@@ -30,13 +30,12 @@ export class BeneosCompendiumReset extends FormApplication {
     } else {
       await this.deleteCompendiumContent("beneos_module.beneos_module_actors")
       ui.notifications.info("BeneosModule : Cleanup of compendiums finished.")
-      BeneosCompendiumManager.buildDynamicCompendiums()
+      BeneosCompendiumManager.buildDynamicCompendiumsTokensDD5()
+      BeneosCompendiumManager.buildDynamicCompendiumsSpellsDD5()
+      BeneosCompendiumManager.buildDynamicCompendiumsItemsDD5()
     }
-
-    // Force reload
-    // window.location.reload(true)
-
   }
+
   /********************************************************************************** */
   render() {
     this.performReset()
@@ -51,7 +50,7 @@ export class BeneosCompendiumManager {
     ui.notifications.info("BeneosModule : PF2 Compendium building .... Please wait !")
 
     BeneosUtility.resetTokenData()
-    let tokenDataFolder = BeneosUtility.getBasePath() + BeneosUtility.getBeneosModuleDataPath()
+    let tokenDataFolder = BeneosUtility.getBasePath() + BeneosUtility.getBeneosTokenDataPath()
 
     // get the packs to update/check
     let actorPack = game.packs.get("beneos_module.beneos_module_actors_pf2")
@@ -121,9 +120,9 @@ export class BeneosCompendiumManager {
           if (filename.toLowerCase().includes("actor_") && filename.toLowerCase().includes(".json")) {
             let r = await fetch(filename)
             let records = await r.json() // This DD5 stuff...
-            let pf2Record = { name: records.name, type: "npc", img: this.replaceImgPath(dataFolder.target, records.img, false) } 
+            let pf2Record = { name: records.name, type: "npc", img: this.replaceImgPath(dataFolder.target, records.img, false) }
             if (records.prototypeToken) {
-              pf2Record.prototypeToken = { texture: {src: this.replaceImgPath(dataFolder.target, records.prototypeToken.texture.src, true) }}
+              pf2Record.prototypeToken = { texture: { src: this.replaceImgPath(dataFolder.target, records.prototypeToken.texture.src, true) } }
             }
             let actor = await Actor.create(pf2Record, { temporary: true })
             let imported = await actorPack.importDocument(actor)
@@ -141,7 +140,7 @@ export class BeneosCompendiumManager {
             }
             // Remove the DD5 token link
             let newPages = []
-            for (let page of records.pages ) {
+            for (let page of records.pages) {
               if (!page.name.includes("Token PDF ")) {
                 newPages.push(page)
               }
@@ -172,7 +171,7 @@ export class BeneosCompendiumManager {
 
   /********************************************************************************** */
   // Main root importer/builder function
-  static async buildDynamicCompendiums() {
+  static async buildDynamicCompendiumsTokensDD5() {
     ui.notifications.info("BeneosModule : Compendium building .... Please wait !")
 
     BeneosUtility.resetTokenData()
@@ -290,6 +289,82 @@ export class BeneosCompendiumManager {
 
     await actorPack.configure({ locked: true })
     await journalPack.configure({ locked: true })
+  }
+
+  /********************************************************************************** */
+  // Main root importer/builder function
+  static async buildDynamicCompendiumsSpellsDD5() {
+    ui.notifications.info("BeneosModule : Spells Compendium building .... Please wait !")
+
+    BeneosUtility.resetTokenData()
+    let tokenDataFolder = BeneosUtility.getBasePath() + BeneosUtility.getBeneosSpellDataPath()
+
+    // get the packs to update/check
+    let spellPack = game.packs.get("beneos_module.beneos_module_spells")
+    await spellPack.getIndex()
+    await spellPack.configure({ locked: false })
+
+    // Parse subfolder
+    let rootFolder = await FilePicker.browse("data", tokenDataFolder)
+    console.log("ROOT", rootFolder)
+    for (let subFolder of rootFolder.dirs) {
+      console.log("SUBFOLDER", subFolder)
+      let res = subFolder.match("/(\\d*)_")
+      if (res && !subFolder.includes("module_assets") && !subFolder.includes("ability_icons")) {
+
+        let dataFolder = await FilePicker.browse("data", subFolder)
+        // And root folder to get json definitions and additionnel idle tokens
+        for (let filename of dataFolder.files) {
+          if (filename.toLowerCase().includes(".json")) {
+            let r = await fetch(filename)
+            let records = await r.json()
+            let spell = await Item.create(records, { temporary: true })
+            await spellPack.importDocument(spell)
+          }
+        }
+      }
+    }
+
+    ui.notifications.info("BeneosModule : Spells Compendium building finished !")
+    await spellPack.configure({ locked: true })
+  }
+
+    /********************************************************************************** */
+  // Main root importer/builder function
+  static async buildDynamicCompendiumsItemsDD5() {
+    ui.notifications.info("BeneosModule : Items Compendium building .... Please wait !")
+
+    BeneosUtility.resetTokenData()
+    let itemDataFolder = BeneosUtility.getBasePath() + BeneosUtility.getBeneosItemDataPath()
+
+    // get the packs to update/check
+    let itemPack = game.packs.get("beneos_module.beneos_module_items")
+    await itemPack.getIndex()
+    await itemPack.configure({ locked: false })
+
+    // Parse subfolder
+    let rootFolder = await FilePicker.browse("data", itemDataFolder)
+    console.log("ROOT", rootFolder)
+    for (let subFolder of rootFolder.dirs) {
+      console.log("SUBFOLDER", subFolder)
+      let res = subFolder.match("/(\\d*)_")
+      if (res && !subFolder.includes("module_assets") && !subFolder.includes("ability_icons")) {
+
+        let dataFolder = await FilePicker.browse("data", subFolder)
+        // And root folder to get json definitions and additionnel idle tokens
+        for (let filename of dataFolder.files) {
+          if (filename.toLowerCase().includes(".json")) {
+            let r = await fetch(filename)
+            let records = await r.json()
+            let item = await Item.create(records, { temporary: true })
+            await itemPack.importDocument(item)
+          }
+        }
+      }
+    }
+
+    ui.notifications.info("BeneosModule : Items Compendium building finished !")
+    await itemPack.configure({ locked: true })
   }
 
   /********************************************************************************** */
