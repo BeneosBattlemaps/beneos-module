@@ -1,0 +1,85 @@
+{
+  "title": "Beneos Module",
+  "description": "Quality of life features for Beneos Battlemaps, Tokens, Spells and Items",
+  "version": "11.0.0",
+  "compatibility": {
+    "minimum": "10",
+    "verified": "11",
+    "maximum": "11"
+  },
+  "url": "https://github.com/BeneosBattlemaps/beneos_module",
+  "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/beneos_module/main/module.json",
+  "download": "https://github.com/BeneosBattlemaps/beneos_module/archive/refs/tags/current_release.zip",
+  "scripts": [
+    "scripts/beneosfx.js"
+  ],
+  "styles": [
+    "css/beneos.css"
+  ],
+  "esmodules": [
+    "scripts/beneos_module.js"
+  ],
+  "packs": [
+    {
+      "name": "beneos_module_actors",
+      "label": "Beneos Tokens",
+      "path": "packs/beneos_module_actors.db",
+      "system": "dnd5e",
+      "type": "Actor",
+      "private": false,
+      "flags": {}
+    },
+    {
+      "name": "beneos_module_actors_pf2",
+      "label": "Beneos Tokens - PF2",
+      "path": "packs/beneos_module_actors_pf2.db",
+      "system": "pf2e",
+      "type": "Actor",
+      "private": false,
+      "flags": {}
+    },
+    {
+      "name": "beneos_module_items",
+      "label": "Beneos Module Items",
+      "path": "packs/beneos_module_items.db",
+      "system": "dnd5e",
+      "type": "Item",
+      "private": false,
+      "flags": {}
+    },
+    {
+      "name": "beneos_module_spells",
+      "label": "Beneos Module Spells",
+      "path": "packs/beneos_module_spells.db",
+      "system": "dnd5e",
+      "type": "Item",
+      "private": false,
+      "flags": {}
+    },
+    {
+      "name": "beneos_module_journal",
+      "label": "Beneos Module Journals",
+      "path": "packs/beneos_module_journal.db",
+      "type": "JournalEntry",
+      "private": false,
+      "flags": {}
+    }
+  ],
+  "id": "beneos_module",
+  "authors": [
+    {
+      "name": "Beneos | Ben#0159",
+      "flags": {}
+    }
+  ],
+  "relationships": {
+    "requires": [
+      {
+        "id": "tokenmagic",
+        "type": "module",
+        "manifest": "https://raw.githubusercontent.com/Feu-Secret/Tokenmagic/master/tokenmagic/module.json",
+        "compatibility": {}
+      }
+    ]
+  }
+}

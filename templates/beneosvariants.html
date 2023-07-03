@@ -1,0 +1,10 @@
+<div class="control-icon beneos-token-variants" data-action="beneosToken-variantlector" >
+    <img src="{{beneosBasePath}}/{{beneosDataPath}}/_ability_icons/violet_04.webp" width="36" height="36" title="Convert to Beneos Token" />
+    <div class="beneos-variants-wrap beneos-disabled">
+        {{#each beneosVariantsHUD as |btoken|}}
+        <button class="beneos-button-select beneos-button-variant control-icon " data-variant="{{btoken.name}}" >
+            <span>{{btoken.name}}</span>
+        </button>
+        {{/each}}
+    </div>
+</div>

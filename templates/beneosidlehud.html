@@ -1,0 +1,17 @@
+<div class="control-icon beneos-token-hud-action" data-action-index="0" data-action="beneosToken-idleselector">
+  <img src="{{beneosBasePath}}/{{beneosDataPath}}/_ability_icons/spellbook03_77.webp" width="36" height="36"
+    title="Select IDLE" />
+  <div class="beneos-selector-wrap beneos-disabled">
+    <span class="">Select IDLE images/animation</span>
+    {{#each beneosTokensIdleHUD as |btoken key|}}
+    <button class="beneos-button-select control-icon beneos-button-idle-token" data-token="{{btoken.tokenvideo}}">
+      {{#if isVideo}}
+      <video class="beneos-token-button" src="{{btoken.token}}" alt="{{btoken.name}}" ></video>
+      {{else}}
+      <image class="beneos-token-button" src="{{btoken.token}}" alt="{{btoken.name}}" ></image>
+      {{/if}}
+      <span class="">{{btoken.name}}</span>
+    </button>
+    {{/each}}
+  </div>
+</div>

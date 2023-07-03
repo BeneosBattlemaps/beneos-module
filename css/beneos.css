@@ -1,0 +1,352 @@
+#token-hud .beneos-selector-wrap, 
+#token-hud .beneos-selector-idle-wrap {
+    position: absolute;
+    left: 75px;
+    display: none;
+    top: 50%;
+    transform: translate(0%, -50%);
+    width: max-content;
+    max-width: 400px;
+    max-height: 350px;
+    text-align: start;
+    overflow-y: auto;
+	
+}
+
+#token-hud .beneos-variants-wrap {
+    position: absolute;
+    left: 75px;
+    display: none;
+    top: 50%;
+    transform: translate(0%, -50%);
+    width: max-content;
+    max-width: 300px;
+    max-height: 350px;
+    text-align: start;
+    overflow-y: auto;
+
+}
+
+#token-hud .beneos-button-select {
+    max-width: 380px;
+	  width: 100%;
+    overflow-wrap: break-word;
+    padding-top: 0;
+    padding-bottom: 0;
+    width: max-content ;
+    padding: 0 ;
+    margin: 0 ;
+    line-height: 40px;
+}
+
+#token-hud .beneos-variants-wrap .beneos-button-select{
+    padding-left:20px;
+}
+
+#token-hud .beneos-token-button {    
+	max-width: 380px;	
+  height: 50px;
+  margin: 4px 0px 4px 8px;
+  object-fit: contain;
+}
+
+
+#token-hud img {
+	display: inline-block;
+	vertical-align: middle;
+	line-height: normal;
+	margin: auto;
+}
+
+#token-hud video {
+	display: inline-block;
+	vertical-align: middle;
+	line-height: normal;
+	margin: auto;
+}
+
+#token-hud span {
+	display: inline-block;
+	vertical-align: middle;
+	line-height: normal;
+	font-size: 18px;
+	margin: auto;
+}
+
+#token-hud .beneos-button-select {
+	width: 100%;
+	text-align: left;
+	
+}
+
+#token-hud .beneos-active {
+    display: block;
+}
+.token-sheet .beneos-disabled {
+    display: none;
+}
+
+.li-no-style {
+  list-style-type: none;
+}
+
+/* Tooltip container */
+.beneos-tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+.beneos-tooltip-dotted {
+  border-bottom: 1px dotted black; /* If you want dots under the hoverable text */
+}
+
+/* Tooltip text */
+.beneos-tooltip .beneos-tooltiptext {
+  text-align: left;  
+  /* Position the tooltip text */
+  position: absolute;
+  margin-left: 2rem;
+  margin-top: 2rem;
+  z-index: 999;
+  /* Fade in tooltip */
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.beneos-tooltip:hover .beneos-tooltiptext {
+  visibility: visible;
+  opacity: 1;
+}
+
+.beneos-tooltip .beneos-tooltip-content{
+  width: 490px;
+  
+  margin: 8px;
+  padding: 8px;
+  background: rgba(233, 226, 218, 0.9);
+  border-radius: 12px;
+  font-size: 0.9rem;
+  top: 0.8rem;
+  left: 2rem;
+}
+.beneos-tooltip .beneos-tooltip-keyword {
+  width: 220px;  
+  margin: 4px;
+  padding: 4px;
+  background: rgba(233, 226, 218, 0.9);
+  border-radius: 12px;
+  font-size: 0.9rem;
+  top: 0.8rem;
+  left: 2rem;
+}
+.beneos-tooltip .beneos-tooltip-purpose {
+  width: 220px;  
+  margin: 4px;
+  padding: 4px;
+  background: rgba(233, 226, 218, 0.9);
+  border-radius: 12px;
+  font-size: 0.8rem;
+  top: 0.8rem;
+  left: 2rem;
+}
+.beneos-search-icons-result {
+  border: 0;
+  width: 120px;
+  height: 120px;
+  margin-right: 4px;
+  max-width: 128px;
+  flex-grow:1;
+}
+.beneos-search-icons-result-tooltip {
+  border: 0;
+  width: 256px;
+  height: 256px;
+  margin-right: 4px;
+  flex-grow:1;
+}
+.beneos-search-icons-bmap-result {
+    border: 0;
+    width: 212px;
+    height: 120px;
+    margin-right: 4px;
+    min-width: 216px;
+    max-width: 216px;
+    flex-grow:1;
+}
+.beneos-search-middle {
+  flex-grow:3;
+}
+.beneos-search-last {
+  flex-grow:1;
+  max-width: 128px;
+}
+.beneos-search-title-result {
+  font-size: 1.2rem;
+}
+.beneos-search-stat {
+  margin-left: 12px;
+}
+.beneos-fitting-button {
+  text-align: center;
+  border-width: 1px;
+  max-width: 7.2rem;
+  border-style: ridge;
+  border-color: black;
+  padding-left: 4px;
+  padding-right: 4px;
+  margin-top: 6px;
+  margin-right: 12px;
+  margin-bottom: 4px;
+  background-color: #cecdc8;
+  max-height: 18px;
+}
+.beneos-search-button {
+  border-width: 1px;
+  border-style: ridge;
+  border-color: black;
+  padding-left: 4px;
+  padding-right: 4px;
+  margin-top: 12px;
+  margin-right: 12px;
+  margin-bottom: 4px;
+  background-color: #cecdc8;
+  max-height: 18px;
+}
+.beneos-search-installed {
+  border-width: 0px;
+  padding-left: 4px;
+  padding-right: 4px;
+  text-align: center;
+  color: #367024;
+  max-height: 18px;
+}
+.beneos-search-notinstalled {
+  border-width: 0px;
+  padding-left: 4px;
+  padding-right: 4px;
+  color: #000000;
+  text-align: center;
+  background-color: #d56b52;
+  max-height: 18px;
+}
+.beneos-search-journal-button{  
+  text-align: center;
+  border-width: 1px;
+  border-style: ridge;
+  border-color: black;
+  padding-left: 4px;
+  padding-right: 4px;
+  background-color: #d6d6d5;
+  flex-grow: 1;
+  max-height: 18px;
+} 
+.biom-content {
+  text-align: center;
+  width: fit-content;
+  flex-grow: 0;
+}
+.beneos-search-grid-button, 
+.beneos-search-brightness-button, 
+.beneos-release-url-button,
+.beneos-search-cr-button{  
+  text-align: center;
+  border-width: 1px;
+  margin-top: 4px;
+  border-style: ridge;
+  border-color: black;
+  padding-left: 4px;
+  padding-right: 4px;
+  background-color: #cecdc8;
+  flex-grow: 1;
+  max-height: 18px;
+} 
+.beneos-search-yt-icons {
+  max-height: 16px;
+  border: 0;
+}
+.beneos-search-yt-button {
+  text-align: center;
+  border-width: 1px;
+  margin-top: 4px;
+  border-style: ridge;
+  border-color: black;
+  padding-left: 4px;
+  padding-right: 4px;
+  background-color: #a79893;
+  flex-grow: 1;
+  max-height: 18px;
+}
+.beneos-search-logo-left {
+  max-width: 64px;
+  max-height: 64px;
+  flex-grow: 1;
+  margin-right: 12px;
+}
+.beneos-search-logo-middle {
+  flex-grow: 3;
+}
+.beneos-search-logo-middle label {
+  color: #191813;
+}
+.beneos-search-logo  {
+  border: 0;
+  max-width: 64px;
+  max-height: 64px;
+}
+.beneos-search-small-icons {
+  border: 0;
+  max-width: 16px;
+  max-height: 16px;
+  flex-grow: 1;
+}
+.beneos-title-center {
+  text-align: center;
+}
+.beneos-search-main-choice {
+  background-color: #bebebe;
+  font-weight: bold;
+}
+.beneos-search-small-text {
+  background-color: #dfdfdf;
+}
+.beneos-not-installed { 
+  background-color: #ff00000E;
+}
+.beneos-description-text {
+  font-size: 0.8rem;
+}
+
+.beneos-actor-menu .beneos-token-menu-element {
+  max-width: 380px;
+  width: 100%;
+  align-self: start;
+}
+
+.beneos-actor-menu .beneos-button-select {
+  max-width: 380px;
+  width: 100%;
+  align-items: start;
+  align-content:start;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding: 0 ;
+  margin: 0 ;
+  text-align: left;
+}
+.beneos-actor-menu .beneos-token-button {    
+  height: 50px;
+  border-width: 0px;
+  margin: 4px 0px 4px 8px;
+  display: inline-block;
+	vertical-align: middle;
+	line-height: normal;
+	margin: auto;
+}
+.beneos-actor-menu .beneos-token-text {
+	display: inline-block;
+	vertical-align: middle;
+	line-height: normal;
+	font-size: 18px;
+	margin: auto;
+}

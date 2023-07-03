@@ -1,0 +1,16 @@
+<div class="beneos-search-token">
+  <span>Search</span>
+  <input type="text" class="beneos-search-token-text" value="{{searchValue}}">
+</div>
+
+
+<div class="" data-action-index="0">
+
+  {{#each beneosTokensHUD as |btoken|}}
+    <button class="beneos-button-select control-icon beneos-button-token-menu" data-actor-id="{{btoken.actorId}}" >
+      <img class="beneos-token-button" src="{{btoken.token}}" alt="{{btoken.name}}"/>
+      <span class="beneos-token-text">{{btoken.actorName}}</span>
+    </button>
+  {{/each}}
+
+</div>
