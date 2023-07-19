@@ -30,8 +30,7 @@ Hooks.once('ready', () => {
 
   BeneosUtility.forgeInit()
   BeneosUtility.registerSettings()
-  BeneosUtility.processUpdate()
-
+  
   //Token Magic Hack  Replacement to prevent double filters when changing animations
   if (typeof TokenMagic !== 'undefined') {
     let OrigSingleLoadFilters = TokenMagic._singleLoadFilters;
@@ -121,24 +120,16 @@ Hooks.once('ready', () => {
     if (!token || !game.user.isGM || !BeneosUtility.isBeneosModule() || !canvas.ready || changeData.texture?.src != undefined) {
       return
     }
-    
     if (changeData["flags"] !== undefined && changeData["flags"]["tokenmagic"] !== undefined) {
       if (changeData.flags.tokenmagic.animeInfo && changeData.flags.tokenmagic.animeInfo[0] && token.state != "move") {
         BeneosUtility.processEndEffect(token.id, changeData.flags.tokenmagic.animeInfo)
       }
     }
     BeneosUtility.debugMessage("[BENEOS TOKENS] Beneos UpdateToken", changeData)
-    //BeneosUtility.detectMoveEnd(token, "updateToken")
 
-    if (changeData.actorData != undefined && changeData.actorData.system?.attributes != undefined && changeData.actorData.system.attributes?.hp != undefined && changeData.actorData.system.attributes.hp.value != 0) {
-      if (changeData.actorData.system.attributes.hp.value < BeneosUtility.beneosHealth[token.id]) {
-        BeneosUtility.updateToken(token.id, "standing", changeData)
-        return
-      }
-      if (changeData.actorData.system.attributes.hp.value > BeneosUtility.beneosHealth[token.id]) {
-        BeneosUtility.updateToken(token.id, "heal", changeData)
-        return
-      }
+    if (changeData.actorData != undefined && changeData.actorData.system?.attributes != undefined && changeData.actorData.system.attributes?.hp != undefined ) {
+      BeneosUtility.updateToken(token.id, changeData)
+      return
     }
 
     BeneosUtility.debugMessage("[BENEOS TOKENS] Nothing to do")
@@ -151,7 +142,7 @@ Hooks.once('ready', () => {
       return
     }
     BeneosUtility.debugMessage("[BENEOS TOKENS] Beneos Combat Start Token")
-    BeneosUtility.updateToken(combatant.tokenId, "standing", {})
+    BeneosUtility.updateToken(combatant.tokenId, {})
   })
 
 
@@ -161,7 +152,7 @@ Hooks.once('ready', () => {
       return
     }
     BeneosUtility.debugMessage("[BENEOS TOKENS] Beneos Combat End Token")
-    BeneosUtility.updateToken(combatant.tokenId, "standing", {})
+    BeneosUtility.updateToken(combatant.tokenId, {})
   })
 
   /********************************************************************************** */
@@ -286,7 +277,7 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
           if (beneosClickedButton.classList.contains("beneos-button-variant")) {
             event.preventDefault();
             token.document.setFlag(BeneosUtility.moduleID(), "variant", beneosClickedButton.dataset.variant)
-            setTimeout(function () { BeneosUtility.updateToken(token.id, "standing", { forceupdate: true }) }, 1000)
+            setTimeout(function () { BeneosUtility.updateToken(token.id, { forceupdate: true }) }, 1000)
           }
         }
       });

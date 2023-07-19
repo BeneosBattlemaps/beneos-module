@@ -92,16 +92,6 @@ export class BeneosUtility {
         restricted: true
       })
 
-      game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-migrate", {
-        name: "Migrate all previous actors/tokens to new data organization",
-        label: "Migrate actors and tokens",
-        hint: "Convert all tokens and actors in the current world to the new BeneosModule organization",
-        scope: 'world',
-        config: true,
-        type: BeneosActorTokenMigration,
-        restricted: true
-      })
-
       game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-search-engine", {
         name: "Search Engine",
         label: "Search in published tokens/battlemaps",
@@ -130,24 +120,6 @@ export class BeneosUtility {
         default: false,
         type: Boolean,
         restricted: true
-      })
-
-      game.settings.register(BeneosUtility.moduleID(), "beneos-disable-walk", {
-        name: "Disable walk animations",
-        hint: "If ticked, walk animations during moves will be disabled",
-        scope: 'world',
-        config: true,
-        default: true,
-        type: Boolean
-      })
-
-      game.settings.register(BeneosUtility.moduleID(), "beneos-disable-walk-updated", {
-        name: "Disable walk animations - To force as default",
-        hint: "If ticked, walk animations during moves will be disabled - To force as default",
-        scope: 'world',
-        config: false,
-        default: false,
-        type: Boolean
       })
 
       game.settings.register(BeneosUtility.moduleID(), "beneos-animated-portrait-only", {
@@ -198,15 +170,6 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
-  static processUpdate() {
-    let isUpdated = game.settings.get(BeneosUtility.moduleID(), 'beneos-disable-walk-updated')
-    if (!isUpdated) {
-      game.settings.set(BeneosUtility.moduleID(), 'beneos-disable-walk', true)
-      game.settings.set(BeneosUtility.moduleID(), 'beneos-disable-walk-updated', true)
-    }
-  }
-
-  /********************************************************************************** */
   static init() {
     this.file_cache = {}
 
@@ -219,7 +182,8 @@ export class BeneosUtility {
     this.itemDataPath += "/beneos_items/"
     this.spellDataPath += "/beneos_spells/"
 
-    this.beneosHealth = []
+    this.beneosHealth = {}
+    this.standingImage = {}
     this.beneosPreload = []
     this.beneosTokens = {}
     try {
@@ -338,7 +302,7 @@ export class BeneosUtility {
     let scaleFactor = this.getScaleFactor(token, object.texture.src)
     canvas.scene.updateEmbeddedDocuments("Token", [({ _id: token.id, scale: scaleFactor })])
     setTimeout(function () {
-      BeneosUtility.updateToken(token.id, "standing", { forceupdate: true })
+      BeneosUtility.updateToken(token.id, { forceupdate: true })
     }, 500)
   }
 
@@ -454,7 +418,7 @@ export class BeneosUtility {
       await token.document.setFlag("core", "randomizeVideo", true)
     }
     if (token.state == "dead") {
-
+      // TODO
     }
     await token.document.update({ img: animation, scale: tkscale, rotation: tkangle, alpha: 1.0, data: { img: animation } }, { animate: false })
     this.addFx(token, bfx, true, true)
@@ -717,14 +681,14 @@ export class BeneosUtility {
     // Manage state change
     if (token.state == "heal" || token.state == "hit" || token.state == "action") {
       setTimeout(function () {
-        BeneosUtility.updateToken(tokenId, "standing", { forceupdate: true });
+        BeneosUtility.updateToken(tokenId, { forceupdate: true });
       }, 20)
     }
   }
 
   /********************************************************************************** */
   // Main function that allows to control the automatic animations and decide which animations has to be shown.
-  static updateToken(tokenid, BeneosUpdateAction, BeneosExtraData) {
+  static updateToken(tokenid, BeneosExtraData) {
 
     let token = BeneosUtility.getToken(tokenid)
     if (!token || !BeneosUtility.checkIsBeneosToken(token) || !token.document.texture.src) {
@@ -752,25 +716,36 @@ export class BeneosUtility {
     let hp = attributes.hp.value
     let benRotation = 0
     let benAlpha = 1
-    if (hp == "undefined") {
+    if (!game.dnd5e || hp == undefined) {
       BeneosUtility.debugMessage("[BENEOS MODULE] No hp")
       return
     }
 
-    BeneosUtility.beneosHealth[token.id] = hp
-    token.state = "standing"
-    if (game.dnd5e && hp == 0) {
+    let currentImage = token.document.texture.src
+    let newImage = undefined
+    if (hp == 0 && hp != BeneosUtility.beneosHealth[token.id]) {
       BeneosUtility.debugMessage("[BENEOS MODULE] Dead")
       token.state = "dead"
-      let currentImage = token.document.texture.src
-      let newImage =  currentImage
+      BeneosUtility.standingImage[token.id] = currentImage
       if (currentImage.includes("_face")) {
         newImage = tokenData.tokenPath + tokenData.tokenKey + "-idle_face_still_death.webp"
       } else if (token.document.texture.src.includes("_top")) {
         newImage = tokenData.tokenPath + tokenData.tokenKey + "-dead_top.webp"
       }
+    }
+    if ( BeneosUtility.beneosHealth[token.id] == 0 && hp > 0) {
+      BeneosUtility.debugMessage("[BENEOS MODULE] Standing")
+      token.state = "standing"
+      newImage = BeneosUtility.standingImage[token.id]
+    }
+    BeneosUtility.beneosHealth[token.id] = hp // Store current HP value
+    if (newImage) {
       fetch(newImage).then(function(response) {
-        BeneosUtility.changeAnimation(token, newImage, benRotation, benAlpha, undefined, undefined, false, true)
+        if (response.ok) {
+          BeneosUtility.changeAnimation(token, newImage, benRotation, benAlpha, undefined, undefined, false, true)
+        } else {
+          throw new Error('File does not exist');
+        }
       }).catch(function(error) {
         console.log('Fetch error : ' + error.message);
       })
@@ -797,7 +772,7 @@ export class BeneosUtility {
         let tokenData = BeneosUtility.getTokenImageInfo(token.texture.src)
         let tokenConfig = this.beneosTokens[tokenData.tokenKey]
         if (typeof tokenConfig === 'object' && tokenConfig) {
-          BeneosUtility.updateToken(token.id, "standing", {})
+          BeneosUtility.updateToken(token.id, {})
         }
       }
     }
@@ -906,10 +881,6 @@ export class BeneosUtility {
         let status = tokenData.currentStatus
         console.log("Updting size : ", tokenData, tokenConfig)
 
-        //if (tokenData.currentStatus.includes("idle") || tokenData.currentStatus.includes("special")) {
-        /*if (tokenData.currentStatus.includes("idle")) {
-          status = "idle"
-        }*/
         let variantName = tokenData.variant
         if (!tokenConfig[tokenData.variant]) {
           variantName = "top"
