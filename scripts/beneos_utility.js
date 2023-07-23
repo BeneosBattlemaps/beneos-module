@@ -139,6 +139,22 @@ export class BeneosUtility {
         default: "",
         config: false
       })
+      game.settings.register(BeneosUtility.moduleID(), 'beneos-json-itemconfig', {
+        name: 'Global JSON config for items',
+        default: {},
+        type: String,
+        scope: 'world',
+        default: "",
+        config: false
+      })
+      game.settings.register(BeneosUtility.moduleID(), 'beneos-json-spellconfig', {
+        name: 'Global JSON config for spells',
+        default: {},
+        type: String,
+        scope: 'world',
+        default: "",
+        config: false
+      })
 
       game.settings.register(BeneosUtility.moduleID(), 'beneos-user-config', {
         name: 'Internal data store for user-defined parameters',
@@ -186,12 +202,29 @@ export class BeneosUtility {
     this.standingImage = {}
     this.beneosPreload = []
     this.beneosTokens = {}
+    this.beneosSpells = {}
+    this.beneosItems = {}
+
     try {
       this.beneosTokens = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-tokenconfig'))
     }
     catch {
-      console.log("BeneosModule : *************** JSON loading error ! **************")
+      console.log("BeneosModule : *************** Token JSON loading error ! **************")
       this.beneosTokens = {}
+    }
+    try {
+      this.beneosSpells = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-spellconfig'))
+    }
+    catch {
+      console.log("BeneosModule : *************** Spell JSON loading error ! **************")
+      this.beneosSpells = {}
+    }
+    try {
+      this.beneosItems = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-itemconfig'))
+    }
+    catch {
+      console.log("BeneosModule : *************** Item JSON loading error ! **************")
+      this.beneosItems = {}
     }
     console.log("Loaded", this.beneosTokens)
 
@@ -536,10 +569,16 @@ export class BeneosUtility {
 
   }
   /********************************************************************************** */
-  static isLoaded(tokenKey) {
-    return this.beneosTokens[tokenKey]
+  static isTokenLoaded(key) {
+    return this.beneosTokens[key]
   }
-
+  static isItemLoaded(key) {
+    return this.beneosItems[key]
+  }
+  static isSpellLoaded(key) {
+    return this.beneosSpells[key]
+  }
+  
   /********************************************************************************** */
   static getActorId(tokenKey) {
     let token = this.beneosTokens[tokenKey]

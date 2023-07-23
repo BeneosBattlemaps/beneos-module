@@ -2,14 +2,14 @@
   <header class="sheet-header">
     <div class="header-fields flexrow">
       <div class="beneos-search-logo-left">
-        <img class="beneos-search-logo" src="modules/beneostokens/icons/beneos_Logo.webp">
+        <img class="beneos-search-logo" src="modules/beneos_module/icons/beneos_Logo.webp">
       </div>
       <div class="beneos-search-logo-middle flexcol">
         <label class="beneos-search-title-result">Search through all Beneos Assets available</label>
         <span>
-          <label class="beneos-search-small-text"><a class="beneos-search-small-text" href="https://www.patreon.com/BeneosTokens"><img class="beneos-search-small-icons" src="modules/beneostokens/icons/patreon_logo32x32.webp">Token Patreon</a></label>
-          <label class="beneos-search-small-text"><a class="beneos-search-small-text" href="https://www.patreon.com/BeneosBattlemaps"><img class="beneos-search-small-icons" src="modules/beneostokens/icons/patreon_logo32x32.webp">Battlemap Patreon</a></label>
-          <label class="beneos-search-small-text"><a class="beneos-search-small-text" href="https://discord.gg/mVpv7Nt5qM"><img class="beneos-search-small-icons" src="modules/beneostokens/icons/discord_logo400x400png.webp">Discord</a></label>
+          <label class="beneos-search-small-text"><a class="beneos-search-small-text" href="https://www.patreon.com/BeneosTokens"><img class="beneos-search-small-icons" src="modules/beneos_module/icons/patreon_logo32x32.webp">Token Patreon</a></label>
+          <label class="beneos-search-small-text"><a class="beneos-search-small-text" href="https://www.patreon.com/BeneosBattlemaps"><img class="beneos-search-small-icons" src="modules/beneos_module/icons/patreon_logo32x32.webp">Battlemap Patreon</a></label>
+          <label class="beneos-search-small-text"><a class="beneos-search-small-text" href="https://discord.gg/mVpv7Nt5qM"><img class="beneos-search-small-icons" src="modules/beneos_module/icons/discord_logo400x400png.webp">Discord</a></label>
         </span>
       </div>
     </div>
@@ -21,9 +21,10 @@
   <section>
     <div class="flexcol">
       <span class="flexrow beneos-search-main-choice">
-        <label><input type="radio" id="beneos-radio-token" name="beneos-search-select" {{checked
-            searchToken}} />ANIMATED TOKENS</label>
-        <label><input type="radio" id="beneos-radio-bmap" name="beneos-search-select" {{checked searchBmap}} />ANIMATED MAPS</label>
+        <label><input type="radio" id="beneos-radio-token" name="beneos-search-select" {{#if (eq searchMode "token")}}checked{{/if}}/>TOKENS</label>
+        <label><input type="radio" id="beneos-radio-bmap" name="beneos-search-select" {{#if (eq searchMode "bmap")}}checked{{/if}} />MAPS</label>
+        <label><input type="radio" id="beneos-radio-item" name="beneos-search-select" {{#if (eq searchMode "item")}}checked{{/if}} />ITEMS</label>
+        <label><input type="radio" id="beneos-radio-spell" name="beneos-search-select" {{#if (eq searchMode "spell")}}checked{{/if}} />SPELLS</label>
       </span>
     </div>
 
@@ -38,7 +39,7 @@
 
     <hr>
 
-    {{#if searchBmap}}
+    {{#if (eq searchMode "bmap")}}
 
     <span class="flexrow">
       <label>Biome Filter 1: </label>
@@ -111,7 +112,9 @@
       </select>
     </span>
 
-    {{else}}
+    {{/if}}
+
+    {{#if (eq searchMode "token")}}
 
     <span class="flexrow">
       <label>Biom : </label>
@@ -184,10 +187,125 @@
         {{/select}}
       </select>
     </span>
-
-
     {{/if}}
-    </div>
+
+    {{#if (eq searchMode "item")}}
+    <span class="flexrow">
+      <label>Item type : </label>
+      <select name="item-type" class="beneos-selector" id="item-type" data-dtype="String">
+        {{#select "any"}}
+        <option value="any">Any</option>
+        {{#each itemType as |data key|}}
+        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        {{/each}}
+        {{/select}}
+      </select>
+    </span>
+    <span class="flexrow">
+      <label>Rarity : </label>
+      <select name="rarity" class="beneos-selector" id="rarity-selector" data-dtype="String">
+        {{#select "any"}}
+        <option value="any">Any</option>
+        {{#each rarity as |data key|}}
+        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        {{/each}}
+        {{/select}}
+      </select>
+    </span>
+    <span class="flexrow">
+      <label>Origin : </label>
+      <select name="origin" class="beneos-selector" id="origin-selector" data-dtype="String">
+        {{#select "any"}}
+        <option value="any">Any</option>
+        {{#each origin as |data key|}}
+        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        {{/each}}
+        {{/select}}
+      </select>
+    </span>
+    <span class="flexrow">
+      <label>Tier : </label>
+      <select name="tier" class="beneos-selector" id="tier-selector" data-dtype="String">
+        {{#select "any"}}
+        <option value="any">Any</option>
+        {{#each tier as |data key|}}
+        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        {{/each}}
+        {{/select}}
+      </select>
+    </span>
+    <span class="flexrow">
+      <label>Price : </label>
+      <select name="price" class="beneos-selector" id="price-selector" data-dtype="String">
+        {{#select "any"}}
+        <option value="any">Any</option>
+        {{#each price as |data key|}}
+        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        {{/each}}
+        {{/select}}
+      </select>
+    </span>
+    {{/if}}
+
+    {{#if (eq searchMode "spell")}}
+    <span class="flexrow">
+      <label>Spell type : </label>
+      <select name="spell-type" class="beneos-selector" id="spell-type" data-dtype="String">
+        {{#select "any"}}
+        <option value="any">Any</option>
+        {{#each spellType as |data key|}}
+        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        {{/each}}
+        {{/select}}
+      </select>
+    </span>
+    <span class="flexrow">
+      <label>School : </label>
+      <select name="school" class="beneos-selector" id="school-selector" data-dtype="String">
+        {{#select "any"}}
+        <option value="any">Any</option>
+        {{#each school as |data key|}}
+        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        {{/each}}
+        {{/select}}
+      </select>
+    </span>
+    <span class="flexrow">
+      <label>Level : </label>
+      <select name="level" class="beneos-selector" id="level-selector" data-dtype="String">
+        {{#select "any"}}
+        <option value="any">Any</option>
+        {{#each level as |data key|}}
+        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        {{/each}}
+        {{/select}}
+      </select>
+    </span>
+    <span class="flexrow">
+      <label>Casting Time : </label>
+      <select name="castingtime" class="beneos-selector" id="castingtime-selector" data-dtype="String">
+        {{#select "any"}}
+        <option value="any">Any</option>
+        {{#each castingTime as |data key|}}
+        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        {{/each}}
+        {{/select}}
+      </select>
+    </span>
+    <span class="flexrow">
+      <label>Class : </label>
+      <select name="class" class="beneos-selector" id="class-selector" data-dtype="String">
+        {{#select "any"}}
+        <option value="any">Any</option>
+        {{#each spellClass as |data key|}}
+        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        {{/each}}
+        {{/select}}
+      </select>
+    </span>
+    {{/if}}
+
+  </div>
 
 
   </section>

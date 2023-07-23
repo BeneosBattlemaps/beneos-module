@@ -249,6 +249,10 @@
 .beneos-search-grid-button, 
 .beneos-search-brightness-button, 
 .beneos-release-url-button,
+.beneos-search-tier-button,
+.beneos-search-price-button,
+.beneos-search-spell-type-button,
+.beneos-search-action-button,
 .beneos-search-cr-button{  
   text-align: center;
   border-width: 1px;

@@ -3,6 +3,8 @@ import { BeneosUtility } from "./beneos_utility.js"
 /********************************************************************************** */
 const tokenDBURL = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/tokens/beneos_tokens_database.json"
 const battlemapDBURL = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/battlemaps/beneos_battlemaps_database.json"
+const itemDBURL = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/items/beneos_items_database.json"
+const spellDBURL = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/spells/beneos_spells_database.json"
 
 /********************************************************************************** */
 export class BeneosModuleMenu extends Dialog {
@@ -29,7 +31,7 @@ export class BeneosModuleMenu extends Dialog {
     }
 
     //console.log("SEARCH results", results)
-    let html = await renderTemplate('modules/beneos_module/templates/' + this.listTemplate, 
+    let html = await renderTemplate('modules/beneos_module/templates/' + this.listTemplate,
       { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getBeneosModuleDataPath(), beneosTokensHUD, searchValue })
     this.data.content = html
     this.render(true)
@@ -37,7 +39,7 @@ export class BeneosModuleMenu extends Dialog {
 
   /********************************************************************************** */
   textSearch(searchValue) {
-    let newList = this.tokenList.filter( t => t.name.toLowerCase().includes( searchValue.toLowerCase()))
+    let newList = this.tokenList.filter(t => t.name.toLowerCase().includes(searchValue.toLowerCase()))
     return newList
   }
 
@@ -93,10 +95,31 @@ export class BeneosDatabaseHolder {
 
   /********************************************************************************** */
   static async loadDatabaseFiles() {
-    let tokenData = await fetchJsonWithTimeout(tokenDBURL)
-    this.tokenData = tokenData
-    let bmapData = await fetchJsonWithTimeout(battlemapDBURL)
-    this.bmapData = bmapData
+    try {
+      let tokenData = await fetchJsonWithTimeout(tokenDBURL)
+      this.tokenData = tokenData
+    } catch {
+      ui.notifications.error("Unable to load Beneos Token Database - File error")
+    }
+    try {
+      let bmapData = await fetchJsonWithTimeout(battlemapDBURL)
+      this.bmapData = bmapData
+    } catch {
+      ui.notifications.error("Unable to load Beneos Battlemap Database - File error")
+    }
+    try {
+      let itemData = await fetchJsonWithTimeout(itemDBURL)
+      this.itemData = itemData
+    } catch {
+      ui.notifications.error("Unable to load Beneos Item Database - File error")
+    }
+    try {
+      let spellData = await fetchJsonWithTimeout(spellDBURL)
+      this.spellData = spellData
+    } catch {
+      ui.notifications.error("Unable to load Beneos Spell Database - File error")
+    }
+
     this.buildSearchData()
   }
 
@@ -151,6 +174,16 @@ export class BeneosDatabaseHolder {
     this.purposeList = {}
     this.gridList = {}
     this.adventureList = {}
+    this.itemRarity = {}
+    this.itemOrigin = {}
+    this.itemType = {}
+    this.itemTier = {}
+    this.itemPrice = {}
+    this.spellLevel = {}
+    this.spellSchool = {}
+    this.spellCastingTime = {}
+    this.spellType = {}
+    this.spellClasses = {}
 
     for (let key in this.tokenData.content) {
       console.log("Processing", key)
@@ -165,7 +198,7 @@ export class BeneosDatabaseHolder {
         mergeObject(this.crList, this.buildList(tokenData.properties.cr))
         mergeObject(this.movementList, this.buildList(tokenData.properties.movement))
         mergeObject(this.purposeList, this.buildList(tokenData.properties.purpose))
-        tokenData.isInstalled = BeneosUtility.isLoaded(key)
+        tokenData.isInstalled = BeneosUtility.isTokenLoaded(key)
         tokenData.actorId = BeneosUtility.getActorId(key)
         //tokenData.description = tokenData.description
       }
@@ -181,10 +214,38 @@ export class BeneosDatabaseHolder {
         mergeObject(this.adventureList, this.buildList(bmapData.properties.adventure))
         mergeObject(this.gridList, this.buildList(bmapData.properties.grid))
         bmapData.isInstalled = true
-        //this.bmapBioms["Any"] = 1 // Force Any, as not present (why ??)
       }
     }
-    //console.log(">>>>>>>>>>>>>>>>>>>", this.bmapBioms)
+    for (let key in this.itemData.content) {
+      let itemData = this.itemData.content[key]
+      if (itemData && typeof (itemData) == "object") {
+        itemData.kind = "item"
+        itemData.key = key
+        itemData.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/items/thumbnails/" + itemData.properties.icon
+        mergeObject(this.itemRarity, this.buildList(itemData.properties.rarity))
+        mergeObject(this.itemOrigin, this.buildList(itemData.properties.origin))
+        mergeObject(this.itemType, this.buildList(itemData.properties.item_type))
+        mergeObject(this.itemTier, this.buildList(itemData.properties.tier))
+        mergeObject(this.itemPrice, this.buildList(itemData.properties.price))
+        itemData.isInstalled = BeneosUtility.isItemLoaded(key)
+      }
+    }
+
+    for (let key in this.spellData.content) {
+      let spellData = this.spellData.content[key]
+      if (spellData && typeof (spellData) == "object") {
+        spellData.kind = "spell"
+        spellData.key = key
+        spellData.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/spells/thumbnails/" + spellData.properties.icon
+        mergeObject(this.spellLevel, this.buildList(spellData.properties.level))
+        mergeObject(this.spellSchool, this.buildList(spellData.properties.school))
+        mergeObject(this.spellCastingTime, this.buildList(spellData.properties.casting_time))
+        mergeObject(this.spellType, this.buildList(String(spellData.properties.spell_type)))
+        mergeObject(this.spellClasses, this.buildList(spellData.properties.classes))
+        spellData.isInstalled = BeneosUtility.isSpellLoaded(key)
+      }
+    }
+
   }
 
   /********************************************************************************** */
@@ -238,7 +299,7 @@ export class BeneosDatabaseHolder {
       }
       if (this.fieldTextSearch(item, text) || this.fieldTextSearch(item.properties, text)) {
         results.push(item)
-      } 
+      }
     }
     return results
   }
@@ -258,28 +319,32 @@ export class BeneosDatabaseHolder {
     let newResults = {}
     value = value.toLowerCase()
 
-    //console.log(">>>>>", type, propertyName, value)
+    console.log(">>>>>", type, propertyName, value, searchResults)
 
     for (let key in searchResults) {
       let item = searchResults[key]
-      item.kind = (type == "token") ? "token" : item.properties.type
+      item.kind = type
+      if (type == "bmap") {
+        item.kind = item.properties.type
+      }
       if (item.kind == "token") {
         item.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/tokens/thumbnails/" + item.key + "-idle_face_still.webp"
-      } else {
+      } 
+      if (type == "bmap" ) {
         item.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/battlemaps/thumbnails/" + item.key + ".webp"
         if (item.properties.sibling) {
           item.siblingPicture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/battlemaps/thumbnails/" + item.properties.sibling + ".webp"
         }
       }
-      //console.log("PROP", type, propertyName, value, searchResults, item.properties[propertyName])
+      console.log("PROP", type, propertyName, value, searchResults, item, item.properties[propertyName])
       if (item[propertyName]) {
         if (item[propertyName].toLowerCase() == value) {
           newResults[key] = duplicate(item)
         }
       }
       if (item.properties && item.properties[propertyName]) {
-        //console.log(item.properties[propertyName], typeof(item.properties[propertyName]))
-        if (typeof (item.properties[propertyName]) == "string") {
+        console.log(item.properties[propertyName], typeof(item.properties[propertyName]))
+        if (typeof (item.properties[propertyName]) == "string" || typeof (item.properties[propertyName]) == "number") {
           if (strict) {
             if (item.properties[propertyName].toLowerCase().toString() == value.toString()) {
               newResults[key] = duplicate(item)
@@ -300,13 +365,22 @@ export class BeneosDatabaseHolder {
         }
       }
     }
+    console.log("Found", newResults)
     return newResults
-    //console.log("Found", searchResults)
   }
 
   /********************************************************************************** */
   static getAll(type) {
-    return (type == "token") ? duplicate(this.tokenData.content) : duplicate(this.bmapData.content)
+    if (type == "token") {
+      return duplicate(this.tokenData.content)
+    }
+    if (type == "item") {
+      return duplicate(this.itemData.content)
+    }
+    if (type == "spell") {
+      return duplicate(this.spellData.content)
+    }
+    return duplicate(this.bmapData.content)
   }
 
   /********************************************************************************** */
@@ -321,8 +395,8 @@ export class BeneosDatabaseHolder {
   /********************************************************************************** */
   static getData() {
     return {
-      searchToken: true,
-      searchBmap: false,
+      searchMode: "token",
+
       tokenBioms: this.toTable(this.tokenBioms),
       bmapBioms: this.toTable(this.bmapBioms),
       tokenTypes: this.toTable(this.tokenTypes),
@@ -332,7 +406,20 @@ export class BeneosDatabaseHolder {
       crList: this.toTable(this.crList, false),
       purposeList: this.toTable(this.purposeList),
       adventureList: this.toTable(this.adventureList),
-      gridList: this.toTable(this.gridList)
+      gridList: this.toTable(this.gridList),
+
+      rarity: this.toTable(this.itemRarity),
+      origin: this.toTable(this.itemOrigin),
+      itemType: this.toTable(this.itemType),
+      tier: this.toTable(this.itemTier),
+      price: this.toTable(this.itemPrice),
+
+      level: this.toTable(this.spellLevel),
+      school: this.toTable(this.spellSchool),
+      castingTime: this.toTable(this.spellCastingTime),
+      spellType: this.toTable(this.spellType),
+      spellClass: this.toTable(this.spellClasses),
+
     }
   }
 }
@@ -422,7 +509,7 @@ export class BeneosSearchResults extends Dialog {
     $(".beneos-button-journal").click(event => {
       let element = $(event.currentTarget)?.parents(".token-root-div")
       let tokenKey = element.data("token-key")
-      let tokenConfig = BeneosUtility.isLoaded(tokenKey)
+      let tokenConfig = BeneosUtility.isTokenLoaded(tokenKey)
       if (tokenConfig && tokenConfig.config) {
         if (tokenConfig.config.compendium) {
           let beneosPack = game.packs.get("beneos_module.beneos_module_journal")
@@ -458,8 +545,8 @@ export class BeneosSearchEngine extends Dialog {
     super(dialogConf, dialogOptions)
 
     this.dbData = data
-    this.dbData.searchToken = true
-    this.dbData.searchBmap = false
+    this.dbData.searchMode = "token"
+
     game.beneosTokens.searchEngine = this
   }
 
@@ -516,7 +603,7 @@ export class BeneosSearchEngine extends Dialog {
 
   /********************************************************************************** */
   processSelectorSearch() {
-    let type = (this.dbData.searchToken) ? "token" : "bmap"
+    let type = this.dbData.searchMode
     let searchResults = BeneosDatabaseHolder.getAll(type)
 
     let biomValue = $("#bioms-selector").val()
@@ -563,6 +650,49 @@ export class BeneosSearchEngine extends Dialog {
     if (adventureValue && adventureValue.toLowerCase() != "any") {
       searchResults = BeneosDatabaseHolder.searchByProperty(type, "adventure", adventureValue, searchResults)
     }
+
+    let rarityValue = $("#rarity-selector").val()
+    if (rarityValue && rarityValue.toLowerCase() != "any") {
+      searchResults = BeneosDatabaseHolder.searchByProperty(type, "rarity", rarityValue, searchResults, true)
+    }
+    let itemTypeValue = $("#item-type").val()
+    if (itemTypeValue && itemTypeValue.toLowerCase() != "any") {
+      searchResults = BeneosDatabaseHolder.searchByProperty(type, "item_type", itemTypeValue, searchResults)
+    }
+    let originValue = $("#origin-selector").val()
+    if (originValue && originValue.toLowerCase() != "any") {
+      searchResults = BeneosDatabaseHolder.searchByProperty(type, "origin", originValue, searchResults, true)
+    }
+    let tierValue = $("#tier-selector").val()
+    if (tierValue && tierValue.toLowerCase() != "any") {
+      searchResults = BeneosDatabaseHolder.searchByProperty(type, "tier", tierValue, searchResults, true)
+    }
+    let priceValue = $("#price-selector").val()
+    if (priceValue && priceValue.toLowerCase() != "any") {
+      searchResults = BeneosDatabaseHolder.searchByProperty(type, "price", priceValue, searchResults, true)
+    }
+
+    let spellTypeValue = $("#spell-type").val()
+    if (spellTypeValue && spellTypeValue.toLowerCase() != "any") {
+      searchResults = BeneosDatabaseHolder.searchByProperty(type, "spell_type", spellTypeValue, searchResults)
+    }
+    let schoolValue = $("#school-selector").val()
+    if (schoolValue && schoolValue.toLowerCase() != "any") {
+      searchResults = BeneosDatabaseHolder.searchByProperty(type, "school", schoolValue, searchResults)
+    }
+    let levelValue = $("#level-selector").val()
+    if (levelValue && levelValue.toLowerCase() != "any") {
+      searchResults = BeneosDatabaseHolder.searchByProperty(type, "level", levelValue, searchResults)
+    }
+    let castingValue = $("#castingtime-selector").val()
+    if (castingValue && castingValue.toLowerCase() != "any") {
+      searchResults = BeneosDatabaseHolder.searchByProperty(type, "casting_time", castingValue, searchResults)
+    }
+    let classValue = $("#class-selector").val()
+    if (classValue && classValue.toLowerCase() != "any") {
+      searchResults = BeneosDatabaseHolder.searchByProperty(type, "classes", classValue, searchResults)
+    }
+
     this.displayResults(searchResults)
   }
 
@@ -585,6 +715,18 @@ export class BeneosSearchEngine extends Dialog {
     $("#token-cr").val("any")
     $('#token-fight-style').val("any")
     $("#token-purpose").val("any")
+
+    $("#rarity-selector").val("any")
+    $("#item-type").val("any")
+    $("#origin-selector").val("any")
+    $("#price-selector").val("any")
+    $("#tier-selector").val("any")
+
+    $("#spell-type").val("any")
+    $("#school-selector").val("any")
+    $("#class-selector").val("any")
+    $("#level-selector").val("any")
+    $("#castingtime-selector").val("any")
   }
 
   /********************************************************************************** */
@@ -621,21 +763,29 @@ export class BeneosSearchEngine extends Dialog {
       }, 600)
     })
     $("#beneos-radio-token").click(event => {
-      this.dbData.searchToken = $(event.currentTarget).val()
-      this.dbData.searchBmap = !this.dbData.searchToken
+      this.dbData.searchMode = "token"
       this.updateContent()
       this.updateSelector(event)
     })
 
     $("#beneos-radio-bmap").click(event => {
-      this.dbData.searchBmap = $(event.currentTarget).val()
-      this.dbData.searchToken = !this.dbData.searchBmap
+      this.dbData.searchMode = "bmap"
+      this.updateContent()
+      this.updateSelector(event)
+    })
+    $("#beneos-radio-spell").click(event => {
+      this.dbData.searchMode = "spell"
+      this.updateContent()
+      this.updateSelector(event)
+    })
+    $("#beneos-radio-item").click(event => {
+      this.dbData.searchMode = "item"
       this.updateContent()
       this.updateSelector(event)
     })
 
     $("#reset-search-list").click(event => {
-      let type = (this.dbData.searchToken) ? "token" : "bmap"
+      let type = this.dbData.searchMode
       this.cleanFilters()
       let searchResults = BeneosDatabaseHolder.getAll(type)
       this.displayResults(searchResults)
@@ -645,7 +795,6 @@ export class BeneosSearchEngine extends Dialog {
       this.updateSelector(event)
     })
   }
-
 }
 
 /********************************************************************************** */

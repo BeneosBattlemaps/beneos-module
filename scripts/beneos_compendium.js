@@ -319,7 +319,9 @@ export class BeneosCompendiumManager {
             let r = await fetch(filename)
             let records = await r.json()
             let spell = await Item.create(records, { temporary: true })
-            await spellPack.importDocument(spell)
+            let iSpell = await spellPack.importDocument(spell)
+            let key = subFolder.replace(/\/$/, "").split("/").pop();
+            BeneosUtility.beneosSpells[key] = {spellId: iSpell.id} 
           }
         }
       }
@@ -327,6 +329,11 @@ export class BeneosCompendiumManager {
 
     ui.notifications.info("BeneosModule : Spells Compendium building finished !")
     await spellPack.configure({ locked: true })
+
+    let toSave = JSON.stringify(BeneosUtility.beneosSpells)
+    //console.log("Saving data :", toSave)
+    game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', toSave) // Save the token config !
+
   }
 
     /********************************************************************************** */
@@ -344,9 +351,9 @@ export class BeneosCompendiumManager {
 
     // Parse subfolder
     let rootFolder = await FilePicker.browse("data", itemDataFolder)
-    console.log("ROOT", rootFolder)
+    //console.log("ROOT", rootFolder)
     for (let subFolder of rootFolder.dirs) {
-      console.log("SUBFOLDER", subFolder)
+      //console.log("SUBFOLDER", subFolder)
       let res = subFolder.match("/(\\d*)_")
       if (res && !subFolder.includes("module_assets") && !subFolder.includes("ability_icons")) {
 
@@ -357,7 +364,9 @@ export class BeneosCompendiumManager {
             let r = await fetch(filename)
             let records = await r.json()
             let item = await Item.create(records, { temporary: true })
-            await itemPack.importDocument(item)
+            let iItem = await itemPack.importDocument(item)
+            let key = subFolder.replace(/\/$/, "").split("/").pop();
+            BeneosUtility.beneosItems[key] = {itemId: iItem.id} 
           }
         }
       }
@@ -365,6 +374,11 @@ export class BeneosCompendiumManager {
 
     ui.notifications.info("BeneosModule : Items Compendium building finished !")
     await itemPack.configure({ locked: true })
+
+    let toSave = JSON.stringify(BeneosUtility.beneosItems)
+    //console.log("Saving data :", toSave)
+    game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', toSave) // Save the token config !
+
   }
 
   /********************************************************************************** */
