@@ -168,7 +168,17 @@
       {{else}}
       <div class="beneos-search-middle flexcol">
       {{/if}}
-        <label class="beneos-search-title-result">{{result.name}}</label>
+
+        <div class="beneos-tooltip">
+          <div class="beneos-tooltiptext beneos-token-description" >
+            <div class="flexrow beneos-tooltip-content-item" >
+              <img class="beneos-search-icons-result-tooltip-item" src="{{result.card_front}}">
+              <img class="beneos-search-icons-result-tooltip-item" src="{{result.card_back}}">
+            </div>
+          </div>          
+          <label class="beneos-search-title-result">{{result.name}}</label>
+        </div>
+
         <span class="beneos-search-text01">
           <label class="beneos-search-stat"><a class="beneos-button-rarity" data-rarity-value="{{result.properties.rarity}}">{{beneosUpperFirst result.properties.rarity}}</a></label>
           <label class="beneos-search-stat"><a class="beneos-button-origin" data-origin-value="{{result.properties.origin}}">{{beneosUpperFirst result.properties.origin}}</a></label>
@@ -215,7 +225,17 @@
       {{else}}
       <div class="beneos-search-middle flexcol">
       {{/if}}
-        <label class="beneos-search-title-result">{{result.name}}</label>
+        
+        <div class="beneos-tooltip">
+          <div class="beneos-tooltiptext beneos-token-description" >
+            <div class="flexrow beneos-tooltip-content-item" >
+              <img class="beneos-search-icons-result-tooltip-item" src="{{result.card_front}}">
+              <img class="beneos-search-icons-result-tooltip-item" src="{{result.card_back}}">
+            </div>
+          </div>          
+          <label class="beneos-search-title-result">{{result.name}}</label>
+        </div>
+    
         <span class="beneos-search-text01">
           <label class="beneos-search-stat"><a class="beneos-button-level" data-level-value="{{result.properties.level}}">{{beneosUpperFirst result.properties.level}}</a></label>
           <label class="beneos-search-stat"><a class="beneos-button-school" data-school-value="{{result.properties.school}}">{{beneosUpperFirst result.properties.school}}</a></label>

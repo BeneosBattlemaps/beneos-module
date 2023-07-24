@@ -221,6 +221,7 @@ export class BeneosDatabaseHolder {
       if (itemData && typeof (itemData) == "object") {
         itemData.kind = "item"
         itemData.key = key
+        itemData.path_name = itemData.name.replace(/ /g, "_").toLowerCase()
         itemData.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/items/thumbnails/" + itemData.properties.icon
         mergeObject(this.itemRarity, this.buildList(itemData.properties.rarity))
         mergeObject(this.itemOrigin, this.buildList(itemData.properties.origin))
@@ -228,6 +229,12 @@ export class BeneosDatabaseHolder {
         mergeObject(this.itemTier, this.buildList(itemData.properties.tier))
         mergeObject(this.itemPrice, this.buildList(itemData.properties.price))
         itemData.isInstalled = BeneosUtility.isItemLoaded(key)
+        if ( itemData.isInstalled ) {
+          itemData.itemId = BeneosUtility.getItemId(key)
+          // Example : /home/morr/foundry/foundrydata-dev/Data/beneos_assets/beneos_spells/0001_grove_moss/grove_moss-front.webp
+          itemData.card_front = BeneosUtility.getBeneosItemDataPath() + "/" + key + "/" + itemData.path_name  + "-front.webp"
+          itemData.card_back = BeneosUtility.getBeneosItemDataPath() + "/" + key + "/" + itemData.path_name  + "-back.webp"
+        }
       }
     }
 
@@ -236,6 +243,7 @@ export class BeneosDatabaseHolder {
       if (spellData && typeof (spellData) == "object") {
         spellData.kind = "spell"
         spellData.key = key
+        spellData.path_name = spellData.name.replace(/ /g, "_").toLowerCase()
         spellData.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/spells/thumbnails/" + spellData.properties.icon
         mergeObject(this.spellLevel, this.buildList(spellData.properties.level))
         mergeObject(this.spellSchool, this.buildList(spellData.properties.school))
@@ -243,6 +251,13 @@ export class BeneosDatabaseHolder {
         mergeObject(this.spellType, this.buildList(String(spellData.properties.spell_type)))
         mergeObject(this.spellClasses, this.buildList(spellData.properties.classes))
         spellData.isInstalled = BeneosUtility.isSpellLoaded(key)
+        if ( spellData.isInstalled ) {
+          spellData.spellId = BeneosUtility.getItemId(key)
+          // Example : /home/morr/foundry/foundrydata-dev/Data/beneos_assets/beneos_spells/0001_grove_moss/grove_moss-front.webp
+          spellData.card_front = BeneosUtility.getBeneosSpellDataPath() + "/" + key + "/" + spellData.path_name  + "-front.webp"
+          spellData.card_back = BeneosUtility.getBeneosSpellDataPath() + "/" + "spell_card_back.webp"
+        }
+
       }
     }
 
@@ -346,18 +361,18 @@ export class BeneosDatabaseHolder {
         console.log(item.properties[propertyName], typeof (item.properties[propertyName]))
         if (typeof (item.properties[propertyName]) == "string" || typeof (item.properties[propertyName]) == "number") {
           if (strict) {
-            if (item.properties[propertyName].toLowerCase().toString() == value.toString()) {
+            if (item.properties[propertyName].toString().toLowerCase() == value.toString()) {
               newResults[key] = duplicate(item)
             }
           } else {
-            if (item.properties[propertyName].toLowerCase().toString().includes(value)) {
+            if (item.properties[propertyName].toString().toLowerCase().includes(value)) {
               newResults[key] = duplicate(item)
             }
           }
         } else {
           if (Array.isArray(item.properties[propertyName])) {
             for (let valueArray of item.properties[propertyName]) {
-              if ((typeof (valueArray) == "string") && valueArray.toLowerCase().toString().includes(value)) {
+              if ((typeof (valueArray) == "string") && valueArray.toString().toLowerCase().includes(value)) {
                 newResults[key] = duplicate(item)
               }
             }
@@ -440,7 +455,7 @@ export class BeneosSearchResults extends Dialog {
   }
 
   /********************************************************************************** */
-  processSearchButton(event, typeName, dataName, fieldName, selectorName) {
+  processSearchButton(event, typeName, fieldName, dataName, selectorName) {
     let searchResults = BeneosDatabaseHolder.getAll(typeName)
     let value = $(event.currentTarget).data(dataName)
     searchResults = BeneosDatabaseHolder.searchByProperty(typeName, fieldName, value.toString(), searchResults)
@@ -487,7 +502,7 @@ export class BeneosSearchResults extends Dialog {
     })
 
     $(".beneos-button-origin").click(event => {
-      this.processSearchButton(event, "item", "origin-value", "origin-value", "origin-selector")
+      this.processSearchButton(event, "item", "origin", "origin-value", "origin-selector")
     })
     $(".beneos-button-item_type").click(event => {
       this.processSearchButton(event, "item", "item_type", "item-type-value", "item-type")
@@ -506,7 +521,7 @@ export class BeneosSearchResults extends Dialog {
       this.processSearchButton(event, "spell", "level", "level-value", "level-selector")
     })
     $(".beneos-button-school").click(event => {
-      this.processSearchButton(event, "spell", "school", "school-value", "level-selector")
+      this.processSearchButton(event, "spell", "school", "school-value", "school-selector")
     })
     $(".beneos-button-class").click(event => {
       this.processSearchButton(event, "spell", "classes", "class-value", "class-selector")
@@ -696,7 +711,7 @@ export class BeneosSearchEngine extends Dialog {
     if (levelValue && levelValue.toLowerCase() != "any") {
       searchResults = BeneosDatabaseHolder.searchByProperty(type, "level", levelValue, searchResults)
     }
-    let castingValue = $("#castingtime-selector").val()
+    let castingValue = $("#casting_time-selector").val()
     if (castingValue && castingValue.toLowerCase() != "any") {
       searchResults = BeneosDatabaseHolder.searchByProperty(type, "casting_time", castingValue, searchResults)
     }

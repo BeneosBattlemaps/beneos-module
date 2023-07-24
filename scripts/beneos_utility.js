@@ -587,7 +587,20 @@ export class BeneosUtility {
     }
     return undefined
   }
-
+  static getItemId(key) {
+    let token = this.beneosItems[key]
+    if (token) {
+      return token.itemId
+    }
+    return undefined
+  }
+  static getSpellId(key) {
+    let token = this.beneosSpells[key]
+    if (token) {
+      return token.spellId
+    }
+    return undefined
+  }
   /********************************************************************************** */
   static getAnimatedTokens(token) {
     //console.log("TOKEN: ", token)

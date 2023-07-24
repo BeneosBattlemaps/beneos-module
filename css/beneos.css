@@ -119,6 +119,17 @@
   opacity: 1;
 }
 
+.beneos-tooltip .beneos-tooltip-content-item{
+  width: 620px;  
+  margin: 8px;
+  padding: 8px;
+  background: rgba(233, 226, 218, 0.9);
+  border-radius: 12px;
+  font-size: 0.9rem;
+  top: 0.8rem;
+  left: -2rem;
+}
+
 .beneos-tooltip .beneos-tooltip-content{
   width: 490px;
   
@@ -163,6 +174,13 @@
   width: 256px;
   height: 256px;
   margin-right: 4px;
+  flex-grow:1;
+}
+.beneos-search-icons-result-tooltip-item {
+  border: 0;
+  width: 256px;
+  margin-right: 4px;
+  transform: translate(-100px, 0px);
   flex-grow:1;
 }
 .beneos-search-icons-bmap-result {
@@ -248,6 +266,7 @@
 }
 .beneos-search-grid-button, 
 .beneos-search-brightness-button, 
+.beneos-search-casting-button,
 .beneos-release-url-button,
 .beneos-search-tier-button,
 .beneos-search-price-button,
