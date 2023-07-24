@@ -170,9 +170,9 @@
       {{/if}}
         <label class="beneos-search-title-result">{{result.name}}</label>
         <span class="beneos-search-text01">
-          <label>{{beneosUpperFirst result.properties.rarity}}</label>
-          <label class="beneos-search-stat">{{beneosUpperFirst result.properties.origin}}</label>
-          <label class="beneos-search-stat">{{beneosUpperFirst result.properties.item_type}}</label>
+          <label class="beneos-search-stat"><a class="beneos-button-rarity" data-rarity-value="{{result.properties.rarity}}">{{beneosUpperFirst result.properties.rarity}}</a></label>
+          <label class="beneos-search-stat"><a class="beneos-button-origin" data-origin-value="{{result.properties.origin}}">{{beneosUpperFirst result.properties.origin}}</a></label>
+          <label class="beneos-search-stat"><a class="beneos-button-item_type" data-item-type-value="{{result.properties.item_type}}">{{beneosUpperFirst result.properties.item_type}}</a></label>
         </span>
         <span class="beneos-search-text01 flexrow">
           {{result.description}}
@@ -217,8 +217,8 @@
       {{/if}}
         <label class="beneos-search-title-result">{{result.name}}</label>
         <span class="beneos-search-text01">
-          <label>{{beneosUpperFirst result.properties.level}}</label>
-          <label class="beneos-search-stat">{{beneosUpperFirst result.properties.school}}</label>
+          <label class="beneos-search-stat"><a class="beneos-button-level" data-level-value="{{result.properties.level}}">{{beneosUpperFirst result.properties.level}}</a></label>
+          <label class="beneos-search-stat"><a class="beneos-button-school" data-school-value="{{result.properties.school}}">{{beneosUpperFirst result.properties.school}}</a></label>
         </span>
         <span class="beneos-search-text01 flexrow">
           {{result.description}}
@@ -226,7 +226,7 @@
 
         <span class="beneos-search-text01 flexrow">
           {{#each result.properties.classes as |class key|}}
-            <span class="beneos-search-stat">{{beneosUpperFirst class}}</span>
+            <span class="beneos-search-stat"><a class="beneos-button-class" data-class-value="{{class}}">{{beneosUpperFirst class}}</a></span>
           {{/each}}
         </span>
 
@@ -242,8 +242,8 @@
           <label class="beneos-search-notinstalled">Not Installed</label>
         {{/if}}
         </a>
-        <label class="beneos-search-spell-type-button"><a class="beneos-button-spell-type" data-tier-value="{{result.properties.spell_type}}"><strong>{{result.properties.spell_type}}</strong></a></label>
-        <label class="beneos-search-action-button"><a class="beneos-button-action" data-price-value="{{result.properties.price}}"><strong>{{result.properties.price}}</strong></a></label>
+        <label class="beneos-search-spell-type-button"><a class="beneos-button-spell-type" data-spell_type-value="{{result.properties.spell_type}}"><strong>{{result.properties.spell_type}}</strong></a></label>
+        <label class="beneos-search-casting-button"><a class="beneos-button-casting" data-casting_time-value="{{result.properties.casting_time}}"><strong>{{result.properties.casting_time}}</strong></a></label>
         {{#if result.properties.concentration}}
           <label class="beneos-search-concentration-button"><strong>Concentration</strong></label>
         {{/if}}

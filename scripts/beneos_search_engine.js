@@ -329,8 +329,8 @@ export class BeneosDatabaseHolder {
       }
       if (item.kind == "token") {
         item.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/tokens/thumbnails/" + item.key + "-idle_face_still.webp"
-      } 
-      if (type == "bmap" ) {
+      }
+      if (type == "bmap") {
         item.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/battlemaps/thumbnails/" + item.key + ".webp"
         if (item.properties.sibling) {
           item.siblingPicture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/battlemaps/thumbnails/" + item.properties.sibling + ".webp"
@@ -343,7 +343,7 @@ export class BeneosDatabaseHolder {
         }
       }
       if (item.properties && item.properties[propertyName]) {
-        console.log(item.properties[propertyName], typeof(item.properties[propertyName]))
+        console.log(item.properties[propertyName], typeof (item.properties[propertyName]))
         if (typeof (item.properties[propertyName]) == "string" || typeof (item.properties[propertyName]) == "number") {
           if (strict) {
             if (item.properties[propertyName].toLowerCase().toString() == value.toString()) {
@@ -438,6 +438,15 @@ export class BeneosSearchResults extends Dialog {
     let dialogOptions = { classes: ["beneos_module", "draggable"], left: 620, width: 720, height: 580, 'z-index': 99999 }
     super(dialogConf, dialogOptions)
   }
+
+  /********************************************************************************** */
+  processSearchButton(event, typeName, dataName, fieldName, selectorName) {
+    let searchResults = BeneosDatabaseHolder.getAll(typeName)
+    let value = $(event.currentTarget).data(dataName)
+    searchResults = BeneosDatabaseHolder.searchByProperty(typeName, fieldName, value.toString(), searchResults)
+    game.beneosTokens.searchEngine.displayResults(searchResults)
+    $('#'+selectorName).val(value)
+  }
   /********************************************************************************** */
   activateListeners() {
 
@@ -449,26 +458,13 @@ export class BeneosSearchResults extends Dialog {
       e.originalEvent.dataTransfer.setData("text/plain", JSON.stringify(drag_data));
     })
     $(".beneos-button-biom").click(event => {
-      let searchResults = BeneosDatabaseHolder.getAll("bmap")
-      let biom = $(event.currentTarget).data("biom-value")
-      searchResults = BeneosDatabaseHolder.searchByProperty("bmap", "biom", biom.toString(), searchResults)
-      game.beneosTokens.searchEngine.displayResults(searchResults)
-      $("#bioms-selector").val(BeneosUtility.firstLetterUpper(biom.toString()))
+      this.processSearchButton(event, "bmap", "biom", "biom-value", "bioms-selector")
     })
     $(".beneos-button-grid").click(event => {
-      let searchResults = BeneosDatabaseHolder.getAll("bmap")
-      let grid = $(event.currentTarget).data("grid-value")
-      searchResults = BeneosDatabaseHolder.searchByProperty("bmap", "grid", grid.toString(), searchResults)
-      game.beneosTokens.searchEngine.displayResults(searchResults)
-      console.log("Set grid", grid.toString())
-      $("#bmap-grid").val(grid.toString())
+      this.processSearchButton(event, "bmap", "grid", "grid-value", "bmap-grid")
     })
     $(".beneos-button-brightness").click(event => {
-      let searchResults = BeneosDatabaseHolder.getAll("bmap")
-      let brightness = $(event.currentTarget).data("brightness-value")
-      searchResults = BeneosDatabaseHolder.searchByProperty("bmap", "brightness", brightness.toString(), searchResults)
-      game.beneosTokens.searchEngine.displayResults(searchResults)
-      $("#bmap-brightness").val(brightness.toString())
+      this.processSearchButton(event, "bmap", "brightness", "brightness-value", "bmap-brightness")
     })
     $(".beneos-jump-linked").click(event => {
       let jumpKey = $(event.currentTarget).data("jump-data")
@@ -477,46 +473,62 @@ export class BeneosSearchResults extends Dialog {
       //$('#beneos-search-text').val(jumpKey)
     })
     $(".beneos-button-adventure").click(event => {
-      let searchResults = BeneosDatabaseHolder.getAll("bmap")
-      let adventure = $(event.currentTarget).data("adventure-name")
-      searchResults = BeneosDatabaseHolder.searchByProperty("bmap", "adventure", adventure.toString(), searchResults)
-      game.beneosTokens.searchEngine.displayResults(searchResults)
-      $('#bmap-adventure').val(adventure)
+      this.processSearchButton(event, "bmap", "adventure", "adventure-name", "bmap-adventure")
     })
 
     $(".beneos-button-cr").click(event => {
-      let searchResults = BeneosDatabaseHolder.getAll("token")
-      let cr = $(event.currentTarget).data("cr-value")
-      searchResults = BeneosDatabaseHolder.searchByProperty("token", "cr", cr.toString(), searchResults, true)
-      game.beneosTokens.searchEngine.displayResults(searchResults)
-      $("#token-cr").val(cr)
+      this.processSearchButton(event, "token", "cr", "cr-value", "token-cr")
     })
     $(".beneos-button-fight").click(event => {
-      let searchResults = BeneosDatabaseHolder.getAll("token")
-      let fight = $(event.currentTarget).data("fight-value")
-      searchResults = BeneosDatabaseHolder.searchByProperty("token", "fightingstyle", fight.toString(), searchResults)
-      game.beneosTokens.searchEngine.displayResults(searchResults)
-      $('#token-fight-style').val(fight)
+      this.processSearchButton(event, "token", "fightingstyle", "fight-value", "token-fight-style")
     })
     $(".beneos-button-purpose").click(event => {
-      let searchResults = BeneosDatabaseHolder.getAll("token")
-      let purpose = $(event.currentTarget).data("purpose-value")
-      searchResults = BeneosDatabaseHolder.searchByProperty("token", "purpose", purpose.toString(), searchResults)
-      game.beneosTokens.searchEngine.displayResults(searchResults)
-      $("#token-purpose").val(purpose)
+      this.processSearchButton(event, "token", "purpose", "purpose-value", "token-purpose")
     })
 
+    $(".beneos-button-origin").click(event => {
+      this.processSearchButton(event, "item", "origin-value", "origin-value", "origin-selector")
+    })
+    $(".beneos-button-item_type").click(event => {
+      this.processSearchButton(event, "item", "item_type", "item-type-value", "item-type")
+    })
+    $(".beneos-button-rarity").click(event => {
+      this.processSearchButton(event, "item", "rarity", "rarity-value", "rarity-selector")
+    })
+    $(".beneos-button-tier").click(event => {
+      this.processSearchButton(event, "item", "tier", "tier-value", "tier-selector")
+    })
+    $(".beneos-button-price").click(event => {
+      this.processSearchButton(event, "item", "price", "price-value", "price-selector")
+    })
+    
+    $(".beneos-button-level").click(event => {
+      this.processSearchButton(event, "spell", "level", "level-value", "level-selector")
+    })
+    $(".beneos-button-school").click(event => {
+      this.processSearchButton(event, "spell", "school", "school-value", "level-selector")
+    })
+    $(".beneos-button-class").click(event => {
+      this.processSearchButton(event, "spell", "classes", "class-value", "class-selector")
+    })
+    $(".beneos-button-spell-type").click(event => {
+      this.processSearchButton(event, "spell", "spell_type", "spell_type-value", "spell-type")
+    })
+    $(".beneos-button-casting").click(event => {
+      this.processSearchButton(event, "spell", "casting_time", "casting_time-value", "casting_time-selector")
+    })
+    
     $(".beneos-button-journal").click(event => {
       let element = $(event.currentTarget)?.parents(".token-root-div")
       let tokenKey = element.data("token-key")
       let tokenConfig = BeneosUtility.isTokenLoaded(tokenKey)
-      if (tokenConfig && tokenConfig.config) {
+      if (tokenConfig?.config) {
         if (tokenConfig.config.compendium) {
           let beneosPack = game.packs.get("beneos_module.beneos_module_journal")
           if (beneosPack) {
             let beneosJournalEntry = null
             let beneosCompendiumEntry = beneosPack.index.getName(tokenConfig.config.compendium)
-            if (beneosCompendiumEntry && beneosCompendiumEntry._id) {
+            if (beneosCompendiumEntry?._id) {
               beneosJournalEntry = beneosPack.getDocument(beneosCompendiumEntry._id)
             }
             if (beneosJournalEntry) {
