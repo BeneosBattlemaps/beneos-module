@@ -5,6 +5,7 @@ const tokenDBURL = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-da
 const battlemapDBURL = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/battlemaps/beneos_battlemaps_database.json"
 const itemDBURL = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/items/beneos_items_database.json"
 const spellDBURL = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/spells/beneos_spells_database.json"
+const commonData = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/common/beneos_common_database.json"
 
 /********************************************************************************** */
 export class BeneosModuleMenu extends Dialog {
@@ -231,7 +232,6 @@ export class BeneosDatabaseHolder {
         itemData.isInstalled = BeneosUtility.isItemLoaded(key)
         if ( itemData.isInstalled ) {
           itemData.itemId =BeneosUtility.getItemId(key)
-          // Example : /home/morr/foundry/foundrydata-dev/Data/beneos_assets/beneos_spells/0001_grove_moss/grove_moss-front.webp
           itemData.card_front = BeneosUtility.getBeneosItemDataPath() + "/" + key + "/" + itemData.path_name  + "-front.webp"
           itemData.card_back = BeneosUtility.getBeneosItemDataPath() + "/" + key + "/" + itemData.path_name  + "-back.webp"
         }
@@ -253,11 +253,9 @@ export class BeneosDatabaseHolder {
         spellData.isInstalled = BeneosUtility.isSpellLoaded(key)
         if ( spellData.isInstalled ) {
           spellData.spellId = BeneosUtility.getSpellId(key)
-          // Example : /home/morr/foundry/foundrydata-dev/Data/beneos_assets/beneos_spells/0001_grove_moss/grove_moss-front.webp
           spellData.card_front = BeneosUtility.getBeneosSpellDataPath() + "/" + key + "/" + spellData.path_name  + "-front.webp"
           spellData.card_back = BeneosUtility.getBeneosSpellDataPath() + "/" + "spell_card_back.webp"
         }
-
       }
     }
 
