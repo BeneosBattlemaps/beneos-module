@@ -130,6 +130,16 @@
   left: -2rem;
 }
 
+.beneos-tooltip .beneos-tooltip-content-installed{
+  width: 620px;  
+  margin: 8px;
+  padding: 8px;
+  background: rgba(233, 226, 218, 0.9);
+  border-radius: 12px;
+  font-size: 0.9rem;
+  transform: translate(-100px, 0px);
+}
+
 .beneos-tooltip .beneos-tooltip-content{
   width: 490px;
   

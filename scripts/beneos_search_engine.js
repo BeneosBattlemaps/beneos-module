@@ -5,7 +5,7 @@ const tokenDBURL = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-da
 const battlemapDBURL = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/battlemaps/beneos_battlemaps_database.json"
 const itemDBURL = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/items/beneos_items_database.json"
 const spellDBURL = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/spells/beneos_spells_database.json"
-const commonData = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/common/beneos_common_database.json"
+const commonDBURL = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/common/beneos_common_database.json"
 
 /********************************************************************************** */
 export class BeneosModuleMenu extends Dialog {
@@ -120,8 +120,24 @@ export class BeneosDatabaseHolder {
     } catch {
       ui.notifications.error("Unable to load Beneos Spell Database - File error")
     }
+    try {
+      let commonData = await fetchJsonWithTimeout(commonDBURL)
+      this.commonData = commonData
+    } catch {
+      ui.notifications.error("Unable to load Beneos Common Database - File error")
+    }
 
     this.buildSearchData()
+  }
+
+  /********************************************************************************** */
+  static getHover(category, term) {
+    category = category.toString().toLowerCase()
+    term = term.toString().toLowerCase() 
+    if ( this.commonData?.hover[category] && this.commonData.hover[category][term]?.message ) {
+      return this.commonData.hover[category][term].message
+    }
+    return "No information"
   }
 
   /********************************************************************************** */
@@ -349,7 +365,6 @@ export class BeneosDatabaseHolder {
           item.siblingPicture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/battlemaps/thumbnails/" + item.properties.sibling + ".webp"
         }
       }
-      console.log("PROP", type, propertyName, value, searchResults, item, item.properties[propertyName])
       if (item[propertyName]) {
         if (item[propertyName].toLowerCase() == value) {
           newResults[key] = duplicate(item)

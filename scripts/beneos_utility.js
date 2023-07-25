@@ -247,6 +247,10 @@ export class BeneosUtility {
       if (typeof text !== 'string') return text
       return text.toLowerCase()
     })
+    Handlebars.registerHelper('beneosGetHover', function (category, term) {
+      return BeneosDatabaseHolder.getHover(category, term)
+    })
+    
 
   }
 
