@@ -29,6 +29,8 @@ export class BeneosCompendiumReset extends FormApplication {
       BeneosCompendiumManager.buildDynamicCompendiumsPF2()
     } else {
       await this.deleteCompendiumContent("beneos_module.beneos_module_actors")
+      await this.deleteCompendiumContent("beneos_module.beneos_module_items")
+      await this.deleteCompendiumContent("beneos_module.beneos_module_spells")
       ui.notifications.info("BeneosModule : Cleanup of compendiums finished.")
       BeneosCompendiumManager.buildDynamicCompendiumsTokensDD5()
       BeneosCompendiumManager.buildDynamicCompendiumsSpellsDD5()

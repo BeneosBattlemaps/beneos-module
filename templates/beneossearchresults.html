@@ -10,13 +10,13 @@
         <div class="beneos-search-icons-result beneos-tooltip entity-link content-link">
           
         {{#if result.isInstalled}}
-          <div class="beneos-tooltiptext beneos-token-description token-search-data" data-document-id="{{result.actorId}}"  draggable="true">
-            <div class="flexrow beneos-tooltip-content token-search-data" data-document-id="{{result.actorId}}"  draggable="true">
+          <div class="beneos-tooltiptext beneos-token-description token-search-data" data-type="Actor" data-document-id="{{result.actorId}}"  draggable="true">
+            <div class="flexrow beneos-tooltip-content token-search-data" data-type="Actor" data-document-id="{{result.actorId}}"  draggable="true">
               <img class="beneos-search-icons-result-tooltip token-search-data" data-document-id="{{result.actorId}}" draggable="true" src="{{result.picture}}">
               <span class="beneos-description-text">{{result.description}}</span>
             </div>
           </div>          
-          <img class="beneos-search-icons-result token-search-data" data-document-id="{{result.actorId}}"  draggable="true" src="{{result.picture}}">
+          <img class="beneos-search-icons-result token-search-data" data-type="Actor" data-document-id="{{result.actorId}}"  draggable="true" src="{{result.picture}}">
         </div>
         {{else}}
           <div class="beneos-tooltiptext beneos-token-description" >
@@ -164,7 +164,7 @@
       </div>
       
       {{#if result.isInstalled}}
-      <div class="beneos-search-middle flexcol token-search-data"  data-type="Item" data-document-id="{{result.itemId}}"  draggable="true">
+      <div class="beneos-search-middle flexcol token-search-data" data-type="Item" data-document-id="{{result.itemId}}"  draggable="true">
       {{else}}
       <div class="beneos-search-middle flexcol">
       {{/if}}
@@ -221,7 +221,7 @@
       </div>
       
       {{#if result.isInstalled}}
-      <div class="beneos-search-middle flexcol token-search-data"  data-type="Item" data-document-id="{{result.itemId}}"  draggable="true">
+      <div class="beneos-search-middle flexcol token-search-data"  data-type="Spell" data-document-id="{{result.spellId}}"  draggable="true">
       {{else}}
       <div class="beneos-search-middle flexcol">
       {{/if}}

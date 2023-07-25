@@ -230,7 +230,7 @@ export class BeneosDatabaseHolder {
         mergeObject(this.itemPrice, this.buildList(itemData.properties.price))
         itemData.isInstalled = BeneosUtility.isItemLoaded(key)
         if ( itemData.isInstalled ) {
-          itemData.itemId = BeneosUtility.getItemId(key)
+          itemData.itemId =BeneosUtility.getItemId(key)
           // Example : /home/morr/foundry/foundrydata-dev/Data/beneos_assets/beneos_spells/0001_grove_moss/grove_moss-front.webp
           itemData.card_front = BeneosUtility.getBeneosItemDataPath() + "/" + key + "/" + itemData.path_name  + "-front.webp"
           itemData.card_back = BeneosUtility.getBeneosItemDataPath() + "/" + key + "/" + itemData.path_name  + "-back.webp"
@@ -252,7 +252,7 @@ export class BeneosDatabaseHolder {
         mergeObject(this.spellClasses, this.buildList(spellData.properties.classes))
         spellData.isInstalled = BeneosUtility.isSpellLoaded(key)
         if ( spellData.isInstalled ) {
-          spellData.spellId = BeneosUtility.getItemId(key)
+          spellData.spellId = BeneosUtility.getSpellId(key)
           // Example : /home/morr/foundry/foundrydata-dev/Data/beneos_assets/beneos_spells/0001_grove_moss/grove_moss-front.webp
           spellData.card_front = BeneosUtility.getBeneosSpellDataPath() + "/" + key + "/" + spellData.path_name  + "-front.webp"
           spellData.card_back = BeneosUtility.getBeneosSpellDataPath() + "/" + "spell_card_back.webp"
@@ -466,10 +466,21 @@ export class BeneosSearchResults extends Dialog {
   activateListeners() {
 
     $(".token-search-data").on('dragstart', function (e) {
-      let id = e.target.getAttribute("data-document-id");
-      let compendium = (game.system.id == "pf2e") ? "beneos_module.beneos_module_actors_pf2" : "beneos_module.beneos_module_actors"
-      let drag_data = { "type": "Actor", "pack": compendium, "uuid": "Compendium." + compendium + "." + id }
-      //console.log("DRAGDARA", drag_data)
+      let id = e.target.getAttribute("data-document-id")
+      let docType = e.target.getAttribute("data-type")
+      let compendium  = ""
+      if (docType == "Actor") {
+        compendium = (game.system.id == "pf2e") ? "beneos_module.beneos_module_actors_pf2" : "beneos_module.beneos_module_actors"
+      }
+      if (docType == "Item") {
+        compendium = "beneos_module.beneos_module_items"
+      }
+      if (docType == "Spell") {
+        compendium = "beneos_module.beneos_module_spells"
+        docType = "Item"
+      }
+      let drag_data = { "type": docType, "pack": compendium, "uuid": "Compendium." + compendium + "." + id }
+      console.log("DRAGDARA", drag_data)
       e.originalEvent.dataTransfer.setData("text/plain", JSON.stringify(drag_data));
     })
     $(".beneos-button-biom").click(event => {
