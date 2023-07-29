@@ -233,7 +233,7 @@
             </div>
 
           </span>
-          <span class="beneos-search-text01 flexrow">
+          <span class="beneos-search-text01 flexrow beneos-description-background ">
             {{result.description}}
           </span>
           {{#if result.properties.releaseurl}}
@@ -312,19 +312,20 @@
 
             <span class="beneos-search-text01">
               <label class="beneos-search-stat"><a class="beneos-button-level"
-                  data-level-value="{{result.properties.level}}">{{beneosUpperFirst
+                  data-level-value="{{result.properties.level}}">Level {{beneosUpperFirst
                   result.properties.level}}</a></label>
               <label class="beneos-search-stat"><a class="beneos-button-school"
                   data-school-value="{{result.properties.school}}">{{beneosUpperFirst
-                  result.properties.school}}</a></label>
+                  result.properties.school}} Spell</a></label>
             </span>
-            <span class="beneos-search-text01 flexrow">
+            <span class="beneos-search-text01 beneos-description-background flexrow">
               {{result.description}}
             </span>
 
-            <span class="beneos-search-text01 flexrow">
+            <span class="beneos-search-text01 flexrow flexpacked">
+              <span class="beneos-classes">Classes:</span>
               {{#each result.properties.classes as |class key|}}
-              <span class="beneos-search-stat"><a class="beneos-button-class"
+              <span class="beneos-classes"><a class="beneos-button-class"
                   data-class-value="{{class}}">{{beneosUpperFirst class}}</a></span>
               {{/each}}
             </span>

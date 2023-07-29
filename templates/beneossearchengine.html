@@ -115,7 +115,6 @@
     {{/if}}
 
     {{#if (eq searchMode "token")}}
-
     <span class="flexrow">
       <label>Biom : </label>
       <select name="bioms" class="beneos-selector" id="bioms-selector" data-dtype="String">
@@ -300,6 +299,19 @@
         {{#each spellClass as |data key|}}
         <option value="{{data}}">{{beneosUpperFirst data}}</option>
         {{/each}}
+        {{/select}}
+      </select>
+    </span>
+    {{/if}}
+
+    {{#if (ne searchMode "bmap")}}
+    <span class="flexrow">
+      <label>Show : </label>
+      <select name="installation" class="beneos-selector" id="installation-selector" data-dtype="String">
+        {{#select "all"}}
+        <option value="all">All</option>
+        <option value="installed">Only installed</option>
+        <option value="noninstalled">Only not installed</option>
         {{/select}}
       </select>
     </span>

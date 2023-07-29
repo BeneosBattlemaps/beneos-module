@@ -215,6 +215,10 @@
 .beneos-search-stat {
   margin-left: 12px;
 }
+.beneos-classes {
+  margin-left: 4px;
+  flex-grow: 0;
+}
 .beneos-fitting-button {
   text-align: center;
   border-width: 1px;
@@ -272,6 +276,9 @@
 .biom-content {
   text-align: center;
   width: fit-content;
+  flex-grow: 0;
+}
+.flexpacked {
   flex-grow: 0;
 }
 .beneos-search-grid-button, 
@@ -345,6 +352,10 @@
 }
 .beneos-not-installed { 
   background-color: #ff00000E;
+}
+.beneos-description-background {
+  background-color: lightgray;
+  padding: 4px;
 }
 .beneos-description-text {
   font-size: 0.8rem;

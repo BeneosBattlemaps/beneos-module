@@ -78,7 +78,7 @@ export class BeneosModuleMenu extends Dialog {
 
       const pack = game.packs.get(BeneosUtility.getActorCompendium()) // find that key by doing game.packs.keys(); in the console.
       const myActor = await pack.getDocument(actorId)
-      console.log(">>>>>> ACTOR", actorId, myActor, myObject.actor)
+      //console.log(">>>>>> ACTOR", actorId, myActor, myObject.actor)
       await myObject.actor.update({ 'img': myActor.img })
       if (myObject.actor.token) {
         await myObject.actor.token.update({ texture: { src: myActor.prototypeToken.texture.src } })
@@ -203,7 +203,7 @@ export class BeneosDatabaseHolder {
     this.spellClasses = {}
 
     for (let key in this.tokenData.content) {
-      console.log("Processing", key)
+      //console.log("Processing", key)
       let tokenData = this.tokenData.content[key]
       if (tokenData && typeof (tokenData) == "object") {
         tokenData.kind = "token"
@@ -216,6 +216,7 @@ export class BeneosDatabaseHolder {
         mergeObject(this.movementList, this.buildList(tokenData.properties.movement))
         mergeObject(this.purposeList, this.buildList(tokenData.properties.purpose))
         tokenData.isInstalled = BeneosUtility.isTokenLoaded(key)
+        tokenData.installed = (tokenData.isInstalled) ? "installed" : "notinstalled"
         tokenData.actorId = BeneosUtility.getActorId(key)
         //tokenData.description = tokenData.description
       }
@@ -233,7 +234,7 @@ export class BeneosDatabaseHolder {
         bmapData.isInstalled = true
       }
     }
-    for (let key in this.itemData.content) {
+    for (let key in this.itemData.content) {250
       let itemData = this.itemData.content[key]
       if (itemData && typeof (itemData) == "object") {
         itemData.kind = "item"
@@ -246,6 +247,7 @@ export class BeneosDatabaseHolder {
         mergeObject(this.itemTier, this.buildList(itemData.properties.tier))
         mergeObject(this.itemPrice, this.buildList(itemData.properties.price))
         itemData.isInstalled = BeneosUtility.isItemLoaded(key)
+        itemData.installed = (itemData.isInstalled) ? "installed" : "notinstalled"
         if ( itemData.isInstalled ) {
           itemData.itemId =BeneosUtility.getItemId(key)
           itemData.card_front = BeneosUtility.getBeneosItemDataPath() + "/" + key + "/" + itemData.path_name  + "-front.webp"
@@ -267,6 +269,7 @@ export class BeneosDatabaseHolder {
         mergeObject(this.spellType, this.buildList(String(spellData.properties.spell_type)))
         mergeObject(this.spellClasses, this.buildList(spellData.properties.classes))
         spellData.isInstalled = BeneosUtility.isSpellLoaded(key)
+        spellData.installed = (spellData.isInstalled) ? "installed" : "notinstalled"
         if ( spellData.isInstalled ) {
           spellData.spellId = BeneosUtility.getSpellId(key)
           spellData.card_front = BeneosUtility.getBeneosSpellDataPath() + "/" + key + "/" + spellData.path_name  + "-front.webp"
@@ -324,6 +327,7 @@ export class BeneosDatabaseHolder {
       if (item.kind == "token") {
         item.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/tokens/thumbnails/" + item.key + "-idle_face_still.webp"
       } else {
+        item.kind = "battlemap"
         item.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/battlemaps/thumbnails/" + item.key + ".webp"
       }
       if (this.fieldTextSearch(item, text) || this.fieldTextSearch(item.properties, text)) {
@@ -348,22 +352,20 @@ export class BeneosDatabaseHolder {
     let newResults = {}
     value = value.toLowerCase()
 
-    console.log(">>>>>", type, propertyName, value, searchResults)
+    //console.log(">>>>>", type, propertyName, value, searchResults)
 
     for (let key in searchResults) {
       let item = searchResults[key]
       item.kind = type
-      if (type == "bmap") {
-        item.kind = item.properties.type
-      }
-      if (item.kind == "token") {
-        item.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/tokens/thumbnails/" + item.key + "-idle_face_still.webp"
-      }
-      if (type == "bmap") {
+      if (type == "bmap" || type == "battlemap") {
+        item.kind = "battlemap"
         item.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/battlemaps/thumbnails/" + item.key + ".webp"
         if (item.properties.sibling) {
           item.siblingPicture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/battlemaps/thumbnails/" + item.properties.sibling + ".webp"
         }
+      }
+      if (item.kind == "token") {
+        item.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/tokens/thumbnails/" + item.key + "-idle_face_still.webp"
       }
       if (item[propertyName]) {
         if (item[propertyName].toLowerCase() == value) {
@@ -371,7 +373,7 @@ export class BeneosDatabaseHolder {
         }
       }
       if (item.properties && item.properties[propertyName]) {
-        console.log(item.properties[propertyName], typeof (item.properties[propertyName]))
+        //console.log(item.properties[propertyName], typeof (item.properties[propertyName]))
         if (typeof (item.properties[propertyName]) == "string" || typeof (item.properties[propertyName]) == "number") {
           if (strict) {
             if (item.properties[propertyName].toString().toLowerCase() == value.toString()) {
@@ -493,7 +495,7 @@ export class BeneosSearchResults extends Dialog {
         docType = "Item"
       }
       let drag_data = { "type": docType, "pack": compendium, "uuid": "Compendium." + compendium + "." + id }
-      console.log("DRAGDARA", drag_data)
+      //console.log("DRAGDARA", drag_data)
       e.originalEvent.dataTransfer.setData("text/plain", JSON.stringify(drag_data));
     })
     $(".beneos-button-biom").click(event => {
@@ -743,7 +745,11 @@ export class BeneosSearchEngine extends Dialog {
     if (classValue && classValue.toLowerCase() != "any") {
       searchResults = BeneosDatabaseHolder.searchByProperty(type, "classes", classValue, searchResults)
     }
-
+    let installedValue = $("#installation-selector").val()
+    if (installedValue && installedValue.toLowerCase() != "all") {
+      searchResults = BeneosDatabaseHolder.searchByProperty(type, "installed", installedValue, searchResults)
+    }
+    
     this.displayResults(searchResults)
   }
 
