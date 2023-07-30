@@ -122,7 +122,7 @@
         {{#if result.siblingPicture}}
         <label class="beneos-fitting-button beneos-tooltip" data-prop-name="biom">
           <a class="beneos-jump-linked" data-jump-data="{{result.properties.sibling}}">
-            {{#if (eq (beneosLowerCase result.kind) "battlemap")}}
+            {{#if (eq (beneosLowerCase result.properties.type) "battlemap")}}
             Fitting Scenery
             {{else}}
             Fitting Battlemap
@@ -147,7 +147,7 @@
 
       <div class="beneos-search-last flexcol">
         <label class="beneos-search-installed">
-          {{#if (eq (beneosLowerCase result.kind) "battlemap")}}
+          {{#if (eq (beneosLowerCase result.properties.type) "battlemap")}}
           Battlemap
           {{else}}
           Scenery

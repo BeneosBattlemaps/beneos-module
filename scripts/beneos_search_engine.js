@@ -669,7 +669,7 @@ export class BeneosSearchEngine extends Dialog {
     }
     let kindValue = $("#kind-selector").val()
     if (kindValue && kindValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "kind", kindValue, searchResults)
+      searchResults = BeneosDatabaseHolder.searchByProperty(type, "type", kindValue, searchResults)
     }
     let brightnessValue = $("#bmap-brightness").val()
     if (brightnessValue && brightnessValue.toLowerCase() != "any") {
