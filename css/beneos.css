@@ -394,3 +394,37 @@
 	font-size: 18px;
 	margin: auto;
 }
+.app.window-app.beneos_search_results {
+  box-shadow: none;
+  background: url(../ui/result_form_bg.webp) no-repeat;
+  background-size: 720px 784px;
+  border: 1px solid rgb(7, 7, 15);
+  /*border-image: url(../ui/result_form_bg.webp);
+  background: none;
+  border-image-slice: 59;
+  border-image-width: 59px;
+  border-image-outset: 0px;*/
+  min-width: 720px;
+  max-width: 720px;
+  min-height: 790px;
+  /* width: 540px !important; */
+  /* height: 552px !important; */
+}
+.beneos_search_results .window-header{
+  display: none;
+}
+.bsr_title {
+  margin-left: 8px;
+  margin-top: 12px;
+  max-width: 230px;
+  max-height: 20px;
+  border-width: 0px;
+}
+.beneos_search_results .window-content {
+  background: none;
+}
+.bsr_result_box {
+  margin-left: 8px;
+  margin-top: 12px;
+  margin-right: 8px;
+}
