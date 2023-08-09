@@ -1,0 +1,9 @@
+.vscode/settings.json
+.idea
+.history
+todo.md
+/.vscode
+/packs/*/
+/packs/*/CURRENT
+/packs/*/LOG
+/packs/*/LOCK
