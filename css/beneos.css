@@ -491,8 +491,8 @@
   background-color: #d5c8c3;
 }
 .item-middle-line {
-  min-height: 2.0rem;
-  max-height: 2.0rem;
+  min-height: 1.8rem;
+  max-height: 1.8rem;
 }
 .item-properties-box {
   background-color: #ebe8e0;
@@ -542,6 +542,12 @@
   max-width: 100%;
   text-align: left;
 }
+.item-description-box-spells  {
+  max-height: 3.7rem;
+  min-height: 3.7rem;
+  margin-top: 6px;
+  margin-bottom: 6px;
+}
 .item-right-text-box {
   border: 0px solid;
   position: relative;
@@ -556,10 +562,11 @@
 }
 .item-right-text-content {
   position: absolute;
+  font-size: 0.7rem;
   border-width: 0px;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -75%);
+  transform: translate(-50%, -78%);
 }
 .item-right-text-content-2 {
   position: absolute;
