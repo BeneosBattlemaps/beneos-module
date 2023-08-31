@@ -629,6 +629,9 @@ export class BeneosSearchEngine extends Dialog {
     if (this.dbData.searchMode == "spell") {
       template = 'modules/beneos_module/templates/beneos-search-results-spells.html'
     }
+    if (this.dbData.searchMode == "bmap") {
+      template = 'modules/beneos_module/templates/beneos-search-results-battlemaps.html'
+    }
     let html = await renderTemplate(template, {
       results: results,
       isMoulinette: false // Up to now

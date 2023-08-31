@@ -1,0 +1,149 @@
+<form class="{{cssClass}}" autocomplete="off">
+
+  {{!-- Sheet Body --}}
+  <section class="sheet-body">
+
+    <div>
+      <img class="bsr_title" src="modules/beneos_module/ui/result_form_title_item.webp">
+    </div>
+
+    <div class="bsr_result_box">
+
+      {{#each results as |result idx|}}
+      <div data-result-index="{{idx}}" data-token-key="{{result.key}}"
+        class="directory-item document actor flexrow token-root-div item-container">
+
+        <div class="flexrow">
+
+          <div class="beneos-tooltip-icon-group beneos-tooltip entity-link content-link">
+            <div class="beneos-tooltiptext beneos-token-description">
+              <div class="flexrow beneos-tooltip-content">
+                <img class="beneos-search-icons-result-tooltip " src="{{result.picture}}">
+              </div>
+            </div>
+            <div class="beneos-icon-group">
+              <img class="beneos-icon-background" src="modules/beneos_module/ui/result_item_icon_bg.webp" />
+              <img class="beneos-icon-child-battlemap" src="{{result.picture}}" />
+            </div>
+          </div>
+
+          {{#if result.isInstalled}}
+          <div class="beneos-search-middle flexcol token-search-data" data-type="Item"
+            data-document-id="{{result.itemId}}" draggable="true">
+          {{else}}
+          <div class="beneos-search-middle flexcol">
+          {{/if}}
+
+              <img class="bsr_top_border" src="modules/beneos_module/ui/border_top.webp" />
+
+              <div class="bsr_item_title beneos-tooltip">
+                <label class="beneos-search-title-result">{{result.name}}</label>
+                <span class="triangle-topleft"></span>
+              </div>
+              <!-- Properties + Attenument line -->
+              <div class="item-middle-line flexrow">
+                <div class="item-properties-box item-properties-box-battlemaps">
+
+                  <span class="beneos-search-text01 flexrow">
+                    {{#each result.properties.biom as |biom key|}}
+                    <label class="beneos-search-stat biom-content" data-prop-name="biom">
+                      <a class="beneos-button-biom" data-biom-value="{{biom}}">{{beneosUpperFirst biom}}</a>
+                    </label>
+                    {{/each}}
+                  </span>
+
+                </div>
+              </div>
+
+              <div class="item-description-box item-description-box-battlemaps">
+                <div class="description-margin">
+                  {{#if result.siblingPicture}}
+                  <label class=" beneos-tooltip" data-prop-name="biom">
+                    <a class="beneos-jump-linked" data-jump-data="{{result.properties.sibling}}">
+                      {{#if (eq (beneosLowerCase result.properties.type) "battlemap")}}
+                      Fitting Scenery
+                      {{else}}
+                      Fitting Battlemap
+                      {{/if}}
+                      <div class="beneos-tooltiptext beneos-token-description">
+                        <div class="flexrow beneos-tooltip-content">
+                          <img class="beneos-search-icons-result-tooltip" src="{{result.siblingPicture}}">
+                        </div>
+                      </div>
+                    </a>
+                  </label>
+                  {{/if}}
+
+                  {{#each result.properties.adventure as |adventure key|}}
+                    {{#if (ne (beneosLowerCase adventure) "none")}}
+                    <label class="beneos-release-url-button"><a class="beneos-button-adventure"
+                        data-adventure-name="{{adventure}}">{{beneosUpperFirst adventure}}</a></label>
+                    {{/if}}
+                  {{/each}}
+                  
+                  <br>
+                  {{#if result.properties.releaseurl}}              
+                  <label class=""><a href="{{result.properties.releaseurl}}">Release URL</a></label>
+                  {{/if}}
+                  {{#if (beneosLength result.properties.videourl)}}
+                  &nbsp;&nbsp;<label class="beneos-search-yt-button"><a class="beneos-button-yt"
+                      href="{{result.properties.videourl}}"><img class="beneos-search-yt-icons"
+                        src="modules/beneos_module/icons/yt_Logo.webp">&nbsp;</a></label>
+                  {{/if}}
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <div class="beneos-search-last flexcol">
+
+            <div class="flexrow flex-content-left">
+              <div class="beneos-tooltip">
+                <div class="beneos-tooltiptext beneos-token-description">
+                </div>
+                <img class="item-right-text-box" src="modules/beneos_module/ui/right_button_v1.png">
+                <label class="beneos-search-installed item-right-text-content">
+                  {{#if (eq (beneosLowerCase result.properties.type) "battlemap")}}
+                  Battlemap
+                  {{else}}
+                  Scenery
+                  {{/if}}
+                </label>
+              </div>
+            </div>
+
+
+            <div class="flexrow flex-content-left">
+              <div class="beneos-tooltip beneos-search-grid-button">
+                <div class="beneos-tooltiptext beneos-token-description">
+                  <div class="flexrow beneos-tooltip-content-installed">
+                  </div>
+                </div>
+                <img class="item-right-text-box" src="modules/beneos_module/ui/right_button_v1.png">
+                <a class="beneos-button-grid item-right-text-content"
+                  data-grid-value="{{result.properties.grid}}"><strong>{{result.properties.grid}}</strong></a>
+              </div>
+            </div>
+
+            <div class="flexrow flex-content-left">
+              <div class="beneos-tooltip  beneos-search-brightness-button">
+                <div class="beneos-tooltiptext beneos-token-description">
+                </div>
+                <img class="item-right-text-box" src="modules/beneos_module/ui/right_button_v1.png">
+                <a class="beneos-button-brightness item-right-text-content"
+                  data-brightness-value="{{result.properties.brightness}}"><strong>{{result.properties.brightness}}</strong></a>
+              </div>
+            </div>
+
+          </div>
+
+          <img src="modules/beneos_module/ui/border_bottom.webp" class="bsr_bottom_border" />
+
+        </div>
+        {{/each}}
+      </div>
+    </div>
+  </section>
+
+</form>
