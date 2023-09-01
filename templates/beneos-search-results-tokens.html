@@ -18,19 +18,18 @@
           <div class="beneos-tooltip-icon-group beneos-tooltip entity-link content-link">
             <div class="beneos-tooltiptext beneos-token-description">
               <div class="flexrow beneos-tooltip-content">
-                <img class="beneos-search-icons-result-tooltip " src="{{result.picture}}">
+                <img class="beneos-search-icons-result-tooltip" data-document-id="{{result.actorId}}" draggable="true" src="{{result.picture}}">
                 <span class="beneos-description-text">{{result.description}}</span>
               </div>
             </div>
             <div class="beneos-icon-group">
               <img class="beneos-icon-background" src="modules/beneos_module/ui/result_item_icon_bg.webp" />
-              <img class="beneos-icon-child" src="{{result.picture}}" />
+              <img class="beneos-icon-child" data-type="Actor" data-document-id="{{result.actorId}}" draggable="true" src="{{result.picture}}" />
             </div>
           </div>
 
           {{#if result.isInstalled}}
-          <div class="beneos-search-middle flexcol token-search-data" data-type="Item"
-            data-document-id="{{result.itemId}}" draggable="true">
+          <div class="beneos-search-middle flexcol token-search-data"  data-type="Actor" data-document-id="{{result.actorId}}" draggable="true">
           {{else}}
           <div class="beneos-search-middle flexcol">
           {{/if}}
@@ -38,52 +37,48 @@
               <img class="bsr_top_border" src="modules/beneos_module/ui/border_top.webp" />
 
               <div class="bsr_item_title beneos-tooltip">
-                <div class="beneos-tooltiptext beneos-token-description">
-                  <div class="flexrow beneos-tooltip-content-item">
-                    <img class="beneos-search-icons-result-tooltip-item" src="{{result.card_front}}">
-                    <img class="beneos-search-icons-result-tooltip-item" src="{{result.card_back}}">
-                  </div>
-                </div>
                 <label class="beneos-search-title-result">{{result.name}}</label>
                 <span class="triangle-topleft"></span>
               </div>
               
-              <!-- Properties + Attenument line -->
+              <!-- Properties  -->
               <div class="item-middle-line flexrow">
-                <div class="item-properties-box item-properties-box-spells">
-                  <label class="beneos-search-stat"><a class="beneos-button-level"
-                      data-level-value="{{result.properties.level}}">Level {{beneosUpperFirst
-                        result.properties.level}}</a>
-                  </label>
-
-                  <div class="beneos-tooltip beneos-search-stat">
-                    <div class="beneos-tooltiptext beneos-token-description">
-                        <div class="flexrow beneos-tooltip-content-installed">
-                          {{beneosGetHover "school" result.properties.school}}
-                        </div>
-                    </div>
-                    <a class="beneos-button-school" data-school-value="{{result.properties.school}}">{{beneosUpperFirst
-                      result.properties.school}} Spell</a>
-                  </div>
+                <div class="item-properties-box item-properties-tokens">
+                  <span class="beneos-search-text01">
+                    <label>{{beneosUpperFirst result.properties.size}}</label>
+                    {{#each result.properties.type as |type key|}}
+                    <label>{{beneosUpperFirst type}}</label>
+                    {{/each}}
+                  </span>
                 </div>
               </div>
               
-              <div class="item-description-box item-description-box-spells">
-                <span class="beneos-search-text01 flexrow beneos-description-background">
-                  {{result.description}}
-                </span>
-
-                <span class="beneos-classes">Classes:</span>
-                {{#each result.properties.classes as |class key|}}
-                <span class="beneos-classes"><a class="beneos-button-class"
-                    data-class-value="{{class}}">{{beneosUpperFirst class}}</a></span>
-                {{/each}}
-
-                {{#if result.properties.releaseurl}}
-                <label><a href="{{result.properties.releaseurl}}">Release URL</a></label>
-                {{/if}}
+              <div class="token-button-rows flexrow">
+                  {{#each result.properties.fightingstyle as |fight key|}}
+                  <label class="beneos-search-button beneos-search-button-token biom-content" data-prop-name="fightingstyle">
+                    <div class="beneos-tooltip">
+                      <div class="beneos-tooltiptext beneos-tooltip-keyword">
+                        <span class="">{{getTagDescription fight}}</span>
+                      </div>
+                      <a class="beneos-button-fight" data-fight-value="{{fight}}">{{beneosUpperFirst fight}}</a>
+                    </div>
+                  </label>
+                  {{/each}}
+                  {{#each result.properties.purpose as |purpose key|}}
+                  <label class="beneos-search-button beneos-search-button-token biom-content" data-prop-name="purpose">
+                    <div class="beneos-tooltip">
+                      <div class="beneos-tooltiptext beneos-tooltip-purpose ">
+                        <span class="">{{getTagDescription purpose}}</span>
+                      </div>
+                      <a class="beneos-button-purpose" data-purpose-value="{{purpose}}">{{beneosUpperFirst purpose}}</a>
+                    </div>
+                  </label>
+                  {{/each}}
               </div>
 
+              <label class="release-url"><a href="{{result.properties.releaseurl}}">{{#if result.isInstalled}} {{else}}GET IT HERE{{/if}} Release
+                URL</a></label>
+    
             </div>
           </div>
 
@@ -112,27 +107,41 @@
           </div>
 
           <div class="flexrow flex-content-left">
-            <div class="beneos-tooltip beneos-search-tier-button">
+            <div class="beneos-tooltip  beneos-search-cr-button">
               <div class="beneos-tooltiptext beneos-token-description">
-                <div class="flexrow beneos-tooltip-content-left-buttons">
-                </div>
               </div>
               <img class="item-right-text-box" src="modules/beneos_module/ui/right_button_v1.png">
-              <a class="beneos-button-spell-type item-right-text-content"
-                data-spell_type-value="{{result.properties.spell_type}}"><strong>{{result.properties.spell_type}}</strong></a>
+              <a class="beneos-button-cr item-right-text-content" data-cr-value="{{result.properties.cr}}">CR
+                <strong>{{result.properties.cr}}</strong></a>
             </div>
           </div>
 
           <div class="flexrow flex-content-left">
-            <div class="beneos-tooltip  beneos-search-price-button">
+            <div class="beneos-tooltip ">
               <div class="beneos-tooltiptext beneos-token-description">
               </div>
               <img class="item-right-text-box" src="modules/beneos_module/ui/right_button_v1.png">
-              <a class="beneos-button-casting item-right-text-content"
-                  data-casting_time-value="{{result.properties.casting_time}}"><strong>{{result.properties.casting_time}}</strong></a>
+              <label class="item-right-text-content" >AC:
+                <strong>{{result.properties.stat_ac}}</strong>
+              </label>
             </div>
           </div>
-          
+
+          <div class="flexrow flex-content-left">
+            <div class="beneos-tooltip ">
+              <div class="beneos-tooltiptext beneos-token-description">
+              </div>
+              <img class="item-right-text-box" src="modules/beneos_module/ui/right_button_v1.png">
+              <label class="item-right-text-content" >HP:
+                <strong>{{result.properties.stat_hp}}</strong></label>
+            </div>
+          </div>
+
+          <div class="video-button-container">
+            <label class="beneos-search-yt-button"><a class="beneos-button-yt" href="{{result.properties.videourl}}"><img
+            class="beneos-search-yt-icons" src="modules/beneos_module/icons/yt_Logo.webp">&nbsp;</a></label>
+          </div>
+
         </div>
 
         <img src="modules/beneos_module/ui/border_bottom.webp" class="bsr_bottom_border" />

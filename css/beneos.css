@@ -126,8 +126,21 @@
   background: rgba(233, 226, 218, 0.9);
   border-radius: 12px;
   font-size: 0.9rem;
+  border: 1px solid black;
   top: 0.8rem;
   left: -2rem;
+}
+
+.beneos-tooltip .beneos-tooltip-content-left-buttons{
+  width: 280px;  
+  margin: 8px;
+  padding: 8px;
+  background: rgba(233, 226, 218, 0.9);
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  transform: translate(-300px, -40px);
 }
 
 .beneos-tooltip .beneos-tooltip-content-installed{
@@ -142,7 +155,7 @@
 
 .beneos-tooltip .beneos-tooltip-content{
   width: 490px;
-  
+  border: 1px solid black;
   margin: 8px;
   padding: 8px;
   background: rgba(233, 226, 218, 0.9);
@@ -153,23 +166,29 @@
 }
 .beneos-tooltip .beneos-tooltip-keyword {
   width: 220px;  
+  height: 96px;  
   margin: 4px;
   padding: 4px;
-  background: rgba(233, 226, 218, 0.9);
-  border-radius: 12px;
-  font-size: 0.9rem;
-  top: 0.8rem;
-  left: 2rem;
-}
-.beneos-tooltip .beneos-tooltip-purpose {
-  width: 220px;  
-  margin: 4px;
-  padding: 4px;
+  white-space: wrap;
+  border: 1px solid black;
   background: rgba(233, 226, 218, 0.9);
   border-radius: 12px;
   font-size: 0.8rem;
   top: 0.8rem;
-  left: 2rem;
+  left: -2rem;
+}
+.beneos-tooltip .beneos-tooltip-purpose {
+  width: 220px;
+  height: 96px;  
+  margin: 4px;
+  padding: 4px;
+  white-space: wrap;
+  border: 1px solid black;
+  background: rgba(233, 226, 218, 0.9);
+  border-radius: 12px;
+  font-size: 0.8rem;
+  top: 0.8rem;
+  left: -2rem;
 }
 .beneos-tooltip-icon-group {
   vertical-align: top;
@@ -189,14 +208,16 @@
   position: absolute;
   top: 0px;
   left: 0px;
-  transform: scale(0.82);
+  transform: scale(0.96);
 }
 .beneos-icon-child-battlemap {
   padding: 0px;
   position: absolute;
-  top: 24px;
-  left: 0px;
-  transform: scale(0.90);
+  width: 110px;
+  height: 110px;
+  top: 10px;
+  left: 10px;
+  object-fit: cover;
 }
 .beneos-search-icons-result {
   padding: 0px;
@@ -268,8 +289,10 @@
   border-top: 1.2rem solid #ebe8e0;
   border-left: 1.2rem solid transparent;
 }
+.beneos-search-text01,
 .beneos-search-stat {
-  margin-left: 12px;
+  padding-left: 4px;
+  margin-right: 12px;
 }
 .beneos-classes {
   margin-left: 4px;
@@ -290,6 +313,24 @@
   max-height: 18px;
 }
 .beneos-search-button {
+
+}
+.beneos-search-button-token {
+  background-color: #ebe8e0;
+  white-space:nowrap;
+  color: #191813;
+  border: 1px solid;
+  text-align: center;
+  border-width: 1px;
+  border-style: solid;
+  padding-left: 4px;
+  padding-right: 4px;
+  margin-top: 0px;
+  margin-right: 12px;
+  margin-bottom: 4px;
+  min-height: 1.2rem;
+  max-height: 1.2rem;
+  max-width: 8rem;
 }
 .beneos-search-notinstalled {
   border-width: 0px;
@@ -328,7 +369,7 @@
   max-height: 16px;
   border: 0;
 }
-.beneos-search-yt-button {
+.beneos-search-yt-button-old {
   text-align: center;
   border-width: 1px;
   margin-top: 4px;
@@ -339,6 +380,22 @@
   background-color: #a79893;
   flex-grow: 1;
   max-height: 18px;
+  max-width: 4rem;
+}
+.beneos-search-yt-button {
+  align-self: center;
+  text-align: center;
+  margin-top: 2px;
+  margin-left: 3.2rem;
+  padding-left: 4px;
+  padding-right: 4px;
+  max-height: 1.2rem;
+  max-width: 4rem;
+}
+.video-button-container {
+  width: 100%;
+  align-items: center;
+  align-content: center;
 }
 .beneos-search-logo-left {
   max-width: 64px;
@@ -418,9 +475,10 @@
 }
 .app.window-app.beneos_search_results {
   box-shadow: none;
+  border: 0px solid;
   background: url(../ui/result_form_bg.webp) no-repeat;
+  pointer-events: all;
   background-size: 720px 784px;
-  border: 1px solid rgb(7, 7, 15);
   /*border-image: url(../ui/result_form_bg.webp);
   background: none;
   border-image-slice: 59;
@@ -429,10 +487,26 @@
   min-width: 720px;
   max-width: 720px;
   min-height: 790px;
+  overflow-y: hidden;
+  /*position: fixed;*/
   /* width: 540px !important; */
   /* height: 552px !important; */
 }
+.beneos_search_results::-webkit-scrollbar{
+  display: none !important;
+  width: 0px !important;
+  height: 0px !important;
+}
 .beneos_search_results .window-header{
+  overflow-y: hidden;
+  border: 0px solid;
+  /*display: none;*/
+  pointer-events: all;
+}
+.beneos_search_results .window-header .window-title{
+  display: none;
+}
+.beneos_search_results .window-header .header-button{
   display: none;
 }
 .bsr_title {
@@ -445,10 +519,15 @@
 .beneos_search_results .window-content {
   background: none;
 }
-.bsr_result_box {
+.bsr_result_box {  
   margin-left: 8px;
   margin-top: 12px;
   margin-right: 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 720px;
+  min-height: 720px;
+  height: 720px;
 }
 .bsr_item_title {
   background-image: url("../ui/result_title_bg_gradient.webp");
@@ -477,7 +556,9 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .item-container {
-
+  background-color: #eaeaea;
+  max-height: 128px;
+  margin-bottom: 6px;
 }
 .item-container:hover {
   background-color: #d5c8c3;
@@ -499,13 +580,27 @@
   max-height: 1.2rem;
   min-width: 16rem;
   max-width: 16rem;
-  align-content: center;
-  text-align: center;
+  align-content: left;
+  text-align: left;
+}
+.item-properties-box-spells {
+  margin-top: 8px;
+  margin-bottom: 0px;
 }
 .item-properties-box-battlemaps {
   justify-content: center;
-  min-width: 24rem;
-  max-width: 24rem;  
+  min-width: 25rem;
+  max-width: 25rem;  
+}
+.item-properties-tokens {
+  margin-top: 8px;
+  margin-bottom: 8px;
+  min-width: 25.1rem;
+  max-width: 25.1rem;
+}
+.token-button-rows {
+  margin-top: 8px;
+  margin-left: 6px;
 }
 .item-attenument-box {
   align-content: center;
@@ -526,17 +621,17 @@
 .item-description-box {
   background-color: #ebe8e0;
   color: #3e0706;
-  border-left: #191813 0px solid;
+  border-left: #191813 1px solid;
   border-top: #191813 1px ridge;
   border-right: #191813 1px ridge;
   border-bottom: #191813 1px ridge;
-  margin-left: 0px;
+  margin-left: 6px;
   margin-top: 12px;
   margin-bottom: 12px;
   max-height: 2.4rem;
   min-height: 2.4rem;
-  min-width: 100%;
-  max-width: 100%;
+  min-width: 25rem;
+  max-width: 25rem;
   text-align: left;
 }
 .item-description-box-spells  {
@@ -593,11 +688,15 @@
   margin-right: 4px;
 }
 .bsr_bottom_border {
-  transform: translate(128px, -12px);
+  transform: translate(128px, -11px);
   max-height: 3px;
+  opacity: 0.2;
   max-width: 550px;
-  z-index: -1;
+  z-index: 0;
 }
 .description-margin {
   margin-left: 4px;
+}
+.release-url {
+  margin-left: 8px;
 }

@@ -226,7 +226,7 @@ export class BeneosDatabaseHolder {
       if (bmapData && typeof (bmapData) == "object") {
         bmapData.kind = "battlemap"
         bmapData.key = key
-        bmapData.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/battlemaps/thumbnails/" + key + ".webp"
+        bmapData.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/battlemaps/thumbnails/" + bmapData.properties.thumbnail
         mergeObject(this.bmapBrightness, this.buildList(bmapData.properties.brightness))
         mergeObject(this.bmapBioms, this.buildList(bmapData.properties.biom))
         mergeObject(this.adventureList, this.buildList(bmapData.properties.adventure))
@@ -465,8 +465,8 @@ export class BeneosSearchResults extends Dialog {
     }
 
     // Common conf
-    let dialogConf = { content: html, title: "Beneos Search Results", buttons: myButtons }
-    let dialogOptions = { classes: ["beneos_module", "beneos_search_results", "draggable"], left: 620, width: 720, height: 580, 'z-index': 99999 }
+    let dialogConf = { content: html, title: "TEST", buttons: myButtons }
+    let dialogOptions = { classes: ["beneos_module", "beneos_search_results", "draggable"], 'window-title': "", left: 620, width: 720, height: 580, 'z-index': 99999 }
     super(dialogConf, dialogOptions)
   }
 
@@ -623,6 +623,9 @@ export class BeneosSearchEngine extends Dialog {
     console.log("SEARCH results", results, this.dbData.searchMode)
 
     let template = 'modules/beneos_module/templates/beneossearchresults.html'
+    if (this.dbData.searchMode == "token") {
+      template = 'modules/beneos_module/templates/beneos-search-results-tokens.html'
+    }
     if (this.dbData.searchMode == "item") {
       template = 'modules/beneos_module/templates/beneos-search-results-items.html'
     }
@@ -642,6 +645,10 @@ export class BeneosSearchEngine extends Dialog {
       this.resultDialog.data.content = html
     }
     this.resultDialog.render(true)
+  }
+
+  get title() {
+    return ""
   }
 
   /********************************************************************************** */

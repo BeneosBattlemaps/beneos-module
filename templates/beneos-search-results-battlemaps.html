@@ -44,7 +44,7 @@
               <div class="item-middle-line flexrow">
                 <div class="item-properties-box item-properties-box-battlemaps">
 
-                  <span class="beneos-search-text01 flexrow">
+                  <span class="beneos-search-text01">
                     {{#each result.properties.biom as |biom key|}}
                     <label class="beneos-search-stat biom-content" data-prop-name="biom">
                       <a class="beneos-button-biom" data-biom-value="{{biom}}">{{beneosUpperFirst biom}}</a>
@@ -85,11 +85,6 @@
                   {{#if result.properties.releaseurl}}              
                   <label class=""><a href="{{result.properties.releaseurl}}">Release URL</a></label>
                   {{/if}}
-                  {{#if (beneosLength result.properties.videourl)}}
-                  &nbsp;&nbsp;<label class="beneos-search-yt-button"><a class="beneos-button-yt"
-                      href="{{result.properties.videourl}}"><img class="beneos-search-yt-icons"
-                        src="modules/beneos_module/icons/yt_Logo.webp">&nbsp;</a></label>
-                  {{/if}}
                 </div>
               </div>
 
@@ -117,7 +112,7 @@
             <div class="flexrow flex-content-left">
               <div class="beneos-tooltip beneos-search-grid-button">
                 <div class="beneos-tooltiptext beneos-token-description">
-                  <div class="flexrow beneos-tooltip-content-installed">
+                  <div class="flexrow beneos-tooltip-content-left-buttons">
                   </div>
                 </div>
                 <img class="item-right-text-box" src="modules/beneos_module/ui/right_button_v1.png">
@@ -135,6 +130,14 @@
                   data-brightness-value="{{result.properties.brightness}}"><strong>{{result.properties.brightness}}</strong></a>
               </div>
             </div>
+
+            {{#if (beneosLength result.properties.videourl)}}
+            <div class="video-button-container">
+              <label class="beneos-search-yt-button"><a class="beneos-button-yt"
+                href="{{result.properties.videourl}}"><img class="beneos-search-yt-icons"
+                  src="modules/beneos_module/icons/yt_Logo.webp">&nbsp;</a></label>
+            </div>
+            {{/if}}
 
           </div>
 

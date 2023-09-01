@@ -51,6 +51,7 @@
               <!-- Properties + Attenument line -->
               <div class="item-middle-line flexrow">
                 <div class="item-properties-box">
+                  
                   <label class="beneos-search-stat"><a class="beneos-button-rarity"
                       data-rarity-value="{{result.properties.rarity}}">{{beneosUpperFirst
                       result.properties.rarity}}</a>
@@ -103,7 +104,7 @@
               <div class="beneos-tooltip beneos-search-installed ">
                 {{#if result.isInstalled}}
                 <div class="beneos-tooltiptext beneos-token-description">
-                  <div class="flexrow beneos-tooltip-content-installed">
+                  <div class="flexrow beneos-tooltip-content-left-buttons">
                     {{beneosGetHover "installed" "installed"}}
                   </div>
                 </div>
@@ -111,7 +112,7 @@
                 <label class="beneos-search-installed item-right-text-content">Installed</label>
               {{else}}
                 <div class="beneos-tooltiptext beneos-token-description">
-                  <div class="flexrow beneos-tooltip-content-installed item-right-text-content">
+                  <div class="flexrow beneos-tooltip-content-left-buttons item-right-text-content">
                     {{beneosGetHover "installed" "not_installed"}}
                   </div>
                 </div>
@@ -124,7 +125,7 @@
           <div class="flexrow flex-content-left">
             <div class="beneos-tooltip beneos-search-tier-button">
               <div class="beneos-tooltiptext beneos-token-description">
-                <div class="flexrow beneos-tooltip-content-installed">
+                <div class="flexrow beneos-tooltip-content-left-buttons">
                   {{beneosGetHover "tier" "1"}}
                 </div>
               </div>
