@@ -213,10 +213,10 @@
 .beneos-icon-child-battlemap {
   padding: 0px;
   position: absolute;
-  width: 110px;
-  height: 110px;
-  top: 10px;
-  left: 10px;
+  width: 124px;
+  height: 124px;
+  top: 2px;
+  left: 2px;
   object-fit: cover;
 }
 .beneos-search-icons-result {
@@ -265,6 +265,13 @@
   justify-content: flex-start;
   flex-grow:0;
   max-width: 128px;
+}
+.beneos-search-title {
+  font-size: 1.2rem;
+  display: flex;
+  color: #ffffff;
+  padding-left: 4px;
+  padding-right: 8px;
 }
 .beneos-search-title-result {
   font-size: 1.2rem;
@@ -333,13 +340,7 @@
   max-width: 8rem;
 }
 .beneos-search-notinstalled {
-  border-width: 0px;
-  padding-left: 4px;
-  padding-right: 4px;
-  color: #000000;
-  text-align: center;
   background-color: #d56b52;
-  max-height: 18px;
 }
 .beneos-search-journal-button{  
   text-align: center;
@@ -502,19 +503,27 @@
   border: 0px solid;
   /*display: none;*/
   pointer-events: all;
+  height: 2.6rem;  
+  min-height: 2.6rem;
+  text-shadow: 1px 1px 2px black;
 }
 .beneos_search_results .window-header .window-title{
-  display: none;
+  margin-top : 14px;
+  margin-left: 16px;
+  height: 2.6rem;
+  /*display: none;*/
 }
 .beneos_search_results .window-header .header-button{
   display: none;
 }
 .bsr_title {
+  transform: translate(0px, -26px);
   margin-left: 8px;
   margin-top: 12px;
   max-width: 230px;
   max-height: 20px;
   border-width: 0px;
+  z-index: 999;
 }
 .beneos_search_results .window-content {
   background: none;
@@ -525,9 +534,9 @@
   margin-right: 8px;
   overflow-y: auto;
   overflow-x: hidden;
-  max-height: 720px;
-  min-height: 720px;
-  height: 720px;
+  max-height: 680px;
+  min-height: 680px;
+  height: 680px;
 }
 .bsr_item_title {
   background-image: url("../ui/result_title_bg_gradient.webp");
@@ -652,6 +661,7 @@
   border-width: Opx;
   margin-left: 0px;
   margin-bottom: 4px;
+  margin-top: 4px;
   max-height: 26px;
   min-height: 26px;
   min-width: 8rem;
@@ -664,7 +674,7 @@
   border-width: 0px;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -78%);
+  transform: translate(-50%, -80%);
 }
 .item-right-text-content-2 {
   position: absolute;
@@ -676,6 +686,7 @@
   max-height: 26px;
 }
 .item-origin-icon {
+  margin-top: 4px;
   align-content: center;
   width: 100%;
 }

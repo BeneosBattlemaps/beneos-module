@@ -465,7 +465,7 @@ export class BeneosSearchResults extends Dialog {
     }
 
     // Common conf
-    let dialogConf = { content: html, title: "TEST", buttons: myButtons }
+    let dialogConf = { content: html, title: "BENEOS SEARCH RESULTS ITEMS", buttons: myButtons }
     let dialogOptions = { classes: ["beneos_module", "beneos_search_results", "draggable"], 'window-title': "", left: 620, width: 720, height: 580, 'z-index': 99999 }
     super(dialogConf, dialogOptions)
   }
@@ -645,10 +645,6 @@ export class BeneosSearchEngine extends Dialog {
       this.resultDialog.data.content = html
     }
     this.resultDialog.render(true)
-  }
-
-  get title() {
-    return ""
   }
 
   /********************************************************************************** */

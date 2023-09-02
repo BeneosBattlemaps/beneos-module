@@ -3,9 +3,9 @@
   {{!-- Sheet Body --}}
   <section class="sheet-body">
 
-    <div>
+    <!--<div>
       <img class="bsr_title" src="modules/beneos_module/ui/result_form_title_item.webp">
-    </div>
+    </div> -->
 
     <div class="bsr_result_box">
 
@@ -146,7 +146,14 @@
           </div>
 
           <div class="flexrow item-origin-icon">
-            <img class="item-origin-icon" src="https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/common/thumnbails/{{beneosLowerCase result.properties.origin}}.webp">
+            <div class="beneos-tooltip beneos-search-origin-button">
+              <div class="beneos-tooltiptext beneos-token-description">
+                <div class="flexrow beneos-tooltip-content-left-buttons">
+                  {{beneosGetHover "origin" result.properties.origin}}
+                </div>
+              </div>
+              <img class="item-origin-icon" src="https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/common/thumnbails/{{beneosLowerCase result.properties.origin}}.webp">
+            </div>
           </div>
           
         </div>
