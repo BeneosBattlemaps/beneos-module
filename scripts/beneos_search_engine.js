@@ -31,7 +31,7 @@ export class BeneosModuleMenu extends Dialog {
       beneosTokensHUD.push({ name: "No results" })
     }
 
-    //console.log("SEARCH results", results)
+    console.log("SEARCH results", beneosTokensHUD)
     let html = await renderTemplate('modules/beneos_module/templates/' + this.listTemplate,
       { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getBeneosModuleDataPath(), beneosTokensHUD, searchValue })
     this.data.content = html
@@ -635,8 +635,15 @@ export class BeneosSearchEngine extends Dialog {
     if (this.dbData.searchMode == "bmap") {
       template = 'modules/beneos_module/templates/beneos-search-results-battlemaps.html'
     }
+    // Sort alpha
+    let resTab = []
+    for(let key in results) {
+      resTab.push(results[key])
+    }
+    resTab.sort( function(a, b) { return a.name.localeCompare(b.name)} )
+
     let html = await renderTemplate(template, {
-      results: results,
+      results: resTab,
       isMoulinette: false // Up to now
     })
     if (!this.resultDialog) {
