@@ -872,6 +872,9 @@ export class BeneosSearchEngineLauncher extends FormApplication {
 
   /********************************************************************************** */
   async render() {
+    if (game.beneosTokens.searchEngine) {
+      return
+    }
     await BeneosDatabaseHolder.loadDatabaseFiles()
     let dbData = BeneosDatabaseHolder.getData()
 
