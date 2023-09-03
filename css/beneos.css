@@ -419,6 +419,8 @@
   border: 0;
   max-width: 16px;
   max-height: 16px;
+  margin-right: 8px;
+  transform: translate(0px, 4px);
   flex-grow: 1;
 }
 .beneos-title-center {
@@ -724,9 +726,11 @@
 }
 .beneos-search-header {
   justify-content:center;
-  margin-left: 24px;
   width: 100%;
 }
 .beneos_search_engine .window-header{
   background-color: #3e0706;
+}
+.beneos-search-margin{
+  margin-left: 32px;
 }
