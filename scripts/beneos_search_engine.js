@@ -595,7 +595,7 @@ export class BeneosSearchEngine extends Dialog {
 
     // Common conf
     let dialogConf = { content: html, title: "Beneos Search Engine", buttons: myButtons };
-    let dialogOptions = { classes: ["beneos_module"], left: 200, width: 400, height: 420, 'z-index': 99999 }
+    let dialogOptions = { classes: ["beneos_module", "beneos_search_engine"], left: 200, width: 400, height: 420, 'z-index': 99999 }
     super(dialogConf, dialogOptions)
 
     this.dbData = data

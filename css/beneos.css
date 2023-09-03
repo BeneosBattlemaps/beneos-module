@@ -429,7 +429,13 @@
   font-weight: bold;
 }
 .beneos-search-small-text {
-  background-color: #dfdfdf;
+  color: #3e0706;
+  justify-self: center;
+  justify-content: center;
+  justify-items: center;
+}
+.beneos-search-small-text a {
+  color: #3e0706;
 }
 .beneos-not-installed { 
   background-color: #ff00000E;
@@ -710,4 +716,17 @@
 }
 .release-url {
   margin-left: 8px;
+  color:#3e0706;
+}
+.release-url-color a,
+.release-url a {
+  color:#3e0706;
+}
+.beneos-search-header {
+  justify-content:center;
+  margin-left: 24px;
+  width: 100%;
+}
+.beneos_search_engine .window-header{
+  background-color: #3e0706;
 }
