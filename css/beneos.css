@@ -234,7 +234,7 @@
   flex-grow:1;
 }
 .beneos-search-icons-result-tooltip {
-  --max-height: 256px;
+  --max-height: 220px;
   /* Set a baseline width for your element */
   width: 100%;
   /* And limit it with our function above (pick 100% with min() if this size is bigger than parent's width to prevent overflowing) */

@@ -234,6 +234,15 @@ export class BeneosDatabaseHolder {
         bmapData.isInstalled = true
       }
     }
+    for (let key in this.bmapData.content) {
+      let bmapData = this.bmapData.content[key]
+      if (bmapData && typeof (bmapData) == "object") {
+        if (bmapData.properties.sibling) {
+          bmapData.siblingPicture = this.getSiblingPicture(bmapData.properties.sibling)
+        }
+      }
+    }
+
     for (let key in this.itemData.content) {
       250
       let itemData = this.itemData.content[key]
@@ -278,6 +287,8 @@ export class BeneosDatabaseHolder {
         }
       }
     }
+    // Double pass to setup siblingPicture
+
 
   }
 
@@ -342,21 +353,31 @@ export class BeneosDatabaseHolder {
   static textSearch(text, mode) {
 
     let results = []
-    if ( mode == "token") {
+    if (mode == "token") {
       results = this.objectTextSearch(this.tokenData.content, text, "token")
     }
-    if ( mode == "bmap") {
+    if (mode == "bmap") {
       results = results.concat(this.objectTextSearch(this.bmapData.content, text, "bmap"))
     }
-    if ( mode == "item") {
+    if (mode == "item") {
       results = results.concat(this.objectTextSearch(this.bmapData.content, text, "item"))
     }
-    if ( mode == "spell") {
+    if (mode == "spell") {
       results = results.concat(this.objectTextSearch(this.bmapData.content, text, "spell"))
     }
 
     //console.log("TEXT results ", results, this.bmapData.content)
     return results
+  }
+
+  /********************************************************************************** */
+  static getSiblingPicture(key) {
+    let sibling = this.bmapData.content[key]
+    if (sibling) {
+      return sibling.picture
+    }
+    console.log("No relevant sibling picture found for", key)
+    return undefined
   }
 
   /********************************************************************************** */
@@ -373,7 +394,7 @@ export class BeneosDatabaseHolder {
         item.kind = "battlemap"
         item.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/battlemaps/thumbnails/" + item.key + ".webp"
         if (item.properties.sibling) {
-          item.siblingPicture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/battlemaps/thumbnails/" + item.properties.sibling + ".webp"
+          item.siblingPicture = this.getSiblingPicture(item.properties.sibling)
         }
       }
       if (item.kind == "token") {
@@ -648,10 +669,10 @@ export class BeneosSearchEngine extends Dialog {
     }
     // Sort alpha
     let resTab = []
-    for(let key in results) {
+    for (let key in results) {
       resTab.push(results[key])
     }
-    resTab.sort( function(a, b) { return a.name.localeCompare(b.name)} )
+    resTab.sort(function (a, b) { return a.name.localeCompare(b.name) })
 
     let html = await renderTemplate(template, {
       results: resTab,
