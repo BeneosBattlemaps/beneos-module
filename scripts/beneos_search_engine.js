@@ -392,10 +392,6 @@ export class BeneosDatabaseHolder {
       item.kind = type
       if (type == "bmap" || type == "battlemap") {
         item.kind = "battlemap"
-        item.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/battlemaps/thumbnails/" + item.key + ".webp"
-        if (item.properties.sibling) {
-          item.siblingPicture = this.getSiblingPicture(item.properties.sibling)
-        }
       }
       if (item.kind == "token") {
         item.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/tokens/thumbnails/" + item.key + "-idle_face_still.webp"
