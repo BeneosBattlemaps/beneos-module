@@ -19,6 +19,9 @@
             <div class="beneos-tooltiptext beneos-token-description">
               <div class="flexrow beneos-tooltip-content">
                 <img class="beneos-search-icons-result-tooltip " src="{{result.picture}}">
+                {{#if result.siblingPicture}}
+                  <img class="beneos-search-icons-result-tooltip " src="{{result.siblingPicture}}">
+                {{/if}}
               </div>
             </div>
             <div class="beneos-icon-group">

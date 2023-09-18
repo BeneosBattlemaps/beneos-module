@@ -339,10 +339,21 @@ export class BeneosDatabaseHolder {
   }
 
   /********************************************************************************** */
-  static textSearch(text) {
+  static textSearch(text, mode) {
 
-    let results = this.objectTextSearch(this.tokenData.content, text, "token")
-    results = results.concat(this.objectTextSearch(this.bmapData.content, text, "bmap"))
+    let results = []
+    if ( mode == "token") {
+      results = this.objectTextSearch(this.tokenData.content, text, "token")
+    }
+    if ( mode == "bmap") {
+      results = results.concat(this.objectTextSearch(this.bmapData.content, text, "bmap"))
+    }
+    if ( mode == "item") {
+      results = results.concat(this.objectTextSearch(this.bmapData.content, text, "item"))
+    }
+    if ( mode == "spell") {
+      results = results.concat(this.objectTextSearch(this.bmapData.content, text, "spell"))
+    }
 
     //console.log("TEXT results ", results, this.bmapData.content)
     return results
@@ -465,7 +476,7 @@ export class BeneosSearchResults extends Dialog {
     }
 
     // Common conf
-    let dialogConf = { content: html, title: "BENEOS SEARCH RESULTS ITEMS", buttons: myButtons }
+    let dialogConf = { content: html, title: "BENEOS SEARCH ENGINE", buttons: myButtons }
     let dialogOptions = { classes: ["beneos_module", "beneos_search_results", "draggable"], 'window-title': "", left: 620, width: 720, height: 580, 'z-index': 99999 }
     super(dialogConf, dialogOptions)
   }
@@ -661,7 +672,7 @@ export class BeneosSearchEngine extends Dialog {
       return
     }
     if (event.currentTarget.value && event.currentTarget.value.length >= 3) {
-      let results = BeneosDatabaseHolder.textSearch(event.currentTarget.value)
+      let results = BeneosDatabaseHolder.textSearch(event.currentTarget.value, this.dbData.searchMode)
 
       this.displayResults(results, event)
     }

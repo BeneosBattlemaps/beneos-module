@@ -15,16 +15,21 @@
 
         <div class="flexrow">
 
-          <div class="beneos-tooltip-icon-group beneos-tooltip entity-link content-link">
-            <div class="beneos-tooltiptext beneos-token-description">
+          <div class="beneos-tooltip-icon-group beneos-tooltip entity-link content-link token-search-data" data-type="Item"
+          data-document-id="{{result.itemId}}" draggable="true">
+            <div class="beneos-tooltiptext beneos-token-description token-search-data"  data-type="Item"
+            data-document-id="{{result.itemId}}" draggable="true">
               <div class="flexrow beneos-tooltip-content">
-                <img class="beneos-search-icons-result-tooltip " src="{{result.picture}}">
+                <img class="beneos-search-icons-result-tooltip token-search-data" src="{{result.picture}}"  data-type="Item"
+                data-document-id="{{result.itemId}}" draggable="true">
                 <span class="beneos-description-text">{{result.description}}</span>
               </div>
             </div>
-            <div class="beneos-icon-group">
-              <img class="beneos-icon-background" src="modules/beneos_module/ui/result_item_icon_bg.webp" />
-              <img class="beneos-icon-child" src="{{result.picture}}" />
+            <div class="beneos-icon-group token-search-data" data-type="Item"
+            data-document-id="{{result.itemId}}" draggable="true">
+              <img class="beneos-icon-background " src="modules/beneos_module/ui/result_item_icon_bg.webp" />
+              <img class="beneos-icon-child token-search-data" src="{{result.picture}}"  data-type="Item"
+              data-document-id="{{result.itemId}}" draggable="true"/>
             </div>
           </div>
 

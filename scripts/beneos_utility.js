@@ -601,6 +601,7 @@ export class BeneosUtility {
   static getSpellId(key) {
     let token = this.beneosSpells[key]
     if (token) {
+      //console.log("Spell ?", token)
       return token.spellId
     }
     return undefined
