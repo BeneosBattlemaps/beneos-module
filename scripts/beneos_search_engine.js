@@ -1,11 +1,11 @@
 import { BeneosUtility } from "./beneos_utility.js"
 
 /********************************************************************************** */
-const tokenDBURL = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/tokens/beneos_tokens_database.json"
-const battlemapDBURL = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/battlemaps/beneos_battlemaps_database.json"
-const itemDBURL = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/items/beneos_items_database.json"
-const spellDBURL = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/spells/beneos_spells_database.json"
-const commonDBURL = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/common/beneos_common_database.json"
+const tokenDBURL = "https://www.beneos-database.com/data/tokens/beneos_tokens_database.json"
+const battlemapDBURL = "https://www.beneos-database.com/data/battlemaps/beneos_battlemaps_database.json"
+const itemDBURL = "https://www.beneos-database.com/data/items/beneos_items_database.json"
+const spellDBURL = "https://www.beneos-database.com/data/spells/beneos_spells_database.json"
+const commonDBURL = "https://www.beneos-database.com/data/common/beneos_common_database.json"
 
 /********************************************************************************** */
 export class BeneosModuleMenu extends Dialog {
@@ -97,31 +97,31 @@ export class BeneosDatabaseHolder {
   /********************************************************************************** */
   static async loadDatabaseFiles() {
     try {
-      let tokenData = await fetchJsonWithTimeout(tokenDBURL)
+      let tokenData = await fetchJsonWithTimeout(tokenDBURL, {method: 'GET', 'Content-Type': 'application/json'})
       this.tokenData = tokenData
-    } catch {
-      ui.notifications.error("Unable to load Beneos Token Database - File error")
+    } catch(err) {
+      ui.notifications.error("Unable to load Beneos Token Database - File error " + err.message + " " + tokenDBURL)
     }
     try {
-      let bmapData = await fetchJsonWithTimeout(battlemapDBURL)
+      let bmapData = await fetchJsonWithTimeout(battlemapDBURL, {method: 'GET', 'Content-Type': 'application/json'})
       this.bmapData = bmapData
     } catch {
       ui.notifications.error("Unable to load Beneos Battlemap Database - File error")
     }
     try {
-      let itemData = await fetchJsonWithTimeout(itemDBURL)
+      let itemData = await fetchJsonWithTimeout(itemDBURL, {method: 'GET', 'Content-Type': 'application/json'})
       this.itemData = itemData
     } catch {
       ui.notifications.error("Unable to load Beneos Item Database - File error")
     }
     try {
-      let spellData = await fetchJsonWithTimeout(spellDBURL)
+      let spellData = await fetchJsonWithTimeout(spellDBURL, {method: 'GET', 'Content-Type': 'application/json'})
       this.spellData = spellData
     } catch {
       ui.notifications.error("Unable to load Beneos Spell Database - File error")
     }
     try {
-      let commonData = await fetchJsonWithTimeout(commonDBURL)
+      let commonData = await fetchJsonWithTimeout(commonDBURL, {method: 'GET', 'Content-Type': 'application/json'})
       this.commonData = commonData
     } catch {
       ui.notifications.error("Unable to load Beneos Common Database - File error")
@@ -208,7 +208,7 @@ export class BeneosDatabaseHolder {
       if (tokenData && typeof (tokenData) == "object") {
         tokenData.kind = "token"
         tokenData.key = key
-        tokenData.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/tokens/thumbnails/" + key + "-idle_face_still.webp"
+        tokenData.picture = "https://www.beneos-database.com/data/tokens/thumbnails/" + key + "-idle_face_still.webp"
         mergeObject(this.tokenBioms, this.buildList(tokenData.properties.biom))
         mergeObject(this.tokenTypes, this.buildList(tokenData.properties.type))
         mergeObject(this.fightingStyles, this.buildList(tokenData.properties.fightingstyle))
@@ -226,7 +226,7 @@ export class BeneosDatabaseHolder {
       if (bmapData && typeof (bmapData) == "object") {
         bmapData.kind = "battlemap"
         bmapData.key = key
-        bmapData.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/battlemaps/thumbnails/" + bmapData.properties.thumbnail
+        bmapData.picture = "https://www.beneos-database.com/data/battlemaps/thumbnails/" + bmapData.properties.thumbnail
         mergeObject(this.bmapBrightness, this.buildList(bmapData.properties.brightness))
         mergeObject(this.bmapBioms, this.buildList(bmapData.properties.biom))
         mergeObject(this.adventureList, this.buildList(bmapData.properties.adventure))
@@ -250,7 +250,7 @@ export class BeneosDatabaseHolder {
         itemData.kind = "item"
         itemData.key = key
         itemData.path_name = itemData.name.replace(/ /g, "_").toLowerCase()
-        itemData.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/items/thumbnails/" + itemData.properties.icon
+        itemData.picture = "https://www.beneos-database.com/data/items/thumbnails/" + itemData.properties.icon
         mergeObject(this.itemRarity, this.buildList(itemData.properties.rarity))
         mergeObject(this.itemOrigin, this.buildList(itemData.properties.origin))
         mergeObject(this.itemType, this.buildList(itemData.properties.item_type))
@@ -272,7 +272,7 @@ export class BeneosDatabaseHolder {
         spellData.kind = "spell"
         spellData.key = key
         spellData.path_name = spellData.name.replace(/ /g, "_").toLowerCase()
-        spellData.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/spells/thumbnails/" + spellData.properties.icon
+        spellData.picture = "https://www.beneos-database.com/data/spells/thumbnails/" + spellData.properties.icon
         mergeObject(this.spellLevel, this.buildList(spellData.properties.level))
         mergeObject(this.spellSchool, this.buildList(spellData.properties.school))
         mergeObject(this.spellCastingTime, this.buildList(spellData.properties.casting_time))
@@ -337,10 +337,10 @@ export class BeneosDatabaseHolder {
       let item = duplicate(objectList[key])
       item.kind = (kind == "token") ? "token" : item.properties.type
       if (item.kind == "token") {
-        item.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/tokens/thumbnails/" + item.key + "-idle_face_still.webp"
+        item.picture = "https://www.beneos-database.com/data/tokens/thumbnails/" + item.key + "-idle_face_still.webp"
       } else {
         item.kind = "battlemap"
-        item.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/battlemaps/thumbnails/" + item.key + ".webp"
+        item.picture = "https://www.beneos-database.com/data/battlemaps/thumbnails/" + item.key + ".webp"
       }
       if (this.fieldTextSearch(item, text) || this.fieldTextSearch(item.properties, text)) {
         results.push(item)
@@ -394,7 +394,7 @@ export class BeneosDatabaseHolder {
         item.kind = "battlemap"
       }
       if (item.kind == "token") {
-        item.picture = "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/tokens/thumbnails/" + item.key + "-idle_face_still.webp"
+        item.picture = "https://www.beneos-database.com/data/tokens/thumbnails/" + item.key + "-idle_face_still.webp"
       }
       if (item[propertyName]) {
         if (item[propertyName].toLowerCase() == value) {
