@@ -1,4 +1,5 @@
 import { BeneosUtility } from "./beneos_utility.js"
+import { BeneosCompendiumManager, BeneosCompendiumReset } from "./beneos_compendium.js";
 
 /********************************************************************************** */
 const tokenDBURL = "https://www.beneos-database.com/data/tokens/beneos_tokens_database.json"
@@ -587,7 +588,6 @@ export class BeneosSearchResults extends Dialog {
     $(".beneos-button-casting").click(event => {
       this.processSearchButton(event, "spell", "casting_time", "casting_time-value", "casting_time-selector")
     })
-
     $(".beneos-button-journal").click(event => {
       let element = $(event.currentTarget)?.parents(".token-root-div")
       let tokenKey = element.data("token-key")
@@ -623,7 +623,7 @@ export class BeneosSearchEngine extends Dialog {
 
     // Common conf
     let dialogConf = { content: html, title: "Beneos Search Engine", buttons: myButtons };
-    let dialogOptions = { classes: ["beneos_module", "beneos_search_engine"], left: 200, width: 400, height: 420, 'z-index': 99999 }
+    let dialogOptions = { classes: ["beneos_module", "beneos_search_engine"], left: 200, width: 400, height: 500, 'z-index': 99999 }
     super(dialogConf, dialogOptions)
 
     this.dbData = data
@@ -899,6 +899,11 @@ export class BeneosSearchEngine extends Dialog {
     $(".beneos-selector").change(event => {
       this.updateSelector(event)
     })
+    $("#beneos-rebuild-compendium-button").click(event => { 
+      let compReset = new BeneosCompendiumReset()
+      compReset.render(true)
+    })
+
   }
 }
 

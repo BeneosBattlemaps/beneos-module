@@ -119,6 +119,26 @@
   opacity: 1;
 }
 
+.beneos-tooltip .beneos-tooltiptext-button {
+  text-align: left;  
+  /* Position the tooltip text */
+  position: absolute;
+  max-width: 200px;
+  margin-left: 2rem;
+  margin-top: 2rem;
+  z-index: 999;
+  /* Fade in tooltip */
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.beneos-tooltip:hover .beneos-tooltiptext-button {
+  visibility: visible;
+  opacity: 1;
+  transform: translate(4px, -60px);
+}
+
 .beneos-tooltip .beneos-tooltip-content-item{
   width: 620px;  
   margin: 8px;
@@ -164,6 +184,19 @@
   top: 0.8rem;
   left: 2rem;
 }
+
+.beneos-tooltip .beneos-tooltip-content-button{
+  width: 220px;
+  border: 1px solid black;
+  margin: 8px;
+  padding: 8px;
+  background: rgba(233, 226, 218, 0.9);
+  border-radius: 12px;
+  font-size: 0.9rem;
+  top: 0.8rem;
+  left: 2rem;
+}
+
 .beneos-tooltip .beneos-tooltip-keyword {
   width: 220px;  
   height: 96px;  
@@ -190,12 +223,22 @@
   top: 0.8rem;
   left: -2rem;
 }
+
+.beneos-rebuild-compendium-button {
+  margin-top: 12px;
+}
+
 .beneos-tooltip-icon-group {
   vertical-align: top;
   padding: 0px;
   max-width: 128px;
   min-width: 128px;
-  transform: translate(8px, -14x);
+  transform: translate(8px, -14px);
+}
+.beneos-tooltip-icon-group-compendium {
+  vertical-align: center;
+  padding: 0px;
+  min-width: 128px;
 }
 .beneos-icon-group {
   padding: 0px;
@@ -234,6 +277,7 @@
   flex-grow:1;
 }
 .beneos-search-icons-result-tooltip {
+  max-height: 220px;
   --max-height: 220px;
   /* Set a baseline width for your element */
   width: 100%;

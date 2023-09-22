@@ -23,13 +23,13 @@ export class BeneosActorTokenMigration extends FormApplication {
 
     // Migrate actors
     for (let actor of game.actors) {
-      if (actor.img && actor.img.includes("beneos_module") && !actor.img.includes(BeneosUtility.tokenDataPath)) {
+      if (actor?.img.includes("beneos_module") && !actor.img.includes(BeneosUtility.tokenDataPath)) {
         let oldImgData = BeneosUtility.getTokenImageInfo(actor.img)
         let newImgPath = BeneosUtility.getFullPathWithSlash() + oldImgData.tokenKey + "/" + oldImgData.filename
         await actor.update({ 'img': newImgPath })
         console.log("actor update...", actor.name, actor.img)
       }
-      if (actor.token && actor.token.img.includes("beneos_module") && !actor.token.img.includes(BeneosUtility.tokenDataPath)) {
+      if (actor?.token.img.includes("beneos_module") && !actor.token.img.includes(BeneosUtility.tokenDataPath)) {
         let oldTokenImgData = BeneosUtility.getTokenImageInfo(actor.texture.src)
         let newTokenImgPath = BeneosUtility.getFullPathWithSlash() + oldTokenImgData.tokenKey + "/" + oldTokenImgData.pathVariant + "/" + oldTokenImgData.filename
         await actor.update({ 'token.img': newTokenImgPath })
@@ -39,7 +39,7 @@ export class BeneosActorTokenMigration extends FormApplication {
     // Migrate tokens on scenes
     for (let scene of game.scenes) {
       for (let token of scene.tokens) {
-        if (token.texture && token.texture.src.includes("beneos_module") && !token.texture.src.includes(BeneosUtility.tokenDataPath)) {
+        if (token?.texture.src.includes("beneos_module") && !token.texture.src.includes(BeneosUtility.tokenDataPath)) {
           let oldTokenImgData = BeneosUtility.getTokenImageInfo(token.texture.src)
           let newTokenImgPath = BeneosUtility.getFullPathWithSlash() + oldTokenImgData.tokenKey + "/" + oldTokenImgData.pathVariant + "/" + oldTokenImgData.filename
           console.log("scene token update : ", scene.name, token.name)
@@ -164,7 +164,7 @@ export class BeneosUtility {
         config: false
       })
 
-      game.settings.register(BeneosUtility.moduleID(), 'beneos-animations', {
+      /*game.settings.register(BeneosUtility.moduleID(), 'beneos-animations', {
         name: 'Enable Automatic Animations',
         default: true,
         type: Boolean,
@@ -172,7 +172,7 @@ export class BeneosUtility {
         default: true,
         config: true,
         hint: 'Whether to animate automatically Beneos Tokens.'
-      })
+      })*/
     }
 
     game.settings.register(BeneosUtility.moduleID(), "beneos-speed", {
@@ -190,7 +190,7 @@ export class BeneosUtility {
     this.file_cache = {}
 
     this.userSizes = duplicate(game.settings.get(BeneosUtility.moduleID(), 'beneos-user-config'))
-    this.beneosModule = game.settings.get(BeneosUtility.moduleID(), 'beneos-animations')
+    this.beneosModule = true // Deprecated game.settings.get(BeneosUtility.moduleID(), 'beneos-animations')
     this.tokenDataPath = game.settings.get(BeneosUtility.moduleID(), 'beneos-datapath') 
     this.itemDataPath = game.settings.get(BeneosUtility.moduleID(), 'beneos-datapath') 
     this.spellDataPath = game.settings.get(BeneosUtility.moduleID(), 'beneos-datapath')
@@ -299,7 +299,7 @@ export class BeneosUtility {
   }
   /********************************************************************************** */
   static isBeneosModule() {
-    return this.beneosModule
+    return true
   }
 
   /********************************************************************************** */

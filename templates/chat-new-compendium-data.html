@@ -1,0 +1,18 @@
+<div>
+
+  <div class="chat-message-header">
+  <h4 class=>New {{itemName}} detected in compendium</h4>
+  </div>
+
+  <hr>
+  
+  <div class="flexcol">
+    <ul>
+    {{#each itemList as |item idx|}}
+      <li>@UUID[{{@root.compendium}}.{{item.id}}]</li>
+    {{/each}}
+    </ul>
+  </div>
+
+
+  </div>

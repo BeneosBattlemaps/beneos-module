@@ -28,13 +28,28 @@ export class BeneosCompendiumReset extends FormApplication {
       ui.notifications.info("BeneosModule : PF2 - Cleanup of compendiums finished.")
       BeneosCompendiumManager.buildDynamicCompendiumsPF2()
     } else {
+      let chatData = {
+        user: game.user.id,
+        rollMode: game.settings.get("core", "rollMode"),
+        whisper: ChatMessage.getWhisperRecipients('GM'),
+        content: `<div><strong>BeneosModule</strong> : Import process started... Please wait end message</div`
+      }
+      ChatMessage.create(chatData);
       await this.deleteCompendiumContent("beneos_module.beneos_module_actors")
       await this.deleteCompendiumContent("beneos_module.beneos_module_items")
       await this.deleteCompendiumContent("beneos_module.beneos_module_spells")
-      ui.notifications.info("BeneosModule : Cleanup of compendiums finished.")
-      BeneosCompendiumManager.buildDynamicCompendiumsTokensDD5()
-      BeneosCompendiumManager.buildDynamicCompendiumsSpellsDD5()
-      BeneosCompendiumManager.buildDynamicCompendiumsItemsDD5()
+      chatData.content = `<div><strong>BeneosModule</strong> : Cleanup of compendiums finished, import is starting</div`
+      ChatMessage.create(chatData);
+      //ui.notifications.info("BeneosModule : Cleanup of compendiums finished")
+      await BeneosCompendiumManager.buildDynamicCompendiumsTokensDD5()
+      chatData.content = `<div><strong>BeneosModule</strong> : Actors compendium done.</div`
+      ChatMessage.create(chatData);
+      await BeneosCompendiumManager.buildDynamicCompendiumsSpellsDD5()
+      chatData.content = `<div><strong>BeneosModule</strong> : Spells compendium done.</div`
+      ChatMessage.create(chatData);
+      await BeneosCompendiumManager.buildDynamicCompendiumsItemsDD5()
+      chatData.content = `<div><strong>BeneosModule</strong> : Items compendium done.<br><strong>All compendiums created, import finished !!</strong></div`
+      ChatMessage.create(chatData);
     }
   }
 
@@ -172,6 +187,27 @@ export class BeneosCompendiumManager {
   }
 
   /********************************************************************************** */
+  static async showNewItems(itemName, newData, previousData, compendium) {
+    let diffData = [] // Detect new import data
+    for(let key in newData) {
+      if (!previousData[key]) {
+        diffData.push(duplicate(newData[key]))
+      }
+    }
+    let content = itemName + " : No new content detected."
+    if (diffData.length > 0) {
+      content = await renderTemplate(`modules/beneos_module/templates/chat-new-compendium-data.html`, {itemList: diffData, itemName, compendium} )
+    } 
+    let chatData = {
+      user: game.user.id,
+      rollMode: game.settings.get("core", "rollMode"),
+      whisper: ChatMessage.getWhisperRecipients('GM'),
+      content: content 
+    }
+    ChatMessage.create(chatData);
+  }
+
+  /********************************************************************************** */
   // Main root importer/builder function
   static async buildDynamicCompendiumsTokensDD5() {
     ui.notifications.info("BeneosModule : Compendium building .... Please wait !")
@@ -279,15 +315,19 @@ export class BeneosCompendiumManager {
           BeneosUtility.beneosTokens[key].idleList = duplicate(idleList)
           BeneosUtility.beneosTokens[key].imgVideoList = duplicate(imgVideoList)
           BeneosUtility.beneosTokens[key].actorId = currentId
+          BeneosUtility.beneosTokens[key].id = currentId
           BeneosUtility.beneosTokens[key].actorName = currentName
         }
       }
     }
 
     ui.notifications.info("BeneosModule : Compendium building finished !")
+    let previousData = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-tokenconfig') || {}) // Get the previous config !
+    await this.showNewItems("Actors", BeneosUtility.beneosTokens, previousData, "Compendium.beneos_module.beneos_module_actors.Actor")
+    
     let toSave = JSON.stringify(BeneosUtility.beneosTokens)
     console.log("Saving data :", toSave)
-    game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', toSave) // Save the token config !
+    await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', toSave) // Save the token config !
 
     await actorPack.configure({ locked: true })
     await journalPack.configure({ locked: true })
@@ -323,7 +363,7 @@ export class BeneosCompendiumManager {
             let spell = await Item.create(records, { temporary: true })
             let iSpell = await spellPack.importDocument(spell)
             let key = subFolder.replace(/\/$/, "").split("/").pop();
-            BeneosUtility.beneosSpells[key] = {spellId: iSpell.id} 
+            BeneosUtility.beneosSpells[key] = {spellId: iSpell.id, id: iSpell.id} 
           }
         }
       }
@@ -331,6 +371,9 @@ export class BeneosCompendiumManager {
 
     ui.notifications.info("BeneosModule : Spells Compendium building finished !")
     await spellPack.configure({ locked: true })
+
+    let previousData = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-spellconfig') || {}) // Get the previous config !
+    await this.showNewItems("Spells", BeneosUtility.beneosSpells, previousData, "Compendium.beneos_module.beneos_module_spells.Item" )
 
     let toSave = JSON.stringify(BeneosUtility.beneosSpells)
     //console.log("Saving data :", toSave)
@@ -368,7 +411,7 @@ export class BeneosCompendiumManager {
             let item = await Item.create(records, { temporary: true })
             let iItem = await itemPack.importDocument(item)
             let key = subFolder.replace(/\/$/, "").split("/").pop();
-            BeneosUtility.beneosItems[key] = {itemId: iItem.id} 
+            BeneosUtility.beneosItems[key] = {itemId: iItem.id, id: iItem.id} 
           }
         }
       }
@@ -376,6 +419,9 @@ export class BeneosCompendiumManager {
 
     ui.notifications.info("BeneosModule : Items Compendium building finished !")
     await itemPack.configure({ locked: true })
+
+    let previousData = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-itemconfig') || {}) // Get the previous config !
+    await this.showNewItems("Items", BeneosUtility.beneosItems, previousData, "Compendium.beneos_module.beneos_module_items.Item" )
 
     let toSave = JSON.stringify(BeneosUtility.beneosItems)
     //console.log("Saving data :", toSave)
@@ -386,7 +432,7 @@ export class BeneosCompendiumManager {
   /********************************************************************************** */
   static replaceItemsPath(records) {
     for (let item of records.items) {
-      if (item.img && item.img.match("_ability_icons")) {
+      if (item?.img.match("_ability_icons")) {
         let filename = item.img.substring(item.img.lastIndexOf("/") + 1)
         item.img = BeneosUtility.getBasePath() + BeneosUtility.getBeneosTokenDataPath() + "/_ability_icons/" + filename
       }
