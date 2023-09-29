@@ -164,10 +164,12 @@
 }
 
 .beneos-tooltip .beneos-tooltip-content-installed{
-  width: 620px;  
+  width: 420px;  
   margin: 8px;
   padding: 8px;
   background: rgba(233, 226, 218, 0.9);
+  border-style: solid;
+  border-width: 1px;
   border-radius: 12px;
   font-size: 0.9rem;
   transform: translate(-100px, 0px);
@@ -233,7 +235,7 @@
   padding: 0px;
   max-width: 128px;
   min-width: 128px;
-  transform: translate(8px, -14px);
+  /*transform: translate(8px, -14px);*/
 }
 .beneos-tooltip-icon-group-compendium {
   vertical-align: center;
@@ -644,8 +646,8 @@
   margin-bottom: 12px;
   min-height: 1.2rem;
   max-height: 1.2rem;
-  min-width: 16rem;
-  max-width: 16rem;
+  min-width: 20rem;
+  max-width: 20rem;
   align-content: left;
   text-align: left;
 }
@@ -681,8 +683,8 @@
   margin-bottom: 12px;
   min-height: 1.2rem;
   max-height: 1.2rem;
-  min-width: 9rem;
-  max-width: 9rem;
+  min-width: 5rem;
+  max-width: 5rem;
 }
 .item-description-box {
   background-color: #ebe8e0;
@@ -696,8 +698,8 @@
   margin-bottom: 12px;
   max-height: 2.4rem;
   min-height: 2.4rem;
-  min-width: 25rem;
-  max-width: 25rem;
+  min-width: 25.4rem;
+  max-width: 25.4rem;
   text-align: left;
 }
 .item-description-box-spells  {
