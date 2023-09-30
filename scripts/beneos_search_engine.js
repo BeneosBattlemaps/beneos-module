@@ -98,31 +98,31 @@ export class BeneosDatabaseHolder {
   /********************************************************************************** */
   static async loadDatabaseFiles() {
     try {
-      let tokenData = await fetchJsonWithTimeout(tokenDBURL, {method: 'GET', 'Content-Type': 'application/json'})
+      let tokenData = await fetchJsonWithTimeout(tokenDBURL, { method: 'GET', 'Content-Type': 'application/json' })
       this.tokenData = tokenData
-    } catch(err) {
+    } catch (err) {
       ui.notifications.error("Unable to load Beneos Token Database - File error " + err.message + " " + tokenDBURL)
     }
     try {
-      let bmapData = await fetchJsonWithTimeout(battlemapDBURL, {method: 'GET', 'Content-Type': 'application/json'})
+      let bmapData = await fetchJsonWithTimeout(battlemapDBURL, { method: 'GET', 'Content-Type': 'application/json' })
       this.bmapData = bmapData
     } catch {
       ui.notifications.error("Unable to load Beneos Battlemap Database - File error")
     }
     try {
-      let itemData = await fetchJsonWithTimeout(itemDBURL, {method: 'GET', 'Content-Type': 'application/json'})
+      let itemData = await fetchJsonWithTimeout(itemDBURL, { method: 'GET', 'Content-Type': 'application/json' })
       this.itemData = itemData
     } catch {
       ui.notifications.error("Unable to load Beneos Item Database - File error")
     }
     try {
-      let spellData = await fetchJsonWithTimeout(spellDBURL, {method: 'GET', 'Content-Type': 'application/json'})
+      let spellData = await fetchJsonWithTimeout(spellDBURL, { method: 'GET', 'Content-Type': 'application/json' })
       this.spellData = spellData
     } catch {
       ui.notifications.error("Unable to load Beneos Spell Database - File error")
     }
     try {
-      let commonData = await fetchJsonWithTimeout(commonDBURL, {method: 'GET', 'Content-Type': 'application/json'})
+      let commonData = await fetchJsonWithTimeout(commonDBURL, { method: 'GET', 'Content-Type': 'application/json' })
       this.commonData = commonData
     } catch {
       ui.notifications.error("Unable to load Beneos Common Database - File error")
@@ -196,7 +196,7 @@ export class BeneosDatabaseHolder {
     this.itemOrigin = {}
     this.itemType = {}
     this.itemTier = {}
-    this.itemPrice = {}
+    this.itemPrice = { "<100": "< 100g", "<1000": "< 1000g", "<5000": "< 5000g", "<15000": "< 15.000g", ">15000": "> 15.000g" }
     this.spellLevel = {}
     this.spellSchool = {}
     this.spellCastingTime = {}
@@ -245,7 +245,6 @@ export class BeneosDatabaseHolder {
     }
 
     for (let key in this.itemData.content) {
-      250
       let itemData = this.itemData.content[key]
       if (itemData && typeof (itemData) == "object") {
         itemData.kind = "item"
@@ -256,7 +255,7 @@ export class BeneosDatabaseHolder {
         mergeObject(this.itemOrigin, this.buildList(itemData.properties.origin))
         mergeObject(this.itemType, this.buildList(itemData.properties.item_type))
         mergeObject(this.itemTier, this.buildList(itemData.properties.tier))
-        mergeObject(this.itemPrice, this.buildList(itemData.properties.price))
+        //mergeObject(this.itemPrice, this.buildList(itemData.properties.price))
         itemData.isInstalled = BeneosUtility.isItemLoaded(key)
         itemData.installed = (itemData.isInstalled) ? "installed" : "notinstalled"
         if (itemData.isInstalled) {
@@ -402,23 +401,37 @@ export class BeneosDatabaseHolder {
           newResults[key] = duplicate(item)
         }
       }
-      if (item.properties && item.properties[propertyName]) {
-        //console.log(item.properties[propertyName], typeof (item.properties[propertyName]))
-        if (typeof (item.properties[propertyName]) == "string" || typeof (item.properties[propertyName]) == "number") {
-          if (strict) {
-            if (item.properties[propertyName].toString().toLowerCase() == value.toString()) {
-              newResults[key] = duplicate(item)
-            }
-          } else {
-            if (item.properties[propertyName].toString().toLowerCase().includes(value)) {
-              newResults[key] = duplicate(item)
-            }
+      if (propertyName == "price") {
+        let comp = value.substring(0, 1)
+        let price = parseInt(value.substring(1))
+        if (comp == "<") {
+          if (item.properties.price < price) {
+            newResults[key] = this.duplicate(item)
           }
         } else {
-          if (Array.isArray(item.properties[propertyName])) {
-            for (let valueArray of item.properties[propertyName]) {
-              if ((typeof (valueArray) == "string") && valueArray.toString().toLowerCase().includes(value)) {
+          if (item.properties.price > price) {
+            newResults[key] = this.duplicate(item)
+          }
+        }
+      } else {
+        if (item.properties && item.properties[propertyName]) {
+          //console.log(item.properties[propertyName], typeof (item.properties[propertyName]))
+          if (typeof (item.properties[propertyName]) == "string" || typeof (item.properties[propertyName]) == "number") {
+            if (strict) {
+              if (item.properties[propertyName].toString().toLowerCase() == value.toString()) {
                 newResults[key] = duplicate(item)
+              }
+            } else {
+              if (item.properties[propertyName].toString().toLowerCase().includes(value)) {
+                newResults[key] = duplicate(item)
+              }
+            }
+          } else {
+            if (Array.isArray(item.properties[propertyName])) {
+              for (let valueArray of item.properties[propertyName]) {
+                if ((typeof (valueArray) == "string") && valueArray.toString().toLowerCase().includes(value)) {
+                  newResults[key] = duplicate(item)
+                }
               }
             }
           }
@@ -472,7 +485,8 @@ export class BeneosDatabaseHolder {
       origin: this.toTable(this.itemOrigin),
       itemType: this.toTable(this.itemType),
       tier: this.toTable(this.itemTier),
-      price: this.toTable(this.itemPrice),
+      //price: this.toTable(this.itemPrice),
+      price: this.itemPrice,
 
       level: this.toTable(this.spellLevel),
       school: this.toTable(this.spellSchool),
@@ -899,7 +913,7 @@ export class BeneosSearchEngine extends Dialog {
     $(".beneos-selector").change(event => {
       this.updateSelector(event)
     })
-    $("#beneos-rebuild-compendium-button").click(event => { 
+    $("#beneos-rebuild-compendium-button").click(event => {
       let compReset = new BeneosCompendiumReset()
       compReset.render(true)
     })

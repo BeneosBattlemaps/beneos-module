@@ -785,3 +785,15 @@
 .beneos-search-margin{
   margin-left: 32px;
 }
+.beneos-search-text-input {
+  align-items: center;
+  align-self: center;
+  align-content: center;
+  flex-grow: 0;
+}
+.beneos-search-text-title {
+  margin-right: 6px;
+}
+.beneos-search-text-input input {
+  text-align: left;
+}

@@ -34,8 +34,8 @@
     <hr>
 
     <div class="flexcol">
-      <span class="flexrow">
-        <label>Global text search (<a id="reset-search-list">Reset</a>): </label>
+      <span class="flexrow beneos-search-text-input">
+        <label class="beneos-search-text-title">Global text search (<a id="reset-search-list">Reset</a>): </label>
         <input type="text" id="beneos-search-text" name="beneos-search-text" value="" data-dtype="String" />
       </span>
     </div>
@@ -242,7 +242,7 @@
         {{#select "any"}}
         <option value="any">Any</option>
         {{#each price as |data key|}}
-        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        <option value="{{key}}">{{beneosUpperFirst data}}</option>
         {{/each}}
         {{/select}}
       </select>
