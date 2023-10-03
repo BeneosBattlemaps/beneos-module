@@ -15,6 +15,7 @@ The Beneos Module is a comprehensive solution for accessing the entire range of 
 
 
 Licensing Information for the Beneos Module by Beneos Battlemaps
+
 The Beneos Module, along with all accompanying assets, unless otherwise specified, is the intellectual property of Beneos Battlemaps, headquartered in Germany. All rights, including but not limited to copyrights, trademarks, and trade secrets, are reserved. Unauthorized use, reproduction, modification, or distribution of the Beneos Module or its included assets without the express written consent of Beneos Battlemaps is strictly prohibited. For further details about Beneos Battlemaps and its offerings, please refer [here](Link to more information). Users are granted permission to freely use the Beneos Module with FoundryVTT. The module can be installed either via Github or through the FoundryVTT Module Browser. No fees or charges will be levied for the use or installation of the module. The primary purpose of this module is to make the products of Beneos Battlemaps more accessible and user-friendly for the community.
 
 Third-Party Rights - Dungeons and Dragons and Wizards of the Coast:
