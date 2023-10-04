@@ -797,3 +797,16 @@
 .beneos-search-text-input input {
   text-align: left;
 }
+.beneos-search-overflow-section {
+  margin-top: 4px;
+  align-self: center;
+  align-content: center;
+  text-align: center;
+}
+#beneos-search-overflow {
+  text-align: center;
+  align-self: center;
+  align-content: center;
+  margin-top: 2px;
+  color: #3e0706;
+}

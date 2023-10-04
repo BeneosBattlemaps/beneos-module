@@ -48,9 +48,8 @@
       <label>Biome Filter 1: </label>
       <select name="bioms" class="beneos-selector" id="bioms-selector" data-dtype="String">
         {{#select bmapBioms}}
-        <option value="any">Any</option>
         {{#each bmapBioms as |data key|}}
-        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        <option value="{{data.key}}">{{beneosUpperFirst data.value}}</option>
         {{/each}}
         {{/select}}
       </select>
@@ -60,9 +59,8 @@
       <label>Biome Filter 2: </label>
       <select name="bioms" class="beneos-selector" id="bioms-selector-2" data-dtype="String">
         {{#select bmapBioms}}
-        <option value="any">Any</option>
         {{#each bmapBioms as |data key|}}
-        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        <option value="{{data.key}}">{{beneosUpperFirst data.value}}</option>
         {{/each}}
         {{/select}}
       </select>
@@ -83,9 +81,8 @@
       <label>Brightness : </label>
       <select name="bmap-brightness" class="beneos-selector" id="bmap-brightness" data-dtype="String">
         {{#select bmapBrightness}}
-        <option value="any">Any</option>
         {{#each bmapBrightness as |data key|}}
-        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        <option value="{{data.key}}">{{beneosUpperFirst data.value}}</option>
         {{/each}}
         {{/select}}
       </select>
@@ -95,9 +92,8 @@
       <label>Adventure : </label>
       <select name="bmap-adventure" class="beneos-selector" id="bmap-adventure" data-dtype="String">
         {{#select adventureList}}
-        <option value="any">Any</option>
         {{#each adventureList as |data key|}}
-        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        <option value="{{data.key}}">{{beneosUpperFirst data.value}}</option>
         {{/each}}
         {{/select}}
       </select>
@@ -107,9 +103,8 @@
       <label>Grid : </label>
       <select name="bmap-grid" class="beneos-selector" id="bmap-grid" data-dtype="String">
         {{#select gridList}}
-        <option value="any">Any</option>
         {{#each gridList as |data key|}}
-        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        <option value="{{data.key}}">{{beneosUpperFirst data.value}}</option>
         {{/each}}
         {{/select}}
       </select>
@@ -122,9 +117,8 @@
       <label>Biom : </label>
       <select name="bioms" class="beneos-selector" id="bioms-selector" data-dtype="String">
         {{#select "any"}}
-        <option value="any">Any</option>
         {{#each tokenBioms as |data key|}}
-        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        <option value="{{data.key}}">{{beneosUpperFirst data.value}}</option>
         {{/each}}
         {{/select}}
       </select>
@@ -134,9 +128,8 @@
       <label>Token type : </label>
       <select name="token-types" class="beneos-selector" id="token-types" data-dtype="String">
         {{#select "any"}}
-        <option value="any">Any</option>
         {{#each tokenTypes as |data key|}}
-        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        <option value="{{data.key}}">{{beneosUpperFirst data.value}}</option>
         {{/each}}
         {{/select}}
       </select>
@@ -146,9 +139,8 @@
       <label>Fighting style : </label>
       <select name="token-fight-style" class="beneos-selector" id="token-fight-style" data-dtype="String">
         {{#select fightingStyles}}
-        <option value="any">Any</option>
         {{#each fightingStyles as |data key|}}
-        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        <option value="{{data.key}}">{{beneosUpperFirst data.value}}</option>
         {{/each}}
         {{/select}}
       </select>
@@ -158,9 +150,8 @@
       <label>CR : </label>
       <select name="token-cr" class="beneos-selector" id="token-cr" data-dtype="String">
         {{#select crList}}
-        <option value="any">Any</option>
         {{#each crList as |data key|}}
-        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        <option value="{{data.key}}">{{beneosUpperFirst data.value}}</option>
         {{/each}}
         {{/select}}
       </select>
@@ -170,9 +161,8 @@
       <label>Movement : </label>
       <select name="token-movement" class="beneos-selector" id="token-movement" data-dtype="String">
         {{#select movementList}}
-        <option value="any">Any</option>
         {{#each movementList as |data key|}}
-        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        <option value="{{data.key}}">{{beneosUpperFirst data.value}}</option>
         {{/each}}
         {{/select}}
       </select>
@@ -182,9 +172,8 @@
       <label>Purpose : </label>
       <select name="token-purpose" class="beneos-selector" id="token-purpose" data-dtype="String">
         {{#select purposeList}}
-        <option value="any">Any</option>
         {{#each purposeList as |data key|}}
-        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        <option value="{{data.key}}">{{beneosUpperFirst data.value}}</option>
         {{/each}}
         {{/select}}
       </select>
@@ -196,9 +185,8 @@
       <label>Item type : </label>
       <select name="item-type" class="beneos-selector" id="item-type" data-dtype="String">
         {{#select "any"}}
-        <option value="any">Any</option>
         {{#each itemType as |data key|}}
-        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        <option value="{{data.key}}">{{beneosUpperFirst data.value}}</option>
         {{/each}}
         {{/select}}
       </select>
@@ -207,9 +195,8 @@
       <label>Rarity : </label>
       <select name="rarity" class="beneos-selector" id="rarity-selector" data-dtype="String">
         {{#select "any"}}
-        <option value="any">Any</option>
         {{#each rarity as |data key|}}
-        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        <option value="{{data.key}}">{{beneosUpperFirst data.value}}</option>
         {{/each}}
         {{/select}}
       </select>
@@ -218,9 +205,8 @@
       <label>Origin : </label>
       <select name="origin" class="beneos-selector" id="origin-selector" data-dtype="String">
         {{#select "any"}}
-        <option value="any">Any</option>
         {{#each origin as |data key|}}
-        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        <option value="{{data.key}}">{{beneosUpperFirst data.value}}</option>
         {{/each}}
         {{/select}}
       </select>
@@ -229,9 +215,8 @@
       <label>Tier : </label>
       <select name="tier" class="beneos-selector" id="tier-selector" data-dtype="String">
         {{#select "any"}}
-        <option value="any">Any</option>
         {{#each tier as |data key|}}
-        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        <option value="{{data.key}}">{{beneosUpperFirst data.value}}</option>
         {{/each}}
         {{/select}}
       </select>
@@ -240,9 +225,8 @@
       <label>Price : </label>
       <select name="price" class="beneos-selector" id="price-selector" data-dtype="String">
         {{#select "any"}}
-        <option value="any">Any</option>
         {{#each price as |data key|}}
-        <option value="{{key}}">{{beneosUpperFirst data}}</option>
+        <option value="{{data.key}}">{{beneosUpperFirst data.value}}</option>
         {{/each}}
         {{/select}}
       </select>
@@ -254,9 +238,8 @@
       <label>Spell type : </label>
       <select name="spell-type" class="beneos-selector" id="spell-type" data-dtype="String">
         {{#select "any"}}
-        <option value="any">Any</option>
         {{#each spellType as |data key|}}
-        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        <option value="{{data.key}}">{{beneosUpperFirst data.value}}</option>
         {{/each}}
         {{/select}}
       </select>
@@ -265,9 +248,8 @@
       <label>School : </label>
       <select name="school" class="beneos-selector" id="school-selector" data-dtype="String">
         {{#select "any"}}
-        <option value="any">Any</option>
         {{#each school as |data key|}}
-        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        <option value="{{data.key}}">{{beneosUpperFirst data.value}}</option>
         {{/each}}
         {{/select}}
       </select>
@@ -276,9 +258,8 @@
       <label>Level : </label>
       <select name="level" class="beneos-selector" id="level-selector" data-dtype="String">
         {{#select "any"}}
-        <option value="any">Any</option>
         {{#each level as |data key|}}
-        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        <option value="{{data.key}}">{{beneosUpperFirst data.value}}</option>
         {{/each}}
         {{/select}}
       </select>
@@ -287,9 +268,8 @@
       <label>Casting Time : </label>
       <select name="castingtime" class="beneos-selector" id="casting_time-selector" data-dtype="String">
         {{#select "any"}}
-        <option value="any">Any</option>
         {{#each castingTime as |data key|}}
-        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        <option value="{{data.key}}">{{beneosUpperFirst data.value}}</option>
         {{/each}}
         {{/select}}
       </select>
@@ -298,9 +278,8 @@
       <label>Class : </label>
       <select name="class" class="beneos-selector" id="class-selector" data-dtype="String">
         {{#select "any"}}
-        <option value="any">Any</option>
         {{#each spellClass as |data key|}}
-        <option value="{{data}}">{{beneosUpperFirst data}}</option>
+        <option value="{{data.key}}">{{beneosUpperFirst data.value}}</option>
         {{/each}}
         {{/select}}
       </select>
@@ -320,6 +299,10 @@
     </span>
     {{/if}}
 
+  </div>
+
+  <div class="beneos-search-overflow-section">
+    <label id="beneos-search-overflow">Only the first 100 results are shown. Please use filters to narrow your search.</label>
   </div>
 
   <div class="beneos-tooltip-icon-group-compendium beneos-tooltip beneos-rebuild-compendium-button">

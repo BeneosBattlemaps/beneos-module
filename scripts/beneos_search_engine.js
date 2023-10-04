@@ -133,6 +133,10 @@ export class BeneosDatabaseHolder {
 
   /********************************************************************************** */
   static getHover(category, term) {
+    if (!term || !category) {
+      console.log("Wrong term/category", category, term)
+      return ""
+    }
     category = category.toString().toLowerCase()
     term = term.toString().toLowerCase()
     if (this.commonData?.hover[category] && this.commonData.hover[category][term]?.message) {
@@ -190,13 +194,15 @@ export class BeneosDatabaseHolder {
     this.crList = {}
     this.movementList = {}
     this.purposeList = {}
-    this.gridList = {}
+    this.gridList = [{ key: "any", value: "Any" }, { key: "<150", value: "Tiny" }, { key: "<500>", value: "Small" }, { key: "<1000", value: "Medium" },
+    { key: "<2000", value: "Big" }, { key: ">2000", value: "Very Big" }]
     this.adventureList = {}
     this.itemRarity = {}
     this.itemOrigin = {}
     this.itemType = {}
     this.itemTier = {}
-    this.itemPrice = { "<100": "< 100g", "<1000": "< 1000g", "<5000": "< 5000g", "<15000": "< 15.000g", ">15000": "> 15.000g" }
+    this.itemPrice = [{ key: "any", value: "Any" }, { key: "<100", value: "< 100g" }, { key: "<1000", value: "< 1000g" }, { key: "<5000", value: "< 5000g" },
+    { key: "<15000", value: "< 15.000g" }, { key: ">15000", value: "> 15.000g" }]
     this.spellLevel = {}
     this.spellSchool = {}
     this.spellCastingTime = {}
@@ -231,7 +237,7 @@ export class BeneosDatabaseHolder {
         mergeObject(this.bmapBrightness, this.buildList(bmapData.properties.brightness))
         mergeObject(this.bmapBioms, this.buildList(bmapData.properties.biom))
         mergeObject(this.adventureList, this.buildList(bmapData.properties.adventure))
-        mergeObject(this.gridList, this.buildList(bmapData.properties.grid))
+        // Deprecated mergeObject(this.gridList, this.buildList(bmapData.properties.grid))
         bmapData.isInstalled = true
       }
     }
@@ -255,7 +261,7 @@ export class BeneosDatabaseHolder {
         mergeObject(this.itemOrigin, this.buildList(itemData.properties.origin))
         mergeObject(this.itemType, this.buildList(itemData.properties.item_type))
         mergeObject(this.itemTier, this.buildList(itemData.properties.tier))
-        //mergeObject(this.itemPrice, this.buildList(itemData.properties.price))
+        // Deprecated mergeObject(this.itemPrice, this.buildList(itemData.properties.price))
         itemData.isInstalled = BeneosUtility.isItemLoaded(key)
         itemData.installed = (itemData.isInstalled) ? "installed" : "notinstalled"
         if (itemData.isInstalled) {
@@ -401,37 +407,40 @@ export class BeneosDatabaseHolder {
           newResults[key] = duplicate(item)
         }
       }
-      if (propertyName == "price") {
+      if (propertyName == "grid") {
         let comp = value.substring(0, 1)
-        let price = parseInt(value.substring(1))
-        if (comp == "<") {
-          if (item.properties.price < price) {
-            newResults[key] = this.duplicate(item)
-          }
-        } else {
-          if (item.properties.price > price) {
-            newResults[key] = this.duplicate(item)
+        let grid = parseInt(value.substring(1))
+        //console.log("Parsing", item.properties.grid, grid, comp)
+        let sizeParse = item.properties.grid.match(/(\d+)\s*x\s*(\d+)/)
+        if (sizeParse && sizeParse[1] && sizeParse[2]) {
+          let size = parseInt(sizeParse[1]) * parseInt(sizeParse[2])
+          if ((comp == "<" && Number(size) <= Number(grid)) || (comp == ">" && Number(size) >= Number(grid))) {
+            newResults[key] = duplicate(item)
           }
         }
-      } else {
-        if (item.properties && item.properties[propertyName]) {
-          //console.log(item.properties[propertyName], typeof (item.properties[propertyName]))
-          if (typeof (item.properties[propertyName]) == "string" || typeof (item.properties[propertyName]) == "number") {
-            if (strict) {
-              if (item.properties[propertyName].toString().toLowerCase() == value.toString()) {
-                newResults[key] = duplicate(item)
-              }
-            } else {
-              if (item.properties[propertyName].toString().toLowerCase().includes(value)) {
-                newResults[key] = duplicate(item)
-              }
+      } else if (propertyName == "price") {
+        let comp = value.substring(0, 1)
+        let price = parseInt(value.substring(1))
+        if ((comp == "<" && item.properties.price <= price) || (comp == ">" && item.properties.price > price)) {
+          newResults[key] = duplicate(item)
+        }
+      } else if (item.properties && item.properties[propertyName]) {
+        //console.log(item.properties[propertyName], typeof (item.properties[propertyName]))
+        if (typeof (item.properties[propertyName]) == "string" || typeof (item.properties[propertyName]) == "number") {
+          if (strict) {
+            if (item.properties[propertyName].toString().toLowerCase() == value.toString()) {
+              newResults[key] = duplicate(item)
             }
           } else {
-            if (Array.isArray(item.properties[propertyName])) {
-              for (let valueArray of item.properties[propertyName]) {
-                if ((typeof (valueArray) == "string") && valueArray.toString().toLowerCase().includes(value)) {
-                  newResults[key] = duplicate(item)
-                }
+            if (item.properties[propertyName].toString().toLowerCase().includes(value)) {
+              newResults[key] = duplicate(item)
+            }
+          }
+        } else {
+          if (Array.isArray(item.properties[propertyName])) {
+            for (let valueArray of item.properties[propertyName]) {
+              if ((typeof (valueArray) == "string") && valueArray.toString().toLowerCase().includes(value)) {
+                newResults[key] = duplicate(item)
               }
             }
           }
@@ -457,12 +466,35 @@ export class BeneosDatabaseHolder {
   }
 
   /********************************************************************************** */
-  static toTable(object, sort = true) {
+  static sortProperties(tab) {
+    tab = tab.filter(it => { if (it.key != "any") { return it } } )
+    if (tab.length > 0) {
+      if (Number(tab[0].key)) {
+        tab = tab.sort(function (a, b) { return Number(a.key) > Number(b.key) })
+      } else if (tab[0].key[0] == "<" || tab[0].key[0] == ">") {
+        tab = tab.sort(function (a, b) { return Number(a.key.slice(1)) > Number(b.key.slice(1)) } )
+      } else {
+        tab = tab.sort(function (a, b) { return a.value.toLowerCase().localeCompare(b.value.toLowerCase()) })
+      }
+    }
+    //tab = tab.sort(function (a, b) { return a.value.toLowerCase().localeCompare(b.value.toLowerCase()) })
+    tab.splice(0, 0,  { key: "any", value: "Any" })
+    return tab
+  }
+
+  /********************************************************************************** */
+  static toTable(object) {
     let tab = []
     for (let key in object) {
-      tab.push(key)
+      if (tab.find((it) => it.key == key.toLowerCase()) == undefined) {
+        tab.push({ key: key.toLowerCase(), value: key })
+      }
     }
-    return (sort) ? tab.sort() : tab
+    BeneosDatabaseHolder.sortProperties(tab)
+    if (tab.find((it) => it.key == "any") == undefined) {
+      tab.splice(0, 0,  { key: "any", value: "Any" })
+    }
+    return tab
   }
 
   /********************************************************************************** */
@@ -476,17 +508,16 @@ export class BeneosDatabaseHolder {
       fightingStyles: this.toTable(this.fightingStyles),
       bmapBrightness: this.toTable(this.bmapBrightness),
       movementList: this.toTable(this.movementList),
-      crList: this.toTable(this.crList, false),
+      crList: this.toTable(this.crList),
       purposeList: this.toTable(this.purposeList),
       adventureList: this.toTable(this.adventureList),
-      gridList: this.toTable(this.gridList),
+      gridList: BeneosDatabaseHolder.sortProperties(duplicate(this.gridList)),
 
       rarity: this.toTable(this.itemRarity),
       origin: this.toTable(this.itemOrigin),
       itemType: this.toTable(this.itemType),
       tier: this.toTable(this.itemTier),
-      //price: this.toTable(this.itemPrice),
-      price: this.itemPrice,
+      price: BeneosDatabaseHolder.sortProperties(duplicate(this.itemPrice)),
 
       level: this.toTable(this.spellLevel),
       school: this.toTable(this.spellSchool),
@@ -626,6 +657,30 @@ export class BeneosSearchResults extends Dialog {
 }
 
 /********************************************************************************** */
+const __propertyDefList = {
+  "grid": { name: "grid", selectors: ["bmap-grid"] },
+  "biom": { name: "biom", selectors: ["bioms-selector", "bioms-selector-2"] },
+  "adventure": { name: "adventure", selectors: ["bmap-adventure"] },
+  "type": { name: "type", selectors: ["kind-selector"] },
+  "token-types": { name: "type", selectors: ["token-types"] },
+  "brightness": { name: "brightness", selectors: ["bmap-brightness"] },
+  "cr": { name: "cr", selectors: ["token-cr"] },
+  "fightingstyle": { name: "fightingstyle", selectors: ["token-fight-style"] },
+  "movement": { name: "movement", selectors: ["token-movement"] },
+  "purpose": { name: "purpose", selectors: ["token-purpose"] },
+  "origin": { name: "origin", selectors: ["origin-selector"] },
+  "item_type": { name: "item_type", selectors: ["item-type"] },
+  "rarity": { name: "rarity", selectors: ["rarity-selector"] },
+  "tier": { name: "tier", selectors: ["tier-selector"] },
+  "price": { name: "price", selectors: ["price-selector"] },
+  "level": { name: "level", selectors: ["level-selector"] },
+  "school": { name: "school", selectors: ["school-selector"] },
+  "classes": { name: "classes", selectors: ["class-selector"] },
+  "spell_type": { name: "spell_type", selectors: ["spell-type"] },
+  "casting_time": { name: "casting_time", selectors: ["casting_time-selector"] }
+}
+
+/********************************************************************************** */
 export class BeneosSearchEngine extends Dialog {
 
   /********************************************************************************** */
@@ -637,7 +692,7 @@ export class BeneosSearchEngine extends Dialog {
 
     // Common conf
     let dialogConf = { content: html, title: "Beneos Search Engine", buttons: myButtons };
-    let dialogOptions = { classes: ["beneos_module", "beneos_search_engine"], left: 200, width: 400, height: 500, 'z-index': 99999 }
+    let dialogOptions = { classes: ["beneos_module", "beneos_search_engine"], left: 200, width: 410, height: 500, 'z-index': 99999 }
     super(dialogConf, dialogOptions)
 
     this.dbData = data
@@ -655,16 +710,62 @@ export class BeneosSearchEngine extends Dialog {
     game.beneosTokens.searchEngine = undefined
   }
 
+  /********************************************************************************** */
+  updatePropertiesDropDown(searchResults) {
+    for (let propKey in __propertyDefList) {
+      let propDef = __propertyDefList[propKey]
+      let properties = []
+      for (let key in searchResults) {
+        let item = searchResults[key]
+        if (item.properties && item.properties[propDef.name]) {
+          if (propDef.name.toLowerCase() == "price") {
+            properties = duplicate(BeneosDatabaseHolder.itemPrice)
+          } else if (propDef.name.toLowerCase() == "grid") {
+            properties = duplicate(BeneosDatabaseHolder.gridList)
+          }else if (typeof (item.properties[propDef.name]) == "string") {
+            if (properties.find((prop) => prop.key == item.properties[propDef.name].toLowerCase()) == undefined) {
+              properties.push({ key: item.properties[propDef.name].toLowerCase(), value: item.properties[propDef.name] })
+            }
+          } else if (Array.isArray(item.properties[propDef.name])) {
+            for (let prop of item.properties[propDef.name]) {
+              if (properties.find((propi) => propi.key == prop.toLowerCase()) == undefined) {
+                properties.push({ key: prop.toLowerCase(), value: prop })
+              }
+            }
+          }
+        }
+      }
+
+      BeneosDatabaseHolder.sortProperties(properties)
+      let html = ""
+      if ( properties.find(it => it.key.toLowerCase() == "any") === undefined ) {
+        html += "<option value='any'>Any</option>"
+      }
+      for (let propDef of properties) {
+        html += "<option value='" + propDef.key + "'>" + propDef.value.charAt(0).toUpperCase() + propDef.value.slice(1) + "</option>"
+      }
+      for (let selector of propDef.selectors) {
+        let selected = $("#" + selector).val()
+        if (selected && !properties.find(it => it.key.toLowerCase() == selected.toLowerCase())) {
+          html += "<option value='" + selected + "'>" + selected.charAt(0).toUpperCase() + selected.slice(1) + "</option>"
+        } else 
+        $("#" + selector).html(html)
+        $("#" + selector).val(selected)
+      }
+    }
+  }
 
   /********************************************************************************** */
   async displayResults(results, event = undefined) {
-    if (results.length == 0) {
-      results.push({ name: "No results" })
+    let searchSize = Object.keys(results).length
+    let resTab = []
+    if (searchSize == 0) {
+      resTab.push({ name: "No results" })
     }
 
-    console.log("SEARCH results", results, this.dbData.searchMode)
+    console.log("SEARCH results", searchSize, results, this.dbData.searchMode)
 
-    let template = 'modules/beneos_module/templates/beneossearchresults.html'
+    let template = 'templates/beneossearchresults.html'
     if (this.dbData.searchMode == "token") {
       template = 'modules/beneos_module/templates/beneos-search-results-tokens.html'
     }
@@ -678,10 +779,15 @@ export class BeneosSearchEngine extends Dialog {
       template = 'modules/beneos_module/templates/beneos-search-results-battlemaps.html'
     }
     // Sort alpha
-    let resTab = []
+    let count = 0
     for (let key in results) {
       resTab.push(results[key])
+      count++;
+      if (count > 100) {
+        break
+      }
     }
+    // Sort the final results
     resTab.sort(function (a, b) { return a.name.localeCompare(b.name) })
 
     let html = await renderTemplate(template, {
@@ -693,6 +799,13 @@ export class BeneosSearchEngine extends Dialog {
     } else {
       this.resultDialog.data.content = html
     }
+
+    if (searchSize > 100) {
+      $('#beneos-search-overflow').html("Only the first 100 results are shown. Please use filters to narrow your search.")
+    } else {
+      $('#beneos-search-overflow').html("")
+    }
+
     this.resultDialog.render(true)
   }
 
@@ -715,9 +828,29 @@ export class BeneosSearchEngine extends Dialog {
     this.data.content = html
     this.render(true)
   }
-
   /********************************************************************************** */
   processSelectorSearch() {
+    let type = this.dbData.searchMode
+    let searchResults = BeneosDatabaseHolder.getAll(type)
+
+    for (let propKey in __propertyDefList) {
+      let propDef = __propertyDefList[propKey]
+      for (let selector of propDef.selectors) {
+        let value = $("#" + selector).val()
+        if (value && value.toLowerCase() != "any") {
+          searchResults = BeneosDatabaseHolder.searchByProperty(type, propDef.name, value, searchResults)
+        }
+      }
+    }
+
+    this.displayResults(searchResults)
+
+    // Refresh the dialog selectors
+    setTimeout(() => { game.beneosTokens.searchEngine.updatePropertiesDropDown(searchResults) }, 400)
+  }
+
+  /********************************************************************************** */
+  processSelectorSearch_DEPRECATED() {
     let type = this.dbData.searchMode
     let searchResults = BeneosDatabaseHolder.getAll(type)
 
