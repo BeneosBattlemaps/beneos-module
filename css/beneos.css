@@ -197,6 +197,7 @@
   font-size: 0.9rem;
   top: 0.8rem;
   left: 2rem;
+  transform: translate(0px, -22px);
 }
 
 .beneos-tooltip .beneos-tooltip-keyword {

@@ -467,19 +467,15 @@ export class BeneosDatabaseHolder {
 
   /********************************************************************************** */
   static sortProperties(tab) {
-    tab = tab.filter(it => { if (it.key != "any") { return it } } )
     if (tab.length > 0) {
       if (Number(tab[0].key)) {
-        tab = tab.sort(function (a, b) { return Number(a.key) > Number(b.key) })
-      } else if (tab[0].key[0] == "<" || tab[0].key[0] == ">") {
-        tab = tab.sort(function (a, b) { return Number(a.key.slice(1)) > Number(b.key.slice(1)) } )
-      } else {
-        tab = tab.sort(function (a, b) { return a.value.toLowerCase().localeCompare(b.value.toLowerCase()) })
+        return tab.sort(function (a, b) { return Number(a.key) > Number(b.key) })
+      }
+      if (tab[0].key[0] == "<" || tab[0].key[0] == ">") {
+        return tab.sort(function (a, b) { return Number(a.key.slice(1)) > Number(b.key.slice(1)) })
       }
     }
-    //tab = tab.sort(function (a, b) { return a.value.toLowerCase().localeCompare(b.value.toLowerCase()) })
-    tab.splice(0, 0,  { key: "any", value: "Any" })
-    return tab
+    return tab.sort(function (a, b) { return a.value.localeCompare(b.value) })
   }
 
   /********************************************************************************** */
@@ -490,10 +486,12 @@ export class BeneosDatabaseHolder {
         tab.push({ key: key.toLowerCase(), value: key })
       }
     }
-    BeneosDatabaseHolder.sortProperties(tab)
+    tab = BeneosDatabaseHolder.sortProperties(tab)
     if (tab.find((it) => it.key == "any") == undefined) {
-      tab.splice(0, 0,  { key: "any", value: "Any" })
+      tab.splice(0, 0, { key: "any", value: "Any" })
     }
+    console.log(">>>>> SORT", tab)
+
     return tab
   }
 
@@ -722,7 +720,7 @@ export class BeneosSearchEngine extends Dialog {
             properties = duplicate(BeneosDatabaseHolder.itemPrice)
           } else if (propDef.name.toLowerCase() == "grid") {
             properties = duplicate(BeneosDatabaseHolder.gridList)
-          }else if (typeof (item.properties[propDef.name]) == "string") {
+          } else if (typeof (item.properties[propDef.name]) == "string") {
             if (properties.find((prop) => prop.key == item.properties[propDef.name].toLowerCase()) == undefined) {
               properties.push({ key: item.properties[propDef.name].toLowerCase(), value: item.properties[propDef.name] })
             }
@@ -738,7 +736,7 @@ export class BeneosSearchEngine extends Dialog {
 
       BeneosDatabaseHolder.sortProperties(properties)
       let html = ""
-      if ( properties.find(it => it.key.toLowerCase() == "any") === undefined ) {
+      if (properties.find(it => it.key.toLowerCase() == "any") === undefined) {
         html += "<option value='any'>Any</option>"
       }
       for (let propDef of properties) {
@@ -748,7 +746,7 @@ export class BeneosSearchEngine extends Dialog {
         let selected = $("#" + selector).val()
         if (selected && !properties.find(it => it.key.toLowerCase() == selected.toLowerCase())) {
           html += "<option value='" + selected + "'>" + selected.charAt(0).toUpperCase() + selected.slice(1) + "</option>"
-        } else 
+        }
         $("#" + selector).html(html)
         $("#" + selector).val(selected)
       }
@@ -810,6 +808,18 @@ export class BeneosSearchEngine extends Dialog {
   }
 
   /********************************************************************************** */
+  checkTextField() {
+    let value = $("#beneos-search-text").val()
+    if (!value || value.length === 0) {
+      //console.log("Goingi to INTERVAL")
+      clearInterval(this.checkInterval)
+      this.checkInterval = undefined
+      let results = BeneosDatabaseHolder.getAll(this.dbData.searchMode)
+      this.displayResults(results)
+    }
+  }
+
+  /********************************************************************************** */
   processTextSearch(event) {
     let code = event.keyCode ? event.keyCode : event.which
     if (code == 13) {  // Enter keycode
@@ -817,8 +827,11 @@ export class BeneosSearchEngine extends Dialog {
     }
     if (event.currentTarget.value && event.currentTarget.value.length >= 3) {
       let results = BeneosDatabaseHolder.textSearch(event.currentTarget.value, this.dbData.searchMode)
-
       this.displayResults(results, event)
+      if (!this.checkInterval) {
+        let myObject = this
+        this.checkInterval = setInterval(function () { myObject.checkTextField() }, 500)
+      }
     }
   }
 

@@ -363,13 +363,7 @@ export class BeneosUtility {
   /********************************************************************************** */
   // Checks if the token image is inside the beneos tokens module
   static checkIsBeneosToken(token) {
-    if (token.document && token.document.texture && token.document.texture.src.includes(this.tokenDataPath)) {
-      return true
-    }
-    if (token.texture && token.texture.src && token.texture.src.includes(this.tokenDataPath)) {
-      return true
-    }
-    return false
+    return  (token?.document?.texture?.src.includes(this.tokenDataPath) || token?.texture?.src.includes(this.tokenDataPath))
   }
 
   /********************************************************************************** */
@@ -431,12 +425,12 @@ export class BeneosUtility {
 
   /********************************************************************************** */
   static preloadImage(finalImage) {
-    TextureLoader.loader.loadImageTexture(finalImage)
+    TextureLoader.loader.loadTexture(finalImage)
   }
 
   /********************************************************************************** */
   static preloadVideo(finalImage) {
-    TextureLoader.loader.loadVideoTexture(finalImage)
+    TextureLoader.loader.loadTexture(finalImage)
   }
 
   /********************************************************************************** */
@@ -612,7 +606,7 @@ export class BeneosUtility {
     let tokenData = this.getTokenImageInfo(token.document.texture.src)
     let tokenList = []
 
-    if (tokenData && tokenData.tokenKey) {
+    if (tokenData?.tokenKey) {
       let tokenConfig = this.beneosTokens[tokenData.tokenKey]
       if (tokenConfig.imgVideoList) {
         for (let imgVideo of tokenConfig.imgVideoList) {
@@ -662,7 +656,7 @@ export class BeneosUtility {
       })
     }
     let userSize = this.userSizes[token.id]?.sizeFactor || 1.0
-    let s = (sData && sData.s) ? sData.s : 1.0
+    let s = (sData?.s) ? sData.s : 1.0
     // When face tokens, scale is always 1.0
     if (newImage && newImage.includes("__face")) {
       newScaleFactor = 1.0

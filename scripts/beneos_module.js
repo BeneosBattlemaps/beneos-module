@@ -89,7 +89,7 @@ Hooks.once('ready', () => {
 
   /********************************************************************************** */
   Hooks.on('preUpdateToken', (token, changeData) => {
-    //console.log("CHANGEDATA", token)
+    console.log("CHANGEDATA", token)
     if (!game.user.isGM || !BeneosUtility.isBeneosModule() || !canvas.ready || token.texture.src != undefined) {
       return
     }
@@ -114,20 +114,36 @@ Hooks.once('ready', () => {
     }
   })
 
+  /********************************************************************************** */
+  Hooks.on('updateActor', (actor, changeData) => {
+    let tokens = canvas.tokens.placeables.filter(t => t.document.actorId == actor.id)
+    //console.log(">>>>>>>>><", tokens)
+    for(let token of tokens) {
+      if ( BeneosUtility.checkIsBeneosToken(token)) {
+        //BeneosUtility.debugMessage("[BENEOS TOKENS] update actor", actor)
+        //BeneosUtility.debugMessage("[BENEOS TOKENS] update actor", changeData)
+        if (changeData?.system?.attributes?.hp?.value == 0) {
+          BeneosUtility.updateToken(token.id, changeData)
+        }
+      }  
+    }
+  })
 
   /********************************************************************************** */
   Hooks.on('updateToken', (token, changeData) => {
     if (!token || !game.user.isGM || !BeneosUtility.isBeneosModule() || !canvas.ready || changeData.texture?.src != undefined) {
+      BeneosUtility.debugMessage("[BENEOS TOKENS] Exit condition")
       return
     }
-    if (changeData["flags"] !== undefined && changeData["flags"]["tokenmagic"] !== undefined) {
-      if (changeData.flags.tokenmagic.animeInfo && changeData.flags.tokenmagic.animeInfo[0] && token.state != "move") {
+
+    if (changeData?.flags?.tokenmagic ) {
+      if (changeData.flags.tokenmagic?.animeInfo[0] && token.state != "move") {
         BeneosUtility.processEndEffect(token.id, changeData.flags.tokenmagic.animeInfo)
       }
     }
     BeneosUtility.debugMessage("[BENEOS TOKENS] Beneos UpdateToken", changeData)
 
-    if (changeData.actorData != undefined && changeData.actorData.system?.attributes != undefined && changeData.actorData.system.attributes?.hp != undefined ) {
+    if (changeData.actorData?.system?.attributes != undefined && changeData.actorData.system.attributes?.hp != undefined ) {
       BeneosUtility.updateToken(token.id, changeData)
       return
     }
@@ -220,13 +236,13 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
   let tokenData = BeneosUtility.getTokenImageInfo(token.document.texture.src)
   let tokenConfig = BeneosUtility.beneosTokens[tokenData.tokenKey]
   // JOURNAL HUD
-  if (tokenConfig && tokenConfig.config) {
+  if (tokenConfig?.config) {
     if (tokenConfig.config.compendium) {
       let beneosPack = game.packs.get("beneos_module.beneos_module_journal")
       if (beneosPack) {
         let beneosJournalEntry = null
         let beneosCompendiumEntry = beneosPack.index.getName(tokenConfig.config.compendium)
-        if (beneosCompendiumEntry && beneosCompendiumEntry._id) {
+        if (beneosCompendiumEntry?._id) {
           beneosJournalEntry = beneosPack.getDocument(beneosCompendiumEntry._id)
         }
         if (beneosJournalEntry) {
