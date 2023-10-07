@@ -588,6 +588,10 @@
 .beneos_search_results .window-content {
   background: none;
 }
+.beneos_search_interface .window-content {
+  overflow-y: unset;
+  overflow-x: unset;
+}
 .bsr_result_box {  
   margin-left: 8px;
   margin-top: 12px;

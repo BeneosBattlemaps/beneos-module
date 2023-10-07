@@ -34,7 +34,7 @@ export class BeneosModuleMenu extends Dialog {
 
     console.log("SEARCH results", beneosTokensHUD)
     let html = await renderTemplate('modules/beneos_module/templates/' + this.listTemplate,
-      { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getBeneosModuleDataPath(), beneosTokensHUD, searchValue })
+      { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getFullPathWithSlash(), beneosTokensHUD, searchValue })
     this.data.content = html
     this.render(true)
   }
@@ -469,10 +469,22 @@ export class BeneosDatabaseHolder {
   static sortProperties(tab) {
     if (tab.length > 0) {
       if (Number(tab[0].key)) {
-        return tab.sort(function (a, b) { return Number(a.key) > Number(b.key) })
+        console.log("Numeric sort!!!")
+        return tab.sort(function (a, b) { 
+          if (!Number(a.key) || !Number(b.key)) { 
+            return 0;
+          }
+          if (Number(a.key) > Number(b.key)) { 
+            return 1;
+          }
+          return -1;
+        } )
       }
       if (tab[0].key[0] == "<" || tab[0].key[0] == ">") {
-        return tab.sort(function (a, b) { return Number(a.key.slice(1)) > Number(b.key.slice(1)) })
+        let a1 = Number(a.key.slice(1))
+        let b1 = Number(b.key.slice(1))
+        if (a1 > b1) return 1;
+        return -1;
       }
     }
     return tab.sort(function (a, b) { return a.value.localeCompare(b.value) })
@@ -487,10 +499,10 @@ export class BeneosDatabaseHolder {
       }
     }
     tab = BeneosDatabaseHolder.sortProperties(tab)
-    if (tab.find((it) => it.key == "any") == undefined) {
+    //console.log(">>>>> SORT", tab)
+    if (tab.find((it) => it.key.toLowerCase() == "any") == undefined) {
       tab.splice(0, 0, { key: "any", value: "Any" })
     }
-    console.log(">>>>> SORT", tab)
 
     return tab
   }
@@ -690,7 +702,7 @@ export class BeneosSearchEngine extends Dialog {
 
     // Common conf
     let dialogConf = { content: html, title: "Beneos Search Engine", buttons: myButtons };
-    let dialogOptions = { classes: ["beneos_module", "beneos_search_engine"], left: 200, width: 410, height: 500, 'z-index': 99999 }
+    let dialogOptions = { classes: ["beneos_module", "beneos_search_engine", "beneos_search_interface"], left: 200, width: 410, height: 500, 'z-index': 99999 }
     super(dialogConf, dialogOptions)
 
     this.dbData = data
@@ -735,6 +747,7 @@ export class BeneosSearchEngine extends Dialog {
       }
 
       BeneosDatabaseHolder.sortProperties(properties)
+      //console.log("OUTPUT", properties)      
       let html = ""
       if (properties.find(it => it.key.toLowerCase() == "any") === undefined) {
         html += "<option value='any'>Any</option>"
