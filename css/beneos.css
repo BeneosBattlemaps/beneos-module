@@ -703,8 +703,8 @@
   margin-bottom: 12px;
   max-height: 2.4rem;
   min-height: 2.4rem;
-  min-width: 25.4rem;
-  max-width: 25.4rem;
+  min-width: 25rem;
+  max-width: 25rem;
   text-align: left;
 }
 .item-description-box-spells  {
@@ -718,6 +718,9 @@
   min-height: 3.7rem;
   margin-top: 6px;
   margin-bottom: 6px;
+}
+.battlemaps-properties {
+  text-overflow: clip;
 }
 .item-right-text-box {
   border: 0px solid;
@@ -734,7 +737,7 @@
 }
 .item-right-text-content {
   position: absolute;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   border-width: 0px;
   top: 50%;
   left: 50%;

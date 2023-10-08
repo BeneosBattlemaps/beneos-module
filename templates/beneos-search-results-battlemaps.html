@@ -47,7 +47,7 @@
               <div class="item-middle-line flexrow">
                 <div class="item-properties-box item-properties-box-battlemaps">
 
-                  <span class="beneos-search-text01">
+                  <span class="beneos-search-text01 battlemaps-properties">
                     {{#each result.properties.biom as |biom key|}}
                     <label class="beneos-search-stat biom-content" data-prop-name="biom">
                       <a class="beneos-button-biom" data-biom-value="{{biom}}">{{beneosUpperFirst biom}}</a>
@@ -63,11 +63,6 @@
                   {{#if result.siblingPicture}}
                   <label class=" beneos-tooltip" data-prop-name="biom">
                     <a class="beneos-jump-linked" data-jump-data="{{result.properties.sibling}}">
-                      {{#if (eq (beneosLowerCase result.properties.type) "battlemap")}}
-                      Fitting Scenery
-                      {{else}}
-                      Fitting Battlemap
-                      {{/if}}
                       <div class="beneos-tooltiptext beneos-token-description">
                         <div class="flexrow beneos-tooltip-content">
                           <img class="beneos-search-icons-result-tooltip" src="{{result.siblingPicture}}">

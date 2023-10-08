@@ -191,10 +191,11 @@ export class BeneosDatabaseHolder {
     this.bmapBioms = {}
     this.fightingStyles = {}
     this.bmapBrightness = {}
-    this.crList = {}
+    this.crList = [{ key: "any", value: "Any" }, { key: "0,4", value: "0 to 4" }, { key: "5,10", value: "5 to 10" }, { key: "11,15", value: "11 to 15" },
+    { key: "15,10000000", value: "15+" }]
     this.movementList = {}
     this.purposeList = {}
-    this.gridList = [{ key: "any", value: "Any" }, { key: "<150", value: "Tiny" }, { key: "<500>", value: "Small" }, { key: "<1000", value: "Medium" },
+    this.gridList = [{ key: "any", value: "Any" }, { key: "<150", value: "Tiny" }, { key: "<500", value: "Small" }, { key: "<1000", value: "Medium" },
     { key: "<2000", value: "Big" }, { key: ">2000", value: "Very Big" }]
     this.adventureList = {}
     this.itemRarity = {}
@@ -219,7 +220,7 @@ export class BeneosDatabaseHolder {
         mergeObject(this.tokenBioms, this.buildList(tokenData.properties.biom))
         mergeObject(this.tokenTypes, this.buildList(tokenData.properties.type))
         mergeObject(this.fightingStyles, this.buildList(tokenData.properties.fightingstyle))
-        mergeObject(this.crList, this.buildList(tokenData.properties.cr))
+        //mergeObject(this.crList, this.buildList(tokenData.properties.cr))
         mergeObject(this.movementList, this.buildList(tokenData.properties.movement))
         mergeObject(this.purposeList, this.buildList(tokenData.properties.purpose))
         tokenData.isInstalled = BeneosUtility.isTokenLoaded(key)
@@ -418,6 +419,16 @@ export class BeneosDatabaseHolder {
             newResults[key] = duplicate(item)
           }
         }
+      } else if (propertyName == "cr") {
+        let comp = value.match(/(\d+),(\d+)/)
+        if (comp && comp[1] && comp[2]) {
+          if (item.properties.cr >= Number(comp[1]) && (item.properties.cr <= Number(comp[2]))) {
+            newResults[key] = duplicate(item)
+          }
+        } else if (item.properties.cr == Number(value)) {
+          newResults[key] = duplicate(item)
+        }
+
       } else if (propertyName == "price") {
         let comp = value.substring(0, 1)
         let price = parseInt(value.substring(1))
@@ -470,15 +481,15 @@ export class BeneosDatabaseHolder {
     if (tab.length > 0) {
       if (Number(tab[0].key)) {
         console.log("Numeric sort!!!")
-        return tab.sort(function (a, b) { 
-          if (!Number(a.key) || !Number(b.key)) { 
+        return tab.sort(function (a, b) {
+          if (!Number(a.key) || !Number(b.key)) {
             return 0;
           }
-          if (Number(a.key) > Number(b.key)) { 
+          if (Number(a.key) > Number(b.key)) {
             return 1;
           }
           return -1;
-        } )
+        })
       }
       if (tab[0].key[0] == "<" || tab[0].key[0] == ">") {
         let a1 = Number(a.key.slice(1))
@@ -518,7 +529,7 @@ export class BeneosDatabaseHolder {
       fightingStyles: this.toTable(this.fightingStyles),
       bmapBrightness: this.toTable(this.bmapBrightness),
       movementList: this.toTable(this.movementList),
-      crList: this.toTable(this.crList),
+      crList: duplicate(this.crList),
       purposeList: this.toTable(this.purposeList),
       adventureList: this.toTable(this.adventureList),
       gridList: BeneosDatabaseHolder.sortProperties(duplicate(this.gridList)),
@@ -560,7 +571,7 @@ export class BeneosSearchResults extends Dialog {
     let value = $(event.currentTarget).data(dataName)
     searchResults = BeneosDatabaseHolder.searchByProperty(typeName, fieldName, value.toString(), searchResults)
     game.beneosTokens.searchEngine.displayResults(searchResults)
-    $('#' + selectorName).val(value)
+    $('#' + selectorName).val(value.toLowerCase())
   }
   /********************************************************************************** */
   activateListeners() {
@@ -669,25 +680,25 @@ export class BeneosSearchResults extends Dialog {
 /********************************************************************************** */
 const __propertyDefList = {
   "grid": { name: "grid", selectors: ["bmap-grid"] },
-  "biom": { name: "biom", selectors: ["bioms-selector", "bioms-selector-2"] },
-  "adventure": { name: "adventure", selectors: ["bmap-adventure"] },
-  "type": { name: "type", selectors: ["kind-selector"] },
-  "token-types": { name: "type", selectors: ["token-types"] },
-  "brightness": { name: "brightness", selectors: ["bmap-brightness"] },
+  "biom": { name: "biom", sort: true, selectors: ["bioms-selector", "bioms-selector-2"] },
+  "adventure": { name: "adventure", sort: true, selectors: ["bmap-adventure"] },
+  "type": { name: "type", sort: true, selectors: ["kind-selector"] },
+  "token-types": { name: "type", sort: true, selectors: ["token-types"] },
+  "brightness": { name: "brightness", sort: true, selectors: ["bmap-brightness"] },
   "cr": { name: "cr", selectors: ["token-cr"] },
-  "fightingstyle": { name: "fightingstyle", selectors: ["token-fight-style"] },
-  "movement": { name: "movement", selectors: ["token-movement"] },
-  "purpose": { name: "purpose", selectors: ["token-purpose"] },
-  "origin": { name: "origin", selectors: ["origin-selector"] },
-  "item_type": { name: "item_type", selectors: ["item-type"] },
-  "rarity": { name: "rarity", selectors: ["rarity-selector"] },
-  "tier": { name: "tier", selectors: ["tier-selector"] },
-  "price": { name: "price", selectors: ["price-selector"] },
-  "level": { name: "level", selectors: ["level-selector"] },
-  "school": { name: "school", selectors: ["school-selector"] },
-  "classes": { name: "classes", selectors: ["class-selector"] },
-  "spell_type": { name: "spell_type", selectors: ["spell-type"] },
-  "casting_time": { name: "casting_time", selectors: ["casting_time-selector"] }
+  "fightingstyle": { name: "fightingstyle", sort: true, selectors: ["token-fight-style"] },
+  "movement": { name: "movement", sort: true, selectors: ["token-movement"] },
+  "purpose": { name: "purpose", sort: true, selectors: ["token-purpose"] },
+  "origin": { name: "origin", sort: true, selectors: ["origin-selector"] },
+  "item_type": { name: "item_type", sort: true, selectors: ["item-type"] },
+  "rarity": { name: "rarity", sort: true, selectors: ["rarity-selector"] },
+  "tier": { name: "tier", sort: true, selectors: ["tier-selector"] },
+  "price": { name: "price", sort: true, selectors: ["price-selector"] },
+  "level": { name: "level", sort: true, selectors: ["level-selector"] },
+  "school": { name: "school", sort: true, selectors: ["school-selector"] },
+  "classes": { name: "classes", sort: true, selectors: ["class-selector"] },
+  "spell_type": { name: "spell_type", sort: true, selectors: ["spell-type"] },
+  "casting_time": { name: "casting_time", sort: true, selectors: ["casting_time-selector"] }
 }
 
 /********************************************************************************** */
@@ -732,6 +743,8 @@ export class BeneosSearchEngine extends Dialog {
             properties = duplicate(BeneosDatabaseHolder.itemPrice)
           } else if (propDef.name.toLowerCase() == "grid") {
             properties = duplicate(BeneosDatabaseHolder.gridList)
+          } else if (propDef.name.toLowerCase() == "cr") {
+            properties = duplicate(BeneosDatabaseHolder.crList)
           } else if (typeof (item.properties[propDef.name]) == "string") {
             if (properties.find((prop) => prop.key == item.properties[propDef.name].toLowerCase()) == undefined) {
               properties.push({ key: item.properties[propDef.name].toLowerCase(), value: item.properties[propDef.name] })
@@ -746,7 +759,9 @@ export class BeneosSearchEngine extends Dialog {
         }
       }
 
-      BeneosDatabaseHolder.sortProperties(properties)
+      if (propDef.sort) {
+        BeneosDatabaseHolder.sortProperties(properties)
+      }
       //console.log("OUTPUT", properties)      
       let html = ""
       if (properties.find(it => it.key.toLowerCase() == "any") === undefined) {
@@ -757,6 +772,7 @@ export class BeneosSearchEngine extends Dialog {
       }
       for (let selector of propDef.selectors) {
         let selected = $("#" + selector).val()
+        selected = (selected) ? selected.toLowerCase() : "any"
         if (selected && !properties.find(it => it.key.toLowerCase() == selected.toLowerCase())) {
           html += "<option value='" + selected + "'>" + selected.charAt(0).toUpperCase() + selected.slice(1) + "</option>"
         }
@@ -1072,7 +1088,7 @@ export class BeneosSearchEngine extends Dialog {
     $(".beneos-selector").change(event => {
       this.updateSelector(event)
     })
-    $("#beneos-rebuild-compendium-button").click(event => {
+    $("#beneos-rebuild-compendium-button-id").click(event => {
       let compReset = new BeneosCompendiumReset()
       compReset.render(true)
     })
