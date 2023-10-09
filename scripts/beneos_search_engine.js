@@ -571,6 +571,10 @@ export class BeneosSearchResults extends Dialog {
     let value = $(event.currentTarget).data(dataName)
     searchResults = BeneosDatabaseHolder.searchByProperty(typeName, fieldName, value.toString(), searchResults)
     game.beneosTokens.searchEngine.displayResults(searchResults)
+
+    searchEngine.updateFilterStack(fieldName, value)
+    searchEngine.updatePropertiesDropDown(searchResults)
+
     $('#' + selectorName).val(value.toLowerCase())
   }
   /********************************************************************************** */
@@ -718,8 +722,20 @@ export class BeneosSearchEngine extends Dialog {
 
     this.dbData = data
     this.dbData.searchMode = "token"
+    this.filterStack = []
 
     game.beneosTokens.searchEngine = this
+  }
+
+  /********************************************************************************** */
+  updateFilterStack(propName, propValue) {
+    for (let propKey in __propertyDefList) {
+      if (__propertyDefList[propKey].name == propName && 
+        this.filterStack.find((it) => it.propKey == propKey ) == undefined
+        ) {
+        this.filterStack.push({ propKey: propKey, propValue: propValue })
+      }
+    }
   }
 
   /********************************************************************************** */
@@ -736,8 +752,15 @@ export class BeneosSearchEngine extends Dialog {
     for (let propKey in __propertyDefList) {
       let propDef = __propertyDefList[propKey]
       let properties = []
-      for (let key in searchResults) {
-        let item = searchResults[key]
+      let toSearch = searchResults
+
+      if (this.filterStack.length == 1 && this.filterStack[0].propKey == propKey) {
+        //console.log("Full list for", propKey, this.filterStack)
+        toSearch = BeneosDatabaseHolder.getAll(this.dbData.searchMode)
+      }
+
+      for (let key in toSearch) {
+        let item = toSearch[key]
         if (item.properties && item.properties[propDef.name]) {
           if (propDef.name.toLowerCase() == "price") {
             properties = duplicate(BeneosDatabaseHolder.itemPrice)
@@ -880,7 +903,12 @@ export class BeneosSearchEngine extends Dialog {
       for (let selector of propDef.selectors) {
         let value = $("#" + selector).val()
         if (value && value.toLowerCase() != "any") {
+          if ( !this.filterStack.find((it) => it.propKey == propKey) ) {
+            this.filterStack.push({ propKey: propKey, value: value })
+          }
           searchResults = BeneosDatabaseHolder.searchByProperty(type, propDef.name, value, searchResults)
+        } else if (value && value.toLowerCase() == "any") {
+          this.filterStack = this.filterStack.filter((it) => it.propKey != propKey)
         }
       }
     }
