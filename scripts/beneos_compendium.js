@@ -40,16 +40,22 @@ export class BeneosCompendiumReset extends FormApplication {
       await this.deleteCompendiumContent("beneos_module.beneos_module_spells")
       chatData.content = `<div><strong>BeneosModule</strong> : Cleanup of compendiums finished, import is starting</div`
       ChatMessage.create(chatData);
-      //ui.notifications.info("BeneosModule : Cleanup of compendiums finished")
+      
       await BeneosCompendiumManager.buildDynamicCompendiumsTokensDD5()
       chatData.content = `<div><strong>BeneosModule</strong> : Actors compendium done.</div`
       ChatMessage.create(chatData);
+      
       await BeneosCompendiumManager.buildDynamicCompendiumsSpellsDD5()
       chatData.content = `<div><strong>BeneosModule</strong> : Spells compendium done.</div`
       ChatMessage.create(chatData);
+      
       await BeneosCompendiumManager.buildDynamicCompendiumsItemsDD5()
       chatData.content = `<div><strong>BeneosModule</strong> : Items compendium done.<br><strong>All compendiums created, import finished !!</strong></div`
-      ChatMessage.create(chatData);
+      ChatMessage.create(chatData)
+      
+      // Reload the settings, as they have been updated during the import
+      BeneosUtility.reloadInternalSettings()
+
     }
   }
 

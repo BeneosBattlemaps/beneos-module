@@ -133,7 +133,6 @@ export class BeneosUtility {
 
       game.settings.register(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', {
         name: 'Global JSON config for tokens',
-        default: {},
         type: String,
         scope: 'world',
         default: "",
@@ -141,7 +140,6 @@ export class BeneosUtility {
       })
       game.settings.register(BeneosUtility.moduleID(), 'beneos-json-itemconfig', {
         name: 'Global JSON config for items',
-        default: {},
         type: String,
         scope: 'world',
         default: "",
@@ -149,7 +147,6 @@ export class BeneosUtility {
       })
       game.settings.register(BeneosUtility.moduleID(), 'beneos-json-spellconfig', {
         name: 'Global JSON config for spells',
-        default: {},
         type: String,
         scope: 'world',
         default: "",
@@ -186,6 +183,33 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
+  static reloadInternalSettings() {
+    try {
+      this.beneosTokens = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-tokenconfig'))
+    }
+    catch {
+      console.log("BeneosModule : *************** Token JSON loading error ! **************")
+      this.beneosTokens = {}
+    }
+
+    try {
+      this.beneosSpells = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-spellconfig'))
+    }
+    catch {
+      console.log("BeneosModule : *************** Spell JSON loading error ! **************")
+      this.beneosSpells = {}
+    }
+
+    try {
+      this.beneosItems = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-itemconfig'))
+    }
+    catch {
+      console.log("BeneosModule : *************** Item JSON loading error ! **************")
+      this.beneosItems = {}
+    }
+  }
+  
+  /********************************************************************************** */
   static init() {
     this.file_cache = {}
 
@@ -205,27 +229,7 @@ export class BeneosUtility {
     this.beneosSpells = {}
     this.beneosItems = {}
 
-    try {
-      this.beneosTokens = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-tokenconfig'))
-    }
-    catch {
-      console.log("BeneosModule : *************** Token JSON loading error ! **************")
-      this.beneosTokens = {}
-    }
-    try {
-      this.beneosSpells = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-spellconfig'))
-    }
-    catch {
-      console.log("BeneosModule : *************** Spell JSON loading error ! **************")
-      this.beneosSpells = {}
-    }
-    try {
-      this.beneosItems = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-itemconfig'))
-    }
-    catch {
-      console.log("BeneosModule : *************** Item JSON loading error ! **************")
-      this.beneosItems = {}
-    }
+    this.reloadInternalSettings()
     console.log("Loaded", this.beneosTokens)
 
     this.m_w = 123456789
