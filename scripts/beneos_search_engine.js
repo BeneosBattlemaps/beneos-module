@@ -267,8 +267,8 @@ export class BeneosDatabaseHolder {
         itemData.installed = (itemData.isInstalled) ? "installed" : "notinstalled"
         if (itemData.isInstalled) {
           itemData.itemId = BeneosUtility.getItemId(key)
-          itemData.card_front = BeneosUtility.getBeneosItemDataPath() + "/" + key + "/" + itemData.path_name + "-front.webp"
-          itemData.card_back = BeneosUtility.getBeneosItemDataPath() + "/" + key + "/" + itemData.path_name + "-back.webp"
+          itemData.card_front = BeneosUtility.getBeneosItemDataPath() + "/" + key + "/" + key + "-front.webp"
+          itemData.card_back = BeneosUtility.getBeneosItemDataPath() + "/" + key + "/" + key + "-back.webp"
         }
       }
     }
@@ -289,7 +289,7 @@ export class BeneosDatabaseHolder {
         spellData.installed = (spellData.isInstalled) ? "installed" : "notinstalled"
         if (spellData.isInstalled) {
           spellData.spellId = BeneosUtility.getSpellId(key)
-          spellData.card_front = BeneosUtility.getBeneosSpellDataPath() + "/" + key + "/" + spellData.path_name + "-front.webp"
+          spellData.card_front = BeneosUtility.getBeneosSpellDataPath() + "/" + key + "/" + key + "-front.webp"
           spellData.card_back = BeneosUtility.getBeneosSpellDataPath() + "/" + "spell_card_back.webp"
         }
       }
