@@ -322,7 +322,13 @@ export class BeneosCompendiumManager {
     }
 
     ui.notifications.info("BeneosModule : Compendium building finished !")
-    let previousData = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-tokenconfig') || {}) // Get the previous config !
+    let previousData = {}
+    try  {
+      previousData = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-tokenconfig') || {}) // Get the previous config !
+    }
+    catch {
+      console.log("Error in parsing JSON for Tokens previousData, warning only all content has been re-imported")
+    }
     await this.showNewItems("Actors", BeneosUtility.beneosTokens, previousData, "Compendium.beneos_module.beneos_module_actors.Actor")
     
     let toSave = JSON.stringify(BeneosUtility.beneosTokens)
@@ -372,7 +378,13 @@ export class BeneosCompendiumManager {
     ui.notifications.info("BeneosModule : Spells Compendium building finished !")
     await spellPack.configure({ locked: true })
 
-    let previousData = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-spellconfig') || {}) // Get the previous config !
+    let previousData = {}
+    try {
+      previousData = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-spellconfig') || {}) // Get the previous config !
+    }
+    catch {
+      console.log("Error in parsing JSON for Spells previousData, warning only all content has been re-imported")
+    }
     await this.showNewItems("Spells", BeneosUtility.beneosSpells, previousData, "Compendium.beneos_module.beneos_module_spells.Item" )
 
     let toSave = JSON.stringify(BeneosUtility.beneosSpells)
@@ -419,8 +431,13 @@ export class BeneosCompendiumManager {
 
     ui.notifications.info("BeneosModule : Items Compendium building finished !")
     await itemPack.configure({ locked: true })
-
-    let previousData = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-itemconfig') || {}) // Get the previous config !
+    let previousData = {}
+    try { 
+      previousData = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-itemconfig') || {}) // Get the previous config !
+    }
+    catch {
+      console.log("Error in parsing JSON for Items previousData, warning only all content has been re-imported")
+    }
     await this.showNewItems("Items", BeneosUtility.beneosItems, previousData, "Compendium.beneos_module.beneos_module_items.Item" )
 
     let toSave = JSON.stringify(BeneosUtility.beneosItems)
