@@ -122,10 +122,10 @@ Hooks.once('ready', () => {
       if ( BeneosUtility.checkIsBeneosToken(token)) {
         //BeneosUtility.debugMessage("[BENEOS TOKENS] update actor", actor)
         //BeneosUtility.debugMessage("[BENEOS TOKENS] update actor", changeData)
-        if (changeData?.system?.attributes?.hp?.value == 0) {
+        if (changeData?.system?.attributes?.hp?.value == 0 || changeData?.system?.attributes?.hp?.value > 0) {
           BeneosUtility.updateToken(token.id, changeData)
         }
-      }  
+      }
     }
   })
 
@@ -339,7 +339,7 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
   // Size management
   if (game.user.isGM && game.settings.get(BeneosUtility.moduleID(), 'beneos-god-mode')) {
     const beneosTokensSize = await renderTemplate('modules/beneos_module/templates/beneosreloadjson.html',
-      { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getBeneosModuleDataPath(), tokenData })
+      { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getFullPathWithSlash(), tokenData })
     let buttonSize = html.find('div.right').append(beneosTokensSize)
 
     buttonSize.click((event) => {
