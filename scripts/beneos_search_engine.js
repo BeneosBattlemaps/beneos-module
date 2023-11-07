@@ -248,6 +248,7 @@ export class BeneosDatabaseHolder {
       if (bmapData && typeof (bmapData) == "object") {
         if (bmapData.properties.sibling) {
           bmapData.siblingPicture = this.getSiblingPicture(bmapData.properties.sibling)
+          console.log("SIBLING : ", bmapData.siblingPicture)
         }
       }
     }
@@ -348,7 +349,7 @@ export class BeneosDatabaseHolder {
         item.picture = "https://www.beneos-database.com/data/tokens/thumbnails/" + item.key + "-idle_face_still.webp"
       } else {
         item.kind = "battlemap"
-        item.picture = "https://www.beneos-database.com/data/battlemaps/thumbnails/" + item.key + ".webp"
+        item.picture = "https://www.beneos-database.com/data/battlemaps/thumbnails/" + item.properties.thumbnail
       }
       if (this.fieldTextSearch(item, text) || this.fieldTextSearch(item.properties, text)) {
         results.push(item)
@@ -382,7 +383,7 @@ export class BeneosDatabaseHolder {
   static getSiblingPicture(key) {
     let sibling = this.bmapData.content[key]
     if (sibling) {
-      return sibling.picture
+      return "https://www.beneos-database.com/data/battlemaps/thumbnails/" + sibling.properties.thumbnail
     }
     console.log("No relevant sibling picture found for", key)
     return undefined

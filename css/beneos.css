@@ -112,6 +112,7 @@
   visibility: hidden;
   opacity: 0;
   transition: opacity 0.3s;
+  overflow-wrap: anywhere;
 }
 
 .beneos-tooltip:hover .beneos-tooltiptext {
@@ -280,22 +281,24 @@
   flex-grow:1;
 }
 .beneos-search-icons-result-tooltip {
-  /*max-height: 220px;
-  --max-height: 220px;
-  width: 100%;
-  max-width: min(100%, calc(var(--max-height, 200px) * var(--img-ratio, 1)));
-  border: 0;
-  margin-right: 4px;
-  flex-grow:0; */
-  object-fit: contain;
-  width: 256px;
-  height: 256px;
-  max-width: 256px;
   max-height: 256px;
+  width: 100%;
+  max-width: min(100%, calc(var(--max-height, 256px) * var(--img-ratio, 1)));
   border: 0;
   margin-right: 4px;
-  flex-grow:1;
-
+  flex-grow:0; 
+}
+.beneos-tooltip .beneos-tooltip-content-bmap{
+  height: 256px;
+  max-height: 256px;
+  width: 620px;
+  margin: 8px;
+  padding: 8px;
+  background: rgba(233, 226, 218, 0.9);
+  border-radius: 12px;
+  font-size: 0.9rem;
+  top: 0.8rem;
+  left: 2rem;
 }
 .beneos-search-icons-result-tooltip-item {
   border: 0;
