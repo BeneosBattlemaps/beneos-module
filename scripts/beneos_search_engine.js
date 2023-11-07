@@ -47,6 +47,7 @@ export class BeneosModuleMenu extends Dialog {
 
   /********************************************************************************** */
   processTextSearch(event) {
+    console.log("Processing text search", event.currentTarget.value)
     let code = event.keyCode ? event.keyCode : event.which
     if (code == 13) {  // Enter keycode
       return
@@ -741,7 +742,12 @@ export class BeneosSearchEngine extends Dialog {
   /********************************************************************************** */
   close() {
     if (this.resultDialog) {
+
       this.resultDialog.close()
+    }
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval)
+      this.checkInterval = undefined
     }
     super.close()
     game.beneosTokens.searchEngine = undefined
@@ -863,7 +869,6 @@ export class BeneosSearchEngine extends Dialog {
   checkTextField() {
     let value = $("#beneos-search-text").val()
     if (!value || value.length === 0) {
-      //console.log("Goingi to INTERVAL")
       clearInterval(this.checkInterval)
       this.checkInterval = undefined
       let results = BeneosDatabaseHolder.getAll(this.dbData.searchMode)
@@ -873,6 +878,7 @@ export class BeneosSearchEngine extends Dialog {
 
   /********************************************************************************** */
   processTextSearch(event) {
+    //console.log("Processing text search", event)
     let code = event.keyCode ? event.keyCode : event.which
     if (code == 13) {  // Enter keycode
       return
