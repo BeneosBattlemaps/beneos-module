@@ -280,17 +280,22 @@
   flex-grow:1;
 }
 .beneos-search-icons-result-tooltip {
-  max-height: 220px;
+  /*max-height: 220px;
   --max-height: 220px;
-  /* Set a baseline width for your element */
   width: 100%;
-  /* And limit it with our function above (pick 100% with min() if this size is bigger than parent's width to prevent overflowing) */
   max-width: min(100%, calc(var(--max-height, 200px) * var(--img-ratio, 1)));
   border: 0;
-  /*width: 256px;*/
-  /*height: 256px;*/
   margin-right: 4px;
-  flex-grow:0;
+  flex-grow:0; */
+  object-fit: contain;
+  width: 256px;
+  height: 256px;
+  max-width: 256px;
+  max-height: 256px;
+  border: 0;
+  margin-right: 4px;
+  flex-grow:1;
+
 }
 .beneos-search-icons-result-tooltip-item {
   border: 0;
