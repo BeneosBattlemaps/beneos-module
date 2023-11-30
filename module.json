@@ -78,6 +78,60 @@
         "type": "module",
         "manifest": "https://raw.githubusercontent.com/Feu-Secret/Tokenmagic/master/tokenmagic/module.json",
         "compatibility": {}
+      },
+	  {
+        "id": "moulinette-core",
+        "type": "module",
+        "manifest": "https://raw.githubusercontent.com/SvenWerlen/moulinette-core/master/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "moulinette-scenes",
+        "type": "module",
+        "manifest": "https://raw.githubusercontent.com/SvenWerlen/moulinette-scenes/main/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "multilevel-tokens",
+        "type": "module",
+        "manifest": "https://raw.githubusercontent.com/grandseiken/foundryvtt-multilevel-tokens/master/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "fxmaster",
+        "type": "module",
+        "manifest": "https://github.com/ghost-fvtt/fxmaster/releases/latest/download/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "monks-active-tiles",
+        "type": "module",
+        "manifest": "https://github.com/ironmonk88/monks-active-tiles/releases/latest/download/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "poi-teleport",
+        "type": "module",
+        "manifest": "https://github.com/zeel01/poi-teleport/releases/latest/download/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "scene-packer",
+        "type": "module",
+        "manifest": "https://github.com/League-of-Foundry-Developers/scene-packer/releases/latest/download/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "LockView",
+        "type": "module",
+        "manifest": "https://github.com/MaterialFoundry/LockView/releases/latest/download/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "lib-wrapper",
+        "type": "module",
+        "manifest": "https://github.com/ruipin/fvtt-lib-wrapper/releases/latest/download/module.json",
+        "compatibility": {}
       }
     ]
   }
