@@ -6,9 +6,9 @@
     "minimum": "10",
     "verified": "11"
   },
-  "url": "https://github.com/BeneosBattlemaps/beneos_module",
-  "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/beneos_module/main/module.json",
-  "download": "https://github.com/BeneosBattlemaps/beneos_module/archive/refs/tags/current_release.zip",
+  "url": "https://github.com/BeneosBattlemaps/beneos-module",
+  "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-module/main/module.json",
+  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/current_release.zip",
   "scripts": [
     "scripts/beneosfx.js"
   ],
