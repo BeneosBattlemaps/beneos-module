@@ -587,13 +587,13 @@ export class BeneosSearchResults extends Dialog {
       let docType = e.target.getAttribute("data-type")
       let compendium = ""
       if (docType == "Actor") {
-        compendium = (game.system.id == "pf2e") ? "beneos_module.beneos_module_actors_pf2" : "beneos_module.beneos_module_actors"
+        compendium = (game.system.id == "pf2e") ? "beneos-module.beneos_module_actors_pf2" : "beneos_module.beneos_module_actors"
       }
       if (docType == "Item") {
-        compendium = "beneos_module.beneos_module_items"
+        compendium = "beneos-module.beneos_module_items"
       }
       if (docType == "Spell") {
-        compendium = "beneos_module.beneos_module_spells"
+        compendium = "beneos-module.beneos_module_spells"
         docType = "Item"
       }
       let drag_data = { "type": docType, "pack": compendium, "uuid": "Compendium." + compendium + "." + id }
@@ -666,7 +666,7 @@ export class BeneosSearchResults extends Dialog {
       let tokenConfig = BeneosUtility.isTokenLoaded(tokenKey)
       if (tokenConfig?.config) {
         if (tokenConfig.config.compendium) {
-          let beneosPack = game.packs.get("beneos_module.beneos_module_journal")
+          let beneosPack = game.packs.get("beneos-module.beneos_module_journal")
           if (beneosPack) {
             let beneosJournalEntry = null
             let beneosCompendiumEntry = beneosPack.index.getName(tokenConfig.config.compendium)
@@ -824,16 +824,16 @@ export class BeneosSearchEngine extends Dialog {
 
     let template = 'templates/beneossearchresults.html'
     if (this.dbData.searchMode == "token") {
-      template = 'modules/beneos_module/templates/beneos-search-results-tokens.html'
+      template = 'modules/beneos-module/templates/beneos-search-results-tokens.html'
     }
     if (this.dbData.searchMode == "item") {
-      template = 'modules/beneos_module/templates/beneos-search-results-items.html'
+      template = 'modules/beneos-module/templates/beneos-search-results-items.html'
     }
     if (this.dbData.searchMode == "spell") {
-      template = 'modules/beneos_module/templates/beneos-search-results-spells.html'
+      template = 'modules/beneos-module/templates/beneos-search-results-spells.html'
     }
     if (this.dbData.searchMode == "bmap") {
-      template = 'modules/beneos_module/templates/beneos-search-results-battlemaps.html'
+      template = 'modules/beneos-module/templates/beneos-search-results-battlemaps.html'
     }
     // Sort alpha
     let count = 0
@@ -896,7 +896,7 @@ export class BeneosSearchEngine extends Dialog {
 
   /********************************************************************************** */
   async updateContent() {
-    let html = await renderTemplate('modules/beneos_module/templates/beneossearchengine.html', this.dbData)
+    let html = await renderTemplate('modules/beneos-module/templates/beneossearchengine.html', this.dbData)
     this.data.content = html
     this.render(true)
   }
@@ -1142,7 +1142,7 @@ export class BeneosSearchEngineLauncher extends FormApplication {
     await BeneosDatabaseHolder.loadDatabaseFiles()
     let dbData = BeneosDatabaseHolder.getData()
 
-    let html = await renderTemplate('modules/beneos_module/templates/beneossearchengine.html', dbData)
+    let html = await renderTemplate('modules/beneos-module/templates/beneossearchengine.html', dbData)
     let searchDialog = new BeneosSearchEngine(html, dbData)
     searchDialog.render(true)
     setTimeout(searchDialog.processSelectorSearch(), 500)

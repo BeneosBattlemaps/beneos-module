@@ -4,7 +4,7 @@ import { BeneosSearchEngineLauncher, BeneosDatabaseHolder, BeneosModuleMenu } fr
 
 /********************************************************************************* */
 const BENEOS_MODULE_NAME = "Beneos Module"
-const BENEOS_MODULE_ID = "beneos_module"
+const BENEOS_MODULE_ID = "beneos-module"
 const BENEOS_DEFAULT_TOKEN_PATH = "beneos_assets"
 
 let beneosDebug = true
@@ -23,13 +23,13 @@ export class BeneosActorTokenMigration extends FormApplication {
 
     // Migrate actors
     for (let actor of game.actors) {
-      if (actor?.img.includes("beneos_module") && !actor.img.includes(BeneosUtility.tokenDataPath)) {
+      if (actor?.img.includes("beneos-module") && !actor.img.includes(BeneosUtility.tokenDataPath)) {
         let oldImgData = BeneosUtility.getTokenImageInfo(actor.img)
         let newImgPath = BeneosUtility.getFullPathWithSlash() + oldImgData.tokenKey + "/" + oldImgData.filename
         await actor.update({ 'img': newImgPath })
         console.log("actor update...", actor.name, actor.img)
       }
-      if (actor?.token.img.includes("beneos_module") && !actor.token.img.includes(BeneosUtility.tokenDataPath)) {
+      if (actor?.token.img.includes("beneos-module") && !actor.token.img.includes(BeneosUtility.tokenDataPath)) {
         let oldTokenImgData = BeneosUtility.getTokenImageInfo(actor.texture.src)
         let newTokenImgPath = BeneosUtility.getFullPathWithSlash() + oldTokenImgData.tokenKey + "/" + oldTokenImgData.pathVariant + "/" + oldTokenImgData.filename
         await actor.update({ 'token.img': newTokenImgPath })
@@ -39,7 +39,7 @@ export class BeneosActorTokenMigration extends FormApplication {
     // Migrate tokens on scenes
     for (let scene of game.scenes) {
       for (let token of scene.tokens) {
-        if (token?.texture.src.includes("beneos_module") && !token.texture.src.includes(BeneosUtility.tokenDataPath)) {
+        if (token?.texture.src.includes("beneos-module") && !token.texture.src.includes(BeneosUtility.tokenDataPath)) {
           let oldTokenImgData = BeneosUtility.getTokenImageInfo(token.texture.src)
           let newTokenImgPath = BeneosUtility.getFullPathWithSlash() + oldTokenImgData.tokenKey + "/" + oldTokenImgData.pathVariant + "/" + oldTokenImgData.filename
           console.log("scene token update : ", scene.name, token.name)
@@ -564,9 +564,9 @@ export class BeneosUtility {
   /********************************************************************************** */
   static getActorCompendium() {
     if (game.system.id == "pf2e") {
-      return "beneos_module.beneos_module_actors_pf2"
+      return "beneos-module.beneos_module_actors_pf2"
     } else {
-      return "beneos_module.beneos_module_actors"
+      return "beneos-module.beneos_module_actors"
     }
 
   }
@@ -866,7 +866,7 @@ export class BeneosUtility {
 
   /********************************************************************************** */
   static async buildAvailableTokensMenuHTML(template, beneosTokensHUD) {
-    const beneosTokensDisplay = await renderTemplate('modules/beneos_module/templates/' + template,
+    const beneosTokensDisplay = await renderTemplate('modules/beneos-module/templates/' + template,
       { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getBeneosTokenDataPath(), beneosTokensHUD })
 
     return beneosTokensDisplay
