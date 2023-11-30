@@ -73,16 +73,16 @@
   ],
   "relationships": {
     "requires": [
-      {
-        "id": "tokenmagic",
-        "type": "module",
-        "manifest": "https://raw.githubusercontent.com/Feu-Secret/Tokenmagic/master/tokenmagic/module.json",
-        "compatibility": {}
-      },
 	  {
         "id": "moulinette-core",
         "type": "module",
         "manifest": "https://raw.githubusercontent.com/SvenWerlen/moulinette-core/master/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "tokenmagic",
+        "type": "module",
+        "manifest": "https://raw.githubusercontent.com/Feu-Secret/Tokenmagic/master/tokenmagic/module.json",
         "compatibility": {}
       },
 	  {
