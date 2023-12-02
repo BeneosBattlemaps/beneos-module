@@ -1,14 +1,14 @@
 {
   "title": "Beneos Module",
   "description": "Quality of life features for Beneos Battlemaps, Tokens, Spells and Items",
-  "version": "11.0.1",
+  "version": "11.0.2",
   "compatibility": {
     "minimum": "10",
     "verified": "11"
   },
-  "url": "https://github.com/BeneosBattlemaps/beneos_module",
-  "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/beneos_module/main/module.json",
-  "download": "https://github.com/BeneosBattlemaps/beneos_module/archive/refs/tags/current_release.zip",
+  "url": "https://github.com/BeneosBattlemaps/beneos-module",
+  "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-module/main/module.json",
+  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/11.0.2.zip",
   "scripts": [
     "scripts/beneosfx.js"
   ],
@@ -73,10 +73,64 @@
   ],
   "relationships": {
     "requires": [
-      {
+	  {
+        "id": "moulinette-core",
+        "type": "module",
+        "manifest": "https://raw.githubusercontent.com/SvenWerlen/moulinette-core/master/module.json",
+        "compatibility": {}
+      },
+	  {
         "id": "tokenmagic",
         "type": "module",
         "manifest": "https://raw.githubusercontent.com/Feu-Secret/Tokenmagic/master/tokenmagic/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "moulinette-scenes",
+        "type": "module",
+        "manifest": "https://raw.githubusercontent.com/SvenWerlen/moulinette-scenes/main/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "multilevel-tokens",
+        "type": "module",
+        "manifest": "https://raw.githubusercontent.com/grandseiken/foundryvtt-multilevel-tokens/master/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "fxmaster",
+        "type": "module",
+        "manifest": "https://github.com/ghost-fvtt/fxmaster/releases/latest/download/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "monks-active-tiles",
+        "type": "module",
+        "manifest": "https://github.com/ironmonk88/monks-active-tiles/releases/latest/download/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "poi-teleport",
+        "type": "module",
+        "manifest": "https://github.com/zeel01/poi-teleport/releases/latest/download/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "scene-packer",
+        "type": "module",
+        "manifest": "https://github.com/League-of-Foundry-Developers/scene-packer/releases/latest/download/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "LockView",
+        "type": "module",
+        "manifest": "https://github.com/MaterialFoundry/LockView/releases/latest/download/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "lib-wrapper",
+        "type": "module",
+        "manifest": "https://github.com/ruipin/fvtt-lib-wrapper/releases/latest/download/module.json",
         "compatibility": {}
       }
     ]
