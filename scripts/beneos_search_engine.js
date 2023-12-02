@@ -139,8 +139,11 @@ export class BeneosDatabaseHolder {
       return ""
     }
     category = category.toString().toLowerCase()
-    term = term.toString().toLowerCase()
-    if (this.commonData?.hover[category] && this.commonData.hover[category][term]?.message) {
+    let termLow = term.toString().toLowerCase()
+    if (this.commonData?.hover[category] && this.commonData.hover[category][termLow]?.message) {
+      return this.commonData.hover[category][term].message
+    }
+    if (this.commonData?.hover[category] && this.commonData.hover[category][term.toString()]?.message) {
       return this.commonData.hover[category][term].message
     }
     return "No information"
