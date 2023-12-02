@@ -4,7 +4,7 @@
   <section class="sheet-body">
 
     <!-- <div>
-      <img class="bsr_title" src="modules/beneos_module/ui/result_form_title_item.webp">
+      <img class="bsr_title" src="modules/beneos-module/ui/result_form_title_item.webp">
     </div> -->
 
     <div class="bsr_result_box">
@@ -23,7 +23,7 @@
               </div>
             </div>
             <div class="beneos-icon-group token-search-data" data-type="Spell"  data-document-id="{{result.spellId}}" draggable="true">
-              <img class="beneos-icon-background" src="modules/beneos_module/ui/result_item_icon_bg.webp" />
+              <img class="beneos-icon-background" src="modules/beneos-module/ui/result_item_icon_bg.webp" />
               <img class="beneos-icon-child token-search-data" data-type="Spell" data-document-id="{{result.spellId}}" draggable="true" src="{{result.picture}}" />
             </div>
           </div>
@@ -35,7 +35,7 @@
           <div class="beneos-search-middle flexcol">
           {{/if}}
 
-              <img class="bsr_top_border" src="modules/beneos_module/ui/border_top.webp" />
+              <img class="bsr_top_border" src="modules/beneos-module/ui/border_top.webp" />
 
               <div class="bsr_item_title beneos-tooltip">
                 <div class="beneos-tooltiptext beneos-token-description">
@@ -98,7 +98,7 @@
                     {{beneosGetHover "installed" "installed"}}
                   </div>
                 </div>
-                <img class="item-right-text-box" src="modules/beneos_module/ui/right_button_v1.png">
+                <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
                 <label class="beneos-search-installed item-right-text-content">Installed</label>
               {{else}}
                 <div class="beneos-tooltiptext beneos-token-description">
@@ -106,7 +106,7 @@
                     {{beneosGetHover "installed" "not_installed"}}
                   </div>
                 </div>
-                <img class="item-right-text-box" src="modules/beneos_module/ui/right_button_v1.png">
+                <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
                 <label class="beneos-search-notinstalled item-right-text-content">Not Installed</label>
               {{/if}}
             </div>
@@ -119,7 +119,7 @@
                   {{beneosGetHover "spell_type" result.properties.spell_type}}
                 </div>
               </div>
-              <img class="item-right-text-box" src="modules/beneos_module/ui/right_button_v1.png">
+              <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
               <a class="beneos-button-spell-type item-right-text-content"
                 data-spell_type-value="{{result.properties.spell_type}}"><strong>{{result.properties.spell_type}}</strong></a>
             </div>
@@ -129,7 +129,7 @@
             <div class="beneos-tooltip  beneos-search-price-button">
               <div class="beneos-tooltiptext beneos-token-description">
               </div>
-              <img class="item-right-text-box" src="modules/beneos_module/ui/right_button_v1.png">
+              <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
               <a class="beneos-button-casting item-right-text-content"
                   data-casting_time-value="{{result.properties.casting_time}}"><strong>{{result.properties.casting_time}}</strong></a>
             </div>
@@ -137,7 +137,7 @@
           
         </div>
 
-        <img src="modules/beneos_module/ui/border_bottom.webp" class="bsr_bottom_border" />
+        <img src="modules/beneos-module/ui/border_bottom.webp" class="bsr_bottom_border" />
         
       </div>
       {{/each}}
