@@ -21,10 +21,10 @@ export class BeneosCompendiumReset extends FormApplication {
   async performReset() {
     ui.notifications.info("BeneosModule : Cleanup of compendiums has started....")
 
-    await this.deleteCompendiumContent("beneos_module.beneos_module_journal")
+    await this.deleteCompendiumContent("beneos-module.beneos_module_journal")
 
     if (game.system.id == "pf2e") {
-      await this.deleteCompendiumContent("beneos_module.beneos_module_actors_pf2")
+      await this.deleteCompendiumContent("beneos-module.beneos_module_actors_pf2")
       ui.notifications.info("BeneosModule : PF2 - Cleanup of compendiums finished.")
       BeneosCompendiumManager.buildDynamicCompendiumsPF2()
     } else {
@@ -35,9 +35,9 @@ export class BeneosCompendiumReset extends FormApplication {
         content: `<div><strong>BeneosModule</strong> : Import process started... Please wait end message</div`
       }
       ChatMessage.create(chatData);
-      await this.deleteCompendiumContent("beneos_module.beneos_module_actors")
-      await this.deleteCompendiumContent("beneos_module.beneos_module_items")
-      await this.deleteCompendiumContent("beneos_module.beneos_module_spells")
+      await this.deleteCompendiumContent("beneos-module.beneos_module_actors")
+      await this.deleteCompendiumContent("beneos-module.beneos_module_items")
+      await this.deleteCompendiumContent("beneos-module.beneos_module_spells")
       chatData.content = `<div><strong>BeneosModule</strong> : Cleanup of compendiums finished, import is starting</div`
       ChatMessage.create(chatData);
       
@@ -76,8 +76,8 @@ export class BeneosCompendiumManager {
     let tokenDataFolder = BeneosUtility.getBasePath() + BeneosUtility.getBeneosTokenDataPath()
 
     // get the packs to update/check
-    let actorPack = game.packs.get("beneos_module.beneos_module_actors_pf2")
-    let journalPack = game.packs.get("beneos_module.beneos_module_journal")
+    let actorPack = game.packs.get("beneos-module.beneos_module_actors_pf2")
+    let journalPack = game.packs.get("beneos-module.beneos_module_journal")
     await actorPack.getIndex()
     await journalPack.getIndex()
 
@@ -202,7 +202,7 @@ export class BeneosCompendiumManager {
     }
     let content = itemName + " : No new content detected."
     if (diffData.length > 0) {
-      content = await renderTemplate(`modules/beneos_module/templates/chat-new-compendium-data.html`, {itemList: diffData, itemName, compendium} )
+      content = await renderTemplate(`modules/beneos-module/templates/chat-new-compendium-data.html`, {itemList: diffData, itemName, compendium} )
     } 
     let chatData = {
       user: game.user.id,
@@ -222,8 +222,8 @@ export class BeneosCompendiumManager {
     let tokenDataFolder = BeneosUtility.getBasePath() + BeneosUtility.getBeneosTokenDataPath()
 
     // get the packs to update/check
-    let actorPack = game.packs.get("beneos_module.beneos_module_actors")
-    let journalPack = game.packs.get("beneos_module.beneos_module_journal")
+    let actorPack = game.packs.get("beneos-module.beneos_module_actors")
+    let journalPack = game.packs.get("beneos-module.beneos_module_journal")
     await actorPack.getIndex()
     await journalPack.getIndex()
 
@@ -335,7 +335,7 @@ export class BeneosCompendiumManager {
     catch {
       console.log("Error in parsing JSON for Tokens previousData, warning only all content has been re-imported")
     }
-    await this.showNewItems("Actors", BeneosUtility.beneosTokens, previousData, "Compendium.beneos_module.beneos_module_actors.Actor")
+    await this.showNewItems("Actors", BeneosUtility.beneosTokens, previousData, "Compendium.beneos-module.beneos_module_actors.Actor")
     
     let toSave = JSON.stringify(BeneosUtility.beneosTokens)
     console.log("Saving data :", toSave)
@@ -354,7 +354,7 @@ export class BeneosCompendiumManager {
     let tokenDataFolder = BeneosUtility.getBasePath() + BeneosUtility.getBeneosSpellDataPath()
 
     // get the packs to update/check
-    let spellPack = game.packs.get("beneos_module.beneos_module_spells")
+    let spellPack = game.packs.get("beneos-module.beneos_module_spells")
     await spellPack.getIndex()
     await spellPack.configure({ locked: false })
 
@@ -391,7 +391,7 @@ export class BeneosCompendiumManager {
     catch {
       console.log("Error in parsing JSON for Spells previousData, warning only all content has been re-imported")
     }
-    await this.showNewItems("Spells", BeneosUtility.beneosSpells, previousData, "Compendium.beneos_module.beneos_module_spells.Item" )
+    await this.showNewItems("Spells", BeneosUtility.beneosSpells, previousData, "Compendium.beneos-module.beneos_module_spells.Item" )
 
     let toSave = JSON.stringify(BeneosUtility.beneosSpells)
     //console.log("Saving data :", toSave)
@@ -408,7 +408,7 @@ export class BeneosCompendiumManager {
     let itemDataFolder = BeneosUtility.getBasePath() + BeneosUtility.getBeneosItemDataPath()
 
     // get the packs to update/check
-    let itemPack = game.packs.get("beneos_module.beneos_module_items")
+    let itemPack = game.packs.get("beneos-module.beneos_module_items")
     await itemPack.getIndex()
     await itemPack.configure({ locked: false })
 
@@ -444,7 +444,7 @@ export class BeneosCompendiumManager {
     catch {
       console.log("Error in parsing JSON for Items previousData, warning only all content has been re-imported")
     }
-    await this.showNewItems("Items", BeneosUtility.beneosItems, previousData, "Compendium.beneos_module.beneos_module_items.Item" )
+    await this.showNewItems("Items", BeneosUtility.beneosItems, previousData, "Compendium.beneos-module.beneos_module_items.Item" )
 
     let toSave = JSON.stringify(BeneosUtility.beneosItems)
     //console.log("Saving data :", toSave)

@@ -33,7 +33,7 @@ export class BeneosModuleMenu extends Dialog {
     }
 
     console.log("SEARCH results", beneosTokensHUD)
-    let html = await renderTemplate('modules/beneos_module/templates/' + this.listTemplate,
+    let html = await renderTemplate('modules/beneos-module/templates/' + this.listTemplate,
       { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getFullPathWithSlash(), beneosTokensHUD, searchValue })
     this.data.content = html
     this.render(true)
@@ -590,7 +590,7 @@ export class BeneosSearchResults extends Dialog {
       let docType = e.target.getAttribute("data-type")
       let compendium = ""
       if (docType == "Actor") {
-        compendium = (game.system.id == "pf2e") ? "beneos-module.beneos_module_actors_pf2" : "beneos_module.beneos_module_actors"
+        compendium = (game.system.id == "pf2e") ? "beneos-module.beneos_module_actors_pf2" : "beneos-module.beneos_module_actors"
       }
       if (docType == "Item") {
         compendium = "beneos-module.beneos_module_items"
