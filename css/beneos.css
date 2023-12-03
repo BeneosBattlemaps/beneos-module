@@ -201,6 +201,16 @@
   transform: translate(0px, -22px);
 }
 
+.beneos-tooltip .beneos-tooltip-content-button-import {
+  width: 220px;
+  border: 1px solid black;
+  padding: 8px;
+  background: rgba(233, 226, 218, 0.9);
+  border-radius: 12px;
+  font-size: 0.9rem;
+  margin: -30px;
+}
+
 .beneos-tooltip .beneos-tooltip-keyword {
   width: 220px;  
   height: 96px;  
