@@ -7,12 +7,14 @@ export class BeneosCompendiumReset extends FormApplication {
   /********************************************************************************** */
   async deleteCompendiumContent(comp) {
     let pack = game.packs.get(comp)
-    await pack.getIndex()
-    await pack.configure({ locked: false })
-
-    for (let item of pack.index.contents) {
-      let doc = await pack.getDocument(item._id)
-      await doc.delete()
+    if (pack) {
+      await pack.getIndex()
+      await pack.configure({ locked: false })
+  
+      for (let item of pack.index.contents) {
+        let doc = await pack.getDocument(item._id)
+        await doc.delete()
+      }  
     }
     //console.log("PACK", pack)
   }
