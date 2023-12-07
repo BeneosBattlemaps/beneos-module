@@ -226,6 +226,10 @@ export class BeneosCompendiumManager {
     // get the packs to update/check
     let actorPack = game.packs.get("beneos-module.beneos_module_actors")
     let journalPack = game.packs.get("beneos-module.beneos_module_journal")
+    if (!actorPack || !journalPack) {
+      ui.notifications.error("BeneosModule : Unable to find compendiums, please check your installation !")
+      return
+    }
     await actorPack.getIndex()
     await journalPack.getIndex()
 
