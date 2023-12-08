@@ -467,9 +467,9 @@ export class BeneosCompendiumManager {
   /********************************************************************************** */
   static replaceItemsPath(records) {
     for (let item of records.items) {
-      if (item?.img.match("_ability_icons")) {
+      if (item?.img.match("ability_icons")) {
         let filename = item.img.substring(item.img.lastIndexOf("/") + 1)
-        item.img = BeneosUtility.getBasePath() + BeneosUtility.getBeneosTokenDataPath() + "/_ability_icons/" + filename
+        item.img = "modules/beneos-module/ability_icons/" + filename
       }
     }
   }
