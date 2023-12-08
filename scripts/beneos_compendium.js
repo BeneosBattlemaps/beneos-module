@@ -221,11 +221,21 @@ export class BeneosCompendiumManager {
     ui.notifications.info("BeneosModule : Compendium building .... Please wait !")
 
     BeneosUtility.resetTokenData()
+    
     let tokenDataFolder = BeneosUtility.getBasePath() + BeneosUtility.getBeneosTokenDataPath()
+    let rootFolder = await FilePicker.browse("data", tokenDataFolder)
+    if (!rootFolder) {
+      ui.notifications.error("BeneosModule : The Beneos Assets folder is not present or configuration is wrong !")
+      return
+    }
 
     // get the packs to update/check
     let actorPack = game.packs.get("beneos-module.beneos_module_actors")
     let journalPack = game.packs.get("beneos-module.beneos_module_journal")
+    if (!actorPack || !journalPack) {
+      ui.notifications.error("BeneosModule : Unable to find compendiums, please check your installation !")
+      return
+    }
     await actorPack.getIndex()
     await journalPack.getIndex()
 
@@ -233,7 +243,7 @@ export class BeneosCompendiumManager {
     await journalPack.configure({ locked: false })
 
     // Parse subfolder
-    let rootFolder = await FilePicker.browse("data", tokenDataFolder)
+    // Move above : let rootFolder = await FilePicker.browse("data", tokenDataFolder)
     console.log("ROOT", rootFolder)
     for (let subFolder of rootFolder.dirs) {
       console.log("SUBFOLDER", subFolder)
