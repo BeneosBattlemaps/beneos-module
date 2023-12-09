@@ -469,7 +469,7 @@ export class BeneosCompendiumManager {
     for (let item of records.items) {
       if (item?.img.match("ability_icons")) {
         let filename = item.img.substring(item.img.lastIndexOf("/") + 1)
-        item.img = "modules/beneos-module/ability_icons/" + filename
+        item.img = "modules/beneos-module/icons/ability_icons/" + filename
       }
     }
   }

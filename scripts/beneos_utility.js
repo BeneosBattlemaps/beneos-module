@@ -367,7 +367,7 @@ export class BeneosUtility {
   /********************************************************************************** */
   // Checks if the token image is inside the beneos tokens module
   static checkIsBeneosToken(token) {
-    return  (token?.document?.texture?.src.includes(this.tokenDataPath) || token?.texture?.src.includes(this.tokenDataPath))
+    return  (token?.document?.texture?.src.includes(this.tokenDataPath) ?? token?.texture?.src.includes(this.tokenDataPath))
   }
 
   /********************************************************************************** */
