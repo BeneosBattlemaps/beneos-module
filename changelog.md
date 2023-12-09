@@ -4,6 +4,11 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 11.0.7 # 2023-12-9
+- Fixed: Icon Pathing for Module related icons
+- Added: Code Optimization
+
+
 ### 11.0.6 # 2023-12-8
 
 - Added: Abilitiy icons to the module to make it easier for hosting service user and shop customers to install tokens
