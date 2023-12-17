@@ -1,4 +1,5 @@
 /********************************************************************************** */
+import { BeneosSearchEngineLauncher } from "./beneos_search_engine.js";
 import { BeneosUtility } from "./beneos_utility.js";
 
 /********************************************************************************** */
@@ -58,6 +59,13 @@ export class BeneosCompendiumReset extends FormApplication {
       // Reload the settings, as they have been updated during the import
       BeneosUtility.reloadInternalSettings()
 
+      if (game.beneosTokens.searchEngine) {
+        console.log("Closing search engine")
+        game.beneosTokens.searchEngine.close()
+        let newS = new BeneosSearchEngineLauncher
+        newS.render(true)
+      }
+      
     }
   }
 

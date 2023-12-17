@@ -251,7 +251,7 @@ export class BeneosDatabaseHolder {
       if (bmapData && typeof (bmapData) == "object") {
         if (bmapData.properties.sibling) {
           bmapData.siblingPicture = this.getSiblingPicture(bmapData.properties.sibling)
-          console.log("SIBLING : ", bmapData.siblingPicture)
+          //console.log("SIBLING : ", bmapData.siblingPicture)
         }
       }
     }
