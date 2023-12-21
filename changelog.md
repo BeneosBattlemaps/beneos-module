@@ -4,7 +4,7 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
-### 11.0.8 # 2023-12-18
+### 11.0.9 # 2023-12-18
 - Fixed: You can  drag and drop assets from the search engine after a content scan without F5 again.
 - Fixed: Tooltip Descriptions
 
