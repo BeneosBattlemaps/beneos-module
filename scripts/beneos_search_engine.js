@@ -308,6 +308,9 @@ export class BeneosDatabaseHolder {
   static fieldTextSearch(item, text) {
     for (let field in item) {
       let value = item[field]
+      if (field == "description") { 
+        continue 
+      }
       if (typeof (value) == "string") {
         if (value.toLowerCase().includes(text)) {
           return true
