@@ -298,9 +298,15 @@
   margin-right: 4px;
   flex-grow:0; 
 }
+.beneos-search-battlemap-result-tooltip {
+  max-height: 600px;
+  width: 100%;
+  max-width: min(100%, calc(var(--max-height, 600px) * var(--img-ratio, 1)));
+  border: 0;
+  margin-right: 4px;
+  flex-grow:0; 
+}
 .beneos-tooltip .beneos-tooltip-content-bmap{
-  height: 256px;
-  max-height: 256px;
   width: 620px;
   margin: 8px;
   padding: 8px;
