@@ -40,7 +40,11 @@
               <img class="bsr_top_border" src="modules/beneos-module/ui/border_top.webp" />
 
               <div class="bsr_item_title beneos-tooltip">
-                <label class="beneos-search-title-result">{{result.name}}</label>
+                <label class="beneos-search-title-result">
+                  <a class="battlemap-open-pack" data-bmap-key="{{result.key}}" data-tooltip="Open the entire pack this map belongs to">
+                  {{result.name}}
+                  </a>
+                </label>
                 <span class="triangle-topleft"></span>
               </div>
               <!-- Properties + Attenument line -->
@@ -138,7 +142,7 @@
             {{/if}}
 
             <div class="moulinette-button-container">
-              <label class="beneos-search-moulinette-button"><a class="beneos-button-moulinette" data-bmap-key="{{result.key}}">
+              <label class="beneos-search-moulinette-button"><a class="beneos-button-moulinette" data-tooltip="Download with Moulinette" data-bmap-key="{{result.key}}">
                 <img class="beneos-search-moulinette-icons" data-bmap-key="{{result.key}}"
                   src="modules/beneos-module/icons/download_icon.svg">&nbsp;</a></label>
             </div>

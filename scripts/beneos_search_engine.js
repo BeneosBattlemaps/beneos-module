@@ -671,6 +671,17 @@ export class BeneosSearchResults extends Dialog {
     $(".beneos-button-casting").click(event => {
       this.processSearchButton(event, "spell", "casting_time", "casting_time-value", "casting_time-selector")
     })
+    $(".battlemap-open-pack").click(event => {
+      let bmapKey = $(event.currentTarget).data("bmap-key")
+      if (bmapKey) {
+        let bmapData = BeneosDatabaseHolder.getBattlemap(bmapKey)
+        if (bmapData?.properties?.download_pack) {
+          game.moulinette.applications.MoulinetteAPI.searchUI("scenes", { "creator": bmapData.properties.download_creator, "pack": bmapData.properties.download_pack})
+        } else {
+          ui.notifications.info("The selected battlemap does not have a Moulinette download information")
+        }
+      }
+    })
     $(".beneos-button-moulinette").click(event => {
       let bmapKey = $(event.currentTarget).data("bmap-key")
       if (bmapKey) {
