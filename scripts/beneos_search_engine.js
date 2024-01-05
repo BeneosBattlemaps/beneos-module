@@ -123,7 +123,7 @@ export class BeneosDatabaseHolder {
       ui.notifications.error("Unable to load Beneos Spell Database - File error")
     }
     try {
-      let commonData = await fetchJsonWithTimeout(commonDBURL, { method: 'GET', 'Content-Type': 'application/json' })
+      let commonData = await fetchJsonWithTimeout(commonDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
       this.commonData = commonData
     } catch {
       ui.notifications.error("Unable to load Beneos Common Database - File error")
