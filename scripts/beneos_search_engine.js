@@ -99,25 +99,25 @@ export class BeneosDatabaseHolder {
   /********************************************************************************** */
   static async loadDatabaseFiles() {
     try {
-      let tokenData = await fetchJsonWithTimeout(tokenDBURL, { method: 'GET', 'Content-Type': 'application/json' })
+      let tokenData = await fetchJsonWithTimeout(tokenDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
       this.tokenData = tokenData
     } catch (err) {
       ui.notifications.error("Unable to load Beneos Token Database - File error " + err.message + " " + tokenDBURL)
     }
     try {
-      let bmapData = await fetchJsonWithTimeout(battlemapDBURL, { method: 'GET', 'Content-Type': 'application/json' })
+      let bmapData = await fetchJsonWithTimeout(battlemapDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
       this.bmapData = bmapData
     } catch {
       ui.notifications.error("Unable to load Beneos Battlemap Database - File error")
     }
     try {
-      let itemData = await fetchJsonWithTimeout(itemDBURL, { method: 'GET', 'Content-Type': 'application/json' })
+      let itemData = await fetchJsonWithTimeout(itemDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
       this.itemData = itemData
     } catch {
       ui.notifications.error("Unable to load Beneos Item Database - File error")
     }
     try {
-      let spellData = await fetchJsonWithTimeout(spellDBURL, { method: 'GET', 'Content-Type': 'application/json' })
+      let spellData = await fetchJsonWithTimeout(spellDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
       this.spellData = spellData
     } catch {
       ui.notifications.error("Unable to load Beneos Spell Database - File error")
@@ -525,6 +525,11 @@ export class BeneosDatabaseHolder {
 
     return tab
   }
+  
+  /********************************************************************************** */
+  static getBattlemap(key) {
+    return this.bmapData.content[key]
+  }
 
   /********************************************************************************** */
   static getData() {
@@ -665,6 +670,19 @@ export class BeneosSearchResults extends Dialog {
     })
     $(".beneos-button-casting").click(event => {
       this.processSearchButton(event, "spell", "casting_time", "casting_time-value", "casting_time-selector")
+    })
+    $(".beneos-button-moulinette").click(event => {
+      let bmapKey = $(event.currentTarget).data("bmap-key")
+      if (bmapKey) {
+        let bmapData = BeneosDatabaseHolder.getBattlemap(bmapKey)
+        console.log("Moulinette search", bmapData)
+        if (bmapData?.properties?.download_terms) {
+          game.moulinette.applications.MoulinetteAPI.searchUI("scenes", { "terms": bmapData.properties.download_terms, 
+          "creator": bmapData.properties.download_creator, "pack": bmapData.properties.download_pack})
+        } else {
+          ui.notifications.info("The selected battlemap does not have a Moulinette download information")
+        }
+      }
     })
     $(".beneos-button-journal").click(event => {
       let element = $(event.currentTarget)?.parents(".token-root-div")

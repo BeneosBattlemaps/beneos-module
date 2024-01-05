@@ -437,9 +437,19 @@
 .beneos-search-cr-button{  
 } 
 .beneos-search-yt-icons {
-  max-height: 16px;
+  max-height: 18px;
   border: 0;
 }
+
+.beneos-search-moulinette-icons {
+  max-height: 18px;
+  border: 0;
+  opacity: 50%;
+}
+.beneos-search-moulinette-icons:hover{
+  opacity: 100%;
+}
+
 .beneos-search-yt-button-old {
   text-align: center;
   border-width: 1px;
@@ -453,6 +463,8 @@
   max-height: 18px;
   max-width: 4rem;
 }
+
+.beneos-search-moulinette-button,
 .beneos-search-yt-button {
   align-self: center;
   text-align: center;
@@ -463,6 +475,8 @@
   max-height: 1.2rem;
   max-width: 4rem;
 }
+
+.moulinette-button-container,
 .video-button-container {
   width: 100%;
   align-items: center;
