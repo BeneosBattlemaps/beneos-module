@@ -836,8 +836,8 @@ export class BeneosUtility {
   /* -------------------------------------------- */
   static sortArrayObjectsByName(myArray) {
     myArray.sort((a, b) => {
-      let fa = a.actorName.toLowerCase();
-      let fb = b.actorName.toLowerCase();
+      let fa = a.actorName?.toLowerCase() || "";
+      let fb = b.actorName?.toLowerCase() || "";
       if (fa < fb) {
         return -1;
       }
@@ -853,13 +853,17 @@ export class BeneosUtility {
     let beneosTokensHUD = []
 
     Object.entries(BeneosUtility.beneosTokens).forEach(([key, value]) => {
-      beneosTokensHUD.push({
-        "token": BeneosUtility.getBasePath() + BeneosUtility.getBeneosTokenDataPath() + "/" + key + '/' + key + "-idle_face_still.webp",
-        "name": key.replaceAll("_", " "), 'tokenvideo': BeneosUtility.getBasePath() + BeneosUtility.getBeneosTokenDataPath() + "/" + key + '/' + key + "-idle_face.webm",
-        "actorId": value.actorId,
-        "actorName": value.actorName
-      })
-    })
+      if ( value?.actorName && value?.actorId) {
+        beneosTokensHUD.push({
+          "token": BeneosUtility.getBasePath() + BeneosUtility.getBeneosTokenDataPath() + "/" + key + '/' + key + "-idle_face_still.webp",
+          "name": key.replaceAll("_", " "), 'tokenvideo': BeneosUtility.getBasePath() + BeneosUtility.getBeneosTokenDataPath() + "/" + key + '/' + key + "-idle_face.webm",
+          "actorId": value.actorId,
+          "actorName": value.actorName
+        }) 
+      } else {
+        ui.notifications.warn("Beneos Module: Actor name/id not found for token " + key)
+      }
+    }) 
     this.sortArrayObjectsByName(beneosTokensHUD)
     return beneosTokensHUD
   }
