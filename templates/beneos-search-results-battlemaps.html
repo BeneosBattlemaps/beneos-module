@@ -87,6 +87,14 @@
                   {{#if result.properties.releaseurl}}              
                   <label class="release-url-color"><a href="{{result.properties.releaseurl}}">Release URL</a></label>
                   {{/if}}
+
+                  {{#if (beneosLength result.properties.videourl)}}
+                  <br>
+                  <label class="beneos-search-yt-button"><a data-tooltip="Youtube Video" class="beneos-button-yt"
+                    href="{{result.properties.videourl}}"><img class="beneos-search-yt-icons"
+                      src="modules/beneos-module/icons/yt_Logo.webp">&nbsp;</a></label>
+                  {{/if}}
+      
                 </div>
               </div>
 
@@ -132,14 +140,6 @@
                   data-brightness-value="{{result.properties.brightness}}"><strong>{{result.properties.brightness}}</strong></a>
               </div>
             </div>
-
-            {{#if (beneosLength result.properties.videourl)}}
-            <div class="video-button-container">
-              <label class="beneos-search-yt-button"><a class="beneos-button-yt"
-                href="{{result.properties.videourl}}"><img class="beneos-search-yt-icons"
-                  src="modules/beneos-module/icons/yt_Logo.webp">&nbsp;</a></label>
-            </div>
-            {{/if}}
 
             <div class="moulinette-button-container">
               <label class="beneos-search-moulinette-button"><a class="beneos-button-moulinette" data-tooltip="Download with Moulinette" data-bmap-key="{{result.key}}">

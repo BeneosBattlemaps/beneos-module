@@ -448,7 +448,7 @@
 }
 
 .beneos-search-moulinette-icons {
-  max-height: 18px;
+  max-height: 32px;
   border: 0;
   opacity: 50%;
 }
@@ -470,12 +470,22 @@
   max-width: 4rem;
 }
 
-.beneos-search-moulinette-button,
-.beneos-search-yt-button {
+.beneos-search-moulinette-button {
   align-self: center;
   text-align: center;
   margin-top: 2px;
   margin-left: 3.2rem;
+  padding-left: 4px;
+  padding-right: 4px;
+  max-height: 1.2rem;
+  max-width: 4rem;
+}
+
+.beneos-search-yt-button {
+  align-self: center;
+  text-align: center;
+  margin-top: 2px;
+  margin-left: 11rem;
   padding-left: 4px;
   padding-right: 4px;
   max-height: 1.2rem;
