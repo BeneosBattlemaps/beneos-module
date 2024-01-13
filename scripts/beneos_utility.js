@@ -221,7 +221,8 @@ export class BeneosUtility {
     this.tokenDataPath += "/beneos_tokens/"
     this.itemDataPath += "/beneos_items/"
     this.spellDataPath += "/beneos_spells/"
-
+    this.sheetLoaded = false
+    
     this.beneosHealth = {}
     this.standingImage = {}
     this.beneosPreload = []
@@ -639,7 +640,7 @@ export class BeneosUtility {
     //console.log("Got token config !!!", tokenData, myToken, this.beneosTokens, tokenData.tokenKey)
     let newScaleFactor = myToken.config.scalefactor
     let sData
-    if (newImage && newImage.includes("_top")) {
+    if (newImage?.includes("_top")) {
       sData = myToken[tokenData.variant][tokenData.currentStatus]
     }
     if (!sData && myToken[tokenData.variant]) {
@@ -662,7 +663,7 @@ export class BeneosUtility {
     let userSize = this.userSizes[token.id]?.sizeFactor || 1.0
     let s = (sData?.s) ? sData.s : 1.0
     // When face tokens, scale is always 1.0
-    if (newImage && newImage.includes("__face")) {
+    if (newImage?.includes("__face")) {
       newScaleFactor = 1.0
     } else {
       newScaleFactor *= s * userSize
@@ -777,7 +778,7 @@ export class BeneosUtility {
     }
 
     let currentImage = token.document.texture.src
-    let newImage = undefined
+    let newImage
     if (hp == 0 && hp != BeneosUtility.beneosHealth[token.id]) {
       BeneosUtility.debugMessage("[BENEOS MODULE] Dead")
       token.state = "dead"
@@ -904,9 +905,7 @@ export class BeneosUtility {
   static async userIncDecSize(tokenId, tokenKey, incDec) {
     let token = BeneosUtility.getToken(tokenId)
 
-    let isAutoscale = false
     if (game.system.id == 'pf2e' && token.document.flags.pf2e.autoscale) {
-      isAutoscale = true
       await token.document.update({ "flags.pf2e.autoscale": false })
       ui.notifications.info("Token size was in auto-scale mode. Auto-scale mode has been disabled for this token, you can re-enable it in the token configuration window.")
     }
@@ -934,7 +933,7 @@ export class BeneosUtility {
     }
 
     let tokenData = this.getTokenImageInfo(tokenImg)
-    if (tokenData && tokenData.tokenKey) {
+    if (tokenData?.tokenKey) {
       let tokenConfig = this.beneosTokens[tokenData.tokenKey]
       if (tokenConfig) {
         let status = tokenData.currentStatus

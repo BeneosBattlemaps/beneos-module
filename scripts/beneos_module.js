@@ -30,7 +30,7 @@ Hooks.once('ready', () => {
 
   BeneosUtility.forgeInit()
   BeneosUtility.registerSettings()
-  
+
   //Token Magic Hack  Replacement to prevent double filters when changing animations
   if (typeof TokenMagic !== 'undefined') {
     let OrigSingleLoadFilters = TokenMagic._singleLoadFilters;
@@ -75,11 +75,11 @@ Hooks.once('ready', () => {
   // Try to catch right click on profile image
   Hooks.on('renderActorSheet', (sheet, html, data) => {
     if (game.system.id == "pf2e") {
-      $(".image-container .actor-image").mousedown(async function (e) {
+      $("#"+sheet.id +" .image-container .actor-image").mouseup(async function (e) {
         BeneosUtility.prepareMenu(e, sheet)
-      })
+        })
     } else {
-      $(".sheet-header .profile").mousedown(async function (e) {
+      $("#"+sheet.id +" .sheet-header .profile").mouseup(async function (e) {
         BeneosUtility.prepareMenu(e, sheet)
       })
     }
@@ -118,8 +118,8 @@ Hooks.once('ready', () => {
   Hooks.on('updateActor', (actor, changeData) => {
     let tokens = canvas.tokens.placeables.filter(t => t.document.actorId == actor.id)
     //console.log(">>>>>>>>><", tokens)
-    for(let token of tokens) {
-      if ( BeneosUtility.checkIsBeneosToken(token)) {
+    for (let token of tokens) {
+      if (BeneosUtility.checkIsBeneosToken(token)) {
         //BeneosUtility.debugMessage("[BENEOS TOKENS] update actor", actor)
         //BeneosUtility.debugMessage("[BENEOS TOKENS] update actor", changeData)
         if (changeData?.system?.attributes?.hp?.value == 0 || changeData?.system?.attributes?.hp?.value > 0) {
@@ -136,14 +136,14 @@ Hooks.once('ready', () => {
       return
     }
 
-    if (changeData?.flags?.tokenmagic ) {
+    if (changeData?.flags?.tokenmagic) {
       if (changeData.flags.tokenmagic?.animeInfo[0] && token.state != "move") {
         BeneosUtility.processEndEffect(token.id, changeData.flags.tokenmagic.animeInfo)
       }
     }
     BeneosUtility.debugMessage("[BENEOS TOKENS] Beneos UpdateToken", changeData)
 
-    if (changeData.actorData?.system?.attributes != undefined && changeData.actorData.system.attributes?.hp != undefined ) {
+    if (changeData.actorData?.system?.attributes != undefined && changeData.actorData.system.attributes?.hp != undefined) {
       BeneosUtility.updateToken(token.id, changeData)
       return
     }
