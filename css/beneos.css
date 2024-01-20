@@ -356,6 +356,7 @@
   color: #ffffff;
   padding-left: 4px;
   padding-right: 8px;
+  overflow: hidden;
 }
 .triangle-topleft {
   width: 0;
@@ -647,6 +648,7 @@
   height: 1.4rem;
   max-height: 1.4rem;
   font-size: 1.2rem;
+  overflow:hidden;
 }
 .bsr_top_border {
   position: relative;
