@@ -442,41 +442,30 @@
 .beneos-search-action-button,
 .beneos-search-cr-button{  
 } 
+
 .beneos-search-yt-icons {
   max-height: 18px;
   border: 0;
+  opacity: 50%;
 }
 
 .beneos-search-moulinette-icons {
-  max-height: 32px;
+  max-height: 24px;
+  margin-top: -6px;
   border: 0;
   opacity: 50%;
 }
+
+.beneos-search-yt-icons:hover,
 .beneos-search-moulinette-icons:hover{
   opacity: 100%;
 }
 
-.beneos-search-yt-button-old {
-  text-align: center;
-  border-width: 1px;
-  margin-top: 4px;
-  border-style: ridge;
-  border-color: black;
-  padding-left: 4px;
-  padding-right: 4px;
-  background-color: #a79893;
-  flex-grow: 1;
-  max-height: 18px;
-  max-width: 4rem;
-}
 
 .beneos-search-moulinette-button {
   align-self: center;
   text-align: center;
   margin-top: 2px;
-  margin-left: 3.2rem;
-  padding-left: 4px;
-  padding-right: 4px;
   max-height: 1.2rem;
   max-width: 4rem;
 }
@@ -485,16 +474,16 @@
   align-self: center;
   text-align: center;
   margin-top: 2px;
-  margin-left: 11rem;
-  padding-left: 4px;
-  padding-right: 4px;
   max-height: 1.2rem;
   max-width: 4rem;
+}
+.beneos-search-yt-button-shifted {
+  margin-left:3.2rem;
 }
 
 .moulinette-button-container,
 .video-button-container {
-  width: 100%;
+  /*width: 100%;*/
   align-items: center;
   align-content: center;
 }
@@ -799,6 +788,9 @@
 .flex-content-left {
   justify-content: flex-end;
   max-height: 26px;
+}
+.flex-content-center {
+  justify-content:space-evenly;
 }
 .item-origin-icon {
   margin-top: 4px;
