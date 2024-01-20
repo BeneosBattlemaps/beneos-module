@@ -760,6 +760,7 @@
 }
 .battlemaps-properties {
   text-overflow: clip;
+  overflow: hidden;
 }
 .item-right-text-box {
   border: 0px solid;
