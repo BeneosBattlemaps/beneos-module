@@ -407,7 +407,7 @@ Hooks.on("getSceneDirectoryEntryContext", (html, options) => {
 Hooks.on("getSceneNavigationContext", (html, options) => {
   let menuEntry1 = {
     name: "Use Static Map",
-    icon: `<img src="modules/beneos-module/icons/icon_image.svg" width="16" height="16" />`,
+    icon: `<img class="beneos-active-scene-menu-icon" src="modules/beneos-module/icons/icon_image.svg" width="16" height="16" />`,
     condition: li => BeneosUtility.isSwitchableBeneosBattlemap(li.data("sceneId"), "webm"),
     callback: async li => {
       let sceneId = li.data("sceneId")
@@ -416,7 +416,7 @@ Hooks.on("getSceneNavigationContext", (html, options) => {
   }
   let menuEntry2 = {
     name: "Use Animated Map",
-    icon: `<img src="modules/beneos-module/icons/icon_video.svg" width="16" height="16" />`,
+    icon: `<img class="beneos-active-scene-menu-icon" src="modules/beneos-module/icons/icon_video.svg" width="16" height="16" />`,
     condition: li => BeneosUtility.isSwitchableBeneosBattlemap(li.data("sceneId"), "webp"),
     callback: async li => {
       let sceneId = li.data("sceneId")

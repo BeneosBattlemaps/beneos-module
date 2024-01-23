@@ -276,7 +276,7 @@ export class BeneosUtility {
       }
     }
 
-    if (game.user.isGM && !(srcPath.toLowerCase().match(/intro/)) && srcPath.toLowerCase().match(/beneos_battlemaps/) &&
+    if (srcPath && game.user.isGM && !(srcPath.toLowerCase().match(/intro/)) && srcPath.toLowerCase().match(/beneos_battlemaps/) &&
       (srcPath.toLowerCase().match(/4k/) || srcPath.toLowerCase().match(/hd/)) &&
       (srcPath.toLowerCase().includes(fileType)) ) {
       return tileId

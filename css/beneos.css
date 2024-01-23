@@ -861,6 +861,10 @@
   margin-top: 2px;
   color: #3e0706;
 }
+.beneos-active-scene-menu-icon {
+  margin-top: 4px;
+  margin-right: 8px;
+}
 .beneos-scene-menu-icon {
   width: 16px;
   max-width: 16px;
