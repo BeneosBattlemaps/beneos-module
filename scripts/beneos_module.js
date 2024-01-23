@@ -75,11 +75,11 @@ Hooks.once('ready', () => {
   // Try to catch right click on profile image
   Hooks.on('renderActorSheet', (sheet, html, data) => {
     if (game.system.id == "pf2e") {
-      $("#"+sheet.id +" .image-container .actor-image").mouseup(async function (e) {
+      $("#" + sheet.id + " .image-container .actor-image").mouseup(async function (e) {
         BeneosUtility.prepareMenu(e, sheet)
-        })
+      })
     } else {
-      $("#"+sheet.id +" .sheet-header .profile").mouseup(async function (e) {
+      $("#" + sheet.id + " .sheet-header .profile").mouseup(async function (e) {
         BeneosUtility.prepareMenu(e, sheet)
       })
     }
@@ -378,4 +378,53 @@ Hooks.on("renderActorDirectory", (app, html, data) => {
     html.find('.header-actions').after(button)
   }
 })
+
+/********************************************************************************** */
+Hooks.on("getSceneDirectoryEntryContext", (html, options) => {
+  options.push({
+    name: "Use Animated Map",
+    icon: `<img class="beneos-scene-menu-icon" src="modules/beneos-module/icons/icon_video.svg" width="16" height="16" />`,
+    callback: async function (li) {
+      BeneosUtility.switchPhase(li.data("documentId"), "toAnimated");
+    },
+    condition: li => {
+      return BeneosUtility.isSwitchableBeneosBattlemap(li.data("documentId"), "webp")
+    },
+  });
+  options.push({
+    name: "Use Static Map",
+    icon: `<img class="beneos-scene-menu-icon" src="modules/beneos-module/icons/icon_image.svg" width="16px" height="16px" />`,
+    callback: async function (li) {
+      BeneosUtility.switchPhase(li.data("documentId"), "toStatic");
+    },
+    condition: li => {
+      return BeneosUtility.isSwitchableBeneosBattlemap(li.data("documentId"), "webm")
+    },
+  });
+});
+
+/********************************************************************************** */
+Hooks.on("getSceneNavigationContext", (html, options) => {
+  let menuEntry1 = {
+    name: "Use Static Map",
+    icon: `<img src="modules/beneos-module/icons/icon_image.svg" width="16" height="16" />`,
+    condition: li => BeneosUtility.isSwitchableBeneosBattlemap(li.data("sceneId"), "webm"),
+    callback: async li => {
+      let sceneId = li.data("sceneId")
+      BeneosUtility.switchPhase(sceneId, "toStatic");
+    }
+  }
+  let menuEntry2 = {
+    name: "Use Animated Map",
+    icon: `<img src="modules/beneos-module/icons/icon_video.svg" width="16" height="16" />`,
+    condition: li => BeneosUtility.isSwitchableBeneosBattlemap(li.data("sceneId"), "webp"),
+    callback: async li => {
+      let sceneId = li.data("sceneId")
+      BeneosUtility.switchPhase(sceneId, "toAnimated");
+    }
+  }
+  options.push(menuEntry1);
+  options.push(menuEntry2);
+  return options;
+});
 

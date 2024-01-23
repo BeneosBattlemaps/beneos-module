@@ -208,21 +208,21 @@ export class BeneosUtility {
       this.beneosItems = {}
     }
   }
-  
+
   /********************************************************************************** */
   static init() {
     this.file_cache = {}
 
     this.userSizes = duplicate(game.settings.get(BeneosUtility.moduleID(), 'beneos-user-config'))
     this.beneosModule = true // Deprecated game.settings.get(BeneosUtility.moduleID(), 'beneos-animations')
-    this.tokenDataPath = game.settings.get(BeneosUtility.moduleID(), 'beneos-datapath') 
-    this.itemDataPath = game.settings.get(BeneosUtility.moduleID(), 'beneos-datapath') 
+    this.tokenDataPath = game.settings.get(BeneosUtility.moduleID(), 'beneos-datapath')
+    this.itemDataPath = game.settings.get(BeneosUtility.moduleID(), 'beneos-datapath')
     this.spellDataPath = game.settings.get(BeneosUtility.moduleID(), 'beneos-datapath')
     this.tokenDataPath += "/beneos_tokens/"
     this.itemDataPath += "/beneos_items/"
     this.spellDataPath += "/beneos_spells/"
     this.sheetLoaded = false
-    
+
     this.beneosHealth = {}
     this.standingImage = {}
     this.beneosPreload = []
@@ -255,8 +255,73 @@ export class BeneosUtility {
     Handlebars.registerHelper('beneosGetHover', function (category, term) {
       return BeneosDatabaseHolder.getHover(category, term)
     })
-    
 
+
+  }
+
+  /********************************************************************************** */
+  static isSwitchableBeneosBattlemap(sceneId, fileType) {
+    let scene = game.scenes.get(sceneId)
+    let srcPath = scene.background.src
+    let tileId = "scene"
+    
+    if (!srcPath) {
+      for (let tile of scene.tiles) {
+        if (tile.texture.src.toLowerCase().match(/beneos_battlemaps/) &&
+          (tile.texture.src.toLowerCase().match(/4k/) || tile.texture.src.toLowerCase().match(/hd/))) {
+          srcPath = tile.texture.src
+          tileId = tile.id
+          break
+        }
+      }
+    }
+
+    if (game.user.isGM && !(srcPath.toLowerCase().match(/intro/)) && srcPath.toLowerCase().match(/beneos_battlemaps/) &&
+      (srcPath.toLowerCase().match(/4k/) || srcPath.toLowerCase().match(/hd/)) &&
+      (srcPath.toLowerCase().includes(fileType)) ) {
+      return tileId
+    } else {
+      return undefined
+    }
+  }
+
+  /********************************************************************************** */
+  static getBattlemapSrcPath(sceneId, tileId) {
+    let scene = game.scenes.get(sceneId)
+    let bg = scene.background.src
+    if (tileId != "scene") {
+      let tile = scene.tiles.get(tileId)
+      bg = tile.texture.src
+    }
+    return bg
+  }
+
+  /********************************************************************************** */
+  static switchPhase(sceneId, command) {
+    let tileId = this.isSwitchableBeneosBattlemap(sceneId, command == "toStatic" ? "webm" : "webp")
+    let scene = game.scenes.get(sceneId)
+
+    if (scene) {
+      let tile
+      if (tileId != "scene") {
+        tile = scene.tiles.get(tileId)
+      }
+
+        //console.log("Scene : ", scene)
+      let srcPath = (tile) ? tile.texture.src : scene.background.src
+      if (command == "toStatic") {
+        srcPath = srcPath.replace("webm", "webp")
+      } else {
+        srcPath = srcPath.replace("webp", "webm")
+      }
+      console.log("New path : ", srcPath)
+      if (tile) {
+        scene.updateEmbeddedDocuments("Tile", [({ _id: tile.id, 'texture.src': srcPath })])
+      } else {
+        scene.update({ 'background.src': srcPath })
+      }
+      //scene.background.src = srcPath
+    }
   }
 
   /********************************************************************************** */
@@ -284,13 +349,13 @@ export class BeneosUtility {
 
   /********************************************************************************** */
   static getBeneosTokenDataPath() {
-    return this.tokenDataPath 
+    return this.tokenDataPath
   }
   static getBeneosSpellDataPath() {
-    return this.spellDataPath 
+    return this.spellDataPath
   }
   static getBeneosItemDataPath() {
-    return this.itemDataPath 
+    return this.itemDataPath
   }
 
   /********************************************************************************** */
@@ -368,7 +433,7 @@ export class BeneosUtility {
   /********************************************************************************** */
   // Checks if the token image is inside the beneos tokens module
   static checkIsBeneosToken(token) {
-    return  (token?.document?.texture?.src.includes(this.tokenDataPath) ?? token?.texture?.src.includes(this.tokenDataPath))
+    return (token?.document?.texture?.src.includes(this.tokenDataPath) ?? token?.texture?.src.includes(this.tokenDataPath))
   }
 
   /********************************************************************************** */
@@ -581,7 +646,7 @@ export class BeneosUtility {
   static isSpellLoaded(key) {
     return this.beneosSpells[key]
   }
-  
+
   /********************************************************************************** */
   static getActorId(tokenKey) {
     let token = this.beneosTokens[tokenKey]
@@ -789,20 +854,20 @@ export class BeneosUtility {
         newImage = tokenData.tokenPath + tokenData.tokenKey + "-dead_top.webp"
       }
     }
-    if ( BeneosUtility.beneosHealth[token.id] == 0 && hp > 0) {
+    if (BeneosUtility.beneosHealth[token.id] == 0 && hp > 0) {
       BeneosUtility.debugMessage("[BENEOS MODULE] Standing")
       token.state = "standing"
       newImage = BeneosUtility.standingImage[token.id]
     }
     BeneosUtility.beneosHealth[token.id] = hp // Store current HP value
     if (newImage) {
-      fetch(newImage).then(function(response) {
+      fetch(newImage).then(function (response) {
         if (response.ok) {
           BeneosUtility.changeAnimation(token, newImage, benRotation, benAlpha, undefined, undefined, false, true)
         } else {
           throw new Error('File does not exist');
         }
-      }).catch(function(error) {
+      }).catch(function (error) {
         console.log('Fetch error : ' + error.message);
       })
     }
@@ -854,17 +919,17 @@ export class BeneosUtility {
     let beneosTokensHUD = []
 
     Object.entries(BeneosUtility.beneosTokens).forEach(([key, value]) => {
-      if ( value?.actorName && value?.actorId) {
+      if (value?.actorName && value?.actorId) {
         beneosTokensHUD.push({
           "token": BeneosUtility.getBasePath() + BeneosUtility.getBeneosTokenDataPath() + "/" + key + '/' + key + "-idle_face_still.webp",
           "name": key.replaceAll("_", " "), 'tokenvideo': BeneosUtility.getBasePath() + BeneosUtility.getBeneosTokenDataPath() + "/" + key + '/' + key + "-idle_face.webm",
           "actorId": value.actorId,
           "actorName": value.actorName
-        }) 
+        })
       } else {
         ui.notifications.warn("Beneos Module: Actor name/id not found for token " + key)
       }
-    }) 
+    })
     this.sortArrayObjectsByName(beneosTokensHUD)
     return beneosTokensHUD
   }
