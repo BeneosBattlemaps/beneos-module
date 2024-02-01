@@ -267,8 +267,8 @@ export class BeneosUtility {
     
     if (!srcPath) {
       for (let tile of scene.tiles) {
-        if (tile.texture.src.toLowerCase().match(/beneos_battlemaps/) &&
-          (tile.texture.src.toLowerCase().match(/4k/) || tile.texture.src.toLowerCase().match(/hd/))) {
+        if (tile.texture?.src?.toLowerCase().match(/beneos_battlemaps/) &&
+          (tile.texture?.src?.toLowerCase().match(/4k/) || tile.texture?.src?.toLowerCase().match(/hd/))) {
           srcPath = tile.texture.src
           tileId = tile.id
           break
