@@ -1,6 +1,7 @@
 /********************************************************************************* */
 import { BeneosCompendiumManager, BeneosCompendiumReset } from "./beneos_compendium.js";
 import { BeneosSearchEngineLauncher, BeneosDatabaseHolder, BeneosModuleMenu } from "./beneos_search_engine.js";
+import { ClassCounter} from "https://www.uberwald.me/fvtt_appcount/count-class-ready.js";
 
 /********************************************************************************* */
 const BENEOS_MODULE_NAME = "Beneos Module"
@@ -255,8 +256,57 @@ export class BeneosUtility {
     Handlebars.registerHelper('beneosGetHover', function (category, term) {
       return BeneosDatabaseHolder.getHover(category, term)
     })
+    Handlebars.registerHelper('beneosChoose', function (text1, text2) {
+      if (text1 && text1 != "") {
+        return text1
+      }
+      return text2
+    })
 
+    let stats = this.countBeneosAssetsUsage()
+    ClassCounter.registerUsageCount('beneos-module', { beneosStats: stats } )
+  }
 
+  /********************************************************************************** */
+  static countBeneosAssetsUsage() {
+    let statsBeneos = { maps: {}, tokens: {}, items: {}, spells: {} }
+    for (let scene of game.scenes) {
+      if (scene.background?.src?.includes('beneos-battlemaps-universe')) {
+        statsBeneos.maps[scene.background.src] = (statsBeneos.maps[scene.background.src]) ? statsBeneos.maps[scene.background.src] + 1 : 1
+      }
+    }
+    for (let item of game.items) {
+      if (item.img.includes('beneos_assets')) {
+        let itemData = this.getItemSpellImageInfo(item.img)
+        if (item.type == 'spell') {
+          statsBeneos.spells[itemData.itemKey] = (statsBeneos.spells[itemData.itemKey]) ? statsBeneos.spells[itemData.itemKey] + 1 : 1
+        } else {
+          statsBeneos.items[itemData.itemKey] = (statsBeneos.items[itemData.itemKey]) ? statsBeneos.items[itemData.itemKey] + 1 : 1
+        }
+      }
+    }
+    for (let actor of game.actors) {
+      if (actor.prototypeToken?.texture?.src.includes('beneos_assets')) {
+        let tokenData = this.getTokenImageInfo(actor.prototypeToken.texture.src)
+        statsBeneos.tokens[tokenData.tokenKey] = (statsBeneos.tokens[tokenData.tokenKey]) ? statsBeneos.tokens[tokenData.tokenKey] + 1 : 1
+      }
+    }
+    return statsBeneos
+  }
+
+  /********************************************************************************** */
+  static getItemSpellImageInfo(newImage) {
+    // beneos_assets/beneos_spells/0027_gunpowder_cloud/0027_gunpowder_cloud-icon.webp
+    let dataPath = {
+      itemKey: newImage
+    }
+    let apath = newImage.split("/")
+    let itemKey = apath[apath.length - 2]
+    let filename = apath[apath.length - 1]
+    if (itemKey) {
+      dataPath = { img: newImage, filename, itemKey }
+    }
+    return dataPath
   }
 
   /********************************************************************************** */
