@@ -88,9 +88,9 @@ Hooks.once('ready', () => {
   BeneosUtility.updateSceneTokens()
 
   /********************************************************************************** */
-  Hooks.on('preUpdateToken', (token, changeData) => {
-    console.log("CHANGEDATA", token)
-    if (!game.user.isGM || !BeneosUtility.isBeneosModule() || !canvas.ready || token.texture.src != undefined) {
+  Hooks.on('preUpdateToken', (token, changeData, options) => {
+    console.log("CHANGEDATA", changeData)
+    if (!game.user.isGM || !BeneosUtility.isBeneosModule() || !canvas.ready || token.texture?.src == undefined) {
       return
     }
 
@@ -100,8 +100,8 @@ Hooks.once('ready', () => {
     }
 
     if (BeneosUtility.checkIsBeneosToken(token)) {
+      let tokenData = BeneosUtility.getTokenImageInfo(token.texture.src)
       if (changeData.scale != undefined) {
-        let tokenData = BeneosUtility.getTokenImageInfo(token.texture.src)
         for (let [key, value] of Object.entries(BeneosUtility.beneosTokens[tokenData.tokenKey][tokenData.variant])) {
           if (value["a"] == tokenData.currentStatus) {
             let scaleFactor = (changeData.scale / value["s"])
@@ -111,8 +111,28 @@ Hooks.once('ready', () => {
           }
         }
       }
+      if (!tokenData?.filename.includes("_face") && (changeData.hasOwnProperty('x') || changeData.hasOwnProperty('y'))) {
+        if (options.hasOwnProperty('rotated')) return true;
+        BeneosUtility.tokenRotateThenMove(token, changeData);
+        return false;
+      }
     }
   })
+
+  /********************************************************************************** */
+  Hooks.on('refreshToken', (token) => {
+    if (BeneosUtility.checkIsBeneosToken(token)) {
+      console.log(">>>>>>>>>>>>> REFRESH TOKEN", token)
+      let tokenData = BeneosUtility.getTokenImageInfo(token.document?.texture?.src)
+      if (!tokenData?.filename.includes("_face") && token.layer.preview?.children[0]) {
+        let clone = token.layer.preview?.children.find(c => c.id == token.id)
+        if (!clone) return;
+        let r = new Ray(canvas.scene.tokens.get(token.id), clone)
+        clone.mesh.angle = r.angle * 180 / Math.PI - 90;
+        token.cursor = 'grabbing';
+      }
+    }
+  });
 
   /********************************************************************************** */
   Hooks.on('updateActor', (actor, changeData) => {

@@ -184,6 +184,26 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
+  static async tokenRotateThenMove(tokenDocument, update){
+    
+    if (!update.x) update.x = tokenDocument.x;
+    if (!update.y) update.y = tokenDocument.y;
+    let r = new Ray(tokenDocument, update);
+    let rotation = r.angle*180/Math.PI-90;
+    if (rotation < 0) rotation += 360;
+    let difference = Math.max(tokenDocument.rotation, rotation) - Math.min(tokenDocument.rotation, rotation)
+    if (difference > 180) difference -= 360;
+    if (difference < -180) difference += 360;
+    let duration = Math.round(Math.abs(difference)*Math.sqrt(tokenDocument.width) * 1.0);
+    if (!tokenDocument.lockRotation) {
+      await tokenDocument.update({rotation}, {animate:true, animation:{duration}});
+      await new Promise((r) => setTimeout(r, duration));
+    }
+    duration = r.distance * 2;
+    await tokenDocument.update(update, {rotated: true, animate:true, animation:{duration: duration }})
+  }
+
+  /********************************************************************************** */
   static reloadInternalSettings() {
     try {
       this.beneosTokens = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-tokenconfig'))
