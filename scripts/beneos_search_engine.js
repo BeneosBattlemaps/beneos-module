@@ -202,7 +202,7 @@ export class BeneosDatabaseHolder {
     this.gridList = [{ key: "any", value: "Any" }, { key: "<150", value: "Tiny" }, { key: "<500", value: "Small" }, { key: "<1000", value: "Medium" },
     { key: "<2000", value: "Big" }, { key: ">2000", value: "Very Big" }]
     this.adventureList = {}
-    this.itemRarity = {}
+    this.itemRarity = [ { key: "any", value: "Any" }, {key: "common", value: "    Common"}, {key: "uncommon", value: "   Uncommon"}, {key: "rare", value: "  Rare"}, {key: "very rare", value: " Very Rare"}, {key: "legendary", value: "Legendary"}]
     this.itemOrigin = {}
     this.itemType = {}
     this.itemTier = {}
@@ -732,9 +732,9 @@ const __propertyDefList = {
   "purpose": { name: "purpose", sort: true, selectors: ["token-purpose"] },
   "origin": { name: "origin", sort: true, selectors: ["origin-selector"] },
   "item_type": { name: "item_type", sort: true, selectors: ["item-type"] },
-  "rarity": { name: "rarity", sort: true, selectors: ["rarity-selector"] },
+  "rarity": { name: "rarity", sort: false, selectors: ["rarity-selector"] },
   "tier": { name: "tier", sort: true, selectors: ["tier-selector"] },
-  "price": { name: "price", sort: true, selectors: ["price-selector"] },
+  "price": { name: "price", sort: false, selectors: ["price-selector"] },
   "level": { name: "level", sort: true, selectors: ["level-selector"] },
   "school": { name: "school", sort: true, selectors: ["school-selector"] },
   "classes": { name: "classes", sort: true, selectors: ["class-selector"] },
@@ -804,7 +804,9 @@ export class BeneosSearchEngine extends Dialog {
       for (let key in toSearch) {
         let item = toSearch[key]
         if (item.properties && item.properties[propDef.name]) {
-          if (propDef.name.toLowerCase() == "price") {
+          if (propDef.name.toLowerCase() == "rarity") {
+            properties = duplicate(BeneosDatabaseHolder.itemRarity)
+          } else if (propDef.name.toLowerCase() == "price") {
             properties = duplicate(BeneosDatabaseHolder.itemPrice)
           } else if (propDef.name.toLowerCase() == "grid") {
             properties = duplicate(BeneosDatabaseHolder.gridList)
