@@ -86,10 +86,6 @@
     display: none;
 }
 
-.li-no-style {
-  list-style-type: none;
-}
-
 /* Tooltip container */
 .beneos-tooltip {
   position: relative;
@@ -430,19 +426,6 @@
   flex-grow: 1;
   max-height: 18px;
 } 
-.flexpacked {
-  flex-grow: 0;
-}
-.beneos-search-grid-button, 
-.beneos-search-brightness-button, 
-.beneos-search-casting-button,
-.beneos-release-url-button,
-.beneos-search-tier-button,
-.beneos-search-price-button,
-.beneos-search-spell-type-button,
-.beneos-search-action-button,
-.beneos-search-cr-button{  
-} 
 
 .beneos-search-yt-icons {
   max-height: 18px;
@@ -667,12 +650,12 @@
   grid-column: span 3 / span 3;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-.item-container {
+.beneos-item-container {
   background-color: #eaeaea;
   max-height: 128px;
   margin-bottom: 6px;
 }
-.item-container:hover {
+.beneos-item-container:hover {
   background-color: #d5c8c3;
 }
 .item-middle-line {
