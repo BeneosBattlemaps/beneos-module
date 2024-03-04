@@ -1,3 +1,18 @@
+* {
+  scrollbar-color: initial;
+}
+
+::-webkit-scrollbar-thumb {
+  border-color: #ff6400;
+}
+
+@-moz-document url-prefix() {
+  * {
+      scrollbar-color: #782e22 transparent;
+      scrollbar-width: thin;
+  }
+}
+
 #token-hud .beneos-selector-wrap, 
 #token-hud .beneos-selector-idle-wrap {
     position: absolute;
