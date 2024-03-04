@@ -122,7 +122,7 @@ Hooks.once('ready', () => {
   /********************************************************************************** */
   Hooks.on('refreshToken', (token) => {
     if (BeneosUtility.checkIsBeneosToken(token)) {
-      console.log(">>>>>>>>>>>>> REFRESH TOKEN", token)
+      // console.log(">>>>>>>>>>>>> REFRESH TOKEN", token)
       let tokenData = BeneosUtility.getTokenImageInfo(token.document?.texture?.src)
       if (!tokenData?.filename.includes("_face") && token.layer.preview?.children[0]) {
         let clone = token.layer.preview?.children.find(c => c.id == token.id)
@@ -262,9 +262,13 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
       if (beneosPack) {
         let beneosJournalEntry = null
         let beneosCompendiumEntry = beneosPack.index.getName(tokenConfig.config.compendium)
+        if (!beneosCompendiumEntry) {
+          let compId = tokenConfig.config.compendium.replace(/\d+ /g, "")
+          beneosCompendiumEntry = beneosPack.index.getName(compId)
+        }
         if (beneosCompendiumEntry?._id) {
           beneosJournalEntry = beneosPack.getDocument(beneosCompendiumEntry._id)
-        }
+        } 
         if (beneosJournalEntry) {
           const beneosJournalDisplay = await renderTemplate('modules/beneos-module/templates/beneosjournal.html',
             { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getBeneosTokenDataPath() })
