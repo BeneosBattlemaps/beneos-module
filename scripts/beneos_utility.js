@@ -308,7 +308,9 @@ export class BeneosUtility {
     for (let actor of game.actors) {
       if (actor.prototypeToken?.texture?.src.includes('beneos_assets')) {
         let tokenData = this.getTokenImageInfo(actor.prototypeToken.texture.src)
-        statsBeneos.tokens[tokenData.tokenKey] = (statsBeneos.tokens[tokenData.tokenKey]) ? statsBeneos.tokens[tokenData.tokenKey] + 1 : 1
+        if (tokenData?.tokenKey) {
+          statsBeneos.tokens[tokenData.tokenKey] = (statsBeneos.tokens[tokenData.tokenKey]) ? statsBeneos.tokens[tokenData.tokenKey] + 1 : 1
+        }
       }
     }
     return statsBeneos
