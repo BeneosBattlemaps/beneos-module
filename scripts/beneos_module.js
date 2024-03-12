@@ -113,7 +113,7 @@ Hooks.once('ready', () => {
       }
       if (!tokenData?.filename.includes("_face") && (changeData.hasOwnProperty('x') || changeData.hasOwnProperty('y'))) {
         if (options.hasOwnProperty('rotated')) return true;
-        BeneosUtility.tokenRotateThenMove(token, changeData);
+        BeneosUtility.tokenRotateThenMove(token, changeData, options);
         return false;
       }
     }

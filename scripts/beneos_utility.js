@@ -184,7 +184,7 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
-  static async tokenRotateThenMove(tokenDocument, update){
+  static async tokenRotateThenMove(tokenDocument, update, info){
     
     if (!update.x) update.x = tokenDocument.x;
     if (!update.y) update.y = tokenDocument.y;
@@ -196,11 +196,11 @@ export class BeneosUtility {
     if (difference < -180) difference += 360;
     let duration = Math.round(Math.abs(difference)*Math.sqrt(tokenDocument.width) * 1.0);
     if (!tokenDocument.lockRotation) {
-      await tokenDocument.update({rotation}, {animate:true, animation:{duration}});
+      await tokenDocument.update({rotation}, {...info, animate:true, animation:{duration}});
       await new Promise((r) => setTimeout(r, duration));
     }
     duration = r.distance * 2;
-    await tokenDocument.update(update, {rotated: true, animate:true, animation:{duration: duration }})
+    await tokenDocument.update(update, {...info, rotated: true, animate:true, animation:{duration: duration }})
   }
 
   /********************************************************************************** */
