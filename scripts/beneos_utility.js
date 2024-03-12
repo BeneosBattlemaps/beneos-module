@@ -184,7 +184,7 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
-  static async tokenRotateThenMove(tokenDocument, update){
+  static async tokenRotateThenMove(tokenDocument, update, options){
     
     if (!update.x) update.x = tokenDocument.x;
     if (!update.y) update.y = tokenDocument.y;
@@ -196,11 +196,13 @@ export class BeneosUtility {
     if (difference < -180) difference += 360;
     let duration = Math.round(Math.abs(difference)*Math.sqrt(tokenDocument.width) * 1.0);
     if (!tokenDocument.lockRotation) {
-      await tokenDocument.update({rotation}, {animate:true, animation:{duration}});
+      await tokenDocument.update({rotation}, {...options, animate:true, animation:{duration}});
       await new Promise((r) => setTimeout(r, duration));
     }
     duration = r.distance * 2;
-    await tokenDocument.update(update, {rotated: true, animate:true, animation:{duration: duration }})
+	console.log(tokenDocument.name);
+	console.log(update);
+    await tokenDocument.update(update, {...options, rotated: true, animate:true, animation:{duration: duration }})
   }
 
   /********************************************************************************** */
@@ -308,9 +310,7 @@ export class BeneosUtility {
     for (let actor of game.actors) {
       if (actor.prototypeToken?.texture?.src.includes('beneos_assets')) {
         let tokenData = this.getTokenImageInfo(actor.prototypeToken.texture.src)
-        if (tokenData?.tokenKey) {
-          statsBeneos.tokens[tokenData.tokenKey] = (statsBeneos.tokens[tokenData.tokenKey]) ? statsBeneos.tokens[tokenData.tokenKey] + 1 : 1
-        }
+        statsBeneos.tokens[tokenData.tokenKey] = (statsBeneos.tokens[tokenData.tokenKey]) ? statsBeneos.tokens[tokenData.tokenKey] + 1 : 1
       }
     }
     return statsBeneos
