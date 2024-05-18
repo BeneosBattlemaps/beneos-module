@@ -43,7 +43,7 @@ Hooks.once('ready', () => {
   }
 
   //Replacement of the token movement across the maps
-  libWrapper.register(BeneosUtility.moduleID(), 'CanvasAnimation.animateLinear', (function () {
+  /*libWrapper.register(BeneosUtility.moduleID(), 'CanvasAnimation.animateLinear', (function () {
 
     return async function (wrapped, ...args) {
       console.log(">>>>> ANIMATE !!!!", args)
@@ -64,7 +64,7 @@ Hooks.once('ready', () => {
 
       return wrapped.apply(this, args);
     }
-  })());
+  })());*/
 
   BeneosUtility.init()
 

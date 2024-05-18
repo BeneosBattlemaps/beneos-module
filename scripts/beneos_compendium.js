@@ -116,7 +116,7 @@ export class BeneosCompendiumManager {
             let recordsToken = await tokenJSON.json()
             if (recordsToken) {
               recordsToken.JSONFilePath = JSONFilePath // Auto-reference
-              BeneosUtility.beneosTokens[key] = duplicate(recordsToken[key])
+              BeneosUtility.beneosTokens[key] = foundry.utils.duplicate(recordsToken[key])
             } else {
               ui.notifications.warn("Warning ! Wrong token config for token " + key)
             }
@@ -185,8 +185,8 @@ export class BeneosCompendiumManager {
         }
         if (key && BeneosUtility.beneosTokens[key]) {
           //console.log("Final IDLE list : ", idleList)
-          BeneosUtility.beneosTokens[key].idleList = duplicate(idleList)
-          BeneosUtility.beneosTokens[key].imgVideoList = duplicate(imgVideoList)
+          BeneosUtility.beneosTokens[key].idleList = foundry.utils.duplicate(idleList)
+          BeneosUtility.beneosTokens[key].imgVideoList = foundry.utils.duplicate(imgVideoList)
           BeneosUtility.beneosTokens[key].actorId = currentId
           BeneosUtility.beneosTokens[key].actorName = currentName
         }
@@ -207,7 +207,7 @@ export class BeneosCompendiumManager {
     let diffData = [] // Detect new import data
     for(let key in newData) {
       if (!previousData[key]) {
-        diffData.push(duplicate(newData[key]))
+        diffData.push(foundry.utils.duplicate(newData[key]))
       }
     }
     let content = itemName + " : No new content detected."
@@ -272,7 +272,7 @@ export class BeneosCompendiumManager {
             let recordsToken = await tokenJSON.json()
             if (recordsToken) {
               recordsToken.JSONFilePath = JSONFilePath // Auto-reference
-              BeneosUtility.beneosTokens[key] = duplicate(recordsToken[key])
+              BeneosUtility.beneosTokens[key] = foundry.utils.duplicate(recordsToken[key])
             } else {
               ui.notifications.warn("Warning ! Wrong token config for token " + key)
             }
@@ -320,7 +320,7 @@ export class BeneosCompendiumManager {
             }
             let actor = await Actor.create(records, { temporary: true })
             let imported = await actorPack.importDocument(actor)
-            console.log("ACTOR IMPO", imported)
+            //console.log("ACTOR IMPO", imported)
             currentId = imported.id
             currentName = actor.name
           }
@@ -338,8 +338,8 @@ export class BeneosCompendiumManager {
         }
         if (key && BeneosUtility.beneosTokens[key]) {
           //console.log("Final IDLE list : ", idleList)
-          BeneosUtility.beneosTokens[key].idleList = duplicate(idleList)
-          BeneosUtility.beneosTokens[key].imgVideoList = duplicate(imgVideoList)
+          BeneosUtility.beneosTokens[key].idleList = foundry.utils.duplicate(idleList)
+          BeneosUtility.beneosTokens[key].imgVideoList = foundry.utils.duplicate(imgVideoList)
           BeneosUtility.beneosTokens[key].actorId = currentId
           BeneosUtility.beneosTokens[key].id = currentId
           BeneosUtility.beneosTokens[key].actorName = currentName

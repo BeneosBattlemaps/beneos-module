@@ -234,7 +234,7 @@ export class BeneosUtility {
   static init() {
     this.file_cache = {}
 
-    this.userSizes = duplicate(game.settings.get(BeneosUtility.moduleID(), 'beneos-user-config'))
+    this.userSizes = foundry.utils.duplicate(game.settings.get(BeneosUtility.moduleID(), 'beneos-user-config'))
     this.beneosModule = true // Deprecated game.settings.get(BeneosUtility.moduleID(), 'beneos-animations')
     this.tokenDataPath = game.settings.get(BeneosUtility.moduleID(), 'beneos-datapath')
     this.itemDataPath = game.settings.get(BeneosUtility.moduleID(), 'beneos-datapath')
@@ -773,8 +773,8 @@ export class BeneosUtility {
     let scaleFactor = object.getFlag(BeneosUtility.moduleID(), "scalefactor") || 0
 
     let tokenData = this.getTokenImageInfo(newImage)
+    console.log("Got token config !!!", tokenData, newImage)
     let myToken = this.beneosTokens[tokenData.tokenKey]
-    //console.log("Got token config !!!", tokenData, myToken, this.beneosTokens, tokenData.tokenKey)
     let newScaleFactor = myToken.config.scalefactor
     let sData
     if (newImage?.includes("_top")) {
@@ -1082,7 +1082,7 @@ export class BeneosUtility {
         }
         if (!tokenConfig[variantName]) {
           if (variantName != "idle" && variantName.includes("idle")) { // Dynamic stuff for idle_X
-            tokenConfig[variantName] = duplicate(tokenConfig["idle"])
+            tokenConfig[variantName] = foundry.utils.duplicate(tokenConfig["idle"])
           } else {
             ui.notifications.warn("Unable to find token/variant data for " + variantName)
             return
@@ -1098,7 +1098,7 @@ export class BeneosUtility {
           }
         }
         if (!currentData) {
-          tokenConfig[variantName][status] = duplicate(tokenConfig.top.idle)
+          tokenConfig[variantName][status] = foundry.utils.duplicate(tokenConfig.top.idle)
           currentData = tokenConfig[variantName][status]
           currentData.a = status
         }
@@ -1141,8 +1141,8 @@ export class BeneosUtility {
     if (tokenConfig) {
       let jsonData = {}
       jsonData[tokenKey] = {
-        config: duplicate(tokenConfig.config),
-        top: duplicate(tokenConfig.top)
+        config: foundry.utils.duplicate(tokenConfig.config),
+        top: foundry.utils.duplicate(tokenConfig.top)
       }
       let json = JSON.stringify(jsonData)
       saveDataToFile(json, "text/json", tokenConfig.JSONFilePath)

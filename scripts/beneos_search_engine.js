@@ -99,31 +99,31 @@ export class BeneosDatabaseHolder {
   /********************************************************************************** */
   static async loadDatabaseFiles() {
     try {
-      let tokenData = await fetchJsonWithTimeout(tokenDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
+      let tokenData = await foundry.utils.fetchJsonWithTimeout(tokenDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
       this.tokenData = tokenData
     } catch (err) {
       ui.notifications.error("Unable to load Beneos Token Database - File error " + err.message + " " + tokenDBURL)
     }
     try {
-      let bmapData = await fetchJsonWithTimeout(battlemapDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
+      let bmapData = await foundry.utils.fetchJsonWithTimeout(battlemapDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
       this.bmapData = bmapData
     } catch {
       ui.notifications.error("Unable to load Beneos Battlemap Database - File error")
     }
     try {
-      let itemData = await fetchJsonWithTimeout(itemDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
+      let itemData = await foundry.utils.fetchJsonWithTimeout(itemDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
       this.itemData = itemData
     } catch {
       ui.notifications.error("Unable to load Beneos Item Database - File error")
     }
     try {
-      let spellData = await fetchJsonWithTimeout(spellDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
+      let spellData = await foundry.utils.fetchJsonWithTimeout(spellDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
       this.spellData = spellData
     } catch {
       ui.notifications.error("Unable to load Beneos Spell Database - File error")
     }
     try {
-      let commonData = await fetchJsonWithTimeout(commonDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
+      let commonData = await foundry.utils.fetchJsonWithTimeout(commonDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
       this.commonData = commonData
     } catch {
       ui.notifications.error("Unable to load Beneos Common Database - File error")
@@ -221,12 +221,12 @@ export class BeneosDatabaseHolder {
         tokenData.kind = "token"
         tokenData.key = key
         tokenData.picture = "https://www.beneos-database.com/data/tokens/thumbnails/" + key + "-idle_face_still.webp"
-        mergeObject(this.tokenBioms, this.buildList(tokenData.properties.biom))
-        mergeObject(this.tokenTypes, this.buildList(tokenData.properties.type))
-        mergeObject(this.fightingStyles, this.buildList(tokenData.properties.fightingstyle))
-        //mergeObject(this.crList, this.buildList(tokenData.properties.cr))
-        mergeObject(this.movementList, this.buildList(tokenData.properties.movement))
-        mergeObject(this.purposeList, this.buildList(tokenData.properties.purpose))
+        foundry.utils.mergeObject(this.tokenBioms, this.buildList(tokenData.properties.biom))
+        foundry.utils.mergeObject(this.tokenTypes, this.buildList(tokenData.properties.type))
+        foundry.utils.mergeObject(this.fightingStyles, this.buildList(tokenData.properties.fightingstyle))
+        //foundry.utils.mergeObject(this.crList, this.buildList(tokenData.properties.cr))
+        foundry.utils.mergeObject(this.movementList, this.buildList(tokenData.properties.movement))
+        foundry.utils.mergeObject(this.purposeList, this.buildList(tokenData.properties.purpose))
         tokenData.isInstalled = BeneosUtility.isTokenLoaded(key)
         tokenData.installed = (tokenData.isInstalled) ? "installed" : "notinstalled"
         tokenData.actorId = BeneosUtility.getActorId(key)
@@ -239,10 +239,10 @@ export class BeneosDatabaseHolder {
         bmapData.kind = "battlemap"
         bmapData.key = key
         bmapData.picture = "https://www.beneos-database.com/data/battlemaps/thumbnails/" + bmapData.properties.thumbnail
-        mergeObject(this.bmapBrightness, this.buildList(bmapData.properties.brightness))
-        mergeObject(this.bmapBioms, this.buildList(bmapData.properties.biom))
-        mergeObject(this.adventureList, this.buildList(bmapData.properties.adventure))
-        // Deprecated mergeObject(this.gridList, this.buildList(bmapData.properties.grid))
+        foundry.utils.mergeObject(this.bmapBrightness, this.buildList(bmapData.properties.brightness))
+        foundry.utils.mergeObject(this.bmapBioms, this.buildList(bmapData.properties.biom))
+        foundry.utils.mergeObject(this.adventureList, this.buildList(bmapData.properties.adventure))
+        // Deprecated foundry.utils.mergeObject(this.gridList, this.buildList(bmapData.properties.grid))
         bmapData.isInstalled = true
       }
     }
@@ -263,11 +263,11 @@ export class BeneosDatabaseHolder {
         itemData.key = key
         itemData.path_name = itemData.name.replace(/ /g, "_").toLowerCase()
         itemData.picture = "https://www.beneos-database.com/data/items/thumbnails/" + itemData.properties.icon
-        mergeObject(this.itemRarity, this.buildList(itemData.properties.rarity))
-        mergeObject(this.itemOrigin, this.buildList(itemData.properties.origin))
-        mergeObject(this.itemType, this.buildList(itemData.properties.item_type))
-        mergeObject(this.itemTier, this.buildList(itemData.properties.tier))
-        // Deprecated mergeObject(this.itemPrice, this.buildList(itemData.properties.price))
+        foundry.utils.mergeObject(this.itemRarity, this.buildList(itemData.properties.rarity))
+        foundry.utils.mergeObject(this.itemOrigin, this.buildList(itemData.properties.origin))
+        foundry.utils.mergeObject(this.itemType, this.buildList(itemData.properties.item_type))
+        foundry.utils.mergeObject(this.itemTier, this.buildList(itemData.properties.tier))
+        // Deprecated foundry.utils.mergeObject(this.itemPrice, this.buildList(itemData.properties.price))
         itemData.isInstalled = BeneosUtility.isItemLoaded(key)
         itemData.installed = (itemData.isInstalled) ? "installed" : "notinstalled"
         if (itemData.isInstalled) {
@@ -285,11 +285,11 @@ export class BeneosDatabaseHolder {
         spellData.key = key
         spellData.path_name = spellData.name.replace(/ /g, "_").toLowerCase()
         spellData.picture = "https://www.beneos-database.com/data/spells/thumbnails/" + spellData.properties.icon
-        mergeObject(this.spellLevel, this.buildList(spellData.properties.level))
-        mergeObject(this.spellSchool, this.buildList(spellData.properties.school))
-        mergeObject(this.spellCastingTime, this.buildList(spellData.properties.casting_time))
-        mergeObject(this.spellType, this.buildList(String(spellData.properties.spell_type)))
-        mergeObject(this.spellClasses, this.buildList(spellData.properties.classes))
+        foundry.utils.mergeObject(this.spellLevel, this.buildList(spellData.properties.level))
+        foundry.utils.mergeObject(this.spellSchool, this.buildList(spellData.properties.school))
+        foundry.utils.mergeObject(this.spellCastingTime, this.buildList(spellData.properties.casting_time))
+        foundry.utils.mergeObject(this.spellType, this.buildList(String(spellData.properties.spell_type)))
+        foundry.utils.mergeObject(this.spellClasses, this.buildList(spellData.properties.classes))
         spellData.isInstalled = BeneosUtility.isSpellLoaded(key)
         spellData.installed = (spellData.isInstalled) ? "installed" : "notinstalled"
         if (spellData.isInstalled) {
@@ -328,7 +328,7 @@ export class BeneosDatabaseHolder {
 
   /********************************************************************************** */
   static getTagDescriptions() {
-    return duplicate(this.tokenData.tag_description)
+    return foundry.utils.duplicate(this.tokenData.tag_description)
   }
 
   /********************************************************************************** */
@@ -349,7 +349,7 @@ export class BeneosDatabaseHolder {
     text = text.toLowerCase()
 
     for (let key in objectList) {
-      let item = duplicate(objectList[key])
+      let item = foundry.utils.duplicate(objectList[key])
       item.kind = (kind == "token") ? "token" : item.properties.type
       if (item.kind == "token") {
         item.picture = "https://www.beneos-database.com/data/tokens/thumbnails/" + item.key + "-idle_face_still.webp"
@@ -413,7 +413,7 @@ export class BeneosDatabaseHolder {
       }
       if (item[propertyName]) {
         if (item[propertyName].toLowerCase() == value) {
-          newResults[key] = duplicate(item)
+          newResults[key] = foundry.utils.duplicate(item)
         }
       }
       if (propertyName == "grid") {
@@ -424,42 +424,42 @@ export class BeneosDatabaseHolder {
         if (sizeParse && sizeParse[1] && sizeParse[2]) {
           let size = parseInt(sizeParse[1]) * parseInt(sizeParse[2])
           if ((comp == "<" && Number(size) <= Number(grid)) || (comp == ">" && Number(size) >= Number(grid))) {
-            newResults[key] = duplicate(item)
+            newResults[key] = foundry.utils.duplicate(item)
           }
         }
       } else if (propertyName == "cr") {
         let comp = value.match(/(\d+),(\d+)/)
         if (comp && comp[1] && comp[2]) {
           if (item.properties.cr >= Number(comp[1]) && (item.properties.cr <= Number(comp[2]))) {
-            newResults[key] = duplicate(item)
+            newResults[key] = foundry.utils.duplicate(item)
           }
         } else if (item.properties.cr == Number(value)) {
-          newResults[key] = duplicate(item)
+          newResults[key] = foundry.utils.duplicate(item)
         }
 
       } else if (propertyName == "price") {
         let comp = value.substring(0, 1)
         let price = parseInt(value.substring(1))
         if ((comp == "<" && item.properties.price <= price) || (comp == ">" && item.properties.price > price)) {
-          newResults[key] = duplicate(item)
+          newResults[key] = foundry.utils.duplicate(item)
         }
       } else if (item.properties && item.properties[propertyName]) {
         //console.log(item.properties[propertyName], typeof (item.properties[propertyName]))
         if (typeof (item.properties[propertyName]) == "string" || typeof (item.properties[propertyName]) == "number") {
           if (strict) {
             if (item.properties[propertyName].toString().toLowerCase() == value.toString()) {
-              newResults[key] = duplicate(item)
+              newResults[key] = foundry.utils.duplicate(item)
             }
           } else {
             if (item.properties[propertyName].toString().toLowerCase().includes(value)) {
-              newResults[key] = duplicate(item)
+              newResults[key] = foundry.utils.duplicate(item)
             }
           }
         } else {
           if (Array.isArray(item.properties[propertyName])) {
             for (let valueArray of item.properties[propertyName]) {
               if ((typeof (valueArray) == "string") && valueArray.toString().toLowerCase().includes(value)) {
-                newResults[key] = duplicate(item)
+                newResults[key] = foundry.utils.duplicate(item)
               }
             }
           }
@@ -473,15 +473,15 @@ export class BeneosDatabaseHolder {
   /********************************************************************************** */
   static getAll(type) {
     if (type == "token") {
-      return duplicate(this.tokenData.content)
+      return foundry.utils.duplicate(this.tokenData.content)
     }
     if (type == "item") {
-      return duplicate(this.itemData.content)
+      return foundry.utils.duplicate(this.itemData.content)
     }
     if (type == "spell") {
-      return duplicate(this.spellData.content)
+      return foundry.utils.duplicate(this.spellData.content)
     }
-    return duplicate(this.bmapData.content)
+    return foundry.utils.duplicate(this.bmapData.content)
   }
 
   /********************************************************************************** */
@@ -542,16 +542,16 @@ export class BeneosDatabaseHolder {
       fightingStyles: this.toTable(this.fightingStyles),
       bmapBrightness: this.toTable(this.bmapBrightness),
       movementList: this.toTable(this.movementList),
-      crList: duplicate(this.crList),
+      crList: foundry.utils.duplicate(this.crList),
       purposeList: this.toTable(this.purposeList),
       adventureList: this.toTable(this.adventureList),
-      gridList: BeneosDatabaseHolder.sortProperties(duplicate(this.gridList)),
+      gridList: BeneosDatabaseHolder.sortProperties(foundry.utils.duplicate(this.gridList)),
 
       rarity: this.toTable(this.itemRarity),
       origin: this.toTable(this.itemOrigin),
       itemType: this.toTable(this.itemType),
       tier: this.toTable(this.itemTier),
-      price: BeneosDatabaseHolder.sortProperties(duplicate(this.itemPrice)),
+      price: BeneosDatabaseHolder.sortProperties(foundry.utils.duplicate(this.itemPrice)),
 
       level: this.toTable(this.spellLevel),
       school: this.toTable(this.spellSchool),
@@ -805,13 +805,13 @@ export class BeneosSearchEngine extends Dialog {
         let item = toSearch[key]
         if (item.properties && item.properties[propDef.name]) {
           if (propDef.name.toLowerCase() == "rarity") {
-            properties = duplicate(BeneosDatabaseHolder.itemRarity)
+            properties = foundry.utils.duplicate(BeneosDatabaseHolder.itemRarity)
           } else if (propDef.name.toLowerCase() == "price") {
-            properties = duplicate(BeneosDatabaseHolder.itemPrice)
+            properties = foundry.utils.duplicate(BeneosDatabaseHolder.itemPrice)
           } else if (propDef.name.toLowerCase() == "grid") {
-            properties = duplicate(BeneosDatabaseHolder.gridList)
+            properties = foundry.utils.duplicate(BeneosDatabaseHolder.gridList)
           } else if (propDef.name.toLowerCase() == "cr") {
-            properties = duplicate(BeneosDatabaseHolder.crList)
+            properties = foundry.utils.duplicate(BeneosDatabaseHolder.crList)
           } else if (typeof (item.properties[propDef.name]) == "string") {
             if (properties.find((prop) => prop.key == item.properties[propDef.name].toLowerCase()) == undefined) {
               properties.push({ key: item.properties[propDef.name].toLowerCase(), value: item.properties[propDef.name] })
