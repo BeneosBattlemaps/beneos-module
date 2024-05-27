@@ -68,7 +68,7 @@ export class BeneosUtility {
     if (typeof ForgeVTT != "undefined" && ForgeVTT.usingTheForge) {
       this.debugMessage("[BENEOS MODULE] This process should only be run in Forge.")
       let ForgeVTTuserid = ForgeAPI.getUserId()
-      ForgeVTTuserid.then(function (result) {
+      ForgeVTTuserid.then(result => {
         this.beneosBasePath = ForgeVTT.ASSETS_LIBRARY_URL_PREFIX + result + "/"
       })
     }
