@@ -101,12 +101,14 @@ Hooks.once('ready', () => {
 
     if (BeneosUtility.checkIsBeneosToken(token)) {
       let tokenData = BeneosUtility.getTokenImageInfo(token.texture.src)
-      if (changeData.scale != undefined) {
+      console.log("get scale",changeData.texture)
+      if (changeData?.texture?.scaleX != undefined) {
         for (let [key, value] of Object.entries(BeneosUtility.beneosTokens[tokenData.tokenKey][tokenData.variant])) {
           if (value["a"] == tokenData.currentStatus) {
-            let scaleFactor = (changeData.scale / value["s"])
+            let scaleFactor = (changeData.texture.scaleX / value["s"])
             BeneosUtility.debugMessage("[BENEOS TOKENS] Beneos PreUpdate Token scale....")
-            token.document.setFlag(BeneosUtility.moduleID(), "scalefactor", scaleFactor)
+            //token.document.setFlag(BeneosUtility.moduleID(), "scalefactor", scaleFactor)
+            token.setFlag(BeneosUtility.moduleID(), "scalefactor", scaleFactor)
             break
           }
         }
@@ -163,9 +165,16 @@ Hooks.once('ready', () => {
     }
     BeneosUtility.debugMessage("[BENEOS TOKENS] Beneos UpdateToken", changeData)
 
-    if (changeData.actorData?.system?.attributes != undefined && changeData.actorData.system.attributes?.hp != undefined) {
-      BeneosUtility.updateToken(token.id, changeData)
-      return
+    if (foundry.utils.isNewerVersion(game.version, "11")) {
+      if (changeData.delta?.system?.attributes != undefined && changeData.delta.system.attributes?.hp != undefined) {
+        BeneosUtility.updateToken(token.id, changeData)
+        return
+      }
+     } else {
+      if (changeData.actorData?.system?.attributes != undefined && changeData.actorData.system.attributes?.hp != undefined) {
+        BeneosUtility.updateToken(token.id, changeData)
+        return
+      }
     }
 
     BeneosUtility.debugMessage("[BENEOS TOKENS] Nothing to do")
@@ -316,7 +325,7 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
           html.find('.beneos-variants-wrap')[0].classList.add('beneos-disabled');
           if (beneosClickedButton.classList.contains("beneos-button-variant")) {
             event.preventDefault();
-            token.document.setFlag(BeneosUtility.moduleID(), "variant", beneosClickedButton.dataset.variant)
+            token.setFlag(BeneosUtility.moduleID(), "variant", beneosClickedButton.dataset.variant)
             setTimeout(function () { BeneosUtility.updateToken(token.id, { forceupdate: true }) }, 1000)
           }
         }
