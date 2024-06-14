@@ -318,7 +318,9 @@ export class BeneosCompendiumManager {
             } else {
               records.token.img = this.replaceImgPath(dataFolder.target, records.token.img, true)
             }
-            let actor = await Actor.create(records, { temporary: true })
+            // Foundry v12
+            let actor = new game.dnd5e.documents.Actor5e(records);
+            // let actor = await Actor.create(records, { temporary: true })
             let imported = await actorPack.importDocument(actor)
             //console.log("ACTOR IMPO", imported)
             currentId = imported.id
@@ -332,7 +334,8 @@ export class BeneosCompendiumManager {
               records.img = this.replaceImgPath(dataFolder.target, records.img, false)
               records.content = this.replaceImgPathHTMLContent(dataFolder.target, records.content)
             }
-            let journal = await JournalEntry.create(records, { temporary: true })
+            //let journal = await JournalEntry.create(records, { temporary: true })
+            let journal = new JournalEntry(records);
             journalPack.importDocument(journal)
           }
         }
@@ -377,6 +380,7 @@ export class BeneosCompendiumManager {
     let spellPack = game.packs.get("beneos-module.beneos_module_spells")
     await spellPack.getIndex()
     await spellPack.configure({ locked: false })
+    let spellErrors = [];
 
     // Parse subfolder
     let rootFolder = await FilePicker.browse("data", tokenDataFolder)
@@ -390,12 +394,23 @@ export class BeneosCompendiumManager {
         // And root folder to get json definitions and additionnel idle tokens
         for (let filename of dataFolder.files) {
           if (filename.toLowerCase().includes(".json")) {
-            let r = await fetch(filename)
-            let records = await r.json()
-            let spell = await Item.create(records, { temporary: true })
-            let iSpell = await spellPack.importDocument(spell)
-            let key = subFolder.replace(/\/$/, "").split("/").pop();
-            BeneosUtility.beneosSpells[key] = {spellId: iSpell.id, id: iSpell.id} 
+            let r, records
+            try {
+              r = await fetch(filename)
+              records = await r.json()
+            }
+            catch {
+              console.log("Error in fetching file", filename);
+            }
+            if (records)  {
+              //let spell = await Item.create(records, { temporary: true })
+              let spell = new game.dnd5e.documents.Item5e(records);
+              let iSpell = await spellPack.importDocument(spell)
+              let key = subFolder.replace(/\/$/, "").split("/").pop();
+              BeneosUtility.beneosSpells[key] = {spellId: iSpell.id, id: iSpell.id} 
+            } else {
+              spellErrors.push("Error in parsing JSON for item " + filename)
+            }
           }
         }
       }
@@ -431,6 +446,7 @@ export class BeneosCompendiumManager {
     let itemPack = game.packs.get("beneos-module.beneos_module_items")
     await itemPack.getIndex()
     await itemPack.configure({ locked: false })
+    let itemErrors = [];
 
     // Parse subfolder
     let rootFolder = await FilePicker.browse("data", itemDataFolder)
@@ -444,12 +460,23 @@ export class BeneosCompendiumManager {
         // And root folder to get json definitions and additionnel idle tokens
         for (let filename of dataFolder.files) {
           if (filename.toLowerCase().includes(".json")) {
-            let r = await fetch(filename)
-            let records = await r.json()
-            let item = await Item.create(records, { temporary: true })
-            let iItem = await itemPack.importDocument(item)
-            let key = subFolder.replace(/\/$/, "").split("/").pop();
-            BeneosUtility.beneosItems[key] = {itemId: iItem.id, id: iItem.id} 
+            let r, records
+            try {
+              r = await fetch(filename)
+              records = await r.json()
+            }
+            catch {
+              console.log("Error in fetching file", filename);
+            }
+            if (records) {
+              //let item = await Item.create(records, { temporary: true })
+              let item = new game.dnd5e.documents.Item5e(records);
+              let iItem = await itemPack.importDocument(item)
+              let key = subFolder.replace(/\/$/, "").split("/").pop();
+              BeneosUtility.beneosItems[key] = {itemId: iItem.id, id: iItem.id} 
+            } else {
+              itemErrors.push("Error in parsing JSON for item " + filename)
+            }
           }
         }
       }
