@@ -80,6 +80,7 @@ export class BeneosCompendiumManager {
 
   /********************************************************************************** */
   static async buildDynamicCompendiumsPF2() {
+    
     ui.notifications.info("BeneosModule : PF2 Compendium building .... Please wait !")
 
     BeneosUtility.resetTokenData()
@@ -157,7 +158,8 @@ export class BeneosCompendiumManager {
             if (records.prototypeToken) {
               pf2Record.prototypeToken = { texture: { src: this.replaceImgPath(dataFolder.target, records.prototypeToken.texture.src, true) } }
             }
-            let actor = await Actor.create(pf2Record, { temporary: true })
+            //let actor = await Actor.create(pf2Record, { temporary: true })
+            let actor = new Actor.implementation(pf2Record)
             let imported = await actorPack.importDocument(actor)
             console.log("ACTOR IMPO", imported)
             currentName = actor.name
@@ -179,7 +181,8 @@ export class BeneosCompendiumManager {
               }
             }
             records.pages = newPages
-            let journal = await JournalEntry.create(records, { temporary: true })
+            //let journal = await JournalEntry.create(records, { temporary: true })
+            let journal = new JournalEntry(records)
             journalPack.importDocument(journal)
           }
         }
