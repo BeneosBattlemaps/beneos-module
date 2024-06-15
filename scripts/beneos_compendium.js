@@ -14,6 +14,7 @@ export class BeneosCompendiumReset extends FormApplication {
   
       for (let item of pack.index.contents) {
         let doc = await pack.getDocument(item._id)
+        $(".beneos-chat-delete-info").html(doc.name) 
         await doc.delete()
       }  
     }
@@ -22,40 +23,64 @@ export class BeneosCompendiumReset extends FormApplication {
 
   /********************************************************************************** */
   async performReset() {
-    ui.notifications.info("BeneosModule : Cleanup of compendiums has started....")
+    ui.notifications.info("BeneosModule : Compendium building is starting, check chat message....");
 
     await this.deleteCompendiumContent("beneos-module.beneos_module_journal")
     BeneosCompendiumManager.cleanImportErrors()
 
     if (game.system.id == "pf2e") {
-      await this.deleteCompendiumContent("beneos-module.beneos_module_actors_pf2")
-      ui.notifications.info("BeneosModule : PF2 - Cleanup of compendiums finished.")
-      BeneosCompendiumManager.buildDynamicCompendiumsPF2()
-    } else {
       let chatData = {
         user: game.user.id,
         rollMode: game.settings.get("core", "rollMode"),
         whisper: ChatMessage.getWhisperRecipients('GM'),
-        content: `<div><strong>BeneosModule</strong> : Import process started... Please wait end message</div`
+        content: `<div><strong>BeneosModule</strong> : Import process started... Please wait end message</div>` + 
+          `<div><strong>1/4 - Cleanup : </strong><span class="beneos-chat-delete-info"></span></div>`
+      }
+      ChatMessage.create(chatData);
+      await this.deleteCompendiumContent("beneos-module.beneos_module_actors_pf2")
+      $(".beneos-chat-delete-info").html("Cleanup finished") 
+
+      ui.notifications.info("BeneosModule : PF2 - Cleanup of compendiums finished.")
+      chatData.content = `<div><strong>BeneosModule</strong> : Cleanup finished, importing actors</div>`+
+        `<div><strong>2/4 - Actors : </strong><span class="beneos-chat-actor-info"></span></div>`
+      ChatMessage.create(chatData);      
+      BeneosCompendiumManager.buildDynamicCompendiumsPF2()
+      $(".beneos-chat-actor-info").html("Actors import done ")
+
+    } else {
+      
+      let chatData = {
+        user: game.user.id,
+        rollMode: game.settings.get("core", "rollMode"),
+        whisper: ChatMessage.getWhisperRecipients('GM'),
+        content: `<div><strong>BeneosModule</strong> : Import process started... Please wait end message</div>` + 
+          `<div><strong>1/4 - Cleanup : </strong><span class="beneos-chat-delete-info"></span></div>`
       }
       ChatMessage.create(chatData);
       await this.deleteCompendiumContent("beneos-module.beneos_module_actors")
       await this.deleteCompendiumContent("beneos-module.beneos_module_items")
       await this.deleteCompendiumContent("beneos-module.beneos_module_spells")
-      chatData.content = `<div><strong>BeneosModule</strong> : Cleanup of compendiums finished, import is starting</div`
-      ChatMessage.create(chatData);
-      
+      $(".beneos-chat-delete-info").html("Cleanup finished") 
+
+      chatData.content = `<div><strong>BeneosModule</strong> : Cleanup finished, importing actors</div>`+
+        `<div><strong>2/4 - Actors : </strong><span class="beneos-chat-actor-info"></span></div>`
+      ChatMessage.create(chatData);      
       await BeneosCompendiumManager.buildDynamicCompendiumsTokensDD5()
-      chatData.content = `<div><strong>BeneosModule</strong> : Actors compendium done.</div`
-      ChatMessage.create(chatData);
+      $(".beneos-chat-actor-info").html("Actors import done ")
       
+      chatData.content = `<div><strong>BeneosModule</strong> : Importing spells</div>`+
+        `<div><strong>3/4 - Spells : </strong><span class="beneos-chat-spell-info"></span></div>`
+      ChatMessage.create(chatData);
       await BeneosCompendiumManager.buildDynamicCompendiumsSpellsDD5()
-      chatData.content = `<div><strong>BeneosModule</strong> : Spells compendium done.</div`
-      ChatMessage.create(chatData);
+      $(".beneos-chat-spell-info").html("Spells import done ")
       
+      chatData.content = `<div><strong>BeneosModule</strong> : Importing items</div>`+
+        `<div><strong>4/4 - Items : </strong><span class="beneos-chat-item-info"></span></div>`
+      ChatMessage.create(chatData);
       await BeneosCompendiumManager.buildDynamicCompendiumsItemsDD5()
       chatData.content = `<div><strong>BeneosModule</strong> : Items compendium done.<br><strong>All compendiums created, import finished !!</strong></div`
       ChatMessage.create(chatData)
+      $(".beneos-chat-item-info").html("Items import done ")
       
       // Reload the settings, as they have been updated during the import
       BeneosUtility.reloadInternalSettings()
@@ -182,6 +207,7 @@ export class BeneosCompendiumManager {
             //let actor = await Actor.create(pf2Record, { temporary: true })
             let actor = new Actor.implementation(pf2Record)
             let imported = await actorPack.importDocument(actor)
+            $(".beneos-chat-actor-info").html(actor.name)
             console.log("ACTOR IMPO", imported)
             currentName = actor.name
             currentId = imported.id
@@ -360,6 +386,7 @@ export class BeneosCompendiumManager {
                 let actor = new game.dnd5e.documents.Actor5e(records);
                 if (actor) {
                   let imported = await actorPack.importDocument(actor);
+                  $(".beneos-chat-actor-info").html(actor.name)
                   if ( imported) {
                     //console.log("ACTOR IMPO", imported)
                     currentId = imported.id
@@ -470,6 +497,7 @@ export class BeneosCompendiumManager {
             if (r && records)  {
               //let spell = await Item.create(records, { temporary: true })
               let spell = new game.dnd5e.documents.Item5e(records);
+              $(".beneos-chat-spell-info").html(spell.name)
               let iSpell = await spellPack.importDocument(spell)
               let key = subFolder.replace(/\/$/, "").split("/").pop();
               BeneosUtility.beneosSpells[key] = {spellId: iSpell.id, id: iSpell.id} 
@@ -536,6 +564,7 @@ export class BeneosCompendiumManager {
             if (r && records) {
               //let item = await Item.create(records, { temporary: true })
               let item = new game.dnd5e.documents.Item5e(records);
+              $(".beneos-chat-item-info").html(item.name)
               let iItem = await itemPack.importDocument(item)
               let key = subFolder.replace(/\/$/, "").split("/").pop();
               BeneosUtility.beneosItems[key] = {itemId: iItem.id, id: iItem.id} 
