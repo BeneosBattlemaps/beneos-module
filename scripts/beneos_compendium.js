@@ -25,6 +25,7 @@ export class BeneosCompendiumReset extends FormApplication {
     ui.notifications.info("BeneosModule : Cleanup of compendiums has started....")
 
     await this.deleteCompendiumContent("beneos-module.beneos_module_journal")
+    BeneosCompendiumManager.cleanImportErrors()
 
     if (game.system.id == "pf2e") {
       await this.deleteCompendiumContent("beneos-module.beneos_module_actors_pf2")
@@ -67,6 +68,8 @@ export class BeneosCompendiumReset extends FormApplication {
       }
       
     }
+    BeneosCompendiumManager.showImportErrors()
+
   }
 
   /********************************************************************************** */
@@ -77,6 +80,24 @@ export class BeneosCompendiumReset extends FormApplication {
 
 /********************************************************************************** */
 export class BeneosCompendiumManager {
+
+  /********************************************************************************** */
+  static cleanImportErrors() {
+    this.importErrors = []; // clean local error cache
+  } 
+  static async showImportErrors() {
+    if (this.importErrors.length > 0) { 
+      console.log("Global import errors : ", this.importErrors)
+      let content = await renderTemplate(`modules/beneos-module/templates/chat-import-error.html`, {errors: this.importErrors} )
+      let chatData = {
+        user: game.user.id,
+        rollMode: game.settings.get("core", "rollMode"),
+        whisper: ChatMessage.getWhisperRecipients('GM'),
+        content: content 
+      }
+      ChatMessage.create(chatData);
+    }
+  } 
 
   /********************************************************************************** */
   static async buildDynamicCompendiumsPF2() {
@@ -283,9 +304,12 @@ export class BeneosCompendiumManager {
             if (!key.match("000_")) {
               ui.notifications.warn("Warning ! Unable to fetch config for token " + key)
             }
+            continue;
           }
         } catch (error) {
+          this.importErrors.push("Error in parsing JSON for token " + key)
           console.log("Warning ! Error in parsing JSON " + error, JSONFilePath)
+          continue;
         }
 
         let dataFolder = await FilePicker.browse("data", subFolder)
@@ -310,39 +334,75 @@ export class BeneosCompendiumManager {
             imgVideoList.push(filename)
           }
           if (filename.toLowerCase().includes("actor_") && filename.toLowerCase().includes(".json")) {
-            let r = await fetch(filename)
-            let records = await r.json()
-            // Replace common v9/v10 stuff
-            records.img = this.replaceImgPath(dataFolder.target, records.img, false)
-            this.replaceItemsPath(records)
-            //console.log(">>>>>>>>>>>>>> REC", records, actor)
-            if (records.prototypeToken) {
-              records.prototypeToken.texture.src = this.replaceImgPath(dataFolder.target, records.prototypeToken.texture.src, true)
-            } else {
-              records.token.img = this.replaceImgPath(dataFolder.target, records.token.img, true)
+            let r, records
+            try {
+              r = await fetch(filename) 
+              records = await r.json()
             }
-            // Foundry v12
-            let actor = new game.dnd5e.documents.Actor5e(records);
-            // let actor = await Actor.create(records, { temporary: true })
-            let imported = await actorPack.importDocument(actor)
-            //console.log("ACTOR IMPO", imported)
-            currentId = imported.id
-            currentName = actor.name
+            catch {
+              this.importErrors.push("Error in fetching file " + filename)
+              console.log("Error in fetching file", filename);
+              continue;
+            }
+            if (r && records) {
+              // Replace common v9/v10 stuff
+              records.img = this.replaceImgPath(dataFolder.target, records.img, false)
+              this.replaceItemsPath(records)
+              //console.log(">>>>>>>>>>>>>> REC", records, actor)
+              if (records.prototypeToken) {
+                records.prototypeToken.texture.src = this.replaceImgPath(dataFolder.target, records.prototypeToken.texture.src, true)
+              } else {
+                records.token.img = this.replaceImgPath(dataFolder.target, records.token.img, true)
+              }
+              // Foundry v12
+              // let actor = await Actor.create(records, { temporary: true })
+              try {
+                let actor = new game.dnd5e.documents.Actor5e(records);
+                if (actor) {
+                  let imported = await actorPack.importDocument(actor);
+                  if ( imported) {
+                    //console.log("ACTOR IMPO", imported)
+                    currentId = imported.id
+                    currentName = actor.name
+                  } else {
+                    this.importErrors.push("Error in creating actor " + records.name)
+                    console.log("Error in creating actor", records.name);
+                  }
+                }
+              } catch {
+                this.importErrors.push("Error in creating actor " + records.name)
+                console.log("Error in creating actor", records.name);
+              }
+            }
           }
           if (filename.toLowerCase().includes("journal_") && filename.toLowerCase().includes(".json")) {
-            let r = await fetch(filename)
-            let records = await r.json()
-            //console.log("JOURNAL DATA", records)
-            if (!game.release.generation || game.release.generation < 10) {
-              records.img = this.replaceImgPath(dataFolder.target, records.img, false)
-              records.content = this.replaceImgPathHTMLContent(dataFolder.target, records.content)
+            let r, records
+            try {
+              r = await fetch(filename)
+              records = await r.json()
+            } catch {
+              this.importErrors.push("Error in fetching file " + filename)
+              console.log("Error in fetching file", filename);
+              continue;
             }
-            //let journal = await JournalEntry.create(records, { temporary: true })
-            let journal = new JournalEntry(records);
-            journalPack.importDocument(journal)
+            if ( r && records) {
+              //console.log("JOURNAL DATA", records)
+              if (!game.release.generation || game.release.generation < 10) {
+                records.img = this.replaceImgPath(dataFolder.target, records.img, false)
+                records.content = this.replaceImgPathHTMLContent(dataFolder.target, records.content)
+              }
+              try {
+                //let journal = await JournalEntry.create(records, { temporary: true })
+                let journal = new JournalEntry(records);
+                journalPack.importDocument(journal);
+              } catch {
+                this.importErrors.push("Error in creating journal " + records.name)
+                console.log("Error in creating journal", records.name);
+              }
+            }
           }
         }
-        if (key && BeneosUtility.beneosTokens[key]) {
+        if (key && BeneosUtility.beneosTokens[key] && currentId) {
           //console.log("Final IDLE list : ", idleList)
           BeneosUtility.beneosTokens[key].idleList = foundry.utils.duplicate(idleList)
           BeneosUtility.beneosTokens[key].imgVideoList = foundry.utils.duplicate(imgVideoList)
@@ -359,6 +419,7 @@ export class BeneosCompendiumManager {
       previousData = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-tokenconfig') || {}) // Get the previous config !
     }
     catch {
+      previousData = {}
       console.log("Error in parsing JSON for Tokens previousData, warning only all content has been re-imported")
     }
     await this.showNewItems("Actors", BeneosUtility.beneosTokens, previousData, "Compendium.beneos-module.beneos_module_actors.Actor")
@@ -383,7 +444,6 @@ export class BeneosCompendiumManager {
     let spellPack = game.packs.get("beneos-module.beneos_module_spells")
     await spellPack.getIndex()
     await spellPack.configure({ locked: false })
-    let spellErrors = [];
 
     // Parse subfolder
     let rootFolder = await FilePicker.browse("data", tokenDataFolder)
@@ -403,17 +463,17 @@ export class BeneosCompendiumManager {
               records = await r.json()
             }
             catch {
+              this.importErrors.push("Error in fetching file " + filename)
               console.log("Error in fetching file", filename);
+              continue;
             }
-            if (records)  {
+            if (r && records)  {
               //let spell = await Item.create(records, { temporary: true })
               let spell = new game.dnd5e.documents.Item5e(records);
               let iSpell = await spellPack.importDocument(spell)
               let key = subFolder.replace(/\/$/, "").split("/").pop();
               BeneosUtility.beneosSpells[key] = {spellId: iSpell.id, id: iSpell.id} 
-            } else {
-              spellErrors.push("Error in parsing JSON for item " + filename)
-            }
+            } 
           }
         }
       }
@@ -427,6 +487,7 @@ export class BeneosCompendiumManager {
       previousData = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-spellconfig') || {}) // Get the previous config !
     }
     catch {
+      previousData = {}
       console.log("Error in parsing JSON for Spells previousData, warning only all content has been re-imported")
     }
     await this.showNewItems("Spells", BeneosUtility.beneosSpells, previousData, "Compendium.beneos-module.beneos_module_spells.Item" )
@@ -449,7 +510,6 @@ export class BeneosCompendiumManager {
     let itemPack = game.packs.get("beneos-module.beneos_module_items")
     await itemPack.getIndex()
     await itemPack.configure({ locked: false })
-    let itemErrors = [];
 
     // Parse subfolder
     let rootFolder = await FilePicker.browse("data", itemDataFolder)
@@ -469,17 +529,17 @@ export class BeneosCompendiumManager {
               records = await r.json()
             }
             catch {
+              this.importErrors.push("Error in fetching file " + filename)
               console.log("Error in fetching file", filename);
+              continue;
             }
-            if (records) {
+            if (r && records) {
               //let item = await Item.create(records, { temporary: true })
               let item = new game.dnd5e.documents.Item5e(records);
               let iItem = await itemPack.importDocument(item)
               let key = subFolder.replace(/\/$/, "").split("/").pop();
               BeneosUtility.beneosItems[key] = {itemId: iItem.id, id: iItem.id} 
-            } else {
-              itemErrors.push("Error in parsing JSON for item " + filename)
-            }
+            } 
           }
         }
       }
@@ -492,6 +552,7 @@ export class BeneosCompendiumManager {
       previousData = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-itemconfig') || {}) // Get the previous config !
     }
     catch {
+      previousData = {}
       console.log("Error in parsing JSON for Items previousData, warning only all content has been re-imported")
     }
     await this.showNewItems("Items", BeneosUtility.beneosItems, previousData, "Compendium.beneos-module.beneos_module_items.Item" )
