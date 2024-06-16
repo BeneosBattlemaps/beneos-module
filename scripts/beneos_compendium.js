@@ -33,8 +33,8 @@ export class BeneosCompendiumReset extends FormApplication {
         user: game.user.id,
         rollMode: game.settings.get("core", "rollMode"),
         whisper: ChatMessage.getWhisperRecipients('GM'),
-        content: `<div><strong>BeneosModule</strong> : Import process started... Please wait end message</div>` + 
-          `<div><strong>1/4 - Cleanup : </strong><span class="beneos-chat-delete-info"></span></div>`
+        content: `<div><strong>BeneosModule</strong> : Import process started... Please wait end message and <strong>do not refresh</strong> your browser.</div>` + 
+          `<div><strong>1/2 - Cleanup : </strong><span class="beneos-chat-delete-info"></span></div>`
       }
       ChatMessage.create(chatData);
       await this.deleteCompendiumContent("beneos-module.beneos_module_actors_pf2")
@@ -42,7 +42,7 @@ export class BeneosCompendiumReset extends FormApplication {
 
       ui.notifications.info("BeneosModule : PF2 - Cleanup of compendiums finished.")
       chatData.content = `<div><strong>BeneosModule</strong> : Cleanup finished, importing actors</div>`+
-        `<div><strong>2/4 - Actors : </strong><span class="beneos-chat-actor-info"></span></div>`
+        `<div><strong>2/2 - Actors : </strong><span class="beneos-chat-actor-info"></span></div>`
       ChatMessage.create(chatData);      
       BeneosCompendiumManager.buildDynamicCompendiumsPF2()
       $(".beneos-chat-actor-info").html("Actors import done ")
@@ -53,7 +53,7 @@ export class BeneosCompendiumReset extends FormApplication {
         user: game.user.id,
         rollMode: game.settings.get("core", "rollMode"),
         whisper: ChatMessage.getWhisperRecipients('GM'),
-        content: `<div><strong>BeneosModule</strong> : Import process started... Please wait end message</div>` + 
+        content: `<div><strong>BeneosModule</strong> : Import process started... Please wait end message and <strong>do not refresh</strong> your browser.</div>` + 
           `<div><strong>1/4 - Cleanup : </strong><span class="beneos-chat-delete-info"></span></div>`
       }
       ChatMessage.create(chatData);
