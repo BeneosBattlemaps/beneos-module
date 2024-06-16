@@ -4,6 +4,12 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 12.0.4 # 2024-06-16
+- The module handles the TokenDocument5e#actorData Warning now
+- We added a progress bar for the import process to give more feedback
+- We added several optimizations for V12
+- We drastically optimized the cleaning process for compendiums. The cleaning should now be 60% to 90% faster.
+
 ### 12.0.3 # 2024-05-29
 - The search engine works properly again
 
