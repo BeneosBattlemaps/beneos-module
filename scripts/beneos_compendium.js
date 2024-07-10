@@ -390,7 +390,8 @@ export class BeneosCompendiumManager {
               // Foundry v12
               // let actor = await Actor.create(records, { temporary: true })
               try {
-                let actor = new game.dnd5e.documents.Actor5e(records);
+                //let actor = new game.dnd5e.documents.Actor5e(records);
+                let actor = new CONFIG.Actor.documentClass(records);
                 if (actor) {
                   let imported = await actorPack.importDocument(actor);
                   $(".beneos-chat-actor-info").html(actor.name)
