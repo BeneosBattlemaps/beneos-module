@@ -4,6 +4,9 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 12.0.5 # 2024-07-14
+- Added compatibility with the Vision5E Module
+
 ### 12.0.4 # 2024-06-16
 - The module handles the TokenDocument5e#actorData Warning now
 - We added a progress bar for the import process to give more feedback
