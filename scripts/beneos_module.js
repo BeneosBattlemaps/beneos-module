@@ -223,21 +223,21 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
     return
   }
   let tokenConfig = BeneosUtility.getTokenImageInfo(token)
+  console.log("Config ?", tokenConfig, token);
   // JOURNAL HUD
   if (tokenConfig?.journalId) {
     let beneosPack = game.packs.get("beneos-module.beneos_module_journal")
     if (beneosPack) {
-      let beneosJournalEntry = null
-      beneosJournalEntry = beneosPack.getDocument(tokenConfig.journalId)
-    }
-    if (beneosJournalEntry) {
-      const beneosJournalDisplay = await renderTemplate('modules/beneos-module/templates/beneosjournal.html',
-        { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getBeneosTokenDataPath() })
-      html.find('div.left').append(beneosJournalDisplay);
-      html.find('img.beneosJournalAction').click((event) => {
-        event.preventDefault()
-        beneosJournalEntry.then(function (result) { result.sheet.render(true) })
-      })
+      let beneosJournalEntry = await beneosPack.getDocument(tokenConfig.journalId)
+      if (beneosJournalEntry) {
+        const beneosJournalDisplay = await renderTemplate('modules/beneos-module/templates/beneosjournal.html',
+          { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getBeneosTokenDataPath() })
+        html.find('div.left').append(beneosJournalDisplay);
+        html.find('img.beneosJournalAction').click((event) => {
+          event.preventDefault();
+          beneosJournalEntry.sheet.render(true);
+        })
+      }
     }
   }
 

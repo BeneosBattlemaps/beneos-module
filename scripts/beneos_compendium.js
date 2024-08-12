@@ -380,8 +380,8 @@ export class BeneosCompendiumManager {
             records.name = tid + "_" + key
             records.pages[0].src = dataFolder.target + "/" + tid + "-" + vkey + "-journal.webp";
             let journal = new JournalEntry(records);
-            let imported = journalPack.importDocument(journal);
-            variants[vkey].journalId = imported.id
+            let imported = await journalPack.importDocument(journal);
+            variant.journalId = imported.id
           } catch {
             this.importErrors.push("Error in creating journal " + records.name)
             console.log("Error in creating journal", records.name);
@@ -390,7 +390,6 @@ export class BeneosCompendiumManager {
           // Create relevant actors
           let records = foundry.utils.duplicate(actorRecords)
           records.img = dataFolder.target + "/" + tid + "-" + vkey + "-avatar.webp";
-          records.flags.beneos = { tid: tid, key: key, vkey: vkey, journalId: variant.journalId }
           this.replaceItemsPath(records)
           //console.log(">>>>>>>>>>>>>> REC", records, actor)
           if (records.prototypeToken) {
@@ -400,6 +399,7 @@ export class BeneosCompendiumManager {
           let actor = new CONFIG.Actor.documentClass(records);
           if (actor) {
             let imported = await actorPack.importDocument(actor);
+            await imported.setFlag("world", "beneos", { tid: tid, key: key, vkey: vkey, journalId: variant.journalId })
             $(".beneos-chat-actor-info").html(actor.name)
             $(".beneos-meter-actor").attr("value", Math.round((count++ / max) * 100));
             //console.log("ACTOR IMPO", imported)
