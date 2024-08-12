@@ -39,7 +39,7 @@ export class BeneosCompendiumReset extends FormApplication {
 
       ui.notifications.info("BeneosModule : PF2 - Cleanup of compendiums finished.")
       chatData.content = `<div><strong>BeneosModule</strong> : Cleanup finished, importing actors</div>` +
-      `<div><strong>2/2 - Actors : </strong><meter class="beneos-meter-actor" min="0" max="100" value="0">100%</meter>&nbsp;<span class="beneos-chat-actor-info"></span></div>`
+        `<div><strong>2/2 - Actors : </strong><meter class="beneos-meter-actor" min="0" max="100" value="0">100%</meter>&nbsp;<span class="beneos-chat-actor-info"></span></div>`
       ChatMessage.create(chatData);
       BeneosCompendiumManager.buildDynamicCompendiumsPF2()
       $(".beneos-chat-actor-info").html("Actors import done ")
@@ -311,138 +311,118 @@ export class BeneosCompendiumManager {
     let max = rootFolder.dirs.length
     let count = 0
     for (let subFolder of rootFolder.dirs) {
-      console.log("SUBFOLDER", subFolder)
-      let res = subFolder.match("/(\\d*)_")
+      // Match a subfolder starting with 3 digits and a dash
+      let res = subFolder.match(/(\d+)-([\w_]+)$/);
+      console.log("SUBFOLDER", subFolder, res)
       if (res && !subFolder.includes("module_assets") && !subFolder.includes("ability_icons")) {
         // Token config
-        let idleList = []
-        let imgVideoList = []
         let currentId = ""
         let currentName = ""
-        let key = subFolder.substring(subFolder.lastIndexOf("/") + 1)
-        //console.log("KEY", res[1])
+        let tid = res[1]
+        let key = res[2]
+        console.log("KEY", tid, key)
 
-        let JSONFilePath = subFolder + "/tokenconfig_" + key + ".json"
-        try {
-          let tokenJSON = await fetch(JSONFilePath)
-          if (tokenJSON && tokenJSON.status == 200) {
-            let recordsToken = await tokenJSON.json()
-            if (recordsToken) {
-              recordsToken.JSONFilePath = JSONFilePath // Auto-reference
-              BeneosUtility.beneosTokens[key] = foundry.utils.duplicate(recordsToken[key])
-            } else {
-              ui.notifications.warn("Warning ! Wrong token config for token " + key)
-            }
-          } else {
-            if (!key.match("000_")) {
-              ui.notifications.warn("Warning ! Unable to fetch config for token " + key)
-            }
-            continue;
-          }
-        } catch (error) {
-          this.importErrors.push("Error in parsing JSON for token " + key)
-          console.log("Warning ! Error in parsing JSON " + error, JSONFilePath)
-          continue;
-        }
-
+        // Build list of variant
         let dataFolder = await FilePicker.browse("data", subFolder)
-        // Parse subfolders to build idle tokens list
-        for (let subFolder2 of dataFolder.dirs) {
-          let dataFolder2 = await FilePicker.browse("data", subFolder2)
-          for (let filename of dataFolder2.files) {
-            if (filename.toLowerCase().includes("idle_")) {
-              idleList.push(filename)
-            }
-            if (filename.toLowerCase().includes(".web") && !filename.toLowerCase().includes(".-preview")) {
-              imgVideoList.push(filename)
-            }
-          }
-        }
-        // And root folder to get json definitions and additionnel idle tokens
+        let r, actorRecords, journalRecords
+        let variants = {}
         for (let filename of dataFolder.files) {
-          if (filename.toLowerCase().includes("idle_")) {
-            idleList.push(filename)
-          }
-          if (filename.toLowerCase().includes(".web") && !filename.toLowerCase().includes(".-preview")) {
-            imgVideoList.push(filename)
-          }
-          if (filename.toLowerCase().includes("actor_") && filename.toLowerCase().includes(".json")) {
-            let r, records
+          // Load the actor JSON reference file
+          if (filename.toLowerCase().includes("actor-") && filename.toLowerCase().includes(".json")) {
             try {
               r = await fetch(filename)
-              records = await r.json()
+              actorRecords = await r.json()
             }
             catch {
               this.importErrors.push("Error in fetching file " + filename)
               console.log("Error in fetching file", filename);
               continue;
             }
-            if (r && records) {
-              // Replace common v9/v10 stuff
-              records.img = this.replaceImgPath(dataFolder.target, records.img, false)
-              this.replaceItemsPath(records)
-              //console.log(">>>>>>>>>>>>>> REC", records, actor)
-              if (records.prototypeToken) {
-                records.prototypeToken.texture.src = this.replaceImgPath(dataFolder.target, records.prototypeToken.texture.src, true)
-              } else {
-                records.token.img = this.replaceImgPath(dataFolder.target, records.token.img, true)
-              }
-              // Foundry v12
-              // let actor = await Actor.create(records, { temporary: true })
-              try {
-                //let actor = new game.dnd5e.documents.Actor5e(records);
-                let actor = new CONFIG.Actor.documentClass(records);
-                if (actor) {
-                  let imported = await actorPack.importDocument(actor);
-                  $(".beneos-chat-actor-info").html(actor.name)
-                  $(".beneos-meter-actor").attr("value", Math.round((count++ / max) * 100));
-                  //console.log("ACTOR IMPO", imported)
-                  currentId = imported.id
-                  currentName = actor.name
-                } else {
-                  this.importErrors.push("Error in creating actor " + records.name)
-                  console.log("Error in creating actor", records.name);
-                }
-              } catch {
-                this.importErrors.push("Error in creating actor " + records.name)
-                console.log("Error in creating actor", records.name);
-              }
-            }
           }
-          if (filename.toLowerCase().includes("journal_") && filename.toLowerCase().includes(".json")) {
-            let r, records
+          // Load the journal JSON reference file
+          if (filename.toLowerCase().includes("journal-") && filename.toLowerCase().includes(".json")) {
             try {
               r = await fetch(filename)
-              records = await r.json()
+              journalRecords = await r.json()
             } catch {
               this.importErrors.push("Error in fetching file " + filename)
               console.log("Error in fetching file", filename);
               continue;
             }
-            if (r && records) {
-              //console.log("JOURNAL DATA", records)
-              if (!game.release.generation || game.release.generation < 10) {
-                records.img = this.replaceImgPath(dataFolder.target, records.img, false)
-                records.content = this.replaceImgPathHTMLContent(dataFolder.target, records.content)
-              }
-              try {
-                //let journal = await JournalEntry.create(records, { temporary: true })
-                let journal = new JournalEntry(records);
-                journalPack.importDocument(journal);
-              } catch {
-                this.importErrors.push("Error in creating journal " + records.name)
-                console.log("Error in creating journal", records.name);
+          }
+          // If it matches a webp file 
+          if (filename.toLowerCase().includes(".webp")) {
+            console.log("FILENAME", filename)
+            // SPlit the filename with the following pattern : 000-name_of_token-variant.webp 
+            let res = filename.match("(\\d+)-(\\w*)-(\\d+)-(\\w*)\\.webp")
+            if (res && res[1] && res[2] && res[3]) {
+              let vkey = res[2] + "-" + res[3]
+              if (!variants[vkey]) {
+                variants[vkey] = { count: 1, actorId: "", journalId: "", name: "", number: res[3] };
+              } else {
+                variants[vkey].count = variants[vkey].count + 1
               }
             }
           }
         }
-        if (key && BeneosUtility.beneosTokens[key] && currentId) {
-          //console.log("Final IDLE list : ", idleList)
-          BeneosUtility.beneosTokens[key].idleList = foundry.utils.duplicate(idleList)
-          BeneosUtility.beneosTokens[key].imgVideoList = foundry.utils.duplicate(imgVideoList)
-          BeneosUtility.beneosTokens[key].actorId = currentId
-          BeneosUtility.beneosTokens[key].id = currentId
-          BeneosUtility.beneosTokens[key].actorName = currentName
+        console.log("VARIANTS", variants)
+        // Process variant and create journal+actors
+        for (let vkey in variants) {
+          let variant = variants[vkey]
+          if (variant.count != 3) {
+            ui.notifications.error("BeneosModule : Variant " + vkey + " is not complete, please check your data !")
+            continue;
+          }
+
+          // Create the journal
+          try {
+            let records = foundry.utils.duplicate(journalRecords)
+            records.name = tid + "_" + key
+            records.pages[0].src = dataFolder.target + "/" + tid + "-" + vkey + "-journal.webp";
+            let journal = new JournalEntry(records);
+            let imported = journalPack.importDocument(journal);
+            variants[vkey].journalId = imported.id
+          } catch {
+            this.importErrors.push("Error in creating journal " + records.name)
+            console.log("Error in creating journal", records.name);
+          }
+
+          // Create relevant actors
+          let records = foundry.utils.duplicate(actorRecords)
+          records.img = dataFolder.target + "/" + tid + "-" + vkey + "-avatar.webp";
+          records.flags.beneos = { tid: tid, key: key, vkey: vkey, journalId: variant.journalId }
+          this.replaceItemsPath(records)
+          //console.log(">>>>>>>>>>>>>> REC", records, actor)
+          if (records.prototypeToken) {
+            records.prototypeToken.texture.src = dataFolder.target + "/" + tid + "-" + vkey + "-token.webp";
+          }
+
+          let actor = new CONFIG.Actor.documentClass(records);
+          if (actor) {
+            let imported = await actorPack.importDocument(actor);
+            $(".beneos-chat-actor-info").html(actor.name)
+            $(".beneos-meter-actor").attr("value", Math.round((count++ / max) * 100));
+            //console.log("ACTOR IMPO", imported)
+            variant.actorId = imported.id
+            variant.name = actor.name
+          } else {
+            this.importErrors.push("Error in creating actor " + records.name)
+            console.log("Error in creating actor", records.name);
+          }
+
+          if (key) {
+            //console.log("Final IDLE list : ", idleList)
+            BeneosUtility.beneosTokens[tid + '-' + vkey] = {
+              actorName: variant.name,
+              actorId: variant.actorId,
+              journalId: variant.journalId,
+              folder: subFolder,
+              tid: tid,
+              key: key,
+              number: variant.number,
+              vkey: vkey,
+            }
+          }
         }
       }
     }
@@ -461,7 +441,6 @@ export class BeneosCompendiumManager {
     let toSave = JSON.stringify(BeneosUtility.beneosTokens)
     console.log("Saving data :", toSave)
     await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', toSave) // Save the token config !
-
     await actorPack.configure({ locked: true })
     await journalPack.configure({ locked: true })
   }
@@ -472,7 +451,7 @@ export class BeneosCompendiumManager {
     ui.notifications.info("BeneosModule : Spells Compendium building .... Please wait !")
 
     BeneosUtility.resetTokenData()
-    let tokenDataFolder = BeneosUtility.getBasePath() + BeneosUtility.getBeneosSpellDataPath()
+    let spellDataFolder = BeneosUtility.getBasePath() + BeneosUtility.getBeneosSpellDataPath()
 
     // get the packs to update/check
     let spellPack = game.packs.get("beneos-module.beneos_module_spells")
@@ -480,7 +459,13 @@ export class BeneosCompendiumManager {
     await spellPack.configure({ locked: false })
 
     // Parse subfolder
-    let rootFolder = await FilePicker.browse("data", tokenDataFolder)
+    let rootFolder
+    try {
+      rootFolder = await FilePicker.browse("data", spellDataFolder)
+    } catch {
+      console.log("Error in fetching root folder", spellDataFolder)
+      return;
+    }
     let max = rootFolder.dirs.length
     let count = 0
     console.log("ROOT", rootFolder)
@@ -550,9 +535,16 @@ export class BeneosCompendiumManager {
     await itemPack.configure({ locked: false })
 
     // Parse subfolder
-    let rootFolder = await FilePicker.browse("data", itemDataFolder)
+    let rootFolder
+    try {
+      rootFolder = await FilePicker.browse("data", itemDataFolder)
+    } catch {
+      console.log("Error in fetching root folder", itemDataFolder)
+      return;
+    }
     let max = rootFolder.dirs.length
     let count = 0
+    if ( !rootFolder ) {}
     //console.log("ROOT", rootFolder)
     for (let subFolder of rootFolder.dirs) {
       //console.log("SUBFOLDER", subFolder)
@@ -602,7 +594,6 @@ export class BeneosCompendiumManager {
     let toSave = JSON.stringify(BeneosUtility.beneosItems)
     //console.log("Saving data :", toSave)
     game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', toSave) // Save the token config !
-
   }
 
   /********************************************************************************** */
