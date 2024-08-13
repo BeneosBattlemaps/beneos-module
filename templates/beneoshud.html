@@ -1,10 +1,10 @@
-<div class="control-icon beneos-token-hud-idle-action" data-action-index="0" data-action="beneosToken-animselector" >
+<div class="control-icon beneos-token-hud-action" data-action-index="0" data-action="beneosToken-animselector" >
     <img src="modules/beneos-module/icons/ability_icons/spellbook03_76.webp" width="36" height="36" title="Convert to Beneos Token" />
-	<div class="beneos-selector-idle-wrap beneos-disabled">
+	<div class="beneos-selector-wrap beneos-disabled">
 		{{#each beneosTokensHUD as |btoken|}}
-			<button class="beneos-button-select control-icon beneos-button-token" data-token="{{btoken.tokenvideo}}" >
-				<image class="beneos-token-button" src="{{btoken.token}}" alt="{{btoken.name}}"/>
-				<span>{{btoken.name}}</span>
+			<button class="beneos-button-select control-icon beneos-button-token" data-img="{{btoken.img}}" data-fullkey="{{btoken.fullKey}}" >
+				<image class="beneos-token-button" src="{{btoken.img}}" alt="{{btoken.actorName}}"/>
+				<span>{{btoken.actorName}}</span>
 			</button>
 		{{/each}}		
     </div>

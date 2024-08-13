@@ -65,23 +65,6 @@ Hooks.once('ready', () => {
   BeneosUtility.updateSceneTokens()
 
   /********************************************************************************** */
-  Hooks.on('preUpdateToken', (token, changeData, options) => {
-    console.log("CHANGEDATA", changeData)
-    if (!game.user.isGM || !BeneosUtility.isBeneosModule() || !canvas.ready || token.texture?.src == undefined) {
-      return
-    }
-
-    if (!token) {
-      BeneosUtility.debugMessage("[BENEOS TOKENS] Token not found")
-      return
-    }
-
-    if (BeneosUtility.checkIsBeneosToken(token)) {
-      let tokenData = BeneosUtility.getTokenImageInfo(token)
-    }
-  })
-
-  /********************************************************************************** */
   Hooks.on('refreshToken', (token) => {
     /* Unused : if (BeneosUtility.checkIsBeneosToken(token)) {
       // console.log(">>>>>>>>>>>>> REFRESH TOKEN", token)
@@ -223,7 +206,7 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
     return
   }
   let tokenConfig = BeneosUtility.getTokenImageInfo(token)
-  console.log("Config ?", tokenConfig, token);
+  //console.log("Config ?", tokenConfig, token);
   // JOURNAL HUD
   if (tokenConfig?.journalId) {
     let beneosPack = game.packs.get("beneos-module.beneos_module_journal")
@@ -248,34 +231,6 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
     BeneosUtility.manageAvailableTokensMenu(token, html, event)
   })
 
-  // Size management
-  if (game.user.isGM && game.settings.get(BeneosUtility.moduleID(), 'beneos-god-mode')) {
-    const beneosTokensSize = await renderTemplate('modules/beneos-module/templates/beneosreloadjson.html',
-      { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getFullPathWithSlash(), tokenData })
-    let buttonSize = html.find('div.right').append(beneosTokensSize)
-
-    buttonSize.click((event) => {
-      let beneosClickedButton = event.target.parentElement
-      let beneosTokenButton = html.find('.beneos-token-hud-reload')[0]
-      if (beneosTokenButton == beneosClickedButton) {
-        let tokenImg = $(beneosTokenButton).data("img")
-        BeneosUtility.changeSize(token.id, tokenImg, 0.1)
-      } else {
-        let beneosTokenButton = html.find('.beneos-token-hud-save')[0]
-        if (beneosTokenButton == beneosClickedButton) {
-          BeneosUtility.saveJSONConfig(tokenData.tokenKey)
-        }
-      }
-    })
-    buttonSize.contextmenu((event) => {
-      let beneosClickedButton = event.target.parentElement
-      let beneosTokenButton = html.find('.beneos-token-hud-reload')[0]
-      if (beneosTokenButton == beneosClickedButton) {
-        let tokenImg = $(beneosTokenButton).data("img")
-        BeneosUtility.changeSize(token.id, tokenImg, -0.1)
-      }
-    })
-  }
 })
 
 /********************************************************************************** */

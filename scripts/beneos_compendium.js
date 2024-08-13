@@ -405,6 +405,7 @@ export class BeneosCompendiumManager {
             //console.log("ACTOR IMPO", imported)
             variant.actorId = imported.id
             variant.name = actor.name
+            variant.img = actor.img
           } else {
             this.importErrors.push("Error in creating actor " + records.name)
             console.log("Error in creating actor", records.name);
@@ -414,6 +415,7 @@ export class BeneosCompendiumManager {
             //console.log("Final IDLE list : ", idleList)
             BeneosUtility.beneosTokens[tid + '-' + vkey] = {
               actorName: variant.name,
+              imgPattern: dataFolder.target + "/" + tid + "-" + vkey ,
               actorId: variant.actorId,
               journalId: variant.journalId,
               folder: subFolder,

@@ -1,7 +1,7 @@
 /********************************************************************************* */
 import { BeneosCompendiumManager, BeneosCompendiumReset } from "./beneos_compendium.js";
 import { BeneosSearchEngineLauncher, BeneosDatabaseHolder, BeneosModuleMenu } from "./beneos_search_engine.js";
-import { ClassCounter} from "https://www.uberwald.me/fvtt_appcount/count-class-ready.js";
+import { ClassCounter } from "https://www.uberwald.me/fvtt_appcount/count-class-ready.js";
 
 /********************************************************************************* */
 const BENEOS_MODULE_NAME = "Beneos Module"
@@ -184,23 +184,23 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
-  static async tokenRotateThenMove(tokenDocument, update, info){
-    
+  static async tokenRotateThenMove(tokenDocument, update, info) {
+
     if (!update.x) update.x = tokenDocument.x;
     if (!update.y) update.y = tokenDocument.y;
     let r = new Ray(tokenDocument, update);
-    let rotation = r.angle*180/Math.PI-90;
+    let rotation = r.angle * 180 / Math.PI - 90;
     if (rotation < 0) rotation += 360;
     let difference = Math.max(tokenDocument.rotation, rotation) - Math.min(tokenDocument.rotation, rotation)
     if (difference > 180) difference -= 360;
     if (difference < -180) difference += 360;
-    let duration = Math.round(Math.abs(difference)*Math.sqrt(tokenDocument.width) * 1.0);
+    let duration = Math.round(Math.abs(difference) * Math.sqrt(tokenDocument.width) * 1.0);
     if (!tokenDocument.lockRotation) {
-      await tokenDocument.update({rotation}, {...info, animate:true, animation:{duration}});
+      await tokenDocument.update({ rotation }, { ...info, animate: true, animation: { duration } });
       await new Promise((r) => setTimeout(r, duration));
     }
     duration = r.distance * 2;
-    await tokenDocument.update(update, {...info, rotated: true, animate:true, animation:{duration: duration }})
+    await tokenDocument.update(update, { ...info, rotated: true, animate: true, animation: { duration: duration } })
   }
 
   /********************************************************************************** */
@@ -284,7 +284,7 @@ export class BeneosUtility {
     })
 
     let stats = this.countBeneosAssetsUsage()
-    ClassCounter.registerUsageCount('beneos-module', { beneosStats: stats } )
+    ClassCounter.registerUsageCount('beneos-module', { beneosStats: stats })
   }
 
   /********************************************************************************** */
@@ -336,7 +336,7 @@ export class BeneosUtility {
     let scene = game.scenes.get(sceneId)
     let srcPath = scene.background.src
     let tileId = "scene"
-    
+
     if (!srcPath) {
       for (let tile of scene.tiles) {
         if (tile.texture?.src?.toLowerCase().match(/beneos_battlemaps/) &&
@@ -350,7 +350,7 @@ export class BeneosUtility {
 
     if (srcPath && game.user.isGM && !(srcPath.toLowerCase().match(/intro/)) && srcPath.toLowerCase().match(/beneos_battlemaps/) &&
       (srcPath.toLowerCase().match(/4k/) || srcPath.toLowerCase().match(/hd/)) &&
-      (srcPath.toLowerCase().includes(fileType)) ) {
+      (srcPath.toLowerCase().includes(fileType))) {
       return tileId
     } else {
       return undefined
@@ -379,7 +379,7 @@ export class BeneosUtility {
         tile = scene.tiles.get(tileId)
       }
 
-        //console.log("Scene : ", scene)
+      //console.log("Scene : ", scene)
       let srcPath = (tile) ? tile.texture.src : scene.background.src
       if (command == "toStatic") {
         srcPath = srcPath.replace("webm", "webp")
@@ -741,24 +741,22 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
-  static async forceChangeToken(tokenid, newImage) {
+  static async forceChangeToken(tokenid, fullKey) {
     let token = BeneosUtility.getToken(tokenid)
     if (token === null || token == undefined) {
       return
     }
-    let tokenData = BeneosUtility.getTokenImageInfo(token)
-    if (newImage.includes("idle_")) { // Save the lates selected IDLE animation
-      token.document.setFlag(BeneosUtility.moduleID(), "idleimg", newImage)
-    }
-    token.document.setFlag(BeneosUtility.moduleID(), "tokenKey", tokenData.tokenKey)
-    let scaleFactor = this.getScaleFactor(token, newImage)
-    //console.log(">>>>>>>>>>> UPDATE TOKEN CHANGE")
-    await token.document.update({ img: newImage, scale: scaleFactor, rotation: 1.0 })
-    //canvas.scene.updateEmbeddedDocuments("Token", [({ _id: token.id, img: finalimage, scale: 1.0, rotation: 0 })])
-    let actor = token.actor
-    if (actor && actor.type == "character") {
-      let actorImage = tokenData.path + "/" + tokenData.tokenKey + "-idle_face" + ".webm"
-      actor.update({ 'token.img': actorImage })
+    let tokenData = BeneosUtility.beneosTokens[fullKey]
+    if (tokenData) {
+      console.log(">>>>>>>>>>> UPDATE TOKEN CHANGE", tokenData, token)
+      await token.document.update({ 'texture.src': tokenData.imgPattern + '-token.webp' })
+      if (token?.actor) {
+        console.log(">>>>>>>>>>> UPDATE ACTOR CHANGE", tokenData)
+        let actorImage = tokenData.imgPattern + "-avatar.webp";
+        token.actor.update({ 'img': actorImage })
+      }
+    } else {
+      ui.notifications.warn("Error in BeneosModule : the tokenKey seems wrong " + fullKey)
     }
     return
   }
@@ -921,8 +919,8 @@ export class BeneosUtility {
     Object.entries(BeneosUtility.beneosTokens).forEach(([key, value]) => {
       if (value?.actorName && value?.actorId) {
         beneosTokensHUD.push({
-          "token": BeneosUtility.getBasePath() + BeneosUtility.getBeneosTokenDataPath() + "/" + key + '/' + key + "-idle_face_still.webp",
-          "name": key.replaceAll("_", " "), 'tokenvideo': BeneosUtility.getBasePath() + BeneosUtility.getBeneosTokenDataPath() + "/" + key + '/' + key + "-idle_face.webm",
+          "fullKey": key, //BeneosUtility.getBasePath() + BeneosUtility.getBeneosTokenDataPath() + "/" + key + '/' + key + "-idle_face_still.webp",
+          "img": value.imgPattern + '-avatar.webp',
           "actorId": value.actorId,
           "actorName": value.actorName
         })
@@ -931,6 +929,7 @@ export class BeneosUtility {
       }
     })
     this.sortArrayObjectsByName(beneosTokensHUD)
+    console.log("Beneos Tokens HUD", beneosTokensHUD)
     return beneosTokensHUD
   }
 
@@ -957,10 +956,9 @@ export class BeneosUtility {
       html.find('.beneos-selector-wrap')[0].classList.add('beneos-disabled')
       if (beneosClickedButton.classList.contains("beneos-button-token")) {
         event.preventDefault()
-        let finalImage = beneosClickedButton.dataset.token
-        BeneosUtility.preloadToken(token)
+        let fullKey = beneosClickedButton.dataset.fullkey
         setTimeout(function () {
-          BeneosUtility.forceChangeToken(token.id, finalImage)
+          BeneosUtility.forceChangeToken(token.id, fullKey)
         }, 200)
       }
     }
