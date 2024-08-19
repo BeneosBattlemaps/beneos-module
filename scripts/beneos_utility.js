@@ -2,6 +2,7 @@
 import { BeneosCompendiumManager, BeneosCompendiumReset } from "./beneos_compendium.js";
 import { BeneosSearchEngineLauncher, BeneosDatabaseHolder, BeneosModuleMenu } from "./beneos_search_engine.js";
 import { ClassCounter } from "https://www.uberwald.me/fvtt_appcount/count-class-ready.js";
+import { BeneosCloud, BeneosCloudLogin } from "./beneos_cloud.js";
 
 /********************************************************************************* */
 const BENEOS_MODULE_NAME = "Beneos Module"
@@ -76,13 +77,42 @@ export class BeneosUtility {
 
   /********************************************************************************** */
   static registerSettings() {
+
+    // Common internal settings
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-user-config', {
+      name: 'Internal data store for user-defined parameters',
+      default: {},
+      type: Object,
+      scope: 'world',
+      config: false
+    })
+
     if (game.user.isGM) {
 
       game.beneosTokens = {
         moduleId: BENEOS_MODULE_ID,
-        BeneosUtility
+        BeneosUtility,
+        BeneosCloud
       }
 
+      game.settings.register(BeneosUtility.moduleID(), 'beneos-cloud-user-id', {
+        name: 'Internal storage of the User ID with Beneos Cloud',
+        default: "",
+        type: String,
+        scope: 'world',
+        config: false
+      })
+
+      game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-patreon-login", {
+        name: "Login to Beneos Cloud with you Patreon account",
+        label: "Login to Beneos Cloud with you Patreon account",
+        hint: "Login to Beneos Cloud with you Patreon account",
+        scope: 'world',
+        config: true,
+        type: BeneosCloudLogin,
+        restricted: true
+      })
+  
       game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-clean-compendium", {
         name: "Empty compendium to re-import all tokens data",
         label: "Reset & Rebuild BeneosModule Compendiums",
@@ -154,14 +184,16 @@ export class BeneosUtility {
         config: false
       })
 
-      game.settings.register(BeneosUtility.moduleID(), 'beneos-user-config', {
-        name: 'Internal data store for user-defined parameters',
-        default: {},
-        type: Object,
+      
+      game.settings.register('beneos-cloud', 'access_token', {
+        name: 'Beneos Cloud Access Token',
+        hint: 'Access token for Beneos Cloud (ie Patreon access key)',
         scope: 'world',
-        config: false
+        config: true,
+        type: String,
+        default: '' 
       })
-
+  
       /*game.settings.register(BeneosUtility.moduleID(), 'beneos-animations', {
         name: 'Enable Automatic Animations',
         default: true,
@@ -172,7 +204,7 @@ export class BeneosUtility {
         hint: 'Whether to animate automatically Beneos Tokens.'
       })*/
     }
-
+    /*
     game.settings.register(BeneosUtility.moduleID(), "beneos-speed", {
       name: 'Number of spaces walked per second.',
       hint: 'Slower speeds will give better results. Foundry default speed is 10.',
@@ -180,7 +212,7 @@ export class BeneosUtility {
       config: true,
       default: 10,
       type: Number
-    })
+    })*/
   }
 
   /********************************************************************************** */
@@ -231,7 +263,7 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
-  static init() {
+  static ready() {
     this.file_cache = {}
 
     this.userSizes = foundry.utils.duplicate(game.settings.get(BeneosUtility.moduleID(), 'beneos-user-config'))
@@ -285,6 +317,7 @@ export class BeneosUtility {
 
     let stats = this.countBeneosAssetsUsage()
     ClassCounter.registerUsageCount('beneos-module', { beneosStats: stats })
+
   }
 
   /********************************************************************************** */
@@ -505,7 +538,8 @@ export class BeneosUtility {
   /********************************************************************************** */
   // Checks if the token image is inside the beneos tokens module
   static checkIsBeneosToken(token) {
-    return (token?.document?.texture?.src.includes(this.tokenDataPath) ?? token?.texture?.src.includes(this.tokenDataPath))
+    // Previous version : return (token?.document?.texture?.src.includes(this.tokenDataPath) ?? token?.texture?.src.includes(this.tokenDataPath))
+    return token?.actor?.getFlag("world", "beneos");
   }
 
   /********************************************************************************** */
@@ -523,7 +557,7 @@ export class BeneosUtility {
   /********************************************************************************** */
   //Function that preloads token animations. We need to do it to prevent the "scale not found" error in Foundry
   static preloadToken(token) {
-    console.log(">>>>>>> token", token)
+    // Not sure to keep this as it was used to preload animations
     let myToken = this.getTokenImageInfo(token)
 
     if (!myToken) {

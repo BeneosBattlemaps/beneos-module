@@ -4,21 +4,7 @@ import { BeneosSearchEngineLauncher, BeneosModuleMenu } from "./beneos_search_en
 
 /********************************************************************************** */
 Hooks.once('init', () => {
-
-  // HAck to prevent errors when the animated textures are not fully loaded
-  Token.prototype.oldRefresh = Token.prototype.refresh
-  Token.prototype.refresh = function () {
-    //console.log("TJIS", this, this.icon)
-    try {
-      if (this.mesh == undefined || typeof (this.mesh.scale) != 'object') {
-        return this
-      }
-      return Token.prototype.oldRefresh.call(this)
-    }
-    catch {
-      return this
-    }
-  }
+  // To be filled if needed
 })
 
 /********************************************************************************** */
@@ -28,8 +14,8 @@ Hooks.once('ready', () => {
   BeneosUtility.debugMessage(`Loading ${BeneosUtility.moduleName()} module...`)
   BeneosUtility.debugMessage("----------------------------------------------")
 
-  BeneosUtility.forgeInit()
   BeneosUtility.registerSettings()
+  BeneosUtility.forgeInit()
 
   //Token Magic Hack  Replacement to prevent double filters when changing animations
   if (typeof TokenMagic !== 'undefined') {
@@ -42,8 +28,7 @@ Hooks.once('ready', () => {
     console.log("No Token Magic found !!!")
   }
 
-
-  BeneosUtility.init()
+  BeneosUtility.ready()
 
   if (!game.user.isGM) {
     return

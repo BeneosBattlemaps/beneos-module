@@ -20,6 +20,7 @@ export class BeneosCompendiumReset extends FormApplication {
 
   /********************************************************************************** */
   async performReset() {
+
     ui.notifications.info("BeneosModule : Compendium building is starting, check chat message....");
 
     await this.deleteCompendiumContent("beneos-module.beneos_module_journal")
