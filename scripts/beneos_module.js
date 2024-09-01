@@ -1,10 +1,15 @@
 import { libWrapper } from "./shim.js";
 import { BeneosUtility } from "./beneos_utility.js";
 import { BeneosSearchEngineLauncher, BeneosModuleMenu } from "./beneos_search_engine.js";
+import { BeneosCloud } from "./beneos_cloud.js";
 
 /********************************************************************************** */
 Hooks.once('init', () => {
-  // To be filled if needed
+
+  game.beneos = {
+    BeneosUtility,
+    cloud : new BeneosCloud(), 
+  }
 })
 
 /********************************************************************************** */
@@ -16,24 +21,14 @@ Hooks.once('ready', () => {
 
   BeneosUtility.registerSettings()
   BeneosUtility.forgeInit()
-
-  //Token Magic Hack  Replacement to prevent double filters when changing animations
-  if (typeof TokenMagic !== 'undefined') {
-    let OrigSingleLoadFilters = TokenMagic._singleLoadFilters;
-    TokenMagic._singleLoadFilters = async function (placeable, bulkLoading = false) {
-      if (BeneosUtility.checkIsBeneosToken(placeable)) return;
-      OrigSingleLoadFilters(placeable, bulkLoading);
-    }
-  } else {
-    console.log("No Token Magic found !!!")
-  }
-
   BeneosUtility.ready()
 
   if (!game.user.isGM) {
     return
   }
 
+  game.beneos.cloud.loginAttempt();
+  
   // Try to catch right click on profile image
   Hooks.on('renderActorSheet', (sheet, html, data) => {
     if (game.system.id == "pf2e") {

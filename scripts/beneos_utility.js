@@ -95,7 +95,7 @@ export class BeneosUtility {
         BeneosCloud
       }
 
-      game.settings.register(BeneosUtility.moduleID(), 'beneos-cloud-user-id', {
+      game.settings.register(BeneosUtility.moduleID(), 'beneos-cloud-foundry-id', {
         name: 'Internal storage of the User ID with Beneos Cloud',
         default: "",
         type: String,
@@ -112,7 +112,7 @@ export class BeneosUtility {
         type: BeneosCloudLogin,
         restricted: true
       })
-  
+
       game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-clean-compendium", {
         name: "Empty compendium to re-import all tokens data",
         label: "Reset & Rebuild BeneosModule Compendiums",
@@ -184,16 +184,16 @@ export class BeneosUtility {
         config: false
       })
 
-      
+
       game.settings.register('beneos-cloud', 'access_token', {
         name: 'Beneos Cloud Access Token',
         hint: 'Access token for Beneos Cloud (ie Patreon access key)',
         scope: 'world',
         config: true,
         type: String,
-        default: '' 
+        default: ''
       })
-  
+
       /*game.settings.register(BeneosUtility.moduleID(), 'beneos-animations', {
         name: 'Enable Automatic Animations',
         default: true,
@@ -317,6 +317,17 @@ export class BeneosUtility {
 
     let stats = this.countBeneosAssetsUsage()
     ClassCounter.registerUsageCount('beneos-module', { beneosStats: stats })
+
+    //Token Magic Hack  Replacement to prevent double filters when changing animations
+    if (typeof TokenMagic !== 'undefined') {
+      let OrigSingleLoadFilters = TokenMagic._singleLoadFilters;
+      TokenMagic._singleLoadFilters = async function (placeable, bulkLoading = false) {
+        if (BeneosUtility.checkIsBeneosToken(placeable)) return;
+        OrigSingleLoadFilters(placeable, bulkLoading);
+      }
+    } else {
+      console.log("No Token Magic found !!!")
+    }
 
   }
 
