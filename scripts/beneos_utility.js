@@ -826,6 +826,9 @@ export class BeneosUtility {
     let scaleFactor = this.getScaleFactor(token, newImage)
     //console.log(">>>>>>>>>>> UPDATE TOKEN CHANGE")
     await token.document.update({ img: newImage, scale: scaleFactor, rotation: 1.0 })
+    if (foundry.utils.isNewerVersion(game.version, "11")) {
+      await token.document.update({ 'texture.src': newImage })
+    }
     //canvas.scene.updateEmbeddedDocuments("Token", [({ _id: token.id, img: finalimage, scale: 1.0, rotation: 0 })])
     let actor = token.actor
     if (actor && actor.type == "character") {
@@ -845,9 +848,12 @@ export class BeneosUtility {
     let scaleFactor = this.getScaleFactor(token, newImage)
     token.document.setFlag(BeneosUtility.moduleID(), "idleimg", newImage)
     token.document.setFlag(BeneosUtility.moduleID(), "tokenKey", tokenData.tokenKey)
-    console.log("New IDLE image", scaleFactor)
+    console.log("New IDLE image", scaleFactor, token)
     await token.document.update({ img: newImage })
     await token.document.update({ scale: scaleFactor, rotation: 1.0 })
+    if (foundry.utils.isNewerVersion(game.version, "11")) {
+      await token.document.update({ 'texture.src': newImage })
+    }
 
     if (tokenData.variant == "top") {
       let tokenConfig = this.beneosTokens[tokenData.tokenKey]
@@ -1060,6 +1066,8 @@ export class BeneosUtility {
     // Update with new s
     let s = this.getScaleFactor(token, token.document.texture.src)
     await token.document.update({ scale: s })
+    await token.document.update({ 'texture.scaleX': s })
+    await token.document.update({ 'texture.scaleY': s })
   }
 
   /********************************************************************************** */
@@ -1074,7 +1082,7 @@ export class BeneosUtility {
       let tokenConfig = this.beneosTokens[tokenData.tokenKey]
       if (tokenConfig) {
         let status = tokenData.currentStatus
-        console.log("Updting size : ", tokenData, tokenConfig)
+        //console.log("Updting size : ", tokenData, tokenConfig)
 
         let variantName = tokenData.variant
         if (!tokenConfig[tokenData.variant]) {
@@ -1108,7 +1116,7 @@ export class BeneosUtility {
         }
         currentData.s += incDec
 
-        console.log("Status detected ", status)
+        //console.log("Status detected ", status)
         // Save scalefactor
         if (status == "die") {
           let currentDataDeath = tokenConfig[variantName]["dead"]
@@ -1129,8 +1137,12 @@ export class BeneosUtility {
         // Save scalefactor
         let scaleFactor = currentData.s * tokenConfig.config.scalefactor
         token.document.setFlag(BeneosUtility.moduleID(), "scalefactor", scaleFactor)
-        console.log(">>>>>>>>>>> UPDATE TOKEN CHANGE SCALE")
+        //console.log(">>>>>>>>>>> UPDATE TOKEN CHANGE SCALE")
         await token.document.update({ scale: scaleFactor })
+        if (foundry.utils.isNewerVersion(game.version, "11")) {
+          await token.document.update({ 'texture.scaleX': scaleFactor })
+          await token.document.update({ 'texture.scaleY': scaleFactor })
+        }
       }
     }
   }
