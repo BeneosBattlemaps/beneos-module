@@ -181,6 +181,47 @@ export class BeneosUtility {
       default: 10,
       type: Number
     })
+
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-table-top-mode', {
+      name: 'Table Top Mode',
+      hint: 'Enable the table top mode',
+      default: false,
+      type: Boolean,
+      scope: 'world',
+      config: true
+    })
+
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-grid-visibility', {
+      name: 'Table Top Mode - Grid Visibility',
+      hint: 'Force the grid visibility in Table Top Mode',
+      default: false,
+      type: Boolean,
+      scope: 'world',
+      config: true
+    })
+
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-grid-visibility-opacity', {
+      name: 'Table Top Mode - Grid Visibility',
+      hint: 'Force the grid visibility in Table Top Mode',
+      range: {
+        min: 0.0,
+        max: 1.0,
+        step: 0.1,
+      },
+      default: 0.5,
+      type: Number,
+      config: true
+    })
+
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-token-vision', {
+      name: 'Table Top Mode - Token Vision',
+      hint: 'Force token vision to false in Table Top mode',
+      default: false,
+      type: Boolean,
+      scope: 'world',
+      config: true
+    })
+
   }
 
   /********************************************************************************** */
