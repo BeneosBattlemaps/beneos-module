@@ -2,6 +2,7 @@ import { libWrapper } from "./shim.js";
 import { BeneosUtility } from "./beneos_utility.js";
 import { BeneosSearchEngineLauncher, BeneosModuleMenu } from "./beneos_search_engine.js";
 import { BeneosTableTop } from "./beneos-table-top.js";
+import { BeneosPlayerView } from "./beneos_player_view.js";
 
 /********************************************************************************** */
 Hooks.once('init', () => {
@@ -32,6 +33,15 @@ Hooks.once('ready', () => {
   BeneosUtility.forgeInit()
   BeneosUtility.registerSettings()
 
+  game.beneosTokens = {
+    moduleId: BENEOS_MODULE_ID,
+    BeneosUtility,
+    BeneosTableTop,
+    BeneosPlayerView
+  }
+  BeneosUtility.init()
+  BeneosTableTop.ready()
+
   //Token Magic Hack  Replacement to prevent double filters when changing animations
   if (typeof TokenMagic !== 'undefined') {
     let OrigSingleLoadFilters = TokenMagic._singleLoadFilters;
@@ -43,38 +53,14 @@ Hooks.once('ready', () => {
     console.log("No Token Magic found !!!")
   }
 
-  //Replacement of the token movement across the maps
-  /*libWrapper.register(BeneosUtility.moduleID(), 'CanvasAnimation.animateLinear', (function () {
-
-    return async function (wrapped, ...args) {
-      console.log(">>>>> ANIMATE !!!!", args)
-      let options = args[1];
-      let name = options.name;
-      if (options.duration === 0 || !name || !name.startsWith('Token.') || !name.endsWith('.animateMovement'))
-        return wrapped.apply(this, args);
-
-      let token = args[0][0].parent;
-      let ray = token._movement;
-      let instantTeleport = Math.max(Math.abs(ray.dx), Math.abs(ray.dy)) <= canvas.grid.size;
-      if (instantTeleport) {
-        args[1].duration = 0;
-        return wrapped.apply(this, args);
-      }
-
-      options.duration = (ray.distance * 1000) / (canvas.dimensions.size * game.settings.get(BeneosUtility.moduleID(), 'beneos-speed'));
-
-      return wrapped.apply(this, args);
-    }
-  })());*/
-
-  BeneosUtility.init()
-
-  if (!game.user.isGM) {
-    return
+  BeneosUtility.updateSceneTokens()
+  if (game.user.isGM) {
+    //game.beneosTokens.playerView = new BeneosPlayerView()
+    //canvas.stage.addChild(game.beneosTokens.playerView)
+    //game.beneosTokens.playerView.addContainer()
   }
 
-  BeneosTableTop.ready()
-
+  
   // Try to catch right click on profile image
   Hooks.on('renderActorSheet', (sheet, html, data) => {
     if (game.system.id == "pf2e") {
@@ -88,7 +74,6 @@ Hooks.once('ready', () => {
     }
   });
 
-  BeneosUtility.updateSceneTokens()
 
   /********************************************************************************** */
   Hooks.on('preUpdateToken', (token, changeData, options) => {
