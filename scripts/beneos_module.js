@@ -2,7 +2,6 @@ import { libWrapper } from "./shim.js";
 import { BeneosUtility } from "./beneos_utility.js";
 import { BeneosSearchEngineLauncher, BeneosModuleMenu } from "./beneos_search_engine.js";
 import { BeneosTableTop } from "./beneos-table-top.js";
-import { BeneosPlayerView } from "./beneos_player_view.js";
 
 /********************************************************************************** */
 Hooks.once('init', () => {
@@ -21,6 +20,11 @@ Hooks.once('init', () => {
       return this
     }
   }
+
+  BeneosUtility.registerSettings()
+  BeneosUtility.setupSocket()
+  BeneosTableTop.init()
+
 })
 
 /********************************************************************************** */
@@ -31,16 +35,13 @@ Hooks.once('ready', () => {
   BeneosUtility.debugMessage("----------------------------------------------")
 
   BeneosUtility.forgeInit()
-  BeneosUtility.registerSettings()
 
   game.beneosTokens = {
     moduleId: BENEOS_MODULE_ID,
     BeneosUtility,
     BeneosTableTop,
-    BeneosPlayerView
   }
   BeneosUtility.init()
-  BeneosTableTop.ready()
 
   //Token Magic Hack  Replacement to prevent double filters when changing animations
   if (typeof TokenMagic !== 'undefined') {
@@ -54,12 +55,6 @@ Hooks.once('ready', () => {
   }
 
   BeneosUtility.updateSceneTokens()
-  if (game.user.isGM) {
-    //game.beneosTokens.playerView = new BeneosPlayerView()
-    //canvas.stage.addChild(game.beneosTokens.playerView)
-    //game.beneosTokens.playerView.addContainer()
-  }
-
   
   // Try to catch right click on profile image
   Hooks.on('renderActorSheet', (sheet, html, data) => {

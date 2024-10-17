@@ -1,22 +1,236 @@
 import { BeneosUtility } from "./beneos_utility.js";
-import { BeneosPlayerView } from "./beneos_player_view.js";
+import { BeneosModuleMenu } from "./beneos_search_engine.js";
 
 /********************************************************************************** */
 export class BeneosTableTop {
 
-  static ready() {
-    console.log("BeneosTableTop Ready");
-
-    this.enabled = game.settings.get(BeneosUtility.moduleID(), "beneos-table-top-mode");
+  static init() {
+    console.log("BeneosTableTop init");
+    BeneosTableTop.titleCache = {}
 
     Hooks.on("updateScene", (scene, updateData, options, userId) => {
       BeneosTableTop.manageGridOpacity(scene, updateData);
     });
 
-    Hooks.on("canvasInit", (canvas) => { BeneosTableTop.onCanvasInit() });
-    Hooks.on('canvasReady', () => { BeneosTableTop.onCanvasReady() });
-    Hooks.on('canvasPan', (canvas, data) => { BeneosTableTop.onCanvasPan(canvas, data) });
+    Hooks.on("canvasInit", (canvas) => { return BeneosTableTop.onCanvasInit() });
+    Hooks.on('canvasReady', () => { return BeneosTableTop.onCanvasReady() });
+    Hooks.on('canvasPan', (canvas, data) => { return BeneosTableTop.onCanvasPan(canvas, data) });
+    Hooks.on("preDeleteDrawing", (drawing, options, data) => { return BeneosTableTop.preDeleteDrawing(drawing, options, data) });
+    Hooks.on('refreshDrawing', (drawing, options, data) => { return BeneosTableTop.refreshDrawing(drawing, options, data) });
+    Hooks.on("getSceneControlButtons", (btns) => { return BeneosTableTop.getSceneControlButtons(btns) });
   }
+
+  /******************************************************************************** */
+  static getSceneControlButtons(btns) {
+    if (!canvas) return;
+    CONFIG.Canvas.layers.beneos = { layerClass: ControlsLayer, group: "primary" };
+    let menu = [];
+
+    if (game.user.isGM) {
+      menu.push({
+        name: "enable-boundary",
+        title: "Enable/Disable scene boundary",
+        icon: "fa-solid fa-users",
+        //button: true,
+        toggle: true,
+        active: BeneosTableTop.isSceneBoundary(),
+        onClick: () => { BeneosTableTop.toggleSceneBoundary() }
+      });
+
+      menu.push({
+        name: "enable-player-view",
+        title: "Enable/Disable GM player view control",
+        icon: "fas fa-magnifying-glass",
+        //button: true,
+        toggle: true,
+        active: BeneosTableTop.isControlPlayerView(),
+        onClick: async () => {
+          BeneosTableTop.toggleControlPlayerView()
+        },
+      });
+
+      btns.push({
+        name: "beneos",
+        title: "Beneos Module",
+        icon: "beneos-module",
+        layer: "beneos",
+        tools: menu
+      });
+
+    }
+  }
+
+  /******************************************************************************** */
+  static refreshDrawing(drawing, options, data) {
+    console.log("Drawing updated", drawing, options, data)
+    if (!game.user.isGM || !options.refreshPosition) {
+      return true;
+    }
+
+    if (drawing.document.getFlag("beneos-module", "beneos-area-mode") == "scene-boundary") {
+      let precText = BeneosTableTop.titleCache[drawing.id]
+      if (!precText) {
+        precText = new PreciseText("Scene Boundary", CONFIG.canvasTextStyle.clone())
+        canvas.drawings.addChild(precText);
+        BeneosTableTop.titleCache[drawing.id] = precText
+      }
+      precText.x = drawing.x + 32;
+      precText.y = drawing.y - 40;
+      BeneosTableTop.sendPositionMessage()
+    }
+    if (drawing.document.getFlag("beneos-module", "user-view")) {
+      console.log("Drawing updated for user", drawing)
+      let user = game.users.get(drawing.document.getFlag("beneos-module", "user-view"))
+      let precText = BeneosTableTop.titleCache[drawing.id]
+      if (!precText) {
+        precText = new PreciseText("View : " + user.name, CONFIG.canvasTextStyle.clone())
+        canvas.drawings.addChild(precText);
+        BeneosTableTop.titleCache[drawing.id] = precText
+      }
+      precText.x = drawing.x + 32;
+      precText.y = drawing.y - 40;
+      BeneosTableTop.sendPositionMessage()
+    }
+    return true;
+  }
+
+  /******************************************************************************** */
+  static preDeleteDrawing(drawing, options, data) {
+    if (drawing.getFlag("beneos-module", "beneos-area-mode") || drawing.getFlag("beneos-module", "user-view")) {
+      ui.notifications.info("Scene boundary or user view activated : you can't delete this drawing")
+      return false;
+    }
+    let precText = BeneosTableTop.titleCache[drawing.id]
+    if (precText) {
+      precText.destroy()
+      delete BeneosTableTop.titleCache[drawing.id]
+    }
+    return true;
+  }
+
+  /******************************************************************************** */
+  static searchLockViewArea() {
+    let drawings = canvas.scene.drawings
+    for (let drawing of drawings) {
+      if (drawing.flags?.LockView?.boundingBox_mode == 2) {
+        console.log("Found a LockView area", drawing)
+        return drawing
+      }
+    }
+    return undefined
+  }
+
+  /******************************************************************************** */
+  static searchBoundaryArea() {
+    let drawings = canvas.scene.drawings
+    for (let drawing of drawings) {
+      let mode = drawing.getFlag("beneos-module", "beneos-area-mode")
+      if (mode == "scene-boundary") {
+        console.log("Found a Beneos area", drawing)
+        return drawing
+      }
+    }
+    return undefined
+  }
+
+  /******************************************************************************** */
+  static async toggleSceneBoundary() {
+    let sceneData = game.canvas.scene.getFlag("beneos-module", "beneos-data") || this.getDefaultSceneData()
+    if (sceneData.sceneBoundary) {
+      sceneData.sceneBoundary = false
+      let rect = BeneosTableTop.searchBoundaryArea()
+      if (rect) {
+        rect.setFlag("beneos-module", "beneos-area-mode", false)
+      }
+      ui.notifications.info("Scene boundary disabled")
+    } else {
+      sceneData.sceneBoundary = true
+      let rect = BeneosTableTop.searchBoundaryArea()
+      if (!rect) {
+        rect = BeneosTableTop.searchLockViewArea()
+        if (rect) {
+          rect.setFlag("beneos-module", "beneos-area-mode", "scene-boundary")
+        } else {
+          let rect = { x: canvas.stage.x, y: canvas.stage.y, interface: true, drawingRole: 'information', hidden: true, strokeColor: game.user.color, shape: { width: canvas.stage.width, height: canvas.stage.height, type: 'r' }, visible: true, fillType: 0 }
+          const defaults = game.settings.get("core", DrawingsLayer.DEFAULT_CONFIG_SETTING);
+          const rectData = foundry.utils.mergeObject(defaults, rect);
+          let d = await canvas.scene.createEmbeddedDocuments('Drawing', [rectData]);
+          await d[0].setFlag('beneos-module', 'beneos-area-mode', "scene-boundary");
+        }
+      }
+      BeneosTableTop.sendPositionMessage()
+      ui.notifications.info("Scene boundary enabled")
+    }
+    game.canvas.scene.setFlag("beneos-module", "beneos-data", sceneData)
+  }
+
+  /********************************************************************************** */
+  static async toggleControlPlayerView() {
+    let sceneData = canvas.scene.getFlag("beneos-module", "beneos-data") || this.getDefaultSceneData()
+    if (sceneData.controlPlayerView) {
+      sceneData.controlPlayerView = false
+      for (let d of canvas.scene.drawings) {
+        let isUserDrawing = d.getFlag('beneos-module', 'user-view');
+        if (isUserDrawing) {
+          d.setFlag("beneos-module", "user-view", false)
+        }
+      }
+      ui.notifications.info("Control player view disabled")
+    } else {
+      sceneData.controlPlayerView = true
+      // Loop thru user
+      let userViews = {}
+      for (let user of game.users) {
+        if (user.isGM) continue
+        userViews[user.id] = false
+        for (let d of canvas.scene.drawings) {
+          let isUserDrawing = d.getFlag('beneos-module', 'user-view') === user.id;
+          if (isUserDrawing) {
+            userViews[user.id] = d.id
+          }
+        }
+      }
+      // Loop thru missing players and create view areas
+      for (let userId in userViews) {
+        if (!userViews[userId]) {
+          console.log('Creating view area for ' + userId);
+          let rect = { x: canvas.stage.x, y: canvas.stage.y, interface: true, drawingRole: 'information', hidden: true,  strokeColor: game.user.color, shape: { width: canvas.stage.width, height: canvas.stage.height, type: 'r' }, visible: true, fillType: 0 }
+          const defaults = game.settings.get("core", DrawingsLayer.DEFAULT_CONFIG_SETTING);
+          const rectData = foundry.utils.mergeObject(defaults, rect);
+          let d = await canvas.scene.createEmbeddedDocuments('Drawing', [rectData]);
+          await d[0].setFlag('beneos-module', 'user-view', userId);
+        }
+      }
+      BeneosTableTop.sendPositionMessage()
+      ui.notifications.info("Control player view enabled")
+    }
+    game.canvas.scene.setFlag("beneos-module", "beneos-data", sceneData)
+  }
+
+  /********************************************************************************** */
+  static isSceneBoundary() {
+    let sceneData = canvas?.scene?.getFlag("beneos-module", "beneos-data") || this.getDefaultSceneData()
+    return sceneData.sceneBoundary
+  }
+  static isControlPlayerView() {
+    let sceneData = canvas?.scene?.getFlag("beneos-module", "beneos-data") || this.getDefaultSceneData()
+    return sceneData.controlPlayerView
+  }
+
+  /********************************************************************************** */
+  static getDefaultSceneData() {
+    let sceneData = {
+      sceneBoundary: game.settings.get("beneos-module", "beneos-scene-boundaries"),
+      controlPlayerView: game.settings.get("beneos-module", "beneos-tt-control-player-view")
+    }
+    return sceneData
+  }
+  /********************************************************************************** */
+  static isControlPlayerView() {
+    let sceneData = canvas.scene?.getFlag("beneos-module", "beneos-data") || this.getDefaultSceneData()
+    return sceneData && (sceneData.sceneBoundary || sceneData.controlPlayerView)
+  }
+
 
   /*************************************/
   static newConstrainView({ x, y, scale }) {
@@ -53,9 +267,8 @@ export class BeneosTableTop {
           Ymin: drawing.y + lineWidth,
           Ymax: drawing.y + drawing.shape.height - 2 * lineWidth
         }
-        
-        console.log("Drawing : ", drawing);
-        let isUserDrawing = drawing.getFlag('beneos-module', 'viewer') === game.userId;
+
+        let isUserDrawing = drawing.getFlag('beneos-module', 'user-view') === game.userId;
         if (isUserDrawing) {
           console.log("User Drawing : ", drawing);
           rect.Xmin = rectTemp.Xmin;
@@ -72,8 +285,8 @@ export class BeneosTableTop {
         if (drawing.flags.LockView.boundingBox_mode == 0) continue;
         const mode = drawing.flags.LockView.boundingBox_mode;
 
-        //If 'mode' is 'Always', set the rect variable and break the 'for statement'
-        if (mode == 2) {
+        isSceneBoundary = drawing.getFlag('beneos-module', 'beneos-area-mode')
+        if (isSceneBoundary == 'scene-boundary') {
           rect.Xmin = rectTemp.Xmin;
           rect.Xmax = rectTemp.Xmax;
           rect.Ymin = rectTemp.Ymin;
@@ -82,6 +295,8 @@ export class BeneosTableTop {
           force = true;
           break;
         }
+
+        if (!isUserDrawing && !isSceneBoundary) continue;
 
         //Check if one of the tokens that are controlled by the user are within the rectangle
         let activeToken = false;
@@ -251,13 +466,16 @@ export class BeneosTableTop {
 
   /*************************************/
   static onCanvasInit(canvas) {
+    // Reset the title caches
+    BeneosTableTop.titleCache = {}
 
     // Enable only if bounding box is enabled
-    if (!game.user.isGM) {
+    if (!game.user.isGM && (BeneosTableTop.isControlPlayerView() || BeneosTableTop.isSceneBoundary())) {
       Canvas.prototype.pan = BeneosTableTop.newPan;
       Canvas.prototype._onDragCanvasPan = BeneosTableTop.newOnDragCanvasPan;
       Canvas.prototype.animatePan = BeneosTableTop.newAnimatePan;
     }
+    return true;
   }
 
   /*************************************/
@@ -271,9 +489,7 @@ export class BeneosTableTop {
   }
 
   /*************************************/
-  static onCanvasPan(canvas, data) {
-    if (!game.user.isGM) return; // GM Only
-
+  static async sendPositionMessage(data) {
     let viewPosition = foundry.utils.duplicate(canvas.scene._viewPosition);
     let views = {}
     for (let d of canvas.scene.drawings) {
@@ -286,21 +502,53 @@ export class BeneosTableTop {
   }
 
   /*************************************/
+  static onCanvasPan(canvas, data) {
+    if (!game.user.isGM) return; // GM Only
+    if (!BeneosTableTop.isControlPlayerView()) return;
+
+    this.sendPositionMessage(data);
+  }
+
+  /*************************************/
   static async applyPosition(msgData) {
     let bounds = msgData.bounds;
-    let playerView = msgData.views[game.userId];
-    console.log("viewPosition : ", bounds);
+    console.log("viewPosition client : ", bounds);
+    Canvas.prototype.pan = BeneosTableTop.newPan;
+    Canvas.prototype._onDragCanvasPan = BeneosTableTop.newOnDragCanvasPan;
+    Canvas.prototype.animatePan = BeneosTableTop.newAnimatePan;
+
     await canvas.pan(bounds);
   }
 
   /*************************************/
   static onCanvasReady() {
-    if (!game.user.isGM) return; // GM Only
-
+    console.log("*********************************************** READY")
+    if (game.user.isGM) {
+      this.pauseVideo()
+    }
+    if (!game.user.isGM || !BeneosTableTop.isControlPlayerView()) {
+      return true;
+    }
     let viewPosition = foundry.utils.duplicate(canvas.scene._viewPosition);
     this.sendViewPosition(viewPosition);
 
-    BeneosPlayerView.onDisplayScene();
+    return true;
+  }
+
+  /*************************************/
+  static pauseVideo() {
+    // Video playing
+    if (game.settings.get(BeneosUtility.moduleID(), "beneos-tt-performance-mode")) {
+      console.log("Pause video");
+      BeneosTableTop.videoPause = setInterval(() => {
+        if (canvas.primary?.background?.sourceElement && !canvas.primary.background.sourceElement.paused) {
+          canvas.primary.background.sourceElement.pause(0)
+          // clear interval
+          clearInterval(BeneosTableTop.videoPause);
+          BeneosTableTop.videoPause = undefined;
+        }
+      }, 200);
+    }
   }
 
   /*************************************/
@@ -313,46 +561,33 @@ export class BeneosTableTop {
         beneosTTFlags = {};
       }
 
-      // Video playing
-      if (this.enabled && game.settings.get(BeneosUtility.moduleID(), "beneos-tt-performance-mode")) {
-        BeneosTableTop.videoPause = setInterval(() => {
-          if (canvas.primary?.background?.sourceElement && !canvas.primary.background.sourceElement.paused) {
-            canvas.primary.background.sourceElement.pause(0)
-            // clear interval
-            clearInterval(BeneosTableTop.videoPause);
-            BeneosTableTop.videoPause = undefined;
-          }
-        }, 200);
-      }
+      this.pauseVideo(scene, updateData)
 
       // Manage token vision 
       if (game.settings.get(BeneosUtility.moduleID(), "beneos-tt-token-vision")) {
-        if (this.enabled) {
-          beneosTTFlags.tokenVision = scene.tokenVision;
-          scene.setFlag(BeneosUtility.moduleID(), "beneos-tt-flags", beneosTTFlags);
-          console.log("token vision : ", scene.tokenVision);
-          scene.update({ 'tokenVision': false });
-        } else if (beneosTTFlags.tokenVision !== undefined) {
-          scene.update({ 'tokenVision': beneosTTFlags.tokenVision });
-        }
+        beneosTTFlags.tokenVision = scene.tokenVision;
+        scene.setFlag(BeneosUtility.moduleID(), "beneos-tt-flags", beneosTTFlags);
+        console.log("token vision : ", scene.tokenVision);
+        scene.update({ 'tokenVision': false });
+      } else if (beneosTTFlags.tokenVision !== undefined) {
+        scene.update({ 'tokenVision': beneosTTFlags.tokenVision });
       }
 
       if (game.settings.get(BeneosUtility.moduleID(), "beneos-tt-grid-visibility")) {
-        if (this.enabled) {
-          // Save the grid opacity
-          beneosTTFlags.gridOpacity = scene.grid.alpha;
-          scene.setFlag(BeneosUtility.moduleID(), "beneos-tt-flags", beneosTTFlags);
-          // Set the new grid opacity
-          let gridOpacity = game.settings.get(BeneosUtility.moduleID(), "beneos-tt-grid-visibility-opacity");
-          console.log("Scene : ", scene);
-          scene.update({ 'grid.alpha': gridOpacity })
-        } else if (beneosTTFlags.gridOpacity !== undefined) {
-          scene.update({ 'grid.alpha': beneosTTFlags.gridOpacity });
-        }
+        // Save the grid opacity
+        beneosTTFlags.gridOpacity = scene.grid.alpha;
+        scene.setFlag(BeneosUtility.moduleID(), "beneos-tt-flags", beneosTTFlags);
+        // Set the new grid opacity
+        let gridOpacity = game.settings.get(BeneosUtility.moduleID(), "beneos-tt-grid-visibility-opacity");
+        console.log("Scene : ", scene);
+        scene.update({ 'grid.alpha': gridOpacity })
+      } else if (beneosTTFlags.gridOpacity !== undefined) {
+        scene.update({ 'grid.alpha': beneosTTFlags.gridOpacity });
       }
     }
   }
 
+  /*************************************/
   static manageDisplayUIComponents() {
     let display = true;
     let show = false;
