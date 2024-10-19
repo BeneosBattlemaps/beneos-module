@@ -234,6 +234,42 @@ export class BeneosUtility {
       scope: 'world',
       config: true
     })
+
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-auto-scale-tv', {
+      name: 'Table Top Mode - Auto scale TV to Grid',
+      hint: 'Auto scale the TV to the grid size',
+      default: false,
+      type: Boolean,
+      scope: 'world',
+      config: true
+    })
+
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-auto-scale-width', {
+      name: 'Table Top Mode - Real screen width in Millimeters',
+      hint: 'Screen width input for the auto scale TV feature (0 = use diagonal)',
+      default: 0,
+      type: Number,
+      scope: 'world',
+      config: true
+    })
+
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-auto-scale-diagonal', {
+      name: 'Table Top Mode - Real screen diagonal in Inches',
+      hint: 'Screen diagonal input for the auto scale TV feature (0 = use screen width)',
+      default: 0,
+      type: Number,
+      scope: 'world',
+      config: true
+    })
+
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-auto-scale-miniature-size', {
+      name: 'Table Top Mode - Miniature size in Millimeters',
+      hint: 'Miniature size input for the auto scale TV feature',
+      default: 25,
+      type: Number,
+      scope: 'world',
+      config: true
+    })
   }
 
 

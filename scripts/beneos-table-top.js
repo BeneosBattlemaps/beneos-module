@@ -218,6 +218,28 @@ export class BeneosTableTop {
   }
 
   /********************************************************************************** */
+  static computePhysicalScale() {
+    let screenWidth = game.settings.get("beneos-module", "beneos-tt-auto-scale-width");
+    if ( screenWidth == 0) {
+      let diagonal = game.settings.get("beneos-module", "beneos-tt-auto-scale-diagonal");
+      if (diagonal == 0) {
+        ui.notifications.error("Please set the screen width or the diagonal of the screen in the module settings")
+        return
+      }
+      screenWidth = (diagonal * 25,4 * 16) / 18.3576;
+    }
+    let miniatureSize = game.settings.get("beneos-module", "beneos-tt-auto-scale-miniature-size");
+    if ( miniatureSize <= 5) {
+      ui.notifications.error("Please set the miniature size in the module settings")
+      return
+    }
+    let squareSize = screenWidth / miniatureSize;
+    let pixelPerSquare = screen.width / squareSize;
+    let scale = pixelPerSquare / canvas.scene.grid.size;
+    return scale;
+  }
+  
+  /********************************************************************************** */
   static getDefaultSceneData() {
     let sceneData = {
       sceneBoundary: game.settings.get("beneos-module", "beneos-scene-boundaries"),
@@ -361,6 +383,10 @@ export class BeneosTableTop {
 
     //Get the new scale
     scale = Math.round(Math.clamp(scale, min, max) * 2000) / 2000;
+    if ( game.settings.get(BeneosUtility.moduleID(), "beneos-tt-auto-scale-tv")) {
+      scale = this.computePhysicalScale();
+    }
+
 
     //Set the bounding box
     bound.Xmin = rect.Xmin + window.innerWidth / (2 * scale);
