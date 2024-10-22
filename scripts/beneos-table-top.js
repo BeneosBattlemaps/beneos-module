@@ -307,7 +307,7 @@ export class BeneosTableTop {
         if (drawing.flags.LockView.boundingBox_mode == 0) continue;
         const mode = drawing.flags.LockView.boundingBox_mode;
 
-        isSceneBoundary = drawing.getFlag('beneos-module', 'beneos-area-mode')
+        let isSceneBoundary = drawing.getFlag('beneos-module', 'beneos-area-mode')
         if (isSceneBoundary == 'scene-boundary') {
           rect.Xmin = rectTemp.Xmin;
           rect.Xmax = rectTemp.Xmax;
