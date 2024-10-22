@@ -300,7 +300,7 @@ export class BeneosTableTop {
 
         let isUserDrawing = drawing.getFlag('beneos-module', 'user-view') == game.userId;
         if (isUserDrawing) {
-          console.log("User Drawing : ", drawing);
+          // console.log("User Drawing : ", drawing);
           rect.Xmin = rectTemp.Xmin;
           rect.Xmax = rectTemp.Xmax;
           rect.Ymin = rectTemp.Ymin;
@@ -319,7 +319,7 @@ export class BeneosTableTop {
         
         let isSceneBoundary = drawing.getFlag('beneos-module', 'beneos-area-mode')
         if (isSceneBoundary == 'scene-boundary') {
-          console.log("Scene Boundary : ", drawing);
+          //console.log("Scene Boundary : ", drawing);
           rect.Xmin = rectTemp.Xmin;
           rect.Xmax = rectTemp.Xmax;
           rect.Ymin = rectTemp.Ymin;
@@ -426,7 +426,7 @@ export class BeneosTableTop {
 
   /*************************************/
   static newPan({ x = null, y = null, scale = null } = {}) {
-    console.log("newPan");
+    // console.log("newPan");
     const constrained = BeneosTableTop.newConstrainView({ x, y, scale });
     this.stage.pivot.set(constrained.x, constrained.y);
     this.stage.scale.set(constrained.scale, constrained.scale);
