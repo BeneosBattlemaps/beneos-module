@@ -138,13 +138,18 @@ export class BeneosTableTop {
     let sceneData = game.canvas.scene.getFlag("beneos-module", "beneos-data") || this.getDefaultSceneData()
     if (sceneData.sceneBoundary) {
       sceneData.sceneBoundary = false
+      await game.canvas.scene.setFlag("beneos-module", "beneos-data", sceneData)
+
       let rect = BeneosTableTop.searchBoundaryArea()
       if (rect) {
-        rect.setFlag("beneos-module", "beneos-area-mode", false)
+        await rect.setFlag("beneos-module", "beneos-area-mode", false)
+        let d = await canvas.scene.deleteEmbeddedDocuments('Drawing', [rect.id]);
       }
       ui.notifications.info("Scene boundary disabled")
     } else {
       sceneData.sceneBoundary = true
+      await game.canvas.scene.setFlag("beneos-module", "beneos-data", sceneData)
+
       let rect = BeneosTableTop.searchBoundaryArea()
       if (!rect) {
         rect = BeneosTableTop.searchLockViewArea()
@@ -161,7 +166,6 @@ export class BeneosTableTop {
       BeneosTableTop.sendPositionMessage()
       ui.notifications.info("Scene boundary enabled")
     }
-    game.canvas.scene.setFlag("beneos-module", "beneos-data", sceneData)
   }
 
   /********************************************************************************** */
@@ -169,15 +173,19 @@ export class BeneosTableTop {
     let sceneData = canvas.scene.getFlag("beneos-module", "beneos-data") || this.getDefaultSceneData()
     if (sceneData.controlPlayerView) {
       sceneData.controlPlayerView = false
+      await game.canvas.scene.setFlag("beneos-module", "beneos-data", sceneData)
+
       for (let d of canvas.scene.drawings) {
         let isUserDrawing = d.getFlag('beneos-module', 'user-view');
         if (isUserDrawing) {
-          d.setFlag("beneos-module", "user-view", false)
+          await d.setFlag("beneos-module", "user-view", false)
+          await canvas.scene.deleteEmbeddedDocuments('Drawing', [d.id]);
         }
       }
       ui.notifications.info("Control player view disabled")
     } else {
       sceneData.controlPlayerView = true
+      await game.canvas.scene.setFlag("beneos-module", "beneos-data", sceneData)
       // Loop thru user
       let userViews = {}
       for (let user of game.users) {
@@ -204,7 +212,6 @@ export class BeneosTableTop {
       BeneosTableTop.sendPositionMessage()
       ui.notifications.info("Control player view enabled")
     }
-    game.canvas.scene.setFlag("beneos-module", "beneos-data", sceneData)
   }
 
   /********************************************************************************** */
@@ -264,8 +271,9 @@ export class BeneosTableTop {
     let drawings = canvas.scene.drawings.contents;      //The drawings on the canvas
     let scaleMin;                                   //The minimum acceptable scale
     let controlledTokens = [];                      //Array or tokens that are controlled by the user
-    let boundingBox = true
-
+    let boundingBox = this.isSceneBoundary() || this.isControlPlayerView(); //Whether a bounding box is drawn
+    let isPlayerView = this.isControlPlayerView();
+    
     if (boundingBox) {
       let tokensInBox = 0;                            //Number of tokens in the bounding box
       let force = false;                              //Rectangle is defined as 'Force Always'
@@ -290,7 +298,7 @@ export class BeneosTableTop {
           Ymax: drawing.y + drawing.shape.height - 2 * lineWidth
         }
 
-        let isUserDrawing = drawing.getFlag('beneos-module', 'user-view') === game.userId;
+        let isUserDrawing = drawing.getFlag('beneos-module', 'user-view') == game.userId;
         if (isUserDrawing) {
           console.log("User Drawing : ", drawing);
           rect.Xmin = rectTemp.Xmin;
@@ -303,12 +311,15 @@ export class BeneosTableTop {
         }
 
         //Check boundingbox mode of the rectangle
-        if (drawing.flags.LockView == undefined) continue;
-        if (drawing.flags.LockView.boundingBox_mode == 0) continue;
-        const mode = drawing.flags.LockView.boundingBox_mode;
+        //if (drawing.flags.LockView == undefined) continue;
+        //if (drawing.flags.LockView.boundingBox_mode == 0) continue;
+        const mode = 2; // drawing.flags.LockView.boundingBox_mode;
 
+        if ( isPlayerView) continue; // If player view has nto been found here, then continue
+        
         let isSceneBoundary = drawing.getFlag('beneos-module', 'beneos-area-mode')
         if (isSceneBoundary == 'scene-boundary') {
+          console.log("Scene Boundary : ", drawing);
           rect.Xmin = rectTemp.Xmin;
           rect.Xmax = rectTemp.Xmax;
           rect.Ymin = rectTemp.Ymin;
