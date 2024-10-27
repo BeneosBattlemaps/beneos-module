@@ -55,6 +55,7 @@ Hooks.once('ready', () => {
   }
 
   BeneosUtility.updateSceneTokens()
+  BeneosUtility.checkLockViewPresence()
   
   // Try to catch right click on profile image
   Hooks.on('renderActorSheet', (sheet, html, data) => {

@@ -98,7 +98,13 @@ export class BeneosTableTop {
       precText.x = drawing.x + 32;
       precText.y = drawing.y - 40;
       setTimeout(() => {BeneosTableTop.sendPositionMessage()}, 100);
-    }
+      if ( game.settings.get(BeneosUtility.moduleID(), "beneos-tt-auto-scale-tv")) {
+        let ratio = this.getRatio()
+        if (drawing.document.shape.height != drawing.document.shape.width / ratio) {
+          drawing.document.update({ "shape.height": drawing.document.shape.width / ratio });
+        }
+      }
+      }
     return true;
   }
 
@@ -234,7 +240,23 @@ export class BeneosTableTop {
   }
 
   /********************************************************************************** */
+  static getRatio() {
+    let ratioStr = game.settings.get("beneos-module", "beneos-tt-auto-scale-ratio");
+    // ratioStr is a string like "X/Y", so get the X and Y values
+    if ( !ratioStr.match("/") ) {
+      ui.notifications.error("Please set the ratio of the screen in the module settings, assuming 16/9")
+      ratioStr = "16/9"
+    }
+    let ratio = ratioStr.split("/");
+    let ratioX = Number(ratio[0]) || 16;
+    let ratioY = Number(ratio[1]) || 9;
+    return ratioX / ratioY;
+  }
+
+  /********************************************************************************** */
   static computePhysicalScale() {
+    let screenRatio = this.getRatio();
+
     let screenWidth = game.settings.get("beneos-module", "beneos-tt-auto-scale-width");
     if ( screenWidth == 0) {
       let diagonal = game.settings.get("beneos-module", "beneos-tt-auto-scale-diagonal");
@@ -243,7 +265,7 @@ export class BeneosTableTop {
         ui.notifications.error("Please set the screen width or the diagonal of the screen in the module settings")
         return
       }
-      screenWidth = (diagonal * 25,4 * 16) / 18.3576;
+      screenWidth = diagonal * screenRatio;
     }
     let miniatureSize = game.settings.get("beneos-module", "beneos-tt-auto-scale-miniature-size");
     if ( miniatureSize <= 5) {
@@ -253,7 +275,7 @@ export class BeneosTableTop {
     let squareSize = screenWidth / miniatureSize;
     let pixelPerSquare = screen.width / squareSize;
     let scale = pixelPerSquare / canvas.scene.grid.size;
-    return scale;
+    return scale, screenRatio;
   }
   
   /********************************************************************************** */
@@ -452,7 +474,7 @@ export class BeneosTableTop {
 
     // Shift by 3 grid spaces at a time
     const { x, y } = event;
-    const pad = 50;
+    const pad = 50;0
     const shift = (this.dimensions.size * 3) / this.stage.scale.x;
 
     // Shift horizontally

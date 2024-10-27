@@ -262,6 +262,15 @@ export class BeneosUtility {
       config: true
     })
 
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-auto-scale-ratio', {
+      name: 'Table Top Mode - Aspect ratio of the screen',
+      hint: 'Aspect ratio of the screen, by default 16/9 (enter X/Y only)',
+      default: "16/9",
+      type: String,
+      scope: 'world',
+      config: true
+    })
+
     game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-auto-scale-miniature-size', {
       name: 'Table Top Mode - Miniature size in Millimeters',
       hint: 'Miniature size input for the auto scale TV feature',
@@ -1062,6 +1071,15 @@ export class BeneosUtility {
         BeneosUtility.debugMessage("[BENEOS MODULE] Force updating " + token.id)
         this.updateToken(token.id, "standing", { forceupdate: true })
       }
+    }
+  }
+
+  /********************************************************************************** */
+  static checkLockViewPresence()  {
+    let lv = game.modules.get("LockView")
+    if (lv?.active) {
+      ui.notifications.warn("Lock View module detected. Beneos Module is no more compatible with LockView module, it must be de-activated.")
+      return true
     }
   }
 
