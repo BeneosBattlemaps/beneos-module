@@ -81,6 +81,7 @@ export class BeneosTableTop {
           name: text,
           title: title,
           icon: "fas " + icon,
+          active:true,
           //button: true,
           toggle: true,
           onClick: async () => {

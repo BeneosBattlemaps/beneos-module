@@ -186,7 +186,7 @@ export class BeneosUtility {
       config: true,
       requiresReload: true,
       onChange: value => {
-        BeneosTableTop.toggleTableTopMode(value)
+        //BeneosTableTop.toggleTableTopMode(value)
       }
     })
 
