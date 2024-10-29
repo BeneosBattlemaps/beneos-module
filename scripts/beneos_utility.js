@@ -183,7 +183,11 @@ export class BeneosUtility {
       default: false,
       type: Boolean,
       scope: 'world',
-      config: true
+      config: true,
+      requiresReload: true,
+      onChange: value => {
+        BeneosTableTop.toggleTableTopMode(value)
+      }
     })
 
     game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-performance-mode', {
@@ -213,15 +217,6 @@ export class BeneosUtility {
       },
       default: 0.5,
       type: Number,
-      scope: 'world',
-      config: true
-    })
-
-    game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-token-vision', {
-      name: 'Table Top Mode - Token Vision',
-      hint: 'Force token vision to false in Table Top mode',
-      default: false,
-      type: Boolean,
       scope: 'world',
       config: true
     })

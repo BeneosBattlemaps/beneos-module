@@ -7,10 +7,14 @@ export class BeneosTableTop {
   static init() {
     console.log("BeneosTableTop init");
     BeneosTableTop.titleCache = {}
+    
+    this.isTableTop = game.settings.get(BeneosUtility.moduleID(), "beneos-table-top-mode");
 
-    Hooks.on("updateScene", (scene, updateData, options, userId) => {
-      BeneosTableTop.manageGridOpacity(scene, updateData);
-    });
+    if ( this.isTableTop ) { 
+      Hooks.on("updateScene", (scene, updateData, options, userId) => {
+        BeneosTableTop.manageGridOpacity(scene, updateData);
+      });
+    }
 
     Hooks.on("canvasInit", (canvas) => { return BeneosTableTop.onCanvasInit() });
     Hooks.on('canvasReady', () => { return BeneosTableTop.onCanvasReady() });
@@ -18,6 +22,26 @@ export class BeneosTableTop {
     Hooks.on("preDeleteDrawing", (drawing, options, data) => { return BeneosTableTop.preDeleteDrawing(drawing, options, data) });
     Hooks.on('refreshDrawing', (drawing, options, data) => { return BeneosTableTop.refreshDrawing(drawing, options, data) });
     Hooks.on("getSceneControlButtons", (btns) => { return BeneosTableTop.getSceneControlButtons(btns) });
+  }
+
+  /******************************************************************************** */
+  static async toggleTableTopMode(value ) {
+
+    for (let scene of game.scenes) {
+      let beneosTTFlags = scene.getFlag(BeneosUtility.moduleID(), "beneos-tt-flags");
+      if (beneosTTFlags === undefined) {
+        beneosTTFlags = {};
+      }
+  
+      if (!value)  { // When disable, restore default values
+        if (beneosTTFlags.gridOpacity !== undefined) { 
+          await scene.update({ 'grid.alpha': beneosTTFlags.gridOpacity });
+        }
+        if (beneosTTFlags.tokenVisionSaved !== undefined) { 
+          await scene.update({ 'tokenVision': beneosTTFlags.tokenVisionSaved });
+        }
+      }  
+    }
   }
 
   /******************************************************************************** */
@@ -37,17 +61,33 @@ export class BeneosTableTop {
         onClick: () => { BeneosTableTop.toggleSceneBoundary() }
       });
 
-      menu.push({
-        name: "enable-player-view",
-        title: "Enable/Disable GM player view control",
-        icon: "fas fa-magnifying-glass",
-        //button: true,
-        toggle: true,
-        active: BeneosTableTop.isControlPlayerView(),
-        onClick: async () => {
-          BeneosTableTop.toggleControlPlayerView()
-        },
-      });
+      if ( this.isTableTop ) { 
+        menu.push({
+          name: "enable-player-view",
+          title: "Enable/Disable GM player view control",
+          icon: "fas fa-magnifying-glass",
+          //button: true,
+          toggle: true,
+          active: BeneosTableTop.isControlPlayerView(),
+          onClick: async () => {
+            BeneosTableTop.toggleControlPlayerView()
+          },
+        });
+  
+        let text = "Enable/Disable Token Vision";
+        let title = "Enable/Disable Token Vision for all players";
+        let icon = "fa-eye";
+        menu.push({
+          name: text,
+          title: title,
+          icon: "fas " + icon,
+          //button: true,
+          toggle: true,
+          onClick: async () => {
+            BeneosTableTop.toggleTokenVision()
+          },
+        });  
+      }
 
       btns.push({
         name: "beneos",
@@ -68,10 +108,10 @@ export class BeneosTableTop {
     }
 
     if (drawing.document.getFlag("beneos-module", "beneos-area-mode") == "scene-boundary") {
-      if (!game.user.isGM ) {
-        if ( canvas.newPan) canvas.newPan();
+      if (!game.user.isGM) {
+        if (canvas.newPan) canvas.newPan();
         return true;
-      }  
+      }
       let precText = BeneosTableTop.titleCache[drawing.id]
       if (!precText) {
         precText = new PreciseText("Scene Boundary", CONFIG.canvasTextStyle.clone())
@@ -80,13 +120,13 @@ export class BeneosTableTop {
       }
       precText.x = drawing.x + 32;
       precText.y = drawing.y - 40;
-      setTimeout(() => {BeneosTableTop.sendPositionMessage()}, 100);
+      setTimeout(() => { BeneosTableTop.sendPositionMessage() }, 100);
     }
     if (drawing.document.getFlag("beneos-module", "user-view")) {
-      if (!game.user.isGM ) {
-        if ( canvas.newPan) canvas.newPan();
+      if (!game.user.isGM) {
+        if (canvas.newPan) canvas.newPan();
         return true;
-      }  
+      }
       console.log("Drawing updated for user", drawing)
       let user = game.users.get(drawing.document.getFlag("beneos-module", "user-view"))
       let precText = BeneosTableTop.titleCache[drawing.id]
@@ -97,14 +137,14 @@ export class BeneosTableTop {
       }
       precText.x = drawing.x + 32;
       precText.y = drawing.y - 40;
-      setTimeout(() => {BeneosTableTop.sendPositionMessage()}, 100);
-      if ( game.settings.get(BeneosUtility.moduleID(), "beneos-tt-auto-scale-tv")) {
+      setTimeout(() => { BeneosTableTop.sendPositionMessage() }, 100);
+      if (game.settings.get(BeneosUtility.moduleID(), "beneos-tt-auto-scale-tv")) {
         let ratio = this.getRatio()
         if (drawing.document.shape.height != drawing.document.shape.width / ratio) {
           drawing.document.update({ "shape.height": drawing.document.shape.width / ratio });
         }
       }
-      }
+    }
     return true;
   }
 
@@ -183,6 +223,23 @@ export class BeneosTableTop {
   }
 
   /********************************************************************************** */
+  static async toggleTokenVision() {    
+    
+    let sceneData = canvas.scene.getFlag("beneos-module", "beneos-tt-flags")
+    if (sceneData.tokenVisionSaved == undefined ) { // Save the proper state
+      sceneData.tokenVisionSaved = canvas.scene.tokenVision;
+      await canvas.scene.setFlag("beneos-module", "beneos-tt-flags", sceneData)
+    }
+    if (canvas.scene.tokenVision) {
+      await canvas.scene.update({ 'tokenVision': false });
+      ui.notifications.info("Token Vision has been disabled")
+    } else {
+      await canvas.scene.update({ 'tokenVision': true });
+      ui.notifications.info("Token Vision has been enabled")
+    }
+  }
+
+  /********************************************************************************** */
   static async toggleControlPlayerView() {
     let sceneData = canvas.scene.getFlag("beneos-module", "beneos-data") || this.getDefaultSceneData()
     if (sceneData.controlPlayerView) {
@@ -217,7 +274,7 @@ export class BeneosTableTop {
       for (let userId in userViews) {
         if (!userViews[userId]) {
           console.log('Creating view area for ' + userId);
-          let rect = { x: canvas.stage.x, y: canvas.stage.y, interface: true, drawingRole: 'information', hidden: true,  strokeColor: game.user.color, shape: { width: canvas.stage.width, height: canvas.stage.height, type: 'r' }, visible: true, fillType: 0 }
+          let rect = { x: canvas.stage.x, y: canvas.stage.y, interface: true, drawingRole: 'information', hidden: true, strokeColor: game.user.color, shape: { width: canvas.stage.width, height: canvas.stage.height, type: 'r' }, visible: true, fillType: 0 }
           const defaults = game.settings.get("core", DrawingsLayer.DEFAULT_CONFIG_SETTING);
           const rectData = foundry.utils.mergeObject(defaults, rect);
           let d = await canvas.scene.createEmbeddedDocuments('Drawing', [rectData]);
@@ -231,11 +288,11 @@ export class BeneosTableTop {
 
   /********************************************************************************** */
   static isSceneBoundary() {
-    let sceneData = canvas?.scene?.getFlag("beneos-module", "beneos-data") 
+    let sceneData = canvas?.scene?.getFlag("beneos-module", "beneos-data")
     return sceneData?.sceneBoundary || false
   }
   static isControlPlayerView() {
-    let sceneData = canvas?.scene?.getFlag("beneos-module", "beneos-data") 
+    let sceneData = canvas?.scene?.getFlag("beneos-module", "beneos-data")
     return sceneData?.controlPlayerView || false
   }
 
@@ -243,7 +300,7 @@ export class BeneosTableTop {
   static getRatio() {
     let ratioStr = game.settings.get("beneos-module", "beneos-tt-auto-scale-ratio");
     // ratioStr is a string like "X/Y", so get the X and Y values
-    if ( !ratioStr.match("/") ) {
+    if (!ratioStr.match("/")) {
       ui.notifications.error("Please set the ratio of the screen in the module settings, assuming 16/9")
       ratioStr = "16/9"
     }
@@ -258,7 +315,7 @@ export class BeneosTableTop {
     let screenRatio = this.getRatio();
 
     let screenWidth = game.settings.get("beneos-module", "beneos-tt-auto-scale-width");
-    if ( screenWidth == 0) {
+    if (screenWidth == 0) {
       let diagonal = game.settings.get("beneos-module", "beneos-tt-auto-scale-diagonal");
       diagonal *= 25.4
       if (diagonal == 0) {
@@ -268,7 +325,7 @@ export class BeneosTableTop {
       screenWidth = diagonal * screenRatio;
     }
     let miniatureSize = game.settings.get("beneos-module", "beneos-tt-auto-scale-miniature-size");
-    if ( miniatureSize <= 5) {
+    if (miniatureSize <= 5) {
       ui.notifications.error("Please set the miniature size in the module settings")
       return
     }
@@ -277,16 +334,17 @@ export class BeneosTableTop {
     let scale = pixelPerSquare / canvas.scene.grid.size;
     return scale, screenRatio;
   }
-  
+
   /********************************************************************************** */
   static getDefaultSceneData() {
     let sceneData = {
       sceneBoundary: game.settings.get("beneos-module", "beneos-scene-boundaries"),
-      controlPlayerView: game.settings.get("beneos-module", "beneos-tt-control-player-view")
+      controlPlayerView: game.settings.get("beneos-module", "beneos-tt-control-player-view"),
+      tokenVisionSaved: -1
     }
     return sceneData
   }
-  
+
   /*************************************/
   static newConstrainView({ x, y, scale }) {
     const d = canvas.dimensions;                    //Canvas dimensions
@@ -297,11 +355,11 @@ export class BeneosTableTop {
     let drawings = canvas.scene.drawings.contents;      //The drawings on the canvas
     let scaleMin;                                   //The minimum acceptable scale
     let controlledTokens = [];                      //Array or tokens that are controlled by the user
-    
+
     let isSceneBoundary = this.isSceneBoundary();
     let isPlayerView = this.isControlPlayerView();
     let boundingBox = isSceneBoundary || isPlayerView; //Whether a bounding box is drawn
-    
+
     if (boundingBox) {
       let tokensInBox = 0;                            //Number of tokens in the bounding box
       let force = false;                              //Rectangle is defined as 'Force Always'
@@ -343,10 +401,10 @@ export class BeneosTableTop {
         //if (drawing.flags.LockView.boundingBox_mode == 0) continue;
         const mode = 2; // drawing.flags.LockView.boundingBox_mode;
 
-        if ( isPlayerView) continue; // If player view has nto been found here, then continue
-        
+        if (isPlayerView) continue; // If player view has nto been found here, then continue
+
         let isDrawingSceneBoundary = drawing.getFlag('beneos-module', 'beneos-area-mode')
-        if ( isSceneBoundary && isDrawingSceneBoundary == 'scene-boundary') {
+        if (isSceneBoundary && isDrawingSceneBoundary == 'scene-boundary') {
           console.log("Scene Boundary : ", drawing);
           rect.Xmin = rectTemp.Xmin;
           rect.Xmax = rectTemp.Xmax;
@@ -422,7 +480,7 @@ export class BeneosTableTop {
 
     //Get the new scale
     scale = Math.round(Math.clamp(scale, min, max) * 2000) / 2000;
-    if ( game.settings.get(BeneosUtility.moduleID(), "beneos-tt-auto-scale-tv")) {
+    if (game.settings.get(BeneosUtility.moduleID(), "beneos-tt-auto-scale-tv")) {
       scale = this.computePhysicalScale();
     }
 
@@ -474,7 +532,7 @@ export class BeneosTableTop {
 
     // Shift by 3 grid spaces at a time
     const { x, y } = event;
-    const pad = 50;0
+    const pad = 50; 0
     const shift = (this.dimensions.size * 3) / this.stage.scale.x;
 
     // Shift horizontally
@@ -570,7 +628,7 @@ export class BeneosTableTop {
     if (!game.user.isGM) return; // GM Only
     if (!BeneosTableTop.isControlPlayerView()) return;
 
-   // this.sendPositionMessage(data);
+    // this.sendPositionMessage(data);
   }
 
   /*************************************/
@@ -616,7 +674,7 @@ export class BeneosTableTop {
   }
 
   /*************************************/
-  static manageGridOpacity(scene, updateData) {
+  static async manageGridOpacity(scene, updateData) {
     if (!game.user.isGM) return; // GM Only
 
     if (updateData.active === true) {
@@ -627,26 +685,16 @@ export class BeneosTableTop {
 
       this.pauseVideo(scene, updateData)
 
-      // Manage token vision 
-      if (game.settings.get(BeneosUtility.moduleID(), "beneos-tt-token-vision")) {
-        beneosTTFlags.tokenVision = scene.tokenVision;
-        scene.setFlag(BeneosUtility.moduleID(), "beneos-tt-flags", beneosTTFlags);
-        console.log("token vision : ", scene.tokenVision);
-        scene.update({ 'tokenVision': false });
-      } else if (beneosTTFlags.tokenVision !== undefined) {
-        scene.update({ 'tokenVision': beneosTTFlags.tokenVision });
-      }
-
       if (game.settings.get(BeneosUtility.moduleID(), "beneos-tt-grid-visibility")) {
         // Save the grid opacity
         beneosTTFlags.gridOpacity = scene.grid.alpha;
-        scene.setFlag(BeneosUtility.moduleID(), "beneos-tt-flags", beneosTTFlags);
+        await scene.setFlag(BeneosUtility.moduleID(), "beneos-tt-flags", beneosTTFlags);
         // Set the new grid opacity
         let gridOpacity = game.settings.get(BeneosUtility.moduleID(), "beneos-tt-grid-visibility-opacity");
         console.log("Scene : ", scene);
-        scene.update({ 'grid.alpha': gridOpacity })
+        await scene.update({ 'grid.alpha': gridOpacity })
       } else if (beneosTTFlags.gridOpacity !== undefined) {
-        scene.update({ 'grid.alpha': beneosTTFlags.gridOpacity });
+        await scene.update({ 'grid.alpha': beneosTTFlags.gridOpacity });
       }
     }
   }
