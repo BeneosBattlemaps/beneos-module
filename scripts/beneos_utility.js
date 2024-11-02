@@ -198,6 +198,7 @@ export class BeneosUtility {
       scope: 'world',
       config: true
     })
+    
     game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-grid-visibility', {
       name: 'Table Top Mode - Grid Visibility',
       hint: 'Force the grid visibility in Table Top Mode',

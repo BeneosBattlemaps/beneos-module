@@ -318,12 +318,11 @@ export class BeneosTableTop {
     let screenWidth = game.settings.get("beneos-module", "beneos-tt-auto-scale-width");
     if (screenWidth == 0) {
       let diagonal = game.settings.get("beneos-module", "beneos-tt-auto-scale-diagonal");
-      diagonal *= 25.4
       if (diagonal == 0) {
         ui.notifications.error("Please set the screen width or the diagonal of the screen in the module settings")
         return
       }
-      screenWidth = diagonal * screenRatio;
+      screenWidth = (diagonal * 25.4 * 16) / 18.3576;
     }
     let miniatureSize = game.settings.get("beneos-module", "beneos-tt-auto-scale-miniature-size");
     if (miniatureSize <= 5) {
@@ -349,16 +348,19 @@ export class BeneosTableTop {
   /*************************************/
   static newConstrainView({ x, y, scale }) {
     const d = canvas.dimensions;                    //Canvas dimensions
-    let boxDefined = false;                         //Whether a bounding box has been drawn
+    let boxDefined = false;                         // Whether a bounding box has been drawn
     let bound = { Xmin: 0, Xmax: 0, Ymin: 0, Ymax: 0 };      //Stores the bounding box values
     let rect = { Xmin: 0, Xmax: 0, Ymin: 0, Ymax: 0 };       //Stores the bounding rectangle values
-    let scaleChange = false;                        //Checks if the scale must be changed
-    let drawings = canvas.scene.drawings.contents;      //The drawings on the canvas
-    let scaleMin;                                   //The minimum acceptable scale
-    let controlledTokens = [];                      //Array or tokens that are controlled by the user
+    let scaleChange = false;                        // Checks if the scale must be changed
+    let drawings = canvas.scene.drawings.contents;      // The drawings on the canvas
+    let scaleMin;                                   // The minimum acceptable scale
+    let controlledTokens = [];                      // Array or tokens that are controlled by the user
 
     let isSceneBoundary = this.isSceneBoundary();
     let isPlayerView = this.isControlPlayerView();
+    if (!this.isTableTop) { // In all other cases, the player view is disabled
+      isPlayerView = false; 
+    }
     let boundingBox = isSceneBoundary || isPlayerView; //Whether a bounding box is drawn
 
     if (boundingBox) {
@@ -367,7 +369,7 @@ export class BeneosTableTop {
 
       //Get the controlled tokens
       if (game.user.isGM == false) controlledTokens = canvas.tokens.controlled;
-      console.log("Update drawings....", isSceneBoundary, isPlayerView);
+      //console.log("Update drawings....", isSceneBoundary, isPlayerView);
       //Check all drawings in the scene
       for (let i = 0; i < drawings.length; i++) {
         const drawing = drawings[i];
@@ -627,7 +629,7 @@ export class BeneosTableTop {
   /*************************************/
   static onCanvasPan(canvas, data) {
     if (!game.user.isGM) return; // GM Only
-    if (!BeneosTableTop.isControlPlayerView()) return;
+    if (!BeneosTableTop.isControlPlayerView() || (BeneosTableTop.isControlPlayerView() && !this.isTableTop)) return;
 
     // this.sendPositionMessage(data);
   }
