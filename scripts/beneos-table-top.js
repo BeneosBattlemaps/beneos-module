@@ -10,11 +10,9 @@ export class BeneosTableTop {
     
     this.isTableTop = game.settings.get(BeneosUtility.moduleID(), "beneos-table-top-mode");
 
-    if ( this.isTableTop ) { 
-      Hooks.on("updateScene", (scene, updateData, options, userId) => {
+    Hooks.on("updateScene", (scene, updateData, options, userId) => {
         BeneosTableTop.manageGridOpacity(scene, updateData);
       });
-    }
 
     Hooks.on("canvasInit", (canvas) => { return BeneosTableTop.onCanvasInit() });
     Hooks.on('canvasReady', () => { return BeneosTableTop.onCanvasReady() });
@@ -102,7 +100,7 @@ export class BeneosTableTop {
   }
 
   /******************************************************************************** */
-  static refreshDrawing(drawing, options, data) {
+  static async refreshDrawing(drawing, options, data) {
     console.log("Drawing updated", drawing, options, data)
     if (!options.refreshPosition) {
       return true;
@@ -123,6 +121,7 @@ export class BeneosTableTop {
       precText.y = drawing.y - 40;
       setTimeout(() => { BeneosTableTop.sendPositionMessage() }, 100);
     }
+
     if (drawing.document.getFlag("beneos-module", "user-view")) {
       if (!game.user.isGM) {
         if (canvas.newPan) canvas.newPan();
@@ -139,7 +138,11 @@ export class BeneosTableTop {
       precText.x = drawing.x + 32;
       precText.y = drawing.y - 40;
       setTimeout(() => { BeneosTableTop.sendPositionMessage() }, 100);
-      if (game.settings.get(BeneosUtility.moduleID(), "beneos-tt-auto-scale-tv")) {
+      if (this.isTableTop) { // Deprecatedl : game.settings.get(BeneosUtility.moduleID(), "beneos-tt-auto-scale-tv")) {
+        /*if (drawing.document.shape.width != 1920 ) {
+          drawing.document.shape.width = 1920;
+          await drawing.document.update({ "shape.width": drawing.document.shape.width });
+        }*/
         let ratio = this.getRatio()
         if (drawing.document.shape.height != drawing.document.shape.width / ratio) {
           drawing.document.update({ "shape.height": drawing.document.shape.width / ratio });
@@ -313,16 +316,9 @@ export class BeneosTableTop {
 
   /********************************************************************************** */
   static computePhysicalScale() {
-    let screenRatio = this.getRatio();
-
-    let screenWidth = game.settings.get("beneos-module", "beneos-tt-auto-scale-width");
-    if (screenWidth == 0) {
-      let diagonal = game.settings.get("beneos-module", "beneos-tt-auto-scale-diagonal");
-      if (diagonal == 0) {
-        ui.notifications.error("Please set the screen width or the diagonal of the screen in the module settings")
-        return
-      }
-      screenWidth = (diagonal * 25.4 * 16) / 18.3576;
+    let screenWidth = game.settings.get("beneos-module", "beneos-tt-auto-scale-width-diagonal");
+    if (screenWidth < 100 ) { // Diagonal in inches
+      screenWidth = (screenWidth * 25.4 * 16) / 18.3576;
     }
     let miniatureSize = game.settings.get("beneos-module", "beneos-tt-auto-scale-miniature-size");
     if (miniatureSize <= 5) {
@@ -330,16 +326,17 @@ export class BeneosTableTop {
       return
     }
     let squareSize = screenWidth / miniatureSize;
-    let pixelPerSquare = screen.width / squareSize;
+    let pixelPerSquare = window.innerWidth / squareSize;
     let scale = pixelPerSquare / canvas.scene.grid.size;
-    return scale, screenRatio;
+    //console.log("SCALE", screenWidth, squareSize, pixelPerSquare, scale); // SCALE 380 15.2 126.31578947368422 1.2631578947368423
+    return scale
   }
 
   /********************************************************************************** */
   static getDefaultSceneData() {
     let sceneData = {
       sceneBoundary: game.settings.get("beneos-module", "beneos-scene-boundaries"),
-      controlPlayerView: game.settings.get("beneos-module", "beneos-tt-control-player-view"),
+      controlPlayerView: true, 
       tokenVisionSaved: -1
     }
     return sceneData
@@ -483,15 +480,15 @@ export class BeneosTableTop {
 
     //Get the new scale
     scale = Math.round(Math.clamp(scale, min, max) * 2000) / 2000;
-    if (game.settings.get(BeneosUtility.moduleID(), "beneos-tt-auto-scale-tv")) {
+    if ( this.isTableTop ) { // Deprecated :  game.settings.get(BeneosUtility.moduleID(), "beneos-tt-auto-scale-tv")) {
       scale = this.computePhysicalScale();
     }
 
     //Set the bounding box
-    bound.Xmin = rect.Xmin + window.innerWidth / (2 * scale);
-    bound.Xmax = rect.Xmax - window.innerWidth / (2 * scale);
-    bound.Ymin = rect.Ymin + window.innerHeight / (2 * scale);
-    bound.Ymax = rect.Ymax - window.innerHeight / (2 * scale);
+    bound.Xmin = rect.Xmin + window.innerWidth / (2*scale);
+    bound.Xmax = rect.Xmax - window.innerWidth / (2*scale);
+    bound.Ymin = rect.Ymin + window.innerHeight / (2*scale);
+    bound.Ymax = rect.Ymax - window.innerHeight / (2*scale);
 
     //Get the new x value
     if (Number.isNumeric(x) == false) x = canvas.stage.pivot.x;
@@ -509,7 +506,8 @@ export class BeneosTableTop {
     }
     else y = Math.clamp(y, -padh, d.height + padh);
 
-    return { x, y, scale };
+    console.log("Applied scaled : ", x, y, scale);  
+    return { x, y, scale: scale };
   }
 
   /*************************************/
@@ -561,7 +559,7 @@ export class BeneosTableTop {
       let ray = new Ray(this.stage.pivot, { x, y });
       duration = Math.round(ray.distance * 1000 / speed);
     }
-
+    console.log("Animate Pan : ", x, y, scale, duration, speed);
     // Constrain the resulting dimensions and construct animation attributes
     const constrained = BeneosTableTop.newConstrainView({ x, y, scale });
     const attributes = [
@@ -688,12 +686,14 @@ export class BeneosTableTop {
 
       this.pauseVideo(scene, updateData)
 
-      if (game.settings.get(BeneosUtility.moduleID(), "beneos-tt-grid-visibility")) {
+      if (this.isTableTop) {
         // Save the grid opacity
-        beneosTTFlags.gridOpacity = scene.grid.alpha;
-        await scene.setFlag(BeneosUtility.moduleID(), "beneos-tt-flags", beneosTTFlags);
+        if (beneosTTFlags.gridOpacity === undefined) {
+          beneosTTFlags.gridOpacity = scene.grid.alpha;
+          await scene.setFlag(BeneosUtility.moduleID(), "beneos-tt-flags", beneosTTFlags);
+        }
         // Set the new grid opacity
-        let gridOpacity = game.settings.get(BeneosUtility.moduleID(), "beneos-tt-grid-visibility-opacity");
+        let gridOpacity = 0.5 // Previously : game.settings.get(BeneosUtility.moduleID(), "beneos-tt-grid-visibility-opacity");
         console.log("Scene : ", scene);
         await scene.update({ 'grid.alpha': gridOpacity })
       } else if (beneosTTFlags.gridOpacity !== undefined) {

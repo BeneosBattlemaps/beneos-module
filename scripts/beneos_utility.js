@@ -179,7 +179,7 @@ export class BeneosUtility {
 
     game.settings.register(BeneosUtility.moduleID(), 'beneos-table-top-mode', {
       name: 'Table Top Mode',
-      hint: 'Enable the table top mode',
+      hint: 'This flag enables the Table Top Mode features. It also enables grid opacity management and the grid size management for miniatures',
       default: false,
       type: Boolean,
       scope: 'world',
@@ -192,66 +192,34 @@ export class BeneosUtility {
 
     game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-performance-mode', {
       name: 'Table Top Mode - Performance mode',
-      hint: 'Disable video playback on GM side',
+      hint: 'Disable video playback on GM side, in order to enhance performance',
       default: false,
       type: Boolean,
       scope: 'world',
       config: true
     })
     
-    game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-grid-visibility', {
-      name: 'Table Top Mode - Grid Visibility',
-      hint: 'Force the grid visibility in Table Top Mode',
-      default: false,
-      type: Boolean,
-      scope: 'world',
-      config: true
-    })
-
-    game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-grid-visibility-opacity', {
-      name: 'Table Top Mode - Grid Visibility',
-      hint: 'Force the grid visibility in Table Top Mode',
-      range: {
-        min: 0.0,
-        max: 1.0,
-        step: 0.1,
-      },
-      default: 0.5,
-      type: Number,
-      scope: 'world',
-      config: true
-    })
-
     game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-control-player-view', {
       name: 'Table Top Mode - Control Player view',
       hint: 'Control the area viewed by the player in the current scene',
-      default: false,
+      default: true,
       type: Boolean,
       scope: 'world',
-      config: true
+      config: false
     })
 
     game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-auto-scale-tv', {
       name: 'Table Top Mode - Auto scale TV to Grid',
       hint: 'Auto scale the TV to the grid size',
-      default: false,
+      default: true,
       type: Boolean,
       scope: 'world',
-      config: true
+      config: false
     })
 
-    game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-auto-scale-width', {
-      name: 'Table Top Mode - Real screen width in Millimeters',
-      hint: 'Screen width input for the auto scale TV feature (0 = use diagonal)',
-      default: 0,
-      type: Number,
-      scope: 'world',
-      config: true
-    })
-
-    game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-auto-scale-diagonal', {
-      name: 'Table Top Mode - Real screen diagonal in Inches',
-      hint: 'Screen diagonal input for the auto scale TV feature (0 = use screen width)',
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-auto-scale-width-diagonal', {
+      name: 'Table Top Mode - Real screen size (width or diagonal)',
+      hint: 'Enter either the diagonal of the screen in inches or the width of the screen in mm',
       default: 0,
       type: Number,
       scope: 'world',
