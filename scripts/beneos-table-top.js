@@ -7,12 +7,12 @@ export class BeneosTableTop {
   static init() {
     console.log("BeneosTableTop init");
     BeneosTableTop.titleCache = {}
-    
+
     this.isTableTop = game.settings.get(BeneosUtility.moduleID(), "beneos-table-top-mode");
 
     Hooks.on("updateScene", (scene, updateData, options, userId) => {
-        BeneosTableTop.manageGridOpacity(scene, updateData);
-      });
+      BeneosTableTop.manageGridOpacity(scene, updateData);
+    });
 
     Hooks.on("canvasInit", (canvas) => { return BeneosTableTop.onCanvasInit() });
     Hooks.on('canvasReady', () => { return BeneosTableTop.onCanvasReady() });
@@ -23,22 +23,28 @@ export class BeneosTableTop {
   }
 
   /******************************************************************************** */
-  static async toggleTableTopMode(value ) {
+  static async manageTableTopMode(value) {
 
     for (let scene of game.scenes) {
       let beneosTTFlags = scene.getFlag(BeneosUtility.moduleID(), "beneos-tt-flags");
       if (beneosTTFlags === undefined) {
         beneosTTFlags = {};
       }
-  
-      if (!value)  { // When disable, restore default values
-        if (beneosTTFlags.gridOpacity !== undefined) { 
+
+      if (!value) { // When disable, restore default values
+        if (beneosTTFlags.gridOpacity !== undefined) {
           await scene.update({ 'grid.alpha': beneosTTFlags.gridOpacity });
         }
-        if (beneosTTFlags.tokenVisionSaved !== undefined) { 
+        if (beneosTTFlags.tokenVisionSaved !== undefined) {
           await scene.update({ 'tokenVision': beneosTTFlags.tokenVisionSaved });
         }
-      }  
+        for (let d of scene.drawings) {
+          let isUserDrawing = d.getFlag('beneos-module', 'user-view');
+          if (isUserDrawing) {
+            await scene.deleteEmbeddedDocuments('Drawing', [d.id]);
+          }
+        }
+      }
     }
   }
 
@@ -59,7 +65,17 @@ export class BeneosTableTop {
         onClick: () => { BeneosTableTop.toggleSceneBoundary() }
       });
 
-      if ( this.isTableTop ) { 
+      menu.push({
+        name: "show-hide-ui",
+        title: "Show/Hide the UI interface for users",
+        icon: "fa-solid fa-face-hand-peeking",
+        //button: true,
+        toggle: true,
+        active: game.settings.get(BeneosUtility.moduleID(), "beneos-ui-state"),
+        onClick: () => { BeneosTableTop.toggleUIElements() }
+      });
+      
+      if (this.isTableTop) {
         menu.push({
           name: "enable-player-view",
           title: "Enable/Disable GM player view control",
@@ -71,7 +87,7 @@ export class BeneosTableTop {
             BeneosTableTop.toggleControlPlayerView()
           },
         });
-  
+
         let text = "Enable/Disable Token Vision";
         let title = "Enable/Disable Token Vision for all players";
         let icon = "fa-eye";
@@ -79,13 +95,13 @@ export class BeneosTableTop {
           name: text,
           title: title,
           icon: "fas " + icon,
-          active:true,
+          active: true,
           //button: true,
           toggle: true,
           onClick: async () => {
             BeneosTableTop.toggleTokenVision()
           },
-        });  
+        });
       }
 
       btns.push({
@@ -227,10 +243,10 @@ export class BeneosTableTop {
   }
 
   /********************************************************************************** */
-  static async toggleTokenVision() {    
-    
+  static async toggleTokenVision() {
+
     let sceneData = canvas.scene.getFlag("beneos-module", "beneos-tt-flags")
-    if (sceneData.tokenVisionSaved == undefined ) { // Save the proper state
+    if (sceneData.tokenVisionSaved == undefined) { // Save the proper state
       sceneData.tokenVisionSaved = canvas.scene.tokenVision;
       await canvas.scene.setFlag("beneos-module", "beneos-tt-flags", sceneData)
     }
@@ -293,7 +309,10 @@ export class BeneosTableTop {
   /********************************************************************************** */
   static isSceneBoundary() {
     let sceneData = canvas?.scene?.getFlag("beneos-module", "beneos-data")
-    return sceneData?.sceneBoundary || false
+    if (sceneData === undefined || sceneData.sceneBoundary === undefined) {
+      return true
+    }
+    return sceneData.sceneBoundary
   }
   static isControlPlayerView() {
     let sceneData = canvas?.scene?.getFlag("beneos-module", "beneos-data")
@@ -317,7 +336,7 @@ export class BeneosTableTop {
   /********************************************************************************** */
   static computePhysicalScale() {
     let screenWidth = game.settings.get("beneos-module", "beneos-tt-auto-scale-width-diagonal");
-    if (screenWidth < 100 ) { // Diagonal in inches
+    if (screenWidth < 100) { // Diagonal in inches
       screenWidth = (screenWidth * 25.4 * 16) / 18.3576;
     }
     let miniatureSize = game.settings.get("beneos-module", "beneos-tt-auto-scale-miniature-size");
@@ -335,8 +354,8 @@ export class BeneosTableTop {
   /********************************************************************************** */
   static getDefaultSceneData() {
     let sceneData = {
-      sceneBoundary: game.settings.get("beneos-module", "beneos-scene-boundaries"),
-      controlPlayerView: true, 
+      sceneBoundary: true,
+      controlPlayerView: true,
       tokenVisionSaved: -1
     }
     return sceneData
@@ -356,9 +375,12 @@ export class BeneosTableTop {
     let isSceneBoundary = this.isSceneBoundary();
     let isPlayerView = this.isControlPlayerView();
     if (!this.isTableTop) { // In all other cases, the player view is disabled
-      isPlayerView = false; 
+      isPlayerView = false;
     }
     let boundingBox = isSceneBoundary || isPlayerView; //Whether a bounding box is drawn
+    if (isPlayerView) {
+      isSceneBoundary = false;
+    }
 
     if (boundingBox) {
       let tokensInBox = 0;                            //Number of tokens in the bounding box
@@ -480,15 +502,15 @@ export class BeneosTableTop {
 
     //Get the new scale
     scale = Math.round(Math.clamp(scale, min, max) * 2000) / 2000;
-    if ( this.isTableTop ) { // Deprecated :  game.settings.get(BeneosUtility.moduleID(), "beneos-tt-auto-scale-tv")) {
+    if (this.isTableTop) { // Deprecated :  game.settings.get(BeneosUtility.moduleID(), "beneos-tt-auto-scale-tv")) {
       scale = this.computePhysicalScale();
     }
 
     //Set the bounding box
-    bound.Xmin = rect.Xmin + window.innerWidth / (2*scale);
-    bound.Xmax = rect.Xmax - window.innerWidth / (2*scale);
-    bound.Ymin = rect.Ymin + window.innerHeight / (2*scale);
-    bound.Ymax = rect.Ymax - window.innerHeight / (2*scale);
+    bound.Xmin = rect.Xmin + window.innerWidth / (2 * scale);
+    bound.Xmax = rect.Xmax - window.innerWidth / (2 * scale);
+    bound.Ymin = rect.Ymin + window.innerHeight / (2 * scale);
+    bound.Ymax = rect.Ymax - window.innerHeight / (2 * scale);
 
     //Get the new x value
     if (Number.isNumeric(x) == false) x = canvas.stage.pivot.x;
@@ -506,7 +528,7 @@ export class BeneosTableTop {
     }
     else y = Math.clamp(y, -padh, d.height + padh);
 
-    console.log("Applied scaled : ", x, y, scale);  
+    console.log("Applied scaled : ", x, y, scale);
     return { x, y, scale: scale };
   }
 
@@ -703,22 +725,35 @@ export class BeneosTableTop {
   }
 
   /*************************************/
-  static manageDisplayUIComponents() {
-    let display = true;
-    let show = false;
-    $('body')
-      .toggleClass('hide-ui', true)
-      .toggleClass('hide-chat', true)
-      .toggleClass('hide-camera-views', display)
-      .toggleClass('show-combat', show)
-      .toggleClass('show-combatants', show)
-      .attr('limit-combatants', 10);
-    if (display && ui.sidebar) {
-      ui.sidebar.activateTab('chat');
+  static toggleUIElements() {
+    if (!game.user.isGM) {
+      return;
     }
-    //$("body").get(0).style.setProperty("--combat-popout-scale", display ? setting('combat-scale') : 1);
+    let newState = !game.settings.get(BeneosUtility.moduleID(), "beneos-ui-state");
+    game.socket.emit("module.beneos-module", {
+      name: "msg_toggle_ui_elements",
+      data: { state: newState }
+    });
+    game.settings.set(BeneosUtility.moduleID(), "beneos-ui-state", newState);
   }
 
-
+  /*************************************/
+  static applyUIElements(data) {
+    if (!data.state) {
+      $('#players').hide();
+      $('#logo').hide();
+      $('#hotbar').hide();
+      $('#navigation').hide();
+      $('#controls').hide();
+      $('#sidebar').hide();
+    } else {
+      $('#players').show();
+      $('#logo').show();
+      $('#hotbar').show();
+      $('#navigation').show();
+      $('#controls').show();
+      $('#sidebar').show();
+    }
+  }
 
 }

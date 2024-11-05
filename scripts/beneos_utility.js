@@ -158,16 +158,15 @@ export class BeneosUtility {
       config: false
     })
 
-    game.settings.register(BeneosUtility.moduleID(), 'beneos-scene-boundaries', {
-      name: 'Scene boundaries for player',
-      hint: "Setup a boundary for the player view",
-      default: true,
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-ui-state', {
+      name: 'Internal data store for user-defined parameters',
+      default: {},
       type: Boolean,
       scope: 'world',
-      config: true
+      config: false,
+      default: true
     })
-
-
+    
     game.settings.register(BeneosUtility.moduleID(), "beneos-speed", {
       name: 'Number of spaces walked per second.',
       hint: 'Slower speeds will give better results. Foundry default speed is 10.',
@@ -186,7 +185,7 @@ export class BeneosUtility {
       config: true,
       requiresReload: true,
       onChange: value => {
-        //BeneosTableTop.toggleTableTopMode(value)
+        BeneosTableTop.manageTableTopMode(value)
       }
     })
 
@@ -251,6 +250,7 @@ export class BeneosUtility {
     game.socket.on(`module.beneos-module`, (msg) => {
       //console.log('pl',payload)
       if (msg.name == 'msg_set_view_position') { BeneosTableTop.applyPosition(msg.data) }
+      if (msg.name == 'msg_toggle_ui_elements') { BeneosTableTop.applyUIElements(msg.data) }
     });
   }
 
