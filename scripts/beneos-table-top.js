@@ -38,9 +38,11 @@ export class BeneosTableTop {
         if (beneosTTFlags.tokenVisionSaved !== undefined) {
           await scene.update({ 'tokenVision': beneosTTFlags.tokenVisionSaved });
         }
-        for (let d of scene.drawings) {
+        for (let d of scene.drawings) { 
+          console.log("Parsing drawing : ", d);         
           let isUserDrawing = d.getFlag('beneos-module', 'user-view');
           if (isUserDrawing) {
+            await d.setFlag("beneos-module", "user-view", false);
             await scene.deleteEmbeddedDocuments('Drawing', [d.id]);
           }
         }
@@ -217,7 +219,7 @@ export class BeneosTableTop {
       let rect = BeneosTableTop.searchBoundaryArea()
       if (rect) {
         await rect.setFlag("beneos-module", "beneos-area-mode", false)
-        let d = await canvas.scene.deleteEmbeddedDocuments('Drawing', [rect.id]);
+        await canvas.scene.deleteEmbeddedDocuments('Drawing', [rect.id]);
       }
       ui.notifications.info("Scene boundary disabled")
     } else {
