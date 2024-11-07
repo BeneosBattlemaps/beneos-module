@@ -251,6 +251,8 @@ export class BeneosUtility {
       //console.log('pl',payload)
       if (msg.name == 'msg_set_view_position') { BeneosTableTop.applyPosition(msg.data) }
       if (msg.name == 'msg_toggle_ui_elements') { BeneosTableTop.applyUIElements(msg.data) }
+      if (msg.name == 'msg_request_user_view') { BeneosTableTop.sendUserViewMessage() }
+      if (msg.name == 'msg_user_view_response') { BeneosTableTop.processUserCurrentView(msg.data) }
     });
   }
 
