@@ -2,7 +2,7 @@
 import { BeneosTableTop } from "./beneos-table-top.js";
 import { BeneosCompendiumManager, BeneosCompendiumReset } from "./beneos_compendium.js";
 import { BeneosSearchEngineLauncher, BeneosDatabaseHolder, BeneosModuleMenu } from "./beneos_search_engine.js";
-import { ClassCounter } from "https://www.uberwald.me/fvtt_appcount/count-class-ready.js";
+import { ClassCounter } from "./count-class-ready.js";
 
 /********************************************************************************* */
 globalThis.BENEOS_MODULE_NAME = "Beneos Module"
@@ -318,7 +318,11 @@ export class BeneosUtility {
       this.itemDataPath += "/beneos_items/"
       this.spellDataPath += "/beneos_spells/"
       let stats = this.countBeneosAssetsUsage()
-      ClassCounter.registerUsageCount('beneos-module', { beneosStats: stats })
+      try {
+        ClassCounter.registerUsageCount('beneos-module', { beneosStats: stats })
+      } catch (e) {
+        console.log("Unable to register usage count, not important", e)
+      }
     }
     this.sheetLoaded = false
 
