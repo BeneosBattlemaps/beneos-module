@@ -101,8 +101,8 @@ export class TableTopModeSettings extends FormApplication {
   getData() {
     let data = super.getData();
     data.config = game.settings.get(BeneosUtility.moduleID(), 'beneos-table-top-config') || this.getDefaultTableTopSettings();
+    //console.log("TableTopModeSettings", data.config)
     // Auto fill users
-    //data.config.performanceModePerUsers = []
     for (let u of game.users) {
       if ( !data.config.performanceModePerUsers.find( x => x.id == u.id ) ) {
         data.config.performanceModePerUsers.push( { id: u.id, name: u.name,  perfMode: false } )
@@ -114,11 +114,11 @@ export class TableTopModeSettings extends FormApplication {
   async _updateObject(_, formData) {
     const data = foundry.utils.expandObject(formData)
     let config = game.settings.get(BeneosUtility.moduleID(), 'beneos-table-top-config')
-    data.performanceModePerUsers = foundry.utils.duplicate(config.performanceModePerUsers)
-    for (let idx in data.performanceModePerUsersArray) {
+    data.performanceModePerUsers = foundry.utils.duplicate(config.performanceModePerUsers) || []
+    for (let idx=0; idx<data.performanceModePerUsersArray.length; idx++) {
       data.performanceModePerUsers[idx].perfMode = data.performanceModePerUsersArray[idx] // Update with form flag value
     }
-    console.log("Updating object",formData, data)
+    //console.log("Updating object",formData, data)
     await game.settings.set(BeneosUtility.moduleID(), 'beneos-table-top-config', data) 
 
     // Manage the ON/OFF value 
