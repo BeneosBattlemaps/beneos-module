@@ -873,6 +873,11 @@
   margin-right: 8px;
 }
 
+
+.beneos-margin-left {
+  margin-left: 4rem;
+}
+
 /* Buttons */
 i.beneos-module {
   width: 36px;

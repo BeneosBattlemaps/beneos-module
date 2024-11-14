@@ -60,6 +60,76 @@ export class BeneosActorTokenMigration extends FormApplication {
 }
 
 /********************************************************************************* */
+export class TableTopModeSettings extends FormApplication { 
+	
+  constructor(object = {}, options) {
+		super(object, options);
+	}
+
+	/** @override */
+	static get defaultOptions() {
+		return {
+			...super.defaultOptions,
+			template: 'modules/beneos-module/templates/beneos-table-top-settings.html',
+			height: 'auto',
+			title: 'Table Top Mode Settings', 
+			width: 600,
+			classes: ['beneos-module', 'settings'],
+			tabs: [
+				{
+					contentSelector: 'form',
+				},
+			],
+			submitOnClose: false,
+		};
+	}
+
+  static getDefaultTableTopSettings() { 
+    let config = {
+      tableTopEnabled: false,
+      performanceModePerUsers: [],
+      controlPlayerView: true,
+      autoScaleTVGrid: true,
+      autoScaleTVWidthDiagonal: 90,
+      autoScaleTVRatio: "16/9",
+      gridOpacity: 0.5,
+      miniatureSize: 25,
+    }
+    return config
+  }
+
+  getData() {
+    let data = super.getData();
+    data.config = game.settings.get(BeneosUtility.moduleID(), 'beneos-table-top-config') || this.getDefaultTableTopSettings();
+    // Auto fill users
+    //data.config.performanceModePerUsers = []
+    for (let u of game.users) {
+      if ( !data.config.performanceModePerUsers.find( x => x.id == u.id ) ) {
+        data.config.performanceModePerUsers.push( { id: u.id, name: u.name,  perfMode: false } )
+      }
+    }
+    return data
+  }
+  
+  async _updateObject(_, formData) {
+    const data = foundry.utils.expandObject(formData)
+    let config = game.settings.get(BeneosUtility.moduleID(), 'beneos-table-top-config')
+    data.performanceModePerUsers = foundry.utils.duplicate(config.performanceModePerUsers)
+    for (let idx in data.performanceModePerUsersArray) {
+      data.performanceModePerUsers[idx].perfMode = data.performanceModePerUsersArray[idx] // Update with form flag value
+    }
+    console.log("Updating object",formData, data)
+    await game.settings.set(BeneosUtility.moduleID(), 'beneos-table-top-config', data) 
+
+    // Manage the ON/OFF value 
+    await BeneosTableTop.manageTableTopMode(data.tableTopEnabled)
+
+    window.location.reload() // Force reload after save
+  }
+}
+
+
+/********************************************************************************* */
 export class BeneosUtility {
 
   /********************************************************************************** */
@@ -135,6 +205,7 @@ export class BeneosUtility {
       default: "",
       config: false
     })
+
     game.settings.register(BeneosUtility.moduleID(), 'beneos-json-itemconfig', {
       name: 'Global JSON config for items',
       type: String,
@@ -176,74 +247,56 @@ export class BeneosUtility {
       type: Number
     })
 
-    game.settings.register(BeneosUtility.moduleID(), 'beneos-table-top-mode', {
-      name: 'Table Top Mode',
-      hint: 'This flag enables the Table Top Mode features. It also enables grid opacity management and the grid size management for miniatures',
-      default: false,
-      type: Boolean,
-      scope: 'world',
-      config: true,
-      requiresReload: true,
-      onChange: value => {
-        BeneosTableTop.manageTableTopMode(value)
-      }
-    })
-
-    game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-performance-mode', {
-      name: 'Table Top Mode - Performance mode',
-      hint: 'Disable video playback on GM side, in order to enhance performance',
-      default: false,
-      type: Boolean,
-      scope: 'world',
-      config: true
-    })
-    
-    game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-control-player-view', {
-      name: 'Table Top Mode - Control Player view',
-      hint: 'Control the area viewed by the player in the current scene',
-      default: true,
-      type: Boolean,
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-table-top-config', {
+      name: 'Internal data store for table top mode settings',
+      default: TableTopModeSettings.getDefaultTableTopSettings(),
+      type: Object,
       scope: 'world',
       config: false
     })
 
-    game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-auto-scale-tv', {
-      name: 'Table Top Mode - Auto scale TV to Grid',
-      hint: 'Auto scale the TV to the grid size',
-      default: true,
-      type: Boolean,
-      scope: 'world',
-      config: false
-    })
+    const menuTableTopModeSettings = {
+			key: 'tableTopModeSettings',
+			config: {
+				name: 'Configure Table Top mode',
+        label: 'Table Top Mode',
+				hint: 'Configure the Table Top mode features',
+				type: TableTopModeSettings,
+				restricted: true,
+			},
+		};
 
-    game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-auto-scale-width-diagonal', {
-      name: 'Table Top Mode - Real screen size (width or diagonal)',
-      hint: 'Enter either the diagonal of the screen in inches or the width of the screen in mm',
-      default: 0,
-      type: Number,
-      scope: 'world',
-      config: true
-    })
+		const settingAutoTemplateSettings = {
+			key: 'tableTopModeSettings',
+			config: {
+				name: 'Table Top mode settings',
+				hint: 'Configure the Table Top mode settings',
+				scope: 'world',
+				config: false,
+				default: {},
+				type: Object,
+			},
+		};
 
-    game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-auto-scale-ratio', {
-      name: 'Table Top Mode - Aspect ratio of the screen',
-      hint: 'Aspect ratio of the screen, by default 16/9 (enter X/Y only)',
-      default: "16/9",
-      type: String,
-      scope: 'world',
-      config: true
-    })
-
-    game.settings.register(BeneosUtility.moduleID(), 'beneos-tt-auto-scale-miniature-size', {
-      name: 'Table Top Mode - Miniature size in Millimeters',
-      hint: 'Miniature size input for the auto scale TV feature',
-      default: 25,
-      type: Number,
-      scope: 'world',
-      config: true
-    })
+    game.settings.registerMenu(BeneosUtility.moduleID(), menuTableTopModeSettings.key, menuTableTopModeSettings.config);
+			game.settings.register(
+				BeneosUtility.moduleID(),
+				settingAutoTemplateSettings.key,
+				foundry.utils.mergeObject(
+					settingAutoTemplateSettings.config,
+					{
+            requiresReload: true
+					},
+					true,
+					true
+				)
+			);
   }
 
+  /********************************************************************************** */
+  static getTableTopConfig() {
+    return game.settings.get(BeneosUtility.moduleID(), 'beneos-table-top-config') || TableTopModeSettings.getDefaultTableTopSettings()
+  }
 
   /********************************************************************************** */
   static setupSocket() {

@@ -8,7 +8,8 @@ export class BeneosTableTop {
     console.log("BeneosTableTop init");
     BeneosTableTop.titleCache = {}
 
-    this.isTableTop = game.settings.get(BeneosUtility.moduleID(), "beneos-table-top-mode");
+    this.tableTopConfig = BeneosUtility.getTableTopConfig();  
+    this.isTableTop = this.tableTopConfig.tableTopEnabled 
 
     Hooks.on("updateScene", (scene, updateData, options, userId) => {
       BeneosTableTop.manageGridOpacity(scene, updateData);
@@ -119,7 +120,7 @@ export class BeneosTableTop {
 
   /******************************************************************************** */
   static async refreshDrawing(drawing, options, data) {
-    console.log("Drawing updated", drawing, options, data)
+    // Debug only : console.log("Drawing updated", drawing, options, data)
     if (!options.refreshPosition) {
       return true;
     }
@@ -279,7 +280,7 @@ export class BeneosTableTop {
     if (!game.user.isGM) {
       return;
     }
-    console.log("User current view : ", data);
+    // Debug only : console.log("User current view : ", data);
 
     let sceneData = canvas.scene.getFlag("beneos-module", "beneos-data") || this.getDefaultSceneData()
 
@@ -355,7 +356,8 @@ export class BeneosTableTop {
   }
   /********************************************************************************** */
   static getRatio() {
-    let ratioStr = game.settings.get("beneos-module", "beneos-tt-auto-scale-ratio");
+
+    let ratioStr = this.tableTopConfig.autoScaleTVRatio // Was: game.settings.get("beneos-module", "beneos-tt-auto-scale-ratio");
     // ratioStr is a string like "X/Y", so get the X and Y values
     if (!ratioStr.match("/")) {
       ui.notifications.error("Please set the ratio of the screen in the module settings, assuming 16/9")
@@ -369,11 +371,15 @@ export class BeneosTableTop {
 
   /********************************************************************************** */
   static computePhysicalScale() {
-    let screenWidth = game.settings.get("beneos-module", "beneos-tt-auto-scale-width-diagonal");
+    let screenWidth = Number(this.tableTopConfig.autoScaleTVWidthDiagonal) // Was: game.settings.get("beneos-module", "beneos-tt-auto-scale-width-diagonal");
+    if (!screenWidth) {
+      ui.notifications.error("Please set the screen width/diagonal with a correct value in the module settings")
+      return
+    }
     if (screenWidth < 100) { // Diagonal in inches
       screenWidth = (screenWidth * 25.4 * 16) / 18.3576;
     }
-    let miniatureSize = game.settings.get("beneos-module", "beneos-tt-auto-scale-miniature-size");
+    let miniatureSize = Number(this.tableTopConfig.miniatureSize) || 25 // Was:  game.settings.get("beneos-module", "beneos-tt-auto-scale-miniature-size");
     if (miniatureSize <= 5) {
       ui.notifications.error("Please set the miniature size in the module settings")
       return
@@ -716,17 +722,20 @@ export class BeneosTableTop {
 
   /*************************************/
   static pauseVideo() {
-    // Video playing
-    if (game.settings.get(BeneosUtility.moduleID(), "beneos-tt-performance-mode")) {
-      console.log("Pause video");
-      BeneosTableTop.videoPause = setInterval(() => {
-        if (canvas.primary?.background?.sourceElement && !canvas.primary.background.sourceElement.paused) {
-          canvas.primary.background.sourceElement.pause(0)
-          // clear interval
-          clearInterval(BeneosTableTop.videoPause);
-          BeneosTableTop.videoPause = undefined;
-        }
-      }, 200);
+    
+    // Ensure we are on a scene with a video background
+    if (canvas.primary?.background?.sourceElement && canvas.primary.background.sourceElement?.videoWidth > 0) {
+      // Check the user  
+      let userData = this.tableTopConfig.performanceModePerUsers.find(u => u.id == game.userId);
+      if (userData && userData.perfMode) {
+        BeneosTableTop.videoPause = setInterval(() => {
+          if ( !canvas.primary.background.sourceElement.paused) {
+            canvas.primary.background.sourceElement.pause(0)
+            clearInterval(BeneosTableTop.videoPause);
+            BeneosTableTop.videoPause = undefined;
+          }
+        }, 200);
+      }  
     }
   }
 

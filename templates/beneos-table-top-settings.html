@@ -1,0 +1,35 @@
+<form name="beneos-table-top-settings-form" ng-submit="save()">
+    <div class="flexrow item">
+      <label for="beneos-table-top-settings" data-tooltip="When enabled, all the table top settings below are applied" >Enable Table Top mode</label>
+      <input type="checkbox" id="beneos-table-top-enabled" name="tableTopEnabled" {{#if config.tableTopEnabled}} checked {{/if}} >
+    </div>
+    <div>
+      <label for="beneos-table-top-settings" data-tooltip="When enabled, video will not be played in the scenes, to save CPU power">
+        Apply performance mode for users (ie disable video on scenes) :</label>
+      <div class="beneos-margin-left">
+        {{#each config.performanceModePerUsers as |user userId|}}
+        <div class="flexrow item">
+          <input type="checkbox" id="beneos-table-top-performance-mode-{{userId}}" name="performanceModePerUsersArray" {{#if user.perfMode}} checked {{/if}} >
+          <label for="beneos-table-top-performance-mode-{{userId}}">{{user.name}}</label>
+        </div>
+        {{/each}}
+      </div>
+    </div>
+    <div class="flexrow item">
+      <label for="beneos-table-top-settings" data-tooltip="Control the view of player screen">Control Player view from GM side</label>
+      <input type="checkbox" id="beneos-table-top-control-player-view" name="controlPlayerView" {{#if config.controlPlayerView}} checked {{/if}}">
+    </div>
+    <div class="flexrow item">
+      <label for="beneos-table-top-settings">TV width or diagonal (inches or cm)</label>
+      <input type="text" id="beneos-table-top-tv-size" name="autoScaleTVWidthDiagonal" value="{{config.autoScaleTVWidthDiagonal}}">
+    </div>
+    <div class="flexrow item">
+      <label for="beneos-table-top-settings">TV aspect ratio</label>
+      <input type="text" id="beneos-table-top-tv-aspect-ratio" name="autoScaleTVRatio" value="{{config.autoScaleTVRatio}}">
+    </div>
+    <div class="flexrow item">  
+      <label for="beneos-table-top-settings">Miniature size (mm)</label>
+      <input type="text" id="beneos-table-top-miniature-size" name="miniatureSize" value="{{config.miniatureSize}}">
+    </div>
+  <button type="submit">Save</button> 
+</form>
