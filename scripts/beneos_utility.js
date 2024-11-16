@@ -101,7 +101,10 @@ export class TableTopModeSettings extends FormApplication {
   getData() {
     let data = super.getData();
     data.config = game.settings.get(BeneosUtility.moduleID(), 'beneos-table-top-config') || this.getDefaultTableTopSettings();
-    //console.log("TableTopModeSettings", data.config)
+    // Check if performanceModePerUsers is an array or not 
+    if ( !Array.isArray(data.config.performanceModePerUsers) ) {
+      data.config.performanceModePerUsers = []
+    }
     // Auto fill users
     for (let u of game.users) {
       if ( !data.config.performanceModePerUsers.find( x => x.id == u.id ) ) {
