@@ -118,6 +118,14 @@ export class TableTopModeSettings extends FormApplication {
     const data = foundry.utils.expandObject(formData)
     let config = game.settings.get(BeneosUtility.moduleID(), 'beneos-table-top-config')
     data.performanceModePerUsers = foundry.utils.duplicate(config.performanceModePerUsers) || []
+    if ( !Array.isArray(data.performanceModePerUsers) ) {
+      data.config.performanceModePerUsers = []
+      for (let u of game.users) {
+        if ( !data.config.performanceModePerUsers.find( x => x.id == u.id ) ) {
+          data.config.performanceModePerUsers.push( { id: u.id, name: u.name,  perfMode: false } )
+        }
+      }
+    }
     console.log("Updating object", data, config)
     for (let idx=0; idx<data.performanceModePerUsersArray.length; idx++) {
       data.performanceModePerUsers[idx].perfMode = data.performanceModePerUsersArray[idx] // Update with form flag value
