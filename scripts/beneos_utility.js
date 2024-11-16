@@ -126,9 +126,13 @@ export class TableTopModeSettings extends FormApplication {
         }
       }
     }
-    console.log("Updating object", data, config)
+    //console.log("Updating object", data, config)
     for (let idx=0; idx<data.performanceModePerUsersArray.length; idx++) {
-      data.performanceModePerUsers[idx].perfMode = data.performanceModePerUsersArray[idx] // Update with form flag value
+      if (data.performanceModePerUsers[idx]) { 
+        data.performanceModePerUsers[idx].perfMode = data.performanceModePerUsersArray[idx] // Update with form flag value
+      } else  {
+        console.log("Error in updating user performance mode", idx, data)
+      }
     }
     //console.log("Updating object",formData, data)
     await game.settings.set(BeneosUtility.moduleID(), 'beneos-table-top-config', data) 
