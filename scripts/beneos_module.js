@@ -2,6 +2,7 @@ import { libWrapper } from "./shim.js";
 import { BeneosUtility } from "./beneos_utility.js";
 import { BeneosSearchEngineLauncher, BeneosModuleMenu } from "./beneos_search_engine.js";
 import { BeneosCloud } from "./beneos_cloud.js";
+import { BeneosTableTop } from "./beneos-table-top.js";
 
 /********************************************************************************** */
 Hooks.once('init', () => {
@@ -10,6 +11,11 @@ Hooks.once('init', () => {
     BeneosUtility,
     cloud : new BeneosCloud(), 
   }
+
+  BeneosUtility.registerSettings()
+  BeneosUtility.setupSocket()
+  BeneosTableTop.init()
+
 })
 
 /********************************************************************************** */
@@ -19,15 +25,28 @@ Hooks.once('ready', () => {
   BeneosUtility.debugMessage(`Loading ${BeneosUtility.moduleName()} module...`)
   BeneosUtility.debugMessage("----------------------------------------------")
 
-  BeneosUtility.registerSettings()
   BeneosUtility.forgeInit()
-  BeneosUtility.ready()
 
-  if (!game.user.isGM) {
-    return
+  game.beneosTokens = {
+    moduleId: BENEOS_MODULE_ID,
+    BeneosUtility,
+    BeneosTableTop,
+  }
+  BeneosUtility.init()
+
+  //Token Magic Hack  Replacement to prevent double filters when changing animations
+  if (typeof TokenMagic !== 'undefined') {
+    let OrigSingleLoadFilters = TokenMagic._singleLoadFilters;
+    TokenMagic._singleLoadFilters = async function (placeable, bulkLoading = false) {
+      if (BeneosUtility.checkIsBeneosToken(placeable)) return;
+      OrigSingleLoadFilters(placeable, bulkLoading);
+    }
+  } else {
+    console.log("No Token Magic found !!!")
   }
 
-  game.beneos.cloud.loginAttempt();
+  BeneosUtility.updateSceneTokens()
+  BeneosUtility.checkLockViewPresence()
   
   // Try to catch right click on profile image
   Hooks.on('renderActorSheet', (sheet, html, data) => {
@@ -42,7 +61,6 @@ Hooks.once('ready', () => {
     }
   });
 
-  BeneosUtility.updateSceneTokens()
 
   /********************************************************************************** */
   Hooks.on('refreshToken', (token) => {

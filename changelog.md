@@ -4,6 +4,9 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 12.0.6 # 2024-09-02
+- Fixed a V12 bug preving button functions on actor context menu
+
 ### 12.0.5 # 2024-07-14
 - Added compatibility with the Vision5E Module
 

@@ -1,3 +1,7 @@
+:root {
+  --logo-standard: url('/modules/beneos-module/icons/beneos_Logo.webp');
+}
+
 * {
   scrollbar-color: initial;
 }
@@ -867,4 +871,23 @@
   height: 16px;
   max-height: 16px;
   margin-right: 8px;
+}
+
+
+.beneos-margin-left {
+  margin-left: 4rem;
+}
+
+/* Buttons */
+i.beneos-module {
+  width: 36px;
+  height: 36px;
+  background-image: var(--logo-standard);
+  background-size: 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  position: relative;
+  filter: grayscale(1);
+  transition: 0.3s;
 }

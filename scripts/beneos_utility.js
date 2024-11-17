@@ -1,13 +1,14 @@
 /********************************************************************************* */
+import { BeneosTableTop } from "./beneos-table-top.js";
 import { BeneosCompendiumManager, BeneosCompendiumReset } from "./beneos_compendium.js";
 import { BeneosSearchEngineLauncher, BeneosDatabaseHolder, BeneosModuleMenu } from "./beneos_search_engine.js";
-import { ClassCounter } from "https://www.uberwald.me/fvtt_appcount/count-class-ready.js";
+import { ClassCounter  } from "./count-class-ready.js";
 import { BeneosCloud, BeneosCloudLogin } from "./beneos_cloud.js";
 
 /********************************************************************************* */
-const BENEOS_MODULE_NAME = "Beneos Module"
-const BENEOS_MODULE_ID = "beneos-module"
-const BENEOS_DEFAULT_TOKEN_PATH = "beneos_assets"
+globalThis.BENEOS_MODULE_NAME = "Beneos Module"
+globalThis.BENEOS_MODULE_ID = "beneos-module"
+globalThis.BENEOS_DEFAULT_TOKEN_PATH = "beneos_assets"
 
 let beneosDebug = true
 let beneosFadingSteps = 10
@@ -58,6 +59,92 @@ export class BeneosActorTokenMigration extends FormApplication {
   }
 
 }
+
+/********************************************************************************* */
+export class TableTopModeSettings extends FormApplication { 
+	
+  constructor(object = {}, options) {
+		super(object, options);
+	}
+
+	/** @override */
+	static get defaultOptions() {
+		return {
+			...super.defaultOptions,
+			template: 'modules/beneos-module/templates/beneos-table-top-settings.html',
+			height: 'auto',
+			title: 'Table Top Mode Settings', 
+			width: 600,
+			classes: ['beneos-module', 'settings'],
+			tabs: [
+				{
+					contentSelector: 'form',
+				},
+			],
+			submitOnClose: false,
+		};
+	}
+
+  static getDefaultTableTopSettings() { 
+    let config = {
+      tableTopEnabled: false,
+      performanceModePerUsers: [],
+      controlPlayerView: true,
+      autoScaleTVGrid: true,
+      autoScaleTVWidthDiagonal: 90,
+      autoScaleTVRatio: "16/9",
+      gridOpacity: 0.5,
+      miniatureSize: 25,
+    }
+    return config
+  }
+
+  getData() {
+    let data = super.getData();
+    data.config = game.settings.get(BeneosUtility.moduleID(), 'beneos-table-top-config') || this.getDefaultTableTopSettings();
+    // Check if performanceModePerUsers is an array or not 
+    if ( !Array.isArray(data.config.performanceModePerUsers) ) {
+      data.config.performanceModePerUsers = []
+    }
+    // Auto fill users
+    for (let u of game.users) {
+      if ( !data.config.performanceModePerUsers.find( x => x.id == u.id ) ) {
+        data.config.performanceModePerUsers.push( { id: u.id, name: u.name,  perfMode: false } )
+      }
+    }
+    return data
+  }
+  
+  async _updateObject(_, formData) {
+    const data = foundry.utils.expandObject(formData)
+    let config = game.settings.get(BeneosUtility.moduleID(), 'beneos-table-top-config')
+    data.performanceModePerUsers = foundry.utils.duplicate(config.performanceModePerUsers) || []
+    if ( !Array.isArray(data.performanceModePerUsers) ) {
+      data.config.performanceModePerUsers = []
+      for (let u of game.users) {
+        if ( !data.config.performanceModePerUsers.find( x => x.id == u.id ) ) {
+          data.config.performanceModePerUsers.push( { id: u.id, name: u.name,  perfMode: false } )
+        }
+      }
+    }
+    //console.log("Updating object", data, config)
+    for (let idx=0; idx<data.performanceModePerUsersArray.length; idx++) {
+      if (data.performanceModePerUsers[idx]) { 
+        data.performanceModePerUsers[idx].perfMode = data.performanceModePerUsersArray[idx] // Update with form flag value
+      } else  {
+        console.log("Error in updating user performance mode", idx, data)
+      }
+    }
+    //console.log("Updating object",formData, data)
+    await game.settings.set(BeneosUtility.moduleID(), 'beneos-table-top-config', data) 
+
+    // Manage the ON/OFF value 
+    await BeneosTableTop.manageTableTopMode(data.tableTopEnabled)
+
+    window.location.reload() // Force reload after save
+  }
+}
+
 
 /********************************************************************************* */
 export class BeneosUtility {
@@ -112,77 +199,79 @@ export class BeneosUtility {
         type: BeneosCloudLogin,
         restricted: true
       })
+    // console.log("Registering settings", game)
 
-      game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-clean-compendium", {
-        name: "Empty compendium to re-import all tokens data",
-        label: "Reset & Rebuild BeneosModule Compendiums",
-        hint: "Cleanup BeneosModule compendium and tokens configs",
-        scope: 'world',
-        config: true,
-        type: BeneosCompendiumReset,
-        restricted: true
-      })
+    game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-clean-compendium", {
+      name: "Empty compendium to re-import all tokens data",
+      label: "Reset & Rebuild BeneosModule Compendiums",
+      hint: "Cleanup BeneosModule compendium and tokens configs",
+      scope: 'world',
+      config: true,
+      type: BeneosCompendiumReset,
+      restricted: true
+    })
 
-      game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-search-engine", {
-        name: "Search Engine",
-        label: "Search in published tokens/battlemaps",
-        hint: "Search in all the published tokens/battlemaps from BeneosSearch engine",
-        scope: 'world',
-        config: true,
-        type: BeneosSearchEngineLauncher,
-        restricted: true
-      })
+    game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-search-engine", {
+      name: "Search Engine",
+      label: "Search in published tokens/battlemaps",
+      hint: "Search in all the published tokens/battlemaps from BeneosSearch engine",
+      scope: 'world',
+      config: true,
+      type: BeneosSearchEngineLauncher,
+      restricted: true
+    })
 
-      game.settings.register(BeneosUtility.moduleID(), "beneos-datapath", {
-        name: "Storage path of tokens assets",
-        hint: "Location of tokens and associated datas",
-        scope: 'world',
-        config: true,
-        default: BENEOS_DEFAULT_TOKEN_PATH,
-        type: String,
-        restricted: true
-      })
+    game.settings.register(BeneosUtility.moduleID(), "beneos-datapath", {
+      name: "Storage path of tokens assets",
+      hint: "Location of tokens and associated datas",
+      scope: 'world',
+      config: true,
+      default: BENEOS_DEFAULT_TOKEN_PATH,
+      type: String,
+      restricted: true
+    })
 
-      game.settings.register(BeneosUtility.moduleID(), "beneos-god-mode", {
-        name: "Enable God Mode",
-        hint: "",
-        scope: 'world',
-        config: false,
-        default: false,
-        type: Boolean,
-        restricted: true
-      })
+    game.settings.register(BeneosUtility.moduleID(), "beneos-god-mode", {
+      name: "Enable God Mode",
+      hint: "",
+      scope: 'world',
+      config: false,
+      default: false,
+      type: Boolean,
+      restricted: true
+    })
 
-      game.settings.register(BeneosUtility.moduleID(), "beneos-animated-portrait-only", {
-        name: "Display only animated portrait",
-        hint: "If ticked, only portraits will be available ",
-        scope: 'world',
-        config: true,
-        default: false,
-        type: Boolean
-      })
+    game.settings.register(BeneosUtility.moduleID(), "beneos-animated-portrait-only", {
+      name: "Display only animated portrait",
+      hint: "If ticked, only portraits will be available ",
+      scope: 'world',
+      config: true,
+      default: false,
+      type: Boolean
+    })
 
-      game.settings.register(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', {
-        name: 'Global JSON config for tokens',
-        type: String,
-        scope: 'world',
-        default: "",
-        config: false
-      })
-      game.settings.register(BeneosUtility.moduleID(), 'beneos-json-itemconfig', {
-        name: 'Global JSON config for items',
-        type: String,
-        scope: 'world',
-        default: "",
-        config: false
-      })
-      game.settings.register(BeneosUtility.moduleID(), 'beneos-json-spellconfig', {
-        name: 'Global JSON config for spells',
-        type: String,
-        scope: 'world',
-        default: "",
-        config: false
-      })
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', {
+      name: 'Global JSON config for tokens',
+      type: String,
+      scope: 'world',
+      default: "",
+      config: false
+    })
+
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-json-itemconfig', {
+      name: 'Global JSON config for items',
+      type: String,
+      scope: 'world',
+      default: "",
+      config: false
+    })
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-json-spellconfig', {
+      name: 'Global JSON config for spells',
+      type: String,
+      scope: 'world',
+      default: "",
+      config: false
+    })
 
 
       game.settings.register('beneos-cloud', 'access_token', {
@@ -193,18 +282,23 @@ export class BeneosUtility {
         type: String,
         default: ''
       })
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-user-config', {
+      name: 'Internal data store for user-defined parameters',
+      default: {},
+      type: Object,
+      scope: 'world',
+      config: false
+    })
 
-      /*game.settings.register(BeneosUtility.moduleID(), 'beneos-animations', {
-        name: 'Enable Automatic Animations',
-        default: true,
-        type: Boolean,
-        scope: 'world',
-        default: true,
-        config: true,
-        hint: 'Whether to animate automatically Beneos Tokens.'
-      })*/
-    }
-    /*
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-ui-state', {
+      name: 'Internal data store for user-defined parameters',
+      default: {},
+      type: Boolean,
+      scope: 'world',
+      config: false,
+      default: true
+    })
+        /*
     game.settings.register(BeneosUtility.moduleID(), "beneos-speed", {
       name: 'Number of spaces walked per second.',
       hint: 'Slower speeds will give better results. Foundry default speed is 10.',
@@ -213,6 +307,68 @@ export class BeneosUtility {
       default: 10,
       type: Number
     })*/
+
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-table-top-config', {
+      name: 'Internal data store for table top mode settings',
+      default: TableTopModeSettings.getDefaultTableTopSettings(),
+      type: Object,
+      scope: 'world',
+      config: false
+    })
+
+    const menuTableTopModeSettings = {
+			key: 'tableTopModeSettings',
+			config: {
+				name: 'Configure Table Top mode',
+        label: 'Table Top Mode',
+				hint: 'Configure the Table Top mode features',
+				type: TableTopModeSettings,
+				restricted: true,
+			},
+		};
+
+		const settingAutoTemplateSettings = {
+			key: 'tableTopModeSettings',
+			config: {
+				name: 'Table Top mode settings',
+				hint: 'Configure the Table Top mode settings',
+				scope: 'world',
+				config: false,
+				default: {},
+				type: Object,
+			},
+		};
+
+    game.settings.registerMenu(BeneosUtility.moduleID(), menuTableTopModeSettings.key, menuTableTopModeSettings.config);
+			game.settings.register(
+				BeneosUtility.moduleID(),
+				settingAutoTemplateSettings.key,
+				foundry.utils.mergeObject(
+					settingAutoTemplateSettings.config,
+					{
+            requiresReload: true
+					},
+					true,
+					true
+				)
+			);
+   }
+  }
+
+  /********************************************************************************** */
+  static getTableTopConfig() {
+    return game.settings.get(BeneosUtility.moduleID(), 'beneos-table-top-config') || TableTopModeSettings.getDefaultTableTopSettings()
+  }
+
+  /********************************************************************************** */
+  static setupSocket() {
+    game.socket.on(`module.beneos-module`, (msg) => {
+      //console.log('pl',payload)
+      if (msg.name == 'msg_set_view_position') { BeneosTableTop.applyPosition(msg.data) }
+      if (msg.name == 'msg_toggle_ui_elements') { BeneosTableTop.applyUIElements(msg.data) }
+      if (msg.name == 'msg_request_user_view') { BeneosTableTop.sendUserViewMessage() }
+      if (msg.name == 'msg_user_view_response') { BeneosTableTop.processUserCurrentView(msg.data) }
+    });
   }
 
   /********************************************************************************** */
@@ -265,15 +421,24 @@ export class BeneosUtility {
   /********************************************************************************** */
   static ready() {
     this.file_cache = {}
+    this.titleCache = {}
 
-    this.userSizes = foundry.utils.duplicate(game.settings.get(BeneosUtility.moduleID(), 'beneos-user-config'))
+    //this.userSizes = foundry.utils.duplicate(game.settings.get(BeneosUtility.moduleID(), 'beneos-user-config'))
     this.beneosModule = true // Deprecated game.settings.get(BeneosUtility.moduleID(), 'beneos-animations')
-    this.tokenDataPath = game.settings.get(BeneosUtility.moduleID(), 'beneos-datapath')
-    this.itemDataPath = game.settings.get(BeneosUtility.moduleID(), 'beneos-datapath')
-    this.spellDataPath = game.settings.get(BeneosUtility.moduleID(), 'beneos-datapath')
-    this.tokenDataPath += "/beneos_tokens/"
-    this.itemDataPath += "/beneos_items/"
-    this.spellDataPath += "/beneos_spells/"
+    if (game.user.isGM) {
+      this.tokenDataPath = game.settings.get(BeneosUtility.moduleID(), 'beneos-datapath')
+      this.itemDataPath = game.settings.get(BeneosUtility.moduleID(), 'beneos-datapath')
+      this.spellDataPath = game.settings.get(BeneosUtility.moduleID(), 'beneos-datapath')
+      this.tokenDataPath += "/beneos_tokens/"
+      this.itemDataPath += "/beneos_items/"
+      this.spellDataPath += "/beneos_spells/"
+      let stats = this.countBeneosAssetsUsage()
+      try {
+        ClassCounter.registerUsageCount('beneos-module', { beneosStats: stats })
+      } catch (e) {
+        console.log("Unable to register usage count, not important", e)
+      }
+    }
     this.sheetLoaded = false
 
     this.beneosHealth = {}
@@ -380,6 +545,7 @@ export class BeneosUtility {
     let scene = game.scenes.get(sceneId)
     let srcPath = scene.background.src
     let tileId = "scene"
+
 
     if (!srcPath) {
       for (let tile of scene.tiles) {
@@ -791,17 +957,22 @@ export class BeneosUtility {
     if (token === null || token == undefined) {
       return
     }
-    let tokenData = BeneosUtility.beneosTokens[fullKey]
-    if (tokenData) {
-      console.log(">>>>>>>>>>> UPDATE TOKEN CHANGE", tokenData, token)
-      await token.document.update({ 'texture.src': tokenData.imgPattern + '-token.webp' })
-      if (token?.actor) {
-        console.log(">>>>>>>>>>> UPDATE ACTOR CHANGE", tokenData)
-        let actorImage = tokenData.imgPattern + "-avatar.webp";
-        token.actor.update({ 'img': actorImage })
-      }
-    } else {
-      ui.notifications.warn("Error in BeneosModule : the tokenKey seems wrong " + fullKey)
+    let tokenData = BeneosUtility.getTokenImageInfo(newImage)
+    if (newImage.includes("idle_")) { // Save the lates selected IDLE animation
+      token.document.setFlag(BeneosUtility.moduleID(), "idleimg", newImage)
+    }
+    token.document.setFlag(BeneosUtility.moduleID(), "tokenKey", tokenData.tokenKey)
+    let scaleFactor = this.getScaleFactor(token, newImage)
+    //console.log(">>>>>>>>>>> UPDATE TOKEN CHANGE")
+    await token.document.update({ img: newImage, scale: scaleFactor, rotation: 1.0 })
+    if (foundry.utils.isNewerVersion(game.version, "11")) {
+      await token.document.update({ 'texture.src': newImage })
+    }
+    //canvas.scene.updateEmbeddedDocuments("Token", [({ _id: token.id, img: finalimage, scale: 1.0, rotation: 0 })])
+    let actor = token.actor
+    if (actor && actor.type == "character") {
+      let actorImage = tokenData.path + "/" + tokenData.tokenKey + "-idle_face" + ".webm"
+      actor.update({ 'token.img': actorImage })
     }
     return
   }
@@ -816,9 +987,12 @@ export class BeneosUtility {
     let scaleFactor = this.getScaleFactor(token, newImage)
     token.document.setFlag(BeneosUtility.moduleID(), "idleimg", newImage)
     token.document.setFlag(BeneosUtility.moduleID(), "tokenKey", tokenData.tokenKey)
-    console.log("New IDLE image", scaleFactor)
+    console.log("New IDLE image", scaleFactor, token)
     await token.document.update({ img: newImage })
     await token.document.update({ scale: scaleFactor, rotation: 1.0 })
+    if (foundry.utils.isNewerVersion(game.version, "11")) {
+      await token.document.update({ 'texture.src': newImage })
+    }
 
     if (tokenData.variant == "top") {
       let tokenConfig = this.beneosTokens[tokenData.tokenKey]
@@ -930,6 +1104,15 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
+  static checkLockViewPresence()  {
+    let lv = game.modules.get("LockView")
+    if (lv?.active) {
+      ui.notifications.warn("Lock View module detected. Beneos Module is no more compatible with LockView module, it must be de-activated.")
+      return true
+    }
+  }
+
+  /********************************************************************************** */
   static processCanvasReady() {
     for (let [key, token] of canvas.scene.tokens.entries()) {
       if (BeneosUtility.checkIsBeneosToken(token)) {
@@ -1031,6 +1214,8 @@ export class BeneosUtility {
     // Update with new s
     let s = this.getScaleFactor(token, token.document.texture.src)
     await token.document.update({ scale: s })
+    await token.document.update({ 'texture.scaleX': s })
+    await token.document.update({ 'texture.scaleY': s })
   }
 
   /********************************************************************************** */
@@ -1045,7 +1230,7 @@ export class BeneosUtility {
       let tokenConfig = this.beneosTokens[tokenData.tokenKey]
       if (tokenConfig) {
         let status = tokenData.currentStatus
-        console.log("Updting size : ", tokenData, tokenConfig)
+        //console.log("Updting size : ", tokenData, tokenConfig)
 
         let variantName = tokenData.variant
         if (!tokenConfig[tokenData.variant]) {
@@ -1079,7 +1264,7 @@ export class BeneosUtility {
         }
         currentData.s += incDec
 
-        console.log("Status detected ", status)
+        //console.log("Status detected ", status)
         // Save scalefactor
         if (status == "die") {
           let currentDataDeath = tokenConfig[variantName]["dead"]
@@ -1100,8 +1285,12 @@ export class BeneosUtility {
         // Save scalefactor
         let scaleFactor = currentData.s * tokenConfig.config.scalefactor
         token.document.setFlag(BeneosUtility.moduleID(), "scalefactor", scaleFactor)
-        console.log(">>>>>>>>>>> UPDATE TOKEN CHANGE SCALE")
+        //console.log(">>>>>>>>>>> UPDATE TOKEN CHANGE SCALE")
         await token.document.update({ scale: scaleFactor })
+        if (foundry.utils.isNewerVersion(game.version, "11")) {
+          await token.document.update({ 'texture.scaleX': scaleFactor })
+          await token.document.update({ 'texture.scaleY': scaleFactor })
+        }
       }
     }
   }

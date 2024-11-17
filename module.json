@@ -1,19 +1,21 @@
 {
   "title": "Beneos Module",
   "description": "Quality of life features for Beneos Battlemaps, Tokens, Spells and Items",
-  "version": "12.0.5",
+  "version": "12.0.6",
+  "socket": true,
   "compatibility": {
     "minimum": "10",
     "verified": "12"
   },
   "url": "https://github.com/BeneosBattlemaps/beneos-module",
   "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-module/main/module.json",
-  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/12.0.5.zip",
+  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/12.0.6.zip",
   "scripts": [
     "scripts/beneosfx.js"
   ],
   "styles": [
-    "css/beneos.css"
+    "css/beneos.css",
+    "css/table-top.css"
   ],
   "esmodules": [
     "scripts/beneos_module.js"
@@ -119,12 +121,6 @@
         "id": "scene-packer",
         "type": "module",
         "manifest": "https://github.com/League-of-Foundry-Developers/scene-packer/releases/latest/download/module.json",
-        "compatibility": {}
-      },
-	  {
-        "id": "LockView",
-        "type": "module",
-        "manifest": "https://github.com/MaterialFoundry/LockView/releases/latest/download/module.json",
         "compatibility": {}
       },
 	  {
