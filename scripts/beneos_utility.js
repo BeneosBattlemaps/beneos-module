@@ -778,16 +778,16 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
+  static async applyDeadFX(token) {
+    let bfx = ["BFXDead", "BFXShadowDead"]
+    this.addFx(token, bfx, true, true)
+
+  }
+  /********************************************************************************** */
   // Function to add FX from the Token Magic module or from the ones defined in the configuration files.
   static async addFx(token, bfx, replace = true, apply = true) {
     if (typeof TokenMagic !== 'undefined') {
       let bpresets = []
-
-      let flag = token.document.getFlag(BeneosUtility.moduleID(), 'variant')
-      if (flag != undefined && flag != "Default") {
-        let myToken = this.getTokenImageInfo(token)
-        bfx = bfx.concat(beneosTokens[tokenData.fullKey]["config"]["variants"][flag])
-      }
 
       $.each(bfx, function (index, value) {
         let bfxid = value
@@ -815,7 +815,7 @@ export class BeneosUtility {
         }
       })
       if (apply) {
-        //console.log("Adding effects", bpresets, replace)
+        console.log("Adding effects", bpresets, replace)
         token.TMFXaddFilters(bpresets, replace)
       } else {
         return bpresets
@@ -1030,16 +1030,16 @@ export class BeneosUtility {
       return
     }
 
-    let currentImage = token.document.texture.src
     if (hp == 0 && hp != BeneosUtility.beneosHealth[token.id]) {
       BeneosUtility.debugMessage("[BENEOS MODULE] Dead")
       token.state = "dead"
-      // TODO : apply grey FX
+      // TODO : apply grey FX ?
+      BeneosUtility.applyDeadFX(token)
     }
     if (BeneosUtility.beneosHealth[token.id] == 0 && hp > 0) {
       BeneosUtility.debugMessage("[BENEOS MODULE] Standing")
       token.state = "standing"
-      // TODO : remove grey FX
+      TokenMagic.deleteFilters(token);
     }
     BeneosUtility.beneosHealth[token.id] = hp // Store current HP value
   }
