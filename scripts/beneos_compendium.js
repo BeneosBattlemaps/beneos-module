@@ -357,6 +357,11 @@ export class BeneosCompendiumManager {
             console.log("FILENAME", filename)
             // SPlit the filename with the following pattern : 000-name_of_token-variant.webp 
             let res = filename.match("(\\d+)-(\\w*)-(\\d+)-(\\w*)\\.webp")
+            if (!res || !res[1] || !res[2] || !res[3]) {
+              this.importErrors.push("Error in parsing filename " + filename)
+              console.log("Error in parsing filename", filename);
+              continue;
+            }
             if (res[3] && Number(res[3]) > 0) {              
               if ( ! subTokens[Number(res[3])] ) {
                 subTokens[Number(res[3])] = { }
@@ -373,7 +378,11 @@ export class BeneosCompendiumManager {
         for (let idx in subTokens) {
           let model = subTokens[idx]
           let fullId = tid + "_" + key + "_" + idx
-
+          if (!model.token || !model.avatar || !model.journal || !model.dynamic) {
+            this.importErrors.push("Error in parsing model " + fullId)
+            console.log("Error in parsing model", fullId);
+            continue;
+          }
           // Create the journal
           try {
             let records = foundry.utils.duplicate(journalRecords)
