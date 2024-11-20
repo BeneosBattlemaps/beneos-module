@@ -326,7 +326,7 @@ export class BeneosCompendiumManager {
         // Build list of variant
         let dataFolder = await FilePicker.browse("data", subFolder)
         let r, actorRecords, journalRecords
-        let variants = {}
+        let subTokens = {}
         for (let filename of dataFolder.files) {
           // Load the actor JSON reference file
           if (filename.toLowerCase().includes("actor-") && filename.toLowerCase().includes(".json")) {
@@ -351,62 +351,61 @@ export class BeneosCompendiumManager {
               continue;
             }
           }
+          
           // If it matches a webp file 
           if (filename.toLowerCase().includes(".webp")) {
             console.log("FILENAME", filename)
             // SPlit the filename with the following pattern : 000-name_of_token-variant.webp 
             let res = filename.match("(\\d+)-(\\w*)-(\\d+)-(\\w*)\\.webp")
-            if (res && res[1] && res[2] && res[3]) {
-              let vkey = res[2] + "-" + res[3]
-              if (!variants[vkey]) {
-                variants[vkey] = { count: 1, actorId: "", journalId: "", name: "", number: res[3] };
-              } else {
-                variants[vkey].count = variants[vkey].count + 1
+            if (res[3] && Number(res[3]) > 0) {              
+              if ( ! subTokens[Number(res[3])] ) {
+                subTokens[Number(res[3])] = { }
+              }
+              if (res[4]) {         
+                subTokens[Number(res[3])][res[4]] = filename
               }
             }
           }
         }
-        console.log("VARIANTS", variants)
+
+        console.log("VARIANTS", subTokens)
         // Process variant and create journal+actors
-        for (let vkey in variants) {
-          let variant = variants[vkey]
-          if (variant.count != 3) {
-            ui.notifications.error("BeneosModule : Variant " + vkey + " is not complete, please check your data !")
-            continue;
-          }
+        for (let idx in subTokens) {
+          let model = subTokens[idx]
+          let fullId = tid + "_" + key + "_" + idx
 
           // Create the journal
           try {
             let records = foundry.utils.duplicate(journalRecords)
-            records.name = tid + "_" + key
-            records.pages[0].src = dataFolder.target + "/" + tid + "-" + vkey + "-journal.webp";
+            records.name = fullId
+            records.pages[0].src = model.journal;
             let journal = new JournalEntry(records);
             let imported = await journalPack.importDocument(journal);
-            variant.journalId = imported.id
+            model.journalId = imported.id
           } catch {
-            this.importErrors.push("Error in creating journal " + records.name)
-            console.log("Error in creating journal", records.name);
+            this.importErrors.push("Error in creating journal " + fullId)
+            console.log("Error in creating journal", fullId);
           }
 
           // Create relevant actors
           let records = foundry.utils.duplicate(actorRecords)
-          records.img = dataFolder.target + "/" + tid + "-" + vkey + "-avatar.webp";
+          records.img = model.avatar;
           this.replaceItemsPath(records)
           //console.log(">>>>>>>>>>>>>> REC", records, actor)
           if (records.prototypeToken) {
-            records.prototypeToken.texture.src = dataFolder.target + "/" + tid + "-" + vkey + "-token.webp";
+            records.prototypeToken.texture.src = model.token;
           }
 
           let actor = new CONFIG.Actor.documentClass(records);
           if (actor) {
             let imported = await actorPack.importDocument(actor);
-            await imported.setFlag("world", "beneos", { tid: tid, key: key, vkey: vkey, journalId: variant.journalId })
+            await imported.setFlag("world", "beneos", { tid: tid, key: key, fullId: fullId, journalId: model.journalId })
             $(".beneos-chat-actor-info").html(actor.name)
             $(".beneos-meter-actor").attr("value", Math.round((count++ / max) * 100));
             //console.log("ACTOR IMPO", imported)
-            variant.actorId = imported.id
-            variant.name = actor.name
-            variant.img = actor.img
+            model.actorId = imported.id
+            model.name = actor.name
+            model.img = actor.img
           } else {
             this.importErrors.push("Error in creating actor " + records.name)
             console.log("Error in creating actor", records.name);
@@ -414,16 +413,21 @@ export class BeneosCompendiumManager {
 
           if (key) {
             //console.log("Final IDLE list : ", idleList)
-            BeneosUtility.beneosTokens[tid + '-' + vkey] = {
-              actorName: variant.name,
-              imgPattern: dataFolder.target + "/" + tid + "-" + vkey ,
-              actorId: variant.actorId,
-              journalId: variant.journalId,
+            BeneosUtility.beneosTokens[fullId] = {
+              actorName: model.name,
+              avatar: model.avatar,
+              token: model.token,
+              journal: model.journal,
+              dynamic: model.dynamic,
+              actorId: model.actorId,
+              journalId: model.journalId,
               folder: subFolder,
               tid: tid,
               key: key,
-              number: variant.number,
-              vkey: vkey,
+              fullId: fullId,
+              fullKey: fullId,
+              number: idx,
+              key: key,
             }
           }
         }

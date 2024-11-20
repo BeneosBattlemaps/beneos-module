@@ -28,13 +28,13 @@ export class BeneosActorTokenMigration extends FormApplication {
     for (let actor of game.actors) {
       if (actor?.img.includes("beneos-module") && !actor.img.includes(BeneosUtility.tokenDataPath)) {
         let oldImgData = BeneosUtility.getTokenImageInfo(actor.img)
-        let newImgPath = BeneosUtility.getFullPathWithSlash() + oldImgData.tokenKey + "/" + oldImgData.filename
+        let newImgPath = BeneosUtility.getFullPathWithSlash() + oldImgData.fullKey + "/" + oldImgData.filename
         await actor.update({ 'img': newImgPath })
         console.log("actor update...", actor.name, actor.img)
       }
       if (actor?.token.img.includes("beneos-module") && !actor.token.img.includes(BeneosUtility.tokenDataPath)) {
         let oldTokenImgData = BeneosUtility.getTokenImageInfo(actor.texture.src)
-        let newTokenImgPath = BeneosUtility.getFullPathWithSlash() + oldTokenImgData.tokenKey + "/" + oldTokenImgData.pathVariant + "/" + oldTokenImgData.filename
+        let newTokenImgPath = BeneosUtility.getFullPathWithSlash() + oldTokenImgData.fullKey + "/" + oldTokenImgData.pathVariant + "/" + oldTokenImgData.filename
         await actor.update({ 'token.img': newTokenImgPath })
         console.log("actor token update...", actor.name, actor.token.texture.src)
       }
@@ -44,7 +44,7 @@ export class BeneosActorTokenMigration extends FormApplication {
       for (let token of scene.tokens) {
         if (token?.texture.src.includes("beneos-module") && !token.texture.src.includes(BeneosUtility.tokenDataPath)) {
           let oldTokenImgData = BeneosUtility.getTokenImageInfo(token.texture.src)
-          let newTokenImgPath = BeneosUtility.getFullPathWithSlash() + oldTokenImgData.tokenKey + "/" + oldTokenImgData.pathVariant + "/" + oldTokenImgData.filename
+          let newTokenImgPath = BeneosUtility.getFullPathWithSlash() + oldTokenImgData.fullKey + "/" + oldTokenImgData.pathVariant + "/" + oldTokenImgData.filename
           console.log("scene token update : ", scene.name, token.name)
           await token.update({ 'img': newTokenImgPath })
         }
@@ -174,8 +174,6 @@ export class BeneosUtility {
       config: false
     })
 
-    if (game.user.isGM) {
-
       game.beneosTokens = {
         moduleId: BENEOS_MODULE_ID,
         BeneosUtility,
@@ -187,7 +185,8 @@ export class BeneosUtility {
         default: "",
         type: String,
         scope: 'world',
-        config: false
+        config: false,
+        restricted: true
       })
 
       game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-patreon-login", {
@@ -280,6 +279,7 @@ export class BeneosUtility {
         scope: 'world',
         config: true,
         type: String,
+        restricted: true,
         default: ''
       })
     game.settings.register(BeneosUtility.moduleID(), 'beneos-user-config', {
@@ -298,15 +298,6 @@ export class BeneosUtility {
       config: false,
       default: true
     })
-        /*
-    game.settings.register(BeneosUtility.moduleID(), "beneos-speed", {
-      name: 'Number of spaces walked per second.',
-      hint: 'Slower speeds will give better results. Foundry default speed is 10.',
-      scope: "world",
-      config: true,
-      default: 10,
-      type: Number
-    })*/
 
     game.settings.register(BeneosUtility.moduleID(), 'beneos-table-top-config', {
       name: 'Internal data store for table top mode settings',
@@ -352,7 +343,6 @@ export class BeneosUtility {
 					true
 				)
 			);
-   }
   }
 
   /********************************************************************************** */
@@ -517,8 +507,8 @@ export class BeneosUtility {
     for (let actor of game.actors) {
       if (actor.prototypeToken?.texture?.src.includes('beneos_assets')) {
         let tokenData = this.getTokenImageInfo(actor.prototypeToken.texture.src)
-        if (tokenData?.tokenKey) {
-          statsBeneos.tokens[tokenData.tokenKey] = (statsBeneos.tokens[tokenData.tokenKey]) ? statsBeneos.tokens[tokenData.tokenKey] + 1 : 1
+        if (tokenData?.fullKey) {
+          statsBeneos.tokens[tokenData.fullKey] = (statsBeneos.tokens[tokenData.fullKey]) ? statsBeneos.tokens[tokenData.fullKey] + 1 : 1
         }
       }
     }
@@ -686,7 +676,7 @@ export class BeneosUtility {
   static newTokenSetup(token) {
     let object = (token.document) ? token.document : token
     let tokenData = BeneosUtility.getTokenImageInfo(object.texture.src)
-    object.setFlag(BeneosUtility.moduleID(), "tokenKey", tokenData.tokenKey)
+    object.setFlag(BeneosUtility.moduleID(), "fullKey", tokenData.fullKey)
     object.setFlag("core", "randomizeVideo", false)
     let scaleFactor = this.getScaleFactor(token, object.texture.src)
     canvas.scene.updateEmbeddedDocuments("Token", [({ _id: token.id, scale: scaleFactor })])
@@ -725,7 +715,16 @@ export class BeneosUtility {
 
     let beneos = token?.actor?.getFlag("world", "beneos");
     if (beneos) {
-      let fullKey = beneos.tid + '-' + beneos.vkey
+      let fullKey = beneos.fullId
+      return BeneosUtility.beneosTokens[fullKey]
+    }
+    return {}
+  }
+
+    /********************************************************************************** */
+  //Retrieves the necessary data from a token in order to be able to fire automatic animations based on the current token image file.
+  static getTokenDataFromKey(fullKey) {
+    if (fullKey) {
       return BeneosUtility.beneosTokens[fullKey]
     }
     return {}
@@ -787,7 +786,7 @@ export class BeneosUtility {
       let flag = token.document.getFlag(BeneosUtility.moduleID(), 'variant')
       if (flag != undefined && flag != "Default") {
         let myToken = this.getTokenImageInfo(token)
-        bfx = bfx.concat(beneosTokens[tokenData.tokenKey]["config"]["variants"][flag])
+        bfx = bfx.concat(beneosTokens[tokenData.fullKey]["config"]["variants"][flag])
       }
 
       $.each(bfx, function (index, value) {
@@ -845,18 +844,18 @@ export class BeneosUtility {
   /********************************************************************************** */
   static getIdleTokens(token) {
     let tokenData = this.getTokenImageInfo(token)
-    let tokenKey = tokenData.tokenKey
+    let fullKey = tokenData.fullKey
     let tokenList = []
 
-    if (tokenKey) {
-      let tokenConfig = this.beneosTokens[tokenKey]
+    if (fullKey) {
+      let tokenConfig = this.beneosTokens[fullKey]
       if (!tokenConfig) {
-        ui.notifications.warn("Error in BeneosModule : the tokenKey seems wrong " + tokenKey)
+        ui.notifications.warn("Error in BeneosModule : the fullKey seems wrong " + fullKey)
         ui.notifications.warn("Check that the token image is a BeneosToken image, from the beneos tokens folder")
-        console.log("Working tokenKey - matchArray : ", tokenKey, matchArray)
+        console.log("Working fullKey - matchArray : ", fullKey, matchArray)
         return tokenList
       }
-      //console.log("Token", tokenKey, token, tokenConfig)
+      //console.log("Token", fullKey, token, tokenConfig)
       for (let idleImg of tokenConfig.idleList) {
         if (game.settings.get(BeneosUtility.moduleID(), "beneos-animated-portrait-only")) {
           if (!idleImg.toLowerCase().match("face")) {
@@ -867,12 +866,12 @@ export class BeneosUtility {
         modeName = this.firstLetterUpper(modeName[1].replace(/_/g, ", "))
         tokenList.push({
           isVideo: idleImg.includes("webm"),
-          token: idleImg, //this.getFullPathWithSlash() + tokenKey + '/' + tokenKey + "-idle_face_still.webp",
+          token: idleImg, //this.getFullPathWithSlash() + fullKey + '/' + fullKey + "-idle_face_still.webp",
           name: modeName, tokenvideo: idleImg
         })
       }
     } else {
-      ui.notifications.warn("Error in BeneosModule : tokenKey not found ")
+      ui.notifications.warn("Error in BeneosModule : fullKey not found ")
       ui.notifications.warn("Check that the token image is a BeneosToken image, from the beneos tokens folder")
     }
     return tokenList
@@ -899,8 +898,8 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
-  static getActorId(tokenKey) {
-    let token = this.beneosTokens[tokenKey]
+  static getActorId(fullKey) {
+    let token = this.beneosTokens[fullKey]
     if (token) {
       return token.actorId
     }
@@ -927,8 +926,8 @@ export class BeneosUtility {
     let tokenData = this.getTokenImageInfo(token)
     let tokenList = []
 
-    if (tokenData?.tokenKey) {
-      let tokenConfig = this.beneosTokens[tokenData.tokenKey]
+    if (tokenData?.fullKey) {
+      let tokenConfig = this.beneosTokens[tokenData.fullKey]
       if (tokenConfig.imgVideoList) {
         for (let imgVideo of tokenConfig.imgVideoList) {
           if (imgVideo.includes("top") && imgVideo.includes(".webm")) {
@@ -936,7 +935,7 @@ export class BeneosUtility {
             modeName = this.firstLetterUpper(modeName[1].replace(/_/g, ", "))
             tokenList.push({
               isVideo: imgVideo.includes("webm"),
-              token: imgVideo, //this.getFullPathWithSlash() + tokenKey + '/' + tokenKey + "-idle_face_still.webp",
+              token: imgVideo, //this.getFullPathWithSlash() + fullKey + '/' + fullKey + "-idle_face_still.webp",
               name: modeName, tokenvideo: imgVideo
             })
           }
@@ -957,13 +956,11 @@ export class BeneosUtility {
     if (token === null || token == undefined) {
       return
     }
-    let tokenData = BeneosUtility.getTokenImageInfo(newImage)
-    if (newImage.includes("idle_")) { // Save the lates selected IDLE animation
-      token.document.setFlag(BeneosUtility.moduleID(), "idleimg", newImage)
-    }
-    token.document.setFlag(BeneosUtility.moduleID(), "tokenKey", tokenData.tokenKey)
-    let scaleFactor = this.getScaleFactor(token, newImage)
-    //console.log(">>>>>>>>>>> UPDATE TOKEN CHANGE")
+    let tokenData = BeneosUtility.getTokenDataFromKey(fullKey)
+    let newImage = tokenData.token
+    token.document.setFlag(BeneosUtility.moduleID(), "fullKey", tokenData.fullKey)
+    let scaleFactor = this.getScaleFactor(token, fullKey)
+    //console.log(">>>>>>>>>>> UPDATE TOKEN CHANGE", fullKey, tokenData, newImage)
     await token.document.update({ img: newImage, scale: scaleFactor, rotation: 1.0 })
     if (foundry.utils.isNewerVersion(game.version, "11")) {
       await token.document.update({ 'texture.src': newImage })
@@ -971,36 +968,10 @@ export class BeneosUtility {
     //canvas.scene.updateEmbeddedDocuments("Token", [({ _id: token.id, img: finalimage, scale: 1.0, rotation: 0 })])
     let actor = token.actor
     if (actor && actor.type == "character") {
-      let actorImage = tokenData.path + "/" + tokenData.tokenKey + "-idle_face" + ".webm"
+      let actorImage = tokenData.avatar
       actor.update({ 'token.img': actorImage })
     }
     return
-  }
-
-  /********************************************************************************** */
-  static async forceIdleTokenUpdate(tokenid, newImage) {
-    let token = BeneosUtility.getToken(tokenid)
-    if (token === null || token == undefined) {
-      return
-    }
-    let tokenData = BeneosUtility.getTokenImageInfo(newImage)
-    let scaleFactor = this.getScaleFactor(token, newImage)
-    token.document.setFlag(BeneosUtility.moduleID(), "idleimg", newImage)
-    token.document.setFlag(BeneosUtility.moduleID(), "tokenKey", tokenData.tokenKey)
-    console.log("New IDLE image", scaleFactor, token)
-    await token.document.update({ img: newImage })
-    await token.document.update({ scale: scaleFactor, rotation: 1.0 })
-    if (foundry.utils.isNewerVersion(game.version, "11")) {
-      await token.document.update({ 'texture.src': newImage })
-    }
-
-    if (tokenData.variant == "top") {
-      let tokenConfig = this.beneosTokens[tokenData.tokenKey]
-      if (tokenConfig && tokenConfig.top && tokenConfig.top.idle && tokenConfig.top.idle.fx) {
-        this.addFx(token, tokenConfig.top.idle.fx, true)
-      }
-    }
-    //canvas.scene.updateEmbeddedDocuments("Token", [({ _id: token.id, img: newImage, scale: scaleFactor, scalefactor: scaleFactor, rotation: 0 })])
   }
 
   /********************************************************************************** */
@@ -1035,14 +1006,13 @@ export class BeneosUtility {
     }
 
     let actorData = token.actor
-    if (!actorData) {
+    if (!actorData || actorData.flags.world.beneos == undefined) {
       return
     }
-
-    let tokenData = BeneosUtility.getTokenImageInfo(token.document.texture.src)
-    let myToken = BeneosUtility.beneosTokens[tokenData.tokenKey]
+    let fullKey = actorData.flags.world.beneos.fullId
+    let myToken = BeneosUtility.getTokenDataFromKey(fullKey)
     if (!myToken) {
-      BeneosUtility.debugMessage("[BENEOS MODULE] Config not found " + tokenData)
+      BeneosUtility.debugMessage("[BENEOS MODULE] Config not found " + fullKey)
       return
     }
 
@@ -1051,6 +1021,7 @@ export class BeneosUtility {
       BeneosUtility.debugMessage("[BENEOS MODULE] No attributes", actorData)
       return
     }
+    console.log("Token HP value", fullKey, myToken)
     let hp = attributes.hp.value
     let benRotation = 0
     let benAlpha = 1
@@ -1060,34 +1031,17 @@ export class BeneosUtility {
     }
 
     let currentImage = token.document.texture.src
-    let newImage
     if (hp == 0 && hp != BeneosUtility.beneosHealth[token.id]) {
       BeneosUtility.debugMessage("[BENEOS MODULE] Dead")
       token.state = "dead"
-      BeneosUtility.standingImage[token.id] = currentImage
-      if (currentImage.includes("_face")) {
-        newImage = tokenData.tokenPath + tokenData.tokenKey + "-idle_face_still_death.webp"
-      } else if (token.document.texture.src.includes("_top")) {
-        newImage = tokenData.tokenPath + tokenData.tokenKey + "-dead_top.webp"
-      }
+      // TODO : apply grey FX
     }
     if (BeneosUtility.beneosHealth[token.id] == 0 && hp > 0) {
       BeneosUtility.debugMessage("[BENEOS MODULE] Standing")
       token.state = "standing"
-      newImage = BeneosUtility.standingImage[token.id]
+      // TODO : remove grey FX
     }
     BeneosUtility.beneosHealth[token.id] = hp // Store current HP value
-    if (newImage) {
-      fetch(newImage).then(function (response) {
-        if (response.ok) {
-          BeneosUtility.changeAnimation(token, newImage, benRotation, benAlpha, undefined, undefined, false, true)
-        } else {
-          throw new Error('File does not exist');
-        }
-      }).catch(function (error) {
-        console.log('Fetch error : ' + error.message);
-      })
-    }
   }
 
   /********************************************************************************** */
@@ -1117,7 +1071,7 @@ export class BeneosUtility {
     for (let [key, token] of canvas.scene.tokens.entries()) {
       if (BeneosUtility.checkIsBeneosToken(token)) {
         let tokenData = BeneosUtility.getTokenImageInfo(token.texture.src)
-        let tokenConfig = this.beneosTokens[tokenData.tokenKey]
+        let tokenConfig = this.beneosTokens[tokenData.fullKey]
         if (typeof tokenConfig === 'object' && tokenConfig) {
           BeneosUtility.updateToken(token.id, {})
         }
@@ -1148,7 +1102,7 @@ export class BeneosUtility {
       if (value?.actorName && value?.actorId) {
         beneosTokensHUD.push({
           "fullKey": key, //BeneosUtility.getBasePath() + BeneosUtility.getBeneosTokenDataPath() + "/" + key + '/' + key + "-idle_face_still.webp",
-          "img": value.imgPattern + '-avatar.webp',
+          "img": value.avatar,
           "actorId": value.actorId,
           "actorName": value.actorName
         })
@@ -1157,7 +1111,7 @@ export class BeneosUtility {
       }
     })
     this.sortArrayObjectsByName(beneosTokensHUD)
-    console.log("Beneos Tokens HUD", beneosTokensHUD)
+    //console.log("Beneos Tokens HUD", beneosTokensHUD)
     return beneosTokensHUD
   }
 
@@ -1193,114 +1147,11 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
-  static async userIncDecSize(tokenId, tokenKey, incDec) {
-    let token = BeneosUtility.getToken(tokenId)
-
-    if (game.system.id == 'pf2e' && token.document.flags.pf2e.autoscale) {
-      await token.document.update({ "flags.pf2e.autoscale": false })
-      ui.notifications.info("Token size was in auto-scale mode. Auto-scale mode has been disabled for this token, you can re-enable it in the token configuration window.")
-    }
-
-    let tokenConfig = this.beneosTokens[tokenKey]
-    if (!token || !tokenConfig) {
-      return
-    }
-
-    let tokenUserSize = this.userSizes[tokenId] || { tokenId: tokenId, tokenKey: tokenKey, sizeFactor: 1.0 }
-    tokenUserSize.sizeFactor += incDec
-    this.userSizes[tokenId] = tokenUserSize
-    game.settings.set(BeneosUtility.moduleID(), 'beneos-user-config', this.userSizes)
-    //console.log("USZER SIZES", this.userSizes)
-    // Update with new s
-    let s = this.getScaleFactor(token, token.document.texture.src)
-    await token.document.update({ scale: s })
-    await token.document.update({ 'texture.scaleX': s })
-    await token.document.update({ 'texture.scaleY': s })
-  }
-
-  /********************************************************************************** */
-  static async changeSize(tokenId, tokenImg, incDec) {
-    let token = BeneosUtility.getToken(tokenId)
-    if (token === null || token == undefined) {
-      return
-    }
-
-    let tokenData = this.getTokenImageInfo(tokenImg)
-    if (tokenData?.tokenKey) {
-      let tokenConfig = this.beneosTokens[tokenData.tokenKey]
-      if (tokenConfig) {
-        let status = tokenData.currentStatus
-        //console.log("Updting size : ", tokenData, tokenConfig)
-
-        let variantName = tokenData.variant
-        if (!tokenConfig[tokenData.variant]) {
-          variantName = "top"
-        }
-        if (!tokenConfig[variantName]) {
-          if (variantName != "idle" && variantName.includes("idle")) { // Dynamic stuff for idle_X
-            tokenConfig[variantName] = foundry.utils.duplicate(tokenConfig["idle"])
-          } else {
-            ui.notifications.warn("Unable to find token/variant data for " + variantName)
-            return
-          }
-        }
-        let currentData = tokenConfig[variantName][status]
-        if (!currentData) {
-          for (let variantKey in tokenConfig.top) {
-            let variantData = tokenConfig.top[variantKey]
-            if (variantData.a == status) {
-              currentData = variantData
-            }
-          }
-        }
-        if (!currentData) {
-          tokenConfig[variantName][status] = foundry.utils.duplicate(tokenConfig.top.idle)
-          currentData = tokenConfig[variantName][status]
-          currentData.a = status
-        }
-        if (!currentData) {
-          ui.notifications.warn("Unable to find token/variant data for " + tokenData.variant + " - " + tokenData.currentStatus)
-          return
-        }
-        currentData.s += incDec
-
-        //console.log("Status detected ", status)
-        // Save scalefactor
-        if (status == "die") {
-          let currentDataDeath = tokenConfig[variantName]["dead"]
-          if (currentDataDeath) {
-            currentDataDeath.s = currentData.s
-            ui.notifications.info("Token Die detected, same size applied to death token")
-          }
-        }
-        if (status == "idle") {
-          for (let key in tokenConfig.top) {
-            if (key.includes("idle")) {
-              let conf = tokenConfig.top[key]
-              conf.s = currentData.s
-              ui.notifications.info("Token idle detected, same size applied to token " + key)
-            }
-          }
-        }
-        // Save scalefactor
-        let scaleFactor = currentData.s * tokenConfig.config.scalefactor
-        token.document.setFlag(BeneosUtility.moduleID(), "scalefactor", scaleFactor)
-        //console.log(">>>>>>>>>>> UPDATE TOKEN CHANGE SCALE")
-        await token.document.update({ scale: scaleFactor })
-        if (foundry.utils.isNewerVersion(game.version, "11")) {
-          await token.document.update({ 'texture.scaleX': scaleFactor })
-          await token.document.update({ 'texture.scaleY': scaleFactor })
-        }
-      }
-    }
-  }
-
-  /********************************************************************************** */
-  static async saveJSONConfig(tokenKey) {
-    let tokenConfig = this.beneosTokens[tokenKey]
+  static async saveJSONConfig(fullKey) {
+    let tokenConfig = this.beneosTokens[fullKey]
     if (tokenConfig) {
       let jsonData = {}
-      jsonData[tokenKey] = {
+      jsonData[fullKey] = {
         config: foundry.utils.duplicate(tokenConfig.config),
         top: foundry.utils.duplicate(tokenConfig.top)
       }
