@@ -32,7 +32,7 @@ Hooks.once('ready', () => {
     BeneosUtility,
     BeneosTableTop,
   }
-  BeneosUtility.init()
+  BeneosUtility.ready()
 
   //Token Magic Hack  Replacement to prevent double filters when changing animations
   if (typeof TokenMagic !== 'undefined') {
