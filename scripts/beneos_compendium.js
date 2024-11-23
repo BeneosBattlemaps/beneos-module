@@ -36,13 +36,14 @@ export class BeneosCompendiumReset extends FormApplication {
       }
       ChatMessage.create(chatData);
       await this.deleteCompendiumContent("beneos-module.beneos_module_actors_pf2")
+      await this.deleteCompendiumContent("beneos-module.beneos_module_journal")
       $(".beneos-chat-delete-info").html("Cleanup finished")
 
       ui.notifications.info("BeneosModule : PF2 - Cleanup of compendiums finished.")
       chatData.content = `<div><strong>BeneosModule</strong> : Cleanup finished, importing actors</div>` +
         `<div><strong>2/2 - Actors : </strong><meter class="beneos-meter-actor" min="0" max="100" value="0">100%</meter>&nbsp;<span class="beneos-chat-actor-info"></span></div>`
       ChatMessage.create(chatData);
-      BeneosCompendiumManager.buildDynamicCompendiumsPF2()
+      BeneosCompendiumManager.buildDynamicCompendiumsTokensGeneric()
       $(".beneos-chat-actor-info").html("Actors import done ")
       $(".beneos-meter-actor").hide()
 
@@ -65,7 +66,7 @@ export class BeneosCompendiumReset extends FormApplication {
       chatData.content = `<div><strong>BeneosModule</strong> : Importing actors</div>` +
         `<div><strong>2/4 - Actors : </strong><meter class="beneos-meter-actor" min="0" max="100" value="0">100%</meter>&nbsp;<span class="beneos-chat-actor-info"></span></div>`
       ChatMessage.create(chatData);
-      await BeneosCompendiumManager.buildDynamicCompendiumsTokensDD5()
+      await BeneosCompendiumManager.buildDynamicCompendiumsTokensGeneric()
       $(".beneos-chat-actor-info").html("Actors import done ")
       $(".beneos-meter-actor").hide()
 
@@ -281,7 +282,7 @@ export class BeneosCompendiumManager {
 
   /********************************************************************************** */
   // Main root importer/builder function
-  static async buildDynamicCompendiumsTokensDD5() {
+  static async buildDynamicCompendiumsTokensGeneric() {
     ui.notifications.info("BeneosModule : Compendium building .... Please wait !")
 
     BeneosUtility.resetTokenData()
@@ -294,7 +295,16 @@ export class BeneosCompendiumManager {
     }
 
     // get the packs to update/check
-    let actorPack = game.packs.get("beneos-module.beneos_module_actors")
+    let actorPack
+    let pf2NPCRecords
+    if (game.system.id == "pf2e") {
+      actorPack = game.packs.get("beneos-module.beneos_module_actors_pf2")
+      let rPF2 = await fetch("modules/beneos-module/scripts/generic_npc_pf2.json")
+      pf2NPCRecords = await rPF2.json()
+
+    } else {
+      actorPack = game.packs.get("beneos-module.beneos_module_actors")
+    }
     let journalPack = game.packs.get("beneos-module.beneos_module_journal")
     if (!actorPack || !journalPack) {
       ui.notifications.error("BeneosModule : Unable to find compendiums, please check your installation !")
@@ -326,8 +336,6 @@ export class BeneosCompendiumManager {
       let res = subFolder.match(/(\d+)-([\w_]+)$/);
       if (res && !subFolder.includes("module_assets") && !subFolder.includes("ability_icons")) {
         // Token config
-        let currentId = ""
-        let currentName = ""
         let tid = res[1]
         let key = res[2]
         console.log("KEY", tid, key)
@@ -363,7 +371,7 @@ export class BeneosCompendiumManager {
           
           // If it matches a webp file 
           if (filename.toLowerCase().includes(".webp")) {
-            console.log("FILENAME", filename)
+            //console.log("FILENAME", filename)
             // SPlit the filename with the following pattern : 000-name_of_token-variant.webp 
             let res = filename.match("(\\d+)-(\\w*)-(\\d+)-(\\w*)\\.webp")
             if (!res || !res[1] || !res[2] || !res[3]) {
@@ -382,7 +390,7 @@ export class BeneosCompendiumManager {
           }
         }
 
-        console.log("VARIANTS", subTokens)
+        //console.log("VARIANTS", subTokens)
         // Process variant and create journal+actors
         for (let idx in subTokens) {
           let model = subTokens[idx]
@@ -406,16 +414,26 @@ export class BeneosCompendiumManager {
           }
 
           // Create relevant actors
-          let records = foundry.utils.duplicate(actorRecords)
-          records.img = model.avatar;
-          this.replaceItemsPath(records)
-          //console.log(">>>>>>>>>>>>>> REC", records, actor)
-          if (records.prototypeToken) {
-            records.prototypeToken.texture.src = model.token;
+          let actor
+          if (game.system.id == "pf2e") {
+            let pf2Record = foundry.utils.duplicate(pf2NPCRecords)
+            pf2Record.name = actorRecords.name
+            pf2Record.img = model.avatar
+            pf2Record.prototypeToken.texture.src = model.token
+            pf2Record.prototypeToken.name = actorRecords.name
+            //actor = await Actor.create(pf2Record, { temporary: true })
+            actor = new Actor.implementation(pf2Record)
+          } else {
+            let records = foundry.utils.duplicate(actorRecords)
+            records.img = model.avatar;
+            this.replaceItemsPath(records)
+            //console.log(">>>>>>>>>>>>>> REC", records, actor)
+            if (records.prototypeToken) {
+              records.prototypeToken.texture.src = model.token;
+            }
+            actor = new CONFIG.Actor.documentClass(records);
           }
-
-          let actor = new CONFIG.Actor.documentClass(records);
-          if (actor) {
+          if (actor ) {
             let imported = await actorPack.importDocument(actor);
             await imported.setFlag("world", "beneos", { tid: tid, key: key, fullId: fullId, journalId: model.journalId })
             $(".beneos-chat-actor-info").html(actor.name)
@@ -461,7 +479,11 @@ export class BeneosCompendiumManager {
       previousData = {}
       console.log("Error in parsing JSON for Tokens previousData, warning only all content has been re-imported")
     }
-    await this.showNewItems("Actors", BeneosUtility.beneosTokens, previousData, "Compendium.beneos-module.beneos_module_actors.Actor")
+    if (game.system.id == "pf2e") {
+      await this.showNewItems("Actors", BeneosUtility.beneosTokens, previousData, "Compendium.beneos-module.beneos_module_actors_pf2.Actor")
+    } else  {
+      await this.showNewItems("Actors", BeneosUtility.beneosTokens, previousData, "Compendium.beneos-module.beneos_module_actors.Actor")
+    } 
 
     let toSave = JSON.stringify(BeneosUtility.beneosTokens)
     console.log("Saving data :", toSave)
