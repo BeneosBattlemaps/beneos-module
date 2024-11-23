@@ -1094,6 +1094,27 @@ export class BeneosUtility {
     })
   }
 
+    /********************************************************************************** */
+  static buildAvailableVariantTokensMenu() {
+    let beneosTokensHUD = []
+
+    Object.entries(BeneosUtility.beneosTokens).forEach(([key, value]) => {
+      if (value?.actorName && value?.actorId) {
+        beneosTokensHUD.push({
+          "fullKey": key, //BeneosUtility.getBasePath() + BeneosUtility.getBeneosTokenDataPath() + "/" + key + '/' + key + "-idle_face_still.webp",
+          "img": value.avatar,
+          "actorId": value.actorId,
+          "actorName": value.actorName
+        })
+      } else {
+        ui.notifications.warn("Beneos Module: Actor name/id not found for token " + key)
+      }
+    })
+    this.sortArrayObjectsByName(beneosTokensHUD)
+    //console.log("Beneos Tokens HUD", beneosTokensHUD)
+    return beneosTokensHUD
+  }
+
   /********************************************************************************** */
   static buildAvailableTokensMenu() {
     let beneosTokensHUD = []
