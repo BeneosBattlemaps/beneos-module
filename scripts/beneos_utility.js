@@ -779,7 +779,7 @@ export class BeneosUtility {
 
   /********************************************************************************** */
   static async applyDeadFX(token) {
-    let bfx = ["BFXDead", "BFXShadowDead"]
+    let bfx = ["BFXDead", "BFXDeadIcon"]
     this.addFx(token, bfx, true, true)
 
   }

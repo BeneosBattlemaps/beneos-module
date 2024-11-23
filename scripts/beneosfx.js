@@ -2,14 +2,16 @@ let beneosFX = {
   "BFXDead": [{
     filterType: "adjustment",
     filterId: "myAdjust",
-    saturation: 0.8,
-    brightness: 1,
-    contrast: 1,
-    gamma: 0.8,
-    red: 0.1,
-    green: 0.1,
-    blue: 0.1,
-    alpha: 0.8,
+    saturation: 0
+  }],
+  "BFXDeadIcon": [{
+    filterType: "sprite",
+    filterId: "BFXDeadIcon",
+    imagePath: "/modules/beneos-module/icons/beneos_token_circular_death_overlay.webp",
+    gridPadding: 2,
+    scaleX: "0.8",
+    scaleY: "0.8",
+    top: true
   }],
   "BFXShadow": [{
     filterType: "shadow",

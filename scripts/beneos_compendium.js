@@ -151,7 +151,7 @@ export class BeneosCompendiumManager {
     let count = 0
     // Loop thru folders
     for (let subFolder of rootFolder.dirs) {
-      let res = subFolder.match("/(\\d*)_")
+      let res = subFolder.match("/(\\d*)-")
       if (res && !subFolder.includes("module_assets") && !subFolder.includes("ability_icons")) {
         // Token config
         let idleList = []
@@ -312,9 +312,18 @@ export class BeneosCompendiumManager {
     let max = rootFolder.dirs.length
     let count = 0
     for (let subFolder of rootFolder.dirs) {
+      // Detect all old token format folder
+      if (subFolder.match(/(\d+)_([\w_]+)$/)) {
+        ChatMessage.create({
+          user: game.user.id,
+          rollMode: game.settings.get("core", "rollMode"),
+          whisper: ChatMessage.getWhisperRecipients('GM'),
+          content: `<div><strong class="beneos-text-warning">BeneosModule Warning</strong> : Old token format detected, please update your assets (${subFolder}) </div>`
+        });
+        continue;
+      }
       // Match a subfolder starting with 3 digits and a dash
       let res = subFolder.match(/(\d+)-([\w_]+)$/);
-      console.log("SUBFOLDER", subFolder, res)
       if (res && !subFolder.includes("module_assets") && !subFolder.includes("ability_icons")) {
         // Token config
         let currentId = ""
