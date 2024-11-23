@@ -9,7 +9,7 @@ Hooks.once('init', () => {
 
   game.beneos = {
     BeneosUtility,
-    cloud : new BeneosCloud(), 
+    cloud: new BeneosCloud(),
   }
 
   BeneosUtility.registerSettings()
@@ -47,7 +47,7 @@ Hooks.once('ready', () => {
 
   BeneosUtility.updateSceneTokens()
   BeneosUtility.checkLockViewPresence()
-  
+
   // Try to catch right click on profile image
   Hooks.on('renderActorSheet', (sheet, html, data) => {
     if (game.system.id == "pf2e") {
@@ -221,6 +221,29 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
       }
     }
   }
+
+  //VARIANTS HUD
+  let beneosVariantsHUD = BeneosUtility.getVariants(tokenConfig)
+  const beneosVariantsDisplay = await renderTemplate('modules/beneos-module/templates/beneosvariants.html',
+    { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getBeneosTokenDataPath(), beneosVariantsHUD })
+  html.find('div.right').append(beneosVariantsDisplay).click((event) => {
+    let beneosClickedButton = event.target.parentElement;
+    let beneosTokenButton = html.find('.beneos-token-variants')[0];
+
+    if (beneosClickedButton === beneosTokenButton) {
+      beneosTokenButton.classList.add('active');
+      html.find('.beneos-variants-wrap')[0].classList.add('beneos-active');
+      html.find('.beneos-variants-wrap')[0].classList.remove('beneos-disabled');
+    } else {
+      beneosTokenButton.classList.remove('active')
+      html.find('.beneos-variants-wrap')[0].classList.remove('beneos-active');
+      html.find('.beneos-variants-wrap')[0].classList.add('beneos-disabled');
+      if (beneosClickedButton.classList.contains("beneos-button-variant")) {
+        event.preventDefault();      
+        setTimeout(function () { BeneosUtility.forceChangeToken(token.id, beneosClickedButton.dataset.variant ) }, 1000)
+      }
+    }
+  });
 
   // REPLACEMENT TOKEN HUD
   let tokenList = BeneosUtility.buildAvailableTokensMenu()

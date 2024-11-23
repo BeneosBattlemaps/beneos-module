@@ -1093,28 +1093,19 @@ export class BeneosUtility {
       return 0;
     })
   }
-
-    /********************************************************************************** */
-  static buildAvailableVariantTokensMenu() {
-    let beneosTokensHUD = []
-
+ 
+  /********************************************************************************** */
+  static getVariants(tokenConfig) {
+    let familyId = tokenConfig.familyId
+    let variants = []
     Object.entries(BeneosUtility.beneosTokens).forEach(([key, value]) => {
-      if (value?.actorName && value?.actorId) {
-        beneosTokensHUD.push({
-          "fullKey": key, //BeneosUtility.getBasePath() + BeneosUtility.getBeneosTokenDataPath() + "/" + key + '/' + key + "-idle_face_still.webp",
-          "img": value.avatar,
-          "actorId": value.actorId,
-          "actorName": value.actorName
-        })
-      } else {
-        ui.notifications.warn("Beneos Module: Actor name/id not found for token " + key)
+      if (value.familyId == familyId) {
+        variants.push({ "name": key, fullId: value.fullId  })
       }
     })
-    this.sortArrayObjectsByName(beneosTokensHUD)
-    //console.log("Beneos Tokens HUD", beneosTokensHUD)
-    return beneosTokensHUD
+    return variants
   }
-
+ 
   /********************************************************************************** */
   static buildAvailableTokensMenu() {
     let beneosTokensHUD = []
