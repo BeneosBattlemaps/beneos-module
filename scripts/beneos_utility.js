@@ -299,7 +299,7 @@ export class BeneosUtility {
       default: true
     })
 
-    game.settings.register(BeneosUtility.moduleID(), 'beneos-table-top-config', {
+    /*game.settings.register(BeneosUtility.moduleID(), 'beneos-table-top-config', {
       name: 'Internal data store for table top mode settings',
       default: TableTopModeSettings.getDefaultTableTopSettings(),
       type: Object,
@@ -342,7 +342,7 @@ export class BeneosUtility {
 					true,
 					true
 				)
-			);
+			);*/
   }
 
   /********************************************************************************** */

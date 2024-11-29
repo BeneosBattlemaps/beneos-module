@@ -2,7 +2,7 @@ import { libWrapper } from "./shim.js";
 import { BeneosUtility } from "./beneos_utility.js";
 import { BeneosSearchEngineLauncher, BeneosModuleMenu } from "./beneos_search_engine.js";
 import { BeneosCloud } from "./beneos_cloud.js";
-import { BeneosTableTop } from "./beneos-table-top.js";
+// Unused : import { BeneosTableTop } from "./beneos-table-top.js";
 
 /********************************************************************************** */
 Hooks.once('init', () => {
@@ -14,7 +14,7 @@ Hooks.once('init', () => {
 
   BeneosUtility.registerSettings()
   BeneosUtility.setupSocket()
-  BeneosTableTop.init()
+  //BeneosTableTop.init()
 
 })
 
@@ -30,7 +30,7 @@ Hooks.once('ready', () => {
   game.beneosTokens = {
     moduleId: BENEOS_MODULE_ID,
     BeneosUtility,
-    BeneosTableTop,
+    //BeneosTableTop,
   }
   BeneosUtility.ready()
 
