@@ -39,7 +39,7 @@
     top: 50%;
     transform: translate(0%, -50%);
     width: max-content;
-    max-width: 300px;
+    max-width: 320px;
     max-height: 350px;
     text-align: start;
     overflow-y: auto;

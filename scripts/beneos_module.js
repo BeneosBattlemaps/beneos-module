@@ -55,7 +55,7 @@ Hooks.once('ready', () => {
         BeneosUtility.prepareMenu(e, sheet)
       })
     } else {
-      $("#" + sheet.id + " .sheet-header .profile").mouseup(async function (e) {
+      $("#" + sheet.id + " .sheet-header .left .portrait").mouseup(async function (e) {
         BeneosUtility.prepareMenu(e, sheet)
       })
     }
@@ -246,11 +246,11 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
   });
 
   // REPLACEMENT TOKEN HUD
-  let tokenList = BeneosUtility.buildAvailableTokensMenu()
+  /* Disable old button : let tokenList = BeneosUtility.buildAvailableTokensMenu()
   const beneosTokensDisplay = await BeneosUtility.buildAvailableTokensMenuHTML("beneoshud.html", tokenList)
   html.find('div.right').append(beneosTokensDisplay).click((event) => {
     BeneosUtility.manageAvailableTokensMenu(token, html, event)
-  })
+  })*/
 
 })
 

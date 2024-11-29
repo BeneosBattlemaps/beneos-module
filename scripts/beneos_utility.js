@@ -1099,8 +1099,9 @@ export class BeneosUtility {
     let familyId = tokenConfig.familyId
     let variants = []
     Object.entries(BeneosUtility.beneosTokens).forEach(([key, value]) => {
-      if (value.familyId == familyId) {
-        variants.push({ "name": key, fullId: value.fullId  })
+      if (value.familyId == familyId && value.fullId != tokenConfig.fullId) {
+        let number = value.number || ""
+        variants.push({ "display_name": value.actorName + " " + number, "img": value.token, "name": key, fullId: value.fullId  })
       }
     })
     return variants

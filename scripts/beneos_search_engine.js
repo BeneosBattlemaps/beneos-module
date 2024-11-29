@@ -400,7 +400,7 @@ export class BeneosDatabaseHolder {
     let newResults = {}
     value = value.toLowerCase()
 
-    //console.log(">>>>>", type, propertyName, value, searchResults)
+    console.log(">>>>>", type, propertyName, value, searchResults)
 
     for (let key in searchResults) {
       let item = searchResults[key]
@@ -488,7 +488,7 @@ export class BeneosDatabaseHolder {
   static sortProperties(tab) {
     if (tab.length > 0) {
       if (Number(tab[0].key)) {
-        console.log("Numeric sort!!!")
+        //console.log("Numeric sort!!!")
         return tab.sort(function (a, b) {
           if (!Number(a.key) || !Number(b.key)) {
             return 0;
@@ -739,7 +739,8 @@ const __propertyDefList = {
   "school": { name: "school", sort: true, selectors: ["school-selector"] },
   "classes": { name: "classes", sort: true, selectors: ["class-selector"] },
   "spell_type": { name: "spell_type", sort: true, selectors: ["spell-type"] },
-  "casting_time": { name: "casting_time", sort: true, selectors: ["casting_time-selector"] }
+  "casting_time": { name: "casting_time", sort: true, selectors: ["casting_time-selector"]},
+  "installed": { name: "installed", sort: true, selectors: ["installation-selector"] }
 }
 
 /********************************************************************************** */
@@ -801,6 +802,10 @@ export class BeneosSearchEngine extends Dialog {
         toSearch = BeneosDatabaseHolder.getAll(this.dbData.searchMode)
       }
 
+      if (propKey == "installed") { 
+        properties = [{ key: "installed", value: "Installed" }, { key: "notinstalled", value: "Not Installed" }]
+      }
+
       for (let key in toSearch) {
         let item = toSearch[key]
         if (item.properties && item.properties[propDef.name]) {
@@ -829,7 +834,7 @@ export class BeneosSearchEngine extends Dialog {
       if (propDef.sort) {
         BeneosDatabaseHolder.sortProperties(properties)
       }
-      //console.log("OUTPUT", properties)      
+      //console.log("OUTPUT", propDef, properties)      
       let html = ""
       if (properties.find(it => it.key.toLowerCase() == "any") === undefined) {
         html += "<option value='any'>Any</option>"
@@ -961,105 +966,6 @@ export class BeneosSearchEngine extends Dialog {
 
     // Refresh the dialog selectors
     setTimeout(() => { game.beneosTokens.searchEngine.updatePropertiesDropDown(searchResults) }, 400)
-  }
-
-  /********************************************************************************** */
-  processSelectorSearch_DEPRECATED() {
-    let type = this.dbData.searchMode
-    let searchResults = BeneosDatabaseHolder.getAll(type)
-
-    let biomValue = $("#bioms-selector").val()
-    if (biomValue && biomValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "biom", biomValue, searchResults)
-    }
-    biomValue = $("#bioms-selector-2").val()
-    if (biomValue && biomValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "biom", biomValue, searchResults)
-    }
-    let kindValue = $("#kind-selector").val()
-    if (kindValue && kindValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "type", kindValue, searchResults)
-    }
-    let brightnessValue = $("#bmap-brightness").val()
-    if (brightnessValue && brightnessValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "brightness", brightnessValue, searchResults)
-    }
-    let typeValue = $("#token-types").val()
-    if (typeValue && typeValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "type", typeValue, searchResults)
-    }
-    let fightValue = $("#token-fight-style").val()
-    if (fightValue && fightValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "fightingstyle", fightValue, searchResults)
-    }
-    let crValue = $("#token-cr").val()
-    if (crValue && crValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "cr", crValue.toString(), searchResults, true)
-    }
-    let moveValue = $("#token-movement").val()
-    if (moveValue && moveValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "movement", moveValue.toString(), searchResults, true)
-    }
-    let purposeValue = $("#token-purpose").val()
-    if (purposeValue && purposeValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "purpose", purposeValue, searchResults)
-    }
-    let gridValue = $("#bmap-grid").val()
-    if (gridValue && gridValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "grid", gridValue, searchResults)
-    }
-    let adventureValue = $("#bmap-adventure").val()
-    if (adventureValue && adventureValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "adventure", adventureValue, searchResults)
-    }
-
-    let rarityValue = $("#rarity-selector").val()
-    if (rarityValue && rarityValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "rarity", rarityValue, searchResults, true)
-    }
-    let itemTypeValue = $("#item-type").val()
-    if (itemTypeValue && itemTypeValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "item_type", itemTypeValue, searchResults)
-    }
-    let originValue = $("#origin-selector").val()
-    if (originValue && originValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "origin", originValue, searchResults, true)
-    }
-    let tierValue = $("#tier-selector").val()
-    if (tierValue && tierValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "tier", tierValue, searchResults, true)
-    }
-    let priceValue = $("#price-selector").val()
-    if (priceValue && priceValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "price", priceValue, searchResults, true)
-    }
-
-    let spellTypeValue = $("#spell-type").val()
-    if (spellTypeValue && spellTypeValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "spell_type", spellTypeValue, searchResults)
-    }
-    let schoolValue = $("#school-selector").val()
-    if (schoolValue && schoolValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "school", schoolValue, searchResults)
-    }
-    let levelValue = $("#level-selector").val()
-    if (levelValue && levelValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "level", levelValue, searchResults)
-    }
-    let castingValue = $("#casting_time-selector").val()
-    if (castingValue && castingValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "casting_time", castingValue, searchResults)
-    }
-    let classValue = $("#class-selector").val()
-    if (classValue && classValue.toLowerCase() != "any") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "classes", classValue, searchResults)
-    }
-    let installedValue = $("#installation-selector").val()
-    if (installedValue && installedValue.toLowerCase() != "all") {
-      searchResults = BeneosDatabaseHolder.searchByProperty(type, "installed", installedValue, searchResults)
-    }
-
-    this.displayResults(searchResults)
   }
 
   /********************************************************************************** */
