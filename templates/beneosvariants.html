@@ -2,9 +2,9 @@
     <img src="modules/beneos-module/icons/beneos_icon_change_skin.svg" width="36" height="36" title="Change Skin" />
     <div class="beneos-variants-wrap beneos-disabled">
         {{#each beneosVariantsHUD as |btoken|}}
-        <button class="beneos-button-select beneos-button-variant control-icon " data-variant="{{btoken.name}}" >
+        <button class="beneos-variant-name-text beneos-button-select beneos-button-variant control-icon " data-variant="{{btoken.name}}" >
           <image class="beneos-token-button" src="{{btoken.img}}" alt="{{btoken.display_name}}"/>
-          <span>{{btoken.display_name}}</span>
+          <span class="beneos-variant-name-text">{{btoken.display_name}}</span>
         </button>
         {{/each}}
     </div>

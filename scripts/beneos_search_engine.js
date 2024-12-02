@@ -75,20 +75,19 @@ export class BeneosModuleMenu extends Dialog {
         myObject.processTextSearch(event)
       }, 600)
     })
-    $(".beneos-actor-menu .beneos-button-select").click(async event => {
-      let actorId = $(event.currentTarget).data("actor-id")
 
-      const pack = game.packs.get(BeneosUtility.getActorCompendium()) // find that key by doing game.packs.keys(); in the console.
-      const myActor = await pack.getDocument(actorId)
-      //console.log(">>>>>> ACTOR", actorId, myActor, myObject.actor)
-      await myObject.actor.update({ 'img': myActor.img })
-      if (myObject.actor.token) {
-        await myObject.actor.token.update({ texture: { src: myActor.prototypeToken.texture.src } })
-        await myObject.actor.prototypeToken.update({ texture: { src: myActor.prototypeToken.texture.src } })
+    $(".beneos-actor-menu .beneos-button-select").click(async event => {
+      let fullKey = $(event.currentTarget).data("full-key")
+      let tokenData = BeneosUtility.getTokenDataFromKey(fullKey)
+
+      let myActor = this.actor
+      await myActor.update({ 'img': tokenData.avatar })
+      if (myActor.token) {
+        await myActor.token.update({ texture: { src: tokenData.token } })
+        await myActor.prototypeToken.update({ texture: { src: tokenData.token } })
       } else {
-        await myObject.actor.prototypeToken.update({ texture: { src: myActor.prototypeToken.texture.src } })
+        await myActor.prototypeToken.update({ texture: { src: tokenData.token } })
       }
-      myObject.close()
     })
   }
 }

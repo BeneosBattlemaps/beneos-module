@@ -55,9 +55,16 @@ Hooks.once('ready', () => {
         BeneosUtility.prepareMenu(e, sheet)
       })
     } else {
-      $("#" + sheet.id + " .sheet-header .left .portrait").mouseup(async function (e) {
-        BeneosUtility.prepareMenu(e, sheet)
-      })
+      console.log("sheet", sheet)
+      if (sheet.template.includes("npc-sheet-2.hbs")) {
+        $("#" + sheet.id + " .sheet-header .left .portrait").mouseup(async function (e) {
+          BeneosUtility.prepareMenu(e, sheet)
+        })
+      } else {
+        $("#" + sheet.id + " .sheet-header .profile").mouseup(async function (e) {
+          BeneosUtility.prepareMenu(e, sheet)
+        })
+      }
     }
   });
 
@@ -239,8 +246,8 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
       html.find('.beneos-variants-wrap')[0].classList.remove('beneos-active');
       html.find('.beneos-variants-wrap')[0].classList.add('beneos-disabled');
       if (beneosClickedButton.classList.contains("beneos-button-variant")) {
-        event.preventDefault();      
-        setTimeout(function () { BeneosUtility.forceChangeToken(token.id, beneosClickedButton.dataset.variant ) }, 1000)
+        event.preventDefault();
+        setTimeout(function () { BeneosUtility.forceChangeToken(token.id, beneosClickedButton.dataset.variant) }, 1000)
       }
     }
   });
