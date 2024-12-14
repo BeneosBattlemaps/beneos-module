@@ -34,7 +34,7 @@ export class BeneosCloudLogin extends FormApplication {
           if (self.nb_wait > 30) {
             clearInterval(pollInterval)
           }
-          console.log(data)
+          console.log("Fecth response:", data)
           if (data.result == 'OK') {
             clearInterval(pollInterval)
             game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-foundry-id", userId)
@@ -96,8 +96,8 @@ export class BeneosCloud {
       .then(data => {
         console.log(data)
         if (data.result == 'OK') {
-          console.log("Available content: ", data.content)
-          game.beneos.cloud.setAvailableContent(data.content)
+          console.log("Available content: ", data.data)
+          game.beneos.cloud.setAvailableContent(data.data)
         }
       })
   }

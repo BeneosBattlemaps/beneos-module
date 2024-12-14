@@ -179,7 +179,7 @@ export class BeneosUtility {
         BeneosUtility,
         BeneosCloud
       }
-      /*
+      
       game.settings.register(BeneosUtility.moduleID(), 'beneos-cloud-foundry-id', {
         name: 'Internal storage of the User ID with Beneos Cloud',
         default: "",
@@ -197,7 +197,7 @@ export class BeneosUtility {
         config: true,
         type: BeneosCloudLogin,
         restricted: true
-      })*/
+      })
     // console.log("Registering settings", game)
 
     game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-clean-compendium", {
