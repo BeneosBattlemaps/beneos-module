@@ -2,7 +2,8 @@ import { BeneosUtility } from "./beneos_utility.js"
 import { BeneosCompendiumManager, BeneosCompendiumReset } from "./beneos_compendium.js";
 
 /********************************************************************************** */
-const tokenDBURL = "https://www.beneos-database.com/data/tokens/beneos_tokens_database.json"
+//const tokenDBURL = "https://www.beneos-database.com/data/tokens/beneos_tokens_database.json"
+const tokenDBURL = "https://www.beneos-database.com/data/tokens/beneos_tokens_database_v2.json"
 const battlemapDBURL = "https://www.beneos-database.com/data/battlemaps/beneos_battlemaps_database.json"
 const itemDBURL = "https://www.beneos-database.com/data/items/beneos_items_database.json"
 const spellDBURL = "https://www.beneos-database.com/data/spells/beneos_spells_database.json"
@@ -219,7 +220,7 @@ export class BeneosDatabaseHolder {
       if (tokenData && typeof (tokenData) == "object") {
         tokenData.kind = "token"
         tokenData.key = key
-        tokenData.picture = "https://www.beneos-database.com/data/tokens/thumbnails/" + key + "-idle_face_still.webp"
+        tokenData.picture = "https://www.beneos-database.com/data/tokens/thumbnails_v2/" + tokenData.properties.thumbnail
         foundry.utils.mergeObject(this.tokenBioms, this.buildList(tokenData.properties.biom))
         foundry.utils.mergeObject(this.tokenTypes, this.buildList(tokenData.properties.type))
         foundry.utils.mergeObject(this.fightingStyles, this.buildList(tokenData.properties.fightingstyle))
@@ -229,7 +230,7 @@ export class BeneosDatabaseHolder {
         tokenData.isInstalled = BeneosUtility.isTokenLoaded(key)
         tokenData.installed = (tokenData.isInstalled) ? "installed" : "notinstalled"
         tokenData.actorId = BeneosUtility.getActorId(key)
-        //tokenData.description = tokenData.description
+        tokenData.description = tokenData.description
       }
     }
     for (let key in this.bmapData.content) {
