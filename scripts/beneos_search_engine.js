@@ -352,7 +352,7 @@ export class BeneosDatabaseHolder {
       let item = foundry.utils.duplicate(objectList[key])
       item.kind = (kind == "token") ? "token" : item.properties.type
       if (item.kind == "token") {
-        item.picture = "https://www.beneos-database.com/data/tokens/thumbnails/" + item.key + "-idle_face_still.webp"
+        item.picture = "https://www.beneos-database.com/data/tokens/thumbnails_v2/" + item.properties.thumbnail
       } else {
         item.kind = "battlemap"
         item.picture = "https://www.beneos-database.com/data/battlemaps/thumbnails/" + item.properties.thumbnail
@@ -409,7 +409,7 @@ export class BeneosDatabaseHolder {
         item.kind = "battlemap"
       }
       if (item.kind == "token") {
-        item.picture = "https://www.beneos-database.com/data/tokens/thumbnails/" + item.key + "-idle_face_still.webp"
+        item.picture = "https://www.beneos-database.com/data/tokens/thumbnails_v2/" + item.properties.thumbnail
       }
       if (item[propertyName]) {
         if (item[propertyName].toLowerCase() == value) {
