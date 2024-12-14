@@ -180,7 +180,7 @@ export class BeneosUtility {
         BeneosCloud
       }
       
-      game.settings.register(BeneosUtility.moduleID(), 'beneos-cloud-foundry-id', {
+      /*game.settings.register(BeneosUtility.moduleID(), 'beneos-cloud-foundry-id', {
         name: 'Internal storage of the User ID with Beneos Cloud',
         default: "",
         type: String,
@@ -198,7 +198,7 @@ export class BeneosUtility {
         type: BeneosCloudLogin,
         restricted: true
       })
-    // console.log("Registering settings", game)
+    // console.log("Registering settings", game)*/
 
     game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-clean-compendium", {
       name: "Empty compendium to re-import all tokens data",
@@ -888,7 +888,12 @@ export class BeneosUtility {
   }
   /********************************************************************************** */
   static isTokenLoaded(key) {
-    return this.beneosTokens[key]
+    for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
+      if (token.searchKey == key) {
+        return true
+      }
+    }
+    return false
   }
   static isItemLoaded(key) {
     return this.beneosItems[key]

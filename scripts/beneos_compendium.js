@@ -329,6 +329,7 @@ export class BeneosCompendiumManager {
               folder: subFolder,
               tid: tid,
               key: key,
+              searchKey: tid + "-" + key,
               familyId: tid + "_" + key,
               fullId: fullId,
               fullKey: fullId,
