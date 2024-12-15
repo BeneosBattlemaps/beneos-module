@@ -229,8 +229,26 @@ export class BeneosDatabaseHolder {
         foundry.utils.mergeObject(this.purposeList, this.buildList(tokenData.properties.purpose))
         tokenData.isInstalled = BeneosUtility.isTokenLoaded(key)
         tokenData.installed = (tokenData.isInstalled) ? "installed" : "notinstalled"
+        tokenData.nbVariants = tokenData.properties.nb_variants || 1
         tokenData.actorId = BeneosUtility.getActorId(key)
         tokenData.description = tokenData.description
+        if (tokenData.nbVariants > 0) {
+          tokenData.variantClass = "beneos-search-icons-result-tooltip-variant-3"
+          if (tokenData.nbVariants == 1) {
+            tokenData.variantClass = "beneos-search-icons-result-tooltip-variant-1"
+          }
+          if (tokenData.nbVariants == 2) {
+            tokenData.variantClass = "beneos-search-icons-result-tooltip-variant-2"
+          }
+          tokenData.variantList = []
+          for (let i = 1; i <= tokenData.nbVariants; i++) {
+            let variant = {
+              thumbnail: "https://www.beneos-database.com/data/tokens/thumbnails_v2/" + tokenData.key + "-" + i + "-db.webp",
+              actorId: BeneosUtility.getActorIdVariant(key, i),
+            }
+            tokenData.variantList.push(variant)
+          }
+        }
       }
     }
     for (let key in this.bmapData.content) {

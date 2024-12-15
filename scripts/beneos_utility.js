@@ -903,13 +903,22 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
-  static getActorId(fullKey) {
-    let token = this.beneosTokens[fullKey]
-    if (token) {
-      return token.actorId
+  static getActorIdVariant(key, idx) {
+    for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
+      if (token.searchKey == key && token.number == idx) {
+        return token.actorId
+      }
     }
     return undefined
-  }
+  }  
+  static getActorId(key) {
+    for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
+      if (token.searchKey == key) {
+        return token.actorId
+      }
+    }
+    return undefined
+  }  
   static getItemId(key) {
     let token = this.beneosItems[key]
     if (token) {

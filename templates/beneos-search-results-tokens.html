@@ -17,9 +17,18 @@
 
           <div class="beneos-tooltip-icon-group beneos-tooltip entity-link content-link token-search-data" data-type="Actor" data-document-id="{{result.actorId}}" {{#if result.isInstalled}} draggable="true" {{/if}}>
             <div class="beneos-tooltiptext beneos-token-description">
-              <div class="flexrow beneos-tooltip-content token-search-data" data-type="Actor" data-document-id="{{result.actorId}}" {{#if result.isInstalled}} draggable="true" {{/if}} >
-                <img class="beneos-search-icons-result-tooltip token-search-data" data-type="Actor" data-document-id="{{result.actorId}}" {{#if result.isInstalled}} draggable="true" {{/if}} src="{{result.picture}}">
+              <div class="flexcol beneos-tooltip-content token-search-data" data-type="Actor" data-document-id="{{result.actorId}}" {{#if result.isInstalled}} draggable="true" {{/if}} >
+                <!--<img class="beneos-search-icons-result-tooltip token-search-data" data-type="Actor" data-document-id="{{result.actorId}}" {{#if result.isInstalled}} draggable="true" {{/if}} src="{{result.picture}}">-->
+                <span class="beneos-description-title">{{result.name}}</span>
                 <span class="beneos-description-text">{{result.description}}</span>
+                {{#if (gt result.nbVariants 0)}}
+                <span class="beneos-description-title">Skin variants</span>
+                  <div class="beneos-tooltip-variant">
+                  {{#each result.variantList as |variant idxVariant|}}
+                    <img class="{{result.variantClass}} token-search-data" data-type="Actor" data-document-id="{{variant.actorId}}" {{#if result.isInstalled}} draggable="true" {{/if}} src="{{variant.thumbnail}}">
+                  {{/each}}
+                  </div>
+                {{/if}}
               </div>
             </div>
             <div class="beneos-icon-group token-search-data" data-type="Actor" data-document-id="{{result.actorId}}" {{#if result.isInstalled}} draggable="true" {{/if}} >

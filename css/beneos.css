@@ -194,7 +194,7 @@
 }
 
 .beneos-tooltip .beneos-tooltip-content {
-  width: 490px;
+  width: 520px;
   border: 1px solid black;
   margin: 8px;
   padding: 8px;
@@ -316,6 +316,30 @@
 }
 
 .beneos-search-icons-result-tooltip {
+  max-height: 256px;
+  width: 100%;
+  max-width: min(100%, calc(var(--max-height, 256px) * var(--img-ratio, 1)));
+  border: 0;
+  margin-right: 4px;
+  flex-grow: 0;
+}
+.beneos-search-icons-result-tooltip-variant-3 {
+  max-height: 160px;
+  width: 100%;
+  max-width: min(100%, calc(var(--max-height, 160px) * var(--img-ratio, 1)));
+  border: 0;
+  margin-right: 4px;
+  flex-grow: 0;
+}
+.beneos-search-icons-result-tooltip-variant-2 {
+  max-height: 200px;
+  width: 100%;
+  max-width: min(100%, calc(var(--max-height, 200px) * var(--img-ratio, 1)));
+  border: 0;
+  margin-right: 4px;
+  flex-grow: 0;
+}
+.beneos-search-icons-result-tooltip-variant-1 {
   max-height: 256px;
   width: 100%;
   max-width: min(100%, calc(var(--max-height, 256px) * var(--img-ratio, 1)));
@@ -577,6 +601,11 @@
 
 .beneos-description-text {
   font-size: 0.8rem;
+}
+
+.beneos-description-title {
+  font-size: 1.2rem;
+  color: #3e0706;
 }
 
 .beneos-actor-menu .beneos-token-menu-element {
