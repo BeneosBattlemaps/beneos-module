@@ -230,9 +230,10 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
   }
 
   //VARIANTS HUD
+  console.log("TOKEN CONFIG", tokenConfig)
   let beneosVariantsHUD = BeneosUtility.getVariants(tokenConfig)
   const beneosVariantsDisplay = await renderTemplate('modules/beneos-module/templates/beneosvariants.html',
-    { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getBeneosTokenDataPath(), beneosVariantsHUD })
+    { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getBeneosTokenDataPath(), beneosVariantsHUD, current: tokenConfig.number })
   html.find('div.right').append(beneosVariantsDisplay).click((event) => {
     let beneosClickedButton = event.target.parentElement;
     let beneosTokenButton = html.find('.beneos-token-variants')[0];
