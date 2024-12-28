@@ -192,7 +192,7 @@ export class BeneosCompendiumManager {
     let count = 0
     for (let subFolder of rootFolder.dirs) {
       // Detect all old token format folder
-      if (subFolder.match(/(\d+)_([\w_]+)$/)) {
+      if (subFolder.match(/\/(\d{3})_([\w\d_]+)$/)) {
         ChatMessage.create({
           user: game.user.id,
           rollMode: game.settings.get("core", "rollMode"),
@@ -202,7 +202,8 @@ export class BeneosCompendiumManager {
         continue;
       }
       // Match a subfolder starting with 3 digits and a dash
-      let res = subFolder.match(/(\d+)-([\w_]+)$/);
+      let res = subFolder.match(/\/(\d{3})-([\w\d_]+)$/);
+      console.log("RES", res) 
       if (res && !subFolder.includes("module_assets") && !subFolder.includes("ability_icons")) {
         // Token config
         let tid = res[1]
@@ -338,6 +339,9 @@ export class BeneosCompendiumManager {
             }
           }
         }
+      } else {
+        this.importErrors.push("Error in parsing folder " + subFolder)
+        console.log("Error in parsing folder", subFolder);
       }
     }
 
