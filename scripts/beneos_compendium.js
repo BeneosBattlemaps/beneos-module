@@ -203,7 +203,6 @@ export class BeneosCompendiumManager {
       }
       // Match a subfolder starting with 3 digits and a dash
       let res = subFolder.match(/\/(\d{3})-([\w\d_]+)$/);
-      console.log("RES", res) 
       if (res && !subFolder.includes("module_assets") && !subFolder.includes("ability_icons")) {
         // Token config
         let tid = res[1]
