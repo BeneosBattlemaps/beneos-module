@@ -445,8 +445,12 @@ export class BeneosUtility {
     this.m_z = 987654321
     this.seed(Date.now())
 
+    Handlebars.registerHelper('isEmpty', function (text) {
+      if (typeof text !== 'string' && typeof text !== 'object') return false
+      return text.length === 0
+    })
     Handlebars.registerHelper('beneosLength', function (text) {
-      if (typeof text !== 'string') return 0
+      if (typeof text !== 'string' && typeof text !== 'object') return 0
       return text.length
     })
     Handlebars.registerHelper('beneosUpperFirst', function (text) {
@@ -713,6 +717,11 @@ export class BeneosUtility {
   //Retrieves the necessary data from a token in order to be able to fire automatic animations based on the current token image file.
   static getTokenImageInfo(token) {
 
+    let fullKey = token?.document?.getFlag(BeneosUtility.moduleID(), "fullKey")
+    if (fullKey) {
+      return BeneosUtility.beneosTokens[fullKey]
+    }
+
     let beneos = token?.actor?.getFlag("world", "beneos");
     if (beneos) {
       let fullKey = beneos.fullId
@@ -972,6 +981,7 @@ export class BeneosUtility {
     }
     let tokenData = BeneosUtility.getTokenDataFromKey(fullKey)
     let newImage = tokenData.token
+    console.log(">>>>>>>>>>>", token)
     token.document.setFlag(BeneosUtility.moduleID(), "fullKey", tokenData.fullKey)
     let scaleFactor = this.getScaleFactor(token, fullKey)
     //console.log(">>>>>>>>>>> UPDATE TOKEN CHANGE", fullKey, tokenData, newImage)

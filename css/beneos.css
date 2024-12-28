@@ -1015,3 +1015,9 @@ i.beneos-module {
 .beneos-variant-name-text {
   font-size: 0.6rem;
 }
+
+.beneos-skin-number-over {
+  font-size: 0.6rem;
+  color: white;
+  transform:translate(-12px, -56px);
+}
