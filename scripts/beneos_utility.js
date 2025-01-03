@@ -449,6 +449,10 @@ export class BeneosUtility {
       if (typeof text !== 'string' && typeof text !== 'object') return false
       return text.length === 0
     })
+    Handlebars.registerHelper('beneosAdd', function (a, b) {
+      return parseInt(a) + parseInt(b);
+    });
+
     Handlebars.registerHelper('beneosLength', function (text) {
       if (typeof text !== 'string' && typeof text !== 'object') return 0
       return text.length
