@@ -230,7 +230,7 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
   }
 
   //VARIANTS HUD
-  console.log("TOKEN CONFIG", tokenConfig)
+  //console.log("TOKEN CONFIG", tokenConfig)
   let beneosVariantsHUD = BeneosUtility.getVariants(tokenConfig)
   const beneosVariantsDisplay = await renderTemplate('modules/beneos-module/templates/beneosvariants.html',
     { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getBeneosTokenDataPath(), beneosVariantsHUD, current: tokenConfig.number })
