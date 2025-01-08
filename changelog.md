@@ -4,6 +4,13 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 12.1.0 # 2025-01-08
+- Fixed some incompatibilities
+- Beneos Search Engine has been updated (New images to reflect the new 2.5D tokens)
+- Added a new tabletop mode (deactivated at the moment until it's 100% pollished)
+- Added the ability to read and work with new beneos tokens, spells and loot
+- Added new Icons for the new Beneos Module
+
 ### 12.0.6 # 2024-09-02
 - Fixed a V12 bug preving button functions on actor context menu
 
