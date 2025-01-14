@@ -8,9 +8,24 @@
   
   <div class="flexcol">
     <ul>
-    {{#each itemList as |item idx|}}
-      <li>@UUID[{{@root.compendium}}.{{item.actorId}}]</li>
-    {{/each}}
+      {{#if (eq itemName "Actors")}}
+        {{#each itemList as |item idx|}}
+          <li>@UUID[{{@root.compendium}}.{{item.actorId}}]</li>
+        {{/each}}
+      {{/if}}
+
+      {{#if (eq itemName "Spells")}}
+        {{#each itemList as |item idx|}}
+          <li>@UUID[{{@root.compendium}}.{{item.spellId}}]</li>
+        {{/each}}
+      {{/if}}
+
+      {{#if (eq itemName "Items")}}
+      {{#each itemList as |item idx|}}
+        <li>@UUID[{{@root.compendium}}.{{item.itemId}}]</li>
+      {{/each}}
+      {{/if}}
+
     </ul>
   </div>
 

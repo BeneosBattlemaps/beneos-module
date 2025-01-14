@@ -416,7 +416,8 @@ export class BeneosCompendiumManager {
               $(".beneos-meter-spell").attr("value", Math.round((count++ / max) * 100));
               let iSpell = await spellPack.importDocument(spell)
               let key = subFolder.replace(/\/$/, "").split("/").pop();
-              BeneosUtility.beneosSpells[key] = { spellId: iSpell.id, id: iSpell.id }
+              console.log("KEY", key, subFolder)
+              BeneosUtility.beneosSpells[key] = { spellId: iSpell.id, id: iSpell.id, name: spell.name }
             }
           }
         }
@@ -437,7 +438,7 @@ export class BeneosCompendiumManager {
     await this.showNewItems("Spells", BeneosUtility.beneosSpells, previousData, "Compendium.beneos-module.beneos_module_spells.Item")
 
     let toSave = JSON.stringify(BeneosUtility.beneosSpells)
-    //console.log("Saving data :", toSave)
+    console.log("Saving data spells:", toSave)
     game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', toSave) // Save the token config !
 
   }
