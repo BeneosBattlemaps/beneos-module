@@ -267,12 +267,20 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
 Hooks.on("renderActorDirectory", (app, html, data) => {
   if (game.user.can('ACTOR_CREATE')) {
     const button = document.createElement('button');
-    button.style.width = '95%';
+    button.style.width = '45%';
     button.innerHTML = 'Search Beneos Database'
     button.addEventListener('click', () => {
       new BeneosSearchEngineLauncher().render()
     })
     html.find('.header-actions').after(button)
+
+    const buttonCloud = document.createElement('button');
+    buttonCloud.style.width = '45%';
+    buttonCloud.innerHTML = 'List cloud content'
+    buttonCloud.addEventListener('click', () => {
+      console.log("Cloud listing !")
+    })
+    html.find('.header-actions').after(buttonCloud)
   }
 })
 

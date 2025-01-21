@@ -231,6 +231,8 @@ export class BeneosDatabaseHolder {
         tokenData.installed = (tokenData.isInstalled) ? "installed" : "notinstalled"
         tokenData.isCloudAvailable = game.beneos.cloud.isTokenAvailable(key)
         tokenData.cloudMessage = (tokenData.isCloudAvailable) ? "Cloud available" : "Cloud not available"
+        tokenData.isInstallable = tokenData.installed 
+
         tokenData.nbVariants = tokenData.properties.nb_variants || 1
         tokenData.actorId = BeneosUtility.getActorId(key)
         tokenData.description = tokenData.description
@@ -613,24 +615,36 @@ export class BeneosSearchResults extends Dialog {
   /********************************************************************************** */
   activateListeners() {
 
+    $(".beneos-cloud-token-install").click(event => {
+      // Get the data-key from the previous div and get it from the cloud 
+      let tokenKey = $(event.target).parents(".token-result-section").data("token-key")
+      game.beneos.cloud.importTokenFromCloud(tokenKey)
+    })      
+
     $(".token-search-data").on('dragstart', function (e) {
       let id = e.target.getAttribute("data-document-id")
-      let docType = e.target.getAttribute("data-type")
-      let compendium = ""
-      if (docType == "Actor") {
-        compendium = (game.system.id == "pf2e") ? "beneos-module.beneos_module_actors_pf2" : "beneos-module.beneos_module_actors"
+      console.log("Draggable id" , id)
+      if ( !id || id == "" || id == "") { 
+        return
+      } else { 
+        let docType = e.target.getAttribute("data-type")
+        let compendium = ""
+        if (docType == "Actor") {
+          compendium = (game.system.id == "pf2e") ? "beneos-module.beneos_module_actors_pf2" : "beneos-module.beneos_module_actors"
+        }
+        if (docType == "Item") {
+          compendium = "beneos-module.beneos_module_items"
+        }
+        if (docType == "Spell") {
+          compendium = "beneos-module.beneos_module_spells"
+          docType = "Item"
+        }
+        let drag_data = { "type": docType, "pack": compendium, "uuid": "Compendium." + compendium + "." + id }
+        //console.log("DRAGDARA", drag_data)
+        e.originalEvent.dataTransfer.setData("text/plain", JSON.stringify(drag_data));
       }
-      if (docType == "Item") {
-        compendium = "beneos-module.beneos_module_items"
-      }
-      if (docType == "Spell") {
-        compendium = "beneos-module.beneos_module_spells"
-        docType = "Item"
-      }
-      let drag_data = { "type": docType, "pack": compendium, "uuid": "Compendium." + compendium + "." + id }
-      //console.log("DRAGDARA", drag_data)
-      e.originalEvent.dataTransfer.setData("text/plain", JSON.stringify(drag_data));
     })
+
     $(".beneos-button-biom").click(event => {
       this.processSearchButton(event, "bmap", "biom", "biom-value", "bioms-selector")
     })

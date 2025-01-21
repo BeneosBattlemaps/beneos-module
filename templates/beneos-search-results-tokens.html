@@ -11,33 +11,32 @@
 
       {{#each results as |result idx|}}
       <div data-result-index="{{idx}}" data-token-key="{{result.key}}"
-        class="directory-item document actor flexrow token-root-div beneos-item-container">
+        class="directory-item document actor flexrow token-root-div beneos-item-container token-result-section">
 
         <div class="flexrow">
 
-          <div class="beneos-tooltip-icon-group beneos-tooltip entity-link content-link token-search-data" data-type="Actor" data-document-id="{{result.actorId}}" {{#if result.isInstalled}} draggable="true" {{/if}}>
+          <div class="beneos-tooltip-icon-group beneos-tooltip entity-link content-link token-search-data" data-type="Actor" data-document-id="{{result.actorId}}" {{#if result.isInstallable}} draggable="true" {{/if}}>
             <div class="beneos-tooltiptext beneos-token-description">
-              <div class="flexcol beneos-tooltip-content token-search-data" data-type="Actor" data-document-id="{{result.actorId}}" {{#if result.isInstalled}} draggable="true" {{/if}} >
-                <!--<img class="beneos-search-icons-result-tooltip token-search-data" data-type="Actor" data-document-id="{{result.actorId}}" {{#if result.isInstalled}} draggable="true" {{/if}} src="{{result.picture}}">-->
+              <div class="flexcol beneos-tooltip-content token-search-data" data-type="Actor" data-document-id="{{result.actorId}}" {{#if result.isInstallable}} draggable="true" {{/if}} >
                 <span class="beneos-description-title">{{result.name}}</span>
                 <span class="beneos-description-text">{{result.description}}</span>
                 {{#if (gt result.nbVariants 0)}}
                 <span class="beneos-description-title">Skin variants</span>
                   <div class="beneos-tooltip-variant">
                   {{#each result.variantList as |variant idxVariant|}}
-                    <img class="{{result.variantClass}} token-search-data" data-type="Actor" data-document-id="{{variant.actorId}}" {{#if result.isInstalled}} draggable="true" {{/if}} src="{{variant.thumbnail}}">
+                    <img class="{{result.variantClass}} token-search-data" data-type="Actor" data-document-id="{{variant.actorId}}" {{#if result.isInstallable}} draggable="true" {{/if}} src="{{variant.thumbnail}}">
                   {{/each}}
                   </div>
                 {{/if}}
               </div>
             </div>
-            <div class="beneos-icon-group token-search-data" data-type="Actor" data-document-id="{{result.actorId}}" {{#if result.isInstalled}} draggable="true" {{/if}} >
+            <div class="beneos-icon-group token-search-data" data-type="Actor" data-document-id="{{result.actorId}}" {{#if result.isInstallable}} draggable="true" {{/if}} >
               <img class="beneos-icon-background" src="modules/beneos-module/ui/result_item_icon_bg.webp" />
-              <img class="beneos-icon-child token-search-data" data-type="Actor" data-document-id="{{result.actorId}}" {{#if result.isInstalled}} draggable="true" {{/if}} src="{{result.picture}}" />
+              <img class="beneos-icon-child token-search-data" data-type="Actor" data-document-id="{{result.actorId}}" {{#if result.isInstallable}} draggable="true" {{/if}} src="{{result.picture}}" />
             </div>
           </div>
 
-          {{#if result.isInstalled}}
+          {{#if result.isInstallable}}
           <div class="beneos-search-middle flexcol token-search-data"  data-type="Actor" data-document-id="{{result.actorId}}" draggable="true">
           {{else}}
           <div class="beneos-search-middle flexcol">
@@ -85,7 +84,7 @@
                   {{/each}}
               </div>
 
-              <label class="release-url"><a href="{{result.properties.releaseurl}}">{{#if result.isInstalled}} {{else}}GET IT HERE{{/if}} Release
+              <label class="release-url"><a href="{{result.properties.releaseurl}}">{{#if result.isInstallable}} {{else}}GET IT HERE{{/if}} Release
                 URL</a></label>
     
             </div>
@@ -95,22 +94,34 @@
             
             <div class="flexrow flex-content-left">
               <div class="beneos-tooltip beneos-search-installed ">
-                {{#if result.isInstalled}}
-                <div class="beneos-tooltiptext beneos-token-description">
-                  <div class="flexrow beneos-tooltip-content-left-buttons">
-                    {{beneosGetHover "installed" "installed"}}
+                {{#if result.isCloudAvailable}}
+                <div class="beneos-tooltip beneos-search-installed">
+                  <div class="beneos-tooltiptext beneos-token-description">
+                    <div class="flexrow beneos-tooltip-content-installed">
+                      {{beneosGetHover "cloudAvailable" "cloudAvailable"}}
+                    </div>
                   </div>
+                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
+                  <label class="beneos-search-installed item-right-text-content"><a class="beneos-cloud-token-install">Cloud Install</a></label>
                 </div>
-                <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
-                <label class="beneos-search-installed item-right-text-content">Installed</label>
-              {{else}}
-                <div class="beneos-tooltiptext beneos-token-description">
-                  <div class="flexrow beneos-tooltip-content-left-buttons item-right-text-content">
-                    {{beneosGetHover "installed" "not_installed"}}
+                {{else}}        
+                  {{#if result.isInstalled}}
+                  <div class="beneos-tooltiptext beneos-token-description">
+                    <div class="flexrow beneos-tooltip-content-left-buttons">
+                      {{beneosGetHover "installed" "installed"}}
+                    </div>
                   </div>
-                </div>
-                <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
-                <label class="beneos-search-notinstalled item-right-text-content">Not Installed</label>
+                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
+                  <label class="beneos-search-installed item-right-text-content">Installed</label>
+                {{else}}
+                  <div class="beneos-tooltiptext beneos-token-description">
+                    <div class="flexrow beneos-tooltip-content-left-buttons item-right-text-content">
+                      {{beneosGetHover "installed" "not_installed"}}
+                    </div>
+                  </div>
+                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
+                  <label class="beneos-search-notinstalled item-right-text-content">Not Installed</label>
+                {{/if}}
               {{/if}}
             </div>
           </div>

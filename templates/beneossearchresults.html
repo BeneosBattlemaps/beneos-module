@@ -76,25 +76,36 @@
       </div>
 
       <div class="beneos-search-last flexcol">
-        {{#if result.isInstalled}}
+        {{#if result.isCloudAvailable}}
         <div class="beneos-tooltip beneos-search-installed">
           <div class="beneos-tooltiptext beneos-token-description">
             <div class="flexrow beneos-tooltip-content-installed">
-              {{beneosGetHover "installed" "installed"}}
+              {{beneosGetHover "cloudAvailable" "cloudAvailable"}}
             </div>
           </div>
-          <label class="beneos-search-installed">Installed</label>
+          <label class="beneos-search-installed"><a class="beneos-cloud-token-install">Cloud ready : INSTALL</a></label>
         </div>
-        <label class="beneos-search-journal-button"><a class="beneos-button-journal">Journal</a></label>
         {{else}}
-        <div class="beneos-tooltip beneos-search-installed">
-          <div class="beneos-tooltiptext beneos-token-description">
-            <div class="flexrow beneos-tooltip-content-installed">
-              {{beneosGetHover "installed" "not_installed"}}
+          {{#if result.isInstalled}}
+          <div class="beneos-tooltip beneos-search-installed">
+            <div class="beneos-tooltiptext beneos-token-description">
+              <div class="flexrow beneos-tooltip-content-installed">
+                {{beneosGetHover "installed" "installed"}}
+              </div>
             </div>
+            <label class="beneos-search-installed">Installed</label>
           </div>
-          <label class="beneos-search-notinstalled">Not Installed</label>
-        </div>
+          <label class="beneos-search-journal-button"><a class="beneos-button-journal">Journal</a></label>
+          {{else}}
+          <div class="beneos-tooltip beneos-search-installed">
+            <div class="beneos-tooltiptext beneos-token-description">
+              <div class="flexrow beneos-tooltip-content-installed">
+                {{beneosGetHover "installed" "not_installed"}}
+              </div>
+            </div>
+            <label class="beneos-search-notinstalled">Not Installed</label>
+          </div>
+          {{/if}}
         {{/if}}
 
         <label class="beneos-search-cr-button"><a class="beneos-button-cr" data-cr-value="{{result.properties.cr}}">CR

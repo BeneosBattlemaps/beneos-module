@@ -1021,3 +1021,7 @@ i.beneos-module {
   color: white;
   transform:translate(-12px, -56px);
 }
+
+.beneos-cloud-token-install {
+  color: #3e0706;
+}
