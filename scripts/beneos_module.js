@@ -47,6 +47,7 @@ Hooks.once('ready', () => {
 
   BeneosUtility.updateSceneTokens()
   //BeneosUtility.checkLockViewPresence()
+  game.beneos.cloud.loginAttempt()
 
   // Try to catch right click on profile image
   Hooks.on('renderActorSheet', (sheet, html, data) => {

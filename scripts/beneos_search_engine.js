@@ -229,6 +229,8 @@ export class BeneosDatabaseHolder {
         foundry.utils.mergeObject(this.purposeList, this.buildList(tokenData.properties.purpose))
         tokenData.isInstalled = BeneosUtility.isTokenLoaded(key)
         tokenData.installed = (tokenData.isInstalled) ? "installed" : "notinstalled"
+        tokenData.isCloudAvailable = game.beneos.cloud.isTokenAvailable(key)
+        tokenData.cloudMessage = (tokenData.isCloudAvailable) ? "Cloud available" : "Cloud not available"
         tokenData.nbVariants = tokenData.properties.nb_variants || 1
         tokenData.actorId = BeneosUtility.getActorId(key)
         tokenData.description = tokenData.description

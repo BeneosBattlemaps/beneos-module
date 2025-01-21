@@ -27,7 +27,7 @@ export class BeneosCloudLogin extends FormApplication {
 
     let pollInterval = setInterval(function () {
       let url = `https://beneos.cloud/foundry-manager.php?check=1&foundryId=${userId}`
-      fetch(url, {credentials: 'same-origin'})
+      fetch(url, { credentials: 'same-origin' })
         .then(response => response.json())
         .then(data => {
           self.nb_wait++;
@@ -54,7 +54,7 @@ export class BeneosCloudLogin extends FormApplication {
 }
 
 export class BeneosCloud {
-  
+
   cloudConnected = false
   availableContent = []
 
@@ -66,10 +66,10 @@ export class BeneosCloud {
       ui.notifications.warn("You are not connected to BeneosCloud. Please connect to BeneosCloud thru the Settings form if you want to import Beneos assets.")
       return;
     }
-    
+
     // Check login validity
     let url = `https://beneos.cloud/foundry-manager.php?check=1&foundryId=${userId}`
-    fetch(url, {credentials: 'same-origin'})
+    fetch(url, { credentials: 'same-origin' })
       .then(response => response.json())
       .then(data => {
         console.log(data)
@@ -87,11 +87,20 @@ export class BeneosCloud {
   setAvailableContent(content) {
     this.availableContent = content
   }
-  
+
+  isTokenAvailable(key) {
+    let content = this.availableContent
+    if (content.length == 0) return false
+    for (let i = 0; i < content.length; i++) {
+      if (content[i].key == key) return true
+    }
+    return false
+  }
+
   checkAvailableContent() {
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
     let url = `https://beneos.cloud/foundry-manager.php?get_content=1&foundryId=${userId}`
-    fetch(url, {credentials: 'same-origin'})
+    fetch(url, { credentials: 'same-origin' })
       .then(response => response.json())
       .then(data => {
         console.log(data)
