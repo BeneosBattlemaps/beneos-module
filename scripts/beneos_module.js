@@ -69,22 +69,6 @@ Hooks.once('ready', () => {
     }
   });
 
-
-  /********************************************************************************** */
-  Hooks.on('refreshToken', (token) => {
-    /* Unused : if (BeneosUtility.checkIsBeneosToken(token)) {
-      // console.log(">>>>>>>>>>>>> REFRESH TOKEN", token)
-      let tokenData = BeneosUtility.getTokenImageInfo(token.document?.texture?.src)
-      if (!tokenData?.filename.includes("_face") && token.layer.preview?.children[0]) {
-        let clone = token.layer.preview?.children.find(c => c.id == token.id)
-        if (!clone) return;
-        let r = new Ray(canvas.scene.tokens.get(token.id), clone)
-        clone.mesh.angle = r.angle * 180 / Math.PI - 90;
-        token.cursor = 'grabbing';
-      }
-    } */
-  });
-
   /********************************************************************************** */
   Hooks.on('updateActor', (actor, changeData) => {
     let tokens = canvas.tokens.placeables.filter(t => t.document.actorId == actor.id)
@@ -107,27 +91,10 @@ Hooks.once('ready', () => {
       return
     }
 
-    /*if (changeData?.flags?.tokenmagic) {
-      if (changeData.flags.tokenmagic?.animeInfo[0] && token.state != "move") {
-        BeneosUtility.processEndEffect(token.id, changeData.flags.tokenmagic.animeInfo)
-      }
+    if (changeData.delta?.system?.attributes != undefined && changeData.delta.system.attributes?.hp != undefined) {
+      BeneosUtility.updateToken(token.id, changeData)
+      return
     }
-    BeneosUtility.debugMessage("[BENEOS TOKENS] Beneos UpdateToken", changeData) */
-
-    if (foundry.utils.isNewerVersion(game.version, "11")) {
-      if (changeData.delta?.system?.attributes != undefined && changeData.delta.system.attributes?.hp != undefined) {
-        BeneosUtility.updateToken(token.id, changeData)
-        return
-      }
-    } else {
-      if (changeData.actorData?.system?.attributes != undefined && changeData.actorData.system.attributes?.hp != undefined) {
-        BeneosUtility.updateToken(token.id, changeData)
-        return
-      }
-    }
-
-    BeneosUtility.debugMessage("[BENEOS TOKENS] Nothing to do")
-
   });
 
   /********************************************************************************** */
@@ -162,12 +129,6 @@ Hooks.once('ready', () => {
     if (!game.user.isGM) {
       return
     }
-    /*if (typeof ForgeVTT === "undefined" || !ForgeVTT.usingTheForge) {
-      BeneosUtility.debugMessage("[BENEOS TOKENS] This process should only be run in Forge.")
-    } else {
-      BeneosUtility.updateSceneTokens()
-    }*/
-
     BeneosUtility.processCanvasReady()
   });
 

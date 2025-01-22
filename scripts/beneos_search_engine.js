@@ -898,7 +898,7 @@ export class BeneosSearchEngine extends Dialog {
 
     console.log("SEARCH results", searchSize, results, this.dbData.searchMode)
 
-    let template = 'templates/beneossearchresults.html'
+    let template 
     if (this.dbData.searchMode == "token") {
       template = 'modules/beneos-module/templates/beneos-search-results-tokens.html'
     }

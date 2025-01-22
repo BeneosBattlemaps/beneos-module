@@ -16,50 +16,6 @@ let beneosFadingWait = 30
 let beneosFadingTime = beneosFadingSteps * beneosFadingWait
 let __mask = 0xffffffff
 
-/********************************************************************************** */
-export class BeneosActorTokenMigration extends FormApplication {
-
-  /********************************************************************************** */
-  async performMigrate() {
-
-    ui.notifications.info("Searching actors and token to migrate ....")
-
-    // Migrate actors
-    for (let actor of game.actors) {
-      if (actor?.img.includes("beneos-module") && !actor.img.includes(BeneosUtility.tokenDataPath)) {
-        let oldImgData = BeneosUtility.getTokenImageInfo(actor.img)
-        let newImgPath = BeneosUtility.getFullPathWithSlash() + oldImgData.fullKey + "/" + oldImgData.filename
-        await actor.update({ 'img': newImgPath })
-        console.log("actor update...", actor.name, actor.img)
-      }
-      if (actor?.token.img.includes("beneos-module") && !actor.token.img.includes(BeneosUtility.tokenDataPath)) {
-        let oldTokenImgData = BeneosUtility.getTokenImageInfo(actor.texture.src)
-        let newTokenImgPath = BeneosUtility.getFullPathWithSlash() + oldTokenImgData.fullKey + "/" + oldTokenImgData.pathVariant + "/" + oldTokenImgData.filename
-        await actor.update({ 'token.img': newTokenImgPath })
-        console.log("actor token update...", actor.name, actor.token.texture.src)
-      }
-    }
-    // Migrate tokens on scenes
-    for (let scene of game.scenes) {
-      for (let token of scene.tokens) {
-        if (token?.texture.src.includes("beneos-module") && !token.texture.src.includes(BeneosUtility.tokenDataPath)) {
-          let oldTokenImgData = BeneosUtility.getTokenImageInfo(token.texture.src)
-          let newTokenImgPath = BeneosUtility.getFullPathWithSlash() + oldTokenImgData.fullKey + "/" + oldTokenImgData.pathVariant + "/" + oldTokenImgData.filename
-          console.log("scene token update : ", scene.name, token.name)
-          await token.update({ 'img': newTokenImgPath })
-        }
-      }
-    }
-    ui.notifications.info("Actors/Tokens migration finished !")
-  }
-
-  /********************************************************************************** */
-  render() {
-    this.performMigrate()
-  }
-
-}
-
 /********************************************************************************* */
 export class TableTopModeSettings extends FormApplication {
 
@@ -200,7 +156,7 @@ export class BeneosUtility {
     })
     console.log("Registering settings", game)
 
-    game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-clean-compendium", {
+    /*game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-clean-compendium", {
       name: "Empty compendium to re-import all tokens data",
       label: "Reset & Rebuild BeneosModule Compendiums",
       hint: "Cleanup BeneosModule compendium and tokens configs",
@@ -208,7 +164,7 @@ export class BeneosUtility {
       config: true,
       type: BeneosCompendiumReset,
       restricted: true
-    })
+    })*/
 
     game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-search-engine", {
       name: "Search Engine",
@@ -359,26 +315,6 @@ export class BeneosUtility {
       if (msg.name == 'msg_request_user_view') { BeneosTableTop.sendUserViewMessage() }
       if (msg.name == 'msg_user_view_response') { BeneosTableTop.processUserCurrentView(msg.data) }
     });
-  }
-
-  /********************************************************************************** */
-  static async tokenRotateThenMove(tokenDocument, update, info) {
-
-    if (!update.x) update.x = tokenDocument.x;
-    if (!update.y) update.y = tokenDocument.y;
-    let r = new Ray(tokenDocument, update);
-    let rotation = r.angle * 180 / Math.PI - 90;
-    if (rotation < 0) rotation += 360;
-    let difference = Math.max(tokenDocument.rotation, rotation) - Math.min(tokenDocument.rotation, rotation)
-    if (difference > 180) difference -= 360;
-    if (difference < -180) difference += 360;
-    let duration = Math.round(Math.abs(difference) * Math.sqrt(tokenDocument.width) * 1.0);
-    if (!tokenDocument.lockRotation) {
-      await tokenDocument.update({ rotation }, { ...info, animate: true, animation: { duration } });
-      await new Promise((r) => setTimeout(r, duration));
-    }
-    duration = r.distance * 2;
-    await tokenDocument.update(update, { ...info, rotated: true, animate: true, animation: { duration: duration } })
   }
 
   /********************************************************************************** */
@@ -696,7 +632,6 @@ export class BeneosUtility {
   /********************************************************************************** */
   static createToken(token) {
     if (BeneosUtility.checkIsBeneosToken(token)) {
-      //console.log(">>>>>>>>>> CREATE TOKEN BENEOS")
       BeneosUtility.preloadToken(token)
       setTimeout(function () {
         BeneosUtility.newTokenSetup(token)
@@ -713,7 +648,6 @@ export class BeneosUtility {
   /********************************************************************************** */
   // Checks if the token image is inside the beneos tokens module
   static checkIsBeneosToken(token) {
-    // Previous version : return (token?.document?.texture?.src.includes(this.tokenDataPath) ?? token?.texture?.src.includes(this.tokenDataPath))
     return token?.actor?.getFlag("world", "beneos");
   }
 
@@ -753,40 +687,6 @@ export class BeneosUtility {
       BeneosUtility.debugMessage("[BENEOS MODULE] Config not found preloadToken " + token.name)
       return
     }
-
-  }
-
-  /********************************************************************************** */
-  static preloadImage(finalImage) {
-    TextureLoader.loader.loadTexture(finalImage)
-  }
-
-  /********************************************************************************** */
-  static preloadVideo(finalImage) {
-    TextureLoader.loader.loadTexture(finalImage)
-  }
-
-  /********************************************************************************** */
-  //Function to change the token animations
-  static async changeAnimation(token, animation, tkangle, tkalpha, tkanimtime, bfx, fading, forceStart) {
-
-    this.debugMessage("[BENEOS MODULE] Changing to image:" + animation, token)
-
-    let tkscale = this.getScaleFactor(token, animation) // Refresh proper token scale
-    token.texture.src = animation
-    tkangle = tkangle || token.rotation || token.document?.rotation || 0
-    BeneosUtility.debugMessage("[BENEOS MODULE] Change animation with scale: " + tkscale, tkangle)
-    if (token.state == "move" || token.state == "action") {
-      await token.document.setFlag("core", "randomizeVideo", false)
-    } else {
-      await token.document.setFlag("core", "randomizeVideo", true)
-    }
-    if (token.state == "dead") {
-      // TODO
-    }
-    await token.document.update({ img: animation, scale: tkscale, rotation: tkangle, alpha: 1.0, data: { img: animation } }, { animate: false })
-    this.addFx(token, bfx, true, true)
-    BeneosUtility.debugMessage("[BENEOS MODULE] Finished changing animation: " + tkscale)
 
   }
 
@@ -854,43 +754,7 @@ export class BeneosUtility {
     }
   }
 
-  /********************************************************************************** */
-  static getIdleTokens(token) {
-    let tokenData = this.getTokenImageInfo(token)
-    let fullKey = tokenData.fullKey
-    let tokenList = []
-
-    if (fullKey) {
-      let tokenConfig = this.beneosTokens[fullKey]
-      if (!tokenConfig) {
-        ui.notifications.warn("Error in BeneosModule : the fullKey seems wrong " + fullKey)
-        ui.notifications.warn("Check that the token image is a BeneosToken image, from the beneos tokens folder")
-        console.log("Working fullKey - matchArray : ", fullKey, matchArray)
-        return tokenList
-      }
-      //console.log("Token", fullKey, token, tokenConfig)
-      for (let idleImg of tokenConfig.idleList) {
-        if (game.settings.get(BeneosUtility.moduleID(), "beneos-animated-portrait-only")) {
-          if (!idleImg.toLowerCase().match("face")) {
-            continue
-          }
-        }
-        let modeName = idleImg.match("(idle_[\\w_]*).web")
-        modeName = this.firstLetterUpper(modeName[1].replace(/_/g, ", "))
-        tokenList.push({
-          isVideo: idleImg.includes("webm"),
-          token: idleImg, //this.getFullPathWithSlash() + fullKey + '/' + fullKey + "-idle_face_still.webp",
-          name: modeName, tokenvideo: idleImg
-        })
-      }
-    } else {
-      ui.notifications.warn("Error in BeneosModule : fullKey not found ")
-      ui.notifications.warn("Check that the token image is a BeneosToken image, from the beneos tokens folder")
-    }
-    return tokenList
-  }
-
-  /********************************************************************************** */
+    /********************************************************************************** */
   static getActorCompendium() {
     if (game.system.id == "pf2e") {
       return "beneos-module.beneos_module_actors_pf2"
@@ -947,30 +811,6 @@ export class BeneosUtility {
     }
     return undefined
   }
-  /********************************************************************************** */
-  static getAnimatedTokens(token) {
-    //console.log("TOKEN: ", token)
-    let tokenData = this.getTokenImageInfo(token)
-    let tokenList = []
-
-    if (tokenData?.fullKey) {
-      let tokenConfig = this.beneosTokens[tokenData.fullKey]
-      if (tokenConfig.imgVideoList) {
-        for (let imgVideo of tokenConfig.imgVideoList) {
-          if (imgVideo.includes("top") && imgVideo.includes(".webm")) {
-            let modeName = imgVideo.match("-([\\w_]*).web")
-            modeName = this.firstLetterUpper(modeName[1].replace(/_/g, ", "))
-            tokenList.push({
-              isVideo: imgVideo.includes("webm"),
-              token: imgVideo, //this.getFullPathWithSlash() + fullKey + '/' + fullKey + "-idle_face_still.webp",
-              name: modeName, tokenvideo: imgVideo
-            })
-          }
-        }
-      }
-    }
-    return tokenList
-  }
 
   /********************************************************************************** */
   static getScaleFactor(token, newImage = undefined) {
@@ -1000,27 +840,6 @@ export class BeneosUtility {
       actor.update({ 'token.img': actorImage })
     }
     return
-  }
-
-  /********************************************************************************** */
-  static delayDetectEnd(token) {
-    token.detectEnd = true
-    setTimeout(function () { BeneosUtility.detectMoveEnd(token) }, 800)
-  }
-
-  /********************************************************************************** */
-  static processEndEffect(tokenId, animeInfo) {
-    BeneosUtility.debugMessage("[BENEOS MODULE] Effect END ! ", animeInfo[0].tmFilterId)
-    let token = canvas.tokens.placeables.find(t => t.id == tokenId)
-    for (let a of animeInfo) {
-      token.TMFXdeleteFilters(a.tmFilterId)
-    }
-    // Manage state change
-    if (token.state == "heal" || token.state == "hit" || token.state == "action") {
-      setTimeout(function () {
-        BeneosUtility.updateToken(tokenId, { forceupdate: true });
-      }, 20)
-    }
   }
 
   /********************************************************************************** */
@@ -1124,10 +943,10 @@ export class BeneosUtility {
 
   /********************************************************************************** */
   static getVariants(tokenConfig) {
-    let familyId = tokenConfig.familyId
+    let tokenKey = tokenConfig.tokenKey
     let variants = []
     Object.entries(BeneosUtility.beneosTokens).forEach(([key, value]) => {
-      if (value.familyId == familyId && value.fullId != tokenConfig.fullId) {
+      if (value.tokenKey == tokenKey && value.fullId != tokenConfig.fullId) {
         let number = value.number || ""
         variants.push({ "display_name": value.actorName + " " + number, "img": value.token, "name": key, fullId: value.fullId })
       }
@@ -1159,7 +978,7 @@ export class BeneosUtility {
   /********************************************************************************** */
   static async buildAvailableTokensMenuHTML(template, beneosTokensHUD) {
     const beneosTokensDisplay = await renderTemplate('modules/beneos-module/templates/' + template,
-      { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getBeneosTokenDataPath(), beneosTokensHUD })
+      { beneosTokensHUD })
 
     return beneosTokensDisplay
   }
