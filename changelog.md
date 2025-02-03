@@ -4,6 +4,13 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 12.1.2 # 2025-02-03
+- Fixed: Issues with the update process
+- Added: some new icons for beneos battlemaps
+
+### 12.1.1 # 2025-01-15
+- Fixed: A bug with beneos Spells sometimes leading to broken links in the "New Content" chat report
+
 ### 12.1.0 # 2025-01-08
 - Fixed some incompatibilities
 - Beneos Search Engine has been updated (New images to reflect the new 2.5D tokens)
