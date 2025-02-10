@@ -228,8 +228,9 @@ export class BeneosDatabaseHolder {
         foundry.utils.mergeObject(this.movementList, this.buildList(tokenData.properties.movement))
         foundry.utils.mergeObject(this.purposeList, this.buildList(tokenData.properties.purpose))
         tokenData.isInstalled = BeneosUtility.isTokenLoaded(key)
+        tokenData.isCloudAvailable = game.beneos.cloud.isTokenAvailable(key)    
         tokenData.installed = (tokenData.isInstalled) ? "installed" : "notinstalled"
-        tokenData.isCloudAvailable = game.beneos.cloud.isTokenAvailable(key)
+        tokenData.installed = (tokenData.isCloudAvailable) ? "cloudavailable" : tokenData.installed
         tokenData.cloudMessage = (tokenData.isCloudAvailable) ? "Cloud available" : "Cloud not available"
         tokenData.isInstallable = tokenData.installed 
 
@@ -291,7 +292,9 @@ export class BeneosDatabaseHolder {
         foundry.utils.mergeObject(this.itemTier, this.buildList(itemData.properties.tier))
         // Deprecated foundry.utils.mergeObject(this.itemPrice, this.buildList(itemData.properties.price))
         itemData.isInstalled = BeneosUtility.isItemLoaded(key)
+        itemData.isCloudAvailable = game.beneos.cloud.isItemAvailable(key)
         itemData.installed = (itemData.isInstalled) ? "installed" : "notinstalled"
+        itemData.installed = (itemData.isCloudAvailable) ? "cloudavailable" : itemData.installed
         if (itemData.isInstalled) {
           itemData.itemId = BeneosUtility.getItemId(key)
           itemData.card_front = BeneosUtility.getBeneosItemDataPath() + "/" + key + "/" + key + "-front.webp"
@@ -313,7 +316,10 @@ export class BeneosDatabaseHolder {
         foundry.utils.mergeObject(this.spellType, this.buildList(String(spellData.properties.spell_type)))
         foundry.utils.mergeObject(this.spellClasses, this.buildList(spellData.properties.classes))
         spellData.isInstalled = BeneosUtility.isSpellLoaded(key)
+        spellData.isCloudAvailable = game.beneos.cloud.isSpellAvailable(key)
         spellData.installed = (spellData.isInstalled) ? "installed" : "notinstalled"
+        spellData.installed = (spellData.isCloudAvailable) ? "cloudavailable" : spellData.installed
+
         if (spellData.isInstalled) {
           spellData.spellId = BeneosUtility.getSpellId(key)
           spellData.card_front = BeneosUtility.getBeneosSpellDataPath() + "/" + key + "/" + key + "-front.webp"
@@ -615,6 +621,17 @@ export class BeneosSearchResults extends Dialog {
   /********************************************************************************** */
   activateListeners() {
 
+    $(".beneos-cloud-item-install").click(event => {
+      // Get the data-key from the previous div and get it from the cloud 
+      let tokenKey = $(event.target).parents(".item-result-section").data("token-key")
+      game.beneos.cloud.importItemFromCloud(tokenKey)
+    })      
+    $(".beneos-cloud-spell-install").click(event => {
+      // Get the data-key from the previous div and get it from the cloud 
+      let tokenKey = $(event.target).parents(".spell-result-section").data("token-key")
+      game.beneos.cloud.importSpellsFromCloud(tokenKey)
+    })      
+    
     $(".beneos-cloud-token-install").click(event => {
       // Get the data-key from the previous div and get it from the cloud 
       let tokenKey = $(event.target).parents(".token-result-section").data("token-key")
@@ -774,7 +791,7 @@ const __propertyDefList = {
   "classes": { name: "classes", sort: true, selectors: ["class-selector"] },
   "spell_type": { name: "spell_type", sort: true, selectors: ["spell-type"] },
   "casting_time": { name: "casting_time", sort: true, selectors: ["casting_time-selector"]},
-  "installed": { name: "installed", sort: true, selectors: ["installation-selector"] }
+  "installed": { name: "installed", sort: true, selectors: ["installation-selector"] },
 }
 
 /********************************************************************************** */
@@ -837,7 +854,7 @@ export class BeneosSearchEngine extends Dialog {
       }
 
       if (propKey == "installed") { 
-        properties = [{ key: "installed", value: "Installed" }, { key: "notinstalled", value: "Not Installed" }]
+        properties = [{ key: "installed", value: "Installed" }, { key: "notinstalled", value: "Not Installed" }, { key: "cloudavailable", value: "Cloud Available" }]
       }
 
       for (let key in toSearch) {
