@@ -90,7 +90,7 @@ export class BeneosCloud {
 
   isTokenAvailable(key) {
     let content = this.availableContent.tokens
-    if (content.length == 0) return false
+    if (!content || content?.length == 0) return false
     for (let i = 0; i < content.length; i++) {
       if (content[i].key == key) {
         return true
