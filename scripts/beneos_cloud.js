@@ -101,7 +101,7 @@ export class BeneosCloud {
 
   isItemAvailable(key) {
     let content = this.availableContent.items
-    if (content.length == 0) return false
+    if (!content || content.length == 0) return false
     for (let i = 0; i < content.length; i++) {
       if (content[i].key == key) {
         return true
@@ -112,7 +112,7 @@ export class BeneosCloud {
 
   isSpellAvailable(key) {
     let content = this.availableContent.spells
-    if (content.length == 0) return false
+    if (!content || content.length == 0) return false
     for (let i = 0; i < content.length; i++) {
       if (content[i].key == key) {
         return true
