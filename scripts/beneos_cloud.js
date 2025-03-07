@@ -72,7 +72,7 @@ export class BeneosCloud {
     fetch(url, { credentials: 'same-origin' })
       .then(response => response.json())
       .then(data => {
-        console.log(data)
+        console.log("BENEOS Cloud login data", data)
         if (data.result == 'OK') {
           game.beneos.cloud.setLoginStatus(true)
           game.beneos.cloud.checkAvailableContent()
@@ -127,7 +127,7 @@ export class BeneosCloud {
     fetch(url, { credentials: 'same-origin' })
       .then(response => response.json())
       .then(data => {
-        console.log(data)
+        console.log("BENEOS Cloud available content", data)
         if (data.result == 'OK') {
           console.log("Available content: ", data.data)
           game.beneos.cloud.setAvailableContent(data.data)
