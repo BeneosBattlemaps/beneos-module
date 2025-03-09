@@ -151,7 +151,7 @@ export class BeneosCloud {
 
   async importItemToCompendium(itemArray) {
     this.beneosItems = {}
-    console.log("Importing token to compendium", tokenArray)  
+    console.log("Importing item to compendium", itemArray)  
 
     let itemPack
     if (game.system.id == "pf2e") {
@@ -189,60 +189,47 @@ export class BeneosCloud {
         console.log("Directory already exists")
       }
 
-      for (let i = 0; i < tokenData.tokenImages.length; i++) {
-        let fullId = tokenKey + "_" + (i+1)
+      for (let i = 0; i < itemData.itemImages.length; i++) {
+        let fullId = itemKey + "_" + (i+1)
 
         // Decode the base64 tokenImg and upload it to the FilePicker
-        let base64Response = await fetch(`data:image/webp;base64,${tokenData.tokenImages[i].token.image64}`);
+        let base64Response = await fetch(`data:image/webp;base64,${itemData.itemImages[i].image.image64}`);
         let blob = await base64Response.blob();
         let file = new File([blob], tokenData.tokenImages[i].token.filename, { type: "image/webp" });
         let response = await FilePicker.upload("data", finalFolder, file, {});
 
-        base64Response = await fetch(`data:image/webp;base64,${tokenData.tokenImages[i].journal.image64}`);
-        blob = await base64Response.blob();
-        file = new File([blob], tokenData.tokenImages[i].journal.filename, { type: "image/webp" });
-        response = await FilePicker.upload("data", finalFolder, file, {});
-
-        base64Response = await fetch(`data:image/webp;base64,${tokenData.tokenImages[i].avatar.image64}`);
-        blob = await base64Response.blob();
-        file = new File([blob], tokenData.tokenImages[i].avatar.filename, { type: "image/webp" });
-        response = await FilePicker.upload("data", finalFolder, file, {});
-
-        actorData.img = `${finalFolder}/${tokenData.tokenImages[i].avatar.filename}`
-        actorData.prototypeToken.texture.src = `${finalFolder}/${tokenData.tokenImages[i].token.filename}`
-        let actor = new CONFIG.Actor.documentClass(actorData);
-        if (actor) {
+        itemData.img = `${finalFolder}/${itemData.itemImages[i].image.filename}`
+        let item = new CONFIG.Item.documentClass(itemData);
+        if (item) {
           // Search if we have already an actor with the same name in the compendium 
-          let existingActor = actorRecords.find(a => a.name == actor.name && a.img == actorData.img)
-          if (existingActor) {
-            console.log("Deleting existing actor", existingActor._id)
-            await actorPack.delete(existingActor._id)
+          let existingItem = itemRecords.find(a => a.name == item.name && a.img == item.img)
+          if (existingItem) {
+            console.log("Deleting existing item", existingItem._id)
+            await Item.deleteDocuments([existingJournal._id], { pack: "beneos-module.beneos_module_items" })
           }
           // And then create it again
-          let imported = await actorPack.importDocument(actor);
-          await imported.setFlag("world", "beneos", { tokenKey, fullId, idx: i, journalId: newJournal.id })
+          let imported = await itemPack.importDocument(item);
+          await imported.setFlag("world", "beneos", { tokenKey, fullId, idx: i })
           //console.log("ACTOR IMPO", imported)
-          BeneosUtility.beneosTokens[fullId] = {
-            actorName: imported.name,
-            avatar: actorData.img,
-            token: actorData.prototypeToken.texture.src ,
-            actorId:imported.id,
-            journalId: newJournal.id,
+          BeneosUtility.beneosItems[fullId] = {
+            itemName: imported.name,
+            imf: itemData.img,
+            itemId:imported.id,
             folder: finalFolder,
             tokenKey: tokenKey,
             fullId: fullId,
             number: i+1
           }
         } else {
-          this.importErrors.push("Error in creating actor " + records.name)
-          console.log("Error in creating actor", records.name);
+          this.importErrors.push("Error in creating item " + records.name)
+          console.log("Error in creating item", records.name);
         }
       }
     }
-    let toSave = JSON.stringify(BeneosUtility.beneosTokens)
+    let toSave = JSON.stringify(BeneosUtility.beneosItems)
     console.log("Saving ITEM data :", toSave)
     await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', toSave) // Save the token config !
-    await actorPack.configure({ locked: true })
+    await itemPack.configure({ locked: true })
   }
 
   async importTokenToCompendium(tokenArray, event) {
