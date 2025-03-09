@@ -135,8 +135,18 @@ export class BeneosCloud {
       })
   }
 
-  sendChatMessageResult() {
-
+  sendChatMessageResult(event) {
+    let chatData = {
+      user: game.user.id,
+      rollMode: game.settings.get("core", "rollMode"),
+      whisper: ChatMessage.getWhisperRecipients('GM'),
+      content: `<div><strong>BeneosModule</strong> : Token(s) has been imported into the beneos module compendium. 
+      </span></div>`
+    }
+    if (event) {
+      chatData.content += `<div>It was installed from a Drag&Drop operation, you can now access them from the Beneos Compendium</div>`
+    }
+    ChatMessage.create(chatData);
   }
 
   async importItemToCompendium(itemArray) {
@@ -198,22 +208,6 @@ export class BeneosCloud {
         file = new File([blob], tokenData.tokenImages[i].avatar.filename, { type: "image/webp" });
         response = await FilePicker.upload("data", finalFolder, file, {});
 
-        // Create the journal entry    
-        journalData.pages[0].src = `${finalFolder}/${tokenData.tokenImages[i].journal.filename}`
-        journalData.name = actorData.name + " " + (i+1)
-        let journal = new JournalEntry(journalData);
-        let newJournal
-        if ( journal ) {
-          // Search for existing journal entry 
-          let existingJournal = journalRecords.find(j => j.name == journal.name && j.img == journal.img)
-          if (existingJournal) {
-            console.log("Deleting existing journal", existingJournal._id)
-            await journalPack.delete(existingJournal._id)
-          }
-          newJournal = await journalPack.importDocument(journal);
-          await newJournal.setFlag("world", "beneos", { tokenkey: tokenKey, fullId: fullId, idx: i, })
-        }
-
         actorData.img = `${finalFolder}/${tokenData.tokenImages[i].avatar.filename}`
         actorData.prototypeToken.texture.src = `${finalFolder}/${tokenData.tokenImages[i].token.filename}`
         let actor = new CONFIG.Actor.documentClass(actorData);
@@ -246,14 +240,12 @@ export class BeneosCloud {
       }
     }
     let toSave = JSON.stringify(BeneosUtility.beneosTokens)
-    console.log("Saving data :", toSave)
-    await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', toSave) // Save the token config !
+    console.log("Saving ITEM data :", toSave)
+    await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', toSave) // Save the token config !
     await actorPack.configure({ locked: true })
-    await journalPack.configure({ locked: true })
-
   }
 
-  async importTokenToCompendium(tokenArray) {
+  async importTokenToCompendium(tokenArray, event) {
     
     console.log("Importing token to compendium", tokenArray)  
 
@@ -277,8 +269,7 @@ export class BeneosCloud {
 
     await actorPack.configure({ locked: false })
     await journalPack.configure({ locked: false })
-
-
+    
     for (let tokenKey in tokenArray) {  
       let tokenData = tokenArray[tokenKey]
       // Get the common actor data
@@ -300,7 +291,6 @@ export class BeneosCloud {
       } catch (err) {
         console.log("Directory already exists")
       }
-
       // Add journal entry
       let journalData = tokenData.journalJSON
 
@@ -334,7 +324,8 @@ export class BeneosCloud {
           let existingJournal = journalRecords.find(j => j.name == journal.name && j.img == journal.img)
           if (existingJournal) {
             console.log("Deleting existing journal", existingJournal._id)
-            await journalPack.delete(existingJournal._id)
+            await JournalEntry.deleteDocuments([existingJournal._id], { pack: "beneos-module.beneos_module_journal" })
+
           }
           newJournal = await journalPack.importDocument(journal);
           await newJournal.setFlag("world", "beneos", { tokenkey: tokenKey, fullId: fullId, idx: i, })
@@ -348,7 +339,7 @@ export class BeneosCloud {
           let existingActor = actorRecords.find(a => a.name == actor.name && a.img == actorData.img)
           if (existingActor) {
             console.log("Deleting existing actor", existingActor._id)
-            await actorPack.delete(existingActor._id)
+            await Actor.deleteDocuments([existingActor._id], { pack: "beneos-module.beneos_module_actors" })
           }
           // And then create it again
           let imported = await actorPack.importDocument(actor);
@@ -366,6 +357,9 @@ export class BeneosCloud {
             number: i+1,
             installDate: Date.now()
           }
+          // Import the actor into the world 
+          //game.actors.importFromCompendium(actorPack, imported.id, { folder: folder.id });
+
         } else {
           this.importErrors.push("Error in creating actor " + records.name)
           console.log("Error in creating actor", records.name);
@@ -378,10 +372,10 @@ export class BeneosCloud {
     await actorPack.configure({ locked: true })
     await journalPack.configure({ locked: true })
 
-    this.sendChatMessageResult()
+    this.sendChatMessageResult(event)
   }
 
-  importTokenFromCloud(tokenKey) {
+  importTokenFromCloud(tokenKey, event = undefined) {
     ui.notifications.info("Importing token from BeneosCloud !")
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
     let url = `https://beneos.cloud/foundry-manager.php?get_token=1&foundryId=${userId}&tokenKey=${tokenKey}`
@@ -389,7 +383,9 @@ export class BeneosCloud {
       .then(response => response.json())
       .then(async function (data) {
         if (data.result == 'OK') {
-          game.beneos.cloud.importTokenToCompendium( { [`${tokenKey}`]: data.data.token } )
+          game.beneos.cloud.importTokenToCompendium( { [`${tokenKey}`]: data.data.token }, event )
+        } else {
+          ui.notifications.error("Error in importing token from BeneosCloud !")
         }
       })
   }

@@ -63,6 +63,13 @@ export class BeneosCompendiumReset extends FormApplication {
       $(".beneos-chat-delete-info").html("Cleanup finished")
       $(".beneos-meter-delete").hide()
 
+      // Cleanup JSON data local cache
+      await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', JSON.stringify({})) 
+      await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', JSON.stringify({}))
+      await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', JSON.stringify({}))
+  
+      return; 
+      
       chatData.content = `<div><strong>BeneosModule</strong> : Importing actors</div>` +
         `<div><strong>2/4 - Actors : </strong><meter class="beneos-meter-actor" min="0" max="100" value="0">100%</meter>&nbsp;<span class="beneos-chat-actor-info"></span></div>`
       ChatMessage.create(chatData);

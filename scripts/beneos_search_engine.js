@@ -202,7 +202,7 @@ export class BeneosDatabaseHolder {
     this.gridList = [{ key: "any", value: "Any" }, { key: "<150", value: "Tiny" }, { key: "<500", value: "Small" }, { key: "<1000", value: "Medium" },
     { key: "<2000", value: "Big" }, { key: ">2000", value: "Very Big" }]
     this.adventureList = {}
-    this.itemRarity = [ { key: "any", value: "Any" }, {key: "common", value: "    Common"}, {key: "uncommon", value: "   Uncommon"}, {key: "rare", value: "  Rare"}, {key: "very rare", value: " Very Rare"}, {key: "legendary", value: "Legendary"}]
+    this.itemRarity = [{ key: "any", value: "Any" }, { key: "common", value: "    Common" }, { key: "uncommon", value: "   Uncommon" }, { key: "rare", value: "  Rare" }, { key: "very rare", value: " Very Rare" }, { key: "legendary", value: "Legendary" }]
     this.itemOrigin = {}
     this.itemType = {}
     this.itemTier = {}
@@ -228,11 +228,14 @@ export class BeneosDatabaseHolder {
         foundry.utils.mergeObject(this.movementList, this.buildList(tokenData.properties.movement))
         foundry.utils.mergeObject(this.purposeList, this.buildList(tokenData.properties.purpose))
         tokenData.isInstalled = BeneosUtility.isTokenLoaded(key)
-        tokenData.isCloudAvailable = game.beneos.cloud.isTokenAvailable(key)    
         tokenData.installed = (tokenData.isInstalled) ? "installed" : "notinstalled"
-        tokenData.installed = (tokenData.isCloudAvailable) ? "cloudavailable" : tokenData.installed
+        tokenData.isCloudAvailable = false
+        if (tokenData.installed == "notinstalled") {
+          tokenData.isCloudAvailable = game.beneos.cloud.isTokenAvailable(key)
+          tokenData.installed = (tokenData.isCloudAvailable) ? "cloudavailable" : tokenData.installed
+        }
         tokenData.cloudMessage = (tokenData.isCloudAvailable) ? "Cloud available" : "Cloud not available"
-        tokenData.isInstallable = tokenData.installed 
+        tokenData.isInstallable = tokenData.installed
 
         tokenData.nbVariants = tokenData.properties.nb_variants || 1
         tokenData.actorId = BeneosUtility.getActorId(key)
@@ -336,8 +339,8 @@ export class BeneosDatabaseHolder {
   static fieldTextSearch(item, text) {
     for (let field in item) {
       let value = item[field]
-      if (field == "description") { 
-        continue 
+      if (field == "description") {
+        continue
       }
       if (typeof (value) == "string") {
         if (value.toLowerCase().includes(text)) {
@@ -553,7 +556,7 @@ export class BeneosDatabaseHolder {
 
     return tab
   }
-  
+
   /********************************************************************************** */
   static getBattlemap(key) {
     return this.bmapData.content[key]
@@ -625,26 +628,34 @@ export class BeneosSearchResults extends Dialog {
       // Get the data-key from the previous div and get it from the cloud 
       let tokenKey = $(event.target).parents(".item-result-section").data("token-key")
       game.beneos.cloud.importItemFromCloud(tokenKey)
-    })      
+    })
     $(".beneos-cloud-spell-install").click(event => {
       // Get the data-key from the previous div and get it from the cloud 
       let tokenKey = $(event.target).parents(".spell-result-section").data("token-key")
       game.beneos.cloud.importSpellsFromCloud(tokenKey)
-    })      
-    
+    })
+
     $(".beneos-cloud-token-install").click(event => {
       // Get the data-key from the previous div and get it from the cloud 
       let tokenKey = $(event.target).parents(".token-result-section").data("token-key")
       game.beneos.cloud.importTokenFromCloud(tokenKey)
-    })      
+    })
 
     $(".token-search-data").on('dragstart', function (e) {
       let id = e.target.getAttribute("data-document-id")
-      console.log("Draggable id" , id)
-      if ( !id || id == "" || id == "") { 
+      let docType = e.target.getAttribute("data-type")
+      console.log("Draggable id", id)
+      if (!id || id == "" || id == "") {
+        // Probable cloud data -> call for the token key
+        let tokenKey = $(e.target).parents(".token-result-section").data("token-key")
+        if (docType == "Actor") {
+          game.beneos.cloud.importTokenFromCloud(tokenKey, e)
+        }
+        if (docType == "Item" || docType == "Spell") {
+          game.beneos.cloud.importItemFromCloud(tokenKey, e)
+        }
         return
-      } else { 
-        let docType = e.target.getAttribute("data-type")
+      } else {
         let compendium = ""
         if (docType == "Actor") {
           compendium = (game.system.id == "pf2e") ? "beneos-module.beneos_module_actors_pf2" : "beneos-module.beneos_module_actors"
@@ -727,7 +738,7 @@ export class BeneosSearchResults extends Dialog {
       if (bmapKey) {
         let bmapData = BeneosDatabaseHolder.getBattlemap(bmapKey)
         if (bmapData?.properties?.download_pack) {
-          game.moulinette.applications.MoulinetteAPI.searchUI("scenes", { "creator": bmapData.properties.download_creator, "pack": bmapData.properties.download_pack})
+          game.moulinette.applications.MoulinetteAPI.searchUI("scenes", { "creator": bmapData.properties.download_creator, "pack": bmapData.properties.download_pack })
         } else {
           ui.notifications.info("The selected battlemap does not have a Moulinette download information")
         }
@@ -739,8 +750,10 @@ export class BeneosSearchResults extends Dialog {
         let bmapData = BeneosDatabaseHolder.getBattlemap(bmapKey)
         console.log("Moulinette search", bmapData)
         if (bmapData?.properties?.download_terms) {
-          game.moulinette.applications.MoulinetteAPI.searchUI("scenes", { "terms": bmapData.properties.download_terms, 
-          "creator": bmapData.properties.download_creator, "pack": bmapData.properties.download_pack})
+          game.moulinette.applications.MoulinetteAPI.searchUI("scenes", {
+            "terms": bmapData.properties.download_terms,
+            "creator": bmapData.properties.download_creator, "pack": bmapData.properties.download_pack
+          })
         } else {
           ui.notifications.info("The selected battlemap does not have a Moulinette download information")
         }
@@ -790,7 +803,7 @@ const __propertyDefList = {
   "school": { name: "school", sort: true, selectors: ["school-selector"] },
   "classes": { name: "classes", sort: true, selectors: ["class-selector"] },
   "spell_type": { name: "spell_type", sort: true, selectors: ["spell-type"] },
-  "casting_time": { name: "casting_time", sort: true, selectors: ["casting_time-selector"]},
+  "casting_time": { name: "casting_time", sort: true, selectors: ["casting_time-selector"] },
   "installed": { name: "installed", sort: true, selectors: ["installation-selector"] },
 }
 
@@ -819,9 +832,9 @@ export class BeneosSearchEngine extends Dialog {
   /********************************************************************************** */
   updateFilterStack(propName, propValue) {
     for (let propKey in __propertyDefList) {
-      if (__propertyDefList[propKey].name == propName && 
-        this.filterStack.find((it) => it.propKey == propKey ) == undefined
-        ) {
+      if (__propertyDefList[propKey].name == propName &&
+        this.filterStack.find((it) => it.propKey == propKey) == undefined
+      ) {
         this.filterStack.push({ propKey: propKey, propValue: propValue })
       }
     }
@@ -853,7 +866,7 @@ export class BeneosSearchEngine extends Dialog {
         toSearch = BeneosDatabaseHolder.getAll(this.dbData.searchMode)
       }
 
-      if (propKey == "installed") { 
+      if (propKey == "installed") {
         properties = [{ key: "installed", value: "Installed" }, { key: "notinstalled", value: "Not Installed" }, { key: "cloudavailable", value: "Cloud Available" }]
       }
 
@@ -915,7 +928,7 @@ export class BeneosSearchEngine extends Dialog {
 
     console.log("SEARCH results", searchSize, results, this.dbData.searchMode)
 
-    let template 
+    let template
     if (this.dbData.searchMode == "token") {
       template = 'modules/beneos-module/templates/beneos-search-results-tokens.html'
     }
@@ -1003,7 +1016,7 @@ export class BeneosSearchEngine extends Dialog {
       for (let selector of propDef.selectors) {
         let value = $("#" + selector).val()
         if (value && value.toLowerCase() != "any") {
-          if ( !this.filterStack.find((it) => it.propKey == propKey) ) {
+          if (!this.filterStack.find((it) => it.propKey == propKey)) {
             this.filterStack.push({ propKey: propKey, value: value })
           }
           searchResults = BeneosDatabaseHolder.searchByProperty(type, propDef.name, value, searchResults)
@@ -1129,7 +1142,7 @@ export class BeneosSearchEngine extends Dialog {
 export class BeneosSearchEngineLauncher extends FormApplication {
 
   /********************************************************************************** */
-  async render() {
+  async render(installed = undefined) {
     if (game.beneosTokens.searchEngine) {
       return
     }
@@ -1139,6 +1152,11 @@ export class BeneosSearchEngineLauncher extends FormApplication {
     let html = await renderTemplate('modules/beneos-module/templates/beneossearchengine.html', dbData)
     let searchDialog = new BeneosSearchEngine(html, dbData)
     searchDialog.render(true)
+    if (installed) {
+      setTimeout(() => {
+        $("#installation-selector").val(installed).change()
+      }, 200)
+    }
     setTimeout(searchDialog.processSelectorSearch(), 500)
   }
 

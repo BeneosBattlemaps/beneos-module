@@ -166,6 +166,16 @@ export class BeneosUtility {
       restricted: true
     })*/
 
+    game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-clean-compendium", {
+      name: "Empty compendium ",
+      label: "Reset BeneosModule Compendiums",
+      hint: "Cleanup BeneosModule compendium and tokens configs",
+      scope: 'world',
+      config: true,
+      type: BeneosCompendiumReset,
+      restricted: true
+    })
+
     game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-search-engine", {
       name: "Search Engine",
       label: "Search in published tokens/battlemaps",
@@ -766,7 +776,7 @@ export class BeneosUtility {
   /********************************************************************************** */
   static isTokenLoaded(key) {
     for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
-      if (token.searchKey == key) {
+      if (token.tokenKey == key) {
         return true
       }
     }
@@ -782,7 +792,7 @@ export class BeneosUtility {
   /********************************************************************************** */
   static getActorIdVariant(key, idx) {
     for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
-      if (token.searchKey == key && token.number == idx) {
+      if (token.tokenKey == key && token.number == idx) {
         return token.actorId
       }
     }
@@ -790,7 +800,7 @@ export class BeneosUtility {
   }
   static getActorId(key) {
     for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
-      if (token.searchKey == key) {
+      if (token.tokenKey == key) {
         return token.actorId
       }
     }
