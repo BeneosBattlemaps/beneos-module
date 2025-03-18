@@ -147,11 +147,19 @@ export class BeneosCloud {
       chatData.content += `<div>It was installed from a Drag&Drop operation, you can now access them from the Beneos Compendium</div>`
     }
     ChatMessage.create(chatData);
+
+    if ( game.beneosTokens.searchEngine ) {
+      setTimeout( () => {
+        game.beneosTokens.searchEngine.updateContent() }, 1000)        
+    }
+
   }
 
   async importItemToCompendium(itemArray) {
     this.beneosItems = {}
     console.log("Importing item to compendium", itemArray)  
+    
+    let tNow = Date.now()
 
     let itemPack
     if (game.system.id == "pf2e") {
@@ -209,7 +217,7 @@ export class BeneosCloud {
           }
           // And then create it again
           let imported = await itemPack.importDocument(item);
-          await imported.setFlag("world", "beneos", { tokenKey, fullId, idx: i })
+          await imported.setFlag("world", "beneos", { tokenKey, fullId, idx: i, installationDate: tNow })
           //console.log("ACTOR IMPO", imported)
           BeneosUtility.beneosItems[fullId] = {
             itemName: imported.name,
@@ -218,6 +226,7 @@ export class BeneosCloud {
             folder: finalFolder,
             tokenKey: tokenKey,
             fullId: fullId,
+            installDate: tNow,
             number: i+1
           }
         } else {
@@ -235,6 +244,8 @@ export class BeneosCloud {
   async importTokenToCompendium(tokenArray, event) {
     
     console.log("Importing token to compendium", tokenArray)  
+    
+    let tNow = Date.now()
 
     let actorPack
     if (game.system.id == "pf2e") {
@@ -315,7 +326,7 @@ export class BeneosCloud {
 
           }
           newJournal = await journalPack.importDocument(journal);
-          await newJournal.setFlag("world", "beneos", { tokenkey: tokenKey, fullId: fullId, idx: i, })
+          await newJournal.setFlag("world", "beneos", { tokenkey: tokenKey, fullId: fullId, idx: i, installDate: tNow })
         }
 
         actorData.img = `${finalFolder}/${tokenData.tokenImages[i].avatar.filename}`
@@ -330,13 +341,14 @@ export class BeneosCloud {
           }
           // And then create it again
           let imported = await actorPack.importDocument(actor);
-          await imported.setFlag("world", "beneos", { tokenKey, fullId, idx: i, journalId: newJournal.id })
+          await imported.setFlag("world", "beneos", { tokenKey, fullId, idx: i, journalId: newJournal.id, installationDate: Date.now() })
           //console.log("ACTOR IMPO", imported)
           BeneosUtility.beneosTokens[fullId] = {
             actorName: imported.name,
             avatar: actorData.img,
             token: actorData.prototypeToken.texture.src ,
             actorId:imported.id,
+            installDate: tNow,
             journalId: newJournal.id,
             folder: finalFolder,
             tokenKey: tokenKey,

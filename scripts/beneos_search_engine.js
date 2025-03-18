@@ -1150,7 +1150,7 @@ export class BeneosSearchEngineLauncher extends FormApplication {
     let dbData = BeneosDatabaseHolder.getData()
 
     let html = await renderTemplate('modules/beneos-module/templates/beneossearchengine.html', dbData)
-    let searchDialog = new BeneosSearchEngine(html, dbData)
+    game.beneos.searchEngine = searchDialog
     searchDialog.render(true)
     if (installed) {
       setTimeout(() => {
@@ -1159,5 +1159,5 @@ export class BeneosSearchEngineLauncher extends FormApplication {
     }
     setTimeout(searchDialog.processSelectorSearch(), 500)
   }
-
+  
 }

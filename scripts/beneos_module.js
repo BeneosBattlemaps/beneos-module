@@ -56,7 +56,7 @@ Hooks.once('ready', () => {
         BeneosUtility.prepareMenu(e, sheet)
       })
     } else {
-      console.log("sheet", sheet)
+      //console.log("sheet", sheet)
       if (sheet.template.includes("npc-sheet-2.hbs")) {
         $("#" + sheet.id + " .sheet-header .left .portrait").mouseup(async function (e) {
           BeneosUtility.prepareMenu(e, sheet)
