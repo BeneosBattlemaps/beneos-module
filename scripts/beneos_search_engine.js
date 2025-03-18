@@ -189,6 +189,20 @@ export class BeneosDatabaseHolder {
   }
 
   /********************************************************************************** */
+  static processInstalledToken(tokenData) {
+    tokenData.isInstalled = BeneosUtility.isTokenLoaded(tokenData.key)
+    tokenData.installed = (tokenData.isInstalled) ? "installed" : "notinstalled"
+    tokenData.isCloudAvailable = false
+    if (tokenData.installed == "notinstalled") {
+      tokenData.isCloudAvailable = game.beneos.cloud.isTokenAvailable(tokenData.key)
+      tokenData.installed = (tokenData.isCloudAvailable) ? "cloudavailable" : tokenData.installed
+    }
+    tokenData.cloudMessage = (tokenData.isCloudAvailable) ? "Cloud available" : "Cloud not available"
+    tokenData.isInstallable = tokenData.installed
+    console.log("Token", tokenData)
+  }
+
+  /********************************************************************************** */
   static buildSearchData() {
     this.tokenTypes = {}
     this.tokenBioms = {}
@@ -227,15 +241,7 @@ export class BeneosDatabaseHolder {
         //foundry.utils.mergeObject(this.crList, this.buildList(tokenData.properties.cr))
         foundry.utils.mergeObject(this.movementList, this.buildList(tokenData.properties.movement))
         foundry.utils.mergeObject(this.purposeList, this.buildList(tokenData.properties.purpose))
-        tokenData.isInstalled = BeneosUtility.isTokenLoaded(key)
-        tokenData.installed = (tokenData.isInstalled) ? "installed" : "notinstalled"
-        tokenData.isCloudAvailable = false
-        if (tokenData.installed == "notinstalled") {
-          tokenData.isCloudAvailable = game.beneos.cloud.isTokenAvailable(key)
-          tokenData.installed = (tokenData.isCloudAvailable) ? "cloudavailable" : tokenData.installed
-        }
-        tokenData.cloudMessage = (tokenData.isCloudAvailable) ? "Cloud available" : "Cloud not available"
-        tokenData.isInstallable = tokenData.installed
+        this.processInstalledToken(tokenData)
 
         tokenData.nbVariants = tokenData.properties.nb_variants || 1
         tokenData.actorId = BeneosUtility.getActorId(key)
@@ -1129,7 +1135,7 @@ export class BeneosSearchEngine extends Dialog {
 
     $(".beneos-selector").change(event => {
       this.updateSelector(event)
-    })
+})
     $("#beneos-rebuild-compendium-button-id").click(event => {
       let compReset = new BeneosCompendiumReset()
       compReset.render(true)
@@ -1141,6 +1147,30 @@ export class BeneosSearchEngine extends Dialog {
 /********************************************************************************** */
 export class BeneosSearchEngineLauncher extends FormApplication {
 
+  static updateDisplay() {
+    if ( !game.beneos.searchEngine) {
+      return
+    }
+    game.beneos.searchEngine.updateContent()
+    setTimeout(game.beneos.searchEngine.processSelectorSearch(), 100)
+  }
+
+  static refresh(typeAsset, key) {
+    if ( !game.beneos.searchEngine) {
+      return
+    }
+    if (typeAsset == "token") {
+      let tokenData = BeneosDatabaseHolder.tokenData.content[key]
+      if (tokenData) {
+        BeneosDatabaseHolder.processInstalledToken(tokenData)
+      } else {
+        console.log("No token data found for", key)
+      }
+    } else {
+      console.log("Refresh not implemented for", typeAsset)
+    }
+  }
+
   /********************************************************************************** */
   async render(installed = undefined) {
     if (game.beneosTokens.searchEngine) {
@@ -1150,9 +1180,11 @@ export class BeneosSearchEngineLauncher extends FormApplication {
     let dbData = BeneosDatabaseHolder.getData()
 
     let html = await renderTemplate('modules/beneos-module/templates/beneossearchengine.html', dbData)
+    let searchDialog = new BeneosSearchEngine(html, dbData)
     game.beneos.searchEngine = searchDialog
     searchDialog.render(true)
     if (installed) {
+      console.log("Refresh with installed", installed)  
       setTimeout(() => {
         $("#installation-selector").val(installed).change()
       }, 200)

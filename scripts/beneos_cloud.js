@@ -1,4 +1,5 @@
 import { BeneosUtility } from "./beneos_utility.js"
+import { BeneosSearchEngineLauncher } from "./beneos_search_engine.js"
 
 // Global parameters
 const redirect_uri = 'https://beneos.cloud/index.php';
@@ -359,6 +360,7 @@ export class BeneosCloud {
           // Import the actor into the world 
           //game.actors.importFromCompendium(actorPack, imported.id, { folder: folder.id });
 
+
         } else {
           this.importErrors.push("Error in creating actor " + records.name)
           console.log("Error in creating actor", records.name);
@@ -372,6 +374,12 @@ export class BeneosCloud {
     await journalPack.configure({ locked: true })
 
     this.sendChatMessageResult(event)
+
+    for (let tokenKey in tokenArray) {  
+      BeneosSearchEngineLauncher.refresh("token", tokenKey)
+    }
+    BeneosSearchEngineLauncher.updateDisplay()
+
   }
 
   importTokenFromCloud(tokenKey, event = undefined) {
