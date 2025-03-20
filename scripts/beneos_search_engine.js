@@ -193,12 +193,31 @@ export class BeneosDatabaseHolder {
     tokenData.isInstalled = BeneosUtility.isTokenLoaded(tokenData.key)
     tokenData.installed = (tokenData.isInstalled) ? "installed" : "notinstalled"
     tokenData.isCloudAvailable = false
+    tokenData.isNew = false
+    tokenData.isUpdate = false
+
     if (tokenData.installed == "notinstalled") {
       tokenData.isCloudAvailable = game.beneos.cloud.isTokenAvailable(tokenData.key)
       tokenData.installed = (tokenData.isCloudAvailable) ? "cloudavailable" : tokenData.installed
     }
     tokenData.cloudMessage = (tokenData.isCloudAvailable) ? "Cloud available" : "Cloud not available"
     tokenData.isInstallable = tokenData.installed
+    
+    // Prepare update/new status
+    let tokenTS = game.beneos.cloud.getTokenTS(tokenData.key)
+    if (tokenTS ) {
+      let t30days = 30 * 24 * 60 * 60
+      let tNow30Days = Math.floor(Date.now() / 1000) - t30days
+      if (tokenData.installed !== "installed" && tokenTS >= tNow30Days) {
+        tokenData.isNew = true
+      }
+      if (tokenData.installed === "installed") {
+        let installTS = BeneosUtility.getTokenInstallTS(tokenData.key)
+        if (tokenTS > installTS) {
+          tokenData.isUpdate = true
+        }
+      }
+    }
   }
 
   /********************************************************************************** */

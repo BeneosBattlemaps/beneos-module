@@ -773,6 +773,17 @@ export class BeneosUtility {
     }
 
   }
+
+  /********************************************************************************** */
+  static getTokenInstallTS(key) {
+    for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
+      if (token.tokenKey == key) {
+        return token.installDate
+      }
+    }
+    return undefined
+  }
+
   /********************************************************************************** */
   static isTokenLoaded(key) {
     for (let [fullKey, token] of Object.entries(this.beneosTokens)) {

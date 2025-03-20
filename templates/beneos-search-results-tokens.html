@@ -45,7 +45,15 @@
               <img class="bsr_top_border" src="modules/beneos-module/ui/border_top.webp" />
 
               <div class="bsr_item_title beneos-tooltip">
-                <label class="beneos-search-title-result">{{result.name}}</label>
+                {{#if result.isNew}}
+                <label class="beneos-search-title-result"><span class="token-name-new">[NEW]</span>{{result.name}}</label>
+                {{else}}
+                  {{#if isUpdate}}
+                  <label class="beneos-search-title-result"><span class="token-name-update">[UPDATE]</span>{{result.name}}</label>
+                  {{else}}
+                  <label class="beneos-search-title-result">{{result.name}}</label>
+                  {{/if}}
+                {{/if}}
                 <span class="triangle-topleft"></span>
               </div>
               
@@ -97,30 +105,40 @@
                 {{#if result.isCloudAvailable}}
                 <div class="beneos-tooltip beneos-search-installed">
                   <div class="beneos-tooltiptext beneos-token-description">
-                    <div class="flexrow beneos-tooltip-content-installed">
+                    <!-- <div class="flexrow beneos-tooltip-content-installed">
                       {{beneosGetHover "cloudAvailable" "cloudAvailable"}}
-                    </div>
+                    </div>-->
                   </div>
-                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
-                  <label class="beneos-search-installed item-right-text-content"><a data-tooltip="Install from the cloud" class="beneos-cloud-token-install">INSTALL</a></label>
+                  {{#if result.isNew}}
+                    <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_new.png">
+                    <label class="beneos-search-new item-right-text-content"><a data-tooltip="New token available from the cloud server ! Click to install it locally." class="beneos-cloud-token-install">NEW !</a></label>
+                  {{else}}
+                    <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
+                    <label class="beneos-search-installed item-right-text-content"><a data-tooltip="Click to install it locally." class="beneos-cloud-token-install">INSTALL</a></label>
+                  {{/if}}
                 </div>
                 {{else}}        
                   {{#if result.isInstalled}}
                   <div class="beneos-tooltiptext beneos-token-description">
-                    <div class="flexrow beneos-tooltip-content-left-buttons">
+                    <!-- <div class="flexrow beneos-tooltip-content-left-buttons">
                       {{beneosGetHover "installed" "installed"}}
-                    </div>
+                    </div>-->
                   </div>
-                  <img class="item-right-text-box " src="modules/beneos-module/ui/right_button_v1.png">
-                  <label class="beneos-search-installed item-right-text-content" data-tooltip="Installed and ready to be used">READY</label>
+                  {{#if result.isNew}}
+                    <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_update.png">
+                    <label class="beneos-search-new item-right-text-content"><a data-tooltip="Updated token available from the cloud server ! Click to install the update." class="beneos-cloud-token-install">UPDATE</a></label>
+                  {{else}}
+                    <img class="item-right-text-box " src="modules/beneos-module/ui/right_button_v1_ready.png">
+                    <label class="beneos-search-installed item-right-text-content" data-tooltip="Installed and ready to be used.">READY</label>
+                  {{/if}}
                 {{else}}
                   <div class="beneos-tooltiptext beneos-token-description">
-                    <div class="flexrow beneos-tooltip-content-left-buttons item-right-text-content">
+                    <!-- <div class="flexrow beneos-tooltip-content-left-buttons item-right-text-content">
                       {{beneosGetHover "installed" "not_installed"}}
-                    </div>
-                  </div>
-                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
-                  <label class="beneos-search-notinstalled item-right-text-content" data-tooltip="No access to this token">NO ACCESS</label>
+                    </div>-->
+                  </div> 
+                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_notavailable.png">
+                  <label class="item-right-text-content beneos-search-notinstalled" data-tooltip="No access to this token, check your Patreon membership">NO ACCESS</label>
                 {{/if}}
               {{/if}}
             </div>

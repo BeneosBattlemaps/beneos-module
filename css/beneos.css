@@ -479,8 +479,27 @@
   max-width: 8rem;
 }
 
+.beneos-search-installed {
+  font-weight: bold;
+}
+
+.beneos-search-new {
+  font-weight: bold;
+  color: #1b9200;
+}
+
+.token-name-new {
+  color: #c7f0a9;
+}
+
+.token-name-update {
+  color: #f4ecbf;
+}
+
 .beneos-search-notinstalled {
-  background-color: #d56b52;
+  /*background-color: #d56b52;*/
+  color: #1b9200;
+  font-size: 0.55rem;
 }
 
 .beneos-search-journal-button {

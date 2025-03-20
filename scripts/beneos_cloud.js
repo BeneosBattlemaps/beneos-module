@@ -89,6 +89,35 @@ export class BeneosCloud {
     this.availableContent = content
   }
 
+  getTokenTS(key) {
+    let content = this.availableContent.tokens
+    if (!content || content?.length == 0) return false
+    for (let i = 0; i < content.length; i++) {
+      if (content[i].key == key) {
+        return content[i].updated_ts
+      }
+    }
+    return false
+  }
+  
+  isNew(key) {
+    let content = this.availableContent.tokens
+    if (!content || content?.length == 0) return false
+    for (let i = 0; i < content.length; i++) {
+      if (content[i].key == key) {
+        // Is new if the updated_ts is greater than the current date minus 30 days
+        let t30days = 30 * 24 * 60 * 60
+        let tNow30Days = Math.floor(Date.now() / 1000) - t30days
+        if (content[i].updated_ts >= tNow30Days) {
+          return true
+        } else {
+          return false
+        }
+      }
+    }
+    return false
+  }
+
   isTokenAvailable(key) {
     let content = this.availableContent.tokens
     if (!content || content?.length == 0) return false
@@ -246,7 +275,7 @@ export class BeneosCloud {
     
     console.log("Importing token to compendium", tokenArray)  
     
-    let tNow = Date.now()
+    let tNow = Math.floor(Date.now() / 1000) // Get the current date in seconds
 
     let actorPack
     if (game.system.id == "pf2e") {
@@ -354,8 +383,7 @@ export class BeneosCloud {
             folder: finalFolder,
             tokenKey: tokenKey,
             fullId: fullId,
-            number: i+1,
-            installDate: Date.now()
+            number: i+1
           }
           // Import the actor into the world 
           //game.actors.importFromCompendium(actorPack, imported.id, { folder: folder.id });
