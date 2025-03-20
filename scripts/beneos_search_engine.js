@@ -199,7 +199,6 @@ export class BeneosDatabaseHolder {
     }
     tokenData.cloudMessage = (tokenData.isCloudAvailable) ? "Cloud available" : "Cloud not available"
     tokenData.isInstallable = tokenData.installed
-    console.log("Token", tokenData)
   }
 
   /********************************************************************************** */
@@ -242,6 +241,9 @@ export class BeneosDatabaseHolder {
         foundry.utils.mergeObject(this.movementList, this.buildList(tokenData.properties.movement))
         foundry.utils.mergeObject(this.purposeList, this.buildList(tokenData.properties.purpose))
         this.processInstalledToken(tokenData)
+        if (tokenData.installed === "notinstalled") {
+          continue; // Skip the rest of the processing if not installed (ie only cloud/installed listing)
+        }
 
         tokenData.nbVariants = tokenData.properties.nb_variants || 1
         tokenData.actorId = BeneosUtility.getActorId(key)
@@ -265,6 +267,7 @@ export class BeneosDatabaseHolder {
         }
       }
     }
+
     for (let key in this.bmapData.content) {
       let bmapData = this.bmapData.content[key]
       if (bmapData && typeof (bmapData) == "object") {
@@ -650,8 +653,9 @@ export class BeneosSearchResults extends Dialog {
     $(".token-search-data").on('dragstart', function (e) {
       let id = e.target.getAttribute("data-document-id")
       let docType = e.target.getAttribute("data-type")
-      console.log("Draggable id", id)
+      console.log("DRAG START", id, docType, e)
       if (!id || id == "" || id == "") {
+        console.log("Cloud - Draggable id", id)
         // Probable cloud data -> call for the token key
         let tokenKey = $(e.target).parents(".token-result-section").data("token-key")
         if (docType == "Actor") {
@@ -660,8 +664,9 @@ export class BeneosSearchResults extends Dialog {
         if (docType == "Item" || docType == "Spell") {
           game.beneos.cloud.importItemFromCloud(tokenKey, e)
         }
-        return
+        return false
       } else {
+        console.log("Local - Draggable id", id, docType)
         let compendium = ""
         if (docType == "Actor") {
           compendium = (game.system.id == "pf2e") ? "beneos-module.beneos_module_actors_pf2" : "beneos-module.beneos_module_actors"
@@ -674,7 +679,7 @@ export class BeneosSearchResults extends Dialog {
           docType = "Item"
         }
         let drag_data = { "type": docType, "pack": compendium, "uuid": "Compendium." + compendium + "." + id }
-        //console.log("DRAGDARA", drag_data)
+        console.log("DRAGDARA", drag_data)
         e.originalEvent.dataTransfer.setData("text/plain", JSON.stringify(drag_data));
       }
     })
@@ -1163,6 +1168,7 @@ export class BeneosSearchEngineLauncher extends FormApplication {
       let tokenData = BeneosDatabaseHolder.tokenData.content[key]
       if (tokenData) {
         BeneosDatabaseHolder.processInstalledToken(tokenData)
+        tokenData.actorId = BeneosUtility.getActorId(key)
       } else {
         console.log("No token data found for", key)
       }

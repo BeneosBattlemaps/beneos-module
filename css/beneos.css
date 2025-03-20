@@ -1008,6 +1008,10 @@ i.beneos-module {
   transition: 0.3s;
 }
 
+.beneos-ready-bg-color {
+  background-color: #ddf2bf;
+}
+
 .beneos-text-warning {
   color: darkred;
 }
