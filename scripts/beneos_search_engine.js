@@ -213,6 +213,7 @@ export class BeneosDatabaseHolder {
       }
       if (tokenData.installed === "installed") {
         let installTS = BeneosUtility.getTokenInstallTS(tokenData.key)
+        console.log("Installed token", tokenData.key, tokenTS, installTS)
         if (tokenTS > installTS) {
           tokenData.isUpdate = true
         }
