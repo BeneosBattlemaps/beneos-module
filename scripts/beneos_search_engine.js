@@ -1,5 +1,6 @@
 import { BeneosUtility } from "./beneos_utility.js"
 import { BeneosCompendiumManager, BeneosCompendiumReset } from "./beneos_compendium.js";
+import { BeneosCloudLogin } from "./beneos_cloud.js"
 
 /********************************************************************************** */
 //const tokenDBURL = "https://www.beneos-database.com/data/tokens/beneos_tokens_database.json"
@@ -619,6 +620,7 @@ export class BeneosDatabaseHolder {
       spellType: this.toTable(this.spellType),
       spellClass: this.toTable(this.spellClasses),
 
+      isCloudLoggedIn: game.beneos.cloud.isLoggedIn(),
     }
   }
 }
@@ -986,6 +988,7 @@ export class BeneosSearchEngine extends Dialog {
 
     let html = await renderTemplate(template, {
       results: resTab,
+      isCloudLoggedIn: game.beneos.cloud.isLoggedIn(),
       isMoulinette: false // Up to now
     })
     if (!this.resultDialog) {
@@ -1161,9 +1164,9 @@ export class BeneosSearchEngine extends Dialog {
     $(".beneos-selector").change(event => {
       this.updateSelector(event)
 })
-    $("#beneos-rebuild-compendium-button-id").click(event => {
-      let compReset = new BeneosCompendiumReset()
-      compReset.render(true)
+    $("#beneos-cloud-login").click(event => {
+      let login = new BeneosCloudLogin()
+      login.render(true)
     })
 
   }

@@ -220,15 +220,12 @@
     <label id="beneos-search-overflow">Only the first 100 results are shown. Please use filters to narrow your search.</label>
   </div>
 
-  <div class="beneos-tooltip-icon-group-compendium beneos-tooltip beneos-rebuild-compendium-button">
-    <div class="beneos-tooltiptext-button">
-      <div class="flexrow beneos-tooltip-content-button-import"  >
-        <span class="beneos-description-text">Searches <strong>beneos_assets</strong> and import newly added content.</span>
-      </div>
-    </div>
-    <button type="submit" class="" id="beneos-rebuild-compendium-button-id" data-tooltip="Click to Scan">
-      Import New Content
-    </button>
+  <div class="beneos-rebuild-compendium-button">
+    {{#if isCloudLoggedIn}}
+      <label class="beneos-cloud-connected">Connected to the Beneos Cloud</label>
+    {{else}}
+      <button type="submit" class="" id="beneos-cloud-login" data-tooltip="Click here to connect to the Beneos Cloud">Connect to Beneos Cloud</button>
+    {{/if}}
   </div>
 
 

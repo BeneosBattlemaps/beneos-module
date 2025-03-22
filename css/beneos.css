@@ -258,6 +258,13 @@
 
 .beneos-rebuild-compendium-button {
   margin-top: 12px;
+  align-items: center;
+  align-content: center;
+  text-align: center;
+}
+
+.beneos-cloud-connected {
+  color: #4e911f;
 }
 
 .beneos-tooltip-icon-group {

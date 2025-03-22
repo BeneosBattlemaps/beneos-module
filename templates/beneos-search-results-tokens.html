@@ -138,7 +138,11 @@
                     </div>-->
                   </div> 
                   <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_notavailable.png">
-                  <label class="item-right-text-content beneos-search-notinstalled" data-tooltip="No access to this token, check your Patreon membership">NO ACCESS</label>
+                  {{#if @root.isCloudLoggedIn}}
+                    <label class="item-right-text-content beneos-search-notinstalled" data-tooltip="No access to this token, check your Patreon membership">NO ACCESS</label>
+                  {{else}}
+                    <label class="item-right-text-content beneos-search-notinstalled" data-tooltip="You are not connected to Beneos cloud, please check in the settings or in the search window on the left.">NOT LOGGED</label>
+                  {{/if}}
                 {{/if}}
               {{/if}}
             </div>

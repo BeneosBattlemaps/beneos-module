@@ -81,6 +81,10 @@ export class BeneosCloud {
       })
   }
 
+  isLoggedIn() {
+    return this.cloudConnected
+  }
+  
   setLoginStatus(status) {
     this.cloudConnected = status
   }
