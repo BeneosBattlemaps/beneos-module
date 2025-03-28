@@ -168,12 +168,12 @@ export class BeneosUtility {
 
     game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-clean-compendium", {
       name: "Empty compendium ",
-      label: "Reset BeneosModule Compendiums",
-      hint: "Cleanup BeneosModule compendium and tokens configs",
+      label: "Reset Beneos Module Compendiums",
+      hint: "Cleanup Beneos Module compendium and tokens configs",
       scope: 'world',
       config: true,
       type: BeneosCompendiumReset,
-      restricted: true
+      restricted: true,
     })
 
     game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-search-engine", {

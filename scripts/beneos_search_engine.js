@@ -978,17 +978,41 @@ export class BeneosSearchEngine extends Dialog {
     if (this.dbData.searchMode == "bmap") {
       template = 'modules/beneos-module/templates/beneos-search-results-battlemaps.html'
     }
-    // Sort alpha
+    
+    // Always display New/Updated in top of the resulting search list, cf #165
+    // First push the results with the isUpdate property 
+    for (let key in results) {
+      if (results[key].isUpdate) {
+        resTab.push(results[key])
+        count++;
+      }
+    }
+    // Then push the results with the isNew property
     let count = 0
     for (let key in results) {
-      resTab.push(results[key])
+      if (results[key].isNew) {
+        resTab.push(results[key])
+        count++;
+      }
+    }
+    // Then push remaining ones
+    let resTab2 = []
+    for (let key in results) {
+      if (resTab.find(it => it.key == key) != undefined) {
+        continue
+      }
+      resTab2.push(results[key])
       count++;
       if (count > 100) {
         break
       }
     }
     // Sort the final results
-    resTab.sort(function (a, b) { return a.name.localeCompare(b.name) })
+    resTab2.sort(function (a, b) { return a.name.localeCompare(b.name) })
+    // then merge resTab and resTab2
+    for (let key in resTab2) {
+      resTab.push(resTab2[key])
+    }
 
     let html = await renderTemplate(template, {
       results: resTab,

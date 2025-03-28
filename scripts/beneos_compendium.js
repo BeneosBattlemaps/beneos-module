@@ -12,10 +12,9 @@ export class BeneosCompendiumReset extends FormApplication {
       await pack.getIndex()
       await pack.configure({ locked: false })
 
-      pack.documentClass.deleteDocuments([], { deleteAll: true, pack: comp });
+      await pack.documentClass.deleteDocuments([], { deleteAll: true, pack: comp });
     }
     $(".beneos-meter-delete").attr("value", 100)
-    //console.log("PACK", pack)
   }
 
   /********************************************************************************** */
@@ -67,7 +66,15 @@ export class BeneosCompendiumReset extends FormApplication {
       await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', JSON.stringify({})) 
       await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', JSON.stringify({}))
       await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', JSON.stringify({}))
-  
+      
+
+      // Set a reload Timeout of 200 ms
+      setTimeout(() => {
+         window.location.reload()
+      }
+      , 200);
+      
+
       return; 
       
       chatData.content = `<div><strong>BeneosModule</strong> : Importing actors</div>` +
