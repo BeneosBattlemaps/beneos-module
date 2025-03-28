@@ -203,10 +203,10 @@ export class BeneosDatabaseHolder {
     }
     tokenData.cloudMessage = (tokenData.isCloudAvailable) ? "Cloud available" : "Cloud not available"
     tokenData.isInstallable = tokenData.installed
-    
+
     // Prepare update/new status
     let tokenTS = game.beneos.cloud.getTokenTS(tokenData.key)
-    if (tokenTS ) {
+    if (tokenTS) {
       let t30days = 30 * 24 * 60 * 60
       let tNow30Days = Math.floor(Date.now() / 1000) - t30days
       if (tokenData.installed !== "installed" && tokenTS >= tNow30Days) {
@@ -655,6 +655,31 @@ export class BeneosSearchResults extends Dialog {
   /********************************************************************************** */
   activateListeners() {
 
+    $(".check-token-batch-install").change(event => {
+      // Get token key 
+      let tokenKey = $(event.target).parents(".token-result-section").data("token-key")
+      // If checkbox is checked, set all the other checkboxes to checked
+      let checkBox = $(event.currentTarget)
+      let checkBoxValue = checkBox.prop("checked")
+      if (checkBoxValue) {
+        game.beneosTokens.searchEngine.batchInstall[tokenKey] = { type: "token", key: tokenKey}
+        console.log("Batch install", game.beneosTokens.searchEngine.batchInstall)
+      } else {
+        game.beneosTokens.searchEngine.batchInstall[tokenKey] = undefined
+        console.log("Batch uninstall", game.beneosTokens.searchEngine.batchInstall)
+      }
+      // Show the Batch Install button if at least one checkbox is checked
+      let anyChecked = false
+      $(".check-token-batch-install").each((index, element) => {
+        if ($(element).prop("checked")) {
+          anyChecked = true
+        }
+      }
+      )
+      $("#beneos-cloud-batch-install").toggle(anyChecked)
+      //console.log("Batch install", game.beneos.cloud.batchInstall)
+    })
+
     $(".beneos-cloud-item-install").click(event => {
       game.beneos.cloud.scrollTop = $(".bsr_result_box").scrollTop()
       // Get the data-key from the previous div and get it from the cloud 
@@ -862,6 +887,7 @@ export class BeneosSearchEngine extends Dialog {
     this.dbData = data
     this.dbData.searchMode = "token"
     this.filterStack = []
+    this.batchInstall = {}
 
     game.beneosTokens.searchEngine = this
   }
@@ -978,7 +1004,7 @@ export class BeneosSearchEngine extends Dialog {
     if (this.dbData.searchMode == "bmap") {
       template = 'modules/beneos-module/templates/beneos-search-results-battlemaps.html'
     }
-    
+
     // Always display New/Updated in top of the resulting search list, cf #165
     // First push the results with the isUpdate property 
     for (let key in results) {
@@ -1090,7 +1116,7 @@ export class BeneosSearchEngine extends Dialog {
 
     this.displayResults(searchResults)
 
-    if ( game.beneos.cloud.scrollTop) {
+    if (game.beneos.cloud.scrollTop) {
       setTimeout(() => {
         $(".bsr_result_box").scrollTop(game.beneos.cloud.scrollTop)
         game.beneos.cloud.scrollTop = undefined
@@ -1198,12 +1224,19 @@ export class BeneosSearchEngine extends Dialog {
 
     $(".beneos-selector").change(event => {
       this.updateSelector(event)
-})
+    })
     $("#beneos-cloud-login").click(event => {
       let login = new BeneosCloudLogin()
       login.render(true)
     })
-
+    $("#beneos-cloud-batch-install").click(event => {
+      console.log("Batch install", game.beneosTokens.searchEngine.batchInstall)
+      game.beneos.cloud.batchInstall(foundry.utils.duplicate(game.beneosTokens.searchEngine.batchInstall))
+      game.beneosTokens.searchEngine.batchInstall = {}
+      // Hide the Batch Install button
+      $("#beneos-cloud-batch-install").hide()
+      $(".check-token-batch-install").prop("checked", false)
+    })
   }
 }
 
@@ -1211,16 +1244,16 @@ export class BeneosSearchEngine extends Dialog {
 export class BeneosSearchEngineLauncher extends FormApplication {
 
   static updateDisplay() {
-    if ( !game.beneos.searchEngine) {
+    if (!game.beneos.searchEngine) {
       return
     }
     game.beneos.searchEngine.updateContent()
-    
+
     setTimeout(game.beneos.searchEngine.processSelectorSearch(), 100)
   }
 
   static refresh(typeAsset, key) {
-    if ( !game.beneos.searchEngine) {
+    if (!game.beneos.searchEngine) {
       return
     }
     if (typeAsset == "token") {
@@ -1249,12 +1282,12 @@ export class BeneosSearchEngineLauncher extends FormApplication {
     game.beneos.searchEngine = searchDialog
     searchDialog.render(true)
     if (installed) {
-      console.log("Refresh with installed", installed)  
+      console.log("Refresh with installed", installed)
       setTimeout(() => {
         $("#installation-selector").val(installed).change()
       }, 200)
     }
     setTimeout(searchDialog.processSelectorSearch(), 500)
   }
-  
+
 }

@@ -411,7 +411,18 @@ export class BeneosCloud {
       BeneosSearchEngineLauncher.refresh("token", tokenKey)
     }
     BeneosSearchEngineLauncher.updateDisplay()
+  }
 
+  async batchInstall(assetList) {
+    // Loop thru the assetList and install them
+    for (let key in assetList) {
+      let asset = assetList[key]
+      if (asset.type == "token") {
+        this.importTokenFromCloud(asset.key)
+      } else if (asset.type == "item") {
+        this.importItemFromCloud(asset.key)
+      }
+    }
   }
 
   importTokenFromCloud(tokenKey, event = undefined) {

@@ -256,6 +256,13 @@
   left: -2rem;
 }
 
+.beneos-search-installed input[type=checkbox],
+.beneos-search-new input[type=checkbox] {
+  padding-top: 2px;
+  width: 12px;
+  height: 12px;
+}
+
 .beneos-rebuild-compendium-button {
   margin-top: 12px;
   align-items: center;

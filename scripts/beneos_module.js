@@ -229,19 +229,11 @@ Hooks.on("renderActorDirectory", (app, html, data) => {
   if (game.user.can('ACTOR_CREATE')) {
     const button = document.createElement('button');
     button.style.width = '90%';
-    button.innerHTML = 'Install Beneos Content'
+    button.innerHTML = 'Search/Install Beneos Content'
     button.addEventListener('click', () => {
       new BeneosSearchEngineLauncher().render()
     })
     html.find('.header-actions').after(button)
-
-    const buttonSearch = document.createElement('button');
-    buttonSearch.style.width = '90%';
-    buttonSearch.innerHTML = 'Search Installed Beneos Content'
-    buttonSearch.addEventListener('click', () => {
-      new BeneosSearchEngineLauncher().render("installed")
-    })
-    html.find('.header-actions').after(buttonSearch)
   }
 })
 
