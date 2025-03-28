@@ -656,17 +656,21 @@ export class BeneosSearchResults extends Dialog {
   activateListeners() {
 
     $(".beneos-cloud-item-install").click(event => {
+      game.beneos.cloud.scrollTop = $(".bsr_result_box").scrollTop()
       // Get the data-key from the previous div and get it from the cloud 
       let tokenKey = $(event.target).parents(".item-result-section").data("token-key")
       game.beneos.cloud.importItemFromCloud(tokenKey)
     })
     $(".beneos-cloud-spell-install").click(event => {
+      game.beneos.cloud.scrollTop = $(".bsr_result_box").scrollTop()
       // Get the data-key from the previous div and get it from the cloud 
       let tokenKey = $(event.target).parents(".spell-result-section").data("token-key")
       game.beneos.cloud.importSpellsFromCloud(tokenKey)
     })
 
     $(".beneos-cloud-token-install").click(event => {
+      // Keep track of last scrolll position
+      game.beneos.cloud.scrollTop = $(".bsr_result_box").scrollTop()
       // Get the data-key from the previous div and get it from the cloud 
       let tokenKey = $(event.target).parents(".token-result-section").data("token-key")
       game.beneos.cloud.importTokenFromCloud(tokenKey)
@@ -1062,6 +1066,13 @@ export class BeneosSearchEngine extends Dialog {
 
     this.displayResults(searchResults)
 
+    if ( game.beneos.cloud.scrollTop) {
+      setTimeout(() => {
+        $(".bsr_result_box").scrollTop(game.beneos.cloud.scrollTop)
+        game.beneos.cloud.scrollTop = undefined
+      }, 200)
+    }
+
     // Refresh the dialog selectors
     setTimeout(() => { game.beneosTokens.searchEngine.updatePropertiesDropDown(searchResults) }, 400)
   }
@@ -1180,6 +1191,7 @@ export class BeneosSearchEngineLauncher extends FormApplication {
       return
     }
     game.beneos.searchEngine.updateContent()
+    
     setTimeout(game.beneos.searchEngine.processSelectorSearch(), 100)
   }
 
