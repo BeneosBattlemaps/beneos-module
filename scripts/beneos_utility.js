@@ -215,6 +215,14 @@ export class BeneosUtility {
       type: Boolean
     })
 
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-database-local-storage', {
+      name: 'Internal storage of the Beneos database',  
+      type: Object,
+      scope: 'world',
+      default: {},
+      config: false
+    })
+
     game.settings.register(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', {
       name: 'Global JSON config for tokens',
       type: String,
@@ -311,6 +319,19 @@ export class BeneosUtility {
       );*/
   }
 
+  /********************************************************************************** */
+  static getLocalStorage() {
+    let localStorage = game.settings.get(BeneosUtility.moduleID(), 'beneos-database-local-storage') || {}
+    return localStorage
+  }
+
+  /********************************************************************************** */
+  static saveLocalStorage(data) {
+    let localStorage = game.settings.get(BeneosUtility.moduleID(), 'beneos-database-local-storage') || {}
+    localStorage = foundry.utils.mergeObject(localStorage, data)
+    game.settings.set(BeneosUtility.moduleID(), 'beneos-database-local-storage', localStorage)
+  }
+      
   /********************************************************************************** */
   static getTableTopConfig() {
     return game.settings.get(BeneosUtility.moduleID(), 'beneos-table-top-config') || TableTopModeSettings.getDefaultTableTopSettings()
