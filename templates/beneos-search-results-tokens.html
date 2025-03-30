@@ -39,7 +39,18 @@
               {{#if result.isInstallable}} draggable="true" {{/if}}>
               <img class="beneos-icon-background" src="modules/beneos-module/ui/result_item_icon_bg.webp" />
               <img class="beneos-icon-child token-search-data" data-type="Actor" data-document-id="{{result.actorId}}"
-                {{#if result.isInstallable}} draggable="true" {{/if}} src="{{result.picture}}" />
+                {{#if result.isInstallable}} draggable="true" {{/if}} 
+                
+                {{#if result.isInstalled}}
+                  src="{{result.picture}}"
+                {{else}}
+                  {{#if @root.isOffline}} 
+                    src="modules/beneos-module/icons/db_offline.webp" 
+                  {{else}}  
+                    src="{{result.picture}}"
+                  {{/if}} 
+                {{/if}}
+                />
             </div>
           </div>
 
@@ -136,8 +147,8 @@
                   </label>
                   {{/if}}
                 </div>
-                {{else}}
-                {{#if result.isInstalled}}
+                {{else}}{{#if result.isInstalled}}
+                
                 <div class="beneos-tooltiptext beneos-token-description">
                   <!-- <div class="flexrow beneos-tooltip-content-left-buttons">
                       {{beneosGetHover "installed" "installed"}}
@@ -165,8 +176,13 @@
                   data-tooltip="No access to this token, check your Patreon membership">NO ACCESS</label>
                 {{else}}
                 <label class="item-right-text-content beneos-search-notinstalled"
-                  data-tooltip="You are not connected to Beneos cloud, please check in the settings or in the search window on the left.">NOT
-                  LOGGED</label>
+                  data-tooltip="You are not connected to Beneos cloud, please check in the settings or in the search window on the left.">
+                  {{#if @root.isOffline}}
+                    OFFLINE
+                  {{else }}
+                    NOT LOGGED
+                  {{/if}}
+                </label>
                 {{/if}}
                 {{/if}}
                 {{/if}}

@@ -806,6 +806,16 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
+  static getLocalAvatarPicture(key) {
+    for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
+      if (token.tokenKey == key) {
+        return token.avatar
+      }
+    }
+    return undefined
+  }
+
+  /********************************************************************************** */
   static isTokenLoaded(key) {
     for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
       if (token.tokenKey == key) {

@@ -100,6 +100,8 @@ export class BeneosDatabaseHolder {
   /********************************************************************************** */
   static async loadDatabaseFiles() {
     let localStorage = BeneosUtility.getLocalStorage()
+    let isOffline = false
+
     try {
       let tokenData = await foundry.utils.fetchJsonWithTimeout(tokenDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
       this.tokenData = tokenData
@@ -107,6 +109,7 @@ export class BeneosDatabaseHolder {
     } catch (err) {
       if (localStorage.tokenData) {
         this.tokenData = foundry.utils.duplicate(localStorage.tokenData)
+        this.isOffline = true
         ui.notifications.info("Unable to load Beneos Token Database - Using local copy (may be outdated)")        
       } else {        
         ui.notifications.error("Unable to load Beneos Token Database - File error " + err.message + " " + tokenDBURL)
@@ -119,6 +122,7 @@ export class BeneosDatabaseHolder {
     } catch {
       if (localStorage.bmapData) {
         this.bmapData = foundry.utils.duplicate(localStorage.bmapData)
+        this.isOffline = true
         ui.notifications.info("Unable to load Beneos Battlemap Database - Using local copy (may be outdated)")
       } else {
         ui.notifications.error("Unable to load Beneos Battlemap Database - File error")
@@ -131,6 +135,7 @@ export class BeneosDatabaseHolder {
     } catch {
       if (localStorage.itemData) {
         this.itemData = foundry.utils.duplicate(localStorage.itemData)
+        this.isOffline = true
         ui.notifications.info("Unable to load Beneos Item Database - Using local copy (may be outdated)")
       } else {        
         ui.notifications.error("Unable to load Beneos Item Database - File error")
@@ -143,6 +148,7 @@ export class BeneosDatabaseHolder {
     } catch {
       if (localStorage.spellData) {
         this.spellData = foundry.utils.duplicate(localStorage.spellData)
+        this.isOffline = true
         ui.notifications.info("Unable to load Beneos Spell Database - Using local copy (may be outdated)")
       } else {        
         ui.notifications.error("Unable to load Beneos Spell Database - File error")
@@ -155,6 +161,7 @@ export class BeneosDatabaseHolder {
     } catch {
       if (localStorage.commonData) {
         this.commonData = foundry.utils.duplicate(localStorage.commonData)
+        this.isOffline = true
         ui.notifications.info("Unable to load Beneos Common Database - Using local copy (may be outdated)")
       } else {
         ui.notifications.error("Unable to load Beneos Common Database - File error")
@@ -164,6 +171,11 @@ export class BeneosDatabaseHolder {
     BeneosUtility.saveLocalStorage(localStorage)
 
     this.buildSearchData()
+  }
+
+  /********************************************************************************** */
+  static getIsOffline() {
+    return this.isOffline
   }
 
   /********************************************************************************** */
@@ -236,6 +248,10 @@ export class BeneosDatabaseHolder {
     }
     tokenData.cloudMessage = (tokenData.isCloudAvailable) ? "Cloud available" : "Cloud not available"
     tokenData.isInstallable = tokenData.installed
+    
+    if (tokenData.isInstalled) {
+      tokenData.picture = BeneosUtility.getLocalAvatarPicture(tokenData.key)
+    }
 
     // Prepare update/new status
     let tokenTS = game.beneos.cloud.getTokenTS(tokenData.key)
@@ -1075,6 +1091,7 @@ export class BeneosSearchEngine extends Dialog {
 
     let html = await renderTemplate(template, {
       results: resTab,
+      isOffline: BeneosDatabaseHolder.getIsOffline(),
       isCloudLoggedIn: game.beneos.cloud.isLoggedIn(),
       isMoulinette: false // Up to now
     })
