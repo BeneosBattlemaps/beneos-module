@@ -1050,11 +1050,20 @@ export class BeneosSearchEngine extends Dialog {
     } else {
       this.resultDialog.data.content = html
     }
+    // Keep track for batch install
+    this.latestResults = results
 
     if (searchSize > 100) {
       $('#beneos-search-overflow').html("Only the first 100 results are shown. Please use filters to narrow your search.")
     } else {
       $('#beneos-search-overflow').html("")
+    }
+
+    // Show the batch install button if at least one search filter is set
+    if ( this.filterStack.length > 0 || this.searchText) {
+      $(".install-batch-button").show()
+    } else {
+      $(".install-batch-button").hide()
     }
 
     this.resultDialog.render(true)
@@ -1066,6 +1075,7 @@ export class BeneosSearchEngine extends Dialog {
     if (!value || value.length === 0) {
       clearInterval(this.checkInterval)
       this.checkInterval = undefined
+      this.searchText = undefined
       let results = BeneosDatabaseHolder.getAll(this.dbData.searchMode)
       this.displayResults(results)
     }
@@ -1073,13 +1083,14 @@ export class BeneosSearchEngine extends Dialog {
 
   /********************************************************************************** */
   processTextSearch(event) {
-    //console.log("Processing text search", event)
+    console.log("Processing text search", event)
     let code = event.keyCode ? event.keyCode : event.which
     if (code == 13) {  // Enter keycode
       return
     }
     if (event.currentTarget.value && event.currentTarget.value.length >= 3) {
       let results = BeneosDatabaseHolder.textSearch(event.currentTarget.value, this.dbData.searchMode)
+      this.searchText = event.currentTarget.value
       this.displayResults(results, event)
       if (!this.checkInterval) {
         let myObject = this
@@ -1161,6 +1172,35 @@ export class BeneosSearchEngine extends Dialog {
   }
 
   /********************************************************************************** */
+  processBatchInstall(installMode) {
+    let batchInstall = {}
+    if (installMode == "install-new") {
+      for (let key in  this.latestResults) {
+        let r = this.latestResults[key]
+        if (r.isNew) {
+          batchInstall[r.key] = { type: this.dbData.searchMode, key: r.key }
+        }
+      }
+    }
+    if (installMode == "install-updated") {
+      for (let key in  this.latestResults) {
+        let r = this.latestResults[key]
+        if (r.isUpdate) {
+          batchInstall[r.key] = { type: this.dbData.searchMode, key: r.key }
+        }
+      }
+    }
+    if (installMode == "install-all") {
+      for (let key in  this.latestResults) {
+        let r = this.latestResults[key]
+        batchInstall[r.key] = { type: this.dbData.searchMode, key: r.key }
+      }
+    }
+    console.log("Batch install", installMode, batchInstall)
+    game.beneos.cloud.batchInstall(batchInstall)
+  }
+
+  /********************************************************************************** */
   activateListeners() {
 
     let myObject = this
@@ -1229,6 +1269,7 @@ export class BeneosSearchEngine extends Dialog {
       let login = new BeneosCloudLogin()
       login.render(true)
     })
+
     $("#beneos-cloud-batch-install").click(event => {
       console.log("Batch install", game.beneosTokens.searchEngine.batchInstall)
       game.beneos.cloud.batchInstall(foundry.utils.duplicate(game.beneosTokens.searchEngine.batchInstall))
@@ -1236,6 +1277,12 @@ export class BeneosSearchEngine extends Dialog {
       // Hide the Batch Install button
       $("#beneos-cloud-batch-install").hide()
       $(".check-token-batch-install").prop("checked", false)
+    })
+
+    $(".install-batch-button").click(event => {
+      // Get the install-mode 
+      let installMode = $(event.currentTarget).data("install-mode")
+      this.processBatchInstall(installMode)
     })
   }
 }
