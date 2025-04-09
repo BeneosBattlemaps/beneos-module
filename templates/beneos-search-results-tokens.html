@@ -16,11 +16,10 @@
         <div class="flexrow">
 
           <div class="beneos-tooltip-icon-group beneos-tooltip entity-link content-link token-search-data"
-            data-type="Actor" data-document-id="{{result.actorId}}" {{#if result.isInstallable}} draggable="true"
-            {{/if}}>
+            data-type="Actor" data-document-id="{{result.actorId}}" data-drag-mode="{{result.dragMode}}" {{#if result.isInstallable}} draggable="true" {{/if}}>
             <div class="beneos-tooltiptext beneos-token-description">
               <div class="flexcol beneos-tooltip-content token-search-data" data-type="Actor"
-                data-document-id="{{result.actorId}}" {{#if result.isInstallable}} draggable="true" {{/if}}>
+                data-document-id="{{result.actorId}}" data-drag-mode="{{result.dragMode}}" {{#if result.isInstallable}} draggable="true" {{/if}}>
                 <span class="beneos-description-title">{{result.name}}</span>
                 <span class="beneos-description-text">{{result.description}}</span>
                 {{#if (gt result.nbVariants 0)}}
@@ -28,7 +27,7 @@
                 <div class="beneos-tooltip-variant">
                   {{#each result.variantList as |variant idxVariant|}}
                   <img class="{{result.variantClass}} token-search-data" data-type="Actor"
-                    data-document-id="{{variant.actorId}}" {{#if result.isInstallable}} draggable="true" {{/if}}
+                    data-document-id="{{variant.actorId}}" data-drag-mode="{{result.dragMode}}" {{#if result.isInstallable}} draggable="true" {{/if}}
                     src="{{variant.thumbnail}}">
                   {{/each}}
                 </div>
@@ -36,27 +35,18 @@
               </div>
             </div>
             <div class="beneos-icon-group token-search-data" data-type="Actor" data-document-id="{{result.actorId}}"
-              {{#if result.isInstallable}} draggable="true" {{/if}}>
+            data-drag-mode="{{result.dragMode}}" {{#if result.isInstallable}} draggable="true" {{/if}}>
               <img class="beneos-icon-background" src="modules/beneos-module/ui/result_item_icon_bg.webp" />
               <img class="beneos-icon-child token-search-data" data-type="Actor" data-document-id="{{result.actorId}}"
-                {{#if result.isInstallable}} draggable="true" {{/if}} 
-                
-                {{#if result.isInstalled}}
-                  src="{{result.picture}}"
-                {{else}}
-                  {{#if @root.isOffline}} 
-                    src="modules/beneos-module/icons/db_offline.webp" 
-                  {{else}}  
-                    src="{{result.picture}}"
-                  {{/if}} 
-                {{/if}}
-                />
+              data-drag-mode="{{result.dragMode}}" {{#if result.isInstallable}} draggable="true" {{/if}} {{#if result.isInstalled}}
+                src="{{result.picture}}" {{else}} {{#if @root.isOffline}}
+                src="modules/beneos-module/icons/db_offline.webp" {{else}} src="{{result.picture}}" {{/if}} {{/if}} />
             </div>
           </div>
 
           {{#if result.isInstallable}}
           <div class="beneos-search-middle flexcol token-search-data" data-type="Actor"
-            data-document-id="{{result.actorId}}" draggable="true">
+            data-document-id="{{result.actorId}}" data-drag-mode="{{result.dragMode}}" draggable="true">
             {{else}}
             <div class="beneos-search-middle flexcol">
               {{/if}}
@@ -125,12 +115,10 @@
 
             <div class="flexrow flex-content-left">
               <div class="beneos-tooltip beneos-search-installed ">
+                
                 {{#if result.isCloudAvailable}}
                 <div class="beneos-tooltip beneos-search-installed">
                   <div class="beneos-tooltiptext beneos-token-description">
-                    <!-- <div class="flexrow beneos-tooltip-content-installed">
-                      {{beneosGetHover "cloudAvailable" "cloudAvailable"}}
-                    </div>-->
                   </div>
                   {{#if result.isNew}}
                   <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_new.png">
@@ -142,50 +130,47 @@
                   {{else}}
                   <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
                   <label class="beneos-search-installed item-right-text-content">
-                    <input type="checkbox" class="check-token-batch-install"> 
-                    <a data-tooltip="Click to install it locally." class="beneos-cloud-token-install">INSTALL</a>                       
+                    <input type="checkbox" class="check-token-batch-install">
+                    <a data-tooltip="Click to install it locally." class="beneos-cloud-token-install">INSTALL</a>
                   </label>
                   {{/if}}
                 </div>
-                {{else}}{{#if result.isInstalled}}
                 
-                <div class="beneos-tooltiptext beneos-token-description">
-                  <!-- <div class="flexrow beneos-tooltip-content-left-buttons">
-                      {{beneosGetHover "installed" "installed"}}
-                    </div>-->
-                </div>
-                {{#if result.isUpdate}}
-                <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_update.png">
-                <label class="beneos-search-new item-right-text-content"><a
-                    data-tooltip="Updated token available from the cloud server ! Click to install the update."
-                    class="beneos-cloud-token-install">UPDATE</a></label>
                 {{else}}
-                <img class="item-right-text-box " src="modules/beneos-module/ui/right_button_v1_ready.png">
-                <label class="beneos-search-installed item-right-text-content"
-                  data-tooltip="Installed and ready to be used.">READY</label>
-                {{/if}}
-                {{else}}
-                <div class="beneos-tooltiptext beneos-token-description">
-                  <!-- <div class="flexrow beneos-tooltip-content-left-buttons item-right-text-content">
-                      {{beneosGetHover "installed" "not_installed"}}
-                    </div>-->
-                </div>
-                <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_notavailable.png">
-                {{#if @root.isCloudLoggedIn}}
-                <label class="item-right-text-content beneos-search-notinstalled"
-                  data-tooltip="No access to this token, check your Patreon membership">NO ACCESS</label>
-                {{else}}
-                <label class="item-right-text-content beneos-search-notinstalled"
-                  data-tooltip="You are not connected to Beneos cloud, please check in the settings or in the search window on the left.">
-                  {{#if @root.isOffline}}
-                    OFFLINE
-                  {{else }}
-                    NOT LOGGED
+                
+                {{#if result.isInstalled}}
+                  <div class="beneos-tooltiptext beneos-token-description">
+                  </div>
+                  {{#if result.isUpdate}}
+                    <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_update.png">
+                    <label class="beneos-search-new item-right-text-content"><a
+                      data-tooltip="Updated token available from the cloud server ! Click to install the update."
+                      class="beneos-cloud-token-install">UPDATE</a></label>
+                  {{else}}
+                    <img class="item-right-text-box " src="modules/beneos-module/ui/right_button_v1_ready.png">
+                    <label class="beneos-search-installed item-right-text-content"
+                      data-tooltip="Installed and ready to be used.">READY</label>
                   {{/if}}
-                </label>
+                {{else}}
+                  <div class="beneos-tooltiptext beneos-token-description">
+                  </div>
+                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_notavailable.png">
+                  {{#if @root.isCloudLoggedIn}}
+                    <label class="item-right-text-content beneos-search-notinstalled"
+                      data-tooltip="No access to this token, check your Patreon membership" >NO ACCESS</label>
+                  {{else}}
+                    <label class="item-right-text-content beneos-search-notinstalled"
+                      data-tooltip="You are not connected to Beneos cloud, please check in the settings or in the search window on the left.">
+                      {{#if @root.isOffline}}
+                      OFFLINE
+                      {{else }}
+                      NOT LOGGED
+                      {{/if}}
+                    </label>
+                  {{/if}}
                 {{/if}}
-                {{/if}}
-                {{/if}}
+              {{/if}}
+              
               </div>
             </div>
 

@@ -100,7 +100,7 @@ export class BeneosDatabaseHolder {
   /********************************************************************************** */
   static async loadDatabaseFiles() {
     let localStorage = BeneosUtility.getLocalStorage()
-    let isOffline = false
+    this.isOffline = false
 
     try {
       let tokenData = await foundry.utils.fetchJsonWithTimeout(tokenDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
@@ -110,8 +110,8 @@ export class BeneosDatabaseHolder {
       if (localStorage.tokenData) {
         this.tokenData = foundry.utils.duplicate(localStorage.tokenData)
         this.isOffline = true
-        ui.notifications.info("Unable to load Beneos Token Database - Using local copy (may be outdated)")        
-      } else {        
+        ui.notifications.info("Unable to load Beneos Token Database - Using local copy (may be outdated)")
+      } else {
         ui.notifications.error("Unable to load Beneos Token Database - File error " + err.message + " " + tokenDBURL)
       }
     }
@@ -131,13 +131,13 @@ export class BeneosDatabaseHolder {
     try {
       let itemData = await foundry.utils.fetchJsonWithTimeout(itemDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
       this.itemData = itemData
-      localStorage.itemData = foundry.utils.duplicate(itemData)      
+      localStorage.itemData = foundry.utils.duplicate(itemData)
     } catch {
       if (localStorage.itemData) {
         this.itemData = foundry.utils.duplicate(localStorage.itemData)
         this.isOffline = true
         ui.notifications.info("Unable to load Beneos Item Database - Using local copy (may be outdated)")
-      } else {        
+      } else {
         ui.notifications.error("Unable to load Beneos Item Database - File error")
       }
     }
@@ -150,7 +150,7 @@ export class BeneosDatabaseHolder {
         this.spellData = foundry.utils.duplicate(localStorage.spellData)
         this.isOffline = true
         ui.notifications.info("Unable to load Beneos Spell Database - Using local copy (may be outdated)")
-      } else {        
+      } else {
         ui.notifications.error("Unable to load Beneos Spell Database - File error")
       }
     }
@@ -247,8 +247,15 @@ export class BeneosDatabaseHolder {
       tokenData.installed = (tokenData.isCloudAvailable) ? "cloudavailable" : tokenData.installed
     }
     tokenData.cloudMessage = (tokenData.isCloudAvailable) ? "Cloud available" : "Cloud not available"
-    tokenData.isInstallable = tokenData.installed
-    
+    tokenData.isInstallable = (tokenData.isInstalled || tokenData.isCloudAvailable)
+
+    tokenData.dragMode = "none"
+    if (tokenData.isCloudAvailable) {
+      tokenData.dragMode = "cloud"
+    } else if (tokenData.isInstalled) {
+      tokenData.dragMode = "local"
+    }
+
     if (tokenData.isInstalled) {
       tokenData.picture = BeneosUtility.getLocalAvatarPicture(tokenData.key)
     }
@@ -711,7 +718,7 @@ export class BeneosSearchResults extends Dialog {
       let checkBox = $(event.currentTarget)
       let checkBoxValue = checkBox.prop("checked")
       if (checkBoxValue) {
-        game.beneosTokens.searchEngine.batchInstall[tokenKey] = { type: "token", key: tokenKey}
+        game.beneosTokens.searchEngine.batchInstall[tokenKey] = { type: "token", key: tokenKey }
         console.log("Batch install", game.beneosTokens.searchEngine.batchInstall)
       } else {
         game.beneosTokens.searchEngine.batchInstall[tokenKey] = undefined
@@ -751,6 +758,14 @@ export class BeneosSearchResults extends Dialog {
     })
 
     $(".token-search-data").on('dragstart', function (e) {
+      if (BeneosDatabaseHolder.getIsOffline()) {
+        return false
+      }
+      let dragMode = $(e.target).data("drag-mode")
+      if (dragMode == "none") {
+        console.log("No drag mode", dragMode)
+        return false
+      }
       let id = e.target.getAttribute("data-document-id")
       let docType = e.target.getAttribute("data-type")
       console.log("DRAG START", id, docType, e)
@@ -1056,6 +1071,7 @@ export class BeneosSearchEngine extends Dialog {
 
     // Always display New/Updated in top of the resulting search list, cf #165
     // First push the results with the isUpdate property 
+    let count = 0
     for (let key in results) {
       if (results[key].isUpdate) {
         resTab.push(results[key])
@@ -1063,7 +1079,6 @@ export class BeneosSearchEngine extends Dialog {
       }
     }
     // Then push the results with the isNew property
-    let count = 0
     for (let key in results) {
       if (results[key].isNew) {
         resTab.push(results[key])
@@ -1110,7 +1125,7 @@ export class BeneosSearchEngine extends Dialog {
     }
 
     // Show the batch install button if at least one search filter is set
-    if ( this.filterStack.length > 0 || this.searchText) {
+    if (this.filterStack.length > 0 || this.searchText) {
       $(".install-batch-button").show()
     } else {
       $(".install-batch-button").hide()
@@ -1225,7 +1240,7 @@ export class BeneosSearchEngine extends Dialog {
   processBatchInstall(installMode) {
     let batchInstall = {}
     if (installMode == "install-new") {
-      for (let key in  this.latestResults) {
+      for (let key in this.latestResults) {
         let r = this.latestResults[key]
         if (r.isNew) {
           batchInstall[r.key] = { type: this.dbData.searchMode, key: r.key }
@@ -1233,7 +1248,7 @@ export class BeneosSearchEngine extends Dialog {
       }
     }
     if (installMode == "install-updated") {
-      for (let key in  this.latestResults) {
+      for (let key in this.latestResults) {
         let r = this.latestResults[key]
         if (r.isUpdate) {
           batchInstall[r.key] = { type: this.dbData.searchMode, key: r.key }
@@ -1241,7 +1256,7 @@ export class BeneosSearchEngine extends Dialog {
       }
     }
     if (installMode == "install-all") {
-      for (let key in  this.latestResults) {
+      for (let key in this.latestResults) {
         let r = this.latestResults[key]
         batchInstall[r.key] = { type: this.dbData.searchMode, key: r.key }
       }
