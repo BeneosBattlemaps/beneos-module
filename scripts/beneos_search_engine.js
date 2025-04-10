@@ -712,7 +712,7 @@ export class BeneosSearchResults extends Dialog {
   activateListeners() {
 
     $(".check-token-batch-install").change(event => {
-      // Get token key 
+      // Get token key
       let tokenKey = $(event.target).parents(".token-result-section").data("token-key")
       // If checkbox is checked, set all the other checkboxes to checked
       let checkBox = $(event.currentTarget)
@@ -738,13 +738,13 @@ export class BeneosSearchResults extends Dialog {
 
     $(".beneos-cloud-item-install").click(event => {
       game.beneos.cloud.scrollTop = $(".bsr_result_box").scrollTop()
-      // Get the data-key from the previous div and get it from the cloud 
+      // Get the data-key from the previous div and get it from the cloud
       let tokenKey = $(event.target).parents(".item-result-section").data("token-key")
       game.beneos.cloud.importItemFromCloud(tokenKey)
     })
     $(".beneos-cloud-spell-install").click(event => {
       game.beneos.cloud.scrollTop = $(".bsr_result_box").scrollTop()
-      // Get the data-key from the previous div and get it from the cloud 
+      // Get the data-key from the previous div and get it from the cloud
       let tokenKey = $(event.target).parents(".spell-result-section").data("token-key")
       game.beneos.cloud.importSpellsFromCloud(tokenKey)
     })
@@ -752,7 +752,7 @@ export class BeneosSearchResults extends Dialog {
     $(".beneos-cloud-token-install").click(event => {
       // Keep track of last scrolll position
       game.beneos.cloud.scrollTop = $(".bsr_result_box").scrollTop()
-      // Get the data-key from the previous div and get it from the cloud 
+      // Get the data-key from the previous div and get it from the cloud
       let tokenKey = $(event.target).parents(".token-result-section").data("token-key")
       game.beneos.cloud.importTokenFromCloud(tokenKey)
     })
@@ -1025,7 +1025,7 @@ export class BeneosSearchEngine extends Dialog {
       if (propDef.sort) {
         BeneosDatabaseHolder.sortProperties(properties)
       }
-      //console.log("OUTPUT", propDef, properties)      
+      //console.log("OUTPUT", propDef, properties)
       let html = ""
       if (properties.find(it => it.key.toLowerCase() == "any") === undefined) {
         html += "<option value='any'>Any</option>"
@@ -1070,7 +1070,7 @@ export class BeneosSearchEngine extends Dialog {
     }
 
     // Always display New/Updated in top of the resulting search list, cf #165
-    // First push the results with the isUpdate property 
+    // First push the results with the isUpdate property
     let count = 0
     for (let key in results) {
       if (results[key].isUpdate) {
@@ -1345,7 +1345,7 @@ export class BeneosSearchEngine extends Dialog {
     })
 
     $(".install-batch-button").click(event => {
-      // Get the install-mode 
+      // Get the install-mode
       let installMode = $(event.currentTarget).data("install-mode")
       this.processBatchInstall(installMode)
     })

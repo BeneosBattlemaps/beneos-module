@@ -225,6 +225,14 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
 })
 
 /********************************************************************************** */
+Hooks.on("deleteActor", (actor, options) => {
+  if (actor?.pack == "beneos-module.beneos_module_actors" || actor?.pack == "beneos-module.beneos_module_actors_PF2E") {
+    BeneosUtility.removeTokenFromActorId(actor.id)
+  }
+  return true;
+})
+
+/********************************************************************************** */
 Hooks.on("renderActorDirectory", (app, html, data) => {
   if (game.user.can('ACTOR_CREATE')) {
     const button = document.createElement('button');
@@ -285,4 +293,3 @@ Hooks.on("getSceneNavigationContext", (html, options) => {
   options.push(menuEntry2);
   return options;
 });
-

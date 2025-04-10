@@ -58,7 +58,7 @@ export class TableTopModeSettings extends FormApplication {
   getData() {
     let data = super.getData();
     data.config = game.settings.get(BeneosUtility.moduleID(), 'beneos-table-top-config') || this.getDefaultTableTopSettings();
-    // Check if performanceModePerUsers is an array or not 
+    // Check if performanceModePerUsers is an array or not
     if (!Array.isArray(data.config.performanceModePerUsers)) {
       data.config.performanceModePerUsers = []
     }
@@ -94,7 +94,7 @@ export class TableTopModeSettings extends FormApplication {
     //console.log("Updating object",formData, data)
     await game.settings.set(BeneosUtility.moduleID(), 'beneos-table-top-config', data)
 
-    // Manage the ON/OFF value 
+    // Manage the ON/OFF value
     await BeneosTableTop.manageTableTopMode(data.tableTopEnabled)
 
     window.location.reload() // Force reload after save
@@ -216,7 +216,7 @@ export class BeneosUtility {
     })
 
     game.settings.register(BeneosUtility.moduleID(), 'beneos-database-local-storage', {
-      name: 'Internal storage of the Beneos database',  
+      name: 'Internal storage of the Beneos database',
       type: Object,
       scope: 'world',
       default: {},
@@ -331,7 +331,7 @@ export class BeneosUtility {
     localStorage = foundry.utils.mergeObject(localStorage, data)
     game.settings.set(BeneosUtility.moduleID(), 'beneos-database-local-storage', localStorage)
   }
-      
+
   /********************************************************************************** */
   static getTableTopConfig() {
     return game.settings.get(BeneosUtility.moduleID(), 'beneos-table-top-config') || TableTopModeSettings.getDefaultTableTopSettings()
@@ -680,6 +680,26 @@ export class BeneosUtility {
   // Checks if the token image is inside the beneos tokens module
   static checkIsBeneosToken(token) {
     return token?.actor?.getFlag("world", "beneos");
+  }
+
+  /********************************************************************************** */
+  static removeTokenFromActorId(actorId) {
+    let isRemoved = false
+    for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
+      if (token.actorId == actorId) {
+        console.log("Removing token from actorId", token.actorId, fullKey)
+        delete this.beneosTokens[fullKey]
+        isRemoved = true
+        break
+      }
+    }
+
+    if (isRemoved) {
+      // Save the new data
+      game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', JSON.stringify(this.beneosTokens))
+      BeneosSearchEngineLauncher.updateDisplay()
+    }
+
   }
 
   /********************************************************************************** */
