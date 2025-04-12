@@ -276,6 +276,13 @@ export class BeneosDatabaseHolder {
         }
       }
     }
+    tokenData.properties.install = ["Any", "All"] // Used for filtering
+    if ( tokenData.isNew) {
+      tokenData.properties.install.push("New")
+    }
+    if ( tokenData.isUpdate) {
+      tokenData.properties.install.push("Updated")
+    }
   }
 
   /********************************************************************************** */
@@ -560,7 +567,7 @@ export class BeneosDatabaseHolder {
         if ((comp == "<" && item.properties.price <= price) || (comp == ">" && item.properties.price > price)) {
           newResults[key] = foundry.utils.duplicate(item)
         }
-      } else if (item.properties && item.properties[propertyName]) {
+      } else if (item?.properties[propertyName]) {
         //console.log(item.properties[propertyName], typeof (item.properties[propertyName]))
         if (typeof (item.properties[propertyName]) == "string" || typeof (item.properties[propertyName]) == "number") {
           if (strict) {
@@ -920,6 +927,7 @@ const __propertyDefList = {
   "fightingstyle": { name: "fightingstyle", sort: true, selectors: ["token-fight-style"] },
   "movement": { name: "movement", sort: true, selectors: ["token-movement"] },
   "purpose": { name: "purpose", sort: true, selectors: ["token-purpose"] },
+  "install": { name: "install", sort: false, selectors: ["asset-install"] },
   "origin": { name: "origin", sort: true, selectors: ["origin-selector"] },
   "item_type": { name: "item_type", sort: true, selectors: ["item-type"] },
   "rarity": { name: "rarity", sort: false, selectors: ["rarity-selector"] },
@@ -1124,11 +1132,21 @@ export class BeneosSearchEngine extends Dialog {
       $('#beneos-search-overflow').html("")
     }
 
-    // Show the batch install button if at least one search filter is set
-    if (this.filterStack.length > 0 || this.searchText) {
-      $(".install-batch-button").show()
-    } else {
-      $(".install-batch-button").hide()
+    // Reset by default
+    $(".install-batch-button-new").hide()
+    $(".install-batch-button-updated").hide()
+    $(".install-batch-button-all").hide()
+
+    // Get  the value of the asset-install selector and uupdatt relevant buttons
+    let installMode = $("#asset-install").val()
+    if (installMode && installMode == "new") {
+      $(".install-batch-button-new").show()
+    }
+    if (installMode && installMode == "updated") {
+      $(".install-batch-button-updated").show()
+    }
+    if (installMode && installMode == "all") {
+      $(".install-batch-button-all").show()
     }
 
     this.resultDialog.render(true)
@@ -1222,6 +1240,7 @@ export class BeneosSearchEngine extends Dialog {
     $("#token-cr").val("any")
     $('#token-fight-style').val("any")
     $("#token-purpose").val("any")
+    $("#asset-install").val("any")
 
     $("#rarity-selector").val("any")
     $("#item-type").val("any")
@@ -1238,6 +1257,41 @@ export class BeneosSearchEngine extends Dialog {
 
   /********************************************************************************** */
   processBatchInstall(installMode) {
+    // Display warning message in a Dialog to ensure the user is aware of the batch install
+    // Get the number of assets to install
+    let assetNum = 0
+    for (let key in this.latestResults) {
+      assetNum++
+    }
+    let message = `<H2>WARNING ! </H2><p>You are about to install ${assetNum} assets.</p>`
+    message += "<p>Please note that this will overwrite any existing assets with the same name.<br></p>"
+    message += "<p>Note also that the download process of all assets can take a significant amount of time.</p>"
+    message += "<p>Do you want to proceed with this batch install?</p>"
+    let buttons = {
+      yes: {
+        label: "Yes",
+        callback: () => {
+          this.executeBatchInstall(installMode)
+        }
+      },
+      no: {
+        label: "No",
+        callback: () => {
+          // Do nothing
+        }
+      }
+    }
+    let dialogOptions = { classes: ["beneos_module", "beneos_search_engine", "beneos_search_interface"], left: 200, width: 410, 'z-index': 99999 }
+    let dialogConf = { title: "Batch Install", content: message, buttons: buttons }
+    let dialog = new Dialog(dialogConf, dialogOptions)
+    dialog.render(true)
+    // Hide the Batch Install button
+    $("#beneos-cloud-batch-install").hide()
+    $(".check-token-batch-install").prop("checked", false)
+  }
+
+  /********************************************************************************** */
+  executeBatchInstall(installMode) {
     let batchInstall = {}
     if (installMode == "install-new") {
       for (let key in this.latestResults) {

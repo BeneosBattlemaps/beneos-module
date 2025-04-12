@@ -77,14 +77,14 @@
     <span class="flexrow">
       <label>Adventure : </label>
       <select name="bmap-adventure" class="beneos-selector" id="bmap-adventure" data-dtype="String">
-        {{selectOptions adventureList nameAttr="key" valueAttr="key" labelAttr="value"}}        
+        {{selectOptions adventureList nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
 
     <span class="flexrow">
       <label>Map size : </label>
       <select name="bmap-grid" class="beneos-selector" id="bmap-grid" data-dtype="String">
-        {{selectOptions gridList nameAttr="key" valueAttr="key" labelAttr="value"}}        
+        {{selectOptions gridList nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
 
@@ -94,75 +94,87 @@
     <span class="flexrow">
       <label>Biome : </label>
       <select name="bioms" class="beneos-selector" id="bioms-selector" data-dtype="String">
-        {{selectOptions tokenBioms selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}                
+        {{selectOptions tokenBioms selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
 
     <span class="flexrow">
       <label>Token type : </label>
       <select name="token-types" class="beneos-selector" id="token-types" data-dtype="String">
-        {{selectOptions tokenTypes selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}                
+        {{selectOptions tokenTypes selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
 
     <span class="flexrow">
       <label>Fighting style : </label>
       <select name="token-fight-style" class="beneos-selector" id="token-fight-style" data-dtype="String">
-        {{selectOptions fightingStyles selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}                
+        {{selectOptions fightingStyles selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
 
     <span class="flexrow">
       <label>CR : </label>
       <select name="token-cr" class="beneos-selector" id="token-cr" data-dtype="String">
-        {{selectOptions crList selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}                
+        {{selectOptions crList selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
 
     <span class="flexrow">
       <label>Movement : </label>
       <select name="token-movement" class="beneos-selector" id="token-movement" data-dtype="String">
-        {{selectOptions movementList selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}                
+        {{selectOptions movementList selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
 
     <span class="flexrow">
       <label>Purpose : </label>
       <select name="token-purpose" class="beneos-selector" id="token-purpose" data-dtype="String">
-        {{selectOptions purposeList selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}                
+        {{selectOptions purposeList selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
+
+    <hr>
+    <span class="flexrow">
+      <label>Install : </label>
+      <select name="asset-install" class="beneos-selector" id="asset-install" data-dtype="String">
+        <option value="any">Any</option>
+        <option value="all">All</option>
+        <option value="new">New</option>
+        <option value="updated">Updated</option>
+      </select>
+    </span>
+
     {{/if}}
 
     {{#if (eq searchMode "item")}}
     <span class="flexrow">
       <label>Item type : </label>
       <select name="item-type" class="beneos-selector" id="item-type" data-dtype="String">
-        {{selectOptions itemType selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}                
+        {{selectOptions itemType selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
     <span class="flexrow">
       <label>Rarity : </label>
       <select name="rarity" class="beneos-selector" id="rarity-selector" data-dtype="String">
-        {{selectOptions rarity selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}                
+        {{selectOptions rarity selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
     <span class="flexrow">
       <label>Origin : </label>
       <select name="origin" class="beneos-selector" id="origin-selector" data-dtype="String">
-        {{selectOptions origin selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}                
+        {{selectOptions origin selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
     <span class="flexrow">
       <label>Tier : </label>
       <select name="tier" class="beneos-selector" id="tier-selector" data-dtype="String">
-        {{selectOptions tier selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}                
+        {{selectOptions tier selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
     <span class="flexrow">
       <label>Price : </label>
       <select name="price" class="beneos-selector" id="price-selector" data-dtype="String">
-        {{selectOptions price selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}                
+        {{selectOptions price selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
     {{/if}}
@@ -171,31 +183,31 @@
     <span class="flexrow">
       <label>Spell type : </label>
       <select name="spell-type" class="beneos-selector" id="spell-type" data-dtype="String">
-        {{selectOptions spellType selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}                
+        {{selectOptions spellType selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
     <span class="flexrow">
       <label>School : </label>
       <select name="school" class="beneos-selector" id="school-selector" data-dtype="String">
-        {{selectOptions school selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}                
+        {{selectOptions school selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
     <span class="flexrow">
       <label>Level : </label>
       <select name="level" class="beneos-selector" id="level-selector" data-dtype="String">
-        {{selectOptions level selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}                
+        {{selectOptions level selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
     <span class="flexrow">
       <label>Casting Time : </label>
       <select name="castingtime" class="beneos-selector" id="casting_time-selector" data-dtype="String">
-        {{selectOptions castingTime selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}                
+        {{selectOptions castingTime selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
     <span class="flexrow">
       <label>Class : </label>
       <select name="class" class="beneos-selector" id="class-selector" data-dtype="String">
-        {{selectOptions spellClass selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}                
+        {{selectOptions spellClass selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
     {{/if}}
@@ -226,11 +238,11 @@
     {{else}}
       <button type="submit" class="" id="beneos-cloud-login" data-tooltip="Click here to connect to the Beneos Cloud">Connect to Beneos Cloud</button>
     {{/if}}
-    <button type="submit" class="" id="beneos-cloud-batch-install" hidden data-tooltip="Click here to install all selected assets">Install all selected assets</button>    
+    <button type="submit" class="" id="beneos-cloud-sbatch-install" hidden data-tooltip="Click here to install all selected assets">Install all selected assets</button>
 
-    <button type="submit" class="install-batch-button" hidden data-install-mode="install-new" data-tooltip="Install all new assets from the search results">Install NEW content</button>
-    <button type="submit" class="install-batch-button" hidden data-install-mode="install-update" data-tooltip="Install all updated assets from the search results">Install UPDATED content</button>
-    <button type="submit" class="install-batch-button" hidden data-install-mode="install-all" data-tooltip="Install all assets from the search results">Install ALL content</button>
+    <button type="submit" class="install-batch-button install-batch-button-new" hidden data-install-mode="install-new" data-tooltip="Install all new assets from the search results">Install NEW content</button>
+    <button type="submit" class="install-batch-button install-batch-button-update" hidden data-install-mode="install-update" data-tooltip="Install all updated assets from the search results">Install UPDATED content</button>
+    <button type="submit" class="install-batch-button install-batch-button-all" hidden data-install-mode="install-all" data-tooltip="Install all assets from the search results">Install ALL content</button>
 
   </div>
 
