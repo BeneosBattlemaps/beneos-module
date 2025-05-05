@@ -84,7 +84,7 @@ export class BeneosCloud {
   isLoggedIn() {
     return this.cloudConnected
   }
-  
+
   setLoginStatus(status) {
     this.cloudConnected = status
   }
@@ -96,27 +96,23 @@ export class BeneosCloud {
   getTokenTS(key) {
     let content = this.availableContent.tokens
     if (!content || content?.length == 0) return false
-    for (let i = 0; i < content.length; i++) {
-      if (content[i].key == key) {
-        return content[i].updated_ts
+    for (const element of content) {
+      if (element.key == key) {
+        return element.updated_ts
       }
     }
     return false
   }
-  
+
   isNew(key) {
     let content = this.availableContent.tokens
     if (!content || content?.length == 0) return false
-    for (let i = 0; i < content.length; i++) {
-      if (content[i].key == key) {
+    for (const element of content) {
+      if (element.key == key) {
         // Is new if the updated_ts is greater than the current date minus 30 days
         let t30days = 30 * 24 * 60 * 60
         let tNow30Days = Math.floor(Date.now() / 1000) - t30days
-        if (content[i].updated_ts >= tNow30Days) {
-          return true
-        } else {
-          return false
-        }
+        return element.updated_ts >= tNow30Days;
       }
     }
     return false
@@ -174,7 +170,7 @@ export class BeneosCloud {
       user: game.user.id,
       rollMode: game.settings.get("core", "rollMode"),
       whisper: ChatMessage.getWhisperRecipients('GM'),
-      content: `<div><strong>BeneosModule</strong> : Token(s) has been imported into the beneos module compendium. 
+      content: `<div><strong>BeneosModule</strong> : Token(s) has been imported into the beneos module compendium.
       </span></div>`
     }
     if (event) {
@@ -184,15 +180,15 @@ export class BeneosCloud {
 
     if ( game.beneosTokens.searchEngine ) {
       setTimeout( () => {
-        game.beneosTokens.searchEngine.updateContent() }, 1000)        
+        game.beneosTokens.searchEngine.updateContent() }, 1000)
     }
 
   }
 
   async importItemToCompendium(itemArray) {
     this.beneosItems = {}
-    console.log("Importing item to compendium", itemArray)  
-    
+    console.log("Importing item to compendium", itemArray)
+
     let tNow = Date.now()
 
     let itemPack
@@ -208,8 +204,8 @@ export class BeneosCloud {
     }
     let itemRecords = await itemPack.getIndex()
     await itemPack.configure({ locked: false })
-    
-    for (let itemKey in itemArray) {  
+
+    for (let itemKey in itemArray) {
       let itemData = itemArray[itemKey]
       // Get the common actor data
       let itemObjectData = itemData.itemJSON
@@ -243,7 +239,7 @@ export class BeneosCloud {
         itemData.img = `${finalFolder}/${itemData.itemImages[i].image.filename}`
         let item = new CONFIG.Item.documentClass(itemData);
         if (item) {
-          // Search if we have already an actor with the same name in the compendium 
+          // Search if we have already an actor with the same name in the compendium
           let existingItem = itemRecords.find(a => a.name == item.name && a.img == item.img)
           if (existingItem) {
             console.log("Deleting existing item", existingItem._id)
@@ -276,9 +272,9 @@ export class BeneosCloud {
   }
 
   async importTokenToCompendium(tokenArray, event) {
-    
-    console.log("Importing token to compendium", tokenArray)  
-    
+
+    console.log("Importing token to compendium", tokenArray)
+
     let tNow = Math.floor(Date.now() / 1000) // Get the current date in seconds
 
     let actorPack
@@ -301,8 +297,8 @@ export class BeneosCloud {
 
     await actorPack.configure({ locked: false })
     await journalPack.configure({ locked: false })
-    
-    for (let tokenKey in tokenArray) {  
+
+    for (let tokenKey in tokenArray) {
       let tokenData = tokenArray[tokenKey]
       // Get the common actor data
       let actorData = tokenData.actorJSON
@@ -346,13 +342,13 @@ export class BeneosCloud {
         file = new File([blob], tokenData.tokenImages[i].avatar.filename, { type: "image/webp" });
         response = await FilePicker.upload("data", finalFolder, file, {});
 
-        // Create the journal entry    
+        // Create the journal entry
         journalData.pages[0].src = `${finalFolder}/${tokenData.tokenImages[i].journal.filename}`
         journalData.name = actorData.name + " " + (i+1)
         let journal = new JournalEntry(journalData);
         let newJournal
         if ( journal ) {
-          // Search for existing journal entry 
+          // Search for existing journal entry
           let existingJournal = journalRecords.find(j => j.name == journal.name && j.img == journal.img)
           if (existingJournal) {
             console.log("Deleting existing journal", existingJournal._id)
@@ -367,7 +363,7 @@ export class BeneosCloud {
         actorData.prototypeToken.texture.src = `${finalFolder}/${tokenData.tokenImages[i].token.filename}`
         let actor = new CONFIG.Actor.documentClass(actorData);
         if (actor) {
-          // Search if we have already an actor with the same name in the compendium 
+          // Search if we have already an actor with the same name in the compendium
           let existingActor = actorRecords.find(a => a.name == actor.name && a.img == actorData.img)
           if (existingActor) {
             console.log("Deleting existing actor", existingActor._id)
@@ -389,7 +385,7 @@ export class BeneosCloud {
             fullId: fullId,
             number: i+1
           }
-          // Import the actor into the world 
+          // Import the actor into the world
           //game.actors.importFromCompendium(actorPack, imported.id, { folder: folder.id });
 
 
@@ -407,7 +403,7 @@ export class BeneosCloud {
 
     this.sendChatMessageResult(event)
 
-    for (let tokenKey in tokenArray) {  
+    for (let tokenKey in tokenArray) {
       BeneosSearchEngineLauncher.refresh("token", tokenKey)
     }
     BeneosSearchEngineLauncher.updateDisplay()

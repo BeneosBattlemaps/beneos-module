@@ -275,7 +275,10 @@ export class BeneosDatabaseHolder {
           tokenData.isUpdate = true
         }
       }
+    } else {
+      console.log("No tokenTS for", tokenData.key)
     }
+
     tokenData.properties.install = ["Any", "All"] // Used for filtering
     if ( tokenData.isNew) {
       tokenData.properties.install.push("New")
@@ -1007,7 +1010,7 @@ export class BeneosSearchEngine extends Dialog {
 
       for (let key in toSearch) {
         let item = toSearch[key]
-        if (item.properties && item.properties[propDef.name]) {
+        if (item.properties?.[propDef.name]) {
           if (propDef.name.toLowerCase() == "rarity") {
             properties = foundry.utils.duplicate(BeneosDatabaseHolder.itemRarity)
           } else if (propDef.name.toLowerCase() == "price") {
