@@ -257,7 +257,7 @@ export class BeneosDatabaseHolder {
     }
 
     if (tokenData.isInstalled) {
-      tokenData.picture = BeneosUtility.getLocalAvatarPicture(tokenData.key)
+      //tokenData.picture = BeneosUtility.getLocalAvatarPicture(tokenData.key)
     }
 
     // Prepare update/new status
