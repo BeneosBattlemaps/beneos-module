@@ -280,10 +280,10 @@ export class BeneosDatabaseHolder {
     }
 
     tokenData.properties.install = ["Any", "All"] // Used for filtering
-    if ( tokenData.isNew) {
+    if (tokenData.isNew) {
       tokenData.properties.install.push("New")
     }
-    if ( tokenData.isUpdate) {
+    if (tokenData.isUpdate) {
       tokenData.properties.install.push("Updated")
     }
   }
@@ -548,7 +548,7 @@ export class BeneosDatabaseHolder {
         let grid = parseInt(value.substring(1))
         //console.log("Parsing", item.properties.grid, grid, comp)
         let sizeParse = item.properties.grid.match(/(\d+)\s*x\s*(\d+)/)
-        if (sizeParse && sizeParse[1] && sizeParse[2]) {
+        if (sizeParse?.[1] && sizeParse?.[2]) {
           let size = parseInt(sizeParse[1]) * parseInt(sizeParse[2])
           if ((comp == "<" && Number(size) <= Number(grid)) || (comp == ">" && Number(size) >= Number(grid))) {
             newResults[key] = foundry.utils.duplicate(item)
@@ -556,7 +556,7 @@ export class BeneosDatabaseHolder {
         }
       } else if (propertyName == "cr") {
         let comp = value.match(/(\d+),(\d+)/)
-        if (comp && comp[1] && comp[2]) {
+        if (comp?.[1] && comp?.[2]) {
           if (item.properties.cr >= Number(comp[1]) && (item.properties.cr <= Number(comp[2]))) {
             newResults[key] = foundry.utils.duplicate(item)
           }
@@ -764,6 +764,8 @@ export class BeneosSearchResults extends Dialog {
       game.beneos.cloud.scrollTop = $(".bsr_result_box").scrollTop()
       // Get the data-key from the previous div and get it from the cloud
       let tokenKey = $(event.target).parents(".token-result-section").data("token-key")
+      // save all the searc engines filters
+      game.beneosTokens.searchEngine.saveSearchEngineFilters()
       game.beneos.cloud.importTokenFromCloud(tokenKey)
     })
 
@@ -1187,12 +1189,34 @@ export class BeneosSearchEngine extends Dialog {
 
   /********************************************************************************** */
   async updateContent() {
+    // Update the content of the dialog
     let html = await renderTemplate('modules/beneos-module/templates/beneossearchengine.html', this.dbData)
     this.data.content = html
     this.render(true)
   }
+
+  /********************************************************************************** */
+  applySearchFilters() {
+    if (this.searchFilters) {
+      // Restore the saved filters
+      for (let propKey in __propertyDefList) {
+        let propDef = __propertyDefList[propKey]
+        for (let selector of propDef.selectors) {
+          let value = this.searchFilters[propDef.name]
+          if (value) {
+            $("#" + selector).val(value)
+          }
+        }
+      }
+      console.log("Search filters restored", this.searchFilters)
+      this.searchFilters = undefined
+    }
+  }
+
   /********************************************************************************** */
   processSelectorSearch() {
+    this.applySearchFilters()
+
     let type = this.dbData.searchMode
     let searchResults = BeneosDatabaseHolder.getAll(type)
 
@@ -1235,7 +1259,25 @@ export class BeneosSearchEngine extends Dialog {
   }
 
   /********************************************************************************** */
+  saveSearchEngineFilters() {
+    let filters = {}
+    for (let propKey in __propertyDefList) {
+      let propDef = __propertyDefList[propKey]
+      for (let selector of propDef.selectors) {
+        let value = $("#" + selector).val()
+        if (value && value.toLowerCase() != "any") {
+          filters[propDef.name] = value
+        }
+      }
+    }
+    game.beneos.searchEngine.searchFilters = filters
+    console.log("Saving search engine filters", filters)
+  }
+
+  /********************************************************************************** */
   cleanFilters() {
+    console.log("Cleaning filters")
+
     $("#bioms-selector").val("any")
     $("#bmap-grid").val("any")
     $("#bmap-brightness").val("any")
@@ -1332,7 +1374,6 @@ export class BeneosSearchEngine extends Dialog {
       if (key == 13) {
         //console.log("HERE KEYDOWN 13 - 2!!!!")
         event.preventDefault()
-        return
       }
     });
     $('#beneos-search-form').keydown(function (event) {
@@ -1340,7 +1381,6 @@ export class BeneosSearchEngine extends Dialog {
       if (key == 13) {
         event.preventDefault()
         //console.log("HERE KEYDOWN 13 - 2!!!!")
-        return
       }
     });
     $("#beneos-search-text").keyup(event => {
@@ -1412,16 +1452,21 @@ export class BeneosSearchEngine extends Dialog {
 /********************************************************************************** */
 export class BeneosSearchEngineLauncher extends FormApplication {
 
+  /********************************************************************************** */
   static updateDisplay() {
     if (!game.beneos.searchEngine) {
       return
     }
     game.beneos.searchEngine.updateContent()
 
-    setTimeout(game.beneos.searchEngine.processSelectorSearch(), 100)
+    setTimeout(() => {
+      game.beneos.searchEngine.processSelectorSearch()
+    },
+      100)
   }
 
-  static refresh(typeAsset, key) {
+   /********************************************************************************** */
+   static refresh(typeAsset, key) {
     if (!game.beneos.searchEngine) {
       return
     }

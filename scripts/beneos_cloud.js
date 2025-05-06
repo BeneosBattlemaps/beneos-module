@@ -178,10 +178,10 @@ export class BeneosCloud {
     }
     ChatMessage.create(chatData);
 
-    if ( game.beneosTokens.searchEngine ) {
+    /*if ( game.beneosTokens.searchEngine ) {
       setTimeout( () => {
         game.beneosTokens.searchEngine.updateContent() }, 1000)
-    }
+    }*/
 
   }
 
