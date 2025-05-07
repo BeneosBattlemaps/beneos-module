@@ -5,6 +5,13 @@ import { BeneosSearchEngineLauncher } from "./beneos_search_engine.js"
 const redirect_uri = 'https://beneos.cloud/index.php';
 const client_id = 'Vlql3B0mCqWge1GkA8dWJ0E4WjAnLzmZAAqBeWTBL-P3PaSmMQlsX92n3Ji6tBv3';
 
+export class BeneosCloudSettings extends FormApplication {
+  render() {
+    if (game.beneos.cloud) {
+      game.beneos.cloud.disconnect()}
+  }
+}
+
 export class BeneosCloudLogin extends FormApplication {
 
   loginRequest() {
@@ -81,6 +88,13 @@ export class BeneosCloud {
       })
   }
 
+  disconnect() {
+    this.setLoginStatus(false)
+    game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-foundry-id", "")
+    // reload the page
+    location.reload()
+  }
+
   isLoggedIn() {
     return this.cloudConnected
   }
@@ -121,8 +135,8 @@ export class BeneosCloud {
   isTokenAvailable(key) {
     let content = this.availableContent.tokens
     if (!content || content?.length == 0) return false
-    for (let i = 0; i < content.length; i++) {
-      if (content[i].key == key) {
+    for (const element of content) {
+      if (element.key == key) {
         return true
       }
     }
@@ -132,8 +146,8 @@ export class BeneosCloud {
   isItemAvailable(key) {
     let content = this.availableContent.items
     if (!content || content.length == 0) return false
-    for (let i = 0; i < content.length; i++) {
-      if (content[i].key == key) {
+    for (const element of content) {
+      if (element.key == key) {
         return true
       }
     }
@@ -143,8 +157,8 @@ export class BeneosCloud {
   isSpellAvailable(key) {
     let content = this.availableContent.spells
     if (!content || content.length == 0) return false
-    for (let i = 0; i < content.length; i++) {
-      if (content[i].key == key) {
+    for (const element of content) {
+      if (element.key == key) {
         return true
       }
     }
@@ -178,7 +192,7 @@ export class BeneosCloud {
     }
     ChatMessage.create(chatData);
 
-    /*if ( game.beneosTokens.searchEngine ) {
+    /*Unused : if ( game.beneosTokens.searchEngine ) {
       setTimeout( () => {
         game.beneosTokens.searchEngine.updateContent() }, 1000)
     }*/
@@ -234,7 +248,7 @@ export class BeneosCloud {
         let base64Response = await fetch(`data:image/webp;base64,${itemData.itemImages[i].image.image64}`);
         let blob = await base64Response.blob();
         let file = new File([blob], tokenData.tokenImages[i].token.filename, { type: "image/webp" });
-        let response = await FilePicker.upload("data", finalFolder, file, {});
+        await FilePicker.upload("data", finalFolder, file, {});
 
         itemData.img = `${finalFolder}/${itemData.itemImages[i].image.filename}`
         let item = new CONFIG.Item.documentClass(itemData);
@@ -330,17 +344,17 @@ export class BeneosCloud {
         let base64Response = await fetch(`data:image/webp;base64,${tokenData.tokenImages[i].token.image64}`);
         let blob = await base64Response.blob();
         let file = new File([blob], tokenData.tokenImages[i].token.filename, { type: "image/webp" });
-        let response = await FilePicker.upload("data", finalFolder, file, {});
+        await FilePicker.upload("data", finalFolder, file, {});
 
         base64Response = await fetch(`data:image/webp;base64,${tokenData.tokenImages[i].journal.image64}`);
         blob = await base64Response.blob();
         file = new File([blob], tokenData.tokenImages[i].journal.filename, { type: "image/webp" });
-        response = await FilePicker.upload("data", finalFolder, file, {});
+        await FilePicker.upload("data", finalFolder, file, {});
 
         base64Response = await fetch(`data:image/webp;base64,${tokenData.tokenImages[i].avatar.image64}`);
         blob = await base64Response.blob();
         file = new File([blob], tokenData.tokenImages[i].avatar.filename, { type: "image/webp" });
-        response = await FilePicker.upload("data", finalFolder, file, {});
+        await FilePicker.upload("data", finalFolder, file, {});
 
         // Create the journal entry
         journalData.pages[0].src = `${finalFolder}/${tokenData.tokenImages[i].journal.filename}`

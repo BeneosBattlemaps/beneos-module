@@ -63,20 +63,21 @@ export class BeneosCompendiumReset extends FormApplication {
       $(".beneos-meter-delete").hide()
 
       // Cleanup JSON data local cache
-      await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', JSON.stringify({})) 
+      await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', JSON.stringify({}))
       await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', JSON.stringify({}))
       await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', JSON.stringify({}))
-      
+
 
       // Set a reload Timeout of 200 ms
       setTimeout(() => {
          window.location.reload()
       }
       , 200);
-      
 
-      return; 
-      
+
+      return;
+
+      /* Deprecated
       chatData.content = `<div><strong>BeneosModule</strong> : Importing actors</div>` +
         `<div><strong>2/4 - Actors : </strong><meter class="beneos-meter-actor" min="0" max="100" value="0">100%</meter>&nbsp;<span class="beneos-chat-actor-info"></span></div>`
       ChatMessage.create(chatData);
@@ -109,6 +110,7 @@ export class BeneosCompendiumReset extends FormApplication {
         let newS = new BeneosSearchEngineLauncher
         newS.render(true)
       }
+    */
 
     }
     BeneosCompendiumManager.showImportErrors()
@@ -119,6 +121,7 @@ export class BeneosCompendiumReset extends FormApplication {
   render() {
     this.performReset()
   }
+
 }
 
 /********************************************************************************** */
@@ -251,22 +254,22 @@ export class BeneosCompendiumManager {
               continue;
             }
           }
-          
-          // If it matches a webp file 
+
+          // If it matches a webp file
           if (filename.toLowerCase().includes(".webp")) {
             //console.log("FILENAME", filename)
-            // SPlit the filename with the following pattern : 000-name_of_token-variant.webp 
+            // SPlit the filename with the following pattern : 000-name_of_token-variant.webp
             let res = filename.match("(\\d+)-(\\w*)-(\\d+)-(\\w*)\\.webp")
             if (!res || !res[1] || !res[2] || !res[3]) {
               this.importErrors.push("Error in parsing filename " + filename)
               console.log("Error in parsing filename", filename);
               continue;
             }
-            if (res[3] && Number(res[3]) > 0) {              
+            if (res[3] && Number(res[3]) > 0) {
               if ( ! subTokens[Number(res[3])] ) {
                 subTokens[Number(res[3])] = { }
               }
-              if (res[4]) {         
+              if (res[4]) {
                 subTokens[Number(res[3])][res[4]] = filename
               }
             }
@@ -371,7 +374,7 @@ export class BeneosCompendiumManager {
       await this.showNewItems("Actors", BeneosUtility.beneosTokens, previousData, "Compendium.beneos-module.beneos_module_actors_pf2.Actor")
     } else  {
       await this.showNewItems("Actors", BeneosUtility.beneosTokens, previousData, "Compendium.beneos-module.beneos_module_actors.Actor")
-    } 
+    }
 
     let toSave = JSON.stringify(BeneosUtility.beneosTokens)
     console.log("Saving data :", toSave)

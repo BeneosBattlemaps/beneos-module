@@ -3,7 +3,7 @@ import { BeneosTableTop } from "./beneos-table-top.js";
 import { BeneosCompendiumManager, BeneosCompendiumReset } from "./beneos_compendium.js";
 import { BeneosSearchEngineLauncher, BeneosDatabaseHolder, BeneosModuleMenu } from "./beneos_search_engine.js";
 import { ClassCounter } from "./count-class-ready.js";
-import { BeneosCloud, BeneosCloudLogin } from "./beneos_cloud.js";
+import { BeneosCloud, BeneosCloudLogin, BeneosCloudSettings } from "./beneos_cloud.js";
 
 /********************************************************************************* */
 globalThis.BENEOS_MODULE_NAME = "Beneos Module"
@@ -175,6 +175,16 @@ export class BeneosUtility {
       restricted: true,
     })
 
+    game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-cloud-disconnect", {
+      name: "Disconnect from Beneos Cloud",
+      label: "Disconnect from Beneos Cloud",
+      hint: "Disconnect from Beneos Cloud",
+      scope: 'world',
+      config: true,
+      type: BeneosCloudSettings,
+      restricted: true,
+    })
+
     game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-search-engine", {
       name: "Beneos Cloud",
       label: "Find and Install Beneos Content",
@@ -185,16 +195,15 @@ export class BeneosUtility {
       restricted: true
     })
 
-    /* Deprecated with Beneos Cloud :
     game.settings.register(BeneosUtility.moduleID(), "beneos-datapath", {
       name: "Storage path of tokens assets",
       hint: "Location of tokens and associated datas",
       scope: 'world',
-      config: true,
+      config: false,
       default: BENEOS_DEFAULT_TOKEN_PATH,
       type: String,
       restricted: true
-    })*/
+    })
 
     game.settings.register(BeneosUtility.moduleID(), "beneos-god-mode", {
       name: "Enable God Mode",
