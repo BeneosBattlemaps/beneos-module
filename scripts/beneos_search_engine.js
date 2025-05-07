@@ -729,9 +729,17 @@ export class BeneosSearchResults extends Dialog {
       let checkBoxValue = checkBox.prop("checked")
       if (checkBoxValue) {
         game.beneosTokens.searchEngine.batchInstall[tokenKey] = { type: "token", key: tokenKey }
+        // search the first parent item with "beneos-item-container" class
+        let parentItem = checkBox.parents(".beneos-item-container")
+        // Add the "batch-install" class to the parent item
+        parentItem.addClass("beneos-batch-install")
         console.log("Batch install", game.beneosTokens.searchEngine.batchInstall)
       } else {
         game.beneosTokens.searchEngine.batchInstall[tokenKey] = undefined
+        // search the first parent item with "beneos-item-container" class
+        let parentItem = checkBox.parents(".beneos-item-container")
+        // Remove the "batch-install" class to the parent item
+        parentItem.removeClass("beneos-batch-install")
         console.log("Batch uninstall", game.beneosTokens.searchEngine.batchInstall)
       }
       // Show the Batch Install button if at least one checkbox is checked

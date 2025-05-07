@@ -796,6 +796,10 @@
   background-color: #d5c8c3;
 }
 
+.beneos-batch-install {
+  background-color: #d2d5c3
+}
+
 .item-middle-line {
   min-height: 1.8rem;
   max-height: 1.8rem;
