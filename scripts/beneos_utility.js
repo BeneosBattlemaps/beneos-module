@@ -154,7 +154,6 @@ export class BeneosUtility {
       type: BeneosCloudLogin,
       restricted: true
     })
-    console.log("Registering settings", game)
 
     /*game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-clean-compendium", {
       name: "Empty compendium to re-import all tokens data",
@@ -177,8 +176,8 @@ export class BeneosUtility {
     })
 
     game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-search-engine", {
-      name: "Search Engine",
-      label: "Search in published tokens/battlemaps",
+      name: "Beneos Cloud",
+      label: "Find and Install Beneos Content",
       hint: "Search in all the published tokens/battlemaps from BeneosSearch engine",
       scope: 'world',
       config: true,

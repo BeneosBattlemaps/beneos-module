@@ -236,7 +236,7 @@ Hooks.on("renderActorDirectory", (app, html, data) => {
   if (game.user.can('ACTOR_CREATE')) {
     const button = document.createElement('button');
     button.style.width = '90%';
-    button.innerHTML = 'Search/Install Beneos Content'
+    button.innerHTML = "Beneos Cloud - Search & Download";
     button.addEventListener('click', () => {
       new BeneosSearchEngineLauncher().render()
     })
