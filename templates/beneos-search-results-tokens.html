@@ -56,11 +56,11 @@
               <div class="bsr_item_title beneos-tooltip">
                 {{#if result.isNew}}
                 <label class="beneos-search-title-result"><span
-                    class="token-name-new">[NEW]</span>{{result.name}}</label>
+                    class="token-name-new">[NEW] </span>{{result.name}}</label>
                 {{else}}
                 {{#if isUpdate}}
                 <label class="beneos-search-title-result"><span
-                    class="token-name-update">[UPDATE]</span>{{result.name}}</label>
+                    class="token-name-update">[UPDATE] </span>{{result.name}}</label>
                 {{else}}
                 <label class="beneos-search-title-result">{{result.name}}</label>
                 {{/if}}
@@ -115,7 +115,7 @@
 
             <div class="flexrow flex-content-left">
               <div class="beneos-tooltip beneos-search-installed ">
-                
+
                 {{#if result.isCloudAvailable}}
                 <div class="beneos-tooltip beneos-search-installed">
                   <div class="beneos-tooltiptext beneos-token-description">
@@ -135,9 +135,9 @@
                   </label>
                   {{/if}}
                 </div>
-                
+
                 {{else}}
-                
+
                 {{#if result.isInstalled}}
                   <div class="beneos-tooltiptext beneos-token-description">
                   </div>
@@ -170,7 +170,7 @@
                   {{/if}}
                 {{/if}}
               {{/if}}
-              
+
               </div>
             </div>
 
