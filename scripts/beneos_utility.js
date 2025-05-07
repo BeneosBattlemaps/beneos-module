@@ -185,6 +185,7 @@ export class BeneosUtility {
       restricted: true
     })
 
+    /* Deprecated with Beneos Cloud :
     game.settings.register(BeneosUtility.moduleID(), "beneos-datapath", {
       name: "Storage path of tokens assets",
       hint: "Location of tokens and associated datas",
@@ -193,7 +194,7 @@ export class BeneosUtility {
       default: BENEOS_DEFAULT_TOKEN_PATH,
       type: String,
       restricted: true
-    })
+    })*/
 
     game.settings.register(BeneosUtility.moduleID(), "beneos-god-mode", {
       name: "Enable God Mode",
@@ -205,6 +206,7 @@ export class BeneosUtility {
       restricted: true
     })
 
+    /* Deprecated with Beneos Cloud :
     game.settings.register(BeneosUtility.moduleID(), "beneos-animated-portrait-only", {
       name: "Display only animated portrait",
       hint: "If ticked, only portraits will be available ",
@@ -213,6 +215,7 @@ export class BeneosUtility {
       default: false,
       type: Boolean
     })
+      */
 
     game.settings.register(BeneosUtility.moduleID(), 'beneos-database-local-storage', {
       name: 'Internal storage of the Beneos database',
