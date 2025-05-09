@@ -145,15 +145,27 @@ export class BeneosUtility {
       restricted: true
     })
 
-    game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-patreon-login", {
-      name: "Login to Beneos Cloud with you Patreon account",
-      label: "Login to Beneos Cloud with you Patreon account",
-      hint: "Login to Beneos Cloud with you Patreon account",
-      scope: 'world',
-      config: true,
-      type: BeneosCloudLogin,
-      restricted: true
-    })
+    if (game.settings.get(BeneosUtility.moduleID(), 'beneos-cloud-foundry-id') == "") {
+      game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-patreon-login", {
+        name: "Login to Beneos Cloud ",
+        label: "Login to Beneos Cloud ",
+        hint: "Login to Beneos Cloud",
+        scope: 'world',
+        config: true,
+        type: BeneosCloudLogin,
+        restricted: true
+      })
+    } else {
+      game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-cloud-disconnect", {
+        name: "Disconnect from Beneos Cloud",
+        label: "Disconnect from Beneos Cloud",
+        hint: "Disconnect from Beneos Cloud",
+        scope: 'world',
+        config: true,
+        type: BeneosCloudSettings,
+        restricted: true,
+      })
+    }
 
     /*game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-clean-compendium", {
       name: "Empty compendium to re-import all tokens data",
@@ -172,16 +184,6 @@ export class BeneosUtility {
       scope: 'world',
       config: true,
       type: BeneosCompendiumReset,
-      restricted: true,
-    })
-
-    game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-cloud-disconnect", {
-      name: "Disconnect from Beneos Cloud",
-      label: "Disconnect from Beneos Cloud",
-      hint: "Disconnect from Beneos Cloud",
-      scope: 'world',
-      config: true,
-      type: BeneosCloudSettings,
       restricted: true,
     })
 
@@ -816,7 +818,7 @@ export class BeneosUtility {
     }
   }
 
-    /********************************************************************************** */
+  /********************************************************************************** */
   static getActorCompendium() {
     if (game.system.id == "pf2e") {
       return "beneos-module.beneos_module_actors_pf2"

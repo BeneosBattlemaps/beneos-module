@@ -1,10 +1,6 @@
 import { BeneosUtility } from "./beneos_utility.js"
 import { BeneosSearchEngineLauncher } from "./beneos_search_engine.js"
 
-// Global parameters
-const redirect_uri = 'https://beneos.cloud/index.php';
-const client_id = 'Vlql3B0mCqWge1GkA8dWJ0E4WjAnLzmZAAqBeWTBL-P3PaSmMQlsX92n3Ji6tBv3';
-
 export class BeneosCloudSettings extends FormApplication {
   render() {
     if (game.beneos.cloud) {
@@ -14,7 +10,43 @@ export class BeneosCloudSettings extends FormApplication {
 
 export class BeneosCloudLogin extends FormApplication {
 
-  loginRequest() {
+  /********************************************************************************** */
+  async loginDialog() {
+
+    let content = await renderTemplate("modules/beneos-module/templates/beneos-cloud-login.html", {})
+
+    const dialogContext = await foundry.applications.api.DialogV2.wait({
+      window: { title: "Login to Beneos Cloud" },
+      classes: ["dialog", "app", "window-app"],
+      content,
+      buttons: [{
+        action: "login",
+        label: "Login",
+        default: true,
+        callback: (event, button, dialog) => {
+          const output = Array.from(button.form.elements).reduce((obj, input) => {
+            if (input.name) obj[input.name] = input.value
+            return obj
+          }, {})
+          return output
+        },
+      }, {
+        action: "cancel",
+        label: "Cancel",
+        callback: (event, button, dialog) => {
+          return null
+        }
+      }],
+      actions: {
+      },
+      render: (event, dialog) => {}
+    })
+
+    return dialogContext
+  }
+
+  /********************************************************************************** */
+  async loginRequest() {
 
     if (!game.user.isGM) return;
 
@@ -24,10 +56,26 @@ export class BeneosCloudLogin extends FormApplication {
       userId = foundry.utils.randomID(32)
     }
     console.log("User ID: ", userId)
-    let patreonURL = `https://www.patreon.com/oauth2/authorize?response_type=code&client_id=${client_id}&redirect_uri=${redirect_uri}&scope=identity identity.memberships&state=${userId}`
-    console.log("URL: ", patreonURL)
-    window.open(patreonURL, '_blank');
 
+    let loginData = await this.loginDialog()
+    let cloudLoginURL = `https://beneos.cloud/foundry-login.php?email=${loginData.email}&password=${loginData.password}&foundryId=${userId}`
+    fetch(cloudLoginURL, { credentials: 'same-origin' })
+    .then(response => response.json())
+    .then(data => {
+      console.log("BENEOS Cloud login data", data)
+      if (data.result == 'OK') {
+        console.log("BENEOS Cloud login success")
+        this.pollForAccess(userId)
+      } else {
+        console.log("BENEOS Cloud login error", data)
+        ui.notifications.error("BeneosModule : Unable to connect to BeneosCloud, please check your credentials !")
+      }
+    })
+
+  }
+
+  /********************************************************************************** */
+  pollForAccess(userId) {
     // Poll the index.php for the access_token
     let self = this
     self.nb_wait = 0;
@@ -48,10 +96,10 @@ export class BeneosCloudLogin extends FormApplication {
             game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-foundry-id", userId)
             console.log("User id saved", userId)
             game.beneos.cloud.setLoginStatus(true)
+            ui.notifications.info("BeneosModule : You are now connected to BeneosCloud !")
           }
         })
     }, 1000)
-
   }
 
   /********************************************************************************** */
