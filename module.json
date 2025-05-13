@@ -1,11 +1,11 @@
 {
   "title": "Beneos Module",
   "description": "Quality of life features for Beneos Battlemaps, Tokens, Spells and Items",
-  "version": "12.1.2",
+  "version": "13.0.0",
   "socket": true,
   "compatibility": {
-    "minimum": "10",
-    "verified": "12"
+    "minimum": "13",
+    "verified": "13"
   },
   "url": "https://github.com/BeneosBattlemaps/beneos-module",
   "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-module/beneos-new-structure/module.json",
@@ -76,21 +76,9 @@
   "relationships": {
     "requires": [
 	  {
-        "id": "moulinette-core",
+        "id": "moulinette",
         "type": "module",
-        "manifest": "https://raw.githubusercontent.com/SvenWerlen/moulinette-core/master/module.json",
-        "compatibility": {}
-      },
-	  {
-        "id": "tokenmagic",
-        "type": "module",
-        "manifest": "https://raw.githubusercontent.com/Feu-Secret/Tokenmagic/master/tokenmagic/module.json",
-        "compatibility": {}
-      },
-	  {
-        "id": "moulinette-scenes",
-        "type": "module",
-        "manifest": "https://raw.githubusercontent.com/SvenWerlen/moulinette-scenes/main/module.json",
+        "manifest": "https://raw.githubusercontent.com/SvenWerlen/moulinette/main/module.json",
         "compatibility": {}
       },
 	  {

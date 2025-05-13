@@ -326,8 +326,8 @@ export class BeneosDatabaseHolder {
   static fieldTextSearch(item, text) {
     for (let field in item) {
       let value = item[field]
-      if (field == "description") { 
-        continue 
+      if (field == "description") {
+        continue
       }
       if (typeof (value) == "string") {
         if (value.toLowerCase().includes(text)) {
@@ -543,7 +543,7 @@ export class BeneosDatabaseHolder {
 
     return tab
   }
-  
+
   /********************************************************************************** */
   static getBattlemap(key) {
     return this.bmapData.content[key]
@@ -706,7 +706,7 @@ export class BeneosSearchResults extends Dialog {
         let bmapData = BeneosDatabaseHolder.getBattlemap(bmapKey)
         console.log("Moulinette search", bmapData)
         if (bmapData?.properties?.download_terms) {
-          game.moulinette.applications.MoulinetteAPI.searchUI("scenes", { "terms": bmapData.properties.download_terms, 
+          game.moulinette.applications.MoulinetteAPI.searchUI("scenes", { "terms": bmapData.properties.download_terms,
           "creator": bmapData.properties.download_creator, "pack": bmapData.properties.download_pack})
         } else {
           ui.notifications.info("The selected battlemap does not have a Moulinette download information")
@@ -786,7 +786,7 @@ export class BeneosSearchEngine extends Dialog {
   /********************************************************************************** */
   updateFilterStack(propName, propValue) {
     for (let propKey in __propertyDefList) {
-      if (__propertyDefList[propKey].name == propName && 
+      if (__propertyDefList[propKey].name == propName &&
         this.filterStack.find((it) => it.propKey == propKey ) == undefined
         ) {
         this.filterStack.push({ propKey: propKey, propValue: propValue })
@@ -820,7 +820,7 @@ export class BeneosSearchEngine extends Dialog {
         toSearch = BeneosDatabaseHolder.getAll(this.dbData.searchMode)
       }
 
-      if (propKey == "installed") { 
+      if (propKey == "installed") {
         properties = [{ key: "installed", value: "Installed" }, { key: "notinstalled", value: "Not Installed" }]
       }
 
@@ -852,7 +852,7 @@ export class BeneosSearchEngine extends Dialog {
       if (propDef.sort) {
         BeneosDatabaseHolder.sortProperties(properties)
       }
-      //console.log("OUTPUT", propDef, properties)      
+      //console.log("OUTPUT", propDef, properties)
       let html = ""
       if (properties.find(it => it.key.toLowerCase() == "any") === undefined) {
         html += "<option value='any'>Any</option>"
@@ -907,7 +907,7 @@ export class BeneosSearchEngine extends Dialog {
     // Sort the final results
     resTab.sort(function (a, b) { return a.name.localeCompare(b.name) })
 
-    let html = await renderTemplate(template, {
+    let html = await foundry.applications.handlebars.renderTemplate(template, {
       results: resTab,
       isMoulinette: false // Up to now
     })
