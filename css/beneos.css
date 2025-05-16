@@ -496,6 +496,7 @@
 }
 
 .beneos-search-yt-icons {
+  transform: translate(60px, -4px);
   max-height: 18px;
   border: 0;
   opacity: 50%;
@@ -525,13 +526,17 @@
 .beneos-search-yt-button {
   align-self: center;
   text-align: center;
+  align-items: center;
+  align-content: center;
   margin-top: 2px;
+  min-height: 1.2rem;
   max-height: 1.2rem;
   max-width: 4rem;
 }
 
+
 .beneos-search-yt-button-shifted {
-  margin-left: 3.2rem;
+  /*margin-left: 3.2rem;*/
 }
 
 .moulinette-button-container,
