@@ -88,12 +88,6 @@
         "compatibility": {}
       },
 	  {
-        "id": "fxmaster",
-        "type": "module",
-        "manifest": "https://github.com/ghost-fvtt/fxmaster/releases/latest/download/module.json",
-        "compatibility": {}
-      },
-	  {
         "id": "monks-active-tiles",
         "type": "module",
         "manifest": "https://github.com/ironmonk88/monks-active-tiles/releases/latest/download/module.json",
