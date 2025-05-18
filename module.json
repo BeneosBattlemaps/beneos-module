@@ -105,6 +105,12 @@
         "manifest": "https://github.com/League-of-Foundry-Developers/scene-packer/releases/latest/download/module.json",
         "compatibility": {}
       },
+        {
+        "id": "LockView",
+        "type": "module",
+        "manifest": "https://github.com/MaterialFoundry/LockView/releases/latest/download/module.json",
+        "compatibility": {}
+      },
 	  {
         "id": "lib-wrapper",
         "type": "module",
