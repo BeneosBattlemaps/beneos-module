@@ -4,6 +4,11 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 13.0.0 # 2025-02-03
+- update: Foundry VTT V13 compatibility
+- Removed: FXMaster, Moulinette Scene, Moulinette Core from dependencies
+
+
 ### 12.1.2 # 2025-02-03
 - Fixed: Issues with the update process
 - Added: some new icons for beneos battlemaps
