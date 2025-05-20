@@ -240,7 +240,7 @@ Hooks.on("renderActorDirectory", (app, html, data) => {
     button.addEventListener('click', () => {
       new BeneosSearchEngineLauncher().render()
     })
-    html.find('.header-actions').after(button)
+    $(html).find('.header-actions').after(button)
   }
 })
 

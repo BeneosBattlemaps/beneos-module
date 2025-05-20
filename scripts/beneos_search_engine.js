@@ -702,7 +702,7 @@ export class BeneosSearchResults extends Dialog {
 
     // Common conf
     let dialogConf = { content: html, title: "BENEOS SEARCH ENGINE", buttons: myButtons }
-    let dialogOptions = { classes: ["beneos_module", "beneos_search_results", "draggable"], 'window-title': "", left: 620, width: 720, height: 580, 'z-index': 99999 }
+    let dialogOptions = { classes: ["beneos_module", "beneos_search_results", "draggable"], 'window-title': "", left: 620, width: 720, height: 500, 'z-index': 99999 }
     super(dialogConf, dialogOptions)
   }
 
@@ -719,62 +719,69 @@ export class BeneosSearchResults extends Dialog {
     $('#' + selectorName).val(value.toLowerCase())
   }
   /********************************************************************************** */
-  activateListeners() {
+  activateListeners(html) {
 
-    $(".check-token-batch-install").change(event => {
-      // Get token key
-      let tokenKey = $(event.target).parents(".token-result-section").data("token-key")
-      // If checkbox is checked, set all the other checkboxes to checked
-      let checkBox = $(event.currentTarget)
-      let checkBoxValue = checkBox.prop("checked")
-      if (checkBoxValue) {
-        game.beneosTokens.searchEngine.batchInstall[tokenKey] = { type: "token", key: tokenKey }
-        // search the first parent item with "beneos-item-container" class
-        let parentItem = checkBox.parents(".beneos-item-container")
-        // Add the "batch-install" class to the parent item
-        parentItem.addClass("beneos-batch-install")
-        console.log("Batch install", game.beneosTokens.searchEngine.batchInstall)
-      } else {
-        game.beneosTokens.searchEngine.batchInstall[tokenKey] = undefined
-        // search the first parent item with "beneos-item-container" class
-        let parentItem = checkBox.parents(".beneos-item-container")
-        // Remove the "batch-install" class to the parent item
-        parentItem.removeClass("beneos-batch-install")
-        console.log("Batch uninstall", game.beneosTokens.searchEngine.batchInstall)
-      }
-      // Show the Batch Install button if at least one checkbox is checked
-      let anyChecked = false
-      $(".check-token-batch-install").each((index, element) => {
-        if ($(element).prop("checked")) {
-          anyChecked = true
+    super.activateListeners(html);
+
+    // Gestionnaire pour CTRL+CLICK sur les éléments avec classe selected-batch
+    $(html).find('.selected-batch').on('click', (event) => {
+      // Vérifier si la touche CTRL est enfoncée
+      if (event.ctrlKey) {
+        event.preventDefault();
+        // Get token key
+        let tokenKey = $(event.target).parents(".token-result-section").data("token-key")
+        let parentItem = $(event.target).parents(".beneos-item-container")
+        if (game.beneosTokens.searchEngine.batchInstall[tokenKey]) {
+          game.beneosTokens.searchEngine.batchInstall[tokenKey] = undefined
+          parentItem.removeClass("beneos-batch-install")
+        } else  {
+          game.beneosTokens.searchEngine.batchInstall[tokenKey] = { type: "token", key: tokenKey }
+          parentItem.addClass("beneos-batch-install")
         }
+        // Show the Batch Install button if at least one checkbox is checked
+        let anyChecked = false
+        for ( let idx in game.beneosTokens.searchEngine.batchInstall) {
+          let token = game.beneosTokens.searchEngine.batchInstall[idx]
+          if (token) {
+            anyChecked = true
+            break
+          }
+        }
+        document.getElementById('beneos-cloud-batch-install').hidden = !anyChecked;
+        console.log("Batch install - Button", anyChecked)
       }
-      )
-      $("#beneos-cloud-batch-install").toggle(anyChecked)
-      //console.log("Batch install", game.beneos.cloud.batchInstall)
     })
+
+    /* $(".check-token-batch-install").change(event => {
+    }) */
 
     $(".beneos-cloud-item-install").click(event => {
-      game.beneos.cloud.scrollTop = $(".bsr_result_box").scrollTop()
-      // Get the data-key from the previous div and get it from the cloud
-      let tokenKey = $(event.target).parents(".item-result-section").data("token-key")
-      game.beneos.cloud.importItemFromCloud(tokenKey)
+      if (!event.ctrlKey) {
+        game.beneos.cloud.scrollTop = $(".bsr_result_box").scrollTop()
+        // Get the data-key from the previous div and get it from the cloud
+        let tokenKey = $(event.target).parents(".item-result-section").data("token-key")
+        game.beneos.cloud.importItemFromCloud(tokenKey)
+      }
     })
     $(".beneos-cloud-spell-install").click(event => {
-      game.beneos.cloud.scrollTop = $(".bsr_result_box").scrollTop()
-      // Get the data-key from the previous div and get it from the cloud
-      let tokenKey = $(event.target).parents(".spell-result-section").data("token-key")
-      game.beneos.cloud.importSpellsFromCloud(tokenKey)
+      if (!event.ctrlKey) {
+        game.beneos.cloud.scrollTop = $(".bsr_result_box").scrollTop()
+        // Get the data-key from the previous div and get it from the cloud
+        let tokenKey = $(event.target).parents(".spell-result-section").data("token-key")
+        game.beneos.cloud.importSpellsFromCloud(tokenKey)
+      }
     })
 
     $(".beneos-cloud-token-install").click(event => {
-      // Keep track of last scrolll position
-      game.beneos.cloud.scrollTop = $(".bsr_result_box").scrollTop()
-      // Get the data-key from the previous div and get it from the cloud
-      let tokenKey = $(event.target).parents(".token-result-section").data("token-key")
-      // save all the searc engines filters
-      game.beneosTokens.searchEngine.saveSearchEngineFilters()
-      game.beneos.cloud.importTokenFromCloud(tokenKey)
+      if (!event.ctrlKey) {
+        // Keep track of last scroll position
+        game.beneos.cloud.scrollTop = $(".bsr_result_box").scrollTop()
+        // Get the data-key from the previous div and get it from the cloud
+        let tokenKey = $(event.target).parents(".token-result-section").data("token-key")
+        // save all the search engines filters
+        game.beneosTokens.searchEngine.saveSearchEngineFilters()
+        game.beneos.cloud.importTokenFromCloud(tokenKey)
+      }
     })
 
     $(".token-search-data").on('dragstart', function (e) {
@@ -966,7 +973,7 @@ export class BeneosSearchEngine extends Dialog {
 
     // Common conf
     let dialogConf = { content: html, title: "Beneos Search Engine", buttons: myButtons };
-    let dialogOptions = { classes: ["beneos_module", "beneos_search_engine", "beneos_search_interface"], left: 200, width: 410, height: 500, 'z-index': 99999 }
+    let dialogOptions = { classes: ["beneos_module", "beneos_search_engine", "beneos_search_interface"], left: 200, width: 410, height: 580, 'z-index': 99999 }
     super(dialogConf, dialogOptions)
 
     this.dbData = data
@@ -1125,7 +1132,7 @@ export class BeneosSearchEngine extends Dialog {
       resTab.push(resTab2[key])
     }
 
-    let html = await renderTemplate(template, {
+    let html = await foundry.applications.handlebars.renderTemplate(template, {
       results: resTab,
       isOffline: BeneosDatabaseHolder.getIsOffline(),
       isCloudLoggedIn: game.beneos.cloud.isLoggedIn(),
@@ -1339,7 +1346,7 @@ export class BeneosSearchEngine extends Dialog {
     let dialog = new Dialog(dialogConf, dialogOptions)
     dialog.render(true)
     // Hide the Batch Install button
-    $("#beneos-cloud-batch-install").hide()
+    document.getElementById('beneos-cloud-batch-install').hidden = true
     $(".check-token-batch-install").prop("checked", false)
   }
 
@@ -1445,7 +1452,7 @@ export class BeneosSearchEngine extends Dialog {
       game.beneos.cloud.batchInstall(foundry.utils.duplicate(game.beneosTokens.searchEngine.batchInstall))
       game.beneosTokens.searchEngine.batchInstall = {}
       // Hide the Batch Install button
-      $("#beneos-cloud-batch-install").hide()
+      document.getElementById('beneos-cloud-batch-install').hidden = true
       $(".check-token-batch-install").prop("checked", false)
     })
 
@@ -1473,8 +1480,8 @@ export class BeneosSearchEngineLauncher extends FormApplication {
       100)
   }
 
-   /********************************************************************************** */
-   static refresh(typeAsset, key) {
+  /********************************************************************************** */
+  static refresh(typeAsset, key) {
     if (!game.beneos.searchEngine) {
       return
     }
