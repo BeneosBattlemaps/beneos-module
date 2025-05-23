@@ -1205,7 +1205,7 @@ export class BeneosSearchEngine extends Dialog {
   /********************************************************************************** */
   async updateContent() {
     // Update the content of the dialog
-    let html = await renderTemplate('modules/beneos-module/templates/beneossearchengine.html', this.dbData)
+    let html = await foundry.applications.handlebars.renderTemplate('modules/beneos-module/templates/beneossearchengine.html', this.dbData)
     this.data.content = html
     this.render(true)
   }
@@ -1443,7 +1443,7 @@ export class BeneosSearchEngine extends Dialog {
       this.updateSelector(event)
     })
     $("#beneos-cloud-login").click(event => {
-      let login = new BeneosCloudLogin()
+      let login = new BeneosCloudLogin("searchEngine")
       login.render(true)
     })
 

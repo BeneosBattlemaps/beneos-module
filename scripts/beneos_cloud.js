@@ -11,6 +11,12 @@ export class BeneosCloudSettings extends FormApplication {
 export class BeneosCloudLogin extends FormApplication {
 
   /********************************************************************************** */
+  constructor(origin = null) {
+    super()
+    this.requestOrigin = origin
+  }
+
+  /********************************************************************************** */
   async loginDialog() {
 
     let content = await renderTemplate("modules/beneos-module/templates/beneos-cloud-login.html", {})
@@ -80,6 +86,7 @@ export class BeneosCloudLogin extends FormApplication {
     let self = this
     self.nb_wait = 0;
     this.foundryId = userId;
+    let requestOrigin = this.requestOrigin
 
     let pollInterval = setInterval(function () {
       let url = `https://beneos.cloud/foundry-manager.php?check=1&foundryId=${userId}`
@@ -97,6 +104,10 @@ export class BeneosCloudLogin extends FormApplication {
             console.log("User id saved", userId)
             game.beneos.cloud.setLoginStatus(true)
             ui.notifications.info("BeneosModule : You are now connected to BeneosCloud !")
+            console.log("Refreshing search engine", requestOrigin)
+            if ( requestOrigin == "searchEngine") {
+              window.location.reload()
+            }
           }
         })
     }, 1000)
