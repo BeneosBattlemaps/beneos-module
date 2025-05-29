@@ -1,7 +1,7 @@
 {
   "title": "Beneos Module",
   "description": "Quality of life features and Search Engine for Beneos Battlemaps, Tokens, Spells and Items",
-  "version": "13.0.0",
+  "version": "13.0.1",
   "socket": true,
   "compatibility": {
     "minimum": "13",
@@ -9,7 +9,7 @@
   },
   "url": "https://github.com/BeneosBattlemaps/beneos-module",
   "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-module/beneos-new-structure-v13/module.json",
-  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/13.0.0.zip",
+  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/13.0.1.zip",
   "scripts": [
     "scripts/beneosfx.js"
   ],
@@ -78,13 +78,19 @@
 	  {
         "id": "moulinette",
         "type": "module",
-        "manifest": "https://raw.githubusercontent.com/SvenWerlen/moulinette/main/module.json",
+        "manifest": "https://github.com/Moulinette-Craft/moulinette-foundryvtt-module/releases/latest/download/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "fxmaster",
+        "type": "module",
+        "manifest": "https://github.com/ghost-fvtt/fxmaster/releases/latest/download/module.json",
         "compatibility": {}
       },
 	  {
         "id": "multilevel-tokens",
         "type": "module",
-        "manifest": "https://raw.githubusercontent.com/grandseiken/foundryvtt-multilevel-tokens/master/module.json",
+        "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/Beneos-Multilevel-Tokens/main/module.json",
         "compatibility": {}
       },
 	  {
@@ -96,7 +102,7 @@
 	  {
         "id": "poi-teleport",
         "type": "module",
-        "manifest": "https://github.com/zeel01/poi-teleport/releases/latest/download/module.json",
+        "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/Beneos-Point-Of-Interest-Teleporter/main/module.json",
         "compatibility": {}
       },
 	  {
