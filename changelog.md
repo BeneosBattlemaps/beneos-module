@@ -4,6 +4,11 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 13.0.1 # 2025-05-29
+- Update: Dependency Manifest Links
+- Added: FXMaster as dependency again because it was unexpectedly updated
+
+
 ### 13.0.0 # 2025-05-20
 - Update: Foundry VTT V13 compatibility
 - Removed: FXMaster, Moulinette Scene, Moulinette Core from dependencies
