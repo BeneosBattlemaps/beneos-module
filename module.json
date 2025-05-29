@@ -9,7 +9,7 @@
   },
   "url": "https://github.com/BeneosBattlemaps/beneos-module",
   "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-module/beneos-new-structure/module.json",
-  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/12.1.2.zip",
+  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/12.1.3.zip",
   "scripts": [
     "scripts/beneosfx.js"
   ],
@@ -82,12 +82,6 @@
         "compatibility": {}
       },
 	  {
-        "id": "tokenmagic",
-        "type": "module",
-        "manifest": "https://raw.githubusercontent.com/Feu-Secret/Tokenmagic/master/tokenmagic/module.json",
-        "compatibility": {}
-      },
-	  {
         "id": "moulinette-scenes",
         "type": "module",
         "manifest": "https://raw.githubusercontent.com/SvenWerlen/moulinette-scenes/main/module.json",
@@ -96,7 +90,7 @@
 	  {
         "id": "multilevel-tokens",
         "type": "module",
-        "manifest": "https://raw.githubusercontent.com/grandseiken/foundryvtt-multilevel-tokens/master/module.json",
+        "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/Beneos-Multilevel-Tokens/refs/heads/v12/module.json",
         "compatibility": {}
       },
 	  {
@@ -114,7 +108,7 @@
 	  {
         "id": "poi-teleport",
         "type": "module",
-        "manifest": "https://github.com/zeel01/poi-teleport/releases/latest/download/module.json",
+        "manifest": "https://raw.github.com/BeneosBattlemaps/Beneos-Point-Of-Interest-Teleporter/refs/heads/v12/module.json",
         "compatibility": {}
       },
 	  {
