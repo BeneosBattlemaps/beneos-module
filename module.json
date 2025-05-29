@@ -1,7 +1,7 @@
 {
   "title": "Beneos Module",
   "description": "Quality of life features for Beneos Battlemaps, Tokens, Spells and Items",
-  "version": "12.1.3",
+  "version": "12.1.4",
   "socket": true,
   "compatibility": {
     "minimum": "10",
@@ -9,7 +9,7 @@
   },
   "url": "https://github.com/BeneosBattlemaps/beneos-module",
   "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-module/beneos-new-structure/module.json",
-  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/12.1.3.zip",
+  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/12.1.4.zip",
   "scripts": [
     "scripts/beneosfx.js"
   ],
@@ -76,15 +76,9 @@
   "relationships": {
     "requires": [
 	  {
-        "id": "moulinette-core",
+        "id": "moulinette",
         "type": "module",
-        "manifest": "https://raw.githubusercontent.com/SvenWerlen/moulinette-core/master/module.json",
-        "compatibility": {}
-      },
-	  {
-        "id": "moulinette-scenes",
-        "type": "module",
-        "manifest": "https://raw.githubusercontent.com/SvenWerlen/moulinette-scenes/main/module.json",
+        "manifest": "https://github.com/Moulinette-Craft/moulinette-foundryvtt-module/releases/latest/download/module.json",
         "compatibility": {}
       },
 	  {

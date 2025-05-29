@@ -4,8 +4,13 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
-### 12.1.3 # 2025-05-29
-- Fixed: Dependency Links for the V12 branch
+### 12.1.4 # 2025-02-03
+- Removed: Moulinette Core and Moulinette Scenes as Foundry V12 Dependency
+- Added: Moulinette Media Search as Foundry V12 Depdendency
+
+### 12.1.3 # 2025-02-03
+- Fixed: Issues with the update process
+- Added: some new icons for beneos battlemaps
 
 ### 12.1.2 # 2025-02-03
 - Fixed: Issues with the update process
