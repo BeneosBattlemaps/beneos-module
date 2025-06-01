@@ -124,5 +124,22 @@
         "compatibility": {}
       }
     ]
+  },
+  "flags": {
+    "hotReload": {
+      "extensions": [
+        "css",
+        "hbs",
+        "html",
+        "json"
+      ],
+      "paths": [
+        "css/",
+        "lang/",
+        "assets/",
+        "templates/"
+      ]
+    }
   }
+
 }

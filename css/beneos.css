@@ -263,16 +263,60 @@
   height: 12px;
 }
 
-.beneos-rebuild-compendium-button {
-  margin-top: 12px;
+.beneos-cloud-label {
+  text-align: left;
+}
+
+.beneos-cloud-login-data{
+  min-width: 12rem;
+  max-width: 12rem;
+  text-align: left;
+}
+
+#beneos-cloud-create-account,
+#beneos-cloud-login,
+.beneos-cloud-login-button {
+}
+
+.beneos-black-text {
+  color: #000000;
+}
+
+.beneos-connection-section {
+  margin-top: 4px;
   align-items: center;
   align-content: center;
   text-align: center;
 }
 
-.beneos-cloud-connected {
-  color: #4e911f;
+.beneos-connection-section > * {
+  margin-bottom: 8px;
 }
+
+.beneos-connection-section > *:last-child {
+  margin-bottom: 0;
+}
+
+.beneos-cloud-connected {
+  color: #6dae11;
+  font-size: 1.2rem;
+}
+
+.beneos-cloud-not-connected {
+  color:#3e0706;
+  font-size: 1.0rem;
+  text-align: left;
+}
+
+.beneos-cloud-no-patreon {
+  min-height: 1.8rem;
+  background-color: #c5bfb5;
+  color: #3e0706;
+  display: flex;
+  align-items: center;
+  justify-content: center; /
+}
+
 
 .beneos-tooltip-icon-group {
   vertical-align: top;
@@ -473,7 +517,23 @@
   max-height: 18px;
 }
 
-.beneos-search-button {}
+.beneos-search-button {
+  background-color: #e1ded9;
+  color : #3e0706;
+  border: 2px solid #000;
+}
+
+.beneos-search-button:active {
+  background-color: #3e0706;
+  color: #e1ded9;
+  border: 2px solid #000;
+}
+
+.beneos-search-button.category-active {
+  background-color: #3e0706;
+  color: #e1ded9;
+  border: 2px solid #000;
+}
 
 .beneos-search-button-token {
   background-color: #ebe8e0;
@@ -983,6 +1043,12 @@
   margin-left: 32px;
 }
 
+
+.beneos-selector {
+  min-width: 12rem;
+  max-width: 12rem;
+}
+
 .beneos-search-text-input {
   align-items: center;
   align-self: center;
@@ -996,6 +1062,8 @@
 
 .beneos-search-text-input input {
   text-align: left;
+  min-width: 12rem;
+  max-width: 12rem;
 }
 
 .beneos-search-overflow-section {

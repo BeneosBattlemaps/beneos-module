@@ -4,7 +4,8 @@ import { BeneosSearchEngineLauncher } from "./beneos_search_engine.js"
 export class BeneosCloudSettings extends FormApplication {
   render() {
     if (game.beneos.cloud) {
-      game.beneos.cloud.disconnect()}
+      game.beneos.cloud.disconnect()
+    }
   }
 }
 
@@ -45,14 +46,14 @@ export class BeneosCloudLogin extends FormApplication {
       }],
       actions: {
       },
-      render: (event, dialog) => {}
+      render: (event, dialog) => { }
     })
 
     return dialogContext
   }
 
   /********************************************************************************** */
-  async loginRequest() {
+  async loginRequest(loginData = null) {
 
     if (!game.user.isGM) return;
 
@@ -63,21 +64,30 @@ export class BeneosCloudLogin extends FormApplication {
     }
     console.log("User ID: ", userId)
 
-    let loginData = await this.loginDialog()
+    if (loginData == null) {
+      // If we don't have login data, we need to ask the user
+      console.log("No login data, asking user")
+      // Show the login dialog
+      loginData = await this.loginDialog()
+      if (!loginData) {
+        ui.notifications.warn("BeneosModule : Login cancelled !")
+        return;
+      }
+    }
+
     let cloudLoginURL = `https://beneos.cloud/foundry-login.php?email=${loginData.email}&password=${loginData.password}&foundryId=${userId}`
     fetch(cloudLoginURL, { credentials: 'same-origin' })
-    .then(response => response.json())
-    .then(data => {
-      console.log("BENEOS Cloud login data", data)
-      if (data.result == 'OK') {
-        console.log("BENEOS Cloud login success")
-        this.pollForAccess(userId)
-      } else {
-        console.log("BENEOS Cloud login error", data)
-        ui.notifications.error("BeneosModule : Unable to connect to BeneosCloud, please check your credentials !")
-      }
-    })
-
+      .then(response => response.json())
+      .then(data => {
+        console.log("BENEOS Cloud login data", data)
+        if (data.result == 'OK') {
+          console.log("BENEOS Cloud login success")
+          this.pollForAccess(userId)
+        } else {
+          console.log("BENEOS Cloud login error", data)
+          ui.notifications.error("BeneosModule : Unable to connect to BeneosCloud, please check your credentials !")
+        }
+      })
   }
 
   /********************************************************************************** */
@@ -101,11 +111,12 @@ export class BeneosCloudLogin extends FormApplication {
           if (data.result == 'OK') {
             clearInterval(pollInterval)
             game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-foundry-id", userId)
+            game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", data.patreon_status)
             console.log("User id saved", userId)
             game.beneos.cloud.setLoginStatus(true)
             ui.notifications.info("BeneosModule : You are now connected to BeneosCloud !")
             console.log("Refreshing search engine", requestOrigin)
-            if ( requestOrigin == "searchEngine") {
+            if (requestOrigin == "searchEngine") {
               window.location.reload()
               game.settings.set(BeneosUtility.moduleID(), "beneos-reload-search-engine", true)
             }
@@ -115,10 +126,9 @@ export class BeneosCloudLogin extends FormApplication {
   }
 
   /********************************************************************************** */
-  render() {
-    this.loginRequest()
+  render(loginData = null) {
+    this.loginRequest(loginData)
   }
-
 }
 
 export class BeneosCloud {
@@ -157,6 +167,10 @@ export class BeneosCloud {
 
   isLoggedIn() {
     return this.cloudConnected
+  }
+
+  getPatreonStatus() {
+    return game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-patreon-status")
   }
 
   setLoginStatus(status) {
@@ -272,7 +286,7 @@ export class BeneosCloud {
       itemPack = game.packs.get("beneos-module.beneos_module_items")
 
     }
-    if (!itemPack ) {
+    if (!itemPack) {
       ui.notifications.error("BeneosModule : Unable to find compendiums, please check your installation !")
       return
     }
@@ -302,7 +316,7 @@ export class BeneosCloud {
       }
 
       for (let i = 0; i < itemData.itemImages.length; i++) {
-        let fullId = itemKey + "_" + (i+1)
+        let fullId = itemKey + "_" + (i + 1)
 
         // Decode the base64 tokenImg and upload it to the FilePicker
         let base64Response = await fetch(`data:image/webp;base64,${itemData.itemImages[i].image.image64}`);
@@ -326,12 +340,12 @@ export class BeneosCloud {
           BeneosUtility.beneosItems[fullId] = {
             itemName: imported.name,
             imf: itemData.img,
-            itemId:imported.id,
+            itemId: imported.id,
             folder: finalFolder,
             tokenKey: tokenKey,
             fullId: fullId,
             installDate: tNow,
-            number: i+1
+            number: i + 1
           }
         } else {
           this.importErrors.push("Error in creating item " + records.name)
@@ -398,7 +412,7 @@ export class BeneosCloud {
 
 
       for (let i = 0; i < tokenData.tokenImages.length; i++) {
-        let fullId = tokenKey + "_" + (i+1)
+        let fullId = tokenKey + "_" + (i + 1)
 
         // Decode the base64 tokenImg and upload it to the FilePicker
         let base64Response = await fetch(`data:image/webp;base64,${tokenData.tokenImages[i].token.image64}`);
@@ -418,10 +432,10 @@ export class BeneosCloud {
 
         // Create the journal entry
         journalData.pages[0].src = `${finalFolder}/${tokenData.tokenImages[i].journal.filename}`
-        journalData.name = actorData.name + " " + (i+1)
+        journalData.name = actorData.name + " " + (i + 1)
         let journal = new JournalEntry(journalData);
         let newJournal
-        if ( journal ) {
+        if (journal) {
           // Search for existing journal entry
           let existingJournal = journalRecords.find(j => j.name == journal.name && j.img == journal.img)
           if (existingJournal) {
@@ -450,14 +464,14 @@ export class BeneosCloud {
           BeneosUtility.beneosTokens[fullId] = {
             actorName: imported.name,
             avatar: actorData.img,
-            token: actorData.prototypeToken.texture.src ,
-            actorId:imported.id,
+            token: actorData.prototypeToken.texture.src,
+            actorId: imported.id,
             installDate: tNow,
             journalId: newJournal.id,
             folder: finalFolder,
             tokenKey: tokenKey,
             fullId: fullId,
-            number: i+1
+            number: i + 1
           }
           // Import the actor into the world
           //game.actors.importFromCompendium(actorPack, imported.id, { folder: folder.id });
@@ -503,7 +517,7 @@ export class BeneosCloud {
       .then(response => response.json())
       .then(async function (data) {
         if (data.result == 'OK') {
-          game.beneos.cloud.importTokenToCompendium( { [`${tokenKey}`]: data.data.token }, event )
+          game.beneos.cloud.importTokenToCompendium({ [`${tokenKey}`]: data.data.token }, event)
         } else {
           ui.notifications.error("Error in importing token from BeneosCloud !")
         }
@@ -518,7 +532,7 @@ export class BeneosCloud {
       .then(response => response.json())
       .then(async function (data) {
         if (data.result == 'OK') {
-          game.beneos.cloud.importItemToCompendium( { [`${itemKey}`]: data.data.item } )
+          game.beneos.cloud.importItemToCompendium({ [`${itemKey}`]: data.data.item })
         }
       })
   }

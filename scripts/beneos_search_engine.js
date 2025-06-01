@@ -687,6 +687,7 @@ export class BeneosDatabaseHolder {
       spellClass: this.toTable(this.spellClasses),
 
       isCloudLoggedIn: game.beneos.cloud.isLoggedIn(),
+      patreonStatus: game.beneos.cloud.getPatreonStatus(),
     }
   }
 }
@@ -972,7 +973,7 @@ export class BeneosSearchEngine extends Dialog {
     }
 
     // Common conf
-    let dialogConf = { content: html, title: "Beneos Search Engine", buttons: myButtons };
+    let dialogConf = { content: html, title: "Beneos Cloud", buttons: myButtons };
     let dialogOptions = { classes: ["beneos_module", "beneos_search_engine", "beneos_search_interface"], left: 200, width: 410, height: 580, 'z-index': 99999 }
     super(dialogConf, dialogOptions)
 
@@ -1411,22 +1412,38 @@ export class BeneosSearchEngine extends Dialog {
       }, 600)
     })
     $("#beneos-radio-token").click(event => {
+      // Retirer la classe active des autres boutons si besoin
+      document.querySelectorAll('.beneos-search-button').forEach(b => b.classList.remove('active'));
+      // Ajouter la classe active à ce bouton
+      $("#beneos-radio-token").addClass('category-active')
       this.dbData.searchMode = "token"
       this.updateContent()
       this.updateSelector(event)
     })
 
     $("#beneos-radio-bmap").click(event => {
+      // Retirer la classe active des autres boutons si besoin
+      document.querySelectorAll('.beneos-search-button').forEach(b => b.classList.remove('active'));
+      // Ajouter la classe active à ce bouton
+      $("#beneos-radio-bmap").addClass('category-active')
       this.dbData.searchMode = "bmap"
       this.updateContent()
       this.updateSelector(event)
     })
     $("#beneos-radio-spell").click(event => {
+      // Retirer la classe active des autres boutons si besoin
+      document.querySelectorAll('.beneos-search-button').forEach(b => b.classList.remove('active'));
+      // Ajouter la classe active à ce bouton
+      $("#beneos-radio-spell").addClass('category-active')
       this.dbData.searchMode = "spell"
       this.updateContent()
       this.updateSelector(event)
     })
     $("#beneos-radio-item").click(event => {
+      // Retirer la classe active des autres boutons si besoin
+      document.querySelectorAll('.beneos-search-button').forEach(b => b.classList.remove('active'));
+      // Ajouter la classe active à ce bouton
+      $("#beneos-radio-item").addClass('category-active')
       this.dbData.searchMode = "item"
       this.updateContent()
       this.updateSelector(event)
@@ -1442,9 +1459,24 @@ export class BeneosSearchEngine extends Dialog {
     $(".beneos-selector").change(event => {
       this.updateSelector(event)
     })
+
+    $("#beneos-cloud-settings").click(event => {
+      // Open the Beneos Cloud settings dialog
+      BeneosUtility.openPostInNewTab('https://beneos.cloud/', { });
+    })
+
+    $("#beneos-cloud-create-account").click(event => {
+      // Exemple d'utilisation :
+      BeneosUtility.openPostInNewTab('https://beneos.cloud/', { 'request-register': 1 });
+    })
+
     $("#beneos-cloud-login").click(event => {
+      let loginData = {
+        email: $("#beneos-cloud-email").val(),
+        password: $("#beneos-cloud-password").val(),
+      }
       let login = new BeneosCloudLogin("searchEngine")
-      login.render(true)
+      login.render(loginData)
     })
 
     $("#beneos-cloud-batch-install").click(event => {
@@ -1506,7 +1538,7 @@ export class BeneosSearchEngineLauncher extends FormApplication {
     await BeneosDatabaseHolder.loadDatabaseFiles()
     let dbData = BeneosDatabaseHolder.getData()
 
-    let html = await renderTemplate('modules/beneos-module/templates/beneossearchengine.html', dbData)
+    let html = await foundry.applications.handlebars.renderTemplate('modules/beneos-module/templates/beneossearchengine.html', dbData)
     let searchDialog = new BeneosSearchEngine(html, dbData)
     game.beneos.searchEngine = searchDialog
     searchDialog.render(true)

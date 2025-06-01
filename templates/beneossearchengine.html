@@ -1,43 +1,19 @@
 <form id="beneos-search-form" class="{{cssClass}}" autocomplete="off">
-  <header class="sheet-header">
-    <div class="header-fields flexrow beneos-search-header">
-      <label class="beneos-search-small-text beneos-search-margin">
-        <a class="" href="https://www.patreon.com/BeneosTokens"><img class="beneos-search-small-icons" src="modules/beneos-module/icons/patreon_logo32x32.webp">Token Patreon</a>
-      </label>
-      <label class="beneos-search-small-text">
-        <a class="" href="https://www.patreon.com/BeneosBattlemaps"><img class="beneos-search-small-icons" src="modules/beneos-module/icons/patreon_logo32x32.webp">Battlemap Patreon</a>
-      </label>
-    </div>
-    <div class="header-fields flexrow beneos-search-header">
-      <label class="beneos-search-small-text beneos-search-margin">
-        <a class="" href="https://discord.gg/mVpv7Nt5qM"><img class="beneos-search-small-icons" src="modules/beneos-module/icons/discord_logo400x400png.webp">Discord</a>
-      </label>
-      <label class="beneos-search-small-text">
-        <a class="" href="https://beneos-battlemaps.com/"><img class="beneos-search-small-icons" src="modules/beneos-module/icons/beneos_Logo.webp">Beneos Online Store</a>
-      </label>
-    </div>
-  </header>
-
-  <hr>
-  <h3 class="beneos-title-center">What are you looking for ?</h3>
-
   <section>
     <div class="flexcol">
       <span class="flexrow beneos-search-main-choice">
-        <label><input type="radio" id="beneos-radio-token" name="beneos-search-select" {{#if (eq searchMode "token")}}checked{{/if}}/>TOKENS</label>
-        <label><input type="radio" id="beneos-radio-bmap" name="beneos-search-select" {{#if (eq searchMode "bmap")}}checked{{/if}} />MAPS</label>
-        <label><input type="radio" id="beneos-radio-item" name="beneos-search-select" {{#if (eq searchMode "item")}}checked{{/if}} />ITEMS</label>
-        <label><input type="radio" id="beneos-radio-spell" name="beneos-search-select" {{#if (eq searchMode "spell")}}checked{{/if}} />SPELLS</label>
+        <button id="beneos-radio-token" class="beneos-search-button" name="beneos-search-select">Tokens</button>
+        <button id="beneos-radio-bmap" class="beneos-search-button" name="beneos-search-select">Maps</button>
+        <button id="beneos-radio-item" class="beneos-search-button" name="beneos-search-select">Items</button>
+        <button id="beneos-radio-spell" class="beneos-search-button" name="beneos-search-select">Spells</button>
       </span>
     </div>
 
     <hr>
 
-    <div class="flexcol">
-      <span class="flexrow beneos-search-text-input">
-        <label class="beneos-search-text-title">Global text search (<a id="reset-search-list">Reset</a>): </label>
-        <input type="text" id="beneos-search-text" name="beneos-search-text" value="" data-dtype="String" />
-      </span>
+    <div class="flexrow beneos-search-text-input">
+      <label class="beneos-search-text-title">Global text search (<a id="reset-search-list" data-tooltip="Overrides Tags">Reset</a>): </label>
+      <input type="text" id="beneos-search-text" name="beneos-search-text" value="" data-dtype="String" />
     </div>
 
     <hr>
@@ -45,21 +21,21 @@
     {{#if (eq searchMode "bmap")}}
 
     <span class="flexrow">
-      <label>Biome Filter 1: </label>
+      <label data-tooltip="Where a creature can be found">Biome Filter 1: </label>
       <select name="bioms" class="beneos-selector" id="bioms-selector" data-dtype="String">
         {{selectOptions bmapBioms nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
 
     <span class="flexrow">
-      <label>Biome Filter 2: </label>
+      <label >Biome Filter 2: </label>
       <select name="bioms" class="beneos-selector" id="bioms-selector-2" data-dtype="String">
         {{selectOptions bmapBioms nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
 
     <span class="flexrow">
-      <label>Type: </label>
+      <label >Type: </label>
       <select name="bmap-kind" class="beneos-selector" id="kind-selector" data-dtype="String">
         <option value="any">Any</option>
         <option value="scenery">Sceneries</option>
@@ -92,42 +68,42 @@
 
     {{#if (eq searchMode "token")}}
     <span class="flexrow">
-      <label>Biome : </label>
+      <label data-tooltip="Where a creature can be found">Biome : </label>
       <select name="bioms" class="beneos-selector" id="bioms-selector" data-dtype="String">
         {{selectOptions tokenBioms selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
 
     <span class="flexrow">
-      <label>Token type : </label>
+      <label data-tooltip="Species or kind of a creature">Token type : </label>
       <select name="token-types" class="beneos-selector" id="token-types" data-dtype="String">
         {{selectOptions tokenTypes selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
 
     <span class="flexrow">
-      <label>Fighting style : </label>
+      <label data-tooltip="The typical way a creature fights">Fighting style : </label>
       <select name="token-fight-style" class="beneos-selector" id="token-fight-style" data-dtype="String">
         {{selectOptions fightingStyles selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
 
     <span class="flexrow">
-      <label>CR : </label>
+      <label data-tooltip="Challenge Rating of the creature">CR : </label>
       <select name="token-cr" class="beneos-selector" id="token-cr" data-dtype="String">
         {{selectOptions crList selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
 
     <span class="flexrow">
-      <label>Movement : </label>
+      <label data-tooltip="The possible mode of locomotion">Movement : </label>
       <select name="token-movement" class="beneos-selector" id="token-movement" data-dtype="String">
         {{selectOptions movementList selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
 
     <span class="flexrow">
-      <label>Purpose : </label>
+      <label data-tooltip="The role the creature fulfills in combat">Purpose : </label>
       <select name="token-purpose" class="beneos-selector" id="token-purpose" data-dtype="String">
         {{selectOptions purposeList selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
@@ -135,7 +111,7 @@
 
     <hr>
     <span class="flexrow">
-      <label>Install : </label>
+      <label data-tooltip="Bulk installation">Install : </label>
       <select name="asset-install" class="beneos-selector" id="asset-install" data-dtype="String">
         <option value="any">Any</option>
         <option value="all">All</option>
@@ -225,18 +201,41 @@
     </span>
     {{/if}}
     -->
-
   </div>
 
-  <div class="beneos-search-overflow-section">
-    <label id="beneos-search-overflow">Only the first 100 results are shown. Please use filters to narrow your search.</label>
-  </div>
-
-  <div class="beneos-rebuild-compendium-button">
+  <div class="beneos-connection-section">
     {{#if isCloudLoggedIn}}
       <label class="beneos-cloud-connected">Connected to the Beneos Cloud</label>
+      <button id="beneos-cloud-settings" class="" data-tooltip="Click here to open the Beneos Cloud settings">Beneos Cloud Account Settings</button>
+
+      {{#if (or (eq patreonStatus "not_active_patron") (eq patronStatus "no_patreon"))}}
+        <div class="beneos-cloud-no-patreon">❌ Patreon Account not Linked</div>
+        <div class="beneos-cloud-no-patreon-info">To have access to Beneos Patreon content, you must be an active Patron and link your Beneos Cloud account to your Patreon account once. Purchased store content from Beneos-Battlemaps.com will automatically be available here.</div>
+      {{else if (eq patreonStatus "active_patron")}}
+        <div class="beneos-cloud-patreon">✅ Patreon Account Linked</div>
+        <div class="beneos-cloud-patreon-info">You are an active Patron and have access to all Beneos Patreon content.</div>
+      {{else if (eq patronStatus "no_patreon")}}
+        <div class="beneos-cloud-no-patreon">❌ Patreon Account not Linked</div>
+        <div class="beneos-cloud-no-patreon-info">You are not a Patron, but you can still access the store content you purchased from Beneos-Battlemaps.com.</div>
+      {{/if}}
+
     {{else}}
-      <button type="submit" class="" id="beneos-cloud-login" data-tooltip="Click here to connect to the Beneos Cloud">Connect to Beneos Cloud</button>
+      <div class="beneos-cloud-not-connected">Not Connected to the Beneos Cloud. Please Log in!</div>
+      <div>Login to your Beneos Cloud account. Credentials entered here are never stored.</div>
+      <div class="flexrow">
+        <label class="beneos-cloud-label">Email: </label>
+        <input type="email" class="beneos-cloud-login-data" id="beneos-cloud-email" name="beneos-cloud-email" value="" data-dtype="String" placeholder="Your Beneos Cloud Email" />
+      </div>
+      <div class="flexrow">
+        <label class="beneos-cloud-label">Password: </label>
+        <input type="password" class="beneos-cloud-login-data" id="beneos-cloud-password" name="beneos-cloud-password" value="" data-dtype="String" placeholder="Your Beneos Cloud Password" />
+      </div>
+      <div class="flexrow">
+        <button type="submit" class="beneos-cloud-login-button" id="beneos-cloud-create-account" data-tooltip="Click here to create an account to the Beneos Cloud">Create Account</button>
+        <button type="submit" class="beneos-cloud-login-button" id="beneos-cloud-login" data-tooltip="Click here to connect to the Beneos Cloud">Login</button>
+      </div>
+      <hr>
+      <div class="beneos-black-text">With the Beneos Cloud, you can conveniently install all Beneos battlemaps, tokens, spells and items directly into your Foundry VTT world.</div>
     {{/if}}
     <button type="submit" class="" id="beneos-cloud-batch-install" hidden data-tooltip="Click here to install all selected assets">Install all selected assets</button>
 

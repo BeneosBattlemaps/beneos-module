@@ -145,6 +145,15 @@ export class BeneosUtility {
       restricted: true
     })
 
+    game.settings.register(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", {
+      name: 'Patreon status of the user',
+      default: "",
+      type: String,
+      scope: 'world',
+      config: false,
+      restricted: true
+    })
+
     game.settings.register(BeneosUtility.moduleID(), 'beneos-reload-search-engine', {
       name: 'Internal storage of the User ID with Beneos Cloud',
       default: "",
@@ -176,16 +185,6 @@ export class BeneosUtility {
         restricted: true,
       })
     }
-
-    /*game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-clean-compendium", {
-      name: "Empty compendium to re-import all tokens data",
-      label: "Reset & Rebuild BeneosModule Compendiums",
-      hint: "Cleanup BeneosModule compendium and tokens configs",
-      scope: 'world',
-      config: true,
-      type: BeneosCompendiumReset,
-      restricted: true
-    })*/
 
     game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-clean-compendium", {
       name: "Empty compendium ",
@@ -341,6 +340,27 @@ export class BeneosUtility {
         )
       );*/
   }
+
+  static openPostInNewTab(url, params) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+    form.target = '_blank';
+
+    for (const key in params) {
+      if (params.hasOwnProperty(key)) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = params[key];
+        form.appendChild(input);
+      }
+    }
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+  }
+
 
   /********************************************************************************** */
   static getLocalStorage() {
