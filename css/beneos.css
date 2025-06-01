@@ -373,6 +373,11 @@
   flex-grow: 1;
 }
 
+.beneos-tooltip-variant {
+  display:grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .beneos-search-icons-result-tooltip {
   max-height: 256px;
   width: 100%;
@@ -382,6 +387,14 @@
   flex-grow: 0;
 }
 .beneos-search-icons-result-tooltip-variant-3 {
+  max-height: 128px;
+  width: 100%;
+  max-width: min(100%, calc(var(--max-height, 128px) * var(--img-ratio, 1)));
+  border: 0;
+  margin-right: 4px;
+  flex-grow: 0;
+}
+.beneos-search-icons-result-tooltip-variant-2 {
   max-height: 160px;
   width: 100%;
   max-width: min(100%, calc(var(--max-height, 160px) * var(--img-ratio, 1)));
@@ -389,18 +402,10 @@
   margin-right: 4px;
   flex-grow: 0;
 }
-.beneos-search-icons-result-tooltip-variant-2 {
-  max-height: 200px;
-  width: 100%;
-  max-width: min(100%, calc(var(--max-height, 200px) * var(--img-ratio, 1)));
-  border: 0;
-  margin-right: 4px;
-  flex-grow: 0;
-}
 .beneos-search-icons-result-tooltip-variant-1 {
-  max-height: 256px;
+  max-height: 216px;
   width: 100%;
-  max-width: min(100%, calc(var(--max-height, 256px) * var(--img-ratio, 1)));
+  max-width: min(100%, calc(var(--max-height, 216px) * var(--img-ratio, 1)));
   border: 0;
   margin-right: 4px;
   flex-grow: 0;
@@ -688,6 +693,9 @@
 
 .beneos-description-text {
   font-size: 0.8rem;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .beneos-description-title {

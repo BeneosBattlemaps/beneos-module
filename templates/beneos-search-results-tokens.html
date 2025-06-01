@@ -3,9 +3,6 @@
   {{!-- Sheet Body --}}
   <section class="sheet-body">
 
-    <!-- <div>
-      <img class="bsr_title" src="modules/beneos-module/ui/result_form_title_item.webp">
-    </div> -->
 
     <div class="bsr_result_box">
 
@@ -105,9 +102,7 @@
               </div>
 
               <label class="release-url"><a href="{{result.properties.releaseurl}}">{{#if result.isInstallable}}
-                  {{else}}GET IT HERE{{/if}} Release
-                  URL</a></label>
-
+                  {{else}}GET ACCESS{{/if}}</a></label>
             </div>
           </div>
 
@@ -164,7 +159,7 @@
                       {{#if @root.isOffline}}
                       OFFLINE
                       {{else }}
-                      NOT LOGGED
+                      Not Connected
                       {{/if}}
                     </label>
                   {{/if}}
