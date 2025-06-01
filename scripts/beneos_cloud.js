@@ -107,6 +107,7 @@ export class BeneosCloudLogin extends FormApplication {
             console.log("Refreshing search engine", requestOrigin)
             if ( requestOrigin == "searchEngine") {
               window.location.reload()
+              game.settings.set(BeneosUtility.moduleID(), "beneos-reload-search-engine", true)
             }
           }
         })

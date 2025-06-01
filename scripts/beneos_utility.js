@@ -145,6 +145,16 @@ export class BeneosUtility {
       restricted: true
     })
 
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-reload-search-engine', {
+      name: 'Internal storage of the User ID with Beneos Cloud',
+      default: "",
+      type: Boolean,
+      scope: 'world',
+      config: false,
+      restricted: true,
+      default: false
+    })
+
     if (game.settings.get(BeneosUtility.moduleID(), 'beneos-cloud-foundry-id') == "") {
       game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-patreon-login", {
         name: "Login to Beneos Cloud ",

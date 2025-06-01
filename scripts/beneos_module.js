@@ -49,6 +49,12 @@ Hooks.once('ready', () => {
   //BeneosUtility.checkLockViewPresence()
   game.beneos.cloud.loginAttempt()
 
+  if (game.settings.get(BeneosUtility.moduleID(), "beneos-reload-search-engine") ) {
+    game.settings.set(BeneosUtility.moduleID(), "beneos-reload-search-engine", false)
+    let searchEngine = new BeneosSearchEngineLauncher;
+    searchEngine.render()
+  }
+
   // Try to catch right click on profile image
   Hooks.on('renderActorSheet', (sheet, html, data) => {
     if (game.system.id == "pf2e") {
