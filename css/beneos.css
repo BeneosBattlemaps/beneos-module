@@ -523,12 +523,6 @@
   border: 2px solid #000;
 }
 
-.beneos-search-button:active {
-  background-color: #3e0706;
-  color: #e1ded9;
-  border: 2px solid #000;
-}
-
 .beneos-search-button.category-active {
   background-color: #3e0706;
   color: #e1ded9;

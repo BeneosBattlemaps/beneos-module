@@ -1413,17 +1413,17 @@ export class BeneosSearchEngine extends Dialog {
     })
     $("#beneos-radio-token").click(event => {
       // Retirer la classe active des autres boutons si besoin
-      document.querySelectorAll('.beneos-search-button').forEach(b => b.classList.remove('active'));
+      $('.beneos-search-button').removeClass('category-active');
       // Ajouter la classe active à ce bouton
-      $("#beneos-radio-token").addClass('category-active')
       this.dbData.searchMode = "token"
       this.updateContent()
       this.updateSelector(event)
+      $("#beneos-radio-token").addClass('category-active')
     })
 
     $("#beneos-radio-bmap").click(event => {
       // Retirer la classe active des autres boutons si besoin
-      document.querySelectorAll('.beneos-search-button').forEach(b => b.classList.remove('active'));
+      $('.beneos-search-button').removeClass('category-active');
       // Ajouter la classe active à ce bouton
       $("#beneos-radio-bmap").addClass('category-active')
       this.dbData.searchMode = "bmap"
@@ -1432,7 +1432,7 @@ export class BeneosSearchEngine extends Dialog {
     })
     $("#beneos-radio-spell").click(event => {
       // Retirer la classe active des autres boutons si besoin
-      document.querySelectorAll('.beneos-search-button').forEach(b => b.classList.remove('active'));
+      $('.beneos-search-button').removeClass('category-active');
       // Ajouter la classe active à ce bouton
       $("#beneos-radio-spell").addClass('category-active')
       this.dbData.searchMode = "spell"
@@ -1441,7 +1441,7 @@ export class BeneosSearchEngine extends Dialog {
     })
     $("#beneos-radio-item").click(event => {
       // Retirer la classe active des autres boutons si besoin
-      document.querySelectorAll('.beneos-search-button').forEach(b => b.classList.remove('active'));
+      $('.beneos-search-button').removeClass('category-active');
       // Ajouter la classe active à ce bouton
       $("#beneos-radio-item").addClass('category-active')
       this.dbData.searchMode = "item"

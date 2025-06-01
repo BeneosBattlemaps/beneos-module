@@ -2,10 +2,10 @@
   <section>
     <div class="flexcol">
       <span class="flexrow beneos-search-main-choice">
-        <button id="beneos-radio-token" class="beneos-search-button" name="beneos-search-select">Tokens</button>
-        <button id="beneos-radio-bmap" class="beneos-search-button" name="beneos-search-select">Maps</button>
-        <button id="beneos-radio-item" class="beneos-search-button" name="beneos-search-select">Items</button>
-        <button id="beneos-radio-spell" class="beneos-search-button" name="beneos-search-select">Spells</button>
+        <button id="beneos-radio-token" class="beneos-search-button {{#if (eq searchMode "token")}}category-active{{/if}}" name="beneos-search-select">Tokens</button>
+        <button id="beneos-radio-bmap" class="beneos-search-button {{#if (eq searchMode "bmap")}}category-active{{/if}}" name="beneos-search-select">Maps</button>
+        <button id="beneos-radio-item" class="beneos-search-button {{#if (eq searchMode "item")}}category-active{{/if}}" name="beneos-search-select">Items</button>
+        <button id="beneos-radio-spell" class="beneos-search-button {{#if (eq searchMode "spell")}}category-active{{/if}}" name="beneos-search-select">Spells</button>
       </span>
     </div>
 
