@@ -230,7 +230,6 @@
 
 .beneos-tooltip .beneos-tooltip-keyword {
   width: 220px;
-  height: 96px;
   margin: 4px;
   padding: 4px;
   white-space: wrap;
@@ -244,7 +243,6 @@
 
 .beneos-tooltip .beneos-tooltip-purpose {
   width: 220px;
-  height: 96px;
   margin: 4px;
   padding: 4px;
   white-space: wrap;
@@ -342,8 +340,8 @@
 .beneos-icon-child {
   padding: 0px;
   position: absolute;
-  top: 0px;
-  left: 0px;
+  top: 2px;
+  left: 2px;
   transform: scale(0.96);
 }
 
@@ -549,8 +547,8 @@
   margin-bottom: 4px;
   min-height: 1.2rem;
   max-height: 1.2rem;
-  max-width: 8rem;
 }
+
 
 .beneos-search-installed {
   font-weight: bold;
@@ -591,6 +589,8 @@
   max-height: 18px;
   border: 0;
   opacity: 50%;
+  padding-left: 52px;
+  transform: translate(0px, -14px);
 }
 
 .beneos-search-moulinette-icons {
@@ -776,7 +776,7 @@
 }
 
 .beneos_search_results .window-header .window-title {
-  margin-top: 14px;
+  margin-top: 40px;
   margin-left: 16px;
   height: 2.6rem;
   /*display: none;*/
@@ -851,7 +851,7 @@
 .beneos-item-container {
   background-color: #eaeaea;
   max-height: 128px;
-  margin-bottom: 6px;
+  margin-bottom: 0px;
 }
 
 .beneos-item-container:hover {
@@ -905,6 +905,8 @@
 .token-button-rows {
   margin-top: 8px;
   margin-left: 6px;
+  min-width: 25.1rem;
+  max-width: 25.1rem;
 }
 
 .item-attenument-box {
@@ -1135,4 +1137,7 @@ i.beneos-module {
 
 .beneos-cloud-token-install {
   color: #3e0706;
+}
+.beneos-search-button-token:last-child {
+  margin-right: 0;
 }
