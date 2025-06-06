@@ -593,6 +593,15 @@
   transform: translate(0px, -14px);
 }
 
+.beneos-search-yt-icons-bmaps {
+  min-height: 18px;
+  max-height: 18px;
+  border: 0;
+  opacity: 50%;
+  transform: translate(16px, 18px);
+}
+
+
 .beneos-search-moulinette-icons {
   max-height: 24px;
   margin-top: -6px;
