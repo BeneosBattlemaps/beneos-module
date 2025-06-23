@@ -64,7 +64,7 @@ export class BeneosCloudLogin extends FormApplication {
     }
     console.log("User ID: ", userId)
 
-    if (loginData == null) {
+    if (loginData == null || typeof loginData === 'boolean') {
       // If we don't have login data, we need to ask the user
       console.log("No login data, asking user")
       // Show the login dialog
@@ -117,9 +117,11 @@ export class BeneosCloudLogin extends FormApplication {
             ui.notifications.info("BeneosModule : You are now connected to BeneosCloud !")
             console.log("Refreshing search engine", requestOrigin)
             if (requestOrigin == "searchEngine") {
-              window.location.reload()
               game.settings.set(BeneosUtility.moduleID(), "beneos-reload-search-engine", true)
             }
+            setTimeout(() => {
+              window.location.reload()
+            }, 200)
           }
         })
     }, 1000)
@@ -158,11 +160,13 @@ export class BeneosCloud {
       })
   }
 
-  disconnect() {
+  async disconnect() {
     this.setLoginStatus(false)
-    game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-foundry-id", "")
-    // reload the page
-    location.reload()
+    await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-foundry-id", "")
+    setTimeout(() => {
+      console.log("BeneosModule : You are now disconnected from BeneosCloud !")
+      location.reload()
+    }, 200)
   }
 
   isLoggedIn() {
