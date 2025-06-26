@@ -52,11 +52,11 @@
                 <label class="beneos-search-title-result">{{result.name}}</label>
                 <span class="triangle-topleft"></span>
               </div>
-              
+
               <!-- Properties + Attenument line -->
               <div class="item-middle-line flexrow">
                 <div class="item-properties-box">
-                  
+
                   <label class="beneos-search-stat"><a class="beneos-button-rarity"
                       data-rarity-value="{{result.properties.rarity}}">{{beneosUpperFirst
                       result.properties.rarity}}</a>
@@ -90,7 +90,7 @@
                 </div>
                 {{/if}}
               </div>
-              
+
               <div class="item-description-box">
                 <span class="beneos-search-text01 flexrow beneos-description-background">
                   {{result.description}}
@@ -101,7 +101,7 @@
           </div>
 
           <div class="beneos-search-last flexcol">
-            
+
             <div class="flexrow flex-content-left">
               <div class="beneos-tooltip beneos-search-installed ">
                 {{#if result.isCloudAvailable}}
@@ -114,7 +114,7 @@
                   <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
                   <label class="beneos-search-installed item-right-text-content"><a class="beneos-cloud-item-install">Cloud Install</a></label>
                 </div>
-                {{else}}        
+                {{else}}
                   {{#if result.isInstalled}}
                   <div class="beneos-tooltiptext beneos-token-description">
                     <div class="flexrow beneos-tooltip-content-left-buttons">
@@ -169,11 +169,11 @@
               <img class="item-origin-icon" src="https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/common/thumnbails/{{beneosLowerCase result.properties.origin}}.webp">
             </div>
           </div>
-          
+
         </div>
 
         <img src="modules/beneos-module/ui/border_bottom.webp" class="bsr_bottom_border" />
-        
+
       </div>
       {{/each}}
       </div>

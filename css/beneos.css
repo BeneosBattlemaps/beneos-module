@@ -936,12 +936,12 @@
 }
 
 .item-description-box {
-  background-color: #ebe8e0;
+  /*background-color: #ebe8e0;*/
   color: #3e0706;
-  border-left: #191813 1px solid;
+  /*border-left: #191813 1px solid;
   border-top: #191813 1px ridge;
   border-right: #191813 1px ridge;
-  border-bottom: #191813 1px ridge;
+  border-bottom: #191813 1px ridge;*/
   margin-left: 6px;
   margin-top: 12px;
   margin-bottom: 12px;
