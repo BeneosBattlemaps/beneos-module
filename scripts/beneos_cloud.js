@@ -226,6 +226,7 @@ export class BeneosCloud {
   isItemAvailable(key) {
     let content = this.availableContent.items
     if (!content || content.length == 0) return false
+    console.log("Available items", content, key)
     for (const element of content) {
       if (element.key == key) {
         return true

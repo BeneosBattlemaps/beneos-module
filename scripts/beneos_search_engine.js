@@ -381,6 +381,9 @@ export class BeneosDatabaseHolder {
     for (let key in this.itemData.content) {
       let itemData = this.itemData.content[key]
       if (itemData && typeof (itemData) == "object") {
+        if (/^\d+_/.test(key)) {
+          key = key.replace(/^(\d+)_/, '$1-');
+        }
         itemData.kind = "item"
         itemData.key = key
         itemData.path_name = itemData.name.replace(/ /g, "_").toLowerCase()
@@ -405,6 +408,9 @@ export class BeneosDatabaseHolder {
     for (let key in this.spellData.content) {
       let spellData = this.spellData.content[key]
       if (spellData && typeof (spellData) == "object") {
+        if (/^\d+_/.test(key)) {
+          key = key.replace(/^(\d+)_/, '$1-');
+        }
         spellData.kind = "spell"
         spellData.key = key
         spellData.path_name = spellData.name.replace(/ /g, "_").toLowerCase()
@@ -493,7 +499,7 @@ export class BeneosDatabaseHolder {
 
   /********************************************************************************** */
   static textSearch(text, mode) {
-
+    console.log("TEXT search", text, mode)
     let results = []
     if (mode == "token") {
       results = this.objectTextSearch(this.tokenData.content, text, "token")
@@ -502,10 +508,10 @@ export class BeneosDatabaseHolder {
       results = results.concat(this.objectTextSearch(this.bmapData.content, text, "bmap"))
     }
     if (mode == "item") {
-      results = results.concat(this.objectTextSearch(this.bmapData.content, text, "item"))
+      results = results.concat(this.objectTextSearch(this.itemData.content, text, "item"))
     }
     if (mode == "spell") {
-      results = results.concat(this.objectTextSearch(this.bmapData.content, text, "spell"))
+      results = results.concat(this.objectTextSearch(this.spellData.content, text, "spell"))
     }
 
     //console.log("TEXT results ", results, this.bmapData.content)
