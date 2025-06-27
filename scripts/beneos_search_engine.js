@@ -483,8 +483,15 @@ export class BeneosDatabaseHolder {
 
     for (let key in objectList) {
       let item = foundry.utils.duplicate(objectList[key])
-      item.kind = (kind == "token") ? "token" : item.properties.type
+      item.kind = kind || "token"
       if (item.kind == "token") {
+        item.kind = (kind == "token") ? "token" : item.properties.type
+      }
+      if (kind && kind == "item") {
+        item.picture = "https://www.beneos-database.com/data/items/thumbnails/" + item.properties.icon
+      } else if (kind && kind == "spell") {
+        item.picture = "https://www.beneos-database.com/data/spells/thumbnails/" + item.properties.icon
+      } else if (item.kind == "token") {
         item.picture = "https://www.beneos-database.com/data/tokens/thumbnails_v2/" + item.properties.thumbnail
       } else {
         item.kind = "battlemap"
