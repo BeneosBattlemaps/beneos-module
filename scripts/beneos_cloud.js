@@ -163,6 +163,7 @@ export class BeneosCloud {
   async disconnect() {
     this.setLoginStatus(false)
     await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-foundry-id", "")
+    await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", "no_patreon")
     setTimeout(() => {
       console.log("BeneosModule : You are now disconnected from BeneosCloud !")
       location.reload()
@@ -212,6 +213,7 @@ export class BeneosCloud {
 
   isTokenAvailable(key) {
     let content = this.availableContent.tokens
+    //console.log("Available tokens", content, key)
     if (!content || content?.length == 0) return false
     for (const element of content) {
       if (element.key == key) {
