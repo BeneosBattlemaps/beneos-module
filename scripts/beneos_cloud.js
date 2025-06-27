@@ -321,42 +321,46 @@ export class BeneosCloud {
       } catch (err) {
         console.log("Directory already exists")
       }
+      console.log("Item", itemData, itemObjectData)
+      // Decode the base64 tokenImg and upload it to the FilePicker
+      let base64Response = await fetch(`data:image/webp;base64,${itemData.itemImage.front.image64}`);
+      let blob = await base64Response.blob();
+      let file = new File([blob], itemData.itemImage.front.filename, { type: "image/webp" });
+      await FilePicker.upload("data", finalFolder, file, {});
 
-      for (let i = 0; i < itemData.itemImages.length; i++) {
-        let fullId = itemKey + "_" + (i + 1)
+      base64Response = await fetch(`data:image/webp;base64,${itemData.itemImage.back.image64}`);
+      blob = await base64Response.blob();
+      file = new File([blob], itemData.itemImage.back.filename, { type: "image/webp" });
+      await FilePicker.upload("data", finalFolder, file, {});
 
-        // Decode the base64 tokenImg and upload it to the FilePicker
-        let base64Response = await fetch(`data:image/webp;base64,${itemData.itemImages[i].image.image64}`);
-        let blob = await base64Response.blob();
-        let file = new File([blob], tokenData.tokenImages[i].token.filename, { type: "image/webp" });
-        await FilePicker.upload("data", finalFolder, file, {});
+      itemObjectData.system.description.value = itemObjectData.system.description.value.replaceAll("beneos_assets/beneos_items/", "beneos_assets/cloud/items/")
 
-        itemData.img = `${finalFolder}/${itemData.itemImages[i].image.filename}`
-        let item = new CONFIG.Item.documentClass(itemData);
-        if (item) {
-          // Search if we have already an actor with the same name in the compendium
-          let existingItem = itemRecords.find(a => a.name == item.name && a.img == item.img)
-          if (existingItem) {
-            console.log("Deleting existing item", existingItem._id)
-            await Item.deleteDocuments([existingJournal._id], { pack: "beneos-module.beneos_module_items" })
-          }
-          // And then create it again
-          let imported = await itemPack.importDocument(item);
-          await imported.setFlag("world", "beneos", { tokenKey, fullId, idx: i, installationDate: tNow })
-          //console.log("ACTOR IMPO", imported)
-          BeneosUtility.beneosItems[fullId] = {
-            itemName: imported.name,
-            imf: itemData.img,
-            itemId: imported.id,
-            folder: finalFolder,
-            tokenKey: tokenKey,
-            fullId: fullId,
-            installDate: tNow,
-            number: i + 1
-          }
-        } else {
-          this.importErrors.push("Error in creating item " + records.name)
-          console.log("Error in creating item", records.name);
+      base64Response = await fetch(`data:image/webp;base64,${itemData.itemImage.icon.image64}`);
+      blob = await base64Response.blob();
+      file = new File([blob], itemData.itemImage.icon.filename, { type: "image/webp" });
+      await FilePicker.upload("data", finalFolder, file, {});
+      itemObjectData.img = `${finalFolder}/${itemData.itemImage.icon.filename}`
+
+      let item = new CONFIG.Item.documentClass(itemObjectData);
+      if (item) {
+        // Search if we have already an actor with the same name in the compendium
+        let existingItem = itemRecords.find(a => a.name == item.name && a.img == item.img)
+        if (existingItem) {
+          console.log("Deleting existing item", existingItem._id)
+          await Item.deleteDocuments([existingItem._id], { pack: "beneos-module.beneos_module_items" })
+        }
+        // And then create it again
+        let imported = await itemPack.importDocument(item);
+        await imported.setFlag("world", "beneos", { itemKey, fullId:itemKey, idx: 1, installationDate: tNow })
+        BeneosUtility.beneosItems[itemKey] = {
+          itemName: imported.name,
+          img: imported.img,
+          itemId: imported.id,
+          folder: finalFolder,
+          itemKey: itemKey,
+          fullId: itemKey,
+          installDate: tNow,
+          number: 1
         }
       }
     }
@@ -364,6 +368,88 @@ export class BeneosCloud {
     console.log("Saving ITEM data :", toSave)
     await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', toSave) // Save the token config !
     await itemPack.configure({ locked: true })
+  }
+
+  async importSpellToCompendium(spellArray, event) {
+    this.beneosSpells = {}
+
+    let tNow = Date.now()
+    let spellPack
+    if (game.system.id == "pf2e") {
+      spellPack = game.packs.get("beneos-module.beneos_module_spells_pf2")
+      let rPF2 = await fetch("modules/beneos-module/scripts/generic_spell_pf2.json")
+      spellData = await rPF2.json()
+    } else {
+      spellPack = game.packs.get("beneos-module.beneos_module_spells")
+    }
+    if (!spellPack) {
+      ui.notifications.error("BeneosModule : Unable to find compendiums, please check your installation !")
+      return
+    }
+    let spellRecords = await spellPack.getIndex()
+    await spellPack.configure({ locked: false })
+    for (let spellKey in spellArray) {
+      let spellData = spellArray[spellKey]
+      // Get the common actor data
+      let spellObjectData = spellData.spellJSON
+      let finalFolder = `beneos_assets/cloud/spells/${spellKey}`
+      try {
+        await FilePicker.createDirectory("data", "beneos_assets/cloud");
+      } catch (err) {
+        console.log("Directory already exists")
+      }
+      try {
+        await FilePicker.createDirectory("data", "beneos_assets/cloud/spells");
+      } catch (err) {
+        console.log("Directory already exists")
+      }
+      try {
+        await FilePicker.createDirectory("data", finalFolder);
+      } catch (err) {
+        console.log("Directory already exists")
+      }
+      console.log("Spell", spellData, spellObjectData )
+      // Decode the base64 tokenImg and upload it to the FilePicker
+      let base64Response = await fetch(`data:image/webp;base64,${spellData.spellImage.front.image64}`);
+      let blob = await base64Response.blob();
+      let file = new File([blob], spellData.spellImage.front.filename, { type: "image/webp" });
+      await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {});
+
+      spellObjectData.system.description.value = spellObjectData.system.description.value.replaceAll("beneos_assets/beneos_spells/", "beneos_assets/cloud/spells/")
+
+      base64Response = await fetch(`data:image/webp;base64,${spellData.spellImage.icon.image64}`);
+      blob = await base64Response.blob();
+      file = new File([blob], spellData.spellImage.icon.filename, { type: "image/webp" });
+      await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {});
+      spellObjectData.img = `${finalFolder}/${spellData.spellImage.icon.filename}`
+
+      let spell = new CONFIG.Item.documentClass(spellObjectData);
+      if (spell) {
+        // Search if we have already an actor with the same name in the compendium
+        let existingSpell = spellRecords.find(a => a.name == spell.name && a.img == spell.img)
+        if (existingSpell) {
+          console.log("Deleting existing spell", existingSpell._id)
+          await Item.deleteDocuments([existingSpell._id], { pack: "beneos-module.beneos_module_spells" })
+        }
+        // And then create it again
+        let imported = await spellPack.importDocument(spell);
+        await imported.setFlag("world", "beneos", { spellKey, fullId:spellKey, idx: 1, installationDate: tNow })
+        BeneosUtility.beneosSpells[spellKey] = {
+          itemName: imported.name,
+          img: imported.img,
+          spellId: imported.id,
+          folder: finalFolder,
+          spellKey: spellKey,
+          fullId: spellKey,
+          installDate: tNow,
+          number: 1
+        }
+      }
+    }
+    let toSave = JSON.stringify(BeneosUtility.beneosSpells)
+    console.log("Saving ITEM data :", toSave)
+    await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', toSave) // Save the token config !
+    await spellPack.configure({ locked: true })
   }
 
   async importTokenToCompendium(tokenArray, event) {
@@ -540,6 +626,19 @@ export class BeneosCloud {
       .then(async function (data) {
         if (data.result == 'OK') {
           game.beneos.cloud.importItemToCompendium({ [`${itemKey}`]: data.data.item })
+        }
+      })
+  }
+
+  importSpellsFromCloud(spellKey) {
+    ui.notifications.info("Importing spell from BeneosCloud !")
+    let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
+    let url = `https://beneos.cloud/foundry-manager.php?get_spell=1&foundryId=${userId}&spellKey=${spellKey}`
+    fetch(url, { credentials: 'same-origin' })
+      .then(response => response.json())
+      .then(async function (data) {
+        if (data.result == 'OK') {
+          game.beneos.cloud.importSpellToCompendium({ [`${spellKey}`]: data.data.spell })
         }
       })
   }
