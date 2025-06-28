@@ -867,6 +867,20 @@ export class BeneosUtility {
     }
     return undefined
   }
+  static getItemInstallTS(key) {
+    let token = this.beneosItems[key]
+    if (token) {
+      return token.installDate
+    }
+    return undefined
+  }
+  static getSpellInstallTS(key) {
+    let token = this.beneosSpells[key]
+    if (token) {
+      return token.installDate
+    }
+    return undefined
+  }
 
   /********************************************************************************** */
   static getLocalAvatarPicture(key) {
@@ -897,7 +911,7 @@ export class BeneosUtility {
   /********************************************************************************** */
   static getActorIdVariant(key, idx) {
     for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
-      if (token.tokenKey == key && token.number == idx) {
+      if (token.tokenKey.toLowerCase() == key.toLowerCase() && token.number == idx) {
         return token.actorId
       }
     }
@@ -905,21 +919,21 @@ export class BeneosUtility {
   }
   static getActorId(key) {
     for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
-      if (token.tokenKey == key) {
+      if (token.tokenKey.toLowerCase() == key.toLowerCase()) {
         return token.actorId
       }
     }
     return undefined
   }
   static getItemId(key) {
-    let token = this.beneosItems[key]
+    let token = this.beneosItems[key.toLowerCase()]
     if (token) {
       return token.itemId
     }
     return undefined
   }
   static getSpellId(key) {
-    let token = this.beneosSpells[key]
+    let token = this.beneosSpells[key.toLowerCase()]
     if (token) {
       //console.log("Spell ?", token)
       return token.spellId

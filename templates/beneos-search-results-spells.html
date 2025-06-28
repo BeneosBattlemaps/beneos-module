@@ -47,7 +47,7 @@
                 <label class="beneos-search-title-result">{{result.name}}</label>
                 <span class="triangle-topleft"></span>
               </div>
-              
+
               <!-- Properties + Attenument line -->
               <div class="item-middle-line flexrow">
                 <div class="item-properties-box item-properties-box-spells">
@@ -67,7 +67,7 @@
                   </div>
                 </div>
               </div>
-              
+
               <div class="beneos-tooltip item-description-box item-description-box-spells">
                 <div class="beneos-tooltiptext beneos-token-description">
                   <div class="beneos-tooltip-content-installed">
@@ -89,38 +89,63 @@
           </div>
 
           <div class="beneos-search-last flexcol">
-            
+
             <div class="flexrow flex-content-left">
               <div class="beneos-tooltip beneos-search-installed ">
                 {{#if result.isCloudAvailable}}
-                <div class="beneos-tooltip beneos-search-installed">
+                <div class="beneos-tooltip beneos-search-installed selected-batch">
                   <div class="beneos-tooltiptext beneos-token-description">
-                    <div class="flexrow beneos-tooltip-content-installed">
-                      {{beneosGetHover "cloudAvailable" "cloudAvailable"}}
-                    </div>
                   </div>
+                  {{#if result.isNew}}
+                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_new.png">
+                  <label class="beneos-search-new item-right-text-content">
+                    <!-- <input type="checkbox" class="check-token-batch-install"> -->
+                    <a data-tooltip="New spell available from the cloud server ! Click to install it locally or Ctrl+Click for batch install."
+                      class="beneos-cloud-spell-install">NEW !</a>
+                  </label>
+                  {{else}}
                   <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
-                  <label class="beneos-search-installed item-right-text-content"><a class="beneos-cloud-spell-install">Cloud Install</a></label>
+                  <label class="beneos-search-installed item-right-text-content ">
+                    <!-- <input type="checkbox" class="check-token-batch-install"> -->
+                    <a data-tooltip="Click to install it locally or Ctrl+Click for batch install." class="beneos-cloud-spell-install">INSTALL</a>
+                  </label>
+                  {{/if}}
                 </div>
-                {{else}}        
-                  {{#if result.isInstalled}}
+
+                {{else}}
+
+                {{#if result.isInstalled}}
                   <div class="beneos-tooltiptext beneos-token-description">
-                    <div class="flexrow beneos-tooltip-content-left-buttons">
-                      {{beneosGetHover "installed" "installed"}}
-                    </div>
                   </div>
-                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
-                  <label class="beneos-search-installed item-right-text-content">Installed</label>
+                  {{#if result.isUpdate}}
+                    <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_update.png">
+                    <label class="beneos-search-new item-right-text-content"><a
+                      data-tooltip="Updated spell available from the cloud server ! Click to install the update."
+                      class="beneos-cloud-spell-install">UPDATE</a></label>
+                  {{else}}
+                    <img class="item-right-text-box " src="modules/beneos-module/ui/right_button_v1_ready.png">
+                    <label class="beneos-search-installed item-right-text-content"
+                      data-tooltip="Installed and ready to be used.">READY</label>
+                  {{/if}}
                 {{else}}
                   <div class="beneos-tooltiptext beneos-token-description">
-                    <div class="flexrow beneos-tooltip-content-left-buttons item-right-text-content">
-                      {{beneosGetHover "installed" "not_installed"}}
-                    </div>
                   </div>
-                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
-                  <label class="beneos-search-notinstalled item-right-text-content">Not Installed</label>
+                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_notavailable.png">
+                  {{#if @root.isCloudLoggedIn}}
+                    <label class="item-right-text-content beneos-search-notinstalled"
+                      data-tooltip="No access to this spell, check your Patreon membership" >NO ACCESS</label>
+                  {{else}}
+                    <label class="item-right-text-content beneos-search-notinstalled"
+                      data-tooltip="You are not connected to Beneos cloud, please check in the settings or in the search window on the left.">
+                      {{#if @root.isOffline}}
+                      OFFLINE
+                      {{else }}
+                      Not Connected
+                      {{/if}}
+                    </label>
+                  {{/if}}
                 {{/if}}
-                {{/if}}
+              {{/if}}
             </div>
           </div>
 
@@ -146,11 +171,11 @@
                   data-casting_time-value="{{result.properties.casting_time}}"><strong>{{result.properties.casting_time}}</strong></a>
             </div>
           </div>
-          
+
         </div>
 
         <img src="modules/beneos-module/ui/border_bottom.webp" class="bsr_bottom_border" />
-        
+
       </div>
       {{/each}}
       </div>

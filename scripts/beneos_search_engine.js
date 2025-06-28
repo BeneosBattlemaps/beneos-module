@@ -289,6 +289,106 @@ export class BeneosDatabaseHolder {
   }
 
   /********************************************************************************** */
+  static processInstalledItem(itemData) {
+    itemData.isInstalled = BeneosUtility.isItemLoaded(itemData.key)
+    itemData.installed = (itemData.isInstalled) ? "installed" : "notinstalled"
+    itemData.isCloudAvailable = false
+    if ( itemData.installed == "notinstalled") {
+      itemData.isCloudAvailable = game.beneos.cloud.isItemAvailable(itemData.key)
+      itemData.installed = (itemData.isCloudAvailable) ? "cloudavailable" : itemData.installed
+    }
+    itemData.cloudMessage = (itemData.isCloudAvailable) ? "Cloud available" : "Cloud not available"
+    itemData.isInstallable = (itemData.isInstalled || itemData.isCloudAvailable)
+
+    if (itemData.isInstalled) {
+      //itemData.picture = BeneosUtility.getLocalAvatarPicture(itemData.key)
+    }
+    // Prepare update/new status
+    let itemTS = game.beneos.cloud.getItemTS(itemData.key)
+    if (itemTS) {
+      let t30days = 30 * 24 * 60 * 60
+      let tNow30Days = Math.floor(Date.now() / 1000) - t30days
+      if (itemData.installed !== "installed" && itemTS >= tNow30Days) {
+        itemData.isNew = true
+      }
+      if (itemData.installed === "installed") {
+        let installTS = BeneosUtility.getItemInstallTS(itemData.key)
+        console.log("Installed item", itemData.key, itemTS, installTS)
+        if (itemTS > installTS) {
+          itemData.isUpdate = true
+        }
+      }
+    } else {
+      console.log("No itemTS for", itemData.key)
+    }
+    itemData.properties.install = ["Any", "All"] // Used for filtering
+    if (itemData.isNew) {
+      itemData.properties.install.push("New")
+    }
+    if (itemData.isUpdate) {
+      itemData.properties.install.push("Updated")
+    }
+    itemData.dragMode = "none"
+    if (itemData.isCloudAvailable) {
+      itemData.dragMode = "cloud"
+    } else if (itemData.isInstalled) {
+      itemData.dragMode = "local"
+    } else {
+      itemData.dragMode = "none"
+    }
+  }
+
+    /********************************************************************************** */
+  static processInstalledSpell(spellData) {
+    spellData.isInstalled = BeneosUtility.isSpellLoaded(spellData.key)
+    spellData.installed = (spellData.isInstalled) ? "installed" : "notinstalled"
+    spellData.isCloudAvailable = false
+    if (spellData.installed == "notinstalled") {
+      spellData.isCloudAvailable = game.beneos.cloud.isSpellAvailable(spellData.key)
+      spellData.installed = (spellData.isCloudAvailable) ? "cloudavailable" : spellData.installed
+    }
+    spellData.cloudMessage = (spellData.isCloudAvailable) ? "Cloud available" : "Cloud not available"
+    spellData.isInstallable = (spellData.isInstalled || spellData.isCloudAvailable)
+
+    if (spellData.isInstalled) {
+      //spellData.picture = BeneosUtility.getLocalAvatarPicture(spellData.key)
+    }
+    // Prepare update/new status
+    let spellTS = game.beneos.cloud.getSpellTS(spellData.key)
+    if (spellTS) {
+      let t30days = 30 * 24 * 60 * 60
+      let tNow30Days = Math.floor(Date.now() / 1000) - t30days
+      if (spellData.installed !== "installed" && spellTS >= tNow30Days) {
+        spellData.isNew = true
+      }
+      if (spellData.installed === "installed") {
+        let installTS = BeneosUtility.getSpellInstallTS(spellData.key)
+        console.log("Installed spell", spellData.key, spellTS, installTS)
+        if (spellTS > installTS) {
+          spellData.isUpdate = true
+        }
+      }
+    } else {
+      console.log("No spellTS for", spellData.key)
+    }
+    spellData.properties.install = ["Any", "All"] // Used for filtering
+    if (spellData.isNew) {
+      spellData.properties.install.push("New")
+    }
+    if (spellData.isUpdate) {
+      spellData.properties.install.push("Updated")
+    }
+    spellData.dragMode = "none"
+    if (spellData.isCloudAvailable) {
+      spellData.dragMode = "cloud"
+    } else if (spellData.isInstalled) {
+      spellData.dragMode = "local"
+    } else {
+      spellData.dragMode = "none"
+    }
+  }
+
+  /********************************************************************************** */
   static buildSearchData() {
     this.tokenTypes = {}
     this.tokenBioms = {}
@@ -393,10 +493,7 @@ export class BeneosDatabaseHolder {
         foundry.utils.mergeObject(this.itemType, this.buildList(itemData.properties.item_type))
         foundry.utils.mergeObject(this.itemTier, this.buildList(itemData.properties.tier))
         // Deprecated foundry.utils.mergeObject(this.itemPrice, this.buildList(itemData.properties.price))
-        itemData.isInstalled = BeneosUtility.isItemLoaded(key)
-        itemData.isCloudAvailable = game.beneos.cloud.isItemAvailable(key)
-        itemData.installed = (itemData.isInstalled) ? "installed" : "notinstalled"
-        itemData.installed = (itemData.isCloudAvailable) ? "cloudavailable" : itemData.installed
+        this.processInstalledItem(itemData)
         if (itemData.isInstalled) {
           itemData.itemId = BeneosUtility.getItemId(key)
           itemData.card_front = BeneosUtility.getBeneosItemDataPath() + "/" + key + "/" + key + "-front.webp"
@@ -420,11 +517,7 @@ export class BeneosDatabaseHolder {
         foundry.utils.mergeObject(this.spellCastingTime, this.buildList(spellData.properties.casting_time))
         foundry.utils.mergeObject(this.spellType, this.buildList(String(spellData.properties.spell_type)))
         foundry.utils.mergeObject(this.spellClasses, this.buildList(spellData.properties.classes))
-        spellData.isInstalled = BeneosUtility.isSpellLoaded(key)
-        spellData.isCloudAvailable = game.beneos.cloud.isSpellAvailable(key)
-        spellData.installed = (spellData.isInstalled) ? "installed" : "notinstalled"
-        spellData.installed = (spellData.isCloudAvailable) ? "cloudavailable" : spellData.installed
-
+        this.processInstalledSpell(spellData)
         if (spellData.isInstalled) {
           spellData.spellId = BeneosUtility.getSpellId(key)
           spellData.card_front = BeneosUtility.getBeneosSpellDataPath() + "/" + key + "/" + key + "-front.webp"
@@ -1534,12 +1627,32 @@ export class BeneosSearchEngineLauncher extends FormApplication {
       let tokenData = BeneosDatabaseHolder.tokenData.content[key]
       if (tokenData) {
         BeneosDatabaseHolder.processInstalledToken(tokenData)
-        tokenData.actorId = BeneosUtility.getActorId(key)
       } else {
         console.log("No token data found for", key)
       }
-    } else {
-      console.log("Refresh not implemented for", typeAsset)
+    } else if (typeAsset == "item") {
+      let itemData = BeneosDatabaseHolder.itemData.content[key]
+      if (itemData) {
+        BeneosDatabaseHolder.processInstalledItem(itemData)
+      } else {
+        console.log("No item data found for", key)
+      }
+    }
+    else if (typeAsset == "spell") {
+      let spellData = BeneosDatabaseHolder.spellData.content[key]
+      if (spellData) {
+        BeneosDatabaseHolder.processInstalledSpell(spellData)
+      } else {
+        console.log("No spell data found for", key)
+      }
+    }
+    else if (typeAsset == "bmap") {
+      let bmapData = BeneosDatabaseHolder.bmapData.content[key]
+      if (bmapData) {
+        BeneosDatabaseHolder.processInstalledBattlemap(bmapData)
+      } else {
+        console.log("No battlemap data found for", key)
+      }
     }
   }
 

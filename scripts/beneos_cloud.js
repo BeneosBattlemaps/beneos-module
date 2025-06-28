@@ -190,7 +190,29 @@ export class BeneosCloud {
     let content = this.availableContent.tokens
     if (!content || content?.length == 0) return false
     for (const element of content) {
-      if (element.key == key) {
+      if (element.key.toLowerCase() == key.toLowerCase()) {
+        return element.updated_ts
+      }
+    }
+    return false
+  }
+
+  getItemTS(key) {
+    let content = this.availableContent.items
+    if (!content || content.length == 0) return false
+    for (const element of content) {
+      if (element.key.toLowerCase() == key.toLowerCase()) {
+        return element.updated_ts
+      }
+    }
+    return false
+  }
+
+  getSpellTS(key) {
+    let content = this.availableContent.spells
+    if (!content || content.length == 0) return false
+    for (const element of content) {
+      if (element.key.toLowerCase() == key.toLowerCase()) {
         return element.updated_ts
       }
     }
@@ -201,7 +223,7 @@ export class BeneosCloud {
     let content = this.availableContent.tokens
     if (!content || content?.length == 0) return false
     for (const element of content) {
-      if (element.key == key) {
+      if (element.key.toLowerCase() == key.toLowerCase()) {
         // Is new if the updated_ts is greater than the current date minus 30 days
         let t30days = 30 * 24 * 60 * 60
         let tNow30Days = Math.floor(Date.now() / 1000) - t30days
@@ -213,10 +235,10 @@ export class BeneosCloud {
 
   isTokenAvailable(key) {
     let content = this.availableContent.tokens
-    //console.log("Available tokens", content, key)
+    console.log("Available tokens", content, key)
     if (!content || content?.length == 0) return false
     for (const element of content) {
-      if (element.key == key) {
+      if (element.key.toLowerCase() == key.toLowerCase()) {
         return true
       }
     }
@@ -226,9 +248,8 @@ export class BeneosCloud {
   isItemAvailable(key) {
     let content = this.availableContent.items
     if (!content || content.length == 0) return false
-    console.log("Available items", content, key)
     for (const element of content) {
-      if (element.key == key) {
+      if (element.key.toLowerCase() == key.toLowerCase()) {
         return true
       }
     }
@@ -239,7 +260,7 @@ export class BeneosCloud {
     let content = this.availableContent.spells
     if (!content || content.length == 0) return false
     for (const element of content) {
-      if (element.key == key) {
+      if (element.key.toLowerCase() == key.toLowerCase()) {
         return true
       }
     }
@@ -280,7 +301,7 @@ export class BeneosCloud {
 
   }
 
-  async importItemToCompendium(itemArray) {
+  async importItemToCompendium(itemArray, event) {
     this.beneosItems = {}
     console.log("Importing item to compendium", itemArray)
 
@@ -368,6 +389,13 @@ export class BeneosCloud {
     console.log("Saving ITEM data :", toSave)
     await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', toSave) // Save the token config !
     await itemPack.configure({ locked: true })
+
+    this.sendChatMessageResult(event)
+    for (let itemKey in itemArray) {
+      BeneosSearchEngineLauncher.refresh("item", itemKey)
+    }
+    BeneosSearchEngineLauncher.updateDisplay()
+
   }
 
   async importSpellToCompendium(spellArray, event) {
@@ -408,7 +436,7 @@ export class BeneosCloud {
       } catch (err) {
         console.log("Directory already exists")
       }
-      console.log("Spell", spellData, spellObjectData )
+      // console.log("Spell", spellData, spellObjectData )
       // Decode the base64 tokenImg and upload it to the FilePicker
       let base64Response = await fetch(`data:image/webp;base64,${spellData.spellImage.front.image64}`);
       let blob = await base64Response.blob();
@@ -450,6 +478,12 @@ export class BeneosCloud {
     console.log("Saving ITEM data :", toSave)
     await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', toSave) // Save the token config !
     await spellPack.configure({ locked: true })
+
+    this.sendChatMessageResult(event)
+    for (let spellKey in spellArray) {
+      BeneosSearchEngineLauncher.refresh("spell", spellKey)
+    }
+    BeneosSearchEngineLauncher.updateDisplay()
   }
 
   async importTokenToCompendium(tokenArray, event) {
@@ -598,6 +632,8 @@ export class BeneosCloud {
         this.importTokenFromCloud(asset.key)
       } else if (asset.type == "item") {
         this.importItemFromCloud(asset.key)
+      } else if (asset.type == "spell") {
+        this.importSpellsFromCloud(asset.key)
       }
     }
   }
