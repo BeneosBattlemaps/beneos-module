@@ -328,6 +328,11 @@ export class BeneosCloud {
 
       let finalFolder = `beneos_assets/cloud/items/${itemKey}`
       try {
+        await FilePicker.createDirectory("data", "beneos_assets");
+      } catch (err) {
+        console.log("Directory already exists")
+      }
+      try {
         await FilePicker.createDirectory("data", "beneos_assets/cloud");
       } catch (err) {
         console.log("Directory already exists")
@@ -372,7 +377,7 @@ export class BeneosCloud {
         }
         // And then create it again
         let imported = await itemPack.importDocument(item);
-        await imported.setFlag("world", "beneos", { itemKey, fullId:itemKey, idx: 1, installationDate: tNow })
+        await imported.setFlag("world", "beneos", { itemKey, fullId: itemKey, idx: 1, installationDate: tNow })
         BeneosUtility.beneosItems[itemKey] = {
           itemName: imported.name,
           img: imported.img,
@@ -422,6 +427,11 @@ export class BeneosCloud {
       let spellObjectData = spellData.spellJSON
       let finalFolder = `beneos_assets/cloud/spells/${spellKey}`
       try {
+        await FilePicker.createDirectory("data", "beneos_assets");
+      } catch (err) {
+        console.log("Directory already exists")
+      }
+      try {
         await FilePicker.createDirectory("data", "beneos_assets/cloud");
       } catch (err) {
         console.log("Directory already exists")
@@ -461,7 +471,7 @@ export class BeneosCloud {
         }
         // And then create it again
         let imported = await spellPack.importDocument(spell);
-        await imported.setFlag("world", "beneos", { spellKey, fullId:spellKey, idx: 1, installationDate: tNow })
+        await imported.setFlag("world", "beneos", { spellKey, fullId: spellKey, idx: 1, installationDate: tNow })
         BeneosUtility.beneosSpells[spellKey] = {
           itemName: imported.name,
           img: imported.img,
@@ -519,6 +529,11 @@ export class BeneosCloud {
       let actorData = tokenData.actorJSON
 
       let finalFolder = `beneos_assets/cloud/tokens/${tokenKey}`
+      try {
+        await FilePicker.createDirectory("data", "beneos_assets");
+      } catch (err) {
+        console.log("Directory already exists")
+      }
       try {
         await FilePicker.createDirectory("data", "beneos_assets/cloud");
       } catch (err) {
