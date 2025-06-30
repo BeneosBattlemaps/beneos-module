@@ -235,7 +235,6 @@ export class BeneosCloud {
 
   isTokenAvailable(key) {
     let content = this.availableContent.tokens
-    console.log("Available tokens", content, key)
     if (!content || content?.length == 0) return false
     for (const element of content) {
       if (element.key.toLowerCase() == key.toLowerCase()) {

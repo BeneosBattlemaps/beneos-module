@@ -19,7 +19,7 @@
                 data-document-id="{{result.actorId}}" data-drag-mode="{{result.dragMode}}" {{#if result.isInstallable}} draggable="true" {{/if}}>
                 <span class="beneos-description-title">{{result.name}}</span>
                 <span class="beneos-description-text">{{result.description}}</span>
-                {{#if (gt result.nbVariants 0)}}
+                {{#if (gt result.properties.nb_variants 0)}}
                 <span class="beneos-description-title">Skin variants</span>
                 <div class="beneos-tooltip-variant">
                   {{#each result.variantList as |variant idxVariant|}}
@@ -53,11 +53,11 @@
               <div class="bsr_item_title beneos-tooltip">
                 {{#if result.isNew}}
                 <label class="beneos-search-title-result"><span
-                    class="token-name-new">[NEW] </span>{{result.name}}</label>
+                    class="token-name-new">[NEW]&nbsp;</span>{{result.name}}</label>
                 {{else}}
                 {{#if isUpdate}}
                 <label class="beneos-search-title-result"><span
-                    class="token-name-update">[UPDATE] </span>{{result.name}}</label>
+                    class="token-name-update">[UPDATE]&nbsp;</span>{{result.name}}</label>
                 {{else}}
                 <label class="beneos-search-title-result">{{result.name}}</label>
                 {{/if}}
@@ -149,12 +149,12 @@
                 {{else}}
                   <div class="beneos-tooltiptext beneos-token-description">
                   </div>
-                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_notavailable.png">
+                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_offline.png">
                   {{#if @root.isCloudLoggedIn}}
                     <label class="item-right-text-content beneos-search-notinstalled"
                       data-tooltip="No access to this token, check your Patreon membership" >NO ACCESS</label>
                   {{else}}
-                    <label class="item-right-text-content beneos-search-notinstalled"
+                    <label class="item-right-text-content beneos-search-notinstalled beneos-search-notconnected"
                       data-tooltip="You are not connected to Beneos cloud, please check in the settings or in the search window on the left.">
                       {{#if @root.isOffline}}
                       OFFLINE
@@ -213,6 +213,11 @@
         </div>
         {{/each}}
       </div>
+
+      <div class="search-100-results">
+        Only the first 100 search results are displayed
+       </div>
+
     </div>
   </section>
 

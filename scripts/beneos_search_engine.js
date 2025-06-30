@@ -807,8 +807,8 @@ export class BeneosSearchResults extends Dialog {
     let myButtons = {
     }
 
-    // Common conf
-    let dialogConf = { content: html, title: "BENEOS SEARCH ENGINE", buttons: myButtons }
+    // Common conff
+    let dialogConf = { content: html, title: "BENEOS CLOUD SEARCH RESULTS", buttons: myButtons }
     let dialogOptions = { classes: ["beneos_module", "beneos_search_results", "draggable"], 'window-title': "", left: 620, width: 720, height: 500, 'z-index': 99999 }
     super(dialogConf, dialogOptions)
   }
@@ -830,8 +830,11 @@ export class BeneosSearchResults extends Dialog {
 
     super.activateListeners(html);
 
+    console.log("Beneos Search Results - Activate listeners", html)
+
     // Gestionnaire pour CTRL+CLICK sur les éléments avec classe selected-batch
     $(html).find('.selected-batch').on('click', (event) => {
+      console.log("Batch install - Click on selected-batch", event)
       // Vérifier si la touche CTRL est enfoncée
       if (event.ctrlKey) {
         event.preventDefault();

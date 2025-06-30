@@ -143,12 +143,12 @@
                 {{else}}
                   <div class="beneos-tooltiptext beneos-token-description">
                   </div>
-                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_notavailable.png">
+                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_offline.png">
                   {{#if @root.isCloudLoggedIn}}
                     <label class="item-right-text-content beneos-search-notinstalled"
                       data-tooltip="No access to this item, check your Patreon membership" >NO ACCESS</label>
                   {{else}}
-                    <label class="item-right-text-content beneos-search-notinstalled"
+                    <label class="item-right-text-content beneos-search-notinstalled beneos-search-notconnected"
                       data-tooltip="You are not connected to Beneos cloud, please check in the settings or in the search window on the left.">
                       {{#if @root.isOffline}}
                       OFFLINE
@@ -204,6 +204,11 @@
       </div>
       {{/each}}
       </div>
+
+      <div class="search-100-results">
+        Only the first 100 search results are displayed
+      </div>
+
     </div>
   </section>
 
