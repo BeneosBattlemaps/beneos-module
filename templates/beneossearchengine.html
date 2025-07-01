@@ -205,20 +205,14 @@
 
   <div class="beneos-connection-section">
     {{#if isCloudLoggedIn}}
-      <label class="beneos-cloud-connected">Connected to the Beneos Cloud</label>
-      <button id="beneos-cloud-settings" class="" data-tooltip="Click here to open the Beneos Cloud settings">Beneos Cloud Account Settings</button>
 
       {{#if (or (eq patreonStatus "not_active_patron") (eq patronStatus "no_patreon"))}}
+        <label class="beneos-cloud-connected">Connected to the Beneos Cloud</label>
+        <button id="beneos-cloud-settings" class="" data-tooltip="Click here to open the Beneos Cloud settings">Beneos Cloud Account Settings</button>
         <div class="beneos-cloud-no-patreon">❌ Patreon Account not Linked</div>
         <div class="beneos-cloud-no-patreon-info">To have access to Beneos Patreon content, you must be an active Patron and link your Beneos Cloud account to your Patreon account once. Purchased store content from Beneos-Battlemaps.com will automatically be available here.</div>
-      {{else if (eq patreonStatus "active_patron")}}
-        <div class="beneos-cloud-patreon">✅ Patreon Account Linked</div>
-        <div class="beneos-cloud-patreon-info">You are an active Patron and have access to all Beneos Patreon content.</div>
-      {{else if (eq patronStatus "no_patreon")}}
-        <div class="beneos-cloud-no-patreon">❌ Patreon Account not Linked</div>
-        <div class="beneos-cloud-no-patreon-info">You are not a Patron, but you can still access the store content you purchased from Beneos-Battlemaps.com.</div>
       {{/if}}
-
+      
     {{else}}
       <div class="beneos-cloud-not-connected">Not Connected to the Beneos Cloud. Please Log in!</div>
       <div>Login to your Beneos Cloud account. Credentials entered here are never stored.</div>

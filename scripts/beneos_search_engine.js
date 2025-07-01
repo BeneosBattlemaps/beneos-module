@@ -319,7 +319,7 @@ export class BeneosDatabaseHolder {
         }
       }
     } else {
-      console.log("No itemTS for", itemData.key)
+      //console.log("No itemTS for", itemData.key)
     }
     itemData.properties.install = ["Any", "All"] // Used for filtering
     if (itemData.isNew) {
@@ -369,7 +369,7 @@ export class BeneosDatabaseHolder {
         }
       }
     } else {
-      console.log("No spellTS for", spellData.key)
+      //console.log("No spellTS for", spellData.key)
     }
     spellData.properties.install = ["Any", "All"] // Used for filtering
     if (spellData.isNew) {
@@ -1370,7 +1370,14 @@ export class BeneosSearchEngine extends Dialog {
     }
 
     // Refresh the dialog selectors
-    setTimeout(() => { game.beneosTokens.searchEngine.updatePropertiesDropDown(searchResults) }, 400)
+    setTimeout(() => {
+      game.beneosTokens.searchEngine.updatePropertiesDropDown(searchResults);
+      if (game.beneos.cloud.isLoggedIn()) {
+        $(".beneos_search_engine .window-header .window-title").html("Beneos Cloud - Connected");
+      } else {
+        $(".beneos_search_engine .window-header .window-title").html("Beneos Cloud");
+      }
+    }, 400)
   }
 
   /********************************************************************************** */
@@ -1678,6 +1685,8 @@ export class BeneosSearchEngineLauncher extends FormApplication {
       }, 200)
     }
     setTimeout(searchDialog.processSelectorSearch(), 500)
+
+
   }
 
 }
