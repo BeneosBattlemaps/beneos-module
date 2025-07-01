@@ -42,11 +42,11 @@
           </div>
 
           {{#if result.isInstallable}}
-          <div class="beneos-search-middle flexcol token-search-data" data-type="Actor"
+          <div class="beneos-search-middle flexcol token-search-data selected-batch" data-type="Actor"
             data-document-id="{{result.actorId}}" data-drag-mode="{{result.dragMode}}" draggable="true">
-            {{else}}
-            <div class="beneos-search-middle flexcol">
-              {{/if}}
+          {{else}}
+          <div class="beneos-search-middle flexcol">
+          {{/if}}
 
               <img class="bsr_top_border" src="modules/beneos-module/ui/border_top.webp" />
 
@@ -106,7 +106,11 @@
             </div>
           </div>
 
+          {{#if result.isInstallable}}
+          <div class="beneos-search-last flexcol selected-batch">
+          {{else}}
           <div class="beneos-search-last flexcol">
+          {{/if}}
 
             <div class="flexrow flex-content-left ">
               <div class="beneos-tooltip beneos-search-installed ">
