@@ -1062,12 +1062,19 @@
   color: black;
 }
 
+.beneos-search-noaccess{
+  margin-top: 2px;
+  font-size: 0.6rem;
+  color: #3e0706;
+}
+
 .search-100-results {
-  text-align: center;
-  font-size: 1.1rem;
+  text-align: left;
+  font-size: 0.9rem;
   font-weight: bold;
   color: #3e0706;
 }
+
 
 .beneos-selector {
   min-width: 12rem;

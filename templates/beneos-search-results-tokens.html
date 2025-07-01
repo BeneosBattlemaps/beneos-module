@@ -151,8 +151,8 @@
                   </div>
                   <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_offline.png">
                   {{#if @root.isCloudLoggedIn}}
-                    <label class="item-right-text-content beneos-search-notinstalled"
-                      data-tooltip="No access to this token, check your Patreon membership" >NO ACCESS</label>
+                    <label class="item-right-text-content beneos-search-notinstalled beneos-search-noaccess"
+                      data-tooltip="You are not logged in or have not purchased this asset." >NO ACCESS</label>
                   {{else}}
                     <label class="item-right-text-content beneos-search-notinstalled beneos-search-notconnected"
                       data-tooltip="You are not connected to Beneos cloud, please check in the settings or in the search window on the left.">
