@@ -293,7 +293,7 @@ export class BeneosDatabaseHolder {
     itemData.isInstalled = BeneosUtility.isItemLoaded(itemData.key)
     itemData.installed = (itemData.isInstalled) ? "installed" : "notinstalled"
     itemData.isCloudAvailable = false
-    if ( itemData.installed == "notinstalled") {
+    if (itemData.installed == "notinstalled") {
       itemData.isCloudAvailable = game.beneos.cloud.isItemAvailable(itemData.key)
       itemData.installed = (itemData.isCloudAvailable) ? "cloudavailable" : itemData.installed
     }
@@ -338,7 +338,7 @@ export class BeneosDatabaseHolder {
     }
   }
 
-    /********************************************************************************** */
+  /********************************************************************************** */
   static processInstalledSpell(spellData) {
     spellData.isInstalled = BeneosUtility.isSpellLoaded(spellData.key)
     spellData.installed = (spellData.isInstalled) ? "installed" : "notinstalled"
@@ -835,22 +835,24 @@ export class BeneosSearchResults extends Dialog {
     // Gestionnaire pour CTRL+CLICK sur les éléments avec classe selected-batch
     $(html).find('.selected-batch').on('click', (event) => {
       console.log("Batch install - Click on selected-batch", event)
+      let tokenKey = $(event.target).parents(".token-result-section").data("token-key")
+
       // Vérifier si la touche CTRL est enfoncée
       if (event.ctrlKey) {
         event.preventDefault();
         // Get token key
-        let tokenKey = $(event.target).parents(".token-result-section").data("token-key")
+        let actorId = $(event.target).parents(".token-search-data").data("document-id")
         let parentItem = $(event.target).parents(".beneos-item-container")
         if (game.beneosTokens.searchEngine.batchInstall[tokenKey]) {
           game.beneosTokens.searchEngine.batchInstall[tokenKey] = undefined
           parentItem.removeClass("beneos-batch-install")
-        } else  {
-          game.beneosTokens.searchEngine.batchInstall[tokenKey] = { type: "token", key: tokenKey }
+        } else {
+          game.beneosTokens.searchEngine.batchInstall[tokenKey] = { type: "token", actorId: actorId, key: tokenKey }
           parentItem.addClass("beneos-batch-install")
         }
         // Show the Batch Install button if at least one checkbox is checked
         let anyChecked = false
-        for ( let idx in game.beneosTokens.searchEngine.batchInstall) {
+        for (let idx in game.beneosTokens.searchEngine.batchInstall) {
           let token = game.beneosTokens.searchEngine.batchInstall[idx]
           if (token) {
             anyChecked = true
@@ -859,6 +861,12 @@ export class BeneosSearchResults extends Dialog {
         }
         document.getElementById('beneos-cloud-batch-install').hidden = !anyChecked;
         console.log("Batch install - Button", anyChecked)
+      } else {
+        if (game.beneosTokens.searchEngine.batchInstall[tokenKey]) {
+          game.beneosTokens.searchEngine.batchInstall = {}
+          $(".beneos-batch-install").removeClass("beneos-batch-install")
+          document.getElementById('beneos-cloud-batch-install').hidden = true;
+        }
       }
     })
 
@@ -898,6 +906,7 @@ export class BeneosSearchResults extends Dialog {
       if (BeneosDatabaseHolder.getIsOffline()) {
         return false
       }
+
       let dragMode = $(e.target).data("drag-mode")
       if (dragMode == "none") {
         console.log("No drag mode", dragMode)
@@ -918,6 +927,7 @@ export class BeneosSearchResults extends Dialog {
         }
         return false
       } else {
+        let isBatch = game.beneosTokens.searchEngine.batchInstall.find((it) => it.actorId == id)
         console.log("Local - Draggable id", id, docType)
         let compendium = ""
         if (docType == "Actor") {
@@ -1578,7 +1588,7 @@ export class BeneosSearchEngine extends Dialog {
 
     $("#beneos-cloud-settings").click(event => {
       // Open the Beneos Cloud settings dialog
-      BeneosUtility.openPostInNewTab('https://beneos.cloud/', { });
+      BeneosUtility.openPostInNewTab('https://beneos.cloud/', {});
     })
 
     $("#beneos-cloud-create-account").click(event => {
