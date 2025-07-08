@@ -340,9 +340,9 @@
 .beneos-icon-child {
   padding: 0px;
   position: absolute;
-  top: 2px;
-  left: 2px;
-  transform: scale(0.96);
+  top: 4px;
+  /*left: 2px;*/
+  /*transform: scale(0.96);*/
 }
 
 .beneos-icon-child-battlemap {

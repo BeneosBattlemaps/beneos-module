@@ -12,7 +12,9 @@
 
         <div class="flexrow">
 
-          <div class="beneos-tooltip-icon-group beneos-tooltip entity-link content-link token-search-data"
+          <!-- content-link -->
+
+          <div class="beneos-tooltip-icon-group beneos-tooltip entity-link  token-search-data"
             data-type="Actor" data-document-id="{{result.actorId}}" data-drag-mode="{{result.dragMode}}" {{#if result.isInstallable}} draggable="true" {{/if}}>
             <div class="beneos-tooltiptext beneos-token-description">
               <div class="flexcol beneos-tooltip-content token-search-data" data-type="Actor"
@@ -33,7 +35,7 @@
             </div>
             <div class="beneos-icon-group token-search-data" data-type="Actor" data-document-id="{{result.actorId}}"
             data-drag-mode="{{result.dragMode}}" {{#if result.isInstallable}} draggable="true" {{/if}}>
-              <img class="beneos-icon-background" src="modules/beneos-module/ui/result_item_icon_bg.webp" />
+              <!-- <img class="beneos-icon-background" src="modules/beneos-module/ui/result_item_icon_bg.webp" /> -->
               <img class="beneos-icon-child token-search-data" data-type="Actor" data-document-id="{{result.actorId}}"
               data-drag-mode="{{result.dragMode}}" {{#if result.isInstallable}} draggable="true" {{/if}} {{#if result.isInstalled}}
                 src="{{result.picture}}" {{else}} {{#if @root.isOffline}}

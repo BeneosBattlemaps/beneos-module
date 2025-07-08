@@ -862,11 +862,9 @@ export class BeneosSearchResults extends Dialog {
         document.getElementById('beneos-cloud-batch-install').hidden = !anyChecked;
         console.log("Batch install - Button", anyChecked)
       } else {
-        if (game.beneosTokens.searchEngine.batchInstall[tokenKey]) {
-          game.beneosTokens.searchEngine.batchInstall = {}
-          $(".beneos-batch-install").removeClass("beneos-batch-install")
-          document.getElementById('beneos-cloud-batch-install').hidden = true;
-        }
+        game.beneosTokens.searchEngine.batchInstall = {}
+        $(".beneos-batch-install").removeClass("beneos-batch-install")
+        document.getElementById('beneos-cloud-batch-install').hidden = true;
       }
     })
 
