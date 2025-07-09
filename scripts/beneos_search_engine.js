@@ -882,6 +882,7 @@ export class BeneosSearchResults extends Dialog {
         game.beneos.cloud.scrollTop = $(".bsr_result_box").scrollTop()
         // Get the data-key from the previous div and get it from the cloud
         let tokenKey = $(event.target).parents(".item-result-section").data("token-key")
+        game.beneosTokens.searchEngine.saveSearchEngineFilters()
         game.beneos.cloud.importItemFromCloud(tokenKey)
       }
     })
@@ -890,6 +891,7 @@ export class BeneosSearchResults extends Dialog {
         game.beneos.cloud.scrollTop = $(".bsr_result_box").scrollTop()
         // Get the data-key from the previous div and get it from the cloud
         let tokenKey = $(event.target).parents(".spell-result-section").data("token-key")
+        game.beneosTokens.searchEngine.saveSearchEngineFilters()
         game.beneos.cloud.importSpellsFromCloud(tokenKey)
       }
     })
@@ -931,7 +933,16 @@ export class BeneosSearchResults extends Dialog {
         }
         return false
       } else {
-        let isBatch = game.beneosTokens.searchEngine.batchInstall.find((it) => it.actorId == id)
+        let isBatch = false
+        if (game.beneosTokens?.searchEngine?.batchInstall) {
+          for (let idx in game.beneosTokens.searchEngine.batchInstall) {
+            let token = game.beneosTokens.searchEngine.batchInstall[idx]
+            if (token && token.actorId == id) {
+              isBatch = true
+              break
+            }
+          }
+        }
         console.log("Local - Draggable id", id, docType)
         let compendium = ""
         if (docType == "Actor") {

@@ -662,12 +662,13 @@ export class BeneosCloud {
         if (data.result == 'OK') {
           game.beneos.cloud.importTokenToCompendium({ [`${tokenKey}`]: data.data.token }, event)
         } else {
+          console.log("Error in importing Token from BeneosCloud !", data, tokenKey)
           ui.notifications.error("Error in importing token from BeneosCloud !")
         }
       })
   }
 
-  importItemFromCloud(itemKey) {
+  importItemFromCloud(itemKey, event = undefined) {
     ui.notifications.info("Importing item from BeneosCloud !")
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
     let url = `https://beneos.cloud/foundry-manager.php?get_item=1&foundryId=${userId}&itemKey=${itemKey}`
@@ -675,12 +676,15 @@ export class BeneosCloud {
       .then(response => response.json())
       .then(async function (data) {
         if (data.result == 'OK') {
-          game.beneos.cloud.importItemToCompendium({ [`${itemKey}`]: data.data.item })
+          game.beneos.cloud.importItemToCompendium({ [`${itemKey}`]: data.data.item }, event)
+        }else {
+          console.log("Error in importing Item from BeneosCloud !", data, itemKey)
+          ui.notifications.error("Error in importing Item from BeneosCloud !", data)
         }
       })
   }
 
-  importSpellsFromCloud(spellKey) {
+  importSpellsFromCloud(spellKey, event = undefined) {
     ui.notifications.info("Importing spell from BeneosCloud !")
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
     let url = `https://beneos.cloud/foundry-manager.php?get_spell=1&foundryId=${userId}&spellKey=${spellKey}`
@@ -688,7 +692,10 @@ export class BeneosCloud {
       .then(response => response.json())
       .then(async function (data) {
         if (data.result == 'OK') {
-          game.beneos.cloud.importSpellToCompendium({ [`${spellKey}`]: data.data.spell })
+          game.beneos.cloud.importSpellToCompendium({ [`${spellKey}`]: data.data.spell }, event)
+        }else {
+          console.log("Error in importing Spell from BeneosCloud !", data, spellKey)
+          ui.notifications.error("Error in importing Spell from BeneosCloud !")
         }
       })
   }
