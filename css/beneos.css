@@ -337,6 +337,11 @@
   min-width: 128px;
 }
 
+.beneos-icon-group img {
+  border: none;
+  border-width: 0px;
+}
+
 .beneos-icon-child {
   padding: 0px;
   position: absolute;
