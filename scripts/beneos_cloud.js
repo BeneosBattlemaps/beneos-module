@@ -280,12 +280,12 @@ export class BeneosCloud {
       })
   }
 
-  sendChatMessageResult(event) {
+  sendChatMessageResult(event, assetName = "Token(s)") {
     let chatData = {
       user: game.user.id,
       rollMode: game.settings.get("core", "rollMode"),
       whisper: ChatMessage.getWhisperRecipients('GM'),
-      content: `<div><strong>BeneosModule</strong> : Token(s) has been imported into the beneos module compendium.
+      content: `<div><strong>BeneosModule</strong> : ${assetName} has been imported into the beneos module compendium.
       </span></div>`
     }
     if (event) {
@@ -394,7 +394,7 @@ export class BeneosCloud {
     await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', toSave) // Save the token config !
     await itemPack.configure({ locked: true })
 
-    this.sendChatMessageResult(event)
+    this.sendChatMessageResult(event, "Item(s)")
     for (let itemKey in itemArray) {
       BeneosSearchEngineLauncher.refresh("item", itemKey)
     }
@@ -488,7 +488,7 @@ export class BeneosCloud {
     await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', toSave) // Save the token config !
     await spellPack.configure({ locked: true })
 
-    this.sendChatMessageResult(event)
+    this.sendChatMessageResult(event, "Spell(s)")
     for (let spellKey in spellArray) {
       BeneosSearchEngineLauncher.refresh("spell", spellKey)
     }

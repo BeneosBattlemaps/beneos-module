@@ -1666,6 +1666,10 @@ export class BeneosSearchEngineLauncher extends FormApplication {
         console.log("No token data found for", key)
       }
     } else if (typeAsset == "item") {
+      // If the key has (numbers)-, then replace it with a underscore
+      if (/^\d+-/.test(key)) {
+        key = key.replace(/^(\d+)-/, '$1_');
+      }
       let itemData = BeneosDatabaseHolder.itemData.content[key]
       if (itemData) {
         BeneosDatabaseHolder.processInstalledItem(itemData)
@@ -1674,6 +1678,11 @@ export class BeneosSearchEngineLauncher extends FormApplication {
       }
     }
     else if (typeAsset == "spell") {
+      // If the key has (numbers)-, then replace it with a underscore
+      if (/^\d+-/.test(key)) {
+        key = key.replace(/^(\d+)-/, '$1_');
+      }
+      // If the key has (numbers)-, then replace it with a underscore
       let spellData = BeneosDatabaseHolder.spellData.content[key]
       if (spellData) {
         BeneosDatabaseHolder.processInstalledSpell(spellData)
