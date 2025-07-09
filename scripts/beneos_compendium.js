@@ -204,7 +204,6 @@ export class BeneosCompendiumManager {
 
     // Parse subfolder
     // Move above : let rootFolder = await FilePicker.browse("data", tokenDataFolder)
-    console.log("ROOT", rootFolder.dirs.length)
     let max = rootFolder.dirs.length
     let count = 0
     for (let subFolder of rootFolder.dirs) {

@@ -238,6 +238,17 @@ Hooks.on("deleteActor", (actor, options) => {
   }
   return true;
 })
+/********************************************************************************** */
+Hooks.on("deleteItem", (item, options) => {
+  console.log("Beneos delete item", item, options )
+  if (item?.pack == "beneos-module.beneos_module_items") {
+    BeneosUtility.removeItem(item.id)
+  }
+  if (item?.pack == "beneos-module.beneos_module_spells") {
+    BeneosUtility.removeSpell(item.id)
+  }
+  return true;
+})
 
 /********************************************************************************** */
 Hooks.on("renderActorDirectory", (app, html, data) => {

@@ -742,7 +742,43 @@ export class BeneosUtility {
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', JSON.stringify(this.beneosTokens))
       BeneosSearchEngineLauncher.updateDisplay()
     }
+  }
 
+  /********************************************************************************** */
+  static removeItem(itemId) {
+    let isRemoved = false
+    for (let [fullKey, item] of Object.entries(this.beneosItems)) {
+      if (item.itemId == itemId) {
+        console.log("Removing item from itemId", item.itemId, fullKey)
+        delete this.beneosItems[fullKey]
+        isRemoved = true
+        break
+      }
+    }
+
+    if (isRemoved) {
+      // Save the new data
+      game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', JSON.stringify(this.beneosItems))
+      BeneosSearchEngineLauncher.updateDisplay()
+    }
+  }
+
+  /********************************************************************************** */
+  static removeSpell(spellId) {
+    let isRemoved = false
+    for (let [fullKey, spell] of Object.entries(this.beneosSpells)) {
+      if (spell.spellId == spellId) {
+        console.log("Removing spell from spellId", spell.spellId, fullKey)
+        delete this.beneosSpells[fullKey]
+        isRemoved = true
+        break
+      }
+    }
+    if (isRemoved) {
+      // Save the new data
+      game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', JSON.stringify(this.beneosSpells))
+      BeneosSearchEngineLauncher.updateDisplay()
+    }
   }
 
   /********************************************************************************** */
