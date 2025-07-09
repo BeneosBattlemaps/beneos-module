@@ -825,6 +825,14 @@ export class BeneosSearchResults extends Dialog {
 
     $('#' + selectorName).val(value.toLowerCase())
   }
+
+  /********************************************************************************** */
+  removeSelectedBatchClass() {
+    game.beneosTokens.searchEngine.batchInstall = {}
+    $(".beneos-batch-install").removeClass("beneos-batch-install")
+    document.getElementById('beneos-cloud-batch-install').hidden = true;
+  }
+
   /********************************************************************************** */
   activateListeners(html) {
 
@@ -862,9 +870,7 @@ export class BeneosSearchResults extends Dialog {
         document.getElementById('beneos-cloud-batch-install').hidden = !anyChecked;
         console.log("Batch install - Button", anyChecked)
       } else {
-        game.beneosTokens.searchEngine.batchInstall = {}
-        $(".beneos-batch-install").removeClass("beneos-batch-install")
-        document.getElementById('beneos-cloud-batch-install').hidden = true;
+        this.removeSelectedBatchClass()
       }
     })
 
