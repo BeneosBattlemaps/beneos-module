@@ -110,11 +110,11 @@
                   <div class="beneos-tooltiptext beneos-token-description">
                   </div>
                   {{#if result.isNew}}
-                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_new.png">
+                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_new.webp">
                   <label class="beneos-search-new item-right-text-content">
                     <!-- <input type="checkbox" class="check-token-batch-install"> -->
                     <a data-tooltip="New item available from the cloud server ! Click to install it locally or Ctrl+Click for batch install."
-                      class="beneos-cloud-item-install">NEW !</a>
+                      class="beneos-cloud-item-install">NEW</a>
                   </label>
                   {{else}}
                   <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
@@ -136,26 +136,29 @@
                       data-tooltip="Updated item available from the cloud server ! Click to install the update."
                       class="beneos-cloud-item-install">UPDATE</a></label>
                   {{else}}
-                    <img class="item-right-text-box " src="modules/beneos-module/ui/right_button_v1_ready.png">
+                    <img class="item-right-text-box " src="modules/beneos-module/ui/right_button_v1.webp">
                     <label class="beneos-search-installed item-right-text-content"
                       data-tooltip="Installed and ready to be used.">READY</label>
                   {{/if}}
                 {{else}}
                   <div class="beneos-tooltiptext beneos-token-description">
                   </div>
-                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_offline.png">
+                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_offline.webp">
                   {{#if @root.isCloudLoggedIn}}
-                    <label class="item-right-text-content beneos-search-notinstalled"
+                    <label class="item-right-text-content beneos-search-notinstalled beneos-search-noaccess"
                       data-tooltip="No access to this item, check your Patreon membership" >NO ACCESS</label>
                   {{else}}
+                    {{#if @root.isOffline}}
                     <label class="item-right-text-content beneos-search-notinstalled beneos-search-notconnected"
                       data-tooltip="You are not connected to Beneos cloud, please check in the settings or in the search window on the left.">
-                      {{#if @root.isOffline}}
                       OFFLINE
+                      </label>
                       {{else }}
-                      Not Connected
+                      <label class="item-right-text-content beneos-search-notinstalled beneos-search-notconnected beneos-search-notconnected-smaller"
+                      data-tooltip="You are not connected to Beneos cloud, please check in the settings or in the search window on the left.">
+                      NOT CONNECTED
+                      </label>
                       {{/if}}
-                    </label>
                   {{/if}}
                 {{/if}}
               {{/if}}

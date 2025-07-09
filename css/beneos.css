@@ -556,7 +556,7 @@
 
 .beneos-search-new {
   font-weight: bold;
-  color: #1b9200;
+  color: black;
 }
 
 .token-name-new {
@@ -1057,8 +1057,11 @@
 }
 
 .beneos-search-notconnected {
-  margin-top: 2px;
   font-size: 0.6rem;
+  color: black;
+}
+.beneos-search-notconnected-smaller {
+  font-size: 0.52rem;
   color: black;
 }
 
@@ -1163,9 +1166,6 @@ i.beneos-module {
   transform:translate(-12px, -56px);
 }
 
-.beneos-cloud-token-install {
-  color: #3e0706;
-}
 .beneos-search-button-token:last-child {
   margin-right: 0;
 }
