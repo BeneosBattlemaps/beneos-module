@@ -276,7 +276,7 @@ export class BeneosDatabaseHolder {
         }
       }
     } else {
-      console.log("No tokenTS for", tokenData.key)
+      //console.log("No tokenTS for", tokenData.key)
     }
 
     tokenData.properties.install = ["Any", "All"] // Used for filtering
