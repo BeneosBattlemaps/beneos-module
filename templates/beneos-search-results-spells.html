@@ -28,8 +28,8 @@
             </div>
           </div>
 
-          {{#if result.isInstalled}}
-          <div class="beneos-search-middle flexcol token-search-data" data-type="Spell"
+          {{#if result.isInstallable}}
+          <div class="beneos-search-middle flexcol token-search-data selected-batch" data-type="Spell"
             data-document-id="{{result.spellId}}" draggable="true">
           {{else}}
           <div class="beneos-search-middle flexcol">
@@ -93,7 +93,7 @@
             <div class="flexrow flex-content-left">
               <div class="beneos-tooltip beneos-search-installed ">
                 {{#if result.isCloudAvailable}}
-                <div class="beneos-tooltip beneos-search-installed selected-batch">
+                <div class="beneos-tooltip beneos-search-installed">
                   <div class="beneos-tooltiptext beneos-token-description">
                   </div>
                   {{#if result.isNew}}

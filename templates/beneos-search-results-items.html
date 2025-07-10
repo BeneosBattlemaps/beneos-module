@@ -33,8 +33,8 @@
             </div>
           </div>
 
-          {{#if result.isInstalled}}
-          <div class="beneos-search-middle flexcol token-search-data" data-type="Item"
+          {{#if result.isInstallable}}
+          <div class="beneos-search-middle flexcol token-search-data selected-batch" data-type="Item"
             data-document-id="{{result.itemId}}" draggable="true">
           {{else}}
           <div class="beneos-search-middle flexcol">

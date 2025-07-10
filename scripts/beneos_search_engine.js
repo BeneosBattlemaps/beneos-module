@@ -820,8 +820,8 @@ export class BeneosSearchResults extends Dialog {
     searchResults = BeneosDatabaseHolder.searchByProperty(typeName, fieldName, value.toString(), searchResults)
     game.beneosTokens.searchEngine.displayResults(searchResults)
 
-    searchEngine.updateFilterStack(fieldName, value)
-    searchEngine.updatePropertiesDropDown(searchResults)
+    game.beneosTokens.searchEngine.updateFilterStack(fieldName, value)
+    game.beneosTokens.searchEngine.updatePropertiesDropDown(searchResults)
     this.removeSelectedBatchClass()
 
     $('#' + selectorName).val(value.toLowerCase())
@@ -844,26 +844,37 @@ export class BeneosSearchResults extends Dialog {
     // Gestionnaire pour CTRL+CLICK sur les éléments avec classe selected-batch
     $(html).find('.selected-batch').on('click', (event) => {
       console.log("Batch install - Click on selected-batch", event)
-      let tokenKey = $(event.target).parents(".token-result-section").data("token-key")
+      let docType = event.target.getAttribute("data-type")
+      let key
+      if (docType == "Actor") {
+        key  = $(event.target).parents(".token-result-section").data("token-key")
+      }
+      if (docType == "Spell") {
+        key  = $(event.target).parents(".spell-result-section").data("token-key")
+      }
+      if (docType == "Item") {
+        key  = $(event.target).parents(".item-result-section").data("token-key")
+      }
+
 
       // Vérifier si la touche CTRL est enfoncée
       if (event.ctrlKey) {
         event.preventDefault();
         // Get token key
-        let actorId = $(event.target).parents(".token-search-data").data("document-id")
+        let id = $(event.target).parents(".token-search-data").data("document-id")
         let parentItem = $(event.target).parents(".beneos-item-container")
-        if (game.beneosTokens.searchEngine.batchInstall[tokenKey]) {
-          game.beneosTokens.searchEngine.batchInstall[tokenKey] = undefined
+        if (game.beneosTokens.searchEngine.batchInstall[key]) {
+          game.beneosTokens.searchEngine.batchInstall[key] = undefined
           parentItem.removeClass("beneos-batch-install")
         } else {
-          game.beneosTokens.searchEngine.batchInstall[tokenKey] = { type: "token", actorId: actorId, key: tokenKey }
+          game.beneosTokens.searchEngine.batchInstall[key] = { type: docType.toLowerCase(), id: id, key: key }
           parentItem.addClass("beneos-batch-install")
         }
         // Show the Batch Install button if at least one checkbox is checked
         let anyChecked = false
         for (let idx in game.beneosTokens.searchEngine.batchInstall) {
-          let token = game.beneosTokens.searchEngine.batchInstall[idx]
-          if (token) {
+          let asset = game.beneosTokens.searchEngine.batchInstall[idx]
+          if (asset) {
             anyChecked = true
             break
           }
