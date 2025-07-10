@@ -858,7 +858,7 @@ export class BeneosSearchResults extends Dialog {
 
 
       // Vérifier si la touche CTRL est enfoncée
-      if (event.ctrlKey) {
+      if (event.ctrlKey && docType) {
         event.preventDefault();
         // Get token key
         let id = $(event.target).parents(".token-search-data").data("document-id")
