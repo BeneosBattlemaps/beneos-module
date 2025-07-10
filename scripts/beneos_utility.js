@@ -419,6 +419,40 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
+  static verifySettingsAgainstCompendium() {
+    let toSave = false
+    let actorPack = game.packs.get("beneos-module.beneos_module_actors")
+    for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
+      if (token.actorId && !actorPack.index.some(i => i._id == token.actorId)) {
+        console.log("Beneos Compendium actor not found for token", fullKey, token.actorId)
+        delete this.beneosTokens[fullKey]
+        toSave = true
+      }
+    }
+    let itemPack = game.packs.get("beneos-module.beneos_module_items")
+    for (let [fullKey, item] of Object.entries(this.beneosItems)) {
+      if (item.itemId && !itemPack.index.some(i => i._id == item.itemId)) {
+        console.log("Beneos Compendium item not found for item", fullKey, item.itemId)
+        delete this.beneosItems[fullKey]
+        toSave = true
+      }
+    }
+    let spellPack = game.packs.get("beneos-module.beneos_module_spells")
+    for (let [fullKey, spell] of Object.entries(this.beneosSpells)) {
+      if (spell.spellId && !spellPack.index.some(i => i._id == spell.spellId)) {
+        console.log("Beneos Compendium spell not found for spell", fullKey, spell.spellId)
+        delete this.beneosSpells[fullKey]
+        toSave = true
+      }
+    }
+    if (game.user.isGM && toSave) {
+      game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', JSON.stringify(this.beneosTokens))
+      game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', JSON.stringify(this.beneosItems))
+      game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', JSON.stringify(this.beneosSpells))
+    }
+  }
+
+  /********************************************************************************** */
   static ready() {
     this.file_cache = {}
     this.titleCache = {}
@@ -449,6 +483,7 @@ export class BeneosUtility {
     this.beneosItems = {}
 
     this.reloadInternalSettings()
+    this.verifySettingsAgainstCompendium()
     console.log("Loaded", this.beneosTokens)
 
     this.m_w = 123456789
