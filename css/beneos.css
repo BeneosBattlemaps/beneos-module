@@ -1034,6 +1034,16 @@
   z-index: 0;
 }
 
+.bsr_bottom_border_bmaps,
+.bsr_bottom_border_items,
+.bsr_bottom_border_spells {
+  transform: translate(128px, 3px);
+  max-height: 3px;
+  opacity: 0.2;
+  max-width: 550px;
+  z-index: 0;
+}
+
 .description-margin {
   margin-left: 4px;
 }
