@@ -822,6 +822,7 @@ export class BeneosSearchResults extends Dialog {
 
     searchEngine.updateFilterStack(fieldName, value)
     searchEngine.updatePropertiesDropDown(searchResults)
+    this.removeSelectedBatchClass()
 
     $('#' + selectorName).val(value.toLowerCase())
   }
@@ -873,9 +874,6 @@ export class BeneosSearchResults extends Dialog {
         this.removeSelectedBatchClass()
       }
     })
-
-    /* $(".check-token-batch-install").change(event => {
-    }) */
 
     $(".beneos-cloud-item-install").click(event => {
       if (!event.ctrlKey) {
@@ -1278,6 +1276,7 @@ export class BeneosSearchEngine extends Dialog {
     } else {
       this.resultDialog.data.content = html
     }
+
     // Keep track for batch install
     this.latestResults = results
 
@@ -1330,6 +1329,7 @@ export class BeneosSearchEngine extends Dialog {
       let results = BeneosDatabaseHolder.textSearch(event.currentTarget.value, this.dbData.searchMode)
       this.searchText = event.currentTarget.value
       this.displayResults(results, event)
+      this.resultDialog.removeSelectedBatchClass()
       if (!this.checkInterval) {
         let myObject = this
         this.checkInterval = setInterval(function () { myObject.checkTextField() }, 500)
@@ -1394,9 +1394,11 @@ export class BeneosSearchEngine extends Dialog {
       }, 200)
     }
 
+    let myObject = this
     // Refresh the dialog selectors
     setTimeout(() => {
       game.beneosTokens.searchEngine.updatePropertiesDropDown(searchResults);
+      myObject.resultDialog.removeSelectedBatchClass()
       if (game.beneos.cloud.isLoggedIn()) {
         $(".beneos_search_engine .window-header .window-title").html("Beneos Cloud - Connected");
       } else {
