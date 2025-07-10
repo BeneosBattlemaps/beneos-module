@@ -614,6 +614,7 @@ export class BeneosDatabaseHolder {
       results = results.concat(this.objectTextSearch(this.spellData.content, text, "spell"))
     }
 
+    console.log("TEXT search results", results)
     //console.log("TEXT results ", results, this.bmapData.content)
     return results
   }
@@ -1260,11 +1261,10 @@ export class BeneosSearchEngine extends Dialog {
     // Then push remaining ones
     let resTab2 = []
     for (let key in results) {
-      if (resTab.find(it => it.key == key) != undefined) {
-        continue
+      if ( !results[key].isUpdate && !results[key].isNew) {
+        resTab2.push(results[key])
+        count++;
       }
-      resTab2.push(results[key])
-      count++;
       if (count > 100) {
         break
       }
@@ -1283,7 +1283,7 @@ export class BeneosSearchEngine extends Dialog {
       isMoulinette: false // Up to now
     })
     if (!this.resultDialog) {
-      this.resultDialog = new BeneosSearchResults(html, this, results)
+      this.resultDialog = new BeneosSearchResults(html, this, resTab)
     } else {
       this.resultDialog.data.content = html
     }
