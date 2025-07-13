@@ -844,8 +844,7 @@ export class BeneosSearchResults extends Dialog {
 
     // Gestionnaire pour CTRL+CLICK sur les éléments avec classe selected-batch
     $(html).find('.selected-batch').on('click', (event) => {
-      console.log("Batch install - Click on selected-batch", event)
-      let docType = event.target.getAttribute("data-type")
+      let docType = $(event.target).parents(".beneos-search-middle").data("type");
       let key
       if (docType == "Actor") {
         key  = $(event.target).parents(".token-result-section").data("token-key")
@@ -856,7 +855,7 @@ export class BeneosSearchResults extends Dialog {
       if (docType == "Item") {
         key  = $(event.target).parents(".item-result-section").data("token-key")
       }
-
+      console.log("Batch install - Click on selected-batch", event, docType)
 
       // Vérifier si la touche CTRL est enfoncée
       if (event.ctrlKey && docType) {
