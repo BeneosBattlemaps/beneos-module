@@ -642,7 +642,7 @@ export class BeneosCloud {
     // Loop thru the assetList and install them
     for (let key in assetList) {
       let asset = assetList[key]
-      if (asset.type == "token") {
+      if (asset.type == "actor" || asset.type == "token") {
         this.importTokenFromCloud(asset.key)
       } else if (asset.type == "item") {
         this.importItemFromCloud(asset.key)

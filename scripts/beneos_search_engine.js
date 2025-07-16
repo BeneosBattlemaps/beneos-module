@@ -831,8 +831,10 @@ export class BeneosSearchResults extends Dialog {
   /********************************************************************************** */
   removeSelectedBatchClass() {
     game.beneosTokens.searchEngine.batchInstall = {}
-    $(".beneos-batch-install").removeClass("beneos-batch-install")
+    $(".beneos-batch-install").removeClass("beneos-batch-install");
     document.getElementById('beneos-cloud-batch-install').hidden = true;
+    // Add the beneos-item-container-hover class from all items
+    $(".beneos-item-container").addClass("beneos-item-container-hover");
   }
 
   /********************************************************************************** */
@@ -860,6 +862,8 @@ export class BeneosSearchResults extends Dialog {
       // Vérifier si la touche CTRL est enfoncée
       if (event.ctrlKey && docType) {
         event.preventDefault();
+        // Remove the beneos-item-container-hover class
+        $(event.target).parents(".beneos-item-container").removeClass("beneos-item-container-hover");
         // Get token key
         let id = $(event.target).parents(".token-search-data").data("document-id")
         let parentItem = $(event.target).parents(".beneos-item-container")
@@ -882,6 +886,7 @@ export class BeneosSearchResults extends Dialog {
         document.getElementById('beneos-cloud-batch-install').hidden = !anyChecked;
         console.log("Batch install - Button", anyChecked)
       } else {
+        // If not CTRL, remove the batch install class
         this.removeSelectedBatchClass()
       }
     })
@@ -1633,7 +1638,7 @@ export class BeneosSearchEngine extends Dialog {
     })
 
     $("#beneos-cloud-batch-install").click(event => {
-      console.log("Batch install", game.beneosTokens.searchEngine.batchInstall)
+      console.log("Processing batch install", game.beneosTokens.searchEngine.batchInstall)
       game.beneos.cloud.batchInstall(foundry.utils.duplicate(game.beneosTokens.searchEngine.batchInstall))
       game.beneosTokens.searchEngine.batchInstall = {}
       // Hide the Batch Install button
