@@ -942,8 +942,11 @@ export class BeneosSearchResults extends Dialog {
         if (docType == "Actor") {
           game.beneos.cloud.importTokenFromCloud(tokenKey, e)
         }
-        if (docType == "Item" || docType == "Spell") {
+        if (docType == "Item" ) {
           game.beneos.cloud.importItemFromCloud(tokenKey, e)
+        }
+        if( docType == "Spell") {
+          game.beneos.cloud.importSpellsFromCloud(tokenKey, e)
         }
         return false
       } else {

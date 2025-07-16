@@ -112,10 +112,8 @@ export class BeneosCloudLogin extends FormApplication {
             clearInterval(pollInterval)
             game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-foundry-id", userId)
             game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", data.patreon_status)
-            console.log("User id saved", userId)
             game.beneos.cloud.setLoginStatus(true)
             ui.notifications.info("BeneosModule : You are now connected to BeneosCloud !")
-            console.log("Refreshing search engine", requestOrigin)
             if (requestOrigin == "searchEngine") {
               game.settings.set(BeneosUtility.moduleID(), "beneos-reload-search-engine", true)
             }
@@ -133,6 +131,7 @@ export class BeneosCloudLogin extends FormApplication {
   }
 }
 
+/********************************************************************************** */
 export class BeneosCloud {
 
   cloudConnected = false
@@ -300,7 +299,7 @@ export class BeneosCloud {
 
   }
 
-  async importItemToCompendium(itemArray, event) {
+  async importItemToCompendium(itemArray, event, isBatch = false) {
     this.beneosItems = {}
     console.log("Importing item to compendium", itemArray)
 
@@ -318,7 +317,9 @@ export class BeneosCloud {
       return
     }
     let itemRecords = await itemPack.getIndex()
-    await itemPack.configure({ locked: false })
+    if ( !isBatch) {
+      await itemPack.configure({ locked: false })
+    }
 
     for (let itemKey in itemArray) {
       let itemData = itemArray[itemKey]
@@ -327,22 +328,22 @@ export class BeneosCloud {
 
       let finalFolder = `beneos_assets/cloud/items/${itemKey}`
       try {
-        await FilePicker.createDirectory("data", "beneos_assets");
+        await foundry.applications.apps.FilePicker.implementation.createDirectory("data", "beneos_assets");
       } catch (err) {
         console.log("Directory already exists")
       }
       try {
-        await FilePicker.createDirectory("data", "beneos_assets/cloud");
+        await foundry.applications.apps.FilePicker.implementation.createDirectory("data", "beneos_assets/cloud");
       } catch (err) {
         console.log("Directory already exists")
       }
       try {
-        await FilePicker.createDirectory("data", "beneos_assets/cloud/items");
+        await foundry.applications.apps.FilePicker.implementation.createDirectory("data", "beneos_assets/cloud/items");
       } catch (err) {
         console.log("Directory already exists")
       }
       try {
-        await FilePicker.createDirectory("data", finalFolder);
+        await foundry.applications.apps.FilePicker.implementation.createDirectory("data", finalFolder);
       } catch (err) {
         console.log("Directory already exists")
       }
@@ -351,19 +352,19 @@ export class BeneosCloud {
       let base64Response = await fetch(`data:image/webp;base64,${itemData.itemImage.front.image64}`);
       let blob = await base64Response.blob();
       let file = new File([blob], itemData.itemImage.front.filename, { type: "image/webp" });
-      await FilePicker.upload("data", finalFolder, file, {});
+      await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {}, {notify: false});
 
       base64Response = await fetch(`data:image/webp;base64,${itemData.itemImage.back.image64}`);
       blob = await base64Response.blob();
       file = new File([blob], itemData.itemImage.back.filename, { type: "image/webp" });
-      await FilePicker.upload("data", finalFolder, file, {});
+      await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {}, {notify: false});
 
       itemObjectData.system.description.value = itemObjectData.system.description.value.replaceAll("beneos_assets/beneos_items/", "beneos_assets/cloud/items/")
 
       base64Response = await fetch(`data:image/webp;base64,${itemData.itemImage.icon.image64}`);
       blob = await base64Response.blob();
       file = new File([blob], itemData.itemImage.icon.filename, { type: "image/webp" });
-      await FilePicker.upload("data", finalFolder, file, {});
+      await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {notify: false});
       itemObjectData.img = `${finalFolder}/${itemData.itemImage.icon.filename}`
 
       let item = new CONFIG.Item.documentClass(itemObjectData);
@@ -392,7 +393,9 @@ export class BeneosCloud {
     let toSave = JSON.stringify(BeneosUtility.beneosItems)
     console.log("Saving ITEM data :", toSave)
     await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', toSave) // Save the token config !
-    await itemPack.configure({ locked: true })
+    if (!isBatch) { // Lock/Unlock only in single install mode
+      await itemPack.configure({ locked: true })
+    }
 
     this.sendChatMessageResult(event, "Item(s)")
     for (let itemKey in itemArray) {
@@ -402,7 +405,7 @@ export class BeneosCloud {
 
   }
 
-  async importSpellToCompendium(spellArray, event) {
+  async importSpellToCompendium(spellArray, event, isBatch = false) {
     this.beneosSpells = {}
 
     let tNow = Date.now()
@@ -419,29 +422,32 @@ export class BeneosCloud {
       return
     }
     let spellRecords = await spellPack.getIndex()
-    await spellPack.configure({ locked: false })
+    if (!isBatch) { // Lock/Unlock only in single install mode
+      await spellPack.configure({ locked: false })
+    }
+
     for (let spellKey in spellArray) {
       let spellData = spellArray[spellKey]
       // Get the common actor data
       let spellObjectData = spellData.spellJSON
       let finalFolder = `beneos_assets/cloud/spells/${spellKey}`
       try {
-        await FilePicker.createDirectory("data", "beneos_assets");
+        await foundry.applications.apps.FilePicker.implementation.createDirectory("data", "beneos_assets");
       } catch (err) {
         console.log("Directory already exists")
       }
       try {
-        await FilePicker.createDirectory("data", "beneos_assets/cloud");
+        await foundry.applications.apps.FilePicker.implementation.createDirectory("data", "beneos_assets/cloud");
       } catch (err) {
         console.log("Directory already exists")
       }
       try {
-        await FilePicker.createDirectory("data", "beneos_assets/cloud/spells");
+        await foundry.applications.apps.FilePicker.implementation.createDirectory("data", "beneos_assets/cloud/spells");
       } catch (err) {
         console.log("Directory already exists")
       }
       try {
-        await FilePicker.createDirectory("data", finalFolder);
+        await foundry.applications.apps.FilePicker.implementation.createDirectory("data", finalFolder);
       } catch (err) {
         console.log("Directory already exists")
       }
@@ -450,14 +456,14 @@ export class BeneosCloud {
       let base64Response = await fetch(`data:image/webp;base64,${spellData.spellImage.front.image64}`);
       let blob = await base64Response.blob();
       let file = new File([blob], spellData.spellImage.front.filename, { type: "image/webp" });
-      await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {});
+      await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {}, {notify: false});
 
       spellObjectData.system.description.value = spellObjectData.system.description.value.replaceAll("beneos_assets/beneos_spells/", "beneos_assets/cloud/spells/")
 
       base64Response = await fetch(`data:image/webp;base64,${spellData.spellImage.icon.image64}`);
       blob = await base64Response.blob();
       file = new File([blob], spellData.spellImage.icon.filename, { type: "image/webp" });
-      await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {});
+      await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {}, {notify: false});
       spellObjectData.img = `${finalFolder}/${spellData.spellImage.icon.filename}`
 
       let spell = new CONFIG.Item.documentClass(spellObjectData);
@@ -486,7 +492,9 @@ export class BeneosCloud {
     let toSave = JSON.stringify(BeneosUtility.beneosSpells)
     console.log("Saving ITEM data :", toSave)
     await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', toSave) // Save the token config !
-    await spellPack.configure({ locked: true })
+    if (!isBatch) { // Lock/Unlock only in single install mode
+      await spellPack.configure({ locked: true })
+    }
 
     this.sendChatMessageResult(event, "Spell(s)")
     for (let spellKey in spellArray) {
@@ -495,23 +503,20 @@ export class BeneosCloud {
     BeneosSearchEngineLauncher.updateDisplay()
   }
 
-  async importTokenToCompendium(tokenArray, event) {
+  async importTokenToCompendium(tokenArray, event, isBatch = false) {
 
-    console.log("Importing token to compendium", tokenArray)
+    console.log("Importing token to compendium", tokenArray, event, isBatch)
 
     let tNow = Math.floor(Date.now() / 1000) // Get the current date in seconds
 
-    let actorPack
+    let actorData
+    let actorPack = BeneosUtility.getActorPack()
     if (game.system.id == "pf2e") {
-      actorPack = game.packs.get("beneos-module.beneos_module_actors_pf2")
       let rPF2 = await fetch("modules/beneos-module/scripts/generic_npc_pf2.json")
       actorData = await rPF2.json()
-
-    } else {
-      actorPack = game.packs.get("beneos-module.beneos_module_actors")
-
     }
-    let journalPack = game.packs.get("beneos-module.beneos_module_journal")
+
+    let journalPack = BeneosUtility.getJournalPack()
     if (!actorPack || !journalPack) {
       ui.notifications.error("BeneosModule : Unable to find compendiums, please check your installation !")
       return
@@ -519,8 +524,10 @@ export class BeneosCloud {
     let actorRecords = await actorPack.getIndex()
     let journalRecords = await journalPack.getIndex()
 
-    await actorPack.configure({ locked: false })
-    await journalPack.configure({ locked: false })
+    if (!isBatch) { // Lock/Unlock only in single install mode
+      await actorPack.configure({ locked: false })
+      await journalPack.configure({ locked: false })
+    }
 
     for (let tokenKey in tokenArray) {
       let tokenData = tokenArray[tokenKey]
@@ -529,22 +536,22 @@ export class BeneosCloud {
 
       let finalFolder = `beneos_assets/cloud/tokens/${tokenKey}`
       try {
-        await FilePicker.createDirectory("data", "beneos_assets");
+        await foundry.applications.apps.FilePicker.implementation.createDirectory("data", "beneos_assets");
       } catch (err) {
         console.log("Directory already exists")
       }
       try {
-        await FilePicker.createDirectory("data", "beneos_assets/cloud");
+        await foundry.applications.apps.FilePicker.implementation.createDirectory("data", "beneos_assets/cloud");
       } catch (err) {
         console.log("Directory already exists")
       }
       try {
-        await FilePicker.createDirectory("data", "beneos_assets/cloud/tokens");
+        await foundry.applications.apps.FilePicker.implementation.createDirectory("data", "beneos_assets/cloud/tokens");
       } catch (err) {
         console.log("Directory already exists")
       }
       try {
-        await FilePicker.createDirectory("data", finalFolder);
+        await foundry.applications.apps.FilePicker.implementation.createDirectory("data", finalFolder);
       } catch (err) {
         console.log("Directory already exists")
       }
@@ -559,17 +566,17 @@ export class BeneosCloud {
         let base64Response = await fetch(`data:image/webp;base64,${tokenData.tokenImages[i].token.image64}`);
         let blob = await base64Response.blob();
         let file = new File([blob], tokenData.tokenImages[i].token.filename, { type: "image/webp" });
-        await FilePicker.upload("data", finalFolder, file, {});
+        await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {}, {notify: false});
 
         base64Response = await fetch(`data:image/webp;base64,${tokenData.tokenImages[i].journal.image64}`);
         blob = await base64Response.blob();
         file = new File([blob], tokenData.tokenImages[i].journal.filename, { type: "image/webp" });
-        await FilePicker.upload("data", finalFolder, file, {});
+        await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {}, {notify: false});
 
         base64Response = await fetch(`data:image/webp;base64,${tokenData.tokenImages[i].avatar.image64}`);
         blob = await base64Response.blob();
         file = new File([blob], tokenData.tokenImages[i].avatar.filename, { type: "image/webp" });
-        await FilePicker.upload("data", finalFolder, file, {});
+        await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {}, {notify: false});
 
         // Create the journal entry
         journalData.pages[0].src = `${finalFolder}/${tokenData.tokenImages[i].journal.filename}`
@@ -627,8 +634,10 @@ export class BeneosCloud {
     let toSave = JSON.stringify(BeneosUtility.beneosTokens)
     console.log("Saving data :", toSave)
     await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', toSave) // Save the token config !
-    await actorPack.configure({ locked: true })
-    await journalPack.configure({ locked: true })
+    if (!isBatch) { // Lock/Unlock only in single install mode
+      await actorPack.configure({ locked: true })
+      await journalPack.configure({ locked: true })
+    }
 
     this.sendChatMessageResult(event)
 
@@ -639,20 +648,22 @@ export class BeneosCloud {
   }
 
   async batchInstall(assetList) {
+    await BeneosUtility.lockUnlockAllPacks(false) // Unlock all packs before batch install
     // Loop thru the assetList and install them
     for (let key in assetList) {
       let asset = assetList[key]
       if (asset.type == "actor" || asset.type == "token") {
-        this.importTokenFromCloud(asset.key)
+        this.importTokenFromCloud(asset.key, undefined, true)
       } else if (asset.type == "item") {
-        this.importItemFromCloud(asset.key)
+        this.importItemFromCloud(asset.key, undefined, true)
       } else if (asset.type == "spell") {
-        this.importSpellsFromCloud(asset.key)
+        this.importSpellsFromCloud(asset.key, undefined, true)
       }
     }
+    //await BeneosUtility.lockUnlockAllPacks(true) // Lock all packs after batch install
   }
 
-  importTokenFromCloud(tokenKey, event = undefined) {
+  importTokenFromCloud(tokenKey, event = undefined, isBatch = false) {
     ui.notifications.info("Importing token from BeneosCloud !")
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
     let url = `https://beneos.cloud/foundry-manager.php?get_token=1&foundryId=${userId}&tokenKey=${tokenKey}`
@@ -660,7 +671,7 @@ export class BeneosCloud {
       .then(response => response.json())
       .then(async function (data) {
         if (data.result == 'OK') {
-          game.beneos.cloud.importTokenToCompendium({ [`${tokenKey}`]: data.data.token }, event)
+          game.beneos.cloud.importTokenToCompendium({ [`${tokenKey}`]: data.data.token }, event, isBatch)
         } else {
           console.log("Error in importing Token from BeneosCloud !", data, tokenKey)
           ui.notifications.error("Error in importing token from BeneosCloud !")
@@ -668,7 +679,7 @@ export class BeneosCloud {
       })
   }
 
-  importItemFromCloud(itemKey, event = undefined) {
+  importItemFromCloud(itemKey, event = undefined, isBatch = false) {
     ui.notifications.info("Importing item from BeneosCloud !")
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
     let url = `https://beneos.cloud/foundry-manager.php?get_item=1&foundryId=${userId}&itemKey=${itemKey}`
@@ -676,7 +687,7 @@ export class BeneosCloud {
       .then(response => response.json())
       .then(async function (data) {
         if (data.result == 'OK') {
-          game.beneos.cloud.importItemToCompendium({ [`${itemKey}`]: data.data.item }, event)
+          game.beneos.cloud.importItemToCompendium({ [`${itemKey}`]: data.data.item }, event, isBatch)
         }else {
           console.log("Error in importing Item from BeneosCloud !", data, itemKey)
           ui.notifications.error("Error in importing Item from BeneosCloud !", data)
@@ -684,7 +695,9 @@ export class BeneosCloud {
       })
   }
 
-  importSpellsFromCloud(spellKey, event = undefined) {
+  importSpellsFromCloud(spellKey, event = undefined, isBatch = false
+
+  ) {
     ui.notifications.info("Importing spell from BeneosCloud !")
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
     let url = `https://beneos.cloud/foundry-manager.php?get_spell=1&foundryId=${userId}&spellKey=${spellKey}`
@@ -692,7 +705,7 @@ export class BeneosCloud {
       .then(response => response.json())
       .then(async function (data) {
         if (data.result == 'OK') {
-          game.beneos.cloud.importSpellToCompendium({ [`${spellKey}`]: data.data.spell }, event)
+          game.beneos.cloud.importSpellToCompendium({ [`${spellKey}`]: data.data.spell }, event, isBatch)
         }else {
           console.log("Error in importing Spell from BeneosCloud !", data, spellKey)
           ui.notifications.error("Error in importing Spell from BeneosCloud !")

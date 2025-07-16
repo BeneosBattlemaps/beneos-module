@@ -419,6 +419,36 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
+  static getActorPack() {
+    if (game.system.id == "pf2e") {
+      return game.packs.get("beneos-module.beneos_module_actors_pf2")
+    } else {
+      return game.packs.get("beneos-module.beneos_module_actors")
+    }
+  }
+  static getJournalPack() {
+    return game.packs.get("beneos-module.beneos_module_journal")
+  }
+  static getItemPack() {
+    return game.packs.get("beneos-module.beneos_module_items")
+  }
+  static getSpellPack() {
+    return game.packs.get("beneos-module.beneos_module_spells")
+  }
+  static async lockUnlockAllPacks(flag = false) {
+    let actorPack = this.getActorPack()
+    let journalPack = this.getJournalPack()
+    let itemPack = this.getItemPack()
+    let spellPack = this.getSpellPack()
+    if (actorPack) await actorPack.configure({ locked: flag })
+    if (journalPack) await journalPack.configure({ locked: flag })
+    if (itemPack) await itemPack.configure({ locked: flag })
+    if (spellPack) await spellPack.configure({ locked: flag })
+  }
+
+
+
+  /********************************************************************************** */
   static verifySettingsAgainstCompendium() {
     let toSave = false
     let actorPack = game.packs.get("beneos-module.beneos_module_actors")
@@ -917,16 +947,6 @@ export class BeneosUtility {
       let menu = new BeneosModuleMenu(beneosTokensDisplay, tokenList, sheet.actor.token?.actor || sheet.actor, e.pageX, e.pageY, "beneos-actor-menu.html")
       menu.render(true)
     }
-  }
-
-  /********************************************************************************** */
-  static getActorCompendium() {
-    if (game.system.id == "pf2e") {
-      return "beneos-module.beneos_module_actors_pf2"
-    } else {
-      return "beneos-module.beneos_module_actors"
-    }
-
   }
 
   /********************************************************************************** */
