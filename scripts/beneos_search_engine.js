@@ -767,8 +767,13 @@ export class BeneosDatabaseHolder {
 
   /********************************************************************************** */
   static getData() {
+    let mode = "token"
+    if (game.beneosTokens.lastFilterStack?.mode) {
+      mode = game.beneosTokens.lastFilterStack.mode
+    }
+
     return {
-      searchMode: "token",
+      searchMode: mode,
 
       tokenBioms: this.toTable(this.tokenBioms),
       bmapBioms: this.toTable(this.bmapBioms),
@@ -821,7 +826,6 @@ export class BeneosSearchResults extends Dialog {
     searchResults = BeneosDatabaseHolder.searchByProperty(typeName, fieldName, value.toString(), searchResults)
     game.beneosTokens.searchEngine.displayResults(searchResults)
 
-    game.beneosTokens.searchEngine.updateFilterStack(fieldName, value)
     game.beneosTokens.searchEngine.updatePropertiesDropDown(searchResults)
     this.removeSelectedBatchClass()
 
@@ -849,13 +853,13 @@ export class BeneosSearchResults extends Dialog {
       let docType = $(event.target).parents(".beneos-search-middle").data("type");
       let key
       if (docType == "Actor") {
-        key  = $(event.target).parents(".token-result-section").data("token-key")
+        key = $(event.target).parents(".token-result-section").data("token-key")
       }
       if (docType == "Spell") {
-        key  = $(event.target).parents(".spell-result-section").data("token-key")
+        key = $(event.target).parents(".spell-result-section").data("token-key")
       }
       if (docType == "Item") {
-        key  = $(event.target).parents(".item-result-section").data("token-key")
+        key = $(event.target).parents(".item-result-section").data("token-key")
       }
       console.log("Batch install - Click on selected-batch", event, docType)
 
@@ -896,7 +900,6 @@ export class BeneosSearchResults extends Dialog {
         game.beneos.cloud.scrollTop = $(".bsr_result_box").scrollTop()
         // Get the data-key from the previous div and get it from the cloud
         let tokenKey = $(event.target).parents(".item-result-section").data("token-key")
-        game.beneosTokens.searchEngine.saveSearchEngineFilters()
         game.beneos.cloud.importItemFromCloud(tokenKey)
       }
     })
@@ -905,7 +908,6 @@ export class BeneosSearchResults extends Dialog {
         game.beneos.cloud.scrollTop = $(".bsr_result_box").scrollTop()
         // Get the data-key from the previous div and get it from the cloud
         let tokenKey = $(event.target).parents(".spell-result-section").data("token-key")
-        game.beneosTokens.searchEngine.saveSearchEngineFilters()
         game.beneos.cloud.importSpellsFromCloud(tokenKey)
       }
     })
@@ -916,8 +918,6 @@ export class BeneosSearchResults extends Dialog {
         game.beneos.cloud.scrollTop = $(".bsr_result_box").scrollTop()
         // Get the data-key from the previous div and get it from the cloud
         let tokenKey = $(event.target).parents(".token-result-section").data("token-key")
-        // save all the search engines filters
-        game.beneosTokens.searchEngine.saveSearchEngineFilters()
         game.beneos.cloud.importTokenFromCloud(tokenKey)
       }
     })
@@ -942,10 +942,10 @@ export class BeneosSearchResults extends Dialog {
         if (docType == "Actor") {
           game.beneos.cloud.importTokenFromCloud(tokenKey, e)
         }
-        if (docType == "Item" ) {
+        if (docType == "Item") {
           game.beneos.cloud.importItemFromCloud(tokenKey, e)
         }
-        if( docType == "Spell") {
+        if (docType == "Spell") {
           game.beneos.cloud.importSpellsFromCloud(tokenKey, e)
         }
         return false
@@ -1129,7 +1129,11 @@ export class BeneosSearchEngine extends Dialog {
     super(dialogConf, dialogOptions)
 
     this.dbData = data
-    this.dbData.searchMode = "token"
+    if (game.beneosTokens.lastFilterStack?.mode) {
+      this.dbData.searchMode = game.beneosTokens.lastFilterStack.mode
+    } else {
+      this.dbData.searchMode = "token"
+    }
     this.filterStack = []
     this.batchInstall = {}
 
@@ -1145,6 +1149,43 @@ export class BeneosSearchEngine extends Dialog {
         this.filterStack.push({ propKey: propKey, propValue: propValue })
       }
     }
+  }
+
+  /********************************************************************************** */
+  restoreFilterStack() {
+    if (game.beneosTokens.lastFilterStack) {
+      let filterStack = game.beneosTokens.lastFilterStack.searchFilters || []
+      if (game.beneosTokens.lastFilterStack?.textSearch && game.beneosTokens.lastFilterStack.textSearch != "") {
+        $("#beneos-search-text").val(game.beneosTokens.lastFilterStack.textSearch)
+        setTimeout(() => {
+          $("#beneos-search-text").trigger("keyup")
+        }, 500)
+      }
+
+      $("#beneos-search-text").val(game.beneosTokens.lastFilterStack.textSearch || "")
+      for (let filter of filterStack) {
+        let propDef = __propertyDefList[filter.propKey]
+        if (propDef && propDef.selectors && propDef.selectors.length > 0) {
+          let selector = propDef.selectors[0]
+          let ret = $("#" + selector).val(filter.propValue)
+          console.log("Restoring filter", filter, selector, filter.propValue, ret)
+        }
+      }
+      game.beneosTokens.lastFilterStack = undefined
+    }
+  }
+
+  /********************************************************************************** */
+  saveSearchFilters() {
+    let searchFilters = []
+    for (let propKey in __propertyDefList) {
+      let propDef = __propertyDefList[propKey]
+      let selected = $("#" + propDef.selectors[0]).val()
+      if (selected && selected != "any") {
+        searchFilters.push({ propKey: propKey, propValue: selected })
+      }
+    }
+    game.beneosTokens.lastFilterStack = { mode: this.dbData.searchMode, searchFilters, textSearch: $("#beneos-search-text").val() }
   }
 
   /********************************************************************************** */
@@ -1268,7 +1309,7 @@ export class BeneosSearchEngine extends Dialog {
     // Then push remaining ones
     let resTab2 = []
     for (let key in results) {
-      if ( !results[key].isUpdate && !results[key].isNew) {
+      if (!results[key].isUpdate && !results[key].isNew) {
         resTab2.push(results[key])
         count++;
       }
@@ -1364,26 +1405,8 @@ export class BeneosSearchEngine extends Dialog {
   }
 
   /********************************************************************************** */
-  applySearchFilters() {
-    if (this.searchFilters) {
-      // Restore the saved filters
-      for (let propKey in __propertyDefList) {
-        let propDef = __propertyDefList[propKey]
-        for (let selector of propDef.selectors) {
-          let value = this.searchFilters[propDef.name]
-          if (value) {
-            $("#" + selector).val(value)
-          }
-        }
-      }
-      console.log("Search filters restored", this.searchFilters)
-      this.searchFilters = undefined
-    }
-  }
-
-  /********************************************************************************** */
   processSelectorSearch() {
-    this.applySearchFilters()
+    this.restoreFilterStack()
 
     let type = this.dbData.searchMode
     let searchResults = BeneosDatabaseHolder.getAll(type)
@@ -1403,6 +1426,7 @@ export class BeneosSearchEngine extends Dialog {
       }
     }
 
+    // Save the search filters
     this.displayResults(searchResults)
 
     if (game.beneos.cloud.scrollTop) {
@@ -1433,22 +1457,6 @@ export class BeneosSearchEngine extends Dialog {
     myObject.timeout = setTimeout(function () {
       myObject.processSelectorSearch(event)
     }, 800)
-  }
-
-  /********************************************************************************** */
-  saveSearchEngineFilters() {
-    let filters = {}
-    for (let propKey in __propertyDefList) {
-      let propDef = __propertyDefList[propKey]
-      for (let selector of propDef.selectors) {
-        let value = $("#" + selector).val()
-        if (value && value.toLowerCase() != "any") {
-          filters[propDef.name] = value
-        }
-      }
-    }
-    game.beneos.searchEngine.searchFilters = filters
-    console.log("Saving search engine filters", filters)
   }
 
   /********************************************************************************** */
@@ -1661,19 +1669,6 @@ export class BeneosSearchEngine extends Dialog {
 export class BeneosSearchEngineLauncher extends FormApplication {
 
   /********************************************************************************** */
-  static updateDisplay() {
-    if (!game.beneos.searchEngine) {
-      return
-    }
-    game.beneos.searchEngine.updateContent()
-
-    setTimeout(() => {
-      game.beneos.searchEngine.processSelectorSearch()
-    },
-      100)
-  }
-
-  /********************************************************************************** */
   static refresh(typeAsset, key) {
     if (!game.beneos.searchEngine) {
       return
@@ -1721,6 +1716,17 @@ export class BeneosSearchEngineLauncher extends FormApplication {
   }
 
   /********************************************************************************** */
+  static closeAndReopen() {
+    if (game.beneos.searchEngine) {
+      game.beneos.searchEngine.saveSearchFilters()
+      game.beneos.searchEngine.close()
+      game.beneos.searchEngine = undefined
+    }
+    let launcher = new BeneosSearchEngineLauncher()
+    launcher.render(true)
+  }
+
+  /********************************************************************************** */
   async render(installed = undefined) {
     if (game.beneosTokens.searchEngine) {
       return
@@ -1731,14 +1737,14 @@ export class BeneosSearchEngineLauncher extends FormApplication {
     let html = await foundry.applications.handlebars.renderTemplate('modules/beneos-module/templates/beneossearchengine.html', dbData)
     let searchDialog = new BeneosSearchEngine(html, dbData)
     game.beneos.searchEngine = searchDialog
-    searchDialog.render(true)
+    await searchDialog.render(true)
     if (installed) {
       console.log("Refresh with installed", installed)
       setTimeout(() => {
-        $("#installation-selector").val(installed).change()
+        //$("#installation-selector").val(installed).change()
       }, 200)
     }
-    setTimeout(searchDialog.processSelectorSearch(), 500)
+    setTimeout(() => {searchDialog.processSelectorSearch()}, 500)
 
 
   }

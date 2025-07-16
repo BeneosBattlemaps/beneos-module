@@ -364,7 +364,7 @@ export class BeneosCloud {
       base64Response = await fetch(`data:image/webp;base64,${itemData.itemImage.icon.image64}`);
       blob = await base64Response.blob();
       file = new File([blob], itemData.itemImage.icon.filename, { type: "image/webp" });
-      await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {notify: false});
+      await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {}, {notify: false});
       itemObjectData.img = `${finalFolder}/${itemData.itemImage.icon.filename}`
 
       let item = new CONFIG.Item.documentClass(itemObjectData);
@@ -393,16 +393,15 @@ export class BeneosCloud {
     let toSave = JSON.stringify(BeneosUtility.beneosItems)
     console.log("Saving ITEM data :", toSave)
     await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', toSave) // Save the token config !
-    if (!isBatch) { // Lock/Unlock only in single install mode
-      await itemPack.configure({ locked: true })
-    }
 
     this.sendChatMessageResult(event, "Item(s)")
-    for (let itemKey in itemArray) {
-      BeneosSearchEngineLauncher.refresh("item", itemKey)
-    }
-    BeneosSearchEngineLauncher.updateDisplay()
 
+    if (!isBatch) { // Lock/Unlock only in single install mode
+      await itemPack.configure({ locked: true })
+      BeneosSearchEngineLauncher.closeAndReopen();
+    } else {
+      this.updateInstalledAssets() // Update the installed assets count
+    }
   }
 
   async importSpellToCompendium(spellArray, event, isBatch = false) {
@@ -490,17 +489,16 @@ export class BeneosCloud {
       }
     }
     let toSave = JSON.stringify(BeneosUtility.beneosSpells)
-    console.log("Saving ITEM data :", toSave)
+    console.log("Saving SPELL data :", toSave)
     await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', toSave) // Save the token config !
-    if (!isBatch) { // Lock/Unlock only in single install mode
-      await spellPack.configure({ locked: true })
-    }
 
     this.sendChatMessageResult(event, "Spell(s)")
-    for (let spellKey in spellArray) {
-      BeneosSearchEngineLauncher.refresh("spell", spellKey)
+    if (!isBatch) { // Lock/Unlock only in single install mode
+      await spellPack.configure({ locked: true })
+      BeneosSearchEngineLauncher.closeAndReopen();
+    } else {
+      this.updateInstalledAssets() // Update the installed assets count
     }
-    BeneosSearchEngineLauncher.updateDisplay()
   }
 
   async importTokenToCompendium(tokenArray, event, isBatch = false) {
@@ -634,21 +632,27 @@ export class BeneosCloud {
     let toSave = JSON.stringify(BeneosUtility.beneosTokens)
     console.log("Saving data :", toSave)
     await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', toSave) // Save the token config !
-    if (!isBatch) { // Lock/Unlock only in single install mode
-      await actorPack.configure({ locked: true })
-      await journalPack.configure({ locked: true })
-    }
 
     this.sendChatMessageResult(event)
 
-    for (let tokenKey in tokenArray) {
-      BeneosSearchEngineLauncher.refresh("token", tokenKey)
+    if (!isBatch) { // Lock/Unlock only in single install mode
+      await actorPack.configure({ locked: true })
+      await journalPack.configure({ locked: true })
+      BeneosSearchEngineLauncher.closeAndReopen();
+    } else {
+      this.updateInstalledAssets() // Update the installed assets count
     }
-    BeneosSearchEngineLauncher.updateDisplay()
   }
 
   async batchInstall(assetList) {
-    await BeneosUtility.lockUnlockAllPacks(false) // Unlock all packs before batch install
+    await BeneosUtility.lockUnlockAllPacks(false)     // Unlock all packs before batch install
+    // COunt the number of assets to install
+    this.nbInstalled = 0
+    this.toInstall = Object.keys(assetList).length
+    if (this.toInstall == 0) {
+      ui.notifications.warn("BeneosModule : No assets to install from BeneosCloud !")
+      return;
+    }
     // Loop thru the assetList and install them
     for (let key in assetList) {
       let asset = assetList[key]
@@ -661,6 +665,17 @@ export class BeneosCloud {
       }
     }
     //await BeneosUtility.lockUnlockAllPacks(true) // Lock all packs after batch install
+  }
+
+  updateInstalledAssets() {
+    this.nbInstalled++;
+    if (this.nbInstalled >= this.toInstall) {
+      setTimeout(() => {
+        BeneosUtility.lockUnlockAllPacks(true) // Lock all packs after batch install
+        ui.notifications.info(`BeneosModule : ${this.nbInstalled} assets have been installed from BeneosCloud !`)
+        BeneosSearchEngineLauncher.closeAndReopen();
+      }, 400)
+    }
   }
 
   importTokenFromCloud(tokenKey, event = undefined, isBatch = false) {
