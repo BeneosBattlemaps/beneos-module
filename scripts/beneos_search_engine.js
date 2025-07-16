@@ -1276,6 +1276,11 @@ export class BeneosSearchEngine extends Dialog {
 
     console.log("SEARCH results", searchSize, results, this.dbData.searchMode)
 
+    // Compare length of results and fullResults
+    let fullResults = BeneosDatabaseHolder.getAll(this.dbData.searchMode)
+    let isFiltered = Object.keys(fullResults).length != Object.keys(results).length
+
+      // If less than 100 results, display the full list
     let template
     if (this.dbData.searchMode == "token") {
       template = 'modules/beneos-module/templates/beneos-search-results-tokens.html'
@@ -1293,36 +1298,49 @@ export class BeneosSearchEngine extends Dialog {
     // Always display New/Updated in top of the resulting search list, cf #165
     // First push the results with the isUpdate property
     let count = 0
-    for (let key in results) {
-      if (results[key].isUpdate) {
-        resTab.push(results[key])
-        count++;
-      }
-    }
-    // Then push the results with the isNew property
-    for (let key in results) {
-      if (results[key].isNew) {
-        resTab.push(results[key])
-        count++;
-      }
-    }
-    // Then push remaining ones
     let resTab2 = []
-    for (let key in results) {
-      if (!results[key].isUpdate && !results[key].isNew) {
+    if (!isFiltered) {
+      for (let key in results) {
+        if (results[key].isUpdate) {
+          resTab.push(results[key])
+          count++;
+        }
+      }
+      // Then push the results with the isNew property
+      for (let key in results) {
+        if (results[key].isNew) {
+          resTab.push(results[key])
+          count++;
+        }
+      }
+      // Then push remaining ones
+      for (let key in results) {
+        if (!results[key].isUpdate && !results[key].isNew) {
+          resTab2.push(results[key])
+          count++;
+        }
+        if (count > 100) {
+          break
+        }
+      }
+    } else {
+      // If filtered, push all results in restTab2
+      for (let key in results) {
         resTab2.push(results[key])
         count++;
-      }
-      if (count > 100) {
-        break
+        if (count > 100) {
+          break
+        }
       }
     }
+
     // Sort the final results
-    resTab2.sort(function (a, b) { return a.name.localeCompare(b.name) })
+    resTab2.sort(function (a, b) { return a.name.trim().localeCompare(b.name.trim()) })
     // then merge resTab and resTab2
     for (let key in resTab2) {
       resTab.push(resTab2[key])
     }
+    console.log("Final results", resTab)
 
     let html = await foundry.applications.handlebars.renderTemplate(template, {
       results: resTab,
