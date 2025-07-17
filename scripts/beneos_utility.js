@@ -478,7 +478,7 @@ export class BeneosUtility {
             await foundry.applications.apps.FilePicker.implementation.browse(actor.prototypeToken.texture.src)
           }
           catch (e) {
-            console.log("Beneos Compendium actor image not found for token", fullKey, actor.prototypeToken.texture.src)
+            console.log("Beneos Compendium actor image not found for token", fullKey, actor.prototypeToken?.texture?.src)
             actorDelete.push(actor._id)
             delete this.beneosTokens[fullKey]
             toSave = true
@@ -585,7 +585,9 @@ export class BeneosUtility {
     this.beneosItems = {}
 
     this.reloadInternalSettings()
-    this.verifySettingsAgainstCompendium()
+    if (game.user.isGM) {
+      this.verifySettingsAgainstCompendium()
+    }
     console.log("Loaded", this.beneosTokens)
 
     this.m_w = 123456789

@@ -1408,7 +1408,7 @@ export class BeneosSearchEngine extends Dialog {
       let results = BeneosDatabaseHolder.textSearch(event.currentTarget.value, this.dbData.searchMode)
       this.searchText = event.currentTarget.value
       this.displayResults(results, event)
-      this.resultDialog.removeSelectedBatchClass()
+      this?.resultDialog?.removeSelectedBatchClass()
       if (!this.checkInterval) {
         let myObject = this
         this.checkInterval = setInterval(function () { myObject.checkTextField() }, 500)
