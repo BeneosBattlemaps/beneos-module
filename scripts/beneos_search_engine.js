@@ -1161,7 +1161,7 @@ export class BeneosSearchEngine extends Dialog {
           game.beneosTokens.lastFilterStack.textSearch = undefined
           $("#beneos-search-text").trigger("keyup")
         }, 600)
-        return
+        return false
       }
 
       for (let filter of filterStack) {
@@ -1174,6 +1174,7 @@ export class BeneosSearchEngine extends Dialog {
       }
       game.beneosTokens.lastFilterStack = undefined
     }
+    return true
   }
 
   /********************************************************************************** */
@@ -1425,7 +1426,9 @@ export class BeneosSearchEngine extends Dialog {
 
   /********************************************************************************** */
   processSelectorSearch() {
-    this.restoreFilterStack()
+    if ( !this.restoreFilterStack() ) {
+      return
+    }
 
     let type = this.dbData.searchMode
     let searchResults = BeneosDatabaseHolder.getAll(type)
