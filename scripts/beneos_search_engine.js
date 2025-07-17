@@ -1158,11 +1158,12 @@ export class BeneosSearchEngine extends Dialog {
       if (game.beneosTokens.lastFilterStack?.textSearch && game.beneosTokens.lastFilterStack.textSearch != "") {
         $("#beneos-search-text").val(game.beneosTokens.lastFilterStack.textSearch)
         setTimeout(() => {
+          game.beneosTokens.lastFilterStack.textSearch = undefined
           $("#beneos-search-text").trigger("keyup")
-        }, 500)
+        }, 600)
+        return
       }
 
-      $("#beneos-search-text").val(game.beneosTokens.lastFilterStack.textSearch || "")
       for (let filter of filterStack) {
         let propDef = __propertyDefList[filter.propKey]
         if (propDef && propDef.selectors && propDef.selectors.length > 0) {
