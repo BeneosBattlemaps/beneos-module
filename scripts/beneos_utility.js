@@ -449,36 +449,108 @@ export class BeneosUtility {
 
 
   /********************************************************************************** */
-  static verifySettingsAgainstCompendium() {
+  static async verifySettingsAgainstCompendium() {
     let toSave = false
+    let actorDelete = []
+    let itemDelete = []
+    let spellDelete = []
     let actorPack = game.packs.get("beneos-module.beneos_module_actors")
     for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
       if (token.actorId && !actorPack.index.some(i => i._id == token.actorId)) {
         console.log("Beneos Compendium actor not found for token", fullKey, token.actorId)
         delete this.beneosTokens[fullKey]
         toSave = true
+      } else {
+        // Check if the image/token are still present in the filesystem
+        // Get the actor from the compendium
+        let actor = actorPack.index.find(i => i._id == token.actorId)
+        if (actor) {
+          try {
+            await foundry.applications.apps.FilePicker.implementation.browse(actor.img)
+          }
+          catch (e) {
+            console.log("Beneos Compendium actor image not found for token", fullKey, actor.img)
+            actorDelete.push(actor._id)
+            delete this.beneosTokens[fullKey]
+            toSave = true
+          }
+          try {
+            await foundry.applications.apps.FilePicker.implementation.browse(actor.prototypeToken.texture.src)
+          }
+          catch (e) {
+            console.log("Beneos Compendium actor image not found for token", fullKey, actor.prototypeToken.texture.src)
+            actorDelete.push(actor._id)
+            delete this.beneosTokens[fullKey]
+            toSave = true
+          }
+        }
       }
     }
+
     let itemPack = game.packs.get("beneos-module.beneos_module_items")
     for (let [fullKey, item] of Object.entries(this.beneosItems)) {
       if (item.itemId && !itemPack.index.some(i => i._id == item.itemId)) {
         console.log("Beneos Compendium item not found for item", fullKey, item.itemId)
         delete this.beneosItems[fullKey]
         toSave = true
+      } else {
+        let itemC = itemPack.index.find(i => i._id == item.itemId)
+        if (itemC) {
+          try {
+            await foundry.applications.apps.FilePicker.implementation.browse(itemC.img)
+          }
+          catch (e) {
+            console.log("Beneos Compendium item image not found for item", fullKey, itemC.img)
+            itemDelete.push(itemC._id)
+            delete this.beneosItems[fullKey]
+            toSave = true
+          }
+        }
       }
     }
+
     let spellPack = game.packs.get("beneos-module.beneos_module_spells")
     for (let [fullKey, spell] of Object.entries(this.beneosSpells)) {
       if (spell.spellId && !spellPack.index.some(i => i._id == spell.spellId)) {
         console.log("Beneos Compendium spell not found for spell", fullKey, spell.spellId)
         delete this.beneosSpells[fullKey]
         toSave = true
+      } else {
+        let spellC = spellPack.index.find(i => i._id == spell.spellId)
+        if (spellC) {
+          try {
+            await foundry.applications.apps.FilePicker.implementation.browse(spellC.img)
+          }
+          catch (e) {
+            console.log("Beneos Compendium item image not found for item", fullKey, spellC.img)
+            spellDelete.push(spellC._id)
+            delete this.beneosSpells[fullKey]
+            toSave = true
+          }
+        }
       }
     }
+
     if (game.user.isGM && toSave) {
+      await BeneosUtility.lockUnlockAllPacks(false) // Unlock the packs before deleting
+      for (let id of actorDelete) {
+        await Actor.deleteDocuments([id], { pack: "beneos-module.beneos_module_actors" })
+      }
+      for (let id of itemDelete) {
+        await Item.deleteDocuments([id], { pack: "beneos-module.beneos_module_items" })
+      }
+      for (let id of spellDelete) {
+        await Item.deleteDocuments([id], { pack: "beneos-module.beneos_module_spells" })
+      }
+      await BeneosUtility.lockUnlockAllPacks(true) // Lock the packs after deleting
+
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', JSON.stringify(this.beneosTokens))
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', JSON.stringify(this.beneosItems))
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', JSON.stringify(this.beneosSpells))
+      // Post chat message to inform the user that the world will reload
+      ChatMessage.create({
+        content: `<div class="beneos-module"><p>Some Beneos files have been deleted or are corrupted. Affected assets must be downloaded again. Please refresh Foundry VTT with (F5 on Windows) to complete this.</p></div>`,
+      });
     }
   }
 

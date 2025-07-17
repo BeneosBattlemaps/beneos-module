@@ -131,6 +131,7 @@ export class BeneosCompendiumManager {
   static cleanImportErrors() {
     this.importErrors = []; // clean local error cache
   }
+  
   static async showImportErrors() {
     if (this.importErrors.length > 0) {
       console.log("Global import errors : ", this.importErrors)
