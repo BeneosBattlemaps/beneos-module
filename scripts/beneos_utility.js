@@ -465,13 +465,13 @@ export class BeneosUtility {
         // Get the actor from the compendium
         let actor = actorPack.index.find(i => i._id == token.actorId)
         if (actor) {
+          let toDelete = false
           try {
             await foundry.applications.apps.FilePicker.implementation.browse(actor.img)
           }
           catch (e) {
             console.log("Beneos Compendium actor image not found for token", fullKey, actor.img)
-            actorDelete.push(actor._id)
-            delete this.beneosTokens[fullKey]
+            toDelete = true
             toSave = true
           }
           try {
@@ -479,9 +479,12 @@ export class BeneosUtility {
           }
           catch (e) {
             console.log("Beneos Compendium actor image not found for token", fullKey, actor.prototypeToken?.texture?.src)
+            toDelete = true
+            toSave = true
+          }
+          if (toDelete) {
             actorDelete.push(actor._id)
             delete this.beneosTokens[fullKey]
-            toSave = true
           }
         }
       }
