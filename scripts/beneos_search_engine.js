@@ -1166,7 +1166,7 @@ export class BeneosSearchEngine extends Dialog {
 
       for (let filter of filterStack) {
         let propDef = __propertyDefList[filter.propKey]
-        if (propDef && propDef.selectors && propDef.selectors.length > 0) {
+        if (propDef?.selectors?.length > 0) {
           let selector = propDef.selectors[0]
           let ret = $("#" + selector).val(filter.propValue)
           console.log("Restoring filter", filter, selector, filter.propValue, ret)

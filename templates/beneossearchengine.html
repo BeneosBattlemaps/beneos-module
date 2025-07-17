@@ -64,6 +64,17 @@
       </select>
     </span>
 
+    <hr>
+    <span class="flexrow">
+      <label data-tooltip="Bulk installation">Install : </label>
+      <select name="asset-install" class="beneos-selector" id="asset-install" data-dtype="String">
+        <option value="any">Any</option>
+        <option value="all">All</option>
+        <option value="new">New</option>
+        <option value="updated">Updated</option>
+      </select>
+    </span>
+
     {{/if}}
 
     {{#if (eq searchMode "token")}}
@@ -153,6 +164,18 @@
         {{selectOptions price selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
+
+    <hr>
+    <span class="flexrow">
+      <label data-tooltip="Bulk installation">Install : </label>
+      <select name="asset-install" class="beneos-selector" id="asset-install" data-dtype="String">
+        <option value="any">Any</option>
+        <option value="all">All</option>
+        <option value="new">New</option>
+        <option value="updated">Updated</option>
+      </select>
+    </span>
+
     {{/if}}
 
     {{#if (eq searchMode "spell")}}
@@ -186,6 +209,18 @@
         {{selectOptions spellClass selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
+
+    <hr>
+    <span class="flexrow">
+      <label data-tooltip="Bulk installation">Install : </label>
+      <select name="asset-install" class="beneos-selector" id="asset-install" data-dtype="String">
+        <option value="any">Any</option>
+        <option value="all">All</option>
+        <option value="new">New</option>
+        <option value="updated">Updated</option>
+      </select>
+    </span>
+
     {{/if}}
 
     <!-- Not used anymore (ie cloud only delivery)
@@ -212,7 +247,7 @@
         <div class="beneos-cloud-no-patreon">❌ Patreon Account not Linked</div>
         <div class="beneos-cloud-no-patreon-info">To have access to Beneos Patreon content, you must be an active Patron and link your Beneos Cloud account to your Patreon account once. Purchased store content from Beneos-Battlemaps.com will automatically be available here.</div>
       {{/if}}
-      
+
     {{else}}
       <div class="beneos-cloud-not-connected">Not Connected to the Beneos Cloud. Please Log in!</div>
       <div>Login to your Beneos Cloud account. Credentials entered here are never stored.</div>
