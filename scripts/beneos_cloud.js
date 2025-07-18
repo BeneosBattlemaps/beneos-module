@@ -413,9 +413,7 @@ export class BeneosCloud {
     let tNow = Date.now()
     let spellPack
     if (game.system.id == "pf2e") {
-      spellPack = game.packs.get("beneos-module.beneos_module_spells_pf2")
-      let rPF2 = await fetch("modules/beneos-module/scripts/generic_spell_pf2.json")
-      spellData = await rPF2.json()
+      return
     } else {
       spellPack = game.packs.get("beneos-module.beneos_module_spells")
     }
@@ -513,11 +511,13 @@ export class BeneosCloud {
 
     let tNow = Math.floor(Date.now() / 1000) // Get the current date in seconds
 
-    let actorData
+    let actorDataPF2
+    let packName = "beneos-module.beneos_module_journal"
     let actorPack = BeneosUtility.getActorPack()
     if (game.system.id == "pf2e") {
+      packName = "beneos-module.beneos_module_actors_pf2"
       let rPF2 = await fetch("modules/beneos-module/scripts/generic_npc_pf2.json")
-      actorData = await rPF2.json()
+      actorDataPF2 = await rPF2.json()
     }
 
     let journalPack = BeneosUtility.getJournalPack()
@@ -537,6 +537,11 @@ export class BeneosCloud {
       let tokenData = tokenArray[tokenKey]
       // Get the common actor data
       let actorData = tokenData.actorJSON
+      if ( actorDataPF2 ) {
+        let name = tokenData.actorJSON.name
+        actorData = actorDataPF2
+        actorDataPF2.name = name
+      }
 
       let finalFolder = `beneos_assets/cloud/tokens/${tokenKey}`
       try {
@@ -607,7 +612,7 @@ export class BeneosCloud {
           let existingActor = actorRecords.find(a => a.name == actor.name && a.img == actorData.img)
           if (existingActor) {
             console.log("Deleting existing actor", existingActor._id)
-            await Actor.deleteDocuments([existingActor._id], { pack: "beneos-module.beneos_module_actors" })
+            await Actor.deleteDocuments([existingActor._id], { pack: packName })
           }
           // And then create it again
           let imported = await actorPack.importDocument(actor);

@@ -251,7 +251,7 @@ Hooks.on("deleteItem", (item, options) => {
 })
 
 /********************************************************************************** */
-Hooks.on("renderActorDirectory", (app, html, data) => {
+Hooks.once("renderActorDirectory", (app, html, data) => {
   if (game.user.can('ACTOR_CREATE')) {
     const button = document.createElement('button');
     button.style["align-self"] = 'center';

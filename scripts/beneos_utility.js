@@ -454,9 +454,9 @@ export class BeneosUtility {
     let actorDelete = []
     let itemDelete = []
     let spellDelete = []
-    let actorPack = game.packs.get("beneos-module.beneos_module_actors")
+    let actorPack = BeneosUtility.getActorPack()
     for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
-      if (token.actorId && !actorPack.index.some(i => i._id == token.actorId)) {
+      if (token?.actorId && !actorPack.index.some(i => i._id == token.actorId)) {
         console.log("Beneos Compendium actor not found for token", fullKey, token.actorId)
         delete this.beneosTokens[fullKey]
         toSave = true
@@ -465,26 +465,15 @@ export class BeneosUtility {
         // Get the actor from the compendium
         let actor = actorPack.index.find(i => i._id == token.actorId)
         if (actor) {
-          let toDelete = false
-          try {
-            await foundry.applications.apps.FilePicker.implementation.browse(actor.img)
+          let ret = await foundry.utils.srcExists(actor.img)
+          if (ret && actor.prototypeToken?.texture?.src) {
+            ret = await foundry.utils.srcExists(actor.prototypeToken.texture.src)
           }
-          catch (e) {
-            console.log("Beneos Compendium actor image not found for token", fullKey, actor.img)
-            toDelete = true
-            toSave = true
-          }
-          try {
-            await foundry.applications.apps.FilePicker.implementation.browse(actor.prototypeToken.texture.src)
-          }
-          catch (e) {
+          if (!ret) {
             console.log("Beneos Compendium actor image not found for token", fullKey, actor.prototypeToken?.texture?.src)
-            toDelete = true
-            toSave = true
-          }
-          if (toDelete) {
             actorDelete.push(actor._id)
             delete this.beneosTokens[fullKey]
+            toSave = true
           }
         }
       }
@@ -499,10 +488,8 @@ export class BeneosUtility {
       } else {
         let itemC = itemPack.index.find(i => i._id == item.itemId)
         if (itemC) {
-          try {
-            await foundry.applications.apps.FilePicker.implementation.browse(itemC.img)
-          }
-          catch (e) {
+          let ret = await foundry.utils.srcExists(itemC.img)
+          if (!ret ) {
             console.log("Beneos Compendium item image not found for item", fullKey, itemC.img)
             itemDelete.push(itemC._id)
             delete this.beneosItems[fullKey]
@@ -521,10 +508,8 @@ export class BeneosUtility {
       } else {
         let spellC = spellPack.index.find(i => i._id == spell.spellId)
         if (spellC) {
-          try {
-            await foundry.applications.apps.FilePicker.implementation.browse(spellC.img)
-          }
-          catch (e) {
+          let ret = await foundry.utils.srcExists(spellC.img)
+          if (!ret) {
             console.log("Beneos Compendium item image not found for item", fullKey, spellC.img)
             spellDelete.push(spellC._id)
             delete this.beneosSpells[fullKey]
@@ -535,9 +520,10 @@ export class BeneosUtility {
     }
 
     if (game.user.isGM && toSave) {
+      let packName = (game.system.id == "pf2e") ?  "beneos-module.beneos_module_actors_pf2" : "beneos-module.beneos_module_actors"
       await BeneosUtility.lockUnlockAllPacks(false) // Unlock the packs before deleting
       for (let id of actorDelete) {
-        await Actor.deleteDocuments([id], { pack: "beneos-module.beneos_module_actors" })
+        await Actor.deleteDocuments([id], { pack: packName })
       }
       for (let id of itemDelete) {
         await Item.deleteDocuments([id], { pack: "beneos-module.beneos_module_items" })
