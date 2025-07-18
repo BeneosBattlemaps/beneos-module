@@ -119,7 +119,7 @@ export class BeneosCloudLogin extends FormApplication {
             }
             setTimeout(() => {
               window.location.reload()
-            }, 800)
+            }, 200)
           }
         })
     }, 1000)
@@ -234,7 +234,10 @@ export class BeneosCloud {
 
   isTokenAvailable(key) {
     let content = this.availableContent.tokens
-    if (!content || content?.length == 0) return false
+    if (!content || content?.length == 0) {
+      console.log("No tokens available from BeneosCloud")
+      return false
+    }
     for (const element of content) {
       if (element.key.toLowerCase() == key.toLowerCase()) {
         return true

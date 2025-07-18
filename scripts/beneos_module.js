@@ -54,7 +54,7 @@ Hooks.once('ready', () => {
       game.settings.set(BeneosUtility.moduleID(), "beneos-reload-search-engine", false)
       let searchEngine = new BeneosSearchEngineLauncher;
       searchEngine.render()
-    }, 1000)
+    }, 4000)
   }
 
   // Try to catch right click on profile image
