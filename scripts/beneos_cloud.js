@@ -119,7 +119,7 @@ export class BeneosCloudLogin extends FormApplication {
             }
             setTimeout(() => {
               window.location.reload()
-            }, 400)
+            }, 800)
           }
         })
     }, 1000)
