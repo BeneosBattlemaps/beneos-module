@@ -1426,9 +1426,9 @@ export class BeneosSearchEngine extends Dialog {
 
   /********************************************************************************** */
   processSelectorSearch() {
-    /*if ( !this.restoreFilterStack() ) {
+    if ( !this.restoreFilterStack() ) {
       return
-    }*/
+    }
 
     let type = this.dbData.searchMode
     let searchResults = BeneosDatabaseHolder.getAll(type)
@@ -1738,14 +1738,12 @@ export class BeneosSearchEngineLauncher extends FormApplication {
   }
 
   /********************************************************************************** */
-  static closeAndReopen() {
+  static closeAndSave() {
     if (game.beneos.searchEngine) {
       game.beneos.searchEngine.saveSearchFilters()
       game.beneos.searchEngine.close()
       game.beneos.searchEngine = undefined
     }
-    let launcher = new BeneosSearchEngineLauncher()
-    launcher.render(true)
   }
 
   /********************************************************************************** */

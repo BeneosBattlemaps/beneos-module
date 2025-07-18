@@ -882,7 +882,10 @@ export class BeneosUtility {
     if (isRemoved) {
       // Save the new data
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', JSON.stringify(this.beneosTokens))
-      BeneosSearchEngineLauncher.closeAndReopen()
+      BeneosSearchEngineLauncher.closeAndSave()
+      setTimeout(() => {
+        new BeneosSearchEngineLauncher().render()
+      }, 100)
     }
   }
 
@@ -901,7 +904,10 @@ export class BeneosUtility {
     if (isRemoved) {
       // Save the new data
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', JSON.stringify(this.beneosItems))
-      BeneosSearchEngineLauncher.closeAndReopen()
+      BeneosSearchEngineLauncher.closeAndSave()
+      setTimeout(() => {
+        new BeneosSearchEngineLauncher().render()
+      }, 100)
     }
   }
 
@@ -919,7 +925,10 @@ export class BeneosUtility {
     if (isRemoved) {
       // Save the new data
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', JSON.stringify(this.beneosSpells))
-      BeneosSearchEngineLauncher.closeAndReopen()
+      BeneosSearchEngineLauncher.closeAndSave()
+      setTimeout(() => {
+        new BeneosSearchEngineLauncher().render()
+      }, 100)
     }
   }
 

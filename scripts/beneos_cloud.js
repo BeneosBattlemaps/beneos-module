@@ -398,7 +398,10 @@ export class BeneosCloud {
 
     if (!isBatch) { // Lock/Unlock only in single install mode
       await itemPack.configure({ locked: true })
-      BeneosSearchEngineLauncher.closeAndReopen();
+      BeneosSearchEngineLauncher.closeAndSave()
+      setTimeout(() => {
+        new BeneosSearchEngineLauncher().render()
+      }, 100)
     } else {
       this.updateInstalledAssets() // Update the installed assets count
     }
@@ -495,7 +498,10 @@ export class BeneosCloud {
     this.sendChatMessageResult(event, "Spell(s)")
     if (!isBatch) { // Lock/Unlock only in single install mode
       await spellPack.configure({ locked: true })
-      BeneosSearchEngineLauncher.closeAndReopen();
+      BeneosSearchEngineLauncher.closeAndSave()
+      setTimeout(() => {
+        new BeneosSearchEngineLauncher().render()
+      }, 100)
     } else {
       this.updateInstalledAssets() // Update the installed assets count
     }
@@ -638,7 +644,10 @@ export class BeneosCloud {
     if (!isBatch) { // Lock/Unlock only in single install mode
       await actorPack.configure({ locked: true })
       await journalPack.configure({ locked: true })
-      BeneosSearchEngineLauncher.closeAndReopen();
+      BeneosSearchEngineLauncher.closeAndSave()
+      setTimeout(() => {
+        new BeneosSearchEngineLauncher().render()
+      }, 100)
     } else {
       this.updateInstalledAssets() // Update the installed assets count
     }
@@ -673,7 +682,10 @@ export class BeneosCloud {
       setTimeout(() => {
         BeneosUtility.lockUnlockAllPacks(true) // Lock all packs after batch install
         ui.notifications.info(`BeneosModule : ${this.nbInstalled} assets have been installed from BeneosCloud !`)
-        BeneosSearchEngineLauncher.closeAndReopen();
+        BeneosSearchEngineLauncher.closeAndSave()
+        setTimeout(() => {
+          new BeneosSearchEngineLauncher().render()
+        }, 100)
       }, 400)
     }
   }
