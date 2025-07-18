@@ -1426,9 +1426,9 @@ export class BeneosSearchEngine extends Dialog {
 
   /********************************************************************************** */
   processSelectorSearch() {
-    if ( !this.restoreFilterStack() ) {
+    /*if ( !this.restoreFilterStack() ) {
       return
-    }
+    }*/
 
     let type = this.dbData.searchMode
     let searchResults = BeneosDatabaseHolder.getAll(type)
