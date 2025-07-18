@@ -815,7 +815,8 @@ export class BeneosSearchResults extends Dialog {
 
     // Common conff
     let dialogConf = { content: html, title: "BENEOS CLOUD SEARCH RESULTS", buttons: myButtons }
-    let dialogOptions = { classes: ["beneos_module", "beneos_search_results", "draggable"], 'window-title': "", left: 620, width: 720, height: 500, 'z-index': 99999 }
+    let pos = game.beneosTokens?.lastFilterStack?.resultPos ||  { left: 620, width: 720, height: 500 }
+    let dialogOptions = { classes: ["beneos_module", "beneos_search_results", "draggable"], 'window-title': "", left: pos.left, width: pos.width, height: pos.height, 'z-index': 99999 }
     super(dialogConf, dialogOptions)
   }
 
@@ -1125,7 +1126,8 @@ export class BeneosSearchEngine extends Dialog {
 
     // Common conf
     let dialogConf = { content: html, title: "Beneos Cloud", buttons: myButtons };
-    let dialogOptions = { classes: ["beneos_module", "beneos_search_engine", "beneos_search_interface"], left: 200, width: 410, height: 580, 'z-index': 99999 }
+    let pos = game.beneosTokens?.lastFilterStack?.searchPos ||  { left: 200, top: 200, width: 410, height: 580 }
+    let dialogOptions = { classes: ["beneos_module", "beneos_search_engine", "beneos_search_interface"], left: pos.left, width: pos.width, height: pos.height, 'z-index': 99999 }
     super(dialogConf, dialogOptions)
 
     this.dbData = data
@@ -1154,6 +1156,10 @@ export class BeneosSearchEngine extends Dialog {
   /********************************************************************************** */
   restoreFilterStack() {
     if (game.beneosTokens.lastFilterStack) {
+      // Restore the scroll position of the search results class bsr_result_box
+      if (game.beneosTokens.lastFilterStack.scrollTop) {
+        $(".bsr_result_box").scrollTop(game.beneosTokens.lastFilterStack.scrollTop)
+      }
       let filterStack = game.beneosTokens.lastFilterStack.searchFilters || []
       if (game.beneosTokens.lastFilterStack?.textSearch && game.beneosTokens.lastFilterStack.textSearch != "") {
         $("#beneos-search-text").val(game.beneosTokens.lastFilterStack.textSearch)
@@ -1187,7 +1193,16 @@ export class BeneosSearchEngine extends Dialog {
         searchFilters.push({ propKey: propKey, propValue: selected })
       }
     }
-    game.beneosTokens.lastFilterStack = { mode: this.dbData.searchMode, searchFilters, textSearch: $("#beneos-search-text").val() }
+
+    game.beneosTokens.lastFilterStack = {
+      // Get the scroll position of the search results class bsr_result_box
+      scrollTop: $(".bsr_result_box")?.scrollTop() || 0,
+      searchPos: foundry.utils.duplicate(this.position),
+      resultPos: foundry.utils.duplicate(this.resultDialog?.position || { left: 0, top: 0, width: 0, height: 0 }),
+      mode: this.dbData.searchMode,
+      searchFilters,
+      textSearch: $("#beneos-search-text").val()
+    }
   }
 
   /********************************************************************************** */
@@ -1282,7 +1297,7 @@ export class BeneosSearchEngine extends Dialog {
     let fullResults = BeneosDatabaseHolder.getAll(this.dbData.searchMode)
     let isFiltered = Object.keys(fullResults).length != Object.keys(results).length
 
-      // If less than 100 results, display the full list
+    // If less than 100 results, display the full list
     let template
     if (this.dbData.searchMode == "token") {
       template = 'modules/beneos-module/templates/beneos-search-results-tokens.html'
@@ -1426,7 +1441,7 @@ export class BeneosSearchEngine extends Dialog {
 
   /********************************************************************************** */
   processSelectorSearch() {
-    if ( !this.restoreFilterStack() ) {
+    if (!this.restoreFilterStack()) {
       return
     }
 
@@ -1743,6 +1758,7 @@ export class BeneosSearchEngineLauncher extends FormApplication {
       game.beneos.searchEngine.saveSearchFilters()
       game.beneos.searchEngine.close()
       game.beneos.searchEngine = undefined
+
     }
   }
 
@@ -1764,7 +1780,7 @@ export class BeneosSearchEngineLauncher extends FormApplication {
         //$("#installation-selector").val(installed).change()
       }, 200)
     }
-    setTimeout(() => {searchDialog.processSelectorSearch()}, 500)
+    setTimeout(() => { searchDialog.processSelectorSearch() }, 500)
 
 
   }
