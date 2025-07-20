@@ -815,7 +815,8 @@ export class BeneosSearchResults extends Dialog {
 
     // Common conff
     let dialogConf = { content: html, title: "BENEOS CLOUD SEARCH RESULTS", buttons: myButtons }
-    let pos = game.beneosTokens?.lastFilterStack?.resultPos ||  { left: 620, width: 720, height: 500 }
+    let pos = game?.beneosTokens?.lastResultPos ||  {left: 620, width: 720, height: 500 }
+    console.log("Beneos Search Results - Constructor", pos, game.beneosTokens?.lastFilterStack?.resultPos)
     let dialogOptions = { classes: ["beneos_module", "beneos_search_results", "draggable"], 'window-title': "", left: pos.left, width: pos.width, height: pos.height, 'z-index': 99999 }
     super(dialogConf, dialogOptions)
   }
@@ -1203,6 +1204,7 @@ export class BeneosSearchEngine extends Dialog {
       searchFilters,
       textSearch: $("#beneos-search-text").val()
     }
+    game.beneosTokens.lastResultPos = foundry.utils.duplicate(game.beneosTokens?.lastFilterStack?.resultPos)
   }
 
   /********************************************************************************** */
