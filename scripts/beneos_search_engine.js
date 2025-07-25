@@ -940,15 +940,17 @@ export class BeneosSearchResults extends Dialog {
       if (!id || id == "" || id == "") {
         console.log("Cloud - Draggable id", id)
         // Probable cloud data -> call for the token key
-        let tokenKey = $(e.target).parents(".token-result-section").data("token-key")
         if (docType == "Actor") {
+          let tokenKey = $(e.target).parents(".token-result-section").data("token-key")
           game.beneos.cloud.importTokenFromCloud(tokenKey, e)
         }
         if (docType == "Item") {
-          game.beneos.cloud.importItemFromCloud(tokenKey, e)
+          let itemKey = $(e.target).parents(".item-result-section").data("token-key")
+          game.beneos.cloud.importItemFromCloud(itemKey, e)
         }
         if (docType == "Spell") {
-          game.beneos.cloud.importSpellsFromCloud(tokenKey, e)
+          let spellKey = $(e.target).parents(".spell-result-section").data("token-key")
+          game.beneos.cloud.importSpellsFromCloud(spellKey, e)
         }
         return false
       } else {
