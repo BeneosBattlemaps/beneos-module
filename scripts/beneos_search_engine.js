@@ -1293,6 +1293,13 @@ export class BeneosSearchEngine extends Dialog {
     let resTab = []
     if (searchSize == 0) {
       resTab.push({ name: "No results" })
+      let template = 'modules/beneos-module/templates/beneos-search-no-result.html'
+      let response = await fetch(template)
+      let content = await response.text()
+      let templateObj = Handlebars.compile(content)
+      let html = templateObj({  })
+      $('#display-result-section').html(html)
+      return
     }
 
     console.log("SEARCH results", searchSize, results, this.dbData.searchMode)

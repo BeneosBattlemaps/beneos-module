@@ -1184,3 +1184,17 @@ i.beneos-module {
 .beneos-search-button-token:last-child {
   margin-right: 0;
 }
+.h2-no-result {
+  color: #3e0706;
+  font-size: 3rem;
+}
+.text-no-result {
+  color: #3e0706;
+  font-size: 1.2rem;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+.beneos-no-result-pic {
+  width: 320px;
+  border-width: 0;
+}
