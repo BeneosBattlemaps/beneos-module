@@ -1385,20 +1385,22 @@ export class BeneosSearchEngine extends Dialog {
     }
 
     // Reset by default
-    $(".install-batch-button-new").hide()
-    $(".install-batch-button-updated").hide()
-    $(".install-batch-button-all").hide()
+    $(".install-batch-button-new").attr("hidden",true);
+    $(".install-batch-button-updated").attr("hidden",true);
+    $(".install-batch-button-all").attr("hidden",true);
 
     // Get  the value of the asset-install selector and uupdatt relevant buttons
     let installMode = $("#asset-install").val()
+    console.log("Install mode", installMode)
     if (installMode && installMode == "new") {
-      $(".install-batch-button-new").show()
+      console.log("Install mode - New")
+      $(".install-batch-button-new").attr("hidden",false);
     }
     if (installMode && installMode == "updated") {
-      $(".install-batch-button-updated").show()
+      $(".install-batch-button-updated").attr("hidden",false);
     }
     if (installMode && installMode == "all") {
-      $(".install-batch-button-all").show()
+      $(".install-batch-button-all").attr("hidden",false);
     }
 
     this.resultDialog.render(true)
