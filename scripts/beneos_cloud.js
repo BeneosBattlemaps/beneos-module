@@ -677,6 +677,7 @@ export class BeneosCloud {
     // Loop thru the assetList and install them
     for (let key in assetList) {
       let asset = assetList[key]
+      console.log("Batch installing asset", asset)
       if (asset.type == "actor" || asset.type == "token") {
         this.importTokenFromCloud(asset.key, undefined, true)
       } else if (asset.type == "item") {
@@ -684,6 +685,7 @@ export class BeneosCloud {
       } else if (asset.type == "spell") {
         this.importSpellsFromCloud(asset.key, undefined, true)
       }
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
     //await BeneosUtility.lockUnlockAllPacks(true) // Lock all packs after batch install
   }

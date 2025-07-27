@@ -1541,7 +1541,10 @@ export class BeneosSearchEngine extends Dialog {
     // Get the number of assets to install
     let assetNum = 0
     for (let key in this.latestResults) {
-      assetNum++
+      let r = this.latestResults[key]
+      if ( r.isInstallable ) {
+        assetNum++
+      }
     }
     let message = `<H2>WARNING ! </H2><p>You are about to install ${assetNum} assets.</p>`
     message += "<p>Please note that this will overwrite any existing assets with the same name.<br></p>"
@@ -1592,7 +1595,9 @@ export class BeneosSearchEngine extends Dialog {
     if (installMode == "install-all") {
       for (let key in this.latestResults) {
         let r = this.latestResults[key]
-        batchInstall[r.key] = { type: this.dbData.searchMode, key: r.key }
+        if (r.isInstallable) {
+          batchInstall[r.key] = { type: this.dbData.searchMode, key: r.key }
+        }
       }
     }
     console.log("Batch install", installMode, batchInstall)
