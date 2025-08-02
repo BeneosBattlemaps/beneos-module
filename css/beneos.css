@@ -1198,3 +1198,20 @@ i.beneos-module {
   width: 320px;
   border-width: 0;
 }
+.beneos-info-box {
+  background: #ebe8e0;
+  color: #3e0706;
+  border: 2px solid #3e0706;
+  border-radius: 8px;
+  padding: 1.2rem 2rem;
+  font-size: 1.2rem;
+  margin: 2rem auto;
+  text-align: center;
+  max-width: 420px;
+  box-shadow: 0 2px 12px #0002;
+  z-index: 9999;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}

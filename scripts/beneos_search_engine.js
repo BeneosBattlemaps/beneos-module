@@ -1798,6 +1798,10 @@ export class BeneosSearchEngineLauncher extends FormApplication {
         //$("#installation-selector").val(installed).change()
       }, 200)
     }
+    if ( game.beneos.info ) {
+      game.beneos.info.hide()
+      game.beneos.info = undefined
+    }
     setTimeout(() => { searchDialog.processSelectorSearch() }, 500)
 
 

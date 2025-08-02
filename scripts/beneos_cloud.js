@@ -1,6 +1,6 @@
 import { BeneosUtility } from "./beneos_utility.js"
 import { BeneosSearchEngineLauncher } from "./beneos_search_engine.js"
-
+import { BeneosInfoBox } from "./beneos_info_box.js"
 export class BeneosCloudSettings extends FormApplication {
   render() {
     if (game.beneos.cloud) {
@@ -666,6 +666,9 @@ export class BeneosCloud {
   }
 
   async batchInstall(assetList) {
+    game.beneos.info = new BeneosInfoBox("Installation in progress - Search engine will refresh", "#ui-middle");
+    game.beneos.info.show();
+
     await BeneosUtility.lockUnlockAllPacks(false)     // Unlock all packs before batch install
     // COunt the number of assets to install
     this.nbInstalled = 0
