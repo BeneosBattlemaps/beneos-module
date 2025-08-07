@@ -55,11 +55,11 @@
                   <span class="beneos-search-text01 battlemaps-properties">
                     {{log result.properties.biom}}
                     {{#each result.properties.biom as |biom key|}}
-                      {{#if (lt key 4)}} <!-- Only show the first 6 biomes due to cell size -->
-                        <label class="beneos-search-stat biom-content" data-prop-name="biom">
-                         <a class="beneos-button-biom" data-biom-value="{{biom}}">{{beneosUpperFirst biom}}</a>
-                        </label>
-                      {{/if}}
+                    {{#if (lt key 4)}} <!-- Only show the first 6 biomes due to cell size -->
+                    <label class="beneos-search-stat biom-content" data-prop-name="biom">
+                      <a class="beneos-button-biom" data-biom-value="{{biom}}">{{beneosUpperFirst biom}}</a>
+                    </label>
+                    {{/if}}
                     {{/each}}
                   </span>
 
@@ -149,7 +149,7 @@
 
               <label class="beneos-search-moulinette-button"><a class="beneos-button-moulinette"
                   data-tooltip="Download with Moulinette" data-bmap-key="{{result.key}}">
-                  <img class="beneos-search-moulinette-icons" data-bmap-key="{{result.key}}"
+                  <img class="beneos-search-moulinette-icons-bmap" data-bmap-key="{{result.key}}"
                     src="modules/beneos-module/icons/download_icon.svg">&nbsp;</a></label>
             </div>
 
@@ -161,9 +161,9 @@
         {{/each}}
       </div>
 
-    <div class="search-100-results">
-      Only the first 100 search results are displayed
-    </div>
+      <div class="search-100-results">
+        Only the first 100 search results are displayed
+      </div>
 
     </div>
   </section>

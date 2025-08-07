@@ -265,7 +265,7 @@
   text-align: left;
 }
 
-.beneos-cloud-login-data{
+.beneos-cloud-login-data {
   min-width: 12rem;
   max-width: 12rem;
   text-align: left;
@@ -273,8 +273,7 @@
 
 #beneos-cloud-create-account,
 #beneos-cloud-login,
-.beneos-cloud-login-button {
-}
+.beneos-cloud-login-button {}
 
 .beneos-black-text {
   color: #000000;
@@ -287,11 +286,11 @@
   text-align: center;
 }
 
-.beneos-connection-section > * {
+.beneos-connection-section>* {
   margin-bottom: 8px;
 }
 
-.beneos-connection-section > *:last-child {
+.beneos-connection-section>*:last-child {
   margin-bottom: 0;
 }
 
@@ -301,7 +300,7 @@
 }
 
 .beneos-cloud-not-connected {
-  color:#3e0706;
+  color: #3e0706;
   font-size: 1.0rem;
   text-align: left;
 }
@@ -312,7 +311,7 @@
   color: #3e0706;
   display: flex;
   align-items: center;
-  justify-content: center; /
+  justify-content: center;/
 }
 
 
@@ -377,7 +376,7 @@
 }
 
 .beneos-tooltip-variant {
-  display:grid;
+  display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
@@ -389,6 +388,7 @@
   margin-right: 4px;
   flex-grow: 0;
 }
+
 .beneos-search-icons-result-tooltip-variant-3 {
   max-height: 128px;
   width: 100%;
@@ -397,6 +397,7 @@
   margin-right: 4px;
   flex-grow: 0;
 }
+
 .beneos-search-icons-result-tooltip-variant-2 {
   max-height: 160px;
   width: 100%;
@@ -405,6 +406,7 @@
   margin-right: 4px;
   flex-grow: 0;
 }
+
 .beneos-search-icons-result-tooltip-variant-1 {
   max-height: 216px;
   width: 100%;
@@ -527,7 +529,7 @@
 
 .beneos-search-button {
   background-color: #e1ded9;
-  color : #3e0706;
+  color: #3e0706;
   border: 2px solid #000;
 }
 
@@ -603,13 +605,21 @@
   max-height: 18px;
   border: 0;
   opacity: 50%;
-  transform: translate(16px, 18px);
+  transform: translate(40px, 18px);
 }
 
 
 .beneos-search-moulinette-icons {
   max-height: 24px;
   margin-top: -6px;
+  border: 0;
+  opacity: 50%;
+}
+
+.beneos-search-moulinette-icons-bmap {
+  max-height: 24px;
+  margin-top: -2px;
+  margin-left: 20px;
   border: 0;
   opacity: 50%;
 }
@@ -1075,12 +1085,13 @@
   font-size: 0.6rem;
   color: black;
 }
+
 .beneos-search-notconnected-smaller {
   font-size: 0.52rem;
   color: black;
 }
 
-.beneos-search-noaccess{
+.beneos-search-noaccess {
   margin-top: 2px;
   font-size: 0.6rem;
   color: #3e0706;
@@ -1178,26 +1189,30 @@ i.beneos-module {
 .beneos-skin-number-over {
   font-size: 0.6rem;
   color: white;
-  transform:translate(-12px, -56px);
+  transform: translate(-12px, -56px);
 }
 
 .beneos-search-button-token:last-child {
   margin-right: 0;
 }
+
 .h2-no-result {
   color: #3e0706;
   font-size: 3rem;
 }
+
 .text-no-result {
   color: #3e0706;
   font-size: 1.2rem;
   margin-top: 12px;
   margin-bottom: 12px;
 }
+
 .beneos-no-result-pic {
   width: 320px;
   border-width: 0;
 }
+
 .beneos-info-box {
   background: #ebe8e0;
   color: #3e0706;
