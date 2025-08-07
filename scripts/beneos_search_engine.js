@@ -815,7 +815,7 @@ export class BeneosSearchResults extends Dialog {
 
     // Common conff
     let dialogConf = { content: html, title: "BENEOS CLOUD SEARCH RESULTS", buttons: myButtons }
-    let pos = game?.beneosTokens?.lastResultPos ||  {left: 620, width: 720, height: 500 }
+    let pos = game?.beneosTokens?.lastResultPos || { left: 620, width: 720, height: 500 }
     console.log("Beneos Search Results - Constructor", pos, game.beneosTokens?.lastFilterStack?.resultPos)
     let dialogOptions = { classes: ["beneos_module", "beneos_search_results", "draggable"], 'window-title': "", left: pos.left, width: pos.width, height: pos.height, 'z-index': 99999 }
     super(dialogConf, dialogOptions)
@@ -1047,7 +1047,9 @@ export class BeneosSearchResults extends Dialog {
       if (bmapKey) {
         let bmapData = BeneosDatabaseHolder.getBattlemap(bmapKey)
         if (bmapData?.properties?.download_pack) {
-          game.moulinette.applications.MoulinetteAPI.searchUI("scenes", { "creator": bmapData.properties.download_creator, "pack": bmapData.properties.download_pack })
+          console.log("Open pack", bmapData.properties.download_pack)
+          console.log("Cretaor", bmapData.properties.download_creator)
+          game.modules.get("moulinette").api.searchUI("mou-cloud", "Map", { "creator": bmapData.properties.download_creator, "pack": bmapData.properties.download_pack })
         } else {
           ui.notifications.info("The selected battlemap does not have a Moulinette download information")
         }
@@ -1057,11 +1059,12 @@ export class BeneosSearchResults extends Dialog {
       let bmapKey = $(event.currentTarget).data("bmap-key")
       if (bmapKey) {
         let bmapData = BeneosDatabaseHolder.getBattlemap(bmapKey)
-        console.log("Moulinette search", bmapData)
         if (bmapData?.properties?.download_terms) {
-          game.moulinette.applications.MoulinetteAPI.searchUI("scenes", {
+          console.log("Moulinette search", bmapData.properties.download_terms, bmapData.properties.download_creator, bmapData.properties.download_pack)
+          game.modules.get("moulinette").api.searchUI("mou-cloud", "Map", {
             "terms": bmapData.properties.download_terms,
-            "creator": bmapData.properties.download_creator, "pack": bmapData.properties.download_pack
+            "creator": bmapData.properties.download_creator,
+            "pack": bmapData.properties.download_pack
           })
         } else {
           ui.notifications.info("The selected battlemap does not have a Moulinette download information")
@@ -1129,7 +1132,7 @@ export class BeneosSearchEngine extends Dialog {
 
     // Common conf
     let dialogConf = { content: html, title: "Beneos Cloud", buttons: myButtons };
-    let pos = game.beneosTokens?.lastFilterStack?.searchPos ||  { left: 200, top: 200, width: 410, height: 580 }
+    let pos = game.beneosTokens?.lastFilterStack?.searchPos || { left: 200, top: 200, width: 410, height: 580 }
     let dialogOptions = { classes: ["beneos_module", "beneos_search_engine", "beneos_search_interface"], left: pos.left, width: pos.width, height: pos.height, 'z-index': 99999 }
     super(dialogConf, dialogOptions)
 
@@ -1297,7 +1300,7 @@ export class BeneosSearchEngine extends Dialog {
       let response = await fetch(template)
       let content = await response.text()
       let templateObj = Handlebars.compile(content)
-      let html = templateObj({  })
+      let html = templateObj({})
       $('#display-result-section').html(html)
       return
     }
@@ -1392,22 +1395,22 @@ export class BeneosSearchEngine extends Dialog {
     }
 
     // Reset by default
-    $(".install-batch-button-new").attr("hidden",true);
-    $(".install-batch-button-updated").attr("hidden",true);
-    $(".install-batch-button-all").attr("hidden",true);
+    $(".install-batch-button-new").attr("hidden", true);
+    $(".install-batch-button-updated").attr("hidden", true);
+    $(".install-batch-button-all").attr("hidden", true);
 
     // Get  the value of the asset-install selector and uupdatt relevant buttons
     let installMode = $("#asset-install").val()
     console.log("Install mode", installMode)
     if (installMode && installMode == "new") {
       console.log("Install mode - New")
-      $(".install-batch-button-new").attr("hidden",false);
+      $(".install-batch-button-new").attr("hidden", false);
     }
     if (installMode && installMode == "updated") {
-      $(".install-batch-button-updated").attr("hidden",false);
+      $(".install-batch-button-updated").attr("hidden", false);
     }
     if (installMode && installMode == "all") {
-      $(".install-batch-button-all").attr("hidden",false);
+      $(".install-batch-button-all").attr("hidden", false);
     }
 
     this.resultDialog.render(true)
@@ -1542,7 +1545,7 @@ export class BeneosSearchEngine extends Dialog {
     let assetNum = 0
     for (let key in this.latestResults) {
       let r = this.latestResults[key]
-      if ( r.isInstallable ) {
+      if (r.isInstallable) {
         assetNum++
       }
     }
@@ -1798,7 +1801,7 @@ export class BeneosSearchEngineLauncher extends FormApplication {
         //$("#installation-selector").val(installed).change()
       }, 200)
     }
-    if ( game.beneos.info ) {
+    if (game.beneos.info) {
       game.beneos.info.hide()
       game.beneos.info = undefined
     }
