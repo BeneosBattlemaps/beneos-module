@@ -1049,7 +1049,11 @@ export class BeneosSearchResults extends Dialog {
         if (bmapData?.properties?.download_pack) {
           console.log("Open pack", bmapData.properties.download_pack)
           console.log("Cretaor", bmapData.properties.download_creator)
-          game.modules.get("moulinette").api.searchUI("mou-cloud", "Map", { "creator": bmapData.properties.download_creator, "pack": bmapData.properties.download_pack })
+          game.modules.get("moulinette").api.searchUI("mou-cloud", "Map",
+            {
+              "creator": bmapData.properties.download_creator,
+              "pack": bmapData.properties.download_pack
+            })
         } else {
           ui.notifications.info("The selected battlemap does not have a Moulinette download information")
         }

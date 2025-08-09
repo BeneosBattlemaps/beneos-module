@@ -489,7 +489,7 @@ export class BeneosUtility {
         let itemC = itemPack.index.find(i => i._id == item.itemId)
         if (itemC) {
           let ret = await foundry.utils.srcExists(itemC.img)
-          if (!ret ) {
+          if (!ret) {
             console.log("Beneos Compendium item image not found for item", fullKey, itemC.img)
             itemDelete.push(itemC._id)
             delete this.beneosItems[fullKey]
@@ -520,7 +520,7 @@ export class BeneosUtility {
     }
 
     if (game.user.isGM && toSave) {
-      let packName = (game.system.id == "pf2e") ?  "beneos-module.beneos_module_actors_pf2" : "beneos-module.beneos_module_actors"
+      let packName = (game.system.id == "pf2e") ? "beneos-module.beneos_module_actors_pf2" : "beneos-module.beneos_module_actors"
       await BeneosUtility.lockUnlockAllPacks(false) // Unlock the packs before deleting
       for (let id of actorDelete) {
         await Actor.deleteDocuments([id], { pack: packName })
@@ -1235,7 +1235,11 @@ export class BeneosUtility {
 
   /********************************************************************************** */
   static getVariants(tokenConfig) {
-    let tokenKey = tokenConfig.tokenKey
+    let tokenKey = tokenConfig?.tokenKey
+    if (!tokenKey) {
+      BeneosUtility.debugMessage("[BENEOS MODULE] No tokenKey found in tokenConfig", tokenConfig)
+      return []
+    }
     let variants = []
     Object.entries(BeneosUtility.beneosTokens).forEach(([key, value]) => {
       if (value.tokenKey == tokenKey && value.fullId != tokenConfig.fullId) {
