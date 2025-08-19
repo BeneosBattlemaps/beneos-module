@@ -256,8 +256,9 @@ Hooks.on("deleteItem", (item, options) => {
 })
 
 /********************************************************************************** */
-Hooks.once("renderActorDirectory", (app, html, data) => {
+Hooks.on("renderActorDirectory", (app, html, data) => {
   if (game.user.can('ACTOR_CREATE')) {
+    console.log("BeneosModule - renderActorDirectory")
     const button = document.createElement('button');
     button.style["align-self"] = 'center';
     button.innerHTML = "Beneos Cloud - Search & Download";
