@@ -187,10 +187,11 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
     if (beneosPack) {
       let beneosJournalEntry = await beneosPack.getDocument(tokenConfig.journalId)
       if (beneosJournalEntry) {
-        const beneosJournalDisplay = await renderTemplate('modules/beneos-module/templates/beneosjournal.html',
+        const beneosJournalDisplay = await foundry.applications.handlebars.renderTemplate('modules/beneos-module/templates/beneosjournal.html',
           { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getBeneosTokenDataPath() })
-        html.find('div.left').append(beneosJournalDisplay);
-        html.find('img.beneosJournalAction').click((event) => {
+        $(html).find('div.left').append(beneosJournalDisplay);
+        console.log("Beneos Journal Entry", beneosJournalEntry )
+        $(html).find('img.beneosJournalAction').click((event) => {
           event.preventDefault();
           beneosJournalEntry.sheet.render(true);
         })
