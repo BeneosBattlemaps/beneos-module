@@ -220,9 +220,7 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
       beneosTokenButton.classList.remove('active')
       $(html).find('.beneos-variants-wrap')[0].classList.remove('beneos-active');
       $(html).find('.beneos-variants-wrap')[0].classList.add('beneos-disabled');
-      console.log("Clicked", beneosClickedButton, event.target.classList)
       if (event.target.classList.contains("beneos-button-variant")) {
-        console.log("Change to ", event.target.dataset)
         setTimeout(function () {
           BeneosUtility.forceChangeToken(token.id, event.target.dataset.variant)
         }, 400)
