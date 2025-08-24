@@ -49,7 +49,7 @@ Hooks.once('ready', () => {
   //BeneosUtility.checkLockViewPresence()
   game.beneos.cloud.loginAttempt()
 
-  if (game.settings.get(BeneosUtility.moduleID(), "beneos-reload-search-engine") ) {
+  if (game.settings.get(BeneosUtility.moduleID(), "beneos-reload-search-engine")) {
     setTimeout(() => {
       game.settings.set(BeneosUtility.moduleID(), "beneos-reload-search-engine", false)
       let searchEngine = new BeneosSearchEngineLauncher;
@@ -190,7 +190,7 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
         const beneosJournalDisplay = await foundry.applications.handlebars.renderTemplate('modules/beneos-module/templates/beneosjournal.html',
           { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getBeneosTokenDataPath() })
         $(html).find('div.left').append(beneosJournalDisplay);
-        console.log("Beneos Journal Entry", beneosJournalEntry )
+        console.log("Beneos Journal Entry", beneosJournalEntry)
         $(html).find('img.beneosJournalAction').click((event) => {
           event.preventDefault();
           beneosJournalEntry.sheet.render(true);
@@ -201,28 +201,31 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
 
   //VARIANTS HUD
   //console.log("TOKEN CONFIG", tokenConfig)
-  if (!tokenConfig?.variants || tokenConfig.variants.length == 0) {
-    //BeneosUtility.debugMessage("[BENEOS TOKENS] No variants found for token", tokenConfig)
+  if (!tokenConfig?.number) {
+    BeneosUtility.debugMessage("[BENEOS TOKENS] No variants found for token", tokenConfig)
     return;
   }
   let beneosVariantsHUD = BeneosUtility.getVariants(tokenConfig)
-  const beneosVariantsDisplay = await renderTemplate('modules/beneos-module/templates/beneosvariants.html',
+  const beneosVariantsDisplay = await foundry.applications.handlebars.renderTemplate('modules/beneos-module/templates/beneosvariants.html',
     { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getBeneosTokenDataPath(), beneosVariantsHUD, current: tokenConfig.number })
-  html.find('div.right').append(beneosVariantsDisplay).click((event) => {
+  $(html).find('div.right').append(beneosVariantsDisplay).click((event) => {
     let beneosClickedButton = event.target.parentElement;
-    let beneosTokenButton = html.find('.beneos-token-variants')[0];
+    let beneosTokenButton = $(html).find('.beneos-token-variants')[0];
 
     if (beneosClickedButton === beneosTokenButton) {
       beneosTokenButton.classList.add('active');
-      html.find('.beneos-variants-wrap')[0].classList.add('beneos-active');
-      html.find('.beneos-variants-wrap')[0].classList.remove('beneos-disabled');
+      $(html).find('.beneos-variants-wrap')[0].classList.add('beneos-active');
+      $(html).find('.beneos-variants-wrap')[0].classList.remove('beneos-disabled');
     } else {
       beneosTokenButton.classList.remove('active')
-      html.find('.beneos-variants-wrap')[0].classList.remove('beneos-active');
-      html.find('.beneos-variants-wrap')[0].classList.add('beneos-disabled');
-      if (beneosClickedButton.classList.contains("beneos-button-variant")) {
-        event.preventDefault();
-        setTimeout(function () { BeneosUtility.forceChangeToken(token.id, beneosClickedButton.dataset.variant) }, 1000)
+      $(html).find('.beneos-variants-wrap')[0].classList.remove('beneos-active');
+      $(html).find('.beneos-variants-wrap')[0].classList.add('beneos-disabled');
+      console.log("Clicked", beneosClickedButton, event.target.classList)
+      if (event.target.classList.contains("beneos-button-variant")) {
+        console.log("Change to ", event.target.dataset)
+        setTimeout(function () {
+          BeneosUtility.forceChangeToken(token.id, event.target.dataset.variant)
+        }, 400)
       }
     }
   });
@@ -245,7 +248,7 @@ Hooks.on("deleteActor", (actor, options) => {
 })
 /********************************************************************************** */
 Hooks.on("deleteItem", (item, options) => {
-  console.log("Beneos delete item", item, options )
+  console.log("Beneos delete item", item, options)
   if (item?.pack == "beneos-module.beneos_module_items") {
     BeneosUtility.removeItem(item.id)
   }

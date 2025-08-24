@@ -1110,6 +1110,21 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
+  static changeVariant(fullId) {
+    let tokenData = BeneosUtility.getTokenDataFromKey(fullId)
+    if (!tokenData) {
+      BeneosUtility.debugMessage("[BENEOS MODULE] Config not found changeVariant " + fullId)
+      return
+    }
+    let token = canvas.tokens.placeables.find(t => t.id == tokenData.currentTokenId)
+    if (!token) {
+      BeneosUtility.debugMessage("[BENEOS MODULE] Token not found changeVariant " + fullId)
+      return
+    }
+    this.forceChangeToken(token.id, fullId)
+  }
+
+  /********************************************************************************** */
   static async forceChangeToken(tokenid, fullKey) {
     let token = BeneosUtility.getToken(tokenid)
     if (token === null || token == undefined) {
@@ -1231,6 +1246,22 @@ export class BeneosUtility {
       }
       return 0;
     })
+  }
+
+  /* -------------------------------------------- */
+  static hasVariants(tokenConfig) {
+    let tokenKey = tokenConfig?.tokenKey
+    if (!tokenKey) {
+      BeneosUtility.debugMessage("[BENEOS MODULE] No tokenKey found in tokenConfig", tokenConfig)
+      return false
+    }
+    let variants = false
+    Object.entries(BeneosUtility.beneosTokens).forEach(([key, value]) => {
+      if (value.tokenKey == tokenKey && value.fullId != tokenConfig.fullId) {
+        variants = true
+      }
+    })
+    return variants
   }
 
   /********************************************************************************** */
