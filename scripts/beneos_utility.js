@@ -1132,8 +1132,7 @@ export class BeneosUtility {
     }
     let tokenData = BeneosUtility.getTokenDataFromKey(fullKey)
     let newImage = tokenData.token
-    console.log(">>>>>>>>>>>", token)
-    token.document.setFlag(BeneosUtility.moduleID(), "fullKey", tokenData.fullKey)
+    await token.document.setFlag(BeneosUtility.moduleID(), "fullKey", tokenData.fullId)
     let scaleFactor = this.getScaleFactor(token, fullKey)
     //console.log(">>>>>>>>>>> UPDATE TOKEN CHANGE", fullKey, tokenData, newImage)
     await token.document.update({ img: newImage, scale: scaleFactor, rotation: 1.0 })
