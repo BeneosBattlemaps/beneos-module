@@ -698,7 +698,7 @@ export class BeneosCloud {
       this.msgRandomId = foundry.utils.randomID(5)
       // Display an install chat message only at the first installed asset
       let msg = `<div><strong>BeneosModule</strong> - Installing selected assets from BeneosCloud, please wait...
-      <div>Asssets installed : <span id="nb-assets-${this.msgRandomId}"></span></div></div>`
+      <div>Asssets installed : <strong><span id="nb-assets-${this.msgRandomId}"></span></strong></div></div>`
       let chatData = {
         user: game.user.id,
         rollMode: game.settings.get("core", "rollMode"),
@@ -708,7 +708,7 @@ export class BeneosCloud {
       this.currentMsgId = ChatMessage.create(chatData);
       console.log("Current msg id", this.currentMsgId)
     } else {
-      $(`#nb-assets-${this.msgRandomId}`).html(this.nbInstalled)
+      $(`#nb-assets-${this.msgRandomId}`).html(`${this.nbInstalled} / ${this.toInstall}`)
     }
     this.nbInstalled++;
     if (this.nbInstalled >= this.toInstall) {
