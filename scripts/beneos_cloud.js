@@ -694,6 +694,22 @@ export class BeneosCloud {
   }
 
   updateInstalledAssets() {
+    if (this.nbInstalled == 0) {
+      this.msgRandomId = foundry.utils.randomID(5)
+      // Display an install chat message only at the first installed asset
+      let msg = `<div><strong>BeneosModule</strong> - Installing selected assets from BeneosCloud, please wait...
+      <div>Asssets installed : <span id="nb-assets-${this.msgRandomId}"></span></div></div>`
+      let chatData = {
+        user: game.user.id,
+        rollMode: game.settings.get("core", "rollMode"),
+        whisper: ChatMessage.getWhisperRecipients('GM'),
+        content: msg,
+      }
+      this.currentMsgId = ChatMessage.create(chatData);
+      console.log("Current msg id", this.currentMsgId)
+    } else {
+      $(`#nb-assets-${this.msgRandomId}`).html(this.nbInstalled)
+    }
     this.nbInstalled++;
     if (this.nbInstalled >= this.toInstall) {
       setTimeout(() => {
@@ -709,7 +725,7 @@ export class BeneosCloud {
   }
 
   importTokenFromCloud(tokenKey, event = undefined, isBatch = false) {
-    ui.notifications.info("Importing token from BeneosCloud !")
+    //ui.notifications.info("Importing token from BeneosCloud !")
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
     let url = `https://beneos.cloud/foundry-manager.php?get_token=1&foundryId=${userId}&tokenKey=${tokenKey}`
     fetch(url, { credentials: 'same-origin' })
