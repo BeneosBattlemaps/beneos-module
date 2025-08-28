@@ -706,7 +706,6 @@ export class BeneosCloud {
         content: msg,
       }
       this.currentMsgId = ChatMessage.create(chatData);
-      console.log("Current msg id", this.currentMsgId)
     } else {
       $(`#nb-assets-${this.msgRandomId}`).html(`${this.nbInstalled} / ${this.toInstall}`)
     }
