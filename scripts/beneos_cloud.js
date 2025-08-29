@@ -682,7 +682,6 @@ export class BeneosCloud {
           let imported = await actorPack.importDocument(actor);
           properName = imported.name
           await imported.setFlag("world", "beneos", { tokenKey, fullId, idx: i, journalId: newJournal.id, installationDate: Date.now() })
-          //console.log("ACTOR IMPO", imported)
           BeneosUtility.beneosTokens[fullId] = {
             actorName: imported.name,
             avatar: actorData.img,
@@ -724,6 +723,7 @@ export class BeneosCloud {
       await journalPack.configure({ locked: true })
       BeneosSearchEngineLauncher.closeAndSave()
       setTimeout(() => {
+        console.log("Rendering search engine after token import")
         new BeneosSearchEngineLauncher().render()
       }, 100)
     } else {
@@ -743,6 +743,7 @@ export class BeneosCloud {
       ui.notifications.warn("BeneosModule : No assets to install from BeneosCloud !")
       return;
     }
+    console.log("Batch installing assets", assetList, this.toInstall)
     // Loop thru the assetList and install them
     for (let key in assetList) {
       let asset = assetList[key]
@@ -783,6 +784,7 @@ export class BeneosCloud {
         BeneosSearchEngineLauncher.closeAndSave()
         this.noWorldImport = false // Reset the no world import flag
         setTimeout(() => {
+          console.log("Rendering search engine after batch import")
           new BeneosSearchEngineLauncher().render()
         }, 100)
       }, 400)
@@ -824,9 +826,7 @@ export class BeneosCloud {
       })
   }
 
-  importSpellsFromCloud(spellKey, event = undefined, isBatch = false
-
-  ) {
+  importSpellsFromCloud(spellKey, event = undefined, isBatch = false) {
     ui.notifications.info("Importing spell from BeneosCloud !")
     spellKey = spellKey.toLowerCase().replace("-", "_") // Cleanup the key
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")

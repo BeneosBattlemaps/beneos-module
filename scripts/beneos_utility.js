@@ -866,12 +866,9 @@ export class BeneosUtility {
     }
 
     if (isRemoved) {
-      // Save the new data
+      console.log("Token removed for actorId", actorId)
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', JSON.stringify(this.beneosTokens))
       BeneosSearchEngineLauncher.closeAndSave()
-      setTimeout(() => {
-        new BeneosSearchEngineLauncher().render()
-      }, 100)
     }
   }
 
@@ -891,9 +888,6 @@ export class BeneosUtility {
       // Save the new data
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', JSON.stringify(this.beneosItems))
       BeneosSearchEngineLauncher.closeAndSave()
-      setTimeout(() => {
-        new BeneosSearchEngineLauncher().render()
-      }, 100)
     }
   }
 
@@ -912,9 +906,6 @@ export class BeneosUtility {
       // Save the new data
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', JSON.stringify(this.beneosSpells))
       BeneosSearchEngineLauncher.closeAndSave()
-      setTimeout(() => {
-        new BeneosSearchEngineLauncher().render()
-      }, 100)
     }
   }
 

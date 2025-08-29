@@ -821,6 +821,7 @@ export class BeneosSearchResults extends Dialog {
 
   /********************************************************************************** */
   processSearchButton(event, typeName, fieldName, dataName, selectorName) {
+    console.log("Search button", event, typeName, fieldName, dataName, selectorName)
     let searchResults = BeneosDatabaseHolder.getAll(typeName)
     let value = $(event.currentTarget).data(dataName)
     searchResults = BeneosDatabaseHolder.searchByProperty(typeName, fieldName, value.toString(), searchResults)
@@ -990,6 +991,7 @@ export class BeneosSearchResults extends Dialog {
     $(".beneos-jump-linked").click(event => {
       let jumpKey = $(event.currentTarget).data("jump-data")
       let searchResults = BeneosDatabaseHolder.textSearch(jumpKey)
+      console.log("Jump linked", jumpKey, searchResults)
       game.beneosTokens.searchEngine.displayResults(searchResults)
       //$('#beneos-search-text').val(jumpKey)
     })
@@ -1422,6 +1424,7 @@ export class BeneosSearchEngine extends Dialog {
       this.checkInterval = undefined
       this.searchText = undefined
       let results = BeneosDatabaseHolder.getAll(this.dbData.searchMode)
+      console.log("Clearing text search", results)
       this.displayResults(results)
     }
   }
@@ -1506,6 +1509,7 @@ export class BeneosSearchEngine extends Dialog {
 
     clearTimeout(myObject.timeout)
     myObject.timeout = setTimeout(function () {
+      console.log("Processing update selector search", event)
       myObject.processSelectorSearch(event)
     }, 800)
   }
@@ -1676,6 +1680,7 @@ export class BeneosSearchEngine extends Dialog {
     })
 
     $("#reset-search-list").click(event => {
+      console.log("Resetting search list")
       let type = this.dbData.searchMode
       this.cleanFilters()
       let searchResults = BeneosDatabaseHolder.getAll(type)
@@ -1778,7 +1783,7 @@ export class BeneosSearchEngineLauncher extends FormApplication {
       game.beneos.searchEngine.saveSearchFilters()
       game.beneos.searchEngine.close()
       game.beneos.searchEngine = undefined
-
+      game.beneos.selectTid = undefined
     }
   }
 
@@ -1798,17 +1803,12 @@ export class BeneosSearchEngineLauncher extends FormApplication {
     await searchDialog.render(true)
     if (installed) {
       console.log("Refresh with installed", installed)
-      setTimeout(() => {
-        //$("#installation-selector").val(installed).change()
-      }, 200)
     }
     if (game.beneos.info) {
       game.beneos.info.hide()
       game.beneos.info = undefined
     }
-    setTimeout(() => { searchDialog.processSelectorSearch() }, 500)
-
-
+    game.beneos.selectTid = setTimeout(() => { searchDialog.processSelectorSearch() }, 200)
   }
 
 }
