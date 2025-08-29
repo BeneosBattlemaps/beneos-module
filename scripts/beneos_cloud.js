@@ -307,6 +307,13 @@ export class BeneosCloud {
     this.beneosItems = {}
     console.log("Importing item to compendium", itemArray)
 
+    // Create the "Beneos Items" folder if it doesn't exist
+    // Create a melee weapons folder if it doesn't exist
+    /*const itemsFolder = game.folders.getName("Beneos Items") || await Folder.create({
+      name: "Beneos Items", type: "Item"
+    })*/
+
+
     let tNow = Date.now()
     let properName
 
@@ -623,7 +630,11 @@ export class BeneosCloud {
           let existingActor = actorRecords.find(a => a.name == actor.name && a.img == actorData.img)
           if (existingActor) {
             console.log("Deleting existing actor", existingActor._id)
-            await Actor.deleteDocuments([existingActor._id], { pack: packName })
+            try {
+              await Actor.deleteDocuments([existingActor._id], { pack: packName })
+            } catch (err) {
+              console.log("Error deleting existing actor", err)
+            }
           }
           // And then create it again
           let imported = await actorPack.importDocument(actor);
