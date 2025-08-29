@@ -15,6 +15,7 @@ export class BeneosCloudLogin extends FormApplication {
   constructor(origin = null) {
     super()
     this.requestOrigin = origin
+    this.noWorldImport = false
   }
 
   /********************************************************************************** */
@@ -249,8 +250,10 @@ export class BeneosCloud {
   isItemAvailable(key) {
     let content = this.availableContent.items
     if (!content || content.length == 0) return false
+    let key2 = key.toLowerCase().replace("-", "_")
     for (const element of content) {
-      if (element.key.toLowerCase() == key.toLowerCase()) {
+      let key1 = element.key.toLowerCase().replace("-", "_")
+      if (key1 == key2) {
         return true
       }
     }
@@ -260,8 +263,10 @@ export class BeneosCloud {
   isSpellAvailable(key) {
     let content = this.availableContent.spells
     if (!content || content.length == 0) return false
+    let key2 = key.toLowerCase().replace("-", "_")
     for (const element of content) {
-      if (element.key.toLowerCase() == key.toLowerCase()) {
+      let key1 = element.key.toLowerCase().replace("-", "_")
+      if (key1 == key2) {
         return true
       }
     }
@@ -303,15 +308,19 @@ export class BeneosCloud {
 
   }
 
+  setNoWorldImport() {
+    this.noWorldImport = true
+    console.log("No world import set to true")
+  }
+
   async importItemToCompendium(itemArray, event, isBatch = false) {
     this.beneosItems = {}
     console.log("Importing item to compendium", itemArray)
 
     // Create the "Beneos Items" folder if it doesn't exist
-    // Create a melee weapons folder if it doesn't exist
-    /*const itemsFolder = game.folders.getName("Beneos Items") || await Folder.create({
+    const itemsFolder = game.folders.getName("Beneos Items") || await Folder.create({
       name: "Beneos Items", type: "Item"
-    })*/
+    })
 
 
     let tNow = Date.now()
@@ -381,11 +390,16 @@ export class BeneosCloud {
 
       let item = new CONFIG.Item.documentClass(itemObjectData);
       if (item) {
-        // Search if we have already an actor with the same name in the compendium
+        // Search if we have already an item with the same name in the compendium
         let existingItem = itemRecords.find(a => a.name == item.name && a.img == item.img)
         if (existingItem) {
           console.log("Deleting existing item", existingItem._id)
-          await Item.deleteDocuments([existingItem._id], { pack: "beneos-module.beneos_module_items" })
+          try {
+            await Item.deleteDocuments([existingItem._id], { pack: "beneos-module.beneos_module_items" })
+          }
+          catch (err) {
+            console.log("Error deleting existing item", err)
+          }
         }
         // And then create it again
         let imported = await itemPack.importDocument(item);
@@ -400,6 +414,10 @@ export class BeneosCloud {
           fullId: itemKey,
           installDate: tNow,
           number: 1
+        }
+        // And import the item into the "Beneos Items" folder, except if in install *ALL* mode
+        if (!this.noWorldImport) {
+          await game.items.importFromCompendium(itemPack, imported.id, { folder: itemsFolder.id });
         }
       }
     }
@@ -423,6 +441,17 @@ export class BeneosCloud {
 
   async importSpellToCompendium(spellArray, event, isBatch = false) {
     this.beneosSpells = {}
+
+    // Create the "Beneos Spells" folder if it doesn't exist
+    const spellsFolder = game.folders.getName("Beneos Spells") || await Folder.create({
+      name: "Beneos Spells", type: "Item"
+    })
+    let levelFolders = []
+    for (let i = 0; i <= 8; i++) {
+      levelFolders[i] = game.folders.getName(`Level ${i}`) || await Folder.create({
+        name: `Level ${i}`, type: "Item", folder: spellsFolder.id
+      })
+    }
 
     let tNow = Date.now()
     let properName
@@ -504,6 +533,11 @@ export class BeneosCloud {
           installDate: tNow,
           number: 1
         }
+        // And import the item into the "Beneos Spells" folder, except if in install *ALL* mode
+        if (!this.noWorldImport) {
+          let folder = levelFolders[Number(imported.system?.level) ?? 0]
+          await game.items.importFromCompendium(spellPack, imported.id, { folder: folder.id });
+        }
       }
     }
     let toSave = JSON.stringify(BeneosUtility.beneosSpells)
@@ -526,11 +560,16 @@ export class BeneosCloud {
 
     console.log("Importing token to compendium", tokenArray, event, isBatch)
 
+    // Create the "Beneos Spells" folder if it doesn't exist
+    const actorsFolder = game.folders.getName("Beneos Actors") || await Folder.create({
+      name: "Beneos Actors", type: "Actor"
+    })
+
     let tNow = Math.floor(Date.now() / 1000) // Get the current date in seconds
     let properName
 
     let actorDataPF2
-    let packName = "beneos-module.beneos_module_journal"
+    let packName = "beneos-module.beneos_module_actors"
     let actorPack = BeneosUtility.getActorPack()
     if (game.system.id == "pf2e") {
       packName = "beneos-module.beneos_module_actors_pf2"
@@ -615,8 +654,11 @@ export class BeneosCloud {
           let existingJournal = journalRecords.find(j => j.name == journal.name && j.img == journal.img)
           if (existingJournal) {
             console.log("Deleting existing journal", existingJournal._id)
-            await JournalEntry.deleteDocuments([existingJournal._id], { pack: "beneos-module.beneos_module_journal" })
-
+            try {
+              await JournalEntry.deleteDocuments([existingJournal._id], { pack: "beneos-module.beneos_module_journal" })
+            } catch (err) {
+              console.log("Error deleting existing journal", err)
+            }
           }
           newJournal = await journalPack.importDocument(journal);
           await newJournal.setFlag("world", "beneos", { tokenkey: tokenKey, fullId: fullId, idx: i, installDate: tNow })
@@ -629,9 +671,9 @@ export class BeneosCloud {
           // Search if we have already an actor with the same name in the compendium
           let existingActor = actorRecords.find(a => a.name == actor.name && a.img == actorData.img)
           if (existingActor) {
-            console.log("Deleting existing actor", existingActor._id)
+            console.log("Deleting existing actor", existingActor._id, packName)
             try {
-              await Actor.deleteDocuments([existingActor._id], { pack: packName })
+              await Actor.implementation.deleteDocuments([existingActor._id], { pack: packName });
             } catch (err) {
               console.log("Error deleting existing actor", err)
             }
@@ -653,6 +695,19 @@ export class BeneosCloud {
             fullId: fullId,
             number: i + 1
           }
+          // And import the item into the "Beneos Spells" folder, except if in install *ALL* mode
+          if (!this.noWorldImport) {
+            let tokenDb = game.beneos.databaseHolder.getTokenDatabaseInfo(tokenKey)
+            let folderName = tokenDb?.properties?.type[0] ?? "Unknown"
+            // Upper first letter
+            folderName = folderName.charAt(0).toUpperCase() + folderName.slice(1)
+            // Create the sub-folder if it doesn't exist
+            let subFolder = game.folders.getName(folderName) || await Folder.create({
+              name: folderName, type: "Actor", folder: actorsFolder.id
+            })
+            await game.actors.importFromCompendium(actorPack, imported.id, { folder: subFolder.id });
+          }
+
         } else {
           this.importErrors.push("Error in creating actor " + records.name)
           console.log("Error in creating actor", records.name);
@@ -704,7 +759,7 @@ export class BeneosCloud {
     //await BeneosUtility.lockUnlockAllPacks(true) // Lock all packs after batch install
   }
 
-  updateInstalledAssets() {
+  async updateInstalledAssets() {
     if (this.nbInstalled == 0) {
       this.msgRandomId = foundry.utils.randomID(5)
       // Display an install chat message only at the first installed asset
@@ -716,17 +771,17 @@ export class BeneosCloud {
         whisper: ChatMessage.getWhisperRecipients('GM'),
         content: msg,
       }
-      this.currentMsgId = ChatMessage.create(chatData);
-    } else {
-      $(`#nb-assets-${this.msgRandomId}`).html(`${this.nbInstalled} / ${this.toInstall}`)
+      await ChatMessage.create(chatData);
     }
     this.nbInstalled++;
+    $(`#nb-assets-${this.msgRandomId}`).html(`${this.nbInstalled} / ${this.toInstall}`)
     if (this.nbInstalled >= this.toInstall) {
       setTimeout(() => {
         BeneosUtility.lockUnlockAllPacks(true) // Lock all packs after batch install
         ui.notifications.info(`BeneosModule : ${this.nbInstalled} assets have been installed from BeneosCloud !`)
         game.beneos.cloud.sendChatMessageResult(null, game.beneos.cloud.importAsset)
         BeneosSearchEngineLauncher.closeAndSave()
+        this.noWorldImport = false // Reset the no world import flag
         setTimeout(() => {
           new BeneosSearchEngineLauncher().render()
         }, 100)
@@ -752,6 +807,7 @@ export class BeneosCloud {
   }
 
   importItemFromCloud(itemKey, event = undefined, isBatch = false) {
+    itemKey = itemKey.toLowerCase().replace("-", "_") // Cleanup the key
     ui.notifications.info("Importing item from BeneosCloud !")
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
     let url = `https://beneos.cloud/foundry-manager.php?get_item=1&foundryId=${userId}&itemKey=${itemKey}`
@@ -772,6 +828,7 @@ export class BeneosCloud {
 
   ) {
     ui.notifications.info("Importing spell from BeneosCloud !")
+    spellKey = spellKey.toLowerCase().replace("-", "_") // Cleanup the key
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
     let url = `https://beneos.cloud/foundry-manager.php?get_spell=1&foundryId=${userId}&spellKey=${spellKey}`
     fetch(url, { credentials: 'same-origin' })

@@ -228,19 +228,28 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
     }
   });
 
-  // REPLACEMENT TOKEN HUD
-  /* Disable old button : let tokenList = BeneosUtility.buildAvailableTokensMenu()
-  const beneosTokensDisplay = await BeneosUtility.buildAvailableTokensMenuHTML("beneoshud.html", tokenList)
-  html.find('div.right').append(beneosTokensDisplay).click((event) => {
-    BeneosUtility.manageAvailableTokensMenu(token, html, event)
-  })*/
-
 })
 
 /********************************************************************************** */
 Hooks.on("deleteActor", (actor, options) => {
   if (actor?.pack == "beneos-module.beneos_module_actors" || actor?.pack == "beneos-module.beneos_module_actors_PF2E") {
     BeneosUtility.removeTokenFromActorId(actor.id)
+  }
+  return true;
+})
+/********************************************************************************** */
+Hooks.on("preCreateActor", (actor, data, context) => {
+  if (actor?.flags?.world?.beneos?.fullId) {
+    let folder = game.folders.getName("Beneos Actors")
+    if (folder) {
+      let tokenDb = game.beneos.databaseHolder.getTokenDatabaseInfo(actor.flags.world.beneos.tokenKey)
+      let folderName = tokenDb?.properties?.type[0] ?? "Unknown"
+      // Upper first letter
+      folderName = folderName.charAt(0).toUpperCase() + folderName.slice(1)
+      // Create the sub-folder if it doesn't exist
+      let subFolder = game.folders.getName(folderName)
+      actor.updateSource({ folder: subFolder?.id ?? folder.id })
+    }
   }
   return true;
 })

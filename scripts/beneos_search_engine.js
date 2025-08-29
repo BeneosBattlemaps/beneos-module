@@ -256,10 +256,6 @@ export class BeneosDatabaseHolder {
       tokenData.dragMode = "local"
     }
 
-    if (tokenData.isInstalled) {
-      //tokenData.picture = BeneosUtility.getLocalAvatarPicture(tokenData.key)
-    }
-
     // Prepare update/new status
     let tokenTS = game.beneos.cloud.getTokenTS(tokenData.key)
     if (tokenTS) {
@@ -293,16 +289,13 @@ export class BeneosDatabaseHolder {
     itemData.isInstalled = BeneosUtility.isItemLoaded(itemData.key)
     itemData.installed = (itemData.isInstalled) ? "installed" : "notinstalled"
     itemData.isCloudAvailable = false
-    if (itemData.installed == "notinstalled") {
+    if (itemData.installed === "notinstalled") {
       itemData.isCloudAvailable = game.beneos.cloud.isItemAvailable(itemData.key)
       itemData.installed = (itemData.isCloudAvailable) ? "cloudavailable" : itemData.installed
     }
     itemData.cloudMessage = (itemData.isCloudAvailable) ? "Cloud available" : "Cloud not available"
     itemData.isInstallable = (itemData.isInstalled || itemData.isCloudAvailable)
 
-    if (itemData.isInstalled) {
-      //itemData.picture = BeneosUtility.getLocalAvatarPicture(itemData.key)
-    }
     // Prepare update/new status
     let itemTS = game.beneos.cloud.getItemTS(itemData.key)
     if (itemTS) {
@@ -386,6 +379,11 @@ export class BeneosDatabaseHolder {
     } else {
       spellData.dragMode = "none"
     }
+  }
+
+  /********************************************************************************** */
+  static getTokenDatabaseInfo(key) {
+    return this.tokenData.content[key]
   }
 
   /********************************************************************************** */
@@ -964,7 +962,6 @@ export class BeneosSearchResults extends Dialog {
             }
           }
         }
-        console.log("Local - Draggable id", id, docType)
         let compendium = ""
         if (docType == "Actor") {
           compendium = (game.system.id == "pf2e") ? "beneos-module.beneos_module_actors_pf2" : "beneos-module.beneos_module_actors"
@@ -977,7 +974,6 @@ export class BeneosSearchResults extends Dialog {
           docType = "Item"
         }
         let drag_data = { "type": docType, "pack": compendium, "uuid": "Compendium." + compendium + "." + id }
-        console.log("DRAGDARA", drag_data)
         e.originalEvent.dataTransfer.setData("text/plain", JSON.stringify(drag_data));
       }
     })
@@ -1405,9 +1401,7 @@ export class BeneosSearchEngine extends Dialog {
 
     // Get  the value of the asset-install selector and uupdatt relevant buttons
     let installMode = $("#asset-install").val()
-    console.log("Install mode", installMode)
     if (installMode && installMode == "new") {
-      console.log("Install mode - New")
       $(".install-batch-button-new").attr("hidden", false);
     }
     if (installMode && installMode == "updated") {
@@ -1608,6 +1602,7 @@ export class BeneosSearchEngine extends Dialog {
       }
     }
     console.log("Batch install", installMode, batchInstall)
+    game.beneos.cloud.setNoWorldImport(true)
     game.beneos.cloud.batchInstall(batchInstall)
   }
 
@@ -1798,6 +1793,8 @@ export class BeneosSearchEngineLauncher extends FormApplication {
     let html = await foundry.applications.handlebars.renderTemplate('modules/beneos-module/templates/beneossearchengine.html', dbData)
     let searchDialog = new BeneosSearchEngine(html, dbData)
     game.beneos.searchEngine = searchDialog
+    game.beneos.databaseHolder = BeneosDatabaseHolder
+
     await searchDialog.render(true)
     if (installed) {
       console.log("Refresh with installed", installed)

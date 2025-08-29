@@ -1065,9 +1065,15 @@ export class BeneosUtility {
     return false
   }
   static isItemLoaded(key) {
+    if (!key) return false
+    if (this.beneosItems[key]) return true
+    key = key.toLowerCase().replace("-", "_")
     return this.beneosItems[key]
   }
   static isSpellLoaded(key) {
+    if (!key) return false
+    if (this.beneosSpells[key]) return true
+    key = key.toLowerCase().replace("-", "_")
     return this.beneosSpells[key]
   }
 
