@@ -641,11 +641,11 @@ export class BeneosCloud {
         await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {}, { notify: false });
 
         // Create the journal entry
+        let newJournal
         if (journalData) {
           journalData.pages[0].src = `${finalFolder}/${tokenData.tokenImages[i].journal.filename}`
           journalData.name = actorData.name + " " + (i + 1)
           let journal = new JournalEntry(journalData);
-          let newJournal
           if (journal) {
             // Search for existing journal entry
             let existingJournal = journalRecords.find(j => j.name == journal.name && j.img == journal.img)
