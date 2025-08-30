@@ -1470,7 +1470,7 @@ export class BeneosSearchEngine extends Dialog {
       for (let selector of propDef.selectors) {
         let value = $("#" + selector).val()
         if (value && value.toLowerCase() != "any") {
-          if (!this.filterStack.find((it) => it.propKey == propKey)) {
+          if (!this.filterStack.find((it) => String(it.propKey) == String(propKey))) {
             this.filterStack.push({ propKey: propKey, value: value })
           }
           searchResults = BeneosDatabaseHolder.searchByProperty(type, propDef.name, value, searchResults)
