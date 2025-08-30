@@ -2,17 +2,22 @@
   <section>
     <div class="flexcol">
       <span class="flexrow beneos-search-main-choice">
-        <button id="beneos-radio-token" class="beneos-search-button {{#if (eq searchMode "token")}}category-active{{/if}}" name="beneos-search-select">Tokens</button>
-        <button id="beneos-radio-bmap" class="beneos-search-button {{#if (eq searchMode "bmap")}}category-active{{/if}}" name="beneos-search-select">Maps</button>
-        <button id="beneos-radio-item" class="beneos-search-button {{#if (eq searchMode "item")}}category-active{{/if}}" name="beneos-search-select">Items</button>
-        <button id="beneos-radio-spell" class="beneos-search-button {{#if (eq searchMode "spell")}}category-active{{/if}}" name="beneos-search-select">Spells</button>
+        <button id="beneos-radio-token" class="beneos-search-button {{#if (eq searchMode "
+          token")}}category-active{{/if}}" name="beneos-search-select">Tokens</button>
+        <button id="beneos-radio-bmap" class="beneos-search-button {{#if (eq searchMode "
+          bmap")}}category-active{{/if}}" name="beneos-search-select">Maps</button>
+        <button id="beneos-radio-item" class="beneos-search-button {{#if (eq searchMode "
+          item")}}category-active{{/if}}" name="beneos-search-select">Items</button>
+        <button id="beneos-radio-spell" class="beneos-search-button {{#if (eq searchMode "
+          spell")}}category-active{{/if}}" name="beneos-search-select">Spells</button>
       </span>
     </div>
 
     <hr>
 
     <div class="flexrow beneos-search-text-input">
-      <label class="beneos-search-text-title">Global text search (<a id="reset-search-list" data-tooltip="Overrides Tags">Reset</a>): </label>
+      <label class="beneos-search-text-title">Global text search (<a id="reset-search-list"
+          data-tooltip="Overrides Tags">Reset</a>): </label>
       <input type="text" id="beneos-search-text" name="beneos-search-text" value="" data-dtype="String" />
     </div>
 
@@ -28,14 +33,14 @@
     </span>
 
     <span class="flexrow">
-      <label >Biome Filter 2: </label>
+      <label>Biome Filter 2: </label>
       <select name="bioms" class="beneos-selector" id="bioms-selector-2" data-dtype="String">
         {{selectOptions bmapBioms nameAttr="key" valueAttr="key" labelAttr="value"}}
       </select>
     </span>
 
     <span class="flexrow">
-      <label >Type: </label>
+      <label>Type: </label>
       <select name="bmap-kind" class="beneos-selector" id="kind-selector" data-dtype="String">
         <option value="any">Any</option>
         <option value="scenery">Sceneries</option>
@@ -236,43 +241,56 @@
     </span>
     {{/if}}
     -->
-  </div>
+    </div>
 
-  <div class="beneos-connection-section">
-    {{#if isCloudLoggedIn}}
+    <div class="beneos-connection-section">
+      {{#if isCloudLoggedIn}}
 
       {{#if (or (eq patreonStatus "not_active_patron") (eq patronStatus "no_patreon"))}}
-        <label class="beneos-cloud-connected">Connected to the Beneos Cloud</label>
-        <button id="beneos-cloud-settings" class="" data-tooltip="Click here to open the Beneos Cloud settings">Beneos Cloud Account Settings</button>
-        <div class="beneos-cloud-no-patreon">❌ Patreon Account not Linked</div>
-        <div class="beneos-cloud-no-patreon-info">To have access to Beneos Patreon content, you must be an active Patron and link your Beneos Cloud account to your Patreon account once. Purchased store content from Beneos-Battlemaps.com will automatically be available here.</div>
+      <label class="beneos-cloud-connected">Connected to the Beneos Cloud</label>
+      <button id="beneos-cloud-settings" class="" data-tooltip="Click here to open the Beneos Cloud settings">Beneos
+        Cloud Account Settings</button>
+      <div class="beneos-cloud-no-patreon">❌ Patreon Account not Linked</div>
+      <div class="beneos-cloud-no-patreon-info">To have access to Beneos Patreon content, you must be an active Patron
+        and link your Beneos Cloud account to your Patreon account once. Purchased store content from
+        Beneos-Battlemaps.com will automatically be available here.</div>
       {{/if}}
 
-    {{else}}
+      {{else}}
       <div class="beneos-cloud-not-connected">Not Connected to the Beneos Cloud. Please Log in!</div>
       <div>Login to your Beneos Cloud account. Credentials entered here are never stored.</div>
       <div class="flexrow">
         <label class="beneos-cloud-label">Email: </label>
-        <input type="email" class="beneos-cloud-login-data" id="beneos-cloud-email" name="beneos-cloud-email" value="" data-dtype="String" placeholder="Your Beneos Cloud Email" />
+        <input type="email" class="beneos-cloud-login-data" id="beneos-cloud-email" name="beneos-cloud-email" value=""
+          data-dtype="String" placeholder="Your Beneos Cloud Email" />
       </div>
       <div class="flexrow">
         <label class="beneos-cloud-label">Password: </label>
-        <input type="password" class="beneos-cloud-login-data" id="beneos-cloud-password" name="beneos-cloud-password" value="" data-dtype="String" placeholder="Your Beneos Cloud Password" />
+        <input type="password" class="beneos-cloud-login-data" id="beneos-cloud-password" name="beneos-cloud-password"
+          value="" data-dtype="String" placeholder="Your Beneos Cloud Password" />
       </div>
       <div class="flexrow">
-        <button type="submit" class="beneos-cloud-login-button" id="beneos-cloud-create-account" data-tooltip="Click here to create an account to the Beneos Cloud">Create Account</button>
-        <button type="submit" class="beneos-cloud-login-button" id="beneos-cloud-login" data-tooltip="Click here to connect to the Beneos Cloud">Login</button>
+        <button type="submit" class="beneos-cloud-login-button" id="beneos-cloud-create-account"
+          data-tooltip="Click here to create an account to the Beneos Cloud">Create Account</button>
+        <button type="submit" class="beneos-cloud-login-button" id="beneos-cloud-login"
+          data-tooltip="Click here to connect to the Beneos Cloud">Login</button>
       </div>
       <hr>
-      <div class="beneos-black-text">With the Beneos Cloud, you can conveniently install all Beneos battlemaps, tokens, spells and items directly into your Foundry VTT world.</div>
-    {{/if}}
-    <button type="submit" class="" id="beneos-cloud-batch-install" hidden data-tooltip="Click here to install all selected assets">Install all selected assets</button>
+      <div class="beneos-black-text">With the Beneos Cloud, you can conveniently install all Beneos battlemaps, tokens,
+        spells and items directly into your Foundry VTT world.</div>
+      {{/if}}
+      <button type="submit" class="" id="beneos-cloud-batch-install" hidden
+        data-tooltip="Click here to install all selected assets">Install all selected assets</button>
 
-    <button type="submit" class="install-batch-button install-batch-button-new" hidden data-install-mode="install-new" data-tooltip="Install all NEW assets from the search results">Install NEW content</button>
-    <button type="submit" class="install-batch-button install-batch-button-update" hidden data-install-mode="install-update" data-tooltip="Install all UPDATED assets from the search results">Install UPDATED content</button>
-    <button type="submit" class="install-batch-button install-batch-button-all" hidden data-install-mode="install-all" data-tooltip="Install ENTIRE archive">Install ALL content</button>
+      <button type="submit" class="install-batch-button install-batch-button-new" hidden data-install-mode="install-new"
+        data-tooltip="Install all NEW assets from the search results">Install NEW content</button>
+      <button type="submit" class="install-batch-button install-batch-button-updated" hidden
+        data-install-mode="install-updated" data-tooltip="Install all UPDATED assets from the search results">Install
+        UPDATED content</button>
+      <button type="submit" class="install-batch-button install-batch-button-all" hidden data-install-mode="install-all"
+        data-tooltip="Install ENTIRE archive">Install ALL content</button>
 
-  </div>
+    </div>
 
 
   </section>
