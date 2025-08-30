@@ -616,9 +616,6 @@ export class BeneosUtility {
       return text2
     })
 
-    let stats = this.countBeneosAssetsUsage()
-    ClassCounter.registerUsageCount('beneos-module', { beneosStats: stats })
-
     //Token Magic Hack  Replacement to prevent double filters when changing animations
     if (typeof TokenMagic !== 'undefined') {
       let OrigSingleLoadFilters = TokenMagic._singleLoadFilters;
