@@ -604,22 +604,18 @@ export class BeneosCloud {
       try {
         await foundry.applications.apps.FilePicker.implementation.createDirectory("data", "beneos_assets");
       } catch (err) {
-        console.log("Directory already exists")
       }
       try {
         await foundry.applications.apps.FilePicker.implementation.createDirectory("data", "beneos_assets/cloud");
       } catch (err) {
-        console.log("Directory already exists")
       }
       try {
         await foundry.applications.apps.FilePicker.implementation.createDirectory("data", "beneos_assets/cloud/tokens");
       } catch (err) {
-        console.log("Directory already exists")
       }
       try {
         await foundry.applications.apps.FilePicker.implementation.createDirectory("data", finalFolder);
       } catch (err) {
-        console.log("Directory already exists")
       }
       // Add journal entry
       let journalData = tokenData.journalJSON
@@ -645,89 +641,98 @@ export class BeneosCloud {
         await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {}, { notify: false });
 
         // Create the journal entry
-        journalData.pages[0].src = `${finalFolder}/${tokenData.tokenImages[i].journal.filename}`
-        journalData.name = actorData.name + " " + (i + 1)
-        let journal = new JournalEntry(journalData);
-        let newJournal
-        if (journal) {
-          // Search for existing journal entry
-          let existingJournal = journalRecords.find(j => j.name == journal.name && j.img == journal.img)
-          if (existingJournal) {
-            console.log("Deleting existing journal", existingJournal._id)
-            try {
-              await JournalEntry.deleteDocuments([existingJournal._id], { pack: "beneos-module.beneos_module_journal" })
-            } catch (err) {
-              console.log("Error deleting existing journal", err)
+        if (journalData) {
+          journalData.pages[0].src = `${finalFolder}/${tokenData.tokenImages[i].journal.filename}`
+          journalData.name = actorData.name + " " + (i + 1)
+          let journal = new JournalEntry(journalData);
+          let newJournal
+          if (journal) {
+            // Search for existing journal entry
+            let existingJournal = journalRecords.find(j => j.name == journal.name && j.img == journal.img)
+            if (existingJournal) {
+              console.log("Deleting existing journal", existingJournal._id)
+              try {
+                await JournalEntry.deleteDocuments([existingJournal._id], { pack: "beneos-module.beneos_module_journal" })
+              } catch (err) {
+                console.log("Error deleting existing journal", err)
+              }
             }
+            newJournal = await journalPack.importDocument(journal);
+            await newJournal.setFlag("world", "beneos", { tokenkey: tokenKey, fullId: fullId, idx: i, installDate: tNow })
           }
-          newJournal = await journalPack.importDocument(journal);
-          await newJournal.setFlag("world", "beneos", { tokenkey: tokenKey, fullId: fullId, idx: i, installDate: tNow })
+        } else {
+          console.log("No journal data for token", tokenKey)
         }
 
-        actorData.img = `${finalFolder}/${tokenData.tokenImages[i].avatar.filename}`
-        actorData.prototypeToken.texture.src = `${finalFolder}/${tokenData.tokenImages[i].token.filename}`
-        let actor = new CONFIG.Actor.documentClass(actorData);
-        if (actor) {
-          // Search if we have already an actor with the same name in the compendium
-          let existingActor = actorRecords.find(a => a.name == actor.name && a.img == actorData.img)
-          if (existingActor) {
-            console.log("Deleting existing actor", existingActor._id, packName)
-            try {
-              await Actor.implementation.deleteDocuments([existingActor._id], { pack: packName });
-            } catch (err) {
-              console.log("Error deleting existing actor", err)
+        if (actorData) {
+          actorData.img = `${finalFolder}/${tokenData.tokenImages[i].avatar.filename}`
+          actorData.prototypeToken.texture.src = `${finalFolder}/${tokenData.tokenImages[i].token.filename}`
+          let actor = new CONFIG.Actor.documentClass(actorData);
+          if (actor) {
+            // Search if we have already an actor with the same name in the compendium
+            let existingActor = actorRecords.find(a => a.name == actor.name && a.img == actorData.img)
+            if (existingActor) {
+              console.log("Deleting existing actor", existingActor._id, packName)
+              try {
+                await Actor.implementation.deleteDocuments([existingActor._id], { pack: packName });
+              } catch (err) {
+                console.log("Error deleting existing actor", err)
+              }
             }
+            // And then create it again
+            let imported = await actorPack.importDocument(actor);
+            properName = imported.name
+            await imported.setFlag("world", "beneos", { tokenKey, fullId, idx: i, journalId: newJournal.id, installationDate: Date.now() })
+            BeneosUtility.beneosTokens[fullId] = {
+              actorName: imported.name,
+              avatar: actorData.img,
+              token: actorData.prototypeToken.texture.src,
+              actorId: imported.id,
+              installDate: tNow,
+              journalId: newJournal?.id,
+              folder: finalFolder,
+              tokenKey: tokenKey,
+              fullId: fullId,
+              number: i + 1
+            }
+            // And import the item into the "Beneos Spells" folder, except if in install *ALL* mode
+            if (!this.noWorldImport) {
+              let tokenDb = game.beneos.databaseHolder.getTokenDatabaseInfo(tokenKey)
+              let folderName = tokenDb?.properties?.type[0] ?? "Unknown"
+              // Upper first letter
+              folderName = folderName.charAt(0).toUpperCase() + folderName.slice(1)
+              // Create the sub-folder if it doesn't exist
+              let subFolder = game.folders.getName(folderName) || await Folder.create({
+                name: folderName, type: "Actor", folder: actorsFolder.id
+              })
+              await game.actors.importFromCompendium(actorPack, imported.id, { folder: subFolder.id });
+            }
+          } else {
+            this.importErrors.push("Error in creating actor " + records.name)
+            console.log("Error in creating actor", records.name);
           }
-          // And then create it again
-          let imported = await actorPack.importDocument(actor);
-          properName = imported.name
-          await imported.setFlag("world", "beneos", { tokenKey, fullId, idx: i, journalId: newJournal.id, installationDate: Date.now() })
-          BeneosUtility.beneosTokens[fullId] = {
-            actorName: imported.name,
-            avatar: actorData.img,
-            token: actorData.prototypeToken.texture.src,
-            actorId: imported.id,
-            installDate: tNow,
-            journalId: newJournal.id,
-            folder: finalFolder,
-            tokenKey: tokenKey,
-            fullId: fullId,
-            number: i + 1
-          }
-          // And import the item into the "Beneos Spells" folder, except if in install *ALL* mode
-          if (!this.noWorldImport) {
-            let tokenDb = game.beneos.databaseHolder.getTokenDatabaseInfo(tokenKey)
-            let folderName = tokenDb?.properties?.type[0] ?? "Unknown"
-            // Upper first letter
-            folderName = folderName.charAt(0).toUpperCase() + folderName.slice(1)
-            // Create the sub-folder if it doesn't exist
-            let subFolder = game.folders.getName(folderName) || await Folder.create({
-              name: folderName, type: "Actor", folder: actorsFolder.id
-            })
-            await game.actors.importFromCompendium(actorPack, imported.id, { folder: subFolder.id });
-          }
-
         } else {
-          this.importErrors.push("Error in creating actor " + records.name)
-          console.log("Error in creating actor", records.name);
+          console.log("No actor data for token", tokenKey)
+          ui.notifications.error("BeneosModule : Token is in error and is not installed : " + tokenKey)
         }
       }
-    }
-    let toSave = JSON.stringify(BeneosUtility.beneosTokens)
-    console.log("Saving data :", toSave)
-    await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', toSave) // Save the token config !
 
-    if (!isBatch) { // Lock/Unlock only in single install mode
-      this.sendChatMessageResult(event, "Token", properName)
-      await actorPack.configure({ locked: true })
-      await journalPack.configure({ locked: true })
-      BeneosSearchEngineLauncher.closeAndSave()
-      setTimeout(() => {
-        console.log("Rendering search engine after token import")
-        new BeneosSearchEngineLauncher().render()
-      }, 100)
-    } else {
-      this.updateInstalledAssets() // Update the installed assets count
+      let toSave = JSON.stringify(BeneosUtility.beneosTokens)
+      // DEBUG : console.log("Saving data :", toSave)
+      await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', toSave) // Save the token config !
+
+      if (!isBatch) { // Lock/Unlock only in single install mode
+        this.sendChatMessageResult(event, "Token", properName)
+        await actorPack.configure({ locked: true })
+        await journalPack.configure({ locked: true })
+        BeneosSearchEngineLauncher.closeAndSave()
+        setTimeout(() => {
+          console.log("Rendering search engine after token import")
+          new BeneosSearchEngineLauncher().render()
+        }, 100)
+      } else {
+        this.updateInstalledAssets() // Update the installed assets count
+      }
     }
   }
 
