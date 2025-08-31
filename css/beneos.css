@@ -1231,23 +1231,3 @@ i.beneos-module {
   transform: translate(-50%, -50%);
 }
 
-/* Beneos Color-Variables for Journals (Light/Dark-Mode fähig) */
-:root {
-	/* accent Color reddish
-  --beneos-accent-text: #7a2a2a;
-
-  /* Box-BG (Light gray for Light-Mode) */
-  --beneos-box-bg: rgba(0, 0, 0, 0.04);
-
-  /* Standard-Border-Color */
-  --beneos-border: rgba(160, 160, 160, 0.45);
-}
-
-/* Optional Dark-Mode-Override */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --beneos-accent-text: #ffb3a8;             /* helleres Rot für dunklen Hintergrund */
-    --beneos-box-bg: rgba(255, 255, 255, 0.06);/* dezenter, transparenter Kasten */
-    --beneos-border: rgba(200, 200, 200, 0.35);
-  }
-}
