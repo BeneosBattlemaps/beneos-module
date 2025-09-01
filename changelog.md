@@ -3,6 +3,8 @@
 All notable changes to this module will be documented in this file.
 
 ## Updates
+
+### 13.2.0 # 2025-09-01
 Complete rework of the Beneos tokens, spells, and items module infrastructure
 - Beneos Battlemaps is not affected (yet)
 - Tokens, spells, and items are now installed directly into the Foundry VTT world via the Beneos Cloud
@@ -11,6 +13,10 @@ Complete rework of the Beneos tokens, spells, and items module infrastructure
 - There is a new setup video in English, German, and French: https://www.youtube.com/watch?v=6lTrpOILOTo
 - The Beneos module must now be linked to a Beneos account (https://beneos.cloud/).
 
+### 13.0.1 # 2025-05-29
+ | For FoundryVTT v13+
+Update: Dependency Manifest Links
+Added: FXMaster as dependency again because it was unexpectedly updated
 
 ### 12.1.0 # 2025-01-08
 - Fixed some incompatibilities
