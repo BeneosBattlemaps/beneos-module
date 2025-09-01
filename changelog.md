@@ -3,6 +3,14 @@
 All notable changes to this module will be documented in this file.
 
 ## Updates
+Complete rework of the Beneos tokens, spells, and items module infrastructure
+- Beneos Battlemaps is not affected (yet)
+- Tokens, spells, and items are now installed directly into the Foundry VTT world via the Beneos Cloud
+- Manual installation (including compendium rebuild) is no longer necessary or possible
+- All content is installed via the Beneos search engine
+- There is a new setup video in English, German, and French: https://www.youtube.com/watch?v=6lTrpOILOTo
+- The Beneos module must now be linked to a Beneos account (https://beneos.cloud/).
+
 
 ### 12.1.0 # 2025-01-08
 - Fixed some incompatibilities
