@@ -269,7 +269,7 @@ export class BeneosUtility {
     })
 
 
-    game.settings.register('beneos-cloud', 'access_token', {
+    /*game.settings.register('beneos-cloud', 'access_token', {
       name: 'Beneos Cloud Access Token',
       hint: 'Access token for Beneos Cloud (ie Patreon access key)',
       scope: 'world',
@@ -277,7 +277,7 @@ export class BeneosUtility {
       type: String,
       restricted: true,
       default: ''
-    })
+    })*/
     game.settings.register(BeneosUtility.moduleID(), 'beneos-user-config', {
       name: 'Internal data store for user-defined parameters',
       default: {},
