@@ -4,6 +4,10 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 13.2.3 # 2025-09-02
+ - Additionnal checks when dealing with the beneosTokens data structure
+ - Remove deprecated settings
+
 ### 13.2.2 # 2025-09-02
  - improved encoding to fix login issues with the HTTP protocol
 
