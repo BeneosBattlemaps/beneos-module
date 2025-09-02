@@ -4,7 +4,7 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
-### 13.2.1 # 2025-09-02
+### 13.2.2 # 2025-09-02
  - improved encoding to fix login issues with the HTTP protocol
 
 ### 13.2.0 # 2025-09-01
