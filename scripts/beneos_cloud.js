@@ -76,7 +76,8 @@ export class BeneosCloudLogin extends FormApplication {
       }
     }
 
-    let cloudLoginURL = `https://beneos.cloud/foundry-login.php?email=${loginData.email}&password=${loginData.password}&foundryId=${userId}`
+    //let cloudLoginURL = `https://beneos.cloud/foundry-login.php?email=${loginData.email}&password=${loginData.password}&foundryId=${userId}`
+    let cloudLoginURL = `https://beneos.cloud/foundry-login.php?email=${encodeURIComponent(loginData.email)}&password=${encodeURIComponent(loginData.password)}&foundryId=${encodeURIComponent(userId)}`
     fetch(cloudLoginURL, { credentials: 'same-origin' })
       .then(response => response.json())
       .then(data => {
