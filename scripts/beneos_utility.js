@@ -1045,6 +1045,9 @@ export class BeneosUtility {
 
   /********************************************************************************** */
   static isTokenLoaded(key) {
+    if (!this.beneosTokens) return false
+    if (!key) return false
+
     for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
       if (token.tokenKey == key) {
         return true
