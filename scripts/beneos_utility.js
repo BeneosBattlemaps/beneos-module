@@ -633,12 +633,12 @@ export class BeneosUtility {
   static countBeneosAssetsUsage() {
     let statsBeneos = { maps: {}, tokens: {}, items: {}, spells: {} }
     for (let scene of game.scenes) {
-      if (scene.background?.src?.includes('beneos-battlemaps-universe')) {
+      if (scene?.background?.src?.includes('beneos-battlemaps-universe')) {
         statsBeneos.maps[scene.background.src] = (statsBeneos.maps[scene.background.src]) ? statsBeneos.maps[scene.background.src] + 1 : 1
       }
     }
     for (let item of game.items) {
-      if (item.img.includes('beneos_assets')) {
+      if (item?.img?.includes('beneos_assets')) {
         let itemData = this.getItemSpellImageInfo(item.img)
         if (item.type == 'spell') {
           statsBeneos.spells[itemData.itemKey] = (statsBeneos.spells[itemData.itemKey]) ? statsBeneos.spells[itemData.itemKey] + 1 : 1
@@ -648,7 +648,7 @@ export class BeneosUtility {
       }
     }
     for (let actor of game.actors) {
-      if (actor.prototypeToken?.texture?.src.includes('beneos_assets')) {
+      if (actor?.prototypeToken?.texture?.src?.includes('beneos_assets')) {
         let tokenData = this.getTokenImageInfo(actor.prototypeToken.texture.src)
         if (tokenData?.fullKey) {
           statsBeneos.tokens[tokenData.fullKey] = (statsBeneos.tokens[tokenData.fullKey]) ? statsBeneos.tokens[tokenData.fullKey] + 1 : 1
