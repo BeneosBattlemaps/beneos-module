@@ -576,7 +576,6 @@ export class BeneosCloud {
     let packName = "world.beneos_module_actors"
     let actorPack = BeneosUtility.getActorPack()
     if (game.system.id == "pf2e") {
-      packName = "world.beneos_module_actors_pf2"
       let rPF2 = await fetch("modules/beneos-module/scripts/generic_npc_pf2.json")
       actorDataPF2 = await rPF2.json()
     }
@@ -700,7 +699,7 @@ export class BeneosCloud {
               number: i + 1
             }
             // And import the item into the "Beneos Spells" folder, except if in install *ALL* mode
-            if (!this.noWorldImport) {
+            if (!this.noWorldImport && i == 0) { // Only import the first token of the serie
               let tokenDb = game.beneos.databaseHolder.getTokenDatabaseInfo(tokenKey)
               let folderName = tokenDb?.properties?.type[0] ?? "Unknown"
               // Upper first letter
