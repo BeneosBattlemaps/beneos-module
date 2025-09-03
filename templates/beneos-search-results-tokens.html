@@ -14,11 +14,13 @@
 
           <!-- content-link -->
 
-          <div class="beneos-tooltip-icon-group beneos-tooltip entity-link  token-search-data"
-            data-type="Actor" data-document-id="{{result.actorId}}" data-drag-mode="{{result.dragMode}}" {{#if result.isInstallable}} draggable="true" {{/if}}>
+          <div class="beneos-tooltip-icon-group beneos-tooltip entity-link  token-search-data" data-type="Actor"
+            data-document-id="{{result.actorId}}" data-drag-mode="{{result.dragMode}}" {{#if result.isInstallable}}
+            draggable="true" {{/if}}>
             <div class="beneos-tooltiptext beneos-token-description">
               <div class="flexcol beneos-tooltip-content token-search-data" data-type="Actor"
-                data-document-id="{{result.actorId}}" data-drag-mode="{{result.dragMode}}" {{#if result.isInstallable}} draggable="true" {{/if}}>
+                data-document-id="{{result.actorId}}" data-drag-mode="{{result.dragMode}}" {{#if result.isInstallable}}
+                draggable="true" {{/if}}>
                 <span class="beneos-description-title">{{result.name}}</span>
                 <span class="beneos-description-text">{{result.description}}</span>
                 {{#if (gt result.properties.nb_variants 0)}}
@@ -26,19 +28,19 @@
                 <div class="beneos-tooltip-variant">
                   {{#each result.variantList as |variant idxVariant|}}
                   <img class="{{result.variantClass}} token-search-data" data-type="Actor"
-                    data-document-id="{{variant.actorId}}" data-drag-mode="{{result.dragMode}}" {{#if result.isInstallable}} draggable="true" {{/if}}
-                    src="{{variant.thumbnail}}">
+                    data-document-id="{{variant.actorId}}" data-drag-mode="{{result.dragMode}}" {{#if
+                    result.isInstallable}} draggable="true" {{/if}} src="{{variant.thumbnail}}">
                   {{/each}}
                 </div>
                 {{/if}}
               </div>
             </div>
             <div class="beneos-icon-group token-search-data" data-type="Actor" data-document-id="{{result.actorId}}"
-            data-drag-mode="{{result.dragMode}}" {{#if result.isInstallable}} draggable="true" {{/if}}>
+              data-drag-mode="{{result.dragMode}}" {{#if result.isInstallable}} draggable="true" {{/if}}>
               <!-- <img class="beneos-icon-background" src="modules/beneos-module/ui/result_item_icon_bg.webp" /> -->
               <img class="beneos-icon-child token-search-data" data-type="Actor" data-document-id="{{result.actorId}}"
-              data-drag-mode="{{result.dragMode}}" {{#if result.isInstallable}} draggable="true" {{/if}} {{#if result.isInstalled}}
-                src="{{result.picture}}" {{else}} {{#if @root.isOffline}}
+                data-drag-mode="{{result.dragMode}}" {{#if result.isInstallable}} draggable="true" {{/if}} {{#if
+                result.isInstalled}} src="{{result.picture}}" {{else}} {{#if @root.isOffline}}
                 src="modules/beneos-module/icons/db_offline.webp" {{else}} src="{{result.picture}}" {{/if}} {{/if}} />
             </div>
           </div>
@@ -46,9 +48,9 @@
           {{#if result.isInstallable}}
           <div class="beneos-search-middle flexcol token-search-data selected-batch" data-type="Actor"
             data-document-id="{{result.actorId}}" data-drag-mode="{{result.dragMode}}" draggable="true">
-          {{else}}
-          <div class="beneos-search-middle flexcol">
-          {{/if}}
+            {{else}}
+            <div class="beneos-search-middle flexcol">
+              {{/if}}
 
               <img class="bsr_top_border" src="modules/beneos-module/ui/border_top.webp" />
 
@@ -110,124 +112,127 @@
 
           {{#if result.isInstallable}}
           <div class="beneos-search-last flexcol selected-batch">
-          {{else}}
-          <div class="beneos-search-last flexcol">
-          {{/if}}
+            {{else}}
+            <div class="beneos-search-last flexcol">
+              {{/if}}
 
-            <div class="flexrow flex-content-left ">
-              <div class="beneos-tooltip beneos-search-installed ">
+              <div class="flexrow flex-content-left ">
+                <div class="beneos-tooltip beneos-search-installed ">
 
-                {{#if result.isCloudAvailable}}
-                <div class="beneos-tooltip beneos-search-installed selected-batch">
-                  <div class="beneos-tooltiptext beneos-token-description">
+                  {{#if result.isCloudAvailable}}
+                  <div class="beneos-tooltip beneos-search-installed selected-batch">
+                    <div class="beneos-tooltiptext beneos-token-description">
+                    </div>
+                    {{#if result.isNew}}
+                    <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_new.webp">
+                    <label class="beneos-search-new item-right-text-content">
+                      <!-- <input type="checkbox" class="check-token-batch-install"> -->
+                      <a data-tooltip="New token available from the cloud server ! Click to install it locally or Ctrl+Click for batch install."
+                        class="beneos-cloud-token-install">NEW</a>
+                    </label>
+                    {{else}}
+                    <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
+                    <label class="beneos-search-installed item-right-text-content ">
+                      <!-- <input type="checkbox" class="check-token-batch-install"> -->
+                      <a data-tooltip="Click to install it locally or Ctrl+Click for batch install."
+                        class="beneos-cloud-token-install">INSTALL</a>
+                    </label>
+                    {{/if}}
                   </div>
-                  {{#if result.isNew}}
-                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_new.webp">
-                  <label class="beneos-search-new item-right-text-content">
-                    <!-- <input type="checkbox" class="check-token-batch-install"> -->
-                    <a data-tooltip="New token available from the cloud server ! Click to install it locally or Ctrl+Click for batch install."
-                      class="beneos-cloud-token-install">NEW</a>
-                  </label>
+
                   {{else}}
-                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
-                  <label class="beneos-search-installed item-right-text-content ">
-                    <!-- <input type="checkbox" class="check-token-batch-install"> -->
-                    <a data-tooltip="Click to install it locally or Ctrl+Click for batch install." class="beneos-cloud-token-install">INSTALL</a>
-                  </label>
-                  {{/if}}
-                </div>
 
-                {{else}}
-
-                {{#if result.isInstalled}}
+                  {{#if result.isInstalled}}
                   <div class="beneos-tooltiptext beneos-token-description">
                   </div>
                   {{#if result.isUpdate}}
-                    <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_update.png">
-                    <label class="beneos-search-new item-right-text-content"><a
+                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_update.png">
+                  <label class="beneos-search-new item-right-text-content"><a
                       data-tooltip="Updated token available from the cloud server ! Click to install the update."
                       class="beneos-cloud-token-install">UPDATE</a></label>
                   {{else}}
-                    <img class="item-right-text-box " src="modules/beneos-module/ui/right_button_v1.webp">
-                    <label class="beneos-search-installed item-right-text-content"
-                      data-tooltip="Installed and ready to be used.">READY</label>
+                  <img class="item-right-text-box " src="modules/beneos-module/ui/right_button_v1.webp">
+                  <label class="beneos-search-installed item-right-text-content">
+                    <a data-tooltip="Add this Asset to your World." class="beneos-cloud-token-add-to-world">READY</a>
+                  </label>
                   {{/if}}
-                {{else}}
+                  {{else}}
                   <div class="beneos-tooltiptext beneos-token-description">
                   </div>
                   <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_offline.webp">
                   {{#if @root.isCloudLoggedIn}}
-                    <label class="item-right-text-content beneos-search-notinstalled beneos-search-noaccess"
-                      data-tooltip="You are not logged in or have not purchased this asset." >NO ACCESS</label>
+                  <label class="item-right-text-content beneos-search-notinstalled beneos-search-noaccess"
+                    data-tooltip="You are not logged in or have not purchased this asset.">NO ACCESS</label>
                   {{else}}
-                    {{#if @root.isOffline}}
-                    <label class="item-right-text-content beneos-search-notinstalled beneos-search-notconnected"
-                      data-tooltip="You are not connected to Beneos cloud, please check in the settings or in the search window on the left.">
-                      OFFLINE
-                      </label>
-                      {{else }}
-                      <label class="item-right-text-content beneos-search-notinstalled beneos-search-notconnected beneos-search-notconnected-smaller"
-                      data-tooltip="You are not connected to Beneos cloud, please check in the settings or in the search window on the left.">
-                      NOT CONNECTED
-                      </label>
-                      {{/if}}
+                  {{#if @root.isOffline}}
+                  <label class="item-right-text-content beneos-search-notinstalled beneos-search-notconnected"
+                    data-tooltip="You are not connected to Beneos cloud, please check in the settings or in the search window on the left.">
+                    OFFLINE
+                  </label>
+                  {{else }}
+                  <label
+                    class="item-right-text-content beneos-search-notinstalled beneos-search-notconnected beneos-search-notconnected-smaller"
+                    data-tooltip="You are not connected to Beneos cloud, please check in the settings or in the search window on the left.">
+                    NOT CONNECTED
+                  </label>
                   {{/if}}
-                {{/if}}
-              {{/if}}
+                  {{/if}}
+                  {{/if}}
+                  {{/if}}
 
-              </div>
-            </div>
-
-            <div class="flexrow flex-content-left">
-              <div class="beneos-tooltip  beneos-search-cr-button">
-                <div class="beneos-tooltiptext beneos-token-description">
                 </div>
-                <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
-                <a class="beneos-button-cr item-right-text-content" data-cr-value="{{result.properties.cr}}">CR
-                  <strong>{{result.properties.cr}}</strong></a>
               </div>
-            </div>
 
-            <div class="flexrow flex-content-left">
-              <div class="beneos-tooltip ">
-                <div class="beneos-tooltiptext beneos-token-description">
+              <div class="flexrow flex-content-left">
+                <div class="beneos-tooltip  beneos-search-cr-button">
+                  <div class="beneos-tooltiptext beneos-token-description">
+                  </div>
+                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
+                  <a class="beneos-button-cr item-right-text-content" data-cr-value="{{result.properties.cr}}">CR
+                    <strong>{{result.properties.cr}}</strong></a>
                 </div>
-                <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
-                <label class="item-right-text-content">AC:
-                  <strong>{{result.properties.stat_ac}}</strong>
-                </label>
               </div>
-            </div>
 
-            <div class="flexrow flex-content-left">
-              <div class="beneos-tooltip ">
-                <div class="beneos-tooltiptext beneos-token-description">
+              <div class="flexrow flex-content-left">
+                <div class="beneos-tooltip ">
+                  <div class="beneos-tooltiptext beneos-token-description">
+                  </div>
+                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
+                  <label class="item-right-text-content">AC:
+                    <strong>{{result.properties.stat_ac}}</strong>
+                  </label>
                 </div>
-                <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
-                <label class="item-right-text-content">HP:
-                  <strong>{{result.properties.stat_hp}}</strong></label>
               </div>
+
+              <div class="flexrow flex-content-left">
+                <div class="beneos-tooltip ">
+                  <div class="beneos-tooltiptext beneos-token-description">
+                  </div>
+                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
+                  <label class="item-right-text-content">HP:
+                    <strong>{{result.properties.stat_hp}}</strong></label>
+                </div>
+              </div>
+
+              <div class="video-button-container">
+                <label class="beneos-search-yt-button beneos-search-yt-button-shifted"><a class="beneos-button-yt"
+                    href="{{result.properties.videourl}}"><img class="beneos-search-yt-icons"
+                      src="modules/beneos-module/icons/yt_Logo.webp"></a></label>
+              </div>
+
             </div>
 
-            <div class="video-button-container">
-              <label class="beneos-search-yt-button beneos-search-yt-button-shifted"><a class="beneos-button-yt"
-                  href="{{result.properties.videourl}}"><img class="beneos-search-yt-icons"
-                    src="modules/beneos-module/icons/yt_Logo.webp"></a></label>
-            </div>
+            <img src="modules/beneos-module/ui/border_bottom.webp" class="bsr_bottom_border" />
 
           </div>
-
-          <img src="modules/beneos-module/ui/border_bottom.webp" class="bsr_bottom_border" />
-
+          {{/each}}
         </div>
-        {{/each}}
+
+        <div class="search-100-results">
+          Only the first 100 search results are displayed
+        </div>
+
       </div>
-
-      <div class="search-100-results">
-        Only the first 100 search results are displayed
-       </div>
-
-    </div>
   </section>
 
 </form>

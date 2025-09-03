@@ -560,6 +560,44 @@ export class BeneosCloud {
     }
   }
 
+  async addTokenToWorldFromCompendium(tokenKey) {
+    let actorPack = BeneosUtility.getActorPack()
+    if (!actorPack) {
+      ui.notifications.error("BeneosModule : Unable to find compendiums, please check your installation !")
+      return
+    }
+    let actorRecords = await actorPack.getIndex()
+    let actorId = BeneosUtility.getActorId(tokenKey)
+    if (!actorId) {
+      ui.notifications.error(`BeneosModule : Unable to find token ${tokenKey} info, please check your installation !`)
+      return
+    }
+    let existingActor = actorRecords.find(a => a._id == actorId)
+    if (existingActor) {
+      let imported = await actorPack.getDocument(existingActor._id)
+      if (imported) {
+        // Create the "Beneos Spells" folder if it doesn't exist
+        const actorsFolder = game.folders.getName("Beneos Actors") || await Folder.create({
+          name: "Beneos Actors", type: "Actor"
+        })
+        let tokenDb = game.beneos.databaseHolder.getTokenDatabaseInfo(tokenKey)
+        let folderName = tokenDb?.properties?.type[0] ?? "Unknown"
+        // Upper first letter
+        folderName = folderName.charAt(0).toUpperCase() + folderName.slice(1)
+        // Create the sub-folder if it doesn't exist
+        let subFolder = game.folders.getName(folderName) || await Folder.create({
+          name: folderName, type: "Actor", folder: actorsFolder.id
+        })
+        await game.actors.importFromCompendium(actorPack, imported.id, { folder: subFolder.id });
+        ui.notifications.info(`BeneosModule : Token ${imported.name} imported into the Beneos Actors folder, Actors directory.`)
+      } else {
+        ui.notifications.error(`BeneosModule : Unable to find token 1 ${tokenKey} in the compendium.`)
+      }
+    } else {
+      ui.notifications.error(`BeneosModule : Unable to find token 2 ${tokenKey} in the compendium.`)
+    }
+  }
+
   async importTokenToCompendium(tokenArray, event, isBatch = false) {
 
     console.log("Importing token to compendium", tokenArray, event, isBatch)

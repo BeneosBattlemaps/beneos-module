@@ -922,6 +922,16 @@ export class BeneosSearchResults extends Dialog {
       }
     })
 
+    $(".beneos-cloud-token-add-to-world").click(event => {
+      if (!event.ctrlKey) {
+        // Keep track of last scroll position
+        game.beneos.cloud.scrollTop = $(".bsr_result_box").scrollTop()
+        // Get the data-key from the previous div and get it from the cloud
+        let tokenKey = $(event.target).parents(".token-result-section").data("token-key")
+        game.beneos.cloud.addTokenToWorldFromCompendium(tokenKey)
+      }
+    })
+
     $(".token-search-data").on('dragstart', function (e) {
       if (BeneosDatabaseHolder.getIsOffline()) {
         return false
