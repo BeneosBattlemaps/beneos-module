@@ -4,6 +4,9 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 13.2.4 # 2025-09-03
+ - Additionnal checks for corrupted data structures in users world preventing loading
+
 ### 13.2.3 # 2025-09-02
  - Additionnal checks when dealing with the beneosTokens data structure
  - Remove deprecated settings
