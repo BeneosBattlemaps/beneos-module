@@ -497,11 +497,16 @@ export class BeneosCloud {
       } catch (err) {
         console.log("Directory already exists")
       }
-      // console.log("Spell", spellData, spellObjectData )
+      console.log("Spell", spellData, spellObjectData)
       // Decode the base64 tokenImg and upload it to the FilePicker
       let base64Response = await fetch(`data:image/webp;base64,${spellData.spellImage.front.image64}`);
       let blob = await base64Response.blob();
       let file = new File([blob], spellData.spellImage.front.filename, { type: "image/webp" });
+      await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {}, { notify: false });
+
+      base64Response = await fetch(`data:image/webp;base64,${spellData.spellImage.back.image64}`);
+      blob = await base64Response.blob();
+      file = new File([blob], spellData.spellImage.back.filename, { type: "image/webp" });
       await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {}, { notify: false });
 
       spellObjectData.system.description.value = spellObjectData.system.description.value.replaceAll("beneos_assets/beneos_spells/", "beneos_assets/cloud/spells/")
