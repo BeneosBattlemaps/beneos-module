@@ -1,6 +1,6 @@
 /********************************************************************************* */
 import { BeneosTableTop } from "./beneos-table-top.js";
-import { BeneosCompendiumManager, BeneosCompendiumReset } from "./beneos_compendium.js";
+import { BeneosCompendiumReset } from "./beneos_compendium.js";
 import { BeneosSearchEngineLauncher, BeneosDatabaseHolder, BeneosModuleMenu } from "./beneos_search_engine.js";
 import { ClassCounter } from "./count-class-ready.js";
 import { BeneosCloud, BeneosCloudLogin, BeneosCloudSettings } from "./beneos_cloud.js";
@@ -420,20 +420,16 @@ export class BeneosUtility {
 
   /********************************************************************************** */
   static getActorPack() {
-    if (game.system.id == "pf2e") {
-      return game.packs.get("beneos-module.beneos_module_actors_pf2")
-    } else {
-      return game.packs.get("beneos-module.beneos_module_actors")
-    }
+    return game.packs.get("world.beneos_module_actors")
   }
   static getJournalPack() {
-    return game.packs.get("beneos-module.beneos_module_journal")
+    return game.packs.get("world.beneos_module_journal")
   }
   static getItemPack() {
-    return game.packs.get("beneos-module.beneos_module_items")
+    return game.packs.get("world.beneos_module_items")
   }
   static getSpellPack() {
-    return game.packs.get("beneos-module.beneos_module_spells")
+    return game.packs.get("world.beneos_module_spells")
   }
   static async lockUnlockAllPacks(flag = false) {
     let actorPack = this.getActorPack()
@@ -479,7 +475,7 @@ export class BeneosUtility {
       }
     }
 
-    let itemPack = game.packs.get("beneos-module.beneos_module_items")
+    let itemPack = game.packs.get("world.beneos_module_items")
     for (let [fullKey, item] of Object.entries(this.beneosItems)) {
       if (item.itemId && !itemPack.index.some(i => i._id == item.itemId)) {
         console.log("Beneos Compendium item not found for item", fullKey, item.itemId)
@@ -499,7 +495,7 @@ export class BeneosUtility {
       }
     }
 
-    let spellPack = game.packs.get("beneos-module.beneos_module_spells")
+    let spellPack = game.packs.get("world.beneos_module_spells")
     for (let [fullKey, spell] of Object.entries(this.beneosSpells)) {
       if (spell.spellId && !spellPack.index.some(i => i._id == spell.spellId)) {
         console.log("Beneos Compendium spell not found for spell", fullKey, spell.spellId)
@@ -520,16 +516,16 @@ export class BeneosUtility {
     }
 
     if (game.user.isGM && toSave) {
-      let packName = (game.system.id == "pf2e") ? "beneos-module.beneos_module_actors_pf2" : "beneos-module.beneos_module_actors"
+      let packName = "world.beneos_module_actors"
       await BeneosUtility.lockUnlockAllPacks(false) // Unlock the packs before deleting
       for (let id of actorDelete) {
         await Actor.deleteDocuments([id], { pack: packName })
       }
       for (let id of itemDelete) {
-        await Item.deleteDocuments([id], { pack: "beneos-module.beneos_module_items" })
+        await Item.deleteDocuments([id], { pack: "world.beneos_module_items" })
       }
       for (let id of spellDelete) {
-        await Item.deleteDocuments([id], { pack: "beneos-module.beneos_module_spells" })
+        await Item.deleteDocuments([id], { pack: "world.beneos_module_spells" })
       }
       await BeneosUtility.lockUnlockAllPacks(true) // Lock the packs after deleting
 
@@ -548,7 +544,22 @@ export class BeneosUtility {
     this.file_cache = {}
     this.titleCache = {}
 
-    //this.userSizes = foundry.utils.duplicate(game.settings.get(BeneosUtility.moduleID(), 'beneos-user-config'))
+    // Create compendiums
+    if (!game.packs.get("world.beneos_module_actors")) {
+      foundry.documents.collections.CompendiumCollection.createCompendium({ "label": "Beneos Tokens", "name": "beneos_module_actors", "type": "Actor" });
+    }
+    if (!game.packs.get("world.beneos_module_journal")) {
+      foundry.documents.collections.CompendiumCollection.createCompendium({ "label": "Beneos Journals", "name": "beneos_module_journal", "type": "JournalEntry" });
+    }
+    if (game.system.id == "dnd5e") {
+      if (!game.packs.get("world.beneos_module_items")) {
+        foundry.documents.collections.CompendiumCollection.createCompendium({ "label": "Beneos Items", "name": "beneos_module_items", "type": "Item" });
+      }
+      if (!game.packs.get("world.beneos_module_spells")) {
+        foundry.documents.collections.CompendiumCollection.createCompendium({ "label": "Beneos Spells", "name": "beneos_module_spells", "type": "Item" });
+      }
+    }
+
     this.beneosModule = true // Deprecated game.settings.get(BeneosUtility.moduleID(), 'beneos-animations')
     if (game.user.isGM) {
       this.tokenDataPath = game.settings.get(BeneosUtility.moduleID(), 'beneos-datapath')

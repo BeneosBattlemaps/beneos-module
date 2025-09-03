@@ -331,7 +331,7 @@ export class BeneosCloud {
     if (game.system.id == "pf2e") {
       return
     } else {
-      itemPack = game.packs.get("beneos-module.beneos_module_items")
+      itemPack = game.packs.get("world.beneos_module_items")
 
     }
     if (!itemPack) {
@@ -396,7 +396,7 @@ export class BeneosCloud {
         if (existingItem) {
           console.log("Deleting existing item", existingItem._id)
           try {
-            await Item.deleteDocuments([existingItem._id], { pack: "beneos-module.beneos_module_items" })
+            await Item.deleteDocuments([existingItem._id], { pack: "world.beneos_module_items" })
           }
           catch (err) {
             console.log("Error deleting existing item", err)
@@ -424,9 +424,7 @@ export class BeneosCloud {
     }
 
     let toSave = JSON.stringify(BeneosUtility.beneosItems)
-    console.log("Saving ITEM data :", toSave)
     await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', toSave) // Save the token config !
-
 
     if (!isBatch) { // Lock/Unlock only in single install mode
       this.sendChatMessageResult(event, "Item", properName)
@@ -461,7 +459,7 @@ export class BeneosCloud {
     if (game.system.id == "pf2e") {
       return
     } else {
-      spellPack = game.packs.get("beneos-module.beneos_module_spells")
+      spellPack = game.packs.get("world.beneos_module_spells")
     }
     if (!spellPack) {
       ui.notifications.error("BeneosModule : Unable to find compendiums, please check your installation !")
@@ -523,7 +521,7 @@ export class BeneosCloud {
         let existingSpell = spellRecords.find(a => a.name == spell.name && a.img == spell.img)
         if (existingSpell) {
           console.log("Deleting existing spell", existingSpell._id)
-          await Item.deleteDocuments([existingSpell._id], { pack: "beneos-module.beneos_module_spells" })
+          await Item.deleteDocuments([existingSpell._id], { pack: "world.beneos_module_spells" })
         }
         // And then create it again
         let imported = await spellPack.importDocument(spell);
@@ -575,10 +573,10 @@ export class BeneosCloud {
     let properName
 
     let actorDataPF2
-    let packName = "beneos-module.beneos_module_actors"
+    let packName = "world.beneos_module_actors"
     let actorPack = BeneosUtility.getActorPack()
     if (game.system.id == "pf2e") {
-      packName = "beneos-module.beneos_module_actors_pf2"
+      packName = "world.beneos_module_actors_pf2"
       let rPF2 = await fetch("modules/beneos-module/scripts/generic_npc_pf2.json")
       actorDataPF2 = await rPF2.json()
     }
@@ -658,7 +656,7 @@ export class BeneosCloud {
             if (existingJournal) {
               console.log("Deleting existing journal", existingJournal._id)
               try {
-                await JournalEntry.deleteDocuments([existingJournal._id], { pack: "beneos-module.beneos_module_journal" })
+                await JournalEntry.deleteDocuments([existingJournal._id], { pack: "world.beneos_module_journal" })
               } catch (err) {
                 console.log("Error deleting existing journal", err)
               }

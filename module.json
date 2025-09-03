@@ -20,52 +20,7 @@
   "esmodules": [
     "scripts/beneos_module.js"
   ],
-  "packs": [
-    {
-      "name": "beneos_module_actors",
-      "label": "Beneos Tokens",
-      "path": "packs/beneos_module_actors.db",
-      "system": "dnd5e",
-      "type": "Actor",
-      "private": false,
-      "flags": {}
-    },
-    {
-      "name": "beneos_module_actors_pf2",
-      "label": "Beneos Tokens - PF2",
-      "path": "packs/beneos_module_actors_pf2.db",
-      "system": "pf2e",
-      "type": "Actor",
-      "private": false,
-      "flags": {}
-    },
-    {
-      "name": "beneos_module_items",
-      "label": "Beneos Module Items",
-      "path": "packs/beneos_module_items.db",
-      "system": "dnd5e",
-      "type": "Item",
-      "private": false,
-      "flags": {}
-    },
-    {
-      "name": "beneos_module_spells",
-      "label": "Beneos Module Spells",
-      "path": "packs/beneos_module_spells.db",
-      "system": "dnd5e",
-      "type": "Item",
-      "private": false,
-      "flags": {}
-    },
-    {
-      "name": "beneos_module_journal",
-      "label": "Beneos Module Journals",
-      "path": "packs/beneos_module_journal.db",
-      "type": "JournalEntry",
-      "private": false,
-      "flags": {}
-    }
-  ],
+  "packs": [],
   "id": "beneos-module",
   "authors": [
     {
