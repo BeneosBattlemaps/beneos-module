@@ -540,27 +540,48 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
+  static async createCompendiums() {
+    // Create the "Beneos Spells" folder if it doesn't exist
+    const packFolder = game.folders.getName("Beneos Data") || await Folder.create({
+      name: "Beneos Data", type: "Compendium"
+    })
+
+    // Create compendiums
+    if (!game.packs.get("world.beneos_module_actors")) {
+      let pack = await foundry.documents.collections.CompendiumCollection.createCompendium({ "label": "Beneos Tokens", "name": "beneos_module_actors", "type": "Actor" });
+      await pack.setFolder(packFolder.id);
+    }
+    if (!game.packs.get("world.beneos_module_journal")) {
+      let pack = await foundry.documents.collections.CompendiumCollection.createCompendium({ "label": "Beneos Journals", "name": "beneos_module_journal", "type": "JournalEntry" });
+      await pack.setFolder(packFolder.id);
+    }
+    if (game.system.id == "dnd5e") {
+      if (!game.packs.get("world.beneos_module_items")) {
+        let pack = await foundry.documents.collections.CompendiumCollection.createCompendium({ "label": "Beneos Items", "name": "beneos_module_items", "type": "Item" });
+        await pack.setFolder(packFolder.id);
+      }
+      if (!game.packs.get("world.beneos_module_spells")) {
+        let pack = await foundry.documents.collections.CompendiumCollection.createCompendium({ "label": "Beneos Spells", "name": "beneos_module_spells", "type": "Item" });
+        await pack.setFolder(packFolder.id);
+      }
+    }
+    await this.verifySettingsAgainstCompendium()
+  }
+
+  /********************************************************************************** */
   static ready() {
     this.file_cache = {}
     this.titleCache = {}
 
-    // Create compendiums
-    if (!game.packs.get("world.beneos_module_actors")) {
-      foundry.documents.collections.CompendiumCollection.createCompendium({ "label": "Beneos Tokens", "name": "beneos_module_actors", "type": "Actor" });
-    }
-    if (!game.packs.get("world.beneos_module_journal")) {
-      foundry.documents.collections.CompendiumCollection.createCompendium({ "label": "Beneos Journals", "name": "beneos_module_journal", "type": "JournalEntry" });
-    }
-    if (game.system.id == "dnd5e") {
-      if (!game.packs.get("world.beneos_module_items")) {
-        foundry.documents.collections.CompendiumCollection.createCompendium({ "label": "Beneos Items", "name": "beneos_module_items", "type": "Item" });
-      }
-      if (!game.packs.get("world.beneos_module_spells")) {
-        foundry.documents.collections.CompendiumCollection.createCompendium({ "label": "Beneos Spells", "name": "beneos_module_spells", "type": "Item" });
-      }
-    }
+    this.sheetLoaded = false
 
     this.beneosModule = true // Deprecated game.settings.get(BeneosUtility.moduleID(), 'beneos-animations')
+    this.beneosHealth = {}
+    this.standingImage = {}
+    this.beneosPreload = []
+    this.beneosTokens = {}
+    this.beneosSpells = {}
+    this.beneosItems = {}
     if (game.user.isGM) {
       this.tokenDataPath = game.settings.get(BeneosUtility.moduleID(), 'beneos-datapath')
       this.itemDataPath = game.settings.get(BeneosUtility.moduleID(), 'beneos-datapath')
@@ -568,26 +589,14 @@ export class BeneosUtility {
       this.tokenDataPath += "/beneos_tokens/"
       this.itemDataPath += "/beneos_items/"
       this.spellDataPath += "/beneos_spells/"
-      let stats = this.countBeneosAssetsUsage()
-      try {
-        ClassCounter.registerUsageCount('beneos-module', { beneosStats: stats })
-      } catch (e) {
-        console.log("Unable to register usage count, not important", e)
-      }
     }
-    this.sheetLoaded = false
-
-    this.beneosHealth = {}
-    this.standingImage = {}
-    this.beneosPreload = []
-    this.beneosTokens = {}
-    this.beneosSpells = {}
-    this.beneosItems = {}
 
     this.reloadInternalSettings()
+    // Check if folder exists
     if (game.user.isGM) {
-      this.verifySettingsAgainstCompendium()
+      this.createCompendiums()
     }
+
     console.log("Loaded", this.beneosTokens)
 
     this.m_w = 123456789
@@ -636,6 +645,15 @@ export class BeneosUtility {
       }
     } else {
       console.log("No Token Magic found !!!")
+    }
+
+    if (game.user.isGM) {
+      let stats = this.countBeneosAssetsUsage()
+      try {
+        ClassCounter.registerUsageCount('beneos-module', { beneosStats: stats })
+      } catch (e) {
+        console.log("Unable to register usage count, not important", e)
+      }
     }
 
   }
