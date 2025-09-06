@@ -3,6 +3,12 @@
 All notable changes to this module will be documented in this file.
 
 ## Updates
+### 13.2.5 # 2025-09-06
+ - World compendiums have now been created for each world in which the downloads are stored. This means that the compendium will only be emptied during this last update and will remain untouched in the future, even during updates.
+ - Cloud Website now has an "Already downloaded indicator"
+ - Not all variants of a token are installed in the actor browser anymore, only the first one (the rest is controlled on the canvas via the variant skin feature).
+ - There is now free content for non-Patrons to view a selection of tokens, spells, and items.
+ - Fixed: Download ALL via the cloud website now works as expected again.
 
 ### 13.2.4 # 2025-09-03
  - Additionnal checks for corrupted data structures in users world preventing loading
