@@ -1230,4 +1230,122 @@ i.beneos-module {
   left: 50%;
   transform: translate(-50%, -50%);
 }
+/* =========================================================================================
+   BENEOS – Compact Chips for Foundry VTT (Dark/Light)
+   • DC/Info: neutral grey, mit hellerem Hintergrund im Darkmode
+   • Action Types: cyan/teal (ehem. DC-Farbe)
+   • Conditions: Amber (boxed) + zusätzliche rote Text-Only-Variante ohne Rahmen/Hintergrund
+   • Weniger dominant: kleinere Schrift, eckige Ecken, leichtes Letterspacing
+========================================================================================= */
 
+/* ---- Core palette (HSL) -------------------------------------------------------------- */
+:root {
+  /* Conditions (amber, boxed) */
+  --bne-h-cond: 38;   --bne-s-cond: 92%; --bne-l-cond: 52%;
+  /* Conditions (plain red text variant) */
+  --bne-h-cond-plain: 6; --bne-s-cond-plain: 78%; --bne-l-cond-plain: 54%;
+
+  /* Actions (former DC cyan/teal) */
+  --bne-h-action: 195; --bne-s-action: 90%; --bne-l-action: 50%;
+
+  /* DC + Info (neutral grey) */
+  --bne-h-info: 210; --bne-s-info: 8%; --bne-l-info: 64%;
+
+  /* Creature attributes (emerald) */
+  --bne-h-attr: 142; --bne-s-attr: 60%; --bne-l-attr: 45%;
+
+  --bne-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", system-ui, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+}
+
+html, body { color-scheme: light dark; font-family: var(--bne-font); }
+
+/* ---- Base chip ----------------------------------------------------------------------- */
+.bne-chip{
+  /* derived (overridden per category) */
+  --_h: var(--bne-h-info);
+  --_s: var(--bne-s-info);
+  --_l: var(--bne-l-info);
+
+  --_fg: hsl(var(--_h) var(--_s) calc(var(--_l) - 14%));
+  --_bg: hsla(var(--_h) var(--_s) var(--_l) / .18);
+  --_bd: hsla(var(--_h) var(--_s) calc(var(--_l) - 18%) / .44);
+
+  display: inline-flex; align-items: center;
+  padding: .10em .45em;
+  border: 1px solid var(--_bd);
+  background: var(--_bg);
+  color: var(--_fg);
+  border-radius: 3px;                 /* squared corners */
+  font-size: .78rem;                  /* smaller text */
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: .035em;             /* slightly wider tracking */
+  text-transform: none;
+  white-space: nowrap;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Improve neutral chips in Dark Mode: brighter text and lighter background */
+@media (prefers-color-scheme: dark) {
+  .bne--info, .bne--dc {
+    --_fg: hsl(var(--_h) var(--_s) calc(var(--_l) + 12%));
+    --_bg: hsla(var(--_h) var(--_s) calc(var(--_l) + 16%) / .42);
+    --_bd: hsla(var(--_h) var(--_s) calc(var(--_l) + 6%) / .46);
+  }
+}
+
+/* ---- Categories ---------------------------------------------------------------------- */
+
+/* Conditions (boxed amber) */
+.bne--cond{
+  --_h: var(--bne-h-cond); --_s: var(--bne-s-cond); --_l: var(--bne-l-cond);
+  --_fg: hsl(var(--_h) var(--_s) calc(var(--_l) - 10%));
+  --_bg: hsla(var(--_h) var(--_s) var(--_l) / .16);
+  --_bd: hsla(var(--_h) var(--_s) calc(var(--_l) - 16%) / .46);
+  border-radius: 3px;
+  font-weight: 650;
+}
+
+/* Conditions (plain red text-only; no border/background) */
+.bne--cond-plain{
+  --_h: var(--bne-h-cond-plain); --_s: var(--bne-s-cond-plain); --_l: var(--bne-l-cond-plain);
+  background: transparent !important;
+  border: none !important;
+  color: hsl(var(--_h) var(--_s) var(--_l)) !important;
+  padding: 0 .08rem;
+  font-weight: 650;
+}
+
+/* Actions: cyan outline, uppercase but compact */
+.bne--action{
+  --_h: var(--bne-h-action); --_s: var(--bne-s-action); --_l: var(--bne-l-action);
+  --_bg: hsla(var(--_h) var(--_s) var(--_l) / .10);
+  --_bd: hsla(var(--_h) var(--_s) calc(var(--_l) - 12%) / .45);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-size: .72rem;                  /* less dominant */
+  font-weight: 700;
+}
+
+/* DC + Info: neutral grey, tabular numerals for DC */
+.bne--dc, .bne--info{
+  --_h: var(--bne-h-info); --_s: var(--bne-s-info); --_l: var(--bne-l-info);
+  --_bg: hsla(var(--_h) var(--_s) var(--_l) / .20);
+  --_bd: hsla(var(--_h) var(--_s) calc(var(--_l) - 8%) / .44);
+}
+.bne--dc{
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "calt" 0;
+  letter-spacing: .02em;
+}
+
+/* Attributes: calm fill, slightly stronger than neutral */
+.bne--attr{
+  --_h: var(--bne-h-attr); --_s: var(--bne-s-attr); --_l: var(--bne-l-attr);
+  --_bg: hsla(var(--_h) var(--_s) var(--_l) / .20);
+  --_bd: hsla(var(--_h) var(--_s) calc(var(--_l) - 10%) / .46);
+}
+
+/* Optional compact size variant for tight layouts */
+.bne-chip.is-tight{ padding:.06em .38em; font-size:.72rem; }
