@@ -22,7 +22,7 @@ export class BeneosCompendiumReset extends FormApplication {
 
     ui.notifications.info("BeneosModule : Compendium building is starting, check chat message....");
 
-    await this.deleteCompendiumContent("beneos-module.beneos_module_journal")
+    await this.deleteCompendiumContent("world.beneos_module_journal")
     BeneosCompendiumManager.cleanImportErrors()
 
     if (game.system.id == "pf2e") {
@@ -34,8 +34,8 @@ export class BeneosCompendiumReset extends FormApplication {
           `<div><strong>1/2 - Cleanup : </strong><span class="beneos-chat-delete-info"></span></div>`
       }
       ChatMessage.create(chatData);
-      await this.deleteCompendiumContent("beneos-module.beneos_module_actors_pf2")
-      await this.deleteCompendiumContent("beneos-module.beneos_module_journal")
+      await this.deleteCompendiumContent("world.beneos_module_actors")
+      await this.deleteCompendiumContent("world.beneos_module_journal")
       $(".beneos-chat-delete-info").html("Cleanup finished")
 
       ui.notifications.info("BeneosModule : PF2 - Cleanup of compendiums finished.")
@@ -56,9 +56,9 @@ export class BeneosCompendiumReset extends FormApplication {
           `<div><strong>1/4 - Cleanup : </strong><meter class="beneos-meter-delete" min="0" max="100" value="0">100%</meter>&nbsp;<span class="beneos-chat-delete-info"></span></div>`
       }
       ChatMessage.create(chatData);
-      await this.deleteCompendiumContent("beneos-module.beneos_module_actors")
-      await this.deleteCompendiumContent("beneos-module.beneos_module_items")
-      await this.deleteCompendiumContent("beneos-module.beneos_module_spells")
+      await this.deleteCompendiumContent("world.beneos_module_actors")
+      await this.deleteCompendiumContent("world.beneos_module_items")
+      await this.deleteCompendiumContent("world.beneos_module_spells")
       $(".beneos-chat-delete-info").html("Cleanup finished")
       $(".beneos-meter-delete").hide()
 
@@ -70,9 +70,9 @@ export class BeneosCompendiumReset extends FormApplication {
 
       // Set a reload Timeout of 200 ms
       setTimeout(() => {
-         window.location.reload()
+        window.location.reload()
       }
-      , 200);
+        , 200);
 
 
       return;
@@ -125,13 +125,13 @@ export class BeneosCompendiumReset extends FormApplication {
 }
 
 /********************************************************************************** */
-export class BeneosCompendiumManager {
+export class BeneosCompendiumManager_DEPRECATED {
 
   /********************************************************************************** */
   static cleanImportErrors() {
     this.importErrors = []; // clean local error cache
   }
-  
+
   static async showImportErrors() {
     if (this.importErrors.length > 0) {
       console.log("Global import errors : ", this.importErrors)
@@ -266,8 +266,8 @@ export class BeneosCompendiumManager {
               continue;
             }
             if (res[3] && Number(res[3]) > 0) {
-              if ( ! subTokens[Number(res[3])] ) {
-                subTokens[Number(res[3])] = { }
+              if (!subTokens[Number(res[3])]) {
+                subTokens[Number(res[3])] = {}
               }
               if (res[4]) {
                 subTokens[Number(res[3])][res[4]] = filename
@@ -319,7 +319,7 @@ export class BeneosCompendiumManager {
             }
             actor = new CONFIG.Actor.documentClass(records);
           }
-          if (actor ) {
+          if (actor) {
             let imported = await actorPack.importDocument(actor);
             await imported.setFlag("world", "beneos", { tid: tid, key: key, fullId: fullId, journalId: model.journalId })
             $(".beneos-chat-actor-info").html(actor.name)
@@ -372,7 +372,7 @@ export class BeneosCompendiumManager {
     }
     if (game.system.id == "pf2e") {
       await this.showNewItems("Actors", BeneosUtility.beneosTokens, previousData, "Compendium.beneos-module.beneos_module_actors_pf2.Actor")
-    } else  {
+    } else {
       await this.showNewItems("Actors", BeneosUtility.beneosTokens, previousData, "Compendium.beneos-module.beneos_module_actors.Actor")
     }
 
@@ -483,7 +483,7 @@ export class BeneosCompendiumManager {
     }
     let max = rootFolder.dirs.length
     let count = 0
-    if ( !rootFolder ) {}
+    if (!rootFolder) { }
     //console.log("ROOT", rootFolder)
     for (let subFolder of rootFolder.dirs) {
       //console.log("SUBFOLDER", subFolder)

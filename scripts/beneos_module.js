@@ -183,7 +183,7 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
   //console.log("Config ?", tokenConfig, token);
   // JOURNAL HUD
   if (tokenConfig?.journalId) {
-    let beneosPack = game.packs.get("beneos-module.beneos_module_journal")
+    let beneosPack = game.packs.get("world.beneos_module_journal")
     if (beneosPack) {
       let beneosJournalEntry = await beneosPack.getDocument(tokenConfig.journalId)
       if (beneosJournalEntry) {
@@ -232,7 +232,7 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
 
 /********************************************************************************** */
 Hooks.on("deleteActor", (actor, options) => {
-  if (actor?.pack == "beneos-module.beneos_module_actors" || actor?.pack == "beneos-module.beneos_module_actors_PF2E") {
+  if (actor?.pack == "world.beneos_module_actors") {
     BeneosUtility.removeTokenFromActorId(actor.id)
   }
   return true;
@@ -256,10 +256,10 @@ Hooks.on("preCreateActor", (actor, data, context) => {
 /********************************************************************************** */
 Hooks.on("deleteItem", (item, options) => {
   console.log("Beneos delete item", item, options)
-  if (item?.pack == "beneos-module.beneos_module_items") {
+  if (item?.pack == "world.beneos_module_items") {
     BeneosUtility.removeItem(item.id)
   }
-  if (item?.pack == "beneos-module.beneos_module_spells") {
+  if (item?.pack == "world.beneos_module_spells") {
     BeneosUtility.removeSpell(item.id)
   }
   return true;

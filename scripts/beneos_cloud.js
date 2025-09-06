@@ -331,7 +331,7 @@ export class BeneosCloud {
     if (game.system.id == "pf2e") {
       return
     } else {
-      itemPack = game.packs.get("beneos-module.beneos_module_items")
+      itemPack = game.packs.get("world.beneos_module_items")
 
     }
     if (!itemPack) {
@@ -396,7 +396,7 @@ export class BeneosCloud {
         if (existingItem) {
           console.log("Deleting existing item", existingItem._id)
           try {
-            await Item.deleteDocuments([existingItem._id], { pack: "beneos-module.beneos_module_items" })
+            await Item.deleteDocuments([existingItem._id], { pack: "world.beneos_module_items" })
           }
           catch (err) {
             console.log("Error deleting existing item", err)
@@ -424,9 +424,7 @@ export class BeneosCloud {
     }
 
     let toSave = JSON.stringify(BeneosUtility.beneosItems)
-    console.log("Saving ITEM data :", toSave)
     await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', toSave) // Save the token config !
-
 
     if (!isBatch) { // Lock/Unlock only in single install mode
       this.sendChatMessageResult(event, "Item", properName)
@@ -461,7 +459,7 @@ export class BeneosCloud {
     if (game.system.id == "pf2e") {
       return
     } else {
-      spellPack = game.packs.get("beneos-module.beneos_module_spells")
+      spellPack = game.packs.get("world.beneos_module_spells")
     }
     if (!spellPack) {
       ui.notifications.error("BeneosModule : Unable to find compendiums, please check your installation !")
@@ -497,11 +495,16 @@ export class BeneosCloud {
       } catch (err) {
         console.log("Directory already exists")
       }
-      // console.log("Spell", spellData, spellObjectData )
+      console.log("Spell", spellData, spellObjectData)
       // Decode the base64 tokenImg and upload it to the FilePicker
       let base64Response = await fetch(`data:image/webp;base64,${spellData.spellImage.front.image64}`);
       let blob = await base64Response.blob();
       let file = new File([blob], spellData.spellImage.front.filename, { type: "image/webp" });
+      await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {}, { notify: false });
+
+      base64Response = await fetch(`data:image/webp;base64,${spellData.spellImage.back.image64}`);
+      blob = await base64Response.blob();
+      file = new File([blob], spellData.spellImage.back.filename, { type: "image/webp" });
       await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {}, { notify: false });
 
       spellObjectData.system.description.value = spellObjectData.system.description.value.replaceAll("beneos_assets/beneos_spells/", "beneos_assets/cloud/spells/")
@@ -518,7 +521,7 @@ export class BeneosCloud {
         let existingSpell = spellRecords.find(a => a.name == spell.name && a.img == spell.img)
         if (existingSpell) {
           console.log("Deleting existing spell", existingSpell._id)
-          await Item.deleteDocuments([existingSpell._id], { pack: "beneos-module.beneos_module_spells" })
+          await Item.deleteDocuments([existingSpell._id], { pack: "world.beneos_module_spells" })
         }
         // And then create it again
         let imported = await spellPack.importDocument(spell);
@@ -557,6 +560,44 @@ export class BeneosCloud {
     }
   }
 
+  async addTokenToWorldFromCompendium(tokenKey) {
+    let actorPack = BeneosUtility.getActorPack()
+    if (!actorPack) {
+      ui.notifications.error("BeneosModule : Unable to find compendiums, please check your installation !")
+      return
+    }
+    let actorRecords = await actorPack.getIndex()
+    let actorId = BeneosUtility.getActorId(tokenKey)
+    if (!actorId) {
+      ui.notifications.error(`BeneosModule : Unable to find token ${tokenKey} info, please check your installation !`)
+      return
+    }
+    let existingActor = actorRecords.find(a => a._id == actorId)
+    if (existingActor) {
+      let imported = await actorPack.getDocument(existingActor._id)
+      if (imported) {
+        // Create the "Beneos Spells" folder if it doesn't exist
+        const actorsFolder = game.folders.getName("Beneos Actors") || await Folder.create({
+          name: "Beneos Actors", type: "Actor"
+        })
+        let tokenDb = game.beneos.databaseHolder.getTokenDatabaseInfo(tokenKey)
+        let folderName = tokenDb?.properties?.type[0] ?? "Unknown"
+        // Upper first letter
+        folderName = folderName.charAt(0).toUpperCase() + folderName.slice(1)
+        // Create the sub-folder if it doesn't exist
+        let subFolder = game.folders.getName(folderName) || await Folder.create({
+          name: folderName, type: "Actor", folder: actorsFolder.id
+        })
+        await game.actors.importFromCompendium(actorPack, imported.id, { folder: subFolder.id });
+        ui.notifications.info(`BeneosModule : Token ${imported.name} imported into the Beneos Actors folder, Actors directory.`)
+      } else {
+        ui.notifications.error(`BeneosModule : Unable to find token 1 ${tokenKey} in the compendium.`)
+      }
+    } else {
+      ui.notifications.error(`BeneosModule : Unable to find token 2 ${tokenKey} in the compendium.`)
+    }
+  }
+
   async importTokenToCompendium(tokenArray, event, isBatch = false) {
 
     console.log("Importing token to compendium", tokenArray, event, isBatch)
@@ -570,10 +611,9 @@ export class BeneosCloud {
     let properName
 
     let actorDataPF2
-    let packName = "beneos-module.beneos_module_actors"
+    let packName = "world.beneos_module_actors"
     let actorPack = BeneosUtility.getActorPack()
     if (game.system.id == "pf2e") {
-      packName = "beneos-module.beneos_module_actors_pf2"
       let rPF2 = await fetch("modules/beneos-module/scripts/generic_npc_pf2.json")
       actorDataPF2 = await rPF2.json()
     }
@@ -653,7 +693,7 @@ export class BeneosCloud {
             if (existingJournal) {
               console.log("Deleting existing journal", existingJournal._id)
               try {
-                await JournalEntry.deleteDocuments([existingJournal._id], { pack: "beneos-module.beneos_module_journal" })
+                await JournalEntry.deleteDocuments([existingJournal._id], { pack: "world.beneos_module_journal" })
               } catch (err) {
                 console.log("Error deleting existing journal", err)
               }
@@ -697,7 +737,7 @@ export class BeneosCloud {
               number: i + 1
             }
             // And import the item into the "Beneos Spells" folder, except if in install *ALL* mode
-            if (!this.noWorldImport) {
+            if (!this.noWorldImport && i == 0) { // Only import the first token of the serie
               let tokenDb = game.beneos.databaseHolder.getTokenDatabaseInfo(tokenKey)
               let folderName = tokenDb?.properties?.type[0] ?? "Unknown"
               // Upper first letter

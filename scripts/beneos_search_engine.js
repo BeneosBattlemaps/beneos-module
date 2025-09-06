@@ -1,5 +1,4 @@
 import { BeneosUtility } from "./beneos_utility.js"
-import { BeneosCompendiumManager, BeneosCompendiumReset } from "./beneos_compendium.js";
 import { BeneosCloudLogin } from "./beneos_cloud.js"
 
 /********************************************************************************** */
@@ -923,6 +922,16 @@ export class BeneosSearchResults extends Dialog {
       }
     })
 
+    $(".beneos-cloud-token-add-to-world").click(event => {
+      if (!event.ctrlKey) {
+        // Keep track of last scroll position
+        game.beneos.cloud.scrollTop = $(".bsr_result_box").scrollTop()
+        // Get the data-key from the previous div and get it from the cloud
+        let tokenKey = $(event.target).parents(".token-result-section").data("token-key")
+        game.beneos.cloud.addTokenToWorldFromCompendium(tokenKey)
+      }
+    })
+
     $(".token-search-data").on('dragstart', function (e) {
       if (BeneosDatabaseHolder.getIsOffline()) {
         return false
@@ -965,13 +974,13 @@ export class BeneosSearchResults extends Dialog {
         }
         let compendium = ""
         if (docType == "Actor") {
-          compendium = (game.system.id == "pf2e") ? "beneos-module.beneos_module_actors_pf2" : "beneos-module.beneos_module_actors"
+          compendium = "world.beneos_module_actors"
         }
         if (docType == "Item") {
-          compendium = "beneos-module.beneos_module_items"
+          compendium = "world.beneos_module_items"
         }
         if (docType == "Spell") {
-          compendium = "beneos-module.beneos_module_spells"
+          compendium = "world.beneos_module_spells"
           docType = "Item"
         }
         let drag_data = { "type": docType, "pack": compendium, "uuid": "Compendium." + compendium + "." + id }
@@ -1079,7 +1088,7 @@ export class BeneosSearchResults extends Dialog {
       let tokenConfig = BeneosUtility.isTokenLoaded(tokenKey)
       if (tokenConfig?.config) {
         if (tokenConfig.config.compendium) {
-          let beneosPack = game.packs.get("beneos-module.beneos_module_journal")
+          let beneosPack = game.packs.get("world.beneos_module_journal")
           if (beneosPack) {
             let beneosJournalEntry = null
             let beneosCompendiumEntry = beneosPack.index.getName(tokenConfig.config.compendium)
