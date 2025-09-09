@@ -20,7 +20,7 @@
               <div class="beneos-tooltip-content-bmap">
                 <img class="beneos-search-battlemap-result-tooltip" src="{{result.picture}}">
                 {{#if result.siblingPicture}}
-                <img class="beneos-search-battlemap-result-tooltip " src="{{result.siblingPicture}}">
+                <img class="beneos-search-battlemap-result-tooltip" src="{{result.siblingPicture}}">
                 {{/if}}
               </div>
             </div>
@@ -79,20 +79,16 @@
                     </a>
                   </label>
                   {{/if}}
-
                   {{#each result.properties.adventure as |adventure key|}}
                   {{#if (ne (beneosLowerCase adventure) "none")}}
                   <label class="beneos-release-url-button"><a class="beneos-button-adventure"
                       data-adventure-name="{{adventure}}">{{beneosUpperFirst adventure}}</a></label>
                   {{/if}}
                   {{/each}}
-
                   <br>
                   {{#if result.properties.releaseurl}}
                   <label class="release-url-color"><a href="{{result.properties.releaseurl}}">Release URL</a></label>
                   {{/if}}
-
-
                 </div>
               </div>
 
@@ -140,17 +136,16 @@
             </div>
 
             <div class="flexrow flex-content-center">
-
               {{#if (beneosLength result.properties.videourl)}}
               <label class=""><a data-tooltip="Youtube Video" class="beneos-button-yt"
                   href="{{result.properties.videourl}}"><img class="beneos-search-yt-icons-bmaps"
-                    src="modules/beneos-module/icons/yt_Logo.webp">&nbsp;</a></label>
+                    src="modules/beneos-module/icons/yt_Logo.webp"></a></label>
               {{/if}}
 
               <label class="beneos-search-moulinette-button"><a class="beneos-button-moulinette"
                   data-tooltip="Download with Moulinette" data-bmap-key="{{result.key}}">
                   <img class="beneos-search-moulinette-icons-bmap" data-bmap-key="{{result.key}}"
-                    src="modules/beneos-module/icons/download_icon.svg">&nbsp;</a></label>
+                    src="modules/beneos-module/icons/download_icon.svg"></a></label>
             </div>
 
           </div>
