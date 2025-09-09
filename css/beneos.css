@@ -1230,122 +1230,201 @@ i.beneos-module {
   left: 50%;
   transform: translate(-50%, -50%);
 }
-/* =========================================================================================
-   BENEOS – Compact Chips for Foundry VTT (Dark/Light)
-   • DC/Info: neutral grey, mit hellerem Hintergrund im Darkmode
-   • Action Types: cyan/teal (ehem. DC-Farbe)
-   • Conditions: Amber (boxed) + zusätzliche rote Text-Only-Variante ohne Rahmen/Hintergrund
-   • Weniger dominant: kleinere Schrift, eckige Ecken, leichtes Letterspacing
-========================================================================================= */
 
-/* ---- Core palette (HSL) -------------------------------------------------------------- */
-:root {
-  /* Conditions (amber, boxed) */
-  --bne-h-cond: 38;   --bne-s-cond: 92%; --bne-l-cond: 52%;
-  /* Conditions (plain red text variant) */
-  --bne-h-cond-plain: 6; --bne-s-cond-plain: 78%; --bne-l-cond-plain: 54%;
+/* =======================================================================================
+   Beneos Tactical Guide – Labels
+   Ziel: ruhige, gut lesbare Labels mit subtilen Farbakzenten.
+   → Zwei Style-Sets je nach Foundry-Theme: .theme-light und .theme-dark
+   → Bestehende Klassen-Namen bleiben unverändert.
+   ======================================================================================= */
 
-  /* Actions (former DC cyan/teal) */
-  --bne-h-action: 195; --bne-s-action: 90%; --bne-l-action: 50%;
+/* =======================================================================================
+   Beneos Tactical Guide – Labels (Light/Dark)
+   Änderungen:
+   - .bne--condition  (Foundry-Zustände): ROT (gut erkennbar)
+   - .bne--cond       (Bedingungen): zurück zu GRAU (ruhig, gut lesbar, warmes Grau)
+   - .bne--attr       (Attribute): erhält das bisherige „Sage“-GRÜN (Fläche)
+   - .bne--cond-plain (Saves/Ability): GOLD (Fläche)
+   - .bne--action     (Action Economy): helles, neutrales BLAU (Fläche, Uppercase)
+   - .bne--advantage  (Advantage/Disadvantage): Outline-only in Action-Blau, NICHT Uppercase
+   - .bne--distance/.bne--range (Entfernungen): Outline-only VIOLETT (kein Hintergrund)
+   - .bne--dc         (DC): Outline-only (kein Hintergrund)
+   - .bne--info       (Standard): neutrales kühles Grau (Fläche)
+   - .bne--attack     (Attack): gedämpftes ORANGE (Fläche)
+   Typografie: insgesamt filigraner (geringeres Gewicht, leicht erhöhte Laufweite)
+   ======================================================================================= */
 
-  /* DC + Info (neutral grey) */
-  --bne-h-info: 210; --bne-s-info: 8%; --bne-l-info: 64%;
-
-  /* Creature attributes (emerald) */
-  --bne-h-attr: 142; --bne-s-attr: 60%; --bne-l-attr: 45%;
-
-  --bne-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", system-ui, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
-}
-
-html, body { color-scheme: light dark; font-family: var(--bne-font); }
-
-/* ---- Base chip ----------------------------------------------------------------------- */
+/* ---- Basis: gemeinsame Chip-Gestaltung ------------------------------------------------ */
 .bne-chip{
-  /* derived (overridden per category) */
-  --_h: var(--bne-h-info);
-  --_s: var(--bne-s-info);
-  --_l: var(--bne-l-info);
-
-  --_fg: hsl(var(--_h) var(--_s) calc(var(--_l) - 14%));
-  --_bg: hsla(var(--_h) var(--_s) var(--_l) / .18);
-  --_bd: hsla(var(--_h) var(--_s) calc(var(--_l) - 18%) / .44);
-
-  display: inline-flex; align-items: center;
-  padding: .10em .45em;
-  border: 1px solid var(--_bd);
-  background: var(--_bg);
-  color: var(--_fg);
-  border-radius: 3px;                 /* squared corners */
-  font-size: .78rem;                  /* smaller text */
-  line-height: 1.25;
-  font-weight: 600;
-  letter-spacing: .035em;             /* slightly wider tracking */
-  text-transform: none;
-  white-space: nowrap;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
+  display:inline-flex; align-items:center;
+  padding:.10em .45em;
+  border-radius:3px;
+  border:1px solid transparent;
+  font-size:.78rem; line-height:1.25;
+  font-weight:500;                /* filigraner als 600 */
+  letter-spacing:.035em;          /* leicht erhöhte Laufweite */
+  white-space:nowrap;
+  text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
 }
 
-/* Improve neutral chips in Dark Mode: brighter text and lighter background */
-@media (prefers-color-scheme: dark) {
-  .bne--info, .bne--dc {
-    --_fg: hsl(var(--_h) var(--_s) calc(var(--_l) + 12%));
-    --_bg: hsla(var(--_h) var(--_s) calc(var(--_l) + 16%) / .42);
-    --_bd: hsla(var(--_h) var(--_s) calc(var(--_l) + 6%) / .46);
-  }
-}
-
-/* ---- Categories ---------------------------------------------------------------------- */
-
-/* Conditions (boxed amber) */
-.bne--cond{
-  --_h: var(--bne-h-cond); --_s: var(--bne-s-cond); --_l: var(--bne-l-cond);
-  --_fg: hsl(var(--_h) var(--_s) calc(var(--_l) - 10%));
-  --_bg: hsla(var(--_h) var(--_s) var(--_l) / .16);
-  --_bd: hsla(var(--_h) var(--_s) calc(var(--_l) - 16%) / .46);
-  border-radius: 3px;
-  font-weight: 650;
-}
-
-/* Conditions (plain red text-only; no border/background) */
-.bne--cond-plain{
-  --_h: var(--bne-h-cond-plain); --_s: var(--bne-s-cond-plain); --_l: var(--bne-l-cond-plain);
-  background: transparent !important;
-  border: none !important;
-  color: hsl(var(--_h) var(--_s) var(--_l)) !important;
-  padding: 0 .08rem;
-  font-weight: 650;
-}
-
-/* Actions: cyan outline, uppercase but compact */
-.bne--action{
-  --_h: var(--bne-h-action); --_s: var(--bne-s-action); --_l: var(--bne-l-action);
-  --_bg: hsla(var(--_h) var(--_s) var(--_l) / .10);
-  --_bd: hsla(var(--_h) var(--_s) calc(var(--_l) - 12%) / .45);
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  font-size: .72rem;                  /* less dominant */
-  font-weight: 700;
-}
-
-/* DC + Info: neutral grey, tabular numerals for DC */
-.bne--dc, .bne--info{
-  --_h: var(--bne-h-info); --_s: var(--bne-s-info); --_l: var(--bne-l-info);
-  --_bg: hsla(var(--_h) var(--_s) var(--_l) / .20);
-  --_bd: hsla(var(--_h) var(--_s) calc(var(--_l) - 8%) / .44);
-}
-.bne--dc{
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1, "calt" 0;
-  letter-spacing: .02em;
-}
-
-/* Attributes: calm fill, slightly stronger than neutral */
-.bne--attr{
-  --_h: var(--bne-h-attr); --_s: var(--bne-s-attr); --_l: var(--bne-l-attr);
-  --_bg: hsla(var(--_h) var(--_s) var(--_l) / .20);
-  --_bd: hsla(var(--_h) var(--_s) calc(var(--_l) - 10%) / .46);
-}
-
-/* Optional compact size variant for tight layouts */
+/* Optional kompakt */
 .bne-chip.is-tight{ padding:.06em .38em; font-size:.72rem; }
+
+/* ---- Farb-Token (Fallbacks). Diese HSL-Werte können zentral überschrieben werden ------ */
+/* ROT für Foundry-Zustände */
+.bne--condition   { --_h: var(--bne-h-condition, 2);    --_s: var(--bne-s-condition, 70%);  --_l: var(--bne-l-condition, 52%); }
+/* GRAU (warmes Grau) für Bedingungen – sehr häufig, soll ruhig wirken */
+.bne--cond        { --_h: var(--bne-h-cond, 30);        --_s: var(--bne-s-cond, 10%);       --_l: var(--bne-l-cond, 52%); }
+/* GOLD für Saving Throws / Ability Rolls */
+.bne--cond-plain  { --_h: var(--bne-h-cond-plain, 38);  --_s: var(--bne-s-cond-plain, 72%); --_l: var(--bne-l-cond-plain, 54%); }
+/* BLAU für Action Economy */
+.bne--action      { --_h: var(--bne-h-action, 205);     --_s: var(--bne-s-action, 55%);     --_l: var(--bne-l-action, 55%); }
+/* ADV/DIS – neutral: nutzt Action-Blau (Outline-only) */
+.bne--advantage   { --_h: var(--bne-h-advantage, var(--bne-h-action, 205));
+                    --_s: var(--bne-s-advantage, var(--bne-s-action, 55%));
+                    --_l: var(--bne-l-advantage, var(--bne-l-action, 55%)); }
+/* ATTRIBUTE – „Sage“-GRÜN (Fläche) */
+.bne--attr        { --_h: var(--bne-h-attr, 150);       --_s: var(--bne-s-attr, 24%);       --_l: var(--bne-l-attr, 48%); }
+/* TARGET – kühles Blau-Grau (Fläche, geringer Attention-Draw) */
+.bne--target      { --_h: var(--bne-h-target, 210);     --_s: var(--bne-s-target, 28%);     --_l: var(--bne-l-target, 52%); }
+/* ATTACK – gedämpftes Orange (Fläche) */
+.bne--attack      { --_h: var(--bne-h-attack, 28);      --_s: var(--bne-s-attack, 70%);     --_l: var(--bne-l-attack, 54%); }
+/* INFO – neutrales kühles Grau (Fläche) */
+.bne--info        { --_h: var(--bne-h-info, 220);       --_s: var(--bne-s-info, 12%);       --_l: var(--bne-l-info, 54%); }
+/* DC – kühles Stahlgrau (Outline-only) */
+.bne--dc          { --_h: var(--bne-h-dc, 250);         --_s: var(--bne-s-dc, 16%);         --_l: var(--bne-l-dc, 54%); }
+/* DISTANCES/RANGE – Violett (Outline-only). Beide Klassen abgedeckt, falls bereits vergeben. */
+.bne--distance,
+.bne--range       { --_h: var(--bne-h-distance, 268);   --_s: var(--bne-s-distance, 34%);   --_l: var(--bne-l-distance, 50%); }
+
+/* ---- Typografie-Spezialfälle --------------------------------------------------------- */
+.bne--action{ text-transform:uppercase; letter-spacing:.06em; font-weight:540; } /* Uppercase darf etwas kräftiger sein */
+.bne--advantage{ text-transform:none; letter-spacing:.045em; font-weight:520; } /* Outline-only, nicht schreien */
+.bne--dc{ font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1, "calt" 0; letter-spacing:.02em; font-weight:510; }
+
+/* =======================================================================================
+   LIGHT MODE – helle, ruhige Flächen; klare, aber weiche Konturen
+   ======================================================================================= */
+.theme-light .bne--condition{      /* ROT (Fläche) */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) - 12%));
+  background: hsla(var(--_h) var(--_s) calc(var(--_l) + 8%) / .20);
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 18%) / .42);
+}
+.theme-light .bne--cond{           /* WARME GRAU-FLÄCHE – sehr häufig, maximal ruhig */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) - 8%));
+  background: hsla(var(--_h) var(--_s) calc(var(--_l) + 10%) / .12);
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 12%) / .26);
+}
+.theme-light .bne--cond-plain{     /* GOLD (Fläche) */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) - 10%));
+  background: hsla(var(--_h) var(--_s) calc(var(--_l) + 10%) / .16);
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 16%) / .34);
+}
+.theme-light .bne--action{         /* BLAU (Fläche) */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) - 16%));
+  background: hsla(var(--_h) var(--_s) calc(var(--_l) + 10%) / .16);
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 18%) / .40);
+}
+.theme-light .bne--advantage{      /* Outline-only in Action-Blau */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) - 10%));
+  background: transparent;
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 8%) / .50);
+  border-style:solid;
+}
+.theme-light .bne--attr{           /* SAGE-GRÜN (Fläche) */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) - 10%));
+  background: hsla(var(--_h) var(--_s) calc(var(--_l) + 8%) / .18);
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 16%) / .42);
+}
+.theme-light .bne--distance,
+.theme-light .bne--range{          /* VIOLETT Outline-only (kein Hintergrund) */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) - 6%));
+  background: transparent;
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 6%) / .48);
+  border-style:solid;
+}
+.theme-light .bne--target{         /* kühles Blau-Grau (Fläche, dezent) */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) - 6%));
+  background: hsla(var(--_h) var(--_s) calc(var(--_l) + 12%) / .12);
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 12%) / .30);
+}
+.theme-light .bne--attack{         /* gedämpftes Orange (Fläche) */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) - 10%));
+  background: hsla(var(--_h) var(--_s) calc(var(--_l) + 10%) / .14);
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 16%) / .34);
+}
+.theme-light .bne--info{           /* neutrales kühles Grau (Fläche) */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) - 10%));
+  background: hsla(var(--_h) var(--_s) var(--_l) / .18);
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 10%) / .40);
+}
+.theme-light .bne--dc{             /* DC: Outline-only (kein Hintergrund) */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) - 8%));
+  background: transparent;
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 8%) / .50);
+  border-style:solid;
+}
+
+/* =======================================================================================
+   DARK MODE – dunkle, ruhige Töne; helle Schrift; etwas kräftigere Konturen
+   ======================================================================================= */
+.theme-dark .bne--condition{       /* ROT (Fläche) */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 16%));
+  background: hsla(var(--_h) var(--_s) calc(var(--_l) - 6%) / .26);
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 22%) / .52);
+}
+.theme-dark .bne--cond{            /* WARME GRAU-FLÄCHE – sehr häufig, maximal ruhig */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 12%));
+  background: hsla(var(--_h) var(--_s) calc(var(--_l) - 8%) / .20);
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 20%) / .46);
+}
+.theme-dark .bne--cond-plain{      /* GOLD (Fläche) */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 14%));
+  background: hsla(var(--_h) var(--_s) calc(var(--_l) - 6%) / .24);
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 22%) / .52);
+}
+.theme-dark .bne--action{          /* BLAU (Fläche) */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 18%));
+  background: hsla(var(--_h) var(--_s) calc(var(--_l) - 8%) / .24);
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 22%) / .54);
+}
+.theme-dark .bne--advantage{       /* Outline-only in Action-Blau */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 14%));
+  background: transparent;
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 10%) / .60);
+  border-style:solid;
+}
+.theme-dark .bne--attr{            /* SAGE-GRÜN (Fläche) */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 16%));
+  background: hsla(var(--_h) var(--_s) calc(var(--_l) - 6%) / .26);
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 22%) / .50);
+}
+.theme-dark .bne--distance,
+.theme-dark .bne--range{           /* VIOLETT Outline-only */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 10%));
+  background: transparent;
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 12%) / .64);
+  border-style:solid;
+}
+.theme-dark .bne--target{          /* kühles Blau-Grau (Fläche, dezent) */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 12%));
+  background: hsla(var(--_h) var(--_s) calc(var(--_l) - 8%) / .22);
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 20%) / .48);
+}
+.theme-dark .bne--attack{          /* gedämpftes Orange (Fläche) */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 14%));
+  background: hsla(var(--_h) var(--_s) calc(var(--_l) - 8%) / .22);
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 22%) / .50);
+}
+.theme-dark .bne--info{            /* neutrales kühles Grau (Fläche) */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 12%));
+  background: hsla(var(--_h) var(--_s) calc(var(--_l) - 6%) / .26);
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 18%) / .50);
+}
+.theme-dark .bne--dc{              /* DC: Outline-only */
+  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 10%));
+  background: transparent;
+  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 12%) / .64);
+  border-style:solid;
+}
