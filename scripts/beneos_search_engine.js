@@ -933,10 +933,6 @@ export class BeneosSearchResults extends Dialog {
     })
 
     $(".token-search-data").on('dragstart', function (e) {
-      if (BeneosDatabaseHolder.getIsOffline()) {
-        return false
-      }
-
       let dragMode = $(e.target).data("drag-mode")
       if (dragMode == "none") {
         console.log("No drag mode", dragMode)
