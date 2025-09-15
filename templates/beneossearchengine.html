@@ -98,6 +98,27 @@
     </span>
 
     <span class="flexrow">
+      <label data-tooltip="The source book or module of the creature">Source : </label>
+      <select name="token-sources" class="beneos-selector" id="source-selector" data-dtype="String">
+        {{selectOptions tokenSources selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
+      </select>
+    </span>
+
+    <span class="flexrow">
+      <label data-tooltip="The campaign the creature belongs to">Campaign : </label>
+      <select name="token-campaigns" class="beneos-selector" id="campaign-selector" data-dtype="String">
+        {{selectOptions tokenCampaigns selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
+      </select>
+    </span>
+
+    <span class="flexrow">
+      <label data-tooltip="The typical role of a creature in an encounter">Faction : </label>
+      <select name="token-factions" class="beneos-selector" id="faction-selector" data-dtype="String">
+        {{selectOptions tokenFactions selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}
+      </select>
+    </span>
+
+    <span class="flexrow">
       <label data-tooltip="The typical way a creature fights">Fighting style : </label>
       <select name="token-fight-style" class="beneos-selector" id="token-fight-style" data-dtype="String">
         {{selectOptions fightingStyles selected="any" nameAttr="key" valueAttr="key" labelAttr="value"}}

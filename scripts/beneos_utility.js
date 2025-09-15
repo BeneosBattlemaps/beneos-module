@@ -635,6 +635,11 @@ export class BeneosUtility {
       }
       return text2
     })
+    Handlebars.registerHelper('beneosSubstr', function (text, len) {
+      if (typeof text !== 'string') return text
+      if (text.length <= len) return text
+      return text.substring(0, len) + "."
+    })
 
     //Token Magic Hack  Replacement to prevent double filters when changing animations
     if (typeof TokenMagic !== 'undefined') {
