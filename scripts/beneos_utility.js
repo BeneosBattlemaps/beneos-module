@@ -226,22 +226,28 @@ export class BeneosUtility {
       restricted: true
     })
 
-    /* Deprecated with Beneos Cloud :
-    game.settings.register(BeneosUtility.moduleID(), "beneos-animated-portrait-only", {
-      name: "Display only animated portrait",
-      hint: "If ticked, only portraits will be available ",
-      scope: 'world',
-      config: true,
-      default: false,
-      type: Boolean
-    })
-      */
-
     game.settings.register(BeneosUtility.moduleID(), 'beneos-database-local-storage', {
       name: 'Internal storage of the Beneos database',
       type: Object,
       scope: 'world',
       default: {},
+      config: false
+    })
+
+
+    // Keep track of the latest news/welcome message displayed
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-cloud-latest-news-id', {
+      name: 'Last news message ID',
+      type: String,
+      scope: 'world',
+      default: "",
+      config: false
+    })
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-cloud-latest-welcome-id', {
+      name: 'Last welcome message ID',
+      type: String,
+      scope: 'world',
+      default: "",
       config: false
     })
 
@@ -690,6 +696,114 @@ export class BeneosUtility {
       }
     }
     return statsBeneos
+  }
+
+  /********************************************************************************** */
+  static async checkWelcomeMessage() {
+    try {
+      const response = await fetch('https://beneos.cloud/messages/welcome_msg.json');
+      if (!response.ok) {
+        console.log("BeneosModule: Failed to fetch welcome message");
+        return;
+      }
+
+      const welcomeData = await response.json();
+
+      // Vérifier que les champs requis sont présents
+      if (!welcomeData.id || !welcomeData.created_at || !welcomeData.content) {
+        console.log("BeneosModule: Invalid welcome message format");
+        return;
+      }
+
+      // Récupérer l'ID du dernier message affiché
+      const lastWelcomeId = game.settings.get(BeneosUtility.moduleID(), 'beneos-cloud-latest-welcome-id');
+
+      // Si l'ID est différent, afficher le message
+      if (welcomeData.id !== lastWelcomeId) {
+        this.displayWelcomeDialog(welcomeData);
+      }
+    } catch (error) {
+      console.log("BeneosModule: Error checking welcome message:", error);
+    }
+  }
+
+  /********************************************************************************** */
+  static displayWelcomeDialog(welcomeData) {
+    new Dialog({
+      title: "Beneos Cloud - Welcome !",
+      content: `
+        <div style="padding: 10px;">
+          <p><strong>Date:</strong> ${new Date(welcomeData.created_at).toLocaleDateString()}</p>
+          <hr>
+          <div>${welcomeData.content}</div>
+        </div>
+      `,
+      buttons: {
+        ok: {
+          label: "Fermer",
+          callback: async () => {
+            // Enregistrer l'ID du message comme lu
+            await game.settings.set(BeneosUtility.moduleID(), 'beneos-cloud-latest-welcome-id', welcomeData.id);
+          }
+        }
+      },
+      default: "ok",
+      width: 500
+    }).render(true);
+  }
+
+  /********************************************************************************** */
+  static async checkNewsMessage() {
+    try {
+      const response = await fetch('https://beneos.cloud/messages/news_msg.json');
+      if (!response.ok) {
+        console.log("BeneosModule: Failed to fetch news message");
+        return;
+      }
+
+      const newsData = await response.json();
+
+      // Vérifier que les champs requis sont présents
+      if (!newsData.id || !newsData.created_at || !newsData.content) {
+        console.log("BeneosModule: Invalid news message format");
+        return;
+      }
+
+      // Récupérer l'ID du dernier message affiché
+      const lastNewsId = game.settings.get(BeneosUtility.moduleID(), 'beneos-cloud-latest-news-id');
+
+      // Si l'ID est différent, afficher le message
+      if (newsData.id !== lastNewsId) {
+        this.displayNewsDialog(newsData);
+      }
+    } catch (error) {
+      console.log("BeneosModule: Error checking news message:", error);
+    }
+  }
+
+  /********************************************************************************** */
+  static displayNewsDialog(newsData) {
+    new Dialog({
+      title: "Beneos Cloud - Laetst News",
+      content: `
+        <div style="padding: 10px;">
+          <p><strong>Date:</strong> ${new Date(newsData.created_at).toLocaleDateString()}</p>
+          <hr>
+          <div>${newsData.content}</div>
+        </div>
+      `,
+      buttons: {
+        ok: {
+          label: "Fermer",
+          callback: async () => {
+            // Enregistrer l'ID du message comme lu
+            await game.settings.set(BeneosUtility.moduleID(), 'beneos-cloud-latest-news-id', newsData.id);
+          }
+        }
+      },
+      default: "ok",
+      width: 500
+    }).render(true);
   }
 
   /********************************************************************************** */
