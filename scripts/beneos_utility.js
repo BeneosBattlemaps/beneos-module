@@ -728,28 +728,22 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
-  static displayWelcomeDialog(welcomeData) {
-    new Dialog({
-      title: "Beneos Cloud - Welcome !",
-      content: `
-        <div style="padding: 10px;">
-          <p><strong>Date:</strong> ${new Date(welcomeData.created_at).toLocaleDateString()}</p>
-          <hr>
+  static async displayWelcomeDialog(welcomeData) {
+    let guess = await foundry.applications.api.DialogV2.wait({
+      window: { title: "Beneos Cloud - Welcome !", contentClasses: "" },
+      content: `<div style="max-height:640px; overflow-y:auto; padding-right:8px;">
           <div>${welcomeData.content}</div>
-        </div>
-      `,
-      buttons: {
-        ok: {
-          label: "Fermer",
-          callback: async () => {
-            // Enregistrer l'ID du message comme lu
-            await game.settings.set(BeneosUtility.moduleID(), 'beneos-cloud-latest-welcome-id', welcomeData.id);
-          }
+          <hr>
+          <p> <strong>Message Date:</strong> ${new Date(welcomeData.created_at).toLocaleDateString()}</p >
+          </div>`,
+      buttons: [{
+        label: "Close",
+        callback: async () => {
+          // Enregistrer l'ID du message comme lu
+          await game.settings.set(BeneosUtility.moduleID(), 'beneos-cloud-latest-welcome-id', welcomeData.id);
         }
-      },
-      default: "ok",
-      width: 500
-    }).render(true);
+      }]
+    });
   }
 
   /********************************************************************************** */
@@ -782,28 +776,22 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
-  static displayNewsDialog(newsData) {
-    new Dialog({
-      title: "Beneos Cloud - Laetst News",
-      content: `
-        <div style="padding: 10px;">
-          <p><strong>Date:</strong> ${new Date(newsData.created_at).toLocaleDateString()}</p>
-          <hr>
+  static async displayNewsDialog(newsData) {
+    let guess = await foundry.applications.api.DialogV2.wait({
+      window: { title: "Beneos Cloud - Latest News !", contentClasses: "" },
+      content: `<div style="max-height:640px; overflow-y:auto; padding-right:8px;">
           <div>${newsData.content}</div>
-        </div>
-      `,
-      buttons: {
-        ok: {
-          label: "Fermer",
-          callback: async () => {
-            // Enregistrer l'ID du message comme lu
-            await game.settings.set(BeneosUtility.moduleID(), 'beneos-cloud-latest-news-id', newsData.id);
-          }
+          <hr>
+          <p> <strong>Message Date:</strong> ${new Date(newsData.created_at).toLocaleDateString()}</p >
+          </div>`,
+      buttons: [{
+        label: "Close",
+        callback: async () => {
+          // Enregistrer l'ID du message comme lu
+          await game.settings.set(BeneosUtility.moduleID(), 'beneos-cloud-latest-news-id', newsData.id);
         }
-      },
-      default: "ok",
-      width: 500
-    }).render(true);
+      }]
+    });
   }
 
   /********************************************************************************** */
