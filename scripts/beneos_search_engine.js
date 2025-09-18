@@ -406,10 +406,10 @@ export class BeneosDatabaseHolder {
     }
     // Add AC/HP
     if (properties.stat_hp) {
-      typeString += ",HP:" + properties.stat_hp
+      typeString += ", HP: " + properties.stat_hp
     }
     if (properties.stat_ac) {
-      typeString += ",AC:" + properties.stat_ac
+      typeString += ", AC: " + properties.stat_ac
     }
     properties.typeString = typeString
   }
@@ -524,7 +524,6 @@ export class BeneosDatabaseHolder {
         foundry.utils.mergeObject(this.itemOrigin, this.buildList(itemData.properties.origin))
         foundry.utils.mergeObject(this.itemType, this.buildList(itemData.properties.item_type))
         foundry.utils.mergeObject(this.itemTier, this.buildList(itemData.properties.tier))
-        // Deprecated foundry.utils.mergeObject(this.itemPrice, this.buildList(itemData.properties.price))
         this.processInstalledItem(itemData)
         if (itemData.isInstalled) {
           itemData.itemId = BeneosUtility.getItemId(key)
@@ -779,6 +778,7 @@ export class BeneosDatabaseHolder {
   static toTable(object) {
     let tab = []
     for (let key in object) {
+      key = String(key)
       if (tab.find((it) => it.key == key.toLowerCase()) == undefined) {
         tab.push({ key: key.toLowerCase(), value: key })
       }
@@ -1299,6 +1299,8 @@ export class BeneosSearchEngine extends Dialog {
             properties = foundry.utils.duplicate(BeneosDatabaseHolder.itemPrice)
           } else if (propDef.name.toLowerCase() == "grid") {
             properties = foundry.utils.duplicate(BeneosDatabaseHolder.gridList)
+          } else if (propDef.name.toLowerCase() == "tier") {
+            properties = foundry.utils.duplicate(BeneosDatabaseHolder.itemTier)
           } else if (propDef.name.toLowerCase() == "cr") {
             properties = foundry.utils.duplicate(BeneosDatabaseHolder.crList)
           } else if (typeof (item.properties[propDef.name]) == "string") {
