@@ -3,6 +3,17 @@
 All notable changes to this module will be documented in this file.
 
 ## Updates
+
+### 13.2.6 # 2025-09-20
+- New: There are new filter options for Beneos tokens. Campaign shows suggestions for campaigns where the creature fits well. Faction shows allies of the creature with synergy effects. Source now allows you to filter by Beneos tokens, SRD tokens, loyalty tokens, and shop content.
+- New: We now have a news and welcome window for new users, with links to the setup and our Discord for questions.
+- New: All tokens now have a label-formatted tactical guide in which terms and conditions are individually formatted to improve readability and make them even easier to understand.
+- New: All assets downloaded from the Beneos module are now world-specific, meaning they must be downloaded individually for each world, but they will no longer be deleted during module updates.
+- Updated: The tokens interface has been modified and the filters have been sorted alphabetically.
+- Fixed: The Download ALL button on the cloud website has been fixed.
+- Fixed: Several typos and rogue spaces. Dieser Text bricht jetzt ganz normal um, wenn du das Journalfenster verkleinerst.
+
+
 ### 13.2.5 # 2025-09-06
  - World compendiums have now been created for each world in which the downloads are stored. This means that the compendium will only be emptied during this last update and will remain untouched in the future, even during updates.
  - Cloud Website now has an "Already downloaded indicator"
