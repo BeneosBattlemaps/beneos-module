@@ -719,7 +719,7 @@ export class BeneosUtility {
       const lastWelcomeId = game.settings.get(BeneosUtility.moduleID(), 'beneos-cloud-latest-welcome-id');
 
       // Si l'ID est différent, afficher le message
-      if (welcomeData.id !== lastWelcomeId) {
+      if (!lastWelcomeId || lastWelcomeId == "" ) {
         this.displayWelcomeDialog(welcomeData);
       }
     } catch (error) {
@@ -731,7 +731,7 @@ export class BeneosUtility {
   static async displayWelcomeDialog(welcomeData) {
     let guess = await foundry.applications.api.DialogV2.wait({
       window: { title: "Beneos Cloud - Welcome !", contentClasses: "" },
-      content: `<div style="max-height:640px; overflow-y:auto; padding-right:8px;">
+      content: `<div style="max-height:640px; max-width:700px; overflow-y:auto; padding-right:8px;">
           <div>${welcomeData.content}</div>
           <hr>
           <p> <strong>Message Date:</strong> ${new Date(welcomeData.created_at).toLocaleDateString()}</p >
@@ -779,7 +779,7 @@ export class BeneosUtility {
   static async displayNewsDialog(newsData) {
     let guess = await foundry.applications.api.DialogV2.wait({
       window: { title: "Beneos Cloud - Latest News !", contentClasses: "" },
-      content: `<div style="max-height:640px; overflow-y:auto; padding-right:8px;">
+      content: `<div style="max-height:640px;  max-width:700px; overflow-y:auto; padding-right:8px;">
           <div>${newsData.content}</div>
           <hr>
           <p> <strong>Message Date:</strong> ${new Date(newsData.created_at).toLocaleDateString()}</p >
