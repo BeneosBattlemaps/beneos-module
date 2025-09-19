@@ -226,22 +226,28 @@ export class BeneosUtility {
       restricted: true
     })
 
-    /* Deprecated with Beneos Cloud :
-    game.settings.register(BeneosUtility.moduleID(), "beneos-animated-portrait-only", {
-      name: "Display only animated portrait",
-      hint: "If ticked, only portraits will be available ",
-      scope: 'world',
-      config: true,
-      default: false,
-      type: Boolean
-    })
-      */
-
     game.settings.register(BeneosUtility.moduleID(), 'beneos-database-local-storage', {
       name: 'Internal storage of the Beneos database',
       type: Object,
       scope: 'world',
       default: {},
+      config: false
+    })
+
+
+    // Keep track of the latest news/welcome message displayed
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-cloud-latest-news-id', {
+      name: 'Last news message ID',
+      type: String,
+      scope: 'world',
+      default: "",
+      config: false
+    })
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-cloud-latest-welcome-id', {
+      name: 'Last welcome message ID',
+      type: String,
+      scope: 'world',
+      default: "",
       config: false
     })
 
@@ -635,6 +641,11 @@ export class BeneosUtility {
       }
       return text2
     })
+    Handlebars.registerHelper('beneosSubstr', function (text, len) {
+      if (typeof text !== 'string') return text
+      if (text.length <= len) return text
+      return text.substring(0, len) + "."
+    })
 
     //Token Magic Hack  Replacement to prevent double filters when changing animations
     if (typeof TokenMagic !== 'undefined') {
@@ -685,6 +696,102 @@ export class BeneosUtility {
       }
     }
     return statsBeneos
+  }
+
+  /********************************************************************************** */
+  static async checkWelcomeMessage() {
+    try {
+      const response = await fetch('https://beneos.cloud/messages/welcome_msg.json');
+      if (!response.ok) {
+        console.log("BeneosModule: Failed to fetch welcome message");
+        return;
+      }
+
+      const welcomeData = await response.json();
+
+      // Vérifier que les champs requis sont présents
+      if (!welcomeData.id || !welcomeData.created_at || !welcomeData.content) {
+        console.log("BeneosModule: Invalid welcome message format");
+        return;
+      }
+
+      // Récupérer l'ID du dernier message affiché
+      const lastWelcomeId = game.settings.get(BeneosUtility.moduleID(), 'beneos-cloud-latest-welcome-id');
+
+      // Si l'ID est différent, afficher le message
+      if (!lastWelcomeId || lastWelcomeId == "" ) {
+        this.displayWelcomeDialog(welcomeData);w
+      }
+    } catch (error) {
+      console.log("BeneosModule: Error checking welcome message:", error);
+    }
+  }
+
+  /********************************************************************************** */
+  static async displayWelcomeDialog(welcomeData) {
+    let guess = await foundry.applications.api.DialogV2.wait({
+      window: { title: "Beneos Cloud - Welcome !", contentClasses: "" },
+      content: `<div style="max-height:640px; max-width:700px; overflow-y:auto; padding-right:8px;">
+          <div>${welcomeData.content}</div>
+          <hr>
+          <p> <strong>Message Date:</strong> ${new Date(welcomeData.created_at).toLocaleDateString()}</p >
+          </div>`,
+      buttons: [{
+        label: "Close",
+        callback: async () => {
+          // Enregistrer l'ID du message comme lu
+          await game.settings.set(BeneosUtility.moduleID(), 'beneos-cloud-latest-welcome-id', welcomeData.id);
+        }
+      }]
+    });
+  }
+
+  /********************************************************************************** */
+  static async checkNewsMessage() {
+    try {
+      const response = await fetch('https://beneos.cloud/messages/news_msg.json');
+      if (!response.ok) {
+        console.log("BeneosModule: Failed to fetch news message");
+        return;
+      }
+
+      const newsData = await response.json();
+
+      // Vérifier que les champs requis sont présents
+      if (!newsData.id || !newsData.created_at || !newsData.content) {
+        console.log("BeneosModule: Invalid news message format");
+        return;
+      }
+
+      // Récupérer l'ID du dernier message affiché
+      const lastNewsId = game.settings.get(BeneosUtility.moduleID(), 'beneos-cloud-latest-news-id');
+
+      // Si l'ID est différent, afficher le message
+      if (newsData.id !== lastNewsId) {
+        this.displayNewsDialog(newsData);
+      }
+    } catch (error) {
+      console.log("BeneosModule: Error checking news message:", error);
+    }
+  }
+
+  /********************************************************************************** */
+  static async displayNewsDialog(newsData) {
+    let guess = await foundry.applications.api.DialogV2.wait({
+      window: { title: "Beneos Cloud - Latest News !", contentClasses: "" },
+      content: `<div style="max-height:640px;  max-width:700px; overflow-y:auto; padding-right:8px;">
+          <div>${newsData.content}</div>
+          <hr>
+          <p> <strong>Message Date:</strong> ${new Date(newsData.created_at).toLocaleDateString()}</p >
+          </div>`,
+      buttons: [{
+        label: "Close",
+        callback: async () => {
+          // Enregistrer l'ID du message comme lu
+          await game.settings.set(BeneosUtility.moduleID(), 'beneos-cloud-latest-news-id', newsData.id);
+        }
+      }]
+    });
   }
 
   /********************************************************************************** */

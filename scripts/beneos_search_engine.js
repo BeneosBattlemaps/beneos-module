@@ -386,9 +386,42 @@ export class BeneosDatabaseHolder {
   }
 
   /********************************************************************************** */
+  static buildTypeACHPString(properties) {
+    if (!properties.type || properties.type.length == 0) {
+      properties.typeString = ""
+      return
+    }
+    let typeString = properties.type[0].charAt(0).toUpperCase() + properties.type[0].slice(1)
+    // For each type above the first, put them into (), comma separated
+    if (properties.type.length > 1) {
+      typeString += " ("
+      for (let i = 1; i < properties.type.length; i++) {
+        if (i > 1) {
+          typeString += ", "
+        }
+        // Uppercase first letter
+        typeString += properties.type[i].charAt(0).toUpperCase() + properties.type[i].slice(1)
+      }
+      typeString += ")"
+    }
+    // Add AC/HP
+    /* No more displayed
+    if (properties.stat_hp) {
+      typeString += ", HP: " + properties.stat_hp
+    }
+    if (properties.stat_ac) {
+      typeString += ", AC: " + properties.stat_ac
+    }*/
+    properties.typeString = typeString
+  }
+
+  /********************************************************************************** */
   static buildSearchData() {
     this.tokenTypes = {}
     this.tokenBioms = {}
+    this.tokenFactions = {}
+    this.tokenCampaigns = {}
+    this.tokenSources = {}
     this.bmapBioms = {}
     this.fightingStyles = {}
     this.bmapBrightness = {}
@@ -419,12 +452,15 @@ export class BeneosDatabaseHolder {
         tokenData.key = key
         tokenData.picture = "https://www.beneos-database.com/data/tokens/thumbnails_v2/" + tokenData.properties.thumbnail
         foundry.utils.mergeObject(this.tokenBioms, this.buildList(tokenData.properties.biom))
+        foundry.utils.mergeObject(this.tokenFactions, this.buildList(tokenData.properties.faction))
+        foundry.utils.mergeObject(this.tokenSources, this.buildList(tokenData.properties.source))
         foundry.utils.mergeObject(this.tokenTypes, this.buildList(tokenData.properties.type))
         foundry.utils.mergeObject(this.fightingStyles, this.buildList(tokenData.properties.fightingstyle))
-        //foundry.utils.mergeObject(this.crList, this.buildList(tokenData.properties.cr))
         foundry.utils.mergeObject(this.movementList, this.buildList(tokenData.properties.movement))
         foundry.utils.mergeObject(this.purposeList, this.buildList(tokenData.properties.purpose))
+        foundry.utils.mergeObject(this.tokenCampaigns, this.buildList(tokenData.properties.campaign))
         this.processInstalledToken(tokenData)
+        this.buildTypeACHPString(tokenData.properties)
         if (tokenData.installed === "notinstalled") {
           continue; // Skip the rest of the processing if not installed (ie only cloud/installed listing)
         }
@@ -489,7 +525,6 @@ export class BeneosDatabaseHolder {
         foundry.utils.mergeObject(this.itemOrigin, this.buildList(itemData.properties.origin))
         foundry.utils.mergeObject(this.itemType, this.buildList(itemData.properties.item_type))
         foundry.utils.mergeObject(this.itemTier, this.buildList(itemData.properties.tier))
-        // Deprecated foundry.utils.mergeObject(this.itemPrice, this.buildList(itemData.properties.price))
         this.processInstalledItem(itemData)
         if (itemData.isInstalled) {
           itemData.itemId = BeneosUtility.getItemId(key)
@@ -744,6 +779,7 @@ export class BeneosDatabaseHolder {
   static toTable(object) {
     let tab = []
     for (let key in object) {
+      key = String(key)
       if (tab.find((it) => it.key == key.toLowerCase()) == undefined) {
         tab.push({ key: key.toLowerCase(), value: key })
       }
@@ -775,6 +811,9 @@ export class BeneosDatabaseHolder {
       tokenBioms: this.toTable(this.tokenBioms),
       bmapBioms: this.toTable(this.bmapBioms),
       tokenTypes: this.toTable(this.tokenTypes),
+      tokenFactions: this.toTable(this.tokenFactions),
+      tokenSources: this.toTable(this.tokenSources),
+      tokenCampaigns: this.toTable(this.tokenCampaigns),
       fightingStyles: this.toTable(this.fightingStyles),
       bmapBrightness: this.toTable(this.bmapBrightness),
       movementList: this.toTable(this.movementList),
@@ -1105,6 +1144,9 @@ export class BeneosSearchResults extends Dialog {
 const __propertyDefList = {
   "grid": { name: "grid", selectors: ["bmap-grid"] },
   "biom": { name: "biom", sort: true, selectors: ["bioms-selector", "bioms-selector-2"] },
+  "faction": { name: "faction", sort: true, selectors: ["faction-selector"] },
+  "source": { name: "source", sort: true, selectors: ["source-selector"] },
+  "campaign": { name: "campaign", sort: true, selectors: ["campaign-selector"] },
   "adventure": { name: "adventure", sort: true, selectors: ["bmap-adventure"] },
   "type": { name: "type", sort: true, selectors: ["kind-selector"] },
   "token-types": { name: "type", sort: true, selectors: ["token-types"] },
@@ -1258,6 +1300,8 @@ export class BeneosSearchEngine extends Dialog {
             properties = foundry.utils.duplicate(BeneosDatabaseHolder.itemPrice)
           } else if (propDef.name.toLowerCase() == "grid") {
             properties = foundry.utils.duplicate(BeneosDatabaseHolder.gridList)
+          } else if (propDef.name.toLowerCase() == "tier") {
+            properties = foundry.utils.duplicate(BeneosDatabaseHolder.itemTier)
           } else if (propDef.name.toLowerCase() == "cr") {
             properties = foundry.utils.duplicate(BeneosDatabaseHolder.crList)
           } else if (typeof (item.properties[propDef.name]) == "string") {
@@ -1333,50 +1377,46 @@ export class BeneosSearchEngine extends Dialog {
       template = 'modules/beneos-module/templates/beneos-search-results-battlemaps.html'
     }
 
-    // Always display New/Updated in top of the resulting search list, cf #165
+    // Always display New/Updated in top of the resulting search list, cf ticket#165
     // First push the results with the isUpdate property
     let count = 0
     let resTab2 = []
-    if (!isFiltered) {
-      for (let key in results) {
-        if (results[key].isUpdate) {
-          resTab.push(results[key])
-          count++;
-        }
-      }
-      // Then push the results with the isNew property
-      for (let key in results) {
-        if (results[key].isNew) {
-          resTab.push(results[key])
-          count++;
-        }
-      }
-      // Then push remaining ones
-      for (let key in results) {
-        if (!results[key].isUpdate && !results[key].isNew) {
-          resTab2.push(results[key])
-          count++;
-        }
-        if (count > 100) {
-          break
-        }
-      }
-    } else {
-      // If filtered, push all results in restTab2
-      for (let key in results) {
-        resTab2.push(results[key])
+    let resTab3 = []
+    for (let key in results) {
+      if (results[key].isUpdate) {
+        resTab.push(results[key])
         count++;
-        if (count > 100) {
-          break
-        }
+      }
+    }
+    // Then push the results with the isNew property
+    for (let key in results) {
+      if (results[key].isNew) {
+        resTab.push(results[key])
+        count++;
+      }
+    }
+    // Then push remaining ones
+    for (let key in results) {
+      if (!results[key].isUpdate && !results[key].isNew && (results[key].isInstallable || results[key].isInstalled)) {
+        resTab2.push(results[key])
+      } else if (!results[key].isInstallable) {
+        resTab3.push(results[key])
+      }
+      count++;
+      if (count > 100) {
+        break
       }
     }
 
     // Sort the final results
     resTab2.sort(function (a, b) { return a.name.trim().localeCompare(b.name.trim()) })
+    resTab3.sort(function (a, b) { return a.name.trim().localeCompare(b.name.trim()) })
     // then merge resTab and resTab2
     for (let key in resTab2) {
       resTab.push(resTab2[key])
+    }
+    for (let key in resTab3) {
+      resTab.push(resTab3[key])
     }
     console.log("Final results", resTab)
 
@@ -1702,7 +1742,6 @@ export class BeneosSearchEngine extends Dialog {
     })
 
     $("#beneos-cloud-create-account").click(event => {
-      // Exemple d'utilisation :
       BeneosUtility.openPostInNewTab('https://beneos.cloud/', { 'request-register': 1 });
     })
 

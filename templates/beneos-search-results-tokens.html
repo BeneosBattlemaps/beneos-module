@@ -46,10 +46,10 @@
           </div>
 
           {{#if result.isInstallable}}
-          <div class="beneos-search-middle flexcol token-search-data selected-batch" data-type="Actor"
+          <div class="beneos-search-middle token-search-data selected-batch" data-type="Actor"
             data-document-id="{{result.actorId}}" data-drag-mode="{{result.dragMode}}" draggable="true">
             {{else}}
-            <div class="beneos-search-middle flexcol">
+            <div class="beneos-search-middle ">
               {{/if}}
 
               <img class="bsr_top_border" src="modules/beneos-module/ui/border_top.webp" />
@@ -74,9 +74,7 @@
                 <div class="item-properties-box item-properties-tokens">
                   <span class="beneos-search-text01">
                     <label>{{beneosUpperFirst result.properties.size}}</label>
-                    {{#each result.properties.type as |type key|}}
-                    <label>{{beneosUpperFirst type}}</label>
-                    {{/each}}
+                    <label>{{result.properties.typeString}}</label>
                   </span>
                 </div>
               </div>
@@ -105,8 +103,11 @@
                 {{/each}}
               </div>
 
-              <label class="release-url"><a href="{{result.properties.releaseurl}}">{{#if result.isInstallable}}
-                  {{else}}GET ACCESS{{/if}}</a></label>
+              <!-- <label class="release-url"><a href="{{result.properties.releaseurl}}">{{#if result.isInstallable}}
+                  {{else}}GET ACCESS{{/if}}</a></label> -->
+              <div class="release-url">
+                <label>{{result.properties.shortdesc}}</label>
+              </div>
             </div>
           </div>
 
@@ -162,7 +163,8 @@
                   <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_offline.webp">
                   {{#if @root.isCloudLoggedIn}}
                   <label class="item-right-text-content beneos-search-notinstalled beneos-search-noaccess"
-                    data-tooltip="You are not logged in or have not purchased this asset.">NO ACCESS</label>
+                    data-tooltip="You are not logged in or have not purchased this asset.">
+                    <a href="{{result.properties.releaseurl}}" target="_blank">NO ACCESS</a></label>
                   {{else}}
                   {{#if @root.isOffline}}
                   <label class="item-right-text-content beneos-search-notinstalled beneos-search-notconnected"
@@ -198,8 +200,7 @@
                   <div class="beneos-tooltiptext beneos-token-description">
                   </div>
                   <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
-                  <label class="item-right-text-content">AC:
-                    <strong>{{result.properties.stat_ac}}</strong>
+                  <label class="item-right-text-content"><strong>{{result.properties.source}}</strong>
                   </label>
                 </div>
               </div>
@@ -209,12 +210,12 @@
                   <div class="beneos-tooltiptext beneos-token-description">
                   </div>
                   <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
-                  <label class="item-right-text-content">HP:
-                    <strong>{{result.properties.stat_hp}}</strong></label>
+                  <label class="item-right-text-content" data-tooltip="{{result.properties.faction}}">
+                    <strong>{{beneosSubstr result.properties.faction 10}}</strong></label>
                 </div>
               </div>
 
-              <div class="video-button-container">
+              <div class=" video-button-container">
                 <label class="beneos-search-yt-button beneos-search-yt-button-shifted"><a class="beneos-button-yt"
                     href="{{result.properties.videourl}}"><img class="beneos-search-yt-icons"
                       src="modules/beneos-module/icons/yt_Logo.webp"></a></label>

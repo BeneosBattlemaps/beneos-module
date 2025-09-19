@@ -1255,176 +1255,294 @@ i.beneos-module {
    ======================================================================================= */
 
 /* ---- Basis: gemeinsame Chip-Gestaltung ------------------------------------------------ */
-.bne-chip{
-  display:inline-flex; align-items:center;
-  padding:.10em .45em;
-  border-radius:3px;
-  border:1px solid transparent;
-  font-size:.78rem; line-height:1.25;
-  font-weight:500;                /* filigraner als 600 */
-  letter-spacing:.035em;          /* leicht erhöhte Laufweite */
-  white-space:nowrap;
-  text-rendering:optimizeLegibility;
-  -webkit-font-smoothing:antialiased;
+.bne-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: .10em .45em;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  font-size: .78rem;
+  line-height: 1.25;
+  font-weight: 500;
+  /* filigraner als 600 */
+  letter-spacing: .035em;
+  /* leicht erhöhte Laufweite */
+  white-space: nowrap;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Optional kompakt */
-.bne-chip.is-tight{ padding:.06em .38em; font-size:.72rem; }
+.bne-chip.is-tight {
+  padding: .06em .38em;
+  font-size: .72rem;
+}
 
 /* ---- Farb-Token (Fallbacks). Diese HSL-Werte können zentral überschrieben werden ------ */
 /* ROT für Foundry-Zustände */
-.bne--condition   { --_h: var(--bne-h-condition, 2);    --_s: var(--bne-s-condition, 70%);  --_l: var(--bne-l-condition, 52%); }
+.bne--condition {
+  --_h: var(--bne-h-condition, 2);
+  --_s: var(--bne-s-condition, 70%);
+  --_l: var(--bne-l-condition, 52%);
+}
+
 /* GRAU (warmes Grau) für Bedingungen – sehr häufig, soll ruhig wirken */
-.bne--cond        { --_h: var(--bne-h-cond, 30);        --_s: var(--bne-s-cond, 10%);       --_l: var(--bne-l-cond, 52%); }
+.bne--cond {
+  --_h: var(--bne-h-cond, 30);
+  --_s: var(--bne-s-cond, 10%);
+  --_l: var(--bne-l-cond, 52%);
+}
+
 /* GOLD für Saving Throws / Ability Rolls */
-.bne--cond-plain  { --_h: var(--bne-h-cond-plain, 38);  --_s: var(--bne-s-cond-plain, 72%); --_l: var(--bne-l-cond-plain, 54%); }
+.bne--cond-plain {
+  --_h: var(--bne-h-cond-plain, 38);
+  --_s: var(--bne-s-cond-plain, 72%);
+  --_l: var(--bne-l-cond-plain, 54%);
+}
+
 /* BLAU für Action Economy */
-.bne--action      { --_h: var(--bne-h-action, 205);     --_s: var(--bne-s-action, 55%);     --_l: var(--bne-l-action, 55%); }
+.bne--action {
+  --_h: var(--bne-h-action, 205);
+  --_s: var(--bne-s-action, 55%);
+  --_l: var(--bne-l-action, 55%);
+}
+
 /* ADV/DIS – neutral: nutzt Action-Blau (Outline-only) */
-.bne--advantage   { --_h: var(--bne-h-advantage, var(--bne-h-action, 205));
-                    --_s: var(--bne-s-advantage, var(--bne-s-action, 55%));
-                    --_l: var(--bne-l-advantage, var(--bne-l-action, 55%)); }
+.bne--advantage {
+  --_h: var(--bne-h-advantage, var(--bne-h-action, 205));
+  --_s: var(--bne-s-advantage, var(--bne-s-action, 55%));
+  --_l: var(--bne-l-advantage, var(--bne-l-action, 55%));
+}
+
 /* ATTRIBUTE – „Sage“-GRÜN (Fläche) */
-.bne--attr        { --_h: var(--bne-h-attr, 150);       --_s: var(--bne-s-attr, 24%);       --_l: var(--bne-l-attr, 48%); }
+.bne--attr {
+  --_h: var(--bne-h-attr, 150);
+  --_s: var(--bne-s-attr, 24%);
+  --_l: var(--bne-l-attr, 48%);
+}
+
 /* TARGET – kühles Blau-Grau (Fläche, geringer Attention-Draw) */
-.bne--target      { --_h: var(--bne-h-target, 210);     --_s: var(--bne-s-target, 28%);     --_l: var(--bne-l-target, 52%); }
+.bne--target {
+  --_h: var(--bne-h-target, 210);
+  --_s: var(--bne-s-target, 28%);
+  --_l: var(--bne-l-target, 52%);
+}
+
 /* ATTACK – gedämpftes Orange (Fläche) */
-.bne--attack      { --_h: var(--bne-h-attack, 28);      --_s: var(--bne-s-attack, 70%);     --_l: var(--bne-l-attack, 54%); }
+.bne--attack {
+  --_h: var(--bne-h-attack, 28);
+  --_s: var(--bne-s-attack, 70%);
+  --_l: var(--bne-l-attack, 54%);
+}
+
 /* INFO – neutrales kühles Grau (Fläche) */
-.bne--info        { --_h: var(--bne-h-info, 220);       --_s: var(--bne-s-info, 12%);       --_l: var(--bne-l-info, 54%); }
+.bne--info {
+  --_h: var(--bne-h-info, 220);
+  --_s: var(--bne-s-info, 12%);
+  --_l: var(--bne-l-info, 54%);
+}
+
 /* DC – kühles Stahlgrau (Outline-only) */
-.bne--dc          { --_h: var(--bne-h-dc, 250);         --_s: var(--bne-s-dc, 16%);         --_l: var(--bne-l-dc, 54%); }
+.bne--dc {
+  --_h: var(--bne-h-dc, 250);
+  --_s: var(--bne-s-dc, 16%);
+  --_l: var(--bne-l-dc, 54%);
+}
+
 /* DISTANCES/RANGE – Violett (Outline-only). Beide Klassen abgedeckt, falls bereits vergeben. */
 .bne--distance,
-.bne--range       { --_h: var(--bne-h-distance, 268);   --_s: var(--bne-s-distance, 34%);   --_l: var(--bne-l-distance, 50%); }
+.bne--range {
+  --_h: var(--bne-h-distance, 268);
+  --_s: var(--bne-s-distance, 34%);
+  --_l: var(--bne-l-distance, 50%);
+}
 
 /* ---- Typografie-Spezialfälle --------------------------------------------------------- */
-.bne--action{ text-transform:uppercase; letter-spacing:.06em; font-weight:540; } /* Uppercase darf etwas kräftiger sein */
-.bne--advantage{ text-transform:none; letter-spacing:.045em; font-weight:520; } /* Outline-only, nicht schreien */
-.bne--dc{ font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1, "calt" 0; letter-spacing:.02em; font-weight:510; }
+.bne--action {
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-weight: 540;
+}
+
+/* Uppercase darf etwas kräftiger sein */
+.bne--advantage {
+  text-transform: none;
+  letter-spacing: .045em;
+  font-weight: 520;
+}
+
+/* Outline-only, nicht schreien */
+.bne--dc {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "calt" 0;
+  letter-spacing: .02em;
+  font-weight: 510;
+}
 
 /* =======================================================================================
    LIGHT MODE – helle, ruhige Flächen; klare, aber weiche Konturen
    ======================================================================================= */
-.theme-light .bne--condition{      /* ROT (Fläche) */
+.theme-light .bne--condition {
+  /* ROT (Fläche) */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) - 12%));
   background: hsla(var(--_h) var(--_s) calc(var(--_l) + 8%) / .20);
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 18%) / .42);
 }
-.theme-light .bne--cond{           /* WARME GRAU-FLÄCHE – sehr häufig, maximal ruhig */
+
+.theme-light .bne--cond {
+  /* WARME GRAU-FLÄCHE – sehr häufig, maximal ruhig */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) - 8%));
   background: hsla(var(--_h) var(--_s) calc(var(--_l) + 10%) / .12);
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 12%) / .26);
 }
-.theme-light .bne--cond-plain{     /* GOLD (Fläche) */
+
+.theme-light .bne--cond-plain {
+  /* GOLD (Fläche) */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) - 10%));
   background: hsla(var(--_h) var(--_s) calc(var(--_l) + 10%) / .16);
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 16%) / .34);
 }
-.theme-light .bne--action{         /* BLAU (Fläche) */
+
+.theme-light .bne--action {
+  /* BLAU (Fläche) */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) - 16%));
   background: hsla(var(--_h) var(--_s) calc(var(--_l) + 10%) / .16);
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 18%) / .40);
 }
-.theme-light .bne--advantage{      /* Outline-only in Action-Blau */
+
+.theme-light .bne--advantage {
+  /* Outline-only in Action-Blau */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) - 10%));
   background: transparent;
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 8%) / .50);
-  border-style:solid;
+  border-style: solid;
 }
-.theme-light .bne--attr{           /* SAGE-GRÜN (Fläche) */
+
+.theme-light .bne--attr {
+  /* SAGE-GRÜN (Fläche) */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) - 10%));
   background: hsla(var(--_h) var(--_s) calc(var(--_l) + 8%) / .18);
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 16%) / .42);
 }
+
 .theme-light .bne--distance,
-.theme-light .bne--range{          /* VIOLETT Outline-only (kein Hintergrund) */
+.theme-light .bne--range {
+  /* VIOLETT Outline-only (kein Hintergrund) */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) - 6%));
   background: transparent;
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 6%) / .48);
-  border-style:solid;
+  border-style: solid;
 }
-.theme-light .bne--target{         /* kühles Blau-Grau (Fläche, dezent) */
+
+.theme-light .bne--target {
+  /* kühles Blau-Grau (Fläche, dezent) */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) - 6%));
   background: hsla(var(--_h) var(--_s) calc(var(--_l) + 12%) / .12);
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 12%) / .30);
 }
-.theme-light .bne--attack{         /* gedämpftes Orange (Fläche) */
+
+.theme-light .bne--attack {
+  /* gedämpftes Orange (Fläche) */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) - 10%));
   background: hsla(var(--_h) var(--_s) calc(var(--_l) + 10%) / .14);
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 16%) / .34);
 }
-.theme-light .bne--info{           /* neutrales kühles Grau (Fläche) */
+
+.theme-light .bne--info {
+  /* neutrales kühles Grau (Fläche) */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) - 10%));
   background: hsla(var(--_h) var(--_s) var(--_l) / .18);
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 10%) / .40);
 }
-.theme-light .bne--dc{             /* DC: Outline-only (kein Hintergrund) */
+
+.theme-light .bne--dc {
+  /* DC: Outline-only (kein Hintergrund) */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) - 8%));
   background: transparent;
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 8%) / .50);
-  border-style:solid;
+  border-style: solid;
 }
 
 /* =======================================================================================
    DARK MODE – dunkle, ruhige Töne; helle Schrift; etwas kräftigere Konturen
    ======================================================================================= */
-.theme-dark .bne--condition{       /* ROT (Fläche) */
+.theme-dark .bne--condition {
+  /* ROT (Fläche) */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) + 16%));
   background: hsla(var(--_h) var(--_s) calc(var(--_l) - 6%) / .26);
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 22%) / .52);
 }
-.theme-dark .bne--cond{            /* WARME GRAU-FLÄCHE – sehr häufig, maximal ruhig */
+
+.theme-dark .bne--cond {
+  /* WARME GRAU-FLÄCHE – sehr häufig, maximal ruhig */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) + 12%));
   background: hsla(var(--_h) var(--_s) calc(var(--_l) - 8%) / .20);
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 20%) / .46);
 }
-.theme-dark .bne--cond-plain{      /* GOLD (Fläche) */
+
+.theme-dark .bne--cond-plain {
+  /* GOLD (Fläche) */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) + 14%));
   background: hsla(var(--_h) var(--_s) calc(var(--_l) - 6%) / .24);
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 22%) / .52);
 }
-.theme-dark .bne--action{          /* BLAU (Fläche) */
+
+.theme-dark .bne--action {
+  /* BLAU (Fläche) */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) + 18%));
   background: hsla(var(--_h) var(--_s) calc(var(--_l) - 8%) / .24);
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 22%) / .54);
 }
-.theme-dark .bne--advantage{       /* Outline-only in Action-Blau */
+
+.theme-dark .bne--advantage {
+  /* Outline-only in Action-Blau */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) + 14%));
   background: transparent;
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 10%) / .60);
-  border-style:solid;
+  border-style: solid;
 }
-.theme-dark .bne--attr{            /* SAGE-GRÜN (Fläche) */
+
+.theme-dark .bne--attr {
+  /* SAGE-GRÜN (Fläche) */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) + 16%));
   background: hsla(var(--_h) var(--_s) calc(var(--_l) - 6%) / .26);
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 22%) / .50);
 }
+
 .theme-dark .bne--distance,
-.theme-dark .bne--range{           /* VIOLETT Outline-only */
+.theme-dark .bne--range {
+  /* VIOLETT Outline-only */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) + 10%));
   background: transparent;
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 12%) / .64);
-  border-style:solid;
+  border-style: solid;
 }
-.theme-dark .bne--target{          /* kühles Blau-Grau (Fläche, dezent) */
+
+.theme-dark .bne--target {
+  /* kühles Blau-Grau (Fläche, dezent) */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) + 12%));
   background: hsla(var(--_h) var(--_s) calc(var(--_l) - 8%) / .22);
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 20%) / .48);
 }
-.theme-dark .bne--attack{          /* gedämpftes Orange (Fläche) */
+
+.theme-dark .bne--attack {
+  /* gedämpftes Orange (Fläche) */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) + 14%));
   background: hsla(var(--_h) var(--_s) calc(var(--_l) - 8%) / .22);
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 22%) / .50);
 }
-.theme-dark .bne--info{            /* neutrales kühles Grau (Fläche) */
+
+.theme-dark .bne--info {
+  /* neutrales kühles Grau (Fläche) */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) + 12%));
   background: hsla(var(--_h) var(--_s) calc(var(--_l) - 6%) / .26);
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 18%) / .50);
 }
-.theme-dark .bne--dc{              /* DC: Outline-only */
+
+.theme-dark .bne--dc {
+  /* DC: Outline-only */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) + 10%));
   background: transparent;
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 12%) / .64);
-  border-style:solid;
+  border-style: solid;
 }

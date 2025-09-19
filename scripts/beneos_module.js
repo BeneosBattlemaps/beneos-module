@@ -49,6 +49,12 @@ Hooks.once('ready', () => {
   //BeneosUtility.checkLockViewPresence()
   game.beneos.cloud.loginAttempt()
 
+  // Vérifier et afficher le message de bienvenue si nécessaire
+  BeneosUtility.checkWelcomeMessage()
+
+  // Vérifier et afficher le message de news si nécessaire
+  BeneosUtility.checkNewsMessage()
+
   if (game.settings.get(BeneosUtility.moduleID(), "beneos-reload-search-engine")) {
     setTimeout(() => {
       game.settings.set(BeneosUtility.moduleID(), "beneos-reload-search-engine", false)
