@@ -720,7 +720,7 @@ export class BeneosUtility {
 
       // Si l'ID est différent, afficher le message
       if (!lastWelcomeId || lastWelcomeId == "" ) {
-        this.displayWelcomeDialog(welcomeData);
+        this.displayWelcomeDialog(welcomeData);w
       }
     } catch (error) {
       console.log("BeneosModule: Error checking welcome message:", error);

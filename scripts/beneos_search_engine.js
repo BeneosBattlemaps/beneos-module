@@ -1742,7 +1742,6 @@ export class BeneosSearchEngine extends Dialog {
     })
 
     $("#beneos-cloud-create-account").click(event => {
-      // Exemple d'utilisation :
       BeneosUtility.openPostInNewTab('https://beneos.cloud/', { 'request-register': 1 });
     })
 
