@@ -405,12 +405,13 @@ export class BeneosDatabaseHolder {
       typeString += ")"
     }
     // Add AC/HP
+    /* No more displayed
     if (properties.stat_hp) {
       typeString += ", HP: " + properties.stat_hp
     }
     if (properties.stat_ac) {
       typeString += ", AC: " + properties.stat_ac
-    }
+    }*/
     properties.typeString = typeString
   }
 
