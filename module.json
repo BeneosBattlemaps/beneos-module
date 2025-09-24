@@ -1,7 +1,7 @@
 {
   "title": "Beneos Module",
   "description": "Quality of life features for Beneos Battlemaps, Tokens, Spells and Items",
-  "version": "13.2.6",
+  "version": "13.2.7",
   "socket": true,
   "compatibility": {
     "minimum": "13",
@@ -9,7 +9,7 @@
   },
   "url": "https://github.com/BeneosBattlemaps/beneos-module",
   "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-module/main/module.json",
-  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/13.2.6.zip",
+  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/13.2.7.zip",
   "scripts": [
     "scripts/beneosfx.js"
   ],
@@ -33,7 +33,7 @@
 	  {
         "id": "moulinette",
         "type": "module",
-        "manifest": "https://raw.githubusercontent.com/SvenWerlen/moulinette-core/master/module.json",
+        "manifest": "https://github.com/Moulinette-Craft/moulinette-foundryvtt-module/releases/latest/download/module.json",
         "compatibility": {}
       },
 	  {
@@ -45,13 +45,31 @@
 	  {
         "id": "poi-teleport",
         "type": "module",
-        "manifest": "https://github.com/zeel01/poi-teleport/releases/latest/download/module.json",
+        "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/Beneos-Point-Of-Interest-Teleporter/main/module.json",
         "compatibility": {}
       },
 	  {
         "id": "scene-packer",
         "type": "module",
         "manifest": "https://github.com/League-of-Foundry-Developers/scene-packer/releases/latest/download/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "fxmaster",
+        "type": "module",
+        "manifest": "https://github.com/gambit07/fxmaster/releases/latest/download/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "multilevel-tokens",
+        "type": "module",
+        "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/Beneos-Multilevel-Tokens/main/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "LockView",
+        "type": "module",
+        "manifest": "https://github.com/MaterialFoundry/LockView/releases/latest/download/module.json",
         "compatibility": {}
       },
 	  {
