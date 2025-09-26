@@ -643,7 +643,7 @@ export class BeneosUtility {
     })
     Handlebars.registerHelper('beneosSubstr', function (text, len) {
       if (typeof text !== 'string') return text
-      if (text.length <= len) return text
+      if (text.length <= len + 1) return text
       return text.substring(0, len) + "."
     })
 
@@ -719,8 +719,8 @@ export class BeneosUtility {
       const lastWelcomeId = game.settings.get(BeneosUtility.moduleID(), 'beneos-cloud-latest-welcome-id');
 
       // Si l'ID est différent, afficher le message
-      if (!lastWelcomeId || lastWelcomeId == "" ) {
-        this.displayWelcomeDialog(welcomeData);w
+      if (!lastWelcomeId || lastWelcomeId == "") {
+        this.displayWelcomeDialog(welcomeData); w
       }
     } catch (error) {
       console.log("BeneosModule: Error checking welcome message:", error);

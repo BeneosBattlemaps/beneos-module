@@ -1,193 +1,286 @@
 <form class="{{cssClass}}" id="display-result-section" autocomplete="off">
-
   {{!-- Sheet Body --}}
   <section class="sheet-body">
-
     <!-- <div>
       <img class="bsr_title" src="modules/beneos-module/ui/result_form_title_item.webp">
     </div> -->
 
     <div class="bsr_result_box">
-
       {{#each results as |result idx|}}
-      <div data-result-index="{{idx}}" data-token-key="{{result.key}}"
-        class="directory-item document actor flexrow token-root-div beneos-item-container beneos-item-container-hover spell-result-section">
-
+      <div
+        data-result-index="{{idx}}"
+        data-token-key="{{result.key}}"
+        class="directory-item document actor flexrow token-root-div beneos-item-container beneos-item-container-hover spell-result-section"
+      >
         <div class="flexrow">
-
-          <div class="beneos-tooltip-icon-group beneos-tooltip entity-link token-search-data" data-type="Spell" data-document-id="{{result.spellId}}" draggable="true">
-            <div class="beneos-tooltiptext beneos-token-description token-search-data" data-type="Spell" data-document-id="{{result.spellId}}" draggable="true">
+          <div
+            class="beneos-tooltip-icon-group beneos-tooltip entity-link token-search-data"
+            data-type="Spell"
+            data-document-id="{{result.spellId}}"
+            draggable="true"
+          >
+            <div
+              class="beneos-tooltiptext beneos-token-description token-search-data"
+              data-type="Spell"
+              data-document-id="{{result.spellId}}"
+              draggable="true"
+            >
               <div class="flexrow beneos-tooltip-content">
-                <img class="beneos-search-icons-result-tooltip token-search-data" data-type="Spell" data-document-id="{{result.spellId}}" draggable="true" src="{{result.picture}}">
-                <span class="beneos-description-text">{{result.description}}</span>
+                <img
+                  class="beneos-search-icons-result-tooltip token-search-data"
+                  data-type="Spell"
+                  data-document-id="{{result.spellId}}"
+                  draggable="true"
+                  src="{{result.picture}}"
+                />
+                <span class="beneos-description-text"
+                  >{{result.description}}</span
+                >
               </div>
             </div>
-            <div class="beneos-icon-group token-search-data" data-type="Spell"  data-document-id="{{result.spellId}}" draggable="true">
+            <div
+              class="beneos-icon-group token-search-data"
+              data-type="Spell"
+              data-document-id="{{result.spellId}}"
+              draggable="true"
+            >
               <!-- <img class="beneos-icon-background" src="modules/beneos-module/ui/result_item_icon_bg.webp" /> -->
-              <img class="beneos-icon-child token-search-data" data-type="Spell" data-document-id="{{result.spellId}}" draggable="true" src="{{result.picture}}" />
+              <img
+                class="beneos-icon-child token-search-data"
+                data-type="Spell"
+                data-document-id="{{result.spellId}}"
+                draggable="true"
+                src="{{result.picture}}"
+              />
             </div>
           </div>
 
           {{#if result.isInstallable}}
-          <div class="beneos-search-middle flexcol token-search-data selected-batch" data-type="Spell"
-            data-document-id="{{result.spellId}}" draggable="true">
-          {{else}}
-          <div class="beneos-search-middle flexcol">
-          {{/if}}
+          <div
+            class="beneos-search-middle flexcol token-search-data selected-batch"
+            data-type="Spell"
+            data-document-id="{{result.spellId}}"
+            draggable="true"
+          >
+            {{else}}
+            <div class="beneos-search-middle flexcol">
+              {{/if}}
 
-              <img class="bsr_top_border" src="modules/beneos-module/ui/border_top.webp" />
+              <img
+                class="bsr_top_border"
+                src="modules/beneos-module/ui/border_top.webp"
+              />
 
               <div class="bsr_item_title beneos-tooltip">
                 <div class="beneos-tooltiptext beneos-token-description">
                   <div class="flexrow beneos-tooltip-content-item">
-                    <img class="beneos-search-icons-result-tooltip-item" src="{{result.card_front}}">
-                    <img class="beneos-search-icons-result-tooltip-item" src="{{result.card_back}}">
+                    <img
+                      class="beneos-search-icons-result-tooltip-item"
+                      src="{{result.card_front}}"
+                    />
+                    <img
+                      class="beneos-search-icons-result-tooltip-item"
+                      src="{{result.card_back}}"
+                    />
                   </div>
                 </div>
-                <label class="beneos-search-title-result">{{result.name}}</label>
+                <label class="beneos-search-title-result"
+                  >{{result.name}}</label
+                >
                 <span class="triangle-topleft"></span>
               </div>
 
               <!-- Properties + Attenument line -->
               <div class="item-middle-line flexrow">
                 <div class="item-properties-box item-properties-box-spells">
-                  <label class="beneos-search-stat"><a class="beneos-button-level"
-                      data-level-value="{{result.properties.level}}">Level {{beneosUpperFirst
-                        result.properties.level}}</a>
+                  <label class="beneos-search-stat"
+                    ><a
+                      class="beneos-button-level"
+                      data-level-value="{{result.properties.level}}"
+                      >Level {{beneosUpperFirst result.properties.level}}</a
+                    >
                   </label>
 
                   <div class="beneos-tooltip beneos-search-stat">
                     <div class="beneos-tooltiptext beneos-token-description">
-                        <div class="flexrow beneos-tooltip-content-installed">
-                          {{beneosGetHover "school" result.properties.school}}
-                        </div>
+                      <div class="flexrow beneos-tooltip-content-installed">
+                        {{beneosGetHover "school" result.properties.school}}
+                      </div>
                     </div>
-                    <a class="beneos-button-school" data-school-value="{{result.properties.school}}">{{beneosUpperFirst
-                      result.properties.school}} Spell</a>
+                    <a
+                      class="beneos-button-school"
+                      data-school-value="{{result.properties.school}}"
+                      >{{beneosUpperFirst result.properties.school}} Spell</a
+                    >
                   </div>
                 </div>
               </div>
 
-              <div class="beneos-tooltip item-description-box item-description-box-spells">
+              <div
+                class="beneos-tooltip item-description-box item-description-box-spells"
+              >
                 <div class="beneos-tooltiptext beneos-token-description">
                   <div class="beneos-tooltip-content-installed">
                     <span class="beneos-classes">Classes:</span>
                     {{#each result.properties.classes as |class key|}}
-                    <span class="beneos-classes"><a class="beneos-button-class"
-                        data-class-value="{{class}}">{{beneosUpperFirst class}}</a></span>
+                    <span class="beneos-classes"
+                      ><a
+                        class="beneos-button-class"
+                        data-class-value="{{class}}"
+                        >{{beneosUpperFirst class}}</a
+                      ></span
+                    >
                     {{/each}}
-                      </div>
+                  </div>
                 </div>
-                <span class="beneos-search-text01 flexrow beneos-description-background">
+                <span
+                  class="beneos-search-text01 flexrow beneos-description-background"
+                >
                   {{result.description}}
                 </span>
-
-
               </div>
-
             </div>
           </div>
 
           <div class="beneos-search-last flexcol">
-
             <div class="flexrow flex-content-left">
-              <div class="beneos-tooltip beneos-search-installed ">
+              <div class="beneos-tooltip beneos-search-installed">
                 {{#if result.isCloudAvailable}}
                 <div class="beneos-tooltip beneos-search-installed">
-                  <div class="beneos-tooltiptext beneos-token-description">
-                  </div>
+                  <div
+                    class="beneos-tooltiptext beneos-token-description"
+                  ></div>
                   {{#if result.isNew}}
-                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_new.webp">
+                  <img
+                    class="item-right-text-box"
+                    src="modules/beneos-module/ui/right_button_v1_new.webp"
+                  />
                   <label class="beneos-search-new item-right-text-content">
                     <!-- <input type="checkbox" class="check-token-batch-install"> -->
-                    <a data-tooltip="New spell available from the cloud server ! Click to install it locally or Ctrl+Click for batch install."
-                      class="beneos-cloud-spell-install">NEW</a>
+                    <a
+                      data-tooltip="New spell available from the cloud server ! Click to install it locally or Ctrl+Click for batch install."
+                      class="beneos-cloud-spell-install"
+                      >NEW</a
+                    >
                   </label>
                   {{else}}
-                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
-                  <label class="beneos-search-installed item-right-text-content ">
+                  <img
+                    class="item-right-text-box"
+                    src="modules/beneos-module/ui/right_button_v1.png"
+                  />
+                  <label
+                    class="beneos-search-installed item-right-text-content"
+                  >
                     <!-- <input type="checkbox" class="check-token-batch-install"> -->
-                    <a data-tooltip="Click to install it locally or Ctrl+Click for batch install." class="beneos-cloud-spell-install">INSTALL</a>
+                    <a
+                      data-tooltip="Click to install it locally or Ctrl+Click for batch install."
+                      class="beneos-cloud-spell-install"
+                      >INSTALL</a
+                    >
                   </label>
                   {{/if}}
                 </div>
 
+                {{else}} {{#if result.isInstalled}}
+                <div class="beneos-tooltiptext beneos-token-description"></div>
+                {{#if result.isUpdate}}
+                <img
+                  class="item-right-text-box"
+                  src="modules/beneos-module/ui/right_button_v1_update.png"
+                />
+                <label class="beneos-search-new item-right-text-content"
+                  ><a
+                    data-tooltip="Updated spell available from the cloud server ! Click to install the update."
+                    class="beneos-cloud-spell-install"
+                    >UPDATE</a
+                  ></label
+                >
                 {{else}}
-
-                {{#if result.isInstalled}}
-                  <div class="beneos-tooltiptext beneos-token-description">
-                  </div>
-                  {{#if result.isUpdate}}
-                    <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_update.png">
-                    <label class="beneos-search-new item-right-text-content"><a
-                      data-tooltip="Updated spell available from the cloud server ! Click to install the update."
-                      class="beneos-cloud-spell-install">UPDATE</a></label>
-                  {{else}}
-                    <img class="item-right-text-box " src="modules/beneos-module/ui/right_button_v1.webp">
-                    <label class="beneos-search-installed item-right-text-content"
-                      data-tooltip="Installed and ready to be used.">READY</label>
-                  {{/if}}
-                {{else}}
-                  <div class="beneos-tooltiptext beneos-token-description">
-                  </div>
-                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_offline.webp">
-                  {{#if @root.isCloudLoggedIn}}
-                    <label class="item-right-text-content beneos-search-notinstalled beneos-search-noaccess"
-                      data-tooltip="No access to this spell, check your Patreon membership" >NO ACCESS</label>
-                  {{else}}
-                    {{#if @root.isOffline}}
-                    <label class="item-right-text-content beneos-search-notinstalled beneos-search-notconnected"
-                      data-tooltip="You are not connected to Beneos cloud, please check in the settings or in the search window on the left.">
-                      OFFLINE
-                      </label>
-                      {{else }}
-                      <label class="item-right-text-content beneos-search-notinstalled beneos-search-notconnected beneos-search-notconnected-smaller"
-                      data-tooltip="You are not connected to Beneos cloud, please check in the settings or in the search window on the left.">
-                      NOT CONNECTED
-                      </label>
-                      {{/if}}
-                  {{/if}}
-                {{/if}}
-              {{/if}}
+                <img
+                  class="item-right-text-box"
+                  src="modules/beneos-module/ui/right_button_v1.webp"
+                />
+                <label
+                  class="beneos-search-installed item-right-text-content"
+                  data-tooltip="Installed and ready to be used."
+                  >READY</label
+                >
+                {{/if}} {{else}}
+                <div class="beneos-tooltiptext beneos-token-description"></div>
+                <img
+                  class="item-right-text-box"
+                  src="modules/beneos-module/ui/right_button_v1_offline.webp"
+                />
+                {{#if @root.isCloudLoggedIn}}
+                <label
+                  class="item-right-text-content beneos-search-notinstalled beneos-search-noaccess"
+                  data-tooltip="No access to this spell, check your Patreon membership"
+                  >NO ACCESS</label
+                >
+                {{else}} {{#if @root.isOffline}}
+                <label
+                  class="item-right-text-content beneos-search-notinstalled beneos-search-notconnected"
+                  data-tooltip="You are not connected to Beneos cloud, please check in the settings or in the search window on the left."
+                >
+                  OFFLINE
+                </label>
+                {{else }}
+                <label
+                  class="item-right-text-content beneos-search-notinstalled beneos-search-notconnected beneos-search-notconnected-smaller"
+                  data-tooltip="You are not connected to Beneos cloud, please check in the settings or in the search window on the left."
+                >
+                  NOT CONNECTED
+                </label>
+                {{/if}} {{/if}} {{/if}} {{/if}}
+              </div>
             </div>
-          </div>
 
-          <div class="flexrow flex-content-left">
-            <div class="beneos-tooltip beneos-search-tier-button">
-              <div class="beneos-tooltiptext beneos-token-description">
-                <div class="flexrow beneos-tooltip-content-left-buttons">
-                  {{beneosGetHover "spell_type" result.properties.spell_type}}
+            <div class="flexrow flex-content-left">
+              <div class="beneos-tooltip beneos-search-tier-button">
+                <div class="beneos-tooltiptext beneos-token-description">
+                  <div class="flexrow beneos-tooltip-content-left-buttons">
+                    {{beneosGetHover "spell_type" result.properties.spell_type}}
+                  </div>
                 </div>
+                <img
+                  class="item-right-text-box"
+                  src="modules/beneos-module/ui/right_button_v1.png"
+                />
+                <a
+                  class="beneos-button-spell-type item-right-text-content"
+                  data-spell_type-value="{{result.properties.spell_type}}"
+                  ><strong>{{result.properties.spell_type}}</strong></a
+                >
               </div>
-              <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
-              <a class="beneos-button-spell-type item-right-text-content"
-                data-spell_type-value="{{result.properties.spell_type}}"><strong>{{result.properties.spell_type}}</strong></a>
+            </div>
+
+            <div class="flexrow flex-content-left">
+              <div class="beneos-tooltip beneos-search-price-button">
+                <div class="beneos-tooltiptext beneos-token-description"></div>
+                <img
+                  class="item-right-text-box"
+                  src="modules/beneos-module/ui/right_button_v1.png"
+                />
+                <a
+                  class="beneos-button-casting item-right-text-content"
+                  data-casting_time-value="{{result.properties.casting_time}}"
+                  ><strong>{{result.properties.casting_time}}</strong></a
+                >
+              </div>
             </div>
           </div>
 
-          <div class="flexrow flex-content-left">
-            <div class="beneos-tooltip  beneos-search-price-button">
-              <div class="beneos-tooltiptext beneos-token-description">
-              </div>
-              <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
-              <a class="beneos-button-casting item-right-text-content"
-                  data-casting_time-value="{{result.properties.casting_time}}"><strong>{{result.properties.casting_time}}</strong></a>
-            </div>
-          </div>
-
+          <img
+            src="modules/beneos-module/ui/border_bottom.webp"
+            class="bsr_bottom_border_spells"
+          />
         </div>
-
-        <img src="modules/beneos-module/ui/border_bottom.webp" class="bsr_bottom_border_spells" />
-
-      </div>
-      {{/each}}
+        {{/each}}
       </div>
 
       <div class="search-100-results">
         Only the first 100 search results are displayed
-       </div>
-
+      </div>
     </div>
   </section>
-
 </form>
