@@ -461,6 +461,7 @@ export class BeneosDatabaseHolder {
         foundry.utils.mergeObject(this.tokenCampaigns, this.buildList(tokenData.properties.campaign))
         this.processInstalledToken(tokenData)
         this.buildTypeACHPString(tokenData.properties)
+        tokenData.factionText = tokenData.properties?.faction?.[0] || ""
         if (tokenData.installed === "notinstalled") {
           continue; // Skip the rest of the processing if not installed (ie only cloud/installed listing)
         }

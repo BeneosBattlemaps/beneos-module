@@ -63,7 +63,6 @@ export class BeneosCloudLogin extends FormApplication {
     if (!userId || userId == '') {
       userId = foundry.utils.randomID(32)
     }
-    console.log("User ID: ", userId)
 
     if (loginData == null || typeof loginData === 'boolean') {
       // If we don't have login data, we need to ask the user
