@@ -998,6 +998,7 @@
   min-width: 8rem;
   max-width: 8rem;
   text-align: center;
+  white-space: nowrap;
 }
 
 .item-right-text-content {
