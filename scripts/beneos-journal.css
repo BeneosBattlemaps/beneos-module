@@ -1,0 +1,256 @@
+/*  Beneos Journal Theme – rev 22 (stabilisierte Version)
+    ------------------------------------------------------------
+      A)  BASE / TYPOGRAPHY
+      B)  GENERIC CARD (Adventure-, Location-, NPC-Box)
+      C)  NODE-MAP
+          C1  Grid + Boxen
+          C2  Badge-Pfeile      (optional)
+          C3  Link-Quadrate     ●●●●
+          C4  Interaction-Icons (<img>, tooltips, active/grey)
+      D)  HARDENING (gegen spätere Styles)
+    ------------------------------------------------------------ */
+
+/* ── A) BASIS / TYPO ──────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+DW+Pica:ital@0;1&family=Inter:wght@400;500;700&display=swap');
+
+:root{
+  --beneos-red:        #741314;
+  --beneos-red-dark:   #4e0d0d;
+  --beneos-text:       #24231e;
+
+  --beneos-page-bg:    url('/ui/ben/page_texture.png');
+  --beneos-paper:      #fbf9f6;
+  --beneos-box-bg:     url('/modules/beneos-module/ui/journal_bg.webp');
+
+  --orn-bl:            url('/modules/beneos-module/ui/ornament_bottom_left.webp');
+  --orn-br:            url('/modules/beneos-module/ui/ornament_bottom_right.webp');
+}
+
+/* Wichtig: greift sowohl auf body als auch auf div.beneos-journal */
+.beneos-journal,
+body.beneos-journal{
+  margin:0;
+  background:var(--beneos-page-bg) repeat;
+  font-family:'Inter',sans-serif;
+  color:var(--beneos-text);
+  font-size:16px;
+  line-height:1.45;
+}
+.beneos-container{max-width:960px;margin:0 auto;padding:1.25rem 1rem 2rem;}
+
+@keyframes rise{from{transform:translateY(20px);opacity:.05} to{transform:none;opacity:1}}
+
+/* ── B) GENERIC CARD ──────────────────────────────────────── */
+.beneos-card{
+  position:relative;
+  background:var(--beneos-paper) var(--beneos-box-bg) center/cover no-repeat;
+  background-blend-mode:multiply;
+  border:1px solid #0003;
+  box-shadow:0 3px 8px #0006;
+  border-radius:6px;
+  margin:1.1rem 0;
+  overflow:hidden;
+  animation:rise .6s ease-out both;
+}
+.beneos-card::before,
+.beneos-card::after{
+  content:'';
+  position:absolute;
+  bottom:-4px;
+  width:60px;height:60px;
+  background-size:contain no-repeat;
+  opacity:.45;
+  pointer-events:none;
+}
+.beneos-card::before{left:-4px; background:var(--orn-bl);}
+.beneos-card::after {right:-4px;background:var(--orn-br);}
+
+/* Header */
+.beneos-card-header{
+  font-family:'IM Fell DW Pica',serif;
+  background:var(--beneos-red);
+  color:#f2ede3;
+  padding:.35rem .9rem;
+  font-size:1.15rem;
+  letter-spacing:.035em;
+  text-transform:uppercase;
+  display:flex;justify-content:space-between;align-items:center;
+  border-bottom:1px solid var(--beneos-red-dark);
+}
+.beneos-card-header small{
+  font-family:'Inter',sans-serif;
+  font-size:.72rem;
+  font-weight:600;
+  opacity:.88;
+}
+
+/* Body + Rows */
+.beneos-card-body{
+  display:grid;
+  grid-template-columns:140px 1fr;
+  gap:.4rem 1rem;
+  padding:1.05rem 1.25rem 1.2rem;
+}
+.beneos-row{display:contents;}
+.beneos-label{
+  background:#e7e5e2;
+  padding:.5rem .6rem;
+  font-weight:700;
+  text-align:right;
+  font-size:.9rem;
+}
+.beneos-value{padding:.5rem .3rem;}
+.beneos-value ul{margin:.25rem 0 0;padding-left:1.25rem;}
+.beneos-value li::marker{color:var(--beneos-red);}
+.beneos-row:hover>*{background:rgba(116,19,20,.07);}
+.beneos-card-body>*:nth-child(even){border-bottom:1px solid rgba(116,19,20,.25);}
+.beneos-card-body>*:nth-last-child(-n+2){border-bottom:none;}
+
+/* optional Icon-Zelle */
+.beneos-icon{
+  width:48px;height:48px;
+  display:flex;align-items:center;justify-content:center;
+  background:#d7d5d2;
+  border:2px solid var(--beneos-red-dark);
+  border-radius:6px;
+  font-size:1.3rem;
+  color:var(--beneos-red);
+}
+
+/* Links & Headings */
+.beneos-ref{color:var(--beneos-red);border-bottom:1px dashed currentColor;text-decoration:none;transition:filter .15s;}
+.beneos-ref:hover{color:#a61717;filter:drop-shadow(0 0 4px #74131499);}
+h1,.h1{font-family:'IM Fell DW Pica',serif;font-size:2rem;color:var(--beneos-red);}
+
+/* ── C1) NODE-MAP GRID ───────────────────────────────────── */
+.beneos-node-map{
+  position:relative;
+  margin:2rem 0 1.4rem;
+  display:grid;
+  gap:1rem;
+  grid-template-columns:repeat(5,1fr);
+  grid-template-rows:repeat(5,auto);
+  justify-items:center;
+}
+
+/* Node-Box */
+.beneos-node{
+  width:200px;
+  display:flex;flex-direction:column;
+  background:var(--beneos-paper) var(--beneos-box-bg) center/cover;
+  border:1px solid #0003;
+  border-radius:6px;
+  box-shadow:0 2px 6px #0005;
+  transition:transform .2s, box-shadow .2s;
+}
+.beneos-node:hover{transform:translateY(-5px);box-shadow:0 6px 12px #0006;}
+.beneos-node-header{
+  background:var(--beneos-red);
+  color:#f2ede3;
+  font-family:'IM Fell DW Pica',serif;
+  font-size:1rem;
+  text-transform:uppercase;
+  padding:.45rem .5rem;
+  text-align:center;
+}
+.beneos-node-body{padding:.7rem .75rem .9rem;font-size:.9rem;}
+[data-node="A"]{grid-column:3;grid-row:1;}
+[data-node="B"]{grid-column:1;grid-row:3;}
+[data-node="C"]{grid-column:3;grid-row:3;}
+[data-node="D"]{grid-column:5;grid-row:3;}
+[data-node="E"]{grid-column:3;grid-row:5;}
+
+/* ── C2) BADGE-PFEILE ─────────────────────────── */
+.badge{
+  display:inline-block;
+  padding:.05rem .35rem;
+  margin-left:.2rem;
+  font-size:.65rem;
+  font-weight:600;
+  color:#fff;
+  background:var(--beneos-red);
+  border-radius:3px;
+}
+.badge[data-go="E"]{background:#22693d;}
+
+/* ── C3) LINK-QUADRATE ───────────── */
+.beneos-node-links{
+  margin-top:auto;
+  display:flex; justify-content:center; gap:.45rem;
+}
+.link-square{
+  flex:0 0 32px; height:28px;
+  border:1px solid #9a9a9a;
+  background:#dcdcdc;
+  border-radius:2px;
+  position:relative;
+  font-size:.7rem;font-weight:700;color:#777;
+  display:flex;align-items:center;justify-content:center;
+}
+.link-square.active{background:#fff;border-color:var(--beneos-red);}
+.link-square.active>span{color:var(--beneos-red);font-weight:700;}
+.link-square:hover::after{
+  content:attr(data-hint);
+  position:absolute;bottom:105%;left:50%;transform:translateX(-50%);
+  background:#f4f4f4;color:#000;
+  font-size:.82rem;font-weight:500;
+  padding:.25rem .55rem;border-radius:3px;
+  white-space:nowrap;box-shadow:0 2px 6px #0003;pointer-events:none;
+}
+.link-square:hover::before{
+  content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+  border:5px solid transparent;border-top-color:#f4f4f4;
+}
+[data-node="E"] .beneos-node-links{display:none;}
+
+/* ── C4) INTERACTION-ICONS ───────────────────── */
+.beneos-node-icons{
+  display:flex;
+  justify-content:space-between;
+  gap:.4rem;
+  padding:.45rem .5rem .4rem;
+  border-bottom:1px solid rgba(0,0,0,.15);
+}
+.node-icon{
+  display:inline-block;
+  flex:0 0 32px;
+  width:32px;height:32px;
+  position:relative;
+}
+.node-icon img{
+  width:100%;height:100%;object-fit:contain;
+  filter:grayscale(100%) opacity(.35);
+}
+.node-icon.active img{filter:none;}
+.node-icon:hover::after{
+  content:attr(data-hint);
+  position:absolute;bottom:105%;left:50%;transform:translateX(-50%);
+  background:#f4f4f4;color:#000;
+  font-size:.82rem;font-weight:500;
+  padding:.25rem .55rem;border-radius:3px;
+  white-space:nowrap;box-shadow:0 2px 6px #0003;pointer-events:none;
+}
+.node-icon:hover::before{
+  content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+  border:5px solid transparent;border-top-color:#f4f4f4;
+}
+
+/* Programmatic highlight (JS) */
+.beneos-node.is-target{
+  outline:2px solid var(--beneos-red);
+  box-shadow:0 0 0 3px #74131433, 0 6px 12px rgba(0,0,0,.45);
+}
+
+/* ── D) HARDENING / SCOPE FIX (höhere Spezifität) ─────────── */
+.journal-page-content .beneos-card        { display:block; }
+.journal-page-content .beneos-card-header { display:flex; justify-content:space-between; align-items:center; background:var(--beneos-red); color:#f2ede3; }
+.journal-page-content .beneos-card-body   { display:grid; grid-template-columns:140px 1fr; gap:.4rem 1rem; }
+.journal-page-content .beneos-row         { display:contents !important; }
+.journal-page-content .beneos-label       { background:#e7e5e2; font-weight:700; text-align:right; }
+.journal-page-content .beneos-value       { padding:.5rem .3rem; }
+.journal-page-content .beneos-node-map    { display:grid; gap:1rem; grid-template-columns:repeat(5,1fr); justify-items:center; }
+.journal-page-content .beneos-node        { display:flex; flex-direction:column; background:var(--beneos-paper) var(--beneos-box-bg) center/cover; border:1px solid #0003; border-radius:6px; box-shadow:0 2px 6px #0005; }
+.journal-page-content .beneos-node-header { background:var(--beneos-red); color:#f2ede3; text-transform:uppercase; text-align:center; }
+.journal-page-content .beneos-node-links  { display:flex; justify-content:center; gap:.45rem; }
+.journal-page-content .link-square        { flex:0 0 32px; height:28px; border:1px solid #9a9a9a; background:#dcdcdc; border-radius:2px; display:flex; align-items:center; justify-content:center; }
+.journal-page-content .link-square.active { background:#fff; border-color:var(--beneos-red); }

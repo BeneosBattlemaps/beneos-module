@@ -14,11 +14,13 @@
     "scripts/beneosfx.js"
   ],
   "styles": [
-    "css/beneos.css",
-    "css/table-top.css"
+	  "css/beneos.css",
+	  "css/table-top.css",
+	  "css/beneos-journal.css"
   ],
   "esmodules": [
-    "scripts/beneos_module.js"
+    "scripts/beneos_module.js",
+	"scripts/beneos-journal.js"
   ],
   "packs": [],
   "id": "beneos-module",
