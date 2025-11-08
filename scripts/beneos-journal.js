@@ -1,81 +1,103 @@
 /****************************************************************
- * beneos-journal.js  –  v1.3 + minWidth-Fix
- * -------------------------------------------------------------
- *  • Node-Hover (Box) + Button-Hover (Ziel-Highlight & Pulse)
- *  • Auto-Resize: Fenster an Map-Breite anpassen
- *      – setzt zusätzlich min-width, damit User nicht schmaler zieht
+ * beneos-journal.js – v1.5 (GLOBAL DELEGATION + sticky click)
  ****************************************************************/
+(() => {
+  'use strict';
 
-/* ---------- Hover & Pulse ---------------------------------- */
-function enableInteractions($beneos){
-  /* Box direkt unter Maus */
-  $beneos.on('mouseenter','.beneos-node',  e=>$(e.currentTarget).addClass('beneos-highlight'))
-         .on('mouseleave','.beneos-node',  e=>$(e.currentTarget).removeClass('beneos-highlight'));
+  /* ---------- GLOBAL INTERACTIONS (once) -------------------- */
+  Hooks.once('ready', () => {
+    const ROOT = document;
 
-  /* Link-Quadrate */
-  const BTN = '.link-square.active, .link-square.active *';
-  $beneos.on('mouseover', BTN, e=>{
-        const id=$(e.currentTarget).closest('.link-square').data('target');
-        $beneos.find(`.beneos-node#${id}`).addClass('beneos-highlight');
-      })
-      .on('mouseout',  BTN, e=>{
-        const id=$(e.currentTarget).closest('.link-square').data('target');
-        $beneos.find(`.beneos-node#${id}`).removeClass('beneos-highlight');
-      })
-      .on('click',     BTN, e=>{
-        const id=$(e.currentTarget).closest('.link-square').data('target');
-        const $box=$beneos.find(`.beneos-node#${id}`);
-        if(!$box.length) return;
-        $box[0].scrollIntoView({behavior:'smooth',block:'center'});
-        $box.addClass('beneos-pulse');
-        setTimeout(()=>$box.removeClass('beneos-pulse'),600);
-      });
-}
+    function getBox(el){
+      const id = el?.dataset?.target;
+      return id ? document.querySelector(`.beneos-node#${id}`) : null;
+    }
 
-/* ---------- Auto-Resize ------------------------------------ */
-function resizeSheet(app, html){
-  const $map = $(html).find('.beneos-node-map');      // Grid-Container
-  if(!$map.length) return;
+    // Fallback: native title aus data-hint
+    document.querySelectorAll('[data-hint]').forEach(el=>{
+      if(!el.getAttribute('title')) el.setAttribute('title', el.getAttribute('data-hint'));
+    });
 
-  const need = $map[0].scrollWidth + 60;              // Inhalt + Puffer
-  const curW = app.element.width() ?? 0;
+    ROOT.addEventListener('mouseenter', (e)=>{
+      const btn = e.target.closest('.link-square.active');
+      if(!btn) return;
+      const box = getBox(btn);
+      if(box) box.classList.add('beneos-highlight');
+      btn.classList.add('is-hovered');
+    }, true);
 
-  if(curW < need){
-    const pos = foundry.utils.deepClone(app.position);
-    pos.width    = need;
-    pos.minWidth = need;                              // ← neuer Fix
-    app.setPosition(pos);
+    ROOT.addEventListener('mouseleave', (e)=>{
+      const btn = e.target.closest('.link-square.active');
+      if(!btn) return;
+      const box = getBox(btn);
+      if(box && !box.classList.contains('beneos-sticky')) box.classList.remove('beneos-highlight');
+      btn.classList.remove('is-hovered');
+    }, true);
+
+    ROOT.addEventListener('focusin', (e)=>{
+      const btn = e.target.closest('.link-square.active');
+      if(!btn) return;
+      const box = getBox(btn);
+      if(box) box.classList.add('beneos-highlight');
+      btn.classList.add('is-hovered');
+    }, true);
+
+    ROOT.addEventListener('focusout', (e)=>{
+      const btn = e.target.closest('.link-square.active');
+      if(!btn) return;
+      const box = getBox(btn);
+      if(box && !box.classList.contains('beneos-sticky')) box.classList.remove('beneos-highlight');
+      btn.classList.remove('is-hovered');
+    }, true);
+
+    ROOT.addEventListener('keydown', (e)=>{
+      const btn = e.target.closest('.link-square.active');
+      if(!btn) return;
+      if(e.key === 'Enter' || e.key === ' '){
+        e.preventDefault();
+        btn.click();
+      }
+    }, true);
+
+    ROOT.addEventListener('click', (e)=>{
+      const btn = e.target.closest('.link-square.active');
+      if(!btn) return;
+      const box = getBox(btn);
+      if(!box) return;
+      try { box.scrollIntoView({behavior:'smooth', block:'center'}); } catch(err){}
+      box.classList.add('beneos-highlight','beneos-pulse','beneos-sticky');
+      setTimeout(()=> box.classList.remove('beneos-pulse'), 600);
+      setTimeout(()=> box.classList.remove('beneos-sticky','beneos-highlight'), 1200);
+    }, true);
+
+    console.info('[Beneos] Global interactions ready');
+  });
+
+  /* ---------- RESIZE PER SHEET RENDER ----------------------- */
+  function resizeSheet(app, html){
+    const map = html[0]?.querySelector?.('.beneos-node-map');
+    if(!map) return;
+    const need = map.scrollWidth + 60;
+    const curW = app.element?.width?.() ?? 0;
+    if(curW < need){
+      const pos = foundry.utils.deepClone(app.position);
+      pos.width    = need;
+      pos.minWidth = need;
+      app.setPosition(pos);
+    }
+    $(html).find('.journal-entry-content, .journal-page-content')
+           .css({ maxWidth: need - 60, margin: 0 });
   }
 
-  /* Beneos-Page auf volle Breite */
-  $(html).find('.journal-entry-content, .journal-page-content')
-        .css({ maxWidth: need - 60, margin: 0 });
-}
-
-/* ---------- Observer pro Sheet ----------------------------- */
-function observeSheet(app, html){
-  const ob = new MutationObserver(()=>{
-    const $beneos = $(html).find('.beneos-journal');
-    if(!$beneos.length) return;
-    enableInteractions($beneos);
+  function observeSheet(app, html){
+    // sofort versuchen
     resizeSheet(app, html);
-    ob.disconnect();                                  // nur einmal
-  });
-  ob.observe(html[0], { childList:true, subtree:true });
-}
+    // zur Sicherheit nach DOM-Änderung erneut
+    const ob = new MutationObserver(()=> resizeSheet(app, html));
+    ob.observe(html[0], { childList:true, subtree:true });
+    setTimeout(()=> ob.disconnect(), 1500); // kurz beobachten, dann aus
+  }
 
-/* Hooks */
-Hooks.on('renderJournalSheet',     observeSheet);
-Hooks.on('renderJournalPageSheet', observeSheet);
-
-/* -------------------------------------------------------------
- * OPTIONALE „Zeit-Regime“ – Beispiele, falls du später
- * wiederkehrende Aktionen brauchst.  Standardmäßig inaktiv.
- * ----------------------------------------------------------- */
-/*
-Hooks.once('ready', () => {
-  // wiederkehrend alle 5 min etwas prüfen?
-  // setInterval(()=> { console.log('Beneos heartbeat'); }, 300_000);
-});
-*/
-
+  Hooks.on('renderJournalSheet',     observeSheet);
+  Hooks.on('renderJournalPageSheet', observeSheet);
+})();

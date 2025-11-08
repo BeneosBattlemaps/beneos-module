@@ -149,18 +149,6 @@ body{font-size:15px;line-height:1.3;color:#222}
   border-color: var(--stroke-main);
 }
 
-/* Slide-In Animation (wenn beneos-slidein genutzt wird) */
-.beneos-slidein {
-  opacity: 0;
-  transform: translateY(48px);
-  animation: beneos-slide-in .75s cubic-bezier(.32,1.21,.44,.93) 0.07s forwards;
-}
-@keyframes beneos-slide-in {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
 /* Headerbereich des Akts */
 .beneos-act-header {
@@ -333,11 +321,68 @@ body{font-size:15px;line-height:1.3;color:#222}
 .beneos-node-map>.beneos-node#C{grid-column:2;grid-row:2}
 .beneos-node-map>.beneos-node#D{grid-column:3;grid-row:2}
 .beneos-node-map>.beneos-node#E{grid-column:2;grid-row:3}
-
+.beneos-node-map .beneos-node { overflow: visible; }
 .beneos-node{
   width:220px;min-height:260px;background:var(--beneos-box-bg);
   border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.25);
   display:flex;flex-direction:column;overflow:hidden;
+}
+
+/* 2) Link-Quadrate sicher sichtbar, Text korrekt eingerückt */
+.beneos-node-links .link-square.active { 
+  display: flex !important;               /* falls ältere Regeln überstimmen */
+  background: #fff;
+  border-color: var(--color-primary);
+}
+.beneos-node-links .link-square p { margin: 0; }
+.beneos-node-links .link-square span { 
+  color: var(--color-primary); 
+  font-weight: 800; 
+}
+
+/* 3) Hover: Rot/Weiß + leichter Lift für Maus und JS-Focus */
+.beneos-node-links .link-square.active:hover,
+.beneos-node-links .link-square.active.is-hovered {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 8px rgba(116,19,20,.35);
+  transform: translateY(-2px);
+}
+.beneos-node-links .link-square.active:hover span,
+.beneos-node-links .link-square.active.is-hovered span {
+  color: #fff;
+}
+
+/* 4) Tooltips für Icons & Links (robust, hoher z-index) */
+.beneos-node-icons .icon-square,
+.beneos-node-links .link-square { position: relative; }
+
+.beneos-node-icons .icon-square.active:hover::after,
+.beneos-node-links .link-square.active:hover::after {
+  content: attr(data-hint);
+  position: absolute;
+  left: 50%;
+  top: -1.9rem;
+  transform: translateX(-50%);
+  background: var(--color-primary);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: .72rem;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 999;
+}
+.beneos-node-icons .icon-square.active:hover::before,
+.beneos-node-links .link-square.active:hover::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -4px;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--color-primary);
+  z-index: 1000;
 }
 
 /* C4) Kopfzeile + Badge */
@@ -364,9 +409,7 @@ body{font-size:15px;line-height:1.3;color:#222}
   align-items: center;
   gap: 0.7em;
 }
-.beneos-node {
-  margin-top: 0.3em;
-}
+
 @media (max-width:600px){
   .beneos-node-header{
     font-size:1.07rem;
@@ -407,10 +450,10 @@ body{font-size:15px;line-height:1.3;color:#222}
   background-size:contain;background-repeat:no-repeat;background-position:center;
   display:none;position:relative;            /* ← neu */
 }
-.icon-square.challenge.active   {display:block;background-image:url("../icons/journal_challenge.webp");}
-.icon-square.combat.active      {display:block;background-image:url("../icons/journal_combat.webp");}
-.icon-square.exploration.active {display:block;background-image:url("../icons/journal_exploration.webp");}
-.icon-square.social.active      {display:block;background-image:url("../icons/journal_social.webp");}
+.icon-square.challenge.active   {display:block;background-image:url("/modules/beneos-module/icons/journal_challenge.webp");}
+.icon-square.combat.active      {display:block;background-image:url("/modules/beneos-module/icons/journal_combat.webp");}
+.icon-square.exploration.active {display:block;background-image:url("/modules/beneos-module/icons/journal_exploration.webp");}
+.icon-square.social.active      {display:block;background-image:url("/modules/beneos-module/icons/journal_social.webp");}
 
 /* C3) Leads-Quadrate */
 .beneos-node-links{
@@ -429,37 +472,43 @@ body{font-size:15px;line-height:1.3;color:#222}
   border:1px solid #9a9a9a;background:#dcdcdc;font:700 .7rem/1 'Roboto Condensed',sans-serif;color:#777;
   display:none;align-items:center;justify-content:center;position:relative; /* ← neu */
 }
-.link-square.active{display:flex;background:#fff;border-color:var(--color-primary);}
-.link-square.active>span{color:var(--color-primary);}
+
+.link-square.active span { color: var(--color-primary); }
 
 /* ───────────────────────────────────────────────────────────
    D) Interaktion
    ────────────────────────────────────────────────────────── */
+.beneos-node { position: relative; }       /* neu: damit z-index greift */
 .beneos-highlight{
-  outline:3px solid var(--color-primary);
-  box-shadow:0 0 12px 4px rgba(116,19,20,.45);
-  transform:translateY(-5px);
-  transition:transform .18s ease-out, box-shadow .18s ease-out;
-  z-index:10;
+  outline: 3px solid var(--color-primary);
+  box-shadow: 0 0 12px 4px rgba(116,19,20,.45);
+  transform: translateY(-5px);
+  z-index: 10;
 }
+
 @keyframes beneos-pulse{0%{transform:scale(1)}50%{transform:scale(1.04)}100%{transform:scale(1)}}
 .beneos-pulse{animation:beneos-pulse .6s ease-out;}
 
 /* ───────────────────────────────────────────────────────────
    E) Tooltips für Icons & Link-Quadrate
    ────────────────────────────────────────────────────────── */
-.icon-square.active:hover::after,
-.link-square.active:hover::after{
-  content:attr(data-hint);
-  position:absolute;left:50%;top:-1.8rem;transform:translateX(-50%);
-  background:#741314;color:#fff;padding:2px 6px;border-radius:3px;
-  font-size:.7rem;white-space:nowrap;z-index:20;pointer-events:none;
+.link-square.active:hover,
+.link-square.active.is-hovered {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 8px rgba(116,19,20,.35);
+  transform: translateY(-2px);
 }
+.link-square.active:hover span,
+.link-square.active.is-hovered span {
+  color: #fff;
+}
+
 .icon-square.active:hover::before,
-.link-square.active:hover::before{
-  content:"";position:absolute;left:50%;top:-4px;transform:translateX(-50%);
-  border:4px solid transparent;border-top-color:#000;z-index:21;
+.link-square.active:hover::before {
+  border-top-color: var(--color-primary);
 }
+
 
 
 /* ----------------------------------------------------------------------- */
@@ -595,19 +644,6 @@ form.journal-sheet.beneos-adventure .sheet-body {
   margin: 0;
   font-size: 1em;
   color: var(--color-info);
-}
-
-/* Slide-in Animation */
-.beneos-slidein {
-  opacity: 0;
-  transform: translateY(48px);
-  animation: beneos-slide-in .75s cubic-bezier(.32,1.21,.44,.93) 0.07s forwards;
-}
-@keyframes beneos-slide-in {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 /* Responsive Anpassungen */
@@ -1206,19 +1242,6 @@ form.journal-sheet.beneos-adventure .sheet-body {
   color: #32231b;
   font-size: 1.03rem;
   line-height: 1.62;
-}
-
-/* Slide-In Animation */
-.beneos-slidein {
-  opacity: 0;
-  transform: translateY(48px);
-  animation: beneos-slide-in .75s cubic-bezier(.32,1.21,.44,.93) 0.07s forwards;
-}
-@keyframes beneos-slide-in {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 /* Responsive Tweaks */
