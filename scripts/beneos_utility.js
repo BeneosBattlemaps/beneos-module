@@ -216,6 +216,16 @@ export class BeneosUtility {
       restricted: true
     })
 
+    game.settings.register(BeneosUtility.moduleID(), "beneos-death-management", {
+      name: "Automatic Death Icon",
+      hint: "Creatures that reach 0 HP automatically receive a skull item.",
+      scope: 'world',
+      config: false,
+      default: true,
+      type: Boolean,
+      restricted: true
+    })
+
     game.settings.register(BeneosUtility.moduleID(), "beneos-god-mode", {
       name: "Enable God Mode",
       hint: "",
@@ -1313,6 +1323,13 @@ export class BeneosUtility {
     let benAlpha = 1
     if (!game.dnd5e || hp == undefined) {
       BeneosUtility.debugMessage("[BENEOS MODULE] No hp")
+      return
+    }
+
+    // Check if the beneos-death-management settings is set to true
+    let deathManagement = game.settings.get(BeneosUtility.moduleID(), 'beneos-death-management')
+    if (!deathManagement) {
+      BeneosUtility.beneosHealth[token.id] = hp // Store current HP value anyway
       return
     }
 

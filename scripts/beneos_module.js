@@ -89,8 +89,6 @@ Hooks.once('ready', () => {
     //console.log(">>>>>>>>><", tokens)
     for (let token of tokens) {
       if (BeneosUtility.checkIsBeneosToken(token)) {
-        //BeneosUtility.debugMessage("[BENEOS TOKENS] update actor", actor)
-        //BeneosUtility.debugMessage("[BENEOS TOKENS] update actor", changeData)
         if (changeData?.system?.attributes?.hp?.value == 0 || changeData?.system?.attributes?.hp?.value > 0) {
           BeneosUtility.updateToken(token.id, changeData)
         }
