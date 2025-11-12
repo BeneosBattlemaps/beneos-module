@@ -220,7 +220,7 @@ export class BeneosUtility {
       name: "Automatic Death Icon",
       hint: "Creatures that reach 0 HP automatically receive a skull item.",
       scope: 'world',
-      config: false,
+      config: true,
       default: true,
       type: Boolean,
       restricted: true
