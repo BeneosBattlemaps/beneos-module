@@ -388,6 +388,14 @@ export class BeneosCloud {
       await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {}, { notify: false });
       itemObjectData.img = `${finalFolder}/${itemData.itemImage.icon.filename}`
 
+      // Loop thru itemObjectData.effects and update the img paths
+      if (itemObjectData.effects && itemObjectData.effects.length > 0) {
+        for (let i = 0; i < itemObjectData.effects.length; i++) {
+          let effect = itemObjectData.effects[i]
+          effect.img = effect.img.replaceAll("beneos_assets/beneos_items/", "beneos_assets/cloud/items/")
+        }
+      }
+
       let item = new CONFIG.Item.documentClass(itemObjectData);
       if (item) {
         // Search if we have already an item with the same name in the compendium
@@ -513,6 +521,14 @@ export class BeneosCloud {
       file = new File([blob], spellData.spellImage.icon.filename, { type: "image/webp" });
       await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {}, { notify: false });
       spellObjectData.img = `${finalFolder}/${spellData.spellImage.icon.filename}`
+
+      // Loop thru spellObjectData.effects and update the img paths
+      if (spellObjectData.effects && spellObjectData.effects.length > 0) {
+        for (let i = 0; i < spellObjectData.effects.length; i++) {
+          let effect = spellObjectData.effects[i]
+          effect.img = effect.img.replaceAll("beneos_assets/beneos_spells/", "beneos_assets/cloud/spells/")
+        }
+      }
 
       let spell = new CONFIG.Item.documentClass(spellObjectData);
       if (spell) {
