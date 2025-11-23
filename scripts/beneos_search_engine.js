@@ -429,6 +429,7 @@ export class BeneosDatabaseHolder {
     { key: "15,10000000", value: "15+" }]
     this.movementList = {}
     this.purposeList = {}
+    this.hiddenTagsList = {}
     this.gridList = [{ key: "any", value: "Any" }, { key: "<150", value: "Tiny" }, { key: "<500", value: "Small" }, { key: "<1000", value: "Medium" },
     { key: "<2000", value: "Big" }, { key: ">2000", value: "Very Big" }]
     this.adventureList = {}
@@ -492,6 +493,8 @@ export class BeneosDatabaseHolder {
     for (let key in this.bmapData.content) {
       let bmapData = this.bmapData.content[key]
       if (bmapData && typeof (bmapData) == "object") {
+        // Make uppercase first letter to all words in the name string
+        bmapData.name = bmapData.name.split(" ").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")
         bmapData.kind = "battlemap"
         bmapData.key = key
         bmapData.picture = "https://www.beneos-database.com/data/battlemaps/thumbnails/" + bmapData.properties.thumbnail
@@ -560,24 +563,31 @@ export class BeneosDatabaseHolder {
     }
     // Double pass to setup siblingPicture
 
-
   }
 
   /********************************************************************************** */
   static fieldTextSearch(item, text) {
-    for (let field in item) {
-      let value = item[field]
-      if (field == "description") {
-        continue
-      }
-      if (typeof (value) == "string") {
-        if (value.toLowerCase().includes(text)) {
-          return true
+    // Split text in words, ignore words smaller than 3 letters
+    let words = text.split(" ").filter(word => word.length >= 3)
+    if (words.length == 0) {
+      return false
+    }
+    // Search each word in all fields
+    for (let word of words) {
+      for (let field in item) {
+        let value = item[field]
+        if (field == "description") {
+          continue
         }
-      } else if (Array.isArray(value)) {
-        for (let arrayValue of value) {
-          if (typeof (arrayValue) == "string" && arrayValue.toLowerCase().includes(text)) {
+        if (typeof (value) == "string") {
+          if (value.toLowerCase().includes(word)) {
             return true
+          }
+        } else if (Array.isArray(value)) {
+          for (let arrayValue of value) {
+            if (typeof (arrayValue) == "string" && arrayValue.toLowerCase().includes(word)) {
+              return true
+            }
           }
         }
       }
