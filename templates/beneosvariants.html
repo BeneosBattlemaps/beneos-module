@@ -1,18 +1,36 @@
 {{#if (isEmpty beneosVariantsHUD)}}
-{{log this}}
+
 {{else}}
-<div class="control-icon beneos-token-variants" data-action="beneosToken-variantlector">
-  <img src="modules/beneos-module/icons/beneos_icon_change_skin.svg" width="36" height="36" title="Change Skin" />
+
+<div
+  class="control-icon beneos-token-variants"
+  data-action="beneosToken-variantlector"
+>
+  <img
+    src="modules/beneos-module/icons/beneos_icon_change_skin.svg"
+    width="36"
+    height="36"
+    title="Change Skin"
+  />
 
   <div class="beneos-variants-wrap beneos-disabled">
     {{#each beneosVariantsHUD as |btoken|}}
-    <button class="beneos-variant-name-text beneos-button-select beneos-button-variant control-icon "
-      data-full-id="{{btoken.fullID}}" data-variant="{{btoken.name}}">
-      <image class="beneos-token-button" src="{{btoken.img}}" alt="{{btoken.display_name}}" />
+    <button
+      class="beneos-variant-name-text beneos-button-select beneos-button-variant control-icon"
+      data-full-id="{{btoken.fullID}}"
+      data-variant="{{btoken.name}}"
+    >
+      <image
+        class="beneos-token-button"
+        src="{{btoken.img}}"
+        alt="{{btoken.display_name}}"
+      />
       <span class="beneos-variant-name-text">{{btoken.display_name}}</span>
     </button>
     {{/each}}
   </div>
 </div>
-<span class="beneos-skin-number-over">{{current}}/{{beneosAdd (beneosLength beneosVariantsHUD) 1}}</span>
+<span class="beneos-skin-number-over"
+  >{{current}}/{{beneosAdd (beneosLength beneosVariantsHUD) 1}}</span
+>
 {{/if}}
