@@ -8,6 +8,11 @@
   Hooks.once('ready', () => {
     const ROOT = document;
 
+    function getActiveLinkBtn(e) {
+      const t = (e?.composedPath?.()[0]) ?? e?.target;
+      return (t instanceof Element) ? t.closest('.link-square.active') : null;
+    }
+
     function getBox(el) {
       const id = el?.dataset?.target;
       return id ? document.querySelector(`.beneos-node#${id}`) : null;
@@ -19,7 +24,7 @@
     });
 
     ROOT.addEventListener('mouseenter', (e) => {
-      const btn = e.target?.closest('.link-square.active');
+      const btn = getActiveLinkBtn(e);
       if (!btn) return;
       const box = getBox(btn);
       if (box) box.classList.add('beneos-highlight');
@@ -27,7 +32,7 @@
     }, true);
 
     ROOT.addEventListener('mouseleave', (e) => {
-      const btn = e.target?.closest('.link-square.active');
+      const btn = getActiveLinkBtn(e);
       if (!btn) return;
       const box = getBox(btn);
       if (box && !box.classList.contains('beneos-sticky')) box.classList.remove('beneos-highlight');
@@ -35,7 +40,7 @@
     }, true);
 
     ROOT.addEventListener('focusin', (e) => {
-      const btn = e.target?.closest('.link-square.active');
+      const btn = getActiveLinkBtn(e);
       if (!btn) return;
       const box = getBox(btn);
       if (box) box.classList.add('beneos-highlight');
@@ -43,7 +48,7 @@
     }, true);
 
     ROOT.addEventListener('focusout', (e) => {
-      const btn = e.target?.closest('.link-square.active');
+      const btn = getActiveLinkBtn(e);
       if (!btn) return;
       const box = getBox(btn);
       if (box && !box.classList.contains('beneos-sticky')) box.classList.remove('beneos-highlight');
@@ -51,7 +56,7 @@
     }, true);
 
     ROOT.addEventListener('keydown', (e) => {
-      const btn = e.target?.closest('.link-square.active');
+      const btn = getActiveLinkBtn(e);
       if (!btn) return;
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
@@ -60,7 +65,7 @@
     }, true);
 
     ROOT.addEventListener('click', (e) => {
-      const btn = e.target?.closest('.link-square.active');
+      const btn = getActiveLinkBtn(e);
       if (!btn) return;
       const box = getBox(btn);
       if (!box) return;
