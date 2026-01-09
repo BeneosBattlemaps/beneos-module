@@ -4,6 +4,15 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 13.2.8 # 2026-01-09
+- Fixed: Uncaught TypeError: e.target?.closest is not a function
+- Fixed: Alternative Token Skins are displayed colour-negative
+- New: Module Setting - Disable Death Icon at 0 HP
+- New: Advanced "Confirm Password" in Cloud Registration Process
+
+### 13.2.7 # 2025-09-24
+Changed Dependencies
+
 ### 13.2.6 # 2025-09-20
 - New: There are new filter options for Beneos tokens. Campaign shows suggestions for campaigns where the creature fits well. Faction shows allies of the creature with synergy effects. Source now allows you to filter by Beneos tokens, SRD tokens, loyalty tokens, and shop content.
 - New: We now have a news and welcome window for new users, with links to the setup and our Discord for questions.
