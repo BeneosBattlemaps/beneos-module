@@ -267,16 +267,15 @@
     <div class="beneos-connection-section">
       {{#if isCloudLoggedIn}}
 
-      {{#if (or (eq patreonStatus "not_active_patron") (eq patronStatus "no_patreon"))}}
-      <label class="beneos-cloud-connected">Connected to the Beneos Cloud</label>
-      <button id="beneos-cloud-settings" class="" data-tooltip="Click here to open the Beneos Cloud settings">Beneos
-        Cloud Account Settings</button>
-      <div class="beneos-cloud-no-patreon">❌ Patreon Account not Linked</div>
-      <div class="beneos-cloud-no-patreon-info">To have access to Beneos Patreon content, you must be an active Patron
-        and link your Beneos Cloud account to your Patreon account once. Purchased store content from
-        Beneos-Battlemaps.com will automatically be available here.</div>
-      {{/if}}
-
+        {{#if (ne patreonStatus "active_patron")}}
+        <label class="beneos-cloud-connected">Connected to the Beneos Cloud</label>
+        <button id="beneos-cloud-settings" class="" data-tooltip="Click here to open the Beneos Cloud settings">Beneos
+          Cloud Account Settings</button>
+        <div class="beneos-cloud-no-patreon">❌ Patreon Account not Linked</div>
+        <div class="beneos-cloud-no-patreon-info">To have access to Beneos Patreon content, you must be an active Patron
+          and link your Beneos Cloud account to your Patreon account once. Purchased store content from
+          Beneos-Battlemaps.com will automatically be available here.</div>
+        {{/if}}
       {{else}}
       <div class="beneos-cloud-not-connected">Not Connected to the Beneos Cloud. Please Log in!</div>
       <div>Login to your Beneos Cloud account. Credentials entered here are never stored.</div>
@@ -300,6 +299,7 @@
       <div class="beneos-black-text">With the Beneos Cloud, you can conveniently install all Beneos battlemaps, tokens,
         spells and items directly into your Foundry VTT world.</div>
       {{/if}}
+
       <button type="submit" class="" id="beneos-cloud-batch-install" hidden
         data-tooltip="Click here to install all selected assets">Install all selected assets</button>
 

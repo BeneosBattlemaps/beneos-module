@@ -49,7 +49,17 @@
                     <img class="beneos-search-icons-result-tooltip-item" src="{{result.card_back}}">
                   </div>
                 </div>
+                {{#if result.isNew}}
+                <label class="beneos-search-title-result"><span
+                    class="token-name-new">[NEW]&nbsp;</span>{{result.name}}</label>
+                {{else}}
+                {{#if isUpdate}}
+                <label class="beneos-search-title-result"><span
+                    class="token-name-update">[UPDATE]&nbsp;</span>{{result.name}}</label>
+                {{else}}
                 <label class="beneos-search-title-result">{{result.name}}</label>
+                {{/if}}
+                {{/if}}
                 <span class="triangle-topleft"></span>
               </div>
 

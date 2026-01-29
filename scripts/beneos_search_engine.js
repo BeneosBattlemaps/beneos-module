@@ -311,7 +311,7 @@ export class BeneosDatabaseHolder {
         }
       }
     } else {
-      //console.log("No itemTS for", itemData.key)
+      // console.log("No itemTS for", itemData)
     }
     itemData.properties.install = ["Any", "All"] // Used for filtering
     if (itemData.isNew) {
@@ -763,6 +763,10 @@ export class BeneosDatabaseHolder {
 
   /********************************************************************************** */
   static sortProperties(tab) {
+    // Check if tab is an array
+    if (!Array.isArray(tab)) {
+      return tab
+    }
     if (tab.length > 0) {
       if (Number(tab[0].key)) {
         //console.log("Numeric sort!!!")
@@ -1332,13 +1336,21 @@ export class BeneosSearchEngine extends Dialog {
       if (propDef.sort) {
         BeneosDatabaseHolder.sortProperties(properties)
       }
-      //console.log("OUTPUT", propDef, properties)
+      // Check if properties is an array
+      if (!Array.isArray(properties)) {
+        // Convert to an array
+        properties = Object.keys(properties).map(key => ({ key: key, value: properties[key] }))
+      }
       let html = ""
       if (properties.find(it => it.key.toLowerCase() == "any") === undefined) {
         html += "<option value='any'>Any</option>"
       }
       for (let propDef of properties) {
-        html += "<option value='" + propDef.key + "'>" + propDef.value.charAt(0).toUpperCase() + propDef.value.slice(1) + "</option>"
+        if ( propDef.value.length > 1) {
+          html += "<option value='" + propDef.key + "'>" + propDef.value.charAt(0).toUpperCase() + propDef.value.slice(1) + "</option>"
+        } else {
+          html += "<option value='" + propDef.key + "'>" + propDef.value + "</option>"
+        }
       }
       for (let selector of propDef.selectors) {
         let selected = $("#" + selector).val()
@@ -1552,7 +1564,12 @@ export class BeneosSearchEngine extends Dialog {
       game.beneosTokens.searchEngine.updatePropertiesDropDown(searchResults);
       myObject.resultDialog.removeSelectedBatchClass()
       if (game.beneos.cloud.isLoggedIn()) {
-        $(".beneos_search_engine .window-header .window-title").html("Beneos Cloud - Connected");
+        let patreonStatus = game.beneos.cloud.getPatreonStatus()
+        if ( patreonStatus == "active_patron" ) {
+          $(".beneos_search_engine .window-header .window-title").html('<span class="beneos-window-title-green">Beneos Cloud - Connected - Patreon OK</span>');
+        } else {
+          $(".beneos_search_engine .window-header .window-title").html('<span class="beneos-window-title-orange">Beneos Cloud - Connected - Patreon NOK</span>');
+        }
       } else {
         $(".beneos_search_engine .window-header .window-title").html("Beneos Cloud");
       }

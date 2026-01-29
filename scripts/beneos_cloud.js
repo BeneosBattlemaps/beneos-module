@@ -200,8 +200,10 @@ export class BeneosCloud {
   getItemTS(key) {
     let content = this.availableContent.items
     if (!content || content.length == 0) return false
+    let key2 = key.toLowerCase().replace("-", "_")
     for (const element of content) {
-      if (element.key.toLowerCase() == key.toLowerCase()) {
+      let key1 = element.key.toLowerCase().replace("-", "_")
+      if (key1 == key2) {
         return element.updated_ts
       }
     }
@@ -211,8 +213,10 @@ export class BeneosCloud {
   getSpellTS(key) {
     let content = this.availableContent.spells
     if (!content || content.length == 0) return false
+    let key2 = key.toLowerCase().replace("-", "_")
     for (const element of content) {
-      if (element.key.toLowerCase() == key.toLowerCase()) {
+      let key1 = element.key.toLowerCase().replace("-", "_")
+      if (key1 == key2) {
         return element.updated_ts
       }
     }

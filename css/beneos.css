@@ -1570,3 +1570,10 @@ i.beneos-module {
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 12%) / .64);
   border-style: solid;
 }
+
+.beneos-window-title-green {
+  color: #1b9200;
+}
+.beneos-window-title-orange {
+  color: #d56b52;
+}
