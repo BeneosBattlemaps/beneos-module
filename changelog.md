@@ -4,6 +4,17 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 13.2.9 # 2026-02-04
+- Fixed: Loyalty Tokens are not displayed as available for some players
+- Fixed: Lore text for items and creatures is now displayed more clearly
+- Fixed: e.target?.closest is not a function error
+- Fixed: Alternative token skins are now displayed correctly again
+- Fixed: Log into Cloud Console randomly disappears
+- Fixed: Missing moulinette references to battlemaps have been restored
+- Added: Capital letters for map names for better readability
+- Added: New spells and items are now always displayed at the top of the search list
+
+
 ### 13.2.8 # 2026-01-09
 - Fixed: Uncaught TypeError: e.target?.closest is not a function
 - Fixed: Alternative Token Skins are displayed colour-negative
