@@ -909,4 +909,104 @@ export class BeneosCloud {
       })
   }
 
+  async importBattlemapFromCloud(filename, event = undefined) {
+    ui.notifications.info("Importing battlemap from BeneosCloud !")
+    let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
+    let url = `https://beneos.cloud/foundry-manager.php?download_uploaded_file=1&foundryId=${userId}&filename=${filename}`
+
+    try {
+      let response = await fetch(url, { credentials: 'same-origin' })
+      let data = await response.json()
+
+      if (data.result == 'OK') {
+        // Dump result for debug
+        console.log("Battlemap data from BeneosCloud", data)
+        // The field data.data.download_url contains the URL to download the battlemap file
+        if (data.data?.download_url) {
+          // Convertir l'URL /download/ en /download-fetch/ pour utiliser X-Accel-Redirect
+          let fetchUrl = data.data.download_url.replace('/download/', '/download-fetch/')
+          console.log("Downloading battlemap from URL", fetchUrl)
+
+          // Create the directory structure if it doesn't exist
+          try {
+            await FilePicker.createDirectory("data", "beneos_assets", {});
+          } catch (err) {
+            console.log("Directory beneos_assets already exists")
+          }
+          try {
+            await FilePicker.createDirectory("data", "beneos_assets/cloud", {});
+          } catch (err) {
+            console.log("Directory beneos_assets/cloud already exists")
+          }
+          try {
+            await FilePicker.createDirectory("data", "beneos_assets/cloud/battlemaps", {});
+          } catch (err) {
+            console.log("Directory beneos_assets/cloud/battlemaps already exists")
+          }
+
+          // Download the file from the URL using fetch-optimized route
+          let fileResponse = await fetch(fetchUrl);
+          console.log("File response", fileResponse)
+
+          if (!fileResponse.ok) {
+            throw new Error(`Download failed: ${fileResponse.status} ${fileResponse.statusText}`);
+          }
+
+          let blob = await fileResponse.blob();
+          console.log("Downloaded blob size:", blob.size);
+
+          // Determine the file type from the filename
+          let fileType = filename.split('.').pop().toLowerCase();
+          let mimeType = blob.type || `application/${fileType}`;
+
+          // FoundryVTT bloque les fichiers .zip pour raisons de sécurité
+          // Solution : renommer en .webm
+          let uploadFilename = filename;
+          let isZipFile = fileType === 'zip';
+
+          if (isZipFile) {
+            uploadFilename = filename.replace(/\.zip$/i, '.webm');
+            mimeType = 'video/webm';
+            console.log(`Renaming ZIP file: ${filename} -> ${uploadFilename}`);
+          }
+
+          // Create a File object
+          let file = new File([blob], uploadFilename, { type: mimeType });
+          console.log("File object created:", file.name, file.size, file.type);
+
+          // Upload via FilePicker (méthode statique, pas implementation)
+          try {
+            let uploadResult = await foundry.applications.apps.FilePicker.implementation.FilePicker.upload(
+              "data",
+              "beneos_assets/cloud/battlemaps",
+              file,
+              {},
+              { notify: false }
+            );
+            console.log("Upload result", uploadResult);
+
+            if (isZipFile) {
+              ui.notifications.info(`Battlemap saved as ${uploadFilename} (original: ${filename})`);
+              ui.notifications.warn(`File was renamed to .webm to bypass FoundryVTT security. It's still a ZIP file.`);
+            } else {
+              ui.notifications.info(`Battlemap ${filename} successfully saved to beneos_assets/cloud/battlemaps/`);
+            }
+          } catch (uploadError) {
+            console.error("Upload error:", uploadError);
+            ui.notifications.error(`Upload failed: ${uploadError.message}`);
+          }
+
+        } else {
+          console.log("Error in downloading Battlemap from BeneosCloud, no download URL provided !", data, filename)
+          ui.notifications.error("Error in downloading Battlemap from BeneosCloud, no download URL provided !")
+        }
+      } else {
+        console.log("Error in importing Battlemap from BeneosCloud !", data, filename)
+        ui.notifications.error("Error in importing Battlemap from BeneosCloud !")
+      }
+    } catch (err) {
+      console.log("Error in downloading Battlemap from BeneosCloud", err)
+      ui.notifications.error("Error in downloading Battlemap from BeneosCloud !")
+    }
+  }
 }

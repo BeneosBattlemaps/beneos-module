@@ -308,6 +308,32 @@ Hooks.on("getSceneDirectoryEntryContext", (html, options) => {
 });
 
 /********************************************************************************** */
+Hooks.on("getSceneContextOptions", (html, options) => {
+  console.log("BeneosModule - getSceneContextOptions", html, options)
+  let menuEntry1 = {
+    name: "Use Static Map",
+    icon: `<i class="fa-regular fa-image"></i>`,
+    condition: li => BeneosUtility.isSwitchableBeneosBattlemap($(li).data("sceneId"), "webm"),
+    callback: async li => {
+      let sceneId = $(li).data("sceneId")
+      BeneosUtility.switchPhase(sceneId, "toStatic");
+    }
+  }
+  let menuEntry2 = {
+    name: "Use Animated Map",
+    icon: `<i class="fa-regular fa-video"></i>`,
+    condition: li => BeneosUtility.isSwitchableBeneosBattlemap($(li).data("sceneId"), "webp"),
+    callback: async li => {
+      let sceneId = $(li).data("sceneId")
+      BeneosUtility.switchPhase(sceneId, "toAnimated");
+    }
+  }
+  options.push(menuEntry1);
+  options.push(menuEntry2);
+  return options;
+})
+
+/********************************************************************************** */
 Hooks.on("getSceneNavigationContext", (html, options) => {
   let menuEntry1 = {
     name: "Use Static Map",

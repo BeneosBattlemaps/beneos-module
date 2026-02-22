@@ -20,7 +20,8 @@
   ],
   "esmodules": [
     "scripts/beneos_module.js",
-	"scripts/beneos-journal.js"
+	"scripts/beneos-journal.js",
+	"scripts/beneos-scenepacker.js"
   ],
   "packs": [],
   "id": "beneos-module",
