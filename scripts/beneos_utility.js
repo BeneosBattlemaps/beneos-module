@@ -822,7 +822,8 @@ export class BeneosUtility {
   /********************************************************************************** */
   static isSwitchableBeneosBattlemap(sceneId, fileType) {
     let scene = game.scenes.get(sceneId)
-    let srcPath = scene.background.src
+    if (!scene) return undefined
+    let srcPath = scene?.background?.src
     let tileId = "scene"
 
 
