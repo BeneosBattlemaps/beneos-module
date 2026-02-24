@@ -313,18 +313,24 @@ Hooks.on("getSceneContextOptions", (html, options) => {
   let menuEntry1 = {
     name: "Use Static Map",
     icon: `<i class="fa-regular fa-image"></i>`,
-    condition: li => BeneosUtility.isSwitchableBeneosBattlemap($(li).data("sceneId"), "webm"),
+    condition: li => {
+      let sceneId = $(li).data("sceneId") || $(li).data("entryId")
+      return BeneosUtility.isSwitchableBeneosBattlemap(sceneId, "webm")
+    },
     callback: async li => {
-      let sceneId = $(li).data("sceneId")
+      let sceneId = $(li).data("sceneId") || $(li).data("entryId")
       BeneosUtility.switchPhase(sceneId, "toStatic");
     }
   }
   let menuEntry2 = {
     name: "Use Animated Map",
     icon: `<i class="fa-regular fa-video"></i>`,
-    condition: li => BeneosUtility.isSwitchableBeneosBattlemap($(li).data("sceneId"), "webp"),
+    condition: li => {
+      let sceneId = $(li).data("sceneId") || $(li).data("entryId")
+      return BeneosUtility.isSwitchableBeneosBattlemap(sceneId, "webp")
+    },
     callback: async li => {
-      let sceneId = $(li).data("sceneId")
+      let sceneId = $(li).data("sceneId") || $(li).data("entryId")
       BeneosUtility.switchPhase(sceneId, "toAnimated");
     }
   }
