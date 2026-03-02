@@ -311,6 +311,14 @@ export class BeneosUtility {
       default: true
     })
 
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-bmap-notice-dismissed', {
+      name: 'Battlemap import notice dismissed',
+      type: Boolean,
+      scope: 'world',
+      default: false,
+      config: false
+    })
+
     /*game.settings.register(BeneosUtility.moduleID(), 'beneos-table-top-config', {
       name: 'Internal data store for table top mode settings',
       default: TableTopModeSettings.getDefaultTableTopSettings(),

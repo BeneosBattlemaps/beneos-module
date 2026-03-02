@@ -1684,6 +1684,28 @@ export class BeneosSearchEngine extends Dialog {
   }
 
   /********************************************************************************** */
+  showBattlemapNotice() {
+    if (game.settings.get(BeneosUtility.moduleID(), 'beneos-bmap-notice-dismissed')) {
+      return
+    }
+    let content = `<div>
+      <h3 style="margin-top:0">Beneos Cloud search currently supports Tokens, Spells, and Items/Loot only.</h3>
+      <p>Import for Battlemaps via the Beneos Cloud are not available here yet, import via Moulinette.</p>
+    </div>`
+    let buttons = {
+      ok: { label: "Got it", callback: () => {} },
+      dismiss: {
+        label: "Don't show again",
+        callback: () => { game.settings.set(BeneosUtility.moduleID(), 'beneos-bmap-notice-dismissed', true) }
+      }
+    }
+    new Dialog(
+      { title: "Beneos Cloud – Battlemap Import", content, buttons },
+      { classes: ["beneos_module"], width: 460, 'z-index': 99999 }
+    ).render(true)
+  }
+
+  /********************************************************************************** */
   activateListeners() {
 
     let myObject = this
@@ -1732,6 +1754,7 @@ export class BeneosSearchEngine extends Dialog {
       this.dbData.searchMode = "bmap"
       this.updateContent()
       this.updateSelector(event)
+      this.showBattlemapNotice()
     })
     $("#beneos-radio-spell").click(event => {
       // Retirer la classe active des autres boutons si besoin
@@ -1796,6 +1819,9 @@ export class BeneosSearchEngine extends Dialog {
       let installMode = $(event.currentTarget).data("install-mode")
       this.processBatchInstall(installMode)
     })
+
+    // Show battlemap import notice on first open
+    this.showBattlemapNotice()
   }
 }
 

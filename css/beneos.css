@@ -1255,6 +1255,24 @@ i.beneos-module {
   transform: translate(-50%, -50%);
 }
 
+.beneos-bmap-info-banner {
+  margin-top: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  background: #ebe8e0;
+  border: 1px solid #c5bfb5;
+  border-radius: 4px;
+  color: #3e0706;
+  font-size: 0.85rem;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.beneos-bmap-info-icon {
+  height: 1em;
+  vertical-align: middle;
+  margin: 0 2px;
+}
+
 /* =======================================================================================
    Beneos Tactical Guide – Labels
    Ziel: ruhige, gut lesbare Labels mit subtilen Farbakzenten.
