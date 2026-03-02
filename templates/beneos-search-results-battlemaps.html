@@ -1,4 +1,4 @@
-<form class="{{cssClass}}" autocomplete="off">
+<form class="{{cssClass}}" id="display-result-section" autocomplete="off">
 
   {{!-- Sheet Body --}}
   <section class="sheet-body">
@@ -11,21 +11,21 @@
 
       {{#each results as |result idx|}}
       <div data-result-index="{{idx}}" data-token-key="{{result.key}}"
-        class="directory-item document actor flexrow token-root-div item-container">
+        class="directory-item document actor flexrow token-root-div beneos-item-container beneos-item-container-hover">
 
         <div class="flexrow">
 
-          <div class="beneos-tooltip-icon-group beneos-tooltip entity-link content-link">
+          <div class="beneos-tooltip-icon-group beneos-tooltip entity-link ">
             <div class="beneos-tooltiptext beneos-token-description">
               <div class="beneos-tooltip-content-bmap">
                 <img class="beneos-search-battlemap-result-tooltip" src="{{result.picture}}">
                 {{#if result.siblingPicture}}
-                <img class="beneos-search-battlemap-result-tooltip " src="{{result.siblingPicture}}">
+                <img class="beneos-search-battlemap-result-tooltip" src="{{result.siblingPicture}}">
                 {{/if}}
               </div>
             </div>
             <div class="beneos-icon-group">
-              <img class="beneos-icon-background" src="modules/beneos-module/ui/result_item_icon_bg.webp" />
+              <!-- <img class="beneos-icon-background" src="modules/beneos-module/ui/result_item_icon_bg.webp" /> -->
               <img class="beneos-icon-child-battlemap" src="{{result.picture}}" />
             </div>
           </div>
@@ -55,11 +55,11 @@
                   <span class="beneos-search-text01 battlemaps-properties">
                     {{log result.properties.biom}}
                     {{#each result.properties.biom as |biom key|}}
-                      {{#if (lt key 5)}} <!-- Only show the first 6 biomes due to cell size -->
-                        <label class="beneos-search-stat biom-content" data-prop-name="biom">
-                         <a class="beneos-button-biom" data-biom-value="{{biom}}">{{beneosUpperFirst biom}}</a>
-                        </label>
-                      {{/if}}
+                    {{#if (lt key 4)}} <!-- Only show the first 6 biomes due to cell size -->
+                    <label class="beneos-search-stat biom-content" data-prop-name="biom">
+                      <a class="beneos-button-biom" data-biom-value="{{biom}}">{{beneosUpperFirst biom}}</a>
+                    </label>
+                    {{/if}}
                     {{/each}}
                   </span>
 
@@ -79,20 +79,16 @@
                     </a>
                   </label>
                   {{/if}}
-
                   {{#each result.properties.adventure as |adventure key|}}
                   {{#if (ne (beneosLowerCase adventure) "none")}}
                   <label class="beneos-release-url-button"><a class="beneos-button-adventure"
                       data-adventure-name="{{adventure}}">{{beneosUpperFirst adventure}}</a></label>
                   {{/if}}
                   {{/each}}
-
                   <br>
                   {{#if result.properties.releaseurl}}
                   <label class="release-url-color"><a href="{{result.properties.releaseurl}}">Release URL</a></label>
                   {{/if}}
-
-
                 </div>
               </div>
 
@@ -140,26 +136,30 @@
             </div>
 
             <div class="flexrow flex-content-center">
-
               {{#if (beneosLength result.properties.videourl)}}
-              <label class="beneos-search-yt-button"><a data-tooltip="Youtube Video" class="beneos-button-yt"
-                  href="{{result.properties.videourl}}"><img class="beneos-search-yt-icons"
-                    src="modules/beneos-module/icons/yt_Logo.webp">&nbsp;</a></label>
+              <label class=""><a data-tooltip="Youtube Video" class="beneos-button-yt"
+                  href="{{result.properties.videourl}}"><img class="beneos-search-yt-icons-bmaps"
+                    src="modules/beneos-module/icons/yt_Logo.webp"></a></label>
               {{/if}}
 
               <label class="beneos-search-moulinette-button"><a class="beneos-button-moulinette"
                   data-tooltip="Download with Moulinette" data-bmap-key="{{result.key}}">
-                  <img class="beneos-search-moulinette-icons" data-bmap-key="{{result.key}}"
-                    src="modules/beneos-module/icons/download_icon.svg">&nbsp;</a></label>
+                  <img class="beneos-search-moulinette-icons-bmap" data-bmap-key="{{result.key}}"
+                    src="modules/beneos-module/icons/download_icon.svg"></a></label>
             </div>
 
           </div>
 
-          <img src="modules/beneos-module/ui/border_bottom.webp" class="bsr_bottom_border" />
+          <img src="modules/beneos-module/ui/border_bottom.webp" class="bsr_bottom_border_bmaps" />
 
         </div>
         {{/each}}
       </div>
+
+      <div class="search-100-results">
+        Only the first 100 search results are displayed
+      </div>
+
     </div>
   </section>
 

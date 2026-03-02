@@ -1,69 +1,29 @@
 {
   "title": "Beneos Module",
   "description": "Quality of life features for Beneos Battlemaps, Tokens, Spells and Items",
-  "version": "11.0.10",
+  "version": "13.2.9",
+  "socket": true,
   "compatibility": {
-    "minimum": "10",
-    "verified": "11"
+    "minimum": "13",
+    "verified": "13"
   },
   "url": "https://github.com/BeneosBattlemaps/beneos-module",
   "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-module/main/module.json",
-  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/11.0.10.zip",
+  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/13.2.9.zip",
   "scripts": [
     "scripts/beneosfx.js"
   ],
   "styles": [
-    "css/beneos.css"
+	  "css/beneos.css",
+	  "css/table-top.css",
+	  "css/beneos-journal.css"
   ],
   "esmodules": [
-    "scripts/beneos_module.js"
+    "scripts/beneos_module.js",
+	"scripts/beneos-journal.js",
+	"scripts/beneos-scenepacker.js"
   ],
-  "packs": [
-    {
-      "name": "beneos_module_actors",
-      "label": "Beneos Tokens",
-      "path": "packs/beneos_module_actors.db",
-      "system": "dnd5e",
-      "type": "Actor",
-      "private": false,
-      "flags": {}
-    },
-    {
-      "name": "beneos_module_actors_pf2",
-      "label": "Beneos Tokens - PF2",
-      "path": "packs/beneos_module_actors_pf2.db",
-      "system": "pf2e",
-      "type": "Actor",
-      "private": false,
-      "flags": {}
-    },
-    {
-      "name": "beneos_module_items",
-      "label": "Beneos Module Items",
-      "path": "packs/beneos_module_items.db",
-      "system": "dnd5e",
-      "type": "Item",
-      "private": false,
-      "flags": {}
-    },
-    {
-      "name": "beneos_module_spells",
-      "label": "Beneos Module Spells",
-      "path": "packs/beneos_module_spells.db",
-      "system": "dnd5e",
-      "type": "Item",
-      "private": false,
-      "flags": {}
-    },
-    {
-      "name": "beneos_module_journal",
-      "label": "Beneos Module Journals",
-      "path": "packs/beneos_module_journal.db",
-      "type": "JournalEntry",
-      "private": false,
-      "flags": {}
-    }
-  ],
+  "packs": [],
   "id": "beneos-module",
   "authors": [
     {
@@ -74,33 +34,9 @@
   "relationships": {
     "requires": [
 	  {
-        "id": "moulinette-core",
+        "id": "moulinette",
         "type": "module",
-        "manifest": "https://raw.githubusercontent.com/SvenWerlen/moulinette-core/master/module.json",
-        "compatibility": {}
-      },
-	  {
-        "id": "tokenmagic",
-        "type": "module",
-        "manifest": "https://raw.githubusercontent.com/Feu-Secret/Tokenmagic/master/tokenmagic/module.json",
-        "compatibility": {}
-      },
-	  {
-        "id": "moulinette-scenes",
-        "type": "module",
-        "manifest": "https://raw.githubusercontent.com/SvenWerlen/moulinette-scenes/main/module.json",
-        "compatibility": {}
-      },
-	  {
-        "id": "multilevel-tokens",
-        "type": "module",
-        "manifest": "https://raw.githubusercontent.com/grandseiken/foundryvtt-multilevel-tokens/master/module.json",
-        "compatibility": {}
-      },
-	  {
-        "id": "fxmaster",
-        "type": "module",
-        "manifest": "https://github.com/ghost-fvtt/fxmaster/releases/latest/download/module.json",
+        "manifest": "https://github.com/Moulinette-Craft/moulinette-foundryvtt-module/releases/latest/download/module.json",
         "compatibility": {}
       },
 	  {
@@ -112,13 +48,25 @@
 	  {
         "id": "poi-teleport",
         "type": "module",
-        "manifest": "https://github.com/zeel01/poi-teleport/releases/latest/download/module.json",
+        "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/Beneos-Point-Of-Interest-Teleporter/main/module.json",
         "compatibility": {}
       },
 	  {
         "id": "scene-packer",
         "type": "module",
         "manifest": "https://github.com/League-of-Foundry-Developers/scene-packer/releases/latest/download/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "fxmaster",
+        "type": "module",
+        "manifest": "https://github.com/gambit07/fxmaster/releases/latest/download/module.json",
+        "compatibility": {}
+      },
+	  {
+        "id": "multilevel-tokens",
+        "type": "module",
+        "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/Beneos-Multilevel-Tokens/main/module.json",
         "compatibility": {}
       },
 	  {
@@ -134,5 +82,22 @@
         "compatibility": {}
       }
     ]
+  },
+  "flags": {
+    "hotReload": {
+      "extensions": [
+        "css",
+        "hbs",
+        "html",
+        "json"
+      ],
+      "paths": [
+        "css/",
+        "lang/",
+        "assets/",
+        "templates/"
+      ]
+    }
   }
+
 }

@@ -7,8 +7,8 @@
 <div class="" data-action-index="0">
 
   {{#each beneosTokensHUD as |btoken|}}
-    <button class="beneos-button-select control-icon beneos-button-token-menu" data-actor-id="{{btoken.actorId}}" >
-      <img class="beneos-token-button" src="{{btoken.token}}" alt="{{btoken.name}}"/>
+    <button class="beneos-button-select control-icon beneos-button-token-menu" data-full-Key="{{btoken.fullKey}}" data-actor-id="{{btoken.actorId}}" >
+      <img class="beneos-token-button" src="{{btoken.img}}" alt="{{btoken.name}}"/>
       <span class="beneos-token-text">{{btoken.actorName}}</span>
     </button>
   {{/each}}

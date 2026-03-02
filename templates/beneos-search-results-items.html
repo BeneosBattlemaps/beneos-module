@@ -1,4 +1,4 @@
-<form class="{{cssClass}}" autocomplete="off">
+<form class="{{cssClass}}" id="display-result-section" autocomplete="off">
 
   {{!-- Sheet Body --}}
   <section class="sheet-body">
@@ -11,30 +11,30 @@
 
       {{#each results as |result idx|}}
       <div data-result-index="{{idx}}" data-token-key="{{result.key}}"
-        class="directory-item document actor flexrow token-root-div item-container">
+        class="directory-item document actor flexrow token-root-div beneos-item-container beneos-item-container-hover item-result-section">
 
         <div class="flexrow">
 
-          <div class="beneos-tooltip-icon-group beneos-tooltip entity-link content-link token-search-data" data-type="Item"
+          <div class="beneos-tooltip-icon-group beneos-tooltip entity-link token-search-data" data-type="Item"
           data-document-id="{{result.itemId}}" draggable="true">
             <div class="beneos-tooltiptext beneos-token-description token-search-data"  data-type="Item"
             data-document-id="{{result.itemId}}" draggable="true">
               <div class="flexrow beneos-tooltip-content">
                 <img class="beneos-search-icons-result-tooltip token-search-data" src="{{result.picture}}"  data-type="Item"
                 data-document-id="{{result.itemId}}" draggable="true">
-                <span class="beneos-description-text">{{result.description}}</span>
+                <span class="beneos-description-text">{{beneosChoose result.flavour result.description}}</span>
               </div>
             </div>
             <div class="beneos-icon-group token-search-data" data-type="Item"
             data-document-id="{{result.itemId}}" draggable="true">
-              <img class="beneos-icon-background " src="modules/beneos-module/ui/result_item_icon_bg.webp" />
+              <!--<img class="beneos-icon-background " src="modules/beneos-module/ui/result_item_icon_bg.webp" /> -->
               <img class="beneos-icon-child token-search-data" src="{{result.picture}}"  data-type="Item"
               data-document-id="{{result.itemId}}" draggable="true"/>
             </div>
           </div>
 
-          {{#if result.isInstalled}}
-          <div class="beneos-search-middle flexcol token-search-data" data-type="Item"
+          {{#if result.isInstallable}}
+          <div class="beneos-search-middle flexcol token-search-data selected-batch" data-type="Item"
             data-document-id="{{result.itemId}}" draggable="true">
           {{else}}
           <div class="beneos-search-middle flexcol">
@@ -49,14 +49,24 @@
                     <img class="beneos-search-icons-result-tooltip-item" src="{{result.card_back}}">
                   </div>
                 </div>
+                {{#if result.isNew}}
+                <label class="beneos-search-title-result"><span
+                    class="token-name-new">[NEW]&nbsp;</span>{{result.name}}</label>
+                {{else}}
+                {{#if isUpdate}}
+                <label class="beneos-search-title-result"><span
+                    class="token-name-update">[UPDATE]&nbsp;</span>{{result.name}}</label>
+                {{else}}
                 <label class="beneos-search-title-result">{{result.name}}</label>
+                {{/if}}
+                {{/if}}
                 <span class="triangle-topleft"></span>
               </div>
-              
+
               <!-- Properties + Attenument line -->
               <div class="item-middle-line flexrow">
                 <div class="item-properties-box">
-                  
+
                   <label class="beneos-search-stat"><a class="beneos-button-rarity"
                       data-rarity-value="{{result.properties.rarity}}">{{beneosUpperFirst
                       result.properties.rarity}}</a>
@@ -90,7 +100,7 @@
                 </div>
                 {{/if}}
               </div>
-              
+
               <div class="item-description-box">
                 <span class="beneos-search-text01 flexrow beneos-description-background">
                   {{result.description}}
@@ -101,26 +111,68 @@
           </div>
 
           <div class="beneos-search-last flexcol">
-            
+
             <div class="flexrow flex-content-left">
               <div class="beneos-tooltip beneos-search-installed ">
+
+                {{#if result.isCloudAvailable}}
+                <div class="beneos-tooltip beneos-search-installed selected-batch">
+                  <div class="beneos-tooltiptext beneos-token-description">
+                  </div>
+                  {{#if result.isNew}}
+                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_new.webp">
+                  <label class="beneos-search-new item-right-text-content">
+                    <!-- <input type="checkbox" class="check-token-batch-install"> -->
+                    <a data-tooltip="New item available from the cloud server ! Click to install it locally or Ctrl+Click for batch install."
+                      class="beneos-cloud-item-install">NEW</a>
+                  </label>
+                  {{else}}
+                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
+                  <label class="beneos-search-installed item-right-text-content ">
+                    <!-- <input type="checkbox" class="check-token-batch-install"> -->
+                    <a data-tooltip="Click to install it locally or Ctrl+Click for batch install." class="beneos-cloud-item-install">INSTALL</a>
+                  </label>
+                  {{/if}}
+                </div>
+
+                {{else}}
+
                 {{#if result.isInstalled}}
-                <div class="beneos-tooltiptext beneos-token-description">
-                  <div class="flexrow beneos-tooltip-content-left-buttons">
-                    {{beneosGetHover "installed" "installed"}}
+                  <div class="beneos-tooltiptext beneos-token-description">
                   </div>
-                </div>
-                <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
-                <label class="beneos-search-installed item-right-text-content">Installed</label>
-              {{else}}
-                <div class="beneos-tooltiptext beneos-token-description">
-                  <div class="flexrow beneos-tooltip-content-left-buttons item-right-text-content">
-                    {{beneosGetHover "installed" "not_installed"}}
+                  {{#if result.isUpdate}}
+                    <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_update.png">
+                    <label class="beneos-search-new item-right-text-content"><a
+                      data-tooltip="Updated item available from the cloud server ! Click to install the update."
+                      class="beneos-cloud-item-install">UPDATE</a></label>
+                  {{else}}
+                    <img class="item-right-text-box " src="modules/beneos-module/ui/right_button_v1.webp">
+                    <label class="beneos-search-installed item-right-text-content"
+                      data-tooltip="Installed and ready to be used.">READY</label>
+                  {{/if}}
+                {{else}}
+                  <div class="beneos-tooltiptext beneos-token-description">
                   </div>
-                </div>
-                <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
-                <label class="beneos-search-notinstalled item-right-text-content">Not Installed</label>
+                  <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1_offline.webp">
+                  {{#if @root.isCloudLoggedIn}}
+                    <label class="item-right-text-content beneos-search-notinstalled beneos-search-noaccess"
+                      data-tooltip="No access to this item, check your Patreon membership" >NO ACCESS</label>
+                  {{else}}
+                    {{#if @root.isOffline}}
+                    <label class="item-right-text-content beneos-search-notinstalled beneos-search-notconnected"
+                      data-tooltip="You are not connected to Beneos cloud, please check in the settings or in the search window on the left.">
+                      OFFLINE
+                      </label>
+                      {{else }}
+                      <label class="item-right-text-content beneos-search-notinstalled beneos-search-notconnected beneos-search-notconnected-smaller"
+                      data-tooltip="You are not connected to Beneos cloud, please check in the settings or in the search window on the left.">
+                      NOT CONNECTED
+                      </label>
+                      {{/if}}
+                  {{/if}}
+                {{/if}}
               {{/if}}
+
             </div>
           </div>
 
@@ -128,7 +180,7 @@
             <div class="beneos-tooltip beneos-search-tier-button">
               <div class="beneos-tooltiptext beneos-token-description">
                 <div class="flexrow beneos-tooltip-content-left-buttons">
-                  {{beneosGetHover "tier" "1"}}
+                  {{beneosGetHover "tier" result.properties.tier}}
                 </div>
               </div>
               <img class="item-right-text-box" src="modules/beneos-module/ui/right_button_v1.png">
@@ -157,14 +209,19 @@
               <img class="item-origin-icon" src="https://raw.githubusercontent.com/BeneosBattlemaps/beneos-database/main/common/thumnbails/{{beneosLowerCase result.properties.origin}}.webp">
             </div>
           </div>
-          
+
         </div>
 
-        <img src="modules/beneos-module/ui/border_bottom.webp" class="bsr_bottom_border" />
-        
+        <img src="modules/beneos-module/ui/border_bottom.webp" class="bsr_bottom_border_items" />
+
       </div>
       {{/each}}
       </div>
+
+      <div class="search-100-results">
+        Only the first 100 search results are displayed
+      </div>
+
     </div>
   </section>
 

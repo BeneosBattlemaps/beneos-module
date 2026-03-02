@@ -1,10 +1,36 @@
-<div class="control-icon beneos-token-variants" data-action="beneosToken-variantlector" >
-    <img src="modules/beneos-module/icons/ability_icons/violet_04.webp" width="36" height="36" title="Convert to Beneos Token" />
-    <div class="beneos-variants-wrap beneos-disabled">
-        {{#each beneosVariantsHUD as |btoken|}}
-        <button class="beneos-button-select beneos-button-variant control-icon " data-variant="{{btoken.name}}" >
-            <span>{{btoken.name}}</span>
-        </button>
-        {{/each}}
-    </div>
+{{#if (isEmpty beneosVariantsHUD)}}
+
+{{else}}
+
+<div
+  class="control-icon beneos-token-variants"
+  data-action="beneosToken-variantlector"
+>
+  <img
+    src="modules/beneos-module/icons/beneos_icon_change_skin.svg"
+    width="36"
+    height="36"
+    title="Change Skin"
+  />
+
+  <div class="beneos-variants-wrap beneos-disabled">
+    {{#each beneosVariantsHUD as |btoken|}}
+    <button
+      class="beneos-variant-name-text beneos-button-select beneos-button-variant control-icon"
+      data-full-id="{{btoken.fullID}}"
+      data-variant="{{btoken.name}}"
+    >
+      <image
+        class="beneos-token-button"
+        src="{{btoken.img}}"
+        alt="{{btoken.display_name}}"
+      />
+      <span class="beneos-variant-name-text">{{btoken.display_name}}</span>
+    </button>
+    {{/each}}
+  </div>
 </div>
+<span class="beneos-skin-number-over"
+  >{{current}}/{{beneosAdd (beneosLength beneosVariantsHUD) 1}}</span
+>
+{{/if}}
