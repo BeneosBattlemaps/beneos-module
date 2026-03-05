@@ -7,3 +7,4 @@ todo.md
 /packs/*/CURRENT
 /packs/*/LOG
 /packs/*/LOCK
+/.github/copilot-instructions.md

@@ -1263,14 +1263,16 @@ i.beneos-module {
   border-radius: 4px;
   color: #3e0706;
   font-size: 0.85rem;
-  text-align: center;
   line-height: 1.6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
 .beneos-bmap-info-icon {
-  height: 1em;
-  vertical-align: middle;
-  margin: 0 2px;
+  height: 2em;
+  flex-shrink: 0;
 }
 
 /* =======================================================================================
