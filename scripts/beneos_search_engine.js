@@ -1208,6 +1208,7 @@ export class BeneosSearchEngine extends Dialog {
     }
     this.filterStack = []
     this.batchInstall = {}
+    this.battlemapNoticeShown = false
 
     game.beneosTokens.searchEngine = this
   }
@@ -1346,7 +1347,7 @@ export class BeneosSearchEngine extends Dialog {
         html += "<option value='any'>Any</option>"
       }
       for (let propDef of properties) {
-        if ( propDef.value.length > 1) {
+        if (propDef.value.length > 1) {
           html += "<option value='" + propDef.key + "'>" + propDef.value.charAt(0).toUpperCase() + propDef.value.slice(1) + "</option>"
         } else {
           html += "<option value='" + propDef.key + "'>" + propDef.value + "</option>"
@@ -1565,7 +1566,7 @@ export class BeneosSearchEngine extends Dialog {
       myObject.resultDialog.removeSelectedBatchClass()
       if (game.beneos.cloud.isLoggedIn()) {
         let patreonStatus = game.beneos.cloud.getPatreonStatus()
-        if ( patreonStatus == "active_patron" ) {
+        if (patreonStatus == "active_patron") {
           $(".beneos_search_engine .window-header .window-title").html('<span class="beneos-window-title-green">Beneos Cloud - Connected - Patreon OK</span>');
         } else {
           $(".beneos_search_engine .window-header .window-title").html('<span class="beneos-window-title-orange">Beneos Cloud - Connected - Patreon NOK</span>');
@@ -1685,23 +1686,29 @@ export class BeneosSearchEngine extends Dialog {
 
   /********************************************************************************** */
   showBattlemapNotice() {
+    if (this.battlemapNoticeShown) {
+      return
+    }
     if (game.settings.get(BeneosUtility.moduleID(), 'beneos-bmap-notice-dismissed')) {
       return
     }
+    this.battlemapNoticeShown = true
     let content = `<div>
-      <h3 style="margin-top:0">Beneos Cloud search currently supports Tokens, Spells, and Items/Loot only.</h3>
+      <h3 style="margin-top:0">Beneos Cloud search currently supports Tokens, Spells, and Loot only.</h3>
       <p>Import for Battlemaps via the Beneos Cloud are not available here yet, import via Moulinette.</p>
     </div>`
     let buttons = {
-      ok: { label: "Got it", callback: () => {} },
+      ok: { label: "Got it", callback: () => { } },
       dismiss: {
         label: "Don't show again",
         callback: () => { game.settings.set(BeneosUtility.moduleID(), 'beneos-bmap-notice-dismissed', true) }
       }
     }
+    let searchLeft = this.position?.left ?? 200
+    let searchTop = this.position?.top ?? 200
     new Dialog(
       { title: "Beneos Cloud – Battlemap Import", content, buttons },
-      { classes: ["beneos_module"], width: 460, 'z-index': 99999 }
+      { classes: ["beneos_module"], width: 460, left: searchLeft, top: Math.max(10, searchTop - 180), 'z-index': 99999 }
     ).render(true)
   }
 
