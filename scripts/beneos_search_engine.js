@@ -1433,8 +1433,30 @@ export class BeneosSearchEngine extends Dialog {
     }
 
     // Sort the final results
-    resTab2.sort(function (a, b) { return a.name.trim().localeCompare(b.name.trim()) })
-    resTab3.sort(function (a, b) { return a.name.trim().localeCompare(b.name.trim()) })
+    // Custom comparator: patreon/loyalty first (alphabetically), then SRD (alphabetically)
+    const sortByOriginThenName = (a, b) => {
+      const aOrigin = a.properties?.origin?.toLowerCase() || ''
+      const bOrigin = b.properties?.origin?.toLowerCase() || ''
+      
+      // SRD goes last; everything else comes first (alphabetically within its group)
+      const aIsSrd = aOrigin === 'srd'
+      const bIsSrd = bOrigin === 'srd'
+      
+      if (aIsSrd !== bIsSrd) {
+        return aIsSrd ? 1 : -1  // Non-SRD before SRD
+      }
+      
+      // If same SRD status, sort by origin first, then by name
+      if (aOrigin !== bOrigin) {
+        return aOrigin.localeCompare(bOrigin)
+      }
+      
+      // Same origin: sort alphabetically by name
+      return a.name.trim().localeCompare(b.name.trim())
+    }
+    
+    resTab2.sort(sortByOriginThenName)
+    resTab3.sort(sortByOriginThenName)
     // then merge resTab and resTab2
     for (let key in resTab2) {
       resTab.push(resTab2[key])
