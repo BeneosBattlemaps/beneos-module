@@ -1433,30 +1433,30 @@ export class BeneosSearchEngine extends Dialog {
     }
 
     // Sort the final results
-    // Custom comparator: patreon/loyalty first (alphabetically), then SRD (alphabetically)
-    const sortByOriginThenName = (a, b) => {
-      const aOrigin = a.properties?.origin?.toLowerCase() || ''
-      const bOrigin = b.properties?.origin?.toLowerCase() || ''
+    // Custom comparator: Beneos content (Webshop, Loyalty, Patreon) first, then SRD
+    const sortBySourceThenName = (a, b) => {
+      const aSource = a.properties?.source || ''
+      const bSource = b.properties?.source || ''
       
-      // SRD goes last; everything else comes first (alphabetically within its group)
-      const aIsSrd = aOrigin === 'srd'
-      const bIsSrd = bOrigin === 'srd'
+      // SRD goes last; everything else comes first
+      const aIsSrd = aSource === 'SRD'
+      const bIsSrd = bSource === 'SRD'
       
       if (aIsSrd !== bIsSrd) {
         return aIsSrd ? 1 : -1  // Non-SRD before SRD
       }
       
-      // If same SRD status, sort by origin first, then by name
-      if (aOrigin !== bOrigin) {
-        return aOrigin.localeCompare(bOrigin)
+      // If both are SRD or both are non-SRD, sort by source alphabetically, then by name
+      if (aSource !== bSource) {
+        return aSource.localeCompare(bSource)
       }
       
-      // Same origin: sort alphabetically by name
+      // Same source: sort alphabetically by name
       return a.name.trim().localeCompare(b.name.trim())
     }
     
-    resTab2.sort(sortByOriginThenName)
-    resTab3.sort(sortByOriginThenName)
+    resTab2.sort(sortBySourceThenName)
+    resTab3.sort(sortBySourceThenName)
     // then merge resTab and resTab2
     for (let key in resTab2) {
       resTab.push(resTab2[key])
