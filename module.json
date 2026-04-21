@@ -89,12 +89,6 @@
         "compatibility": {}
       },
 	  {
-        "id": "LockView",
-        "type": "module",
-        "manifest": "https://github.com/MaterialFoundry/LockView/releases/latest/download/module.json",
-        "compatibility": {}
-      },
-	  {
         "id": "lib-wrapper",
         "type": "module",
         "manifest": "https://github.com/ruipin/fvtt-lib-wrapper/releases/latest/download/module.json",
