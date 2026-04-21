@@ -142,8 +142,6 @@ export class BeneosCloud {
     this.setLoginStatus(false)
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
     if (!userId || userId == '') {
-      // Outputs a warning message
-      ui.notifications.warn("You are not connected to BeneosCloud. Please connect to BeneosCloud thru the Settings form if you want to import Beneos assets.")
       return;
     }
 

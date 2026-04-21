@@ -271,7 +271,7 @@ export class BeneosTableTop {
 
     game.socket.emit("module.beneos-module", {
       name: "msg_user_view_response",
-      data: foundry.utils.duplicate(viewPosition)
+      data: structuredClone(viewPosition)
     });
   }
 
@@ -676,7 +676,7 @@ export class BeneosTableTop {
 
   /*************************************/
   static async sendPositionMessage(data) {
-    let viewPosition = foundry.utils.duplicate(canvas.scene._viewPosition);
+    let viewPosition = structuredClone(canvas.scene._viewPosition);
     let views = {}
     for (let d of canvas.scene.drawings) {
       let userId = d.getFlag('beneos-module', 'viewer');
@@ -714,7 +714,7 @@ export class BeneosTableTop {
     if (!game.user.isGM || !BeneosTableTop.isControlPlayerView()) {
       return true;
     }
-    let viewPosition = foundry.utils.duplicate(canvas.scene._viewPosition);
+    let viewPosition = structuredClone(canvas.scene._viewPosition);
     this.sendViewPosition(viewPosition);
 
     return true;
@@ -773,7 +773,7 @@ export class BeneosTableTop {
       return;
     }
 
-    let sceneData = foundry.utils.duplicate(canvas?.scene?.getFlag("beneos-module", "beneos-data") || this.getDefaultSceneData() )
+    let sceneData = structuredClone(canvas?.scene?.getFlag("beneos-module", "beneos-data") || this.getDefaultSceneData() )
     sceneData.uiState = !sceneData.uiState
     game.socket.emit("module.beneos-module", {
       name: "msg_toggle_ui_elements",

@@ -1,6 +1,7 @@
+import "./beneos_tours.js";
 import { libWrapper } from "./shim.js";
 import { BeneosUtility } from "./beneos_utility.js";
-import { BeneosSearchEngineLauncher, BeneosModuleMenu } from "./beneos_search_engine.js";
+import { BeneosSearchEngineLauncher, BeneosModuleMenu, BeneosDatabaseHolder } from "./beneos_search_engine.js";
 import { BeneosCloud } from "./beneos_cloud.js";
 // Unused : import { BeneosTableTop } from "./beneos-table-top.js";
 
@@ -34,6 +35,16 @@ Hooks.once('ready', () => {
   }
   BeneosUtility.ready()
 
+  // Eagerly populate game.beneos.databaseHolder so hooks like preCreateActor
+  // can use it even if the Search Engine UI hasn't been opened yet. Without
+  // this, ZipImporter-driven actor imports crash in the preCreateActor hook
+  // because `game.beneos.databaseHolder` is undefined.
+  BeneosDatabaseHolder.loadDatabaseFiles().then(() => {
+    game.beneos.databaseHolder = BeneosDatabaseHolder;
+  }).catch(e => {
+    console.warn("Beneos | databaseHolder eager load failed:", e);
+  });
+
   //Token Magic Hack  Replacement to prevent double filters when changing animations
   if (typeof TokenMagic !== 'undefined') {
     let OrigSingleLoadFilters = TokenMagic._singleLoadFilters;
@@ -47,13 +58,13 @@ Hooks.once('ready', () => {
 
   BeneosUtility.updateSceneTokens()
   //BeneosUtility.checkLockViewPresence()
-  game.beneos.cloud.loginAttempt()
 
-  // Vérifier et afficher le message de bienvenue si nécessaire
-  BeneosUtility.checkWelcomeMessage()
-
-  // Vérifier et afficher le message de news si nécessaire
-  BeneosUtility.checkNewsMessage()
+  // Cloud login, welcome and news messages are GM-only
+  if (game.user.isGM) {
+    game.beneos.cloud.loginAttempt()
+    BeneosUtility.checkWelcomeMessage()
+    BeneosUtility.checkNewsMessage()
+  }
 
   if (game.settings.get(BeneosUtility.moduleID(), "beneos-reload-search-engine")) {
     setTimeout(() => {
@@ -65,6 +76,7 @@ Hooks.once('ready', () => {
 
   // Try to catch right click on profile image
   Hooks.on('renderActorSheet', (sheet, html, data) => {
+    if (!sheet.template && !sheet.constructor?.PARTS) return; // Skip unknown sheet formats (v14+ safety)
     if (game.system.id == "pf2e") {
       $("#" + sheet.id + " .image-container .actor-image").mouseup(async function (e) {
         BeneosUtility.prepareMenu(e, sheet)
@@ -246,8 +258,11 @@ Hooks.on("preCreateActor", (actor, data, context) => {
   if (actor?.flags?.world?.beneos?.fullId) {
     let folder = game.folders.getName("Beneos Actors")
     if (folder) {
-      let tokenDb = game.beneos.databaseHolder.getTokenDatabaseInfo(actor.flags.world.beneos.tokenKey)
-      let folderName = tokenDb?.properties?.type[0] ?? "Unknown"
+      // databaseHolder may not be ready yet (e.g. during an early
+      // ZipImporter run); fall back to the top-level Beneos Actors folder
+      // instead of crashing the whole preCreateActor chain.
+      let tokenDb = game.beneos?.databaseHolder?.getTokenDatabaseInfo?.(actor.flags.world.beneos.tokenKey)
+      let folderName = tokenDb?.properties?.type?.[0] ?? "Unknown"
       // Upper first letter
       folderName = folderName.charAt(0).toUpperCase() + folderName.slice(1)
       // Create the sub-folder if it doesn't exist
@@ -277,6 +292,12 @@ Hooks.on("renderActorDirectory", (app, html, data) => {
     button.style["align-self"] = 'center';
     button.innerHTML = "Beneos Cloud - Search & Download";
     button.addEventListener('click', () => {
+      try {
+        const src = "modules/beneos-module/ui/sfx/beneos_start.ogg";
+        const helper = foundry.audio?.AudioHelper
+                    ?? (typeof AudioHelper !== "undefined" ? AudioHelper : null);
+        helper?.play?.({ src, volume: 0.5, autoplay: true, loop: false }, false);
+      } catch (e) {}
       new BeneosSearchEngineLauncher().render()
     })
     $(html).find('.header-actions').after(button)

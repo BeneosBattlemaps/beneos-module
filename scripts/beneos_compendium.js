@@ -151,7 +151,7 @@ export class BeneosCompendiumManager_DEPRECATED {
     let diffData = [] // Detect new import data
     for (let key in newData) {
       if (!previousData[key]) {
-        diffData.push(foundry.utils.duplicate(newData[key]))
+        diffData.push(structuredClone(newData[key]))
       }
     }
     let content = itemName + " : No new content detected."
@@ -288,7 +288,7 @@ export class BeneosCompendiumManager_DEPRECATED {
           }
           // Create the journal
           try {
-            let records = foundry.utils.duplicate(journalRecords)
+            let records = structuredClone(journalRecords)
             records.name = fullId
             records.pages[0].src = model.journal;
             let journal = new JournalEntry(records);
@@ -302,7 +302,7 @@ export class BeneosCompendiumManager_DEPRECATED {
           // Create relevant actors
           let actor
           if (game.system.id == "pf2e") {
-            let pf2Record = foundry.utils.duplicate(pf2NPCRecords)
+            let pf2Record = structuredClone(pf2NPCRecords)
             pf2Record.name = actorRecords.name
             pf2Record.img = model.avatar
             pf2Record.prototypeToken.texture.src = model.token
@@ -310,7 +310,7 @@ export class BeneosCompendiumManager_DEPRECATED {
             //actor = await Actor.create(pf2Record, { temporary: true })
             actor = new Actor.implementation(pf2Record)
           } else {
-            let records = foundry.utils.duplicate(actorRecords)
+            let records = structuredClone(actorRecords)
             records.img = model.avatar;
             this.replaceItemsPath(records)
             //console.log(">>>>>>>>>>>>>> REC", records, actor)

@@ -3,6 +3,22 @@
 All notable changes to this module will be documented in this file.
 
 ## Updates
+### 14.0.0 # 2026-04-19
+- New: Foundry **V14 compatibility** — full module re-integration and migration for Foundry VTT V14. Existing V13 behaviour is preserved via a parallel v13/v14 data path.
+- New: **Setup Tour** — interactive first-run tour that guides new users through the Moulinette Cloud login, filtering the Beneos creator and pack, and then automatically downloads + installs the Getting Started pack as a playable scene via ScenePacker.
+- New: **Getting Started Tour** — comprehensive in-world demo tour based on a dedicated demo pack that walks players through every Beneos product line: Beneos **Battlemaps**, **Creatures**, **Spells**, and **Loot**, including the token HUD, skin variants, journal integrations, and the Beneos Search engine.
+- New: **First-run prompt** — new patrons installing the module for the first time see a styled welcome dialog with an animated preview GIF and a "Don't show again" option, offering a one-click start of the Setup Tour.
+- New: **Moulinette Patreon login gate** — if the user skips the Patreon login during the Setup Tour, Step 11 now pauses with a blocking Beneos-styled dialog, opens the Moulinette login window, and passively polls + force-refreshes Moulinette's patron cache until login is confirmed, then auto-resumes the tour at the correct step.
+- New: **Reference Checker** — users with incomplete or corrupt Beneos downloads now see a guided Beneos-styled notification with step-by-step recovery instructions instead of silent failures.
+- New: **13 languages** — full translation of the tour system, prompts, and UI strings: Català, Čeština, Deutsch, English, Español, Français, Italiano, Polski, Português (Brasil), Português (Portugal), 日本語, 한국어, 繁體中文. The "Available in your language" intro step now lists all languages in alphabetical order.
+- New: **Global spotlight highlighting** in the Setup Tour — Steps 8–11 now dim the rest of the screen and spotlight the specific Moulinette element the tooltip refers to (Creator dropdown, Pack dropdown, Start-Here scene row, Import-All button), making the onboarding impossible to misread.
+- Updated: **Beneos documentation** fully rewritten to match the new tour-driven onboarding, the V14 behaviour, and the Reference-Checker recovery flow.
+- Updated: Setup-Tour "Setup Complete" step no longer overlaps with the "Install Getting Started Tour?" prompt — on "Yes" the install runs immediately, on "No" the tooltip serves as the tour's wrap-up.
+- Updated: Setup-Tour Step 9 (Pack selection) now releases keyboard focus from the `<select>` so arrow-key tour navigation can't accidentally change the pre-selected pack.
+- Updated: Setup-Tour Step 10 (Importing a Pack) now hovers the "Start Here" scene row to reveal Moulinette's per-row "Import w. ScenePacker" button and spotlights just that row.
+- Fixed: Multiple V13→V14 migration issues uncovered during integration (Application v1→v2 patterns, hook signatures, scene/actor data paths, tour DOM lifecycle).
+- Fixed: Tour tooltip no longer lingers on screen during the post-install page reload.
+
 ### 13.2.10 # 2026-05-05
 - Added: Beneos Cloud Message for Beneos Battlemaps Patrons (stating the cloud is only für Beneos Tokens Patrons for now)
 

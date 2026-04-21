@@ -74,7 +74,7 @@ export class TableTopModeSettings extends FormApplication {
   async _updateObject(_, formData) {
     const data = foundry.utils.expandObject(formData)
     let config = game.settings.get(BeneosUtility.moduleID(), 'beneos-table-top-config')
-    data.performanceModePerUsers = foundry.utils.duplicate(config.performanceModePerUsers) || []
+    data.performanceModePerUsers = structuredClone(config.performanceModePerUsers) || []
     if (!Array.isArray(data.performanceModePerUsers)) {
       data.config.performanceModePerUsers = []
       for (let u of game.users) {
@@ -166,9 +166,9 @@ export class BeneosUtility {
 
     if (game.settings.get(BeneosUtility.moduleID(), 'beneos-cloud-foundry-id') == "") {
       game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-patreon-login", {
-        name: "Login to Beneos Cloud ",
-        label: "Login to Beneos Cloud ",
-        hint: "Login to Beneos Cloud",
+        name: "BENEOS.Settings.PatreonLogin.Name",
+        label: "BENEOS.Settings.PatreonLogin.Label",
+        hint: "BENEOS.Settings.PatreonLogin.Hint",
         scope: 'world',
         config: true,
         type: BeneosCloudLogin,
@@ -176,9 +176,9 @@ export class BeneosUtility {
       })
     } else {
       game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-cloud-disconnect", {
-        name: "Disconnect from Beneos Cloud",
-        label: "Disconnect from Beneos Cloud",
-        hint: "Disconnect from Beneos Cloud",
+        name: "BENEOS.Settings.CloudDisconnect.Name",
+        label: "BENEOS.Settings.CloudDisconnect.Label",
+        hint: "BENEOS.Settings.CloudDisconnect.Hint",
         scope: 'world',
         config: true,
         type: BeneosCloudSettings,
@@ -187,9 +187,9 @@ export class BeneosUtility {
     }
 
     game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-clean-compendium", {
-      name: "Empty compendium ",
-      label: "Reset Beneos Module Compendiums",
-      hint: "Cleanup Beneos Module compendium and tokens configs",
+      name: "BENEOS.Settings.CleanCompendium.Name",
+      label: "BENEOS.Settings.CleanCompendium.Label",
+      hint: "BENEOS.Settings.CleanCompendium.Hint",
       scope: 'world',
       config: true,
       type: BeneosCompendiumReset,
@@ -197,9 +197,9 @@ export class BeneosUtility {
     })
 
     game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-search-engine", {
-      name: "Beneos Cloud",
-      label: "Find and Install Beneos Content",
-      hint: "Search in all the published tokens/battlemaps from BeneosSearch engine",
+      name: "BENEOS.Settings.SearchEngine.Name",
+      label: "BENEOS.Settings.SearchEngine.Label",
+      hint: "BENEOS.Settings.SearchEngine.Hint",
       scope: 'world',
       config: true,
       type: BeneosSearchEngineLauncher,
@@ -217,8 +217,8 @@ export class BeneosUtility {
     })
 
     game.settings.register(BeneosUtility.moduleID(), "beneos-death-management", {
-      name: "Automatic Death Icon",
-      hint: "Creatures that reach 0 HP automatically receive a skull item.",
+      name: "BENEOS.Settings.DeathManagement.Name",
+      hint: "BENEOS.Settings.DeathManagement.Hint",
       scope: 'world',
       config: true,
       default: true,
@@ -688,11 +688,27 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
+  static getSceneBackgroundSrc(scene) {
+    if (scene.firstLevel) return scene.firstLevel.background?.src;
+    return scene.background?.src;
+  }
+
+  /********************************************************************************** */
+  static async updateSceneBackgroundSrc(scene, srcPath) {
+    if (scene.firstLevel) {
+      await scene.firstLevel.update({"background.src": srcPath});
+    } else {
+      await scene.update({'background.src': srcPath});
+    }
+  }
+
+  /********************************************************************************** */
   static countBeneosAssetsUsage() {
     let statsBeneos = { maps: {}, tokens: {}, items: {}, spells: {} }
     for (let scene of game.scenes) {
-      if (scene?.background?.src?.includes('beneos-battlemaps-universe')) {
-        statsBeneos.maps[scene.background.src] = (statsBeneos.maps[scene.background.src]) ? statsBeneos.maps[scene.background.src] + 1 : 1
+      let bgSrc = BeneosUtility.getSceneBackgroundSrc(scene)
+      if (bgSrc?.includes('beneos-battlemaps-universe')) {
+        statsBeneos.maps[bgSrc] = (statsBeneos.maps[bgSrc]) ? statsBeneos.maps[bgSrc] + 1 : 1
       }
     }
     for (let item of game.items) {
@@ -831,7 +847,7 @@ export class BeneosUtility {
   static isSwitchableBeneosBattlemap(sceneId, fileType) {
     let scene = game.scenes.get(sceneId)
     if (!scene) return undefined
-    let srcPath = scene?.background?.src
+    let srcPath = BeneosUtility.getSceneBackgroundSrc(scene)
     let tileId = "scene"
 
 
@@ -858,7 +874,7 @@ export class BeneosUtility {
   /********************************************************************************** */
   static getBattlemapSrcPath(sceneId, tileId) {
     let scene = game.scenes.get(sceneId)
-    let bg = scene.background.src
+    let bg = BeneosUtility.getSceneBackgroundSrc(scene)
     if (tileId != "scene") {
       let tile = scene.tiles.get(tileId)
       bg = tile.texture.src
@@ -878,7 +894,7 @@ export class BeneosUtility {
       }
 
       //console.log("Scene : ", scene)
-      let srcPath = (tile) ? tile.texture.src : scene.background.src
+      let srcPath = (tile) ? tile.texture.src : BeneosUtility.getSceneBackgroundSrc(scene)
       if (command == "toStatic") {
         srcPath = srcPath.replace("webm", "webp")
       } else {
@@ -888,7 +904,7 @@ export class BeneosUtility {
       if (tile) {
         scene.updateEmbeddedDocuments("Tile", [({ _id: tile.id, 'texture.src': srcPath })])
       } else {
-        scene.update({ 'background.src': srcPath })
+        BeneosUtility.updateSceneBackgroundSrc(scene, srcPath)
       }
       //scene.background.src = srcPath
     }
@@ -1497,8 +1513,8 @@ export class BeneosUtility {
     if (tokenConfig) {
       let jsonData = {}
       jsonData[fullKey] = {
-        config: foundry.utils.duplicate(tokenConfig.config),
-        top: foundry.utils.duplicate(tokenConfig.top)
+        config: structuredClone(tokenConfig.config),
+        top: structuredClone(tokenConfig.top)
       }
       let json = JSON.stringify(jsonData)
       saveDataToFile(json, "text/json", tokenConfig.JSONFilePath)

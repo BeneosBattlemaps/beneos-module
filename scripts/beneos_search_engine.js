@@ -104,10 +104,10 @@ export class BeneosDatabaseHolder {
     try {
       let tokenData = await foundry.utils.fetchJsonWithTimeout(tokenDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
       this.tokenData = tokenData
-      localStorage.tokenData = foundry.utils.duplicate(tokenData)
+      localStorage.tokenData = structuredClone(tokenData)
     } catch (err) {
       if (localStorage.tokenData) {
-        this.tokenData = foundry.utils.duplicate(localStorage.tokenData)
+        this.tokenData = structuredClone(localStorage.tokenData)
         this.isOffline = true
         ui.notifications.info("Unable to load Beneos Token Database - Using local copy (may be outdated)")
       } else {
@@ -117,10 +117,10 @@ export class BeneosDatabaseHolder {
     try {
       let bmapData = await foundry.utils.fetchJsonWithTimeout(battlemapDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
       this.bmapData = bmapData
-      localStorage.bmapData = foundry.utils.duplicate(bmapData)
+      localStorage.bmapData = structuredClone(bmapData)
     } catch {
       if (localStorage.bmapData) {
-        this.bmapData = foundry.utils.duplicate(localStorage.bmapData)
+        this.bmapData = structuredClone(localStorage.bmapData)
         this.isOffline = true
         ui.notifications.info("Unable to load Beneos Battlemap Database - Using local copy (may be outdated)")
       } else {
@@ -130,10 +130,10 @@ export class BeneosDatabaseHolder {
     try {
       let itemData = await foundry.utils.fetchJsonWithTimeout(itemDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
       this.itemData = itemData
-      localStorage.itemData = foundry.utils.duplicate(itemData)
+      localStorage.itemData = structuredClone(itemData)
     } catch {
       if (localStorage.itemData) {
-        this.itemData = foundry.utils.duplicate(localStorage.itemData)
+        this.itemData = structuredClone(localStorage.itemData)
         this.isOffline = true
         ui.notifications.info("Unable to load Beneos Item Database - Using local copy (may be outdated)")
       } else {
@@ -143,10 +143,10 @@ export class BeneosDatabaseHolder {
     try {
       let spellData = await foundry.utils.fetchJsonWithTimeout(spellDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
       this.spellData = spellData
-      localStorage.spellData = foundry.utils.duplicate(spellData)
+      localStorage.spellData = structuredClone(spellData)
     } catch {
       if (localStorage.spellData) {
-        this.spellData = foundry.utils.duplicate(localStorage.spellData)
+        this.spellData = structuredClone(localStorage.spellData)
         this.isOffline = true
         ui.notifications.info("Unable to load Beneos Spell Database - Using local copy (may be outdated)")
       } else {
@@ -156,10 +156,10 @@ export class BeneosDatabaseHolder {
     try {
       let commonData = await foundry.utils.fetchJsonWithTimeout(commonDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
       this.commonData = commonData
-      localStorage.commonData = foundry.utils.duplicate(commonData)
+      localStorage.commonData = structuredClone(commonData)
     } catch {
       if (localStorage.commonData) {
-        this.commonData = foundry.utils.duplicate(localStorage.commonData)
+        this.commonData = structuredClone(localStorage.commonData)
         this.isOffline = true
         ui.notifications.info("Unable to load Beneos Common Database - Using local copy (may be outdated)")
       } else {
@@ -597,7 +597,7 @@ export class BeneosDatabaseHolder {
 
   /********************************************************************************** */
   static getTagDescriptions() {
-    return foundry.utils.duplicate(this.tokenData.tag_description)
+    return structuredClone(this.tokenData.tag_description)
   }
 
   /********************************************************************************** */
@@ -618,7 +618,7 @@ export class BeneosDatabaseHolder {
     text = text.toLowerCase()
 
     for (let key in objectList) {
-      let item = foundry.utils.duplicate(objectList[key])
+      let item = structuredClone(objectList[key])
       item.kind = kind || "token"
       if (item.kind == "token") {
         item.kind = (kind == "token") ? "token" : item.properties.type
@@ -690,7 +690,7 @@ export class BeneosDatabaseHolder {
       }
       if (item[propertyName]) {
         if (item[propertyName].toLowerCase() == value) {
-          newResults[key] = foundry.utils.duplicate(item)
+          newResults[key] = structuredClone(item)
         }
       }
       if (propertyName == "grid") {
@@ -701,42 +701,42 @@ export class BeneosDatabaseHolder {
         if (sizeParse?.[1] && sizeParse?.[2]) {
           let size = parseInt(sizeParse[1]) * parseInt(sizeParse[2])
           if ((comp == "<" && Number(size) <= Number(grid)) || (comp == ">" && Number(size) >= Number(grid))) {
-            newResults[key] = foundry.utils.duplicate(item)
+            newResults[key] = structuredClone(item)
           }
         }
       } else if (propertyName == "cr") {
         let comp = value.match(/(\d+),(\d+)/)
         if (comp?.[1] && comp?.[2]) {
           if (item.properties.cr >= Number(comp[1]) && (item.properties.cr <= Number(comp[2]))) {
-            newResults[key] = foundry.utils.duplicate(item)
+            newResults[key] = structuredClone(item)
           }
         } else if (item.properties.cr == Number(value)) {
-          newResults[key] = foundry.utils.duplicate(item)
+          newResults[key] = structuredClone(item)
         }
 
       } else if (propertyName == "price") {
         let comp = value.substring(0, 1)
         let price = parseInt(value.substring(1))
         if ((comp == "<" && item.properties.price <= price) || (comp == ">" && item.properties.price > price)) {
-          newResults[key] = foundry.utils.duplicate(item)
+          newResults[key] = structuredClone(item)
         }
       } else if (item?.properties[propertyName]) {
         //console.log(item.properties[propertyName], typeof (item.properties[propertyName]))
         if (typeof (item.properties[propertyName]) == "string" || typeof (item.properties[propertyName]) == "number") {
           if (strict) {
             if (item.properties[propertyName].toString().toLowerCase() == value.toString()) {
-              newResults[key] = foundry.utils.duplicate(item)
+              newResults[key] = structuredClone(item)
             }
           } else {
             if (item.properties[propertyName].toString().toLowerCase().includes(value)) {
-              newResults[key] = foundry.utils.duplicate(item)
+              newResults[key] = structuredClone(item)
             }
           }
         } else {
           if (Array.isArray(item.properties[propertyName])) {
             for (let valueArray of item.properties[propertyName]) {
               if ((typeof (valueArray) == "string") && valueArray.toString().toLowerCase().includes(value)) {
-                newResults[key] = foundry.utils.duplicate(item)
+                newResults[key] = structuredClone(item)
               }
             }
           }
@@ -750,15 +750,15 @@ export class BeneosDatabaseHolder {
   /********************************************************************************** */
   static getAll(type) {
     if (type == "token") {
-      return foundry.utils.duplicate(this.tokenData.content)
+      return structuredClone(this.tokenData.content)
     }
     if (type == "item") {
-      return foundry.utils.duplicate(this.itemData.content)
+      return structuredClone(this.itemData.content)
     }
     if (type == "spell") {
-      return foundry.utils.duplicate(this.spellData.content)
+      return structuredClone(this.spellData.content)
     }
-    return foundry.utils.duplicate(this.bmapData.content)
+    return structuredClone(this.bmapData.content)
   }
 
   /********************************************************************************** */
@@ -832,16 +832,16 @@ export class BeneosDatabaseHolder {
       fightingStyles: this.toTable(this.fightingStyles),
       bmapBrightness: this.toTable(this.bmapBrightness),
       movementList: this.toTable(this.movementList),
-      crList: foundry.utils.duplicate(this.crList),
+      crList: structuredClone(this.crList),
       purposeList: this.toTable(this.purposeList),
       adventureList: this.toTable(this.adventureList),
-      gridList: BeneosDatabaseHolder.sortProperties(foundry.utils.duplicate(this.gridList)),
+      gridList: BeneosDatabaseHolder.sortProperties(structuredClone(this.gridList)),
 
       rarity: this.toTable(this.itemRarity),
       origin: this.toTable(this.itemOrigin),
       itemType: this.toTable(this.itemType),
       tier: this.toTable(this.itemTier),
-      price: BeneosDatabaseHolder.sortProperties(foundry.utils.duplicate(this.itemPrice)),
+      price: BeneosDatabaseHolder.sortProperties(structuredClone(this.itemPrice)),
 
       level: this.toTable(this.spellLevel),
       school: this.toTable(this.spellSchool),
@@ -1268,13 +1268,13 @@ export class BeneosSearchEngine extends Dialog {
     game.beneosTokens.lastFilterStack = {
       // Get the scroll position of the search results class bsr_result_box
       scrollTop: $(".bsr_result_box")?.scrollTop() || 0,
-      searchPos: foundry.utils.duplicate(this.position),
-      resultPos: foundry.utils.duplicate(this.resultDialog?.position || { left: 0, top: 0, width: 0, height: 0 }),
+      searchPos: structuredClone(this.position),
+      resultPos: structuredClone(this.resultDialog?.position || { left: 0, top: 0, width: 0, height: 0 }),
       mode: this.dbData.searchMode,
       searchFilters,
       textSearch: $("#beneos-search-text").val()
     }
-    game.beneosTokens.lastResultPos = foundry.utils.duplicate(game.beneosTokens?.lastFilterStack?.resultPos)
+    game.beneosTokens.lastResultPos = structuredClone(game.beneosTokens?.lastFilterStack?.resultPos)
   }
 
   /********************************************************************************** */
@@ -1311,15 +1311,15 @@ export class BeneosSearchEngine extends Dialog {
         let item = toSearch[key]
         if (item.properties?.[propDef.name]) {
           if (propDef.name.toLowerCase() == "rarity") {
-            properties = foundry.utils.duplicate(BeneosDatabaseHolder.itemRarity)
+            properties = structuredClone(BeneosDatabaseHolder.itemRarity)
           } else if (propDef.name.toLowerCase() == "price") {
-            properties = foundry.utils.duplicate(BeneosDatabaseHolder.itemPrice)
+            properties = structuredClone(BeneosDatabaseHolder.itemPrice)
           } else if (propDef.name.toLowerCase() == "grid") {
-            properties = foundry.utils.duplicate(BeneosDatabaseHolder.gridList)
+            properties = structuredClone(BeneosDatabaseHolder.gridList)
           } else if (propDef.name.toLowerCase() == "tier") {
-            properties = foundry.utils.duplicate(BeneosDatabaseHolder.itemTier)
+            properties = structuredClone(BeneosDatabaseHolder.itemTier)
           } else if (propDef.name.toLowerCase() == "cr") {
-            properties = foundry.utils.duplicate(BeneosDatabaseHolder.crList)
+            properties = structuredClone(BeneosDatabaseHolder.crList)
           } else if (typeof (item.properties[propDef.name]) == "string") {
             if (properties.find((prop) => prop.key == item.properties[propDef.name].toLowerCase()) == undefined) {
               properties.push({ key: item.properties[propDef.name].toLowerCase(), value: item.properties[propDef.name] })
@@ -1814,7 +1814,7 @@ export class BeneosSearchEngine extends Dialog {
 
     $("#beneos-cloud-batch-install").click(event => {
       console.log("Processing batch install", game.beneosTokens.searchEngine.batchInstall)
-      game.beneos.cloud.batchInstall(foundry.utils.duplicate(game.beneosTokens.searchEngine.batchInstall))
+      game.beneos.cloud.batchInstall(structuredClone(game.beneosTokens.searchEngine.batchInstall))
       game.beneosTokens.searchEngine.batchInstall = {}
       // Hide the Batch Install button
       document.getElementById('beneos-cloud-batch-install').hidden = true

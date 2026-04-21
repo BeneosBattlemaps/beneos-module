@@ -1,15 +1,15 @@
 {
   "title": "Beneos Module",
   "description": "Quality of life features for Beneos Battlemaps, Tokens, Spells and Items",
-  "version": "13.2.10",
+  "version": "14.0.0",
   "socket": true,
   "compatibility": {
     "minimum": "13",
-    "verified": "13"
+    "verified": "14"
   },
   "url": "https://github.com/BeneosBattlemaps/beneos-module",
   "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-module/main/module.json",
-  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/13.2.10.zip",
+  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/14.0.0.zip",
   "scripts": [
     "scripts/beneosfx.js"
   ],
@@ -19,9 +19,28 @@
 	  "css/beneos-journal.css"
   ],
   "esmodules": [
+    "scripts/beneos-asset-path-repair.js",
+    "scripts/beneos_tours.js",
     "scripts/beneos_module.js",
 	"scripts/beneos-journal.js",
-	"scripts/beneos-scenepacker.js"
+	"scripts/beneos-scenepacker.js",
+	"scripts/beneos_nav_visibility.js",
+	"scripts/beneos-asset-watcher.js"
+  ],
+  "languages": [
+    { "lang": "en",    "name": "English",                 "path": "lang/en.json" },
+    { "lang": "de",    "name": "Deutsch",                 "path": "lang/de.json" },
+    { "lang": "fr",    "name": "Français",                "path": "lang/fr.json" },
+    { "lang": "cs",    "name": "Čeština",                 "path": "lang/cs.json" },
+    { "lang": "ca",    "name": "Català",                  "path": "lang/ca.json" },
+    { "lang": "ko",    "name": "한국어",                    "path": "lang/ko.json" },
+    { "lang": "es",    "name": "Español",                 "path": "lang/es.json" },
+    { "lang": "pt-BR", "name": "Português (Brasil)",      "path": "lang/pt-BR.json" },
+    { "lang": "ja",    "name": "日本語",                    "path": "lang/ja.json" },
+    { "lang": "zh-TW", "name": "繁體中文",                  "path": "lang/zh-TW.json" },
+    { "lang": "pl",    "name": "Polski",                  "path": "lang/pl.json" },
+    { "lang": "pt-PT", "name": "Português (Portugal)",    "path": "lang/pt-PT.json" },
+    { "lang": "it",    "name": "Italiano",                "path": "lang/it.json" }
   ],
   "packs": [],
   "id": "beneos-module",
