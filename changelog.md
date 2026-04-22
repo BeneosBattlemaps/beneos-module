@@ -2,7 +2,12 @@
 
 All notable changes to this module will be documented in this file.
 
+
+
 ## Updates
+### 14.0.2 # 2026-04-22
+- Updated: Automatic reference detection for missing assets has been improved and now points to an external URL instead of an internal journal (which, if present, is not updated and therefore offers no added value)
+
 ### 14.0.0 # 2026-04-19
 - New: Foundry **V14 compatibility** — full module re-integration and migration for Foundry VTT V14. Existing V13 behaviour is preserved via a parallel v13/v14 data path.
 - New: **Setup Tour** — interactive first-run tour that guides new users through the Moulinette Cloud login, filtering the Beneos creator and pack, and then automatically downloads + installs the Getting Started pack as a playable scene via ScenePacker.
