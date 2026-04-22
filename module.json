@@ -1,7 +1,7 @@
 {
   "title": "Beneos Module",
-  "description": "Quality of life features for Beneos Battlemaps, Tokens, Spells and Items",
-  "version": "14.0.1",
+  "description": "Features for Beneos Battlemaps, Creatures, Spells and Loot",
+  "version": "14.0.2",
   "socket": true,
   "compatibility": {
     "minimum": "13",
@@ -9,7 +9,7 @@
   },
   "url": "https://github.com/BeneosBattlemaps/beneos-module",
   "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-module/main/module.json",
-  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/14.0.1.zip",
+  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/14.0.2.zip",
   "scripts": [
     "scripts/beneosfx.js"
   ],
