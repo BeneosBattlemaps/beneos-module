@@ -1297,15 +1297,19 @@ Hooks.once("init", () => {
     config: false
   });
 
+  // World-scope intentional: each new world should get a fresh first-run
+  // experience. A client-scoped flag would survive world/module resets via
+  // browser localStorage, so a returning GM creating a new campaign world
+  // would silently miss the Setup Tour prompt.
   game.settings.register(MODULE_ID, "tourPromptLastVersion", {
-    scope: "client",
+    scope: "world",
     type: String,
     default: "",
     config: false
   });
 
   game.settings.register(MODULE_ID, "tourPromptDontShowAgain", {
-    scope: "client",
+    scope: "world",
     type: Boolean,
     default: false,
     config: false
@@ -6300,7 +6304,10 @@ Hooks.once("setup", async () => {
 /* ================================================================== */
 
 Hooks.once("ready", async () => {
-  if (!game.user.isGM) return;
+  if (!game.user.isGM) {
+    console.log("Beneos Setup Tour | first-run check skipped: user is not GM");
+    return;
+  }
 
   // --- Phase 1 auto-start on first run ---
   const isFirstRun = game.settings.get(MODULE_ID, "tourFirstRun");
@@ -6319,13 +6326,30 @@ Hooks.once("ready", async () => {
   const lastVersion = game.settings.get(MODULE_ID, "tourPromptLastVersion");
   const dontShow = game.settings.get(MODULE_ID, "tourPromptDontShowAgain");
   const shouldPrompt = !dontShow && currentVersion && currentVersion !== lastVersion;
+  console.log(`Beneos Setup Tour | first-run check: currentVersion="${currentVersion}", lastVersion="${lastVersion}", dontShow=${dontShow}, shouldPrompt=${shouldPrompt}`);
 
   if (shouldPrompt) {
     setTimeout(async () => {
+      console.log("Beneos Setup Tour | opening first-run prompt");
       const result = await _confirmStartSetupTour();
-      if (!result) return; // dismissed via X → re-show next session
+      console.log("Beneos Setup Tour | first-run prompt resolved:", result);
+      // Only persist the "last seen version" when the user actually clicked
+      // Yes or No. Any other close path — null (close-handler), undefined,
+      // escape key, X button, auto-dismiss, or a malformed callback return —
+      // leaves settings untouched so the prompt re-appears on next load.
+      // The old `if (!result) return` was too permissive: some DialogV2
+      // variants return an empty object on X-close, which previously slipped
+      // past and got treated as a "yes" answer.
+      if (!result || typeof result.answer !== "boolean") {
+        console.log("Beneos Setup Tour | dismissed without explicit Yes/No — settings left untouched, prompt will re-appear on next load");
+        return;
+      }
       await game.settings.set(MODULE_ID, "tourPromptLastVersion", currentVersion);
-      if (result.dontShow) await game.settings.set(MODULE_ID, "tourPromptDontShowAgain", true);
+      console.log(`Beneos Setup Tour | tourPromptLastVersion set to "${currentVersion}" (answer=${result.answer}, dontShow=${!!result.dontShow})`);
+      if (result.dontShow) {
+        await game.settings.set(MODULE_ID, "tourPromptDontShowAgain", true);
+        console.log("Beneos Setup Tour | user opted out permanently for this world");
+      }
       if (result.answer) {
         const tour = game.tours.get(`${MODULE_ID}.setup`);
         if (tour?.canStart) {

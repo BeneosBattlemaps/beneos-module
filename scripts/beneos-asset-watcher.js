@@ -4,8 +4,12 @@
  * On canvasReady, collects every Beneos-owned asset path referenced by the
  * scene (background, foreground, tiles, tokens, notes) and verifies each one
  * via a HEAD fetch. If any are missing, shows a single aggregated dialog with
- * a button that opens the troubleshooting journal (locale-aware: DE gets the
- * German docs page, everything else gets the English one).
+ * a button that opens the public FAQ page in a new browser tab. Previously
+ * this linked to a locally-installed troubleshooting journal, but Moulinette
+ * does not overwrite existing assets on re-install — so users with an older
+ * Beneos release already installed were being pointed at a stale local
+ * journal whose referenced pages didn't exist. The external URL is always
+ * reachable and always current.
  *
  * Design constraints:
  *   - GM-only. Players can't fix missing files and shouldn't see warnings.
@@ -16,9 +20,12 @@
  *     missing paths are persisted on the scene as a flag. They will never
  *     trigger the dialog again — but any OTHER path that breaks on the same
  *     scene later will still show it.
- *   - Cloud URLs (beneos-battlemaps-universe) are skipped — CORS would false-
- *     positive HEAD requests and we can't distinguish "really gone" from
- *     "cross-origin blocked".
+ *   - Absolute http(s):// URLs are skipped — CORS would false-positive HEAD
+ *     requests and we can't distinguish "really gone" from "cross-origin
+ *     blocked". Only relative / local paths are verified. This covers both
+ *     direct module installs and Moulinette-installed paths (which live
+ *     under moulinette/adventures/beneos-battlemaps-universe/beneos_assets/…
+ *     but are still local on disk and must be checked).
  *
  * Verbose console logging is intentional: when something goes wrong, the GM
  * needs a clear breadcrumb trail.
@@ -32,13 +39,11 @@ const WARN = (...args) => console.warn("Beneos AssetWatcher |", ...args);
 // Reuses the path conventions already recognised elsewhere in the module
 // (beneos_utility.js:710, 856, 865 and ctRotCerfAsset in beneos_tours.js).
 const BENEOS_PATH_RE = /(?:^|\/)beneos_(?:assets|battlemaps)\//i;
-const CLOUD_SUBSTR = "beneos-battlemaps-universe";
 
-// Locale → { journal, page }. Anything not listed falls back to _default.
-const TROUBLESHOOTING_DOCS = {
-  de:       { journal: "Q2wVmtfGoydDgvom", page: "NYrsaIkoo7nq418k" },
-  _default: { journal: "Q5xvdypjD1tGOro5", page: "Dngl5lDgXpxQCxyR" }
-};
+// Public FAQ page. The site itself can handle language negotiation; we open
+// a single canonical URL so old/new Beneos installs all land on the right
+// content regardless of which journal the local world happens to contain.
+const TROUBLESHOOTING_URL = "https://beneos-battlemaps.com/pages/beneos-faq-black-screen-error";
 
 // Session dedup: sceneId → sorted-undismissed-missing-key. Suppresses
 // re-opening the same dialog on repeated canvasReady fires within a session.
@@ -139,7 +144,6 @@ document.head.appendChild(WATCHER_CSS);
 
 const isBeneosPath = (src) => {
   if (!src || typeof src !== "string") return false;
-  if (src.includes(CLOUD_SUBSTR)) return false;
   if (/^https?:\/\//i.test(src)) return false;
   return BENEOS_PATH_RE.test(src);
 };
@@ -204,15 +208,12 @@ const runCheck = async (scene, { forceDialog = false } = {}) => {
   showDialog(scene, missing, undismissed);
 };
 
-const openTroubleshootingJournal = async () => {
-  const locale = TROUBLESHOOTING_DOCS[game.i18n.lang] ?? TROUBLESHOOTING_DOCS._default;
-  const journal = game.journal.get(locale.journal);
-  if (!journal) {
-    WARN(`troubleshooting journal ${locale.journal} not found in world`);
-    return;
+const openTroubleshootingFaq = () => {
+  try {
+    window.open(TROUBLESHOOTING_URL, "_blank", "noopener,noreferrer");
+  } catch (e) {
+    WARN("failed to open FAQ in new tab:", e);
   }
-  try { await journal.sheet.render(true, { pageId: locale.page }); }
-  catch (e) { WARN("failed to open journal:", e); }
 };
 
 const escapeHTML = (s) => String(s).replace(/[&<>"']/g, c => ({
@@ -255,7 +256,7 @@ const showDialog = (scene, missing, undismissed) => {
       open: {
         icon: '<i class="fas fa-book"></i>',
         label: game.i18n.localize("BENEOS.AssetWatcher.DialogOpenDocs"),
-        callback: () => openTroubleshootingJournal()
+        callback: () => openTroubleshootingFaq()
       },
       close: {
         icon: '<i class="fas fa-times"></i>',
