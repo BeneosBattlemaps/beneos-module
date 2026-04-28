@@ -390,5 +390,9 @@
   "BENEOS.Tour.Setup.SetupLanguages.Title": "Disponible dans votre langue",
   "BENEOS.Tour.Setup.SetupLanguages.Content": "<p>Cette visite est disponible en <strong>13 langues</strong> :</p><ul><li>Català</li><li>Čeština</li><li>Deutsch</li><li>English</li><li>Español</li><li>Français</li><li>Italiano</li><li>Polski</li><li>Português (Brasil)</li><li>Português (Portugal)</li><li>日本語</li><li>한국어</li><li>繁體中文</li></ul><p>Vous pouvez changer votre langue à tout moment via <strong>Configurer les paramètres → Paramètres principaux → Langue</strong>.</p>",
   "BENEOS.Tour.StartHere.StartLanguages.Title": "Disponible dans votre langue",
-  "BENEOS.Tour.StartHere.StartLanguages.Content": "<p>Cette visite est disponible en <strong>13 langues</strong> :</p><ul><li>Català</li><li>Čeština</li><li>Deutsch</li><li>English</li><li>Español</li><li>Français</li><li>Italiano</li><li>Polski</li><li>Português (Brasil)</li><li>Português (Portugal)</li><li>日本語</li><li>한국어</li><li>繁體中文</li></ul><p>Vous pouvez changer votre langue à tout moment via <strong>Configurer les paramètres → Paramètres principaux → Langue</strong>.</p>"
+  "BENEOS.Tour.StartHere.StartLanguages.Content": "<p>Cette visite est disponible en <strong>13 langues</strong> :</p><ul><li>Català</li><li>Čeština</li><li>Deutsch</li><li>English</li><li>Español</li><li>Français</li><li>Italiano</li><li>Polski</li><li>Português (Brasil)</li><li>Português (Portugal)</li><li>日本語</li><li>한국어</li><li>繁體中文</li></ul><p>Vous pouvez changer votre langue à tout moment via <strong>Configurer les paramètres → Paramètres principaux → Langue</strong>.</p>",
+  "BENEOS.Cloud.AssetInstalled": "{assetName} : {name} installé(e) avec succès.",
+  "BENEOS.Cloud.AssetsInstalled": "Les {assetName}s sélectionnés ont été installés.",
+  "BENEOS.Cloud.AssetsInstalledBatch": "Les {assetName}s sélectionnés ont été installés dans le <strong>Compendium Beneos</strong>. Vous pouvez les faire glisser et déposer dans votre scène ou monde.",
+  "BENEOS.Cloud.DragDropCompendium": "Il a été installé à partir d'une opération Drag&Drop, vous pouvez maintenant y accéder à partir du <strong>Compendium Beneos</strong>."
 }
