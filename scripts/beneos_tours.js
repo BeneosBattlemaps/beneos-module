@@ -124,6 +124,27 @@ const MANAGED_AUDIO_KEYS = (() => {
   }
   return keys;
 })();
+
+/**
+ * Stop every sound listed in MANAGED_AUDIO_KEYS that is currently playing.
+ * Called when the GM leaves a tutorial scene for a non-tutorial scene, so
+ * the Foundry-global tour playlist does not keep playing on unrelated
+ * scenes (e.g. another Moulinette pack). Tour start paths always re-apply
+ * the desired music via _applyTourAudio() so stopping here is safe — the
+ * next tour entry will restart what it needs.
+ */
+const stopAllManagedTourAudio = () => {
+  try {
+    for (const key of MANAGED_AUDIO_KEYS) {
+      const [pId, sId] = key.split(".");
+      const pl = game.playlists.get(pId);
+      const snd = pl?.sounds.get(sId);
+      if (snd?.playing) pl.stopSound(snd);
+    }
+  } catch (e) {
+    console.warn("Beneos Tutorial Tour | stopAllManagedTourAudio failed:", e);
+  }
+};
 // Video length: 19s 5f @ 24fps ≈ 19.208s — buffer a bit for fade/decode.
 const FAREWELL_VIDEO_MS    = 19500;
 
@@ -2850,6 +2871,13 @@ class BeneosTutorialSceneTour extends TourBase {
     }
     this._removeSpotlight();
     document.body.classList.remove("beneos-no-fade");
+    // Stop every tour-managed sound. Without this, manually aborting a tour
+    // (X-button, Esc, or navigating to a non-tutorial scene) leaves the
+    // Foundry-global tour playlist running. It then "follows" the GM onto
+    // unrelated scenes (e.g. other Moulinette packs), overriding the scene's
+    // own ambient sound. A later tour entry restarts what it needs via
+    // _applyTourAudio(), so stopping here is always safe.
+    stopAllManagedTourAudio();
     _restoreTourTooltipGuard(this);
     tourCleanup(this);
     return super.exit();
@@ -7197,7 +7225,15 @@ Hooks.on("canvasReady", async () => {
 
   const tourKey = TUTORIAL_SCENE_TOURS[canvas.scene.id]
                ?? TUTORIAL_SCENE_TOURS_BY_NAME[canvas.scene.name];
-  if (!tourKey) return;
+  if (!tourKey) {
+    // Non-tutorial scene: stop any tour-managed music that may still be
+    // playing from a previous tour. Tour playlists are Foundry-global, so
+    // they keep playing across scene switches unless we explicitly stop
+    // them. Without this guard the Getting Started tour music "follows"
+    // the GM onto unrelated scenes (e.g. other Moulinette packs).
+    stopAllManagedTourAudio();
+    return;
+  }
 
   const tour = game.tours.get(`${MODULE_ID}.${tourKey}`);
   if (!tour) return;

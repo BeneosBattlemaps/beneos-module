@@ -77,6 +77,7 @@ Hooks.once('ready', () => {
   // Try to catch right click on profile image
   Hooks.on('renderActorSheet', (sheet, html, data) => {
     if (!sheet.template && !sheet.constructor?.PARTS) return; // Skip unknown sheet formats (v14+ safety)
+    if (!game.user.isGM) return; // GM-only: hide Beneos token menu from players
     if (game.system.id == "pf2e") {
       $("#" + sheet.id + " .image-container .actor-image").mouseup(async function (e) {
         BeneosUtility.prepareMenu(e, sheet)

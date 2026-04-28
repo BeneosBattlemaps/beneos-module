@@ -810,13 +810,30 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
+  // Strip inline color/background styles from fetched journal HTML so the
+  // Beneos news box style (.beneos-news-box in beneos.css) is not overridden
+  // by editor-default colors like #191813. Structural HTML, classes, links,
+  // images and other attributes are preserved.
+  static _sanitizeNewsHtml(html) {
+    if (!html) return "";
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const STRIP = ["color", "background", "background-color"];
+    doc.body.querySelectorAll("[style]").forEach(el => {
+      STRIP.forEach(prop => el.style.removeProperty(prop));
+      if (!el.getAttribute("style")) el.removeAttribute("style");
+    });
+    return doc.body.innerHTML;
+  }
+
+  /********************************************************************************** */
   static async displayNewsDialog(newsData) {
+    const sanitized = BeneosUtility._sanitizeNewsHtml(newsData.content);
     let guess = await foundry.applications.api.DialogV2.wait({
       window: { title: "Beneos Cloud - Latest News !", contentClasses: "" },
-      content: `<div style="max-height:640px;  max-width:700px; overflow-y:auto; padding-right:8px;">
-          <div>${newsData.content}</div>
+      content: `<div class="beneos-news-box">
+          ${sanitized}
           <hr>
-          <p> <strong>Message Date:</strong> ${new Date(newsData.created_at).toLocaleDateString()}</p >
+          <p><strong>Message Date:</strong> ${new Date(newsData.created_at).toLocaleDateString()}</p>
           </div>`,
       buttons: [{
         label: "Close",
@@ -1172,6 +1189,7 @@ export class BeneosUtility {
 
   /********************************************************************************** */
   static async prepareMenu(e, sheet) {
+    if (!game.user.isGM) return; // GM-only: defense-in-depth
     if (e.button == 2) {
       let tokenList = BeneosUtility.buildAvailableTokensMenu()
       const beneosTokensDisplay = await BeneosUtility.buildAvailableTokensMenuHTML("beneos-actor-menu.html", tokenList)

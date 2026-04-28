@@ -1255,6 +1255,91 @@ i.beneos-module {
   transform: translate(-50%, -50%);
 }
 
+/* =======================================================================================
+   Beneos News Box — Setup-Tour CI (siehe beneos_tours.js:336-575, 2165-2205)
+   Dunkler Body, Gold-Akzente, pulsierender Gold-Glow-Border. Eigener Kontrast,
+   daher in beiden Foundry-Themes (Dark/Light) lesbar.
+   ======================================================================================= */
+@keyframes beneos-news-glow-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 2px #151412,
+      0 0 14px 2px rgba(21, 20, 18, 0.45);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px #f5c992,
+      0 0 14px 2px rgba(245, 201, 146, 0.45);
+  }
+}
+
+.beneos-news-box {
+  background: #151412;
+  color: #e6e5e3;
+  border: 2px solid #f5c992;
+  border-radius: 6px;
+  padding: 1.2rem 1.6rem;
+  max-height: 640px;
+  max-width: 700px;
+  overflow-y: auto;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  animation: beneos-news-glow-pulse 4s ease-in-out infinite;
+}
+.beneos-news-box h1,
+.beneos-news-box h2,
+.beneos-news-box h3,
+.beneos-news-box h4,
+.beneos-news-box strong,
+.beneos-news-box b {
+  color: #f5c992;
+}
+.beneos-news-box a {
+  color: #f5c992;
+  text-decoration: underline;
+}
+.beneos-news-box a:hover {
+  color: #c8b888;
+}
+.beneos-news-box hr {
+  border: none;
+  border-top: 1px solid #333;
+  margin: 0.8rem 0;
+}
+.beneos-news-box table {
+  border-collapse: collapse;
+  margin: 0.6rem 0;
+}
+.beneos-news-box table th {
+  color: #f5c992;
+  border-bottom: 1px solid #333;
+  padding: 0.3rem 0.6rem;
+  text-align: left;
+}
+.beneos-news-box table td {
+  border-bottom: 1px solid #333;
+  padding: 0.3rem 0.6rem;
+}
+.beneos-news-box img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+.beneos-news-box ul,
+.beneos-news-box ol {
+  padding-left: 1.4rem;
+}
+
+/* Respect prefers-reduced-motion: stop the pulse, keep static gold border. */
+@media (prefers-reduced-motion: reduce) {
+  .beneos-news-box {
+    animation: none;
+    box-shadow:
+      0 0 0 2px #f5c992,
+      0 0 14px 2px rgba(245, 201, 146, 0.30);
+  }
+}
+
 .beneos-bmap-info-banner {
   margin-top: 0.6rem;
   padding: 0.5rem 0.6rem;
