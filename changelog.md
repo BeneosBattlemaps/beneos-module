@@ -2,21 +2,28 @@
 
 All notable changes to this module will be documented in this file.
 
-
-
 ## Updates
+### 14.0.3 # 2026-04-28
+- New: **Dark Mode support across the entire module.** Beneos creature, spell and loot journals - including all immersive integration boxes, tactical guide cards and DC check panels - now follow your active Foundry color scheme. Light mode keeps the classic beige + Beneos-red look, dark mode switches to a warm dark background with Beneos-gold accents that's easy on the eyes during long sessions.
+- New: **Cloud News & Welcome dialogs** are now styled in the same dark-with-gold-glow CI as the rest of the Beneos onboarding, with subtle pulsing border for the latest message. Cloud-side announcements stay readable regardless of your Foundry theme.
+- Improved: **Asset installation feedback** is now localized in all 13 languages and tells you exactly what to do next. Bulk installs explicitly point you to the Beneos Compendium where your tokens, spells and loot are ready to drag onto the scene; single Drag & Drop installs get their own concise confirmation.
+- Improved: **Patreon tier auto-refresh.** Your tier status is now re-verified automatically every time you log in to the Beneos Cloud - newly unlocked content shows up without manual reload.
+- Improved: **Missing-asset helper** now opens our always-current online FAQ in a new browser tab instead of a local troubleshooting journal that may have aged out with older Beneos installs. Moulinette-installed assets are now checked too, so users who installed packs through Moulinette get the same guidance.
+- Improved: **Tour audio lifecycle.** Tutorial music no longer "follows" you onto unrelated scenes if you cancel a tour or navigate away - every other scene's own ambience plays cleanly.
+- Fixed: Search engine occasionally failed to refresh after rapid filter changes (#331).
+
 ### 14.0.2 # 2026-04-22
 - Updated: Automatic reference detection for missing assets has been improved and now points to an external URL instead of an internal journal (which, if present, is not updated and therefore offers no added value)
 
 ### 14.0.0 # 2026-04-19
-- New: Foundry **V14 compatibility** — full module re-integration and migration for Foundry VTT V14. Existing V13 behaviour is preserved via a parallel v13/v14 data path.
-- New: **Setup Tour** — interactive first-run tour that guides new users through the Moulinette Cloud login, filtering the Beneos creator and pack, and then automatically downloads + installs the Getting Started pack as a playable scene via ScenePacker.
-- New: **Getting Started Tour** — comprehensive in-world demo tour based on a dedicated demo pack that walks players through every Beneos product line: Beneos **Battlemaps**, **Creatures**, **Spells**, and **Loot**, including the token HUD, skin variants, journal integrations, and the Beneos Search engine.
-- New: **First-run prompt** — new patrons installing the module for the first time see a styled welcome dialog with an animated preview GIF and a "Don't show again" option, offering a one-click start of the Setup Tour.
-- New: **Reference Checker** — users with incomplete or corrupt Beneos downloads now see a guided Beneos-styled notification with step-by-step recovery instructions instead of silent failures.
-- New: **13 languages** — full translation of the tour system, prompts, and UI strings: Català, Čeština, Deutsch, English, Español, Français, Italiano, Polski, Português (Brasil), Português (Portugal), 日本語, 한국어, 繁體中文. The "Available in your language" intro step now lists all languages in alphabetical order.
+- New: Foundry **V14 compatibility** - full module re-integration and migration for Foundry VTT V14. Existing V13 behaviour is preserved via a parallel v13/v14 data path.
+- New: **Setup Tour** - interactive first-run tour that guides new users through the Moulinette Cloud login, filtering the Beneos creator and pack, and then automatically downloads + installs the Getting Started pack as a playable scene via ScenePacker.
+- New: **Getting Started Tour** - comprehensive in-world demo tour based on a dedicated demo pack that walks players through every Beneos product line: Beneos **Battlemaps**, **Creatures**, **Spells**, and **Loot**, including the token HUD, skin variants, journal integrations, and the Beneos Search engine.
+- New: **First-run prompt** - new patrons installing the module for the first time see a styled welcome dialog with an animated preview GIF and a "Don't show again" option, offering a one-click start of the Setup Tour.
+- New: **Reference Checker** - users with incomplete or corrupt Beneos downloads now see a guided Beneos-styled notification with step-by-step recovery instructions instead of silent failures.
+- New: **13 languages** - full translation of the tour system, prompts, and UI strings: Català, Čeština, Deutsch, English, Español, Français, Italiano, Polski, Português (Brasil), Português (Portugal), 日本語, 한국어, 繁體中文. The "Available in your language" intro step now lists all languages in alphabetical order.
 - Updated: **Beneos documentation** Partially rewritten to match the new tour-driven onboarding, the V14 behaviour, and the Reference-Checker recovery flow.
-- Updated: **DM-only information hidden from players by default** — all navigation icons, DM teleporters, and DM-facing overlays are now blanket-hidden for logged-in players, so only the GM sees them. Since this behaviour is now built into the Beneos module itself, the **LockView** module is no longer required and has been removed from the dependencies.
+- Updated: **DM-only information hidden from players by default** - all navigation icons, DM teleporters, and DM-facing overlays are now blanket-hidden for logged-in players, so only the GM sees them. Since this behaviour is now built into the Beneos module itself, the **LockView** module is no longer required and has been removed from the dependencies.
 - Fixed: Multiple V13→V14 migration issues uncovered during integration (Application v1→v2 patterns, hook signatures, scene/actor data paths, tour DOM lifecycle).
 - Fixed: Tour tooltip no longer lingers on screen during the post-install page reload.
 
