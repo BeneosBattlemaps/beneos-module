@@ -153,6 +153,7 @@ export class BeneosCloud {
         console.log("BENEOS Cloud login data", data)
         if (data.result == 'OK') {
           game.beneos.cloud.setLoginStatus(true)
+          game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", data.patreon_status)
           game.beneos.cloud.checkAvailableContent()
         }
       })
