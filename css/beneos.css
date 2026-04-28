@@ -1255,6 +1255,14 @@ i.beneos-module {
   transform: translate(-50%, -50%);
 }
 
+body.theme-dark .beneos-info-box,
+.application.theme-dark .beneos-info-box {
+  background: #1f1d1a;
+  color: #e6e5e3;
+  border-color: #f5c992;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+
 /* =======================================================================================
    Beneos News Box — Setup-Tour CI (siehe beneos_tours.js:336-575, 2165-2205)
    Dunkler Body, Gold-Akzente, pulsierender Gold-Glow-Border. Eigener Kontrast,

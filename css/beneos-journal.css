@@ -48,9 +48,58 @@
   /* Gradient- und Spezial-Variablen */
   --gradient-headline:       linear-gradient(var(--color-primary-bg) 0%, var(--color-primary-bg-alt) 100%);
   --gradient-bg-main:        linear-gradient(#f7f8f9,#ffde00 65%,#d9dadb); /* inear-gradient(#f7f8f9,#e4e5e7 65%,#d9dadb); */
-  
-  
+
+  /* Beneos Journal-HTML-Wrapper (verwendet von ~720 journal-*.json files) */
+  --beneos-box-bg:           var(--bg-main);
+  --beneos-border:           var(--color-primary);
+  --beneos-accent-text:      var(--color-primary);
+
   font-family: 'Roboto Condensed', sans-serif;
+}
+
+/* ───────────────────────────────────────────────────────────
+   A.2) Dark-Theme-Override
+   Foundry V13/V14 setzt body.theme-dark / body.theme-light
+   abhaengig vom User-Color-Scheme. Beneos-Branding wechselt
+   im Dark-Mode auf Gold-auf-Dunkel (analog .beneos-news-box
+   und PDF-Creator Dark Theme).
+   ────────────────────────────────────────────────────────── */
+body.theme-dark,
+.application.theme-dark,
+.app.theme-dark {
+  /* Primaerfarben */
+  --color-primary:           #f5c992;   /* Beneos Gold (statt Rot) */
+  --color-primary-bg:        #1f1d1a;
+  --color-primary-bg-alt:    #2a2724;
+  --color-pip-outline:       #4a4540;
+
+  /* Akzent-/Sekundaerfarben */
+  --color-accent:            #f5c992;
+  --color-info:              #e6e5e3;
+  --color-info-muted:        #b8b3aa;
+
+  /* Neutrale Hintergruende */
+  --bg-main:                 #1f1d1a;
+  --bg-box:                  #2a2724;
+  --bg-box-light:            #34302c;
+  --bg-paper:                #25221f;
+  --bg-image-box:            #2a2724;
+  --bg-image-box-gradient:   #2a2724;
+  --bg-sub-headline:         #2a2724;
+  --bg-header-box:           #1f1d1a;
+  --bg-header-box-gradient:  #1f1d1a;
+
+  /* Utility */
+  --stroke-main:             var(--color-primary);
+  --stroke-section:          #4a4540;
+  --shadow-main:             0 8px 32px rgba(0, 0, 0, 0.55);
+
+  /* Beneos Journal-HTML-Wrapper-Vars: explizit redefinieren — CSS-Spec evaluiert
+     var()-Indirection an :root am DEFINIERENDEN Element zur Computed-Value-Time,
+     daher wuerde die Cascade sonst die Light-Werte vererben. */
+  --beneos-box-bg:        #1f1d1a;   /* matched --bg-main dark */
+  --beneos-border:        #f5c992;   /* matched --color-primary dark */
+  --beneos-accent-text:   #f5c992;   /* matched --color-primary dark */
 }
 
 
