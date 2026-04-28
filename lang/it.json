@@ -390,5 +390,9 @@
   "BENEOS.Tour.Setup.SetupLanguages.Title": "Disponibile nella tua lingua",
   "BENEOS.Tour.Setup.SetupLanguages.Content": "<p>Questo tour è disponibile in <strong>13 lingue</strong>:</p><ul><li>Català</li><li>Čeština</li><li>Deutsch</li><li>English</li><li>Español</li><li>Français</li><li>Italiano</li><li>Polski</li><li>Português (Brasil)</li><li>Português (Portugal)</li><li>日本語</li><li>한국어</li><li>繁體中文</li></ul><p>Puoi cambiare la tua lingua in qualsiasi momento in <strong>Configura impostazioni → Impostazioni principali → Lingua</strong>.</p>",
   "BENEOS.Tour.StartHere.StartLanguages.Title": "Disponibile nella tua lingua",
-  "BENEOS.Tour.StartHere.StartLanguages.Content": "<p>Questo tour è disponibile in <strong>13 lingue</strong>:</p><ul><li>Català</li><li>Čeština</li><li>Deutsch</li><li>English</li><li>Español</li><li>Français</li><li>Italiano</li><li>Polski</li><li>Português (Brasil)</li><li>Português (Portugal)</li><li>日本語</li><li>한국어</li><li>繁體中文</li></ul><p>Puoi cambiare la tua lingua in qualsiasi momento in <strong>Configura impostazioni → Impostazioni principali → Lingua</strong>.</p>"
+  "BENEOS.Tour.StartHere.StartLanguages.Content": "<p>Questo tour è disponibile in <strong>13 lingue</strong>:</p><ul><li>Català</li><li>Čeština</li><li>Deutsch</li><li>English</li><li>Español</li><li>Français</li><li>Italiano</li><li>Polski</li><li>Português (Brasil)</li><li>Português (Portugal)</li><li>日本語</li><li>한국어</li><li>繁體中文</li></ul><p>Puoi cambiare la tua lingua in qualsiasi momento in <strong>Configura impostazioni → Impostazioni principali → Lingua</strong>.</p>",
+  "BENEOS.Cloud.AssetInstalled": "{assetName} : {name} successfully installed.",
+  "BENEOS.Cloud.AssetsInstalled": "Selected {assetName}s have been installed.",
+  "BENEOS.Cloud.AssetsInstalledBatch": "Selected {assetName}s have been installed in the <strong>Beneos Compendium</strong>. You can drag & drop them to your scene or world.",
+  "BENEOS.Cloud.DragDropCompendium": "It was installed from a Drag&Drop operation, you can now access it from the <strong>Beneos Compendium</strong>."
 }

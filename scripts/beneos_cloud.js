@@ -290,12 +290,13 @@ export class BeneosCloud {
       })
   }
 
-  sendChatMessageResult(event, assetName = "Token", name = undefined) {
+  sendChatMessageResult(event, assetName = "Token", name = undefined, isBatch = false) {
     let content
     if (name) {
-      content = `<div><strong>BeneosModule</strong> - ${assetName} : ${name} successfully installed.</div>`
+      content = `<div><strong>BeneosModule</strong> - ${game.i18n.format("BENEOS.Cloud.AssetInstalled", {assetName, name})}</div>`
     } else {
-      content = `<div><strong>BeneosModule</strong> - Selected ${assetName}s has been installed.</div>`
+      const msgKey = isBatch ? "BENEOS.Cloud.AssetsInstalledBatch" : "BENEOS.Cloud.AssetsInstalled"
+      content = `<div><strong>BeneosModule</strong> - ${game.i18n.format(msgKey, {assetName})}</div>`
     }
     console.log("Sending chat message result for", assetName, name, content)
     let chatData = {
@@ -305,7 +306,7 @@ export class BeneosCloud {
       content: content,
     }
     if (event) {
-      chatData.content += `<div>It was installed from a Drag&Drop operation, you can now access them from the Beneos Compendium</div>`
+      chatData.content += `<div>${game.i18n.localize("BENEOS.Cloud.DragDropCompendium")}</div>`
     }
     ChatMessage.create(chatData);
 
@@ -844,7 +845,7 @@ export class BeneosCloud {
       setTimeout(() => {
         BeneosUtility.lockUnlockAllPacks(true) // Lock all packs after batch install
         ui.notifications.info(`BeneosModule : ${this.nbInstalled} assets have been installed from BeneosCloud !`)
-        game.beneos.cloud.sendChatMessageResult(null, game.beneos.cloud.importAsset)
+        game.beneos.cloud.sendChatMessageResult(null, game.beneos.cloud.importAsset, undefined, true)
         BeneosSearchEngineLauncher.closeAndSave()
         this.noWorldImport = false // Reset the no world import flag
         setTimeout(() => {
