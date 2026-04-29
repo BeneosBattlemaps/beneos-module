@@ -28,7 +28,7 @@ All notable changes to this module will be documented in this file.
 - Fixed: Tour tooltip no longer lingers on screen during the post-install page reload.
 
 ### 13.2.10 # 2026-05-05
-- Added: Beneos Cloud Message for Beneos Battlemaps Patrons (stating the cloud is only für Beneos Tokens Patrons for now)
+- Added: Beneos Cloud Message for Beneos Battlemaps Patrons (stating the cloud is only for Beneos Tokens Patrons for now)
 
 ### 13.2.9 # 2026-02-04
 - Fixed: Loyalty Tokens are not displayed as available for some players

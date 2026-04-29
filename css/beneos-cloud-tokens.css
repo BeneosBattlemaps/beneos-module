@@ -1,0 +1,117 @@
+/* =============================================================
+   Beneos Cloud — Design Tokens (Welle B-3)
+   Single source of truth for colors, typography, spacing, shadows
+   used by the Beneos Cloud search engine and (later) the V2 UI.
+   Loaded BEFORE css/beneos.css so the variables resolve via cascade.
+
+   Source: Beneos Foundry VTT Module Design 2.0 / handoff/design-tokens.css
+   ============================================================= */
+
+:root {
+  /* ---- Surface ladder (darkest → lightest within dark theme) ---- */
+  --bc-bg:           #0f0e0c;   /* outermost background */
+  --bc-bg-panel:     #151412;   /* sidebar / footer band */
+  --bc-bg-elevated:  #1c1a17;   /* result pane bg */
+  --bc-card:         #242019;   /* cards, list rows */
+  --bc-card-hover:   #2c2721;
+
+  /* ---- Borders ---- */
+  --bc-border:        #2e2920;
+  --bc-border-strong: #4a4233;
+  --bc-border-inset:  rgba(255,255,255,0.035);
+
+  /* ---- Text ---- */
+  --bc-text:        #ebe9e5;     /* primary */
+  --bc-text-muted:  #a59d8e;     /* secondary */
+  --bc-text-dim:    #6f6859;     /* tertiary / disabled */
+
+  /* ---- Brand accent (Beneos gold — replaces legacy #ff6400 orange) ---- */
+  --bc-accent:        #f5c992;
+  --bc-accent-soft:   #fde9ca;
+  --bc-accent-strong: #ffd8a4;
+  --bc-accent-dim:    rgba(245, 201, 146, 0.12);
+  --bc-accent-line:   rgba(245, 201, 146, 0.30);
+
+  /* ---- Semantic (status indicators) ---- */
+  --bc-danger:  #d88270;   /* replaces legacy patron-NOK orange #d56b52 */
+  --bc-success: #8bbf8b;   /* replaces legacy patron-OK green #1b9200 */
+  --bc-info:    #8faac6;
+
+  /* ---- Per-category accents (for the optional category-tint mode) ---- */
+  --bc-cat-tokens: #d98876;
+  --bc-cat-maps:   #7fb3ad;
+  --bc-cat-items:  #e0b36a;
+  --bc-cat-spells: #a692d4;
+
+  /* ---- Geometry ---- */
+  --bc-radius:    5px;
+  --bc-radius-lg: 10px;
+  --bc-shadow-pop:   0 8px 30px rgba(0, 0, 0, 0.4);
+  --bc-shadow-inner: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+
+  /* ---- Spacing scale ---- */
+  --bc-space-1: 4px;
+  --bc-space-2: 8px;
+  --bc-space-3: 12px;
+  --bc-space-4: 16px;
+  --bc-space-5: 20px;
+  --bc-space-6: 24px;
+  --bc-space-8: 32px;
+
+  /* ---- Type stacks ---- */
+  /* Welle B-3: variables declared but not yet applied to existing selectors —
+     prevents layout reflow in the legacy V1 UI. V2 templates will adopt them
+     directly. Inter / Fraunces / JetBrains Mono fall back gracefully if not
+     locally installed (self-hosted .woff2 to follow with V2 or B-3b). */
+  --bc-font-ui:      'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --bc-font-display: 'Fraunces', 'Cormorant Garamond', serif;
+  --bc-font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+}
+
+/* ============================================================
+   Optional themes — applied via [data-bc-theme="parchment|neutral"]
+   on a future .beneos-cloud-app root element. Welle B-3 ships only
+   `dark` (above, as :root default). Parchment + neutral defined here
+   for the V2 redesign so a theme switcher can flip them on later
+   without further CSS edits.
+   ============================================================ */
+
+[data-bc-theme="parchment"] {
+  --bc-bg:          #f4f0eb;
+  --bc-bg-elevated: #efe9df;
+  --bc-card:        #faf6ef;
+  --bc-card-hover:  #f5eee0;
+  --bc-border:        #d9cfbd;
+  --bc-border-strong: #c2b59c;
+  --bc-text:        #2b241c;
+  --bc-text-muted:  #6c5f4a;
+  --bc-text-dim:    #9a8e76;
+  --bc-accent:      #8b4a3a;
+  --bc-accent-soft: #b76753;
+  --bc-accent-dim:  rgba(139, 74, 58, 0.08);
+  --bc-accent-line: rgba(139, 74, 58, 0.20);
+  --bc-cat-tokens:  #9a3f2e;
+  --bc-cat-maps:    #3f6b65;
+  --bc-cat-items:   #96691f;
+  --bc-cat-spells:  #5a4288;
+}
+
+[data-bc-theme="neutral"] {
+  --bc-bg:          #f8f8f7;
+  --bc-bg-elevated: #ffffff;
+  --bc-card:        #ffffff;
+  --bc-card-hover:  #f3f3f1;
+  --bc-border:        #e5e3df;
+  --bc-border-strong: #cfcbc4;
+  --bc-text:        #1a1a1a;
+  --bc-text-muted:  #6b6b6b;
+  --bc-text-dim:    #a0a0a0;
+  --bc-accent:      #c89050;
+  --bc-accent-soft: #e6b27a;
+  --bc-accent-dim:  rgba(200, 144, 80, 0.10);
+  --bc-accent-line: rgba(200, 144, 80, 0.25);
+  --bc-cat-tokens:  #b84e3a;
+  --bc-cat-maps:    #3f8a83;
+  --bc-cat-items:   #b1831f;
+  --bc-cat-spells:  #6f58a6;
+}

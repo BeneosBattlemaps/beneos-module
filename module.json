@@ -14,6 +14,7 @@
     "scripts/beneosfx.js"
   ],
   "styles": [
+	  "css/beneos-cloud-tokens.css",
 	  "css/beneos.css",
 	  "css/table-top.css",
 	  "css/beneos-journal.css"

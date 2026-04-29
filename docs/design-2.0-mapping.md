@@ -14,11 +14,11 @@ This document is a bridge between the new design prototype and the existing modu
 - **Filter sidebar on the left** — search, chips, sliders, dropdowns, source checklist with counts.
 - **List + Grid view** with switchable density (List default for Tokens & Maps).
 - **Detail drawer** slides in from right on row click.
-- **Maps paired** (battlemap + scenery) as a single installable unit with hover-crossfade — *server-side change, deferred to Welle 2*.
+- **Maps paired** (battlemap + scenery) as a single installable unit with hover-crossfade — *server-side change, deferred to Wave 2*.
 - **Releases** = clusters of maps with their own atmospheric hero artwork — *server-side change, deferred*.
 - **Install button** has 4 states: idle / in-progress (bar) / installed (green ✓) / update-available (blue dot).
 - **Account chip** in sidebar footer; login modal opens automatically when install attempted while offline.
-- **Three themes** via `[data-bc-theme]`: dark (default), parchment, neutral. Welle 1 ships only `dark`.
+- **Three themes** via `[data-bc-theme]`: dark (default), parchment, neutral. Wave 1 ships only `dark`.
 - **Quick Picker** — separate compact window for in-scene asset drops.
 
 ## Brand decision
@@ -35,14 +35,14 @@ This document is a bridge between the new design prototype and the existing modu
 | Top tab strip | inside `app.jsx` | `<button id="beneos-radio-{token|bmap|item|spell}">` in `templates/beneossearchengine.html` | preserve IDs as Tour aliases |
 | `<FilterSidebar>` | `prototype/FilterSidebar.jsx` | Filter form sections in `beneossearchengine.html` (token/bmap/item/spell sub-sections) | restructure to vertical sidebar |
 | `<Results>` | `prototype/Results.jsx` | The 4 `beneos-search-results-*.html` templates | unify with category-aware part rendering |
-| `<ReleaseCard>` | `prototype/ReleaseCard.jsx` | NEW concept — no current code | server-side, Welle 2 |
+| `<ReleaseCard>` | `prototype/ReleaseCard.jsx` | NEW concept — no current code | server-side, Wave 2 |
 | Detail drawer | inside `Results.jsx` | NEW concept — no current code | slide-in panel inside the V2 window |
 | `<LoginModal>` | `prototype/LoginModal.jsx` | `BeneosCloudLogin.loginDialog()` in `scripts/beneos_cloud.js:22` (DialogV2) | reskin only — backend stays |
-| `<QuickPicker>` | `prototype/QuickPicker.jsx` | NEW window — no current code | Welle 1 second ApplicationV2 |
+| `<QuickPicker>` | `prototype/QuickPicker.jsx` | NEW window — no current code | Wave 1 second ApplicationV2 |
 | `<TweaksPanel>` | `prototype/TweaksPanel.jsx` | DESIGN-ONLY DEBUG TOOL | DELETE — never port |
 | `data.jsx` mock arrays | — | Replace with adapter over existing `BeneosCloud.checkAvailableContent()` + database CDN | shape-mismatch documented in `handoff/api-contract.md` |
-| Install button (4 states) | `app.jsx` install state machine | Today: install starts, full re-render after | hardening + 4-state UI in Welle B-3+ |
-| Status bar (storage/sync/issues) | `app.jsx` | NEW — partial info exists in settings | Welle 1 |
+| Install button (4 states) | `app.jsx` install state machine | Today: install starts, full re-render after | hardening + 4-state UI in Wave B-3+ |
+| Status bar (storage/sync/issues) | `app.jsx` | NEW — partial info exists in settings | Wave 1 |
 | Right icon-rail | inside `FloatingWindow.jsx` | Foundry's actual sidebar — DO NOT recreate | DROP |
 | `.vtt-canvas` simulation | `styles.css` | Foundry's actual scene canvas | DROP from CSS port |
 
