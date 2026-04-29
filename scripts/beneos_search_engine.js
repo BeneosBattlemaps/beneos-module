@@ -996,11 +996,28 @@ export class BeneosSearchResults extends Dialog {
       let docType = e.target.getAttribute("data-type")
       console.log("DRAG START", id, docType, e)
       if (!id || id == "" || id == "") {
+        // Cloud-mode: asset is not yet installed. Items and Spells are imported
+        // immediately on dragstart (no canvas-drop concept for them); Tokens use
+        // the new "phantom-drag" pattern — Fix #B-1d/Cloud below.
         console.log("Cloud - Draggable id", id)
-        // Probable cloud data -> call for the token key
         if (docType == "Actor") {
+          // Fix #B-1d (Cloud-Drag): instead of triggering the install on dragstart
+          // and aborting the drag (return false), we set a phantom marker in the
+          // dataTransfer and let the drag run. The dropCanvasData hook in
+          // beneos_module.js picks the marker up, kicks off the import via
+          // importTokenFromCloud, remembers the drop coordinates in
+          // pendingCanvasDrops, and creates the token at that position once the
+          // import has completed. Without this, dropping a "Cloud available"
+          // token on the canvas did nothing visible — the install ran but the
+          // token only landed in the compendium.
           let tokenKey = $(e.target).parents(".token-result-section").data("token-key")
-          game.beneos.cloud.importTokenFromCloud(tokenKey, e)
+          let drag_data = {
+            type: "Actor",
+            beneosCloudPending: true,
+            beneosTokenKey: tokenKey
+          }
+          e.originalEvent.dataTransfer.setData("text/plain", JSON.stringify(drag_data))
+          return  // let the drag run; dropCanvasData hook resolves it
         }
         if (docType == "Item") {
           let itemKey = $(e.target).parents(".item-result-section").data("token-key")
@@ -1034,6 +1051,22 @@ export class BeneosSearchResults extends Dialog {
           docType = "Item"
         }
         let drag_data = { "type": docType, "pack": compendium, "uuid": "Compendium." + compendium + "." + id }
+        // Fix #B-1d (Local-Drag): when the actor is already imported into the
+        // world (Beneos Actors folder), point the drag at the world actor's UUID
+        // instead of the compendium copy. Foundry's drop handler then places
+        // only a Token at the drop position; with the compendium UUID it would
+        // additionally clone a duplicate world actor into the Actor browser
+        // every time — which was the user-reported "duplicate" bug.
+        if (docType == "Actor") {
+          let tokenKey = $(e.target).parents(".token-result-section").data("token-key")
+          let worldActor = game.actors?.find(a => {
+            const flag = a.getFlag("world", "beneos")
+            return flag?.tokenKey === tokenKey
+          })
+          if (worldActor) {
+            drag_data = { type: "Actor", uuid: worldActor.uuid }
+          }
+        }
         e.originalEvent.dataTransfer.setData("text/plain", JSON.stringify(drag_data));
       }
     })
@@ -1708,13 +1741,17 @@ export class BeneosSearchEngine extends Dialog {
 
   /********************************************************************************** */
   showBattlemapNotice() {
-    if (this.battlemapNoticeShown) {
+    // Fix #C2: persist the "shown once" flag on game.beneos (which survives the
+    // search engine's close-and-reopen lifecycle) instead of on `this`. Together
+    // with the softRefresh-based install path this means the notice now appears
+    // at most once per Foundry session, and never again once permanently dismissed.
+    if (game.beneos.battlemapNoticeShownThisSession) {
       return
     }
     if (game.settings.get(BeneosUtility.moduleID(), 'beneos-bmap-notice-dismissed')) {
       return
     }
-    this.battlemapNoticeShown = true
+    game.beneos.battlemapNoticeShownThisSession = true
     let content = `<div>
       <h3 style="margin-top:0">Beneos Cloud search currently supports Tokens, Spells, and Loot only.</h3>
       <p>Import for Battlemaps via the Beneos Cloud are not available here yet, import via Moulinette.</p>
@@ -1902,6 +1939,22 @@ export class BeneosSearchEngineLauncher extends FormApplication {
         console.log("No battlemap data found for", key)
       }
     }
+  }
+
+  /********************************************************************************** */
+  // Fix #C2: in-place refresh after a single asset install. Replaces the
+  // legacy close-and-reopen pattern (which caused window flicker, lost scroll
+  // position and made the battlemap-import notice re-appear on every install).
+  // Uses two pre-existing helpers: `refresh(type, key)` updates the in-memory
+  // installed/cloudavailable flags for one asset, then `processSelectorSearch()`
+  // rebuilds the result list via `displayResults()` which Foundry renders soft
+  // (`render(true)`) on the existing window — no close, no flicker.
+  static softRefresh(typeAsset, key) {
+    if (!game.beneos.searchEngine) return
+    // Save current scroll so processSelectorSearch's existing restore logic picks it up.
+    game.beneos.cloud.scrollTop = $(".bsr_result_box")?.scrollTop() || 0
+    BeneosSearchEngineLauncher.refresh(typeAsset, key)
+    game.beneos.searchEngine.processSelectorSearch()
   }
 
   /********************************************************************************** */

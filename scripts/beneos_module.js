@@ -274,6 +274,19 @@ Hooks.on("preCreateActor", (actor, data, context) => {
   return true;
 })
 /********************************************************************************** */
+// Fix #B-1d: cloud-token drag-to-canvas pipeline. The dragstart handler in the
+// search engine sets a phantom marker `{ beneosCloudPending: true,
+// beneosTokenKey: ... }` on the dataTransfer instead of a real UUID. When the
+// user drops onto the canvas, Foundry fires this hook with the parsed payload
+// plus the drop coordinates. We cancel Foundry's default drop processing
+// (returning false) and forward to BeneosCloud, which kicks off the import and
+// places one Token per recorded drop position once the import has finished.
+Hooks.on("dropCanvasData", (canvas, data) => {
+  if (data?.beneosCloudPending !== true) return true
+  game.beneos?.cloud?.handlePendingCanvasDrop?.(canvas, data)
+  return false
+})
+/********************************************************************************** */
 Hooks.on("deleteItem", (item, options) => {
   console.log("Beneos delete item", item, options)
   if (item?.pack == "world.beneos_module_items") {

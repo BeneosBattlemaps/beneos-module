@@ -70,7 +70,7 @@ export class BeneosCloudLogin extends FormApplication {
       // Show the login dialog
       loginData = await this.loginDialog()
       if (!loginData) {
-        ui.notifications.warn("BeneosModule : Login cancelled !")
+        ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Notification.LoginCancelled"))
         return;
       }
     }
@@ -86,12 +86,17 @@ export class BeneosCloudLogin extends FormApplication {
           this.pollForAccess(userId)
         } else {
           console.log("BENEOS Cloud login error", data)
-          ui.notifications.error("BeneosModule : Unable to connect to BeneosCloud, please check your credentials !")
+          ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginFailed"))
         }
       })
   }
 
   /********************************************************************************** */
+  // Fix #E7: every URL building site below wraps dynamic segments
+  // (foundryId, tokenKey, itemKey, spellKey, filename) in encodeURIComponent.
+  // For alphanumeric keys this is a no-op; for keys containing & + space # it
+  // makes the request well-formed where it would previously have been rejected
+  // by the server. Login URL (line 79) was already encoded.
   pollForAccess(userId) {
     // Poll the index.php for the access_token
     let self = this
@@ -100,7 +105,7 @@ export class BeneosCloudLogin extends FormApplication {
     let requestOrigin = this.requestOrigin
 
     let pollInterval = setInterval(function () {
-      let url = `https://beneos.cloud/foundry-manager.php?check=1&foundryId=${userId}`
+      let url = `https://beneos.cloud/foundry-manager.php?check=1&foundryId=${encodeURIComponent(userId)}`
       fetch(url, { credentials: 'same-origin' })
         .then(response => response.json())
         .then(data => {
@@ -114,7 +119,7 @@ export class BeneosCloudLogin extends FormApplication {
             game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-foundry-id", userId)
             game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", data.patreon_status)
             game.beneos.cloud.setLoginStatus(true)
-            ui.notifications.info("BeneosModule : You are now connected to BeneosCloud !")
+            ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Notification.Connected"))
             if (requestOrigin == "searchEngine") {
               game.settings.set(BeneosUtility.moduleID(), "beneos-reload-search-engine", true)
             }
@@ -136,7 +141,27 @@ export class BeneosCloudLogin extends FormApplication {
 export class BeneosCloud {
 
   cloudConnected = false
-  availableContent = []
+  // Fix #B1: pre-shape so is*Available() can short-circuit cleanly before
+  // checkAvailableContent() resolves. Previously this was [], but downstream
+  // code accesses it as { tokens, items, spells } and would otherwise throw.
+  availableContent = { tokens: [], items: [], spells: [] }
+
+  // Fix #E3: idempotency lock for in-flight imports. Keys look like
+  // "token:<assetKey>" / "item:<assetKey>" / "spell:<assetKey>" / "battlemap:<filename>".
+  // A repeated click on the same asset while its pipeline is still running is
+  // ignored (with a notification) instead of spawning a parallel pipeline that
+  // would race on file uploads, compendium delete-then-create, and the search
+  // engine close-and-reopen. Released in `finally` blocks so errors don't leak
+  // a permanent lock.
+  inflightImports = new Set()
+
+  // Fix #B-1d: pending canvas drops for cloud-tokens. When a user drags a
+  // "Cloud available" token onto the scene, we don't yet have a Foundry
+  // document to place — the cloud import takes a few seconds. This map keeps
+  // tokenKey -> [{ x, y, sceneId }, ...] entries; once importTokenToCompendium
+  // finishes successfully, drainPendingCanvasDrops places one Token per entry.
+  // On import failure the entries are discarded with a notification.
+  pendingCanvasDrops = new Map()
 
   loginAttempt() {
     this.setLoginStatus(false)
@@ -146,15 +171,17 @@ export class BeneosCloud {
     }
 
     // Check login validity
-    let url = `https://beneos.cloud/foundry-manager.php?check=1&foundryId=${userId}`
+    let url = `https://beneos.cloud/foundry-manager.php?check=1&foundryId=${encodeURIComponent(userId)}`
     fetch(url, { credentials: 'same-origin' })
       .then(response => response.json())
-      .then(data => {
+      .then(async data => {
         console.log("BENEOS Cloud login data", data)
         if (data.result == 'OK') {
           game.beneos.cloud.setLoginStatus(true)
-          game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", data.patreon_status)
-          game.beneos.cloud.checkAvailableContent()
+          await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", data.patreon_status)
+          // Fix #B2: await the available-content fetch so the search UI sees the
+          // populated map on the next render, not an empty placeholder.
+          await game.beneos.cloud.checkAvailableContent()
         }
       })
   }
@@ -171,6 +198,74 @@ export class BeneosCloud {
 
   isLoggedIn() {
     return this.cloudConnected
+  }
+
+  // Fix #B-1d: called from the dropCanvasData hook in beneos_module.js when a
+  // user drops a "Cloud available" token onto the scene. We register the drop
+  // position (so multiple drags of the same token can each land at their own
+  // spot) and kick off the cloud import. The actual token placement happens
+  // later, in drainPendingCanvasDrops, once the compendium has the document.
+  async handlePendingCanvasDrop(canvas, data) {
+    const tokenKey = data?.beneosTokenKey
+    if (!tokenKey) return
+
+    if (!this.pendingCanvasDrops.has(tokenKey)) {
+      this.pendingCanvasDrops.set(tokenKey, [])
+    }
+    this.pendingCanvasDrops.get(tokenKey).push({
+      x: data.x,
+      y: data.y,
+      sceneId: canvas.scene?.id
+    })
+
+    ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.ImportingForCanvas", { key: tokenKey }))
+
+    // If a pipeline for this token is already running (user dragged the same
+    // token a second time before the first import finished), the new drop
+    // position has been recorded above and the running pipeline will pick it
+    // up. Avoid spawning a parallel install.
+    if (!this.inflightImports.has(`token:${tokenKey}`)) {
+      this.importTokenFromCloud(tokenKey)
+    }
+  }
+
+  // Fix #B-1d: place one Token per registered drop position once the cloud
+  // import has produced a world actor. Called from the success branch of
+  // importTokenToCompendium. On failure, discardPendingCanvasDrops clears the
+  // map and surfaces a notification.
+  async drainPendingCanvasDrops(tokenKey) {
+    const pending = this.pendingCanvasDrops.get(tokenKey)
+    if (!pending || pending.length === 0) return
+
+    const worldActor = game.actors?.find(a => {
+      const flag = a.getFlag("world", "beneos")
+      return flag?.tokenKey === tokenKey
+    })
+    if (!worldActor) {
+      console.error("BeneosModule: cannot resolve pending canvas drops; world actor not found for", tokenKey)
+      this.pendingCanvasDrops.delete(tokenKey)
+      return
+    }
+
+    for (const drop of pending) {
+      const scene = game.scenes.get(drop.sceneId)
+      if (!scene) continue
+      try {
+        const tokenDoc = await worldActor.getTokenDocument({ x: drop.x, y: drop.y })
+        await scene.createEmbeddedDocuments("Token", [tokenDoc.toObject()])
+      } catch (err) {
+        console.error("BeneosModule: failed to place pending token on canvas", tokenKey, drop, err)
+      }
+    }
+    this.pendingCanvasDrops.delete(tokenKey)
+  }
+
+  // Fix #B-1d: clear pending canvas drops for a token whose import failed.
+  // Called from the error branches of importTokenFromCloud / catch handler.
+  discardPendingCanvasDrops(tokenKey) {
+    if (!this.pendingCanvasDrops.has(tokenKey)) return
+    this.pendingCanvasDrops.delete(tokenKey)
+    ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.ImportErrorToken"))
   }
 
   getPatreonStatus() {
@@ -196,12 +291,15 @@ export class BeneosCloud {
     return false
   }
 
+  // Fix #B5: keys are normalised with replaceAll (not replace) so multi-hyphen item/spell
+  // keys like "my-fancy-token" get all hyphens converted, matching the cloud-side key form.
+  // See `beneos-search-engine` skill, issue B5, for context.
   getItemTS(key) {
     let content = this.availableContent.items
     if (!content || content.length == 0) return false
-    let key2 = key.toLowerCase().replace("-", "_")
+    let key2 = key.toLowerCase().replaceAll("-", "_")
     for (const element of content) {
-      let key1 = element.key.toLowerCase().replace("-", "_")
+      let key1 = element.key.toLowerCase().replaceAll("-", "_")
       if (key1 == key2) {
         return element.updated_ts
       }
@@ -212,9 +310,9 @@ export class BeneosCloud {
   getSpellTS(key) {
     let content = this.availableContent.spells
     if (!content || content.length == 0) return false
-    let key2 = key.toLowerCase().replace("-", "_")
+    let key2 = key.toLowerCase().replaceAll("-", "_")
     for (const element of content) {
-      let key1 = element.key.toLowerCase().replace("-", "_")
+      let key1 = element.key.toLowerCase().replaceAll("-", "_")
       if (key1 == key2) {
         return element.updated_ts
       }
@@ -253,9 +351,9 @@ export class BeneosCloud {
   isItemAvailable(key) {
     let content = this.availableContent.items
     if (!content || content.length == 0) return false
-    let key2 = key.toLowerCase().replace("-", "_")
+    let key2 = key.toLowerCase().replaceAll("-", "_")
     for (const element of content) {
-      let key1 = element.key.toLowerCase().replace("-", "_")
+      let key1 = element.key.toLowerCase().replaceAll("-", "_")
       if (key1 == key2) {
         return true
       }
@@ -266,9 +364,9 @@ export class BeneosCloud {
   isSpellAvailable(key) {
     let content = this.availableContent.spells
     if (!content || content.length == 0) return false
-    let key2 = key.toLowerCase().replace("-", "_")
+    let key2 = key.toLowerCase().replaceAll("-", "_")
     for (const element of content) {
-      let key1 = element.key.toLowerCase().replace("-", "_")
+      let key1 = element.key.toLowerCase().replaceAll("-", "_")
       if (key1 == key2) {
         return true
       }
@@ -276,18 +374,27 @@ export class BeneosCloud {
     return false
   }
 
-  checkAvailableContent() {
+  // Fix #B2: returns a promise so callers (e.g. loginAttempt, search engine
+  // open) can await content readiness before they read availableContent. The
+  // function still no-ops gracefully on network/server errors; callers are not
+  // forced to handle them. In-dubio-pro-reo: a UI that wants to be optimistic
+  // can simply not await and render with the empty initial shape from #B1.
+  async checkAvailableContent() {
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
-    let url = `https://beneos.cloud/foundry-manager.php?get_content=1&foundryId=${userId}`
-    fetch(url, { credentials: 'same-origin' })
-      .then(response => response.json())
-      .then(data => {
-        console.log("BENEOS Cloud available content", data)
-        if (data.result == 'OK') {
-          console.log("Available content: ", data.data)
-          game.beneos.cloud.setAvailableContent(data.data)
-        }
-      })
+    let url = `https://beneos.cloud/foundry-manager.php?get_content=1&foundryId=${encodeURIComponent(userId)}`
+    try {
+      const response = await fetch(url, { credentials: 'same-origin' })
+      const data = await response.json()
+      console.log("BENEOS Cloud available content", data)
+      if (data.result == 'OK') {
+        console.log("Available content: ", data.data)
+        game.beneos.cloud.setAvailableContent(data.data)
+      }
+      return data
+    } catch (err) {
+      console.error("BeneosModule: checkAvailableContent failed", err)
+      return null
+    }
   }
 
   sendChatMessageResult(event, assetName = "Token", name = undefined, isBatch = false) {
@@ -318,6 +425,9 @@ export class BeneosCloud {
   }
 
   async importItemToCompendium(itemArray, event, isBatch = false) {
+    // Fix #C5: a single install must always world-import. Reset stale flag from a
+    // crashed earlier batch so this install behaves deterministically.
+    if (!isBatch) this.noWorldImport = false
     this.beneosItems = {}
     console.log("Importing item to compendium", itemArray)
 
@@ -338,7 +448,7 @@ export class BeneosCloud {
 
     }
     if (!itemPack) {
-      ui.notifications.error("BeneosModule : Unable to find compendiums, please check your installation !")
+      ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.CompendiumMissing"))
       return
     }
     let itemRecords = await itemPack.getIndex()
@@ -415,21 +525,27 @@ export class BeneosCloud {
         }
         // And then create it again
         let imported = await itemPack.importDocument(item);
-        properName = imported.name
-        await imported.setFlag("world", "beneos", { itemKey, fullId: itemKey, idx: 1, installationDate: tNow })
-        BeneosUtility.beneosItems[itemKey] = {
-          itemName: imported.name,
-          img: imported.img,
-          itemId: imported.id,
-          folder: finalFolder,
-          itemKey: itemKey,
-          fullId: itemKey,
-          installDate: tNow,
-          number: 1
-        }
-        // And import the item into the "Beneos Items" folder, except if in install *ALL* mode
-        if (!this.noWorldImport) {
-          await game.items.importFromCompendium(itemPack, imported.id, { folder: itemsFolder.id });
+        // Fix #C3: only mark as installed when import actually succeeded, otherwise
+        // the UI showed an "installed" badge for items that never made it to the compendium.
+        if (imported?.id) {
+          properName = imported.name
+          await imported.setFlag("world", "beneos", { itemKey, fullId: itemKey, idx: 1, installationDate: tNow })
+          BeneosUtility.beneosItems[itemKey] = {
+            itemName: imported.name,
+            img: imported.img,
+            itemId: imported.id,
+            folder: finalFolder,
+            itemKey: itemKey,
+            fullId: itemKey,
+            installDate: tNow,
+            number: 1
+          }
+          // And import the item into the "Beneos Items" folder, except if in install *ALL* mode
+          if (!this.noWorldImport) {
+            await game.items.importFromCompendium(itemPack, imported.id, { folder: itemsFolder.id });
+          }
+        } else {
+          console.error("BeneosModule: Item import failed for", itemKey)
         }
       }
     }
@@ -440,16 +556,17 @@ export class BeneosCloud {
     if (!isBatch) { // Lock/Unlock only in single install mode
       this.sendChatMessageResult(event, "Item", properName)
       await itemPack.configure({ locked: true })
-      BeneosSearchEngineLauncher.closeAndSave()
-      setTimeout(() => {
-        new BeneosSearchEngineLauncher().render()
-      }, 100)
+      // Fix #C2: in-place refresh — keeps search engine open, scroll position,
+      // and prevents the battlemap notice from re-appearing on every install.
+      BeneosSearchEngineLauncher.softRefresh("item", itemKey)
     } else {
       this.updateInstalledAssets() // Update the installed assets count
     }
   }
 
   async importSpellToCompendium(spellArray, event, isBatch = false) {
+    // Fix #C5: see importItemToCompendium for rationale.
+    if (!isBatch) this.noWorldImport = false
     this.beneosSpells = {}
 
     // Create the "Beneos Spells" folder if it doesn't exist
@@ -473,7 +590,7 @@ export class BeneosCloud {
       spellPack = game.packs.get("world.beneos_module_spells")
     }
     if (!spellPack) {
-      ui.notifications.error("BeneosModule : Unable to find compendiums, please check your installation !")
+      ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.CompendiumMissing"))
       return
     }
     let spellRecords = await spellPack.getIndex()
@@ -544,22 +661,27 @@ export class BeneosCloud {
         }
         // And then create it again
         let imported = await spellPack.importDocument(spell);
-        properName = imported.name
-        await imported.setFlag("world", "beneos", { spellKey, fullId: spellKey, idx: 1, installationDate: tNow })
-        BeneosUtility.beneosSpells[spellKey] = {
-          itemName: imported.name,
-          img: imported.img,
-          spellId: imported.id,
-          folder: finalFolder,
-          spellKey: spellKey,
-          fullId: spellKey,
-          installDate: tNow,
-          number: 1
-        }
-        // And import the item into the "Beneos Spells" folder, except if in install *ALL* mode
-        if (!this.noWorldImport) {
-          let folder = levelFolders[Number(imported.system?.level) ?? 0]
-          await game.items.importFromCompendium(spellPack, imported.id, { folder: folder.id });
+        // Fix #C3: only mark as installed when import actually succeeded.
+        if (imported?.id) {
+          properName = imported.name
+          await imported.setFlag("world", "beneos", { spellKey, fullId: spellKey, idx: 1, installationDate: tNow })
+          BeneosUtility.beneosSpells[spellKey] = {
+            itemName: imported.name,
+            img: imported.img,
+            spellId: imported.id,
+            folder: finalFolder,
+            spellKey: spellKey,
+            fullId: spellKey,
+            installDate: tNow,
+            number: 1
+          }
+          // And import the item into the "Beneos Spells" folder, except if in install *ALL* mode
+          if (!this.noWorldImport) {
+            let folder = levelFolders[Number(imported.system?.level) ?? 0]
+            await game.items.importFromCompendium(spellPack, imported.id, { folder: folder.id });
+          }
+        } else {
+          console.error("BeneosModule: Spell import failed for", spellKey)
         }
       }
     }
@@ -570,10 +692,8 @@ export class BeneosCloud {
     if (!isBatch) { // Lock/Unlock only in single install mode
       this.sendChatMessageResult(event, "Spell", properName)
       await spellPack.configure({ locked: true })
-      BeneosSearchEngineLauncher.closeAndSave()
-      setTimeout(() => {
-        new BeneosSearchEngineLauncher().render()
-      }, 100)
+      // Fix #C2: see importItemToCompendium for rationale.
+      BeneosSearchEngineLauncher.softRefresh("spell", spellKey)
     } else {
       this.updateInstalledAssets() // Update the installed assets count
     }
@@ -582,13 +702,13 @@ export class BeneosCloud {
   async addTokenToWorldFromCompendium(tokenKey) {
     let actorPack = BeneosUtility.getActorPack()
     if (!actorPack) {
-      ui.notifications.error("BeneosModule : Unable to find compendiums, please check your installation !")
+      ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.CompendiumMissing"))
       return
     }
     let actorRecords = await actorPack.getIndex()
     let actorId = BeneosUtility.getActorId(tokenKey)
     if (!actorId) {
-      ui.notifications.error(`BeneosModule : Unable to find token ${tokenKey} info, please check your installation !`)
+      ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.TokenLookupFailed", { key: tokenKey }))
       return
     }
     let existingActor = actorRecords.find(a => a._id == actorId)
@@ -608,16 +728,18 @@ export class BeneosCloud {
           name: folderName, type: "Actor", folder: actorsFolder.id
         })
         await game.actors.importFromCompendium(actorPack, imported.id, { folder: subFolder.id });
-        ui.notifications.info(`BeneosModule : Token ${imported.name} imported into the Beneos Actors folder, Actors directory.`)
+        ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.TokenImported", { name: imported.name }))
       } else {
-        ui.notifications.error(`BeneosModule : Unable to find token 1 ${tokenKey} in the compendium.`)
+        ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.TokenLookupFailed", { key: tokenKey }))
       }
     } else {
-      ui.notifications.error(`BeneosModule : Unable to find token 2 ${tokenKey} in the compendium.`)
+      ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.TokenLookupFailed", { key: tokenKey }))
     }
   }
 
   async importTokenToCompendium(tokenArray, event, isBatch = false) {
+    // Fix #C5: see importItemToCompendium for rationale.
+    if (!isBatch) this.noWorldImport = false
 
     console.log("Importing token to compendium", tokenArray, event, isBatch)
 
@@ -639,7 +761,7 @@ export class BeneosCloud {
 
     let journalPack = BeneosUtility.getJournalPack()
     if (!actorPack || !journalPack) {
-      ui.notifications.error("BeneosModule : Unable to find compendiums, please check your installation !")
+      ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.CompendiumMissing"))
       return
     }
     let actorRecords = await actorPack.getIndex()
@@ -741,39 +863,48 @@ export class BeneosCloud {
             }
             // And then create it again
             let imported = await actorPack.importDocument(actor);
-            properName = imported.name
-            await imported.setFlag("world", "beneos", { tokenKey, fullId, idx: i, journalId: newJournal.id, installationDate: Date.now() })
-            BeneosUtility.beneosTokens[fullId] = {
-              actorName: imported.name,
-              avatar: actorData.img,
-              token: actorData.prototypeToken.texture.src,
-              actorId: imported.id,
-              installDate: tNow,
-              journalId: newJournal?.id,
-              folder: finalFolder,
-              tokenKey: tokenKey,
-              fullId: fullId,
-              number: i + 1
-            }
-            // And import the item into the "Beneos Spells" folder, except if in install *ALL* mode
-            if (!this.noWorldImport && i == 0) { // Only import the first token of the serie
-              let tokenDb = game.beneos.databaseHolder.getTokenDatabaseInfo(tokenKey)
-              let folderName = tokenDb?.properties?.type[0] ?? "Unknown"
-              // Upper first letter
-              folderName = folderName.charAt(0).toUpperCase() + folderName.slice(1)
-              // Create the sub-folder if it doesn't exist
-              let subFolder = game.folders.getName(folderName) || await Folder.create({
-                name: folderName, type: "Actor", folder: actorsFolder.id
-              })
-              await game.actors.importFromCompendium(actorPack, imported.id, { folder: subFolder.id });
+            // Fix #C3: only mark as installed when import actually succeeded; previous
+            // code accessed `imported.name` unconditionally, which crashed silently for
+            // failed imports and could leave half-written settings.
+            if (imported?.id) {
+              properName = imported.name
+              await imported.setFlag("world", "beneos", { tokenKey, fullId, idx: i, journalId: newJournal?.id, installationDate: Date.now() })
+              BeneosUtility.beneosTokens[fullId] = {
+                actorName: imported.name,
+                avatar: actorData.img,
+                token: actorData.prototypeToken.texture.src,
+                actorId: imported.id,
+                installDate: tNow,
+                journalId: newJournal?.id,
+                folder: finalFolder,
+                tokenKey: tokenKey,
+                fullId: fullId,
+                number: i + 1
+              }
+              // And import the item into the "Beneos Spells" folder, except if in install *ALL* mode
+              if (!this.noWorldImport && i == 0) { // Only import the first token of the serie
+                let tokenDb = game.beneos.databaseHolder.getTokenDatabaseInfo(tokenKey)
+                let folderName = tokenDb?.properties?.type[0] ?? "Unknown"
+                // Upper first letter
+                folderName = folderName.charAt(0).toUpperCase() + folderName.slice(1)
+                // Create the sub-folder if it doesn't exist
+                let subFolder = game.folders.getName(folderName) || await Folder.create({
+                  name: folderName, type: "Actor", folder: actorsFolder.id
+                })
+                await game.actors.importFromCompendium(actorPack, imported.id, { folder: subFolder.id });
+              }
+            } else {
+              console.error("BeneosModule: Token actor import failed for", tokenKey, fullId)
             }
           } else {
-            this.importErrors.push("Error in creating actor " + records.name)
-            console.log("Error in creating actor", records.name);
+            // Fix #C3: previous code referenced an undefined `records` variable here,
+            // which threw ReferenceError and crashed the entire batch. Use the data we have.
+            this.importErrors?.push("Error in creating actor " + (actorData?.name ?? tokenKey))
+            console.error("BeneosModule: Error creating actor for", tokenKey, actorData?.name)
           }
         } else {
           console.log("No actor data for token", tokenKey)
-          ui.notifications.error("BeneosModule : Token is in error and is not installed : " + tokenKey)
+          ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.TokenInstallError", { key: tokenKey }))
         }
       }
 
@@ -785,11 +916,11 @@ export class BeneosCloud {
         this.sendChatMessageResult(event, "Token", properName)
         await actorPack.configure({ locked: true })
         await journalPack.configure({ locked: true })
-        BeneosSearchEngineLauncher.closeAndSave()
-        setTimeout(() => {
-          console.log("Rendering search engine after token import")
-          new BeneosSearchEngineLauncher().render()
-        }, 100)
+        // Fix #C2: see importItemToCompendium for rationale.
+        BeneosSearchEngineLauncher.softRefresh("token", tokenKey)
+        // Fix #B-1d: place any tokens whose drop position was registered while
+        // the import was running (cloud-drag onto canvas). No-op if there were none.
+        await this.drainPendingCanvasDrops(tokenKey)
       } else {
         this.updateInstalledAssets() // Update the installed assets count
       }
@@ -805,7 +936,7 @@ export class BeneosCloud {
     this.nbInstalled = 0
     this.toInstall = Object.keys(assetList).length
     if (this.toInstall == 0) {
-      ui.notifications.warn("BeneosModule : No assets to install from BeneosCloud !")
+      ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Notification.BatchEmpty"))
       return;
     }
     console.log("Batch installing assets", assetList, this.toInstall)
@@ -829,8 +960,9 @@ export class BeneosCloud {
     if (this.nbInstalled == 0) {
       this.msgRandomId = foundry.utils.randomID(5)
       // Display an install chat message only at the first installed asset
-      let msg = `<div><strong>BeneosModule</strong> - Installing selected assets from BeneosCloud, please wait...
-      <div>Assets installed : <strong><span id="nb-assets-${this.msgRandomId}"></span></strong></div></div>`
+      // Fix #F1: localised; surrounding HTML structure preserved.
+      let msg = `<div>${game.i18n.localize("BENEOS.Cloud.Notification.BatchInstalling")}
+      <div>${game.i18n.localize("BENEOS.Cloud.Notification.BatchProgressLabel")} <strong><span id="nb-assets-${this.msgRandomId}"></span></strong></div></div>`
       let chatData = {
         user: game.user.id,
         rollMode: game.settings.get("core", "rollMode"),
@@ -844,7 +976,7 @@ export class BeneosCloud {
     if (this.nbInstalled >= this.toInstall) {
       setTimeout(() => {
         BeneosUtility.lockUnlockAllPacks(true) // Lock all packs after batch install
-        ui.notifications.info(`BeneosModule : ${this.nbInstalled} assets have been installed from BeneosCloud !`)
+        ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.BatchComplete", { nb: this.nbInstalled }))
         game.beneos.cloud.sendChatMessageResult(null, game.beneos.cloud.importAsset, undefined, true)
         BeneosSearchEngineLauncher.closeAndSave()
         this.noWorldImport = false // Reset the no world import flag
@@ -857,62 +989,121 @@ export class BeneosCloud {
   }
 
   importTokenFromCloud(tokenKey, event = undefined, isBatch = false) {
-    //ui.notifications.info("Importing token from BeneosCloud !")
+    // Fix #E3: ignore repeat clicks while this token's pipeline is still in flight.
+    const lockKey = `token:${tokenKey}`
+    if (this.inflightImports.has(lockKey)) {
+      ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.AlreadyImporting", { key: tokenKey }))
+      return
+    }
+    this.inflightImports.add(lockKey)
+
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
-    let url = `https://beneos.cloud/foundry-manager.php?get_token=1&foundryId=${userId}&tokenKey=${tokenKey}`
+    let url = `https://beneos.cloud/foundry-manager.php?get_token=1&foundryId=${encodeURIComponent(userId)}&tokenKey=${encodeURIComponent(tokenKey)}`
     fetch(url, { credentials: 'same-origin' })
       .then(response => response.json())
       .then(async function (data) {
         if (data.result == 'OK') {
           game.beneos.cloud.importAsset = "Token"
-          game.beneos.cloud.importTokenToCompendium({ [`${tokenKey}`]: data.data.token }, event, isBatch)
+          // Fix #E3: await so the lock is only released after the full import (including
+          // file uploads, compendium writes and search-engine re-render) has settled.
+          await game.beneos.cloud.importTokenToCompendium({ [`${tokenKey}`]: data.data.token }, event, isBatch)
         } else {
           console.log("Error in importing Token from BeneosCloud !", data, tokenKey)
-          ui.notifications.error("Error in importing token from BeneosCloud !")
+          ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.ImportErrorToken"))
+          // Fix #B-1d: drop any pending canvas drops on server reject; user
+          // already saw the generic error notification, no second one needed.
+          game.beneos.cloud.pendingCanvasDrops.delete(tokenKey)
         }
+      })
+      .catch(err => {
+        console.error("BeneosModule: token import error for", tokenKey, err)
+        // Fix #B-1d: discard pending drops AND surface a notification so the
+        // user understands why nothing appeared on the canvas.
+        game.beneos.cloud.discardPendingCanvasDrops(tokenKey)
+      })
+      .finally(() => {
+        game.beneos.cloud.inflightImports.delete(lockKey)
       })
   }
 
   importItemFromCloud(itemKey, event = undefined, isBatch = false) {
-    itemKey = itemKey.toLowerCase().replace("-", "_") // Cleanup the key
-    ui.notifications.info("Importing item from BeneosCloud !")
+    itemKey = itemKey.toLowerCase().replaceAll("-", "_") // Fix #B5: replaceAll handles multi-hyphen keys
+    // Fix #E3: see importTokenFromCloud for rationale.
+    const lockKey = `item:${itemKey}`
+    if (this.inflightImports.has(lockKey)) {
+      ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.AlreadyImporting", { key: itemKey }))
+      return
+    }
+    this.inflightImports.add(lockKey)
+
+    ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Notification.ImportingItem"))
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
-    let url = `https://beneos.cloud/foundry-manager.php?get_item=1&foundryId=${userId}&itemKey=${itemKey}`
+    let url = `https://beneos.cloud/foundry-manager.php?get_item=1&foundryId=${encodeURIComponent(userId)}&itemKey=${encodeURIComponent(itemKey)}`
     fetch(url, { credentials: 'same-origin' })
       .then(response => response.json())
       .then(async function (data) {
         if (data.result == 'OK') {
           game.beneos.cloud.importAsset = "Item"
-          game.beneos.cloud.importItemToCompendium({ [`${itemKey}`]: data.data.item }, event, isBatch)
+          await game.beneos.cloud.importItemToCompendium({ [`${itemKey}`]: data.data.item }, event, isBatch)
         } else {
           console.log("Error in importing Item from BeneosCloud !", data, itemKey)
-          ui.notifications.error("Error in importing Item from BeneosCloud !", data)
+          ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.ImportErrorItem"))
         }
+      })
+      .catch(err => {
+        console.error("BeneosModule: item import error for", itemKey, err)
+      })
+      .finally(() => {
+        game.beneos.cloud.inflightImports.delete(lockKey)
       })
   }
 
   importSpellsFromCloud(spellKey, event = undefined, isBatch = false) {
-    ui.notifications.info("Importing spell from BeneosCloud !")
-    spellKey = spellKey.toLowerCase().replace("-", "_") // Cleanup the key
+    spellKey = spellKey.toLowerCase().replaceAll("-", "_") // Fix #B5: replaceAll handles multi-hyphen keys
+    // Fix #E3: see importTokenFromCloud for rationale.
+    const lockKey = `spell:${spellKey}`
+    if (this.inflightImports.has(lockKey)) {
+      ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.AlreadyImporting", { key: spellKey }))
+      return
+    }
+    this.inflightImports.add(lockKey)
+
+    ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Notification.ImportingSpell"))
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
-    let url = `https://beneos.cloud/foundry-manager.php?get_spell=1&foundryId=${userId}&spellKey=${spellKey}`
+    let url = `https://beneos.cloud/foundry-manager.php?get_spell=1&foundryId=${encodeURIComponent(userId)}&spellKey=${encodeURIComponent(spellKey)}`
     fetch(url, { credentials: 'same-origin' })
       .then(response => response.json())
       .then(async function (data) {
         if (data.result == 'OK') {
           game.beneos.cloud.importAsset = "Spell"
-          game.beneos.cloud.importSpellToCompendium({ [`${spellKey}`]: data.data.spell }, event, isBatch)
+          await game.beneos.cloud.importSpellToCompendium({ [`${spellKey}`]: data.data.spell }, event, isBatch)
         } else {
           console.log("Error in importing Spell from BeneosCloud !", data, spellKey)
-          ui.notifications.error("Error in importing Spell from BeneosCloud !")
+          ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.ImportErrorSpell"))
         }
+      })
+      .catch(err => {
+        console.error("BeneosModule: spell import error for", spellKey, err)
+      })
+      .finally(() => {
+        game.beneos.cloud.inflightImports.delete(lockKey)
       })
   }
 
   async importBattlemapFromCloud(filename, event = undefined) {
-    ui.notifications.info("Importing battlemap from BeneosCloud !")
+    // Fix #E3: see importTokenFromCloud for rationale. Battlemap path is not yet
+    // wired to the search UI (see beneos-search-engine skill — Moulinette is the
+    // current battlemap distribution channel) but we lock here for consistency.
+    const lockKey = `battlemap:${filename}`
+    if (this.inflightImports.has(lockKey)) {
+      ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.AlreadyImporting", { key: filename }))
+      return
+    }
+    this.inflightImports.add(lockKey)
+
+    ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Notification.ImportingBattlemap"))
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
-    let url = `https://beneos.cloud/foundry-manager.php?download_uploaded_file=1&foundryId=${userId}&filename=${filename}`
+    let url = `https://beneos.cloud/foundry-manager.php?download_uploaded_file=1&foundryId=${encodeURIComponent(userId)}&filename=${encodeURIComponent(filename)}`
 
     try {
       let response = await fetch(url, { credentials: 'same-origin' })
@@ -974,9 +1165,12 @@ export class BeneosCloud {
           let file = new File([blob], uploadFilename, { type: mimeType });
           console.log("File object created:", file.name, file.size, file.type);
 
-          // Upload via FilePicker (méthode statique, pas implementation)
+          // Fix #E4: previous code had a duplicated `.FilePicker` segment
+          // (`FilePicker.implementation.FilePicker.upload`) which threw silently
+          // and broke every battlemap upload. Aligned to the same form used by
+          // token/item/spell uploads earlier in this file.
           try {
-            let uploadResult = await foundry.applications.apps.FilePicker.implementation.FilePicker.upload(
+            let uploadResult = await foundry.applications.apps.FilePicker.implementation.upload(
               "data",
               "beneos_assets/cloud/battlemaps",
               file,
@@ -986,27 +1180,30 @@ export class BeneosCloud {
             console.log("Upload result", uploadResult);
 
             if (isZipFile) {
-              ui.notifications.info(`Battlemap saved as ${uploadFilename} (original: ${filename})`);
-              ui.notifications.warn(`File was renamed to .webm to bypass FoundryVTT security. It's still a ZIP file.`);
+              ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.BattlemapSavedRenamed", { newName: uploadFilename, oldName: filename }));
+              ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Notification.BattlemapRenameNotice"));
             } else {
-              ui.notifications.info(`Battlemap ${filename} successfully saved to beneos_assets/cloud/battlemaps/`);
+              ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.BattlemapSaved", { filename }));
             }
           } catch (uploadError) {
             console.error("Upload error:", uploadError);
-            ui.notifications.error(`Upload failed: ${uploadError.message}`);
+            ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.BattlemapUploadFailed", { message: uploadError.message }));
           }
 
         } else {
           console.log("Error in downloading Battlemap from BeneosCloud, no download URL provided !", data, filename)
-          ui.notifications.error("Error in downloading Battlemap from BeneosCloud, no download URL provided !")
+          ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.BattlemapNoUrl"))
         }
       } else {
         console.log("Error in importing Battlemap from BeneosCloud !", data, filename)
-        ui.notifications.error("Error in importing Battlemap from BeneosCloud !")
+        ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.ImportErrorBattlemap"))
       }
     } catch (err) {
       console.log("Error in downloading Battlemap from BeneosCloud", err)
-      ui.notifications.error("Error in downloading Battlemap from BeneosCloud !")
+      ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.ImportErrorBattlemap"))
+    } finally {
+      // Fix #E3: release the idempotency lock regardless of outcome.
+      this.inflightImports.delete(`battlemap:${filename}`)
     }
   }
 }
