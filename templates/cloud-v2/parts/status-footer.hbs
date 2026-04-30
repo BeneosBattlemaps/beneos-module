@@ -1,0 +1,85 @@
+{{!-- Beneos Cloud V2 — status footer (account chip + cloud actions).
+     Patreon status / login state visualised here, lifted out of the form
+     where it lived in v1.
+     Wave B-9-fix-36: external-link buttons (Discord / Webshop / Patreon)
+     and the module version label. The Patreon URL is tab-aware — Maps
+     opens BeneosBattlemaps, every other tab opens BeneosTokens. --}}
+<footer class="bc-footer" data-bc-region="footer">
+  <div class="bc-footer-left">
+    {{!-- Wave B-9-fix-58: offline state takes precedence over the
+         logged-in chip — the user might be signed in from a previous
+         session, but if the cloud server is unreachable we still want
+         to surface that. The login button is hidden when offline since
+         it would just fail; the Account button stays available so the
+         user can review their saved credentials. --}}
+    {{#if isOffline}}
+      <div class="bc-account-chip bc-chip-warning">
+        <i class="fa-solid fa-cloud-slash"></i>
+        <span>{{localize "BENEOS.Cloud.Footer.Offline"}}</span>
+      </div>
+      {{#if isCloudLoggedIn}}
+        <button type="button"
+                class="bc-footer-button"
+                data-action="openCloudSettings"
+                data-tooltip="{{localize 'BENEOS.Cloud.Footer.AccountSettingsTooltip'}}">
+          <i class="fa-solid fa-gear"></i>
+          <span>{{localize "BENEOS.Cloud.Footer.AccountSettings"}}</span>
+        </button>
+      {{/if}}
+    {{else if isCloudLoggedIn}}
+      <div class="bc-account-chip {{#if (eq patreonStatus "active_patron")}}bc-chip-success{{else}}bc-chip-warning{{/if}}">
+        {{#if (eq patreonStatus "active_patron")}}
+          <i class="fa-solid fa-circle-check"></i>
+          <span>{{localize "BENEOS.Cloud.Footer.PatreonOK"}}</span>
+        {{else}}
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <span>{{localize "BENEOS.Cloud.Footer.PatreonNOK"}}</span>
+        {{/if}}
+      </div>
+      <button type="button"
+              class="bc-footer-button"
+              data-action="openCloudSettings"
+              data-tooltip="{{localize 'BENEOS.Cloud.Footer.AccountSettingsTooltip'}}">
+        <i class="fa-solid fa-gear"></i>
+        <span>{{localize "BENEOS.Cloud.Footer.AccountSettings"}}</span>
+      </button>
+    {{else}}
+      <div class="bc-account-chip bc-chip-neutral beneos-cloud-not-connected">
+        <i class="fa-solid fa-cloud-slash"></i>
+        <span>{{localize "BENEOS.Cloud.Footer.NotConnected"}}</span>
+      </div>
+      <button type="button"
+              class="bc-footer-button bc-footer-button-primary beneos-cloud-login-button"
+              data-action="openLogin">
+        <i class="fa-solid fa-right-to-bracket"></i>
+        <span>{{localize "BENEOS.Cloud.Footer.SignIn"}}</span>
+      </button>
+    {{/if}}
+  </div>
+  {{!-- Wave B-9-fix-45: external links pushed to the right and toned
+       down so they don't compete with the Account/Login button on the
+       left. Brand colour appears on hover, version moved to the title. --}}
+  <div class="bc-footer-right">
+    <button type="button"
+            class="bc-footer-button bc-footer-link bc-footer-button-discord"
+            data-action="openExternal" data-href="{{discordUrl}}"
+            data-tooltip="{{localize 'BENEOS.Cloud.Footer.DiscordTooltip'}}">
+      <i class="fa-brands fa-discord"></i>
+      <span>{{localize "BENEOS.Cloud.Footer.Discord"}}</span>
+    </button>
+    <button type="button"
+            class="bc-footer-button bc-footer-link bc-footer-button-webshop"
+            data-action="openExternal" data-href="{{webshopUrl}}"
+            data-tooltip="{{localize 'BENEOS.Cloud.Footer.WebshopTooltip'}}">
+      <i class="fa-solid fa-cart-shopping"></i>
+      <span>{{localize "BENEOS.Cloud.Footer.Webshop"}}</span>
+    </button>
+    <button type="button"
+            class="bc-footer-button bc-footer-link bc-footer-button-patreon"
+            data-action="openExternal" data-href="{{patreonUrl}}"
+            data-tooltip="{{localize 'BENEOS.Cloud.Footer.PatreonTooltip'}}">
+      <i class="fa-brands fa-patreon"></i>
+      <span>{{localize "BENEOS.Cloud.Footer.Patreon"}}</span>
+    </button>
+  </div>
+</footer>

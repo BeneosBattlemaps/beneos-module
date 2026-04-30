@@ -1974,11 +1974,28 @@ export class BeneosSearchEngineLauncher extends FormApplication {
     }
     await BeneosDatabaseHolder.loadDatabaseFiles()
     let dbData = BeneosDatabaseHolder.getData()
+    game.beneos.databaseHolder = BeneosDatabaseHolder
+
+    // Wave B-4: respect the v1/v2 setting. v2 is the new ApplicationV2 unified
+    // window (BeneosCloudWindowV2); v1 is the legacy Dialog pair. The two
+    // share the same data source (BeneosDatabaseHolder, BeneosCloud) so
+    // toggling between them is a one-setting flip — no data migration.
+    const version = game.settings.get(BeneosUtility.moduleID(), 'beneos-search-engine-version')
+    if (version === "v2") {
+      if (game.beneos.cloudWindowV2) return
+      const { BeneosCloudWindowV2 } = await import("./cloud-v2/cloud-window-v2.mjs")
+      const win = new BeneosCloudWindowV2()
+      await win.render({ force: true })
+      if (game.beneos.info) {
+        game.beneos.info.hide()
+        game.beneos.info = undefined
+      }
+      return
+    }
 
     let html = await foundry.applications.handlebars.renderTemplate('modules/beneos-module/templates/beneossearchengine.html', dbData)
     let searchDialog = new BeneosSearchEngine(html, dbData)
     game.beneos.searchEngine = searchDialog
-    game.beneos.databaseHolder = BeneosDatabaseHolder
 
     await searchDialog.render(true)
     if (installed) {

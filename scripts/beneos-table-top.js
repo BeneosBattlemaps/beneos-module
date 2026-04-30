@@ -77,7 +77,7 @@ export class BeneosTableTop {
         active: BeneosTableTop.isHideUI(),
         onClick: () => { BeneosTableTop.toggleUIElements() }
       });
-      
+
       if (this.isTableTop) {
         menu.push({
           name: "enable-player-view",

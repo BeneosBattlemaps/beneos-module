@@ -1,0 +1,521 @@
+{{!-- Beneos Cloud V2 — results pane (Wave B-5 native rendering).
+     Replaces the legacy v1 HTML mount with V2-native cards + a slide-in
+     detail drawer on the right. content-visibility on each card lets the
+     browser skip offscreen rendering — major performance gain on lists with
+     hundreds of tokens.
+
+     The card markup intentionally keeps the v1 data-attributes
+     (data-document-id, data-type, data-drag-mode, data-token-key) so the
+     existing dragstart handler in BeneosCloudWindowV2 (mirrored from
+     beneos_search_engine.js v1) and the B-1d dropCanvasData hook keep
+     working unchanged. --}}
+<section class="bc-results" data-bc-region="results">
+
+  {{#if cards.length}}
+    <div class="bc-results-meta">
+      {{#if hasMore}}
+        <span class="bc-results-count">{{partialHint}}</span>
+      {{else}}
+        <span class="bc-results-count">{{cards.length}} {{localize "BENEOS.Cloud.Results.Count"}}</span>
+      {{/if}}
+      {{!-- Wave B-9: list / grid view toggle. Two segmented buttons,
+           the active one is highlighted via .bc-view-active. The state
+           round-trips through this.viewMode + a client-scoped Foundry
+           setting (so reloads keep the user's choice). --}}
+      <div class="bc-view-toggle" role="tablist" aria-label="View mode">
+        <button type="button"
+                class="bc-view-button{{#unless viewIsGrid}} bc-view-active{{/unless}}"
+                data-view="list" data-action="switchView"
+                data-tooltip="{{localize 'BENEOS.Cloud.View.List'}}"
+                aria-label="{{localize 'BENEOS.Cloud.View.List'}}">
+          <i class="fa-solid fa-list"></i>
+          <span class="bc-view-label">{{localize "BENEOS.Cloud.View.List"}}</span>
+        </button>
+        <button type="button"
+                class="bc-view-button{{#if viewIsGrid}} bc-view-active{{/if}}"
+                data-view="grid" data-action="switchView"
+                data-tooltip="{{localize 'BENEOS.Cloud.View.Grid'}}"
+                aria-label="{{localize 'BENEOS.Cloud.View.Grid'}}">
+          <i class="fa-solid fa-grip"></i>
+          <span class="bc-view-label">{{localize "BENEOS.Cloud.View.Grid"}}</span>
+        </button>
+      </div>
+      {{!-- Wave B-8i-1: consolidated bulk-install kebab menu. <details>
+           handles open/close natively (no extra JS needed for the toggle).
+           Only options with > 0 candidate keys render — empty groups
+           don't appear in the menu, and the whole kebab is hidden when
+           there's nothing actionable at all. --}}
+      {{#if hasBulkOptions}}
+        <details class="bc-bulk-menu" data-bc-bulk-menu>
+          <summary class="bc-bulk-menu-trigger" data-tooltip="{{localize 'BENEOS.Cloud.Results.BulkMenuTooltip'}}" aria-label="Bulk install options">
+            <i class="fa-solid fa-ellipsis-vertical"></i>
+          </summary>
+          <div class="bc-bulk-menu-list">
+            {{#if bulkOptions.view}}
+              <button type="button" class="bc-bulk-menu-item" data-bulk-group="view">
+                {{bulkOptions.view.label}}
+              </button>
+            {{/if}}
+            {{#if bulkOptions.new}}
+              <button type="button" class="bc-bulk-menu-item" data-bulk-group="new">
+                {{bulkOptions.new.label}}
+              </button>
+            {{/if}}
+            {{#if bulkOptions.update}}
+              <button type="button" class="bc-bulk-menu-item" data-bulk-group="update">
+                {{bulkOptions.update.label}}
+              </button>
+            {{/if}}
+            {{!-- Wave B-8k-1: explicit "Install entire backlog" entry,
+                 visually separated by a divider so users notice this is
+                 a different scope than the filtered actions above. The
+                 click handler fires a stronger Beneos-themed confirm
+                 dialog before queuing the work. --}}
+            {{#if bulkOptions.backlog}}
+              <div class="bc-bulk-menu-divider"></div>
+              <button type="button" class="bc-bulk-menu-item bc-bulk-menu-backlog" data-bulk-group="backlog">
+                {{bulkOptions.backlog.label}}
+              </button>
+            {{/if}}
+          </div>
+        </details>
+      {{/if}}
+    </div>
+
+    <div class="bc-result-list{{#if viewIsGrid}} bc-view-grid{{/if}}">
+      {{#each cards as |card|}}
+        {{!-- Wave B-8d: divider before the first card of each group
+             (New / Update / Rest). The group classification happens in
+             #buildCards based on isNew/isUpdate + hasActiveFilter. --}}
+        {{#if card.divider}}
+          {{!-- Wave B-8i-1: divider is purely a section label now. The
+               bulk-install actions all live in the kebab menu in the
+               results-meta header above. --}}
+          <div class="bc-result-divider bc-divider-{{card.groupKind}}">
+            <span class="bc-divider-label">{{card.dividerLabel}}</span>
+          </div>
+        {{/if}}
+        <article class="bc-result-card bc-card-group-{{card.groupKind}}{{#if card.isInstalled}} bc-card-installed{{/if}}{{#if card.isCloudAvailable}} bc-card-cloud{{/if}}{{#if card.isInstalling}} bc-card-installing{{/if}}{{#if card.justInstalled}} bc-card-just-installed{{/if}}{{#if card.isSelected}} bc-card-selected{{/if}}"
+                 data-asset-key="{{card.key}}"
+                 data-asset-type="{{card.assetType}}"
+                 data-document-id="{{card.documentId}}"
+                 data-type="{{card.dragType}}"
+                 data-drag-mode="{{card.dragMode}}"
+                 data-token-key="{{card.key}}"
+                 draggable="{{#if card.isDraggable}}true{{else}}false{{/if}}"
+                 style="--bc-install-duration: {{card.installDuration}};"
+                 tabindex="0">
+
+          <div class="bc-card-thumb">
+            {{#if card.thumbUrl}}
+              {{!-- Wave B-9-fix-24: draggable="false" so the browser
+                   doesn't intercept the drag as an image-drag in grid
+                   mode (where the thumb covers most of the card area).
+                   The card itself stays draggable; setDragImage still
+                   works since it only needs the <img> as a pixel
+                   reference, not as a drag source. --}}
+              <img src="{{card.thumbUrl}}" alt="{{card.name}}" loading="lazy" draggable="false" />
+            {{else}}
+              <div class="bc-card-thumb-placeholder"></div>
+            {{/if}}
+          </div>
+
+          {{!-- Wave B-8d-fix-1: New/Update chips live next to the name now,
+               not on top of the cropped thumbnail (thumb visual identity
+               was already weak after the 16:9 crop, the chip overlay made
+               the portrait unreadable). --}}
+          <div class="bc-card-meta">
+            <div class="bc-card-name-row">
+              <h3 class="bc-card-name">{{card.name}}</h3>
+              {{#if card.isNew}}
+                <span class="bc-status-chip bc-status-new">{{localize "BENEOS.Cloud.Card.New"}}</span>
+              {{/if}}
+              {{#if card.isUpdate}}
+                <span class="bc-status-chip bc-status-update">{{localize "BENEOS.Cloud.Card.Update"}}</span>
+              {{/if}}
+            </div>
+            <div class="bc-card-tags">
+              {{!-- Wave B-8e: clickable tags. Each tag carries
+                   data-filter-type + data-filter-value so the click
+                   listener can dispatch the right filter mutation.
+                   data-tooltip is added only when the tag has lore
+                   text in commonData.hover (Foundry hides empty
+                   tooltips automatically anyway). --}}
+              {{#if card.crLabel}}
+                <span class="bc-tag bc-tag-cr"
+                      data-filter-type="cr" data-filter-value="{{card.crFilter}}">CR {{card.crLabel}}</span>
+              {{/if}}
+              {{#if card.rarity}}
+                <span class="bc-tag bc-tag-rarity"
+                      {{#if card.rarityTooltip}}data-tooltip="{{card.rarityTooltip}}"{{/if}}
+                      data-filter-type="rarity" data-filter-value="{{card.rarityFilter}}">{{card.rarity}}</span>
+              {{/if}}
+              {{!-- Wave B-9-fix-21: origin icon removed from result
+                   cards. At 14px the icon read as visual noise; users
+                   parse the origin name instantly anyway. The icon
+                   stays prominent in the drawer detail section. --}}
+              {{#if card.itemOriginLabel}}
+                <span class="bc-tag bc-tag-origin"
+                      {{#if card.originTooltip}}data-tooltip="{{card.originTooltip}}"{{/if}}
+                      data-filter-type="origin" data-filter-value="{{card.originFilter}}">{{card.itemOriginLabel}}</span>
+              {{/if}}
+              {{#if card.itemTypeLabel}}
+                <span class="bc-tag"
+                      {{#if card.itemTypeTooltip}}data-tooltip="{{card.itemTypeTooltip}}"{{/if}}
+                      data-filter-type="item_type" data-filter-value="{{card.itemTypeFilter}}">{{card.itemTypeLabel}}</span>
+              {{/if}}
+              {{#if card.typeLabel}}
+                <span class="bc-tag"
+                      {{#if card.typeTooltip}}data-tooltip="{{card.typeTooltip}}"{{/if}}
+                      data-filter-type="type" data-filter-value="{{card.typeFilter}}">{{card.typeLabel}}</span>
+              {{/if}}
+              {{!-- Wave B-8h-3: bmap resolution alongside the type tag --}}
+              {{#if card.gridLabel}}
+                <span class="bc-tag"
+                      data-filter-type="grid" data-filter-value="{{card.gridFilter}}">{{card.gridLabel}}</span>
+              {{/if}}
+              {{!-- Wave B-8e-fix-5: Level + School are the primary
+                   identifiers a GM scans for when picking a spell;
+                   they belong in the prominent tag row. Casting Time
+                   and Spell Type are secondary metadata and live in
+                   the muted stats line below. --}}
+              {{#if card.level}}
+                <span class="bc-tag"
+                      data-filter-type="level" data-filter-value="{{card.levelFilter}}">{{localize "BENEOS.Cloud.Card.LevelShort"}} {{card.level}}</span>
+              {{/if}}
+              {{#if card.school}}
+                <span class="bc-tag"
+                      data-filter-type="school" data-filter-value="{{card.schoolFilter}}">{{card.school}}</span>
+              {{/if}}
+              {{#if card.faction}}
+                <span class="bc-tag"
+                      {{#if card.factionTooltip}}data-tooltip="{{card.factionTooltip}}"{{/if}}
+                      data-filter-type="faction" data-filter-value="{{card.factionFilter}}">{{card.faction}}</span>
+              {{/if}}
+              {{#if card.source}}
+                <span class="bc-tag bc-tag-source"
+                      data-filter-type="source" data-filter-value="{{card.sourceFilter}}">{{card.source}}</span>
+              {{/if}}
+            </div>
+            {{!-- Wave B-8e-fix-4 → fix-5: stats row carries the muted
+                 secondary metadata. Loot: Tier + Price (numeric / sale
+                 value pair). Spells: Casting Time + Spell Type (both
+                 categorical, render as plain text — no icons since
+                 that visual weight reads as "primary tag" instead of
+                 "footnote"). Single chained conditional since item and
+                 spell branches never coexist on the same card. --}}
+            {{#if card.itemTierLabel}}
+              <div class="bc-card-stats">
+                <span class="bc-stat bc-stat-tier"
+                      {{#if card.tierTooltip}}data-tooltip="{{card.tierTooltip}}"{{/if}}
+                      data-filter-type="tier" data-filter-value="{{card.tierFilter}}">{{card.itemTierLabel}}</span>
+                {{#if card.itemPriceLabel}}<span class="bc-stat bc-stat-price">{{card.itemPriceLabel}}</span>{{/if}}
+              </div>
+            {{else if card.itemPriceLabel}}
+              <div class="bc-card-stats">
+                <span class="bc-stat bc-stat-price">{{card.itemPriceLabel}}</span>
+              </div>
+            {{else if card.castingTimeLabel}}
+              <div class="bc-card-stats bc-stats-spell">
+                <span class="bc-stat-text"
+                      data-filter-type="casting_time" data-filter-value="{{card.castingTimeFilter}}">{{card.castingTimeLabel}}</span>
+                {{#if card.spellType}}
+                  <span class="bc-stat-text"
+                        {{#if card.spellTypeTooltip}}data-tooltip="{{card.spellTypeTooltip}}"{{/if}}
+                        data-filter-type="spell_type" data-filter-value="{{card.spellTypeFilter}}">{{card.spellType}}</span>
+                {{/if}}
+              </div>
+            {{else if card.spellType}}
+              <div class="bc-card-stats bc-stats-spell">
+                <span class="bc-stat-text"
+                      {{#if card.spellTypeTooltip}}data-tooltip="{{card.spellTypeTooltip}}"{{/if}}
+                      data-filter-type="spell_type" data-filter-value="{{card.spellTypeFilter}}">{{card.spellType}}</span>
+              </div>
+            {{/if}}
+          </div>
+
+          <div class="bc-card-actions">
+            {{#if card.isInstalling}}
+              <span class="bc-state-pill bc-state-installing" data-tooltip="{{localize 'BENEOS.Cloud.Card.InstallingTooltip'}}">
+                <i class="fa-solid fa-circle-notch fa-spin"></i>
+                {{localize "BENEOS.Cloud.Card.Installing"}}
+              </span>
+            {{else if card.isInstalled}}
+              <span class="bc-state-pill bc-state-installed" data-tooltip="{{localize 'BENEOS.Cloud.Card.InstalledTooltip'}}">
+                <i class="fa-solid fa-circle-check"></i>
+                {{localize "BENEOS.Cloud.Card.Installed"}}
+              </span>
+              {{#if card.isUpdate}}
+                <button type="button" class="bc-card-button bc-card-button-primary bc-action-install"
+                        data-asset-key="{{card.key}}"
+                        data-asset-type="{{card.assetType}}"
+                        data-tooltip="{{localize 'BENEOS.Cloud.Card.UpdateTooltip'}}">
+                  <i class="fa-solid fa-rotate"></i>
+                </button>
+              {{/if}}
+            {{else if card.isOfflineCard}}
+              {{!-- Wave B-9-fix-58: cloud unreachable → tell the user
+                   it's an offline state, not a generic "unavailable". --}}
+              <span class="bc-state-pill bc-state-offline" data-tooltip="{{localize 'BENEOS.Cloud.Card.OfflineTooltip'}}">
+                <i class="fa-solid fa-cloud-slash"></i>
+                {{localize "BENEOS.Cloud.Card.Offline"}}
+              </span>
+            {{else if card.needsLogin}}
+              {{!-- Wave B-9-fix-58: not signed in. The button triggers
+                   the V2 login dialog via the existing openLogin action
+                   so the user can sign in straight from the card. --}}
+              <button type="button" class="bc-card-button bc-card-button-secondary"
+                      data-action="openLogin"
+                      data-tooltip="{{localize 'BENEOS.Cloud.Card.SignInTooltip'}}">
+                <i class="fa-solid fa-right-to-bracket"></i>
+                {{localize "BENEOS.Cloud.Card.SignIn"}}
+              </button>
+            {{else if card.isCloudAvailable}}
+              {{#if card.isBmap}}
+                <button type="button" class="bc-card-button bc-card-button-primary bc-action-install bc-action-moulinette"
+                        data-asset-key="{{card.key}}"
+                        data-asset-type="{{card.assetType}}"
+                        data-tooltip="{{localize 'BENEOS.Cloud.Card.MoulinetteTooltip'}}">
+                  <i class="fa-solid fa-cube"></i>
+                  {{localize "BENEOS.Cloud.Card.Moulinette"}}
+                </button>
+              {{else}}
+                <button type="button" class="bc-card-button bc-card-button-primary bc-action-install"
+                        data-asset-key="{{card.key}}"
+                        data-asset-type="{{card.assetType}}"
+                        data-tooltip="{{localize 'BENEOS.Cloud.Card.InstallTooltip'}}">
+                  <i class="fa-solid fa-cloud-arrow-down"></i>
+                  {{localize "BENEOS.Cloud.Card.Install"}}
+                </button>
+              {{/if}}
+            {{else}}
+              <span class="bc-state-pill bc-state-unavailable" data-tooltip="{{localize 'BENEOS.Cloud.Card.UnavailableTooltip'}}">
+                <i class="fa-solid fa-circle-minus"></i>
+                {{localize "BENEOS.Cloud.Card.NotAvailable"}}
+              </span>
+            {{/if}}
+          </div>
+        </article>
+      {{/each}}
+    </div>
+  {{else}}
+    <div class="bc-results-empty">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <p>{{localize "BENEOS.Cloud.Results.Empty"}}</p>
+    </div>
+  {{/if}}
+
+  {{!-- Detail drawer — slides in from the right when an asset is selected --}}
+  <aside class="bc-detail-drawer{{#if drawer.open}} bc-drawer-open{{/if}}{{#if drawer.asset.assetType}} bc-drawer-{{drawer.asset.assetType}}{{/if}}" data-bc-drawer data-bc-drawer-type="{{drawer.asset.assetType}}">
+    {{#if drawer.asset}}
+      <header class="bc-drawer-header">
+        <button type="button" class="bc-drawer-close bc-action-close-drawer"
+                data-tooltip="{{localize 'BENEOS.Cloud.Drawer.Close'}}">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+        <h2 class="bc-drawer-title">{{drawer.asset.name}}</h2>
+      </header>
+
+      <div class="bc-drawer-body">
+        {{!-- Wave B-7: paired-sibling view for battlemaps. When the asset
+             has a sibling in the database (scenery + battlemap pair), show
+             both images side-by-side so the user sees the full pair before
+             installing. Tokens / items / spells fall back to the regular
+             single hero image. --}}
+        {{!-- Wave B-7-fix-2: decoding="async" + fetchpriority="high" prevent
+             the click-to-open-drawer freeze on bmaps. Battlemap thumbnails
+             are big — without async decode the browser blocks the main
+             thread while it scales the image to the 220 px hero box, which
+             reads as the whole window freezing. --}}
+        {{#if drawer.asset.siblingThumbUrl}}
+          <div class="bc-drawer-pair">
+            <div class="bc-drawer-hero" data-bc-drawer-hero>
+              <img src="{{drawer.asset.thumbUrl}}" alt="{{drawer.asset.name}}"
+                   decoding="async" fetchpriority="high" loading="eager" />
+            </div>
+            <div class="bc-drawer-sibling">
+              <img src="{{drawer.asset.siblingThumbUrl}}" alt="{{localize 'BENEOS.Cloud.Drawer.Sibling'}}"
+                   decoding="async" fetchpriority="high" loading="eager" />
+              <span class="bc-drawer-sibling-label">{{localize "BENEOS.Cloud.Drawer.Sibling"}}</span>
+            </div>
+          </div>
+        {{else if drawer.asset.thumbUrl}}
+          <div class="bc-drawer-hero" data-bc-drawer-hero>
+            <img src="{{drawer.asset.thumbUrl}}" alt="{{drawer.asset.name}}"
+                 decoding="async" fetchpriority="high" loading="eager" />
+          </div>
+        {{/if}}
+
+        {{!-- Wave B-6: variant carousel for tokens with nb_variants > 1.
+             Click a thumbnail → swap the hero image. Drag a thumbnail (only
+             for installed variants) → drops that specific variant's actor on
+             canvas. Cloud-only variants (parent token not installed yet) get
+             a small cloud-icon overlay and are not draggable; user must
+             install the parent token first. --}}
+        {{#if drawer.asset.variants.length}}
+          <section class="bc-variants" data-bc-variant-region>
+            <header class="bc-variants-head">
+              <h3 class="bc-variants-title">{{localize "BENEOS.Cloud.Drawer.Variants"}}</h3>
+              <span class="bc-variants-counter" data-bc-variant-counter>1 / {{drawer.asset.variants.length}}</span>
+            </header>
+            <div class="bc-variants-strip">
+              {{#each drawer.asset.variants as |v|}}
+                <button type="button"
+                        class="bc-variant-thumb{{#if @first}} bc-variant-active{{/if}}{{#unless v.isInstalled}} bc-variant-cloud{{/unless}}"
+                        data-variant-index="{{v.index}}"
+                        data-asset-key="{{../drawer.asset.key}}"
+                        data-actor-id="{{v.actorId}}"
+                        draggable="{{#if v.isInstalled}}true{{else}}false{{/if}}"
+                        data-tooltip="{{#if v.isInstalled}}{{localize 'BENEOS.Cloud.Drawer.VariantTooltip'}} {{v.index}}{{else}}{{localize 'BENEOS.Cloud.Drawer.VariantCloudOnly'}}{{/if}}">
+                  <img src="{{v.thumbUrl}}" alt="Variant {{v.index}}" loading="lazy" draggable="false" />
+                </button>
+              {{/each}}
+            </div>
+          </section>
+        {{/if}}
+
+        {{!-- Wave B-9-fix-30: fields and the install action share a row.
+             The footer is gone; the action sits inline with CR/Type/etc.
+             so the drawer ends right after the description block. --}}
+        <div class="bc-drawer-summary">
+        <dl class="bc-drawer-fields">
+          {{#if drawer.asset.crLabel}}
+            <div class="bc-field"><dt>{{localize "BENEOS.Cloud.Drawer.CR"}}</dt><dd>{{drawer.asset.crLabel}}</dd></div>
+          {{/if}}
+          {{#if drawer.asset.typeLabel}}
+            <div class="bc-field"><dt>{{localize "BENEOS.Cloud.Drawer.Type"}}</dt><dd>{{drawer.asset.typeLabel}}</dd></div>
+          {{/if}}
+          {{#if drawer.asset.faction}}
+            {{!-- Wave B-9-fix-35: faction value carries a tooltip with
+                 the lore description, same source as the sidebar info
+                 icon. Foundry's data-tooltip handles the hover popup. --}}
+            <div class="bc-field"><dt>{{localize "BENEOS.Cloud.Drawer.Faction"}}</dt><dd{{#if drawer.asset.factionDescription}} class="bc-field-tooltip" data-tooltip="{{drawer.asset.factionDescription}}"{{/if}}>{{drawer.asset.faction}}</dd></div>
+          {{/if}}
+          {{#if drawer.asset.level}}
+            <div class="bc-field"><dt>{{localize "BENEOS.Cloud.Drawer.Level"}}</dt><dd>{{drawer.asset.level}}</dd></div>
+          {{/if}}
+          {{#if drawer.asset.school}}
+            <div class="bc-field"><dt>{{localize "BENEOS.Cloud.Drawer.School"}}</dt><dd>{{drawer.asset.school}}</dd></div>
+          {{/if}}
+          {{#if drawer.asset.rarity}}
+            <div class="bc-field"><dt>{{localize "BENEOS.Cloud.Drawer.Rarity"}}</dt><dd>{{drawer.asset.rarity}}</dd></div>
+          {{/if}}
+          {{#if drawer.asset.source}}
+            <div class="bc-field"><dt>{{localize "BENEOS.Cloud.Drawer.Source"}}</dt><dd>{{drawer.asset.source}}</dd></div>
+          {{/if}}
+          {{!-- Wave B-9-fix-29: bmap-only release info pulled from
+               download_pack. Format: "{number} - {name}". --}}
+          {{#if drawer.asset.releaseLabel}}
+            <div class="bc-field"><dt>{{localize "BENEOS.Cloud.Drawer.Release"}}</dt><dd>{{drawer.asset.releaseLabel}}</dd></div>
+          {{/if}}
+          {{!-- Wave B-6: the variant count line is redundant now — the
+               carousel above shows the actual variants and a "1 / N"
+               counter in its header. --}}
+        </dl>
+
+        {{!-- Wave B-9-fix-30/31: install action moved out of the footer
+             into the summary row. Bmap branch shows the Moulinette
+             label (matches the card behaviour) since the v1 cloud-bmap
+             pipeline isn't live yet. --}}
+        <div class="bc-drawer-action">
+          {{#if drawer.asset.isInstalled}}
+            <span class="bc-state-pill bc-state-installed">
+              <i class="fa-solid fa-circle-check"></i>
+              {{localize "BENEOS.Cloud.Card.Installed"}}
+            </span>
+            {{#if drawer.asset.isUpdate}}
+              <button type="button" class="bc-card-button bc-card-button-primary bc-action-install"
+                      data-asset-key="{{drawer.asset.key}}"
+                      data-asset-type="{{drawer.asset.assetType}}">
+                <i class="fa-solid fa-rotate"></i>
+                {{localize "BENEOS.Cloud.Card.Update"}}
+              </button>
+            {{/if}}
+          {{else if drawer.asset.isOfflineCard}}
+            <span class="bc-state-pill bc-state-offline">
+              <i class="fa-solid fa-cloud-slash"></i>
+              {{localize "BENEOS.Cloud.Card.Offline"}}
+            </span>
+          {{else if drawer.asset.needsLogin}}
+            <button type="button" class="bc-card-button bc-card-button-secondary"
+                    data-action="openLogin">
+              <i class="fa-solid fa-right-to-bracket"></i>
+              {{localize "BENEOS.Cloud.Card.SignIn"}}
+            </button>
+          {{else if drawer.asset.isCloudAvailable}}
+            {{#if drawer.asset.isBmap}}
+              <button type="button" class="bc-card-button bc-card-button-primary bc-action-install bc-action-moulinette"
+                      data-asset-key="{{drawer.asset.key}}"
+                      data-asset-type="{{drawer.asset.assetType}}">
+                <i class="fa-solid fa-cube"></i>
+                {{localize "BENEOS.Cloud.Card.Moulinette"}}
+              </button>
+            {{else}}
+              {{!-- Wave B-9-fix-46: when more than one card is selected
+                   the drawer's install button installs every card in
+                   the selection set (handled by #onInstallClick). --}}
+              <button type="button" class="bc-card-button bc-card-button-primary bc-action-install"
+                      data-asset-key="{{drawer.asset.key}}"
+                      data-asset-type="{{drawer.asset.assetType}}">
+                <i class="fa-solid fa-cloud-arrow-down"></i>
+                {{#if drawer.isMultiSelect}}
+                  {{localize "BENEOS.Cloud.Card.InstallSelected"}} ({{drawer.selectedCount}})
+                {{else}}
+                  {{localize "BENEOS.Cloud.Card.Install"}}
+                {{/if}}
+              </button>
+            {{/if}}
+          {{else}}
+            <span class="bc-state-pill bc-state-unavailable">
+              <i class="fa-solid fa-circle-minus"></i>
+              {{localize "BENEOS.Cloud.Card.NotAvailable"}}
+            </span>
+          {{/if}}
+        </div>
+        </div> {{!-- /.bc-drawer-summary --}}
+
+        {{#if drawer.asset.description}}
+          {{!-- Wave B-9-fix-23: description gets a clamp + "Read more"
+               toggle in grid mode for tokens, where the column width is
+               narrow and the column-3 vertical space is tight. The
+               button is rendered always; #wireResultListeners hides it
+               at runtime if the description fits without clamping. --}}
+          <div class="bc-drawer-description" data-bc-description>
+            {{{drawer.asset.description}}}
+          </div>
+          <button type="button" class="bc-action-readmore" data-bc-readmore
+                  data-label-more="{{localize 'BENEOS.Cloud.Drawer.ReadMore'}}"
+                  data-label-less="{{localize 'BENEOS.Cloud.Drawer.ShowLess'}}">
+            {{localize "BENEOS.Cloud.Drawer.ReadMore"}}
+          </button>
+        {{/if}}
+
+        {{!-- Wave B-9-fix-14: dedicated Origin section for items. The
+             icon recolouring (filter) lives in CSS so missing origin
+             icons (onerror=this.remove) degrade to text-only without
+             a broken-image placeholder. The set-bonus hint is a passive
+             pointer to the Origin Set Bonuses sidebar button. --}}
+        {{#if drawer.asset.itemOriginLabel}}
+          <section class="bc-drawer-origin">
+            <hr class="bc-drawer-origin-divider" />
+            <header class="bc-drawer-origin-head">
+              {{#if drawer.asset.itemOriginIcon}}
+                <img class="bc-drawer-origin-icon" src="{{drawer.asset.itemOriginIcon}}"
+                     alt="" onerror="this.remove()" loading="lazy" />
+              {{/if}}
+              <h3 class="bc-drawer-origin-name">{{drawer.asset.itemOriginLabel}}</h3>
+            </header>
+            {{#if drawer.asset.itemOriginDescription}}
+              <p class="bc-drawer-origin-desc">{{drawer.asset.itemOriginDescription}}</p>
+            {{/if}}
+            <p class="bc-drawer-origin-hint">
+              <i class="fa-solid fa-circle-info"></i>
+              {{localize "BENEOS.Cloud.Drawer.OriginSetHint"}}
+            </p>
+          </section>
+        {{/if}}
+      </div>
+
+    {{/if}}
+  </aside>
+</section>

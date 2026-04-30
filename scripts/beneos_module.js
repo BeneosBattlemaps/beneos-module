@@ -287,6 +287,41 @@ Hooks.on("dropCanvasData", (canvas, data) => {
   return false
 })
 /********************************************************************************** */
+// Wave B-9-fix-41: cloud item / spell drop on a character sheet. Mirrors the
+// dropCanvasData pipeline. The search-engine dragstart sets a phantom marker
+// `{ beneosCloudPending: true, beneosItemKey, beneosAssetKind }` on the
+// dataTransfer; when the user drops onto an actor sheet, this hook fires
+// with the parsed data plus the actor + sheet refs. We forward to BeneosCloud,
+// which kicks off the import and adds the freshly-installed item to the actor
+// once the world doc exists. Returning false suppresses Foundry's default
+// drop handler (which can't resolve the phantom marker as a real UUID).
+Hooks.on("dropActorSheetData", (actor, sheet, data) => {
+  if (data?.beneosCloudPending !== true) return true
+  if (data?.type !== "Item") return true
+  game.beneos?.cloud?.handlePendingItemDrop?.(actor, data)
+  return false
+})
+/********************************************************************************** */
+// Wave B-9-fix-48: silence Item.fromDropData / Actor.fromDropData when the
+// drop payload is one of our phantom Beneos cloud markers. The
+// dropActorSheetData hook above stops Foundry's V13 _onDrop from calling
+// fromDropData, but the dnd5e ActorSheet override still calls it directly,
+// which throws "Failed to resolve Document from provided DragData. Either
+// data or a UUID must be provided.". Returning null here lets dnd5e fall
+// through gracefully — our pipeline has already kicked off the import
+// and will register the actor for drainPendingItemDrops to populate later.
+Hooks.once("ready", () => {
+  for (const docName of ["Item", "Actor"]) {
+    const cls = CONFIG?.[docName]?.documentClass
+    if (!cls?.fromDropData) continue
+    const original = cls.fromDropData
+    cls.fromDropData = async function(data, options) {
+      if (data?.beneosCloudPending === true) return null
+      return original.call(this, data, options)
+    }
+  }
+})
+/********************************************************************************** */
 Hooks.on("deleteItem", (item, options) => {
   console.log("Beneos delete item", item, options)
   if (item?.pack == "world.beneos_module_items") {
@@ -299,22 +334,81 @@ Hooks.on("deleteItem", (item, options) => {
 })
 
 /********************************************************************************** */
-Hooks.on("renderActorDirectory", (app, html, data) => {
-  if (game.user.can('ACTOR_CREATE')) {
-    console.log("BeneosModule - renderActorDirectory")
-    const button = document.createElement('button');
-    button.style["align-self"] = 'center';
-    button.innerHTML = "Beneos Cloud - Search & Download";
-    button.addEventListener('click', () => {
-      try {
-        const src = "modules/beneos-module/ui/sfx/beneos_start.ogg";
-        const helper = foundry.audio?.AudioHelper
-                    ?? (typeof AudioHelper !== "undefined" ? AudioHelper : null);
-        helper?.play?.({ src, volume: 0.5, autoplay: true, loop: false }, false);
-      } catch (e) {}
-      new BeneosSearchEngineLauncher().render()
-    })
-    $(html).find('.header-actions').after(button)
+// Wave B-8j (Cloud opener in left toolbar) — V13/V14 only, no V12 fallback.
+//
+// Foundry V13 changed the `getSceneControlButtons` payload from an Array
+// (V12-style `btns.push({...})`) to an Object map keyed by category name.
+// Tools within each category are also keyed objects, and the action
+// handler for buttons is `onChange` (not `onClick`).
+//
+// This hook adds a single "Beneos Cloud" category with one "Open"
+// button. No canvas layer is involved — the button works on a fresh
+// world before any scene is active, which is the practical pain point
+// users described with Moulinette and similar.
+//
+// The Actor-sidebar button (`renderActorDirectory` hook) was removed in
+// the same wave — Beneos now ships Creatures + Loot + Spells, so a
+// single Actor-tab entry no longer fits the module's surface.
+Hooks.on("getSceneControlButtons", (controls) => {
+  if (!game.user?.isGM) return
+  controls.beneos = {
+    name: "beneos",
+    title: game.i18n.localize("BENEOS.Toolbar.Title"),
+    // Wave B-9-fix-44: Beneos logo SVG via the masked CSS class.
+    icon: "beneos-icon-logo",
+    order: 99,
+    visible: true,
+    tools: {
+      "open-cloud": {
+        name: "open-cloud",
+        title: game.i18n.localize("BENEOS.Toolbar.OpenCloud"),
+        icon: "beneos-icon-logo",
+        order: 1,
+        visible: true,
+        button: true,
+        // Wave B-9-fix-52: V13 dispatches onChange twice for a single
+        // click on a button-tool when both the control AND the tool
+        // change in the same activation cycle (#postActivate fires the
+        // tool onChange via #onToolChange, and #onChangeTool can fire
+        // it again directly for `button: true` tools). The duplicate
+        // fire makes the start sound stack on itself; debounce the
+        // handler to a single trigger per ~600ms so a user-visible
+        // double-click also still gets one open + one sound.
+        //
+        // Plus: do the window render and control switch on a setTimeout
+        // so we leave the scene-controls activation stack before any
+        // ApplicationV2 render. V13's _updatePosition reads
+        // `el.parentElement.offsetWidth` which can be null when the
+        // render fires inside the same JS task as the click — yields
+        // "Cannot read properties of null (reading 'offsetWidth')".
+        onChange: () => {
+          if (Hooks._beneosOpenCloudInProgress) return
+          Hooks._beneosOpenCloudInProgress = true
+          try {
+            const src = "modules/beneos-module/ui/sfx/beneos_start.ogg"
+            const helper = foundry.audio?.AudioHelper
+                        ?? (typeof AudioHelper !== "undefined" ? AudioHelper : null)
+            helper?.play?.({ src, volume: 0.5, autoplay: true, loop: false }, false)
+          } catch (e) {}
+          // Defer the heavy work outside Foundry's click handler so the
+          // scene-controls activation stack unwinds first.
+          setTimeout(() => {
+            try { new BeneosSearchEngineLauncher().render() } catch (e) { console.error(e) }
+            // Switch focus back to Token Controls — the "beneos" group
+            // has no canvas tools, so leaving it focused after the cloud
+            // window opens would strand the user. Defer once more so the
+            // controls switch happens after the cloud window's first
+            // paint (avoids a second render-time race).
+            setTimeout(() => {
+              try { ui.controls?.activate?.({ control: "tokens", tool: "select" }) }
+              catch (e) {}
+              Hooks._beneosOpenCloudInProgress = false
+            }, 120)
+          }, 0)
+        }
+      }
+    },
+    activeTool: "open-cloud"
   }
 })
 

@@ -3,7 +3,7 @@ import { BeneosTableTop } from "./beneos-table-top.js";
 import { BeneosCompendiumReset } from "./beneos_compendium.js";
 import { BeneosSearchEngineLauncher, BeneosDatabaseHolder, BeneosModuleMenu } from "./beneos_search_engine.js";
 import { ClassCounter } from "./count-class-ready.js";
-import { BeneosCloud, BeneosCloudLogin, BeneosCloudSettings } from "./beneos_cloud.js";
+import { BeneosCloud, BeneosCloudLogin, BeneosCloudSettings, BeneosCloudAccountMenu } from "./beneos_cloud.js";
 
 /********************************************************************************* */
 globalThis.BENEOS_MODULE_NAME = "Beneos Module"
@@ -164,27 +164,50 @@ export class BeneosUtility {
       default: false
     })
 
-    if (game.settings.get(BeneosUtility.moduleID(), 'beneos-cloud-foundry-id') == "") {
-      game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-patreon-login", {
-        name: "BENEOS.Settings.PatreonLogin.Name",
-        label: "BENEOS.Settings.PatreonLogin.Label",
-        hint: "BENEOS.Settings.PatreonLogin.Hint",
-        scope: 'world',
-        config: true,
-        type: BeneosCloudLogin,
-        restricted: true
-      })
-    } else {
-      game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-cloud-disconnect", {
-        name: "BENEOS.Settings.CloudDisconnect.Name",
-        label: "BENEOS.Settings.CloudDisconnect.Label",
-        hint: "BENEOS.Settings.CloudDisconnect.Hint",
-        scope: 'world',
-        config: true,
-        type: BeneosCloudSettings,
-        restricted: true,
-      })
-    }
+    // Wave B-4: opt-in switch between the legacy two-window search engine (v1)
+    // and the new unified ApplicationV2 window (v2). Default v1 — users
+    // explicitly opt into v2 from settings, no surprise migrations.
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-search-engine-version', {
+      name: "BENEOS.Settings.SearchEngineVersion.Name",
+      hint: "BENEOS.Settings.SearchEngineVersion.Hint",
+      scope: 'world',
+      config: true,
+      type: String,
+      choices: {
+        v1: "BENEOS.Settings.SearchEngineVersion.V1",
+        v2: "BENEOS.Settings.SearchEngineVersion.V2"
+      },
+      default: "v1",
+      restricted: true
+    })
+
+    // Wave B-9: per-user list/grid view preference for the V2 cloud
+    // window. Client-scoped because the choice is purely visual; each
+    // GM can pick their own preferred density.
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-cloud-view-mode', {
+      name: 'Beneos Cloud V2 view mode',
+      scope: 'client',
+      config: false,
+      type: String,
+      default: 'list'
+    })
+
+    // Wave B-9-fix-68: single state-aware menu. The button class
+    // BeneosCloudAccountMenu inspects game.beneos.cloud.isLoggedIn()
+    // at click time and dispatches to the login dialog OR the
+    // disconnect handler. Previously we registered one of two menus
+    // conditionally on the stored foundryId at init — that worked on
+    // first load but stayed stale after a runtime login/logout
+    // (Foundry doesn't re-evaluate menu definitions without a reload).
+    game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-cloud-account", {
+      name: "BENEOS.Settings.CloudAccount.Name",
+      label: "BENEOS.Settings.CloudAccount.Label",
+      hint: "BENEOS.Settings.CloudAccount.Hint",
+      scope: 'world',
+      config: true,
+      type: BeneosCloudAccountMenu,
+      restricted: true
+    })
 
     game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-clean-compendium", {
       name: "BENEOS.Settings.CleanCompendium.Name",
@@ -1053,7 +1076,13 @@ export class BeneosUtility {
     if (isRemoved) {
       console.log("Token removed for actorId", actorId)
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', JSON.stringify(this.beneosTokens))
-      BeneosSearchEngineLauncher.closeAndSave()
+      // Wave B-8g-2: only the legacy V1 search engine needs the close+reopen
+      // refresh on actor delete (Foundry fires deleteActor when the cloud
+      // import replaces an existing compendium entry during update). V2
+      // handles the same case via the softRefresh chain that runs at the
+      // tail of importTokenToCompendium — closing it here would defeat the
+      // whole in-place patch UX and leave the user with a closed window.
+      if (!game.beneos?.cloudWindowV2) BeneosSearchEngineLauncher.closeAndSave()
     }
   }
 
@@ -1072,7 +1101,8 @@ export class BeneosUtility {
     if (isRemoved) {
       // Save the new data
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', JSON.stringify(this.beneosItems))
-      BeneosSearchEngineLauncher.closeAndSave()
+      // Wave B-8g-2: same V2 guard as removeTokenFromActorId.
+      if (!game.beneos?.cloudWindowV2) BeneosSearchEngineLauncher.closeAndSave()
     }
   }
 
@@ -1090,7 +1120,8 @@ export class BeneosUtility {
     if (isRemoved) {
       // Save the new data
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', JSON.stringify(this.beneosSpells))
-      BeneosSearchEngineLauncher.closeAndSave()
+      // Wave B-8g-2: same V2 guard as removeTokenFromActorId.
+      if (!game.beneos?.cloudWindowV2) BeneosSearchEngineLauncher.closeAndSave()
     }
   }
 

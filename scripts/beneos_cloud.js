@@ -9,6 +9,21 @@ export class BeneosCloudSettings extends FormApplication {
   }
 }
 
+// Wave B-9-fix-68: single state-aware settings menu. Foundry's
+// game.settings.registerMenu() instantiates the registered class on
+// click; we dispatch from there based on the live login state instead
+// of registering two conditional menus at module init (which couldn't
+// react to runtime state changes without a reload).
+export class BeneosCloudAccountMenu extends FormApplication {
+  render(force, options) {
+    const cloud = game.beneos?.cloud
+    if (cloud?.isLoggedIn?.()) {
+      return new BeneosCloudSettings().render(force, options)
+    }
+    return new BeneosCloudLogin().render(force, options)
+  }
+}
+
 export class BeneosCloudLogin extends FormApplication {
 
   /********************************************************************************** */
@@ -23,32 +38,46 @@ export class BeneosCloudLogin extends FormApplication {
 
     let content = await renderTemplate("modules/beneos-module/templates/beneos-cloud-login.html", {})
 
-    const dialogContext = await foundry.applications.api.DialogV2.wait({
-      window: { title: "Login to Beneos Cloud" },
-      classes: ["dialog", "app", "window-app"],
-      content,
-      buttons: [{
-        action: "login",
-        label: "Login",
-        default: true,
-        callback: (event, button, dialog) => {
-          const output = Array.from(button.form.elements).reduce((obj, input) => {
-            if (input.name) obj[input.name] = input.value
-            return obj
-          }, {})
-          return output
+    // Wave B-9-fix-57: rejectClose: false so closing via the X header
+    // button resolves with null (matches Cancel) instead of throwing.
+    // Wrapped in try/catch as a belt-and-braces in case a future Foundry
+    // patch flips the default back. Either way → no error toast on close.
+    let dialogContext = null
+    try {
+      dialogContext = await foundry.applications.api.DialogV2.wait({
+        window: { title: game.i18n.localize("BENEOS.Cloud.Login.WindowTitle") },
+        // Wave B-5c/B-5d: scope V2 styling onto the login dialog so it matches the
+        // unified-window look (gold accent, dark surfaces, compact form) instead
+        // of Foundry's default Dialog chrome.
+        classes: ["dialog", "app", "window-app", "beneos-cloud-app", "beneos-cloud-login-dialog"],
+        content,
+        rejectClose: false,
+        buttons: [{
+          action: "login",
+          label: game.i18n.localize("BENEOS.Cloud.Login.Submit"),
+          default: true,
+          callback: (event, button, dialog) => {
+            const output = Array.from(button.form.elements).reduce((obj, input) => {
+              if (input.name) obj[input.name] = input.value
+              return obj
+            }, {})
+            return output
+          },
+        }, {
+          action: "cancel",
+          label: game.i18n.localize("BENEOS.Cloud.Login.Cancel"),
+          callback: (event, button, dialog) => {
+            return null
+          }
+        }],
+        actions: {
         },
-      }, {
-        action: "cancel",
-        label: "Cancel",
-        callback: (event, button, dialog) => {
-          return null
-        }
-      }],
-      actions: {
-      },
-      render: (event, dialog) => { }
-    })
+        render: (event, dialog) => { }
+      })
+    } catch (e) {
+      // Treat any close-related rejection the same as a Cancel.
+      dialogContext = null
+    }
 
     return dialogContext
   }
@@ -69,16 +98,44 @@ export class BeneosCloudLogin extends FormApplication {
       console.log("No login data, asking user")
       // Show the login dialog
       loginData = await this.loginDialog()
-      if (!loginData) {
-        ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Notification.LoginCancelled"))
-        return;
-      }
+      // Wave B-9-fix-57 → fix-62: silent on Cancel / X / Esc. V13's
+      // DialogV2._onSubmit (api/dialog.mjs:242) does
+      //   result = (await callback?.()) ?? button.action
+      // so a callback returning null falls back to the action name
+      // string ("cancel"). That string is truthy and used to slip past
+      // the old `if (!loginData) return` guard, which is what surfaced
+      // the red "check credentials" error on a plain Cancel click.
+      // Treating any non-object return as dismissal covers null,
+      // undefined, and the action-name string in one rule.
+      if (!loginData || typeof loginData !== "object") return
     }
 
-    //let cloudLoginURL = `https://beneos.cloud/foundry-login.php?email=${loginData.email}&password=${loginData.password}&foundryId=${userId}`
+    // Wave B-9-fix-57: validate that BOTH fields were filled. Empty
+    // fields used to fall through to the LoginFailed red error which
+    // confused the user — the issue isn't bad credentials, it's an
+    // incomplete form. Surface a yellow warn with a clear message.
+    if (!loginData.email?.trim() || !loginData.password?.trim()) {
+      ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Notification.LoginIncomplete"))
+      return
+    }
+
     let cloudLoginURL = `https://beneos.cloud/foundry-login.php?email=${encodeURIComponent(loginData.email)}&password=${encodeURIComponent(loginData.password)}&foundryId=${encodeURIComponent(userId)}`
+    // Wave B-5d-Hotfix: sanitize URL for console (strip password) so we can
+    // share screenshots without leaking credentials.
+    console.log("BENEOS Cloud login attempt:", cloudLoginURL.replace(/password=[^&]+/, "password=***"))
+    // Fix #A2 / Wave B-5d-Hotfix: surface fetch failures as user-visible
+    // notifications instead of unhandled promise rejections. "Failed to fetch"
+    // is a network-level error (DNS / TCP / TLS / CSP / CORS preflight). The
+    // error message exposes which class the failure belongs to so we can act.
     fetch(cloudLoginURL, { credentials: 'same-origin' })
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          console.error(`BENEOS Cloud login HTTP ${response.status} ${response.statusText}`)
+          ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.LoginHttpError", { status: response.status }))
+          throw new Error(`HTTP ${response.status}`)
+        }
+        return response.json()
+      })
       .then(data => {
         console.log("BENEOS Cloud login data", data)
         if (data.result == 'OK') {
@@ -88,6 +145,13 @@ export class BeneosCloudLogin extends FormApplication {
           console.log("BENEOS Cloud login error", data)
           ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginFailed"))
         }
+      })
+      .catch(err => {
+        // HTTP-error path already notified above; this branch catches network
+        // failures (Failed to fetch / NetworkError) and JSON parse errors.
+        if (err && String(err.message).startsWith("HTTP ")) return
+        console.error("BENEOS Cloud login network error:", err)
+        ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginNetworkError"))
       })
   }
 
@@ -106,27 +170,74 @@ export class BeneosCloudLogin extends FormApplication {
 
     let pollInterval = setInterval(function () {
       let url = `https://beneos.cloud/foundry-manager.php?check=1&foundryId=${encodeURIComponent(userId)}`
+      // Fix #A4 / Wave B-5d-Hotfix: HTTP-status check + .catch() so server
+      // errors and network failures during polling don't loop silently for
+      // 30 seconds. Polling stops on the first hard error.
       fetch(url, { credentials: 'same-origin' })
-        .then(response => response.json())
-        .then(data => {
+        .then(response => {
+          if (!response.ok) {
+            clearInterval(pollInterval)
+            console.error(`BENEOS Cloud poll HTTP ${response.status} ${response.statusText}`)
+            ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.LoginHttpError", { status: response.status }))
+            throw new Error(`HTTP ${response.status}`)
+          }
+          return response.json()
+        })
+        .then(async data => {
           self.nb_wait++;
           if (self.nb_wait > 30) {
             clearInterval(pollInterval)
+            ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Notification.LoginTimeout"))
           }
           console.log("Fecth response:", data)
           if (data.result == 'OK') {
             clearInterval(pollInterval)
-            game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-foundry-id", userId)
-            game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", data.patreon_status)
+            // Wave B-9-fix-66: Beneos runs two separate Patreon
+            // campaigns — "Beneos Battlemaps" and "Beneos Tokens /
+            // Spells / Loot". Users from one Patreon can't access the
+            // other's content but frequently confuse the two on
+            // Discord. We need the server to expose which campaign(s)
+            // the authenticated user belongs to so the install path
+            // can warn before a futile cloud roundtrip. Until that
+            // server-side change ships, log the FULL poll response so
+            // we can see exactly which fields the back-end returns
+            // today — `patreon_status` is currently the only signal
+            // the module reads. After the user shares this log we'll
+            // wire up the campaign-distinction check.
+            console.log("[Beneos Cloud] Poll response keys:", Object.keys(data))
+            console.log("[Beneos Cloud] Full payload (excluding sensitive):", {
+              ...data,
+              // Strip any token-looking fields if they ever appear.
+              access_token: data.access_token ? "<redacted>" : undefined
+            })
+            await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-foundry-id", userId)
+            await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", data.patreon_status)
+            // Stash the raw login response on the cloud singleton so a
+            // future campaign-check helper (BeneosCloud.hasCampaign?)
+            // can read fields like patreon_campaigns / patreon_tier
+            // once the back-end starts returning them.
+            game.beneos.cloud.lastLoginPayload = data
             game.beneos.cloud.setLoginStatus(true)
             ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Notification.Connected"))
-            if (requestOrigin == "searchEngine") {
-              game.settings.set(BeneosUtility.moduleID(), "beneos-reload-search-engine", true)
+            // Fix #B-5d / Issue #A5: no more `window.location.reload()`. Refresh the
+            // available-content map and re-render the open search-engine in place.
+            // V2 (BeneosCloudWindowV2) supports partial part-renders; V1 keeps the
+            // legacy close-and-reopen because the v1 Dialog has no partial-render.
+            await game.beneos.cloud.checkAvailableContent()
+            const v2 = game.beneos.cloudWindowV2
+            if (v2) {
+              v2.render({ parts: ["sidebar", "results", "footer"] })
+            } else if (requestOrigin == "searchEngine" && game.beneos.searchEngine) {
+              BeneosSearchEngineLauncher.closeAndSave()
+              setTimeout(() => { new BeneosSearchEngineLauncher().render() }, 100)
             }
-            setTimeout(() => {
-              window.location.reload()
-            }, 200)
           }
+        })
+        .catch(err => {
+          if (err && String(err.message).startsWith("HTTP ")) return
+          clearInterval(pollInterval)
+          console.error("BENEOS Cloud poll network error:", err)
+          ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginNetworkError"))
         })
     }, 1000)
   }
@@ -163,6 +274,13 @@ export class BeneosCloud {
   // On import failure the entries are discarded with a notification.
   pendingCanvasDrops = new Map()
 
+  // Wave B-9-fix-41: pending actor-sheet drops for cloud-only items /
+  // spells. Mirrors pendingCanvasDrops. itemKey -> [{ actorId, kind }]
+  // entries; once importItemToCompendium / importSpellToCompendium
+  // finishes, drainPendingItemDrops looks up the freshly-installed
+  // world Item and creates an embedded copy on each registered actor.
+  pendingItemDrops = new Map()
+
   loginAttempt() {
     this.setLoginStatus(false)
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
@@ -172,8 +290,17 @@ export class BeneosCloud {
 
     // Check login validity
     let url = `https://beneos.cloud/foundry-manager.php?check=1&foundryId=${encodeURIComponent(userId)}`
+    // Wave B-5d-Hotfix: silent init-time check; on network failure we don't
+    // bother the user with a notification (they haven't asked for anything
+    // yet) — just log so devs can see why the cloud chip is not green.
     fetch(url, { credentials: 'same-origin' })
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          console.warn(`BENEOS Cloud loginAttempt HTTP ${response.status} ${response.statusText}`)
+          throw new Error(`HTTP ${response.status}`)
+        }
+        return response.json()
+      })
       .then(async data => {
         console.log("BENEOS Cloud login data", data)
         if (data.result == 'OK') {
@@ -184,16 +311,28 @@ export class BeneosCloud {
           await game.beneos.cloud.checkAvailableContent()
         }
       })
+      .catch(err => {
+        if (err && String(err.message).startsWith("HTTP ")) return
+        console.warn("BENEOS Cloud loginAttempt network error:", err)
+      })
   }
 
   async disconnect() {
     this.setLoginStatus(false)
     await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-foundry-id", "")
     await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", "no_patreon")
-    setTimeout(() => {
-      console.log("BeneosModule : You are now disconnected from BeneosCloud !")
-      location.reload()
-    }, 200)
+    // Fix #B-5d / Issue #A5: no full GUI reload. Clear the available-content map,
+    // surface a notification, and re-render the V2 window if it's open.
+    this.availableContent = { tokens: [], items: [], spells: [] }
+    ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Notification.Disconnected"))
+    const v2 = game.beneos?.cloudWindowV2
+    if (v2) {
+      v2.render({ parts: ["sidebar", "results", "footer"] })
+    } else if (game.beneos?.searchEngine) {
+      // V1 path keeps the legacy close-and-reopen.
+      BeneosSearchEngineLauncher.closeAndSave()
+    }
+    console.log("BeneosModule: disconnected from Beneos Cloud")
   }
 
   isLoggedIn() {
@@ -205,27 +344,56 @@ export class BeneosCloud {
   // position (so multiple drags of the same token can each land at their own
   // spot) and kick off the cloud import. The actual token placement happens
   // later, in drainPendingCanvasDrops, once the compendium has the document.
+  //
+  // Wave B-9-fix-49: payload may carry `beneosTokenKeys: [...]` when the user
+  // dragged a Ctrl+click multi-selection. Each key gets its own drop position
+  // distributed in a ring around the original drop point so the tokens don't
+  // stack on top of each other when they pop in.
   async handlePendingCanvasDrop(canvas, data) {
-    const tokenKey = data?.beneosTokenKey
-    if (!tokenKey) return
+    const sceneId = canvas.scene?.id
+    const grid = canvas.scene?.grid?.size || 100
+    const tokenKeys = Array.isArray(data?.beneosTokenKeys) && data.beneosTokenKeys.length
+      ? data.beneosTokenKeys
+      : (data?.beneosTokenKey ? [data.beneosTokenKey] : [])
+    if (!tokenKeys.length) return
 
-    if (!this.pendingCanvasDrops.has(tokenKey)) {
-      this.pendingCanvasDrops.set(tokenKey, [])
+    // Ring/grid distribution: first token at the drop point, subsequent
+    // ones placed one grid step away in cardinal then diagonal directions
+    // for a clean cluster around the cursor. Beyond 9 the pattern reaches
+    // out one further ring; rare in practice but bounded.
+    const offsets = [
+      [0, 0], [1, 0], [0, 1], [-1, 0], [0, -1],
+      [1, 1], [-1, 1], [-1, -1], [1, -1],
+      [2, 0], [0, 2], [-2, 0], [0, -2],
+      [2, 1], [-2, 1], [2, -1], [-2, -1],
+      [1, 2], [-1, 2], [1, -2], [-1, -2]
+    ]
+
+    for (let i = 0; i < tokenKeys.length; i++) {
+      const tokenKey = tokenKeys[i]
+      const [dx, dy] = offsets[i] || [i, 0]
+      const x = data.x + dx * grid
+      const y = data.y + dy * grid
+      if (!this.pendingCanvasDrops.has(tokenKey)) {
+        this.pendingCanvasDrops.set(tokenKey, [])
+      }
+      this.pendingCanvasDrops.get(tokenKey).push({ x, y, sceneId })
+      game.beneos?.cloudWindowV2?.notifyInstallStarted?.(tokenKey)
     }
-    this.pendingCanvasDrops.get(tokenKey).push({
-      x: data.x,
-      y: data.y,
-      sceneId: canvas.scene?.id
-    })
 
-    ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.ImportingForCanvas", { key: tokenKey }))
+    if (tokenKeys.length === 1) {
+      ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.ImportingForCanvas", { key: tokenKeys[0] }))
+    } else {
+      ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.ImportingMultipleForCanvas", { count: tokenKeys.length }))
+    }
 
-    // If a pipeline for this token is already running (user dragged the same
-    // token a second time before the first import finished), the new drop
-    // position has been recorded above and the running pipeline will pick it
-    // up. Avoid spawning a parallel install.
-    if (!this.inflightImports.has(`token:${tokenKey}`)) {
-      this.importTokenFromCloud(tokenKey)
+    // Wave B-9-fix-47: await each pipeline so the compendium lock/unlock
+    // cycle finishes before the next starts. The previous fire-and-forget
+    // approach worked for single tokens but races on multi.
+    for (const tokenKey of tokenKeys) {
+      if (!this.inflightImports.has(`token:${tokenKey}`)) {
+        await this.importTokenFromCloud(tokenKey)
+      }
     }
   }
 
@@ -258,6 +426,9 @@ export class BeneosCloud {
       }
     }
     this.pendingCanvasDrops.delete(tokenKey)
+    // Wave B-5e: drag-install completed successfully — flash the card green
+    // and settle into the installed state.
+    game.beneos?.cloudWindowV2?.notifyInstallEnded?.(tokenKey, true)
   }
 
   // Fix #B-1d: clear pending canvas drops for a token whose import failed.
@@ -266,10 +437,145 @@ export class BeneosCloud {
     if (!this.pendingCanvasDrops.has(tokenKey)) return
     this.pendingCanvasDrops.delete(tokenKey)
     ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.ImportErrorToken"))
+    // Wave B-5e: drag-install failed — clear the in-progress visual so the
+    // card snaps back to "cloud available" and the user can retry.
+    game.beneos?.cloudWindowV2?.notifyInstallEnded?.(tokenKey, false)
+  }
+
+  // Wave B-9-fix-41: cloud item / spell dropped on a character sheet.
+  // Mirrors handlePendingCanvasDrop. The dropActorSheetData hook in
+  // beneos_module.js calls this with the dropped-on actor and the
+  // payload from the search-engine dragstart. We register the drop,
+  // kick off the cloud import (if not already running), then return —
+  // drainPendingItemDrops will add the installed item to the actor
+  // once the world doc is created.
+  //
+  // Wave B-9-fix-46: payload may carry `beneosItemKeys` (an array)
+  // when the user dropped a multi-select; iterate and register each
+  // key on the same actor so all selected items get added once their
+  // imports complete.
+  async handlePendingItemDrop(actor, data) {
+    const kind = data?.beneosAssetKind === "spell" ? "spell" : "item"
+    if (!actor) return
+    const keys = Array.isArray(data?.beneosItemKeys) && data.beneosItemKeys.length
+      ? data.beneosItemKeys
+      : (data?.beneosItemKey ? [data.beneosItemKey] : [])
+    if (!keys.length) return
+
+    // Step 1 — register all drops + show progress visuals up front so the
+    // user sees the cards switch to "Installing" the moment they drop,
+    // not one-at-a-time as the queue drains.
+    for (const itemKey of keys) {
+      if (!this.pendingItemDrops.has(itemKey)) {
+        this.pendingItemDrops.set(itemKey, [])
+      }
+      this.pendingItemDrops.get(itemKey).push({ actorId: actor.id, kind })
+      game.beneos?.cloudWindowV2?.notifyInstallStarted?.(itemKey)
+    }
+
+    if (keys.length === 1) {
+      ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.ImportingForActorSheet", { key: keys[0] }))
+    } else {
+      ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.ImportingMultipleForActorSheet", { count: keys.length }))
+    }
+
+    // Step 2 — Wave B-9-fix-50: await each import in turn. The previous
+    // version fired all imports in parallel, which raced on the shared
+    // compendium lock (importItemToCompendium / importSpellToCompendium
+    // unlock → write → lock) and threw "may not create documents in the
+    // locked compendium" mid-batch. Awaiting serialises the lock cycle.
+    for (const itemKey of keys) {
+      const lockKey = `${kind}:${itemKey}`
+      if (this.inflightImports.has(lockKey)) continue
+      if (kind === "spell") await this.importSpellsFromCloud(itemKey)
+      else                  await this.importItemFromCloud(itemKey)
+    }
+  }
+
+  // Add the freshly-installed world Item to every actor that received a
+  // cloud-drop while the import was in flight. Called from the success
+  // branch of importItemToCompendium / importSpellToCompendium.
+  async drainPendingItemDrops(itemKey, kind) {
+    const pending = this.pendingItemDrops.get(itemKey)
+    if (!pending || pending.length === 0) return
+
+    // Look up the world Item document that the import just created.
+    // Items installed via importItemToCompendium also import to the
+    // world's items collection (game.items) and carry a flag
+    // world.beneos.itemKey (or spellKey) we can match on.
+    const flagKey = kind === "spell" ? "spellKey" : "itemKey"
+    const worldItem = game.items?.find?.(i => {
+      const flag = i.getFlag?.("world", "beneos")
+      return flag?.[flagKey] === itemKey
+    })
+    if (!worldItem) {
+      console.error("BeneosModule: cannot resolve pending item drops; world item not found for", itemKey)
+      this.pendingItemDrops.delete(itemKey)
+      return
+    }
+
+    for (const drop of pending) {
+      const actor = game.actors?.get?.(drop.actorId)
+      if (!actor) continue
+      try {
+        await actor.createEmbeddedDocuments("Item", [worldItem.toObject()])
+      } catch (err) {
+        console.error("BeneosModule: failed to add cloud item to actor", itemKey, drop, err)
+      }
+    }
+    this.pendingItemDrops.delete(itemKey)
+    game.beneos?.cloudWindowV2?.notifyInstallEnded?.(itemKey, true)
+  }
+
+  // Clear pending item drops for a key whose import failed. Called from
+  // the error branches of importItemFromCloud / importSpellsFromCloud.
+  discardPendingItemDrops(itemKey) {
+    if (!this.pendingItemDrops.has(itemKey)) return
+    this.pendingItemDrops.delete(itemKey)
+    game.beneos?.cloudWindowV2?.notifyInstallEnded?.(itemKey, false)
   }
 
   getPatreonStatus() {
     return game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-patreon-status")
+  }
+
+  // Wave B-9-fix-66: Beneos has two Patreon campaigns:
+  //   - Beneos Battlemaps (gives access to bmaps via Moulinette; not
+  //     served by this module's Cloud install path)
+  //   - Beneos Tokens / Spells / Loot (gives access to the cloud-served
+  //     creature, item, and spell catalogue)
+  // Users frequently support one but not the other and don't realise
+  // their Battlemaps subscription doesn't unlock tokens. This helper
+  // returns true when the authenticated user has access to a given
+  // campaign category. Until the server starts returning explicit
+  // campaign membership in the poll response (e.g. data.campaigns =
+  // ["battlemaps", "tokens"]), we fall back to the existing single-
+  // string `patreon_status` setting and treat any "active_*" value as
+  // having access — the strict check kicks in only when we see the
+  // expected campaign field.
+  //
+  // Categories: "battlemaps" | "tokens" | "items" | "spells"
+  hasCampaignAccess(category) {
+    const payload = this.lastLoginPayload
+    // Preferred: explicit campaign list from the server.
+    if (payload && Array.isArray(payload.campaigns)) {
+      // tokens / items / spells are all unlocked by the same "Beneos
+      // Tokens" Patreon, so collapse them into the same key.
+      const required = (category === "battlemaps") ? "battlemaps" : "tokens"
+      return payload.campaigns.includes(required)
+    }
+    // Preferred (alternative shape): boolean flags per campaign.
+    if (payload?.is_battlemaps_patron !== undefined ||
+        payload?.is_tokens_patron !== undefined) {
+      if (category === "battlemaps") return !!payload.is_battlemaps_patron
+      return !!payload.is_tokens_patron
+    }
+    // Fallback: assume access if the user has any active patreon
+    // status. The current server only returns a single string, so we
+    // can't distinguish — better to let the user attempt the install
+    // and surface the server's own error than to false-block them.
+    const status = this.getPatreonStatus()
+    return !!(status && status !== "no_patreon")
   }
 
   setLoginStatus(status) {
@@ -558,7 +864,14 @@ export class BeneosCloud {
       await itemPack.configure({ locked: true })
       // Fix #C2: in-place refresh — keeps search engine open, scroll position,
       // and prevents the battlemap notice from re-appearing on every install.
-      BeneosSearchEngineLauncher.softRefresh("item", itemKey)
+      // Fix #B-5c: itemKey is no longer in scope outside the for-loop above; in
+      // single-install mode itemArray has exactly one entry, so the first key
+      // is the asset we just installed.
+      const installedItemKey = Object.keys(itemArray)[0]
+      if (installedItemKey) BeneosSearchEngineLauncher.softRefresh("item", installedItemKey)
+      // Wave B-9-fix-41: place the installed item on any actor sheet
+      // the user dropped it onto while the import was running.
+      if (installedItemKey) await this.drainPendingItemDrops(installedItemKey, "item")
     } else {
       this.updateInstalledAssets() // Update the installed assets count
     }
@@ -693,7 +1006,13 @@ export class BeneosCloud {
       this.sendChatMessageResult(event, "Spell", properName)
       await spellPack.configure({ locked: true })
       // Fix #C2: see importItemToCompendium for rationale.
-      BeneosSearchEngineLauncher.softRefresh("spell", spellKey)
+      // Fix #B-5c: spellKey is not in scope outside the for-loop above; pull
+      // the just-installed key from spellArray (single-install: one entry).
+      const installedSpellKey = Object.keys(spellArray)[0]
+      if (installedSpellKey) BeneosSearchEngineLauncher.softRefresh("spell", installedSpellKey)
+      // Wave B-9-fix-41: place the installed spell on any actor sheet
+      // the user dropped it onto while the import was running.
+      if (installedSpellKey) await this.drainPendingItemDrops(installedSpellKey, "spell")
     } else {
       this.updateInstalledAssets() // Update the installed assets count
     }
@@ -988,18 +1307,20 @@ export class BeneosCloud {
     }
   }
 
+  // Wave B-9-fix-47: returns the Promise so multi-install loops can
+  // sequence pipelines and avoid the compendium-lock race.
   importTokenFromCloud(tokenKey, event = undefined, isBatch = false) {
     // Fix #E3: ignore repeat clicks while this token's pipeline is still in flight.
     const lockKey = `token:${tokenKey}`
     if (this.inflightImports.has(lockKey)) {
       ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.AlreadyImporting", { key: tokenKey }))
-      return
+      return Promise.resolve()
     }
     this.inflightImports.add(lockKey)
 
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
     let url = `https://beneos.cloud/foundry-manager.php?get_token=1&foundryId=${encodeURIComponent(userId)}&tokenKey=${encodeURIComponent(tokenKey)}`
-    fetch(url, { credentials: 'same-origin' })
+    return fetch(url, { credentials: 'same-origin' })
       .then(response => response.json())
       .then(async function (data) {
         if (data.result == 'OK') {
@@ -1026,20 +1347,25 @@ export class BeneosCloud {
       })
   }
 
+  // Wave B-9-fix-47: returns a Promise that resolves after the full
+  // import pipeline (fetch + compendium write + world import + softRefresh
+  // + drainPendingItemDrops) completes. Callers can `await` to sequence
+  // multiple installs and avoid the compendium-lock race condition that
+  // happened when 7+ parallel imports tried to lock/unlock the same pack.
   importItemFromCloud(itemKey, event = undefined, isBatch = false) {
     itemKey = itemKey.toLowerCase().replaceAll("-", "_") // Fix #B5: replaceAll handles multi-hyphen keys
     // Fix #E3: see importTokenFromCloud for rationale.
     const lockKey = `item:${itemKey}`
     if (this.inflightImports.has(lockKey)) {
       ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.AlreadyImporting", { key: itemKey }))
-      return
+      return Promise.resolve()
     }
     this.inflightImports.add(lockKey)
 
     ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Notification.ImportingItem"))
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
     let url = `https://beneos.cloud/foundry-manager.php?get_item=1&foundryId=${encodeURIComponent(userId)}&itemKey=${encodeURIComponent(itemKey)}`
-    fetch(url, { credentials: 'same-origin' })
+    return fetch(url, { credentials: 'same-origin' })
       .then(response => response.json())
       .then(async function (data) {
         if (data.result == 'OK') {
@@ -1048,30 +1374,35 @@ export class BeneosCloud {
         } else {
           console.log("Error in importing Item from BeneosCloud !", data, itemKey)
           ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.ImportErrorItem"))
+          // Wave B-9-fix-41: clear any pending actor-sheet drops for this key
+          // so they don't dangle waiting for an install that never happened.
+          game.beneos.cloud.discardPendingItemDrops?.(itemKey)
         }
       })
       .catch(err => {
         console.error("BeneosModule: item import error for", itemKey, err)
+        game.beneos.cloud.discardPendingItemDrops?.(itemKey)
       })
       .finally(() => {
         game.beneos.cloud.inflightImports.delete(lockKey)
       })
   }
 
+  // Wave B-9-fix-47: returns the Promise (see importItemFromCloud).
   importSpellsFromCloud(spellKey, event = undefined, isBatch = false) {
     spellKey = spellKey.toLowerCase().replaceAll("-", "_") // Fix #B5: replaceAll handles multi-hyphen keys
     // Fix #E3: see importTokenFromCloud for rationale.
     const lockKey = `spell:${spellKey}`
     if (this.inflightImports.has(lockKey)) {
       ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.AlreadyImporting", { key: spellKey }))
-      return
+      return Promise.resolve()
     }
     this.inflightImports.add(lockKey)
 
     ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Notification.ImportingSpell"))
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
     let url = `https://beneos.cloud/foundry-manager.php?get_spell=1&foundryId=${encodeURIComponent(userId)}&spellKey=${encodeURIComponent(spellKey)}`
-    fetch(url, { credentials: 'same-origin' })
+    return fetch(url, { credentials: 'same-origin' })
       .then(response => response.json())
       .then(async function (data) {
         if (data.result == 'OK') {
@@ -1080,10 +1411,13 @@ export class BeneosCloud {
         } else {
           console.log("Error in importing Spell from BeneosCloud !", data, spellKey)
           ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.ImportErrorSpell"))
+          // Wave B-9-fix-41: drop pending actor-sheet drops on failure.
+          game.beneos.cloud.discardPendingItemDrops?.(spellKey)
         }
       })
       .catch(err => {
         console.error("BeneosModule: spell import error for", spellKey, err)
+        game.beneos.cloud.discardPendingItemDrops?.(spellKey)
       })
       .finally(() => {
         game.beneos.cloud.inflightImports.delete(lockKey)
