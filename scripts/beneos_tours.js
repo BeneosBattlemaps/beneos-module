@@ -5,6 +5,8 @@
  * import line in beneos_module.js and the esmodules entry in module.json.
  */
 
+import { BeneosUtility } from "./beneos_utility.js";
+
 const MODULE_ID = "beneos-module";
 
 // V13/V14 compat: use namespaced Tour if available
@@ -246,7 +248,6 @@ const NEXT_SOUND_OVERRIDES = {
   "ct-filter-type":            "beneos_click.ogg",
   "ct-filter-faction":         "beneos_click.ogg",
   "ct-filter-fighting":        "beneos_click.ogg",
-  "ct-filter-movement":        "beneos_click.ogg",
   "ct-filter-purpose":         "beneos_click.ogg",
   "ct-search-intro":           "beneos_click.ogg",
   "ct-search-rotcerf":         "beneos_type.ogg",
@@ -381,9 +382,14 @@ TOUR_CSS.textContent = `
     font-size: calc(1em + 2px) !important;
   }
 
-  /* During a tour, boost app windows above the overlay (z-index 9998) */
+  /* During a tour, boost app windows above the overlay (z-index 9998).
+     V14: Moulinette's cloud-search renders as #mou-cloud (was #mou-browser
+     in V13 via mou.browser.render). Both ID variants are listed so the
+     z-index lift works on either Foundry version. */
   body.tour-active #mou-user,
   body.tour-active #mou-browser,
+  body.tour-active #mou-cloud,
+  body.tour-active .browser,
   body.tour-active .beneos_search_engine,
   body.tour-active .dialog,
   body.tour-active .window-app {
@@ -581,15 +587,23 @@ TOUR_CSS.textContent = `
   /* Persistent hover state for a Moulinette asset row during the Setup Tour.
      Moulinette hides .overlay / .menu until :hover; we force them visible so
      the per-row "Import w. ScenePacker" button shown in Step 10 stays on
-     screen while the tour spotlight dims everything else. */
+     screen while the tour spotlight dims everything else. Selectors cover
+     both V13 (#mou-browser) and V14 (#mou-cloud) container IDs plus the
+     shared .browser root class. */
   #mou-browser .asset.inline.beneos-tour-row-focus .overlay,
-  #mou-browser .asset.inline.beneos-tour-row-focus .menu {
+  #mou-browser .asset.inline.beneos-tour-row-focus .menu,
+  #mou-cloud .asset.inline.beneos-tour-row-focus .overlay,
+  #mou-cloud .asset.inline.beneos-tour-row-focus .menu,
+  .browser .asset.inline.beneos-tour-row-focus .overlay,
+  .browser .asset.inline.beneos-tour-row-focus .menu {
     display: block !important;
     opacity: 1 !important;
     visibility: visible !important;
     pointer-events: auto !important;
   }
-  #mou-browser .asset.inline.beneos-tour-row-focus {
+  #mou-browser .asset.inline.beneos-tour-row-focus,
+  #mou-cloud .asset.inline.beneos-tour-row-focus,
+  .browser .asset.inline.beneos-tour-row-focus {
     outline: 3px solid #f5c992;
     outline-offset: 2px;
     box-shadow: 0 0 12px 4px rgba(245, 201, 146, 0.6);
@@ -615,6 +629,28 @@ function waitForElement(selector, timeoutMs = 6000) {
         resolve(found || null);
       }
     }, 200);
+  });
+}
+
+// Inverse of waitForElement: resolves true once the element disappears (or was
+// never there), false on timeout. Used to confirm a window actually closed
+// before triggering the next render — V14 close animations can take ~300ms,
+// during which Moulinette still treats the window as active and can suppress
+// a fresh searchUI render.
+function waitForElementGone(selector, timeoutMs = 1500) {
+  return new Promise(resolve => {
+    if (!document.querySelector(selector)) return resolve(true);
+    const start = Date.now();
+    const iv = setInterval(() => {
+      const stillThere = document.querySelector(selector);
+      if (!stillThere) {
+        clearInterval(iv);
+        resolve(true);
+      } else if (Date.now() - start > timeoutMs) {
+        clearInterval(iv);
+        resolve(false);
+      }
+    }, 100);
   });
 }
 
@@ -696,7 +732,7 @@ function openMoulinetteWithFilter(filters = {}) {
   try {
     const mou = game.modules.get("moulinette");
     if (!mou?.api?.searchUI) {
-      ui.notifications.warn("Moulinette is not available. Please install and log in first.");
+      ui.notifications.warn(game.i18n.localize("BENEOS.Notifications.Tours.MoulinetteUnavailable"));
       return;
     }
     mou.api.searchUI("mou-cloud", "Map", filters);
@@ -729,6 +765,31 @@ function cleanupTourElements() {
   document.querySelectorAll(".tour-center-step").forEach(el => el.remove());
   document.querySelectorAll(".tour-fadeout").forEach(el => el.remove());
   document.querySelectorAll(".tour-overlay").forEach(el => el.remove());
+  // Beneos custom spotlight cutouts (applied via _applySpotlight). If a step
+  // returns early or errors out, _removeSpotlight may not run — leaves the
+  // dim overlay locked over the screen until full tour exit.
+  document.querySelectorAll(".beneos-spotlight-piece").forEach(el => el.remove());
+}
+
+/**
+ * Clear stale Foundry tour-tooltip containers BEFORE rendering a new step.
+ * Foundry V13 uses a singleton `#tooltip` element so duplicates shouldn't
+ * happen, but V14's tour transition occasionally leaves an orphaned
+ * `aside.tour` / `.tour-tooltip` in the DOM (the X close button of the
+ * orphan is bound to a stale Tour instance and refuses to dismiss). When a
+ * step's _preStep takes long enough to render the next tooltip while the
+ * previous one is still visible, the user sees TWO tour boxes stacked.
+ *
+ * Defensive sweep: keep at most one of each container. We don't know which
+ * is the live one, so the simplest robust answer is to remove ALL of them —
+ * Foundry will re-render the live tooltip from scratch in `_renderStep`.
+ */
+function clearStaleTourTooltips() {
+  // Foundry V14: tour tooltip is rendered as <aside class="tour ...">.
+  document.querySelectorAll("aside.tour").forEach(el => { try { el.remove(); } catch (e) {} });
+  // Older / generic class fallback — some tour systems / future Foundry
+  // versions render to .tour-tooltip directly.
+  document.querySelectorAll(".tour-tooltip").forEach(el => { try { el.remove(); } catch (e) {} });
 }
 
 /* ================================================================== */
@@ -827,28 +888,103 @@ class BeneosSetupTour extends TourBase {
     // before anything else happens, so the jump into the overlay feels
     // intentional and snappy.
     this._playSound("beneos_transition.ogg");
+
+    // Spinner-bug workaround. Moulinette's first-pack-click after F5 routinely
+    // renders ScenePacker's importer in a stuck loading state — the
+    // `.content.loading .lds-ring` spinner runs forever and the import-all
+    // button never appears, because moulinette-importer.js:65 has a `.then()`
+    // without a `.catch()` so a transient fetch failure leaves the promise
+    // chain hanging. Manual workaround that always works: close the importer,
+    // wait 1-2s, reopen → loads correctly. Automate that here.
+    const fixOk = await this._fixStuckImporterIfNeeded();
+    if (fixOk === "failed") {
+      ui.notifications.error(game.i18n.localize("BENEOS.Tour.Setup.InstallError.NoButton"));
+      return;
+    }
+
     const btn = document.querySelector('button[name="import-all"]')
              ?? document.getElementById('beneos-scenepacker-import-all');
     if (!btn) {
       console.warn("Beneos Setup Tour | Import-All button not found — user will need to click it manually.");
+      ui.notifications.error(game.i18n.localize("BENEOS.Tour.Setup.InstallError.NoButton"));
       return;
     }
     // Show the full-screen install overlay so the user can't accidentally
     // click/interrupt the import. Removed by the page reload at the end of
-    // onInstallDone.
+    // onInstallDone, OR by any of the watchdog failure paths below.
     _showInstallOverlay();
     // Arm the flag: _maybeHandInstallComplete() sees this and bails out so
     // it doesn't re-ask the user via _confirmStartTutorial — the inline
     // path here is the single source of truth for this install.
     _autoInstallActive = true;
+
     // Shared post-install activation: runs on whichever ScenePacker
-    // completion hook fires first. Uses a local `handled` guard so the
-    // second hook — if it also fires — becomes a no-op.
+    // completion hook fires first. `handled` is closed-over so all watchdogs
+    // and the hook bail out if any one of them already fired.
     let handled = false;
+
+    // Watchdog handles — cleared on success or on any single failure so we
+    // never leave a dangling timer that fires after the user has retried.
+    let initialResponseTimer = null;
+    let stallHintTimer = null;
+    let hardTimer = null;
+    const clearWatchdogs = () => {
+      if (initialResponseTimer) { clearTimeout(initialResponseTimer); initialResponseTimer = null; }
+      if (stallHintTimer)       { clearTimeout(stallHintTimer);       stallHintTimer = null; }
+      if (hardTimer)            { clearTimeout(hardTimer);            hardTimer = null; }
+    };
+
+    // Failure-path entry point. Hides overlay, opens retry dialog, recurses
+    // back into _runAutoInstall on Retry. `reasonKey` selects the user-facing
+    // message; the console log includes the raw reason for diagnostics.
+    const fail = async (reasonKey, diagnostic = "") => {
+      if (handled) return;
+      handled = true;
+      clearWatchdogs();
+      _hideInstallOverlay();
+      // Click-blocker cleanup. _hideInstallOverlay only removes our own
+      // overlay element. Foundry's tour layer (`.tour-fadeout`, `.tour-overlay`,
+      // `.tour-center-step`) and our spotlight-cutout pieces can still be in
+      // the DOM and intercept clicks above the dialog — the user reports
+      // seeing the retry dialog but not being able to click any button or X.
+      // Force-clean every tour-layer element and the body class so the
+      // retry dialog is the only interactive layer left.
+      cleanupTourElements();
+      try { document.body.classList.remove("tour-active", "beneos-no-fade"); } catch (e) {}
+      try { _removeTourTooltipDOM(); } catch (e) {}
+      _autoInstallActive = false;
+      console.warn(`[Beneos] Auto-install failed (${reasonKey}):`, diagnostic);
+      const retry = await _confirmInstallRetry(reasonKey);
+      if (retry) {
+        // Re-trigger the install. The Moulinette window may have been
+        // closed by the user's interactions during the retry dialog —
+        // re-running _runAutoInstall handles missing-button gracefully via
+        // the early-return at the top.
+        await this._runAutoInstall();
+      }
+    };
+
     const onInstallDone = async (data) => {
       if (handled) return;
       handled = true;
-      console.log("Beneos Setup | post-install scene activation:", data);
+      clearWatchdogs();
+      BeneosUtility.debugMessage("Beneos Setup | post-install scene activation:", data);
+
+      // Wave 1.5 cross-talk: if the generic empty-install detector in
+      // beneos-scenepacker.js has already detected and reported a silent
+      // Moulinette failure, abort the tour-level reload path. The user is
+      // already looking at a "0 of N files installed" dialog from there;
+      // re-firing our own retry dialog on top would be a stacked-modal mess.
+      // The flag self-resets on consume, so a subsequent retry-driven run
+      // gets fresh state.
+      const wasEmptyInstall = globalThis.BeneosInstallTracker?.consumeEmptyInstallFlag?.();
+      if (wasEmptyInstall) {
+        console.warn("[Beneos] Auto-install: empty install detected by scenepacker hook — skipping tour-level reload, scenepacker dialog handles retry UX");
+        _hideInstallOverlay();
+        _autoInstallActive = false;
+        return;
+      }
+
       try {
         await game.settings.set(MODULE_ID, "sceneTourPending", false);
         // Let ScenePacker finish any leftover folder/journal work.
@@ -892,7 +1028,42 @@ class BeneosSetupTour extends TourBase {
     };
     Hooks.once("ScenePacker.importMoulinetteComplete", onInstallDone);
     Hooks.once("ScenePacker.importAllComplete", onInstallDone);
+
     btn.click();
+
+    // ---- Watchdog 1: initial-response timeout ----
+    // ScenePacker's MoulinetteImporter renders with id="scene-packer-importer"
+    // (export-import/moulinette-importer.js:89). It should appear within a
+    // few seconds of the click — if it hasn't after 15s, the click did not
+    // take. Most likely cause: Moulinette session timed out, the user got
+    // signed out without the UI updating, or the network is unreachable.
+    initialResponseTimer = setTimeout(() => {
+      if (handled) return;
+      const importer = document.getElementById("scene-packer-importer") ||
+                       document.querySelector(".scene-packer-importer");
+      if (!importer) {
+        fail("no-start", "scene-packer-importer never rendered after 15s");
+      }
+    }, 15000);
+
+    // ---- Watchdog 2: stall hint ----
+    // After 60s of "Please wait…" the user starts to wonder if it's frozen.
+    // We don't fail — large WebMs can legitimately take this long — but we
+    // update the overlay text so the user knows it's working, not stuck.
+    stallHintTimer = setTimeout(() => {
+      if (handled) return;
+      _updateInstallOverlayText(game.i18n.localize("BENEOS.Tour.Setup.InstallOverlay.StillWorking"));
+    }, 60000);
+
+    // ---- Watchdog 3: hard timeout ----
+    // Even on a slow connection, the Getting Started Tour pack should finish
+    // within 8 minutes. If the completion hook never fires by then, abort —
+    // overlay can't be left up indefinitely (it blocks all input and the
+    // user has no recovery path otherwise).
+    hardTimer = setTimeout(() => {
+      fail("timeout", "no completion hook within 8 minutes");
+    }, 8 * 60 * 1000);
+
     // Clear suggested-next-tours BEFORE exit so Foundry's native suggestion
     // popup doesn't appear on top of the install flow.
     try { if (this.config) this.config.suggestedNextTours = []; } catch (e) {}
@@ -904,6 +1075,99 @@ class BeneosSetupTour extends TourBase {
     _removeTourTooltipDOM();
     setTimeout(_removeTourTooltipDOM, 200);
     setTimeout(_removeTourTooltipDOM, 800);
+  }
+
+  /**
+   * Detect ScenePacker importer stuck-loading state and apply close-and-reopen
+   * workaround. Returns "ok" (importer is loaded or absent — no fix needed),
+   * "fixed" (stuck importer was reset and the new instance loaded fine), or
+   * "failed" (stuck and reopen didn't recover within 8s — caller should fail
+   * gracefully, the import-all button still won't be clickable).
+   *
+   * Why this exists: Moulinette's first pack-click after a Foundry reload
+   * routinely traps ScenePacker's importer in a state where the loading
+   * spinner runs forever — the `.then()` chain at moulinette-importer.js:65
+   * has no `.catch()`, so a transient fetch failure leaves the promise
+   * unresolved and `this.loading` never flips back to false. Manually closing
+   * + reopening the importer fixes it 100% of the time, because the second
+   * instance hits a fresh fetch with the connection now warmed up.
+   */
+  async _fixStuckImporterIfNeeded() {
+    const importer = document.getElementById("scene-packer-importer");
+    if (!importer) return "ok"; // No importer rendered — caller decides
+
+    // Stuck signal: spinner element present + no enabled import-all button.
+    // Both checks together rule out the rare race where both are momentarily
+    // visible during normal load.
+    const hasSpinner = !!importer.querySelector(".content.loading .lds-ring");
+    const hasUsableButton = !!importer.querySelector('button[name="import-all"]:not([disabled])');
+    if (!hasSpinner || hasUsableButton) return "ok";
+
+    console.warn("[Beneos] Setup Tour | ScenePacker importer detected in stuck loading state — applying close-and-reopen workaround");
+
+    // Cached packInfo from beneos-scenepacker.js's renderMoulinetteImporter
+    // listener. Exposed via globalThis.BeneosInstallTracker.
+    const cached = globalThis.BeneosInstallTracker?.getCachedPackInfo?.();
+    if (!cached?.packInfo) {
+      console.warn("[Beneos] Setup Tour | No cached packInfo available — cannot reinstantiate, user will need to retry the tour");
+      return "failed";
+    }
+
+    // Close the stuck importer cleanly via its FormApplication instance.
+    let closedOk = false;
+    try {
+      const importerApp = ui.windows
+        ? Object.values(ui.windows).find(w => w.id === "scene-packer-importer")
+        : null;
+      if (importerApp) {
+        await importerApp.close();
+        closedOk = true;
+      }
+    } catch (e) {
+      console.warn("[Beneos] Setup Tour | importerApp.close() threw:", e);
+    }
+    // Belt-and-suspenders: if no app reference or close failed, fall back to
+    // clicking the close button directly via DOM.
+    if (!closedOk) {
+      const closeBtn = importer.querySelector('button[name="close"], [data-action="close"], .close');
+      if (closeBtn) closeBtn.click();
+    }
+
+    // Wait for the DOM element to actually disappear, plus a small extra
+    // buffer — the second-instance fetch needs the connection-pool to settle.
+    await waitForElementGone("#scene-packer-importer", 3000);
+    await new Promise(r => setTimeout(r, 1500));
+
+    // Reinstantiate with the same pack details. ScenePacker's MoulinetteImporter
+    // is a default-export ESM class; we dynamically import it the same way
+    // BeneosScenePackerManager.importPackage already does (beneos-scenepacker.js:169).
+    try {
+      const { default: MoulinetteImporter } = await import("/modules/scene-packer/scripts/export-import/moulinette-importer.js");
+      const newImporter = new MoulinetteImporter({
+        packInfo: cached.packInfo,
+        sceneID: cached.sceneID ?? "",
+        actorID: cached.actorID ?? ""
+      });
+      newImporter.render(true);
+    } catch (e) {
+      console.error("[Beneos] Setup Tour | failed to reinstantiate MoulinetteImporter:", e);
+      return "failed";
+    }
+
+    // Poll for fully-loaded state — enabled import-all button is the
+    // definitive ready signal. 200ms intervals up to 8s.
+    const start = Date.now();
+    while (Date.now() - start < 8000) {
+      const newBtn = document.querySelector('#scene-packer-importer button[name="import-all"]:not([disabled])');
+      if (newBtn) {
+        console.log("[Beneos] Setup Tour | stuck importer recovered via close+reopen");
+        return "fixed";
+      }
+      await new Promise(r => setTimeout(r, 200));
+    }
+
+    console.warn("[Beneos] Setup Tour | importer still stuck after 8s of close+reopen retry");
+    return "failed";
   }
 
   async start() {
@@ -946,7 +1210,8 @@ class BeneosSetupTour extends TourBase {
       el.classList.remove("beneos-tour-row-focus");
       try { el.dispatchEvent(new MouseEvent("mouseleave", { bubbles: true })); } catch (e) {}
     });
-    document.querySelectorAll("#mou-browser select").forEach(s => { try { s.blur(); } catch (e) {} });
+    // V13: #mou-browser, V14: #mou-cloud — both for safety.
+    document.querySelectorAll("#mou-browser select, #mou-cloud select, .browser select").forEach(s => { try { s.blur(); } catch (e) {} });
     await super._postStep();
   }
 
@@ -981,6 +1246,15 @@ class BeneosSetupTour extends TourBase {
   }
 
   async _preStep() {
+    // Step-handover guardrail: nuke any orphaned tour tooltip containers
+    // BEFORE Foundry renders the new step's tooltip. V14 occasionally leaks
+    // a previous step's <aside class="tour"> into the next step, producing
+    // a stacked duplicate that the X button can't dismiss. Always start the
+    // step with a clean DOM. Also clears stale spotlight cutouts left over
+    // by an early-returning preStep handler.
+    clearStaleTourTooltips();
+    cleanupTourElements();
+
     // setup-complete: ask the auto-install question BEFORE super._preStep
     // renders the "Setup Complete" tooltip. "Yes" → run the install and skip
     // the tooltip entirely (they appeared simultaneously before, which was
@@ -1022,24 +1296,74 @@ class BeneosSetupTour extends TourBase {
     }
 
     if (stepId === "mou-browser-open") {
+      // V14 reliability: instead of fire-and-wait-1500ms, actively poll for
+      // the cloud window after each open attempt. V14 occasionally drops the
+      // first searchUI call (especially right after closing #mou-user) — we
+      // give it up to 4s, then retry once with a fresh API call.
       closeMoulinetteWindow("mou-user");
-      await new Promise(r => setTimeout(r, 400));
-      // Open browser via API — no filters yet, just show the interface
-      const mouApi = getMoulinette()?.api;
-      if (mouApi?.searchUI) {
-        mouApi.searchUI("mou-cloud", "Map", {});
-      } else {
-        await openMoulinetteBrowser();
+      // Wait for the user window to actually leave the DOM before triggering
+      // searchUI. Without this, V14 can race: the close animation hasn't
+      // finished, searchUI fires, and Moulinette internally suppresses the
+      // new render because the previous window is still flagged as active.
+      const userGone = await waitForElementGone("#mou-user", 1500);
+      if (!userGone) {
+        BeneosUtility?.debugMessage?.("Beneos Setup Tour | mou-browser-open: #mou-user did not close in 1.5s, proceeding anyway");
       }
-      await new Promise(r => setTimeout(r, 1500));
-      this._trySelector("#mou-browser");
+
+      const tryOpen = async () => {
+        const mouApi = getMoulinette()?.api;
+        if (mouApi?.searchUI) {
+          try { await mouApi.searchUI("mou-cloud", "Map", {}); return; }
+          catch (e) { console.warn("[Beneos] Tour | mouApi.searchUI threw, falling back to mou.browser.render:", e); }
+        }
+        try { await openMoulinetteBrowser(); }
+        catch (e) { console.warn("[Beneos] Tour | openMoulinetteBrowser failed:", e); }
+      };
+
+      const waitForBrowser = async (timeoutMs) => {
+        const start = Date.now();
+        while (Date.now() - start < timeoutMs) {
+          const el = document.querySelector("#mou-cloud") ||
+                     document.querySelector("#mou-browser") ||
+                     document.querySelector(".browser");
+          if (el) return el;
+          await new Promise(r => setTimeout(r, 150));
+        }
+        return null;
+      };
+
+      let opened = null;
+      for (let attempt = 1; attempt <= 2 && !opened; attempt++) {
+        await tryOpen();
+        opened = await waitForBrowser(4000);
+        if (!opened && attempt < 2) {
+          console.warn(`[Beneos] Tour | mou-browser-open: attempt ${attempt} did not render the cloud window, retrying`);
+          await new Promise(r => setTimeout(r, 500));
+        }
+      }
+
+      if (!opened) {
+        // Hard failure after 2 attempts. Surface a notification so the GM
+        // knows why the tour is now anchored to the body — they can either
+        // open Moulinette manually and click Next, or restart the tour.
+        ui.notifications.warn(game.i18n.localize("BENEOS.Notifications.Tours.MoulinetteUnavailable"));
+        console.error("[Beneos] Tour | mou-browser-open: Moulinette cloud window did not render after 2 attempts. Subsequent tour steps will float.");
+        return;
+      }
+
+      // Anchor tooltip to whichever window ID actually rendered.
+      this._trySelector("#mou-browser") ||
+      this._trySelector("#mou-cloud") ||
+      this._trySelector(".browser");
     }
 
     if (stepId === "mou-browser-creator") {
-      // Filter to Beneos as creator
+      // Filter to Beneos as creator. Same await-then-fallback pattern as
+      // mou-browser-open above (without the close+open prelude).
       const mouApi = getMoulinette()?.api;
       if (mouApi?.searchUI) {
-        mouApi.searchUI("mou-cloud", "Map", { creator: "Beneos Battlemaps" });
+        try { await mouApi.searchUI("mou-cloud", "Map", { creator: "Beneos Battlemaps" }); }
+        catch (e) { console.warn("[Beneos] Tour | searchUI(creator) failed:", e); }
       }
       await new Promise(r => setTimeout(r, 1500));
       // Point tooltip at the Creator <select> and dim the rest so the user's
@@ -1049,8 +1373,12 @@ class BeneosSetupTour extends TourBase {
         this._trySelector("#creator-select");
         this._applySpotlight(creatorSelect, 8);
       } else {
+        this._trySelector("#mou-cloud .filters") ||
         this._trySelector("#mou-browser .filters") ||
-        this._trySelector("#mou-browser");
+        this._trySelector(".browser .filters") ||
+        this._trySelector("#mou-cloud") ||
+        this._trySelector("#mou-browser") ||
+        this._trySelector(".browser");
       }
     }
 
@@ -1058,10 +1386,12 @@ class BeneosSetupTour extends TourBase {
       // Filter to specific pack
       const mouApi = getMoulinette()?.api;
       if (mouApi?.searchUI) {
-        mouApi.searchUI("mou-cloud", "Map", {
-          creator: "Beneos Battlemaps",
-          pack: "- Beneos Getting Started Tour"
-        });
+        try {
+          await mouApi.searchUI("mou-cloud", "Map", {
+            creator: "Beneos Battlemaps",
+            pack: "- Beneos Getting Started Tour"
+          });
+        } catch (e) { console.warn("[Beneos] Tour | searchUI(pack) failed:", e); }
       }
       await new Promise(r => setTimeout(r, 1500));
       // Point tooltip at the Pack <select> (one row below Creator), spotlight
@@ -1073,8 +1403,12 @@ class BeneosSetupTour extends TourBase {
         try { packSelect.blur(); } catch (e) {}
         try { document.activeElement?.blur?.(); } catch (e) {}
       } else {
+        this._trySelector("#mou-cloud .content") ||
         this._trySelector("#mou-browser .content") ||
-        this._trySelector("#mou-browser");
+        this._trySelector(".browser .content") ||
+        this._trySelector("#mou-cloud") ||
+        this._trySelector("#mou-browser") ||
+        this._trySelector(".browser");
       }
     }
 
@@ -1085,8 +1419,12 @@ class BeneosSetupTour extends TourBase {
       // spotlight that one row.
       const browser = getMoulinette()?.browser;
       const asset = browser?.currentAssets?.find(a => a.name?.includes("Start Here"));
+      // V14: row lives under #mou-cloud (searchUI), V13: under #mou-browser
+      // (mou.browser.render). Try both before falling back to .browser class.
       const row = asset
-        ? document.querySelector(`#mou-browser .asset.inline[data-id="${asset.id}"]`)
+        ? (document.querySelector(`#mou-cloud .asset.inline[data-id="${asset.id}"]`) ||
+           document.querySelector(`#mou-browser .asset.inline[data-id="${asset.id}"]`) ||
+           document.querySelector(`.browser .asset.inline[data-id="${asset.id}"]`))
         : null;
       if (row) {
         row.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
@@ -1097,8 +1435,12 @@ class BeneosSetupTour extends TourBase {
         this._trySelector(`#${row.id}`);
         this._applySpotlight(row, 6);
       } else {
+        this._trySelector("#mou-cloud .content") ||
         this._trySelector("#mou-browser .content") ||
-        this._trySelector("#mou-browser");
+        this._trySelector(".browser .content") ||
+        this._trySelector("#mou-cloud") ||
+        this._trySelector("#mou-browser") ||
+        this._trySelector(".browser");
       }
     }
 
@@ -1130,7 +1472,7 @@ class BeneosSetupTour extends TourBase {
             a.name?.includes("Start Here")
           );
           if (asset) {
-            console.log("Beneos Tour | Triggering ScenePacker import for:", asset.name);
+            BeneosUtility.debugMessage("Beneos Tour | Triggering ScenePacker import for:", asset.name);
             await browser.collection.executeAction(2, asset);
             // Wait for MoulinetteImporter window to render
             await new Promise(r => setTimeout(r, 4000));
@@ -1220,6 +1562,10 @@ class BeneosDemoTour extends TourBase {
   }
 
   async _preStep() {
+    // See BeneosSetupTour._preStep — same orphan-tooltip guardrail applies
+    // to the demo / creature tours too.
+    clearStaleTourTooltips();
+    cleanupTourElements();
     await super._preStep();
     const stepId = this.currentStep.id;
 
@@ -1277,14 +1623,13 @@ class BeneosDemoTour extends TourBase {
     }
 
     if (stepId === "demo-maps-filters") {
-      this._trySelector("#bioms-selector") ||
+      this._trySelector("#bc-biome-add") ||
       this._trySelector(".beneos_search_engine");
     }
 
     if (stepId === "demo-maps-download") {
       // Target the results area where download buttons are
-      this._trySelector("#display-result-section") ||
-      this._trySelector(".bsr_result_box") ||
+      this._trySelector(".bc-results") ||
       this._trySelector(".beneos_search_engine");
     }
   }
@@ -1365,7 +1710,7 @@ function startTourByKey(tourKey) {
   }, 400);
 }
 
-class BeneosStartSetupTour extends FormApplication {
+export class BeneosStartSetupTour extends FormApplication {
   render() { startTourByKey("setup"); return this; }
 }
 
@@ -2281,7 +2626,7 @@ class BeneosTutorialSceneTour extends TourBase {
           const current = game.settings.get(ns, key);
           if (current < target) {
             await game.settings.set(ns, key, target);
-            console.log(`Beneos Tutorial Tour | Raised ${key} from ${current.toFixed(3)} to ${target.toFixed(3)}`);
+            BeneosUtility.debugMessage(`Beneos Tutorial Tour | Raised ${key} from ${current.toFixed(3)} to ${target.toFixed(3)}`);
           }
         } catch (e) {
           console.warn(`Beneos Tutorial Tour | Could not adjust ${key}:`, e);
@@ -2551,7 +2896,9 @@ class BeneosTutorialSceneTour extends TourBase {
 
   /** Remove all fake context menus from the DOM */
   _clearFakeContextMenus() {
-    for (const m of this._fakeContextMenus) m.remove();
+    for (const m of this._fakeContextMenus) {
+      try { m.remove(); } catch (e) {}
+    }
     this._fakeContextMenus = [];
   }
 
@@ -2678,7 +3025,7 @@ class BeneosTutorialSceneTour extends TourBase {
     // tiles) is active. This is a backup for when the tour is triggered
     // manually and the canvasReady hook pre-hide didn't fire.
     if (this.id === "tutorial-page-1-overview") {
-      try { await game.settings.set("core", "notesDisplayToggle", false); } catch (e) {}
+      if (game.user.isGM) await game.settings.set("core", "notesDisplayToggle", false);
       await this._hidePlaceholderTiles(OVERVIEW_PLACEHOLDER_TILE_IDS);
     }
     // Scenery tour: hide the pause-symbol drawings at start; revealed only
@@ -2693,14 +3040,14 @@ class BeneosTutorialSceneTour extends TourBase {
     // Scenery + World Map: ensure journal icons are visible (may be off if
     // the user aborted a previous tour before pins were re-enabled)
     if (this.id === "tutorial-page-3-sceneries" || this.id === "tutorial-page-5-world-map") {
-      try { await game.settings.set("core", "notesDisplayToggle", true); } catch (e) {}
+      if (game.user.isGM) await game.settings.set("core", "notesDisplayToggle", true);
     }
     // Battlemap: journal pins stay active throughout this tour. The scene may
     // load with the display toggle off if a previous tour aborted before
     // re-enabling it — force it back on and snap the notes layer visible so
     // there's no flicker into step 1.
     if (this.id === "tutorial-page-2-battlemaps") {
-      try { await game.settings.set("core", "notesDisplayToggle", true); } catch (e) {}
+      if (game.user.isGM) await game.settings.set("core", "notesDisplayToggle", true);
       if (canvas.notes?.objects) {
         canvas.notes.objects.visible = true;
         canvas.notes.objects.renderable = true;
@@ -2865,7 +3212,7 @@ class BeneosTutorialSceneTour extends TourBase {
     try { document.querySelector('#context-menu')?.remove(); } catch (e) {}
     // Restore the demo-state modifications so the user isn't stuck with
     // hidden pins or invisible placeholder tiles after a mid-tour exit.
-    try { game.settings.set("core", "notesDisplayToggle", true); } catch (e) {}
+    if (game.user.isGM) game.settings.set("core", "notesDisplayToggle", true);
     if (this.id === "tutorial-page-1-overview") {
       this._showPlaceholderTiles(OVERVIEW_PLACEHOLDER_TILE_IDS);
     }
@@ -2979,7 +3326,7 @@ class BeneosTutorialSceneTour extends TourBase {
     // Dismiss any context menu left by sc-static-maps step
     try { document.querySelector('#context-menu')?.remove(); } catch (e) {}
     // Ensure demo-state modifications are reverted when the tour completes
-    try { await game.settings.set("core", "notesDisplayToggle", true); } catch (e) {}
+    if (game.user.isGM) await game.settings.set("core", "notesDisplayToggle", true);
     if (this.id === "tutorial-page-1-overview") {
       await this._showPlaceholderTiles(OVERVIEW_PLACEHOLDER_TILE_IDS);
     }
@@ -3177,6 +3524,10 @@ class BeneosTutorialSceneTour extends TourBase {
   /* ---- Step Logic ---- */
 
   async _preStep() {
+    // See BeneosSetupTour._preStep — same orphan-tooltip guardrail applies
+    // to the per-scene tutorial tours.
+    clearStaleTourTooltips();
+    cleanupTourElements();
     await super._preStep();
     this._swooshThisStep = false; // Reset before step logic; _panTo sets it
     // Always ensure the game isn't paused at the start of each step
@@ -3300,7 +3651,7 @@ class BeneosTutorialSceneTour extends TourBase {
       // tiles in one go so the user sees the journal icons appear as they read
       // the confirmation box. The click SFX is triggered by next()/previous()
       // via the NEXT_SOUND_OVERRIDES map.
-      try { await game.settings.set("core", "notesDisplayToggle", true); } catch (e) {}
+      if (game.user.isGM) await game.settings.set("core", "notesDisplayToggle", true);
       await this._showPlaceholderTiles(OVERVIEW_PLACEHOLDER_TILE_IDS);
       // Same tour target as p1-pin-notice — the navbar itself. Foundry's
       // fadeout creates a clean cutout, and the tooltip docks above it.
@@ -3461,7 +3812,7 @@ class BeneosTutorialSceneTour extends TourBase {
     // observed to drop `objects.visible` back to false between tour start
     // and step 1; re-applying on each step eliminates the race.
     if (this.id === "tutorial-page-2-battlemaps") {
-      try { await game.settings.set("core", "notesDisplayToggle", true); } catch (e) {}
+      if (game.user.isGM) await game.settings.set("core", "notesDisplayToggle", true);
       if (canvas.notes?.objects) {
         canvas.notes.objects.visible = true;
         canvas.notes.objects.renderable = true;
@@ -4457,21 +4808,39 @@ class BeneosTutorialSceneTour extends TourBase {
     // and removes anything Beneos-Cloud-related.
     const ctCloseCloud = () => {
       ctCloseBattleMapNotice();
+      // V1 path: ui.windows contains FormApplication-style apps. The V2 cloud
+      // window does NOT register here — Foundry V14's ApplicationV2 lives in
+      // foundry.applications.instances instead.
       try {
         for (const app of Object.values(ui.windows || {})) {
           const el = app.element?.[0] ?? app.element;
           if (!el) continue;
           if (el.classList?.contains("beneos_search_engine") ||
               el.querySelector?.(".beneos_search_engine") ||
-              el.querySelector?.("#display-result-section") ||
-              el.querySelector?.(".bsr_result_box")) {
+              el.querySelector?.(".bc-results")) {
             try { app.close(); } catch (e) {}
           }
         }
       } catch (e) {}
-      // Defensive: nuke any leftover DOM elements
-      document.querySelectorAll(".beneos_search_engine").forEach(el => {
-        const wrapper = el.closest(".app");
+      // V2 path: iterate the ApplicationV2 instance map. Anything carrying
+      // our cloud-app class gets closed via its own .close() method.
+      try {
+        const v2 = foundry.applications?.instances;
+        if (v2 && typeof v2[Symbol.iterator] === "function") {
+          for (const [, app] of v2) {
+            const el = app?.element;
+            if (!el?.classList) continue;
+            if (el.classList.contains("beneos-cloud-app") ||
+                el.classList.contains("beneos_search_engine")) {
+              try { app.close(); } catch (e) {}
+            }
+          }
+        }
+      } catch (e) {}
+      // Defensive DOM nuke for both V1 (`.app` wrapper) and V2 (`.application`
+      // wrapper). Picks up anything our class checks above missed.
+      document.querySelectorAll(".beneos_search_engine, .beneos-cloud-app").forEach(el => {
+        const wrapper = el.closest(".app, .application");
         if (wrapper && document.body.contains(wrapper)) wrapper.remove();
       });
     };
@@ -4481,55 +4850,55 @@ class BeneosTutorialSceneTour extends TourBase {
       document.querySelectorAll(".beneos_search_engine select").forEach(s => { s.size = 1; });
     };
 
-    // Helper: find the row container of a filter <select> (the element that
-    // wraps both the label and the select). Walks up the DOM until we find an
-    // ancestor that contains a <label>.
-    const ctFindFilterRow = (selectEl) => {
-      let row = selectEl;
-      for (let i = 0; i < 4 && row?.parentElement; i++) {
-        row = row.parentElement;
-        if (row.querySelector("label")) return row;
-      }
-      return selectEl.parentElement || selectEl;
-    };
-
-    // Helper: highlight the filter row (label + select) via spotlight AND render
-    // a floating popup next to it showing all options. Non-interactive.
-    const ctShowFilterOptions = (sel, id) => {
+    // Render a fake "dropdown preview" below the filter <select> so the user
+    // can see what values are available — like opening the dropdown — while
+    // the spotlight stays tightly on the select itself. The cloud sidebar is
+    // pre-scrolled so the select sits near the top of its visible band, which
+    // guarantees room below for the popup even for selects that normally live
+    // at the bottom of the sidebar (Campaign, Source, Show).
+    const ctShowFilterOptions = (sel) => {
       this._clearFakeContextMenus();
       const el = document.querySelector(sel);
       if (!el) return false;
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      const row = ctFindFilterRow(el);
-      const rect = el.getBoundingClientRect();
-      const menu = document.createElement("div");
-      menu.id = `beneos-fake-context-menu-${id}`;
-      menu.classList.add("beneos-fake-context-menu");
-      Object.assign(menu.style, {
-        left: `${rect.right + 12}px`,
-        top: `${rect.top}px`,
-        maxHeight: "480px",
-        overflowY: "auto",
-        minWidth: "220px",
-        zIndex: "999999"
-      });
-      const ol = document.createElement("ol");
-      for (const opt of el.options) {
-        const label = (opt.textContent || opt.value || "").trim();
-        if (!label) continue;
-        const li = document.createElement("li");
-        const span = document.createElement("span");
-        span.textContent = label;
-        li.appendChild(span);
-        ol.appendChild(li);
+      const sidebar = el.closest(".bc-sidebar");
+      if (sidebar) {
+        const sbRect = sidebar.getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        sidebar.scrollTop = Math.max(0, sidebar.scrollTop + (elRect.top - sbRect.top - 16));
       }
-      menu.appendChild(ol);
-      document.body.appendChild(menu);
-      this._fakeContextMenus.push(menu);
-      // Spotlight on ROW + MENU union (both visible); anchor tour tooltip to the
-      // MENU so it appears to the RIGHT of the popup, not overlapping it.
-      this._applySpotlight([row, menu], 6);
-      this._trySelector(`#beneos-fake-context-menu-${id}`);
+      requestAnimationFrame(() => {
+        const rect = el.getBoundingClientRect();
+        const menu = document.createElement("div");
+        menu.classList.add("beneos-fake-context-menu");
+        const popupTop = rect.bottom + 4;
+        const popupLeft = Math.max(8, rect.left);
+        const maxHeight = Math.max(120, Math.min(360, window.innerHeight - popupTop - 24));
+        Object.assign(menu.style, {
+          left: `${popupLeft}px`,
+          top: `${popupTop}px`,
+          minWidth: `${Math.max(rect.width, 200)}px`,
+          maxHeight: `${maxHeight}px`,
+          overflowY: "auto",
+          zIndex: "999999"
+        });
+        const ol = document.createElement("ol");
+        for (const opt of el.options) {
+          const label = (opt.textContent || opt.value || "").trim();
+          if (!label) continue;
+          const li = document.createElement("li");
+          const span = document.createElement("span");
+          span.textContent = label;
+          li.appendChild(span);
+          ol.appendChild(li);
+        }
+        menu.appendChild(ol);
+        document.body.appendChild(menu);
+        this._fakeContextMenus.push(menu);
+        // Spotlight covers select + dropdown preview so both are illuminated
+        // out of the dark tour overlay.
+        this._applySpotlight([el, menu], 6);
+        this._trySelector(sel);
+      });
       return true;
     };
 
@@ -4545,21 +4914,24 @@ class BeneosTutorialSceneTour extends TourBase {
     }
 
     if (stepId === "ct-actor-directory") {
-      // Fade background, focus on sidebar + Beneos Cloud button
+      // V2 layout: Beneos has its own scene-controls toolbar button on the
+      // left side of the canvas. Anchor the tour spotlight there. Note: the
+      // scene-controls panel only renders when a scene is active — for the
+      // tour case this is fine because we run on a tutorial scene, but the
+      // tooltip text mentions the requirement so patrons hit no surprise
+      // when they later try to open Beneos Cloud from a fresh world.
       document.body.classList.remove("beneos-no-fade");
-      // Open the Actors sidebar tab
-      try {
-        const tab = document.querySelector('[data-tab="actors"]');
-        if (tab) tab.click();
-        await new Promise(r => setTimeout(r, 400));
-      } catch (e) {}
-      // Give the Beneos Cloud button a stable ID so the tour can anchor to it
-      try {
-        for (const btn of document.querySelectorAll("button")) {
-          if (btn.textContent.includes("Beneos Cloud")) { btn.id = "beneos-cloud-launch-btn"; break; }
-        }
-      } catch (e) {}
-      this._trySelector("#beneos-cloud-launch-btn") || this._trySelector('[data-tab="actors"]');
+      const beneosBtn = document.querySelector("#scene-controls li button.beneos-icon-logo, .scene-controls button.beneos-icon-logo");
+      if (beneosBtn) {
+        beneosBtn.id = beneosBtn.id || "beneos-tour-toolbar-anchor";
+        try { beneosBtn.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) {}
+        this._applySpotlight(beneosBtn, 10);
+        this._trySelector("#" + beneosBtn.id);
+      } else {
+        // Last-ditch fallback: center the tooltip if the toolbar button isn't
+        // in the DOM yet (e.g. canvas still initializing).
+        ctCenterAnchor("ct-actor-directory");
+      }
     }
 
     if (stepId === "ct-cloud-open") {
@@ -4572,21 +4944,21 @@ class BeneosTutorialSceneTour extends TourBase {
       // Suppress Foundry's fade; we'll use our own custom spotlight covering the cloud window too.
       document.body.classList.add("beneos-no-fade");
       await ctEnsureCloudOpen();
-      try {
-        document.querySelector(".beneos-connection-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
-      } catch (e) {}
       await new Promise(r => setTimeout(r, 300));
-      // Spotlight on the two auth buttons only
-      const createBtn = document.querySelector("#beneos-cloud-create-account");
-      const loginBtn = document.querySelector("#beneos-cloud-login");
-      if (createBtn || loginBtn) {
-        this._applySpotlight([createBtn, loginBtn].filter(Boolean), 10);
-        // Anchor the tooltip to the login button so it points at the spotlight
-        const anchor = loginBtn ?? createBtn;
+      // V2 layout: auth lives in the cloud window footer (status-footer.hbs), not
+      // in the form body. Either the Sign-In button (logged out) or the Account
+      // Settings button (logged in) is rendered — never both. Spotlight whichever
+      // is currently shown so the step works in either state.
+      const loginBtn = document.querySelector(".beneos-cloud-login-button");
+      const accountBtn = document.querySelector('.bc-footer-button[data-action="openCloudSettings"]');
+      const anchor = loginBtn ?? accountBtn;
+      if (anchor) {
         anchor.id = anchor.id || "beneos-tour-auth-anchor";
+        try { anchor.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) {}
+        this._applySpotlight(anchor, 10);
         this._trySelector("#" + anchor.id);
       } else {
-        this._trySelector(".beneos-connection-section") || this._trySelector(".beneos_search_engine");
+        this._trySelector(".beneos_search_engine");
       }
     }
 
@@ -4607,43 +4979,38 @@ class BeneosTutorialSceneTour extends TourBase {
       this._trySelector(".beneos_search_engine");
     }
 
-    // Filter steps — render a floating options list next to the filter so the
-    // user can see all possible values. No-fade stays ACTIVE so the cloud
-    // remains readable; the popup itself is the visual highlight.
+    // Filter steps — expand the relevant <select> inline so the user sees the
+    // available values right where the filter is. No-fade stays ACTIVE so the
+    // cloud remains readable; the spotlight on the expanded select is the focus.
     if (stepId === "ct-filter-biome") {
       document.body.classList.add("beneos-no-fade");
       await ctEnsureCloudOpen();
-      if (!ctShowFilterOptions("#bioms-selector", "ct-filter-biome")) this._trySelector(".beneos_search_engine");
+      if (!ctShowFilterOptions("#bc-biome-add")) this._trySelector(".beneos_search_engine");
     }
     if (stepId === "ct-filter-campaign") {
       document.body.classList.add("beneos-no-fade");
       await ctEnsureCloudOpen();
-      if (!ctShowFilterOptions("#campaign-selector", "ct-filter-campaign")) this._trySelector(".beneos_search_engine");
+      if (!ctShowFilterOptions("#campaign-selector")) this._trySelector(".beneos_search_engine");
     }
     if (stepId === "ct-filter-type") {
       document.body.classList.add("beneos-no-fade");
       await ctEnsureCloudOpen();
-      if (!ctShowFilterOptions("#token-types", "ct-filter-type")) this._trySelector(".beneos_search_engine");
+      if (!ctShowFilterOptions("#token-types")) this._trySelector(".beneos_search_engine");
     }
     if (stepId === "ct-filter-faction") {
       document.body.classList.add("beneos-no-fade");
       await ctEnsureCloudOpen();
-      if (!ctShowFilterOptions("#faction-selector", "ct-filter-faction")) this._trySelector(".beneos_search_engine");
+      if (!ctShowFilterOptions("#faction-selector")) this._trySelector(".beneos_search_engine");
     }
     if (stepId === "ct-filter-fighting") {
       document.body.classList.add("beneos-no-fade");
       await ctEnsureCloudOpen();
-      if (!ctShowFilterOptions("#token-fight-style", "ct-filter-fighting")) this._trySelector(".beneos_search_engine");
-    }
-    if (stepId === "ct-filter-movement") {
-      document.body.classList.add("beneos-no-fade");
-      await ctEnsureCloudOpen();
-      if (!ctShowFilterOptions("#token-movement", "ct-filter-movement")) this._trySelector(".beneos_search_engine");
+      if (!ctShowFilterOptions("#token-fight-style")) this._trySelector(".beneos_search_engine");
     }
     if (stepId === "ct-filter-purpose") {
       document.body.classList.add("beneos-no-fade");
       await ctEnsureCloudOpen();
-      if (!ctShowFilterOptions("#token-purpose", "ct-filter-purpose")) this._trySelector(".beneos_search_engine");
+      if (!ctShowFilterOptions("#token-purpose")) this._trySelector(".beneos_search_engine");
     }
 
     if (stepId === "ct-search-intro") {
@@ -4669,6 +5036,11 @@ class BeneosTutorialSceneTour extends TourBase {
       document.body.classList.add("beneos-no-fade");
       await ctEnsureCloudOpen();
       ctCollapseAllSelects();
+      // The previous filter steps scrolled the cloud sidebar down so the
+      // various selects sat near the top of the visible band. The search
+      // input lives at the very top of the sidebar — reset the sidebar's
+      // scroll so it's actually visible for this step.
+      try { document.querySelector(".bc-sidebar")?.scrollTo({ top: 0, behavior: "instant" }); } catch (e) {}
       try {
         const input = document.querySelector("#beneos-search-text");
         if (input) {
@@ -4678,8 +5050,8 @@ class BeneosTutorialSceneTour extends TourBase {
       } catch (e) {}
       await new Promise(r => setTimeout(r, 1300));
       try {
-        const resultBox = document.querySelector(".bsr_result_box");
-        const rows = resultBox?.querySelectorAll(".beneos-item-container, .token-result-section");
+        const resultBox = document.querySelector(".bc-results");
+        const rows = resultBox?.querySelectorAll(".bc-result-card");
         let rotRow = null;
         for (const row of rows || []) {
           if (row.textContent.toLowerCase().includes("rot cerf")) { rotRow = row; break; }
@@ -4695,7 +5067,7 @@ class BeneosTutorialSceneTour extends TourBase {
           return;
         }
       } catch (e) {}
-      this._trySelector(".bsr_result_box") || this._trySelector(".beneos_search_engine");
+      this._trySelector(".bc-results") || this._trySelector(".beneos_search_engine");
     }
 
     if (stepId === "ct-search-install") {
@@ -4704,25 +5076,21 @@ class BeneosTutorialSceneTour extends TourBase {
       // (Install vs the CR/Source/Tier buttons below) is the right one.
       await ctEnsureCloudOpen();
       try {
-        const rows = document.querySelectorAll(".beneos-item-container, .token-result-section");
+        const rows = document.querySelectorAll(".bc-result-card");
         let rotRow = null;
         for (const row of rows || []) {
           if (row.textContent.toLowerCase().includes("rot cerf")) { rotRow = row; break; }
         }
         if (rotRow) {
-          const resultBox = document.querySelector(".bsr_result_box");
+          const resultBox = document.querySelector(".bc-results");
           if (resultBox) resultBox.scrollTop = rotRow.offsetTop - resultBox.offsetTop - 8;
           await new Promise(r => setTimeout(r, 250));
-          // Prefer walking up from the install anchor/label to the .beneos-tooltip container.
-          // If not logged in, .beneos-cloud-token-install may not exist → fall back to image.
-          let installBtn = rotRow.querySelector(".beneos-cloud-token-install")?.closest(".beneos-tooltip");
-          if (!installBtn) {
-            const img = rotRow.querySelector('img.item-right-text-box[src*="right_button_v1"]');
-            installBtn = img?.closest(".beneos-tooltip") ?? img?.parentElement;
-          }
-          if (!installBtn) {
-            installBtn = rotRow.querySelector(".beneos-search-last .beneos-tooltip");
-          }
+          // V2 card layout: the install action is a single button with both
+          // .bc-card-button and .bc-action-install classes (results-pane.hbs:259).
+          // Update buttons share the install class and add .bc-action-update on top,
+          // so this selector also picks them up — fine for the demo, since either
+          // button is the "primary card action" the tour should highlight.
+          const installBtn = rotRow.querySelector(".bc-card-button.bc-action-install");
           if (installBtn) {
             installBtn.id = "beneos-tour-install-anchor";
             // _applySpotlight darkens everything OUTSIDE a cutout around the
@@ -4738,7 +5106,7 @@ class BeneosTutorialSceneTour extends TourBase {
       // Fallback: if we couldn't find the specific button, suppress the fade
       // to avoid darkening the cloud window with no cutout reference.
       document.body.classList.add("beneos-no-fade");
-      this._trySelector(".bsr_result_box") || this._trySelector(".beneos_search_engine");
+      this._trySelector(".bc-results") || this._trySelector(".beneos_search_engine");
     }
 
     if (stepId === "ct-place-token") {
@@ -6036,7 +6404,7 @@ Hooks.once("setup", async () => {
     nextSceneId: "B0h1UkhCXoKatFx4",  // Page 7: Loot
     steps: _localizeSteps("Page6", [
       { id: "ct-welcome", selector: "", tooltipDirection: "DOWN" },
-      { id: "ct-actor-directory", selector: "", tooltipDirection: "LEFT" },
+      { id: "ct-actor-directory", selector: "", tooltipDirection: "RIGHT" },
       { id: "ct-cloud-open", selector: "", tooltipDirection: "LEFT" },
       { id: "ct-cloud-account", selector: "", tooltipDirection: "RIGHT" },
       { id: "ct-categories", selector: "", tooltipDirection: "LEFT" },
@@ -6045,7 +6413,6 @@ Hooks.once("setup", async () => {
       { id: "ct-filter-type", selector: "", tooltipDirection: "RIGHT" },
       { id: "ct-filter-faction", selector: "", tooltipDirection: "RIGHT" },
       { id: "ct-filter-fighting", selector: "", tooltipDirection: "RIGHT" },
-      { id: "ct-filter-movement", selector: "", tooltipDirection: "RIGHT" },
       { id: "ct-filter-purpose", selector: "", tooltipDirection: "RIGHT" },
       { id: "ct-search-intro", selector: "", tooltipDirection: "LEFT" },
       { id: "ct-search-rotcerf", selector: "", tooltipDirection: "RIGHT" },
@@ -6245,7 +6612,7 @@ Hooks.once("setup", async () => {
     if (sceneId === CONTACTS_SCENE_ID && _beneosFarewellVideoPlaying) return false;
     let pt;
     try { pt = event.getLocalPosition(canvas.stage); }
-    catch (e) { return false; }
+    catch (e) { console.warn("[Beneos Tours] _sceneTileClickHit: failed to compute world coords", e); return false; }
     if (!Number.isFinite(pt.x) || !Number.isFinite(pt.y)) return false;
     for (const [tileId, handler] of Object.entries(handlers)) {
       // Resolve the tile document. `canvas.tiles.get` returns the Tile
@@ -6279,7 +6646,7 @@ Hooks.once("setup", async () => {
     return false;
   };
   Hooks.once("ready", () => {
-    if (typeof libWrapper === "undefined") {
+    if (!game.modules.get("lib-wrapper")?.active) {
       console.warn("Beneos | libWrapper not available; scene-tile clicks disabled.");
       return;
     }
@@ -6333,7 +6700,7 @@ Hooks.once("setup", async () => {
 
 Hooks.once("ready", async () => {
   if (!game.user.isGM) {
-    console.log("Beneos Setup Tour | first-run check skipped: user is not GM");
+    BeneosUtility.debugMessage("Beneos Setup Tour | first-run check skipped: user is not GM");
     return;
   }
 
@@ -6354,13 +6721,13 @@ Hooks.once("ready", async () => {
   const lastVersion = game.settings.get(MODULE_ID, "tourPromptLastVersion");
   const dontShow = game.settings.get(MODULE_ID, "tourPromptDontShowAgain");
   const shouldPrompt = !dontShow && currentVersion && currentVersion !== lastVersion;
-  console.log(`Beneos Setup Tour | first-run check: currentVersion="${currentVersion}", lastVersion="${lastVersion}", dontShow=${dontShow}, shouldPrompt=${shouldPrompt}`);
+  BeneosUtility.debugMessage(`Beneos Setup Tour | first-run check: currentVersion="${currentVersion}", lastVersion="${lastVersion}", dontShow=${dontShow}, shouldPrompt=${shouldPrompt}`);
 
   if (shouldPrompt) {
     setTimeout(async () => {
-      console.log("Beneos Setup Tour | opening first-run prompt");
+      BeneosUtility.debugMessage("Beneos Setup Tour | opening first-run prompt");
       const result = await _confirmStartSetupTour();
-      console.log("Beneos Setup Tour | first-run prompt resolved:", result);
+      BeneosUtility.debugMessage("Beneos Setup Tour | first-run prompt resolved:", result);
       // Only persist the "last seen version" when the user actually clicked
       // Yes or No. Any other close path — null (close-handler), undefined,
       // escape key, X button, auto-dismiss, or a malformed callback return —
@@ -6369,14 +6736,14 @@ Hooks.once("ready", async () => {
       // variants return an empty object on X-close, which previously slipped
       // past and got treated as a "yes" answer.
       if (!result || typeof result.answer !== "boolean") {
-        console.log("Beneos Setup Tour | dismissed without explicit Yes/No — settings left untouched, prompt will re-appear on next load");
+        BeneosUtility.debugMessage("Beneos Setup Tour | dismissed without explicit Yes/No — settings left untouched, prompt will re-appear on next load");
         return;
       }
       await game.settings.set(MODULE_ID, "tourPromptLastVersion", currentVersion);
-      console.log(`Beneos Setup Tour | tourPromptLastVersion set to "${currentVersion}" (answer=${result.answer}, dontShow=${!!result.dontShow})`);
+      BeneosUtility.debugMessage(`Beneos Setup Tour | tourPromptLastVersion set to "${currentVersion}" (answer=${result.answer}, dontShow=${!!result.dontShow})`);
       if (result.dontShow) {
         await game.settings.set(MODULE_ID, "tourPromptDontShowAgain", true);
-        console.log("Beneos Setup Tour | user opted out permanently for this world");
+        BeneosUtility.debugMessage("Beneos Setup Tour | user opted out permanently for this world");
       }
       if (result.answer) {
         const tour = game.tours.get(`${MODULE_ID}.setup`);
@@ -6813,6 +7180,45 @@ function _hideInstallOverlay() {
   _beneosInstallOverlay = null;
 }
 
+// Update the visible install-overlay text in place — used by the auto-install
+// stall-hint watchdog (60s) so the user sees something change rather than
+// staring at the same "Please wait…" string and assuming Foundry froze.
+function _updateInstallOverlayText(text) {
+  if (!_beneosInstallOverlay) return;
+  const el = _beneosInstallOverlay.querySelector(".beneos-install-text");
+  if (el) el.textContent = text;
+}
+
+// Retry-or-cancel dialog shown after the auto-install watchdogs trip. Returns
+// true if the user wants to retry, false on cancel. Each `reasonKey` maps to
+// a distinct user-facing message in en.json so the user understands WHICH
+// failure mode they're in (no install ever started vs. install ran out of
+// time) and can address the right cause.
+async function _confirmInstallRetry(reasonKey) {
+  const messageMap = {
+    "no-start": "BENEOS.Tour.Setup.InstallError.NoStart",
+    "timeout":  "BENEOS.Tour.Setup.InstallError.Timeout"
+  };
+  const messageI18n = messageMap[reasonKey] ?? "BENEOS.Tour.Setup.InstallError.Generic";
+  const title   = game.i18n.localize("BENEOS.Tour.Setup.InstallError.Title");
+  const message = game.i18n.localize(messageI18n);
+  const retry   = game.i18n.localize("BENEOS.Tour.Setup.InstallError.Retry");
+  const cancel  = game.i18n.localize("BENEOS.Tour.Setup.InstallError.Cancel");
+
+  return new Promise(resolve => {
+    new Dialog({
+      title,
+      content: `<p>${message}</p>`,
+      buttons: {
+        retry:  { icon: '<i class="fas fa-rotate-right"></i>', label: retry,  callback: () => resolve(true) },
+        cancel: { icon: '<i class="fas fa-xmark"></i>',         label: cancel, callback: () => resolve(false) }
+      },
+      default: "retry",
+      close: () => resolve(false)
+    }, { classes: ["beneos-asset-watcher-dialog"] }).render(true);
+  });
+}
+
 /**
  * Non-fullscreen "waiting for Moulinette login" overlay. Pinned to the top
  * of the viewport so the Moulinette user window is still reachable beneath.
@@ -7051,7 +7457,7 @@ async function _confirmStartSetupTour() {
 
   const readCheckbox = (root) => {
     try { return !!root?.querySelector?.('input[name="beneos-dont-show-again"]')?.checked; }
-    catch (e) { return false; }
+    catch (e) { console.warn("[Beneos Tours] readCheckbox failed", e); return false; }
   };
 
   try {
@@ -7243,7 +7649,7 @@ Hooks.on("canvasReady", async () => {
   // so the user never sees the icons flash into view. They are revealed
   // during the p1-pin-activated step.
   if (tourKey === "tutorial-page-1-overview") {
-    try { await game.settings.set("core", "notesDisplayToggle", false); } catch (e) {}
+    if (game.user.isGM) await game.settings.set("core", "notesDisplayToggle", false);
     try {
       const updates = OVERVIEW_PLACEHOLDER_TILE_IDS
         .filter(id => canvas.scene.tiles.get(id))
@@ -7270,7 +7676,7 @@ Hooks.on("canvasReady", async () => {
       // interleave and the new tour silently never renders.
       await tour.reset();
       await tour.start();
-      console.log(`Beneos Tutorial Tour | Auto-started '${tourKey}' on ${canvas.scene.name}`);
+      BeneosUtility.debugMessage(`Beneos Tutorial Tour | Auto-started '${tourKey}' on ${canvas.scene.name}`);
     } catch (e) {
       console.warn("Beneos Tutorial Tour | Auto-start failed:", e);
     }

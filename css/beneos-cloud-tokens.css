@@ -32,6 +32,15 @@
   --bc-accent-dim:    rgba(245, 201, 146, 0.12);
   --bc-accent-line:   rgba(245, 201, 146, 0.30);
 
+  /* ---- Update accent (blue) — visually separates "installed-but-update-
+     pending" cards from the regular gold install action. Built around
+     --bc-info (#8faac6) so theme switchers can override in one place. */
+  --bc-update:        #8faac6;
+  --bc-update-soft:   #c5d5e8;
+  --bc-update-strong: #e1ebf4;
+  --bc-update-dim:    rgba(143, 170, 198, 0.18);
+  --bc-update-line:   rgba(143, 170, 198, 0.45);
+
   /* ---- Semantic (status indicators) ---- */
   --bc-danger:  #d88270;   /* replaces legacy patron-NOK orange #d56b52 */
   --bc-success: #8bbf8b;   /* replaces legacy patron-OK green #1b9200 */

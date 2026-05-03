@@ -95,7 +95,7 @@ export class BeneosCloudLogin extends FormApplication {
 
     if (loginData == null || typeof loginData === 'boolean') {
       // If we don't have login data, we need to ask the user
-      console.log("No login data, asking user")
+      BeneosUtility.debugMessage("No login data, asking user")
       // Show the login dialog
       loginData = await this.loginDialog()
       // Wave B-9-fix-57 → fix-62: silent on Cancel / X / Esc. V13's
@@ -122,7 +122,7 @@ export class BeneosCloudLogin extends FormApplication {
     let cloudLoginURL = `https://beneos.cloud/foundry-login.php?email=${encodeURIComponent(loginData.email)}&password=${encodeURIComponent(loginData.password)}&foundryId=${encodeURIComponent(userId)}`
     // Wave B-5d-Hotfix: sanitize URL for console (strip password) so we can
     // share screenshots without leaking credentials.
-    console.log("BENEOS Cloud login attempt:", cloudLoginURL.replace(/password=[^&]+/, "password=***"))
+    BeneosUtility.debugMessage("BENEOS Cloud login attempt:", cloudLoginURL.replace(/password=[^&]+/, "password=***"))
     // Fix #A2 / Wave B-5d-Hotfix: surface fetch failures as user-visible
     // notifications instead of unhandled promise rejections. "Failed to fetch"
     // is a network-level error (DNS / TCP / TLS / CSP / CORS preflight). The
@@ -137,12 +137,12 @@ export class BeneosCloudLogin extends FormApplication {
         return response.json()
       })
       .then(data => {
-        console.log("BENEOS Cloud login data", data)
+        BeneosUtility.debugMessage("BENEOS Cloud login data", data)
         if (data.result == 'OK') {
-          console.log("BENEOS Cloud login success")
+          BeneosUtility.debugMessage("BENEOS Cloud login success")
           this.pollForAccess(userId)
         } else {
-          console.log("BENEOS Cloud login error", data)
+          BeneosUtility.debugMessage("BENEOS Cloud login error", data)
           ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginFailed"))
         }
       })
@@ -189,7 +189,7 @@ export class BeneosCloudLogin extends FormApplication {
             clearInterval(pollInterval)
             ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Notification.LoginTimeout"))
           }
-          console.log("Fecth response:", data)
+          BeneosUtility.debugMessage("Fecth response:", data)
           if (data.result == 'OK') {
             clearInterval(pollInterval)
             // Wave B-9-fix-66: Beneos runs two separate Patreon
@@ -204,8 +204,8 @@ export class BeneosCloudLogin extends FormApplication {
             // today — `patreon_status` is currently the only signal
             // the module reads. After the user shares this log we'll
             // wire up the campaign-distinction check.
-            console.log("[Beneos Cloud] Poll response keys:", Object.keys(data))
-            console.log("[Beneos Cloud] Full payload (excluding sensitive):", {
+            BeneosUtility.debugMessage("[Beneos Cloud] Poll response keys:", Object.keys(data))
+            BeneosUtility.debugMessage("[Beneos Cloud] Full payload (excluding sensitive):", {
               ...data,
               // Strip any token-looking fields if they ever appear.
               access_token: data.access_token ? "<redacted>" : undefined
@@ -266,6 +266,12 @@ export class BeneosCloud {
   // a permanent lock.
   inflightImports = new Set()
 
+  // Session-only opt-out for the world-update confirmation dialog. Set when
+  // the GM picks "Yes, don't ask again this session" in the propagate
+  // dialog; resets on world reload (no setting persistence). Keeps batch
+  // updates of many creatures from prompting on every single one.
+  _skipUpdateConfirmation = false
+
   // Fix #B-1d: pending canvas drops for cloud-tokens. When a user drags a
   // "Cloud available" token onto the scene, we don't yet have a Foundry
   // document to place — the cloud import takes a few seconds. This map keeps
@@ -302,7 +308,7 @@ export class BeneosCloud {
         return response.json()
       })
       .then(async data => {
-        console.log("BENEOS Cloud login data", data)
+        BeneosUtility.debugMessage("BENEOS Cloud login data", data)
         if (data.result == 'OK') {
           game.beneos.cloud.setLoginStatus(true)
           await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", data.patreon_status)
@@ -332,7 +338,7 @@ export class BeneosCloud {
       // V1 path keeps the legacy close-and-reopen.
       BeneosSearchEngineLauncher.closeAndSave()
     }
-    console.log("BeneosModule: disconnected from Beneos Cloud")
+    BeneosUtility.debugMessage("BeneosModule: disconnected from Beneos Cloud")
   }
 
   isLoggedIn() {
@@ -588,7 +594,7 @@ export class BeneosCloud {
 
   getTokenTS(key) {
     let content = this.availableContent.tokens
-    if (!content || content?.length == 0) return false
+    if (!content || content.length == 0) return false
     for (const element of content) {
       if (element.key.toLowerCase() == key.toLowerCase()) {
         return element.updated_ts
@@ -628,7 +634,7 @@ export class BeneosCloud {
 
   isNew(key) {
     let content = this.availableContent.tokens
-    if (!content || content?.length == 0) return false
+    if (!content || content.length == 0) return false
     for (const element of content) {
       if (element.key.toLowerCase() == key.toLowerCase()) {
         // Is new if the updated_ts is greater than the current date minus 30 days
@@ -642,8 +648,8 @@ export class BeneosCloud {
 
   isTokenAvailable(key) {
     let content = this.availableContent.tokens
-    if (!content || content?.length == 0) {
-      console.log("No tokens available from BeneosCloud")
+    if (!content || content.length == 0) {
+      BeneosUtility.debugMessage("No tokens available from BeneosCloud")
       return false
     }
     for (const element of content) {
@@ -691,9 +697,9 @@ export class BeneosCloud {
     try {
       const response = await fetch(url, { credentials: 'same-origin' })
       const data = await response.json()
-      console.log("BENEOS Cloud available content", data)
+      BeneosUtility.debugMessage("BENEOS Cloud available content", data)
       if (data.result == 'OK') {
-        console.log("Available content: ", data.data)
+        BeneosUtility.debugMessage("Available content: ", data.data)
         game.beneos.cloud.setAvailableContent(data.data)
       }
       return data
@@ -711,7 +717,7 @@ export class BeneosCloud {
       const msgKey = isBatch ? "BENEOS.Cloud.AssetsInstalledBatch" : "BENEOS.Cloud.AssetsInstalled"
       content = `<div><strong>BeneosModule</strong> - ${game.i18n.format(msgKey, {assetName})}</div>`
     }
-    console.log("Sending chat message result for", assetName, name, content)
+    BeneosUtility.debugMessage("Sending chat message result for", assetName, name, content)
     let chatData = {
       user: game.user.id,
       rollMode: game.settings.get("core", "rollMode"),
@@ -727,7 +733,7 @@ export class BeneosCloud {
 
   setNoWorldImport() {
     this.noWorldImport = true
-    console.log("No world import set to true")
+    BeneosUtility.debugMessage("No world import set to true")
   }
 
   async importItemToCompendium(itemArray, event, isBatch = false) {
@@ -735,7 +741,7 @@ export class BeneosCloud {
     // crashed earlier batch so this install behaves deterministically.
     if (!isBatch) this.noWorldImport = false
     this.beneosItems = {}
-    console.log("Importing item to compendium", itemArray)
+    BeneosUtility.debugMessage("Importing item to compendium", itemArray)
 
     // Create the "Beneos Items" folder if it doesn't exist
     const itemsFolder = game.folders.getName("Beneos Items") || await Folder.create({
@@ -771,24 +777,24 @@ export class BeneosCloud {
       try {
         await foundry.applications.apps.FilePicker.implementation.createDirectory("data", "beneos_assets");
       } catch (err) {
-        console.log("Directory already exists")
+        BeneosUtility.debugMessage("Directory already exists")
       }
       try {
         await foundry.applications.apps.FilePicker.implementation.createDirectory("data", "beneos_assets/cloud");
       } catch (err) {
-        console.log("Directory already exists")
+        BeneosUtility.debugMessage("Directory already exists")
       }
       try {
         await foundry.applications.apps.FilePicker.implementation.createDirectory("data", "beneos_assets/cloud/items");
       } catch (err) {
-        console.log("Directory already exists")
+        BeneosUtility.debugMessage("Directory already exists")
       }
       try {
         await foundry.applications.apps.FilePicker.implementation.createDirectory("data", finalFolder);
       } catch (err) {
-        console.log("Directory already exists")
+        BeneosUtility.debugMessage("Directory already exists")
       }
-      console.log("Item", itemData, itemObjectData)
+      BeneosUtility.debugMessage("Item", itemData, itemObjectData)
       // Decode the base64 tokenImg and upload it to the FilePicker
       let base64Response = await fetch(`data:image/webp;base64,${itemData.itemImage.front.image64}`);
       let blob = await base64Response.blob();
@@ -821,12 +827,12 @@ export class BeneosCloud {
         // Search if we have already an item with the same name in the compendium
         let existingItem = itemRecords.find(a => a.name == item.name && a.img == item.img)
         if (existingItem) {
-          console.log("Deleting existing item", existingItem._id)
+          BeneosUtility.debugMessage("Deleting existing item", existingItem._id)
           try {
             await Item.deleteDocuments([existingItem._id], { pack: "world.beneos_module_items" })
           }
           catch (err) {
-            console.log("Error deleting existing item", err)
+            console.warn("[Beneos Cloud] Error deleting existing item", err)
           }
         }
         // And then create it again
@@ -919,24 +925,24 @@ export class BeneosCloud {
       try {
         await foundry.applications.apps.FilePicker.implementation.createDirectory("data", "beneos_assets");
       } catch (err) {
-        console.log("Directory already exists")
+        BeneosUtility.debugMessage("Directory already exists")
       }
       try {
         await foundry.applications.apps.FilePicker.implementation.createDirectory("data", "beneos_assets/cloud");
       } catch (err) {
-        console.log("Directory already exists")
+        BeneosUtility.debugMessage("Directory already exists")
       }
       try {
         await foundry.applications.apps.FilePicker.implementation.createDirectory("data", "beneos_assets/cloud/spells");
       } catch (err) {
-        console.log("Directory already exists")
+        BeneosUtility.debugMessage("Directory already exists")
       }
       try {
         await foundry.applications.apps.FilePicker.implementation.createDirectory("data", finalFolder);
       } catch (err) {
-        console.log("Directory already exists")
+        BeneosUtility.debugMessage("Directory already exists")
       }
-      console.log("Spell", spellData, spellObjectData)
+      BeneosUtility.debugMessage("Spell", spellData, spellObjectData)
       // Decode the base64 tokenImg and upload it to the FilePicker
       let base64Response = await fetch(`data:image/webp;base64,${spellData.spellImage.front.image64}`);
       let blob = await base64Response.blob();
@@ -969,7 +975,7 @@ export class BeneosCloud {
         // Search if we have already an actor with the same name in the compendium
         let existingSpell = spellRecords.find(a => a.name == spell.name && a.img == spell.img)
         if (existingSpell) {
-          console.log("Deleting existing spell", existingSpell._id)
+          BeneosUtility.debugMessage("Deleting existing spell", existingSpell._id)
           await Item.deleteDocuments([existingSpell._id], { pack: "world.beneos_module_spells" })
         }
         // And then create it again
@@ -999,7 +1005,7 @@ export class BeneosCloud {
       }
     }
     let toSave = JSON.stringify(BeneosUtility.beneosSpells)
-    console.log("Saving SPELL data :", toSave)
+    BeneosUtility.debugMessage("Saving SPELL data :", toSave)
     await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', toSave) // Save the token config !
 
     if (!isBatch) { // Lock/Unlock only in single install mode
@@ -1056,11 +1062,297 @@ export class BeneosCloud {
     }
   }
 
+  /**
+   * Propagate a compendium creature update to existing world actors and
+   * the scene tokens that point at them. Called from importTokenToCompendium
+   * when a re-install detects pre-existing world actors carrying the same
+   * fullId flag.
+   *
+   * Protection rules (per user direction "nur wenn original liegen"):
+   *   - World actors whose name matches the recorded originalName flag get
+   *     a full-replace from the new compendium document.
+   *   - World actors the DM has renamed are left untouched.
+   *   - Scene tokens whose name still matches the originalName get their
+   *     visuals (texture, name) refreshed; renamed scene tokens are skipped.
+   *
+   * Lazy migration: actors installed before originalName was tracked have
+   * no flag yet — for those we treat the current compendium name as the
+   * baseline (best-effort; if the DM had already renamed pre-feature, we
+   * cannot tell, but those will simply not match and stay untouched).
+   *
+   * Counts are surfaced in a DialogV2 so the GM has a chance to abort
+   * before the cascade runs.
+   */
+  async _propagateTokenUpdateToWorld(fullId, imported, existingWorldActors) {
+    const compendiumName = imported.name
+    const updatable = []
+    const skippedRenamed = []
+    for (const actor of existingWorldActors) {
+      const flag = actor.getFlag("world", "beneos") || {}
+      const baseline = flag.originalName ?? compendiumName
+      if (actor.name === baseline) updatable.push(actor)
+      else skippedRenamed.push(actor)
+    }
+
+    // Collect scene-token updates. Unlinked Beneos tokens carry their own
+    // texture override per scene, so an Actor-side update does NOT reach
+    // them automatically — we have to push per-token updates per scene.
+    //
+    // Two match strategies, in order:
+    //   1) TokenDocument.actorId === world actor id (the standard drop
+    //      pipeline registers this directly).
+    //   2) Synthetic-actor beneos flag fullId matches — fallback for
+    //      tokens whose actorId resolution didn't catch (cloud-drag
+    //      edge cases, legacy installs, etc.).
+    //
+    // Visual feedback while we scan: setting body cursor to "wait" plus
+    // a heads-up notification on multi-scene worlds. The DM is rarely
+    // sitting on the scene that holds the affected tokens, so the scan
+    // routinely runs against scenes that aren't currently rendered.
+    const allScenes = [...(game.scenes ?? [])]
+    if (allScenes.length > 1) {
+      ui.notifications.info(game.i18n.format(
+        "BENEOS.Cloud.Update.SearchingScenes",
+        { count: allScenes.length }
+      ))
+    }
+    const prevCursorSearch = document.body.style.cursor
+    document.body.style.cursor = "wait"
+    const sceneUpdates = []
+    let scannedTokens = 0
+    let matchedTokens = 0
+    try {
+      for (const scene of allScenes) {
+        const tokenUpdates = []
+        for (const token of scene.tokens) {
+          scannedTokens++
+          let actor = updatable.find(a => a.id === token.actorId)
+          if (!actor) {
+            const tokenActor = token.actor
+            const tokenFlag = tokenActor?.getFlag?.("world", "beneos")
+            if (tokenFlag?.fullId === fullId) actor = updatable[0]
+          }
+          if (!actor) continue
+          const flag = actor.getFlag("world", "beneos") || {}
+          const baseline = flag.originalName ?? compendiumName
+          if (token.name !== baseline) continue
+          tokenUpdates.push({
+            _id: token.id,
+            name: compendiumName,
+            "texture.src": imported.prototypeToken.texture.src
+          })
+          matchedTokens++
+        }
+        if (tokenUpdates.length) {
+          console.log(`[Beneos Cloud] Scene "${scene.name}": ${tokenUpdates.length} matching token(s)`)
+          sceneUpdates.push({ scene, updates: tokenUpdates })
+        }
+      }
+    } finally {
+      document.body.style.cursor = prevCursorSearch
+    }
+    console.log(`[Beneos Cloud] Scene scan complete — scanned ${scannedTokens} token(s), matched ${matchedTokens} for fullId=${fullId}`)
+    const totalSceneTokens = sceneUpdates.reduce((n, s) => n + s.updates.length, 0)
+
+    if (updatable.length === 0) {
+      ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Update.NothingToDo"))
+      return
+    }
+
+    // Confirmation dialog with full context — asset name + type so the
+    // GM can identify the affected creature at a glance (matters when a
+    // bulk-install run pauses on the first asset that has world actors;
+    // without the name + type the prompt feels generic). The scene
+    // breakdown lists every place the asset is currently in use, so the
+    // GM can make an informed call before mass-updating tokens that may
+    // already be mid-session. Skipped entirely if the GM previously
+    // chose "Yes, don't ask again this session".
+    if (!this._skipUpdateConfirmation) {
+      const escapeHTML = (s) => String(s).replace(/[&<>"']/g, c => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]))
+
+      // Asset type label — driven by the imported document so future
+      // extensions to items / spells slot in without changing the helper
+      // signature. _propagateTokenUpdateToWorld currently only runs for
+      // creatures, but the i18n keys are pre-staged for the rest.
+      let assetTypeLabel = game.i18n.localize("BENEOS.Cloud.Update.AssetCreature")
+      if (imported?.documentName === "Item") {
+        const isSpell = imported?.type === "spell"
+        assetTypeLabel = game.i18n.localize(isSpell
+          ? "BENEOS.Cloud.Update.AssetSpell"
+          : "BENEOS.Cloud.Update.AssetLoot")
+      }
+
+      const escapedName = escapeHTML(compendiumName)
+      const escapedType = escapeHTML(assetTypeLabel)
+
+      const sceneListItems = sceneUpdates.map(s => {
+        const text = game.i18n.format("BENEOS.Cloud.Update.SceneEntry", {
+          scene: s.scene.name ?? "",
+          count: s.updates.length
+        })
+        return `<li>${escapeHTML(text)}</li>`
+      }).join("")
+      const sceneListHtml = sceneUpdates.length
+        ? `<ul class="bc-update-scene-list">${sceneListItems}</ul>`
+        : `<p class="bc-update-no-scenes">${escapeHTML(game.i18n.localize("BENEOS.Cloud.Update.NoSceneTokens"))}</p>`
+
+      const renamedLine = skippedRenamed.length
+        ? `<p class="bc-update-skipped-note">${escapeHTML(game.i18n.format("BENEOS.Cloud.Update.SkippedRenamedDetail", { count: skippedRenamed.length }))}</p>`
+        : ""
+
+      const introText = game.i18n.format("BENEOS.Cloud.Update.IntroDetail", { actorCount: updatable.length })
+
+      const content = `
+        <div class="bc-update-dialog">
+          <div class="bc-update-asset-header">
+            <span class="bc-update-asset-type">${escapedType}</span>
+            <span class="bc-update-asset-name">${escapedName}</span>
+          </div>
+          <p class="bc-update-intro">${escapeHTML(introText)}</p>
+          <p class="bc-update-scenes-heading">${escapeHTML(game.i18n.localize("BENEOS.Cloud.Update.UsedOn"))}</p>
+          ${sceneListHtml}
+          ${renamedLine}
+          <p class="bc-update-question">${escapeHTML(game.i18n.localize("BENEOS.Cloud.Update.QuestionDetail"))}</p>
+        </div>
+      `
+
+      let dialogResult
+      try {
+        dialogResult = await foundry.applications.api.DialogV2.wait({
+          window: { title: game.i18n.localize("BENEOS.Cloud.Update.Title") },
+          classes: ["dialog", "app", "window-app", "beneos-cloud-app", "beneos-confirm"],
+          position: { width: 520 },
+          content,
+          buttons: [
+            { action: "yes",       label: game.i18n.localize("BENEOS.Cloud.Update.Yes"),       default: true, callback: () => "yes"       },
+            { action: "yesAlways", label: game.i18n.localize("BENEOS.Cloud.Update.YesAlways"),                callback: () => "yesAlways" },
+            { action: "no",        label: game.i18n.localize("BENEOS.Cloud.Update.No"),                       callback: () => "no"        }
+          ],
+          rejectClose: false
+        })
+      } catch (err) {
+        console.warn("[Beneos Cloud] Update-confirm dialog failed", err)
+        dialogResult = "no"
+      }
+      if (!dialogResult || dialogResult === "no") return
+      if (dialogResult === "yesAlways") this._skipUpdateConfirmation = true
+    }
+
+    // Apply phase — visual feedback again because the actor + token CRUD
+    // pass can take a noticeable moment on big worlds.
+    if (sceneUpdates.length > 0 || updatable.length > 1) {
+      ui.notifications.info(game.i18n.format(
+        "BENEOS.Cloud.Update.ApplyingUpdate",
+        { actors: updatable.length, tokens: totalSceneTokens }
+      ))
+    }
+    const prevCursorApply = document.body.style.cursor
+    document.body.style.cursor = "wait"
+
+    // Full-replace each world actor with the compendium copy. Strip the
+    // compendium _id so we don't collide with the existing actor's id; we
+    // also drop folder so the world copy stays in its current sub-folder,
+    // and we strip the embedded collections (items / effects) because
+    // Actor.update() does NOT replace embedded collections — those must
+    // be wiped and re-created explicitly, otherwise removed items don't
+    // come back and renamed/changed items aren't refreshed.
+    const newData = imported.toObject()
+    delete newData._id
+    delete newData.folder
+    delete newData.items
+    delete newData.effects
+    const newItemsData   = imported.items.map(i => i.toObject())
+    const newEffectsData = imported.effects.map(e => e.toObject())
+    for (const actor of updatable) {
+      const beneosFlag = actor.getFlag("world", "beneos") || {}
+      try {
+        // 1) Top-level properties (system, name, img, prototypeToken, ...)
+        await actor.update(newData)
+        // 2) Items: full replace. Wipe any DM edits, restore the canonical set.
+        const oldItemIds = actor.items.map(i => i.id)
+        if (oldItemIds.length) {
+          await actor.deleteEmbeddedDocuments("Item", oldItemIds)
+        }
+        if (newItemsData.length) {
+          await actor.createEmbeddedDocuments("Item", newItemsData, { keepId: true })
+        }
+        // 3) Active effects: full replace, same reasoning.
+        const oldEffectIds = actor.effects.map(e => e.id)
+        if (oldEffectIds.length) {
+          await actor.deleteEmbeddedDocuments("ActiveEffect", oldEffectIds)
+        }
+        if (newEffectsData.length) {
+          await actor.createEmbeddedDocuments("ActiveEffect", newEffectsData, { keepId: true })
+        }
+        // 4) Re-stamp the beneos flag (newData.flags from the compendium
+        //    may have overwritten it during step 1).
+        await actor.setFlag("world", "beneos", {
+          ...beneosFlag,
+          originalName: compendiumName,
+          updateDate: Date.now()
+        })
+      } catch (err) {
+        console.warn("[Beneos Cloud] World actor update failed for", actor.name, err)
+      }
+    }
+
+    // Apply per-scene token updates. Two passes per scene:
+    //
+    //   1) TokenDocument-level updates (texture.src, name) so the canvas
+    //      shows the new image and label.
+    //   2) Embedded-collection refresh on each token's synthetic actor.
+    //      Beneos tokens are unlinked (actorLink: false) — each token
+    //      carries its own ActorDelta that overrides the world actor's
+    //      data. If the GM had deleted items/actions from the token's
+    //      sheet (which writes to the delta, NOT the world actor), step 1
+    //      would leave those deletions in place; the token would still
+    //      render the stale, DM-modified item set even though the world
+    //      actor is now fresh. Wiping + recreating items/effects on the
+    //      synthetic actor routes through the delta and brings the token
+    //      back in line with the new compendium data.
+    for (const { scene, updates } of sceneUpdates) {
+      try { await scene.updateEmbeddedDocuments("Token", updates) }
+      catch (err) { console.warn("[Beneos Cloud] Scene-token document update failed for", scene.name, err) }
+      for (const u of updates) {
+        const token = scene.tokens.get(u._id)
+        const tokenActor = token?.actor
+        if (!tokenActor) continue
+        try {
+          const oldItemIds = tokenActor.items.map(i => i.id)
+          if (oldItemIds.length) {
+            await tokenActor.deleteEmbeddedDocuments("Item", oldItemIds)
+          }
+          if (newItemsData.length) {
+            await tokenActor.createEmbeddedDocuments("Item", newItemsData, { keepId: true })
+          }
+          const oldEffectIds = tokenActor.effects.map(e => e.id)
+          if (oldEffectIds.length) {
+            await tokenActor.deleteEmbeddedDocuments("ActiveEffect", oldEffectIds)
+          }
+          if (newEffectsData.length) {
+            await tokenActor.createEmbeddedDocuments("ActiveEffect", newEffectsData, { keepId: true })
+          }
+        } catch (err) {
+          console.warn("[Beneos Cloud] Scene-token actor refresh failed for", token?.name, err)
+        }
+      }
+    }
+
+    document.body.style.cursor = prevCursorApply
+    ui.notifications.info(game.i18n.format("BENEOS.Cloud.Update.Done", {
+      actors: updatable.length,
+      tokens: totalSceneTokens,
+      skipped: skippedRenamed.length
+    }))
+  }
+
   async importTokenToCompendium(tokenArray, event, isBatch = false) {
     // Fix #C5: see importItemToCompendium for rationale.
     if (!isBatch) this.noWorldImport = false
 
-    console.log("Importing token to compendium", tokenArray, event, isBatch)
+    BeneosUtility.debugMessage("Importing token to compendium", tokenArray, event, isBatch)
 
     // Create the "Beneos Spells" folder if it doesn't exist
     const actorsFolder = game.folders.getName("Beneos Actors") || await Folder.create({
@@ -1151,18 +1443,18 @@ export class BeneosCloud {
             // Search for existing journal entry
             let existingJournal = journalRecords.find(j => j.name == journal.name && j.img == journal.img)
             if (existingJournal) {
-              console.log("Deleting existing journal", existingJournal._id)
+              BeneosUtility.debugMessage("Deleting existing journal", existingJournal._id)
               try {
                 await JournalEntry.deleteDocuments([existingJournal._id], { pack: "world.beneos_module_journal" })
               } catch (err) {
-                console.log("Error deleting existing journal", err)
+                console.warn("[Beneos Cloud] Error deleting existing journal", err)
               }
             }
             newJournal = await journalPack.importDocument(journal);
             await newJournal.setFlag("world", "beneos", { tokenkey: tokenKey, fullId: fullId, idx: i, installDate: tNow })
           }
         } else {
-          console.log("No journal data for token", tokenKey)
+          BeneosUtility.debugMessage("No journal data for token", tokenKey)
         }
 
         if (actorData) {
@@ -1173,11 +1465,11 @@ export class BeneosCloud {
             // Search if we have already an actor with the same name in the compendium
             let existingActor = actorRecords.find(a => a.name == actor.name && a.img == actorData.img)
             if (existingActor) {
-              console.log("Deleting existing actor", existingActor._id, packName)
+              BeneosUtility.debugMessage("Deleting existing actor", existingActor._id, packName)
               try {
                 await Actor.implementation.deleteDocuments([existingActor._id], { pack: packName });
               } catch (err) {
-                console.log("Error deleting existing actor", err)
+                console.warn("[Beneos Cloud] Error deleting existing actor", err)
               }
             }
             // And then create it again
@@ -1200,17 +1492,39 @@ export class BeneosCloud {
                 fullId: fullId,
                 number: i + 1
               }
-              // And import the item into the "Beneos Spells" folder, except if in install *ALL* mode
-              if (!this.noWorldImport && i == 0) { // Only import the first token of the serie
+              // World import — only the first token of a multi-variant series.
+              // Two paths depending on whether this is a first install or an update:
+              //   - First install: import a fresh world copy and stamp originalName.
+              //   - Update: propagate to existing world actors (and scene tokens),
+              //     skipping anything the DM has renamed.
+              if (!this.noWorldImport && i == 0) {
                 let tokenDb = game.beneos.databaseHolder.getTokenDatabaseInfo(tokenKey)
                 let folderName = tokenDb?.properties?.type[0] ?? "Unknown"
-                // Upper first letter
                 folderName = folderName.charAt(0).toUpperCase() + folderName.slice(1)
-                // Create the sub-folder if it doesn't exist
                 let subFolder = game.folders.getName(folderName) || await Folder.create({
                   name: folderName, type: "Actor", folder: actorsFolder.id
                 })
-                await game.actors.importFromCompendium(actorPack, imported.id, { folder: subFolder.id });
+                const existingWorldActors = game.actors.filter(a =>
+                  a.getFlag("world", "beneos")?.fullId === fullId
+                )
+                if (existingWorldActors.length === 0) {
+                  // First install: drop a fresh world copy and stamp the
+                  // original compendium name so future updates can verify
+                  // the world actor hasn't been renamed by the DM.
+                  const newWorldActor = await game.actors.importFromCompendium(actorPack, imported.id, { folder: subFolder.id });
+                  if (newWorldActor) {
+                    const flag = newWorldActor.getFlag("world", "beneos") || {}
+                    await newWorldActor.setFlag("world", "beneos", {
+                      ...flag,
+                      originalName: imported.name,
+                      installationDate: Date.now()
+                    })
+                  }
+                } else {
+                  // Update: cascade the new compendium data to matching
+                  // world actors and their scene tokens.
+                  await this._propagateTokenUpdateToWorld(fullId, imported, existingWorldActors)
+                }
               }
             } else {
               console.error("BeneosModule: Token actor import failed for", tokenKey, fullId)
@@ -1222,13 +1536,13 @@ export class BeneosCloud {
             console.error("BeneosModule: Error creating actor for", tokenKey, actorData?.name)
           }
         } else {
-          console.log("No actor data for token", tokenKey)
+          BeneosUtility.debugMessage("No actor data for token", tokenKey)
           ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.TokenInstallError", { key: tokenKey }))
         }
       }
 
       let toSave = JSON.stringify(BeneosUtility.beneosTokens)
-      // DEBUG : console.log("Saving data :", toSave)
+      // DEBUG : BeneosUtility.debugMessage("Saving data :", toSave)
       await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', toSave) // Save the token config !
 
       if (!isBatch) { // Lock/Unlock only in single install mode
@@ -1258,11 +1572,11 @@ export class BeneosCloud {
       ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Notification.BatchEmpty"))
       return;
     }
-    console.log("Batch installing assets", assetList, this.toInstall)
+    BeneosUtility.debugMessage("Batch installing assets", assetList, this.toInstall)
     // Loop thru the assetList and install them
     for (let key in assetList) {
       let asset = assetList[key]
-      console.log("Batch installing asset", asset)
+      BeneosUtility.debugMessage("Batch installing asset", asset)
       if (asset.type == "actor" || asset.type == "token") {
         this.importTokenFromCloud(asset.key, undefined, true)
       } else if (asset.type == "item") {
@@ -1300,7 +1614,7 @@ export class BeneosCloud {
         BeneosSearchEngineLauncher.closeAndSave()
         this.noWorldImport = false // Reset the no world import flag
         setTimeout(() => {
-          console.log("Rendering search engine after batch import")
+          BeneosUtility.debugMessage("Rendering search engine after batch import")
           new BeneosSearchEngineLauncher().render()
         }, 100)
       }, 400)
@@ -1329,7 +1643,7 @@ export class BeneosCloud {
           // file uploads, compendium writes and search-engine re-render) has settled.
           await game.beneos.cloud.importTokenToCompendium({ [`${tokenKey}`]: data.data.token }, event, isBatch)
         } else {
-          console.log("Error in importing Token from BeneosCloud !", data, tokenKey)
+          console.warn("[Beneos Cloud] Error in importing Token from BeneosCloud", data, tokenKey)
           ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.ImportErrorToken"))
           // Fix #B-1d: drop any pending canvas drops on server reject; user
           // already saw the generic error notification, no second one needed.
@@ -1372,7 +1686,7 @@ export class BeneosCloud {
           game.beneos.cloud.importAsset = "Item"
           await game.beneos.cloud.importItemToCompendium({ [`${itemKey}`]: data.data.item }, event, isBatch)
         } else {
-          console.log("Error in importing Item from BeneosCloud !", data, itemKey)
+          console.warn("[Beneos Cloud] Error in importing Item from BeneosCloud", data, itemKey)
           ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.ImportErrorItem"))
           // Wave B-9-fix-41: clear any pending actor-sheet drops for this key
           // so they don't dangle waiting for an install that never happened.
@@ -1409,7 +1723,7 @@ export class BeneosCloud {
           game.beneos.cloud.importAsset = "Spell"
           await game.beneos.cloud.importSpellToCompendium({ [`${spellKey}`]: data.data.spell }, event, isBatch)
         } else {
-          console.log("Error in importing Spell from BeneosCloud !", data, spellKey)
+          console.warn("[Beneos Cloud] Error in importing Spell from BeneosCloud", data, spellKey)
           ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.ImportErrorSpell"))
           // Wave B-9-fix-41: drop pending actor-sheet drops on failure.
           game.beneos.cloud.discardPendingItemDrops?.(spellKey)
@@ -1445,40 +1759,40 @@ export class BeneosCloud {
 
       if (data.result == 'OK') {
         // Dump result for debug
-        console.log("Battlemap data from BeneosCloud", data)
+        BeneosUtility.debugMessage("Battlemap data from BeneosCloud", data)
         // The field data.data.download_url contains the URL to download the battlemap file
         if (data.data?.download_url) {
           // Convertir l'URL /download/ en /download-fetch/ pour utiliser X-Accel-Redirect
           let fetchUrl = data.data.download_url.replace('/download/', '/download-fetch/')
-          console.log("Downloading battlemap from URL", fetchUrl)
+          BeneosUtility.debugMessage("Downloading battlemap from URL", fetchUrl)
 
           // Create the directory structure if it doesn't exist
           try {
             await FilePicker.createDirectory("data", "beneos_assets", {});
           } catch (err) {
-            console.log("Directory beneos_assets already exists")
+            BeneosUtility.debugMessage("Directory beneos_assets already exists")
           }
           try {
             await FilePicker.createDirectory("data", "beneos_assets/cloud", {});
           } catch (err) {
-            console.log("Directory beneos_assets/cloud already exists")
+            BeneosUtility.debugMessage("Directory beneos_assets/cloud already exists")
           }
           try {
             await FilePicker.createDirectory("data", "beneos_assets/cloud/battlemaps", {});
           } catch (err) {
-            console.log("Directory beneos_assets/cloud/battlemaps already exists")
+            BeneosUtility.debugMessage("Directory beneos_assets/cloud/battlemaps already exists")
           }
 
           // Download the file from the URL using fetch-optimized route
           let fileResponse = await fetch(fetchUrl);
-          console.log("File response", fileResponse)
+          BeneosUtility.debugMessage("File response", fileResponse)
 
           if (!fileResponse.ok) {
             throw new Error(`Download failed: ${fileResponse.status} ${fileResponse.statusText}`);
           }
 
           let blob = await fileResponse.blob();
-          console.log("Downloaded blob size:", blob.size);
+          BeneosUtility.debugMessage("Downloaded blob size:", blob.size);
 
           // Determine the file type from the filename
           let fileType = filename.split('.').pop().toLowerCase();
@@ -1492,12 +1806,12 @@ export class BeneosCloud {
           if (isZipFile) {
             uploadFilename = filename.replace(/\.zip$/i, '.webm');
             mimeType = 'video/webm';
-            console.log(`Renaming ZIP file: ${filename} -> ${uploadFilename}`);
+            BeneosUtility.debugMessage(`Renaming ZIP file: ${filename} -> ${uploadFilename}`);
           }
 
           // Create a File object
           let file = new File([blob], uploadFilename, { type: mimeType });
-          console.log("File object created:", file.name, file.size, file.type);
+          BeneosUtility.debugMessage("File object created:", file.name, file.size, file.type);
 
           // Fix #E4: previous code had a duplicated `.FilePicker` segment
           // (`FilePicker.implementation.FilePicker.upload`) which threw silently
@@ -1511,7 +1825,7 @@ export class BeneosCloud {
               {},
               { notify: false }
             );
-            console.log("Upload result", uploadResult);
+            BeneosUtility.debugMessage("Upload result", uploadResult);
 
             if (isZipFile) {
               ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.BattlemapSavedRenamed", { newName: uploadFilename, oldName: filename }));
@@ -1525,15 +1839,15 @@ export class BeneosCloud {
           }
 
         } else {
-          console.log("Error in downloading Battlemap from BeneosCloud, no download URL provided !", data, filename)
+          console.warn("[Beneos Cloud] Error in downloading Battlemap from BeneosCloud, no download URL provided", data, filename)
           ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.BattlemapNoUrl"))
         }
       } else {
-        console.log("Error in importing Battlemap from BeneosCloud !", data, filename)
+        console.warn("[Beneos Cloud] Error in importing Battlemap from BeneosCloud", data, filename)
         ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.ImportErrorBattlemap"))
       }
     } catch (err) {
-      console.log("Error in downloading Battlemap from BeneosCloud", err)
+      console.warn("[Beneos Cloud] Error in downloading Battlemap from BeneosCloud", err)
       ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.ImportErrorBattlemap"))
     } finally {
       // Fix #E3: release the idempotency lock regardless of outcome.

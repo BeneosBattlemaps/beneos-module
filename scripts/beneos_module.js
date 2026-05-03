@@ -111,6 +111,8 @@ Hooks.once('ready', () => {
 
   /********************************************************************************** */
   Hooks.on('updateToken', (token, changeData) => {
+    // Skip texture-only updates: the tour system swaps token images at runtime,
+    // and we don't want those swaps to trigger HP/variant downstream logic.
     if (!token || !game.user.isGM || !BeneosUtility.isBeneosModule() || !canvas.ready || changeData.texture?.src != undefined) {
       BeneosUtility.debugMessage("[BENEOS TOKENS] Exit condition")
       return
@@ -226,8 +228,11 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
   const beneosVariantsDisplay = await foundry.applications.handlebars.renderTemplate('modules/beneos-module/templates/beneosvariants.html',
     { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getBeneosTokenDataPath(), beneosVariantsHUD, current: tokenConfig.number })
   $(html).find('div.right').append(beneosVariantsDisplay).click((event) => {
-    let beneosClickedButton = event.target.parentElement;
+    // div.right also hosts Foundry-Core HUD buttons (Add to Combat, etc.). Bail out
+    // if our variants box isn't in this render — let core handlers run untouched.
     let beneosTokenButton = $(html).find('.beneos-token-variants')[0];
+    if (!beneosTokenButton) return;
+    let beneosClickedButton = event.target.parentElement;
 
     if (beneosClickedButton === beneosTokenButton) {
       beneosTokenButton.classList.add('active');

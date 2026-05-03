@@ -81,5 +81,22 @@
       <i class="fa-brands fa-patreon"></i>
       <span>{{localize "BENEOS.Cloud.Footer.Patreon"}}</span>
     </button>
+    {{!-- Visual divider — splits the "leaves the app" external link
+         cluster (Discord / Webshop / Patreon) from the in-app Settings
+         action that lives right after it. --}}
+    <span class="bc-footer-divider" aria-hidden="true"></span>
+    {{!-- Settings button — opens BeneosCloudSettingsV2 modal. Uses
+         fa-sliders to differentiate from the existing fa-gear in the
+         AccountSettings button on the left. Intentionally NOT carrying
+         the .bc-footer-link class — Settings is an in-app primary
+         action and should hold its full brightness even at rest, while
+         the external links next to it stay dimmed until hover. --}}
+    <button type="button"
+            class="bc-footer-button bc-footer-button-settings"
+            data-action="openSettings"
+            data-tooltip="{{localize 'BENEOS.Cloud.Footer.SettingsTooltip'}}">
+      <i class="fa-solid fa-sliders"></i>
+      <span>{{localize "BENEOS.Cloud.Footer.Settings"}}</span>
+    </button>
   </div>
 </footer>

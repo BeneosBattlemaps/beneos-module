@@ -174,7 +174,7 @@ export class BeneosTableTop {
   /******************************************************************************** */
   static preDeleteDrawing(drawing, options, data) {
     if (drawing.getFlag("beneos-module", "beneos-area-mode") || drawing.getFlag("beneos-module", "user-view")) {
-      ui.notifications.info("Scene boundary or user view activated : you can't delete this drawing")
+      ui.notifications.info(game.i18n.localize("BENEOS.Notifications.TableTop.CannotDeleteBoundary"))
       return false;
     }
     let precText = BeneosTableTop.titleCache[drawing.id]
@@ -222,7 +222,7 @@ export class BeneosTableTop {
         await rect.setFlag("beneos-module", "beneos-area-mode", false)
         await canvas.scene.deleteEmbeddedDocuments('Drawing', [rect.id]);
       }
-      ui.notifications.info("Scene boundary disabled")
+      ui.notifications.info(game.i18n.localize("BENEOS.Notifications.TableTop.BoundaryDisabled"))
     } else {
       sceneData.sceneBoundary = true
       await game.canvas.scene.setFlag("beneos-module", "beneos-data", sceneData)
@@ -241,7 +241,7 @@ export class BeneosTableTop {
         }
       }
       BeneosTableTop.sendPositionMessage()
-      ui.notifications.info("Scene boundary enabled")
+      ui.notifications.info(game.i18n.localize("BENEOS.Notifications.TableTop.BoundaryEnabled"))
     }
   }
 
@@ -255,10 +255,10 @@ export class BeneosTableTop {
     }
     if (canvas.scene.tokenVision) {
       await canvas.scene.update({ 'tokenVision': false });
-      ui.notifications.info("Token Vision has been disabled")
+      ui.notifications.info(game.i18n.localize("BENEOS.Notifications.TableTop.VisionDisabled"))
     } else {
       await canvas.scene.update({ 'tokenVision': true });
-      ui.notifications.info("Token Vision has been enabled")
+      ui.notifications.info(game.i18n.localize("BENEOS.Notifications.TableTop.VisionEnabled"))
     }
   }
 
@@ -310,7 +310,7 @@ export class BeneosTableTop {
       await d[0].setFlag('beneos-module', 'user-view', data.userId);
     }
     BeneosTableTop.sendPositionMessage()
-    ui.notifications.info("Control player view enabled")
+    ui.notifications.info(game.i18n.localize("BENEOS.Notifications.TableTop.PlayerViewEnabled"))
   }
 
   /********************************************************************************** */
@@ -328,7 +328,7 @@ export class BeneosTableTop {
         }
       }
       BeneosTableTop.sendPositionMessage()
-      ui.notifications.info("Control player view disabled")
+      ui.notifications.info(game.i18n.localize("BENEOS.Notifications.TableTop.PlayerViewDisabled"))
     } else {
       game.socket.emit("module.beneos-module", {
         name: "msg_request_user_view",
@@ -360,7 +360,7 @@ export class BeneosTableTop {
     let ratioStr = this.tableTopConfig.autoScaleTVRatio // Was: game.settings.get("beneos-module", "beneos-tt-auto-scale-ratio");
     // ratioStr is a string like "X/Y", so get the X and Y values
     if (!ratioStr.match("/")) {
-      ui.notifications.error("Please set the ratio of the screen in the module settings, assuming 16/9")
+      ui.notifications.error(game.i18n.localize("BENEOS.Notifications.TableTop.MissingRatio"))
       ratioStr = "16/9"
     }
     let ratio = ratioStr.split("/");
@@ -373,7 +373,7 @@ export class BeneosTableTop {
   static computePhysicalScale() {
     let screenWidth = Number(this.tableTopConfig.autoScaleTVWidthDiagonal) // Was: game.settings.get("beneos-module", "beneos-tt-auto-scale-width-diagonal");
     if (!screenWidth) {
-      ui.notifications.error("Please set the screen width/diagonal with a correct value in the module settings")
+      ui.notifications.error(game.i18n.localize("BENEOS.Notifications.TableTop.MissingScreen"))
       return
     }
     if (screenWidth < 100) { // Diagonal in inches
@@ -381,7 +381,7 @@ export class BeneosTableTop {
     }
     let miniatureSize = Number(this.tableTopConfig.miniatureSize) || 25 // Was:  game.settings.get("beneos-module", "beneos-tt-auto-scale-miniature-size");
     if (miniatureSize <= 5) {
-      ui.notifications.error("Please set the miniature size in the module settings")
+      ui.notifications.error(game.i18n.localize("BENEOS.Notifications.TableTop.MissingMiniature"))
       return
     }
     let squareSize = screenWidth / miniatureSize;

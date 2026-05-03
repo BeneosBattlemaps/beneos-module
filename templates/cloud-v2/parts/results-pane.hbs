@@ -88,11 +88,25 @@
              (New / Update / Rest). The group classification happens in
              #buildCards based on isNew/isUpdate + hasActiveFilter. --}}
         {{#if card.divider}}
-          {{!-- Wave B-8i-1: divider is purely a section label now. The
-               bulk-install actions all live in the kebab menu in the
-               results-meta header above. --}}
+          {{!-- Y4-redo: section divider doubles as the natural home for
+               the per-group bulk-install master button. Label stays on
+               the left, button (when applicable) sits on the right —
+               directly above the cards it acts on. New/Update groups
+               get colour-coded action; "regular" group never gets one
+               because it would target the entire backlog inadvertently
+               (that's what the kebab-menu's "Install entire backlog"
+               option is for, with its own stronger confirmation). --}}
           <div class="bc-result-divider bc-divider-{{card.groupKind}}">
             <span class="bc-divider-label">{{card.dividerLabel}}</span>
+            {{#if card.dividerBulkAction}}
+              <button type="button"
+                      class="bc-bulk-prominent bc-bulk-prominent-{{card.dividerBulkAction.variant}}"
+                      data-bulk-group="{{card.dividerBulkAction.group}}"
+                      data-tooltip="{{card.dividerBulkAction.label}}">
+                <i class="{{card.dividerBulkAction.icon}}"></i>
+                <span>{{card.dividerBulkAction.label}}</span>
+              </button>
+            {{/if}}
           </div>
         {{/if}}
         <article class="bc-result-card bc-card-group-{{card.groupKind}}{{#if card.isInstalled}} bc-card-installed{{/if}}{{#if card.isCloudAvailable}} bc-card-cloud{{/if}}{{#if card.isInstalling}} bc-card-installing{{/if}}{{#if card.justInstalled}} bc-card-just-installed{{/if}}{{#if card.isSelected}} bc-card-selected{{/if}}"
@@ -135,66 +149,21 @@
               {{/if}}
             </div>
             <div class="bc-card-tags">
-              {{!-- Wave B-8e: clickable tags. Each tag carries
-                   data-filter-type + data-filter-value so the click
-                   listener can dispatch the right filter mutation.
-                   data-tooltip is added only when the tag has lore
-                   text in commonData.hover (Foundry hides empty
-                   tooltips automatically anyway). --}}
-              {{#if card.crLabel}}
-                <span class="bc-tag bc-tag-cr"
-                      data-filter-type="cr" data-filter-value="{{card.crFilter}}">CR {{card.crLabel}}</span>
-              {{/if}}
-              {{#if card.rarity}}
-                <span class="bc-tag bc-tag-rarity"
-                      {{#if card.rarityTooltip}}data-tooltip="{{card.rarityTooltip}}"{{/if}}
-                      data-filter-type="rarity" data-filter-value="{{card.rarityFilter}}">{{card.rarity}}</span>
-              {{/if}}
-              {{!-- Wave B-9-fix-21: origin icon removed from result
-                   cards. At 14px the icon read as visual noise; users
-                   parse the origin name instantly anyway. The icon
-                   stays prominent in the drawer detail section. --}}
-              {{#if card.itemOriginLabel}}
-                <span class="bc-tag bc-tag-origin"
-                      {{#if card.originTooltip}}data-tooltip="{{card.originTooltip}}"{{/if}}
-                      data-filter-type="origin" data-filter-value="{{card.originFilter}}">{{card.itemOriginLabel}}</span>
-              {{/if}}
-              {{#if card.itemTypeLabel}}
-                <span class="bc-tag"
-                      {{#if card.itemTypeTooltip}}data-tooltip="{{card.itemTypeTooltip}}"{{/if}}
-                      data-filter-type="item_type" data-filter-value="{{card.itemTypeFilter}}">{{card.itemTypeLabel}}</span>
-              {{/if}}
-              {{#if card.typeLabel}}
-                <span class="bc-tag"
-                      {{#if card.typeTooltip}}data-tooltip="{{card.typeTooltip}}"{{/if}}
-                      data-filter-type="type" data-filter-value="{{card.typeFilter}}">{{card.typeLabel}}</span>
-              {{/if}}
-              {{!-- Wave B-8h-3: bmap resolution alongside the type tag --}}
-              {{#if card.gridLabel}}
-                <span class="bc-tag"
-                      data-filter-type="grid" data-filter-value="{{card.gridFilter}}">{{card.gridLabel}}</span>
-              {{/if}}
-              {{!-- Wave B-8e-fix-5: Level + School are the primary
-                   identifiers a GM scans for when picking a spell;
-                   they belong in the prominent tag row. Casting Time
-                   and Spell Type are secondary metadata and live in
-                   the muted stats line below. --}}
-              {{#if card.level}}
-                <span class="bc-tag"
-                      data-filter-type="level" data-filter-value="{{card.levelFilter}}">{{localize "BENEOS.Cloud.Card.LevelShort"}} {{card.level}}</span>
-              {{/if}}
-              {{#if card.school}}
-                <span class="bc-tag"
-                      data-filter-type="school" data-filter-value="{{card.schoolFilter}}">{{card.school}}</span>
-              {{/if}}
-              {{#if card.faction}}
-                <span class="bc-tag"
-                      {{#if card.factionTooltip}}data-tooltip="{{card.factionTooltip}}"{{/if}}
-                      data-filter-type="faction" data-filter-value="{{card.factionFilter}}">{{card.faction}}</span>
-              {{/if}}
-              {{#if card.source}}
-                <span class="bc-tag bc-tag-source"
-                      data-filter-type="source" data-filter-value="{{card.sourceFilter}}">{{card.source}}</span>
+              {{!-- Wave B-9-fix-Y2: card chips render through a unified
+                   tag-descriptor array built in #enrichCard. The tag row
+                   is capped at the first N descriptors (per-card visible
+                   limit) and overflow surfaces as a "+N more" chip whose
+                   tooltip lists the hidden labels. Behaviour for clicks /
+                   data-filter-* attributes is unchanged from the previous
+                   per-type if-blocks — every descriptor carries the same
+                   filterType / filterValue pair the click handler reads. --}}
+              {{#each card.visibleTagDescriptors as |tag|}}
+                <span class="bc-tag{{#if tag.className}} {{tag.className}}{{/if}}"
+                      {{#if tag.tooltip}}data-tooltip="{{tag.tooltip}}"{{/if}}
+                      data-filter-type="{{tag.filterType}}" data-filter-value="{{tag.filterValue}}">{{tag.label}}</span>
+              {{/each}}
+              {{#if card.moreTagsCount}}
+                <span class="bc-tag bc-tag-more" data-tooltip="{{card.moreTagsTooltip}}">{{card.moreTagsLabel}}</span>
               {{/if}}
             </div>
             {{!-- Wave B-8e-fix-4 → fix-5: stats row carries the muted
@@ -241,12 +210,19 @@
                 {{localize "BENEOS.Cloud.Card.Installing"}}
               </span>
             {{else if card.isInstalled}}
-              <span class="bc-state-pill bc-state-installed" data-tooltip="{{localize 'BENEOS.Cloud.Card.InstalledTooltip'}}">
+              {{!-- bc-state-update-pending swaps the pill from green to
+                   the same blue accent the update-button uses, so a quick
+                   scroll through the result list immediately surfaces
+                   "installed but update available" cards. After the
+                   update runs and the dataset re-enriches with
+                   isUpdate=false, the class is gone and the pill goes
+                   back to standard green. --}}
+              <span class="bc-state-pill bc-state-installed{{#if card.isUpdate}} bc-state-update-pending{{/if}}" data-tooltip="{{localize 'BENEOS.Cloud.Card.InstalledTooltip'}}">
                 <i class="fa-solid fa-circle-check"></i>
                 {{localize "BENEOS.Cloud.Card.Installed"}}
               </span>
               {{#if card.isUpdate}}
-                <button type="button" class="bc-card-button bc-card-button-primary bc-action-install"
+                <button type="button" class="bc-card-button bc-card-button-primary bc-action-install bc-action-update"
                         data-asset-key="{{card.key}}"
                         data-asset-type="{{card.assetType}}"
                         data-tooltip="{{localize 'BENEOS.Cloud.Card.UpdateTooltip'}}">

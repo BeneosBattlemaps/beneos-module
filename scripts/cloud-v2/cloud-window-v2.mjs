@@ -28,6 +28,7 @@
 
 import { BeneosUtility } from "../beneos_utility.js"
 import { BeneosCloudLogin } from "../beneos_cloud.js"
+import { BeneosStartSetupTour } from "../beneos_tours.js"
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
 
@@ -46,7 +47,7 @@ const V2_FILTER_DEFS = [
   { types: ["token"], selector: "faction-selector",       prop: "faction"       },
   { types: ["token"], selector: "campaign-selector",      prop: "campaign"      },
   { types: ["token"], selector: "token-types",            prop: "type"          },
-  { types: ["token"], selector: "installation-selector",  prop: "installed"     },
+  { types: ["token", "item", "spell"], selector: "installation-selector",  prop: "installed"     },
   { types: ["token"], selector: "token-fight-style",      prop: "fightingstyle" },
   { types: ["token"], selector: "token-purpose",          prop: "purpose"       },
   // Battlemaps
@@ -93,7 +94,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
 
   static DEFAULT_OPTIONS = {
     id: "beneos-cloud-window-v2",
-    classes: ["beneos-cloud-app", "beneos_module"],
+    classes: ["beneos-cloud-app", "beneos_module", "beneos_search_engine"],
     tag: "section",
     window: {
       title: "BENEOS.Cloud.WindowTitle",
@@ -109,6 +110,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       switchTab:               BeneosCloudWindowV2._onSwitchTab,
       openLogin:               BeneosCloudWindowV2._onOpenLogin,
       openCloudSettings:       BeneosCloudWindowV2._onOpenCloudSettings,
+      openSettings:            BeneosCloudWindowV2._onOpenSettings,
       resetFilters:            BeneosCloudWindowV2._onResetFilters,
       switchView:              BeneosCloudWindowV2._onSwitchView,
       openExternal:            BeneosCloudWindowV2._onOpenExternal
@@ -122,14 +124,86 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     footer:  { template: "modules/beneos-module/templates/cloud-v2/parts/status-footer.hbs" }
   }
 
-  // Wave B-9-fix-45: title bar shows the module version next to the
-  // app name so the system info has a stable home in the header
-  // (footer is now reserved for connection state + brand links).
   get title() {
-    const base = game.i18n.localize("BENEOS.Cloud.WindowTitle") || "Beneos Cloud"
-    const moduleId = BeneosUtility?.moduleID?.() || "beneos-module"
-    const version = game.modules?.get?.(moduleId)?.version
-    return version ? `${base} · v${version}` : base
+    return game.i18n.localize("BENEOS.Cloud.WindowTitle") || "Beneos Cloud"
+  }
+
+  // Total number of curated easter-egg quotes shipped in lang/en.json under
+  // BENEOS.Cloud.Quotes.NNN. Translators may localize subsets — missing keys
+  // gracefully fall through to English via Foundry's i18n fallback.
+  static QUOTE_COUNT = 94
+
+  // How often the title-bar quote rotates while the window is open.
+  static QUOTE_CYCLE_MS = 20000
+
+  // Pick a fresh random quote different from the last one shown. Returns null
+  // if nothing localizes (no en.json keys → no easter egg, no error).
+  #pickRandomQuote() {
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const idx = Math.floor(Math.random() * BeneosCloudWindowV2.QUOTE_COUNT) + 1
+      const key = `BENEOS.Cloud.Quotes.${String(idx).padStart(3, "0")}`
+      const text = game.i18n.localize(key)
+      if (text && text !== key && text !== this._lastQuoteText) {
+        this._lastQuoteText = text
+        return text
+      }
+    }
+    return null
+  }
+
+  // Insert the quote into the window header next to the title text and start
+  // the rotation. Foundry's ApplicationV2 renders <h1 class="window-title">
+  // {this.title}</h1>; we append a wrapper span with overflow:hidden so the
+  // inner text can animate vertically without disturbing the header layout.
+  #injectTitleQuote() {
+    const titleEl = this.element?.querySelector(".window-title")
+    if (!titleEl) return
+    if (titleEl.querySelector(".bc-window-quote")) return
+    const first = this.#pickRandomQuote()
+    if (!first) return
+    const wrap = document.createElement("span")
+    wrap.className = "bc-window-quote"
+    const inner = document.createElement("span")
+    inner.className = "bc-window-quote-text"
+    inner.textContent = first
+    wrap.appendChild(inner)
+    titleEl.appendChild(wrap)
+    this.#startQuoteCycle()
+  }
+
+  #startQuoteCycle() {
+    if (this._quoteCycleHandle) clearInterval(this._quoteCycleHandle)
+    this._quoteCycleHandle = setInterval(() => this.#cycleQuote(), BeneosCloudWindowV2.QUOTE_CYCLE_MS)
+  }
+
+  #stopQuoteCycle() {
+    if (this._quoteCycleHandle) {
+      clearInterval(this._quoteCycleHandle)
+      this._quoteCycleHandle = null
+    }
+  }
+
+  // Slide the current quote down out of the title-bar viewport, swap to the
+  // next quote (positioned just above the viewport), and slide it down into
+  // place. Reads as a slot-machine reel scrolling top→bottom.
+  #cycleQuote() {
+    const inner = this.element?.querySelector(".bc-window-quote .bc-window-quote-text")
+    if (!inner) {
+      this.#stopQuoteCycle()
+      return
+    }
+    const next = this.#pickRandomQuote()
+    if (!next) return
+    inner.classList.add("is-leaving")
+    setTimeout(() => {
+      inner.textContent = next
+      inner.classList.remove("is-leaving")
+      inner.classList.add("is-entering")
+      // Force layout flush so the transition runs from the entering-state
+      // back to the default state in the next paint frame.
+      void inner.offsetWidth
+      inner.classList.remove("is-entering")
+    }, 950)
   }
 
   /** @inheritdoc */
@@ -272,6 +346,23 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // still parse correctly. Sort ascending by number — the user's
       // pack catalogue already runs from 1 to ~108 so numeric order
       // matches publication chronology.
+      // Show-filter "Only new" / "Only updated" only render when the
+      // dataset actually has anything flagged. Single pass over the
+      // unfiltered catalog of the current asset type; bail out early
+      // once both flags hit. Generalised across token / item / spell
+      // (bmap stays out — bmaps use the Moulinette pipeline, no isNew
+      // / isUpdate flags in that schema).
+      let hasNewAssets = false
+      let hasUpdatedAssets = false
+      if (this.searchMode === "token" || this.searchMode === "item" || this.searchMode === "spell") {
+        const dbHolder = game.beneos?.databaseHolder
+        const all = dbHolder?.getAll?.(this.searchMode) || {}
+        for (const data of Object.values(all)) {
+          if (data?.isNew) hasNewAssets = true
+          if (data?.isUpdate) hasUpdatedAssets = true
+          if (hasNewAssets && hasUpdatedAssets) break
+        }
+      }
       const releaseList = {}
       if (this.searchMode === "bmap") {
         const dbHolder = game.beneos?.databaseHolder
@@ -334,6 +425,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // Pre-computed flag for the template, since Foundry's Handlebars
         // doesn't ship a guaranteed `or` helper.
         biomeHasAny: biomeChips.length > 0 || biomeAvailable.length > 0,
+        hasNewAssets,
+        hasUpdatedAssets,
         crMinLabel, crMaxLabel, crRangeLabel,
         crMinIndex: crMinIndex >= 0 ? crMinIndex : 0,
         crMaxIndex: crMaxIndex >= 0 ? crMaxIndex : crStepsMax,
@@ -565,9 +658,17 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // "update") so we can render a discreet "Install all N" button on
     // the divider. The "regular" group never gets a bulk button — the
     // user shouldn't accidentally pull the entire backlog.
+    // When the GM has explicitly filtered to "Only New" or "Only Updated"
+    // we WANT the matching group classification to survive — the user is
+    // signalling "this is the slice I care about", and demoting update→
+    // regular under that filter would (a) hide the group divider so the
+    // header reads "ALL ASSETS" instead of "UPDATED", and (b) leave
+    // groupBulkKeys.update empty so the bulk-install button can't surface.
+    const showFilterValue = this.element?.querySelector?.("#installation-selector")?.value || ""
+    const keepUpdateGroup = showFilterValue === "updated"
     const enriched = entries.map(([key, data]) => {
       const card = this.#enrichCard(type, key, data)
-      if (hasActiveFilter && card.groupKind === "update") {
+      if (hasActiveFilter && card.groupKind === "update" && !keepUpdateGroup) {
         card.groupKind = "regular"
       }
       return card
@@ -607,16 +708,37 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         }
       }
     }
+    // Y4-redo: the prominent "Install all N" bulk-action lives on the
+    // group divider (right side of the heading row) — but ONLY when the
+    // GM has explicitly filtered down to that group via the show-filter.
+    // Mixing modes ("Any" filter shows New + Update + Regular sections,
+    // each with its own bulk button) felt too eager — the user was seeing
+    // a master button inviting "install all" without the filter context
+    // making clear which slice it targets. Now the button only surfaces
+    // when the filter and the group line up unambiguously.
     const out = []
     let lastGroup = null
     for (const card of enriched) {
       if (card.groupKind !== lastGroup) {
         card.divider = true
         card.dividerLabel = this.#groupHeading(card.groupKind)
-        // Wave B-8i-1: divider no longer carries the bulk-install button —
-        // the consolidated kebab menu in the results header handles all
-        // three options ("matching", "new", "update") in one place. Keep
-        // the divider purely as a section label.
+        if (showFilterValue === "new" && card.groupKind === "new" && groupBulkKeys.new.length) {
+          card.dividerBulkAction = {
+            variant: "new",
+            group: "new",
+            count: groupBulkKeys.new.length,
+            label: game.i18n.format("BENEOS.Cloud.Results.InstallAllNewN", { count: groupBulkKeys.new.length }),
+            icon: "fa-solid fa-plus"
+          }
+        } else if (showFilterValue === "updated" && card.groupKind === "update" && groupBulkKeys.update.length) {
+          card.dividerBulkAction = {
+            variant: "update",
+            group: "update",
+            count: groupBulkKeys.update.length,
+            label: game.i18n.format("BENEOS.Cloud.Results.InstallAllUpdateN", { count: groupBulkKeys.update.length }),
+            icon: "fa-solid fa-rotate"
+          }
+        }
         lastGroup = card.groupKind
       }
       out.push(card)
@@ -816,6 +938,151 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       }
     }
 
+    // Build a single, ordered tag-descriptor array so the template can
+    // render the chip row with one {{#each}} loop and a per-card visible
+    // limit ("+X more" overflow indicator). Each descriptor carries the
+    // display label, click-filter wiring, optional tooltip, and an
+    // optional className for type-specific tag styling. Order mirrors
+    // the original mode-specific layout (CR / rarity / origin / item type
+    // / type / grid / level / school / faction / source) so the visible
+    // first-N chips look identical to the previous design when there are
+    // few tags.
+    const tagDescriptors = []
+    const pushTag = (descriptor) => {
+      if (!descriptor) return
+      // Coerce + trim so whitespace-only labels, accidental Array→String
+      // joins ("a,b"), and stringified null/undefined ("null") all get
+      // dropped instead of rendering as empty / weird chips. Array-typed
+      // fields (faction, etc.) are exploded by their own callers below
+      // BEFORE this helper sees them — by the time we hit pushTag, label
+      // should already be a single primitive value.
+      const lbl = String(descriptor.label ?? "").trim()
+      if (!lbl || lbl === "null" || lbl === "undefined") return
+      tagDescriptors.push({ ...descriptor, label: lbl })
+    }
+    const crLabelForTag = BeneosCloudWindowV2.#formatCR(props.cr)
+    if (props.cr !== undefined && props.cr !== null) {
+      pushTag({
+        label: `CR ${crLabelForTag}`,
+        className: "bc-tag-cr",
+        filterType: "cr",
+        filterValue: props.cr,
+        tooltip: null
+      })
+    }
+    if (props.rarity) {
+      pushTag({
+        label: props.rarity,
+        className: "bc-tag-rarity",
+        filterType: "rarity",
+        filterValue: props.rarity,
+        tooltip: this.#getCardTagTooltip("rarity", props.rarity)
+      })
+    }
+    if (itemOriginLabel) {
+      pushTag({
+        label: itemOriginLabel,
+        className: "bc-tag-origin",
+        filterType: "origin",
+        filterValue: props.origin || null,
+        tooltip: this.#getCardTagTooltip("origin", props.origin)
+      })
+    }
+    if (itemTypeLabel) {
+      pushTag({
+        label: itemTypeLabel,
+        className: null,
+        filterType: "item_type",
+        filterValue: props.item_type || null,
+        tooltip: this.#getCardTagTooltip("item_type", props.item_type)
+      })
+    }
+    if (typeLabel) {
+      const typeFilterValueLocal = (Array.isArray(props.type) ? props.type[0] : props.type) || null
+      pushTag({
+        label: typeLabel,
+        className: null,
+        filterType: "type",
+        filterValue: typeFilterValueLocal,
+        tooltip: this.#getCardTagTooltip(
+          assetType === "item" ? "item_type" : assetType === "spell" ? "spell_type" : null,
+          typeFilterValueLocal
+        )
+      })
+    }
+    if (gridLabel) {
+      pushTag({
+        label: gridLabel,
+        className: null,
+        filterType: "grid",
+        filterValue: props.grid || null,
+        tooltip: null
+      })
+    }
+    if (assetType === "spell" && props.level !== undefined && props.level !== null && props.level !== "") {
+      pushTag({
+        label: `${game.i18n.localize("BENEOS.Cloud.Card.LevelShort")} ${props.level}`,
+        className: null,
+        filterType: "level",
+        filterValue: props.level,
+        tooltip: null
+      })
+    }
+    if (assetType === "spell" && props.school) {
+      pushTag({
+        label: props.school,
+        className: null,
+        filterType: "school",
+        filterValue: props.school,
+        tooltip: null
+      })
+    }
+    // Faction can be a single string OR an array (multi-faction creatures).
+    // Render one tag per entry so each is independently click-filterable
+    // and gets its own commonData hover lookup — joining them into a
+    // single "A,B,C" chip would block per-faction filtering and would
+    // render as a comma-merged label instead of separate visual chips.
+    const factionList = Array.isArray(props.faction)
+      ? props.faction
+      : (props.faction ? [props.faction] : [])
+    for (const f of factionList) {
+      const fStr = String(f ?? "").trim()
+      if (!fStr) continue
+      pushTag({
+        label: fStr,
+        className: null,
+        filterType: "faction",
+        filterValue: fStr,
+        tooltip: this.#getCardTagTooltip("faction", fStr)
+      })
+    }
+    const sourceLabel = BeneosCloudWindowV2.#getSourceLabel(props.source)
+    if (sourceLabel) {
+      pushTag({
+        label: sourceLabel,
+        className: "bc-tag-source",
+        filterType: "source",
+        filterValue: props.source || null,
+        tooltip: null
+      })
+    }
+
+    // Static visible limit per card. Holds even on narrow windows because
+    // the parent .bc-card-tags also caps height at 2 rows — anything that
+    // doesn't fit visually still fits semantically through the "+X more"
+    // chip's tooltip. Picked 4 because that's what fits in two rows for
+    // the typical mid-length tag strings ("Beast", "Loyalty Tokens", etc.).
+    const VISIBLE_TAG_LIMIT = 4
+    const visibleTagDescriptors = tagDescriptors.slice(0, VISIBLE_TAG_LIMIT)
+    const hiddenTagDescriptors  = tagDescriptors.slice(VISIBLE_TAG_LIMIT)
+    const moreTagsCount   = hiddenTagDescriptors.length
+    const moreTagsTooltip = moreTagsCount > 0
+      ? hiddenTagDescriptors.map(t => t.label).join(" · ")
+      : null
+    const moreTagsLabel = moreTagsCount > 0
+      ? game.i18n.format("BENEOS.Cloud.Card.MoreTags", { count: moreTagsCount })
+      : null
+
     return {
       key,
       assetType,
@@ -941,7 +1208,16 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       castingTimeLabel:    assetType === "spell" ? (props.casting_time || null) : null,
       castingTimeFilter:   assetType === "spell" ? (props.casting_time || null) : null,
       spellLevelLabel:     (assetType === "spell" && props.level !== undefined && props.level !== null && props.level !== "")
-                             ? `${game.i18n.localize("BENEOS.Cloud.Card.LevelShort")} ${props.level}` : null
+                             ? `${game.i18n.localize("BENEOS.Cloud.Card.LevelShort")} ${props.level}` : null,
+      // Tag descriptor list + overflow indicator for the grid-card chip
+      // row. The template iterates visibleTagDescriptors with a single
+      // {{#each}} and renders the "+N more" chip when moreTagsCount > 0.
+      // Hidden labels are joined into moreTagsTooltip so the overflowed
+      // info stays one hover away.
+      visibleTagDescriptors,
+      moreTagsCount,
+      moreTagsLabel,
+      moreTagsTooltip
     }
   }
 
@@ -1224,6 +1500,19 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       if (!sel) continue
       const value = sel.value
       if (!value || value.toLowerCase() === "any") continue
+      // Show-filter values "new" and "updated" don't map onto a property
+      // value (data.installed only carries "installed"/"notinstalled").
+      // Filter on the corresponding boolean flags that #enrichCard reads
+      // from the dataset directly.
+      if (def.selector === "installation-selector" && (value === "new" || value === "updated")) {
+        const flag = value === "new" ? "isNew" : "isUpdate"
+        const filtered = {}
+        for (const [k, v] of Object.entries(results)) {
+          if (v?.[flag]) filtered[k] = v
+        }
+        results = filtered
+        continue
+      }
       const beforeCount = Object.keys(results).length
       // Wave B-8d-fix-9: log every active filter so we can see why
       // searchByProperty isn't narrowing for the user's data shape.
@@ -1671,6 +1960,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     this.#refreshFilterInfoIcons()
     this.#injectSelectDividers()
     this.#updateTitleBadge(context)
+    this.#injectTitleQuote()
   }
 
   // Wave B-8k-4: insert a disabled "──────────" option after the Any
@@ -1762,6 +2052,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         requestAnimationFrame(() => {
           requestAnimationFrame(async () => {
             try { await this.render({ parts: ["results"] }) }
+            catch (err) { console.warn("[Beneos]", err) }
             finally { resolve() }
           })
         })
@@ -2180,6 +2471,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
           requestAnimationFrame(async () => {
             try {
               await this.render({ parts: ["results"] })
+            } catch (err) {
+              console.warn("[Beneos]", err)
             } finally {
               this.#hideLoading()
               const newList = this.element?.querySelector(".bc-result-list")
@@ -2224,17 +2517,19 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       })
     })
 
-    // Wave B-8i-1: bulk-install items live in the consolidated kebab
-    // menu above the result list now. Each item carries data-bulk-group
-    // (matching | new | update); click triggers the confirmation dialog
-    // and the sequential install loop.
-    resultsRegion.querySelectorAll(".bc-bulk-menu-item").forEach(btn => {
+    // Wave B-8i-1 / Y4: bulk-install triggers can come from two places —
+    // the consolidated kebab menu (.bc-bulk-menu-item) and the prominent
+    // header button (.bc-bulk-prominent) that surfaces when the show
+    // filter is set to "new" or "updated". Both carry data-bulk-group;
+    // a single querySelectorAll handles them with no extra logic, and
+    // the kebab-close branch only kicks in when the click came from the
+    // menu (closest() returns null for the prominent button).
+    resultsRegion.querySelectorAll("[data-bulk-group]").forEach(btn => {
       btn.addEventListener("click", (event) => {
         event.preventDefault()
         event.stopPropagation()
         const group = btn.dataset.bulkGroup
         if (!group) return
-        // Close the <details> menu after click.
         const menu = btn.closest("details.bc-bulk-menu")
         if (menu) menu.open = false
         this.#onBulkInstallClick(group)
@@ -2262,6 +2557,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
           requestAnimationFrame(async () => {
             try {
               await this.render({ parts: ["results"] })
+            } catch (err) {
+              console.warn("[Beneos]", err)
             } finally {
               this.#hideLoading()
               const newList = this.element?.querySelector(".bc-result-list")
@@ -2449,6 +2746,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       requestAnimationFrame(async () => {
         try {
           await this.render({ parts: ["header", "sidebar", "results"] })
+        } catch (err) {
+          console.warn("[Beneos]", err)
         } finally {
           this.#hideLoading()
         }
@@ -2485,6 +2784,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
             await this.render({ parts })
             const newSidebar = this.element?.querySelector(".bc-sidebar")
             if (newSidebar) newSidebar.scrollTop = scrollTop
+          } catch (err) {
+            console.warn("[Beneos]", err)
           } finally {
             this.#hideLoading()
             resolve()
@@ -2507,6 +2808,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         requestAnimationFrame(() => {
           requestAnimationFrame(async () => {
             try { await this.render({ parts }) }
+            catch (err) { console.warn("[Beneos]", err) }
             finally { this.#hideLoading(); resolve() }
           })
         })
@@ -2561,6 +2863,18 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     BeneosUtility.openPostInNewTab?.("https://beneos.cloud/", {})
   }
 
+  // Settings modal companion. Single instance per click — if one is
+  // already open, just bring it to focus instead of stacking copies.
+  static _onOpenSettings(_event, _target) {
+    const existing = Object.values(foundry.applications.instances ?? {})
+      .find(a => a instanceof BeneosCloudSettingsV2)
+    if (existing) {
+      existing.bringToFront?.()
+      return
+    }
+    new BeneosCloudSettingsV2().render(true)
+  }
+
   // Wave B-9-fix-36: opens an external URL in a new browser tab. URL
   // comes from data-href on the trigger so the same handler covers
   // Discord / Webshop / Patreon (and is tab-aware via the context-
@@ -2597,9 +2911,137 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   /* ========== Cleanup ========== */
 
   async _onClose(options) {
+    this.#stopQuoteCycle()
     if (game.beneos?.cloudWindowV2 === this) game.beneos.cloudWindowV2 = undefined
     if (game.beneos?.searchEngine === this) game.beneos.searchEngine = undefined
     if (game.beneosTokens?.searchEngine === this) game.beneosTokens.searchEngine = undefined
     return super._onClose?.(options)
+  }
+}
+
+/* ============================================================================
+ * BeneosCloudSettingsV2 — companion settings modal for the Cloud V2 window.
+ *
+ * Surfaces the most-used module settings (death tokens, nav visibility) plus
+ * action buttons (Setup Tour, world-wide asset check) in the same V2 design
+ * language so users don't have to detour through Foundry's main settings
+ * sheet for routine tasks. Built as a small ApplicationV2 with a single
+ * Handlebars part — extending it later means adding a row to the template
+ * and (if it's an action) a static handler below.
+ * ========================================================================== */
+
+const BENEOS_MODULE_ID = "beneos-module"
+const DEATH_SETTING_KEY = "beneos-death-management"
+const SHOW_NAV_SETTING_KEY = "showNavToPlayers"
+const ASSET_CHECK_SETTING_KEY = "assetWatcherEnabled"
+
+export class BeneosCloudSettingsV2 extends HandlebarsApplicationMixin(ApplicationV2) {
+  static DEFAULT_OPTIONS = {
+    id: "beneos-cloud-settings-v2",
+    classes: ["beneos-cloud-app", "bc-settings-window"],
+    tag: "section",
+    window: {
+      title: "BENEOS.Cloud.Settings.Title",
+      icon: "fa-solid fa-sliders",
+      resizable: false
+    },
+    position: {
+      width: 420,
+      height: "auto"
+    },
+    actions: {
+      startSetupTour: BeneosCloudSettingsV2._onStartSetupTour
+    }
+  }
+
+  static PARTS = {
+    form: { template: "modules/beneos-module/templates/cloud-v2/cloud-settings-v2.hbs" }
+  }
+
+  async _prepareContext(_options) {
+    return {
+      deathTokensEnabled: !!this._safeGetSetting(DEATH_SETTING_KEY),
+      showNavEnabled:     !!this._safeGetSetting(SHOW_NAV_SETTING_KEY),
+      assetCheckEnabled:  !!this._safeGetSetting(ASSET_CHECK_SETTING_KEY)
+    }
+  }
+
+  _safeGetSetting(key) {
+    try { return game.settings.get(BENEOS_MODULE_ID, key) }
+    catch (err) {
+      console.warn("[Beneos Cloud Settings] missing setting", key, err)
+      return false
+    }
+  }
+
+  _onRender(context, options) {
+    super._onRender?.(context, options)
+    // Live binding for the simple boolean toggles. ApplicationV2 actions
+    // would work too, but a single change-listener per render keeps the
+    // template free of action wiring per row — every toggle just needs
+    // its data-setting-key attribute and the right initial check state.
+    // After a successful write, briefly flash the row's "Saved ✓" pill
+    // so the user gets confirmation feedback in our own visual language
+    // instead of through Foundry's ui.notifications toast (which doesn't
+    // match the V2 aesthetic).
+    const root = this.element
+    if (!root) return
+    for (const input of root.querySelectorAll("input[data-setting-key]")) {
+      input.addEventListener("change", async ev => {
+        // Capture the element + values BEFORE the await — DOM Events 4
+        // null out event.currentTarget once the synchronous portion of
+        // the handler returns, so reading ev.currentTarget after `await
+        // game.settings.set(...)` would crash on either branch (the
+        // success path's _flashSavedFeedback closest()-walk OR the catch
+        // branch's `.checked = ...` reset). Using the locally-bound
+        // element reference keeps both paths safe.
+        const inputEl = ev.currentTarget
+        const key = inputEl?.dataset?.settingKey
+        const val = !!inputEl?.checked
+        if (!key) return
+        try {
+          await game.settings.set(BENEOS_MODULE_ID, key, val)
+          this._flashSavedFeedback(inputEl)
+        } catch (err) {
+          console.warn("[Beneos Cloud Settings] could not write setting", key, err)
+          if (inputEl) inputEl.checked = !!this._safeGetSetting(key)
+        }
+      })
+    }
+  }
+
+  // Flash the .bc-settings-saved sibling on the same row by toggling a
+  // CSS class for ~1.5s. The animation is purely CSS — JS just adds /
+  // removes the class.
+  _flashSavedFeedback(input) {
+    const row = input?.closest?.(".bc-settings-row")
+    const savedPill = row?.querySelector(".bc-settings-saved")
+    if (!savedPill) return
+    savedPill.classList.remove("bc-settings-saved-show")
+    // Force reflow so the same class can re-trigger the animation when
+    // the user toggles back and forth quickly.
+    void savedPill.offsetWidth
+    savedPill.classList.add("bc-settings-saved-show")
+    if (this._savedTimeout) clearTimeout(this._savedTimeout)
+    this._savedTimeout = setTimeout(() => {
+      savedPill.classList.remove("bc-settings-saved-show")
+    }, 1500)
+  }
+
+  /* -------- Actions (static — Foundry binds `this` to the app instance) -------- */
+
+  static async _onStartSetupTour(_event, _target) {
+    // Close both this settings modal AND the Cloud-V2 window so the GM
+    // has a clean canvas while the tour runs (the tour itself opens
+    // dialogs and overlays and benefits from no other Beneos surfaces
+    // competing for attention). Both closes are best-effort; the tour
+    // launches regardless.
+    try { this.close() } catch (e) {}
+    try { game.beneos?.cloudWindowV2?.close?.() } catch (e) {}
+    try {
+      new BeneosStartSetupTour().render(true)
+    } catch (err) {
+      console.warn("[Beneos Cloud Settings] setup-tour trigger failed", err)
+    }
   }
 }

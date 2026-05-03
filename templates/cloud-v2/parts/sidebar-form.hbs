@@ -47,6 +47,41 @@
       </div>
     </section>
 
+    {{!-- Wave B-8d: biome chip-dropdown. Picking a biome from the
+         dropdown adds it as a chip below; clicking the chip's × removes
+         it. AND-semantics filter (all chips must match) is unchanged
+         from B-8c — only the UI shape is more compact.
+         Order note: Biome sits ABOVE Refinement because it is the most
+         frequently used creature filter in practice (DM picking the
+         right encounter for the current scene). --}}
+    {{#if biomeHasAny}}
+    <section class="bc-sidebar-group">
+      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Biome"}}</header>
+      {{#if biomeAvailable.length}}
+        <div class="bc-sidebar-field">
+          <select class="bc-select" id="bc-biome-add">
+            <option value="">{{localize "BENEOS.Cloud.Filter.AddBiome"}}</option>
+            {{#each biomeAvailable as |b|}}
+              <option value="{{b.key}}">{{b.label}} ({{b.count}})</option>
+            {{/each}}
+          </select>
+        </div>
+      {{/if}}
+      {{#if biomeChips.length}}
+        <div class="bc-chip-list" data-bc-chip-list="biome">
+          {{#each biomeChips as |c|}}
+            <button type="button" class="bc-chip bc-biome-chip"
+                    data-biome="{{c.key}}"
+                    aria-label="Remove {{c.label}}">
+              <span class="bc-chip-label">{{c.label}}</span>
+              <span class="bc-chip-remove" aria-hidden="true">×</span>
+            </button>
+          {{/each}}
+        </div>
+      {{/if}}
+    </section>
+    {{/if}}
+
     {{!-- Refine — single-select dropdowns ordered by user-importance
          (Wave B-8h-2): Type first (most important), then Purpose, Fighting
          Style, Faction (least important). --}}
@@ -106,38 +141,6 @@
       {{/if}}
     </section>
 
-    {{!-- Wave B-8d: biome chip-dropdown. Picking a biome from the
-         dropdown adds it as a chip below; clicking the chip's × removes
-         it. AND-semantics filter (all chips must match) is unchanged
-         from B-8c — only the UI shape is more compact. --}}
-    {{#if biomeHasAny}}
-    <section class="bc-sidebar-group">
-      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Biome"}}</header>
-      {{#if biomeAvailable.length}}
-        <div class="bc-sidebar-field">
-          <select class="bc-select" id="bc-biome-add">
-            <option value="">{{localize "BENEOS.Cloud.Filter.AddBiome"}}</option>
-            {{#each biomeAvailable as |b|}}
-              <option value="{{b.key}}">{{b.label}} ({{b.count}})</option>
-            {{/each}}
-          </select>
-        </div>
-      {{/if}}
-      {{#if biomeChips.length}}
-        <div class="bc-chip-list" data-bc-chip-list="biome">
-          {{#each biomeChips as |c|}}
-            <button type="button" class="bc-chip bc-biome-chip"
-                    data-biome="{{c.key}}"
-                    aria-label="Remove {{c.label}}">
-              <span class="bc-chip-label">{{c.label}}</span>
-              <span class="bc-chip-remove" aria-hidden="true">×</span>
-            </button>
-          {{/each}}
-        </div>
-      {{/if}}
-    </section>
-    {{/if}}
-
     {{!-- Source — checkbox multi-select with dataset counts. Counts come
          from _preparePartContext (one pass over the full unfiltered raw
          entries for this assetType) so they show how many items exist
@@ -176,7 +179,10 @@
     {{!-- Install state — kept as a small section for power-users.
          Wave B-8c: the value="notinstalled" matches the actual data field
          (tokenData.installed); the previous "noninstalled" value never
-         matched anything so the filter was a no-op. --}}
+         matched anything so the filter was a no-op.
+         hasNewAssets / hasUpdatedAssets are computed in
+         _preparePartContext("sidebar") for the current asset type, so
+         the same block can be re-used verbatim in the item / spell tabs. --}}
     <section class="bc-sidebar-group">
       <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Show"}}</header>
       <div class="bc-sidebar-field">
@@ -184,6 +190,12 @@
           <option value="any">{{localize "BENEOS.Cloud.Filter.InstallAny"}}</option>
           <option value="installed">{{localize "BENEOS.Cloud.Filter.InstallInstalled"}}</option>
           <option value="notinstalled">{{localize "BENEOS.Cloud.Filter.InstallNotInstalled"}}</option>
+          {{#if hasNewAssets}}
+            <option value="new">{{localize "BENEOS.Cloud.Filter.InstallOnlyNew"}}</option>
+          {{/if}}
+          {{#if hasUpdatedAssets}}
+            <option value="updated">{{localize "BENEOS.Cloud.Filter.InstallOnlyUpdated"}}</option>
+          {{/if}}
         </select>
       </div>
     </section>
@@ -365,6 +377,26 @@
         </button>
       </div>
     </section>
+
+    {{!-- Show-state filter (shared with token + spell tabs). The
+         hasNewAssets / hasUpdatedAssets flags come from the sidebar
+         context and are computed for the current asset type. --}}
+    <section class="bc-sidebar-group">
+      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Show"}}</header>
+      <div class="bc-sidebar-field">
+        <select class="bc-select beneos-selector" id="installation-selector">
+          <option value="any">{{localize "BENEOS.Cloud.Filter.InstallAny"}}</option>
+          <option value="installed">{{localize "BENEOS.Cloud.Filter.InstallInstalled"}}</option>
+          <option value="notinstalled">{{localize "BENEOS.Cloud.Filter.InstallNotInstalled"}}</option>
+          {{#if hasNewAssets}}
+            <option value="new">{{localize "BENEOS.Cloud.Filter.InstallOnlyNew"}}</option>
+          {{/if}}
+          {{#if hasUpdatedAssets}}
+            <option value="updated">{{localize "BENEOS.Cloud.Filter.InstallOnlyUpdated"}}</option>
+          {{/if}}
+        </select>
+      </div>
+    </section>
   {{/if}}
 
   {{#if (eq searchMode "spell")}}
@@ -413,6 +445,24 @@
           </select>
         </div>
       {{/if}}
+    </section>
+
+    {{!-- Show-state filter (shared with token + item tabs). --}}
+    <section class="bc-sidebar-group">
+      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Show"}}</header>
+      <div class="bc-sidebar-field">
+        <select class="bc-select beneos-selector" id="installation-selector">
+          <option value="any">{{localize "BENEOS.Cloud.Filter.InstallAny"}}</option>
+          <option value="installed">{{localize "BENEOS.Cloud.Filter.InstallInstalled"}}</option>
+          <option value="notinstalled">{{localize "BENEOS.Cloud.Filter.InstallNotInstalled"}}</option>
+          {{#if hasNewAssets}}
+            <option value="new">{{localize "BENEOS.Cloud.Filter.InstallOnlyNew"}}</option>
+          {{/if}}
+          {{#if hasUpdatedAssets}}
+            <option value="updated">{{localize "BENEOS.Cloud.Filter.InstallOnlyUpdated"}}</option>
+          {{/if}}
+        </select>
+      </div>
     </section>
   {{/if}}
 

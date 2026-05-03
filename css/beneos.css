@@ -1092,9 +1092,11 @@
   width: 100%;
 }
 
-.beneos_search_engine .window-header {
-  background-color: #3e0706;
-}
+/* Removed 2026-05-02: legacy V1 cloud-window header tint (#3e0706 dark Beneos
+   red) was dead code after the V1→V2 redesign — no V1 cloud window exists
+   anymore. Re-introducing `beneos_search_engine` as a V2-class alias for tour
+   selector back-compat (cloud-window-v2.mjs:97) made this stale rule paint the
+   V2 window's header dark red, out of place against the gold/black V2 palette. */
 
 .beneos-search-margin {
   margin-left: 32px;
