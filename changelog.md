@@ -3,6 +3,26 @@
 All notable changes to this module will be documented in this file.
 
 ## Updates
+### 14.0.4 # 2026-05-04
+- New: **Beneos Cloud - completely redesigned interface.** A modern browse-and-install window with a fresh look, smoother animations, faster rendering and a cleaner layout designed around how you actually pick assets. Replaces the old Search Engine across Creatures, Maps, Items and Spells.
+- New: **Beneos Cloud toolbar button.** The Cloud has a new permanent home in the left scene-controls toolbar, no longer hidden inside the Actor Directory. Open it from anywhere in Foundry - even on a fresh world before you've placed a scene.
+- New: **Grid and List view modes.** Toggle between dense list cards or portrait-style grid tiles depending on how you like to browse. Your preference is remembered between sessions.
+- New: **Asset detail drawer.** Click any creature, map, item or spell to slide open a side panel with full details - stats, tags, source, lore - without leaving the result list.
+- New: **Bulk install actions.** Install all new content, all updates, every asset in your current view, or your entire backlog with a single click. Confirmation dialogs protect you from triggering large downloads by accident.
+- New: **Multi-select with Ctrl/Cmd+click.** Pick several assets at once and install or drag them as a batch.
+- New: **Smart asset grouping.** Search results are now organized into "New", "Updated" and "All Assets" sections so you immediately see what needs your attention.
+- New: **Asset integrity check.** When you open a scene that uses Beneos content, the module verifies all referenced assets are actually on disk. If something's missing, you get one clear dialog with a link to the troubleshooting FAQ - no more silent 404s mid-session.
+- Improved: **Search and filtering across the board.** Challenge Rating and Gold Price now use dual-thumb range sliders. Source and Biome filters support multi-select, with separate Biomes for Maps and Creatures (no more cross-contamination). New filter types: Faction, Campaign, Fighting Style, Purpose, Spell Type, Casting Time, Origin and Tier. Filters that don't apply to your current dataset hide themselves automatically.
+- Improved: **Account and login.** Clearer error messages for network issues and invalid credentials. Patreon tier is re-checked on every login, so newly unlocked content shows up immediately without a manual reload. Automatic reconnect when you load a world while still signed in.
+- Improved: **Performance.** Even searches with thousands of results stay responsive - cards load in as you scroll, thumbnails are fetched on demand, and the Cloud window no longer competes with the Foundry canvas for paint cycles.
+- Improved: **Offline mode.** When the Beneos Cloud is unreachable, the search engine falls back to a local cached database. Cards from offline content show a clear cloud-offline indicator and disable installs until you're back online.
+- Improved: **Battlemap browsing.** New filters for Brightness and Adventure, plus a Release-focus dropdown to zero in on a single map pack at a time.
+- Improved: **Item filters.** Type names are deduplicated ("Light Armor" instead of "Light Armor +1/+2"), and Rarity is sorted in canonical D&D order (Common → Legendary) instead of alphabetically.
+- Improved: **Patreon link awareness.** The footer's Patreon link now adapts to your current tab - Creatures/Loot/Spells link to the Beneos Tokens Patreon, Maps links to the Beneos Battle Maps Patreon.
+- Improved: **Toast notifications.** Cleaner install confirmations, accurate counts of queued assets, and explicit Moulinette availability warnings.
+- Improved: **13-language localization.** Full coverage of every UI string, tour step, notification and Easter-egg quote across English, German, French, Spanish, Italian, Portuguese (Brazil), Portuguese (Portugal), Polish, Czech, Catalan, Japanese, Korean and Traditional Chinese.
+- Improved: **Smaller download.** Removed leftover assets from the previous interface to slim down the module package.
+
 ### 14.0.3 # 2026-04-28
 - New: **Dark Mode support across the entire module.** Beneos creature, spell and loot journals - including all immersive integration boxes, tactical guide cards and DC check panels - now follow your active Foundry color scheme. Light mode keeps the classic beige + Beneos-red look, dark mode switches to a warm dark background with Beneos-gold accents that's easy on the eyes during long sessions.
 - New: **Cloud News & Welcome dialogs** are now styled in the same dark-with-gold-glow CI as the rest of the Beneos onboarding, with subtle pulsing border for the latest message. Cloud-side announcements stay readable regardless of your Foundry theme.
