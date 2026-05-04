@@ -33,7 +33,7 @@ export class BeneosModuleMenu extends Dialog {
       beneosTokensHUD.push({ name: "No results" })
     }
 
-    console.log("SEARCH results", beneosTokensHUD)
+    BeneosUtility.debugMessage("SEARCH results", beneosTokensHUD)
     let html = await renderTemplate('modules/beneos-module/templates/' + this.listTemplate,
       { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getFullPathWithSlash(), beneosTokensHUD, searchValue })
     this.data.content = html
@@ -48,7 +48,7 @@ export class BeneosModuleMenu extends Dialog {
 
   /********************************************************************************** */
   processTextSearch(event) {
-    console.log("Processing text search", event.currentTarget.value)
+    BeneosUtility.debugMessage("Processing text search", event.currentTarget.value)
     let code = event.keyCode ? event.keyCode : event.which
     if (code == 13) {  // Enter keycode
       return
@@ -109,9 +109,9 @@ export class BeneosDatabaseHolder {
       if (localStorage.tokenData) {
         this.tokenData = structuredClone(localStorage.tokenData)
         this.isOffline = true
-        ui.notifications.info("Unable to load Beneos Token Database - Using local copy (may be outdated)")
+        ui.notifications.info(game.i18n.localize("BENEOS.Notifications.Search.TokenDbLocal"))
       } else {
-        ui.notifications.error("Unable to load Beneos Token Database - File error " + err.message + " " + tokenDBURL)
+        ui.notifications.error(game.i18n.format("BENEOS.Notifications.Search.TokenDbError", { message: err.message, url: tokenDBURL }))
       }
     }
     try {
@@ -122,9 +122,9 @@ export class BeneosDatabaseHolder {
       if (localStorage.bmapData) {
         this.bmapData = structuredClone(localStorage.bmapData)
         this.isOffline = true
-        ui.notifications.info("Unable to load Beneos Battlemap Database - Using local copy (may be outdated)")
+        ui.notifications.info(game.i18n.localize("BENEOS.Notifications.Search.BattlemapDbLocal"))
       } else {
-        ui.notifications.error("Unable to load Beneos Battlemap Database - File error")
+        ui.notifications.error(game.i18n.localize("BENEOS.Notifications.Search.BattlemapDbError"))
       }
     }
     try {
@@ -135,9 +135,9 @@ export class BeneosDatabaseHolder {
       if (localStorage.itemData) {
         this.itemData = structuredClone(localStorage.itemData)
         this.isOffline = true
-        ui.notifications.info("Unable to load Beneos Item Database - Using local copy (may be outdated)")
+        ui.notifications.info(game.i18n.localize("BENEOS.Notifications.Search.ItemDbLocal"))
       } else {
-        ui.notifications.error("Unable to load Beneos Item Database - File error")
+        ui.notifications.error(game.i18n.localize("BENEOS.Notifications.Search.ItemDbError"))
       }
     }
     try {
@@ -148,9 +148,9 @@ export class BeneosDatabaseHolder {
       if (localStorage.spellData) {
         this.spellData = structuredClone(localStorage.spellData)
         this.isOffline = true
-        ui.notifications.info("Unable to load Beneos Spell Database - Using local copy (may be outdated)")
+        ui.notifications.info(game.i18n.localize("BENEOS.Notifications.Search.SpellDbLocal"))
       } else {
-        ui.notifications.error("Unable to load Beneos Spell Database - File error")
+        ui.notifications.error(game.i18n.localize("BENEOS.Notifications.Search.SpellDbError"))
       }
     }
     try {
@@ -161,9 +161,9 @@ export class BeneosDatabaseHolder {
       if (localStorage.commonData) {
         this.commonData = structuredClone(localStorage.commonData)
         this.isOffline = true
-        ui.notifications.info("Unable to load Beneos Common Database - Using local copy (may be outdated)")
+        ui.notifications.info(game.i18n.localize("BENEOS.Notifications.Search.CommonDbLocal"))
       } else {
-        ui.notifications.error("Unable to load Beneos Common Database - File error")
+        ui.notifications.error(game.i18n.localize("BENEOS.Notifications.Search.CommonDbError"))
       }
     }
 
@@ -179,10 +179,7 @@ export class BeneosDatabaseHolder {
 
   /********************************************************************************** */
   static getHover(category, term) {
-    if (!term || !category) {
-      console.log("Wrong term/category", category, term)
-      return ""
-    }
+    if (!term || !category) return ""
     category = category.toString().toLowerCase()
     let termLow = term.toString().toLowerCase()
     if (this.commonData?.hover[category] && this.commonData.hover[category][termLow]?.message) {
@@ -265,13 +262,13 @@ export class BeneosDatabaseHolder {
       }
       if (tokenData.installed === "installed") {
         let installTS = BeneosUtility.getTokenInstallTS(tokenData.key)
-        console.log("Installed token", tokenData.key, tokenTS, installTS)
+        BeneosUtility.debugMessage("Installed token", tokenData.key, tokenTS, installTS)
         if (tokenTS > installTS) {
           tokenData.isUpdate = true
         }
       }
     } else {
-      //console.log("No tokenTS for", tokenData.key)
+      //BeneosUtility.debugMessage("No tokenTS for", tokenData.key)
     }
 
     tokenData.properties.install = ["Any", "All"] // Used for filtering
@@ -305,13 +302,13 @@ export class BeneosDatabaseHolder {
       }
       if (itemData.installed === "installed") {
         let installTS = BeneosUtility.getItemInstallTS(itemData.key)
-        console.log("Installed item", itemData.key, itemTS, installTS)
+        BeneosUtility.debugMessage("Installed item", itemData.key, itemTS, installTS)
         if (itemTS > installTS) {
           itemData.isUpdate = true
         }
       }
     } else {
-      // console.log("No itemTS for", itemData)
+      // BeneosUtility.debugMessage("No itemTS for", itemData)
     }
     itemData.properties.install = ["Any", "All"] // Used for filtering
     if (itemData.isNew) {
@@ -355,13 +352,13 @@ export class BeneosDatabaseHolder {
       }
       if (spellData.installed === "installed") {
         let installTS = BeneosUtility.getSpellInstallTS(spellData.key)
-        console.log("Installed spell", spellData.key, spellTS, installTS)
+        BeneosUtility.debugMessage("Installed spell", spellData.key, spellTS, installTS)
         if (spellTS > installTS) {
           spellData.isUpdate = true
         }
       }
     } else {
-      //console.log("No spellTS for", spellData.key)
+      //BeneosUtility.debugMessage("No spellTS for", spellData.key)
     }
     spellData.properties.install = ["Any", "All"] // Used for filtering
     if (spellData.isNew) {
@@ -446,7 +443,7 @@ export class BeneosDatabaseHolder {
     this.spellClasses = {}
 
     for (let key in this.tokenData.content) {
-      //console.log("Processing", key)
+      //BeneosUtility.debugMessage("Processing", key)
       let tokenData = this.tokenData.content[key]
       if (tokenData && typeof (tokenData) == "object") {
         tokenData.kind = "token"
@@ -510,7 +507,7 @@ export class BeneosDatabaseHolder {
       if (bmapData && typeof (bmapData) == "object") {
         if (bmapData.properties.sibling) {
           bmapData.siblingPicture = this.getSiblingPicture(bmapData.properties.sibling)
-          //console.log("SIBLING : ", bmapData.siblingPicture)
+          //BeneosUtility.debugMessage("SIBLING : ", bmapData.siblingPicture)
         }
       }
     }
@@ -642,7 +639,7 @@ export class BeneosDatabaseHolder {
 
   /********************************************************************************** */
   static textSearch(text, mode) {
-    console.log("TEXT search", text, mode)
+    BeneosUtility.debugMessage("TEXT search", text, mode)
     let results = []
     if (mode == "token") {
       results = this.objectTextSearch(this.tokenData.content, text, "token")
@@ -657,8 +654,8 @@ export class BeneosDatabaseHolder {
       results = results.concat(this.objectTextSearch(this.spellData.content, text, "spell"))
     }
 
-    console.log("TEXT search results", results)
-    //console.log("TEXT results ", results, this.bmapData.content)
+    BeneosUtility.debugMessage("TEXT search results", results)
+    //BeneosUtility.debugMessage("TEXT results ", results, this.bmapData.content)
     return results
   }
 
@@ -668,7 +665,7 @@ export class BeneosDatabaseHolder {
     if (sibling) {
       return "https://www.beneos-database.com/data/battlemaps/thumbnails/" + sibling.properties.thumbnail
     }
-    console.log("No relevant sibling picture found for", key)
+    BeneosUtility.debugMessage("No relevant sibling picture found for", key)
     return undefined
   }
 
@@ -677,7 +674,7 @@ export class BeneosDatabaseHolder {
     let newResults = {}
     value = value.toLowerCase()
 
-    console.log(">>>>>", type, propertyName, value, searchResults)
+    BeneosUtility.debugMessage(">>>>>", type, propertyName, value, searchResults)
 
     for (let key in searchResults) {
       let item = searchResults[key]
@@ -696,7 +693,7 @@ export class BeneosDatabaseHolder {
       if (propertyName == "grid") {
         let comp = value.substring(0, 1)
         let grid = parseInt(value.substring(1))
-        //console.log("Parsing", item.properties.grid, grid, comp)
+        //BeneosUtility.debugMessage("Parsing", item.properties.grid, grid, comp)
         let sizeParse = item.properties.grid.match(/(\d+)\s*x\s*(\d+)/)
         if (sizeParse?.[1] && sizeParse?.[2]) {
           let size = parseInt(sizeParse[1]) * parseInt(sizeParse[2])
@@ -721,7 +718,7 @@ export class BeneosDatabaseHolder {
           newResults[key] = structuredClone(item)
         }
       } else if (item?.properties[propertyName]) {
-        //console.log(item.properties[propertyName], typeof (item.properties[propertyName]))
+        //BeneosUtility.debugMessage(item.properties[propertyName], typeof (item.properties[propertyName]))
         if (typeof (item.properties[propertyName]) == "string" || typeof (item.properties[propertyName]) == "number") {
           if (strict) {
             if (item.properties[propertyName].toString().toLowerCase() == value.toString()) {
@@ -743,7 +740,7 @@ export class BeneosDatabaseHolder {
         }
       }
     }
-    console.log("Found", newResults)
+    BeneosUtility.debugMessage("Found", newResults)
     return newResults
   }
 
@@ -769,7 +766,7 @@ export class BeneosDatabaseHolder {
     }
     if (tab.length > 0) {
       if (Number(tab[0].key)) {
-        //console.log("Numeric sort!!!")
+        //BeneosUtility.debugMessage("Numeric sort!!!")
         return tab.sort(function (a, b) {
           if (!Number(a.key) || !Number(b.key)) {
             return 0;
@@ -800,7 +797,7 @@ export class BeneosDatabaseHolder {
       }
     }
     tab = BeneosDatabaseHolder.sortProperties(tab)
-    //console.log(">>>>> SORT", tab)
+    //BeneosUtility.debugMessage(">>>>> SORT", tab)
     if (tab.find((it) => it.key.toLowerCase() == "any") == undefined) {
       tab.splice(0, 0, { key: "any", value: "Any" })
     }
@@ -867,14 +864,14 @@ export class BeneosSearchResults extends Dialog {
     // Common conff
     let dialogConf = { content: html, title: "BENEOS CLOUD SEARCH RESULTS", buttons: myButtons }
     let pos = game?.beneosTokens?.lastResultPos || { left: 620, width: 720, height: 500 }
-    console.log("Beneos Search Results - Constructor", pos, game.beneosTokens?.lastFilterStack?.resultPos)
+    BeneosUtility.debugMessage("Beneos Search Results - Constructor", pos, game.beneosTokens?.lastFilterStack?.resultPos)
     let dialogOptions = { classes: ["beneos_module", "beneos_search_results", "draggable"], 'window-title': "", left: pos.left, width: pos.width, height: pos.height, 'z-index': 99999 }
     super(dialogConf, dialogOptions)
   }
 
   /********************************************************************************** */
   processSearchButton(event, typeName, fieldName, dataName, selectorName) {
-    console.log("Search button", event, typeName, fieldName, dataName, selectorName)
+    BeneosUtility.debugMessage("Search button", event, typeName, fieldName, dataName, selectorName)
     let searchResults = BeneosDatabaseHolder.getAll(typeName)
     let value = $(event.currentTarget).data(dataName)
     searchResults = BeneosDatabaseHolder.searchByProperty(typeName, fieldName, value.toString(), searchResults)
@@ -900,7 +897,7 @@ export class BeneosSearchResults extends Dialog {
 
     super.activateListeners(html);
 
-    console.log("Beneos Search Results - Activate listeners", html)
+    BeneosUtility.debugMessage("Beneos Search Results - Activate listeners", html)
 
     // Gestionnaire pour CTRL+CLICK sur les éléments avec classe selected-batch
     $(html).find('.selected-batch').on('click', (event) => {
@@ -915,7 +912,7 @@ export class BeneosSearchResults extends Dialog {
       if (docType == "Item") {
         key = $(event.target).parents(".item-result-section").data("token-key")
       }
-      console.log("Batch install - Click on selected-batch", event, docType)
+      BeneosUtility.debugMessage("Batch install - Click on selected-batch", event, docType)
 
       // Vérifier si la touche CTRL est enfoncée
       if (event.ctrlKey && docType) {
@@ -942,7 +939,7 @@ export class BeneosSearchResults extends Dialog {
           }
         }
         document.getElementById('beneos-cloud-batch-install').hidden = !anyChecked;
-        console.log("Batch install - Button", anyChecked)
+        BeneosUtility.debugMessage("Batch install - Button", anyChecked)
       } else {
         // If not CTRL, remove the batch install class
         this.removeSelectedBatchClass()
@@ -989,18 +986,35 @@ export class BeneosSearchResults extends Dialog {
     $(".token-search-data").on('dragstart', function (e) {
       let dragMode = $(e.target).data("drag-mode")
       if (dragMode == "none") {
-        console.log("No drag mode", dragMode)
+        BeneosUtility.debugMessage("No drag mode", dragMode)
         return false
       }
       let id = e.target.getAttribute("data-document-id")
       let docType = e.target.getAttribute("data-type")
-      console.log("DRAG START", id, docType, e)
+      BeneosUtility.debugMessage("DRAG START", id, docType, e)
       if (!id || id == "" || id == "") {
-        console.log("Cloud - Draggable id", id)
-        // Probable cloud data -> call for the token key
+        // Cloud-mode: asset is not yet installed. Items and Spells are imported
+        // immediately on dragstart (no canvas-drop concept for them); Tokens use
+        // the new "phantom-drag" pattern — Fix #B-1d/Cloud below.
+        BeneosUtility.debugMessage("Cloud - Draggable id", id)
         if (docType == "Actor") {
+          // Fix #B-1d (Cloud-Drag): instead of triggering the install on dragstart
+          // and aborting the drag (return false), we set a phantom marker in the
+          // dataTransfer and let the drag run. The dropCanvasData hook in
+          // beneos_module.js picks the marker up, kicks off the import via
+          // importTokenFromCloud, remembers the drop coordinates in
+          // pendingCanvasDrops, and creates the token at that position once the
+          // import has completed. Without this, dropping a "Cloud available"
+          // token on the canvas did nothing visible — the install ran but the
+          // token only landed in the compendium.
           let tokenKey = $(e.target).parents(".token-result-section").data("token-key")
-          game.beneos.cloud.importTokenFromCloud(tokenKey, e)
+          let drag_data = {
+            type: "Actor",
+            beneosCloudPending: true,
+            beneosTokenKey: tokenKey
+          }
+          e.originalEvent.dataTransfer.setData("text/plain", JSON.stringify(drag_data))
+          return  // let the drag run; dropCanvasData hook resolves it
         }
         if (docType == "Item") {
           let itemKey = $(e.target).parents(".item-result-section").data("token-key")
@@ -1034,6 +1048,22 @@ export class BeneosSearchResults extends Dialog {
           docType = "Item"
         }
         let drag_data = { "type": docType, "pack": compendium, "uuid": "Compendium." + compendium + "." + id }
+        // Fix #B-1d (Local-Drag): when the actor is already imported into the
+        // world (Beneos Actors folder), point the drag at the world actor's UUID
+        // instead of the compendium copy. Foundry's drop handler then places
+        // only a Token at the drop position; with the compendium UUID it would
+        // additionally clone a duplicate world actor into the Actor browser
+        // every time — which was the user-reported "duplicate" bug.
+        if (docType == "Actor") {
+          let tokenKey = $(e.target).parents(".token-result-section").data("token-key")
+          let worldActor = game.actors?.find(a => {
+            const flag = a.getFlag("world", "beneos")
+            return flag?.tokenKey === tokenKey
+          })
+          if (worldActor) {
+            drag_data = { type: "Actor", uuid: worldActor.uuid }
+          }
+        }
         e.originalEvent.dataTransfer.setData("text/plain", JSON.stringify(drag_data));
       }
     })
@@ -1050,7 +1080,7 @@ export class BeneosSearchResults extends Dialog {
     $(".beneos-jump-linked").click(event => {
       let jumpKey = $(event.currentTarget).data("jump-data")
       let searchResults = BeneosDatabaseHolder.textSearch(jumpKey)
-      console.log("Jump linked", jumpKey, searchResults)
+      BeneosUtility.debugMessage("Jump linked", jumpKey, searchResults)
       game.beneosTokens.searchEngine.displayResults(searchResults)
       //$('#beneos-search-text').val(jumpKey)
     })
@@ -1104,15 +1134,15 @@ export class BeneosSearchResults extends Dialog {
       if (bmapKey) {
         let bmapData = BeneosDatabaseHolder.getBattlemap(bmapKey)
         if (bmapData?.properties?.download_pack) {
-          console.log("Open pack", bmapData.properties.download_pack)
-          console.log("Cretaor", bmapData.properties.download_creator)
+          BeneosUtility.debugMessage("Open pack", bmapData.properties.download_pack)
+          BeneosUtility.debugMessage("Cretaor", bmapData.properties.download_creator)
           game.modules.get("moulinette").api.searchUI("mou-cloud", "Map",
             {
               "creator": bmapData.properties.download_creator,
               "pack": bmapData.properties.download_pack
             })
         } else {
-          ui.notifications.info("The selected battlemap does not have a Moulinette download information")
+          ui.notifications.info(game.i18n.localize("BENEOS.Notifications.Search.BattlemapNoMoulinetteInfo"))
         }
       }
     })
@@ -1121,14 +1151,14 @@ export class BeneosSearchResults extends Dialog {
       if (bmapKey) {
         let bmapData = BeneosDatabaseHolder.getBattlemap(bmapKey)
         if (bmapData?.properties?.download_terms) {
-          console.log("Moulinette search", bmapData.properties.download_terms, bmapData.properties.download_creator, bmapData.properties.download_pack)
+          BeneosUtility.debugMessage("Moulinette search", bmapData.properties.download_terms, bmapData.properties.download_creator, bmapData.properties.download_pack)
           game.modules.get("moulinette").api.searchUI("mou-cloud", "Map", {
             "terms": bmapData.properties.download_terms,
             "creator": bmapData.properties.download_creator,
             "pack": bmapData.properties.download_pack
           })
         } else {
-          ui.notifications.info("The selected battlemap does not have a Moulinette download information")
+          ui.notifications.info(game.i18n.localize("BENEOS.Notifications.Search.BattlemapNoMoulinetteInfo"))
         }
       }
     })
@@ -1246,7 +1276,7 @@ export class BeneosSearchEngine extends Dialog {
         if (propDef?.selectors?.length > 0) {
           let selector = propDef.selectors[0]
           let ret = $("#" + selector).val(filter.propValue)
-          console.log("Restoring filter", filter, selector, filter.propValue, ret)
+          BeneosUtility.debugMessage("Restoring filter", filter, selector, filter.propValue, ret)
         }
       }
       game.beneosTokens.lastFilterStack = undefined
@@ -1299,7 +1329,7 @@ export class BeneosSearchEngine extends Dialog {
       let toSearch = searchResults
 
       if (this.filterStack.length == 1 && this.filterStack[0].propKey == propKey) {
-        //console.log("Full list for", propKey, this.filterStack)
+        //BeneosUtility.debugMessage("Full list for", propKey, this.filterStack)
         toSearch = BeneosDatabaseHolder.getAll(this.dbData.searchMode)
       }
 
@@ -1380,7 +1410,7 @@ export class BeneosSearchEngine extends Dialog {
       return
     }
 
-    console.log("SEARCH results", searchSize, results, this.dbData.searchMode)
+    BeneosUtility.debugMessage("SEARCH results", searchSize, results, this.dbData.searchMode)
 
     // Compare length of results and fullResults
     let fullResults = BeneosDatabaseHolder.getAll(this.dbData.searchMode)
@@ -1464,7 +1494,7 @@ export class BeneosSearchEngine extends Dialog {
     for (let key in resTab3) {
       resTab.push(resTab3[key])
     }
-    console.log("Final results", resTab)
+    BeneosUtility.debugMessage("Final results", resTab)
 
     let html = await foundry.applications.handlebars.renderTemplate(template, {
       results: resTab,
@@ -1515,14 +1545,14 @@ export class BeneosSearchEngine extends Dialog {
       this.checkInterval = undefined
       this.searchText = undefined
       let results = BeneosDatabaseHolder.getAll(this.dbData.searchMode)
-      console.log("Clearing text search", results)
+      BeneosUtility.debugMessage("Clearing text search", results)
       this.displayResults(results)
     }
   }
 
   /********************************************************************************** */
   processTextSearch(event) {
-    console.log("Processing text search", event)
+    BeneosUtility.debugMessage("Processing text search", event)
     let code = event.keyCode ? event.keyCode : event.which
     if (code == 13) {  // Enter keycode
       return
@@ -1531,7 +1561,7 @@ export class BeneosSearchEngine extends Dialog {
       let results = BeneosDatabaseHolder.textSearch(event.currentTarget.value, this.dbData.searchMode)
       this.searchText = event.currentTarget.value
       this.displayResults(results, event)
-      this?.resultDialog?.removeSelectedBatchClass()
+      this.resultDialog?.removeSelectedBatchClass()
       if (!this.checkInterval) {
         let myObject = this
         this.checkInterval = setInterval(function () { myObject.checkTextField() }, 500)
@@ -1605,14 +1635,14 @@ export class BeneosSearchEngine extends Dialog {
 
     clearTimeout(myObject.timeout)
     myObject.timeout = setTimeout(function () {
-      console.log("Processing update selector search", event)
+      BeneosUtility.debugMessage("Processing update selector search", event)
       myObject.processSelectorSearch(event)
     }, 800)
   }
 
   /********************************************************************************** */
   cleanFilters() {
-    console.log("Cleaning filters")
+    BeneosUtility.debugMessage("Cleaning filters")
 
     $("#bioms-selector").val("any")
     $("#bmap-grid").val("any")
@@ -1701,20 +1731,24 @@ export class BeneosSearchEngine extends Dialog {
         }
       }
     }
-    console.log("Batch install", installMode, batchInstall)
+    BeneosUtility.debugMessage("Batch install", installMode, batchInstall)
     game.beneos.cloud.setNoWorldImport(true)
     game.beneos.cloud.batchInstall(batchInstall)
   }
 
   /********************************************************************************** */
   showBattlemapNotice() {
-    if (this.battlemapNoticeShown) {
+    // Fix #C2: persist the "shown once" flag on game.beneos (which survives the
+    // search engine's close-and-reopen lifecycle) instead of on `this`. Together
+    // with the softRefresh-based install path this means the notice now appears
+    // at most once per Foundry session, and never again once permanently dismissed.
+    if (game.beneos.battlemapNoticeShownThisSession) {
       return
     }
     if (game.settings.get(BeneosUtility.moduleID(), 'beneos-bmap-notice-dismissed')) {
       return
     }
-    this.battlemapNoticeShown = true
+    game.beneos.battlemapNoticeShownThisSession = true
     let content = `<div>
       <h3 style="margin-top:0">Beneos Cloud search currently supports Tokens, Spells, and Loot only.</h3>
       <p>Import for Battlemaps via the Beneos Cloud are not available here yet, import via Moulinette.</p>
@@ -1742,7 +1776,7 @@ export class BeneosSearchEngine extends Dialog {
     $('#beneos-search-text').bind("enterKey", function (event) {
       let key = event.keyCode ? event.keyCode : event.which
       if (key == 13) {
-        //console.log("HERE KEYDOWN 13 - 2!!!!")
+        //BeneosUtility.debugMessage("HERE KEYDOWN 13 - 2!!!!")
         event.preventDefault()
       }
     });
@@ -1750,14 +1784,14 @@ export class BeneosSearchEngine extends Dialog {
       let key = event.keyCode ? event.keyCode : event.which
       if (key == 13) {
         event.preventDefault()
-        //console.log("HERE KEYDOWN 13 - 2!!!!")
+        //BeneosUtility.debugMessage("HERE KEYDOWN 13 - 2!!!!")
       }
     });
     $("#beneos-search-text").keyup(event => {
       let code = event.keyCode ? event.keyCode : event.which
       if (code == 13) {  // Enter keycode
         event.preventDefault()
-        //console.log("HERE 13!!!!")
+        //BeneosUtility.debugMessage("HERE 13!!!!")
         return
       }
       clearTimeout(myObject.timeout)
@@ -1805,7 +1839,7 @@ export class BeneosSearchEngine extends Dialog {
     })
 
     $("#reset-search-list").click(event => {
-      console.log("Resetting search list")
+      BeneosUtility.debugMessage("Resetting search list")
       let type = this.dbData.searchMode
       this.cleanFilters()
       let searchResults = BeneosDatabaseHolder.getAll(type)
@@ -1835,7 +1869,7 @@ export class BeneosSearchEngine extends Dialog {
     })
 
     $("#beneos-cloud-batch-install").click(event => {
-      console.log("Processing batch install", game.beneosTokens.searchEngine.batchInstall)
+      BeneosUtility.debugMessage("Processing batch install", game.beneosTokens.searchEngine.batchInstall)
       game.beneos.cloud.batchInstall(structuredClone(game.beneosTokens.searchEngine.batchInstall))
       game.beneosTokens.searchEngine.batchInstall = {}
       // Hide the Batch Install button
@@ -1867,7 +1901,7 @@ export class BeneosSearchEngineLauncher extends FormApplication {
       if (tokenData) {
         BeneosDatabaseHolder.processInstalledToken(tokenData)
       } else {
-        console.log("No token data found for", key)
+        BeneosUtility.debugMessage("No token data found for", key)
       }
     } else if (typeAsset == "item") {
       // If the key has (numbers)-, then replace it with a underscore
@@ -1878,7 +1912,7 @@ export class BeneosSearchEngineLauncher extends FormApplication {
       if (itemData) {
         BeneosDatabaseHolder.processInstalledItem(itemData)
       } else {
-        console.log("No item data found for", key)
+        BeneosUtility.debugMessage("No item data found for", key)
       }
     }
     else if (typeAsset == "spell") {
@@ -1891,7 +1925,7 @@ export class BeneosSearchEngineLauncher extends FormApplication {
       if (spellData) {
         BeneosDatabaseHolder.processInstalledSpell(spellData)
       } else {
-        console.log("No spell data found for", key)
+        BeneosUtility.debugMessage("No spell data found for", key)
       }
     }
     else if (typeAsset == "bmap") {
@@ -1899,9 +1933,25 @@ export class BeneosSearchEngineLauncher extends FormApplication {
       if (bmapData) {
         BeneosDatabaseHolder.processInstalledBattlemap(bmapData)
       } else {
-        console.log("No battlemap data found for", key)
+        BeneosUtility.debugMessage("No battlemap data found for", key)
       }
     }
+  }
+
+  /********************************************************************************** */
+  // Fix #C2: in-place refresh after a single asset install. Replaces the
+  // legacy close-and-reopen pattern (which caused window flicker, lost scroll
+  // position and made the battlemap-import notice re-appear on every install).
+  // Uses two pre-existing helpers: `refresh(type, key)` updates the in-memory
+  // installed/cloudavailable flags for one asset, then `processSelectorSearch()`
+  // rebuilds the result list via `displayResults()` which Foundry renders soft
+  // (`render(true)`) on the existing window — no close, no flicker.
+  static softRefresh(typeAsset, key) {
+    if (!game.beneos.searchEngine) return
+    // Save current scroll so processSelectorSearch's existing restore logic picks it up.
+    game.beneos.cloud.scrollTop = $(".bsr_result_box")?.scrollTop() || 0
+    BeneosSearchEngineLauncher.refresh(typeAsset, key)
+    game.beneos.searchEngine.processSelectorSearch()
   }
 
   /********************************************************************************** */
@@ -1921,21 +1971,19 @@ export class BeneosSearchEngineLauncher extends FormApplication {
     }
     await BeneosDatabaseHolder.loadDatabaseFiles()
     let dbData = BeneosDatabaseHolder.getData()
-
-    let html = await foundry.applications.handlebars.renderTemplate('modules/beneos-module/templates/beneossearchengine.html', dbData)
-    let searchDialog = new BeneosSearchEngine(html, dbData)
-    game.beneos.searchEngine = searchDialog
     game.beneos.databaseHolder = BeneosDatabaseHolder
 
-    await searchDialog.render(true)
-    if (installed) {
-      console.log("Refresh with installed", installed)
-    }
+    // V2 is now the only available window. The legacy V1 BeneosSearchEngine
+    // class is still exported above for any external integration that imports
+    // it directly, but the toolbar-launch path goes straight to V2.
+    if (game.beneos.cloudWindowV2) return
+    const { BeneosCloudWindowV2 } = await import("./cloud-v2/cloud-window-v2.mjs")
+    const win = new BeneosCloudWindowV2()
+    await win.render({ force: true })
     if (game.beneos.info) {
       game.beneos.info.hide()
       game.beneos.info = undefined
     }
-    game.beneos.selectTid = setTimeout(() => { searchDialog.processSelectorSearch() }, 200)
   }
 
 }

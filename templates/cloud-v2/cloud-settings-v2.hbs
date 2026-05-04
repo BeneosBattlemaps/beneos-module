@@ -1,0 +1,102 @@
+{{!-- Beneos Cloud V2 — settings modal.
+     Surfaces the most-used module options and a small set of action
+     buttons inside the same V2 design language as the cloud window.
+     Built on the existing .beneos-cloud-app token system + .bc-* utility
+     classes so visual consistency is automatic.
+
+     Initial sections (further sections can be appended without changing
+     the layout grammar):
+       - Setup Tour            (button → BeneosStartSetupTour)
+       - Automatic Death Token (toggle → beneos-death-management)
+       - Show DM Navigation    (toggle → showNavToPlayers)
+       - Asset Check           (button → scanAllScenes) --}}
+<section class="beneos-cloud-app bc-settings-app">
+
+  <header class="bc-sidebar-group bc-settings-header">
+    <h2 class="bc-sidebar-heading bc-settings-title">{{localize "BENEOS.Cloud.Settings.Title"}}</h2>
+  </header>
+
+  <div class="bc-settings-rows">
+
+    {{!-- Setup Tour — action row. The handler instantiates the existing
+         BeneosStartSetupTour FormApplication. --}}
+    <div class="bc-settings-row">
+      <div class="bc-settings-row-meta">
+        <div class="bc-settings-row-label">{{localize "BENEOS.Cloud.Settings.SetupTour.Label"}}</div>
+        <div class="bc-settings-row-hint">{{localize "BENEOS.Cloud.Settings.SetupTour.Hint"}}</div>
+      </div>
+      <div class="bc-settings-row-control">
+        <button type="button"
+                class="bc-card-button bc-card-button-primary"
+                data-action="startSetupTour">
+          <i class="fa-solid fa-play"></i>
+          <span>{{localize "BENEOS.Cloud.Settings.SetupTour.Action"}}</span>
+        </button>
+      </div>
+    </div>
+
+    {{!-- Death Tokens — toggle row bound to beneos-death-management. --}}
+    <div class="bc-settings-row">
+      <div class="bc-settings-row-meta">
+        <div class="bc-settings-row-label">{{localize "BENEOS.Cloud.Settings.DeathTokens.Label"}}</div>
+        <div class="bc-settings-row-hint">{{localize "BENEOS.Cloud.Settings.DeathTokens.Hint"}}</div>
+      </div>
+      <div class="bc-settings-row-control">
+        <span class="bc-settings-saved" aria-hidden="true">
+          <i class="fa-solid fa-check"></i>
+          <span>{{localize "BENEOS.Cloud.Settings.Saved"}}</span>
+        </span>
+        <label class="bc-checkbox-row bc-settings-toggle">
+          <input type="checkbox"
+                 class="bc-checkbox"
+                 data-setting-key="beneos-death-management"
+                 {{#if deathTokensEnabled}}checked{{/if}} />
+        </label>
+      </div>
+    </div>
+
+    {{!-- Show DM Navigation to Players — toggle row bound to showNavToPlayers. --}}
+    <div class="bc-settings-row">
+      <div class="bc-settings-row-meta">
+        <div class="bc-settings-row-label">{{localize "BENEOS.Cloud.Settings.ShowNav.Label"}}</div>
+        <div class="bc-settings-row-hint">{{localize "BENEOS.Cloud.Settings.ShowNav.Hint"}}</div>
+      </div>
+      <div class="bc-settings-row-control">
+        <span class="bc-settings-saved" aria-hidden="true">
+          <i class="fa-solid fa-check"></i>
+          <span>{{localize "BENEOS.Cloud.Settings.Saved"}}</span>
+        </span>
+        <label class="bc-checkbox-row bc-settings-toggle">
+          <input type="checkbox"
+                 class="bc-checkbox"
+                 data-setting-key="showNavToPlayers"
+                 {{#if showNavEnabled}}checked{{/if}} />
+        </label>
+      </div>
+    </div>
+
+    {{!-- Asset Watcher — toggle row. Mirrors the existing
+         `assetWatcherEnabled` setting registered in beneos-asset-watcher.js;
+         when on, the canvasReady hook auto-scans each opened scene and
+         pops a single dialog if anything is missing. --}}
+    <div class="bc-settings-row">
+      <div class="bc-settings-row-meta">
+        <div class="bc-settings-row-label">{{localize "BENEOS.Cloud.Settings.AssetCheck.Label"}}</div>
+        <div class="bc-settings-row-hint">{{localize "BENEOS.Cloud.Settings.AssetCheck.Hint"}}</div>
+      </div>
+      <div class="bc-settings-row-control">
+        <span class="bc-settings-saved" aria-hidden="true">
+          <i class="fa-solid fa-check"></i>
+          <span>{{localize "BENEOS.Cloud.Settings.Saved"}}</span>
+        </span>
+        <label class="bc-checkbox-row bc-settings-toggle">
+          <input type="checkbox"
+                 class="bc-checkbox"
+                 data-setting-key="assetWatcherEnabled"
+                 {{#if assetCheckEnabled}}checked{{/if}} />
+        </label>
+      </div>
+    </div>
+
+  </div>
+</section>

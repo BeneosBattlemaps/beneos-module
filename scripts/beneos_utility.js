@@ -1,9 +1,8 @@
 /********************************************************************************* */
 import { BeneosTableTop } from "./beneos-table-top.js";
-import { BeneosCompendiumReset } from "./beneos_compendium.js";
 import { BeneosSearchEngineLauncher, BeneosDatabaseHolder, BeneosModuleMenu } from "./beneos_search_engine.js";
 import { ClassCounter } from "./count-class-ready.js";
-import { BeneosCloud, BeneosCloudLogin, BeneosCloudSettings } from "./beneos_cloud.js";
+import { BeneosCloud, BeneosCloudLogin, BeneosCloudSettings, BeneosCloudAccountMenu } from "./beneos_cloud.js";
 
 /********************************************************************************* */
 globalThis.BENEOS_MODULE_NAME = "Beneos Module"
@@ -83,15 +82,15 @@ export class TableTopModeSettings extends FormApplication {
         }
       }
     }
-    //console.log("Updating object", data, config)
+    //BeneosUtility.debugMessage("Updating object", data, config)
     for (let idx = 0; idx < data.performanceModePerUsersArray.length; idx++) {
       if (data.performanceModePerUsers[idx]) {
         data.performanceModePerUsers[idx].perfMode = data.performanceModePerUsersArray[idx] // Update with form flag value
       } else {
-        console.log("Error in updating user performance mode", idx, data)
+        console.warn("[Beneos] Error in updating user performance mode", idx, data)
       }
     }
-    //console.log("Updating object",formData, data)
+    //BeneosUtility.debugMessage("Updating object",formData, data)
     await game.settings.set(BeneosUtility.moduleID(), 'beneos-table-top-config', data)
 
     // Manage the ON/OFF value
@@ -164,36 +163,32 @@ export class BeneosUtility {
       default: false
     })
 
-    if (game.settings.get(BeneosUtility.moduleID(), 'beneos-cloud-foundry-id') == "") {
-      game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-patreon-login", {
-        name: "BENEOS.Settings.PatreonLogin.Name",
-        label: "BENEOS.Settings.PatreonLogin.Label",
-        hint: "BENEOS.Settings.PatreonLogin.Hint",
-        scope: 'world',
-        config: true,
-        type: BeneosCloudLogin,
-        restricted: true
-      })
-    } else {
-      game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-cloud-disconnect", {
-        name: "BENEOS.Settings.CloudDisconnect.Name",
-        label: "BENEOS.Settings.CloudDisconnect.Label",
-        hint: "BENEOS.Settings.CloudDisconnect.Hint",
-        scope: 'world',
-        config: true,
-        type: BeneosCloudSettings,
-        restricted: true,
-      })
-    }
+    // Wave B-9: per-user list/grid view preference for the V2 cloud
+    // window. Client-scoped because the choice is purely visual; each
+    // GM can pick their own preferred density.
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-cloud-view-mode', {
+      name: 'Beneos Cloud V2 view mode',
+      scope: 'client',
+      config: false,
+      type: String,
+      default: 'list'
+    })
 
-    game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-clean-compendium", {
-      name: "BENEOS.Settings.CleanCompendium.Name",
-      label: "BENEOS.Settings.CleanCompendium.Label",
-      hint: "BENEOS.Settings.CleanCompendium.Hint",
+    // Wave B-9-fix-68: single state-aware menu. The button class
+    // BeneosCloudAccountMenu inspects game.beneos.cloud.isLoggedIn()
+    // at click time and dispatches to the login dialog OR the
+    // disconnect handler. Previously we registered one of two menus
+    // conditionally on the stored foundryId at init — that worked on
+    // first load but stayed stale after a runtime login/logout
+    // (Foundry doesn't re-evaluate menu definitions without a reload).
+    game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-cloud-account", {
+      name: "BENEOS.Settings.CloudAccount.Name",
+      label: "BENEOS.Settings.CloudAccount.Label",
+      hint: "BENEOS.Settings.CloudAccount.Hint",
       scope: 'world',
       config: true,
-      type: BeneosCompendiumReset,
-      restricted: true,
+      type: BeneosCloudAccountMenu,
+      restricted: true
     })
 
     game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-search-engine", {
@@ -407,7 +402,7 @@ export class BeneosUtility {
   /********************************************************************************** */
   static setupSocket() {
     game.socket.on(`module.beneos-module`, (msg) => {
-      //console.log('pl',payload)
+      //BeneosUtility.debugMessage('pl',payload)
       if (msg.name == 'msg_set_view_position') { BeneosTableTop.applyPosition(msg.data) }
       if (msg.name == 'msg_toggle_ui_elements') { BeneosTableTop.applyUIElements(msg.data) }
       if (msg.name == 'msg_request_user_view') { BeneosTableTop.sendUserViewMessage() }
@@ -421,7 +416,7 @@ export class BeneosUtility {
       this.beneosTokens = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-tokenconfig'))
     }
     catch {
-      console.log("BeneosModule : *************** Token JSON loading error ! **************")
+      console.warn("[Beneos] Token JSON loading error")
       this.beneosTokens = {}
     }
 
@@ -429,7 +424,7 @@ export class BeneosUtility {
       this.beneosSpells = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-spellconfig'))
     }
     catch {
-      console.log("BeneosModule : *************** Spell JSON loading error ! **************")
+      console.warn("[Beneos] Spell JSON loading error")
       this.beneosSpells = {}
     }
 
@@ -437,7 +432,7 @@ export class BeneosUtility {
       this.beneosItems = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-itemconfig'))
     }
     catch {
-      console.log("BeneosModule : *************** Item JSON loading error ! **************")
+      console.warn("[Beneos] Item JSON loading error")
       this.beneosItems = {}
     }
   }
@@ -477,7 +472,7 @@ export class BeneosUtility {
     let actorPack = BeneosUtility.getActorPack()
     for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
       if (token?.actorId && !actorPack.index.some(i => i._id == token.actorId)) {
-        console.log("Beneos Compendium actor not found for token", fullKey, token.actorId)
+        BeneosUtility.debugMessage("Beneos Compendium actor not found for token", fullKey, token.actorId)
         delete this.beneosTokens[fullKey]
         toSave = true
       } else {
@@ -490,7 +485,7 @@ export class BeneosUtility {
             ret = await foundry.utils.srcExists(actor.prototypeToken.texture.src)
           }
           if (!ret) {
-            console.log("Beneos Compendium actor image not found for token", fullKey, actor.prototypeToken?.texture?.src)
+            BeneosUtility.debugMessage("Beneos Compendium actor image not found for token", fullKey, actor.prototypeToken?.texture?.src)
             actorDelete.push(actor._id)
             delete this.beneosTokens[fullKey]
             toSave = true
@@ -502,7 +497,7 @@ export class BeneosUtility {
     let itemPack = game.packs.get("world.beneos_module_items")
     for (let [fullKey, item] of Object.entries(this.beneosItems)) {
       if (item.itemId && !itemPack.index.some(i => i._id == item.itemId)) {
-        console.log("Beneos Compendium item not found for item", fullKey, item.itemId)
+        BeneosUtility.debugMessage("Beneos Compendium item not found for item", fullKey, item.itemId)
         delete this.beneosItems[fullKey]
         toSave = true
       } else {
@@ -510,7 +505,7 @@ export class BeneosUtility {
         if (itemC) {
           let ret = await foundry.utils.srcExists(itemC.img)
           if (!ret) {
-            console.log("Beneos Compendium item image not found for item", fullKey, itemC.img)
+            BeneosUtility.debugMessage("Beneos Compendium item image not found for item", fullKey, itemC.img)
             itemDelete.push(itemC._id)
             delete this.beneosItems[fullKey]
             toSave = true
@@ -522,7 +517,7 @@ export class BeneosUtility {
     let spellPack = game.packs.get("world.beneos_module_spells")
     for (let [fullKey, spell] of Object.entries(this.beneosSpells)) {
       if (spell.spellId && !spellPack.index.some(i => i._id == spell.spellId)) {
-        console.log("Beneos Compendium spell not found for spell", fullKey, spell.spellId)
+        BeneosUtility.debugMessage("Beneos Compendium spell not found for spell", fullKey, spell.spellId)
         delete this.beneosSpells[fullKey]
         toSave = true
       } else {
@@ -530,7 +525,7 @@ export class BeneosUtility {
         if (spellC) {
           let ret = await foundry.utils.srcExists(spellC.img)
           if (!ret) {
-            console.log("Beneos Compendium item image not found for item", fullKey, spellC.img)
+            BeneosUtility.debugMessage("Beneos Compendium item image not found for item", fullKey, spellC.img)
             spellDelete.push(spellC._id)
             delete this.beneosSpells[fullKey]
             toSave = true
@@ -621,7 +616,7 @@ export class BeneosUtility {
       this.createCompendiums()
     }
 
-    console.log("Loaded", this.beneosTokens)
+    BeneosUtility.debugMessage("Loaded", this.beneosTokens)
 
     this.m_w = 123456789
     this.m_z = 987654321
@@ -673,7 +668,7 @@ export class BeneosUtility {
         OrigSingleLoadFilters(placeable, bulkLoading);
       }
     } else {
-      console.log("No Token Magic found !!!")
+      BeneosUtility.debugMessage("No Token Magic found !!!")
     }
 
     if (game.user.isGM) {
@@ -681,7 +676,7 @@ export class BeneosUtility {
       try {
         ClassCounter.registerUsageCount('beneos-module', { beneosStats: stats })
       } catch (e) {
-        console.log("Unable to register usage count, not important", e)
+        BeneosUtility.debugMessage("Unable to register usage count, not important", e)
       }
     }
 
@@ -737,7 +732,7 @@ export class BeneosUtility {
     try {
       const response = await fetch('https://beneos.cloud/messages/welcome_msg.json');
       if (!response.ok) {
-        console.log("BeneosModule: Failed to fetch welcome message");
+        console.warn("[Beneos] Failed to fetch welcome message");
         return;
       }
 
@@ -745,7 +740,7 @@ export class BeneosUtility {
 
       // Vérifier que les champs requis sont présents
       if (!welcomeData.id || !welcomeData.created_at || !welcomeData.content) {
-        console.log("BeneosModule: Invalid welcome message format");
+        console.warn("[Beneos] Invalid welcome message format");
         return;
       }
 
@@ -757,7 +752,7 @@ export class BeneosUtility {
         this.displayWelcomeDialog(welcomeData); w
       }
     } catch (error) {
-      console.log("BeneosModule: Error checking welcome message:", error);
+      console.warn("[Beneos] Error checking welcome message:", error);
     }
   }
 
@@ -785,7 +780,7 @@ export class BeneosUtility {
     try {
       const response = await fetch('https://beneos.cloud/messages/news_msg.json');
       if (!response.ok) {
-        console.log("BeneosModule: Failed to fetch news message");
+        console.warn("[Beneos] Failed to fetch news message");
         return;
       }
 
@@ -793,7 +788,7 @@ export class BeneosUtility {
 
       // Vérifier que les champs requis sont présents
       if (!newsData.id || !newsData.created_at || !newsData.content) {
-        console.log("BeneosModule: Invalid news message format");
+        console.warn("[Beneos] Invalid news message format");
         return;
       }
 
@@ -805,7 +800,7 @@ export class BeneosUtility {
         this.displayNewsDialog(newsData);
       }
     } catch (error) {
-      console.log("BeneosModule: Error checking news message:", error);
+      console.warn("[Beneos] Error checking news message:", error);
     }
   }
 
@@ -910,14 +905,14 @@ export class BeneosUtility {
         tile = scene.tiles.get(tileId)
       }
 
-      //console.log("Scene : ", scene)
+      //BeneosUtility.debugMessage("Scene : ", scene)
       let srcPath = (tile) ? tile.texture.src : BeneosUtility.getSceneBackgroundSrc(scene)
       if (command == "toStatic") {
         srcPath = srcPath.replace("webm", "webp")
       } else {
         srcPath = srcPath.replace("webp", "webm")
       }
-      console.log("New path : ", srcPath)
+      BeneosUtility.debugMessage("New path : ", srcPath)
       if (tile) {
         scene.updateEmbeddedDocuments("Tile", [({ _id: tile.id, 'texture.src': srcPath })])
       } else {
@@ -1043,7 +1038,7 @@ export class BeneosUtility {
     let isRemoved = false
     for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
       if (token.actorId == actorId) {
-        console.log("Removing token from actorId", token.actorId, fullKey)
+        BeneosUtility.debugMessage("Removing token from actorId", token.actorId, fullKey)
         delete this.beneosTokens[fullKey]
         isRemoved = true
         break
@@ -1051,9 +1046,15 @@ export class BeneosUtility {
     }
 
     if (isRemoved) {
-      console.log("Token removed for actorId", actorId)
+      BeneosUtility.debugMessage("Token removed for actorId", actorId)
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', JSON.stringify(this.beneosTokens))
-      BeneosSearchEngineLauncher.closeAndSave()
+      // Wave B-8g-2: only the legacy V1 search engine needs the close+reopen
+      // refresh on actor delete (Foundry fires deleteActor when the cloud
+      // import replaces an existing compendium entry during update). V2
+      // handles the same case via the softRefresh chain that runs at the
+      // tail of importTokenToCompendium — closing it here would defeat the
+      // whole in-place patch UX and leave the user with a closed window.
+      if (!game.beneos?.cloudWindowV2) BeneosSearchEngineLauncher.closeAndSave()
     }
   }
 
@@ -1062,7 +1063,7 @@ export class BeneosUtility {
     let isRemoved = false
     for (let [fullKey, item] of Object.entries(this.beneosItems)) {
       if (item.itemId == itemId) {
-        console.log("Removing item from itemId", item.itemId, fullKey)
+        BeneosUtility.debugMessage("Removing item from itemId", item.itemId, fullKey)
         delete this.beneosItems[fullKey]
         isRemoved = true
         break
@@ -1072,7 +1073,8 @@ export class BeneosUtility {
     if (isRemoved) {
       // Save the new data
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', JSON.stringify(this.beneosItems))
-      BeneosSearchEngineLauncher.closeAndSave()
+      // Wave B-8g-2: same V2 guard as removeTokenFromActorId.
+      if (!game.beneos?.cloudWindowV2) BeneosSearchEngineLauncher.closeAndSave()
     }
   }
 
@@ -1081,7 +1083,7 @@ export class BeneosUtility {
     let isRemoved = false
     for (let [fullKey, spell] of Object.entries(this.beneosSpells)) {
       if (spell.spellId == spellId) {
-        console.log("Removing spell from spellId", spell.spellId, fullKey)
+        BeneosUtility.debugMessage("Removing spell from spellId", spell.spellId, fullKey)
         delete this.beneosSpells[fullKey]
         isRemoved = true
         break
@@ -1090,7 +1092,8 @@ export class BeneosUtility {
     if (isRemoved) {
       // Save the new data
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', JSON.stringify(this.beneosSpells))
-      BeneosSearchEngineLauncher.closeAndSave()
+      // Wave B-8g-2: same V2 guard as removeTokenFromActorId.
+      if (!game.beneos?.cloudWindowV2) BeneosSearchEngineLauncher.closeAndSave()
     }
   }
 
@@ -1171,7 +1174,7 @@ export class BeneosUtility {
         }
       })
       if (apply) {
-        console.log("Adding effects", bpresets, replace)
+        BeneosUtility.debugMessage("Adding effects", bpresets, replace)
         token.TMFXaddFilters(bpresets, replace)
       } else {
         return bpresets
@@ -1284,7 +1287,7 @@ export class BeneosUtility {
   static getSpellId(key) {
     let token = this.beneosSpells[key.toLowerCase()]
     if (token) {
-      //console.log("Spell ?", token)
+      //BeneosUtility.debugMessage("Spell ?", token)
       return token.spellId
     }
     return undefined
@@ -1320,7 +1323,7 @@ export class BeneosUtility {
     let newImage = tokenData.token
     await token.document.setFlag(BeneosUtility.moduleID(), "fullKey", tokenData.fullId)
     let scaleFactor = this.getScaleFactor(token, fullKey)
-    //console.log(">>>>>>>>>>> UPDATE TOKEN CHANGE", fullKey, tokenData, newImage)
+    //BeneosUtility.debugMessage(">>>>>>>>>>> UPDATE TOKEN CHANGE", fullKey, tokenData, newImage)
     await token.document.update({ img: newImage, scale: scaleFactor, rotation: 1.0 })
     if (foundry.utils.isNewerVersion(game.version, "11")) {
       await token.document.update({ 'texture.src': newImage })
@@ -1360,7 +1363,7 @@ export class BeneosUtility {
       BeneosUtility.debugMessage("[BENEOS MODULE] No attributes", actorData)
       return
     }
-    console.log("Token HP value", fullKey, myToken)
+    BeneosUtility.debugMessage("Token HP value", fullKey, myToken)
     let hp = attributes.hp.value
     let benRotation = 0
     let benAlpha = 1
@@ -1407,7 +1410,7 @@ export class BeneosUtility {
   static checkLockViewPresence() {
     let lv = game.modules.get("LockView")
     if (lv?.active) {
-      ui.notifications.warn("Lock View module detected. Beneos Module is no more compatible with LockView module, it must be de-activated.")
+      ui.notifications.warn(game.i18n.localize("BENEOS.Notifications.Utility.LockViewIncompatible"))
       return true
     }
   }
@@ -1486,11 +1489,11 @@ export class BeneosUtility {
           "actorName": value.actorName
         })
       } else {
-        ui.notifications.warn("Beneos Module: Actor name/id not found for token " + key)
+        ui.notifications.warn(game.i18n.format("BENEOS.Notifications.Utility.ActorNotFound", { key }))
       }
     })
     this.sortArrayObjectsByName(beneosTokensHUD)
-    //console.log("Beneos Tokens HUD", beneosTokensHUD)
+    //BeneosUtility.debugMessage("Beneos Tokens HUD", beneosTokensHUD)
     return beneosTokensHUD
   }
 

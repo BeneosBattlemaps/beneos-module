@@ -1,0 +1,43 @@
+{{!-- Beneos Cloud V2 — header tab strip.
+     Tour selectors (#beneos-radio-token etc.) are kept as id aliases so the
+     existing tour script keeps targeting the right elements. --}}
+<header class="bc-header" data-bc-region="header">
+  <nav class="bc-tab-strip" role="tablist">
+    <button type="button"
+            class="bc-tab beneos-search-button{{#if (eq searchMode "token")}} bc-tab-active category-active{{/if}}"
+            id="beneos-radio-token"
+            data-bc-tab="token"
+            data-action="switchTab"
+            role="tab">
+      {{localize "BENEOS.Cloud.Tab.Tokens"}}
+    </button>
+
+    <button type="button"
+            class="bc-tab beneos-search-button{{#if (eq searchMode "bmap")}} bc-tab-active category-active{{/if}}"
+            id="beneos-radio-bmap"
+            data-bc-tab="bmap"
+            data-action="switchTab"
+            role="tab"
+            data-tooltip="{{localize 'BENEOS.Cloud.Tab.MapsTooltip'}}">
+      {{localize "BENEOS.Cloud.Tab.Maps"}}
+    </button>
+
+    <button type="button"
+            class="bc-tab beneos-search-button{{#if (eq searchMode "item")}} bc-tab-active category-active{{/if}}"
+            id="beneos-radio-item"
+            data-bc-tab="item"
+            data-action="switchTab"
+            role="tab">
+      {{localize "BENEOS.Cloud.Tab.Items"}}
+    </button>
+
+    <button type="button"
+            class="bc-tab beneos-search-button{{#if (eq searchMode "spell")}} bc-tab-active category-active{{/if}}"
+            id="beneos-radio-spell"
+            data-bc-tab="spell"
+            data-action="switchTab"
+            role="tab">
+      {{localize "BENEOS.Cloud.Tab.Spells"}}
+    </button>
+  </nav>
+</header>

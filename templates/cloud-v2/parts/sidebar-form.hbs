@@ -1,0 +1,474 @@
+{{!-- Beneos Cloud V2 — filter sidebar.
+     Wave B-8b: section-headed layout matching the design mockup. Each
+     filter group has a small accent bar + uppercase heading; tokens mode
+     uses a CR slider (replaces the CR dropdown), Source checkboxes (with
+     dataset counts), and a dedicated Campaign block. Other modes keep
+     their existing dropdowns under the same heading style for visual
+     consistency. Legacy ids on selects are preserved so V2_FILTER_DEFS
+     and the existing tour selectors still resolve. --}}
+<aside class="bc-sidebar" data-bc-region="sidebar">
+
+  {{!-- Global text search + reset --}}
+  {{!-- Wave B-8e-fix-7: reset is a <button type="button">, not an
+       <a href="#">. The anchor used to bubble through Foundry's
+       app-shell click pipeline and end up opening localhost:30000/join
+       in a new tab even though our action handler called
+       preventDefault. A button has no default navigation; ApplicationV2
+       still picks up the data-action attribute exactly the same way. --}}
+  <div class="bc-sidebar-search">
+    <label class="bc-sidebar-search-label" for="beneos-search-text">
+      {{localize "BENEOS.Cloud.Filter.Search"}}
+      (<button type="button" id="reset-search-list" class="bc-link-button" data-action="resetFilters">{{localize "BENEOS.Cloud.Filter.Reset"}}</button>)
+    </label>
+    <input type="text" id="beneos-search-text" class="bc-input beneos-search-text-input" autocomplete="off" />
+  </div>
+
+  {{#if (eq searchMode "token")}}
+
+    {{!-- CR — dual-thumb min/max range slider (Wave B-8c). Steps are
+         indices into CR_STEPS so D&D fractions (1/8, 1/4, 1/2) work as
+         distinct slider positions. The active range is rendered as a
+         coloured fill behind the thumbs; left/right are set by JS in
+         updateDisplay() based on the thumb positions. --}}
+    <section class="bc-sidebar-group">
+      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.CR"}}</header>
+      <div class="bc-slider-wrap">
+        <div class="bc-slider-row">
+          <label class="bc-sidebar-label">{{localize "BENEOS.Cloud.Filter.MinCR"}} – {{localize "BENEOS.Cloud.Filter.MaxCR"}}</label>
+          <output class="bc-slider-display" id="bc-cr-display">{{crRangeLabel}}</output>
+        </div>
+        <div class="bc-slider-dual">
+          <div class="bc-slider-fill" data-bc-slider-fill></div>
+          <input type="range" id="bc-cr-min" class="bc-slider bc-slider-thumb-min"
+                 min="0" max="{{crStepsMax}}" step="1" value="{{crMinIndex}}" />
+          <input type="range" id="bc-cr-max" class="bc-slider bc-slider-thumb-max"
+                 min="0" max="{{crStepsMax}}" step="1" value="{{crMaxIndex}}" />
+        </div>
+      </div>
+    </section>
+
+    {{!-- Wave B-8d: biome chip-dropdown. Picking a biome from the
+         dropdown adds it as a chip below; clicking the chip's × removes
+         it. AND-semantics filter (all chips must match) is unchanged
+         from B-8c — only the UI shape is more compact.
+         Order note: Biome sits ABOVE Refinement because it is the most
+         frequently used creature filter in practice (DM picking the
+         right encounter for the current scene). --}}
+    {{#if biomeHasAny}}
+    <section class="bc-sidebar-group">
+      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Biome"}}</header>
+      {{#if biomeAvailable.length}}
+        <div class="bc-sidebar-field">
+          <select class="bc-select" id="bc-biome-add">
+            <option value="">{{localize "BENEOS.Cloud.Filter.AddBiome"}}</option>
+            {{#each biomeAvailable as |b|}}
+              <option value="{{b.key}}">{{b.label}} ({{b.count}})</option>
+            {{/each}}
+          </select>
+        </div>
+      {{/if}}
+      {{#if biomeChips.length}}
+        <div class="bc-chip-list" data-bc-chip-list="biome">
+          {{#each biomeChips as |c|}}
+            <button type="button" class="bc-chip bc-biome-chip"
+                    data-biome="{{c.key}}"
+                    aria-label="Remove {{c.label}}">
+              <span class="bc-chip-label">{{c.label}}</span>
+              <span class="bc-chip-remove" aria-hidden="true">×</span>
+            </button>
+          {{/each}}
+        </div>
+      {{/if}}
+    </section>
+    {{/if}}
+
+    {{!-- Refine — single-select dropdowns ordered by user-importance
+         (Wave B-8h-2): Type first (most important), then Purpose, Fighting
+         Style, Faction (least important). --}}
+    <section class="bc-sidebar-group">
+      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Refine"}}</header>
+      {{#if tokenTypes}}
+        <div class="bc-sidebar-field">
+          <label class="bc-sidebar-label">{{localize "BENEOS.Cloud.Filter.Type"}}</label>
+          <div class="bc-sidebar-field-row">
+            <select class="bc-select beneos-selector" id="token-types">
+              {{selectOptions tokenTypes nameAttr="key" valueAttr="key" labelAttr="value"}}
+            </select>
+            <span class="bc-filter-info" data-info-for="token-types" style="display:none">
+              <i class="fa-solid fa-circle-info"></i>
+            </span>
+          </div>
+        </div>
+      {{/if}}
+      {{#if purposeList}}
+        <div class="bc-sidebar-field">
+          <label class="bc-sidebar-label">{{localize "BENEOS.Cloud.Filter.Purpose"}}</label>
+          <div class="bc-sidebar-field-row">
+            <select class="bc-select beneos-selector" id="token-purpose">
+              {{selectOptions purposeList nameAttr="key" valueAttr="key" labelAttr="value"}}
+            </select>
+            <span class="bc-filter-info" data-info-for="token-purpose" style="display:none">
+              <i class="fa-solid fa-circle-info"></i>
+            </span>
+          </div>
+        </div>
+      {{/if}}
+      {{#if fightingStyles}}
+        <div class="bc-sidebar-field">
+          <label class="bc-sidebar-label">{{localize "BENEOS.Cloud.Filter.FightingStyle"}}</label>
+          <div class="bc-sidebar-field-row">
+            <select class="bc-select beneos-selector" id="token-fight-style">
+              {{selectOptions fightingStyles nameAttr="key" valueAttr="key" labelAttr="value"}}
+            </select>
+            <span class="bc-filter-info" data-info-for="token-fight-style" style="display:none">
+              <i class="fa-solid fa-circle-info"></i>
+            </span>
+          </div>
+        </div>
+      {{/if}}
+      {{#if tokenFactions}}
+        <div class="bc-sidebar-field">
+          <label class="bc-sidebar-label">{{localize "BENEOS.Cloud.Filter.Faction"}}</label>
+          <div class="bc-sidebar-field-row">
+            <select class="bc-select beneos-selector" id="faction-selector">
+              {{selectOptions tokenFactions nameAttr="key" valueAttr="key" labelAttr="value"}}
+            </select>
+            <span class="bc-filter-info" data-info-for="faction-selector" style="display:none">
+              <i class="fa-solid fa-circle-info"></i>
+            </span>
+          </div>
+        </div>
+      {{/if}}
+    </section>
+
+    {{!-- Source — checkbox multi-select with dataset counts. Counts come
+         from _preparePartContext (one pass over the full unfiltered raw
+         entries for this assetType) so they show how many items exist
+         per source overall, not "after current filters". --}}
+    {{!-- Wave B-8c: exclusion-model source filter. All checkboxes start
+         checked = "show all"; unchecking a source hides it. The label
+         shows the user-facing name (Patreon → "Beneos Originals") and the
+         tooltip explains where the content comes from. --}}
+    {{#if sourceCheckboxes.length}}
+    <section class="bc-sidebar-group">
+      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Source"}}</header>
+      {{#each sourceCheckboxes as |src|}}
+        <label class="bc-checkbox-row" data-tooltip="{{src.tooltip}}">
+          <input type="checkbox" class="bc-checkbox bc-source-checkbox"
+                 data-source="{{src.key}}"
+                 {{#if src.checked}}checked{{/if}} />
+          <span class="bc-checkbox-label">{{src.label}}</span>
+          <span class="bc-checkbox-count">{{src.count}}</span>
+        </label>
+      {{/each}}
+    </section>
+    {{/if}}
+
+    {{!-- Campaign — token-side adventure dropdown. Surfaces the existing
+         dbHolder.tokenCampaigns map (was previously hidden behind the
+         old flat layout). --}}
+    {{#if tokenCampaigns}}
+    <section class="bc-sidebar-group">
+      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Campaign"}}</header>
+      <select class="bc-select beneos-selector" id="campaign-selector">
+        {{selectOptions tokenCampaigns nameAttr="key" valueAttr="key" labelAttr="value"}}
+      </select>
+    </section>
+    {{/if}}
+
+    {{!-- Install state — kept as a small section for power-users.
+         Wave B-8c: the value="notinstalled" matches the actual data field
+         (tokenData.installed); the previous "noninstalled" value never
+         matched anything so the filter was a no-op.
+         hasNewAssets / hasUpdatedAssets are computed in
+         _preparePartContext("sidebar") for the current asset type, so
+         the same block can be re-used verbatim in the item / spell tabs. --}}
+    <section class="bc-sidebar-group">
+      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Show"}}</header>
+      <div class="bc-sidebar-field">
+        <select class="bc-select beneos-selector" id="installation-selector">
+          <option value="any">{{localize "BENEOS.Cloud.Filter.InstallAny"}}</option>
+          <option value="installed">{{localize "BENEOS.Cloud.Filter.InstallInstalled"}}</option>
+          <option value="notinstalled">{{localize "BENEOS.Cloud.Filter.InstallNotInstalled"}}</option>
+          {{#if hasNewAssets}}
+            <option value="new">{{localize "BENEOS.Cloud.Filter.InstallOnlyNew"}}</option>
+          {{/if}}
+          {{#if hasUpdatedAssets}}
+            <option value="updated">{{localize "BENEOS.Cloud.Filter.InstallOnlyUpdated"}}</option>
+          {{/if}}
+        </select>
+      </div>
+    </section>
+  {{/if}}
+
+  {{#if (eq searchMode "bmap")}}
+    {{!-- Wave B-8k-2: bmap biome chip-dropdown — same UX pattern as the
+         token tab. The biomeChips / biomeAvailable lists are populated
+         for bmap mode in #buildBiomeLists. The bmap-bioms-selector
+         dropdown is removed; filter logic now runs through
+         #applyBiomeFilter against this.bmapBiomeFilters. --}}
+    {{#if biomeHasAny}}
+    <section class="bc-sidebar-group">
+      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Biome"}}</header>
+      {{#if biomeAvailable.length}}
+        <div class="bc-sidebar-field">
+          <select class="bc-select" id="bc-biome-add">
+            <option value="">{{localize "BENEOS.Cloud.Filter.AddBiome"}}</option>
+            {{#each biomeAvailable as |b|}}
+              <option value="{{b.key}}">{{b.label}} ({{b.count}})</option>
+            {{/each}}
+          </select>
+        </div>
+      {{/if}}
+      {{#if biomeChips.length}}
+        <div class="bc-chip-list" data-bc-chip-list="biome">
+          {{#each biomeChips as |c|}}
+            <button type="button" class="bc-chip bc-biome-chip"
+                    data-biome="{{c.key}}"
+                    aria-label="Remove {{c.label}}">
+              <span class="bc-chip-label">{{c.label}}</span>
+              <span class="bc-chip-remove" aria-hidden="true">×</span>
+            </button>
+          {{/each}}
+        </div>
+      {{/if}}
+    </section>
+    {{/if}}
+    <section class="bc-sidebar-group">
+      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Refine"}}</header>
+      {{#if bmapBrightness}}
+        <div class="bc-sidebar-field">
+          <label class="bc-sidebar-label">{{localize "BENEOS.Cloud.Filter.Brightness"}}</label>
+          <select class="bc-select beneos-selector" id="bmap-brightness">
+            {{selectOptions bmapBrightness nameAttr="key" valueAttr="key" labelAttr="value"}}
+          </select>
+        </div>
+      {{/if}}
+      {{#if gridList}}
+        <div class="bc-sidebar-field">
+          <label class="bc-sidebar-label">{{localize "BENEOS.Cloud.Filter.Grid"}}</label>
+          <select class="bc-select beneos-selector" id="bmap-grid">
+            {{selectOptions gridList nameAttr="key" valueAttr="key" labelAttr="value"}}
+          </select>
+        </div>
+      {{/if}}
+      <div class="bc-sidebar-field">
+        <label class="bc-sidebar-label">{{localize "BENEOS.Cloud.Filter.Type"}}</label>
+        <select class="bc-select beneos-selector" id="kind-selector">
+          <option value="any">{{localize "BENEOS.Cloud.Filter.InstallAny"}}</option>
+          <option value="scenery">{{localize "BENEOS.Cloud.Filter.Scenery"}}</option>
+          <option value="battlemap">{{localize "BENEOS.Cloud.Filter.Battlemap"}}</option>
+        </select>
+      </div>
+    </section>
+    {{#if adventureList}}
+    <section class="bc-sidebar-group">
+      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Campaign"}}</header>
+      <select class="bc-select beneos-selector" id="bmap-adventure">
+        {{selectOptions adventureList nameAttr="key" valueAttr="key" labelAttr="value"}}
+      </select>
+    </section>
+    {{/if}}
+    {{!-- Wave B-9-fix-29: release filter — narrows bmap results to a
+         single pack ("96 - DiA 00 …"). Useful when the user references
+         a specific pack number from a Beneos overview map. --}}
+    {{#if releaseList}}
+    <section class="bc-sidebar-group">
+      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Release"}}</header>
+      <select class="bc-select beneos-selector" id="release-selector">
+        {{selectOptions releaseList nameAttr="key" valueAttr="key" labelAttr="value"}}
+      </select>
+    </section>
+    {{/if}}
+    <div class="bc-sidebar-banner bc-banner-info">
+      {{localize "BENEOS.Cloud.MapsBanner"}}
+    </div>
+  {{/if}}
+
+  {{#if (eq searchMode "item")}}
+    {{!-- Wave B-8i-3: gold range slider — dual-thumb min/max, exact same
+         visual pattern as the CR slider. Max bound is computed from the
+         dataset so the user always sees the actual range available. --}}
+    <section class="bc-sidebar-group">
+      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Gold"}}</header>
+      <div class="bc-slider-wrap">
+        <div class="bc-slider-row">
+          <label class="bc-sidebar-label">{{localize "BENEOS.Cloud.Filter.GoldRange"}}</label>
+          <output class="bc-slider-display" id="bc-gold-display">{{goldRangeLabel}}</output>
+        </div>
+        <div class="bc-slider-dual">
+          <div class="bc-slider-fill" data-bc-slider-fill="gold"></div>
+          <input type="range" id="bc-gold-min" class="bc-slider bc-slider-thumb-min"
+                 min="0" max="{{goldMaxAvailable}}" step="10" value="{{goldMin}}" />
+          <input type="range" id="bc-gold-max" class="bc-slider bc-slider-thumb-max"
+                 min="0" max="{{goldMaxAvailable}}" step="10" value="{{goldMax}}" />
+        </div>
+      </div>
+    </section>
+    <section class="bc-sidebar-group">
+      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Refine"}}</header>
+      {{#if itemType}}
+        <div class="bc-sidebar-field">
+          <label class="bc-sidebar-label">{{localize "BENEOS.Cloud.Filter.Type"}}</label>
+          <select class="bc-select beneos-selector" id="item-type">
+            {{selectOptions itemType nameAttr="key" valueAttr="key" labelAttr="value"}}
+          </select>
+        </div>
+      {{/if}}
+      {{#if rarity}}
+        <div class="bc-sidebar-field">
+          <label class="bc-sidebar-label">{{localize "BENEOS.Cloud.Filter.Rarity"}}</label>
+          <select class="bc-select beneos-selector" id="rarity-selector">
+            {{selectOptions rarity nameAttr="key" valueAttr="key" labelAttr="value"}}
+          </select>
+        </div>
+      {{/if}}
+      {{#if origin}}
+        <div class="bc-sidebar-field">
+          <label class="bc-sidebar-label">{{localize "BENEOS.Cloud.Filter.Origin"}}</label>
+          <div class="bc-sidebar-field-row">
+            <select class="bc-select beneos-selector" id="origin-selector">
+              {{selectOptions origin nameAttr="key" valueAttr="key" labelAttr="value"}}
+            </select>
+            <span class="bc-filter-info" data-info-for="origin-selector" style="display:none">
+              <i class="fa-solid fa-circle-info"></i>
+            </span>
+          </div>
+        </div>
+      {{/if}}
+      {{!-- Wave B-8i-3: tier dropdown — surfaces the existing
+           dbHolder.itemTier data that was previously not exposed in V2.
+           Wave B-8k-fix-2: info icon with hardcoded fallback descriptions
+           (Tier 1 = player levels 1–4, Tier 2 = 5–9, etc.) when the DB
+           doesn't carry tier descriptions. The data-info-context routes
+           the lookup to the tier-specific fallback bucket. --}}
+      {{#if tier}}
+        <div class="bc-sidebar-field">
+          <label class="bc-sidebar-label">{{localize "BENEOS.Cloud.Filter.Tier"}}</label>
+          <div class="bc-sidebar-field-row">
+            <select class="bc-select beneos-selector" id="tier-selector">
+              {{selectOptions tier nameAttr="key" valueAttr="key" labelAttr="value"}}
+            </select>
+            <span class="bc-filter-info" data-info-for="tier-selector" data-info-context="tier" style="display:none">
+              <i class="fa-solid fa-circle-info"></i>
+            </span>
+          </div>
+        </div>
+      {{/if}}
+    </section>
+    {{!-- Wave B-9-fix-7: placeholders for upcoming loot mechanics live
+         in their own section so the visual relationship is clear (and
+         they don't sit awkwardly inside the filter dropdowns block).
+         The mechanics behind these buttons are TBD; clicking either
+         surfaces a "coming soon" toast. --}}
+    <section class="bc-sidebar-group">
+      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.ItemMechanics"}}</header>
+      {{!-- Wave B-9-fix-60: icons removed from these buttons. The
+           label is descriptive on its own and the icon (link / arrows)
+           added visual noise without information value. --}}
+      <div class="bc-sidebar-field">
+        <button type="button" class="bc-sidebar-button" id="bc-origin-set-bonuses">
+          {{localize "BENEOS.Cloud.Filter.OriginSetBonuses"}}
+        </button>
+      </div>
+      <div class="bc-sidebar-field">
+        <button type="button" class="bc-sidebar-button" id="bc-tier-upgrade-mechanic">
+          {{localize "BENEOS.Cloud.Filter.TierUpgrade"}}
+        </button>
+      </div>
+    </section>
+
+    {{!-- Show-state filter (shared with token + spell tabs). The
+         hasNewAssets / hasUpdatedAssets flags come from the sidebar
+         context and are computed for the current asset type. --}}
+    <section class="bc-sidebar-group">
+      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Show"}}</header>
+      <div class="bc-sidebar-field">
+        <select class="bc-select beneos-selector" id="installation-selector">
+          <option value="any">{{localize "BENEOS.Cloud.Filter.InstallAny"}}</option>
+          <option value="installed">{{localize "BENEOS.Cloud.Filter.InstallInstalled"}}</option>
+          <option value="notinstalled">{{localize "BENEOS.Cloud.Filter.InstallNotInstalled"}}</option>
+          {{#if hasNewAssets}}
+            <option value="new">{{localize "BENEOS.Cloud.Filter.InstallOnlyNew"}}</option>
+          {{/if}}
+          {{#if hasUpdatedAssets}}
+            <option value="updated">{{localize "BENEOS.Cloud.Filter.InstallOnlyUpdated"}}</option>
+          {{/if}}
+        </select>
+      </div>
+    </section>
+  {{/if}}
+
+  {{#if (eq searchMode "spell")}}
+    <section class="bc-sidebar-group">
+      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Refine"}}</header>
+      {{#if level}}
+        <div class="bc-sidebar-field">
+          <label class="bc-sidebar-label">{{localize "BENEOS.Cloud.Filter.Level"}}</label>
+          <select class="bc-select beneos-selector" id="level-selector">
+            {{selectOptions level nameAttr="key" valueAttr="key" labelAttr="value"}}
+          </select>
+        </div>
+      {{/if}}
+      {{#if school}}
+        <div class="bc-sidebar-field">
+          <label class="bc-sidebar-label">{{localize "BENEOS.Cloud.Filter.School"}}</label>
+          <select class="bc-select beneos-selector" id="school-selector">
+            {{selectOptions school nameAttr="key" valueAttr="key" labelAttr="value"}}
+          </select>
+        </div>
+      {{/if}}
+      {{#if spellClass}}
+        <div class="bc-sidebar-field">
+          <label class="bc-sidebar-label">{{localize "BENEOS.Cloud.Filter.Classes"}}</label>
+          <select class="bc-select beneos-selector" id="class-selector">
+            {{selectOptions spellClass nameAttr="key" valueAttr="key" labelAttr="value"}}
+          </select>
+        </div>
+      {{/if}}
+      {{!-- Wave B-8e-fix-3: spell-side filters for casting_time and
+           spell_type. Both are pre-built lists from BeneosDatabaseHolder.
+           getData() (castingTime / spellType properties). --}}
+      {{#if castingTime}}
+        <div class="bc-sidebar-field">
+          <label class="bc-sidebar-label">{{localize "BENEOS.Cloud.Filter.CastingTime"}}</label>
+          <select class="bc-select beneos-selector" id="casting-time-selector">
+            {{selectOptions castingTime nameAttr="key" valueAttr="key" labelAttr="value"}}
+          </select>
+        </div>
+      {{/if}}
+      {{#if spellType}}
+        <div class="bc-sidebar-field">
+          <label class="bc-sidebar-label">{{localize "BENEOS.Cloud.Filter.SpellType"}}</label>
+          <select class="bc-select beneos-selector" id="spell-type-selector">
+            {{selectOptions spellType nameAttr="key" valueAttr="key" labelAttr="value"}}
+          </select>
+        </div>
+      {{/if}}
+    </section>
+
+    {{!-- Show-state filter (shared with token + item tabs). --}}
+    <section class="bc-sidebar-group">
+      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Show"}}</header>
+      <div class="bc-sidebar-field">
+        <select class="bc-select beneos-selector" id="installation-selector">
+          <option value="any">{{localize "BENEOS.Cloud.Filter.InstallAny"}}</option>
+          <option value="installed">{{localize "BENEOS.Cloud.Filter.InstallInstalled"}}</option>
+          <option value="notinstalled">{{localize "BENEOS.Cloud.Filter.InstallNotInstalled"}}</option>
+          {{#if hasNewAssets}}
+            <option value="new">{{localize "BENEOS.Cloud.Filter.InstallOnlyNew"}}</option>
+          {{/if}}
+          {{#if hasUpdatedAssets}}
+            <option value="updated">{{localize "BENEOS.Cloud.Filter.InstallOnlyUpdated"}}</option>
+          {{/if}}
+        </select>
+      </div>
+    </section>
+  {{/if}}
+
+  {{#if isOffline}}
+    <div class="bc-sidebar-banner bc-banner-warning">
+      {{localize "BENEOS.Cloud.OfflineBanner"}}
+    </div>
+  {{/if}}
+</aside>

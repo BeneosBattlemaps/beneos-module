@@ -1,19 +1,22 @@
-<section class="beneos-cloud-login">
+<section class="bc-login-form">
+  <p class="bc-login-form__hint">{{localize "BENEOS.Cloud.Login.Description"}}</p>
 
-  <div class="beneos-cloud-login__container">
-    <h1 class="beneos-cloud-login__title">Beneos Cloud</h1>
-    <p class="beneos-cloud-login__description">Login to your Beneos Cloud account.
-      Credentials entered here are never stored.</p>
-
-    <div class="flexrow">
-      <label for="email" class="beneos-cloud-login__label">Email</label>
-      <input type="email" id="email" name="email" required class="beneos-cloud-login__input">
-    </div>
-    <div class="flexrow">
-      <label for="password" class="beneos-cloud-login__label">Password</label>
-      <input type="password" id="password" name="password" required class="beneos-cloud-login__input">
-    </div>
-
+  <div class="bc-login-form__field">
+    <label for="email" class="bc-login-form__label">{{localize "BENEOS.Cloud.Login.EmailLabel"}}</label>
+    <input type="email" id="email" name="email" required class="bc-login-form__input" autocomplete="email" />
   </div>
 
+  <div class="bc-login-form__field">
+    <label for="password" class="bc-login-form__label">{{localize "BENEOS.Cloud.Login.PasswordLabel"}}</label>
+    <input type="password" id="password" name="password" required class="bc-login-form__input" autocomplete="current-password" />
+  </div>
+
+  {{!-- Wave B-9-fix-64: low-prominence text link to the Beneos Cloud
+       sign-up page so users without an account see a clear path to
+       create one. Plain anchor with target=_blank — no button styling,
+       no extra CSS surface, just inline text. --}}
+  <p class="bc-login-form__signup">
+    {{localize "BENEOS.Cloud.Login.NoAccount"}}
+    <a href="https://beneos.cloud/" target="_blank" rel="noopener noreferrer">{{localize "BENEOS.Cloud.Login.SignUp"}}</a>
+  </p>
 </section>

@@ -1,0 +1,3001 @@
+/* =============================================================
+   Beneos Cloud V2 — window layout (Wave B-4)
+   All selectors scoped under .beneos-cloud-app so the V2 styling
+   never leaks into the rest of Foundry's UI or into the v1 search
+   engine that still lives in css/beneos.css.
+
+   Tokens (--bc-*) are defined in css/beneos-cloud-tokens.css and
+   loaded before this file (see module.json styles[]).
+   ============================================================= */
+
+/* Wave B-5a anchor fix: Foundry V13's ApplicationV2 + HandlebarsApplicationMixin
+   wraps content in a `.window-content` that has its own padding/flex defaults
+   with higher specificity than ours. We anchor the V2 layout via
+   - `#beneos-cloud-window-v2` ID (always wins specificity)
+   - `!important` on the layout primitives (overrides Foundry defaults)
+   - explicit height: 100% chain so the grid actually fills the window. */
+
+.beneos-cloud-app,
+#beneos-cloud-window-v2 {
+  font-family: var(--bc-font-ui);
+  color: var(--bc-text);
+  background: var(--bc-bg);
+  /* Make sure the outer Foundry element fills its allotted height so the
+     inner grid (window-content) actually has room to lay things out. */
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* The Foundry window-content wrapper becomes our grid container. */
+#beneos-cloud-window-v2 .window-content,
+.beneos-cloud-app .window-content {
+  display: grid !important;
+  grid-template-columns: 280px 1fr !important;
+  grid-template-rows: auto 1fr auto !important;
+  grid-template-areas:
+    "header  header"
+    "sidebar results"
+    "footer  footer" !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  background: var(--bc-bg) !important;
+  overflow: hidden !important;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+/* If a Handlebars part renders an extra wrapper between window-content and
+   the [data-bc-region] element, `display: contents` makes that wrapper
+   transparent so the region still occupies its grid slot. */
+#beneos-cloud-window-v2 .window-content > div:not([data-bc-region]):not(.bc-detail-drawer),
+.beneos-cloud-app .window-content > div:not([data-bc-region]):not(.bc-detail-drawer) {
+  display: contents;
+}
+
+#beneos-cloud-window-v2 [data-bc-region="header"],
+.beneos-cloud-app [data-bc-region="header"]  { grid-area: header !important; min-width: 0; }
+#beneos-cloud-window-v2 [data-bc-region="sidebar"],
+.beneos-cloud-app [data-bc-region="sidebar"] { grid-area: sidebar !important; min-width: 0; min-height: 0; overflow-y: auto; }
+#beneos-cloud-window-v2 [data-bc-region="results"],
+.beneos-cloud-app [data-bc-region="results"] { grid-area: results !important; min-width: 0; min-height: 0; overflow: hidden; }
+#beneos-cloud-window-v2 [data-bc-region="footer"],
+.beneos-cloud-app [data-bc-region="footer"]  { grid-area: footer !important; min-width: 0; }
+
+/* ---- Header / tab strip ---- */
+
+.beneos-cloud-app .bc-header {
+  background: var(--bc-bg-panel);
+  border-bottom: 1px solid var(--bc-border);
+}
+.beneos-cloud-app .bc-tab-strip {
+  display: flex;
+  gap: var(--bc-space-1);
+  padding: var(--bc-space-2) var(--bc-space-3);
+}
+.beneos-cloud-app .bc-tab {
+  flex: 1 1 auto;
+  padding: var(--bc-space-2) var(--bc-space-3);
+  background: transparent;
+  color: var(--bc-text-muted);
+  border: 1px solid transparent;
+  border-radius: var(--bc-radius);
+  font-family: var(--bc-font-ui);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.beneos-cloud-app .bc-tab:hover {
+  background: var(--bc-card-hover);
+  color: var(--bc-text);
+}
+.beneos-cloud-app .bc-tab-active,
+.beneos-cloud-app .bc-tab.category-active {
+  background: var(--bc-accent-dim);
+  color: var(--bc-accent-soft);
+  border-color: var(--bc-accent-line);
+}
+
+/* ---- Sidebar ---- */
+
+.beneos-cloud-app .bc-sidebar {
+  background: var(--bc-bg-panel);
+  border-right: 1px solid var(--bc-border);
+  padding: var(--bc-space-4);
+  overflow-y: auto;
+  /* Wave B-8d-fix-6: slim modern scrollbar; the Firefox properties are
+   * declared at the wrapper level and the WebKit pseudo-element rules
+   * are scoped to the same selector below. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.10) transparent;
+}
+/* Wave B-8d-fix-6: shared modern scrollbar treatment for both the
+ * sidebar and the result list. WebKit uses pseudo-element selectors;
+ * Firefox honours `scrollbar-width: thin` on the parent. The thumb is
+ * translucent at rest and brightens to the design accent on hover so
+ * it reads as part of the panel rather than as a system control.
+ * Track stays transparent — no Excel-style border/groove. */
+.beneos-cloud-app .bc-sidebar::-webkit-scrollbar,
+.beneos-cloud-app .bc-result-list::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.beneos-cloud-app .bc-sidebar::-webkit-scrollbar-track,
+.beneos-cloud-app .bc-result-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.beneos-cloud-app .bc-sidebar::-webkit-scrollbar-thumb,
+.beneos-cloud-app .bc-result-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.10);
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.beneos-cloud-app .bc-sidebar:hover::-webkit-scrollbar-thumb,
+.beneos-cloud-app .bc-result-list:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.20);
+}
+.beneos-cloud-app .bc-sidebar::-webkit-scrollbar-thumb:hover,
+.beneos-cloud-app .bc-result-list::-webkit-scrollbar-thumb:hover {
+  background: var(--bc-accent);
+}
+.beneos-cloud-app .bc-sidebar::-webkit-scrollbar-corner,
+.beneos-cloud-app .bc-result-list::-webkit-scrollbar-corner {
+  background: transparent;
+}
+.beneos-cloud-app .bc-sidebar-section {
+  margin-bottom: var(--bc-space-4);
+  border-left: 2px solid var(--bc-accent-line);
+  padding-left: var(--bc-space-3);
+}
+.beneos-cloud-app .bc-sidebar-label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bc-text-muted);
+  margin-bottom: var(--bc-space-1);
+}
+.beneos-cloud-app .bc-sidebar-label a {
+  color: var(--bc-accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+.beneos-cloud-app .bc-input,
+.beneos-cloud-app .bc-select {
+  width: 100%;
+  padding: 6px 10px;
+  background: var(--bc-card);
+  color: var(--bc-text);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius);
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
+}
+.beneos-cloud-app .bc-input:focus,
+.beneos-cloud-app .bc-select:focus {
+  outline: none;
+  border-color: var(--bc-accent);
+}
+.beneos-cloud-app .bc-sidebar-banner {
+  margin-top: var(--bc-space-4);
+  padding: var(--bc-space-2) var(--bc-space-3);
+  border-radius: var(--bc-radius);
+  font-size: 12px;
+}
+
+/* Wave B-8b: section-headed sidebar — each filter group is its own
+ * .bc-sidebar-group with an accent-bar heading. Wraps multiple fields
+ * (search box, dropdown, slider, checkbox row) under one visual block. */
+.beneos-cloud-app .bc-sidebar-search {
+  margin-bottom: var(--bc-space-4);
+  padding-bottom: var(--bc-space-3);
+  border-bottom: 1px solid var(--bc-border);
+}
+.beneos-cloud-app .bc-sidebar-search-label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bc-text-muted);
+  margin-bottom: var(--bc-space-1);
+}
+.beneos-cloud-app .bc-sidebar-search-label a,
+.beneos-cloud-app .bc-sidebar-search-label .bc-link-button {
+  color: var(--bc-accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+/* Wave B-8e-fix-7: .bc-link-button is a real <button> styled as a
+   text link. Strip the default browser button chrome so it visually
+   matches the surrounding label text.
+   display: inline overrides Foundry's V2 application button defaults
+   (often flex/block with full width) that would otherwise force the
+   "(reset)" affordance onto its own line and break the parentheses
+   onto separate lines too. */
+.beneos-cloud-app .bc-link-button {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  display: inline;
+}
+.beneos-cloud-app .bc-link-button:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.beneos-cloud-app .bc-link-button:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.beneos-cloud-app .bc-sidebar-group {
+  margin-bottom: var(--bc-space-4);
+}
+.beneos-cloud-app .bc-sidebar-heading {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--bc-text);
+  padding-left: var(--bc-space-2);
+  border-left: 3px solid var(--bc-accent);
+  margin: 0 0 var(--bc-space-2) 0;
+}
+.beneos-cloud-app .bc-sidebar-field {
+  margin-bottom: var(--bc-space-2);
+}
+.beneos-cloud-app .bc-sidebar-field:last-child {
+  margin-bottom: 0;
+}
+/* Wave B-8i-2: dropdown + info-icon row. The info icon sits to the
+ * right of the select, only visible when a non-Any value is selected
+ * AND the tag has a description in the DB. Hover shows the description
+ * via Foundry's data-tooltip. */
+.beneos-cloud-app .bc-sidebar-field-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.beneos-cloud-app .bc-sidebar-field-row > .bc-select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.beneos-cloud-app .bc-filter-info {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--bc-text-dim);
+  cursor: help;
+  font-size: 13px;
+  transition: color 0.12s, background 0.12s;
+}
+.beneos-cloud-app .bc-filter-info:hover {
+  color: var(--bc-accent);
+  background: var(--bc-card-hover);
+}
+
+/* CR slider — Wave B-8c dual-thumb range. Two overlapping <input
+ * type="range"> are absolutely positioned in .bc-slider-dual; their
+ * native tracks are hidden (transparent) so we can paint a single shared
+ * track via the wrapper's ::before. The active range strip is a
+ * <div class="bc-slider-fill"> whose left/right are set in JS based on
+ * the thumb positions. pointer-events: none on the inputs lets clicks
+ * fall through to the visible track for dragging the fill, while the
+ * thumb pseudo-elements set pointer-events: auto so each thumb is
+ * grabbable individually. */
+.beneos-cloud-app .bc-slider-wrap {
+  padding: 0 var(--bc-space-1);
+}
+.beneos-cloud-app .bc-slider-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: var(--bc-space-2);
+}
+.beneos-cloud-app .bc-slider-display {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bc-accent);
+  font-variant-numeric: tabular-nums;
+}
+.beneos-cloud-app .bc-slider-dual {
+  position: relative;
+  height: 22px;
+}
+.beneos-cloud-app .bc-slider-dual::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--bc-card);
+  border-radius: 4px;
+  transform: translateY(-50%);
+}
+.beneos-cloud-app .bc-slider-fill {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--bc-accent);
+  border-radius: 4px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.beneos-cloud-app .bc-slider-dual .bc-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 22px;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: none;       /* track ignores clicks; only thumbs grab */
+  margin: 0;
+  outline: none;
+}
+/* WebKit thumb — Wave B-8d-2: track is 4px (same as the visible
+ * ::before/.bc-slider-fill behind it); the 14px thumb is offset upward
+ * via negative margin-top so it sits centered over that 4px line. */
+.beneos-cloud-app .bc-slider-dual .bc-slider::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 4px;
+  border: none;
+}
+.beneos-cloud-app .bc-slider-dual .bc-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--bc-accent);
+  border: 2px solid var(--bc-bg-panel);
+  cursor: pointer;
+  pointer-events: auto;
+  /* Center the 14px thumb on the 4px track: (4 - 14) / 2 = -5px */
+  margin-top: -5px;
+  box-shadow: 0 0 0 1px var(--bc-bg);
+}
+/* Firefox thumb — track height controlled separately; thumb centers
+ * automatically via the browser. */
+.beneos-cloud-app .bc-slider-dual .bc-slider::-moz-range-track {
+  background: transparent;
+  height: 4px;
+  border: none;
+}
+.beneos-cloud-app .bc-slider-dual .bc-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--bc-accent);
+  border: 2px solid var(--bc-bg-panel);
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 0 0 1px var(--bc-bg);
+}
+
+/* Wave B-8d-fix-4 / fix-7: tab-switch loading overlay. The .bc-loading
+ * class is applied to the app root before the heavy render starts
+ * (with a double-requestAnimationFrame wrapper so the browser actually
+ * paints the overlay before the DOM rebuild blocks the main thread).
+ * Overlay lives on the ROOT, not on .bc-results — that way it survives
+ * the part-render DOM teardown. Filter changes do NOT use this; those
+ * renders are quick and a flickering spinner would be worse than the
+ * brief delay.
+ *
+ * Wave B-8d-fix-7: do NOT declare `position: relative` on
+ * .beneos-cloud-app. Foundry's ApplicationV2 wrapper already sets
+ * `position: fixed` (or `absolute`) on the window element to make it
+ * float — overriding that here pushed the window into the normal
+ * document flow and shoved Foundry's right sidebar to the side. The
+ * absolute pseudo-elements still position correctly relative to the
+ * Foundry-provided positioning context. */
+.beneos-cloud-app.bc-loading::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.18);
+  z-index: 1000;
+  pointer-events: none;
+}
+.beneos-cloud-app.bc-loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px;
+  border: 4px solid rgba(255, 255, 255, 0.12);
+  border-top-color: var(--bc-accent);
+  border-radius: 50%;
+  animation: bc-spin 0.7s linear infinite;
+  z-index: 1001;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+@keyframes bc-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Wave B-8d: chip-style filter pills. Used by the biome filter — pick
+ * a biome from the dropdown and it appears as a removable chip below. */
+.beneos-cloud-app .bc-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: var(--bc-space-2);
+}
+.beneos-cloud-app .bc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 200, 80, 0.10);
+  color: var(--bc-text);
+  border: 1px solid var(--bc-accent);
+  border-radius: 12px;
+  padding: 2px 4px 2px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.beneos-cloud-app .bc-chip:hover {
+  background: rgba(255, 200, 80, 0.18);
+  border-color: var(--bc-accent-strong, var(--bc-accent));
+}
+.beneos-cloud-app .bc-chip-label {
+  pointer-events: none;
+}
+.beneos-cloud-app .bc-chip-remove {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.20);
+  color: var(--bc-text);
+  font-size: 14px;
+  line-height: 1;
+  pointer-events: none;
+}
+.beneos-cloud-app .bc-chip:hover .bc-chip-remove {
+  background: var(--bc-danger, #d56b52);
+  color: var(--bc-bg);
+}
+
+/* Source checkboxes — multi-select with per-source dataset count */
+.beneos-cloud-app .bc-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: var(--bc-space-2);
+  padding: 4px 0;
+  cursor: pointer;
+  font-size: 13px;
+}
+.beneos-cloud-app .bc-checkbox-row:hover .bc-checkbox-label {
+  color: var(--bc-text);
+}
+.beneos-cloud-app .bc-checkbox {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--bc-accent);
+  cursor: pointer;
+  margin: 0;
+}
+.beneos-cloud-app .bc-checkbox-label {
+  flex: 1 1 auto;
+  color: var(--bc-text-muted);
+  transition: color 0.12s;
+}
+.beneos-cloud-app .bc-checkbox-count {
+  font-size: 11px;
+  color: var(--bc-text-dim);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+.beneos-cloud-app .bc-banner-warning {
+  background: rgba(216, 130, 112, 0.10);
+  color: var(--bc-danger);
+  border: 1px solid rgba(216, 130, 112, 0.25);
+}
+.beneos-cloud-app .bc-banner-info {
+  background: var(--bc-accent-dim);
+  color: var(--bc-accent-soft);
+  border: 1px solid var(--bc-accent-line);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+/* ---- Login dialog V2 look (Wave B-5d polish) ----
+   Foundry's DialogV2 has its own chrome (red top stripe, full-width buttons,
+   tight padding). We override to match the unified window: dark surface,
+   gold accent on the primary button, and a compact, breathable form. */
+
+.beneos-cloud-login-dialog {
+  max-width: 360px;
+}
+.beneos-cloud-login-dialog .window-content {
+  background: var(--bc-bg-panel) !important;
+  color: var(--bc-text);
+  font-family: var(--bc-font-ui);
+  padding: var(--bc-space-4) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+}
+.beneos-cloud-login-dialog .window-header {
+  background: var(--bc-bg) !important;
+  /* Wave B-9-fix-63: no underline below the title. The user reported
+     the bottom border (and a default Foundry red stripe drawn via
+     ::before/::after pseudos) read as visual noise; the title alone
+     reads cleanly. */
+  border-bottom: none !important;
+  position: relative;
+}
+.beneos-cloud-login-dialog .window-header::before,
+.beneos-cloud-login-dialog .window-header::after {
+  display: none !important;
+  content: none !important;
+}
+/* V14 ApplicationV2 adds extra header-control buttons (pop-out / detach
+   window, more-actions menu) next to the close button. They render unstyled
+   at default size and clash with the small login dialog (icons too big,
+   missing FA glyphs show as broken three-dots boxes). Hide everything except
+   the close action — the login dialog has no use for detach/pop-out anyway. */
+.beneos-cloud-login-dialog .window-header .header-control:not([data-action="close"]) {
+  display: none !important;
+}
+.beneos-cloud-login-dialog .window-title {
+  font-family: var(--bc-font-display);
+  color: var(--bc-text);
+  font-weight: 500;
+  font-size: 15px;
+}
+/* Close-button (X) — Wave B-9-fix-57 rebuild.
+   V13 sets fa-xmark as a class directly on the button (the icon class
+   IS the button's class). When the loaded Font Awesome version doesn't
+   include the f00d glyph (FA5 vs FA6 mismatch, partial bundle, etc.)
+   the user sees an empty/missing-glyph box. We bypass that with a
+   plain Unicode × (U+00D7) rendered in the inherited font, which is
+   guaranteed to draw on every system. */
+.beneos-cloud-login-dialog .window-header .header-control[data-action="close"],
+.beneos-cloud-login-dialog .window-header button.close {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  color: var(--bc-text-muted) !important;
+  width: 24px !important;
+  height: 24px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 0 !important; /* hide any text-content from V13's button */
+  line-height: 1 !important;
+}
+.beneos-cloud-login-dialog .window-header .header-control[data-action="close"]:hover,
+.beneos-cloud-login-dialog .window-header button.close:hover {
+  background: var(--bc-card-hover) !important;
+  color: var(--bc-text) !important;
+  border-color: var(--bc-border) !important;
+}
+/* Override the FA pseudo-element with a plain multiplication sign. The
+   `font-size: 0` above hides FA's content while our ::before draws a
+   crisp × at 18px in the inherited UI font. */
+.beneos-cloud-login-dialog .window-header .header-control[data-action="close"]::before,
+.beneos-cloud-login-dialog .window-header button.close::before {
+  content: "\00d7" !important;
+  font-family: var(--bc-font-ui), system-ui, sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+  color: inherit !important;
+}
+/* Hide the FA-class's own ::before content if it happens to render. */
+.beneos-cloud-login-dialog .window-header .header-control[data-action="close"] i,
+.beneos-cloud-login-dialog .window-header button.close i {
+  display: none !important;
+}
+
+/* Login form layout */
+.beneos-cloud-login-dialog .bc-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bc-space-3);
+}
+.beneos-cloud-login-dialog .bc-login-form__hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--bc-text-muted);
+}
+/* Wave B-9-fix-64: sign-up text link. Low-prominence so it doesn't
+   compete with the Sign-in button — small font, muted text colour,
+   gold underlined anchor for the actionable part only. */
+.beneos-cloud-login-dialog .bc-login-form__signup {
+  margin: var(--bc-space-2) 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--bc-text-dim);
+  text-align: center;
+}
+.beneos-cloud-login-dialog .bc-login-form__signup a {
+  color: var(--bc-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.beneos-cloud-login-dialog .bc-login-form__signup a:hover {
+  color: var(--bc-accent-strong);
+}
+.beneos-cloud-login-dialog .bc-login-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.beneos-cloud-login-dialog .bc-login-form__label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bc-text-muted);
+  font-weight: 500;
+}
+.beneos-cloud-login-dialog .bc-login-form__input {
+  width: 100%;
+  background: var(--bc-card);
+  color: var(--bc-text);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius);
+  padding: 7px 10px;
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
+  box-sizing: border-box;
+}
+.beneos-cloud-login-dialog .bc-login-form__input:focus {
+  outline: none;
+  border-color: var(--bc-accent);
+}
+
+/* Dialog button row — keep buttons compact, right-align, gold accent on primary */
+.beneos-cloud-login-dialog .form-footer,
+.beneos-cloud-login-dialog .dialog-buttons {
+  display: flex !important;
+  gap: var(--bc-space-2) !important;
+  justify-content: flex-end !important;
+  padding-top: var(--bc-space-3) !important;
+  margin-top: var(--bc-space-3) !important;
+  border-top: 1px solid var(--bc-border) !important;
+}
+.beneos-cloud-login-dialog button[data-action] {
+  background: var(--bc-card);
+  color: var(--bc-text);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius);
+  padding: 7px 14px;
+  font-family: var(--bc-font-ui);
+  font-size: 12px;
+  cursor: pointer;
+  /* Override Foundry's `flex: 1` default that stretches buttons full-width */
+  flex: 0 0 auto !important;
+  min-width: 80px;
+  width: auto !important;
+}
+.beneos-cloud-login-dialog button[data-action]:hover {
+  background: var(--bc-card-hover);
+  border-color: var(--bc-border-strong);
+}
+.beneos-cloud-login-dialog button[data-action="login"],
+.beneos-cloud-login-dialog button.default {
+  background: var(--bc-accent-dim);
+  color: var(--bc-accent-soft);
+  border-color: var(--bc-accent-line);
+}
+.beneos-cloud-login-dialog button[data-action="login"]:hover,
+.beneos-cloud-login-dialog button.default:hover {
+  background: var(--bc-accent-line);
+  color: var(--bc-accent-strong);
+}
+
+/* ---- Results pane (Wave B-5: native V2 cards) ---- */
+
+.beneos-cloud-app .bc-results {
+  background: var(--bc-bg-elevated);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;            /* anchor for the slide-in detail drawer */
+  /* Isolate this region's layout/paint from the Foundry canvas behind us —
+     biggest single performance fix when the user drags the window. */
+  contain: layout style paint;
+}
+.beneos-cloud-app .bc-results-meta {
+  padding: var(--bc-space-2) var(--bc-space-4);
+  font-size: 11px;
+  color: var(--bc-text-muted);
+  border-bottom: 1px solid var(--bc-border);
+  /* Wave B-8i-1: flex row so the bulk-install kebab menu can sit on the
+   * right while the count label stays left-aligned. */
+  display: flex;
+  align-items: center;
+  gap: var(--bc-space-2);
+}
+.beneos-cloud-app .bc-result-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: var(--bc-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--bc-space-2);
+  contain: layout style paint;
+  /* Wave B-8d-fix-6: slim modern scrollbar — Firefox declaration here,
+   * WebKit pseudo-elements live in the shared rule above. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.10) transparent;
+}
+.beneos-cloud-app .bc-results-empty {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--bc-space-3);
+  color: var(--bc-text-dim);
+  font-style: italic;
+}
+.beneos-cloud-app .bc-results-empty i {
+  font-size: 32px;
+  opacity: 0.5;
+}
+
+/* Wave B-8d: group dividers + per-group card tints. Default-sorted
+ * lists (no filter active) split into New → Update → Rest; with any
+ * filter on, Update folds into Rest. The dividers carry a faint left
+ * accent in the group's color so the section break reads at a glance.
+ * The card backgrounds use very subtle tints — enough to differentiate
+ * but not loud. */
+.beneos-cloud-app .bc-result-divider {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--bc-text-muted);
+  padding: var(--bc-space-2) var(--bc-space-3);
+  margin: var(--bc-space-2) 0 0;
+  border-left: 3px solid var(--bc-border);
+  /* Wave B-8g-3: divider hosts the discreet bulk-install button on the
+   * right; flex layout keeps the label left, button right. */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--bc-space-2);
+}
+.beneos-cloud-app .bc-result-divider .bc-divider-label {
+  flex: 0 0 auto;
+}
+/* Wave B-8i-1: consolidated bulk-install kebab menu. <details> handles
+ * the open/close state natively — the trigger is a small ⋮ pill on the
+ * right side of the results-meta row, the dropdown panel sits absolute-
+ * positioned below it. Each menu item is a button that calls into
+ * #onBulkInstallClick. Hidden entirely when no actions are available. */
+/* Wave B-9: list / grid view toggle. Two segmented pill buttons sit
+ * before the kebab menu in the results-meta row. Active button uses the
+ * Beneos accent. The pill icons stay readable at small sizes; the
+ * label is hidden under ~520px so the toggle still fits compactly. */
+.beneos-cloud-app .bc-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bc-bg);
+  border: 1px solid var(--bc-border);
+  border-radius: 999px;
+  margin-left: auto;
+}
+.beneos-cloud-app .bc-view-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: transparent;
+  color: var(--bc-text-muted);
+  border: none;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.beneos-cloud-app .bc-view-button:hover {
+  color: var(--bc-text);
+  background: var(--bc-card-hover);
+}
+.beneos-cloud-app .bc-view-button.bc-view-active {
+  background: var(--bc-accent);
+  color: var(--bc-bg);
+}
+.beneos-cloud-app .bc-view-button.bc-view-active:hover {
+  background: var(--bc-accent);
+  color: var(--bc-bg);
+}
+.beneos-cloud-app .bc-view-button .bc-view-label {
+  font-size: 11px;
+}
+
+/* Prominent header bulk button — appears in .bc-results-meta next to
+   the view-toggle when the show filter is set to "Only New" or "Only
+   Updated" and there are matching keys. Click triggers the same
+   #onBulkInstallClick pipeline as the kebab-menu entries through
+   the shared [data-bulk-group] attribute.
+
+   Variant colours mirror the existing card-button accents so the GM
+   parses the button's effect at a glance:
+     - bc-bulk-prominent-new    → Beneos gold (--bc-accent palette)
+     - bc-bulk-prominent-update → blue (--bc-update palette, same as
+       the per-card update button) */
+.beneos-cloud-app .bc-bulk-prominent {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bc-space-2);
+  padding: 6px 12px;
+  font-family: var(--bc-font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--bc-radius);
+  border: 1px solid;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.beneos-cloud-app .bc-bulk-prominent-new {
+  background: var(--bc-accent-dim);
+  color: var(--bc-accent-soft);
+  border-color: var(--bc-accent-line);
+}
+.beneos-cloud-app .bc-bulk-prominent-new:hover {
+  background: var(--bc-accent-line);
+  color: var(--bc-accent-strong);
+}
+.beneos-cloud-app .bc-bulk-prominent-update {
+  background: var(--bc-update-dim);
+  color: var(--bc-update-soft);
+  border-color: var(--bc-update-line);
+}
+.beneos-cloud-app .bc-bulk-prominent-update:hover {
+  background: var(--bc-update-line);
+  color: var(--bc-update-strong);
+}
+
+.beneos-cloud-app .bc-bulk-menu {
+  position: relative;
+  display: inline-block;
+}
+.beneos-cloud-app .bc-bulk-menu-trigger {
+  list-style: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--bc-text-muted);
+  font-size: 14px;
+  user-select: none;
+  transition: background 0.12s, color 0.12s;
+}
+.beneos-cloud-app .bc-bulk-menu-trigger::-webkit-details-marker { display: none; }
+.beneos-cloud-app .bc-bulk-menu-trigger::marker { content: ""; }
+.beneos-cloud-app .bc-bulk-menu-trigger:hover {
+  background: var(--bc-card-hover);
+  color: var(--bc-text);
+}
+.beneos-cloud-app .bc-bulk-menu[open] > .bc-bulk-menu-trigger {
+  background: var(--bc-card-hover);
+  color: var(--bc-accent);
+}
+.beneos-cloud-app .bc-bulk-menu-list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 220px;
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  padding: 4px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.beneos-cloud-app .bc-bulk-menu-item {
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--bc-text);
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
+}
+.beneos-cloud-app .bc-bulk-menu-item:hover {
+  background: var(--bc-accent);
+  color: var(--bc-bg);
+}
+/* Wave B-8k-1 → B-9-fix-40: visual divider + de-emphasised backlog
+ * row. The user explicitly asked for the backlog option to feel less
+ * inviting than the filter-bound rows above so it doesn't get clicked
+ * accidentally — toned-down dim text colour, no font-weight bump, and
+ * a slightly darker divider above. The hover hint stays in the danger
+ * red so the action's gravity is still clear when intentional. */
+.beneos-cloud-app .bc-bulk-menu-divider {
+  height: 1px;
+  background: var(--bc-border-strong);
+  margin: 4px 6px;
+}
+.beneos-cloud-app .bc-bulk-menu-item.bc-bulk-menu-backlog {
+  color: var(--bc-text-dim);
+}
+.beneos-cloud-app .bc-bulk-menu-item.bc-bulk-menu-backlog:hover {
+  background: var(--bc-danger, #d56b52);
+  color: var(--bc-bg);
+}
+/* Wave B-8k-1: stronger-warning paragraph for the backlog confirm dialog */
+.beneos-cloud-app .bc-confirm-warning {
+  margin-top: var(--bc-space-2);
+  padding: var(--bc-space-2) var(--bc-space-3);
+  border-left: 3px solid var(--bc-danger, #d56b52);
+  background: rgba(213, 107, 82, 0.08);
+  color: var(--bc-text);
+  font-size: 12px;
+}
+.beneos-cloud-app .bc-result-divider.bc-divider-new {
+  color: var(--bc-accent);
+  border-left-color: var(--bc-accent);
+}
+.beneos-cloud-app .bc-result-divider.bc-divider-update {
+  color: var(--bc-info);
+  border-left-color: var(--bc-info);
+}
+.beneos-cloud-app .bc-card-group-new {
+  background: rgba(255, 200, 80, 0.045);
+}
+.beneos-cloud-app .bc-card-group-update {
+  background: rgba(143, 170, 198, 0.045);
+}
+/* Wave B-9-fix-19 → R6 fix-25: in grid mode the row-highlight tints
+   (gold for New, blue for Update) read as random card backgrounds
+   rather than row-grouping. The chip overlay on the thumbnail already
+   conveys the status, so suppress the tints AND all four left stripes
+   (installed-green, installing-info, group-update-blue, group-new-gold)
+   in grid only. List mode keeps both since the row layout makes them
+   readable as row markers. */
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-group-new,
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-group-update {
+  background: var(--bc-card);
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card.bc-card-installed,
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card.bc-card-installing,
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card.bc-card-group-new,
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card.bc-card-group-update {
+  border-left: none;
+}
+.beneos-cloud-app .bc-card-group-new:hover {
+  background: rgba(255, 200, 80, 0.10);
+}
+.beneos-cloud-app .bc-card-group-update:hover {
+  background: rgba(143, 170, 198, 0.10);
+}
+
+/* Wave B-9: grid view — Pokémon-card-style layout. The list flex
+ * column is overridden into a CSS grid with auto-fill columns sized to
+ * 180px minimum; cards switch from horizontal to vertical layout
+ * (thumbnail on top, name + tags in the middle, action area at the
+ * bottom). Status chips reposition to a top-right overlay on the
+ * thumbnail since the name row is no longer flex-aligned with them.
+ * Dividers span the full grid width via grid-column: 1 / -1. */
+.beneos-cloud-app .bc-result-list.bc-view-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--bc-space-3);
+  align-content: start;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-divider {
+  grid-column: 1 / -1;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card {
+  grid-template-columns: none;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  /* overflow: hidden keeps the rounded thumbnail from peeking past the
+     card's border-radius corners — and now also acts as the hard cap
+     that prevents tag-row content from pushing the install button out
+     of view. */
+  overflow: hidden;
+  /* Wave B-9-fix-Y3: switched from min-height to a fixed height so the
+     card can never grow past 290px regardless of tag count or window
+     resizing. With min-height alone, dense tag rows could push the card
+     taller, which then dragged the install button below the visible
+     boundary on narrow viewports. The previous max-height on
+     .bc-card-tags didn't catch every case because .bc-card-meta has
+     flex: 1 1 auto and (without min-height: 0) was happy to grow with
+     its content, bypassing the children's max-height entirely. */
+  height: 290px;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="bmap"] {
+  grid-template-columns: none;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-thumb {
+  position: relative;
+  width: 100%;
+  height: 140px;
+  /* Wave B-9-fix-19: pin the thumb size so a card with extra-tall meta
+     content (e.g. an item with multiple tag rows) can't squeeze the
+     image into a shorter box. flex: 0 0 140px locks both basis and
+     prevents shrink/grow. */
+  flex: 0 0 140px;
+  min-height: 140px;
+  border-radius: var(--bc-radius) var(--bc-radius) 0 0;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="bmap"] .bc-card-thumb {
+  width: 100%;
+  height: 140px;
+  flex: 0 0 140px;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-meta {
+  flex: 1 1 auto;
+  padding: var(--bc-space-2) var(--bc-space-3);
+  /* Wave B-8e-fix-6: was overflow: hidden — that clipped the stats
+     row (Tier+Price / Casting+SpellType) when the meta column was
+     shorter than its content. Now visible so the stats render; the
+     parent .bc-result-card still clips at its rounded border via its
+     own overflow: hidden, which preserves the original visual frame. */
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* Wave B-9-fix-Y3: flex items default to min-height: auto, which is
+     content-based and lets the meta block grow past its parent — that
+     was why .bc-card-tags' max-height got bypassed in the previous
+     attempt. Forcing min-height: 0 lets the meta block actually shrink
+     to whatever space the fixed-height card has after thumb + actions,
+     making the children's max-height/overflow rules effective again. */
+  min-height: 0;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-name {
+  font-size: 13px;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-name-row {
+  align-items: flex-start;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  /* Cap the tag block at roughly two rows so cards with many tags or
+     long tag strings can't push .bc-card-meta past the card's
+     overflow:hidden boundary and shove the install/update button out of
+     view. Anything that doesn't fit gets clipped silently — full info
+     stays available in the drawer detail. */
+  max-height: 50px;
+  overflow: hidden;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-actions {
+  padding: var(--bc-space-2) var(--bc-space-3);
+  border-top: 1px solid var(--bc-border);
+  /* Push the action block to the card's bottom edge so the install pill
+     and update button sit at the same y-position across every card in a
+     row (CSS-Grid stretches all cards to the row's tallest card). Without
+     this, cards with extra tags would let .bc-card-meta consume the
+     vertical space and leave actions floating mid-card or clipping past
+     the card's overflow: hidden boundary. */
+  margin-top: auto;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-actions .bc-card-button {
+  width: 100%;
+  justify-content: center;
+}
+/* Status chips overlay top-right of the thumbnail in grid mode so the
+ * name row stays clean and the visual identity comes through clearly.
+ * Both NEW and UPDATE chips share the same top-right slot — UPDATE used
+ * to be pinned to the bottom but that overlapped the install-state pill
+ * and the update button in cards with installed+update state. */
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-status-chip {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* ---- Result card (V2) ---- */
+
+.beneos-cloud-app .bc-result-card {
+  display: grid;
+  /* Wave B-7: wider thumb column for tokens/items/spells so the preview is
+   * visible without squinting. Battlemaps override below to stay square
+   * (their thumbnails are scenery shots, look better square than cropped). */
+  grid-template-columns: 96px 1fr auto;
+  gap: var(--bc-space-3);
+  align-items: center;
+  padding: var(--bc-space-2) var(--bc-space-3);
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius);
+  cursor: pointer;
+  /* Wave B-5e-fix-1c: position only (no overflow). Needed so the install
+   * progress ::before can absolute-position against the card. The previous
+   * combination of `content-visibility: auto` + `contain: layout style paint`
+   * + `contain-intrinsic-size` + `overflow: hidden` interacted with class
+   * toggling and produced a partial-height bar / collapsed cards in the
+   * user's V13 test. With the 100-results cap (B-5e-fix-2) the perf
+   * containment is no longer load-bearing, so it's removed. */
+  position: relative;
+  transition: background 0.12s, border-color 0.12s;
+}
+.beneos-cloud-app .bc-result-card:hover {
+  background: var(--bc-card-hover);
+  border-color: var(--bc-border-strong);
+}
+/* Wave B-9-fix-26: in grid mode the row-edge border tweak is barely
+   visible because the cards have less surrounding chrome than in list
+   mode. Bump the hover treatment to a clearer accent-tinted background
+   plus a softer border so the whole tile reads as the active target. */
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card:hover {
+  background: var(--bc-accent-dim);
+  border-color: var(--bc-accent-line);
+}
+.beneos-cloud-app .bc-result-card:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: -2px;
+}
+/* Wave B-9-fix-32: the card whose drawer is currently open gets a
+   stronger gold treatment than hover so the user can scroll through
+   the list and still see which item the drawer maps to. Background
+   uses --bc-accent-line (more saturated than hover's --bc-accent-dim)
+   plus a solid accent border. Works in both list and grid mode. */
+.beneos-cloud-app .bc-result-card.bc-card-selected,
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card.bc-card-selected:hover {
+  background: var(--bc-accent-line);
+  border-color: var(--bc-accent);
+  outline: 1px solid var(--bc-accent);
+  outline-offset: -2px;
+}
+/* Wave B-8d-fix-2: left-edge stripe priority cascade.
+ *
+ * Default: no stripe (the gold "cloud-available" stripe was visually
+ * noisy — every cloud-only card lit up regardless of relevance).
+ *
+ *   1. Installed (no update pending): green
+ *   2. Update available (regardless of installed): blue — overrides green
+ *      because an installed-but-outdated token is NOT the latest version
+ *   3. New: gold — highest priority, overrides everything
+ *
+ * CSS source order matters here: declare new last so it wins when
+ * specificity ties. The .bc-card-cloud rule is intentionally dropped. */
+.beneos-cloud-app .bc-card-installed {
+  border-left: 3px solid var(--bc-success);
+}
+.beneos-cloud-app .bc-card-group-update {
+  border-left: 3px solid var(--bc-info);
+}
+.beneos-cloud-app .bc-card-group-new {
+  border-left: 3px solid var(--bc-accent);
+}
+
+/* Wave B-5e: install-progress visual = full-card-row left-to-right fill
+ * sweep instead of the small button-area pulse from B-5d. The sweep is a
+ * pseudo-element overlay so the card content stays interactive and the
+ * thumbnail / text stays sharp. The CSS animation runs to 90 % over the
+ * asset-type-specific --bc-install-duration (4s tokens, 1.5s items/spells)
+ * and holds at 90 % via animation-fill-mode: forwards. JS triggers the
+ * snap-to-100 % via the .bc-card-just-installed class once the actual
+ * import pipeline finishes — same pattern as Chrome's download bar.
+ *
+ * Wave B-5e-fix-1c: only `position: relative` lives on the base card; no
+ * `overflow: hidden`, no `content-visibility`, no `contain` shenanigans.
+ * The ::before matches the card's border-radius so it stays inside the
+ * rounded shape without an overflow-clip. Explicit top/bottom/left avoid
+ * edge cases with `inset: 0` shorthand across browsers. */
+.beneos-cloud-app .bc-result-card.bc-card-installing {
+  border-left: 3px solid var(--bc-info);
+}
+.beneos-cloud-app .bc-result-card.bc-card-installing::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 0%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 200, 80, 0.10) 0%,
+    rgba(255, 200, 80, 0.28) 60%,
+    rgba(255, 200, 80, 0.36) 100%
+  );
+  border-radius: var(--bc-radius);
+  pointer-events: none;
+  z-index: 1;
+  animation: bc-card-fill var(--bc-install-duration, 4s) ease-out forwards;
+}
+.beneos-cloud-app .bc-result-card.bc-card-installing > * {
+  position: relative;
+  z-index: 2;
+}
+@keyframes bc-card-fill {
+  0%   { width: 0%; }
+  50%  { width: 55%; }
+  85%  { width: 80%; }
+  100% { width: 90%; }
+}
+
+.beneos-cloud-app .bc-result-card.bc-card-just-installed {
+  border-left: 3px solid var(--bc-success);
+}
+.beneos-cloud-app .bc-result-card.bc-card-just-installed::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(60, 220, 100, 0.32),
+    rgba(60, 220, 100, 0.40)
+  );
+  border-radius: var(--bc-radius);
+  pointer-events: none;
+  z-index: 1;
+  animation: bc-card-flash 1.5s ease-out forwards;
+}
+.beneos-cloud-app .bc-result-card.bc-card-just-installed > * {
+  position: relative;
+  z-index: 2;
+}
+@keyframes bc-card-flash {
+  0%   { opacity: 1.0; }
+  100% { opacity: 0.0; }
+}
+
+.beneos-cloud-app .bc-state-installing {
+  background: rgba(143, 170, 198, 0.12);
+  color: var(--bc-info);
+}
+
+.beneos-cloud-app .bc-card-thumb {
+  position: relative;
+  /* Wave B-7: 96×64 default (3:2-ish) — token portraits zoom in via
+   * object-fit: cover, top-and-bottom crop reads as a wider preview window.
+   * Bmaps override to a 64×64 square just below. */
+  width: 96px;
+  height: 64px;
+  border-radius: var(--bc-radius);
+  overflow: hidden;
+  background: var(--bc-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.beneos-cloud-app .bc-result-card[data-asset-type="bmap"] {
+  grid-template-columns: 64px 1fr auto;
+}
+.beneos-cloud-app .bc-result-card[data-asset-type="bmap"] .bc-card-thumb {
+  width: 64px;
+  height: 64px;
+}
+.beneos-cloud-app .bc-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.beneos-cloud-app .bc-card-thumb-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--bc-card) 0%, var(--bc-bg-panel) 100%);
+}
+
+/* Wave B-8d-fix-1: status chips live next to the card name now, not
+ * over the thumbnail. The thumb is already cropped 16:9 so its only
+ * job is "give a visual reading of the creature"; overlaying chips
+ * made it unreadable. The name row is flex with wrap so chips line
+ * up cleanly even on long names. */
+.beneos-cloud-app .bc-card-name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--bc-space-2);
+  flex-wrap: wrap;
+  /* Wave B-9-fix-8: with align-items: center, any margin or
+     line-height mismatch on .bc-card-name shifts the chip baseline
+     visually. Fix it at the row level so the chip sits centered with
+     the heading text instead of floating below it. */
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.beneos-cloud-app .bc-card-name-row .bc-card-name {
+  margin: 0;
+  line-height: 1.2;
+}
+.beneos-cloud-app .bc-status-chip {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+.beneos-cloud-app .bc-status-chip.bc-status-new {
+  background: var(--bc-accent);
+  color: var(--bc-bg);
+}
+.beneos-cloud-app .bc-status-chip.bc-status-update {
+  background: var(--bc-info);
+  color: var(--bc-bg);
+}
+
+.beneos-cloud-app .bc-card-meta {
+  min-width: 0;
+}
+.beneos-cloud-app .bc-card-name {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--bc-text);
+  font-family: var(--bc-font-display);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.beneos-cloud-app .bc-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.beneos-cloud-app .bc-tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--bc-bg-panel);
+  color: var(--bc-text-muted);
+  border-radius: 3px;
+  border: 1px solid var(--bc-border);
+}
+.beneos-cloud-app .bc-tag-cr {
+  background: var(--bc-accent-dim);
+  color: var(--bc-accent-soft);
+  border-color: var(--bc-accent-line);
+}
+.beneos-cloud-app .bc-tag-source {
+  background: transparent;
+  font-style: italic;
+}
+/* Overflow indicator for the chip row. Renders as a passive, dimmed,
+   italic chip — no click affordance (it carries neither data-filter-type
+   nor data-filter-value, so the click handler ignores it). The hover
+   tooltip lists the hidden tag labels so the GM doesn't lose semantic
+   info when the row gets clipped. */
+.beneos-cloud-app .bc-tag-more {
+  background: transparent;
+  color: var(--bc-text-dim);
+  border-style: dashed;
+  font-style: italic;
+  cursor: help;
+}
+/* Wave B-8e: clickable tags. Default tags stay passive; only those
+   with a data-filter-type attribute get the cursor + hover treatment.
+   Same selector covers .bc-tag and .bc-stat (the price/tier stats
+   row) so both inherit the click affordance when wired. */
+.beneos-cloud-app .bc-tag[data-filter-type],
+.beneos-cloud-app .bc-stat[data-filter-type] {
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.beneos-cloud-app .bc-tag[data-filter-type]:hover,
+.beneos-cloud-app .bc-stat[data-filter-type]:hover {
+  background: var(--bc-accent-dim);
+  border-color: var(--bc-accent-line);
+  color: var(--bc-accent-soft);
+}
+.beneos-cloud-app .bc-tag[data-filter-type]:focus-visible,
+.beneos-cloud-app .bc-stat[data-filter-type]:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 1px;
+}
+/* Wave B-9-fix-9: loot-specific tag accents. Origin gets a small icon
+   from the CDN (icons/<origin>.webp); rarity / tier / price get subtle
+   colour hints so the row is scannable at a glance. */
+/* Wave B-9-fix-21: origin tag is now text-only on result cards (icon
+   moved to drawer-only). Kept the class for selector continuity but the
+   inline-icon rules are no longer needed. */
+.beneos-cloud-app .bc-tag-origin {
+  /* default .bc-tag styling applies */
+}
+.beneos-cloud-app .bc-tag-rarity {
+  background: var(--bc-accent-dim);
+  color: var(--bc-accent-soft);
+  border-color: var(--bc-accent-line);
+}
+/* Wave B-9-fix-13: tier + price split into their own correlative
+   stats row below the tag row. Visual weight is muted (no border,
+   smaller font) so they read as metadata, not part of the descriptive
+   tag sentence. Tier and price share the same neutral muted palette. */
+.beneos-cloud-app .bc-card-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--bc-text-muted);
+}
+.beneos-cloud-app .bc-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.02em;
+  /* Wave B-8e-fix-2: keep "icon  52,800 gp" on a single line. On
+     narrow grid-mode cards the flex-wrap on .bc-card-stats can break
+     after the number (the unit "gp" wrapped to its own line, looking
+     detached from the amount). nowrap glues the whole stat together;
+     flex-wrap on the parent still lets multiple stats stack as a
+     whole when needed. */
+  white-space: nowrap;
+}
+.beneos-cloud-app .bc-stat-tier::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--bc-text-dim);
+  opacity: 0.6;
+}
+.beneos-cloud-app .bc-stat-price {
+  font-variant-numeric: tabular-nums;
+  color: var(--bc-accent-soft);
+}
+.beneos-cloud-app .bc-stat-price::before {
+  content: "\f51e"; /* fa-coins */
+  font-family: "Font Awesome 6 Free", "Font Awesome 6 Pro", FontAwesome;
+  font-weight: 900;
+  font-size: 10px;
+  opacity: 0.7;
+}
+/* Wave B-8e-fix-5: spell stats line uses plain dim text instead of
+   pill-styled stats. The user explicitly asked for "reiner Text" so
+   Casting Time + Spell Type read as a footnote, not a competing tag
+   row. The dot separator between items mirrors how typical inline
+   metadata reads on web (e.g. "Action · Area Damage"). Hover/focus
+   inherit the .bc-stat[data-filter-type] hover rule (B-8e) when the
+   span carries a filter target. */
+.beneos-cloud-app .bc-stats-spell {
+  /* Drop the gap from the generic stats row — we use a CSS-bullet
+     between siblings instead so empty entries don't leave a gap. */
+  gap: 0;
+}
+.beneos-cloud-app .bc-stat-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--bc-text-muted);
+}
+.beneos-cloud-app .bc-stat-text + .bc-stat-text::before {
+  content: "·";
+  display: inline-block;
+  margin: 0 6px;
+  color: var(--bc-text-dim);
+  opacity: 0.7;
+}
+.beneos-cloud-app .bc-stat-text[data-filter-type] {
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+.beneos-cloud-app .bc-stat-text[data-filter-type]:hover {
+  color: var(--bc-accent-soft);
+}
+
+/* Wave B-9-fix-14: drawer origin info section. Sits at the bottom of
+   the drawer body for items that have an origin assigned. Above the
+   section a thin gold divider visually separates it from the asset's
+   own description. The recoloured icon picks up the same white-mask
+   filter as the inline tag icon. */
+.beneos-cloud-app .bc-drawer-origin {
+  margin-top: var(--bc-space-3);
+}
+.beneos-cloud-app .bc-drawer-origin-divider {
+  border: 0;
+  border-top: 1px solid var(--bc-accent-line);
+  margin: 0 0 var(--bc-space-3) 0;
+  height: 0;
+}
+.beneos-cloud-app .bc-drawer-origin-head {
+  display: flex;
+  align-items: center;
+  gap: var(--bc-space-2);
+  margin-bottom: var(--bc-space-2);
+}
+.beneos-cloud-app .bc-drawer-origin-icon {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  flex: 0 0 36px;
+  /* Wave B-9-fix-17: matches the inline tag icon filter chain — gold
+     tint for the larger drawer icon. */
+  filter: brightness(0) saturate(100%) invert(89%) sepia(28%) saturate(606%) hue-rotate(338deg) brightness(102%) contrast(94%);
+}
+.beneos-cloud-app .bc-drawer-origin-name {
+  margin: 0;
+  font-family: var(--bc-font-display);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--bc-accent-soft);
+  letter-spacing: 0.02em;
+}
+.beneos-cloud-app .bc-drawer-origin-desc {
+  margin: 0 0 var(--bc-space-3);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--bc-text);
+}
+.beneos-cloud-app .bc-drawer-origin-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  padding: var(--bc-space-2) var(--bc-space-3);
+  background: var(--bc-accent-dim);
+  border-left: 3px solid var(--bc-accent);
+  border-radius: 0 var(--bc-radius) var(--bc-radius) 0;
+  font-size: 12px;
+  color: var(--bc-text-muted);
+  line-height: 1.5;
+}
+.beneos-cloud-app .bc-drawer-origin-hint i {
+  color: var(--bc-accent);
+  margin-top: 2px;
+  flex: 0 0 auto;
+}
+
+/* Grid-mode placement: origin section spans both columns at the bottom
+   so it gets the full row width. Without this, the section would land
+   in column 2 (right side) and squeeze, looking like a footnote. */
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer .bc-drawer-body > .bc-drawer-origin {
+  grid-column: 1 / -1;
+  grid-row: auto;
+}
+
+/* ---- Wave B-9-fix-16: per-asset-type drawer layouts in grid mode.
+   Grid mode is height-constrained — each drawer type gets a layout
+   tuned for compact vertical footprint instead of the default tall
+   stack. List mode is unaffected (right slide-in column with plenty
+   of vertical space). The drawer aside carries .bc-drawer-{type}.
+   ----
+   Item / Spell:
+     - Hero icon shrunk to 100px square (these are just type icons,
+       not card art).
+     - Description spans full width with bigger, less-muted typography
+       (it's the most interesting content while scrolling loot).
+     - Origin section spans full width below.
+   Token:
+     - Hero stays at a useful 160px size on the left.
+     - Variants column flips from horizontal strip to vertical stack
+       to the right of the hero — the user sees variants without
+       horizontal scrolling.
+     - Fields take the right column.
+     - Description spans full width below the row of image+variants+fields.
+*/
+
+/* --- Item & Spell (Wave B-9-fix-28) ---
+   Same compact pattern as the token drawer: small icon on the left
+   (80px) spanning the right-column rows, inline horizontal fields,
+   description clamped to 3 lines with Read more, origin section as
+   a full-width row at the bottom (item only). Drops drawer height
+   from ~500px to ~220px. */
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-item .bc-drawer-body,
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-spell .bc-drawer-body {
+  grid-template-columns: 80px 1fr;
+  grid-auto-rows: auto;
+  gap: var(--bc-space-2) var(--bc-space-3);
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-item .bc-drawer-body > .bc-drawer-hero,
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-spell .bc-drawer-body > .bc-drawer-hero {
+  grid-column: 1;
+  grid-row: 1 / span 3;
+  width: 80px;
+  height: 80px;
+  margin-bottom: 0;
+  align-self: start;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-item .bc-drawer-body > .bc-drawer-summary,
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-spell .bc-drawer-body > .bc-drawer-summary {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  margin: 0;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-item .bc-drawer-body .bc-drawer-fields,
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-spell .bc-drawer-body .bc-drawer-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-item .bc-drawer-body .bc-drawer-fields .bc-field,
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-spell .bc-drawer-body .bc-drawer-fields .bc-field {
+  display: inline-flex;
+  gap: 4px;
+  align-items: baseline;
+  margin: 0;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-item .bc-drawer-body .bc-drawer-fields .bc-field dt,
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-spell .bc-drawer-body .bc-drawer-fields .bc-field dt {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bc-text-muted);
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-item .bc-drawer-body .bc-drawer-fields .bc-field dd,
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-spell .bc-drawer-body .bc-drawer-fields .bc-field dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--bc-text);
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-item .bc-drawer-body > .bc-drawer-description,
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-spell .bc-drawer-body > .bc-drawer-description {
+  grid-column: 2;
+  grid-row: 2;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  border-top: none;
+  padding-top: 0;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  font-style: italic;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-item .bc-drawer-body > .bc-drawer-description.bc-expanded,
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-spell .bc-drawer-body > .bc-drawer-description.bc-expanded {
+  -webkit-line-clamp: unset;
+  display: block;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-item .bc-drawer-body > .bc-action-readmore,
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-spell .bc-drawer-body > .bc-action-readmore {
+  grid-column: 2;
+  grid-row: 3;
+  justify-self: start;
+  align-self: start;
+  margin: 0;
+}
+/* Origin section (item only) — full-width row at the bottom, kept as
+   the gold-divider block from B-9-fix-14 but no longer takes its own
+   half of vertical space. */
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-item .bc-drawer-body > .bc-drawer-origin {
+  grid-column: 1 / -1;
+  grid-row: 4;
+}
+
+/* --- Token (Wave B-9-fix-27) ---
+   Compact 2-col layout. Hero shrunk to 130px and spans the right
+   column's three rows (fields / description / read-more). Variants
+   move to a full-width compact horizontal strip at the bottom. The
+   right column packs all the text content in a tight stack:
+     - Row 1: fields displayed as inline pairs ("CR 9 · Type Fey ·…")
+              instead of stacked dt/dd to save 4-5 vertical lines.
+     - Row 2: description clamped to 3 lines (was 5).
+     - Row 3: read-more toggle.
+   Result: drawer height drops from ~600px to ~280px. */
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-token .bc-drawer-body {
+  grid-template-columns: 130px 1fr;
+  grid-auto-rows: auto;
+  gap: var(--bc-space-2) var(--bc-space-3);
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-token .bc-drawer-body > .bc-drawer-hero {
+  grid-column: 1;
+  grid-row: 1 / span 3;
+  width: 130px;
+  height: 130px;
+  margin-bottom: 0;
+  align-self: start;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-token .bc-drawer-body > .bc-drawer-summary {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  margin: 0;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-token .bc-drawer-body .bc-drawer-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-token .bc-drawer-body .bc-drawer-fields .bc-field {
+  display: inline-flex;
+  gap: 4px;
+  align-items: baseline;
+  margin: 0;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-token .bc-drawer-body .bc-drawer-fields .bc-field dt {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bc-text-muted);
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-token .bc-drawer-body .bc-drawer-fields .bc-field dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--bc-text);
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-token .bc-drawer-body > .bc-drawer-description {
+  grid-column: 2;
+  grid-row: 2;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  border-top: none;
+  padding-top: 0;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-token .bc-drawer-body > .bc-drawer-description.bc-expanded {
+  -webkit-line-clamp: unset;
+  display: block;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-token .bc-drawer-body > .bc-action-readmore {
+  grid-column: 2;
+  grid-row: 3;
+  justify-self: start;
+  align-self: start;
+  margin: 0;
+}
+/* Variants strip moved to a compact full-width row at the bottom of
+   the body. 48px thumbs (was 56) wrap onto multiple rows if needed. */
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-token .bc-drawer-body > .bc-variants {
+  grid-column: 1 / -1;
+  grid-row: 4;
+  margin: 0;
+  padding-top: var(--bc-space-2);
+  border-top: 1px solid var(--bc-border);
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-token .bc-drawer-body > .bc-variants .bc-variants-head {
+  display: none;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-token .bc-drawer-body > .bc-variants .bc-variants-strip {
+  flex-direction: row;
+  flex-wrap: wrap;
+  max-height: none;
+  gap: 6px;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-token .bc-drawer-body > .bc-variants .bc-variant-thumb {
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+}
+.beneos-cloud-app .bc-action-readmore {
+  background: transparent;
+  border: none;
+  padding: 2px 0;
+  font-family: var(--bc-font-ui);
+  font-size: 12px;
+  color: var(--bc-accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.beneos-cloud-app .bc-action-readmore:hover {
+  color: var(--bc-accent-strong);
+}
+/* Hide the read-more button in non-grid contexts and on bmap drawers.
+   List mode and bmap drawers render the full description without
+   clamping. Token / item / spell grid drawers all clamp + expose the
+   button. Wave B-9-fix-28 widened scope from token-only to all three. */
+.beneos-cloud-app .bc-detail-drawer.bc-drawer-bmap .bc-action-readmore,
+.beneos-cloud-app .bc-results:not(:has(.bc-result-list.bc-view-grid)) .bc-action-readmore {
+  display: none;
+}
+
+.beneos-cloud-app .bc-card-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--bc-space-2);
+}
+.beneos-cloud-app .bc-card-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius);
+  background: var(--bc-card);
+  color: var(--bc-text);
+  font-size: 11px;
+  font-family: var(--bc-font-ui);
+  cursor: pointer;
+}
+.beneos-cloud-app .bc-card-button:hover {
+  background: var(--bc-card-hover);
+}
+.beneos-cloud-app .bc-card-button-primary {
+  background: var(--bc-accent-dim);
+  color: var(--bc-accent-soft);
+  border-color: var(--bc-accent-line);
+}
+.beneos-cloud-app .bc-card-button-primary:hover {
+  background: var(--bc-accent-line);
+  color: var(--bc-accent-strong);
+}
+
+/* Update-state primary button: applied alongside .bc-card-button-primary
+   on cards that are already installed but have a pending update. The
+   blue tone separates "ready to update" from regular gold "ready to
+   install" so users don't confuse the two states at a glance. */
+.beneos-cloud-app .bc-card-button-primary.bc-action-update {
+  background: var(--bc-update-dim);
+  color: var(--bc-update-soft);
+  border-color: var(--bc-update-line);
+}
+.beneos-cloud-app .bc-card-button-primary.bc-action-update:hover {
+  background: var(--bc-update-line);
+  color: var(--bc-update-strong);
+}
+
+.beneos-cloud-app .bc-state-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 10px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+.beneos-cloud-app .bc-state-installed {
+  background: rgba(139, 191, 139, 0.12);
+  color: var(--bc-success);
+}
+/* Update-pending state: the card is installed AND has a fresh version
+   waiting in the cloud. Reuses the --bc-update palette so the pill and
+   the adjacent update-button read as a coordinated visual signal —
+   the GM scrolling the result grid sees "blue = needs attention" at a
+   glance. The class is added in the template only when card.isUpdate is
+   truthy, so the pill snaps back to green automatically once the update
+   completes and the next render re-enriches the card data. */
+.beneos-cloud-app .bc-state-installed.bc-state-update-pending {
+  background: var(--bc-update-dim);
+  color: var(--bc-update-soft);
+}
+.beneos-cloud-app .bc-state-unavailable {
+  background: var(--bc-bg-panel);
+  color: var(--bc-text-dim);
+}
+/* Wave B-9-fix-58: pill for the cloud-unreachable state. Warm-warning
+   tone (vs the muted unavailable grey) so the user reads "something
+   I can fix" rather than "asset doesn't exist". */
+.beneos-cloud-app .bc-state-offline {
+  background: rgba(216, 130, 112, 0.12);
+  color: var(--bc-danger);
+  border: 1px solid rgba(216, 130, 112, 0.30);
+}
+/* Secondary card button — used for the "Sign in" call-to-action on
+   needs-login cards. Sits between the unavailable pill (passive) and
+   the install button (primary). */
+.beneos-cloud-app .bc-card-button-secondary {
+  background: transparent;
+  border: 1px solid var(--bc-accent-line);
+  color: var(--bc-accent);
+}
+.beneos-cloud-app .bc-card-button-secondary:hover {
+  background: var(--bc-accent-dim);
+  border-color: var(--bc-accent);
+  color: var(--bc-accent-strong);
+}
+
+/* ---- Detail drawer (right slide-in) ---- */
+
+.beneos-cloud-app .bc-detail-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 360px;
+  background: var(--bc-bg-panel);
+  border-left: 1px solid var(--bc-border-strong);
+  box-shadow: var(--bc-shadow-pop);
+  transform: translateX(100%);
+  transition: transform 0.18s ease-out;
+  display: flex;
+  flex-direction: column;
+  z-index: 5;
+  contain: layout style paint;
+}
+.beneos-cloud-app .bc-detail-drawer.bc-drawer-open {
+  transform: translateX(0);
+}
+/* ---- Wave B-9-fix-2/6: in grid mode the right-side overlay covered
+       the remaining cards, so we flow the open drawer below the result
+       list. The DOM stays the same; only positioning + body layout
+       change. The :has() selector targets .bc-results only when it
+       actually contains a grid-mode list. Foundry V13 ships Chromium
+       28+ which supports :has() natively.
+
+       Wave B-9-fix-6: in this flow position the drawer is height-
+       constrained, so the body switches from stacked vertical to a
+       2-column grid (hero + variants on the left, fields + description
+       on the right). Hero shrinks to a thumbnail-sized 220px box. */
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-open {
+  position: static;
+  width: auto;
+  height: auto;
+  transform: none;
+  margin-top: var(--bc-space-3);
+  border-left: none;
+  border-top: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-radius);
+  box-shadow: none;
+  background: var(--bc-bg-panel);
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer .bc-drawer-body {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-auto-rows: auto;
+  gap: var(--bc-space-3);
+  align-items: start;
+  overflow-y: visible;
+  max-height: none;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer .bc-drawer-body > .bc-drawer-hero {
+  grid-column: 1;
+  grid-row: 1;
+  height: 160px;
+  margin-bottom: 0;
+}
+/* Wave B-9-fix-10: bmap pairs (.bc-drawer-pair) need both images visible
+   side-by-side at proper aspect, not cropped into the narrow 220px left
+   column. In grid mode the pair spans both columns and gets a roomy
+   row of its own. The inner two-image grid stays balanced 1fr / 1fr. */
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer .bc-drawer-body > .bc-drawer-pair {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  margin-bottom: 0;
+  /* Wave B-9-fix-22/33: switch from the 50/50 grid (or list-mode's
+     flex-column stack) to a flex-row so each image keeps its natural
+     aspect ratio at the fixed 160px row height. Centred so a wide map
+     and a square scenery line up symmetrically. */
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: stretch;
+  gap: var(--bc-space-2);
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer .bc-drawer-body > .bc-drawer-pair .bc-drawer-hero,
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer .bc-drawer-body > .bc-drawer-pair .bc-drawer-sibling {
+  height: 160px;
+  /* Width auto-sizes to whatever the natural aspect ratio dictates so
+     the image fills the height without being cropped vertically or
+     stretched horizontally. */
+  width: auto;
+  flex: 0 0 auto;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer .bc-drawer-body > .bc-drawer-pair .bc-drawer-hero img,
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer .bc-drawer-body > .bc-drawer-pair .bc-drawer-sibling img {
+  width: auto;
+  height: 100%;
+  object-fit: contain;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer .bc-drawer-body > .bc-variants {
+  grid-column: 1;
+  grid-row: 2;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer .bc-drawer-body > .bc-drawer-summary {
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer .bc-drawer-body > .bc-drawer-description {
+  grid-column: 2;
+  grid-row: 2;
+}
+/* Wave B-9-fix-10/30: when the body contains a bmap pair, summary and
+   description flow full-width below the pair instead of squeezing into
+   the right column. Uses :has() — supported in Foundry V13 Chromium. */
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer .bc-drawer-body:has(> .bc-drawer-pair) > .bc-drawer-summary {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer .bc-drawer-body:has(> .bc-drawer-pair) > .bc-drawer-description {
+  grid-column: 1 / -1;
+  grid-row: 3;
+}
+.beneos-cloud-app .bc-drawer-header {
+  display: flex;
+  align-items: center;
+  gap: var(--bc-space-2);
+  padding: var(--bc-space-3);
+  border-bottom: 1px solid var(--bc-border);
+}
+.beneos-cloud-app .bc-drawer-title {
+  margin: 0;
+  flex: 1 1 auto;
+  font-family: var(--bc-font-display);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--bc-text);
+}
+.beneos-cloud-app .bc-drawer-close {
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--bc-text-muted);
+  border-radius: var(--bc-radius);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.beneos-cloud-app .bc-drawer-close:hover {
+  background: var(--bc-card-hover);
+  color: var(--bc-text);
+  border-color: var(--bc-border);
+}
+.beneos-cloud-app .bc-drawer-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: var(--bc-space-3);
+}
+.beneos-cloud-app .bc-drawer-hero {
+  width: 100%;
+  height: 220px;
+  border-radius: var(--bc-radius);
+  overflow: hidden;
+  background: var(--bc-bg);
+  margin-bottom: var(--bc-space-3);
+}
+/* Wave B-7 → B-9-fix-33: paired sibling view (scenery + battlemap).
+ * In list mode the drawer column is narrow and tall, so the user has
+ * plenty of vertical space; stack the two images on top of each other
+ * at full column width with their natural aspect ratio (object-fit:
+ * contain), so both maps are fully visible without cropping. The grid
+ * mode override below handles the wide-row case differently. */
+.beneos-cloud-app .bc-drawer-pair {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bc-space-2);
+  margin-bottom: var(--bc-space-3);
+}
+.beneos-cloud-app .bc-drawer-pair .bc-drawer-hero {
+  margin-bottom: 0;
+  width: 100%;
+  height: auto;
+}
+.beneos-cloud-app .bc-drawer-pair .bc-drawer-hero img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+.beneos-cloud-app .bc-drawer-sibling {
+  position: relative;
+  width: 100%;
+  height: auto;
+  border-radius: var(--bc-radius);
+  overflow: hidden;
+  background: var(--bc-bg);
+  border: 1px solid var(--bc-border);
+}
+.beneos-cloud-app .bc-drawer-sibling img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+.beneos-cloud-app .bc-drawer-sibling-label {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.65);
+  color: var(--bc-text);
+}
+.beneos-cloud-app .bc-drawer-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+/* Wave B-6: variant carousel — sits between the hero image and the
+ * details fields in the drawer. Token bundles often ship as multi-variant
+ * packs (e.g. an Adult Dragon with 12 colored variants); the carousel
+ * lets the GM preview each variant by click and drag the specific one
+ * they want onto the canvas. Cloud-only variants (the parent token isn't
+ * installed yet) get a small cloud-icon overlay and a non-draggable state
+ * so the user understands "install first to drag". */
+.beneos-cloud-app .bc-variants {
+  margin: 0 0 var(--bc-space-3) 0;
+  padding-top: var(--bc-space-2);
+  border-top: 1px solid var(--bc-border);
+}
+.beneos-cloud-app .bc-variants-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: var(--bc-space-2);
+}
+.beneos-cloud-app .bc-variants-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bc-text-muted);
+  margin: 0;
+}
+.beneos-cloud-app .bc-variants-counter {
+  font-size: 11px;
+  color: var(--bc-text-dim);
+}
+.beneos-cloud-app .bc-variants-strip {
+  display: flex;
+  gap: var(--bc-space-2);
+  /* Wave B-9-fix-20: wrap to a new row instead of horizontal scroll.
+     Variant counts are typically small (2-12), so a wrapped grid reads
+     better than a scrollable strip and avoids ugly inline scrollbars. */
+  flex-wrap: wrap;
+}
+.beneos-cloud-app .bc-variant-thumb {
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--bc-radius);
+  overflow: hidden;
+  background: var(--bc-bg);
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  transition: border-color 0.12s, transform 0.12s;
+}
+.beneos-cloud-app .bc-variant-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.beneos-cloud-app .bc-variant-thumb:hover {
+  border-color: var(--bc-border-strong);
+  transform: translateY(-1px);
+}
+.beneos-cloud-app .bc-variant-thumb.bc-variant-active {
+  border-color: var(--bc-accent);
+  outline: 1px solid var(--bc-accent);
+  outline-offset: -3px;
+}
+.beneos-cloud-app .bc-variant-thumb.bc-variant-cloud {
+  cursor: default;
+}
+.beneos-cloud-app .bc-variant-thumb.bc-variant-cloud::after {
+  content: "\f0c2"; /* fa-cloud */
+  font-family: "Font Awesome 6 Free", "Font Awesome 6 Pro", FontAwesome;
+  font-weight: 900;
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  font-size: 10px;
+  color: var(--bc-accent);
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+/* Wave B-9-fix-30: fields + install action share a flex row. In list
+   mode the fields grow to fill the row and the action sits right-
+   aligned. In grid mode the override below repositions the whole
+   summary block into the right column of the body grid. */
+.beneos-cloud-app .bc-drawer-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--bc-space-3);
+  margin: 0 0 var(--bc-space-3) 0;
+}
+.beneos-cloud-app .bc-drawer-summary > .bc-drawer-fields {
+  flex: 1 1 auto;
+  margin: 0;
+}
+.beneos-cloud-app .bc-drawer-summary > .bc-drawer-action {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--bc-space-2);
+}
+.beneos-cloud-app .bc-drawer-fields {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--bc-space-1) var(--bc-space-3);
+  margin: 0 0 var(--bc-space-3) 0;
+}
+.beneos-cloud-app .bc-drawer-fields .bc-field {
+  display: contents;
+}
+.beneos-cloud-app .bc-drawer-fields dt {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bc-text-muted);
+}
+.beneos-cloud-app .bc-drawer-fields dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--bc-text);
+}
+/* Wave B-9-fix-35: faction value carries a description tooltip — use a
+   subtle dotted underline to signal "hover for more info". */
+.beneos-cloud-app .bc-field-tooltip {
+  text-decoration: underline dotted var(--bc-accent-line);
+  text-underline-offset: 3px;
+  cursor: help;
+}
+.beneos-cloud-app .bc-drawer-description {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--bc-text);
+  border-top: 1px solid var(--bc-border);
+  padding-top: var(--bc-space-3);
+}
+/* Wave B-9-fix-18: descriptions for loot/spells are the most useful
+   piece of information when scrolling. They get bumped a notch above
+   the default with a slightly italic, non-muted treatment. The text
+   colour is full --bc-text so it doesn't read as a footnote. */
+.beneos-cloud-app .bc-detail-drawer.bc-drawer-item .bc-drawer-description,
+.beneos-cloud-app .bc-detail-drawer.bc-drawer-spell .bc-drawer-description {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--bc-text);
+  font-style: italic;
+}
+/* Wave B-9-fix-30: .bc-drawer-footer no longer rendered. The install
+   action moved into .bc-drawer-summary inline with the fields, so the
+   drawer ends right after the description block (or the origin section
+   for items). The class is left here as a comment marker only — no
+   styles needed. */
+
+/* ---- Footer ---- */
+
+.beneos-cloud-app .bc-footer {
+  background: var(--bc-bg-panel);
+  border-top: 1px solid var(--bc-border);
+  padding: var(--bc-space-2) var(--bc-space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--bc-space-3);
+}
+/* Wave B-9-fix-36: footer split into left (account chip + buttons) and
+   right (module version label) groups. */
+.beneos-cloud-app .bc-footer-left {
+  display: flex;
+  align-items: center;
+  gap: var(--bc-space-2);
+  flex-wrap: wrap;
+}
+.beneos-cloud-app .bc-footer-right {
+  display: flex;
+  align-items: center;
+  gap: var(--bc-space-1);
+  flex: 0 0 auto;
+}
+/* Wave B-9-fix-45: external link buttons toned down so they don't
+   compete with the Account/Login button on the left. Transparent
+   background, dim text, no border by default — brand colour blooms on
+   hover only. The .bc-footer-link class is applied alongside the
+   brand-specific class so this base styling lands once. */
+.beneos-cloud-app .bc-footer-link {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--bc-text-dim);
+  padding: 4px 10px;
+  /* Recede the external links so the in-app Settings button next to
+     them reads as the foreground action. Opacity restores fully on
+     hover, in tandem with the brand-colour bloom below. */
+  opacity: 0.65;
+  transition: opacity 0.12s, background 0.12s, border-color 0.12s, color 0.12s;
+}
+.beneos-cloud-app .bc-footer-link:hover {
+  background: var(--bc-card) !important;
+  opacity: 1;
+}
+/* Vertical separator between the external-links cluster and the
+   in-app Settings button. Subtle hairline so it groups the buttons
+   visually without becoming its own visual element. */
+.beneos-cloud-app .bc-footer-divider {
+  display: inline-block;
+  width: 1px;
+  height: 18px;
+  margin: 0 var(--bc-space-2);
+  background: var(--bc-border);
+  flex: 0 0 auto;
+}
+.beneos-cloud-app .bc-footer-button-discord:hover {
+  border-color: #5865F2 !important;
+  color: #5865F2;
+}
+.beneos-cloud-app .bc-footer-button-webshop:hover {
+  border-color: var(--bc-accent) !important;
+  color: var(--bc-accent);
+}
+.beneos-cloud-app .bc-footer-button-patreon:hover {
+  border-color: #FF424D !important;
+  color: #FF424D;
+}
+
+/* ---- Wave B-9-fix-44 → fix-56: Beneos logo as icon ----
+   V13 renders the icon class in two different DOM positions depending
+   on context (verified in Foundry source):
+     - Window title bar: <i class="window-icon ... beneos-icon-logo">
+       (api/application.mjs:699). The icon class lands on an <i>.
+     - Scene-controls toolbar: <button class="control ui-control layer
+       icon beneos-icon-logo">
+       (templates/ui/scene-controls-layers.hbs). The icon class lands
+       on the BUTTON itself; there is no inner <i>.
+   Two selectors handle the two cases:
+     - i.beneos-icon-logo masks the SVG over the element directly
+     - button.beneos-icon-logo uses ::before so ui-control's 32x32
+       dark-square sizing/background isn't blown away. */
+
+/* Window-title variant (i element). */
+i.beneos-icon-logo {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  background: currentColor;
+  -webkit-mask: url("../Icons/beneos_logo.svg") center / contain no-repeat;
+          mask: url("../Icons/beneos_logo.svg") center / contain no-repeat;
+  vertical-align: middle;
+  font-style: normal;
+}
+/* Wave B-9-fix-54 / fix-56: title-bar logo is white and slightly
+   bigger so the brand mark reads at first glance. */
+.application.beneos-cloud-app .window-header .window-title .beneos-icon-logo,
+.application.beneos-cloud-app .window-header .beneos-icon-logo {
+  color: var(--bc-text);
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+  flex: 0 0 20px;
+}
+
+/* Scene-controls toolbar variant (button element). The icon renders
+   as a ::before pseudo-element on top of the button so Foundry's
+   ui-control rules continue to size and background-fill the button.
+   Wave B-9-fix-65: dropped the cream-circle backplate.
+   Wave B-9-fix-67: bump the tile size by locally overriding
+   --control-size. Foundry's li.ui-control / button.ui-control read
+   the variable via `width: var(--control-size); height: var(--control-size)`
+   (foundry2.css:5564) so the override only resizes our tile — other
+   Foundry tools keep their 32px size. Logo fills ~88% of the larger
+   tile so the brand mark reads at first glance. */
+#scene-controls li:has(button.beneos-icon-logo),
+.scene-controls li:has(button.beneos-icon-logo) {
+  --control-size: 40px;
+}
+button.beneos-icon-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--control-bg-color, rgba(20, 20, 20, 0.85));
+  border: 1px solid var(--control-border-color, rgba(255, 255, 255, 0.1));
+  color: var(--control-icon-color, #ddd);
+}
+button.beneos-icon-logo::before {
+  content: "";
+  display: block;
+  width: 36px;
+  height: 36px;
+  background: currentColor;
+  -webkit-mask: url("../Icons/beneos_logo.svg") center / contain no-repeat;
+          mask: url("../Icons/beneos_logo.svg") center / contain no-repeat;
+}
+button.beneos-icon-logo:hover::before {
+  background: var(--bc-accent, #f5c992);
+}
+
+/* No-active-scene clickability override.
+   When `canvas.scene === null` (fresh world, scene just deleted) Foundry V13/V14
+   greys out scene-controls toolbar buttons because most tools depend on a canvas.
+   The Beneos cloud-launch button does NOT depend on a canvas — its render path
+   (BeneosSearchEngineLauncher → BeneosCloudWindowV2) only reads compendia and
+   the cloud database, no canvas calls. So we override the disabled visual +
+   pointer-events for our own button regardless of scene state, while leaving
+   every other Foundry tool's disable behaviour untouched. */
+#scene-controls li:has(button.beneos-icon-logo) button,
+.scene-controls li:has(button.beneos-icon-logo) button,
+button.beneos-icon-logo {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  cursor: pointer !important;
+}
+#scene-controls li:has(button.beneos-icon-logo)[disabled],
+.scene-controls li:has(button.beneos-icon-logo)[disabled],
+#scene-controls li:has(button.beneos-icon-logo) button[disabled],
+.scene-controls li:has(button.beneos-icon-logo) button[disabled] {
+  /* Belt-and-suspenders: even if Foundry sets the `disabled` attribute, we
+     visually unmute the button. The click handler bypasses disabled state via
+     pointer-events: auto above. */
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  cursor: pointer !important;
+}
+
+/* ---- Account chip ---- */
+
+.beneos-cloud-app .bc-account-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bc-space-2);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.beneos-cloud-app .bc-account-chip i { font-size: 12px; }
+.beneos-cloud-app .bc-chip-success {
+  background: rgba(139, 191, 139, 0.12);
+  color: var(--bc-success);
+  border: 1px solid rgba(139, 191, 139, 0.30);
+}
+.beneos-cloud-app .bc-chip-warning {
+  background: rgba(216, 130, 112, 0.12);
+  color: var(--bc-danger);
+  border: 1px solid rgba(216, 130, 112, 0.30);
+}
+.beneos-cloud-app .bc-chip-neutral {
+  background: var(--bc-card);
+  color: var(--bc-text-muted);
+  border: 1px solid var(--bc-border);
+}
+
+.beneos-cloud-app .bc-footer-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bc-space-2);
+  padding: 6px 12px;
+  background: var(--bc-card);
+  color: var(--bc-text);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius);
+  font-family: var(--bc-font-ui);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.beneos-cloud-app .bc-footer-button:hover {
+  background: var(--bc-card-hover);
+  border-color: var(--bc-border-strong);
+}
+.beneos-cloud-app .bc-footer-button-primary {
+  background: var(--bc-accent-dim);
+  color: var(--bc-accent-soft);
+  border-color: var(--bc-accent-line);
+}
+.beneos-cloud-app .bc-footer-button-primary:hover {
+  background: var(--bc-accent-line);
+  color: var(--bc-accent-strong);
+}
+
+/* ---- Title bar Patreon status colour (mirrors v1 behavior) ---- */
+
+.beneos-cloud-app .window-header .window-title.beneos-window-title-green {
+  color: var(--bc-success);
+}
+.beneos-cloud-app .window-header .window-title.beneos-window-title-orange {
+  color: var(--bc-danger);
+}
+
+/* ---- Easter-egg quote next to the cloud window title ----
+   Outer span clips the slide and carries the divider border on the left;
+   inner span carries the typography and the transform animation. Cycles
+   every 20s via JS. */
+.beneos-cloud-app .window-header .window-title .bc-window-quote {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 0.85em;
+  padding-left: 0.85em;
+  border-left: 1px solid rgba(255, 255, 255, 0.22);
+  max-width: 70%;
+  overflow: hidden;
+  white-space: nowrap;
+  line-height: 1.2em;
+  height: 1.2em;
+}
+.beneos-cloud-app .window-header .window-title .bc-window-quote .bc-window-quote-text {
+  display: inline-block;
+  font-style: italic;
+  font-weight: normal;
+  font-size: 0.82em;
+  color: rgba(255, 255, 255, 0.42);
+  letter-spacing: 0.01em;
+  transform: translateY(0);
+  opacity: 1;
+  transition: transform 0.9s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.9s ease;
+  will-change: transform, opacity;
+}
+.beneos-cloud-app .window-header .window-title .bc-window-quote .bc-window-quote-text.is-leaving {
+  transform: translateY(120%);
+  opacity: 0;
+}
+.beneos-cloud-app .window-header .window-title .bc-window-quote .bc-window-quote-text.is-entering {
+  transform: translateY(-120%);
+  opacity: 0;
+  transition: none;
+}
+
+/* ---- Wave B-9-fix-4: loot sidebar placeholder buttons ----
+   Match the rest of the sidebar visually: card-tone background, border,
+   gold icon. Click handler shows a "coming soon" notification until the
+   feature is wired up. */
+.beneos-cloud-app .bc-sidebar-button {
+  /* Wave B-9-fix-55 → fix-60: match the select-field width exactly.
+     Selects use `width: 100%` and `box-sizing: border-box` (Foundry
+     default), so the buttons match by doing the same. Icons removed
+     from the labels so we no longer need left-align — center the
+     text for a cleaner mechanic-button feel. */
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  background: var(--bc-card);
+  color: var(--bc-text);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius);
+  font-size: 13px;
+  font-family: var(--bc-font-ui);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.beneos-cloud-app .bc-sidebar-button:hover {
+  background: var(--bc-card-hover);
+  border-color: var(--bc-accent);
+}
+/* Wave B-9-fix-60: icon rules dropped — the loot mechanics buttons
+   no longer carry icons. Left as a comment so a future reader sees
+   the deliberate removal rather than wondering where the rule went. */
+
+/* ---- Wave B-9-fix-3 → fix-39 → fix-42: bulk-install confirm dialog ----
+   V13 DialogV2 actual markup (verified in core source dialog.mjs:178-188):
+     <form class="dialog-form standard-form">
+       <div class="dialog-content standard-form">[content]</div>
+       <footer class="form-footer">[buttons]</footer>
+     </form>
+   The .standard-form class carries Foundry's own form layout that stacks
+   children vertically with full-width buttons. Our overrides target the
+   actual V13 classes and use !important to win against core's defaults.
+   The .beneos-confirm class is added via DialogV2.confirm({classes:...})
+   so the rules only fire on Beneos confirmation dialogs. */
+.application.beneos-cloud-app.beneos-confirm {
+  background: var(--bc-bg-elevated) !important;
+  color: var(--bc-text) !important;
+  border: 1px solid var(--bc-border-strong) !important;
+  border-radius: var(--bc-radius) !important;
+  box-shadow: var(--bc-shadow-pop) !important;
+  max-width: 460px !important;
+  width: 460px !important;
+}
+
+/* Window header — title + close button */
+.application.beneos-cloud-app.beneos-confirm .window-header {
+  background: var(--bc-bg-panel) !important;
+  border-bottom: 1px solid var(--bc-border) !important;
+  color: var(--bc-text) !important;
+  padding: var(--bc-space-2) var(--bc-space-3) !important;
+}
+.application.beneos-cloud-app.beneos-confirm .window-header .window-title {
+  color: var(--bc-text) !important;
+  font-family: var(--bc-font-display);
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.02em;
+  text-align: center;
+  flex: 1 1 auto;
+  /* Foundry V13 + dnd5e add a coloured underline on .window-title via
+     text-decoration / border-bottom on different versions. Strip both so
+     the V2 confirm header reads as a clean centred title instead of
+     "underlined link". */
+  text-decoration: none !important;
+  border-bottom: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.application.beneos-cloud-app.beneos-confirm .window-header,
+.application.beneos-cloud-app.beneos-confirm .window-header * {
+  text-decoration: none !important;
+}
+/* Header control buttons (close X + any V13 system buttons that land
+   here). The control bar is rendered by Foundry as a row of icon-only
+   buttons; we force them into our colour palette and a clean square
+   hit-target so the X stops looking like greyed-out chrome. */
+.application.beneos-cloud-app.beneos-confirm .window-header [data-action="close"],
+.application.beneos-cloud-app.beneos-confirm .window-header .header-control,
+.application.beneos-cloud-app.beneos-confirm .window-header button.header-control {
+  color: var(--bc-text) !important;
+  opacity: 1 !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: var(--bc-radius) !important;
+  width: 24px !important;
+  height: 24px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 auto !important;
+  cursor: pointer !important;
+  transition: background 0.12s, border-color 0.12s, color 0.12s !important;
+}
+.application.beneos-cloud-app.beneos-confirm .window-header [data-action="close"] i,
+.application.beneos-cloud-app.beneos-confirm .window-header .header-control i {
+  color: inherit !important;
+  font-size: 12px !important;
+  margin: 0 !important;
+}
+.application.beneos-cloud-app.beneos-confirm .window-header [data-action="close"]:hover,
+.application.beneos-cloud-app.beneos-confirm .window-header .header-control:hover {
+  color: var(--bc-accent-strong) !important;
+  background: var(--bc-card-hover) !important;
+  border-color: var(--bc-border) !important;
+}
+
+/* Window content — strip Foundry's default padding so our wrapper owns it */
+.application.beneos-cloud-app.beneos-confirm .window-content {
+  background: transparent !important;
+  color: var(--bc-text) !important;
+  padding: 0 !important;
+}
+
+/* The form itself uses .standard-form which Foundry styles as a vertical
+   form layout. We need to override that to a plain block so our content
+   + footer stack naturally. */
+.application.beneos-cloud-app.beneos-confirm .dialog-form,
+.application.beneos-cloud-app.beneos-confirm .dialog-form.standard-form {
+  display: block !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  gap: 0 !important;
+  background: transparent !important;
+}
+.application.beneos-cloud-app.beneos-confirm .dialog-content,
+.application.beneos-cloud-app.beneos-confirm .dialog-content.standard-form {
+  display: block !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  color: var(--bc-text) !important;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* World-update confirm dialog — emitted by _propagateTokenUpdateToWorld.
+   Built on the .beneos-confirm chrome but with richer body content: an
+   asset header (type chip + name), a per-scene usage list, an optional
+   skip-renamed note, and the question line. Layout is left-aligned (vs
+   the centred bc-confirm-content) because the content is mostly a list
+   of facts rather than a single question. */
+.beneos-cloud-app .bc-update-dialog {
+  padding: var(--bc-space-4);
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.beneos-cloud-app .bc-update-asset-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--bc-space-2);
+  margin: 0 0 var(--bc-space-3);
+  padding-bottom: var(--bc-space-2);
+  border-bottom: 1px solid var(--bc-border);
+}
+.beneos-cloud-app .bc-update-asset-type {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bc-accent-dim);
+  border: 1px solid var(--bc-accent-line);
+  color: var(--bc-accent-soft);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  flex: 0 0 auto;
+}
+.beneos-cloud-app .bc-update-asset-name {
+  font-family: var(--bc-font-display);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--bc-text);
+  flex: 1 1 auto;
+  word-break: break-word;
+}
+.beneos-cloud-app .bc-update-intro {
+  margin: 0 0 var(--bc-space-3);
+  color: var(--bc-text-muted);
+}
+.beneos-cloud-app .bc-update-scenes-heading {
+  margin: 0 0 var(--bc-space-2);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bc-text-muted);
+}
+.beneos-cloud-app .bc-update-scene-list {
+  margin: 0 0 var(--bc-space-3);
+  padding: 0;
+  list-style: none;
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius);
+  background: var(--bc-bg-panel);
+}
+.beneos-cloud-app .bc-update-scene-list li {
+  padding: 6px var(--bc-space-3);
+  border-bottom: 1px solid var(--bc-border);
+  color: var(--bc-text);
+  font-size: 12px;
+}
+.beneos-cloud-app .bc-update-scene-list li:last-child {
+  border-bottom: none;
+}
+.beneos-cloud-app .bc-update-no-scenes {
+  margin: 0 0 var(--bc-space-3);
+  padding: var(--bc-space-2) var(--bc-space-3);
+  background: var(--bc-bg-panel);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius);
+  color: var(--bc-text-muted);
+  font-size: 12px;
+  font-style: italic;
+}
+.beneos-cloud-app .bc-update-skipped-note {
+  margin: 0 0 var(--bc-space-3);
+  padding: var(--bc-space-2) var(--bc-space-3);
+  border-left: 3px solid var(--bc-accent-line);
+  background: var(--bc-accent-dim);
+  color: var(--bc-text);
+  font-size: 12px;
+  border-radius: 0 var(--bc-radius) var(--bc-radius) 0;
+}
+.beneos-cloud-app .bc-update-question {
+  margin: var(--bc-space-3) 0 0;
+  padding-top: var(--bc-space-3);
+  border-top: 1px solid var(--bc-border);
+  color: var(--bc-text);
+  font-weight: 500;
+}
+
+/* Our centred wrapper — emitted inline by #onBulkInstallClick */
+.beneos-cloud-app .bc-confirm-content {
+  padding: var(--bc-space-4);
+  text-align: center;
+}
+.beneos-cloud-app .bc-confirm-content .bc-confirm-text {
+  margin: 0 0 var(--bc-space-3);
+  color: var(--bc-text);
+}
+.beneos-cloud-app .bc-confirm-content .bc-confirm-text:last-child {
+  margin-bottom: 0;
+}
+.beneos-cloud-app .bc-confirm-content .bc-confirm-warning {
+  margin: var(--bc-space-3) auto 0;
+  padding: var(--bc-space-2) var(--bc-space-3);
+  border-left: 3px solid var(--bc-danger);
+  background: rgba(216, 130, 112, 0.10);
+  color: var(--bc-text);
+  font-size: 12px;
+  border-radius: 0 var(--bc-radius) var(--bc-radius) 0;
+  text-align: left;
+  max-width: 380px;
+}
+
+/* Footer button row. DialogV2 ships either .form-footer (newer V13)
+   or .dialog-buttons (V12-style still alive in some V13 builds), and a
+   raw <menu> element gets used for some confirm helpers — cover all
+   three so the layout is consistent regardless of which path Foundry
+   picks at runtime. */
+.application.beneos-cloud-app.beneos-confirm .form-footer,
+.application.beneos-cloud-app.beneos-confirm .dialog-buttons,
+.application.beneos-cloud-app.beneos-confirm menu {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: var(--bc-space-3) !important;
+  padding: var(--bc-space-3) var(--bc-space-4) !important;
+  margin: 0 !important;
+  border-top: 1px solid var(--bc-border) !important;
+  background: var(--bc-bg-panel) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  list-style: none !important;
+}
+.application.beneos-cloud-app.beneos-confirm .form-footer > button[data-action],
+.application.beneos-cloud-app.beneos-confirm .form-footer > button.dialog-button,
+.application.beneos-cloud-app.beneos-confirm .dialog-buttons > button,
+.application.beneos-cloud-app.beneos-confirm menu > button {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 110px !important;
+  padding: 8px 16px !important;
+  border-radius: var(--bc-radius) !important;
+  font-family: var(--bc-font-ui) !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  border: 1px solid var(--bc-border-strong) !important;
+  background: var(--bc-card) !important;
+  color: var(--bc-text) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  transition: background 120ms ease, border-color 120ms ease !important;
+  text-decoration: none !important;
+}
+.application.beneos-cloud-app.beneos-confirm .form-footer > button[data-action]:hover,
+.application.beneos-cloud-app.beneos-confirm .dialog-buttons > button:hover,
+.application.beneos-cloud-app.beneos-confirm menu > button:hover {
+  background: var(--bc-card-hover) !important;
+  border-color: var(--bc-border-strong) !important;
+}
+.application.beneos-cloud-app.beneos-confirm .form-footer > button[data-action="yes"],
+.application.beneos-cloud-app.beneos-confirm .dialog-buttons > button[data-button="yes"],
+.application.beneos-cloud-app.beneos-confirm menu > button[data-button="yes"] {
+  background: var(--bc-accent) !important;
+  border-color: var(--bc-accent) !important;
+  color: var(--bc-bg) !important;
+}
+.application.beneos-cloud-app.beneos-confirm .form-footer > button[data-action="yes"]:hover,
+.application.beneos-cloud-app.beneos-confirm .dialog-buttons > button[data-button="yes"]:hover,
+.application.beneos-cloud-app.beneos-confirm menu > button[data-button="yes"]:hover {
+  background: var(--bc-accent-strong) !important;
+  border-color: var(--bc-accent-strong) !important;
+  color: var(--bc-bg) !important;
+}
+
+/* ============================================================
+ * Cloud-V2 Settings modal (BeneosCloudSettingsV2)
+ *
+ * Reuses the same .beneos-cloud-app design tokens as the main window so
+ * the modal feels like part of the same surface. The structure is a
+ * vertical list of "rows": each row has meta on the left (label + hint)
+ * and a control on the right (button or toggle). Adding a new section
+ * later means adding a div.bc-settings-row in the template — no extra
+ * CSS required.
+ * ============================================================ */
+.beneos-cloud-app.bc-settings-window {
+  background: var(--bc-bg);
+  color: var(--bc-text);
+}
+.beneos-cloud-app .bc-settings-app {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bc-space-3);
+  padding: var(--bc-space-3) var(--bc-space-4);
+}
+.beneos-cloud-app .bc-settings-header {
+  margin: 0;
+  padding: 0;
+}
+.beneos-cloud-app .bc-settings-title {
+  margin: 0;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--bc-accent-soft);
+}
+.beneos-cloud-app .bc-settings-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.beneos-cloud-app .bc-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--bc-space-4);
+  padding: var(--bc-space-3) 0;
+  border-bottom: 1px solid var(--bc-border);
+}
+.beneos-cloud-app .bc-settings-row:last-child {
+  border-bottom: none;
+}
+.beneos-cloud-app .bc-settings-row-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.beneos-cloud-app .bc-settings-row-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--bc-text);
+  margin-bottom: 2px;
+}
+.beneos-cloud-app .bc-settings-row-hint {
+  font-size: 11px;
+  color: var(--bc-text-muted);
+  line-height: 1.4;
+}
+.beneos-cloud-app .bc-settings-row-control {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--bc-space-2);
+}
+.beneos-cloud-app .bc-settings-toggle {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+/* "Saved ✓" feedback pill — sits to the left of each toggle and is
+   invisible until JS adds .bc-settings-saved-show, at which point it
+   fades in for ~1.2s then fades out. Matches the success colour palette
+   so the visual language reads as confirmation without resorting to
+   Foundry's default ui.notifications toast. */
+.beneos-cloud-app .bc-settings-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(139, 191, 139, 0.15);
+  color: var(--bc-success);
+  border: 1px solid rgba(139, 191, 139, 0.45);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: translateY(2px);
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+.beneos-cloud-app .bc-settings-saved-show {
+  opacity: 1;
+  transform: translateY(0);
+}

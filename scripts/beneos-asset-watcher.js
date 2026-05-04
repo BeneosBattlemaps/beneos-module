@@ -310,9 +310,50 @@ Hooks.on("canvasReady", async () => {
   catch (e) { WARN("check failed:", e); }
 });
 
-// Manual triggers (force-open the dialog, clear the session dedup cache, or
-// clear the per-scene dismissal flag). Left in place so a GM can re-test
-// after fixing files without reloading the world.
+// Silent per-scene scanner — returns the missing-paths set without
+// rendering any dialog. Used by the world-wide scan (see scanAllScenes
+// below) so the GM gets one aggregated result rather than N popups.
+const scanSceneSilent = async (scene) => {
+  if (!scene) return { paths: [], missing: [] };
+  const paths = collectBeneosPaths(scene);
+  if (!paths.length) return { paths: [], missing: [] };
+  const results = await Promise.all(paths.map(async p => {
+    const r = await headCheck(p);
+    return { p, ...r };
+  }));
+  const missing = results.filter(r => !r.ok).map(r => r.p);
+  return { paths, missing };
+};
+
+// World-wide scan triggered from the Cloud-V2 settings modal. Iterates
+// every scene in the world (not just canvas.scene like the canvasReady
+// hook) and returns aggregated counts plus a per-scene breakdown so the
+// caller can decide how to surface the result. GM-only by design — the
+// underlying watcher path is also GM-gated.
+const scanAllScenes = async () => {
+  if (!game.user?.isGM) return null;
+  const scenes = [...(game.scenes ?? [])];
+  const sceneSummary = [];
+  let totalMissing = 0;
+  for (const scene of scenes) {
+    const { missing } = await scanSceneSilent(scene);
+    if (missing.length) {
+      totalMissing += missing.length;
+      sceneSummary.push({ scene, missing });
+    }
+  }
+  return {
+    totalScenes:  scenes.length,
+    scannedScenes: scenes.length,
+    totalMissing,
+    sceneSummary
+  };
+};
+
+// Manual triggers (force-open the dialog, clear the session dedup cache,
+// clear the per-scene dismissal flag, or run the world-wide scan). Left
+// in place so a GM can re-test after fixing files without reloading the
+// world. The world-wide scan also feeds the Cloud-V2 settings modal.
 globalThis.beneosAssetWatcher = {
   check: async () => {
     const scene = canvas.scene;
@@ -324,5 +365,8 @@ globalThis.beneosAssetWatcher = {
     const scene = canvas.scene;
     if (!scene) return;
     await scene.unsetFlag(MODULE_ID, FLAG_DISMISSED);
-  }
+  },
+  scanAllScenes
 };
+
+export { scanAllScenes, scanSceneSilent, headCheck, isBeneosPath, BENEOS_PATH_RE };

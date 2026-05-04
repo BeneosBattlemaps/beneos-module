@@ -7,7 +7,10 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  border-color: #ff6400;
+  /* Fix #B-3: Beneos brand accent — was hardcoded #ff6400 (orange), now sourced
+     from the design-token system (defaults to gold #f5c992). Defined in
+     css/beneos-cloud-tokens.css. */
+  border-color: var(--bc-accent, #ff6400);
 }
 
 @-moz-document url-prefix() {
@@ -589,7 +592,8 @@
 
 .beneos-search-notinstalled {
   /*background-color: #d56b52;*/
-  color: #1b9200;
+  /* Fix #B-3: status-success token (was hardcoded #1b9200). */
+  color: var(--bc-success, #1b9200);
   font-size: 0.55rem;
 }
 
@@ -1088,9 +1092,11 @@
   width: 100%;
 }
 
-.beneos_search_engine .window-header {
-  background-color: #3e0706;
-}
+/* Removed 2026-05-02: legacy V1 cloud-window header tint (#3e0706 dark Beneos
+   red) was dead code after the V1→V2 redesign — no V1 cloud window exists
+   anymore. Re-introducing `beneos_search_engine` as a V2-class alias for tour
+   selector back-compat (cloud-window-v2.mjs:97) made this stale rule paint the
+   V2 window's header dark red, out of place against the gold/black V2 palette. */
 
 .beneos-search-margin {
   margin-left: 32px;
@@ -1685,8 +1691,10 @@ body.theme-dark .beneos-info-box,
 }
 
 .beneos-window-title-green {
-  color: #1b9200;
+  /* Fix #B-3: Patreon-OK status — was hardcoded #1b9200. */
+  color: var(--bc-success, #1b9200);
 }
 .beneos-window-title-orange {
-  color: #d56b52;
+  /* Fix #B-3: Patreon-NOK status — was hardcoded #d56b52. */
+  color: var(--bc-danger, #d56b52);
 }
