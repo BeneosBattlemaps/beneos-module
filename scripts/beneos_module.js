@@ -17,6 +17,29 @@ Hooks.once('init', () => {
   BeneosUtility.setupSocket()
   //BeneosTableTop.init()
 
+  // dnd5e 5.3.x's NPCData.prepareBaseData unconditionally calls
+  // `this.parent.getCRExp(cr)`. When Moulinette imports older-system actors
+  // (_stats.systemVersion < current), the transient instance constructed by
+  // Actor.fromImport occasionally lacks the method, polluting the log with
+  // non-fatal "this.parent.getCRExp is not a function" errors. Install a
+  // fallback on the BASE Actor prototype mirroring dnd5e's own implementation.
+  // Actor5e keeps its own override on its class prototype, so live actors are
+  // unaffected — this only catches the brief import-time gap.
+  try {
+    const BaseActor = foundry?.documents?.Actor ?? globalThis.Actor;
+    if (BaseActor && !Object.prototype.hasOwnProperty.call(BaseActor.prototype, "getCRExp")) {
+      BaseActor.prototype.getCRExp = function(cr) {
+        if (cr === null || cr === undefined) return null;
+        if (cr < 1) return Math.max(200 * cr, 10);
+        const levels = CONFIG?.DND5E?.CR_EXP_LEVELS;
+        if (!levels) return 0;
+        return levels[cr] ?? Object.values(levels).pop();
+      };
+    }
+  } catch (e) {
+    console.warn("Beneos | getCRExp shim install failed:", e);
+  }
+
 })
 
 /********************************************************************************** */
