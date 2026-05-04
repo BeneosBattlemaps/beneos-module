@@ -785,11 +785,15 @@ function cleanupTourElements() {
  * Foundry will re-render the live tooltip from scratch in `_renderStep`.
  */
 function clearStaleTourTooltips() {
-  // Foundry V14: tour tooltip is rendered as <aside class="tour ...">.
-  document.querySelectorAll("aside.tour").forEach(el => { try { el.remove(); } catch (e) {} });
-  // Older / generic class fallback — some tour systems / future Foundry
-  // versions render to .tour-tooltip directly.
-  document.querySelectorAll(".tour-tooltip").forEach(el => { try { el.remove(); } catch (e) {} });
+  // Foundry V14 renders the tour box ON the singleton <aside id="tooltip">
+  // by adding class="tour …". Removing that node detaches TooltipManager's
+  // internal `this.tooltip` reference — the next activate() then calls
+  // showPopover() on a disconnected element → InvalidStateError, tour aborts.
+  // Only sweep ORPHAN duplicates, never the singleton.
+  document.querySelectorAll("aside.tour, .tour-tooltip").forEach(el => {
+    if (el.id === "tooltip") return;
+    try { el.remove(); } catch (e) {}
+  });
 }
 
 /* ================================================================== */
@@ -2251,10 +2255,13 @@ class BeneosTutorialSceneTour extends TourBase {
     }
     const gs = canvas.grid?.size ?? 100;
     try {
-      await token.document.update({
-        x: token.document.x + (dx * gs),
-        y: token.document.y + (dy * gs)
-      });
+      // Tour controls all MLT teleports explicitly via _triggerMLTTeleport;
+      // the auto-trigger from MLT's updateToken hook would visually revert
+      // the move (token enters region → MLT teleports back → "halfway" bug).
+      await token.document.update(
+        { x: token.document.x + (dx * gs), y: token.document.y + (dy * gs) },
+        { mlt_bypass: true }
+      );
     } catch (e) {
       console.warn("Beneos Tutorial Tour | Failed to move token:", e);
     }
@@ -3863,7 +3870,12 @@ class BeneosTutorialSceneTour extends TourBase {
       const knight = this._findToken("0kffK0uqEseXCTQi");
       if (knight) {
         try {
-          await knight.document.update({ x: 2050, y: 2825, elevation: 0 });
+          // mlt_bypass prevents MLT's auto-teleport from yanking the knight
+          // back into the world overview region during the demo reset.
+          await knight.document.update(
+            { x: 2050, y: 2825, elevation: 0 },
+            { mlt_bypass: true }
+          );
         } catch (e) {
           console.warn("Beneos Tutorial Tour | Failed to reset knight position:", e);
         }

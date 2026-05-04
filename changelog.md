@@ -3,6 +3,9 @@
 All notable changes to this module will be documented in this file.
 
 ## Updates
+### 14.0.5 # 2026-05-04
+- Fixed: Minor fix for the Beneos Tour (Battlemap Tour)
+
 ### 14.0.4 # 2026-05-04
 - New: **Beneos Cloud - completely redesigned interface.** A modern browse-and-install window with a fresh look, smoother animations, faster rendering and a cleaner layout designed around how you actually pick assets. Replaces the old Search Engine across Creatures, Maps, Items and Spells.
 - New: **Beneos Cloud toolbar button.** The Cloud has a new permanent home in the left scene-controls toolbar, no longer hidden inside the Actor Directory. Open it from anywhere in Foundry - even on a fresh world before you've placed a scene.
