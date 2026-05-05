@@ -3,11 +3,14 @@
 All notable changes to this module will be documented in this file.
 
 ## Updates
-### 14.0.5 # 2026-05-04
+### 14.0.6 # 2026-05-04
 - New: **SRD Spells and Items.** We have integrated all SRD spells and SRD items from the D&D 5.5 version into the Beneos module. This is new.
 - New: **New Icons.** All spells and items now have updated icons that better match the overall design and provide clearer, more useful information.
 - Improved: **SRD Filter.** Spells and items now also include an SRD and Beneos Original filter, allowing you to switch between them. Beneos Original content is slightly highlighted in the search to distinguish it from generic SRD content.
 - Improved: **Performance.** There have also been some performance improvements when displaying large numbers of battlemaps in the search engine.
+
+### 14.0.5 # 2026-05-04
+- Fixed: Minor fix for the Beneos Tour (Battlemap Tour)
 
 ### 14.0.4 # 2026-05-04
 - New: **Beneos Cloud - completely redesigned interface.** A modern browse-and-install window with a fresh look, smoother animations, faster rendering and a cleaner layout designed around how you actually pick assets. Replaces the old Search Engine across Creatures, Maps, Items and Spells.
