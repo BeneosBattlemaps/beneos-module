@@ -1315,6 +1315,128 @@
   background: linear-gradient(135deg, var(--bc-card) 0%, var(--bc-bg-panel) 100%);
 }
 
+/* ---- Items / Spells: 1:1 thumbs + tighter grid (Sigil-Plate icons are
+ * square by design and look stretched in the default 96×64 / 100%×140
+ * frames used for token portraits). Token + bmap thumbs keep their
+ * existing aspect on purpose — those are scenery / portrait crops. ---- */
+
+/* List mode: 64×64 square thumb (matches bmaps' aspect) */
+.beneos-cloud-app .bc-result-card[data-asset-type="item"],
+.beneos-cloud-app .bc-result-card[data-asset-type="spell"] {
+  grid-template-columns: 64px 1fr auto;
+}
+.beneos-cloud-app .bc-result-card[data-asset-type="item"] .bc-card-thumb,
+.beneos-cloud-app .bc-result-card[data-asset-type="spell"] .bc-card-thumb {
+  width: 64px;
+  height: 64px;
+}
+
+/* Grid mode: tighter columns + fixed 140×140 thumb so card height stays
+ * predictable (290px). The previous aspect-ratio + auto-fill stretch
+ * combination let the thumb scale with cell width and pushed the meta
+ * block past the card's overflow:hidden boundary, causing tags to ride
+ * over the install button on wider cells. */
+.beneos-cloud-app .bc-result-list.bc-view-grid:has(.bc-result-card[data-asset-type="item"]),
+.beneos-cloud-app .bc-result-list.bc-view-grid:has(.bc-result-card[data-asset-type="spell"]) {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="item"],
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="spell"] {
+  height: 290px;
+  min-height: 290px;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="item"] .bc-card-thumb,
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="spell"] .bc-card-thumb {
+  width: 140px;
+  height: 140px;
+  flex: 0 0 140px;
+  min-height: 140px;
+  margin: 0 auto;
+  /* Center the icon image inside the square thumb so transparent-edge
+   * Sigil-Plate icons sit visually centered rather than top-aligned. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bc-bg);
+  /* Don't round the bottom corners since title now sits flush against
+   * the thumb's bottom edge. Top corners still rounded by inheritance. */
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="item"] .bc-card-thumb img,
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="spell"] .bc-card-thumb img {
+  /* contain (not cover) so the round icon corners stay visible inside
+   * the square frame instead of getting clipped to a rectangle. */
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  padding: 4px;
+}
+/* Pull the meta block up — User-Direktive: Titel näher am Icon, mehr Platz
+ * unten für Tags und Action-Button. Default padding-top: var(--bc-space-2)
+ * (~8px) plus gap: 6px; we drop both for tighter typography. */
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="item"] .bc-card-meta,
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="spell"] .bc-card-meta {
+  padding-top: 4px;
+  gap: 4px;
+}
+
+/* ---- Card-name typography: User-Direktive — weg vom Times-New-Roman-
+ * artigen Default-Serif. Sans-serif system stack mit Inter / Segoe UI
+ * vorne, Apple-Stack als Fallback, dann generic. Greift auf alle drei
+ * Asset-Typen in Grid + List, weil die Klasse global angesetzt ist. ---- */
+.beneos-cloud-app .bc-card-name,
+.beneos-cloud-app .bc-card-name-row {
+  font-family: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* ---- Beneos-Originals highlight ----
+ *
+ * The border-left was originally reserved for install-state signaling
+ * (green = installed, blue = update, gold = new) — colliding with that
+ * channel was visually confusing. This pass keeps the highlight purely
+ * cosmetic: a subtle gold-tinted background gradient + an inner glow.
+ * No border modification, no shadow that mimics a state stripe. The
+ * Source tag itself (.bc-tag-source-patreon / -webshop, see below)
+ * carries the louder visual cue so users still spot non-SRD content at
+ * a glance. ---- */
+.beneos-cloud-app .bc-result-card.bc-card-beneos-original {
+  background-image: linear-gradient(90deg, rgba(245,201,146,0.10) 0%, rgba(245,201,146,0.03) 40%, transparent 85%);
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card.bc-card-beneos-original {
+  background-image: linear-gradient(180deg, rgba(245,201,146,0.12) 0%, rgba(245,201,146,0.03) 40%, transparent 75%);
+}
+
+/* ---- Beneos status-chip in the name-row ----
+ *
+ * Compact "BENEOS" chip rendered next to the NEW / UPDATE chips for
+ * non-SRD entries (items / spells / tokens). Replaces the previous
+ * row-overflow source tag — that was visually loud AND broke the grid
+ * card layout because the meta row had no horizontal headroom for a
+ * gold-fill pill. The chip below uses the same shape as bc-status-new
+ * but with a muted gold accent so it reads as a quiet badge, not a
+ * banner. The row-background gradient on .bc-card-beneos-original
+ * provides the broader "this is non-SRD" cue; the chip just confirms
+ * it without grabbing attention. ---- */
+.beneos-cloud-app .bc-status-chip.bc-status-beneos {
+  background: rgba(245,201,146,0.18);
+  color: #e9c77b;
+  border: 1px solid rgba(245,201,146,0.35);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+/* Grid mode: NEW / UPDATE chips position absolute top-right (line 1122).
+ * BENEOS lands at top-LEFT so it doesn't stack on top of those when an
+ * entry is both non-SRD AND new/update. The thumb is a solid square,
+ * so top-left is empty space. */
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-status-chip.bc-status-beneos {
+  top: 6px;
+  left: 6px;
+  right: auto;
+}
+
 /* Wave B-8d-fix-1: status chips live next to the card name now, not
  * over the thumbnail. The thumb is already cropped 16:9 so its only
  * job is "give a visual reading of the creature"; overlaying chips
@@ -1363,9 +1485,14 @@
 .beneos-cloud-app .bc-card-name {
   margin: 0 0 4px 0;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
+  /* User-Direktive: weg vom serifen --bc-font-display (Fraunces / Cormorant
+   * Garamond) — schwer lesbar bei kleinen Card-Titles. Wir nutzen jetzt das
+   * UI-Sans-Stack (Inter / Segoe UI). Greift fuer alle Asset-Typen in beiden
+   * Modi, weil .bc-card-name die einzige globale Title-Klasse ist. */
   color: var(--bc-text);
-  font-family: var(--bc-font-display);
+  font-family: var(--bc-font-ui);
+  letter-spacing: 0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

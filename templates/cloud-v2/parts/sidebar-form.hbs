@@ -23,6 +23,26 @@
     <input type="text" id="beneos-search-text" class="bc-input beneos-search-text-input" autocomplete="off" />
   </div>
 
+  {{!-- Source filter (shared across token / item / spell). Rendered globally
+       — was previously buried inside the token-only block, which hid the
+       checkboxes from loot + spell modes even though #buildSourceCheckboxes
+       populates the array regardless of searchMode. The Loyalty-Token row
+       drops out automatically (count = 0 for items/spells). --}}
+  {{#if sourceCheckboxes.length}}
+  <section class="bc-sidebar-group">
+    <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Source"}}</header>
+    {{#each sourceCheckboxes as |src|}}
+      <label class="bc-checkbox-row" data-tooltip="{{src.tooltip}}">
+        <input type="checkbox" class="bc-checkbox bc-source-checkbox"
+               data-source="{{src.key}}"
+               {{#if src.checked}}checked{{/if}} />
+        <span class="bc-checkbox-label">{{src.label}}</span>
+        <span class="bc-checkbox-count">{{src.count}}</span>
+      </label>
+    {{/each}}
+  </section>
+  {{/if}}
+
   {{#if (eq searchMode "token")}}
 
     {{!-- CR — dual-thumb min/max range slider (Wave B-8c). Steps are
@@ -141,28 +161,9 @@
       {{/if}}
     </section>
 
-    {{!-- Source — checkbox multi-select with dataset counts. Counts come
-         from _preparePartContext (one pass over the full unfiltered raw
-         entries for this assetType) so they show how many items exist
-         per source overall, not "after current filters". --}}
-    {{!-- Wave B-8c: exclusion-model source filter. All checkboxes start
-         checked = "show all"; unchecking a source hides it. The label
-         shows the user-facing name (Patreon → "Beneos Originals") and the
-         tooltip explains where the content comes from. --}}
-    {{#if sourceCheckboxes.length}}
-    <section class="bc-sidebar-group">
-      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Source"}}</header>
-      {{#each sourceCheckboxes as |src|}}
-        <label class="bc-checkbox-row" data-tooltip="{{src.tooltip}}">
-          <input type="checkbox" class="bc-checkbox bc-source-checkbox"
-                 data-source="{{src.key}}"
-                 {{#if src.checked}}checked{{/if}} />
-          <span class="bc-checkbox-label">{{src.label}}</span>
-          <span class="bc-checkbox-count">{{src.count}}</span>
-        </label>
-      {{/each}}
-    </section>
-    {{/if}}
+    {{!-- Source filter moved to the top of the sidebar so it appears for
+         every searchMode. See the global block above (right after the
+         search input) for the actual checkbox list. --}}
 
     {{!-- Campaign — token-side adventure dropdown. Surfaces the existing
          dbHolder.tokenCampaigns map (was previously hidden behind the

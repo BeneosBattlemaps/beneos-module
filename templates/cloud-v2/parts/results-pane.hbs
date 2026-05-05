@@ -109,7 +109,7 @@
             {{/if}}
           </div>
         {{/if}}
-        <article class="bc-result-card bc-card-group-{{card.groupKind}}{{#if card.isInstalled}} bc-card-installed{{/if}}{{#if card.isCloudAvailable}} bc-card-cloud{{/if}}{{#if card.isInstalling}} bc-card-installing{{/if}}{{#if card.justInstalled}} bc-card-just-installed{{/if}}{{#if card.isSelected}} bc-card-selected{{/if}}"
+        <article class="bc-result-card bc-card-group-{{card.groupKind}}{{#if card.isInstalled}} bc-card-installed{{/if}}{{#if card.isCloudAvailable}} bc-card-cloud{{/if}}{{#if card.isInstalling}} bc-card-installing{{/if}}{{#if card.justInstalled}} bc-card-just-installed{{/if}}{{#if card.isSelected}} bc-card-selected{{/if}}{{#if card.isBeneosOriginal}} bc-card-beneos-original{{/if}}"
                  data-asset-key="{{card.key}}"
                  data-asset-type="{{card.assetType}}"
                  data-document-id="{{card.documentId}}"
@@ -146,6 +146,9 @@
               {{/if}}
               {{#if card.isUpdate}}
                 <span class="bc-status-chip bc-status-update">{{localize "BENEOS.Cloud.Card.Update"}}</span>
+              {{/if}}
+              {{#if card.beneosChip}}
+                <span class="bc-status-chip bc-status-beneos" data-tooltip="Beneos Original (non-SRD)">{{card.beneosChip}}</span>
               {{/if}}
             </div>
             <div class="bc-card-tags">

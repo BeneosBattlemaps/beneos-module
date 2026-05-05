@@ -564,6 +564,48 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     return game.i18n.localize(def.i18nLabel) || def.label
   }
 
+  // Normalize raw asset data to a SOURCE_DEFS key string. User-Direktive:
+  // SRD content for ALL three asset types (creatures / loot / spells) is
+  // identified by `srd` in the key — creatures use `000-srd_<name>` (dash),
+  // items + spells use `0000_srd_<name>` (underscore). The flexible regex
+  // matches both. Anything starting with `0000_` (without `srd`) is the
+  // Webshop bucket (release-zero Beneos content); everything else is a
+  // Patreon "Beneos Original". Tokens fall back to properties.source when
+  // the key doesn't carry the marker (some legacy creature keys).
+  static SRD_KEY_RE = /(?:^|[-_])srd[-_]/i
+
+  static #getNormalizedSource(data, assetType, key) {
+    if (assetType === "bmap") {
+      return data?.properties?.source || null
+    }
+    const k = typeof key === "string" ? key : ""
+    const isKeySrd     = BeneosCloudWindowV2.SRD_KEY_RE.test(k)
+    const isKeyWebshop = !isKeySrd && k.startsWith("0000_")
+
+    if (assetType === "token") {
+      // Prefer the explicit source field when present (covers Loyalty Tokens
+      // and Webshop-only creatures whose keys don't carry the bucket).
+      const explicit = data?.properties?.source
+      if (explicit) return explicit
+      if (isKeySrd) return "SRD"
+      if (isKeyWebshop) return "Webshop"
+      return "Patreon"
+    }
+    if (assetType === "item") {
+      const o = String(data?.properties?.origin || "").toLowerCase()
+      if (o === "srd" || isKeySrd) return "SRD"
+      if (isKeyWebshop) return "Webshop"
+      if (o) return "Patreon"
+      return null
+    }
+    if (assetType === "spell") {
+      if (isKeySrd)     return "SRD"
+      if (isKeyWebshop) return "Webshop"
+      return "Patreon"
+    }
+    return null
+  }
+
   #buildCards() {
     const dbHolder = game.beneos?.databaseHolder
     if (!dbHolder) return { cards: [], totalMatches: 0, hasMore: false }
@@ -607,6 +649,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       afterSource = entries.length
       entries = this.#applyBiomeFilter(entries)
       afterBiome = entries.length
+    }
+    // Source filter must also run for items and spells (the sidebar
+    // checkboxes apply to all asset types now). Was previously gated to
+    // tokens only — that's why unchecking SRD on the Loot/Spells tab did
+    // nothing visible. CR + biome filters stay token-exclusive.
+    if (type === "item" || type === "spell") {
+      entries = this.#applySourceFilter(entries)
+      afterSource = entries.length
     }
     // Wave B-8k-2: bmap biome chip filter — same AND semantics.
     if (type === "bmap") {
@@ -1056,15 +1106,22 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         tooltip: this.#getCardTagTooltip("faction", fStr)
       })
     }
-    const sourceLabel = BeneosCloudWindowV2.#getSourceLabel(props.source)
-    if (sourceLabel) {
-      pushTag({
-        label: sourceLabel,
-        className: "bc-tag-source",
-        filterType: "source",
-        filterValue: props.source || null,
-        tooltip: null
-      })
+    // Source tag: only for tokens (legacy creature UX kept). For items
+    // + spells we surface the bucket via the small "BENEOS" status chip
+    // next to the title (see card.beneosChip below) instead of a wide
+    // tag in the meta row — the wide tag overflowed the grid card and
+    // doubled visual weight against the row-background highlight.
+    if (assetType === "token") {
+      const sourceLabel = BeneosCloudWindowV2.#getSourceLabel(props.source)
+      if (sourceLabel) {
+        pushTag({
+          label: sourceLabel,
+          className: "bc-tag-source",
+          filterType: "source",
+          filterValue: props.source || null,
+          tooltip: null
+        })
+      }
     }
 
     // Static visible limit per card. Holds even on narrow windows because
@@ -1107,6 +1164,18 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // Wave B-9-fix-34: map "Patreon" → "Beneos Originals" etc. so the
       // drawer matches the filter labels.
       source: BeneosCloudWindowV2.#getSourceLabel(props.source),
+      // Subtle highlight on non-SRD entries so Beneos Originals stand out
+      // when scrolling. Tokens drive off properties.source; items use
+      // properties.origin (lowercase "srd"); spells fall back to the
+      // 0000_srd_ key prefix established by the migration.
+      isBeneosOriginal: BeneosCloudWindowV2.#getNormalizedSource(data, assetType, key) !== "SRD",
+      // Small status-chip beside the name (next to NEW / UPDATE chips).
+      // Renders only for non-SRD cards. The label intentionally short so
+      // it fits in the grid name-row without wrapping; "BENEOS" reads
+      // unambiguously as "Beneos Original / Webshop / Loyalty".
+      beneosChip: BeneosCloudWindowV2.#getNormalizedSource(data, assetType, key) === "SRD"
+        ? null
+        : "BENEOS",
       rarity: props.rarity || null,
       level: props.level ?? null,
       school: props.school || null,
@@ -1646,8 +1715,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // through (no source = unaffected by the filter).
   #applySourceFilter(entries) {
     if (!this.sourceHidden.size) return entries
-    return entries.filter(([_key, data]) => {
-      const src = data?.properties?.source
+    const mode = this.searchMode
+    return entries.filter(([key, data]) => {
+      const src = BeneosCloudWindowV2.#getNormalizedSource(data, mode, key)
       if (!src) return true
       return !this.sourceHidden.has(src)
     })
@@ -1664,8 +1734,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     if (!dbHolder) return []
     const raw = dbHolder.getAll?.(this.searchMode) || {}
     const counts = {}
-    for (const data of Object.values(raw)) {
-      const src = data?.properties?.source
+    const mode = this.searchMode
+    for (const [key, data] of Object.entries(raw)) {
+      const src = BeneosCloudWindowV2.#getNormalizedSource(data, mode, key)
       if (src) counts[src] = (counts[src] || 0) + 1
     }
     return BeneosCloudWindowV2.SOURCE_DEFS
