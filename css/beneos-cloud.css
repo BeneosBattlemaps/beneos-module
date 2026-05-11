@@ -26,9 +26,17 @@
   flex-direction: column !important;
 }
 
-/* The Foundry window-content wrapper becomes our grid container. */
-#beneos-cloud-window-v2 .window-content,
-.beneos-cloud-app .window-content {
+/* The Foundry window-content wrapper becomes our grid container.
+   IMPORTANT: scoped to the cloud-window-v2 ID only. Previously this
+   rule also matched `.beneos-cloud-app .window-content`, but that
+   class is shared by the Settings modal, the login dialog and the
+   confirm dialogs (cloud-window-v2.mjs:3150, beneos_cloud.js:52/1452,
+   cloud-window-v2.mjs:2017). All four were silently inheriting the
+   sidebar/results 2-column grid, which dumped their entire markup
+   into the 280px sidebar slot and left the 1fr results slot empty —
+   the source of the "Settings only uses 30% of the window width"
+   user complaint. Keep this restricted to the cloud main window. */
+#beneos-cloud-window-v2 .window-content {
   display: grid !important;
   grid-template-columns: 280px 1fr !important;
   grid-template-rows: auto 1fr auto !important;
@@ -46,9 +54,9 @@
 
 /* If a Handlebars part renders an extra wrapper between window-content and
    the [data-bc-region] element, `display: contents` makes that wrapper
-   transparent so the region still occupies its grid slot. */
-#beneos-cloud-window-v2 .window-content > div:not([data-bc-region]):not(.bc-detail-drawer),
-.beneos-cloud-app .window-content > div:not([data-bc-region]):not(.bc-detail-drawer) {
+   transparent so the region still occupies its grid slot. Same scope
+   as the parent grid rule — main cloud window only. */
+#beneos-cloud-window-v2 .window-content > div:not([data-bc-region]):not(.bc-detail-drawer) {
   display: contents;
 }
 
@@ -1005,7 +1013,10 @@
  * Dividers span the full grid width via grid-column: 1 / -1. */
 .beneos-cloud-app .bc-result-list.bc-view-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  /* Punkt 2 v2: minmax 180 → 150 so a typical V2 window fits ~5 cards
+     per row instead of 4. Auto-fill keeps the layout responsive — at
+     narrower window widths it gracefully drops to 4, 3, 2 columns. */
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: var(--bc-space-3);
   align-content: start;
 }
@@ -1018,43 +1029,80 @@
   flex-direction: column;
   padding: 0;
   /* overflow: hidden keeps the rounded thumbnail from peeking past the
-     card's border-radius corners — and now also acts as the hard cap
-     that prevents tag-row content from pushing the install button out
-     of view. */
+     card's border-radius corners — and acts as the hard cap that
+     prevents tag-row content from pushing the install button out of
+     view. */
   overflow: hidden;
-  /* Wave B-9-fix-Y3: switched from min-height to a fixed height so the
-     card can never grow past 290px regardless of tag count or window
-     resizing. With min-height alone, dense tag rows could push the card
-     taller, which then dragged the install button below the visible
-     boundary on narrow viewports. The previous max-height on
-     .bc-card-tags didn't catch every case because .bc-card-meta has
-     flex: 1 1 auto and (without min-height: 0) was happy to grow with
-     its content, bypassing the children's max-height entirely. */
-  height: 290px;
+  /* Punkt 2 v5: 270 → 240 — NEW/UPDATE chip moved to the icon's
+     bottom-left (next to BENEOS, see chip-override below), so the
+     top of the card no longer needs reserved space for a chip
+     overlay. Combined with thumb 150, meta + actions get ~90 px,
+     which still fits 2-line name + 1 tag row + install button. */
+  height: 240px;
 }
 .beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="bmap"] {
   grid-template-columns: none;
 }
 .beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-thumb {
   position: relative;
-  width: 100%;
-  height: 140px;
-  /* Wave B-9-fix-19: pin the thumb size so a card with extra-tall meta
-     content (e.g. an item with multiple tag rows) can't squeeze the
-     image into a shorter box. flex: 0 0 140px locks both basis and
-     prevents shrink/grow. */
-  flex: 0 0 140px;
-  min-height: 140px;
+  /* Punkt 2 v6: 150 → 80. v5 overshot the "10-20 % larger" target
+     because the actual visible baseline before v5 was 64 px (due to
+     the item/spell list-leak), not the 130 px the plan assumed.
+     80 px is ~25 % above 64 — sits at the upper edge of the user's
+     range and gives meta + actions enough room (240 − 80 = 160 px)
+     so tags and stats no longer overlap the install button.
+     Background transparent so the icon blends with the card.
+     Battlemap overrides below back to the full-width strip. */
+  width: 80px;
+  height: 80px;
+  flex: 0 0 80px;
+  min-height: 80px;
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
   border-radius: var(--bc-radius) var(--bc-radius) 0 0;
 }
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="token"] {
+  /* Punkt 2 v8: token cards get extra height because the bigger
+     130 thumb leaves less room for meta — without this, the first
+     tag row was getting clipped mid-row by the card's overflow. With
+     280 px the meta gets ~150 px (vs the generic 110), comfortably
+     fitting name + BENEOS chip wrap + at least one tag row + install
+     button. SRD tokens (no BENEOS chip) get room for two tag rows. */
+  height: 280px;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="token"] .bc-card-thumb {
+  /* Punkt 2 v7: tokens get the previous "good size" 130 px back. The
+     generic 80 px from v6 is right for loot/spell icons but too small
+     for creature portraits. */
+  width: 130px;
+  height: 130px;
+  flex: 0 0 130px;
+  min-height: 130px;
+}
 .beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="bmap"] .bc-card-thumb {
+  /* Bmap stays a full-width strip (out of scope for Punkt 2). Reset all
+     square-thumb properties from the generic rule above. */
   width: 100%;
   height: 140px;
   flex: 0 0 140px;
+  min-height: 140px;
+  margin: 0;
+  display: block;
+  background: transparent;
 }
 .beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-thumb img {
+  /* Tokens/items/spells contain in their square frame. */
   width: 100%;
   height: 100%;
+  object-fit: contain;
+  padding: 0;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="bmap"] .bc-card-thumb img {
+  /* Bmap restores its scenery-strip crop. */
   object-fit: cover;
 }
 .beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-meta {
@@ -1080,23 +1128,44 @@
 .beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-name {
   font-size: 13px;
   line-height: 1.25;
-  white-space: nowrap;
+  /* Punkt 2 v5: previous attempts set up the line-clamp infra
+     (display:-webkit-box, -webkit-line-clamp, word-break) but didn't
+     reset the global rule's `white-space: nowrap` (Z. ~1535) — so
+     the box stayed single-line and the global `text-overflow: ellipsis`
+     kicked in, producing the "centered + clipped both sides" look.
+     The v5 fix explicitly resets white-space, text-align (in case
+     a parent app sets center), and text-overflow so the multi-line
+     clamp actually does its job. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  text-align: start;
+  text-overflow: clip;
+  word-break: break-word;
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  flex: 1 1 100%;
 }
 .beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-name-row {
   align-items: flex-start;
+  /* Flex-row carrying the name needs min-width: 0 so its child <h3> can
+     actually shrink and apply line-clamp; without this, flex defaults
+     to min-width: auto (= content size) and lets the name overflow. */
+  min-width: 0;
 }
 .beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  /* Cap the tag block at roughly two rows so cards with many tags or
-     long tag strings can't push .bc-card-meta past the card's
-     overflow:hidden boundary and shove the install/update button out of
-     view. Anything that doesn't fit gets clipped silently — full info
-     stays available in the drawer detail. */
-  max-height: 50px;
+  /* Punkt 2 v8: cap on a clean row-multiple — 22 px tag + 4 px gap +
+     22 px tag = 48 px for two full rows. Previous 50 sat between
+     1-row (22) and 2-row (48) boundaries and could clip a 2nd row
+     mid-tag. With 48, anything past two rows gets cut at a clean row
+     boundary; partial-tag clipping is avoided. */
+  max-height: 48px;
   overflow: hidden;
 }
 .beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-actions {
@@ -1131,10 +1200,11 @@
 
 .beneos-cloud-app .bc-result-card {
   display: grid;
-  /* Wave B-7: wider thumb column for tokens/items/spells so the preview is
-   * visible without squinting. Battlemaps override below to stay square
-   * (their thumbnails are scenery shots, look better square than cropped). */
-  grid-template-columns: 96px 1fr auto;
+  /* Punkt 2 v3: unified 64px thumb column for ALL asset types in list
+     mode. Tokens were previously 96px wide (3:2 cover-crop strip);
+     User-Direktive aligns them with items/spells/bmaps so the list
+     reads as a consistent column of 1:1 icons. */
+  grid-template-columns: 64px 1fr auto;
   gap: var(--bc-space-3);
   align-items: center;
   padding: var(--bc-space-2) var(--bc-space-3);
@@ -1284,10 +1354,11 @@
 
 .beneos-cloud-app .bc-card-thumb {
   position: relative;
-  /* Wave B-7: 96×64 default (3:2-ish) — token portraits zoom in via
-   * object-fit: cover, top-and-bottom crop reads as a wider preview window.
-   * Bmaps override to a 64×64 square just below. */
-  width: 96px;
+  /* Punkt 2 v3: unified 64×64 square thumb in list mode — applies to
+     tokens (was 96×64) as well as items/spells/bmaps. Items/spells
+     and bmap had their own 64×64 overrides previously; those become
+     redundant but harmless. */
+  width: 64px;
   height: 64px;
   border-radius: var(--bc-radius);
   overflow: hidden;
@@ -1320,63 +1391,31 @@
  * frames used for token portraits). Token + bmap thumbs keep their
  * existing aspect on purpose — those are scenery / portrait crops. ---- */
 
-/* List mode: 64×64 square thumb (matches bmaps' aspect) */
-.beneos-cloud-app .bc-result-card[data-asset-type="item"],
-.beneos-cloud-app .bc-result-card[data-asset-type="spell"] {
-  grid-template-columns: 64px 1fr auto;
-}
-.beneos-cloud-app .bc-result-card[data-asset-type="item"] .bc-card-thumb,
-.beneos-cloud-app .bc-result-card[data-asset-type="spell"] .bc-card-thumb {
-  width: 64px;
-  height: 64px;
-}
+/* Punkt 2 v5: item/spell list-mode override removed.
+   The base `.bc-result-card` rule now sets `grid-template-columns:
+   64px 1fr auto` for ALL asset types in list mode (Z. ~1174 post-v3),
+   and the base `.bc-card-thumb` rule sets 64×64 (Z. ~1322 post-v3),
+   so this block was redundant. It also lacked `:not(.bc-view-grid)`
+   scoping, so its 64×64 thumb-size was leaking into grid mode and
+   shrinking loot/spell icons to list-size — root cause of "icon as
+   small as in list" feedback. Removing the block restores the
+   intended grid-thumb size (now 150 px from the generic v5 rule). */
 
 /* Grid mode: tighter columns + fixed 140×140 thumb so card height stays
  * predictable (290px). The previous aspect-ratio + auto-fill stretch
  * combination let the thumb scale with cell width and pushed the meta
  * block past the card's overflow:hidden boundary, causing tags to ride
  * over the install button on wider cells. */
-.beneos-cloud-app .bc-result-list.bc-view-grid:has(.bc-result-card[data-asset-type="item"]),
-.beneos-cloud-app .bc-result-list.bc-view-grid:has(.bc-result-card[data-asset-type="spell"]) {
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-}
-.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="item"],
-.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="spell"] {
-  height: 290px;
-  min-height: 290px;
-}
-.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="item"] .bc-card-thumb,
-.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="spell"] .bc-card-thumb {
-  width: 140px;
-  height: 140px;
-  flex: 0 0 140px;
-  min-height: 140px;
-  margin: 0 auto;
-  /* Center the icon image inside the square thumb so transparent-edge
-   * Sigil-Plate icons sit visually centered rather than top-aligned. */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bc-bg);
-  /* Don't round the bottom corners since title now sits flush against
-   * the thumb's bottom edge. Top corners still rounded by inheritance. */
-}
-.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="item"] .bc-card-thumb img,
-.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="spell"] .bc-card-thumb img {
-  /* contain (not cover) so the round icon corners stay visible inside
-   * the square frame instead of getting clipped to a rectangle. */
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  padding: 4px;
-}
-/* Pull the meta block up — User-Direktive: Titel näher am Icon, mehr Platz
- * unten für Tags und Action-Button. Default padding-top: var(--bc-space-2)
- * (~8px) plus gap: 6px; we drop both for tighter typography. */
-.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="item"] .bc-card-meta,
-.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="spell"] .bc-card-meta {
+/* Punkt 2 v2: item/spell-specific overrides removed — tokens now share
+ * the same 110×110 square thumb geometry, so the unified rule above
+ * covers all three asset types. The `:has()` column-width override and
+ * the per-type thumb-size + thumb-img blocks were duplicates. The
+ * meta-padding tighten rule moves below to apply to all grid cards. */
+
+/* Tighter meta padding/gap for all grid cards (was item/spell only).
+ * Title sits closer to the icon, more breathing room below for tags
+ * and the action button. */
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-meta {
   padding-top: 4px;
   gap: 4px;
 }
@@ -1427,14 +1466,58 @@
   font-weight: 700;
   letter-spacing: 0.06em;
 }
-/* Grid mode: NEW / UPDATE chips position absolute top-right (line 1122).
- * BENEOS lands at top-LEFT so it doesn't stack on top of those when an
- * entry is both non-SRD AND new/update. The thumb is a solid square,
- * so top-left is empty space. */
-.beneos-cloud-app .bc-result-list.bc-view-grid .bc-status-chip.bc-status-beneos {
-  top: 6px;
+/* Punkt 2 v2: all three chips (BENEOS, NEW, UPDATE) move into the thumb
+ * in grid mode via duplicate `.bc-thumb-chip` instances rendered by the
+ * template. Position is relative to `.bc-card-thumb` (position:relative
+ * is set on the thumb), so chips sit on the icon corners regardless of
+ * whether the thumb is a centered 110×110 square (token/item/spell) or
+ * a full-width strip (bmap).
+ *
+ *   - BENEOS  → bottom-right of icon (default rule below)
+ *   - NEW/UPDATE → top-right of icon (specific override after)
+ *
+ * UPDATE wins over NEW; the template enforces the mutex so they never
+ * stack. The original chip copies in `.bc-card-name-row` stay for list
+ * mode and are hidden in grid mode below. */
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-thumb .bc-thumb-chip {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  top: auto;
+  left: auto;
+  z-index: 2;
+}
+/* Punkt 2 v5: NEW/UPDATE chip moves to the icon's bottom-LEFT,
+   alongside the BENEOS chip (which stays bottom-right via the default
+   .bc-thumb-chip rule above). For SRD assets without BENEOS the
+   NEW/UPDATE chip stands alone bottom-left. The freed top-of-icon
+   space is what allowed the card height to drop 270 → 240. */
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-thumb .bc-thumb-chip.bc-status-new,
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-thumb .bc-thumb-chip.bc-status-update {
+  bottom: 6px;
   left: 6px;
+  top: auto;
   right: auto;
+}
+.beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-thumb-chip {
+  display: none;
+}
+/* Hide ALL in-name status chips in grid mode (BENEOS + NEW + UPDATE)
+ * so they don't double-render alongside the in-thumb copies. */
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-name-row .bc-status-chip:not(.bc-thumb-chip) {
+  display: none;
+}
+/* Punkt 2 v8: BENEOS chip lives next to the title for ALL asset types
+   in grid mode (matches list-mode behaviour and keeps the visual
+   identity consistent across creatures/loot/spells/maps). The in-
+   thumb copy gets hidden universally; the in-name-row copy is re-
+   shown via display: inline-flex to override the generic in-name
+   chip-hide above. NEW/UPDATE chip stays bottom-left on the thumb. */
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-thumb .bc-thumb-chip.bc-status-beneos {
+  display: none;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-name-row .bc-status-beneos:not(.bc-thumb-chip) {
+  display: inline-flex;
 }
 
 /* Wave B-8d-fix-1: status chips live next to the card name now, not
@@ -1956,6 +2039,28 @@
   align-items: center;
   gap: var(--bc-space-2);
 }
+
+/* List-View only: the bc-card-actions row can get squeezed because the
+   "Installed" state-pill carries its own padding + uppercase text and
+   the adjacent update-button is fixed-width. Without min-width:0 +
+   flex-shrink on the pill, the button gets pushed past the card's
+   right edge on narrow widths. Grid-View has more horizontal room and
+   its own dedicated layout block at .bc-view-grid .bc-card-actions
+   (line 1163), so we scope this fix to non-grid lists only. */
+.beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-card-actions {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+.beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-card-actions .bc-state-pill {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-card-actions .bc-card-button {
+  flex: 0 0 auto;
+}
 .beneos-cloud-app .bc-card-button {
   display: inline-flex;
   align-items: center;
@@ -1994,6 +2099,30 @@
 .beneos-cloud-app .bc-card-button-primary.bc-action-update:hover {
   background: var(--bc-update-line);
   color: var(--bc-update-strong);
+}
+
+/* Hard-block state ("Not compatible"): Loot/Spell cards on a non-dnd5e
+   system. Reddish tint with stop-sign icon so the GM sees at a glance
+   that the asset can't install. The button stays clickable on purpose
+   so a click surfaces the explanation dialog (confirmSystemCompat →
+   _showIncompatibleDialog), which matches the in-dubio-pro-reo
+   directive: don't lock the surface, inform the user. */
+.beneos-cloud-app .bc-action-install.bc-action-incompatible {
+  background: rgba(180, 50, 50, 0.18);
+  color: #f08a8a;
+  border: 1px solid rgba(220, 90, 90, 0.55);
+  cursor: help;
+}
+.beneos-cloud-app .bc-action-install.bc-action-incompatible:hover {
+  background: rgba(200, 60, 60, 0.30);
+  color: #ffb3b3;
+  border-color: rgba(240, 110, 110, 0.80);
+}
+.beneos-cloud-app .bc-action-install.bc-action-incompatible i {
+  color: #f08a8a;
+}
+.beneos-cloud-app .bc-action-install.bc-action-incompatible:hover i {
+  color: #ffb3b3;
 }
 
 .beneos-cloud-app .bc-state-pill {
@@ -2212,6 +2341,38 @@
   background: var(--bc-bg);
   margin-bottom: var(--bc-space-3);
 }
+/* Punkt 2 v3: items + spells in the drawer use a small square hero
+   with `object-fit: contain` instead of the default 220 px cover-strip.
+   The default crop swallowed the rarity-diamond (items, top-left) and
+   spell-level marker (spells, top-left). 160×160 centered shows the
+   full icon with both markers visible. Tokens and battlemaps keep the
+   default cover-strip (out of scope). */
+.beneos-cloud-app .bc-detail-drawer.bc-drawer-item .bc-drawer-hero,
+.beneos-cloud-app .bc-detail-drawer.bc-drawer-spell .bc-drawer-hero {
+  width: 160px;
+  height: 160px;
+  margin: 0 auto var(--bc-space-3);
+  background: transparent;
+  border-radius: var(--bc-radius);
+}
+.beneos-cloud-app .bc-detail-drawer.bc-drawer-item .bc-drawer-hero img,
+.beneos-cloud-app .bc-detail-drawer.bc-drawer-spell .bc-drawer-hero img {
+  object-fit: contain;
+}
+/* Stage 10: token drawer hero is square (220×220) — the avatar and
+   variant thumbnails are themselves square crops, but the default
+   .bc-drawer-hero (100% × 220px) stretched the box wide and the
+   `object-fit: cover` rule then trimmed the top + bottom of every
+   image, hiding details users need to judge the asset. Square box
+   + object-fit: contain shows the full image without any crop. */
+.beneos-cloud-app .bc-detail-drawer.bc-drawer-token .bc-drawer-hero {
+  width: 220px;
+  height: 220px;
+  margin: 0 auto var(--bc-space-3);
+}
+.beneos-cloud-app .bc-detail-drawer.bc-drawer-token .bc-drawer-hero img {
+  object-fit: contain;
+}
 /* Wave B-7 → B-9-fix-33: paired sibling view (scenery + battlemap).
  * In list mode the drawer column is narrow and tall, so the user has
  * plenty of vertical space; stack the two images on top of each other
@@ -2348,6 +2509,87 @@
   color: var(--bc-accent);
   text-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
   pointer-events: none;
+}
+
+/* Top-Down Stage 5: tiles start as opacity:0 (pending an image-load
+   resolution). The Stage-3 display:none approach broke lazy-load —
+   browsers defer image loads for elements with no rendered layout,
+   so onload never fires and the tile stays hidden forever. opacity
+   keeps the element in layout (image loads), then onload drops the
+   pending class for a clean fade-in. onerror still removes the
+   tile button entirely so missing CDN files don't flash. */
+.beneos-cloud-app .bc-variant-thumb {
+  transition: opacity 0.15s ease-out;
+}
+.beneos-cloud-app .bc-variant-thumb.bc-variant-pending {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Top-Down Stage 2: per-style cues on variant thumbs. The Top-Down
+   tile gets a subtle cyan border-tint so it reads as a different
+   "style" of the same variant, and a "TOP" pill in the top-right
+   corner so the meaning is unambiguous even at thumb size. */
+.beneos-cloud-app .bc-variant-thumb.bc-variant-topdown {
+  border-color: rgba(72, 200, 220, 0.4);
+}
+.beneos-cloud-app .bc-variant-thumb.bc-variant-topdown:hover {
+  border-color: rgba(72, 200, 220, 0.85);
+}
+.beneos-cloud-app .bc-variant-thumb.bc-variant-topdown.bc-variant-active {
+  border-color: rgb(72, 200, 220);
+  outline-color: rgb(72, 200, 220);
+}
+.beneos-cloud-app .bc-variant-style-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: rgba(72, 200, 220, 0.92);
+  color: rgb(8, 18, 22);
+  padding: 1px 4px;
+  border-radius: 3px;
+  pointer-events: none;
+  text-shadow: none;
+  line-height: 1.1;
+}
+
+/* Top-Down Stage 2: install-style radio (Token sidebar). Matches the
+   compact styling of bc-checkbox-row but uses a horizontal split so
+   2.5D | Top-Down sit side-by-side. */
+.beneos-cloud-app .bc-install-style-group .bc-radio-row {
+  display: flex;
+  gap: 6px;
+  padding: 0 4px;
+}
+.beneos-cloud-app .bc-install-style-group .bc-radio-label {
+  flex: 1 1 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--bc-bg);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius);
+  cursor: pointer;
+  font-size: 12px;
+  user-select: none;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+.beneos-cloud-app .bc-install-style-group .bc-radio-label:hover {
+  border-color: var(--bc-border-strong);
+}
+.beneos-cloud-app .bc-install-style-group .bc-radio-label input[type="radio"] {
+  margin: 0;
+  accent-color: var(--bc-accent);
+}
+.beneos-cloud-app .bc-install-style-group .bc-radio-label:has(input[type="radio"]:checked) {
+  border-color: var(--bc-accent);
+  background: rgba(255, 184, 76, 0.08);
+  color: var(--bc-accent);
 }
 
 /* Wave B-9-fix-30: fields + install action share a flex row. In list
@@ -2614,6 +2856,15 @@ button.beneos-icon-logo {
   background: var(--bc-card);
   color: var(--bc-text-muted);
   border: 1px solid var(--bc-border);
+}
+/* Stage 9: server-unreachable / maintenance state — visually
+   stronger than warning (the warning chip is for "logged in but
+   patreon not active"; this is a hard "no service" condition).
+   Uses a saturated red so it reads as an outage at a glance. */
+.beneos-cloud-app .bc-chip-error {
+  background: rgba(220, 53, 69, 0.15);
+  color: rgb(220, 53, 69);
+  border: 1px solid rgba(220, 53, 69, 0.40);
 }
 
 .beneos-cloud-app .bc-footer-button {
@@ -3043,7 +3294,9 @@ button.beneos-icon-logo {
   display: flex;
   flex-direction: column;
   gap: var(--bc-space-3);
-  padding: var(--bc-space-3) var(--bc-space-4);
+  /* Horizontal padding reduced from --bc-space-4 (16px) to --bc-space-3
+     (12px) so the description column gets ~8px more usable width. */
+  padding: var(--bc-space-3);
 }
 .beneos-cloud-app .bc-settings-header {
   margin: 0;
@@ -3063,7 +3316,11 @@ button.beneos-icon-logo {
 }
 .beneos-cloud-app .bc-settings-row {
   display: flex;
-  align-items: center;
+  /* flex-start so the control button aligns with the row's first line
+     (= label) instead of vertically centring against the wrapped hint
+     block — which previously made the right column look "floating in
+     the middle of nothing" and the left column look squashed. */
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--bc-space-4);
   padding: var(--bc-space-3) 0;
@@ -3073,7 +3330,11 @@ button.beneos-icon-logo {
   border-bottom: none;
 }
 .beneos-cloud-app .bc-settings-row-meta {
-  flex: 1 1 auto;
+  /* basis: 0 (not auto) — forces the column to stretch to the
+     remaining row width regardless of the intrinsic content size of
+     label/hint, instead of just hugging the text and leaving extra
+     space between meta and control. */
+  flex: 1 1 0;
   min-width: 0;
 }
 .beneos-cloud-app .bc-settings-row-label {
@@ -3125,4 +3386,1632 @@ button.beneos-icon-logo {
 .beneos-cloud-app .bc-settings-saved-show {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* ============================================================
+   Punkt 3 — Loot Generator
+   Standalone ApplicationV2 modal with a 3-step wizard. Uses the
+   .beneos-loot-generator scope so styles don't leak into the
+   parent cloud window.
+   ============================================================ */
+
+.beneos-loot-generator {
+  --blg-bg: #1a1614;
+  --blg-card: #221d1a;
+  --blg-card-hover: #2a2421;
+  --blg-border: #3a322c;
+  --blg-text: #e7d9c4;
+  --blg-text-dim: #a89b86;
+  --blg-accent: #f5c992;
+  --blg-accent-soft: rgba(245, 201, 146, 0.18);
+  --blg-success: #7ed99e;
+  --blg-radius: 8px;
+
+  /* Rarity palette — D&D 5e community standard. */
+  --blg-c-common:    #c6c6c6;
+  --blg-c-uncommon:  #4caf50;
+  --blg-c-rare:      #2196f3;
+  --blg-c-veryrare:  #b261d6;
+  --blg-c-legendary: #ffa726;
+}
+
+.beneos-loot-generator .blg-frame {
+  background: var(--blg-bg);
+  color: var(--blg-text);
+  padding: 18px 22px 16px;
+  border-radius: var(--blg-radius);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-family: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  /* Punkt 3 v5c: cap the wizard so the footer (Save / Reroll /
+     Restart) stays accessible regardless of how many slots the user
+     adds via the Plus-Button. The inner .blg-scroll-body absorbs the
+     overflow; the footer is pinned at the bottom of the column. */
+  max-height: 85vh;
+}
+.beneos-loot-generator .blg-scroll-body,
+.beneos-magic-shop .blg-scroll-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  /* Punkt 3 v5d: hard-cap horizontal overflow so any 1-2px hover
+     transform on a child element can't trigger a horizontal scrollbar
+     flicker. */
+  overflow-x: hidden;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.beneos-loot-generator .blg-frame > .blg-footer,
+.beneos-magic-shop .blg-frame > .blg-footer {
+  flex: 0 0 auto;
+}
+
+.beneos-loot-generator .blg-header {
+  text-align: center;
+  border-bottom: 1px solid var(--blg-border);
+  padding-bottom: 10px;
+}
+.beneos-loot-generator .blg-title {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--blg-accent);
+  letter-spacing: 0.02em;
+}
+.beneos-loot-generator .blg-subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--blg-text-dim);
+}
+
+.beneos-loot-generator .blg-question {
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+  margin: 6px 0 14px;
+}
+
+/* ---- Step 1: bias buttons ---- */
+
+.beneos-loot-generator .blg-bias-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.beneos-loot-generator .blg-bias-btn {
+  flex: 1 1 0;
+  max-width: 200px;
+  background: var(--blg-card);
+  border: 1px solid var(--blg-border);
+  border-radius: var(--blg-radius);
+  /* Punkt 3 v3: padding tightened since icons were removed; centred
+     text fills the button cleanly without the prior icon stack. */
+  padding: 14px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--blg-text);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+.beneos-loot-generator .blg-bias-btn i {
+  font-size: 22px;
+  color: var(--blg-text-dim);
+  transition: color 0.15s;
+}
+.beneos-loot-generator .blg-bias-btn:hover {
+  background: var(--blg-card-hover);
+  border-color: var(--blg-accent);
+  transform: translateY(-2px);
+}
+.beneos-loot-generator .blg-bias-btn:hover i {
+  color: var(--blg-accent);
+}
+.beneos-loot-generator .blg-bias-btn.is-selected {
+  border-color: var(--blg-accent);
+  background: var(--blg-accent-soft);
+}
+.beneos-loot-generator .blg-bias-btn.is-selected i {
+  color: var(--blg-accent);
+}
+.beneos-loot-generator .blg-bias-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ---- Step 2: tier grid ---- */
+
+.beneos-loot-generator .blg-tier-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.beneos-loot-generator .blg-tier-btn {
+  background: var(--blg-card);
+  border: 1px solid var(--blg-border);
+  border-radius: var(--blg-radius);
+  /* Punkt 3 v3-fix: padding + min-height bumped so the 3 lines (name,
+     levels, tag) sit comfortably inside the button without visually
+     spilling out. Icons were removed per user direction. */
+  padding: 18px 12px;
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--blg-text);
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.beneos-loot-generator .blg-tier-btn:hover {
+  background: var(--blg-card-hover);
+  border-color: var(--blg-accent);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(245, 201, 146, 0.15);
+}
+.beneos-loot-generator .blg-tier-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--blg-text);
+}
+.beneos-loot-generator .blg-tier-levels {
+  font-size: 11px;
+  color: var(--blg-text-dim);
+}
+.beneos-loot-generator .blg-tier-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--blg-accent);
+  margin-top: 2px;
+}
+
+/* ---- Step 3: rolling state ---- */
+
+.beneos-loot-generator .blg-rolling {
+  padding: 26px 10px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.beneos-loot-generator .blg-dice-wrap {
+  font-size: 56px;
+  color: var(--blg-accent);
+  filter: drop-shadow(0 0 16px rgba(245, 201, 146, 0.5));
+}
+.beneos-loot-generator .blg-dice-icon {
+  display: inline-block;
+  animation: blg-dice-spin 1.4s linear infinite;
+}
+@keyframes blg-dice-spin {
+  0%   { transform: rotate(0deg) scale(1); }
+  50%  { transform: rotate(540deg) scale(1.08); }
+  100% { transform: rotate(1080deg) scale(1); }
+}
+.beneos-loot-generator .blg-rolling-text {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--blg-accent);
+}
+.beneos-loot-generator .blg-loading-track {
+  width: 80%;
+  height: 6px;
+  background: var(--blg-card);
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid var(--blg-border);
+}
+.beneos-loot-generator .blg-loading-bar {
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, var(--blg-accent), #ffd9a0, var(--blg-accent));
+  background-size: 200% 100%;
+  animation: blg-loading-fill 2.5s ease-out forwards, blg-loading-shine 1.2s linear infinite;
+}
+@keyframes blg-loading-fill {
+  0%   { width: 0; }
+  100% { width: 100%; }
+}
+@keyframes blg-loading-shine {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
+}
+
+/* ---- Step 3: legendary / very rare banner ---- */
+
+.beneos-loot-generator .blg-banner {
+  position: relative;
+  text-align: center;
+  padding: 10px 14px;
+  border-radius: var(--blg-radius);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  overflow: hidden;
+  animation: blg-banner-pulse 2.4s ease-in-out infinite;
+}
+.beneos-loot-generator .blg-banner-legendary {
+  background: linear-gradient(90deg, rgba(255, 167, 38, 0.18), rgba(255, 167, 38, 0.32), rgba(255, 167, 38, 0.18));
+  color: var(--blg-c-legendary);
+  border: 1px solid var(--blg-c-legendary);
+  box-shadow: 0 0 28px rgba(255, 167, 38, 0.45);
+}
+.beneos-loot-generator .blg-banner-veryrare {
+  background: linear-gradient(90deg, rgba(178, 97, 214, 0.15), rgba(178, 97, 214, 0.28), rgba(178, 97, 214, 0.15));
+  color: var(--blg-c-veryrare);
+  border: 1px solid var(--blg-c-veryrare);
+}
+@keyframes blg-banner-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.012); }
+}
+.beneos-loot-generator .blg-banner-spark {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--blg-c-legendary);
+  border-radius: 50%;
+  filter: blur(0.5px);
+  animation: blg-spark-rise 2.2s ease-in infinite;
+  pointer-events: none;
+}
+.beneos-loot-generator .blg-banner-spark-1 { left: 12%; bottom: 10%; animation-delay: 0s; }
+.beneos-loot-generator .blg-banner-spark-2 { left: 32%; bottom: 10%; animation-delay: 0.4s; }
+.beneos-loot-generator .blg-banner-spark-3 { left: 64%; bottom: 10%; animation-delay: 0.8s; }
+.beneos-loot-generator .blg-banner-spark-4 { left: 86%; bottom: 10%; animation-delay: 1.2s; }
+@keyframes blg-spark-rise {
+  0%   { transform: translateY(0) scale(0.6); opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translateY(-30px) scale(1.2); opacity: 0; }
+}
+
+/* ---- Step 3: result cards ---- */
+
+.beneos-loot-generator .blg-results {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.beneos-loot-generator .blg-result-card {
+  position: relative;
+  background: var(--blg-card);
+  border: 1px solid var(--blg-border);
+  border-radius: var(--blg-radius);
+  padding: 12px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  /* Pre-reveal: invisible + scaled down. blg-reveal toggles visibility. */
+  opacity: 0;
+  transform: scale(0.7) translateY(8px);
+  transition: opacity 0.45s cubic-bezier(0.18, 1.2, 0.6, 1), transform 0.45s cubic-bezier(0.18, 1.2, 0.6, 1);
+}
+.beneos-loot-generator .blg-result-card.blg-reveal {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+.beneos-loot-generator .blg-result-card[draggable="true"] {
+  cursor: grab;
+}
+.beneos-loot-generator .blg-result-card[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* Per-rarity glow halo behind the card. The .blg-card-glow lives at the
+   bottom of the stacking order; we colour it via the rarity class. */
+.beneos-loot-generator .blg-card-glow {
+  position: absolute;
+  inset: -3px;
+  border-radius: calc(var(--blg-radius) + 3px);
+  background: transparent;
+  opacity: 0;
+  z-index: 0;
+  /* Punkt 3 v5: glow layer must never intercept clicks/drags so the
+     install button + drag handler on the wondrous card actually fire. */
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+.beneos-loot-generator .blg-result-card.blg-reveal .blg-card-glow {
+  opacity: 0.85;
+  animation: blg-glow-fade-in 0.8s ease-out forwards;
+}
+@keyframes blg-glow-fade-in {
+  0%   { opacity: 0; }
+  60%  { opacity: 1; }
+  100% { opacity: 0.4; }
+}
+.beneos-loot-generator .blg-result-card.blg-rarity-common .blg-card-glow {
+  box-shadow: 0 0 10px var(--blg-c-common);
+}
+.beneos-loot-generator .blg-result-card.blg-rarity-uncommon .blg-card-glow {
+  box-shadow: 0 0 14px var(--blg-c-uncommon);
+}
+.beneos-loot-generator .blg-result-card.blg-rarity-rare .blg-card-glow {
+  box-shadow: 0 0 18px var(--blg-c-rare);
+}
+.beneos-loot-generator .blg-result-card.blg-rarity-veryrare .blg-card-glow {
+  box-shadow: 0 0 22px var(--blg-c-veryrare);
+}
+.beneos-loot-generator .blg-result-card.blg-rarity-legendary .blg-card-glow {
+  box-shadow: 0 0 28px var(--blg-c-legendary), 0 0 8px var(--blg-c-legendary);
+}
+.beneos-loot-generator .blg-result-card.is-legendary {
+  animation: blg-legendary-pulse 2.2s ease-in-out 0.8s infinite;
+}
+@keyframes blg-legendary-pulse {
+  0%, 100% { box-shadow: 0 0 0 transparent; }
+  50%      { box-shadow: 0 0 20px var(--blg-c-legendary); }
+}
+
+.beneos-loot-generator .blg-card-thumb {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+.beneos-loot-generator .blg-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.beneos-loot-generator .blg-card-thumb-placeholder {
+  font-size: 36px;
+  color: var(--blg-text-dim);
+}
+.beneos-loot-generator .blg-card-name {
+  position: relative;
+  z-index: 1;
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--blg-text);
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.beneos-loot-generator .blg-card-meta {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+.beneos-loot-generator .blg-rarity-pill,
+.beneos-loot-generator .blg-tier-pill,
+.beneos-loot-generator .blg-type-pill {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--blg-card-hover);
+  color: var(--blg-text);
+  border: 1px solid var(--blg-border);
+}
+.beneos-loot-generator .blg-rarity-pill.blg-rarity-common    { color: var(--blg-c-common);    border-color: var(--blg-c-common); }
+.beneos-loot-generator .blg-rarity-pill.blg-rarity-uncommon  { color: var(--blg-c-uncommon);  border-color: var(--blg-c-uncommon); }
+.beneos-loot-generator .blg-rarity-pill.blg-rarity-rare      { color: var(--blg-c-rare);      border-color: var(--blg-c-rare); }
+.beneos-loot-generator .blg-rarity-pill.blg-rarity-veryrare  { color: var(--blg-c-veryrare);  border-color: var(--blg-c-veryrare); }
+.beneos-loot-generator .blg-rarity-pill.blg-rarity-legendary { color: var(--blg-c-legendary); border-color: var(--blg-c-legendary); }
+.beneos-loot-generator .blg-card-price {
+  position: relative;
+  z-index: 1;
+  font-size: 11px;
+  color: var(--blg-text-dim);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.beneos-loot-generator .blg-card-prob {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--blg-text-dim);
+}
+.beneos-loot-generator .blg-prob-label {
+  font-weight: 600;
+}
+.beneos-loot-generator .blg-cross-tier {
+  font-size: 10px;
+  color: var(--blg-accent);
+  font-weight: 600;
+}
+.beneos-loot-generator .blg-cross-tier.blg-cross-fallback {
+  color: var(--blg-text-dim);
+}
+
+.beneos-loot-generator .blg-card-actions {
+  position: relative;
+  z-index: 1;
+  margin-top: 4px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.beneos-loot-generator .blg-install-btn {
+  background: var(--blg-accent-soft);
+  border: 1px solid var(--blg-accent);
+  color: var(--blg-accent);
+  padding: 5px 14px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s;
+}
+.beneos-loot-generator .blg-install-btn:hover {
+  background: rgba(245, 201, 146, 0.32);
+}
+.beneos-loot-generator .blg-drag-hint {
+  font-size: 11px;
+  color: var(--blg-success);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---- Footer ---- */
+
+.beneos-loot-generator .blg-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 6px;
+  border-top: 1px solid var(--blg-border);
+}
+.beneos-loot-generator .blg-footer-step3 {
+  justify-content: space-between;
+}
+.beneos-loot-generator .blg-primary-btn,
+.beneos-loot-generator .blg-secondary-btn {
+  border-radius: 4px;
+  padding: 7px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s, transform 0.15s;
+}
+.beneos-loot-generator .blg-primary-btn {
+  background: var(--blg-accent);
+  border: 1px solid var(--blg-accent);
+  color: var(--blg-bg);
+}
+.beneos-loot-generator .blg-primary-btn:hover {
+  background: #ffd9a0;
+  transform: translateY(-1px);
+}
+.beneos-loot-generator .blg-primary-btn.is-disabled,
+.beneos-loot-generator .blg-primary-btn[disabled] {
+  background: var(--blg-card);
+  border-color: var(--blg-border);
+  color: var(--blg-text-dim);
+  cursor: not-allowed;
+  transform: none;
+}
+.beneos-loot-generator .blg-secondary-btn {
+  background: var(--blg-card);
+  border: 1px solid var(--blg-border);
+  color: var(--blg-text-dim);
+}
+.beneos-loot-generator .blg-secondary-btn:hover {
+  background: var(--blg-card-hover);
+  color: var(--blg-text);
+}
+.beneos-loot-generator .blg-reroll-count {
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: 4px;
+  opacity: 0.8;
+}
+
+/* ---- Punkt 3 v2 — per-rarity hover border + lift on result cards ---- */
+.beneos-loot-generator .blg-result-card.blg-reveal {
+  cursor: help;
+  transition: opacity 0.45s cubic-bezier(0.18, 1.2, 0.6, 1),
+              transform 0.45s cubic-bezier(0.18, 1.2, 0.6, 1),
+              border-color 0.18s ease,
+              box-shadow 0.18s ease;
+}
+.beneos-loot-generator .blg-result-card.blg-reveal:hover {
+  transform: scale(1) translateY(-3px);
+}
+.beneos-loot-generator .blg-result-card.blg-rarity-common:hover    { border-color: var(--blg-c-common);    box-shadow: 0 0 12px rgba(198, 198, 198, 0.45); }
+.beneos-loot-generator .blg-result-card.blg-rarity-uncommon:hover  { border-color: var(--blg-c-uncommon);  box-shadow: 0 0 14px rgba(76, 175, 80, 0.5); }
+.beneos-loot-generator .blg-result-card.blg-rarity-rare:hover      { border-color: var(--blg-c-rare);      box-shadow: 0 0 18px rgba(33, 150, 243, 0.55); }
+.beneos-loot-generator .blg-result-card.blg-rarity-veryrare:hover  { border-color: var(--blg-c-veryrare);  box-shadow: 0 0 20px rgba(178, 97, 214, 0.55); }
+.beneos-loot-generator .blg-result-card.blg-rarity-legendary:hover { border-color: var(--blg-c-legendary); box-shadow: 0 0 24px rgba(255, 167, 38, 0.65); }
+
+/* ---- Punkt 3 v2 — Hoard strip (gold + treasures above results) ---- */
+.beneos-loot-generator .blg-hoard-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  margin-bottom: 4px;
+  background: linear-gradient(90deg, rgba(245,201,146,0.08), rgba(245,201,146,0.18), rgba(245,201,146,0.08));
+  border: 1px solid var(--blg-border);
+  border-radius: var(--blg-radius);
+}
+.beneos-loot-generator .blg-hoard-gold {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--blg-accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.04em;
+}
+.beneos-loot-generator .blg-hoard-treasure {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(178, 97, 214, 0.12);
+  border: 1px solid rgba(178, 97, 214, 0.35);
+  border-radius: 999px;
+  color: var(--blg-c-veryrare);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: help;
+}
+.beneos-loot-generator .blg-hoard-treasure-name { color: var(--blg-text); }
+.beneos-loot-generator .blg-hoard-treasure-price {
+  color: var(--blg-text-dim);
+  font-weight: 500;
+}
+
+/* ============================================================
+   Punkt 3 v2 — Magic Shop Generator
+   Re-uses .beneos-loot-generator scope tokens; the .beneos-magic-shop
+   class adds size-specific selectors. Step 1 + 2 styles inherit; only
+   the shop-specific layout (size cards, item list, mini buttons) is new.
+   ============================================================ */
+
+.beneos-magic-shop .blg-shop-frame {
+  /* slightly more breathing room than the loot-gen modal */
+  padding-bottom: 14px;
+}
+
+/* ---- Step 1: shop size selector ---- */
+.beneos-magic-shop .blg-shop-size-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.beneos-magic-shop .blg-shop-size-btn {
+  background: var(--blg-card);
+  border: 1px solid var(--blg-border);
+  border-radius: var(--blg-radius);
+  /* Punkt 3 v3-fix: explicit min-height so all three lines (name,
+     subtitle, stats) sit inside the button. Without it the buttons
+     were too short and content ran into the shop-name input below.
+     Icons removed per user direction. */
+  padding: 16px 12px;
+  min-height: 130px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--blg-text);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.beneos-magic-shop .blg-shop-size-btn:hover {
+  background: var(--blg-card-hover);
+  border-color: var(--blg-accent);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(245, 201, 146, 0.18);
+}
+.beneos-magic-shop .blg-shop-size-icon {
+  font-size: 28px;
+  color: var(--blg-accent);
+}
+.beneos-magic-shop .blg-shop-size-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--blg-text);
+  letter-spacing: 0.02em;
+}
+.beneos-magic-shop .blg-shop-size-sub {
+  font-size: 11px;
+  color: var(--blg-text-dim);
+  text-align: center;
+  line-height: 1.3;
+}
+.beneos-magic-shop .blg-shop-size-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--blg-text-dim);
+}
+.beneos-magic-shop .blg-shop-size-stats i {
+  color: var(--blg-accent);
+  margin-right: 4px;
+}
+
+.beneos-magic-shop .blg-shop-name-row {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.beneos-magic-shop .blg-shop-name-row label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blg-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.beneos-magic-shop .blg-shop-name-input {
+  background: var(--blg-card);
+  border: 1px solid var(--blg-border);
+  border-radius: 4px;
+  color: var(--blg-text);
+  padding: 8px 10px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+.beneos-magic-shop .blg-shop-name-input:focus {
+  outline: none;
+  border-color: var(--blg-accent);
+}
+.beneos-magic-shop .blg-shop-name-hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--blg-text-dim);
+}
+
+/* ---- Step 3: shop item list ---- */
+.beneos-magic-shop .blg-shop-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.beneos-magic-shop .blg-shop-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  background: var(--blg-card);
+  border: 1px solid var(--blg-border);
+  border-radius: var(--blg-radius);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.3s ease, transform 0.3s ease, border-color 0.18s, box-shadow 0.18s;
+  cursor: help;
+}
+.beneos-magic-shop .blg-shop-item.blg-reveal {
+  opacity: 1;
+  transform: translateY(0);
+}
+.beneos-magic-shop .blg-shop-item[draggable="true"] { cursor: grab; }
+.beneos-magic-shop .blg-shop-item[draggable="true"]:active { cursor: grabbing; }
+.beneos-magic-shop .blg-shop-item.blg-rarity-common:hover    { border-color: var(--blg-c-common);    box-shadow: 0 0 8px rgba(198, 198, 198, 0.35); }
+.beneos-magic-shop .blg-shop-item.blg-rarity-uncommon:hover  { border-color: var(--blg-c-uncommon);  box-shadow: 0 0 10px rgba(76, 175, 80, 0.45); }
+.beneos-magic-shop .blg-shop-item.blg-rarity-rare:hover      { border-color: var(--blg-c-rare);      box-shadow: 0 0 12px rgba(33, 150, 243, 0.45); }
+.beneos-magic-shop .blg-shop-item.blg-rarity-veryrare:hover  { border-color: var(--blg-c-veryrare);  box-shadow: 0 0 14px rgba(178, 97, 214, 0.45); }
+.beneos-magic-shop .blg-shop-item.blg-rarity-legendary:hover { border-color: var(--blg-c-legendary); box-shadow: 0 0 16px rgba(255, 167, 38, 0.5); }
+.beneos-magic-shop .blg-shop-item.is-healing {
+  background: linear-gradient(90deg, rgba(255, 105, 105, 0.08), var(--blg-card));
+}
+
+.beneos-magic-shop .blg-shop-item-thumb {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 4px;
+}
+.beneos-magic-shop .blg-shop-item-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.beneos-magic-shop .blg-healing-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ff6b6b;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  box-shadow: 0 0 6px rgba(255, 107, 107, 0.6);
+}
+
+.beneos-magic-shop .blg-shop-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.beneos-magic-shop .blg-shop-item-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--blg-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.beneos-magic-shop .blg-shop-item-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.beneos-magic-shop .blg-shop-item-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+.beneos-magic-shop .blg-shop-item-price {
+  color: var(--blg-accent);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.beneos-magic-shop .blg-shop-item-bracket {
+  color: var(--blg-text-dim);
+  font-size: 10px;
+}
+
+.beneos-magic-shop .blg-shop-item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.beneos-magic-shop .blg-shop-mini-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  background: var(--blg-card-hover);
+  border: 1px solid var(--blg-border);
+  color: var(--blg-text-dim);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.beneos-magic-shop .blg-shop-mini-btn:hover {
+  background: var(--blg-accent-soft);
+  color: var(--blg-accent);
+  border-color: var(--blg-accent);
+}
+.beneos-magic-shop .blg-shop-mini-danger:hover {
+  background: rgba(220, 80, 80, 0.18);
+  color: #ff8888;
+  border-color: #ff8888;
+}
+.beneos-magic-shop .blg-shop-mini-install:hover {
+  background: rgba(126, 217, 158, 0.18);
+  color: var(--blg-success);
+  border-color: var(--blg-success);
+}
+
+.beneos-magic-shop .blg-footer-shop {
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ---- Punkt 3 v3 — Step 1: Shop-Type picker ---- */
+.beneos-magic-shop .blg-shop-type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+.beneos-magic-shop .blg-shop-type-btn {
+  background: var(--blg-card);
+  border: 1px solid var(--blg-border);
+  border-radius: var(--blg-radius);
+  padding: 14px 12px;
+  text-align: center;
+  color: var(--blg-text);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.beneos-magic-shop .blg-shop-type-btn:hover {
+  background: var(--blg-card-hover);
+  border-color: var(--blg-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(245, 201, 146, 0.18);
+  color: var(--blg-accent);
+}
+.beneos-magic-shop .blg-shop-type-btn.is-selected {
+  background: var(--blg-accent-soft);
+  border-color: var(--blg-accent);
+  color: var(--blg-accent);
+}
+.beneos-magic-shop .blg-shop-type-empty {
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  background: var(--blg-card);
+  border: 1px dashed var(--blg-border);
+  border-radius: var(--blg-radius);
+  text-align: center;
+  font-size: 12px;
+  color: var(--blg-text-dim);
+}
+
+/* ---- Punkt 3 v3 — Roleplay (atmosphere) items ---- */
+.beneos-magic-shop .blg-shop-roleplay {
+  margin-top: 4px;
+  padding: 10px 12px;
+  border: 1px dashed var(--blg-border);
+  border-radius: var(--blg-radius);
+  background: rgba(255, 255, 255, 0.015);
+}
+.beneos-magic-shop .blg-shop-roleplay-header {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--blg-text-dim);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.beneos-magic-shop .blg-shop-roleplay-header i {
+  color: var(--blg-accent);
+}
+.beneos-magic-shop .blg-shop-roleplay-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.beneos-magic-shop .blg-shop-item.is-roleplay {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px 4px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--blg-border);
+  border-radius: 999px;
+  color: var(--blg-text-dim);
+  font-size: 12px;
+  cursor: help;
+  /* Override the .blg-shop-item grid layout — roleplay chips are inline. */
+  grid-template-columns: none;
+  opacity: 0.85;
+}
+.beneos-magic-shop .blg-shop-item.is-roleplay:hover {
+  border-color: var(--blg-text-dim);
+  box-shadow: none;
+  color: var(--blg-text);
+}
+.beneos-magic-shop .blg-shop-item.is-roleplay .blg-shop-item-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+.beneos-magic-shop .blg-shop-roleplay-remove {
+  width: 18px;
+  height: 18px;
+  font-size: 9px;
+  background: transparent;
+  border: none;
+  color: var(--blg-text-dim);
+}
+.beneos-magic-shop .blg-shop-roleplay-remove:hover {
+  background: rgba(220, 80, 80, 0.18);
+  color: #ff8888;
+  border: 1px solid #ff8888;
+}
+
+/* ---- Punkt 3 v4 — Claim-Gold button + Default Inventory section + drag cue ---- */
+.beneos-loot-generator .blg-claim-gold-btn {
+  margin-left: 10px;
+  background: rgba(245, 201, 146, 0.18);
+  border: 1px solid var(--blg-accent);
+  border-radius: 4px;
+  color: var(--blg-accent);
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.15s, transform 0.15s;
+}
+.beneos-loot-generator .blg-claim-gold-btn:hover {
+  background: rgba(245, 201, 146, 0.32);
+  transform: translateY(-1px);
+}
+
+.beneos-magic-shop .blg-shop-section + .blg-shop-section { margin-top: 12px; }
+.beneos-magic-shop .blg-shop-section-header {
+  margin-bottom: 8px;
+}
+.beneos-magic-shop .blg-shop-section-header h3 {
+  margin: 0 0 2px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--blg-accent);
+  text-transform: uppercase;
+}
+.beneos-magic-shop .blg-shop-section-hint {
+  margin: 0;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--blg-text-dim);
+}
+
+.beneos-magic-shop .blg-shop-default-list {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  /* Punkt 3 v5e: cap the default-inventory grid so the outer modal
+     scroll stays inactive in normal use. Together with the existing
+     480 px Special-Items cap and the 85vh modal frame, the user
+     sees only the inner Special-Items scrollbar — no double-scroll. */
+  max-height: 150px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.beneos-magic-shop .blg-shop-item-default {
+  /* Punkt 3 v5b: vertical stack — icon on top, full-width name below.
+     Horizontal layout starved the title at ~80 px and most names got
+     truncated; vertical gives ~140 px and lets the title wrap two
+     lines if needed. */
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 4px;
+  padding: 8px 6px;
+  text-align: center;
+  align-items: center;
+  justify-items: center;
+}
+.beneos-magic-shop .blg-shop-item-default .blg-shop-item-thumb {
+  width: 40px;
+  height: 40px;
+}
+.beneos-magic-shop .blg-shop-item-default .blg-shop-item-name {
+  font-size: 11px;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+  white-space: normal;
+  width: 100%;
+}
+.beneos-magic-shop .blg-shop-item-default .blg-shop-item-body {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.beneos-magic-shop .blg-shop-item-default .blg-shop-item-bottom {
+  width: 100%;
+  justify-content: center;
+  font-size: 10px;
+}
+
+/* Drag-cue overlay on uninstalled cards — small cloud icon hinting
+   that drag = drag-install. Doesn't show on installed items. */
+.beneos-loot-generator .blg-cloud-cue,
+.beneos-magic-shop .blg-cloud-cue {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(245, 201, 146, 0.85);
+  color: #1a1614;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  z-index: 2;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* ---- Punkt 3 v5 — drag-done greyout + plus-button + pool warning ---- */
+.beneos-loot-generator .blg-result-card.is-delivered,
+.beneos-magic-shop .blg-shop-item.is-delivered {
+  opacity: 0.45;
+  filter: grayscale(0.7);
+}
+.beneos-loot-generator .blg-result-card.is-delivered:hover,
+.beneos-magic-shop .blg-shop-item.is-delivered:hover {
+  opacity: 0.6;
+}
+.beneos-loot-generator .blg-delivered-marker,
+.beneos-magic-shop .blg-delivered-marker {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--blg-success, #7ed99e);
+  color: #1a1614;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  z-index: 3;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.beneos-magic-shop .blg-section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.beneos-magic-shop .blg-section-header-row h3 {
+  margin: 0;
+}
+.beneos-magic-shop .blg-add-slot-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--blg-card-hover);
+  border: 1px solid var(--blg-accent);
+  color: var(--blg-accent);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.beneos-magic-shop .blg-add-slot-btn:hover {
+  background: var(--blg-accent-soft);
+  /* Punkt 3 v5d: scale() removed — the 1-2px size jump nudged the
+     scroll container to flash a horizontal/vertical scrollbar for a
+     few frames. Rotation + bg-shift give enough hover feedback. */
+  transform: rotate(90deg);
+  box-shadow: 0 0 10px rgba(245, 201, 146, 0.4);
+}
+
+.beneos-magic-shop .blg-pool-warning {
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: rgba(220, 80, 80, 0.18);
+  border: 1px solid rgba(220, 80, 80, 0.55);
+  border-radius: 4px;
+  color: #ff8888;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.beneos-magic-shop .blg-pool-warning i {
+  font-size: 13px;
+}
+
+/* ---- Punkt 3 v5b — Loot Add-Slot pill + hoard interactivity ---- */
+.beneos-loot-generator .blg-add-slot-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.beneos-loot-generator .blg-add-slot-btn-row {
+  width: auto;
+  height: auto;
+  padding: 6px 16px;
+  border-radius: 18px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--blg-card-hover);
+  border: 1px solid var(--blg-accent);
+  color: var(--blg-accent);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.beneos-loot-generator .blg-add-slot-btn-row:hover {
+  background: var(--blg-accent-soft);
+  /* Punkt 3 v5d: scale() removed for the same reason as the round
+     plus-button — translateY alone is enough hover lift. */
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(245, 201, 146, 0.22);
+}
+.beneos-loot-generator .blg-pool-warning {
+  margin-top: 6px;
+  padding: 6px 12px;
+  background: rgba(220, 80, 80, 0.18);
+  border: 1px solid rgba(220, 80, 80, 0.55);
+  border-radius: 4px;
+  color: #ff8888;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Make hoard treasures + gold draggable visually. */
+.beneos-loot-generator .blg-hoard-treasure[draggable="true"],
+.beneos-loot-generator .blg-hoard-gold[draggable="true"] {
+  cursor: grab;
+}
+.beneos-loot-generator .blg-hoard-treasure[draggable="true"]:active,
+.beneos-loot-generator .blg-hoard-gold[draggable="true"]:active {
+  cursor: grabbing;
+}
+.beneos-loot-generator .blg-hoard-treasure.is-delivered {
+  opacity: 0.45;
+  filter: grayscale(0.7);
+}
+
+/* ---- Punkt 3 v3-fix — Magic Shop cash on hand pill ---- */
+.beneos-magic-shop .blg-shop-cash {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 5px 12px;
+  background: var(--blg-accent-soft);
+  border: 1px solid var(--blg-accent);
+  border-radius: 999px;
+  color: var(--blg-accent);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.beneos-magic-shop .blg-shop-cash strong {
+  color: var(--blg-text);
+  font-weight: 700;
+}
+
+/* ---- Punkt 3 v3-fix — Wondrous Twist (loot-generator bonus slot) ---- */
+.beneos-loot-generator .blg-wondrous-twist {
+  margin: 4px 0 8px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(178, 97, 214, 0.10), rgba(245, 201, 146, 0.08));
+  border: 1px dashed rgba(245, 201, 146, 0.55);
+  border-radius: var(--blg-radius);
+  position: relative;
+  overflow: hidden;
+}
+.beneos-loot-generator .blg-wondrous-twist::before,
+.beneos-loot-generator .blg-wondrous-twist::after {
+  content: "";
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(20px);
+}
+.beneos-loot-generator .blg-wondrous-twist::before {
+  top: -20px; left: -20px;
+  background: rgba(178, 97, 214, 0.35);
+}
+.beneos-loot-generator .blg-wondrous-twist::after {
+  bottom: -20px; right: -20px;
+  background: rgba(245, 201, 146, 0.35);
+}
+.beneos-loot-generator .blg-wondrous-header {
+  position: relative;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--blg-accent);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.beneos-loot-generator .blg-wondrous-header i {
+  color: var(--blg-c-veryrare);
+  font-size: 16px;
+  animation: blg-wondrous-twirl 3.5s ease-in-out infinite;
+}
+@keyframes blg-wondrous-twirl {
+  0%, 100% { transform: rotate(-8deg) scale(1); }
+  50%      { transform: rotate(8deg)  scale(1.08); }
+}
+.beneos-loot-generator .blg-wondrous-sub {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  color: var(--blg-text-dim);
+}
+.beneos-loot-generator .blg-wondrous-card {
+  position: relative;
+  margin: 0 auto;
+  max-width: 240px;
+  /* Wondrous card always reveals immediately — it isn't part of the
+     stagger sequence on .blg-result-card.blg-reveal. */
+  opacity: 1;
+  transform: none;
+}
+
+/* Stage 11: open-splash overlay shown between Beneos-logo click and
+   the cloud window's first paint. Document-body level (NOT scoped
+   under .beneos-cloud-app) because the V2 window root doesn't exist
+   yet at click time. The CSS-Compositor-driven rotation runs even
+   while Foundry's main thread is blocked by DB-fetches + template
+   compile. Re-uses the existing bc-spin keyframe. */
+#beneos-cloud-loading-splash {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 12, 18, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+.beneos-loading-splash-card {
+  background: rgba(20, 24, 32, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  min-width: 240px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.beneos-loading-splash-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255, 255, 255, 0.12);
+  border-top-color: var(--bc-accent, #ffb84c);
+  border-radius: 50%;
+  animation: bc-spin 0.7s linear infinite;
+}
+.beneos-loading-splash-text {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  font-weight: 500;
+}
+
+/* Stage 13c-mini: Beneos FX-Editor — kompaktes ApplicationV2-Window
+   für den Creator-Mode-Designer-Workflow. Lebt unter .beneos-fx-
+   editor (Window-Class), nicht unter .beneos-cloud-app. Eigener Scope
+   weil das Window standalone ist (nicht in der Cloud-Window
+   eingebettet). */
+.beneos-fx-editor {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.beneos-fx-editor .bfx-editor-body {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.beneos-fx-editor .bfx-header {
+  margin: 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--bc-border, rgba(255, 255, 255, 0.1));
+}
+.beneos-fx-editor .bfx-subtitle {
+  margin: 0;
+  font-size: 11px;
+  color: var(--bc-text-muted, rgba(255, 255, 255, 0.6));
+  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.beneos-fx-editor .bfx-mode-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(255, 184, 76, 0.15);
+  color: var(--bc-accent, #ffb84c);
+  border: 1px solid rgba(255, 184, 76, 0.4);
+}
+.beneos-fx-editor .bfx-mode-tag.bfx-mode-topdown {
+  background: rgba(120, 200, 255, 0.15);
+  color: #78c8ff;
+  border-color: rgba(120, 200, 255, 0.4);
+}
+.beneos-fx-editor .bfx-legacy-hint {
+  margin: 4px 0 0 0;
+  font-size: 10px;
+  color: var(--bc-text-muted, rgba(255, 255, 255, 0.5));
+  font-style: italic;
+}
+.beneos-fx-editor .bfx-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.beneos-fx-editor .bfx-library,
+.beneos-fx-editor .bfx-footer {
+  flex: 0 0 auto;
+}
+.beneos-fx-editor .bfx-library-stack {
+  flex: 0 0 auto;
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 4px;
+}
+.beneos-fx-editor .bfx-entry {
+  background: var(--bc-card, rgba(20, 24, 32, 0.5));
+  border: 1px solid var(--bc-border, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+  padding: 8px;
+  transition: opacity 0.15s;
+}
+.beneos-fx-editor .bfx-entry.bfx-disabled { opacity: 0.5; }
+.beneos-fx-editor .bfx-entry-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px 0;
+}
+.beneos-fx-editor .bfx-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  cursor: pointer;
+  user-select: none;
+}
+.beneos-fx-editor .bfx-entry-label {
+  font-weight: 600;
+  text-transform: capitalize;
+  letter-spacing: 0.04em;
+}
+.beneos-fx-editor .bfx-remove-btn {
+  background: transparent;
+  border: 1px solid var(--bc-border, rgba(255, 255, 255, 0.1));
+  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  color: var(--bc-text-muted, rgba(255, 255, 255, 0.5));
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.beneos-fx-editor .bfx-remove-btn:hover {
+  color: rgb(220, 53, 69);
+  border-color: rgba(220, 53, 69, 0.4);
+  background: rgba(220, 53, 69, 0.1);
+}
+.beneos-fx-editor .bfx-params {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+.beneos-fx-editor .bfx-param {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+}
+.beneos-fx-editor .bfx-param-name {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--bc-text-muted, rgba(255, 255, 255, 0.7));
+  text-transform: uppercase;
+  font-size: 10px;
+}
+.beneos-fx-editor .bfx-param input[type="range"] {
+  width: 100%;
+  margin: 0;
+}
+.beneos-fx-editor .bfx-param input[type="color"] {
+  width: 100%;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--bc-border, rgba(255, 255, 255, 0.1));
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+.beneos-fx-editor .bfx-value {
+  text-align: right;
+  font-size: 10px;
+  color: var(--bc-text-muted, rgba(255, 255, 255, 0.5));
+  font-variant-numeric: tabular-nums;
+}
+.beneos-fx-editor .bfx-empty {
+  text-align: center;
+  font-size: 12px;
+  color: var(--bc-text-muted, rgba(255, 255, 255, 0.5));
+  padding: 24px 12px;
+  font-style: italic;
+}
+.beneos-fx-editor .bfx-add-row {
+  margin: 0;
+}
+.beneos-fx-editor .bfx-add-btn {
+  width: 100%;
+  padding: 10px;
+  background: rgba(255, 184, 76, 0.08);
+  border: 1px dashed rgba(255, 184, 76, 0.4);
+  border-radius: 6px;
+  color: var(--bc-accent, #ffb84c);
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition: background 0.12s, border-color 0.12s;
+}
+.beneos-fx-editor .bfx-add-btn:hover {
+  background: rgba(255, 184, 76, 0.15);
+  border-color: rgba(255, 184, 76, 0.7);
+  border-style: solid;
+}
+/* Stage 13c-full: Filter-Library-Section. Replaces the single
+   "Add Drop Shadow"-Button with a 2-column grid of filter-type
+   cards. Each card has an icon + label and adds the corresponding
+   filter on click. Tooltip shows the description. */
+.beneos-fx-editor .bfx-entry-icon {
+  font-size: 13px;
+  color: var(--bc-accent, #ffb84c);
+  margin-right: 4px;
+}
+.beneos-fx-editor .bfx-library {
+  margin-top: 0;
+  padding: 6px 8px;
+  background: rgba(255, 184, 76, 0.04);
+  border: 1px solid rgba(255, 184, 76, 0.18);
+  border-radius: 6px;
+}
+.beneos-fx-editor .bfx-library-head {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bc-accent, #ffb84c);
+  margin-bottom: 6px;
+  padding: 0 2px;
+}
+.beneos-fx-editor .bfx-library-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+.beneos-fx-editor .bfx-library-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--bc-card, rgba(20, 24, 32, 0.5));
+  border: 1px solid var(--bc-border, rgba(255, 255, 255, 0.1));
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-align: left;
+  transition: background 0.12s, border-color 0.12s, transform 0.08s;
+}
+.beneos-fx-editor .bfx-library-item:hover {
+  background: rgba(255, 184, 76, 0.10);
+  border-color: rgba(255, 184, 76, 0.5);
+  transform: translateY(-1px);
+}
+.beneos-fx-editor .bfx-library-item i {
+  font-size: 16px;
+  color: var(--bc-accent, #ffb84c);
+  flex: 0 0 auto;
+}
+.beneos-fx-editor .bfx-library-label {
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.beneos-fx-editor .bfx-footer {
+  display: flex;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--bc-border, rgba(255, 255, 255, 0.1));
+}
+.beneos-fx-editor .bfx-copy-btn,
+.beneos-fx-editor .bfx-close-btn {
+  flex: 1 1 50%;
+  padding: 8px;
+  background: var(--bc-card, rgba(20, 24, 32, 0.5));
+  border: 1px solid var(--bc-border, rgba(255, 255, 255, 0.1));
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.12s, border-color 0.12s;
+}
+.beneos-fx-editor .bfx-copy-btn:hover,
+.beneos-fx-editor .bfx-close-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--bc-border-strong, rgba(255, 255, 255, 0.2));
 }

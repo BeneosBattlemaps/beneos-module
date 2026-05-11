@@ -129,9 +129,18 @@ export class BeneosCloudLogin extends FormApplication {
     // error message exposes which class the failure belongs to so we can act.
     fetch(cloudLoginURL, { credentials: 'same-origin' })
       .then(response => {
+        // Stage 9: classify the response so the global serverOffline
+        // flag and the user-facing notification both reflect the
+        // distinction between server-down (5xx, network) and
+        // wrong-credentials (4xx).
+        game.beneos?.cloud?.markServerStatus?.(response, null)
         if (!response.ok) {
           console.error(`BENEOS Cloud login HTTP ${response.status} ${response.statusText}`)
-          ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.LoginHttpError", { status: response.status }))
+          if (response.status >= 500) {
+            ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginServerOffline"))
+          } else {
+            ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.LoginHttpError", { status: response.status }))
+          }
           throw new Error(`HTTP ${response.status}`)
         }
         return response.json()
@@ -150,8 +159,11 @@ export class BeneosCloudLogin extends FormApplication {
         // HTTP-error path already notified above; this branch catches network
         // failures (Failed to fetch / NetworkError) and JSON parse errors.
         if (err && String(err.message).startsWith("HTTP ")) return
+        // Stage 9: tag the global flag — true network failure means
+        // server is unreachable.
+        game.beneos?.cloud?.markServerStatus?.(null, err)
         console.error("BENEOS Cloud login network error:", err)
-        ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginNetworkError"))
+        ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginServerOffline"))
       })
   }
 
@@ -252,10 +264,67 @@ export class BeneosCloudLogin extends FormApplication {
 export class BeneosCloud {
 
   cloudConnected = false
+  // Stage 9: server-reachability flag, separate from cloudConnected
+  // (which is the LOGIN state). serverOffline is true when ANY fetch
+  // to beneos.cloud has recently failed at the network level OR
+  // returned 5xx. 4xx responses (auth, validation) keep this flag
+  // false because they prove the server is up. Auto-recovers via
+  // the periodic re-probe in startServerProbeLoop().
+  serverOffline = false
+  _serverProbeHandle = null
   // Fix #B1: pre-shape so is*Available() can short-circuit cleanly before
   // checkAvailableContent() resolves. Previously this was [], but downstream
   // code accesses it as { tokens, items, spells } and would otherwise throw.
   availableContent = { tokens: [], items: [], spells: [] }
+
+  /********************************************************************************** */
+  // Stage 9: central reachability classifier. Every fetch to
+  // beneos.cloud should call this with its (response, error) pair so
+  // the offline state stays in sync. Only network errors and 5xx flip
+  // the flag; 4xx (auth, bad request) and 2xx clear it.
+  markServerStatus(response, error) {
+    const wasOffline = this.serverOffline
+    if (error && !response) {
+      // Network-level failure (DNS / TCP / TLS / CORS).
+      this.serverOffline = true
+    } else if (response && response.status >= 500 && response.status < 600) {
+      // Server reachable but in trouble (maintenance, crash, overload).
+      this.serverOffline = true
+    } else if (response && response.ok) {
+      // Server proven up.
+      this.serverOffline = false
+    } else if (response && response.status >= 400 && response.status < 500) {
+      // 4xx — server up, request rejected. Don't toggle offline.
+      this.serverOffline = false
+    }
+    if (wasOffline !== this.serverOffline) this._notifyServerStateChange()
+  }
+
+  // Stage 9: re-render the open V2 cloud window so the footer chip
+  // and any inline server-state UI reflects the new flag immediately.
+  _notifyServerStateChange() {
+    try {
+      const v2 = game.beneos?.cloudWindowV2
+      if (v2?.rendered) v2.render({ parts: ["footer", "results"] })
+    } catch (err) {
+      console.warn("[Beneos Cloud] Server-state re-render failed", err)
+    }
+  }
+
+  // Stage 9: 60s probe loop, only active while serverOffline is true.
+  // Hits the existing ?check=1 healthcheck endpoint and lets
+  // markServerStatus flip the flag back when the server returns.
+  startServerProbeLoop() {
+    if (this._serverProbeHandle) return
+    this._serverProbeHandle = setInterval(() => {
+      if (!this.serverOffline) return
+      const userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id") || ""
+      const url = `https://beneos.cloud/foundry-manager.php?check=1&foundryId=${encodeURIComponent(userId)}&_t=${Date.now()}`
+      fetch(url, { credentials: 'same-origin' })
+        .then(r => this.markServerStatus(r, null))
+        .catch(err => this.markServerStatus(null, err))
+    }, 60000)
+  }
 
   // Fix #E3: idempotency lock for in-flight imports. Keys look like
   // "token:<assetKey>" / "item:<assetKey>" / "spell:<assetKey>" / "battlemap:<filename>".
@@ -289,6 +358,10 @@ export class BeneosCloud {
 
   loginAttempt() {
     this.setLoginStatus(false)
+    // Stage 9: fire up the periodic re-probe loop on first attempt.
+    // It only actually probes while serverOffline is true, so it's a
+    // no-op cost when the server is reachable.
+    this.startServerProbeLoop()
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
     if (!userId || userId == '') {
       return;
@@ -299,8 +372,11 @@ export class BeneosCloud {
     // Wave B-5d-Hotfix: silent init-time check; on network failure we don't
     // bother the user with a notification (they haven't asked for anything
     // yet) — just log so devs can see why the cloud chip is not green.
+    // Stage 9: feed every response/error through markServerStatus so the
+    // serverOffline flag stays accurate at init time too.
     fetch(url, { credentials: 'same-origin' })
       .then(response => {
+        game.beneos.cloud.markServerStatus(response, null)
         if (!response.ok) {
           console.warn(`BENEOS Cloud loginAttempt HTTP ${response.status} ${response.statusText}`)
           throw new Error(`HTTP ${response.status}`)
@@ -319,6 +395,10 @@ export class BeneosCloud {
       })
       .catch(err => {
         if (err && String(err.message).startsWith("HTTP ")) return
+        // Stage 9: only mark offline on TRUE network errors (no
+        // response object at all). A "HTTP <n>" error was already
+        // marked above via markServerStatus on the response.
+        game.beneos.cloud.markServerStatus(null, err)
         console.warn("BENEOS Cloud loginAttempt network error:", err)
       })
   }
@@ -363,6 +443,11 @@ export class BeneosCloud {
       : (data?.beneosTokenKey ? [data.beneosTokenKey] : [])
     if (!tokenKeys.length) return
 
+    // Gate before any UI state change (notifyInstallStarted, notifications,
+    // pending-drop registration). Otherwise the GM sees the install
+    // animation running while the system-compat prompt is still up.
+    if (!await BeneosUtility.confirmSystemCompat("token")) return;
+
     // Ring/grid distribution: first token at the drop point, subsequent
     // ones placed one grid step away in cardinal then diagonal directions
     // for a clean cluster around the cursor. Beyond 9 the pattern reaches
@@ -375,6 +460,22 @@ export class BeneosCloud {
       [1, 2], [-1, 2], [1, -2], [-1, -2]
     ]
 
+    // Stage 5: pull variant-strip-specific fields off the payload so
+    // drainPendingCanvasDrops can place the correct variant with the
+    // right style. Stage 6: when the result-card drag has no explicit
+    // beneosForceStyle (only the variant-strip drag adds it), fall
+    // back to the user's default install-style setting so the result-
+    // card drop respects the GM's sidebar choice for already-installed
+    // creatures too.
+    const variantIndex = data?.beneosVariantIndex || 1
+    let forceStyle = data?.beneosForceStyle
+    if (!forceStyle) {
+      try {
+        forceStyle = game.settings.get(BeneosUtility.moduleID(), "beneos-default-install-style")
+      } catch (e) { /* setting not registered yet */ }
+    }
+    forceStyle = forceStyle || "tokenized"
+
     for (let i = 0; i < tokenKeys.length; i++) {
       const tokenKey = tokenKeys[i]
       const [dx, dy] = offsets[i] || [i, 0]
@@ -383,7 +484,7 @@ export class BeneosCloud {
       if (!this.pendingCanvasDrops.has(tokenKey)) {
         this.pendingCanvasDrops.set(tokenKey, [])
       }
-      this.pendingCanvasDrops.get(tokenKey).push({ x, y, sceneId })
+      this.pendingCanvasDrops.get(tokenKey).push({ x, y, sceneId, variantIndex, forceStyle })
       game.beneos?.cloudWindowV2?.notifyInstallStarted?.(tokenKey)
     }
 
@@ -398,7 +499,10 @@ export class BeneosCloud {
     // approach worked for single tokens but races on multi.
     for (const tokenKey of tokenKeys) {
       if (!this.inflightImports.has(`token:${tokenKey}`)) {
-        await this.importTokenFromCloud(tokenKey)
+        // Pre-gated above; pass opts.gated=true so importTokenFromCloud
+        // doesn't re-prompt. isBatch stays false so the import* function
+        // continues to manage its own compendium lock cycle.
+        await this.importTokenFromCloud(tokenKey, undefined, false, { gated: true })
       }
     }
   }
@@ -411,21 +515,47 @@ export class BeneosCloud {
     const pending = this.pendingCanvasDrops.get(tokenKey)
     if (!pending || pending.length === 0) return
 
-    const worldActor = game.actors?.find(a => {
+    // Primary world actor (variant 1) — used for the legacy result-
+    // card-drag path. Stage 5 may override per-drop with a specific
+    // variant actor pulled from the compendium.
+    const primaryWorldActor = game.actors?.find(a => {
       const flag = a.getFlag("world", "beneos")
       return flag?.tokenKey === tokenKey
     })
-    if (!worldActor) {
-      console.error("BeneosModule: cannot resolve pending canvas drops; world actor not found for", tokenKey)
-      this.pendingCanvasDrops.delete(tokenKey)
-      return
-    }
+    const compendium = game.packs?.get("world.beneos_module_actors")
 
     for (const drop of pending) {
       const scene = game.scenes.get(drop.sceneId)
       if (!scene) continue
+
+      // Stage 5: resolve the variant-specific actor. Variant 1 has a
+      // world copy; variants 2..N are compendium-only. The variant
+      // strip drag passes drop.variantIndex; the result-card path
+      // defaults to 1.
+      const variantIdx = drop.variantIndex || 1
+      let actorForPlace = null
+      if (variantIdx === 1) {
+        actorForPlace = primaryWorldActor
+      } else {
+        const variantActorId = BeneosUtility.getActorIdVariant(tokenKey, variantIdx)
+        if (variantActorId && compendium) {
+          try { actorForPlace = await compendium.getDocument(variantActorId) }
+          catch (err) { console.warn("BeneosModule: compendium variant lookup failed", err) }
+        }
+      }
+      if (!actorForPlace) {
+        console.error("BeneosModule: cannot resolve actor for pending canvas drop", tokenKey, drop)
+        continue
+      }
+
+      // Stage 5: bridge flag for the preCreateToken hook in
+      // beneos_module.js — flips the texture src to -top.webp before
+      // the placeable is committed when the user dragged a Top-Down
+      // tile. Set per-drop so multiple drops in a batch each carry
+      // their own intent.
+      BeneosUtility._pendingDropStyle = drop.forceStyle || "tokenized"
       try {
-        const tokenDoc = await worldActor.getTokenDocument({ x: drop.x, y: drop.y })
+        const tokenDoc = await actorForPlace.getTokenDocument({ x: drop.x, y: drop.y })
         await scene.createEmbeddedDocuments("Token", [tokenDoc.toObject()])
       } catch (err) {
         console.error("BeneosModule: failed to place pending token on canvas", tokenKey, drop, err)
@@ -468,6 +598,16 @@ export class BeneosCloud {
       : (data?.beneosItemKey ? [data.beneosItemKey] : [])
     if (!keys.length) return
 
+    // Gate before any UI state change. On non-dnd5e this fires the
+    // hard-block info dialog for items/spells and aborts the drop without
+    // ever flipping the cards into "Installing" state.
+    if (!await BeneosUtility.confirmSystemCompat(kind)) return;
+
+    // One token per drop event. Used by drainPendingItemDrops to group
+    // spells from the same drop so the Pact-Magic "apply to all" choice
+    // can flow across them (BeneosUtility._pactMagicBatchCache).
+    const batchToken = (keys.length > 1) ? foundry.utils.randomID() : ""
+
     // Step 1 — register all drops + show progress visuals up front so the
     // user sees the cards switch to "Installing" the moment they drop,
     // not one-at-a-time as the queue drains.
@@ -475,7 +615,7 @@ export class BeneosCloud {
       if (!this.pendingItemDrops.has(itemKey)) {
         this.pendingItemDrops.set(itemKey, [])
       }
-      this.pendingItemDrops.get(itemKey).push({ actorId: actor.id, kind })
+      this.pendingItemDrops.get(itemKey).push({ actorId: actor.id, kind, batchToken })
       game.beneos?.cloudWindowV2?.notifyInstallStarted?.(itemKey)
     }
 
@@ -493,8 +633,11 @@ export class BeneosCloud {
     for (const itemKey of keys) {
       const lockKey = `${kind}:${itemKey}`
       if (this.inflightImports.has(lockKey)) continue
-      if (kind === "spell") await this.importSpellsFromCloud(itemKey)
-      else                  await this.importItemFromCloud(itemKey)
+      // Pre-gated above; pass opts.gated=true so import* doesn't re-prompt.
+      // isBatch stays false so the import* function manages its own
+      // compendium lock cycle.
+      if (kind === "spell") await this.importSpellsFromCloud(itemKey, undefined, false, { gated: true })
+      else                  await this.importItemFromCloud(itemKey, undefined, false, { gated: true })
     }
   }
 
@@ -524,10 +667,34 @@ export class BeneosCloud {
       const actor = game.actors?.get?.(drop.actorId)
       if (!actor) continue
       try {
-        await actor.createEmbeddedDocuments("Item", [worldItem.toObject()])
+        const itemData = worldItem.toObject()
+
+        // Warlock Pact-Magic: leveled spells dropped on a Warlock get a
+        // chance to be marked as Pact-cast so dnd5e routes them through
+        // the pact-slot pool instead of normal spell slots. Cantrips skip
+        // the prompt (level 0 spells never consume slots either way).
+        if (kind === "spell"
+            && itemData.type === "spell"
+            && (itemData.system?.level ?? 0) > 0
+            && BeneosUtility.isWarlockActor(actor)) {
+          const choice = await BeneosUtility.askPactMagicChoice({
+            spellItem: worldItem,
+            actor,
+            batchToken: drop.batchToken
+          });
+          if (choice === "pact") BeneosUtility.applyPactMagicToSpellData(itemData);
+        }
+
+        await actor.createEmbeddedDocuments("Item", [itemData])
       } catch (err) {
         console.error("BeneosModule: failed to add cloud item to actor", itemKey, drop, err)
       }
+    }
+    // Clean up per-batch Pact-cache entries owned by this batch token. Safe
+    // even when no Warlock prompt fired — clearPactMagicBatchCache no-ops
+    // on missing keys.
+    for (const drop of pending) {
+      BeneosUtility.clearPactMagicBatchCache(drop.actorId, drop.batchToken);
     }
     this.pendingItemDrops.delete(itemKey)
     game.beneos?.cloudWindowV2?.notifyInstallEnded?.(itemKey, true)
@@ -647,25 +814,32 @@ export class BeneosCloud {
   }
 
   isTokenAvailable(key) {
-    let content = this.availableContent.tokens
-    if (!content || content.length == 0) {
+    // Defensive: a single malformed cloud entry (missing `key`) used to
+    // crash the V2 cloud window render chain. Skip non-string entries
+    // and bail early on a non-string lookup key.
+    if (!key || typeof key !== "string") return false
+    const content = this.availableContent?.tokens
+    if (!Array.isArray(content) || !content.length) {
       BeneosUtility.debugMessage("No tokens available from BeneosCloud")
       return false
     }
+    const lowKey = key.toLowerCase()
     for (const element of content) {
-      if (element.key.toLowerCase() == key.toLowerCase()) {
-        return true
-      }
+      const ek = element?.key
+      if (typeof ek === "string" && ek.toLowerCase() === lowKey) return true
     }
     return false
   }
 
   isItemAvailable(key) {
-    let content = this.availableContent.items
-    if (!content || content.length == 0) return false
-    let key2 = key.toLowerCase().replaceAll("-", "_")
+    if (!key || typeof key !== "string") return false
+    const content = this.availableContent?.items
+    if (!Array.isArray(content) || !content.length) return false
+    const key2 = key.toLowerCase().replaceAll("-", "_")
     for (const element of content) {
-      let key1 = element.key.toLowerCase().replaceAll("-", "_")
+      const ek = element?.key
+      if (typeof ek !== "string") continue
+      const key1 = ek.toLowerCase().replaceAll("-", "_")
       if (key1 == key2) {
         return true
       }
@@ -674,11 +848,14 @@ export class BeneosCloud {
   }
 
   isSpellAvailable(key) {
-    let content = this.availableContent.spells
-    if (!content || content.length == 0) return false
-    let key2 = key.toLowerCase().replaceAll("-", "_")
+    if (!key || typeof key !== "string") return false
+    const content = this.availableContent?.spells
+    if (!Array.isArray(content) || !content.length) return false
+    const key2 = key.toLowerCase().replaceAll("-", "_")
     for (const element of content) {
-      let key1 = element.key.toLowerCase().replaceAll("-", "_")
+      const ek = element?.key
+      if (typeof ek !== "string") continue
+      const key1 = ek.toLowerCase().replaceAll("-", "_")
       if (key1 == key2) {
         return true
       }
@@ -696,6 +873,8 @@ export class BeneosCloud {
     let url = `https://beneos.cloud/foundry-manager.php?get_content=1&foundryId=${encodeURIComponent(userId)}`
     try {
       const response = await fetch(url, { credentials: 'same-origin' })
+      // Stage 9: classify reachability before parsing the body.
+      game.beneos?.cloud?.markServerStatus?.(response, null)
       const data = await response.json()
       BeneosUtility.debugMessage("BENEOS Cloud available content", data)
       if (data.result == 'OK') {
@@ -704,6 +883,9 @@ export class BeneosCloud {
       }
       return data
     } catch (err) {
+      // Stage 9: network/parse failure — server unreachable from our
+      // perspective.
+      game.beneos?.cloud?.markServerStatus?.(null, err)
       console.error("BeneosModule: checkAvailableContent failed", err)
       return null
     }
@@ -743,11 +925,10 @@ export class BeneosCloud {
     this.beneosItems = {}
     BeneosUtility.debugMessage("Importing item to compendium", itemArray)
 
-    // Create the "Beneos Items" folder if it doesn't exist
-    const itemsFolder = game.folders.getName("Beneos Items") || await Folder.create({
-      name: "Beneos Items", type: "Item"
-    })
-
+    // Punkt 1 — Folder-Restruktur: per-item path is computed inside the loop
+    // ("Beneos Loot / SRD / <Item-Type>" or
+    //  "Beneos Loot / Beneos Originals / <Origin> / <Item-Type>"). The legacy
+    // flat "Beneos Items" world folder is no longer auto-created.
 
     let tNow = Date.now()
     let properName
@@ -835,12 +1016,40 @@ export class BeneosCloud {
             console.warn("[Beneos Cloud] Error deleting existing item", err)
           }
         }
+        // Punkt 1 — Folder-Restruktur: build segment path per item.
+        // BeneosDatabaseHolder exposes itemData.content directly (see
+        // beneos_search_engine.js:515), no dedicated getItemDatabaseInfo.
+        const itemDb = game.beneos.databaseHolder?.itemData?.content?.[itemKey]
+        const itemRawBucket = BeneosUtility.getSourceBucket(itemDb, "item", itemKey)
+        const itemFolderBucket = BeneosUtility.getFolderBucket(itemRawBucket)
+        const itemTypeSlug = item.type || "loot"
+        const itemTypeLabel = (() => {
+          const raw = CONFIG?.Item?.typeLabels?.[itemTypeSlug] || itemTypeSlug
+          const localized = typeof raw === "string" && raw.includes(".") ? game.i18n.localize(raw) : raw
+          return (localized || "Item").charAt(0).toUpperCase() + (localized || "Item").slice(1)
+        })()
+        let itemSegments
+        if (itemFolderBucket === "SRD") {
+          itemSegments = ["Beneos Loot", "SRD", itemTypeLabel]
+        } else {
+          let origin = String(itemDb?.properties?.origin || "Misc")
+          origin = origin.charAt(0).toUpperCase() + origin.slice(1)
+          itemSegments = ["Beneos Loot", "Beneos Originals", origin, itemTypeLabel]
+        }
+        const itemCompendiumLeaf = await BeneosUtility.ensureBeneosFolderPath(
+          { type: "Item", scope: "compendium", pack: "world.beneos_module_items" },
+          itemSegments
+        )
         // And then create it again
-        let imported = await itemPack.importDocument(item);
+        let imported = await itemPack.importDocument(item, itemCompendiumLeaf?.id ? { folder: itemCompendiumLeaf.id } : undefined);
         // Fix #C3: only mark as installed when import actually succeeded, otherwise
         // the UI showed an "installed" badge for items that never made it to the compendium.
         if (imported?.id) {
           properName = imported.name
+          if (itemCompendiumLeaf?.id && imported.folder?.id !== itemCompendiumLeaf.id) {
+            try { await imported.update({ folder: itemCompendiumLeaf.id }) }
+            catch (err) { BeneosUtility.debugMessage("Folder assign failed (compendium item)", err) }
+          }
           await imported.setFlag("world", "beneos", { itemKey, fullId: itemKey, idx: 1, installationDate: tNow })
           BeneosUtility.beneosItems[itemKey] = {
             itemName: imported.name,
@@ -852,9 +1061,13 @@ export class BeneosCloud {
             installDate: tNow,
             number: 1
           }
-          // And import the item into the "Beneos Items" folder, except if in install *ALL* mode
+          // World-copy import into the matching world-folder, except if in install *ALL* mode.
           if (!this.noWorldImport) {
-            await game.items.importFromCompendium(itemPack, imported.id, { folder: itemsFolder.id });
+            const itemWorldLeaf = await BeneosUtility.ensureBeneosFolderPath(
+              { type: "Item", scope: "world" },
+              itemSegments
+            )
+            await game.items.importFromCompendium(itemPack, imported.id, itemWorldLeaf?.id ? { folder: itemWorldLeaf.id } : {});
           }
         } else {
           console.error("BeneosModule: Item import failed for", itemKey)
@@ -888,16 +1101,9 @@ export class BeneosCloud {
     if (!isBatch) this.noWorldImport = false
     this.beneosSpells = {}
 
-    // Create the "Beneos Spells" folder if it doesn't exist
-    const spellsFolder = game.folders.getName("Beneos Spells") || await Folder.create({
-      name: "Beneos Spells", type: "Item"
-    })
-    let levelFolders = []
-    for (let i = 0; i <= 8; i++) {
-      levelFolders[i] = game.folders.getName(`Level ${i}`) || await Folder.create({
-        name: `Level ${i}`, type: "Item", folder: spellsFolder.id
-      })
-    }
+    // Punkt 1 — Folder-Restruktur: per-spell path is computed inside the loop
+    // ("Beneos Spells / [SRD|Beneos Originals] / <School>"). The legacy
+    // "Beneos Spells / Level <0..8>" world folder is no longer auto-created.
 
     let tNow = Date.now()
     let properName
@@ -978,11 +1184,29 @@ export class BeneosCloud {
           BeneosUtility.debugMessage("Deleting existing spell", existingSpell._id)
           await Item.deleteDocuments([existingSpell._id], { pack: "world.beneos_module_spells" })
         }
+        // Punkt 1 — Folder-Restruktur: build segment path per spell
+        // ("Beneos Spells / [SRD|Beneos Originals] / <School>"). School is
+        // taken from the cloud DB; spell objects also expose it via
+        // imported.system.school after import as a fallback.
+        const spellDb = game.beneos.databaseHolder?.spellData?.content?.[spellKey]
+        const spellRawBucket = BeneosUtility.getSourceBucket(spellDb, "spell", spellKey)
+        const spellFolderBucket = BeneosUtility.getFolderBucket(spellRawBucket)
+        let school = String(spellDb?.properties?.school || spell.system?.school || "Misc")
+        school = school.charAt(0).toUpperCase() + school.slice(1)
+        const spellSegments = ["Beneos Spells", spellFolderBucket, school]
+        const spellCompendiumLeaf = await BeneosUtility.ensureBeneosFolderPath(
+          { type: "Item", scope: "compendium", pack: "world.beneos_module_spells" },
+          spellSegments
+        )
         // And then create it again
-        let imported = await spellPack.importDocument(spell);
+        let imported = await spellPack.importDocument(spell, spellCompendiumLeaf?.id ? { folder: spellCompendiumLeaf.id } : undefined);
         // Fix #C3: only mark as installed when import actually succeeded.
         if (imported?.id) {
           properName = imported.name
+          if (spellCompendiumLeaf?.id && imported.folder?.id !== spellCompendiumLeaf.id) {
+            try { await imported.update({ folder: spellCompendiumLeaf.id }) }
+            catch (err) { BeneosUtility.debugMessage("Folder assign failed (compendium spell)", err) }
+          }
           await imported.setFlag("world", "beneos", { spellKey, fullId: spellKey, idx: 1, installationDate: tNow })
           BeneosUtility.beneosSpells[spellKey] = {
             itemName: imported.name,
@@ -994,10 +1218,13 @@ export class BeneosCloud {
             installDate: tNow,
             number: 1
           }
-          // And import the item into the "Beneos Spells" folder, except if in install *ALL* mode
+          // World-copy import into the matching world-folder, except if in install *ALL* mode.
           if (!this.noWorldImport) {
-            let folder = levelFolders[Number(imported.system?.level) ?? 0]
-            await game.items.importFromCompendium(spellPack, imported.id, { folder: folder.id });
+            const spellWorldLeaf = await BeneosUtility.ensureBeneosFolderPath(
+              { type: "Item", scope: "world" },
+              spellSegments
+            )
+            await game.items.importFromCompendium(spellPack, imported.id, spellWorldLeaf?.id ? { folder: spellWorldLeaf.id } : {});
           }
         } else {
           console.error("BeneosModule: Spell import failed for", spellKey)
@@ -1040,19 +1267,19 @@ export class BeneosCloud {
     if (existingActor) {
       let imported = await actorPack.getDocument(existingActor._id)
       if (imported) {
-        // Create the "Beneos Spells" folder if it doesn't exist
-        const actorsFolder = game.folders.getName("Beneos Actors") || await Folder.create({
-          name: "Beneos Actors", type: "Actor"
-        })
-        let tokenDb = game.beneos.databaseHolder.getTokenDatabaseInfo(tokenKey)
-        let folderName = tokenDb?.properties?.type[0] ?? "Unknown"
-        // Upper first letter
-        folderName = folderName.charAt(0).toUpperCase() + folderName.slice(1)
-        // Create the sub-folder if it doesn't exist
-        let subFolder = game.folders.getName(folderName) || await Folder.create({
-          name: folderName, type: "Actor", folder: actorsFolder.id
-        })
-        await game.actors.importFromCompendium(actorPack, imported.id, { folder: subFolder.id });
+        // Punkt 1 — Folder-Restruktur: world-side path
+        // "Beneos Creatures / [SRD|Beneos Originals] / <Type> / CR <X>".
+        const tokenDb = game.beneos.databaseHolder.getTokenDatabaseInfo(tokenKey)
+        const rawBucket = BeneosUtility.getSourceBucket(tokenDb, "token", tokenKey)
+        const folderBucket = BeneosUtility.getFolderBucket(rawBucket)
+        let creatureType = tokenDb?.properties?.type?.[0] ?? "Unknown"
+        creatureType = creatureType.charAt(0).toUpperCase() + creatureType.slice(1)
+        const crFolder = BeneosUtility.formatCrFolder(tokenDb?.properties?.cr)
+        const worldLeaf = await BeneosUtility.ensureBeneosFolderPath(
+          { type: "Actor", scope: "world" },
+          ["Beneos Creatures", folderBucket, creatureType, crFolder]
+        )
+        await game.actors.importFromCompendium(actorPack, imported.id, worldLeaf?.id ? { folder: worldLeaf.id } : {});
         ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.TokenImported", { name: imported.name }))
       } else {
         ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.TokenLookupFailed", { key: tokenKey }))
@@ -1288,10 +1515,32 @@ export class BeneosCloud {
         }
         // 4) Re-stamp the beneos flag (newData.flags from the compendium
         //    may have overwritten it during step 1).
+        // Stage 13a: rendering-Merge mit User-Override-Priorität. Der
+        // user-gesetzte rendering-Block (z.B. lokal im Foundry via
+        // Console oder Stage-13d-Creator-UI) hat Priorität über Cloud-
+        // Defaults. Cloud füllt nur null/missing-Felder. Per-Field-
+        // Merge, damit auch teilweise gesetzte Overrides respektiert
+        // werden (z.B. nur topDownScale gesetzt, tokenizedScale aus
+        // Cloud).
+        const existingRendering = beneosFlag.rendering || {}
+        const cloudRendering = newData?.flags?.world?.beneos?.rendering || {}
+        const mergedRendering = {
+          topDownScale:   existingRendering.topDownScale   ?? cloudRendering.topDownScale   ?? null,
+          tokenizedScale: existingRendering.tokenizedScale ?? cloudRendering.tokenizedScale ?? null,
+          fx: (existingRendering.fx && existingRendering.fx.length > 0)
+            ? existingRendering.fx
+            : (cloudRendering.fx || []),
+          fxEnabled: existingRendering.fxEnabled !== undefined ? existingRendering.fxEnabled : true
+        }
+        // Stage 13a-Polish: backfill isBeneosCreature on every cloud-
+        // update — Pre-Polish-Tokens (no explicit marker yet) get the
+        // flag set silently the next time the cloud ships a refresh.
         await actor.setFlag("world", "beneos", {
           ...beneosFlag,
           originalName: compendiumName,
-          updateDate: Date.now()
+          updateDate: Date.now(),
+          isBeneosCreature: true,
+          rendering: mergedRendering
         })
       } catch (err) {
         console.warn("[Beneos Cloud] World actor update failed for", actor.name, err)
@@ -1354,10 +1603,12 @@ export class BeneosCloud {
 
     BeneosUtility.debugMessage("Importing token to compendium", tokenArray, event, isBatch)
 
-    // Create the "Beneos Spells" folder if it doesn't exist
-    const actorsFolder = game.folders.getName("Beneos Actors") || await Folder.create({
-      name: "Beneos Actors", type: "Actor"
-    })
+    // Punkt 1 — Folder-Restruktur: per-token folder paths are computed
+    // inside the loop now ("Beneos Creatures / [SRD|Beneos Originals] /
+    // <Type> / CR <X>"), in both the world Actor-Directory and the
+    // compendium pack. The legacy flat "Beneos Actors" world folder is no
+    // longer created automatically; pre-existing installs keep their old
+    // folders by direction (no migration).
 
     let tNow = Math.floor(Date.now() / 1000) // Get the current date in seconds
     let properName
@@ -1433,6 +1684,22 @@ export class BeneosCloud {
         file = new File([blob], tokenData.tokenImages[i].avatar.filename, { type: "image/webp" });
         await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, file, {}, { notify: false });
 
+        // Top-Down Stage 1: optional `*-top.webp` companion. Cloud
+        // delivers the field on every response once the backend patch
+        // is live; while it isn't (or for tokens whose top-asset isn't
+        // rendered yet) we silently skip and leave a debug hint.
+        const topData = tokenData.tokenImages[i].top
+        if (topData?.image64 && topData?.filename) {
+          const topResp = await fetch(`data:image/webp;base64,${topData.image64}`);
+          const topBlob = await topResp.blob();
+          const topFile = new File([topBlob], topData.filename, { type: "image/webp" });
+          await foundry.applications.apps.FilePicker.implementation.upload("data", finalFolder, topFile, {}, { notify: false });
+        } else {
+          BeneosUtility.debugMessage(
+            "[Beneos] No top-down variant in cloud response for token", tokenKey, "variant", i + 1
+          )
+        }
+
         // Create the journal entry
         let newJournal
         if (journalData) {
@@ -1460,6 +1727,45 @@ export class BeneosCloud {
         if (actorData) {
           actorData.img = `${finalFolder}/${tokenData.tokenImages[i].avatar.filename}`
           actorData.prototypeToken.texture.src = `${finalFolder}/${tokenData.tokenImages[i].token.filename}`
+          // Top-Down Stage 2/6/7/12/13a: honour the user's default
+          // install style. Stage 12 dropped the topData?.filename guard
+          // — setting is source-of-truth. Stage 13a: when the cloud-
+          // delivered actorJSON ships flags.world.beneos.rendering.
+          // topDownScale (per-token-default), use that instead of the
+          // BENEOS_SCALE_TOPDOWN constant.
+          try {
+            const installStyle = game.settings.get(BeneosUtility.moduleID(), "beneos-default-install-style")
+            const cloudRendering = actorData?.flags?.world?.beneos?.rendering || null
+            if (installStyle === "topdown"
+              && actorData.prototypeToken.texture.src.includes("-token.webp")) {
+              actorData.prototypeToken.texture.src =
+                actorData.prototypeToken.texture.src.replace("-token.webp", "-top.webp")
+              const topDownScale = (typeof cloudRendering?.topDownScale === "number" && cloudRendering.topDownScale > 0)
+                ? cloudRendering.topDownScale
+                : BeneosUtility.BENEOS_SCALE_TOPDOWN
+              if (actorData.prototypeToken.texture) {
+                actorData.prototypeToken.texture.scaleX = topDownScale
+                actorData.prototypeToken.texture.scaleY = topDownScale
+              }
+              actorData.prototypeToken.scale = topDownScale
+              if (!topData?.filename) {
+                BeneosUtility.debugMessage(
+                  "[Beneos] Top-Down install style active but cloud response has no top variant; relying on local file presence",
+                  tokenKey, "variant", i + 1
+                )
+              }
+            } else if (installStyle !== "topdown" && cloudRendering?.tokenizedScale
+              && typeof cloudRendering.tokenizedScale === "number" && cloudRendering.tokenizedScale > 0) {
+              // Stage 13a: 2.5D install path can also pick up a per-
+              // token-override for the tokenized scale (e.g. a giant's
+              // creature being sized larger than the 1.1 default).
+              if (actorData.prototypeToken.texture) {
+                actorData.prototypeToken.texture.scaleX = cloudRendering.tokenizedScale
+                actorData.prototypeToken.texture.scaleY = cloudRendering.tokenizedScale
+              }
+              actorData.prototypeToken.scale = cloudRendering.tokenizedScale
+            }
+          } catch (e) { /* setting not registered yet — fall back to 2.5D */ }
           let actor = new CONFIG.Actor.documentClass(actorData);
           if (actor) {
             // Search if we have already an actor with the same name in the compendium
@@ -1472,18 +1778,60 @@ export class BeneosCloud {
                 console.warn("[Beneos Cloud] Error deleting existing actor", err)
               }
             }
+            // Punkt 1 — Folder-Restruktur: compute the new path
+            // "Beneos Creatures / [SRD|Beneos Originals] / <Type> / CR <X>"
+            // for both the compendium folder and the world folder, so the
+            // compendium-doc and (later) the world-copy land in matching
+            // structured folders. Source-bucket detection is shared with V2.
+            const tokenDb = game.beneos.databaseHolder.getTokenDatabaseInfo(tokenKey)
+            const rawBucket = BeneosUtility.getSourceBucket(tokenDb, "token", tokenKey)
+            const folderBucket = BeneosUtility.getFolderBucket(rawBucket)
+            let creatureType = tokenDb?.properties?.type?.[0] ?? "Unknown"
+            creatureType = creatureType.charAt(0).toUpperCase() + creatureType.slice(1)
+            const crFolder = BeneosUtility.formatCrFolder(tokenDb?.properties?.cr)
+            const beneosSegments = ["Beneos Creatures", folderBucket, creatureType, crFolder]
+            const compendiumLeaf = await BeneosUtility.ensureBeneosFolderPath(
+              { type: "Actor", scope: "compendium", pack: "world.beneos_module_actors" },
+              beneosSegments
+            )
             // And then create it again
-            let imported = await actorPack.importDocument(actor);
+            let imported = await actorPack.importDocument(actor, compendiumLeaf?.id ? { folder: compendiumLeaf.id } : undefined);
             // Fix #C3: only mark as installed when import actually succeeded; previous
             // code accessed `imported.name` unconditionally, which crashed silently for
             // failed imports and could leave half-written settings.
             if (imported?.id) {
               properName = imported.name
-              await imported.setFlag("world", "beneos", { tokenKey, fullId, idx: i, journalId: newJournal?.id, installationDate: Date.now() })
+              if (compendiumLeaf?.id && imported.folder?.id !== compendiumLeaf.id) {
+                try { await imported.update({ folder: compendiumLeaf.id }) }
+                catch (err) { BeneosUtility.debugMessage("Folder assign failed (compendium actor)", err) }
+              }
+              // Stage 13a: pull rendering metadata (per-token scale +
+              // FX presets + fxEnabled) from the cloud-delivered
+              // actorJSON. The cloud may not yet ship this object, so
+              // we default to an empty `rendering: {}` — that's
+              // forward-compatible: getBeneosScale falls through to
+              // the BENEOS_SCALE_* constants when fields are absent.
+              // Stage 13a-Polish: explicit isBeneosCreature marker so
+              // future features can gate Beneos-only behavior on a
+              // boolean instead of relying on flag-existence
+              // truthiness.
+              const cloudRenderingFlag = actorData?.flags?.world?.beneos?.rendering || {}
+              await imported.setFlag("world", "beneos", {
+                tokenKey, fullId, idx: i,
+                journalId: newJournal?.id,
+                installationDate: Date.now(),
+                isBeneosCreature: true,
+                rendering: cloudRenderingFlag
+              })
               BeneosUtility.beneosTokens[fullId] = {
                 actorName: imported.name,
                 avatar: actorData.img,
                 token: actorData.prototypeToken.texture.src,
+                // Top-Down Stage 1: remember the top-webp path when the
+                // cloud included it; null otherwise so Stage 2 (mode
+                // switch) can detect old-cache entries that need a
+                // re-install.
+                topDown: (topData?.filename) ? `${finalFolder}/${topData.filename}` : null,
                 actorId: imported.id,
                 installDate: tNow,
                 journalId: newJournal?.id,
@@ -1498,12 +1846,10 @@ export class BeneosCloud {
               //   - Update: propagate to existing world actors (and scene tokens),
               //     skipping anything the DM has renamed.
               if (!this.noWorldImport && i == 0) {
-                let tokenDb = game.beneos.databaseHolder.getTokenDatabaseInfo(tokenKey)
-                let folderName = tokenDb?.properties?.type[0] ?? "Unknown"
-                folderName = folderName.charAt(0).toUpperCase() + folderName.slice(1)
-                let subFolder = game.folders.getName(folderName) || await Folder.create({
-                  name: folderName, type: "Actor", folder: actorsFolder.id
-                })
+                const worldLeaf = await BeneosUtility.ensureBeneosFolderPath(
+                  { type: "Actor", scope: "world" },
+                  beneosSegments
+                )
                 const existingWorldActors = game.actors.filter(a =>
                   a.getFlag("world", "beneos")?.fullId === fullId
                 )
@@ -1511,13 +1857,24 @@ export class BeneosCloud {
                   // First install: drop a fresh world copy and stamp the
                   // original compendium name so future updates can verify
                   // the world actor hasn't been renamed by the DM.
-                  const newWorldActor = await game.actors.importFromCompendium(actorPack, imported.id, { folder: subFolder.id });
+                  const newWorldActor = await game.actors.importFromCompendium(actorPack, imported.id, worldLeaf?.id ? { folder: worldLeaf.id } : {});
                   if (newWorldActor) {
                     const flag = newWorldActor.getFlag("world", "beneos") || {}
+                    // Stage 13a: rendering ships with the cloud actorJSON
+                    // and was already merged into the compendium imported
+                    // actor's flag (line 1786). importFromCompendium
+                    // copies that flag-tree, so it lands here too. We
+                    // just preserve it via spread; if the import dropped
+                    // it, fall back to the cloud value.
+                    // Stage 13a-Polish: ensure isBeneosCreature is set
+                    // explicitly on the world copy too.
+                    const cloudRenderingFlag = actorData?.flags?.world?.beneos?.rendering || {}
                     await newWorldActor.setFlag("world", "beneos", {
                       ...flag,
                       originalName: imported.name,
-                      installationDate: Date.now()
+                      installationDate: Date.now(),
+                      isBeneosCreature: true,
+                      rendering: flag.rendering || cloudRenderingFlag
                     })
                   }
                 } else {
@@ -1561,21 +1918,44 @@ export class BeneosCloud {
   }
 
   async batchInstall(assetList) {
+    // Per-kind compat gate. We bucket the batch by kind, run the gate once
+    // per kind that's actually present, and drop blocked kinds before the
+    // animation starts. Hard-blocked kinds (item/spell on non-dnd5e) emit
+    // an info dialog and silently disappear from the queue. The soft-warn
+    // for tokens/maps fires once with a session-bypass option. Dnd5e takes
+    // a single property-read fast path inside confirmSystemCompat.
+    const kindOrder = ["item", "spell", "token"]; // hard-blocked first so info dialogs come first
+    const buckets = { token: {}, item: {}, spell: {} };
+    for (let key in assetList) {
+      const asset = assetList[key];
+      if (asset.type === "actor" || asset.type === "token") buckets.token[key] = asset;
+      else if (asset.type === "item")  buckets.item[key]  = asset;
+      else if (asset.type === "spell") buckets.spell[key] = asset;
+    }
+    const filteredAssets = {};
+    for (const kind of kindOrder) {
+      const entries = buckets[kind];
+      if (!Object.keys(entries).length) continue;
+      if (!await BeneosUtility.confirmSystemCompat(kind)) continue;
+      Object.assign(filteredAssets, entries);
+    }
+    if (Object.keys(filteredAssets).length === 0) return;
+
     game.beneos.info = new BeneosInfoBox("Installation in progress - Search engine will refresh", "#ui-middle");
     game.beneos.info.show();
 
     await BeneosUtility.lockUnlockAllPacks(false)     // Unlock all packs before batch install
     // COunt the number of assets to install
     this.nbInstalled = 0
-    this.toInstall = Object.keys(assetList).length
+    this.toInstall = Object.keys(filteredAssets).length
     if (this.toInstall == 0) {
       ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Notification.BatchEmpty"))
       return;
     }
-    BeneosUtility.debugMessage("Batch installing assets", assetList, this.toInstall)
-    // Loop thru the assetList and install them
-    for (let key in assetList) {
-      let asset = assetList[key]
+    BeneosUtility.debugMessage("Batch installing assets", filteredAssets, this.toInstall)
+    // Loop thru the filtered assetList and install them
+    for (let key in filteredAssets) {
+      let asset = filteredAssets[key]
       BeneosUtility.debugMessage("Batch installing asset", asset)
       if (asset.type == "actor" || asset.type == "token") {
         this.importTokenFromCloud(asset.key, undefined, true)
@@ -1623,7 +2003,17 @@ export class BeneosCloud {
 
   // Wave B-9-fix-47: returns the Promise so multi-install loops can
   // sequence pipelines and avoid the compendium-lock race.
-  importTokenFromCloud(tokenKey, event = undefined, isBatch = false) {
+  //
+  // `isBatch` controls the compendium lock contract: when true, the caller
+  // (batchInstall) is responsible for the global lockUnlockAllPacks cycle.
+  // `opts.gated` is the system-compat gate flag: when true, the caller has
+  // already shown the prompt and we skip the per-import gate. The two are
+  // intentionally orthogonal — single-asset paths like the V2 install
+  // button or handlePendingCanvasDrop gate up-front (so the install
+  // animation only starts after Yes) but still want the import* function
+  // to manage its own pack lock.
+  async importTokenFromCloud(tokenKey, event = undefined, isBatch = false, opts = {}) {
+    if (!isBatch && !opts.gated && !await BeneosUtility.confirmSystemCompat("token")) return;
     // Fix #E3: ignore repeat clicks while this token's pipeline is still in flight.
     const lockKey = `token:${tokenKey}`
     if (this.inflightImports.has(lockKey)) {
@@ -1666,7 +2056,9 @@ export class BeneosCloud {
   // + drainPendingItemDrops) completes. Callers can `await` to sequence
   // multiple installs and avoid the compendium-lock race condition that
   // happened when 7+ parallel imports tried to lock/unlock the same pack.
-  importItemFromCloud(itemKey, event = undefined, isBatch = false) {
+  // See importTokenFromCloud for the isBatch-vs-opts.gated contract.
+  async importItemFromCloud(itemKey, event = undefined, isBatch = false, opts = {}) {
+    if (!isBatch && !opts.gated && !await BeneosUtility.confirmSystemCompat("item")) return;
     itemKey = itemKey.toLowerCase().replaceAll("-", "_") // Fix #B5: replaceAll handles multi-hyphen keys
     // Fix #E3: see importTokenFromCloud for rationale.
     const lockKey = `item:${itemKey}`
@@ -1703,7 +2095,9 @@ export class BeneosCloud {
   }
 
   // Wave B-9-fix-47: returns the Promise (see importItemFromCloud).
-  importSpellsFromCloud(spellKey, event = undefined, isBatch = false) {
+  // See importTokenFromCloud for the isBatch-vs-opts.gated contract.
+  async importSpellsFromCloud(spellKey, event = undefined, isBatch = false, opts = {}) {
+    if (!isBatch && !opts.gated && !await BeneosUtility.confirmSystemCompat("spell")) return;
     spellKey = spellKey.toLowerCase().replaceAll("-", "_") // Fix #B5: replaceAll handles multi-hyphen keys
     // Fix #E3: see importTokenFromCloud for rationale.
     const lockKey = `spell:${spellKey}`

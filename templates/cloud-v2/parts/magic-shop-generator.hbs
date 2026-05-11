@@ -1,0 +1,237 @@
+{{!-- Beneos Magic Shop Generator (Punkt 3 v3). Four-step wizard:
+     1. Shop-Type picker (dynamic from properties.shop tags)
+     2. Size + optional shop name
+     3. Loading
+     4. Result with save / reroll
+     Re-uses the loot-generator's CSS scope for animation parity. --}}
+<div class="blg-frame blg-shop-frame">
+
+  {{#if isStep1}}
+    <header class="blg-header">
+      <h2 class="blg-title">Magic Shop</h2>
+      <p class="blg-subtitle">Pick the shop type. Items and healing potions will be filtered to match.</p>
+    </header>
+    <div class="blg-step blg-step-shop-type">
+      <p class="blg-question">What kind of shop is this?</p>
+      {{#if hasShopTypes}}
+        <div class="blg-shop-type-grid">
+          {{#each shopTypes as |t|}}
+            <button type="button"
+                    class="blg-shop-type-btn{{#if t.selected}} is-selected{{/if}}"
+                    data-action="pickShopType"
+                    data-shop-type="{{t.key}}">
+              {{t.label}}
+            </button>
+          {{/each}}
+        </div>
+      {{else}}
+        <p class="blg-shop-type-empty">
+          No shop categories defined yet. Please update the Beneos item database.
+        </p>
+      {{/if}}
+    </div>
+  {{/if}}
+
+  {{#if isStep2}}
+    <header class="blg-header">
+      <h2 class="blg-title">{{shopTypeLabel}}</h2>
+      <p class="blg-subtitle">How big is the shop? Optionally name it.</p>
+    </header>
+    <div class="blg-step blg-step-shop-size">
+      <p class="blg-question">How big is the shop?</p>
+      <div class="blg-shop-size-grid">
+        {{#each sizes as |s|}}
+          <button type="button"
+                  class="blg-shop-size-btn{{#if s.selected}} is-selected{{/if}}"
+                  data-action="pickSize"
+                  data-size="{{s.key}}">
+            <div class="blg-shop-size-name">{{s.label}}</div>
+            <div class="blg-shop-size-sub">{{s.sub}}</div>
+            <div class="blg-shop-size-stats">
+              <span>{{s.slots.min}}–{{s.slots.max}} items</span>
+              <span>{{s.healing.min}}–{{s.healing.max}} potions</span>
+            </div>
+          </button>
+        {{/each}}
+      </div>
+      <div class="blg-shop-name-row">
+        <label for="blg-shop-name">Shop name (optional)</label>
+        <input type="text" id="blg-shop-name" class="blg-shop-name-input"
+               value="{{shopName}}" placeholder="{{shopNamePlaceholder}}" maxlength="64" />
+        <p class="blg-shop-name-hint">Leave empty to auto-name. Shops are saved under <em>Beneos Shop / &lt;Name&gt;</em>.</p>
+      </div>
+    </div>
+    <footer class="blg-footer">
+      <button type="button" class="blg-secondary-btn" data-action="restart">
+        <i class="fa-solid fa-arrow-left"></i> Back
+      </button>
+    </footer>
+  {{/if}}
+
+  {{#if isStep3}}
+    <header class="blg-header">
+      <h2 class="blg-title">Magic Shop</h2>
+      <p class="blg-subtitle">The shopkeeper is sorting the inventory…</p>
+    </header>
+    <div class="blg-rolling">
+      <div class="blg-dice-wrap">
+        <i class="fa-solid fa-shop blg-dice-icon"></i>
+      </div>
+      <p class="blg-rolling-text">Stocking the Shelves…</p>
+      <div class="blg-loading-track">
+        <div class="blg-loading-bar"></div>
+      </div>
+    </div>
+  {{/if}}
+
+  {{#if isStep4}}
+    <header class="blg-header">
+      <h2 class="blg-title">{{#if shopName}}{{shopName}}{{else}}{{shopNamePlaceholder}}{{/if}}</h2>
+      <p class="blg-subtitle">
+        {{shopTypeLabel}} · {{itemCount}} items · {{totalGoldFormatted}} gp inventory value
+      </p>
+      {{#if shopCash}}
+        <div class="blg-shop-cash" data-tooltip="Gold the shopkeeper has on hand to buy items from the players">
+          <i class="fa-solid fa-sack-dollar"></i> Cash on hand: <strong>{{shopCashFormatted}} gp</strong>
+        </div>
+      {{/if}}
+    </header>
+
+    <div class="blg-scroll-body">
+    {{#if hasDefaultItems}}
+      <section class="blg-shop-section blg-shop-default-section">
+        <header class="blg-shop-section-header">
+          <div class="blg-section-header-row">
+            <h3>Default Inventory</h3>
+            <button type="button" class="blg-add-slot-btn" data-action="addDefaultSlot" data-tooltip="Add another default item">
+              <i class="fa-solid fa-plus"></i>
+            </button>
+          </div>
+          <p class="blg-shop-section-hint">Always-stocked basics this shop carries. Drag any item directly onto a sheet to install it on the fly.</p>
+          {{#if poolWarningDefault}}
+            <div class="blg-pool-warning">
+              <i class="fa-solid fa-circle-exclamation"></i>
+              No more default items available for this shop type.
+            </div>
+          {{/if}}
+        </header>
+        <div class="blg-shop-default-list">
+          {{#each defaultItems as |x|}}
+            <article class="blg-shop-item blg-shop-item-default {{x.rarityClass}}{{#if x.isInstalled}} is-installed{{/if}}{{#if x.isDelivered}} is-delivered{{/if}}"
+                     data-item-key="{{x.itemKey}}"
+                     data-slot-idx="{{x.slotIdx}}"
+                     data-action="openItem"
+                     draggable="true"
+                     {{#if x.tooltipHtml}}data-tooltip="{{{x.tooltipHtml}}}"{{/if}}>
+              <div class="blg-shop-item-thumb">
+                {{#if x.thumbUrl}}
+                  <img src="{{x.thumbUrl}}" alt="{{x.name}}" loading="lazy" draggable="false" />
+                {{else}}
+                  <div class="blg-card-thumb-placeholder"><i class="fa-solid fa-question"></i></div>
+                {{/if}}
+                {{#unless x.isInstalled}}
+                  <span class="blg-cloud-cue" data-tooltip="Drag to install"><i class="fa-solid fa-cloud-arrow-down"></i></span>
+                {{/unless}}
+                {{#if x.isDelivered}}
+                  <span class="blg-delivered-marker" data-tooltip="Already delivered"><i class="fa-solid fa-check"></i></span>
+                {{/if}}
+              </div>
+              <div class="blg-shop-item-body">
+                <div class="blg-shop-item-name">{{x.name}}</div>
+                <div class="blg-shop-item-bottom">
+                  <span class="blg-shop-item-price"><i class="fa-solid fa-coins"></i> {{x.price}}</span>
+                </div>
+              </div>
+            </article>
+          {{/each}}
+        </div>
+      </section>
+    {{/if}}
+
+    <section class="blg-shop-section blg-shop-special-section">
+      <header class="blg-shop-section-header">
+        <div class="blg-section-header-row">
+          <h3>Special Items</h3>
+          <button type="button" class="blg-add-slot-btn" data-action="addSpecialSlot" data-tooltip="Add another special item">
+            <i class="fa-solid fa-plus"></i>
+          </button>
+        </div>
+        <p class="blg-shop-section-hint">Use these if your shop also offers magical or particularly valuable items. Click any card to install it and open the item sheet.</p>
+        {{#if poolWarningSpecial}}
+          <div class="blg-pool-warning">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            No more special items available for this shop type.
+          </div>
+        {{/if}}
+      </header>
+    <div class="blg-shop-list">
+      {{#each items as |x|}}
+        <article class="blg-shop-item {{x.rarityClass}}{{#if x.isInstalled}} is-installed{{/if}}{{#if x.isHealing}} is-healing{{/if}}{{#if x.isDelivered}} is-delivered{{/if}}"
+                 data-item-key="{{x.itemKey}}"
+                 data-slot-idx="{{x.slotIdx}}"
+                 data-action="openItem"
+                 draggable="true"
+                 {{#if x.tooltipHtml}}data-tooltip="{{{x.tooltipHtml}}}"{{/if}}>
+          <div class="blg-shop-item-thumb">
+            {{#if x.thumbUrl}}
+              <img src="{{x.thumbUrl}}" alt="{{x.name}}" loading="lazy" draggable="false" />
+            {{else}}
+              <div class="blg-card-thumb-placeholder"><i class="fa-solid fa-question"></i></div>
+            {{/if}}
+            {{#if x.isHealing}}
+              <span class="blg-healing-badge" data-tooltip="Guaranteed healing potion"><i class="fa-solid fa-heart-pulse"></i></span>
+            {{/if}}
+          </div>
+          <div class="blg-shop-item-body">
+            <div class="blg-shop-item-name">{{x.name}}</div>
+            <div class="blg-shop-item-pills">
+              <span class="blg-rarity-pill {{x.rarityClass}}">{{x.rarity}}</span>
+              {{#if x.itemTier}}<span class="blg-tier-pill">T{{x.itemTier}}</span>{{/if}}
+              {{#if x.itemType}}<span class="blg-type-pill">{{x.itemType}}</span>{{/if}}
+            </div>
+            <div class="blg-shop-item-bottom">
+              <span class="blg-shop-item-price"><i class="fa-solid fa-coins"></i> {{x.price}}</span>
+              <span class="blg-shop-item-bracket">{{x.bracket}}</span>
+            </div>
+          </div>
+          <div class="blg-shop-item-actions">
+            <button type="button" class="blg-shop-mini-btn" data-action="rollSlot" data-slot-idx="{{x.slotIdx}}" data-tooltip="Re-roll this slot">
+              <i class="fa-solid fa-dice-d20"></i>
+            </button>
+            <button type="button" class="blg-shop-mini-btn blg-shop-mini-danger" data-action="removeSlot" data-slot-idx="{{x.slotIdx}}" data-tooltip="Remove this item">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+            {{#unless x.isInstalled}}
+              <button type="button" class="blg-shop-mini-btn blg-shop-mini-install" data-action="installPick" data-item-key="{{x.itemKey}}" data-tooltip="Install this item now">
+                <i class="fa-solid fa-cloud-arrow-down"></i>
+              </button>
+            {{/unless}}
+          </div>
+        </article>
+      {{/each}}
+    </div>
+
+    </section>
+    </div>
+
+    <footer class="blg-footer blg-footer-shop">
+      <button type="button" class="blg-secondary-btn" data-action="restart" {{#if saving}}disabled{{/if}}>
+        <i class="fa-solid fa-rotate-left"></i> Restart
+      </button>
+      <button type="button" class="blg-secondary-btn" data-action="reroll" {{#if saving}}disabled{{/if}}>
+        <i class="fa-solid fa-dice-d20"></i> Reroll All
+        {{#if rerollCount}}<span class="blg-reroll-count">#{{rerollCount}}</span>{{/if}}
+      </button>
+      <button type="button" class="blg-primary-btn" data-action="saveShop"
+              data-tooltip="{{{saveTooltip}}}"
+              {{#if saving}}disabled{{/if}}>
+        {{#if saving}}
+          <i class="fa-solid fa-spinner fa-spin"></i> Saving…
+        {{else}}
+          <i class="fa-solid fa-floppy-disk"></i> Save Shop to World
+        {{/if}}
+      </button>
+    </footer>
+  {{/if}}
+
+</div>

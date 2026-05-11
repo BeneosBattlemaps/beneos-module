@@ -1,0 +1,125 @@
+{{!-- Stage 13c-full: FX-Editor-Window-Body. Generic Param-Renderer
+     iteriert über entry.paramDefs aus dem Schema; Filter-Library-
+     Section am Ende ersetzt den alten "Add Drop Shadow"-Single-
+     Button durch eine 2-Spalten-Grid mit allen verfügbaren Filter-
+     Typen. --}}
+<div class="bfx-editor-body">
+  <header class="bfx-header">
+    <p class="bfx-subtitle">
+      {{localize "BENEOS.FXEditor.Subtitle"}}
+      <span class="bfx-mode-tag bfx-mode-{{editingMode}}">{{editingModeLabel}}</span>
+    </p>
+    {{#if isLegacyShared}}
+      <p class="bfx-legacy-hint">{{localize "BENEOS.FXEditor.LegacyFallbackHint"}}</p>
+    {{/if}}
+  </header>
+
+  <ul class="bfx-list">
+    {{#each fx as |entry idx|}}
+      <li class="bfx-entry{{#unless entry.enabled}} bfx-disabled{{/unless}}">
+        <header class="bfx-entry-head">
+          <label class="bfx-toggle">
+            <input type="checkbox" data-action="toggleFx" data-fx-idx="{{idx}}"
+                   {{#if entry.enabled}}checked{{/if}} />
+            <i class="{{entry.typeIcon}} bfx-entry-icon"></i>
+            <span class="bfx-entry-label">{{entry.typeLabel}}</span>
+          </label>
+          <button type="button" class="bfx-remove-btn" data-action="removeFx" data-fx-idx="{{idx}}"
+                  data-tooltip="{{localize 'BENEOS.FXEditor.RemoveTooltip'}}">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </header>
+        <div class="bfx-params">
+          {{#each entry.paramDefs as |p|}}
+            <label class="bfx-param">
+              <span class="bfx-param-name">{{p.label}}</span>
+              {{#if (eq p.control "slider")}}
+                <input type="range" min="{{p.min}}" max="{{p.max}}" step="{{p.step}}"
+                       value="{{p.value}}"
+                       data-fx-idx="{{idx}}" data-param="{{p.name}}" />
+                <span class="bfx-value">{{p.displayValue}}{{p.unit}}</span>
+              {{else if (eq p.control "color")}}
+                <input type="color"
+                       value="{{p.colorHex}}"
+                       data-fx-idx="{{idx}}" data-param="{{p.name}}" />
+                <span class="bfx-value">{{p.colorHex}}</span>
+              {{/if}}
+            </label>
+          {{/each}}
+        </div>
+      </li>
+    {{/each}}
+    {{#unless hasFx}}
+      <li class="bfx-empty">{{localize "BENEOS.FXEditor.Empty"}}</li>
+    {{/unless}}
+  </ul>
+
+  {{!-- Stage 13d-8: Library-Stack — alle drei Library-Sections
+       (Filters / Particles / Render-Layers) leben in einem
+       gemeinsamen scrollbaren Container, sodass die Effekt-Liste
+       oben mehr Platz behält. --}}
+  <div class="bfx-library-stack">
+    <section class="bfx-library">
+      <header class="bfx-library-head">
+        {{localize "BENEOS.FXEditor.LibraryFilters"}}
+      </header>
+      <div class="bfx-library-grid">
+        {{#each filterTypes as |t|}}
+          <button type="button" class="bfx-library-item"
+                  data-action="addFilter" data-fx-type="{{t.id}}"
+                  data-tooltip="{{t.description}}">
+            <i class="{{t.icon}}"></i>
+            <span class="bfx-library-label">{{t.label}}</span>
+          </button>
+        {{/each}}
+      </div>
+    </section>
+
+    {{#if hasParticles}}
+      <section class="bfx-library">
+        <header class="bfx-library-head">
+          {{localize "BENEOS.FXEditor.LibraryParticles"}}
+        </header>
+        <div class="bfx-library-grid">
+          {{#each particleTypes as |t|}}
+            <button type="button" class="bfx-library-item"
+                    data-action="addFilter" data-fx-type="{{t.id}}"
+                    data-tooltip="{{t.description}}">
+              <i class="{{t.icon}}"></i>
+              <span class="bfx-library-label">{{t.label}}</span>
+            </button>
+          {{/each}}
+        </div>
+      </section>
+    {{/if}}
+
+    {{#if hasRenderLayers}}
+      <section class="bfx-library">
+        <header class="bfx-library-head">
+          {{localize "BENEOS.FXEditor.LibraryRenderLayers"}}
+        </header>
+        <div class="bfx-library-grid">
+          {{#each renderLayerTypes as |t|}}
+            <button type="button" class="bfx-library-item"
+                    data-action="addFilter" data-fx-type="{{t.id}}"
+                    data-tooltip="{{t.description}}">
+              <i class="{{t.icon}}"></i>
+              <span class="bfx-library-label">{{t.label}}</span>
+            </button>
+          {{/each}}
+        </div>
+      </section>
+    {{/if}}
+  </div>
+
+  <footer class="bfx-footer">
+    <button type="button" data-action="copyJson" class="bfx-copy-btn"
+            data-tooltip="{{localize 'BENEOS.FXEditor.CopyJsonTooltip'}}">
+      <i class="fa-solid fa-copy"></i>
+      {{localize "BENEOS.FXEditor.CopyJson"}}
+    </button>
+    <button type="button" data-action="closeEditor" class="bfx-close-btn">
+      {{localize "BENEOS.FXEditor.Close"}}
+    </button>
+  </footer>
+</div>

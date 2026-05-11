@@ -1,0 +1,246 @@
+{{!-- Beneos Loot Generator (Punkt 3). Single template renders all
+     three wizard steps via {{#if isStepN}}. Action wiring uses the
+     ApplicationV2 data-action attribute so handlers are routed
+     through DEFAULT_OPTIONS.actions in loot-generator.mjs. --}}
+<div class="blg-frame">
+
+  {{#if isStep1}}
+    <header class="blg-header">
+      <h2 class="blg-title">Loot Generator</h2>
+      <p class="blg-subtitle">Roll random magic items appropriate for your party after a battle.</p>
+    </header>
+    <div class="blg-step blg-step-bias">
+      <p class="blg-question">How rare should the items be?</p>
+      <div class="blg-bias-row">
+        {{#each biases as |b|}}
+          <button type="button"
+                  class="blg-bias-btn{{#if b.selected}} is-selected{{/if}}"
+                  data-action="pickBias"
+                  data-bias="{{b.key}}"
+                  data-tooltip="{{b.tooltip}}">
+            <span class="blg-bias-label">{{b.label}}</span>
+          </button>
+        {{/each}}
+      </div>
+    </div>
+  {{/if}}
+
+  {{#if isStep2}}
+    <header class="blg-header">
+      <h2 class="blg-title">Loot Generator</h2>
+      <p class="blg-subtitle">Pick the tier that matches your party's level.</p>
+    </header>
+    <div class="blg-step blg-step-tier">
+      <p class="blg-question">What level is your party?</p>
+      <div class="blg-tier-grid">
+        {{#each tiers as |t|}}
+          <button type="button"
+                  class="blg-tier-btn{{#if t.selected}} is-selected{{/if}}"
+                  data-action="pickTier"
+                  data-tier="{{t.tier}}">
+            <div class="blg-tier-name">Tier {{t.tier}}</div>
+            <div class="blg-tier-levels">Levels {{t.levels}}</div>
+            <div class="blg-tier-tag">{{t.tag}}</div>
+          </button>
+        {{/each}}
+      </div>
+    </div>
+    <footer class="blg-footer">
+      <button type="button" class="blg-secondary-btn" data-action="restart">
+        <i class="fa-solid fa-arrow-left"></i> Back
+      </button>
+    </footer>
+  {{/if}}
+
+  {{#if isStep3}}
+    <header class="blg-header">
+      <h2 class="blg-title">Loot Generator</h2>
+      {{#if rolling}}
+        <p class="blg-subtitle">The dice are rolling…</p>
+      {{else}}
+        <p class="blg-subtitle">Three magic items have been awarded to your party.</p>
+      {{/if}}
+    </header>
+
+    <div class="blg-scroll-body">
+    {{#if rolling}}
+      <div class="blg-rolling">
+        <div class="blg-dice-wrap">
+          <i class="fa-solid fa-dice-d20 blg-dice-icon"></i>
+        </div>
+        <p class="blg-rolling-text">Rolling Loot…</p>
+        <div class="blg-loading-track">
+          <div class="blg-loading-bar"></div>
+        </div>
+      </div>
+    {{else}}
+      {{#if hasLegendary}}
+        <div class="blg-banner blg-banner-legendary">
+          <span class="blg-banner-spark blg-banner-spark-1"></span>
+          <span class="blg-banner-spark blg-banner-spark-2"></span>
+          <span class="blg-banner-spark blg-banner-spark-3"></span>
+          <span class="blg-banner-spark blg-banner-spark-4"></span>
+          <span class="blg-banner-text"><i class="fa-solid fa-star"></i> LEGENDARY DROP!</span>
+        </div>
+      {{else if hasVeryRare}}
+        <div class="blg-banner blg-banner-veryrare">
+          <span class="blg-banner-text"><i class="fa-solid fa-gem"></i> Very Rare find</span>
+        </div>
+      {{/if}}
+
+      {{#if hasHoard}}
+        <div class="blg-hoard-strip">
+          {{#if goldFormatted}}
+            <span class="blg-hoard-gold"
+                  draggable="true"
+                  data-tooltip="Drag onto a character sheet to drop a gold pile, or click Claim to add directly">
+              <i class="fa-solid fa-coins"></i> {{goldFormatted}} gp
+              <button type="button" class="blg-claim-gold-btn"
+                      data-action="claimGold"
+                      data-tooltip="Add this gold to the active character (selected token, or your User Character)">
+                <i class="fa-solid fa-hand-holding-dollar"></i> Claim
+              </button>
+            </span>
+          {{/if}}
+          {{#each treasures as |t|}}
+            <span class="blg-hoard-treasure{{#if t.isInstalled}} is-installed{{/if}}{{#if t.isDelivered}} is-delivered{{/if}}"
+                  data-item-key="{{t.itemKey}}"
+                  data-action="openItem"
+                  draggable="true"
+                  {{#if t.tooltipHtml}}data-tooltip="{{{t.tooltipHtml}}}"{{/if}}>
+              <i class="fa-solid fa-gem"></i>
+              <span class="blg-hoard-treasure-name">{{t.name}}</span>
+              {{#if t.price}}<span class="blg-hoard-treasure-price">{{t.price}}</span>{{/if}}
+            </span>
+          {{/each}}
+        </div>
+      {{/if}}
+
+      {{#if hasWondrous}}
+        <div class="blg-wondrous-twist">
+          <header class="blg-wondrous-header">
+            <i class="fa-solid fa-wand-sparkles"></i> Wondrous Twist
+            <span class="blg-wondrous-sub">a curious bonus from the depths of the hoard</span>
+          </header>
+          <article class="blg-result-card blg-wondrous-card {{wondrous.rarityClass}}{{#if wondrous.isInstalled}} is-installed{{/if}}{{#if wondrous.isDelivered}} is-delivered{{/if}}"
+                   data-item-key="{{wondrous.itemKey}}"
+                   data-action="openItem"
+                   draggable="true"
+                   {{#if wondrous.tooltipHtml}}data-tooltip="{{{wondrous.tooltipHtml}}}"{{/if}}>
+            <div class="blg-card-glow"></div>
+            <div class="blg-card-thumb">
+              {{#if wondrous.thumbUrl}}
+                <img src="{{wondrous.thumbUrl}}" alt="{{wondrous.name}}" loading="lazy" draggable="false" />
+              {{else}}
+                <div class="blg-card-thumb-placeholder"><i class="fa-solid fa-question"></i></div>
+              {{/if}}
+            </div>
+            <h3 class="blg-card-name">{{wondrous.name}}</h3>
+            <div class="blg-card-meta">
+              <span class="blg-rarity-pill {{wondrous.rarityClass}}">{{wondrous.rarity}}</span>
+              {{#if wondrous.itemTier}}<span class="blg-tier-pill">T{{wondrous.itemTier}}</span>{{/if}}
+              <span class="blg-type-pill">Wondrous</span>
+            </div>
+            {{#if wondrous.price}}
+              <div class="blg-card-price"><i class="fa-solid fa-coins"></i> {{wondrous.price}}</div>
+            {{/if}}
+            <div class="blg-card-actions">
+              {{#if wondrous.isInstalled}}
+                <span class="blg-drag-hint"><i class="fa-solid fa-up-down-left-right"></i> Drag to character sheet</span>
+              {{else}}
+                <button type="button" class="blg-install-btn"
+                        data-action="installPick"
+                        data-item-key="{{wondrous.itemKey}}">
+                  <i class="fa-solid fa-cloud-arrow-down"></i> Install
+                </button>
+              {{/if}}
+            </div>
+          </article>
+        </div>
+      {{/if}}
+
+      <div class="blg-results">
+        {{#each results as |r|}}
+          <article class="blg-result-card {{r.rarityClass}}{{#if r.isInstalled}} is-installed{{/if}}{{#if r.isLegendary}} is-legendary{{/if}}{{#if r.isDelivered}} is-delivered{{/if}}"
+                   data-item-key="{{r.itemKey}}"
+                   data-action="openItem"
+                   draggable="true"
+                   {{#if r.tooltipHtml}}data-tooltip="{{{r.tooltipHtml}}}"{{/if}}>
+            <div class="blg-card-glow"></div>
+            <div class="blg-card-thumb">
+              {{#if r.thumbUrl}}
+                <img src="{{r.thumbUrl}}" alt="{{r.name}}" loading="lazy" draggable="false" />
+              {{else}}
+                <div class="blg-card-thumb-placeholder">
+                  <i class="fa-solid fa-question"></i>
+                </div>
+              {{/if}}
+            </div>
+            <h3 class="blg-card-name">{{r.name}}</h3>
+            <div class="blg-card-meta">
+              <span class="blg-rarity-pill {{r.rarityClass}}">{{r.rarity}}</span>
+              {{#if r.itemTier}}<span class="blg-tier-pill">T{{r.itemTier}}</span>{{/if}}
+              {{#if r.itemType}}<span class="blg-type-pill">{{r.itemType}}</span>{{/if}}
+            </div>
+            {{#if r.price}}
+              <div class="blg-card-price"><i class="fa-solid fa-coins"></i> {{r.price}}</div>
+            {{/if}}
+            <div class="blg-card-prob">
+              <span class="blg-prob-label">{{r.probabilityPct}} chance</span>
+              {{#if r.crossTierMarker}}
+                {{#if (eq r.crossTierMarker "up")}}
+                  <span class="blg-cross-tier blg-cross-up" data-tooltip="One tier above your party">⚡ Tier ↑</span>
+                {{else}}
+                  <span class="blg-cross-tier blg-cross-down" data-tooltip="One tier below your party">⬇ Tier ↓</span>
+                {{/if}}
+              {{/if}}
+              {{#if r.isFallbackBucket}}
+                <span class="blg-cross-tier blg-cross-fallback" data-tooltip="Pulled from a broader pool. DB had no exact match.">≈ Substituted</span>
+              {{/if}}
+            </div>
+            <div class="blg-card-actions">
+              {{#if r.isInstalled}}
+                <span class="blg-drag-hint"><i class="fa-solid fa-up-down-left-right"></i> Drag to character sheet</span>
+              {{else}}
+                <button type="button" class="blg-install-btn"
+                        data-action="installPick"
+                        data-item-key="{{r.itemKey}}">
+                  <i class="fa-solid fa-cloud-arrow-down"></i> Install
+                </button>
+              {{/if}}
+            </div>
+          </article>
+        {{/each}}
+      </div>
+
+      <div class="blg-add-slot-row">
+        <button type="button" class="blg-add-slot-btn blg-add-slot-btn-row"
+                data-action="addLootSlot"
+                data-tooltip="Add another loot item">
+          <i class="fa-solid fa-plus"></i>
+          <span>Add Loot Slot</span>
+        </button>
+        {{#if poolWarningLoot}}
+          <div class="blg-pool-warning">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            No more items available for this rarity / tier combination.
+          </div>
+        {{/if}}
+      </div>
+    {{/if}}
+    </div>
+
+    <footer class="blg-footer blg-footer-step3">
+      <button type="button" class="blg-secondary-btn" data-action="restart">
+        <i class="fa-solid fa-rotate-left"></i> Restart
+      </button>
+      {{#unless rolling}}
+        <button type="button" class="blg-primary-btn" data-action="reroll">
+          <i class="fa-solid fa-dice-d20"></i> Reroll
+          {{#if rerollCount}}<span class="blg-reroll-count">#{{rerollCount}}</span>{{/if}}
+        </button>
+      {{/unless}}
+    </footer>
+  {{/if}}
+
+</div>

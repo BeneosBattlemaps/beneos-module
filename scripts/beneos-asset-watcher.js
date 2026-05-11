@@ -31,6 +31,8 @@
  * needs a clear breadcrumb trail.
  */
 
+import { BeneosRepairMenuApp } from "./beneos-asset-repair-dialog.js";
+
 const MODULE_ID = "beneos-module";
 const SETTING_ENABLED = "assetWatcherEnabled";
 const FLAG_DISMISSED = "dismissedMissingAssets";
@@ -38,7 +40,21 @@ const WARN = (...args) => console.warn("Beneos AssetWatcher |", ...args);
 
 // Reuses the path conventions already recognised elsewhere in the module
 // (beneos_utility.js:710, 856, 865 and ctRotCerfAsset in beneos_tours.js).
-const BENEOS_PATH_RE = /(?:^|\/)beneos_(?:assets|battlemaps)\//i;
+//
+// Two distinct shapes we accept as "Beneos-owned":
+// 1) Anything under a beneos_assets/ or beneos_battlemaps/ folder — the
+//    legacy convention used by the token pipeline and pre-Moulinette
+//    installs.
+// 2) Anything under moulinette/<subroot>/beneos[-_]…/ — files that
+//    Moulinette extracted from a Beneos cloud pack live inside the
+//    pack's own world-folder (e.g. moulinette/adventures/beneos-battle\
+//    maps-universe/map_assets/icons/icon_prison.svg). Without this
+//    branch the watcher silently ignores broken assets sitting under
+//    map_assets/, sound_effects/, etc. — these subdirs don't carry
+//    the beneos_ token but they are unambiguously Beneos because of
+//    their grandparent folder.
+const BENEOS_PATH_RE =
+  /(?:^|\/)beneos_(?:assets|battlemaps)\/|^moulinette\/(?:adventures|images|sounds|scenes)\/beneos[-_]/i;
 
 // Public FAQ page. The site itself can handle language negotiation; we open
 // a single canonical URL so old/new Beneos installs all land on the right
@@ -108,6 +124,35 @@ WATCHER_CSS.textContent = `
     line-height: 1.4;
     word-break: break-all;
   }
+  .beneos-asset-watcher-dialog .beneos-aw-pathlist li.beneos-aw-entry {
+    list-style: none;
+    margin: 0.4em 0;
+    padding: 0.35em 0.5em;
+    border-left: 2px solid #f5c992;
+    background: rgba(245, 201, 146, 0.05);
+    border-radius: 2px;
+  }
+  .beneos-asset-watcher-dialog .beneos-aw-entry-context {
+    font-size: 0.9em;
+    color: #b8b6b3;
+    line-height: 1.3;
+  }
+  .beneos-asset-watcher-dialog .beneos-aw-entry-context strong {
+    color: #f5c992;
+  }
+  .beneos-asset-watcher-dialog .beneos-aw-entry-child {
+    color: #8d8b88;
+    font-size: 0.9em;
+  }
+  .beneos-asset-watcher-dialog .beneos-aw-entry-asset {
+    font-size: 0.95em;
+    margin-top: 0.1em;
+  }
+  .beneos-asset-watcher-dialog .beneos-aw-entry-asset code {
+    color: #e6e5e3;
+    background: transparent;
+    padding: 0;
+  }
   .beneos-asset-watcher-dialog .beneos-aw-copy {
     background: #2a2623 !important;
     color: #f5c992 !important;
@@ -139,6 +184,78 @@ WATCHER_CSS.textContent = `
   .beneos-asset-watcher-dialog .dialog-buttons button:hover {
     background: #3a3228 !important;
   }
+  /* Phase E (still-missing) — source list + per-row actions */
+  .beneos-asset-watcher-dialog .beneos-rd-stillmissing h3 {
+    margin: 0.6em 0 0.4em;
+    color: #f5c992;
+    border-bottom: 1px solid #3a3228;
+    padding-bottom: 0.25em;
+  }
+  .beneos-asset-watcher-dialog .beneos-rd-missing {
+    margin: 0.4em 0;
+    padding: 0.4em 0.5em;
+    border-left: 2px solid #f5c992;
+    background: rgba(245, 201, 146, 0.04);
+    border-radius: 2px;
+  }
+  .beneos-asset-watcher-dialog .beneos-rd-missing summary {
+    cursor: pointer;
+    color: #e6e5e3;
+    list-style: none;
+  }
+  .beneos-asset-watcher-dialog .beneos-rd-missing summary::-webkit-details-marker {
+    display: none;
+  }
+  .beneos-asset-watcher-dialog .beneos-rd-show-path {
+    padding: 2px 6px !important;
+    margin-left: 6px;
+    font-size: 0.85em;
+  }
+  .beneos-asset-watcher-dialog .beneos-rd-source {
+    padding: 0.35em 0.5em;
+    margin: 0.25em 0;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 2px;
+  }
+  .beneos-asset-watcher-dialog .beneos-rd-source-line {
+    font-size: 0.9em;
+    color: #b8b6b3;
+    margin-bottom: 0.3em;
+  }
+  .beneos-asset-watcher-dialog .beneos-rd-kind {
+    color: #f5c992;
+  }
+  .beneos-asset-watcher-dialog .beneos-rd-source-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35em;
+  }
+  .beneos-asset-watcher-dialog .beneos-rd-action {
+    background: #2a2623 !important;
+    color: #f5c992 !important;
+    border: 1px solid #f5c992 !important;
+    padding: 4px 8px !important;
+    font-size: 0.85em;
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  .beneos-asset-watcher-dialog .beneos-rd-action:hover {
+    background: #3a3228 !important;
+  }
+  .beneos-asset-watcher-dialog .beneos-rd-education {
+    margin: 0.6em 0;
+    padding: 0.5em;
+    background: rgba(245, 201, 146, 0.06);
+    border-left: 3px solid #f5c992;
+    border-radius: 2px;
+  }
+  .beneos-asset-watcher-dialog .beneos-rd-education p {
+    margin: 0.4em 0;
+    color: #e6e5e3;
+  }
+  .beneos-asset-watcher-dialog progress {
+    accent-color: #f5c992;
+  }
 `;
 document.head.appendChild(WATCHER_CSS);
 
@@ -148,23 +265,191 @@ const isBeneosPath = (src) => {
   return BENEOS_PATH_RE.test(src);
 };
 
-const collectBeneosPaths = (scene) => {
-  const paths = new Set();
-  const push = (p) => { if (isBeneosPath(p)) paths.add(p); };
-  push(scene.background?.src);
-  push(typeof scene.foreground === "string" ? scene.foreground : scene.foreground?.src);
-  push(scene.firstLevel?.background?.src);
-  for (const t of scene.tiles ?? [])  push(t.texture?.src);
-  for (const t of scene.tokens ?? []) push(t.texture?.src);
-  for (const n of scene.notes ?? []) { push(n.texture?.src); push(n.icon); }
-  return [...paths];
+// Pull the filename ("foo.webp") out of a path for compact display in the
+// watcher dialog. Falls back to the whole string if no slash present.
+const _basename = (p) => {
+  if (typeof p !== "string" || !p) return "";
+  const decoded = p.replace(/\\/g, "/");
+  const last = decoded.split("/").pop();
+  return last || decoded;
 };
 
+// Structured ref: { path, kind, entityType, entityId, entityName, field,
+// fileName, ownerType?, ownerId?, ownerName? }. The optional owner fields
+// describe a containing document — e.g. an item-img has entityType="Item"
+// with the actor as owner. Phase-E in the repair dialog uses these to
+// build the "Scene X — Tile" / "Actor Y (Item: Z) — Icon" labels and to
+// pick the right delete/remove action.
+const _ref = (path, kind, entityType, entity, field, ownerType, owner) => ({
+  path,
+  kind,
+  entityType,
+  entityId: entity?.id ?? null,
+  entityName: entity?.name ?? "",
+  field,
+  fileName: _basename(path),
+  ownerType: ownerType ?? null,
+  ownerId: owner?.id ?? null,
+  ownerName: owner?.name ?? null
+});
+
+const _sceneRefs = (scene) => {
+  const out = [];
+  const push = (path, kind, entity, field) => {
+    if (isBeneosPath(path)) out.push(_ref(path, kind, "Scene", entity ?? scene, field));
+  };
+  push(scene.background?.src, "background", scene, "background.src");
+  const fgRaw = typeof scene.foreground === "string" ? scene.foreground : scene.foreground?.src;
+  if (isBeneosPath(fgRaw)) {
+    out.push(_ref(
+      fgRaw,
+      "foreground",
+      "Scene",
+      scene,
+      typeof scene.foreground === "string" ? "foreground" : "foreground.src"
+    ));
+  }
+  push(scene.firstLevel?.background?.src, "firstLevelBg", scene, "firstLevel.background.src");
+  for (const t of scene.tiles ?? []) {
+    if (isBeneosPath(t.texture?.src)) {
+      out.push(_ref(t.texture.src, "tile", "Tile", t, "texture.src", "Scene", scene));
+    }
+  }
+  for (const t of scene.tokens ?? []) {
+    if (isBeneosPath(t.texture?.src)) {
+      out.push(_ref(t.texture.src, "token", "Token", t, "texture.src", "Scene", scene));
+    }
+  }
+  for (const n of scene.notes ?? []) {
+    if (isBeneosPath(n.texture?.src)) {
+      out.push(_ref(n.texture.src, "note-texture", "Note", n, "texture.src", "Scene", scene));
+    }
+    if (isBeneosPath(n.icon)) {
+      out.push(_ref(n.icon, "note-icon", "Note", n, "icon", "Scene", scene));
+    }
+  }
+  for (const s of scene.sounds ?? []) {
+    if (isBeneosPath(s.path)) {
+      out.push(_ref(s.path, "sound", "AmbientSound", s, "path", "Scene", scene));
+    }
+  }
+  return out;
+};
+
+const _actorRefs = (actor) => {
+  const out = [];
+  if (isBeneosPath(actor.img)) {
+    out.push(_ref(actor.img, "actor-img", "Actor", actor, "img"));
+  }
+  if (isBeneosPath(actor.prototypeToken?.texture?.src)) {
+    out.push(_ref(actor.prototypeToken.texture.src, "prototype-token", "Actor", actor, "prototypeToken.texture.src"));
+  }
+  for (const item of actor.items ?? []) {
+    if (isBeneosPath(item.img)) {
+      out.push(_ref(item.img, "item-img", "Item", item, "img", "Actor", actor));
+    }
+    for (const eff of item.effects ?? []) {
+      const effPath = eff.img ?? eff.icon;
+      const effField = eff.img ? "img" : "icon";
+      if (isBeneosPath(effPath)) {
+        out.push(_ref(effPath, "item-effect-icon", "ActiveEffect", eff, effField, "Item", item));
+      }
+    }
+  }
+  for (const eff of actor.effects ?? []) {
+    const effPath = eff.img ?? eff.icon;
+    const effField = eff.img ? "img" : "icon";
+    if (isBeneosPath(effPath)) {
+      out.push(_ref(effPath, "effect-icon", "ActiveEffect", eff, effField, "Actor", actor));
+    }
+  }
+  return out;
+};
+
+const _journalRefs = (journal) => {
+  const out = [];
+  if (isBeneosPath(journal.img)) {
+    out.push(_ref(journal.img, "journal-img", "JournalEntry", journal, "img"));
+  }
+  for (const page of journal.pages ?? []) {
+    if (isBeneosPath(page.src)) {
+      out.push(_ref(page.src, "journal-page", "JournalEntryPage", page, "src", "JournalEntry", journal));
+    }
+    const html = page.text?.content;
+    if (typeof html === "string" && html.length > 0) {
+      const re = /<(?:img|video|source|audio)\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi;
+      let m;
+      while ((m = re.exec(html)) !== null) {
+        if (isBeneosPath(m[1])) {
+          out.push(_ref(m[1], "journal-page", "JournalEntryPage", page, "text.content", "JournalEntry", journal));
+        }
+      }
+    }
+  }
+  return out;
+};
+
+const _playlistRefs = (playlist) => {
+  const out = [];
+  for (const s of playlist.sounds ?? []) {
+    if (isBeneosPath(s.path)) {
+      out.push(_ref(s.path, "playlist-sound", "PlaylistSound", s, "path", "Playlist", playlist));
+    }
+  }
+  return out;
+};
+
+const _tableRefs = (table) => {
+  const out = [];
+  if (isBeneosPath(table.img)) {
+    out.push(_ref(table.img, "table-img", "RollTable", table, "img"));
+  }
+  for (const r of table.results ?? []) {
+    if (isBeneosPath(r.img)) {
+      out.push(_ref(r.img, "table-result", "TableResult", r, "img", "RollTable", table));
+    }
+  }
+  return out;
+};
+
+// Legacy shim — returns deduplicated path strings. New code should use
+// _sceneRefs / collectBeneosRefs to keep entity / kind / field info.
+const collectBeneosPaths = (scene) => {
+  const seen = new Set();
+  for (const ref of _sceneRefs(scene)) seen.add(ref.path);
+  return [...seen];
+};
+
+const collectBeneosRefs = (scene) => _sceneRefs(scene);
+
+// Existence check for missing-asset detection.
+//
+// Two-step: foundry.utils.srcExists first (FilePicker-aware, matches
+// what loadTexture sees), then a raw HEAD with cache: "no-store" to
+// defeat stale browser caches AND inspect Content-Type — some Foundry
+// hosting setups answer 200 with an HTML error/fallback page for
+// missing assets, which would otherwise look like a successful probe.
+//
+// Function name kept as `headCheck` for back-compat with external
+// callers; return shape matches the old { ok, status? } contract.
 const headCheck = async (path) => {
-  const url = path.split("/").map(encodeURIComponent).join("/");
   try {
+    let exists;
+    try { exists = await foundry.utils.srcExists(path); }
+    catch (e) { exists = null; }
+    if (exists === false) return { ok: false, status: 404 };
+
+    // Belt-and-suspenders raw HEAD: forces revalidation against the
+    // server even if the browser has a stale cached HEAD response, and
+    // lets us reject HTML-fallback "200 OK" pages by content-type.
+    const url = path.split("/").map(encodeURIComponent).join("/");
     const resp = await fetch(url, { method: "HEAD", cache: "no-store" });
-    return { ok: resp.ok, status: resp.status };
+    if (!resp.ok) return { ok: false, status: resp.status };
+    const ct = (resp.headers.get("content-type") || "").toLowerCase();
+    if (ct.startsWith("text/html") && !/\.html?$/i.test(path)) {
+      return { ok: false, status: 415, note: "html-fallback" };
+    }
+    return { ok: true, status: 200 };
   } catch (e) {
     return { ok: false, status: -1, error: String(e) };
   }
@@ -184,28 +469,30 @@ const persistDismissal = async (scene, paths) => {
 };
 
 const runCheck = async (scene, { forceDialog = false } = {}) => {
-  const paths = collectBeneosPaths(scene);
-  if (!paths.length) {
+  const refs = _sceneRefs(scene);
+  if (!refs.length) {
+    console.log(`Beneos AssetWatcher | scene "${scene.name}" — 0 Beneos refs found, skipping check`);
     lastResults.set(scene.id, "");
     return;
   }
 
-  const results = await Promise.all(paths.map(async p => {
-    const r = await headCheck(p);
-    return { p, ...r };
-  }));
+  const probed = await _probeRefs(refs);
+  const missingRefs = probed.filter(r => !r.ok);
+  const missingPaths = [...new Set(missingRefs.map(r => r.path))];
 
-  const missing = results.filter(r => !r.ok).map(r => r.p);
   const dismissed = getDismissedPaths(scene);
-  const undismissed = missing.filter(p => !dismissed.includes(p));
-  const key = [...undismissed].sort().join("|");
+  const undismissedRefs = missingRefs.filter(r => !dismissed.includes(r.path));
+  const undismissedPaths = [...new Set(undismissedRefs.map(r => r.path))];
+  const key = [...undismissedPaths].sort().join("|");
   const prevKey = lastResults.get(scene.id);
   lastResults.set(scene.id, key);
 
-  if (!missing.length) return;
-  if (!undismissed.length) return;
+  console.log(`Beneos AssetWatcher | scene "${scene.name}" — ${refs.length} refs collected, ${missingRefs.length} missing, ${undismissedRefs.length} undismissed`);
+
+  if (!missingRefs.length) return;
+  if (!undismissedRefs.length) return;
   if (!forceDialog && prevKey === key) return;
-  showDialog(scene, missing, undismissed);
+  showDialog(scene, missingPaths, undismissedPaths, missingRefs);
 };
 
 const openTroubleshootingFaq = () => {
@@ -220,12 +507,75 @@ const escapeHTML = (s) => String(s).replace(/[&<>"']/g, c => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
 }[c]));
 
-const showDialog = (scene, missing, undismissed) => {
+// Build a Discord-friendly plain-text clipboard payload from structured
+// missing refs. Two lines per entry: a context line (Scene / Actor /
+// Journal name + Type + filename) and an indented full-path line.
+const _buildClipboardText = (missingRefs) => {
+  if (!Array.isArray(missingRefs) || !missingRefs.length) return "";
+  const _entLabel = (t) => {
+    const k = `BENEOS.AssetWatcher.Dialog.EntityType.${t}`;
+    return game.i18n.has?.(k) ? game.i18n.localize(k) : t;
+  };
+  const _kindLabel = (k) => {
+    const key = `BENEOS.AssetWatcher.Dialog.Kind.${k}`;
+    return game.i18n.has?.(key) ? game.i18n.localize(key) : k;
+  };
+  const lines = [
+    game.i18n.localize?.("BENEOS.AssetWatcher.Repair.CopyListHeader") ?? "Beneos Asset Watcher — Missing Files",
+    game.i18n.localize?.("BENEOS.AssetWatcher.Repair.CopyListSeparator") ?? "------------------------------------"
+  ];
+  for (const ref of missingRefs) {
+    const parentName = ref.ownerName || ref.entityName || "—";
+    const parentType = ref.ownerType ? _entLabel(ref.ownerType) : _entLabel(ref.entityType);
+    const childPart = ref.ownerName ? ` (${_entLabel(ref.entityType)}: ${ref.entityName || "—"})` : "";
+    const kindLine = _kindLabel(ref.kind);
+    lines.push(`${parentType}: "${parentName}"${childPart} — ${kindLine} · ${ref.fileName || ""}`);
+    lines.push(`  ${ref.path}`);
+  }
+  return lines.join("\n");
+};
+
+// Render a single missing-ref entry as a two-line block:
+//   "Scene: <name>" / "<kind label> · <filename>"
+// The full path goes into title= so the browser tooltip exposes it on
+// hover, while the copy button still grabs the raw path list for
+// Discord support tickets.
+const _formatRef = (ref) => {
+  const kindKey = `BENEOS.AssetWatcher.Dialog.Kind.${ref.kind}`;
+  const kindLabel = game.i18n.has?.(kindKey) ? game.i18n.localize(kindKey) : ref.kind;
+  const entityTypeKey = `BENEOS.AssetWatcher.Dialog.EntityType.${ref.entityType}`;
+  const entityTypeLabel = game.i18n.has?.(entityTypeKey)
+    ? game.i18n.localize(entityTypeKey)
+    : ref.entityType;
+  const parentName = ref.ownerName || ref.entityName || "—";
+  const parentType = ref.ownerType
+    ? (game.i18n.has?.(`BENEOS.AssetWatcher.Dialog.EntityType.${ref.ownerType}`)
+        ? game.i18n.localize(`BENEOS.AssetWatcher.Dialog.EntityType.${ref.ownerType}`)
+        : ref.ownerType)
+    : entityTypeLabel;
+  const childInfo = ref.ownerName
+    ? ` <span class="beneos-aw-entry-child">(${entityTypeLabel}: ${escapeHTML(ref.entityName)})</span>`
+    : "";
+
+  return `
+    <li class="beneos-aw-entry" title="${escapeHTML(ref.path)}">
+      <div class="beneos-aw-entry-context">${escapeHTML(parentType)}: <strong>${escapeHTML(parentName)}</strong>${childInfo}</div>
+      <div class="beneos-aw-entry-asset">${escapeHTML(kindLabel)} · <code>${escapeHTML(ref.fileName)}</code></div>
+    </li>`;
+};
+
+const showDialog = (scene, missing, undismissed, missingRefs = null) => {
   const intro = game.i18n.format("BENEOS.AssetWatcher.DialogIntro", {
     count: missing.length,
     scene: escapeHTML(scene.name ?? "")
   });
-  const items = missing.map(p => `<li><code>${escapeHTML(p)}</code></li>`).join("");
+
+  // Render structured entries if refs are available; fall back to legacy
+  // path-only display for back-compat (e.g. external callers via
+  // globalThis.beneosAssetWatcher.check that pre-date the refactor).
+  const items = (missingRefs?.length)
+    ? missingRefs.map(_formatRef).join("")
+    : missing.map(p => `<li class="beneos-aw-entry" title="${escapeHTML(p)}"><code>${escapeHTML(p)}</code></li>`).join("");
   const content = `
     <p>${intro}</p>
     <details open>
@@ -253,6 +603,18 @@ const showDialog = (scene, missing, undismissed) => {
     title: game.i18n.localize("BENEOS.AssetWatcher.DialogTitle"),
     content,
     buttons: {
+      repair: {
+        icon: '<i class="fas fa-wrench"></i>',
+        label: game.i18n.localize("BENEOS.AssetWatcher.Repair.DialogButtonRepair"),
+        callback: () => import("./beneos-asset-repair-dialog.js")
+          .then(m => m.BeneosRepairDialog.open({
+            scene,
+            missingPaths: missing,
+            missingRefs: missingRefs ?? [],
+            initialScope: "ask"
+          }))
+          .catch(e => console.warn("Beneos Asset Repair | dialog load failed:", e))
+      },
       open: {
         icon: '<i class="fas fa-book"></i>',
         label: game.i18n.localize("BENEOS.AssetWatcher.DialogOpenDocs"),
@@ -263,7 +625,7 @@ const showDialog = (scene, missing, undismissed) => {
         label: game.i18n.localize("BENEOS.AssetWatcher.DialogClose")
       }
     },
-    default: "open",
+    default: "repair",
     close: handleClose,
     render: (html) => {
       const root = html?.jquery ? html[0] : html;
@@ -273,7 +635,12 @@ const showDialog = (scene, missing, undismissed) => {
         ev.preventDefault();
         ev.stopPropagation();
         try {
-          await navigator.clipboard.writeText(missing.join("\n"));
+          // Prefer the structured Discord-friendly format when refs are
+          // available; fall back to raw path list for back-compat.
+          const payload = (missingRefs?.length)
+            ? _buildClipboardText(missingRefs)
+            : missing.join("\n");
+          await navigator.clipboard.writeText(payload);
           const old = btn.innerHTML;
           btn.innerHTML = `<i class="fas fa-check"></i> ${game.i18n.localize("BENEOS.AssetWatcher.DialogCopied")}`;
           setTimeout(() => { btn.innerHTML = old; }, 1500);
@@ -296,6 +663,18 @@ Hooks.once("init", () => {
     type: Boolean,
     default: true
   });
+
+  // Troubleshooting entry: when the watcher silently misses a broken
+  // pack (e.g. the user dismissed it earlier or the scene never opened),
+  // the GM can still trigger the repair from the Beneos settings panel.
+  game.settings.registerMenu(MODULE_ID, "assetRepairMenu", {
+    name: "BENEOS.Settings.AssetRepair.Name",
+    label: "BENEOS.Settings.AssetRepair.Label",
+    hint: "BENEOS.Settings.AssetRepair.Hint",
+    icon: "fas fa-wrench",
+    type: BeneosRepairMenuApp,
+    restricted: true
+  });
 });
 
 Hooks.on("canvasReady", async () => {
@@ -310,19 +689,34 @@ Hooks.on("canvasReady", async () => {
   catch (e) { WARN("check failed:", e); }
 });
 
+// Probe each ref's path via HEAD; returns refs annotated with `ok`.
+// Deduplicated per path to avoid hammering the disk with the same lookup.
+const _probeRefs = async (refs) => {
+  const byPath = new Map();
+  for (const r of refs) {
+    if (!byPath.has(r.path)) byPath.set(r.path, []);
+    byPath.get(r.path).push(r);
+  }
+  const probed = await Promise.all([...byPath.keys()].map(async p => {
+    const r = await headCheck(p);
+    return { path: p, ok: r.ok };
+  }));
+  const okByPath = new Map(probed.map(p => [p.path, p.ok]));
+  return refs.map(r => ({ ...r, ok: okByPath.get(r.path) ?? false }));
+};
+
 // Silent per-scene scanner — returns the missing-paths set without
 // rendering any dialog. Used by the world-wide scan (see scanAllScenes
 // below) so the GM gets one aggregated result rather than N popups.
 const scanSceneSilent = async (scene) => {
-  if (!scene) return { paths: [], missing: [] };
-  const paths = collectBeneosPaths(scene);
-  if (!paths.length) return { paths: [], missing: [] };
-  const results = await Promise.all(paths.map(async p => {
-    const r = await headCheck(p);
-    return { p, ...r };
-  }));
-  const missing = results.filter(r => !r.ok).map(r => r.p);
-  return { paths, missing };
+  if (!scene) return { paths: [], missing: [], refs: [], missingRefs: [] };
+  const refs = _sceneRefs(scene);
+  if (!refs.length) return { paths: [], missing: [], refs: [], missingRefs: [] };
+  const probed = await _probeRefs(refs);
+  const missingRefs = probed.filter(r => !r.ok);
+  const paths = [...new Set(refs.map(r => r.path))];
+  const missing = [...new Set(missingRefs.map(r => r.path))];
+  return { paths, missing, refs, missingRefs };
 };
 
 // World-wide scan triggered from the Cloud-V2 settings modal. Iterates
@@ -336,10 +730,10 @@ const scanAllScenes = async () => {
   const sceneSummary = [];
   let totalMissing = 0;
   for (const scene of scenes) {
-    const { missing } = await scanSceneSilent(scene);
+    const { missing, missingRefs } = await scanSceneSilent(scene);
     if (missing.length) {
       totalMissing += missing.length;
-      sceneSummary.push({ scene, missing });
+      sceneSummary.push({ scene, missing, missingRefs });
     }
   }
   return {
@@ -347,6 +741,51 @@ const scanAllScenes = async () => {
     scannedScenes: scenes.length,
     totalMissing,
     sceneSummary
+  };
+};
+
+// World-wide scan across Scenes + Actors + Journals + Playlists + Tables.
+// This is the entry point Phase B of the repair dialog uses for "Entire
+// world" scope — it gives us Beneos ref coverage for every entity type
+// (scene-only scanAllScenes() above misses actor-embedded paths like
+// item icons, which user reported as W2-7 gap).
+const scanAllEntities = async (onProgress) => {
+  if (!game.user?.isGM) return null;
+  const collections = [
+    { type: "Scene",    coll: game.scenes ?? [],    refs: _sceneRefs },
+    { type: "Actor",    coll: game.actors ?? [],    refs: _actorRefs },
+    { type: "Journal",  coll: game.journal ?? [],   refs: _journalRefs },
+    { type: "Playlist", coll: game.playlists ?? [], refs: _playlistRefs },
+    { type: "Table",    coll: game.tables ?? [],    refs: _tableRefs }
+  ];
+  const total = collections.reduce((s, c) => s + (c.coll.size ?? c.coll.length ?? 0), 0);
+  let current = 0;
+  const allRefs = [];
+  for (const spec of collections) {
+    for (const doc of spec.coll) {
+      current++;
+      try { onProgress?.({ current, total, label: `${spec.type}: ${doc.name}` }); } catch (e) {}
+      try {
+        for (const r of spec.refs(doc)) allRefs.push(r);
+      } catch (e) {
+        WARN(`refs(${spec.type}:${doc.name}) failed:`, e);
+      }
+    }
+  }
+  if (!allRefs.length) {
+    console.log(`Beneos AssetWatcher | world scan — 0 Beneos refs found across all entities`);
+    return { totalRefs: 0, totalMissing: 0, refs: [], missingRefs: [], missing: [] };
+  }
+  const probed = await _probeRefs(allRefs);
+  const missingRefs = probed.filter(r => !r.ok);
+  const missing = [...new Set(missingRefs.map(r => r.path))];
+  console.log(`Beneos AssetWatcher | world scan — ${allRefs.length} refs collected, ${missingRefs.length} missing`);
+  return {
+    totalRefs: allRefs.length,
+    totalMissing: missingRefs.length,
+    refs: probed,
+    missingRefs,
+    missing
   };
 };
 
@@ -366,7 +805,23 @@ globalThis.beneosAssetWatcher = {
     if (!scene) return;
     await scene.unsetFlag(MODULE_ID, FLAG_DISMISSED);
   },
-  scanAllScenes
+  scanAllScenes,
+  scanAllEntities,
+  repair: (opts) => import("./beneos-asset-repair-dialog.js")
+    .then(m => m.BeneosRepairDialog.open(opts ?? {}))
 };
 
-export { scanAllScenes, scanSceneSilent, headCheck, isBeneosPath, BENEOS_PATH_RE };
+export {
+  scanAllScenes,
+  scanAllEntities,
+  scanSceneSilent,
+  collectBeneosRefs,
+  _sceneRefs as collectSceneRefs,
+  _actorRefs as collectActorRefs,
+  _journalRefs as collectJournalRefs,
+  _playlistRefs as collectPlaylistRefs,
+  _tableRefs as collectTableRefs,
+  headCheck,
+  isBeneosPath,
+  BENEOS_PATH_RE
+};

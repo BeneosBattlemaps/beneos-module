@@ -6,13 +6,20 @@
      opens BeneosBattlemaps, every other tab opens BeneosTokens. --}}
 <footer class="bc-footer" data-bc-region="footer">
   <div class="bc-footer-left">
-    {{!-- Wave B-9-fix-58: offline state takes precedence over the
-         logged-in chip — the user might be signed in from a previous
-         session, but if the cloud server is unreachable we still want
-         to surface that. The login button is hidden when offline since
-         it would just fail; the Account button stays available so the
-         user can review their saved credentials. --}}
-    {{#if isOffline}}
+    {{!-- Stage 9: server-offline (beneos.cloud unreachable) takes
+         absolute top priority. Distinct from the asset-DB-offline
+         branch below — that's the CDN content fetch failing; this
+         is the login/auth backend itself being down. The Sign-In
+         button is hidden because a click would just produce a
+         confusing HTTP error. Auto-recovers via the 60s probe loop
+         in BeneosCloud.startServerProbeLoop. --}}
+    {{#if isServerOffline}}
+      <div class="bc-account-chip bc-chip-error"
+           data-tooltip="{{localize 'BENEOS.Cloud.Footer.ServerOfflineTooltip'}}">
+        <i class="fa-solid fa-server"></i>
+        <span>{{localize "BENEOS.Cloud.Footer.ServerOffline"}}</span>
+      </div>
+    {{else if isOffline}}
       <div class="bc-account-chip bc-chip-warning">
         <i class="fa-solid fa-cloud-slash"></i>
         <span>{{localize "BENEOS.Cloud.Footer.Offline"}}</span>

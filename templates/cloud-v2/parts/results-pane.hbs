@@ -132,6 +132,21 @@
             {{else}}
               <div class="bc-card-thumb-placeholder"></div>
             {{/if}}
+            {{!-- Punkt 2: status chips duplicated inside the thumb so
+                 grid mode can pin them onto the icon (BENEOS bottom-right,
+                 NEW/UPDATE top-right). List mode hides these copies via
+                 CSS and uses the in-name copies below.
+                 NEW + UPDATE are mutually exclusive per User-Direktive
+                 ("wer updaten kann, hat es bereits installiert; NEW
+                 hätte dann keinen Informationswert"). UPDATE wins. --}}
+            {{#if card.isUpdate}}
+              <span class="bc-status-chip bc-status-update bc-thumb-chip">{{localize "BENEOS.Cloud.Card.Update"}}</span>
+            {{else if card.isNew}}
+              <span class="bc-status-chip bc-status-new bc-thumb-chip">{{localize "BENEOS.Cloud.Card.New"}}</span>
+            {{/if}}
+            {{#if card.beneosChip}}
+              <span class="bc-status-chip bc-status-beneos bc-thumb-chip" data-tooltip="Beneos Original (non-SRD)">{{card.beneosChip}}</span>
+            {{/if}}
           </div>
 
           {{!-- Wave B-8d-fix-1: New/Update chips live next to the name now,
@@ -141,11 +156,11 @@
           <div class="bc-card-meta">
             <div class="bc-card-name-row">
               <h3 class="bc-card-name">{{card.name}}</h3>
-              {{#if card.isNew}}
-                <span class="bc-status-chip bc-status-new">{{localize "BENEOS.Cloud.Card.New"}}</span>
-              {{/if}}
+              {{!-- NEW + UPDATE Mutex: UPDATE wins (User-Direktive). --}}
               {{#if card.isUpdate}}
                 <span class="bc-status-chip bc-status-update">{{localize "BENEOS.Cloud.Card.Update"}}</span>
+              {{else if card.isNew}}
+                <span class="bc-status-chip bc-status-new">{{localize "BENEOS.Cloud.Card.New"}}</span>
               {{/if}}
               {{#if card.beneosChip}}
                 <span class="bc-status-chip bc-status-beneos" data-tooltip="Beneos Original (non-SRD)">{{card.beneosChip}}</span>
@@ -249,6 +264,17 @@
                 <i class="fa-solid fa-right-to-bracket"></i>
                 {{localize "BENEOS.Cloud.Card.SignIn"}}
               </button>
+            {{else if card.isIncompatible}}
+              {{!-- Hard-blocked Loot/Spell on a non-dnd5e system. The button
+                   stays clickable so the GM can read the explanation dialog
+                   surfaced by confirmSystemCompat → _showIncompatibleDialog. --}}
+              <button type="button" class="bc-card-button bc-action-install bc-action-incompatible"
+                      data-asset-key="{{card.key}}"
+                      data-asset-type="{{card.assetType}}"
+                      data-tooltip="{{localize 'BENEOS.Cloud.Card.NotCompatibleTooltip'}}">
+                <i class="fa-solid fa-ban"></i>
+                {{localize "BENEOS.Cloud.Card.NotCompatible"}}
+              </button>
             {{else if card.isCloudAvailable}}
               {{#if card.isBmap}}
                 <button type="button" class="bc-card-button bc-card-button-primary bc-action-install bc-action-moulinette"
@@ -335,18 +361,24 @@
           <section class="bc-variants" data-bc-variant-region>
             <header class="bc-variants-head">
               <h3 class="bc-variants-title">{{localize "BENEOS.Cloud.Drawer.Variants"}}</h3>
-              <span class="bc-variants-counter" data-bc-variant-counter>1 / {{drawer.asset.variants.length}}</span>
+              <span class="bc-variants-counter" data-bc-variant-counter data-bc-variant-total="{{drawer.asset.variantsCount}}">{{localize "BENEOS.Cloud.Drawer.AvatarLabel"}}</span>
             </header>
             <div class="bc-variants-strip">
               {{#each drawer.asset.variants as |v|}}
                 <button type="button"
-                        class="bc-variant-thumb{{#if @first}} bc-variant-active{{/if}}{{#unless v.isInstalled}} bc-variant-cloud{{/unless}}"
+                        class="bc-variant-thumb bc-variant-pending{{#unless v.isInstalled}} bc-variant-cloud{{/unless}}{{#if (eq v.style "topdown")}} bc-variant-topdown{{/if}}"
                         data-variant-index="{{v.index}}"
-                        data-asset-key="{{../drawer.asset.key}}"
+                        data-variant-style="{{v.style}}"
+                        data-asset-key="{{v.assetKey}}"
                         data-actor-id="{{v.actorId}}"
-                        draggable="{{#if v.isInstalled}}true{{else}}false{{/if}}"
-                        data-tooltip="{{#if v.isInstalled}}{{localize 'BENEOS.Cloud.Drawer.VariantTooltip'}} {{v.index}}{{else}}{{localize 'BENEOS.Cloud.Drawer.VariantCloudOnly'}}{{/if}}">
-                  <img src="{{v.thumbUrl}}" alt="Variant {{v.index}}" loading="lazy" draggable="false" />
+                        draggable="true"
+                        data-tooltip="{{#if v.isInstalled}}{{localize 'BENEOS.Cloud.Drawer.VariantTooltip'}} {{v.index}}{{#if (eq v.style 'topdown')}} · {{localize 'BENEOS.Cloud.Drawer.StyleTopDown'}}{{else}} · {{localize 'BENEOS.Cloud.Drawer.StyleTokenized'}}{{/if}}{{else}}{{localize 'BENEOS.Cloud.Drawer.VariantTooltip'}} {{v.index}}{{#if (eq v.style 'topdown')}} · {{localize 'BENEOS.Cloud.Drawer.StyleTopDown'}}{{else}} · {{localize 'BENEOS.Cloud.Drawer.StyleTokenized'}}{{/if}} · {{localize 'BENEOS.Cloud.Drawer.DragInstalls'}}{{/if}}">
+                  <img src="{{v.thumbUrl}}" alt="Variant {{v.index}} {{v.style}}" draggable="false"
+                       onload="this.parentElement.classList.remove('bc-variant-pending')"
+                       onerror="this.parentElement.remove()" />
+                  {{#if (eq v.style "topdown")}}
+                    <span class="bc-variant-style-badge">TOP</span>
+                  {{/if}}
                 </button>
               {{/each}}
             </div>
@@ -398,10 +430,14 @@
              pipeline isn't live yet. --}}
         <div class="bc-drawer-action">
           {{#if drawer.asset.isInstalled}}
-            <span class="bc-state-pill bc-state-installed">
-              <i class="fa-solid fa-circle-check"></i>
-              {{localize "BENEOS.Cloud.Card.Installed"}}
-            </span>
+            {{!-- W7-2b: when an update is available, render only the
+                 Update button — the redundant "Installed" pill caused
+                 a horizontal scrollbar inside the drawer because the
+                 button carries a text label here (vs icon-only in the
+                 list cards). User direction: "im Detailfenster soll
+                 der Install-Chip nicht mehr angezeigt werden, damit
+                 der Update- oder Download-Button korrekt an seinem
+                 Ort angezeigt werden kann". --}}
             {{#if drawer.asset.isUpdate}}
               <button type="button" class="bc-card-button bc-card-button-primary bc-action-install"
                       data-asset-key="{{drawer.asset.key}}"
@@ -409,6 +445,11 @@
                 <i class="fa-solid fa-rotate"></i>
                 {{localize "BENEOS.Cloud.Card.Update"}}
               </button>
+            {{else}}
+              <span class="bc-state-pill bc-state-installed">
+                <i class="fa-solid fa-circle-check"></i>
+                {{localize "BENEOS.Cloud.Card.Installed"}}
+              </span>
             {{/if}}
           {{else if drawer.asset.isOfflineCard}}
             <span class="bc-state-pill bc-state-offline">
@@ -420,6 +461,15 @@
                     data-action="openLogin">
               <i class="fa-solid fa-right-to-bracket"></i>
               {{localize "BENEOS.Cloud.Card.SignIn"}}
+            </button>
+          {{else if drawer.asset.isIncompatible}}
+            {{!-- Same hard-block render as the card-grid version. --}}
+            <button type="button" class="bc-card-button bc-action-install bc-action-incompatible"
+                    data-asset-key="{{drawer.asset.key}}"
+                    data-asset-type="{{drawer.asset.assetType}}"
+                    data-tooltip="{{localize 'BENEOS.Cloud.Card.NotCompatibleTooltip'}}">
+              <i class="fa-solid fa-ban"></i>
+              {{localize "BENEOS.Cloud.Card.NotCompatible"}}
             </button>
           {{else if drawer.asset.isCloudAvailable}}
             {{#if drawer.asset.isBmap}}

@@ -29,6 +29,8 @@
 import { BeneosUtility } from "../beneos_utility.js"
 import { BeneosCloudLogin } from "../beneos_cloud.js"
 import { BeneosStartSetupTour } from "../beneos_tours.js"
+import { BeneosLootGenerator } from "./loot-generator.mjs"
+import { BeneosMagicShopGenerator } from "./magic-shop-generator.mjs"
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
 
@@ -298,6 +300,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       isCloudLoggedIn: cloud?.isLoggedIn() ?? false,
       patreonStatus:   cloud?.getPatreonStatus() ?? "",
       isOffline:       dbHolder?.getIsOffline?.() ?? false,
+      // Stage 9: cloud-server reachability (separate from the asset-DB
+      // offline state above). Top-priority chip in the footer template.
+      isServerOffline: cloud?.serverOffline === true,
       moduleVersion,
       patreonUrl,
       discordUrl: "https://discord.gg/R2yBH557Wk",
@@ -333,6 +338,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const goldMaxAvailable = this.#getMaxItemPrice()
       const effectiveGoldMax = this.goldMax ?? goldMaxAvailable
       const goldRangeLabel = `${this.goldMin} – ${effectiveGoldMax}`
+      // Top-Down Stage 2: surface the persisted default install style
+      // so the token-tab can render its radio in the correct state.
+      let installStyle = "tokenized"
+      try { installStyle = game.settings.get(BeneosUtility.moduleID(), "beneos-default-install-style") || "tokenized" }
+      catch (e) { /* setting not yet registered (early init) */ }
       // Wave B-8k-3: rebuild the rarity table for items so the dropdown
       // reads "Common → Uncommon → … → Legendary" in canonical D&D
       // order rather than alphabetically (which leaves "Common" between
@@ -434,7 +444,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         goldMaxAvailable,
         goldMin: this.goldMin,
         goldMax: effectiveGoldMax,
-        goldRangeLabel
+        goldRangeLabel,
+        installStyle
       }
     }
     if (partId === "results") {
@@ -925,14 +936,34 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // spells, and bmaps stay variantless.
     const nbVariants = props.nb_variants || 1
     const variants = []
-    if (assetType === "token" && nbVariants > 1) {
+    if (assetType === "token") {
+      // Top-Down Stage 5: variant strip thumbnails always come from
+      // the search-engine CDN (the same data source the result-card
+      // avatar uses). 2 tiles per variant — 2.5D (-db-token.webp) and
+      // Top-Down (-db-top.webp). Stage-4's local-path branch was
+      // wrong; the user explicitly wants the online thumbnails. The
+      // template's onload/onerror gate still removes tiles whose URL
+      // 404s, so partial CDN uploads degrade gracefully. assetKey is
+      // pre-computed for the uninstalled-drag flow (cloudPending).
       for (let i = 1; i <= nbVariants; i++) {
         const variantActorId = BeneosUtility.getActorIdVariant?.(key, i)
+        const isInstalled = !!variantActorId
+        const baseUrl = `${THUMB_BASE.token}${key}-${i}`
         variants.push({
           index: i,
-          thumbUrl: `${THUMB_BASE.token}${key}-${i}-db.webp`,
+          style: "tokenized",
+          thumbUrl: `${baseUrl}-db-token.webp`,
           actorId: variantActorId || "",
-          isInstalled: !!variantActorId
+          assetKey: key,
+          isInstalled
+        })
+        variants.push({
+          index: i,
+          style: "topdown",
+          thumbUrl: `${baseUrl}-db-top.webp`,
+          actorId: variantActorId || "",
+          assetKey: key,
+          isInstalled
         })
       }
     }
@@ -1190,9 +1221,19 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       itemPriceLabel,
       description: data.description || null,
       variantsCount: props.nb_variants || null,
+      // Stage 3: pre-computed flag because Foundry's Handlebars helper
+      // set ships with `eq` but not `gt` — single-variant counter
+      // suppression is gated by this in the template.
+      hasMultipleVariants: (props.nb_variants || 1) > 1,
       variants,
       isInstalled,
       isCloudAvailable,
+      // Hard-blocked kinds on non-dnd5e systems (Loot, Spells on Pathfinder
+      // and friends). Used by the action-area renderer to swap the Install
+      // button for a red "Not compatible" pill so the GM sees up front
+      // what won't install. The cached BeneosUtility.isDnd5e check is a
+      // single property read; cheap enough to evaluate per card.
+      isIncompatible: !isInstalled && BeneosUtility.isHardBlockedKind(assetType),
       isInstallable: !!data.isInstallable,
       // Wave B-9-fix-58 → fix-59: surface login + offline state to the
       // card so the install button can render a tailored label/tooltip
@@ -1896,6 +1937,16 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       }
       return html
     }
+    if (card.isIncompatible) {
+      // Hard-blocked Loot/Spell on a non-dnd5e system. Mirror of the
+      // results-pane.hbs branch. Click is intentionally still wired —
+      // confirmSystemCompat surfaces the incompatible-asset info dialog
+      // so the GM understands why this asset can't install.
+      return `<button type="button" class="bc-card-button bc-action-install bc-action-incompatible"`
+        + ` data-asset-key="${card.key}" data-asset-type="${card.assetType}"`
+        + ` data-tooltip="${localize("BENEOS.Cloud.Card.NotCompatibleTooltip")}">`
+        + `<i class="fa-solid fa-ban"></i> ${localize("BENEOS.Cloud.Card.NotCompatible")}</button>`
+    }
     if (card.isCloudAvailable) {
       // Wave B-7: bmaps get a Moulinette-branded action button instead of
       // "Install" so the user understands the install flows through
@@ -1928,6 +1979,16 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const cloud = game.beneos?.cloud
     if (!cloud) return
     const type = this.searchMode
+
+    // Pre-gate before the install-all confirm dialog. On dnd5e this is a
+    // free property read; on other systems the GM gets the system-compat
+    // warning (or hard-block info dialog) up front, so they don't first
+    // wade through the install-all confirm only to be told nothing can be
+    // installed.
+    if (type !== "bmap") {
+      const ok = await BeneosUtility.confirmSystemCompat(type);
+      if (!ok) return;
+    }
 
     // Wave B-8k-1: per-group dialog title + body. The "backlog" branch
     // gets a stronger warning because it ignores the current filter and
@@ -1967,15 +2028,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // step, leading to "locked compendium" errors mid-batch.
     for (const key of keys) {
       this.notifyInstallStarted?.(key)
-      if (type === "token") await cloud.importTokenFromCloud?.(key)
-      else if (type === "item")  await cloud.importItemFromCloud?.(key)
-      else if (type === "spell") await cloud.importSpellsFromCloud?.(key)
+      if (type === "token") await cloud.importTokenFromCloud?.(key, undefined, false, { gated: true })
+      else if (type === "item")  await cloud.importItemFromCloud?.(key, undefined, false, { gated: true })
+      else if (type === "spell") await cloud.importSpellsFromCloud?.(key, undefined, false, { gated: true })
     }
   }
 
   // Extracted from the install-button click handler so the same logic runs
   // for the freshly inserted button after #patchCardState.
-  #onInstallClick(event, btn) {
+  async #onInstallClick(event, btn) {
     event.stopPropagation()
     const key = btn.dataset.assetKey
     const type = btn.dataset.assetType
@@ -1990,10 +2051,16 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       this.#installSelected(type)
       return
     }
-    if (type !== "bmap") this.notifyInstallStarted(key)
-    if (type === "token") cloud.importTokenFromCloud(key)
-    if (type === "item")  cloud.importItemFromCloud(key)
-    if (type === "spell") cloud.importSpellsFromCloud(key)
+    // Pre-gate before any UI state change. Battlemaps go through Moulinette
+    // and don't trigger Beneos's install pipeline, so they skip the gate.
+    if (type !== "bmap") {
+      const ok = await BeneosUtility.confirmSystemCompat(type);
+      if (!ok) return;
+      this.notifyInstallStarted(key)
+    }
+    if (type === "token") cloud.importTokenFromCloud(key, undefined, false, { gated: true })
+    if (type === "item")  cloud.importItemFromCloud(key, undefined, false, { gated: true })
+    if (type === "spell") cloud.importSpellsFromCloud(key, undefined, false, { gated: true })
     if (type === "bmap") {
       // Wave B-7: pass the bmap key so the static handler can look up
       // download_pack/creator/terms and call Moulinette's searchUI with the
@@ -2011,12 +2078,16 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   async #installSelected(type) {
     const cloud = game.beneos?.cloud
     if (!cloud) return
+    // Pre-gate once for the whole multi-select. Same kind for all keys, so
+    // one prompt covers the entire selection. Cards stay idle until Yes.
+    const ok = await BeneosUtility.confirmSystemCompat(type);
+    if (!ok) return;
     const keys = [...this.selectedKeys]
     for (const k of keys) {
       this.notifyInstallStarted(k)
-      if (type === "token") await cloud.importTokenFromCloud?.(k)
-      else if (type === "item")  await cloud.importItemFromCloud?.(k)
-      else if (type === "spell") await cloud.importSpellsFromCloud?.(k)
+      if (type === "token") await cloud.importTokenFromCloud?.(k, undefined, false, { gated: true })
+      else if (type === "item")  await cloud.importItemFromCloud?.(k, undefined, false, { gated: true })
+      else if (type === "spell") await cloud.importSpellsFromCloud?.(k, undefined, false, { gated: true })
     }
   }
 
@@ -2032,6 +2103,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     this.#injectSelectDividers()
     this.#updateTitleBadge(context)
     this.#injectTitleQuote()
+    // Stage 11: tear down the open-splash injected in
+    // beneos_module.js's toolbar handler. _onRender runs after the
+    // V2 window is in DOM — clean handover with no flicker.
+    document.getElementById("beneos-cloud-loading-splash")?.remove()
   }
 
   // Wave B-8k-4: insert a disabled "──────────" option after the Any
@@ -2176,6 +2251,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const root = this.element
     if (!root) return
     const idx = btn.dataset.variantIndex
+    const style = btn.dataset.variantStyle || "tokenized"
     const newImg = btn.querySelector("img")
     const heroImg = root.querySelector("[data-bc-drawer-hero] img")
     if (heroImg && newImg) heroImg.src = newImg.src
@@ -2184,8 +2260,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     })
     const counter = root.querySelector("[data-bc-variant-counter]")
     if (counter) {
-      const total = counter.textContent.split(" / ")[1]
-      counter.textContent = `${idx} / ${total}`
+      // Top-Down Stage 3: counter format adapts to single-variant
+      // tokens (SRD creatures with nbVariants=1 just show the style
+      // label since there's nothing to count). For multi-variant
+      // tokens the format is "<i> · <Style> / <total>".
+      const totalNum = parseInt(counter.dataset.bcVariantTotal, 10) || 1
+      const styleLabel = style === "topdown" ? "TOP" : "2.5D"
+      counter.textContent = (totalNum > 1)
+        ? `${idx} · ${styleLabel} / ${totalNum}`
+        : styleLabel
     }
   }
 
@@ -2195,17 +2278,43 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // 56×56 thumbnail as the drag image so the cursor carries something
   // recognizable instead of a snapshot of the button element.
   #onVariantDragStart(event, btn) {
+    const style = btn.dataset.variantStyle || "tokenized"
+    const variantIdx = parseInt(btn.dataset.variantIndex, 10) || 1
+    const assetKey = btn.dataset.assetKey
     const actorId = btn.dataset.actorId
-    if (!actorId) { event.preventDefault(); return false }
-    const compendium = "world.beneos_module_actors"
-    const worldActor = game.actors?.get?.(actorId) ||
-                       game.actors?.find?.(a => {
-                         const flag = a.getFlag?.("world", "beneos")
-                         return flag?.actorId === actorId
-                       })
-    const drag_data = worldActor
-      ? { type: "Actor", uuid: worldActor.uuid }
-      : { type: "Actor", pack: compendium, uuid: `Compendium.${compendium}.${actorId}` }
+
+    let drag_data = null
+    if (actorId) {
+      // Stage 2-4 path — variant is installed, drag the variant's
+      // actor and let the preCreateToken hook flip the texture src.
+      const compendium = "world.beneos_module_actors"
+      const worldActor = game.actors?.get?.(actorId) ||
+                         game.actors?.find?.(a => {
+                           const flag = a.getFlag?.("world", "beneos")
+                           return flag?.actorId === actorId
+                         })
+      drag_data = worldActor
+        ? { type: "Actor", uuid: worldActor.uuid }
+        : { type: "Actor", pack: compendium, uuid: `Compendium.${compendium}.${actorId}` }
+      if (style === "topdown") drag_data.beneosForceStyle = "topdown"
+      BeneosUtility._pendingDropStyle = style
+    } else if (assetKey) {
+      // Stage 5 path — variant is NOT installed yet. Fire the
+      // beneosCloudPending drag-install pipeline (Wave B-1d/B-9)
+      // with the chosen variant index + style; handlePendingCanvasDrop
+      // and drainPendingCanvasDrops in beneos_cloud.js apply both
+      // when the install completes.
+      drag_data = {
+        type: "Actor",
+        beneosCloudPending: true,
+        beneosTokenKey: assetKey,
+        beneosVariantIndex: variantIdx,
+        beneosForceStyle: style
+      }
+    } else {
+      event.preventDefault()
+      return false
+    }
     event.dataTransfer.setData("text/plain", JSON.stringify(drag_data))
     const thumbImg = btn.querySelector("img")
     if (thumbImg && thumbImg.complete && thumbImg.naturalWidth > 0) {
@@ -2247,6 +2356,18 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
           this.#resetPagination()
           this.#renderResults(["results"])
         }, 100)
+      })
+    })
+
+    // Top-Down Stage 2: install-style radio in the token sidebar.
+    // Persists the choice as a client-scope setting; no re-render
+    // needed since the result-card list doesn't depend on it.
+    root.querySelectorAll('input[name="beneos-install-style"]').forEach(input => {
+      input.addEventListener("change", () => {
+        if (!input.checked) return
+        try {
+          game.settings.set(BeneosUtility.moduleID(), "beneos-default-install-style", input.value)
+        } catch (e) { /* setting not registered yet */ }
       })
     })
 
@@ -2451,6 +2572,18 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     if (originBtn) originBtn.addEventListener("click", comingSoon)
     const tierBtn = root.querySelector("#bc-tier-upgrade-mechanic")
     if (tierBtn) tierBtn.addEventListener("click", comingSoon)
+    // Punkt 3: Loot Generator wizard.
+    const lootBtn = root.querySelector("#bc-loot-generator")
+    if (lootBtn) lootBtn.addEventListener("click", () => {
+      const gen = new BeneosLootGenerator()
+      gen.render(true)
+    })
+    // Punkt 3 v2: Magic Shop Generator.
+    const shopBtn = root.querySelector("#bc-magic-shop")
+    if (shopBtn) shopBtn.addEventListener("click", () => {
+      const shop = new BeneosMagicShopGenerator()
+      shop.render(true)
+    })
   }
 
   #cleanFilters() {
@@ -2753,30 +2886,29 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       }
     }
 
-    // Local mode (installed) — point the drag at the world actor (not the
-    // compendium copy) so Foundry creates only a Token, no duplicate actor
-    // (Wave B-1d local-drag fix).
-    let drag_data = null
-    if (docType === "Actor") {
-      const worldActor = game.actors?.find(a => {
-        const flag = a.getFlag?.("world", "beneos")
-        return flag?.tokenKey === tokenKey
-      })
-      if (worldActor) {
-        drag_data = { type: "Actor", uuid: worldActor.uuid }
-      } else {
-        const compendium = "world.beneos_module_actors"
-        drag_data = { type: "Actor", pack: compendium, uuid: "Compendium." + compendium + "." + id }
-      }
-    } else if (docType === "Item") {
-      // Wave B-9-fix-38: drag the world Item document, not a phantom
-      // compendium reference. `id` here is the world doc id (resolved
-      // via BeneosUtility.getItemId / getSpellId), so the canonical UUID
-      // is "Item.<id>". Foundry's drop handlers on character sheets and
-      // folders recognise this UUID and add the item directly.
-      drag_data = { type: "Item", uuid: "Item." + id }
+    // Local mode (installed) — Punkt 1, Compendium-as-Truth.
+    // BeneosUtility.resolveBeneosDragData prefers the world doc (so Foundry
+    // doesn't clone a duplicate world copy on drop, Wave B-1d) and falls
+    // back to a V12+ compendium UUID when the world copy was deleted. This
+    // replaces the legacy "Compendium.<pack>.<id>" form (V11, unresolvable
+    // in V13) and the broken "Item.<comp-id>" world UUID that previously
+    // pointed at a non-existent world doc.
+    //
+    // V2 cards report card.dataset.type as "Actor" or "Item" (5e spells are
+    // Item docs). Use this.searchMode to pick the right cache + pack: when
+    // the user is on the spell tab, the real docType is "Spell".
+    const logicalDocType = docType === "Actor" ? "Actor"
+                          : this.searchMode === "spell" ? "Spell"
+                          : "Item"
+    const drag_data = tokenKey
+      ? BeneosUtility.resolveBeneosDragData(logicalDocType, tokenKey)
+      : null
+    if (!drag_data) {
+      ui.notifications?.warn?.(game.i18n.localize("BENEOS.Cloud.Notification.OrphanInstall") || "This Beneos asset is no longer available in the world or compendium — please reinstall it from the Search Engine.")
+      event.preventDefault()
+      return false
     }
-    if (drag_data) event.dataTransfer.setData("text/plain", JSON.stringify(drag_data))
+    event.dataTransfer.setData("text/plain", JSON.stringify(drag_data))
   }
 
   /* ========== Title-bar Patreon badge ========== */
@@ -2986,6 +3118,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     if (game.beneos?.cloudWindowV2 === this) game.beneos.cloudWindowV2 = undefined
     if (game.beneos?.searchEngine === this) game.beneos.searchEngine = undefined
     if (game.beneosTokens?.searchEngine === this) game.beneosTokens.searchEngine = undefined
+    // Defensive: ensure the toolbar-button onChange lock is clear after
+    // any close path (X button, ESC, programmatic close). Without this
+    // the toolbar can appear stuck "open" if the inner reset setTimeout
+    // in beneos_module.js gets dropped (browser tab throttling, error
+    // mid-open). Cleared unconditionally — no-op if already false.
+    if (typeof Hooks !== "undefined") Hooks._beneosOpenCloudInProgress = false
     return super._onClose?.(options)
   }
 }
@@ -3017,11 +3155,18 @@ export class BeneosCloudSettingsV2 extends HandlebarsApplicationMixin(Applicatio
       resizable: false
     },
     position: {
-      width: 420,
+      // Was 420 → 600 → 720. Second user feedback 2026-05-11: "Das
+      // Fenster ist relativ breit, aber nur die Hälfte davon wird
+      // wirklich genutzt für die Beschreibungstexte." Combined with
+      // the CSS fix (flex: 1 1 0 on .bc-settings-row-meta + reduced
+      // horizontal padding) this gives the description column ~540 px
+      // of usable width — enough for single-line German/CJK hints.
+      width: 720,
       height: "auto"
     },
     actions: {
-      startSetupTour: BeneosCloudSettingsV2._onStartSetupTour
+      startSetupTour: BeneosCloudSettingsV2._onStartSetupTour,
+      openAssetRepair: BeneosCloudSettingsV2._onOpenAssetRepair
     }
   }
 
@@ -3113,6 +3258,18 @@ export class BeneosCloudSettingsV2 extends HandlebarsApplicationMixin(Applicatio
       new BeneosStartSetupTour().render(true)
     } catch (err) {
       console.warn("[Beneos Cloud Settings] setup-tour trigger failed", err)
+    }
+  }
+
+  static async _onOpenAssetRepair(_event, _target) {
+    // Close the settings modal so the repair chooser sits on a clean
+    // surface — the Cloud-V2 window itself can stay open behind it.
+    try { this.close() } catch (e) {}
+    try {
+      const mod = await import("../beneos-asset-repair-dialog.js")
+      mod.BeneosRepairMenuApp.openChooser()
+    } catch (err) {
+      console.warn("[Beneos Cloud Settings] asset-repair launcher failed", err)
     }
   }
 }

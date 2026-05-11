@@ -469,6 +469,20 @@ function* iterateScenePaths(scene) {
 function* iterateActorPaths(actor) {
   if (actor.img) yield actor.img;
   if (actor.prototypeToken?.texture?.src) yield actor.prototypeToken.texture.src;
+  // Embedded items (D&D5e Spells/Feats/Equipment etc.). The icon fields used
+  // depend on Foundry version: img (V13+) and icon (V12 legacy) — yield both
+  // when present so the watcher catches references regardless of system age.
+  for (const item of actor.items ?? []) {
+    if (item.img) yield item.img;
+    for (const eff of item.effects ?? []) {
+      if (eff.img) yield eff.img;
+      if (eff.icon) yield eff.icon;
+    }
+  }
+  for (const eff of actor.effects ?? []) {
+    if (eff.img) yield eff.img;
+    if (eff.icon) yield eff.icon;
+  }
 }
 function* iterateJournalPaths(journal) {
   if (journal.img) yield journal.img;
@@ -580,6 +594,23 @@ const showInstallProblemDialog = (packLabel, missing, totalCount) => {
           catch (e) {}
         }
       },
+      repair: {
+        icon: '<i class="fas fa-wrench"></i>',
+        label: game.i18n.localize("BENEOS.AssetWatcher.Repair.DialogButtonRepair"),
+        callback: async () => {
+          try {
+            const paths = missing.map(e => e.path);
+            const mod = await import("./beneos-asset-repair-dialog.js");
+            mod.BeneosRepairDialog.open({
+              scene: canvas?.scene ?? null,
+              missingPaths: paths,
+              initialScope: "ask"
+            });
+          } catch (e) {
+            console.warn("Beneos Asset Repair | dialog load failed:", e);
+          }
+        }
+      },
       copy: {
         icon: '<i class="fas fa-copy"></i>',
         label: game.i18n.localize("BENEOS.Cloud.InstallVerify.DialogActionCopyPaths"),
@@ -622,6 +653,22 @@ const showPostInstallDialog = (scene, missing) => {
     title: game.i18n.localize("BENEOS.AssetWatcher.PostInstall.DialogTitle"),
     content,
     buttons: {
+      repair: {
+        icon: '<i class="fas fa-wrench"></i>',
+        label: game.i18n.localize("BENEOS.AssetWatcher.Repair.DialogButtonRepair"),
+        callback: async () => {
+          try {
+            const mod = await import("./beneos-asset-repair-dialog.js");
+            mod.BeneosRepairDialog.open({
+              scene: scene ?? canvas?.scene ?? null,
+              missingPaths: Array.isArray(missing) ? missing : [],
+              initialScope: "ask"
+            });
+          } catch (e) {
+            console.warn("Beneos Asset Repair | dialog load failed:", e);
+          }
+        }
+      },
       faq: {
         icon: '<i class="fas fa-book"></i>',
         label: game.i18n.localize("BENEOS.AssetWatcher.PostInstall.DialogActionRetry"),
@@ -638,7 +685,7 @@ const showPostInstallDialog = (scene, missing) => {
         label: game.i18n.localize("BENEOS.AssetWatcher.PostInstall.DialogActionDismiss")
       }
     },
-    default: "faq"
+    default: "repair"
   }, { classes: ["beneos-asset-watcher-dialog"] });
 
   dlg.render(true);

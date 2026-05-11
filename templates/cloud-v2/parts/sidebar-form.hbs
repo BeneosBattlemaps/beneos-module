@@ -200,6 +200,26 @@
         </select>
       </div>
     </section>
+
+    {{!-- Top-Down Stage 2: default install style. Client-scope setting,
+         persisted via change-listener in #wireSidebarListeners. The
+         install pipeline reads it directly to set prototypeToken
+         texture src to either -token.webp (2.5D) or -top.webp. --}}
+    <section class="bc-sidebar-group bc-install-style-group">
+      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.InstallStyle"}}</header>
+      <div class="bc-radio-row" data-tooltip="{{localize 'BENEOS.Cloud.Filter.InstallStyleHint'}}">
+        <label class="bc-radio-label">
+          <input type="radio" name="beneos-install-style" value="tokenized"
+                 {{#if (eq installStyle "tokenized")}}checked{{/if}} />
+          <span>{{localize "BENEOS.Cloud.Filter.InstallStyle25D"}}</span>
+        </label>
+        <label class="bc-radio-label">
+          <input type="radio" name="beneos-install-style" value="topdown"
+                 {{#if (eq installStyle "topdown")}}checked{{/if}} />
+          <span>{{localize "BENEOS.Cloud.Filter.InstallStyleTopDown"}}</span>
+        </label>
+      </div>
+    </section>
   {{/if}}
 
   {{#if (eq searchMode "bmap")}}
@@ -375,6 +395,18 @@
       <div class="bc-sidebar-field">
         <button type="button" class="bc-sidebar-button" id="bc-tier-upgrade-mechanic">
           {{localize "BENEOS.Cloud.Filter.TierUpgrade"}}
+        </button>
+      </div>
+      {{!-- Punkt 3: Loot Generator — opens a 3-step roll wizard. --}}
+      <div class="bc-sidebar-field">
+        <button type="button" class="bc-sidebar-button" id="bc-loot-generator">
+          {{localize "BENEOS.LootGen.SidebarButton"}}
+        </button>
+      </div>
+      {{!-- Punkt 3 v2: Magic Shop Generator — sister wizard. --}}
+      <div class="bc-sidebar-field">
+        <button type="button" class="bc-sidebar-button" id="bc-magic-shop">
+          {{localize "BENEOS.MagicShop.SidebarButton"}}
         </button>
       </div>
     </section>

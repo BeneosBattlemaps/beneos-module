@@ -3,6 +3,22 @@
 All notable changes to this module will be documented in this file.
 
 ## Updates
+### 14.1.0 # 2026-05-11
+- New: **Top-Down Token Mode.** All Beneos Creatures and SRD creatures now ship with top-down icons in addition to the established 2.5D portrait tokens. Right-click any creature on the canvas to switch between top-down and 2.5D in place; the Cloud search results expose both styles as variants; the Creatures sidebar has a new Default Style filter so drag-and-drop or one-click installs land in your preferred orientation.
+- New: **Loot Generator.** A new action button in the Loot tab opens a generator window where you pick the player level and the loot-quality dial; the module rolls a thematic, level-appropriate selection from all SRD and Beneos items you have access to, shows the probability behind each result, and lets you push the rolled items and the gold roll straight to a player's character sheet.
+- New: **Magic Shop Generator.** A second new action in the Loot tab opens a shop generator. Pick a shop archetype - Tavern, Armor, Weaponsmith, Thieves' Guild, Alchemist, and more - and the generator rolls a believable, priced inventory from SRD + Beneos items. Give the shop a name, save it, and it is integrated into your world's Item Browser in its own folder, re-openable any time.
+- New: **Asset Repair Tool.** When Foundry can't load a Beneos asset - the typical cause being a Moulinette install that moved files to a folder that doesn't match the references - the module now offers a one-click "Try to repair locally" flow. It scans the world for broken Beneos references, deep-scans your data folder for the files, derives a path mapping per pack, previews the rewrite and applies it on Apply. Reachable from the missing-asset watcher dialog, the post-install dialog, the Foundry module settings menu and the new entry in the Beneos Cloud settings window.
+- Improved: **Cloud Settings layout.** The Beneos Cloud settings window now uses the full available width, so longer German, Italian and Portuguese descriptions stay readable on a single line instead of stacking three words wide.
+- Improved: **Toolbar toggle stability.** Clicking the Beneos toolbar icon while the Cloud window is already open is now a no-op - no more replaying the splash overlay and start sound on a window that's already on screen. Close the window through the standard window controls.
+- Improved: **13-language localization sweep.** A large translation backlog has been cleared - Cloud tabs, Install / Update / New / Installed chips, source filters and Patreon-connection labels were missing in many languages; that's all native now across German, French, Spanish, Italian, Portuguese (Brazil), Portuguese (Portugal), Polish, Czech, Catalan, Japanese, Korean and Traditional Chinese.
+- Improved: **Refreshed visuals.** Updated icons across all Loot and Spell entries, plus refreshed creature thumbnails in the search engine.
+- Fixed: Installed creatures that had been deleted from the world while still living in the compendium no longer throw an error in the Cloud window.
+- Fixed: Various spelling fixes across the module.
+
+*Coming up next: matching 2.5D companion tokens for the new top-down variants are in production and will land in a near-future release - the search engine already shows their slots so the upgrade arrives transparently. Per-creature effect animations (poison auras, lightning, and similar) are also in development and will be added where it fits the creature thematically.*
+
+*Translation polish: if any wording reads awkwardly in your language, ping us on Discord and we'll patch it quickly - we want every language to feel native.*
+
 ### 14.0.6 # 2026-05-04
 - New: **SRD Spells and Items.** We have integrated all SRD spells and SRD items from the D&D 5.5 version into the Beneos module. This is new.
 - New: **New Icons.** All spells and items now have updated icons that better match the overall design and provide clearer, more useful information.

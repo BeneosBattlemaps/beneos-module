@@ -3,6 +3,8 @@ import { libWrapper } from "./shim.js";
 import { BeneosUtility } from "./beneos_utility.js";
 import { BeneosSearchEngineLauncher, BeneosModuleMenu, BeneosDatabaseHolder } from "./beneos_search_engine.js";
 import { BeneosCloud } from "./beneos_cloud.js";
+import { BeneosFXEngine } from "./cloud-v2/beneos-fx.mjs";
+import { BeneosFXEditor } from "./cloud-v2/beneos-fx-editor.mjs";
 // Unused : import { BeneosTableTop } from "./beneos-table-top.js";
 
 /********************************************************************************** */
@@ -82,11 +84,11 @@ Hooks.once('ready', () => {
   BeneosUtility.updateSceneTokens()
   //BeneosUtility.checkLockViewPresence()
 
-  // Cloud login, welcome and news messages are GM-only
+  // Cloud login is GM-only. Setup-tour-prompt and news popups are
+  // orchestrated centrally in beneos_tours.js so at most one window
+  // opens per world load (priority: tutorial-tour > setup-prompt > news).
   if (game.user.isGM) {
     game.beneos.cloud.loginAttempt()
-    BeneosUtility.checkWelcomeMessage()
-    BeneosUtility.checkNewsMessage()
   }
 
   if (game.settings.get(BeneosUtility.moduleID(), "beneos-reload-search-engine")) {
@@ -247,7 +249,12 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
     BeneosUtility.debugMessage("[BENEOS TOKENS] No variants found for token", tokenConfig)
     return;
   }
-  let beneosVariantsHUD = BeneosUtility.getVariants(tokenConfig)
+  // Stage 5: derive HUD mode from the placed token's current texture
+  // src so the change-skin button lists OTHER variants as either 2.5D
+  // or top-down images, matching the active mode of this token.
+  const protoSrc = token.document?.texture?.src || ""
+  const hudMode = protoSrc.includes("-top.webp") ? "topdown" : "tokenized"
+  let beneosVariantsHUD = BeneosUtility.getVariants(tokenConfig, hudMode)
   const beneosVariantsDisplay = await foundry.applications.handlebars.renderTemplate('modules/beneos-module/templates/beneosvariants.html',
     { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getBeneosTokenDataPath(), beneosVariantsHUD, current: tokenConfig.number })
   $(html).find('div.right').append(beneosVariantsDisplay).click((event) => {
@@ -273,6 +280,302 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
     }
   });
 
+  // Top-Down Stage 3: STYLE-SWITCH HUD button — filesystem-gated.
+  // Stage 2 trusted the cache; Stage 3 probes the disk via
+  // BeneosUtility.beneosTopVariantExists so manual-drop test setups
+  // and legacy installs work transparently. If the counterpart file
+  // (-top.webp ↔ -token.webp) isn't on disk, the button isn't
+  // rendered at all — no error path, no notification noise.
+  try {
+    // Stage 7: read the placed token's texture.src first. Stage-6
+    // relied on actor.prototypeToken.texture.src, which goes stale
+    // when an actor.update fails (V13 schema rejection on legacy
+    // `scale` paths). Token-document is the most authoritative
+    // source for what the user actually sees on the canvas.
+    const protoSrc = token?.document?.texture?.src
+                  || token?.actor?.prototypeToken?.texture?.src
+                  || ""
+    const isTopDown = protoSrc.includes("-top.webp")
+    const isTokenized = protoSrc.includes("-token.webp")
+    if (isTopDown || isTokenized) {
+      const counterpartExists = await BeneosUtility.beneosTopVariantExists(protoSrc)
+      if (counterpartExists) {
+        const tooltipKey = isTopDown
+          ? "BENEOS.TokenMenu.SwitchStyleTo25D"
+          : "BENEOS.TokenMenu.SwitchStyleToTopDown"
+        const tooltipText = game.i18n.localize(tooltipKey)
+        // Stage 7: visually distinct icon pair tied to the TARGET
+        // shape. 2.5D tokens are round, Top-Down tokens are square-ish
+        // map tiles. So Top-Down active → fa-circle (target = round
+        // 2.5D); 2.5D active → fa-down-long (target = top-down view).
+        const iconClass = isTopDown ? "fa-solid fa-circle" : "fa-solid fa-down-long"
+        const $btn = $(`
+          <div class="control-icon beneos-token-style-toggle"
+               data-action="beneosToken-style"
+               title="${tooltipText}"
+               style="display:flex;align-items:center;justify-content:center;cursor:pointer;">
+            <i class="${iconClass}" style="font-size:20px;"></i>
+          </div>
+        `)
+        $btn.on("click", (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          BeneosUtility.toggleTokenStyle(token.id)
+        })
+        $(html).find('div.right').append($btn)
+      }
+    }
+  } catch (err) {
+    console.warn("[Beneos] Style-toggle HUD button failed", err)
+  }
+
+  // Stage 13c-mini: FX-Editor-Button. Sichtbar NUR wenn Creator-Mode
+  // aktiv und Token ist Beneos-Creature. Klick öffnet das BeneosFX-
+  // Editor-Window mit Live-Auto-Save für Drop-Shadow-Parameter. End-
+  // User-Modus zeigt diesen Button gar nicht.
+  try {
+    const creatorMode = game.settings.get(BeneosUtility.moduleID(), "beneos-creator-mode")
+    if (creatorMode && BeneosUtility.isBeneosCreature(token)) {
+      const tooltipText = game.i18n.localize("BENEOS.FXEditor.Title")
+      const $fxBtn = $(`
+        <div class="control-icon beneos-fx-editor-toggle"
+             title="${tooltipText}"
+             style="display:flex;align-items:center;justify-content:center;cursor:pointer;">
+          <i class="fa-solid fa-wand-sparkles" style="font-size:20px;"></i>
+        </div>
+      `)
+      $fxBtn.on("click", (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        try {
+          new BeneosFXEditor(token).render(true)
+        } catch (err) {
+          console.warn("[Beneos] FX-Editor open failed", err)
+        }
+      })
+      $(html).find('div.right').append($fxBtn)
+    }
+  } catch (err) {
+    console.warn("[Beneos] FX-Editor HUD button failed", err)
+  }
+
+})
+
+/********************************************************************************** */
+// Top-Down Stage 2: drag-from-variant-detail bridge. The variant
+// drag-handler in the cloud window sets BeneosUtility._pendingDropStyle
+// just before placing the actor on canvas. preCreateToken fires once
+// per placeable creation — we read the flag, rewrite the texture src
+// to -top.webp if requested, then null the flag so the next drop is
+// untouched. Defensive: only swap when the source actually contains
+// "-token.webp" (regular tokens with no style suffix are left alone).
+Hooks.on("preCreateToken", (tokenDoc, data, options, userId) => {
+  try {
+    const pending = BeneosUtility._pendingDropStyle
+    BeneosUtility._pendingDropStyle = null
+    if (pending !== "topdown") return
+    const src = data?.texture?.src || tokenDoc?.texture?.src || ""
+    if (!src.includes("-token.webp")) return
+    const newSrc = src.replace("-token.webp", "-top.webp")
+    // Stage 6/7/13a: scale moves with the texture. Stage 13a routes
+    // through getBeneosScale so per-token flag-overrides
+    // (rendering.topDownScale) win over the BENEOS_SCALE_TOPDOWN
+    // default. The hook fires before the token is in the canvas, so
+    // we read the actor straight off the tokenDoc.
+    const topDownScale = BeneosUtility.getBeneosScale(tokenDoc?.actor, "topdown")
+    tokenDoc.updateSource({
+      "texture.src": newSrc,
+      "texture.scaleX": topDownScale,
+      "texture.scaleY": topDownScale
+    })
+  } catch (err) {
+    console.warn("[Beneos] preCreateToken style override failed", err)
+  }
+})
+
+/********************************************************************************** */
+// Stage 13a: Creator-Mode Auto-Write. Two hooks (Token + Actor) feed
+// a shared persistence helper. The PRIMARY designer workflow runs via
+// Right-Click placed Token → "Configure Token" (Gear-Icon im HUD) →
+// Appearance → Scale-Slider → Save. That path goes through
+// preUpdateToken (TokenDocument), NOT preUpdateActor — so a hook
+// only on Actor-Updates would silently miss the most common path,
+// which exactly matches the user's bug report. preUpdateActor stays
+// for the alternate path (Actor-Sheet → Token-Tab edits).
+//
+// Critical: at unlinked Beneos tokens, `tokenDoc.actor` is the
+// synthetic delta-actor. We must persist on the WORLD actor (via
+// game.actors.get(tokenDoc.actorId)) so the flag survives in
+// actor.toObject().flags for Foundry's Right-Click → Export Data
+// roundtrip.
+function _beneosCreatorPersistScale(worldActor, newScale, newTextureSrc) {
+  if (!worldActor) return
+  if (!(typeof newScale === "number" && newScale > 0)) return
+  const beneosFlag = worldActor.getFlag("world", "beneos")
+  if (!beneosFlag) return  // not a Beneos creature — silent skip
+  const src = newTextureSrc || worldActor.prototypeToken?.texture?.src || ""
+  const mode = src.includes("-top.webp") ? "topdown" : "tokenized"
+  const flagKey = mode === "topdown" ? "topDownScale" : "tokenizedScale"
+  const rendering = { ...(beneosFlag.rendering || {}), [flagKey]: newScale }
+  worldActor.setFlag("world", "beneos", { ...beneosFlag, rendering }).then(() => {
+    ui.notifications?.info(`Beneos Creator: ${flagKey} = ${newScale} on ${worldActor.name}`)
+    BeneosUtility.debugMessage(
+      "[Beneos Creator-Mode] persisted", flagKey, "=", newScale, "on", worldActor.name
+    )
+  }).catch(err => {
+    console.warn("[Beneos] Creator-Mode setFlag failed", err)
+  })
+}
+
+// Stage 13d-11: anchor auto-save, mirror of the scale path. Detects
+// the active mode from the token's current texture-src so 2.5D and
+// top-down anchor settings stay separated. Caller passes whichever
+// of ax/ay actually changed (a single-axis edit is the common case);
+// no-op for non-Beneos actors.
+function _beneosCreatorPersistAnchor(worldActor, ax, ay, newTextureSrc) {
+  if (!worldActor) return
+  if (!Number.isFinite(ax) && !Number.isFinite(ay)) return
+  const beneosFlag = worldActor.getFlag("world", "beneos")
+  if (!beneosFlag) return
+  const src = newTextureSrc || worldActor.prototypeToken?.texture?.src || ""
+  const mode = src.includes("-top.webp") ? "topdown" : "tokenized"
+  const xKey = mode === "topdown" ? "topDownAnchorX" : "tokenizedAnchorX"
+  const yKey = mode === "topdown" ? "topDownAnchorY" : "tokenizedAnchorY"
+  const current = beneosFlag.rendering || {}
+  // Idempotency: skip if neither axis would actually change.
+  const xChanged = Number.isFinite(ax) && current[xKey] !== ax
+  const yChanged = Number.isFinite(ay) && current[yKey] !== ay
+  if (!xChanged && !yChanged) return
+  const rendering = { ...current }
+  if (xChanged) rendering[xKey] = ax
+  if (yChanged) rendering[yKey] = ay
+  worldActor.setFlag("world", "beneos", { ...beneosFlag, rendering }).then(() => {
+    const parts = []
+    if (xChanged) parts.push(`${xKey}=${ax}`)
+    if (yChanged) parts.push(`${yKey}=${ay}`)
+    ui.notifications?.info(`Beneos Creator: ${parts.join(", ")} on ${worldActor.name}`)
+    BeneosUtility.debugMessage("[Beneos Creator-Mode] persisted anchor", parts.join(", "), "on", worldActor.name)
+  }).catch(err => {
+    console.warn("[Beneos] Creator-Mode anchor setFlag failed", err)
+  })
+}
+
+// Path 1: Designer edits Scale via Actor-Sheet → Prototype-Token-Tab.
+// Update lands directly on the Actor-Document, prototypeToken-Sub.
+Hooks.on("preUpdateActor", (actor, changes, options, userId) => {
+  try {
+    if (!game.settings.get(BeneosUtility.moduleID(), "beneos-creator-mode")) return
+    const proto = changes?.prototypeToken
+    if (!proto) return
+    const newSrc = proto?.texture?.src ?? actor.prototypeToken?.texture?.src ?? ""
+    const newScale = (typeof proto?.texture?.scaleX === "number") ? proto.texture.scaleX
+                  : (typeof proto?.scale === "number") ? proto.scale
+                  : null
+    if (newScale !== null) _beneosCreatorPersistScale(actor, newScale, newSrc)
+    // Stage 13d-11: anchor auto-save alongside scale.
+    const ax = (typeof proto?.texture?.anchorX === "number") ? proto.texture.anchorX : null
+    const ay = (typeof proto?.texture?.anchorY === "number") ? proto.texture.anchorY : null
+    if (ax !== null || ay !== null) _beneosCreatorPersistAnchor(actor, ax, ay, newSrc)
+  } catch (err) {
+    console.warn("[Beneos] Creator-Mode preUpdateActor auto-write failed", err)
+  }
+})
+
+// Path 2 (PRIMARY designer path): Right-Click placed Token →
+// Configure Token → Appearance → Scale-Slider → Save. Update goes
+// through TokenDocument. We resolve the WORLD actor via
+// tokenDoc.actorId so the flag persists on the actor (for Export →
+// Cloud roundtrip), not on the synthetic delta of the placed token.
+Hooks.on("preUpdateToken", (tokenDoc, changes, options, userId) => {
+  try {
+    if (!game.settings.get(BeneosUtility.moduleID(), "beneos-creator-mode")) return
+    const newSrc = changes?.texture?.src ?? tokenDoc?.texture?.src ?? ""
+    const worldActor = tokenDoc.actorId ? game.actors.get(tokenDoc.actorId) : null
+    if (!worldActor) return
+    const newScale = (typeof changes?.texture?.scaleX === "number") ? changes.texture.scaleX
+                  : (typeof changes?.scale === "number") ? changes.scale
+                  : null
+    if (newScale !== null) _beneosCreatorPersistScale(worldActor, newScale, newSrc)
+    // Stage 13d-11: anchor auto-save alongside scale.
+    const ax = (typeof changes?.texture?.anchorX === "number") ? changes.texture.anchorX : null
+    const ay = (typeof changes?.texture?.anchorY === "number") ? changes.texture.anchorY : null
+    if (ax !== null || ay !== null) _beneosCreatorPersistAnchor(worldActor, ax, ay, newSrc)
+  } catch (err) {
+    console.warn("[Beneos] Creator-Mode preUpdateToken auto-write failed", err)
+  }
+})
+
+/********************************************************************************** */
+// Stage 13b: FX-Engine Hook-Wiring. canvasReady covers the cold path
+// when the user opens a scene; updateToken catches live flag-edits
+// (Creator-Mode-Auto-Write or manual setFlag) and re-renders the FX
+// without requiring a scene reload. destroyToken cleans up so
+// detached PIXI-filter-objects don't outlive their token.
+Hooks.on("canvasReady", () => {
+  try {
+    BeneosFXEngine.refreshAll()
+  } catch (err) {
+    console.warn("[Beneos FX] canvasReady refresh failed", err)
+  }
+})
+
+Hooks.on("updateToken", (tokenDoc, changes) => {
+  // Re-apply on rendering-flag changes OR on a texture-source flip
+  // (mode-switch tokenized↔top-down). The mode-switch alone needs a
+  // re-apply because the active fx-list resolves from
+  // texture.src — switching modes selects the other list, so live
+  // PIXI state has to be rebuilt to match.
+  const flagChanged    = foundry.utils.hasProperty(changes, "flags.world.beneos.rendering")
+  const textureChanged = foundry.utils.hasProperty(changes, "texture.src")
+  if (!flagChanged && !textureChanged) return
+  // Stage 13d-1: skip when the FX-Editor is mid-commit.
+  if (globalThis.beneosFXEditorWriting) return
+  const token = tokenDoc.object
+  if (!token) return
+  try {
+    BeneosFXEngine.applyForToken(token)
+  } catch (err) {
+    console.warn("[Beneos FX] updateToken refresh failed", err)
+  }
+})
+
+// Stage 13b-Bugfix: actor-level Hook für FX-Re-Apply.
+//
+// actor.setFlag(...) — wie es der Stage-13c-mini-FX-Editor und
+// auch direkte Console-Edits aufrufen — feuert updateActor, NICHT
+// updateToken. Stage 13b hörte nur auf updateToken, daher wurde
+// die FX-Engine bei Editor-Edits nie getriggert. Hier iterieren
+// wir alle placed Tokens des aktualisierten Actors auf der aktiven
+// Canvas und re-applyen die Filter.
+Hooks.on("updateActor", (actor, changes) => {
+  if (!foundry.utils.hasProperty(changes, "flags.world.beneos.rendering")) return
+  // Stage 13d-1: bypass when the FX-Editor is committing a slider
+  // release. liveUpdate already wrote the value to the live PIXI
+  // filters; clear+re-instantiate here would replace the running
+  // filters with fresh ones — visually identical, but it resets
+  // animator phase and triggers a 1-frame visual hiccup that the
+  // user perceives as "lag". External flag-edits (Console, Cloud-
+  // Update) never set this flag, so they still re-apply correctly.
+  if (globalThis.beneosFXEditorWriting) return
+  const tokens = canvas?.tokens?.placeables?.filter(
+    t => t.document?.actorId === actor.id
+  ) || []
+  for (const token of tokens) {
+    try {
+      BeneosFXEngine.applyForToken(token)
+    } catch (err) {
+      console.warn("[Beneos FX] updateActor refresh failed", err)
+    }
+  }
+})
+
+Hooks.on("destroyToken", token => {
+  try {
+    BeneosFXEngine.clearForToken(token)
+  } catch (err) {
+    /* swallow — cleanup is best-effort, Foundry's own teardown
+       handles the PIXI-mesh GC anyway. */
+  }
 })
 
 /********************************************************************************** */
@@ -283,22 +586,41 @@ Hooks.on("deleteActor", (actor, options) => {
   return true;
 })
 /********************************************************************************** */
+// Punkt 1 — Folder-Restruktur: ZipImporter and other non-cloud creation
+// flows hit this hook without a pre-set folder. We try to find the deepest
+// matching folder in the new "Beneos Creatures / [SRD|Beneos Originals] /
+// <Type> / CR <X>" hierarchy and fall back upward if any level is missing.
+// This is sync-only (Foundry hooks can't await), so we never CREATE folders
+// here — that's the import path's job. If nothing matches we leave the
+// actor's folder untouched.
 Hooks.on("preCreateActor", (actor, data, context) => {
-  if (actor?.flags?.world?.beneos?.fullId) {
-    let folder = game.folders.getName("Beneos Actors")
-    if (folder) {
-      // databaseHolder may not be ready yet (e.g. during an early
-      // ZipImporter run); fall back to the top-level Beneos Actors folder
-      // instead of crashing the whole preCreateActor chain.
-      let tokenDb = game.beneos?.databaseHolder?.getTokenDatabaseInfo?.(actor.flags.world.beneos.tokenKey)
-      let folderName = tokenDb?.properties?.type?.[0] ?? "Unknown"
-      // Upper first letter
-      folderName = folderName.charAt(0).toUpperCase() + folderName.slice(1)
-      // Create the sub-folder if it doesn't exist
-      let subFolder = game.folders.getName(folderName)
-      actor.updateSource({ folder: subFolder?.id ?? folder.id })
-    }
+  const beneosFlag = actor?.flags?.world?.beneos
+  if (!beneosFlag?.fullId) return true
+  if (actor.folder) return true // cloud-install path already set a folder
+
+  const tokenKey = beneosFlag.tokenKey
+  const tokenDb = game.beneos?.databaseHolder?.getTokenDatabaseInfo?.(tokenKey)
+  const rawBucket = BeneosUtility.getSourceBucket(tokenDb, "token", tokenKey)
+  const folderBucket = BeneosUtility.getFolderBucket(rawBucket)
+  let creatureType = tokenDb?.properties?.type?.[0] ?? "Unknown"
+  creatureType = creatureType.charAt(0).toUpperCase() + creatureType.slice(1)
+  const crFolder = BeneosUtility.formatCrFolder(tokenDb?.properties?.cr)
+  const segments = ["Beneos Creatures", folderBucket, creatureType, crFolder]
+
+  const findChild = (parentId, name) => game.folders.find(f =>
+    f.name === name && f.type === "Actor" && (f.folder?.id ?? null) === parentId
+  )
+
+  // Walk down as far as we can; the deepest match wins.
+  let parent = null
+  let chosen = null
+  for (const name of segments) {
+    const next = findChild(parent?.id ?? null, name)
+    if (!next) break
+    parent = next
+    chosen = next
   }
+  if (chosen?.id) actor.updateSource({ folder: chosen.id })
   return true;
 })
 /********************************************************************************** */
@@ -349,6 +671,56 @@ Hooks.once("ready", () => {
     }
   }
 })
+/********************************************************************************** */
+// Warlock Pact-Magic prompt for the manual compendium → actor drop. The cloud
+// import path runs its own prompt inside drainPendingItemDrops; this hook
+// catches the case where a GM drags a spell directly out of the Beneos pack
+// (or any other source carrying the world.beneos.spellKey flag) onto a
+// Warlock sheet. We cancel the default create, run the async prompt, then
+// re-create the embedded item with the chosen method. The
+// `beneosPactMagicHandled` option flag prevents the hook from re-prompting
+// itself on the second create call.
+Hooks.on("preCreateItem", (item, data, options, userId) => {
+  if (options?.beneosPactMagicHandled) return true;
+  if (game.system?.id !== "dnd5e") return true;
+  if (item?.type !== "spell") return true;
+  if ((item?.system?.level ?? 0) === 0) return true; // cantrips never use slots
+  const actor = item?.parent;
+  if (!(actor && actor.documentName === "Actor")) return true;
+  if (!BeneosUtility.isWarlockActor(actor)) return true;
+
+  // Only fire for Beneos spells. The flag is stamped during cloud-import
+  // (importSpellToCompendium) and rides along when the world item is
+  // drag-dropped onto an actor.
+  const beneosFlag = item.flags?.world?.beneos
+                  ?? (item.getFlag?.("world", "beneos"));
+  const isBeneos = !!(beneosFlag?.spellKey)
+                || item.pack === "world.beneos_module_spells";
+  if (!isBeneos) return true;
+
+  (async () => {
+    let choice = "normal";
+    try {
+      choice = await BeneosUtility.askPactMagicChoice({
+        spellItem: item,
+        actor,
+        batchToken: "" // no batch cache for manual compendium drops
+      });
+    } catch (e) {
+      console.warn("Beneos | Pact-Magic prompt failed during preCreateItem:", e);
+    }
+    const itemData = (item.toObject ? item.toObject() : foundry.utils.deepClone(data)) || {};
+    if (choice === "pact") BeneosUtility.applyPactMagicToSpellData(itemData);
+    try {
+      await actor.createEmbeddedDocuments("Item", [itemData], { beneosPactMagicHandled: true });
+    } catch (err) {
+      console.error("Beneos | Re-create after Pact-Magic prompt failed:", err);
+    }
+  })();
+
+  return false; // suppress the default create — re-created above with chosen method
+})
+
 /********************************************************************************** */
 Hooks.on("deleteItem", (item, options) => {
   console.log("Beneos delete item", item, options)
@@ -410,18 +782,68 @@ Hooks.on("getSceneControlButtons", (controls) => {
         // render fires inside the same JS task as the click — yields
         // "Cannot read properties of null (reading 'offsetWidth')".
         onChange: () => {
+          // V13 dispatches onChange TWICE per click on button-tools
+          // (see Wave B-9-fix-52 below). The in-progress lock catches
+          // the duplicate dispatch.
           if (Hooks._beneosOpenCloudInProgress) return
+          // No-op when the Cloud window is already on screen. Per
+          // user direction: toolbar-button = open; window-X / ESC =
+          // close. Strict === true so transient states (closing,
+          // undefined) fall through to the open path.
+          try {
+            const existing = game.beneos?.cloudWindowV2
+            if (existing && existing.rendered === true) return
+          } catch (e) {}
           Hooks._beneosOpenCloudInProgress = true
+          // Safety net: if the regular reset (120 ms after launcher
+          // render) is dropped — browser tab throttling, mid-open
+          // error — the lock would otherwise stay true forever and
+          // dead-end the toolbar. Force-clear after 5 s.
+          setTimeout(() => {
+            if (Hooks._beneosOpenCloudInProgress) {
+              console.warn("Beneos | open-cloud lock stuck >5s, forcing reset")
+              Hooks._beneosOpenCloudInProgress = false
+            }
+          }, 5000)
           try {
             const src = "modules/beneos-module/ui/sfx/beneos_start.ogg"
             const helper = foundry.audio?.AudioHelper
                         ?? (typeof AudioHelper !== "undefined" ? AudioHelper : null)
             helper?.play?.({ src, volume: 0.5, autoplay: true, loop: false }, false)
           } catch (e) {}
+          // Stage 11: synchronous splash-overlay. Cold-open of the
+          // cloud window triggers up to 5 sequential CDN fetches in
+          // BeneosDatabaseHolder.loadDatabaseFiles plus template
+          // compilation — total 2-5s of dead silence between the
+          // click sound and the first paint. Inject a fixed-position
+          // overlay BEFORE the deferred render so the user sees
+          // Foundry isn't frozen. Removed by V2's _onRender hook.
+          if (!document.getElementById("beneos-cloud-loading-splash")) {
+            try {
+              const splash = document.createElement("div")
+              splash.id = "beneos-cloud-loading-splash"
+              const splashText = game.i18n?.localize?.("BENEOS.Cloud.Loading.Splash")
+                              || "Loading Beneos Cloud…"
+              splash.innerHTML = `
+                <div class="beneos-loading-splash-card">
+                  <div class="beneos-loading-splash-spinner"></div>
+                  <div class="beneos-loading-splash-text">${splashText}</div>
+                </div>
+              `
+              document.body.appendChild(splash)
+            } catch (e) { /* splash is best-effort, never block the open */ }
+          }
           // Defer the heavy work outside Foundry's click handler so the
           // scene-controls activation stack unwinds first.
           setTimeout(() => {
-            try { new BeneosSearchEngineLauncher().render() } catch (e) { console.error(e) }
+            try {
+              new BeneosSearchEngineLauncher().render()
+            } catch (e) {
+              console.error(e)
+              // Stage 11: if the launcher throws synchronously,
+              // strip the splash so it doesn't hang forever.
+              document.getElementById("beneos-cloud-loading-splash")?.remove()
+            }
             // Switch focus back to Token Controls — the "beneos" group
             // has no canvas tools, so leaving it focused after the cloud
             // window opens would strand the user. Defer once more so the

@@ -6710,9 +6710,30 @@ Hooks.once("setup", async () => {
 /*  Auto-start on first run (GM only)                                  */
 /* ================================================================== */
 
+/**
+ * Returns true if the given scene is one of the Getting Started tutorial
+ * scenes. The canvasReady auto-start handler at the bottom of this file
+ * launches the matching tutorial tour for these scenes; the world-load
+ * orchestrator must therefore not fire a setup-tour prompt or news popup
+ * on top.
+ */
+function _isTutorialScene(scene) {
+  if (!scene) return false;
+  return Boolean(TUTORIAL_SCENE_TOURS[scene.id] || TUTORIAL_SCENE_TOURS_BY_NAME[scene.name]);
+}
+
 Hooks.once("ready", async () => {
   if (!game.user.isGM) {
-    BeneosUtility.debugMessage("Beneos Setup Tour | first-run check skipped: user is not GM");
+    BeneosUtility.debugMessage("Beneos Popup Orchestrator | skipped: user is not GM");
+    return;
+  }
+
+  // --- Hierarchy gate 1: tutorial-tour scenes always win.
+  // The canvasReady hook lower in this file auto-starts the matching
+  // tutorial tour. Skip the setup-tour prompt and news popup entirely
+  // so the user never sees a competing window stack on top.
+  if (_isTutorialScene(canvas.scene)) {
+    BeneosUtility.debugMessage(`Beneos Popup Orchestrator | active scene "${canvas.scene?.name}" is a tutorial scene — yielding to canvasReady auto-start`);
     return;
   }
 
@@ -6725,8 +6746,8 @@ Hooks.once("ready", async () => {
     }
   }
 
-  // Show the Beneos Tour prompt on first install or after any module
-  // version change, unless the user has opted out permanently. This
+  // --- Hierarchy gate 2: setup-tour prompt on first install or after any
+  // module version change, unless the user has opted out permanently. This
   // replaces the previous silent auto-start so veteran users aren't
   // forced through the tour on every update.
   const currentVersion = game.modules.get(MODULE_ID)?.version ?? "";
@@ -6765,7 +6786,7 @@ Hooks.once("ready", async () => {
         }
       }
     }, 2000);
-    return; // Don't also start scene tour on same load
+    return; // Don't also start scene tour or news on same load
   }
 
   // --- Bridge: after Getting Started Pack import, ask whether to launch the
@@ -6784,7 +6805,14 @@ Hooks.once("ready", async () => {
         // canvasReady hook handles the tour start automatically
       }
     }, 3000);
+    return; // sceneTourPending bridge owns this load — skip news
   }
+
+  // --- Hierarchy gate 3: news popup. Reached only when no tutorial scene
+  // is active, no version-change prompt fired, and no scene-tour bridge
+  // is pending. Per-message-ID dedup inside checkNewsMessage() ensures
+  // each news entry is shown at most once per world.
+  BeneosUtility.checkNewsMessage();
 });
 
 /**

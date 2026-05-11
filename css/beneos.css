@@ -1354,6 +1354,61 @@ body.theme-dark .beneos-info-box,
   }
 }
 
+/* =======================================================================================
+   Beneos News Window (ApplicationV2 frame for cloud news messages).
+   The inner .beneos-news-box keeps its own gold-pulse border; the window
+   chrome contributes the dark Beneos title bar and the footer Close button.
+   ======================================================================================= */
+.beneos-news-window .window-header {
+  background: linear-gradient(180deg, #1f1d1a 0%, #151412 100%);
+  border-bottom: 2px solid #f5c992;
+}
+.beneos-news-window .window-header .window-title {
+  color: #f5c992;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.beneos-news-window .window-content {
+  background: #1a1816;
+  padding: 0.8rem;
+}
+.beneos-news-window-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+.beneos-news-window .beneos-news-box {
+  /* Inside the V2 window the box should fill the available width rather
+     than retain the legacy 700px cap of the old DialogV2 inline render. */
+  max-width: none;
+}
+.beneos-news-window .beneos-news-date {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  color: #c8b888;
+}
+.beneos-news-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+.beneos-news-window .beneos-news-close-btn {
+  background: linear-gradient(180deg, #2a2723 0%, #1c1a17 100%);
+  color: #f5c992;
+  border: 1px solid #f5c992;
+  border-radius: 4px;
+  padding: 0.45rem 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.beneos-news-window .beneos-news-close-btn:hover {
+  background: #f5c992;
+  color: #151412;
+}
+.beneos-news-window .beneos-news-close-btn i {
+  margin-right: 0.4rem;
+}
+
 .beneos-bmap-info-banner {
   margin-top: 0.6rem;
   padding: 0.5rem 0.6rem;

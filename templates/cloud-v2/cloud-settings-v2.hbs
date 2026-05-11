@@ -35,6 +35,22 @@
       </div>
     </div>
 
+    {{!-- Asset Repair — action row that opens BeneosRepairMenuApp. --}}
+    <div class="bc-settings-row">
+      <div class="bc-settings-row-meta">
+        <div class="bc-settings-row-label">{{localize "BENEOS.Cloud.Settings.AssetRepair.Label"}}</div>
+        <div class="bc-settings-row-hint">{{localize "BENEOS.Cloud.Settings.AssetRepair.Hint"}}</div>
+      </div>
+      <div class="bc-settings-row-control">
+        <button type="button"
+                class="bc-card-button bc-card-button-primary"
+                data-action="openAssetRepair">
+          <i class="fa-solid fa-wrench"></i>
+          <span>{{localize "BENEOS.Cloud.Settings.AssetRepair.Action"}}</span>
+        </button>
+      </div>
+    </div>
+
     {{!-- Death Tokens — toggle row bound to beneos-death-management. --}}
     <div class="bc-settings-row">
       <div class="bc-settings-row-meta">

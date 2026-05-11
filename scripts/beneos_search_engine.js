@@ -1026,45 +1026,30 @@ export class BeneosSearchResults extends Dialog {
         }
         return false
       } else {
-        let isBatch = false
-        if (game.beneosTokens?.searchEngine?.batchInstall) {
-          for (let idx in game.beneosTokens.searchEngine.batchInstall) {
-            let token = game.beneosTokens.searchEngine.batchInstall[idx]
-            if (token && token.actorId == id) {
-              isBatch = true
-              break
-            }
-          }
+        // Punkt 1 — Compendium-as-Truth: route every installed-asset drag through
+        // BeneosUtility.resolveBeneosDragData. World-doc UUID wins when present
+        // (avoids the duplicate-world-copy clone Foundry would otherwise do on
+        // a compendium-doc drop, Wave B-1d local-drag); compendium UUID is the
+        // fallback when the user has deleted the world copy. Both forms are
+        // emitted in the V12+ format Compendium.<pack>.<DocType>.<id> — the
+        // legacy V11 form was unresolvable for items/spells and produced the
+        // "Failed to resolve Document from provided DragData" crash.
+        const sectionSelector = docType === "Actor" ? ".token-result-section"
+                              : docType === "Item"  ? ".item-result-section"
+                              : docType === "Spell" ? ".spell-result-section"
+                              : null
+        const assetKey = sectionSelector
+          ? $(e.target).parents(sectionSelector).data("token-key")
+          : null
+        const dragData = assetKey
+          ? BeneosUtility.resolveBeneosDragData(docType, assetKey)
+          : null
+        if (!dragData) {
+          ui.notifications?.warn?.(game.i18n.localize("BENEOS.Cloud.Notification.OrphanInstall") || "This Beneos asset is no longer available in the world or compendium — please reinstall it from the Search Engine.")
+          e.preventDefault()
+          return false
         }
-        let compendium = ""
-        if (docType == "Actor") {
-          compendium = "world.beneos_module_actors"
-        }
-        if (docType == "Item") {
-          compendium = "world.beneos_module_items"
-        }
-        if (docType == "Spell") {
-          compendium = "world.beneos_module_spells"
-          docType = "Item"
-        }
-        let drag_data = { "type": docType, "pack": compendium, "uuid": "Compendium." + compendium + "." + id }
-        // Fix #B-1d (Local-Drag): when the actor is already imported into the
-        // world (Beneos Actors folder), point the drag at the world actor's UUID
-        // instead of the compendium copy. Foundry's drop handler then places
-        // only a Token at the drop position; with the compendium UUID it would
-        // additionally clone a duplicate world actor into the Actor browser
-        // every time — which was the user-reported "duplicate" bug.
-        if (docType == "Actor") {
-          let tokenKey = $(e.target).parents(".token-result-section").data("token-key")
-          let worldActor = game.actors?.find(a => {
-            const flag = a.getFlag("world", "beneos")
-            return flag?.tokenKey === tokenKey
-          })
-          if (worldActor) {
-            drag_data = { type: "Actor", uuid: worldActor.uuid }
-          }
-        }
-        e.originalEvent.dataTransfer.setData("text/plain", JSON.stringify(drag_data));
+        e.originalEvent.dataTransfer.setData("text/plain", JSON.stringify(dragData))
       }
     })
 
@@ -1969,7 +1954,15 @@ export class BeneosSearchEngineLauncher extends FormApplication {
     if (game.beneosTokens.searchEngine) {
       return
     }
-    await BeneosDatabaseHolder.loadDatabaseFiles()
+    // Stage 11: skip the 2-5s re-fetch if the module-ready eager-load
+    // has already populated the holder. Cold first-open still pays
+    // the price; warm reopens drop to ~200-300ms (template + card
+    // build only) since the in-memory DBs are reused.
+    const dbAlreadyLoaded = !!BeneosDatabaseHolder.tokenData
+                         && !!BeneosDatabaseHolder.itemData
+    if (!dbAlreadyLoaded) {
+      await BeneosDatabaseHolder.loadDatabaseFiles()
+    }
     let dbData = BeneosDatabaseHolder.getData()
     game.beneos.databaseHolder = BeneosDatabaseHolder
 
