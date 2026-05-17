@@ -1,0 +1,129 @@
+{
+  "$version": 1,
+  "$migrated": "2026-05-15T19:00:00Z",
+  "data": {
+    "identity": {
+      "tokenKey": "tkn-cult-possessed",
+      "name": "Cult Possessed",
+      "type": "Medium Aberration",
+      "cr": 3,
+      "biome": "urban",
+      "faction": "cults",
+      "fightingStyle": ["Pack", "Melee"],
+      "purpose": ["Damage", "Gimmick", "Minion"]
+    },
+    "visuals": {
+      "sizeTone": { "primary": "#3a1a2a", "secondary": "#1a0a14", "glow": "#a8745a" },
+      "portraitInitial": "P",
+      "heroImageUrl": "icons/svg/mystery-man.svg"
+    },
+    "narrative": {
+      "showcase": "A vessel of forbidden powers — bones shift, flesh writhes, and a hunger no human mouth can articulate moves through alleys and shrines alike.",
+      "lore": "Not every cult is heard, and not every cultist is rewarded. Yet the gifts of the powers that reign over domains beyond mortal comprehension are rarely subtle, and they wreak havoc upon the human form.",
+      "recommendedAllies": ["Cult Oracle", "Acolyte of Murder", "Witherflesh Colossus", "Witherflesh Ripper"]
+    },
+    "abilities": [
+      { "id": "bountiful_gifts",       "name": "Bountiful Gifts",       "type": "trait",
+        "flavorText": "The creature convulses, new limbs tearing free from its flesh." },
+      { "id": "parasitic_protrusions", "name": "Parasitic Protrusions", "type": "bonus",
+        "flavorText": "Wet, spined tendrils shoot out from its throat, wrapping around your limbs." },
+      { "id": "unholy_strength",       "name": "Unholy Strength",       "type": "trait",
+        "flavorText": "Its chest swells grotesquely, veins glowing faintly beneath the skin." },
+      { "id": "living_shade",          "name": "Living Shade",          "type": "free",
+        "flavorText": "Its shadow detaches from its body, peeling up like smoke caught in reverse." },
+      { "id": "rake_and_claw",         "name": "Rake and Claw",         "type": "action",
+        "flavorText": "Its claws shred armour and flesh alike." },
+      { "id": "dark_seed",             "name": "Dark Seed",             "type": "action",
+        "flavorText": "It plunges a jagged finger into your flesh, leaving something behind." }
+    ],
+    "storyHooks": [
+      { "id": "hook-1", "tier": 1, "title": "Old Town",
+        "description": "Locals avoid an old tenement after several disappearances. A suspected cult squats inside, using abducted beggars as vessels. A desperate landlord hires the party to clear it out — no questions asked." },
+      { "id": "hook-2", "tier": 2, "title": "Noblesse Oblige",
+        "description": "A minor noble's heir exhibits violent outbursts and odd growths. During a fashionable seance with friends, a Dark Seed has taken root. The family seeks help in secret, fearing scandal." },
+      { "id": "hook-3", "tier": 2, "title": "The Broken Chain",
+        "description": "A convoy carrying dangerous prisoners was ambushed. A Cult Possessed meant for magical study is hiding in the slums, growing more unstable." }
+    ],
+    "foreshadowing": [
+      {
+        "id": "foresee-1", "title": "Midnight Movements",
+        "description": "Late at night, robed figures are observed skulking through alleyways. Their gait is erratic, some limp, others move with unnatural swiftness.",
+        "check": { "dc": 16, "skills": ["Perception"], "result": "If humanoid, these figures exhibit physical deformities inconsistent with common illness or injury." },
+        "countermeasure": {
+          "dc": 19, "skills": ["Arcana", "Investigation"],
+          "result": "The mutations bear runic seals — Detect Evil/Good or Holy Water disrupts them.",
+          "preparation": "Bring blessed weapons or scrolls of Dispel Magic; the seals weaken in moonlight."
+        }
+      },
+      {
+        "id": "foresee-2", "title": "Two Minds, One Body",
+        "description": "Players casting Detect Thoughts notice a disconcerting mental echo. These beings harbor dual presences: one diminished human consciousness, another feral and predatory.",
+        "check": { "dc": 17, "skills": ["Passive Insight"], "result": "This layered consciousness is characteristic of psychic possession." }
+      }
+    ],
+    "combat": {
+      "firstAppearance": "A disjointed figure emerges from the shadows, its movement twitching and irregular, like a puppet pulled on unseen strings. Whatever this once was, it is no longer a man.",
+      "deathPrompt": "The Possessed stumbles, its limbs locking in unnatural angles as it screeches in a voice that is not its own. Its body goes still — then arches upward with a final convulsion. The air shimmers around the corpse. And then, silence."
+    },
+    "tactical": {
+      "startOfTurn": [
+        {
+          "text": ["Roll ", { "roll": "1d4" }, " to determine which ", { "ref": "bountiful_gifts" }, " effect becomes active. Gain ", { "mechanic": "Temporary Hit Points", "value": "5" }, "."],
+          "children": [
+            { "text": [{ "context": "On 1" }, " ", { "ref": "parasitic_protrusions" }, " becomes available as ", { "action": "bonus" }, "."] },
+            { "text": [{ "context": "On 2" }, " ", { "ref": "unholy_strength" }, " active — attacks deal +", { "roll": "1d8" }, " necrotic."] },
+            { "text": [{ "context": "On 3" }, " ", { "ref": "living_shade" }, " becomes available as ", { "action": "free" }, "."] },
+            { "text": [{ "context": "On 4" }, " Skitterstalks: ", { "mechanic": "Speed", "value": "+10" }, ", Spider Climb."] }
+          ]
+        }
+      ],
+      "movement": [
+        { "text": [{ "action": "action" }, " Get into melee range."] },
+        { "text": [{ "context": "When Skitterstalks Is Active" }, " ", { "mechanic": "Speed", "value": "+10" }, ", Spider Climb."] }
+      ],
+      "bonusActions": [
+        {
+          "text": [{ "context": "When ", "ref": "bountiful_gifts" }, " roll is 1: ", { "ref": "parasitic_protrusions" }, "."],
+          "children": [
+            { "text": [{ "target": "One Creature" }, " within ", { "range": "10 Ft." }, ", ", { "dc": 15, "skills": ["Strength Saving Throw"] }, "."] },
+            { "text": [{ "context": "On Failure" }, " ", { "condition": "Grappled" }, " and ", { "condition": "Restrained" }, "."] }
+          ]
+        }
+      ],
+      "freeActions": [
+        {
+          "text": [{ "context": "When ", "ref": "bountiful_gifts" }, " roll is 3: ", { "ref": "living_shade" }, "."],
+          "children": [
+            { "text": [{ "target": "One Creature" }, " within ", { "range": "15 Ft." }, ", ", { "dc": 16, "skills": ["Charisma Saving Throw"] }, "."] },
+            { "text": [{ "context": "On Failure" }, " ", { "roll": "2d8" }, " Necrotic Damage and ", { "condition": "Frightened" }, "."] }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "text": [{ "ref": "rake_and_claw" }],
+          "children": [
+            { "text": [{ "action": "action" }, " ", { "tohit": 5 }, ", reach ", { "range": "5 Ft." }, ", ", { "target": "One Target" }, "."] },
+            { "text": [{ "context": "On Hit" }, " ", { "roll": "2d4+3" }, " Slashing Damage."] }
+          ]
+        },
+        {
+          "text": [{ "ref": "dark_seed" }],
+          "children": [
+            { "text": [{ "action": "action" }, " ", { "tohit": 5 }, ", reach ", { "range": "5 Ft." }, "."] },
+            { "text": [{ "context": "On Hit" }, " ", { "roll": "1d4+3" }, " Piercing + ", { "dc": 13, "skills": ["Charisma Saving Throw"] }, "."] }
+          ]
+        }
+      ],
+      "traits": [
+        {
+          "text": [{ "ref": "bountiful_gifts" }, " (Plaything of the Gods)"],
+          "children": [
+            { "text": [{ "context": "On 1-10" }, " ", { "condition": "Saving Throw fails" }] },
+            { "text": [{ "context": "On 11-20" }, " auto-succeeds on the saving throw."] }
+          ]
+        }
+      ]
+    }
+  }
+}

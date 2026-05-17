@@ -1,0 +1,23 @@
+{{!-- Story Hooks — Welle 5 master layout: tier badge (T1-T4) + title + body. --}}
+<div class="cdx-section">
+  <header class="cdx-h">
+    <h2>{{localize "BENEOS.CreatureCodex.Hooks.Title"}}</h2>
+    <p>{{localize "BENEOS.CreatureCodex.Hooks.Hint"}}</p>
+  </header>
+
+  {{#if data.storyPrompts.length}}
+    <div class="cdx-hooks">
+      {{#each data.storyPrompts}}
+        <article class="cdx-hook" style="--stagger-index:{{@index}}">
+          <div class="cdx-hook-tier">T{{tier}}</div>
+          <div class="cdx-hook-body">
+            <h3 class="cdx-hook-title">{{title}}</h3>
+            <p class="cdx-hook-text">{{text}}</p>
+          </div>
+        </article>
+      {{/each}}
+    </div>
+  {{else}}
+    <p class="cdx-empty">{{localize "BENEOS.CreatureCodex.EmptyState.NoSection"}}</p>
+  {{/if}}
+</div>

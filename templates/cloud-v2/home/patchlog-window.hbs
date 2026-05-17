@@ -1,0 +1,82 @@
+{{!-- Beneos Patchlog window — renders the last N changelog versions
+     parsed from changelog.md. The window-content wrapper has
+     overflow-y: auto in CSS so the body scrolls when the versions
+     stack exceeds the fixed window height. --}}
+<div class="bc-patchlog">
+
+  {{#if hasVersions}}
+    {{#each versions}}
+      <article class="bc-patchlog-version">
+        <header class="bc-patchlog-version-head">
+          <h2 class="bc-patchlog-version-number">{{this.version}}</h2>
+          <span class="bc-patchlog-version-date">{{this.date}}</span>
+        </header>
+
+        {{#if this.entries.new.length}}
+          <section class="bc-patchlog-group bc-patchlog-new">
+            <h3 class="bc-patchlog-group-title">
+              <span class="bc-patchlog-chip bc-patchlog-chip-new">
+                {{localize "BENEOS.Cloud.Home.Patchlog.Section.New"}}
+              </span>
+            </h3>
+            <ul class="bc-patchlog-list">
+              {{#each this.entries.new}}
+                <li class="bc-patchlog-item">
+                  {{#if this.title}}<strong class="bc-patchlog-item-title">{{this.title}}</strong>{{/if}}
+                  {{#if this.body}}<span class="bc-patchlog-item-body"> {{this.body}}</span>{{/if}}
+                </li>
+              {{/each}}
+            </ul>
+          </section>
+        {{/if}}
+
+        {{#if this.entries.improved.length}}
+          <section class="bc-patchlog-group bc-patchlog-improved">
+            <h3 class="bc-patchlog-group-title">
+              <span class="bc-patchlog-chip bc-patchlog-chip-improved">
+                {{localize "BENEOS.Cloud.Home.Patchlog.Section.Improved"}}
+              </span>
+            </h3>
+            <ul class="bc-patchlog-list">
+              {{#each this.entries.improved}}
+                <li class="bc-patchlog-item">
+                  {{#if this.title}}<strong class="bc-patchlog-item-title">{{this.title}}</strong>{{/if}}
+                  {{#if this.body}}<span class="bc-patchlog-item-body"> {{this.body}}</span>{{/if}}
+                </li>
+              {{/each}}
+            </ul>
+          </section>
+        {{/if}}
+
+        {{#if this.entries.fixed.length}}
+          <section class="bc-patchlog-group bc-patchlog-fixed">
+            <h3 class="bc-patchlog-group-title">
+              <span class="bc-patchlog-chip bc-patchlog-chip-fixed">
+                {{localize "BENEOS.Cloud.Home.Patchlog.Section.Fixed"}}
+              </span>
+            </h3>
+            <ul class="bc-patchlog-list">
+              {{#each this.entries.fixed}}
+                <li class="bc-patchlog-item">
+                  {{#if this.title}}<strong class="bc-patchlog-item-title">{{this.title}}</strong>{{/if}}
+                  {{#if this.body}}<span class="bc-patchlog-item-body"> {{this.body}}</span>{{/if}}
+                </li>
+              {{/each}}
+            </ul>
+          </section>
+        {{/if}}
+      </article>
+    {{/each}}
+  {{else}}
+    <p class="bc-patchlog-empty">{{localize "BENEOS.Cloud.Home.Patchlog.Empty"}}</p>
+  {{/if}}
+
+  <footer class="bc-patchlog-footer">
+    <button type="button" class="bc-patchlog-external"
+            data-action="openExternalChangelog">
+      <i class="fas fa-up-right-from-square"></i>
+      {{localize "BENEOS.Cloud.Home.Patchlog.ViewFull"}}
+    </button>
+  </footer>
+
+</div>

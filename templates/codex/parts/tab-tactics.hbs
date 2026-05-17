@@ -1,0 +1,104 @@
+{{!-- Tactics — Welle 5h: two modes selectable via mode-switcher.
+     Playbook (Welle 5d) = 6-phase stepper + Persistent-Traits sidebar.
+     Cards (Welle 5h)    = flat card grid with tag filter bar — useful
+     during combat to scan "what do I still have?" by Action /
+     Bonus Action / Reaction etc. --}}
+<div class="cdx-section">
+  <header class="cdx-h">
+    <h2>{{localize "BENEOS.CreatureCodex.Tactics.Title"}}</h2>
+    <p>{{localize "BENEOS.CreatureCodex.Tactics.Hint"}}</p>
+  </header>
+
+  <nav class="tlab-modes" role="tablist">
+    <button type="button"
+            class="tlab-mode {{#if (eq activeTacticsMode "playbook")}}active{{/if}}"
+            data-action="switchTacticsMode" data-mode="playbook">
+      <div class="tlab-mode-label">{{localize "BENEOS.CreatureCodex.Tactics.ModePlaybook"}}</div>
+      <div class="tlab-mode-hint">{{localize "BENEOS.CreatureCodex.Tactics.ModePlaybookHint"}}</div>
+    </button>
+    <button type="button"
+            class="tlab-mode {{#if (eq activeTacticsMode "cards")}}active{{/if}}"
+            data-action="switchTacticsMode" data-mode="cards">
+      <div class="tlab-mode-label">{{localize "BENEOS.CreatureCodex.Tactics.ModeCards"}}</div>
+      <div class="tlab-mode-hint">{{localize "BENEOS.CreatureCodex.Tactics.ModeCardsHint"}}</div>
+    </button>
+  </nav>
+
+  {{#if (eq activeTacticsMode "playbook")}}
+    <div class="tlab-playbook">
+      <div class="tlab-pb-main">
+        {{#each playbookPhases}}
+          {{#if items.length}}
+            <article class="tlab-phase">
+              <header class="tlab-phase-head">
+                <div class="tlab-phase-num">{{num}}</div>
+                <div>
+                  <h3>{{localize labelKey}}</h3>
+                  <small>{{localize hintKey}}</small>
+                </div>
+              </header>
+              <div class="tlab-phase-body">
+                <ul class="tlab-rules">
+                  {{#each items}}
+                    {{> "modules/beneos-module/templates/codex/parts/partials/tac-rule.hbs"}}
+                  {{/each}}
+                </ul>
+              </div>
+            </article>
+          {{/if}}
+        {{/each}}
+      </div>
+
+      {{#if data.tacticalGuide.traits.length}}
+        <aside class="tlab-pb-aside">
+          <div class="tlab-aside-head">⚑ {{localize "BENEOS.CreatureCodex.Tactics.PersistentTraits"}}</div>
+          <div class="tlab-aside-hint">{{localize "BENEOS.CreatureCodex.Tactics.PersistentTraitsHint"}}</div>
+          <div class="tlab-traits">
+            {{#each data.tacticalGuide.traits}}
+              <div class="tlab-trait">
+                <div class="tlab-trait-head">
+                  {{> "modules/beneos-module/templates/codex/parts/partials/tac-inline.hbs" parts=text}}
+                </div>
+                {{#if children.length}}
+                  <ul class="tlab-trait-rules">
+                    {{#each children}}
+                      <li>{{> "modules/beneos-module/templates/codex/parts/partials/tac-inline.hbs" parts=text}}</li>
+                    {{/each}}
+                  </ul>
+                {{/if}}
+              </div>
+            {{/each}}
+          </div>
+        </aside>
+      {{/if}}
+    </div>
+  {{/if}}
+
+  {{#if (eq activeTacticsMode "cards")}}
+    <div class="tlab-cards-mode">
+      <div class="tlab-filter-bar">
+        <span class="tlab-filter-label">{{localize "BENEOS.CreatureCodex.Tactics.Filter"}}:</span>
+        {{#each tacticsFilterTagsWithActive}}
+          <button type="button"
+                  class="tlab-filter {{#if active}}active{{/if}}"
+                  data-action="filterTacticsCards" data-tag="{{tag}}">{{tag}}</button>
+        {{/each}}
+      </div>
+      {{#if tacticsCardsFiltered.length}}
+        <div class="tlab-cards">
+          {{#each tacticsCardsFiltered}}
+            <article class="tlab-card" style="--stagger-index:{{@index}}">
+              <h4 class="tlab-card-title">{{title}}</h4>
+              <div class="tlab-card-tags">
+                {{#each tags}}<span class="tlab-card-tag">{{this}}</span>{{/each}}
+              </div>
+              <p class="tlab-card-text">{{summary}}</p>
+            </article>
+          {{/each}}
+        </div>
+      {{else}}
+        <p class="cdx-empty">{{localize "BENEOS.CreatureCodex.EmptyState.NoSection"}}</p>
+      {{/if}}
+    </div>
+  {{/if}}
+</div>

@@ -1,11 +1,28 @@
 import { BeneosUtility } from "./beneos_utility.js"
-import { BeneosSearchEngineLauncher } from "./beneos_search_engine.js"
 import { BeneosInfoBox } from "./beneos_info_box.js"
 export class BeneosCloudSettings extends FormApplication {
-  render() {
-    if (game.beneos.cloud) {
-      game.beneos.cloud.disconnect()
+  async render() {
+    if (!game.beneos?.cloud) return
+    // Confirm before disconnect — the Foundry-Settings menu entry
+    // looks like "Manage Account" but actually triggers a logout when
+    // already signed in. The dialog makes the destructive intent
+    // explicit instead of relying on the user reading the label.
+    const DialogV2 = foundry?.applications?.api?.DialogV2
+    let proceed = true
+    if (DialogV2?.confirm) {
+      try {
+        proceed = await DialogV2.confirm({
+          window: { title: game.i18n.localize("BENEOS.Cloud.Disconnect.ConfirmTitle") },
+          content: `<p>${game.i18n.localize("BENEOS.Cloud.Disconnect.ConfirmContent")}</p>`,
+          yes: { label: game.i18n.localize("BENEOS.Cloud.Disconnect.ConfirmYes") },
+          no:  { label: game.i18n.localize("BENEOS.Cloud.Disconnect.ConfirmNo") },
+          rejectClose: false
+        })
+      } catch (e) {
+        proceed = false
+      }
     }
+    if (proceed) await game.beneos.cloud.disconnect()
   }
 }
 
@@ -224,10 +241,16 @@ export class BeneosCloudLogin extends FormApplication {
             })
             await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-foundry-id", userId)
             await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", data.patreon_status)
-            // Stash the raw login response on the cloud singleton so a
-            // future campaign-check helper (BeneosCloud.hasCampaign?)
-            // can read fields like patreon_campaigns / patreon_tier
-            // once the back-end starts returning them.
+            // Persist per-campaign Patreon membership so the patron-aware
+            // UI survives a Foundry restart without requiring a re-login.
+            // Falls back to `false` when the server hasn't sent the field
+            // (e.g. legacy responses) — strict "true only when explicitly
+            // confirmed" semantics match the "in dubio gate" memory rule.
+            await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-token-patron", !!data.token_patron)
+            await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-battlemap-patron", !!data.battlemap_patron)
+            // Stash the raw login response on the cloud singleton so the
+            // campaign-check helper can read fields like token_patron /
+            // battlemap_patron / campaigns in the same session.
             game.beneos.cloud.lastLoginPayload = data
             game.beneos.cloud.setLoginStatus(true)
             ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Notification.Connected"))
@@ -238,10 +261,7 @@ export class BeneosCloudLogin extends FormApplication {
             await game.beneos.cloud.checkAvailableContent()
             const v2 = game.beneos.cloudWindowV2
             if (v2) {
-              v2.render({ parts: ["sidebar", "results", "footer"] })
-            } else if (requestOrigin == "searchEngine" && game.beneos.searchEngine) {
-              BeneosSearchEngineLauncher.closeAndSave()
-              setTimeout(() => { new BeneosSearchEngineLauncher().render() }, 100)
+              v2.render({ parts: ["home", "sidebar", "results", "footer"] })
             }
           }
         })
@@ -388,6 +408,12 @@ export class BeneosCloud {
         if (data.result == 'OK') {
           game.beneos.cloud.setLoginStatus(true)
           await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", data.patreon_status)
+          await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-token-patron", !!data.token_patron)
+          await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-battlemap-patron", !!data.battlemap_patron)
+          // Cache the raw response in-memory so hasCampaignAccess() can
+          // read fresh-from-server fields on the same session without
+          // hitting the settings store on every call.
+          game.beneos.cloud.lastLoginPayload = data
           // Fix #B2: await the available-content fetch so the search UI sees the
           // populated map on the next render, not an empty placeholder.
           await game.beneos.cloud.checkAvailableContent()
@@ -407,16 +433,16 @@ export class BeneosCloud {
     this.setLoginStatus(false)
     await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-foundry-id", "")
     await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", "no_patreon")
+    await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-token-patron", false)
+    await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-battlemap-patron", false)
+    this.lastLoginPayload = null
     // Fix #B-5d / Issue #A5: no full GUI reload. Clear the available-content map,
     // surface a notification, and re-render the V2 window if it's open.
     this.availableContent = { tokens: [], items: [], spells: [] }
     ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Notification.Disconnected"))
     const v2 = game.beneos?.cloudWindowV2
     if (v2) {
-      v2.render({ parts: ["sidebar", "results", "footer"] })
-    } else if (game.beneos?.searchEngine) {
-      // V1 path keeps the legacy close-and-reopen.
-      BeneosSearchEngineLauncher.closeAndSave()
+      v2.render({ parts: ["home", "sidebar", "results", "footer"] })
     }
     BeneosUtility.debugMessage("BeneosModule: disconnected from Beneos Cloud")
   }
@@ -729,26 +755,93 @@ export class BeneosCloud {
   //
   // Categories: "battlemaps" | "tokens" | "items" | "spells"
   hasCampaignAccess(category) {
+    // tokens / items / spells are all unlocked by the same "Beneos
+    // Tokens" Patreon campaign, so collapse them into one key.
+    const isBattlemaps = (category === "battlemaps")
+    const settingKey = isBattlemaps ? "beneos-cloud-battlemap-patron" : "beneos-cloud-token-patron"
+    // Primary source: persisted setting — survives Foundry restart
+    // without needing a fresh login round-trip.
+    try {
+      const persisted = game.settings.get(BeneosUtility.moduleID(), settingKey)
+      if (persisted === true) return true
+      if (persisted === false) {
+        // Fall through to the in-memory payload check only when the
+        // setting hasn't been populated yet (first login in a fresh
+        // session that updated lastLoginPayload but we're being called
+        // before the await game.settings.set chain completed).
+        const payload = this.lastLoginPayload
+        if (payload) {
+          if (isBattlemaps && payload.battlemap_patron === true) return true
+          if (!isBattlemaps && payload.token_patron === true) return true
+        }
+        return false
+      }
+    } catch (e) {
+      // Settings not registered yet (very early init) — fall back to
+      // the in-memory payload.
+    }
     const payload = this.lastLoginPayload
-    // Preferred: explicit campaign list from the server.
-    if (payload && Array.isArray(payload.campaigns)) {
-      // tokens / items / spells are all unlocked by the same "Beneos
-      // Tokens" Patreon, so collapse them into the same key.
-      const required = (category === "battlemaps") ? "battlemaps" : "tokens"
-      return payload.campaigns.includes(required)
+    if (payload) {
+      if (isBattlemaps) return !!payload.battlemap_patron
+      return !!payload.token_patron
     }
-    // Preferred (alternative shape): boolean flags per campaign.
-    if (payload?.is_battlemaps_patron !== undefined ||
-        payload?.is_tokens_patron !== undefined) {
-      if (category === "battlemaps") return !!payload.is_battlemaps_patron
-      return !!payload.is_tokens_patron
+    return false
+  }
+
+  // Dev-only helper: simulate a Patreon membership state for local
+  // UX testing without an actual server login. Manipulates persistent
+  // settings + in-memory payload + connected flag in lockstep, so the
+  // patron-aware UI behaves as if the user signed in fresh with the
+  // given role. Reset by calling disconnect().
+  //
+  // Also stubs availableContent so simulated personas can actually
+  // install assets — patrons get every catalogue key, free accounts get
+  // only the entries flagged properties.free_content === true in the
+  // public database. Without this stub the Free-Section would render
+  // but every card would fall back to the legacy "Not Available" path.
+  async simulatePatron({ tokens = false, battlemaps = false, freeAccount = false } = {}) {
+    const isPatron = tokens || battlemaps
+    this.setLoginStatus(true)
+    this.lastLoginPayload = {
+      result: "OK",
+      information: "User found (simulated)",
+      patreon_status: isPatron ? "active_patron" : (freeAccount ? "free" : "no_patreon"),
+      token_patron: !!tokens,
+      battlemap_patron: !!battlemaps,
+      campaigns: [tokens && "tokens", battlemaps && "battlemaps"].filter(Boolean),
+      foundryId: "simulated"
     }
-    // Fallback: assume access if the user has any active patreon
-    // status. The current server only returns a single string, so we
-    // can't distinguish — better to let the user attempt the install
-    // and surface the server's own error than to false-block them.
-    const status = this.getPatreonStatus()
-    return !!(status && status !== "no_patreon")
+    await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-token-patron", !!tokens)
+    await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-battlemap-patron", !!battlemaps)
+    await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status",
+      isPatron ? "active_patron" : (freeAccount ? "free" : "no_patreon"))
+    // Build a stub availableContent so cards have a real Install path.
+    // Patron of a campaign → all keys from that campaign's catalogue
+    // are available. Free / non-patron → only properties.free_content
+    // entries surface as installable.
+    const db = game.beneos?.databaseHolder
+    const ts = Math.floor(Date.now() / 1000)
+    const collect = (raw, includeAll) => {
+      if (!raw) return []
+      return Object.entries(raw)
+        .filter(([_, data]) => includeAll || data?.properties?.free_content === true)
+        .map(([key]) => ({ key, updated_ts: ts }))
+    }
+    this.availableContent = {
+      tokens: collect(db?.tokenData?.content, !!tokens),
+      items:  collect(db?.itemData?.content,  !!tokens),
+      spells: collect(db?.spellData?.content, !!tokens)
+    }
+    console.warn("[Beneos] simulatePatron applied", {
+      payload: this.lastLoginPayload,
+      stubCounts: {
+        tokens: this.availableContent.tokens.length,
+        items:  this.availableContent.items.length,
+        spells: this.availableContent.spells.length
+      }
+    })
+    const v2 = game.beneos?.cloudWindowV2
+    if (v2) v2.render({ parts: ["home", "sidebar", "results", "footer"] })
   }
 
   setLoginStatus(status) {
@@ -892,25 +985,10 @@ export class BeneosCloud {
   }
 
   sendChatMessageResult(event, assetName = "Token", name = undefined, isBatch = false) {
-    let content
-    if (name) {
-      content = `<div><strong>BeneosModule</strong> - ${game.i18n.format("BENEOS.Cloud.AssetInstalled", {assetName, name})}</div>`
-    } else {
-      const msgKey = isBatch ? "BENEOS.Cloud.AssetsInstalledBatch" : "BENEOS.Cloud.AssetsInstalled"
-      content = `<div><strong>BeneosModule</strong> - ${game.i18n.format(msgKey, {assetName})}</div>`
-    }
-    BeneosUtility.debugMessage("Sending chat message result for", assetName, name, content)
-    let chatData = {
-      user: game.user.id,
-      rollMode: game.settings.get("core", "rollMode"),
-      whisper: ChatMessage.getWhisperRecipients('GM'),
-      content: content,
-    }
-    if (event) {
-      chatData.content += `<div>${game.i18n.localize("BENEOS.Cloud.DragDropCompendium")}</div>`
-    }
-    ChatMessage.create(chatData);
-
+    // No-op: install feedback now lives in the V2 cloud-window footer
+    // (mass-install progress band) and per-card pulse/state-pill
+    // animation. Whisper-to-GM chat spam was net-negative for actual
+    // play. Signature kept so legacy call-sites stay compatible.
   }
 
   setNoWorldImport() {
@@ -1087,7 +1165,7 @@ export class BeneosCloud {
       // single-install mode itemArray has exactly one entry, so the first key
       // is the asset we just installed.
       const installedItemKey = Object.keys(itemArray)[0]
-      if (installedItemKey) BeneosSearchEngineLauncher.softRefresh("item", installedItemKey)
+      if (installedItemKey) game.beneos?.cloudWindowV2?.notifyInstallEnded?.(installedItemKey, true)
       // Wave B-9-fix-41: place the installed item on any actor sheet
       // the user dropped it onto while the import was running.
       if (installedItemKey) await this.drainPendingItemDrops(installedItemKey, "item")
@@ -1242,7 +1320,7 @@ export class BeneosCloud {
       // Fix #B-5c: spellKey is not in scope outside the for-loop above; pull
       // the just-installed key from spellArray (single-install: one entry).
       const installedSpellKey = Object.keys(spellArray)[0]
-      if (installedSpellKey) BeneosSearchEngineLauncher.softRefresh("spell", installedSpellKey)
+      if (installedSpellKey) game.beneos?.cloudWindowV2?.notifyInstallEnded?.(installedSpellKey, true)
       // Wave B-9-fix-41: place the installed spell on any actor sheet
       // the user dropped it onto while the import was running.
       if (installedSpellKey) await this.drainPendingItemDrops(installedSpellKey, "spell")
@@ -1280,7 +1358,6 @@ export class BeneosCloud {
           ["Beneos Creatures", folderBucket, creatureType, crFolder]
         )
         await game.actors.importFromCompendium(actorPack, imported.id, worldLeaf?.id ? { folder: worldLeaf.id } : {});
-        ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.TokenImported", { name: imported.name }))
       } else {
         ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.TokenLookupFailed", { key: tokenKey }))
       }
@@ -1907,7 +1984,7 @@ export class BeneosCloud {
         await actorPack.configure({ locked: true })
         await journalPack.configure({ locked: true })
         // Fix #C2: see importItemToCompendium for rationale.
-        BeneosSearchEngineLauncher.softRefresh("token", tokenKey)
+        game.beneos?.cloudWindowV2?.notifyInstallEnded?.(tokenKey, true)
         // Fix #B-1d: place any tokens whose drop position was registered while
         // the import was running (cloud-drag onto canvas). No-op if there were none.
         await this.drainPendingCanvasDrops(tokenKey)
@@ -1941,9 +2018,6 @@ export class BeneosCloud {
     }
     if (Object.keys(filteredAssets).length === 0) return;
 
-    game.beneos.info = new BeneosInfoBox("Installation in progress - Search engine will refresh", "#ui-middle");
-    game.beneos.info.show();
-
     await BeneosUtility.lockUnlockAllPacks(false)     // Unlock all packs before batch install
     // COunt the number of assets to install
     this.nbInstalled = 0
@@ -1970,33 +2044,20 @@ export class BeneosCloud {
   }
 
   async updateInstalledAssets() {
-    if (this.nbInstalled == 0) {
-      this.msgRandomId = foundry.utils.randomID(5)
-      // Display an install chat message only at the first installed asset
-      // Fix #F1: localised; surrounding HTML structure preserved.
-      let msg = `<div>${game.i18n.localize("BENEOS.Cloud.Notification.BatchInstalling")}
-      <div>${game.i18n.localize("BENEOS.Cloud.Notification.BatchProgressLabel")} <strong><span id="nb-assets-${this.msgRandomId}"></span></strong></div></div>`
-      let chatData = {
-        user: game.user.id,
-        rollMode: game.settings.get("core", "rollMode"),
-        whisper: ChatMessage.getWhisperRecipients('GM'),
-        content: msg,
-      }
-      await ChatMessage.create(chatData);
-    }
+    // V2 surfaces progress via the cloud-window footer band. Chat-message
+    // and toast generation removed; the counter and pack-lock/re-render
+    // sequence remains so the legacy V1 batchInstall path still completes
+    // cleanly.
     this.nbInstalled++;
-    $(`#nb-assets-${this.msgRandomId}`).html(`${this.nbInstalled} / ${this.toInstall}`)
     if (this.nbInstalled >= this.toInstall) {
       setTimeout(() => {
-        BeneosUtility.lockUnlockAllPacks(true) // Lock all packs after batch install
-        ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.BatchComplete", { nb: this.nbInstalled }))
-        game.beneos.cloud.sendChatMessageResult(null, game.beneos.cloud.importAsset, undefined, true)
-        BeneosSearchEngineLauncher.closeAndSave()
-        this.noWorldImport = false // Reset the no world import flag
-        setTimeout(() => {
-          BeneosUtility.debugMessage("Rendering search engine after batch import")
-          new BeneosSearchEngineLauncher().render()
-        }, 100)
+        BeneosUtility.lockUnlockAllPacks(true)
+        this.noWorldImport = false
+        // V2 full-refresh after batch install — the previous V1 path
+        // closed and reopened the dialog window; V2 stays open and
+        // re-renders its parts in place.
+        const v2 = game.beneos?.cloudWindowV2
+        if (v2) v2.render({ parts: ["home", "sidebar", "results", "footer"] })
       }, 400)
     }
   }
@@ -2068,7 +2129,6 @@ export class BeneosCloud {
     }
     this.inflightImports.add(lockKey)
 
-    ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Notification.ImportingItem"))
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
     let url = `https://beneos.cloud/foundry-manager.php?get_item=1&foundryId=${encodeURIComponent(userId)}&itemKey=${encodeURIComponent(itemKey)}`
     return fetch(url, { credentials: 'same-origin' })
@@ -2107,7 +2167,6 @@ export class BeneosCloud {
     }
     this.inflightImports.add(lockKey)
 
-    ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Notification.ImportingSpell"))
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
     let url = `https://beneos.cloud/foundry-manager.php?get_spell=1&foundryId=${encodeURIComponent(userId)}&spellKey=${encodeURIComponent(spellKey)}`
     return fetch(url, { credentials: 'same-origin' })
@@ -2143,7 +2202,6 @@ export class BeneosCloud {
     }
     this.inflightImports.add(lockKey)
 
-    ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Notification.ImportingBattlemap"))
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
     let url = `https://beneos.cloud/foundry-manager.php?download_uploaded_file=1&foundryId=${encodeURIComponent(userId)}&filename=${encodeURIComponent(filename)}`
 

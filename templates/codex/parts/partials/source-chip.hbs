@@ -1,0 +1,8 @@
+{{!-- Tiny chip indicating where this section's content came from.
+     `source` is one of: edited | parsed | legacy | empty. --}}
+{{#unless (eq source "empty")}}
+  <span class="bc-source-chip bc-src-{{source}}"
+        data-tooltip="{{localize (bcConcat "BENEOS.CreatureCodex.Source." source)}}">
+    {{localize (bcConcat "BENEOS.CreatureCodex.Source." source)}}
+  </span>
+{{/unless}}

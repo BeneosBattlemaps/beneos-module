@@ -1594,16 +1594,15 @@ class BeneosDemoTour extends TourBase {
     }
 
     if (stepId === "demo-beneos-cloud") {
-      // Open the Beneos Search Engine
+      // Open the Beneos Cloud Window (V2). V1 launcher is gone; the V2
+      // window covers the same tour-bound selectors (#beneos-radio-*).
       try {
-        const { BeneosSearchEngineLauncher } = await import("./beneos_search_engine.js");
-        new BeneosSearchEngineLauncher().render();
+        const { BeneosCloudWindowV2 } = await import("./cloud-v2/cloud-window-v2.mjs");
+        new BeneosCloudWindowV2().render({ force: true });
       } catch(e) {
-        if (typeof BeneosSearchEngineLauncher !== "undefined") {
-          new BeneosSearchEngineLauncher().render();
-        }
+        console.warn("Beneos | Tour cloud-window launch failed:", e);
       }
-      await waitForElement(".beneos_search_engine", 5000);
+      await waitForElement(".beneos_search_engine, #beneos-cloud-window-v2", 5000);
       await new Promise(r => setTimeout(r, 1500));
       this._trySelector("#beneos-radio-token") ||
       this._trySelector(".beneos_search_engine");
@@ -4790,14 +4789,14 @@ class BeneosTutorialSceneTour extends TourBase {
       } catch (e) {}
     };
 
-    // Helper: ensure cloud search engine is open on Tokens tab
+    // Helper: ensure cloud window is open on Tokens tab
     const ctEnsureCloudOpen = async () => {
-      if (!document.querySelector(".beneos_search_engine")) {
+      if (!document.querySelector("#beneos-cloud-window-v2, .beneos_search_engine")) {
         try {
-          const { BeneosSearchEngineLauncher } = await import("./beneos_search_engine.js");
-          new BeneosSearchEngineLauncher().render();
+          const { BeneosCloudWindowV2 } = await import("./cloud-v2/cloud-window-v2.mjs");
+          new BeneosCloudWindowV2().render({ force: true });
         } catch (e) {
-          try { if (typeof BeneosSearchEngineLauncher !== "undefined") new BeneosSearchEngineLauncher().render(); } catch (e2) {}
+          console.warn("Beneos | Tour cloud-window launch failed:", e);
         }
         await new Promise(r => setTimeout(r, 1500));
         try {
@@ -6554,9 +6553,9 @@ Hooks.once("setup", async () => {
       "UbYZoxyfcf5xQ1sJ": () => window.open("https://beneos.cloud/", "_blank", "noopener"),
       "OrdZJUbt0u3YDd8w": async () => {
         try {
-          const { BeneosSearchEngineLauncher } = await import("./beneos_search_engine.js");
-          new BeneosSearchEngineLauncher().render();
-        } catch (e) { console.warn("Beneos | Search launcher failed:", e); }
+          const { BeneosCloudWindowV2 } = await import("./cloud-v2/cloud-window-v2.mjs");
+          new BeneosCloudWindowV2().render({ force: true });
+        } catch (e) { console.warn("Beneos | Cloud window launch failed:", e); }
       },
       "SidVYdtkooJ3H52J": () => window.open("https://discord.gg/MS6KbX7YQ6", "_blank", "noopener"),
       "huvDEibZyu30B47y": () => openMoulinetteWithFilter({ terms: "BM: Spire Monastery", creator: "Beneos Battlemaps", pack: "00 Single Map Releases - 01" }),
@@ -6808,11 +6807,9 @@ Hooks.once("ready", async () => {
     return; // sceneTourPending bridge owns this load — skip news
   }
 
-  // --- Hierarchy gate 3: news popup. Reached only when no tutorial scene
-  // is active, no version-change prompt fired, and no scene-tour bridge
-  // is pending. Per-message-ID dedup inside checkNewsMessage() ensures
-  // each news entry is shown at most once per world.
-  BeneosUtility.checkNewsMessage();
+  // News popup was replaced by the Home tab in the Beneos Cloud window
+  // (cloud-window-v2.mjs). Users see the latest news the moment they open
+  // the Cloud window, so the legacy intrusive popup on world-ready is gone.
 });
 
 /**

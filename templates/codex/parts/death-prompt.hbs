@@ -1,0 +1,35 @@
+{{!-- Death-Prompt popup — Welle 5e. Mirrors DeathPrompt.jsx layout
+     from the master mock. Phase is set on the wrapping <div> so CSS
+     transitions can stagger enter → reading → leaving. --}}
+<div class="death-prompt" data-phase="{{phase}}">
+  <div class="dp-glow"
+       style="background: radial-gradient(ellipse at center, {{data.sizeTone.glow}}55, transparent 70%);"></div>
+
+  <header class="dp-head">
+    <div class="dp-portrait"
+         style="background: linear-gradient(135deg, {{data.sizeTone.primary}}, {{data.sizeTone.secondary}});">
+      <span>{{data.portraitInitial}}</span>
+    </div>
+    <div class="dp-meta">
+      <div class="dp-eyebrow">{{localize "BENEOS.CreatureCodex.DeathPrompt.Eyebrow"}}</div>
+      <div class="dp-name">{{data.name}}</div>
+    </div>
+    <button type="button" class="dp-close" data-action="dismiss" title="{{localize 'BENEOS.CreatureCodex.DeathPrompt.Dismiss'}}">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </header>
+
+  <div class="dp-body">
+    <p class="dp-text">{{data.deathPrompt}}</p>
+  </div>
+
+  <footer class="dp-foot">
+    <button type="button" class="dp-link" data-action="openCodex">
+      <i class="fa-solid fa-circle-info"></i> {{localize "BENEOS.CreatureCodex.DeathPrompt.OpenCodex"}}
+    </button>
+    <span class="dp-hint">{{localize "BENEOS.CreatureCodex.DeathPrompt.SettingHint"}}</span>
+    <button type="button" class="dp-btn" data-action="dismiss">
+      {{localize "BENEOS.CreatureCodex.DeathPrompt.Continue"}}
+    </button>
+  </footer>
+</div>

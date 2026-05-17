@@ -270,13 +270,6 @@
   left: -2rem;
 }
 
-.beneos-search-installed input[type=checkbox],
-.beneos-search-new input[type=checkbox] {
-  padding-top: 2px;
-  width: 12px;
-  height: 12px;
-}
-
 .beneos-cloud-label {
   text-align: left;
 }
@@ -573,28 +566,12 @@
 }
 
 
-.beneos-search-installed {
-  font-weight: bold;
-}
-
-.beneos-search-new {
-  font-weight: bold;
-  color: black;
-}
-
 .token-name-new {
   color: #c7f0a9;
 }
 
 .token-name-update {
   color: #f4ecbf;
-}
-
-.beneos-search-notinstalled {
-  /*background-color: #d56b52;*/
-  /* Fix #B-3: status-success token (was hardcoded #1b9200). */
-  color: var(--bc-success, #1b9200);
-  font-size: 0.55rem;
 }
 
 .beneos-search-journal-button {
@@ -1100,22 +1077,6 @@
 
 .beneos-search-margin {
   margin-left: 32px;
-}
-
-.beneos-search-notconnected {
-  font-size: 0.6rem;
-  color: black;
-}
-
-.beneos-search-notconnected-smaller {
-  font-size: 0.52rem;
-  color: black;
-}
-
-.beneos-search-noaccess {
-  margin-top: 2px;
-  font-size: 0.6rem;
-  color: #3e0706;
 }
 
 .search-100-results {

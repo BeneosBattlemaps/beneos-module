@@ -1,0 +1,78 @@
+{
+  "$version": 1,
+  "$migrated": "2026-05-15T19:00:00Z",
+  "data": {
+    "identity": {
+      "tokenKey": "month_1_bone_hag",
+      "name": "Bone Hag",
+      "type": "Large Fey (Hag)",
+      "cr": 8,
+      "biome": "underdark",
+      "faction": "primordial",
+      "fightingStyle": ["debuff", "area"],
+      "purpose": ["boss"]
+    },
+    "visuals": {
+      "sizeTone": { "primary": "#1a2a14", "secondary": "#0a140a", "glow": "#8bbf8b" },
+      "portraitInitial": "B",
+      "heroImageUrl": "beneos_assets/beneos_tokens/000-month_1_bone_hag/000-month_1_bone_hag-1-journal.webp"
+    },
+    "narrative": {
+      "showcase": "Where she walks, the soil rises in defense, and the bones of the long-dead bend to her will.",
+      "lore": "The Bone Hag is an ancient fey corrupted by centuries beneath the earth.",
+      "recommendedAllies": []
+    },
+    "abilities": [
+      { "id": "multiattack",      "name": "Multiattack",      "type": "action",   "flavorText": "" },
+      { "id": "hexbone_knife",    "name": "Hexbone Knife",    "type": "action",   "flavorText": "" },
+      { "id": "spine_whip",       "name": "Spine Whip",       "type": "bonus",    "flavorText": "" },
+      { "id": "bone_ridge",       "name": "Bone Ridge",       "type": "trait",    "flavorText": "" },
+      { "id": "bone_spurs",       "name": "Bone Spurs",       "type": "reaction", "flavorText": "" },
+      { "id": "bone_curse",       "name": "Bone Curse",       "type": "action",   "flavorText": "" },
+      { "id": "earthen_maw",      "name": "Earthen Maw",      "type": "action",   "flavorText": "" }
+    ],
+    "storyHooks": [
+      { "id": "hook-1", "tier": 1, "title": "Prompt 1", "description": "Work in Progress" },
+      { "id": "hook-2", "tier": 1, "title": "Prompt 2", "description": "Work in Progress" },
+      { "id": "hook-3", "tier": 1, "title": "Prompt 3", "description": "Work in Progress" }
+    ],
+    "foreshadowing": [
+      {
+        "id": "foresee-1", "title": "Prompt 1", "description": "Work in Progress",
+        "check": { "dc": 10, "skills": ["Check1", "Check2", "Check3"], "result": "Work in Progress" }
+      },
+      {
+        "id": "foresee-2", "title": "Prompt 2", "description": "Work in Progress",
+        "check": { "dc": 10, "skills": ["Check1", "Check2", "Check3"], "result": "Work in Progress" }
+      },
+      {
+        "id": "foresee-3", "title": "Prompt 3", "description": "Work in Progress",
+        "check": { "dc": 10, "skills": ["Check1", "Check2", "Check3"], "result": "Work in Progress" }
+      }
+    ],
+    "combat": {
+      "firstAppearance": "",
+      "deathPrompt": ""
+    },
+    "tactical": {
+      "startOfTurn": [],
+      "movement":     [{ "text": [{ "action": "action" }, " Earthwalk: move through stone at full speed."] }],
+      "bonusActions": [
+        { "text": [{ "ref": "spine_whip" }, ": reach ", { "range": "15 Ft." }, ", ", { "roll": "2d8" }, " piercing."] }
+      ],
+      "actions": [
+        {
+          "text": [{ "ref": "multiattack" }],
+          "children": [
+            { "text": ["Two attacks with ", { "ref": "hexbone_knife" }, "."] }
+          ]
+        },
+        { "text": [{ "ref": "bone_curse" }, ": save vs disadvantage on next attack."] },
+        { "text": [{ "ref": "earthen_maw" }, ": open a ", { "range": "10 Ft." }, " square pit."] }
+      ],
+      "traits": [
+        { "text": [{ "ref": "bone_ridge" }, " — persistent area effect."] }
+      ]
+    }
+  }
+}

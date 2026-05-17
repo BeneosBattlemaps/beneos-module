@@ -1,0 +1,20 @@
+{{!-- Reusable empty-state block shown when a section has no content.
+     For GM, exposes an "Add this section" button that opens the editor.
+     Caller passes `section` (dot-path, e.g. "lore") and `isGM` / `readonly`. --}}
+<div class="bc-empty-state" data-section="{{section}}">
+  <i class="fa-solid fa-feather"></i>
+  <p>{{localize "BENEOS.CreatureCodex.EmptyState.NoSection"}}</p>
+  {{#if isGM}}
+    <button type="button"
+            data-action="addSection"
+            data-section="{{section}}"
+            class="bc-btn bc-btn-primary"
+            {{#if readonly}}disabled{{/if}}>
+      <i class="fa-solid fa-plus"></i> {{localize "BENEOS.CreatureCodex.AddSection"}}
+    </button>
+  {{else}}
+    <p style="font-size:0.8rem;color:var(--bc-text-dim)">
+      {{localize "BENEOS.CreatureCodex.EmptyState.PlayerHint"}}
+    </p>
+  {{/if}}
+</div>

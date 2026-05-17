@@ -31,6 +31,9 @@ import { BeneosCloudLogin } from "../beneos_cloud.js"
 import { BeneosStartSetupTour } from "../beneos_tours.js"
 import { BeneosLootGenerator } from "./loot-generator.mjs"
 import { BeneosMagicShopGenerator } from "./magic-shop-generator.mjs"
+import { HomeController } from "./home/home-controller.mjs"
+import { BeneosPatchlogWindow } from "./home/patchlog-window.mjs"
+import { fetchNewsFeed, markNewsRead } from "./services/news-api.mjs"
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
 
@@ -115,12 +118,18 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       openSettings:            BeneosCloudWindowV2._onOpenSettings,
       resetFilters:            BeneosCloudWindowV2._onResetFilters,
       switchView:              BeneosCloudWindowV2._onSwitchView,
-      openExternal:            BeneosCloudWindowV2._onOpenExternal
+      openExternal:            BeneosCloudWindowV2._onOpenExternal,
+      openPatchlog:            BeneosCloudWindowV2._onOpenPatchlog,
+      openNewsDetail:          BeneosCloudWindowV2._onOpenNewsDetail,
+      openNewsCta:             BeneosCloudWindowV2._onOpenNewsCta,
+      switchToCategory:        BeneosCloudWindowV2._onSwitchToCategory,
+      openMoulinetteForMap:    BeneosCloudWindowV2._onOpenMoulinetteForMap
     }
   }
 
   static PARTS = {
     header:  { template: "modules/beneos-module/templates/cloud-v2/parts/header-tabs.hbs" },
+    home:    { template: "modules/beneos-module/templates/cloud-v2/parts/home-feed.hbs" },
     sidebar: { template: "modules/beneos-module/templates/cloud-v2/parts/sidebar-form.hbs" },
     results: { template: "modules/beneos-module/templates/cloud-v2/parts/results-pane.hbs" },
     footer:  { template: "modules/beneos-module/templates/cloud-v2/parts/status-footer.hbs" }
@@ -212,7 +221,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   constructor(options = {}) {
     super(options)
     const lastMode = game.beneosTokens?.lastFilterStack?.mode
-    this.searchMode = (lastMode && lastMode !== "bmap") ? lastMode : "token"
+    this.searchMode = lastMode || "home"
+    this._newsCache = []
     this.selectedAssetKey = null     // currently open in detail drawer (null = closed)
     // Wave B-9-fix-46: multi-select set for Ctrl+click. Holds asset
     // keys highlighted in the result list. The drawer always shows the
@@ -294,9 +304,20 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const patreonUrl = this.searchMode === "bmap"
       ? "https://www.patreon.com/c/BeneosBattlemaps"
       : "https://www.patreon.com/c/BeneosTokens"
+    // Patron-aware UI: which campaign this tab belongs to + whether
+    // the active user has access. Tokens / items / spells share one
+    // campaign ("tokens"), maps the other ("battlemaps"). The Locked-
+    // CTA and Free-Section rendering both pivot on these flags.
+    const currentTabCampaign = this.searchMode === "bmap" ? "battlemaps" : "tokens"
+    const isTokenPatron     = !!cloud?.hasCampaignAccess?.("tokens")
+    const isBattlemapPatron = !!cloud?.hasCampaignAccess?.("battlemaps")
+    const isCurrentTabPatron = currentTabCampaign === "battlemaps"
+      ? isBattlemapPatron
+      : isTokenPatron
     return {
       ...dbData,
       searchMode: this.searchMode,
+      isHome:    this.searchMode === "home",
       isCloudLoggedIn: cloud?.isLoggedIn() ?? false,
       patreonStatus:   cloud?.getPatreonStatus() ?? "",
       isOffline:       dbHolder?.getIsOffline?.() ?? false,
@@ -305,6 +326,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       isServerOffline: cloud?.serverOffline === true,
       moduleVersion,
       patreonUrl,
+      joinPatreonUrl: patreonUrl,
+      currentTabCampaign,
+      isTokenPatron,
+      isBattlemapPatron,
+      isCurrentTabPatron,
       discordUrl: "https://discord.gg/R2yBH557Wk",
       webshopUrl: "https://beneos-battlemaps.com/"
     }
@@ -315,6 +341,26 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
    * drawer state. Other parts inherit the root context as-is.
    */
   async _preparePartContext(partId, context) {
+    // Home tab: news feed + Recent rails + Hero rotation. Heavy work
+    // (network fetch, db iteration) lives in HomeController so this
+    // method stays focused on routing.
+    if (partId === "home") {
+      const isHome = this.searchMode === "home"
+      if (!isHome) {
+        return { ...context, isHome: false }
+      }
+      const home = await HomeController.prepare()
+      // Stash raw news payload so openNewsDetail can resolve by id
+      // without re-fetching (HomeController.prepare reuses the 5min
+      // news-api cache anyway, but the lookup is cleaner this way).
+      try {
+        const { news } = await fetchNewsFeed()
+        this._newsCache = news
+      } catch (_e) {
+        this._newsCache = []
+      }
+      return { ...context, isHome: true, home }
+    }
     // Wave B-8b: sidebar gets the source-checkbox list with per-source
     // counts. We count over the unfiltered raw dataset for the current
     // assetType so the numbers represent "how many SRD tokens exist in
@@ -357,14 +403,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // pack catalogue already runs from 1 to ~108 so numeric order
       // matches publication chronology.
       // Show-filter "Only new" / "Only updated" only render when the
-      // dataset actually has anything flagged. Single pass over the
-      // unfiltered catalog of the current asset type; bail out early
-      // once both flags hit. Generalised across token / item / spell
-      // (bmap stays out — bmaps use the Moulinette pipeline, no isNew
-      // / isUpdate flags in that schema).
+      // dataset actually has anything flagged. For bmap, NEW is derived
+      // from the highest release-number prefix in #buildCards (there is
+      // always one), so the option is always available; UPDATED stays
+      // out — battlemaps have no per-asset update channel.
       let hasNewAssets = false
       let hasUpdatedAssets = false
-      if (this.searchMode === "token" || this.searchMode === "item" || this.searchMode === "spell") {
+      if (this.searchMode === "bmap") {
+        hasNewAssets = true
+      } else if (this.searchMode === "token" || this.searchMode === "item" || this.searchMode === "spell") {
         const dbHolder = game.beneos?.databaseHolder
         const all = dbHolder?.getAll?.(this.searchMode) || {}
         for (const data of Object.values(all)) {
@@ -644,6 +691,24 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       if (type === "bmap")  dbHolder.processInstalledBattlemap?.(data)
     }
 
+    // Battlemaps have no updated_ts feed; flag the highest release as NEW
+    // so the group divider, NEW chip, and "Only New" show-filter all light
+    // up the same way they do for tokens/items/spells. The pack pipeline
+    // numbers releases ascending via the DB-key prefix ("01-…" before
+    // "02-…"), so max(recency) over the bmap catalogue is "newest release".
+    if (type === "bmap") {
+      let maxRelease = 0
+      for (const [k] of entries) {
+        const r = this.#recencyOf("bmap", k)
+        if (r > maxRelease) maxRelease = r
+      }
+      if (maxRelease > 0) {
+        for (const [k, data] of entries) {
+          if (this.#recencyOf("bmap", k) === maxRelease) data.isNew = true
+        }
+      }
+    }
+
     // Apply text filter + dropdown filters from the sidebar DOM.
     if (this._textFilter) entries = this.#applyTextFilter(entries, this._textFilter)
     const afterText = entries.length
@@ -689,18 +754,54 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     }
 
     const hasActiveFilter = this.#hasActiveFilter(type)
-    const groupRank = (data) => {
-      if (data?.isNew) return 0
-      if (!hasActiveFilter && data?.isUpdate) return 1
-      return 2
+    const textActive = !!(this._textFilter && this._textFilter.trim())
+
+    if (textActive) {
+      // Free-text search: rank by relevance score from #scoreTextMatch,
+      // alphabetic on ties. New/Update boost is suppressed so an exact
+      // name match always wins over a NEW-flagged near-miss.
+      entries.sort((a, b) => {
+        const sa = a[1]?.__bcTextScore || 0
+        const sb = b[1]?.__bcTextScore || 0
+        if (sa !== sb) return sb - sa
+        const na = (a[1]?.name || a[0]).toString()
+        const nb = (b[1]?.name || b[0]).toString()
+        return na.localeCompare(nb)
+      })
+    } else {
+      // Patron-aware ranking. For non-patrons of the current tab's
+      // campaign, Free assets float above New/Update/Regular and Locked
+      // assets sink below — so the user sees what they can grab for
+      // free first and the "Join Patreon to unlock" tier last. Patrons
+      // keep the original three-tier order.
+      const tabCampaign = type === "bmap" ? "battlemaps" : "tokens"
+      const tabHasCampaign = !!game.beneos?.cloud?.hasCampaignAccess?.(tabCampaign)
+      const groupRank = (data) => {
+        if (!tabHasCampaign) {
+          if (data?.properties?.free_content === true) return -1
+          const dInstalled = type === "bmap" ? false : !!data?.isInstalled
+          const dAvail     = type === "bmap" ? true  : !!data?.isCloudAvailable
+          if (!dAvail && !dInstalled) return 9999
+        }
+        if (data?.isNew) return 0
+        if (!hasActiveFilter && data?.isUpdate) return 1
+        return 2
+      }
+      // Pre-compute recency once per entry so the comparator stays O(1)
+      // and the cloud-TS lookup doesn't fan out across O(n log n) calls.
+      const recency = new Map()
+      for (const [k] of entries) recency.set(k, this.#recencyOf(type, k))
+      entries.sort((a, b) => {
+        const ra = groupRank(a[1]); const rb = groupRank(b[1])
+        if (ra !== rb) return ra - rb
+        const recA = recency.get(a[0]) || 0
+        const recB = recency.get(b[0]) || 0
+        if (recA !== recB) return recB - recA
+        const na = (a[1]?.name || a[0]).toString()
+        const nb = (b[1]?.name || b[0]).toString()
+        return na.localeCompare(nb)
+      })
     }
-    entries.sort((a, b) => {
-      const ra = groupRank(a[1]); const rb = groupRank(b[1])
-      if (ra !== rb) return ra - rb
-      const na = (a[1]?.name || a[0]).toString()
-      const nb = (b[1]?.name || b[0]).toString()
-      return na.localeCompare(nb)
-    })
 
     const totalMatches = entries.length
     const limit = this.loadedCount
@@ -783,6 +884,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       if (card.groupKind !== lastGroup) {
         card.divider = true
         card.dividerLabel = this.#groupHeading(card.groupKind)
+        // The Free section gets an explanatory subline so non-patrons
+        // understand they can install these without a paid membership.
+        // Locked stays label-only — the per-card Join-Patreon CTA already
+        // delivers the explanation in context.
+        if (card.groupKind === "free") {
+          card.dividerDescription = game.i18n.localize("BENEOS.Patreon.FreeSection.Description")
+        }
         if (showFilterValue === "new" && card.groupKind === "new" && groupBulkKeys.new.length) {
           card.dividerBulkAction = {
             variant: "new",
@@ -844,6 +952,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   }
 
   #groupHeading(kind) {
+    if (kind === "free") {
+      const mode = this.searchMode
+      if (mode === "token") return game.i18n.localize("BENEOS.Patreon.FreeSection.Creatures")
+      if (mode === "item")  return game.i18n.localize("BENEOS.Patreon.FreeSection.Loot")
+      if (mode === "spell") return game.i18n.localize("BENEOS.Patreon.FreeSection.Spells")
+      if (mode === "bmap")  return game.i18n.localize("BENEOS.Patreon.FreeSection.Maps")
+      return game.i18n.localize("BENEOS.Patreon.FreeBadge")
+    }
+    if (kind === "locked") return game.i18n.localize("BENEOS.Patreon.LockedSectionHeader")
     if (kind === "new")    return game.i18n.localize("BENEOS.Cloud.Results.GroupNew")
     if (kind === "update") return game.i18n.localize("BENEOS.Cloud.Results.GroupUpdate")
     return game.i18n.localize("BENEOS.Cloud.Results.GroupRegular")
@@ -868,7 +985,18 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // bmaps are cloud-only previews; force the flags accordingly.
     const isInstalled      = assetType === "bmap" ? false : !!data.isInstalled
     const isCloudAvailable = assetType === "bmap" ? true  : !!data.isCloudAvailable
-    const dragMode = data.dragMode || "none"
+    let dragMode = data.dragMode || "none"
+
+    // Patron-aware per-card flags. isFree surfaces the green "FREE" badge
+    // and groups the card into the Free section for non-patrons. isLocked
+    // means the user lacks the campaign-specific Patreon membership AND
+    // the asset isn't on their free list — the card then shows a
+    // "Join Patreon" CTA instead of the install button and refuses drag.
+    const cardCampaign = assetType === "bmap" ? "battlemaps" : "tokens"
+    const hasCampaign = !!game.beneos?.cloud?.hasCampaignAccess?.(cardCampaign)
+    const isFree   = props.free_content === true
+    const isLocked = !isCloudAvailable && !isInstalled && !hasCampaign && !isFree
+    if (isLocked) dragMode = "none"
     const dragType = assetType === "spell" ? "Item" : (assetType === "item" ? "Item" : "Actor")
     const documentId = isInstalled
       ? (BeneosUtility.getActorId?.(key) || BeneosUtility.getItemId?.(key) || BeneosUtility.getSpellId?.(key) || "")
@@ -1247,6 +1375,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
                                               ?? game.beneos?.databaseHolder?.isOffline),
       isNew: !!data.isNew,
       isUpdate: !!data.isUpdate,
+      isFree,
+      isLocked,
       dragMode,
       dragType,
       documentId,
@@ -1268,10 +1398,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // single-selection case.
       isSelected: this.selectedKeys?.has?.(key) || this.selectedAssetKey === key,
       // Wave B-8d: group classification for the New → Update → Rest sort.
-      // The actual "Update collapses into Rest when a filter is active"
-      // logic happens in #buildCards before this is called; here we just
-      // map the data flags to a group key the template can theme on.
-      groupKind: data?.isNew ? "new" : (data?.isUpdate ? "update" : "regular"),
+      // For non-patrons, Free cards float to the top under their own
+      // group, and Locked cards sink to the bottom; this is what drives
+      // the Free-Section header + Locked-Section behaviour for the
+      // patron-aware UX. Patrons see the original New/Update/Regular
+      // partitioning so nothing changes for paying users.
+      groupKind: (!hasCampaign && isFree)   ? "free"
+              :  (!hasCampaign && isLocked) ? "locked"
+              :  (data?.isNew    ? "new"
+              :  (data?.isUpdate ? "update" : "regular")),
       // Wave B-8e: clickable tags. For every tag the template renders,
       // expose two parallel fields:
       //   - <tag>Tooltip  → string from commonData.hover or null
@@ -1576,15 +1711,92 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
 
   /* ========== Filters ========== */
 
+  // Comparable "newness" per asset; higher = newer. Tokens/items/spells
+  // read updated_ts from the cloud's availableContent feed (Unix-seconds).
+  // Battlemaps have no TS feed, so we parse the release-number prefix
+  // from the DB key — the content pipeline assigns those in release
+  // order ("01-…" before "02-…"). Falls back to 0 when nothing is known,
+  // which lets the alphabetic tie-breaker take over.
+  #recencyOf(type, key) {
+    const cloud = game.beneos?.cloud
+    if (type === "token" && cloud?.getTokenTS) {
+      const ts = cloud.getTokenTS(key)
+      return Number.isFinite(ts) ? ts : 0
+    }
+    if (type === "item" && cloud?.getItemTS) {
+      const ts = cloud.getItemTS(key)
+      return Number.isFinite(ts) ? ts : 0
+    }
+    if (type === "spell" && cloud?.getSpellTS) {
+      const ts = cloud.getSpellTS(key)
+      return Number.isFinite(ts) ? ts : 0
+    }
+    if (type === "bmap") {
+      const m = String(key || "").match(/^(\d+)/)
+      return m ? parseInt(m[1], 10) || 0 : 0
+    }
+    return 0
+  }
+
+  // Tiered relevance score for the free-text search. Returns 0 when
+  // nothing matches (caller drops the entry). Searched fields:
+  //   - data.name                       (primary)
+  //   - data.properties.hidden_tags     (alias terms, e.g. "Beholder" on
+  //                                      a licensing-safe Aberrant Tyrant;
+  //                                      schema is normally an array but
+  //                                      a few records store a string)
+  //   - data.description                (low-weight fallback)
+  #scoreTextMatch(data, key, q) {
+    if (!q) return 0
+    const tokens = q.split(/\s+/).filter(Boolean)
+    const name = String(data?.name || key || "").toLowerCase()
+    const ht = data?.properties?.hidden_tags
+    const tagList = Array.isArray(ht)
+      ? ht
+      : (typeof ht === "string" && ht.trim() ? [ht] : [])
+    const tagText = tagList.map(s => String(s).toLowerCase()).join(" ")
+    const desc = String(data?.description || "").toLowerCase()
+
+    if (name === q)             return 1_000_000
+    if (name.startsWith(q))     return 900_000 + q.length
+    if (name.includes(q))       return 800_000 + q.length
+    if (tagText.includes(q))    return 700_000 + q.length
+
+    if (tokens.length > 1 && tokens.every(t => name.includes(t))) {
+      const matchedChars = tokens.reduce((s, t) => s + t.length, 0)
+      return 600_000 + matchedChars
+    }
+    if (tokens.length > 1 && tokens.every(t => name.includes(t) || tagText.includes(t))) {
+      const matchedChars = tokens.reduce((s, t) => s + t.length, 0)
+      return 500_000 + matchedChars
+    }
+
+    let partial = 0
+    for (const t of tokens) {
+      if (name.includes(t))         partial += t.length * 3
+      else if (tagText.includes(t)) partial += t.length * 2
+    }
+    if (partial > 0) return 100_000 + partial
+
+    if (desc.includes(q)) return 10_000
+    return 0
+  }
+
   #applyTextFilter(entries, term) {
-    const t = term.toLowerCase()
-    return entries.filter(([key, data]) => {
-      const name = (data.name || key).toLowerCase()
-      if (name.includes(t)) return true
-      const desc = (data.description || "").toLowerCase()
-      if (desc.includes(t)) return true
-      return false
-    })
+    const q = String(term || "").toLowerCase().trim()
+    if (!q) return entries
+    const out = []
+    for (const [key, data] of entries) {
+      const score = this.#scoreTextMatch(data, key, q)
+      if (score > 0) {
+        // Stash on the data object so the downstream sort picks it up
+        // without re-scoring. #buildCards re-pulls entries from the DB
+        // holder each render, so this transient marker doesn't persist.
+        data.__bcTextScore = score
+        out.push([key, data])
+      }
+    }
+    return out
   }
 
   #applyDropdownFilters(type, entries) {
@@ -1966,6 +2178,61 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       + `<i class="fa-solid fa-circle-minus"></i> ${localize("BENEOS.Cloud.Card.NotAvailable")}</span>`
   }
 
+  // During a bulk install, Foundry-core emits a per-asset "Updated 1
+  // actor(s)…" info-toast from importFromCompendium → Document.create
+  // that the module can't suppress via option. Patch ui.notifications.notify
+  // for the duration of the loop: errors and warnings pass through, info-
+  // toasts are dropped. try/finally restores the original method even if
+  // an import throws.
+  async #withSuppressedInfoToasts(fn) {
+    const n = ui.notifications
+    if (!n || typeof n.notify !== "function") return fn()
+    const orig = n.notify.bind(n)
+    n.notify = (message, type = "info", options = {}) => {
+      if (type === "error" || type === "warning" || type === "warn") {
+        return orig(message, type, options)
+      }
+      return null
+    }
+    try { return await fn() }
+    finally { n.notify = orig }
+  }
+
+  // Footer progress band — shown only during a bulk install run. Replaces
+  // the per-asset toast/chat noise the legacy pipeline produced. Single-
+  // install paths intentionally don't touch this; their card pulse is the
+  // feedback channel.
+  #showInstallProgress(total) {
+    const el = this.element?.querySelector?.(".bc-install-progress")
+    if (!el) return
+    this._bulkInstall = { total, done: 0 }
+    el.dataset.state = "running"
+    const fill = el.querySelector(".bc-install-progress-fill")
+    if (fill) fill.style.width = "0%"
+    const label = el.querySelector(".bc-install-progress-label")
+    if (label) label.textContent =
+      game.i18n.format("BENEOS.Cloud.Progress.InstallProgress", { done: 0, total })
+  }
+  #tickInstallProgress() {
+    const el = this.element?.querySelector?.(".bc-install-progress")
+    if (!el || !this._bulkInstall) return
+    this._bulkInstall.done++
+    const { done, total } = this._bulkInstall
+    const pct = total > 0 ? Math.round((done / total) * 100) : 100
+    const fill = el.querySelector(".bc-install-progress-fill")
+    if (fill) fill.style.width = pct + "%"
+    const label = el.querySelector(".bc-install-progress-label")
+    if (label) label.textContent =
+      game.i18n.format("BENEOS.Cloud.Progress.InstallProgress", { done, total })
+  }
+  #hideInstallProgress() {
+    const el = this.element?.querySelector?.(".bc-install-progress")
+    if (!el) return
+    el.dataset.state = "done"
+    this._bulkInstall = null
+    setTimeout(() => { if (el.dataset.state === "done") el.dataset.state = "idle" }, 1500)
+  }
+
   // Wave B-8g-3: bulk install loop for the New / Update divider buttons.
   // Confirmation dialog before queuing — the user shouldn't accidentally
   // pull dozens of tokens. Sequential triggers (200ms apart) so the cloud
@@ -2021,17 +2288,21 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       no:   { default: true }
     })
     if (!confirmed) return
-    ui.notifications.info(game.i18n.format("BENEOS.Cloud.Results.InstallAllStart", { count: keys.length }))
+    this.#showInstallProgress(keys.length)
     // Wave B-9-fix-47: await each pipeline so the compendium's
     // lock/unlock cycle completes before the next starts. The old
     // 250ms timer would race when imports outpaced their own lock
     // step, leading to "locked compendium" errors mid-batch.
-    for (const key of keys) {
-      this.notifyInstallStarted?.(key)
-      if (type === "token") await cloud.importTokenFromCloud?.(key, undefined, false, { gated: true })
-      else if (type === "item")  await cloud.importItemFromCloud?.(key, undefined, false, { gated: true })
-      else if (type === "spell") await cloud.importSpellsFromCloud?.(key, undefined, false, { gated: true })
-    }
+    await this.#withSuppressedInfoToasts(async () => {
+      for (const key of keys) {
+        this.notifyInstallStarted?.(key)
+        if (type === "token") await cloud.importTokenFromCloud?.(key, undefined, false, { gated: true })
+        else if (type === "item")  await cloud.importItemFromCloud?.(key, undefined, false, { gated: true })
+        else if (type === "spell") await cloud.importSpellsFromCloud?.(key, undefined, false, { gated: true })
+        this.#tickInstallProgress()
+      }
+    })
+    this.#hideInstallProgress()
   }
 
   // Extracted from the install-button click handler so the same logic runs
@@ -2083,18 +2354,26 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const ok = await BeneosUtility.confirmSystemCompat(type);
     if (!ok) return;
     const keys = [...this.selectedKeys]
-    for (const k of keys) {
-      this.notifyInstallStarted(k)
-      if (type === "token") await cloud.importTokenFromCloud?.(k, undefined, false, { gated: true })
-      else if (type === "item")  await cloud.importItemFromCloud?.(k, undefined, false, { gated: true })
-      else if (type === "spell") await cloud.importSpellsFromCloud?.(k, undefined, false, { gated: true })
-    }
+    this.#showInstallProgress(keys.length)
+    await this.#withSuppressedInfoToasts(async () => {
+      for (const k of keys) {
+        this.notifyInstallStarted(k)
+        if (type === "token") await cloud.importTokenFromCloud?.(k, undefined, false, { gated: true })
+        else if (type === "item")  await cloud.importItemFromCloud?.(k, undefined, false, { gated: true })
+        else if (type === "spell") await cloud.importSpellsFromCloud?.(k, undefined, false, { gated: true })
+        this.#tickInstallProgress()
+      }
+    })
+    this.#hideInstallProgress()
   }
 
   /* ========== Render lifecycle ========== */
 
   _onRender(context, options) {
     super._onRender?.(context, options)
+    // Mark the window with the active mode so CSS can rearrange the
+    // grid (Home swaps sidebar+results for the full-width feed).
+    if (this.element) this.element.dataset.bcMode = this.searchMode
     this.#wireSidebarListeners()
     this.#wireResultListeners()
     this.#wireScrollLoader()
@@ -2103,10 +2382,62 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     this.#injectSelectDividers()
     this.#updateTitleBadge(context)
     this.#injectTitleQuote()
+    this.#wireHomeHero()
     // Stage 11: tear down the open-splash injected in
     // beneos_module.js's toolbar handler. _onRender runs after the
     // V2 window is in DOM — clean handover with no flicker.
     document.getElementById("beneos-cloud-loading-splash")?.remove()
+  }
+
+  // Hero rotation for the Home tab. Cycles slides every 7s and pauses
+  // on hover. Manual dot navigation jumps to a specific slide and
+  // restarts the timer. Re-binds cleanly on each render (the dataset
+  // flag stops double-binding within the same DOM).
+  #wireHomeHero() {
+    if (this._heroTimer) {
+      clearInterval(this._heroTimer)
+      this._heroTimer = null
+    }
+    const hero = this.element?.querySelector("[data-bc-hero]")
+    if (!hero) return
+    const slides = [...hero.querySelectorAll(".bc-hero-slide")]
+    const dots = [...hero.querySelectorAll(".bc-hero-dot")]
+    if (slides.length <= 1) return
+    const interval = parseInt(hero.dataset.bcHeroInterval, 10) || 7000
+
+    let activeIndex = slides.findIndex(s => s.classList.contains("is-active"))
+    if (activeIndex < 0) activeIndex = 0
+
+    const setActive = (idx) => {
+      activeIndex = (idx + slides.length) % slides.length
+      slides.forEach((s, i) => s.classList.toggle("is-active", i === activeIndex))
+      dots.forEach((d, i) => d.classList.toggle("is-active", i === activeIndex))
+    }
+
+    const start = () => {
+      stop()
+      this._heroTimer = setInterval(() => setActive(activeIndex + 1), interval)
+    }
+    const stop = () => {
+      if (this._heroTimer) { clearInterval(this._heroTimer); this._heroTimer = null }
+    }
+
+    // Force-apply the initial active state explicitly. The Handlebars
+    // template tags the first slide with .is-active, but if the cycle
+    // re-binds after a re-render and the existing classes get dropped
+    // by a different code path, this guarantees something is visible.
+    setActive(activeIndex)
+
+    hero.addEventListener("mouseenter", stop)
+    hero.addEventListener("mouseleave", start)
+    dots.forEach((dot, i) => {
+      dot.addEventListener("click", (e) => {
+        e.preventDefault()
+        setActive(i)
+        start()
+      })
+    })
+    start()
   }
 
   // Wave B-8k-4: insert a disabled "──────────" option after the Any
@@ -2948,7 +3279,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     requestAnimationFrame(() => {
       requestAnimationFrame(async () => {
         try {
-          await this.render({ parts: ["header", "sidebar", "results"] })
+          await this.render({ parts: ["header", "home", "sidebar", "results"] })
         } catch (err) {
           console.warn("[Beneos]", err)
         } finally {
@@ -2956,6 +3287,101 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         }
       })
     })
+  }
+
+  /* ========== Home tab action handlers ========== */
+
+  static _onOpenPatchlog(event, _target) {
+    event.preventDefault()
+    try { new BeneosPatchlogWindow().render({ force: true }) }
+    catch (err) { console.warn("[Beneos Patchlog] Failed to open:", err) }
+  }
+
+  static async _onOpenNewsDetail(event, target) {
+    event.preventDefault()
+    const card = target.closest?.("[data-news-id]") || target
+    const id = card?.dataset?.newsId
+    if (id === undefined || id === null || id === "") return
+    let news = this._newsCache?.find?.(n => String(n.id) === String(id))
+    if (!news) {
+      try {
+        const fresh = await fetchNewsFeed({ force: true })
+        this._newsCache = fresh.news || []
+        news = this._newsCache.find(n => String(n.id) === String(id))
+      } catch (_e) { /* ignored */ }
+    }
+    if (!news) return
+    try { await markNewsRead(news.id) } catch (_e) { /* ignored */ }
+
+    const formattedDate = (() => {
+      try {
+        const d = new Date(news.date)
+        if (Number.isNaN(d.getTime())) return news.date
+        return d.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
+      } catch (_e) { return news.date }
+    })()
+
+    const html = await foundry.applications.handlebars.renderTemplate(
+      "modules/beneos-module/templates/cloud-v2/home/news-detail-modal.hbs",
+      { news: { ...news, formattedDate } }
+    )
+
+    try {
+      await foundry.applications.api.DialogV2.prompt({
+        window: { title: news.title || game.i18n.localize("BENEOS.Cloud.Home.News.DetailTitle"), icon: "fas fa-newspaper" },
+        content: html,
+        classes: ["beneos-cloud-app", "beneos-news-detail-dialog"],
+        ok: { label: game.i18n.localize("BENEOS.Cloud.Home.News.Close"), icon: "fas fa-check" },
+        rejectClose: false
+      })
+    } catch (_e) { /* user dismissed */ }
+
+    // Refresh the home tab so the unread highlight clears.
+    if (this.searchMode === "home") {
+      try { await this.render({ parts: ["home"] }) }
+      catch (err) { console.warn("[Beneos Home] Refresh failed:", err) }
+    }
+  }
+
+  static _onSwitchToCategory(event, target) {
+    event.preventDefault()
+    const tab = target.dataset?.targetTab
+    if (!tab) return
+    this.searchMode = tab
+    this.selectedAssetKey = null
+    this.#resetPagination()
+    this.#showLoading()
+    requestAnimationFrame(() => {
+      requestAnimationFrame(async () => {
+        try { await this.render({ parts: ["header", "home", "sidebar", "results"] }) }
+        catch (err) { console.warn("[Beneos]", err) }
+        finally { this.#hideLoading() }
+      })
+    })
+  }
+
+  // Home-tab Maps-rail tile click: delegate to the existing Moulinette
+  // hand-off so the browser opens the right map-pack filter exactly like
+  // the Maps-tab does. data-target-key holds the bmap key.
+  static _onOpenMoulinetteForMap(event, target) {
+    event.preventDefault()
+    event.stopPropagation?.()
+    const key = target?.dataset?.targetKey
+    if (!key) return
+    BeneosCloudWindowV2._onMoulinetteInstall(event, key)
+  }
+
+  // News CTA: opens the news item's cta_url in a new browser tab.
+  // stopPropagation prevents the surrounding news-card data-action
+  // (openNewsDetail) from firing as well when the user clicks the
+  // inline CTA button inside the card.
+  static _onOpenNewsCta(event, target) {
+    event.preventDefault()
+    event.stopPropagation?.()
+    const url = target?.dataset?.newsCtaUrl
+    if (!url) return
+    try { window.open(url, "_blank", "noopener,noreferrer") }
+    catch (err) { console.warn("[Beneos News CTA] Failed to open:", err) }
   }
 
   // Wave B-8d-fix-4: spinner overlay lives on the window root so it
@@ -3166,7 +3592,10 @@ export class BeneosCloudSettingsV2 extends HandlebarsApplicationMixin(Applicatio
     },
     actions: {
       startSetupTour: BeneosCloudSettingsV2._onStartSetupTour,
-      openAssetRepair: BeneosCloudSettingsV2._onOpenAssetRepair
+      openAssetRepair: BeneosCloudSettingsV2._onOpenAssetRepair,
+      disconnectAccount: BeneosCloudSettingsV2._onDisconnectAccount,
+      openLogin:         BeneosCloudSettingsV2._onOpenLoginFromSettings,
+      simulatePersona:   BeneosCloudSettingsV2._onSimulatePersona
     }
   }
 
@@ -3175,10 +3604,16 @@ export class BeneosCloudSettingsV2 extends HandlebarsApplicationMixin(Applicatio
   }
 
   async _prepareContext(_options) {
+    const cloud = game.beneos?.cloud
+    const isLoggedIn = !!cloud?.isLoggedIn?.()
+    const patreonStatus = cloud?.getPatreonStatus?.() ?? ""
     return {
       deathTokensEnabled: !!this._safeGetSetting(DEATH_SETTING_KEY),
       showNavEnabled:     !!this._safeGetSetting(SHOW_NAV_SETTING_KEY),
-      assetCheckEnabled:  !!this._safeGetSetting(ASSET_CHECK_SETTING_KEY)
+      assetCheckEnabled:  !!this._safeGetSetting(ASSET_CHECK_SETTING_KEY),
+      isCloudLoggedIn:    isLoggedIn,
+      patreonStatus,
+      creatorMode:        !!this._safeGetSetting("beneos-creator-mode")
     }
   }
 
@@ -3271,5 +3706,64 @@ export class BeneosCloudSettingsV2 extends HandlebarsApplicationMixin(Applicatio
     } catch (err) {
       console.warn("[Beneos Cloud Settings] asset-repair launcher failed", err)
     }
+  }
+
+  // Logout from the Cloud session via the settings modal. Always
+  // wraps disconnect() in a Confirm dialog — public-Foundry workflows
+  // need a fast logout path but should never logout by accident.
+  static async _onDisconnectAccount(_event, _target) {
+    const cloud = game.beneos?.cloud
+    if (!cloud?.isLoggedIn?.()) return
+    const DialogV2 = foundry?.applications?.api?.DialogV2
+    let proceed = true
+    if (DialogV2?.confirm) {
+      try {
+        proceed = await DialogV2.confirm({
+          window: { title: game.i18n.localize("BENEOS.Cloud.Disconnect.ConfirmTitle") },
+          content: `<p>${game.i18n.localize("BENEOS.Cloud.Disconnect.ConfirmContent")}</p>`,
+          yes: { label: game.i18n.localize("BENEOS.Cloud.Disconnect.ConfirmYes") },
+          no:  { label: game.i18n.localize("BENEOS.Cloud.Disconnect.ConfirmNo") },
+          rejectClose: false
+        })
+      } catch (e) {
+        proceed = false
+      }
+    }
+    if (!proceed) return
+    await cloud.disconnect()
+    // Re-render this settings modal so the Account row flips to the
+    // signed-out variant without the user having to close & reopen.
+    try { this.render({ parts: ["form"] }) } catch (e) {}
+  }
+
+  static async _onOpenLoginFromSettings(_event, _target) {
+    try {
+      new BeneosCloudLogin("cloudSettingsV2").render()
+    } catch (err) {
+      console.warn("[Beneos Cloud Settings] login launch failed", err)
+    }
+  }
+
+  // Dev-only: dispatch to BeneosCloud.simulatePatron() based on the
+  // clicked button's data-persona attribute. Re-renders both this modal
+  // and the main cloud window so the patron-aware UI updates in lockstep.
+  static async _onSimulatePersona(event, target) {
+    const cloud = game.beneos?.cloud
+    if (!cloud?.simulatePatron) return
+    const persona = target?.dataset?.persona
+    const presets = {
+      "full":      { tokens: true,  battlemaps: true  },
+      "tokens":    { tokens: true,  battlemaps: false },
+      "battlemaps":{ tokens: false, battlemaps: true  },
+      "free":      { tokens: false, battlemaps: false, freeAccount: true },
+    }
+    if (persona === "reset") {
+      await cloud.disconnect()
+    } else if (presets[persona]) {
+      await cloud.simulatePatron(presets[persona])
+    } else {
+      return
+    }
+    try { this.render({ parts: ["form"] }) } catch (e) {}
   }
 }

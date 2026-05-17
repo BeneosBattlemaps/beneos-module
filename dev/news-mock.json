@@ -1,0 +1,60 @@
+{
+  "result": "ok",
+  "news": [
+    {
+      "id": 101,
+      "title": "Top-Down Token Mode is live",
+      "date": "2026-05-11",
+      "cta_string": "Try it now",
+      "cta_url": "https://www.patreon.com/c/BeneosTokens",
+      "news_text": "<p>Every Beneos creature now ships with a true top-down token in addition to the 2.5D portrait. Right-click any creature on the canvas to switch styles in place — perfect for grid combat. The Cloud search exposes both variants and the new <strong>Default Style</strong> filter lets you pick which one drag-and-drop installs land as.</p><p>Coming up next: matching 2.5D companion tokens for every new top-down variant, plus per-creature effect animations (poison auras, lightning, more).</p>",
+      "image_base64": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2MDAgMzQwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmNWM5OTIiLz48c3RvcCBvZmZzZXQ9IjAuNTUiIHN0b3AtY29sb3I9IiM4YjRhM2EiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMxYzFhMTciLz48L2xpbmVhckdyYWRpZW50PjxyYWRpYWxHcmFkaWVudCBpZD0iciIgY3g9IjAuNzgiIGN5PSIwLjIyIiByPSIwLjU1Ij48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZmQ4YTQiIHN0b3Atb3BhY2l0eT0iMC44NSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmZDhhNCIgc3RvcC1vcGFjaXR5PSIwIi8+PC9yYWRpYWxHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjYwMCIgaGVpZ2h0PSIzNDAiIGZpbGw9InVybCgjZykiLz48cmVjdCB3aWR0aD0iNjAwIiBoZWlnaHQ9IjM0MCIgZmlsbD0idXJsKCNyKSIvPjxnIG9wYWNpdHk9IjAuMTgiIGZpbGw9IiMwZjBlMGMiPjxwb2x5Z29uIHBvaW50cz0iMCwzNDAgMTgwLDE4MCAzMjAsMjYwIDQ2MCwxNDAgNjAwLDIyMCA2MDAsMzQwIi8+PC9nPjwvc3ZnPg==",
+      "is_pinned": true,
+      "created_at": "2026-05-11 12:00:00"
+    },
+    {
+      "id": 100,
+      "title": "Loot Generator & Magic Shop",
+      "date": "2026-05-11",
+      "cta_string": "Open the Loot tab",
+      "cta_url": "https://beneos-battlemaps.com/",
+      "news_text": "<p>Two new generators in the Loot tab. The Loot Generator rolls level-appropriate treasure from SRD + Beneos items. The Magic Shop Generator builds priced inventories for Tavern, Armor, Weaponsmith, Alchemist and more — save a shop and it integrates into your world's Item Browser in its own folder.</p>",
+      "image_base64": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2MDAgMzQwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMxZjNhNGQiLz48c3RvcCBvZmZzZXQ9IjAuNiIgc3RvcC1jb2xvcj0iIzNhMmE0ZCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzBmMGUwYyIvPjwvbGluZWFyR3JhZGllbnQ+PHJhZGlhbEdyYWRpZW50IGlkPSJyIiBjeD0iMC4yIiBjeT0iMC4zIiByPSIwLjYiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzhmYWFjNiIgc3RvcC1vcGFjaXR5PSIwLjc1Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOGZhYWM2IiBzdG9wLW9wYWNpdHk9IjAiLz48L3JhZGlhbEdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iNjAwIiBoZWlnaHQ9IjM0MCIgZmlsbD0idXJsKCNnKSIvPjxyZWN0IHdpZHRoPSI2MDAiIGhlaWdodD0iMzQwIiBmaWxsPSJ1cmwoI3IpIi8+PGcgZmlsbD0iI2Y1Yzk5MiIgb3BhY2l0eT0iMC42Ij48Y2lyY2xlIGN4PSIxMjAiIGN5PSI4MCIgcj0iMS41Ii8+PGNpcmNsZSBjeD0iMjQwIiBjeT0iNDAiIHI9IjEiLz48Y2lyY2xlIGN4PSIzODAiIGN5PSI5MCIgcj0iMiIvPjxjaXJjbGUgY3g9IjUwMCIgY3k9IjUwIiByPSIxLjIiLz48Y2lyY2xlIGN4PSI0NTAiIGN5PSIxNDAiIHI9IjEiLz48L2c+PC9zdmc+",
+      "is_pinned": false,
+      "created_at": "2026-05-11 11:30:00"
+    },
+    {
+      "id": 99,
+      "title": "Asset Repair Tool",
+      "date": "2026-05-11",
+      "cta_string": "Read the guide",
+      "cta_url": "https://github.com/BeneosBattlemaps/beneos-module/blob/main/changelog.md",
+      "news_text": "<p>One-click recovery when Foundry can't load a Beneos asset — usually because Moulinette installed files into a non-standard folder. The new tool scans your world, deep-scans your data folder, derives a path mapping, previews the rewrite and applies it on confirm. Reachable from the missing-asset watcher, the post-install dialog, and the Cloud settings window.</p>",
+      "image_base64": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2MDAgMzQwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMzYTRkMmEiLz48c3RvcCBvZmZzZXQ9IjAuNTUiIHN0b3AtY29sb3I9IiM1YTNhMmEiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMxYzFhMTciLz48L2xpbmVhckdyYWRpZW50PjxyYWRpYWxHcmFkaWVudCBpZD0iciIgY3g9IjAuNyIgY3k9IjAuNCIgcj0iMC41NSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZjVjOTkyIiBzdG9wLW9wYWNpdHk9IjAuNTUiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNmNWM5OTIiIHN0b3Atb3BhY2l0eT0iMCIvPjwvcmFkaWFsR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSI2MDAiIGhlaWdodD0iMzQwIiBmaWxsPSJ1cmwoI2cpIi8+PHJlY3Qgd2lkdGg9IjYwMCIgaGVpZ2h0PSIzNDAiIGZpbGw9InVybCgjcikiLz48ZyBvcGFjaXR5PSIwLjIyIiBmaWxsPSIjMGYwZTBjIj48cG9seWdvbiBwb2ludHM9IjAsMzQwIDgwLDI2MCAxNjAsMjkwIDI2MCwyMTAgMzYwLDI1MCA0NjAsMjAwIDU2MCwyNDAgNjAwLDIyMCA2MDAsMzQwIi8+PC9nPjwvc3ZnPg==",
+      "is_pinned": false,
+      "created_at": "2026-05-08 16:00:00"
+    },
+    {
+      "id": 98,
+      "title": "SRD Spells & Items integrated",
+      "date": "2026-05-04",
+      "cta_string": "Browse the catalog",
+      "cta_url": "https://www.patreon.com/c/BeneosTokens",
+      "news_text": "<p>All SRD spells and items from D&D 5.5 are now available alongside Beneos originals. Use the new SRD / Beneos Original filter to switch focus — Beneos originals are subtly highlighted in the result list.</p>",
+      "image_base64": null,
+      "is_pinned": false,
+      "created_at": "2026-05-04 10:00:00"
+    },
+    {
+      "id": 97,
+      "title": "Battlemap pack: Ashur Fire Temple",
+      "date": "2026-04-28",
+      "cta_string": "View the pack",
+      "cta_url": "https://www.patreon.com/c/BeneosBattlemaps",
+      "news_text": "<p>A complete adventure pack with battlemaps, sceneries, intro sequences, handouts and an Overview Map with full Beneos navigation pre-configured. Available now to Beneos Battlemaps patrons.</p>",
+      "image_base64": null,
+      "is_pinned": false,
+      "created_at": "2026-04-28 09:00:00"
+    }
+  ]
+}

@@ -1,10 +1,11 @@
 import "./beneos_tours.js";
 import { libWrapper } from "./shim.js";
 import { BeneosUtility } from "./beneos_utility.js";
-import { BeneosSearchEngineLauncher, BeneosModuleMenu, BeneosDatabaseHolder } from "./beneos_search_engine.js";
+import { BeneosModuleMenu, BeneosDatabaseHolder } from "./beneos_search_engine.js";
 import { BeneosCloud } from "./beneos_cloud.js";
 import { BeneosFXEngine } from "./cloud-v2/beneos-fx.mjs";
 import { BeneosFXEditor } from "./cloud-v2/beneos-fx-editor.mjs";
+import { BeneosCloudWindowV2 } from "./cloud-v2/cloud-window-v2.mjs";
 // Unused : import { BeneosTableTop } from "./beneos-table-top.js";
 
 /********************************************************************************** */
@@ -41,6 +42,39 @@ Hooks.once('init', () => {
   } catch (e) {
     console.warn("Beneos | getCRExp shim install failed:", e);
   }
+
+  // State-aware label for the "Beneos Cloud Account" settings menu.
+  // registerMenu() takes a static i18n key, so we patch the rendered
+  // label in-place on every SettingsConfig render. Targets both the
+  // V1 jQuery payload and the V2 HTMLElement payload defensively.
+  const patchCloudAccountLabel = (root) => {
+    try {
+      const dom = root?.jquery ? root[0] : root
+      if (!(dom instanceof HTMLElement) && !(dom instanceof DocumentFragment)) return
+      const button = dom.querySelector('button[data-key="beneos-module.beneos-cloud-account"]')
+                  ?? dom.querySelector('[data-key="beneos-module.beneos-cloud-account"] button')
+                  ?? dom.querySelector('[data-key="beneos-module.beneos-cloud-account"]')
+      if (!button) return
+      const loggedIn = !!game.beneos?.cloud?.isLoggedIn?.()
+      const key = loggedIn
+        ? "BENEOS.Settings.CloudAccount.LabelLoggedIn"
+        : "BENEOS.Settings.CloudAccount.LabelLoggedOut"
+      const label = game.i18n.localize(key)
+      // Replace only the text node so any existing <i> icon stays intact.
+      let replaced = false
+      for (const node of button.childNodes) {
+        if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+          node.textContent = ` ${label}`
+          replaced = true
+          break
+        }
+      }
+      if (!replaced) button.textContent = label
+    } catch (e) {
+      console.warn("Beneos | cloud-account label patch failed:", e)
+    }
+  }
+  Hooks.on("renderSettingsConfig", (_app, html) => patchCloudAccountLabel(html))
 
 })
 
@@ -94,8 +128,7 @@ Hooks.once('ready', () => {
   if (game.settings.get(BeneosUtility.moduleID(), "beneos-reload-search-engine")) {
     setTimeout(() => {
       game.settings.set(BeneosUtility.moduleID(), "beneos-reload-search-engine", false)
-      let searchEngine = new BeneosSearchEngineLauncher;
-      searchEngine.render()
+      new BeneosCloudWindowV2().render({ force: true })
     }, 4000)
   }
 
@@ -237,7 +270,18 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
         console.log("Beneos Journal Entry", beneosJournalEntry)
         $(html).find('img.beneosJournalAction').click((event) => {
           event.preventDefault();
-          beneosJournalEntry.sheet.render(true);
+          // Welle 3.2: route HUD button through the Creature Codex so
+          // the GM gets the curated tabbed view (lore + tags + tactical
+          // grid) instead of the raw journal pages. Fall back to the
+          // legacy journal sheet if the codex isn't loaded (defensive
+          // for stripped-down worlds or pre-init timing).
+          const opener = game.beneos?.codex?.openForActor
+          if (typeof opener === "function" && token.actor) {
+            opener(token.actor).catch(err =>
+              console.error("[beneos-codex] HUD open failed", err))
+          } else {
+            beneosJournalEntry.sheet.render(true);
+          }
         })
       }
     }
@@ -418,7 +462,6 @@ function _beneosCreatorPersistScale(worldActor, newScale, newTextureSrc) {
   const flagKey = mode === "topdown" ? "topDownScale" : "tokenizedScale"
   const rendering = { ...(beneosFlag.rendering || {}), [flagKey]: newScale }
   worldActor.setFlag("world", "beneos", { ...beneosFlag, rendering }).then(() => {
-    ui.notifications?.info(`Beneos Creator: ${flagKey} = ${newScale} on ${worldActor.name}`)
     BeneosUtility.debugMessage(
       "[Beneos Creator-Mode] persisted", flagKey, "=", newScale, "on", worldActor.name
     )
@@ -453,7 +496,6 @@ function _beneosCreatorPersistAnchor(worldActor, ax, ay, newTextureSrc) {
     const parts = []
     if (xChanged) parts.push(`${xKey}=${ax}`)
     if (yChanged) parts.push(`${yKey}=${ay}`)
-    ui.notifications?.info(`Beneos Creator: ${parts.join(", ")} on ${worldActor.name}`)
     BeneosUtility.debugMessage("[Beneos Creator-Mode] persisted anchor", parts.join(", "), "on", worldActor.name)
   }).catch(err => {
     console.warn("[Beneos] Creator-Mode anchor setFlag failed", err)
@@ -837,7 +879,7 @@ Hooks.on("getSceneControlButtons", (controls) => {
           // scene-controls activation stack unwinds first.
           setTimeout(() => {
             try {
-              new BeneosSearchEngineLauncher().render()
+              new BeneosCloudWindowV2().render({ force: true })
             } catch (e) {
               console.error(e)
               // Stage 11: if the launcher throws synchronously,

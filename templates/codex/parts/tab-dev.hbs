@@ -1,0 +1,39 @@
+{{!-- Dev tab — GM only. Source meta, tier resolution map, debug data. --}}
+<section style="display:flex;flex-direction:column;gap:var(--bc-space-4)">
+
+  <article class="bc-section-card">
+    <header><h3>{{localize "BENEOS.CreatureCodex.Dev.SourceMeta"}}</h3></header>
+    <table class="bc-dev-table">
+      <tbody>
+        <tr><th>tokenKey</th>        <td>{{data.sourceMeta.tokenKey}}</td></tr>
+        <tr><th>journalUuid</th>     <td>{{data.sourceMeta.journalUuid}}</td></tr>
+        <tr><th>analysisSource</th>  <td>{{data.sourceMeta.analysisSource}}</td></tr>
+        <tr><th>pipelineVersion</th> <td>{{data.sourceMeta.pipelineVersion}}</td></tr>
+        <tr><th>lastSync</th>        <td>{{data.sourceMeta.lastSync}}</td></tr>
+        <tr><th>biographyHash</th>   <td>{{data.sourceMeta.biographyHash}}</td></tr>
+        <tr><th>biographyDrift</th>  <td>{{driftWarning}}</td></tr>
+      </tbody>
+    </table>
+  </article>
+
+  <article class="bc-section-card">
+    <header><h3>{{localize "BENEOS.CreatureCodex.Dev.TierMap"}}</h3></header>
+    <table class="bc-dev-table">
+      <thead>
+        <tr><th>Section</th><th>Source</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>lore</td>          <td>{{data.lore.source}}</td></tr>
+        <tr><td>hooks</td>         <td>{{data.hooks.source}}</td></tr>
+        <tr><td>foreshadowing</td> <td>{{data.foreshadow.source}}</td></tr>
+        <tr><td>combatStarter</td> <td>{{data.combatStarter.source}}</td></tr>
+        <tr><td>abilities</td>     <td>{{data.abilities.source}}</td></tr>
+        <tr><td>deathPrompt</td>   <td>{{data.deathPrompt.source}}</td></tr>
+        {{#each data.tactical.cards}}
+          <tr><td>tactical.{{key}}</td><td>{{section.source}}</td></tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </article>
+
+</section>

@@ -1,0 +1,12 @@
+{{!-- Lore tab: player-visible immersive summary. --}}
+{{#if (eq data.lore.source "empty")}}
+  {{> "modules/beneos-module/templates/codex/parts/partials/empty-section.hbs" section="lore" isGM=isGM readonly=readonly}}
+{{else}}
+  <article class="bc-section-card" data-edit-section="lore">
+    <header>
+      <h3>{{localize "BENEOS.CreatureCodex.Lore.Title"}}</h3>
+      {{> "modules/beneos-module/templates/codex/parts/partials/source-chip.hbs" source=data.lore.source}}
+    </header>
+    <div class="bc-rich-html">{{{data.lore.value}}}</div>
+  </article>
+{{/if}}

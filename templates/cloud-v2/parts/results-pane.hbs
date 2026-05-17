@@ -97,7 +97,12 @@
                (that's what the kebab-menu's "Install entire backlog"
                option is for, with its own stronger confirmation). --}}
           <div class="bc-result-divider bc-divider-{{card.groupKind}}">
-            <span class="bc-divider-label">{{card.dividerLabel}}</span>
+            <div class="bc-divider-text">
+              <span class="bc-divider-label">{{card.dividerLabel}}</span>
+              {{#if card.dividerDescription}}
+                <p class="bc-divider-description">{{card.dividerDescription}}</p>
+              {{/if}}
+            </div>
             {{#if card.dividerBulkAction}}
               <button type="button"
                       class="bc-bulk-prominent bc-bulk-prominent-{{card.dividerBulkAction.variant}}"
@@ -144,6 +149,9 @@
             {{else if card.isNew}}
               <span class="bc-status-chip bc-status-new bc-thumb-chip">{{localize "BENEOS.Cloud.Card.New"}}</span>
             {{/if}}
+            {{#if card.isFree}}
+              <span class="bc-status-chip bc-status-free bc-thumb-chip" data-tooltip="{{localize 'BENEOS.Patreon.FreeSection.Description'}}">{{localize "BENEOS.Patreon.FreeBadge"}}</span>
+            {{/if}}
             {{#if card.beneosChip}}
               <span class="bc-status-chip bc-status-beneos bc-thumb-chip" data-tooltip="Beneos Original (non-SRD)">{{card.beneosChip}}</span>
             {{/if}}
@@ -161,6 +169,9 @@
                 <span class="bc-status-chip bc-status-update">{{localize "BENEOS.Cloud.Card.Update"}}</span>
               {{else if card.isNew}}
                 <span class="bc-status-chip bc-status-new">{{localize "BENEOS.Cloud.Card.New"}}</span>
+              {{/if}}
+              {{#if card.isFree}}
+                <span class="bc-status-chip bc-status-free" data-tooltip="{{localize 'BENEOS.Patreon.FreeSection.Description'}}">{{localize "BENEOS.Patreon.FreeBadge"}}</span>
               {{/if}}
               {{#if card.beneosChip}}
                 <span class="bc-status-chip bc-status-beneos" data-tooltip="Beneos Original (non-SRD)">{{card.beneosChip}}</span>
@@ -235,10 +246,17 @@
                    update runs and the dataset re-enriches with
                    isUpdate=false, the class is gone and the pill goes
                    back to standard green. --}}
-              <span class="bc-state-pill bc-state-installed{{#if card.isUpdate}} bc-state-update-pending{{/if}}" data-tooltip="{{localize 'BENEOS.Cloud.Card.InstalledTooltip'}}">
-                <i class="fa-solid fa-circle-check"></i>
-                {{localize "BENEOS.Cloud.Card.Installed"}}
-              </span>
+              {{#if card.isUpdate}}
+                <span class="bc-state-pill bc-state-installed bc-state-update-pending" data-tooltip="{{localize 'BENEOS.Cloud.Card.UpdateAvailableTooltip'}}">
+                  <i class="fa-solid fa-circle-up"></i>
+                  {{localize "BENEOS.Cloud.Card.UpdateAvailable"}}
+                </span>
+              {{else}}
+                <span class="bc-state-pill bc-state-installed" data-tooltip="{{localize 'BENEOS.Cloud.Card.InstalledTooltip'}}">
+                  <i class="fa-solid fa-circle-check"></i>
+                  {{localize "BENEOS.Cloud.Card.Installed"}}
+                </span>
+              {{/if}}
               {{#if card.isUpdate}}
                 <button type="button" class="bc-card-button bc-card-button-primary bc-action-install bc-action-update"
                         data-asset-key="{{card.key}}"
@@ -264,6 +282,19 @@
                 <i class="fa-solid fa-right-to-bracket"></i>
                 {{localize "BENEOS.Cloud.Card.SignIn"}}
               </button>
+            {{else if card.isLocked}}
+              {{!-- Patron-gate: the user is signed in but lacks the
+                   Patreon-campaign membership that unlocks this card.
+                   Show a "Join Patreon" CTA targeted at the campaign
+                   the active tab belongs to. The link opens in a new
+                   browser tab — same pattern as the footer Patreon
+                   button. --}}
+              <a class="bc-card-button bc-card-button-join-patron"
+                 href="{{@root.joinPatreonUrl}}" target="_blank" rel="noopener noreferrer"
+                 data-tooltip="{{localize 'BENEOS.Patreon.JoinPatron'}}">
+                <i class="fa-brands fa-patreon"></i>
+                <span>{{localize "BENEOS.Patreon.JoinPatron"}}</span>
+              </a>
             {{else if card.isIncompatible}}
               {{!-- Hard-blocked Loot/Spell on a non-dnd5e system. The button
                    stays clickable so the GM can read the explanation dialog
@@ -293,12 +324,14 @@
                   {{localize "BENEOS.Cloud.Card.Install"}}
                 </button>
               {{/if}}
-            {{else}}
-              <span class="bc-state-pill bc-state-unavailable" data-tooltip="{{localize 'BENEOS.Cloud.Card.UnavailableTooltip'}}">
-                <i class="fa-solid fa-circle-minus"></i>
-                {{localize "BENEOS.Cloud.Card.NotAvailable"}}
-              </span>
             {{/if}}
+            {{!-- Wave B-12-fix: the catch-all "Unavailable" pill is gone.
+                 Per user directive it sounded like an error to non-patron
+                 viewers; the patron-aware UX already covers the real cases
+                 (Free → Install, Patron-locked → Join Patreon, signed-out
+                 → Sign In, offline → Offline, etc.). Anything that falls
+                 through is a rare edge case (e.g. Loyalty content the user
+                 doesn't have) and is better left silent than alarmist. --}}
           </div>
         </article>
       {{/each}}
@@ -439,11 +472,17 @@
                  der Update- oder Download-Button korrekt an seinem
                  Ort angezeigt werden kann". --}}
             {{#if drawer.asset.isUpdate}}
-              <button type="button" class="bc-card-button bc-card-button-primary bc-action-install"
+              {{!-- Update-state in the drawer uses the same blue accent
+                   the list-card update pill uses, plus a clearer
+                   "Update Available" label so the GM sees at a glance
+                   that this isn't a fresh install (the previous "Update"
+                   label was easy to misread as just-installed). --}}
+              <button type="button" class="bc-card-button bc-card-button-primary bc-action-install bc-action-update"
                       data-asset-key="{{drawer.asset.key}}"
-                      data-asset-type="{{drawer.asset.assetType}}">
-                <i class="fa-solid fa-rotate"></i>
-                {{localize "BENEOS.Cloud.Card.Update"}}
+                      data-asset-type="{{drawer.asset.assetType}}"
+                      data-tooltip="{{localize 'BENEOS.Cloud.Card.UpdateAvailableTooltip'}}">
+                <i class="fa-solid fa-circle-up"></i>
+                {{localize "BENEOS.Cloud.Card.UpdateAvailable"}}
               </button>
             {{else}}
               <span class="bc-state-pill bc-state-installed">
@@ -462,6 +501,17 @@
               <i class="fa-solid fa-right-to-bracket"></i>
               {{localize "BENEOS.Cloud.Card.SignIn"}}
             </button>
+          {{else if drawer.asset.isLocked}}
+            {{!-- Same Patron-gate as the list card: signed in but missing
+                 the Patreon-campaign membership that would unlock this
+                 asset. CTA opens the campaign-specific Patreon page in
+                 a new tab. --}}
+            <a class="bc-card-button bc-card-button-join-patron"
+               href="{{@root.joinPatreonUrl}}" target="_blank" rel="noopener noreferrer"
+               data-tooltip="{{localize 'BENEOS.Patreon.JoinPatron'}}">
+              <i class="fa-brands fa-patreon"></i>
+              <span>{{localize "BENEOS.Patreon.JoinPatron"}}</span>
+            </a>
           {{else if drawer.asset.isIncompatible}}
             {{!-- Same hard-block render as the card-grid version. --}}
             <button type="button" class="bc-card-button bc-action-install bc-action-incompatible"
@@ -494,12 +544,9 @@
                 {{/if}}
               </button>
             {{/if}}
-          {{else}}
-            <span class="bc-state-pill bc-state-unavailable">
-              <i class="fa-solid fa-circle-minus"></i>
-              {{localize "BENEOS.Cloud.Card.NotAvailable"}}
-            </span>
           {{/if}}
+          {{!-- Drawer catch-all unavailable pill removed in lockstep with
+               the list-card variant (Wave B-12-fix). --}}
         </div>
         </div> {{!-- /.bc-drawer-summary --}}
 

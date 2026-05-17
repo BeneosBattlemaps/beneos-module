@@ -18,6 +18,49 @@
 
   <div class="bc-settings-rows">
 
+    {{!-- Account — state-aware Login / Disconnect row. Shows
+         disconnect when signed in (public-Foundry users need a fast
+         logout path), sign-in CTA when signed out. --}}
+    <div class="bc-settings-row bc-settings-row-account">
+      <div class="bc-settings-row-meta">
+        <div class="bc-settings-row-label">{{localize "BENEOS.Cloud.Settings.Account.Header"}}</div>
+        {{#if isCloudLoggedIn}}
+          <div class="bc-settings-row-hint">
+            <span class="bc-account-chip bc-chip-success">
+              <i class="fa-solid fa-circle-check"></i>
+              <span>{{localize "BENEOS.Cloud.Settings.Account.LoggedInAs"}}</span>
+            </span>
+            {{localize "BENEOS.Cloud.Settings.Account.DisconnectHint"}}
+          </div>
+        {{else}}
+          <div class="bc-settings-row-hint">
+            <span class="bc-account-chip bc-chip-neutral">
+              <i class="fa-solid fa-cloud-slash"></i>
+              <span>{{localize "BENEOS.Cloud.Settings.Account.NotConnected"}}</span>
+            </span>
+            {{localize "BENEOS.Cloud.Settings.Account.SignInHint"}}
+          </div>
+        {{/if}}
+      </div>
+      <div class="bc-settings-row-control">
+        {{#if isCloudLoggedIn}}
+          <button type="button"
+                  class="bc-card-button bc-card-button-danger"
+                  data-action="disconnectAccount">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span>{{localize "BENEOS.Cloud.Settings.Account.Disconnect"}}</span>
+          </button>
+        {{else}}
+          <button type="button"
+                  class="bc-card-button bc-card-button-primary"
+                  data-action="openLogin">
+            <i class="fa-solid fa-right-to-bracket"></i>
+            <span>{{localize "BENEOS.Cloud.Settings.Account.SignIn"}}</span>
+          </button>
+        {{/if}}
+      </div>
+    </div>
+
     {{!-- Setup Tour — action row. The handler instantiates the existing
          BeneosStartSetupTour FormApplication. --}}
     <div class="bc-settings-row">
@@ -113,6 +156,46 @@
         </label>
       </div>
     </div>
+
+    {{#if creatorMode}}
+      {{!-- Dev: Test Personas. Simulates Patreon membership states
+           without an actual login — used during V2 development to
+           preview the patron-aware UI in all five permutations. Only
+           visible when the beneos-creator-mode setting is true. --}}
+      <div class="bc-settings-row bc-settings-row-dev">
+        <div class="bc-settings-row-meta">
+          <div class="bc-settings-row-label">{{localize "BENEOS.Cloud.Settings.DevPersonas.Header"}}</div>
+          <div class="bc-settings-row-hint">{{localize "BENEOS.Cloud.Settings.DevPersonas.Description"}}</div>
+        </div>
+        <div class="bc-settings-row-control bc-settings-personas">
+          <button type="button" class="bc-card-button bc-card-button-primary"
+                  data-action="simulatePersona" data-persona="full">
+            <i class="fa-solid fa-crown"></i>
+            <span>{{localize "BENEOS.Cloud.Settings.DevPersonas.FullPatron"}}</span>
+          </button>
+          <button type="button" class="bc-card-button"
+                  data-action="simulatePersona" data-persona="tokens">
+            <i class="fa-solid fa-dragon"></i>
+            <span>{{localize "BENEOS.Cloud.Settings.DevPersonas.TokenOnly"}}</span>
+          </button>
+          <button type="button" class="bc-card-button"
+                  data-action="simulatePersona" data-persona="battlemaps">
+            <i class="fa-solid fa-map"></i>
+            <span>{{localize "BENEOS.Cloud.Settings.DevPersonas.BattlemapOnly"}}</span>
+          </button>
+          <button type="button" class="bc-card-button"
+                  data-action="simulatePersona" data-persona="free">
+            <i class="fa-solid fa-gift"></i>
+            <span>{{localize "BENEOS.Cloud.Settings.DevPersonas.Free"}}</span>
+          </button>
+          <button type="button" class="bc-card-button bc-card-button-danger"
+                  data-action="simulatePersona" data-persona="reset">
+            <i class="fa-solid fa-rotate-left"></i>
+            <span>{{localize "BENEOS.Cloud.Settings.DevPersonas.Reset"}}</span>
+          </button>
+        </div>
+      </div>
+    {{/if}}
 
   </div>
 </section>

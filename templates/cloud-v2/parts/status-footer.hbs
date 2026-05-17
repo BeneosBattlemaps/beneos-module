@@ -4,7 +4,12 @@
      Wave B-9-fix-36: external-link buttons (Discord / Webshop / Patreon)
      and the module version label. The Patreon URL is tab-aware — Maps
      opens BeneosBattlemaps, every other tab opens BeneosTokens. --}}
-<footer class="bc-footer" data-bc-region="footer">
+<div class="bc-footer-region" data-bc-region="footer">
+<div class="bc-install-progress" data-state="idle" aria-live="polite">
+  <span class="bc-install-progress-label"></span>
+  <div class="bc-install-progress-bar"><div class="bc-install-progress-fill"></div></div>
+</div>
+<footer class="bc-footer">
   <div class="bc-footer-left">
     {{!-- Stage 9: server-offline (beneos.cloud unreachable) takes
          absolute top priority. Distinct from the asset-DB-offline
@@ -34,15 +39,36 @@
         </button>
       {{/if}}
     {{else if isCloudLoggedIn}}
-      <div class="bc-account-chip {{#if (eq patreonStatus "active_patron")}}bc-chip-success{{else}}bc-chip-warning{{/if}}">
-        {{#if (eq patreonStatus "active_patron")}}
-          <i class="fa-solid fa-circle-check"></i>
-          <span>{{localize "BENEOS.Cloud.Footer.PatreonOK"}}</span>
+      {{!-- Four valid connection states. The Beneos Cloud auto-syncs
+           the user's Patreon memberships, so "not linked" is never a
+           thing here — even a free account is a fully valid login.
+           All four variants render in the success colour; the chip
+           label spells out what kind of access the user has, and the
+           tooltip explains the consequence (and softly upsells the
+           campaign the user doesn't yet support). --}}
+      {{#if isTokenPatron}}
+        {{#if isBattlemapPatron}}
+          <div class="bc-account-chip bc-chip-success" data-tooltip="{{localize 'BENEOS.Cloud.Footer.Chip.FullTooltip'}}">
+            <i class="fa-solid fa-crown"></i>
+            <span>{{localize "BENEOS.Cloud.Footer.Chip.Full"}}</span>
+          </div>
         {{else}}
-          <i class="fa-solid fa-circle-exclamation"></i>
-          <span>{{localize "BENEOS.Cloud.Footer.PatreonNOK"}}</span>
+          <div class="bc-account-chip bc-chip-success" data-tooltip="{{localize 'BENEOS.Cloud.Footer.Chip.TokensTooltip'}}">
+            <i class="fa-solid fa-dragon"></i>
+            <span>{{localize "BENEOS.Cloud.Footer.Chip.Tokens"}}</span>
+          </div>
         {{/if}}
-      </div>
+      {{else if isBattlemapPatron}}
+        <div class="bc-account-chip bc-chip-success" data-tooltip="{{localize 'BENEOS.Cloud.Footer.Chip.BattlemapsTooltip'}}">
+          <i class="fa-solid fa-map"></i>
+          <span>{{localize "BENEOS.Cloud.Footer.Chip.Battlemaps"}}</span>
+        </div>
+      {{else}}
+        <div class="bc-account-chip bc-chip-success" data-tooltip="{{localize 'BENEOS.Cloud.Footer.Chip.FreeTooltip'}}">
+          <i class="fa-solid fa-circle-check"></i>
+          <span>{{localize "BENEOS.Cloud.Footer.Chip.Free"}}</span>
+        </div>
+      {{/if}}
       <button type="button"
               class="bc-footer-button"
               data-action="openCloudSettings"
@@ -107,3 +133,4 @@
     </button>
   </div>
 </footer>
+</div>

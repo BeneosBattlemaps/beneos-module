@@ -1,6 +1,6 @@
 /********************************************************************************* */
 import { BeneosTableTop } from "./beneos-table-top.js";
-import { BeneosSearchEngineLauncher, BeneosDatabaseHolder, BeneosModuleMenu } from "./beneos_search_engine.js";
+import { BeneosDatabaseHolder, BeneosModuleMenu } from "./beneos_search_engine.js";
 import { ClassCounter } from "./count-class-ready.js";
 import { BeneosCloud, BeneosCloudLogin, BeneosCloudSettings, BeneosCloudAccountMenu } from "./beneos_cloud.js";
 
@@ -9,7 +9,7 @@ globalThis.BENEOS_MODULE_NAME = "Beneos Module"
 globalThis.BENEOS_MODULE_ID = "beneos-module"
 globalThis.BENEOS_DEFAULT_TOKEN_PATH = "beneos_assets"
 
-let beneosDebug = true
+let beneosDebug = false
 let beneosFadingSteps = 10
 let beneosFadingWait = 30
 let beneosFadingTime = beneosFadingSteps * beneosFadingWait
@@ -153,6 +153,29 @@ export class BeneosUtility {
       restricted: true
     })
 
+    // Per-campaign Patreon membership flags. The Beneos Cloud runs two
+    // independent Patreon campaigns (Tokens/Spells/Loot vs Battlemaps).
+    // Persisted here so the patron-aware UI can decide between
+    // installable / Join-Patreon CTA without waiting for a fresh login
+    // poll after a Foundry restart.
+    game.settings.register(BeneosUtility.moduleID(), "beneos-cloud-token-patron", {
+      name: 'Token campaign Patreon membership',
+      default: false,
+      type: Boolean,
+      scope: 'world',
+      config: false,
+      restricted: true
+    })
+
+    game.settings.register(BeneosUtility.moduleID(), "beneos-cloud-battlemap-patron", {
+      name: 'Battlemap campaign Patreon membership',
+      default: false,
+      type: Boolean,
+      scope: 'world',
+      config: false,
+      restricted: true
+    })
+
     game.settings.register(BeneosUtility.moduleID(), 'beneos-reload-search-engine', {
       name: 'Internal storage of the User ID with Beneos Cloud',
       default: "",
@@ -221,16 +244,6 @@ export class BeneosUtility {
       restricted: true
     })
 
-    game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-search-engine", {
-      name: "BENEOS.Settings.SearchEngine.Name",
-      label: "BENEOS.Settings.SearchEngine.Label",
-      hint: "BENEOS.Settings.SearchEngine.Hint",
-      scope: 'world',
-      config: true,
-      type: BeneosSearchEngineLauncher,
-      restricted: true
-    })
-
     game.settings.register(BeneosUtility.moduleID(), "beneos-datapath", {
       name: "Storage path of tokens assets",
       hint: "Location of tokens and associated datas",
@@ -270,12 +283,13 @@ export class BeneosUtility {
     })
 
 
-    // Keep track of the latest news message displayed
-    game.settings.register(BeneosUtility.moduleID(), 'beneos-cloud-latest-news-id', {
-      name: 'Last news message ID',
-      type: String,
-      scope: 'world',
-      default: "",
+    // Per-user read-state for Home-tab news cards. Stores the array of
+    // news ids the user has opened so the "unread" highlight clears.
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-cloud-news-read-ids', {
+      name: 'Beneos Cloud news read state',
+      type: Array,
+      scope: 'client',
+      default: [],
       config: false
     })
 
@@ -748,58 +762,6 @@ export class BeneosUtility {
       }
     }
     return statsBeneos
-  }
-
-  /********************************************************************************** */
-  static async checkNewsMessage() {
-    try {
-      const response = await fetch('https://beneos.cloud/messages/news_msg.json');
-      if (!response.ok) {
-        console.warn("[Beneos] Failed to fetch news message");
-        return;
-      }
-
-      const newsData = await response.json();
-
-      // Vérifier que les champs requis sont présents
-      if (!newsData.id || !newsData.created_at || !newsData.content) {
-        console.warn("[Beneos] Invalid news message format");
-        return;
-      }
-
-      // Récupérer l'ID du dernier message affiché
-      const lastNewsId = game.settings.get(BeneosUtility.moduleID(), 'beneos-cloud-latest-news-id');
-
-      // Si l'ID est différent, afficher le message
-      if (newsData.id !== lastNewsId) {
-        this.displayNewsDialog(newsData);
-      }
-    } catch (error) {
-      console.warn("[Beneos] Error checking news message:", error);
-    }
-  }
-
-  /********************************************************************************** */
-  // Strip inline color/background styles from fetched journal HTML so the
-  // Beneos news box style (.beneos-news-box in beneos.css) is not overridden
-  // by editor-default colors like #191813. Structural HTML, classes, links,
-  // images and other attributes are preserved.
-  static _sanitizeNewsHtml(html) {
-    if (!html) return "";
-    const doc = new DOMParser().parseFromString(html, "text/html");
-    const STRIP = ["color", "background", "background-color"];
-    doc.body.querySelectorAll("[style]").forEach(el => {
-      STRIP.forEach(prop => el.style.removeProperty(prop));
-      if (!el.getAttribute("style")) el.removeAttribute("style");
-    });
-    return doc.body.innerHTML;
-  }
-
-  /********************************************************************************** */
-  static async displayNewsDialog(newsData) {
-    const sanitized = BeneosUtility._sanitizeNewsHtml(newsData.content);
-    const { BeneosNewsWindow } = await import("./beneos_news_window.js");
-    new BeneosNewsWindow({ newsData, sanitizedHtml: sanitized }).render({ force: true });
   }
 
   /********************************************************************************** */
@@ -1311,13 +1273,9 @@ export class BeneosUtility {
     if (isRemoved) {
       BeneosUtility.debugMessage("Token removed for actorId", actorId)
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', JSON.stringify(this.beneosTokens))
-      // Wave B-8g-2: only the legacy V1 search engine needs the close+reopen
-      // refresh on actor delete (Foundry fires deleteActor when the cloud
-      // import replaces an existing compendium entry during update). V2
-      // handles the same case via the softRefresh chain that runs at the
-      // tail of importTokenToCompendium — closing it here would defeat the
-      // whole in-place patch UX and leave the user with a closed window.
-      if (!game.beneos?.cloudWindowV2) BeneosSearchEngineLauncher.closeAndSave()
+      // V1 close-and-reopen path removed — V2 handles the actor-delete
+      // refresh via the notifyInstallEnded chain at the tail of
+      // importTokenToCompendium and stays open in place.
     }
   }
 
@@ -1336,8 +1294,7 @@ export class BeneosUtility {
     if (isRemoved) {
       // Save the new data
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', JSON.stringify(this.beneosItems))
-      // Wave B-8g-2: same V2 guard as removeTokenFromActorId.
-      if (!game.beneos?.cloudWindowV2) BeneosSearchEngineLauncher.closeAndSave()
+      // V1 close-and-reopen removed — V2 handles refresh in place.
     }
   }
 
@@ -1355,8 +1312,7 @@ export class BeneosUtility {
     if (isRemoved) {
       // Save the new data
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', JSON.stringify(this.beneosSpells))
-      // Wave B-8g-2: same V2 guard as removeTokenFromActorId.
-      if (!game.beneos?.cloudWindowV2) BeneosSearchEngineLauncher.closeAndSave()
+      // V1 close-and-reopen removed — V2 handles refresh in place.
     }
   }
 

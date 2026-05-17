@@ -1,0 +1,309 @@
+{{!-- Beneos Cloud V2 — Home tab feed.
+     Spans the sidebar+results grid area when searchMode === "home". Built
+     around three blocks: featured hero rotation, news grid (1 pinned + 4
+     rolling), and "What's new in library" rails per category. --}}
+<section class="bc-home" data-bc-region="home">
+  {{#if isHome}}
+
+  {{!-- ============ Status bar ============ --}}
+  {{#if home.status}}
+    <div class="bc-home-statusbar">
+      <span class="bc-home-status-pill {{#if home.status.cloudLoggedIn}}is-on{{else}}is-off{{/if}}"
+            data-tooltip="{{#if home.status.cloudLoggedIn}}{{localize 'BENEOS.Cloud.Home.Status.CloudConnected'}}{{else}}{{localize 'BENEOS.Cloud.Home.Status.CloudDisconnected'}}{{/if}}">
+        <i class="fas {{#if home.status.cloudLoggedIn}}fa-check{{else}}fa-xmark{{/if}} bc-home-status-icon"></i>
+        {{#if home.status.cloudLoggedIn}}{{localize "BENEOS.Cloud.Home.Status.CloudOn"}}{{else}}{{localize "BENEOS.Cloud.Home.Status.CloudOff"}}{{/if}}
+      </span>
+
+      <a class="bc-home-status-pill bc-home-status-link {{#if home.status.mapPatron}}is-on{{else}}is-off{{/if}}"
+         href="{{home.status.patreonMapsUrl}}" target="_blank" rel="noopener noreferrer"
+         data-tooltip="{{#if home.status.mapPatron}}{{localize 'BENEOS.Cloud.Home.Status.MapsTooltipOn'}}{{else}}{{localize 'BENEOS.Cloud.Home.Status.MapsTooltipOff'}}{{/if}}">
+        <i class="fas {{#if home.status.mapPatron}}fa-check{{else}}fa-xmark{{/if}} bc-home-status-icon"></i>
+        {{#if home.status.mapPatron}}
+          {{localize "BENEOS.Cloud.Home.Status.MapsLabelOn"}}
+        {{else if home.status.cloudLoggedIn}}
+          {{localize "BENEOS.Cloud.Home.Status.MapsLabelNoPatron"}}
+        {{else}}
+          {{localize "BENEOS.Cloud.Home.Status.MapsLabelDisconnected"}}
+        {{/if}}
+      </a>
+
+      <a class="bc-home-status-pill bc-home-status-link {{#if home.status.tokenPatron}}is-on{{else}}is-off{{/if}}"
+         href="{{home.status.patreonTokensUrl}}" target="_blank" rel="noopener noreferrer"
+         data-tooltip="{{#if home.status.tokenPatron}}{{localize 'BENEOS.Cloud.Home.Status.TokensTooltipOn'}}{{else}}{{localize 'BENEOS.Cloud.Home.Status.TokensTooltipOff'}}{{/if}}">
+        <i class="fas {{#if home.status.tokenPatron}}fa-check{{else}}fa-xmark{{/if}} bc-home-status-icon"></i>
+        {{#if home.status.tokenPatron}}
+          {{localize "BENEOS.Cloud.Home.Status.TokensLabelOn"}}
+        {{else if home.status.cloudLoggedIn}}
+          {{localize "BENEOS.Cloud.Home.Status.TokensLabelNoPatron"}}
+        {{else}}
+          {{localize "BENEOS.Cloud.Home.Status.TokensLabelDisconnected"}}
+        {{/if}}
+      </a>
+    </div>
+  {{/if}}
+
+  {{!-- ============ Hero rotation ============ --}}
+  {{#if home.heroHasSlides}}
+    <div class="bc-home-hero" data-bc-hero
+         data-bc-hero-count="{{home.hero.length}}"
+         data-bc-hero-interval="7000">
+      {{#each home.hero}}
+        <article class="bc-hero-slide{{#if @first}} is-active{{/if}}"
+                 data-hero-index="{{@index}}"
+                 data-news-id="{{this.id}}">
+          {{#if this.imageBase64}}
+            <img class="bc-hero-image" src="{{this.imageBase64}}" alt="" loading="lazy" />
+          {{else}}
+            <div class="bc-hero-image bc-hero-image-fallback" aria-hidden="true"></div>
+          {{/if}}
+          <div class="bc-hero-overlay">
+            <div class="bc-hero-eyebrow">
+              {{#if this.isPinned}}
+                <span class="bc-hero-badge bc-hero-badge-pinned">
+                  <i class="fas fa-thumbtack"></i>
+                  {{localize "BENEOS.Cloud.Home.News.Pinned"}}
+                </span>
+              {{/if}}
+              <span class="bc-hero-date">{{this.formattedDate}}</span>
+            </div>
+            <h2 class="bc-hero-title">{{this.title}}</h2>
+            {{#if this.ctaString}}
+              <div class="bc-hero-actions">
+                {{#if this.ctaUrl}}
+                  <button type="button" class="bc-hero-cta"
+                          data-action="openNewsCta"
+                          data-news-cta-url="{{this.ctaUrl}}"
+                          data-news-id="{{this.id}}">
+                    {{this.ctaString}}
+                    <i class="fas fa-arrow-up-right-from-square"></i>
+                  </button>
+                {{else}}
+                  <button type="button" class="bc-hero-cta"
+                          data-action="openNewsDetail"
+                          data-news-id="{{this.id}}">
+                    {{this.ctaString}}
+                  </button>
+                {{/if}}
+              </div>
+            {{/if}}
+          </div>
+        </article>
+      {{/each}}
+      {{#if home.heroHasMultiple}}
+        <nav class="bc-hero-dots" aria-label="Featured slides">
+          {{#each home.hero}}
+            <button type="button" class="bc-hero-dot{{#if @first}} is-active{{/if}}"
+                    data-hero-jump="{{@index}}"
+                    aria-label="Slide {{this.slideNumber}}"></button>
+          {{/each}}
+        </nav>
+      {{/if}}
+    </div>
+  {{/if}}
+
+  {{!-- ============ News grid ============ --}}
+  <section class="bc-home-section bc-home-news">
+    <header class="bc-home-section-head">
+      <div class="bc-home-section-head-text">
+        <h3 class="bc-home-section-title">{{localize "BENEOS.Cloud.Home.News.SectionTitle"}}</h3>
+        <p class="bc-home-section-sub">{{localize "BENEOS.Cloud.Home.News.SectionSub"}}</p>
+      </div>
+      <div class="bc-home-section-head-actions">
+        <button type="button"
+                class="bc-home-section-iconbtn"
+                data-action="openPatchlog"
+                data-tooltip="{{localize 'BENEOS.Cloud.Home.Patchlog.Tooltip'}}"
+                aria-label="{{localize 'BENEOS.Cloud.Home.Patchlog.Title'}}">
+          <i class="fas fa-clipboard-list"></i>
+        </button>
+      </div>
+    </header>
+
+    {{#if home.hasAnyNews}}
+      <div class="bc-news-grid">
+
+        {{#if home.pinned}}
+          <article class="bc-news-card bc-news-pinned{{#if home.pinned.isUnread}} is-unread{{/if}}"
+                   data-news-id="{{home.pinned.id}}"
+                   data-action="openNewsDetail">
+            <div class="bc-news-card-media">
+              {{#if home.pinned.imageBase64}}
+                <img src="{{home.pinned.imageBase64}}" alt="" loading="lazy" />
+              {{else}}
+                <div class="bc-news-card-media-fallback" aria-hidden="true"></div>
+              {{/if}}
+              <span class="bc-news-pin-mark" aria-label="Pinned">
+                <i class="fas fa-thumbtack"></i>
+              </span>
+            </div>
+            <div class="bc-news-card-body">
+              <div class="bc-news-card-meta">
+                <span class="bc-news-pin-label">{{localize "BENEOS.Cloud.Home.News.Pinned"}}</span>
+                <span class="bc-news-date">{{home.pinned.formattedDate}}</span>
+              </div>
+              <h4 class="bc-news-title">{{home.pinned.title}}</h4>
+              {{#if home.pinned.ctaUrl}}{{#if home.pinned.ctaString}}
+                <div class="bc-news-card-cta">
+                  <button type="button" class="bc-news-cta-btn"
+                          data-action="openNewsCta"
+                          data-news-cta-url="{{home.pinned.ctaUrl}}">
+                    {{home.pinned.ctaString}}
+                    <i class="fas fa-arrow-up-right-from-square"></i>
+                  </button>
+                </div>
+              {{/if}}{{/if}}
+            </div>
+          </article>
+        {{/if}}
+
+        {{#each home.rolling}}
+          <article class="bc-news-card{{#if this.isUnread}} is-unread{{/if}}"
+                   data-news-id="{{this.id}}"
+                   data-action="openNewsDetail">
+            <div class="bc-news-card-media">
+              {{#if this.imageBase64}}
+                <img src="{{this.imageBase64}}" alt="" loading="lazy" />
+              {{else}}
+                <div class="bc-news-card-media-fallback" aria-hidden="true"></div>
+              {{/if}}
+            </div>
+            <div class="bc-news-card-body">
+              <div class="bc-news-card-meta">
+                <span class="bc-news-date">{{this.formattedDate}}</span>
+              </div>
+              <h4 class="bc-news-title">{{this.title}}</h4>
+              {{#if this.ctaUrl}}{{#if this.ctaString}}
+                <div class="bc-news-card-cta">
+                  <button type="button" class="bc-news-cta-btn"
+                          data-action="openNewsCta"
+                          data-news-cta-url="{{this.ctaUrl}}">
+                    {{this.ctaString}}
+                    <i class="fas fa-arrow-up-right-from-square"></i>
+                  </button>
+                </div>
+              {{/if}}{{/if}}
+            </div>
+          </article>
+        {{/each}}
+      </div>
+    {{else}}
+      <div class="bc-home-empty">
+        <i class="fas fa-newspaper"></i>
+        <p>{{localize "BENEOS.Cloud.Home.News.Empty"}}</p>
+      </div>
+    {{/if}}
+  </section>
+
+  {{!-- ============ Library overview (stats + rails) ============ --}}
+  <section class="bc-home-section bc-home-library">
+    <header class="bc-home-section-head">
+      <div class="bc-home-section-head-text">
+        <h3 class="bc-home-section-title">{{localize "BENEOS.Cloud.Home.Library.SectionTitle"}}</h3>
+        <p class="bc-home-section-sub">{{localize "BENEOS.Cloud.Home.Library.SectionSub"}}</p>
+      </div>
+    </header>
+
+    {{#if home.stats.length}}
+      <div class="bc-library-stats">
+        {{#each home.stats}}
+          <button type="button" class="bc-stat-card bc-stat-card-{{this.accessTone}}"
+                  data-action="switchToCategory"
+                  data-target-tab="{{this.type}}">
+            <div class="bc-stat-head">
+              <span class="bc-stat-label">{{localize this.labelKey}}</span>
+              {{#if this.statusSuffixKey}}
+                <span class="bc-stat-status">({{localize this.statusSuffixKey}})</span>
+              {{/if}}
+            </div>
+            <div class="bc-stat-value">
+              <span class="bc-stat-installed">{{this.accessible}}</span>
+              <span class="bc-stat-sep">/</span>
+              <span class="bc-stat-total">{{this.total}}</span>
+            </div>
+            {{#unless this.hasFullAccess}}
+              <div class="bc-stat-free-hint">
+                {{localize this.freeLabelKey}}: {{this.freeCount}}
+              </div>
+            {{/unless}}
+            <div class="bc-stat-progress">
+              <div class="bc-stat-progress-bar" style="width: {{this.pct}}%"></div>
+            </div>
+          </button>
+        {{/each}}
+      </div>
+    {{/if}}
+
+
+    {{#each home.rails}}
+      <div class="bc-rail" data-rail-type="{{this.type}}">
+        <div class="bc-rail-head">
+          <h4 class="bc-rail-title">{{localize this.labelKey}}</h4>
+          <div class="bc-rail-actions">
+            <button type="button" class="bc-rail-seeall"
+                    data-action="switchToCategory"
+                    data-target-tab="{{this.type}}">
+              {{localize "BENEOS.Cloud.Home.Recent.SeeAll"}}
+              <i class="fas fa-chevron-right"></i>
+            </button>
+          </div>
+        </div>
+
+        {{#if this.hasContent}}
+          <div class="bc-rail-strip" tabindex="0">
+
+            {{#each this.newItems}}
+              <button type="button" class="bc-rail-tile"
+                      {{#if (eq this.type "bmap")}}
+                        data-action="openMoulinetteForMap"
+                        data-target-key="{{this.key}}"
+                      {{else}}
+                        data-action="switchToCategory"
+                        data-target-tab="{{this.type}}"
+                        data-target-key="{{this.key}}"
+                      {{/if}}>
+                {{#if this.thumb}}
+                  <img src="{{this.thumb}}" alt="" loading="lazy"
+                       class="bc-rail-tile-thumb"
+                       onerror="this.style.visibility='hidden'" />
+                {{else}}
+                  <span class="bc-rail-tile-thumb bc-rail-tile-thumb-fallback" aria-hidden="true"></span>
+                {{/if}}
+                <span class="bc-rail-tile-name">{{this.name}}</span>
+                <span class="bc-rail-tile-chip bc-rail-chip-new">{{localize "BENEOS.Cloud.Card.New"}}</span>
+              </button>
+            {{/each}}
+
+            {{#each this.updatedItems}}
+              <button type="button" class="bc-rail-tile"
+                      {{#if (eq this.type "bmap")}}
+                        data-action="openMoulinetteForMap"
+                        data-target-key="{{this.key}}"
+                      {{else}}
+                        data-action="switchToCategory"
+                        data-target-tab="{{this.type}}"
+                        data-target-key="{{this.key}}"
+                      {{/if}}>
+                {{#if this.thumb}}
+                  <img src="{{this.thumb}}" alt="" loading="lazy"
+                       class="bc-rail-tile-thumb"
+                       onerror="this.style.visibility='hidden'" />
+                {{else}}
+                  <span class="bc-rail-tile-thumb bc-rail-tile-thumb-fallback" aria-hidden="true"></span>
+                {{/if}}
+                <span class="bc-rail-tile-name">{{this.name}}</span>
+                <span class="bc-rail-tile-chip bc-rail-chip-upd">{{localize "BENEOS.Cloud.Card.Update"}}</span>
+              </button>
+            {{/each}}
+
+          </div>
+        {{else}}
+          <div class="bc-rail-empty">
+            <span>{{localize this.emptyKey}}</span>
+          </div>
+        {{/if}}
+      </div>
+    {{/each}}
+  </section>
+
+  {{/if}}
+</section>

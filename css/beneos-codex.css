@@ -1,0 +1,2736 @@
+/* =============================================================
+   Beneos Creature Codex — Window styling
+   Scoped under .beneos-codex-app. Uses Beneos Cloud design tokens
+   (--bc-*) declared in beneos-cloud-tokens.css.
+   ============================================================= */
+
+.beneos-codex-app {
+  --codex-pad: var(--bc-space-4);
+  --codex-radius: var(--bc-radius);
+  --codex-card-pad: var(--bc-space-3);
+  --codex-warning: #d8b070;
+
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 0;
+  height: 100%;
+  background: var(--bc-bg);
+  color: var(--bc-text);
+  font-family: var(--bc-font-ui);
+  overflow: hidden;
+}
+
+/* ============ Header (Welle 4c: hero with overlay title + sparkles) ============ */
+.beneos-codex-app .bc-codex-header {
+  position: relative;
+  padding: 0;
+  background: var(--bc-bg-panel);
+  border-bottom: 1px solid var(--bc-border);
+}
+
+.beneos-codex-app .bc-hero-banner {
+  position: relative;
+  display: block;
+  height: 320px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: var(--bc-bg-elevated);
+  cursor: zoom-in;
+  overflow: hidden;
+  text-align: left;
+}
+.beneos-codex-app .bc-hero-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 25%;
+  display: block;
+}
+
+/* Top + bottom gradient overlays so the title block stays legible
+   regardless of the hero artwork's contrast. */
+.beneos-codex-app .bc-hero-banner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(15,14,12,0.45) 0%, transparent 25%, transparent 55%, rgba(15,14,12,0.92) 100%);
+}
+
+/* Sparkle layer — pure CSS rising particles. Two pseudo-elements with
+   offset animation delays give the impression of more particles than
+   actually exist on the GPU. */
+.beneos-codex-app .bc-hero-sparkles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  mix-blend-mode: screen;
+  opacity: 0.7;
+}
+.beneos-codex-app .bc-hero-sparkles::before,
+.beneos-codex-app .bc-hero-sparkles::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  height: 200%;
+  top: 0;
+  background-image:
+    radial-gradient(2px 2px at 12% 90%, rgba(245,201,146,0.9), transparent 60%),
+    radial-gradient(1.5px 1.5px at 28% 70%, rgba(245,201,146,0.7), transparent 55%),
+    radial-gradient(2px 2px at 42% 95%, rgba(253,233,202,0.85), transparent 55%),
+    radial-gradient(1px 1px at 56% 80%, rgba(245,201,146,0.7), transparent 60%),
+    radial-gradient(2.5px 2.5px at 72% 88%, rgba(245,201,146,0.6), transparent 55%),
+    radial-gradient(1.5px 1.5px at 84% 76%, rgba(253,233,202,0.8), transparent 50%),
+    radial-gradient(2px 2px at 18% 60%, rgba(245,201,146,0.55), transparent 60%),
+    radial-gradient(1.5px 1.5px at 64% 65%, rgba(253,233,202,0.75), transparent 55%),
+    radial-gradient(2px 2px at 92% 60%, rgba(245,201,146,0.7), transparent 55%);
+  animation: bc-sparkle-rise 9s linear infinite;
+}
+.beneos-codex-app .bc-hero-sparkles::after {
+  animation-delay: -4.5s;
+  opacity: 0.6;
+}
+@keyframes bc-sparkle-rise {
+  0%   { transform: translateY(0);     opacity: 0; }
+  10%  { opacity: 0.9; }
+  90%  { opacity: 0.9; }
+  100% { transform: translateY(-50%);  opacity: 0; }
+}
+
+/* Title overlay — sits bottom-left of the banner */
+.beneos-codex-app .bc-hero-overlay {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: var(--bc-space-4) var(--bc-space-5);
+  pointer-events: none;
+}
+.beneos-codex-app .bc-hero-overlay h1 {
+  margin: 0;
+  font-family: var(--bc-font-display);
+  font-weight: 600;
+  font-size: 2rem;
+  line-height: 1.05;
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.85), 0 1px 2px rgba(0,0,0,0.95);
+  border: none;
+}
+.beneos-codex-app .bc-hero-overlay .bc-subtitle {
+  margin: var(--bc-space-1) 0 var(--bc-space-2) 0;
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.9);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.85);
+}
+.beneos-codex-app .bc-hero-overlay .bc-wip-tag {
+  color: var(--codex-warning);
+}
+.beneos-codex-app .bc-hero-overlay .bc-tag-row {
+  pointer-events: auto;
+}
+
+/* Drift pill — small floating chip top-right */
+.beneos-codex-app .bc-drift-pill {
+  position: absolute;
+  top: var(--bc-space-3);
+  right: var(--bc-space-3);
+  padding: 6px 10px;
+  background: rgba(216, 176, 112, 0.85);
+  border: none;
+  border-radius: 999px;
+  color: #1f1a13;
+  cursor: pointer;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  animation: bc-pulse 2s ease-in-out infinite;
+}
+@keyframes bc-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(216,176,112,0.6); }
+  50%      { box-shadow: 0 0 0 8px rgba(216,176,112,0); }
+}
+
+.beneos-codex-app .bc-portrait {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: var(--bc-radius);
+  border: 1px solid var(--bc-border-strong);
+  background: var(--bc-card);
+}
+
+/* Header action bar — replaces the old footer-button row.
+   Welle 4c: Open Sheet / Open Journal sit here, just above the tab strip. */
+.beneos-codex-app .bc-codex-actionbar {
+  display: flex;
+  gap: var(--bc-space-2);
+  padding: var(--bc-space-2) var(--bc-space-4);
+  background: var(--bc-bg-panel);
+  border-bottom: 1px solid var(--bc-border);
+  flex-wrap: wrap;
+}
+.beneos-codex-app .bc-codex-actionbar:empty { display: none; }
+
+.beneos-codex-app .bc-titleblock {
+  grid-area: title;
+  padding: var(--bc-space-3) var(--bc-space-4);
+  align-self: center;
+}
+.beneos-codex-app .bc-titleblock h1 {
+  margin: 0 0 var(--bc-space-1) 0;
+  font-family: var(--bc-font-display);
+  font-weight: 600;
+  font-size: 1.6rem;
+  color: var(--bc-accent-soft);
+  border: none;
+  line-height: 1.1;
+}
+
+.beneos-codex-app .bc-subtitle {
+  margin: 0 0 var(--bc-space-2) 0;
+  font-size: 0.85rem;
+  color: var(--bc-text-muted);
+}
+
+.beneos-codex-app .bc-tag-row {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--bc-space-1);
+}
+
+.beneos-codex-app .bne-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  background: var(--bc-card);
+  color: var(--bc-text-muted);
+  border: 1px solid var(--bc-border);
+  border-radius: 999px;
+  line-height: 1.4;
+}
+
+.beneos-codex-app .bne-chip.bne--biom    { color: #b9d4ad; border-color: #4a6d3f; }
+.beneos-codex-app .bne-chip.bne--faction { color: #d4b9ad; border-color: #6d4a3f; }
+.beneos-codex-app .bne-chip.bne--style   { color: #adbcd4; border-color: #3f4a6d; }
+.beneos-codex-app .bne-chip.bne--purpose { color: var(--bc-accent-soft); border-color: var(--bc-accent-line); }
+
+.beneos-codex-app .bc-drift-banner {
+  grid-area: drift;
+  align-self: start;
+  margin: var(--bc-space-3);
+  padding: var(--bc-space-2) var(--bc-space-3);
+  background: rgba(216, 176, 112, 0.12);
+  border: 1px solid var(--codex-warning);
+  border-radius: var(--bc-radius);
+  color: var(--codex-warning);
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--bc-space-2);
+}
+
+.beneos-codex-app .bc-drift-banner:hover {
+  background: rgba(216, 176, 112, 0.18);
+}
+
+/* ============ Tab strip ============ */
+.beneos-codex-app .bc-tab-strip {
+  display: flex;
+  gap: 2px;
+  padding: var(--bc-space-2) var(--bc-space-4) 0 var(--bc-space-4);
+  background: var(--bc-bg-elevated);
+  border-bottom: 1px solid var(--bc-border);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.beneos-codex-app .bc-tab {
+  appearance: none;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: var(--bc-space-2) var(--bc-space-4);
+  color: var(--bc-text-muted);
+  font-family: var(--bc-font-ui);
+  font-size: 0.9rem;
+  cursor: pointer;
+  border-radius: var(--bc-radius) var(--bc-radius) 0 0;
+  white-space: nowrap;
+  transition: color 120ms, background 120ms, border-color 120ms;
+}
+
+.beneos-codex-app .bc-tab:hover {
+  color: var(--bc-text);
+  background: var(--bc-card-hover);
+}
+
+.beneos-codex-app .bc-tab.is-active {
+  color: var(--bc-accent-soft);
+  border-bottom-color: var(--bc-accent);
+  background: var(--bc-bg);
+}
+
+/* ============ Tab pane ============ */
+.beneos-codex-app .bc-tab-pane {
+  padding: var(--bc-space-5);
+  overflow-y: auto;
+  background: var(--bc-bg);
+  min-height: 0;
+}
+
+.beneos-codex-app .bc-rich-html {
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--bc-text);
+}
+
+.beneos-codex-app .bc-rich-html p { margin: 0 0 var(--bc-space-3) 0; }
+.beneos-codex-app .bc-rich-html ul, .beneos-codex-app .bc-rich-html ol { padding-left: 1.2rem; margin: 0 0 var(--bc-space-3) 0; }
+.beneos-codex-app .bc-rich-html h1, .beneos-codex-app .bc-rich-html h2, .beneos-codex-app .bc-rich-html h3 {
+  font-family: var(--bc-font-display);
+  color: var(--bc-accent-soft);
+  margin: var(--bc-space-4) 0 var(--bc-space-2) 0;
+  border: none;
+}
+.beneos-codex-app .bc-rich-html blockquote {
+  border-left: 3px solid var(--bc-accent-line);
+  margin: var(--bc-space-3) 0;
+  padding: var(--bc-space-2) var(--bc-space-3);
+  background: var(--bc-bg-elevated);
+  color: var(--bc-text-muted);
+  font-style: italic;
+}
+
+/* ============ Section cards (Hooks / Foreshadow / Abilities) ============ */
+.beneos-codex-app .bc-section-card {
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius);
+  padding: var(--codex-card-pad);
+  margin-bottom: var(--bc-space-3);
+}
+
+.beneos-codex-app .bc-section-card header {
+  display: flex;
+  align-items: center;
+  gap: var(--bc-space-2);
+  margin-bottom: var(--bc-space-2);
+}
+
+.beneos-codex-app .bc-section-card h3 {
+  margin: 0;
+  font-family: var(--bc-font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--bc-accent-soft);
+  border: none;
+}
+
+.beneos-codex-app .bc-section-card .bc-dc-badge {
+  background: var(--bc-accent-dim);
+  color: var(--bc-accent-soft);
+  border: 1px solid var(--bc-accent-line);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* ============ Tactical Grid (8 cards) ============ */
+.beneos-codex-app .bc-tactical-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--bc-space-3);
+}
+
+.beneos-codex-app .bc-tactical-card {
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius);
+  padding: var(--codex-card-pad);
+  display: flex;
+  flex-direction: column;
+  gap: var(--bc-space-2);
+}
+
+.beneos-codex-app .bc-tactical-card header {
+  display: flex;
+  align-items: center;
+  gap: var(--bc-space-2);
+}
+
+.beneos-codex-app .bc-tactical-card header img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.beneos-codex-app .bc-tactical-card h3 {
+  margin: 0;
+  flex: 1;
+  font-family: var(--bc-font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--bc-accent-soft);
+  border: none;
+}
+
+/* ============ Empty state ============ */
+.beneos-codex-app .bc-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--bc-space-3);
+  padding: var(--bc-space-8) var(--bc-space-4);
+  text-align: center;
+  color: var(--bc-text-dim);
+  border: 1px dashed var(--bc-border);
+  border-radius: var(--bc-radius);
+  background: var(--bc-bg-elevated);
+}
+
+.beneos-codex-app .bc-empty-state i {
+  font-size: 1.6rem;
+  color: var(--bc-text-dim);
+}
+
+.beneos-codex-app .bc-empty-state p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* ============ Source chips ============ */
+.beneos-codex-app .bc-source-chip {
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.beneos-codex-app .bc-source-chip.bc-src-edited { background: var(--bc-accent-dim);  color: var(--bc-accent-soft); }
+.beneos-codex-app .bc-source-chip.bc-src-parsed { background: var(--bc-update-dim);  color: var(--bc-update-soft); }
+.beneos-codex-app .bc-source-chip.bc-src-legacy { background: rgba(255,255,255,0.05); color: var(--bc-text-dim); }
+
+/* ============ Buttons ============ */
+.beneos-codex-app .bc-btn {
+  appearance: none;
+  padding: var(--bc-space-2) var(--bc-space-4);
+  background: var(--bc-card);
+  color: var(--bc-text);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-radius);
+  font-family: var(--bc-font-ui);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms;
+}
+
+.beneos-codex-app .bc-btn:hover:not([disabled]) {
+  background: var(--bc-card-hover);
+  border-color: var(--bc-accent-line);
+}
+
+.beneos-codex-app .bc-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.beneos-codex-app .bc-btn-primary {
+  background: var(--bc-accent-dim);
+  color: var(--bc-accent-soft);
+  border-color: var(--bc-accent-line);
+}
+
+.beneos-codex-app .bc-btn-primary:hover:not([disabled]) {
+  background: var(--bc-accent);
+  color: var(--bc-bg);
+}
+
+.beneos-codex-app .bc-btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--bc-text-muted);
+}
+
+.beneos-codex-app .bc-btn-ghost:hover { color: var(--bc-text); }
+
+.beneos-codex-app .bc-icon-btn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--bc-text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--bc-radius);
+}
+
+.beneos-codex-app .bc-icon-btn:hover { color: var(--bc-accent-soft); background: var(--bc-card-hover); }
+
+/* ============ Footer (Welle 4c: only visible during edit) ============ */
+.beneos-codex-app .bc-codex-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--bc-space-3);
+  padding: var(--bc-space-3) var(--bc-space-4);
+  background: var(--bc-bg-panel);
+  border-top: 1px solid var(--bc-border);
+  font-size: 0.8rem;
+}
+
+.beneos-codex-app .bc-codex-footer .bc-status-key {
+  margin-left: auto;
+  color: var(--bc-text-dim);
+  font-family: var(--bc-font-mono);
+  font-size: 0.72rem;
+}
+
+/* Welle 4c: ensure the Save/Cancel footer band stays prominent — gold
+   accent border at the top so the edit-mode is visually obvious. */
+.beneos-codex-app .bc-codex-footer.is-editing {
+  border-top-color: var(--bc-accent-line);
+}
+
+/* ============ Overview tab ============ */
+.beneos-codex-app .bc-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--bc-space-3);
+}
+
+.beneos-codex-app .bc-overview-cell {
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius);
+  padding: var(--codex-card-pad);
+}
+
+.beneos-codex-app .bc-overview-cell h4 {
+  margin: 0 0 var(--bc-space-2) 0;
+  font-family: var(--bc-font-display);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bc-text-dim);
+  border: none;
+}
+
+/* Welle 4c: Overview head with PDF-button */
+.beneos-codex-app .bc-overview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--bc-space-3);
+  margin-bottom: var(--bc-space-4);
+}
+.beneos-codex-app .bc-overview-head h2 {
+  margin: 0;
+  font-family: var(--bc-font-display);
+  font-size: 1.4rem;
+  color: var(--bc-accent-soft);
+  border: none;
+}
+
+/* Welle 4c: neutral-colored box variant — white body text instead of gold */
+.beneos-codex-app .bc-overview-cell.bc-cell--neutral h4 { color: var(--bc-text-muted); }
+.beneos-codex-app .bc-overview-cell.bc-cell--neutral { color: var(--bc-text); }
+.beneos-codex-app .bc-overview-cell.bc-cell--neutral p { color: var(--bc-text); }
+
+.beneos-codex-app .bc-overview-cell.bc-cell--lore {
+  grid-column: span 2;
+}
+.beneos-codex-app .bc-lore-snippet {
+  font-family: var(--bc-font-display);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--bc-text);
+  margin: 0 0 var(--bc-space-2) 0;
+}
+
+.beneos-codex-app .bc-overview-cell.bc-cell--allies {
+  grid-column: span 2;
+}
+
+.beneos-codex-app .bc-link {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--bc-accent-soft);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-align: left;
+}
+.beneos-codex-app .bc-link:hover { color: var(--bc-accent); text-decoration: underline; }
+
+.beneos-codex-app .bc-rich-html.bc-rich-html--compact {
+  max-height: 180px;
+  overflow: hidden;
+  position: relative;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+.beneos-codex-app .bc-rich-html.bc-rich-html--compact::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 40px;
+  background: linear-gradient(transparent, var(--bc-card));
+  pointer-events: none;
+}
+
+/* ============ Number markers (Hooks / Foreshadowing) ============ */
+.beneos-codex-app .bc-entry-number {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bc-accent);
+  color: var(--bc-bg);
+  font-family: var(--bc-font-display);
+  font-weight: 700;
+  font-size: 1.2rem;
+  border-radius: var(--bc-radius);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+/* ============ Hook card layout ============ */
+.beneos-codex-app .bc-hook-card {
+  display: flex;
+  gap: var(--bc-space-3);
+  align-items: flex-start;
+}
+.beneos-codex-app .bc-hook-body {
+  flex: 1;
+  min-width: 0;
+}
+.beneos-codex-app .bc-hook-body header {
+  display: flex;
+  align-items: center;
+  gap: var(--bc-space-2);
+  margin-bottom: var(--bc-space-2);
+}
+.beneos-codex-app .bc-hook-body header h3 {
+  margin: 0;
+  flex: 1;
+  font-family: var(--bc-font-display);
+  color: var(--bc-accent-soft);
+  border: none;
+}
+
+/* ============ Foreshadowing card (Welle 4c three-column) ============ */
+.beneos-codex-app .bc-foreshadow-card {
+  display: grid;
+  grid-template-columns: 40px 80px 1fr;
+  gap: var(--bc-space-3);
+  align-items: flex-start;
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border);
+  border-left: 3px solid var(--bc-accent-line);
+  border-radius: var(--bc-radius);
+  padding: var(--bc-space-3);
+  margin-bottom: var(--bc-space-3);
+}
+.beneos-codex-app .bc-foreshadow-dc {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bc-accent-dim);
+  color: var(--bc-accent-soft);
+  border: 1px solid var(--bc-accent-line);
+  border-radius: var(--bc-radius);
+}
+.beneos-codex-app .bc-foreshadow-dc-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bc-accent);
+}
+.beneos-codex-app .bc-foreshadow-dc-value {
+  font-family: var(--bc-font-display);
+  font-weight: 700;
+  font-size: 1.8rem;
+  line-height: 1;
+}
+.beneos-codex-app .bc-foreshadow-body { min-width: 0; }
+.beneos-codex-app .bc-foreshadow-body header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--bc-space-2);
+  margin-bottom: var(--bc-space-2);
+}
+.beneos-codex-app .bc-foreshadow-body header h3 {
+  margin: 0;
+  font-family: var(--bc-font-display);
+  font-size: 1.05rem;
+  color: var(--bc-accent-soft);
+  border: none;
+}
+.beneos-codex-app .bc-foreshadow-quote {
+  margin: 0;
+  padding: var(--bc-space-2) var(--bc-space-3);
+  border-left: 3px solid var(--bc-accent-line);
+  background: var(--bc-bg-elevated);
+  font-style: italic;
+  color: var(--bc-text);
+}
+
+/* ============ Chip row (difficulty + skill chips) ============ */
+.beneos-codex-app .bc-chip-row {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--bc-space-1);
+}
+.beneos-codex-app .bc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border-radius: 999px;
+  background: var(--bc-card-hover);
+  color: var(--bc-text-muted);
+  border: 1px solid var(--bc-border);
+}
+.beneos-codex-app .bc-chip.bc-chip--difficulty {
+  background: var(--bc-accent-dim);
+  color: var(--bc-accent-soft);
+  border-color: var(--bc-accent-line);
+}
+.beneos-codex-app .bc-chip.bc-chip--skill {
+  background: var(--bc-bg-elevated);
+  color: var(--bc-text);
+}
+.beneos-codex-app .bc-chip.bc-chip--kind {
+  text-transform: capitalize;
+  background: var(--bc-update-dim);
+  color: var(--bc-update-soft);
+  border-color: var(--bc-update-line);
+}
+
+/* ============ Tactical sub-tabs (Welle 4c) ============ */
+.beneos-codex-app .bc-tactical-sub-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: var(--bc-space-2);
+  background: var(--bc-bg-elevated);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius);
+  margin-bottom: var(--bc-space-3);
+}
+.beneos-codex-app .bc-tactical-sub-tab {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 6px 12px;
+  color: var(--bc-text-muted);
+  font: inherit;
+  font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  border-radius: var(--bc-radius);
+  transition: color 120ms, background 120ms, border-color 120ms;
+}
+.beneos-codex-app .bc-tactical-sub-tab img {
+  width: 18px; height: 18px; object-fit: contain;
+}
+.beneos-codex-app .bc-tactical-sub-tab:hover {
+  color: var(--bc-text);
+  background: var(--bc-card-hover);
+}
+.beneos-codex-app .bc-tactical-sub-tab.is-active {
+  color: var(--bc-accent-soft);
+  background: var(--bc-card);
+  border-color: var(--bc-accent-line);
+}
+.beneos-codex-app .bc-tactical-content {
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius);
+  padding: var(--bc-space-4);
+}
+.beneos-codex-app .bc-tactical-content header {
+  display: flex;
+  align-items: center;
+  gap: var(--bc-space-2);
+  margin-bottom: var(--bc-space-3);
+  padding-bottom: var(--bc-space-2);
+  border-bottom: 1px solid var(--bc-border);
+}
+.beneos-codex-app .bc-tactical-content-icon {
+  width: 28px; height: 28px; object-fit: contain;
+}
+.beneos-codex-app .bc-tactical-content h3 {
+  margin: 0;
+  flex: 1;
+  font-family: var(--bc-font-display);
+  color: var(--bc-accent-soft);
+  border: none;
+}
+/* Turn-Playbook variant — slightly distinct accent for choreography blocks */
+.beneos-codex-app .bc-tactical-card--turn_playbook {
+  border-left: 3px solid var(--bc-update);
+}
+
+/* ============ Combat-pane hover reactivity (Welle 4c Fix 8) ============ */
+.beneos-codex-app .bc-pane-combat .bc-section-card {
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+.beneos-codex-app .bc-pane-combat .bc-section-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(245, 201, 146, 0.18);
+  border-color: var(--bc-accent-line);
+}
+.beneos-codex-app .bc-pane-combat .bc-section-card:hover header h3 {
+  color: var(--bc-accent-strong);
+  text-shadow: 0 0 8px rgba(245,201,146,0.4);
+}
+
+/* ============ Stagger fade-in for hook + foreshadow cards ============ */
+.beneos-codex-app .bc-staggered {
+  animation: bc-card-fade-in 0.4s ease both;
+  animation-delay: calc(0.08s * var(--stagger-index, 0));
+}
+@keyframes bc-card-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ============ Foreshadowing list ============ */
+.beneos-codex-app .bc-skill-chip {
+  display: inline-block;
+  margin: 0 4px 4px 0;
+  padding: 1px 6px;
+  font-size: 0.7rem;
+  background: var(--bc-bg-elevated);
+  border: 1px solid var(--bc-border);
+  border-radius: 3px;
+  color: var(--bc-text-muted);
+}
+
+/* ============ Dev tab ============ */
+.beneos-codex-app .bc-dev-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--bc-font-mono);
+  font-size: 0.78rem;
+}
+
+.beneos-codex-app .bc-dev-table th,
+.beneos-codex-app .bc-dev-table td {
+  text-align: left;
+  padding: var(--bc-space-1) var(--bc-space-2);
+  border-bottom: 1px solid var(--bc-border);
+  color: var(--bc-text-muted);
+}
+
+.beneos-codex-app .bc-dev-table th {
+  color: var(--bc-text-dim);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+}
+
+/* ============ Floating context menu (Cloud-V2 right-click) ============
+   Lives in <body>, NOT under .beneos-codex-app — so we redeclare the
+   tokens it needs explicitly with sensible defaults. */
+
+/* Full-screen transparent backdrop. Captures outside clicks so the
+   menu dismisses without racing Foundry's document-level handlers. */
+.beneos-codex-floating-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: transparent;
+}
+
+.beneos-codex-floating-menu {
+  background: var(--bc-card, #242019);
+  border: 1px solid var(--bc-border-strong, #4a4233);
+  border-radius: var(--bc-radius, 5px);
+  box-shadow: var(--bc-shadow-pop, 0 8px 30px rgba(0, 0, 0, 0.4));
+  padding: 4px;
+  min-width: 200px;
+  font-family: var(--bc-font-ui, sans-serif);
+  font-size: 0.85rem;
+  color: var(--bc-text, #ebe9e5);
+}
+.beneos-codex-floating-menu .bc-floating-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 3px;
+  font: inherit;
+}
+.beneos-codex-floating-menu .bc-floating-item:hover {
+  background: var(--bc-accent-dim, rgba(245, 201, 146, 0.12));
+  color: var(--bc-accent-soft, #fde9ca);
+}
+.beneos-codex-floating-menu .bc-floating-item i {
+  width: 16px;
+  text-align: center;
+}
+
+/* ============ Beneos action button inside DnD5e nav.tabs ============
+   Sits in the sheet's tab-strip, NOT under .beneos-codex-app. Inherits
+   the strip's flexbox sizing so it visually matches the other tabs. */
+.beneos-sheet-codex-tab {
+  color: var(--bc-accent, #f5c992);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.beneos-sheet-codex-tab:hover {
+  color: var(--bc-accent-soft, #fde9ca);
+  background: var(--bc-accent-dim, rgba(245, 201, 146, 0.12));
+}
+
+/* ============ Inline entry actions (hooks / foreshadow / abilities) ============ */
+.beneos-codex-app .bc-entry-actions-inline {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: auto;
+  align-self: flex-start;
+}
+
+.beneos-codex-app .bc-add-entry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bc-space-2);
+  margin-top: var(--bc-space-3);
+}
+
+/* ============ Entry editor modal ============ */
+.beneos-codex-entry-editor .bc-entry-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bc-space-3);
+  padding: var(--bc-space-4);
+  background: var(--bc-bg, #0f0e0c);
+  color: var(--bc-text, #ebe9e5);
+  font-family: var(--bc-font-ui, sans-serif);
+}
+
+.beneos-codex-entry-editor .bc-entry-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bc-space-1);
+}
+
+.beneos-codex-entry-editor .bc-entry-field label {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bc-text-dim, #6f6859);
+}
+
+.beneos-codex-entry-editor input[type="text"],
+.beneos-codex-entry-editor input[type="number"],
+.beneos-codex-entry-editor select {
+  background: var(--bc-card, #242019);
+  color: var(--bc-text, #ebe9e5);
+  border: 1px solid var(--bc-border, #2e2920);
+  border-radius: var(--bc-radius, 5px);
+  padding: 6px 10px;
+  font: inherit;
+}
+
+.beneos-codex-entry-editor input:focus,
+.beneos-codex-entry-editor select:focus {
+  outline: none;
+  border-color: var(--bc-accent, #f5c992);
+}
+
+.beneos-codex-entry-editor .bc-prose-slot {
+  border: 1px solid var(--bc-border, #2e2920);
+  border-radius: var(--bc-radius, 5px);
+  background: var(--bc-card, #242019);
+  min-height: 200px;
+}
+
+.beneos-codex-entry-editor .bc-entry-actions {
+  display: flex;
+  gap: var(--bc-space-2);
+  justify-content: flex-end;
+  margin-top: var(--bc-space-2);
+}
+
+/* ============================================================
+   Welle 5b — Master-Mock CSS (ported from
+   Beneos-creature-codex/codex-handoff/source/styles.css).
+   All selectors are scoped under .beneos-codex-app. The master
+   uses raw tokens (--bg, --accent, ...); they alias to the
+   Beneos --bc-* tokens already declared globally so no extra
+   token declarations are needed here.
+   ============================================================ */
+
+.beneos-codex-app {
+  --bg: var(--bc-bg); --bg-panel: var(--bc-bg-panel); --bg-elevated: var(--bc-bg-elevated);
+  --card: var(--bc-card); --card-hover: var(--bc-card-hover);
+  --border: var(--bc-border); --border-strong: var(--bc-border-strong);
+  --text: var(--bc-text); --text-muted: var(--bc-text-muted); --text-dim: var(--bc-text-dim);
+  --accent: var(--bc-accent); --accent-soft: var(--bc-accent-soft);
+  --accent-strong: var(--bc-accent-strong); --accent-dim: var(--bc-accent-dim); --accent-line: var(--bc-accent-line);
+  --danger: var(--bc-danger); --success: var(--bc-success); --info: var(--bc-info);
+  --radius: var(--bc-radius); --radius-lg: var(--bc-radius-lg);
+  --shadow-pop: var(--bc-shadow-pop); --font-ui: var(--bc-font-ui); --font-display: var(--bc-font-display); --font-mono: var(--bc-font-mono);
+}
+
+.beneos-codex-app .creature-codex {
+  position: absolute;
+  width: 1080px;
+  height: 760px;
+  max-width: calc(100vw - 60px);
+  max-height: calc(100vh - 60px);
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 70px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,0,0,0.6);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: var(--font-ui);
+  color: var(--text);
+}
+
+/* ---- Hero region ---- */
+.beneos-codex-app .cdx-hero {
+  flex: 0 0 auto;
+  position: relative;
+  height: 280px;
+  overflow: hidden;
+  cursor: move;
+  user-select: none;
+}
+.beneos-codex-app .cdx-hero-art {
+  position: absolute; inset: 0;
+  pointer-events: none;
+}
+
+/* Titlebar overlay on hero */
+.beneos-codex-app .cdx-titlebar {
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 42px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 12px;
+  z-index: 4;
+  background: linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0));
+}
+.cdx-titlebar-left { display: flex; align-items: center; gap: 10px; }
+.beneos-codex-app .cdx-logo {
+  width: 24px; height: 24px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #1a1408;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.beneos-codex-app .cdx-titlebar-name {
+  font-size: 12px;
+  color: rgba(255,255,255,0.85);
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+.cdx-titlebar-right { display: flex; gap: 4px; }
+.beneos-codex-app .cdx-icon-btn {
+  width: 26px; height: 26px;
+  border-radius: 4px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.12s;
+  backdrop-filter: blur(4px);
+}
+.cdx-icon-btn:hover { background: rgba(0,0,0,0.6); color: var(--accent); border-color: var(--accent-line); }
+
+/* Hero body */
+.beneos-codex-app .cdx-hero-body {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 20px 28px 22px;
+  z-index: 3;
+  background: linear-gradient(0deg, rgba(0,0,0,0.85), rgba(0,0,0,0));
+}
+.beneos-codex-app .cdx-hero-meta {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255,255,255,0.65);
+  margin-bottom: 6px;
+}
+.beneos-codex-app .cdx-cr {
+  display: inline-flex; align-items: center;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 3px 9px;
+  border-radius: 2px;
+  border: 1px solid var(--accent-line);
+  letter-spacing: 1.2px;
+  font-family: var(--font-mono);
+}
+.beneos-codex-app .cdx-divider {
+  width: 1px; height: 12px;
+  background: rgba(255,255,255,0.25);
+}
+.cdx-type { color: rgba(255,255,255,0.85); font-weight: 500; }
+.cdx-biome { color: rgba(255,255,255,0.7); }
+
+.beneos-codex-app .cdx-name {
+  font-family: var(--font-display);
+  font-size: 44px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 10px;
+  letter-spacing: -0.5px;
+  line-height: 1.05;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+}
+.beneos-codex-app .cdx-showcase {
+  font-size: 13.5px;
+  color: rgba(255,255,255,0.88);
+  line-height: 1.55;
+  margin: 0 0 16px;
+  max-width: 640px;
+  font-style: italic;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.cdx-hero-actions { display: flex; gap: 8px; }
+.beneos-codex-app .cdx-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 4px;
+  background: rgba(0,0,0,0.45);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.92);
+  font-size: 12.5px;
+  font-weight: 500;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: all 0.12s;
+  backdrop-filter: blur(4px);
+}
+.cdx-btn:hover { background: rgba(0,0,0,0.65); border-color: rgba(255,255,255,0.25); }
+.beneos-codex-app .cdx-btn.cdx-btn-primary {
+  background: var(--accent);
+  color: #1a1408;
+  border-color: var(--accent);
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+}
+.cdx-btn.cdx-btn-primary:hover { background: var(--accent-soft); }
+.cdx-btn.cdx-btn-primary.busy { opacity: 0.7; cursor: wait; }
+.beneos-codex-app .cdx-btn.cdx-btn-danger {
+  border-color: rgba(216,130,112,0.35);
+  color: rgba(216,130,112,0.95);
+}
+.beneos-codex-app .cdx-btn.cdx-btn-danger:hover {
+  background: rgba(216,130,112,0.15);
+  border-color: rgba(216,130,112,0.55);
+}
+
+/* ---- Tab strip ---- */
+.beneos-codex-app .cdx-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  padding: 0 14px;
+  background: linear-gradient(180deg, #0c0b0a, #0a0908);
+  border-bottom: 1px solid #000;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03),
+              inset 0 -1px 0 rgba(245,201,146,0.08);
+  gap: 0;
+}
+.beneos-codex-app .cdx-tab {
+  display: flex; align-items: center; gap: 8px;
+  padding: 13px 18px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.12s, background 0.12s;
+}
+.beneos-codex-app .cdx-tab + .cdx-tab::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 30%; bottom: 30%;
+  width: 1px;
+  background: rgba(255,255,255,0.06);
+}
+.cdx-tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+.beneos-codex-app .cdx-tab.active {
+  color: var(--accent);
+  background: linear-gradient(180deg, rgba(245,201,146,0.12), rgba(245,201,146,0.02));
+}
+.beneos-codex-app .cdx-tab.active::after {
+  content: '';
+  position: absolute; left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(245,201,146,0.4);
+}
+.beneos-codex-app .cdx-tab-count {
+  font-size: 10px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.beneos-codex-app .cdx-tab.active .cdx-tab-count {
+  background: var(--accent-dim);
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+
+/* ---- Body & sections ---- */
+.beneos-codex-app .cdx-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 26px 32px 32px;
+  background: var(--bg);
+}
+.beneos-codex-app .cdx-section {
+  display: flex; flex-direction: column;
+  gap: 18px;
+}
+.beneos-codex-app .cdx-h {
+  display: flex; flex-direction: column;
+  gap: 3px;
+  padding-left: 14px;
+  position: relative;
+}
+.beneos-codex-app .cdx-h::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 4px; bottom: 4px;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 1px;
+  box-shadow: 0 0 6px rgba(245,201,146,0.3);
+}
+.beneos-codex-app .cdx-h h2 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0;
+  letter-spacing: 0.2px;
+}
+.beneos-codex-app .cdx-h.small h2 {
+  font-size: 14px;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--accent-soft);
+}
+.beneos-codex-app .cdx-h p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.cdx-h.small p { font-size: 11px; }
+
+/* ---- Blockquote ---- */
+.beneos-codex-app .cdx-blockquote {
+  position: relative;
+  padding: 16px 20px 16px 26px;
+  background: linear-gradient(135deg, var(--card), var(--bg-elevated));
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text);
+  font-style: italic;
+  margin: 0;
+}
+.beneos-codex-app .cdx-blockquote-dramatic {
+  background: linear-gradient(135deg, rgba(245,201,146,0.04), var(--bg-elevated));
+  font-family: var(--font-display);
+  font-style: normal;
+  font-size: 15px;
+  color: var(--accent-soft);
+  line-height: 1.7;
+}
+.beneos-codex-app .cdx-blockquote-death {
+  background: linear-gradient(135deg, rgba(216,130,112,0.08), var(--bg-elevated));
+  border-left-color: var(--danger);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 14px;
+  color: rgba(216,130,112,0.95);
+  line-height: 1.7;
+}
+
+/* ---- Overview tab grid ---- */
+.beneos-codex-app .cdx-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-top: 6px;
+}
+.beneos-codex-app .cdx-ally-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: flex; flex-direction: column;
+  gap: 4px;
+}
+.beneos-codex-app .cdx-ally-list li {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text);
+  transition: border-color 0.12s, background 0.12s;
+}
+.cdx-ally-list li:hover { border-color: var(--accent-line); background: var(--card-hover); }
+.beneos-codex-app .cdx-ally-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(245,201,146,0.4);
+}
+.beneos-codex-app .cdx-ally-list li > span:not(.cdx-ally-dot) {
+  flex: 1;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 14px;
+}
+.beneos-codex-app .cdx-ally-add {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--accent);
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+  font-family: inherit;
+  padding: 0;
+}
+.beneos-codex-app .cdx-ally-add:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+
+.beneos-codex-app .cdx-tags-grid {
+  display: flex; flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+.beneos-codex-app .cdx-tag-row {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.beneos-codex-app .cdx-tag-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-dim);
+}
+.cdx-tag-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.beneos-codex-app .cdx-tag {
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* ---- Story Hooks ---- */
+.beneos-codex-app .cdx-hooks {
+  display: flex; flex-direction: column;
+  gap: 12px;
+}
+.beneos-codex-app .cdx-hook {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 14px;
+  padding: 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  transition: border-color 0.12s, background 0.12s;
+}
+.cdx-hook:hover { border-color: var(--border-strong); background: var(--card-hover); }
+.beneos-codex-app .cdx-hook-tier {
+  width: 56px; height: 56px;
+  background: linear-gradient(135deg, var(--accent), color-mix(in oklch, var(--accent) 60%, #000));
+  color: #1a1408;
+  border-radius: 4px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.2),
+              0 2px 6px rgba(0,0,0,0.35);
+  letter-spacing: -0.5px;
+}
+.beneos-codex-app .cdx-hook-title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--accent-soft);
+  margin: 0 0 6px;
+  letter-spacing: 0.2px;
+}
+.beneos-codex-app .cdx-hook-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+/* ---- Foreshadowing ---- */
+.beneos-codex-app .cdx-foreshadow {
+  display: flex; flex-direction: column;
+  gap: 12px;
+}
+.beneos-codex-app .cdx-foresee {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 16px;
+  padding: 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.beneos-codex-app .cdx-foresee-num {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--accent);
+  text-align: center;
+  letter-spacing: -1px;
+  line-height: 1;
+  padding-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.beneos-codex-app .cdx-foresee-title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0 0 6px;
+}
+.beneos-codex-app .cdx-foresee-text {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+}
+.beneos-codex-app .cdx-check {
+  margin-top: 10px;
+  padding: 11px 14px;
+  background: rgba(0,0,0,0.3);
+  border-left: 2px solid var(--accent-line);
+  border-radius: 0 4px 4px 0;
+}
+.beneos-codex-app .cdx-check-header {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 8px;
+}
+.beneos-codex-app .cdx-dc {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-line);
+  padding: 2px 8px;
+  border-radius: 3px;
+  letter-spacing: 0.8px;
+}
+.beneos-codex-app .cdx-skill {
+  font-size: 11px;
+  background: rgba(143,170,198,0.12);
+  color: var(--info);
+  border: 1px solid rgba(143,170,198,0.3);
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.beneos-codex-app .cdx-mod {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+.beneos-codex-app .cdx-check-result {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+/* ---- Combat Theater: ability prompts ---- */
+.beneos-codex-app .cdx-prompts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+.beneos-codex-app .cdx-prompt {
+  padding: 14px 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent-line);
+  border-radius: 4px;
+  transition: border-color 0.12s, background 0.12s;
+}
+.beneos-codex-app .cdx-prompt:hover {
+  border-color: var(--border-strong);
+  border-left-color: var(--accent);
+  background: var(--card-hover);
+}
+.beneos-codex-app .cdx-prompt-head {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 8px;
+}
+.beneos-codex-app .cdx-prompt-marker {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px rgba(245,201,146,0.4);
+}
+.beneos-codex-app .cdx-prompt h3 {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-soft);
+  margin: 0;
+  letter-spacing: 0.3px;
+}
+.beneos-codex-app .cdx-prompt-text {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text);
+  font-style: italic;
+}
+
+.beneos-codex-app .cdx-death-trigger {
+  display: flex; align-items: center; gap: 14px;
+  margin-top: 6px;
+}
+.beneos-codex-app .cdx-death-trigger small {
+  color: var(--text-dim);
+  font-size: 11px;
+  font-style: italic;
+}
+
+/* ---- Tactics tab ---- */
+.beneos-codex-app .cdx-tactical {
+  display: flex; flex-direction: column;
+  gap: 18px;
+}
+.beneos-codex-app .cdx-tac-section {
+  padding: 14px 16px 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.beneos-codex-app .cdx-tac-section-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 0 0 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  position: relative;
+  padding-left: 12px;
+}
+.beneos-codex-app .cdx-tac-section-title::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 1px; bottom: 1px;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 1px;
+}
+.beneos-codex-app .cdx-tac-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex; flex-direction: column;
+  gap: 4px;
+}
+.beneos-codex-app .cdx-tac-list .cdx-tac-list {
+  margin-left: 20px;
+  margin-top: 4px;
+  padding-left: 12px;
+  border-left: 1px dashed var(--border);
+}
+.beneos-codex-app .cdx-tac-item {
+  display: flex; flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.beneos-codex-app .cdx-tac-line {
+  display: inline;
+  color: var(--text);
+}
+.beneos-codex-app .cdx-tac-line > span:not(.cdx-chip) {
+  vertical-align: middle;
+}
+
+/* ---- Chips (tactical guide) ---- */
+.beneos-codex-app .cdx-chip {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 3px;
+  margin: 0 2px;
+  border: 1px solid;
+  letter-spacing: 0.15px;
+  white-space: nowrap;
+  background: rgba(0,0,0,0.3);
+}
+
+/* Chip kinds — keep the original system's color language */
+.beneos-codex-app .cdx-chip-dice {
+  color: #d4c08a;
+  border-color: rgba(212,192,138,0.3);
+  background: rgba(212,192,138,0.08);
+  font-family: var(--font-mono);
+}
+.beneos-codex-app .cdx-chip-feature {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: rgba(255,255,255,0.04);
+  text-decoration: underline;
+  text-decoration-color: rgba(245,201,146,0.4);
+  text-underline-offset: 2px;
+  font-weight: 700;
+}
+.beneos-codex-app .cdx-chip-context {
+  color: var(--text-muted);
+  border-color: var(--border);
+  background: rgba(255,255,255,0.02);
+}
+.beneos-codex-app .cdx-chip-mechanic {
+  color: #a8c890;
+  border-color: rgba(168,200,144,0.3);
+  background: rgba(168,200,144,0.08);
+}
+.beneos-codex-app .cdx-chip-action {
+  color: var(--info);
+  border-color: rgba(143,170,198,0.35);
+  background: rgba(143,170,198,0.1);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.beneos-codex-app .cdx-chip-target {
+  color: #c4a8d6;
+  border-color: rgba(196,168,214,0.3);
+  background: rgba(196,168,214,0.08);
+}
+.beneos-codex-app .cdx-chip-range {
+  color: var(--text-muted);
+  border-color: var(--border);
+  font-family: var(--font-mono);
+}
+.beneos-codex-app .cdx-chip-dc {
+  color: var(--accent);
+  border-color: var(--accent-line);
+  background: var(--accent-dim);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+.beneos-codex-app .cdx-chip-save {
+  color: #d8c070;
+  border-color: rgba(216,192,112,0.35);
+  background: rgba(216,192,112,0.08);
+}
+.beneos-codex-app .cdx-chip-condition {
+  color: #d88270;
+  border-color: rgba(216,130,112,0.35);
+  background: rgba(216,130,112,0.1);
+}
+.beneos-codex-app .cdx-chip-attack {
+  color: #e0a070;
+  border-color: rgba(224,160,112,0.35);
+  background: rgba(224,160,112,0.08);
+}
+.beneos-codex-app .cdx-chip-tohit {
+  color: var(--accent);
+  border-color: var(--accent-line);
+  background: var(--accent-dim);
+  font-family: var(--font-mono);
+}
+
+/* ---- Minimized state ---- */
+.beneos-codex-app .cdx-minimized {
+  position: absolute;
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 10px 6px 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.55);
+  z-index: 40;
+  cursor: grab;
+  user-select: none;
+}
+.cdx-minimized:active { cursor: grabbing; }
+.beneos-codex-app .cdx-mini-portrait {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  border: 1px solid var(--accent-line);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+}
+.beneos-codex-app .cdx-mini-label {
+  min-width: 0;
+  display: flex; flex-direction: column;
+  line-height: 1.15;
+}
+.beneos-codex-app .cdx-mini-label b {
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 600;
+}
+.beneos-codex-app .cdx-mini-label small {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.beneos-codex-app .cdx-mini-btn {
+  width: 22px; height: 22px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.cdx-mini-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ============================================================
+   DEATH PROMPT — dramatic floating popup
+   ============================================================ */
+.beneos-codex-app .death-prompt {
+  position: fixed;
+  bottom: 30px; right: 30px;
+  width: 420px;
+  background: linear-gradient(135deg, #1c0f0d, #100808);
+  border: 1px solid rgba(216,130,112,0.4);
+  border-radius: 8px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.7), 0 0 40px rgba(216,130,112,0.15);
+  z-index: 200;
+  overflow: hidden;
+  font-family: var(--font-ui);
+  color: var(--text);
+  transition: transform 280ms cubic-bezier(0.2, 0.9, 0.3, 1.2), opacity 280ms ease;
+}
+.beneos-codex-app .death-prompt.phase-enter {
+  transform: translateY(20px) scale(0.96);
+  opacity: 0;
+}
+.beneos-codex-app .death-prompt.phase-reading {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+.beneos-codex-app .death-prompt.phase-leaving {
+  transform: translateY(20px) scale(0.96);
+  opacity: 0;
+}
+
+.beneos-codex-app .dp-glow {
+  position: absolute;
+  inset: -50px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.beneos-codex-app .dp-head {
+  position: relative;
+  z-index: 2;
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(216,130,112,0.25);
+  background: linear-gradient(180deg, rgba(216,130,112,0.08), transparent);
+}
+.beneos-codex-app .dp-portrait {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  border: 1px solid rgba(216,130,112,0.5);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+}
+.dp-meta { flex: 1; min-width: 0; }
+.beneos-codex-app .dp-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: rgba(216,130,112,0.95);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.beneos-codex-app .dp-name {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  color: #fff;
+  letter-spacing: 0.3px;
+  line-height: 1.1;
+}
+.beneos-codex-app .dp-close {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.dp-close:hover { background: rgba(0,0,0,0.6); color: #fff; }
+
+.beneos-codex-app .dp-body {
+  position: relative;
+  z-index: 2;
+  padding: 16px 18px;
+  background: rgba(0,0,0,0.25);
+}
+.beneos-codex-app .dp-text {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  font-style: italic;
+  line-height: 1.65;
+  color: rgba(255,228,220,0.95);
+}
+
+.beneos-codex-app .dp-foot {
+  position: relative;
+  z-index: 2;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  border-top: 1px solid rgba(216,130,112,0.2);
+  background: rgba(0,0,0,0.35);
+  font-size: 11px;
+}
+.beneos-codex-app .dp-link {
+  background: transparent;
+  border: none;
+  color: rgba(216,130,112,0.85);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: inherit;
+  padding: 4px 6px;
+  border-radius: 3px;
+}
+.dp-link:hover { color: rgba(255,255,255,0.95); background: rgba(216,130,112,0.1); }
+.beneos-codex-app .dp-hint {
+  flex: 1;
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-dim);
+  font-style: italic;
+  padding: 0 8px;
+}
+.beneos-codex-app .dp-btn {
+  background: rgba(216,130,112,0.85);
+  border: 1px solid rgba(216,130,112,1);
+  color: #1a0808;
+  font-weight: 600;
+  font-size: 11px;
+  padding: 6px 14px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.dp-btn:hover { background: rgba(232,156,140,1); }
+
+
+/* ============================================================
+   CODEX — gamification & animations (features 1-4)
+   ============================================================ */
+
+/* (1) Hero ken-burns + ambient particles + pulsing CR badge */
+@keyframes cdxKenBurns {
+  0%   { transform: scale(1.04) translate(0, 0); }
+  50%  { transform: scale(1.08) translate(-1.5%, -1%); }
+  100% { transform: scale(1.04) translate(0, 0); }
+}
+.beneos-codex-app .cdx-hero-zoom {
+  width: 100%; height: 100%;
+  animation: cdxKenBurns 36s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes cdxParticleDrift {
+  0%   { transform: translate(0, 0);    opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translate(-12px, -60px); opacity: 0; }
+}
+.beneos-codex-app .cdx-particles circle {
+  animation: cdxParticleDrift 6s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes cdxPulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245,201,146,0.45); }
+  50%      { box-shadow: 0 0 0 4px rgba(245,201,146,0); }
+}
+.beneos-codex-app .cdx-cr {
+  animation: cdxPulseGlow 2.4s ease-in-out infinite;
+}
+
+@keyframes cdxHeroIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.cdx-hero-meta { animation: cdxHeroIn 380ms ease 100ms backwards; }
+.cdx-name      { animation: cdxHeroIn 480ms ease 200ms backwards; }
+.cdx-showcase  { animation: cdxHeroIn 540ms ease 320ms backwards; }
+.cdx-hero-actions { animation: cdxHeroIn 540ms ease 440ms backwards; }
+
+/* (2) Section reveals on tab change — stagger fade + accent line grow */
+@keyframes cdxFadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.beneos-codex-app .cdx-body > .cdx-section > * {
+  animation: cdxFadeUp 380ms cubic-bezier(0.2, 0.7, 0.3, 1) backwards;
+}
+.cdx-body > .cdx-section > *:nth-child(1) { animation-delay: 0ms; }
+.cdx-body > .cdx-section > *:nth-child(2) { animation-delay: 60ms; }
+.cdx-body > .cdx-section > *:nth-child(3) { animation-delay: 120ms; }
+.cdx-body > .cdx-section > *:nth-child(4) { animation-delay: 180ms; }
+.cdx-body > .cdx-section > *:nth-child(5) { animation-delay: 240ms; }
+.cdx-body > .cdx-section > *:nth-child(6) { animation-delay: 300ms; }
+.cdx-body > .cdx-section > *:nth-child(7) { animation-delay: 360ms; }
+
+/* Children of grids (hooks, foreshadow, prompts) also stagger */
+.beneos-codex-app .cdx-hooks > *, .beneos-codex-app .cdx-foreshadow > *, .beneos-codex-app .cdx-prompts > *, .beneos-codex-app .cdx-tactical > * {
+  animation: cdxFadeUp 380ms cubic-bezier(0.2, 0.7, 0.3, 1) backwards;
+}
+.cdx-hooks > *:nth-child(1), .cdx-foreshadow > *:nth-child(1),
+.cdx-prompts > *:nth-child(1), .cdx-tactical > *:nth-child(1) { animation-delay: 100ms; }
+.cdx-hooks > *:nth-child(2), .cdx-foreshadow > *:nth-child(2),
+.cdx-prompts > *:nth-child(2), .cdx-tactical > *:nth-child(2) { animation-delay: 160ms; }
+.cdx-hooks > *:nth-child(3), .cdx-foreshadow > *:nth-child(3),
+.cdx-prompts > *:nth-child(3), .cdx-tactical > *:nth-child(3) { animation-delay: 220ms; }
+.cdx-hooks > *:nth-child(4), .cdx-foreshadow > *:nth-child(4),
+.cdx-prompts > *:nth-child(4), .cdx-tactical > *:nth-child(4) { animation-delay: 280ms; }
+.cdx-hooks > *:nth-child(5), .cdx-foreshadow > *:nth-child(5),
+.cdx-prompts > *:nth-child(5), .cdx-tactical > *:nth-child(5) { animation-delay: 340ms; }
+.cdx-hooks > *:nth-child(6), .cdx-foreshadow > *:nth-child(6),
+.cdx-prompts > *:nth-child(6), .cdx-tactical > *:nth-child(6) { animation-delay: 400ms; }
+.cdx-prompts > *:nth-child(7) { animation-delay: 460ms; }
+
+/* Accent line grows on heading mount */
+@keyframes cdxLineGrow {
+  from { transform: scaleY(0); opacity: 0; }
+  to   { transform: scaleY(1); opacity: 0.95; }
+}
+.beneos-codex-app .cdx-h::before {
+  transform-origin: top;
+  animation: cdxLineGrow 420ms cubic-bezier(0.2, 0.8, 0.3, 1) 80ms backwards;
+}
+
+/* (3) Combat Theater — round counter, reset, prompt actions */
+.beneos-codex-app .cdx-combat-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(245,201,146,0.05), rgba(0,0,0,0.3));
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 4px;
+}
+.cdx-round { display: inline-flex; align-items: center; gap: 10px; }
+.beneos-codex-app .cdx-round-btn {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: rgba(0,0,0,0.35);
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-family: inherit;
+  line-height: 1;
+  transition: all 0.12s;
+}
+.cdx-round-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+.beneos-codex-app .cdx-round-display {
+  display: flex; flex-direction: column; align-items: center;
+  line-height: 1;
+  min-width: 64px;
+}
+.beneos-codex-app .cdx-round-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 3px;
+}
+.beneos-codex-app .cdx-round-num {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+}
+.beneos-codex-app .cdx-reset-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 11px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+}
+.cdx-reset-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* Readable blockquote wrapper (First Appearance) */
+.cdx-readable { position: relative; }
+.cdx-readable.read .cdx-blockquote { opacity: 0.55; }
+.beneos-codex-app .cdx-readable.read::after {
+  content: '';
+  position: absolute; top: 6px; right: 8px;
+  width: 18px; height: 18px;
+  background: var(--success);
+  color: #0a1408;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 2;
+}
+.beneos-codex-app .cdx-readable-actions {
+  display: flex; gap: 6px;
+  margin-top: 6px;
+  justify-content: flex-end;
+}
+
+/* Mini action buttons on prompts */
+.beneos-codex-app .cdx-mini-action {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  padding: 4px 9px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.12s;
+}
+.beneos-codex-app .cdx-mini-action:hover {
+  color: var(--accent);
+  border-color: var(--accent-line);
+  background: var(--accent-dim);
+}
+.beneos-codex-app .cdx-mini-action.primary {
+  color: var(--accent);
+  border-color: var(--accent-line);
+  background: var(--accent-dim);
+}
+.beneos-codex-app .cdx-mini-action.primary:hover {
+  background: var(--accent);
+  color: #1a1408;
+  border-color: var(--accent);
+}
+.beneos-codex-app .cdx-mini-action.on {
+  color: var(--success);
+  border-color: color-mix(in oklch, var(--success), transparent 50%);
+  background: color-mix(in oklch, var(--success), transparent 88%);
+}
+
+/* Used prompts fade */
+.beneos-codex-app .cdx-prompt {
+  position: relative;
+  transition: opacity 0.25s, filter 0.25s, border-color 0.18s, background 0.18s;
+}
+.beneos-codex-app .cdx-prompt.used {
+  opacity: 0.55;
+  filter: saturate(0.7);
+}
+.beneos-codex-app .cdx-prompt.used::after {
+  content: '✓';
+  position: absolute;
+  top: 10px; right: 10px;
+  width: 18px; height: 18px;
+  background: var(--success);
+  color: #0a1408;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 0 8px color-mix(in oklch, var(--success), transparent 60%);
+}
+.cdx-prompt.used:hover { opacity: 0.85; }
+
+.beneos-codex-app .cdx-prompt-count {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-line);
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.beneos-codex-app .cdx-prompt-tts {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.cdx-prompt-tts:hover { color: var(--accent); border-color: var(--accent); }
+
+.beneos-codex-app .cdx-prompt-actions {
+  display: flex; gap: 6px;
+  margin-top: 10px;
+  justify-content: flex-end;
+}
+
+/* (4) Rollable chips — dice, DC, to-hit */
+.beneos-codex-app .cdx-chip-rollable {
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
+  user-select: none;
+  position: relative;
+}
+.beneos-codex-app .cdx-chip-rollable::before {
+  content: '⚄';
+  margin-right: 4px;
+  font-size: 10px;
+  opacity: 0.6;
+}
+.beneos-codex-app .cdx-chip-rollable:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(245,201,146,0.2);
+  background: color-mix(in oklch, currentColor, transparent 85%);
+}
+@keyframes cdxRoll {
+  0%   { transform: scale(1) rotate(0); }
+  30%  { transform: scale(1.15) rotate(-8deg); }
+  60%  { transform: scale(0.95) rotate(6deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+.cdx-chip-rollable.rolling { animation: cdxRoll 360ms ease; }
+
+@keyframes cdxResultPop {
+  0%   { transform: translate(-50%, 8px) scale(0.7); opacity: 0; }
+  20%  { opacity: 1; transform: translate(-50%, -4px) scale(1.05); }
+  30%  { transform: translate(-50%, -8px) scale(1); }
+  85%  { opacity: 1; }
+  100% { transform: translate(-50%, -22px) scale(0.95); opacity: 0; }
+}
+.beneos-codex-app .cdx-chip-result {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 2px);
+  padding: 4px 10px;
+  background: linear-gradient(135deg, #1a1408, #2a1f10);
+  color: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 50;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.6), 0 0 12px rgba(245,201,146,0.3);
+  animation: cdxResultPop 2.2s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+}
+.beneos-codex-app .cdx-chip-result::after {
+  content: '';
+  position: absolute;
+  top: 100%; left: 50%; transform: translateX(-50%);
+  width: 0; height: 0;
+  border: 4px solid transparent;
+  border-top-color: var(--accent);
+}
+
+
+/* ============================================================
+   TACTICS LAB — 6 layout modes for the tactical guide
+   ============================================================ */
+
+/* Mode selector */
+.beneos-codex-app .tlab-modes {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  margin-bottom: 18px;
+  padding: 6px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.beneos-codex-app .tlab-mode {
+  display: flex; flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.tlab-mode:hover { background: var(--card); color: var(--text); }
+.beneos-codex-app .tlab-mode.active {
+  background: var(--accent-dim);
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+.tlab-mode-label { font-size: 12px; font-weight: 700; letter-spacing: 0.2px; }
+.tlab-mode-hint { font-size: 10px; color: var(--text-dim); font-weight: 400; line-height: 1.2; }
+.tlab-mode.active .tlab-mode-hint { color: var(--accent-soft); opacity: 0.85; }
+
+/* Stage animation */
+.tlab-stage { animation: cdxFadeUp 320ms ease backwards; }
+
+/* ===== MODE A — Turn Playbook ===== */
+.beneos-codex-app .tlab-playbook {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 14px;
+  align-items: start;
+}
+.tlab-pb-main { display: flex; flex-direction: column; gap: 10px; }
+.beneos-codex-app .tlab-phase {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.beneos-codex-app .tlab-phase-head {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(245,201,146,0.05), transparent);
+  border-bottom: 1px solid var(--border);
+}
+.beneos-codex-app .tlab-phase-num {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #1a1408;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+.beneos-codex-app .tlab-phase-head h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent-soft);
+  letter-spacing: 0.3px;
+}
+.beneos-codex-app .tlab-phase-head small {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.tlab-phase-body { padding: 12px 14px 14px; }
+.beneos-codex-app .tlab-phase-empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  font-style: italic;
+  text-align: center;
+  padding: 8px;
+}
+.beneos-codex-app .tlab-rules {
+  list-style: none;
+  padding: 0; margin: 0;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.beneos-codex-app .tlab-rule {
+  padding: 8px 12px;
+  background: rgba(0,0,0,0.25);
+  border-left: 2px solid var(--border-strong);
+  border-radius: 0 4px 4px 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text);
+}
+.tlab-rule-line { display: inline; }
+.beneos-codex-app .tlab-rule-sub {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0 14px;
+  display: flex; flex-direction: column; gap: 4px;
+  border-left: 1px dashed var(--border);
+  padding-left: 10px;
+}
+.beneos-codex-app .tlab-rule-sub .tlab-rule {
+  background: transparent;
+  border-left: none;
+  padding: 2px 0;
+}
+
+.beneos-codex-app .tlab-pb-aside {
+  position: sticky;
+  top: 0;
+  background: linear-gradient(135deg, rgba(216,130,112,0.06), var(--card));
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px 14px;
+}
+.beneos-codex-app .tlab-aside-head {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--danger);
+  margin-bottom: 4px;
+}
+.beneos-codex-app .tlab-aside-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+.tlab-traits { display: flex; flex-direction: column; gap: 10px; }
+.beneos-codex-app .tlab-trait {
+  padding: 10px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--danger);
+  border-radius: 4px;
+}
+.beneos-codex-app .tlab-trait-head {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--accent-soft);
+  margin-bottom: 6px;
+  text-decoration: underline;
+  text-decoration-color: var(--accent-line);
+  text-underline-offset: 2px;
+}
+.beneos-codex-app .tlab-trait-rules {
+  list-style: none;
+  padding: 0; margin: 0;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.beneos-codex-app .tlab-trait-rules li {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* ===== MODE B — Flowchart ===== */
+.beneos-codex-app .tlab-flowchart {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+.beneos-codex-app .tlab-fc-legend {
+  display: flex; gap: 18px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.beneos-codex-app .tlab-fc-dot {
+  display: inline-block;
+  width: 10px; height: 10px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+.beneos-codex-app .tlab-fc-dot.diamond {
+  transform: rotate(45deg);
+  background: #1c1a17;
+  border: 1px solid #d4c08a;
+}
+.beneos-codex-app .tlab-fc-dot.box {
+  background: #242019;
+  border: 1px solid var(--accent);
+}
+.beneos-codex-app .tlab-fc-dot.pill {
+  border-radius: 50%;
+  background: rgba(245,201,146,0.15);
+  border: 1px solid var(--accent-line);
+}
+.beneos-codex-app .tlab-fc-h {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--accent-soft);
+  margin: 0 0 8px;
+}
+.beneos-codex-app .tlab-fc-canvas {
+  background: rgba(0,0,0,0.35);
+  border-radius: 6px;
+  padding: 16px;
+}
+.beneos-codex-app .tlab-fc-side-note {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(245,201,146,0.04);
+  border-left: 2px solid var(--accent-line);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  border-radius: 0 4px 4px 0;
+  line-height: 1.55;
+}
+.tlab-fc-side-note b { color: var(--accent); font-weight: 700; }
+
+/* ===== MODE C — State-Aware ===== */
+.tlab-stateful { display: flex; flex-direction: column; gap: 14px; }
+.beneos-codex-app .tlab-state-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, rgba(245,201,146,0.04), rgba(0,0,0,0.3));
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.beneos-codex-app .tlab-state-group {
+  display: flex; flex-direction: column; gap: 5px;
+}
+.beneos-codex-app .tlab-state-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.tlab-state-pills { display: flex; gap: 4px; }
+.beneos-codex-app .tlab-pill {
+  width: 30px; height: 26px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-weight: 700;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.tlab-pill:hover { color: var(--accent); border-color: var(--accent-line); }
+.beneos-codex-app .tlab-pill.active {
+  background: var(--accent);
+  color: #1a1408;
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(245,201,146,0.4);
+}
+.beneos-codex-app .tlab-toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  font-family: var(--font-ui);
+}
+.beneos-codex-app .tlab-toggle span {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--border-strong);
+  transition: all 0.15s;
+}
+.tlab-toggle.on { color: var(--accent); border-color: var(--accent-line); background: var(--accent-dim); }
+.tlab-toggle.on span { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+
+.beneos-codex-app .tlab-sf-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.beneos-codex-app .tlab-sc {
+  padding: 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  transition: all 0.18s ease;
+  position: relative;
+}
+.beneos-codex-app .tlab-sc.active {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, rgba(245,201,146,0.06), var(--card));
+  box-shadow: 0 0 20px rgba(245,201,146,0.12);
+}
+.tlab-sc.dimmed { opacity: 0.35; filter: saturate(0.5); }
+.beneos-codex-app .tlab-sc-phase {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+.tlab-sc.active .tlab-sc-phase { color: var(--accent); }
+.beneos-codex-app .tlab-sc-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.beneos-codex-app .tlab-sc-desc {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.beneos-codex-app .tlab-sc-mods {
+  list-style: none;
+  padding: 0; margin: 4px 0 0;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.beneos-codex-app .tlab-sc-mods li {
+  font-size: 11px;
+  padding: 3px 8px;
+  background: rgba(0,0,0,0.3);
+  border-left: 2px solid var(--accent-line);
+  border-radius: 0 2px 2px 0;
+  color: var(--accent-soft);
+}
+.beneos-codex-app .tlab-sc.dimmed .tlab-sc-mods li {
+  color: var(--text-dim);
+  border-left-color: var(--border);
+}
+
+/* ===== MODE D — Trigger-First ===== */
+.tlab-triggers { display: flex; flex-direction: column; gap: 10px; }
+.beneos-codex-app .tlab-trig {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.beneos-codex-app .tlab-trig-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(245,201,146,0.04), transparent);
+  border-bottom: 1px solid var(--border);
+}
+.tlab-trig-icon { font-size: 18px; }
+.beneos-codex-app .tlab-trig-head h3 {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.1px;
+}
+.beneos-codex-app .tlab-trig-rules {
+  list-style: none;
+  padding: 10px 14px 12px;
+  margin: 0;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.beneos-codex-app .tlab-trig-rule {
+  display: flex; align-items: flex-start; gap: 9px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text);
+  padding: 4px 0;
+}
+.beneos-codex-app .tlab-trig-marker {
+  width: 6px; height: 6px;
+  margin-top: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--text-dim);
+}
+.tlab-trig-rule.kind-roll .tlab-trig-marker { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.tlab-trig-rule.kind-cond .tlab-trig-marker { background: var(--info); }
+.tlab-trig-rule.kind-action .tlab-trig-marker { background: #e0a070; }
+.beneos-codex-app .tlab-trig-rule.kind-sub {
+  margin-left: 18px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.tlab-trig-rule.kind-sub .tlab-trig-marker { background: var(--border-strong); }
+
+/* ===== MODE E — Filter Cards ===== */
+.tlab-cards-mode { display: flex; flex-direction: column; gap: 14px; }
+.beneos-codex-app .tlab-filter-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.beneos-codex-app .tlab-filter-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-dim);
+  margin-right: 6px;
+}
+.beneos-codex-app .tlab-filter {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: var(--font-ui);
+}
+.tlab-filter:hover { color: var(--text); border-color: var(--border-strong); }
+.beneos-codex-app .tlab-filter.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+.beneos-codex-app .tlab-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+.beneos-codex-app .tlab-card {
+  padding: 12px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.beneos-codex-app .tlab-card-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--accent-soft);
+  margin: 0 0 6px;
+  letter-spacing: 0.2px;
+}
+.tlab-card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.beneos-codex-app .tlab-card-tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 2px;
+  background: rgba(245,201,146,0.08);
+  color: var(--accent);
+  border: 1px solid var(--accent-line);
+}
+.beneos-codex-app .tlab-card-text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* ============================================================
+   Welle 5b — Foundry ApplicationV2 host overrides.
+   The master mock's outer `.creature-codex` rule positions the
+   codex as an absolute 1080×760 floating window. Inside an
+   ApplicationV2 window we want the body to fill the host
+   chrome instead. Suppress those properties and let the wrapper
+   adopt the host's flex layout.
+   ============================================================ */
+.beneos-codex-app.cdx-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  z-index: auto;
+}
+.beneos-codex-app .cdx-hero { cursor: default; }
+.beneos-codex-app .cdx-titlebar { display: none; } /* Foundry already has one */
+.beneos-codex-app .cdx-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }

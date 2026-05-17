@@ -1,0 +1,36 @@
+{{!-- Beneos News detail — full text view for a single news entry. --}}
+<article class="bc-news-detail">
+
+  {{#if news.imageBase64}}
+    <div class="bc-news-detail-hero">
+      <img src="{{news.imageBase64}}" alt="" />
+    </div>
+  {{/if}}
+
+  <header class="bc-news-detail-head">
+    <div class="bc-news-detail-meta">
+      {{#if news.isPinned}}
+        <span class="bc-news-detail-pin">
+          <i class="fas fa-thumbtack"></i>
+          {{localize "BENEOS.Cloud.Home.News.Pinned"}}
+        </span>
+      {{/if}}
+      <span class="bc-news-detail-date">{{news.formattedDate}}</span>
+    </div>
+    <h1 class="bc-news-detail-title">{{news.title}}</h1>
+  </header>
+
+  <div class="bc-news-detail-body">
+    {{{news.newsText}}}
+  </div>
+
+  {{#if news.ctaUrl}}{{#if news.ctaString}}
+    <footer class="bc-news-detail-footer">
+      <a class="bc-news-detail-cta" href="{{news.ctaUrl}}" target="_blank" rel="noopener noreferrer">
+        {{news.ctaString}}
+        <i class="fas fa-arrow-up-right-from-square"></i>
+      </a>
+    </footer>
+  {{/if}}{{/if}}
+
+</article>

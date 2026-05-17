@@ -183,6 +183,26 @@
   outline: none;
   border-color: var(--bc-accent);
 }
+
+/* color-scheme tells Chromium to render the native <option> popup dark;
+   the explicit option rules cover Firefox, which ignores color-scheme there. */
+.beneos-cloud-app .bc-select,
+.beneos-selector {
+  color-scheme: dark;
+}
+.beneos-cloud-app .bc-select option,
+.beneos-selector option {
+  background-color: var(--bc-card, #242019);
+  color: var(--bc-text, #ebe9e5);
+}
+.beneos-cloud-app .bc-select option:checked,
+.beneos-cloud-app .bc-select option:hover,
+.beneos-selector option:checked,
+.beneos-selector option:hover {
+  background-color: var(--bc-card-hover, #2c2721);
+  color: var(--bc-accent, #f5c992);
+}
+
 .beneos-cloud-app .bc-sidebar-banner {
   margin-top: var(--bc-space-4);
   padding: var(--bc-space-2) var(--bc-space-3);
@@ -790,6 +810,41 @@
 }
 .beneos-cloud-app .bc-result-divider .bc-divider-label {
   flex: 0 0 auto;
+}
+/* Divider with subline (Free-Section uses this). The text wrapper sits
+   on the left so the label + description stack vertically while the
+   optional bulk-action button stays right-aligned in the flex row. */
+.beneos-cloud-app .bc-result-divider .bc-divider-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.beneos-cloud-app .bc-result-divider .bc-divider-description {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--bc-text-muted);
+  opacity: 0.85;
+  margin: 0;
+  line-height: 1.35;
+}
+/* Free-Section header — uses the success-green accent so non-patrons
+   immediately see "you can grab these for free" on entry. */
+.beneos-cloud-app .bc-result-divider.bc-divider-free {
+  border-left-color: var(--bc-success);
+  color: var(--bc-success);
+}
+.beneos-cloud-app .bc-result-divider.bc-divider-free .bc-divider-description {
+  color: var(--bc-text-muted);
+}
+/* Locked-Section header — muted, sits at the bottom of the result list. */
+.beneos-cloud-app .bc-result-divider.bc-divider-locked {
+  border-left-color: var(--bc-danger, #d56b52);
+  color: var(--bc-danger, #d56b52);
+  opacity: 0.9;
 }
 /* Wave B-8i-1: consolidated bulk-install kebab menu. <details> handles
  * the open/close state natively — the trigger is a small ⋮ pill on the
@@ -1466,6 +1521,37 @@
   font-weight: 700;
   letter-spacing: 0.06em;
 }
+/* FREE-Badge — same shape as the BENEOS chip, but in success-green so
+   non-patrons can spot at a glance which assets they can grab for free
+   without joining Patreon. Rendered in both list and grid mode. */
+.beneos-cloud-app .bc-status-chip.bc-status-free {
+  background: rgba(27, 146, 0, 0.22);
+  color: var(--bc-success, #6fcf52);
+  border: 1px solid rgba(27, 146, 0, 0.45);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+/* Join-Patreon CTA on locked cards. Patreon brand red so the button
+   reads as an external paywall, not as a regular install action. */
+.beneos-cloud-app .bc-card-button-join-patron {
+  background: rgba(249, 104, 84, 0.18);
+  color: #f96854;
+  border: 1px solid rgba(249, 104, 84, 0.55);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.beneos-cloud-app .bc-card-button-join-patron:hover {
+  background: rgba(249, 104, 84, 0.32);
+  color: #ffe2dc;
+  border-color: #f96854;
+  text-decoration: none;
+}
+.beneos-cloud-app .bc-card-button-join-patron i {
+  font-size: 14px;
+}
 /* Punkt 2 v2: all three chips (BENEOS, NEW, UPDATE) move into the thumb
  * in grid mode via duplicate `.bc-thumb-chip` instances rendered by the
  * template. Position is relative to `.bc-card-thumb` (position:relative
@@ -1497,6 +1583,14 @@
   bottom: 6px;
   left: 6px;
   top: auto;
+  right: auto;
+}
+/* FREE-Badge in grid mode sits at top-left of the thumb so it doesn't
+   collide with NEW/UPDATE (bottom-left) or BENEOS (bottom-right). */
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-thumb .bc-thumb-chip.bc-status-free {
+  top: 6px;
+  left: 6px;
+  bottom: auto;
   right: auto;
 }
 .beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-thumb-chip {
@@ -2101,6 +2195,37 @@
   color: var(--bc-update-strong);
 }
 
+/* Danger variant for destructive actions (Disconnect, Reset). Uses the
+   shared --bc-danger token so it visually matches existing destructive
+   surfaces in the V2 design language. */
+.beneos-cloud-app .bc-card-button-danger {
+  background: rgba(213, 107, 82, 0.18);
+  color: var(--bc-danger, #d56b52);
+  border-color: var(--bc-danger, #d56b52);
+}
+.beneos-cloud-app .bc-card-button-danger:hover {
+  background: rgba(213, 107, 82, 0.32);
+  color: #f7c7b9;
+}
+
+/* Persona-Simulator (dev-only): horizontal wrap of preset buttons. The
+   right column of the settings row needs to grow so the buttons line up
+   instead of stacking awkwardly inside the narrower control column. */
+.beneos-cloud-app .bc-settings-row-dev .bc-settings-row-control.bc-settings-personas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+  align-items: center;
+}
+.beneos-cloud-app .bc-settings-row-dev .bc-settings-row-control.bc-settings-personas .bc-card-button {
+  flex: 0 1 auto;
+}
+.beneos-cloud-app .bc-settings-row-account .bc-account-chip {
+  margin-right: 6px;
+  vertical-align: -2px;
+}
+
 /* Hard-block state ("Not compatible"): Loot/Spell cards on a non-dnd5e
    system. Reddish tint with stop-sign icon so the GM sees at a glance
    that the asset can't install. The button stays clickable on purpose
@@ -2664,6 +2789,45 @@
    styles needed. */
 
 /* ---- Footer ---- */
+
+/* Live progress bar for mass-install (backlog, all-NEW, all-Updates,
+   multi-select). Sits above the footer; hidden by default via
+   data-state="idle". Card-pulse animation handles per-asset feedback,
+   this band carries the aggregate count. */
+.beneos-cloud-app .bc-install-progress {
+  display: none;
+  align-items: center;
+  gap: var(--bc-space-3);
+  padding: 6px var(--bc-space-3);
+  border-top: 1px solid var(--bc-border);
+  background: var(--bc-bg-panel);
+}
+.beneos-cloud-app .bc-install-progress[data-state="running"],
+.beneos-cloud-app .bc-install-progress[data-state="done"] {
+  display: flex;
+}
+.beneos-cloud-app .bc-install-progress-label {
+  font-size: 12px;
+  color: var(--bc-text);
+  white-space: nowrap;
+}
+.beneos-cloud-app .bc-install-progress-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--bc-card);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.beneos-cloud-app .bc-install-progress-fill {
+  width: 0%;
+  height: 100%;
+  background: var(--bc-accent);
+  transition: width 180ms ease-out;
+}
+.beneos-cloud-app .bc-install-progress[data-state="done"] {
+  opacity: 0;
+  transition: opacity 600ms ease-out 800ms;
+}
 
 .beneos-cloud-app .bc-footer {
   background: var(--bc-bg-panel);
@@ -5015,3 +5179,1059 @@ button.beneos-icon-logo {
   background: rgba(255, 255, 255, 0.05);
   border-color: var(--bc-border-strong, rgba(255, 255, 255, 0.2));
 }
+
+/* ============================================================
+   Home Tab (Beneos Cloud V2)
+
+   The Home tab is a full-width landing surface that swaps the
+   sidebar+results split for a single feed area when active. We
+   override the parent grid via [data-bc-mode="home"] on the root
+   window element (set in cloud-window-v2.mjs:_onRender).
+   ============================================================ */
+
+/* Grid swap: when home mode is active, collapse sidebar+results
+   into a single full-width "home" cell. */
+#beneos-cloud-window-v2[data-bc-mode="home"] .window-content {
+  grid-template-columns: 1fr !important;
+  grid-template-areas:
+    "header"
+    "home"
+    "footer" !important;
+}
+#beneos-cloud-window-v2[data-bc-mode="home"] [data-bc-region="sidebar"],
+#beneos-cloud-window-v2[data-bc-mode="home"] [data-bc-region="results"] {
+  display: none !important;
+}
+#beneos-cloud-window-v2:not([data-bc-mode="home"]) [data-bc-region="home"] {
+  display: none !important;
+}
+.beneos-cloud-app [data-bc-region="home"] {
+  grid-area: home !important;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--bc-bg);
+}
+
+/* Header action group (Patchlog icon) — pushed to the right edge
+   of the tab strip. */
+.beneos-cloud-app .bc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--bc-space-3);
+}
+.beneos-cloud-app .bc-tab-strip {
+  flex: 1 1 auto;
+}
+.beneos-cloud-app .bc-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--bc-space-2);
+  padding: 0 var(--bc-space-3);
+}
+.beneos-cloud-app .bc-header-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--bc-radius);
+  color: var(--bc-text-muted);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.beneos-cloud-app .bc-header-iconbtn:hover {
+  background: var(--bc-accent-dim);
+  color: var(--bc-accent-soft);
+  border-color: var(--bc-accent-line);
+}
+.beneos-cloud-app .bc-tab .fa-house { margin-right: 6px; }
+
+/* ---- Home feed root + offline banner ---- */
+.beneos-cloud-app .bc-home {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px 28px 32px;
+}
+
+/* ---- Status bar (above the hero) ---- */
+.beneos-cloud-app .bc-home-statusbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  padding: 6px 10px;
+  background: rgba(245, 201, 146, 0.03);
+  border: 1px solid rgba(245, 201, 146, 0.12);
+  font-size: 11px;
+}
+/* Dezent: kein Card-bg, kein Uppercase, normales Gewicht. Tone-Klassen
+   geben die Farbe (Border + Text), Icon ersetzt den Dot. */
+.beneos-cloud-app .bc-home-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--bc-text-muted);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  text-decoration: none;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.beneos-cloud-app .bc-home-status-icon {
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.beneos-cloud-app .bc-home-status-link { cursor: pointer; }
+.beneos-cloud-app .bc-home-status-link:hover {
+  background: rgba(245, 201, 146, 0.08);
+  color: var(--bc-accent-soft);
+  border-color: var(--bc-accent-line);
+  text-decoration: none;
+}
+.beneos-cloud-app .bc-home-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  flex-shrink: 0;
+}
+/* Semantic colour-coding: green = connected/active, red = disconnected/
+   not-a-patron. Replaces the gold default so the bar reads as a true
+   connection indicator, not a brand accent. */
+.beneos-cloud-app .bc-home-status-pill.is-on {
+  color: #6fb86f;
+  border-color: rgba(111, 184, 111, 0.4);
+}
+.beneos-cloud-app .bc-home-status-pill.is-on .bc-home-status-dot {
+  background: #6fb86f;
+  box-shadow: 0 0 6px rgba(111, 184, 111, 0.55);
+}
+.beneos-cloud-app .bc-home-status-pill.is-off {
+  color: #d97a7a;
+  border-color: rgba(217, 122, 122, 0.4);
+}
+.beneos-cloud-app .bc-home-status-pill.is-off .bc-home-status-dot {
+  background: #d97a7a;
+}
+.beneos-cloud-app .bc-home-offline-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border);
+  border-left: 3px solid var(--bc-info);
+  border-radius: 0;
+  color: var(--bc-text-muted);
+  font-size: 13px;
+}
+
+/* ---- Hero ----
+   Container itself carries a visible Beneos-gradient background so the
+   280px area always reads as the hero even if every slide failed to
+   paint (no slide image, no fallback div, race condition, …). The
+   slides paint over the gradient when they're ready.
+   flex-shrink: 0 is critical — without it the column-flex parent
+   collapses the hero to 0 height when content+sidebar overflow. */
+.beneos-cloud-app .bc-home-hero {
+  position: relative;
+  width: 100%;
+  height: 280px;
+  flex-shrink: 0;
+  border-radius: 0;
+  overflow: hidden;
+  border: 1px solid var(--bc-border);
+  background:
+    linear-gradient(135deg, var(--bc-accent) 0%, var(--bc-accent-soft) 35%, var(--bc-bg-elevated) 85%),
+    radial-gradient(circle at 78% 25%, var(--bc-accent-strong) 0%, transparent 55%);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+.beneos-cloud-app .bc-hero-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+.beneos-cloud-app .bc-hero-slide.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+.beneos-cloud-app .bc-hero-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+.beneos-cloud-app .bc-hero-image-fallback {
+  /* The container already paints the gradient; this layer is a
+     transparent passthrough so the overlay (eyebrow + title + CTA)
+     stays readable on top of the container gradient. */
+  background: transparent;
+}
+.beneos-cloud-app .bc-hero-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 24px 28px;
+  background: linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,0.72) 100%);
+  color: #fff;
+}
+.beneos-cloud-app .bc-hero-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bc-accent-soft);
+}
+.beneos-cloud-app .bc-hero-badge-pinned {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  background: var(--bc-accent);
+  color: var(--bc-bg);
+  border-radius: 999px;
+  font-size: 11px;
+}
+.beneos-cloud-app .bc-hero-date {
+  color: rgba(255,255,255,0.78);
+}
+.beneos-cloud-app .bc-hero-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.15;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.55);
+}
+.beneos-cloud-app .bc-hero-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+.beneos-cloud-app .bc-hero-cta {
+  padding: 9px 18px;
+  background: var(--bc-accent);
+  color: var(--bc-bg);
+  border: none;
+  border-radius: var(--bc-radius);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.12s;
+}
+.beneos-cloud-app .bc-hero-cta:hover {
+  background: var(--bc-accent-strong);
+  transform: translateY(-1px);
+}
+.beneos-cloud-app .bc-hero-dots {
+  position: absolute;
+  bottom: 14px;
+  right: 20px;
+  display: flex;
+  gap: 6px;
+}
+/* Horizontal-bar dot indicators (3 semi-transparent slim rectangles).
+   Active state turns gold without scaling, so the bar row stays clean. */
+.beneos-cloud-app .bc-hero-dot {
+  width: 28px;
+  height: 4px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.28);
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.beneos-cloud-app .bc-hero-dot:hover {
+  background: rgba(255, 255, 255, 0.55);
+}
+.beneos-cloud-app .bc-hero-dot.is-active {
+  background: var(--bc-accent);
+  transform: none;
+}
+
+/* ---- Home sections (News + Recent) ---- */
+.beneos-cloud-app .bc-home-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex-shrink: 0;
+}
+.beneos-cloud-app .bc-home-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.beneos-cloud-app .bc-home-section-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.beneos-cloud-app .bc-home-section-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.beneos-cloud-app .bc-home-section-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  color: var(--bc-text-muted);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.beneos-cloud-app .bc-home-section-iconbtn:hover {
+  background: var(--bc-accent-dim);
+  color: var(--bc-accent-soft);
+  border-color: var(--bc-accent-line);
+}
+.beneos-cloud-app .bc-home-section-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--bc-text);
+}
+.beneos-cloud-app .bc-home-section-sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--bc-text-muted);
+}
+
+/* ---- News grid ---- */
+.beneos-cloud-app .bc-news-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 14px;
+}
+.beneos-cloud-app .bc-news-pinned {
+  grid-column: 1 / 2;
+  grid-row: 1 / 3;
+}
+.beneos-cloud-app .bc-news-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0;
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.beneos-cloud-app .bc-news-card:hover {
+  border-color: var(--bc-accent-line);
+  background: rgba(245, 201, 146, 0.05);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+}
+.beneos-cloud-app .bc-news-card.is-unread::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  background: var(--bc-accent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(245, 201, 146, 0.18);
+}
+.beneos-cloud-app .bc-news-card-media {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: var(--bc-bg-elevated);
+  overflow: hidden;
+}
+.beneos-cloud-app .bc-news-pinned .bc-news-card-media {
+  aspect-ratio: 16 / 11;
+}
+.beneos-cloud-app .bc-news-card-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+.beneos-cloud-app .bc-news-card-media-fallback {
+  width: 100%;
+  height: 100%;
+  background:
+    linear-gradient(135deg, var(--bc-accent-dim) 0%, transparent 60%),
+    var(--bc-bg-elevated);
+}
+.beneos-cloud-app .bc-news-pin-mark {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: var(--bc-accent);
+  color: var(--bc-bg);
+  border-radius: 50%;
+  font-size: 11px;
+}
+.beneos-cloud-app .bc-news-card-body {
+  padding: 12px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.beneos-cloud-app .bc-news-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--bc-text-muted);
+}
+.beneos-cloud-app .bc-news-pin-label {
+  padding: 1px 7px;
+  background: var(--bc-accent-dim);
+  color: var(--bc-accent-soft);
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.beneos-cloud-app .bc-news-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--bc-text);
+}
+.beneos-cloud-app .bc-news-pinned .bc-news-title {
+  font-size: 18px;
+}
+
+/* CTA button rendered inside a news card (small, secondary). Click is
+   handled by the openNewsCta action; stopPropagation in the action
+   handler prevents the surrounding card's openNewsDetail from firing. */
+.beneos-cloud-app .bc-news-card-cta {
+  margin-top: 6px;
+}
+.beneos-cloud-app .bc-news-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: var(--bc-accent-dim);
+  color: var(--bc-accent-soft);
+  border: 1px solid var(--bc-accent-line);
+  border-radius: var(--bc-radius);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.beneos-cloud-app .bc-news-cta-btn:hover {
+  background: var(--bc-accent);
+  color: var(--bc-bg);
+  border-color: var(--bc-accent);
+}
+.beneos-cloud-app .bc-news-cta-btn i {
+  font-size: 10px;
+}
+
+.beneos-cloud-app .bc-home-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px;
+  color: var(--bc-text-muted);
+  background: var(--bc-card);
+  border: 1px dashed var(--bc-border);
+  border-radius: 10px;
+}
+.beneos-cloud-app .bc-home-empty i {
+  font-size: 28px;
+  color: var(--bc-accent-line);
+}
+
+/* ---- Library overview (stats + rails in one section) ---- */
+.beneos-cloud-app .bc-home-library {
+  gap: 14px;
+}
+/* Slightly trimmed header for the Library section (~10% smaller than
+   the default home-section heading). */
+.beneos-cloud-app .bc-home-library .bc-home-section-head {
+  gap: 8px;
+}
+.beneos-cloud-app .bc-home-library .bc-home-section-title {
+  font-size: 16px;
+}
+.beneos-cloud-app .bc-home-library .bc-home-section-sub {
+  font-size: 12px;
+  margin-top: 1px;
+}
+/* Coloured separation band for the stats row — sits visually above the
+   rails as the "access overview" the user asked for. */
+.beneos-cloud-app .bc-library-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(245, 201, 146, 0.04);
+  border-top: 1px solid rgba(245, 201, 146, 0.18);
+  border-bottom: 1px solid rgba(245, 201, 146, 0.18);
+}
+@media (max-width: 720px) {
+  .beneos-cloud-app .bc-library-stats { grid-template-columns: repeat(2, 1fr); }
+}
+.beneos-cloud-app .bc-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  min-width: 0;
+  min-height: 96px;
+  overflow: hidden;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.12s, transform 0.12s, background 0.12s;
+}
+.beneos-cloud-app .bc-stat-card:hover {
+  border-color: var(--bc-accent-line);
+  background: rgba(245, 201, 146, 0.05);
+  transform: translateY(-1px);
+}
+.beneos-cloud-app .bc-stat-head {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--bc-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.beneos-cloud-app .bc-stat-head i { color: var(--bc-accent-soft); flex: 0 0 auto; }
+.beneos-cloud-app .bc-stat-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.beneos-cloud-app .bc-stat-value {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+  color: var(--bc-text);
+}
+.beneos-cloud-app .bc-stat-installed {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--bc-accent-soft);
+  line-height: 1.1;
+}
+.beneos-cloud-app .bc-stat-sep   { font-size: 14px; color: var(--bc-text-muted); }
+.beneos-cloud-app .bc-stat-total { font-size: 14px; color: var(--bc-text-muted); }
+.beneos-cloud-app .bc-stat-progress {
+  margin-top: auto;
+  height: 4px;
+  background: var(--bc-bg-elevated);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.beneos-cloud-app .bc-stat-progress-bar {
+  height: 100%;
+  background: var(--bc-accent);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* Stats-card tone variants: gold = full patron access, green = only
+   free-content accessible, red = not logged in. Numbers + progress bar
+   pick up the semantic colour so the user immediately sees the access
+   state at a glance. */
+.beneos-cloud-app .bc-stat-card-is-full      .bc-stat-installed { color: var(--bc-accent-soft); }
+.beneos-cloud-app .bc-stat-card-is-free      .bc-stat-installed { color: #6fb86f; }
+.beneos-cloud-app .bc-stat-card-is-disconnected .bc-stat-installed { color: #d97a7a; }
+
+.beneos-cloud-app .bc-stat-card-is-full         .bc-stat-progress-bar { background: var(--bc-accent); }
+.beneos-cloud-app .bc-stat-card-is-free         .bc-stat-progress-bar { background: #6fb86f; }
+.beneos-cloud-app .bc-stat-card-is-disconnected .bc-stat-progress-bar { background: #d97a7a; }
+
+.beneos-cloud-app .bc-stat-status {
+  margin-left: 6px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #d97a7a;
+}
+.beneos-cloud-app .bc-stat-free-hint {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #6fb86f;
+}
+
+/* ---- Recent rails ---- */
+.beneos-cloud-app .bc-home-recent {
+  gap: 18px;
+}
+.beneos-cloud-app .bc-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.beneos-cloud-app .bc-rail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.beneos-cloud-app .bc-rail-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--bc-accent-soft);
+}
+.beneos-cloud-app .bc-rail-seeall {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: transparent;
+  color: var(--bc-text-muted);
+  border: 1px solid transparent;
+  border-radius: var(--bc-radius);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.beneos-cloud-app .bc-rail-seeall:hover {
+  background: var(--bc-accent-dim);
+  color: var(--bc-accent-soft);
+  border-color: var(--bc-accent-line);
+}
+.beneos-cloud-app .bc-rail-strip {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 2px 8px;
+  scroll-snap-type: x proximity;
+}
+/* Floating overlay scrollbars on the Home region (vertical) and the
+   recent rails (horizontal): 3px slim, semi-transparent gold tint,
+   transparent track. The thumb tone bumps on hover so the user gets
+   a clear "scroll possible here" cue when they reach the strip.
+
+   ID prefix + !important: Foundry V13 has high-specificity scrollbar
+   styling in core CSS (gold thick Beneos-theme bar) that otherwise
+   wins over a `.beneos-cloud-app` selector. */
+#beneos-cloud-window-v2 [data-bc-region="home"]::-webkit-scrollbar,
+#beneos-cloud-window-v2 .bc-rail-strip::-webkit-scrollbar {
+  width: 3px !important;
+  height: 3px !important;
+  background: transparent !important;
+}
+#beneos-cloud-window-v2 [data-bc-region="home"]::-webkit-scrollbar-track,
+#beneos-cloud-window-v2 .bc-rail-strip::-webkit-scrollbar-track {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+#beneos-cloud-window-v2 [data-bc-region="home"]::-webkit-scrollbar-thumb {
+  background: rgba(245, 201, 146, 0.25) !important;
+  border: none !important;
+  border-radius: 3px !important;
+  box-shadow: none !important;
+}
+#beneos-cloud-window-v2 [data-bc-region="home"]:hover::-webkit-scrollbar-thumb {
+  background: rgba(245, 201, 146, 0.55) !important;
+}
+/* Rail strip: scrollbar fully transparent by default; appears only on
+   hover over the strip itself (user-requested polish). */
+#beneos-cloud-window-v2 .bc-rail-strip::-webkit-scrollbar-thumb {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 3px !important;
+  box-shadow: none !important;
+}
+#beneos-cloud-window-v2 .bc-rail-strip:hover::-webkit-scrollbar-thumb {
+  background: rgba(245, 201, 146, 0.4) !important;
+}
+#beneos-cloud-window-v2 [data-bc-region="home"]::-webkit-scrollbar-corner,
+#beneos-cloud-window-v2 .bc-rail-strip::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+#beneos-cloud-window-v2 [data-bc-region="home"],
+#beneos-cloud-window-v2 .bc-rail-strip {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(245, 201, 146, 0.35) transparent;
+}
+/* Poster-style tile: image covers the entire square via object-fit,
+   the name overlays the bottom with a dark gradient so it stays
+   readable on any background. NEW/UPD chip floats top-left as a
+   small status badge. Tiles are 180×180 (Maps 240×180) — quadratic
+   enough that each item can carry its image meaningfully, with the
+   name as the dominant readable label. If the thumbnail URL fails,
+   the tile's own gradient background remains visible (no empty
+   tiles). */
+.beneos-cloud-app .bc-rail-tile {
+  position: relative;
+  flex: 0 0 auto;
+  width: 154px;
+  height: 154px;
+  padding: 0;
+  background:
+    linear-gradient(135deg, var(--bc-accent-dim) 0%, transparent 70%),
+    var(--bc-bg-elevated);
+  border: 1px solid transparent;
+  border-radius: 0;
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  scroll-snap-align: start;
+  transition: border-color 0.12s, transform 0.12s, box-shadow 0.12s;
+}
+.beneos-cloud-app .bc-rail-tile:hover {
+  border-color: var(--bc-accent-line);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+/* Maps share the square tile geometry — object-fit:cover on the thumb
+   crops the underlying 16:10 map image to a square preview. */
+.beneos-cloud-app .bc-rail[data-rail-type="bmap"] .bc-rail-tile {
+  width: 154px;
+  height: 154px;
+}
+
+.beneos-cloud-app .bc-rail-tile-chip {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  z-index: 4;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+.beneos-cloud-app .bc-rail-chip-new {
+  background: var(--bc-accent);
+  color: var(--bc-bg);
+}
+.beneos-cloud-app .bc-rail-chip-upd {
+  background: var(--bc-info);
+  color: var(--bc-bg);
+}
+.beneos-cloud-app .bc-rail-tile-thumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  display: block;
+  z-index: 1;
+}
+.beneos-cloud-app .bc-rail-tile-thumb-fallback {
+  /* Span fallback — transparent so the tile's gradient background
+     reads through. */
+  background: transparent;
+}
+.beneos-cloud-app .bc-rail-tile-name {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 28px 12px 10px;
+  background: linear-gradient(180deg,
+              rgba(0, 0, 0, 0) 0%,
+              rgba(0, 0, 0, 0.85) 100%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  white-space: normal;
+  z-index: 3;
+}
+.beneos-cloud-app .bc-rail-tile-sub { display: none; }
+.beneos-cloud-app .bc-rail-empty {
+  padding: 14px 16px;
+  background: var(--bc-card);
+  border: 1px dashed var(--bc-border);
+  border-radius: 8px;
+  color: var(--bc-text-muted);
+  font-size: 12px;
+}
+
+/* ---- Responsive: collapse news grid on narrow windows ---- */
+@media (max-width: 940px) {
+  .beneos-cloud-app .bc-news-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .beneos-cloud-app .bc-news-pinned {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+}
+
+/* ============================================================
+   Patch log (inline section on the Home tab — and shared block
+   styles for the changelog cards)
+   ============================================================ */
+.bc-patchlog {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  color: var(--bc-text);
+}
+.bc-patchlog-version {
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bc-patchlog-version-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--bc-border);
+}
+.bc-patchlog-version-number {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--bc-accent-soft);
+}
+.bc-patchlog-version-date {
+  font-size: 12px;
+  color: var(--bc-text-muted);
+}
+.bc-patchlog-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bc-patchlog-group-title {
+  margin: 0;
+}
+.bc-patchlog-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.bc-patchlog-chip-new      { background: var(--bc-accent); color: var(--bc-bg); }
+.bc-patchlog-chip-improved { background: var(--bc-info); color: var(--bc-bg); }
+.bc-patchlog-chip-fixed    { background: var(--bc-border-strong); color: var(--bc-text); }
+.bc-patchlog-list {
+  margin: 0;
+  padding: 0 0 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bc-patchlog-item {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--bc-text);
+}
+.bc-patchlog-item-title { font-weight: 600; }
+.bc-patchlog-item-body  { color: var(--bc-text-muted); }
+.bc-patchlog-empty {
+  padding: 14px;
+  color: var(--bc-text-muted);
+  text-align: center;
+}
+.bc-patchlog-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+.bc-patchlog-external {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  color: var(--bc-text-muted);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.bc-patchlog-external:hover {
+  background: var(--bc-accent-dim);
+  color: var(--bc-accent-soft);
+  border-color: var(--bc-accent-line);
+}
+
+/* Patchlog modal window — body scrolls when the two version blocks
+   exceed the 600px window height. Floating scrollbar matches the
+   Home-tab style. */
+.beneos-patchlog-window .window-content {
+  background: var(--bc-bg);
+  padding: 16px 18px 20px;
+  overflow-y: auto;
+  min-height: 0;
+}
+.beneos-patchlog-window .window-content::-webkit-scrollbar {
+  width: 3px;
+  background: transparent;
+}
+.beneos-patchlog-window .window-content::-webkit-scrollbar-track { background: transparent; }
+.beneos-patchlog-window .window-content::-webkit-scrollbar-thumb {
+  background: rgba(245, 201, 146, 0.3);
+  border-radius: 3px;
+}
+.beneos-patchlog-window .window-content:hover::-webkit-scrollbar-thumb {
+  background: rgba(245, 201, 146, 0.55);
+}
+.beneos-patchlog-window .window-content {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(245, 201, 146, 0.35) transparent;
+}
+
+/* ---- News detail dialog ---- */
+.beneos-news-detail-dialog .window-content { background: var(--bc-bg); }
+.bc-news-detail { color: var(--bc-text); }
+.bc-news-detail-hero {
+  margin: -8px -8px 14px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.bc-news-detail-hero img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  max-height: 320px;
+}
+.bc-news-detail-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.bc-news-detail-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--bc-text-muted);
+}
+.bc-news-detail-pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  background: var(--bc-accent-dim);
+  color: var(--bc-accent-soft);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.bc-news-detail-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.bc-news-detail-body {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--bc-text);
+}
+.bc-news-detail-body p { margin: 0 0 10px; }
+.bc-news-detail-body p:last-child { margin-bottom: 0; }
+.bc-news-detail-body strong { color: var(--bc-accent-soft); }
+
+.bc-news-detail-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--bc-border);
+}
+.bc-news-detail-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  background: var(--bc-accent);
+  color: var(--bc-bg);
+  border-radius: var(--bc-radius);
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: none;
+  transition: background 0.12s, transform 0.12s, box-shadow 0.12s;
+}
+.bc-news-detail-cta:hover {
+  background: var(--bc-accent-strong);
+  color: var(--bc-bg);
+  text-decoration: none;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+.bc-news-detail-cta i {
+  font-size: 11px;
+}
+

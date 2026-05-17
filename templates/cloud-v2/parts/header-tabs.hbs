@@ -4,6 +4,16 @@
 <header class="bc-header" data-bc-region="header">
   <nav class="bc-tab-strip" role="tablist">
     <button type="button"
+            class="bc-tab beneos-search-button{{#if (eq searchMode "home")}} bc-tab-active category-active{{/if}}"
+            id="beneos-radio-home"
+            data-bc-tab="home"
+            data-action="switchTab"
+            role="tab">
+      {{#if (eq searchMode "home")}}<i class="fas fa-house" aria-hidden="true"></i>{{/if}}
+      {{localize "BENEOS.Cloud.Tab.Home"}}
+    </button>
+
+    <button type="button"
             class="bc-tab beneos-search-button{{#if (eq searchMode "token")}} bc-tab-active category-active{{/if}}"
             id="beneos-radio-token"
             data-bc-tab="token"

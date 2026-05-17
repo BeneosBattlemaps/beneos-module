@@ -1,0 +1,14 @@
+{{!-- Recursive playbook rule. Each TacItem renders as <li> with an
+     inline chip-rendered text array, plus a nested <ul> for children. --}}
+<li class="tlab-rule">
+  <div class="tlab-rule-line">
+    {{> "modules/beneos-module/templates/codex/parts/partials/tac-inline.hbs" parts=text}}
+  </div>
+  {{#if children.length}}
+    <ul class="tlab-rule-sub">
+      {{#each children}}
+        {{> "modules/beneos-module/templates/codex/parts/partials/tac-rule.hbs"}}
+      {{/each}}
+    </ul>
+  {{/if}}
+</li>

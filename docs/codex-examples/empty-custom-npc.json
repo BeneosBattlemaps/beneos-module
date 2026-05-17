@@ -1,0 +1,24 @@
+{
+  "$version": 1,
+  "$migrated": "2026-05-15T19:00:00Z",
+  "data": {
+    "identity": {
+      "tokenKey": "",
+      "name": "Custom NPC",
+      "type": "",
+      "cr": null,
+      "fightingStyle": [],
+      "purpose": []
+    },
+    "visuals": {
+      "sizeTone": { "primary": "#2a2014", "secondary": "#14100a", "glow": "#f5c992" },
+      "portraitInitial": "C"
+    },
+    "narrative": { "showcase": "", "lore": "", "recommendedAllies": [] },
+    "abilities": [],
+    "storyHooks": [],
+    "foreshadowing": [],
+    "combat": { "firstAppearance": "", "deathPrompt": "" },
+    "tactical": {}
+  }
+}

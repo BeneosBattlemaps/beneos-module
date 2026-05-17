@@ -1,0 +1,32 @@
+{{!-- Beneos Creature Codex — Welle 5: master-mock layout.
+     Hero with SVG sizeTone gradient + particles, 5-tab strip,
+     active pane. Inherits Foundry's ApplicationV2 title bar; the
+     codex's own titlebar lives inside the hero. --}}
+<div class="beneos-codex-app cdx-root" data-bc-theme="dark">
+
+  {{> "modules/beneos-module/templates/codex/parts/hero.hbs"}}
+
+  <nav class="cdx-tabs" role="tablist">
+    {{#each tabs}}
+      <button type="button"
+              class="cdx-tab {{#if active}}active{{/if}}"
+              data-action="switchTab"
+              data-tab="{{id}}"
+              role="tab"
+              aria-selected="{{active}}">
+        <i class="fa-solid {{icon}}"></i>
+        <span>{{localize label}}</span>
+        {{#if count}}<span class="cdx-tab-count">{{count}}</span>{{/if}}
+      </button>
+    {{/each}}
+  </nav>
+
+  <section class="cdx-body scroll" data-active-tab="{{activeTab}}">
+    {{#if (eq activeTab "overview")}}  {{> "modules/beneos-module/templates/codex/parts/tab-overview.hbs"}}{{/if}}
+    {{#if (eq activeTab "hooks")}}     {{> "modules/beneos-module/templates/codex/parts/tab-hooks.hbs"}}{{/if}}
+    {{#if (eq activeTab "foreshadow")}}{{> "modules/beneos-module/templates/codex/parts/tab-foreshadow.hbs"}}{{/if}}
+    {{#if (eq activeTab "theater")}}   {{> "modules/beneos-module/templates/codex/parts/tab-theater.hbs"}}{{/if}}
+    {{#if (eq activeTab "tactics")}}   {{> "modules/beneos-module/templates/codex/parts/tab-tactics.hbs"}}{{/if}}
+  </section>
+
+</div>

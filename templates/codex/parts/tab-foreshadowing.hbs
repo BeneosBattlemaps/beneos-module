@@ -1,0 +1,56 @@
+{{!-- Foreshadowing tab — Welle 4c: three-column card (number / DC / body)
+     with difficulty + skill chip rows. --}}
+{{#if (eq data.foreshadow.source "empty")}}
+  {{> "modules/beneos-module/templates/codex/parts/partials/empty-section.hbs" section="foreshadowing" isGM=isGM readonly=readonly}}
+{{else}}
+  <header style="display:flex;align-items:center;gap:var(--bc-space-2);margin-bottom:var(--bc-space-3)">
+    <h2 style="margin:0;font-family:var(--bc-font-display);color:var(--bc-accent-soft);border:none">
+      {{localize "BENEOS.CreatureCodex.Foreshadowing.Title"}}
+    </h2>
+    {{> "modules/beneos-module/templates/codex/parts/partials/source-chip.hbs" source=data.foreshadow.source}}
+  </header>
+  {{#each data.foreshadow.value}}
+    <article class="bc-foreshadow-card bc-staggered"
+             data-entry-id="{{id}}"
+             style="--stagger-index:{{@index}}">
+      <div class="bc-entry-number">{{add @index 1}}</div>
+      <div class="bc-foreshadow-dc">
+        <div class="bc-foreshadow-dc-label">DC</div>
+        <div class="bc-foreshadow-dc-value">{{#if dc}}{{dc}}{{else}}?{{/if}}</div>
+      </div>
+      <div class="bc-foreshadow-body">
+        <header>
+          <h3>{{title}}</h3>
+          <ul class="bc-chip-row">
+            {{#if dc}}<li class="bc-chip bc-chip--difficulty">DC {{dc}}</li>{{/if}}
+            {{#each skills}}<li class="bc-chip bc-chip--skill"><i class="fa-solid fa-feather"></i> {{this}}</li>{{/each}}
+          </ul>
+          {{#if ../isGM}}
+            <span class="bc-entry-actions-inline">
+              <button type="button" class="bc-icon-btn"
+                      data-action="editEntry" data-section="foreshadowing" data-entry-id="{{id}}"
+                      {{#if ../readonly}}disabled{{/if}}
+                      data-tooltip="{{localize 'BENEOS.CreatureCodex.EditEntry'}}">
+                <i class="fa-solid fa-pen"></i>
+              </button>
+              <button type="button" class="bc-icon-btn"
+                      data-action="removeEntry" data-section="foreshadowing" data-entry-id="{{id}}"
+                      {{#if ../readonly}}disabled{{/if}}
+                      data-tooltip="{{localize 'BENEOS.CreatureCodex.RemoveEntry'}}">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </span>
+          {{/if}}
+        </header>
+        <blockquote class="bc-foreshadow-quote bc-rich-html">{{{body}}}</blockquote>
+      </div>
+    </article>
+  {{/each}}
+  {{#if isGM}}
+    <button type="button" class="bc-btn bc-btn-primary bc-add-entry-btn"
+            data-action="addEntry" data-section="foreshadowing"
+            {{#if readonly}}disabled{{/if}}>
+      <i class="fa-solid fa-plus"></i> {{localize "BENEOS.CreatureCodex.AddEntry"}}
+    </button>
+  {{/if}}
+{{/if}}
