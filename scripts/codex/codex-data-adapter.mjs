@@ -479,7 +479,11 @@ function transformV13ToCreatureCodex(content, actor, props, tokenKey, journal) {
  *  token-HUD button) appear. */
 export function hasV13CodexContent(actor) {
   if (!actor) return false
-  const flag = actor.getFlag?.("beneos", "content")
+  // `flags.beneos.content` is written by the external Python/Gemini
+  // pipeline via document.update(), so read it directly instead of
+  // actor.getFlag("beneos", ...) — "beneos" is not a registered module
+  // id and would trip Foundry's flag-scope validation.
+  const flag = actor.flags?.beneos?.content
   return !!(flag && flag.schemaVersion)
 }
 
@@ -489,7 +493,8 @@ export async function getCodexDataForActor(actor) {
   if (!actor) throw new Error("getCodexDataForActor: actor is required")
 
   // Iter 13a — Bridge: prefer v1.3 structured content when present.
-  const v13Content = actor.getFlag?.("beneos", "content")
+  // Direct flag access — see hasV13CodexContent above.
+  const v13Content = actor.flags?.beneos?.content
   if (v13Content && v13Content.schemaVersion) {
     const worldFlag = actor.getFlag("world", "beneos") ?? {}
     const tokenKey  = worldFlag.fullId ?? worldFlag.tokenKey ?? null

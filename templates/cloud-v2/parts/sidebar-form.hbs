@@ -188,14 +188,17 @@
       <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Show"}}</header>
       <div class="bc-sidebar-field">
         <select class="bc-select beneos-selector" id="installation-selector">
-          <option value="any">{{localize "BENEOS.Cloud.Filter.InstallAny"}}</option>
-          <option value="installed">{{localize "BENEOS.Cloud.Filter.InstallInstalled"}}</option>
-          <option value="notinstalled">{{localize "BENEOS.Cloud.Filter.InstallNotInstalled"}}</option>
+          {{!-- V7: selected attribute driven by showFilter* booleans from
+               _preparePartContext("sidebar"), so Show survives tab switches
+               without DOM/state desync. --}}
+          <option value="any"          {{#if showFilterIsAny}}selected{{/if}}>{{localize "BENEOS.Cloud.Filter.InstallAny"}}</option>
+          <option value="installed"    {{#if showFilterIsInstalled}}selected{{/if}}>{{localize "BENEOS.Cloud.Filter.InstallInstalled"}}</option>
+          <option value="notinstalled" {{#if showFilterIsNotInstalled}}selected{{/if}}>{{localize "BENEOS.Cloud.Filter.InstallNotInstalled"}}</option>
           {{#if hasNewAssets}}
-            <option value="new">{{localize "BENEOS.Cloud.Filter.InstallOnlyNew"}}</option>
+            <option value="new"        {{#if showFilterIsNew}}selected{{/if}}>{{localize "BENEOS.Cloud.Filter.InstallOnlyNew"}}</option>
           {{/if}}
           {{#if hasUpdatedAssets}}
-            <option value="updated">{{localize "BENEOS.Cloud.Filter.InstallOnlyUpdated"}}</option>
+            <option value="updated"    {{#if showFilterIsUpdated}}selected{{/if}}>{{localize "BENEOS.Cloud.Filter.InstallOnlyUpdated"}}</option>
           {{/if}}
         </select>
       </div>
@@ -418,14 +421,17 @@
       <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Show"}}</header>
       <div class="bc-sidebar-field">
         <select class="bc-select beneos-selector" id="installation-selector">
-          <option value="any">{{localize "BENEOS.Cloud.Filter.InstallAny"}}</option>
-          <option value="installed">{{localize "BENEOS.Cloud.Filter.InstallInstalled"}}</option>
-          <option value="notinstalled">{{localize "BENEOS.Cloud.Filter.InstallNotInstalled"}}</option>
+          {{!-- V7: selected attribute driven by showFilter* booleans from
+               _preparePartContext("sidebar"), so Show survives tab switches
+               without DOM/state desync. --}}
+          <option value="any"          {{#if showFilterIsAny}}selected{{/if}}>{{localize "BENEOS.Cloud.Filter.InstallAny"}}</option>
+          <option value="installed"    {{#if showFilterIsInstalled}}selected{{/if}}>{{localize "BENEOS.Cloud.Filter.InstallInstalled"}}</option>
+          <option value="notinstalled" {{#if showFilterIsNotInstalled}}selected{{/if}}>{{localize "BENEOS.Cloud.Filter.InstallNotInstalled"}}</option>
           {{#if hasNewAssets}}
-            <option value="new">{{localize "BENEOS.Cloud.Filter.InstallOnlyNew"}}</option>
+            <option value="new"        {{#if showFilterIsNew}}selected{{/if}}>{{localize "BENEOS.Cloud.Filter.InstallOnlyNew"}}</option>
           {{/if}}
           {{#if hasUpdatedAssets}}
-            <option value="updated">{{localize "BENEOS.Cloud.Filter.InstallOnlyUpdated"}}</option>
+            <option value="updated"    {{#if showFilterIsUpdated}}selected{{/if}}>{{localize "BENEOS.Cloud.Filter.InstallOnlyUpdated"}}</option>
           {{/if}}
         </select>
       </div>
@@ -485,14 +491,17 @@
       <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Show"}}</header>
       <div class="bc-sidebar-field">
         <select class="bc-select beneos-selector" id="installation-selector">
-          <option value="any">{{localize "BENEOS.Cloud.Filter.InstallAny"}}</option>
-          <option value="installed">{{localize "BENEOS.Cloud.Filter.InstallInstalled"}}</option>
-          <option value="notinstalled">{{localize "BENEOS.Cloud.Filter.InstallNotInstalled"}}</option>
+          {{!-- V7: selected attribute driven by showFilter* booleans from
+               _preparePartContext("sidebar"), so Show survives tab switches
+               without DOM/state desync. --}}
+          <option value="any"          {{#if showFilterIsAny}}selected{{/if}}>{{localize "BENEOS.Cloud.Filter.InstallAny"}}</option>
+          <option value="installed"    {{#if showFilterIsInstalled}}selected{{/if}}>{{localize "BENEOS.Cloud.Filter.InstallInstalled"}}</option>
+          <option value="notinstalled" {{#if showFilterIsNotInstalled}}selected{{/if}}>{{localize "BENEOS.Cloud.Filter.InstallNotInstalled"}}</option>
           {{#if hasNewAssets}}
-            <option value="new">{{localize "BENEOS.Cloud.Filter.InstallOnlyNew"}}</option>
+            <option value="new"        {{#if showFilterIsNew}}selected{{/if}}>{{localize "BENEOS.Cloud.Filter.InstallOnlyNew"}}</option>
           {{/if}}
           {{#if hasUpdatedAssets}}
-            <option value="updated">{{localize "BENEOS.Cloud.Filter.InstallOnlyUpdated"}}</option>
+            <option value="updated"    {{#if showFilterIsUpdated}}selected{{/if}}>{{localize "BENEOS.Cloud.Filter.InstallOnlyUpdated"}}</option>
           {{/if}}
         </select>
       </div>

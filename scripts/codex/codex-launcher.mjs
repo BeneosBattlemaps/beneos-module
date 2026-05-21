@@ -11,6 +11,8 @@ import { maybeOpenDeathPrompt, BeneosCodexDeathPrompt } from "./codex-death-prom
 
 const CODEX_TEMPLATE_ROOT = "modules/beneos-module/templates/codex"
 
+const CODEX_ENABLED = false   // Temporarily disabled — flip back to true to re-enable
+
 const CODEX_PARTIALS = [
   // Welle 5b master-mock layout
   `${CODEX_TEMPLATE_ROOT}/parts/hero.hbs`,
@@ -54,6 +56,7 @@ function beneosUtility() {
 // =========================================================
 
 Hooks.once("init", async () => {
+  if (!CODEX_ENABLED) return
   try {
     const loader = foundry?.applications?.handlebars?.loadTemplates ?? globalThis.loadTemplates
     if (typeof loader === "function") {
@@ -147,6 +150,7 @@ Hooks.once("init", async () => {
 // safest hook: it fires before Foundry has committed the change,
 // so we can compare old vs new HP without observing the post-state.
 Hooks.on("preUpdateActor", (actor, changes) => {
+  if (!CODEX_ENABLED) return
   maybeOpenDeathPrompt(actor, changes).catch(err =>
     console.error("[beneos-codex] death-prompt auto-fire failed", err))
 })
@@ -156,6 +160,7 @@ Hooks.on("preUpdateActor", (actor, changes) => {
 // =========================================================
 
 Hooks.on("renderActorSheet", (sheet, html) => {
+  if (!CODEX_ENABLED) return
   if (!sheet?.actor) return
   const util = beneosUtility()
   // Same gate as Cloud-V2: only Beneos-imported creatures get the surface.
@@ -227,6 +232,7 @@ Hooks.on("renderActorSheet", (sheet, html) => {
 // =========================================================
 
 Hooks.on("renderBeneosCloudWindowV2", (app, html) => {
+  if (!CODEX_ENABLED) return
   const root = html instanceof HTMLElement ? html : html?.[0]
   if (!root) return
 

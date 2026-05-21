@@ -220,8 +220,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   /** @inheritdoc */
   constructor(options = {}) {
     super(options)
+    const HOME_TAB_ENABLED = false   // Temporarily disabled — flip back to true to re-enable
     const lastMode = game.beneosTokens?.lastFilterStack?.mode
-    this.searchMode = lastMode || "home"
+    const safeMode = (!HOME_TAB_ENABLED && lastMode === "home") ? null : lastMode
+    this.searchMode = safeMode || (HOME_TAB_ENABLED ? "home" : "token")
     this._newsCache = []
     this.selectedAssetKey = null     // currently open in detail drawer (null = closed)
     // Wave B-9-fix-46: multi-select set for Ctrl+click. Holds asset
@@ -238,6 +240,22 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // - "done" set by processSelectorSearch (called from softRefresh after a
     //   successful install), then cleared after a short flash.
     this.installState = new Map()
+
+    // Cache for lazily-loaded compendium descriptions used by the drawer's
+    // "Full Description" block. Keyed by `${assetType}:${beneosKey}`.
+    // Values: plaintext string when found, null when not (no doc / empty
+    // body / non-dnd5e). Populated by #ensureLocalFullDescriptionLoaded at
+    // card-click time so the synchronous #enrichCard step can read it.
+    // Lifetime: window-scoped — cleared on close via the ApplicationV2
+    // default lifecycle.
+    this.localFullDescriptionCache = new Map()
+
+    // Show-filter persists across tab switches so the user's "Only Installed"
+    // selection on the Loot tab carries over to Spells (etc.) without
+    // desyncing from the dropdown UI. Other filters stay DOM-state because
+    // they're tab-specific; only this one is cross-tab (see V2_FILTER_DEFS:
+    // installation-selector covers token + item + spell).
+    this.showFilter = "any"
 
     // Wave B-5e-fix-4: progressive loading. Initial 100 cards in the DOM,
     // scroll-near-bottom appends another 100 (full results re-render with
@@ -484,6 +502,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         biomeHasAny: biomeChips.length > 0 || biomeAvailable.length > 0,
         hasNewAssets,
         hasUpdatedAssets,
+        // V7: pre-computed flags for the Show-dropdown's `selected` attribute.
+        // Foundry's Handlebars doesn't ship a guaranteed `eq` helper, so we
+        // surface the comparison result as a boolean per option. This pre-
+        // selects the active value when the sidebar re-renders on tab switch.
+        showFilterIsAny:          this.showFilter === "any",
+        showFilterIsInstalled:    this.showFilter === "installed",
+        showFilterIsNotInstalled: this.showFilter === "notinstalled",
+        showFilterIsNew:          this.showFilter === "new",
+        showFilterIsUpdated:      this.showFilter === "updated",
         crMinLabel, crMaxLabel, crRangeLabel,
         crMinIndex: crMinIndex >= 0 ? crMinIndex : 0,
         crMaxIndex: crMaxIndex >= 0 ? crMaxIndex : crStepsMax,
@@ -826,7 +853,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // regular under that filter would (a) hide the group divider so the
     // header reads "ALL ASSETS" instead of "UPDATED", and (b) leave
     // groupBulkKeys.update empty so the bulk-install button can't surface.
-    const showFilterValue = this.element?.querySelector?.("#installation-selector")?.value || ""
+    // V7: read from the persisted instance state instead of the DOM —
+    // matches the same source #applyDropdownFilters uses, so the two
+    // read points can never disagree mid tab-switch.
+    const showFilterValue = this.showFilter || ""
     const keepUpdateGroup = showFilterValue === "updated"
     const enriched = entries.map(([key, data]) => {
       const card = this.#enrichCard(type, key, data)
@@ -964,6 +994,169 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     if (kind === "new")    return game.i18n.localize("BENEOS.Cloud.Results.GroupNew")
     if (kind === "update") return game.i18n.localize("BENEOS.Cloud.Results.GroupUpdate")
     return game.i18n.localize("BENEOS.Cloud.Results.GroupRegular")
+  }
+
+  // Strip HTML to plain text for the drawer's "Full Description" block.
+  // Six-step pipeline. Each step exists because a specific symptom was
+  // observed in the raw card-creator HTML:
+  //   1. Beneos card-creator promo boilerplate must be cut entirely.
+  //   2. Card-image labels ("Item Card", "FRONT CARD", "BACK CARD") must
+  //      be cut — they only made sense beside their now-stripped <img>.
+  //   3. <img> tags must be removed so labels don't end up adjacent to
+  //      filename fragments.
+  //   4. Block-level closing tags must be replaced with newlines BEFORE
+  //      textContent runs — otherwise paragraphs/headers concatenate
+  //      with no whitespace.
+  //   5. DOM-based textContent strip handles inline tags safely.
+  //   6. Final whitespace pass: collapse runs, trim lines, cap blank
+  //      lines at one.
+  // Pre-DOM regex steps run on the raw string deliberately — operating
+  // on .innerHTML and then .textContent collapses too many boundaries
+  // for the boilerplate patterns to match reliably.
+  static stripHtmlToPlaintext(htmlString) {
+    if (!htmlString || typeof htmlString !== "string") return ""
+
+    let html = htmlString
+
+    // --- Step 1: Strip the Beneos card-creator promo boilerplate ---
+    // The promo is a fixed block appended by the Beneos card creator to
+    // every Cloud-shipped item and spell. We've seen at least three
+    // header variants — the strip anchors on any of them and cuts greedy
+    // to end-of-string (the promo is always the final block).
+    //
+    // Known promo anchors (case-insensitive):
+    //   - "Enhance Your Gaming Experience"             (older items)
+    //   - "This item is available for VTTs"            (loot variant)
+    //   - "This spell is available for VTTs"           (spell variant)
+    //   - "available for VTTs and as printable cards"  (shared substring fallback)
+    //
+    // After the anchor pass, an extra stub-strip catches the patron-link
+    // footer "FREE DOWNLOAD FOR PATRONS HERE" in case a yet-unknown
+    // promo variant slips through.
+    const promoAnchors = [
+      /<[^>]*>\s*Enhance Your Gaming Experience[\s\S]*$/i,
+      /Enhance Your Gaming Experience[\s\S]*$/i,
+      /<[^>]*>\s*This (?:item|spell) is available for VTTs[\s\S]*$/i,
+      /This (?:item|spell) is available for VTTs[\s\S]*$/i,
+      /available for VTTs and as printable cards[\s\S]*$/i,
+    ]
+    for (const re of promoAnchors) {
+      html = html.replace(re, "")
+    }
+    // Defense-in-depth: strip any leftover patron-link stub.
+    html = html.replace(/>+\s*FREE DOWNLOAD FOR PATRONS HERE\s*<+/gi, "")
+
+    // --- Step 2: Strip card-image labels ---
+    // "Item Card", "FRONT CARD", "BACK CARD" appear as standalone labels
+    // adjacent to the card-image <img>s.
+    html = html.replace(
+      /<[^>]+>\s*(?:Item Card|FRONT CARD|BACK CARD)\s*<\/[^>]+>/gi,
+      ""
+    )
+    html = html.replace(/\b(?:Item Card|FRONT CARD|BACK CARD)\b/g, "")
+
+    // --- Step 3: Remove <img> tags entirely ---
+    html = html.replace(/<img\b[^>]*>/gi, "")
+
+    // --- Step 4: Convert block-level tag boundaries to newlines ---
+    // textContent collapses block boundaries to nothing. Pre-injecting
+    // newlines preserves paragraph and header breaks.
+    html = html
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/(?:p|div|h[1-6]|li|tr|section|article|header|footer|blockquote|pre)\s*>/gi, "\n")
+      .replace(/<hr\s*\/?>/gi, "\n")
+    // Header *opening* tags get a leading newline too so the header
+    // never butts into the trailing text of a previous block.
+    html = html.replace(/<(?:h[1-6])\b[^>]*>/gi, "\n")
+
+    // --- Step 5: DOM strip remaining tags ---
+    const tmp = document.createElement("div")
+    tmp.innerHTML = html
+    let text = tmp.textContent ?? ""
+
+    // --- Step 5b: Reduce Foundry enricher references to their display name ---
+    // system.description.value is NOT pre-enriched by TextEditor.enrichHTML
+    // (we read it raw from the compendium document), so V13-style enricher
+    // tokens survive the DOM pass intact as plain text. Reduce them so the
+    // reader sees just the human label:
+    //   @UUID[Compendium.dnd5e.spells24.Item.phbsplMa]{Magic Missile}  → Magic Missile
+    //   @UUID[Actor.abc123]{Some NPC}                                  → Some NPC
+    //   @Damage[2d6]{2d6 piercing}                                     → 2d6 piercing
+    //   @Check[wis]{Wisdom Check}                                      → Wisdom Check
+    //   &Reference[abilityCheck]{Skill Check}                          → Skill Check
+    // Both @Foo[…] (Foundry core) and &Foo[…] (dnd5e system) variants
+    // are handled. Tokens without a display brace are dropped entirely
+    // rather than left as raw bracket noise.
+    text = text
+      .replace(/[@&]\w+\[[^\]]+\]\{([^}]+)\}/g, "$1")
+      .replace(/[@&]\w+\[[^\]]+\]/g, "")
+
+    // --- Step 6: Whitespace normalisation ---
+    text = text
+      .replace(/ /g, " ")                  // nbsp → space
+      .split("\n")
+      .map(line => line.replace(/[ \t]+/g, " ").trim())
+      .join("\n")
+      .replace(/\n{3,}/g, "\n\n")               // cap blank lines at one
+      .trim()
+
+    return text
+  }
+
+  // Loads the local item/spell description from the appropriate Beneos
+  // world-scoped compendium pack and caches it. Idempotent: re-calls for
+  // the same (assetType, key) return immediately from cache.
+  //
+  // The compendium is the single source of truth — world Items can be
+  // deleted, moved, or renamed by the user, but compendium entries are
+  // the install target and the update target. We do NOT fall back to
+  // game.items, by design.
+  //
+  // Patron-gated: returns null silently for non-item/spell types, when
+  // the asset is not installed (no cached docId), when the user's system
+  // is not dnd5e (no packs created — see beneos_utility.js:614), or when
+  // the compendium document is missing or empty.
+  //
+  // Called from the card-click handler BEFORE the drawer re-renders, so
+  // the synchronous #enrichCard step can read the cached result.
+  async #ensureLocalFullDescriptionLoaded(key, assetType) {
+    if (!key) return null
+    if (assetType !== "item" && assetType !== "spell") return null
+
+    const cacheKey = `${assetType}:${key}`
+    if (this.localFullDescriptionCache.has(cacheKey)) {
+      return this.localFullDescriptionCache.get(cacheKey)
+    }
+
+    const docId = assetType === "spell"
+      ? BeneosUtility.getSpellId?.(key)
+      : BeneosUtility.getItemId?.(key)
+    if (!docId) {
+      this.localFullDescriptionCache.set(cacheKey, null)
+      return null
+    }
+
+    const packName = assetType === "spell"
+      ? "world.beneos_module_spells"
+      : "world.beneos_module_items"
+    const pack = game.packs?.get?.(packName)
+    if (!pack) {
+      this.localFullDescriptionCache.set(cacheKey, null)
+      return null
+    }
+
+    try {
+      const doc = await pack.getDocument(docId)
+      const html = doc?.system?.description?.value
+      const plaintext = BeneosCloudWindowV2.stripHtmlToPlaintext(html)
+      const result = plaintext.length > 0 ? plaintext : null
+      this.localFullDescriptionCache.set(cacheKey, result)
+      return result
+    } catch (err) {
+      console.warn("[Beneos] Failed to load local description from compendium:", err)
+      this.localFullDescriptionCache.set(cacheKey, null)
+      return null
+    }
   }
 
   #enrichCard(assetType, key, data) {
@@ -1348,6 +1541,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       itemPrice,
       itemPriceLabel,
       description: data.description || null,
+      // Patron-gated full description from the locally-installed compendium
+      // document. The actual lookup runs asynchronously in the card-click
+      // handler (#ensureLocalFullDescriptionLoaded) and writes the result
+      // to localFullDescriptionCache; here we only read the cache so
+      // #enrichCard stays synchronous. Null when not loaded yet, not
+      // item/spell, not installed, or no body content.
+      localFullDescription: (isInstalled && (assetType === "item" || assetType === "spell"))
+        ? (this.localFullDescriptionCache.get(`${assetType}:${key}`) ?? null)
+        : null,
       variantsCount: props.nb_variants || null,
       // Stage 3: pre-computed flag because Foundry's Handlebars helper
       // set ships with `eq` but not `gt` — single-variant counter
@@ -1818,9 +2020,19 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // sidebar selectors (still in the DOM during the part-render
       // window) cross-contaminate the new tab's filter pipeline.
       if (def.types && !def.types.includes(type)) continue
-      const sel = root.querySelector("#" + def.selector)
-      if (!sel) continue
-      const value = sel.value
+      // V7: the Show filter persists on the instance (this.showFilter)
+      // so it survives tab switches without depending on the DOM state
+      // of the sidebar that's about to be re-rendered. All other filters
+      // remain DOM-state — they're tab-scoped and the def.types guard
+      // above already prevents cross-tab contamination.
+      let value
+      if (def.selector === "installation-selector") {
+        value = this.showFilter
+      } else {
+        const sel = root.querySelector("#" + def.selector)
+        if (!sel) continue
+        value = sel.value
+      }
       if (!value || value.toLowerCase() === "any") continue
       // Show-filter values "new" and "updated" don't map onto a property
       // value (data.installed only carries "installed"/"notinstalled").
@@ -2677,6 +2889,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
 
     root.querySelectorAll(".beneos-selector").forEach(sel => {
       sel.addEventListener("change", () => {
+        // V7: the Show filter (installation-selector) persists across tab
+        // switches on the instance. Capture the new value before the
+        // debounced re-render so #applyDropdownFilters reads consistent
+        // state. Other dropdowns stay DOM-only and are read on render.
+        if (sel.id === "installation-selector") {
+          this.showFilter = sel.value || "any"
+        }
         // Wave B-8i-2: update the info icon next to this dropdown
         // immediately so the tooltip reflects the new selection without
         // waiting for the debounced render.
@@ -2974,7 +3193,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // so the user gets feedback for any "click that triggers a heavy
     // render" — not just navigation.
     resultsRegion.querySelectorAll(".bc-result-card").forEach(card => {
-      card.addEventListener("click", (event) => {
+      // async because we await the compendium-description loader before the
+      // drawer re-renders (see #ensureLocalFullDescriptionLoaded below).
+      card.addEventListener("click", async (event) => {
         if (event.target.closest(".bc-action-install")) return
         // Wave B-8e: clickable tag inside the card — let the dedicated
         // tag listener handle it and stop the card from also opening
@@ -3002,6 +3223,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         const scrollTop = list?.scrollTop || 0
         this.selectedAssetKey = key
         this.#showLoading()
+
+        // Lazy-load the full description from the appropriate Beneos
+        // compendium pack BEFORE the drawer re-renders. The loader is
+        // a no-op for tokens/bmaps and idempotent per (type, key), so
+        // re-clicking the same card hits the cache instantly. We swallow
+        // errors here — the loader itself logs and falls back to null,
+        // and the template hides the block when the cache says null.
+        await this.#ensureLocalFullDescriptionLoaded(key, this.searchMode)
+
         requestAnimationFrame(() => {
           requestAnimationFrame(async () => {
             try {

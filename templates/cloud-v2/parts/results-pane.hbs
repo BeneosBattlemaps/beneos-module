@@ -249,7 +249,12 @@
               {{#if card.isUpdate}}
                 <span class="bc-state-pill bc-state-installed bc-state-update-pending" data-tooltip="{{localize 'BENEOS.Cloud.Card.UpdateAvailableTooltip'}}">
                   <i class="fa-solid fa-circle-up"></i>
-                  {{localize "BENEOS.Cloud.Card.UpdateAvailable"}}
+                  {{!-- V12: two label spans. List-Mode shows the full label,
+                       Grid-Mode swaps to the short one (the update button
+                       next to it already carries the icon). See V12 block
+                       in beneos-cloud.css. --}}
+                  <span class="bc-pill-label-full">{{localize "BENEOS.Cloud.Card.UpdateAvailable"}}</span>
+                  <span class="bc-pill-label-short">{{localize "BENEOS.Cloud.Card.UpdateShort"}}</span>
                 </span>
               {{else}}
                 <span class="bc-state-pill bc-state-installed" data-tooltip="{{localize 'BENEOS.Cloud.Card.InstalledTooltip'}}">
@@ -564,6 +569,20 @@
                   data-label-less="{{localize 'BENEOS.Cloud.Drawer.ShowLess'}}">
             {{localize "BENEOS.Cloud.Drawer.ReadMore"}}
           </button>
+        {{/if}}
+
+        {{!-- Patron-gated full description from the locally-installed
+             Foundry item or spell document. Only set by #enrichCard when
+             assetType ∈ {item, spell} AND drawer.asset.isInstalled.
+             Plaintext (two-brace {{...}}, not three); CSS preserves
+             whitespace via white-space: pre-wrap. Overflow scrolls inside
+             the body block. --}}
+        {{#if drawer.asset.localFullDescription}}
+          <section class="bc-drawer-local-description"
+                   aria-label="{{localize 'BENEOS.Cloud.Drawer.FullDescription'}}">
+            <h4 class="bc-drawer-local-description-header">{{localize "BENEOS.Cloud.Drawer.FullDescription"}}</h4>
+            <div class="bc-drawer-local-description-body">{{drawer.asset.localFullDescription}}</div>
+          </section>
         {{/if}}
 
         {{!-- Wave B-9-fix-14: dedicated Origin section for items. The

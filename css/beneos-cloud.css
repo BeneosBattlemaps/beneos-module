@@ -1067,6 +1067,11 @@
  * thumbnail since the name row is no longer flex-aligned with them.
  * Dividers span the full grid width via grid-column: 1 / -1. */
 .beneos-cloud-app .bc-result-list.bc-view-grid {
+  /* V9: required so the result-list can shrink below its intrinsic card
+     content size when the detail-drawer claims its min-height. Default
+     min-height:auto on flex children blocks shrinking and the drawer
+     would collapse to ~5px. */
+  min-height: 0;
   display: grid;
   /* Punkt 2 v2: minmax 180 → 150 so a typical V2 window fits ~5 cards
      per row instead of 4. Auto-fill keeps the layout responsive — at
@@ -1997,12 +2002,25 @@
   align-self: start;
   margin: 0;
 }
+/* V11: Full Description (only present when the asset is installed
+   locally) needs an explicit grid-row, otherwise CSS auto-placement
+   folds it into the short-description's row-2 cell when that
+   description spans 2+ lines (Ben saw the Full Description "ride up
+   into" the Short Description on Spells). It gets its own full-width
+   row beneath the hero/summary/short-description stack. */
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-item .bc-drawer-body > .bc-drawer-local-description,
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-spell .bc-drawer-body > .bc-drawer-local-description {
+  grid-column: 1 / -1;
+  grid-row: 4;
+}
 /* Origin section (item only) — full-width row at the bottom, kept as
    the gold-divider block from B-9-fix-14 but no longer takes its own
    half of vertical space. */
 .beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-item .bc-drawer-body > .bc-drawer-origin {
   grid-column: 1 / -1;
-  grid-row: 4;
+  /* V11: shifted from row 4 → row 5 to make room for the explicit
+     local-description row above (see V11 Full-Description block). */
+  grid-row: 5;
 }
 
 /* --- Token (Wave B-9-fix-27) ---
@@ -2154,6 +2172,40 @@
 }
 .beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-card-actions .bc-card-button {
   flex: 0 0 auto;
+}
+/* V12: Update-pill carries two label spans. Default (list-mode etc.):
+   show the full "Update Available" label. Grid-Mode swaps to the short
+   "Update" because the update button next to the pill already shows the
+   fa-circle-up icon, and the narrow grid-card width was forcing the
+   full label onto two lines. Plus enforce nowrap on grid-mode pills as
+   a safety net (the list-mode-only rule above doesn't cover grid). */
+.beneos-cloud-app .bc-state-update-pending .bc-pill-label-short {
+  display: none;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-state-update-pending .bc-pill-label-full {
+  display: none;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-state-update-pending .bc-pill-label-short {
+  display: inline;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-state-pill {
+  /* V13/V14: text never wraps in the pill, plus V14 adds flex-shrink:0
+     so the pill keeps its content width (icon + short "UPDATE" label)
+     while the button next to it (V14 rule below) takes the remaining
+     row space. V12's overflow:hidden+ellipsis was removed in V13 —
+     it cropped "UPDATE" to "UPD..." in the tight layout. */
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+/* V14: Pill + button sit in a row in Grid-Mode (replaces V13's column
+   stack, which Ben rejected — the V12 text-shortening was meant to keep
+   them side-by-side). The grid-mode card button's default width:100%
+   (Z 1242) is what crushed the pill in V12; override it when a pill is
+   present so the button shrinks to the remaining row space. */
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-actions:has(.bc-state-pill) .bc-card-button {
+  width: auto;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .beneos-cloud-app .bc-card-button {
   display: inline-flex;
@@ -2337,7 +2389,19 @@
 .beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-open {
   position: static;
   width: auto;
-  height: auto;
+  /* V9: hold the drawer at a guaranteed visible size. The parent
+     .bc-results is column-flex and .bc-result-list (sibling) is
+     flex:1 — without flex:0 0 auto + min-height here, a long card
+     list squashes the drawer to ~5px (Ben saw the drawer rendered
+     as a thin sliver under the cards with no visible header). */
+  flex: 0 0 auto;
+  /* V11: tightened from V10 (240/360) → 200/290 per Ben's feedback.
+     Drawer stays compact; cards above keep usable real estate; long
+     content (full description + origin) scrolls inside drawer-body via
+     the flex:1/min-height:0 rule below. */
+  min-height: 200px;
+  max-height: min(290px, calc(100vh - 240px));
+  overflow: hidden;
   transform: none;
   margin-top: var(--bc-space-3);
   border-left: none;
@@ -2352,7 +2416,16 @@
   grid-auto-rows: auto;
   gap: var(--bc-space-3);
   align-items: start;
-  overflow-y: visible;
+  /* V10: bind the body to its parent drawer's height so overflow-y:auto
+     actually has something to overflow from. Without flex:1 + min-height:0
+     the body keeps its natural content size and the drawer's overflow:hidden
+     just crops the lower content — Ben saw this on Loot, which has Origin
+     section + Full Description stacked below the hero/stats row. */
+  flex: 1 1 auto;
+  min-height: 0;
+  /* V7: outer scroll. Replaces V5's overflow-y: visible — the drawer-open
+     max-height above bounds us, so the body becomes the scroll surface. */
+  overflow-y: auto;
   max-height: none;
 }
 .beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer .bc-drawer-body > .bc-drawer-hero {
@@ -2782,6 +2855,42 @@
   color: var(--bc-text);
   font-style: italic;
 }
+
+/* Patron-gated full description block. Only rendered when the item/spell
+   is installed locally (isInstalled === true). Sits below the short
+   DB-teaser description; bordered + tinted background to read as a
+   distinct, DM-only resource. Body scrolls internally so a long spell
+   write-up doesn't push the drawer into a runaway scroll. */
+.beneos-cloud-app .bc-drawer-local-description {
+  margin-top: var(--bc-space-3);
+  padding-top: var(--bc-space-3);
+  border-top: 1px solid var(--bc-border);
+}
+.beneos-cloud-app .bc-drawer-local-description-header {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bc-text-muted, rgba(255, 255, 255, 0.6));
+  margin: 0 0 var(--bc-space-2) 0;
+}
+.beneos-cloud-app .bc-drawer-local-description-body {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--bc-text);
+  white-space: pre-wrap;
+  /* V8: no inner scroll. The full-description flows in the drawer-body's
+     outer scroll for both List- and Grid-Mode — nested scrollbars are
+     gone (Ben: "doppelte Scrollfenster ineinander verschachtelt" felt
+     unangenehm). Padding/background/border stay as visual treatments. */
+  padding: var(--bc-space-2);
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--bc-border);
+  border-radius: 4px;
+}
+/* V8: Grid-Mode override removed. The base rule above no longer sets a
+   max-height or inner overflow, so List- AND Grid-Mode both flow the
+   full-description in the drawer-body outer scroll. Kept comment as
+   historical marker. */
 /* Wave B-9-fix-30: .bc-drawer-footer no longer rendered. The install
    action moved into .bc-drawer-summary inline with the fields, so the
    drawer ends right after the description block (or the origin section
@@ -2916,8 +3025,8 @@ i.beneos-icon-logo {
   width: 1em;
   height: 1em;
   background: currentColor;
-  -webkit-mask: url("../Icons/beneos_logo.svg") center / contain no-repeat;
-          mask: url("../Icons/beneos_logo.svg") center / contain no-repeat;
+  -webkit-mask: url("../icons/beneos_logo.svg") center / contain no-repeat;
+          mask: url("../icons/beneos_logo.svg") center / contain no-repeat;
   vertical-align: middle;
   font-style: normal;
 }
@@ -2960,8 +3069,8 @@ button.beneos-icon-logo::before {
   width: 36px;
   height: 36px;
   background: currentColor;
-  -webkit-mask: url("../Icons/beneos_logo.svg") center / contain no-repeat;
-          mask: url("../Icons/beneos_logo.svg") center / contain no-repeat;
+  -webkit-mask: url("../icons/beneos_logo.svg") center / contain no-repeat;
+          mask: url("../icons/beneos_logo.svg") center / contain no-repeat;
 }
 button.beneos-icon-logo:hover::before {
   background: var(--bc-accent, #f5c992);
