@@ -114,7 +114,7 @@
             {{/if}}
           </div>
         {{/if}}
-        <article class="bc-result-card bc-card-group-{{card.groupKind}}{{#if card.isInstalled}} bc-card-installed{{/if}}{{#if card.isCloudAvailable}} bc-card-cloud{{/if}}{{#if card.isInstalling}} bc-card-installing{{/if}}{{#if card.justInstalled}} bc-card-just-installed{{/if}}{{#if card.isSelected}} bc-card-selected{{/if}}{{#if card.isBeneosOriginal}} bc-card-beneos-original{{/if}}"
+        <article class="bc-result-card bc-card-group-{{card.groupKind}}{{#if card.isInstalled}} bc-card-installed{{/if}}{{#if card.isCloudAvailable}} bc-card-cloud{{/if}}{{#if card.isInstalling}} bc-card-installing{{/if}}{{#if card.justInstalled}} bc-card-just-installed{{/if}}{{#if card.isSelected}} bc-card-selected{{/if}}{{#if card.isBeneosOriginal}} bc-card-beneos-original{{/if}}{{#if card.isNewForUser}} bc-card-new-for-user{{/if}}"
                  data-asset-key="{{card.key}}"
                  data-asset-type="{{card.assetType}}"
                  data-document-id="{{card.documentId}}"
@@ -329,6 +329,11 @@
                   {{localize "BENEOS.Cloud.Card.Install"}}
                 </button>
               {{/if}}
+            {{else if card.isOutOfSync}}
+              <span class="bc-state-pill bc-state-out-of-sync" data-tooltip="{{localize 'BENEOS.Cloud.Card.OutOfSyncTooltip'}}">
+                <i class="fa-solid fa-cloud-question"></i>
+                {{localize "BENEOS.Cloud.Card.OutOfSync"}}
+              </span>
             {{/if}}
             {{!-- Wave B-12-fix: the catch-all "Unavailable" pill is gone.
                  Per user directive it sounded like an error to non-patron

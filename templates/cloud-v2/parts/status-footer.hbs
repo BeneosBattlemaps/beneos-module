@@ -8,6 +8,16 @@
 <div class="bc-install-progress" data-state="idle" aria-live="polite">
   <span class="bc-install-progress-label"></span>
   <div class="bc-install-progress-bar"><div class="bc-install-progress-fill"></div></div>
+  {{!-- Stage 14: cancel the currently running bulk install. Cancel only
+       finishes the asset that's already in-flight (the import pipeline is
+       atomic per asset) and breaks the loop before the next one starts. --}}
+  <button type="button"
+          class="bc-install-progress-cancel"
+          data-action="beneosCancelBulkInstall"
+          aria-label="{{localize 'BENEOS.Common.Cancel'}}"
+          title="{{localize 'BENEOS.Common.Cancel'}}">
+    <i class="fas fa-times"></i>
+  </button>
 </div>
 <footer class="bc-footer">
   <div class="bc-footer-left">

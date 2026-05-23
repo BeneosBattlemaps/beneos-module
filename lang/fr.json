@@ -1117,5 +1117,14 @@
   "BENEOS.CreatureCodex.Tactics.ModePlaybookHint": "Step-by-step in turn order",
   "BENEOS.CreatureCodex.Tactics.ModeCards": "Filter Cards",
   "BENEOS.CreatureCodex.Tactics.ModeCardsHint": "Flat cards filtered by Action / Bonus / Trait / ...",
-  "BENEOS.CreatureCodex.Tactics.Filter": "Filter"
+  "BENEOS.CreatureCodex.Tactics.Filter": "Filter",
+  "BENEOS.Settings.FxMasterDisable.Name": "Désactiver les FX (Performance)",
+  "BENEOS.Settings.FxMasterDisable.Hint": "Masque tous les effets visuels (ombres portées, halos) sur les créatures Beneos. À activer en cas de problèmes de performance.",
+  "BENEOS.Cloud.BulkInstall.ConfirmTitle": "Installation groupée",
+  "BENEOS.Cloud.BulkInstall.ConfirmText": "Vous êtes sur le point d'installer {count} ressources. Ajouter beaucoup de ressources à votre monde peut le ralentir sensiblement pour vous et vos joueurs. Voulez-vous les ajouter à votre monde, ou seulement les télécharger pour une utilisation ultérieure ?",
+  "BENEOS.Cloud.BulkInstall.WorldInstall": "Télécharger et ajouter au monde",
+  "BENEOS.Cloud.BulkInstall.DownloadOnly": "Télécharger uniquement",
+  "BENEOS.Common.Cancel": "Annuler",
+  "BENEOS.Cloud.BulkInstall.Cancelling": "Annulation de l'installation groupée…",
+  "BENEOS.Cloud.BulkInstall.CancelledNotification": "Installation groupée annulée à {done}/{total} ressources. Les ressources déjà installées sont conservées ; les autres restent disponibles pour installation."
 }

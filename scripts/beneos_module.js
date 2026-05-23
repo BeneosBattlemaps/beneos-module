@@ -14,6 +14,9 @@ Hooks.once('init', () => {
   game.beneos = {
     BeneosUtility,
     cloud: new BeneosCloud(),
+    // Stage 13d-11: expose FX engine for the FX master-disable setting's
+    // onChange handler in beneos_utility.js (avoids a circular import).
+    fx: BeneosFXEngine,
   }
 
   BeneosUtility.registerSettings()
@@ -406,13 +409,13 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
 })
 
 /********************************************************************************** */
-// Top-Down Stage 2: drag-from-variant-detail bridge. The variant
-// drag-handler in the cloud window sets BeneosUtility._pendingDropStyle
-// just before placing the actor on canvas. preCreateToken fires once
-// per placeable creation — we read the flag, rewrite the texture src
-// to -top.webp if requested, then null the flag so the next drop is
-// untouched. Defensive: only swap when the source actually contains
-// "-token.webp" (regular tokens with no style suffix are left alone).
+// Drag-from-variant-strip bridge: the variant drag-handler and the
+// pending-canvas-drop drain both set BeneosUtility._pendingDropStyle to
+// "topdown" only AFTER they have verified that the -top.webp counterpart
+// is actually present on disk. This hook trusts that upstream gate and
+// performs the synchronous texture swap here — preCreateToken cannot
+// await an async FS probe and still mutate the document, so the check
+// has to live upstream.
 Hooks.on("preCreateToken", (tokenDoc, data, options, userId) => {
   try {
     const pending = BeneosUtility._pendingDropStyle
@@ -421,16 +424,18 @@ Hooks.on("preCreateToken", (tokenDoc, data, options, userId) => {
     const src = data?.texture?.src || tokenDoc?.texture?.src || ""
     if (!src.includes("-token.webp")) return
     const newSrc = src.replace("-token.webp", "-top.webp")
-    // Stage 6/7/13a: scale moves with the texture. Stage 13a routes
-    // through getBeneosScale so per-token flag-overrides
-    // (rendering.topDownScale) win over the BENEOS_SCALE_TOPDOWN
-    // default. The hook fires before the token is in the canvas, so
-    // we read the actor straight off the tokenDoc.
-    const topDownScale = BeneosUtility.getBeneosScale(tokenDoc?.actor, "topdown")
+    // Stage 13d-10: pass newSrc so variant-specific scale/anchor apply
+    // when the placed variant is not the `-1` default. Also lift the
+    // anchor (previously only set on toggle), otherwise the token sits
+    // visually off-center until the user clicks the HUD swap once.
+    const topDownScale = BeneosUtility.getBeneosScale(tokenDoc?.actor, "topdown", newSrc)
+    const topDownAnchor = BeneosUtility.getBeneosAnchor(tokenDoc?.actor, "topdown", newSrc)
     tokenDoc.updateSource({
       "texture.src": newSrc,
       "texture.scaleX": topDownScale,
-      "texture.scaleY": topDownScale
+      "texture.scaleY": topDownScale,
+      "texture.anchorX": topDownAnchor.x,
+      "texture.anchorY": topDownAnchor.y
     })
   } catch (err) {
     console.warn("[Beneos] preCreateToken style override failed", err)
@@ -712,6 +717,14 @@ Hooks.once("ready", () => {
       return original.call(this, data, options)
     }
   }
+  // Tier-3 delta-cursor safety net: every world-open starts with a
+  // fresh cursor so the first checkAvailableContent fetches the full
+  // catalog. Prevents a stale cursor from a previous session leaving
+  // the available-content map in a partial state and tripping the
+  // Out-of-Sync pill on every card.
+  try {
+    game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-last-content-fetch-server-time", 0)
+  } catch (e) { /* setting not registered yet — module init order */ }
 })
 /********************************************************************************** */
 // Warlock Pact-Magic prompt for the manual compendium → actor drop. The cloud

@@ -1117,5 +1117,14 @@
   "BENEOS.CreatureCodex.Tactics.ModePlaybookHint": "Step-by-step in turn order",
   "BENEOS.CreatureCodex.Tactics.ModeCards": "Filter Cards",
   "BENEOS.CreatureCodex.Tactics.ModeCardsHint": "Flat cards filtered by Action / Bonus / Trait / ...",
-  "BENEOS.CreatureCodex.Tactics.Filter": "Filter"
+  "BENEOS.CreatureCodex.Tactics.Filter": "Filter",
+  "BENEOS.Settings.FxMasterDisable.Name": "Desactivar FX (Rendiment)",
+  "BENEOS.Settings.FxMasterDisable.Hint": "Amaga tots els efectes visuals (ombres, lluentors) a les criatures Beneos. Activa-ho si tens problemes de rendiment.",
+  "BENEOS.Cloud.BulkInstall.ConfirmTitle": "Instal·lació en bloc",
+  "BENEOS.Cloud.BulkInstall.ConfirmText": "Estàs a punt d'instal·lar {count} recursos. Afegir molts recursos al teu món pot alentir-lo notablement per a tu i els teus jugadors. Vols afegir-los al teu món, o només descarregar-los per fer-ne ús més tard?",
+  "BENEOS.Cloud.BulkInstall.WorldInstall": "Descarregar i afegir al món",
+  "BENEOS.Cloud.BulkInstall.DownloadOnly": "Només descarregar",
+  "BENEOS.Common.Cancel": "Cancel·la",
+  "BENEOS.Cloud.BulkInstall.Cancelling": "Cancel·lant la instal·lació en bloc…",
+  "BENEOS.Cloud.BulkInstall.CancelledNotification": "Instal·lació en bloc cancel·lada a {done}/{total} recursos. Els recursos ja instal·lats es mantenen; la resta segueix disponible per a instal·lació."
 }

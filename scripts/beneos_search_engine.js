@@ -259,16 +259,20 @@ export class BeneosDatabaseHolder {
 
     // Prepare update/new status
     let tokenTS = game.beneos.cloud.getTokenTS(tokenData.key)
+    tokenData.isNewForUser = !!game.beneos.cloud.getTokenIsNewForUser(tokenData.key)
     if (tokenTS) {
-      let t30days = 30 * 24 * 60 * 60
-      let tNow30Days = Math.floor(Date.now() / 1000) - t30days
-      if (tokenData.installed !== "installed" && tokenTS >= tNow30Days) {
+      let tNowWindow = Math.floor(Date.now() / 1000) - BeneosUtility.getNewAssetWindowSeconds()
+      if (tokenData.installed !== "installed" && tokenTS >= tNowWindow) {
         tokenData.isNew = true
       }
       if (tokenData.installed === "installed") {
         let installTS = BeneosUtility.getTokenInstallTS(tokenData.key)
-        BeneosUtility.debugMessage("Installed token", tokenData.key, tokenTS, installTS)
+        let cloudHash = game.beneos.cloud.getTokenHash(tokenData.key)
+        let installHash = BeneosUtility.getTokenInstallHash(tokenData.key)
+        BeneosUtility.debugMessage("Installed token", tokenData.key, tokenTS, installTS, cloudHash, installHash)
         if (tokenTS > installTS) {
+          tokenData.isUpdate = true
+        } else if (cloudHash && installHash && cloudHash !== installHash) {
           tokenData.isUpdate = true
         }
       }
@@ -279,6 +283,9 @@ export class BeneosDatabaseHolder {
     tokenData.properties.install = ["Any", "All"] // Used for filtering
     if (tokenData.isNew) {
       tokenData.properties.install.push("New")
+    }
+    if (tokenData.isNewForUser) {
+      tokenData.properties.install.push("NewForYou")
     }
     if (tokenData.isUpdate) {
       tokenData.properties.install.push("Updated")
@@ -309,16 +316,20 @@ export class BeneosDatabaseHolder {
 
     // Prepare update/new status
     let itemTS = game.beneos.cloud.getItemTS(itemData.key)
+    itemData.isNewForUser = !!game.beneos.cloud.getItemIsNewForUser(itemData.key)
     if (itemTS) {
-      let t30days = 30 * 24 * 60 * 60
-      let tNow30Days = Math.floor(Date.now() / 1000) - t30days
-      if (itemData.installed !== "installed" && itemTS >= tNow30Days) {
+      let tNowWindow = Math.floor(Date.now() / 1000) - BeneosUtility.getNewAssetWindowSeconds()
+      if (itemData.installed !== "installed" && itemTS >= tNowWindow) {
         itemData.isNew = true
       }
       if (itemData.installed === "installed") {
         let installTS = BeneosUtility.getItemInstallTS(itemData.key)
-        BeneosUtility.debugMessage("Installed item", itemData.key, itemTS, installTS)
+        let cloudHash = game.beneos.cloud.getItemHash(itemData.key)
+        let installHash = BeneosUtility.getItemInstallHash(itemData.key)
+        BeneosUtility.debugMessage("Installed item", itemData.key, itemTS, installTS, cloudHash, installHash)
         if (itemTS > installTS) {
+          itemData.isUpdate = true
+        } else if (cloudHash && installHash && cloudHash !== installHash) {
           itemData.isUpdate = true
         }
       }
@@ -328,6 +339,9 @@ export class BeneosDatabaseHolder {
     itemData.properties.install = ["Any", "All"] // Used for filtering
     if (itemData.isNew) {
       itemData.properties.install.push("New")
+    }
+    if (itemData.isNewForUser) {
+      itemData.properties.install.push("NewForYou")
     }
     if (itemData.isUpdate) {
       itemData.properties.install.push("Updated")
@@ -364,16 +378,20 @@ export class BeneosDatabaseHolder {
     }
     // Prepare update/new status
     let spellTS = game.beneos.cloud.getSpellTS(spellData.key)
+    spellData.isNewForUser = !!game.beneos.cloud.getSpellIsNewForUser(spellData.key)
     if (spellTS) {
-      let t30days = 30 * 24 * 60 * 60
-      let tNow30Days = Math.floor(Date.now() / 1000) - t30days
-      if (spellData.installed !== "installed" && spellTS >= tNow30Days) {
+      let tNowWindow = Math.floor(Date.now() / 1000) - BeneosUtility.getNewAssetWindowSeconds()
+      if (spellData.installed !== "installed" && spellTS >= tNowWindow) {
         spellData.isNew = true
       }
       if (spellData.installed === "installed") {
         let installTS = BeneosUtility.getSpellInstallTS(spellData.key)
-        BeneosUtility.debugMessage("Installed spell", spellData.key, spellTS, installTS)
+        let cloudHash = game.beneos.cloud.getSpellHash(spellData.key)
+        let installHash = BeneosUtility.getSpellInstallHash(spellData.key)
+        BeneosUtility.debugMessage("Installed spell", spellData.key, spellTS, installTS, cloudHash, installHash)
         if (spellTS > installTS) {
+          spellData.isUpdate = true
+        } else if (cloudHash && installHash && cloudHash !== installHash) {
           spellData.isUpdate = true
         }
       }
@@ -383,6 +401,9 @@ export class BeneosDatabaseHolder {
     spellData.properties.install = ["Any", "All"] // Used for filtering
     if (spellData.isNew) {
       spellData.properties.install.push("New")
+    }
+    if (spellData.isNewForUser) {
+      spellData.properties.install.push("NewForYou")
     }
     if (spellData.isUpdate) {
       spellData.properties.install.push("Updated")

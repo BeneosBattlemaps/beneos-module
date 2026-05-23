@@ -1117,5 +1117,14 @@
   "BENEOS.CreatureCodex.Tactics.ModePlaybookHint": "Step-by-step in turn order",
   "BENEOS.CreatureCodex.Tactics.ModeCards": "Filter Cards",
   "BENEOS.CreatureCodex.Tactics.ModeCardsHint": "Flat cards filtered by Action / Bonus / Trait / ...",
-  "BENEOS.CreatureCodex.Tactics.Filter": "Filter"
+  "BENEOS.CreatureCodex.Tactics.Filter": "Filter",
+  "BENEOS.Settings.FxMasterDisable.Name": "FX 비활성화 (성능)",
+  "BENEOS.Settings.FxMasterDisable.Hint": "Beneos 크리처의 모든 시각 효과(그림자, 광채)를 숨깁니다. 성능 문제가 있을 경우 활성화하세요.",
+  "BENEOS.Cloud.BulkInstall.ConfirmTitle": "일괄 설치",
+  "BENEOS.Cloud.BulkInstall.ConfirmText": "지금 {count}개의 에셋을 설치하려고 합니다. 많은 에셋을 월드에 추가하면 본인과 플레이어에게 눈에 띄게 느려질 수 있습니다. 월드에 추가하시겠습니까, 아니면 나중에 사용할 수 있도록 다운로드만 하시겠습니까?",
+  "BENEOS.Cloud.BulkInstall.WorldInstall": "다운로드 후 월드에 추가",
+  "BENEOS.Cloud.BulkInstall.DownloadOnly": "다운로드만",
+  "BENEOS.Common.Cancel": "취소",
+  "BENEOS.Cloud.BulkInstall.Cancelling": "일괄 설치를 취소하는 중…",
+  "BENEOS.Cloud.BulkInstall.CancelledNotification": "일괄 설치가 {done}/{total} 개에서 취소되었습니다. 이미 설치된 에셋은 유지되며, 나머지는 계속 설치 가능합니다."
 }

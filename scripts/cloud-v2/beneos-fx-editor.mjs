@@ -312,7 +312,12 @@ export class BeneosFXEditor extends HandlebarsApplicationMixin(ApplicationV2) {
     const { el, fxIdx, param, value } = parsed
     const actor = this.actor
     if (!actor) return
-    const fx = actor.getFlag("world", "beneos")?.rendering?.fx || []
+    // Stage 13d-12: mode-aware lookup (same as _onParamCommit / _onToggleFx).
+    // Was: `rendering?.fx` — hardcoded to the legacy key, which is empty on
+    // tokens whose FX live in fxTopdown/fxTokenized. That made fxEntry
+    // undefined and the early return below swallowed every slider input.
+    const rendering = actor.getFlag("world", "beneos")?.rendering || {}
+    const fx = readActiveFxList(rendering, this.token)
     const fxEntry = fx[fxIdx]
     if (!fxEntry?.id) return
     this._updateValueLabel(el, param, value, fxEntry.type)

@@ -1117,5 +1117,14 @@
   "BENEOS.CreatureCodex.Tactics.ModePlaybookHint": "Schritt für Schritt in Zugreihenfolge",
   "BENEOS.CreatureCodex.Tactics.ModeCards": "Filter-Karten",
   "BENEOS.CreatureCodex.Tactics.ModeCardsHint": "Flache Karten gefiltert nach Aktion / Bonus / Trait / ...",
-  "BENEOS.CreatureCodex.Tactics.Filter": "Filter"
+  "BENEOS.CreatureCodex.Tactics.Filter": "Filter",
+  "BENEOS.Settings.FxMasterDisable.Name": "FX deaktivieren (Performance)",
+  "BENEOS.Settings.FxMasterDisable.Hint": "Blendet alle visuellen FX (Schlagschatten, Glow-Effekte) auf Beneos-Kreaturen aus. Aktivieren, wenn Performance-Probleme auftreten.",
+  "BENEOS.Cloud.BulkInstall.ConfirmTitle": "Bulk-Installation bestätigen",
+  "BENEOS.Cloud.BulkInstall.ConfirmText": "Du installierst gerade {count} Assets. Viele Assets in der Welt können sie für dich und deine Spieler spürbar verlangsamen. Möchtest du sie wirklich in deine Welt einfügen, oder nur installieren und offline verfügbar machen?",
+  "BENEOS.Cloud.BulkInstall.WorldInstall": "Download und in die Welt speichern",
+  "BENEOS.Cloud.BulkInstall.DownloadOnly": "Nur downloaden",
+  "BENEOS.Common.Cancel": "Abbrechen",
+  "BENEOS.Cloud.BulkInstall.Cancelling": "Bulk-Installation wird abgebrochen…",
+  "BENEOS.Cloud.BulkInstall.CancelledNotification": "Bulk-Installation bei {done}/{total} Assets abgebrochen. Bereits installierte Assets bleiben; die restlichen können weiterhin installiert werden."
 }

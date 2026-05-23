@@ -1117,5 +1117,14 @@
   "BENEOS.CreatureCodex.Tactics.ModePlaybookHint": "Step-by-step in turn order",
   "BENEOS.CreatureCodex.Tactics.ModeCards": "Filter Cards",
   "BENEOS.CreatureCodex.Tactics.ModeCardsHint": "Flat cards filtered by Action / Bonus / Trait / ...",
-  "BENEOS.CreatureCodex.Tactics.Filter": "Filter"
+  "BENEOS.CreatureCodex.Tactics.Filter": "Filter",
+  "BENEOS.Settings.FxMasterDisable.Name": "Vypnout FX (Výkon)",
+  "BENEOS.Settings.FxMasterDisable.Hint": "Skryje všechny vizuální efekty (stíny, záře) na bytostech Beneos. Zapněte, pokud máte problémy s výkonem.",
+  "BENEOS.Cloud.BulkInstall.ConfirmTitle": "Hromadná instalace",
+  "BENEOS.Cloud.BulkInstall.ConfirmText": "Chystáte se nainstalovat {count} položek. Přidání mnoha položek do světa jej může pro vás i hráče znatelně zpomalit. Chcete je přidat do svého světa, nebo je jen stáhnout pro pozdější použití?",
+  "BENEOS.Cloud.BulkInstall.WorldInstall": "Stáhnout a přidat do světa",
+  "BENEOS.Cloud.BulkInstall.DownloadOnly": "Pouze stáhnout",
+  "BENEOS.Common.Cancel": "Zrušit",
+  "BENEOS.Cloud.BulkInstall.Cancelling": "Ruším hromadnou instalaci…",
+  "BENEOS.Cloud.BulkInstall.CancelledNotification": "Hromadná instalace zrušena u {done}/{total} položek. Již nainstalované zůstávají; ostatní jsou stále k dispozici k instalaci."
 }

@@ -3,6 +3,20 @@
 All notable changes to this module will be documented in this file.
 
 ## Updates
+### 14.1.2 # 2026-05-23
+- Fixed: Installation of the Top-Down tokens should now be available and functional for all creatures. 
+- New: All Top-Down creatures now feature individual scaling based on their visual size.
+- New: Version 1 of the Beneos FX Suite has been implemented. All Top-Down tokens now include dynamic drop shadows, and additional effects for custom creatures will also be available in the future.
+- New: When installing a large number of assets simultaneously, users now receive a notification asking whether they want to directly install the assets into the world or simply make them available offline.
+- New: Large bulk downloads can now also be canceled during installation.
+- Improved: Complete update of all 2.5D tokens to the new design.
+- Improved: Additional safety mechanisms have been implemented to ensure that users always see the assets they actually have access to.
+- Improved: Several smaller fixes have also been added for the grid and list views across the different sections.
+
+### 14.1.1 # 2026-05-21
+- Fixed: A wrong icon path has been fixed.
+- New: Loot and Spells now also display their description texts directly inside the module once installed, allowing you to read assets that already exist in your world directly from the search engine.
+
 ### 14.1.0 # 2026-05-11
 - New: **Top-Down Token Mode.** All Beneos Creatures and SRD creatures now ship with top-down icons in addition to the established 2.5D portrait tokens. Right-click any creature on the canvas to switch between top-down and 2.5D in place; the Cloud search results expose both styles as variants; the Creatures sidebar has a new Default Style filter so drag-and-drop or one-click installs land in your preferred orientation.
 - New: **Loot Generator.** A new action button in the Loot tab opens a generator window where you pick the player level and the loot-quality dial; the module rolls a thematic, level-appropriate selection from all SRD and Beneos items you have access to, shows the probability behind each result, and lets you push the rolled items and the gold roll straight to a player's character sheet.

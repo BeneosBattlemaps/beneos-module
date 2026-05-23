@@ -2,7 +2,7 @@
 import { BeneosTableTop } from "./beneos-table-top.js";
 import { BeneosDatabaseHolder, BeneosModuleMenu } from "./beneos_search_engine.js";
 import { ClassCounter } from "./count-class-ready.js";
-import { BeneosCloud, BeneosCloudLogin, BeneosCloudSettings, BeneosCloudAccountMenu } from "./beneos_cloud.js";
+import { BeneosCloud, BeneosCloudLogin, BeneosCloudSettings, BeneosCloudAccountMenu, BeneosOrphanCleanupMenu } from "./beneos_cloud.js";
 
 /********************************************************************************* */
 globalThis.BENEOS_MODULE_NAME = "Beneos Module"
@@ -209,6 +209,58 @@ export class BeneosUtility {
       default: 'tokenized'
     })
 
+    // Configurable window for the "Newly added"-badge in the Search
+    // Engine. Default 30 days; world-scoped so each table can tune it
+    // (slow-release setups may want 60-90, fast iteration 7-14).
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-new-asset-window-days', {
+      name: game.i18n.localize("BENEOS.Settings.NewAssetWindowDays.Name") || "New-asset highlight window (days)",
+      hint: game.i18n.localize("BENEOS.Settings.NewAssetWindowDays.Hint") || "How many days an asset stays in the 'Newly added' filter after its last update. Default 30.",
+      scope: 'world',
+      config: true,
+      type: Number,
+      default: 30,
+      range: { min: 1, max: 365, step: 1 }
+    })
+
+    // Stage 13d-11: global FX master-disable for performance-constrained
+    // clients. The read-side (beneos-fx.mjs:121) already consults this
+    // setting and short-circuits applyForToken when true. onChange triggers
+    // immediate re-apply on every placed Beneos token so the toggle is
+    // visible without a reload. Falls back to a no-op if game.beneos.fx
+    // isn't ready yet (init ordering).
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-fx-master-disable', {
+      name: game.i18n.localize("BENEOS.Settings.FxMasterDisable.Name") || "Disable FX (Performance)",
+      hint: game.i18n.localize("BENEOS.Settings.FxMasterDisable.Hint") || "Hides all visual FX (drop shadows, glow effects) on Beneos creatures. Enable if you experience performance issues.",
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: false,
+      restricted: true,
+      onChange: () => {
+        if (!canvas?.ready) return
+        const fx = game.beneos?.fx
+        if (!fx?.applyForToken) return
+        for (const t of canvas.tokens.placeables) {
+          try {
+            if (BeneosUtility.isBeneosCreature(t)) fx.applyForToken(t)
+          } catch (e) { /* defensive */ }
+        }
+      }
+    })
+
+    // Server-time cursor for delta content fetches. Stored as Unix
+    // seconds (from the server's clock, returned in the get_content
+    // response). Empty/0 = first run, full catalog fetch; non-zero =
+    // next fetch only asks for assets updated since this timestamp.
+    // Client-scoped because each Foundry instance fetches independently.
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-cloud-last-content-fetch-server-time', {
+      name: 'Beneos Cloud delta-fetch cursor (server time)',
+      scope: 'client',
+      config: false,
+      type: Number,
+      default: 0
+    })
+
     // Stage 13a: hidden Creator-Mode toggle for the Beneos design team.
     // When enabled, prototypeToken-Scale-Änderungen on Beneos creatures
     // get auto-persisted into flags.world.beneos.rendering via the
@@ -241,6 +293,20 @@ export class BeneosUtility {
       scope: 'world',
       config: true,
       type: BeneosCloudAccountMenu,
+      restricted: true
+    })
+
+    // Orphan-Cleanup maintenance entry. Opens a one-shot dialog that
+    // scans the Beneos compendiums and lets the GM delete entries that
+    // have lost their folder, lost their local asset files, or have no
+    // matching world actor. See BeneosCloud.runOrphanCleanup.
+    game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-orphan-cleanup", {
+      name: "BENEOS.Settings.OrphanCleanup.Name",
+      label: "BENEOS.Settings.OrphanCleanup.Label",
+      hint: "BENEOS.Settings.OrphanCleanup.Hint",
+      scope: 'world',
+      config: true,
+      type: BeneosOrphanCleanupMenu,
       restricted: true
     })
 
@@ -1444,6 +1510,39 @@ export class BeneosUtility {
     return undefined
   }
 
+  // Hash lookups for the content-signature based update detection.
+  // Returns the SHA256 stored at install time, or empty string if the
+  // asset predates the Tier-2 flag schema (in which case Update-
+  // Detection falls back to a pure timestamp compare).
+  static getTokenInstallHash(key) {
+    for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
+      if (token.tokenKey == key) {
+        return token.contentSignature || ""
+      }
+    }
+    return ""
+  }
+  static getItemInstallHash(key) {
+    return this.beneosItems[key]?.contentSignature || ""
+  }
+  static getSpellInstallHash(key) {
+    return this.beneosSpells[key]?.contentSignature || ""
+  }
+
+  // Days an asset stays in the "Newly added" filter, configurable per
+  // world via the beneos-new-asset-window-days setting. Returns the
+  // value in seconds for direct comparison against Unix timestamps.
+  // Defaults to 30 days when the setting is not yet registered (init
+  // order on a fresh world) or holds a non-positive value.
+  static getNewAssetWindowSeconds() {
+    let days = 30
+    try {
+      const v = game.settings.get(BeneosUtility.moduleID(), 'beneos-new-asset-window-days')
+      if (typeof v === "number" && v > 0) days = v
+    } catch (e) { /* setting not registered yet */ }
+    return days * 24 * 60 * 60
+  }
+
   /********************************************************************************** */
   static getLocalAvatarPicture(key) {
     for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
@@ -1536,6 +1635,16 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
+  // Stage 13d-10: variant index from a Beneos texture path
+  // (`…-2-top.webp` → "2", `…-1-token.webp` → "1"). Returned as string
+  // so it indexes the JSON variants map directly.
+  static beneosVariantFromSrc(src) {
+    if (typeof src !== "string") return null
+    const m = /-(\d+)-(?:top|token)\.webp$/i.exec(src)
+    return m ? m[1] : null
+  }
+
+  /********************************************************************************** */
   // Stage 13a: per-token scale resolver. Reads
   // flags.world.beneos.rendering.{topDownScale,tokenizedScale}; falls
   // back to BENEOS_SCALE_* constants when the actor has no override
@@ -1544,7 +1653,11 @@ export class BeneosUtility {
   // users (or the Stage-13d Creator-Mode UI) can override locally.
   // Source-of-truth-Hierarchie: User-Override > Cloud-Default >
   // Konstante.
-  static getBeneosScale(actor, mode) {
+  // Stage 13d-10: variant-aware. When `src` is passed and the actor's
+  // rendering flag carries a `variants` map, the per-variant value
+  // (e.g. rendering.variants["2"].topDownScale) wins over the
+  // top-level. The top-level remains the canonical `-1` default.
+  static getBeneosScale(actor, mode, src = null) {
     const isTopDown = (mode === "topdown")
     const fallback = isTopDown
       ? BeneosUtility.BENEOS_SCALE_TOPDOWN
@@ -1552,7 +1665,13 @@ export class BeneosUtility {
     if (!actor) return fallback
     const rendering = actor.getFlag?.("world", "beneos")?.rendering
     if (!rendering) return fallback
-    const override = isTopDown ? rendering.topDownScale : rendering.tokenizedScale
+    const scaleKey = isTopDown ? "topDownScale" : "tokenizedScale"
+    const variant = BeneosUtility.beneosVariantFromSrc(src)
+    if (variant && rendering.variants && rendering.variants[variant]) {
+      const v = rendering.variants[variant][scaleKey]
+      if (typeof v === "number" && v > 0) return v
+    }
+    const override = rendering[scaleKey]
     return (typeof override === "number" && override > 0) ? override : fallback
   }
 
@@ -1562,14 +1681,26 @@ export class BeneosUtility {
   // applies the right value alongside the texture+scale swap. Foundry
   // default is (0.5, 0.5) — center anchor — and we use that as the
   // fallback when no override exists.
-  static getBeneosAnchor(actor, mode) {
+  // Stage 13d-10: variant-aware. Same precedence chain as
+  // getBeneosScale — variants[N] beats top-level when `src` resolves
+  // to a known variant, both axes must be numeric to count as a hit.
+  static getBeneosAnchor(actor, mode, src = null) {
     const fallback = { x: 0.5, y: 0.5 }
     if (!actor) return fallback
     const rendering = actor.getFlag?.("world", "beneos")?.rendering
     if (!rendering) return fallback
     const isTopDown = (mode === "topdown")
-    const ax = isTopDown ? rendering.topDownAnchorX : rendering.tokenizedAnchorX
-    const ay = isTopDown ? rendering.topDownAnchorY : rendering.tokenizedAnchorY
+    const xKey = isTopDown ? "topDownAnchorX" : "tokenizedAnchorX"
+    const yKey = isTopDown ? "topDownAnchorY" : "tokenizedAnchorY"
+    const variant = BeneosUtility.beneosVariantFromSrc(src)
+    if (variant && rendering.variants && rendering.variants[variant]) {
+      const ve = rendering.variants[variant]
+      if (typeof ve[xKey] === "number" && typeof ve[yKey] === "number") {
+        return { x: ve[xKey], y: ve[yKey] }
+      }
+    }
+    const ax = rendering[xKey]
+    const ay = rendering[yKey]
     return {
       x: (typeof ax === "number") ? ax : fallback.x,
       y: (typeof ay === "number") ? ay : fallback.y
@@ -1640,16 +1771,17 @@ export class BeneosUtility {
   // Stage 13a: delegates to getBeneosScale once mode is resolved, so
   // per-token Flag-Overrides take precedence over the constants.
   static getScaleFactor(token, newImage = undefined, mode) {
+    // Stage 13d-10: hoist probeSrc out of the mode-derivation branch
+    // so the variant-aware getBeneosScale call below can always see
+    // the texture path (e.g. `-2-top.webp` → variant "2"), even when
+    // the caller passed `mode` explicitly.
+    let probeSrc = ""
+    if (typeof newImage === "string") probeSrc = newImage
+    else probeSrc = token?.document?.texture?.src || ""
     if (mode === undefined) {
-      // Prefer newImage (caller's intent for the swap) over the
-      // current document texture, since the swap may not yet be
-      // committed when this is called.
-      let probeSrc = ""
-      if (typeof newImage === "string") probeSrc = newImage
-      else probeSrc = token?.document?.texture?.src || ""
       mode = probeSrc.includes("-top.webp") ? "topdown" : "tokenized"
     }
-    return BeneosUtility.getBeneosScale(token?.actor ?? null, mode)
+    return BeneosUtility.getBeneosScale(token?.actor ?? null, mode, probeSrc)
   }
 
   /********************************************************************************** */
@@ -1695,7 +1827,8 @@ export class BeneosUtility {
     // scale. Mode is decided by the destination image's suffix
     // (-top.webp = topdown, otherwise tokenized).
     const newMode = newImage.includes("-top.webp") ? "topdown" : "tokenized"
-    const newAnchor = BeneosUtility.getBeneosAnchor(token.actor, newMode)
+    // Stage 13d-10: pass newImage so variant-specific anchors apply.
+    const newAnchor = BeneosUtility.getBeneosAnchor(token.actor, newMode, newImage)
     //BeneosUtility.debugMessage(">>>>>>>>>>> UPDATE TOKEN CHANGE", fullKey, tokenData, newImage)
     await token.document.update({ img: newImage, scale: scaleFactor, rotation: 1.0 })
     if (foundry.utils.isNewerVersion(game.version, "11")) {
@@ -1819,8 +1952,10 @@ export class BeneosUtility {
     // creatures with custom rendering.{topDown,tokenized}Scale flags
     // get those values, others fall back to the BENEOS_SCALE_*
     // constants.
-    const newScale = BeneosUtility.getBeneosScale(actor, newStyle)
-    const newAnchor = BeneosUtility.getBeneosAnchor(actor, newStyle)
+    // Stage 13d-10: newSrc carries the variant suffix, so the resolver
+    // can look up per-variant scale/anchor in flags.world.beneos.rendering.variants.
+    const newScale = BeneosUtility.getBeneosScale(actor, newStyle, newSrc)
+    const newAnchor = BeneosUtility.getBeneosAnchor(actor, newStyle, newSrc)
 
     try {
       await token.document.update({

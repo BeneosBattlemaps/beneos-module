@@ -2937,6 +2937,40 @@
   opacity: 0;
   transition: opacity 600ms ease-out 800ms;
 }
+/* Stage 14: cancel-button at the right edge of the progress bar.
+   Visible only during a running bulk install (data-state="running"); hidden
+   during data-state="cancelling" (handler already fired, can't double-cancel)
+   and data-state="done" (the run is finishing/fading anyway). */
+.beneos-cloud-app .bc-install-progress-cancel {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--bc-border);
+  color: var(--bc-text-dim);
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  padding: 0;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 120ms ease-out, border-color 120ms ease-out, background 120ms ease-out;
+}
+.beneos-cloud-app .bc-install-progress[data-state="running"] .bc-install-progress-cancel {
+  display: inline-flex;
+}
+.beneos-cloud-app .bc-install-progress-cancel:hover {
+  color: var(--bc-danger, #d05050);
+  border-color: var(--bc-danger, #d05050);
+  background: rgba(208, 80, 80, 0.08);
+}
+.beneos-cloud-app .bc-install-progress[data-state="cancelling"] {
+  display: flex;
+  opacity: 0.6;
+}
+.beneos-cloud-app .bc-install-progress[data-state="cancelling"] .bc-install-progress-cancel {
+  display: none;
+}
 
 .beneos-cloud-app .bc-footer {
   background: var(--bc-bg-panel);

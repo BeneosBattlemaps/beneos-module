@@ -117,6 +117,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       openCloudSettings:       BeneosCloudWindowV2._onOpenCloudSettings,
       openSettings:            BeneosCloudWindowV2._onOpenSettings,
       resetFilters:            BeneosCloudWindowV2._onResetFilters,
+      beneosResyncCatalog:     BeneosCloudWindowV2._onResyncCatalog,
+      beneosCancelBulkInstall: BeneosCloudWindowV2._onCancelBulkInstall,
       switchView:              BeneosCloudWindowV2._onSwitchView,
       openExternal:            BeneosCloudWindowV2._onOpenExternal,
       openPatchlog:            BeneosCloudWindowV2._onOpenPatchlog,
@@ -427,6 +429,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // out — battlemaps have no per-asset update channel.
       let hasNewAssets = false
       let hasUpdatedAssets = false
+      let hasNewForUserAssets = false
       if (this.searchMode === "bmap") {
         hasNewAssets = true
       } else if (this.searchMode === "token" || this.searchMode === "item" || this.searchMode === "spell") {
@@ -435,7 +438,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         for (const data of Object.values(all)) {
           if (data?.isNew) hasNewAssets = true
           if (data?.isUpdate) hasUpdatedAssets = true
-          if (hasNewAssets && hasUpdatedAssets) break
+          if (data?.isNewForUser) hasNewForUserAssets = true
+          if (hasNewAssets && hasUpdatedAssets && hasNewForUserAssets) break
         }
       }
       const releaseList = {}
@@ -502,6 +506,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         biomeHasAny: biomeChips.length > 0 || biomeAvailable.length > 0,
         hasNewAssets,
         hasUpdatedAssets,
+        hasNewForUserAssets,
         // V7: pre-computed flags for the Show-dropdown's `selected` attribute.
         // Foundry's Handlebars doesn't ship a guaranteed `eq` helper, so we
         // surface the comparison result as a boolean per option. This pre-
@@ -691,6 +696,26 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     return null
   }
 
+  // Tier-3 self-heal trigger. Called from #buildCards when too many
+  // cards land in the Out-of-Sync catch-all. Resets the delta cursor
+  // and re-fetches a full catalog. Debounced (30s) so a server that
+  // keeps returning a partial list can't trap us in a render-fetch loop.
+  _triggerAutoHealCatalog(count) {
+    const now = Date.now()
+    if (this._lastAutoHealAt && (now - this._lastAutoHealAt) < 30000) return
+    this._lastAutoHealAt = now
+    console.warn(`[Beneos Cloud] ${count} out-of-sync cards detected → forcing full catalog re-sync`)
+    setTimeout(async () => {
+      try {
+        await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-last-content-fetch-server-time", 0)
+        await game.beneos.cloud.checkAvailableContent()
+        try { this.render({ parts: ["results"] }) } catch (e) { /* render skipped */ }
+      } catch (err) {
+        console.warn("[Beneos Cloud] Auto-heal catalog re-sync failed", err)
+      }
+    }, 100)
+  }
+
   #buildCards() {
     const dbHolder = game.beneos?.databaseHolder
     if (!dbHolder) return { cards: [], totalMatches: 0, hasMore: false }
@@ -874,8 +899,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // decide which of the four options to render (only ones with > 0
     // keys show up).
     const groupBulkKeys = { new: [], update: [], view: [], backlog: [] }
+    let outOfSyncCount = 0
     for (const card of enriched) {
       if (type !== "token" && type !== "item" && type !== "spell") continue
+      if (card.isOutOfSync) outOfSyncCount++
       const isInstallableNow = (card.isCloudAvailable && !card.isInstalled)
       const isUpdatePending  = (card.isUpdate && card.isInstalled)
       if (card.groupKind === "new" && isInstallableNow) {
@@ -887,6 +914,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         groupBulkKeys.view.push(card.key)
       }
     }
+    // Tier-3 self-heal: when too many cards land in the Out-of-Sync
+    // catch-all the cloud catalog is almost certainly stale (delta
+    // cursor stuck on a non-zero value). Reset the cursor and force a
+    // full re-fetch in the background; the next render picks up the
+    // fresh list. Debounced so it can't loop on a server that keeps
+    // returning a partial response.
+    if (outOfSyncCount > 5) this._triggerAutoHealCatalog(outOfSyncCount)
     // Wave B-8k-1: the "entire backlog" option scans the FULL unfiltered
     // raw dataset (already enriched-with-installed-flags by the early
     // processInstalled* loop above). Includes every cloud-available
@@ -1132,7 +1166,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       ? BeneosUtility.getSpellId?.(key)
       : BeneosUtility.getItemId?.(key)
     if (!docId) {
-      this.localFullDescriptionCache.set(cacheKey, null)
+      // Don't cache: the asset may simply not be installed yet. When the
+      // drawer is open BEFORE install, the first call lands here, gets
+      // null, and a cached null would block the post-install re-render
+      // from ever picking up the description (this is workflow B from
+      // the bug repro). Pack absence below stays cached because that's
+      // a permanent state (no compendium = no docs for the session).
       return null
     }
 
@@ -1150,11 +1189,19 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const html = doc?.system?.description?.value
       const plaintext = BeneosCloudWindowV2.stripHtmlToPlaintext(html)
       const result = plaintext.length > 0 ? plaintext : null
-      this.localFullDescriptionCache.set(cacheKey, result)
+      // Only cache positive results. A null here typically means the
+      // compendium doc wasn't fully populated yet (race with a fresh
+      // cloud-install — the doc lands but its description.value can
+      // arrive a few ticks later). Caching null would lock the empty
+      // state in for the whole session; leaving null uncached lets the
+      // next click retry and pick up the description once it's there.
+      if (result !== null) {
+        this.localFullDescriptionCache.set(cacheKey, result)
+      }
       return result
     } catch (err) {
       console.warn("[Beneos] Failed to load local description from compendium:", err)
-      this.localFullDescriptionCache.set(cacheKey, null)
+      // Same retry-on-failure policy: don't poison the cache.
       return null
     }
   }
@@ -1190,6 +1237,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const isFree   = props.free_content === true
     const isLocked = !isCloudAvailable && !isInstalled && !hasCampaign && !isFree
     if (isLocked) dragMode = "none"
+    // Pre-compute the three state flags that feed both the card-object
+    // and the isOutOfSync catch-all detection. Without these as named
+    // consts, the catch-all condition has to re-evaluate the same
+    // expressions inline, which is brittle when one of them changes.
+    const cardIsIncompatible = !isInstalled && BeneosUtility.isHardBlockedKind(assetType)
+    const cardNeedsLogin = assetType !== "bmap" && !(game.beneos?.cloud?.isLoggedIn?.())
+    const cardIsOffline = assetType !== "bmap" && !!(game.beneos?.databaseHolder?.getIsOffline?.()
+                                                    ?? game.beneos?.databaseHolder?.isOffline)
     const dragType = assetType === "spell" ? "Item" : (assetType === "item" ? "Item" : "Actor")
     const documentId = isInstalled
       ? (BeneosUtility.getActorId?.(key) || BeneosUtility.getItemId?.(key) || BeneosUtility.getSpellId?.(key) || "")
@@ -1563,7 +1618,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // button for a red "Not compatible" pill so the GM sees up front
       // what won't install. The cached BeneosUtility.isDnd5e check is a
       // single property read; cheap enough to evaluate per card.
-      isIncompatible: !isInstalled && BeneosUtility.isHardBlockedKind(assetType),
+      isIncompatible: cardIsIncompatible,
       isInstallable: !!data.isInstallable,
       // Wave B-9-fix-58 → fix-59: surface login + offline state to the
       // card so the install button can render a tailored label/tooltip
@@ -1572,10 +1627,23 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // Bmaps stay exempt — they don't go through Beneos Cloud at all
       // (the install path is Moulinette), so neither sign-in nor cloud
       // reachability is relevant. The Moulinette button always renders.
-      needsLogin: assetType !== "bmap" && !(game.beneos?.cloud?.isLoggedIn?.()),
-      isOfflineCard: assetType !== "bmap" && !!(game.beneos?.databaseHolder?.getIsOffline?.()
-                                              ?? game.beneos?.databaseHolder?.isOffline),
+      needsLogin: cardNeedsLogin,
+      isOfflineCard: cardIsOffline,
+      // Catch-all sync flag: when none of the previous branches match
+      // (not installing/installed/offline/needs-login/locked/incompatible/
+      // cloud-available), the card used to fall through to a silent
+      // catch-all in the template, leaving users with no button and no
+      // status. This flag flips on for exactly that case so the template
+      // can render a visible "Cloud catalog out of sync" pill instead.
+      isOutOfSync: !isInstalling
+                && !isInstalled
+                && !cardIsOffline
+                && !cardNeedsLogin
+                && !isLocked
+                && !cardIsIncompatible
+                && !isCloudAvailable,
       isNew: !!data.isNew,
+      isNewForUser: !!data.isNewForUser,
       isUpdate: !!data.isUpdate,
       isFree,
       isLocked,
@@ -2281,6 +2349,25 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         this.installState.delete(key)
         this.#patchCardState(key)
       }, 1500)
+      // Stage 14: if the freshly-installed asset is currently the one in
+      // the drawer, refresh its detail pane so the full description (only
+      // surfaced for installed assets) appears immediately. Without this,
+      // the drawer stays in its pre-install state — cloud teaser only,
+      // no body text — until the user F5s. User workflow this enables:
+      // browse the backlog, click into a card to read the teaser, install,
+      // read the full body in place, decide to keep wandering.
+      if (key === this.selectedAssetKey) {
+        this.#ensureLocalFullDescriptionLoaded(key, this.searchMode)
+          .then(() => {
+            if (key !== this.selectedAssetKey || !this.rendered) return
+            this.render({ parts: ["results"] }).catch(err =>
+              console.warn("[Beneos] post-install drawer refresh failed", err)
+            )
+          })
+          .catch(err =>
+            console.warn("[Beneos] post-install description preload failed", err)
+          )
+      }
     } else {
       this.installState.delete(key)
       this.#patchCardState(key)
@@ -2490,31 +2577,87 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
           : "BENEOS.Cloud.Results.InstallAllViewTitle"
       innerHtml = `<p class="bc-confirm-text">${game.i18n.format("BENEOS.Cloud.Results.InstallAllConfirm", { count: keys.length })}</p>`
     }
-    const contentHtml = `<div class="bc-confirm-content">${innerHtml}</div>`
-    const confirmed = await foundry.applications.api.DialogV2.confirm({
-      window: { title: game.i18n.localize(titleKey) },
-      classes: ["dialog", "app", "window-app", "beneos-cloud-app", "beneos-confirm"],
-      position: { width: 460 },
-      content: contentHtml,
-      yes:  { default: false },
-      no:   { default: true }
-    })
-    if (!confirmed) return
-    this.#showInstallProgress(keys.length)
-    // Wave B-9-fix-47: await each pipeline so the compendium's
-    // lock/unlock cycle completes before the next starts. The old
-    // 250ms timer would race when imports outpaced their own lock
-    // step, leading to "locked compendium" errors mid-batch.
-    await this.#withSuppressedInfoToasts(async () => {
-      for (const key of keys) {
-        this.notifyInstallStarted?.(key)
-        if (type === "token") await cloud.importTokenFromCloud?.(key, undefined, false, { gated: true })
-        else if (type === "item")  await cloud.importItemFromCloud?.(key, undefined, false, { gated: true })
-        else if (type === "spell") await cloud.importSpellsFromCloud?.(key, undefined, false, { gated: true })
-        this.#tickInstallProgress()
+    // Stage 14: at scale, also offer the compendium-only option here. The
+    // legacy Yes/No confirm only protected against accidental clicks; it
+    // still pushed every asset into the world DB. For > 5 non-bmap assets
+    // we now ask whether to add world copies, or just download.
+    let deferWorldImport = false
+    if (type !== "bmap" && keys.length > 5) {
+      // Use DialogV2.wait so the Beneos theme classes actually take effect
+      // (legacy `new Dialog()` ignores them, producing an off-theme grey box).
+      const bulkBody = `<p class="bc-confirm-text">${game.i18n.format("BENEOS.Cloud.BulkInstall.ConfirmText", { count: keys.length })}</p>`
+      let choice
+      try {
+        choice = await foundry.applications.api.DialogV2.wait({
+          window: { title: game.i18n.localize(titleKey) },
+          classes: ["dialog", "app", "window-app", "beneos-cloud-app", "beneos-confirm"],
+          position: { width: 460 },
+          content: `<div class="bc-confirm-content">${innerHtml}${bulkBody}</div>`,
+          buttons: [
+            { action: "world",    label: game.i18n.localize("BENEOS.Cloud.BulkInstall.WorldInstall"), default: true, callback: () => "world"    },
+            { action: "download", label: game.i18n.localize("BENEOS.Cloud.BulkInstall.DownloadOnly"),                callback: () => "download" },
+            { action: "cancel",   label: game.i18n.localize("BENEOS.Common.Cancel"),                                 callback: () => "cancel"   }
+          ],
+          rejectClose: false
+        })
+      } catch (err) {
+        console.warn("[Beneos Cloud] Bulk-install confirm dialog failed", err)
+        choice = "cancel"
       }
-    })
+      if (!choice || choice === "cancel") return
+      deferWorldImport = (choice === "download")
+    } else {
+      // ≤ 5 assets, or bmaps: keep the legacy Yes/No safety net.
+      const contentHtml = `<div class="bc-confirm-content">${innerHtml}</div>`
+      const confirmed = await foundry.applications.api.DialogV2.confirm({
+        window: { title: game.i18n.localize(titleKey) },
+        classes: ["dialog", "app", "window-app", "beneos-cloud-app", "beneos-confirm"],
+        position: { width: 460 },
+        content: contentHtml,
+        yes:  { default: false },
+        no:   { default: true }
+      })
+      if (!confirmed) return
+    }
+    this.#showInstallProgress(keys.length)
+    // Stage 14: honour the user's "Download only" choice for the lifetime
+    // of this bulk run. The loop already awaits each import (Wave B-9-fix-47),
+    // so a simple try/finally around the loop suffices — by the time we
+    // restore the flag, no in-flight import can still race.
+    const prevNoWorldImport = cloud.noWorldImport
+    cloud.noWorldImport = deferWorldImport || cloud.noWorldImport
+    try {
+      // Wave B-9-fix-47: await each pipeline so the compendium's
+      // lock/unlock cycle completes before the next starts. The old
+      // 250ms timer would race when imports outpaced their own lock
+      // step, leading to "locked compendium" errors mid-batch.
+      // Stage 14: cancel-check before each iteration — keeps in-flight
+      // imports atomic but stops the queue cleanly.
+      await this.#withSuppressedInfoToasts(async () => {
+        for (const key of keys) {
+          if (this._bulkInstall?.cancelled) break
+          this.notifyInstallStarted?.(key)
+          if (type === "token") await cloud.importTokenFromCloud?.(key, undefined, false, { gated: true })
+          else if (type === "item")  await cloud.importItemFromCloud?.(key, undefined, false, { gated: true })
+          else if (type === "spell") await cloud.importSpellsFromCloud?.(key, undefined, false, { gated: true })
+          this.#tickInstallProgress()
+        }
+      })
+    } finally {
+      cloud.noWorldImport = prevNoWorldImport
+    }
+    // Stage 14: distinct end-of-run notification on cancel — read
+    // counters before #hideInstallProgress() nulls _bulkInstall.
+    const wasCancelled = !!this._bulkInstall?.cancelled
+    const finalDone   = this._bulkInstall?.done  ?? 0
+    const finalTotal  = this._bulkInstall?.total ?? 0
     this.#hideInstallProgress()
+    if (wasCancelled) {
+      ui.notifications?.info?.(
+        game.i18n.format("BENEOS.Cloud.BulkInstall.CancelledNotification",
+                         { done: finalDone, total: finalTotal })
+      )
+    }
   }
 
   // Extracted from the install-button click handler so the same logic runs
@@ -2778,12 +2921,79 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     region.querySelectorAll(".bc-variant-thumb").forEach(btn => {
       btn.addEventListener("click", (event) => {
         event.stopPropagation()
-        this.#selectVariant(btn)
+        this.#onVariantClick(btn)
       })
     })
     region.querySelectorAll(".bc-variant-thumb[draggable='true']").forEach(btn => {
       btn.addEventListener("dragstart", (event) => this.#onVariantDragStart(event, btn))
     })
+    // Async side-channel: probe whether each installed Top-Down variant has
+    // its -top.webp on disk. The result is written back to the tile as a
+    // data-bc-topdown-missing flag so the synchronous click + dragstart
+    // handlers can decide between regular swap vs. reinstall path without
+    // their own HEAD round-trip. Fire-and-forget; tiles whose probe is still
+    // pending behave as "present" (the post-drop drain in beneos_cloud.js
+    // does a final FS check anyway).
+    this.#probeVariantTopAssets(region)
+  }
+
+  // Per-tile HEAD-probe for the -top.webp counterpart of every installed
+  // Top-Down variant. Reads the canonical -token.webp path from the
+  // BeneosUtility.beneosTokens cache (filled at startup); when the cache
+  // has no entry for a variant (cloud-only / not installed) the tile is
+  // skipped because the cloud-pending drop pipeline will fetch the asset
+  // fresh anyway.
+  async #probeVariantTopAssets(region) {
+    const tiles = region.querySelectorAll(
+      ".bc-variant-thumb[data-variant-style='topdown'][data-actor-id]:not([data-actor-id=''])"
+    )
+    if (!tiles.length) return
+    const missingTooltip = game.i18n.localize("BENEOS.TokenMenu.TopDownAssetMissing")
+      || "Top-Down asset missing — drag/click triggers a reinstall."
+    await Promise.allSettled(Array.from(tiles).map(async (btn) => {
+      const assetKey = btn.dataset.assetKey
+      const variantIdx = btn.dataset.variantIndex
+      if (!assetKey || !variantIdx) return
+      const fullId = `${assetKey}_${variantIdx}`
+      const cacheEntry = BeneosUtility.beneosTokens?.[fullId]
+      const tokenPath = cacheEntry?.token
+      if (!tokenPath || !tokenPath.includes("-token.webp")) return
+      const topPath = tokenPath.replace("-token.webp", "-top.webp")
+      try {
+        const url = topPath.startsWith("/") ? topPath : `/${topPath}`
+        const res = await fetch(url, { method: "HEAD" })
+        if (!res.ok) {
+          btn.dataset.bcTopdownMissing = "true"
+          btn.dataset.tooltip = missingTooltip
+        }
+      } catch (e) {
+        btn.dataset.bcTopdownMissing = "true"
+        btn.dataset.tooltip = missingTooltip
+      }
+    }))
+  }
+
+  // Click-router: a Top-Down tile flagged as missing triggers a silent
+  // reinstall of the whole token (the cloud refetches and writes the
+  // -top.webp). Otherwise we keep the original behaviour (hero swap +
+  // active-outline toggle).
+  #onVariantClick(btn) {
+    const style = btn.dataset.variantStyle || "tokenized"
+    if (style === "topdown" && btn.dataset.bcTopdownMissing === "true") {
+      const assetKey = btn.dataset.assetKey
+      if (assetKey && game.beneos?.cloud?.importTokenFromCloud) {
+        try {
+          ui.notifications?.info?.(
+            game.i18n.localize("BENEOS.TokenMenu.TopDownReinstallStarted")
+            || "Beneos: reinstalling Top-Down variant from cloud…"
+          )
+        } catch (e) { /* notifications not ready */ }
+        game.beneos.cloud.importTokenFromCloud(assetKey).catch(err =>
+          console.warn("[Beneos] Top-Down reinstall failed", err))
+        return
+      }
+    }
+    this.#selectVariant(btn)
   }
 
   // Hero swap + active-outline toggle + counter update. All three are
@@ -2825,11 +3035,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const variantIdx = parseInt(btn.dataset.variantIndex, 10) || 1
     const assetKey = btn.dataset.assetKey
     const actorId = btn.dataset.actorId
+    const topdownMissing = style === "topdown" && btn.dataset.bcTopdownMissing === "true"
 
     let drag_data = null
-    if (actorId) {
-      // Stage 2-4 path — variant is installed, drag the variant's
-      // actor and let the preCreateToken hook flip the texture src.
+    if (actorId && !topdownMissing) {
+      // Variant is installed AND (for Top-Down) the -top.webp is on
+      // disk — drag the variant's actor and let the preCreateToken
+      // hook flip the texture src.
       const compendium = "world.beneos_module_actors"
       const worldActor = game.actors?.get?.(actorId) ||
                          game.actors?.find?.(a => {
@@ -2841,6 +3053,24 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         : { type: "Actor", pack: compendium, uuid: `Compendium.${compendium}.${actorId}` }
       if (style === "topdown") drag_data.beneosForceStyle = "topdown"
       BeneosUtility._pendingDropStyle = style
+    } else if (assetKey && topdownMissing) {
+      // Variant is installed but its -top.webp is missing from disk.
+      // Route through the cloud-pending pipeline so the import refetches
+      // the token (server should now ship `top.image64`) and the post-
+      // import drain places the variant in Top-Down mode.
+      drag_data = {
+        type: "Actor",
+        beneosCloudPending: true,
+        beneosTokenKey: assetKey,
+        beneosVariantIndex: variantIdx,
+        beneosForceStyle: "topdown"
+      }
+      try {
+        ui.notifications?.info?.(
+          game.i18n.localize("BENEOS.TokenMenu.TopDownReinstallStarted")
+          || "Beneos: reinstalling Top-Down variant from cloud…"
+        )
+      } catch (e) { /* notifications not ready */ }
     } else if (assetKey) {
       // Stage 5 path — variant is NOT installed yet. Fire the
       // beneosCloudPending drag-install pipeline (Wave B-1d/B-9)
@@ -3749,6 +3979,47 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // Wave B-5e-fix-4: reset filters -> back to first page.
     this.#resetPagination()
     this.#renderResults(["sidebar", "results"])
+  }
+
+  // Stage 14: bulk install cancellation. Sets a flag on the active
+  // _bulkInstall state object; the running loop in #onBulkInstallClick
+  // reads it before each iteration and breaks cleanly. The currently
+  // in-flight asset is allowed to finish (the import pipeline is atomic
+  // per asset; aborting mid-pipeline would leave half-written compendium
+  // entries / lock files). All assets that haven't started yet stay in
+  // their "not installed" state and remain installable.
+  static _onCancelBulkInstall(event, _target) {
+    event.preventDefault()
+    if (!this._bulkInstall || this._bulkInstall.cancelled) return
+    this._bulkInstall.cancelled = true
+    const el = this.element?.querySelector?.(".bc-install-progress")
+    if (el) el.dataset.state = "cancelling"
+    ui.notifications?.info?.(game.i18n.localize("BENEOS.Cloud.BulkInstall.Cancelling"))
+  }
+
+  // Manual escape hatch when the cloud catalog looks lopsided (Out-of-Sync
+  // pills everywhere, missing categories, etc.). Resets the Tier-3 delta
+  // cursor to zero, re-fetches the full content list, and re-renders the
+  // results area. Same effect as the auto-heal in #buildCards, just user-
+  // triggered.
+  static async _onResyncCatalog(event, _target) {
+    event.preventDefault()
+    try {
+      await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-last-content-fetch-server-time", 0)
+    } catch (e) { /* setting not registered yet */ }
+    try {
+      ui.notifications?.info?.(game.i18n.localize("BENEOS.Cloud.Filter.ResyncStarted")
+        || "Beneos: re-syncing the cloud catalog…")
+    } catch (e) { /* notifications not ready */ }
+    try {
+      await game.beneos?.cloud?.checkAvailableContent?.()
+      try { this.render({ parts: ["results"] }) } catch (e) { /* render skipped */ }
+      ui.notifications?.info?.(game.i18n.localize("BENEOS.Cloud.Filter.ResyncDone")
+        || "Beneos: cloud catalog re-synced.")
+    } catch (err) {
+      console.warn("[Beneos Cloud] Manual catalog re-sync failed", err)
+      ui.notifications?.error?.(`Beneos: catalog re-sync failed — ${err?.message || "unknown"}`)
+    }
   }
 
   // Wave B-9: list / grid view switch. Updates instance state, persists

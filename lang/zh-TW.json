@@ -1117,5 +1117,14 @@
   "BENEOS.CreatureCodex.Tactics.ModePlaybookHint": "Step-by-step in turn order",
   "BENEOS.CreatureCodex.Tactics.ModeCards": "Filter Cards",
   "BENEOS.CreatureCodex.Tactics.ModeCardsHint": "Flat cards filtered by Action / Bonus / Trait / ...",
-  "BENEOS.CreatureCodex.Tactics.Filter": "Filter"
+  "BENEOS.CreatureCodex.Tactics.Filter": "Filter",
+  "BENEOS.Settings.FxMasterDisable.Name": "停用 FX（效能）",
+  "BENEOS.Settings.FxMasterDisable.Hint": "隱藏 Beneos 生物上的所有視覺效果（陰影、光暈）。如有效能問題請啟用此選項。",
+  "BENEOS.Cloud.BulkInstall.ConfirmTitle": "批次安裝",
+  "BENEOS.Cloud.BulkInstall.ConfirmText": "您即將安裝 {count} 個資源。將大量資源加入您的世界可能會明顯拖慢您和玩家的體驗。要將它們加入您的世界，還是僅下載以供日後使用？",
+  "BENEOS.Cloud.BulkInstall.WorldInstall": "下載並加入世界",
+  "BENEOS.Cloud.BulkInstall.DownloadOnly": "僅下載",
+  "BENEOS.Common.Cancel": "取消",
+  "BENEOS.Cloud.BulkInstall.Cancelling": "正在取消批次安裝…",
+  "BENEOS.Cloud.BulkInstall.CancelledNotification": "批次安裝在 {done}/{total} 個資源時取消。已安裝的資源保留;其餘仍可繼續安裝。"
 }

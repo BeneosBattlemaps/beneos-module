@@ -1117,5 +1117,14 @@
   "BENEOS.CreatureCodex.Tactics.ModePlaybookHint": "Step-by-step in turn order",
   "BENEOS.CreatureCodex.Tactics.ModeCards": "Filter Cards",
   "BENEOS.CreatureCodex.Tactics.ModeCardsHint": "Flat cards filtered by Action / Bonus / Trait / ...",
-  "BENEOS.CreatureCodex.Tactics.Filter": "Filter"
+  "BENEOS.CreatureCodex.Tactics.Filter": "Filter",
+  "BENEOS.Settings.FxMasterDisable.Name": "FXを無効化（パフォーマンス）",
+  "BENEOS.Settings.FxMasterDisable.Hint": "Beneos クリーチャーのすべての視覚エフェクト（ドロップシャドウ、グロー）を非表示にします。パフォーマンスの問題がある場合に有効化してください。",
+  "BENEOS.Cloud.BulkInstall.ConfirmTitle": "一括インストール",
+  "BENEOS.Cloud.BulkInstall.ConfirmText": "{count} 件のアセットをインストールしようとしています。ワールドに大量のアセットを追加すると、あなたとプレイヤーのために体感的に動作が遅くなることがあります。ワールドに追加しますか、それとも後で使うためにダウンロードのみ行いますか？",
+  "BENEOS.Cloud.BulkInstall.WorldInstall": "ダウンロードしてワールドに追加",
+  "BENEOS.Cloud.BulkInstall.DownloadOnly": "ダウンロードのみ",
+  "BENEOS.Common.Cancel": "キャンセル",
+  "BENEOS.Cloud.BulkInstall.Cancelling": "一括インストールを中止しています…",
+  "BENEOS.Cloud.BulkInstall.CancelledNotification": "一括インストールを {done}/{total} 件で中止しました。すでにインストール済みのアセットはそのまま残り、残りは引き続きインストール可能です。"
 }
