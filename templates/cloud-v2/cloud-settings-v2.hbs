@@ -41,6 +41,10 @@
             {{localize "BENEOS.Cloud.Settings.Account.SignInHint"}}
           </div>
         {{/if}}
+        {{!-- Online-account hint: the "Account" button below opens the Beneos
+             Cloud website where the user manages their account and can sign
+             in online. (This action moved here from the cloud-window footer.) --}}
+        <div class="bc-settings-row-hint">{{localize "BENEOS.Cloud.Settings.Account.OnlineHint"}}</div>
       </div>
       <div class="bc-settings-row-control">
         {{#if isCloudLoggedIn}}
@@ -58,6 +62,13 @@
             <span>{{localize "BENEOS.Cloud.Settings.Account.SignIn"}}</span>
           </button>
         {{/if}}
+        <button type="button"
+                class="bc-card-button"
+                data-action="openAccountOnline"
+                data-tooltip="{{localize 'BENEOS.Cloud.Settings.Account.OnlineHint'}}">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i>
+          <span>{{localize "BENEOS.Cloud.Settings.Account.Online"}}</span>
+        </button>
       </div>
     </div>
 
@@ -75,85 +86,6 @@
           <i class="fa-solid fa-play"></i>
           <span>{{localize "BENEOS.Cloud.Settings.SetupTour.Action"}}</span>
         </button>
-      </div>
-    </div>
-
-    {{!-- Asset Repair — action row that opens BeneosRepairMenuApp. --}}
-    <div class="bc-settings-row">
-      <div class="bc-settings-row-meta">
-        <div class="bc-settings-row-label">{{localize "BENEOS.Cloud.Settings.AssetRepair.Label"}}</div>
-        <div class="bc-settings-row-hint">{{localize "BENEOS.Cloud.Settings.AssetRepair.Hint"}}</div>
-      </div>
-      <div class="bc-settings-row-control">
-        <button type="button"
-                class="bc-card-button bc-card-button-primary"
-                data-action="openAssetRepair">
-          <i class="fa-solid fa-wrench"></i>
-          <span>{{localize "BENEOS.Cloud.Settings.AssetRepair.Action"}}</span>
-        </button>
-      </div>
-    </div>
-
-    {{!-- Death Tokens — toggle row bound to beneos-death-management. --}}
-    <div class="bc-settings-row">
-      <div class="bc-settings-row-meta">
-        <div class="bc-settings-row-label">{{localize "BENEOS.Cloud.Settings.DeathTokens.Label"}}</div>
-        <div class="bc-settings-row-hint">{{localize "BENEOS.Cloud.Settings.DeathTokens.Hint"}}</div>
-      </div>
-      <div class="bc-settings-row-control">
-        <span class="bc-settings-saved" aria-hidden="true">
-          <i class="fa-solid fa-check"></i>
-          <span>{{localize "BENEOS.Cloud.Settings.Saved"}}</span>
-        </span>
-        <label class="bc-checkbox-row bc-settings-toggle">
-          <input type="checkbox"
-                 class="bc-checkbox"
-                 data-setting-key="beneos-death-management"
-                 {{#if deathTokensEnabled}}checked{{/if}} />
-        </label>
-      </div>
-    </div>
-
-    {{!-- Show DM Navigation to Players — toggle row bound to showNavToPlayers. --}}
-    <div class="bc-settings-row">
-      <div class="bc-settings-row-meta">
-        <div class="bc-settings-row-label">{{localize "BENEOS.Cloud.Settings.ShowNav.Label"}}</div>
-        <div class="bc-settings-row-hint">{{localize "BENEOS.Cloud.Settings.ShowNav.Hint"}}</div>
-      </div>
-      <div class="bc-settings-row-control">
-        <span class="bc-settings-saved" aria-hidden="true">
-          <i class="fa-solid fa-check"></i>
-          <span>{{localize "BENEOS.Cloud.Settings.Saved"}}</span>
-        </span>
-        <label class="bc-checkbox-row bc-settings-toggle">
-          <input type="checkbox"
-                 class="bc-checkbox"
-                 data-setting-key="showNavToPlayers"
-                 {{#if showNavEnabled}}checked{{/if}} />
-        </label>
-      </div>
-    </div>
-
-    {{!-- Asset Watcher — toggle row. Mirrors the existing
-         `assetWatcherEnabled` setting registered in beneos-asset-watcher.js;
-         when on, the canvasReady hook auto-scans each opened scene and
-         pops a single dialog if anything is missing. --}}
-    <div class="bc-settings-row">
-      <div class="bc-settings-row-meta">
-        <div class="bc-settings-row-label">{{localize "BENEOS.Cloud.Settings.AssetCheck.Label"}}</div>
-        <div class="bc-settings-row-hint">{{localize "BENEOS.Cloud.Settings.AssetCheck.Hint"}}</div>
-      </div>
-      <div class="bc-settings-row-control">
-        <span class="bc-settings-saved" aria-hidden="true">
-          <i class="fa-solid fa-check"></i>
-          <span>{{localize "BENEOS.Cloud.Settings.Saved"}}</span>
-        </span>
-        <label class="bc-checkbox-row bc-settings-toggle">
-          <input type="checkbox"
-                 class="bc-checkbox"
-                 data-setting-key="assetWatcherEnabled"
-                 {{#if assetCheckEnabled}}checked{{/if}} />
-        </label>
       </div>
     </div>
 
@@ -196,6 +128,26 @@
         </div>
       </div>
     {{/if}}
+
+    {{!-- All module settings — opens Foundry's own module-settings panel
+         (jumped straight to the Beneos category). This modal intentionally
+         carries only the fast-access options; every advanced / rarely-used
+         toggle (asset repair, death tokens, DM navigation, asset check, ...)
+         lives there so nothing is duplicated. --}}
+    <div class="bc-settings-row bc-settings-row-footer">
+      <div class="bc-settings-row-meta">
+        <div class="bc-settings-row-label">{{localize "BENEOS.Cloud.Settings.AllSettings.Label"}}</div>
+        <div class="bc-settings-row-hint">{{localize "BENEOS.Cloud.Settings.AllSettings.Hint"}}</div>
+      </div>
+      <div class="bc-settings-row-control">
+        <button type="button"
+                class="bc-card-button"
+                data-action="openModuleSettings">
+          <i class="fa-solid fa-sliders"></i>
+          <span>{{localize "BENEOS.Cloud.Settings.AllSettings.Action"}}</span>
+        </button>
+      </div>
+    </div>
 
   </div>
 </section>

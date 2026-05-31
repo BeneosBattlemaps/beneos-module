@@ -1,0 +1,14 @@
+<div class="codex-wip-wrap">
+  <button class="subpage-back" data-action="go-hub" style="align-self:flex-start;">{{localize "BENEOS.Codex.BackToHub"}}</button>
+  <div class="codex-wip-card">
+    <div class="codex-wip-eyebrow">{{localize "BENEOS.Codex.WIPEyebrow"}}</div>
+    <h2>
+      {{~#if (eq wipLabel "spells")~}}{{localize "BENEOS.Codex.HubCard.Spells.Title"}}
+      {{~else if (eq wipLabel "world")~}}{{localize "BENEOS.Codex.HubCard.World.Title"}}
+      {{~else if (eq wipLabel "creatures")~}}{{localize "BENEOS.Codex.HubCard.Creatures.Title"}}
+      {{~else~}}{{localize "BENEOS.Codex.HubCard.Adventures.Title"}}
+      {{~/if~}}
+    </h2>
+    <p>{{localize "BENEOS.Codex.WIPBody"}}</p>
+  </div>
+</div>

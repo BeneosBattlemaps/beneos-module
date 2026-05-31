@@ -5,7 +5,6 @@ import { BeneosModuleMenu } from "./beneos_search_engine.js";
 export class BeneosTableTop {
 
   static init() {
-    console.log("BeneosTableTop init");
     BeneosTableTop.titleCache = {}
 
     this.tableTopConfig = BeneosUtility.getTableTopConfig();  
@@ -39,8 +38,7 @@ export class BeneosTableTop {
         if (beneosTTFlags.tokenVisionSaved !== undefined) {
           await scene.update({ 'tokenVision': beneosTTFlags.tokenVisionSaved });
         }
-        for (let d of scene.drawings) { 
-          console.log("Parsing drawing : ", d);         
+        for (let d of scene.drawings) {
           let isUserDrawing = d.getFlag('beneos-module', 'user-view');
           if (isUserDrawing) {
             await d.setFlag("beneos-module", "user-view", false);
@@ -146,7 +144,6 @@ export class BeneosTableTop {
         if (canvas.newPan) canvas.newPan();
         return true;
       }
-      console.log("Drawing updated for user", drawing)
       let user = game.users.get(drawing.document.getFlag("beneos-module", "user-view"))
       let precText = BeneosTableTop.titleCache[drawing.id]
       if (!precText) {
@@ -190,7 +187,6 @@ export class BeneosTableTop {
     let drawings = canvas.scene.drawings
     for (let drawing of drawings) {
       if (drawing.flags?.LockView?.boundingBox_mode == 2) {
-        console.log("Found a LockView area", drawing)
         return drawing
       }
     }
@@ -203,7 +199,6 @@ export class BeneosTableTop {
     for (let drawing of drawings) {
       let mode = drawing.getFlag("beneos-module", "beneos-area-mode")
       if (mode == "scene-boundary") {
-        console.log("Found a Beneos area", drawing)
         return drawing
       }
     }
@@ -468,7 +463,6 @@ export class BeneosTableTop {
 
         let isDrawingSceneBoundary = drawing.getFlag('beneos-module', 'beneos-area-mode')
         if (isSceneBoundary && isDrawingSceneBoundary == 'scene-boundary') {
-          console.log("Scene Boundary : ", drawing);
           rect.Xmin = rectTemp.Xmin;
           rect.Xmax = rectTemp.Xmax;
           rect.Ymin = rectTemp.Ymin;
@@ -622,7 +616,6 @@ export class BeneosTableTop {
       let ray = new Ray(this.stage.pivot, { x, y });
       duration = Math.round(ray.distance * 1000 / speed);
     }
-    console.log("Animate Pan : ", x, y, scale, duration, speed);
     // Constrain the resulting dimensions and construct animation attributes
     const constrained = BeneosTableTop.newConstrainView({ x, y, scale });
     const attributes = [
@@ -671,7 +664,6 @@ export class BeneosTableTop {
       data: { bounds: viewPosition, views: playerViews }
     }
     game.socket.emit("module.beneos-module", msg);
-    console.log("viewPosition PAN : ", viewPosition);
   }
 
   /*************************************/
@@ -698,7 +690,6 @@ export class BeneosTableTop {
   /*************************************/
   static async applyPosition(msgData) {
     let bounds = msgData.bounds;
-    console.log("viewPosition client : ", bounds);
     Canvas.prototype.pan = BeneosTableTop.newPan;
     Canvas.prototype._onDragCanvasPan = BeneosTableTop.newOnDragCanvasPan;
     Canvas.prototype.animatePan = BeneosTableTop.newAnimatePan;
@@ -759,7 +750,6 @@ export class BeneosTableTop {
         }
         // Set the new grid opacity
         let gridOpacity = 0.5 // Previously : game.settings.get(BeneosUtility.moduleID(), "beneos-tt-grid-visibility-opacity");
-        console.log("Scene : ", scene);
         await scene.update({ 'grid.alpha': gridOpacity })
       } else if (beneosTTFlags.gridOpacity !== undefined) {
         await scene.update({ 'grid.alpha': beneosTTFlags.gridOpacity });

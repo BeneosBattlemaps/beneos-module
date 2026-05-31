@@ -1,0 +1,23 @@
+<div class="cdx-tac-general cdx-tac-masonry">
+  {{#if creature.data.tacticalSections.length}}
+    {{#each creature.data.tacticalSections}}
+      <section class="cdx-tac-section cdx-tac-section-{{id}}">
+        <header class="cdx-tac-section-head">
+          <h3>{{title}}</h3>
+        </header>
+        <div class="cdx-tac-section-body">
+          {{#each items}}
+            <div class="cdx-tac-entry">
+              {{#if heading}}<h4 class="cdx-tac-entry-head">{{heading}}</h4>{{/if}}
+              <p class="cdx-tac-entry-text">
+                {{> "beneos-codex/creature/tac-inline" parts=text actorId=../../creature.actorId}}
+              </p>
+            </div>
+          {{/each}}
+        </div>
+      </section>
+    {{/each}}
+  {{else}}
+    <p class="cdx-empty">{{localize "BENEOS.CreatureCodex.Tactics.GeneralEmpty"}}</p>
+  {{/if}}
+</div>

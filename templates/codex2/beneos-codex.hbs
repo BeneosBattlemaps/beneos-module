@@ -1,0 +1,23 @@
+<div class="codex-shell">
+  <div class="codex-ambient"></div>
+  <div class="codex-grain"></div>
+
+  {{> "beneos-codex/header" header=header}}
+  {{> "beneos-codex/sub-hero"}}
+
+  <div class="cdx-body">
+    {{#if (eq view "hub")}}
+      {{> "beneos-codex/hub"}}
+    {{else if (eq view "item")}}
+      {{> "beneos-codex/item-page" .}}
+    {{else if (eq view "creature")}}
+      {{> "beneos-codex/creature-page" .}}
+    {{else if (eq view "creature-detail")}}
+      {{> "beneos-codex/creature-detail-page" .}}
+    {{else if (eq view "world")}}
+      {{> "beneos-codex/world-page" .}}
+    {{else if (eq view "wip")}}
+      {{> "beneos-codex/wip-screen" wipLabel=wipLabel}}
+    {{/if}}
+  </div>
+</div>

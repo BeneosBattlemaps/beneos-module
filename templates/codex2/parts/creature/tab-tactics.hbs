@@ -1,0 +1,23 @@
+<section class="cdx-section">
+  <nav class="cdx-tactics-subs">
+    {{#each creature.tacticsSubs}}
+      <button type="button"
+              class="cdx-tactics-sub {{#if active}}active{{/if}}"
+              data-action="cdx-tactics-sub"
+              data-cdx-sub="{{id}}">
+        <i class="{{icon}}"></i>
+        <span>{{label}}</span>
+      </button>
+    {{/each}}
+  </nav>
+
+  <div class="cdx-tactics-body">
+    {{#if (eq creature.activeTacticsSub "general")}}
+      {{> "beneos-codex/creature/sub-general" creature=creature}}
+    {{else if (eq creature.activeTacticsSub "abilities")}}
+      {{> "beneos-codex/creature/sub-abilities" creature=creature}}
+    {{else if (eq creature.activeTacticsSub "autopilot")}}
+      {{> "beneos-codex/creature/sub-autopilot" creature=creature}}
+    {{/if}}
+  </div>
+</section>

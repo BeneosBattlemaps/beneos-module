@@ -1,0 +1,61 @@
+{{#if creature.ready}}
+  <article class="beneos-codex-creature" data-actor-id="{{creature.actorId}}">
+    {{> "beneos-codex/creature/hero" creature=creature}}
+
+    <div class="beneos-codex-hint">
+      {{#if creature.hasTokenAccess}}
+        <span>{{localize "BENEOS.Access.TokenContentLabel"}}</span>
+      {{else if creature.isFree}}
+        <span>{{localize "BENEOS.Access.FreePreview"}}</span>
+        <a class="beneos-codex-hint-join" href="{{creature.joinPatreonUrl}}" target="_blank" rel="noopener noreferrer">
+          <i class="fa-brands fa-patreon" aria-hidden="true"></i>
+          <span>{{localize "BENEOS.Patreon.JoinPatron"}}</span>
+        </a>
+      {{else}}
+        <span>{{localize "BENEOS.Access.TokenContentLabel"}}</span>
+        <a class="beneos-codex-hint-join" href="{{creature.joinPatreonUrl}}" target="_blank" rel="noopener noreferrer">
+          <i class="fa-brands fa-patreon" aria-hidden="true"></i>
+          <span>{{localize "BENEOS.Patreon.JoinPatron"}}</span>
+        </a>
+      {{/if}}
+    </div>
+
+    <nav class="cdx-tabs cdx-creature-tabs{{#if creature.locked}} is-locked-nav{{/if}}">
+      {{#each creature.tabs}}
+        <button type="button"
+                class="cdx-tab {{#if active}}active{{/if}} {{#if standalone}}cdx-tab-standalone{{/if}}"
+                data-action="cdx-tab"
+                data-cdx-tab="{{id}}">
+          <span>{{label}}</span>
+          {{#if count}}<span class="cdx-tab-count">{{count}}</span>{{/if}}
+        </button>
+      {{/each}}
+    </nav>
+
+    <div class="cdx-creature-body beneos-paywall-wrap{{#if creature.locked}} is-locked{{/if}}">
+      <div class="beneos-paywall-content">
+        {{#if (eq creature.activeTab "overview")}}
+          {{> "beneos-codex/creature/tab-overview" creature=creature}}
+        {{else if (eq creature.activeTab "hooks")}}
+          {{> "beneos-codex/creature/tab-hooks" creature=creature}}
+        {{else if (eq creature.activeTab "foreshadow")}}
+          {{> "beneos-codex/creature/tab-foreshadow" creature=creature}}
+        {{else if (eq creature.activeTab "theater")}}
+          {{> "beneos-codex/creature/tab-theater" creature=creature}}
+        {{else if (eq creature.activeTab "tactics")}}
+          {{> "beneos-codex/creature/tab-tactics" creature=creature}}
+        {{/if}}
+      </div>
+      {{#if creature.locked}}{{> "modules/beneos-module/templates/shared/beneos-paywall.hbs" joinUrl=creature.joinPatreonUrl label="BENEOS.Access.LockedContent"}}{{/if}}
+    </div>
+  </article>
+{{else}}
+  <div class="beneos-codex-creature cdx-creature-error">
+    <h2>{{localize "BENEOS.CreatureCodex.NotFoundTitle"}}</h2>
+    <p>{{localize "BENEOS.CreatureCodex.NotFoundBody"}}</p>
+    <p class="cdx-creature-error-tag">{{creature.tokenKey}}</p>
+    <button type="button" class="cdx-btn" data-action="go-route" data-route="creatures">
+      {{localize "BENEOS.CreatureCodex.BackToHub"}}
+    </button>
+  </div>
+{{/if}}

@@ -3,6 +3,20 @@
 All notable changes to this module will be documented in this file.
 
 ## Updates
+
+### 14.2.0 # 2026-05-31
+- New: **Creature Codex.** Every Beneos and SRD creature now has its own in-Foundry codex, opened from the Token HUD, the actor-sheet header or in the Beneos Cloud Windows. It gathers the creature's lore, story hooks, foreshadowing clues, read-aloud combat moments and a full tactical guide in one window, so you can run any monster without leaving the table.
+- New: **Combat Autopilot.** During combat a single autopilot window follows the turn order and shows the active creature's play for the current round: opening move, primary and bonus actions, movement, positioning, target priority and reactions. Ability chips fire the action or open the item, HP is editable inline, and you can mute the autopilot per creature.
+- New: **Stat-block PDFs inside the codex.** Pull a creature's printable PDF straight from the Beneos Cloud with one click and read it in a built-in viewer window, no browser tab and no leaving Foundry.
+- New: **Poppable journal art.** The journal illustration in the Creature Codex and Autopilot is clickable: it pops out full-size with a Show-Players button, so you can reveal the art to your table in one click.
+- New: **Read-aloud Combat Theater.** Each creature carries cinematic read-aloud text for its first appearance, its signature abilities and its death, with a one-click popup for the death moment. Prompts you have used dim out so you can track what is already narrated.
+- New: **Origins, set bonuses and the Forge.** Beneos loot is now organized into Origins with set bonuses (Resonance at two attuned items, Perfect Harmony at three) and item-level Echo effects. The Forge lets you imprint any Origin onto your own or mundane SRD items, so the Origin's name, icon and bonus rules apply to gear you already use.
+- New: **Origin Radar.** Push a live Origin "ping" to your players: anyone carrying an attuned item of that Origin feels it on a compass on their character sheet, with detail that sharpens from direction, to rarity, to exact location and name as they attune more matching items.
+- New: **Beneos Codex hub.** A new book icon opens the interactive Beneos documentation. Its Item Codex covers the full Origins, Echo, Resonance and Harmony system with an attunement simulator, plus the Forge and the loot and shop generators in one place.
+- New: **Item Companion panel.** Open an item that carries Beneos loot data and a companion panel appears beside the sheet showing its Origin, tier and rarity with a flip-card preview, while hiding the duplicated stat lines that used to clutter the description.
+- Improved: **Clearer installed Loot and Spell text.** In the Cloud search results, installed loot and spell descriptions now highlight key phrases and render dice notation (such as 2d6 or 1d8) as clean chips, so the rules read at a glance.
+- Improved: **Faster settings access.** The Beneos Cloud settings popup keeps only the everyday controls (account, tour) and adds a one-click "Open Foundry module settings" button for everything else, so nothing is duplicated.
+
 ### 14.1.2 # 2026-05-23
 - Fixed: Installation of the Top-Down tokens should now be available and functional for all creatures. 
 - New: All Top-Down creatures now feature individual scaling based on their visual size.

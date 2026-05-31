@@ -1,0 +1,89 @@
+<header class="cdx-creature-hero{{#if creature.data.heroImageUrl}} cdx-hero-no-avatar{{/if}}"
+        style="--tone-primary: {{creature.data.sizeTone.primary}}; --tone-secondary: {{creature.data.sizeTone.secondary}}; --tone-glow: {{creature.data.sizeTone.glow}};">
+
+  {{#if creature.data.heroImageUrl}}
+    <div class="cdx-hero-bg-blur" style="background-image: url('{{creature.data.heroImageUrl}}');" aria-hidden="true"></div>
+  {{/if}}
+
+  {{!-- Avatar only for SRD creatures (no journal art). When a journal image
+       exists it carries the visual, so the avatar is dropped and the text +
+       buttons shift left (single-column hero). --}}
+  {{#unless creature.data.heroImageUrl}}
+    {{#if creature.data.avatarUrl}}
+      <img class="cdx-hero-avatar" src="{{creature.data.avatarUrl}}" alt="">
+    {{else}}
+      <div class="cdx-hero-avatar cdx-hero-avatar-empty" aria-hidden="true">{{creature.data.portraitInitial}}</div>
+    {{/if}}
+  {{/unless}}
+
+  <div class="cdx-hero-body">
+    <div class="cdx-hero-meta">
+      {{#if creature.data.cr}}
+        <span class="cdx-cr">{{localize "BENEOS.CreatureCodex.CrPrefix"}} {{creature.data.cr}}</span>
+        <span class="cdx-divider" aria-hidden="true"></span>
+      {{/if}}
+      {{#if creature.data.typeLine}}<span class="cdx-type">{{creature.data.typeLine}}</span>{{else if creature.data.type}}<span class="cdx-type">{{creature.data.type}}</span>{{/if}}
+      <span class="cdx-divider" aria-hidden="true"></span>
+      {{#if creature.data.isSrd}}
+        <span class="cdx-origin cdx-origin-srd" data-tooltip="{{localize 'BENEOS.CreatureCodex.Origin.SrdTooltip'}}">{{localize "BENEOS.CreatureCodex.Origin.SrdCreature"}}</span>
+      {{else}}
+        <span class="cdx-origin">{{localize "BENEOS.CreatureCodex.Origin.BeneosOriginal"}}</span>
+      {{/if}}
+      {{#if creature.data.biome}}
+        <span class="cdx-divider" aria-hidden="true"></span>
+        <span class="cdx-biome">{{creature.data.biome}}</span>
+      {{/if}}
+      {{#if creature.data.faction}}
+        <span class="cdx-divider" aria-hidden="true"></span>
+        <span class="cdx-faction">{{creature.data.faction}}</span>
+      {{/if}}
+    </div>
+
+    <h1 class="cdx-name">{{creature.data.name}}</h1>
+
+    <div class="cdx-hero-actions">
+      {{#unless hideDownload}}
+        {{#if creature.data.pdfInstalled}}
+          <button type="button"
+                  class="cdx-btn cdx-btn-primary"
+                  data-action="cdx-open-pdf"
+                  data-pdf-path="{{creature.data.pdfLocalPath}}"
+                  data-actor-id="{{creature.actorId}}">
+            <i class="fa-solid fa-up-right-from-square"></i>
+            <span>{{localize "BENEOS.CreatureCodex.ViewPdf"}}</span>
+          </button>
+        {{else}}
+          <button type="button"
+                  class="cdx-btn cdx-btn-primary"
+                  data-action="cdx-download-pdf"
+                  data-actor-id="{{creature.actorId}}">
+            <i class="fa-solid fa-download"></i>
+            <span>{{localize "BENEOS.CreatureCodex.DownloadPdf"}}</span>
+          </button>
+        {{/if}}
+      {{/unless}}
+      <button type="button"
+              class="cdx-btn"
+              data-action="cdx-open-actor"
+              data-actor-id="{{creature.actorId}}">
+        <i class="fa-solid fa-user"></i>
+        <span>{{localize "BENEOS.CreatureCodex.OpenActor"}}</span>
+      </button>
+    </div>
+  </div>
+
+  {{#if creature.data.heroImageUrl}}
+    <div class="cdx-hero-journal"
+         role="button"
+         style="background-image: url('{{creature.data.heroImageUrl}}');"
+         data-action="cdx-open-journal-image"
+         data-src="{{creature.data.heroImageUrl}}"
+         data-title="{{creature.data.name}}">
+      <div class="cdx-hero-journal-zoom" aria-hidden="true">
+        <i class="fa-solid fa-magnifying-glass-plus"
+           data-tooltip="{{localize 'BENEOS.CreatureCodex.EnlargeJournal'}}"
+           data-tooltip-direction="DOWN"></i>
+      </div>
+    </div>
+  {{/if}}
+</header>

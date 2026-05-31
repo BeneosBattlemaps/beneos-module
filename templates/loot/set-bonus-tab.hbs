@@ -1,0 +1,89 @@
+<section class="tab beneos-set-bonus-tab" data-tab="beneos-sets" data-group="primary"
+         data-application-part="beneos-sets">
+
+  <header class="beneos-tab-intro">
+    <h2 class="beneos-tab-intro__heading">{{localize "BENEOS.Sheet.TabHeading"}}</h2>
+    <p class="beneos-tab-intro__lead">{{localize "BENEOS.Sheet.TabLead"}}</p>
+  </header>
+
+  {{#if isEmpty}}
+    <div class="beneos-set-empty">{{localize "BENEOS.Sheet.NoSets"}}</div>
+  {{else}}
+    {{#each groups}}
+      <article class="beneos-set-group" data-origin="{{slug}}" style="--origin-color:{{glow}};">
+
+        <header class="beneos-set-group__head">
+          <button type="button"
+                  class="beneos-set-group__icon is-clickable"
+                  data-action="beneos-set-open-codex"
+                  data-origin="{{slug}}"
+                  title="{{localize 'BENEOS.Sheet.OpenInCodex'}}">
+            {{#if originIconPath}}
+              <img src="{{originIconPath}}" alt="{{originName}}">
+            {{else}}
+              <span>{{mono}}</span>
+            {{/if}}
+          </button>
+          <div class="beneos-set-group__title">
+            <button type="button"
+                    class="beneos-set-group__name is-clickable"
+                    data-action="beneos-set-open-codex"
+                    data-origin="{{slug}}"
+                    title="{{localize 'BENEOS.Sheet.OpenInCodex'}}">{{originName}}</button>
+            <div class="beneos-set-group__count">{{localize "BENEOS.Sheet.AttunedCount" n=attunedCount}}</div>
+          </div>
+        </header>
+
+        <div class="beneos-set-rm-row"
+             data-tooltip="{{localize 'BENEOS.Sheet.RarityModifierTooltip'}}"
+             data-tooltip-direction="UP">
+          <span class="beneos-set-rm-row__label">{{localize "BENEOS.Sheet.RarityModifierLabel"}}</span>
+          <div class="beneos-set-rm-bar" aria-label="{{rarityModifierSum}} / 15">
+            {{#each rmPips}}
+              <span class="beneos-set-rm-pip{{#if filled}} is-filled{{/if}}"></span>
+            {{/each}}
+          </div>
+          <span class="beneos-set-rm-row__value">{{rarityModifierSum}}/15</span>
+        </div>
+
+        <div class="beneos-set-tiers">
+          {{#each tierStates}}
+            <div class="beneos-set-tier{{#if active}} is-active{{else}} is-locked{{/if}}" data-tier="{{key}}">
+              <div class="beneos-set-tier__label">{{label}}</div>
+              <div class="beneos-set-tier__status">{{statusLabel}}</div>
+              <div class="beneos-set-tier__cond">{{condition}}</div>
+            </div>
+          {{/each}}
+        </div>
+
+        <ul class="beneos-set-items">
+          {{#each attunedItems}}
+            <li class="beneos-set-item">
+              <img src="{{img}}" alt="">
+              <span>{{name}}</span>
+              <span class="beneos-set-item__rarity">{{rarity}}</span>
+            </li>
+          {{/each}}
+        </ul>
+
+        {{#if effects.length}}
+          <div class="beneos-set-effects">
+            {{#each effects}}
+              <div class="beneos-set-effect" data-tier="{{tier}}">
+                <div class="beneos-set-effect__head" data-action="beneos-toggle-effect">
+                  <span>{{label}}</span>
+                </div>
+                <div class="beneos-set-effect__body">{{{rulesHtml}}}</div>
+              </div>
+            {{/each}}
+          </div>
+        {{/if}}
+
+      </article>
+    {{/each}}
+  {{/if}}
+
+  {{!-- Sense Compass, aggregated at the end of the Beneos tab (M7.6) --}}
+  {{> "modules/beneos-module/templates/loot/sense-compass.hbs" senseCtx=senseCompass}}
+
+</section>

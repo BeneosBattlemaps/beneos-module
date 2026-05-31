@@ -186,14 +186,19 @@ const V13_CAT_TO_KIND = Object.freeze({
 })
 
 const KW_TOKEN_RE = /\{kw:([a-z\-]+)\|([^}]+)\}/gi
-const ITEM_REF_RE = /\[\[\/item\s+([^\]]+)\]\]/g
+// Item ref. The closing `]]` is tolerated as a single `]` too, because the
+// content pipeline occasionally emits a malformed `[[/item Name]` (one
+// bracket). Being lenient keeps such tokens from leaking as raw text.
+const ITEM_REF_RE = /\[\[\/item\s+([^\]]+)\]\]?/g
+// Bare dice expression in prose ("Roll 1d6", "2d8+3") → a rollable chip.
+const DICE_RE = /\b(\d+d\d+(?:\s*[+-]\s*\d+)?)\b/gi
 
 /** Tokenize a v1.3 string into the existing TacText array. Plain text
  *  outside of `{kw:CAT|TEXT}` and `[[/item Name]]` becomes a string;
  *  recognised tokens become `{chip, kind}` objects.  Unknown chip-cats
  *  fall through as plain strings so unknown markup is visible, not
  *  invisible. */
-function tokenizeV13ToTacText(str) {
+export function tokenizeV13ToTacText(str, resolveItem = null) {
   if (!str) return []
   const parts = []
   let i = 0
@@ -208,8 +213,12 @@ function tokenizeV13ToTacText(str) {
   }
   collect(KW_TOKEN_RE, "kw")
   collect(ITEM_REF_RE, "item")
+  collect(DICE_RE, "dice")
   tokens.sort((a, b) => a.start - b.start)
   for (const t of tokens) {
+    // Skip a token that starts inside an already-consumed range. This
+    // prevents a bare dice match inside a {kw:dmg|2d6} from duplicating.
+    if (t.start < i) continue
     if (t.start > i) parts.push(str.slice(i, t.start))
     if (t.kind === "kw") {
       const cat = (t.match[1] || "").toLowerCase()
@@ -217,14 +226,103 @@ function tokenizeV13ToTacText(str) {
       const kind = V13_CAT_TO_KIND[cat]
       if (kind) parts.push({ chip: text, kind })
       else parts.push(text)   // unknown cat — plain text fallback
+    } else if (t.kind === "dice") {
+      // Rollable dice chip; strip inner whitespace so new Roll() is clean.
+      parts.push({ chip: (t.match[1] || "").replace(/\s+/g, ""), kind: "dice" })
     } else {
       const refName = (t.match[1] || "").trim()
-      parts.push({ chip: refName, kind: "feature" })
+      // Resolve [[/item NAME]] to a clickable chip when the caller supplied
+      // an item resolver (actor available). itemId + summary let the
+      // template render a trigger-button with a hover tooltip.
+      const resolved = typeof resolveItem === "function" ? resolveItem(refName) : null
+      if (resolved && resolved.id) {
+        parts.push({ chip: refName, kind: "feature", itemId: resolved.id, summary: resolved.summary || "", summaryHtml: resolved.summaryHtml || "" })
+      } else {
+        parts.push({ chip: refName, kind: "feature" })
+      }
     }
     i = t.end
   }
   if (i < str.length) parts.push(str.slice(i))
   return parts.filter(p => typeof p !== "string" || p.length > 0)
+}
+
+/** Render a token string into a highlighted HTML string for use in a
+ *  Foundry `data-tooltip-html` attribute: [[/item]] / {kw:…} become styled
+ *  spans (gold item, blue save, orange status, …) instead of raw syntax.
+ *  Tokenized with resolveItem=null so nothing is clickable (a tooltip is
+ *  static) and there is no recursion. Span attributes are single-quoted so
+ *  the whole string is safe inside a double-quoted HTML attribute. */
+export function summaryToTooltipHtml(summary) {
+  if (!summary) return ""
+  const esc = (s) => String(s).replace(/[&<>"']/g, c => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]))
+  const clsFor = (kind) =>
+    kind === "feature" ? "cdx-tt-item"
+    : kind === "save" ? "cdx-tt-save"
+    : kind === "condition" ? "cdx-tt-status"
+    : (kind === "dice" || kind === "dc" || kind === "tohit") ? "cdx-tt-dice"
+    : "cdx-tt-kw"
+  return tokenizeV13ToTacText(summary, null).map(p => {
+    if (typeof p === "string") return esc(p)
+    return `<span class='cdx-tt ${clsFor(p.kind)}'>${esc(p.chip)}</span>`
+  }).join("")
+}
+
+/** Enrich a dnd5e description HTML (so &Reference[…], [[/roll]] and @UUID
+ *  links render) for use inside an ability-reference hover tooltip. V13 moved
+ *  the enricher to foundry.applications.ux.TextEditor; fall back to the legacy
+ *  global and finally to the raw HTML so a bad description never throws. */
+export async function enrichDescription(html, item) {
+  const raw = String(html ?? "").trim()
+  if (!raw) return ""
+  try {
+    const TE = foundry.applications?.ux?.TextEditor?.implementation ?? globalThis.TextEditor
+    const rollData = item?.getRollData?.() ?? {}
+    return await TE.enrichHTML(raw, { relativeTo: item, secrets: false, rollData })
+  } catch (_) {
+    return raw
+  }
+}
+
+/** Build the ability-reference hover tooltip: two separated panes, the real
+ *  enriched dnd5e ability text on the left ("Ability") and the Beneos author
+ *  comment on the right ("Beneos Comment"). Returns "" when there is no Beneos
+ *  comment, so chips without authored content keep their prior no-tooltip
+ *  behaviour. The whole string lands in a double-quoted data-tooltip-html
+ *  attribute, so internal markup uses single quotes and the enriched
+ *  description's own double-quotes are escaped to &quot; (the browser restores
+ *  them when reading the attribute). */
+export function buildAbilityRefTooltip(descHtml, summary) {
+  if (!summary) return ""
+  const q = (s) => String(s ?? "").replace(/"/g, "&quot;")
+  const L = (key, fb) => {
+    try { const s = globalThis.game?.i18n?.localize?.(key); return q((s && s !== key) ? s : fb) }
+    catch (_) { return q(fb) }
+  }
+  const commentHtml = summaryToTooltipHtml(summary)
+  const descSafe = String(descHtml ?? "").trim().replace(/"/g, "&quot;")
+  const abilHead = L("BENEOS.CreatureCodex.Ability.AbilityPaneHeading", "Ability")
+  const commHead = L("BENEOS.CreatureCodex.Ability.BeneosCommentHeading", "Beneos Comment")
+  const noDesc   = L("BENEOS.CreatureCodex.Ability.NoDescription", "No description available.")
+  const leftTip   = L("BENEOS.CreatureCodex.Ability.TipLeftClick", "Left-click: use ability")
+  const rightTip  = L("BENEOS.CreatureCodex.Ability.TipRightClick", "Right-click: open sheet")
+  const leftBody = descSafe || `<span class='cdx-ref-empty'>${noDesc}</span>`
+  // Long descriptions overflow the height-capped tooltip box; flag them so the
+  // CSS fades the cut edge and shows a trailing "…". Plain-text length is a
+  // good-enough proxy for "taller than ~15 lines" without measuring layout.
+  const descPlainLen = descSafe.replace(/<[^>]*>/g, "").replace(/&[a-z]+;/gi, " ").trim().length
+  const longCls = descPlainLen > 640 ? " cdx-ref-body-long" : ""
+  return `<div class='cdx-ref-tip'>`
+       + `<div class='cdx-ref-cols'>`
+       + `<div class='cdx-ref-pane cdx-ref-ability'><div class='cdx-ref-head'>${abilHead}</div><div class='cdx-ref-body${longCls}'>${leftBody}</div></div>`
+       + `<div class='cdx-ref-pane cdx-ref-comment'><div class='cdx-ref-head'>${commHead}</div><div class='cdx-ref-body'>${commentHtml}</div></div>`
+       + `</div>`
+       + `<div class='cdx-ref-actions'>`
+       + `<span class='cdx-ref-action'><i class='fa-solid fa-arrow-pointer'></i> ${leftTip}</span>`
+       + `<span class='cdx-ref-action'><i class='fa-solid fa-up-right-from-square'></i> ${rightTip}</span>`
+       + `</div>`
+       + `</div>`
 }
 
 /** One v1.3 clause → one TacText[] (concatenation of slot strings with
@@ -300,24 +398,31 @@ function v13AbilityToTacItem(ab) {
   return { text, children }
 }
 
-/** Map v1.3 immersive.foreshadowing[] → modul Foreshadow[]. The shapes
- *  align closely (title / description / checks[] with dc / skills /
- *  result). Modul uses `entries` as the array key; we expose under
- *  `foreshadowing` to match the existing adapter contract. */
+/** Map immersive.foreshadowing[] → modul Foreshadow[].
+ *  Schema v1.4.1 uses `narrative` + `checks[]` plural with optional
+ *  `level` per check (e.g. "discovery"). Legacy migrated docs may carry
+ *  `description` + singular `check`. Both shapes feed through. Output
+ *  always exposes `text` + `checks[]` plural so the template iterates. */
 function v13ForeshadowingToModul(arr) {
   if (!Array.isArray(arr)) return []
-  return arr.map((f, idx) => ({
-    id:          f.id || `fs-${idx + 1}`,
-    title:       f.title || "",
-    description: f.description || "",
-    checks:      (f.checks || []).map(c => ({
-      level:    c.level,
-      dc:       c.dc,
+  return arr.map((f, idx) => {
+    const rawChecks = Array.isArray(f.checks)
+      ? f.checks
+      : (f.check ? [f.check] : [])
+    const checks = rawChecks.map(c => ({
+      level:    c.level ?? null,
+      dc:       c.dc ?? null,
       skills:   c.skills || [],
       result:   c.result || "",
-      preparation: c.preparation || ""
+      modifier: c.modifier || ""
     }))
-  }))
+    return {
+      id:    f.id || `fs-${idx + 1}`,
+      title: f.title || "",
+      text:  f.narrative || f.text || f.description || "",
+      checks
+    }
+  })
 }
 
 /** v1.3 immersive.storyPrompts[] → modul StoryPrompt[]. */
@@ -331,39 +436,74 @@ function v13StoryPromptsToModul(arr) {
   }))
 }
 
+/** Normalize an ability name / trigger to a stable dedup key. */
+function _promptKey(s) {
+  return String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "").trim()
+}
+
 /** v1.3 abilities[].duringCombatPrompts[<variant>] → modul abilityPrompts.
- *  The modul shape is a flat list of `{name, prompt}`; v1.3 supports
- *  variants per ability (default + named variants like rabid_assault).
- *  Bridge flattens them with `Name (variant)` style display names. */
+ *  Output items carry `_key` (normalized ability name) so the merge with
+ *  contextualPrompts can dedup. Variants other than `default` are emitted
+ *  as separate entries with a `Name: Variant` display label. */
 function v13AbilityPromptsToModul(abilities) {
   if (!Array.isArray(abilities)) return []
   const out = []
   for (const ab of abilities) {
     const prompts = ab.duringCombatPrompts || {}
     for (const [variant, text] of Object.entries(prompts)) {
-      if (!text) continue
-      const label = variant === "default"
+      if (!text || !text.trim()) continue
+      const isDefault = variant === "default"
+      const label = isDefault
         ? (ab.name || "Ability")
         : `${ab.name || "Ability"}: ${variant.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}`
-      out.push({ name: label, prompt: text })
+      out.push({
+        name: label,
+        text,
+        _key: _promptKey(ab.name) + (isDefault ? "" : `:${variant}`)
+      })
     }
   }
   return out
 }
 
-/** v1.3 immersive.contextualPrompts[] (battle-cries, trigger-conditions,
+/** immersive.contextualPrompts[] (battle-cries, trigger-conditions,
  *  phase descriptions that didn't resolve to an Ability) → modul
  *  abilityPrompts list as well. They show up in the Theater tab under
  *  the same UI grouping. */
 function v13ContextualPromptsToModul(arr) {
   if (!Array.isArray(arr)) return []
-  return arr.map(p => ({ name: p.trigger || p.id || "Contextual", prompt: p.text || "" }))
+  return arr.map(p => ({
+    name: p.trigger || p.id || "Contextual",
+    text: p.text || "",
+    _key: _promptKey(p.trigger || p.id)
+  }))
+}
+
+/** Merge contextualPrompts (priority) with abilityPrompts (fallback).
+ *  When an ability's name matches a contextualPrompt trigger (by normalized
+ *  key), the contextualPrompt wins and the duplicate abilityPrompt is
+ *  skipped. Items without text are dropped entirely. */
+function mergeAbilityPrompts(contextualList, abilityList) {
+  const seen = new Set()
+  const out = []
+  for (const p of contextualList) {
+    if (!p.text?.trim()) continue
+    if (p._key) seen.add(p._key)
+    out.push(p)
+  }
+  for (const p of abilityList) {
+    if (!p.text?.trim()) continue
+    if (p._key && seen.has(p._key)) continue
+    out.push(p)
+    if (p._key) seen.add(p._key)
+  }
+  return out
 }
 
 /** Main entry: synthesize the existing CreatureCodex shape from a
  *  validated v1.3 content object. Returns the same fields that the
  *  legacy HTML-pipeline produced, so the renderer is unchanged. */
-function transformV13ToCreatureCodex(content, actor, props, tokenKey, journal) {
+function transformV13ToCreatureCodex(content, actor, props, tokenKey, journal, descById = new Map()) {
   const showcase = content.showcase || {}
   const immersive = content.immersive || {}
   const meta = content.meta || {}
@@ -411,6 +551,73 @@ function transformV13ToCreatureCodex(content, actor, props, tokenKey, journal) {
   addNotes("traits",       tn.tactics,      "Tactics")
   addNotes("movement",     tn.movement,     "Movement Notes")
 
+  // ---- Tactical Sections (M8.3.14) — ordered, parsed, interactive ----
+  // resolveItem maps a [[/item NAME]] reference to the actor item id and
+  // its Beneos summary so inline chips become clickable trigger buttons
+  // with a hover tooltip.
+  const _normName = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
+  const _actorItems = Array.from(actor?.items ?? [])
+  const resolveItem = (refName) => {
+    const target = _normName(refName)
+    if (!target) return null
+    const item = _actorItems.find(it => _normName(it.name) === target)
+      || _actorItems.find(it => _normName(it.name).includes(target))
+      || _actorItems.find(it => target.includes(_normName(it.name)))
+    if (!item) return null
+    const ab = (content.abilities || []).find(a => a.sourceItemId === item.id)
+      || (content.abilities || []).find(a => _normName(a.name) === _normName(item.name))
+    const summary = (ab && ab.summary) || ""
+    return { id: item.id, summary, summaryHtml: buildAbilityRefTooltip(descById.get(item.id) || "", summary) }
+  }
+  const _loc = (key, fallback) => {
+    try { const s = globalThis.game?.i18n?.localize?.(key); return (s && s !== key) ? s : fallback }
+    catch (_) { return fallback }
+  }
+  const _titleCase = (k) => String(k || "").replace(/[_-]+/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, c => c.toUpperCase()).trim()
+
+  const tacticalSections = []
+  const cm = content.creatureMechanics || {}
+  // 1. Core Mechanics (anchor mechanics with name + description)
+  if (Array.isArray(cm.coreMechanics) && cm.coreMechanics.length) {
+    tacticalSections.push({
+      id: "core",
+      title: _loc("BENEOS.CreatureCodex.Tactical.CoreMechanics", "Core Mechanics"),
+      items: cm.coreMechanics.map(m => ({
+        heading: m.name || "",
+        text: tokenizeV13ToTacText(m.description || "", resolveItem)
+      }))
+    })
+  }
+  // 2. Custom Statuses
+  if (Array.isArray(cm.customStatuses) && cm.customStatuses.length) {
+    tacticalSections.push({
+      id: "statuses",
+      title: _loc("BENEOS.CreatureCodex.Tactical.CustomStatuses", "Custom Statuses"),
+      items: cm.customStatuses.map(s => ({
+        heading: s.name || s.label || "",
+        text: tokenizeV13ToTacText(s.description || s.text || "", resolveItem)
+      }))
+    })
+  }
+  // 3-6. tacticalNotes flat string-array sections in fixed order
+  const noteSection = (id, title, bullets) => {
+    if (!Array.isArray(bullets) || !bullets.length) return
+    tacticalSections.push({ id, title, items: bullets.map(b => ({ text: tokenizeV13ToTacText(b, resolveItem) })) })
+  }
+  noteSection("general",   _loc("BENEOS.CreatureCodex.Tactical.GeneralNotes", "General Notes"), tn.generalNotes)
+  noteSection("before",    _loc("BENEOS.CreatureCodex.Tactical.BeforeCombat", "Before Combat"), tn.beforeCombat)
+  noteSection("startturn", _loc("BENEOS.CreatureCodex.Tactical.StartOfTurn",  "Start of Turn"), tn.startTurn)
+  noteSection("movement",  _loc("BENEOS.CreatureCodex.Tactical.Movement",     "Movement"),      tn.movement)
+  // Any other tacticalNotes keys we did not explicitly order (except tactics)
+  const _handled = new Set(["generalNotes", "beforeCombat", "startTurn", "movement", "tactics"])
+  for (const [key, val] of Object.entries(tn)) {
+    if (_handled.has(key) || !Array.isArray(val) || !val.length) continue
+    tacticalSections.push({ id: key, title: _titleCase(key), items: val.map(b => ({ text: tokenizeV13ToTacText(b, resolveItem) })) })
+  }
+  // 7. Tactics — always last
+  noteSection("tactics", _loc("BENEOS.CreatureCodex.Tactical.Tactics", "Tactics"), tn.tactics)
+
   // Lore / showcase — modul expects a single string each.
   const loreText = (immersive.lore && immersive.lore.text) || ""
   const showcaseStr = showcase.tagline
@@ -418,7 +625,15 @@ function transformV13ToCreatureCodex(content, actor, props, tokenKey, journal) {
     : (showcase.summary || showcase.name || "")
 
   // Compose final CreatureCodex object.
-  const playerImg = actor?.img
+  // Avatar = actor.img (Foundry portrait). Hero/journal image priority:
+  //   1) v1.3 content.visuals.heroImageUrl (Beneos pipeline output)
+  //   2) Creature Player Handout journal page src
+  //   3) actor.img as last-resort fallback
+  const playerPage = (journal?.pages?.contents ?? []).find(p => p.name === "Creature Player Handout")
+  const avatarImg  = actor?.img
+  const heroImg    = (content.visuals && content.visuals.heroImageUrl)
+                   || playerPage?.src
+                   || actor?.img
   const name = actor?.name || showcase.name || ""
   const cr = actor?.system?.details?.cr?.value
           ?? actor?.system?.details?.cr
@@ -427,10 +642,10 @@ function transformV13ToCreatureCodex(content, actor, props, tokenKey, journal) {
   const type = flat(actor?.system?.details?.type?.value ?? actor?.system?.details?.type)
 
   // Combined abilityPrompts: per-ability variants + contextualPrompts.
-  const abilityPrompts = [
-    ...v13AbilityPromptsToModul(content.abilities),
-    ...v13ContextualPromptsToModul(immersive.contextualPrompts)
-  ]
+  const abilityPrompts = mergeAbilityPrompts(
+    v13ContextualPromptsToModul(immersive.contextualPrompts),
+    v13AbilityPromptsToModul(content.abilities)
+  )
 
   return {
     id:                 actor?.id,
@@ -445,7 +660,8 @@ function transformV13ToCreatureCodex(content, actor, props, tokenKey, journal) {
 
     sizeTone:           resolveSizeTone(actor, props),
     portraitInitial:    (name?.[0] ?? "?").toUpperCase(),
-    heroImageUrl:       playerImg,
+    avatarUrl:          avatarImg,
+    heroImageUrl:       heroImg,
 
     showcase:           showcaseStr,
     lore:               loreText,
@@ -455,6 +671,7 @@ function transformV13ToCreatureCodex(content, actor, props, tokenKey, journal) {
     abilityPrompts,
     deathPrompt:        immersive.deathPrompt || "",
     tacticalGuide,
+    tacticalSections,
 
     recommendedAllies:  meta.recommendedAllies || [],
     tags:               Array.isArray(props.type) ? props.type : (props.type ? [props.type] : []),
@@ -501,7 +718,14 @@ export async function getCodexDataForActor(actor) {
     const tokenInfo = (globalThis.BeneosUtility?.beneosTokens ?? {})[tokenKey] ?? {}
     const props     = tokenInfo.properties ?? {}
     const journal   = await resolveJournalEntry(actor)
-    return transformV13ToCreatureCodex(v13Content, actor, props, tokenKey, journal)
+    // Enrich each item's dnd5e description once so the ability-reference hover
+    // tooltips can show the real ability text beside the Beneos comment.
+    const descById = new Map()
+    for (const it of (actor.items ?? [])) {
+      const raw = it.system?.description?.value ?? ""
+      descById.set(it.id, raw ? await enrichDescription(raw, it) : "")
+    }
+    return transformV13ToCreatureCodex(v13Content, actor, props, tokenKey, journal, descById)
   }
 
   // Legacy path — HTML-parser pipeline. Untouched.
@@ -577,7 +801,8 @@ export async function getCodexDataForActor(actor) {
   const name = actor.name
   const type = flat(actor.system?.details?.type?.value ?? actor.system?.details?.type)
 
-  const playerImg = playerPage?.src ?? actor.img
+  const avatarImg = actor.img
+  const heroImg   = playerPage?.src ?? actor.img
 
   return {
     /* identity */
@@ -595,7 +820,8 @@ export async function getCodexDataForActor(actor) {
     /* visuals */
     sizeTone:           resolveSizeTone(actor, props),
     portraitInitial:    (name?.[0] ?? "?").toUpperCase(),
-    heroImageUrl:       playerImg,
+    avatarUrl:          avatarImg,
+    heroImageUrl:       heroImg,
 
     /* narrative */
     showcase,

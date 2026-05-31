@@ -1,0 +1,68 @@
+<section class="cdx-section">
+  {{#if creature.hasLore}}
+    <header class="cdx-h">
+      <h2>{{localize "BENEOS.CreatureCodex.Overview.LoreTitle"}}</h2>
+      <p>{{localize "BENEOS.CreatureCodex.Overview.LoreSub"}}</p>
+    </header>
+    <blockquote class="cdx-blockquote">{{creature.data.lore}}</blockquote>
+  {{/if}}
+
+  <div class="cdx-grid-2">
+    <div>
+      <header class="cdx-h small">
+        <h3>{{localize "BENEOS.CreatureCodex.Overview.AlliesTitle"}}</h3>
+        <p>{{localize "BENEOS.CreatureCodex.Overview.AlliesSub"}}</p>
+      </header>
+      {{#if creature.hasRecommendedAllies}}
+        <ul class="cdx-ally-list">
+          {{#each creature.data.recommendedAllies}}
+            <li>
+              <button type="button"
+                      class="cdx-ally-link"
+                      data-action="cdx-ally-search"
+                      data-ally-name="{{this}}"
+                      title="{{localize 'BENEOS.CreatureCodex.Overview.AllyTooltip'}}">
+                <span class="cdx-ally-dot" aria-hidden="true"></span>
+                <span class="cdx-ally-name">{{this}}</span>
+                <i class="cdx-ally-icon fa-solid fa-magnifying-glass"></i>
+              </button>
+            </li>
+          {{/each}}
+        </ul>
+      {{else}}
+        <p class="cdx-empty">{{localize "BENEOS.CreatureCodex.Overview.AlliesEmpty"}}</p>
+      {{/if}}
+    </div>
+
+    <div>
+      <header class="cdx-h small">
+        <h3>{{localize "BENEOS.CreatureCodex.Overview.TagsTitle"}}</h3>
+        <p>{{localize "BENEOS.CreatureCodex.Overview.TagsSub"}}</p>
+      </header>
+      <div class="cdx-tags-grid">
+        {{#if creature.data.fightingStyle.length}}
+          <div class="cdx-tag-row">
+            <span class="cdx-tag-label">{{localize "BENEOS.CreatureCodex.Tags.FightingStyle"}}</span>
+            <div class="cdx-tag-list">
+              {{#each creature.data.fightingStyle}}<span class="cdx-tag">{{this}}</span>{{/each}}
+            </div>
+          </div>
+        {{/if}}
+        {{#if creature.data.purpose.length}}
+          <div class="cdx-tag-row">
+            <span class="cdx-tag-label">{{localize "BENEOS.CreatureCodex.Tags.Purpose"}}</span>
+            <div class="cdx-tag-list">
+              {{#each creature.data.purpose}}<span class="cdx-tag">{{this}}</span>{{/each}}
+            </div>
+          </div>
+        {{/if}}
+        {{#if creature.data.faction}}
+          <div class="cdx-tag-row">
+            <span class="cdx-tag-label">{{localize "BENEOS.CreatureCodex.Tags.Faction"}}</span>
+            <div class="cdx-tag-list"><span class="cdx-tag">{{creature.data.faction}}</span></div>
+          </div>
+        {{/if}}
+      </div>
+    </div>
+  </div>
+</section>

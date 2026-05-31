@@ -1,0 +1,51 @@
+<section class="cdx-section">
+
+  {{#if creature.hasFirstAppearance}}
+    <header class="cdx-h">
+      <h2>{{localize "BENEOS.CreatureCodex.Theater.FirstAppearanceTitle"}}</h2>
+      <p>{{localize "BENEOS.CreatureCodex.Theater.FirstAppearanceSub"}}</p>
+    </header>
+    <blockquote class="cdx-blockquote cdx-blockquote-dramatic">{{creature.data.firstAppearance}}</blockquote>
+  {{/if}}
+
+  {{#if creature.hasAbilityPrompts}}
+    <header class="cdx-h">
+      <h2>{{localize "BENEOS.CreatureCodex.Theater.PromptsTitle"}}</h2>
+      <p>{{localize "BENEOS.CreatureCodex.Theater.PromptsSub"}}</p>
+    </header>
+    <div class="cdx-prompts cdx-prompts-grid">
+      {{#each creature.data.abilityPrompts}}
+        <article class="cdx-prompt{{#if summaryTokens.length}} cdx-prompt-has-card{{/if}}">
+          <header class="cdx-prompt-head"{{#if summaryTokens.length}} data-action="cdx-toggle-prompt"{{/if}}>
+            {{#if itemImg}}
+              <img class="cdx-prompt-icon" src="{{itemImg}}" alt="">
+            {{else}}
+              <span class="cdx-prompt-marker" aria-hidden="true"></span>
+            {{/if}}
+            <h3 class="cdx-prompt-name">{{name}}</h3>
+          </header>
+          <p class="cdx-prompt-text">
+            {{> "beneos-codex/creature/tac-inline" parts=textTokens actorId=../creature.actorId}}
+          </p>
+          {{#if summaryTokens.length}}
+            <div class="cdx-prompt-hover-card">
+              {{> "beneos-codex/creature/tac-inline" parts=summaryTokens static=true}}
+            </div>
+          {{/if}}
+        </article>
+      {{/each}}
+    </div>
+  {{/if}}
+
+  {{#if creature.hasDeathPrompt}}
+    <header class="cdx-h">
+      <h2>{{localize "BENEOS.CreatureCodex.Theater.DeathTitle"}}</h2>
+      <p>{{localize "BENEOS.CreatureCodex.Theater.DeathSub"}}</p>
+    </header>
+    <blockquote class="cdx-blockquote cdx-blockquote-death">{{creature.data.deathPrompt}}</blockquote>
+  {{/if}}
+
+  {{#unless (or creature.hasFirstAppearance creature.hasAbilityPrompts creature.hasDeathPrompt)}}
+    <p class="cdx-empty">{{localize "BENEOS.CreatureCodex.Theater.Empty"}}</p>
+  {{/unless}}
+</section>

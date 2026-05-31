@@ -102,6 +102,15 @@
   color: var(--bc-accent-soft);
   border-color: var(--bc-accent-line);
 }
+/* M8.3.41: kill the Foundry-core button focus ring (reddish outline +
+   glow) on the tabs. It lingered as a 4th visual state after a click and
+   only cleared on blur. The tab now has exactly three states: rest, hover,
+   and active/selected (handled by the rules above). */
+.beneos-cloud-app .bc-tab:focus,
+.beneos-cloud-app .bc-tab:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
 
 /* ---- Sidebar ---- */
 
@@ -114,7 +123,7 @@
    * declared at the wrapper level and the WebKit pseudo-element rules
    * are scoped to the same selector below. */
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.10) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
 }
 /* Wave B-8d-fix-6: shared modern scrollbar treatment for both the
  * sidebar and the result list. WebKit uses pseudo-element selectors;
@@ -124,8 +133,8 @@
  * Track stays transparent — no Excel-style border/groove. */
 .beneos-cloud-app .bc-sidebar::-webkit-scrollbar,
 .beneos-cloud-app .bc-result-list::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 .beneos-cloud-app .bc-sidebar::-webkit-scrollbar-track,
 .beneos-cloud-app .bc-result-list::-webkit-scrollbar-track {
@@ -133,13 +142,13 @@
 }
 .beneos-cloud-app .bc-sidebar::-webkit-scrollbar-thumb,
 .beneos-cloud-app .bc-result-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.28);
   border-radius: 6px;
   transition: background 0.15s;
 }
 .beneos-cloud-app .bc-sidebar:hover::-webkit-scrollbar-thumb,
 .beneos-cloud-app .bc-result-list:hover::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.20);
+  background: rgba(255, 255, 255, 0.45);
 }
 .beneos-cloud-app .bc-sidebar::-webkit-scrollbar-thumb:hover,
 .beneos-cloud-app .bc-result-list::-webkit-scrollbar-thumb:hover {
@@ -758,6 +767,47 @@
   align-items: center;
   gap: var(--bc-space-2);
 }
+/* Active "Show" filter chip: lives next to the result count, lightly
+   highlighted so the global filter is obvious after a tab switch. */
+.beneos-cloud-app .bc-results-show-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--bc-accent-dim);
+  border: 1px solid var(--bc-accent-line);
+  color: var(--bc-accent-soft);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.beneos-cloud-app .bc-results-show-chip i { color: var(--bc-accent); font-size: 10px; }
+/* X to clear the active Show filter directly from the chip. */
+.beneos-cloud-app .bc-results-show-chip-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  line-height: 1;
+  margin-left: 1px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+  color: var(--bc-accent-soft);
+  cursor: pointer;
+  transition: color 0.12s, transform 0.12s;
+}
+.beneos-cloud-app .bc-results-show-chip-clear i { color: inherit; font-size: 10px; }
+.beneos-cloud-app .bc-results-show-chip-clear:hover {
+  background: transparent;
+  color: #fff;
+  transform: scale(1.18);
+}
 .beneos-cloud-app .bc-result-list {
   flex: 1 1 auto;
   overflow-y: auto;
@@ -769,7 +819,7 @@
   /* Wave B-8d-fix-6: slim modern scrollbar — Firefox declaration here,
    * WebKit pseudo-elements live in the shared rule above. */
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.10) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
 }
 .beneos-cloud-app .bc-results-empty {
   flex: 1 1 auto;
@@ -1057,6 +1107,34 @@
 }
 .beneos-cloud-app .bc-card-group-update:hover {
   background: rgba(143, 170, 198, 0.10);
+}
+/* Locked cards: the user does not have access (no campaign membership, not
+   free, not installed). A reddish tint + soft red border accent makes "no
+   access" obvious at a glance, in both list and grid view. Compound selector
+   raises specificity above .bc-result-card's later-defined --bc-card bg. */
+.beneos-cloud-app .bc-result-card.bc-card-group-locked {
+  background: rgba(213, 107, 82, 0.14);
+  border-color: rgba(213, 107, 82, 0.45);
+}
+.beneos-cloud-app .bc-result-card.bc-card-group-locked:hover {
+  background: rgba(213, 107, 82, 0.20);
+  border-color: rgba(213, 107, 82, 0.60);
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card.bc-card-group-locked {
+  background: rgba(213, 107, 82, 0.14);
+}
+/* Free cards (only grouped out for non-patrons): a greenish tint mirrors the
+   red locked tint so "this one is free" reads at a glance, in list + grid. */
+.beneos-cloud-app .bc-result-card.bc-card-group-free {
+  background: rgba(82, 180, 107, 0.14);
+  border-color: rgba(82, 180, 107, 0.45);
+}
+.beneos-cloud-app .bc-result-card.bc-card-group-free:hover {
+  background: rgba(82, 180, 107, 0.20);
+  border-color: rgba(82, 180, 107, 0.60);
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card.bc-card-group-free {
+  background: rgba(82, 180, 107, 0.14);
 }
 
 /* Wave B-9: grid view — Pokémon-card-style layout. The list flex
@@ -1405,6 +1483,31 @@
 @keyframes bc-card-flash {
   0%   { opacity: 1.0; }
   100% { opacity: 0.0; }
+}
+
+/* Failed-download flash: a red pulse signalling the asset could not be
+   fetched (offline / signed-out / Patreon-locked). Mirrors the green
+   just-installed flash but in danger red and a touch quicker. */
+.beneos-cloud-app .bc-result-card.bc-card-install-failed::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(213, 107, 82, 0.42),
+    rgba(213, 107, 82, 0.52)
+  );
+  border-radius: var(--bc-radius);
+  pointer-events: none;
+  z-index: 1;
+  animation: bc-card-flash 1.1s ease-out forwards;
+}
+.beneos-cloud-app .bc-result-card.bc-card-install-failed > * {
+  position: relative;
+  z-index: 2;
 }
 
 .beneos-cloud-app .bc-state-installing {
@@ -1835,6 +1938,15 @@
 .beneos-cloud-app .bc-drawer-origin {
   margin-top: var(--bc-space-3);
 }
+/* Locked-card drawer: blur the info text (fields, description, origin, full
+   description) so non-patrons get no readable content. The action row keeps
+   its sharp "Join Patreon" CTA (it lives outside these blurred blocks). */
+.beneos-cloud-app .bc-drawer-blur {
+  filter: blur(5px) saturate(0.6);
+  opacity: 0.5;
+  pointer-events: none;
+  user-select: none;
+}
 .beneos-cloud-app .bc-drawer-origin-divider {
   border: 0;
   border-top: 1px solid var(--bc-accent-line);
@@ -2172,6 +2284,12 @@
 }
 .beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-card-actions .bc-card-button {
   flex: 0 0 auto;
+}
+/* List-mode: the Codex button is icon-only (label hidden) like Install/Update,
+   so the labeled button no longer overflows the narrow actions column /
+   triggers a horizontal scrollbar. Grid-mode keeps the "Codex" label. */
+.beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-action-codex span {
+  display: none;
 }
 /* V12: Update-pill carries two label spans. Default (list-mode etc.):
    show the full "Update Available" label. Grid-Mode swaps to the short
@@ -2810,6 +2928,23 @@
   align-items: center;
   gap: var(--bc-space-2);
 }
+/* List-mode detail drawer: the injected "Open Codex" button carries a text
+   label, so the [fields | install + Open Codex] flex row grew wider than the
+   narrow drawer and produced an inner horizontal scrollbar. In list mode only,
+   stack the fields above a full-width action row and drop the Open Codex button
+   onto its own line below the install/state control. Grid mode keeps its own
+   right-column layout (handled by the .bc-view-grid drawer overrides). */
+.beneos-cloud-app .bc-results:has(.bc-result-list:not(.bc-view-grid)) .bc-detail-drawer .bc-drawer-summary {
+  flex-direction: column;
+  align-items: stretch;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list:not(.bc-view-grid)) .bc-detail-drawer .bc-drawer-summary > .bc-drawer-action {
+  flex-wrap: wrap;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list:not(.bc-view-grid)) .bc-detail-drawer .bc-action-open-codex {
+  flex: 1 0 100%;
+  justify-content: center;
+}
 .beneos-cloud-app .bc-drawer-fields {
   display: grid;
   grid-template-columns: max-content 1fr;
@@ -2886,6 +3021,30 @@
   background: rgba(0, 0, 0, 0.18);
   border: 1px solid var(--bc-border);
   border-radius: 4px;
+}
+/* M8.3.40: highlighted key terms from the proprietary __phrase__ markup
+   (rendered into both the cloud blurb and the installed full description). */
+.beneos-cloud-app .bc-drawer-description .bc-md-em,
+.beneos-cloud-app .bc-drawer-local-description-body .bc-md-em {
+  font-weight: 700;
+  color: var(--bc-accent, #f0c772);
+}
+/* M8.3.41: dice mechanics surfaced from the description ([[/roll 2d6]],
+   bare 2d6 / 1D8 etc.). Rendered as a non-clickable monospace chip so the
+   formula reads at a glance without implying it is interactive. */
+.beneos-cloud-app .bc-drawer-description .bc-md-roll,
+.beneos-cloud-app .bc-drawer-local-description-body .bc-md-roll {
+  display: inline-block;
+  font-family: var(--bc-font-mono, ui-monospace, "Cascadia Code", Consolas, monospace);
+  font-weight: 600;
+  font-size: 0.92em;
+  line-height: 1.2;
+  color: var(--bc-accent, #f0c772);
+  background: var(--bc-accent-dim, rgba(240, 199, 114, 0.12));
+  border: 1px solid var(--bc-accent-line, rgba(240, 199, 114, 0.3));
+  border-radius: 4px;
+  padding: 0 5px;
+  white-space: nowrap;
 }
 /* V8: Grid-Mode override removed. The base rule above no longer sets a
    max-height or inner overflow, so List- AND Grid-Mode both flow the
@@ -2987,8 +3146,13 @@
   display: flex;
   align-items: center;
   gap: var(--bc-space-2);
-  flex-wrap: wrap;
+  /* Keep chip + Sign-In + Settings on a single row in every login state.
+     Wrapping pushed Settings onto a second line and shifted the whole footer. */
+  flex-wrap: nowrap;
+  min-width: 0;
 }
+.beneos-cloud-app .bc-footer-left .bc-account-chip,
+.beneos-cloud-app .bc-footer-left .bc-footer-button { white-space: nowrap; flex: 0 0 auto; }
 .beneos-cloud-app .bc-footer-right {
   display: flex;
   align-items: center;
@@ -3201,6 +3365,16 @@ button.beneos-icon-logo {
   background: var(--bc-accent-line);
   color: var(--bc-accent-strong);
 }
+/* Sign-in button: a gentle pulse every 2s draws the eye while the user is
+   signed out, without being distracting. Disabled in Performance Mode. */
+@keyframes bc-signin-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 201, 146, 0.00); }
+  50%      { box-shadow: 0 0 0 6px rgba(245, 201, 146, 0.22); }
+}
+.beneos-cloud-app .beneos-cloud-login-button {
+  animation: bc-signin-pulse 2s ease-in-out infinite;
+}
+body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: none; }
 
 /* ---- Title bar Patreon status colour (mirrors v1 behavior) ---- */
 
@@ -5663,6 +5837,25 @@ button.beneos-icon-logo {
   font-weight: 700;
   color: var(--bc-text);
 }
+/* Small "News" chip above the section title: signals these are external,
+   server-updated news (not in-app system messages). */
+.beneos-cloud-app .bc-news-chip {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 3px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--bc-accent-dim);
+  border: 1px solid var(--bc-accent-line);
+  color: var(--bc-accent-soft);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.beneos-cloud-app .bc-news-chip i { font-size: 9px; color: var(--bc-accent); }
 .beneos-cloud-app .bc-home-section-sub {
   margin: 0;
   font-size: 13px;
@@ -5680,13 +5873,25 @@ button.beneos-icon-logo {
   grid-column: 1 / 2;
   grid-row: 1 / 3;
 }
+/* The pinned card reads as the headline: a gold-tinted border + faint glow set
+   it apart from the rolling cards. Compound selector so it beats the base
+   .bc-news-card border (same specificity, defined later in the file). */
+.beneos-cloud-app .bc-news-card.bc-news-pinned {
+  border-color: var(--bc-accent-line);
+  box-shadow: 0 0 0 1px var(--bc-accent-dim) inset;
+}
+.beneos-cloud-app .bc-news-card.bc-news-pinned:hover {
+  border-color: var(--bc-accent);
+}
 .beneos-cloud-app .bc-news-card {
   position: relative;
   display: flex;
   flex-direction: column;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 0;
+  /* Resting card now has a real surface + border + radius so each box is
+     clearly delimited (previously transparent and only visible on hover). */
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: 10px;
   overflow: hidden;
   cursor: pointer;
   text-align: left;
@@ -5694,7 +5899,7 @@ button.beneos-icon-logo {
 }
 .beneos-cloud-app .bc-news-card:hover {
   border-color: var(--bc-accent-line);
-  background: rgba(245, 201, 146, 0.05);
+  background: var(--bc-card-hover);
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(0,0,0,0.28);
 }
@@ -5714,6 +5919,9 @@ button.beneos-icon-logo {
   aspect-ratio: 16 / 9;
   background: var(--bc-bg-elevated);
   overflow: hidden;
+  /* Hard edge between the image and the card body so it is obvious where the
+     picture ends and the text panel begins. */
+  border-bottom: 1px solid var(--bc-border-strong);
 }
 .beneos-cloud-app .bc-news-pinned .bc-news-card-media {
   aspect-ratio: 16 / 11;
@@ -5751,6 +5959,23 @@ button.beneos-icon-logo {
   flex-direction: column;
   gap: 6px;
 }
+/* Pinned card has more vertical room than the rolling tiles, so it shows a
+   short body preview below the title to use the space well. */
+/* News preview: a short body teaser under the title. Rolling cards clamp to
+   2 lines (compact); the larger pinned card overrides to ~6 for breathing room. */
+.beneos-cloud-app .bc-news-preview {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--bc-text-muted);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.beneos-cloud-app .bc-news-pinned .bc-news-preview {
+  -webkit-line-clamp: 6;
+}
 .beneos-cloud-app .bc-news-card-meta {
   display: flex;
   align-items: center;
@@ -5768,15 +5993,24 @@ button.beneos-icon-logo {
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
+/* News title: explicit body font + bolder weight + tighter clamp so the small
+   rolling cards stay readable (the previous mix inherited an unclear face). */
 .beneos-cloud-app .bc-news-title {
   margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.3;
+  font-family: var(--bc-font-ui, "Geist", system-ui, sans-serif);
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.32;
+  letter-spacing: 0;
   color: var(--bc-text);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 .beneos-cloud-app .bc-news-pinned .bc-news-title {
   font-size: 18px;
+  -webkit-line-clamp: 3;
 }
 
 /* CTA button rendered inside a news card (small, secondary). Click is
@@ -6377,4 +6611,789 @@ button.beneos-icon-logo {
 .bc-news-detail-cta i {
   font-size: 11px;
 }
+
+/* ============================================================
+   M8.0 Live Game Control launcher in the cloud footer
+   ============================================================ */
+.bc-footer-button-lgc {
+  background: linear-gradient(180deg, #f0c772 0%, #b89146 100%) !important;
+  border: 1px solid #f0c772 !important;
+  color: #2a1f10 !important;
+  font-family: "Cinzel", serif !important;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  position: relative;
+  padding-right: 22px !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.18) inset,
+    0 0 12px rgba(240, 199, 114, 0.30),
+    0 2px 6px rgba(0, 0, 0, 0.35);
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.bc-footer-button-lgc:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.30) inset,
+    0 0 20px rgba(240, 199, 114, 0.55),
+    0 4px 10px rgba(0, 0, 0, 0.35);
+}
+.bc-footer-button-lgc i { color: #2a1f10; }
+.bc-footer-button-lgc .bc-lgc-livedot {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  width: 7px; height: 7px;
+  margin-top: -3.5px;
+  border-radius: 50%;
+  background: #b03030;
+  box-shadow: 0 0 6px #b03030;
+  opacity: 0;
+}
+.bc-footer-button-lgc.has-pings .bc-lgc-livedot {
+  opacity: 1;
+  animation: bc-lgc-livedot-pulse 1.4s ease-in-out infinite;
+}
+@keyframes bc-lgc-livedot-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(0.85); }
+  50%      { opacity: 1;    transform: scale(1.15); }
+}
+body.beneos-perf-mode .bc-footer-button-lgc .bc-lgc-livedot {
+  animation: none !important;
+}
+
+/* ===================================================================
+   Patreon paywall (M8.3.31) — intentionally UNSCOPED: reused across the
+   cloud generators (.beneos-cloud-app), the LGC window and the codex
+   windows, which are separate ApplicationV2 scopes. Class prefixes
+   beneos-paywall-* / beneos-codex-hint-* keep collisions unlikely.
+   =================================================================== */
+.beneos-paywall-wrap { position: relative; }
+/* The real controls stay in the DOM but become a blurred, inert teaser. */
+.beneos-paywall-wrap.is-locked .beneos-paywall-content {
+  filter: blur(4px) saturate(0.6);
+  opacity: 0.5;
+  pointer-events: none;
+  user-select: none;
+}
+.beneos-paywall-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  padding: 12px;
+}
+/* Sticky variant (item-codex center column): the column scrolls inside the
+   shared .detail-layout, so the join card pins near the top and stays visible
+   over the blurred tiers instead of sitting mid-column off-screen. */
+.beneos-paywall-overlay.is-sticky {
+  position: sticky;
+  inset: auto;
+  top: 14px;
+  z-index: 6;
+  align-self: stretch;
+  pointer-events: none;
+  margin-bottom: 6px;
+}
+.beneos-paywall-overlay.is-sticky .beneos-paywall-card { pointer-events: auto; }
+.beneos-paywall-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 320px;
+  padding: 16px 20px;
+  text-align: center;
+  background: rgba(18, 14, 9, 0.92);
+  /* Soft gold edge (the harsh red border read poorly); the red accent stays on
+     the Join button only. */
+  border: 1px solid rgba(212, 168, 87, 0.35);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+}
+/* Generator paywall: give the locked wrap enough height so the centered card
+   is never clipped (the wrapped control row alone is too short), and center
+   the blurred teaser. Only when locked, so the unlocked layout is untouched. */
+.beneos-loot-generator .beneos-paywall-wrap.is-locked,
+.beneos-magic-shop .beneos-paywall-wrap.is-locked {
+  min-height: 210px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.beneos-loot-generator .beneos-paywall-wrap.is-locked .beneos-paywall-content,
+.beneos-magic-shop .beneos-paywall-wrap.is-locked .beneos-paywall-content {
+  width: 100%;
+}
+.beneos-paywall-lock { font-size: 18px; color: #f0c772; }
+.beneos-paywall-text {
+  font-family: "Geist", system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #e9dec4;
+}
+.beneos-paywall-join {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border-radius: 6px;
+  background: rgba(249, 104, 84, 0.18);
+  color: #f96854;
+  border: 1px solid rgba(249, 104, 84, 0.55);
+  font-family: "Geist", system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.beneos-paywall-join:hover {
+  background: rgba(249, 104, 84, 0.32);
+  color: #ffe2dc;
+  border-color: #f96854;
+  text-decoration: none;
+}
+
+/* Slim content-origin hint banner for the codex windows. */
+.beneos-codex-hint {
+  position: relative;
+  overflow: hidden;
+  /* M8.3.42: as a direct flex-child of the codex article this banner used to
+     inherit `flex: 0 1 auto` and so got squeezed thinner or wider depending
+     on how tall the active tab's body was (Tactical Guide squished it to
+     ~20px, Story Hook let it grow to ~32px). Pin it to a constant height with
+     flex:0 0 auto + a min-height floor so it never reflows between tabs and
+     the PDF progress bar always runs across the same band. */
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 4px;
+  padding: 7px 14px;
+  font-family: "Geist", system-ui, sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: #c8b896;
+  background: rgba(212, 168, 87, 0.08);
+  border: 1px solid rgba(212, 168, 87, 0.22);
+  /* M8.3.46: square corners. The banner spans the full window width, so
+     rounded corners read as out of place. */
+  border-radius: 0;
+}
+/* M8.3.40: PDF-download progress bar. Mirrors the cloud-install left-to-right
+   fill: eases to ~90% while the PDF is fetched, then is-done snaps to 100%
+   with a green flash. Text/link stay above the bar via z-index. */
+.beneos-codex-hint > * { position: relative; z-index: 1; }
+.beneos-codex-hint.is-downloading::after,
+.beneos-codex-hint.is-done::after {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  width: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 0;
+  background: linear-gradient(90deg, rgba(240, 199, 114, 0.12) 0%, rgba(240, 199, 114, 0.30) 60%, rgba(240, 199, 114, 0.42) 100%);
+}
+.beneos-codex-hint.is-downloading::after {
+  animation: beneos-codex-pdf-fill 4s ease-out forwards;
+}
+.beneos-codex-hint.is-done::after {
+  width: 100%;
+  background: linear-gradient(90deg, rgba(60, 220, 100, 0.34), rgba(60, 220, 100, 0.42));
+  animation: beneos-codex-pdf-flash 0.6s ease-out forwards;
+}
+@keyframes beneos-codex-pdf-fill {
+  0%   { width: 0; }
+  60%  { width: 70%; }
+  100% { width: 90%; }
+}
+@keyframes beneos-codex-pdf-flash {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+body.beneos-perf-mode .beneos-codex-hint.is-downloading::after,
+body.beneos-perf-mode .beneos-codex-hint.is-done::after { animation: none; }
+/* Join CTA sits directly to the right of the text (not pushed to the far
+   edge), so it stays clickable: in the creature codex the journal image
+   overlaps the right side and would otherwise cover a far-right link. */
+.beneos-codex-hint-join {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(249, 104, 84, 0.16);
+  color: #f96854;
+  border: 1px solid rgba(249, 104, 84, 0.50);
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.beneos-codex-hint-join:hover {
+  background: rgba(249, 104, 84, 0.30);
+  color: #ffe2dc;
+  border-color: #f96854;
+  text-decoration: none;
+}
+
+/* ===================================================================
+   Beneos Forge (M8.3.35) — imprint a Beneos Origin onto a dnd5e item.
+   Embedded in the item-codex Forge tab; reuses the shared paywall wrap.
+   =================================================================== */
+.beneos-forge .bf-frame {
+  background: #1a1614;
+  color: #e7d9c4;
+  padding: 14px 22px 18px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-family: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.beneos-forge .bf-header { text-align: center; }
+.beneos-forge .bf-title {
+  font-family: "Cinzel", serif;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 3px;
+  color: #f0c772;
+}
+.beneos-forge .bf-subtitle {
+  font-size: 12px;
+  line-height: 1.4;
+  color: #a89b86;
+  margin: 0 auto;
+  max-width: 560px;
+}
+.beneos-forge .bf-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 150px;
+  padding-top: 6px;
+}
+.beneos-forge .bf-hammer {
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  transform: translate(-50%, -40px) rotate(-35deg);
+  font-size: 34px;
+  color: #d9b56a;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+.beneos-forge .bf-spark {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: 120px;
+  height: 120px;
+  transform: translate(-50%, -50%) scale(0);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,236,170,0.95) 0%, rgba(249,176,84,0.7) 35%, rgba(249,104,84,0) 70%);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+/* Fusion: "Origin + Item" -> two square slots with a plus between them. */
+.beneos-forge .bf-fusion {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.beneos-forge .bf-slot {
+  position: relative;
+  width: 122px;
+  height: 122px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 12px;
+  border-radius: 14px;
+  text-align: center;
+  overflow: hidden;
+}
+.beneos-forge .bf-slot-origin {
+  border: 2px solid color-mix(in srgb, var(--bf-dot, #d4a857) 38%, transparent);
+  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--bf-dot, #d4a857) 24%, #0c0a08) 0%, rgba(0,0,0,0.82) 82%);
+}
+.beneos-forge .bf-slot-origin.is-filled {
+  border-color: color-mix(in srgb, var(--bf-dot) 70%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--bf-dot) 40%, transparent);
+}
+.beneos-forge .bf-slot-glow {
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--bf-dot) 50%, transparent) 0%, transparent 65%);
+  opacity: 0.6; pointer-events: none;
+}
+.beneos-forge .bf-slot-origin-img {
+  position: relative; z-index: 1;
+  width: 80px; height: 80px; object-fit: contain;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--bf-dot) 55%, transparent));
+}
+.beneos-forge .bf-slot-item {
+  border: 2px dashed rgba(212, 168, 87, 0.4);
+  background: rgba(0, 0, 0, 0.25);
+  transition: border-color 0.15s, background 0.15s;
+}
+.beneos-forge .bf-slot-item.is-dragover { border-color: #f0c772; background: rgba(240, 199, 114, 0.10); }
+.beneos-forge .bf-slot-item.has-item { border-style: solid; border-color: rgba(212, 168, 87, 0.55); }
+.beneos-forge .bf-slot-item-img {
+  width: 72px; height: 72px; object-fit: contain;
+  border-radius: 10px; border: 1px solid rgba(212, 168, 87, 0.4);
+}
+.beneos-forge .bf-slot-cap {
+  font-size: 12px; font-weight: 600; color: #e7d9c4; line-height: 1.25;
+  max-width: 112px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.beneos-forge .bf-slot-cap-ph { color: #8a7f6e; font-weight: 500; }
+.beneos-forge .bf-slot-ph-icon { font-size: 26px; color: #b89146; }
+.beneos-forge .bf-drop-icon { font-size: 26px; color: #b89146; }
+.beneos-forge .bf-plus {
+  flex: none;
+  font-size: 22px;
+  color: #d9b56a;
+  opacity: 0.9;
+  text-shadow: 0 0 10px rgba(240, 199, 114, 0.4);
+}
+.beneos-forge .bf-clear {
+  position: absolute; top: 6px; right: 6px;
+  width: 20px; height: 20px; padding: 0; min-height: 0;
+  border: none; border-radius: 50%;
+  background: rgba(0,0,0,0.45); color: #a89b86; cursor: pointer; z-index: 2;
+}
+.beneos-forge .bf-clear:hover { background: rgba(249,104,84,0.3); color: #ffe2dc; }
+.beneos-forge .bf-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.beneos-forge .bf-origin-label { font-size: 12px; letter-spacing: 0.04em; color: #a89b86; }
+.beneos-forge .bf-origin-select {
+  min-width: 180px;
+  padding: 6px 10px;
+  background: #221d1a;
+  color: #e7d9c4;
+  border: 1px solid #3a322c;
+  border-radius: 6px;
+}
+.beneos-forge .bf-forge-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 6px;
+  background: rgba(240, 199, 114, 0.16);
+  border: 1px solid rgba(240, 199, 114, 0.5);
+  color: #f0c772;
+  font-family: "Cinzel", serif;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.beneos-forge .bf-forge-btn:hover:not([disabled]) {
+  background: rgba(240, 199, 114, 0.3);
+  color: #fff0cf;
+  border-color: #f0c772;
+}
+.beneos-forge .bf-forge-btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+.beneos-forge .bf-result {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 13px; color: #7ed99e;
+}
+.beneos-forge .bf-result i { color: #7ed99e; }
+.beneos-forge .bf-mode-hint {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin: 0 0 12px; padding: 10px 14px;
+  font-size: 12.5px; line-height: 1.45; color: #d8c8a8;
+  background: rgba(212,168,87,0.10);
+  border: 1px solid rgba(212,168,87,0.30); border-radius: 8px;
+}
+.beneos-forge .bf-mode-hint i { margin-top: 2px; color: #d4a857; }
+.beneos-forge .bf-stage.is-forging .bf-hammer { animation: bf-hammer 0.85s ease; }
+.beneos-forge .bf-stage.is-forging .bf-spark  { animation: bf-spark 0.85s ease; }
+.beneos-forge .bf-stage.is-forging .bf-fusion { animation: bf-anvil-shake 0.85s ease; }
+@keyframes bf-hammer {
+  0%   { transform: translate(-50%, -40px) rotate(-38deg); opacity: 0; }
+  18%  { opacity: 1; }
+  40%  { transform: translate(-50%, 16px) rotate(10deg); }
+  52%  { transform: translate(-50%, 6px) rotate(2deg); }
+  100% { transform: translate(-50%, -40px) rotate(-38deg); opacity: 0; }
+}
+@keyframes bf-spark {
+  0%, 38% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+  46%     { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100%    { transform: translate(-50%, -50%) scale(2.3); opacity: 0; }
+}
+@keyframes bf-anvil-shake {
+  0%, 40% { transform: translateX(0); }
+  46%     { transform: translateX(-4px); }
+  51%     { transform: translateX(4px); }
+  58%     { transform: translateX(0); }
+}
+body.beneos-perf-mode .beneos-forge .bf-stage.is-forging .bf-hammer,
+body.beneos-perf-mode .beneos-forge .bf-stage.is-forging .bf-spark,
+body.beneos-perf-mode .beneos-forge .bf-stage.is-forging .bf-fusion { animation: none; }
+
+/* --- Stamp under the anvil: the chosen Origin (bold, embossed) or, once an
+   item is on the anvil, the exact "New (...)" name that will be created. --- */
+/* "Make this item <Origin>" instruction above the result name + button. */
+.beneos-forge .bf-make {
+  text-align: center;
+  margin: 10px auto 0;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: #a89b86;
+}
+.beneos-forge .bf-make strong {
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  color: #f0c772;
+}
+.beneos-forge .bf-stamp {
+  text-align: center;
+  min-height: 22px;
+  margin: 4px auto 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.beneos-forge .bf-stamp-hint { font-size: 12px; color: #8a7f6e; font-style: italic; }
+.beneos-forge .bf-stamp-name {
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: #f0c772;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.6), 0 0 14px rgba(240,199,114,0.28);
+}
+.beneos-forge .bf-stamp.is-new .bf-stamp-name {
+  color: #ffe6c0;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-size: 16px;
+}
+.beneos-forge .bf-stamp-tag {
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #1a1108;
+  background: #f0c772;
+  padding: 2px 9px;
+  border-radius: 4px;
+  box-shadow: 0 0 12px rgba(240,199,114,0.45);
+}
+
+/* --- Two-column body: left = Origin picker (icon + name cards, like the codex
+   Origin list); right = fusion slots + Forge button + Echo bonus. --- */
+.beneos-forge .bf-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 22px;
+}
+.beneos-forge .bf-origin-col { flex: 1 1 auto; min-width: 0; }
+.beneos-forge .bf-work-col {
+  flex: 0 0 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.beneos-forge .bf-origin-list {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  max-height: 470px;
+  overflow-y: auto;
+  padding: 2px 6px 2px 2px;
+}
+.beneos-forge .bf-origin-list::-webkit-scrollbar { width: 8px; }
+.beneos-forge .bf-origin-list::-webkit-scrollbar-thumb { background: rgba(212,168,87,0.2); border-radius: 4px; }
+
+/* Origin card: big tinted icon + name underneath. */
+.beneos-forge .bf-origin-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 104px;
+  padding: 12px 8px 11px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--bf-dot) 38%, transparent);
+  background: radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--bf-dot) 22%, #0c0a08) 0%, rgba(0,0,0,0.82) 85%);
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.25s cubic-bezier(.2,.7,.2,1), box-shadow 0.4s ease, border-color 0.3s ease;
+}
+.beneos-forge .bf-origin-card-glow {
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--bf-dot) 50%, transparent) 0%, transparent 62%);
+  opacity: 0.4;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.beneos-forge .bf-origin-card-name {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  font-family: "Cinzel", serif;
+  /* Dynamic: shrinks for long names (e.g. "Dwarven Forged" or longer locales)
+     and wraps instead of overflowing the card. */
+  font-size: clamp(9px, 1.05vw, 12px);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #e7d9c4;
+  text-align: center;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+.beneos-forge .bf-origin-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--bf-dot) 70%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--bf-dot) 45%, transparent);
+}
+.beneos-forge .bf-origin-card:hover .bf-origin-card-glow { opacity: 0.65; }
+.beneos-forge .bf-origin-card.is-active {
+  border-color: color-mix(in srgb, var(--bf-dot) 90%, #ffffff 10%);
+  box-shadow:
+    0 0 20px 3px color-mix(in srgb, var(--bf-dot) 60%, transparent),
+    inset 0 0 0 1px rgba(255,255,255,0.15);
+}
+.beneos-forge .bf-origin-card.is-active .bf-origin-card-glow { opacity: 1; }
+.beneos-forge .bf-origin-card.is-active .bf-origin-card-name { color: #fff4df; }
+
+/* Origin-coloured icon: solid colour masked to the icon's form (.bf-tile-tint)
+   with the detail re-applied on top via luminosity (matches the codex gallery). */
+.beneos-forge .bf-tile-art {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  width: 62px;
+  height: 62px;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--bf-dot) 50%, transparent));
+  transition: filter 0.28s ease;
+}
+.beneos-forge .bf-origin-card.is-active .bf-tile-art { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--bf-dot) 80%, transparent)); }
+.beneos-forge .bf-tile-tint {
+  position: absolute; inset: 0;
+  background-color: var(--bf-dot);
+}
+.beneos-forge .bf-tile-detail {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: contain;
+  mix-blend-mode: luminosity;
+  opacity: 0.9;
+  pointer-events: none;
+}
+/* Same tint inside the Origin slot, just larger. */
+.beneos-forge .bf-slot-art { width: 80px; height: 80px; }
+
+/* Echo-of-Origin preview: plain text under the Forge button (no box). */
+.beneos-forge .bf-echo {
+  margin-top: 2px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(212, 168, 87, 0.16);
+  max-height: 240px;
+  overflow-y: auto;
+  animation: bf-echo-in 0.35s ease both;
+}
+.beneos-forge .bf-echo-title {
+  display: flex; align-items: center; gap: 7px;
+  font-family: "Cinzel", serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #f0c772;
+  margin-bottom: 6px;
+}
+.beneos-forge .bf-echo-title i { color: #d4a857; font-size: 11px; }
+.beneos-forge .bf-echo-body {
+  font-size: 12px;
+  line-height: 1.55;
+  color: #cabba2;
+}
+.beneos-forge .bf-echo-body p { margin: 0 0 7px; }
+.beneos-forge .bf-echo-body p:last-child { margin-bottom: 0; }
+.beneos-forge .bf-echo-body strong { color: #e7d9c4; }
+@keyframes bf-echo-in {
+  from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Forge button glows once an item + Origin are both ready. */
+.beneos-forge .bf-forge-btn.is-ready {
+  animation: bf-btn-ready 1.5s ease-in-out infinite;
+  border-color: #f0c772;
+  color: #fff0cf;
+}
+@keyframes bf-btn-ready {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(240,199,114,0.0); background: rgba(240,199,114,0.18); }
+  50%      { box-shadow: 0 0 18px 3px rgba(240,199,114,0.55); background: rgba(240,199,114,0.34); }
+}
+
+/* Cursor sparkle-trail: a few seconds of "casting magic" while ready. */
+.bf-sparkle-layer { position: fixed; inset: 0; pointer-events: none; z-index: 100000; }
+.bf-sparkle {
+  position: fixed;
+  width: 6px; height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffffff 0%, #ffe39a 42%, rgba(249,176,84,0) 72%);
+  box-shadow: 0 0 6px 2px rgba(255,210,120,0.8);
+  animation: bf-sparkle-fall 0.85s ease-out forwards;
+  will-change: transform, opacity;
+}
+@keyframes bf-sparkle-fall {
+  0%   { opacity: 1; transform: translate(0, 0) scale(1); }
+  100% { opacity: 0; transform: translate(var(--sx, 0), var(--sy, 22px)) scale(0.3); }
+}
+
+.beneos-forge .bf-reveal-drag-hint {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 11.5px; color: #a89b86;
+  animation: bf-reveal-in 0.5s ease 0.4s both;
+}
+.beneos-forge .bf-reveal-card[draggable="true"] { cursor: grab; }
+.beneos-forge .bf-reveal-card[draggable="true"]:active { cursor: grabbing; }
+
+/* --- Reveal: the freshly forged item presented like an unlocked trading card. --- */
+.beneos-forge .bf-reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0 8px;
+  animation: bf-reveal-in 0.5s ease both;
+}
+.beneos-forge .bf-reveal-card {
+  position: relative;
+  width: 176px;
+  height: 176px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: bf-reveal-pop 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+}
+.beneos-forge .bf-reveal-img {
+  position: relative;
+  z-index: 3;
+  width: 160px;
+  height: 160px;
+  object-fit: contain;
+  border-radius: 16px;
+  filter: drop-shadow(0 0 14px rgba(240, 199, 114, 0.7));
+  animation: bf-float 3.4s ease-in-out 0.7s infinite;
+}
+.beneos-forge .bf-reveal-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 230px;
+  height: 230px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(240, 199, 114, 0.42) 0%, rgba(249, 176, 84, 0.16) 45%, rgba(0, 0, 0, 0) 70%);
+  z-index: 1;
+  pointer-events: none;
+  animation: bf-glow-pulse 2.8s ease-in-out infinite;
+}
+.beneos-forge .bf-reveal-rays {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 280px;
+  height: 280px;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(255, 236, 170, 0) 0deg,
+    rgba(255, 236, 170, 0.18) 6deg,
+    rgba(255, 236, 170, 0) 12deg
+  );
+  -webkit-mask: radial-gradient(circle, rgba(0, 0, 0, 0) 28%, #000 46%, rgba(0, 0, 0, 0) 72%);
+          mask: radial-gradient(circle, rgba(0, 0, 0, 0) 28%, #000 46%, rgba(0, 0, 0, 0) 72%);
+  mix-blend-mode: screen;
+  opacity: 0.55;
+  animation: bf-rays-spin 18s linear infinite;
+}
+.beneos-forge .bf-reveal.is-change .bf-reveal-img { filter: drop-shadow(0 0 14px rgba(120, 200, 255, 0.6)); }
+.beneos-forge .bf-reveal.is-change .bf-reveal-glow {
+  background: radial-gradient(circle, rgba(120, 200, 255, 0.36) 0%, rgba(90, 160, 220, 0.14) 45%, rgba(0, 0, 0, 0) 70%);
+}
+.beneos-forge .bf-reveal-name {
+  font-family: "Cinzel", serif;
+  font-size: 19px;
+  font-weight: 700;
+  color: #fff0cf;
+  text-align: center;
+  text-shadow: 0 0 10px rgba(240, 199, 114, 0.45);
+  animation: bf-reveal-in 0.5s ease 0.25s both;
+}
+.beneos-forge .bf-reveal-sub {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: #7ed99e;
+  animation: bf-reveal-in 0.5s ease 0.35s both;
+}
+.beneos-forge .bf-reveal-again { margin-top: 4px; animation: bf-reveal-in 0.5s ease 0.45s both; }
+
+@keyframes bf-reveal-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bf-reveal-pop {
+  0%   { transform: scale(0.5) rotate(-9deg); opacity: 0; }
+  60%  { transform: scale(1.08) rotate(2deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); }
+}
+@keyframes bf-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-9px); }
+}
+@keyframes bf-glow-pulse {
+  0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+  50%      { opacity: 1;   transform: translate(-50%, -50%) scale(1.08); }
+}
+@keyframes bf-rays-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+body.beneos-perf-mode .beneos-forge .bf-reveal,
+body.beneos-perf-mode .beneos-forge .bf-reveal-card,
+body.beneos-perf-mode .beneos-forge .bf-reveal-img,
+body.beneos-perf-mode .beneos-forge .bf-reveal-glow,
+body.beneos-perf-mode .beneos-forge .bf-reveal-rays,
+body.beneos-perf-mode .beneos-forge .bf-reveal-name,
+body.beneos-perf-mode .beneos-forge .bf-reveal-sub,
+body.beneos-perf-mode .beneos-forge .bf-reveal-again { animation: none; }
+body.beneos-perf-mode .beneos-forge .bf-origin-card { transition: none; }
+body.beneos-perf-mode .beneos-forge .bf-forge-btn.is-ready { animation: none; }
+body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 

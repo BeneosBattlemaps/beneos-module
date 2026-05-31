@@ -1,6 +1,0 @@
-{{!-- Inline chip-renderer. `parts` is an array where each element is
-     either a string (plain text) or a { chip, kind } object. Rollable
-     kinds (dice, dc, tohit) get the .cdx-chip-rollable class — the
-     window's _onRender adds a click listener that talks to
-     codex-chip-roller.mjs (Welle 5f). --}}
-{{#each parts}}{{#if (eq (typeof this) "string")}}<span class="cdx-tac-text">{{this}}</span>{{else}}<span class="cdx-chip cdx-chip-{{kind}}{{#if (or (eq kind "dice") (eq kind "dc") (eq kind "tohit"))}} cdx-chip-rollable{{/if}}" data-chip="{{chip}}" data-kind="{{kind}}">{{chip}}</span>{{/if}}{{/each}}

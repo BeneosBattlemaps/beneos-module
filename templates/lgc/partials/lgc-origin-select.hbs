@@ -1,0 +1,56 @@
+<div class="origin-select">
+  <button type="button"
+          class="origin-select-btn"
+          data-action="lgc-toggle-origin-dropdown"
+          {{#if selected}}style="--origin-color: {{selected.color}};"{{/if}}>
+    {{#if selected}}
+      {{#if selected.iconPath}}
+        <span class="lgc-origin-emblem sm">
+          <span class="emblem-disc has-image" style="--origin-color: {{selected.color}};">
+            <span class="emblem-tint-wrap">
+              <span class="emblem-tint-base"
+                    style="background-color: {{selected.color}};
+                           -webkit-mask: url('{{selected.iconPath}}') center / contain no-repeat;
+                                   mask: url('{{selected.iconPath}}') center / contain no-repeat;"></span>
+              <img class="emblem-tint-detail" src="{{selected.iconPath}}" alt="" />
+            </span>
+          </span>
+        </span>
+      {{else}}
+        <span class="origin-swatch"></span>
+      {{/if}}
+      <span class="origin-option-name">{{selected.name}}</span>
+    {{else}}
+      <span style="color: var(--ink-muted);">{{placeholder}}</span>
+    {{/if}}
+    <span class="chev">▾</span>
+  </button>
+  {{#if dropdownOpen}}
+    <div class="origin-select-popover">
+      {{#each origins}}
+        <button type="button"
+                class="origin-option {{#if (eq slug ../selected.slug)}}selected{{/if}}"
+                data-action="lgc-set-origin"
+                data-slug="{{slug}}"
+                style="--origin-color: {{color}};">
+          {{#if iconPath}}
+            <span class="lgc-origin-emblem sm">
+              <span class="emblem-disc has-image" style="--origin-color: {{color}};">
+                <span class="emblem-tint-wrap">
+                  <span class="emblem-tint-base"
+                        style="background-color: {{color}};
+                               -webkit-mask: url('{{iconPath}}') center / contain no-repeat;
+                                       mask: url('{{iconPath}}') center / contain no-repeat;"></span>
+                  <img class="emblem-tint-detail" src="{{iconPath}}" alt="" />
+                </span>
+              </span>
+            </span>
+          {{else}}
+            <span class="origin-swatch"></span>
+          {{/if}}
+          <span class="origin-option-name">{{name}}</span>
+        </button>
+      {{/each}}
+    </div>
+  {{/if}}
+</div>

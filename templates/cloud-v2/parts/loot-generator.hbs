@@ -6,40 +6,45 @@
 
   {{#if isStep1}}
     <header class="blg-header">
-      <h2 class="blg-title">Loot Generator</h2>
-      <p class="blg-subtitle">Roll random magic items appropriate for your party after a battle.</p>
+      <h2 class="blg-title">{{localize "BENEOS.LootGen.StepTitle"}}</h2>
+      <p class="blg-subtitle">{{localize "BENEOS.LootGen.Step1Subtitle"}}</p>
     </header>
     <div class="blg-step blg-step-bias">
-      <p class="blg-question">How rare should the items be?</p>
-      <div class="blg-bias-row">
-        {{#each biases as |b|}}
-          <button type="button"
-                  class="blg-bias-btn{{#if b.selected}} is-selected{{/if}}"
-                  data-action="pickBias"
-                  data-bias="{{b.key}}"
-                  data-tooltip="{{b.tooltip}}">
-            <span class="blg-bias-label">{{b.label}}</span>
-          </button>
-        {{/each}}
+      <p class="blg-question">{{localize "BENEOS.LootGen.RarityQuestion"}}</p>
+      <div class="beneos-paywall-wrap{{#unless hasTokenAccess}} is-locked{{/unless}}">
+        <div class="beneos-paywall-content">
+          <div class="blg-bias-row">
+            {{#each biases as |b|}}
+              <button type="button"
+                      class="blg-bias-btn{{#if b.selected}} is-selected{{/if}}"
+                      data-action="pickBias"
+                      data-bias="{{b.key}}"
+                      data-tooltip="{{b.tooltip}}">
+                <span class="blg-bias-label">{{b.label}}</span>
+              </button>
+            {{/each}}
+          </div>
+        </div>
+        {{#unless hasTokenAccess}}{{> "modules/beneos-module/templates/shared/beneos-paywall.hbs" joinUrl=joinPatreonUrl}}{{/unless}}
       </div>
     </div>
   {{/if}}
 
   {{#if isStep2}}
     <header class="blg-header">
-      <h2 class="blg-title">Loot Generator</h2>
-      <p class="blg-subtitle">Pick the tier that matches your party's level.</p>
+      <h2 class="blg-title">{{localize "BENEOS.LootGen.StepTitle"}}</h2>
+      <p class="blg-subtitle">{{localize "BENEOS.LootGen.Step2Subtitle"}}</p>
     </header>
     <div class="blg-step blg-step-tier">
-      <p class="blg-question">What level is your party?</p>
+      <p class="blg-question">{{localize "BENEOS.LootGen.TierQuestion"}}</p>
       <div class="blg-tier-grid">
         {{#each tiers as |t|}}
           <button type="button"
                   class="blg-tier-btn{{#if t.selected}} is-selected{{/if}}"
                   data-action="pickTier"
                   data-tier="{{t.tier}}">
-            <div class="blg-tier-name">Tier {{t.tier}}</div>
-            <div class="blg-tier-levels">Levels {{t.levels}}</div>
+            <div class="blg-tier-name">{{localize "BENEOS.LootGen.TierWord"}} {{t.tier}}</div>
+            <div class="blg-tier-levels">{{localize "BENEOS.LootGen.Levels"}} {{t.levels}}</div>
             <div class="blg-tier-tag">{{t.tag}}</div>
           </button>
         {{/each}}
@@ -47,18 +52,18 @@
     </div>
     <footer class="blg-footer">
       <button type="button" class="blg-secondary-btn" data-action="restart">
-        <i class="fa-solid fa-arrow-left"></i> Back
+        <i class="fa-solid fa-arrow-left"></i> {{localize "BENEOS.Common.Back"}}
       </button>
     </footer>
   {{/if}}
 
   {{#if isStep3}}
     <header class="blg-header">
-      <h2 class="blg-title">Loot Generator</h2>
+      <h2 class="blg-title">{{localize "BENEOS.LootGen.StepTitle"}}</h2>
       {{#if rolling}}
-        <p class="blg-subtitle">The dice are rolling…</p>
+        <p class="blg-subtitle">{{localize "BENEOS.LootGen.Step3RollingSubtitle"}}</p>
       {{else}}
-        <p class="blg-subtitle">Three magic items have been awarded to your party.</p>
+        <p class="blg-subtitle">{{localize "BENEOS.LootGen.Step3DoneSubtitle"}}</p>
       {{/if}}
     </header>
 
@@ -68,7 +73,7 @@
         <div class="blg-dice-wrap">
           <i class="fa-solid fa-dice-d20 blg-dice-icon"></i>
         </div>
-        <p class="blg-rolling-text">Rolling Loot…</p>
+        <p class="blg-rolling-text">{{localize "BENEOS.LootGen.RollingText"}}</p>
         <div class="blg-loading-track">
           <div class="blg-loading-bar"></div>
         </div>
@@ -80,11 +85,11 @@
           <span class="blg-banner-spark blg-banner-spark-2"></span>
           <span class="blg-banner-spark blg-banner-spark-3"></span>
           <span class="blg-banner-spark blg-banner-spark-4"></span>
-          <span class="blg-banner-text"><i class="fa-solid fa-star"></i> LEGENDARY DROP!</span>
+          <span class="blg-banner-text"><i class="fa-solid fa-star"></i> {{localize "BENEOS.LootGen.LegendaryBanner"}}</span>
         </div>
       {{else if hasVeryRare}}
         <div class="blg-banner blg-banner-veryrare">
-          <span class="blg-banner-text"><i class="fa-solid fa-gem"></i> Very Rare find</span>
+          <span class="blg-banner-text"><i class="fa-solid fa-gem"></i> {{localize "BENEOS.LootGen.VeryRareBanner"}}</span>
         </div>
       {{/if}}
 
@@ -93,12 +98,12 @@
           {{#if goldFormatted}}
             <span class="blg-hoard-gold"
                   draggable="true"
-                  data-tooltip="Drag onto a character sheet to drop a gold pile, or click Claim to add directly">
+                  data-tooltip="{{localize 'BENEOS.LootGen.GoldTooltip'}}">
               <i class="fa-solid fa-coins"></i> {{goldFormatted}} gp
               <button type="button" class="blg-claim-gold-btn"
                       data-action="claimGold"
-                      data-tooltip="Add this gold to the active character (selected token, or your User Character)">
-                <i class="fa-solid fa-hand-holding-dollar"></i> Claim
+                      data-tooltip="{{localize 'BENEOS.LootGen.ClaimTooltip'}}">
+                <i class="fa-solid fa-hand-holding-dollar"></i> {{localize "BENEOS.LootGen.ClaimGold"}}
               </button>
             </span>
           {{/if}}
@@ -119,8 +124,8 @@
       {{#if hasWondrous}}
         <div class="blg-wondrous-twist">
           <header class="blg-wondrous-header">
-            <i class="fa-solid fa-wand-sparkles"></i> Wondrous Twist
-            <span class="blg-wondrous-sub">a curious bonus from the depths of the hoard</span>
+            <i class="fa-solid fa-wand-sparkles"></i> {{localize "BENEOS.LootGen.WondrousTwist"}}
+            <span class="blg-wondrous-sub">{{localize "BENEOS.LootGen.WondrousSubtitle"}}</span>
           </header>
           <article class="blg-result-card blg-wondrous-card {{wondrous.rarityClass}}{{#if wondrous.isInstalled}} is-installed{{/if}}{{#if wondrous.isDelivered}} is-delivered{{/if}}"
                    data-item-key="{{wondrous.itemKey}}"
@@ -139,19 +144,19 @@
             <div class="blg-card-meta">
               <span class="blg-rarity-pill {{wondrous.rarityClass}}">{{wondrous.rarity}}</span>
               {{#if wondrous.itemTier}}<span class="blg-tier-pill">T{{wondrous.itemTier}}</span>{{/if}}
-              <span class="blg-type-pill">Wondrous</span>
+              <span class="blg-type-pill">{{localize "BENEOS.LootGen.Wondrous"}}</span>
             </div>
             {{#if wondrous.price}}
               <div class="blg-card-price"><i class="fa-solid fa-coins"></i> {{wondrous.price}}</div>
             {{/if}}
             <div class="blg-card-actions">
               {{#if wondrous.isInstalled}}
-                <span class="blg-drag-hint"><i class="fa-solid fa-up-down-left-right"></i> Drag to character sheet</span>
+                <span class="blg-drag-hint"><i class="fa-solid fa-up-down-left-right"></i> {{localize "BENEOS.LootGen.DragHint"}}</span>
               {{else}}
                 <button type="button" class="blg-install-btn"
                         data-action="installPick"
                         data-item-key="{{wondrous.itemKey}}">
-                  <i class="fa-solid fa-cloud-arrow-down"></i> Install
+                  <i class="fa-solid fa-cloud-arrow-down"></i> {{localize "BENEOS.Common.Install"}}
                 </button>
               {{/if}}
             </div>
@@ -186,26 +191,26 @@
               <div class="blg-card-price"><i class="fa-solid fa-coins"></i> {{r.price}}</div>
             {{/if}}
             <div class="blg-card-prob">
-              <span class="blg-prob-label">{{r.probabilityPct}} chance</span>
+              <span class="blg-prob-label">{{r.probabilityPct}} {{localize "BENEOS.LootGen.Chance"}}</span>
               {{#if r.crossTierMarker}}
                 {{#if (eq r.crossTierMarker "up")}}
-                  <span class="blg-cross-tier blg-cross-up" data-tooltip="One tier above your party">⚡ Tier ↑</span>
+                  <span class="blg-cross-tier blg-cross-up" data-tooltip="{{localize 'BENEOS.LootGen.TierUpTooltip'}}">⚡ {{localize "BENEOS.LootGen.TierWord"}} ↑</span>
                 {{else}}
-                  <span class="blg-cross-tier blg-cross-down" data-tooltip="One tier below your party">⬇ Tier ↓</span>
+                  <span class="blg-cross-tier blg-cross-down" data-tooltip="{{localize 'BENEOS.LootGen.TierDownTooltip'}}">⬇ {{localize "BENEOS.LootGen.TierWord"}} ↓</span>
                 {{/if}}
               {{/if}}
               {{#if r.isFallbackBucket}}
-                <span class="blg-cross-tier blg-cross-fallback" data-tooltip="Pulled from a broader pool. DB had no exact match.">≈ Substituted</span>
+                <span class="blg-cross-tier blg-cross-fallback" data-tooltip="{{localize 'BENEOS.LootGen.FallbackTooltip'}}">≈ {{localize "BENEOS.LootGen.Substituted"}}</span>
               {{/if}}
             </div>
             <div class="blg-card-actions">
               {{#if r.isInstalled}}
-                <span class="blg-drag-hint"><i class="fa-solid fa-up-down-left-right"></i> Drag to character sheet</span>
+                <span class="blg-drag-hint"><i class="fa-solid fa-up-down-left-right"></i> {{localize "BENEOS.LootGen.DragHint"}}</span>
               {{else}}
                 <button type="button" class="blg-install-btn"
                         data-action="installPick"
                         data-item-key="{{r.itemKey}}">
-                  <i class="fa-solid fa-cloud-arrow-down"></i> Install
+                  <i class="fa-solid fa-cloud-arrow-down"></i> {{localize "BENEOS.Common.Install"}}
                 </button>
               {{/if}}
             </div>
@@ -216,14 +221,14 @@
       <div class="blg-add-slot-row">
         <button type="button" class="blg-add-slot-btn blg-add-slot-btn-row"
                 data-action="addLootSlot"
-                data-tooltip="Add another loot item">
+                data-tooltip="{{localize 'BENEOS.LootGen.AddSlotTooltip'}}">
           <i class="fa-solid fa-plus"></i>
-          <span>Add Loot Slot</span>
+          <span>{{localize "BENEOS.LootGen.AddSlot"}}</span>
         </button>
         {{#if poolWarningLoot}}
           <div class="blg-pool-warning">
             <i class="fa-solid fa-circle-exclamation"></i>
-            No more items available for this rarity / tier combination.
+            {{localize "BENEOS.LootGen.PoolExhausted"}}
           </div>
         {{/if}}
       </div>
@@ -232,11 +237,11 @@
 
     <footer class="blg-footer blg-footer-step3">
       <button type="button" class="blg-secondary-btn" data-action="restart">
-        <i class="fa-solid fa-rotate-left"></i> Restart
+        <i class="fa-solid fa-rotate-left"></i> {{localize "BENEOS.Common.Restart"}}
       </button>
       {{#unless rolling}}
         <button type="button" class="blg-primary-btn" data-action="reroll">
-          <i class="fa-solid fa-dice-d20"></i> Reroll
+          <i class="fa-solid fa-dice-d20"></i> {{localize "BENEOS.Common.Reroll"}}
           {{#if rerollCount}}<span class="blg-reroll-count">#{{rerollCount}}</span>{{/if}}
         </button>
       {{/unless}}

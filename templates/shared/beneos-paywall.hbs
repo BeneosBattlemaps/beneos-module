@@ -1,0 +1,13 @@
+{{!-- Beneos paywall overlay. Floats over a .beneos-paywall-wrap.is-locked
+     whose .beneos-paywall-content is blurred behind it. Teases the gated
+     feature and offers the Tokens-campaign Patreon join CTA. Takes joinUrl. --}}
+<div class="beneos-paywall-overlay {{extraClass}}" aria-hidden="false">
+  <div class="beneos-paywall-card">
+    <i class="fa-solid fa-lock beneos-paywall-lock" aria-hidden="true"></i>
+    <span class="beneos-paywall-text">{{#if label}}{{localize label}}{{else}}{{localize "BENEOS.Access.PatreonFeature"}}{{/if}}</span>
+    <a class="beneos-paywall-join" href="{{joinUrl}}" target="_blank" rel="noopener noreferrer">
+      <i class="fa-brands fa-patreon" aria-hidden="true"></i>
+      <span>{{localize "BENEOS.Patreon.JoinPatron"}}</span>
+    </a>
+  </div>
+</div>

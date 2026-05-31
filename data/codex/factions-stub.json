@@ -1,0 +1,45 @@
+{
+  "_note": "Stub data for Creature Codex — Factions tab. User pflegt echte Inhalte später. Schema: { slug, name, glow, eyebrow, lore, traits[] }",
+  "factions": [
+    {
+      "slug": "harrowshrike",
+      "name": "The Harrowshrike Legion",
+      "glow": "#b03030",
+      "eyebrow": "Faction",
+      "lore": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. A vampiric conclave bound to the screaming masks of the Harrowshrike, channeling fear into power.",
+      "traits": ["Vampiric Origin", "Cult of Fear", "Necropolis aligned"]
+    },
+    {
+      "slug": "dwarven_smiths",
+      "name": "The Iron Conclave",
+      "glow": "#c08040",
+      "eyebrow": "Faction",
+      "lore": "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Master-smiths of the deep mountains, forging weapons that remember every strike.",
+      "traits": ["Dwarvenforged Origin", "Mountain stronghold", "Guildsworn"]
+    },
+    {
+      "slug": "feywoven_courts",
+      "name": "The Twilight Courts",
+      "glow": "#4dbf8e",
+      "eyebrow": "Faction",
+      "lore": "Ut enim ad minim veniam, quis nostrud exercitation ullamco. Fey nobility weaving glamour and treachery into every gift.",
+      "traits": ["Feywoven Origin", "Trickster diplomacy", "Wild magic adept"]
+    },
+    {
+      "slug": "occult_brotherhood",
+      "name": "The Velvet Brotherhood",
+      "glow": "#6a2d8a",
+      "eyebrow": "Faction",
+      "lore": "Duis aute irure dolor in reprehenderit in voluptate velit esse. A secret cabal that bargains with shadows to keep older horrors at bay.",
+      "traits": ["Occult Origin", "Pact-bound", "Shadow-wardens"]
+    },
+    {
+      "slug": "technoarcane_guild",
+      "name": "The Refractor Guild",
+      "glow": "#4ac8d9",
+      "eyebrow": "Faction",
+      "lore": "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia. Tinkers fusing arcane sigils with clockwork engines, exiled from the orthodox towers.",
+      "traits": ["Technoarcane Origin", "Heretical innovation", "Roaming workshops"]
+    }
+  ]
+}

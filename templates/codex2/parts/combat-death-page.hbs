@@ -1,0 +1,22 @@
+<div class="beneos-codex-creature cdx-combat-box" data-token-key="{{tokenKey}}">
+  <header class="cdx-combat-head">
+    <h2 class="cdx-combat-name">{{creature.data.name}}</h2>
+    <div class="cdx-combat-subtitle">{{localize "BENEOS.CreatureCodex.Combat.DeathTitle"}}</div>
+  </header>
+
+  <blockquote class="cdx-blockquote cdx-blockquote-death cdx-combat-readaloud">
+    {{> "beneos-codex/creature/tac-inline" parts=creature.data.deathPromptTokens actorId=creature.actorId}}
+  </blockquote>
+
+  <footer class="cdx-combat-footer">
+    <label class="cdx-combat-mute">
+      <input type="checkbox" class="cdx-combat-optout">
+      <span>{{localize "BENEOS.CreatureCodex.Combat.MuteReadAloud"}}</span>
+    </label>
+    <button type="button" class="cdx-btn cdx-combat-close-btn"
+            data-action="cdx-combat-close"
+            data-actor-id="{{creature.actorId}}">
+      {{localize "BENEOS.CreatureCodex.Combat.Close"}}
+    </button>
+  </footer>
+</div>

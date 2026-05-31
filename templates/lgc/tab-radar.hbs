@@ -1,0 +1,87 @@
+<header class="radar-header">
+  <div>
+    <h2>{{i18n.radarHeading}}</h2>
+    <div class="sub">{{i18n.radarSub}}</div>
+  </div>
+  <div class="count-pill">
+    <span class="n">{{pingCount}}</span>
+    <span>{{i18n.countActive}}</span>
+  </div>
+</header>
+
+<div class="radar-body">
+
+  <div class="beneos-paywall-wrap{{#unless hasTokenAccess}} is-locked{{/unless}}">
+  <div class="beneos-paywall-content">
+  <div class="composer {{#if composer.expanded}}is-expanded{{else}}is-collapsed{{/if}}">
+    <button type="button" class="composer-toggle" data-action="lgc-toggle-composer">
+      <div class="composer-toggle-title">{{i18n.composerHeading}}</div>
+      <div class="composer-toggle-hint">{{i18n.composerHint}}</div>
+      <span class="composer-toggle-chev"><i class="fa-solid fa-chevron-{{#if composer.expanded}}up{{else}}down{{/if}}"></i></span>
+    </button>
+
+    <div class="composer-anim">
+    <div class="composer-grid">
+      <div class="field-stack">
+        <div class="field">
+          <span class="field-label">{{i18n.composerOriginLabel}}</span>
+          {{> "modules/beneos-module/templates/lgc/partials/lgc-origin-select.hbs"
+              origins=origins
+              selected=composer.originDisplay
+              dropdownOpen=composer.dropdownOpen
+              placeholder=i18n.composerOriginPlaceholder}}
+        </div>
+        <div class="field">
+          <span class="field-label">{{i18n.composerDistanceLabel}}</span>
+          {{> "modules/beneos-module/templates/lgc/partials/lgc-distance-slider.hbs"
+              sliderValue=composer.sliderValue
+              label=composer.distanceLabel}}
+        </div>
+      </div>
+      <div class="field field-direction">
+        <span class="field-label">{{i18n.composerDirectionLabel}}</span>
+        {{> "modules/beneos-module/templates/lgc/partials/lgc-direction-picker.hbs"
+            deg=composer.directionDeg
+            degLabel=composer.directionDegLabel
+            sector=composer.directionSector
+            sectorCardinal=composer.directionSectorCardinal
+            pingId="composer"
+            originColor=composer.originDisplay.color}}
+      </div>
+      <div class="composer-send-stack">
+        <button type="button" class="btn-add" data-action="lgc-ping-add">
+          {{i18n.composerSend}}
+        </button>
+        <button type="button"
+                class="composer-help"
+                data-tooltip="{{i18n.composerHelpTooltip}}"
+                data-tooltip-direction="UP"
+                aria-label="{{i18n.composerHelpAria}}">
+          <i class="fa-solid fa-circle-question"></i>
+        </button>
+      </div>
+    </div>
+    </div>
+  </div>
+  </div>
+  {{#unless hasTokenAccess}}{{> "modules/beneos-module/templates/shared/beneos-paywall.hbs" joinUrl=joinPatreonUrl}}{{/unless}}
+  </div>
+
+  <div class="section-head">
+    <h3>{{i18n.activeHeading}}</h3>
+    <span class="hint">{{i18n.activeHint}}</span>
+  </div>
+
+  {{#if pings.length}}
+    <div class="ping-list">
+      {{#each pings}}
+        {{> "modules/beneos-module/templates/lgc/partials/lgc-ping-card.hbs"
+            ping=this
+            i18n=@root.i18n}}
+      {{/each}}
+    </div>
+  {{else}}
+    <div class="empty-state">{{i18n.empty}}</div>
+  {{/if}}
+
+</div>

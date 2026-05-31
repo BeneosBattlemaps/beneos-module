@@ -14,30 +14,9 @@
 // coords (0, 0) is the token center. Token width/height available
 // via `token.w` / `token.h`.
 
+import { tokenHalfWidth, tokenHalfHeight, tokenRadius } from "./beneos-fx-geometry.mjs"
+
 const TWO_PI = Math.PI * 2
-
-/**
- * Half-width / half-height of the token in canvas pixels, derived
- * from document.width/height × grid.size. token.w/.h can carry
- * mesh-scale subtleties; document-based math is reliable for
- * multi-cell tokens (e.g. a 2×3 dragon).
- */
-function tokenHalfWidth(token) {
-  const grid = canvas?.grid?.size || 100
-  return (token?.document?.width ?? 1) * grid * 0.5
-}
-function tokenHalfHeight(token) {
-  const grid = canvas?.grid?.size || 100
-  return (token?.document?.height ?? 1) * grid * 0.5
-}
-
-/**
- * Used for sprite *size* scaling — the smaller axis ensures sprites
- * stay proportional even on rectangular tokens.
- */
-function tokenRadius(token) {
-  return Math.min(tokenHalfWidth(token), tokenHalfHeight(token))
-}
 
 /**
  * Effective spawn half-extents per axis, scaled by user-controlled

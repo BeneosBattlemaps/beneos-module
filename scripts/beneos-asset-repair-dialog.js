@@ -22,7 +22,9 @@
 import {
   scanSceneSilent,
   scanAllEntities,
-  collectBeneosRefs
+  collectBeneosRefs,
+  escapeHTML as escapeHtml,
+  _basename
 } from "./beneos-asset-watcher.js";
 import {
   scanForMappings,
@@ -38,10 +40,6 @@ const DEFAULT_ITEM_ICON = "icons/svg/item-bag.svg";
 const DEFAULT_TOKEN_ICON = "icons/svg/mystery-man.svg";
 const DEFAULT_EFFECT_ICON = "icons/svg/aura.svg";
 const PROGRESS_BAR_ID = "beneos-repair-progress";
-
-const escapeHtml = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({
-  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-}[c]));
 
 const _l = (key, fallback) => {
   if (game.i18n.has?.(key)) return game.i18n.localize(key);
@@ -1032,11 +1030,6 @@ export class BeneosRepairDialog {
     return lines.join("\n");
   }
 }
-
-const _basename = (p) => {
-  if (typeof p !== "string" || !p) return "";
-  return p.replace(/\\/g, "/").split("/").pop() || p;
-};
 
 /* ============================================================== */
 /*  Settings menu hull — invoked via game.settings.registerMenu()  */

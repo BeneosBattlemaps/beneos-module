@@ -1,0 +1,1324 @@
+/* ============================================================
+   Beneos Live Game Control (M8.0)
+   Port of design-live-game-control/lgc.css, minus prototype-only
+   globals (foundry-mock, sidebar, cluster, launcher in cloud.css,
+   body resets). All rules scoped under .beneos-lgc or .lgc-window.
+   No italics anywhere (feedback_no_em_dashes / no-italic policy).
+   ============================================================ */
+
+.beneos-lgc.lgc-window,
+.lgc-window {
+  --bg-base:       #0d0a08;
+  --bg-panel:      #16110c;
+  --bg-card:       #1a140e;
+  --bg-card-hi:    #221a12;
+  --line-faint:    rgba(212, 168, 87, 0.10);
+  --line-soft:     rgba(212, 168, 87, 0.20);
+  --line-strong:   rgba(212, 168, 87, 0.36);
+  --line-bright:   rgba(240, 199, 114, 0.55);
+  --gold:          #d4a857;
+  --gold-bright:   #f0c772;
+  --gold-soft:     #b89146;
+  --gold-glow:     rgba(240, 199, 114, 0.35);
+  --ink-primary:   #f5e9cf;
+  --ink-secondary: #c8b896;
+  --ink-muted:     #8a7c63;
+  --ink-faint:     #5e5240;
+  --blood:         #b03030;
+  --live:          #6ed078;
+  --rad-md: 8px;
+  --rad-lg: 12px;
+  font-family: "Signika", "Geist", system-ui, sans-serif;
+  color: var(--ink-primary);
+}
+
+/* ApplicationV2 frameless window: we replace the Foundry default chrome
+   with our own .lgc-titlebar. Background fills the full V2 root.
+   Foundry V2 frameless mode does NOT add .window-app (which would have
+   set position: absolute), so we set it here explicitly, plus a high
+   z-index so the window floats above the Foundry sidebar. */
+.beneos-lgc.lgc-window {
+  position: fixed;
+  /* No hard z-index baseline: JS sets the inline z-index to one above
+     the current max on open + on mousedown, exactly like Foundry's
+     own windows. That way other apps can be raised over LGC and back
+     under it without us forcing a permanent top band. */
+  background: linear-gradient(180deg, var(--bg-panel) 0%, var(--bg-base) 100%);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--rad-lg);
+  box-shadow: 0 0 0 1px rgba(255, 220, 160, 0.04) inset,
+              0 24px 60px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+  padding: 0;
+}
+.beneos-lgc.lgc-window .lgc-window-inner {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+.beneos-lgc.lgc-window.popped { /* full-inset is set inline by JS */ }
+.beneos-lgc.lgc-window.minimized .lgc-content,
+.beneos-lgc.lgc-window.minimized .lgc-tabs { display: none; }
+
+/* ---- Titlebar -------------------------------------------- */
+.lgc-titlebar {
+  display: grid;
+  /* Order: brand (logo + title) left, spacer, window controls (Pop /
+     Min / Close) right. Matches all other Beneos windows (Cloud,
+     Codex, Companion). */
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px 10px 16px;
+  background: linear-gradient(180deg, #1c1611 0%, #16110c 100%);
+  border-bottom: 1px solid var(--line-soft);
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+  position: relative;
+}
+.lgc-titlebar::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-glow), transparent);
+}
+.lgc-titlebar .brand { display: flex; align-items: center; gap: 10px; }
+.lgc-titlebar .logo {
+  width: 24px;
+  height: 24px;
+  /* CSS-mask the brand SVG so we can paint it pure white, matching
+     the way Cloud and Codex render the Beneos mark in their titlebars
+     (instead of the full-colour brand asset). */
+  background-color: #ffffff;
+  -webkit-mask: url("../icons/beneos_logo.svg") center / contain no-repeat;
+          mask: url("../icons/beneos_logo.svg") center / contain no-repeat;
+  filter: drop-shadow(0 0 4px rgba(240, 199, 114, 0.25));
+  flex-shrink: 0;
+}
+.lgc-titlebar .title-text {
+  font-family: "Cinzel", serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-primary);
+}
+.lgc-titlebar .session-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 9px;
+  background: rgba(110, 208, 120, 0.10);
+  border: 1px solid rgba(110, 208, 120, 0.35);
+  border-radius: 999px;
+  font-family: "Geist", sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--live);
+  justify-self: start;
+}
+.lgc-titlebar .session-pill .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--live);
+  box-shadow: 0 0 6px var(--live);
+  animation: lgc-live-pulse 1.4s ease-in-out infinite;
+}
+.lgc-titlebar .actions {
+  display: flex; align-items: center; gap: 4px;
+  justify-self: end;
+}
+.lgc-iconbtn {
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.lgc-iconbtn:hover {
+  color: var(--ink-primary);
+  border-color: var(--line-soft);
+  background: rgba(212, 168, 87, 0.05);
+}
+.lgc-iconbtn.close:hover {
+  color: #ff8888;
+  border-color: rgba(176, 48, 48, 0.4);
+  background: rgba(176, 48, 48, 0.1);
+}
+
+@keyframes lgc-live-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(0.85); }
+  50%      { opacity: 1;    transform: scale(1.15); }
+}
+
+/* ---- Tab strip ------------------------------------------- */
+.lgc-tabs {
+  display: flex;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid var(--line-faint);
+  padding: 0 12px;
+  gap: 4px;
+  overflow-x: auto;
+  flex-shrink: 0;
+  min-height: 56px;
+}
+.lgc-tabs::-webkit-scrollbar { height: 0; }
+.lgc-tab {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 16px 18px 17px;
+  background: transparent;
+  border: none;
+  /* Force square corners so the gold underline (border-bottom) stays
+     a clean horizontal stripe instead of curving in at the edges as
+     Foundry's default border-radius: 4px would do. */
+  border-radius: 0;
+  color: var(--ink-muted);
+  font-family: "Geist", sans-serif;
+  font-size: 12.5px;
+  letter-spacing: 0.10em;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.lgc-tab:hover:not(.disabled) { color: var(--ink-secondary); }
+.lgc-tab.active {
+  color: var(--gold-bright);
+  border-bottom-color: var(--gold);
+}
+.lgc-tab.disabled { color: var(--ink-faint); cursor: default; }
+/* Suppress the Foundry/dnd5e focus ring on tab buttons so the only
+   active-state cue is the gold under-stroke (matches the user's
+   reference behaviour from other Beneos tab bars). */
+.lgc-tab:focus,
+.lgc-tab:focus-visible,
+.lgc-tab.active { outline: none; box-shadow: none; }
+.lgc-tab.active { background: transparent; }
+.lgc-tab .tab-ic { width: 14px; height: 14px; display: inline-grid; place-items: center; }
+.lgc-tab .count {
+  display: inline-grid; place-items: center;
+  min-width: 18px; height: 16px;
+  padding: 0 5px;
+  background: rgba(212, 168, 87, 0.12);
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-secondary);
+}
+.lgc-tab.active .count {
+  background: rgba(240, 199, 114, 0.18);
+  border-color: var(--line-bright);
+  color: var(--gold-bright);
+}
+.lgc-tab .wip {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(180, 109, 232, 0.10);
+  border: 1px solid rgba(180, 109, 232, 0.40);
+  color: #d9a8ee;
+  text-transform: uppercase;
+}
+
+/* ---- Content area ---------------------------------------- */
+.lgc-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ============================================================
+   Sense Radar tab
+   ============================================================ */
+.radar-header {
+  padding: 18px 24px 14px;
+  border-bottom: 1px solid var(--line-faint);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: flex-end;
+  gap: 16px;
+}
+.radar-header h2 {
+  font-family: "Cinzel", serif;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin: 0 0 4px;
+}
+.radar-header .sub {
+  font-family: "Signika", "Geist", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-secondary);
+  max-width: 520px;
+}
+.radar-header .count-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 12px;
+  background: rgba(212, 168, 87, 0.08);
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  font-family: "Cinzel", serif;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-secondary);
+  white-space: nowrap;
+}
+.radar-header .count-pill .n {
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  color: var(--gold-bright);
+  font-size: 13px;
+}
+
+.radar-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 24px 20px;
+}
+.radar-body::-webkit-scrollbar { width: 8px; }
+.radar-body::-webkit-scrollbar-thumb { background: rgba(212, 168, 87, 0.18); border-radius: 4px; }
+
+/* ---- Composer -------------------------------------------- */
+.composer {
+  background: linear-gradient(180deg, var(--bg-card-hi) 0%, var(--bg-card) 100%);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--rad-md);
+  margin-bottom: 18px;
+  /* Collapsed: hide overflow so the closed pill stays clipped to the
+     rounded rectangle. Expanded: visible so the Origin-Popover can
+     float above the active-pings section without being clipped. */
+  overflow: hidden;
+}
+.composer.is-expanded { overflow: visible; }
+.composer.is-collapsed { padding: 0; }
+.composer.is-expanded  { padding: 0; }
+
+/* The collapsed/expanded toggle is the same button. Title left, hint
+   right, chevron at the far right. The hint stays visible in both
+   states so the collapsed pill still reads as a section header.
+   Foundry's default button style would constrain the height to 28px,
+   so we set a generous min-height and force box-sizing/line-height
+   to keep the text vertically centred inside the pill. */
+.composer-toggle {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  line-height: 1.2;
+  transition: background 0.18s ease;
+}
+.composer-toggle:hover { background: rgba(212, 168, 87, 0.04); }
+.composer.is-expanded .composer-toggle {
+  background: linear-gradient(180deg, rgba(212, 168, 87, 0.10) 0%, rgba(212, 168, 87, 0.04) 100%);
+  border-bottom: 1px solid var(--line-soft);
+}
+.composer-toggle-title {
+  font-family: "Cinzel", serif;
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--gold-soft);
+  display: inline-flex; align-items: center; gap: 10px;
+  white-space: nowrap;
+}
+.composer-toggle-title::before {
+  content: "";
+  width: 3px; height: 14px;
+  background: var(--gold);
+  border-radius: 2px;
+  box-shadow: 0 0 6px var(--gold-glow);
+}
+.composer.is-expanded .composer-toggle-title { color: var(--gold-bright); }
+.composer-toggle-hint {
+  font-family: "Signika", "Geist", system-ui, sans-serif;
+  font-size: 12px;
+  color: var(--ink-secondary);
+  text-align: right;
+  justify-self: end;
+}
+.composer-toggle-chev {
+  flex: 0 0 auto;
+  color: var(--ink-muted);
+  font-size: 11px;
+  transition: color 0.15s, transform 0.25s ease;
+}
+.composer.is-expanded .composer-toggle-chev { transform: rotate(180deg); }
+.composer-toggle:hover .composer-toggle-chev { color: var(--ink-primary); }
+
+/* Smooth expand of the composer body. We use max-height instead of
+   the modern grid-template-rows 0fr→1fr trick because the latter
+   needs Chrome 117+ and was rendering as a 34px stub in older builds,
+   leaving a non-interactive band beneath the collapsed pill (the
+   "split button" bug). max-height is older but works everywhere. */
+.composer .composer-anim {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: max-height 0.30s ease, opacity 0.20s ease;
+}
+.composer.is-expanded .composer-anim {
+  max-height: 500px;
+  opacity: 1;
+  pointer-events: auto;
+  /* Once expanded, let the origin popover float down past the body. */
+  overflow: visible;
+}
+.composer .composer-anim > .composer-grid {
+  min-height: 0;
+}
+
+.composer-grid {
+  display: grid;
+  grid-template-columns: 1fr 140px auto;
+  gap: 16px;
+  padding: 16px 18px 18px;
+  align-items: start;
+}
+.composer-grid .field-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.composer-grid .field-direction {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.composer-grid .field-direction .field-label { align-self: center; }
+.composer-grid .btn-add { align-self: stretch; }
+
+/* Send Ping + help-icon column. The help button sits centred below
+   the Send button and surfaces a translatable tooltip explaining the
+   scavenger-hunt mechanic to first-time GMs. */
+.composer-send-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.composer-send-stack .btn-add { align-self: stretch; }
+.composer-help {
+  align-self: center;
+  width: 26px; height: 26px;
+  padding: 0;
+  display: inline-grid; place-items: center;
+  background: transparent;
+  border: 1px solid var(--line-soft);
+  border-radius: 50%;
+  color: var(--ink-muted);
+  font-size: 13px;
+  cursor: help;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.composer-help:hover,
+.composer-help:focus-visible {
+  color: var(--gold-bright);
+  border-color: var(--line-bright);
+  background: rgba(212, 168, 87, 0.08);
+  box-shadow: 0 0 8px rgba(240, 199, 114, 0.30);
+  outline: none;
+}
+
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field-label {
+  font-family: "Geist", sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* ---- Origin select ---------------------------------------- */
+.origin-select { position: relative; }
+.origin-select-btn {
+  width: 100%;
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px 8px 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  color: var(--ink-primary);
+  cursor: pointer;
+  text-align: left;
+  font-family: "Cinzel", serif;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  transition: border-color 0.15s, background 0.15s;
+  height: 38px;
+}
+.origin-select-btn:hover { border-color: var(--line-strong); }
+.origin-select-btn .chev { margin-left: auto; color: var(--ink-muted); font-size: 10px; }
+
+.origin-select-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0; right: 0;
+  background: linear-gradient(180deg, #1c1611 0%, #110d08 100%);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 6px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  z-index: 10;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6);
+  max-height: 280px;
+  overflow-y: auto;
+}
+.origin-select-popover::-webkit-scrollbar { width: 6px; }
+.origin-select-popover::-webkit-scrollbar-thumb { background: rgba(212, 168, 87, 0.18); border-radius: 3px; }
+.origin-option {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  font-family: "Cinzel", serif;
+  font-size: 12px;
+  text-align: left;
+  justify-content: flex-start;
+}
+.origin-option:hover {
+  background: color-mix(in srgb, var(--origin-color) 12%, rgba(212, 168, 87, 0.06));
+  color: var(--ink-primary);
+}
+.origin-option.selected {
+  background: color-mix(in srgb, var(--origin-color) 18%, rgba(0, 0, 0, 0.3));
+  border-color: color-mix(in srgb, var(--origin-color) 50%, transparent);
+  color: var(--ink-primary);
+}
+.origin-option-name { flex: 1 1 auto; text-align: left; }
+/* Color swatch shared by the trigger button + dropdown options
+   (fallback when no iconPath is available). */
+.origin-swatch {
+  width: 14px; height: 14px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--origin-color, var(--gold));
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.55) inset,
+    0 0 6px color-mix(in srgb, var(--origin-color, var(--gold)) 50%, transparent);
+}
+/* Origin emblem (Codex-style): replaces the old plain mask icon. Uses
+   the same two-layer trick as .origin-card .emblem-disc in beneos-codex.css:
+   - .emblem-tint-base : full origin-colour shape (silhouette), via mask
+   - .emblem-tint-detail : the original BW image overlaid with
+     mix-blend-mode: luminosity so inner light/dark detail survives
+   Result: the icon is tinted in the origin colour but the inner pattern
+   stays readable against the dark disc background.
+   Three size variants (sm/md/lg) cover dropdown / ping-card / chat-card. */
+.lgc-origin-emblem {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  --emblem-size: 24px;
+  width: var(--emblem-size);
+  height: var(--emblem-size);
+}
+.lgc-origin-emblem.sm { --emblem-size: 24px; }
+.lgc-origin-emblem.md { --emblem-size: 44px; }
+.lgc-origin-emblem.lg { --emblem-size: 56px; }
+
+.lgc-origin-emblem .emblem-disc {
+  width: 100%; height: 100%;
+  position: relative;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 55%,
+    color-mix(in oklab, var(--origin-color, var(--gold)) 30%, #000 70%) 0%,
+    rgba(0, 0, 0, 0.85) 78%
+  );
+  border: 1px solid color-mix(in srgb, var(--origin-color, var(--gold)) 55%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--origin-color, var(--gold)) 35%, transparent),
+              0 1px 0 rgba(255, 220, 160, 0.08) inset;
+  display: grid; place-items: center;
+  overflow: hidden;
+}
+.lgc-origin-emblem .emblem-tint-wrap {
+  position: relative;
+  width: 78%; height: 78%;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--origin-color, var(--gold)) 55%, transparent));
+}
+.lgc-origin-emblem .emblem-tint-base {
+  position: absolute; inset: 0;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+}
+.lgc-origin-emblem .emblem-tint-detail {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: contain;
+  mix-blend-mode: luminosity;
+  opacity: 0.85;
+  pointer-events: none;
+}
+.origin-disc {
+  width: 22px; height: 22px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 55%, color-mix(in srgb, var(--origin-color) 70%, #000 30%) 0%, color-mix(in srgb, var(--origin-color) 22%, #000 78%) 65%, rgba(0, 0, 0, 0.85) 100%);
+  border: 1px solid color-mix(in srgb, var(--origin-color) 50%, transparent);
+  display: grid; place-items: center;
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  font-size: 9px;
+  color: color-mix(in srgb, var(--origin-color) 25%, #f5e9cf 75%);
+  text-shadow: 0 0 4px color-mix(in srgb, var(--origin-color) 70%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--origin-color) 35%, transparent);
+}
+
+/* ---- Segmented radio (Distance) -------------------------- */
+/* Horizontal 3-column row again (user revert: vertical stack felt cramped).
+   Active button gets a gold under-bar only, no full glow/border, so it
+   reads consistently with the active-tab cue at the top of the window. */
+.seg-radio {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: auto;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  padding: 3px;
+  gap: 2px;
+  height: 38px;
+}
+.seg-radio button {
+  padding: 0 10px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--ink-secondary);
+  font-family: "Cinzel", serif;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  text-align: center;
+  outline: none;
+}
+.seg-radio button:hover { color: var(--ink-primary); }
+.seg-radio button:focus,
+.seg-radio button:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+.seg-radio button.active {
+  background: rgba(212, 168, 87, 0.08);
+  color: var(--ink-primary);
+  border-bottom-color: var(--gold);
+}
+
+/* ---- Direction picker ------------------------------------- */
+.dir-cross {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  flex-shrink: 0;
+}
+.ping-card-body .dir-cross { width: 96px; height: 96px; }
+.dir-cross .dir-spoke {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 50%; height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--line-soft) 20%, var(--line-soft) 100%);
+  transform-origin: 0% 50%;
+  pointer-events: none;
+  transition: background 0.18s ease, box-shadow 0.18s ease, height 0.18s ease;
+}
+/* The spoke pointing at the currently selected direction lights up in
+   the active origin colour so the user sees both the pressed button AND
+   the line that "carries the signal" out from the centre. The match
+   between data-selected on the .dir-cross and the spoke's class
+   (.n, .ne, .e, ...) drives which one glows. */
+.dir-cross[data-selected="N"]  .dir-spoke.n,
+.dir-cross[data-selected="NE"] .dir-spoke.ne,
+.dir-cross[data-selected="E"]  .dir-spoke.e,
+.dir-cross[data-selected="SE"] .dir-spoke.se,
+.dir-cross[data-selected="S"]  .dir-spoke.s,
+.dir-cross[data-selected="SW"] .dir-spoke.sw,
+.dir-cross[data-selected="W"]  .dir-spoke.w,
+.dir-cross[data-selected="NW"] .dir-spoke.nw {
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--origin-color, var(--gold)) 35%, transparent) 0%,
+    var(--origin-color, var(--gold)) 65%,
+    var(--origin-color, var(--gold)) 100%
+  );
+  box-shadow: 0 0 8px color-mix(in srgb, var(--origin-color, var(--gold)) 55%, transparent);
+}
+.dir-cross .dir-spoke.n  { transform: rotate(-90deg); }
+.dir-cross .dir-spoke.e  { transform: rotate(0deg); }
+.dir-cross .dir-spoke.s  { transform: rotate(90deg); }
+.dir-cross .dir-spoke.w  { transform: rotate(180deg); }
+.dir-cross .dir-spoke.ne { transform: rotate(-45deg); }
+.dir-cross .dir-spoke.se { transform: rotate(45deg); }
+.dir-cross .dir-spoke.sw { transform: rotate(135deg); }
+.dir-cross .dir-spoke.nw { transform: rotate(-135deg); }
+
+.dir-cross .dir-center {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 10px; height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 30%,
+    color-mix(in srgb, var(--origin-color, var(--gold)) 80%, #fff 20%),
+    color-mix(in srgb, var(--origin-color, var(--gold)) 25%, #000 75%)
+  );
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5) inset,
+              0 0 8px color-mix(in srgb, var(--origin-color, var(--gold)) 60%, transparent);
+  pointer-events: none;
+  transition: background 0.18s ease, box-shadow 0.18s ease;
+}
+.dir-cross .dir-btn {
+  position: absolute;
+  width: 22px; height: 22px;
+  margin: -11px 0 0 -11px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--line-soft);
+  display: grid; place-items: center;
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.12s, border-color 0.12s, color 0.12s, box-shadow 0.12s;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+.dir-cross .dir-btn:hover {
+  color: var(--ink-primary);
+  border-color: var(--line-strong);
+  background: rgba(212, 168, 87, 0.10);
+}
+.dir-cross .dir-btn.selected {
+  background: radial-gradient(circle at 50% 55%, color-mix(in srgb, var(--origin-color, var(--gold)) 70%, #000 30%) 0%, color-mix(in srgb, var(--origin-color, var(--gold)) 25%, #000 75%) 80%);
+  border-color: color-mix(in srgb, var(--origin-color, var(--gold)) 60%, transparent);
+  color: #f5e9cf;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--origin-color, var(--gold)) 60%, transparent),
+              0 0 0 1px rgba(255, 220, 160, 0.12) inset;
+}
+.dir-cross .dir-btn.intercard {
+  width: 18px; height: 18px;
+  margin: -9px 0 0 -9px;
+  font-size: 8.5px;
+  color: var(--ink-muted);
+}
+.dir-cross .dir-btn.intercard.selected { color: #f5e9cf; }
+
+.dir-cross .dir-btn.n  { top: 0;      left: 50%; }
+.dir-cross .dir-btn.e  { top: 50%;    left: 100%; }
+.dir-cross .dir-btn.s  { top: 100%;   left: 50%; }
+.dir-cross .dir-btn.w  { top: 50%;    left: 0; }
+.dir-cross .dir-btn.ne { top: 14.6%;  left: 85.4%; }
+.dir-cross .dir-btn.se { top: 85.4%;  left: 85.4%; }
+.dir-cross .dir-btn.sw { top: 85.4%;  left: 14.6%; }
+.dir-cross .dir-btn.nw { top: 14.6%;  left: 14.6%; }
+
+/* ---- Add button ------------------------------------------ */
+.btn-add {
+  height: 38px;
+  padding: 0 16px;
+  background: linear-gradient(180deg, #f0c772, #b89146);
+  border: 1px solid #f0c772;
+  color: #2a1f10;
+  border-radius: 6px;
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15) inset,
+              0 0 14px rgba(240, 199, 114, 0.30);
+  transition: transform 0.12s, box-shadow 0.12s;
+  white-space: nowrap;
+  align-self: end;
+}
+.btn-add:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25) inset,
+              0 0 22px rgba(240, 199, 114, 0.45);
+}
+.btn-add:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ---- Active pings list ----------------------------------- */
+.section-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin: 6px 0 10px;
+}
+.section-head h3 {
+  font-family: "Cinzel", serif;
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-secondary);
+  margin: 0;
+  display: inline-flex; align-items: center; gap: 10px;
+}
+.section-head h3::before {
+  content: "";
+  width: 3px; height: 12px;
+  background: var(--gold);
+  border-radius: 2px;
+  box-shadow: 0 0 6px var(--gold-glow);
+}
+.section-head .hint {
+  font-family: "Signika", "Geist", system-ui, sans-serif;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.ping-list { display: flex; flex-direction: column; gap: 10px; }
+.empty-state {
+  padding: 28px 24px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px dashed var(--line-soft);
+  border-radius: var(--rad-md);
+  font-family: "Signika", "Geist", system-ui, sans-serif;
+  font-size: 14px;
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
+.ping-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px 14px;
+  background: linear-gradient(180deg, var(--bg-card-hi) 0%, var(--bg-card) 100%);
+  border: 1px solid var(--line-soft);
+  border-left: 3px solid var(--origin-color);
+  border-radius: var(--rad-md);
+  overflow: hidden;
+}
+.ping-card-head {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+.ping-card-body {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-faint);
+}
+
+/* Footer strip: characters whose Sense-Compass currently shows this
+   ping. The GM clicks a chip to jump straight to that actor's sheet
+   on the Beneos tab. Shown only when sensingActors is non-empty. */
+.ping-card-sensing {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 10px;
+  margin-top: 4px;
+  border-top: 1px solid var(--line-faint);
+}
+.ping-sensing-label {
+  font-family: "Geist", sans-serif;
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  flex-shrink: 0;
+}
+.ping-sensing-list {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  flex: 1 1 auto;
+}
+.ping-sensing-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px 3px 3px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--line-soft);
+  border-left: 2px solid var(--origin-color);
+  border-radius: 999px;
+  color: var(--ink-secondary);
+  font-family: "Cinzel", serif;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.ping-sensing-chip:hover {
+  color: var(--ink-primary);
+  background: color-mix(in srgb, var(--origin-color) 14%, rgba(0,0,0,0.4));
+  border-color: color-mix(in srgb, var(--origin-color) 45%, transparent);
+}
+.ping-sensing-avatar {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid color-mix(in srgb, var(--origin-color) 50%, transparent);
+  background: #14100a;
+  flex-shrink: 0;
+}
+.ping-sensing-avatar.fallback {
+  display: grid; place-items: center;
+  color: var(--ink-muted);
+  font-size: 10px;
+}
+.ping-sensing-name { white-space: nowrap; }
+.ping-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 65% 80% at 0% 50%,
+    color-mix(in srgb, var(--origin-color) 16%, transparent) 0%,
+    transparent 55%
+  );
+  pointer-events: none;
+  animation: lgc-card-pulse 2.4s ease-in-out infinite;
+  z-index: 0;
+}
+@keyframes lgc-card-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+.ping-card > * { position: relative; z-index: 1; }
+
+.ping-card .big-disc {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 55%, color-mix(in srgb, var(--origin-color) 70%, #000 30%) 0%, color-mix(in srgb, var(--origin-color) 22%, #000 78%) 65%, rgba(0, 0, 0, 0.85) 100%);
+  border: 1px solid color-mix(in srgb, var(--origin-color) 55%, transparent);
+  display: grid; place-items: center;
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: color-mix(in srgb, var(--origin-color) 30%, #f5e9cf 70%);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--origin-color) 70%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--origin-color) 40%, transparent),
+              0 1px 0 rgba(255, 220, 160, 0.08) inset;
+}
+.ping-card .big-disc.has-icon { padding: 0; }
+.ping-card .big-disc-ic {
+  width: 70%; height: 70%;
+  background-color: var(--origin-color);
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: center;  mask-position: center;
+  -webkit-mask-size: contain;     mask-size: contain;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--origin-color) 60%, transparent));
+}
+.ping-card .meta-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: "Signika", "Geist", system-ui, sans-serif;
+  font-size: 12.5px;
+  color: var(--ink-secondary);
+  white-space: nowrap;
+}
+.ping-card .meta-pill .v {
+  font-family: "Cinzel", serif;
+  font-weight: 600;
+  color: var(--gold-bright);
+  letter-spacing: 0.04em;
+}
+.ping-card .meta-pill .ago { color: var(--ink-muted); font-size: 11.5px; }
+.ping-card .meta-pill .dot-sep { color: var(--ink-faint); }
+
+.ping-info { min-width: 0; }
+.ping-info .name-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 4px;
+}
+.ping-info .o-name {
+  font-family: "Cinzel", serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--ink-primary);
+}
+.ping-info .live-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 8px;
+  background: rgba(110, 208, 120, 0.12);
+  border: 1px solid rgba(110, 208, 120, 0.40);
+  border-radius: 999px;
+  font-family: "Geist", sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--live);
+}
+.ping-info .live-tag .dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--live);
+  box-shadow: 0 0 5px var(--live);
+  animation: lgc-live-pulse 1.4s ease-in-out infinite;
+}
+.ping-info .meta-line {
+  font-family: "Signika", "Geist", system-ui, sans-serif;
+  font-size: 13px;
+  color: var(--ink-secondary);
+}
+.ping-info .meta-line .v {
+  font-family: "Cinzel", serif;
+  font-weight: 600;
+  color: var(--gold-bright);
+  letter-spacing: 0.04em;
+}
+.ping-info .meta-line .dot-sep { color: var(--ink-faint); }
+
+.ping-edit { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
+.ping-edit-label {
+  font-family: "Geist", sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.ping-edit .seg-radio {
+  grid-template-columns: repeat(3, auto);
+  height: 30px;
+}
+.ping-edit .seg-radio button {
+  font-size: 10px;
+  padding: 4px 10px;
+}
+.ping-edit .dir-select {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px;
+  padding: 3px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--line-soft);
+  border-radius: 5px;
+  width: 184px;
+}
+.ping-edit .dir-select button {
+  padding: 4px 0;
+  background: transparent;
+  border: none;
+  color: var(--ink-secondary);
+  font-family: "Cinzel", serif;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.ping-edit .dir-select button:hover { color: var(--ink-primary); }
+.ping-edit .dir-select button.active {
+  background: color-mix(in srgb, var(--origin-color) 22%, rgba(0, 0, 0, 0.3));
+  color: var(--ink-primary);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--origin-color) 40%, transparent);
+}
+
+.icon-btn {
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--line-soft);
+  border-radius: 5px;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  align-self: start;
+}
+.icon-btn:hover { color: var(--ink-primary); border-color: var(--line-strong); background: rgba(212, 168, 87, 0.05); }
+.icon-btn.danger:hover {
+  color: #ff8888;
+  border-color: rgba(176, 48, 48, 0.4);
+  background: rgba(176, 48, 48, 0.1);
+}
+
+/* ---- WIP placeholder ------------------------------------- */
+.tab-placeholder {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 48px 36px;
+}
+.tab-placeholder-inner {
+  max-width: 480px;
+  text-align: center;
+  padding: 32px 28px;
+  background: repeating-linear-gradient(135deg, rgba(180, 109, 232, 0.05) 0 14px, rgba(180, 109, 232, 0.10) 14px 28px);
+  border: 1px dashed rgba(180, 109, 232, 0.45);
+  border-radius: 12px;
+}
+.tab-placeholder-inner h3 {
+  font-family: "Cinzel", serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin: 0 0 8px;
+  color: var(--ink-primary);
+}
+.tab-placeholder-inner p {
+  font-family: "Signika", "Geist", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-secondary);
+  margin: 0;
+}
+.tab-placeholder .tag {
+  display: inline-block;
+  font-family: "Cinzel", serif;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(180, 109, 232, 0.15);
+  border: 1px solid rgba(180, 109, 232, 0.50);
+  color: #e8c7ff;
+  margin-bottom: 16px;
+}
+
+/* ---- Distance slider (composer + ping-card body) -------- */
+.dist-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.dist-slider-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+}
+.dist-readout {
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  color: var(--gold-bright);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--gold-bright) 35%, transparent);
+}
+.dist-slider-foot {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.dist-tick {
+  font-family: "Geist", sans-serif;
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.dist-range {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 20px;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+  margin: 0;
+}
+.dist-range:focus, .dist-range:focus-visible { outline: none; box-shadow: none; }
+/* Track */
+.dist-range::-webkit-slider-runnable-track {
+  height: 4px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--gold) 55%, transparent) 0%,
+    color-mix(in srgb, var(--gold) 20%, transparent) 60%,
+    rgba(212, 168, 87, 0.10) 100%);
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+}
+.dist-range::-moz-range-track {
+  height: 4px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--gold) 55%, transparent) 0%,
+    color-mix(in srgb, var(--gold) 20%, transparent) 60%,
+    rgba(212, 168, 87, 0.10) 100%);
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+}
+/* Thumb */
+.dist-range::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 16px; height: 16px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f0c772, #6a4f24);
+  border: 1px solid #f0c772;
+  box-shadow: 0 0 10px rgba(240, 199, 114, 0.55),
+              0 0 0 1px rgba(0, 0, 0, 0.4) inset;
+  cursor: grab;
+}
+.dist-range::-moz-range-thumb {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f0c772, #6a4f24);
+  border: 1px solid #f0c772;
+  box-shadow: 0 0 10px rgba(240, 199, 114, 0.55);
+  cursor: grab;
+}
+.dist-range:active::-webkit-slider-thumb { cursor: grabbing; }
+
+/* ---- Continuous direction picker ------------------------ */
+.dir-picker { display: inline-flex; }
+.dir-cross {
+  cursor: crosshair;
+  --dir-deg: 0deg;
+}
+/* The hovered wedge is a 45° conic-gradient slice centred on --dir-deg.
+   The mask-image cuts a ring (transparent inside, opaque outside) so
+   the wedge does not cover the readout in the middle. */
+.dir-cross .dir-wedge {
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  pointer-events: none;
+  /* conic-gradient starts at 12 o'clock (North) going clockwise — the
+     same convention as our mouseToDeg() math (0=N, 90=E, ...). So the
+     wedge centred on --dir-deg has its 0% angle at --dir-deg - 22.5°.
+     No extra -90deg offset needed: an earlier draft subtracted 90°
+     which made the wedge appear 90° anticlockwise of the cursor. */
+  background: conic-gradient(
+    from calc(var(--dir-deg) - 22.5deg),
+    color-mix(in srgb, var(--origin-color, var(--gold)) 35%, transparent) 0deg,
+    color-mix(in srgb, var(--origin-color, var(--gold)) 45%, transparent) 22.5deg,
+    color-mix(in srgb, var(--origin-color, var(--gold)) 35%, transparent) 45deg,
+    transparent 45deg, transparent 360deg
+  );
+  -webkit-mask: radial-gradient(circle at 50% 50%, transparent 0 32%, #000 34%);
+          mask: radial-gradient(circle at 50% 50%, transparent 0 32%, #000 34%);
+  opacity: 0.85;
+  filter: blur(0.4px);
+  transition: background 0.12s linear;
+}
+.dir-readout {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center;
+  pointer-events: none;
+  font-family: "Cinzel", serif;
+  color: var(--ink-primary);
+  line-height: 1;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.7);
+  z-index: 2;
+}
+.dir-readout-deg {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold-bright);
+  letter-spacing: 0.04em;
+}
+.dir-readout-sector {
+  font-family: "Geist", sans-serif;
+  font-size: 8.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-secondary);
+  margin-top: 2px;
+}
+
+/* ============================================================
+   LGC Chat-Card (whispered to the affected player + GM when a ping
+   fires). Two variants: .attuned (pulsing, with open-sheet link)
+   and .owned (static, "your item vibrates"-style).
+   ============================================================ */
+.beneos-ping-whisper {
+  position: relative;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--line-soft, rgba(212, 168, 87, 0.22));
+  border-left: 3px solid var(--origin-color, #d4a857);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #1a140e 0%, #14100a 100%);
+  font-family: "Signika", "Geist", system-ui, sans-serif;
+  color: #f5e9cf;
+  overflow: hidden;
+}
+.beneos-ping-whisper .bpw-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 6px;
+}
+.beneos-ping-whisper .bpw-emblem .lgc-origin-emblem {
+  --emblem-size: 32px;
+}
+.beneos-ping-whisper .bpw-title {
+  font-family: "Cinzel", serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #f0c772;
+}
+.beneos-ping-whisper .bpw-body {
+  font-size: 13px;
+  line-height: 1.45;
+  color: #c8b896;
+}
+.beneos-ping-whisper .bpw-body strong { color: #f5e9cf; }
+.beneos-ping-whisper .bpw-link {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-top: 10px;
+  padding: 6px 12px;
+  background: linear-gradient(180deg, rgba(240, 199, 114, 0.18), rgba(212, 168, 87, 0.06));
+  border: 1px solid rgba(240, 199, 114, 0.45);
+  border-radius: 999px;
+  color: #f0c772;
+  font-family: "Cinzel", serif;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.beneos-ping-whisper .bpw-link:hover {
+  background: linear-gradient(180deg, rgba(240, 199, 114, 0.30), rgba(212, 168, 87, 0.10));
+  color: #ffe6b3;
+  box-shadow: 0 0 14px rgba(240, 199, 114, 0.35);
+}
+/* Pulse: gentle border + box-shadow oscillation that keeps the player
+   aware until they click through. The renderChatMessage hook removes
+   .pulse once the user opens the sheet OR the flag is already set. */
+.beneos-ping-whisper.pulse {
+  animation: beneos-ping-whisper-pulse 1.8s ease-in-out infinite;
+}
+@keyframes beneos-ping-whisper-pulse {
+  0%, 100% {
+    border-color: color-mix(in srgb, var(--origin-color, #d4a857) 35%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--origin-color, #d4a857) 0%, transparent);
+  }
+  50% {
+    border-color: color-mix(in srgb, var(--origin-color, #d4a857) 80%, transparent);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--origin-color, #d4a857) 45%, transparent);
+  }
+}
+body.beneos-perf-mode .beneos-ping-whisper.pulse { animation: none; }
+
+/* ---- Performance-Mode kill switch ------------------------ */
+body.beneos-perf-mode .lgc-titlebar .session-pill .dot,
+body.beneos-perf-mode .ping-card,
+body.beneos-perf-mode .ping-card::before,
+body.beneos-perf-mode .ping-info .live-tag .dot {
+  animation: none !important;
+}

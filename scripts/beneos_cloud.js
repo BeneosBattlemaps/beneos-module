@@ -1538,6 +1538,22 @@ export class BeneosCloud {
         }
       }
 
+      // Fix M8.3.39: the cloud spellJSON occasionally ships an empty/wrong
+      // system.school (e.g. Message/Prestidigitation), which leaves the
+      // installed spell "school not configured" and falling back to the
+      // wrong (evocation) school. The authoritative school lives in the
+      // Beneos spell DB; map its word to the dnd5e code and write it onto
+      // the object BEFORE the Item is created. Unknown words are left as-is.
+      try {
+        const dbSchoolWord = String(game.beneos.databaseHolder?.spellData?.content?.[spellKey]?.properties?.school || "").trim().toLowerCase()
+        const DND5E_SCHOOL_CODE = { abjuration: "abj", conjuration: "con", divination: "div", enchantment: "enc", evocation: "evo", illusion: "ill", necromancy: "nec", transmutation: "trs" }
+        const code = DND5E_SCHOOL_CODE[dbSchoolWord]
+        if (code) {
+          spellObjectData.system = spellObjectData.system || {}
+          spellObjectData.system.school = code
+        }
+      } catch (e) { /* never block import on school mapping */ }
+
       let spell = new CONFIG.Item.documentClass(spellObjectData);
       if (spell) {
         // Search if we have already an actor with the same name in the compendium
@@ -1738,14 +1754,14 @@ export class BeneosCloud {
           matchedTokens++
         }
         if (tokenUpdates.length) {
-          console.log(`[Beneos Cloud] Scene "${scene.name}": ${tokenUpdates.length} matching token(s)`)
+          BeneosUtility.debugMessage(`[Beneos Cloud] Scene "${scene.name}": ${tokenUpdates.length} matching token(s)`)
           sceneUpdates.push({ scene, updates: tokenUpdates })
         }
       }
     } finally {
       document.body.style.cursor = prevCursorSearch
     }
-    console.log(`[Beneos Cloud] Scene scan complete — scanned ${scannedTokens} token(s), matched ${matchedTokens} for fullId=${fullId}`)
+    BeneosUtility.debugMessage(`[Beneos Cloud] Scene scan complete — scanned ${scannedTokens} token(s), matched ${matchedTokens} for fullId=${fullId}`)
     const totalSceneTokens = sceneUpdates.reduce((n, s) => n + s.updates.length, 0)
 
     if (updatable.length === 0) {
@@ -2437,7 +2453,12 @@ export class BeneosCloud {
           const topResp = await fetch(`data:image/webp;base64,${topData.image64}`);
           const topBlob = await topResp.blob();
           const topFile = new File([topBlob], topData.filename, { type: "image/webp" });
-          await _beneosSafeUpload(finalFolder, topFile, `token ${tokenKey} variant ${i + 1} top`);
+          // Fix M8.3.39: remember whether the top file actually landed on disk.
+          // The prototype-token swap below must only point at -top.webp when
+          // the upload succeeded; otherwise we leave a dangling reference that
+          // 404s on the canvas (matches the user-report top.webp 404 spam).
+          const topUpload = await _beneosSafeUpload(finalFolder, topFile, `token ${tokenKey} variant ${i + 1} top`);
+          topData._beneosUploaded = !!(topUpload && topUpload.path)
         } else {
           BeneosUtility.debugMessage(
             "[Beneos] No top-down variant in cloud response for token", tokenKey, "variant", i + 1
@@ -2480,7 +2501,7 @@ export class BeneosCloud {
           try {
             const installStyle = game.settings.get(BeneosUtility.moduleID(), "beneos-default-install-style")
             const cloudRendering = actorData?.flags?.world?.beneos?.rendering || null
-            const topAssetAvailable = !!(topData?.image64 && topData?.filename)
+            const topAssetAvailable = !!(topData?.image64 && topData?.filename && topData._beneosUploaded)
             if (installStyle === "topdown" && topAssetAvailable
               && actorData.prototypeToken.texture.src.includes("-token.webp")) {
               actorData.prototypeToken.texture.src =

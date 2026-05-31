@@ -1,0 +1,43 @@
+{{!--
+  Continuous direction picker. The .dir-cross is a clickable disc:
+  mouse-move highlights the 45° sector under the pointer and shows the
+  exact angle in the center readout; click commits the angle. The 8
+  cardinal buttons remain as quick-picks (N, NE, ...) that snap to the
+  exact cardinal degree. The selected wedge stays lit until another
+  angle is set.
+--}}
+<div class="dir-picker">
+  <div class="dir-cross"
+       data-action="lgc-direction-click"
+       data-deg="{{deg}}"
+       data-sector="{{sector}}"
+       data-ping-id="{{pingId}}"
+       {{#if originColor}}style="--origin-color: {{originColor}}; --dir-deg: {{deg}}deg;"{{else}}style="--dir-deg: {{deg}}deg;"{{/if}}>
+
+    <div class="dir-wedge"></div>
+
+    <div class="dir-spoke n"></div>
+    <div class="dir-spoke e"></div>
+    <div class="dir-spoke s"></div>
+    <div class="dir-spoke w"></div>
+    <div class="dir-spoke ne"></div>
+    <div class="dir-spoke se"></div>
+    <div class="dir-spoke sw"></div>
+    <div class="dir-spoke nw"></div>
+
+    <div class="dir-readout">
+      <span class="dir-readout-deg">{{degLabel}}</span>
+      <span class="dir-readout-sector">{{sector}}</span>
+    </div>
+
+    <button type="button" class="dir-btn n {{#if (eq sectorCardinal "N" )}}selected{{/if}}" data-action="lgc-direction-cardinal" data-cardinal="N"  title="{{localize 'BENEOS.LGC.Direction.N'}}">N</button>
+    <button type="button" class="dir-btn e {{#if (eq sectorCardinal "E" )}}selected{{/if}}" data-action="lgc-direction-cardinal" data-cardinal="E"  title="{{localize 'BENEOS.LGC.Direction.E'}}">E</button>
+    <button type="button" class="dir-btn s {{#if (eq sectorCardinal "S" )}}selected{{/if}}" data-action="lgc-direction-cardinal" data-cardinal="S"  title="{{localize 'BENEOS.LGC.Direction.S'}}">S</button>
+    <button type="button" class="dir-btn w {{#if (eq sectorCardinal "W" )}}selected{{/if}}" data-action="lgc-direction-cardinal" data-cardinal="W"  title="{{localize 'BENEOS.LGC.Direction.W'}}">W</button>
+
+    <button type="button" class="dir-btn intercard ne {{#if (eq sectorCardinal "NE")}}selected{{/if}}" data-action="lgc-direction-cardinal" data-cardinal="NE" title="{{localize 'BENEOS.LGC.Direction.NE'}}">NE</button>
+    <button type="button" class="dir-btn intercard se {{#if (eq sectorCardinal "SE")}}selected{{/if}}" data-action="lgc-direction-cardinal" data-cardinal="SE" title="{{localize 'BENEOS.LGC.Direction.SE'}}">SE</button>
+    <button type="button" class="dir-btn intercard sw {{#if (eq sectorCardinal "SW")}}selected{{/if}}" data-action="lgc-direction-cardinal" data-cardinal="SW" title="{{localize 'BENEOS.LGC.Direction.SW'}}">SW</button>
+    <button type="button" class="dir-btn intercard nw {{#if (eq sectorCardinal "NW")}}selected{{/if}}" data-action="lgc-direction-cardinal" data-cardinal="NW" title="{{localize 'BENEOS.LGC.Direction.NW'}}">NW</button>
+  </div>
+</div>

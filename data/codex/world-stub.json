@@ -1,0 +1,35 @@
+{
+  "_note": "Stub data for World Codex. User pflegt echte Texte später.",
+  "sections": {
+    "cosmology": {
+      "title": "Cosmology",
+      "eyebrow": "The Shape of Things",
+      "paragraphs": [
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. The world of Eskalion floats between three planes — the Bright, the Hollow, and the Unwritten.",
+        "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Each plane bleeds into the others through wounds the elders call Origin-scars."
+      ]
+    },
+    "geography": {
+      "title": "Geography",
+      "eyebrow": "The Lands",
+      "paragraphs": [
+        "Ut enim ad minim veniam, quis nostrud exercitation ullamco. Five great realms ring the inland sea: the Iron Throne to the north, the Fey Wilds to the west, the Sun-Cult deserts to the south, the Occult marshes to the east, and the techno-arcane city-states in the central archipelago."
+      ]
+    },
+    "calendar": {
+      "title": "Calendar",
+      "eyebrow": "Time's Edge",
+      "paragraphs": [
+        "Duis aute irure dolor in reprehenderit in voluptate velit. The Eskalian year has 360 days split into ten Tides — each Tide aligns with an Origin's ascendancy.",
+        "During the Vampiric Tide, blood-magic flows easiest. During the Sanctified Tide, holy power redoubles. Players who time their rituals can exploit these alignments."
+      ]
+    },
+    "history": {
+      "title": "History",
+      "eyebrow": "The Long Memory",
+      "paragraphs": [
+        "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia. The age of the First Forge, the Sundering, the Long Silence, and the present age of Awakened Loot — four eras shaping every adventure."
+      ]
+    }
+  }
+}

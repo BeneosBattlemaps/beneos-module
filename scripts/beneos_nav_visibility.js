@@ -43,7 +43,6 @@ function hideTileIfNav(tile) {
 function hideNoteIfNav(note) {
   if (game.user.isGM) return;
   const src = note.document.texture?.src ?? note.document.icon;
-  console.log("Beneos Nav | Note check:", src, "| isNav:", isBeneosNavAsset(src), "| exception:", src?.includes(BENEOS_NAV_EXCEPTION));
   if (!isBeneosNavAsset(src)) return;
   note.visible = false;
   note.renderable = false;

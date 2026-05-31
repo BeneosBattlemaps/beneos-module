@@ -1,0 +1,796 @@
+/* ============================================================
+   Sense Compass — Beneos sheet tab artifact (M7.6)
+   Port of design-sense-compass/origin-bonis/project/sense-compass.css
+   minus prototype-only globals (stage, dev-controls, body resets,
+   Google Fonts @import). All rules scoped under .beneos-sense-compass.
+   ============================================================ */
+
+.beneos-sense-compass {
+  --bg-base:       #0d0a08;
+  --bg-panel:      #16110c;
+  --bg-card:       #1a140e;
+  --line-faint:    rgba(212, 168, 87, 0.10);
+  --line-soft:     rgba(212, 168, 87, 0.20);
+  --line-strong:   rgba(212, 168, 87, 0.36);
+  --gold:          #d4a857;
+  --gold-bright:   #f0c772;
+  --gold-soft:     #b89146;
+  --gold-dim:      #7a5d2c;
+  --ink-primary:   #f5e9cf;
+  --ink-secondary: #c8b896;
+  --ink-muted:     #8a7c63;
+  --ink-faint:     #5e5240;
+  --brass-light:   #c9a060;
+  --brass-mid:     #8a6438;
+  --brass-dark:    #4e3820;
+  --iron-light:    #6a5a4c;
+  --iron-dark:     #2a201a;
+  --wood-light:    #4a2f1a;
+  --wood-dark:     #1f140a;
+
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, var(--bg-panel) 0%, var(--bg-base) 100%);
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  overflow: hidden;
+  font-family: "Geist", system-ui, sans-serif;
+  color: var(--ink-primary);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  margin-top: 10px;
+}
+.beneos-sense-compass *,
+.beneos-sense-compass *::before,
+.beneos-sense-compass *::after { box-sizing: border-box; }
+
+.beneos-sense-compass .bnc-header {
+  padding: 12px 16px 8px;
+  border-bottom: 1px solid var(--line-faint);
+  text-align: center;
+}
+.beneos-sense-compass .bnc-eyebrow {
+  font-family: "Geist", sans-serif;
+  font-size: 9.5px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.beneos-sense-compass .bnc-title {
+  font-family: "Cinzel", serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--gold-bright);
+  margin: 4px 0 0;
+}
+.beneos-sense-compass .bnc-empty {
+  padding: 18px 18px 28px;
+  text-align: center;
+  font-family: "Signika", "Geist", system-ui, sans-serif;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+/* Narrative readout beneath the compass: "A pull from the North East"
+   line + an evocative distance tier ("Very close" / "Close" / "Within
+   3 miles" / "Within 5 miles"). Both are i18n keys so translations are
+   plug-and-play later. */
+.beneos-sense-compass .bnc-pull-readout {
+  margin: 14px 0 4px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.beneos-sense-compass .bnc-pull-line {
+  font-family: "Signika", "Geist", system-ui, sans-serif;
+  font-size: 14.5px;
+  line-height: 1.4;
+  color: var(--ink-secondary);
+}
+.beneos-sense-compass .bnc-pull-line strong {
+  font-family: "Cinzel", serif;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--gold-bright);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--gold-bright) 35%, transparent);
+}
+.beneos-sense-compass .bnc-pull-dist {
+  font-family: "Cinzel", serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-soft);
+}
+
+/* ============================================================
+   Dormant state: rendered when no LGC pings, no actor-flag senses
+   and demo-setting is off. We still draw the compass case so the
+   player knows the artifact is bound to the sheet, but in
+   grayscale + dimmed + no animations. The big.heading switches
+   to "Nothing stirring" via the sense-compass.hbs branch. */
+.beneos-sense-compass.is-dormant {
+  /* Hold colour for the title row so the heading stays readable;
+     desaturate only the compass frame below. */
+}
+.beneos-sense-compass.is-dormant .compass-area.is-dormant {
+  filter: grayscale(1) brightness(0.55);
+  opacity: 0.7;
+  pointer-events: none;
+}
+.beneos-sense-compass.is-dormant .compass-area.is-dormant .compass-pulse,
+.beneos-sense-compass.is-dormant .compass-area.is-dormant .compass-aura,
+.beneos-sense-compass.is-dormant .compass-area.is-dormant .needle-aim,
+.beneos-sense-compass.is-dormant .compass-area.is-dormant .compass-halo,
+.beneos-sense-compass.is-dormant .compass-area.is-dormant .compass-intro {
+  display: none !important;
+}
+
+/* ============================================================
+   Farewell beat: ping just disappeared. The compass-area animates
+   from its active look down to a dim, desaturated state over 4s,
+   while a "contact lost" overlay rises above it (fade-in, hold,
+   fade-out). A second sheet render lands the user in .is-dormant.
+   ============================================================ */
+.beneos-sense-compass.is-farewell .compass-area.is-farewell {
+  position: relative;
+  animation: bnc-farewell-compass 4s ease forwards;
+  pointer-events: none;
+}
+@keyframes bnc-farewell-compass {
+  0%   { opacity: 1.0; filter: saturate(1)    brightness(1);    }
+  25%  { opacity: 0.6; filter: saturate(0.55) brightness(0.72); }
+  100% { opacity: 0.25; filter: saturate(0)   brightness(0.45); }
+}
+/* Kill the active-state animations once farewell starts so the
+   compass doesn't keep pulsing while it's fading out. */
+.beneos-sense-compass.is-farewell .compass-area.is-farewell .compass-pulse,
+.beneos-sense-compass.is-farewell .compass-area.is-farewell .compass-aura,
+.beneos-sense-compass.is-farewell .compass-area.is-farewell .needle-aim,
+.beneos-sense-compass.is-farewell .compass-area.is-farewell .compass-halo {
+  display: none !important;
+}
+/* Centred message overlay over the fading compass. */
+.bnc-farewell-overlay {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center;
+  gap: 6px;
+  padding: 14px 22px;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  animation: bnc-farewell-overlay 4s ease forwards;
+  z-index: 10;
+}
+@keyframes bnc-farewell-overlay {
+  0%   { opacity: 0; transform: translate(-50%, calc(-50% + 6px)); }
+  15%  { opacity: 1; transform: translate(-50%, -50%); }
+  78%  { opacity: 1; transform: translate(-50%, -50%); }
+  100% { opacity: 0; transform: translate(-50%, calc(-50% - 4px)); }
+}
+.bnc-farewell-icon {
+  font-size: 22px;
+  color: var(--ink-secondary);
+  filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.6));
+}
+.bnc-farewell-msg {
+  font-family: "Signika", "Geist", system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-primary);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  max-width: 220px;
+}
+.bnc-farewell-origin {
+  font-family: "Cinzel", serif;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--origin-color, var(--gold-soft));
+  font-weight: 700;
+  text-shadow: 0 0 6px color-mix(in srgb, var(--origin-color, var(--gold-soft)) 35%, transparent);
+}
+
+/* ============================================================
+   The Compass — main attraction
+   ============================================================ */
+.beneos-sense-compass .compass-area {
+  padding: 18px 24px 16px;
+  display: flex; flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Explanation copy above the compass */
+.beneos-sense-compass .compass-intro {
+  font-family: "Signika", "Geist", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-secondary);
+  text-align: center;
+  text-wrap: pretty;
+  max-width: 320px;
+  padding: 0 6px;
+  margin: 0 0 2px;
+}
+.beneos-sense-compass .compass-intro strong {
+  font-family: "Cinzel", serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  color: color-mix(in oklab, var(--origin-color) 30%, #f5e9cf 70%);
+}
+
+/* Outer halo — pulse effect BEHIND the compass body */
+.beneos-sense-compass .compass-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 240px;
+  height: 240px;
+  margin: 12px 0 4px;
+}
+.beneos-sense-compass .compass-halo {
+  position: absolute;
+  inset: -34%;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 50%,
+    color-mix(in oklab, var(--pulse-color, var(--origin-color)) 70%, transparent) 0%,
+    color-mix(in oklab, var(--pulse-color, var(--origin-color)) 35%, transparent) 18%,
+    color-mix(in oklab, var(--pulse-color, var(--origin-color)) 14%, transparent) 36%,
+    transparent 60%
+  );
+  mix-blend-mode: screen;
+  filter: blur(18px) saturate(1.15);
+  animation: bnc-halo-breath 1.9s ease-in-out infinite;
+  z-index: 0;
+}
+@keyframes bnc-halo-breath {
+  0%, 100% { opacity: 0.55; transform: scale(0.90); }
+  50%      { opacity: 1.0;  transform: scale(1.12); }
+}
+.beneos-sense-compass .compass-halo::after {
+  content: "";
+  position: absolute;
+  inset: 20%;
+  border-radius: 50%;
+  border: 2px solid color-mix(in oklab, var(--pulse-color, var(--origin-color)) 55%, transparent);
+  animation: bnc-halo-ring 2.6s ease-out infinite;
+  opacity: 0;
+}
+@keyframes bnc-halo-ring {
+  0%   { transform: scale(0.45); opacity: 0; }
+  20%  { opacity: 0.7; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.beneos-sense-compass .compass-frame {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  z-index: 1;
+}
+.beneos-sense-compass .compass-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 30%, var(--wood-light) 0%, var(--wood-dark) 80%);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.4) inset,
+    0 0 0 2px rgba(212, 168, 87, 0.08) inset,
+    0 0 28px rgba(0, 0, 0, 0.5),
+    0 14px 30px rgba(0, 0, 0, 0.45);
+}
+.beneos-sense-compass .compass-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    transparent 0deg 2deg,
+    rgba(40, 22, 10, 0.18) 2deg 4deg,
+    transparent 4deg 7deg
+  );
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+/* Brass face */
+.beneos-sense-compass .compass-face {
+  position: absolute;
+  inset: 28px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #d9b078 0%, var(--brass-mid) 50%, var(--brass-dark) 95%);
+  box-shadow:
+    0 0 0 1px rgba(40, 25, 10, 0.6) inset,
+    0 0 0 2px rgba(255, 220, 160, 0.18) inset,
+    0 4px 10px rgba(0, 0, 0, 0.3) inset;
+  overflow: hidden;
+}
+
+/* Origin-tinted aura */
+.beneos-sense-compass .compass-aura {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--origin-color) 25%, transparent) 0%, transparent 60%);
+  opacity: 0.5;
+  transition: background 0.8s ease, opacity 0.8s ease;
+  mix-blend-mode: screen;
+  animation: bnc-aura-breath 6.2s ease-in-out infinite;
+  will-change: opacity;
+}
+.beneos-sense-compass .compass-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  /* Stronger hot-spot now: the inner ~10% is nearly opaque so the
+     direction reads at a glance, then falls off quickly to keep the
+     overall compass face legible. Reduced blur (was 10px → 6px) so
+     the core stays crisp; boosted saturation so the origin colour
+     reads against the dark face. */
+  background: radial-gradient(
+    circle at var(--pulse-x, 50%) var(--pulse-y, 50%),
+    color-mix(in srgb, var(--pulse-color, var(--origin-color)) 100%, transparent) 0%,
+    color-mix(in srgb, var(--pulse-color, var(--origin-color))  92%, transparent) 10%,
+    color-mix(in srgb, var(--pulse-color, var(--origin-color))  72%, transparent) 22%,
+    color-mix(in srgb, var(--pulse-color, var(--origin-color))  50%, transparent) 34%,
+    color-mix(in srgb, var(--pulse-color, var(--origin-color))  30%, transparent) 46%,
+    color-mix(in srgb, var(--pulse-color, var(--origin-color))  14%, transparent) 58%,
+    color-mix(in srgb, var(--pulse-color, var(--origin-color))   4%, transparent) 70%,
+    transparent 80%
+  );
+  mix-blend-mode: screen;
+  animation: bnc-pulse-breath 2.6s ease-in-out infinite;
+  transition: background 0.9s ease;
+  filter: blur(6px) saturate(1.6);
+  will-change: opacity;
+  z-index: 2;
+}
+/* opacity-only animation, no transform: scale (would shift gradient
+   stops across the pixel raster and create the visible banding). */
+@keyframes bnc-pulse-breath {
+  0%, 100% { opacity: 0.75; }
+  50%      { opacity: 1.0;  }
+}
+@keyframes bnc-aura-breath {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 0.85; }
+}
+
+.beneos-sense-compass .compass-face::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(0, 0, 0, 0.18) 0%, transparent 30%),
+    radial-gradient(circle at 75% 65%, rgba(255, 220, 160, 0.10) 0%, transparent 30%),
+    radial-gradient(circle at 50% 90%, rgba(0, 0, 0, 0.20) 0%, transparent 40%);
+  pointer-events: none;
+}
+
+/* Cardinal markings on the wooden ring */
+.beneos-sense-compass .bnc-cardinals {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.beneos-sense-compass .bnc-cardinal {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  font-family: "Cinzel", serif;
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: 0.04em;
+  color: #ffe9c0;
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.7),
+    0 0 12px rgba(255, 196, 96, 0.55),
+    0 0 4px rgba(255, 196, 96, 0.9);
+  width: 32px;
+  height: 32px;
+  z-index: 4;
+}
+.beneos-sense-compass .bnc-cardinal.n { top: 0;       left: 50%;   transform: translate(-50%, -50%); }
+.beneos-sense-compass .bnc-cardinal.e { right: 0;     top: 50%;    transform: translate(50%, -50%); }
+.beneos-sense-compass .bnc-cardinal.s { bottom: 0;    left: 50%;   transform: translate(-50%, 50%); }
+.beneos-sense-compass .bnc-cardinal.w { left: 0;      top: 50%;    transform: translate(-50%, -50%); }
+
+/* Needle */
+.beneos-sense-compass .needle-aim {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  transform: rotate(var(--target-angle, 0deg));
+  transition: transform 1.1s cubic-bezier(.35, 1.4, .35, 1);
+  pointer-events: none;
+}
+
+@property --quiver-rot {
+  syntax: "<number>";
+  initial-value: 0;
+  inherits: false;
+}
+
+.beneos-sense-compass .needle {
+  position: relative;
+  width: 14px;
+  height: 76%;
+  --quiver-rot: 0;
+  transform: rotate(calc(var(--quiver-rot) * var(--twitch-intensity, 1) * 1deg));
+  animation:
+    bnc-needle-quiver 1.1s cubic-bezier(.35,1.4,.35,1) infinite,
+    bnc-needle-tremor 0.18s linear infinite,
+    bnc-needle-pulse  5.5s ease-in-out infinite;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+}
+@keyframes bnc-needle-quiver {
+  0%, 100% { --quiver-rot: 0; }
+  8%       { --quiver-rot: -4.5; }
+  18%      { --quiver-rot: 3.5; }
+  28%      { --quiver-rot: -5.2; }
+  38%      { --quiver-rot: 2.8; }
+  48%      { --quiver-rot: -3.6; }
+  58%      { --quiver-rot: 4.2; }
+  68%      { --quiver-rot: -2.4; }
+  78%      { --quiver-rot: 3.0; }
+  88%      { --quiver-rot: -1.4; }
+  94%      { --quiver-rot: 1.8; }
+}
+@keyframes bnc-needle-pulse {
+  0%, 88%, 100% { --quiver-rot: 0; }
+  90%           { --quiver-rot: -7; }
+  92%           { --quiver-rot: 5; }
+  94%           { --quiver-rot: -3; }
+  96%           { --quiver-rot: 2; }
+  98%           { --quiver-rot: -0.5; }
+}
+@keyframes bnc-needle-tremor {
+  0%, 100% { translate: 0 0; }
+  20%      { translate: 0.4px -0.2px; }
+  40%      { translate: -0.3px 0.1px; }
+  60%      { translate: 0.2px 0.3px; }
+  80%      { translate: -0.2px -0.1px; }
+}
+.beneos-sense-compass .needle svg { width: 100%; height: 100%; overflow: visible; }
+
+/* Glass dome */
+.beneos-sense-compass .compass-glass {
+  position: absolute;
+  inset: 28px;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse 55% 35% at 35% 25%, rgba(255, 245, 225, 0.18) 0%, transparent 50%),
+    radial-gradient(ellipse 30% 20% at 70% 80%, rgba(255, 245, 225, 0.06) 0%, transparent 50%);
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+.beneos-sense-compass .compass-glass::after {
+  content: "";
+  position: absolute;
+  top: 8%; left: 10%;
+  width: 30%; height: 16%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255, 250, 230, 0.20) 0%, transparent 70%);
+  transform: rotate(-25deg);
+}
+
+/* Brass pivot */
+.beneos-sense-compass .compass-pivot {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 18px; height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--brass-light) 0%, var(--brass-dark) 80%);
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.5) inset,
+    0 0 0 2px rgba(255, 220, 160, 0.25) inset,
+    0 2px 4px rgba(0,0,0,0.4);
+  z-index: 5;
+}
+.beneos-sense-compass .compass-pivot::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, var(--brass-dark) 0%, #1a0e06 90%);
+}
+
+/* ============================================================
+   Readout below the compass
+   ============================================================ */
+.beneos-sense-compass .readout {
+  text-align: center;
+  width: 100%;
+  display: flex; flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.beneos-sense-compass .readout-eyebrow {
+  font-family: "Geist", sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.beneos-sense-compass .readout-direction {
+  font-family: "Cinzel", serif;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--ink-primary);
+  margin: 2px 0 4px;
+}
+.beneos-sense-compass .readout-origin {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 8px;
+  background: color-mix(in oklab, var(--origin-color) 12%, rgba(0,0,0,0.4));
+  border: 1px solid color-mix(in oklab, var(--origin-color) 45%, transparent);
+  border-radius: 999px;
+  font-family: "Cinzel", serif;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: color-mix(in oklab, var(--origin-color) 25%, #f5e9cf 75%);
+  margin-top: 2px;
+  transition: background 0.5s, border-color 0.5s;
+}
+.beneos-sense-compass .readout-origin .mini-sigil {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 55%, color-mix(in oklab, var(--origin-color) 70%, #000 30%) 0%, color-mix(in oklab, var(--origin-color) 22%, #000 78%) 65%, rgba(0,0,0,0.85) 100%);
+  border: 1px solid color-mix(in oklab, var(--origin-color) 50%, transparent);
+  display: grid; place-items: center;
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  font-size: 9px;
+  color: color-mix(in oklab, var(--origin-color) 25%, #f5e9cf 75%);
+}
+
+.beneos-sense-compass .rarity-strip {
+  display: flex; align-items: center; gap: 14px;
+  margin-top: 10px;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.beneos-sense-compass .rarity-strip.revealed { opacity: 1; transform: translateY(0); }
+.beneos-sense-compass .rarity-strip .label {
+  font-family: "Geist", sans-serif;
+  font-size: 9.5px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.beneos-sense-compass .rarity-strip .gems { display: flex; gap: 4px; }
+.beneos-sense-compass .rarity-gem {
+  width: 10px; height: 10px;
+  transform: rotate(45deg);
+  background: rgba(40, 25, 10, 0.5);
+  border: 1px solid var(--ink-faint);
+  border-radius: 1px;
+}
+.beneos-sense-compass .rarity-gem.lit {
+  background: var(--gem-color, var(--origin-color));
+  border-color: color-mix(in oklab, var(--gem-color, var(--origin-color)) 70%, #f5e9cf);
+  box-shadow:
+    0 0 6px var(--gem-color, var(--origin-color)),
+    0 0 0 1px rgba(0,0,0,0.4) inset;
+}
+.beneos-sense-compass .rarity-name {
+  font-family: "Cinzel", serif;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gem-color, var(--origin-color));
+}
+.beneos-sense-compass .distance-hint {
+  font-family: "Signika", "Geist", system-ui, sans-serif;
+  font-size: 13px;
+  color: var(--ink-secondary);
+  margin-top: 8px;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.5s ease 0.15s, transform 0.5s ease 0.15s;
+}
+.beneos-sense-compass .distance-hint.revealed { opacity: 1; transform: translateY(0); }
+.beneos-sense-compass .distance-hint .num {
+  font-family: "Cinzel", serif;
+  color: var(--gold-bright);
+  margin: 0 3px;
+}
+
+/* Minimal rarity-line readout: appears only once the character has
+   2+ attuned items of this Origin (the existing reveal threshold).
+   Shows "Very Rare Sanctified Item" + colour-tinted rarity gems. */
+.beneos-sense-compass .readout-rarity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 18px 12px;
+  text-align: center;
+}
+.beneos-sense-compass .rarity-line {
+  font-family: "Cinzel", serif;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: var(--ink-primary);
+}
+.beneos-sense-compass .rarity-line .rarity-name {
+  color: var(--gem-color, var(--origin-color));
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  text-shadow: 0 0 6px color-mix(in srgb, var(--gem-color, var(--origin-color)) 35%, transparent);
+}
+.beneos-sense-compass .rarity-line .rarity-origin {
+  color: var(--gold-bright);
+  font-weight: 600;
+  margin: 0 4px;
+}
+.beneos-sense-compass .rarity-line .rarity-suffix {
+  color: var(--ink-secondary);
+}
+.beneos-sense-compass .readout-rarity .rarity-gems {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.beneos-sense-compass .whisper {
+  padding: 8px 26px 4px;
+  font-family: "Signika", "Geist", system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-secondary);
+  text-align: center;
+  text-wrap: pretty;
+}
+.beneos-sense-compass .whisper em {
+  color: color-mix(in oklab, var(--origin-color) 30%, #f5e9cf 70%);
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* "Also stirring" */
+.beneos-sense-compass .also-felt {
+  border-top: 1px solid var(--line-faint);
+  background: rgba(0,0,0,0.35);
+  padding: 12px 18px 14px;
+  display: flex; flex-direction: column;
+  gap: 6px;
+}
+.beneos-sense-compass .also-head {
+  font-family: "Geist", sans-serif;
+  font-size: 9.5px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 2px;
+}
+.beneos-sense-compass .also-row {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--line-faint);
+  border-left: 2px solid var(--origin-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+}
+.beneos-sense-compass .also-row:hover {
+  background: rgba(212, 168, 87, 0.05);
+  border-left-color: color-mix(in oklab, var(--origin-color) 80%, #f5e9cf);
+}
+.beneos-sense-compass .also-row .mini-sigil {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 55%, color-mix(in oklab, var(--origin-color) 70%, #000 30%) 0%, color-mix(in oklab, var(--origin-color) 22%, #000 78%) 65%, rgba(0,0,0,0.85) 100%);
+  border: 1px solid color-mix(in oklab, var(--origin-color) 50%, transparent);
+  display: grid; place-items: center;
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  font-size: 8.5px;
+  color: color-mix(in oklab, var(--origin-color) 25%, #f5e9cf 75%);
+}
+.beneos-sense-compass .also-row .lede {
+  font-family: "Signika", "Geist", system-ui, sans-serif;
+  font-size: 13px;
+  color: var(--ink-primary);
+  line-height: 1.3;
+}
+.beneos-sense-compass .also-row .lede em {
+  font-style: normal;
+  font-weight: 600;
+}
+.beneos-sense-compass .also-row .dir-chip {
+  font-family: "Cinzel", serif;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--line-faint);
+  color: var(--ink-secondary);
+}
+
+/* ============================================================
+   Distance-based intensity tiers. The further away the source, the
+   slower the needle quivers and the gentler the aura pulses. Bound
+   to the LGC ping's distanceFt via sense-compass-data._lgcPingToSense
+   (close ≤ 1 mi, mid ≤ 3 mi, far ≤ 5 mi, distant ≤ 10 mi).
+   ============================================================ */
+/* Intensity tuning — close range is meant to feel like a violent
+   homing pulse: needle thrashes ~3× harder, pulse cycles every ~1.6s,
+   aura breathes quickly. As distance grows the whole compass calms
+   down (twitch shrinks, durations grow) so the player can feel
+   "warmer / colder" while the GM drags the distance slider. */
+.beneos-sense-compass .compass-area.intensity-close .needle {
+  --twitch-intensity: 2.8;
+  animation:
+    bnc-needle-quiver 0.28s cubic-bezier(.35,1.4,.35,1) infinite,
+    bnc-needle-tremor 0.07s linear infinite,
+    bnc-needle-pulse  1.6s  ease-in-out infinite;
+}
+.beneos-sense-compass .compass-area.intensity-mid .needle {
+  --twitch-intensity: 1.4;
+  animation:
+    bnc-needle-quiver 0.70s cubic-bezier(.35,1.4,.35,1) infinite,
+    bnc-needle-tremor 0.14s linear infinite,
+    bnc-needle-pulse  3.2s  ease-in-out infinite;
+}
+.beneos-sense-compass .compass-area.intensity-far .needle {
+  --twitch-intensity: 0.55;
+  animation:
+    bnc-needle-quiver 1.8s cubic-bezier(.35,1.4,.35,1) infinite,
+    bnc-needle-tremor 0.35s linear infinite,
+    bnc-needle-pulse  6.5s ease-in-out infinite;
+}
+.beneos-sense-compass .compass-area.intensity-distant .needle {
+  --twitch-intensity: 0.20;
+  animation:
+    bnc-needle-quiver 4.0s cubic-bezier(.35,1.4,.35,1) infinite,
+    bnc-needle-tremor 0.9s  linear infinite,
+    bnc-needle-pulse  9s    ease-in-out infinite;
+}
+.beneos-sense-compass .compass-area.intensity-close   .compass-aura { animation-duration: 1.2s; opacity: 0.95; }
+.beneos-sense-compass .compass-area.intensity-mid     .compass-aura { animation-duration: 3.0s; }
+.beneos-sense-compass .compass-area.intensity-far     .compass-aura { animation-duration: 5.5s; }
+.beneos-sense-compass .compass-area.intensity-distant .compass-aura { animation-duration: 9.0s; opacity: 0.55; }
+.beneos-sense-compass .compass-area.intensity-close   .compass-halo { animation-duration: 1.0s; }
+.beneos-sense-compass .compass-area.intensity-mid     .compass-halo { animation-duration: 2.5s; }
+.beneos-sense-compass .compass-area.intensity-far     .compass-halo { animation-duration: 5.0s; }
+.beneos-sense-compass .compass-area.intensity-distant .compass-halo { animation-duration: 8.0s; }
+.beneos-sense-compass .compass-area.intensity-close   .compass-pulse { animation-duration: 1.4s; }
+.beneos-sense-compass .compass-area.intensity-mid     .compass-pulse { animation-duration: 3.0s; }
+.beneos-sense-compass .compass-area.intensity-far     .compass-pulse { animation-duration: 5.0s; }
+.beneos-sense-compass .compass-area.intensity-distant .compass-pulse { animation-duration: 8.5s; }
+
+/* Performance-Mode kill switch */
+body.beneos-perf-mode .beneos-sense-compass .compass-halo,
+body.beneos-perf-mode .beneos-sense-compass .compass-aura,
+body.beneos-perf-mode .beneos-sense-compass .compass-pulse,
+body.beneos-perf-mode .beneos-sense-compass .needle {
+  animation: none !important;
+}

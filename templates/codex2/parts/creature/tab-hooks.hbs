@@ -1,0 +1,22 @@
+<section class="cdx-section">
+  <header class="cdx-h">
+    <h2>{{localize "BENEOS.CreatureCodex.Hooks.Title"}}</h2>
+    <p>{{localize "BENEOS.CreatureCodex.Hooks.Sub"}}</p>
+  </header>
+
+  {{#if creature.hasStoryPrompts}}
+    <div class="cdx-hooks">
+      {{#each creature.data.storyPrompts}}
+        <article class="cdx-hook tier-{{tier}}">
+          <div class="cdx-hook-tier">{{roman (sum @index 1)}}</div>
+          <div class="cdx-hook-body">
+            <h3 class="cdx-hook-title">{{title}}</h3>
+            <p class="cdx-hook-text">{{{text}}}</p>
+          </div>
+        </article>
+      {{/each}}
+    </div>
+  {{else}}
+    <p class="cdx-empty">{{localize "BENEOS.CreatureCodex.Hooks.Empty"}}</p>
+  {{/if}}
+</section>

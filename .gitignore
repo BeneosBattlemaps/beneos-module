@@ -8,3 +8,5 @@ todo.md
 /packs/*/LOG
 /packs/*/LOCK
 /.github/copilot-instructions.md
+*.bak
+*.bak-*

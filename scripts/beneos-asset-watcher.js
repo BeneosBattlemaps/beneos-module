@@ -471,7 +471,7 @@ const persistDismissal = async (scene, paths) => {
 const runCheck = async (scene, { forceDialog = false } = {}) => {
   const refs = _sceneRefs(scene);
   if (!refs.length) {
-    console.log(`Beneos AssetWatcher | scene "${scene.name}" — 0 Beneos refs found, skipping check`);
+    if (globalThis.BeneosUtility?.isDebug?.()) console.log(`Beneos AssetWatcher | scene "${scene.name}" — 0 Beneos refs found, skipping check`);
     lastResults.set(scene.id, "");
     return;
   }
@@ -487,7 +487,7 @@ const runCheck = async (scene, { forceDialog = false } = {}) => {
   const prevKey = lastResults.get(scene.id);
   lastResults.set(scene.id, key);
 
-  console.log(`Beneos AssetWatcher | scene "${scene.name}" — ${refs.length} refs collected, ${missingRefs.length} missing, ${undismissedRefs.length} undismissed`);
+  if (globalThis.BeneosUtility?.isDebug?.()) console.log(`Beneos AssetWatcher | scene "${scene.name}" — ${refs.length} refs collected, ${missingRefs.length} missing, ${undismissedRefs.length} undismissed`);
 
   if (!missingRefs.length) return;
   if (!undismissedRefs.length) return;
@@ -503,7 +503,7 @@ const openTroubleshootingFaq = () => {
   }
 };
 
-const escapeHTML = (s) => String(s).replace(/[&<>"']/g, c => ({
+const escapeHTML = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
 }[c]));
 
@@ -773,13 +773,13 @@ const scanAllEntities = async (onProgress) => {
     }
   }
   if (!allRefs.length) {
-    console.log(`Beneos AssetWatcher | world scan — 0 Beneos refs found across all entities`);
+    if (globalThis.BeneosUtility?.isDebug?.()) console.log(`Beneos AssetWatcher | world scan — 0 Beneos refs found across all entities`);
     return { totalRefs: 0, totalMissing: 0, refs: [], missingRefs: [], missing: [] };
   }
   const probed = await _probeRefs(allRefs);
   const missingRefs = probed.filter(r => !r.ok);
   const missing = [...new Set(missingRefs.map(r => r.path))];
-  console.log(`Beneos AssetWatcher | world scan — ${allRefs.length} refs collected, ${missingRefs.length} missing`);
+  if (globalThis.BeneosUtility?.isDebug?.()) console.log(`Beneos AssetWatcher | world scan — ${allRefs.length} refs collected, ${missingRefs.length} missing`);
   return {
     totalRefs: allRefs.length,
     totalMissing: missingRefs.length,
@@ -823,5 +823,7 @@ export {
   _tableRefs as collectTableRefs,
   headCheck,
   isBeneosPath,
-  BENEOS_PATH_RE
+  BENEOS_PATH_RE,
+  escapeHTML,
+  _basename
 };

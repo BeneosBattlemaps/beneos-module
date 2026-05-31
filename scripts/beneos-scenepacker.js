@@ -28,8 +28,7 @@ export class BeneosScenePackerManager {
      * Initialise le manager avec le Foundry ID depuis les settings Beneos
      */
     async initialize() {
-        console.log('BeneosScenePackerManager | Initializing...');
-        
+
         // Récupérer le Foundry ID depuis les settings Beneos
         try {
             const foundryId = game.settings.get('beneos-module', 'beneos-cloud-foundry-id');
@@ -263,7 +262,6 @@ let beneosScenePackerManager = null;
 
 // Hook d'initialisation
 Hooks.once('ready', async () => {
-    console.log('BeneosScenePackerManager | Module ready');
 
     // Créer l'instance globale
     const beneosScenePackerManager = new BeneosScenePackerManager();
@@ -272,13 +270,8 @@ Hooks.once('ready', async () => {
     const initialized = await beneosScenePackerManager.initialize();
 
     if (initialized) {
-        console.log('BeneosScenePackerManager | Ready to import packages');
-
         // Exposer dans le scope global pour accès facile
         window.BeneosScenePacker = beneosScenePackerManager;
-
-        // Commande de console pour tester
-        console.log('BeneosScenePackerManager | Use window.BeneosScenePacker.showPackageSelector() to import packages');
 
         // Ajouter un bouton dans l'interface Moulinette (si disponible)
         // TODO: Intégrer dans l'UI Moulinette existante

@@ -1,0 +1,15 @@
+<div class="dist-slider"
+     {{#if pingId}}data-ping-id="{{pingId}}"{{/if}}>
+  <div class="dist-slider-head">
+    <span class="dist-readout">{{label}}</span>
+  </div>
+  <input type="range"
+         class="dist-range"
+         min="0" max="1000" step="1"
+         value="{{sliderValue}}"
+         data-action="lgc-distance-input">
+  <div class="dist-slider-foot">
+    <span class="dist-tick start">0 ft</span>
+    <span class="dist-tick end">10 mi</span>
+  </div>
+</div>

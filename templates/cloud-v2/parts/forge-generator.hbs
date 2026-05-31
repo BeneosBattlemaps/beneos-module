@@ -1,0 +1,140 @@
+{{!-- Beneos Forge. Drop a non-Beneos item on the anvil, pick an Origin, and
+     forge: the item is imprinted with that Origin (Echo bonus appended,
+     renamed, flagged) so it behaves like a Beneos item. Patreon-gated. --}}
+<div class="bf-frame">
+
+  <header class="bf-header">
+    <h2 class="bf-title">{{localize "BENEOS.Forge.Title"}}</h2>
+    <p class="bf-subtitle">{{localize "BENEOS.Forge.Purpose"}}</p>
+  </header>
+
+  <div class="beneos-paywall-wrap{{#unless hasTokenAccess}} is-locked{{/unless}}">
+    <div class="beneos-paywall-content">
+
+      {{#if resultName}}
+        {{!-- Reveal: the freshly forged item presented like a trading card.
+             The card is the drag source (img is draggable=false so the drag
+             bubbles to the card and carries the Item payload). --}}
+        <div class="bf-reveal{{#if isChangeResult}} is-change{{/if}}">
+          <div class="bf-reveal-card">
+            <div class="bf-reveal-rays" aria-hidden="true"></div>
+            <div class="bf-reveal-glow" aria-hidden="true"></div>
+            {{#if resultImg}}<img class="bf-reveal-img" src="{{resultImg}}" alt="" draggable="false">{{/if}}
+          </div>
+          <div class="bf-reveal-name">{{resultName}}</div>
+          <div class="bf-reveal-sub"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> {{resultMessage}}</div>
+          <div class="bf-reveal-drag-hint"><i class="fa-solid fa-hand-pointer" aria-hidden="true"></i> {{localize "BENEOS.Forge.DragHint"}}</div>
+          <button type="button" class="bf-forge-btn bf-reveal-again" data-action="forgeReset">
+            <i class="fa-solid fa-hammer"></i>
+            <span>{{localize "BENEOS.Forge.ForgeAnother"}}</span>
+          </button>
+        </div>
+      {{else}}
+
+        {{!-- Two columns: left = Origin picker (icon + name, like the codex
+             Origin list); right = the two fusion slots, the Forge button, and
+             the Echo-of-Origin bonus underneath. --}}
+        <div class="bf-body">
+
+          <div class="bf-origin-col">
+            <div class="bf-origin-list">
+              {{#each origins}}
+                <button type="button" class="bf-origin-card{{#if selected}} is-active{{/if}}"
+                        style="--bf-dot: {{glow}};" data-action="forgeSelectOrigin" data-slug="{{slug}}"
+                        aria-label="{{name}}" aria-pressed="{{#if selected}}true{{else}}false{{/if}}">
+                  <span class="bf-origin-card-glow" aria-hidden="true"></span>
+                  {{#if icon}}
+                    <span class="bf-tile-art">
+                      <span class="bf-tile-tint" style="-webkit-mask: url('{{iconMask}}') center / contain no-repeat; mask: url('{{iconMask}}') center / contain no-repeat;"></span>
+                      <img class="bf-tile-detail" src="{{icon}}" alt="" draggable="false">
+                    </span>
+                  {{/if}}
+                  <span class="bf-origin-card-name">{{name}}</span>
+                </button>
+              {{/each}}
+            </div>
+          </div>
+
+          <div class="bf-work-col">
+
+            {{!-- Fusion: chosen Origin + dropped item, "Origin + Item". --}}
+            <div class="bf-stage{{#if forging}} is-forging{{/if}}">
+              <div class="bf-hammer" aria-hidden="true"><i class="fa-solid fa-hammer"></i></div>
+              <div class="bf-spark" aria-hidden="true"></div>
+              <div class="bf-fusion">
+
+                <div class="bf-slot bf-slot-origin{{#if hasOrigin}} is-filled{{/if}}" style="--bf-dot: {{originGlow}};">
+                  {{#if hasOrigin}}
+                    <span class="bf-slot-glow" aria-hidden="true"></span>
+                    <span class="bf-tile-art bf-slot-art">
+                      <span class="bf-tile-tint" style="-webkit-mask: url('{{originIconMask}}') center / contain no-repeat; mask: url('{{originIconMask}}') center / contain no-repeat;"></span>
+                      <img class="bf-tile-detail" src="{{originIcon}}" alt="" draggable="false">
+                    </span>
+                  {{else}}
+                    <i class="fa-solid fa-gem bf-slot-ph-icon"></i>
+                    <span class="bf-slot-cap bf-slot-cap-ph">{{localize "BENEOS.Forge.PickOrigin"}}</span>
+                  {{/if}}
+                </div>
+
+                <div class="bf-plus" aria-hidden="true"><i class="fa-solid fa-plus"></i></div>
+
+                <div class="bf-slot bf-slot-item bf-drop{{#if hasItem}} is-filled has-item{{/if}}">
+                  {{#if hasItem}}
+                    {{#if itemImg}}<img class="bf-slot-item-img" src="{{itemImg}}" alt="" draggable="false">{{/if}}
+                    <button type="button" class="bf-clear" data-action="forgeClearItem"
+                            data-tooltip="{{localize 'BENEOS.Forge.ClearItem'}}"
+                            aria-label="{{localize 'BENEOS.Forge.ClearItem'}}"><i class="fa-solid fa-xmark"></i></button>
+                  {{else}}
+                    <i class="fa-solid fa-arrow-down-to-bracket bf-drop-icon"></i>
+                    <span class="bf-slot-cap bf-slot-cap-ph">{{localize "BENEOS.Forge.DropHint"}}</span>
+                  {{/if}}
+                </div>
+
+              </div>
+            </div>
+
+            {{!-- Action line + stamp: what will be made, and the exact result name. --}}
+            {{#if hasOrigin}}
+              <div class="bf-make">{{localize "BENEOS.Forge.MakeThisItem"}} <strong>{{originName}}</strong></div>
+            {{/if}}
+            <div class="bf-stamp{{#if hasOrigin}} is-set{{/if}}{{#if stampNew}} is-new{{/if}}">
+              {{#if hasOrigin}}
+                {{#if stampNew}}
+                  <span class="bf-stamp-tag">{{localize "BENEOS.Forge.StampNew"}}</span>
+                  <span class="bf-stamp-name">({{forgedPreviewName}})</span>
+                {{else}}
+                  <span class="bf-stamp-name">{{originName}}</span>
+                {{/if}}
+              {{else}}
+                <span class="bf-stamp-hint">{{localize "BENEOS.Forge.PickOrigin"}}</span>
+              {{/if}}
+            </div>
+
+            {{#if isChangeMode}}
+              <div class="bf-mode-hint"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> {{localize "BENEOS.Forge.CannotReforge"}}</div>
+            {{/if}}
+
+            <div class="bf-controls">
+              <button type="button" class="bf-forge-btn{{#if canForge}} is-ready{{/if}}" data-action="forgeStrike" {{#unless canForge}}disabled{{/unless}}>
+                <i class="fa-solid fa-hammer"></i>
+                <span>{{#if isChangeMode}}{{localize "BENEOS.Forge.ChangeOriginButton"}}{{else}}{{localize "BENEOS.Forge.ForgeButton"}}{{/if}}</span>
+              </button>
+            </div>
+
+            {{#if echoHtml}}
+              <div class="bf-echo">
+                <div class="bf-echo-title"><i class="fa-solid fa-wand-sparkles" aria-hidden="true"></i> {{echoTitle}}</div>
+                <div class="bf-echo-body">{{{echoHtml}}}</div>
+              </div>
+            {{/if}}
+
+          </div>
+        </div>
+
+      {{/if}}
+
+    </div>
+    {{#unless hasTokenAccess}}{{> "modules/beneos-module/templates/shared/beneos-paywall.hbs" joinUrl=joinPatreonUrl}}{{/unless}}
+  </div>
+
+</div>

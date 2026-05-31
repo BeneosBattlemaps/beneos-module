@@ -1,0 +1,40 @@
+<aside class="concept-rail">
+  <div class="eyebrow">{{localize "BENEOS.Codex.ConceptRail.Eyebrow"}}</div>
+  <h1 class="concept-title">{{localize "BENEOS.Codex.ConceptRail.Heading"}}</h1>
+  <p class="concept-lead">
+    {{localize "BENEOS.Codex.ConceptRail.Lead"}}
+  </p>
+
+  <div class="model-block model-block-set">
+    <div class="model-block-head">
+      <div class="pip-emblem set"></div>
+      <div class="model-block-name">{{localize "BENEOS.Codex.ConceptRail.SetBonusTitle"}}</div>
+    </div>
+    <div class="model-block-body">{{localize "BENEOS.Codex.ConceptRail.SetBonusBody"}}</div>
+    <div class="set-ladder">
+      <div class="set-rung">
+        <div class="set-pip reson"></div>
+        <div class="set-rung-name">{{localize "BENEOS.Codex.ConceptRail.Resonance"}}</div>
+        <div class="set-rung-cond">{{localize "BENEOS.Codex.ConceptRail.ResonanceCond"}}</div>
+      </div>
+      <div class="set-rung">
+        <div class="set-pip harmony"></div>
+        <div class="set-rung-name">{{localize "BENEOS.Codex.ConceptRail.Harmony"}}</div>
+        <div class="set-rung-cond">{{localize "BENEOS.Codex.ConceptRail.HarmonyCond"}}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="eyebrow" style="margin-top:24px;margin-bottom:10px;">{{localize "BENEOS.Codex.ConceptRail.RulesHeading"}}</div>
+  {{#each mechanicRules}}
+    <div class="rule-block">
+      <div class="rule-head" data-action="toggle-rule" data-rule="{{k}}">
+        <div class="rule-title">{{localize title}}</div>
+        <span style="color:var(--gold-soft);font-family:Cinzel,serif;font-size:14px;">{{#if open}}−{{else}}+{{/if}}</span>
+      </div>
+      {{#if open}}
+        <div class="rule-summary">{{localize body}}</div>
+      {{/if}}
+    </div>
+  {{/each}}
+</aside>

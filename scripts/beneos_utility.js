@@ -417,6 +417,62 @@ export class BeneosUtility {
       config: false
     })
 
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-performance-mode', {
+      name: 'BENEOS.Settings.PerfMode.Name',
+      hint: 'BENEOS.Settings.PerfMode.Hint',
+      scope: 'client',
+      config: true,
+      type: Boolean,
+      default: false,
+      onChange: (val) => document.body.classList.toggle('beneos-perf-mode', !!val)
+    })
+
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-loot-set-bonuses', {
+      name: 'BENEOS.Settings.LootSetBonuses.Name',
+      hint: 'BENEOS.Settings.LootSetBonuses.Hint',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: true,
+      onChange: () => {
+        // Re-render all open actor sheets so the Beneos tab appears
+        // or disappears depending on the new state.
+        const map = foundry?.applications?.instances;
+        const visit = (app) => {
+          if (app?.actor && app?.rendered) {
+            try { app.render(false); } catch (_) {}
+          }
+        };
+        if (map?.forEach) map.forEach(visit);
+        for (const a of Object.values(ui.windows ?? {})) visit(a);
+      }
+    })
+
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-sense-demo', {
+      name: 'BENEOS.Sense.DemoSetting.Name',
+      hint: 'BENEOS.Sense.DemoSetting.Hint',
+      scope: 'client',
+      config: true,
+      type: Boolean,
+      default: false,
+      onChange: () => {
+        for (const app of Object.values(ui.windows ?? {})) {
+          if (app?.rendered) try { app.render(false); } catch (_) {}
+        }
+      }
+    })
+
+    /* Live Game Control: world-scoped list of active Origin pings. The GM
+       Sense-Radar tab writes here; player char sheets read via
+       sense-compass-data._resolveSenses. */
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-lgc-active-pings', {
+      name: 'Beneos LGC Active Pings (internal)',
+      scope: 'world',
+      config: false,
+      type: Array,
+      default: []
+    })
+
     /*game.settings.register(BeneosUtility.moduleID(), 'beneos-table-top-config', {
       name: 'Internal data store for table top mode settings',
       default: TableTopModeSettings.getDefaultTableTopSettings(),
@@ -763,16 +819,9 @@ export class BeneosUtility {
       return text.substring(0, len) + "."
     })
 
-    //Token Magic Hack  Replacement to prevent double filters when changing animations
-    if (typeof TokenMagic !== 'undefined') {
-      let OrigSingleLoadFilters = TokenMagic._singleLoadFilters;
-      TokenMagic._singleLoadFilters = async function (placeable, bulkLoading = false) {
-        if (BeneosUtility.checkIsBeneosToken(placeable)) return;
-        OrigSingleLoadFilters(placeable, bulkLoading);
-      }
-    } else {
-      BeneosUtility.debugMessage("No Token Magic found !!!")
-    }
+    // Note: the TokenMagic._singleLoadFilters hijack (preventing double
+    // filters on Beneos tokens) is installed once in beneos_module.js's
+    // ready hook.
 
     if (game.user.isGM) {
       let stats = this.countBeneosAssetsUsage()
@@ -1444,16 +1493,20 @@ export class BeneosUtility {
         } else {
           if (beneosFX[bfxid] !== undefined) {
             BeneosUtility.debugMessage("[BENEOS MODULE] Setting Beneos FX: " + bfxid)
+            // Computed preset fields are plain functions (see beneosfx.js).
+            // Resolve them per-apply so the per-token randomisation stays
+            // live, producing a fresh preset object without mutating the
+            // shared beneosFX definition.
+            const fxCtx = {
+              dataPath: BeneosUtility.getBasePath() + BeneosUtility.getBeneosTokenDataPath(),
+              random: () => BeneosUtility.random()
+            }
             $.each(beneosFX[bfxid], function (presetindex, pressetvalue) {
+              const resolved = {}
               $.each(pressetvalue, function (kid, kidvalue) {
-                if (kid.indexOf("eval_") != -1) {
-                  let newkid = kid.replace("eval_", "")
-                  kidvalue = kidvalue.replace("random()", "BeneosUtility.random()")
-                  kidvalue = kidvalue.replace("__BENEOS_DATA_PATH__", BeneosUtility.getBasePath() + BeneosUtility.getBeneosTokenDataPath())
-                  pressetvalue[newkid] = eval(kidvalue)
-                };
-              });
-              bpresets.push(pressetvalue)
+                resolved[kid] = (typeof kidvalue === "function") ? kidvalue(fxCtx) : kidvalue
+              })
+              bpresets.push(resolved)
             })
           }
         }
@@ -1487,47 +1540,47 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
-  static getTokenInstallTS(key) {
-    for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
-      if (token.tokenKey == key) {
-        return token.installDate
+  // Asset-type registry for the generic install/loaded lookups below.
+  // Tokens are cached under their fullKey (so they need a scan on
+  // token.tokenKey); items and spells are keyed directly in their dict.
+  static #ASSET_DICT    = { token: "beneosTokens", item: "beneosItems", spell: "beneosSpells" }
+  static #ASSET_PACK    = { token: "world.beneos_module_actors", item: "world.beneos_module_items", spell: "world.beneos_module_spells" }
+  static #ASSET_IDFIELD = { token: "actorId", item: "itemId", spell: "spellId" }
+
+  // Resolve the cache entry for an asset key. `fallback` enables the
+  // lowercase/underscore key normalisation that the loaded-status check
+  // uses for items and spells.
+  static #assetEntry(type, key, { fallback = false } = {}) {
+    if (!key) return undefined
+    const dict = this[this.#ASSET_DICT[type]]
+    if (!dict) return undefined
+    if (type === "token") {
+      for (const token of Object.values(dict)) {
+        if (token.tokenKey == key) return token
       }
+      return undefined
     }
-    return undefined
-  }
-  static getItemInstallTS(key) {
-    let token = this.beneosItems[key]
-    if (token) {
-      return token.installDate
-    }
-    return undefined
-  }
-  static getSpellInstallTS(key) {
-    let token = this.beneosSpells[key]
-    if (token) {
-      return token.installDate
-    }
-    return undefined
+    let entry = dict[key]
+    if (!entry && fallback) entry = dict[key.toLowerCase().replace("-", "_")]
+    return entry
   }
 
-  // Hash lookups for the content-signature based update detection.
+  static getInstallTS(type, key) {
+    return this.#assetEntry(type, key)?.installDate
+  }
   // Returns the SHA256 stored at install time, or empty string if the
   // asset predates the Tier-2 flag schema (in which case Update-
   // Detection falls back to a pure timestamp compare).
-  static getTokenInstallHash(key) {
-    for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
-      if (token.tokenKey == key) {
-        return token.contentSignature || ""
-      }
-    }
-    return ""
+  static getInstallHash(type, key) {
+    return this.#assetEntry(type, key)?.contentSignature || ""
   }
-  static getItemInstallHash(key) {
-    return this.beneosItems[key]?.contentSignature || ""
-  }
-  static getSpellInstallHash(key) {
-    return this.beneosSpells[key]?.contentSignature || ""
-  }
+
+  static getTokenInstallTS(key) { return this.getInstallTS("token", key) }
+  static getItemInstallTS(key)  { return this.getInstallTS("item", key) }
+  static getSpellInstallTS(key) { return this.getInstallTS("spell", key) }
+  static getTokenInstallHash(key) { return this.getInstallHash("token", key) }
+  static getItemInstallHash(key)  { return this.getInstallHash("item", key) }
+  static getSpellInstallHash(key) { return this.getInstallHash("spell", key) }
 
   // Days an asset stays in the "Newly added" filter, configurable per
   // world via the beneos-new-asset-window-days setting. Returns the
@@ -1570,36 +1623,18 @@ export class BeneosUtility {
     return !!index.get?.(id) || !!index.has?.(id)
   }
 
-  static isTokenLoaded(key) {
-    if (!this.beneosTokens) return false
-    if (!key) return false
-    for (let [, token] of Object.entries(this.beneosTokens)) {
-      if (token.tokenKey == key) {
-        return BeneosUtility.#compendiumHasId("world.beneos_module_actors", token.actorId)
-      }
-    }
-    return false
-  }
-  static isItemLoaded(key) {
-    if (!key) return false
-    let entry = this.beneosItems[key]
-    if (!entry) {
-      const lk = key.toLowerCase().replace("-", "_")
-      entry = this.beneosItems[lk]
-    }
+  // Installed-status: the cache claims the asset AND its referenced
+  // compendium id resolves in the pack index. Items/spells get the
+  // lowercase/underscore key fallback; tokens are matched by tokenKey.
+  static isLoaded(type, key) {
+    const entry = this.#assetEntry(type, key, { fallback: type !== "token" })
     if (!entry) return false
-    return BeneosUtility.#compendiumHasId("world.beneos_module_items", entry.itemId)
+    return BeneosUtility.#compendiumHasId(this.#ASSET_PACK[type], entry[this.#ASSET_IDFIELD[type]])
   }
-  static isSpellLoaded(key) {
-    if (!key) return false
-    let entry = this.beneosSpells[key]
-    if (!entry) {
-      const lk = key.toLowerCase().replace("-", "_")
-      entry = this.beneosSpells[lk]
-    }
-    if (!entry) return false
-    return BeneosUtility.#compendiumHasId("world.beneos_module_spells", entry.spellId)
-  }
+
+  static isTokenLoaded(key) { return this.isLoaded("token", key) }
+  static isItemLoaded(key)  { return this.isLoaded("item", key) }
+  static isSpellLoaded(key) { return this.isLoaded("spell", key) }
 
   /********************************************************************************** */
   static getActorIdVariant(key, idx) {

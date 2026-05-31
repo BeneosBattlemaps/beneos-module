@@ -1,22 +1,23 @@
 /* News feed service for the Beneos Cloud Home tab.
-   - Production endpoint: https://cloud.beneos.com/api-news.php
-   - Falls back to a bundled mock JSON in /dev/news-mock.json when the live
-     endpoint is unreachable (Frontend-First development; the PHP endpoint may
-     not be deployed yet). The mock is shipped in the module repo only — it is
-     not loaded unless the live endpoint fails.
-   - 5-minute in-memory cache keyed by URL. The launcher reopens the window
-     many times per session; the user-facing news rarely changes that fast. */
+   - Production endpoint: https://beneos.cloud/api-news.php
+   - Offline-first: every successful live payload is mirrored into a persistent
+     localStorage cache. When the user is offline or the endpoint is briefly
+     unreachable, that saved payload is served instead, so the Home tab keeps
+     showing the last real news with no error or broken image. This also spares
+     repeat traffic. A clean empty state shows only when nothing was ever saved.
+   - The bundled /dev/news-mock.json is a DEV preview only (LIVE disabled); it
+     is never shown to end users in production.
+   - 5-minute in-memory cache on top, so reopening the window does not refetch. */
 
-const ENDPOINT_LIVE = "https://cloud.beneos.com/api-news.php"
+const ENDPOINT_LIVE = "https://beneos.cloud/api-news.php"
 const ENDPOINT_MOCK = "modules/beneos-module/dev/news-mock.json"
+const PERSIST_KEY = "beneos-cloud-news-cache-v1"
 const CACHE_TTL_MS = 5 * 60 * 1000
 const FETCH_TIMEOUT_MS = 6000
 
-// Set to true once https://cloud.beneos.com/api-news.php is deployed.
-// While false, the module renders the bundled mock JSON only — no live
-// fetch is attempted, so the browser does not surface
-// ERR_NAME_NOT_RESOLVED in the console for users.
-const LIVE_ENDPOINT_ENABLED = false
+// The live endpoint is deployed. When it is unreachable the fetch fails and
+// the bundled mock JSON is served as a graceful fallback (see fetchNewsFeed).
+const LIVE_ENDPOINT_ENABLED = true
 
 let memoryCache = null
 // Session circuit-breaker: once the live endpoint has failed for any reason
@@ -45,14 +46,27 @@ async function fetchJson(url) {
   return response.json()
 }
 
+// Plain-text excerpt of the news body. Strips HTML and collapses whitespace,
+// then truncates on a word boundary so the pinned card can show a teaser line
+// without bleeding raw markup.
+function buildPreview(html, limit = 220) {
+  const text = String(html ?? "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
+  if (text.length <= limit) return text
+  const cut = text.slice(0, limit)
+  const ws = cut.lastIndexOf(" ")
+  return (ws > 0 ? cut.slice(0, ws) : cut) + "…"
+}
+
 function normalize(item) {
+  const newsText = item.news_text || ""
   return {
     id: item.id,
     title: item.title || "",
     date: item.date || "",
     ctaString: item.cta_string || "",
     ctaUrl: item.cta_url || "",
-    newsText: item.news_text || "",
+    newsText,
+    preview: buildPreview(newsText),
     imageBase64: item.image_base64 || null,
     isPinned: item.is_pinned === true,
     createdAt: item.created_at || ""
@@ -67,6 +81,48 @@ async function fetchFromMock() {
   return { news, source: "mock", offline: true }
 }
 
+// ---- Persistent (offline) cache -----------------------------------------
+// Mirror the last successful live payload into localStorage so the Home tab
+// can render real news while offline and across reloads.
+function readPersistentCache() {
+  try {
+    const raw = globalThis.localStorage?.getItem(PERSIST_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed?.news) && parsed.news.length) return parsed.news
+  } catch (_e) { /* unavailable or corrupt */ }
+  return null
+}
+
+function writePersistentCache(news) {
+  const store = globalThis.localStorage
+  if (!store || !Array.isArray(news) || !news.length) return
+  try {
+    store.setItem(PERSIST_KEY, JSON.stringify({ news, savedAt: Date.now() }))
+  } catch (_e) {
+    // Quota exceeded (base64 images are large): keep the text so at least the
+    // headlines and bodies survive offline, drop the images.
+    try {
+      const slim = news.map(n => ({ ...n, imageBase64: null }))
+      store.setItem(PERSIST_KEY, JSON.stringify({ news: slim, savedAt: Date.now() }))
+    } catch (_e2) { /* give up silently */ }
+  }
+}
+
+// Serve the saved news (offline path). Returns null when nothing is cached.
+function servedFromCache() {
+  const news = readPersistentCache()
+  if (!news) return null
+  memoryCache = { news, fetchedAt: Date.now(), source: "cache" }
+  return { news, source: "cache", offline: true }
+}
+
+// Clean empty state: no error, no broken links, just "no news yet".
+function servedEmpty() {
+  memoryCache = { news: [], fetchedAt: Date.now(), source: "empty" }
+  return { news: [], source: "empty", offline: true }
+}
+
 export async function fetchNewsFeed({ force = false } = {}) {
   if (!force && isFresh(memoryCache)) {
     return {
@@ -76,18 +132,21 @@ export async function fetchNewsFeed({ force = false } = {}) {
     }
   }
 
-  // Compile-time gate: the live endpoint is not deployed yet, so we
-  // never attempt the network request. Sparing the browser a guaranteed
-  // ERR_NAME_NOT_RESOLVED until the API is shipped.
-  // Also the runtime circuit-breaker: skip the live attempt entirely
-  // once it has failed in this session.
-  if (!LIVE_ENDPOINT_ENABLED || liveBlockedForSession) {
-    try {
-      const mock = await fetchFromMock()
-      if (mock) return mock
-    } catch (_e) { /* fall through to empty */ }
-    memoryCache = { news: [], fetchedAt: Date.now(), source: "empty" }
-    return { news: [], source: "empty", offline: true }
+  // Dev preview: the live endpoint is gated off. Show the saved cache first,
+  // then the bundled dev mock, then a clean empty state. (Mock is dev-only.)
+  if (!LIVE_ENDPOINT_ENABLED) {
+    const cached = servedFromCache()
+    if (cached) return cached
+    try { const mock = await fetchFromMock(); if (mock) return mock } catch (_e) { /* ignore */ }
+    return servedEmpty()
+  }
+
+  // True offline (no connection) or the circuit-breaker already tripped this
+  // session: never hit the network, so the browser logs no error. Serve the
+  // last saved news, else a clean empty state. No dev mock for end users.
+  const isOffline = !!globalThis.navigator && globalThis.navigator.onLine === false
+  if (isOffline || liveBlockedForSession) {
+    return servedFromCache() ?? servedEmpty()
   }
 
   try {
@@ -95,17 +154,13 @@ export async function fetchNewsFeed({ force = false } = {}) {
     if (data?.result === "ok" && Array.isArray(data.news)) {
       const news = data.news.map(normalize)
       memoryCache = { news, fetchedAt: Date.now(), source: "live" }
+      writePersistentCache(news)
       return { news, source: "live", offline: false }
     }
     throw new Error(`Unexpected payload: ${JSON.stringify(data).slice(0, 80)}`)
   } catch (_liveErr) {
     liveBlockedForSession = true
-    try {
-      const mock = await fetchFromMock()
-      if (mock) return mock
-    } catch (_mockErr) { /* fall through to empty */ }
-    memoryCache = { news: [], fetchedAt: Date.now(), source: "empty" }
-    return { news: [], source: "empty", offline: true }
+    return servedFromCache() ?? servedEmpty()
   }
 }
 

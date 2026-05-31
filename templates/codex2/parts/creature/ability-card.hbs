@@ -1,0 +1,33 @@
+<article class="cdx-ability-card">
+  <div class="cdx-ability-trigger-zone"
+       data-action="cdx-trigger-ability"
+       data-actor-id="{{actorId}}"
+       data-item-id="{{ability.id}}"
+       data-tooltip="{{localize 'BENEOS.CreatureCodex.Tactics.Trigger'}}">
+    <header class="cdx-ability-head">
+      {{#if ability.img}}<img class="cdx-ability-img" src="{{ability.img}}" alt="">{{/if}}
+      <div class="cdx-ability-head-text">
+        <h4>{{ability.name}}</h4>
+      </div>
+    </header>
+    {{!-- One full-width chip bar: the action-type tag leads, then the
+          auto-generated detail chips (attack / save / range …) flow and
+          wrap beside it instead of breaking into a cramped column. --}}
+    <div class="cdx-ability-pills">
+      <span class="cdx-ability-tag cdx-ability-tag-{{ability.filterKey}}">{{ability.filterLabel}}</span>
+      {{#each ability.pills}}
+        <span class="cdx-ability-pill cdx-ability-pill-{{kind}}{{#if sub}} cdx-ability-pill-activation-{{sub}}{{/if}}">{{label}}</span>
+      {{/each}}
+    </div>
+    {{#if ability.damageLine}}
+      <div class="cdx-ability-damage">{{ability.damageLine}}</div>
+    {{/if}}
+  </div>
+  {{#if ability.summaryTokens.length}}
+    <p class="cdx-ability-summary">
+      {{> "beneos-codex/creature/tac-inline" parts=ability.summaryTokens actorId=actorId}}
+    </p>
+  {{else if ability.summary}}
+    <p class="cdx-ability-summary">{{ability.summary}}</p>
+  {{/if}}
+</article>

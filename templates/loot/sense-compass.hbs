@@ -1,0 +1,122 @@
+<section class="beneos-sense-compass {{#if senseCtx.isEmpty}}is-dormant{{/if}} {{#if senseCtx.isFarewell}}is-farewell{{/if}}">
+  <header class="bnc-header">
+    <h2 class="bnc-title">
+      {{#if senseCtx.isFarewell}}
+        {{localize "BENEOS.Sense.Heading"}}
+      {{else if senseCtx.isEmpty}}
+        {{localize "BENEOS.Sense.EmptyHeading"}}
+      {{else}}
+        {{localize "BENEOS.Sense.Heading"}}
+      {{/if}}
+    </h2>
+  </header>
+
+  {{#if senseCtx.isFarewell}}
+    {{!-- Farewell beat: the compass-area starts intact and fades out
+          over 4s while a contact-lost message rises as an overlay
+          above it. After 4s a follow-up render lands us in dormant. --}}
+    <div class="compass-area is-farewell" style="--origin-color:{{senseCtx.farewell.originColor}};">
+      <div class="compass-wrap">
+        <div class="compass-frame">
+          <div class="compass-face"></div>
+          <div class="bnc-cardinals">
+            <span class="bnc-cardinal n">N</span>
+            <span class="bnc-cardinal e">E</span>
+            <span class="bnc-cardinal s">S</span>
+            <span class="bnc-cardinal w">W</span>
+          </div>
+          <div class="compass-pivot"></div>
+          <div class="compass-glass"></div>
+        </div>
+      </div>
+      <div class="bnc-farewell-overlay">
+        <div class="bnc-farewell-icon"><i class="fa-solid fa-circle-xmark"></i></div>
+        <div class="bnc-farewell-msg">{{localize "BENEOS.LGC.Compass.ContactLost"}}</div>
+        {{#if senseCtx.farewell.originName}}
+          <div class="bnc-farewell-origin">{{senseCtx.farewell.originName}}</div>
+        {{/if}}
+      </div>
+    </div>
+  {{else if senseCtx.isEmpty}}
+    {{! Dormant compass: rendered black-and-white, no pulse / aura /
+        needle / whisper. Tells the player "the sense is here but
+        nothing is pinging right now" rather than hiding the device
+        entirely. }}
+    <div class="compass-area is-dormant">
+      <div class="compass-wrap">
+        <div class="compass-frame">
+          <div class="compass-face"></div>
+          <div class="bnc-cardinals">
+            <span class="bnc-cardinal n">N</span>
+            <span class="bnc-cardinal e">E</span>
+            <span class="bnc-cardinal s">S</span>
+            <span class="bnc-cardinal w">W</span>
+          </div>
+          <div class="compass-pivot"></div>
+          <div class="compass-glass"></div>
+        </div>
+      </div>
+      <div class="bnc-empty">{{localize "BENEOS.Sense.EmptyState"}}</div>
+    </div>
+  {{else}}
+    <div class="compass-area intensity-{{senseCtx.active.intensity}}" style="--origin-color:{{senseCtx.active.origin.color}};">
+      <p class="compass-intro">{{{senseCtx.active.introHtml}}}</p>
+
+      <div class="compass-wrap">
+        <div class="compass-halo"></div>
+        <div class="compass-frame">
+          <div class="compass-face">
+            <div class="compass-aura"></div>
+            <div class="compass-pulse" style="--pulse-x:{{senseCtx.active.pulseX}}%;--pulse-y:{{senseCtx.active.pulseY}}%;"></div>
+          </div>
+
+          <div class="bnc-cardinals">
+            <span class="bnc-cardinal n">N</span>
+            <span class="bnc-cardinal e">E</span>
+            <span class="bnc-cardinal s">S</span>
+            <span class="bnc-cardinal w">W</span>
+          </div>
+
+          <div class="needle-aim" style="--target-angle:{{senseCtx.active.angleDeg}}deg;">
+            <div class="needle">
+              {{> "modules/beneos-module/templates/loot/sense-needle.hbs"}}
+            </div>
+          </div>
+
+          <div class="compass-pivot"></div>
+          <div class="compass-glass"></div>
+        </div>
+      </div>
+
+      <div class="bnc-pull-readout">
+        <div class="bnc-pull-line">{{{senseCtx.active.pullFromHtml}}}</div>
+        <div class="bnc-pull-dist">{{senseCtx.active.distanceHtml}}</div>
+      </div>
+
+      {{> "modules/beneos-module/templates/loot/sense-readout.hbs" active=senseCtx.active}}
+    </div>
+
+    {{#if senseCtx.active.flavor}}
+      <div class="whisper" style="--origin-color:{{senseCtx.active.origin.color}};">
+        <em>{{senseCtx.active.flavor}}</em>
+      </div>
+    {{/if}}
+
+    {{#if senseCtx.others.length}}
+      <div class="also-felt">
+        <div class="also-head">{{localize "BENEOS.Sense.AlsoStirring"}}</div>
+        {{#each senseCtx.others}}
+          <button type="button"
+                  class="also-row"
+                  data-action="beneos-select-sense"
+                  data-sense-id="{{id}}"
+                  style="--origin-color:{{origin.color}};">
+            <span class="mini-sigil">{{origin.mono}}</span>
+            <span class="lede">{{{lede}}}</span>
+            <span class="dir-chip">{{dirShort}}</span>
+          </button>
+        {{/each}}
+      </div>
+    {{/if}}
+  {{/if}}
+</section>

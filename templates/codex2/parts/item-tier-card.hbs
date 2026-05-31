@@ -1,0 +1,18 @@
+<div class="tier-card {{#if active}}active{{else}}dimmed{{/if}}" style="--tier-color:{{tierColor}};">
+  <div class="tier-head">
+    <div class="tier-head-left">
+      <div class="tier-emblem">{{mono}}</div>
+      <div class="tier-info">
+        <div class="tier-eyebrow">{{label}}</div>
+        <div class="tier-title">{{data.title}}</div>
+        {{#if requires}}<div class="tier-req">{{requires}}</div>{{/if}}
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      {{#if data.rarity}}<span class="rarity-chip rc-{{data.rarity}}">{{data.rarity}}</span>{{/if}}
+      <div class="tier-lock">{{#if active}}{{localize "BENEOS.Codex.TierCard.Active"}}{{else}}{{localize "BENEOS.Codex.TierCard.Dormant"}}{{/if}}</div>
+    </div>
+  </div>
+  {{#if data.lore}}<div class="tier-lore">{{data.lore}}</div>{{/if}}
+  <div class="tier-rules">{{{data.rules}}}</div>
+</div>

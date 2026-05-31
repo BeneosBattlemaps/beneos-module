@@ -1,0 +1,47 @@
+<div class="lgc-window-inner {{#if popped}}popped{{/if}} {{#if minimized}}minimized{{/if}}">
+
+  <div class="lgc-titlebar">
+    <div class="brand">
+      <span class="logo" role="img" aria-label="{{localize 'BENEOS.LGC.Logo.AriaLabel'}}"></span>
+      <div class="title-text">{{i18n.title}}</div>
+    </div>
+    <div class="actions">
+      <button type="button" class="lgc-iconbtn" data-action="lgc-pop" title="{{localize 'BENEOS.LGC.Window.PopOut'}}">
+        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+      </button>
+      <button type="button" class="lgc-iconbtn" data-action="lgc-min" title="{{localize 'BENEOS.LGC.Window.Minimize'}}">
+        <i class="fa-solid fa-window-minimize"></i>
+      </button>
+      <button type="button" class="lgc-iconbtn close" data-action="lgc-close" title="{{localize 'BENEOS.LGC.Window.Close'}}">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  </div>
+
+  <nav class="lgc-tabs">
+    {{#each tabs}}
+      <button type="button"
+              class="lgc-tab {{#if active}}active{{/if}} {{#if wip}}disabled{{/if}}"
+              data-action="lgc-tab"
+              data-tab="{{id}}">
+        <span class="tab-ic"><i class="{{icon}}"></i></span>
+        <span>{{label}}</span>
+        {{#if (eq id "radar")}}{{#if count}}<span class="count">{{count}}</span>{{/if}}{{/if}}
+        {{#if wip}}<span class="wip">{{@root.i18n.wipBadge}}</span>{{/if}}
+      </button>
+    {{/each}}
+  </nav>
+
+  <div class="lgc-content">
+    {{#if (eq tab "radar")}}
+      {{> "modules/beneos-module/templates/lgc/tab-radar.hbs"}}
+    {{else if (eq tab "sound")}}
+      {{> "modules/beneos-module/templates/lgc/tab-placeholder.hbs" placeholder=i18n.placeholderSound}}
+    {{else if (eq tab "rolls")}}
+      {{> "modules/beneos-module/templates/lgc/tab-placeholder.hbs" placeholder=i18n.placeholderRolls}}
+    {{else if (eq tab "handouts")}}
+      {{> "modules/beneos-module/templates/lgc/tab-placeholder.hbs" placeholder=i18n.placeholderHandouts}}
+    {{/if}}
+  </div>
+
+</div>

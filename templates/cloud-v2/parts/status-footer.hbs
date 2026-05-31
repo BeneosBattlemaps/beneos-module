@@ -39,15 +39,6 @@
         <i class="fa-solid fa-cloud-slash"></i>
         <span>{{localize "BENEOS.Cloud.Footer.Offline"}}</span>
       </div>
-      {{#if isCloudLoggedIn}}
-        <button type="button"
-                class="bc-footer-button"
-                data-action="openCloudSettings"
-                data-tooltip="{{localize 'BENEOS.Cloud.Footer.AccountSettingsTooltip'}}">
-          <i class="fa-solid fa-gear"></i>
-          <span>{{localize "BENEOS.Cloud.Footer.AccountSettings"}}</span>
-        </button>
-      {{/if}}
     {{else if isCloudLoggedIn}}
       {{!-- Four valid connection states. The Beneos Cloud auto-syncs
            the user's Patreon memberships, so "not linked" is never a
@@ -79,13 +70,6 @@
           <span>{{localize "BENEOS.Cloud.Footer.Chip.Free"}}</span>
         </div>
       {{/if}}
-      <button type="button"
-              class="bc-footer-button"
-              data-action="openCloudSettings"
-              data-tooltip="{{localize 'BENEOS.Cloud.Footer.AccountSettingsTooltip'}}">
-        <i class="fa-solid fa-gear"></i>
-        <span>{{localize "BENEOS.Cloud.Footer.AccountSettings"}}</span>
-      </button>
     {{else}}
       <div class="bc-account-chip bc-chip-neutral beneos-cloud-not-connected">
         <i class="fa-solid fa-cloud-slash"></i>
@@ -98,6 +82,17 @@
         <span>{{localize "BENEOS.Cloud.Footer.SignIn"}}</span>
       </button>
     {{/if}}
+    {{!-- Settings now lives on the left, in the slot the old "Account"
+         button used to hold. Rendered in every connection state (after the
+         chip / Sign-In) so module settings stay reachable even when signed
+         out. The online-account action moved into the Settings modal. --}}
+    <button type="button"
+            class="bc-footer-button bc-footer-button-settings"
+            data-action="openSettings"
+            data-tooltip="{{localize 'BENEOS.Cloud.Footer.SettingsTooltip'}}">
+      <i class="fa-solid fa-sliders"></i>
+      <span>{{localize "BENEOS.Cloud.Footer.Settings"}}</span>
+    </button>
   </div>
   {{!-- Wave B-9-fix-45: external links pushed to the right and toned
        down so they don't compete with the Account/Login button on the
@@ -125,22 +120,30 @@
       <span>{{localize "BENEOS.Cloud.Footer.Patreon"}}</span>
     </button>
     {{!-- Visual divider — splits the "leaves the app" external link
-         cluster (Discord / Webshop / Patreon) from the in-app Settings
-         action that lives right after it. --}}
+         cluster (Discord / Webshop / Patreon) from the in-app actions
+         that live right after it. --}}
     <span class="bc-footer-divider" aria-hidden="true"></span>
-    {{!-- Settings button — opens BeneosCloudSettingsV2 modal. Uses
-         fa-sliders to differentiate from the existing fa-gear in the
-         AccountSettings button on the left. Intentionally NOT carrying
-         the .bc-footer-link class — Settings is an in-app primary
-         action and should hold its full brightness even at rest, while
-         the external links next to it stay dimmed until hover. --}}
+    {{!-- Beneos Codex — opens the general Creature Codex (origins etc.).
+         In-app primary action, sits to the left of Game Control. --}}
     <button type="button"
-            class="bc-footer-button bc-footer-button-settings"
-            data-action="openSettings"
-            data-tooltip="{{localize 'BENEOS.Cloud.Footer.SettingsTooltip'}}">
-      <i class="fa-solid fa-sliders"></i>
-      <span>{{localize "BENEOS.Cloud.Footer.Settings"}}</span>
+            class="bc-footer-button bc-footer-button-codex"
+            data-action="openCodex"
+            data-tooltip="{{localize 'BENEOS.Cloud.Footer.CodexTooltip'}}">
+      <i class="fa-solid fa-book-skull"></i>
+      <span>{{localize "BENEOS.Cloud.Footer.Codex"}}</span>
     </button>
+    {{!-- Live Game Control launcher (GM only). Pulsing dot when active pings exist. --}}
+    {{#if isGm}}
+      <span class="bc-footer-divider" aria-hidden="true"></span>
+      <button type="button"
+              class="bc-footer-button bc-footer-button-lgc {{#if lgcHasPings}}has-pings{{/if}}"
+              data-action="openLgc"
+              data-tooltip="{{localize 'BENEOS.LGC.LauncherTooltip'}}">
+        <i class="fa-solid fa-tower-broadcast"></i>
+        <span>{{localize "BENEOS.LGC.LauncherLabel"}}</span>
+        <span class="bc-lgc-livedot"></span>
+      </button>
+    {{/if}}
   </div>
 </footer>
 </div>

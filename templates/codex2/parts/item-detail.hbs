@@ -1,0 +1,165 @@
+<div class="detail-layout" style="--origin-color:{{detail.glow}};">
+
+  <div class="detail-left">
+    <button class="back-btn" data-action="back">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 2L3.5 6L7.5 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      {{localize "BENEOS.Codex.Detail.BackToOrigins"}}
+    </button>
+
+    <div class="hero-emblem has-image" style="--origin-color:{{detail.glow}};">
+      {{#if detail.iconBw}}
+        <div class="emblem-tint-wrap">
+          <div class="emblem-tint-base" style="background-color: {{detail.glow}}; -webkit-mask: url('{{detail.iconBw}}') center / contain no-repeat; mask: url('{{detail.iconBw}}') center / contain no-repeat;"></div>
+          <img class="emblem-tint-detail" src="{{detail.iconBw}}" alt="{{detail.displayName}}" />
+        </div>
+      {{else}}
+        <img src="{{detail.iconPath}}" alt="{{detail.displayName}}" onerror="this.style.display='none';this.parentNode.innerHTML='<span>{{detail.mono}}</span>';" />
+      {{/if}}
+    </div>
+
+    <div class="detail-name-row">
+      <div class="detail-eyebrow">{{localize "BENEOS.Codex.Detail.Eyebrow"}}</div>
+      <h1 class="detail-name">{{detail.displayName}}</h1>
+    </div>
+    <p class="detail-lore">{{detail.lore}}</p>
+
+    <nav class="origin-pager" aria-label="Browse origins">
+      <button type="button" class="op-btn op-prev" data-action="open-origin" data-slug="{{detail.prev.slug}}" title="{{detail.prev.name}}">
+        <span class="op-arrow">‹</span>
+        <span class="op-label"><span class="op-direction">{{localize "BENEOS.Codex.Detail.Previous"}}</span><span class="op-name">{{detail.prev.name}}</span></span>
+      </button>
+      <button type="button" class="op-btn op-next" data-action="open-origin" data-slug="{{detail.next.slug}}" title="{{detail.next.name}}">
+        <span class="op-label"><span class="op-direction">{{localize "BENEOS.Codex.Detail.Next"}}</span><span class="op-name">{{detail.next.name}}</span></span>
+        <span class="op-arrow">›</span>
+      </button>
+    </nav>
+    <div class="origin-pager-hint">{{localize "BENEOS.Codex.Detail.PagerHint"}}</div>
+  </div>
+
+  <main class="detail-center beneos-paywall-wrap{{#if detail.locked}} is-locked{{/if}}">
+    {{!-- Origin-detail paywall: for non-patrons the whole center column (the
+         set-bonus tiers) is blurred behind a sticky Join-Patreon card so the
+         user sees what they would get. The left nav + right attune-simulator
+         stay fully interactive; the simulator still toggles the (blurred)
+         tier cards underneath. --}}
+    {{#if detail.locked}}{{> "modules/beneos-module/templates/shared/beneos-paywall.hbs" joinUrl=detail.joinPatreonUrl extraClass="is-sticky"}}{{/if}}
+    <div class="beneos-paywall-content">
+    <div class="section-eyebrow set-bonus-eyebrow">{{localize "BENEOS.Codex.ConceptRail.SetBonusTitle"}}</div>
+    <div class="section-divider"></div>
+    <h2 class="detail-section-heading">{{localize "BENEOS.Codex.Detail.PowerHeading"}}</h2>
+    <div class="detail-section-tag">{{localize "BENEOS.Codex.Detail.LootFeatureTag"}}</div>
+    <p class="detail-section-lead">{{localize "BENEOS.Codex.Detail.PowerLead"}}</p>
+
+    <div class="tier-stack">
+      {{#each detail.resonItems}}
+        {{#if @first}}
+          {{> "beneos-codex/item-tier-card"
+              data=this
+              label=(localize "BENEOS.Codex.Detail.Tier1Label")
+              requires=(localize "BENEOS.Codex.Detail.Tier1Requires")
+              mono="1"
+              tierColor="var(--tier-reson)"
+              active=../detail.resonActive}}
+        {{else}}
+          <div class="reson-sub">
+            <div class="reson-sub-head">{{title}}</div>
+            <div class="tier-rules">{{{rules}}}</div>
+          </div>
+        {{/if}}
+      {{/each}}
+
+      {{#if detail.harmony}}
+        {{> "beneos-codex/item-tier-card"
+            data=detail.harmony
+            label=(localize "BENEOS.Codex.Detail.Tier2Label")
+            requires=(localize "BENEOS.Codex.Detail.Tier2Requires")
+            mono="2"
+            tierColor="var(--tier-harmony)"
+            active=detail.harmonyActive}}
+      {{/if}}
+
+      {{#if detail.specials.length}}
+        <div class="specials-section" data-visible="{{#if detail.harmonyActive}}true{{else}}false{{/if}}">
+          <div class="divider-fancy" style="margin-top:8px;">
+            <span style="font-family:Cinzel,serif;font-size:11px;letter-spacing:0.32em;text-transform:uppercase;color:var(--tier-special);">{{localize "BENEOS.Codex.Detail.BonusRites"}}</span>
+          </div>
+          {{#each detail.specials}}
+            {{> "beneos-codex/item-tier-card"
+                data=this
+                label=ritualLabel
+                requires=ritualReq
+                mono="✦"
+                tierColor="var(--tier-special)"
+                active=true}}
+          {{/each}}
+        </div>
+      {{/if}}
+    </div>
+
+    {{#if detail.echo}}
+      <div class="section-eyebrow item-echo-eyebrow" style="margin-top:36px;">{{localize "BENEOS.Codex.Detail.ItemAbilityEyebrow"}}</div>
+      <div class="section-divider"></div>
+      <p class="detail-section-lead">{{localize "BENEOS.Codex.Detail.ItemAbilityLead"}}</p>
+      {{> "beneos-codex/item-tier-card"
+          data=detail.echo
+          label=(localize "BENEOS.Codex.Detail.EchoLabel")
+          requires=""
+          mono="◆"
+          tierColor="var(--tier-echo)"
+          active=true}}
+    {{/if}}
+    </div>
+  </main>
+
+  <aside class="detail-right">
+    <div class="attune-sim" style="--origin-color:{{detail.glow}};">
+      <div class="codex-eyebrow"><span>{{localize "BENEOS.Codex.Detail.AttuneSimulator"}}</span></div>
+      <h2 class="attune-h2">{{detail.attuneWithLabel}}</h2>
+      <p class="attune-subclaim">{{localize "BENEOS.Codex.Detail.AttuneSubclaim"}}</p>
+
+      <div class="codex-eyebrow"><span>{{localize "BENEOS.Codex.Detail.ItemsAttuned"}}</span></div>
+      <div class="attune-tiles-frame">
+        <div class="attune-tiles">
+          {{#each (range 1 4)}}
+            <button type="button"
+                    class="attune-tile{{#if (lte this ../detail.attuned)}} is-active{{/if}}"
+                    data-action="set-attuned"
+                    data-attuned="{{this}}">
+              <div class="at-circle"><span class="at-num">{{#if (eq this 1)}}I{{else if (eq this 2)}}II{{else}}III{{/if}}</span></div>
+              <div class="at-label">{{lookup ../detail.itemLabels @index}}</div>
+            </button>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+
+    <div class="set-bonus-block" style="--origin-color:{{detail.glow}};">
+      <div class="codex-eyebrow"><span>{{localize "BENEOS.Codex.SetBonusActive"}}</span></div>
+      <h2 class="sba-value{{#if detail.harmonyActive}} is-harmony{{else if detail.resonActive}} is-reson{{else}} is-none{{/if}}">
+        {{#if detail.harmonyActive}}{{localize "BENEOS.Codex.PerfectHarmonyActive"}}
+        {{else if detail.resonActive}}{{localize "BENEOS.Codex.ResonanceActive"}}
+        {{else}}{{localize "BENEOS.Codex.NoSetBonus"}}
+        {{/if}}
+      </h2>
+      <p class="sba-hint">{{detail.sbaHint}}</p>
+      {{#if detail.specials.length}}
+        <button type="button" class="sba-ritual-cta" data-action="scroll-to-specials"
+                data-visible="{{#if detail.harmonyActive}}true{{else}}false{{/if}}">
+          {{localize "BENEOS.Codex.Detail.RitualCta"}}
+        </button>
+      {{/if}}
+    </div>
+
+    <div class="sense-of-like" data-attuned="{{detail.attuned}}" style="--origin-color:{{detail.glow}};">
+      <div class="sol-eyebrow">{{localize "BENEOS.Codex.SenseOfLike"}}</div>
+      <div class="sol-map" aria-hidden="true">
+        <div class="sol-ring sol-r10"><span class="sol-ring-label">10 mi</span></div>
+        <div class="sol-ring sol-r5"><span class="sol-ring-label">5 mi</span></div>
+        <div class="sol-ring sol-r1"><span class="sol-ring-label">1 mi</span></div>
+        <div class="sol-center"></div>
+      </div>
+      <p class="sol-text">{{localize "BENEOS.Codex.SenseOfLikeLead"}}</p>
+    </div>
+  </aside>
+
+</div>

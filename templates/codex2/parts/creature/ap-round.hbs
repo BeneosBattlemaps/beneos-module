@@ -1,0 +1,45 @@
+{{!-- Autopilot round detail. Context: a single round object. Param: actorId.
+      Shared by the Tactical-Guide collapse (sub-autopilot) and the in-combat
+      autopilot window (rendered open). --}}
+<div class="cdx-ap-detail">
+  {{#if movementTokens.length}}
+    <p class="cdx-ap-line"><span class="cdx-ap-line-label">{{localize "BENEOS.CreatureCodex.Autopilot.Movement"}}</span>
+      {{> "beneos-codex/creature/tac-inline" parts=movementTokens actorId=actorId}}</p>
+  {{/if}}
+  {{#if positioningHintTokens.length}}
+    <p class="cdx-ap-line"><span class="cdx-ap-line-label">{{localize "BENEOS.CreatureCodex.Autopilot.Positioning"}}</span>
+      {{> "beneos-codex/creature/tac-inline" parts=positioningHintTokens actorId=actorId}}</p>
+  {{/if}}
+  {{#if dmHintTokens.length}}
+    <p class="cdx-ap-line"><span class="cdx-ap-line-label">{{localize "BENEOS.CreatureCodex.Autopilot.DmHint"}}</span>
+      {{> "beneos-codex/creature/tac-inline" parts=dmHintTokens actorId=actorId}}</p>
+  {{/if}}
+  {{#if targetPriority.length}}
+    <div class="cdx-ap-targets">
+      <span class="cdx-ap-line-label">{{localize "BENEOS.CreatureCodex.Autopilot.TargetPriority"}}</span>
+      <ol class="cdx-ap-target-list">
+        {{#each targetPriority}}
+          <li><strong>{{archetype}}</strong>{{#if reasonTokens.length}}: {{> "beneos-codex/creature/tac-inline" parts=reasonTokens actorId=../actorId}}{{/if}}</li>
+        {{/each}}
+      </ol>
+    </div>
+  {{/if}}
+  {{#if reactionTriggers.length}}
+    <div class="cdx-ap-reactions">
+      <span class="cdx-ap-line-label">{{localize "BENEOS.CreatureCodex.Autopilot.Reactions"}}</span>
+      {{#each reactionTriggers}}
+        <p class="cdx-ap-reaction">
+          {{#if itemId}}
+            <button type="button" class="cdx-chip cdx-chip-feature cdx-chip-item"
+                    data-action="cdx-trigger-ability"
+                    data-actor-id="{{../actorId}}"
+                    data-item-id="{{itemId}}">{{name}}</button>
+          {{else}}
+            <span class="cdx-chip cdx-chip-feature">{{name}}</span>
+          {{/if}}
+          {{> "beneos-codex/creature/tac-inline" parts=triggerTokens actorId=../actorId}}
+        </p>
+      {{/each}}
+    </div>
+  {{/if}}
+</div>

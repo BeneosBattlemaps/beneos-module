@@ -12,19 +12,9 @@
 //   * Self-destruct in _tick when graphics/token go away.
 //   * Idempotent destroy() so double-calls are safe.
 
-const TWO_PI = Math.PI * 2
+import { tokenHalfWidth, tokenHalfHeight, tokenRadius } from "./beneos-fx-geometry.mjs"
 
-function tokenHalfWidth(token) {
-  const grid = canvas?.grid?.size || 100
-  return (token?.document?.width ?? 1) * grid * 0.5
-}
-function tokenHalfHeight(token) {
-  const grid = canvas?.grid?.size || 100
-  return (token?.document?.height ?? 1) * grid * 0.5
-}
-function tokenRadius(token) {
-  return Math.min(tokenHalfWidth(token), tokenHalfHeight(token))
-}
+const TWO_PI = Math.PI * 2
 
 export class BeneosRenderLayer {
   static instances = new Set()

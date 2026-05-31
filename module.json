@@ -1,7 +1,7 @@
 {
   "title": "Beneos Module",
   "description": "Features for Beneos Battlemaps, Creatures, Spells and Loot",
-  "version": "14.1.2",
+  "version": "14.2.0",
   "socket": true,
   "compatibility": {
     "minimum": "13",
@@ -9,7 +9,7 @@
   },
   "url": "https://github.com/BeneosBattlemaps/beneos-module",
   "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-module/main/module.json",
-  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/14.1.2.zip",
+  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/14.2.0.zip",
   "scripts": [
     "scripts/beneosfx.js"
   ],
@@ -19,7 +19,14 @@
 	  "css/beneos-cloud.css",
 	  "css/table-top.css",
 	  "css/beneos-journal.css",
-	  "css/beneos-codex.css"
+	  "css/beneos-codex.css",
+	  "css/beneos-codex-app.css",
+	  "css/beneos-loot.css",
+	  "css/beneos-companion.css",
+	  "css/beneos-character-sheet.css",
+	  "css/beneos-sense-compass.css",
+	  "css/beneos-lgc.css",
+	  "css/beneos-creature-codex.css"
   ],
   "esmodules": [
     "scripts/beneos-asset-path-repair.js",
@@ -30,7 +37,10 @@
 	"scripts/beneos_nav_visibility.js",
 	"scripts/beneos-asset-watcher.js",
 	"scripts/cloud-v2/cloud-window-v2.mjs",
-	"scripts/codex/codex-launcher.mjs"
+	"scripts/codex2/beneos-codex.mjs",
+	"scripts/codex2/beneos-codex-init.mjs",
+	"scripts/lgc/beneos-lgc.mjs",
+	"scripts/codex2/item-companion.mjs"
   ],
   "languages": [
     { "lang": "en",    "name": "English",                 "path": "lang/en.json" },

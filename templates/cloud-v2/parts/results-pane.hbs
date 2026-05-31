@@ -18,6 +18,21 @@
       {{else}}
         <span class="bc-results-count">{{cards.length}} {{localize "BENEOS.Cloud.Results.Count"}}</span>
       {{/if}}
+      {{!-- Active "Show" filter chip: reminds the user why the list is
+           narrowed after switching tabs (the filter is global). --}}
+      {{#if showFilterActive}}
+        <span class="bc-results-show-chip"
+              data-tooltip="{{localize 'BENEOS.Cloud.Filter.ShowChipTooltip'}}">
+          <i class="fa-solid fa-filter"></i>
+          <span>{{showFilterLabel}}</span>
+          <button type="button" class="bc-results-show-chip-clear"
+                  data-action="clearShowFilter"
+                  data-tooltip="{{localize 'BENEOS.Cloud.Filter.ShowChipClear'}}"
+                  aria-label="{{localize 'BENEOS.Cloud.Filter.ShowChipClear'}}">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </span>
+      {{/if}}
       {{!-- Wave B-9: list / grid view toggle. Two segmented buttons,
            the active one is highlighted via .bc-view-active. The state
            round-trips through this.viewMode + a client-scoped Foundry
@@ -270,6 +285,14 @@
                   <i class="fa-solid fa-rotate"></i>
                 </button>
               {{/if}}
+              {{#if card.showCodexButton}}
+                <button type="button" class="bc-card-button bc-action-codex"
+                        data-asset-key="{{card.key}}"
+                        data-tooltip="{{localize 'BENEOS.Cloud.Card.Codex'}}">
+                  <i class="fa-solid fa-book-open"></i>
+                  <span>{{localize "BENEOS.Cloud.Card.Codex"}}</span>
+                </button>
+              {{/if}}
             {{else if card.isOfflineCard}}
               {{!-- Wave B-9-fix-58: cloud unreachable → tell the user
                    it's an offline state, not a generic "unavailable". --}}
@@ -414,6 +437,7 @@
                         data-variant-style="{{v.style}}"
                         data-asset-key="{{v.assetKey}}"
                         data-actor-id="{{v.actorId}}"
+                        data-bc-locked="{{drawer.asset.isLocked}}"
                         draggable="true"
                         data-tooltip="{{#if v.isInstalled}}{{localize 'BENEOS.Cloud.Drawer.VariantTooltip'}} {{v.index}}{{#if (eq v.style 'topdown')}} · {{localize 'BENEOS.Cloud.Drawer.StyleTopDown'}}{{else}} · {{localize 'BENEOS.Cloud.Drawer.StyleTokenized'}}{{/if}}{{else}}{{localize 'BENEOS.Cloud.Drawer.VariantTooltip'}} {{v.index}}{{#if (eq v.style 'topdown')}} · {{localize 'BENEOS.Cloud.Drawer.StyleTopDown'}}{{else}} · {{localize 'BENEOS.Cloud.Drawer.StyleTokenized'}}{{/if}} · {{localize 'BENEOS.Cloud.Drawer.DragInstalls'}}{{/if}}">
                   <img src="{{v.thumbUrl}}" alt="Variant {{v.index}} {{v.style}}" draggable="false"
@@ -432,7 +456,7 @@
              The footer is gone; the action sits inline with CR/Type/etc.
              so the drawer ends right after the description block. --}}
         <div class="bc-drawer-summary">
-        <dl class="bc-drawer-fields">
+        <dl class="bc-drawer-fields{{#if drawer.asset.isLocked}} bc-drawer-blur{{/if}}">
           {{#if drawer.asset.crLabel}}
             <div class="bc-field"><dt>{{localize "BENEOS.Cloud.Drawer.CR"}}</dt><dd>{{drawer.asset.crLabel}}</dd></div>
           {{/if}}
@@ -566,27 +590,30 @@
                narrow and the column-3 vertical space is tight. The
                button is rendered always; #wireResultListeners hides it
                at runtime if the description fits without clamping. --}}
-          <div class="bc-drawer-description" data-bc-description>
+          <div class="bc-drawer-description{{#if drawer.asset.isLocked}} bc-drawer-blur{{/if}}" data-bc-description>
             {{{drawer.asset.description}}}
           </div>
+          {{#unless drawer.asset.isLocked}}
           <button type="button" class="bc-action-readmore" data-bc-readmore
                   data-label-more="{{localize 'BENEOS.Cloud.Drawer.ReadMore'}}"
                   data-label-less="{{localize 'BENEOS.Cloud.Drawer.ShowLess'}}">
             {{localize "BENEOS.Cloud.Drawer.ReadMore"}}
           </button>
+          {{/unless}}
         {{/if}}
 
         {{!-- Patron-gated full description from the locally-installed
              Foundry item or spell document. Only set by #enrichCard when
              assetType ∈ {item, spell} AND drawer.asset.isInstalled.
-             Plaintext (two-brace {{...}}, not three); CSS preserves
-             whitespace via white-space: pre-wrap. Overflow scrolls inside
-             the body block. --}}
+             Safe HTML (M8.3.40: #enrichCard escapes the plaintext, then
+             converts proprietary __markers__ to bold accents -> rendered
+             three-brace). CSS preserves whitespace via white-space: pre-wrap.
+             Overflow scrolls inside the body block. --}}
         {{#if drawer.asset.localFullDescription}}
-          <section class="bc-drawer-local-description"
+          <section class="bc-drawer-local-description{{#if drawer.asset.isLocked}} bc-drawer-blur{{/if}}"
                    aria-label="{{localize 'BENEOS.Cloud.Drawer.FullDescription'}}">
             <h4 class="bc-drawer-local-description-header">{{localize "BENEOS.Cloud.Drawer.FullDescription"}}</h4>
-            <div class="bc-drawer-local-description-body">{{drawer.asset.localFullDescription}}</div>
+            <div class="bc-drawer-local-description-body">{{{drawer.asset.localFullDescription}}}</div>
           </section>
         {{/if}}
 
@@ -596,7 +623,7 @@
              a broken-image placeholder. The set-bonus hint is a passive
              pointer to the Origin Set Bonuses sidebar button. --}}
         {{#if drawer.asset.itemOriginLabel}}
-          <section class="bc-drawer-origin">
+          <section class="bc-drawer-origin{{#if drawer.asset.isLocked}} bc-drawer-blur{{/if}}">
             <hr class="bc-drawer-origin-divider" />
             <header class="bc-drawer-origin-head">
               {{#if drawer.asset.itemOriginIcon}}

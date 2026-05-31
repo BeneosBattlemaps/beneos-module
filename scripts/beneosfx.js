@@ -1,3 +1,11 @@
+/* Legacy Token Magic FX preset library. This is a fallback data source
+ * consumed only by BeneosUtility.addFx() for TokenMagic-based effects
+ * (e.g. the dead-token blood splat). The primary, native FX system is
+ * scripts/cloud-v2/beneos-fx.mjs.
+ *
+ * Computed fields are plain functions receiving a context object
+ * { dataPath, random }; addFx resolves them per-apply so each token gets
+ * fresh randomisation. (Previously these were eval()-ed strings.) */
 let beneosFX = {
   "BFXDead": [{
     filterType: "adjustment",
@@ -47,11 +55,11 @@ let beneosFX = {
   "BFXDeadRedBlood": [{
     filterType: "sprite",
     filterId: "BFXDeadRedBlood",
-    eval_imagePath: "'__BENEOS_DATA_PATH__/000_module_assets/blood_splat_'+( (Math.floor(random()*7)+1))+'.webp'",
+    imagePath: (ctx) => ctx.dataPath + '/000_module_assets/blood_splat_' + (Math.floor(ctx.random() * 7) + 1) + '.webp',
     gridPadding: 2,
-    eval_scaleX: "0.5+random()",
-    eval_scaleY: "0.5+random()",
-    eval_rotation: "random()*360",
+    scaleX: (ctx) => 0.5 + ctx.random(),
+    scaleY: (ctx) => 0.5 + ctx.random(),
+    rotation: (ctx) => ctx.random() * 360,
     colorize: false,
     inverse: true,
     top: false,
@@ -59,11 +67,11 @@ let beneosFX = {
   "BFXDeadBlackBlood": [{
     filterType: "sprite",
     filterId: "BFXDeadBlackBlood",
-    eval_imagePath: "'__BENEOS_DATA_PATH__/000_module_assets/blood_splat_black_'+( (Math.floor(random()*7)+1))+'.webp'",
+    imagePath: (ctx) => ctx.dataPath + '/000_module_assets/blood_splat_black_' + (Math.floor(ctx.random() * 7) + 1) + '.webp',
     gridPadding: 2,
-    eval_scaleX: "0.5+random()",
-    eval_scaleY: "0.5+random()",
-    eval_rotation: "random()*360",
+    scaleX: (ctx) => 0.5 + ctx.random(),
+    scaleY: (ctx) => 0.5 + ctx.random(),
+    rotation: (ctx) => ctx.random() * 360,
     colorize: false,
     inverse: true,
     top: false,
@@ -71,11 +79,11 @@ let beneosFX = {
   "BFXDeadBlueBlood": [{
     filterType: "sprite",
     filterId: "BFXDeadBlueBlood",
-    eval_imagePath: "'__BENEOS_DATA_PATH__/000_module_assets/blood_blue_black_'+( (Math.floor(random()*7)+1))+'.webp'",
+    imagePath: (ctx) => ctx.dataPath + '/000_module_assets/blood_blue_black_' + (Math.floor(ctx.random() * 7) + 1) + '.webp',
     gridPadding: 2,
-    eval_scaleX: "0.5+random()",
-    eval_scaleY: "0.5+random()",
-    eval_rotation: "random()*360",
+    scaleX: (ctx) => 0.5 + ctx.random(),
+    scaleY: (ctx) => 0.5 + ctx.random(),
+    rotation: (ctx) => ctx.random() * 360,
     colorize: false,
     inverse: true,
     top: false,
@@ -83,11 +91,11 @@ let beneosFX = {
   "BFXDeadGreenBlood": [{
     filterType: "sprite",
     filterId: "BFXDeadGreenBlood",
-    eval_imagePath: "'__BENEOS_DATA_PATH__/000_module_assets/blood_splat_green_'+( (Math.floor(random()*7)+1))+'.webp'",
+    imagePath: (ctx) => ctx.dataPath + '/000_module_assets/blood_splat_green_' + (Math.floor(ctx.random() * 7) + 1) + '.webp',
     gridPadding: 2,
-    eval_scaleX: "0.5+random()",
-    eval_scaleY: "0.5+random()",
-    eval_rotation: "random()*360",
+    scaleX: (ctx) => 0.5 + ctx.random(),
+    scaleY: (ctx) => 0.5 + ctx.random(),
+    rotation: (ctx) => ctx.random() * 360,
     colorize: false,
     inverse: true,
     top: false,
@@ -95,11 +103,11 @@ let beneosFX = {
   "BFXDeadYellowBlood": [{
     filterType: "sprite",
     filterId: "BFXDeadYellowBlood",
-    eval_imagePath: "'__BENEOS_DATA_PATH__/000_module_assets/blood_splat_yellow_'+( (Math.floor(random()*7)+1))+'.webp'",
+    imagePath: (ctx) => ctx.dataPath + '/000_module_assets/blood_splat_yellow_' + (Math.floor(ctx.random() * 7) + 1) + '.webp',
     gridPadding: 2,
-    eval_scaleX: "0.5+random()",
-    eval_scaleY: "0.5+random()",
-    eval_rotation: "random()*360",
+    scaleX: (ctx) => 0.5 + ctx.random(),
+    scaleY: (ctx) => 0.5 + ctx.random(),
+    rotation: (ctx) => ctx.random() * 360,
     colorize: false,
     inverse: true,
     top: false,

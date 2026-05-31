@@ -1,0 +1,21 @@
+{{!-- Reusable 3D card flipper. Driven by data-flipped="true|false" on the
+     wrapper; the JS click-handler in item-companion.mjs toggles that.
+     NOTE: the "Tap to flip" hint lives in the parent .bc-cardwrap (sibling of
+     this flipper) so it stays in front of the card during the 3D rotation,
+     instead of being part of the preserve-3d transform group. --}}
+<div class="beneos-card-flipper" data-flipped="{{flipped}}" data-act="flip" role="button" tabindex="0" aria-label="Flip card">
+  <div class="card-face card-face--front">
+    {{#if frontCard}}
+      <img src="{{frontCard}}" alt="Front of card" loading="lazy">
+    {{else}}
+      <div class="card-face--placeholder">No front image</div>
+    {{/if}}
+  </div>
+  <div class="card-face card-face--back">
+    {{#if backCard}}
+      <img src="{{backCard}}" alt="Back of card" loading="lazy">
+    {{else}}
+      <div class="card-face--placeholder">No back image</div>
+    {{/if}}
+  </div>
+</div>

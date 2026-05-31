@@ -1,0 +1,111 @@
+<div class="beneos-codex-creature cdx-combat-autopilot" data-token-key="{{creature.tokenKey}}">
+  {{> "beneos-codex/creature/hero" creature=creature hideDownload=true}}
+
+  <div class="cdx-ap-stats">
+    {{#if stats.ac}}<span class="cdx-ap-stat"><label>{{localize "BENEOS.CreatureCodex.Stats.AC"}}</label><b>{{stats.ac}}</b></span>{{/if}}
+    <span class="cdx-ap-stat cdx-ap-hp">
+      <label>{{localize "BENEOS.CreatureCodex.Stats.HP"}}</label>
+      <input type="number" class="cdx-ap-hp-input" value="{{stats.hp.value}}" min="0" {{#unless stats.isOwner}}disabled{{/unless}}>
+      <span class="cdx-ap-hp-max">/ {{stats.hp.max}}</span>
+    </span>
+    {{#if stats.movement}}<span class="cdx-ap-stat"><label>{{localize "BENEOS.CreatureCodex.Stats.Speed"}}</label><b>{{stats.movement}}</b></span>{{/if}}
+    {{#if stats.resist}}<span class="cdx-ap-stat cdx-ap-stat-block"><label>{{localize "BENEOS.CreatureCodex.Stats.Resistances"}}</label><span>{{stats.resist}}</span></span>{{/if}}
+    {{#if stats.immun}}<span class="cdx-ap-stat cdx-ap-stat-block"><label>{{localize "BENEOS.CreatureCodex.Stats.Immunities"}}</label><span>{{stats.immun}}</span></span>{{/if}}
+    {{#if stats.vuln}}<span class="cdx-ap-stat cdx-ap-stat-block"><label>{{localize "BENEOS.CreatureCodex.Stats.Vulnerabilities"}}</label><span>{{stats.vuln}}</span></span>{{/if}}
+    {{#if stats.condImmun}}<span class="cdx-ap-stat cdx-ap-stat-block"><label>{{localize "BENEOS.CreatureCodex.Stats.ConditionImmunities"}}</label><span>{{stats.condImmun}}</span></span>{{/if}}
+  </div>
+
+  <nav class="cdx-tabs cdx-ap-tabs{{#if locked}} is-locked-nav{{/if}}">
+    <button type="button" class="cdx-tab {{#if (eq autoTab "autopilot")}}active{{/if}}"
+            data-action="cdx-ap-tab" data-ap-tab="autopilot">
+      <span>{{localize "BENEOS.CreatureCodex.Autopilot.TabAutopilot"}}</span>
+    </button>
+    <button type="button" class="cdx-tab {{#if (eq autoTab "abilities")}}active{{/if}}"
+            data-action="cdx-ap-tab" data-ap-tab="abilities">
+      <span>{{localize "BENEOS.CreatureCodex.Autopilot.TabAbilities"}}</span>
+    </button>
+    <button type="button" class="cdx-tab {{#if (eq autoTab "mechanics")}}active{{/if}}"
+            data-action="cdx-ap-tab" data-ap-tab="mechanics">
+      <span>{{localize "BENEOS.CreatureCodex.Autopilot.TabMechanics"}}</span>
+    </button>
+  </nav>
+
+  <div class="cdx-combat-ap-body">
+    <div class="beneos-paywall-wrap{{#if locked}} is-locked{{/if}}">
+    <div class="beneos-paywall-content">
+    {{#if (eq autoTab "abilities")}}
+      <nav class="cdx-ability-filter">
+        {{#each autoFilters}}
+          <button type="button"
+                  class="cdx-ability-filter-btn {{#if active}}active{{/if}}"
+                  data-action="cdx-ability-filter"
+                  data-cdx-filter="{{id}}">{{label}}</button>
+        {{/each}}
+      </nav>
+      {{#if autoAbilities.length}}
+        <div class="cdx-ability-cards single-group">
+          {{#each autoAbilities}}
+            {{> "beneos-codex/creature/ability-card" ability=this actorId=../creature.actorId}}
+          {{/each}}
+        </div>
+      {{else}}
+        <p class="cdx-empty">{{localize "BENEOS.CreatureCodex.Tactics.AbilityEmpty"}}</p>
+      {{/if}}
+    {{else if (eq autoTab "mechanics")}}
+      {{> "beneos-codex/creature/sub-general" creature=creature}}
+    {{else}}
+      {{#if currentRound}}
+        <section class="cdx-ap-round cdx-ap-round-open">
+          <header class="cdx-ap-round-head cdx-ap-round-head-static">
+            <span class="cdx-ap-round-num">{{localize "BENEOS.CreatureCodex.Autopilot.Round"}} {{currentRound.n}}</span>
+            {{#if currentRound.phaseLabel}}
+              <span class="cdx-ap-phase">{{currentRound.phaseLabel}}{{#if currentRound.hpRangeLabel}} · {{currentRound.hpRangeLabel}}{{/if}}</span>
+            {{/if}}
+            <span class="cdx-ap-actions">
+              {{#if currentRound.primary}}
+                {{localize "BENEOS.CreatureCodex.Autopilot.Primary"}}:
+                {{#if currentRound.primary.itemId}}
+                  <button type="button" class="cdx-chip cdx-chip-feature cdx-chip-item"
+                          data-action="cdx-trigger-ability"
+                          data-actor-id="{{creature.actorId}}"
+                          data-item-id="{{currentRound.primary.itemId}}">{{currentRound.primary.name}}</button>
+                {{else}}
+                  <span class="cdx-chip cdx-chip-feature">{{currentRound.primary.name}}</span>
+                {{/if}}
+              {{/if}}
+              {{#if currentRound.bonus}}
+                <span class="cdx-ap-bonus-label">{{localize "BENEOS.CreatureCodex.Autopilot.Bonus"}}:</span>
+                {{#if currentRound.bonus.itemId}}
+                  <button type="button" class="cdx-chip cdx-chip-feature cdx-chip-item"
+                          data-action="cdx-trigger-ability"
+                          data-actor-id="{{creature.actorId}}"
+                          data-item-id="{{currentRound.bonus.itemId}}">{{currentRound.bonus.name}}</button>
+                {{else}}
+                  <span class="cdx-chip cdx-chip-feature">{{currentRound.bonus.name}}</span>
+                {{/if}}
+              {{/if}}
+            </span>
+          </header>
+          {{> "beneos-codex/creature/ap-round" currentRound actorId=creature.actorId}}
+        </section>
+      {{else}}
+        <p class="cdx-empty">{{localize "BENEOS.CreatureCodex.Autopilot.Empty"}}</p>
+      {{/if}}
+    {{/if}}
+    </div>
+    {{#if locked}}{{> "modules/beneos-module/templates/shared/beneos-paywall.hbs" joinUrl=joinPatreonUrl label="BENEOS.Access.LockedContent"}}{{/if}}
+    </div>
+
+    <footer class="cdx-combat-footer">
+      <label class="cdx-combat-mute">
+        <input type="checkbox" class="cdx-combat-optout">
+        <span>{{localize "BENEOS.CreatureCodex.Combat.MuteAutopilot"}}</span>
+      </label>
+      <button type="button" class="cdx-btn cdx-combat-close-btn"
+              data-action="cdx-combat-close"
+              data-actor-id="{{creature.actorId}}">
+        {{localize "BENEOS.CreatureCodex.Combat.Close"}}
+      </button>
+    </footer>
+  </div>
+</div>

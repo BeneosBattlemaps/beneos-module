@@ -5,43 +5,6 @@
 <section class="bc-home" data-bc-region="home">
   {{#if isHome}}
 
-  {{!-- ============ Status bar ============ --}}
-  {{#if home.status}}
-    <div class="bc-home-statusbar">
-      <span class="bc-home-status-pill {{#if home.status.cloudLoggedIn}}is-on{{else}}is-off{{/if}}"
-            data-tooltip="{{#if home.status.cloudLoggedIn}}{{localize 'BENEOS.Cloud.Home.Status.CloudConnected'}}{{else}}{{localize 'BENEOS.Cloud.Home.Status.CloudDisconnected'}}{{/if}}">
-        <i class="fas {{#if home.status.cloudLoggedIn}}fa-check{{else}}fa-xmark{{/if}} bc-home-status-icon"></i>
-        {{#if home.status.cloudLoggedIn}}{{localize "BENEOS.Cloud.Home.Status.CloudOn"}}{{else}}{{localize "BENEOS.Cloud.Home.Status.CloudOff"}}{{/if}}
-      </span>
-
-      <a class="bc-home-status-pill bc-home-status-link {{#if home.status.mapPatron}}is-on{{else}}is-off{{/if}}"
-         href="{{home.status.patreonMapsUrl}}" target="_blank" rel="noopener noreferrer"
-         data-tooltip="{{#if home.status.mapPatron}}{{localize 'BENEOS.Cloud.Home.Status.MapsTooltipOn'}}{{else}}{{localize 'BENEOS.Cloud.Home.Status.MapsTooltipOff'}}{{/if}}">
-        <i class="fas {{#if home.status.mapPatron}}fa-check{{else}}fa-xmark{{/if}} bc-home-status-icon"></i>
-        {{#if home.status.mapPatron}}
-          {{localize "BENEOS.Cloud.Home.Status.MapsLabelOn"}}
-        {{else if home.status.cloudLoggedIn}}
-          {{localize "BENEOS.Cloud.Home.Status.MapsLabelNoPatron"}}
-        {{else}}
-          {{localize "BENEOS.Cloud.Home.Status.MapsLabelDisconnected"}}
-        {{/if}}
-      </a>
-
-      <a class="bc-home-status-pill bc-home-status-link {{#if home.status.tokenPatron}}is-on{{else}}is-off{{/if}}"
-         href="{{home.status.patreonTokensUrl}}" target="_blank" rel="noopener noreferrer"
-         data-tooltip="{{#if home.status.tokenPatron}}{{localize 'BENEOS.Cloud.Home.Status.TokensTooltipOn'}}{{else}}{{localize 'BENEOS.Cloud.Home.Status.TokensTooltipOff'}}{{/if}}">
-        <i class="fas {{#if home.status.tokenPatron}}fa-check{{else}}fa-xmark{{/if}} bc-home-status-icon"></i>
-        {{#if home.status.tokenPatron}}
-          {{localize "BENEOS.Cloud.Home.Status.TokensLabelOn"}}
-        {{else if home.status.cloudLoggedIn}}
-          {{localize "BENEOS.Cloud.Home.Status.TokensLabelNoPatron"}}
-        {{else}}
-          {{localize "BENEOS.Cloud.Home.Status.TokensLabelDisconnected"}}
-        {{/if}}
-      </a>
-    </div>
-  {{/if}}
-
   {{!-- ============ Hero rotation ============ --}}
   {{#if home.heroHasSlides}}
     <div class="bc-home-hero" data-bc-hero
@@ -105,6 +68,7 @@
   <section class="bc-home-section bc-home-news">
     <header class="bc-home-section-head">
       <div class="bc-home-section-head-text">
+        <span class="bc-news-chip"><i class="fa-solid fa-rss" aria-hidden="true"></i> {{localize "BENEOS.Cloud.Home.News.Chip"}}</span>
         <h3 class="bc-home-section-title">{{localize "BENEOS.Cloud.Home.News.SectionTitle"}}</h3>
         <p class="bc-home-section-sub">{{localize "BENEOS.Cloud.Home.News.SectionSub"}}</p>
       </div>
@@ -139,9 +103,11 @@
             <div class="bc-news-card-body">
               <div class="bc-news-card-meta">
                 <span class="bc-news-pin-label">{{localize "BENEOS.Cloud.Home.News.Pinned"}}</span>
-                <span class="bc-news-date">{{home.pinned.formattedDate}}</span>
               </div>
               <h4 class="bc-news-title">{{home.pinned.title}}</h4>
+              {{#if home.pinned.preview}}
+                <p class="bc-news-preview">{{home.pinned.preview}}</p>
+              {{/if}}
               {{#if home.pinned.ctaUrl}}{{#if home.pinned.ctaString}}
                 <div class="bc-news-card-cta">
                   <button type="button" class="bc-news-cta-btn"
@@ -168,10 +134,10 @@
               {{/if}}
             </div>
             <div class="bc-news-card-body">
-              <div class="bc-news-card-meta">
-                <span class="bc-news-date">{{this.formattedDate}}</span>
-              </div>
               <h4 class="bc-news-title">{{this.title}}</h4>
+              {{#if this.preview}}
+                <p class="bc-news-preview">{{this.preview}}</p>
+              {{/if}}
               {{#if this.ctaUrl}}{{#if this.ctaString}}
                 <div class="bc-news-card-cta">
                   <button type="button" class="bc-news-cta-btn"
@@ -193,6 +159,45 @@
       </div>
     {{/if}}
   </section>
+
+  {{!-- ============ Status bar ============
+       Sits below the news (so news stays at the very top) and above the
+       library. Shows the cloud connection + the two patron states. --}}
+  {{#if home.status}}
+    <div class="bc-home-statusbar">
+      <span class="bc-home-status-pill {{#if home.status.cloudLoggedIn}}is-on{{else}}is-off{{/if}}"
+            data-tooltip="{{#if home.status.cloudLoggedIn}}{{localize 'BENEOS.Cloud.Home.Status.CloudConnected'}}{{else}}{{localize 'BENEOS.Cloud.Home.Status.CloudDisconnected'}}{{/if}}">
+        <i class="fas {{#if home.status.cloudLoggedIn}}fa-check{{else}}fa-xmark{{/if}} bc-home-status-icon"></i>
+        {{#if home.status.cloudLoggedIn}}{{localize "BENEOS.Cloud.Home.Status.CloudOn"}}{{else}}{{localize "BENEOS.Cloud.Home.Status.CloudOff"}}{{/if}}
+      </span>
+
+      <a class="bc-home-status-pill bc-home-status-link {{#if home.status.mapPatron}}is-on{{else}}is-off{{/if}}"
+         href="{{home.status.patreonMapsUrl}}" target="_blank" rel="noopener noreferrer"
+         data-tooltip="{{#if home.status.mapPatron}}{{localize 'BENEOS.Cloud.Home.Status.MapsTooltipOn'}}{{else}}{{localize 'BENEOS.Cloud.Home.Status.MapsTooltipOff'}}{{/if}}">
+        <i class="fas {{#if home.status.mapPatron}}fa-check{{else}}fa-xmark{{/if}} bc-home-status-icon"></i>
+        {{#if home.status.mapPatron}}
+          {{localize "BENEOS.Cloud.Home.Status.MapsLabelOn"}}
+        {{else if home.status.cloudLoggedIn}}
+          {{localize "BENEOS.Cloud.Home.Status.MapsLabelNoPatron"}}
+        {{else}}
+          {{localize "BENEOS.Cloud.Home.Status.MapsLabelDisconnected"}}
+        {{/if}}
+      </a>
+
+      <a class="bc-home-status-pill bc-home-status-link {{#if home.status.tokenPatron}}is-on{{else}}is-off{{/if}}"
+         href="{{home.status.patreonTokensUrl}}" target="_blank" rel="noopener noreferrer"
+         data-tooltip="{{#if home.status.tokenPatron}}{{localize 'BENEOS.Cloud.Home.Status.TokensTooltipOn'}}{{else}}{{localize 'BENEOS.Cloud.Home.Status.TokensTooltipOff'}}{{/if}}">
+        <i class="fas {{#if home.status.tokenPatron}}fa-check{{else}}fa-xmark{{/if}} bc-home-status-icon"></i>
+        {{#if home.status.tokenPatron}}
+          {{localize "BENEOS.Cloud.Home.Status.TokensLabelOn"}}
+        {{else if home.status.cloudLoggedIn}}
+          {{localize "BENEOS.Cloud.Home.Status.TokensLabelNoPatron"}}
+        {{else}}
+          {{localize "BENEOS.Cloud.Home.Status.TokensLabelDisconnected"}}
+        {{/if}}
+      </a>
+    </div>
+  {{/if}}
 
   {{!-- ============ Library overview (stats + rails) ============ --}}
   <section class="bc-home-section bc-home-library">
@@ -257,9 +262,10 @@
                         data-action="openMoulinetteForMap"
                         data-target-key="{{this.key}}"
                       {{else}}
-                        data-action="switchToCategory"
+                        data-action="openRailEntity"
                         data-target-tab="{{this.type}}"
                         data-target-key="{{this.key}}"
+                        data-target-name="{{this.name}}"
                       {{/if}}>
                 {{#if this.thumb}}
                   <img src="{{this.thumb}}" alt="" loading="lazy"
@@ -279,9 +285,10 @@
                         data-action="openMoulinetteForMap"
                         data-target-key="{{this.key}}"
                       {{else}}
-                        data-action="switchToCategory"
+                        data-action="openRailEntity"
                         data-target-tab="{{this.type}}"
                         data-target-key="{{this.key}}"
+                        data-target-name="{{this.name}}"
                       {{/if}}>
                 {{#if this.thumb}}
                   <img src="{{this.thumb}}" alt="" loading="lazy"

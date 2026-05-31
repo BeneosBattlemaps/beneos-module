@@ -1,0 +1,68 @@
+<div class="cdx-autopilot">
+  <header class="cdx-h">
+    <h3>{{localize "BENEOS.CreatureCodex.Autopilot.Title"}}</h3>
+    <p>{{localize "BENEOS.CreatureCodex.Autopilot.Sub"}}</p>
+  </header>
+
+  {{#if creature.autopilot.hasContent}}
+    <div class="cdx-ap-strategy">
+      {{#if creature.autopilot.hasOpeningMove}}
+        <div class="cdx-ap-strat-block cdx-ap-strat-opening">
+          <div class="cdx-ap-strat-label">{{localize "BENEOS.CreatureCodex.Autopilot.OpeningMove"}}</div>
+          <p class="cdx-ap-strat-text">
+            {{> "beneos-codex/creature/tac-inline" parts=creature.autopilot.openingMoveTokens actorId=creature.actorId}}
+          </p>
+        </div>
+      {{/if}}
+      {{#if creature.autopilot.hasFallback}}
+        <div class="cdx-ap-strat-block cdx-ap-strat-fallback">
+          <div class="cdx-ap-strat-label">{{localize "BENEOS.CreatureCodex.Autopilot.Fallback"}}</div>
+          <p class="cdx-ap-strat-text">
+            {{> "beneos-codex/creature/tac-inline" parts=creature.autopilot.fallbackTokens actorId=creature.actorId}}
+          </p>
+        </div>
+      {{/if}}
+    </div>
+
+    <div class="cdx-ap-rounds">
+      {{#each creature.autopilot.rounds}}
+        <details class="cdx-ap-round">
+          <summary class="cdx-ap-round-head">
+            <span class="cdx-ap-round-num">{{localize "BENEOS.CreatureCodex.Autopilot.Round"}} {{n}}</span>
+            {{#if phaseLabel}}
+              <span class="cdx-ap-phase">{{phaseLabel}}{{#if hpRangeLabel}} · {{hpRangeLabel}}{{/if}}</span>
+            {{/if}}
+            <span class="cdx-ap-actions">
+              {{#if primary}}
+                {{localize "BENEOS.CreatureCodex.Autopilot.Primary"}}:
+                {{#if primary.itemId}}
+                  <button type="button" class="cdx-chip cdx-chip-feature cdx-chip-item"
+                          data-action="cdx-trigger-ability"
+                          data-actor-id="{{../creature.actorId}}"
+                          data-item-id="{{primary.itemId}}">{{primary.name}}</button>
+                {{else}}
+                  <span class="cdx-chip cdx-chip-feature">{{primary.name}}</span>
+                {{/if}}
+              {{/if}}
+              {{#if bonus}}
+                <span class="cdx-ap-bonus-label">{{localize "BENEOS.CreatureCodex.Autopilot.Bonus"}}:</span>
+                {{#if bonus.itemId}}
+                  <button type="button" class="cdx-chip cdx-chip-feature cdx-chip-item"
+                          data-action="cdx-trigger-ability"
+                          data-actor-id="{{../creature.actorId}}"
+                          data-item-id="{{bonus.itemId}}">{{bonus.name}}</button>
+                {{else}}
+                  <span class="cdx-chip cdx-chip-feature">{{bonus.name}}</span>
+                {{/if}}
+              {{/if}}
+            </span>
+          </summary>
+
+          {{> "beneos-codex/creature/ap-round" this actorId=../creature.actorId}}
+        </details>
+      {{/each}}
+    </div>
+  {{else}}
+    <p class="cdx-empty">{{localize "BENEOS.CreatureCodex.Autopilot.Empty"}}</p>
+  {{/if}}
+</div>

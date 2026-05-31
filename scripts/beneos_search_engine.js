@@ -8,6 +8,7 @@ const battlemapDBURL = "https://www.beneos-database.com/data/battlemaps/beneos_b
 const itemDBURL = "https://www.beneos-database.com/data/items/beneos_items_database.json"
 const spellDBURL = "https://www.beneos-database.com/data/spells/beneos_spells_database.json"
 const commonDBURL = "https://www.beneos-database.com/data/common/beneos_common_database.json"
+const i18nMatrixURL = "https://www.beneos-database.com/data/common/beneos_i18n.json"
 
 /********************************************************************************** */
 export class BeneosModuleMenu extends Dialog {
@@ -167,9 +168,63 @@ export class BeneosDatabaseHolder {
       }
     }
 
+    // Controlled-vocabulary tag-translation matrix (biomes, schools, rarities,
+    // origins, ...). Best-effort: a failure here must not break the DB load;
+    // the localizeTag helper falls back to the raw value when it is absent.
+    try {
+      let i18nMatrix = await foundry.utils.fetchJsonWithTimeout(i18nMatrixURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
+      this.i18nMatrix = i18nMatrix
+      this._i18nLcIndex = null // reset the lazy lowercase index on (re)load
+      localStorage.i18nMatrix = structuredClone(i18nMatrix)
+    } catch {
+      if (localStorage.i18nMatrix) {
+        this.i18nMatrix = structuredClone(localStorage.i18nMatrix)
+        this._i18nLcIndex = null
+      } else {
+        this.i18nMatrix = null
+      }
+    }
+
     BeneosUtility.saveLocalStorage(localStorage)
 
     this.buildSearchData()
+  }
+
+  /********************************************************************************** */
+  // Localize a controlled-vocabulary tag value via the shared beneos_i18n matrix.
+  // `domainField` is a field_map key (e.g. "token.biom", "item.rarity",
+  // "spell.school"). Returns the translation for the active locale, falling back
+  // to English, then to the raw value (so callers can still #capitalize it).
+  // Never throws.
+  static localizeTag(domainField, value) {
+    const raw = String(value ?? "")
+    try {
+      const m = this.i18nMatrix
+      if (!m || !m.field_map || !m.domains) return raw
+      const catPath = m.field_map[domainField]
+      if (!catPath) return raw
+      const dot = catPath.indexOf(".")
+      const dom = catPath.slice(0, dot), cat = catPath.slice(dot + 1)
+      const bucket = m.domains?.[dom]?.[cat]
+      if (!bucket) return raw
+      let term = bucket[raw]
+      if (!term) {
+        // case-insensitive fallback (e.g. hardcoded "very rare" vs key "Very Rare")
+        if (!this._i18nLcIndex) this._i18nLcIndex = {}
+        const ck = dom + "." + cat
+        let idx = this._i18nLcIndex[ck]
+        if (!idx) {
+          idx = {}
+          for (const k in bucket) idx[k.toLowerCase()] = bucket[k]
+          this._i18nLcIndex[ck] = idx
+        }
+        term = idx[raw.toLowerCase()]
+      }
+      if (!term) return raw
+      return term[game.i18n.lang] || term.en || raw
+    } catch (e) {
+      return raw
+    }
   }
 
   /********************************************************************************** */
@@ -455,19 +510,19 @@ export class BeneosDatabaseHolder {
     this.bmapBioms = {}
     this.fightingStyles = {}
     this.bmapBrightness = {}
-    this.crList = [{ key: "any", value: "Any" }, { key: "0,4", value: "0 to 4" }, { key: "5,10", value: "5 to 10" }, { key: "11,15", value: "11 to 15" },
+    this.crList = [{ key: "any", value: game.i18n.localize("BENEOS.Cloud.Filter.Any") }, { key: "0,4", value: "0 to 4" }, { key: "5,10", value: "5 to 10" }, { key: "11,15", value: "11 to 15" },
     { key: "15,10000000", value: "15+" }]
     this.movementList = {}
     this.purposeList = {}
     this.hiddenTagsList = {}
-    this.gridList = [{ key: "any", value: "Any" }, { key: "<150", value: "Tiny" }, { key: "<500", value: "Small" }, { key: "<1000", value: "Medium" },
+    this.gridList = [{ key: "any", value: game.i18n.localize("BENEOS.Cloud.Filter.Any") }, { key: "<150", value: "Tiny" }, { key: "<500", value: "Small" }, { key: "<1000", value: "Medium" },
     { key: "<2000", value: "Big" }, { key: ">2000", value: "Very Big" }]
     this.adventureList = {}
-    this.itemRarity = [{ key: "any", value: "Any" }, { key: "common", value: "    Common" }, { key: "uncommon", value: "   Uncommon" }, { key: "rare", value: "  Rare" }, { key: "very rare", value: " Very Rare" }, { key: "legendary", value: "Legendary" }]
+    this.itemRarity = [{ key: "any", value: game.i18n.localize("BENEOS.Cloud.Filter.Any") }, { key: "common", value: "    Common" }, { key: "uncommon", value: "   Uncommon" }, { key: "rare", value: "  Rare" }, { key: "very rare", value: " Very Rare" }, { key: "legendary", value: "Legendary" }]
     this.itemOrigin = {}
     this.itemType = {}
     this.itemTier = {}
-    this.itemPrice = [{ key: "any", value: "Any" }, { key: "<100", value: "< 100g" }, { key: "<1000", value: "< 1000g" }, { key: "<5000", value: "< 5000g" },
+    this.itemPrice = [{ key: "any", value: game.i18n.localize("BENEOS.Cloud.Filter.Any") }, { key: "<100", value: "< 100g" }, { key: "<1000", value: "< 1000g" }, { key: "<5000", value: "< 5000g" },
     { key: "<15000", value: "< 15.000g" }, { key: ">15000", value: "> 15.000g" }]
     this.spellLevel = {}
     this.spellSchool = {}
@@ -823,7 +878,7 @@ export class BeneosDatabaseHolder {
     }
     tab = BeneosDatabaseHolder.sortProperties(tab)
     if (tab.find((it) => it.key.toLowerCase() == "any") == undefined) {
-      tab.splice(0, 0, { key: "any", value: "Any" })
+      tab.splice(0, 0, { key: "any", value: game.i18n.localize("BENEOS.Cloud.Filter.Any") })
     }
 
     return tab

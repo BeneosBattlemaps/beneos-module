@@ -1,0 +1,23 @@
+{{!--
+  Sense-Readout: minimal, the verbose "A pull from the NE / Sanctified
+  / 1 mile away" block was already covered above the compass. Here we
+  only surface the rarity-tier cue once the player has at least two
+  attuned items of this Origin (per the attunement-reveal mechanic).
+  Below 2 attunements: nothing renders.
+--}}
+{{#if active.showRarity}}
+  <div class="readout-rarity" style="--origin-color:{{active.origin.color}};--gem-color:{{active.gemColor}};">
+    <div class="rarity-line">
+      <span class="rarity-name">{{active.rarityName}}</span>
+      <span class="rarity-origin">{{active.origin.name}}</span>
+      <span class="rarity-suffix">{{localize "BENEOS.LGC.Compass.ItemSuffix"}}</span>
+    </div>
+    <span class="rarity-gems">
+      <span class="rarity-gem{{#if (gte active.rarity 1)}} lit{{/if}}"></span>
+      <span class="rarity-gem{{#if (gte active.rarity 2)}} lit{{/if}}"></span>
+      <span class="rarity-gem{{#if (gte active.rarity 3)}} lit{{/if}}"></span>
+      <span class="rarity-gem{{#if (gte active.rarity 4)}} lit{{/if}}"></span>
+      <span class="rarity-gem{{#if (gte active.rarity 5)}} lit{{/if}}"></span>
+    </span>
+  </div>
+{{/if}}

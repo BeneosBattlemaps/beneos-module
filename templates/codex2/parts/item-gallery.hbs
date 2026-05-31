@@ -1,0 +1,37 @@
+<main class="gallery-wrap">
+  <div class="gallery-header">
+    <div>
+      <div class="eyebrow">{{localize "BENEOS.Codex.Gallery.Eyebrow"}}</div>
+      <h2>{{localize "BENEOS.Codex.Gallery.Heading"}}</h2>
+    </div>
+    <div class="count-readout"><strong>{{gallery.totalOrigins}}</strong> <span>{{localize "BENEOS.Codex.Gallery.Count"}}</span></div>
+  </div>
+
+  <div class="gallery-grid">
+    {{#each gallery.cards}}
+      <div class="origin-card" data-action="open-origin" data-slug="{{slug}}" tabindex="0"
+           style="--origin-color:{{glow}};--origin-glow:color-mix(in oklab, {{glow}} 40%, transparent);">
+        <div class="emblem-area">
+          <div class="ambient-ring"></div>
+          <div class="ambient-ring inner"></div>
+          <div class="emblem">
+            <div class="emblem-disc has-image" style="--origin-color:{{glow}};">
+              {{#if iconBw}}
+                <div class="emblem-tint-wrap">
+                  <div class="emblem-tint-base" style="background-color: {{glow}}; -webkit-mask: url('{{iconBw}}') center / contain no-repeat; mask: url('{{iconBw}}') center / contain no-repeat;"></div>
+                  <img class="emblem-tint-detail" src="{{iconBw}}" alt="{{displayName}}" />
+                </div>
+              {{else}}
+                <img src="{{iconPath}}" alt="{{displayName}}" onerror="this.style.display='none';this.parentNode.innerHTML='<span>{{mono}}</span>';" />
+              {{/if}}
+            </div>
+          </div>
+        </div>
+        <div class="meta">
+          <div class="name">{{displayName}}</div>
+          <div class="blurb">{{lore}}</div>
+        </div>
+      </div>
+    {{/each}}
+  </div>
+</main>

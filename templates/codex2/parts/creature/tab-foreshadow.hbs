@@ -1,0 +1,32 @@
+<section class="cdx-section">
+  <header class="cdx-h">
+    <h2>{{localize "BENEOS.CreatureCodex.Foreshadow.Title"}}</h2>
+    <p>{{localize "BENEOS.CreatureCodex.Foreshadow.Sub"}}</p>
+  </header>
+
+  {{#if creature.hasForeshadowing}}
+    <div class="cdx-foreshadow">
+      {{#each creature.data.foreshadowing}}
+        <article class="cdx-foresee">
+          <div class="cdx-foresee-num">{{numString (sum @index 1)}}</div>
+          <div class="cdx-foresee-body">
+            <h3 class="cdx-foresee-title">{{title}}</h3>
+            <p class="cdx-foresee-text">{{{text}}}</p>
+            {{#each checks}}
+              <details class="cdx-check">
+                <summary class="cdx-check-header">
+                  <span class="cdx-dc">{{localize "BENEOS.CreatureCodex.Foreshadow.DcPrefix"}} {{dc}}</span>
+                  {{#each skills}}<span class="cdx-skill">{{this}}</span>{{/each}}
+                  {{#if modifier}}<span class="cdx-mod">({{modifier}})</span>{{/if}}
+                </summary>
+                {{#if result}}<p class="cdx-check-result">{{{result}}}</p>{{/if}}
+              </details>
+            {{/each}}
+          </div>
+        </article>
+      {{/each}}
+    </div>
+  {{else}}
+    <p class="cdx-empty">{{localize "BENEOS.CreatureCodex.Foreshadow.Empty"}}</p>
+  {{/if}}
+</section>

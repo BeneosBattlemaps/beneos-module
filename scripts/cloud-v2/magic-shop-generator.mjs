@@ -28,8 +28,8 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
 // v3-fix), used when players want to SELL items to the shop.
 const SHOP_SIZES = {
   small: {
-    label: "Small",
-    sub: "Wandering Merchants & Provincial Outposts",
+    labelKey: "BENEOS.MagicShop.Size.Small",
+    subKey: "BENEOS.MagicShop.Size.SmallSub",
     icon: "fa-solid fa-cart-shopping",
     slots:   { min: 4, max: 6 },
     healing: { min: 1, max: 2 },
@@ -37,8 +37,8 @@ const SHOP_SIZES = {
     tierMix: { 1: 75, 2: 25 }
   },
   medium: {
-    label: "Medium",
-    sub: "City Shops & Established Guilds",
+    labelKey: "BENEOS.MagicShop.Size.Medium",
+    subKey: "BENEOS.MagicShop.Size.MediumSub",
     icon: "fa-solid fa-shop",
     slots:   { min: 8, max: 12 },
     healing: { min: 2, max: 4 },
@@ -46,8 +46,8 @@ const SHOP_SIZES = {
     tierMix: { 1: 15, 2: 60, 3: 25 }
   },
   large: {
-    label: "Large",
-    sub: "Capital Emporiums & Grand Halls",
+    labelKey: "BENEOS.MagicShop.Size.Large",
+    subKey: "BENEOS.MagicShop.Size.LargeSub",
     icon: "fa-solid fa-building-columns",
     slots:   { min: 15, max: 20 },
     healing: { min: 4, max: 6 },
@@ -185,6 +185,8 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
 
     ctx.sizes = Object.entries(SHOP_SIZES).map(([key, def]) => ({
       key, ...def,
+      label: game.i18n.localize(def.labelKey),
+      sub: game.i18n.localize(def.subKey),
       selected: this.size === key
     }))
     ctx.size = this.size ? SHOP_SIZES[this.size] : null
@@ -204,11 +206,13 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
     ctx.poolWarningDefault = this.poolWarning === "default"
     ctx.poolWarningSpecial = this.poolWarning === "special"
     const typeLabel = this.shopType ? shopLabel(this.shopType) : "Misc"
-    ctx.saveTooltip =
-      `<strong>Save Shop to World</strong>` +
-      `<p>Creates a folder &quot;Beneos Shop / ${typeLabel} / ` +
-      `${this.shopName || this.#suggestShopName()}&quot; ` +
-      `and files every rolled item into price-bracket sub-folders.</p>`
+    ctx.saveTooltip = game.i18n.format("BENEOS.MagicShop.SaveTooltip", {
+      path: `${typeLabel} / ${this.shopName || this.#suggestShopName()}`
+    })
+    // Patreon gate: only active Creatures/Spells/Loot (tokens) patrons can use
+    // the generator; everyone else sees the controls blurred behind a join CTA.
+    ctx.hasTokenAccess = !!game.beneos?.cloud?.hasCampaignAccess?.("tokens")
+    ctx.joinPatreonUrl = "https://www.patreon.com/c/BeneosTokens"
     return ctx
   }
 
@@ -399,7 +403,7 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
       }
     }
     if (!BeneosUtility.isItemLoaded?.(key)) {
-      ui.notifications?.warn?.("Could not install this item.")
+      ui.notifications?.warn?.(game.i18n.localize("BENEOS.LootGen.Notify.InstallFailed"))
       return
     }
     const doc = game.items?.find?.(d => d.getFlag?.("world", "beneos")?.itemKey === key)
@@ -468,7 +472,7 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
     const typeLabel = this.shopType ? shopLabel(this.shopType) : "Misc"
     const confirmed = await foundry.applications.api.DialogV2.confirm({
       window: { title: game.i18n.localize("BENEOS.MagicShop.SaveConfirmTitle") || "Save Magic Shop" },
-      content: `<p>Will install ${total} items into <em>Beneos Shop / ${typeLabel} / ${shopName}</em>. Continue?</p>`,
+      content: `<p>${game.i18n.format("BENEOS.MagicShop.SaveConfirmBody", { count: total, name: `${typeLabel} / ${shopName}` })}</p>`,
       rejectClose: false,
       modal: true
     })
@@ -478,7 +482,7 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
     await this.render({ parts: ["body"] })
     try {
       await this.#saveToWorld(shopName)
-      ui.notifications.info(`Shop "${typeLabel} / ${shopName}" saved with ${total} items.`)
+      ui.notifications.info(game.i18n.format("BENEOS.MagicShop.SaveSuccess", { name: `${typeLabel} / ${shopName}`, count: total }))
     } catch (err) {
       console.error("[Beneos MagicShop] save failed", err)
       ui.notifications.error(game.i18n.localize("BENEOS.MagicShop.SaveFailed") || "Saving the shop failed. See console.")

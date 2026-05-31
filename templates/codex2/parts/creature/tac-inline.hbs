@@ -1,0 +1,29 @@
+{{~#each parts~}}
+  {{~#if (eq (typeof this) "string")~}}
+    <span class="cdx-tac-text">{{this}}</span>
+  {{~else if ../static~}}
+    {{~#if this.itemId~}}
+      <span class="cdx-chip cdx-chip-feature cdx-chip-item-static">{{this.chip}}</span>
+    {{~else~}}
+      <span class="cdx-chip cdx-chip-{{this.kind}}">{{this.chip}}</span>
+    {{~/if~}}
+  {{~else~}}
+    {{~#if (or (eq this.kind "dice") (eq this.kind "dc") (eq this.kind "tohit"))~}}
+      <button type="button"
+              class="cdx-chip cdx-chip-{{this.kind}} cdx-chip-rollable"
+              data-action="cdx-roll-chip"
+              data-actor-id="{{../actorId}}"
+              data-roll-formula="{{this.chip}}"
+              title="{{localize 'BENEOS.CreatureCodex.Chip.Roll'}}">{{this.chip}}</button>
+    {{~else if this.itemId~}}
+      <button type="button"
+              class="cdx-chip cdx-chip-feature cdx-chip-item"
+              data-action="cdx-trigger-ability"
+              data-actor-id="{{../actorId}}"
+              data-item-id="{{this.itemId}}"
+              {{#if this.summaryHtml}}data-tooltip-html="{{{this.summaryHtml}}}"{{else if this.summary}}data-tooltip="{{this.summary}}"{{/if}}>{{this.chip}}</button>
+    {{~else~}}
+      <span class="cdx-chip cdx-chip-{{this.kind}}">{{this.chip}}</span>
+    {{~/if~}}
+  {{~/if~}}
+{{~/each~}}

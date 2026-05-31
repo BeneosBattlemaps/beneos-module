@@ -1,0 +1,24 @@
+<header class="cdx-header">
+  <button class="cdx-brand" data-action="go-hub" style="background:transparent;border:none;cursor:pointer;padding:0;text-align:left;">
+    <div class="logo logo-mark" aria-hidden="true"></div>
+    <div>
+      <span class="title">{{localize "BENEOS.Codex.Brand"}}</span>
+    </div>
+  </button>
+
+  <nav class="cdx-tabs">
+    {{#each header.tabs}}
+      <button class="cdx-tab {{#if active}}active{{/if}}" data-action="go-route" data-route="{{id}}">
+        {{localize label}}{{#if wip}}<span class="count" style="background:rgba(180,109,232,0.10);border-color:rgba(180,109,232,0.42);color:#d9a8ee;">{{localize "BENEOS.Codex.WIP"}}</span>{{/if}}
+      </button>
+    {{/each}}
+  </nav>
+
+  <div class="cdx-header-right">
+    <button class="cdx-iconbtn cdx-close" title="{{localize 'BENEOS.Codex.Close'}}" data-action="close-codex">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M3 3L11 11M11 3L3 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+</header>

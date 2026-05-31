@@ -1,0 +1,12 @@
+<li class="cdx-tac-item depth-{{depth}}">
+  <div class="cdx-tac-line">
+    {{> "beneos-codex/creature/tac-inline" parts=item.text actorId=actorId}}
+  </div>
+  {{#if item.children.length}}
+    <ul class="cdx-tac-list">
+      {{#each item.children}}
+        {{> "beneos-codex/creature/tac-rule" item=this depth=(sum ../depth 1) actorId=../actorId}}
+      {{/each}}
+    </ul>
+  {{/if}}
+</li>

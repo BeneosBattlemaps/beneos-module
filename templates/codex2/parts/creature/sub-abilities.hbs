@@ -1,0 +1,59 @@
+<div class="cdx-abilities-layout">
+  <div class="cdx-abilities-main">
+    <nav class="cdx-ability-filter">
+      {{#each creature.abilityFilters}}
+        <button type="button"
+                class="cdx-ability-filter-btn {{#if active}}active{{/if}}"
+                data-action="cdx-ability-filter"
+                data-cdx-filter="{{id}}">{{label}}</button>
+      {{/each}}
+    </nav>
+
+    {{#if creature.activeAbilities.length}}
+      {{#if (eq creature.activeAbilityFilter "all")}}
+        {{#each creature.abilityGroupsForAll}}
+          <section class="cdx-ability-group">
+            <header class="cdx-ability-group-head">
+              <h3>{{filterLabel}}</h3>
+              <span class="cdx-ability-group-count">{{list.length}}</span>
+            </header>
+            <div class="cdx-ability-cards">
+              {{#each list}}
+                {{> "beneos-codex/creature/ability-card" ability=this actorId=../../creature.actorId}}
+              {{/each}}
+            </div>
+          </section>
+        {{/each}}
+      {{else}}
+        {{#if creature.filteredAbilities.length}}
+          <div class="cdx-ability-cards single-group">
+            {{#each creature.filteredAbilities}}
+              {{> "beneos-codex/creature/ability-card" ability=this actorId=../creature.actorId}}
+            {{/each}}
+          </div>
+        {{else}}
+          <p class="cdx-empty">{{localize "BENEOS.CreatureCodex.Tactics.AbilityEmpty"}}</p>
+        {{/if}}
+      {{/if}}
+    {{else}}
+      <p class="cdx-empty">{{localize "BENEOS.CreatureCodex.Tactics.NoActive"}}</p>
+    {{/if}}
+  </div>
+
+  <aside class="cdx-abilities-aside">
+    <header class="cdx-aside-head">
+      <span class="cdx-aside-marker" aria-hidden="true"></span>
+      <h3>{{localize "BENEOS.CreatureCodex.Tactics.PassiveTitle"}}</h3>
+    </header>
+    <p class="cdx-aside-hint">{{localize "BENEOS.CreatureCodex.Tactics.PassiveHint"}}</p>
+    {{#if creature.hasPassives}}
+      <div class="cdx-ability-cards single-group">
+        {{#each creature.passiveAbilities}}
+          {{> "beneos-codex/creature/ability-card" ability=this actorId=../creature.actorId}}
+        {{/each}}
+      </div>
+    {{else}}
+      <p class="cdx-empty">{{localize "BENEOS.CreatureCodex.Tactics.NoPassives"}}</p>
+    {{/if}}
+  </aside>
+</div>

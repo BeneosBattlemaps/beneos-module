@@ -1,0 +1,857 @@
+/* ============================================================
+   beneos-codex-app.css — additional classes for the ApplicationV2
+   wrapper that aren't in the React design bundle. These map the
+   design's visual language onto the Hub→Subpage flow used by
+   BeneosCodex (M7).
+   ============================================================ */
+
+.beneos-codex.codex-root .window-content {
+  padding: 0;
+  background: var(--bg-base);
+  overflow: hidden;
+}
+/* Fix.12: drop the redundant Foundry window-header — our .cdx-header IS the header. */
+.beneos-codex.codex-root > .window-header { display: none; }
+
+/* Fix.16: minimal scrollbars across the whole codex — no track box, no shadow. */
+.beneos-codex,
+.beneos-codex * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 168, 87, 0.25) transparent;
+}
+.beneos-codex *::-webkit-scrollbar { width: 6px; height: 6px; }
+.beneos-codex *::-webkit-scrollbar-track {
+  background: transparent;
+  box-shadow: none;
+  border: none;
+}
+.beneos-codex *::-webkit-scrollbar-thumb {
+  background: rgba(212, 168, 87, 0.22);
+  border-radius: 3px;
+  border: none;
+}
+.beneos-codex *::-webkit-scrollbar-thumb:hover { background: rgba(240, 199, 114, 0.40); }
+.beneos-codex *::-webkit-scrollbar-corner { background: transparent; }
+
+/* M7-Fix.1: ApplicationV2 verlangt einen single-root pro Part. Der Shell
+   wrappt ambient + grain + header + body und füllt das Application-Fenster. */
+.codex-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+.codex-shell > .cdx-body {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.codex-subpage {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-base);
+  color: var(--ink-primary);
+}
+/* Subnav — Streifen-Look, dunklerer Grund, kein Button-Frame */
+.subpage-tabbar {
+  display: flex;
+  gap: 0;
+  padding: 0;
+  /* Fix.12: bottom border removed — .subpage-lead carries the only separator below. */
+  border-bottom: none;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.25) 100%);
+}
+/* Fix.13 defense: dnd5e + browser focus styles produce red/blue outlines on
+   nav buttons. Nuke outline + box-shadow globally inside the codex, then
+   reintroduce a clean gold focus-visible ring for keyboard a11y. */
+.beneos-codex .cdx-tab:not(.cdx-tab-standalone),
+.beneos-codex .subpage-tab,
+.beneos-codex .subpage-back,
+.beneos-codex .cdx-iconbtn,
+.beneos-codex button:not(.cdx-tab-standalone) {
+  border-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+/* The Tactical-Guide standalone button keeps its own gold styling + yellow
+   active shine (see beneos-creature-codex.css); it still gets the focus
+   outline nuked, but not the box-shadow/border resets above. */
+.beneos-codex .cdx-tab-standalone { outline: none !important; }
+.beneos-codex .cdx-tab.active:not(.cdx-tab-standalone) { border-bottom-color: var(--gold) !important; }
+.beneos-codex .subpage-tab.active { border-bottom-color: var(--gold) !important; }
+.beneos-codex .cdx-tab:focus-visible,
+.beneos-codex .subpage-tab:focus-visible,
+.beneos-codex button:focus-visible {
+  outline: 1px solid var(--gold-bright) !important;
+  outline-offset: 2px;
+}
+.subpage-back {
+  padding: 16px 18px;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--line-soft);
+  border-radius: 0;
+  color: var(--ink-muted);
+  font-family: "Cinzel", serif;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+.subpage-back:hover { color: var(--ink-primary); background: rgba(255, 255, 255, 0.04); }
+
+.subpage-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--ink-muted);
+  padding: 16px 8px;
+  font-family: "Cinzel", serif;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-align: center;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.15s, background-color 0.15s, border-color 0.15s;
+}
+.subpage-tab:hover {
+  color: var(--ink-primary);
+  background: rgba(255, 255, 255, 0.04);
+}
+.subpage-tab.active {
+  color: var(--gold-bright);
+  border-bottom-color: var(--gold);
+  background: rgba(212, 168, 87, 0.06);
+}
+
+/* Subpage-Lead — Erklärtext unter der Subnav */
+.subpage-lead {
+  padding: 14px 22px 12px;
+  font-family: "EB Garamond", serif;
+  font-style: normal;
+  font-size: 14.5px;
+  line-height: 1.55;
+  letter-spacing: 0.01em;
+  color: var(--ink-secondary);
+  border-bottom: 1px solid var(--line-soft);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.generator-pane {
+  padding: 32px 48px;
+  overflow-y: auto;
+  flex: 1;
+}
+.generator-pane h2 {
+  font-family: "Cinzel", serif;
+  font-size: 26px;
+  margin: 0 0 16px;
+  color: var(--ink-primary);
+}
+.generator-pane p {
+  font-family: "EB Garamond", serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--ink-secondary);
+  margin: 0 0 12px;
+}
+.generator-pane .eyebrow {
+  font-family: "Cinzel", serif;
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold-soft);
+  margin-bottom: 6px;
+}
+.generator-pane .hint {
+  margin-top: 24px;
+  padding: 12px 14px;
+  background: rgba(212,168,87,0.05);
+  border-left: 2px solid var(--gold-soft);
+  font-size: 13px;
+  color: var(--ink-muted);
+  font-style: normal;
+}
+.generator-pane code {
+  background: rgba(0,0,0,0.3);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+.cta-primary {
+  background: linear-gradient(180deg, var(--gold) 0%, var(--gold-soft) 100%);
+  color: #2a1a08;
+  border: 1px solid var(--gold-bright);
+  padding: 10px 22px;
+  border-radius: 6px;
+  font-family: "Cinzel", serif;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 16px;
+}
+.cta-primary:hover { filter: brightness(1.1); }
+
+.item-origins-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 24px;
+  padding: 0 24px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+@media (max-width: 1100px) { .item-origins-layout { grid-template-columns: 1fr; } }
+
+.detail-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr 280px;
+  gap: 28px;
+  padding: 0 28px 28px;
+  overflow-y: auto;
+  flex: 1;
+}
+@media (max-width: 1100px) { .detail-layout { grid-template-columns: 1fr; } }
+.detail-left { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
+.detail-right { display: flex; flex-direction: column; gap: 14px; }
+.back-btn {
+  background: transparent;
+  border: 1px solid var(--line-soft);
+  color: var(--gold-soft);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-family: "Cinzel", serif;
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.attune-sim {
+  background: var(--bg-card);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--rad-lg);
+  padding: 18px;
+  box-shadow: var(--shadow-card);
+}
+.attune-eyebrow {
+  font-family: "Cinzel", serif;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold-soft);
+  margin-bottom: 10px;
+}
+
+/* Fix.17: shared eyebrow with gold left-bar (Attune-Sim + Set-Bonus-Active) */
+.codex-eyebrow {
+  display: flex; align-items: center; gap: 10px;
+  font-family: "Cinzel", serif;
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold-soft);
+  margin-bottom: 10px;
+}
+.codex-eyebrow::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 14px;
+  background: var(--gold-bright, #f0d486);
+  border-radius: 1px;
+}
+.codex-eyebrow + .attune-h2,
+.codex-eyebrow + .sba-value {
+  margin-top: 0;
+}
+
+/* Attunement-Simulator headings + subclaim */
+.attune-h2 {
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 0.02em;
+  color: var(--ink-primary);
+  margin: 0 0 6px;
+}
+.attune-subclaim {
+  font-family: "EB Garamond", serif;
+  font-style: normal;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-secondary);
+  margin: 0 0 18px;
+}
+
+/* Dark frame around the three item-attune cards */
+.attune-tiles-frame {
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+.attune-count {
+  font-family: "Cinzel", serif;
+  font-size: 36px;
+  color: var(--origin-color, var(--gold-bright));
+  font-weight: 600;
+}
+.attune-count span {
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-left: 6px;
+}
+.attune-dots { display: flex; gap: 6px; margin: 12px 0 16px; }
+.attune-dot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--line-soft);
+  background: var(--bg-panel);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.attune-dot.filled {
+  background: var(--origin-color, var(--gold));
+  border-color: var(--origin-color, var(--gold-bright));
+  box-shadow: 0 0 12px var(--origin-color, var(--gold-glow));
+}
+.attune-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  font-family: "EB Garamond", serif;
+  font-size: 14px;
+}
+.attune-row > span:first-child {
+  width: 24px; height: 24px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--bg-panel);
+  font-family: "Cinzel", serif;
+  font-size: 12px;
+}
+.attune-row em {
+  color: var(--ink-muted);
+  font-size: 12px;
+  margin-left: auto;
+  font-style: normal;
+}
+.attune-row.met { color: var(--ink-primary); background: rgba(240,199,114,0.08); }
+.attune-row.miss { color: var(--ink-faint); opacity: 0.65; }
+.attune-row.met > span:first-child { color: var(--origin-color, var(--gold-bright)); }
+
+/* ---- Fix.9 Attunement-Simulator: 3 tiles + Set-Bonus-Active block ---- */
+.attune-count-text {
+  font-family: "EB Garamond", serif;
+  font-style: normal;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-secondary);
+  margin: 4px 0 12px;
+}
+
+.attune-tiles {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+}
+.attune-tile {
+  background: linear-gradient(180deg, rgba(60, 38, 22, 0.55), rgba(30, 18, 10, 0.55));
+  border: 1px solid rgba(212, 168, 87, 0.18);
+  border-radius: 10px;
+  padding: 14px 4px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 70px;
+  height: 132px;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  transition: background 0.25s, border-color 0.25s, box-shadow 0.25s, transform 0.15s;
+}
+.attune-tile:hover { transform: translateY(-1px); }
+.attune-tile .at-circle {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.40);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  display: grid; place-items: center;
+  transition: background 0.25s, border-color 0.25s, box-shadow 0.25s;
+}
+.attune-tile .at-num {
+  font-family: "Cinzel", serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink-secondary);
+  line-height: 1;
+}
+.attune-tile .at-label {
+  font-family: "Cinzel", serif;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.attune-tile.is-active {
+  background: color-mix(in oklab, var(--origin-color, var(--gold)) 22%, rgba(0,0,0,0.40));
+  border-color: var(--origin-color, var(--gold));
+  box-shadow: 0 0 16px color-mix(in oklab, var(--origin-color, var(--gold)) 40%, transparent);
+}
+.attune-tile.is-active .at-circle {
+  background: color-mix(in oklab, var(--origin-color, var(--gold)) 40%, rgba(0,0,0,0.30));
+  border-color: var(--origin-color, var(--gold-bright));
+  box-shadow: 0 0 12px color-mix(in oklab, var(--origin-color, var(--gold)) 55%, transparent);
+}
+.attune-tile.is-active .at-num   { color: var(--ink-primary); }
+.attune-tile.is-active .at-label { color: var(--ink-primary); }
+
+/* Fix.17: Set-Bonus-Active separate panel below the simulator */
+.set-bonus-block {
+  margin-top: 20px;
+  padding: 18px;
+  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--line-soft);
+  box-shadow: var(--shadow-card);
+}
+.sba-value {
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  font-size: 24px;
+  letter-spacing: 0.02em;
+  margin: 0 0 6px;
+  line-height: 1.1;
+}
+.sba-value.is-none    { color: var(--ink-secondary); }
+.sba-value.is-reson   { color: var(--tier-reson, #e8b556); }
+.sba-value.is-harmony { color: var(--tier-harmony, #fff0b8); }
+.sba-hint {
+  font-family: "EB Garamond", serif;
+  font-style: normal;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-secondary);
+  margin: 0;
+}
+
+/* Ritual-of-Ascension CTA — only visible at Perfect Harmony (attuned >= 3) */
+.sba-ritual-cta {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  margin-top: 14px;
+  padding: 14px 12px;
+  background: linear-gradient(180deg, rgba(150, 80, 220, 0.22), rgba(80, 40, 140, 0.22));
+  border: 1px solid var(--tier-special, #b06de8);
+  border-radius: 8px;
+  color: var(--tier-special, #d9a8ee);
+  font-family: "Cinzel", serif;
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  line-height: 1.35;
+  text-transform: uppercase;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+  animation: ritual-pulse 2.4s ease-in-out infinite;
+}
+.sba-ritual-cta:hover {
+  background: linear-gradient(180deg, rgba(150, 80, 220, 0.40), rgba(80, 40, 140, 0.40));
+  transform: translateY(-1px);
+}
+.sba-ritual-cta[data-visible="false"] { display: none; }
+
+@keyframes ritual-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(176, 109, 232, 0.0);
+    border-color: rgba(176, 109, 232, 0.65);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(176, 109, 232, 0.55);
+    border-color: rgba(224, 184, 255, 1);
+  }
+}
+
+/* Specials section in the tier-stack — only revealed at Perfect Harmony */
+.specials-section[data-visible="false"] { display: none; }
+
+/* ---- Sense of Like — passive origin-sensing explainer + mini-map --- */
+.sense-of-like {
+  margin-top: 20px;
+  padding: 14px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.sol-eyebrow {
+  font-family: "Cinzel", serif;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold-soft);
+  margin-bottom: 8px;
+}
+.sol-text {
+  font-family: "EB Garamond", serif;
+  font-style: normal;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-secondary);
+  margin: 10px 0 0;
+}
+
+/* Mini-map: 3 concentric range rings around a central glow dot.
+   Rings light up based on the attune count via [data-attuned]. */
+.sol-map {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  margin: 4px 0 8px;
+}
+.sol-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.10);
+  transition: border-color 0.3s, border-style 0.3s, background-color 0.3s, box-shadow 0.3s;
+}
+.sol-r10 { inset: 0; }
+.sol-r5  { inset: 22%; }
+.sol-r1  { inset: 40%; }
+.sol-center {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--origin-color, var(--gold-bright));
+  box-shadow: 0 0 10px var(--origin-color, var(--gold-bright));
+}
+.sol-ring-label {
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Cinzel", serif;
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  color: var(--ink-muted);
+  background: var(--bg-base, #0d0a08);
+  padding: 1px 6px;
+  border-radius: 2px;
+}
+/* Light up rings based on attuned count */
+.sense-of-like[data-attuned="1"] .sol-r1,
+.sense-of-like[data-attuned="2"] .sol-r1,
+.sense-of-like[data-attuned="2"] .sol-r5,
+.sense-of-like[data-attuned="3"] .sol-r1,
+.sense-of-like[data-attuned="3"] .sol-r5,
+.sense-of-like[data-attuned="3"] .sol-r10 {
+  border-color: var(--origin-color, var(--gold-bright));
+  border-style: solid;
+  background: color-mix(in oklab, var(--origin-color, var(--gold)) 8%, transparent);
+}
+.sense-of-like[data-attuned="1"] .sol-r1 .sol-ring-label,
+.sense-of-like[data-attuned="2"] .sol-r5 .sol-ring-label,
+.sense-of-like[data-attuned="3"] .sol-r10 .sol-ring-label {
+  color: var(--gold-bright);
+}
+
+/* ---- Origin-Pager (Browse the Codex) in detail-LEFT under lore ---- */
+.detail-left .origin-pager {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 18px 0 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
+  width: 100%;
+}
+.origin-pager .op-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 64px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.30);
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  text-align: left;
+  font-family: inherit;
+  height: auto;
+}
+.origin-pager .op-btn:hover {
+  background: rgba(212, 168, 87, 0.10);
+  border-color: var(--gold-soft);
+  color: var(--ink-primary);
+}
+.origin-pager .op-next { justify-content: flex-end; text-align: right; }
+.origin-pager .op-arrow {
+  font-family: "Cinzel", serif;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--gold-soft);
+  flex: 0 0 auto;
+}
+.origin-pager .op-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.origin-pager .op-direction {
+  font-family: "Cinzel", serif;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  line-height: 1.2;
+}
+.origin-pager .op-name {
+  font-family: "Cinzel", serif;
+  font-size: 13px;
+  color: var(--ink-primary);
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+.origin-pager-hint {
+  font-family: "Geist", system-ui, sans-serif;
+  font-size: 11px;
+  color: var(--ink-muted);
+  text-align: center;
+  margin: 4px 0 12px;
+}
+
+/* ---- Origin-Detail section headings + leads (inline replacement) ---- */
+.detail-section-heading {
+  font-family: "Cinzel", serif;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin: 8px 0 4px;
+}
+/* Small gold tag under the heading that names this as a Beneos loot feature,
+   so the set-bonus copy reads as part of the wider Beneos loot system. */
+.detail-section-tag {
+  display: inline-block;
+  font-family: "Geist", system-ui, sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #d9b56a;
+  background: rgba(212, 168, 87, 0.12);
+  border: 1px solid rgba(212, 168, 87, 0.30);
+  border-radius: 999px;
+  padding: 2px 10px;
+  margin: 2px 0 10px;
+}
+.detail-section-lead {
+  font-family: "Geist", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-secondary);
+  margin: 0 0 16px;
+}
+
+.factions-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 24px;
+  padding: 24px;
+  flex: 1;
+  overflow: hidden;
+}
+.factions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+}
+.factions-list .eyebrow {
+  font-family: "Cinzel", serif;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold-soft);
+  margin-bottom: 8px;
+  padding: 0 6px;
+}
+.factions-layout .faction-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-faint);
+  background: var(--bg-card);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--ink-secondary);
+  font-family: "EB Garamond", serif;
+  font-size: 14px;
+}
+.factions-layout .faction-row .dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--faction-glow, var(--gold));
+  box-shadow: 0 0 8px var(--faction-glow, var(--gold-glow));
+}
+.faction-card {
+  padding: 28px;
+  background: var(--bg-card);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--rad-lg);
+  border-left: 4px solid var(--faction-glow, var(--gold));
+}
+.faction-card .eyebrow {
+  font-family: "Cinzel", serif;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold-soft);
+  margin-bottom: 6px;
+}
+.faction-card h2 {
+  font-family: "Cinzel", serif;
+  font-size: 28px;
+  margin: 0 0 14px;
+  color: var(--ink-primary);
+}
+.faction-card .faction-lore {
+  font-family: "EB Garamond", serif;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink-secondary);
+  margin: 0 0 18px;
+}
+.trait-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.trait-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-family: "Cinzel", serif;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: rgba(212,168,87,0.08);
+  border: 1px solid var(--line-soft);
+  color: var(--gold-soft);
+}
+.faction-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--ink-muted);
+  font-family: "EB Garamond", serif;
+  font-style: normal;
+}
+.faction-empty .hint { font-size: 12px; opacity: 0.7; margin-top: 8px; }
+
+.codex-wip-wrap {
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  flex: 1;
+}
+.codex-wip-card {
+  max-width: 480px;
+  padding: 40px;
+  background: var(--bg-card);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--rad-lg);
+  text-align: center;
+  box-shadow: var(--shadow-card);
+}
+.codex-wip-glyph { font-size: 48px; margin-bottom: 14px; }
+.codex-wip-eyebrow {
+  font-family: "Cinzel", serif;
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(180,109,232,0.85);
+}
+.codex-wip-card h2 {
+  font-family: "Cinzel", serif;
+  font-size: 28px;
+  margin: 10px 0 14px;
+  color: var(--ink-primary);
+}
+.codex-wip-card p {
+  font-family: "EB Garamond", serif;
+  font-size: 15px;
+  color: var(--ink-secondary);
+}
+
+.rarity-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: "Cinzel", serif;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.rarity-chip.rc-Common    { color:#c8c8c0; background:rgba(200,200,192,0.10); border:1px solid rgba(200,200,192,0.30); }
+.rarity-chip.rc-Uncommon  { color:#7dd07d; background:rgba(125,208,125,0.10); border:1px solid rgba(125,208,125,0.32); }
+.rarity-chip.rc-Rare      { color:#6db0ec; background:rgba(109,176,236,0.10); border:1px solid rgba(109,176,236,0.32); }
+.rarity-chip[class*="Very"] { color:#c478ec; background:rgba(196,120,236,0.10); border:1px solid rgba(196,120,236,0.32); }
+.rarity-chip.rc-Legendary { color:#f0a040; background:rgba(240,160,64,0.10); border:1px solid rgba(240,160,64,0.34); }
+
+.reson-sub {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line-soft);
+}
+.reson-sub-head {
+  font-family: "Cinzel", serif;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  color: var(--tier-reson);
+  margin-bottom: 8px;
+}
+
+/* ---- M7.9 Performance-Mode kill switch (Codex App) -------------------- */
+body.beneos-perf-mode .sba-ritual-cta,
+body.beneos-perf-mode .beneos-codex .cdx-sparks .cdx-spark,
+body.beneos-perf-mode .beneos-codex .codex-sub-hero::before,
+body.beneos-perf-mode .beneos-codex .codex-sub-hero::after,
+body.beneos-perf-mode .beneos-codex .codex-sub-hero .csh-title,
+body.beneos-perf-mode .beneos-codex .hero-emblem::after {
+  animation: none !important;
+}
+body.beneos-perf-mode .beneos-codex .cdx-sparks { display: none !important; }

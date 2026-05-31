@@ -1,0 +1,76 @@
+<div class="ping-card" data-ping-id="{{ping.id}}" style="--origin-color: {{ping.origin.color}};">
+  <div class="ping-card-head">
+    {{#if ping.origin.iconPath}}
+      <span class="lgc-origin-emblem md">
+        <span class="emblem-disc has-image" style="--origin-color: {{ping.origin.color}};">
+          <span class="emblem-tint-wrap">
+            <span class="emblem-tint-base"
+                  style="background-color: {{ping.origin.color}};
+                         -webkit-mask: url('{{ping.origin.iconPath}}') center / contain no-repeat;
+                                 mask: url('{{ping.origin.iconPath}}') center / contain no-repeat;"></span>
+            <img class="emblem-tint-detail" src="{{ping.origin.iconPath}}" alt="" />
+          </span>
+        </span>
+      </span>
+    {{else}}
+      <span class="big-disc">{{ping.origin.mono}}</span>
+    {{/if}}
+
+    <div class="ping-info">
+      <div class="name-row">
+        <span class="o-name">{{ping.origin.name}}</span>
+        <span class="live-tag"><span class="dot"></span>{{i18n.liveTag}}</span>
+      </div>
+      <div class="meta-pill">
+        <span class="v">{{ping.distanceLabel}}</span>
+        <span class="dot-sep">·</span>
+        <span class="v">{{ping.directionLabel}}</span>
+        <span class="dot-sep">·</span>
+        <span class="ago">{{ping.agoLabel}}</span>
+      </div>
+    </div>
+
+    <button type="button"
+            class="icon-btn danger"
+            title="{{i18n.endPing}}"
+            data-action="lgc-ping-remove">
+      <i class="fa-solid fa-trash"></i>
+    </button>
+  </div>
+
+  <div class="ping-card-body">
+    {{> "modules/beneos-module/templates/lgc/partials/lgc-distance-slider.hbs"
+        sliderValue=ping.sliderValue
+        label=ping.distanceLabel
+        pingId=ping.id}}
+    {{> "modules/beneos-module/templates/lgc/partials/lgc-direction-picker.hbs"
+        deg=ping.directionDeg
+        degLabel=ping.directionDegLabel
+        sector=ping.directionSector
+        sectorCardinal=ping.directionSectorCardinal
+        pingId=ping.id
+        originColor=ping.origin.color}}
+  </div>
+
+  {{#if ping.sensingActors.length}}
+    <div class="ping-card-sensing">
+      <span class="ping-sensing-label">{{i18n.sensingLabel}}</span>
+      <div class="ping-sensing-list">
+        {{#each ping.sensingActors}}
+          <button type="button"
+                  class="ping-sensing-chip"
+                  data-action="lgc-open-actor-sheet"
+                  data-actor-id="{{id}}"
+                  title="{{name}}">
+            {{#if img}}
+              <img class="ping-sensing-avatar" src="{{img}}" alt="">
+            {{else}}
+              <span class="ping-sensing-avatar fallback"><i class="fa-solid fa-user"></i></span>
+            {{/if}}
+            <span class="ping-sensing-name">{{name}}</span>
+          </button>
+        {{/each}}
+      </div>
+    </div>
+  {{/if}}
+</div>

@@ -6,7 +6,23 @@ import { BeneosCloud } from "./beneos_cloud.js";
 import { BeneosFXEngine } from "./cloud-v2/beneos-fx.mjs";
 import { BeneosFXEditor } from "./cloud-v2/beneos-fx-editor.mjs";
 import { BeneosCloudWindowV2 } from "./cloud-v2/cloud-window-v2.mjs";
+import { OriginsRegistry } from "./loot/origins-registry.mjs";
+import { ItemSheetExtender } from "./loot/item-sheet-extender.mjs";
+import { ActorSetBonusTab } from "./loot/actor-set-bonus-tab.mjs";
+import { CharacterInventoryOriginIcon } from "./loot/character-inventory-origin-icon.mjs";
 // Unused : import { BeneosTableTop } from "./beneos-table-top.js";
+
+/********************************************************************************** */
+// Chromium emits a benign "ResizeObserver loop ..." error when an observer
+// callback triggers further layout in the same frame. It breaks nothing but
+// clutters the console (e.g. while the codex PDF viewer relayouts). Swallow
+// only that exact message; every other error passes through untouched.
+window.addEventListener("error", (event) => {
+  if (/ResizeObserver loop (limit exceeded|completed)/.test(event?.message ?? "")) {
+    event.stopImmediatePropagation();
+    event.preventDefault();
+  }
+});
 
 /********************************************************************************** */
 Hooks.once('init', () => {
@@ -88,6 +104,11 @@ Hooks.once('ready', () => {
   BeneosUtility.debugMessage(`Loading ${BeneosUtility.moduleName()} module...`)
   BeneosUtility.debugMessage("----------------------------------------------")
 
+  try {
+    const perfOn = game.settings.get(BENEOS_MODULE_ID, 'beneos-performance-mode')
+    document.body.classList.toggle('beneos-perf-mode', !!perfOn)
+  } catch (e) { /* setting may not be registered yet on very first install */ }
+
   BeneosUtility.forgeInit()
 
   game.beneosTokens = {
@@ -107,6 +128,48 @@ Hooks.once('ready', () => {
     console.warn("Beneos | databaseHolder eager load failed:", e);
   });
 
+  // Load _itemorigins/origins.json into game.beneos.origins for the loot
+  // sheet extender and the actor set-bonus tab. Failure is non-fatal:
+  // the registry falls back to {} and downstream renderers no-op.
+  OriginsRegistry.load().catch(e => {
+    console.warn("Beneos | OriginsRegistry eager load failed:", e);
+  });
+
+  // Inject Beneos loot extras (Origin badge, Tier chip, Cards) into the
+  // item sheet whenever an item carries flags.beneos-module.loot.
+  ItemSheetExtender.register();
+
+  // Inject the read-only "Origin Set Bonuses" section into character sheets,
+  // showing active Echo / Resonance / Harmony tiers per Origin from attuned
+  // Beneos loot items. Re-renders on item attunement changes (debounced).
+  ActorSetBonusTab.register();
+
+  // Decorate character-sheet inventory rows with the Origin icon next to
+  // the item name for at-a-glance identification of Beneos items.
+  CharacterInventoryOriginIcon.register();
+
+  // Live Game Control: preload HBS partials so the LGC window can render
+  // its origin-select, distance-radio, direction-picker and ping-card.
+  import("./lgc/beneos-lgc.mjs").then(mod => {
+    mod.BeneosLiveGameControl?.preloadTemplates?.();
+  }).catch(e => console.warn("Beneos | LGC preload failed:", e));
+  // Shared Patreon-paywall overlay partial — used by the loot/shop generators,
+  // the LGC Item Radar and the codex. Register once globally (full-path partials
+  // are NOT auto-loaded at render time), so every gated surface can include it.
+  (() => {
+    const loader = foundry?.applications?.handlebars?.loadTemplates ?? globalThis.loadTemplates;
+    try { loader?.(["modules/beneos-module/templates/shared/beneos-paywall.hbs"]); }
+    catch (e) { console.warn("Beneos | paywall partial preload failed:", e); }
+  })();
+  // LGC Socket bridge (ping sound) + ChatMessage card hook (open-sheet
+  // click + pulse-stop). Both are no-ops until the first ping is fired.
+  import("./lgc/lgc-socket.mjs").then(mod => {
+    mod.registerLgcSocket?.();
+  }).catch(e => console.warn("Beneos | LGC socket init failed:", e));
+  import("./lgc/lgc-chatcard.mjs").then(mod => {
+    mod.registerLgcChatcardHook?.();
+  }).catch(e => console.warn("Beneos | LGC chatcard hook failed:", e));
+
   //Token Magic Hack  Replacement to prevent double filters when changing animations
   if (typeof TokenMagic !== 'undefined') {
     let OrigSingleLoadFilters = TokenMagic._singleLoadFilters;
@@ -115,7 +178,7 @@ Hooks.once('ready', () => {
       OrigSingleLoadFilters(placeable, bulkLoading);
     }
   } else {
-    console.log("No Token Magic found !!!")
+    BeneosUtility.debugMessage("No Token Magic found")
   }
 
   BeneosUtility.updateSceneTokens()
@@ -253,6 +316,32 @@ Hooks.once('ready', () => {
 })
 
 /********************************************************************************** */
+// Add a Beneos Creature-Codex tab to the dnd5e actor sheet (ApplicationV2)
+// for Beneos creatures, mirroring the right-click HUD button as an extra
+// entry point. Appended to the sheet's tab nav (bottom-right for tabs-right).
+Hooks.on('renderActorSheetV2', (sheet, html) => {
+  const actor = sheet?.document ?? sheet?.actor
+  if (!actor || !BeneosUtility.checkIsBeneosToken(actor)) return
+  const root = html instanceof HTMLElement ? html : html?.[0]
+  const nav = root?.querySelector?.('nav.tabs[data-group="primary"]')
+        ?? root?.querySelector?.('nav.tabs')
+        ?? root?.querySelector?.('.sheet-tabs')
+  if (!nav || nav.querySelector('.beneos-sheet-codex-tab')) return
+  const label = game.i18n.localize('BENEOS.CreatureCodex.SheetTabTooltip')
+  const tab = document.createElement('a')
+  tab.className = 'item control beneos-sheet-codex-tab'
+  tab.dataset.tooltip = label
+  tab.setAttribute('aria-label', label)
+  tab.innerHTML = '<i class="beneos-icon-logo"></i>'
+  tab.addEventListener('click', (ev) => {
+    ev.preventDefault(); ev.stopPropagation()
+    try { game.beneos?.codex?.openForActor?.(actor) }
+    catch (err) { console.error('[beneos-codex] sheet-tab open failed', err) }
+  })
+  nav.appendChild(tab)
+})
+
+/********************************************************************************** */
 Hooks.on('renderTokenHUD', async (hud, html, token) => {
 
   token = BeneosUtility.getToken(token._id)
@@ -270,7 +359,7 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
         const beneosJournalDisplay = await foundry.applications.handlebars.renderTemplate('modules/beneos-module/templates/beneosjournal.html',
           { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getBeneosTokenDataPath() })
         $(html).find('div.left').append(beneosJournalDisplay);
-        console.log("Beneos Journal Entry", beneosJournalEntry)
+        BeneosUtility.debugMessage("Beneos Journal Entry", beneosJournalEntry)
         $(html).find('img.beneosJournalAction').click((event) => {
           event.preventDefault();
           // Welle 3.2: route HUD button through the Creature Codex so
@@ -778,7 +867,7 @@ Hooks.on("preCreateItem", (item, data, options, userId) => {
 
 /********************************************************************************** */
 Hooks.on("deleteItem", (item, options) => {
-  console.log("Beneos delete item", item, options)
+  BeneosUtility.debugMessage("Beneos delete item", item, options)
   if (item?.pack == "world.beneos_module_items") {
     BeneosUtility.removeItem(item.id)
   }
@@ -943,7 +1032,7 @@ Hooks.on("getSceneDirectoryEntryContext", (html, options) => {
 
 /********************************************************************************** */
 Hooks.on("getSceneContextOptions", (html, options) => {
-  console.log("BeneosModule - getSceneContextOptions", html, options)
+  BeneosUtility.debugMessage("BeneosModule - getSceneContextOptions", html, options)
   let menuEntry1 = {
     name: "Use Static Map",
     icon: `<i class="fa-regular fa-image"></i>`,

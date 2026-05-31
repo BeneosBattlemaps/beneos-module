@@ -1,0 +1,62 @@
+<div class="codex-subpage">
+  <div class="subpage-tabbar">
+    <button class="subpage-back" data-action="go-hub">{{localize "BENEOS.Codex.BackToHub"}}</button>
+    {{#each creatureSubTabs}}
+      <button class="subpage-tab {{#if active}}active{{/if}}" data-action="go-tab" data-tab="{{id}}">{{localize label}}</button>
+    {{/each}}
+  </div>
+
+  {{#if (eq creatureTab "factions")}}
+    <div class="factions-layout">
+      <aside class="factions-list">
+        <div class="eyebrow">Factions</div>
+        {{#each factions}}
+          <button class="faction-row" data-action="go-route" data-route="creatures/factions/{{slug}}"
+                  style="--faction-glow:{{glow}};">
+            <span class="dot"></span>
+            <span class="name">{{name}}</span>
+          </button>
+        {{/each}}
+      </aside>
+      <main class="faction-detail">
+        {{#if selectedFaction}}
+          <div class="faction-card" style="--faction-glow:{{selectedFaction.glow}};">
+            <div class="eyebrow">{{selectedFaction.eyebrow}}</div>
+            <h2>{{selectedFaction.name}}</h2>
+            <p class="faction-lore">{{selectedFaction.lore}}</p>
+            <div class="trait-chips">
+              {{#each selectedFaction.traits}}
+                <span class="trait-chip">{{this}}</span>
+              {{/each}}
+            </div>
+          </div>
+        {{else}}
+          <div class="faction-empty">
+            <p>Select a faction from the left to view its details.</p>
+            <p class="hint">These are stub entries, replace via <code>data/codex/factions-stub.json</code>.</p>
+          </div>
+        {{/if}}
+      </main>
+    </div>
+  {{else if (eq creatureTab "philosophy")}}
+    <div class="generator-pane">
+      <div class="eyebrow">Design Philosophy</div>
+      <h2>The Beneos Bestiary, by Intent</h2>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Why every Beneos creature reads first as a story prompt and only second as a stat block.</p>
+      <p>Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, narrative-first design, with mechanical hooks layered on top.</p>
+      <p class="hint">Stub, pflege Inhalt direkt in <code>templates/codex2/parts/creature-page.hbs</code> oder verlagere in eine JSON.</p>
+    </div>
+  {{else if (eq creatureTab "howto")}}
+    <div class="generator-pane">
+      <div class="eyebrow">How To Use</div>
+      <h2>From Token to Encounter</h2>
+      <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+      <ol>
+        <li>Drag a creature from the Beneos Cloud onto your scene.</li>
+        <li>Right-click the token to access faction context.</li>
+        <li>Use the Creature Codex for deeper lore + GM tactics.</li>
+      </ol>
+      <p class="hint">Stub.</p>
+    </div>
+  {{/if}}
+</div>

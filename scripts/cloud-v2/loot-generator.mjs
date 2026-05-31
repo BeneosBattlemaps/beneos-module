@@ -147,16 +147,16 @@ export const RARITY_COLOR_CLASS = {
 }
 
 const TIER_DEFS = [
-  { tier: 1, levels: "1–4",   tag: "Apprentice", icon: "fa-solid fa-shield" },
-  { tier: 2, levels: "5–10",  tag: "Heroic",     icon: "fa-solid fa-helmet-battle" },
-  { tier: 3, levels: "11–16", tag: "Paragon",    icon: "fa-solid fa-crown" },
-  { tier: 4, levels: "17–20", tag: "Epic",       icon: "fa-solid fa-star" }
+  { tier: 1, levels: "1–4",   tagKey: "BENEOS.LootGen.TierTag.Apprentice", icon: "fa-solid fa-shield" },
+  { tier: 2, levels: "5–10",  tagKey: "BENEOS.LootGen.TierTag.Heroic",     icon: "fa-solid fa-helmet-battle" },
+  { tier: 3, levels: "11–16", tagKey: "BENEOS.LootGen.TierTag.Paragon",    icon: "fa-solid fa-crown" },
+  { tier: 4, levels: "17–20", tagKey: "BENEOS.LootGen.TierTag.Epic",       icon: "fa-solid fa-star" }
 ]
 
 const BIAS_DEFS = [
-  { key: "lower",  label: "Lower Chance",  icon: "fa-solid fa-arrow-trend-down" },
-  { key: "normal", label: "Normal Chance", icon: "fa-solid fa-scale-balanced" },
-  { key: "higher", label: "Higher Chance", icon: "fa-solid fa-arrow-trend-up" }
+  { key: "lower",  labelKey: "BENEOS.LootGen.Bias.Lower",  icon: "fa-solid fa-arrow-trend-down" },
+  { key: "normal", labelKey: "BENEOS.LootGen.Bias.Normal", icon: "fa-solid fa-scale-balanced" },
+  { key: "higher", labelKey: "BENEOS.LootGen.Bias.Higher", icon: "fa-solid fa-arrow-trend-up" }
 ]
 
 export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV2) {
@@ -222,10 +222,11 @@ export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV
     ctx.rerollCount = this.rerollCount
     ctx.biases = BIAS_DEFS.map(b => ({
       ...b,
+      label: game.i18n.localize(b.labelKey),
       selected: this.bias === b.key,
       tooltip: this.#biasTooltip(b.key)
     }))
-    ctx.tiers = TIER_DEFS.map(t => ({ ...t, selected: this.tier === t.tier }))
+    ctx.tiers = TIER_DEFS.map(t => ({ ...t, tag: game.i18n.localize(t.tagKey), selected: this.tier === t.tier }))
     ctx.results = this.results.map(r => this.#enrichResult(r))
     ctx.hasLegendary = this.results.some(r => r.rolledRarity === "Legendary")
     ctx.hasVeryRare  = this.results.some(r => r.rolledRarity === "Very Rare")
@@ -237,6 +238,10 @@ export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV
     ctx.wondrous = this.wondrous ? this.#enrichResult(this.wondrous) : null
     ctx.hasWondrous = !!this.wondrous
     ctx.poolWarningLoot = this.poolWarning === "loot"
+    // Patreon gate: only active Creatures/Spells/Loot (tokens) patrons can use
+    // the generator; everyone else sees the controls blurred behind a join CTA.
+    ctx.hasTokenAccess = !!game.beneos?.cloud?.hasCampaignAccess?.("tokens")
+    ctx.joinPatreonUrl = "https://www.patreon.com/c/BeneosTokens"
     return ctx
   }
 
@@ -522,7 +527,7 @@ export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV
       }
     }
     if (!BeneosUtility.isItemLoaded?.(key)) {
-      ui.notifications?.warn?.("Could not install this item.")
+      ui.notifications?.warn?.(game.i18n.localize("BENEOS.LootGen.Notify.InstallFailed"))
       return
     }
     const doc = game.items?.find?.(d => d.getFlag?.("world", "beneos")?.itemKey === key)
@@ -537,7 +542,7 @@ export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV
   static async _onClaimGold(event, target) {
     if (!this.gold) return
     if (game.system?.id !== "dnd5e") {
-      ui.notifications?.warn?.(`Claim-Gold requires the dnd5e system (current: ${game.system?.id ?? "unknown"}).`)
+      ui.notifications?.warn?.(game.i18n.format("BENEOS.LootGen.Notify.SystemRequired", { system: game.system?.id ?? "unknown" }))
       return
     }
     const tokenActor = canvas.tokens?.controlled?.[0]?.actor
@@ -560,7 +565,7 @@ export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV
       await this.render({ parts: ["body"] })
     } catch (err) {
       console.warn("[Beneos LootGen] claim-gold failed", err)
-      ui.notifications?.error?.("Adding the gold failed — see console.")
+      ui.notifications?.error?.(game.i18n.localize("BENEOS.LootGen.Notify.GoldAddFailed"))
     }
   }
 
@@ -805,7 +810,7 @@ export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV
       goldEl.addEventListener("dragstart", (e) => {
         if (!this.gold) { e.preventDefault(); return }
         if (game.system?.id !== "dnd5e") {
-          ui.notifications?.warn?.("Gold drag requires the dnd5e system. Use the Claim button instead.")
+          ui.notifications?.warn?.(game.i18n.localize("BENEOS.LootGen.Notify.GoldDragSystem"))
           e.preventDefault()
           return
         }

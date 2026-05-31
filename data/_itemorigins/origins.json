@@ -1,0 +1,780 @@
+{
+  "version": "1.0",
+  "generated_at": "2026-05-23",
+  "description": "Beneos Loot Origin set-bonus dataset. Merges origin lore (concept blurb) with Echo/Resonance/Harmony tier rules and Special-tier entries. Intended as handover for Claude Design.",
+  "source": {
+    "lore": "beneos_common_database.json -> hover.origin.<slug>.message",
+    "tiers": "items.json -> entries where releaseName starts with '0000_'",
+    "icons": "beneos_card_creator_v1/source/icons_origin/"
+  },
+  "naming_notes": {
+    "slug_to_icon_filename_overrides": {
+      "technoarcane": "techno_arcane",
+      "giantforged": "giant_forged",
+      "dwarvenforged": "dwarven_forged"
+    },
+    "bw_filename_typo": "crystalline origin uses crystaline_blackwhite.webp (single L) -- source typo, not corrected here"
+  },
+  "anomalies": [
+    "ancient: missing Echo tier"
+  ],
+  "mechanic_rules": {
+    "i": {
+      "title": "Item Origins: Rules I",
+      "rules": "**Generic and Named Items.** Items whose name consists only of their Origin and base item (for example, Vampiric Longsword +X) are considered Generic Items. Generic items always grant the Echo of Origin feature of their respective Origin. Items with a unique name (such as Griefplate) are considered Named Items. Named items possess an Origin but do not grant the Echo of Origin feature on their own.\n\n**Origin Set Bonus.** A Set Bonus is any benefit gained from being attuned to two or more items of the same Origin at the same time. Dormant items still count toward determining whether a Set Bonus is active, as long as you remain attuned to them. Abilities gained through Ascension do not count as items for the purpose of determining Set Bonuses unless explicitly stated.\n\n**Rarity Modifier.** Many Origin features scale based on an item’s Rarity Modifier. Rarity Modifiers are derived from the item’s rarity: a Common item has a modifier of 1, Uncommon 2, Rare 3, Very Rare 4, and Legendary 5. Whenever an effect refers to the combined rarity modifier, add together the modifiers of all relevant attuned items.\n\n",
+      "source_key": "0000_item_origins_rules_i"
+    },
+    "keywords": {
+      "title": "Item Origins: Rules Keywords",
+      "rules": "**Dormant.** A Dormant item has lost access to its magical functions. Its abilities cannot be activated and it grants no passive bonuses. For all practical purposes it is magically inert. However, it is still a magic item, you remain attuned to it, and it still counts toward your Origin set bonuses. Unless otherwise specified, it also continues to contribute its Rarity Modifier. A Dormant item cannot be used as a required focus, ritual component, or conduit to resolve an origin effect. For example, if you have two Dormant Occult items, you may still benefit from Occult Resonance effects, provided the effect does not require the Dormant item to act as a focus or be actively used.\n\n**Grandeur.** A Grandeur effect becomes active, or may be activated, only when all attuned items of the respective Origin are of Very Rare or Legendary rarity. \n\n",
+      "source_key": "0000_item_origins_rules_keywords"
+    },
+    "ritual_of_ascension": {
+      "title": "Item Origins Rules: Ritual of Ascension",
+      "rules": "**Ritual of Ascension.** To perform a Ritual of Ascension, you must offer three magic items of the same Origin, each of Very Rare rarity or higher. The ritual takes 1 hour (typically during a long rest, vigil, or dedicated rite) and consumes the items’ active magic: the three items become permanently Dormant as part of the transformation. You remain attuned to them unless you end attunement, and they still count toward your Origin set bonuses, but they can no longer be used as active foci or to resolve effects that require an item’s functioning magic.\n\nUpon completion, your creature type changes to match the Origin’s ascended nature (e.g., Fey for Feywoven, Undead for Occult). You permanently gain that Origin’s Echo of Origin, Resonance, and Perfect Harmony as inherent abilities (they no longer depend on attunement). These inherent abilities scale based on the ritual’s power, using the average Rarity Modifier of the three items sacrificed (Common 1, Uncommon 2, Rare 3, Very Rare 4, Legendary 5; rounded down). \n",
+      "source_key": "0000_item_origins_rules_ritual_of_ascension"
+    },
+    "sensing_items": {
+      "title": "Item Origins Rules: Sensing Items",
+      "rules": "If a player is attuned to one or more items of a specific Origin, they develop a subtle awareness of other items of the same Origin within range. This awareness is cumulative based on the number of items of that Origin to which the player is currently attuned.\n\n**Echo.** If a player is attuned to one item, they can vaguely sense the presence of other items of that Origin within 1 mile. They know only the general direction and whether the sensed item feels stronger, weaker, or comparable in power to their highest rarity item of that Origin.\n\n**Resonance.** If a player is attuned to two items, their awareness sharpens. Within 5 miles, they can determine the item’s precise direction and approximate distance, as well as its relative rarity tier.\n\n**Harmony.** If a player is attuned to three or more items, their perception deepens into recognition. Within 10 miles, they know the item’s exact location, its item type (weapon, armor, focus, etc.), and whether it is a Named item. If it is Named, they learn its name immediately upon sensing it.\n\nThis sense is passive and does not function across planar boundaries unless the DM determines that the Origin transcends them.",
+      "source_key": "0000_item_origins_rules_sensing_items"
+    }
+  },
+  "origins": {
+    "awoken": {
+      "slug": "awoken",
+      "display_name": "Awoken",
+      "icon_filename": "awoken.webp",
+      "icon_filename_bw": "awoken_blackwhite.webp",
+      "icon_exists": true,
+      "icon_bw_exists": true,
+      "lore": "Some objects acquire magical properties by being shaped through continued and singular use, becoming a concrete object signifying and drawing strength from abstract concepts.",
+      "tiers": {
+        "echo": {
+          "title": "Awoken: Echo of Origin",
+          "lore": "\nSome objects acquire magical properties by being shaped through continued and singular use, becoming a concrete object signifying and drawing strength from abstract concepts.",
+          "rules": "**Awoken Echo.** Awoken items have a rudimentary awareness of their surroundings and can communicate with you through simple impulses, symbols, or emotional impressions, perhaps warning you or offering (albeit rudimentary and cryptic) advice.\n\nYou gain a bonus to your Passive Perception equal to all your Awoken item's combined Rarity Modififer.\n\nYou can also draw from your items' burgeoning spirits to gain advantage on Ability Checks that relate to the Awoken items' past or purpose. For example: A weapon sensing nearby violence (Perception), a tool detecting structural instability (Investigation), a quill guiding your writing (Performance/Persuasion). These advantages may be granted at DM's discretion. ",
+          "rarity": "Uncommon",
+          "source_key": "0000_awoken_echo_of_origin"
+        },
+        "resonance": [
+          {
+            "title": "Awoken: Resonance II",
+            "lore": "",
+            "rules": "**Movement.** If the awakened item lacks appendages suitable for locomotion, it instead gains a flying speed of 30 feet and can hover.\n\n**Acting in Combat.** The awakened item acts on your Initiative, immediately after your turn. It instinctively follows your intent and requires no verbal commands. You don’t need to use your own Actions to direct it.\n\nIf the item has a feature that normally requires an Action, Bonus Action, or Reaction, it can use its own Action, Bonus Action, or Reaction to activate that feature, provided the feature had remaining uses at the time the item was animated. The feature functions exactly as described in the item’s description.\n\n**Passive Effects.** If the item grants a passive or continuous effect while worn or wielded, you continue to benefit from that effect as long as you remain within 10 × the item’s Rarity Modifier (in feet) of the awakened item.\n\n**Reduced to 0 Hit Points.** When the awakened item is reduced to 0 hit points, it immediately returns to your side and becoms __dormant__ until you finish a Long Rest. ",
+            "rarity": "Rare",
+            "source_key": "0000_awoken_resonance_ii"
+          },
+          {
+            "title": "Awoken: Resonance I",
+            "lore": "\nRequires Attunement to two Awoken items.",
+            "rules": "**Awoken Resonance (Bonus Action, 1/Day).** You can awaken an item’s latent spirit, causing it to awaken for up to 1 minute, as if affected by the __animate objects__ spell. This effect does not require concentration.\n\nThe item becomes a Tiny, Small, or Medium Animated Object (per its size).\n\n**Rarity Bonus.** The awakened item gains a bonus equal to its Rarity Modifier to its AC, saving throws, attack rolls, and damage rolls. If the item is Very Rare or Legendary, it can make two attacks on its turn.\n\n**Additional Hit Points.** The item gains additional hit points equal to 5 × its Rarity Modifier.\n\n**Awoken Weaponry.** If the item is a weapon, the Animated Object’s Slam attack is replaced with an attack using the weapon’s normal properties and damage.",
+            "rarity": "Rare",
+            "source_key": "0000_awoken_resonance_i"
+          }
+        ],
+        "harmony": {
+          "title": "Awoken: Perfect Harmony",
+          "lore": "\nRequires Attunement to three Awoken items.\n\n\n",
+          "rules": "**Awoken Harmony.** Your bond with your Awoken items deepens into seamless unity. As long as you are attuned to three Awoken items, the following benefits apply:\n\n**Shared Sentience.** Any nonmagical weapon, armor, or spellcasting focus you are wearing or wielding gains a +1 bonus to attack and damage rolls (weapon), spellcasting save DC (spellcasting focus) or AC (armor or shield), depending on its type. This bonus increases to +2 when you are level 10 or higher. These items are considered Magical but don't require attunement or possess a Rarity Modifier.\n\n**Emboldened Spirits.** Any Awoken item you are attuned to that already provides a numerical bonus (such as to attack rolls, AC, or spell save DC) gains an additional +1 bonus to that value. For example, a +1 Awoken sword becomes +2 while you maintain Awoken Harmony. This bonus is not cumulative with the one granted by Shared Sentience. \n\nAs alwas, these effects persist only while you remain attuned to three Awoken items. If attunement to one ends, Awoken Harmony and all its effects ends immediately.",
+          "rarity": "Very Rare",
+          "source_key": "0000_awoken_perfect_harmony"
+        },
+        "specials": []
+      }
+    },
+    "elemental": {
+      "slug": "elemental",
+      "display_name": "Elemental",
+      "icon_filename": "elemental.webp",
+      "icon_filename_bw": "elemental_blackwhite.webp",
+      "icon_exists": true,
+      "icon_bw_exists": true,
+      "lore": "Infused with the essences of the elemental planes, these objects often allow their users to harness the raw forces of the elements.",
+      "tiers": {
+        "echo": {
+          "title": "Elemental: Echo of Origin",
+          "lore": "\nInfused with the essences of their respective planes, these objects often allow their users to harness raw elemental powers.",
+          "rules": "**Elemental Echo.** During combat, you generate Elemental Stacks based on your actions each turn. You gain a Wind (Lightning) stack when you take the Dash or Disengage action, a Fire (Fire) stack when you take the Attack action, a Water (Cold) stack when you take the Dodge action or regain hit points, and an Earth (Force) stack if you do not move during your turn. You can gain only one stack per turn, unless you cast a spell aligned with one of these elemental types (at the DM’s discretion), wherein you can gain one additional stack.\n\nWhenever you gain a stack, your next attack before the end of your next turn deals an additional 1d4 damage of the corresponding damage type. You can hold a maximum number of stacks equal to your highest Elemental item’s Rarity Modifier. All stacks are lost at the end of combat.\n\n**Elemental Channeling (Bonus Action/Reaction).** When you deal magical damage, you can use a Bonus Action to roll a number of d4 equal to the stacks expended and add the total to the damage roll. When you take magical damage, you can use your Reaction to roll a number of d4 equal to the stacks expended and subtract the total from the damage taken.\n\nIf you use this feature to increase damage, the damage type added is determined by the majority of stacks expended. In the case of a tie, you choose the damage type from among those expended.",
+          "rarity": "Uncommon",
+          "source_key": "0000_elemental_echo_of_origin"
+        },
+        "resonance": [
+          {
+            "title": "Elemental: Resonance",
+            "lore": "\nRequires Attunement to two Elemental items.\n",
+            "rules": "**Elemental Resonance (Action, 1/Day).** You may expend Elemental Stacks to summon an Elemental.\n\nEach expended stack contributes ¼ CR toward the summoned creature’s Challenge Rating. Stacks that match the elemental type of the summoned creature  instead contribute ½ CR each.\n\nThe summoned Elemental must have a Challenge Rating equal to or lower than the total CR generated by the expended stacks.\n\nThe Elemental appears in an unoccupied space within 30 feet, acts immediately after your turn, follows verbal commands without requiring an action, and remains for a number of rounds equal to the combined Rarity Modifier of your attuned Elemental items.\n\nAfter this duration, the Elemental dissipates. \n\n**Chaotic Conjuring.**Instead you may choose to perform a Chaotic Conjuring. Each expended stack contributes ½ CR, and matching stacks contribute 1 CR each. However, the Elemental summoned is randomly determined by the DM and there is a 30% chance that the Elemental is hostile to all creatures present.",
+            "rarity": "Rare",
+            "source_key": "0000_elemental_resonance"
+          }
+        ],
+        "harmony": {
+          "title": "Elemental: Perfect Harmony",
+          "lore": "\nRequires Attunement to three Elemental items.\n",
+          "rules": "**Elemental Harmony.** The dice used for the Elemental Echo features increase from 1d4 to 1d8.\n\nWhen summoning an Elemental, each expended stack now contributes 1 CR, and stacks matching the elemental type of the summoned creature contribute 1.5 CR instead.\n\nWhen performing a Chaotic Conjuring, each stack contributes 1.5 CR, and matching stacks contribute 2 CR.\n\n**Rite of Passage (Ritual, 1/Day).** You may perform a 10-minute ritual in order to cast Plane Shift once per day without material components, rendering one Elemental item of your choice dormant until the end of your next Long Rest.\n\nIf this ritual is used to travel to an Elemental Plane, all creatures transported by this effect are immune to passive environmental hazards of the plane, including elemental damage from ambient conditions, movement penalties, atmospheric harm, or similar planar effects.\n\nThis protection does not grant immunity against direct attacks, spells, or creatures native to the plane.\n",
+          "rarity": "Very Rare",
+          "source_key": "0000_elemental_perfect_harmony"
+        },
+        "specials": []
+      }
+    },
+    "vampiric": {
+      "slug": "vampiric",
+      "display_name": "Vampiric",
+      "icon_filename": "vampiric.webp",
+      "icon_filename_bw": "vampiric_blackwhite.webp",
+      "icon_exists": true,
+      "icon_bw_exists": true,
+      "lore": "In their pursuit of mastery over the very life-essence that they so crave, Vampires have mastered many abhorrent methods of imbuing items with sanguine power.",
+      "tiers": {
+        "echo": {
+          "title": "Vampiric: Echo of Origin",
+          "lore": "\nIn their pursuit of mastery over the very life-essence that they so crave, Vampires have mastered many abhorrent methods of imbuing items with sanguine power.\n",
+          "rules": "**Vampiric Echo.** When you score a critical hit against a living creature or reduce it to 0 hit points while being attuned to a Vampiric item, you create one Blood Simulacrum, appearing, for example, as a crimson fleck within your iris, an oozing mark upon your body or a swirling scarlet spectre.\n\nEach Vampiric item can hold a number of Blood Simulacra equal to its Rarity Modifier. \n\n**Consume Simulacra (Bonus Action).** You may consume any number of availabe Blood Simulacra to regain 1d4 hit points per Simulacrum. Over the course of a Long Rest, you automatically absorb all Blood Simulacra and gain 1d4 temporary hit points per absorbed Simulacrum upon finishing the Long Rest.",
+          "rarity": "Uncommon",
+          "source_key": "0000_vampiric_echo_of_origin"
+        },
+        "resonance": [
+          {
+            "title": "Vampiric: Resonance",
+            "lore": "\nRequires Attunement to two Vampiric items.",
+            "rules": "**Vampiric Resonance.** When consuming Blood Simulacra, you can choose to benefit from a feature from the Sanguine Rites table.\n\nThese features can only be activated when the corresponding amount of Blood Simulacra are consumed and only one feature can be active at a time.\n\n\n",
+            "rarity": "Rare",
+            "source_key": "0000_vampiric_resonance"
+          }
+        ],
+        "harmony": {
+          "title": "Vampiric: Perfect Harmony",
+          "lore": "\nRequires Attunement to three Vampiric items.",
+          "rules": "**Vampiric Harmony.** Whenever you would create a Blood Simulacrum, you create two instead. Each of your Vampiric items can hold a number of Blood Simulacra equal to your Vampiric item with the highest Rarity Modifier.\n\nWhen regaining hit points or gaining temporary hit points by consuming or absorbing Blood Simulacra, roll a d6 instead of a d4.\n\nWhen you start a Long Rest with Blood Simulacra remaining, you can choose a power from the Sanguine Powers table and benefit from that power over the course of the next day, instead of gaining temporary hit points.\n\n**Spellcasting (1/ Short Rest, Long Rest).** You can expend a Blood Simulacrum to cast __dominate person,__ __dominate beast,__ or __dominate monster__ targeting a humanoid, beast or undead respectively. The creature must succeed on a saving throw with the DC being 10 + your Vampiric items' cumulative Rarity Modifiers to resist the spell. \n\nCreatures of CR lower than your highest Vampiric item’s Rarity Modifier automatically fail this saving throw.",
+          "rarity": "Very Rare",
+          "source_key": "0000_vampiric_perfect_harmony"
+        },
+        "specials": [
+          {
+            "type": "ritual_of_ascension",
+            "title": "Vampiric: Ritual of Ascension",
+            "lore": "\nUsing the essence of three Vampiric Items that must be at least Very Rare, you may perform a ritual that permanently transforms you into a Vampire.",
+            "rules": "**Ritual of Ascension.** By doing so, the items used for the ritual become dormant indefinitely, but you permanently gain the abilities derived from the Echo of Origin, Resonance and Perfect Harmony features. Your creature type is Undead (Vampire) and you can use the Crimson Kiss action to gain Blood Simulacra:\n\n**Crimson Kiss (Action).** __Melee Attack__: +X to hit, reach 5ft., one living target. Hit: 1d4+X piercing damage plus 2d10 necrotic damage. The Vampire gains temporary hit points equal to the necrotic damage dealt and gains a Blood Simulacrum. \n\nThrough this feature, you can store a number of Blood Simulacra equal to your Charisma Modifier (min. 1). You lose Blood Simulacra gained through the Crimson Kiss after finishing a Long Rest. \n\n",
+            "rarity": "Common",
+            "source_key": "0000_vampiric_ritual_of_ascension"
+          },
+          {
+            "type": "sanguine_rites",
+            "title": "Vampiric Sanguine Rites",
+            "lore": "\nWhen consuming Blood Simulacra, you benefit from a feature from the Sanguine Rites table.",
+            "rules": "**Crimson Charm (1 or more):** For a number of minutes equal to the amount of Sanguine Simulacra consumed, you gain a bonus to Charisma (Persuasion, Intimidation) and Wisdom (Insight, Animal Handling) Ability Checks equal to the amount of Simulacra consumed.\n\n**Prey Sight (2 or more):** Until the end of your next turn, you can see any living creature within 60 feet of you, even if they are hidden, heavily obscured or invisible.\n\n**Feral Ferocity (3 or more):** Until the end of your next turn, whenever you make a melee weapon attack, roll one additional damage die of the weapon’s type (e.g. 2d8 instead of 1d8 for a Longsword).\n\n**Sanguine Swiftness (4 or more):** Until the end of your next turn, your movement speed increases by 20 feet, you gain climbing speed equal to your movement speed and you make Dexterity Saving Throws with advantage.\n",
+            "rarity": "Common",
+            "source_key": "0000_vampiric_sanguine_rites"
+          }
+        ]
+      }
+    },
+    "druidic": {
+      "slug": "druidic",
+      "display_name": "Druidic",
+      "icon_filename": "druidic.webp",
+      "icon_filename_bw": "druidic_blackwhite.webp",
+      "icon_exists": true,
+      "icon_bw_exists": true,
+      "lore": "These objects often incorporate living organisms, carefully nurtured and motivated to share nature's gifts or dole out her wrath.",
+      "tiers": {
+        "echo": {
+          "title": "Druidic: Echo of Origin",
+          "lore": "\nThese objects often incorporate living organisms, carefully nurtured and motivated to share nature's gifts or dole out her wrath.",
+          "rules": "**Druidic Echo.** Whenever you regain hit points or restore hit points to a creature, roll a number of d4 equal to your highest Druidic item's Raritiy Modifier. Increase amount of hit points restored by a number equal to the roll.\n\n!|!\n\n**Spark of Life (Action, 1/Day per Item).** While holding a Druidic item you are attuned to, you can touch an unconscious creature. The creature regains 1 hit point and the Druidic item becomes __dormant__ until you finish a Long \nRest.",
+          "rarity": "Uncommon",
+          "source_key": "0000_druidic_echo_of_origin"
+        },
+        "resonance": [
+          {
+            "title": "Druidic: Resonance",
+            "lore": "\nRequires Attunement to two Druidic items.\n",
+            "rules": "**Druidic Resonance.** When taking a Long Rest, your Druidic items gently pulses with life, releasing subtle harmonics that foster peace and belonging.\n\nWhile resting, you and friendly creatures within 30 feet of you are enveloped in an aura of peace. Unaligned or neutral Beasts and Plant creatures will not consider you or your allies as prey or threats unless directly provoked. \n\nNearby good-aligned creatures may be drawn to your camp, resting alongside your group in shared warmth or watchful silence. At the DM's discretion, they may assist you on your journey, perhaps acting as scouts, mounts, guards, or even combat allies.\n\n**Spellcasting (1/ Long Rest each).** You may cast __speak with animals,__ __animal messenger__ and __voice of the voiceless__ without expending a spell slot or requiring material \ncomponents.\n\n",
+            "rarity": "Rare",
+            "source_key": "0000_druidic_resonance"
+          }
+        ],
+        "harmony": {
+          "title": "Druidic: Perfect Harmony",
+          "lore": "\nRequires Attunement to three Druidic items.\n",
+          "rules": "**Druidic Harmony.** Lost, separated, or frightened creatures, be it animals or NPCs, are subtly drawn toward you.\n\nAt the DM’s discretion, this may result in easier reunification with missing creatures, chance encounters with fleeing beings, or narrative opportunities for temporary or lasting companionship.\n\n!|! \n \n**Ancestral Warden (Action, 1/Day).** You may call forth a spectral guardian bound by ancestral memory or divine will. You summon a Ravager (Beneos Token #150) in an unoccupied space within 30 feet. Its creature type is undead, elemental or celestial (your choice).\n\nIt is incorporeal, can’t regain hit points, has resistance to nonmagical bludgeoning, piercing, and slashing damage, is immune to poison and necrotic damage, and immune to the charmed, exhaustion, frightened, grappled, paralyzed, petrified, poisoned, prone, and restrained conditions.\n\nIt remains for a number of rounds equal to your highest Druidic item’s Rarity Modifier.",
+          "rarity": "Very Rare",
+          "source_key": "0000_druidic_perfect_harmony"
+        },
+        "specials": []
+      }
+    },
+    "arcane": {
+      "slug": "arcane",
+      "display_name": "Arcane",
+      "icon_filename": "arcane.webp",
+      "icon_filename_bw": "arcane_blackwhite.webp",
+      "icon_exists": true,
+      "icon_bw_exists": true,
+      "lore": "Some items are consciously imbued with magic upon their construction by their creators.",
+      "tiers": {
+        "echo": {
+          "title": "Arcane: Echo of Origin",
+          "lore": "\nSome items are consciously imbued with magic upon their construction by their creator.",
+          "rules": "**Arcane Echo (Bonus Action).** You can draw raw arcana from the item, choosing one of the following effects until the end of your current turn, where X equals the item’s Rarity Modifier:\n\n- Gain a +X bonus to spell attack rolls and spell save DC.\n\n- Gain a +X bonus to weapon attack rolls and your weapon attacks deal an additional Xd6 force damage.\n\n**Dormant.** Once you use this feature, the item becomes __dormant__ for 24 hours. ",
+          "rarity": "Uncommon",
+          "source_key": "0000_arcane_echo_of_origin"
+        },
+        "resonance": [
+          {
+            "title": "Arcane: Resonance",
+            "lore": "\nRequires Attunement to two Arcane items.",
+            "rules": "**Arcane Resonance.** When you cast a spell using a 1st to 6th level spell slot, you may roll a d6. If the result is equal to the spell’s level, you do not expend the spell slot used to cast it. \n\nYou may regain a spell slot this way a number of times equal to your Arcane items' highest Rarity Modifier, regaining all uses upon finishing Long Rest.\n\n\n",
+            "rarity": "Rare",
+            "source_key": "0000_arcane_resonance"
+          }
+        ],
+        "harmony": {
+          "title": "Arcane: Perfect Harmony",
+          "lore": "\nRequires Attunement to three Arcane items.",
+          "rules": "**Arcane Harmony.** When you cast a spell using a 1st to 8th level spell slot, you may roll a d8 instead of a d6. If the result is equal to the spell’s level, you do not expend the spell slot. Once you regained a spell slot via this feature three times, you can only do so again after finishing a Long Rest. \n\n**Expanded Attunement.** You can now be attuned to one additional Arcane item, increasing your total attunement slots by +1, but only for items of the Arcane origin.\n\n**Arcane Grandeur (Ritual).** You can perform a 4-hour ritual using four attuned Arcane items as foci. Upon completion, choose one of these items to become your Spellcasting Focus until you designate a new one.\n\n- When casting a spell while holding this focus, your spell attack modifier and spell save DC both increase by +X, where X equals the item’s Rarity Modifier.\n\n- If the item has features with a limited number of uses or charges per day, it gains +1 additional use or charge of each such feature.\n\n- You can only have one such Spellcasting focus at a time, and only one such ritual may be completed every 24 hours. ",
+          "rarity": "Very Rare",
+          "source_key": "0000_arcane_perfect_harmony"
+        },
+        "specials": []
+      }
+    },
+    "dwarvenforged": {
+      "slug": "dwarvenforged",
+      "display_name": "Dwarvenforged",
+      "icon_filename": "dwarven_forged.webp",
+      "icon_filename_bw": "dwarven_forged_blackwhite.webp",
+      "icon_exists": true,
+      "icon_bw_exists": true,
+      "lore": "Unparalleled in their mastery over steel and stone, the dwarven forgemasters' creations are inimitable in their unique blend of practicability and craftsmanship.",
+      "tiers": {
+        "echo": {
+          "title": "Dwarvenforged: Echo of Origin",
+          "lore": "\nUnparalleled in their mastery over steel and stone, the dwarven forgemasters' creations are inimitable in their unique blend of practicability and craftsmanship.",
+          "rules": "**Dwarven-Forged Echo (Free Action).**  You can evoke a dwarven tenet of the trade, benefitting from its effect until the end of your next turn. You can do so a number of times equal to the number of Dwarven-Forged items you are attuned to, regaining all uses upon finishing a Short Rest. You can not invoke the same tenet twice one the same day.\n\n**Safety First, Last and Always.** You gain advantage on Dexterity saving throws against effects that you can see, such as traps and spells. To gain this benefit, you can’t be blinded, deafened, or incapacitated. \n\n**Measure Twice, Cut Once.** When making only one attack on your turn, you gain advantage on the attack roll and can reroll the damage roll.\n\n**If You Can’t Be Good, Be Careful.** When you take the Dodge action, you also gain a +2 bonus to your AC and 1d8 temporary hit points.\n\n**If It’s Worth Doing, It’s Worth Overdoing.** Once per turn, you can add +3 to an Ability check after rolling but before knowing the outcome. If the roll is successful, you make your next Ability check with advantage.",
+          "rarity": "Uncommon",
+          "source_key": "0000_dwarvenforged_echo_of_origin"
+        },
+        "resonance": [
+          {
+            "title": "Dwarven-Forged: Resonance",
+            "lore": "\nRequires Attunement to two Dwarvenforged items.",
+            "rules": "**Dwarven-Forged Resonance.** What others may consider boring, dwarves praise as reliable. While achieving Resonance, your maximum hit points increase by an amount equal to twice your Dwarvenforged items' combined Rarity Modifier. This bonus is lost immediately if you are no longer attuned to at least two Dwarvenforged items.\n\nIn addition, you have Advantage on any checks made to craft, repair, or reinforce items primarily made of wood, metal or stone.",
+            "rarity": "Rare",
+            "source_key": "0000_dwarvenforged_resonance"
+          }
+        ],
+        "harmony": {
+          "title": "Dwarven-Forged: Perfect Harmony",
+          "lore": "\nRequires Attunement to three Dwarven-Forged items.",
+          "rules": "**Dwarven-Forged Harmony (Ritual).** Over the course of a Long Rest, you can imbue one Dwarvenforged item in your possession with a Tenet of the Trade, reflecting a sacred principle of dwarven craft. For 12 hours (a dwarven work shift) that item gains a +3 bonus its attack and damage rolls (weapons) or to its AC (armor,shields) depending on its type. \n\nWhile wielding/wearing the item, a creature can invoke the imbued Tenet once, benefiting from its effects (see **Dwarvenforged Echo**).\n\nYou must cycle through each available Tenet before you can imbue the same one again.\n\n**Dwarvenforged Grandeur.** You are granted knowledge of ancient blueprints hidden within the dwarven tenets.\n\nYou may create a construct with a CR equal to or less than the combined Rarity Modifiers of your attuned Dwarvenforged items. The construction requires 1 day per CR and access to a forge or workshop. The construct is friendly to you and obeys your commands \n(no action required). It persists until destroyed and you can only control one such construct at a time.\n\n",
+          "rarity": "Very Rare",
+          "source_key": "0000_dwarvenforged_perfect_harmony"
+        },
+        "specials": []
+      }
+    },
+    "sanctified": {
+      "slug": "sanctified",
+      "display_name": "Sanctified",
+      "icon_filename": "sanctified.webp",
+      "icon_filename_bw": "sanctified_blackwhite.webp",
+      "icon_exists": true,
+      "icon_bw_exists": true,
+      "lore": "These objects are ritually imbued with sacred purpose, each one a manifestation of unquestioning devotion.",
+      "tiers": {
+        "echo": {
+          "title": "Sanctified: Echo of Origin",
+          "lore": "\nThese objects are ritually imbued with sacred purpose, each one a manifestation of unquestioning devotion.",
+          "rules": "**Sanctified Echo (1/Item per Long Rest).** At the start of your turn, if you are affected by a condition, you can choose to ignore that condition until the end of your turn, acting as if you were not affected by it.\n\nYou can use this feature a number of times equal to the number of Sanctified items you are attuned to, regaining all uses when you finish a Long Rest.\n\n!|!\n\n**Cleanse or Purge.** When you deal damage or restore hit points, you can channel the power of one Sanctified item you are attuned to. Roll a number of d10s equal to that item’s Rarity Modifier and apply the result as either additional radiant damage or additional hit points restored.\n\nWhen you do so, the chosen item becomes __dormant__ until you finish a Long Rest.",
+          "rarity": "Uncommon",
+          "source_key": "0000_sanctified_echo_of_origin"
+        },
+        "resonance": [
+          {
+            "title": "Sanctified: Resonance",
+            "lore": "\nRequires Attunement to two Sanctified items.\n",
+            "rules": "**Sanctified Resonance (1/Long Rest per Item).** When you roll to deal damage or restore hit points, you may choose to forego rolling and automatically achieve the maximum possible value of the roll. When doing this, you can either:\n\n- Grant Heroic Inspiration to a creature of your choice, or\n\n- force a creature within 30 feet to make a Wisdom saving throw with the DC being equal to 10 + highest Sanctified item's Rarity Modifier or your Charisma modifier (whichever is higher).\nOn a failed save the target becomes frightened of you (repeat save at the end of each of its turns, ending the effect on it on a success).\n\nYou can use this feature a number of times per Long Rest equal to the number of Sanctified items you are attuned to.",
+            "rarity": "Rare",
+            "source_key": "0000_sanctified_resonance"
+          }
+        ],
+        "harmony": {
+          "title": "Sanctified: Perfect Harmony",
+          "lore": "\nRequires Attunement to three Sanctified items.",
+          "rules": "**Sanctified Harmony (Action, 1/Long Rest per Item).** By touch, you cure a creature of the following conditions: blinded, charmed, frightened, deafened, paralyzed, petrified, or poisoned. The affliction is sealed within one of your attuned Sanctified items, where it is purged over the course of three rounds. While the item is purging the affliction, it loses its regular magical properties.\n\nInstead, the item grants you resistance to necrotic and poison damage, as well as advantage on saving throws against the same condition currently being purged. If the item is a weapon, it also deals additional radiant damage equal to 1d6 × its Rarity Modifier.\n\nAfter 3 rounds, the item becomes __dormant__ until you finish a Long Rest. ",
+          "rarity": "Very Rare",
+          "source_key": "0000_sanctified_perfect_harmony"
+        },
+        "specials": []
+      }
+    },
+    "infernal": {
+      "slug": "infernal",
+      "display_name": "Infernal",
+      "icon_filename": "infernal.webp",
+      "icon_filename_bw": "infernal_blackwhite.webp",
+      "icon_exists": true,
+      "icon_bw_exists": true,
+      "lore": "Crafted within the ash-choked hell-forges or otherwise permeated by infernal influence, power granted by these items often comes at a cost.",
+      "tiers": {
+        "echo": {
+          "title": "Infernal: Echo of Origin",
+          "lore": "\nCrafted within the hell-forges or permeated by infernal influence, power granted by these items often comes at a cost.",
+          "rules": "**Infernal Echo (Bonus Action, 1/Day per item).** A creature you can see within 15 feet that can see you receives a subtle promise of power in whatever form it is able to comprehend it.\n\nIt must make a Charisma saving throw (DC = 10 + the item's Rarity Modifier or your Charisma modifier).\nOn a fail, the creature accepts the Pact (consciously or not). Both you and the target gain one use of Heroic Inspiration, as well as temporary hit points equal to twice your highest Infernal item’s Rarity Modifier. On a success, it resists and is immune for 24 hours.  A creature can be bound by only one Infernal Pact at a time.\n\nIf the creature spends this Inspiration to reroll a d20 Test and the successful result would directly harm you, it takes fire damage equal to the d20 roll.\nWhen a creature that entered a pact with you dies within the next 13 hours, you gain a Soul Fragment worth 10 + its highest ability score (creatures with CR < 1 are just worth 1 Fragment). All fragments combine into a single pool equal to their total value.\n\nSoul Fragments are used as barter or currency by those who recognize their true worth.",
+          "rarity": "Uncommon",
+          "source_key": "0000_infernal_echo_of_origin"
+        },
+        "resonance": [
+          {
+            "title": "Infernal: Resonance",
+            "lore": "\nRequires Attunement to two Infernal items.",
+            "rules": "**Infernal Resonance (Action, 1/Long Rest).**  You may expend Soul Fragments from your pool to summon one or more Fiends. The combined average hit points of the summoned Fiends can’t exceed your current Soul Fragment pool.\n\nUpon summoning, Soul Fragments equal to the Fiends’ total average hit points are consumed. Each summoned Fiend’s CR must be equal to or lower than your highest Infernal item’s Rarity Modifier.\n\nThe Fiends appear in unoccupied spaces within 30 feet, obey your commands (no Action required), and remain until destroyed or dismissed (Action).\n\nOnce you use this feature, you can’t use it again until you finish a Long Rest.\n\nThe DM determines available fiend stat blocks.\n\n",
+            "rarity": "Rare",
+            "source_key": "0000_infernal_resonance"
+          }
+        ],
+        "harmony": {
+          "title": "Infernal: Perfect Harmony",
+          "lore": "\nRequires Attunement to three Infernal items.\n",
+          "rules": "**Infernal Harmony.** Any creature targeting you with an attack or a harmful spell must first succeed on a Charisma saving throw (DC 10 + your Charisma modifier + your highest Infernal item's Rarity Modifier).\n\nOn a failed save, the creature must choose a new target or lose the attack or spell. On a successful save, the creature can act normally and is immune to your Infernal Glamour for 24 hours.\n\nA creature that is immune to being charmed makes this saving throw with advantage. \n\n\n\n",
+          "rarity": "Very Rare",
+          "source_key": "0000_infernal_perfect_harmony"
+        },
+        "specials": [
+          {
+            "type": "ritual_of_ascension",
+            "title": "Infernal: Ritual of Ascension",
+            "lore": "\nUsing three Infernal items of Very Rare rarity or higher, you may perform a ritual that permanently transforms you into a Devil, permanently rendering the items dormant in the process.",
+            "rules": "**Ritual of Ascension.** Your creature type becomes Fiend (Devil), and you permanently gain the Infernal Echo, Resonance and Harmony features as if attuned to the respective amount of items. Should the abilities scale based on the items Rarity Modifiers, use the average Rarity Modifiers of the items used for your ascension. You are resistant to fire and poison damage, as well as immune to the poisoned condition. \n\nThis transformation can only be undone by performing a reverse ritual using three Blessed or Sanctified items that are at least Very Rare, through the power of a __wish__ spell or comparable magic.\n\nWhen ascended, you are banished to an Infernal plane instead of dying. Upon death, your body dissolves and reforms on an infernal plane chosen by the DM orto which you have a meaningful connection. \n\nFor a number of weeks equal to your character level, you are incapacitated and  unconscious while you slowly reform. Once this period ends, you awaken fully  restored.\n\n\n",
+            "rarity": "Common",
+            "source_key": "0000_infernal_ritual_of_ascension"
+          }
+        ]
+      }
+    },
+    "blessed": {
+      "slug": "blessed",
+      "display_name": "Blessed",
+      "icon_filename": "blessed.webp",
+      "icon_filename_bw": "blessed_blackwhite.webp",
+      "icon_exists": true,
+      "icon_bw_exists": true,
+      "lore": "Brimming with godly powers or bearing the stigmata of a saintly touch, blessed items are divine intention given form.",
+      "tiers": {
+        "echo": {
+          "title": "Blessed: Echo of Origin",
+          "lore": "\nBrimming with godly powers or bearing the stigmata of a saintly touch, blessed items are divine intention given form.",
+          "rules": "**Blessed Echo (Action, 1/Day).**  When rolling dice to regain hit points or restoring another creature's hit points, you may choose to maximize the healing instead of rolling.\n\nIn addition, you gain one additional death saving throw, requiring four failed saves to die and three successful saves to stabilize, as normal.\n\n!|!\n\n**Blessed Reanimation.** A Blessed item that is at least Very Rare can be used to cast __revivify__ without expending a spell slot, acting both as the spellcasting focus and the material component necessary to cast the spell.\nOnce the spell is completed, the Blessed item becomes __dormant__ for 12 weeks. ",
+          "rarity": "Uncommon",
+          "source_key": "0000_blessed_echo_of_origin"
+        },
+        "resonance": [
+          {
+            "title": "Blessed: Resonance",
+            "lore": "\nRequires Attunement to two Blessed items.",
+            "rules": "**Blessed Resonance (Bonus Action).** You can plant a blessed items on the ground to consecreate the area in a 40-foot radius centered on it.\n\nWhile within this blessed area, non-magical weapon attacks against fiends and undead are considered magical for the purpose of overcoming damage resistances and all hit points or temporary hit points gained or regained by fiends or undead are reduced by half.\n\nAdditionally, fiends and undead have disadvantage on any ability checks or saving throws to reanimate, reincarnate or resist death. When an ally of yours would regain hit points while within the area, they regain additional hit points equal to the planted item's Rarity Modifier. You can use this feature once per Blessed item per day.\n\n**Consecrated Crusader (Action, 1/Long Rest).** Once per day, you can summon a Crusader to an unoccupied space within the consecrated ground (Beneos Tokens #081 Crusader ), which is undead or celestial (your choice). \n\nThe Crusader remains for a number of rounds equal to your highest Blessed item’s Rarity Modifier.\n\n",
+            "rarity": "Rare",
+            "source_key": "0000_blessed_resonance"
+          }
+        ],
+        "harmony": {
+          "title": "Blessed: Perfect Harmony",
+          "lore": "\nRequires Attunement to three Blessed items.\n",
+          "rules": "**Blessed Harmony (Free Action, 1/Day).** You may implore divine aid through one of your attuned Blessed items. Describe the intervention you seek and roll a d100. If the result is equal to or lower than your Blessed item's combined Rarity Modifier, a miraculous event occurs, the form and magnitude of which is determined by the DM. \n\nIf the intervention is successful, you can not attempt to plea for another intervention again. However, you as you have witnessed true divinity, you gain advantage on all Wisdom checks and saving throws for the next 12 hours and may choose to automatically succeed on one saving throw of your choice within that time.\n\nAfter this, your eyes become permanently touched by light — turning, for example, golden, silver, or prismatic, marking you as a witness of the divine.\n\nThe DM may choose to have NPCs, creatures, or planar forces react accordingly, for good or ill. You can see normally in magical and non-magical darkness and can cast __true seeing__ once per day on its base level without having to expend a spell slot. ",
+          "rarity": "Very Rare",
+          "source_key": "0000_blessed_perfect_harmony"
+        },
+        "specials": []
+      }
+    },
+    "primordial": {
+      "slug": "primordial",
+      "display_name": "Primordial",
+      "icon_filename": "primordial.webp",
+      "icon_filename_bw": "primordial_blackwhite.webp",
+      "icon_exists": true,
+      "icon_bw_exists": true,
+      "lore": "Remnants of a world that was, still drawing strength from the primal essences unleashed at the dawn of creation.",
+      "tiers": {
+        "echo": {
+          "title": "Primordial: Echo of Origin",
+          "lore": "\nRemnants of a world that was, still drawing strength from the primal essences unleashed at the dawn of creation.",
+          "rules": "**Primordial Echo.** If you move no more than half your speed on your turn and do not take the Dash Action, you gain a +1 bonus to your AC until the start of your next turn. In addition, you have advantage on Strength and Constitution saving throws or ability checks you make to resist being pushed, pulled, knocked prone, or otherwise moved against your will until the start of your next turn.\n\nIf you don’t move at all, the bonus increases to +2 AC, and you gain advantage on all Strength and Constitution saving throws, while creatures have disadvantage on any ability checks made to move you against your will.\n\nIf an effect would automatically move you without a saving throw (such as an attack that pushes), the distance is halved. If a creature attempts to move you along by force (e.g. by grappling and dragging), its movement is halved, regardless of its Strength, size, or speed.",
+          "rarity": "Uncommon",
+          "source_key": "0000_primordial_echo_of_origin"
+        },
+        "resonance": [
+          {
+            "title": "Primordial: Resonance",
+            "lore": "\nRequires Attunement to two Primordial items.",
+            "rules": "**Primordial Resonance.** You gain proficiency with heavy armor and shields, but only if they are of Primordial origin. While wearing heavy armor and with your feet touching the ground, you reduce all incoming damage by 3. \n\nYou can wield a weapon with the __two-handed__ or __heavy property__ in one hand. In addition, while you are wielding two weapons, you may treat any weapon you are holding as having the __light__ property for the purpose of qualifying for two-weapon fighting.\n\nWhile you are wielding a __two-handed__ or __heavy__ weapon in one hand, your speed is reduced by 5 feet for each such weapon you are wielding in one hand (maximum reduction 10 feet). This reduction lasts as long as you continue to wield the weapon(s) in this way.",
+            "rarity": "Rare",
+            "source_key": "0000_primordial_resonance"
+          }
+        ],
+        "harmony": {
+          "title": "Primordial: Perfect Harmony",
+          "lore": "\nRequires Attunement to three Primordial items.",
+          "rules": "**Primordial Harmony.** You can speak and understand Primordial. At the end of any turn in which you do not move, you gain temporary hit points equal to the combined Rarity Modifiers of your attuned Primordial items. While you have these temporary hit points, \nyou are resistant to all damage. \n\nIf you move more than half your movement speed on your turn, you immediately lose all temporary hit points granted by this feature. \n\nWhile your feet are touching the ground, you no longer suffer the penalty to your movement speed imposed by **Primordial Strength**.",
+          "rarity": "Very Rare",
+          "source_key": "0000_primordial_perfect_harmony"
+        },
+        "specials": []
+      }
+    },
+    "relic": {
+      "slug": "relic",
+      "display_name": "Relic",
+      "icon_filename": "relic.webp",
+      "icon_filename_bw": "relic_blackwhite.webp",
+      "icon_exists": true,
+      "icon_bw_exists": true,
+      "lore": "Exalted vestiges enwrapped by the gossamer strings of fate, their wielders burdened with the glorious purpose of changing the world for better or for worse.",
+      "tiers": {
+        "echo": {
+          "title": "Relic: Echo of Origin",
+          "lore": "\nExalted vestiges enwrapped by the gossamer strings of fate, their wielders burdened with the glorious purpose of changing the world for better or for worse.",
+          "rules": "**Relic Echo.** You gain a bonus to Death saving throws equal to the number of Relic items you are attuned to. \n\n**Entangled by Fate (1/Day).** When you would be reduced to 0 hit points, you can choose to be reduced to 1 hit point instead. If you would be reduced to 0 hit points again before the start of your next turn, you instead fall unconscious and begin making death saving throws as normal, but, if still alive, you regain 1 hit point at the start of your next turn.\n\n!|! \n\n**Greater Things at Play.** Whenever you roll a natural 20 on a d20 Test, DMs are encouraged to treat these rolls with more narrative or gameplay impact as usual, as opportunities for roleplay, symbolism, or subtle shifts in the world that reflect the Relic bearer's connection to fate.",
+          "rarity": "Uncommon",
+          "source_key": "0000_relic_echo_of_origin"
+        },
+        "resonance": [
+          {
+            "title": "Relic: Resonance",
+            "lore": "\nRequires Attunement to two Relic items.",
+            "rules": "**Relic Resonance.** When you make a saving throw to avoid or end the charmed or frightened condition, you can choose to use a different ability score for that saving throw instead of the ability score the effect normally requires.\n\n**Not Like This (1/Day).** When you fail a d20 Test by exactly 1, you can choose to succeed instead. ",
+            "rarity": "Rare",
+            "source_key": "0000_relic_resonance"
+          }
+        ],
+        "harmony": {
+          "title": "Relic: Perfect Harmony",
+          "lore": "\nRequires attunement to three Relic items.",
+          "rules": "**Relic Harmony (1/Long Rest).** When you fail an attack roll, saving throw, or ability check, you may choose for this roll to become a success instead. When you do so, you gain temporary hit points equal to the combined Rarity Modifier of all your attuned Relic items.\n\nIn addition, you cannot be killed by random chance alone. If an effect would kill you outright without reducing you to 0 hit points first (such as massive damage or a death effect), you instead drop to 1 hit point. Once this protection triggers, it cannot do so again until you finish a Long Rest.",
+          "rarity": "Very Rare",
+          "source_key": "0000_relic_perfect_harmony"
+        },
+        "specials": []
+      }
+    },
+    "mutation": {
+      "slug": "mutation",
+      "display_name": "Mutation",
+      "icon_filename": "mutation.webp",
+      "icon_filename_bw": "mutation_blackwhite.webp",
+      "icon_exists": true,
+      "icon_bw_exists": true,
+      "lore": "Cells upon cells upon cells, two organisms fusing together in harmonious symbiosis.",
+      "tiers": {
+        "echo": {
+          "title": "Mutation: Echo of Origin",
+          "lore": "\nCells upon cells upon cells, two organisms fusing together in harmonious symbiosis.",
+          "rules": "**Mutation Echo (1/ Long Rest).** When you or a creature healing you rolls dice to determine the amount of hit points you regain, you may choose to maximize the healing instead of rolling.\n\n**Ritual (1/Short Rest).** You may spend 1 minute absorbing the essence of a creature that died within the past hour by touching it. Based on the creature’s highest movement speed, you gain a mutation for 1 hour.\n\nWalking. You ignore nonmagical difficult terrain, and standing up from prone costs only 5 feet of movement.\n\nSwimming. You can breathe water and gain a swim speed equal to your walking speed.\n\nFlying. Your jump distance is doubled, and you take no damage from falling less than 60 feet.\n\nClimbing. As a Bonus Action, you can move up, down, or across vertical surfaces and ceilings at half your movement speed until the end of your next turn. You must be in contact with the surface using at least one hand and both feet.\n\nBurrowing. You gain tremorsense (15 feet).",
+          "rarity": "Uncommon",
+          "source_key": "0000_mutation_echo_of_origin"
+        },
+        "resonance": [
+          {
+            "title": "Mutation: Resonance",
+            "lore": "\nRequires Attunement to two Mutation items.",
+            "rules": "**Mutation Resonance.** Whenever you regain hit points while your current hit points are below half your maximum, roll a d20. If the result is less than or equal to the total number of hit points you regained, you gain a Mutation. Roll a d12 on the Mutation Surge Table to determine the Mutation.\n\nExcept explitcitly stated otherwise, these Mutations' effects last 10 minutes. You can only benefit from a number of mutations equal to the amount of Mutation items you are attuned to at a time. \n\n",
+            "rarity": "Rare",
+            "source_key": "0000_mutation_resonance"
+          }
+        ],
+        "harmony": {
+          "title": "Mutation: Perfect Harmony",
+          "lore": "\nRequires Attunement to three Mutation items.\n",
+          "rules": "**Mutation Harmony.** At the start of your third consecutive turn affected by the same condition, if you have at least 1 hit point, that condition immediately ends, and you become immune to it until the end of your next Short Rest.\n\n**Mutation Grandeur.** When rolling for Mutations on the Mutation Surge Table, you can roll two d12 and \npick the result. \n\n**Spellcasting.** You can cast __polymorph__ on its base level targeting yourself without expending a spell slot. You can do up to three additional times per day, each cast rendering a Mutation item of yours __dormant__. ",
+          "rarity": "Very Rare",
+          "source_key": "0000_mutation_perfect_harmony"
+        },
+        "specials": [
+          {
+            "type": "surge_table_i",
+            "title": "Mutation Surge Table I",
+            "lore": "\nMutations gained via Mutation Items are determined by rolling a d12 on the Mutation Surge Table. You can only benefit from a number of mutations equal to your attuned Mutation items at a time. ",
+            "rules": "**1 - Adaptive Tissue.** When taking damage, gain resistance to that damage type until taking damage of a new damage type. Repeat this effect for the duration.\n\n**2 - Rapid Regeneration.** At the start of your turn, if you have at least 1 hit point but fewer than 10, you regain 2d6 hit\npoints.\n\n**3 - Muscular Growth.** On a hit, attacks with a melee weapon deals one additional damage die.\n\n**4 - Reinforced Sinews (Bonus Action).** Leap a distance of up to 30 feet in any direction.\n\n**5 - Reactive Rewiring.** After succeeding or failing on a saving throw, you gain advantage on saves against the same effect for 1 hour.\n\n**6 - Symbiotic Overgrowth.** Upon taking damage, you can choose to have this Mutation absorb that damage, reducing that damage to 0. You then lose the Mutation.   \n",
+            "rarity": "Common",
+            "source_key": "0000_mutation_surge_table_i"
+          },
+          {
+            "type": "surge_table_ii",
+            "title": "Mutation Surge Table II",
+            "lore": "\nMutations gained via Mutation Items are determined by rolling a d12 on the Mutation Surge Table. You can only benefit from a number of mutations equal to your attuned Mutation items at a time. ",
+            "rules": "**7 - Metabolic Boost.** Whenever you roll dice to regain hit points, you roll additional dice of the same type equal to your highest Mutation item’s Rarity Modifier and add them to the total healing.\n\n**8 - Flesh Memory (Action).** You can consume the flesh of a dead humanoid, monstrosity, or beast that has been dead for no longer than 1 hour. Roll two of the creature’s Hit Dice and regain hit points equal to the total. You also learn how and when the creature died.\n\n**9 - Nerve Tendrils (Reaction).** Upon taking damage, you grab a creature within 5 feet of you with neural tendrils. The creature must make a Constitution saving throw (DC = 10 + your highest Mutation items' Rarity Modifier). On a failed save, the damage is split between you and the target creature. On a successful save, you take full damage and the creature takes half that damage. \n\n**10 - Mimicry Chords.** After hearing a creature over the course of at least a minute, you can spend 1 minute retuning your vocal cords to perfectly mimic its voice.",
+            "rarity": "Common",
+            "source_key": "0000_mutation_surge_table_ii"
+          }
+        ]
+      }
+    },
+    "ancient": {
+      "slug": "ancient",
+      "display_name": "Ancient",
+      "icon_filename": "ancient.webp",
+      "icon_filename_bw": "ancient_blackwhite.webp",
+      "icon_exists": true,
+      "icon_bw_exists": true,
+      "lore": "These objects outlasted the rise and fall of empires and civilisations, their essence enriched by the gravitas of bygone days.",
+      "tiers": {
+        "echo": null,
+        "resonance": [
+          {
+            "title": "Ancient: Resonance",
+            "lore": "\nRequires Attunement to two Ancient items.",
+            "rules": "**Ancient Resonance (1/ Long Rest).** When you are reduced to 0 hit points but not killed outright, ancient powers stir to ward off fate. \n\nAt the start of your next turn, you:\n\n- Regain an amount of hit points equal to 3 x the combined Rarity Modifier of your attuned Ancient items.\n\n- Gain resistance to all damage until the start of your \nnext turn.\n\n**Dormant.**By activating this effect, one Ancient item of your choice becomes __dormant__ until you finish a Long Rest. \n",
+            "rarity": "Rare",
+            "source_key": "0000_ancient_resonance"
+          }
+        ],
+        "harmony": {
+          "title": "Ancient: Perfect Harmony",
+          "lore": "\nRequires Attunement to three Ancient items.",
+          "rules": "**Ancient Harmony (1/ Long Rest).** When you fail a saving throw, you may choose to succeed instead. You can use this feature even while incapacitated or otherwise unable to act. This is not a magical effect. \n\nYou must declare the use immediately after the failed saving throw is rolled. When you use this features, you gain a use of Heroic Inspiration. \n\n**Ancient Grandeur (1/Day).** When you gain Heroic Inspiration, you can choose to grant all allied creatures that can see you Heroic Inspiration as well.  ",
+          "rarity": "Very Rare",
+          "source_key": "0000_ancient_perfect_harmony"
+        },
+        "specials": []
+      }
+    },
+    "technoarcane": {
+      "slug": "technoarcane",
+      "display_name": "Technoarcane",
+      "icon_filename": "techno_arcane.webp",
+      "icon_filename_bw": "techno_arcane_blackwhite.webp",
+      "icon_exists": true,
+      "icon_bw_exists": true,
+      "lore": "There is power in the profane, be it the certainty of the clockwork or the energies harvested from coal and steel. Ingenuity knows no bounds and any sufficiently advanced technology is indistinguishable from magic.",
+      "tiers": {
+        "echo": {
+          "title": "Techno-Arcane: Echo of Origin",
+          "lore": "\nThere is power in the profane, be it the certainty of the clockwork or the energies harvested from coal and steel. Ingenuity knows no bounds and any sufficiently advanced technology is indistinguishable from magic.",
+          "rules": "**Techno-Arcane Echo (Action, 1/Long Rest per Item).** You can use a Techno-Arcane item to power a non-magical or arcane-compatible mechanism or vehicle. The item emits a focused surge of the required energy, sufficient to activate or sustain an object, device, or structure within 5 feet of it for up to its Rarity Modifier x 10 minutes. The maximum size or complexity of what you can power is based on the item’s Rarity Modifier, with a Common Techno-Arcane item being able to be power a Medium or smaller sized device or object, while a Legendary Techno-Arcane item can power a Gargantuan object. \n\nYou could power mechanical contraptions to lock or unlock gates, lift drawbridges, have a cart drive without a draft animal or move a boat without manning the oars. You could charge arcane batteries, activate magical mechanisms or even power inert constructs (e.g. golems or arcane guardians; at DM's discretion).\n\nThe effect ends early if the device is shut down, disabled, or overloaded. Once this ability is used, the used item becomes __dormant__ until you finish a Long Rest.",
+          "rarity": "Uncommon",
+          "source_key": "0000_technoarcane_echo_of_origin"
+        },
+        "resonance": [
+          {
+            "title": "Techno-Arcane: Resonance",
+            "lore": "\nRequires Attunement to two Techno-Arcane items.",
+            "rules": "**Techno-Arcane Resonance (1/Long Rest per Item).** When you are reduced to 0 hit points but not killed outright, your Techno-Arcane items surge to maintain motor function.\n\nEven though you fall unconscious, you remain mobile for a number of rounds equal to your Techno-Arcane items' combined Rarity Modifiers.\n\nYou are still unconscious and and continue making death saving throws as normal.\n\nHowever, while in this state, you may take your movement on each turn as normal. You may choose to Dash or Disengage, but each such use consumes 2 rounds of remaining duration. You can continue to move even when you die. \n\nShould you regain consciousness while this effect is still active, you gain temporary hit points equal to 3 x this effect's remaining duration and the effect ends.\n\nOnce the duration is over, the Techno-Arcane item used becomes __dormant__ until you finish a Long Rest. \n\n    ",
+            "rarity": "Rare",
+            "source_key": "0000_technoarcane_resonance"
+          }
+        ],
+        "harmony": {
+          "title": "Techno-Arcane: Perfect Harmony",
+          "lore": "\nRequires Attunement to three Techno-Arcane items.",
+          "rules": "**Techno-Arcane Harmony (1/ Day per Item).** When you activate a feature of a Techno-Arcane item that has limited uses (such as an item with charges or a per-rest ability), you may trigger a cascading surge, as one other Techno-Arcane item of your choice you are attuned to regains one expended use of one of its features.\n\nThis transfer happens instantly upon use and does not require an action. The restored feature must be one you have previously used. You choose which item and feature to refresh. This effect can only restore features that have limited daily uses, charges, or per-rest activations.\n\nAn individual item can only benefit from this restoration once per day.\n\n**Example:** You activate a Techno-Arcane amulet’s Echo to power a wrench to open a gate. Immediately, your Techno-Arcane boots (which allow a short-range teleport once per Long Rest) regain their use, if they haven’t already been refreshed by this feature today.",
+          "rarity": "Very Rare",
+          "source_key": "0000_technoarcane_perfect_harmony"
+        },
+        "specials": []
+      }
+    },
+    "crystalline": {
+      "slug": "crystalline",
+      "display_name": "Crystalline",
+      "icon_filename": "crystalline.webp",
+      "icon_filename_bw": "crystaline_blackwhite.webp",
+      "icon_exists": true,
+      "icon_bw_exists": true,
+      "lore": "Throughout the mundane and planar realms, crystals act as conduits for all kinds of magic, with application in matters ranging from warfare to leisure activities or entertainment. ",
+      "tiers": {
+        "echo": {
+          "title": "Crystalline: Echo of Origin",
+          "lore": "\nThroughout the mundane and planar realms, crystals act as conduits for all kinds of magic, with application in matters ranging from warfare to leisure activities or entertainment.",
+          "rules": "**Crystalline Echo (Reaction, 1/Long Rest).** When a creature within 10 feet of you performs an Action (such as Dash, Disengage, Hide, or Attack; not a Magic Action) on its turn, you may echo that Action. You immediately take the same Action, using your own statistics. You cannot copy spellcasting or Actions requiring specific class features, feats, items, or resources you don’t possess. You can do so a number of times equal to the amount of Crystalline items you are attuned to. Once per Day, you regain one use of this feature after finishing a Short Rest. You regain all uses after finishing a Long Rest.\n\n!|!\n\n**Crystalline Spellstoring (Magic Action).** A creature can touch a Crystalline item and expend a spell slot to imbue the item with a spell known to and prepared by it of a spell level equal to the expended spell slot's level. While holding the item, the creature attuned to it can cast the stored spell using the original caster's statistics. After the spell is cast, the item is no longer imbued with it. A Crystalline item can only be imbued with a spell whose level is equal to or lower than the item's Rarity Modifier.",
+          "rarity": "Uncommon",
+          "source_key": "0000_crystalline_echo_of_origin"
+        },
+        "resonance": [
+          {
+            "title": "Crystalline: Resonance",
+            "lore": "\nRequires Attunement to two Crystalline items.\n",
+            "rules": "**Crystalline Resonance (Action).** You can strike two of your attuned Crystalline items together, generating an arcane frequency that destabilizes your physical form. Until the end of your current turn:\n\nYou can move through creatures and objects as if they were difficult terrain. While phasing, you do not provoke opportunity attacks and any damage you take during this turn is halved. When you use this Action while a creature that is also attuned to a Crystalline item is within 30 feet of you, it can use its Reaction to harmonize, allowing it to phase as well and move up to its movement speed as part of the same Reaction.\nWhen harmonizing, both you and the other creature do not suffer any penalties to your movement when moving through creatures and objects. \n\nYou can't use this feature while within an area that is magically silenced.\n\nYou can use this feature once every six hours, as you need to wait for the reverberation to subside before being able to achieve the phasing frequenzy again. ",
+            "rarity": "Rare",
+            "source_key": "0000_crystalline_resonance"
+          }
+        ],
+        "harmony": {
+          "title": "Crystalline: Perfect Harmony",
+          "lore": "\nRequires Attunement to three Crystalline items.\n",
+          "rules": "**Crystalline Harmony (Reaction).** When you are the sole target of a spell cast by another creature or within the target area of a spell, you can attempt to reflect the spell. Instead of making the saving throw detailed by the spell, you roll a d20 and add the combined Rarity Modifier of your Crystalline items to the roll. If the total result exceeds the caster's spell save DC, you immediately cast the same spell using the original caster's statistics. You do not expend a spell slot, require no components, and cast it at the same level as the original spell. If the spell requires concentration, you must maintain it normally. As part of this Reaction, you may choose to neutralize the original spell effect on you by dispersing it into infinite prismatic fractals or allow it to resolve its effect as intended by the caster.\n\nAfter using this feature, the items' reverberations fade over a number of hours equal to the level of the spell slot the reflected spell was cast with. Once this time passes, you can use this feature again.\n\n**Harmonic Spellstoring.** While a Crystalline weapon is imbued with a spell, attacks made with it gain a bonus to attack and damage rolls equal to the level of the spell stored within it, while shields and armor gain a bonus to the AC they provide equal to half the stored spell's level (rounded up).",
+          "rarity": "Very Rare",
+          "source_key": "0000_crystalline_perfect_harmony"
+        },
+        "specials": []
+      }
+    },
+    "beastforged": {
+      "slug": "beastforged",
+      "display_name": "Beastforged",
+      "icon_filename": "beastforged.webp",
+      "icon_filename_bw": "beastforged_blackwhite.webp",
+      "icon_exists": true,
+      "icon_bw_exists": true,
+      "lore": "Gear crafted from parts of a creature's inherent biology or physical makeup often retains some of the original creature's traits.",
+      "tiers": {
+        "echo": {
+          "title": "Beastforged: Echo of Origin",
+          "lore": "\nGear crafted from parts of a creature's inherent biology or physical makeup often retains some of the original creature's traits.",
+          "rules": "**Beastforged Echo (Action/ 1/Day).** You may cast __speak with animals__ without expending a spell slot. The spell lasts its normal duration and does not require concentration.\n\nFor the duration of the spell, you have advantage on Charisma (Persuasion) or Charisma (Intimidation) checks made to influence or assert dominance over beasts, animal-like humanoids, demi-humans, or NPCs who recognize and respect primal strength (at DM's discretion). ",
+          "rarity": "Uncommon",
+          "source_key": "0000_beastforged_echo_of_origin"
+        },
+        "resonance": [
+          {
+            "title": "Beast-forged: Resonance",
+            "lore": "\nRequires Attunement to two Beastforged items.",
+            "rules": "**Beast-forged Resonance (Action, 1/Day).** Drawing upon the item's power, you may enter a temporary Beastform:\n\n- You transform into a beast of your choice with a Challenge Rating equal to or less than your Beast-forged items’ combined Rarity Modifier. The transformation lasts for a number of rounds equal to that combined Rarity Modifier.\n\n**Example:** A character attuned to a Rare Beast-forged armor (4) and a Very Rare Beast-forged weapon (4) may transform into a CR 7 beast for 7 rounds.\n\n- You retain your Intelligence, Wisdom, and Charisma scores, as well as your class features unless they require a specific form (DM's discretion).\n\n- You revert early if you fall to 0 hit points or if you end the effect as a Bonus Action.\n\n- You can only turn into beasts that you have personally seen and touched (alive or dead) or from parts of which one of your Beast-forged items has been crafted.\n\n- As you transform, you drop all currently carried or equipped gear and equipment that is not Beastforged.\n\n\n",
+            "rarity": "Rare",
+            "source_key": "0000_beastforged_resonance"
+          }
+        ],
+        "harmony": {
+          "title": "Beastforged: Perfect Harmony",
+          "lore": "\nRequires Attunement to three Beast-forged items.",
+          "rules": "**Beastforged Harmony (Action, 1/Day each).** You can summon a number of Beast-type creatures equal to the number of Beastforged items you are attuned to.\n\n- You can summon beasts with a Challenge Rating up to the Rarity Modifier of the item that calls it.\n\n- Each beast appears in an unoccupied space within 30 feet of you, is friendly to you and your allies and acts immediately after your turn, following your commands (no Action required).\n\n- Each summoned beast remains for a number of rounds equal to the total combined Rarity Modifiers of your Beastforged items.\nWhile summoned, it gains a bonus to its attack rolls and maximum hit points equal to that same total.\n\n- You can only summon beasts that you have personally seen and touched (alive or dead) or from parts of which one of your Beastforged items has been crafted.\n\n**Beastforged Grandeur.** You may use __Monstrosities__ for the **Resonance** and **Harmony** features in addition to Beast-type creatures. All the other rules apply normally.\n",
+          "rarity": "Very Rare",
+          "source_key": "0000_beastforged_perfect_harmony"
+        },
+        "specials": []
+      }
+    },
+    "feywoven": {
+      "slug": "feywoven",
+      "display_name": "Feywoven",
+      "icon_filename": "feywoven.webp",
+      "icon_filename_bw": "feywoven_blackwhite.webp",
+      "icon_exists": true,
+      "icon_bw_exists": true,
+      "lore": "Objects exemplifying the nature of the fair lords and ladies and their alien domain, equally plausible to have been brought into existence in pursuit of power or simply for fun.",
+      "tiers": {
+        "echo": {
+          "title": "Feywoven: Echo of Origin",
+          "lore": "\nObjects exemplifying the nature of the fair lords and ladies and their alien domain, equally plausible to have been brought into existence in pursuit of power or simply for fun",
+          "rules": "**Feywoven Echo (Reaction/ Bonus Action).** Upon finishing a Long Rest, you gain 15 feet of __liminal distortion__ per Feywoven item you are attuned to.\n\nAs a Reaction or Bonus Action, you can spend __liminal distortion__ to add or subtract this distance in increments of 5 to any movement, distance, range, or reach affecting you.\n\nExamples include: +5 ft. to your movement speed, -10 ft. to the distance between you and a creature to be able to touch it, or 15 ft. to be out of the range of its spell, -15 ft. to the falling distance, +15 ft. to your melee reach to hit a moving creature with an attack of opportunity. ",
+          "rarity": "Uncommon",
+          "source_key": "0000_feywoven_echo_of_origin"
+        },
+        "resonance": [
+          {
+            "title": "Feywoven: Resonance",
+            "lore": "\nRequires Attunement to two Feywoven items.",
+            "rules": "**Feywoven Resonance (Free Action, Long Rest).** When you make an attack roll targeting a creature or a saving throw against an effect originating from a creature, you may invoke __fey trickery__. You can declare to do so after rolling, but before the roll's consequences take effect. You can't use fey trickery if the roll is already confirmed to be successful.\n\nRoll a die of your choice (d4 to d20). On an even result, add it to the roll; on an odd result, subtract it. Depending on the type of roll, resolve the respective effect:\n\nIf you succeed on a saving throw due to the trickery die's bonus, the effect's originator becomes the new target of the effect instead. It must make a saving throw against it, subtracting the result of your trickery die from the roll.\n\nIf an attack roll made by you succeeds due to the trickery die's bonus, it deals additional damage equal to the trickery dice roll. \n\nShould you fail a saving throw or miss with an attack roll, your ally farthest from you becomes the target of your attack roll or suffers the effect alongside you. \n\nYou can use __fey trickery__ once per Feywoven item you are attuned to, regaining all uses after finishing a Long Rest.",
+            "rarity": "Rare",
+            "source_key": "0000_feywoven_resonance"
+          }
+        ],
+        "harmony": {
+          "title": "Feywoven: Perfect Harmony",
+          "lore": "\nRequires Attunement to three Feywoven items.\n",
+          "rules": "**Feywoven Harmony.** Cloaked in charms bestowing unnerving beauty, you exude alien majesty. You cannot be targeted or affected by spells cast using a spell slot of a level equal to or lower than your highest Feywoven item’s Rarity Modifier or your Charisma modifier\n(whichever is higher).\n\nYou may, however, still choose to allow for such a spell to affect you.\n\nIn addition, creatures with a CR lower than that item’s Rarity modifier or your Charisma modifier (whichever is higher) have disadvantage on attack rolls against you, while you gain a +3 bonus to all Charisma ability checks made to interact with them. \n\nIf that creature is a beast or humanoid, you also make these checks with advantage.\n",
+          "rarity": "Very Rare",
+          "source_key": "0000_feywoven_perfect_harmony"
+        },
+        "specials": [
+          {
+            "type": "ritual_of_ascension",
+            "title": "Feywoven: Ritual of Ascension",
+            "lore": "\nRequires Feywoven Grandeur.",
+            "rules": "**Ritual of Ascension.** Using three Feywoven items of Very Rare rarity or higher, you may perform a ritual that transforms you into a fey being, permanently rendering the items dormant in the process. Your creature type becomes Fey, and you permanently gain the Feywoven Echo, Resonance and Harmony features as if attuned to the respective amount of items. Should the abilities scale based on the items Rarity Modifiers, use the average Rarity Modifiers of the items used for your ascension.\n\nHaving ascended, you are immune to the environmental and magical effects of the Feywild that would alter your behavior, emotions, memories, or sense of time. You cannot become lost, disoriented, or charmed by the plane’s influence, and your presence is never treated as intrusive or foreign by its native magic. You also gain resistance to charm effects and immunity to magical sleep. \n",
+            "rarity": "Common",
+            "source_key": "0000_feywoven_ritual_of_ascension"
+          }
+        ]
+      }
+    },
+    "occult": {
+      "slug": "occult",
+      "display_name": "Occult",
+      "icon_filename": "occult.webp",
+      "icon_filename_bw": "occult_blackwhite.webp",
+      "icon_exists": true,
+      "icon_bw_exists": true,
+      "lore": "Sinister in appearance and function, these items were created using forbidden knowledge or had their essence marred through vile use.",
+      "tiers": {
+        "echo": {
+          "title": "Occult: Echo of Origin",
+          "lore": "\nSinister in appearance and function, these items were created using forbidden knowledge or had their essence marred through vile use.",
+          "rules": "**Occult Echo.** Each time you finish a Long Rest, you gain a number of Rite Dice for each Occult item you're attuned to. Per item, you gain 1 Rite Die (d6) plus one additional die per the item’s Rarity Modifier. \n\n**Using Rite Dice.** After making a d20 test (before knowing the result), you may roll a Rite die and add the result to the d20 test. You lose hit points equal to twice the result and these hit points are added to your Sacrifice Pool.\n\n**Ritual (Short Rest or 10 Minutes).** You may roll any number of remaining Rite Dice, losing hit points equal to the roll and adding them to the Sacrifice Pool. Upon finishing a Long Rest, your Sacrifice Pool is emptied.\n\n**Black Touch (Magic Action, 1/Day per Item).** Make a melee spell attack against a creature within 5 feet, using either your Spellcasting ability modifier or your proficiency bonus + your highest Occult item's Rarity Modifier to determine the to hit bonus. On a hit, target takes necrotic damage equal to the amount of points within your Sacrifice pool and the pool is emptied in the process.\n\n",
+          "rarity": "Uncommon",
+          "source_key": "0000_occult_echo_of_origin"
+        },
+        "resonance": [
+          {
+            "title": "Occult: Resonance",
+            "lore": "\nRequires Attunement to two Occult items.",
+            "rules": "**Occult Resonance.** When finishing a Long Rest, you now retain points in your Sacrifice Pool equal to your Occult items' combined Rarity Modifiers.\n\n**Open the Vaults (Action).** You can expend points from your Sacrifice Pool to summon undead creatures from the Shamblevaults, hidden oubliettes overrun with undead.\n\nTo be eligible for summoning, a creature's CR must not exceed the Rarity modifier of your highest-attuned Occult \nitem.\n\nYou must expend a number of points from the pool equal to the creature’s average hit point maximum (your DM has the creature's statistics). Summoned undead appear in unoccupied spaces within 15 feet of you, act immediately after your turn, follow your verbal commands (no action required), and remain until destroyed. At the end of a Long Rest, you must use points from the Sacrifice Pool equal to half the creature’s summoning cost or it is destroyed. \n\n**Regeneration (Short Rest).** When you spend hit dice during a Short Rest to regain hit points, all your undead creatures summoned via **Open the Vaults** regain hit points equal to half the total healing you receive (rounded up).",
+            "rarity": "Rare",
+            "source_key": "0000_occult_resonance"
+          }
+        ],
+        "harmony": {
+          "title": "Occult: Perfect Harmony",
+          "lore": "\nRequires Attunement to three Occult items.",
+          "rules": "**Occult Harmony (1/Day per Item).** When you would be reduced to 0 hit points, you instead roll a number of your Hit Dice equal to the combined Rarity Modifiers of all your attuned Occult items.\n\nAt the start of your next turn, you regain hit points equal to the total rolled. The Occult item that triggered this effect becomes __dormant__ until you finish a Long Rest.\n\nEach time you use this feature, roll on the Short-Term Madness table (DMG).\n\nIf you use Occult Harmony three times within 24 hours, you must succeed on a DC 15 Charisma saving throw. On a failure, you instead roll on the Long-Term Madness table and suffer that effect.\n\nYou regain one use of Occult Harmony per Long Rest by performing a ritual over the course of the night. If you do so, you regain only half your maximum hit points from that Long Rest.",
+          "rarity": "Very Rare",
+          "source_key": "0000_occult_perfect_harmony"
+        },
+        "specials": [
+          {
+            "type": "dark_bond",
+            "title": "Occult: Dark Bond",
+            "lore": "\nSinister in appearance and function, these items were created using forbidden knowledge or had their essence marred through vile use.",
+            "rules": "**Dark Bond.** If you're attuned to a Rare or higher Occult item, you may give it to an undead creature under your control. That creature gains the benefits of the __Chosen Thrall__ spell (Beneos Spell #85) while carrying the item. It is considered attuned to the item for all intents and purposes and may make use of the item’s passive and active features.\n\nWhile the item is attuned to your thrall, it is considered __dormant__ for you. \n",
+            "rarity": "Common",
+            "source_key": "0000_occult_dark_bond"
+          },
+          {
+            "type": "ritual_of_ascension",
+            "title": "Occult: Ritual of Ascension",
+            "lore": "\nUsing three magical items of Very Rare rarity or higher with the Occult origin, you can perform a ritual of Ascension, permanently rendering the items dormant in the process. ",
+            "rules": "Your creature type becomes Undead, and you permanently gain the Occult Echo, Resonance and Harmony features as if attuned to the respective amount of items. Should the abilities scale based on the items Rarity Modifiers, use the average Rarity Modifiers of the items used for your ascension.\n\nHaving ascended, you are resistant to necrotic damage, as well as immune to poison damage and the poisoned condition. As you are undead, you do not require food, sleep or air. However, to benefit from a Long Rest, you must rest mind and body for six hours to keep from fading away into a mindless husk\n\nShould you die, you will rise with 1 hit point after 1d12 hours. If your body is destroyed, you reform out of ash and dust. However, you lose one aspect of your undead form, beginning with your Perfect Harmony abilities.\n\nA second death removes Occult Resonance, a third one Occult Echo and a fourth death condemns you to oblivion: You can not be resurrected by any means.\n\nLost aspects can be regained by performing a ritual in which you sacrifice a Very Rare or higher Occult item.",
+            "rarity": "Common",
+            "source_key": "0000_occult_ritual_of_ascension"
+          }
+        ]
+      }
+    },
+    "giantforged": {
+      "slug": "giantforged",
+      "display_name": "Giantforged",
+      "icon_filename": "giant_forged.webp",
+      "icon_filename_bw": "giant_forged_blackwhite.webp",
+      "icon_exists": true,
+      "icon_bw_exists": true,
+      "lore": "Whether forged on storm-wreathed peaks or within the boiling depths of volcanic magma chambers, these artifacts embody the indomitable elemental might of giant-kin.",
+      "tiers": {
+        "echo": {
+          "title": "Giantforged: Echo of Origin",
+          "lore": "\nWhether forged on storm-wreathed peaks or within the boiling depths of volcanic magma chambers, these artifacts embody the indomitable elemental might of giant-kin.",
+          "rules": "**Giantforged Echo.** The inherent bonus offered from a Giantforged item varies with its item type:\n\n**Weapon.** A Giantforged weapon is unusually large but can still be wielded normally. Its reach increases by 5 feet, and it deals one additional weapon damage die on a hit.\n\n**Armor or Shield.** Whenever you take magical damage, replace the highest damage die roll with a 1.\nIf you are wearing both a Giantforged armor and wielding a Giantforged shield, replace the highest and lowest damage die rolls with 1s instead.\n\n**Spellcasting Focus.** When you roll damage for a spell cast using a Giantforged Spellcasting Focus, replace the lowest damage die roll with the highest possible result for that die.\n\n**Other.** When you deal magical damage, you can reroll the lowest damage die. When you take magical damage, you can reroll the highest damage die.",
+          "rarity": "Uncommon",
+          "source_key": "0000_giantforged_echo_of_origin"
+        },
+        "resonance": [
+          {
+            "title": "Giant-Forged: Resonance",
+            "lore": "\nRequires Attunement to two Giant-Forged items.\n\n",
+            "rules": "**Giantforged Resonance.** You gain the ability to understand and verbally communicate with giants, dragons, fey, undead, and elementals. While a creature’s responses may be limited by its Intelligence, it can at minimum share information about nearby locations and creatures, including what it has perceived within the past day.\n\nAdditionally, your growing understanding of ancient perspectives grants you advantage on Charisma checks made to interact with creatures that are more than 200 years old.\n\n!|!\n\n**Kin's Might (Free Action, 1/Day).** You draw strength from your Giantforged items, growing in size accordingly. Until the end of your next turn, you become Large (your equipment growing with you). While Large, you can roll an additional damage die when making a weapon attack, gain a +4 bonus to Strength saving throws and Strength checks, add 5 feet to your melee weapons' reach and 10 feet to your movement speed.",
+            "rarity": "Rare",
+            "source_key": "0000_giantforged_resonance"
+          }
+        ],
+        "harmony": {
+          "title": "Giant-Forged: Perfect Harmony",
+          "lore": "\nRequires Attunement to three Giantforged items.\n",
+          "rules": "**Giantforged Harmony (Bonus Action).** You can choose one of your ability scores and double its value. This effect lasts for up to 5 rounds; at the start of each of your turns, you must choose to maintain it, otherwise it ends.\nWhen the effect ends, you gain a number of levels of exhaustion equal to the number of rounds it was active, and you can’t use this feature again until you have finished an equal number of Long Rests.\n\n!|!\n\n**Kin's Might (Free Action, 1/Day).** When using Kin's Might, you can choose to become Huge. \n\nUntil the end of your next turn, you roll two additional damage dice when making a weapon attack, gain a +6 bonus to Strength saving throws and Strength checks,  add 10 feet to your melee weapons' reach and 10 feet to your movement speed.\n\n**Giantforged Grandeur.** When using Kin's Might, you can choose to become Gargantuan, increasing the boni to four additional damage dice, +8 to Strength saving throws and Strength checks, +20 feet to your melee weapons' reach and +20 feet to your movement speed.",
+          "rarity": "Very Rare",
+          "source_key": "0000_giantforged_perfect_harmony"
+        },
+        "specials": []
+      }
+    }
+  }
+}

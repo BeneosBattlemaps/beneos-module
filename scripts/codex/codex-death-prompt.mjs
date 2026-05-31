@@ -78,7 +78,9 @@ function deathFiredSet() {
   return game.beneos.codex.deathFired
 }
 
-/** Auto-fire on hp ≤ 0. Registered in codex-launcher.mjs. */
+/** Manual auto-fire helper for hp ≤ 0. The combat prompt engine
+ *  (codex2/combat-prompt-engine.mjs) is the active death trigger; this
+ *  remains for manual / programmatic use. */
 export async function maybeOpenDeathPrompt(actor, changes) {
   if (!game.user?.isGM) return
   // GM-only auto-open, and only if the user setting allows it.

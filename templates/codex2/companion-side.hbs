@@ -1,0 +1,123 @@
+{{!-- M7.2 Side-Companion: floats to the right of the dnd5e item-sheet.
+     Read mostly from flags.beneos-module.loot (origin / tier / raw / card /
+     render). Click "⋯" to toggle the Foundry-description legacy sections. --}}
+<aside class="beneos-companion-shell" style="--origin-glow: {{glow}}; --origin-ring: {{ring}};">
+
+  <header class="bc-header">
+    <div class="bc-brand">
+      <span class="bc-brand-mark" role="img" aria-label="Beneos"></span>
+      <span class="bc-brand-label">{{localize "BENEOS.Companion.Title"}}</span>
+    </div>
+    <div class="bc-glow-pill" title="{{localize 'BENEOS.Companion.Origin'}}: {{displayName}}">
+      <span class="bc-glow-dot"></span>
+      <span class="bc-glow-text">{{slug}}</span>
+    </div>
+    <button type="button"
+            class="bc-iconbtn{{#if showLegacy}} is-on{{/if}}"
+            data-act="toggle-legacy"
+            title="{{localize 'BENEOS.Companion.ShowOriginalSections'}}">⋯</button>
+  </header>
+
+  <section class="bc-hero">
+    <div class="bc-emblem"
+         data-act="open-codex"
+         data-origin="{{slug}}"
+         role="button"
+         tabindex="0"
+         title="{{localize 'BENEOS.Companion.ViewCodex'}}">
+      {{#if iconUrl}}
+        <img class="bc-emblem-img" src="{{iconUrl}}" alt="{{displayName}} emblem" loading="lazy">
+      {{else}}
+        <span class="bc-emblem-mono">{{mono}}</span>
+      {{/if}}
+      <div class="bc-emblem-glow"></div>
+    </div>
+    <div class="bc-hero-text">
+      <div class="bc-eyebrow">{{localize "BENEOS.Companion.Origin"}}</div>
+      <h2 class="bc-name">{{displayName}}</h2>
+      {{#if lore}}<p class="bc-lore">{{lore}}</p>{{/if}}
+    </div>
+  </section>
+
+  <section class="bc-tier">
+    {{#if tierLabel}}
+      <span class="bc-tier-pill">{{tierLabel}}</span>
+    {{/if}}
+    <span class="bc-tier-kind {{#if isNamed}}is-named{{else}}is-generic{{/if}}">
+      {{#if isNamed}}{{localize "BENEOS.Companion.Named"}}{{else}}{{localize "BENEOS.Companion.Generic"}}{{/if}}
+    </span>
+  </section>
+
+  <section class="bc-stats">
+    <div class="bc-stat">
+      <div class="bc-stat-label">{{localize "BENEOS.Companion.Rarity"}}</div>
+      <div class="bc-stat-value">
+        <span class="bc-rarity-chip {{rarityClass}}"
+              style="color:{{rarityFg}};background:{{rarityBg}};border:1px solid {{rarityBorder}};">{{rarity}}</span>
+      </div>
+    </div>
+    {{#if goldVal}}
+      <div class="bc-stat">
+        <div class="bc-stat-label">{{localize "BENEOS.Companion.Value"}}</div>
+        <div class="bc-stat-value">{{goldVal}} gp</div>
+      </div>
+    {{/if}}
+    {{#if weight}}
+      <div class="bc-stat">
+        <div class="bc-stat-label">{{localize "BENEOS.Companion.Weight"}}</div>
+        <div class="bc-stat-value">{{weight}}</div>
+      </div>
+    {{/if}}
+  </section>
+
+  <section class="bc-modifier-row">
+    <div class="bc-modifier-header">
+      <span class="bc-modifier-label">{{localize "BENEOS.Companion.Modifier"}}</span>
+      <span class="bc-modifier-readout"><strong>{{rarityMod}}</strong> / {{rarityModMax}}</span>
+    </div>
+    <div class="bc-modbars">
+      {{#each rarityModPips}}
+        <div class="bc-modbar{{#if this.on}} on{{/if}}{{#if this.peak}} is-peak{{/if}}"></div>
+      {{/each}}
+    </div>
+  </section>
+
+  <section class="bc-contributes">
+    <div class="bc-eyebrow">{{localize "BENEOS.Companion.ContributesToward"}}</div>
+    <div class="bc-contrib-list">
+      {{#each contributes}}
+        <div class="bc-contrib-row bc-contrib-{{kind}}{{#if active}} is-active{{/if}}"
+             data-act="toggle-contrib"
+             data-tier="{{key}}"
+             data-expanded="{{#if expanded}}true{{else}}false{{/if}}">
+          <span class="bc-contrib-dot"></span>
+          <span class="bc-contrib-label">
+            {{#if prefix}}<span class="bc-contrib-prefix">{{prefix}}</span><span class="bc-contrib-sep">·</span>{{/if}}
+            <span class="bc-contrib-name">{{label}}</span>
+          </span>
+          <span class="bc-contrib-thresh">≥ {{threshold}}</span>
+        </div>
+        <div class="bc-contrib-body" data-expanded="{{#if expanded}}true{{else}}false{{/if}}">
+          <div class="bc-contrib-body-inner">
+            {{#if title}}<div class="bc-contrib-title">{{title}}</div>{{/if}}
+            <div class="bc-contrib-rules">{{{rules}}}</div>
+            <button type="button"
+                    class="bc-contrib-codexlink"
+                    data-act="open-codex"
+                    data-origin="{{../slug}}">{{localize "BENEOS.Companion.OpenInCodex"}} →</button>
+          </div>
+        </div>
+      {{/each}}
+    </div>
+  </section>
+
+  {{#if frontCard}}
+    <section class="bc-cardwrap">
+      {{> "beneos-companion/flipper"}}
+      {{#if hasBack}}
+        <div class="card-flip-hint">{{localize "BENEOS.Companion.TapToFlip"}}</div>
+      {{/if}}
+    </section>
+  {{/if}}
+
+</aside>

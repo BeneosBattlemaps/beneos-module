@@ -1,0 +1,61 @@
+<section class="beneos-loot-extras" data-beneos-loot data-release="{{loot.releaseName}}">
+
+  <div class="beneos-loot-header">
+    {{#if originDef}}
+      <div class="beneos-origin-badge" data-origin="{{loot.origin.slug}}">
+        <img class="beneos-origin-icon" src="{{originIconPath}}" alt="{{originDef.display_name}}" />
+        <div class="beneos-origin-text">
+          <div class="beneos-origin-name">{{originDef.display_name}}</div>
+          <div class="beneos-origin-lore">{{originDef.lore}}</div>
+          {{#if loot.origin.isNamed}}
+            <div class="beneos-origin-flag beneos-origin-flag--named" data-tooltip="{{localize 'BENEOS.Loot.Named.Tooltip'}}">
+              {{localize "BENEOS.Loot.Named.Label"}}
+            </div>
+          {{else}}
+            <div class="beneos-origin-flag beneos-origin-flag--generic" data-tooltip="{{localize 'BENEOS.Loot.Generic.Tooltip'}}">
+              {{localize "BENEOS.Loot.Generic.Label"}}
+            </div>
+          {{/if}}
+        </div>
+      </div>
+    {{/if}}
+
+    {{#if loot.tier}}
+      <div class="beneos-tier-chip beneos-tier-chip--{{loot.tier.number}}" data-tooltip="{{tierTooltip}}">
+        <span class="beneos-tier-chip-label">{{localize "BENEOS.Loot.Tier.Label"}}</span>
+        <span class="beneos-tier-chip-value">{{loot.tier.number}}</span>
+      </div>
+    {{/if}}
+  </div>
+
+  {{#if loot.card.frontLore}}
+    <blockquote class="beneos-loot-flavor">{{loot.card.frontLore}}</blockquote>
+  {{/if}}
+
+  {{#if hasCards}}
+    <details class="beneos-loot-cards">
+      <summary>{{localize "BENEOS.Loot.Card.Toggle"}}</summary>
+      <div class="beneos-loot-cards-grid">
+        {{#if loot.render.frontCardWebp}}
+          <figure>
+            <img src="{{loot.render.frontCardWebp}}" alt="{{localize 'BENEOS.Loot.Card.Front'}}" />
+            <figcaption>{{localize "BENEOS.Loot.Card.Front"}}</figcaption>
+          </figure>
+        {{/if}}
+        {{#if loot.render.backCardWebp}}
+          <figure>
+            <img src="{{loot.render.backCardWebp}}" alt="{{localize 'BENEOS.Loot.Card.Back'}}" />
+            <figcaption>{{localize "BENEOS.Loot.Card.Back"}}</figcaption>
+          </figure>
+        {{/if}}
+      </div>
+    </details>
+  {{/if}}
+
+  <div class="beneos-loot-toggle-row">
+    <button type="button" class="beneos-loot-legacy-toggle" data-beneos-toggle-legacy>
+      {{localize "BENEOS.Loot.ShowLegacy"}}
+    </button>
+  </div>
+
+</section>
