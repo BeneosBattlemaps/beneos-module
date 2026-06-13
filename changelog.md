@@ -4,6 +4,12 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.3.0 # 2026-06-13
+- New: **Passwordless Beneos Cloud login.** Connect a Foundry world to your Beneos Cloud account with just your email: we send a one-time code, you enter it, done. No password to remember.
+- New: **Sign up from inside Foundry.** If you do not have a Beneos account yet, entering the emailed code creates one for you and links it to the Beneos shop, so your library and purchases share one identity.
+- New: **Anonymous usage insights (GM-only, opt-out).** With your consent the module sends anonymous, GM-only data (no player data, no names) so Beneos can spot broken content and improve releases. You can turn it off any time in the module settings.
+- Improved: **Older logins keep working.** Existing password logins continue to work, so worlds on previous versions are unaffected.
+
 ### 14.2.0 # 2026-05-31
 - New: **Creature Codex.** Every Beneos and SRD creature now has its own in-Foundry codex, opened from the Token HUD, the actor-sheet header or in the Beneos Cloud Windows. It gathers the creature's lore, story hooks, foreshadowing clues, read-aloud combat moments and a full tactical guide in one window, so you can run any monster without leaving the table.
 - New: **Combat Autopilot.** During combat a single autopilot window follows the turn order and shows the active creature's play for the current round: opening move, primary and bonus actions, movement, positioning, target priority and reactions. Ability chips fire the action or open the item, HP is editable inline, and you can mute the autopilot per creature.

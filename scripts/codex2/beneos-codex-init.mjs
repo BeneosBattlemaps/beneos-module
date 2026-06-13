@@ -132,6 +132,7 @@ Hooks.once("ready", async () => {
      *  Returns a Promise so callers (e.g. the Token-HUD handler in
      *  beneos_module.js) can .catch() the result safely. */
     openForActor: async (actor) => {
+      try { game.beneos?.analytics?.track("feature_used", { feature: "codex" }); } catch (_) {}
       if (!actor) { BeneosCodex.open("creatures"); return null; }
       return BeneosCreatureCodexWindow.openForActor(actor);
     },

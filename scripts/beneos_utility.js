@@ -144,6 +144,16 @@ export class BeneosUtility {
       restricted: true
     })
 
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-cloud-base-url', {
+      name: 'Beneos Cloud base URL (advanced)',
+      hint: 'Override the Beneos Cloud base URL for testing against a dev server. Leave empty for the production cloud (https://beneos.cloud).',
+      default: "",
+      type: String,
+      scope: 'world',
+      config: false,
+      restricted: true
+    })
+
     game.settings.register(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", {
       name: 'Patreon status of the user',
       default: "",
@@ -471,6 +481,39 @@ export class BeneosUtility {
       config: false,
       type: Array,
       default: []
+    })
+
+    /* Analytics opt-out. Anonymous, GM-only usage telemetry that helps us
+       find broken assets and unreported problems. Default ON; a one-time
+       info banner explains it on first cloud-window open. */
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-analytics-enabled', {
+      name: game.i18n.localize("BENEOS.Settings.Analytics.Name") || "Share anonymous usage data",
+      hint: game.i18n.localize("BENEOS.Settings.Analytics.Hint") || "Sends anonymous, GM-only telemetry (no player data, no names) so Beneos can detect broken content and improve releases. You can turn this off at any time.",
+      scope: 'world',
+      config: true,
+      restricted: true,
+      type: Boolean,
+      default: true
+    })
+
+    /* Internal cache: detected hosting environment (self/forge/molten/aws). */
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-analytics-hosting-type', {
+      name: 'Beneos analytics hosting type (internal)',
+      scope: 'world',
+      config: false,
+      restricted: true,
+      type: String,
+      default: ''
+    })
+
+    /* Internal: whether the one-time analytics info banner has been shown. */
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-analytics-banner-shown', {
+      name: 'Beneos analytics banner shown (internal)',
+      scope: 'world',
+      config: false,
+      restricted: true,
+      type: Boolean,
+      default: false
     })
 
     /*game.settings.register(BeneosUtility.moduleID(), 'beneos-table-top-config', {
@@ -1280,6 +1323,16 @@ export class BeneosUtility {
   /********************************************************************************** */
   static moduleID() {
     return BENEOS_MODULE_ID
+  }
+
+  /********************************************************************************** */
+  // Base URL of the Beneos Cloud. Defaults to the production cloud; can be pointed
+  // at a dev server via the hidden 'beneos-cloud-base-url' world setting (no trailing slash).
+  static cloudBase() {
+    let base = ""
+    try { base = game.settings.get(BeneosUtility.moduleID(), 'beneos-cloud-base-url') || "" } catch (e) { base = "" }
+    base = String(base).trim().replace(/\/+$/, "")
+    return base || "https://beneos.cloud"
   }
 
   /********************************************************************************** */

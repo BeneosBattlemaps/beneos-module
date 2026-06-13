@@ -191,6 +191,7 @@ export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV
 
   constructor(options = {}) {
     super(options)
+    try { game.beneos?.analytics?.track("feature_used", { feature: "loot-generator" }); } catch (_) {}
     this.step = 1
     this.bias = null
     this.tier = null

@@ -3,6 +3,7 @@ import { libWrapper } from "./shim.js";
 import { BeneosUtility } from "./beneos_utility.js";
 import { BeneosModuleMenu, BeneosDatabaseHolder } from "./beneos_search_engine.js";
 import { BeneosCloud } from "./beneos_cloud.js";
+import { BeneosAnalytics } from "./beneos_analytics.js";
 import { BeneosFXEngine } from "./cloud-v2/beneos-fx.mjs";
 import { BeneosFXEditor } from "./cloud-v2/beneos-fx-editor.mjs";
 import { BeneosCloudWindowV2 } from "./cloud-v2/cloud-window-v2.mjs";
@@ -33,6 +34,8 @@ Hooks.once('init', () => {
     // Stage 13d-11: expose FX engine for the FX master-disable setting's
     // onChange handler in beneos_utility.js (avoids a circular import).
     fx: BeneosFXEngine,
+    // Anonymous, GM-only usage telemetry (opt-out, default on).
+    analytics: BeneosAnalytics,
   }
 
   BeneosUtility.registerSettings()
@@ -189,6 +192,14 @@ Hooks.once('ready', () => {
   // opens per world load (priority: tutorial-tour > setup-prompt > news).
   if (game.user.isGM) {
     game.beneos.cloud.loginAttempt()
+
+    // Anonymous usage telemetry: boot the collector and emit the once-per-
+    // session world/hosting/companion/party events. Gated internally by the
+    // GM check and the beneos-analytics-enabled opt-out, and wrapped so it can
+    // never interfere with world load.
+    Promise.resolve(BeneosAnalytics.start())
+      .then(() => BeneosAnalytics.emitSessionStartEvents())
+      .catch(e => console.warn("Beneos | analytics start failed:", e))
   }
 
   if (game.settings.get(BeneosUtility.moduleID(), "beneos-reload-search-engine")) {
@@ -255,6 +266,13 @@ Hooks.once('ready', () => {
     }
     BeneosUtility.debugMessage("[BENEOS TOKENS] Beneos Combat Start Token")
     BeneosUtility.updateToken(combatant.tokenId, {})
+    try {
+      const token = BeneosUtility.getToken(combatant.tokenId)
+      if (BeneosUtility.checkIsBeneosToken(token)) {
+        const assetId = BeneosAnalytics.beneosAssetId(token)
+        if (assetId) BeneosAnalytics.track("combat_add", { asset_id: assetId })
+      }
+    } catch (_) {}
   })
 
 
@@ -265,6 +283,13 @@ Hooks.once('ready', () => {
     }
     BeneosUtility.debugMessage("[BENEOS TOKENS] Beneos Combat End Token")
     BeneosUtility.updateToken(combatant.tokenId, {})
+    try {
+      const token = BeneosUtility.getToken(combatant.tokenId)
+      if (BeneosUtility.checkIsBeneosToken(token)) {
+        const assetId = BeneosAnalytics.beneosAssetId(token)
+        if (assetId) BeneosAnalytics.track("combat_remove", { asset_id: assetId })
+      }
+    } catch (_) {}
   })
 
   /********************************************************************************** */
@@ -273,6 +298,12 @@ Hooks.once('ready', () => {
       return
     }
     BeneosUtility.createToken(token)
+    try {
+      if (BeneosUtility.checkIsBeneosToken(token)) {
+        const assetId = BeneosAnalytics.beneosAssetId(token)
+        if (assetId) BeneosAnalytics.track("canvas_drop_local", { asset_id: assetId })
+      }
+    } catch (_) {}
   })
 
   /********************************************************************************** */
@@ -280,7 +311,13 @@ Hooks.once('ready', () => {
     if (!game.user.isGM) {
       return
     }
-    BeneosUtility.processCanvasReady()
+    try {
+      BeneosUtility.processCanvasReady()
+    } catch (e) {
+      try { BeneosAnalytics.trackBattlemapError(canvas?.scene, e) } catch (_) {}
+      throw e
+    }
+    try { BeneosAnalytics.trackSceneActivate(canvas?.scene) } catch (_) {}
   });
 
   /********************************************************************************** */
@@ -485,6 +522,7 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
         e.stopPropagation()
         try {
           new BeneosFXEditor(token).render(true)
+          try { BeneosAnalytics.track("feature_used", { feature: "fx-editor" }) } catch (_) {}
         } catch (err) {
           console.warn("[Beneos] FX-Editor open failed", err)
         }
@@ -615,6 +653,35 @@ Hooks.on("preUpdateActor", (actor, changes, options, userId) => {
   } catch (err) {
     console.warn("[Beneos] Creator-Mode preUpdateActor auto-write failed", err)
   }
+})
+
+// Analytics: a GM personalising a Beneos creature (rename or stat tweak) is a
+// strong "this asset is actually used" signal. We only record WHICH top-level
+// fields changed, never the values, and only the asset_id, never the name.
+// Debounced 30s per actor because Foundry fires internal preUpdateActor churn.
+Hooks.on("preUpdateActor", (actor, changes) => {
+  try {
+    if (!game.user.isGM || !BeneosUtility.checkIsBeneosToken(actor)) return
+    const assetId = BeneosAnalytics.beneosAssetId(actor)
+    if (!assetId) return
+
+    const nameChanged = typeof changes?.name === "string"
+    const sys = changes?.system
+    const statFields = []
+    if (sys?.attributes?.hp !== undefined) statFields.push("hp")
+    if (sys?.attributes?.ac !== undefined) statFields.push("ac")
+    if (sys?.abilities !== undefined) statFields.push("abilities")
+    if (sys?.details?.cr !== undefined) statFields.push("cr")
+    if (sys?.attributes?.movement !== undefined) statFields.push("movement")
+
+    if (!nameChanged && !statFields.length) return
+    if (!BeneosAnalytics.shouldEmitActorModify(actor.id)) return
+
+    if (nameChanged) BeneosAnalytics.track("actor_modify_name", { asset_id: assetId })
+    if (statFields.length) {
+      BeneosAnalytics.track("actor_modify_stats", { asset_id: assetId, fields_changed: statFields })
+    }
+  } catch (_) { /* swallow */ }
 })
 
 // Path 2 (PRIMARY designer path): Right-Click placed Token →
@@ -770,6 +837,10 @@ Hooks.on("preCreateActor", (actor, data, context) => {
 Hooks.on("dropCanvasData", (canvas, data) => {
   if (data?.beneosCloudPending !== true) return true
   game.beneos?.cloud?.handlePendingCanvasDrop?.(canvas, data)
+  try {
+    const assetId = data?.beneosTokenKey || data?.beneosItemKey || null
+    if (assetId) BeneosAnalytics.track("canvas_drop_cloud", { asset_id: assetId })
+  } catch (_) {}
   return false
 })
 /********************************************************************************** */

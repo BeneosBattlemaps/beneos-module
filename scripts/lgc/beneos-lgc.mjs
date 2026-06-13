@@ -597,6 +597,7 @@ export class BeneosLiveGameControl extends HandlebarsApplicationMixin(Applicatio
       if (dispatch.soundUserIds.length) {
         emitPingSound(dispatch.soundUserIds, { alsoGM: true });
       }
+      try { game.beneos?.analytics?.track("feature_used", { feature: "lgc-ping" }); } catch (_) {}
       await createPingWhispers(ping, dispatch);
     } catch (e) {
       console.warn("Beneos | LGC ping dispatch failed:", e);

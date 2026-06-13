@@ -27,6 +27,7 @@
    ============================================================= */
 
 import { BeneosUtility } from "../beneos_utility.js"
+import { BeneosAnalytics } from "../beneos_analytics.js"
 import { BeneosCloudLogin } from "../beneos_cloud.js"
 import { BeneosStartSetupTour } from "../beneos_tours.js"
 import { BeneosLootGenerator } from "./loot-generator.mjs"
@@ -2783,6 +2784,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     if (!key || !type) return
     const cloud = game.beneos?.cloud
     if (!cloud) return
+    try {
+      const drawer = this._analyticsDrawerOpen
+      const sinceMs = (drawer?.key === key && drawer?.ts) ? (Date.now() - drawer.ts) : null
+      BeneosAnalytics.track("install_initiated", {
+        asset_id: key,
+        asset_type: type,
+        time_since_drawer_open_ms: sinceMs
+      })
+    } catch (_) {}
     // Wave B-9-fix-46: if the user has Ctrl+click-built a multi-select
     // and clicks the drawer install button, kick off imports for every
     // key in the set instead of just the drawer card. Bmaps don't
@@ -2863,6 +2873,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // beneos_module.js's toolbar handler. _onRender runs after the
     // V2 window is in DOM — clean handover with no flicker.
     document.getElementById("beneos-cloud-loading-splash")?.remove()
+    // One-time anonymous-analytics info banner (no-op after first acceptance).
+    try { BeneosAnalytics.maybeShowConsentBanner() } catch (_) {}
   }
 
   // Hero rotation for the Home tab. Cycles slides every 7s and pauses
@@ -3287,6 +3299,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
           // Wave B-5e-fix-4: filter change -> back to first page.
           this.#resetPagination()
           this.#renderResults(["results"])
+          try {
+            if (this._textFilter) {
+              BeneosAnalytics.track("search_query", {
+                query: BeneosAnalytics.sanitize(this._textFilter, 64),
+                tab: this.searchMode
+              })
+            }
+          } catch (_) {}
         }, 300)
       })
     }
@@ -3309,6 +3329,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
           // Wave B-5e-fix-4: dropdown change -> back to first page.
           this.#resetPagination()
           this.#renderResults(["results"])
+          try {
+            BeneosAnalytics.track("filter_applied", {
+              filter_type: BeneosAnalytics.sanitize(sel.id || "", 32),
+              filter_value: BeneosAnalytics.sanitize(sel.value || "", 48),
+              tab: this.searchMode
+            })
+          } catch (_) {}
         }, 100)
       })
     })
@@ -3645,6 +3672,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         const list = this.element?.querySelector(".bc-result-list")
         const scrollTop = list?.scrollTop || 0
         this.selectedAssetKey = key
+        try {
+          this._analyticsDrawerOpen = { key, ts: Date.now() }
+          BeneosAnalytics.track("result_drawer_open", { asset_id: key, asset_type: this.searchMode })
+        } catch (_) {}
         this.#showLoading()
 
         // Lazy-load the full description from the appropriate Beneos

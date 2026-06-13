@@ -137,7 +137,8 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
 
   constructor(options = {}) {
     super(options)
-    // Punkt 3 v3: 4 steps — Type → Size+Name → Loading → Result
+    try { game.beneos?.analytics?.track("feature_used", { feature: "magic-shop" }); } catch (_) {}
+    // Punkt 3 v3: 4 steps: Type, Size+Name, Loading, Result
     this.step = 1
     this.shopType = null           // Punkt 3 v3: e.g. "magic_shop"
     this.size = null               // "small" | "medium" | "large"

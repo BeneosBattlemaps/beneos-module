@@ -218,15 +218,14 @@ export class BeneosCloudLogin extends FormApplication {
         content,
         rejectClose: false,
         buttons: [{
-          action: "login",
-          label: game.i18n.localize("BENEOS.Cloud.Login.Submit"),
+          action: "connect",
+          label: game.i18n.localize("BENEOS.Cloud.ConnectAccount.ButtonLabel"),
           default: true,
           callback: (event, button, dialog) => {
-            const output = Array.from(button.form.elements).reduce((obj, input) => {
-              if (input.name) obj[input.name] = input.value
-              return obj
-            }, {})
-            return output
+            // Passwordless: email only. We email a one-time code (login for existing
+            // accounts, registration for new ones), then verify it in connectWithCode().
+            const emailEl = button.form.elements.email
+            return { mode: "otp", email: emailEl ? emailEl.value : "" }
           },
         }, {
           action: "cancel",
@@ -275,6 +274,12 @@ export class BeneosCloudLogin extends FormApplication {
       if (!loginData || typeof loginData !== "object") return
     }
 
+    // Passwordless path: the user clicked "Connect with email code" in the dialog.
+    // Hand off to the one-time-code flow; the email+password branch below is skipped.
+    if (loginData.mode === "otp") {
+      return this.connectWithCode((loginData.email || "").trim(), userId)
+    }
+
     // Wave B-9-fix-57: validate that BOTH fields were filled. Empty
     // fields used to fall through to the LoginFailed red error which
     // confused the user — the issue isn't bad credentials, it's an
@@ -284,7 +289,7 @@ export class BeneosCloudLogin extends FormApplication {
       return
     }
 
-    let cloudLoginURL = `https://beneos.cloud/foundry-login.php?email=${encodeURIComponent(loginData.email)}&password=${encodeURIComponent(loginData.password)}&foundryId=${encodeURIComponent(userId)}`
+    let cloudLoginURL = `${BeneosUtility.cloudBase()}/foundry-login.php?email=${encodeURIComponent(loginData.email)}&password=${encodeURIComponent(loginData.password)}&foundryId=${encodeURIComponent(userId)}`
     // Wave B-5d-Hotfix: sanitize URL for console (strip password) so we can
     // share screenshots without leaking credentials.
     BeneosUtility.debugMessage("BENEOS Cloud login attempt:", cloudLoginURL.replace(/password=[^&]+/, "password=***"))
@@ -346,7 +351,7 @@ export class BeneosCloudLogin extends FormApplication {
     let requestOrigin = this.requestOrigin
 
     let pollInterval = setInterval(function () {
-      let url = `https://beneos.cloud/foundry-manager.php?check=1&foundryId=${encodeURIComponent(userId)}`
+      let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?check=1&foundryId=${encodeURIComponent(userId)}`
       // Fix #A4 / Wave B-5d-Hotfix: HTTP-status check + .catch() so server
       // errors and network failures during polling don't loop silently for
       // 30 seconds. Polling stops on the first hard error.
@@ -423,6 +428,106 @@ export class BeneosCloudLogin extends FormApplication {
   }
 
   /********************************************************************************** */
+  // Passwordless login (steps 1 + 2): ask the Cloud to email a one-time code, then
+  // verify it. On success it reuses pollForAccess() exactly like the password path,
+  // so login state, settings and the V2 re-render are handled by the same code.
+  async connectWithCode(email, userId) {
+    if (!game.user.isGM) return
+    if (!email || !email.trim()) {
+      ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Notification.LoginIncomplete"))
+      return
+    }
+    email = email.trim()
+
+    // Step 1: request a code.
+    let reqURL = `${BeneosUtility.cloudBase()}/foundry-otp-request.php?email=${encodeURIComponent(email)}&foundryId=${encodeURIComponent(userId)}`
+    let sent = false
+    try {
+      const resp = await fetch(reqURL, { credentials: 'same-origin' })
+      game.beneos?.cloud?.markServerStatus?.(resp, null)
+      if (!resp.ok) {
+        if (resp.status >= 500) ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginServerOffline"))
+        else ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.LoginHttpError", { status: resp.status }))
+        return
+      }
+      const data = await resp.json()
+      sent = (data.result === 'OK')
+    } catch (err) {
+      game.beneos?.cloud?.markServerStatus?.(null, err)
+      console.error("BENEOS Cloud OTP request error:", err)
+      ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginServerOffline"))
+      return
+    }
+    if (!sent) {
+      ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginFailed"))
+      return
+    }
+    ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Notification.CodeSent"))
+
+    // Step 2: collect the code and verify it.
+    const codeData = await this.codeDialog()
+    if (!codeData || typeof codeData !== "object" || !codeData.code?.trim()) return
+    const code = codeData.code.trim()
+
+    let verURL = `${BeneosUtility.cloudBase()}/foundry-otp-verify.php?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}&foundryId=${encodeURIComponent(userId)}`
+    try {
+      const resp = await fetch(verURL, { credentials: 'same-origin' })
+      game.beneos?.cloud?.markServerStatus?.(resp, null)
+      if (!resp.ok) {
+        ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.LoginHttpError", { status: resp.status }))
+        return
+      }
+      const data = await resp.json()
+      if (data.result === 'OK') {
+        this.pollForAccess(userId)
+      } else {
+        ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.CodeInvalid"))
+      }
+    } catch (err) {
+      game.beneos?.cloud?.markServerStatus?.(null, err)
+      console.error("BENEOS Cloud OTP verify error:", err)
+      ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginServerOffline"))
+    }
+  }
+
+  /********************************************************************************** */
+  // Small second-step dialog asking for the 6-digit code. Same look as the login dialog.
+  async codeDialog() {
+    const content = `<section class="bc-login-form">
+      <p class="bc-login-form__hint">${game.i18n.localize("BENEOS.Cloud.ConnectAccount.CodeDescription")}</p>
+      <div class="bc-login-form__field">
+        <label for="code" class="bc-login-form__label">${game.i18n.localize("BENEOS.Cloud.ConnectAccount.CodeLabel")}</label>
+        <input type="text" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" class="bc-login-form__input" />
+      </div>
+    </section>`
+    let result = null
+    try {
+      result = await foundry.applications.api.DialogV2.wait({
+        window: { title: game.i18n.localize("BENEOS.Cloud.ConnectAccount.Title") },
+        classes: ["dialog", "app", "window-app", "beneos-cloud-app", "beneos-cloud-login-dialog"],
+        content,
+        rejectClose: false,
+        buttons: [{
+          action: "verify",
+          label: game.i18n.localize("BENEOS.Cloud.ConnectAccount.VerifyCode"),
+          default: true,
+          callback: (event, button, dialog) => {
+            const el = button.form.elements.code
+            return { code: el ? el.value : "" }
+          },
+        }, {
+          action: "cancel",
+          label: game.i18n.localize("BENEOS.Cloud.Login.Cancel"),
+          callback: () => null
+        }]
+      })
+    } catch (e) {
+      result = null
+    }
+    return result
+  }
+
+  /********************************************************************************** */
   render(loginData = null) {
     this.loginRequest(loginData)
   }
@@ -487,7 +592,7 @@ export class BeneosCloud {
     this._serverProbeHandle = setInterval(() => {
       if (!this.serverOffline) return
       const userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id") || ""
-      const url = `https://beneos.cloud/foundry-manager.php?check=1&foundryId=${encodeURIComponent(userId)}&_t=${Date.now()}`
+      const url = `${BeneosUtility.cloudBase()}/foundry-manager.php?check=1&foundryId=${encodeURIComponent(userId)}&_t=${Date.now()}`
       fetch(url, { credentials: 'same-origin' })
         .then(r => this.markServerStatus(r, null))
         .catch(err => this.markServerStatus(null, err))
@@ -543,7 +648,7 @@ export class BeneosCloud {
     }
 
     // Check login validity
-    let url = `https://beneos.cloud/foundry-manager.php?check=1&foundryId=${encodeURIComponent(userId)}`
+    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?check=1&foundryId=${encodeURIComponent(userId)}`
     // Wave B-5d-Hotfix: silent init-time check; on network failure we don't
     // bother the user with a notification (they haven't asked for anything
     // yet) — just log so devs can see why the cloud chip is not green.
@@ -1222,7 +1327,7 @@ export class BeneosCloud {
       const v = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-last-content-fetch-server-time")
       if (typeof v === "number" && v > 0) sinceTs = v
     } catch (e) { /* setting not registered yet */ }
-    let url = `https://beneos.cloud/foundry-manager.php?get_content=1&foundryId=${encodeURIComponent(userId)}`
+    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_content=1&foundryId=${encodeURIComponent(userId)}`
     if (sinceTs > 0) url += `&since=${encodeURIComponent(sinceTs)}`
     try {
       const response = await fetch(url, { credentials: 'same-origin' })
@@ -2879,7 +2984,7 @@ export class BeneosCloud {
     this.inflightImports.add(lockKey)
 
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
-    let url = `https://beneos.cloud/foundry-manager.php?get_token=1&foundryId=${encodeURIComponent(userId)}&tokenKey=${encodeURIComponent(tokenKey)}`
+    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_token=1&foundryId=${encodeURIComponent(userId)}&tokenKey=${encodeURIComponent(tokenKey)}`
     return fetch(url, { credentials: 'same-origin' })
       .then(response => response.json())
       .then(async function (data) {
@@ -2926,7 +3031,7 @@ export class BeneosCloud {
     this.inflightImports.add(lockKey)
 
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
-    let url = `https://beneos.cloud/foundry-manager.php?get_item=1&foundryId=${encodeURIComponent(userId)}&itemKey=${encodeURIComponent(itemKey)}`
+    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_item=1&foundryId=${encodeURIComponent(userId)}&itemKey=${encodeURIComponent(itemKey)}`
     return fetch(url, { credentials: 'same-origin' })
       .then(response => response.json())
       .then(async function (data) {
@@ -2965,7 +3070,7 @@ export class BeneosCloud {
     this.inflightImports.add(lockKey)
 
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
-    let url = `https://beneos.cloud/foundry-manager.php?get_spell=1&foundryId=${encodeURIComponent(userId)}&spellKey=${encodeURIComponent(spellKey)}`
+    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_spell=1&foundryId=${encodeURIComponent(userId)}&spellKey=${encodeURIComponent(spellKey)}`
     return fetch(url, { credentials: 'same-origin' })
       .then(response => response.json())
       .then(async function (data) {
@@ -3001,7 +3106,7 @@ export class BeneosCloud {
     this.inflightImports.add(lockKey)
 
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
-    let url = `https://beneos.cloud/foundry-manager.php?download_uploaded_file=1&foundryId=${encodeURIComponent(userId)}&filename=${encodeURIComponent(filename)}`
+    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?download_uploaded_file=1&foundryId=${encodeURIComponent(userId)}&filename=${encodeURIComponent(filename)}`
 
     try {
       let response = await fetch(url, { credentials: 'same-origin' })
