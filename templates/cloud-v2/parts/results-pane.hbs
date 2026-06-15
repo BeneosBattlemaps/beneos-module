@@ -204,6 +204,15 @@
             {{#if card.beneosChip}}
               <span class="bc-status-chip bc-status-beneos bc-thumb-chip" data-tooltip="Beneos Original (non-SRD)">{{card.beneosChip}}</span>
             {{/if}}
+            {{!-- Plan §33.6 install-state badge for release-cards. Green tick
+                 when the release is installed in this world (sourceSignature
+                 still matches the cloud), gold "!" when the cloud has a newer
+                 version since the world install. --}}
+            {{#if card.dlBadgeFresh}}
+              <span class="bc-dl-status bc-dl-fresh" data-tooltip="{{card.dlBadgeTooltip}}">✓</span>
+            {{else if card.dlBadgeStale}}
+              <span class="bc-dl-status bc-dl-stale" data-tooltip="{{card.dlBadgeTooltip}}">!</span>
+            {{/if}}
           </div>
 
           {{!-- Wave B-8d-fix-1: New/Update chips live next to the name now,

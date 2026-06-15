@@ -35,6 +35,7 @@ import { BeneosMagicShopGenerator } from "./magic-shop-generator.mjs"
 import { HomeController } from "./home/home-controller.mjs"
 import { BeneosPatchlogWindow } from "./home/patchlog-window.mjs"
 import { fetchNewsFeed, markNewsRead } from "./services/news-api.mjs"
+import { BeneosInstallState, BeneosPreInstallDialog, beneosLogModuleInstall } from "./beneos-install-state.mjs"
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
 
@@ -4494,18 +4495,82 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       queue.push({ packId: buildPackId(sceneSlug), label: mapName + variantLabel, coverUrl: releaseCover || sceneThumb })
     }
 
+    // Plan §33.6 — pre-install dialog. If the world already has any variant
+    // of this release recorded, warn the user before the importer runs. The
+    // dialog is skipped for fresh installs (no record on this releaseDir).
+    const existingInstalls = BeneosInstallState.findByReleaseDir(releaseDir)
+    if (existingInstalls.length) {
+      const okToProceed = await BeneosPreInstallDialog.confirm({
+        existingInstalls,
+        releaseDir,
+        newVariant:          isSingle ? "" : variant,
+        releaseDisplayName:  bmapData?.name || releaseEntry?.display_name || releaseDir,
+      })
+      if (!okToProceed) {
+        return
+      }
+      // Variant-switch: drop the old record so the world only ever tracks
+      // one variant per release. Same-variant reinstall keeps the key and
+      // overwrites it on success.
+      const newVariantStr = isSingle ? "" : variant
+      for (const e of existingInstalls) {
+        if ((e.variant || "") !== newVariantStr) {
+          await BeneosInstallState.forget({ releaseDir, variant: e.variant || "" })
+        }
+      }
+    }
+
+    // Plan §33.6 — capture scene-ids the upcoming importPackage creates so
+    // recordInstall stores the link. The scene-packer importer fires
+    // "ScenePacker.importMoulinetteComplete" with {sceneID, actorID, info}
+    // once per imported pack; we collect them until the install loop ends.
+    const installedSceneIds = []
+    const hookId = Hooks.on("ScenePacker.importMoulinetteComplete", (payload) => {
+      const sid = payload?.sceneID
+      if (sid) installedSceneIds.push(String(sid))
+    })
+
     // Sequential install: MoulinetteImporter is per-scene idempotent so a pair
     // install is just two awaits. Errors on one entry do not abort the rest;
     // we surface them individually to the user. The progress window itself is
     // the user-facing status — we keep the legacy info-toast off so the user
     // sees only the Beneos UI (Plan §18 toast-suppress).
+    let anySuccess = false
     for (const job of queue) {
       try {
         await mgr.importPackage(job.packId, { label: job.label, coverUrl: job.coverUrl })
+        anySuccess = true
       } catch (err) {
         console.warn("BeneosCloudWindowV2 | cloud install failed", job, err)
         ui.notifications.error(`Cloud install failed for ${job.label}: ${err?.message || err}`)
       }
+    }
+    Hooks.off("ScenePacker.importMoulinetteComplete", hookId)
+
+    // Plan §33.6 — persist the install record + ping cluster031 log_download.
+    // Only on success: a fully-failed install must not leave a stale install
+    // marker that hides the "missing scenes" symptom on the next render.
+    if (anySuccess) {
+      const assetId = String(releaseEntry?.cloud_release_id || props.cloud_release_id || "")
+      const sourceSig = String(releaseEntry?.content_signature || "")
+      try {
+        await BeneosInstallState.recordInstall({
+          releaseDir,
+          variant:         isSingle ? "" : variant,
+          assetId,
+          sceneIds:        installedSceneIds,
+          sourceSignature: sourceSig,
+          sceneCount:      installedSceneIds.length,
+        })
+      } catch (e) {
+        console.warn("BeneosCloudWindowV2 | recordInstall failed", e)
+      }
+      const labelVariant = isSingle ? "" : (variant === "HD" ? "Foundry_HD" : "Foundry_4K")
+      beneosLogModuleInstall({
+        assetId,
+        variant:    labelVariant,
+        sceneCount: installedSceneIds.length,
+      })
     }
   }
 
@@ -4832,6 +4897,30 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const coverUrl = useV === "HD" ? (r?.cover_url_hd || r?.cover_url_4k || null)
                                      : (r?.cover_url_4k || r?.cover_url_hd || null)
       const bytes    = r?.bytes_per_variant?.[useV] || 0
+
+      // Plan §33.6 — install-state for the green / gold badge. The world
+      // setting "battlemap-installs" carries every installed release; we
+      // check the active-variant first, then fall back to "any variant".
+      // is_stale compares stored sourceSignature against the freshly
+      // fetched content_signature on list_releases.
+      let installState = null
+      const installs = BeneosInstallState.findByReleaseDir(r.release_dir)
+      if (installs.length) {
+        const wantVariant = single ? "" : useV
+        const matchActive = installs.find(e => (e.variant || "") === wantVariant)
+        const chosen = matchActive || installs[0]
+        const currentSig = String(r?.content_signature || "")
+        const stale = currentSig !== "" && chosen.sourceSignature !== "" && chosen.sourceSignature !== currentSig
+        installState = {
+          installed:        true,
+          stale,
+          variantInstalled: chosen.variant || "",
+          variantMatch:     !!matchActive,
+          installedAt:      chosen.installedAt || "",
+          sceneCount:       chosen.sceneCount || (chosen.sceneIds?.length || 0),
+        }
+      }
+
       return {
         key:                  r.release_dir,
         name:                 r.display_name || r.release_dir,
@@ -4859,6 +4948,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // but the click-to-open path still goes through enrichCard for
         // the install button to fire correctly.
         installScope:         "release",
+        // Plan §33.6 badge fields (consumed by results-pane.hbs).
+        installState,
+        dlBadgeFresh:         !!(installState && !installState.stale),
+        dlBadgeStale:         !!(installState && installState.stale),
+        dlBadgeTooltip:       installState
+          ? (installState.stale
+              ? `Installed ${installState.variantInstalled || "single-variant"} on ${this.#formatInstallDate(installState.installedAt)} (${installState.sceneCount} scenes). Release updated since install.`
+              : `Installed ${installState.variantInstalled || "single-variant"} on ${this.#formatInstallDate(installState.installedAt)} (${installState.sceneCount} scenes).`)
+          : "",
       }
     })
     return {
@@ -4870,6 +4968,18 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       loadingReleases: !!this._releaseLoading,
       releasesError:   this._releaseLoadError || null,
     }
+  }
+
+  // Plan §33.6 - render an install timestamp for the badge tooltip. Same
+  // toLocaleDateString approach as the storefront; degrades to "earlier"
+  // when the stored value can't be parsed (e.g. legacy install record).
+  #formatInstallDate(iso) {
+    if (!iso) return "earlier"
+    try {
+      const d = new Date(iso)
+      if (isNaN(d.getTime())) return "earlier"
+      return d.toLocaleDateString()
+    } catch (_e) { return "earlier" }
   }
 
   // Small inline byte-formatter for release-card labels. Foundry's

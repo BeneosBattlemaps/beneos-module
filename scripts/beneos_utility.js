@@ -244,6 +244,20 @@ export class BeneosUtility {
       default: false
     })
 
+    // Plan §33.6: world-scoped record of installed battlemap releases.
+    // Map<"<releaseDir>_<variant>", { sceneIds[], installedAt iso, assetId,
+    // sourceSignature, sceneCount }>. Empty at world-start (no auto-scan; see
+    // Plan §33.10 decision). The cloud window reads this to surface the green
+    // installed-badge plus the gold update-available badge, and the pre-install
+    // dialog uses it to detect re-install + variant-switch attempts.
+    game.settings.register(BeneosUtility.moduleID(), 'battlemap-installs', {
+      name: 'Beneos installed battlemap releases',
+      scope: 'world',
+      config: false,
+      type: Object,
+      default: {}
+    })
+
     // Top-Down Stage 2: per-user default install style for tokens.
     // "tokenized" = classic 2.5D (-token.webp), "topdown" = top-down
     // skin (-top.webp). The Search-Window sidebar exposes a radio so

@@ -1781,6 +1781,40 @@
 .beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-thumb-chip {
   display: none;
 }
+
+/* Plan §33.6 install-state badge on release-cards. Position top-right of
+ * the thumb so it sits opposite FREE (top-left) and above the bottom-row
+ * status chips. Round, mono-glyph (✓ or !), tooltip carries the date and
+ * scene-count via data-tooltip. Visible in BOTH grid and list modes. */
+.beneos-cloud-app .bc-card-thumb .bc-dl-status {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  border: 1px solid var(--bc-line, rgba(255,255,255,0.15));
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px);
+}
+.beneos-cloud-app .bc-card-thumb .bc-dl-status.bc-dl-fresh {
+  color: var(--bc-success, #6fcf52);
+  border-color: color-mix(in srgb, var(--bc-success, #6fcf52) 55%, transparent);
+  background: color-mix(in srgb, var(--bc-success, #6fcf52) 18%, rgba(0,0,0,0.55));
+}
+.beneos-cloud-app .bc-card-thumb .bc-dl-status.bc-dl-stale {
+  color: var(--bc-warn, #e0b53e);
+  border-color: color-mix(in srgb, var(--bc-warn, #e0b53e) 60%, transparent);
+  background: color-mix(in srgb, var(--bc-warn, #e0b53e) 18%, rgba(0,0,0,0.55));
+}
+
 /* Hide ALL in-name status chips in grid mode (BENEOS + NEW + UPDATE)
  * so they don't double-render alongside the in-thumb copies. */
 .beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-name-row .bc-status-chip:not(.bc-thumb-chip) {
