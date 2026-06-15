@@ -1,0 +1,91 @@
+{{!-- Plan §18 Phase A: Beneos-styled install progress window. Replaces
+     the scene-packer wizard (gray, off-brand, asks redundant scope
+     question) with our own --bc-* themed UI. Cover hero, total progress,
+     phase list with status icons, current operation, close button. --}}
+<section class="bc-install-progress" data-bc-install-state="{{state}}">
+
+  {{#if coverUrl}}
+    <header class="bcip-hero" style="background-image: url('{{coverUrl}}');">
+      <div class="bcip-hero-gradient"></div>
+      <div class="bcip-hero-text">
+        <h2 class="bcip-title">{{label}}</h2>
+        {{#if subtitle}}<p class="bcip-subtitle">{{subtitle}}</p>{{/if}}
+      </div>
+    </header>
+  {{else}}
+    <header class="bcip-hero bcip-hero-plain">
+      <h2 class="bcip-title">{{label}}</h2>
+      {{#if subtitle}}<p class="bcip-subtitle">{{subtitle}}</p>{{/if}}
+    </header>
+  {{/if}}
+
+  <div class="bcip-body">
+
+    <div class="bcip-total">
+      <div class="bcip-total-row">
+        <span class="bcip-total-label">{{localize "BENEOS.Cloud.Bmap.InstallProgress.TotalProgress"}}</span>
+        <span class="bcip-total-pct">{{totalPct}}%</span>
+      </div>
+      <div class="bcip-bar">
+        <div class="bcip-bar-fill" style="width: {{totalPct}}%;"></div>
+      </div>
+      {{#if currentLabel}}
+        <div class="bcip-current" data-tooltip="{{currentLabel}}">
+          {{#if currentSpinner}}<i class="fa-solid fa-circle-notch fa-spin"></i>{{/if}}
+          <span class="bcip-current-text">{{currentLabel}}</span>
+        </div>
+      {{/if}}
+    </div>
+
+    <ul class="bcip-phases">
+      {{#each phases as |p|}}
+        <li class="bcip-phase bcip-phase-{{p.status}}">
+          <span class="bcip-phase-icon">
+            {{#if (eq p.status "done")}}<i class="fa-solid fa-circle-check"></i>{{/if}}
+            {{#if (eq p.status "active")}}<i class="fa-solid fa-circle-notch fa-spin"></i>{{/if}}
+            {{#if (eq p.status "pending")}}<i class="fa-regular fa-circle"></i>{{/if}}
+            {{#if (eq p.status "skipped")}}<i class="fa-solid fa-minus"></i>{{/if}}
+            {{#if (eq p.status "error")}}<i class="fa-solid fa-circle-xmark"></i>{{/if}}
+          </span>
+          <span class="bcip-phase-label">{{localize p.labelKey}}</span>
+          {{#if p.count}}<span class="bcip-phase-count">{{p.count}}</span>{{/if}}
+        </li>
+      {{/each}}
+    </ul>
+
+    {{#if errorMessage}}
+      <div class="bcip-error">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>{{errorMessage}}</span>
+      </div>
+    {{/if}}
+
+    {{#if completedMessage}}
+      <div class="bcip-success">
+        <i class="fa-solid fa-circle-check"></i>
+        <span>{{completedMessage}}</span>
+      </div>
+    {{/if}}
+
+  </div>
+
+  <footer class="bcip-actions">
+    {{#if showOpenScenes}}
+      <button type="button" class="bc-card-button bc-card-button-primary"
+              data-action="openFirstScene">
+        <i class="fa-solid fa-image"></i>
+        {{localize "BENEOS.Cloud.Bmap.InstallProgress.OpenFirstScene"}}
+      </button>
+    {{/if}}
+    <button type="button" class="bc-card-button{{#if closeDisabled}} bc-card-button-disabled{{/if}}"
+            data-action="closeProgress"
+            {{#if closeDisabled}}disabled{{/if}}>
+      {{#if closeDisabled}}
+        {{localize "BENEOS.Cloud.Bmap.InstallProgress.WaitForFinish"}}
+      {{else}}
+        {{localize "BENEOS.Cloud.Bmap.InstallProgress.Close"}}
+      {{/if}}
+    </button>
+  </footer>
+
+</section>

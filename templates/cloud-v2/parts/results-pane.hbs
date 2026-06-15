@@ -33,6 +33,40 @@
           </button>
         </span>
       {{/if}}
+      {{!-- Plan §13: battlemap-specific toolbar — resolution toggle (4K/HD)
+           + view-mode toggle (Releases / Individual Maps). Visible only when
+           the active asset tab is bmap. The Grid/List toggle below stays in
+           place; this strip layers on top, orthogonal to it. --}}
+      {{#if isBmap}}
+      <div class="bc-bmap-toolbar" role="group" aria-label="Battlemap view controls">
+        <div class="bc-bmap-res" role="tablist" aria-label="Resolution">
+          <button type="button"
+                  class="bc-view-button{{#if bmapRes4K}} bc-view-active{{/if}}"
+                  data-bmap-res="4K" data-action="switchBmapRes">4K</button>
+          <button type="button"
+                  class="bc-view-button{{#unless bmapRes4K}} bc-view-active{{/unless}}"
+                  data-bmap-res="HD" data-action="switchBmapRes">HD</button>
+        </div>
+        <div class="bc-bmap-view" role="tablist" aria-label="View mode">
+          <button type="button"
+                  class="bc-view-button{{#if bmapViewIsReleases}} bc-view-active{{/if}}"
+                  data-bmap-view="releases" data-action="switchBmapView">{{localize "BENEOS.Cloud.Bmap.Releases"}}</button>
+          <button type="button"
+                  class="bc-view-button{{#unless bmapViewIsReleases}} bc-view-active{{/unless}}"
+                  data-bmap-view="individual" data-action="switchBmapView">{{localize "BENEOS.Cloud.Bmap.Individual"}}</button>
+        </div>
+        {{!-- Plan §15.2 debug filter: drops catalog entries without a
+             cloud_release_id so the operator can isolate the cloud pilot
+             slice while the migration sweep is still in flight. --}}
+        <label class="bc-bmap-debug-toggle"
+               data-tooltip="{{localize 'BENEOS.Cloud.Bmap.OnlyCloudReadyTooltip'}}">
+          <input type="checkbox"
+                 data-action="switchBmapCloudReadyOnly"
+                 {{#if bmapCloudReadyOnly}}checked{{/if}}>
+          <span>{{localize "BENEOS.Cloud.Bmap.OnlyCloudReady"}}</span>
+        </label>
+      </div>
+      {{/if}}
       {{!-- Wave B-9: list / grid view toggle. Two segmented buttons,
            the active one is highlighted via .bc-view-active. The state
            round-trips through this.viewMode + a client-scoped Foundry
@@ -217,7 +251,17 @@
                  that visual weight reads as "primary tag" instead of
                  "footnote"). Single chained conditional since item and
                  spell branches never coexist on the same card. --}}
-            {{#if card.itemTierLabel}}
+            {{#if card.isReleaseCard}}
+              {{!-- Plan §15.1 release-card stats: bytes for the active
+                   resolution + scene count + variant chip. The resolution
+                   toggle updates bytesLabel + variantLabel + thumbUrl in
+                   #buildReleaseCards so flipping the chip is live. --}}
+              <div class="bc-card-stats">
+                {{#if card.bytesLabel}}<span class="bc-stat bc-stat-release-bytes">{{card.bytesLabel}}</span>{{/if}}
+                {{#if card.sceneCount}}<span class="bc-stat bc-stat-release-scenes">{{card.sceneCount}} {{localize "BENEOS.Cloud.Bmap.Scenes"}}</span>{{/if}}
+                {{#if card.variantLabel}}<span class="bc-stat bc-stat-release-variant">{{card.variantLabel}}</span>{{/if}}
+              </div>
+            {{else if card.itemTierLabel}}
               <div class="bc-card-stats">
                 <span class="bc-stat bc-stat-tier"
                       {{#if card.tierTooltip}}data-tooltip="{{card.tierTooltip}}"{{/if}}
@@ -336,6 +380,41 @@
               </button>
             {{else if card.isCloudAvailable}}
               {{#if card.isBmap}}
+                {{#if card.isReleaseCard}}
+                  {{!-- Plan §18.7: release-card single "Install via Beneos
+                       Cloud" button — routes to native installer. No
+                       Moulinette legacy (Moulinette doesn't understand
+                       release_dir as a pack key). --}}
+                  <button type="button" class="bc-card-button bc-card-button-primary bc-action-install"
+                          data-asset-key="{{card.key}}"
+                          data-asset-type="{{card.assetType}}"
+                          data-bmap-scope="release"
+                          data-bmap-release-card="true"
+                          data-bmap-native="true"
+                          data-tooltip="{{localize 'BENEOS.Cloud.Bmap.InstallNativeReleaseTooltip'}}">
+                    <i class="fa-solid fa-layer-group"></i>
+                  </button>
+                {{else if card.cloudReady}}
+                  {{!-- Plan §18.7 single cloud button: native installer
+                       (Beneos-owned pipeline) + Moulinette-legacy fallback
+                       drunter fuer maps die noch nicht auf der cloud
+                       sind oder bei nativer install-Probleme. --}}
+                  <button type="button" class="bc-card-button bc-card-button-primary bc-action-install"
+                          data-asset-key="{{card.key}}"
+                          data-asset-type="{{card.assetType}}"
+                          data-bmap-scope="scene"
+                          data-bmap-native="true"
+                          data-tooltip="{{localize 'BENEOS.Cloud.Bmap.InstallNativeSceneTooltip'}}">
+                    <i class="fa-solid fa-cloud-arrow-down"></i>
+                  </button>
+                  <button type="button" class="bc-card-button bc-action-install bc-install-legacy"
+                          data-asset-key="{{card.key}}"
+                          data-asset-type="{{card.assetType}}"
+                          data-bmap-legacy="true"
+                          data-tooltip="{{localize 'BENEOS.Cloud.Bmap.LegacyMoulinetteTooltip'}}">
+                    <i class="fa-solid fa-cube"></i>
+                  </button>
+                {{else}}
                 <button type="button" class="bc-card-button bc-card-button-primary bc-action-install bc-action-moulinette"
                         data-asset-key="{{card.key}}"
                         data-asset-type="{{card.assetType}}"
@@ -343,6 +422,7 @@
                   <i class="fa-solid fa-cube"></i>
                   {{localize "BENEOS.Cloud.Card.Moulinette"}}
                 </button>
+                {{/if}}
               {{else}}
                 <button type="button" class="bc-card-button bc-card-button-primary bc-action-install"
                         data-asset-key="{{card.key}}"
@@ -370,10 +450,32 @@
       {{/each}}
     </div>
   {{else}}
-    <div class="bc-results-empty">
-      <i class="fa-solid fa-magnifying-glass"></i>
-      <p>{{localize "BENEOS.Cloud.Results.Empty"}}</p>
-    </div>
+    {{#if bmapReleasesLoading}}
+      {{!-- Plan §15.1: first paint after switching to Releases view.
+           The lazy fetch is in flight; placeholder until the second
+           render with populated data lands. --}}
+      <div class="bc-results-empty">
+        <i class="fa-solid fa-circle-notch fa-spin"></i>
+        <p>{{localize "BENEOS.Cloud.Bmap.LoadingReleases"}}</p>
+      </div>
+    {{else if bmapReleasesError}}
+      {{!-- Plan §23.1: the lazy fetch failed after 3 backoff attempts.
+           Inline error card with a Retry button so the operator does
+           not have to flip the view-toggle to recover. --}}
+      <div class="bc-results-empty bc-results-error">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <p>{{localize "BENEOS.Cloud.Bmap.ReleasesLoadFailed"}}</p>
+        <p class="bc-results-error-detail">{{bmapReleasesError}}</p>
+        <button type="button" class="bc-btn-secondary" data-action="retryLoadReleases">
+          {{localize "BENEOS.Cloud.Bmap.Retry"}}
+        </button>
+      </div>
+    {{else}}
+      <div class="bc-results-empty">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <p>{{localize "BENEOS.Cloud.Results.Empty"}}</p>
+      </div>
+    {{/if}}
   {{/if}}
 
   {{!-- Detail drawer — slides in from the right when an asset is selected --}}
@@ -557,12 +659,40 @@
             </button>
           {{else if drawer.asset.isCloudAvailable}}
             {{#if drawer.asset.isBmap}}
+              {{#if drawer.asset.cloudReady}}
+                {{!-- Plan §18.7: single "Install via Beneos Cloud" button.
+                     Routes to BeneosNativeBattlemapInstaller (Beneos-owned
+                     pipeline, no scene-packer dependency). Individual map
+                     installs the scene, the release card already lives in
+                     its own template branch above. --}}
+                <button type="button" class="bc-card-button bc-card-button-primary bc-action-install"
+                        data-asset-key="{{drawer.asset.key}}"
+                        data-asset-type="{{drawer.asset.assetType}}"
+                        data-bmap-scope="scene"
+                        data-bmap-native="true"
+                        data-tooltip="{{localize 'BENEOS.Cloud.Bmap.InstallNativeSceneTooltip'}}">
+                  <i class="fa-solid fa-cloud-arrow-down"></i>
+                  {{localize "BENEOS.Cloud.Bmap.InstallNativeScene"}}
+                </button>
+                {{!-- Plan §13.3.6 dual-button: Moulinette legacy stays
+                     directly below as a search-UI fallback for catalog
+                     entries that aren't on the cloud yet. --}}
+                <button type="button" class="bc-card-button bc-action-install bc-install-legacy"
+                        data-asset-key="{{drawer.asset.key}}"
+                        data-asset-type="{{drawer.asset.assetType}}"
+                        data-bmap-legacy="true"
+                        data-tooltip="{{localize 'BENEOS.Cloud.Bmap.LegacyMoulinetteTooltip'}}">
+                  <i class="fa-solid fa-cube"></i>
+                  {{localize "BENEOS.Cloud.Bmap.LegacyMoulinette"}}
+                </button>
+              {{else}}
               <button type="button" class="bc-card-button bc-card-button-primary bc-action-install bc-action-moulinette"
                       data-asset-key="{{drawer.asset.key}}"
                       data-asset-type="{{drawer.asset.assetType}}">
                 <i class="fa-solid fa-cube"></i>
                 {{localize "BENEOS.Cloud.Card.Moulinette"}}
               </button>
+              {{/if}}
             {{else}}
               {{!-- Wave B-9-fix-46: when more than one card is selected
                    the drawer's install button installs every card in

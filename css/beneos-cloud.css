@@ -941,8 +941,85 @@
   background: var(--bc-accent);
   color: var(--bc-bg);
 }
+
+/* Plan §13: bmap-only toolbar — resolution + view-mode segments. Sits
+   above the existing Grid/List toggle. Each segment reuses the same
+   .bc-view-toggle / .bc-view-button shells so the visual language stays
+   consistent; only the wrapping flex container is new. */
+.beneos-cloud-app .bc-bmap-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 8px;
+}
+.beneos-cloud-app .bc-bmap-res,
+.beneos-cloud-app .bc-bmap-view {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bc-bg);
+  border: 1px solid var(--bc-border);
+  border-radius: 999px;
+}
+/* Plan §13 toolbar buttons need explicit single-line behaviour. Otherwise
+   the active button gets a hint of extra padding / bold weight and the
+   text wraps to a second line (especially "Individual Maps"). nowrap +
+   flex-shrink:0 keeps every segment one line wide regardless of state. */
+.beneos-cloud-app .bc-bmap-res .bc-view-button,
+.beneos-cloud-app .bc-bmap-view .bc-view-button {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 .beneos-cloud-app .bc-view-button .bc-view-label {
   font-size: 11px;
+}
+
+/* Plan §15.2 debug filter: checkbox toggle in the bmap-toolbar that
+   restricts the result list to entries with cloud_release_id set. The
+   label/checkbox pair styles as a pill so it sits visually next to the
+   resolution + view segments. Slightly muted — it's a dev affordance,
+   not user-facing UI. */
+.beneos-cloud-app .bc-bmap-debug-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--bc-bg);
+  border: 1px dashed var(--bc-border);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--bc-text-muted, rgba(255,255,255,0.55));
+  cursor: pointer;
+  user-select: none;
+}
+.beneos-cloud-app .bc-bmap-debug-toggle input[type="checkbox"] {
+  margin: 0;
+  width: 12px;
+  height: 12px;
+  accent-color: var(--bc-accent, #f5c992);
+}
+.beneos-cloud-app .bc-bmap-debug-toggle:hover {
+  color: rgba(255,255,255,0.85);
+  border-color: var(--bc-accent, #f5c992);
+}
+
+/* Plan §15.1 release-card stats: bytes + scene-count + variant chip
+   live next to the card name. Variant uses the gold accent so the
+   4K/HD chip reads immediately; scenes get the muted treatment. */
+.beneos-cloud-app .bc-stat-release-bytes {
+  font-variant-numeric: tabular-nums;
+}
+.beneos-cloud-app .bc-stat-release-scenes {
+  color: var(--bc-text-muted, rgba(255,255,255,0.55));
+}
+.beneos-cloud-app .bc-stat-release-variant {
+  background: rgba(245, 201, 146, 0.18);
+  color: var(--bc-accent, #f5c992);
+  border: 1px solid rgba(245, 201, 146, 0.40);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-weight: 600;
 }
 
 /* Prominent header bulk button — appears in .bc-results-meta next to
@@ -2418,6 +2495,38 @@
 }
 .beneos-cloud-app .bc-action-install.bc-action-incompatible:hover i {
   color: #ffb3b3;
+}
+
+/* Plan §13.3.6 dual-button: legacy Moulinette secondary that sits beneath
+   the cloud install path during the migration window. Dimmed, smaller,
+   reads as "fallback" not "primary". Same shape as other secondary cards
+   but with reduced opacity + muted accent so the user's eye lands on the
+   cloud button first. Removed once the catalog sweep finishes per §13.7. */
+.beneos-cloud-app .bc-action-install.bc-install-legacy {
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+  padding: 4px 8px;
+  opacity: 0.8;
+}
+.beneos-cloud-app .bc-action-install.bc-install-legacy:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.18);
+  opacity: 1;
+}
+.beneos-cloud-app .bc-action-install.bc-install-legacy i {
+  color: rgba(255, 255, 255, 0.55);
+}
+.beneos-cloud-app .bc-action-install.bc-install-legacy:hover i {
+  color: rgba(255, 255, 255, 0.85);
+}
+.beneos-cloud-app .bc-drawer-action .bc-action-install.bc-install-legacy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
 }
 
 .beneos-cloud-app .bc-state-pill {
@@ -7396,4 +7505,201 @@ body.beneos-perf-mode .beneos-forge .bf-reveal-again { animation: none; }
 body.beneos-perf-mode .beneos-forge .bf-origin-card { transition: none; }
 body.beneos-perf-mode .beneos-forge .bf-forge-btn.is-ready { animation: none; }
 body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
+
+/* =============================================================
+   Plan §18 — Beneos battlemap install-progress window
+   Replaces the gray scene-packer wizard. Hero cover, total
+   progress, phase list with status icons, current-operation
+   label, close button. Engine-agnostic (Phase A wraps
+   MoulinetteImporter, Phase B will swap to BeneosBattlemapInstaller).
+   ============================================================= */
+
+.beneos-cloud-app.bc-install-progress-window .window-content {
+  padding: 0;
+  background: var(--bc-bg, #1a1814);
+  color: var(--bc-text, #e8e3da);
+}
+.beneos-cloud-app .bc-install-progress {
+  display: flex;
+  flex-direction: column;
+  min-width: 460px;
+}
+
+/* --- Hero --- */
+.beneos-cloud-app .bcip-hero {
+  position: relative;
+  height: 160px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  overflow: hidden;
+  isolation: isolate;
+}
+.beneos-cloud-app .bcip-hero-plain {
+  background: linear-gradient(135deg, rgba(127, 179, 173, 0.18), rgba(245, 201, 146, 0.08));
+}
+.beneos-cloud-app .bcip-hero-gradient {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(15, 14, 12, 0.10) 0%, rgba(15, 14, 12, 0.85) 100%);
+  z-index: 1;
+}
+.beneos-cloud-app .bcip-hero-text {
+  position: absolute;
+  left: 16px; right: 16px; bottom: 12px;
+  z-index: 2;
+}
+.beneos-cloud-app .bcip-hero-plain .bcip-hero-text {
+  position: static;
+  padding: 24px 16px;
+}
+.beneos-cloud-app .bcip-title {
+  margin: 0;
+  font-family: var(--bc-font-display, "Fraunces", serif);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--bc-text-strong, #fff);
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  border: none;
+}
+.beneos-cloud-app .bcip-subtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* --- Body --- */
+.beneos-cloud-app .bcip-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Total progress bar */
+.beneos-cloud-app .bcip-total {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.beneos-cloud-app .bcip-total-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bc-text-muted, rgba(255, 255, 255, 0.55));
+}
+.beneos-cloud-app .bcip-total-pct {
+  font-variant-numeric: tabular-nums;
+  color: var(--bc-accent, #f5c992);
+  font-weight: 600;
+}
+.beneos-cloud-app .bcip-bar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.beneos-cloud-app .bcip-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--bc-accent, #f5c992) 0%, #ffd9a0 100%);
+  border-radius: 999px;
+  transition: width 0.25s ease-out;
+}
+.beneos-cloud-app .bcip-current {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--bc-text-muted, rgba(255, 255, 255, 0.65));
+  font-variant-numeric: tabular-nums;
+}
+.beneos-cloud-app .bcip-current i {
+  color: var(--bc-accent, #f5c992);
+}
+.beneos-cloud-app .bcip-current-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Phase list */
+.beneos-cloud-app .bcip-phases {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+}
+.beneos-cloud-app .bcip-phase {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 4px 0;
+}
+.beneos-cloud-app .bcip-phase-icon {
+  width: 16px;
+  flex: 0 0 16px;
+  text-align: center;
+}
+.beneos-cloud-app .bcip-phase-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.beneos-cloud-app .bcip-phase-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--bc-text-muted, rgba(255, 255, 255, 0.55));
+  font-size: 11px;
+}
+.beneos-cloud-app .bcip-phase-pending .bcip-phase-icon { color: rgba(255, 255, 255, 0.25); }
+.beneos-cloud-app .bcip-phase-pending .bcip-phase-label { color: rgba(255, 255, 255, 0.45); }
+.beneos-cloud-app .bcip-phase-skipped .bcip-phase-icon,
+.beneos-cloud-app .bcip-phase-skipped .bcip-phase-label { color: rgba(255, 255, 255, 0.30); }
+.beneos-cloud-app .bcip-phase-active .bcip-phase-icon { color: var(--bc-accent, #f5c992); }
+.beneos-cloud-app .bcip-phase-active .bcip-phase-label { color: var(--bc-text-strong, #fff); font-weight: 500; }
+.beneos-cloud-app .bcip-phase-done .bcip-phase-icon { color: #7fd99a; }
+.beneos-cloud-app .bcip-phase-done .bcip-phase-label { color: var(--bc-text, #e8e3da); }
+.beneos-cloud-app .bcip-phase-error .bcip-phase-icon { color: #f08a8a; }
+.beneos-cloud-app .bcip-phase-error .bcip-phase-label { color: #f08a8a; }
+
+/* Status banners */
+.beneos-cloud-app .bcip-error,
+.beneos-cloud-app .bcip-success {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-top: 6px;
+}
+.beneos-cloud-app .bcip-error {
+  background: rgba(180, 50, 50, 0.18);
+  border: 1px solid rgba(220, 90, 90, 0.40);
+  color: #f4b3b3;
+}
+.beneos-cloud-app .bcip-success {
+  background: rgba(127, 217, 154, 0.12);
+  border: 1px solid rgba(127, 217, 154, 0.35);
+  color: #b8e8c5;
+}
+
+/* Footer actions */
+.beneos-cloud-app .bcip-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--bc-border, rgba(255, 255, 255, 0.08));
+}
+.beneos-cloud-app .bcip-actions .bc-card-button-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 

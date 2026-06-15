@@ -207,6 +207,43 @@ export class BeneosUtility {
       default: 'list'
     })
 
+    // Plan §13: active resolution for battlemap installs. Persists across
+    // sessions per-user. Single-variant releases ignore this — they install
+    // their only available pack regardless. Default 4K (the higher-quality
+    // master); the toolbar control flips it for the rest of the session.
+    game.settings.register(BeneosUtility.moduleID(), 'battlemap-active-resolution', {
+      name: 'Beneos battlemap active resolution',
+      scope: 'client',
+      config: false,
+      type: String,
+      default: '4K'
+    })
+
+    // Plan §13: view-mode toggle for the bmap tab — "releases" (one card per
+    // release, default) or "individual" (one card per scene). Not persisted
+    // across reloads; see plan decision §13.7 ("Persistence of view-mode: not
+    // persisted"). Kept here for API parity but with scope=client + config=false
+    // so the runtime can still read/write inside a session.
+    game.settings.register(BeneosUtility.moduleID(), 'battlemap-bmap-view-mode', {
+      name: 'Beneos battlemap view mode (session-only)',
+      scope: 'client',
+      config: false,
+      type: String,
+      default: 'releases'
+    })
+
+    // Plan §15.2 debug filter: when true, the bmap tab only shows catalog
+    // entries with a cloud_release_id set (= really downloadable from the
+    // cloud right now). Persistent so the operator can keep the cloud-ready
+    // slice pinned across reloads while iterating on the catalog sweep.
+    game.settings.register(BeneosUtility.moduleID(), 'battlemap-cloud-ready-only', {
+      name: 'Beneos battlemap cloud-ready debug filter',
+      scope: 'client',
+      config: false,
+      type: Boolean,
+      default: false
+    })
+
     // Top-Down Stage 2: per-user default install style for tokens.
     // "tokenized" = classic 2.5D (-token.webp), "topdown" = top-down
     // skin (-top.webp). The Search-Window sidebar exposes a radio so

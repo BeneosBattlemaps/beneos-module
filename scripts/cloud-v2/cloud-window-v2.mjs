@@ -163,6 +163,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       beneosResyncCatalog:     BeneosCloudWindowV2._onResyncCatalog,
       beneosCancelBulkInstall: BeneosCloudWindowV2._onCancelBulkInstall,
       switchView:              BeneosCloudWindowV2._onSwitchView,
+      switchBmapRes:           BeneosCloudWindowV2._onSwitchBmapRes,
+      switchBmapView:          BeneosCloudWindowV2._onSwitchBmapView,
+      switchBmapCloudReadyOnly: BeneosCloudWindowV2._onSwitchBmapCloudReadyOnly,
+      retryLoadReleases:       BeneosCloudWindowV2._onRetryLoadReleases,
       openExternal:            BeneosCloudWindowV2._onOpenExternal,
       openPatchlog:            BeneosCloudWindowV2._onOpenPatchlog,
       openNewsDetail:          BeneosCloudWindowV2._onOpenNewsDetail,
@@ -279,6 +283,24 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // resets the set to a single entry; Ctrl/Cmd+click toggles.
     this.selectedKeys = new Set()
     this._textFilter = ""
+
+    // Plan §13 release index. Lazy-loaded the first time the bmap tab
+    // renders. Map<release_dir, releaseObject> for O(1) lookup; the array
+    // form lives next to it for ordered rendering. Cleared on cache refresh.
+    this._releaseIndex     = null  // Map<release_dir, release>
+    this._releaseList      = null  // Array<release>, sorted by release_num desc
+    this._releaseLoading   = false
+    this._releaseLoadError = null
+
+    // Plan §13 debug filter: when true, the bmap result list and release
+    // list are filtered to entries that carry a cloud_release_id (= really
+    // downloadable from Beneos Cloud). Lets the user isolate the cloud
+    // pilot subset while the catalog migration sweep is in flight.
+    this._bmapCloudReadyOnly = false
+    try {
+      const v = game.settings?.get?.(BeneosUtility.moduleID(), "battlemap-cloud-ready-only")
+      if (typeof v === "boolean") this._bmapCloudReadyOnly = v
+    } catch (_e) {}
 
     // Wave B-5d: per-asset install state for the 4-state install button.
     // Map<assetKey, "progress" | "done">. Idle is the absence of an entry.
@@ -663,6 +685,16 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // .bc-view-grid modifier when the user picked grid mode.
         viewMode: this.viewMode,
         viewIsGrid: this.viewMode === "grid",
+        // Plan §13: surface battlemap-specific toolbar state so the template
+        // can render the resolution + Releases/Individual-Maps controls
+        // above the existing Grid/List toggle, only when the active tab is
+        // bmap. Resolution persists; view mode is session-only.
+        isBmap: this.searchMode === "bmap",
+        bmapRes4K: this._bmapActiveResolution() === "4K",
+        bmapViewIsReleases: this._bmapActiveView() === "releases",
+        bmapCloudReadyOnly: !!this._bmapCloudReadyOnly,
+        bmapReleasesLoading: !!this._releaseLoading && this._releaseList === null,
+        bmapReleasesError:   (!this._releaseLoading && this._releaseLoadError) ? String(this._releaseLoadError) : null,
         drawer: {
           open: !!drawerAsset,
           asset: drawerAsset || null,
@@ -792,6 +824,17 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const type = this.searchMode
     const raw = dbHolder.getAll?.(type) || {}
 
+    // Plan §15.1: when the bmap tab is active, fire-and-forget the lazy
+    // release fetch (idempotent). First paint sees no release data yet
+    // (loading=true); the fetch's finally re-renders with the populated
+    // list. Releases mode reroutes the entire pipeline to release cards.
+    if (type === "bmap") {
+      this.#ensureReleasesLoaded()
+      if (this._bmapActiveView() === "releases") {
+        return this.#buildReleaseCards()
+      }
+    }
+
     let entries = Object.entries(raw)
     const initialCount = entries.length
 
@@ -859,6 +902,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // Wave B-8k-2: bmap biome chip filter — same AND semantics.
     if (type === "bmap") {
       entries = this.#applyBiomeFilter(entries)
+      // Plan §15.2 debug filter: when active, drop catalog entries that
+      // are not yet on the cloud (missing cloud_release_id). Lets the
+      // user isolate the pilot subset during the migration sweep.
+      if (this._bmapCloudReadyOnly) {
+        entries = entries.filter(([_k, data]) => !!data?.properties?.cloud_release_id)
+      }
     }
     // Wave B-8i-3: item-only gold range filter.
     if (type === "item") {
@@ -1759,6 +1808,19 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // cloud-bmap pipeline ships (B-8). The sibling URL is set above for
       // bmaps that have a paired view registered in the database.
       isBmap: assetType === "bmap",
+      // Plan §13: a battlemap catalog entry is "cloud-ready" when it carries
+      // the three slugs the cloud install path needs (cloud_release_id +
+      // release_dir + cloud_scene_slug). Otherwise the drawer falls back to
+      // the Moulinette button. hasSibling drives the optional "Install pair"
+      // CTA — only set when the partner entry actually has its own cloud
+      // slug too (siblings without a slug cannot be paired-installed).
+      cloudReady: assetType === "bmap"
+        && !!(data?.properties?.cloud_release_id)
+        && !!(data?.properties?.cloud_scene_slug)
+        && !!(data?.properties?.release_dir),
+      hasSibling: assetType === "bmap"
+        && !!(data?.properties?.sibling)
+        && !!(game.beneos?.databaseHolder?.getAll?.("bmap")?.[data.properties.sibling]?.properties?.cloud_scene_slug),
       siblingThumbUrl,
       gridLabel,
       releaseLabel,
@@ -2539,10 +2601,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     if (actions) {
       actions.innerHTML = this.#buildCardActionsHTML(enriched)
       // Re-bind the install-button click listener on the freshly inserted
-      // button, if there is one. The dragstart listener is on the outer
-      // .bc-result-card and survives the inner-HTML swap.
-      const btn = actions.querySelector(".bc-action-install")
-      if (btn) btn.addEventListener("click", (event) => this.#onInstallClick(event, btn))
+      // button(s). The dragstart listener is on the outer .bc-result-card
+      // and survives the inner-HTML swap. Plan §13.3.6 dual-button render
+      // can emit two install buttons (cloud + legacy moulinette); listen on
+      // both so either path stays clickable.
+      actions.querySelectorAll(".bc-action-install").forEach(btn => {
+        btn.addEventListener("click", (event) => this.#onInstallClick(event, btn))
+      })
     }
   }
 
@@ -2574,10 +2639,31 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         + `<i class="fa-solid fa-ban"></i> ${localize("BENEOS.Cloud.Card.NotCompatible")}</button>`
     }
     if (card.isCloudAvailable) {
-      // Wave B-7: bmaps get a Moulinette-branded action button instead of
-      // "Install" so the user understands the install flows through
-      // Moulinette (until the cloud-bmap pipeline ships in B-8).
       if (card.isBmap) {
+        // Plan §18.7 release-card: single Beneos Cloud button (native installer).
+        if (card.isReleaseCard) {
+          return `<button type="button" class="bc-card-button bc-card-button-primary bc-action-install"`
+            + ` data-asset-key="${card.key}" data-asset-type="${card.assetType}"`
+            + ` data-bmap-scope="release" data-bmap-release-card="true" data-bmap-native="true"`
+            + ` data-tooltip="${localize("BENEOS.Cloud.Bmap.InstallNativeReleaseTooltip")}">`
+            + `<i class="fa-solid fa-layer-group"></i></button>`
+        }
+        // Plan §18.7 individual-map: single Beneos Cloud button (native) +
+        // Moulinette-legacy fallback below. The native button routes
+        // through #onInstallClick (data-bmap-native="true") to
+        // BeneosNativeBattlemapInstaller.
+        if (card.cloudReady) {
+          return `<button type="button" class="bc-card-button bc-card-button-primary bc-action-install"`
+            + ` data-asset-key="${card.key}" data-asset-type="${card.assetType}"`
+            + ` data-bmap-scope="scene" data-bmap-native="true"`
+            + ` data-tooltip="${localize("BENEOS.Cloud.Bmap.InstallNativeSceneTooltip")}">`
+            + `<i class="fa-solid fa-cloud-arrow-down"></i></button>`
+            + `<button type="button" class="bc-card-button bc-action-install bc-install-legacy"`
+            + ` data-asset-key="${card.key}" data-asset-type="${card.assetType}"`
+            + ` data-bmap-legacy="true"`
+            + ` data-tooltip="${localize("BENEOS.Cloud.Bmap.LegacyMoulinetteTooltip")}">`
+            + `<i class="fa-solid fa-cube"></i></button>`
+        }
         return `<button type="button" class="bc-card-button bc-card-button-primary bc-action-install bc-action-moulinette"`
           + ` data-asset-key="${card.key}" data-asset-type="${card.assetType}"`
           + ` data-tooltip="${localize("BENEOS.Cloud.Card.MoulinetteTooltip")}">`
@@ -2819,10 +2905,44 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     if (type === "item")  cloud.importItemFromCloud(key, undefined, false, { gated: true })
     if (type === "spell") cloud.importSpellsFromCloud(key, undefined, false, { gated: true })
     if (type === "bmap") {
-      // Wave B-7: pass the bmap key so the static handler can look up
-      // download_pack/creator/terms and call Moulinette's searchUI with the
-      // pre-filter — opens the user directly on the matching map.
-      BeneosCloudWindowV2._onMoulinetteInstall(event, key)
+      // Plan §13: cloud-migrated entries route through the new install
+      // pipeline with a chosen scope. The drawer template emits three
+      // buttons with data-bmap-scope="scene|pair|release"; the card-grid
+      // emits a single button without that attr, which defaults to scene.
+      // Unmigrated entries (no cloud_release_id) still fall back to the
+      // Moulinette searchUI hand-off.
+      // Plan §13.3.6 dual-button: a button can carry data-bmap-legacy="true"
+      // to force the Moulinette path even when cloud_release_id is set.
+      // Lets the user A/B-test cloud vs legacy side by side during migration.
+      // Plan §15.1 release-card path: release cards live outside the catalog,
+      // so the cloud-ready check falls back to the release index.
+      const dbHolder = game.beneos?.databaseHolder
+      const bmapData = dbHolder?.getAll?.("bmap")?.[key]
+      const props = bmapData?.properties || {}
+      const forceLegacy = btn?.dataset?.bmapLegacy === "true"
+      const isReleaseCardAttr = btn?.dataset?.bmapReleaseCard === "true"
+      // Drawer paths can open for a release-card too — the drawer.asset is
+      // synthesized without the data-bmap-release-card attr. Fall back to
+      // the release-index so the click still routes through the cloud path.
+      const inReleaseIndex = !!this._releaseIndex?.get?.(key)
+      const isReleaseCard = isReleaseCardAttr || (inReleaseIndex && !props.cloud_release_id)
+      const wantsNative = btn?.dataset?.bmapNative === "true"
+      const cloudReady = isReleaseCard
+        || inReleaseIndex
+        || !!(props.cloud_release_id && props.cloud_scene_slug && props.release_dir)
+      if (cloudReady && !forceLegacy) {
+        const scope = btn?.dataset?.bmapScope || (isReleaseCard ? "release" : "scene")
+        const idForLog = isReleaseCard ? key : (props.cloud_release_id || "(unknown)")
+        try { console.log("[beneos-bm]", wantsNative ? "native" : "legacy-cloud", "install", idForLog, scope, key) } catch (_) {}
+        if (wantsNative) {
+          BeneosCloudWindowV2._onCloudBattlemapInstallNative.call(this, event, key, scope)
+        } else {
+          BeneosCloudWindowV2._onCloudBattlemapInstall.call(this, event, key, scope)
+        }
+      } else {
+        try { console.log("[beneos-bm] legacy moulinette install", props.cloud_release_id || "(unmigrated)", key) } catch (_) {}
+        BeneosCloudWindowV2._onMoulinetteInstall(event, key)
+      }
     }
   }
 
@@ -4178,6 +4298,218 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   }
 
   /**
+   * Wave B-8: Beneos Cloud battlemap install. Reads cloud_release_id +
+   * release_dir + cloud_scene_slug from the catalog entry, constructs the
+   * mini-pack id (release_dir + variant + scene_slug) and hands it to
+   * BeneosScenePackerManager.importPackage which spins up Scene-Packer's
+   * MoulinetteImporter against signed beneos.cloud URLs. Variant is chosen
+   * from the beneos-module setting "battlemap-default-resolution", default
+   * 4K when unset. The handler is dispatched from #onInstallClick when the
+   * catalog entry has the cloud_* fields; legacy catalog entries still go
+   * through Moulinette.
+   */
+  /**
+   * Plan §13: install one battlemap with a chosen scope.
+   *   installScope = "scene"   (default — just this mini-pack)
+   *                | "pair"    (battlemap + its sibling scenery — two install calls)
+   *                | "release" (the full <release_dir>_<variant> pack)
+   *
+   * Variant: read from setting battlemap-active-resolution when not pinned by
+   * the catalog (single-variant releases ignore the setting and use no infix).
+   */
+  /**
+   * Plan §18.7 — native install path. Resolves the same release_dir +
+   * variant as _onCloudBattlemapInstall but hands off to
+   * BeneosNativeBattlemapInstaller instead of MoulinetteImporter. The
+   * native installer downloads + imports without scene-packer in the
+   * loop, suppressing the toast spam and the gray wizard.
+   */
+  static async _onCloudBattlemapInstallNative(_event, bmapKey, installScope = "scene") {
+    const dbHolder = game.beneos?.databaseHolder
+    const bmapData = dbHolder?.getAll?.("bmap")?.[bmapKey]
+    let props = bmapData?.properties || {}
+    let releaseDir = String(props.release_dir || "").trim()
+    let nbVariants = Number(props.cloud_nb_variants ?? props.nb_variants ?? 0) || 0
+    let displayName = bmapData?.name || bmapKey
+
+    // Release-card path: bmapKey === release_dir, no catalog row.
+    if (!releaseDir && this._releaseIndex?.get) {
+      const r = this._releaseIndex.get(bmapKey)
+      if (r) {
+        releaseDir = r.release_dir
+        nbVariants = Number(r.nb_variants || 0) || 0
+        displayName = r.display_name || bmapKey
+        installScope = "release"
+      }
+    }
+    if (!releaseDir) {
+      ui.notifications.warn(`Catalog entry "${bmapKey}" is missing release_dir.`)
+      return
+    }
+
+    const isSingle = nbVariants === 1
+    let variant = ""
+    if (!isSingle) {
+      variant = "4K"
+      try {
+        const v = game.settings.get("beneos-module", "battlemap-active-resolution")
+        if (v === "HD" || v === "4K") variant = v
+      } catch (_) {}
+    }
+    const variantLabel = isSingle ? "" : ` (${variant})`
+
+    // Resolve coverUrl from release index when available so the install
+    // window's hero shows the manually-curated pack cover.
+    const releaseEntry = this._releaseIndex?.get?.(releaseDir) || null
+    const coverUrl = releaseEntry
+      ? (variant === "HD" ? (releaseEntry.cover_url_hd || releaseEntry.cover_url_4k)
+                          : (releaseEntry.cover_url_4k || releaseEntry.cover_url_hd))
+      : null
+
+    // V1 native installer: release-scope only (the full pack). Scene-scope
+    // would require us to filter the importer's documents to a single
+    // scene_slug; that's V1.5. For now we install the full release.
+    const packId = isSingle ? releaseDir : `${releaseDir}_${variant}`
+    const NativeInstaller = globalThis.BeneosNativeBattlemapInstaller
+    if (!NativeInstaller) {
+      ui.notifications.error("BeneosNativeBattlemapInstaller is not loaded")
+      return
+    }
+    try {
+      await NativeInstaller.install({
+        packageId: packId,
+        label:     displayName + variantLabel,
+        coverUrl,
+      })
+    } catch (err) {
+      console.warn("BeneosCloudWindowV2 | native install failed", { packId, err })
+      ui.notifications.error(`Native install failed for ${displayName}: ${err?.message || err}`)
+    }
+  }
+
+  static async _onCloudBattlemapInstall(_event, bmapKey, installScope = "scene") {
+    const dbHolder = game.beneos?.databaseHolder
+    const bmapData = dbHolder?.getAll?.("bmap")?.[bmapKey]
+    let props = bmapData?.properties || {}
+    let releaseDir = String(props.release_dir || "").trim()
+    let sceneSlug  = String(props.cloud_scene_slug || "").trim()
+
+    // Plan §15.1 release-card path: the install button on a release card
+    // carries the release_dir as its asset-key (the catalog has no entry
+    // with that key). Fall back to the lazy-loaded release index when the
+    // catalog lookup came up empty so the click still wires through to
+    // the existing install pipeline.
+    if (!releaseDir && this._releaseIndex?.get) {
+      const r = this._releaseIndex.get(bmapKey)
+      if (r) {
+        releaseDir = r.release_dir
+        // Synthesize the bits the rest of the function reads from props
+        // so the release-scope branch downstream has what it needs. The
+        // scene-slug stays empty (we never need it for release scope).
+        props = {
+          release_dir:        r.release_dir,
+          cloud_release_id:   r.cloud_release_id,
+          cloud_nb_variants:  r.nb_variants,
+          cloud_scene_slug:   "", // unused for release scope
+        }
+        if (installScope !== "release") {
+          // A release-card was clicked with a scene/pair scope — that
+          // shouldn't happen given how the card emits data-bmap-scope,
+          // but be defensive: install the full release rather than a
+          // missing slug.
+          installScope = "release"
+        }
+      }
+    }
+    if (!releaseDir || (installScope !== "release" && !sceneSlug)) {
+      ui.notifications.warn(`Catalog entry "${bmapKey}" is missing release_dir or cloud_scene_slug.`)
+      return
+    }
+    const nbVariants = Number(props.cloud_nb_variants ?? props.nb_variants ?? 0) || 0
+    const isSingle = nbVariants === 1
+    // Pick the active resolution. Single-variant releases skip the read.
+    let variant = ""
+    if (!isSingle) {
+      variant = "4K"
+      try {
+        const v = game.settings.get("beneos-module", "battlemap-active-resolution")
+        if (v === "HD" || v === "4K") variant = v
+      } catch (_) {
+        try {
+          const v2 = game.settings.get("beneos-module", "battlemap-default-resolution")
+          if (v2 === "HD" || v2 === "4K") variant = v2
+        } catch (_e) { /* both unset; default 4K */ }
+      }
+    }
+    const buildPackId = (slug) => isSingle ? `${releaseDir}_${slug}` : `${releaseDir}_${variant}_${slug}`
+    const mgr = window.BeneosScenePacker
+    if (!mgr) {
+      ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Notification.MoulinetteUnavailable") || "Beneos cloud installer not ready")
+      return
+    }
+    const variantLabel = isSingle ? "" : ` (${variant})`
+    const mapName = bmapData?.name || bmapKey
+
+    // Plan §18 — pass the hero cover into the install-progress window.
+    // For release-card clicks the cover comes from list_releases (already
+    // cached on _releaseIndex). For individual-map clicks fall back to the
+    // catalog thumbnail. The progress window degrades gracefully when null.
+    const releaseEntry = this._releaseIndex?.get?.(releaseDir) || null
+    const hdMode = !isSingle && variant === "HD"
+    const releaseCover = releaseEntry
+      ? (hdMode ? (releaseEntry.cover_url_hd || releaseEntry.cover_url_4k)
+                : (releaseEntry.cover_url_4k || releaseEntry.cover_url_hd))
+      : null
+    const sceneThumb = props.thumbnail
+      ? `https://www.beneos-database.com/data/battlemaps/thumbnails/${props.thumbnail}`
+      : null
+
+    // Resolve the install queue based on scope. Sibling resolution: the catalog
+    // exposes a `sibling` key naming the partner catalog entry; we look it up
+    // and pull its cloud_scene_slug too. Release scope passes the full pack dir
+    // (<release_dir>_<variant> or <release_dir>) — MoulinetteImporter then walks
+    // every scene of the release in one shot.
+    const queue = []
+    if (installScope === "release") {
+      const packId = isSingle ? releaseDir : `${releaseDir}_${variant}`
+      queue.push({ packId, label: mapName + variantLabel, coverUrl: releaseCover })
+    } else if (installScope === "pair") {
+      queue.push({ packId: buildPackId(sceneSlug), label: mapName + variantLabel, coverUrl: releaseCover || sceneThumb })
+      const siblingKey = String(props.sibling || "").trim()
+      const siblingEntry = siblingKey ? dbHolder?.getAll?.("bmap")?.[siblingKey] : null
+      const siblingSlug = String(siblingEntry?.properties?.cloud_scene_slug || "").trim()
+      if (siblingSlug) {
+        const siblingThumb = siblingEntry?.properties?.thumbnail
+          ? `https://www.beneos-database.com/data/battlemaps/thumbnails/${siblingEntry.properties.thumbnail}`
+          : null
+        queue.push({
+          packId: buildPackId(siblingSlug),
+          label:  (siblingEntry?.name || siblingKey) + variantLabel,
+          coverUrl: releaseCover || siblingThumb,
+        })
+      } else {
+        ui.notifications.warn(`Sibling for "${bmapKey}" is missing cloud_scene_slug — installing only this scene.`)
+      }
+    } else {
+      queue.push({ packId: buildPackId(sceneSlug), label: mapName + variantLabel, coverUrl: releaseCover || sceneThumb })
+    }
+
+    // Sequential install: MoulinetteImporter is per-scene idempotent so a pair
+    // install is just two awaits. Errors on one entry do not abort the rest;
+    // we surface them individually to the user. The progress window itself is
+    // the user-facing status — we keep the legacy info-toast off so the user
+    // sees only the Beneos UI (Plan §18 toast-suppress).
+    for (const job of queue) {
+      try {
+        await mgr.importPackage(job.packId, { label: job.label, coverUrl: job.coverUrl })
+      } catch (err) {
+        console.warn("BeneosCloudWindowV2 | cloud install failed", job, err)
+        ui.notifications.error(`Cloud install failed for ${job.label}: ${err?.message || err}`)
+      }
+    }
+  }
+
+  /**
    * Wave B-5c → Wave B-7: Battlemap install hand-off to Moulinette. Until
    * the cloud battlemap pipeline is live (Wave B-8 server side), clicking
    * the Moulinette button on a bmap card opens Moulinette's search UI
@@ -4337,6 +4669,221 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       game.settings?.set?.(BeneosUtility.moduleID(), "beneos-cloud-view-mode", view)
     } catch (e) {}
     this.#renderResults(["results"])
+  }
+
+  // Plan §13: read battlemap active resolution. Stored in client setting
+  // so it persists across reload. Default 4K. Single-variant releases
+  // ignore the value at install time; the toolbar control still toggles
+  // for any dual-variant release the user may open next.
+  _bmapActiveResolution() {
+    try {
+      const v = game.settings?.get?.(BeneosUtility.moduleID(), "battlemap-active-resolution")
+      if (v === "HD" || v === "4K") return v
+    } catch (_e) {}
+    return "4K"
+  }
+
+  // Plan §13: read battlemap view mode (releases | individual). Session-
+  // scoped via this._bmapViewMode (NOT persisted across reloads per spec
+  // §13.7 — defaults to "releases" on every fresh window open).
+  _bmapActiveView() {
+    return this._bmapViewMode === "individual" ? "individual" : "releases"
+  }
+
+  // Plan §13: resolution toggle handler. Persists, re-renders just the
+  // results pane (the rest of the layout does not depend on resolution).
+  static _onSwitchBmapRes(event, target) {
+    event.preventDefault()
+    const v = target.dataset.bmapRes
+    if (v !== "4K" && v !== "HD") return
+    if (this._bmapActiveResolution() === v) return
+    try {
+      game.settings?.set?.(BeneosUtility.moduleID(), "battlemap-active-resolution", v)
+    } catch (_e) {}
+    this.#renderResults(["results"])
+  }
+
+  // Plan §13: view-mode toggle (Releases | Individual Maps). Clicking a
+  // tab pins the choice for the session; the auto-switch heuristic in
+  // #applyDropdownFilters only flips while pinned=false.
+  static _onSwitchBmapView(event, target) {
+    event.preventDefault()
+    const v = target.dataset.bmapView
+    if (v !== "releases" && v !== "individual") return
+    if (this._bmapActiveView() === v) return
+    this._bmapViewMode = v
+    this._bmapViewPinned = true
+    this.#renderResults(["results"])
+  }
+
+  // Plan §15.2 debug filter toggle. Persists across reloads in a client
+  // setting so the operator can keep the cloud-ready slice pinned while
+  // reloading the world to test fresh state.
+  static _onSwitchBmapCloudReadyOnly(event, target) {
+    event.preventDefault()
+    const next = !this._bmapCloudReadyOnly
+    this._bmapCloudReadyOnly = next
+    try {
+      game.settings?.set?.(BeneosUtility.moduleID(), "battlemap-cloud-ready-only", next)
+    } catch (_e) {}
+    this.#renderResults(["results"])
+  }
+
+  // Plan §23.1: invoked by the inline "Retry" button when the release
+  // fetch failed after all 3 backoff attempts. Clears cached state so
+  // #ensureReleasesLoaded runs from scratch.
+  static _onRetryLoadReleases(event, target) {
+    event.preventDefault()
+    this._releaseLoadError = null
+    this._releaseList      = null
+    this._releaseIndex     = null
+    try {
+      const mgr = window.BeneosScenePacker
+      if (mgr) mgr._releasesCache = null   // drop the manager-side cache too
+    } catch (_e) {}
+    this.#renderResults(["results"])
+    this.#ensureReleasesLoaded()
+  }
+
+  // Plan §15.1 — lazy fetch list_releases. Idempotent: subsequent calls
+  // are no-ops until the first request completes (or fails). On success,
+  // re-renders the results pane so the data shows up without a manual
+  // toggle. Failures land on _releaseLoadError; the build helper uses
+  // that to render an inline error placeholder.
+  // Plan §23.1: 3 attempts (immediate + 2s + 8s delay) before giving up.
+  // Beneos-Module had no retry pattern; this is the first one. Pulled
+  // off into its own helper so #ensureReleasesLoaded keeps the same
+  // shape (state-set + finally + re-render).
+  async #fetchReleasesWithBackoff() {
+    // Manager-missing is a hard structural error, not a transient
+    // network blip — no point retrying it.
+    const mgr = window.BeneosScenePacker
+    if (!mgr || typeof mgr.listReleases !== "function") {
+      throw new Error("scenepacker manager missing")
+    }
+    const delays = [2000, 8000]   // gaps between attempts; final attempt is immediate
+    let lastErr = null
+    for (let attempt = 0; attempt <= delays.length; attempt++) {
+      try {
+        return await mgr.listReleases({ refresh: attempt > 0 })
+      } catch (e) {
+        lastErr = e
+        if (attempt === delays.length) break
+        console.warn(`BeneosCloudWindowV2 | list_releases attempt ${attempt + 1} failed: ${e?.message}. Retrying in ${delays[attempt]}ms`)
+        await new Promise(r => setTimeout(r, delays[attempt]))
+      }
+    }
+    throw lastErr
+  }
+
+  async #ensureReleasesLoaded() {
+    if (this._releaseIndex || this._releaseLoading) return
+    this._releaseLoading = true
+    this._releaseLoadError = null
+    try {
+      const releases = await this.#fetchReleasesWithBackoff()
+      const list = Array.isArray(releases) ? [...releases] : []
+      list.sort((a, b) => {
+        const ra = parseInt(a?.release_num, 10) || 0
+        const rb = parseInt(b?.release_num, 10) || 0
+        if (ra !== rb) return rb - ra
+        return String(a?.display_name || "").localeCompare(String(b?.display_name || ""))
+      })
+      this._releaseList  = list
+      this._releaseIndex = new Map(list.map(r => [r.release_dir, r]))
+    } catch (e) {
+      this._releaseLoadError = e?.message || String(e)
+      console.warn("BeneosCloudWindowV2 | listReleases failed after retries", e)
+    } finally {
+      this._releaseLoading = false
+    }
+    // Re-render once the fetch resolves so the freshly loaded cards
+    // appear without the operator having to flip the view-toggle again.
+    try { this.#renderResults(["results"]) } catch (_e) {}
+  }
+
+  // Plan §15.1 — build release-cards from the lazy-loaded list_releases
+  // payload. Each release becomes one card; the existing results-pane.hbs
+  // grid/list template renders it because we mirror the asset-card shape
+  // (key, name, thumbUrl, isBmap, etc.). Resolution toggle picks the
+  // cover + byte label live. Debug filter is a no-op here — the backend
+  // only returns cloud-ready releases by definition.
+  #buildReleaseCards() {
+    const list = Array.isArray(this._releaseList) ? this._releaseList : []
+    // Apply text-filter on display_name. The dropdown sidebar filters do
+    // not apply to release-view (biome/brightness/grid live on the scene
+    // catalog, not on releases — auto-switch heuristic in §13 already
+    // flips back to individual when those are active).
+    let filtered = list
+    const q = (this._textFilter || "").trim().toLowerCase()
+    if (q) {
+      filtered = filtered.filter(r => String(r?.display_name || "").toLowerCase().includes(q))
+    }
+    const variant     = this._bmapActiveResolution() === "HD" ? "HD" : "4K"
+    const variantHas  = (r) => Array.isArray(r?.variants_available) && r.variants_available.includes(variant)
+    const totalMatches = filtered.length
+    const limit        = this.loadedCount
+    const hasMore      = totalMatches > limit
+    const sliced       = hasMore ? filtered.slice(0, limit) : filtered
+
+    const cards = sliced.map(r => {
+      const single   = Number(r?.nb_variants || 0) === 1
+      const useV     = single ? (r.variants_available?.[0] || "4K") : variant
+      const coverUrl = useV === "HD" ? (r?.cover_url_hd || r?.cover_url_4k || null)
+                                     : (r?.cover_url_4k || r?.cover_url_hd || null)
+      const bytes    = r?.bytes_per_variant?.[useV] || 0
+      return {
+        key:                  r.release_dir,
+        name:                 r.display_name || r.release_dir,
+        assetType:            "bmap",
+        dragType:             "bmap",
+        dragMode:             "noop",
+        documentId:           "",
+        isDraggable:          false,
+        isBmap:               true,
+        isCloudAvailable:     true,
+        cloudReady:           true,
+        isReleaseCard:        true,
+        releaseScope:         true,
+        singleVariant:        single,
+        thumbUrl:             coverUrl,
+        bytesLabel:           bytes ? this.#formatBytes(bytes) : "",
+        sceneCount:           Number(r?.scene_count || 0),
+        releaseNum:           r?.release_num || "",
+        variantLabel:         single ? "" : useV,
+        installDuration:      "0.6s",
+        groupKind:            "regular",
+        visibleTagDescriptors: [],
+        moreTagsCount:        0,
+        // Drawer is not used yet for release-cards (Plan §15.5 V2),
+        // but the click-to-open path still goes through enrichCard for
+        // the install button to fire correctly.
+        installScope:         "release",
+      }
+    })
+    return {
+      cards,
+      totalMatches,
+      hasMore,
+      partialHint:    hasMore ? `${cards.length} / ${totalMatches}` : "",
+      groupBulkKeys:  { new: [], update: [], view: [], backlog: [] },
+      loadingReleases: !!this._releaseLoading,
+      releasesError:   this._releaseLoadError || null,
+    }
+  }
+
+  // Small inline byte-formatter for release-card labels. Foundry's
+  // numberFormat helper is locale-aware but kicks in heavy when iterating
+  // dozens of cards; the cheap inline path is fine here (no decimals for
+  // values >= 1 GiB, one decimal otherwise).
+  #formatBytes(b) {
+    const n = Number(b) || 0
+    if (n >= 1024 * 1024 * 1024) {
+      const g = n / (1024 * 1024 * 1024)
+      return `${(g >= 10 ? g.toFixed(0) : g.toFixed(1))} GB`
+    }
+    const m = n / (1024 * 1024)
+    return `${m >= 100 ? m.toFixed(0) : m.toFixed(1)} MB`
   }
 
   /* ========== Cleanup ========== */

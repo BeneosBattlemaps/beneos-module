@@ -1,0 +1,315 @@
+/**
+ * Plan §18 Phase A — Beneos Battlemap Install Progress Window.
+ *
+ * Replaces the scene-packer wizard with a custom Beneos-V2-styled progress
+ * window. The engine (MoulinetteImporter in Phase A, BeneosBattlemapInstaller
+ * in Phase B) is engine-agnostic via attach(engine, progress):
+ *
+ *   const progress = await BeneosBattlemapInstallProgress.open({label, coverUrl})
+ *   const cleanup = BeneosBattlemapInstallProgress.attach(importer, progress)
+ *   try { await importer.process() } finally { cleanup() }
+ *
+ * Toast spam from scene-packer (8 phase toasts + 50+ asset toasts) is
+ * suppressed by monkey-patching ScenePacker.logType during the install
+ * window. Phase tracking comes from intercepting updateProcessStatus;
+ * per-asset progress comes from intercepting displayProgressBar.
+ *
+ * Phase B (full in-house installer per Plan §7) will keep this class
+ * unchanged — only the attach() wiring will hook to a different engine.
+ */
+
+const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
+
+// Phase order matches MoulinetteImporter.process() (line 219 of
+// scene-packer/scripts/export-import/moulinette-importer.js). Each entry
+// has a localize-able label key and an optional countSource (a path into
+// scenePackerInfo.counts) so the phase row can display the document count.
+const PHASE_DEFS = [
+  { key: "manifest",   labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Manifest",  countSource: null,    weight: 0.5 },
+  { key: "system",     labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.System",    countSource: null,    weight: 0.2 },
+  { key: "data",       labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Data",      countSource: null,    weight: 0.5 },
+  { key: "scenes",     labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Scenes",    countSource: "Scene", weight: 2.5 },
+  { key: "actors",     labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Actors",    countSource: "Actor", weight: 1.5 },
+  { key: "journals",   labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Journals",  countSource: "JournalEntry", weight: 1.0 },
+  { key: "items",      labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Items",     countSource: "Item",  weight: 0.8 },
+  { key: "macros",     labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Macros",    countSource: "Macro", weight: 0.3 },
+  { key: "playlists",  labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Playlists", countSource: "Playlist", weight: 1.0 },
+  { key: "cards",      labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Cards",     countSource: "Cards", weight: 0.2 },
+  { key: "rolltables", labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.RollTables", countSource: "RollTable", weight: 0.2 },
+  { key: "unrelated",  labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Unrelated", countSource: null,    weight: 0.5 },
+  { key: "finalize",   labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Finalize",  countSource: null,    weight: 0.3 },
+]
+
+// Match scene-packer's i18n keys when updateProcessStatus fires so we know
+// which phase just started. The keys come from
+// SCENE-PACKER.importer.creating-documents-* in the scene-packer module.
+// We map by stem since the localized strings may include counts/HTML.
+const STATUS_KEY_TO_PHASE = new Map([
+  ["scene",         "scenes"],
+  ["actor",         "actors"],
+  ["journal",       "journals"],
+  ["item",          "items"],
+  ["macro",         "macros"],
+  ["playlist",      "playlists"],
+  ["card",          "cards"],
+  ["rolltable",     "rolltables"],
+  ["roll table",    "rolltables"],
+  ["unrelated",     "unrelated"],
+])
+
+export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(ApplicationV2) {
+
+  static DEFAULT_OPTIONS = {
+    id: "beneos-bmap-install-progress",
+    classes: ["beneos-cloud-app", "bc-install-progress-window"],
+    tag: "section",
+    window: {
+      title: "BENEOS.Cloud.Bmap.InstallProgress.WindowTitle",
+      resizable: false,
+      minimizable: true,
+    },
+    position: { width: 480, height: "auto" },
+    actions: {
+      closeProgress:   BeneosBattlemapInstallProgress._onClose,
+      openFirstScene:  BeneosBattlemapInstallProgress._onOpenFirstScene,
+    },
+  }
+
+  static PARTS = {
+    body: { template: "modules/beneos-module/templates/cloud-v2/install-progress.hbs" },
+  }
+
+  /** Singleton open. Closes any existing instance and opens a fresh one. */
+  static async open({ label, coverUrl = null, subtitle = "", packageId = "" } = {}) {
+    const existing = Object.values(foundry.applications.instances ?? {})
+      .find(a => a instanceof BeneosBattlemapInstallProgress)
+    if (existing) await existing.close({ force: true })
+    const win = new BeneosBattlemapInstallProgress({ label, coverUrl, subtitle, packageId })
+    await win.render(true)
+    return win
+  }
+
+  /**
+   * Hook the engine into a progress window. Suppresses scene-packer toasts,
+   * forwards phase + asset events. Returns a cleanup() to restore originals.
+   */
+  static attach(importer, progress) {
+    const cleanups = []
+
+    // Toast suppression: ScenePacker.logType(name, level, showToast, msg) is
+    // the funnel for every scene-packer notification. Wrap it so info-level
+    // toasts disappear; warnings and errors still pass through.
+    const SP = globalThis.ScenePacker
+    if (SP && typeof SP.logType === "function") {
+      const orig = SP.logType.bind(SP)
+      SP.logType = function (n, level, _show, msg) {
+        if (level === "info") return orig(n, level, false, msg)
+        return orig(n, level, _show, msg)
+      }
+      cleanups.push(() => { SP.logType = orig })
+    }
+
+    // Phase tracking via updateProcessStatus. scene-packer calls this with
+    // an HTML/text snippet at the start of each entity-type phase. We sniff
+    // the substring for known stems and advance our phase model.
+    if (importer && typeof importer.updateProcessStatus === "function") {
+      const orig = importer.updateProcessStatus.bind(importer)
+      importer.updateProcessStatus = function (msg) {
+        try { progress.handleStatusMessage(String(msg || "")) } catch (_) {}
+        return orig(msg)
+      }
+      cleanups.push(() => { importer.updateProcessStatus = orig })
+    }
+
+    // Asset-download progress via displayProgressBar(name, total, current).
+    // Fired once per asset download. We drive our current-label + asset
+    // counter; the upstream Foundry notification is swallowed.
+    if (importer && typeof importer.displayProgressBar === "function") {
+      const orig = importer.displayProgressBar.bind(importer)
+      importer.displayProgressBar = function (name, total, current) {
+        try { progress.handleAssetProgress(name, total, current) } catch (_) {}
+        // Do not call orig() — we own the UI now.
+      }
+      cleanups.push(() => { importer.displayProgressBar = orig })
+    }
+
+    // Completion hook — scene-packer fires this at the very end of process().
+    // Single-fire so a second install doesn't trigger stale closures.
+    const completeHook = Hooks.once("ScenePacker.importMoulinetteComplete", (info) => {
+      try { progress.handleCompleteHook(info) } catch (_) {}
+    })
+    cleanups.push(() => Hooks.off("ScenePacker.importMoulinetteComplete", completeHook))
+
+    return () => { for (const c of cleanups) { try { c() } catch (_) {} } }
+  }
+
+  constructor({ label = "", coverUrl = null, subtitle = "", packageId = "" } = {}, options = {}) {
+    super(options)
+    this._label    = label
+    this._coverUrl = coverUrl
+    this._subtitle = subtitle
+    this._packageId = packageId
+
+    // Phase model: per-key { status: "pending"|"active"|"done"|"skipped"|"error", count: int|null }.
+    this._phases = new Map(PHASE_DEFS.map(p => [p.key, { status: "pending", count: null }]))
+    // Manifest + System + Data start as active-then-done in rapid succession;
+    // we mark them done as soon as we see ANY status message, since by then
+    // those phases have necessarily completed inside process().
+    this._phases.get("manifest").status = "active"
+
+    this._state            = "running" // "running" | "completed" | "failed"
+    this._errorMessage     = null
+    this._completedMessage = null
+    this._currentLabel     = null
+    this._currentSpinner   = true
+    this._assetCurrent     = 0
+    this._assetTotal       = 0
+    this._scenePackerInfo  = null
+    this._firstSceneId     = null
+  }
+
+  /* ========== Engine event handlers (called from attach()) ========== */
+
+  handleStatusMessage(msg) {
+    // Mark the "prefix" phases done on the first status (we know manifest +
+    // system + data passed by the time scene-packer emits its first
+    // creating-documents call).
+    for (const k of ["manifest", "system", "data"]) {
+      const p = this._phases.get(k)
+      if (p.status === "pending" || p.status === "active") p.status = "done"
+    }
+    const lower = msg.toLowerCase()
+    let matched = null
+    for (const [stem, phaseKey] of STATUS_KEY_TO_PHASE) {
+      if (lower.includes(stem)) { matched = phaseKey; break }
+    }
+    if (matched) {
+      // Mark previous active phase done, mark new one active.
+      for (const [k, v] of this._phases) {
+        if (v.status === "active") v.status = "done"
+      }
+      const next = this._phases.get(matched)
+      if (next && next.status !== "done") next.status = "active"
+      this._currentLabel = msg.replace(/<[^>]*>/g, "").trim().slice(0, 80)
+    } else {
+      // Fall-through: just update the current-label.
+      this._currentLabel = msg.replace(/<[^>]*>/g, "").trim().slice(0, 80) || this._currentLabel
+    }
+    this.render(false)
+  }
+
+  handleAssetProgress(name, total, current) {
+    this._assetTotal   = Number(total) || 0
+    this._assetCurrent = Number(current) || 0
+    this._currentLabel = `${name} — ${this._assetCurrent} / ${this._assetTotal}`
+    this.render(false)
+  }
+
+  handleCompleteHook(info) {
+    this._scenePackerInfo = info?.info || null
+    // Wire phase counts from info.counts now that the importer has finished
+    // and the metadata is reliable.
+    const counts = this._scenePackerInfo?.counts || {}
+    for (const def of PHASE_DEFS) {
+      if (!def.countSource) continue
+      const c = counts[def.countSource]
+      const p = this._phases.get(def.key)
+      if (typeof c === "number") p.count = c
+      // Skip rows with 0 count so the UI doesn't lie about pending work.
+      if (p.status === "pending" && (c === 0 || c === undefined || c === null)) {
+        p.status = "skipped"
+      }
+    }
+    this._firstSceneId = this._scenePackerInfo?.scenes?.[0]?.id || null
+  }
+
+  markCompleted() {
+    this._state = "completed"
+    this._currentLabel   = null
+    this._currentSpinner = false
+    this._completedMessage = game.i18n.localize("BENEOS.Cloud.Bmap.InstallProgress.CompletedBody")
+    // Any phase still active or pending => mark done (process() returned, so
+    // we trust scene-packer's "everything ran" semantics).
+    for (const v of this._phases.values()) {
+      if (v.status === "active" || v.status === "pending") v.status = "done"
+    }
+    this.render(false)
+  }
+
+  markFailed(message) {
+    this._state = "failed"
+    this._currentLabel   = null
+    this._currentSpinner = false
+    this._errorMessage   = message || game.i18n.localize("BENEOS.Cloud.Bmap.InstallProgress.UnknownError")
+    for (const v of this._phases.values()) {
+      if (v.status === "active") v.status = "error"
+    }
+    this.render(false)
+  }
+
+  /* ========== Render context ========== */
+
+  async _prepareContext() {
+    const phases = PHASE_DEFS.map(def => {
+      const cur = this._phases.get(def.key)
+      return {
+        key:      def.key,
+        labelKey: def.labelKey,
+        status:   cur.status,
+        count:    cur.count,
+      }
+    })
+
+    // Total progress: phase weights + asset sub-fraction inside the active phase.
+    let totalWeight = 0
+    let doneWeight  = 0
+    for (const def of PHASE_DEFS) {
+      totalWeight += def.weight
+      const v = this._phases.get(def.key)
+      if (v.status === "done" || v.status === "skipped") doneWeight += def.weight
+    }
+    let assetFraction = 0
+    if (this._assetTotal > 0) assetFraction = Math.min(1, this._assetCurrent / this._assetTotal)
+    // Add half-weight of the currently-active phase so the bar moves while it runs.
+    for (const def of PHASE_DEFS) {
+      if (this._phases.get(def.key).status === "active") {
+        doneWeight += def.weight * (assetFraction || 0.5)
+        break
+      }
+    }
+    const totalPct = totalWeight > 0 ? Math.min(100, Math.round((doneWeight / totalWeight) * 100)) : 0
+
+    return {
+      state:            this._state,
+      label:            this._label,
+      coverUrl:         this._coverUrl,
+      subtitle:         this._subtitle,
+      totalPct,
+      currentLabel:     this._currentLabel,
+      currentSpinner:   this._currentSpinner && this._state === "running",
+      phases,
+      errorMessage:     this._errorMessage,
+      completedMessage: this._completedMessage,
+      closeDisabled:    this._state === "running",
+      showOpenScenes:   this._state === "completed" && !!this._firstSceneId,
+    }
+  }
+
+  /* ========== Actions ========== */
+
+  static _onClose(_event, _target) {
+    this.close()
+  }
+
+  static _onOpenFirstScene(_event, _target) {
+    const id = this._firstSceneId
+    if (!id) return
+    const scene = game.scenes?.get?.(id)
+    if (scene?.sheet?.render) scene.sheet.render(true)
+    else if (scene?.activate) scene.activate()
+  }
+}
+
+// Expose globally for the scenepacker wrapper to construct without an import
+// cycle (beneos-scenepacker.js is a regular script loaded before this ESM).
+globalThis.BeneosBattlemapInstallProgress = BeneosBattlemapInstallProgress

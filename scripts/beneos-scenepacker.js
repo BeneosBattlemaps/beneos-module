@@ -88,6 +88,30 @@ export class BeneosScenePackerManager {
     }
 
     /**
+     * Plan §13: release-level catalog. Returns one entry per battlemap assets
+     * row with cover_url, scene_count, variants_available, nb_variants and the
+     * can_install / can_download_zip gates. Cached on first call so successive
+     * renders do not re-hit the cloud.
+     * @returns {Promise<Array>}
+     */
+    async listReleases({ refresh = false } = {}) {
+        if (!this.sessionId) {
+            throw new Error('No Foundry ID available. Please connect to Beneos Cloud first.');
+        }
+        if (!refresh && this._releasesCache) return this._releasesCache;
+        const response = await fetch(this.apiEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ s: this.sessionId, a: 'list_releases' })
+        });
+        const data = await response.json();
+        if (data.status !== 'ok') throw new Error(data.message || 'Failed to list releases');
+        this._releasesCache = data.releases || [];
+        console.log('BeneosScenePackerManager | listReleases returned', this._releasesCache.length);
+        return this._releasesCache;
+    }
+
+    /**
      * Récupère le packInfo pour un package spécifique
      * @param {string} packageId - ID du package
      * @returns {Promise<Object>} Le packInfo
@@ -166,7 +190,7 @@ export class BeneosScenePackerManager {
 
             // Récupérer le packInfo
             const packInfo = await this.getPackInfo(packageId);
-            
+
             // Vérifier que mtte.json est présent
             if (!packInfo['mtte.json']) {
                 throw new Error('Invalid package: mtte.json not found');
@@ -177,19 +201,15 @@ export class BeneosScenePackerManager {
             // Charger dynamiquement MoulinetteImporter depuis ScenePacker
             const MoulinetteImporter = (await import('/modules/scene-packer/scripts/export-import/moulinette-importer.js')).default;
 
-            // Créer les options pour MoulinetteImporter
-            const importOptions = {
+            const importer = new MoulinetteImporter({
                 packInfo: packInfo,
                 sceneID: options.sceneID || '',
                 actorID: options.actorID || ''
-            };
-
-            // Créer et afficher l'importer
-            const importer = new MoulinetteImporter(importOptions);
+            });
             importer.render(true);
-            
+
             console.log('BeneosScenePackerManager | MoulinetteImporter launched successfully');
-            
+
         } catch (error) {
             console.error('BeneosScenePackerManager | Error importing package:', error);
             ui.notifications.error(`Failed to import package: ${error.message}`);
