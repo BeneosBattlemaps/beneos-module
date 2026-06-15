@@ -454,42 +454,6 @@ export class BeneosAnalytics {
     } catch (_) { return "" }
   }
 
-  /********************************************************************************** */
-  // One-time, GM-only info banner (DSGVO transparency). Shown on the first
-  // cloud-window open. Default is opt-out, so this informs rather than asks.
-  static async maybeShowConsentBanner() {
-    try {
-      if (!game.user?.isGM) return
-      if (game.settings.get(this.moduleId(), "beneos-analytics-banner-shown")) return
-      // Persist immediately so a render race cannot show it twice.
-      await game.settings.set(this.moduleId(), "beneos-analytics-banner-shown", true)
-
-      const title = game.i18n.localize("BENEOS.Analytics.Banner.Title") || "Beneos anonymous usage data"
-      const body = game.i18n.localize("BENEOS.Analytics.Banner.Body")
-        || "Beneos collects anonymous, GM-only usage data (no player data, no names) to find broken content and improve releases. You can turn this off any time in the module settings."
-        const settingsLabel = game.i18n.localize("BENEOS.Analytics.Banner.Settings") || "Open settings"
-      const okLabel = game.i18n.localize("BENEOS.Analytics.Banner.Ok") || "Got it"
-
-      const DialogV2 = foundry?.applications?.api?.DialogV2
-      if (DialogV2) {
-        await DialogV2.wait({
-          window: { title },
-          content: `<p style="margin:0 0 .5em 0">${body}</p>`,
-          buttons: [
-            {
-              action: "settings",
-              label: settingsLabel,
-              callback: () => { try { game.settings.sheet.render(true) } catch (_) {} }
-            },
-            { action: "ok", label: okLabel, default: true }
-          ]
-        })
-      } else {
-        ui.notifications.info(body, { permanent: true })
-      }
-    } catch (_) { /* never block the window */ }
-  }
-
   static async _sha256(text) {
     try {
       const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(text || "")))

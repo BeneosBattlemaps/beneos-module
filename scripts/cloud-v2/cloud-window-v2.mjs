@@ -2873,8 +2873,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // beneos_module.js's toolbar handler. _onRender runs after the
     // V2 window is in DOM — clean handover with no flicker.
     document.getElementById("beneos-cloud-loading-splash")?.remove()
-    // One-time anonymous-analytics info banner (no-op after first acceptance).
-    try { BeneosAnalytics.maybeShowConsentBanner() } catch (_) {}
   }
 
   // Hero rotation for the Home tab. Cycles slides every 7s and pauses

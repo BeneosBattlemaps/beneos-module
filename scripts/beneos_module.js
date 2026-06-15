@@ -859,22 +859,31 @@ Hooks.on("dropActorSheetData", (actor, sheet, data) => {
   return false
 })
 /********************************************************************************** */
-// Wave B-9-fix-48: silence Item.fromDropData / Actor.fromDropData when the
-// drop payload is one of our phantom Beneos cloud markers. The
-// dropActorSheetData hook above stops Foundry's V13 _onDrop from calling
-// fromDropData, but the dnd5e ActorSheet override still calls it directly,
-// which throws "Failed to resolve Document from provided DragData. Either
-// data or a UUID must be provided.". Returning null here lets dnd5e fall
-// through gracefully — our pipeline has already kicked off the import
-// and will register the actor for drainPendingItemDrops to populate later.
+// Silence Item.fromDropData / Actor.fromDropData when the drop payload is one
+// of our phantom Beneos cloud markers. The dropActorSheetData hook above stops
+// Foundry's V13 _onDrop from calling fromDropData, but the dnd5e ActorSheet
+// override still calls it directly, which throws "Failed to resolve Document
+// from provided DragData. Either data or a UUID must be provided.". Returning
+// null here lets dnd5e fall through gracefully: our pipeline has already kicked
+// off the import and will register the actor for drainPendingItemDrops to
+// populate later. We wrap via libWrapper instead of reassigning the method so
+// other modules patching the same fromDropData stay compatible.
 Hooks.once("ready", () => {
   for (const docName of ["Item", "Actor"]) {
     const cls = CONFIG?.[docName]?.documentClass
     if (!cls?.fromDropData) continue
-    const original = cls.fromDropData
-    cls.fromDropData = async function(data, options) {
-      if (data?.beneosCloudPending === true) return null
-      return original.call(this, data, options)
+    try {
+      libWrapper.register(
+        BeneosUtility.moduleID(),
+        `CONFIG.${docName}.documentClass.fromDropData`,
+        function (wrapped, data, options) {
+          if (data?.beneosCloudPending === true) return null
+          return wrapped(data, options)
+        },
+        "MIXED"
+      )
+    } catch (e) {
+      console.warn(`Beneos | fromDropData libWrapper register failed for ${docName}:`, e)
     }
   }
   // Tier-3 delta-cursor safety net: every world-open starts with a

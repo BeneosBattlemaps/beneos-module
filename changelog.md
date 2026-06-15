@@ -4,10 +4,13 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.3.1 # 2026-06-15
+- Improved: **Plays nicer with other modules.** Beneos now hooks into Foundry's drag-and-drop through libWrapper, so it no longer clashes with other modules that touch the same drop handling.
+
 ### 14.3.0 # 2026-06-13
 - New: **Passwordless Beneos Cloud login.** Connect a Foundry world to your Beneos Cloud account with just your email: we send a one-time code, you enter it, done. No password to remember.
 - New: **Sign up from inside Foundry.** If you do not have a Beneos account yet, entering the emailed code creates one for you and links it to the Beneos shop, so your library and purchases share one identity.
-- New: **Anonymous usage insights (GM-only, opt-out).** With your consent the module sends anonymous, GM-only data (no player data, no names) so Beneos can spot broken content and improve releases. You can turn it off any time in the module settings.
+- New: **Anonymous usage insights (GM-only, opt-out).** With your consent the module sends anonymous, GM-only data (no player data, no names) so Beneos can spot broken content and improve releases. You can turn it off any time in the module settings. We use this anonymous information to proactively identify which releases are causing issues in which environments (self-hosted, hosting services, etc.) so that we can fix them without needing a report.
 - Improved: **Older logins keep working.** Existing password logins continue to work, so worlds on previous versions are unaffected.
 
 ### 14.2.0 # 2026-05-31
