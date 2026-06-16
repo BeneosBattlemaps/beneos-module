@@ -1815,6 +1815,50 @@
   background: color-mix(in srgb, var(--bc-warn, #e0b53e) 18%, rgba(0,0,0,0.55));
 }
 
+/* Plan §20 W4.2 release-locked overlay. Centered semitransparent block over
+ * the cover thumb with a lock icon + CTA chip. Clicks pass through to the
+ * card's data-action handler which short-circuits to window.open(unlockUrl).
+ * Card body underneath stays dimmed so the release info stays scannable. */
+.beneos-cloud-app .bc-card-thumb .bc-release-locked-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(2px);
+  color: var(--bc-text-primary, #f0e3c8);
+  z-index: 3;
+  pointer-events: none;
+}
+.beneos-cloud-app .bc-card-thumb .bc-release-locked-overlay i {
+  font-size: 28px;
+  color: var(--bc-warn, #e0b53e);
+  filter: drop-shadow(0 0 4px rgba(0,0,0,0.6));
+}
+.beneos-cloud-app .bc-card-thumb .bc-release-locked-overlay .bc-release-locked-cta {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid color-mix(in srgb, var(--bc-warn, #e0b53e) 55%, transparent);
+  color: var(--bc-warn, #e0b53e);
+}
+/* Locked release-cards get a dimmed body to reinforce the no-access state.
+ * The cover overlay above is already strong enough on its own; this just
+ * keeps the visual grouping consistent. Selector matches the article class
+ * emitted by results-pane.hbs (bc-result-card + bc-release-locked). */
+.beneos-cloud-app .bc-result-card.bc-release-locked .bc-card-body,
+.beneos-cloud-app .bc-result-card.bc-release-locked .bc-card-meta,
+.beneos-cloud-app .bc-result-card.bc-release-locked .bc-card-name-row {
+  opacity: 0.55;
+}
+
 /* Hide ALL in-name status chips in grid mode (BENEOS + NEW + UPDATE)
  * so they don't double-render alongside the in-thumb copies. */
 .beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-name-row .bc-status-chip:not(.bc-thumb-chip) {

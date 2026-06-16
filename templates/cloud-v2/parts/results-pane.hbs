@@ -163,7 +163,7 @@
             {{/if}}
           </div>
         {{/if}}
-        <article class="bc-result-card bc-card-group-{{card.groupKind}}{{#if card.isInstalled}} bc-card-installed{{/if}}{{#if card.isCloudAvailable}} bc-card-cloud{{/if}}{{#if card.isInstalling}} bc-card-installing{{/if}}{{#if card.justInstalled}} bc-card-just-installed{{/if}}{{#if card.isSelected}} bc-card-selected{{/if}}{{#if card.isBeneosOriginal}} bc-card-beneos-original{{/if}}{{#if card.isNewForUser}} bc-card-new-for-user{{/if}}"
+        <article class="bc-result-card bc-card-group-{{card.groupKind}}{{#if card.isInstalled}} bc-card-installed{{/if}}{{#if card.isCloudAvailable}} bc-card-cloud{{/if}}{{#if card.isInstalling}} bc-card-installing{{/if}}{{#if card.justInstalled}} bc-card-just-installed{{/if}}{{#if card.isSelected}} bc-card-selected{{/if}}{{#if card.isBeneosOriginal}} bc-card-beneos-original{{/if}}{{#if card.isNewForUser}} bc-card-new-for-user{{/if}}{{#if card.isReleaseLocked}} bc-release-locked{{/if}}"
                  data-asset-key="{{card.key}}"
                  data-asset-type="{{card.assetType}}"
                  data-document-id="{{card.documentId}}"
@@ -212,6 +212,16 @@
               <span class="bc-dl-status bc-dl-fresh" data-tooltip="{{card.dlBadgeTooltip}}">✓</span>
             {{else if card.dlBadgeStale}}
               <span class="bc-dl-status bc-dl-stale" data-tooltip="{{card.dlBadgeTooltip}}">!</span>
+            {{/if}}
+            {{!-- Plan §20 W4.2 release-locked overlay. Sits over the cover
+                 thumb so the user instantly sees "no access" without reading
+                 the action row. Click-handler in the card-click dispatcher
+                 short-circuits to window.open(unlock_url) for these cards. --}}
+            {{#if card.isReleaseLocked}}
+              <div class="bc-release-locked-overlay" data-tooltip="{{card.unlockLabel}}">
+                <i class="fa-solid fa-lock"></i>
+                <span class="bc-release-locked-cta">{{localize "BENEOS.Cloud.Bmap.Release.UnlockCta"}}</span>
+              </div>
             {{/if}}
           </div>
 

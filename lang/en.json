@@ -223,6 +223,7 @@
   "BENEOS.Cloud.Bmap.PreInstall.SwitchBody": "'%name%' is installed as %old% (%count% scenes since %date%). You are about to install %new%. The quality changes from %old% to %new%, and the existing scenes will be overwritten. Continue?",
   "BENEOS.Cloud.Bmap.PreInstall.SwitchYes": "Switch variant",
   "BENEOS.Cloud.Bmap.PreInstall.Cancel": "Cancel",
+  "BENEOS.Cloud.Bmap.Release.UnlockCta": "Unlock",
   "BENEOS.Cloud.Settings.Account.Header": "Beneos Cloud Account",
   "BENEOS.Cloud.Settings.Account.LoggedInAs": "Connected",
   "BENEOS.Cloud.Settings.Account.NotConnected": "Not connected",

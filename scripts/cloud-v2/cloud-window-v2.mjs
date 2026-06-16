@@ -2928,6 +2928,20 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const inReleaseIndex = !!this._releaseIndex?.get?.(key)
       const isReleaseCard = isReleaseCardAttr || (inReleaseIndex && !props.cloud_release_id)
       const wantsNative = btn?.dataset?.bmapNative === "true"
+      // Plan §20 W4.2 - locked release short-circuit. When the cloud responded
+      // can_install=false on this release we open the unlock-CTA URL (Patreon
+      // join / shop purchase) instead of firing the install pipeline. The
+      // Moulinette legacy button stays clickable next to it for the cards
+      // that have a legacy match - that path doesn't require cloud access.
+      if (isReleaseCard) {
+        const rel = this._releaseIndex?.get?.(key)
+        if (rel && rel.can_install === false) {
+          const url = rel.unlock_hint?.url || "https://www.patreon.com/BeneosBattlemaps"
+          try { console.log("[beneos-bm] release locked, opening unlock", key, url) } catch (_) {}
+          window.open(url, "_blank", "noopener,noreferrer")
+          return
+        }
+      }
       const cloudReady = isReleaseCard
         || inReleaseIndex
         || !!(props.cloud_release_id && props.cloud_scene_slug && props.release_dir)
@@ -4921,6 +4935,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         }
       }
 
+      // Plan §20 W4.2 - visibility matrix on release cards. Backend emits
+      // can_install + unlock_hint on every list_releases row; we surface
+      // locked releases as dimmed cards with a CTA-button that opens the
+      // unlock URL (Patreon join / shop purchase / loyalty hint) instead
+      // of firing the install pipeline.
+      const canInstall = r?.can_install !== false   // default true if backend doesn't set
+      const unlockHint = r?.unlock_hint || null
+
       return {
         key:                  r.release_dir,
         name:                 r.display_name || r.release_dir,
@@ -4930,7 +4952,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         documentId:           "",
         isDraggable:          false,
         isBmap:               true,
-        isCloudAvailable:     true,
+        isCloudAvailable:     canInstall,
         cloudReady:           true,
         isReleaseCard:        true,
         releaseScope:         true,
@@ -4957,6 +4979,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
               ? `Installed ${installState.variantInstalled || "single-variant"} on ${this.#formatInstallDate(installState.installedAt)} (${installState.sceneCount} scenes). Release updated since install.`
               : `Installed ${installState.variantInstalled || "single-variant"} on ${this.#formatInstallDate(installState.installedAt)} (${installState.sceneCount} scenes).`)
           : "",
+        // Plan §20 W4.2 - locked-card fields. Card renders dimmed with a
+        // CTA-button that opens unlockHint.url in a new tab.
+        isReleaseLocked:      !canInstall,
+        unlockUrl:            unlockHint?.url   || "",
+        unlockLabel:          unlockHint?.label || "Unlock via Patreon",
+        unlockType:           unlockHint?.type  || "generic",
       }
     })
     return {
