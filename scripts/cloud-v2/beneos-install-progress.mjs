@@ -72,6 +72,7 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
     actions: {
       closeProgress:   BeneosBattlemapInstallProgress._onClose,
       openFirstScene:  BeneosBattlemapInstallProgress._onOpenFirstScene,
+      showReport:      BeneosBattlemapInstallProgress._onShowReport,
     },
   }
 
@@ -166,6 +167,8 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
     this._assetTotal       = 0
     this._scenePackerInfo  = null
     this._firstSceneId     = null
+    this._failedCount      = 0    // live failed-transfer count (robust installer)
+    this._reportOpener     = null // () => void, set by the native installer
   }
 
   /* ========== Engine event handlers (called from attach()) ========== */
@@ -221,6 +224,37 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
       }
     }
     this._firstSceneId = this._scenePackerInfo?.scenes?.[0]?.id || null
+  }
+
+  /** Live count of failed transfers, surfaced during the run (native installer). */
+  handleFailureCount(n) {
+    this._failedCount = Number(n) || 0
+    if (this._state === "running") this.render(false)
+  }
+
+  /** Register a callback that re-opens the post-install report dialog. */
+  setReportOpener(fn) {
+    this._reportOpener = (typeof fn === "function") ? fn : null
+    // Re-render so the "Show report" button appears once a terminal state is set.
+    if (this._state !== "running") this.render(false)
+  }
+
+  /** Completed, but some assets/documents failed. Distinct from a hard failure. */
+  markCompletedWithIssues({ failed = 0 } = {}) {
+    this._state = "completed-with-issues"
+    this._currentLabel   = null
+    this._currentSpinner = false
+    this._failedCount    = failed || this._failedCount
+    let msg
+    try { msg = game.i18n.format("BENEOS.Cloud.Bmap.InstallProgress.CompletedWithIssuesBody", { count: this._failedCount }) } catch (_) {}
+    if (!msg || msg.includes("CompletedWithIssues")) {
+      msg = `Install finished, but ${this._failedCount} item(s) could not be transferred. See the report for what failed and why.`
+    }
+    this._completedMessage = msg
+    for (const v of this._phases.values()) {
+      if (v.status === "active" || v.status === "pending") v.status = "done"
+    }
+    this.render(false)
   }
 
   markCompleted() {
@@ -291,8 +325,19 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
       errorMessage:     this._errorMessage,
       completedMessage: this._completedMessage,
       closeDisabled:    this._state === "running",
-      showOpenScenes:   this._state === "completed" && !!this._firstSceneId,
+      showOpenScenes:   (this._state === "completed" || this._state === "completed-with-issues") && !!this._firstSceneId,
+      hasIssues:        this._state === "completed-with-issues",
+      failedCount:      this._failedCount,
+      failedLabel:      this._failedCount ? this.#failedLabel(this._failedCount) : null,
+      showReportButton: (this._state === "completed-with-issues" || this._state === "failed") && typeof this._reportOpener === "function",
     }
+  }
+
+  #failedLabel(n) {
+    let s
+    try { s = game.i18n.format("BENEOS.Cloud.Bmap.InstallProgress.FailedSoFar", { count: n }) } catch (_) {}
+    if (!s || s.includes("FailedSoFar")) s = `${n} failed so far`
+    return s
   }
 
   /* ========== Actions ========== */
@@ -307,6 +352,10 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
     const scene = game.scenes?.get?.(id)
     if (scene?.sheet?.render) scene.sheet.render(true)
     else if (scene?.activate) scene.activate()
+  }
+
+  static _onShowReport(_event, _target) {
+    try { this._reportOpener?.() } catch (e) { console.warn("BeneosInstallProgress | report open failed", e) }
   }
 }
 

@@ -35,6 +35,12 @@
           <span class="bcip-current-text">{{currentLabel}}</span>
         </div>
       {{/if}}
+      {{#if failedLabel}}
+        <div class="bcip-current" style="color:#f5c992;">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span class="bcip-current-text">{{failedLabel}}</span>
+        </div>
+      {{/if}}
     </div>
 
     <ul class="bcip-phases">
@@ -60,16 +66,30 @@
       </div>
     {{/if}}
 
-    {{#if completedMessage}}
-      <div class="bcip-success">
-        <i class="fa-solid fa-circle-check"></i>
+    {{#if hasIssues}}
+      <div class="bcip-error" style="border-left-color:#f5c992;background:rgba(245,201,146,0.10);color:#f5c992;">
+        <i class="fa-solid fa-triangle-exclamation"></i>
         <span>{{completedMessage}}</span>
       </div>
+    {{else}}
+      {{#if completedMessage}}
+        <div class="bcip-success">
+          <i class="fa-solid fa-circle-check"></i>
+          <span>{{completedMessage}}</span>
+        </div>
+      {{/if}}
     {{/if}}
 
   </div>
 
   <footer class="bcip-actions">
+    {{#if showReportButton}}
+      <button type="button" class="bc-card-button bc-card-button-primary"
+              data-action="showReport">
+        <i class="fa-solid fa-clipboard-list"></i>
+        {{localize "BENEOS.Cloud.Bmap.InstallProgress.ShowReport"}}
+      </button>
+    {{/if}}
     {{#if showOpenScenes}}
       <button type="button" class="bc-card-button bc-card-button-primary"
               data-action="openFirstScene">
