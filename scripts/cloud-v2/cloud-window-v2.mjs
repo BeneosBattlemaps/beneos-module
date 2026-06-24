@@ -166,6 +166,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       switchView:              BeneosCloudWindowV2._onSwitchView,
       switchBmapRes:           BeneosCloudWindowV2._onSwitchBmapRes,
       switchBmapView:          BeneosCloudWindowV2._onSwitchBmapView,
+      installBundle:           BeneosCloudWindowV2._onCloudBundleInstall,
       retryLoadReleases:       BeneosCloudWindowV2._onRetryLoadReleases,
       openExternal:            BeneosCloudWindowV2._onOpenExternal,
       openPatchlog:            BeneosCloudWindowV2._onOpenPatchlog,
@@ -699,6 +700,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         isBmap: this.searchMode === "bmap",
         bmapRes4K: this._bmapActiveResolution() === "4K",
         bmapViewIsReleases: this._bmapActiveView() === "releases",
+        bmapViewIsIndividual: this._bmapActiveView() === "individual",
+        bmapViewIsBundles: this._bmapActiveView() === "bundles",
         bmapReleasesLoading: !!this._releaseLoading && this._releaseList === null,
         bmapReleasesError:   (!this._releaseLoading && this._releaseLoadError) ? String(this._releaseLoadError) : null,
         drawer: {
@@ -839,8 +842,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // (loading=true); the fetch's finally re-renders with the populated
     // list. Releases mode reroutes the entire pipeline to release cards.
     if (type === "bmap") {
+      const bmapView = this._bmapActiveView()
+      if (bmapView === "bundles") {
+        this.#ensureBundlesLoaded()
+        return this.#buildBundleCards()
+      }
       this.#ensureReleasesLoaded()
-      if (this._bmapActiveView() === "releases") {
+      if (bmapView === "releases") {
         return this.#buildReleaseCards()
       }
     }
@@ -4769,7 +4777,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // scoped via this._bmapViewMode (NOT persisted across reloads per spec
   // §13.7 — defaults to "releases" on every fresh window open).
   _bmapActiveView() {
-    return this._bmapViewMode === "individual" ? "individual" : "releases"
+    if (this._bmapViewMode === "individual") return "individual"
+    if (this._bmapViewMode === "bundles") return "bundles"
+    return "releases"
   }
 
   // Plan §13: resolution toggle handler. Persists, re-renders just the
@@ -4791,7 +4801,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   static _onSwitchBmapView(event, target) {
     event.preventDefault()
     const v = target.dataset.bmapView
-    if (v !== "releases" && v !== "individual") return
+    if (v !== "releases" && v !== "individual" && v !== "bundles") return
     if (this._bmapActiveView() === v) return
     this._bmapViewMode = v
     this._bmapViewPinned = true
@@ -5040,6 +5050,115 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       if (n > 0) rows.push({ count: n, label: game.i18n.localize(key) })
     }
     return rows.length ? rows : null
+  }
+
+  // #5: lazy-load install bundles for the Bundles view. Mirrors #ensureReleasesLoaded.
+  async #ensureBundlesLoaded() {
+    if (this._bundleList || this._bundlesLoading) return
+    this._bundlesLoading = true
+    this._bundlesLoadError = null
+    try {
+      const mgr = window.BeneosScenePacker
+      const bundles = (mgr && typeof mgr.listBundles === "function") ? await mgr.listBundles() : []
+      this._bundleList = Array.isArray(bundles) ? bundles : []
+    } catch (e) {
+      this._bundlesLoadError = e?.message || String(e)
+      this._bundleList = []
+      console.warn("BeneosCloudWindowV2 | listBundles failed", e)
+    } finally {
+      this._bundlesLoading = false
+    }
+    try { this.#renderResults(["results"]) } catch (_e) {}
+  }
+
+  // #5: build bundle-cards from list_bundles. Mirrors the release-card shape so
+  // the existing results grid/list renders them; the drawer shows the member
+  // list + a single "Install Bundle" button.
+  #buildBundleCards() {
+    const list = Array.isArray(this._bundleList) ? this._bundleList : []
+    let filtered = list
+    const q = (this._textFilter || "").trim().toLowerCase()
+    if (q) filtered = filtered.filter(b => String(b?.name || "").toLowerCase().includes(q))
+    const totalMatches = filtered.length
+    const limit = this.loadedCount
+    const hasMore = totalMatches > limit
+    const sliced = hasMore ? filtered.slice(0, limit) : filtered
+    const cards = sliced.map(b => {
+      const canInstall = b?.can_install !== false
+      const members = Array.isArray(b?.members)
+        ? [...b.members].sort((m1, m2) => (m1.sort_order || 0) - (m2.sort_order || 0))
+        : []
+      return {
+        key:              b.id,
+        name:             b.name || b.id,
+        assetType:        "bmap",
+        dragType:         "bmap",
+        dragMode:         "noop",
+        isDraggable:      false,
+        isBmap:           true,
+        isBundleCard:     true,
+        bundleScope:      true,
+        isCloudAvailable: canInstall,
+        cloudReady:       true,
+        thumbUrl:         b.cover_url || null,
+        bytesLabel:       "",
+        sceneCount:       0,
+        memberCount:      Number(b.member_count || members.length),
+        members,
+        description:      b.description || "",
+        variantLabel:     "",
+        installScope:     "bundle",
+        visibleTagDescriptors: [],
+        moreTagsCount:    0,
+        isReleaseLocked:  !canInstall,
+        unlockUrl:        b?.unlock_hint?.url || "",
+        unlockLabel:      b?.unlock_hint?.label || "Unlock via Patreon",
+      }
+    })
+    return {
+      cards,
+      totalMatches,
+      hasMore,
+      partialHint:    hasMore ? `${cards.length} / ${totalMatches}` : "",
+      groupBulkKeys:  { new: [], update: [], view: [], backlog: [] },
+      loadingReleases: !!this._bundlesLoading,
+      releasesError:   this._bundlesLoadError || null,
+    }
+  }
+
+  // #5: install every member release of a bundle, sequentially in sort_order,
+  // from a single click. One confirmation, progress notifications per member.
+  static async _onCloudBundleInstall(event, target) {
+    event.preventDefault()
+    const bundleId = target?.dataset?.bundleId
+    const bundle = (this._bundleList || []).find(b => b.id === bundleId)
+    if (!bundle || !Array.isArray(bundle.members) || !bundle.members.length) {
+      ui.notifications.warn("This bundle has no installable releases.")
+      return
+    }
+    const NativeInstaller = globalThis.BeneosNativeBattlemapInstaller
+    if (!NativeInstaller) {
+      ui.notifications.error("BeneosNativeBattlemapInstaller is not loaded")
+      return
+    }
+    const variant = this._bmapActiveResolution() === "HD" ? "HD" : "4K"
+    const members = [...bundle.members].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+    const total = members.length
+    let idx = 0
+    for (const m of members) {
+      idx++
+      const dirs = m.variant_dirs || {}
+      const packId = dirs[variant] || dirs["4K"] || dirs["HD"] || dirs["SINGLE"] || Object.values(dirs)[0]
+      if (!packId) { console.warn("BeneosCloudWindowV2 | bundle member has no pack dir", m); continue }
+      ui.notifications.info(game.i18n.format("BENEOS.Cloud.Bmap.BundleInstalling", { current: idx, total }))
+      try {
+        await NativeInstaller.install({ packageId: packId, label: `${bundle.name}: ${m.name}` })
+      } catch (e) {
+        console.warn("BeneosCloudWindowV2 | bundle member install failed", m.name, e)
+        ui.notifications.error(`Install failed for ${m.name}: ${e?.message || e}`)
+      }
+    }
+    ui.notifications.info(`Bundle "${bundle.name}" installed (${total} releases).`)
   }
 
   // Plan §33.6 - render an install timestamp for the badge tooltip. Same

@@ -52,8 +52,11 @@
                   class="bc-view-button{{#if bmapViewIsReleases}} bc-view-active{{/if}}"
                   data-bmap-view="releases" data-action="switchBmapView">{{localize "BENEOS.Cloud.Bmap.Releases"}}</button>
           <button type="button"
-                  class="bc-view-button{{#unless bmapViewIsReleases}} bc-view-active{{/unless}}"
+                  class="bc-view-button{{#if bmapViewIsIndividual}} bc-view-active{{/if}}"
                   data-bmap-view="individual" data-action="switchBmapView">{{localize "BENEOS.Cloud.Bmap.Individual"}}</button>
+          <button type="button"
+                  class="bc-view-button{{#if bmapViewIsBundles}} bc-view-active{{/if}}"
+                  data-bmap-view="bundles" data-action="switchBmapView">{{localize "BENEOS.Cloud.Bmap.Bundles"}}</button>
         </div>
       </div>
       {{/if}}
@@ -638,6 +641,31 @@
         </section>
         {{/if}}
 
+        {{!-- #5: bundle drawer , member list (install order) + one sequential
+             "Install Bundle" button. Skips the per-asset install action below. --}}
+        {{#if drawer.asset.isBundleCard}}
+        <section class="bc-drawer-section bc-drawer-bundle-members">
+          <h4 class="bc-drawer-section-h">{{localize "BENEOS.Cloud.Bmap.BundleMembers"}} ({{drawer.asset.memberCount}})</h4>
+          <ol class="bc-bundle-members">
+            {{#each drawer.asset.members as |m|}}
+              <li>{{m.name}}</li>
+            {{/each}}
+          </ol>
+        </section>
+        <div class="bc-drawer-action">
+          {{#if drawer.asset.isReleaseLocked}}
+            <a class="bc-card-button bc-card-button-join-patron" href="{{@root.joinPatreonUrl}}" target="_blank" rel="noopener noreferrer">
+              <i class="fa-brands fa-patreon"></i><span>{{localize "BENEOS.Patreon.JoinPatron"}}</span>
+            </a>
+          {{else}}
+            <button type="button" class="bc-card-button bc-card-button-primary"
+                    data-action="installBundle" data-bundle-id="{{drawer.asset.key}}">
+              <i class="fa-solid fa-cloud-arrow-down"></i>
+              {{localize "BENEOS.Cloud.Bmap.InstallBundle"}}
+            </button>
+          {{/if}}
+        </div>
+        {{else}}
         {{!-- Wave B-9-fix-30/31: install action moved out of the footer
              into the summary row. Bmap branch shows the Moulinette
              label (matches the card behaviour) since the v1 cloud-bmap
@@ -757,6 +785,7 @@
           {{!-- Drawer catch-all unavailable pill removed in lockstep with
                the list-card variant (Wave B-12-fix). --}}
         </div>
+        {{/if}}
         </div> {{!-- /.bc-drawer-summary --}}
 
         {{#if drawer.asset.description}}

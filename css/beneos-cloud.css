@@ -7801,3 +7801,7 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 .bc-scenes-loading, .bc-scenes-empty { font-size: 12px; opacity: .65; margin: 4px 0; }
 /* #4 larger release cover in the drawer hero */
 .bc-detail-drawer.bc-drawer-bmap .bc-drawer-hero img { max-height: 240px; object-fit: cover; }
+
+/* ===== #5 Bundle drawer member list ===== */
+.bc-bundle-members { margin: 0; padding-left: 20px; display: grid; gap: 3px; font-size: 12px; }
+.bc-bundle-members li { line-height: 1.35; }
