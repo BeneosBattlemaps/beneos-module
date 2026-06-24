@@ -7781,3 +7781,23 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   cursor: not-allowed;
 }
 
+
+/* ===== #4 Release drawer: what's-included checkmarks + scene list ===== */
+.bc-drawer-section { margin-top: 14px; }
+.bc-drawer-section-h {
+  font-size: 13px; font-weight: 600; margin: 0 0 8px; opacity: .9;
+  border-bottom: 1px solid rgba(255,255,255,.08); padding-bottom: 4px;
+}
+.bc-included-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.bc-included-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.bc-included-row i { color: #46b450; }
+.bc-included-row strong { min-width: 1.4em; text-align: right; }
+.bc-scene-list { display: grid; gap: 6px; max-height: 340px; overflow-y: auto; padding-right: 4px; }
+.bc-scene-row { display: flex; align-items: center; gap: 8px; }
+.bc-scene-row-thumbs { display: flex; gap: 3px; flex: 0 0 auto; }
+.bc-scene-thumb { width: 84px; height: 48px; border-radius: 4px; overflow: hidden; background: rgba(0,0,0,.3); }
+.bc-scene-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bc-scene-row-title { font-size: 12px; line-height: 1.3; }
+.bc-scenes-loading, .bc-scenes-empty { font-size: 12px; opacity: .65; margin: 4px 0; }
+/* #4 larger release cover in the drawer hero */
+.bc-detail-drawer.bc-drawer-bmap .bc-drawer-hero img { max-height: 240px; object-fit: cover; }

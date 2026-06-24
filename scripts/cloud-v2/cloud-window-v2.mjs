@@ -635,6 +635,22 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const drawerAsset = this.selectedAssetKey
         ? cards.find(c => c.key === this.selectedAssetKey)
         : null
+      // #4: lazy per-release scene list + "what's included" checklist for the
+      // release-card drawer. Scenes are fetched on first open and cached; the
+      // fetch re-renders the drawer when it resolves.
+      let drawerScenes = null
+      let drawerScenesLoading = false
+      let drawerChecklist = null
+      if (drawerAsset && drawerAsset.isReleaseCard) {
+        drawerChecklist = this.#buildReleaseChecklist(drawerAsset.releaseStats)
+        const rd = drawerAsset.key
+        if (this._releaseScenesCache?.has?.(rd)) {
+          drawerScenes = this._releaseScenesCache.get(rd)
+        } else {
+          drawerScenesLoading = true
+          this.#ensureReleaseScenesLoaded(rd, drawerAsset)
+        }
+      }
       // Wave B-5e-fix-2/4: pre-formatted hint so the template can stay simple
       // (Foundry's {{localize}} helper takes no inline params). When more
       // results are pending, the hint says "scroll for more"; when the user
@@ -688,6 +704,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         drawer: {
           open: !!drawerAsset,
           asset: drawerAsset || null,
+          // #4: release-drawer scene list + what's-included checklist.
+          scenes: drawerScenes,
+          scenesLoading: drawerScenesLoading,
+          checklist: drawerChecklist,
           // Wave B-9-fix-46: surface the multi-select count so the
           // drawer install button can flip its label to "Install
           // Selected (N)" when more than one card is highlighted.
@@ -4930,6 +4950,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         thumbUrl:             coverUrl,
         bytesLabel:           bytes ? this.#formatBytes(bytes) : "",
         sceneCount:           Number(r?.scene_count || 0),
+        // #4: surface release stats (what's-included checkmarks) + the resolved
+        // on-disk variant dirs so the drawer can lazy-load this release's scenes.
+        releaseStats:         r?.stats || null,
+        variantDirs:          r?.variant_dirs || {},
         releaseNum:           r?.release_num || "",
         variantLabel:         single ? "" : useV,
         installDuration:      "0.6s",
@@ -4966,6 +4990,56 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       loadingReleases: !!this._releaseLoading,
       releasesError:   this._releaseLoadError || null,
     }
+  }
+
+  // #4: lazy-load one release's scene list (BM + SC thumbnails) for the drawer.
+  // Idempotent per release_dir; caches the result and re-renders the drawer once
+  // the fetch resolves so the scenes appear without a second click.
+  async #ensureReleaseScenesLoaded(releaseDir, card) {
+    if (!this._releaseScenesCache)   this._releaseScenesCache = new Map()
+    if (!this._releaseScenesInflight) this._releaseScenesInflight = new Set()
+    if (this._releaseScenesCache.has(releaseDir) || this._releaseScenesInflight.has(releaseDir)) return
+    this._releaseScenesInflight.add(releaseDir)
+    const mgr = window.BeneosScenePacker
+    if (!mgr || typeof mgr.listReleaseScenes !== "function") {
+      this._releaseScenesInflight.delete(releaseDir)
+      this._releaseScenesCache.set(releaseDir, [])
+      return
+    }
+    try {
+      const variant = card?.variantLabel === "HD" ? "HD" : (card?.variantLabel === "4K" ? "4K" : "")
+      const scenes = await mgr.listReleaseScenes(releaseDir, variant)
+      this._releaseScenesCache.set(releaseDir, Array.isArray(scenes) ? scenes : [])
+    } catch (e) {
+      console.warn("BeneosCloudWindowV2 | listReleaseScenes failed", releaseDir, e?.message || e)
+      this._releaseScenesCache.set(releaseDir, [])
+    } finally {
+      this._releaseScenesInflight.delete(releaseDir)
+    }
+    if (this.selectedAssetKey === releaseDir && this.rendered) {
+      try { this.#renderResults(["results"]) } catch (_e) {}
+    }
+  }
+
+  // #4: build the "what's included" checklist rows from a list_releases stats
+  // object. Returns [{ count, label }] for the non-zero buckets, or null.
+  #buildReleaseChecklist(stats) {
+    if (!stats || typeof stats !== "object") return null
+    const defs = [
+      ["battlemaps",     "BENEOS.Cloud.Drawer.Stat.Battlemaps"],
+      ["sceneries",      "BENEOS.Cloud.Drawer.Stat.Sceneries"],
+      ["intros",         "BENEOS.Cloud.Drawer.Stat.Intros"],
+      ["overview",       "BENEOS.Cloud.Drawer.Stat.Overview"],
+      ["standalones",    "BENEOS.Cloud.Drawer.Stat.Standalones"],
+      ["handouts",       "BENEOS.Cloud.Drawer.Stat.Handouts"],
+      ["ambient_tracks", "BENEOS.Cloud.Drawer.Stat.Ambient"],
+    ]
+    const rows = []
+    for (const [k, key] of defs) {
+      const n = Number(stats[k] || 0)
+      if (n > 0) rows.push({ count: n, label: game.i18n.localize(key) })
+    }
+    return rows.length ? rows : null
   }
 
   // Plan §33.6 - render an install timestamp for the badge tooltip. Same

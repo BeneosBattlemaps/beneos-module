@@ -112,6 +112,50 @@ export class BeneosScenePackerManager {
     }
 
     /**
+     * Per-release scene list (BM + SC sibling thumbnails) for the release drawer.
+     * Lazy: fetched when a release drawer opens, cached by the caller.
+     * @param {string} releaseDir  assets.filename (= release card key)
+     * @param {string} variant     "4K" | "HD" | "" (single)
+     * @returns {Promise<Array>}
+     */
+    async listReleaseScenes(releaseDir, variant = '') {
+        if (!this.sessionId) {
+            throw new Error('No Foundry ID available. Please connect to Beneos Cloud first.');
+        }
+        const response = await fetch(this.apiEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ s: this.sessionId, a: 'list_release_scenes', release_dir: releaseDir, variant: variant || '' })
+        });
+        const data = await response.json();
+        if (data.status !== 'ok') throw new Error(data.message || 'Failed to list release scenes');
+        return data.scenes || [];
+    }
+
+    /**
+     * Install bundles (Plan §72) for the Bundles view. Each bundle carries its
+     * members ordered by sort_order, each with variant_dirs for sequential install.
+     * Cached on first call.
+     * @returns {Promise<Array>}
+     */
+    async listBundles({ refresh = false } = {}) {
+        if (!this.sessionId) {
+            throw new Error('No Foundry ID available. Please connect to Beneos Cloud first.');
+        }
+        if (!refresh && this._bundlesCache) return this._bundlesCache;
+        const response = await fetch(this.apiEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ s: this.sessionId, a: 'list_bundles' })
+        });
+        const data = await response.json();
+        if (data.status !== 'ok') throw new Error(data.message || 'Failed to list bundles');
+        this._bundlesCache = data.bundles || [];
+        console.log('BeneosScenePackerManager | listBundles returned', this._bundlesCache.length);
+        return this._bundlesCache;
+    }
+
+    /**
      * Récupère le packInfo pour un package spécifique
      * @param {string} packageId - ID du package
      * @returns {Promise<Object>} Le packInfo

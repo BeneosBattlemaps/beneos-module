@@ -597,10 +597,46 @@
           {{#if drawer.asset.releaseLabel}}
             <div class="bc-field"><dt>{{localize "BENEOS.Cloud.Drawer.Release"}}</dt><dd>{{drawer.asset.releaseLabel}}</dd></div>
           {{/if}}
-          {{!-- Wave B-6: the variant count line is redundant now — the
+          {{!-- Wave B-6: the variant count line is redundant now , the
                carousel above shows the actual variants and a "1 / N"
                counter in its header. --}}
         </dl>
+
+        {{!-- #4: what's-included checklist (from list_releases stats). --}}
+        {{#if drawer.checklist}}
+        <section class="bc-drawer-section bc-drawer-included">
+          <h4 class="bc-drawer-section-h">{{localize "BENEOS.Cloud.Drawer.WhatsIncluded"}}</h4>
+          <ul class="bc-included-list">
+            {{#each drawer.checklist as |row|}}
+              <li class="bc-included-row"><i class="fa-solid fa-circle-check"></i> <strong>{{row.count}}</strong> {{row.label}}</li>
+            {{/each}}
+          </ul>
+        </section>
+        {{/if}}
+
+        {{!-- #4: per-release scene list with BM + SC sibling thumbnails. --}}
+        {{#if drawer.asset.isReleaseCard}}
+        <section class="bc-drawer-section bc-drawer-scenes">
+          <h4 class="bc-drawer-section-h">{{localize "BENEOS.Cloud.Drawer.ScenesInRelease"}}{{#if drawer.scenes.length}} ({{drawer.scenes.length}}){{/if}}</h4>
+          {{#if drawer.scenesLoading}}
+            <p class="bc-scenes-loading">{{localize "BENEOS.Cloud.Drawer.ScenesLoading"}}</p>
+          {{else if drawer.scenes.length}}
+            <div class="bc-scene-list">
+              {{#each drawer.scenes as |sc|}}
+                <div class="bc-scene-row">
+                  <div class="bc-scene-row-thumbs">
+                    {{#if sc.thumbnail}}<div class="bc-scene-thumb"><img loading="lazy" src="{{sc.thumbnail}}" alt=""></div>{{/if}}
+                    {{#if sc.sibling_thumbnail}}<div class="bc-scene-thumb"><img loading="lazy" src="{{sc.sibling_thumbnail}}" alt=""></div>{{/if}}
+                  </div>
+                  <div class="bc-scene-row-title">{{sc.name}}</div>
+                </div>
+              {{/each}}
+            </div>
+          {{else}}
+            <p class="bc-scenes-empty">{{localize "BENEOS.Cloud.Drawer.ScenesNone"}}</p>
+          {{/if}}
+        </section>
+        {{/if}}
 
         {{!-- Wave B-9-fix-30/31: install action moved out of the footer
              into the summary row. Bmap branch shows the Moulinette
