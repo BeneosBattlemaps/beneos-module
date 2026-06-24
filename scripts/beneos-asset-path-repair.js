@@ -26,6 +26,12 @@ const TUTORIAL_PLAYLIST_ID = "pQpsDUhEtL0Q27vJ";
 // them correctly.
 const MOULINETTE_MULTIPACK_RE = /^moulinette\/(adventures|images|sounds|scenes)\/[^/]+\//i;
 
+// The in-house Beneos cloud-install namespace. Anything under
+// beneos_assets/cloud/ is written by the native cloud installer at a canonical
+// root-relative location and must never be re-prefixed by the global-prefix
+// legacy repair (see _repairSceneTiles / _repairTutorialPlaylist).
+const BENEOS_CLOUD_NAMESPACE_RE = /(^|\/)beneos_assets\/cloud\//i;
+
 let _cachedPrefix = null;
 
 function _probe(s) {
@@ -69,6 +75,13 @@ async function _repairSceneTiles(scene) {
     // scanForMappings/applyMappings flow. Rewriting them onto the global
     // prefix would re-break references after a successful repair.
     if (MOULINETTE_MULTIPACK_RE.test(norm)) continue;
+    // Never re-prefix the in-house cloud namespace. Assets installed by the
+    // Beneos native cloud installer live at the canonical root-relative
+    // location beneos_assets/cloud/...; a world that ALSO holds older
+    // Moulinette-prefixed Beneos content makes beneosGetAssetPrefix() detect a
+    // moulinette/<...>/ prefix, which would then be wrongly prepended here and
+    // 404 the (already correct) cloud paths.
+    if (BENEOS_CLOUD_NAMESPACE_RE.test(norm)) continue;
     const idx = norm.indexOf(ASSET_MARKER);
     if (idx < 0) continue;
     if (norm.slice(0, idx) === prefix) continue;
@@ -94,6 +107,8 @@ async function _repairTutorialPlaylist() {
     const norm = p.replace(/\\/g, "/");
     // Skip Moulinette multi-pack paths (see note in _repairSceneTiles).
     if (MOULINETTE_MULTIPACK_RE.test(norm)) continue;
+    // Skip the in-house cloud namespace (see note in _repairSceneTiles).
+    if (BENEOS_CLOUD_NAMESPACE_RE.test(norm)) continue;
     const idx = norm.indexOf(ASSET_MARKER);
     if (idx < 0) continue;
     if (norm.slice(0, idx) === prefix) continue;

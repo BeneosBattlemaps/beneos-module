@@ -1352,6 +1352,7 @@
   "BENEOS.Cloud.Filter.Scenery": "Tylko sceneria",
   "BENEOS.Cloud.Filter.Battlemap": "Tylko battlemapa",
   "BENEOS.Cloud.Notification.MoulinetteSearch": "Moulinette opened, please search for: {name}",
+  "BENEOS.Cloud.Install.AssetsMissing": "Nie udało się zainstalować {count} zasobów i mogą być widoczne jako brakujące. Sprawdź konsolę lub zainstaluj pakiet ponownie.",
   "BENEOS.Cloud.Login.WindowTitle": "Beneos Cloud, Sign in",
   "BENEOS.Cloud.Login.Description": "Zaloguj się do swojego konta Beneos Cloud. Dane logowania nigdy nie są zapisywane lokalnie.",
   "BENEOS.Cloud.Login.NoAccount": "Nie masz jeszcze konta?",

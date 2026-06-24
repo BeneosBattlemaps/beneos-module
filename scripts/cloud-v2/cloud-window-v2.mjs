@@ -2946,7 +2946,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // the release-index so the click still routes through the cloud path.
       const inReleaseIndex = !!this._releaseIndex?.get?.(key)
       const isReleaseCard = isReleaseCardAttr || (inReleaseIndex && !props.cloud_release_id)
-      const wantsNative = btn?.dataset?.bmapNative === "true"
       // Plan §20 W4.2 - locked release short-circuit. When the cloud responded
       // can_install=false on this release we open the unlock-CTA URL (Patreon
       // join / shop purchase) instead of firing the install pipeline. The
@@ -2967,12 +2966,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       if (cloudReady && !forceLegacy) {
         const scope = btn?.dataset?.bmapScope || (isReleaseCard ? "release" : "scene")
         const idForLog = isReleaseCard ? key : (props.cloud_release_id || "(unknown)")
-        try { console.log("[beneos-bm]", wantsNative ? "native" : "legacy-cloud", "install", idForLog, scope, key) } catch (_) {}
-        if (wantsNative) {
-          BeneosCloudWindowV2._onCloudBattlemapInstallNative.call(this, event, key, scope)
-        } else {
-          BeneosCloudWindowV2._onCloudBattlemapInstall.call(this, event, key, scope)
-        }
+        try { console.log("[beneos-bm] native install", idForLog, scope, key) } catch (_) {}
+        // Cloud install is ALWAYS the in-house native installer now. The legacy
+        // scene-packer route (_onCloudBattlemapInstall -> MoulinetteImporter) is
+        // retired so a Beneos Cloud install never touches scene-packer. The
+        // Moulinette-legacy button still routes to the marketplace handoff below
+        // (forceLegacy), which opens the Moulinette platform, not our installer.
+        BeneosCloudWindowV2._onCloudBattlemapInstallNative.call(this, event, key, scope)
       } else {
         try { console.log("[beneos-bm] legacy moulinette install", props.cloud_release_id || "(unmigrated)", key) } catch (_) {}
         // .call(this): _onMoulinetteInstall reads this._releaseIndex to

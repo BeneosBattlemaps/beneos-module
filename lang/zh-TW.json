@@ -1352,6 +1352,7 @@
   "BENEOS.Cloud.Filter.Scenery": "僅場景畫面",
   "BENEOS.Cloud.Filter.Battlemap": "僅戰鬥地圖",
   "BENEOS.Cloud.Notification.MoulinetteSearch": "Moulinette opened, please search for: {name}",
+  "BENEOS.Cloud.Install.AssetsMissing": "{count} 個資源無法安裝，可能顯示為遺失。請檢查主控台或重新安裝此包。",
   "BENEOS.Cloud.Login.WindowTitle": "Beneos Cloud, 登入",
   "BENEOS.Cloud.Login.Description": "登入你的 Beneos Cloud 帳號。登入資訊不會儲存在本機。",
   "BENEOS.Cloud.Login.NoAccount": "還沒有帳號嗎？",

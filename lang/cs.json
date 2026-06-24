@@ -1352,6 +1352,7 @@
   "BENEOS.Cloud.Filter.Scenery": "Pouze scenérie",
   "BENEOS.Cloud.Filter.Battlemap": "Pouze battlemapa",
   "BENEOS.Cloud.Notification.MoulinetteSearch": "Moulinette opened, please search for: {name}",
+  "BENEOS.Cloud.Install.AssetsMissing": "{count} assetů se nepodařilo nainstalovat a mohou se zobrazovat jako chybějící. Zkontrolujte konzoli nebo balíček nainstalujte znovu.",
   "BENEOS.Cloud.Login.WindowTitle": "Beneos Cloud, Sign in",
   "BENEOS.Cloud.Login.Description": "Přihlas se ke svému účtu Beneos Cloud. Přihlašovací údaje se nikdy neukládají lokálně.",
   "BENEOS.Cloud.Login.NoAccount": "Ještě nemáš účet?",

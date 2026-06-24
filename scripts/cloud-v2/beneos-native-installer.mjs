@@ -38,6 +38,46 @@ const FOUNDRY_DOC_TYPES_IN_ORDER = [
   ["tables",        () => globalThis.RollTable],
 ]
 
+// Beneos cloud-install namespace. Battlemap packs are authored against
+// `beneos_assets/beneos_battlemaps/...`; on cloud install we relocate them
+// into the isolated `beneos_assets/cloud/battlemaps/...` namespace, mirroring
+// the model items/spells already use (beneos_cloud.js rewrites
+// `beneos_assets/beneos_items/` -> `beneos_assets/cloud/items/`). This keeps
+// cloud-downloaded content fully owned by the Beneos installer and free of any
+// collision with module-bundled assets. The prefix is deliberately narrow so
+// tokens/spells/items (`beneos_assets/beneos_tokens/` etc.) are never touched.
+const PACK_SOURCE_PREFIX   = "beneos_assets/beneos_battlemaps/"
+const CLOUD_INSTALL_PREFIX = "beneos_assets/cloud/battlemaps/"
+
+/** Swap the pack-source asset prefix for the cloud-install prefix in a string. */
+function toCloudAssetPath(p) {
+  return (typeof p === "string" && p.includes(PACK_SOURCE_PREFIX))
+    ? p.split(PACK_SOURCE_PREFIX).join(CLOUD_INSTALL_PREFIX)
+    : p
+}
+
+/**
+ * Deep-walk a parsed document and relocate every
+ * `beneos_assets/beneos_battlemaps/` reference into the cloud namespace so the
+ * document's asset paths match where #downloadAssets wrote the files. Covers
+ * scene background/foreground, tiles[].texture.src (incl. overlays), tokens,
+ * notes icons, journal/actor images, embedded HTML <img src>, etc. Mutates in
+ * place and returns the value. Scoped to the narrow prefix above, so
+ * tokens/spells/items references are left untouched.
+ */
+function rewriteDocAssetPaths(value) {
+  if (typeof value === "string") return toCloudAssetPath(value)
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) value[i] = rewriteDocAssetPaths(value[i])
+    return value
+  }
+  if (value && typeof value === "object") {
+    for (const k of Object.keys(value)) value[k] = rewriteDocAssetPaths(value[k])
+    return value
+  }
+  return value
+}
+
 const JSON_FILE_TO_PHASE = {
   "data/folders.json":      { phaseKey: "data",       collection: "folders",   docClass: () => globalThis.Folder },
   "data/Scene.json":        { phaseKey: "scenes",     collection: "scenes",    docClass: () => globalThis.Scene },
@@ -89,10 +129,15 @@ export class BeneosNativeBattlemapInstaller {
       this.progress.handleStatusMessage("Preparing asset download")
       const { assets, jsons, mtteJson } = this.#classifyPack(packInfo)
 
-      await this.#downloadAssets(assets)
+      const failedUploads = await this.#downloadAssets(assets)
 
       // Phase: create documents in Foundry order
       await this.#importDocuments(jsons, mtteJson)
+
+      // Phase: post-install integrity check + auto-repair (in-house, no
+      // scene-packer). Re-fetches any asset that failed to upload or is
+      // missing on disk, from the pack manifest we still hold.
+      await this.#verifyAndRepair(assets, failedUploads)
 
       this.progress.markCompleted()
     } catch (err) {
@@ -117,8 +162,11 @@ export class BeneosNativeBattlemapInstaller {
       if (relPath === "mtte.json") { mtteJson = url; continue }
       if (relPath === "beneos-pack-manifest.json") continue
       if (relPath.startsWith("data/assets/")) {
-        // Strip "data/assets/" -> client-side relative path under user's data root.
-        const target = relPath.substring("data/assets/".length)
+        // Strip "data/assets/" -> client-side relative path under user's data
+        // root, then relocate beneos_assets/beneos_battlemaps/ into the cloud
+        // namespace (beneos_assets/cloud/battlemaps/). The document rewrite in
+        // #importDocuments uses the same swap so refs match the written files.
+        const target = toCloudAssetPath(relPath.substring("data/assets/".length))
         assets.push({ url, target, relPath })
         continue
       }
@@ -151,6 +199,7 @@ export class BeneosNativeBattlemapInstaller {
     const source  = isForge ? "forgevtt" : "data"
 
     const total = assets.length
+    const failed = []
     for (let i = 0; i < total; i++) {
       const a = assets[i]
       try {
@@ -168,11 +217,13 @@ export class BeneosNativeBattlemapInstaller {
         await FilePicker.upload(source, dir, fileObj, {}, { notify: false })
       } catch (err) {
         console.warn("BeneosNativeInstaller | asset upload failed", a.target, err)
-        // V1: continue on per-asset failure so the document phase still runs.
-        // V2: collect failures, mark phase as error if too many.
+        // Continue on per-asset failure so the document phase still runs; the
+        // failure is collected and retried by #verifyAndRepair afterwards.
+        failed.push(a)
       }
       this.progress.handleAssetProgress("Assets", total, i + 1)
     }
+    return failed
   }
 
   /**
@@ -251,6 +302,11 @@ export class BeneosNativeBattlemapInstaller {
       else arr = []
       if (arr.length === 0) continue
 
+      // Relocate pack-source asset paths into the cloud namespace before
+      // create, so tile/background/token/journal references resolve to the
+      // files #downloadAssets wrote under beneos_assets/cloud/battlemaps/.
+      for (let i = 0; i < arr.length; i++) arr[i] = rewriteDocAssetPaths(arr[i])
+
       // Idempotency: drop entries whose _id already exists in the target collection.
       const coll = game[meta.collection]
       const filtered = arr.filter(d => {
@@ -279,6 +335,79 @@ export class BeneosNativeBattlemapInstaller {
         }
       }
       this.progress.handleAssetProgress(meta.phaseKey, arr.length, arr.length)
+    }
+  }
+
+  /**
+   * Post-install integrity pass (in-house, no scene-packer). Confirms every
+   * asset the pack should have written exists on disk and auto-repairs misses
+   * by re-fetching from the pack manifest (we still hold the signed URLs).
+   * Catches both hard upload failures (tracked during #downloadAssets) and any
+   * silent gaps. Directly addresses "missing assets were never detected" that
+   * the legacy Moulinette/scene-packer path left unhandled.
+   *
+   * @param {Array<{url:string,target:string,relPath:string}>} assets         full manifest
+   * @param {Array<{url:string,target:string,relPath:string}>} failedUploads  uploads that threw
+   */
+  async #verifyAndRepair(assets, failedUploads = []) {
+    this.progress.handleStatusMessage("Verifying installed assets")
+    const FilePicker = foundry.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker
+    const isForge = typeof ForgeVTT !== "undefined" && ForgeVTT.usingTheForge === true
+    const source  = isForge ? "forgevtt" : "data"
+
+    // Build the repair candidate set. Definite upload failures always qualify.
+    // On standard Foundry (data store served from the site root) we also
+    // HEAD-check every target to catch silent gaps. On Forge the asset URL is
+    // not a simple root path, so we trust the tracked-failure set there.
+    const byTarget = new Map()
+    for (const a of failedUploads) byTarget.set(a.target, a)
+    if (!isForge) {
+      for (const a of assets) {
+        if (byTarget.has(a.target)) continue
+        if (!(await this.#assetExistsOnData(a.target))) byTarget.set(a.target, a)
+      }
+    }
+
+    const candidates = [...byTarget.values()]
+    if (candidates.length === 0) return
+
+    this.progress.handleStatusMessage(`Repairing ${candidates.length} missing asset(s)`)
+    const stillMissing = []
+    for (let i = 0; i < candidates.length; i++) {
+      const a = candidates[i]
+      try {
+        const dir  = a.target.includes("/") ? a.target.substring(0, a.target.lastIndexOf("/")) : ""
+        const file = a.target.substring(a.target.lastIndexOf("/") + 1)
+        if (dir) await this.#ensureDir(FilePicker, source, dir)
+        const resp = await fetch(a.url)
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+        const blob = await resp.blob()
+        await FilePicker.upload(source, dir, new File([blob], file, { type: blob.type }), {}, { notify: false })
+        if (!isForge && !(await this.#assetExistsOnData(a.target))) stillMissing.push(a.target)
+      } catch (err) {
+        console.warn("BeneosNativeInstaller | repair failed", a.target, err)
+        stillMissing.push(a.target)
+      }
+      this.progress.handleAssetProgress("Repair", candidates.length, i + 1)
+    }
+
+    if (stillMissing.length) {
+      console.warn("BeneosNativeInstaller | assets still missing after repair", stillMissing)
+      try {
+        ui.notifications.warn(game.i18n.format("BENEOS.Cloud.Install.AssetsMissing", { count: stillMissing.length }))
+      } catch (_) {
+        ui.notifications.warn(`${stillMissing.length} asset(s) could not be installed. See console for the list.`)
+      }
+    }
+  }
+
+  /** HEAD-check a data-store target path against the Foundry site root. */
+  async #assetExistsOnData(target) {
+    try {
+      const r = await fetch("/" + String(target).replace(/^\/+/, ""), { method: "HEAD" })
+      return r.ok
+    } catch (_) {
+      return false
     }
   }
 }
