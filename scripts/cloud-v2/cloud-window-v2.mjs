@@ -548,6 +548,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         adventureList:  orderList(context.adventureList, "battlemap.adventure"),
         gridList:       orderList(context.gridList),
         releaseList:    releaseList,
+        // Task 4: in Bundles view only the Campaign filter is offered (bundles
+        // are module-specific); the template hides the other bmap filters.
+        bmapViewIsBundles: this.searchMode === "bmap" && this._bmapActiveView() === "bundles",
         // Item-side
         // Wave B-8k-5: collapse "Light Armor +1/+2/…" into "Light Armor"
         // before sorting so the dropdown isn't cluttered with modded
@@ -639,27 +642,52 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // #4: lazy per-release scene list + "what's included" checklist for the
       // release-card drawer. Scenes are fetched on first open and cached; the
       // fetch re-renders the drawer when it resolves.
+      // Punkt 4: the same scene list also powers the Individual-Maps scene
+      // drawer ("This Release also contains …"), keyed off the scene's
+      // release_dir instead of its own key.
       let drawerScenes = null
       let drawerScenesLoading = false
       let drawerChecklist = null
+      let drawerReleaseDir = null
+      let drawerReleaseName = null
       if (drawerAsset && drawerAsset.isReleaseCard) {
         drawerChecklist = this.#buildReleaseChecklist(drawerAsset.releaseStats)
-        const rd = drawerAsset.key
-        if (this._releaseScenesCache?.has?.(rd)) {
-          drawerScenes = this._releaseScenesCache.get(rd)
+        drawerReleaseDir = drawerAsset.key
+      } else if (drawerAsset && drawerAsset.isBmap && drawerAsset.releaseDir) {
+        // Individual map scene: surface its parent release + sibling scenes.
+        drawerReleaseDir  = drawerAsset.releaseDir
+        drawerReleaseName = drawerAsset.releaseDisplayName || drawerAsset.releaseDir
+      }
+      // Remember which release the open drawer depends on so the async
+      // scene-load callback knows whether to re-render (Punkt 5 scroll-safe).
+      this._drawerReleaseDir = drawerReleaseDir
+      if (drawerReleaseDir) {
+        if (this._releaseScenesCache?.has?.(drawerReleaseDir)) {
+          drawerScenes = this._releaseScenesCache.get(drawerReleaseDir)
         } else {
           drawerScenesLoading = true
-          this.#ensureReleaseScenesLoaded(rd, drawerAsset)
+          this.#ensureReleaseScenesLoaded(drawerReleaseDir, drawerAsset)
         }
       }
       // Wave B-5e-fix-2/4: pre-formatted hint so the template can stay simple
       // (Foundry's {{localize}} helper takes no inline params). When more
       // results are pending, the hint says "scroll for more"; when the user
       // has loaded everything, only the plain count shows.
+      // Punkt 6: the count noun depends on what the active view actually
+      // lists, so "Showing 100 of N" reads truthfully. Releases view counts
+      // releases, Individual Maps counts maps, Bundles counts bundles, every
+      // other tab keeps the generic "results".
+      const _activeBmapView = this.searchMode === "bmap" ? this._bmapActiveView() : null
+      const countNoun =
+          _activeBmapView === "releases"   ? game.i18n.localize("BENEOS.Cloud.Results.NounReleases")
+        : _activeBmapView === "individual" ? game.i18n.localize("BENEOS.Cloud.Results.NounMaps")
+        : _activeBmapView === "bundles"    ? game.i18n.localize("BENEOS.Cloud.Results.NounBundles")
+        : game.i18n.localize("BENEOS.Cloud.Results.Count")
       const partialHint = hasMore
-        ? game.i18n.format("BENEOS.Cloud.Results.Partial", {
+        ? game.i18n.format("BENEOS.Cloud.Results.PartialNoun", {
             loaded: cards.length,
-            total: totalMatches
+            total: totalMatches,
+            noun: countNoun
           })
         : null
       // Track whether more pages exist so the scroll loader knows when to
@@ -685,6 +713,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         totalMatches,
         hasMore,
         partialHint,
+        countNoun,
+        // Punkt 2: the bmap view tabs must stay reachable even when a view is
+        // empty or still loading, so render the meta bar whenever we're on the
+        // bmap tab OR there are cards. Without this the toolbar lived inside
+        // the cards-length gate and vanished in an empty Bundles view, trapping
+        // the user.
+        showResultsMeta: (this.searchMode === "bmap") || cards.length > 0,
         showFilterActive,
         showFilterLabel,
         bulkOptions,
@@ -711,6 +746,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
           scenes: drawerScenes,
           scenesLoading: drawerScenesLoading,
           checklist: drawerChecklist,
+          // Punkt 4: parent-release context for the Individual-Maps scene
+          // drawer. isSceneDetail distinguishes "scene in a release" from the
+          // release card itself so the template can show the right headings.
+          releaseName: drawerReleaseName,
+          isSceneDetail: !!(drawerAsset && drawerAsset.isBmap && !drawerAsset.isReleaseCard && drawerAsset.releaseDir),
           // Wave B-9-fix-46: surface the multi-select count so the
           // drawer install button can flip its label to "Install
           // Selected (N)" when more than one card is highlighted.
@@ -1014,13 +1054,24 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // read points can never disagree mid tab-switch.
     const showFilterValue = this.showFilter || ""
     const keepUpdateGroup = showFilterValue === "updated"
-    const enriched = entries.map(([key, data]) => {
-      const card = this.#enrichCard(type, key, data)
-      if (hasActiveFilter && card.groupKind === "update" && !keepUpdateGroup) {
-        card.groupKind = "regular"
-      }
-      return card
-    })
+    // Perf (Task D): #enrichCard does a sibling lookup that, unguarded, calls
+    // databaseHolder.getAll("bmap") PER card. getAll deep-copies all ~1838
+    // catalog entries (~13ms each), so 100 cards x 2 lookups was ~2.6s , the
+    // entire scene-click lag. Reuse the single `raw` snapshot we already
+    // fetched for the whole card loop; #bmapCatalog() reads it.
+    this._bmapSnapshot = (type === "bmap") ? raw : null
+    let enriched
+    try {
+      enriched = entries.map(([key, data]) => {
+        const card = this.#enrichCard(type, key, data)
+        if (hasActiveFilter && card.groupKind === "update" && !keepUpdateGroup) {
+          card.groupKind = "regular"
+        }
+        return card
+      })
+    } finally {
+      this._bmapSnapshot = null
+    }
     // Wave B-8i-1 / B-8k-1: collect bulk-install candidate keys per group
     // plus the full "view" set (everything in the filtered view that's
     // either cloud-available-not-installed OR an installed-with-update)
@@ -1353,6 +1404,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     }
   }
 
+  // Perf (Task D): return the bmap catalog reusing a per-build snapshot when
+  // one is active (set in #buildCards), instead of a fresh getAll() deep-copy
+  // on every call. getAll("bmap") copies ~1838 entries (~13ms) , calling it
+  // per card was the dominant cost of the scene-click re-render.
+  #bmapCatalog() {
+    return this._bmapSnapshot || game.beneos?.databaseHolder?.getAll?.("bmap") || {}
+  }
+
   #enrichCard(assetType, key, data) {
     const props = data?.properties ?? {}
     const thumbBase = THUMB_BASE[assetType] || ""
@@ -1425,8 +1484,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // before installing.
     let siblingThumbUrl = null
     if (assetType === "bmap" && props.sibling) {
-      const dbHolder = game.beneos?.databaseHolder
-      const sib = dbHolder?.getAll?.("bmap")?.[props.sibling]
+      const sib = this.#bmapCatalog()[props.sibling]   // Task D: snapshot, no per-card getAll
       const sibThumb = sib?.properties?.thumbnail
       if (sibThumb) siblingThumbUrl = THUMB_BASE.bmap + sibThumb
     }
@@ -1445,6 +1503,17 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         const num = parseInt(numStr, 10)
         if (Number.isFinite(num)) releaseLabel = `${num} - ${name}`
       }
+    }
+
+    // Punkt 3: compatible-adventure chip. Catalog scenes carry the adventure
+    // in props.adventure (slug or localized). We render a compact acronym
+    // (Curse of Strahd -> CoS, Descent into Avernus -> DiA) with the full
+    // name in the tooltip. Front-of-house chip parity for the cloud browser.
+    let compatibleAdventure = null
+    if (assetType === "bmap" && props.adventure) {
+      const advRaw = String(Array.isArray(props.adventure) ? props.adventure[0] : props.adventure)
+      const loc = game.beneos?.databaseHolder?.localizeTag?.("battlemap.adventure", advRaw)
+      compatibleAdventure = this.#adventureChip((loc && loc !== advRaw) ? loc : advRaw)
     }
 
     // Wave B-8h-3: bmap resolution label rendered as a tag. The DB stores
@@ -1739,7 +1808,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // Renders only for non-SRD cards. The label intentionally short so
       // it fits in the grid name-row without wrapping; "BENEOS" reads
       // unambiguously as "Beneos Original / Webshop / Loyalty".
-      beneosChip: BeneosCloudWindowV2.#getNormalizedSource(data, assetType, key) === "SRD"
+      // Edit #4: never on battlemaps , every map is a Beneos original, so the
+      // chip carries no information and just wastes space on the card.
+      beneosChip: (assetType === "bmap" || BeneosCloudWindowV2.#getNormalizedSource(data, assetType, key) === "SRD")
         ? null
         : "BENEOS",
       rarity: props.rarity || null,
@@ -1832,10 +1903,17 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         && !!(data?.properties?.release_dir),
       hasSibling: assetType === "bmap"
         && !!(data?.properties?.sibling)
-        && !!(game.beneos?.databaseHolder?.getAll?.("bmap")?.[data.properties.sibling]?.properties?.cloud_scene_slug),
+        && !!(this.#bmapCatalog()[data.properties.sibling]?.properties?.cloud_scene_slug),
       siblingThumbUrl,
       gridLabel,
       releaseLabel,
+      compatibleAdventure,
+      // Punkt 4: parent-release link for the Individual-Maps scene drawer
+      // ("This Scene Belongs to …" + the release's other scenes).
+      releaseDir: assetType === "bmap" ? (props.release_dir || null) : null,
+      releaseDisplayName: assetType === "bmap"
+        ? (this._releaseIndex?.get?.(props.release_dir)?.display_name || null)
+        : null,
       // Wave B-9-fix-32 → fix-46: any card in the multi-select set
       // gets the gold highlight. The drawer-open card is always in the
       // set (single click adds itself), so this also covers the
@@ -1911,6 +1989,34 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   }
 
   #capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s }
+
+  // Punkt 3: derive a compact adventure acronym + a clean full name from a
+  // raw adventure value (slug "curse-of-strahd" or localized "Curse of
+  // Strahd"). The acronym keeps the first letter of every word, lowercasing
+  // connector words so it reads like the storefront chips: Curse of Strahd ->
+  // "CoS", Descent into Avernus -> "DiA". Returns null when there's nothing
+  // meaningful to show.
+  #adventureChip(name) {
+    const raw = String(name ?? "").trim()
+    if (!raw) return null
+    const connectors = new Set([
+      "of", "the", "into", "in", "and", "to", "a", "an", "on", "at", "for",
+      "from", "with", "by", "de", "le", "la", "des", "du", "von", "der"
+    ])
+    const words = raw.split(/[\s_\-]+/).filter(Boolean)
+    if (!words.length) return null
+    let acronym = ""
+    const display = []
+    for (const w of words) {
+      const lower = w.toLowerCase()
+      const isConn = connectors.has(lower)
+      const first = w.charAt(0)
+      acronym += isConn ? first.toLowerCase() : first.toUpperCase()
+      display.push(isConn ? lower : (first.toUpperCase() + w.slice(1)))
+    }
+    if (!acronym) return null
+    return { acronym, fullName: display.join(" ") }
+  }
 
   // Wave B-8i-2 / B-8k-fix-2: tag descriptions live in
   // BeneosDatabaseHolder per data source (tokenData / itemData /
@@ -3454,7 +3560,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
           this._textFilter = textInput.value || ""
           // Wave B-5e-fix-4: filter change -> back to first page.
           this.#resetPagination()
-          this.#renderResults(["results"])
+          const leftBundles = this.#maybeAutoSwitchBmapView("text")   // Task 4
+          this.#renderResults(leftBundles ? ["sidebar", "results"] : ["results"])
           try {
             if (this._textFilter) {
               BeneosAnalytics.track("search_query", {
@@ -3484,6 +3591,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         this._dropdownTimer = setTimeout(() => {
           // Wave B-5e-fix-4: dropdown change -> back to first page.
           this.#resetPagination()
+          this.#maybeAutoSwitchBmapView(sel.id || "")   // Task 4
           this.#renderResults(["results"])
           try {
             BeneosAnalytics.track("filter_applied", {
@@ -3669,6 +3777,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         const set = this.searchMode === "bmap" ? this.bmapBiomeFilters : this.biomeFilters
         set.add(v)
         this.#resetPagination()
+        this.#maybeAutoSwitchBmapView("bmap-biome")   // Task 4
         this.#renderPreservingSidebarScroll(["sidebar", "results"])
       })
     }
@@ -3772,6 +3881,21 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const resultsRegion = root.querySelector("[data-bc-region='results']")
     if (!resultsRegion) return
 
+    // Punkt 5: keep a single source of truth for the result-list scroll
+    // position. The list is recreated on every results re-render, so we record
+    // the user's scroll here and restore from it in #renderResultsPreserveScroll
+    // (used only by the drawer-open / close / scene-load renders). Tab, filter
+    // and view switches use plain #renderResults and reset to the top, calling
+    // resetResultScroll() to clear the saved value. The _restoringScroll guard
+    // stops the programmatic restore's own scroll events from clobbering it.
+    const scrollList = resultsRegion.querySelector(".bc-result-list")
+    if (scrollList) {
+      if (this._resultListScrollTop == null) this._resultListScrollTop = 0
+      scrollList.addEventListener("scroll", () => {
+        if (!this._restoringScroll) this._resultListScrollTop = scrollList.scrollTop
+      }, { passive: true })
+    }
+
     // Bulk-install kebab menu: close it when the user clicks anywhere outside
     // the menu (the native <details> element only auto-closes when the user
     // clicks the summary again, which is unintuitive). Attached once per
@@ -3822,17 +3946,19 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         } else {
           this.selectedKeys = new Set([key])
         }
-        // Wave B-9-fix-32: capture the result-list scroll position
-        // before the part-render rebuilds the DOM, restore it after,
-        // so the user's view doesn't jump when opening the drawer.
-        const list = this.element?.querySelector(".bc-result-list")
-        const scrollTop = list?.scrollTop || 0
+        // Punkt 5: scroll preservation now lives in
+        // #renderResultsPreserveScroll, which also covers the async
+        // release-scene re-render that previously wiped the restore.
         this.selectedAssetKey = key
         try {
           this._analyticsDrawerOpen = { key, ts: Date.now() }
           BeneosAnalytics.track("result_drawer_open", { asset_id: key, asset_type: this.searchMode })
         } catch (_) {}
         this.#showLoading()
+        // Task C: yield one frame so the loading overlay actually PAINTS before
+        // the (synchronous) re-render runs , otherwise the main thread is busy
+        // and the spinner never shows, reading as a freeze.
+        await new Promise(r => requestAnimationFrame(() => r()))
 
         // Lazy-load the full description from the appropriate Beneos
         // compendium pack BEFORE the drawer re-renders. The loader is
@@ -3842,19 +3968,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // and the template hides the block when the cache says null.
         await this.#ensureLocalFullDescriptionLoaded(key, this.searchMode)
 
-        requestAnimationFrame(() => {
-          requestAnimationFrame(async () => {
-            try {
-              await this.render({ parts: ["results"] })
-            } catch (err) {
-              console.warn("[Beneos]", err)
-            } finally {
-              this.#hideLoading()
-              const newList = this.element?.querySelector(".bc-result-list")
-              if (newList) newList.scrollTop = scrollTop
-            }
-          })
-        })
+        try {
+          await this.#renderResultsPreserveScroll(["results"])
+        } finally {
+          this.#hideLoading()
+        }
       })
     })
 
@@ -3901,7 +4019,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         const result = this.#applyTagFilter(tagType, value)
         if (!result) return
         this.#resetPagination?.()
-        const parts = result.parts || ["results"]
+        const leftBundles = this.#maybeAutoSwitchBmapView(tagType === "adventure" ? "bmap-adventure" : "tag")   // Task 4
+        let parts = result.parts || ["results"]
+        if (leftBundles && !parts.includes("sidebar")) parts = ["sidebar", ...parts]
         if (this.#renderResults) this.#renderResults(parts)
         else this.render({ parts })
       })
@@ -3932,31 +4052,50 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // with the same showLoading + double-rAF pattern as card-click and
     // tab-switch so the user gets the centered spinner while it finishes.
     resultsRegion.querySelectorAll(".bc-action-close-drawer").forEach(btn => {
-      btn.addEventListener("click", (event) => {
+      btn.addEventListener("click", async (event) => {
         event.stopPropagation()
-        // Wave B-9-fix-32: same scroll-preserve pattern on close so the
-        // result list returns to where the user was, not the top.
-        const list = this.element?.querySelector(".bc-result-list")
-        const scrollTop = list?.scrollTop || 0
+        // Punkt 5: scroll preserve centralized in #renderResultsPreserveScroll
+        // so close returns the list to where the user was, not the top.
         this.selectedAssetKey = null
         // Wave B-9-fix-46: closing the drawer also clears multi-select
         // since there's no UI to operate on the set without a drawer.
         this.selectedKeys = new Set()
         this.#showLoading()
-        requestAnimationFrame(() => {
-          requestAnimationFrame(async () => {
-            try {
-              await this.render({ parts: ["results"] })
-            } catch (err) {
-              console.warn("[Beneos]", err)
-            } finally {
-              this.#hideLoading()
-              const newList = this.element?.querySelector(".bc-result-list")
-              if (newList) newList.scrollTop = scrollTop
-            }
-          })
-        })
+        try {
+          await this.#renderResultsPreserveScroll(["results"])
+        } finally {
+          this.#hideLoading()
+        }
       })
+    })
+
+    // Punkt 4: hover-preview for the drawer's scene thumbnails. They're small;
+    // on hover we float a larger copy (already loaded) beside the cursor so the
+    // user can judge a scene before installing. Appended to <body> so it
+    // escapes the drawer's overflow/containment, and re-used via a fixed id so
+    // only one ever exists.
+    const bcZoomCleanup = () => { document.getElementById("bc-scene-zoom-preview")?.remove() }
+    bcZoomCleanup()
+    resultsRegion.querySelectorAll(".bc-scene-thumb[data-bc-zoom]").forEach(thumb => {
+      thumb.addEventListener("mouseenter", () => {
+        const src = thumb.dataset.bcZoom
+        if (!src) return
+        bcZoomCleanup()
+        const img = document.createElement("img")
+        img.id = "bc-scene-zoom-preview"
+        img.className = "bc-scene-zoom-preview"
+        img.src = src
+        document.body.appendChild(img)
+        const r = thumb.getBoundingClientRect()
+        const W = 294   // Task B: keep in sync with .bc-scene-zoom-preview width
+        // Prefer to the left of the drawer; fall back to the right if no room.
+        let left = r.left - W - 14
+        if (left < 8) left = r.right + 14
+        const top = Math.min(window.innerHeight - 20, Math.max(20, r.top + r.height / 2))
+        img.style.left = `${Math.max(8, left)}px`
+        img.style.top  = `${top}px`
+      })
+      thumb.addEventListener("mouseleave", bcZoomCleanup)
     })
 
     // 4) Dragstart — same logic as v1's `.token-search-data` handler so the
@@ -4321,7 +4460,39 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // through this helper: in bmap mode it shows the spinner overlay
   // around a double-rAF, in any other mode it stays a plain render so
   // fast paths don't get a flicker frame.
+  // Punkt 5: re-render the results part WITHOUT losing the user's scroll
+  // position. The detail drawer lives inside the results part, so opening a
+  // card (and the async release-scene lazy-load that follows) rebuilds the
+  // `.bc-result-list` and would otherwise snap it back to the top. We capture
+  // scrollTop before the render and restore it after, plus once more on the
+  // next frame as a safety net against late layout. Plain render (no spinner)
+  // so it composes with callers that manage their own loading overlay.
+  async #renderResultsPreserveScroll(parts = ["results"]) {
+    // Restore to the single source of truth (this._resultListScrollTop, kept
+    // current by the scroll listener in #wireResultListeners) rather than a
+    // per-call capture. Multiple re-renders can overlap (card-click + the
+    // async release-scene load) — capturing per call raced and one of them
+    // read the freshly-rendered 0, wiping the restore. A shared target +
+    // a restoring guard makes every overlapping render converge on the same
+    // position.
+    const want = this._resultListScrollTop || 0
+    try { await this.render({ parts }) }
+    catch (err) { console.warn("[Beneos]", err) }
+    this._restoringScroll = true
+    const restore = () => {
+      const list = this.element?.querySelector(".bc-result-list")
+      if (list && want > 0) list.scrollTop = want
+    }
+    restore()
+    requestAnimationFrame(() => { restore(); this._restoringScroll = false })
+  }
+
   async #renderResults(parts) {
+    // Punkt 5: tab / filter / view switches reset the scroll memory so the
+    // next drawer-preserve render doesn't jump to a stale position. The
+    // drawer-open/close/scene-load path uses #renderResultsPreserveScroll and
+    // bypasses this reset.
+    this._resultListScrollTop = 0
     if (this.searchMode === "bmap") {
       this.#showLoading()
       return new Promise((resolve) => {
@@ -4399,21 +4570,27 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const variantLabel = isSingle ? "" : ` (${variant})`
 
     // Resolve coverUrl from release index when available so the install
-    // window's hero shows the manually-curated pack cover.
+    // window's hero shows the manually-curated pack cover. Task 6: the release
+    // cover is shown for scene installs too. If the release index isn't loaded
+    // yet (e.g. user jumped straight to Individual Maps), pull it now, and fall
+    // back to the scene's own catalog thumbnail so the hero always has an image.
+    if (!this._releaseIndex && typeof this.#ensureReleasesLoaded === "function") {
+      try { await this.#ensureReleasesLoaded() } catch (_) {}
+    }
     const releaseEntry = this._releaseIndex?.get?.(releaseDir) || null
-    const coverUrl = releaseEntry
+    let coverUrl = releaseEntry
       ? (variant === "HD" ? (releaseEntry.cover_url_hd || releaseEntry.cover_url_4k)
                           : (releaseEntry.cover_url_4k || releaseEntry.cover_url_hd))
       : null
+    if (!coverUrl && props.thumbnail) {
+      coverUrl = `https://www.beneos-database.com/data/battlemaps/thumbnails/${props.thumbnail}`
+    }
 
-    // V1 native installer: release-scope only (the full pack). Scene-scope
-    // would require us to filter the importer's documents to a single
-    // scene_slug; that's V1.5. For now we install the full release.
-    //
-    // packId = the ACTUAL on-disk pack dir. list_releases returns variant_dirs
-    // (post-greenfield beneos_<pack_slug>_foundry_<variant_lc>); use it instead
-    // of constructing <release_dir>_<VARIANT>, which no longer exists on disk
-    // and threw "Package not found". Legacy construction stays as a fallback.
+    // packId = the ACTUAL on-disk pack dir (the WHOLE release). list_releases
+    // returns variant_dirs (post-greenfield beneos_<pack_slug>_foundry_<variant_lc>);
+    // use it instead of constructing <release_dir>_<VARIANT>, which no longer
+    // exists on disk and threw "Package not found". Legacy construction stays
+    // as a fallback.
     const vdirs = (releaseEntry && releaseEntry.variant_dirs) || props.variant_dirs || null
     let packId = null
     if (vdirs && typeof vdirs === "object") {
@@ -4422,6 +4599,27 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         : (vdirs[variant] || vdirs["4K"] || vdirs["HD"] || vdirs.SINGLE || Object.values(vdirs)[0])
     }
     if (!packId) packId = isSingle ? releaseDir : `${releaseDir}_${variant}`
+
+    // Punkt 7: scene scope. For an individual map ("Install") we install ONLY
+    // the selected scene plus its sibling (battlemap + scenery), not the whole
+    // release. We pass their cloud_scene_slugs to the installer, which reads
+    // the pack's per-scene manifests (.scenes/<slug>.json) to fetch exactly
+    // those scenes' assets + documents through the same robust pipeline. The
+    // release card and the "Install entire release" button keep scope=release
+    // (no slugs -> full pack).
+    let sceneSlugs = null
+    if (installScope === "scene") {
+      const ownSlug = String(props.cloud_scene_slug || "").trim()
+      const slugs = []
+      if (ownSlug) slugs.push(ownSlug)
+      const siblingKey = String(props.sibling || "").trim()
+      if (siblingKey) {
+        const sibSlug = String(dbHolder?.getAll?.("bmap")?.[siblingKey]?.properties?.cloud_scene_slug || "").trim()
+        if (sibSlug) slugs.push(sibSlug)
+      }
+      if (slugs.length) sceneSlugs = slugs
+    }
+
     const NativeInstaller = globalThis.BeneosNativeBattlemapInstaller
     if (!NativeInstaller) {
       ui.notifications.error("BeneosNativeBattlemapInstaller is not loaded")
@@ -4432,9 +4630,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         packageId: packId,
         label:     displayName + variantLabel,
         coverUrl,
+        sceneSlugs,
       })
     } catch (err) {
-      console.warn("BeneosCloudWindowV2 | native install failed", { packId, err })
+      console.warn("BeneosCloudWindowV2 | native install failed", { packId, sceneSlugs, err })
       ui.notifications.error(`Native install failed for ${displayName}: ${err?.message || err}`)
     }
   }
@@ -4875,6 +5074,27 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     return "releases"
   }
 
+  // Task 4: when the user applies a filter while browsing Releases or Bundles,
+  // auto-switch to Individual Maps, where scene-level results are far more
+  // useful. Bundles are module-specific, so ONLY the Campaign/adventure filter
+  // keeps you in the Bundles view; any other active filter (text, biome, type,
+  // ...) flips to individual too. Call this BEFORE re-rendering the results.
+  // `filterId` is the changed control's id (e.g. "bmap-adventure") or "" for
+  // text/biome/tag filters.
+  // Returns true if it switched AWAY from Bundles (so the caller knows the
+  // sidebar must re-render to drop the bundles-only filter restriction).
+  #maybeAutoSwitchBmapView(filterId = "") {
+    if (this.searchMode !== "bmap") return false
+    const view = this._bmapActiveView()
+    if (view === "individual") return false
+    if (view === "bundles" && filterId === "bmap-adventure") return false  // campaign filters bundles in place
+    if (this.#hasActiveFilter("bmap")) {
+      this._bmapViewMode = "individual"
+      return view === "bundles"
+    }
+    return false
+  }
+
   // Plan §13: resolution toggle handler. Persists, re-renders just the
   // results pane (the rest of the layout does not depend on resolution).
   static _onSwitchBmapRes(event, target) {
@@ -4895,10 +5115,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     event.preventDefault()
     const v = target.dataset.bmapView
     if (v !== "releases" && v !== "individual" && v !== "bundles") return
-    if (this._bmapActiveView() === v) return
+    const prev = this._bmapActiveView()
+    if (prev === v) return
     this._bmapViewMode = v
     this._bmapViewPinned = true
-    this.#renderResults(["results"])
+    // Task 4: entering/leaving Bundles changes which sidebar filters are
+    // offered (bundles = campaign only), so refresh the sidebar on those
+    // transitions. Releases <-> Individual share the same filter set.
+    const sidebarChanges = (v === "bundles" || prev === "bundles")
+    this.#renderResults(sidebarChanges ? ["sidebar", "results"] : ["results"])
   }
 
   // Plan §23.1: invoked by the inline "Retry" button when the release
@@ -4955,7 +5180,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     try {
       const releases = await this.#fetchReleasesWithBackoff()
       const list = Array.isArray(releases) ? [...releases] : []
+      // Task 1: newest first. Primary key is the catalog release_date (desc);
+      // release_num (desc) and name break ties. While all release_dates are
+      // identical (greenfield) this degrades cleanly to the previous
+      // release_num/name ordering, and becomes a real recency sort the moment
+      // the database carries diverse dates.
       list.sort((a, b) => {
+        const da = this.#releaseDateInfo(a?.release_dir)?.releaseDate || ""
+        const db = this.#releaseDateInfo(b?.release_dir)?.releaseDate || ""
+        if (da !== db) return db.localeCompare(da)   // ISO dates: lexical desc = newest first
         const ra = parseInt(a?.release_num, 10) || 0
         const rb = parseInt(b?.release_num, 10) || 0
         if (ra !== rb) return rb - ra
@@ -4981,6 +5214,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // cover + byte label live. Debug filter is a no-op here — the backend
   // only returns cloud-ready releases by definition.
   #buildReleaseCards() {
+    // Task 1: a release counts as "New" when its catalog release_date is within
+    // this many days of the newest release in the catalog.
+    const RELEASE_NEW_WINDOW_DAYS = 30
     const list = Array.isArray(this._releaseList) ? this._releaseList : []
     // Apply text-filter on display_name. The dropdown sidebar filters do
     // not apply to release-view (biome/brightness/grid live on the scene
@@ -5036,6 +5272,25 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const canInstall = r?.can_install !== false   // default true if backend doesn't set
       const unlockHint = r?.unlock_hint || null
 
+      // Task 1: New / Updated chips (date + install-status combined).
+      //  - Updated: the release is installed AND the cloud has a newer version
+      //    (content_signature mismatch -> installState.stale).
+      //  - New: not installed AND its release_date belongs to the newest cohort
+      //    (within RELEASE_NEW_WINDOW_DAYS of the newest catalog date). Gated on
+      //    date diversity so today's uniform greenfield dates produce no chip;
+      //    it activates automatically once the DB carries real dates.
+      const installed = !!installState
+      const isUpdate  = installed && !!installState.stale
+      let isNew = false
+      if (!installed && (this._releaseDistinctDateCount || 0) > 1) {
+        const rd = this.#releaseDateInfo(r.release_dir)?.releaseDate || ""
+        if (rd && this._releaseNewestDate) {
+          const days = (Date.parse(this._releaseNewestDate) - Date.parse(rd)) / 86400000
+          isNew = Number.isFinite(days) && days >= 0 && days <= RELEASE_NEW_WINDOW_DAYS
+        }
+      }
+      const groupKind = isUpdate ? "update" : (isNew ? "new" : "regular")
+
       return {
         key:                  r.release_dir,
         name:                 r.display_name || r.release_dir,
@@ -5053,6 +5308,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         thumbUrl:             coverUrl,
         bytesLabel:           bytes ? this.#formatBytes(bytes) : "",
         sceneCount:           Number(r?.scene_count || 0),
+        // Punkt 3: compatible-adventure chip on the release detail, derived
+        // from a representative catalog scene of this release.
+        compatibleAdventure:  this.#releaseAdventureChip(r.release_dir),
         // #4: surface release stats (what's-included checkmarks) + the resolved
         // on-disk variant dirs so the drawer can lazy-load this release's scenes.
         releaseStats:         r?.stats || null,
@@ -5060,7 +5318,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         releaseNum:           r?.release_num || "",
         variantLabel:         single ? "" : useV,
         installDuration:      "0.6s",
-        groupKind:            "regular",
+        // Task 1: New / Updated surfacing (chips + group classification).
+        isNew,
+        isUpdate,
+        groupKind,
         visibleTagDescriptors: [],
         moreTagsCount:        0,
         // Drawer is not used yet for release-cards (Plan §15.5 V2),
@@ -5095,6 +5356,56 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     }
   }
 
+  // Punkt 3: map a release_dir to its compatible-adventure chip by sampling a
+  // representative catalog scene of that release. Memoized per session so the
+  // 138-release card build stays O(1) per card after the first scan.
+  #releaseAdventureChip(releaseDir) {
+    if (!releaseDir) return null
+    if (!this._releaseAdventureMap) {
+      const map = new Map()
+      const all = game.beneos?.databaseHolder?.getAll?.("bmap") || {}
+      for (const v of Object.values(all)) {
+        const rd  = v?.properties?.release_dir
+        const adv = v?.properties?.adventure
+        if (rd && adv && !map.has(rd)) {
+          map.set(rd, String(Array.isArray(adv) ? adv[0] : adv))
+        }
+      }
+      this._releaseAdventureMap = map
+    }
+    const advRaw = this._releaseAdventureMap.get(releaseDir)
+    if (!advRaw) return null
+    const loc = game.beneos?.databaseHolder?.localizeTag?.("battlemap.adventure", advRaw)
+    return this.#adventureChip((loc && loc !== advRaw) ? loc : advRaw)
+  }
+
+  // Task 1: per-release recency dates from the bmap catalog (release_date +
+  // updated_date), memoized. Also tracks how many DISTINCT release_dates exist
+  // so we can suppress the "New" chip while the data has no diversity (today
+  // every release shares the greenfield date; the chip activates automatically
+  // once the database carries real per-release dates). Returns
+  // { releaseDate, updatedDate } strings (YYYY-MM-DD) or null.
+  #releaseDateInfo(releaseDir) {
+    if (!this._releaseDateMap) {
+      const map = new Map()
+      const distinct = new Set()
+      const all = game.beneos?.databaseHolder?.getAll?.("bmap") || {}
+      for (const v of Object.values(all)) {
+        const rd = v?.properties?.release_dir
+        if (!rd || map.has(rd)) continue
+        const releaseDate = String(v?.properties?.release_date || "").trim()
+        const updatedDate = String(v?.properties?.updated_date || "").trim()
+        map.set(rd, { releaseDate, updatedDate })
+        if (releaseDate) distinct.add(releaseDate)
+      }
+      this._releaseDateMap = map
+      this._releaseDistinctDateCount = distinct.size
+      // Newest release_date across the catalog (lexical works for ISO dates).
+      this._releaseNewestDate = [...distinct].sort().pop() || ""
+    }
+    return this._releaseDateMap.get(releaseDir) || null
+  }
+
   // #4: lazy-load one release's scene list (BM + SC thumbnails) for the drawer.
   // Idempotent per release_dir; caches the result and re-renders the drawer once
   // the fetch resolves so the scenes appear without a second click.
@@ -5119,8 +5430,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     } finally {
       this._releaseScenesInflight.delete(releaseDir)
     }
-    if (this.selectedAssetKey === releaseDir && this.rendered) {
-      try { this.#renderResults(["results"]) } catch (_e) {}
+    // Re-render when the open drawer depends on this release — either a
+    // release card (selectedAssetKey === releaseDir) or an individual scene
+    // whose parent release is this one (tracked in _drawerReleaseDir, Punkt 4).
+    if (this.rendered && (this.selectedAssetKey === releaseDir || this._drawerReleaseDir === releaseDir)) {
+      // Punkt 5: preserve scroll — this re-render fires after the drawer is
+      // already open, so a plain #renderResults would snap the list back to
+      // the top once the scenes resolve.
+      try { this.#renderResultsPreserveScroll(["results"]) } catch (_e) {}
     }
   }
 

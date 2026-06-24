@@ -226,6 +226,10 @@
   {{/if}}
 
   {{#if (eq searchMode "bmap")}}
+    {{!-- Task 4: bundles are module-specific, so in Bundles view only the
+         Campaign filter is offered. Biome / Refine (brightness, grid, type) /
+         Release are hidden there; they reappear in Releases + Individual. --}}
+    {{#unless bmapViewIsBundles}}
     {{!-- Wave B-8k-2: bmap biome chip-dropdown — same UX pattern as the
          token tab. The biomeChips / biomeAvailable lists are populated
          for bmap mode in #buildBiomeLists. The bmap-bioms-selector
@@ -285,6 +289,7 @@
         </select>
       </div>
     </section>
+    {{/unless}}
     {{#if adventureList}}
     <section class="bc-sidebar-group">
       <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Campaign"}}</header>
@@ -295,7 +300,9 @@
     {{/if}}
     {{!-- Wave B-9-fix-29: release filter — narrows bmap results to a
          single pack ("96 - DiA 00 …"). Useful when the user references
-         a specific pack number from a Beneos overview map. --}}
+         a specific pack number from a Beneos overview map. Hidden in
+         Bundles view (Task 4). --}}
+    {{#unless bmapViewIsBundles}}
     {{#if releaseList}}
     <section class="bc-sidebar-group">
       <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Release"}}</header>
@@ -304,6 +311,7 @@
       </select>
     </section>
     {{/if}}
+    {{/unless}}
   {{/if}}
 
   {{#if (eq searchMode "item")}}

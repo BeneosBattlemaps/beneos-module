@@ -5,7 +5,13 @@
 <section class="bc-install-progress" data-bc-install-state="{{state}}">
 
   {{#if coverUrl}}
-    <header class="bcip-hero" style="background-image: url('{{coverUrl}}');">
+    {{!-- Punkt 8b: the cover renders greyscale and fills with colour left to
+         right in lockstep with the progress bar, with a thin indicator line at
+         the current position. Two stacked layers of the same image + a clip. --}}
+    <header class="bcip-hero">
+      <div class="bcip-hero-img bcip-hero-img-base" style="background-image: url('{{coverUrl}}');"></div>
+      <div class="bcip-hero-img bcip-hero-img-fill" style="background-image: url('{{coverUrl}}'); clip-path: inset(0 calc(100% - {{totalPct}}%) 0 0);"></div>
+      <div class="bcip-hero-progress-line" style="left: {{totalPct}}%;"></div>
       <div class="bcip-hero-gradient"></div>
       <div class="bcip-hero-text">
         <h2 class="bcip-title">{{label}}</h2>
@@ -29,6 +35,12 @@
       <div class="bcip-bar">
         <div class="bcip-bar-fill" style="width: {{totalPct}}%;"></div>
       </div>
+      {{#if etaLabel}}
+        <div class="bcip-eta">
+          <i class="fa-regular fa-clock"></i>
+          <span>{{etaLabel}}</span>
+        </div>
+      {{/if}}
       {{#if currentLabel}}
         <div class="bcip-current" data-tooltip="{{currentLabel}}">
           {{#if currentSpinner}}<i class="fa-solid fa-circle-notch fa-spin"></i>{{/if}}
@@ -54,7 +66,7 @@
             {{#if (eq p.status "error")}}<i class="fa-solid fa-circle-xmark"></i>{{/if}}
           </span>
           <span class="bcip-phase-label">{{localize p.labelKey}}</span>
-          {{#if p.count}}<span class="bcip-phase-count">{{p.count}}</span>{{/if}}
+          {{#if p.countLabel}}<span class="bcip-phase-count">{{p.countLabel}}</span>{{/if}}
         </li>
       {{/each}}
     </ul>

@@ -27,6 +27,9 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
 const PHASE_DEFS = [
   { key: "manifest",   labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Manifest",  countSource: null,    weight: 0.5 },
   { key: "system",     labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.System",    countSource: null,    weight: 0.2 },
+  // Punkt 8: the native installer's bulk phase — downloading + uploading every
+  // asset. The scene-packer path never activates it (no matching status stem).
+  { key: "assets",     labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Assets",    countSource: null,    weight: 4.0 },
   { key: "data",       labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Data",      countSource: null,    weight: 0.5 },
   { key: "scenes",     labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Scenes",    countSource: "Scene", weight: 2.5 },
   { key: "actors",     labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Actors",    countSource: "Actor", weight: 1.5 },
@@ -151,12 +154,16 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
     this._subtitle = subtitle
     this._packageId = packageId
 
-    // Phase model: per-key { status: "pending"|"active"|"done"|"skipped"|"error", count: int|null }.
-    this._phases = new Map(PHASE_DEFS.map(p => [p.key, { status: "pending", count: null }]))
-    // Manifest + System + Data start as active-then-done in rapid succession;
-    // we mark them done as soon as we see ANY status message, since by then
-    // those phases have necessarily completed inside process().
+    // Phase model: per-key { status, count, current, total }. status adds
+    // "hidden" (Punkt 8: native installer hides phases not in this release).
+    // Task 6: start every phase HIDDEN except the manifest so the initial view
+    // is just "Loading manifest" , no full static phase list flashing before
+    // setPhasePlan narrows it to the real per-release scope. The legacy
+    // scene-packer path reveals phases via handleStatusMessage as it matches.
+    this._phases = new Map(PHASE_DEFS.map(p => [p.key, { status: "hidden", count: null, current: null, total: null }]))
     this._phases.get("manifest").status = "active"
+    this._nativeMode = false   // Punkt 8: explicit phase plan instead of stem-sniffing
+    this._startTime  = null    // Punkt 8: set on first asset progress, drives ETA
 
     this._state            = "running" // "running" | "completed" | "failed"
     this._errorMessage     = null
@@ -173,7 +180,66 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
 
   /* ========== Engine event handlers (called from attach()) ========== */
 
+  /**
+   * Punkt 8: native-installer phase plan. Hides every phase row, then the
+   * installer reveals only the phases that actually exist in this release via
+   * revealPhase(), each with its real count. manifest + system are marked done
+   * (they ran to reach this point). Replaces the scene-packer stem-sniffing so
+   * absent types (no actors / no rolltables) never show.
+   */
+  beginNativeRun() {
+    this._nativeMode = true
+    for (const v of this._phases.values()) {
+      v.status = "hidden"; v.current = null; v.total = null; v.count = null
+    }
+    const m = this._phases.get("manifest"); if (m) m.status = "done"
+    const s = this._phases.get("system");   if (s) s.status = "done"
+    this.render(false)
+  }
+
+  /**
+   * Task 6: declare the FULL phase plan up front. Every phase that is part of
+   * this install is shown immediately as "pending" (greyed out) with its known
+   * total and a "0 of N" count; phases not in the plan are hidden. manifest +
+   * system are marked done (we reached this point). revealPhase() then fills
+   * each phase's `current` as it runs, so the user watches "0 of N" -> "N of N".
+   * Supersedes beginNativeRun (which hid everything and revealed lazily).
+   */
+  setPhasePlan(plan) {
+    this._nativeMode = true
+    const present = new Map((Array.isArray(plan) ? plan : []).map(p => [p.key, Number(p.total) || 0]))
+    for (const [k, v] of this._phases) {
+      if (k === "manifest" || k === "system") { v.status = "done"; v.current = null; v.total = null; v.count = null; continue }
+      if (present.has(k)) {
+        v.status = "pending"; v.total = present.get(k); v.current = 0; v.count = null
+      } else {
+        v.status = "hidden"; v.current = null; v.total = null; v.count = null
+      }
+    }
+    if (this._startTime == null) this._startTime = Date.now()
+    this.render(false)
+  }
+
+  /** Punkt 8: reveal / update one native phase with its live count. */
+  revealPhase(key, { status = "active", current = null, total = null } = {}) {
+    const p = this._phases.get(key)
+    if (!p) return
+    if (status) p.status = status
+    if (current != null) p.current = current
+    if (total != null)   p.total = total
+    if (current != null && total != null) { this._assetCurrent = current; this._assetTotal = total }
+    if (this._startTime == null) this._startTime = Date.now()
+    this.render(false)
+  }
+
   handleStatusMessage(msg) {
+    // Punkt 8: in native mode the phase model is driven explicitly by
+    // revealPhase(); status messages only update the current-operation label.
+    if (this._nativeMode) {
+      this._currentLabel = String(msg || "").replace(/<[^>]*>/g, "").trim().slice(0, 80) || this._currentLabel
+      this.render(false)
+      return
+    }
     // Mark the "prefix" phases done on the first status (we know manifest +
     // system + data passed by the time scene-packer emits its first
     // creating-documents call).
@@ -202,6 +268,7 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
   }
 
   handleAssetProgress(name, total, current) {
+    if (this._startTime == null) this._startTime = Date.now()   // Punkt 8: ETA clock
     this._assetTotal   = Number(total) || 0
     this._assetCurrent = Number(current) || 0
     this._currentLabel = `${name} — ${this._assetCurrent} / ${this._assetTotal}`
@@ -230,6 +297,16 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
   handleFailureCount(n) {
     this._failedCount = Number(n) || 0
     if (this._state === "running") this.render(false)
+  }
+
+  /**
+   * Task E: the native installer tells us which scene the "Open" button should
+   * open (the installed scene for a single-scene install, the Overview scene
+   * for a release). Enables the Open button once a terminal state is reached.
+   */
+  setOpenScene(sceneId) {
+    this._firstSceneId = sceneId || null
+    if (this._state !== "running") this.render(false)
   }
 
   /** Register a callback that re-opens the post-install report dialog. */
@@ -284,30 +361,42 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
   /* ========== Render context ========== */
 
   async _prepareContext() {
-    const phases = PHASE_DEFS.map(def => {
-      const cur = this._phases.get(def.key)
-      return {
-        key:      def.key,
-        labelKey: def.labelKey,
-        status:   cur.status,
-        count:    cur.count,
-      }
-    })
+    // Punkt 8: only render phases that are part of this install. Hidden phases
+    // (absent doc types) are dropped; visible phases carry a "x / y" count.
+    const phases = PHASE_DEFS
+      .filter(def => this._phases.get(def.key).status !== "hidden")
+      .map(def => {
+        const cur = this._phases.get(def.key)
+        return {
+          key:        def.key,
+          labelKey:   def.labelKey,
+          status:     cur.status,
+          count:      cur.count,
+          countLabel: this.#phaseCountLabel(cur),
+        }
+      })
 
-    // Total progress: phase weights + asset sub-fraction inside the active phase.
+    // Total progress: phase weights + asset sub-fraction inside the active
+    // phase. Hidden phases are excluded from the denominator so the bar
+    // reflects the actual work for this install (Punkt 8).
     let totalWeight = 0
     let doneWeight  = 0
     for (const def of PHASE_DEFS) {
-      totalWeight += def.weight
       const v = this._phases.get(def.key)
+      if (v.status === "hidden") continue
+      totalWeight += def.weight
       if (v.status === "done" || v.status === "skipped") doneWeight += def.weight
     }
     let assetFraction = 0
     if (this._assetTotal > 0) assetFraction = Math.min(1, this._assetCurrent / this._assetTotal)
-    // Add half-weight of the currently-active phase so the bar moves while it runs.
+    // Add the in-progress fraction of the currently-active phase so the bar
+    // moves while it runs (use the phase's own current/total when available).
     for (const def of PHASE_DEFS) {
-      if (this._phases.get(def.key).status === "active") {
-        doneWeight += def.weight * (assetFraction || 0.5)
+      const v = this._phases.get(def.key)
+      if (v.status === "active") {
+        let frac = assetFraction || 0.5
+        if (v.total > 0 && v.current != null) frac = Math.min(1, v.current / v.total)
+        doneWeight += def.weight * frac
         break
       }
     }
@@ -319,6 +408,7 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
       coverUrl:         this._coverUrl,
       subtitle:         this._subtitle,
       totalPct,
+      etaLabel:         this.#etaLabel(totalPct),
       currentLabel:     this._currentLabel,
       currentSpinner:   this._currentSpinner && this._state === "running",
       phases,
@@ -331,6 +421,39 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
       failedLabel:      this._failedCount ? this.#failedLabel(this._failedCount) : null,
       showReportButton: (this._state === "completed-with-issues" || this._state === "failed") && typeof this._reportOpener === "function",
     }
+  }
+
+  /**
+   * "x of y" count chip for a phase row. Task 6: with a known total we always
+   * show "current of total" (current = total once done) so the user watches the
+   * fill from "0 of N" to "N of N". Falls back to a bare count when no total.
+   */
+  #phaseCountLabel(cur) {
+    if (cur.total == null) return (cur.count != null ? String(cur.count) : null)
+    const current = (cur.status === "done") ? cur.total : (cur.current ?? 0)
+    try { return game.i18n.format("BENEOS.Cloud.Bmap.InstallProgress.PhaseCount", { current, total: cur.total }) } catch (_) {}
+    return `${current} of ${cur.total}`
+  }
+
+  /**
+   * Punkt 8: estimated time remaining from elapsed time and the weighted
+   * total-progress fraction. Only shown while running with enough signal to
+   * be meaningful (>3% done and >1.5s elapsed) so it doesn't flicker wild
+   * numbers at the very start.
+   */
+  #etaLabel(totalPct) {
+    if (this._state !== "running" || this._startTime == null) return null
+    const elapsed = Date.now() - this._startTime
+    if (totalPct < 3 || elapsed < 1500) return null
+    const frac = totalPct / 100
+    const remainingMs = elapsed * (1 - frac) / frac
+    if (!isFinite(remainingMs) || remainingMs <= 0) return null
+    const secs = Math.round(remainingMs / 1000)
+    const mm = Math.floor(secs / 60)
+    const ss = secs % 60
+    const time = mm > 0 ? `${mm}m ${String(ss).padStart(2, "0")}s` : `${ss}s`
+    try { return game.i18n.format("BENEOS.Cloud.Bmap.InstallProgress.Eta", { time }) } catch (_) {}
+    return `Est. ${time} remaining`
   }
 
   #failedLabel(n) {
@@ -350,8 +473,12 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
     const id = this._firstSceneId
     if (!id) return
     const scene = game.scenes?.get?.(id)
-    if (scene?.sheet?.render) scene.sheet.render(true)
-    else if (scene?.activate) scene.activate()
+    if (!scene) return
+    // Task E: open the scene on the canvas (view) , the most useful action for
+    // "the map is ready". Fall back to the sheet if view isn't available.
+    if (typeof scene.view === "function") scene.view()
+    else if (typeof scene.activate === "function") scene.activate()
+    else scene.sheet?.render?.(true)
   }
 
   static _onShowReport(_event, _target) {

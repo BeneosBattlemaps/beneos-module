@@ -117,19 +117,27 @@ const JSON_FILE_TO_PHASE = {
 
 export class BeneosNativeBattlemapInstaller {
 
-  constructor({ packageId, label = "", coverUrl = null } = {}) {
+  constructor({ packageId, label = "", coverUrl = null, sceneSlugs = null } = {}) {
     if (!packageId) throw new Error("BeneosNativeBattlemapInstaller: packageId is required")
     this.packageId = packageId
     this.label     = label || packageId
     this.coverUrl  = coverUrl
+    // Punkt 7: optional scene scope. When set, only the named scenes (by
+    // cloud_scene_slug) and their assets are installed from the release pack,
+    // not the whole release. The pack ships a per-scene manifest at
+    // `.scenes/<slug>.json` carrying that scene's Foundry document id + the
+    // exact list of asset files, so we never have to guess. An empty/unknown
+    // scope falls back to the full release so the user never gets nothing.
+    this.sceneSlugs = (Array.isArray(sceneSlugs) && sceneSlugs.length) ? sceneSlugs.filter(Boolean) : null
     this.progress  = null
     this._manifestRefreshes = 0
     this._urlByTarget = new Map() // target/relPath -> current signed URL (refreshable)
+    this._sceneScope  = null      // { assetRelPaths:Set, sceneIds:Set } when scene-scoped
   }
 
   /** One-shot install + UI. Returns the progress window so callers can wait if needed. */
-  static async install({ packageId, label, coverUrl } = {}) {
-    const inst = new BeneosNativeBattlemapInstaller({ packageId, label, coverUrl })
+  static async install({ packageId, label, coverUrl, sceneSlugs } = {}) {
+    const inst = new BeneosNativeBattlemapInstaller({ packageId, label, coverUrl, sceneSlugs })
     return inst.run()
   }
 
@@ -145,6 +153,7 @@ export class BeneosNativeBattlemapInstaller {
 
     const result = this.#newResult()
     this._result = result
+    this._importedScenes = []   // Task E: {id,name} of imported scenes
     this._fp     = foundry.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker
     this._isForge = typeof ForgeVTT !== "undefined" && ForgeVTT.usingTheForge === true
     this._source = this._isForge ? "forgevtt" : "data"
@@ -156,6 +165,29 @@ export class BeneosNativeBattlemapInstaller {
       if (!mgr) throw new Error("BeneosScenePackerManager missing")
       const packInfo = await mgr.getPackInfo(this.packageId)
       const { assets, jsons } = this.#classifyPack(packInfo)
+
+      // Punkt 7: narrow to a single scene (+ its sibling) when scene-scoped.
+      // The same robustness layer applies — we just feed it a smaller, exact
+      // asset list and remember which Scene documents to import.
+      let installAssets = assets
+      if (this.sceneSlugs) {
+        const scope = await this.#resolveSceneScope(packInfo, assets)
+        if (scope && scope.assets.length) {
+          installAssets = scope.assets
+          this._sceneScope = {
+            assetRelPaths: scope.assetRelPaths, sceneIds: scope.sceneIds,
+            journalIds: scope.journalIds, playlistIds: scope.playlistIds, actorIds: scope.actorIds,
+            folderIds: scope.folderIds, primarySceneId: scope.primarySceneId,
+          }
+          this.progress.handleStatusMessage(`Preparing ${this.sceneSlugs.length} scene(s)`)
+        } else {
+          // Manifest missing / empty -> install the full release rather than
+          // risk an empty install. Transparent: logged, and the user still
+          // gets a working map.
+          console.warn("BeneosNativeInstaller | scene scope resolved empty, installing full release", this.sceneSlugs)
+          this._sceneScope = null
+        }
+      }
 
       // Phase: pre-flight write check — fail fast + clearly if the host blocks writes
       this.progress.handleStatusMessage("Checking write access")
@@ -169,10 +201,25 @@ export class BeneosNativeBattlemapInstaller {
       }
       result.preflight = { ok: true }
 
-      // Phases: download -> import -> verify/repair
-      await this.#downloadAssets(assets)
+      // Task 6: compute ALL phase counts up front (assets length + folders
+      // length + mtte.json document counts; scene-scope uses the scoped
+      // subset). The progress window then shows every relevant phase greyed
+      // out with "0 of N" from the start and fills to "N of N" as it runs ,
+      // the user sees the full scope immediately. Phases with 0 stay hidden.
+      this.progress.handleStatusMessage("Reading pack contents")
+      const phasePlan = await this.#buildPhasePlan(packInfo, installAssets)
+      if (typeof this.progress.setPhasePlan === "function") this.progress.setPhasePlan(phasePlan)
+      else this.progress.beginNativeRun?.()
+
+      // Phases: download -> import -> verify/repair (scene-scoped asset set
+      // when applicable; #importDocuments reads this._sceneScope to filter).
+      await this.#downloadAssets(installAssets)
       await this.#importDocuments(jsons)
-      await this.#verifyAndRepair(assets)
+      await this.#verifyAndRepair(installAssets)
+
+      // Task E: tell the progress window which scene the "Open" button opens.
+      const openSceneId = this.#pickOpenSceneId()
+      if (openSceneId) this.progress.setOpenScene?.(openSceneId)
 
       result.totals.failed = result.assetFailures.length
       const failureCount = result.assetFailures.length + result.docFailures.length
@@ -195,6 +242,20 @@ export class BeneosNativeBattlemapInstaller {
       throw err
     }
     return this.progress
+  }
+
+  /**
+   * Task E: which scene the "Open" button should open. Single-scene install ->
+   * the clicked (primary) scene; release -> the "Overview" scene if present,
+   * else the first imported scene. The pack carries no active/initial-view flag.
+   */
+  #pickOpenSceneId() {
+    if (this._sceneScope?.primarySceneId) return this._sceneScope.primarySceneId
+    const scenes = this._importedScenes || []
+    if (!scenes.length) return null
+    const exact = scenes.find(s => /^\s*overview\s*$/i.test(s.name))
+    const loose = scenes.find(s => /overview/i.test(s.name))
+    return (exact || loose || scenes[0]).id
   }
 
   // ---- Result + environment ------------------------------------------------
@@ -266,6 +327,175 @@ export class BeneosNativeBattlemapInstaller {
       // thumbs/cover/other -> skipped (Foundry regenerates thumbs; cover shown by hero)
     }
     return { assets, jsons }
+  }
+
+  /**
+   * Punkt 7: resolve a scene scope from the pack's per-scene manifests
+   * (`.scenes/<slug>.json`). Each manifest carries the scene's Foundry
+   * document id (scene_id) and the exact asset files[] for that scene. We
+   * union scene + sibling, restrict the install asset list to those files,
+   * and remember the scene ids so #importDocuments imports only those scenes.
+   * Returns null when no manifest could be read (caller falls back to full).
+   */
+  async #resolveSceneScope(packInfo, assets) {
+    const wantPaths = new Set()
+    const sceneIds  = new Set()
+    let primarySceneId = null   // Task E: the clicked scene (first slug) , Open target
+    for (let si = 0; si < this.sceneSlugs.length; si++) {
+      const slug = this.sceneSlugs[si]
+      const rel = `.scenes/${slug}.json`
+      const url = packInfo[rel]
+      if (!url) { console.warn("BeneosNativeInstaller | scene manifest missing", rel); continue }
+      try {
+        const blob = await this.#fetchAsset(url, rel)
+        const man  = JSON.parse(await blob.text())
+        if (man?.scene_id) {
+          sceneIds.add(String(man.scene_id))
+          if (si === 0) primarySceneId = String(man.scene_id)
+        }
+        for (const f of (Array.isArray(man?.files) ? man.files : [])) {
+          if (f?.path) wantPaths.add(String(f.path))
+        }
+      } catch (e) {
+        console.warn("BeneosNativeInstaller | scene manifest fetch failed", rel, e?.message || e)
+      }
+    }
+    if (!wantPaths.size && !sceneIds.size) return null
+
+    // ---- Task F: document DEPENDENCY CLOSURE -------------------------------
+    // A scene is not self-contained on its own: its Note pin icons point at
+    // JournalEntry documents (POI teleporters, handouts), it may link a journal
+    // + an ambient playlist, and its tokens reference actors. Installing only
+    // the Scene leaves those notes/handouts dangling , a real integrity bug.
+    // So we pull the closure of referenced documents, their folder chains, and
+    // the assets THEY reference (e.g. handout images), on top of the scene's
+    // own manifest assets.
+    const loadDocs = async (rel) => {
+      const url = packInfo[rel]
+      if (!url) return []
+      try {
+        const raw = JSON.parse(await (await this.#fetchAsset(url, rel)).text())
+        return Array.isArray(raw) ? raw : Object.values(raw || {})
+      } catch (e) { console.warn("BeneosNativeInstaller | could not read", rel, e?.message || e); return [] }
+    }
+
+    const sceneDocs = (await loadDocs("data/Scene.json")).filter(d => sceneIds.has(String(d?._id)))
+
+    const journalIds = new Set(), playlistIds = new Set(), actorIds = new Set()
+    for (const sc of sceneDocs) {
+      for (const n of (Array.isArray(sc?.notes) ? sc.notes : [])) {
+        if (n?.entryId) journalIds.add(String(n.entryId))
+      }
+      if (sc?.journal)  journalIds.add(String(sc.journal))
+      if (sc?.playlist) playlistIds.add(String(sc.playlist))
+      for (const t of (Array.isArray(sc?.tokens) ? sc.tokens : [])) {
+        if (t?.actorId) actorIds.add(String(t.actorId))
+      }
+    }
+
+    const journalDocs  = journalIds.size  ? (await loadDocs("data/JournalEntry.json")).filter(d => journalIds.has(String(d?._id)))  : []
+    const playlistDocs = playlistIds.size ? (await loadDocs("data/Playlist.json")).filter(d => playlistIds.has(String(d?._id)))     : []
+    const actorDocs    = actorIds.size    ? (await loadDocs("data/Actor.json")).filter(d => actorIds.has(String(d?._id)))           : []
+    // Narrow id sets to docs that actually exist in the pack.
+    const presentJournalIds  = new Set(journalDocs.map(d => String(d._id)))
+    const presentPlaylistIds = new Set(playlistDocs.map(d => String(d._id)))
+    const presentActorIds    = new Set(actorDocs.map(d => String(d._id)))
+
+    // Asset closure: deep-walk every closure document for in-pack
+    // beneos_battlemaps asset references (handout page images, note icons,
+    // ambient sounds, …) and union with the scene's own manifest files.
+    const closureDocs = [...sceneDocs, ...journalDocs, ...playlistDocs, ...actorDocs]
+    for (const d of closureDocs) this.#collectAssetRefs(d, wantPaths)
+    const scopedAssets = assets.filter(a => wantPaths.has(a.relPath))
+
+    // Folder closure over EVERY imported document (scenes, journals, playlists,
+    // actors), so only the folders that actually hold them are created.
+    const folderIds = await this.#resolveFolderClosure(packInfo, closureDocs)
+
+    return {
+      assets: scopedAssets, assetRelPaths: wantPaths,
+      sceneIds, journalIds: presentJournalIds, playlistIds: presentPlaylistIds, actorIds: presentActorIds,
+      folderIds, primarySceneId,
+    }
+  }
+
+  /** Task F: collect in-pack asset paths (beneos_battlemaps) from a document. */
+  #collectAssetRefs(value, out) {
+    if (typeof value === "string") {
+      const i = value.indexOf(PACK_SOURCE_PREFIX)
+      if (i >= 0) out.add("data/assets/" + value.substring(i))
+      return
+    }
+    if (Array.isArray(value)) { for (const v of value) this.#collectAssetRefs(v, out); return }
+    if (value && typeof value === "object") { for (const k of Object.keys(value)) this.#collectAssetRefs(value[k], out) }
+  }
+
+  /**
+   * Task 5/F: resolve the folder ids needed to place a set of documents , each
+   * document's own folder plus the chain of parent folders up to the root.
+   * Folders are typed in folders.json (Scene/JournalEntry/…); closing over the
+   * ids works across all types. Returns a Set of folder _ids.
+   */
+  async #resolveFolderClosure(packInfo, docs) {
+    const ids = new Set()
+    try {
+      const fUrl = packInfo["data/folders.json"]
+      if (!fUrl) return ids
+      const folderArr = JSON.parse(await (await this.#fetchAsset(fUrl, "data/folders.json")).text())
+      const folders = Array.isArray(folderArr) ? folderArr : Object.values(folderArr || {})
+      const folderById = new Map(folders.map(f => [String(f?._id), f]))
+      for (const d of docs) {
+        let fid = d?.folder ? String(d.folder) : null
+        let guard = 0
+        while (fid && !ids.has(fid) && guard++ < 64) {
+          ids.add(fid)
+          const f = folderById.get(fid)
+          fid = f?.folder ? String(f.folder) : null
+        }
+      }
+    } catch (e) {
+      console.warn("BeneosNativeInstaller | folder closure failed", e?.message || e)
+    }
+    return ids
+  }
+
+  /**
+   * Task 6: pre-compute every phase's total BEFORE downloading, so the progress
+   * window can show the full scope (all phases, greyed, "0 of N") immediately.
+   * Document counts come from the pack's mtte.json `counts`; assets from the
+   * (possibly scene-scoped) asset list; folders from data/folders.json. Scene
+   * scope uses the scoped scene/folder counts and skips other doc types.
+   * Returns [{ key, total }] for totals > 0.
+   */
+  async #buildPhasePlan(packInfo, installAssets) {
+    const plan = []
+    const add = (key, total) => { if (Number(total) > 0) plan.push({ key, total: Number(total) }) }
+    add("assets", installAssets.length)
+    if (this._sceneScope) {
+      add("data",      this._sceneScope.folderIds?.size   || 0)
+      add("scenes",    this._sceneScope.sceneIds?.size     || 0)
+      add("journals",  this._sceneScope.journalIds?.size   || 0)
+      add("playlists", this._sceneScope.playlistIds?.size  || 0)
+      add("actors",    this._sceneScope.actorIds?.size     || 0)
+      return plan
+    }
+    // Full release: folder count + document counts from mtte.json.
+    try {
+      const fUrl = packInfo["data/folders.json"]
+      if (fUrl) {
+        const arr = JSON.parse(await (await this.#fetchAsset(fUrl, "data/folders.json")).text())
+        add("data", Array.isArray(arr) ? arr.length : Object.keys(arr || {}).length)
+      }
+    } catch (_) {}
+    try {
+      const mUrl = packInfo["mtte.json"]
+      if (mUrl) {
+        const counts = (JSON.parse(await (await this.#fetchAsset(mUrl, "mtte.json")).text()))?.counts || {}
+        const MAP = { Scene: "scenes", Actor: "actors", JournalEntry: "journals", Item: "items", Macro: "macros", Playlist: "playlists", Cards: "cards", RollTable: "rolltables" }
+        for (const [src, key] of Object.entries(MAP)) add(key, counts[src])
+      }
+    } catch (_) {}
+    return plan
   }
 
   /** Re-mint signed URLs (signatures expire after ~2h; slow installs outrun them). */
@@ -453,13 +683,16 @@ export class BeneosNativeBattlemapInstaller {
     this.progress.handleStatusMessage("Downloading scene assets")
     const total = assets.length
     this._result.totals.assets = total
+    this.progress.revealPhase?.("assets", { status: "active", current: 0, total })
     for (let i = 0; i < total; i++) {
       const a = assets[i]
       const res = await this.#transferOne(a)
       if (res.ok) this._result.totals.ok += 1
       else this.#recordAssetFailure(a.target, res.category, res.error)
       this.progress.handleAssetProgress("Assets", total, i + 1)
+      this.progress.revealPhase?.("assets", { status: "active", current: i + 1, total })
     }
+    this.progress.revealPhase?.("assets", { status: "done", current: total, total })
   }
 
   /**
@@ -472,7 +705,19 @@ export class BeneosNativeBattlemapInstaller {
       "data/folders.json", "data/Scene.json", "data/Actor.json", "data/JournalEntry.json",
       "data/Item.json", "data/Macro.json", "data/Playlist.json", "data/Cards.json", "data/RollTable.json",
     ]
+    // Punkt 7 + Task F: when scene-scoped, import the scene structure PLUS the
+    // dependency closure of the selected scenes , the journals their note pins
+    // reference (POI teleporters, handouts), the scene journal, the ambient
+    // playlist, and token actors , so a single-scene install is self-contained.
+    // Other release-level docs (items, macros, cards, rolltables) are skipped.
+    const sceneScope = this._sceneScope
+    const SCENE_SCOPE_ALLOWED = new Set([
+      "data/folders.json", "data/Scene.json",
+      "data/JournalEntry.json", "data/Playlist.json", "data/Actor.json",
+    ])
+
     for (const relPath of ORDERED_PATHS) {
+      if (sceneScope && !SCENE_SCOPE_ALLOWED.has(relPath)) continue
       const url = jsons[relPath]
       if (!url) continue
       const meta = JSON_FILE_TO_PHASE[relPath]
@@ -495,13 +740,34 @@ export class BeneosNativeBattlemapInstaller {
       }
 
       let arr = Array.isArray(raw) ? raw : (raw && typeof raw === "object" ? Object.values(raw) : [])
+      // Scene-scope: keep only the documents in the dependency closure.
+      if (sceneScope) {
+        const FILTER_SET = {
+          "data/Scene.json":        sceneScope.sceneIds,
+          "data/JournalEntry.json": sceneScope.journalIds,
+          "data/Playlist.json":     sceneScope.playlistIds,
+          "data/Actor.json":        sceneScope.actorIds,
+          "data/folders.json":      sceneScope.folderIds,
+        }
+        const want = FILTER_SET[relPath]
+        if (want) arr = arr.filter(d => d?._id && want.has(String(d._id)))
+      }
+      // Task E: remember imported scenes (id + name) so we can offer an "Open"
+      // button afterwards (Overview scene for a release, the scene itself for a
+      // single-scene install).
+      if (relPath === "data/Scene.json") {
+        this._importedScenes = arr.map(d => ({ id: String(d?._id), name: String(d?.name || "") }))
+      }
       if (arr.length === 0) continue
+      // Punkt 8: reveal this phase with its real document count.
+      this.progress.revealPhase?.(meta.phaseKey, { status: "active", current: 0, total: arr.length })
       for (let i = 0; i < arr.length; i++) arr[i] = rewriteDocAssetPaths(arr[i])
 
       const coll = game[meta.collection]
       const filtered = arr.filter(d => (d?._id ? !coll?.get?.(d._id) : true))
       if (filtered.length === 0) {
         this.progress.handleAssetProgress(meta.phaseKey, arr.length, arr.length)
+        this.progress.revealPhase?.(meta.phaseKey, { status: "done", current: arr.length, total: arr.length })
         continue
       }
       try {
@@ -523,6 +789,7 @@ export class BeneosNativeBattlemapInstaller {
         }
       }
       this.progress.handleAssetProgress(meta.phaseKey, arr.length, arr.length)
+      this.progress.revealPhase?.(meta.phaseKey, { status: "done", current: arr.length, total: arr.length })
     }
   }
 

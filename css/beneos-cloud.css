@@ -952,6 +952,15 @@
   gap: 8px;
   margin-right: 8px;
 }
+/* Task A: a flex-grow spacer between the (conditional) count chip and the
+   right-hand controls. It absorbs all free space, so the bmap toolbar
+   (4K/HD + Releases/Individual/Bundles) sits at the SAME position whether or
+   not the results-count chip is present , no more left-jump on the empty
+   Bundles view. */
+.beneos-cloud-app .bc-results-meta .bc-meta-spacer {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .beneos-cloud-app .bc-bmap-res,
 .beneos-cloud-app .bc-bmap-view {
   display: inline-flex;
@@ -1309,6 +1318,31 @@
   display: block;
   background: transparent;
 }
+/* Task 2: bmap (release) cards size to their content instead of the fixed
+   240px the generic grid card uses. The fixed height + overflow:hidden was the
+   root cause of a 2-line name shoving the install buttons out of the card and
+   the size/scene-count stats line being clipped under the buttons. Auto height
+   (with a min so rows stay visually even, grid align-self:stretch evens the
+   rest) keeps thumb -> name(2 lines) -> stats -> actions all visible. */
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="bmap"] {
+  height: auto;
+  min-height: 250px;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="bmap"] .bc-card-meta {
+  /* Reserve room for the stats line so it is never squeezed out. */
+  overflow: visible;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="bmap"] .bc-card-stats {
+  margin-top: 2px;
+}
+/* Edit #3: individual-map cards carry tags (biome / type / grid). The generic
+   grid cap (.bc-card-tags max-height:48px; overflow:hidden) clipped them. Since
+   bmap cards are height:auto now, let the tags show in full and grow the card
+   instead of cutting the text off above the install buttons. */
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="bmap"] .bc-card-tags {
+  max-height: none;
+  overflow: visible;
+}
 .beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-thumb img {
   /* Tokens/items/spells contain in their square frame. */
   width: 100%;
@@ -1607,12 +1641,18 @@
   align-items: center;
   justify-content: center;
 }
-.beneos-cloud-app .bc-result-card[data-asset-type="bmap"] {
-  grid-template-columns: 64px 1fr auto;
+/* Punkt 1: battlemap list-mode rows get a wide 16:9 preview. The release
+   thumbnails are cropped 16:9 at the source and read far better at scene
+   width than in the 64x64 square used for tokens/items. Scoped to
+   :not(.bc-view-grid) so grid mode keeps its own full-width 140px thumb.
+   Applies to Releases AND Individual Maps (both render bmap cards). */
+.beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-result-card[data-asset-type="bmap"] {
+  grid-template-columns: 160px 1fr auto;
 }
-.beneos-cloud-app .bc-result-card[data-asset-type="bmap"] .bc-card-thumb {
-  width: 64px;
-  height: 64px;
+.beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-result-card[data-asset-type="bmap"] .bc-card-thumb {
+  width: 160px;
+  height: 90px;
+  aspect-ratio: 16 / 9;
 }
 .beneos-cloud-app .bc-card-thumb img {
   width: 100%;
@@ -2799,6 +2839,64 @@
   grid-column: 1 / -1;
   grid-row: 3;
 }
+
+/* ===== Task 3: grid-mode BATTLEMAP drawer ==========================
+   The generic grid drawer above uses a 2-column grid (image left, content
+   right). For battlemap releases that breaks: the paired image sits left
+   while What's-Included + Scenes try to cram into the right column, and the
+   290px cap forces a tiny inner vertical scrollbar. For bmap we override to a
+   clean single-column vertical stack (pair on top, then summary, what's-
+   included, scenes), a generous height so it isn't cramped, and the scene
+   list becomes a HORIZONTAL strip (at most one horizontal scrollbar). All
+   content is reachable by scrolling the drawer body. */
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-bmap.bc-drawer-open {
+  /* Bug 1: cap the in-flow grid drawer to ~half of the results area (which has
+     a definite height) so the card grid above stays visible , the previous
+     52vh squeezed the list down to ~24px. The drawer body scrolls its content. */
+  max-height: 48%;
+  min-height: 180px;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-bmap .bc-drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bc-space-3);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+/* Reset the 2-column grid placements so every section flows full-width. */
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-bmap .bc-drawer-body > .bc-drawer-hero,
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-bmap .bc-drawer-body > .bc-drawer-pair,
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-bmap .bc-drawer-body > .bc-drawer-summary,
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-bmap .bc-drawer-body > .bc-drawer-section,
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-bmap .bc-drawer-body > .bc-drawer-description {
+  grid-column: auto;
+  grid-row: auto;
+  width: 100%;
+  margin: 0;
+}
+/* Bug 2: in the flex stack the release-cover hero lost its height (the generic
+   grid hero height rule no longer applied), collapsing to 0 and hiding the
+   thumbnail. Give it an explicit height so the cover shows; the image fills it.
+   (.bc-drawer-pair for individual scenes already has its own 160px height.) */
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-bmap .bc-drawer-body > .bc-drawer-hero {
+  height: 170px;
+  flex: 0 0 auto;
+}
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-bmap .bc-drawer-body > .bc-drawer-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* Edit #2: the scenes are listed VERTICALLY (one row per scene) and scroll with
+   the drawer body's vertical scrollbar , no horizontal scroll trap that blocked
+   scrolling down to the rest of the content. */
+.beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-bmap .bc-scene-list {
+  display: grid;
+  gap: 6px;
+  max-height: none;
+  overflow: visible;
+}
+
 .beneos-cloud-app .bc-drawer-header {
   display: flex;
   align-items: center;
@@ -7606,7 +7704,10 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 /* --- Hero --- */
 .beneos-cloud-app .bcip-hero {
   position: relative;
-  height: 160px;
+  /* Task 6: the release cover always renders 16:9 (also for single-scene
+     installs, which pass the release cover too). */
+  width: 100%;
+  aspect-ratio: 16 / 9;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -7616,6 +7717,47 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 .beneos-cloud-app .bcip-hero-plain {
   background: linear-gradient(135deg, rgba(127, 179, 173, 0.18), rgba(245, 201, 146, 0.08));
 }
+/* Punkt 8b: two stacked cover layers — greyscale base + colour fill clipped to
+   the progress percentage, plus a thin moving indicator line. */
+.beneos-cloud-app .bcip-hero-img {
+  position: absolute; inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 0;
+}
+.beneos-cloud-app .bcip-hero-img-base {
+  /* Task E: greyscale + slightly blurred so the sharp, colour fill that the
+     progress bar "wipes" across reveals crisp detail as the install proceeds. */
+  filter: grayscale(1) brightness(0.7) blur(3px);
+  transform: scale(1.06); /* hide the blur's transparent edge */
+}
+.beneos-cloud-app .bcip-hero-img-fill {
+  filter: saturate(1.05);
+  transition: clip-path 0.35s ease-out;
+  will-change: clip-path;
+}
+.beneos-cloud-app .bcip-hero-progress-line {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--bc-accent, #f5c992);
+  box-shadow: 0 0 8px rgba(245, 201, 146, 0.8);
+  z-index: 2;
+  transition: left 0.35s ease-out;
+  pointer-events: none;
+}
+/* Punkt 8a: estimated-time line under the progress bar. */
+.beneos-cloud-app .bcip-eta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--bc-text-muted, rgba(255,255,255,0.6));
+}
+.beneos-cloud-app .bcip-eta i { opacity: 0.8; }
 .beneos-cloud-app .bcip-hero-gradient {
   position: absolute; inset: 0;
   background: linear-gradient(180deg, rgba(15, 14, 12, 0.10) 0%, rgba(15, 14, 12, 0.85) 100%);
@@ -7672,6 +7814,9 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   font-variant-numeric: tabular-nums;
   color: var(--bc-accent, #f5c992);
   font-weight: 600;
+  /* Task E: reserve width so "9%" -> "100%" doesn't nudge the layout. */
+  min-width: 3.5ch;
+  text-align: right;
 }
 .beneos-cloud-app .bcip-bar {
   height: 8px;
@@ -7734,6 +7879,12 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   font-variant-numeric: tabular-nums;
   color: var(--bc-text-muted, rgba(255, 255, 255, 0.55));
   font-size: 11px;
+  /* Task E: fixed width + right align so "0 of 16" -> "16 of 16" never shifts
+     the row horizontally as the counts climb. */
+  min-width: 6ch;
+  text-align: right;
+  margin-left: auto;
+  flex: 0 0 auto;
 }
 .beneos-cloud-app .bcip-phase-pending .bcip-phase-icon { color: rgba(255, 255, 255, 0.25); }
 .beneos-cloud-app .bcip-phase-pending .bcip-phase-label { color: rgba(255, 255, 255, 0.45); }
@@ -7792,15 +7943,105 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 .bc-included-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
 .bc-included-row i { color: #46b450; }
 .bc-included-row strong { min-width: 1.4em; text-align: right; }
-.bc-scene-list { display: grid; gap: 6px; max-height: 340px; overflow-y: auto; padding-right: 4px; }
+/* Edit #1: the scene list flows with the drawer's own scrollbar instead of
+   carrying its own max-height + overflow. In list mode the whole detail drawer
+   already scrolls (.bc-drawer-body), so an inner scrollbar produced a confusing
+   double scrollbar on releases with many scenes. */
+.bc-scene-list { display: grid; gap: 6px; padding-right: 4px; }
 .bc-scene-row { display: flex; align-items: center; gap: 8px; }
 .bc-scene-row-thumbs { display: flex; gap: 3px; flex: 0 0 auto; }
 .bc-scene-thumb { width: 84px; height: 48px; border-radius: 4px; overflow: hidden; background: rgba(0,0,0,.3); }
-.bc-scene-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Task C: lazy-load placeholder. The thumb shows an animated shimmer until its
+   screenshot has decoded, then the image fades in (onload toggles
+   bc-img-loaded). Avoids blank boxes while the per-scene screenshots stream in. */
+.bc-scene-thumb { position: relative; background-image: linear-gradient(100deg, rgba(255,255,255,.04) 30%, rgba(255,255,255,.12) 50%, rgba(255,255,255,.04) 70%); background-size: 200% 100%; animation: bc-shimmer 1.2s linear infinite; }
+.bc-scene-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity 0.25s ease-out; }
+.bc-scene-thumb img.bc-img-loaded { opacity: 1; }
+.bc-scene-thumb:has(img.bc-img-loaded) { animation: none; background-image: none; }
+@keyframes bc-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 .bc-scene-row-title { font-size: 12px; line-height: 1.3; }
 .bc-scenes-loading, .bc-scenes-empty { font-size: 12px; opacity: .65; margin: 4px 0; }
 /* #4 larger release cover in the drawer hero */
 .bc-detail-drawer.bc-drawer-bmap .bc-drawer-hero img { max-height: 240px; object-fit: cover; }
+
+/* Punkt 4: scene-detail drawer headings (individual map view). */
+.beneos-cloud-app .bc-scene-belongs { font-weight: 500; }
+.beneos-cloud-app .bc-scene-belongs strong { color: var(--bc-accent); }
+.beneos-cloud-app .bc-drawer-subsection-h {
+  margin: 8px 0 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bc-text-muted);
+}
+/* Punkt 4: hovering a scene thumb floats a larger preview. The thumb gets a
+   subtle cue; the preview itself is appended to <body> (see JS) to escape the
+   drawer's overflow/containment. */
+.beneos-cloud-app .bc-scene-thumb[data-bc-zoom] { cursor: zoom-in; }
+.beneos-cloud-app .bc-scene-thumb[data-bc-zoom]:hover { outline: 1px solid var(--bc-accent); }
+.bc-scene-zoom-preview {
+  position: fixed;
+  transform: translateY(-50%);
+  /* Task B: 30% smaller (420 -> 294). The scene screenshots are only ~400px,
+     so a larger box upscaled them and looked blurry. */
+  width: 294px;
+  max-width: 32vw;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border: 2px solid var(--bc-accent, #f5c992);
+  border-radius: 6px;
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.6);
+  z-index: 100000;
+  pointer-events: none;
+  background: #0c0b0a;
+}
+
+/* Punkt 3: compatible-adventure chip in the drawer (acronym + tooltip). */
+.beneos-cloud-app .bc-drawer-compat { margin: 2px 0 8px; }
+.beneos-cloud-app .bc-compat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--bc-accent, #f5c992);
+  background: var(--bc-accent-dim, rgba(245, 201, 146, 0.12));
+  border: 1px solid var(--bc-accent-line, rgba(245, 201, 146, 0.4));
+  cursor: help;
+}
+.beneos-cloud-app .bc-compat-chip i { font-size: 11px; opacity: 0.85; }
+
+/* Punkt 4: prominent full-width install buttons in the drawer. The text is
+   centered both axes and the button fills the drawer width so the primary
+   action can't be missed. Applies to the cloud Install, Install Entire
+   Release, and the Moulinette-legacy fallback. */
+.beneos-cloud-app .bc-card-button.bc-card-button-block {
+  width: 100%;
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  font-size: 14px;
+}
+/* When the action carries full-width block buttons (bmap drawers), stack the
+   whole summary into a column so the fields sit above and the install buttons
+   span the entire drawer width in both list and grid mode. */
+.beneos-cloud-app .bc-drawer-summary:has(.bc-card-button-block) {
+  flex-direction: column;
+  align-items: stretch;
+}
+.beneos-cloud-app .bc-drawer-summary:has(.bc-card-button-block) > .bc-drawer-action {
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+}
 
 /* ===== #5 Bundle drawer member list ===== */
 .bc-bundle-members { margin: 0; padding-left: 20px; display: grid; gap: 3px; font-size: 12px; }

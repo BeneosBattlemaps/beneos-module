@@ -11,12 +11,18 @@
      working unchanged. --}}
 <section class="bc-results" data-bc-region="results">
 
-  {{#if cards.length}}
+  {{!-- Punkt 2: meta bar (incl. the bmap view tabs) renders whenever we're on
+       the bmap tab OR there are cards, so the Releases/Individual/Bundles tabs
+       never disappear in an empty or still-loading view. --}}
+  {{#if showResultsMeta}}
     <div class="bc-results-meta">
+      {{#if cards.length}}
       {{#if hasMore}}
         <span class="bc-results-count">{{partialHint}}</span>
       {{else}}
-        <span class="bc-results-count">{{cards.length}} {{localize "BENEOS.Cloud.Results.Count"}}</span>
+        {{!-- Punkt 6: noun matches the active view (releases / maps / bundles). --}}
+        <span class="bc-results-count">{{cards.length}} {{countNoun}}</span>
+      {{/if}}
       {{/if}}
       {{!-- Active "Show" filter chip: reminds the user why the list is
            narrowed after switching tabs (the filter is global). --}}
@@ -33,6 +39,10 @@
           </button>
         </span>
       {{/if}}
+      {{!-- Task A: flex-grow spacer so the right-hand controls keep a stable
+           position regardless of whether the count chip is present (empty
+           Bundles view). --}}
+      <div class="bc-meta-spacer"></div>
       {{!-- Plan §13: battlemap-specific toolbar — resolution toggle (4K/HD)
            + view-mode toggle (Releases / Individual Maps). Visible only when
            the active asset tab is bmap. The Grid/List toggle below stays in
@@ -123,7 +133,9 @@
         </details>
       {{/if}}
     </div>
+  {{/if}}
 
+  {{#if cards.length}}
     <div class="bc-result-list{{#if viewIsGrid}} bc-view-grid{{/if}}">
       {{#each cards as |card|}}
         {{!-- Wave B-8d: divider before the first card of each group
@@ -268,10 +280,12 @@
                    resolution + scene count + variant chip. The resolution
                    toggle updates bytesLabel + variantLabel + thumbUrl in
                    #buildReleaseCards so flipping the chip is live. --}}
+              {{!-- Task 2: the HD/4K variant chip is gone from result cards ,
+                   the user already picked the resolution in the toolbar, so it
+                   only wasted space here. variantLabel still feeds the drawer. --}}
               <div class="bc-card-stats">
                 {{#if card.bytesLabel}}<span class="bc-stat bc-stat-release-bytes">{{card.bytesLabel}}</span>{{/if}}
                 {{#if card.sceneCount}}<span class="bc-stat bc-stat-release-scenes">{{card.sceneCount}} {{localize "BENEOS.Cloud.Bmap.Scenes"}}</span>{{/if}}
-                {{#if card.variantLabel}}<span class="bc-stat bc-stat-release-variant">{{card.variantLabel}}</span>{{/if}}
               </div>
             {{else if card.itemTierLabel}}
               <div class="bc-card-stats">
@@ -574,6 +588,17 @@
           </section>
         {{/if}}
 
+        {{!-- Punkt 3: compatible-adventure chip (acronym + full name tooltip),
+             shown for both the release detail and individual map scenes. --}}
+        {{#if drawer.asset.compatibleAdventure}}
+          <div class="bc-drawer-compat">
+            <span class="bc-compat-chip"
+                  data-tooltip="{{localize 'BENEOS.Cloud.Drawer.CompatibleWith'}} {{drawer.asset.compatibleAdventure.fullName}}">
+              <i class="fa-solid fa-book-skull"></i>{{drawer.asset.compatibleAdventure.acronym}}
+            </span>
+          </div>
+        {{/if}}
+
         {{!-- Wave B-9-fix-30: fields and the install action share a row.
              The footer is gone; the action sits inline with CR/Type/etc.
              so the drawer ends right after the description block. --}}
@@ -625,7 +650,11 @@
         </section>
         {{/if}}
 
-        {{!-- #4: per-release scene list with BM + SC sibling thumbnails. --}}
+        {{!-- #4 / Punkt 4: per-release scene list with BM + SC sibling
+             thumbnails. Shown for the release card ("Scenes in this release")
+             and for an individual scene ("This Scene Belongs to <release> /
+             This Release also contains"). Hovering a thumbnail pops a larger
+             preview (bc-scene-thumb-zoom), data already loaded. --}}
         {{#if drawer.asset.isReleaseCard}}
         <section class="bc-drawer-section bc-drawer-scenes">
           <h4 class="bc-drawer-section-h">{{localize "BENEOS.Cloud.Drawer.ScenesInRelease"}}{{#if drawer.scenes.length}} ({{drawer.scenes.length}}){{/if}}</h4>
@@ -636,8 +665,30 @@
               {{#each drawer.scenes as |sc|}}
                 <div class="bc-scene-row">
                   <div class="bc-scene-row-thumbs">
-                    {{#if sc.thumbnail}}<div class="bc-scene-thumb"><img loading="lazy" src="{{sc.thumbnail}}" alt=""></div>{{/if}}
-                    {{#if sc.sibling_thumbnail}}<div class="bc-scene-thumb"><img loading="lazy" src="{{sc.sibling_thumbnail}}" alt=""></div>{{/if}}
+                    {{#if sc.thumbnail}}<div class="bc-scene-thumb" data-bc-zoom="{{sc.thumbnail}}"><img loading="lazy" decoding="async" src="{{sc.thumbnail}}" alt="" onload="this.classList.add('bc-img-loaded')"></div>{{/if}}
+                    {{#if sc.sibling_thumbnail}}<div class="bc-scene-thumb" data-bc-zoom="{{sc.sibling_thumbnail}}"><img loading="lazy" decoding="async" src="{{sc.sibling_thumbnail}}" alt="" onload="this.classList.add('bc-img-loaded')"></div>{{/if}}
+                  </div>
+                  <div class="bc-scene-row-title">{{sc.name}}</div>
+                </div>
+              {{/each}}
+            </div>
+          {{else}}
+            <p class="bc-scenes-empty">{{localize "BENEOS.Cloud.Drawer.ScenesNone"}}</p>
+          {{/if}}
+        </section>
+        {{else if drawer.isSceneDetail}}
+        <section class="bc-drawer-section bc-drawer-scenes bc-drawer-scene-detail">
+          <h4 class="bc-drawer-section-h bc-scene-belongs">{{localize "BENEOS.Cloud.Drawer.SceneBelongsTo"}} <strong>{{drawer.releaseName}}</strong></h4>
+          <h5 class="bc-drawer-subsection-h">{{localize "BENEOS.Cloud.Drawer.ReleaseAlsoContains"}}{{#if drawer.scenes.length}} ({{drawer.scenes.length}}){{/if}}</h5>
+          {{#if drawer.scenesLoading}}
+            <p class="bc-scenes-loading">{{localize "BENEOS.Cloud.Drawer.ScenesLoading"}}</p>
+          {{else if drawer.scenes.length}}
+            <div class="bc-scene-list">
+              {{#each drawer.scenes as |sc|}}
+                <div class="bc-scene-row">
+                  <div class="bc-scene-row-thumbs">
+                    {{#if sc.thumbnail}}<div class="bc-scene-thumb" data-bc-zoom="{{sc.thumbnail}}"><img loading="lazy" decoding="async" src="{{sc.thumbnail}}" alt="" onload="this.classList.add('bc-img-loaded')"></div>{{/if}}
+                    {{#if sc.sibling_thumbnail}}<div class="bc-scene-thumb" data-bc-zoom="{{sc.sibling_thumbnail}}"><img loading="lazy" decoding="async" src="{{sc.sibling_thumbnail}}" alt="" onload="this.classList.add('bc-img-loaded')"></div>{{/if}}
                   </div>
                   <div class="bc-scene-row-title">{{sc.name}}</div>
                 </div>
@@ -741,12 +792,13 @@
           {{else if drawer.asset.isCloudAvailable}}
             {{#if drawer.asset.isBmap}}
               {{#if drawer.asset.cloudReady}}
-                {{!-- Plan §18.7: single "Install via Beneos Cloud" button.
-                     Routes to BeneosNativeBattlemapInstaller (Beneos-owned
-                     pipeline, no scene-packer dependency). Individual map
-                     installs the scene, the release card already lives in
-                     its own template branch above. --}}
-                <button type="button" class="bc-card-button bc-card-button-primary bc-action-install"
+                {{!-- Plan §18.7 + Punkt 4/7: prominent full-width Install
+                     button. Routes to BeneosNativeBattlemapInstaller. For an
+                     individual scene this installs ONLY that scene (its
+                     battlemap + scenery siblings); the "Install Entire
+                     Release" button below installs the whole pack. Label is
+                     plain "Install" now that the cloud is the default path. --}}
+                <button type="button" class="bc-card-button bc-card-button-primary bc-card-button-block bc-action-install"
                         data-asset-key="{{drawer.asset.key}}"
                         data-asset-type="{{drawer.asset.assetType}}"
                         data-bmap-scope="scene"
@@ -755,10 +807,26 @@
                   <i class="fa-solid fa-cloud-arrow-down"></i>
                   {{localize "BENEOS.Cloud.Bmap.InstallNativeScene"}}
                 </button>
+                {{!-- Punkt 4: from a scene the user can also pull the whole
+                     release. Only rendered when the scene is linked to a
+                     release (release_dir present). scope=release + the
+                     release_dir as the key routes to the full-pack install. --}}
+                {{#if drawer.isSceneDetail}}
+                <button type="button" class="bc-card-button bc-card-button-secondary bc-card-button-block bc-action-install"
+                        data-asset-key="{{drawer.asset.releaseDir}}"
+                        data-asset-type="bmap"
+                        data-bmap-scope="release"
+                        data-bmap-release-card="true"
+                        data-bmap-native="true"
+                        data-tooltip="{{localize 'BENEOS.Cloud.Bmap.InstallReleaseTooltip'}}">
+                  <i class="fa-solid fa-layer-group"></i>
+                  {{localize "BENEOS.Cloud.Bmap.InstallRelease"}}
+                </button>
+                {{/if}}
                 {{!-- Plan §13.3.6 dual-button: Moulinette legacy stays
                      directly below as a search-UI fallback for catalog
                      entries that aren't on the cloud yet. --}}
-                <button type="button" class="bc-card-button bc-action-install bc-install-legacy"
+                <button type="button" class="bc-card-button bc-card-button-block bc-action-install bc-install-legacy"
                         data-asset-key="{{drawer.asset.key}}"
                         data-asset-type="{{drawer.asset.assetType}}"
                         data-bmap-legacy="true"
