@@ -4395,7 +4395,19 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // V1 native installer: release-scope only (the full pack). Scene-scope
     // would require us to filter the importer's documents to a single
     // scene_slug; that's V1.5. For now we install the full release.
-    const packId = isSingle ? releaseDir : `${releaseDir}_${variant}`
+    //
+    // packId = the ACTUAL on-disk pack dir. list_releases returns variant_dirs
+    // (post-greenfield beneos_<pack_slug>_foundry_<variant_lc>); use it instead
+    // of constructing <release_dir>_<VARIANT>, which no longer exists on disk
+    // and threw "Package not found". Legacy construction stays as a fallback.
+    const vdirs = (releaseEntry && releaseEntry.variant_dirs) || props.variant_dirs || null
+    let packId = null
+    if (vdirs && typeof vdirs === "object") {
+      packId = isSingle
+        ? (vdirs.SINGLE || vdirs["4K"] || vdirs["HD"] || Object.values(vdirs)[0])
+        : (vdirs[variant] || vdirs["4K"] || vdirs["HD"] || vdirs.SINGLE || Object.values(vdirs)[0])
+    }
+    if (!packId) packId = isSingle ? releaseDir : `${releaseDir}_${variant}`
     const NativeInstaller = globalThis.BeneosNativeBattlemapInstaller
     if (!NativeInstaller) {
       ui.notifications.error("BeneosNativeBattlemapInstaller is not loaded")
