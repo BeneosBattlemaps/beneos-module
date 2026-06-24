@@ -166,7 +166,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       switchView:              BeneosCloudWindowV2._onSwitchView,
       switchBmapRes:           BeneosCloudWindowV2._onSwitchBmapRes,
       switchBmapView:          BeneosCloudWindowV2._onSwitchBmapView,
-      switchBmapCloudReadyOnly: BeneosCloudWindowV2._onSwitchBmapCloudReadyOnly,
       retryLoadReleases:       BeneosCloudWindowV2._onRetryLoadReleases,
       openExternal:            BeneosCloudWindowV2._onOpenExternal,
       openPatchlog:            BeneosCloudWindowV2._onOpenPatchlog,
@@ -293,15 +292,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     this._releaseLoading   = false
     this._releaseLoadError = null
 
-    // Plan §13 debug filter: when true, the bmap result list and release
-    // list are filtered to entries that carry a cloud_release_id (= really
-    // downloadable from Beneos Cloud). Lets the user isolate the cloud
-    // pilot subset while the catalog migration sweep is in flight.
-    this._bmapCloudReadyOnly = false
-    try {
-      const v = game.settings?.get?.(BeneosUtility.moduleID(), "battlemap-cloud-ready-only")
-      if (typeof v === "boolean") this._bmapCloudReadyOnly = v
-    } catch (_e) {}
 
     // Wave B-5d: per-asset install state for the 4-state install button.
     // Map<assetKey, "progress" | "done">. Idle is the absence of an entry.
@@ -693,7 +683,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         isBmap: this.searchMode === "bmap",
         bmapRes4K: this._bmapActiveResolution() === "4K",
         bmapViewIsReleases: this._bmapActiveView() === "releases",
-        bmapCloudReadyOnly: !!this._bmapCloudReadyOnly,
         bmapReleasesLoading: !!this._releaseLoading && this._releaseList === null,
         bmapReleasesError:   (!this._releaseLoading && this._releaseLoadError) ? String(this._releaseLoadError) : null,
         drawer: {
@@ -903,12 +892,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // Wave B-8k-2: bmap biome chip filter — same AND semantics.
     if (type === "bmap") {
       entries = this.#applyBiomeFilter(entries)
-      // Plan §15.2 debug filter: when active, drop catalog entries that
-      // are not yet on the cloud (missing cloud_release_id). Lets the
-      // user isolate the pilot subset during the migration sweep.
-      if (this._bmapCloudReadyOnly) {
-        entries = entries.filter(([_k, data]) => !!data?.properties?.cloud_release_id)
-      }
     }
     // Wave B-8i-3: item-only gold range filter.
     if (type === "item") {
@@ -4792,19 +4775,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     if (this._bmapActiveView() === v) return
     this._bmapViewMode = v
     this._bmapViewPinned = true
-    this.#renderResults(["results"])
-  }
-
-  // Plan §15.2 debug filter toggle. Persists across reloads in a client
-  // setting so the operator can keep the cloud-ready slice pinned while
-  // reloading the world to test fresh state.
-  static _onSwitchBmapCloudReadyOnly(event, target) {
-    event.preventDefault()
-    const next = !this._bmapCloudReadyOnly
-    this._bmapCloudReadyOnly = next
-    try {
-      game.settings?.set?.(BeneosUtility.moduleID(), "battlemap-cloud-ready-only", next)
-    } catch (_e) {}
     this.#renderResults(["results"])
   }
 

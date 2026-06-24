@@ -55,16 +55,6 @@
                   class="bc-view-button{{#unless bmapViewIsReleases}} bc-view-active{{/unless}}"
                   data-bmap-view="individual" data-action="switchBmapView">{{localize "BENEOS.Cloud.Bmap.Individual"}}</button>
         </div>
-        {{!-- Plan §15.2 debug filter: drops catalog entries without a
-             cloud_release_id so the operator can isolate the cloud pilot
-             slice while the migration sweep is still in flight. --}}
-        <label class="bc-bmap-debug-toggle"
-               data-tooltip="{{localize 'BENEOS.Cloud.Bmap.OnlyCloudReadyTooltip'}}">
-          <input type="checkbox"
-                 data-action="switchBmapCloudReadyOnly"
-                 {{#if bmapCloudReadyOnly}}checked{{/if}}>
-          <span>{{localize "BENEOS.Cloud.Bmap.OnlyCloudReady"}}</span>
-        </label>
       </div>
       {{/if}}
       {{!-- Wave B-9: list / grid view toggle. Two segmented buttons,

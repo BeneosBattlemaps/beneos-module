@@ -232,18 +232,6 @@ export class BeneosUtility {
       default: 'releases'
     })
 
-    // Plan §15.2 debug filter: when true, the bmap tab only shows catalog
-    // entries with a cloud_release_id set (= really downloadable from the
-    // cloud right now). Persistent so the operator can keep the cloud-ready
-    // slice pinned across reloads while iterating on the catalog sweep.
-    game.settings.register(BeneosUtility.moduleID(), 'battlemap-cloud-ready-only', {
-      name: 'Beneos battlemap cloud-ready debug filter',
-      scope: 'client',
-      config: false,
-      type: Boolean,
-      default: false
-    })
-
     // Plan §33.6: world-scoped record of installed battlemap releases.
     // Map<"<releaseDir>_<variant>", { sceneIds[], installedAt iso, assetId,
     // sourceSignature, sceneCount }>. Empty at world-start (no auto-scan; see

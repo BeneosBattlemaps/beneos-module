@@ -142,9 +142,13 @@ export class BeneosScenePackerManager {
                 throw new Error(data.message || 'Failed to get packInfo');
             }
 
-            // Ajouter le session ID à toutes les URLs du packInfo
-            const packInfo = this.addSessionToUrls(data.packInfo);
-            
+            // Le serveur renvoie des URLs signees auto-verifiables (HMAC sur
+            // package/file/exp, independantes de l'utilisateur, fenetre 2h). On
+            // les utilise telles quelles: ajouter s= fragmenterait le cache CDN
+            // OVH par utilisateur et n'est plus necessaire pour l'auth
+            // (scenepacker-files.php verifie d'abord la signature publique).
+            const packInfo = data.packInfo;
+
             console.log('BeneosScenePackerManager | PackInfo retrieved with', Object.keys(packInfo).length, 'files');
             return packInfo;
             
@@ -152,23 +156,6 @@ export class BeneosScenePackerManager {
             console.error('BeneosScenePackerManager | Error getting packInfo:', error);
             throw error;
         }
-    }
-
-    /**
-     * Ajoute le session ID à toutes les URLs du packInfo
-     * @param {Object} packInfo - Le packInfo original
-     * @returns {Object} Le packInfo avec session ID ajouté aux URLs
-     */
-    addSessionToUrls(packInfo) {
-        const result = {};
-        
-        for (const [key, url] of Object.entries(packInfo)) {
-            // Ajouter le paramètre session ID à l'URL
-            const separator = url.includes('?') ? '&' : '?';
-            result[key] = `${url}${separator}s=${this.sessionId}`;
-        }
-        
-        return result;
     }
 
     /**
