@@ -2652,13 +2652,21 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     }
     if (card.isCloudAvailable) {
       if (card.isBmap) {
-        // Plan §18.7 release-card: single Beneos Cloud button (native installer).
+        // Plan §18.7 release-card: Beneos Cloud button (native installer,
+        // primary) + Moulinette-legacy fallback. The legacy button hands off
+        // to Moulinette's cloud browser pre-filtered by creator + pack so the
+        // user can grab the pack there during the parallel-run transition.
         if (card.isReleaseCard) {
           return `<button type="button" class="bc-card-button bc-card-button-primary bc-action-install"`
             + ` data-asset-key="${card.key}" data-asset-type="${card.assetType}"`
             + ` data-bmap-scope="release" data-bmap-release-card="true" data-bmap-native="true"`
             + ` data-tooltip="${localize("BENEOS.Cloud.Bmap.InstallNativeReleaseTooltip")}">`
             + `<i class="fa-solid fa-layer-group"></i></button>`
+            + `<button type="button" class="bc-card-button bc-action-install bc-install-legacy"`
+            + ` data-asset-key="${card.key}" data-asset-type="${card.assetType}"`
+            + ` data-bmap-legacy="true"`
+            + ` data-tooltip="${localize("BENEOS.Cloud.Bmap.LegacyMoulinetteTooltip")}">`
+            + `<i class="fa-solid fa-cube"></i></button>`
         }
         // Plan §18.7 individual-map: single Beneos Cloud button (native) +
         // Moulinette-legacy fallback below. The native button routes
@@ -2967,7 +2975,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         }
       } else {
         try { console.log("[beneos-bm] legacy moulinette install", props.cloud_release_id || "(unmigrated)", key) } catch (_) {}
-        BeneosCloudWindowV2._onMoulinetteInstall(event, key)
+        // .call(this): _onMoulinetteInstall reads this._releaseIndex to
+        // resolve a release_dir key (release-card legacy clicks) to its
+        // Moulinette creator + pack. Without the instance context the
+        // release path would silently fall through to the no-terms notice.
+        BeneosCloudWindowV2._onMoulinetteInstall.call(this, event, key)
       }
     }
   }
@@ -4245,7 +4257,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     event.stopPropagation?.()
     const key = target?.dataset?.targetKey
     if (!key) return
-    BeneosCloudWindowV2._onMoulinetteInstall(event, key)
+    // .call(this): pass the instance so release_dir keys resolve via
+    // this._releaseIndex inside _onMoulinetteInstall (see #onInstallClick).
+    BeneosCloudWindowV2._onMoulinetteInstall.call(this, event, key)
   }
 
   // News CTA: opens the news item's cta_url in a new browser tab.
@@ -4620,10 +4634,40 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
    * (`beneos_search_engine.js:1158`). The user lands on the matching map
    * directly instead of having to find it in Moulinette by hand.
    */
-  static _onMoulinetteInstall(_event, bmapKey) {
+  static async _onMoulinetteInstall(_event, bmapKey) {
     const dbHolder = game.beneos?.databaseHolder
-    const bmapData = dbHolder?.getAll?.("bmap")?.[bmapKey]
-    const props = bmapData?.properties || {}
+    const catalog = dbHolder?.getAll?.("bmap") || {}
+    let bmapData = catalog[bmapKey]
+    let props = bmapData?.properties || {}
+    let displayName = bmapData?.name || bmapKey
+    // Release-card path: bmapKey is a release_dir, which is not a catalog
+    // entry, so it carries no download_* fields. Resolve the Moulinette
+    // creator/pack from a representative catalog scene of that release. We
+    // read download_pack from the scene (not the release display name)
+    // because the Moulinette pack title can differ from how the release is
+    // labelled in the library (e.g. a pack titled "Crystal Case" whose
+    // release shows as "Crystal Cave"). Release scope drops the per-scene
+    // term so the whole pack shows on Moulinette instead of a single map.
+    if (!props.download_pack && !props.download_creator && this._releaseIndex?.get) {
+      const rel = this._releaseIndex.get(bmapKey)
+      if (rel) {
+        const relDir = String(rel.release_dir || bmapKey)
+        let repProps = null
+        for (const k in catalog) {
+          const p = catalog[k]?.properties
+          if (p && String(p.release_dir || "") === relDir && (p.download_pack || p.download_creator)) { repProps = p; break }
+        }
+        if (repProps) {
+          props = {
+            download_creator: repProps.download_creator || "",
+            download_pack:    repProps.download_pack    || "",
+            download_terms:   "" // release scope: show the whole pack, not one scene
+          }
+          displayName = rel.display_name || relDir
+          bmapData = { name: displayName }
+        }
+      }
+    }
     const mou = game.modules?.get?.("moulinette")
     if (!mou?.api?.searchUI) {
       ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Notification.MoulinetteUnavailable"))
@@ -4633,19 +4677,56 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Notification.MoulinetteNoTerms"))
       return
     }
+    // Creator + Pack combined narrows Moulinette's cloud browser to the exact
+    // Beneos pack (creator alone or a bare term like "Tavern" would surface
+    // many other creators). Same call the Beneos tour uses (beneos_tours.js,
+    // mou-browser-pack step).
+    const filters = {
+      terms:   props.download_terms   || "",
+      creator: props.download_creator || "",
+      pack:    props.download_pack    || ""
+    }
+    // Moulinette's searchUI throws ("Cannot set properties of undefined
+    // (setting 'collection')") if its cloud browser hasn't finished its first
+    // render+load yet: the internal filterPrefs settings object is only built
+    // once the browser's initial load completes. So render the browser, poll
+    // until isInitialLoadCompleted, then apply the filter (with one retry to
+    // cover the brief window where the flag flips before filterPrefs is set).
+    const isBrowserOpen = () => !!document.querySelector("#mou-cloud, #mou-browser")
+    // Prefer the browser's own async search() over the public searchUI()
+    // wrapper: searchUI fires browser.search WITHOUT awaiting it, so a
+    // cold-start failure escapes as an unhandled rejection we can't trap and
+    // would print a scary console error on this customer-facing path. Calling
+    // browser.search directly lets us await + catch + retry cleanly. Fall
+    // back to searchUI on Moulinette builds that don't expose browser.search.
+    const runSearch = () => (typeof mou.browser?.search === "function")
+      ? mou.browser.search("mou-cloud", "Map", filters)
+      : mou.api.searchUI("mou-cloud", "Map", filters)
     try {
-      mou.api.searchUI("mou-cloud", "Map", {
-        terms:   props.download_terms   || "",
-        creator: props.download_creator || "",
-        pack:    props.download_pack    || ""
-      })
+      if (!isBrowserOpen() || !mou.browser?.isInitialLoadCompleted) {
+        try { mou.browser?.render?.(true) } catch (_) {}
+        const deadline = Date.now() + 8000
+        while (Date.now() < deadline) {
+          await new Promise(r => setTimeout(r, 200))
+          if (isBrowserOpen() && mou.browser?.isInitialLoadCompleted) break
+        }
+        // Settle: isInitialLoadCompleted can flip true a tick before the
+        // browser's filter-prefs object is wired up (which search() writes to).
+        await new Promise(r => setTimeout(r, 500))
+      }
+      try {
+        await runSearch()
+      } catch (innerErr) {
+        // Retry once after a short settle for the cold-start race above.
+        await new Promise(r => setTimeout(r, 700))
+        await runSearch()
+      }
     } catch (err) {
       console.warn("BeneosModule: Moulinette searchUI failed", err)
       ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Notification.MoulinetteUnavailable"))
       return
     }
-    const mapName = bmapData?.name || bmapKey
-    ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.MoulinetteSearch", { name: mapName }))
+    ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.MoulinetteSearch", { name: displayName }))
   }
 
   static _onOpenLogin(_event, _target) {

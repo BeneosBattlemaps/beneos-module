@@ -393,10 +393,11 @@
             {{else if card.isCloudAvailable}}
               {{#if card.isBmap}}
                 {{#if card.isReleaseCard}}
-                  {{!-- Plan §18.7: release-card single "Install via Beneos
-                       Cloud" button — routes to native installer. No
-                       Moulinette legacy (Moulinette doesn't understand
-                       release_dir as a pack key). --}}
+                  {{!-- Plan §18.7: release-card "Install via Beneos Cloud"
+                       button (native installer, primary) + Moulinette-legacy
+                       fallback. The legacy button resolves the release's
+                       creator + pack from a representative catalog scene and
+                       hands off to Moulinette's cloud browser. --}}
                   <button type="button" class="bc-card-button bc-card-button-primary bc-action-install"
                           data-asset-key="{{card.key}}"
                           data-asset-type="{{card.assetType}}"
@@ -405,6 +406,13 @@
                           data-bmap-native="true"
                           data-tooltip="{{localize 'BENEOS.Cloud.Bmap.InstallNativeReleaseTooltip'}}">
                     <i class="fa-solid fa-layer-group"></i>
+                  </button>
+                  <button type="button" class="bc-card-button bc-action-install bc-install-legacy"
+                          data-asset-key="{{card.key}}"
+                          data-asset-type="{{card.assetType}}"
+                          data-bmap-legacy="true"
+                          data-tooltip="{{localize 'BENEOS.Cloud.Bmap.LegacyMoulinetteTooltip'}}">
+                    <i class="fa-solid fa-cube"></i>
                   </button>
                 {{else if card.cloudReady}}
                   {{!-- Plan §18.7 single cloud button: native installer
