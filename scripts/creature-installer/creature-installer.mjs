@@ -1,0 +1,767 @@
+/**
+ * creature-installer.mjs
+ *
+ * In-scene Creature Installer drawer. A viewport-anchored overlay that slides up
+ * from the bottom of the screen on Beneos battlemap scenes and lets the GM place
+ * the creatures intended for that scene:
+ *
+ *   - Free / SRD creatures: always placeable (one click or drag-and-drop).
+ *   - Beneos creatures: hand-built premium tokens. Placeable for supporters of
+ *     the Beneos Creatures Patreon; shown behind a tasteful support gate for
+ *     everyone else (no "Premium"/lock/lootbox treatment - higher-craft framing).
+ *
+ * Data source: the scene flag written by the beneos-dev "Scan Scene Creatures"
+ * tool (scene.flags["beneos-module"].creatureInstaller). A present, non-empty
+ * flag is what activates the drawer - the in-scene navigation-bar art is only
+ * visual context. The drawer is fully optional; a GM who only wants the map can
+ * leave it collapsed.
+ *
+ * This module is intentionally self-contained: it registers its own hooks and
+ * builds its own DOM/overlay (it does NOT modify beneos_module.js). Drag-and-drop
+ * reuses Foundry's native Actor-drop ({type:"Actor", uuid}) so no custom
+ * dropCanvasData handler is needed.
+ */
+
+const MODULE_ID = "beneos-module";
+const FLAG_SCOPE = "beneos-module";
+const FLAG_KEY = "creatureInstaller";
+const TEMPLATE = "modules/beneos-module/templates/creature-installer/drawer.hbs";
+
+// Client-scoped, per-scene "hide this drawer" map { [sceneId]: true }. Local to
+// each GM, never written to the scene -> never shipped/packed.
+const HIDDEN_SETTING = "creatureInstallerHidden";
+
+// Client-scoped, per-scene "the GM has opened this drawer at least once" map.
+// Drives the one-time attract pulse on the collapsed tab; once opened it never
+// pulses again (survives F5 / scene revisits).
+const SEEN_SETTING = "creatureInstallerSeen";
+
+// How long the drawer stays open after the cursor leaves it, so the gap between
+// the bookmark tab and the panel can be crossed without it snapping shut.
+const HOVER_CLOSE_DELAY = 250;
+
+// Slack around the panel that still counts as "inside" for hover-close: applied
+// to the left, right AND top edges (below the panel always stays open - that is
+// the macro-hotbar area). Same margin on all three sides per design.
+const HOVER_MARGIN = 8;
+
+// Beneos token thumbnail CDN base (mirrors cloud-window-v2.mjs THUMB_BASE.token).
+const TOKEN_THUMB_BASE = "https://www.beneos-database.com/data/tokens/thumbnails_v2/";
+
+// V13 moved renderTemplate under foundry.applications.handlebars; keep a fallback
+// to the (deprecated) global for older builds.
+function renderTemplateCompat(path, data) {
+  const rt = foundry.applications?.handlebars?.renderTemplate ?? globalThis.renderTemplate;
+  return rt(path, data);
+}
+
+// Stable identity for a creature entry (and for an assignment reference).
+function entryKey(e) {
+  return e?.fullId || e?.tokenKey || e?.name || null;
+}
+
+// All canvas placements of a creature entry. Supports the positions[] model and
+// upgrades legacy single-x/y entries. Each position carries its own hidden flag.
+function positionsOf(entry) {
+  if (Array.isArray(entry?.positions) && entry.positions.length) return entry.positions;
+  if (entry?.x != null && entry?.y != null) {
+    return [{ x: entry.x, y: entry.y, elevation: entry.elevation, rotation: entry.rotation, width: entry.width, height: entry.height, hidden: !!entry.hidden }];
+  }
+  return [];
+}
+
+const positionKey = (p) => `${Math.round(p.x ?? 0)},${Math.round(p.y ?? 0)},${p.hidden ? 1 : 0}`;
+
+// Collapse a list to one entry per unique creature, merging their positions, so
+// the drawer never shows the same creature twice (it may still sit at many spots).
+function dedupeByCreature(list) {
+  const out = [];
+  const byKey = new Map();
+  for (const e of (list || [])) {
+    const k = entryKey(e);
+    const ex = byKey.get(k);
+    if (!ex) { const copy = { ...e, positions: [...positionsOf(e)] }; byKey.set(k, copy); out.push(copy); }
+    else { for (const p of positionsOf(e)) if (!ex.positions.some(q => positionKey(q) === positionKey(p))) ex.positions.push(p); }
+  }
+  return out;
+}
+
+export class BeneosCreatureInstaller {
+  /** @type {BeneosCreatureInstaller|null} */
+  static instance = null;
+
+  constructor() {
+    this.scene = null;
+    this.data = null;
+    this.expanded = false;
+    /** @type {HTMLElement|null} */
+    this.host = null;
+    /** @type {number|null} hover-intent close timer */
+    this._closeTimer = null;
+  }
+
+  /* --------------------------------------------------------------- lifecycle */
+
+  static boot() {
+    const refresh = () => BeneosCreatureInstaller.get().attachToActiveScene();
+    Hooks.on("canvasReady", refresh);
+    // The flag may be (un)set on the active scene while it is open (admin scan).
+    Hooks.on("updateScene", (scene) => {
+      if (scene?.id === canvas?.scene?.id) refresh();
+    });
+    // Expose a refresh hook so the login/support flow can flip the drawer into
+    // the patron state after a successful auth without a scene reload.
+    game.beneos = game.beneos || {};
+    game.beneos.creatureInstaller = BeneosCreatureInstaller.get();
+    // On a hard reload (F5) canvasReady often fires BEFORE this ready hook, so the
+    // listener above would miss the initial draw and the drawer would only appear
+    // after switching scenes. Attach immediately if the canvas is already up.
+    if (canvas?.ready) refresh();
+  }
+
+  static get() {
+    return (BeneosCreatureInstaller.instance ??= new BeneosCreatureInstaller());
+  }
+
+  refresh() { this.attachToActiveScene(); }
+
+  /* -------------------------------------------------------- hide (per scene) */
+
+  /** @returns {boolean} whether this GM hid the drawer on the current scene. */
+  isHidden() {
+    if (!this.scene) return false;
+    try {
+      const map = game.settings.get(MODULE_ID, HIDDEN_SETTING) || {};
+      return map[this.scene.id] === true;
+    } catch (e) { return false; }
+  }
+
+  async setHidden(bool) {
+    if (!this.scene) return;
+    try {
+      const map = foundry.utils.duplicate(game.settings.get(MODULE_ID, HIDDEN_SETTING) || {});
+      if (bool) map[this.scene.id] = true; else delete map[this.scene.id];
+      await game.settings.set(MODULE_ID, HIDDEN_SETTING, map);
+    } catch (e) { console.error("beneos | creature-installer setHidden failed", e); }
+  }
+
+  /** Has the GM opened the drawer on this scene before? (drives the attract pulse) */
+  isSeen() {
+    if (!this.scene) return true;
+    try { return (game.settings.get(MODULE_ID, SEEN_SETTING) || {})[this.scene.id] === true; }
+    catch (e) { return true; }
+  }
+
+  async markSeen() {
+    if (!this.scene || this.isSeen()) return;
+    try {
+      const map = foundry.utils.duplicate(game.settings.get(MODULE_ID, SEEN_SETTING) || {});
+      map[this.scene.id] = true;
+      await game.settings.set(MODULE_ID, SEEN_SETTING, map);
+    } catch (e) { console.error("beneos | creature-installer markSeen failed", e); }
+  }
+
+  attachToActiveScene() {
+    const scene = canvas?.scene;
+    const data = scene?.getFlag?.(FLAG_SCOPE, FLAG_KEY);
+    const hasContent = data && ((data.srdCreatures?.length ?? 0) > 0 || (data.beneosCreatures?.length ?? 0) > 0);
+    if (!game.user?.isGM || !scene || !hasContent) {
+      this.destroy();
+      return;
+    }
+    // Only force the collapsed bookmark when arriving on a DIFFERENT scene. A
+    // flag update on the current scene (e.g. removing a creature) keeps the
+    // drawer's open/closed state instead of snapping it shut.
+    const sameScene = this.scene?.id === scene.id;
+    this.scene = scene;
+    this.data = data;
+    if (!sameScene) this.expanded = false;
+    this.render();
+  }
+
+  destroy() {
+    if (this._docHover) { document.removeEventListener("mousemove", this._docHover); this._docHover = null; }
+    if (this._closeTimer) { clearTimeout(this._closeTimer); this._closeTimer = null; }
+    this.host?.remove();
+    this.host = null;
+    this.scene = null;
+    this.data = null;
+    this.expanded = false;
+  }
+
+  /* ------------------------------------------------------------ account state */
+
+  /** @returns {"patron"|"connected_nonpatron"|"not_connected"} */
+  accountState() {
+    try {
+      if (game.beneos?.cloud?.hasCampaignAccess?.("tokens")) return "patron";
+    } catch (e) { /* fall through */ }
+    try {
+      if (game.settings.get(MODULE_ID, "beneos-cloud-token-patron")) return "patron";
+    } catch (e) { /* setting may be unregistered */ }
+    try {
+      const status = game.settings.get(MODULE_ID, "beneos-cloud-patreon-status");
+      if (status && status !== "no_patreon") return "connected_nonpatron";
+    } catch (e) { /* fall through */ }
+    return "not_connected";
+  }
+
+  /* --------------------------------------------------- creature resolution */
+
+  /** Find the world Actor for a flag entry via stable Beneos id, then name. */
+  resolveActor(entry) {
+    if (!entry) return null;
+    // SRD/packed actors keep their _id on import (Scene-Packer keepId), so the
+    // stored actorId is the most reliable handle and survives token-vs-actor name
+    // drift (e.g. token "Barovian Commoner" vs actor "Barovian Commoner 06").
+    if (entry.actorId) {
+      const a = game.actors.get(entry.actorId);
+      if (a) return a;
+    }
+    if (entry.fullId) {
+      const a = game.actors.find(x => x.flags?.world?.beneos?.fullId === entry.fullId);
+      if (a) return a;
+    }
+    if (entry.tokenKey) {
+      const a = game.actors.find(x => x.flags?.world?.beneos?.tokenKey === entry.tokenKey);
+      if (a) return a;
+    }
+    if (entry.name) {
+      const a = game.actors.getName(entry.name);
+      if (a) return a;
+    }
+    return null;
+  }
+
+  /* ----------------------------------------------------------- render context */
+
+  decorate(entry, { premium, isPatron }) {
+    const actor = this.resolveActor(entry);
+    const installed = !!actor;
+    // SRD discs use local token art; premium guests/uninstalled use the CDN
+    // thumbnail; an installed premium token can use its real local art.
+    let img = null;
+    if (premium) {
+      const installedArt = installed ? (actor.prototypeToken?.texture?.src || actor.img) : null;
+      const embedded = entry.thumbnailData || null;   // offline-safe base64 preview
+      const cdn = entry.thumbnail ? TOKEN_THUMB_BASE + entry.thumbnail : null;
+      img = (isPatron && installedArt) || embedded || cdn || installedArt || null;
+    } else {
+      img = entry.art || (actor?.prototypeToken?.texture?.src) || actor?.img || null;
+    }
+    return {
+      ...entry,
+      img,
+      shape: entry.shape || (premium ? "square" : "round"),
+      installed,
+      available: installed,                 // locally resolvable -> visible + draggable
+      uuid: actor?.uuid || null,
+      // Anything present in the world can be dragged onto the canvas (native
+      // Actor-drop). Premium that is not installed yet stays non-draggable and
+      // is handled by the install-on-place button instead.
+      draggable: installed,
+      // Patron, premium, not yet installed -> "+" install affordance.
+      showInstallBadge: premium && isPatron && !installed && !entry.alternative,
+      // Any accessible premium not yet in the world (incl. alternatives) can be
+      // cloud-installed from the drawer -> grayscale + part of "Install Beneos".
+      needsInstall: premium && isPatron && !installed && !!entry.tokenKey,
+      // Alternatives: optional swap suggestions, never auto-placed.
+      alternative: !!entry.alternative,
+      // Assignment link viz: own key + (for SRD) the assigned Beneos' key/name.
+      key: entryKey(entry),
+      linkedKey: entry.replacedBy ? entryKey(entry.replacedBy) : null,
+      linkedName: entry.replacedBy?.name || null
+    };
+  }
+
+  async buildContext() {
+    const hidden = this.isHidden();
+    // Hidden + collapsed -> show only the restore logo. Hidden + expanded means
+    // the GM peeked it open via the logo; render the full drawer (hide checkbox
+    // stays checked) without clearing the per-scene hide choice.
+    if (hidden && !this.expanded) return { logo: true };
+
+    const state = this.accountState();
+    const isPatron = state === "patron";
+    const srd = dedupeByCreature(this.data.srdCreatures).map(e => this.decorate(e, { premium: false, isPatron }));
+    const beneos = dedupeByCreature(this.data.beneosCreatures).map(e => this.decorate(e, { premium: true, isPatron }));
+    const missingCount = isPatron ? beneos.filter(c => !c.installed).length : 0;
+    // Gold-button state machine: not connected -> support; patron with any
+    // accessible-but-not-installed Beneos -> install (cloud); all installed and
+    // something to auto-place -> place; all installed but only alternatives (no
+    // auto-placeable) -> place disabled (drag-only).
+    const beneosMissing = beneos.filter(c => c.needsInstall).length;
+    const srdPlaceable = srd.some(c => positionsOf(c).length);
+    const beneosOwnPlaceable = beneos.some(c => !c.alternative && positionsOf(c).length);
+    const beneosPlaceable = srdPlaceable || beneosOwnPlaceable;
+    let beneosBtn = "support";
+    if (isPatron) beneosBtn = beneosMissing > 0 ? "install" : (beneosPlaceable ? "place" : "place-empty");
+    return {
+      logo: false,
+      hidden,
+      state,
+      pulse: !this.isSeen(),   // one-time attract glow on the collapsed tab
+      isPatron,
+      isConnected: state !== "not_connected",
+      expanded: this.expanded,
+      sceneName: this.data.sceneName || this.scene?.name || "",
+      srd,
+      beneos,
+      srdCount: srd.length,
+      beneosCount: beneos.length,
+      totalCount: srd.length + beneos.length,
+      hasSrd: srd.length > 0,
+      hasBeneos: beneos.length > 0,
+      missingCount,
+      beneosMissing,
+      beneosBtn,
+      btnInstall: beneosBtn === "install",
+      btnPlace: beneosBtn === "place",
+      btnPlaceEmpty: beneosBtn === "place-empty",
+      hasGuide: !!this.data.guideRef
+    };
+  }
+
+  async render() {
+    const ctx = await this.buildContext();
+    const html = await renderTemplateCompat(TEMPLATE, ctx);
+    if (!this.host) {
+      this.host = document.createElement("div");
+      this.host.id = "beneos-creature-installer";
+      document.body.appendChild(this.host);
+    }
+    this.host.innerHTML = html;
+    this.host.classList.toggle("bci-expanded", this.expanded && !ctx.logo);
+    this.host.classList.toggle("bci-hidden", !!ctx.logo);
+    this.activateListeners();
+    if (ctx.logo) this.#positionRestore();
+  }
+
+  /** Anchor the restore logo just left of the macro hotbar. */
+  #positionRestore() {
+    const btn = this.host?.querySelector(".bci-restore");
+    if (!btn) return;
+    const hb = document.getElementById("hotbar") || document.getElementById("ui-bottom");
+    if (!hb) return; // CSS default keeps it bottom-centre-left
+    const r = hb.getBoundingClientRect();
+    if (!r.width) return;
+    btn.style.left = `${Math.max(8, Math.round(r.left - 52))}px`;
+    btn.style.bottom = `${Math.max(8, Math.round(window.innerHeight - r.bottom))}px`;
+  }
+
+  /* --------------------------------------------------------------- listeners */
+
+  activateListeners() {
+    const root = this.host;
+    if (!root) return;
+
+    // Click actions (buttons, links, the restore logo).
+    root.querySelectorAll("[data-action]").forEach(el => {
+      if (el.tagName === "INPUT") return; // checkboxes handled below via change
+      el.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        const action = el.dataset.action;
+        const handler = this[`_on_${action}`];
+        if (typeof handler === "function") handler.call(this, ev, el);
+      });
+    });
+
+    // Checkbox actions (the per-scene hide toggle).
+    root.querySelectorAll("input[type=checkbox][data-action]").forEach(el => {
+      el.addEventListener("change", (ev) => {
+        const handler = this[`_on_${el.dataset.action}`];
+        if (typeof handler === "function") handler.call(this, ev, el);
+      });
+    });
+
+    // Native Foundry actor-drop: dragging a disc onto the canvas creates a token.
+    // The inner <img> is made non-draggable (template + CSS pointer-events:none)
+    // so the drag source is the disc div, carrying our Actor data - otherwise the
+    // browser drags the image file instead and Foundry never sees the actor.
+    root.querySelectorAll(".bci-disc[draggable=true]").forEach(disc => {
+      disc.addEventListener("dragstart", (ev) => {
+        const uuid = disc.dataset.uuid;
+        if (!uuid) { ev.preventDefault(); return; }
+        this._dragging = true;
+        this.#clearCloseTimer();
+        ev.dataTransfer.setData("text/plain", JSON.stringify({ type: "Actor", uuid }));
+        ev.dataTransfer.effectAllowed = "copy";
+        try { ev.dataTransfer.setDragImage(disc, 26, 26); } catch (e) { /* best effort */ }
+      });
+      disc.addEventListener("dragend", () => {
+        this._dragging = false;
+        // The pointer ends up on the canvas after the drop; close shortly after.
+        if (this.expanded) this._closeTimer = setTimeout(() => { this._closeTimer = null; this.#collapse(); }, HOVER_CLOSE_DELAY);
+      });
+      // Single click opens the creature's actor sheet. A click does NOT fire
+      // after a drag, so holding-and-dragging still drops onto the canvas.
+      disc.addEventListener("click", async (ev) => {
+        ev.preventDefault();
+        const uuid = disc.dataset.uuid;
+        if (!uuid) return;
+        try { (await fromUuid(uuid))?.sheet?.render(true); }
+        catch (e) { console.warn("beneos | creature-installer: open sheet failed", uuid, e); }
+      });
+    });
+
+    // Assignment link viz: hovering a creature highlights its counterpart and
+    // shows a short "<Beneos> replaces <SRD>" message.
+    this.#activateLinkHover(root);
+
+    // Hover-open from the collapsed bookmark tab.
+    const tab = root.querySelector(".bci-tab");
+    if (tab) tab.addEventListener("mouseenter", () => this.#open());
+
+    // Hover-close while expanded is tracked at document level so that moving the
+    // pointer anywhere outside the drawer (macro hotbar, canvas, ...) closes it -
+    // not only when the pointer happens to leave the panel element itself.
+    this.#syncDocHover();
+  }
+
+  /** Wire the SRD<->Beneos assignment highlight + message on hover. */
+  #activateLinkHover(root) {
+    const msgEl = root.querySelector(".bci-link-msg");
+    const setMsg = (txt) => {
+      if (!msgEl) return;
+      msgEl.textContent = txt || "";
+      msgEl.classList.toggle("bci-link-msg-on", !!txt);
+    };
+    const clear = () => {
+      root.querySelectorAll(".bci-linked-hl, .bci-linked-src").forEach(e => e.classList.remove("bci-linked-hl", "bci-linked-src"));
+      root.classList.remove("bci-focus-link");
+      setMsg("");
+    };
+    const discByKey = (key) => key ? root.querySelector(`.bci-disc[data-key="${CSS.escape(key)}"]`) : null;
+    const srdByLink = (key) => key ? root.querySelector(`.bci-disc[data-linked="${CSS.escape(key)}"]`) : null;
+    const message = (beneosName, srdName) =>
+      game.i18n.format("BENEOS.CreatureInstaller.Replaces", { beneos: beneosName || "?", srd: srdName || "?" });
+    // Highlight the pair, mark the hovered one as source, and focus-dim the rest.
+    const focus = (srcEl, targetEl, beneosName, srdName) => {
+      if (!targetEl) return;
+      srcEl.classList.add("bci-linked-src");
+      targetEl.classList.add("bci-linked-hl");
+      root.classList.add("bci-focus-link");
+      setMsg(message(beneosName, srdName));
+    };
+
+    root.querySelectorAll(".bci-disc[data-linked]").forEach(srd => {
+      srd.addEventListener("mouseenter", () => focus(srd, discByKey(srd.dataset.linked), discByKey(srd.dataset.linked)?.dataset.name, srd.dataset.name));
+      srd.addEventListener("mouseleave", clear);
+    });
+    root.querySelectorAll(".bci-col-beneos .bci-disc[data-key]").forEach(b => {
+      b.addEventListener("mouseenter", () => focus(b, srdByLink(b.dataset.key), b.dataset.name, srdByLink(b.dataset.key)?.dataset.name));
+      b.addEventListener("mouseleave", clear);
+    });
+  }
+
+  #clearCloseTimer() {
+    if (this._closeTimer) { clearTimeout(this._closeTimer); this._closeTimer = null; }
+  }
+
+  /** Attach/detach the document-level hover-close watcher to match expanded.
+   *  Close only when the pointer leaves the drawer's horizontal band (left/right).
+   *  Everything below the drawer down to the screen edge - and above it up to the
+   *  top - within that column keeps it open, so hovering the macro hotbar or the
+   *  gold button (which sits inside the band) never closes it. The watcher only
+   *  ARMS once the pointer has entered the band, so opening from a spot outside it
+   *  (e.g. the bottom-left restore logo) does not immediately re-close it. */
+  #syncDocHover() {
+    if (this.expanded && !this._docHover) {
+      this._docHover = (ev) => {
+        if (this._dragging) { this.#clearCloseTimer(); return; }
+        const panel = this.host?.querySelector(".bci-panel");
+        if (!panel) return;
+        const r = panel.getBoundingClientRect();
+        // Inside = within the panel's horizontal band AND not above its top edge
+        // (minus a small margin). Anything below the panel down to the screen edge
+        // stays open (macro hotbar); leaving left, right or up closes it.
+        const inSafe = ev.clientX >= r.left - HOVER_MARGIN
+                    && ev.clientX <= r.right + HOVER_MARGIN
+                    && ev.clientY >= r.top - HOVER_MARGIN;
+        if (inSafe) { this._closeArmed = true; this.#clearCloseTimer(); }
+        else if (this._closeArmed && !this._closeTimer) {
+          this._closeTimer = setTimeout(() => { this._closeTimer = null; this.#collapse(); }, HOVER_CLOSE_DELAY);
+        }
+      };
+      document.addEventListener("mousemove", this._docHover);
+    } else if (!this.expanded && this._docHover) {
+      document.removeEventListener("mousemove", this._docHover);
+      this._docHover = null;
+      this.#clearCloseTimer();
+    }
+  }
+
+  #open() {
+    if (this.expanded) return;
+    this._closeArmed = false; // require the pointer to enter the band before closing
+    this.markSeen();          // first open kills the attract pulse for good
+    this.expanded = true;
+    this.render();
+  }
+
+  #collapse() {
+    if (!this.expanded) return;
+    this.expanded = false;
+    this.render();
+  }
+
+  /** Show a spinner on a button while an async action runs. */
+  async #withBusy(el, fn) {
+    if (el) { el.classList.add("bci-busy"); el.setAttribute("disabled", ""); }
+    try { return await fn(); }
+    finally { if (el) { el.classList.remove("bci-busy"); el.removeAttribute("disabled"); } }
+  }
+
+  /* ------------------------------------------------------------------ actions */
+
+  _on_toggle() {
+    // Tab click (touch / accessibility). Hover-intent normally opens it already.
+    this.#open();
+  }
+
+  _on_close() {
+    this.#clearCloseTimer();
+    this.expanded = false;
+    this.render();
+  }
+
+  async _on_hide(ev, el) {
+    const checked = el ? !!el.checked : true;
+    await this.setHidden(checked);
+    // Checking hides -> collapse to the logo. Unchecking keeps the drawer open.
+    if (checked) this.expanded = false;
+    this.render();
+  }
+
+  // Clicking the restore logo only PEEKS the drawer open; the per-scene hide
+  // choice stays active, so collapsing returns to the logo (not the tab). #open
+  // resets the close-arm so the panel (centred) does not snap shut just because
+  // the logo (bottom-left) sits outside the panel's band.
+  _on_restore() {
+    this.#open();
+  }
+
+  async _on_placeSrd(ev, el) {
+    if (!this.data?.srdCreatures?.length) return;
+    await this.#withBusy(el, () => this.#placeEntries(this.data.srdCreatures, { allowInstall: false }));
+  }
+
+  async _on_placeBeneos(ev, el) {
+    if (this.accountState() !== "patron") { this._on_support(); return; }
+    await this.#withBusy(el, () => this.#placeBestVersion());
+  }
+
+  /**
+   * "Install Beneos Creatures" - cloud-install every accessible-but-not-installed
+   * Beneos creature listed in the drawer (incl. alternatives, so they become
+   * draggable). Each disc fills from grayscale to colour with a gold rim as its
+   * token finishes; the button shows progress, then glows and relabels to "Place".
+   */
+  async _on_installAll(ev, el) {
+    if (this.accountState() !== "patron") { this._on_support(); return; }
+    const root = this.host;
+    if (!root) return;
+
+    // Unique accessible-but-not-installed Beneos tokenKeys (one creature may appear once).
+    const seen = new Set();
+    const queue = [];
+    root.querySelectorAll(".bci-disc-beneos.bci-needsinstall[data-tokenkey]").forEach(d => {
+      const tokenKey = d.dataset.tokenkey;
+      if (!tokenKey || seen.has(tokenKey)) return;
+      seen.add(tokenKey);
+      queue.push(tokenKey);
+    });
+    const total = queue.length;
+    if (!total) { this.render(); return; }
+
+    const setProgress = (done) => {
+      const span = el?.querySelector("span");
+      if (span) span.textContent = game.i18n.format("BENEOS.CreatureInstaller.Installing", { done, total });
+      el?.style.setProperty("--bci-progress", `${Math.round((done / total) * 100)}%`);
+    };
+    el?.classList.add("bci-installing-btn");
+    el?.setAttribute("disabled", "");
+    setProgress(0);
+
+    let done = 0, failed = 0;
+    for (const tokenKey of queue) {
+      const discs = [...root.querySelectorAll(`.bci-disc-beneos[data-tokenkey="${CSS.escape(tokenKey)}"]`)];
+      discs.forEach(d => d.classList.add("bci-installing"));   // gold pulsing rim while loading
+      try {
+        await game.beneos?.cloud?.importTokenFromCloud?.(tokenKey, undefined, false);
+        // grayscale 0% -> colour 100% + green check on completion
+        discs.forEach(d => { d.classList.remove("bci-needsinstall", "bci-installing"); d.classList.add("bci-installed-fx", "bci-available"); });
+      } catch (e) {
+        console.error("beneos | creature-installer: install failed", tokenKey, e);
+        discs.forEach(d => d.classList.remove("bci-installing"));
+        failed++;
+      }
+      done++;
+      setProgress(done);
+    }
+
+    el?.classList.remove("bci-installing-btn");
+    el?.classList.add("bci-glow");   // brief triumphant glow
+    if (failed) ui.notifications?.warn(game.i18n.format("BENEOS.CreatureInstaller.PlacedWithMissing", { n: failed }));
+    else ui.notifications?.info(game.i18n.format("BENEOS.CreatureInstaller.InstallDone", { n: total }));
+    // Re-render after the glow so the button recomputes to "Place ..." (or place-empty).
+    setTimeout(() => this.render(), 950);
+  }
+
+  _on_login() { this.#openCloud(); }
+  _on_support() { this.#openCloud(); }
+
+  async _on_guide() {
+    const ref = this.data?.guideRef;
+    if (!ref) return;
+    try {
+      const doc = await fromUuid(ref);
+      doc?.sheet?.render(true);
+    } catch (e) {
+      ui.notifications?.warn(game.i18n.localize("BENEOS.CreatureInstaller.GuideMissing"));
+    }
+  }
+
+  /* -------------------------------------------------------------- placement */
+
+  /** Resolve a creature reference; for patrons, install a missing Beneos by key. */
+  async #resolveOrInstall(ref, { allowInstall }) {
+    let actor = this.resolveActor(ref);
+    if (!actor && allowInstall && ref?.tokenKey) actor = await this.#installToken(ref.tokenKey);
+    return actor;
+  }
+
+  /** Build a TokenDocument object for `actor` at the given position, restoring
+   *  the authored visibility (hidden) state for that placement. */
+  async #buildToken(actor, pos) {
+    const td = await actor.getTokenDocument({
+      x: pos.x, y: pos.y,
+      elevation: pos.elevation ?? 0,
+      rotation: pos.rotation ?? 0,
+      hidden: !!pos.hidden
+    });
+    return td.toObject();
+  }
+
+  /**
+   * "Place Beneos Creatures on Map" - the best version of every slot:
+   *  - each SRD slot: its assigned Beneos at the SRD's position, else the SRD itself;
+   *  - any standalone Beneos (not used as a replacement) at its own position.
+   *  No duplicates. Assigned Beneos keep their own size; only x/y/elev/rot come
+   *  from the SRD slot they replace.
+   */
+  async #placeBestVersion() {
+    const scene = this.scene;
+    if (!scene) return;
+    const allowInstall = this.accountState() === "patron";
+    const tokenDocs = [];
+    const placedBeneos = new Set();
+    let missing = 0;
+
+    const placeAll = async (actor, positions) => {
+      for (const pos of positions) {
+        try { tokenDocs.push(await this.#buildToken(actor, pos)); }
+        catch (e) { console.error("beneos | creature-installer: token build failed", pos, e); missing++; }
+      }
+    };
+
+    for (const srd of dedupeByCreature(this.data.srdCreatures)) {
+      const positions = positionsOf(srd);
+      if (!positions.length) continue;
+      let beneosActor = null;
+      if (srd.replacedBy) beneosActor = await this.#resolveOrInstall(srd.replacedBy, { allowInstall });
+      if (beneosActor) {
+        placedBeneos.add(entryKey(srd.replacedBy));
+        await placeAll(beneosActor, positions);     // assigned Beneos at every SRD position
+        continue;
+      }
+      const srdActor = this.resolveActor(srd);
+      if (!srdActor) { missing += positions.length; continue; }
+      await placeAll(srdActor, positions);           // free SRD fallback
+    }
+
+    // Standalone Beneos creatures (no SRD link) at their own position(s).
+    for (const b of dedupeByCreature(this.data.beneosCreatures)) {
+      if (b.alternative) continue;                 // alternatives are never auto-placed
+      if (placedBeneos.has(entryKey(b))) continue;
+      const positions = positionsOf(b);
+      if (!positions.length) continue;
+      const actor = await this.#resolveOrInstall(b, { allowInstall });
+      if (!actor) { missing++; continue; }
+      await placeAll(actor, positions);
+    }
+
+    if (tokenDocs.length) await scene.createEmbeddedDocuments("Token", tokenDocs);
+    if (missing > 0) ui.notifications?.warn(game.i18n.format("BENEOS.CreatureInstaller.PlacedWithMissing", { n: missing }));
+    else if (tokenDocs.length) ui.notifications?.info(game.i18n.format("BENEOS.CreatureInstaller.Placed", { n: tokenDocs.length }));
+  }
+
+  async #placeEntries(entries, { allowInstall }) {
+    const scene = this.scene;
+    if (!scene) return;
+    const tokenDocs = [];
+    let missing = 0;
+    for (const entry of dedupeByCreature(entries)) {
+      let actor = this.resolveActor(entry);
+      if (!actor && allowInstall && entry.tokenKey) {
+        actor = await this.#installToken(entry.tokenKey);
+      }
+      const positions = positionsOf(entry);
+      if (!actor) { missing += positions.length || 1; continue; }
+      for (const pos of positions) {
+        try { tokenDocs.push(await this.#buildToken(actor, pos)); }
+        catch (e) { console.error("beneos | creature-installer: token build failed", entry, e); missing++; }
+      }
+    }
+    if (tokenDocs.length) {
+      await scene.createEmbeddedDocuments("Token", tokenDocs);
+    }
+    if (missing > 0) {
+      ui.notifications?.warn(game.i18n.format("BENEOS.CreatureInstaller.PlacedWithMissing", { n: missing }));
+    } else if (tokenDocs.length) {
+      ui.notifications?.info(game.i18n.format("BENEOS.CreatureInstaller.Placed", { n: tokenDocs.length }));
+    }
+  }
+
+  /** Install a Beneos token by key via the cloud importer, then resolve it. */
+  async #installToken(tokenKey) {
+    try {
+      await game.beneos?.cloud?.importTokenFromCloud?.(tokenKey, undefined, false);
+    } catch (e) {
+      console.error("beneos | creature-installer: install failed", tokenKey, e);
+    }
+    return this.resolveActor({ tokenKey });
+  }
+
+  /* ----------------------------------------------------------------- cloud */
+
+  #openCloud() {
+    const w = game.beneos?.cloudWindowV2;
+    if (w?.render) { w.render(true); return; }
+    import("../cloud-v2/cloud-window-v2.mjs")
+      .then(m => new m.BeneosCloudWindowV2().render({ force: true }))
+      .catch(() => ui.notifications?.warn(game.i18n.localize("BENEOS.CreatureInstaller.OpenCloudHint")));
+  }
+}
+
+Hooks.once("init", () => {
+  try {
+    game.settings.register(MODULE_ID, HIDDEN_SETTING, {
+      scope: "client",
+      config: false,
+      type: Object,
+      default: {}
+    });
+    game.settings.register(MODULE_ID, SEEN_SETTING, {
+      scope: "client",
+      config: false,
+      type: Object,
+      default: {}
+    });
+  } catch (e) { console.error("beneos | creature-installer setting register failed", e); }
+});
+
+Hooks.once("ready", () => {
+  try { BeneosCreatureInstaller.boot(); }
+  catch (e) { console.error("beneos | creature-installer boot failed", e); }
+});

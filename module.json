@@ -26,7 +26,8 @@
 	  "css/beneos-character-sheet.css",
 	  "css/beneos-sense-compass.css",
 	  "css/beneos-lgc.css",
-	  "css/beneos-creature-codex.css"
+	  "css/beneos-creature-codex.css",
+	  "css/beneos-creature-installer.css"
   ],
   "esmodules": [
     "scripts/beneos-asset-path-repair.js",
@@ -40,10 +41,12 @@
 	"scripts/cloud-v2/cloud-window-v2.mjs",
 	"scripts/cloud-v2/beneos-install-progress.mjs",
 	"scripts/cloud-v2/beneos-native-installer.mjs",
+	"scripts/cloud-v2/beneos-release-install-api.mjs",
 	"scripts/codex2/beneos-codex.mjs",
 	"scripts/codex2/beneos-codex-init.mjs",
 	"scripts/lgc/beneos-lgc.mjs",
-	"scripts/codex2/item-companion.mjs"
+	"scripts/codex2/item-companion.mjs",
+	"scripts/creature-installer/creature-installer.mjs"
   ],
   "languages": [
     { "lang": "en",    "name": "English",                 "path": "lang/en.json" },

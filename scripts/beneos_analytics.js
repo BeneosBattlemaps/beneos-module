@@ -20,6 +20,8 @@ const SESSION_SAMPLE_MS = 60 * 1000;
 const QUEUE_FLUSH_THRESHOLD = 50;
 const MAX_BATCH = 50;
 const MAX_BACKUP = 200;
+const MAX_QUEUE = 300;          // hard cap on the in-memory queue
+const MAX_FLUSH_FAILURES = 3;   // consecutive failures before the session circuit-breaks
 const ERROR_THROTTLE_MS = 60 * 1000;
 const ACTOR_MODIFY_THROTTLE_MS = 30 * 1000;
 const BACKUP_KEY = "beneos-analytics-queue-backup";
@@ -37,6 +39,8 @@ export class BeneosAnalytics {
   static _errorThrottle = new Map()       // fingerprint -> last emit ts
   static _actorModifyThrottle = new Map() // actorId -> last emit ts
   static _flushing = false
+  static _consecutiveFailures = 0
+  static _disabledForSession = false
 
   /********************************************************************************** */
   static moduleId() { return BeneosUtility.moduleID() }
@@ -88,9 +92,12 @@ export class BeneosAnalytics {
   // Queue one event. `payload` may carry asset_id / asset_type / bytes which are
   // promoted to dedicated columns; everything else becomes the JSON payload.
   static track(eventType, payload = {}) {
-    if (!this.isEnabled()) return
+    if (!this.isEnabled() || this._disabledForSession) return
     try {
       this.queue.push(this._buildEvent(eventType, payload))
+      // Hard-cap the in-memory queue so a stalled endpoint cannot grow it without
+      // bound (the localStorage backup is already capped at MAX_BACKUP).
+      if (this.queue.length > MAX_QUEUE) this.queue.splice(0, this.queue.length - MAX_QUEUE)
       if (this.queue.length >= QUEUE_FLUSH_THRESHOLD) this.flush()
     } catch (_) { /* telemetry must never throw into a hook */ }
   }
@@ -118,6 +125,7 @@ export class BeneosAnalytics {
   // Flush up to MAX_BATCH events. On success they are removed from the queue;
   // on failure they stay queued for the next interval (no retry storm).
   static async flush(useBeacon = false) {
+    if (this._disabledForSession) return
     if (!this.queue.length) return
     const foundryId = this.getFoundryId()
     if (!foundryId) return // cannot attribute yet, keep queued
@@ -136,6 +144,7 @@ export class BeneosAnalytics {
 
     if (this._flushing) return
     this._flushing = true
+    let ok = false
     try {
       const resp = await fetch(url, {
         method: "POST",
@@ -143,15 +152,35 @@ export class BeneosAnalytics {
         body,
         keepalive: true
       })
-      if (resp?.ok) {
-        this.queue.splice(0, batch.length)
-        if (this.queue.length) setTimeout(() => this.flush(), 250)
-      }
+      ok = !!resp?.ok
     } catch (_) {
-      /* network down: keep queue, retry on next interval */
+      /* network/CORS down: counted as a failure below, queue kept */
     } finally {
       this._flushing = false
     }
+
+    if (ok) {
+      this._consecutiveFailures = 0
+      this.queue.splice(0, batch.length)
+      if (this.queue.length) setTimeout(() => this.flush(), 250)
+      return
+    }
+
+    // Circuit-breaker: after MAX_FLUSH_FAILURES consecutive failures (unreachable
+    // endpoint, CORS block, firewall) stop flushing for the rest of the session so
+    // a dead endpoint can never flood the console or grow the queue. A reload
+    // starts fresh and retries; if the endpoint is healthy again, it resumes.
+    this._consecutiveFailures++
+    if (this._consecutiveFailures >= MAX_FLUSH_FAILURES) this._disableForSession()
+  }
+
+  static _disableForSession() {
+    this._disabledForSession = true
+    try { if (this._flushTimer) clearInterval(this._flushTimer) } catch (_) {}
+    this._flushTimer = null
+    this.queue = []
+    try { window.localStorage?.removeItem(BACKUP_KEY) } catch (_) {}
+    try { console.warn("Beneos | analytics endpoint unreachable, telemetry paused for this session.") } catch (_) {}
   }
 
   /********************************************************************************** */

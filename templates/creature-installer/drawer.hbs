@@ -1,0 +1,164 @@
+{{!--
+  Beneos Creature Installer drawer. Rendered into a viewport-anchored host div by
+  scripts/creature-installer/creature-installer.mjs. Collapsed by default (bookmark
+  tab); hover-intent expands the panel. Visual spec: design_handoff_creature_installer.
+  When hidden on this scene, only the restore logo (left of the macro hotbar) shows.
+--}}
+{{#if logo}}
+  <button type="button" class="bci-restore" data-action="restore" title="{{localize 'BENEOS.CreatureInstaller.RestoreTooltip'}}">
+    <i class="beneos-icon-logo"></i>
+  </button>
+{{else}}
+<div class="bci-root bci-state-{{state}}">
+
+  {{!-- collapsed bookmark tab (always visible) --}}
+  <button type="button" class="bci-tab {{#if pulse}}bci-pulse{{/if}}" data-action="toggle" title="{{localize 'BENEOS.CreatureInstaller.TabTooltip'}}">
+    <span class="bci-tab-disc">
+      <i class="beneos-icon-logo" aria-hidden="true"></i>
+    </span>
+    <span class="bci-tab-label">{{localize 'BENEOS.CreatureInstaller.TabLabel'}}</span>
+    <span class="bci-tab-count">{{totalCount}}</span>
+    <span class="bci-tab-chev"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+  </button>
+
+  {{!-- expanded panel --}}
+  <section class="bci-panel">
+    <div class="bci-hairline"></div>
+
+    <header class="bci-header">
+      <div class="bci-title">
+        <span class="bci-encounter">{{localize 'BENEOS.CreatureInstaller.Encounter'}}</span>
+        <span class="bci-scene">{{sceneName}}</span>
+        <span class="bci-count">{{totalCount}} {{localize 'BENEOS.CreatureInstaller.CountSuffix'}}</span>
+      </div>
+      <div class="bci-header-right">
+        {{#if isPatron}}
+          <div class="bci-chip bci-chip-patron">
+            <svg class="bci-ico-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.5L12 17.8 6.1 20.6l1.2-6.5L2.5 9l6.6-.9z"/></svg>
+            <span>{{localize 'BENEOS.CreatureInstaller.ChipPatron'}}</span>
+            <svg class="bci-ico-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+          </div>
+        {{else}}
+          <div class="bci-chip bci-chip-guest">
+            <span class="bci-dot"></span>
+            <span>{{localize 'BENEOS.CreatureInstaller.ChipNotConnected'}}</span>
+            <a class="bci-link" data-action="login">{{localize 'BENEOS.CreatureInstaller.LogIn'}}</a>
+          </div>
+        {{/if}}
+        <label class="bci-hide" title="{{localize 'BENEOS.CreatureInstaller.HideTooltip'}}">
+          <input type="checkbox" data-action="hide" {{#if hidden}}checked{{/if}}>
+          <span>{{localize 'BENEOS.CreatureInstaller.Hide'}}</span>
+        </label>
+        <button type="button" class="bci-collapse" data-action="close" title="{{localize 'BENEOS.CreatureInstaller.Collapse'}}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="bci-columns">
+
+      {{!-- free / SRD --}}
+      <div class="bci-col bci-col-srd">
+        <div class="bci-group-head">
+          <span class="bci-grp-title bci-grp-srd">{{localize 'BENEOS.CreatureInstaller.IncludedFree'}}</span>
+          <span class="bci-srd-tag" title="{{localize 'BENEOS.CreatureInstaller.SrdTagTooltip'}}">{{localize 'BENEOS.CreatureInstaller.SrdTag'}}</span>
+          <span class="bci-grp-help">{{localize 'BENEOS.CreatureInstaller.AlwaysFree'}}</span>
+        </div>
+        <div class="bci-bed">
+          {{#each srd}}
+            <div class="bci-tokencol">
+              <div class="bci-disc bci-disc-srd bci-shape-{{shape}} {{#if available}}bci-available{{/if}}" draggable="{{draggable}}" data-uuid="{{uuid}}" data-key="{{key}}" data-name="{{name}}" {{#if linkedKey}}data-linked="{{linkedKey}}"{{/if}} title="{{#if available}}{{localize 'BENEOS.CreatureInstaller.OpenSheetHint'}}{{else}}{{name}}{{/if}}">
+                {{#if img}}<img src="{{img}}" alt="{{name}}" draggable="false" onerror="this.style.display='none'">{{/if}}
+                {{#if available}}<span class="bci-check" title="{{localize 'BENEOS.CreatureInstaller.Available'}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span>{{/if}}
+              </div>
+              <span class="bci-name">{{name}}</span>
+            </div>
+          {{/each}}
+          {{#unless hasSrd}}<p class="bci-empty">{{localize 'BENEOS.CreatureInstaller.NoSrd'}}</p>{{/unless}}
+        </div>
+      </div>
+
+      <div class="bci-divider"></div>
+
+      {{!-- Beneos creatures --}}
+      <div class="bci-col bci-col-beneos">
+        <div class="bci-group-head">
+          <svg class="bci-ico-crown" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l4 5 5-7 5 7 4-5-2 12H5z"/></svg>
+          <span class="bci-grp-title bci-grp-beneos">{{localize 'BENEOS.CreatureInstaller.BeneosCreatures'}}</span>
+          <span class="bci-grp-help">{{localize 'BENEOS.CreatureInstaller.BeneosSubtitle'}}</span>
+        </div>
+        <div class="bci-bed-wrap">
+          <div class="bci-bed {{#unless isPatron}}bci-bed-deemphasised{{/unless}}">
+            {{#each beneos}}
+              <div class="bci-tokencol">
+                <div class="bci-disc bci-disc-beneos bci-shape-{{shape}} {{#if available}}bci-available{{/if}} {{#if alternative}}bci-alt{{/if}} {{#if needsInstall}}bci-needsinstall{{/if}}" draggable="{{draggable}}" data-uuid="{{uuid}}" data-key="{{key}}" data-name="{{name}}" data-tokenkey="{{tokenKey}}" title="{{#if alternative}}{{localize 'BENEOS.CreatureInstaller.AlternativeTooltip'}}{{else if available}}{{localize 'BENEOS.CreatureInstaller.OpenSheetHint'}}{{else}}{{name}}{{/if}}">
+                  {{#if img}}<img src="{{img}}" alt="{{name}}" draggable="false" onerror="this.style.display='none'">{{/if}}
+                  {{#if alternative}}<span class="bci-alt-badge" title="{{localize 'BENEOS.CreatureInstaller.AlternativeTooltip'}}">{{localize 'BENEOS.CreatureInstaller.AltShort'}}</span>{{/if}}
+                  {{#if available}}
+                    <span class="bci-check" title="{{localize 'BENEOS.CreatureInstaller.Available'}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span>
+                  {{else if showInstallBadge}}
+                    <span class="bci-badge">+</span>
+                  {{/if}}
+                </div>
+                <span class="bci-name">{{name}}</span>
+              </div>
+            {{/each}}
+            {{#unless hasBeneos}}<p class="bci-empty">{{localize 'BENEOS.CreatureInstaller.NoBeneos'}}</p>{{/unless}}
+          </div>
+
+          {{#unless isPatron}}
+            <div class="bci-gate">
+              <div class="bci-gate-emblem">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l4 5 5-7 5 7 4-5-2 12H5z"/></svg>
+              </div>
+              <div class="bci-gate-title">{{beneosCount}} {{localize 'BENEOS.CreatureInstaller.GateTitleSuffix'}}</div>
+              <p class="bci-gate-body">{{localize 'BENEOS.CreatureInstaller.GateBody'}}</p>
+              <div class="bci-gate-actions">
+                <button type="button" class="bci-btn bci-btn-gold" data-action="support">{{localize 'BENEOS.CreatureInstaller.SupportPatreon'}}</button>
+                <button type="button" class="bci-btn bci-btn-dark" data-action="login">{{localize 'BENEOS.CreatureInstaller.LogIn'}}</button>
+              </div>
+            </div>
+          {{/unless}}
+        </div>
+      </div>
+
+    </div>
+
+    <div class="bci-link-msg" aria-live="polite"></div>
+
+    <footer class="bci-footer">
+      <button type="button" class="bci-btn bci-btn-dark bci-btn-icon bci-btn-disabled" data-action="guide" disabled title="{{localize 'BENEOS.CreatureInstaller.GuideWip'}}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 012-2h13v18H6a2 2 0 01-2-2zM9 3v18"/></svg>
+        <span>{{localize 'BENEOS.CreatureInstaller.Guide'}}</span>
+      </button>
+      <button type="button" class="bci-btn bci-btn-dark {{#unless isPatron}}bci-btn-green{{/unless}}" data-action="placeSrd">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6-7-11a7 7 0 0114 0c0 5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        <span>{{localize 'BENEOS.CreatureInstaller.PlaceSrd'}}</span>
+      </button>
+      {{#if isPatron}}
+        {{#if btnInstall}}
+          <button type="button" class="bci-btn bci-btn-gold bci-btn-grow bci-btn-install" data-action="installAll">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
+            <span>{{localize 'BENEOS.CreatureInstaller.InstallBeneos'}}</span>
+          </button>
+        {{else if btnPlace}}
+          <button type="button" class="bci-btn bci-btn-gold bci-btn-grow" data-action="placeBeneos">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6-7-11a7 7 0 0114 0c0 5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+            <span>{{localize 'BENEOS.CreatureInstaller.PlaceBeneos'}}</span>
+          </button>
+        {{else}}
+          <button type="button" class="bci-btn bci-btn-gold bci-btn-grow bci-btn-disabled" title="{{localize 'BENEOS.CreatureInstaller.PlaceBeneosEmptyTooltip'}}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6-7-11a7 7 0 0114 0c0 5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+            <span>{{localize 'BENEOS.CreatureInstaller.PlaceBeneos'}}</span>
+          </button>
+        {{/if}}
+      {{else}}
+        <button type="button" class="bci-btn bci-btn-gold bci-btn-grow" data-action="support">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l4 5 5-7 5 7 4-5-2 12H5z"/></svg>
+          <span>{{localize 'BENEOS.CreatureInstaller.SupportToAdd'}}</span>
+        </button>
+      {{/if}}
+    </footer>
+  </section>
+</div>
+{{/if}}
