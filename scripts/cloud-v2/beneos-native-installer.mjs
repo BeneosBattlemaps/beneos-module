@@ -24,6 +24,8 @@
  * a transparent report instead of a silent miss.
  */
 
+import { BeneosInstallState, BeneosPreInstallDialog, beneosLogModuleInstall } from "./beneos-install-state.mjs"
+
 // ---- Transfer config -------------------------------------------------------
 const FETCH_MAX_ATTEMPTS  = 3            // transient retries per asset
 const FETCH_BACKOFF_MS    = [500, 1500, 4000]
@@ -117,11 +119,17 @@ const JSON_FILE_TO_PHASE = {
 
 export class BeneosNativeBattlemapInstaller {
 
-  constructor({ packageId, label = "", coverUrl = null, sceneSlugs = null } = {}) {
+  constructor({ packageId, label = "", coverUrl = null, sceneSlugs = null, overwrite = false, record = null } = {}) {
     if (!packageId) throw new Error("BeneosNativeBattlemapInstaller: packageId is required")
     this.packageId = packageId
     this.label     = label || packageId
     this.coverUrl  = coverUrl
+    // Teil 2: when true, every pack document (except folders) is replaced by
+    // _id instead of skipped — set after the user confirms the world-overwrite
+    // dialog. `record` carries the release metadata the installer needs to
+    // detect staleness, decide source re-download, and persist the install.
+    this.overwrite = !!overwrite
+    this.record    = record || null
     // Punkt 7: optional scene scope. When set, only the named scenes (by
     // cloud_scene_slug) and their assets are installed from the release pack,
     // not the whole release. The pack ships a per-scene manifest at
@@ -135,10 +143,15 @@ export class BeneosNativeBattlemapInstaller {
     this._sceneScope  = null      // { assetRelPaths:Set, sceneIds:Set } when scene-scoped
   }
 
-  /** One-shot install + UI. Returns the progress window so callers can wait if needed. */
-  static async install({ packageId, label, coverUrl, sceneSlugs } = {}) {
-    const inst = new BeneosNativeBattlemapInstaller({ packageId, label, coverUrl, sceneSlugs })
-    return inst.run()
+  /**
+   * One-shot install + UI. Returns the installer instance so callers can read
+   * the result (imported scenes, totals, whether the user cancelled) — used by
+   * the cloud window to refresh the installed-marker after the run.
+   */
+  static async install({ packageId, label, coverUrl, sceneSlugs, overwrite = false, record = null } = {}) {
+    const inst = new BeneosNativeBattlemapInstaller({ packageId, label, coverUrl, sceneSlugs, overwrite, record })
+    await inst.run()
+    return inst
   }
 
   async run() {
@@ -189,6 +202,45 @@ export class BeneosNativeBattlemapInstaller {
         }
       }
 
+      // Teil 2: existence check. Work out which Scene documents this run will
+      // create, then warn before overwriting scenes already in the world — a
+      // re-install/variant-switch resets those scenes, so any placed tokens or
+      // manual edits are lost. Confirm => overwrite mode; cancel => abort
+      // cleanly (close the progress window, install nothing). This is what was
+      // silently skipped before (bm_0011: scene already present -> no-op, green).
+      const targetSceneIds = this._sceneScope?.sceneIds?.size
+        ? [...this._sceneScope.sceneIds]
+        : await this.#readReleaseSceneIds(jsons)
+      this._targetSceneIds = targetSceneIds
+      const presentIds = targetSceneIds.filter(id => game.scenes?.get?.(id))
+      this._allPresent  = targetSceneIds.length > 0 && presentIds.length === targetSceneIds.length
+      const prior = this.#priorRecord()
+      this._stale = this.#isStale(prior)
+      if (presentIds.length && !this.overwrite) {
+        const ok = await BeneosPreInstallDialog.confirmWorldOverwrite({
+          scope:        this._sceneScope ? "scene" : "release",
+          name:         this.label,
+          presentCount: presentIds.length,
+          totalCount:   targetSceneIds.length,
+          installedAt:  prior?.installedAt || "",
+          stale:        this._stale,
+        })
+        if (!ok) {
+          this._cancelled = true
+          try { await this.progress.close?.() } catch (_) {}
+          return this
+        }
+        this.overwrite = true
+      }
+      // Source-overwrite gating (user decision: release-signature gating). The
+      // source files are byte-identical when the release is unchanged, so a
+      // re-install of an up-to-date, fully-present release skips the download
+      // and only resets the documents. A stale release (newer signature or
+      // installed before the catalog's updated_date), a fresh install, or a
+      // partially-present one re-downloads everything so map updates reach the
+      // user. The verify pass re-fetches any locally-missing file regardless.
+      this._skipSource = !!prior && !this._stale && this._allPresent
+
       // Phase: pre-flight write check — fail fast + clearly if the host blocks writes
       this.progress.handleStatusMessage("Checking write access")
       const pre = await this.#preflightWriteCheck()
@@ -221,6 +273,11 @@ export class BeneosNativeBattlemapInstaller {
       const openSceneId = this.#pickOpenSceneId()
       if (openSceneId) this.progress.setOpenScene?.(openSceneId)
 
+      // Teil 2/3: persist the install so the cloud window can render the
+      // installed-marker + update-available state and future re-installs detect
+      // presence. Only on a real install (>=1 scene imported).
+      await this.#recordInstallIfAny()
+
       result.totals.failed = result.assetFailures.length
       const failureCount = result.assetFailures.length + result.docFailures.length
       if (failureCount > 0) {
@@ -231,7 +288,10 @@ export class BeneosNativeBattlemapInstaller {
         }
         await this.#showReport(result)
       } else {
-        this.progress.markCompleted()
+        // Honest completion: if nothing was created or refreshed (everything was
+        // already present), say so instead of "ready in the scene directory".
+        const noChanges = (result.totals.docsCreated === 0 && result.totals.docsUpdated === 0)
+        this.progress.markCompleted({ noChanges })
       }
     } catch (err) {
       console.error("BeneosNativeBattlemapInstaller | failure", err)
@@ -258,6 +318,78 @@ export class BeneosNativeBattlemapInstaller {
     return (exact || loose || scenes[0]).id
   }
 
+  // ---- Teil 2: existence / overwrite / install-record helpers --------------
+
+  /**
+   * Release-scope target scene ids: read the pack's Scene.json and return every
+   * scene _id. Used by the existence check when no scene scope narrows the run.
+   * Best-effort — a fetch/parse failure returns [] (no false "already present").
+   */
+  async #readReleaseSceneIds(jsons) {
+    const url = jsons?.["data/Scene.json"]
+    if (!url) return []
+    try {
+      const raw = JSON.parse(await (await this.#fetchAsset(url, "data/Scene.json")).text())
+      const arr = Array.isArray(raw) ? raw : (raw && typeof raw === "object" ? Object.values(raw) : [])
+      return arr.map(d => String(d?._id || "")).filter(Boolean)
+    } catch (e) {
+      console.warn("BeneosNativeInstaller | could not read Scene.json for existence check", e?.message || e)
+      return []
+    }
+  }
+
+  /** The stored install record for this release + variant, or null. */
+  #priorRecord() {
+    if (!this.record?.releaseDir) return null
+    const variant = this.record.variant || ""
+    const installs = BeneosInstallState.findByReleaseDir(this.record.releaseDir)
+    return installs.find(e => (e.variant || "") === variant) || installs[0] || null
+  }
+
+  /**
+   * Is the locally-installed release older than the online version? True when
+   * the content signature changed, or the install predates the catalog's
+   * updated_date. No prior record => treat as stale (download fresh).
+   */
+  #isStale(prior) {
+    if (!prior) return true
+    const sig = String(this.record?.contentSignature || "")
+    if (sig && prior.sourceSignature && prior.sourceSignature !== sig) return true
+    const upd = String(this.record?.updatedDate || "")
+    if (upd && prior.installedAt) {
+      const i = Date.parse(prior.installedAt), u = Date.parse(upd)
+      if (Number.isFinite(i) && Number.isFinite(u) && i < u) return true
+    }
+    return false
+  }
+
+  /**
+   * Persist the install + ping the download log, but only when at least one
+   * scene was actually imported and the caller handed us release metadata.
+   */
+  async #recordInstallIfAny() {
+    if (!this.record?.releaseDir) return
+    const sceneIds = (this._importedScenes || []).map(s => String(s.id)).filter(Boolean)
+    if (!sceneIds.length) return
+    try {
+      await BeneosInstallState.recordInstall({
+        releaseDir:      this.record.releaseDir,
+        variant:         this.record.variant || "",
+        assetId:         this.record.assetId || "",
+        sceneIds,
+        sourceSignature: this.record.contentSignature || "",
+        sceneCount:      sceneIds.length,
+      })
+    } catch (e) {
+      console.warn("BeneosNativeInstaller | recordInstall failed", e)
+    }
+    try {
+      const labelVariant = this.record.variant === "HD" ? "Foundry_HD"
+                         : this.record.variant === "4K" ? "Foundry_4K" : ""
+      beneosLogModuleInstall({ assetId: this.record.assetId || "", variant: labelVariant, sceneCount: sceneIds.length })
+    } catch (_) {}
+  }
+
   // ---- Result + environment ------------------------------------------------
 
   #newResult() {
@@ -265,7 +397,7 @@ export class BeneosNativeBattlemapInstaller {
       packageId: this.packageId,
       label:     this.label,
       env:       this.#envFingerprint(),
-      totals:    { assets: 0, ok: 0, repaired: 0, failed: 0, docsCreated: 0, docsFailed: 0 },
+      totals:    { assets: 0, ok: 0, repaired: 0, failed: 0, docsCreated: 0, docsUpdated: 0, docsSkippedExisting: 0, docsFailed: 0 },
       assetFailures: [], // {target, category, attempts, lastError}
       docFailures:   [], // {type, id, error}
       preflight:     null,
@@ -680,9 +812,19 @@ export class BeneosNativeBattlemapInstaller {
   // ---- Phases --------------------------------------------------------------
 
   async #downloadAssets(assets) {
-    this.progress.handleStatusMessage("Downloading scene assets")
     const total = assets.length
     this._result.totals.assets = total
+    // Teil 2 source-gating: an up-to-date, fully-present release has byte-
+    // identical source files locally, so skip the download. The verify pass
+    // still HEAD-checks and re-fetches anything actually missing, so a
+    // partially-deleted install self-heals.
+    if (this._skipSource) {
+      this.progress.handleStatusMessage("Scene assets already up to date")
+      this.progress.revealPhase?.("assets", { status: "done", current: total, total })
+      this._result.totals.ok += total
+      return
+    }
+    this.progress.handleStatusMessage("Downloading scene assets")
     this.progress.revealPhase?.("assets", { status: "active", current: 0, total })
     for (let i = 0; i < total; i++) {
       const a = assets[i]
@@ -763,20 +905,88 @@ export class BeneosNativeBattlemapInstaller {
       this.progress.revealPhase?.(meta.phaseKey, { status: "active", current: 0, total: arr.length })
       for (let i = 0; i < arr.length; i++) arr[i] = rewriteDocAssetPaths(arr[i])
 
+      // Idempotency: a re-install or a 4K<->HD variant switch reuses the SAME
+      // document _ids (verified: 4K and HD packs share scene ids). The old code
+      // skipped any doc whose _id already existed and still reported success ,
+      // so re-installing or switching variant silently did nothing. Fix:
+      // OVERWRITE the scene itself (delete + recreate from the pack) so new asset
+      // paths + layout take effect; closure docs (folders, journals, playlists,
+      // actors) stay create-if-missing so shared/edited docs , and folders that
+      // hold other scenes , are never clobbered.
       const coll = game[meta.collection]
-      const filtered = arr.filter(d => (d?._id ? !coll?.get?.(d._id) : true))
-      if (filtered.length === 0) {
+      const OVERWRITE_TYPES = new Set(["data/Scene.json"])
+      // Teil 2: folders are structural grouping, not user content — never
+      // delete+recreate them (that would orphan unrelated scenes to the root),
+      // even in full-overwrite mode. Everything else is replaced by _id.
+      const NO_OVERWRITE_TYPES = new Set(["data/folders.json"])
+      const exists = d => !!(d?._id && coll?.get?.(d._id))
+      let toCreate = arr.filter(d => !exists(d))
+      let overwritten = 0
+      if (this.overwrite && !NO_OVERWRITE_TYPES.has(relPath)) {
+        // User confirmed the world-overwrite dialog: replace EVERY existing
+        // pack doc of this type by _id (scenes + actors + journals + playlists
+        // + items …). No name-guard — the overwrite was deliberate. Folders
+        // stay create-if-missing (NO_OVERWRITE_TYPES above).
+        const existing = arr.filter(exists)
+        if (existing.length) {
+          try {
+            await docClass.deleteDocuments(existing.map(d => String(d._id)))
+            overwritten = existing.length
+            toCreate = arr.slice()   // all recreated fresh from the pack
+          } catch (err) {
+            console.warn(`BeneosNativeInstaller | overwrite delete failed for ${relPath}`, err)
+            // fall through with create-if-missing only (toCreate unchanged)
+          }
+        }
+      } else if (OVERWRITE_TYPES.has(relPath)) {
+        // Same _id AND same name => the same scene (re-install or 4K<->HD switch)
+        // => safe to overwrite (delete + recreate from the pack). Same _id but a
+        // DIFFERENT name => a foreign scene happens to hold this id (cross-pack id
+        // collision in relinked packs) => do NOT clobber it; record a conflict so
+        // the report warns instead of destroying unrelated content.
+        const sameScene = []
+        for (const d of arr) {
+          if (!exists(d)) continue
+          const cur = coll.get(String(d._id))
+          if (cur && String(cur.name || "") === String(d?.name || "")) {
+            sameScene.push(d)
+          } else {
+            this._result.docFailures.push({
+              type: meta.phaseKey, id: String(d?._id || "?"),
+              error: `_id already used by a different scene "${cur?.name || "?"}", not overwritten (pack id collision)`,
+            })
+          }
+        }
+        if (sameScene.length) {
+          try {
+            await docClass.deleteDocuments(sameScene.map(d => String(d._id)))
+            overwritten = sameScene.length
+            // After deletion the same-scenes report as missing again, so this
+            // recreates fresh + just-deleted scenes and still skips foreign-id docs.
+            toCreate = arr.filter(d => !exists(d))
+          } catch (err) {
+            console.warn(`BeneosNativeInstaller | overwrite delete failed for ${relPath}`, err)
+            // fall back to create-if-missing only (toCreate stays the fresh set)
+          }
+        }
+      }
+      this._result.totals.docsSkippedExisting += (arr.length - toCreate.length)
+
+      if (toCreate.length === 0) {
+        // Nothing to add: all docs of this type already present (closure docs we
+        // intentionally do not overwrite). Honest no-op, not a failure.
         this.progress.handleAssetProgress(meta.phaseKey, arr.length, arr.length)
         this.progress.revealPhase?.(meta.phaseKey, { status: "done", current: arr.length, total: arr.length })
         continue
       }
       try {
-        await docClass.createDocuments(filtered, { keepId: true })
-        this._result.totals.docsCreated += filtered.length
+        await docClass.createDocuments(toCreate, { keepId: true })
+        this._result.totals.docsCreated += toCreate.length
+        if (overwritten) this._result.totals.docsUpdated += overwritten
       } catch (err) {
         console.warn(`BeneosNativeInstaller | createDocuments failed for ${relPath}`, err)
         let ok = 0
-        for (const d of filtered) {
+        for (const d of toCreate) {
           try {
             await docClass.createDocuments([d], { keepId: true })
             ok += 1
@@ -785,7 +995,7 @@ export class BeneosNativeBattlemapInstaller {
             console.warn(`BeneosNativeInstaller | doc create skipped (${d?._id})`, e2?.message || e2)
             this._result.docFailures.push({ type: meta.phaseKey, id: d?._id || "?", error: String(e2?.message || e2) })
           }
-          this.progress.handleAssetProgress(meta.phaseKey, filtered.length, ok)
+          this.progress.handleAssetProgress(meta.phaseKey, toCreate.length, ok)
         }
       }
       this.progress.handleAssetProgress(meta.phaseKey, arr.length, arr.length)

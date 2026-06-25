@@ -1334,6 +1334,12 @@
 }
 .beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="bmap"] .bc-card-stats {
   margin-top: 2px;
+  /* Guaranteed gap to the .bc-card-actions border-top divider below. On a
+     two-line release name the actions' margin-top:auto collapses to ~0, which
+     used to butt the stats row (size + scene count) straight against the
+     divider so the text looked cut off. Flex-item margins don't collapse, so
+     this gap survives even when the card fills its stretched height. */
+  margin-bottom: 7px;
 }
 /* Edit #3: individual-map cards carry tags (biome / type / grid). The generic
    grid cap (.bc-card-tags max-height:48px; overflow:hidden) clipped them. Since
@@ -1431,6 +1437,20 @@
 .beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-actions .bc-card-button {
   width: 100%;
   justify-content: center;
+}
+/* Maps grid: the native cloud button (icon + "Install" label, unified with
+   Creatures/Loot/Spells) takes the row; the Moulinette legacy button stays a
+   compact square beside it. The generic grid rule above forces width:100% on
+   every card-button, which would split the bmap two-button row into equal
+   halves — override so it reads "primary + small backup". */
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="bmap"] .bc-card-actions .bc-card-button-primary {
+  width: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="bmap"] .bc-card-actions .bc-install-legacy {
+  width: auto;
+  flex: 0 0 auto;
 }
 /* Status chips overlay top-right of the thumbnail in grid mode so the
  * name row stays clean and the visual identity comes through clearly.
@@ -1665,6 +1685,32 @@
   height: 100%;
   background: linear-gradient(135deg, var(--bc-card) 0%, var(--bc-bg-panel) 100%);
 }
+/* Feature 5: offline battlemap thumb — gradient placeholder with a centered
+   "Offline" label, shown instead of a (failing) remote thumbnail. */
+.beneos-cloud-app .bc-card-thumb-offline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--bc-text-dim, rgba(255, 255, 255, 0.55));
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.beneos-cloud-app .bc-card-thumb-offline i {
+  font-size: 20px;
+  opacity: 0.85;
+}
+/* onerror fallback logo: contain + dim so it reads as a placeholder, not as
+   the actual map cover. */
+.beneos-cloud-app img.bc-thumb-fallback {
+  object-fit: contain;
+  opacity: 0.45;
+  padding: 16%;
+  background: linear-gradient(135deg, var(--bc-card) 0%, var(--bc-bg-panel) 100%);
+}
 
 /* ---- Items / Spells: 1:1 thumbs + tighter grid (Sigil-Plate icons are
  * square by design and look stretched in the default 96×64 / 100%×140
@@ -1749,6 +1795,14 @@
 /* FREE-Badge — same shape as the BENEOS chip, but in success-green so
    non-patrons can spot at a glance which assets they can grab for free
    without joining Patreon. Rendered in both list and grid mode. */
+/* Teil 3: battlemap installed-marker — a green check next to the card title.
+   Same success green as the install dividers/borders; the tooltip carries the
+   install date ("Installed on …"). */
+.beneos-cloud-app .bc-bmap-installed-check {
+  color: var(--bc-success, #6fcf52);
+  font-size: 0.95em;
+  flex: 0 0 auto;
+}
 .beneos-cloud-app .bc-status-chip.bc-status-free {
   background: rgba(27, 146, 0, 0.22);
   color: var(--bc-success, #6fcf52);
@@ -3012,7 +3066,8 @@
   object-fit: contain;
   display: block;
 }
-.beneos-cloud-app .bc-drawer-sibling-label {
+.beneos-cloud-app .bc-drawer-sibling-label,
+.beneos-cloud-app .bc-scene-kind-chip {
   position: absolute;
   bottom: 6px;
   left: 6px;
@@ -3024,6 +3079,8 @@
   border-radius: 3px;
   background: rgba(0, 0, 0, 0.65);
   color: var(--bc-text);
+  z-index: 2;
+  pointer-events: none;
 }
 .beneos-cloud-app .bc-drawer-hero img {
   width: 100%;
@@ -7941,7 +7998,7 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 }
 .bc-included-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .bc-included-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
-.bc-included-row i { color: #46b450; }
+.bc-included-row i { color: var(--bc-accent, #f5c992); }
 .bc-included-row strong { min-width: 1.4em; text-align: right; }
 /* Edit #1: the scene list flows with the drawer's own scrollbar instead of
    carrying its own max-height + overflow. In list mode the whole detail drawer
@@ -7965,7 +8022,15 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 .bc-detail-drawer.bc-drawer-bmap .bc-drawer-hero img { max-height: 240px; object-fit: cover; }
 
 /* Punkt 4: scene-detail drawer headings (individual map view). */
-.beneos-cloud-app .bc-scene-belongs { font-weight: 500; }
+/* Edit #4: the drawer section headings inherited the off-brand display serif
+   and read poorly at this size , force the legible Inter/system sans stack so
+   "This scene belongs to <Release>" is clearly readable. */
+.beneos-cloud-app .bc-drawer-section-h,
+.beneos-cloud-app .bc-scene-belongs,
+.beneos-cloud-app .bc-drawer-subsection-h {
+  font-family: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+}
+.beneos-cloud-app .bc-scene-belongs { font-weight: 600; font-size: 13px; letter-spacing: 0.01em; opacity: 1; }
 .beneos-cloud-app .bc-scene-belongs strong { color: var(--bc-accent); }
 .beneos-cloud-app .bc-drawer-subsection-h {
   margin: 8px 0 4px;
@@ -7973,6 +8038,53 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--bc-text-muted);
+}
+
+/* Edit #2: battlemap/scenery preview boxes take the real map aspect ratio (set
+   inline from props.grid) instead of a forced 16:9; width drives, height
+   follows, the 16:9 thumbnail fills the box. Safety cap for extreme portraits.
+   Overrides the natural-aspect + 240px-cap rules above (later in the cascade). */
+.beneos-cloud-app .bc-drawer-pair .bc-drawer-hero,
+.beneos-cloud-app .bc-drawer-pair .bc-drawer-sibling {
+  position: relative;
+  width: 100%;
+  height: auto;
+  max-height: 70vh;
+  overflow: hidden;
+}
+.beneos-cloud-app .bc-detail-drawer.bc-drawer-bmap .bc-drawer-pair .bc-drawer-hero img,
+.beneos-cloud-app .bc-drawer-pair .bc-drawer-hero img,
+.beneos-cloud-app .bc-drawer-pair .bc-drawer-sibling img {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: cover;
+  display: block;
+}
+
+/* Design test (Edit #1): release cover as a dimmed, blurred backdrop behind the
+   whole row in LIST mode only. The content layers sit above it. */
+.beneos-cloud-app .bc-card-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.25;
+  filter: grayscale(1) blur(2px);
+  border-radius: inherit;
+  z-index: 0;
+  pointer-events: none;
+  /* Fade the backdrop out toward the right edge: fully visible up to 40% of the
+     width, then ramp to transparent at the right edge (right 60% fades). */
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 40%, transparent 100%);
+          mask-image: linear-gradient(to right, #000 0%, #000 40%, transparent 100%);
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-bg { display: none; }
+.beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-card-release .bc-card-thumb,
+.beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-card-release .bc-card-meta,
+.beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-card-release .bc-card-actions {
+  position: relative;
+  z-index: 1;
 }
 /* Punkt 4: hovering a scene thumb floats a larger preview. The thumb gets a
    subtle cue; the preview itself is appended to <body> (see JS) to escape the

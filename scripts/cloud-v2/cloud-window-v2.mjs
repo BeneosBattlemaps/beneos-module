@@ -1439,6 +1439,34 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const isCloudAvailable = assetType === "bmap" ? true  : !!data.isCloudAvailable
     let dragMode = data.dragMode || "none"
 
+    // Teil 3: battlemap installed-marker (green check + "Installed on" tooltip)
+    // and update detection — MARKER ONLY, we never flip isInstalled (that would
+    // reroute the card into the token-style installed branch and strip the
+    // install/Moulinette buttons; an installed map must stay re-installable).
+    // Foundry scene ids aren't in the catalog, so a scene counts as installed
+    // when its release has a record (installing the release puts these scenes
+    // in the world). Update = the install predates the online updated_date or
+    // the content signature changed.
+    let bmapInstalled = false, bmapInstalledOn = "", bmapUpdate = false
+    if (assetType === "bmap" && props.release_dir) {
+      const installs = BeneosInstallState.findByReleaseDir(props.release_dir)
+      if (installs.length) {
+        const chosen = installs[0]
+        bmapInstalled   = true
+        bmapInstalledOn = this.#formatInstallDate(chosen.installedAt)
+        const rel        = this._releaseIndex?.get?.(props.release_dir) || null
+        const curSig     = String(rel?.content_signature || "")
+        const updatedDate = this.#releaseDateInfo(props.release_dir)?.updatedDate || ""
+        const sigStale   = !!(curSig && chosen.sourceSignature && chosen.sourceSignature !== curSig)
+        let dateStale = false
+        if (updatedDate && chosen.installedAt) {
+          const i = Date.parse(chosen.installedAt), u = Date.parse(updatedDate)
+          dateStale = Number.isFinite(i) && Number.isFinite(u) && i < u
+        }
+        bmapUpdate = sigStale || dateStale
+      }
+    }
+
     // Patron-aware per-card flags. isFree surfaces the green "FREE" badge
     // and groups the card into the Free section for non-patrons. isLocked
     // means the user lacks the campaign-specific Patreon membership AND
@@ -1455,8 +1483,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // expressions inline, which is brittle when one of them changes.
     const cardIsIncompatible = !isInstalled && BeneosUtility.isHardBlockedKind(assetType)
     const cardNeedsLogin = assetType !== "bmap" && !(game.beneos?.cloud?.isLoggedIn?.())
-    const cardIsOffline = assetType !== "bmap" && !!(game.beneos?.databaseHolder?.getIsOffline?.()
-                                                    ?? game.beneos?.databaseHolder?.isOffline)
+    // Feature 5: battlemaps now respect offline too (the bmap exemption is
+    // gone). Offline -> the card shows the "Offline" state and drops its remote
+    // thumbnail so the result list isn't flooded with broken images.
+    const cardIsOffline = !!(game.beneos?.databaseHolder?.getIsOffline?.()
+                            ?? game.beneos?.databaseHolder?.isOffline)
     const dragType = assetType === "spell" ? "Item" : (assetType === "item" ? "Item" : "Actor")
     const documentId = isInstalled
       ? (BeneosUtility.getActorId?.(key) || BeneosUtility.getItemId?.(key) || BeneosUtility.getSpellId?.(key) || "")
@@ -1483,10 +1514,40 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // The drawer renders both side-by-side so the user sees the full pair
     // before installing.
     let siblingThumbUrl = null
+    let siblingKindLabel = null
+    let siblingType = null
     if (assetType === "bmap" && props.sibling) {
       const sib = this.#bmapCatalog()[props.sibling]   // Task D: snapshot, no per-card getAll
       const sibThumb = sib?.properties?.thumbnail
       if (sibThumb) siblingThumbUrl = THUMB_BASE.bmap + sibThumb
+      siblingType = sib?.properties?.type
+      siblingKindLabel = this.#sceneKindLabel(siblingType)
+    }
+    // Drawer-pair corner chips: tell the user which image is the Battlemap and
+    // which is the Scenery (replaces the old generic "Paired view" label).
+    const heroKindLabel = assetType === "bmap" ? this.#sceneKindLabel(props.type) : null
+
+    // The drawer pair always shows Scenery on top, Battlemap below , regardless
+    // of which one the user clicked , for a consistent visual experience. Map
+    // the clicked + sibling thumbnails onto fixed scenery/battlemap slots.
+    let pairSceneryUrl = null, pairBattlemapUrl = null
+    if (assetType === "bmap" && siblingThumbUrl && thumbUrl) {
+      const clickedIsScenery = /scen/.test(String(Array.isArray(props.type) ? props.type[0] : (props.type || "")).toLowerCase())
+      if (clickedIsScenery) { pairSceneryUrl = thumbUrl;        pairBattlemapUrl = siblingThumbUrl }
+      else                  { pairSceneryUrl = siblingThumbUrl; pairBattlemapUrl = thumbUrl }
+    }
+
+    // True map aspect ratio from the grid dimensions (the preview thumbnails are
+    // all 16:9 crops, but props.grid holds the real "W x H" in squares). The
+    // drawer uses this so the battlemap box shows the correct shape instead of
+    // a forced 16:9. Null when grid is missing/unparseable -> natural fallback.
+    let mapAspect = null
+    if (assetType === "bmap" && props.grid) {
+      const m = String(props.grid).match(/(\d+)\s*x\s*(\d+)/i)
+      if (m) {
+        const w = parseInt(m[1], 10), h = parseInt(m[2], 10)
+        if (w > 0 && h > 0) mapAspect = { w, h }
+      }
     }
 
     // Wave B-9-fix-29: parse the bmap's release info from download_pack
@@ -1779,7 +1840,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       key,
       assetType,
       name: data.name || key,
-      thumbUrl,
+      // Feature 5: drop the remote thumb for offline battlemaps so the gradient
+      // placeholder + "Offline" overlay renders instead of a broken image.
+      thumbUrl: (cardIsOffline && assetType === "bmap") ? null : thumbUrl,
       typeLabel,
       cr: props.cr ?? null,
       crLabel: BeneosCloudWindowV2.#formatCR(props.cr),
@@ -1876,7 +1939,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
                 && !isCloudAvailable,
       isNew: !!data.isNew,
       isNewForUser: !!data.isNewForUser,
-      isUpdate: !!data.isUpdate,
+      isUpdate: assetType === "bmap" ? bmapUpdate : !!data.isUpdate,
+      // Teil 3: marker-only installed state for battlemap scene cards.
+      bmapInstalled,
+      installedOnLabel: bmapInstalledOn,
       isFree,
       isLocked,
       dragMode,
@@ -1905,6 +1971,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         && !!(data?.properties?.sibling)
         && !!(this.#bmapCatalog()[data.properties.sibling]?.properties?.cloud_scene_slug),
       siblingThumbUrl,
+      siblingKindLabel,
+      heroKindLabel,
+      pairSceneryUrl,
+      pairBattlemapUrl,
+      mapAspect,
       gridLabel,
       releaseLabel,
       compatibleAdventure,
@@ -1990,6 +2061,17 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
 
   #capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s }
 
+  // Drawer-pair chip: classify a bmap scene as Battlemap or Scenery from its
+  // type property and return the localized label (reuses the sidebar filter
+  // keys). Returns null when the type is unknown.
+  #sceneKindLabel(type) {
+    const raw = String(Array.isArray(type) ? type[0] : (type || "")).toLowerCase()
+    if (!raw) return null
+    return /scen/.test(raw)
+      ? game.i18n.localize("BENEOS.Cloud.Drawer.KindScenery")
+      : game.i18n.localize("BENEOS.Cloud.Drawer.KindBattlemap")
+  }
+
   // Punkt 3: derive a compact adventure acronym + a clean full name from a
   // raw adventure value (slug "curse-of-strahd" or localized "Curse of
   // Strahd"). The acronym keeps the first letter of every word, lowercasing
@@ -1999,6 +2081,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   #adventureChip(name) {
     const raw = String(name ?? "").trim()
     if (!raw) return null
+    // Guard against junk values that would otherwise render as a chip with a
+    // "Undefined" full name (and a "Compatible with undefined" tooltip) when the
+    // catalog field is empty/placeholder. Treat these as "no adventure".
+    if (/^(undefined|null|none|n\/?a|-+|nan)$/i.test(raw)) return null
     const connectors = new Set([
       "of", "the", "into", "in", "and", "to", "a", "an", "on", "at", "for",
       "from", "with", "by", "de", "le", "la", "des", "du", "von", "der"
@@ -2612,6 +2698,16 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // V2 keeps its filter / scroll state on the instance and survives across
     // re-renders by itself, so save-before-close is a no-op. Kept as a method
     // because the legacy closeAndSave() static unconditionally calls it.
+  }
+
+  /**
+   * Teil 3: after a native battlemap install records its state, rebuild the
+   * results pane so the installed-marker (and update state, when the online
+   * version is newer) appears immediately. A "results" part re-render reruns
+   * buildReleaseCards, which reads BeneosInstallState fresh.
+   */
+  async #refreshAfterBmapInstall(_releaseDir) {
+    try { this.render({ parts: ["results"] }) } catch (_) {}
   }
 
   /* ========== Install-progress public API (Wave B-5e) ========== */
@@ -4625,16 +4721,35 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       ui.notifications.error("BeneosNativeBattlemapInstaller is not loaded")
       return
     }
+    // Teil 2: hand the installer the release metadata it needs to (a) detect a
+    // stale install vs the online updated_date/signature, (b) decide whether to
+    // re-download the source files, and (c) persist the install record so the
+    // installed-marker + update state render afterwards.
+    const record = {
+      releaseDir,
+      variant:          isSingle ? "" : variant,
+      assetId:          String(releaseEntry?.cloud_release_id || props.cloud_release_id || ""),
+      contentSignature: String(releaseEntry?.content_signature || ""),
+      updatedDate:      this.#releaseDateInfo(releaseDir)?.updatedDate || "",
+    }
+    let inst = null
     try {
-      await NativeInstaller.install({
+      inst = await NativeInstaller.install({
         packageId: packId,
         label:     displayName + variantLabel,
         coverUrl,
         sceneSlugs,
+        record,
       })
     } catch (err) {
       console.warn("BeneosCloudWindowV2 | native install failed", { packId, sceneSlugs, err })
       ui.notifications.error(`Native install failed for ${displayName}: ${err?.message || err}`)
+      return
+    }
+    // Teil 3: refresh the installed-marker + update state for this release.
+    // Skip when the user cancelled the overwrite dialog (nothing changed).
+    if (inst && !inst._cancelled) {
+      try { await this.#refreshAfterBmapInstall?.(releaseDir) } catch (_) {}
     }
   }
 
@@ -5231,10 +5346,17 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const variantHas  = (r) => Array.isArray(r?.variants_available) && r.variants_available.includes(variant)
     const totalMatches = filtered.length
     const limit        = this.loadedCount
-    const hasMore      = totalMatches > limit
-    const sliced       = hasMore ? filtered.slice(0, limit) : filtered
 
-    const cards = sliced.map(r => {
+    // Feature 4 (free maps): when the user lacks battlemaps-campaign access
+    // (logged out / non-patron) we group like Creatures/Spells/Loot — Free
+    // releases on top, everything else as a locked "Join Patreon" section
+    // below. Patrons keep the flat newest-first list. Build every card first
+    // (cheap, no remote calls), then group-sort + slice so the Free section is
+    // never paged out before the locked one.
+    const hasCampaign = !!game.beneos?.cloud?.hasCampaignAccess?.("battlemaps")
+    const isOffline   = !!(game.beneos?.databaseHolder?.getIsOffline?.() ?? game.beneos?.databaseHolder?.isOffline)
+
+    const cards = filtered.map(r => {
       const single   = Number(r?.nb_variants || 0) === 1
       const useV     = single ? (r.variants_available?.[0] || "4K") : variant
       const coverUrl = useV === "HD" ? (r?.cover_url_hd || r?.cover_url_4k || null)
@@ -5280,16 +5402,32 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       //    date diversity so today's uniform greenfield dates produce no chip;
       //    it activates automatically once the DB carries real dates.
       const installed = !!installState
-      const isUpdate  = installed && !!installState.stale
+      // Teil 4: unified rule shared with token/item/spell.
+      //  - New  = release_date within the window of TODAY (publication recency),
+      //    regardless of catalog date diversity (the old distinct-date gate is
+      //    gone now that the catalog carries real per-release dates).
+      //  - Update = installed AND the install predates the catalog updated_date,
+      //    with the stored content-signature mismatch as a fallback signal.
+      const di = this.#releaseDateInfo(r.release_dir) || null
       let isNew = false
-      if (!installed && (this._releaseDistinctDateCount || 0) > 1) {
-        const rd = this.#releaseDateInfo(r.release_dir)?.releaseDate || ""
-        if (rd && this._releaseNewestDate) {
-          const days = (Date.parse(this._releaseNewestDate) - Date.parse(rd)) / 86400000
-          isNew = Number.isFinite(days) && days >= 0 && days <= RELEASE_NEW_WINDOW_DAYS
-        }
+      if (!installed && di?.releaseDate) {
+        const ageDays = (Date.now() - Date.parse(di.releaseDate)) / 86400000
+        isNew = Number.isFinite(ageDays) && ageDays >= 0 && ageDays <= RELEASE_NEW_WINDOW_DAYS
       }
-      const groupKind = isUpdate ? "update" : (isNew ? "new" : "regular")
+      let isUpdate = false
+      if (installed) {
+        const instAt = installState.installedAt ? Date.parse(installState.installedAt) : NaN
+        const updAt  = di?.updatedDate ? Date.parse(di.updatedDate) : NaN
+        if (Number.isFinite(instAt) && Number.isFinite(updAt) && updAt > instAt) isUpdate = true
+        if (!isUpdate && installState.stale) isUpdate = true
+      }
+      // Feature 4: free/locked grouping for non-patrons (logged out). A free
+      // release floats to the top; everything else not installed is locked.
+      const isFree   = this.#releaseIsFree(r.release_dir)
+      const isLocked = !hasCampaign && !isFree && !installed
+      const groupKind = (!hasCampaign && isFree)   ? "free"
+                      : (!hasCampaign && isLocked) ? "locked"
+                      : isUpdate ? "update" : (isNew ? "new" : "regular")
 
       return {
         key:                  r.release_dir,
@@ -5300,12 +5438,20 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         documentId:           "",
         isDraggable:          false,
         isBmap:               true,
-        isCloudAvailable:     canInstall,
+        // Locked releases (logged-out non-free) route into the Join-Patreon
+        // branch instead of the install buttons. Offline cards route into the
+        // offline branch (both are checked before isCloudAvailable).
+        isCloudAvailable:     (groupKind === "locked") ? false : canInstall,
+        isFree,
+        isLocked:             groupKind === "locked",
+        isOfflineCard:        isOffline,
         cloudReady:           true,
         isReleaseCard:        true,
         releaseScope:         true,
         singleVariant:        single,
-        thumbUrl:             coverUrl,
+        // Feature 5: offline -> no remote cover request, the gradient
+        // placeholder + "Offline" overlay renders instead.
+        thumbUrl:             isOffline ? null : coverUrl,
         bytesLabel:           bytes ? this.#formatBytes(bytes) : "",
         sceneCount:           Number(r?.scene_count || 0),
         // Punkt 3: compatible-adventure chip on the release detail, derived
@@ -5321,6 +5467,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // Task 1: New / Updated surfacing (chips + group classification).
         isNew,
         isUpdate,
+        // Teil 3: installed-marker (green check next to the title + "Installed
+        // on" tooltip). A MARKER-ONLY flag — NOT `isInstalled`, which would
+        // reroute the card into the token-style installed branch and strip the
+        // install/Moulinette buttons (an installed map stays re-installable).
+        bmapInstalled:        installed,
+        installedOnLabel:     installState ? this.#formatInstallDate(installState.installedAt) : "",
         groupKind,
         visibleTagDescriptors: [],
         moreTagsCount:        0,
@@ -5328,32 +5480,77 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // but the click-to-open path still goes through enrichCard for
         // the install button to fire correctly.
         installScope:         "release",
-        // Plan §33.6 badge fields (consumed by results-pane.hbs).
+        // Plan §33.6 badge fields (consumed by results-pane.hbs). Teil 4:
+        // keyed off the unified isUpdate so the thumb badge agrees with the
+        // name-row marker + update chip (a date-based update with a matching
+        // signature would otherwise still show the green "fresh" tick).
         installState,
-        dlBadgeFresh:         !!(installState && !installState.stale),
-        dlBadgeStale:         !!(installState && installState.stale),
+        dlBadgeFresh:         installed && !isUpdate,
+        dlBadgeStale:         installed && isUpdate,
         dlBadgeTooltip:       installState
-          ? (installState.stale
+          ? (isUpdate
               ? `Installed ${installState.variantInstalled || "single-variant"} on ${this.#formatInstallDate(installState.installedAt)} (${installState.sceneCount} scenes). Release updated since install.`
               : `Installed ${installState.variantInstalled || "single-variant"} on ${this.#formatInstallDate(installState.installedAt)} (${installState.sceneCount} scenes).`)
           : "",
         // Plan §20 W4.2 - locked-card fields. Card renders dimmed with a
         // CTA-button that opens unlockHint.url in a new tab.
-        isReleaseLocked:      !canInstall,
-        unlockUrl:            unlockHint?.url   || "",
+        isReleaseLocked:      !canInstall || (groupKind === "locked"),
+        unlockUrl:            unlockHint?.url   || "https://www.patreon.com/BeneosBattlemaps",
         unlockLabel:          unlockHint?.label || "Unlock via Patreon",
         unlockType:           unlockHint?.type  || "generic",
       }
     })
+
+    // Feature 4: group-sort + section dividers, only when grouping is active
+    // (user lacks campaign access). A STABLE sort preserves the newest-first
+    // order within each group. Patrons keep the flat list with no dividers.
+    let ordered = cards
+    if (!hasCampaign) {
+      const rank = (gk) => gk === "free" ? -1 : gk === "locked" ? 9999
+                         : gk === "new" ? 0 : gk === "update" ? 1 : 2
+      ordered = cards.slice().sort((a, b) => rank(a.groupKind) - rank(b.groupKind))
+    }
+    const hasMore = totalMatches > limit
+    const visible = hasMore ? ordered.slice(0, limit) : ordered
+    if (!hasCampaign) {
+      let lastGroup = null
+      for (const card of visible) {
+        if (card.groupKind !== lastGroup) {
+          card.divider = true
+          card.dividerLabel = this.#groupHeading(card.groupKind)
+          if (card.groupKind === "free") {
+            card.dividerDescription = game.i18n.localize("BENEOS.Patreon.FreeSection.Description")
+          }
+          lastGroup = card.groupKind
+        }
+      }
+    }
     return {
-      cards,
+      cards: visible,
       totalMatches,
       hasMore,
-      partialHint:    hasMore ? `${cards.length} / ${totalMatches}` : "",
+      partialHint:    hasMore ? `${visible.length} / ${totalMatches}` : "",
       groupBulkKeys:  { new: [], update: [], view: [], backlog: [] },
       loadingReleases: !!this._releaseLoading,
       releasesError:   this._releaseLoadError || null,
     }
+  }
+
+  // Feature 4: a release is "free" when any of its catalog scenes carries
+  // properties.free_content === true — the same per-asset flag tokens/items/
+  // spells use. Memoized per session like the adventure/date maps.
+  #releaseIsFree(releaseDir) {
+    if (!releaseDir) return false
+    if (!this._releaseFreeMap) {
+      const map = new Map()
+      const all = game.beneos?.databaseHolder?.getAll?.("bmap") || {}
+      for (const v of Object.values(all)) {
+        const rd = v?.properties?.release_dir
+        if (rd && v?.properties?.free_content === true) map.set(rd, true)
+      }
+      this._releaseFreeMap = map
+    }
+    return this._releaseFreeMap.get(releaseDir) === true
   }
 
   // Punkt 3: map a release_dir to its compatible-adventure chip by sampling a
@@ -5579,7 +5776,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     try {
       const d = new Date(iso)
       if (isNaN(d.getTime())) return "earlier"
-      return d.toLocaleDateString()
+      // Force US English (most patrons are US) so the install date reads the
+      // same regardless of the client's locale, e.g. "June 25, 2026".
+      return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
     } catch (_e) { return "earlier" }
   }
 

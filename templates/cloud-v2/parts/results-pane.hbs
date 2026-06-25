@@ -168,7 +168,7 @@
             {{/if}}
           </div>
         {{/if}}
-        <article class="bc-result-card bc-card-group-{{card.groupKind}}{{#if card.isInstalled}} bc-card-installed{{/if}}{{#if card.isCloudAvailable}} bc-card-cloud{{/if}}{{#if card.isInstalling}} bc-card-installing{{/if}}{{#if card.justInstalled}} bc-card-just-installed{{/if}}{{#if card.isSelected}} bc-card-selected{{/if}}{{#if card.isBeneosOriginal}} bc-card-beneos-original{{/if}}{{#if card.isNewForUser}} bc-card-new-for-user{{/if}}{{#if card.isReleaseLocked}} bc-release-locked{{/if}}"
+        <article class="bc-result-card bc-card-group-{{card.groupKind}}{{#if card.isInstalled}} bc-card-installed{{/if}}{{#if card.isCloudAvailable}} bc-card-cloud{{/if}}{{#if card.isInstalling}} bc-card-installing{{/if}}{{#if card.justInstalled}} bc-card-just-installed{{/if}}{{#if card.isSelected}} bc-card-selected{{/if}}{{#if card.isBeneosOriginal}} bc-card-beneos-original{{/if}}{{#if card.isNewForUser}} bc-card-new-for-user{{/if}}{{#if card.isReleaseLocked}} bc-release-locked{{/if}}{{#if card.isReleaseCard}} bc-card-release{{/if}}"
                  data-asset-key="{{card.key}}"
                  data-asset-type="{{card.assetType}}"
                  data-document-id="{{card.documentId}}"
@@ -179,15 +179,35 @@
                  style="--bc-install-duration: {{card.installDuration}};"
                  tabindex="0">
 
+          {{!-- Design test: the release cover as a dimmed, blurred backdrop
+               behind the whole row (list mode only; CSS hides it in grid). --}}
+          {{#if card.isReleaseCard}}{{#if card.thumbUrl}}<div class="bc-card-bg" style="background-image: url('{{card.thumbUrl}}');"></div>{{/if}}{{/if}}
+
           <div class="bc-card-thumb">
-            {{#if card.thumbUrl}}
+            {{#if card.isOfflineCard}}
+              {{!-- Feature 5: offline -> a local placeholder + "Offline" label,
+                   never a remote thumbnail request, so a basement session
+                   doesn't flood the result list with broken images. --}}
+              <div class="bc-card-thumb-placeholder bc-card-thumb-offline">
+                <i class="fa-solid fa-cloud-slash"></i>
+                <span>{{localize "BENEOS.Cloud.Card.Offline"}}</span>
+              </div>
+            {{else if card.thumbUrl}}
               {{!-- Wave B-9-fix-24: draggable="false" so the browser
                    doesn't intercept the drag as an image-drag in grid
                    mode (where the thumb covers most of the card area).
                    The card itself stays draggable; setDragImage still
                    works since it only needs the <img> as a pixel
-                   reference, not as a drag source. --}}
-              <img src="{{card.thumbUrl}}" alt="{{card.name}}" loading="lazy" draggable="false" />
+                   reference, not as a drag source.
+                   Feature 5: bmap thumbs carry an onerror fallback to a local
+                   logo so a single failed remote thumb (offline mid-session /
+                   404) never shows a broken-image icon. --}}
+              {{#if card.isBmap}}
+                <img src="{{card.thumbUrl}}" alt="{{card.name}}" loading="lazy" draggable="false"
+                     onerror="this.onerror=null;this.src='modules/beneos-module/ui/beneos_logo_bw.svg';this.classList.add('bc-thumb-fallback');" />
+              {{else}}
+                <img src="{{card.thumbUrl}}" alt="{{card.name}}" loading="lazy" draggable="false" />
+              {{/if}}
             {{else}}
               <div class="bc-card-thumb-placeholder"></div>
             {{/if}}
@@ -242,6 +262,16 @@
                 <span class="bc-status-chip bc-status-update">{{localize "BENEOS.Cloud.Card.Update"}}</span>
               {{else if card.isNew}}
                 <span class="bc-status-chip bc-status-new">{{localize "BENEOS.Cloud.Card.New"}}</span>
+              {{/if}}
+              {{!-- Teil 3: installed-marker for battlemaps (release + scene
+                   cards). Green check next to the title, tooltip carries the
+                   install date. Hidden while an UPDATE chip is showing so the
+                   two states don't compete. --}}
+              {{#if card.bmapInstalled}}
+                {{#unless card.isUpdate}}
+                  <i class="fa-solid fa-circle-check bc-bmap-installed-check"
+                     data-tooltip="{{localize 'BENEOS.Cloud.Card.InstalledOn'}} {{card.installedOnLabel}}"></i>
+                {{/unless}}
               {{/if}}
               {{#if card.isFree}}
                 <span class="bc-status-chip bc-status-free" data-tooltip="{{localize 'BENEOS.Patreon.FreeSection.Description'}}">{{localize "BENEOS.Patreon.FreeBadge"}}</span>
@@ -412,14 +442,15 @@
                        fallback. The legacy button resolves the release's
                        creator + pack from a representative catalog scene and
                        hands off to Moulinette's cloud browser. --}}
-                  <button type="button" class="bc-card-button bc-card-button-primary bc-action-install"
+                  <button type="button" class="bc-card-button bc-card-button-primary bc-action-install{{#if card.isUpdate}} bc-action-update{{/if}}"
                           data-asset-key="{{card.key}}"
                           data-asset-type="{{card.assetType}}"
                           data-bmap-scope="release"
                           data-bmap-release-card="true"
                           data-bmap-native="true"
                           data-tooltip="{{localize 'BENEOS.Cloud.Bmap.InstallNativeReleaseTooltip'}}">
-                    <i class="fa-solid fa-layer-group"></i>
+                    <i class="fa-solid {{#if card.isUpdate}}fa-rotate{{else}}fa-cloud-arrow-down{{/if}}"></i>
+                    {{#if card.isUpdate}}{{localize "BENEOS.Cloud.Card.Update"}}{{else}}{{localize "BENEOS.Cloud.Card.Install"}}{{/if}}
                   </button>
                   <button type="button" class="bc-card-button bc-action-install bc-install-legacy"
                           data-asset-key="{{card.key}}"
@@ -433,13 +464,14 @@
                        (Beneos-owned pipeline) + Moulinette-legacy fallback
                        drunter fuer maps die noch nicht auf der cloud
                        sind oder bei nativer install-Probleme. --}}
-                  <button type="button" class="bc-card-button bc-card-button-primary bc-action-install"
+                  <button type="button" class="bc-card-button bc-card-button-primary bc-action-install{{#if card.isUpdate}} bc-action-update{{/if}}"
                           data-asset-key="{{card.key}}"
                           data-asset-type="{{card.assetType}}"
                           data-bmap-scope="scene"
                           data-bmap-native="true"
                           data-tooltip="{{localize 'BENEOS.Cloud.Bmap.InstallNativeSceneTooltip'}}">
-                    <i class="fa-solid fa-cloud-arrow-down"></i>
+                    <i class="fa-solid {{#if card.isUpdate}}fa-rotate{{else}}fa-cloud-arrow-down{{/if}}"></i>
+                    {{#if card.isUpdate}}{{localize "BENEOS.Cloud.Card.Update"}}{{else}}{{localize "BENEOS.Cloud.Card.Install"}}{{/if}}
                   </button>
                   <button type="button" class="bc-card-button bc-action-install bc-install-legacy"
                           data-asset-key="{{card.key}}"
@@ -535,15 +567,21 @@
              thread while it scales the image to the 220 px hero box, which
              reads as the whole window freezing. --}}
         {{#if drawer.asset.siblingThumbUrl}}
+          {{!-- Aspect-ratio box derived from the map's grid (W x H squares) so
+               the battlemap shows its real shape, not a forced 16:9. A small
+               corner chip on each image marks Battlemap vs Scenery. --}}
+          {{!-- Always Scenery on top, Battlemap below, regardless of which one
+               the user clicked , consistent visual experience. --}}
           <div class="bc-drawer-pair">
-            <div class="bc-drawer-hero" data-bc-drawer-hero>
-              <img src="{{drawer.asset.thumbUrl}}" alt="{{drawer.asset.name}}"
+            <div class="bc-drawer-hero" data-bc-drawer-hero{{#if drawer.asset.mapAspect}} style="aspect-ratio: {{drawer.asset.mapAspect.w}} / {{drawer.asset.mapAspect.h}}"{{/if}}>
+              <img src="{{#if drawer.asset.pairSceneryUrl}}{{drawer.asset.pairSceneryUrl}}{{else}}{{drawer.asset.siblingThumbUrl}}{{/if}}" alt="{{localize 'BENEOS.Cloud.Drawer.KindScenery'}}"
                    decoding="async" fetchpriority="high" loading="eager" />
+              <span class="bc-scene-kind-chip">{{localize "BENEOS.Cloud.Drawer.KindScenery"}}</span>
             </div>
-            <div class="bc-drawer-sibling">
-              <img src="{{drawer.asset.siblingThumbUrl}}" alt="{{localize 'BENEOS.Cloud.Drawer.Sibling'}}"
+            <div class="bc-drawer-sibling"{{#if drawer.asset.mapAspect}} style="aspect-ratio: {{drawer.asset.mapAspect.w}} / {{drawer.asset.mapAspect.h}}"{{/if}}>
+              <img src="{{#if drawer.asset.pairBattlemapUrl}}{{drawer.asset.pairBattlemapUrl}}{{else}}{{drawer.asset.thumbUrl}}{{/if}}" alt="{{localize 'BENEOS.Cloud.Drawer.KindBattlemap'}}"
                    decoding="async" fetchpriority="high" loading="eager" />
-              <span class="bc-drawer-sibling-label">{{localize "BENEOS.Cloud.Drawer.Sibling"}}</span>
+              <span class="bc-scene-kind-chip">{{localize "BENEOS.Cloud.Drawer.KindBattlemap"}}</span>
             </div>
           </div>
         {{else if drawer.asset.thumbUrl}}
@@ -590,7 +628,7 @@
 
         {{!-- Punkt 3: compatible-adventure chip (acronym + full name tooltip),
              shown for both the release detail and individual map scenes. --}}
-        {{#if drawer.asset.compatibleAdventure}}
+        {{#if drawer.asset.compatibleAdventure.acronym}}
           <div class="bc-drawer-compat">
             <span class="bc-compat-chip"
                   data-tooltip="{{localize 'BENEOS.Cloud.Drawer.CompatibleWith'}} {{drawer.asset.compatibleAdventure.fullName}}">
@@ -798,14 +836,14 @@
                      battlemap + scenery siblings); the "Install Entire
                      Release" button below installs the whole pack. Label is
                      plain "Install" now that the cloud is the default path. --}}
-                <button type="button" class="bc-card-button bc-card-button-primary bc-card-button-block bc-action-install"
+                <button type="button" class="bc-card-button bc-card-button-primary bc-card-button-block bc-action-install{{#if drawer.asset.isUpdate}} bc-action-update{{/if}}"
                         data-asset-key="{{drawer.asset.key}}"
                         data-asset-type="{{drawer.asset.assetType}}"
                         data-bmap-scope="scene"
                         data-bmap-native="true"
                         data-tooltip="{{localize 'BENEOS.Cloud.Bmap.InstallNativeSceneTooltip'}}">
-                  <i class="fa-solid fa-cloud-arrow-down"></i>
-                  {{localize "BENEOS.Cloud.Bmap.InstallNativeScene"}}
+                  <i class="fa-solid {{#if drawer.asset.isUpdate}}fa-rotate{{else}}fa-cloud-arrow-down{{/if}}"></i>
+                  {{#if drawer.asset.isUpdate}}{{localize "BENEOS.Cloud.Card.Update"}}{{else}}{{localize "BENEOS.Cloud.Bmap.InstallNativeScene"}}{{/if}}
                 </button>
                 {{!-- Punkt 4: from a scene the user can also pull the whole
                      release. Only rendered when the scene is linked to a

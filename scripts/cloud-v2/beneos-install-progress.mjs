@@ -334,11 +334,13 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
     this.render(false)
   }
 
-  markCompleted() {
+  markCompleted({ noChanges = false } = {}) {
     this._state = "completed"
     this._currentLabel   = null
     this._currentSpinner = false
-    this._completedMessage = game.i18n.localize("BENEOS.Cloud.Bmap.InstallProgress.CompletedBody")
+    this._completedMessage = game.i18n.localize(noChanges
+      ? "BENEOS.Cloud.Bmap.InstallProgress.CompletedNoChangesBody"
+      : "BENEOS.Cloud.Bmap.InstallProgress.CompletedBody")
     // Any phase still active or pending => mark done (process() returned, so
     // we trust scene-packer's "everything ran" semantics).
     for (const v of this._phases.values()) {

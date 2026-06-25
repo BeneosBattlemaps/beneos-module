@@ -286,6 +286,49 @@ export class BeneosDatabaseHolder {
   }
 
   /********************************************************************************** */
+  // Teil 4: unified New/Updated computation for token/item/spell.
+  //  - New: the asset's catalog release_date (publication) is within the
+  //    "new asset" window (default 30 days) AND it is not yet installed.
+  //  - Updated: it IS installed and the online version is newer than the local
+  //    install — compared via the catalog updated_date vs the local install
+  //    date, with a content-signature mismatch as the fallback signal.
+  // Falls back to the legacy updated_ts window for "new" only when release_date
+  // is absent, so un-backfilled catalogs keep working and the new rule
+  // auto-activates once the date fields arrive. (The old `ts > installTS`
+  // update check compared unix-seconds against milliseconds and could never
+  // fire, so update relied solely on the hash mismatch — the date comparison
+  // below is what actually makes time-based updates work.)
+  static beneosComputeNewUpdate(data, { ts, installTS, cloudHash, installHash } = {}) {
+    const props = data?.properties || {}
+    const installed = data?.installed === "installed"
+    const windowSec = BeneosUtility.getNewAssetWindowSeconds()
+    let isNew = false, isUpdate = false
+
+    if (!installed) {
+      const relMs = this.beneosParseDateMs(props.release_date)
+      if (relMs != null) {
+        const ageDays = (Date.now() - relMs) / 86400000
+        isNew = ageDays >= 0 && ageDays <= (windowSec / 86400)
+      } else if (ts) {
+        isNew = ts >= (Math.floor(Date.now() / 1000) - windowSec)
+      }
+    } else {
+      const updMs  = this.beneosParseDateMs(props.updated_date)
+      const instMs = Number(installTS) || 0
+      if (updMs != null && instMs > 0 && updMs > instMs) isUpdate = true
+      if (!isUpdate && cloudHash && installHash && cloudHash !== installHash) isUpdate = true
+    }
+    return { isNew, isUpdate }
+  }
+
+  static beneosParseDateMs(s) {
+    const str = String(s || "").trim()
+    if (!str) return null
+    const ms = Date.parse(str)
+    return Number.isFinite(ms) ? ms : null
+  }
+
+  /********************************************************************************** */
   static processInstalledToken(tokenData) {
     tokenData.isInstalled = BeneosUtility.isTokenLoaded(tokenData.key)
     tokenData.installed = (tokenData.isInstalled) ? "installed" : "notinstalled"
@@ -312,27 +355,18 @@ export class BeneosDatabaseHolder {
       tokenData.dragMode = "local"
     }
 
-    // Prepare update/new status
+    // Prepare update/new status (Teil 4: unified release_date / updated_date)
     let tokenTS = game.beneos.cloud.getTokenTS(tokenData.key)
     tokenData.isNewForUser = !!game.beneos.cloud.getTokenIsNewForUser(tokenData.key)
-    if (tokenTS) {
-      let tNowWindow = Math.floor(Date.now() / 1000) - BeneosUtility.getNewAssetWindowSeconds()
-      if (tokenData.installed !== "installed" && tokenTS >= tNowWindow) {
-        tokenData.isNew = true
-      }
-      if (tokenData.installed === "installed") {
-        let installTS = BeneosUtility.getTokenInstallTS(tokenData.key)
-        let cloudHash = game.beneos.cloud.getTokenHash(tokenData.key)
-        let installHash = BeneosUtility.getTokenInstallHash(tokenData.key)
-        BeneosUtility.debugMessage("Installed token", tokenData.key, tokenTS, installTS, cloudHash, installHash)
-        if (tokenTS > installTS) {
-          tokenData.isUpdate = true
-        } else if (cloudHash && installHash && cloudHash !== installHash) {
-          tokenData.isUpdate = true
-        }
-      }
-    } else {
-      //BeneosUtility.debugMessage("No tokenTS for", tokenData.key)
+    {
+      const f = this.beneosComputeNewUpdate(tokenData, {
+        ts:          tokenTS,
+        installTS:   BeneosUtility.getTokenInstallTS(tokenData.key),
+        cloudHash:   game.beneos.cloud.getTokenHash(tokenData.key),
+        installHash: BeneosUtility.getTokenInstallHash(tokenData.key),
+      })
+      tokenData.isNew = f.isNew
+      tokenData.isUpdate = f.isUpdate
     }
 
     tokenData.properties.install = ["Any", "All"] // Used for filtering
@@ -369,27 +403,18 @@ export class BeneosDatabaseHolder {
     itemData.cloudMessage = (itemData.isCloudAvailable) ? "Cloud available" : "Cloud not available"
     itemData.isInstallable = (itemData.isInstalled || itemData.isCloudAvailable)
 
-    // Prepare update/new status
+    // Prepare update/new status (Teil 4: unified release_date / updated_date)
     let itemTS = game.beneos.cloud.getItemTS(itemData.key)
     itemData.isNewForUser = !!game.beneos.cloud.getItemIsNewForUser(itemData.key)
-    if (itemTS) {
-      let tNowWindow = Math.floor(Date.now() / 1000) - BeneosUtility.getNewAssetWindowSeconds()
-      if (itemData.installed !== "installed" && itemTS >= tNowWindow) {
-        itemData.isNew = true
-      }
-      if (itemData.installed === "installed") {
-        let installTS = BeneosUtility.getItemInstallTS(itemData.key)
-        let cloudHash = game.beneos.cloud.getItemHash(itemData.key)
-        let installHash = BeneosUtility.getItemInstallHash(itemData.key)
-        BeneosUtility.debugMessage("Installed item", itemData.key, itemTS, installTS, cloudHash, installHash)
-        if (itemTS > installTS) {
-          itemData.isUpdate = true
-        } else if (cloudHash && installHash && cloudHash !== installHash) {
-          itemData.isUpdate = true
-        }
-      }
-    } else {
-      // BeneosUtility.debugMessage("No itemTS for", itemData)
+    {
+      const f = this.beneosComputeNewUpdate(itemData, {
+        ts:          itemTS,
+        installTS:   BeneosUtility.getItemInstallTS(itemData.key),
+        cloudHash:   game.beneos.cloud.getItemHash(itemData.key),
+        installHash: BeneosUtility.getItemInstallHash(itemData.key),
+      })
+      itemData.isNew = f.isNew
+      itemData.isUpdate = f.isUpdate
     }
     itemData.properties.install = ["Any", "All"] // Used for filtering
     if (itemData.isNew) {
@@ -431,27 +456,18 @@ export class BeneosDatabaseHolder {
     if (spellData.isInstalled) {
       //spellData.picture = BeneosUtility.getLocalAvatarPicture(spellData.key)
     }
-    // Prepare update/new status
+    // Prepare update/new status (Teil 4: unified release_date / updated_date)
     let spellTS = game.beneos.cloud.getSpellTS(spellData.key)
     spellData.isNewForUser = !!game.beneos.cloud.getSpellIsNewForUser(spellData.key)
-    if (spellTS) {
-      let tNowWindow = Math.floor(Date.now() / 1000) - BeneosUtility.getNewAssetWindowSeconds()
-      if (spellData.installed !== "installed" && spellTS >= tNowWindow) {
-        spellData.isNew = true
-      }
-      if (spellData.installed === "installed") {
-        let installTS = BeneosUtility.getSpellInstallTS(spellData.key)
-        let cloudHash = game.beneos.cloud.getSpellHash(spellData.key)
-        let installHash = BeneosUtility.getSpellInstallHash(spellData.key)
-        BeneosUtility.debugMessage("Installed spell", spellData.key, spellTS, installTS, cloudHash, installHash)
-        if (spellTS > installTS) {
-          spellData.isUpdate = true
-        } else if (cloudHash && installHash && cloudHash !== installHash) {
-          spellData.isUpdate = true
-        }
-      }
-    } else {
-      //BeneosUtility.debugMessage("No spellTS for", spellData.key)
+    {
+      const f = this.beneosComputeNewUpdate(spellData, {
+        ts:          spellTS,
+        installTS:   BeneosUtility.getSpellInstallTS(spellData.key),
+        cloudHash:   game.beneos.cloud.getSpellHash(spellData.key),
+        installHash: BeneosUtility.getSpellInstallHash(spellData.key),
+      })
+      spellData.isNew = f.isNew
+      spellData.isUpdate = f.isUpdate
     }
     spellData.properties.install = ["Any", "All"] // Used for filtering
     if (spellData.isNew) {

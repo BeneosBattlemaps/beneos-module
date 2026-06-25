@@ -154,12 +154,69 @@ export class BeneosPreInstallDialog {
     }
   }
 
+  /**
+   * Teil 2 — world-presence overwrite confirmation. Driven by the ACTUAL
+   * scenes in the world (not just the install registry), so it also fires for
+   * worlds that imported a release before the registry existed. Returns
+   * Promise<boolean>: true => proceed in overwrite mode, false => abort.
+   */
+  static async confirmWorldOverwrite({ scope, name, presentCount = 0, totalCount = 0, installedAt = "", stale = false }) {
+    const DialogV2 = foundry?.applications?.api?.DialogV2
+    if (!DialogV2?.confirm) return true   // too old to ask -> never block an install
+
+    const L = (key, fallback) => {
+      try { const s = game.i18n.localize(key); if (s && s !== key) return s } catch (_) {}
+      return fallback
+    }
+    const safeName  = foundry.utils.escapeHTML(String(name || ""))
+    const dateStr   = this.#formatDate(installedAt)
+    const isRelease = scope === "release"
+
+    const title = stale
+      ? L("BENEOS.Cloud.Bmap.Overwrite.TitleUpdate", "Update available")
+      : L("BENEOS.Cloud.Bmap.Overwrite.Title", "Already in your world")
+    const subject = isRelease
+      ? L("BENEOS.Cloud.Bmap.Overwrite.SubjectRelease", "This release")
+      : L("BENEOS.Cloud.Bmap.Overwrite.SubjectScene", "This scene")
+    const intro = stale
+      ? L("BENEOS.Cloud.Bmap.Overwrite.IntroUpdate",
+          "%subject% of '%name%' is already in your world (installed %date%), and a newer version is online.")
+      : L("BENEOS.Cloud.Bmap.Overwrite.Intro",
+          "%subject% of '%name%' is already in your world (installed %date%).")
+    const warn = L("BENEOS.Cloud.Bmap.Overwrite.Warn",
+      "Reinstalling rebuilds the scenes from the pack — any placed tokens or manual edits on them are lost. Continue?")
+
+    const body = (intro + " " + warn)
+      .replace("%subject%", foundry.utils.escapeHTML(subject))
+      .replace("%name%",    safeName)
+      .replace("%date%",    foundry.utils.escapeHTML(dateStr))
+
+    const yesLabel = stale
+      ? L("BENEOS.Cloud.Bmap.Overwrite.YesUpdate", "Update")
+      : L("BENEOS.Cloud.Bmap.Overwrite.Yes", "Overwrite")
+    const noLabel = L("BENEOS.Cloud.Bmap.Overwrite.Cancel", "Cancel")
+
+    try {
+      const proceed = await DialogV2.confirm({
+        window:  { title },
+        content: `<p style="line-height:1.5">${body}</p>`,
+        yes:     { label: yesLabel, default: false },
+        no:      { label: noLabel, default: true },
+        rejectClose: false,
+      })
+      return proceed === true
+    } catch (_e) {
+      return false
+    }
+  }
+
   static #formatDate(iso) {
     if (!iso) return "unknown"
     try {
       const d = new Date(iso)
       if (isNaN(d.getTime())) return "unknown"
-      return d.toLocaleDateString()
+      // Force US English (most patrons are US), e.g. "June 25, 2026".
+      return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
     } catch (_e) { return "unknown" }
   }
 }
