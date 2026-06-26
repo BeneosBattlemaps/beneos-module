@@ -71,6 +71,17 @@
       {{/each}}
     </ul>
 
+    {{!-- Second install layer: Beneos creatures referenced by the scenes.
+         Gold + paw when the user is an active token-patron (pulled from the
+         cloud); grey + red X when not (info only). --}}
+    {{#if creatureBlock}}
+      <div class="bcip-creatures {{#if creatureBlock.isPatron}}bcip-creatures-patron{{else}}bcip-creatures-locked{{/if}}">
+        <i class="fa-solid {{#if creatureBlock.isPatron}}fa-paw{{else}}fa-circle-xmark{{/if}}"></i>
+        <span class="bcip-creatures-text">{{localize "BENEOS.Cloud.Bmap.InstallProgress.Creatures"}} <span class="bcip-creatures-suffix">{{localize "BENEOS.Cloud.Bmap.InstallProgress.CreaturesPatron"}}</span></span>
+        {{#if creatureBlock.showCount}}<span class="bcip-creatures-count">{{creatureBlock.countLabel}}</span>{{/if}}
+      </div>
+    {{/if}}
+
     {{#if errorMessage}}
       <div class="bcip-error">
         <i class="fa-solid fa-triangle-exclamation"></i>

@@ -309,6 +309,17 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
     if (this._state !== "running") this.render(false)
   }
 
+  /**
+   * Second-layer "Adding Beneos Creatures" block at the bottom of the window.
+   * Gold + paw when the user is an active token-patron (the creatures are being
+   * pulled from the cloud); grey + red X when not (info only, nothing installed).
+   * Only shown when the release actually references Beneos creatures.
+   */
+  setCreatureBlock({ present = false, isPatron = false, count = 0, installed = 0, state = "pending" } = {}) {
+    this._creatureBlock = present ? { isPatron: !!isPatron, count, installed, state } : null
+    this.render(false)
+  }
+
   /** Register a callback that re-opens the post-install report dialog. */
   setReportOpener(fn) {
     this._reportOpener = (typeof fn === "function") ? fn : null
@@ -422,6 +433,12 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
       failedCount:      this._failedCount,
       failedLabel:      this._failedCount ? this.#failedLabel(this._failedCount) : null,
       showReportButton: (this._state === "completed-with-issues" || this._state === "failed") && typeof this._reportOpener === "function",
+      creatureBlock:    this._creatureBlock ? {
+        isPatron:   this._creatureBlock.isPatron,
+        state:      this._creatureBlock.state,
+        countLabel: `${this._creatureBlock.installed}/${this._creatureBlock.count}`,
+        showCount:  this._creatureBlock.isPatron && this._creatureBlock.state === "done",
+      } : null,
     }
   }
 

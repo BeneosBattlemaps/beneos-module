@@ -110,12 +110,6 @@
         "type": "module",
         "manifest": "https://github.com/Moulinette-Craft/moulinette-foundryvtt-module/releases/latest/download/module.json",
         "compatibility": {}
-      },
-	  {
-        "id": "scene-packer",
-        "type": "module",
-        "manifest": "https://github.com/League-of-Foundry-Developers/scene-packer/releases/latest/download/module.json",
-        "compatibility": {}
       }
     ]
   },

@@ -189,6 +189,28 @@ export class BeneosOrphanCleanupMenu extends FormApplication {
   }
 }
 
+// Manual ZIP-import entry registered as a Foundry Settings-Menu (bottom of the
+// Beneos settings). On click it opens a local file dialog to pick a release ZIP
+// and installs it 1:1 like a cloud install. The importer (+ its fflate ZIP lib)
+// is loaded lazily on first use so it costs nothing at startup.
+//
+// Extends ApplicationV2 (not the deprecated V1 FormApplication) so clicking the
+// menu doesn't log a V1-framework deprecation. It never renders a window —
+// render() just runs the action and returns.
+export class BeneosManualZipImportMenu extends foundry.applications.api.ApplicationV2 {
+  static DEFAULT_OPTIONS = { id: "beneos-manual-zip-import", tag: "div" }
+  async render() {
+    try {
+      const { BeneosZipImporter } = await import("./cloud-v2/beneos-zip-importer.mjs")
+      await BeneosZipImporter.pickAndImport()
+    } catch (err) {
+      console.error("[Beneos] Manual ZIP import failed", err)
+      ui.notifications?.error?.(`Beneos ZIP import failed: ${err?.message || "unknown"}`)
+    }
+    return this
+  }
+}
+
 export class BeneosCloudLogin extends FormApplication {
 
   /********************************************************************************** */

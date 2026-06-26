@@ -2,7 +2,7 @@
 import { BeneosTableTop } from "./beneos-table-top.js";
 import { BeneosDatabaseHolder, BeneosModuleMenu } from "./beneos_search_engine.js";
 import { ClassCounter } from "./count-class-ready.js";
-import { BeneosCloud, BeneosCloudLogin, BeneosCloudSettings, BeneosCloudAccountMenu, BeneosOrphanCleanupMenu } from "./beneos_cloud.js";
+import { BeneosCloud, BeneosCloudLogin, BeneosCloudSettings, BeneosCloudAccountMenu, BeneosOrphanCleanupMenu, BeneosManualZipImportMenu } from "./beneos_cloud.js";
 
 /********************************************************************************* */
 globalThis.BENEOS_MODULE_NAME = "Beneos Module"
@@ -356,6 +356,19 @@ export class BeneosUtility {
       scope: 'world',
       config: true,
       type: BeneosOrphanCleanupMenu,
+      restricted: true
+    })
+
+    // Manual ZIP import (bottom of the Beneos settings): pick a local release
+    // ZIP and install it 1:1 like a cloud install. Makes Beneos independent of
+    // the scene-packer importer wizard.
+    game.settings.registerMenu(BeneosUtility.moduleID(), "beneos-manual-zip-import", {
+      name: "BENEOS.Settings.ManualZipImport.Name",
+      label: "BENEOS.Settings.ManualZipImport.Label",
+      hint: "BENEOS.Settings.ManualZipImport.Hint",
+      scope: 'world',
+      config: true,
+      type: BeneosManualZipImportMenu,
       restricted: true
     })
 

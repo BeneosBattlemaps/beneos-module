@@ -7976,6 +7976,37 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   color: #b8e8c5;
 }
 
+/* Second install layer: "Adding Beneos Creatures" block. Gold when the user is
+   an active token-patron (creatures pulled from the cloud); muted grey with a
+   red X when not (info only). */
+.beneos-cloud-app .bcip-creatures {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-top: 6px;
+}
+.beneos-cloud-app .bcip-creatures-patron {
+  background: rgba(245, 201, 146, 0.12);
+  border: 1px solid rgba(245, 201, 146, 0.40);
+  color: var(--bc-accent, #f5c992);
+}
+.beneos-cloud-app .bcip-creatures-locked {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: rgba(255, 255, 255, 0.55);
+}
+.beneos-cloud-app .bcip-creatures-locked i { color: #e06a6a; }
+.beneos-cloud-app .bcip-creatures-text { flex: 1 1 auto; }
+.beneos-cloud-app .bcip-creatures-suffix { opacity: 0.85; font-weight: 600; }
+.beneos-cloud-app .bcip-creatures-count {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
 /* Footer actions */
 .beneos-cloud-app .bcip-actions {
   display: flex;

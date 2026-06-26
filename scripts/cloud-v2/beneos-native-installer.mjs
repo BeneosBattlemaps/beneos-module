@@ -119,11 +119,17 @@ const JSON_FILE_TO_PHASE = {
 
 export class BeneosNativeBattlemapInstaller {
 
-  constructor({ packageId, label = "", coverUrl = null, sceneSlugs = null, overwrite = false, record = null } = {}) {
+  constructor({ packageId, label = "", coverUrl = null, sceneSlugs = null, overwrite = false, record = null, source = null } = {}) {
     if (!packageId) throw new Error("BeneosNativeBattlemapInstaller: packageId is required")
     this.packageId = packageId
     this.label     = label || packageId
     this.coverUrl  = coverUrl
+    // Pack source: cloud (default — signed URLs via BeneosScenePacker.getPackInfo)
+    // or a local ZIP ({ kind:"zip", entries: Map<relPath, Uint8Array> }) for the
+    // manual importer. Both feed the identical download/import pipeline, so the
+    // unpack + storage are byte-identical regardless of source.
+    this.source    = source || { kind: "cloud" }
+    this._zipEntries = null   // set in #loadPackInfo when source.kind === "zip"
     // Teil 2: when true, every pack document (except folders) is replaced by
     // _id instead of skipped — set after the user confirms the world-overwrite
     // dialog. `record` carries the release metadata the installer needs to
@@ -148,8 +154,8 @@ export class BeneosNativeBattlemapInstaller {
    * the result (imported scenes, totals, whether the user cancelled) — used by
    * the cloud window to refresh the installed-marker after the run.
    */
-  static async install({ packageId, label, coverUrl, sceneSlugs, overwrite = false, record = null } = {}) {
-    const inst = new BeneosNativeBattlemapInstaller({ packageId, label, coverUrl, sceneSlugs, overwrite, record })
+  static async install({ packageId, label, coverUrl, sceneSlugs, overwrite = false, record = null, source = null } = {}) {
+    const inst = new BeneosNativeBattlemapInstaller({ packageId, label, coverUrl, sceneSlugs, overwrite, record, source })
     await inst.run()
     return inst
   }
@@ -174,9 +180,7 @@ export class BeneosNativeBattlemapInstaller {
     try {
       // Phase: manifest
       this.progress.handleStatusMessage("Loading manifest and pack contents")
-      const mgr = window.BeneosScenePacker
-      if (!mgr) throw new Error("BeneosScenePackerManager missing")
-      const packInfo = await mgr.getPackInfo(this.packageId)
+      const packInfo = await this.#loadPackInfo()
       const { assets, jsons } = this.#classifyPack(packInfo)
 
       // Punkt 7: narrow to a single scene (+ its sibling) when scene-scoped.
@@ -268,6 +272,12 @@ export class BeneosNativeBattlemapInstaller {
       await this.#downloadAssets(installAssets)
       await this.#importDocuments(jsons)
       await this.#verifyAndRepair(installAssets)
+
+      // Second install layer: the scenes' creatureInstaller flag references
+      // Beneos creatures (cloud tokenKeys). Pull them from the cloud when the
+      // user is an active token-patron; otherwise leave the standard import
+      // untouched. Same for cloud + manual-ZIP installs.
+      await this.#installBeneosCreatures(jsons)
 
       // Task E: tell the progress window which scene the "Open" button opens.
       const openSceneId = this.#pickOpenSceneId()
@@ -390,6 +400,72 @@ export class BeneosNativeBattlemapInstaller {
     } catch (_) {}
   }
 
+  // ---- Beneos-Creatures (second install layer) -----------------------------
+
+  /**
+   * Collect the Beneos (cloud) creature tokenKeys referenced by the installed
+   * scenes' `flags["beneos-module"].creatureInstaller.beneosCreatures[]`. SRD
+   * creatures (no tokenKey) are already packed as Actors and ignored here.
+   */
+  async #collectBeneosCreatureKeys(jsons) {
+    const url = jsons?.["data/Scene.json"]
+    if (!url) return []
+    let arr
+    try {
+      const raw = JSON.parse(await (await this.#fetchAsset(url, "data/Scene.json")).text())
+      arr = Array.isArray(raw) ? raw : (raw && typeof raw === "object" ? Object.values(raw) : [])
+    } catch (_) { return [] }
+    const want = (this._targetSceneIds?.length) ? new Set(this._targetSceneIds.map(String)) : null
+    const keys = new Set()
+    for (const sc of arr) {
+      if (want && !want.has(String(sc?._id))) continue
+      const ci = sc?.flags?.["beneos-module"]?.creatureInstaller
+      const list = Array.isArray(ci?.beneosCreatures) ? ci.beneosCreatures : []
+      for (const c of list) {
+        const k = (c?.tokenKey != null) ? String(c.tokenKey).trim() : ""
+        if (k) keys.add(k)
+      }
+    }
+    return [...keys]
+  }
+
+  /**
+   * Second install layer: import the scenes' referenced Beneos creatures from
+   * the cloud when the user is an active token-patron. Non-patrons get the info
+   * block (grey + red X) and the standard map import stands. Actors-only — the
+   * Creature-Drawer handles placement when a scene is opened.
+   */
+  async #installBeneosCreatures(jsons) {
+    let keys = []
+    try { keys = await this.#collectBeneosCreatureKeys(jsons) } catch (_) {}
+    if (!keys.length) return   // no creature block for releases without Beneos creatures
+
+    const cloud = game.beneos?.cloud
+    const isPatron = !!cloud?.hasCampaignAccess?.("tokens")
+    this.progress.setCreatureBlock?.({ present: true, isPatron, count: keys.length, installed: 0,
+      state: isPatron ? "active" : "skipped" })
+
+    if (!isPatron || typeof cloud?.importTokenFromCloud !== "function") {
+      this._result.creatures = { present: true, patron: isPatron, installed: 0, total: keys.length }
+      return
+    }
+
+    this.progress.handleStatusMessage?.(`Adding ${keys.length} Beneos creature(s)`)
+    let ok = 0
+    for (const key of keys) {
+      try {
+        await cloud.importTokenFromCloud(key, undefined, false, { gated: true })
+        ok += 1
+      } catch (e) {
+        console.warn("BeneosNativeInstaller | Beneos creature install failed", key, e?.message || e)
+        this._result.docFailures.push({ type: "creature", id: key, error: String(e?.message || e) })
+      }
+      this.progress.setCreatureBlock?.({ present: true, isPatron: true, count: keys.length, installed: ok, state: "active" })
+    }
+    this._result.creatures = { present: true, patron: true, installed: ok, total: keys.length }
+    this.progress.setCreatureBlock?.({ present: true, isPatron: true, count: keys.length, installed: ok, state: "done" })
+  }
+
   // ---- Result + environment ------------------------------------------------
 
   #newResult() {
@@ -397,7 +473,7 @@ export class BeneosNativeBattlemapInstaller {
       packageId: this.packageId,
       label:     this.label,
       env:       this.#envFingerprint(),
-      totals:    { assets: 0, ok: 0, repaired: 0, failed: 0, docsCreated: 0, docsUpdated: 0, docsSkippedExisting: 0, docsFailed: 0 },
+      totals:    { assets: 0, ok: 0, repaired: 0, failed: 0, docsCreated: 0, docsUpdated: 0, docsSkippedExisting: 0, docsFailed: 0, skippedPackageOwned: 0 },
       assetFailures: [], // {target, category, attempts, lastError}
       docFailures:   [], // {type, id, error}
       preflight:     null,
@@ -435,6 +511,28 @@ export class BeneosNativeBattlemapInstaller {
   // ---- Manifest classification + refresh -----------------------------------
 
   /**
+   * Resolve the packInfo map for the active source.
+   *  - cloud: signed-URL map from BeneosScenePacker.getPackInfo (value = URL).
+   *  - zip:   value === relPath (the ZIP entry key) so #fetchAsset reads bytes
+   *           straight from `this._zipEntries`. The rest of the pipeline is the
+   *           same, so unpack + storage stay byte-identical to a cloud install.
+   */
+  async #loadPackInfo() {
+    if (this.source?.kind === "zip") {
+      const entries = (this.source.entries instanceof Map)
+        ? this.source.entries
+        : new Map(Object.entries(this.source.entries || {}))
+      this._zipEntries = entries
+      const packInfo = {}
+      for (const relPath of entries.keys()) packInfo[relPath] = relPath
+      return packInfo
+    }
+    const mgr = window.BeneosScenePacker
+    if (!mgr) throw new Error("BeneosScenePackerManager missing")
+    return await mgr.getPackInfo(this.packageId)
+  }
+
+  /**
    * Split the packInfo URL map into assets[] (binary uploads) and jsons{}
    * (document collections). Also index every URL by its target/relPath so a
    * signed-URL refresh (#refreshManifestFor) can hand back a fresh URL.
@@ -447,6 +545,16 @@ export class BeneosNativeBattlemapInstaller {
       if (relPath === "mtte.json" || relPath === "beneos-pack-manifest.json") continue
       if (relPath.startsWith("data/assets/")) {
         const target = toCloudAssetPath(relPath.substring("data/assets/".length))
+        // Package-owned paths (modules/<id>/…, systems/<id>/…) are provided by
+        // the installed package itself — e.g. the pack bundles beneos-module's
+        // own ability icons under modules/beneos-module/icons/. Re-uploading
+        // them would (a) write into a module/system folder, which Foundry warns
+        // is unsafe (a package update wipes them), and (b) be redundant. Skip
+        // them: the imported docs reference the existing package files directly.
+        if (/^(modules|systems)\//.test(target)) {
+          this._result.totals.skippedPackageOwned = (this._result.totals.skippedPackageOwned || 0) + 1
+          continue
+        }
         assets.push({ url, target, relPath })
         this._urlByTarget.set(target, url)
         continue
@@ -707,6 +815,17 @@ export class BeneosNativeBattlemapInstaller {
    * Returns a Blob or throws a TransferError carrying the final category.
    */
   async #fetchAsset(initialUrl, targetOrRelPath) {
+    // ZIP source: bytes come straight from the in-memory entry map (no network,
+    // no signed-URL refresh). `initialUrl` is the relPath (= the entry key). The
+    // value is a lazy factory (() => Uint8Array) so large packs decompress one
+    // entry at a time; call it to get the bytes. Also accept a materialized
+    // Uint8Array/Blob for robustness.
+    if (this._zipEntries) {
+      let v = this._zipEntries.get(String(initialUrl))
+      if (typeof v === "function") v = await v()
+      if (!v) throw new TransferError(`zip entry missing: ${initialUrl}`, INSTALL_ERROR.NOTFOUND, null)
+      return (v instanceof Blob) ? v : new Blob([v])
+    }
     let url = initialUrl
     let transient = 0
     for (let guard = 0; guard < 8; guard++) {
@@ -905,6 +1024,17 @@ export class BeneosNativeBattlemapInstaller {
       this.progress.revealPhase?.(meta.phaseKey, { status: "active", current: 0, total: arr.length })
       for (let i = 0; i < arr.length; i++) arr[i] = rewriteDocAssetPaths(arr[i])
 
+      // Playlists grow, they are never replaced: the export ships each release's
+      // playlist with only the few sounds that release uses (same playlist _id +
+      // sound _ids). On install we MERGE — add the pack's PlaylistSound(s) not
+      // already present (by _id) into the existing playlist, leaving its other
+      // sounds untouched; a brand-new playlist is created whole. Never delete a
+      // playlist (even in overwrite mode) so ambiences accumulate across installs.
+      if (relPath === "data/Playlist.json") {
+        await this.#mergePlaylists(arr, docClass, meta)
+        continue
+      }
+
       // Idempotency: a re-install or a 4K<->HD variant switch reuses the SAME
       // document _ids (verified: 4K and HD packs share scene ids). The old code
       // skipped any doc whose _id already existed and still reported success ,
@@ -1001,6 +1131,44 @@ export class BeneosNativeBattlemapInstaller {
       this.progress.handleAssetProgress(meta.phaseKey, arr.length, arr.length)
       this.progress.revealPhase?.(meta.phaseKey, { status: "done", current: arr.length, total: arr.length })
     }
+  }
+
+  /**
+   * Merge playlists instead of replacing them. A new playlist is created whole
+   * (with its sounds). An existing playlist (same _id) keeps its sounds and only
+   * gains the pack's PlaylistSound(s) that aren't already present (matched by
+   * _id), preserving the original sound _ids. So a release's ambiences are added
+   * to the shared playlist, which grows with each install.
+   */
+  async #mergePlaylists(arr, docClass, meta) {
+    const coll = game.playlists
+    let created = 0, soundsAdded = 0, done = 0
+    for (const pl of arr) {
+      const id = String(pl?._id || "")
+      const existing = id ? coll?.get?.(id) : null
+      try {
+        if (!existing) {
+          await docClass.createDocuments([pl], { keepId: true })   // whole playlist + its sounds
+          created += 1
+        } else {
+          const have = new Set((existing.sounds?.contents ?? existing.sounds ?? []).map(s => String(s?.id ?? s?._id)))
+          const missing = (Array.isArray(pl.sounds) ? pl.sounds : []).filter(s => s?._id && !have.has(String(s._id)))
+          if (missing.length) {
+            await existing.createEmbeddedDocuments("PlaylistSound", missing, { keepId: true })
+            soundsAdded += missing.length
+          }
+        }
+      } catch (err) {
+        console.warn("BeneosNativeInstaller | playlist merge failed", id, err?.message || err)
+        this._result.docFailures.push({ type: meta.phaseKey, id: id || "?", error: String(err?.message || err) })
+      }
+      done += 1
+      this.progress.handleAssetProgress?.(meta.phaseKey, arr.length, done)
+    }
+    this._result.totals.docsCreated += created
+    // Count merged sounds as updates so completion isn't reported as "no changes".
+    if (soundsAdded) this._result.totals.docsUpdated += soundsAdded
+    this.progress.revealPhase?.(meta.phaseKey, { status: "done", current: arr.length, total: arr.length })
   }
 
   /**
