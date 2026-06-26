@@ -235,9 +235,16 @@ export class BeneosCreatureInstaller {
 
   /* ----------------------------------------------------------- render context */
 
-  decorate(entry, { premium, isPatron }) {
+  decorate(entry, { premium, isPatron, assignedKeys }) {
     const actor = this.resolveActor(entry);
     const installed = !!actor;
+    // A Beneos creature is an "alternative" purely by DERIVATION, never by a stale
+    // stored flag: it is alternative iff it was neither placed on the map (no
+    // positions) nor assigned 1:1 to an SRD (not a replacedBy target). Anything
+    // placed or assigned is a regular creature and must never show the ALT tag.
+    const hasPositions = positionsOf(entry).length > 0;
+    const isAssigned = !!(premium && assignedKeys && assignedKeys.has(entryKey(entry)));
+    const alternative = premium && !hasPositions && !isAssigned;
     // SRD discs use local token art; premium guests/uninstalled use the CDN
     // thumbnail; an installed premium token can use its real local art.
     let img = null;
@@ -261,12 +268,12 @@ export class BeneosCreatureInstaller {
       // is handled by the install-on-place button instead.
       draggable: installed,
       // Patron, premium, not yet installed -> "+" install affordance.
-      showInstallBadge: premium && isPatron && !installed && !entry.alternative,
+      showInstallBadge: premium && isPatron && !installed && !alternative,
       // Any accessible premium not yet in the world (incl. alternatives) can be
       // cloud-installed from the drawer -> grayscale + part of "Install Beneos".
       needsInstall: premium && isPatron && !installed && !!entry.tokenKey,
-      // Alternatives: optional swap suggestions, never auto-placed.
-      alternative: !!entry.alternative,
+      // Alternatives: optional swap suggestions, never auto-placed. Derived above.
+      alternative,
       // Assignment link viz: own key + (for SRD) the assigned Beneos' key/name.
       key: entryKey(entry),
       linkedKey: entry.replacedBy ? entryKey(entry.replacedBy) : null,
@@ -283,8 +290,12 @@ export class BeneosCreatureInstaller {
 
     const state = this.accountState();
     const isPatron = state === "patron";
-    const srd = dedupeByCreature(this.data.srdCreatures).map(e => this.decorate(e, { premium: false, isPatron }));
-    const beneos = dedupeByCreature(this.data.beneosCreatures).map(e => this.decorate(e, { premium: true, isPatron }));
+    // Keys of Beneos creatures that are assigned 1:1 to an SRD (replacedBy targets);
+    // these are regular creatures, never alternatives.
+    const assignedKeys = new Set();
+    for (const s of (this.data.srdCreatures || [])) if (s.replacedBy) assignedKeys.add(entryKey(s.replacedBy));
+    const srd = dedupeByCreature(this.data.srdCreatures).map(e => this.decorate(e, { premium: false, isPatron, assignedKeys }));
+    const beneos = dedupeByCreature(this.data.beneosCreatures).map(e => this.decorate(e, { premium: true, isPatron, assignedKeys }));
     const missingCount = isPatron ? beneos.filter(c => !c.installed).length : 0;
     // Gold-button state machine: not connected -> support; patron with any
     // accessible-but-not-installed Beneos -> install (cloud); all installed and
@@ -323,18 +334,31 @@ export class BeneosCreatureInstaller {
   }
 
   async render() {
-    const ctx = await this.buildContext();
-    const html = await renderTemplateCompat(TEMPLATE, ctx);
-    if (!this.host) {
-      this.host = document.createElement("div");
-      this.host.id = "beneos-creature-installer";
-      document.body.appendChild(this.host);
+    try {
+      const ctx = await this.buildContext();
+      const html = await renderTemplateCompat(TEMPLATE, ctx);
+      if (!this.host) {
+        this.host = document.createElement("div");
+        this.host.id = "beneos-creature-installer";
+        document.body.appendChild(this.host);
+      }
+      this.host.innerHTML = html;
+      this.host.classList.toggle("bci-expanded", this.expanded && !ctx.logo);
+      this.host.classList.toggle("bci-hidden", !!ctx.logo);
+      this.activateListeners();
+      if (ctx.logo) this.#positionRestore();
+      this._renderRetry = false;   // a clean render clears the retry guard
+    } catch (e) {
+      // A transient render error (bad flag entry, template hiccup) must NEVER
+      // silently kill the drawer: keep the existing host in its last good state
+      // and retry once on the next tick. The drawer stays "always active" as long
+      // as the scene carries a creatureInstaller flag.
+      console.error("beneos | creature-installer: render failed (drawer kept in last good state)", e);
+      if (!this._renderRetry) {
+        this._renderRetry = true;
+        setTimeout(() => { this.render().catch(() => {}); }, 250);
+      }
     }
-    this.host.innerHTML = html;
-    this.host.classList.toggle("bci-expanded", this.expanded && !ctx.logo);
-    this.host.classList.toggle("bci-hidden", !!ctx.logo);
-    this.activateListeners();
-    if (ctx.logo) this.#positionRestore();
   }
 
   /** Anchor the restore logo just left of the macro hotbar. */
@@ -680,9 +704,10 @@ export class BeneosCreatureInstaller {
       await placeAll(srdActor, positions);           // free SRD fallback
     }
 
-    // Standalone Beneos creatures (no SRD link) at their own position(s).
+    // Standalone Beneos creatures at their own position(s). Alternatives have no
+    // positions (so they are skipped here); assigned ones were placed above and
+    // are tracked in placedBeneos. No reliance on the stored `alternative` flag.
     for (const b of dedupeByCreature(this.data.beneosCreatures)) {
-      if (b.alternative) continue;                 // alternatives are never auto-placed
       if (placedBeneos.has(entryKey(b))) continue;
       const positions = positionsOf(b);
       if (!positions.length) continue;
