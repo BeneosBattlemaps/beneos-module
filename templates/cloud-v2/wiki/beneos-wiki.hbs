@@ -1,0 +1,78 @@
+{{!-- Beneos Wiki body. Rendered inside the (themed) ApplicationV2 window
+      frame. Left rail = search + category nav; right pane = article with
+      prev/next. All text comes from BENEOS.Wiki.* i18n keys. --}}
+<div class="bw-layout">
+
+  <aside class="bw-sidebar">
+    <div class="bw-search-wrap">
+      <span class="bw-search-ico">&#9109;</span>
+      <input class="bn-input bw-search" type="text" data-wiki-search
+             value="{{query}}" placeholder="{{ui.search}}" autocomplete="off" spellcheck="false" />
+      {{#if searchMode}}
+        <span class="bw-search-clear" data-action="clearSearch" title="Clear">&#10005;</span>
+      {{/if}}
+    </div>
+
+    <div class="bn-scroll bw-navscroll">
+      {{#if navMode}}
+        {{#each groups}}
+          <div class="bw-group">
+            <div class="bw-group-label">{{this.label}}</div>
+            {{#each this.items}}
+              <div class="bw-nav-item{{#if this.active}} is-active{{/if}}"
+                   data-action="openPage" data-page-key="{{this.key}}">
+                <span class="bw-nav-dot"></span>
+                <span class="bw-nav-title">{{this.title}}</span>
+              </div>
+            {{/each}}
+          </div>
+        {{/each}}
+      {{/if}}
+
+      {{#if searchMode}}
+        <div class="bw-results-count">{{resultCount}} {{ui.results}}</div>
+        {{#each results}}
+          <div class="bw-result" data-action="openPage" data-page-key="{{this.key}}">
+            <div class="bw-result-head">
+              <span class="bw-result-title">{{this.title}}</span>
+              <span class="bw-result-cat">{{this.cat}}</span>
+            </div>
+            <div class="bw-result-snip">{{this.snippet}}</div>
+          </div>
+        {{/each}}
+        {{#if noResults}}
+          <div class="bw-noresult">{{ui.noResult}}<br>&ldquo;{{query}}&rdquo;</div>
+        {{/if}}
+      {{/if}}
+    </div>
+
+    <div class="bw-foot">{{ui.footer}}</div>
+  </aside>
+
+  <div class="bn-scroll bw-main" data-wiki-main>
+    <img class="bw-compass" src="modules/beneos-module/assets/wiki/beneos_compas.webp" alt="" />
+    <article class="bw-article">
+      <div class="bw-eyebrow">{{current.cat}}</div>
+      <h1 class="bw-title">{{current.title}}</h1>
+      <div class="bw-rule"></div>
+      <div class="bn-body">{{{current.bodyHtml}}}</div>
+
+      <nav class="bw-pager">
+        {{#if hasPrev}}
+          <div class="bw-pager-prev" data-action="gotoPage" data-page-key="{{prevKey}}">
+            <div class="bw-pager-k">&lsaquo; {{ui.prev}}</div>
+            <div class="bw-pager-t">{{prevTitle}}</div>
+          </div>
+        {{/if}}
+        <div class="bw-pager-spacer"></div>
+        {{#if hasNext}}
+          <div class="bw-pager-next" data-action="gotoPage" data-page-key="{{nextKey}}">
+            <div class="bw-pager-k">{{ui.next}} &rsaquo;</div>
+            <div class="bw-pager-t">{{nextTitle}}</div>
+          </div>
+        {{/if}}
+      </nav>
+    </article>
+  </div>
+
+</div>

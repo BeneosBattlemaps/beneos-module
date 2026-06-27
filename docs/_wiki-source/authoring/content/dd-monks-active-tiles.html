@@ -1,0 +1,25 @@
+<blockquote><p><strong>Before you read:</strong> none of this is needed to use Beneos Battlemaps. Everything is set up for you and works out of the box. This deep dive is for anyone who wants to add Monks Active Tile Trigger functions to their own maps, or is just curious how it works.</p></blockquote>
+<hr />
+<p>Monks Active Tile Trigger (MATT for short) is one of the most powerful automation modules for Foundry VTT. It is a companion module, not part of the Beneos Module, so make sure it is installed and active. See <a class="wikilink" data-page="requirements">Requirements</a> for the full list.</p>
+<h2>What we use MATT for</h2>
+<p>MATT is an all-rounder for automating or controlling parts of a scene. We use it for:</p>
+<ul>
+<li>Start and stop buttons that play and pause the player intro sequences.</li>
+<li>Click-based navigation on the Escalia world map.</li>
+<li>Mini soundboards on some scenes (for example Barovia Village, The Church).</li>
+<li>Placed buttons for traps, secret doors, or other clickable events.</li>
+<li>The navigation bar for the Curse of Strahd main menu.</li>
+</ul>
+<p>MATT can start animations, play sounds, jump to scenes, and much more. Covering every function here would be overwhelming, and a wiki page is the wrong format for it. To go deep, there are excellent video tutorials online. Below we walk through how we use MATT so you can build your own ideas on top.</p>
+<h2>How MATT works</h2>
+<p>Everything in MATT works through tiles. The Tile Configuration gains a new tab called <strong>Triggers</strong>. MATT runs on cause and effect: when a trigger defined in <strong>Setup</strong> is met (a click, a token entering the tile, or many other conditions), whatever is defined in <strong>Actions</strong> happens.</p>
+<img src="modules/beneos-module/assets/wiki/matt_a.webp" alt="Beneos intro start tile" />
+<p>In this example a tile is the start and stop button for the intro sequences. The intro is also a tile, and it only plays when you click the play button tile.</p>
+<p>Select <strong>Tile Controls</strong> in the left toolbar to click tiles on the canvas. Clicking our play button (a tile with a play-button image) lets us define under <strong>Triggers</strong> what should happen and when.</p>
+<img src="modules/beneos-module/assets/wiki/matt_b.webp" alt="MATT triggers tab" />
+<p>In <strong>Setup</strong> you define when the action runs. Here the tile only triggers when the GM clicks it.</p>
+<img src="modules/beneos-module/assets/wiki/matt_c.webp" alt="MATT actions tab" />
+<p>Under <strong>Actions</strong>, several actions are chained to a single click. MATT runs them top to bottom. Here: the tile holding the intro is reset so it starts from the beginning (Foundry has a quirk of starting webm videos at random positions), then the intro tile is started, then the clicked tile's image is swapped so the play button turns red and reads as a stop button next time, and finally a click sound plays as feedback for all players and the DM. The swap images are defined in the <strong>Images</strong> tab.</p>
+<img src="modules/beneos-module/assets/wiki/matt_d.webp" alt="MATT images tab" />
+<p>The Images tab collects the images MATT switches between. Here just two, start and stop, swapped each click. A technical note: the two images live under different file paths. When we pack a release, the second image is not exported and would be missing on download. So the second image ships inside the Beneos Module itself, which is always installed and therefore always available.</p>
+<p>That was one example. To build your own ideas, inspect the tiles we use to control intros, build soundboards, or trigger traps. With a little creativity you can make genuinely cool interactive effects. Foreground tiles can carry MATT triggers too, covered in our <a class="wikilink" data-page="dd-foreground-tiles">foreground tiles deep dive</a>.</p>

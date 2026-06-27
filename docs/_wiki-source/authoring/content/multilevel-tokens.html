@@ -1,0 +1,28 @@
+<blockquote><p><strong>Before you read:</strong> none of this is needed to use Beneos Battlemaps. Everything is set up for you and works out of the box. This deep dive is for anyone who wants to add Multilevel Tokens functions to their own maps, or is just curious how it works.</p></blockquote>
+<hr />
+<h2>What MLT does</h2>
+<p>Multilevel Tokens (MLT) is an old module that still works flawlessly. It teleports tokens from one place to another, letting player and DM creatures move independently between maps. Why MLT over newer modules that also teleport tokens? Because of how it works. MLT does not use Foundry IDs, it uses its own identifiers. That means, unlike Monks Active Tiles, we can link two releases even when they are not part of the same pack. Download Pack A, then later Pack B, and they work together automatically. With Monks Active Tiles you would have to download every map as one giant release or maintain every teleporter by hand, which is no fun across several thousand scenes. Trust us.</p>
+<h2>How MLT works</h2>
+<p>Everything in MLT works through drawings, shapes made with the Drawing Tool in the left toolbar. We call them MLT fields. Setting up and linking them is simple and error-free.</p>
+<img src="modules/beneos-module/assets/wiki/mlt_setup_a.webp" alt="MLT zone" />
+<p>With MLT active, a drawn shape's settings (Beneos always uses rectangles) gain a new tab called <strong>Multilevel</strong>. Set everything each teleporter needs here, per field. Tip: copy shapes with Ctrl+C and paste them onto other scenes.</p>
+<img src="modules/beneos-module/assets/wiki/mlt_setup_b.webp" alt="MLT settings" />
+<ol>
+<li><strong>Source or destination.</strong> MLT sends tokens from a source field to a destination field. Check <strong>Out</strong> to teleport from this field. Check <strong>In</strong> to teleport into it. Check both for two-way travel.</li>
+<li><strong>Teleport identifier.</strong> The core of MLT. Enter any text, but keep it logical. When a token leaves this field, the identifier points to the destination: the token goes to the other field with the same identifier. Only two fields should share an identifier. Three or more and MLT picks at random, which causes errors. In short, source and destination are paired by sharing an identifier.
+<ol>
+<li>The Beneos naming convention is <strong>ReleaseNumberA-MapNumberA_ReleaseNumberB-MapNumberB</strong> with leading zeros, smaller number on the left. For example 76-04_76-05, or 64-04_76-01.</li>
+</ol>
+</li>
+<li><strong>Activate via Map Node.</strong> With this on, the field stays inactive even when tokens enter it. Only a click on a journal icon inside the field triggers the teleport. This matters because MLT fields are usually invisible and players might otherwise change scenes by accident. So we put a unique journal icon on every field: it tells players they can leave the map here, and acts as the button if they choose to.</li>
+<li><strong>Token cloning.</strong> Rarer but neat. Cloning shows the tokens from another MLT field on the current surface (or the reverse) without teleporting them. Move a token on Map A and it also moves on Map B. Great for seeing first-floor tokens while you stand on the second. Source and destination fields share the same identifier as always. <strong>Source</strong> is the field tokens are displayed from (the first floor here), <strong>Target</strong> is where they show (the second floor).</li>
+</ol>
+<h2>Follow your players</h2>
+<p>When a player steps through a teleporter, you get a private chat card: who teleported, to which scene, and a <strong>View Scene</strong> button that jumps you right to them. No more wondering where the party wandered off to. It is on by default; toggle it under <strong>Notify GM on teleport</strong> in the module settings if you ever want it off.</p>
+<img src="modules/beneos-module/assets/wiki/shot_mlt-chat_1.webp" alt="The GM-only chat card showing a token teleported to a scene with a View Scene button">
+
+<h2>Add a teleport sound</h2>
+<p>Want players to hear something when they use a teleporter? Open the <strong>In</strong> field's Drawing Config, go to the <strong>Multilevel</strong> tab, and set a <strong>Teleport sound</strong>. It plays for the players who travel and for you when the teleport fires. A small touch that sells the moment.</p>
+<img src="modules/beneos-module/assets/wiki/shot_mlt-sound_1.webp" alt="The Teleport sound dropdown on the Multilevel tab of the Drawing Config">
+
+<p>For how this looks to players, see <a class="wikilink" data-page="player-navigation">Player navigation</a>. For DM-side scene jumps, see <a class="wikilink" data-page="poi-teleporter">POI Teleporter</a>.</p>

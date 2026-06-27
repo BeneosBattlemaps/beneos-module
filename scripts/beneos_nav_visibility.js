@@ -106,6 +106,58 @@ Hooks.once("init", () => {
   });
 });
 
+/* ------------------------------------------------------------------ */
+/*  "How to Use" note -> open the documentation wiki                   */
+/*                                                                     */
+/*  Every Beneos scene carries a journal map-note labelled "How to     */
+/*  Use" (icon icon_help.svg) with no linked journal. Clicking it,     */
+/*  left or right, opens the Beneos documentation in the Foundry       */
+/*  client language. POI Teleporter never touches this note because it */
+/*  has no journal reference, so there is no conflict.                 */
+/* ------------------------------------------------------------------ */
+
+const HOWTO_NOTE_LABEL = "How to Use";
+const HOWTO_NOTE_ICON = "icon_help.svg";
+
+function isHowToUseNote(note) {
+  const d = note?.document;
+  if (!d) return false;
+  if (d.text === HOWTO_NOTE_LABEL) return true;
+  const src = d.texture?.src ?? d.icon ?? "";
+  return typeof src === "string" && src.includes(HOWTO_NOTE_ICON);
+}
+
+let _howToWrapped = false;
+function registerHowToNoteHandler() {
+  if (_howToWrapped) return;
+  if (typeof libWrapper === "undefined") {
+    console.warn("[Beneos] libWrapper unavailable; 'How to Use' note handler skipped.");
+    return;
+  }
+  // CONFIG.Note.objectClass resolves to the active Note placeable class in
+  // both V13 and V14, so we wrap there rather than a namespace path.
+  const base = "CONFIG.Note.objectClass.prototype";
+  const open = function () {
+    try { game.beneos?.openWiki?.("overview"); }
+    catch (e) { console.warn("[Beneos] How-to note open failed:", e); }
+  };
+  for (const method of ["_onClickLeft", "_onClickRight", "_onClickLeft2", "_onClickRight2"]) {
+    try {
+      libWrapper.register(MODULE_ID, `${base}.${method}`, function (wrapped, ...args) {
+        if (isHowToUseNote(this) && typeof game.beneos?.openWiki === "function") {
+          open();
+          return;
+        }
+        return wrapped(...args);
+      }, "MIXED");
+    } catch (e) {
+      console.warn(`[Beneos] Could not wrap Note.${method} for the How-to handler:`, e);
+    }
+  }
+  _howToWrapped = true;
+}
+
 Hooks.once("ready", () => {
   updateHooks();
+  registerHowToNoteHandler();
 });

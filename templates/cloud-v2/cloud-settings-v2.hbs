@@ -89,6 +89,22 @@
       </div>
     </div>
 
+    {{!-- Documentation — opens the Beneos wiki window. --}}
+    <div class="bc-settings-row">
+      <div class="bc-settings-row-meta">
+        <div class="bc-settings-row-label">{{localize "BENEOS.Cloud.Settings.Documentation.Label"}}</div>
+        <div class="bc-settings-row-hint">{{localize "BENEOS.Cloud.Settings.Documentation.Hint"}}</div>
+      </div>
+      <div class="bc-settings-row-control">
+        <button type="button"
+                class="bc-card-button"
+                data-action="openDocumentation">
+          <i class="fa-solid fa-book-open"></i>
+          <span>{{localize "BENEOS.Cloud.Settings.Documentation.Action"}}</span>
+        </button>
+      </div>
+    </div>
+
     {{#if creatorMode}}
       {{!-- Dev: Test Personas. Simulates Patreon membership states
            without an actual login — used during V2 development to

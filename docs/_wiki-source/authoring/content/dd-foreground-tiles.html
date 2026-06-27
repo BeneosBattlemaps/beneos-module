@@ -1,0 +1,30 @@
+<blockquote><p><strong>Before you read:</strong> none of this is needed to use Beneos Battlemaps. Everything is set up for you and works out of the box. This deep dive is for anyone who wants to build the same sense of depth into their own maps, or is just curious how it works.</p></blockquote>
+<hr />
+<p>Unlike the other deep dives, foreground tiles need no companion module. They are part of FoundryVTT core, so everything here works out of the box.</p>
+<h2>What foreground tiles are</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_a.webp" alt="Foreground tile example" />
+<p>Ever wonder how tokens walk under trees, beams, or door frames? Foreground tiles. They are ordinary tiles placed <strong>over</strong> the tokens instead of under them. Tokens disappear behind anything that logically sits above them, which gives the scene real depth: a player walking under a gnarled branch, through a doorway, past an overhanging wall.</p>
+<p>To do this we manually cut out every object taller than the players and place it as a foreground image on top. Extra work, but it is a big part of what makes a Beneos map feel like a space rather than a flat picture.</p>
+<h2>Reaching foreground tiles</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_b.webp" alt="Access foreground tiles" />
+<p>To change or deactivate foreground tiles, click <strong>Tile Controls</strong> in the left toolbar. The foreground layer is hidden by default so you cannot click it by accident. Click the house icon and all foreground tiles become selectable like any other tile.</p>
+<p>Watch out: on some maps several foreground tiles overlap (up to eight in places, say a roof plus its door beams plus a wall section). Clicking always selects the top tile. To reach one underneath, move the top one aside, click the one below, then put it back. Tiles are often locked against accidental movement, so right-click a tile and click the small lock icon to unlock it first. Usually the foreground tile is exactly map-sized, which saves you juggling lots of small tiles.</p>
+<h2>Foreground tile settings</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_c.webp" alt="Foreground tile settings" />
+<p>With the foreground layer clickable via the house icon, double-click any tile to open its settings like a normal tile. You can hide a foreground tile from players, and attach automation with Monks Active Tile Trigger to run actions under certain conditions. More in our <a class="wikilink" data-page="dd-monks-active-tiles">Monks Active Tile Trigger deep dive</a>. Foreground tiles can be video files too, and partially transparent videos make lovely effects like waving treetops. Video tiles cost performance, so we use them sparingly. For keeping animated maps smooth, see <a class="wikilink" data-page="performance">Performance</a>.</p>
+<h3>Promoting a tile to the foreground</h3>
+<p>To turn a normal tile into a foreground tile, tick <strong>Is Overhead?</strong>. Note that ticking <strong>Is Roof?</strong> alone is not enough: that only affects how token sight range is calculated from a distance, not whether the tile renders above tokens.</p>
+<h3>Occlusion modes</h3>
+<p><strong>Occlusion Mode</strong> controls how a foreground tile behaves when a token moves underneath it. The four options:</p>
+<table>
+<thead>
+<tr><th>Mode</th><th>Behavior</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>None</strong></td><td>The tile is always displayed. Right for most cases.</td></tr>
+<tr><td><strong>Fade</strong></td><td>The whole tile fades out. Useful for a roof that should fade when tokens are under it.</td></tr>
+<tr><td><strong>Radial</strong></td><td>Keeps the tile shown and fades only a small area around the token, set with the Occlusion Alpha slider. The faded area is small and fixed, so the token can look like it sits on top of the tile rather than under it.</td></tr>
+<tr><td><strong>Vision</strong></td><td>Fades only the parts a token actually sees with active token vision. In practice players see the tile clearly only when it is in shadow, which is not very intuitive.</td></tr>
+</tbody>
+</table>
+<p>For how all of this fits into running a scene as the DM, see <a class="wikilink" data-page="dm-navigation">DM navigation</a>.</p>

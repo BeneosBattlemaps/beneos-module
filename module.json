@@ -27,7 +27,8 @@
 	  "css/beneos-sense-compass.css",
 	  "css/beneos-lgc.css",
 	  "css/beneos-creature-codex.css",
-	  "css/beneos-creature-installer.css"
+	  "css/beneos-creature-installer.css",
+	  "css/beneos-wiki.css"
   ],
   "esmodules": [
     "scripts/beneos-asset-path-repair.js",
@@ -46,7 +47,8 @@
 	"scripts/codex2/beneos-codex-init.mjs",
 	"scripts/lgc/beneos-lgc.mjs",
 	"scripts/codex2/item-companion.mjs",
-	"scripts/creature-installer/creature-installer.mjs"
+	"scripts/creature-installer/creature-installer.mjs",
+	"scripts/cloud-v2/wiki/beneos-wiki-window.mjs"
   ],
   "languages": [
     { "lang": "en",    "name": "English",                 "path": "lang/en.json" },

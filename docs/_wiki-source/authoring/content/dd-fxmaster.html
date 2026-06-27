@@ -1,0 +1,18 @@
+<blockquote><p><strong>Before you read:</strong> none of this is needed to use Beneos Battlemaps. Everything is set up for you and works out of the box. This deep dive is for anyone who wants to add FXMaster functions to their own maps, or is just curious how it works.</p></blockquote>
+<hr />
+<p>FXMaster is a companion module, not part of the Beneos Module, so make sure it is installed and active. See <a class="wikilink" data-page="requirements">Requirements</a> for the full list.</p>
+<h2>Change a map's weather and mood</h2>
+<p>FXMaster is the tool for changing how a map feels: rain, fog, embers, drifting leaves, a heavier sky. At heart it is a library of image and particle effects, configured and saved per scene. Our older releases especially (built on an older engine by a less experienced version of us) benefit from a layer of falling leaves, more contrast, or some fog and birds. FXMaster shapes a scene in post toward the look you imagined. You can completely change the mood of one map: blue fireflies plus a night filter turn a bright daytime forest into a Feywild, and heavy fog can make the same forest feel like the Svalich Woods from Curse of Strahd.</p>
+<h2>How to use FXMaster</h2>
+<p>Easy to reach, easy to use. With FXMaster active, a new icon appears in the left toolbar, the magic wand. The two settings you will use most are <strong>Particle Effects</strong> and <strong>Filter Effects</strong>, both saved per scene.</p>
+<h2>Particle Effects</h2>
+<img src="modules/beneos-module/assets/wiki/fx_master_a.webp" alt="FXMaster particle effects" />
+<p>This is everything that adds movement to the map. Each effect has settings like speed, density, color, and size. Send birds over the map, blow leaves in the wind, drop rain or snow onto the scene. The settings are mostly self-explanatory, so play around: it is a bit of trial and error.</p>
+<h2>Filter Effects</h2>
+<img src="modules/beneos-module/assets/wiki/fx_master_b.webp" alt="FXMaster filter effects" />
+<p>This is everything that changes the map itself. Adjust color, add lightning, or drop an underwater effect onto the scene. Many settings reward exploring, so try them and keep what you like.</p>
+<h2>Saving and reusing settings</h2>
+<img src="modules/beneos-module/assets/wiki/fx_master_c.webp" alt="FXMaster save settings" />
+<p>Configured a scene the way you want? The filter and particle effects apply to that scene only. To carry the look to another scene, you need a macro that stores the exact settings, and it takes one click. Use the floppy disk save icon and a new macro lands in your macro list with all the current scene's changes. Right-click the macro and give it a distinctive name, because FXMaster names every saved macro the same.</p>
+<p>Drag the macro onto your macro bar. Run it on a scene and all saved filters and particle effects apply. Delete it afterward if you no longer need it.</p>
+<p>To strip every effect from a scene, open the magic wand toolbar and use the small trash can icon at the bottom.</p>

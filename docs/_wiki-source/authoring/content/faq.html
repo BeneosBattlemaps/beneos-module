@@ -1,0 +1,39 @@
+<p>The most common questions about Beneos content, the module, and the systems around it. If your question is not here, our Discord is the fastest way to get an answer. See <a class="wikilink" data-page="bug-contact">bug report and contact</a>.</p>
+<h2>General</h2>
+<h3>Where can I go for help with Beneos content?</h3>
+<p>The Beneos Discord is the best place to find help. Search the FAQ and troubleshooting channels and you may find your answer right away. If not, post a question and we will help you out. The invite link is on the <a class="wikilink" data-page="bug-contact">bug report and contact</a> page.</p>
+<h3>I am very new to Foundry. How do I use all this cool stuff?</h3>
+<p>For general Foundry questions, the large collection of video guides online is a great start (search for how to use Foundry VTT and you will find many getting-started guides). For anything Beneos-specific, our Discord is the next stop. The <a class="wikilink" data-page="quickstart">quickstart</a> also walks you through your first steps with the module.</p>
+<h3>Why is some content locked?</h3>
+<p>Access depends on your Beneos account and whether it is linked to an active supporter status or a webshop purchase. Free and SRD content is available to everyone, while patron and shop content unlocks once your account is connected. See <a class="wikilink" data-page="account-linking">account linking</a> for how to connect everything, and <a class="wikilink" data-page="login-accounts">login and accounts</a> for signing in.</p>
+<h3>How do I update an installed asset?</h3>
+<p>When we release a new version of an asset, you reinstall it from the Beneos Cloud window and the newer files replace the old ones. See <a class="wikilink" data-page="installing-content">installing content</a> for the full process, and <a class="wikilink" data-page="cloud-window">the cloud window</a> for where the install button lives.</p>
+<h3>Where do I browse and install content?</h3>
+<p>Everything lives in the Beneos Cloud window inside Foundry, backed by your library. Browse there, then drag and drop or install what you need. See <a class="wikilink" data-page="library-overview">library overview</a> and <a class="wikilink" data-page="cloud-window">the cloud window</a>.</p>
+<h3>I imported scenes from a published adventure (like Curse of Strahd). Where is the written adventure text?</h3>
+<p>Due to copyright we cannot include the written adventures from Wizards of the Coast. If you own the adventure on D&D Beyond, you can legally import its text into your world using a module like D&D Beyond Importer.</p>
+<h2>Installing and Updating</h2>
+<h3>The Cloud window will not open.</h3>
+<p>Open the console with F12, click <strong>Console</strong>, then <strong>Errors</strong>, and see whether an error appears when you press the button. If so, report it on our Discord and we will sort it. The Cloud backend is hosted online, so it stays current and we can ship fixes without a module update. Also make sure you are <a class="wikilink" data-page="login-accounts">signed in</a>.</p>
+<h3>I imported content but I get a black screen or elements show a prominent exclamation mark.</h3>
+<p>This usually means the download timed out or hit an error, so Foundry cannot locate a file (a map background, handout, or icon). Delete the affected scenes and their handouts from the scene and journal sidebars, then install the content again. If it keeps happening, report it on our Discord and we will troubleshoot it with you. See <a class="wikilink" data-page="installing-content">installing content</a>.</p>
+<h2>On the Map</h2>
+<h3>A scenery fills the whole screen and I cannot move. Is that a bug?</h3>
+<p>No. Sceneries are meant to be cinematic, full-bleed views for a roleplay moment, not tactical maps, so there is nothing to move on. Jump back to the tactical version with the <a class="wikilink" data-page="poi-teleporter">battlemap teleporter</a> on the scene. <a class="wikilink" data-page="dm-navigation">DM navigation</a> covers the icons.</p>
+<h3>A journal teleporter sends me to the wrong scene.</h3>
+<p>The journal icon probably has no target journal assigned, or the same journal is assigned to more than one scene. You can relink it manually, and we would appreciate a quick report on Discord so we can fix it for everyone. See the <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporter</a> page for the step-by-step fix.</p>
+<h3>My player tokens teleport to a random or incorrect spot.</h3>
+<p>This points to a teleport area whose destination identifier is wrong. There should be exactly two teleporters sharing the same Teleport Identifier. If there are more, one is chosen at random; if there are none, it does nothing. See the <a class="wikilink" data-page="multilevel-tokens">Multilevel Tokens</a> page, and please report faulty teleporters on Discord.</p>
+<h3>My creatures and tokens disappear under trees or walls. What is happening?</h3>
+<p>That is by design. We cut out everything taller than the players and place it as a foreground image on top of the tokens, which gives the map a real sense of depth. These are foreground (overhead) tiles. To edit them, open Tile Controls and click the house icon first. For the full explanation see the <a class="wikilink" data-page="dd-foreground-tiles">foreground tiles deep dive</a>.</p>
+<h3>I see birds, fog, or rain on some maps. Can I stop them?</h3>
+<p>Many effects are baked into the video itself and cannot be changed. Some scenes also use the FXMaster module for extra filters and particle effects. To remove those, open the magic wand toolbar on the left and use the small trash can icon to clear all effects on the scene. See the <a class="wikilink" data-page="dd-fxmaster">FXMaster deep dive</a>.</p>
+<h3>Why is my intro not playing?</h3>
+<p>Intros are loopable and paused by default, because players often load onto a scene at different times. The DM starts the intro for everyone by clicking the start and pause tile at the bottom of the navigation, once all players have arrived. Make sure the Monks Active Tile Trigger module is installed and active. See the <a class="wikilink" data-page="dd-monks-active-tiles">Monks Active Tile Trigger deep dive</a>.</p>
+<h3>The map has lots of sounds. Where do they come from, and how loud are they?</h3>
+<p>Audio is placed as ambient sounds on the sound layer, which you reach from the left control menu, so you can adjust volume, mute, or remove sounds there. Each player and DM also sets their own volumes: the Playlist slider controls DM music, the Ambient slider controls map sounds and sequences, and the Interface slider controls door sound effects. See <a class="wikilink" data-page="ambience-sound">ambience and sound</a>.</p>
+<h2>Usage and Rights</h2>
+<h3>Can I use Beneos assets in monetized streams or videos?</h3>
+<p>Yes, without any issue. As a matter of fairness we ask for a verbal mention or an on-screen credit, and we love links to your games so we can share them on social media. For streams expecting 800 or more viewers, or videos expecting 100,000 or more views, please talk to us beforehand.</p>
+<h3>Can I redistribute Beneos content or offer it for download?</h3>
+<p>No, that is not permitted without a separate agreement. If you have an idea or want to use our content in a way that is not covered here, get in touch and we will talk it through. For the full terms see the <a class="wikilink" data-page="license">license</a> page.</p>

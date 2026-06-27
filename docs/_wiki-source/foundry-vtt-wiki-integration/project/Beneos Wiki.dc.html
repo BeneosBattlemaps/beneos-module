@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Signika:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  html,body{margin:0;height:100%;}
+  *{box-sizing:border-box;}
+  body{background:#050506;font-family:'Signika',sans-serif;}
+  .bn-scroll::-webkit-scrollbar{width:11px;}
+  .bn-scroll::-webkit-scrollbar-track{background:transparent;}
+  .bn-scroll::-webkit-scrollbar-thumb{background:rgba(198,154,92,.26);border-radius:6px;border:3px solid transparent;background-clip:padding-box;}
+  .bn-scroll::-webkit-scrollbar-thumb:hover{background:rgba(198,154,92,.5);background-clip:padding-box;}
+  .bn-input::placeholder{color:#8c836f;}
+  .bn-input:focus{border-color:rgba(212,178,114,.7);box-shadow:0 0 0 3px rgba(198,154,92,.10);}
+  .bn-body{color:#e3dccd;font-family:'Signika',sans-serif;font-size:16px;line-height:1.74;}
+  .bn-body > *:first-child{margin-top:0;}
+  .bn-body h1{font-family:'Cinzel',serif;font-size:27px;line-height:1.22;color:#f3ead2;font-weight:600;margin:1.7em 0 .55em;letter-spacing:.005em;}
+  .bn-body h2{font-family:'Cinzel',serif;font-size:20px;color:#efe3c9;font-weight:600;margin:1.8em 0 .6em;padding-bottom:.38em;border-bottom:1px solid rgba(198,154,92,.30);}
+  .bn-body h3{font-family:'Signika',sans-serif;font-size:16.5px;font-weight:700;color:#e6c98a;margin:1.5em 0 .35em;letter-spacing:.015em;}
+  .bn-body h4{font-family:'Signika',sans-serif;font-size:15px;font-weight:700;color:#d8c39a;margin:1.3em 0 .3em;}
+  .bn-body p{margin:.75em 0;}
+  .bn-body a{color:#e2ba6f;text-decoration:none;border-bottom:1px solid rgba(226,186,111,.38);cursor:pointer;transition:color .15s,border-color .15s;}
+  .bn-body a:hover{color:#f4d493;border-bottom-color:#f4d493;}
+  .bn-body a.wikilink{font-weight:600;}
+  .bn-body span.wikiref{color:#d8c39a;font-weight:600;}
+  .bn-body ul,.bn-body ol{margin:.65em 0 1em;padding-left:1.4em;}
+  .bn-body li{margin:.32em 0;}
+  .bn-body li::marker{color:#c69a5c;}
+  .bn-body strong{color:#f1e8d4;}
+  .bn-body em{color:#d7cdb6;}
+  .bn-body hr{border:none;border-top:1px solid rgba(198,154,92,.2);margin:1.7em 0;}
+  .bn-body img{display:block;max-width:min(100%,560px);height:auto;margin:1.3em auto;border-radius:9px;border:1px solid rgba(198,154,92,.26);box-shadow:0 8px 30px rgba(0,0,0,.55);}
+  .bn-body iframe{display:block;width:100%;max-width:640px;aspect-ratio:16/9;height:auto;margin:1.5em auto;border:1px solid rgba(198,154,92,.32);border-radius:9px;background:#000;}
+  .bn-body blockquote{margin:1.2em 0;padding:.85em 1.15em;background:rgba(198,154,92,.07);border-left:3px solid #c69a5c;border-radius:0 7px 7px 0;color:#cdc1a4;}
+  .bn-body blockquote p{margin:.3em 0;}
+  .bn-body table{width:100%;border-collapse:collapse;margin:1.2em 0;font-size:14.5px;}
+  .bn-body th,.bn-body td{border:1px solid rgba(198,154,92,.22);padding:9px 11px;vertical-align:top;text-align:left;}
+  .bn-body th{background:rgba(198,154,92,.08);color:#ecdfc4;font-family:'Cinzel',serif;font-size:12.5px;letter-spacing:.04em;}
+  .bn-body td hr{display:none;}
+  .bn-body td img{max-width:48px;margin:0 auto;border:none;box-shadow:none;border-radius:6px;}
+  .bn-body code{background:rgba(0,0,0,.4);padding:1px 6px;border-radius:4px;font-size:.88em;color:#e6c98a;}
+</style>
+<script src="wiki-data.js"></script>
+</helmet>
+<div data-screen-label="Beneos Wiki" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:26px;overflow:hidden;background:radial-gradient(130% 120% at 50% -10%, #14141b 0%, #07070a 62%, #040405 100%);font-family:'Signika',sans-serif;">
+
+  <sc-if value="{{ showBackdrop }}" hint-placeholder-val="{{ true }}">
+    <div style="position:absolute;inset:0;background-image:url(uploads/dm_ol_tile_c.webp);background-size:cover;background-position:center;filter:blur(8px) brightness(.3) saturate(.85);transform:scale(1.1);"></div>
+    <div style="position:absolute;inset:0;background:radial-gradient(120% 100% at 50% 38%, rgba(6,6,8,.4), rgba(3,3,4,.94));"></div>
+  </sc-if>
+
+  <div style="position:relative;width:min(1190px,96vw);height:min(910px,93vh);display:flex;flex-direction:column;background:linear-gradient(180deg,#16171c 0%,#0f1014 100%);border:1px solid rgba(198,154,92,.42);border-radius:13px;box-shadow:0 34px 100px rgba(0,0,0,.72),0 0 0 1px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.045);overflow:hidden;">
+
+    <div style="display:flex;align-items:center;gap:16px;height:57px;padding:0 16px;flex:0 0 auto;background:linear-gradient(180deg,#1f2026,#16171c);border-bottom:1px solid rgba(198,154,92,.32);">
+      <img src="uploads/beneos_logo_text.webp" alt="Beneos Battlemaps" style="height:21px;width:auto;filter:invert(1) brightness(1.7);opacity:.9;" />
+      <div style="flex:1;text-align:center;font-family:'Cinzel',serif;font-size:14px;font-weight:600;letter-spacing:.36em;color:#e8dab6;text-transform:uppercase;padding-left:.36em;">{{ T.doc }}</div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button onClick="{{ setDe }}" style="{{ deBtnStyle }}">DE</button>
+        <button onClick="{{ setEn }}" style="{{ enBtnStyle }}">EN</button>
+      </div>
+      <div style="width:1px;height:24px;background:rgba(198,154,92,.25);"></div>
+      <div title="Close" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:6px;color:#b6ac95;cursor:pointer;font-size:16px;transition:background .15s,color .15s;" style-hover="background:rgba(126,42,46,.45);color:#f1e4cd">✕</div>
+    </div>
+
+    <div style="flex:1;display:flex;min-height:0;">
+
+      <div style="flex:0 0 288px;display:flex;flex-direction:column;min-height:0;background:linear-gradient(180deg,#111218,#0c0d11);border-right:1px solid rgba(198,154,92,.22);">
+        <div style="padding:15px 14px 11px;flex:0 0 auto;">
+          <div style="position:relative;display:flex;align-items:center;">
+            <span style="position:absolute;left:11px;color:#8c836f;font-size:14px;pointer-events:none;">⌕</span>
+            <input class="bn-input" type="text" value="{{ query }}" onChange="{{ onSearch }}" placeholder="{{ T.search }}" style="width:100%;padding:9px 30px;background:#070709;border:1px solid rgba(198,154,92,.28);border-radius:7px;color:#e7e0d2;font-family:'Signika',sans-serif;font-size:13px;outline:none;transition:border-color .15s,box-shadow .15s;" />
+            <sc-if value="{{ searchMode }}" hint-placeholder-val="{{ false }}">
+              <span onClick="{{ clearSearch }}" style="position:absolute;right:9px;color:#9c917a;cursor:pointer;font-size:13px;" style-hover="color:#e2ba6f">✕</span>
+            </sc-if>
+          </div>
+        </div>
+
+        <div class="bn-scroll" style="flex:1;overflow-y:auto;padding:4px 10px 16px;min-height:0;">
+          <sc-if value="{{ navMode }}" hint-placeholder-val="{{ true }}">
+            <sc-for list="{{ groups }}" as="group" hint-placeholder-count="4">
+              <div style="margin:8px 0 17px;">
+                <div style="font-family:'Cinzel',serif;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#9a7c45;padding:0 4px 7px;border-bottom:1px solid rgba(198,154,92,.16);margin-bottom:6px;">{{ group.label }}</div>
+                <sc-for list="{{ group.items }}" as="item" hint-placeholder-count="3">
+                  <div onClick="{{ item.open }}" style="{{ item.style }}" style-hover="background:rgba(198,154,92,.09);color:#e7ddc9">
+                    <span style="{{ item.dotStyle }}"></span>
+                    <span style="flex:1;">{{ item.title }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </sc-if>
+
+          <sc-if value="{{ searchMode }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:7px 5px 10px;font-family:'Cinzel',serif;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:#9a7c45;">{{ resultCount }} {{ T.results }}</div>
+            <sc-for list="{{ results }}" as="r" hint-placeholder-count="4">
+              <div onClick="{{ r.open }}" style="padding:10px 11px;border-radius:8px;cursor:pointer;margin-bottom:6px;border:1px solid rgba(198,154,92,.12);background:rgba(255,255,255,.013);transition:background .15s,border-color .15s;" style-hover="background:rgba(198,154,92,.08);border-color:rgba(198,154,92,.32)">
+                <div style="display:flex;align-items:baseline;gap:8px;justify-content:space-between;">
+                  <span style="color:#ecdfc4;font-size:13.5px;font-weight:600;">{{ r.title }}</span>
+                  <span style="color:#8d7a4f;font-size:9px;font-family:'Cinzel',serif;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;">{{ r.cat }}</span>
+                </div>
+                <div style="color:#9b9483;font-size:11.5px;line-height:1.46;margin-top:4px;">{{ r.snippet }}</div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:20px 8px;color:#8c836f;font-size:13px;text-align:center;line-height:1.5;">{{ T.noresult }}<br />“{{ query }}”</div>
+            </sc-if>
+          </sc-if>
+        </div>
+
+        <div style="flex:0 0 auto;padding:11px 16px;border-top:1px solid rgba(198,154,92,.16);font-size:10.5px;letter-spacing:.05em;color:#6f6757;">beneos-battlemaps.com</div>
+      </div>
+
+      <div ref="{{ setMainRef }}" class="bn-scroll" style="flex:1;overflow-y:auto;min-height:0;position:relative;">
+        <sc-if value="{{ showCompass }}" hint-placeholder-val="{{ true }}">
+          <img src="uploads/beneos_compas.webp" alt="" style="position:absolute;top:-28px;right:-32px;width:232px;opacity:.05;filter:invert(1);pointer-events:none;user-select:none;" />
+        </sc-if>
+        <div style="max-width:824px;margin:0 auto;padding:42px 58px 72px;position:relative;">
+          <div style="font-family:'Cinzel',serif;font-size:11px;font-weight:700;letter-spacing:.17em;text-transform:uppercase;color:#9a7c45;margin-bottom:10px;">{{ currentCat }}</div>
+          <h1 style="font-family:'Cinzel',serif;font-size:33px;line-height:1.16;font-weight:700;color:#f4ead2;margin:0;letter-spacing:.008em;">{{ currentTitle }}</h1>
+          <div style="height:2px;width:66px;background:linear-gradient(90deg,#c69a5c,rgba(198,154,92,0));margin:15px 0 28px;"></div>
+          <div ref="{{ setBodyRef }}" class="bn-body"></div>
+          <div style="display:flex;gap:14px;align-items:flex-start;margin-top:48px;padding-top:22px;border-top:1px solid rgba(198,154,92,.18);">
+            <sc-if value="{{ hasPrev }}" hint-placeholder-val="{{ true }}">
+              <div onClick="{{ prevOpen }}" style="cursor:pointer;max-width:47%;">
+                <div style="font-family:'Cinzel',serif;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8d7a4f;">‹ {{ T.prev }}</div>
+                <div style="color:#dac9a4;font-size:13.5px;margin-top:4px;line-height:1.35;">{{ prevTitle }}</div>
+              </div>
+            </sc-if>
+            <div style="flex:1;"></div>
+            <sc-if value="{{ hasNext }}" hint-placeholder-val="{{ true }}">
+              <div onClick="{{ nextOpen }}" style="cursor:pointer;max-width:47%;text-align:right;">
+                <div style="font-family:'Cinzel',serif;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8d7a4f;">{{ T.next }} ›</div>
+                <div style="color:#dac9a4;font-size:13.5px;margin-top:4px;line-height:1.35;">{{ nextTitle }}</div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;startLang&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;en&quot;,&quot;de&quot;],&quot;default&quot;:&quot;en&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;showBackdrop&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;showCompass&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  state = { lang: 'en', activeKey: null, query: '', ready: false };
+
+  componentDidMount() {
+    this._plainCache = {};
+    this._wait(0);
+  }
+
+  _wait(n) {
+    const d = window.BENEOS_WIKI;
+    if (d && d.slots && d.slots.length) {
+      this.data = d;
+      let lang = (this.props.startLang === 'de' || this.props.startLang === 'en') ? this.props.startLang : 'en';
+      let activeKey = d.slots[0].key;
+      try {
+        const s = JSON.parse(localStorage.getItem('beneosWikiState') || '{}');
+        if (s.lang === 'en' || s.lang === 'de') lang = s.lang;
+        if (s.activeKey && d.slots.some(x => x.key === s.activeKey)) activeKey = s.activeKey;
+      } catch (e) {}
+      this.setState({ ready: true, lang, activeKey });
+      return;
+    }
+    if (n < 80) setTimeout(() => this._wait(n + 1), 50);
+  }
+
+  _save() {
+    try { localStorage.setItem('beneosWikiState', JSON.stringify({ lang: this.state.lang, activeKey: this.state.activeKey })); } catch (e) {}
+  }
+
+  componentDidUpdate() { this._renderBody(); }
+
+  _slot(key) { return this.data && this.data.slots.find(s => s.key === key); }
+  _L(slot) { return slot[this.state.lang]; }
+
+  open(key) { this.setState({ activeKey: key, query: '' }, () => this._save()); }
+  setLang(l) { if (l === this.state.lang) return; this.setState({ lang: l }, () => this._save()); }
+  onSearch(e) { this.setState({ query: e.target.value }); }
+  clearSearch() { this.setState({ query: '' }); }
+
+  _plain(slot) {
+    const k = slot.key + '|' + this.state.lang;
+    if (this._plainCache[k] != null) return this._plainCache[k];
+    const div = document.createElement('div');
+    div.innerHTML = this._L(slot).html;
+    const t = (div.textContent || '').replace(/\s+/g, ' ').trim();
+    this._plainCache[k] = t;
+    return t;
+  }
+
+  _renderBody() {
+    if (!this.bodyEl || !this.data || !this.state.ready) return;
+    const slot = this._slot(this.state.activeKey);
+    if (!slot) return;
+    const sig = this.state.activeKey + '|' + this.state.lang;
+    if (this._sig === sig) return;
+    this._sig = sig;
+    this.bodyEl.innerHTML = this._L(slot).html;
+    this.bodyEl.querySelectorAll('a.wikilink').forEach(a => {
+      a.onclick = (e) => { e.preventDefault(); const p = a.getAttribute('data-page'); if (p) this.open(p); };
+    });
+    this.bodyEl.querySelectorAll('img').forEach(img => {
+      img.onerror = () => { img.style.display = 'none'; };
+      img.loading = 'lazy';
+    });
+    if (this.mainEl) this.mainEl.scrollTop = 0;
+  }
+
+  renderVals() {
+    const lang = this.state.lang;
+    const T = ({
+      en: { doc: 'Documentation', search: 'Search the documentation\u2026', results: 'results', noresult: 'No articles found for', prev: 'Previous', next: 'Next' },
+      de: { doc: 'Dokumentation', search: 'Dokumentation durchsuchen\u2026', results: 'Treffer', noresult: 'Keine Artikel gefunden f\u00fcr', prev: 'Zur\u00fcck', next: 'Weiter' }
+    })[lang];
+
+    const base = {
+      T, query: this.state.query,
+      enBtnStyle: this._langBtn(lang === 'en'), deBtnStyle: this._langBtn(lang === 'de'),
+      setEn: () => this.setLang('en'), setDe: () => this.setLang('de'),
+      onSearch: (e) => this.onSearch(e), clearSearch: () => this.clearSearch(),
+      setBodyRef: (el) => { this.bodyEl = el; }, setMainRef: (el) => { this.mainEl = el; },
+      showBackdrop: this.props.showBackdrop !== false,
+      showCompass: this.props.showCompass !== false,
+      groups: [], searchMode: false, navMode: true, results: [], resultCount: 0, noResults: false,
+      currentTitle: '', currentCat: '',
+      hasPrev: false, hasNext: false, prevTitle: '', nextTitle: '', prevOpen: () => {}, nextOpen: () => {}
+    };
+
+    if (!this.state.ready || !this.data) return base;
+
+    const cats = this.data.categories;
+    const catLabel = (ck) => { const c = cats.find(x => x.key === ck); return c ? c[lang] : ''; };
+
+    const q = this.state.query.trim().toLowerCase();
+    base.searchMode = q.length > 0;
+    base.navMode = !base.searchMode;
+
+    base.groups = cats.map(c => ({
+      label: c[lang],
+      items: this.data.slots.filter(s => s.category === c.key).map(s => {
+        const active = s.key === this.state.activeKey;
+        return { key: s.key, title: this._L(s).title, open: () => this.open(s.key), style: this._itemStyle(active), dotStyle: this._dotStyle(active) };
+      })
+    })).filter(g => g.items.length);
+
+    if (base.searchMode) {
+      const res = [];
+      this.data.slots.forEach(s => {
+        const L = this._L(s);
+        if (L.search.indexOf(q) < 0) return;
+        const text = this._plain(s);
+        const lc = text.toLowerCase();
+        const i = lc.indexOf(q);
+        let snip;
+        if (i >= 0) { const st = Math.max(0, i - 38); snip = (st > 0 ? '\u2026 ' : '') + text.slice(st, i + q.length + 62).trim() + ' \u2026'; }
+        else { snip = text.slice(0, 96).trim() + ' \u2026'; }
+        res.push({ key: s.key, title: L.title, cat: catLabel(s.category), snippet: snip, open: () => this.open(s.key) });
+      });
+      base.results = res; base.resultCount = res.length; base.noResults = res.length === 0;
+    }
+
+    const slot = this._slot(this.state.activeKey);
+    if (slot) {
+      base.currentTitle = this._L(slot).title;
+      base.currentCat = catLabel(slot.category);
+      const idx = this.data.slots.indexOf(slot);
+      const prev = idx > 0 ? this.data.slots[idx - 1] : null;
+      const next = idx < this.data.slots.length - 1 ? this.data.slots[idx + 1] : null;
+      if (prev) { base.hasPrev = true; base.prevTitle = this._L(prev).title; base.prevOpen = () => this.open(prev.key); }
+      if (next) { base.hasNext = true; base.nextTitle = this._L(next).title; base.nextOpen = () => this.open(next.key); }
+    }
+    return base;
+  }
+
+  _itemStyle(a) {
+    return { display: 'flex', alignItems: 'center', gap: '9px', padding: '7px 10px 7px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '13.5px', lineHeight: '1.32', color: a ? '#f3e9d3' : '#a9a191', background: a ? 'linear-gradient(90deg,rgba(126,42,46,.42),rgba(126,42,46,.03))' : 'transparent', boxShadow: a ? 'inset 2px 0 0 0 #c69a5c' : 'inset 2px 0 0 0 transparent', transition: 'color .15s,background .15s' };
+  }
+  _dotStyle(a) {
+    return { flex: '0 0 auto', width: '5px', height: '5px', transform: 'rotate(45deg)', background: a ? '#d9b675' : '#544b3b', transition: 'background .15s' };
+  }
+  _langBtn(on) {
+    return { appearance: 'none', border: '1px solid ' + (on ? 'rgba(212,178,114,.85)' : 'rgba(198,154,92,.28)'), background: on ? 'linear-gradient(180deg,#cda45f,#9a753c)' : 'transparent', color: on ? '#1c1509' : '#c2b699', fontFamily: "'Cinzel',serif", fontSize: '11px', fontWeight: '700', letterSpacing: '.06em', padding: '4px 9px', borderRadius: '5px', cursor: 'pointer' };
+  }
+}
+</script>
+</body>
+</html>

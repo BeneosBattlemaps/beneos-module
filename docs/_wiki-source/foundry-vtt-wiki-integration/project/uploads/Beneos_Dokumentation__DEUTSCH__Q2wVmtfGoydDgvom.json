@@ -1,0 +1,666 @@
+{
+  "name": "Beneos Dokumentation [DEUTSCH]",
+  "folder": "vAmuv64c93yFJnhm",
+  "sort": 100000,
+  "flags": {
+    "core": {},
+    "scene-packer": {
+      "hash": "701fd2503f68fa92542e722a26fd387e36f30f6a",
+      "sourceId": "JournalEntry.Tyfbw9TdTeDYTLPp",
+      "moulinette-adventure-name": "Beneos Battlemap test",
+      "moulinette-adventure-version": "1.0.0"
+    }
+  },
+  "pages": [
+    {
+      "name": "ÜBERSICHT",
+      "type": "text",
+      "title": {
+        "show": false,
+        "level": 1
+      },
+      "text": {
+        "format": 1,
+        "content": "<h1><span style=\"font-family:Modesto Condensed\">danke für deine unterstützung!</span></h1><p><span style=\"font-family:Söhne, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Noto Sans', sans-serif, 'Helvetica Neue', Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'\"><strong>Dein Beitrag macht Beneos Battlemaps und Beneos Tokens möglich. Wir freuen uns, Dir hochwertige Foundry VTT Karten und Szenerien zu liefern, die sowohl das Erlebnis der Spielleitenden, als auch der Spieler durch einzigartige Interaktivität bereichern.</strong></span></p><iframe width=\"560\" height=\"315\" src=\"https://www.youtube.com/embed/PKQcASt09RE?si=zt_6IFzRA7cpcFgc\" title=\"YouTube video player\"></iframe><h3><strong>BEVOR DU LOS LEGST, STELLE SICHER, DASS DU ALLE MODULE INSTALLIERT UND AKTIVIERT HAST!</strong></h3><ul><li><a href=\"https://foundryvtt.com/packages/beneos-module\">Beneos Module</a></li><li><a href=\"https://github.com/ghost-fvtt/fxmaster\" title=\"FXMaster\">FXMaster</a></li><li><a href=\"https://localhost:30000/https//foundryvtt.com/packages/lib-wrapper\">libwrapper</a></li><li><a href=\"https://localhost:30000/https//github.com/CDeenen/LockView\">Lock View</a></li><li><a href=\"https://github.com/ironmonk88/monks-active-tiles/\" title=\"Monks Active Tile Triggers\">Monks Active Tile Triggers</a></li><li><a href=\"https://localhost:30000/https//foundryvtt.com/packages/moulinette-core\">Moulinette Core</a></li><li><a href=\"https://localhost:30000/https//foundryvtt.com/packages/moulinette-SCes\">Moulinette Scenes</a></li><li style=\"text-align:left\"><a href=\"https://localhost:30000/https//github.com/grandseiken/foundryvtt-multilevel-tokens\" target=\"_blank\" rel=\"noopener\">Multi-Level Tokens</a></li><li><a href=\"https://localhost:30000/https//github.com/zeel01/poi-teleport\">Point of Interest Teleporter</a></li></ul><p><strong>ALLE DIESE MODULE MÜSSEN INSTALLIERT UND AKTIVIERT SEIN, BEVOR DU FORTFÄHRST.</strong></p><p></p><h3><strong>ENGLISH DOCUMENTATION</strong></h3><ul><li><p>@UUID[JournalEntry.Q5xvdypjD1tGOro5]{Beneos Documentation [ENGLISH]}</p></li></ul><p></p><h3><strong>ALLGEMEINE INFORMATIONEN</strong></h3><ul><li><p>@UUID[.SZhcLPv1tALRS1cF]{1. VIDEO LEITFADEN}</p></li><li><p>@UUID[.yNchfgseQzjDTBMR]{2. SPIELLEITER NAVIGATION &amp; STEUERUNG}</p></li><li><p>@UUID[.NzMxwvwPt1uN1owI]{3. SPIELER NAVIGATION &amp; STEUERUNG}</p></li><li><p>@UUID[.2jBuYOPMC7KXFqnr]{4. BENEOS SUCHMASCHINE}</p></li><li><p>@UUID[.Rl1q5fBbCPagzIyQ]{5. BENEOS TOKENS, ZAUBER UND ITEMS}</p></li><li><p>@UUID[.sUE7ybHYYg4ApV8d]{6. INSTALLIERE SHOP INHALTE}</p></li><li><p>@UUID[.2AWTN5FvnJopnqW1]{7. ÜBER BENEOS}</p></li></ul><p></p><h3><strong>FEHLERBEHEBUNG</strong></h3><ul><li><p>@UUID[.9d9JVLPDlzTVB4eF]{8. F.A.Q.}</p></li><li><p>@UUID[.UA1mI9upQAxhyupZ]{9. BUG REPORT &amp; KONTAKT}</p></li></ul><p></p><h3><strong>WEITERFÜHRENDE INFORMATIONEN</strong></h3><ul><li><p>@UUID[.SLCZbPelOrCWInbl]{DEEP DIVE: LOCK VIEW}</p></li><li><p>@UUID[.HBHLui4WLYFWpPbt]{DEEP DIVE: FX MASTER}</p></li><li><p>@UUID[.Bk4Zxjh1k8viPMYd]{DEEP DIVE: MONKS ACTIVE TILE TRIGGER}</p></li><li><p>@UUID[.2roSnOsTjhv2827I]{DEEP DIVE: MULTILEVEL TOKENS}</p></li><li><p>@UUID[.lOPwk7kOLJPo3Ymf]{DEEP DIVE: POI TELEPORTER}</p></li></ul><p></p><h3><strong>LIZENZ UND RECHTLICHES</strong></h3><ul><li><p>@UUID[.Mm5caYanijVs0AyX]{LANGWEILIGER KRAM (Lizenz und Rechtliches)}</p></li></ul>",
+        "markdown": ""
+      },
+      "_id": "mIGixy2OXWghLxh5",
+      "image": {},
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "sort": 100000,
+      "ownership": {
+        "default": -1
+      },
+      "flags": {},
+      "_stats": {
+        "systemId": "dnd5e",
+        "systemVersion": "2.4.1",
+        "coreVersion": "13.351",
+        "createdTime": null,
+        "modifiedTime": 1706694429546,
+        "lastModifiedBy": "ZBYX4B1Ai6kvIouY",
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null
+      },
+      "category": null,
+      "_key": "!journal.pages!Q2wVmtfGoydDgvom.mIGixy2OXWghLxh5"
+    },
+    {
+      "sort": 300000,
+      "name": "2. SPIELLEITER NAVIGATION & STEUERUNG",
+      "type": "text",
+      "_id": "yNchfgseQzjDTBMR",
+      "title": {
+        "show": true,
+        "level": 1
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr /><p></p><p>Beneos Battlemaps' herausragendes Merkmal ist seine miteinander verbundenen Karten. Anstatt einzelne Karten anzubieten, verknüpfen wir verschiedene Orte. Viele unserer Veröffentlichungen enthalten mehrere Karten für einen einzigen Ort, alle verbunden mit einer Übersichtskarte. Als Spielleiter kannst du nahtlos von einer Karte zu ihrer entsprechenden Szenerie oder einer Vogelperspektive mit der Übersichtsszene wechseln. Das \"Point of Interest Teleporter\" Modul in Foundry erleichtert diese Navigation. Wir haben alles im Voraus für dich eingerichtet, also wird dieser Leitfaden die verschiedenen Interaktionsmöglichkeiten erklären. Wenn du neugierig auf das Modul selbst bist und deine eigenen Links erstellen möchtest, gibt es unten einen tiefgehenden Abschnitt, aber das ist optional.</p><p></p><p><strong>Hinweis</strong>: Alle hier erwähnten Icons sind für Spieler unsichtbar. Sie sind ausschließlich für Spielleiter, um die Navigation ohne technisches Know-how zu unterstützen.</p><p></p><h2>Navigation mit dem Point of Interest Teleporter</h2><p>Karten haben platzierte Journaleinträge. Ein Rechtsklick bietet zwei Optionen für Spielleiter::</p><ul><li>\"View Scene\" \"View Scene\" wechselt nur den Spielleiter zur Zielszene.</li><li>\"Activate Scene\" bewegt alle aktiven Spieler zur Zielszene.</li></ul><p></p><h2>Mache Journal-Icons auf deinen Szenen für die Spielleitung sichtbar</h2><p>Wenn du keine Journal-Icons auf deinen Karten sehen kannst, stelle sicher, dass sie sichtbar sind! Dazu gehst du zur FoundryVTT Toolbar auf der linken Seite, klickst auf das Banner-Icon und dann auf das Stecknadel-Icon mit der Bezeichnung \"Toggle Notes Display\". Dadurch werden alle Journal-Icons dauerhaft sichtbar.</p><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/navigation_activate_journals.webp\" alt=\"Activate Journal Entries on your Map\" width=\"200\" height=\"403\" /><p></p><p></p><h2>Icon Bedeutungen</h2><table><tbody><tr><td data-colwidth=\"294\"><hr /></td><td data-colwidth=\"654\"><hr /></td></tr><tr><td data-colwidth=\"294\"><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/icon_overview.svg\" alt=\"Overview Map Icon\" width=\"128\" height=\"128\" /><p></p></td><td data-colwidth=\"654\"><blockquote><h3><strong>ÜBERSICHTSKARTE</strong></h3></blockquote><ul><li><p>Führt zur Hauptübersichtskarte des derzeitigen Releases.</p></li></ul></td></tr><tr><td data-colwidth=\"294\"><hr /></td><td data-colwidth=\"654\"><hr /></td></tr><tr><td data-colwidth=\"294\"><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/icon_region_map.svg\" alt=\"Regional Map Icon\" width=\"128\" height=\"128\" /></td><td data-colwidth=\"654\"><blockquote><h3><strong>REGIONALE KARTE</strong></h3></blockquote><ul><li><p>Führt zur spezifischen Region oder das Königreich innerhalb von Beneos' weitläufiger Fantasywelt Escalia hervor. Diese Karte bietet Kontext, ob es sich um ein Königreich oder eine spezifische Region wie Barovia handelt.</p></li></ul></td></tr><tr><td data-colwidth=\"294\"><hr /></td><td data-colwidth=\"654\"><hr /></td></tr><tr><td data-colwidth=\"294\"><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/icon_worldmap.svg\" alt=\"World Map Icon\" width=\"128\" height=\"128\" /></td><td data-colwidth=\"654\"><blockquote><h3><strong>WELTKARTE</strong></h3></blockquote><ul><li><p>Ein Tor zurück zur globalen Karte, bietet Sprünge zu Kontinenten oder Königreichen. Diese Karte nutzt auch das \"Monks Active Tile Triggers\" Modul. Denke daran, alle Module aktiv zu halten für ein reibungsloses Erlebnis!</p></li></ul></td></tr><tr><td data-colwidth=\"294\"><hr /></td><td data-colwidth=\"654\"><hr /></td></tr><tr><td data-colwidth=\"294\"><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/icon_handout.svg\" alt=\"Handout Icon\" width=\"128\" height=\"128\" /></td><td data-colwidth=\"654\"><blockquote><h3><strong>OPTIONALE SPIELER-HANDOUTS</strong></h3></blockquote><ul><li><p>Doppelklick zum Anzeigen einer immersiven Aufnahme der aktuellen Karte. Diese sind optional für Spielleiter und können verwendet werden, um story-relevante Aspekte hervorzuheben.</p></li></ul></td></tr><tr><td data-colwidth=\"294\"><hr /></td><td data-colwidth=\"654\"><hr /></td></tr><tr><td data-colwidth=\"294\"><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/icon_scenery.svg\" alt=\"Scenery Icon\" width=\"128\" height=\"128\" /></td><td data-colwidth=\"654\"><blockquote><h3><strong>SCENERY</strong></h3></blockquote><ul><li><p>Bringt dich zu einer immersiven, cinematischen Ansicht der aktuellen Battlemap, ideal für Rollenspielmomente.</p></li></ul></td></tr><tr><td data-colwidth=\"294\"><hr /></td><td data-colwidth=\"654\"><hr /></td></tr><tr><td data-colwidth=\"294\"><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/icon_battlemap.svg\" alt=\"Battlemap Icon\" width=\"128\" height=\"128\" /></td><td data-colwidth=\"654\"><blockquote><h3><strong>BATTLEMAP</strong></h3></blockquote><ul><li><p>Wechselt zur taktischen Ansicht der aktuellen Szenerie, nützlich für Kampf oder tiefergehende Erkundung.</p></li></ul></td></tr><tr><td data-colwidth=\"294\"><hr /></td><td data-colwidth=\"654\"><hr /></td></tr><tr><td data-colwidth=\"294\"><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/icon_help.svg\" alt=\"Help Icon\" width=\"128\" height=\"128\" /></td><td data-colwidth=\"654\"><blockquote><h3><strong>HILFE</strong></h3></blockquote><ul><li><p>Verlinkt zurück zu diesem Leitfaden.</p></li></ul></td></tr><tr><td data-colwidth=\"294\"><hr /></td><td data-colwidth=\"654\"><hr /></td></tr><tr><td data-colwidth=\"294\"><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/icon_intro.svg\" alt=\"Help Icon\" width=\"128\" height=\"128\" /></td><td data-colwidth=\"654\"><blockquote><h3><strong>SPIELER-INTRO</strong></h3></blockquote><ul><li><p>Bietet speziell produzierte Videosequenzen für eine immersive Einführung in eine Szene (falls verfügbar).</p></li></ul></td></tr><tr><td data-colwidth=\"294\"><hr /></td><td data-colwidth=\"654\"><hr /></td></tr><tr><td data-colwidth=\"294\"><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/beneos_compas.webp\" alt=\"COMPASS Icon\" width=\"64\" height=\"64\" /></td><td data-colwidth=\"654\"><blockquote><h3><strong>KOMPASS</strong></h3></blockquote><ul><li><p>Helps orientate on battlemaps and sceneries, especially when sceneries offer different perspectives.</p></li></ul></td></tr><tr><td data-colwidth=\"294\"><hr /></td><td data-colwidth=\"654\"><hr /></td></tr><tr><td data-colwidth=\"294\"><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/icon_move.svg\" alt=\"DM Navigator Icon\" width=\"128\" height=\"128\" /></td><td data-colwidth=\"654\"><blockquote><h3><strong>DM NAVIGATOR</strong></h3></blockquote><ul><li><p>Diese Icons, platziert an den Rändern der Battlemaps, zeigen die Richtung der Zielszene an und geben einen Sinn für die Richtung und helfen, die Umgebung zu verstehen.</p></li></ul></td></tr><tr><td data-colwidth=\"294\"><hr /></td><td data-colwidth=\"654\"><hr /></td></tr><tr><td data-colwidth=\"294\"><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/icon_information.webp\" alt=\"DM Navigator Icon\" width=\"64\" height=\"64\" /></td><td data-colwidth=\"654\"><blockquote><h3><strong>INFO</strong></h3></blockquote><ul><li><p>Einige Karten kommen mit zusätzlichen Tipps oder Informationen für den Spielleiter, immer in der oberen linken Ecke platziert..</p></li></ul></td></tr><tr><td data-colwidth=\"294\"><hr /></td><td data-colwidth=\"654\"><hr /></td></tr></tbody></table><p></p><h2>Vordergrun-Tiles</h2><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/dm_ol_tile_a.webp\" alt=\"Overlay Tile Example\" /><p>Wenn du dich je gefragt hast, wie ich ein Gefühl von Tiefe in den Karten erreiche, wo man unter Bäumen oder Türen hindurchgehen kann, dann liegt das an Vordergrund-Tiles. Diese sind im Prinzip normale Tiles, aber sie liegen ÜBER, nicht unter, den Tokens (oder Actors, in Foundry-Sprache). So vermitteln Vordergrundschicht-Tiles wunderbar Tiefe, weil Tokens hinter Wänden verschwinden und unter allem hindurchgehen, was logisch über ihnen in der Kartenanordnung liegt. Vordergrundschichten sind Teil des FoundryVTT Core, also ist kein Modul nötig.</p><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/dm_ol_tile_b.webp\" alt=\"Acces Foreground Layer Tiles\" /><p>Wenn du Vordergrundschichten ändern oder deaktivieren möchtest, klicke auf \"Tile Controls\" in deiner Toolbar auf der linken Seite. Standardmäßig ist die Vordergrundschicht versteckt und kann nicht versehentlich angeklickt werden. Um dies zu ändern, klicke auf das Haussymbol, und alle Vordergrundschicht-Tiles werden konfigurierbar wie jedes andere Tile. Achte nur darauf, dass du immer nur auf das Tile klickst, das hierarchisch oben liegt. Tiles darunter (die auf einigen Karten bis zu 8 sein können) können erst angeklickt werden, wenn du das oben liegende zur Seite schiebst. In den meisten Fällen ist das Vordergrundschicht-Tile genauso groß wie die eigentliche Karte, sodass du nicht zahlreiche kleine Tiles auf der Karte verteilt hast.</p><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/dm_ol_tile_c.webp\" alt=\"Foreground Layer Settings\" /><p>Wenn Vordergrundschicht-Tiles über das Haussymbol anklickbar sind, kannst du die Einstellungen mit einem Doppelklick öffnen, wie bei jedem Tile. Du kannst auch Overlay-Tiles unsichtbar schalten, damit Spieler sie nicht sehen können, oder Module wie Monks Active Tile Triggers verwenden, um automatisiert (Wenn-&gt;Dann) unter bestimmten Bedingungen zu aktivieren. Mehr zu MATT findest du in unserem DEEP DIVE: MONKS ACTIVE TILE TRIGGER. Übrigens können Vordergrundschicht-Tiles auch Videodateien sein. Wenn sie teilweise durchsichtig sind, können sie coole Effekte erzeugen, wie wehende Bäume (oder ähnliches). Natürlich erhöht dies auch die Leistungsanforderungen, daher setzen wir sie sehr sparsam und bedacht ein.</p><p>Die Einstellungen für Vordergrundschicht-Tiles geben dir alles, was du brauchst. Hier kannst du auch ein normales Tile zu einem Vordergrundschicht-Tile \"befördern\", indem du das Kästchen \"Is Overhead?\" aktivierst. Nur \"Is Roof?\" allein reicht nicht; diese Einstellung betrifft nur, wie die Sichtweite von Tokens aus der Ferne berechnet wird. Der \"Occlusion Mode\" ist ebenfalls interessant.</p><ul><li>None: Das Tile wird IMMER angezeigt, was für die meisten Anwendungen richtig ist.</li><li>Fade: Das gesamte Tile blendet aus, nützlich, wenn das Vordergrundschicht-Tile ein Dach ist, das ausblendet, wenn Tokens darunter sind.</li><li>Radial: Im Prinzip ein cooles Feature, weil es das Vordergrundschicht-Tile konstant anzeigt und nur um das Token herum einen kleinen Bereich ausblendet oder basierend auf dem \"Occlusion Alpha\"-Regler mehr oder weniger transparent macht. Leider ist die Verdeckung um das Token so klein und unveränderlich, dass es oft so aussieht, als würde das Token AUF dem Vordergrundschicht-Tile und nicht darunter sein.</li><li>Vision: Diese Einstellung blendet nur die Teile des Vordergrundschicht-Tiles aus, die von einem Token mit aktiver \"Token Vision\" gesehen werden. Das bedeutet, Spieler sehen das Vordergrundschicht-Tile eigentlich nur, wenn es im Sichtschatten liegt. Nicht sehr intuitiv.</li></ul><p></p><h2>Wie steuere ich die Umgebungs- und Türgeräusche auf den Karten</h2><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/dm_sound.webp\" alt=\"Sound Controls\" /><p>Das ist ziemlich einfach. Wichtig ist, dass du nicht festlegen kannst, wie laut Dinge für deine Spieler sind; jeder Spieler muss dies für sich selbst einstellen. Dies wird im \"Playlist\"-Tab in deiner Navigationsleiste oben rechts gesteuert.</p><ul><li><p>Der <strong>Playlist</strong>-Regler passt die Lautstärke der Musik an, die der DM in Foundry abspielt.</p></li><li><p>Der wichtigste Regler ist der \"<strong>Ambient</strong>\"-Regler. Er regelt die Lautstärke der Intros, der Karten-Sounds und der Klickgeräusche auf einigen Karten mit interaktiven Funktionen.</p></li><li><p>Der \"<strong>Interface</strong>\"-Regler regelt die Lautstärke der Türgeräusche auf den Karten. Wenn du findest, dass das Öffnen der Türen zu laut ist, stelle einfach den Interface-Regler leiser.</p></li></ul><p></p><hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr />",
+        "markdown": ""
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1,
+        "ZBYX4B1Ai6kvIouY": 3
+      },
+      "flags": {},
+      "_stats": {
+        "systemId": "dnd5e",
+        "systemVersion": "2.4.1",
+        "coreVersion": "13.351",
+        "createdTime": 1692781542616,
+        "modifiedTime": 1706646413536,
+        "lastModifiedBy": "ZBYX4B1Ai6kvIouY",
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null
+      },
+      "category": null,
+      "_key": "!journal.pages!Q2wVmtfGoydDgvom.yNchfgseQzjDTBMR"
+    },
+    {
+      "sort": 400000,
+      "name": "3. SPIELER NAVIGATION & STEUERUNG",
+      "type": "text",
+      "_id": "NzMxwvwPt1uN1owI",
+      "title": {
+        "show": true,
+        "level": 1
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr /><p></p><p>Nicht nur Spielleiter können von einer Karte zur anderen wechseln. Spieler, oder genauer gesagt ihre Charakter-Akteure, können sich ebenfalls eigenständig von einer Karte zur anderen bewegen. Dies ist an spezifischen Punkten auf der Karte möglich und kann von den Spielern selbst durchgeführt werden. Diese Funktionalität wird hauptsächlich durch das Foundry-Modul \"Multi Level Tokens\" realisiert. Stelle sicher, dass das Modul in deiner Welt installiert und aktiviert ist. Die Nutzung für Spieler ist super einfach. Wenn du mehr über die Technik dahinter erfahren möchtest oder deine eigenen MLT-Navigatoren platzieren möchtest, lies den MLT Deep Dive durch. Aber das ist nicht notwendig, da wir alles für dich vorbereitet haben.</p><p></p><h2>MULTI LEVEL TOKENS</h2><p>Das MLT-Modul verbindet zwei Orte miteinander: einen Ursprung und ein Ziel. Es verwendet einfache Rechteckformen, die in der Text-Toolbar auf der linken Seite zu finden sind. Innerhalb dieser Rechteckform haben wir die \"Adresse\" vorkonfiguriert, zu der dieser sogenannte Spieler-Teleporter führt. Auf jedem Spieler-Teleporter-Feld, das nur Spielleiter sehen können, befindet sich immer ein Journal-Icon. Sobald ein Spieler auf eines klickt, wird sein Charakter-Token vom \"Ursprung\" zum \"Ziel\" \"teleportiert\", und die Szene ändert sich nur für diesen Spieler. Wenn der Spielleiter auf ein Journal-Icon in einer Teleporter-Zone klickt, werden ALLE Tokens, egal ob Spieler- oder Nichtspieler-Akteure, teleportiert. So einfach ist das.</p><p>Als Spielleiter bist du natürlich nicht verpflichtet, deine Spieler frei herumwandern zu lassen, aber es kann spannende und narrativ packende Erkundungen fördern. Es ist ratsam, dass der Spielleiter den Überblick behält, wo sich jeder Spieler befindet, und es ist auch ein Zeichen des Respekts, wenn Spieler im Voraus ankündigen, dass sie die Szene wechseln, um dem Spielleiter die Gelegenheit zu geben, den neuen Ort angemessen zu beschreiben. Es gibt zwei Arten von Journal-Icons, um die Teleporter zu steuern.</p><p>Wenn du mehr erfahren möchtest, siehe: @UUID[.6OQqnXClZ5J71YSf]{DEEP DIVE: MLT TELEPORTER}</p><p></p><h2>Bedeutung der Icons</h2><table><tbody><tr><td data-colwidth=\"181\"><hr /></td><td><hr /></td></tr><tr><td data-colwidth=\"181\"><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/icon_leave.svg\" alt=\"Player Navigation Icon\" width=\"256\" height=\"256\" /></td><td><blockquote><h3><strong>SPIELER-NAVIGATOR</strong></h3></blockquote><ul><li><p>Dies ist das Standard-Icon, das alle Spieler sehen, wenn sie nahe genug herankommen. Spieler können dieses Icon nicht durch Wände sehen; sie müssen zuerst den Ausgang der Szene erreichen, um damit zu interagieren. Wenn ein Spieler auf das Icon klickt, während ein von ihm kontrolliertes Charakter-Token in der (für den Spieler unsichtbaren) MLT-Zone ist, wird der Charakter zum Ziel teleportiert, und die Szene ändert sich nur für diesen Spieler.</p></li></ul></td></tr><tr><td data-colwidth=\"181\"><hr /></td><td><hr /></td></tr><tr><td data-colwidth=\"181\"><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/icon_secret_leave.svg\" alt=\"Hidden DM Navigator\" width=\"128\" height=\"128\" /></td><td><blockquote><h3><strong>VERSTECKTER DM-NAVIGATOR</strong></h3></blockquote><ul><li><p>Dieses Icon macht genau dasselbe wie der Spieler-Teleporter, mit dem Unterschied, dass dieses Icon für Spieler völlig unsichtbar ist und nicht von ihnen verwendet werden kann. Es dient dazu, nicht offensichtliche Pfade, wie geheime Türen oder andere Wege (die später entdeckt oder geöffnet werden sollen), zu nutzen, um die Szene zu verlassen. Wenn der Spielleiter glaubt, dass die Spieler weiterziehen können, kann er auf das DM-Navigator-Icon klicken, und wie beim Spieler-Navigator werden die Spieler zum Ziel teleportiert. Das ist großartig für Fallen, freigeräumte Pfade, geknackte Türen und so weiter.</p></li></ul></td></tr><tr><td data-colwidth=\"181\"><hr /></td><td><hr /></td></tr></tbody></table><p></p><h2>Entscheide, welche Journal-Icons Spieler auf der Karte sehen können</h2><p>Spieler können nur das Journal-Icon auf der Karte sehen, das ihnen individuell oder allen Spielern freigegeben wurde. Wenn beispielsweise 5 Journal-Icons auf der Karte platziert sind, aber jedes Journal, auf das die Icons verweisen, nur einem bestimmten Spieler freigegeben wurde, dann sieht jeder Spieler nur das freigegebene. Auf diese Weise kannst du Spielern erlauben, auf ihre individuellen Notizen zuzugreifen, die nur für sie sichtbar sind, oder die DM-Navigation von der Spieler-Navigation zu trennen.</p><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/dm_journal_permission.webp\" alt=\"Change Journal Permission\" /><p>Um die Berechtigung für ein Journal zu ändern, mach es genauso, wie du es für ein Token (= Actor) tun würdest. Gehe über den Journal-Browser via \"Journal\" in der oberen rechten Navigationsleiste. Rechtsklicke auf das Journal, das du einem oder mehreren Spielern freigeben möchtest, und wähle \"Configure Ownership.\" Mit \"All Players\" kannst du die Berechtigung allen in der Welt angelegten Spielern geben (Spielleiter sind ausgeschlossen). Darunter kannst du jedem Spieler individuelle Regeln setzen. Normalerweise gibst du dem Spieler, der das alleinige Recht haben soll, die Berechtigung und lässt die anderen unverändert.</p><ul><li><strong>Owner</strong>: Gewährt den Spielern vollständige Lese- und Bearbeitungsrechte.</li><li><strong>Observer</strong>: Spieler können das Journal sehen, aber nicht bearbeiten.</li><li><strong>None</strong>: Spieler können das Journal weder bearbeiten noch sehen. Das ist die Standardeinstellung für alle DM-Navigations-Journale, wie den Point of Interest Teleporter.</li></ul><p></p><hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr />",
+        "markdown": ""
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1,
+        "ZBYX4B1Ai6kvIouY": 3
+      },
+      "flags": {},
+      "_stats": {
+        "systemId": "dnd5e",
+        "systemVersion": "2.4.1",
+        "coreVersion": "13.351",
+        "createdTime": 1692784748063,
+        "modifiedTime": 1706618615374,
+        "lastModifiedBy": "ZBYX4B1Ai6kvIouY",
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null
+      },
+      "category": null,
+      "_key": "!journal.pages!Q2wVmtfGoydDgvom.NzMxwvwPt1uN1owI"
+    },
+    {
+      "sort": 581250,
+      "name": "7. ÜBER BENEOS",
+      "type": "text",
+      "_id": "2AWTN5FvnJopnqW1",
+      "title": {
+        "show": true,
+        "level": 1
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr /><p></p><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/beneos_logo_text.webp\" alt=\"Beneos Logo and Text\" width=\"640\" height=\"143\" /><p></p><p><strong>Beneos</strong> ist ein Indie-Publisher, der sich auf Inhalte für Tabletop-Rollenspiele spezialisiert hat. Unsere Mission ist es nicht nur, grandiose Assets, sondern auch technische Lösungen anzubieten, die ein immersives und stimmiges Erlebnis für Dich und Deine Spieler ermöglichen. Wir streben danach, nicht nur Assets, sondern ganze Erlebnisse zu liefern!<br /></p><p>Du findest uns auf <strong>Patreon</strong> (<a href=\"https://www.patreon.com/BeneosBattlemaps\" title=\"Beneos Battlemaps\">Beneos Battlemaps</a> sowie <a href=\"https://www.patreon.com/BeneosTokens\" title=\"Beneos Tokens, Spells, and Items\">Beneos Tokens, Spells, and Items</a>) und auf unserer Internetseite beneos-battlemaps.com, wo wir Abenteuer, Tokens, Zauber, Magische Gegenstände und Bundles anbieten.<br /></p><h2>BENEOS BATTLEMAPS</h2><p>Beneos Battlemaps produziert Kampfkarten, Szenerien, Handouts und Intro-Sequenzen mit modernster Technologie. Wir nutzen Unreal Engine 5, um hochwertige Welten zu erschaffen und bieten sie in der zugänglichsten Form an - als Videodateien. Dies stellt sicher, dass alle Karten einen konsistenten Kunststil beibehalten und ermöglicht es uns, die zahlreichen Vorteile einer 3D-Welt gegenüber handgezeichneten Karten zu nutzen. Diese Vorteile beinhalten mehrere Perspektiven, ansprechende Intro-Sequenzen für Spieler und dynamische Elemente in den Karten, um das Eintauchen zu verstärken.</p><p></p><h2>BENEOS TOKENS, SPELLS &amp; ITEMS</h2><iframe width=\"560\" height=\"315\" src=\"https://www.youtube.com/embed/-Ep7Z_vKlrs?si=ryaId8JpWmH8H8vI\" title=\"YouTube video player\"></iframe><p>Beneos Tokens, Spells und Items bieten alles, was ein Dungeon Master benötigt. Jede Woche veröffentlichen wir hochwertige 3D-Kreaturen, um deine Welt zu bevölkern und deine Spieler in Angst und Schrecken zu versetzen. Während diese Kreaturen unglaubliche Details aufweisen, komplett mit eigenen Intro-Sequenzen, um jedes bedrohliche Detail eines Monsters vor dem Kampf zu präsentieren, liegt ihre wahre Stärke in ihrem Design. Der Gedanke und die Kreativität, die in jede Kreatur fließen, stellen sicher, dass sie substanziell wirken, spannende Fähigkeiten bieten und dabei nicht zu weit vom traditionellen DnD-Design abweichen. Im Gegensatz zu anderen, die oft Regeln neu erfinden, weil ihnen die Klarheit in ihren Ideen fehlt, halten wir die Balance. Zusätzlich bieten wir maßgeschneiderte Gegenstände und Zauber an, die mit stilvoll gestalteten Karten kommen, die ausgedruckt und an realen Spieltischen verwendet werden können. Mit der Beneos-Suchmaschine kannst du schnell das perfekte Monster basierend auf bevorzugtem Biom oder Kreaturen-Spielstil finden. Gegenstände, Zauber und Kampfkarten können ebenfalls einfach durchsucht werden.</p><p></p><h2>Über das Beneos-Modul:</h2><p>Das Beneos-Modul ist eine umfassende Lösung, um auf die gesamte Palette der Beneos-Inhalte zuzugreifen. Während es das Erlebnis für Beneos Tokens- und Beneos Battlemaps-Patrons verbessert, steht es auch Nicht-Unterstützern zur Verfügung. Zu den Hauptfunktionen des Beneos-Moduls gehören:</p><ul><li>Beneos-Datenbank: Eine online-gestützte Suchmaschine, um durch ALLE Beneos-Assets zu suchen, mit schnellem Zugriff (Drag-and-Drop) auf alles lokal Installierte.</li><li>Exklusive Zauber und Gegenstände: Speziell für Beneos Tokens, Items und Spells-Supporter entwickelt.</li><li>Zusätzliche Komfortfunktionen: Maßgeschneidert für Beneos Battlemaps-Patrons.</li><li>Zugang zu kostenlosem Inhalt: Das Modul integriert kostenlosen Beneos- und Dungeons and Dragons 5e SRD-Inhalt in Beneos-Qualität, komplett mit benutzerdefinierten Icons und Zauber-/Gegenstandskarten.</li></ul><p></p><hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr /><p></p>",
+        "markdown": ""
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1,
+        "ZBYX4B1Ai6kvIouY": 3
+      },
+      "flags": {},
+      "_stats": {
+        "systemId": "dnd5e",
+        "systemVersion": "2.4.1",
+        "coreVersion": "13.351",
+        "createdTime": 1692785123115,
+        "modifiedTime": 1706620373313,
+        "lastModifiedBy": "ZBYX4B1Ai6kvIouY",
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null
+      },
+      "category": null,
+      "_key": "!journal.pages!Q2wVmtfGoydDgvom.2AWTN5FvnJopnqW1"
+    },
+    {
+      "sort": 2100000,
+      "name": "Rechtliches, Gesundheit und Lizenzen",
+      "type": "text",
+      "_id": "Mm5caYanijVs0AyX",
+      "title": {
+        "show": true,
+        "level": 1
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr /><p></p><h3>Gesundheitswarnung für Nutzer mit Epilepsie</h3><p>Beim Verwenden von animierten Beneos Battlemaps ist es wichtig, sich der potenziellen Gesundheitsrisiken bewusst zu sein, insbesondere für Personen, die anfällig für fotosensitive Epilepsie sind. Einige unserer Karten enthalten Elemente, die möglicherweise Anfälle bei Menschen mit fotosensitiver Epilepsie auslösen könnten. Beispielsweise können Blitzeffekte von Gewitteranimationen auf bestimmten Karten stroboähnliche Lichtblitze simulieren, die als Auslöser wirken können. Wenn Sie oder jemand in Ihrer Spielgruppe eine Vorgeschichte von Epilepsie oder Anfällen hat, konsultieren Sie bitte vor der Verwendung dieser animierten Karten einen medizinischen Fachmann. Zusätzlich sollten Nutzer regelmäßige Pausen einlegen, in einem gut beleuchteten Raum spielen und vermeiden, zu spielen, wenn sie sich müde fühlen oder wenig geschlafen haben, da dies das Risiko eines Anfalls erhöhen kann.</p><p></p><h3>Informationen zur Altersfreigabe</h3><p>Unser Inhalt bei Beneos Battlemaps wurde von keiner öffentlichen Bewertungsbehörde klassifiziert. Wir bemühen uns jedoch, Inhalte zu erstellen, die Gewalt und Brutalität nicht verherrlichen. Obwohl unsere Fantasy-Abenteuerkarten Spuren von Gewalt enthalten oder groteske Kreaturen darstellen können, sind diese Elemente nicht der Schwerpunkt unserer Kreationen. Im Geiste einer sicheren und inklusiven Spielerfahrung bewerten wir unseren Inhalt selbst und schlagen vor, dass er für Nutzer ab 12 Jahren geeignet ist. Wir empfehlen Eltern, die Karten selbst zu überprüfen oder sich an unsere allgemeine Altersempfehlung zu halten, um zu bestimmen, ob der Inhalt für ihre Kinder geeignet ist. Unser Engagement gilt dem Bereitstellen von immersiven und fesselnden Fantasy-Erlebnissen, ohne das Wohlbefinden und die Sicherheit unserer Nutzer zu gefährden.</p><p></p><h2>Allgemeine Lizenzinformationen:</h2><p>Der Programmcode des Beneos-Moduls ist, sofern nicht anders angegeben, geistiges Eigentum von Beneos Battlemaps mit Sitz in Deutschland.</p><hr /><p></p><h2>Nutzung mit Foundry VTT:</h2><p>Benutzern wird die Erlaubnis erteilt, das Beneos-Modul frei mit FoundryVTT zu verwenden. Das Modul kann entweder über Github oder über den FoundryVTT Modul-Browser installiert werden. Für die Nutzung oder Installation des Moduls werden keine Gebühren oder Kosten erhoben. Der Hauptzweck dieses Moduls besteht darin, die Produkte von Beneos Battlemaps für die Community zugänglicher und benutzerfreundlicher zu machen.</p><hr /><p></p><h2>Rechte Dritter - Dungeons and Dragons und Wizards of the Coast:</h2><p></p><p>Alle Rechte, Warenzeichen und geistiges Eigentum, die sich auf Dungeons and Dragons beziehen, gehören Wizards of the Coast. Das Beneos-Modul und seine enthaltenen Assets stehen in keiner Verbindung zu, sind nicht von Wizards of the Coast genehmigt oder gesponsert.</p><p>Bei der Bezugnahme auf das System Reference Document (SRD) halten wir uns an den folgenden rechtlichen Rahmen:</p><blockquote><p>\"Das System Reference Document 5.1 wird Ihnen kostenlos unter den Bedingungen der Creative Commons Attribution 4.0 International License („CC-BY-4.0“) zur Verfügung gestellt. Sie dürfen diesen Inhalt in jeder durch diese Lizenz erlaubten Weise verwenden, solange Sie die folgende Urheberrechtsangabe in Ihrem eigenen Werk aufnehmen:</p><p>Dieses Werk enthält Material aus dem System Reference Document 5.1 („SRD 5.1“) von Wizards of the Coast LLC, verfügbar unter https://dnd.wizards.com/resources/systems-reference-document. Das SRD 5.1 ist unter der Creative Commons Attribution 4.0 International License lizenziert, verfügbar unter <a href=\"https://creativecommons.org/licenses/by/4.0/legalcode\" title=\"CC BY 4.0 LEGAL CODE\">https://creativecommons.org/licenses/by/4.0/legalcode</a>.</p><p>Bitte verzichten Sie darauf, eine andere Urheberrechtsangabe bezüglich Wizards einzufügen, als die oben genannte. Sie können jedoch in Ihrem Werk die Angabe aufnehmen, dass es „mit der fünften Edition kompatibel“ oder „5E-kompatibel“ ist.\"<br /></p><p>Abschnitt 5 der CC-BY-4.0 enthält einen Haftungsausschluss und eine Haftungsbeschränkung, die unsere Haftung Ihnen gegenüber begrenzt.</p></blockquote><p></p><p>Für das vollständige SRD Creative Commons-Dokument besuchen Sie bitte: <a href=\"https://media.wizards.com/2023/downloads/dnd/SRD_CC_v5.1.pdf\">https://media.wizards.com/2023/downloads/dnd/SRD_CC_v5.1.pdf</a></p><p></p><h3>Kann ich Beneos-Assets (Battlemaps, Tokens, Zauber, Gegenstände usw.) in monetarisierten Streams oder Videos verwenden?</h3><ul><li><p>Antwort: Ja, ohne Probleme. Allerdings bitte ich aus Fairness um eine mündliche Erwähnung oder eine Darstellung auf dem Bildschirm. Ich freue mich auch sehr über Links zu Ihren Spielen, sodass ich diese in den sozialen Medien teilen kann. Bei Streams mit erwarteten Zahlen von über 800 Zuschauern oder Videos mit über 100.000 Aufrufen, sprechen Sie bitte vorher mit mir.</p></li></ul><hr /><h3>Darf ich Beneos-Inhalte in anderen Produkten weiterverbreiten oder zum Download anbieten?</h3><ul><li><p>Antwort: Nein, das ist ohne weitere Vereinbarung nicht gestattet – was haben Sie gedacht? Kontaktieren Sie mich gerne, wenn Sie Ideen haben oder meinen Inhalt auf eine andere Art verwenden möchten, als hier genehmigt.</p></li></ul><p></p><hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr />",
+        "markdown": ""
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1,
+        "ZBYX4B1Ai6kvIouY": 3
+      },
+      "flags": {},
+      "_stats": {
+        "systemId": "dnd5e",
+        "systemVersion": "2.4.1",
+        "coreVersion": "13.351",
+        "createdTime": 1696344854477,
+        "modifiedTime": 1708351123482,
+        "lastModifiedBy": "ZBYX4B1Ai6kvIouY",
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null
+      },
+      "category": null,
+      "_key": "!journal.pages!Q2wVmtfGoydDgvom.Mm5caYanijVs0AyX"
+    },
+    {
+      "sort": 500000,
+      "name": "4. BENEOS SUCHMASCHINE",
+      "type": "text",
+      "_id": "2jBuYOPMC7KXFqnr",
+      "title": {
+        "show": true,
+        "level": 1
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr /><p></p><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/beneos_search_spells_title.webp\" alt=\"Search Engine Preview\" /><p>Sobald du alle Module aktiviert hast, findest du im \"Actors\" Tab oben rechts einen neuen Button mit der Aufschrift \"<strong>Search Beneos Database</strong>\". Klicke darauf und unser Hauptfeature, die Suchmaschine, öffnet sich. Wir haben so viel Inhalt - ohne Suchmaschine zu arbeiten, ist fast unmöglich. Die Bedienung ist selbsterklärend.</p><p>Unsere Suchmaschine zeigt ALLE verfügbaren Beneos-Inhalte an. Es gibt verschiedene Quellen für Beneos-Materialien, und nicht jeder Dungeon Master braucht alles. Daher haben wir Karten, Tokens, Zauber und Gegenstände getrennt. Wenn du auf Assets stößt, die dein Interesse wecken, aber dir nicht zur Verfügung stehen, findest du sie entweder über einen unserer Patreons - Beneos Battlemaps oder Beneos Tokens, Spells &amp; Items - oder kannst sie für eine geringe Gebühr in unserem Beneos Webshop kaufen.</p><p></p><h3>Die Suchmaschine ist auch online zugänglich. </h3><p>Das bedeutet, du kannst alle Beneos-Inhalte durchsuchen, OHNE Patreon oder Shop-Kunde zu sein. Es ist unglaublich praktisch, wenn du unterwegs bist und überprüfen möchtest, was du für deine bevorstehende Session brauchst.</p><p></p><ul><li><p>Besuche einfach beneos-database.com, um auf die Online-Suchmaschine zuzugreifen.</p></li></ul><p></p><h2>Zugriff auf die Suchmaschine in Foundry VTT</h2><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/beneos_search_access.webp\" alt=\"Search Beneos Database Button\" width=\"350\" height=\"165\" /><p>Sobald du das Beneos-Modul installiert und aktiviert hast, findest du einen neuen Button in deinem Actor-Browser mit der Bezeichnung \"Search Beneos Database\". Klicke darauf, und das Suchfenster öffnet sich.</p><p></p><h2>KARTEN DURCHSUCHEN</h2><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/beneos_search_battlemaps.webp\" alt=\"Beneos Search Engine Battlemaps\" /><ol><li><p>Hier kannst du Tags verwenden, um durch alle Karten zu suchen. Die verfügbaren Optionen umfassen::</p><ul><li><strong>Biome 1</strong>  (wie Wald, Stadt, Dungeon usw.)</li><li><strong>Biome 2</strong>- Es stehen zwei Biome-Filter zur Verfügung, um mehrere Biome zu kombinieren. Du kannst beispielsweise nach Horror-Karten suchen, die in einer Stadt spielen, oder einen Tempel in einem Wald. Art (Battlemap oder Szenerie)</li><li><strong>Brightness</strong> (Hell, Mittel, Dunkel)</li><li><strong>Adventure</strong></li><li><strong>Map Size</strong> (von Winzig bis Riesig)</li></ul></li><li><p>Hier findest du das Thumbnail der Battlemap oder Szenerie. Wenn du mit der Maus darüber fährst, siehst du die Szene in höherer Auflösung, um zu entscheiden, ob die Karte deinen Bedürfnissen entspricht. Jede Battlemap hat ihre eigene Szenerie, daher hat auch jede Szenerie eine entsprechende Battlemap. Deshalb werden beide immer als Paar angezeigt, sodass du die Karte aus allen Perspektiven sehen kannst.</p></li><li><p>Der Download-Button leitet dich direkt zu Moulinette und filtert die ausgewählte Karte für einen One-Click-Download heraus. Der Play-Button führt dich zu dem YouTube-Video, das das gesamte Release präsentiert und zeigt, wie die Szene aufgebaut ist.</p></li></ol><p></p><h2>TOKENS DURCHSUCHEN</h2><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/beneos_search_tokens.webp\" alt=\"Beneos Tokens UI\" /><p>Beneos Tokens, Spells und Items können (noch) nicht über Moulinette installiert werden und müssen zuerst lokal im \"beneos_assets\" Ordner installiert werden. Wir haben erklärt, wie das in unserem einfach zu befolgenden Setup-Video funktioniert.</p><ol><li><p>Hier kannst du verschiedene Tags für deine Suche verwenden. Verfügbare Optionen umfassen:</p><ol><li><p><strong>Biomes</strong> (wie Wald, Wüste, Dungeon usw.)</p></li><li><p><strong>Token Type</strong> (Dämon, Humanoid, Teufel usw.)</p></li><li><p><strong>Fighting Style</strong> (Nahkampf, Debuff, Rudel usw.)</p></li><li><p><strong>CR</strong> - Schwierigkeitsgrad (Je niedriger desto Schwächer)</p></li><li><p><strong>Movement</strong> (Gehen, Fliegen, Graben usw.)</p></li><li><p><strong>Purpose</strong> (Boss, Debuff, Tank usw.)</p></li></ol></li><li><p>Dieser Button ermöglicht es dem Beneos-Modul, deinen beneos_assets Ordner zu durchsuchen. Alle neu hinzugefügten Tokens, Zauber und Gegenstände werden der Suchmaschine hinzugefügt und können dann in Foundry verwendet werden. Neue Assets sind erst nach einem manuellen Import verfügbar.</p></li><li><p>Hier siehst du, ob das gesuchte Item lokal installiert und gefunden wurde. Nur Tokens, Zauber und Gegenstände haben diese Anzeige, da Battlemaps über Moulinette heruntergeladen werden und immer verfügbar sind (vorausgesetzt, du bist ein Beneos Battlemaps-Patron).</p></li></ol><p></p><h2>GEGENSTÄNDE DURCHSUCHEN</h2><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/beneos_search_items.webp\" alt=\"Beneos Items UI\" /><p>Genau wie Tokens und Zauber müssen Gegenstände über Moulinette installiert und manuell installiert werden. Folge dem Beneos Tokens, Spells &amp; Items-Installationsleitfaden, um zu erfahren, wie das geht.</p><ol><li><p>Hier kannst du Tags verwenden, um alle Gegenstände zu durchsuchen. Verfügbare Optionen umfassen:</p><ul><li><strong>Item Type</strong> (Kleidung, Trinket, Nahkampfwaffe usw.)</li><li><strong>Rarity</strong> (Uncommon bis Legendary)</li><li><strong>Origin</strong> (Dwarvenforged, Relic, Vampiric, etc.)</li><li><strong>Price</strong></li></ul></li><li><p>Dieser Button ermöglicht es dem Beneos-Modul, deinen beneos_assets Ordner zu durchsuchen. Alle neu hinzugefügten Tokens, Zauber und Gegenstände werden der Suchmaschine hinzugefügt und können dann in Foundry verwendet werden. Neue Assets sind erst nach einem manuellen Import verfügbar.</p></li><li><p>Hier siehst du, ob das gesuchte Item lokal installiert und gefunden wurde. Nur Tokens, Zauber und Gegenstände haben diese Anzeige, da Battlemaps über Moulinette heruntergeladen werden und immer verfügbar sind (vorausgesetzt, du bist ein Beneos Battlemaps-Patron).</p></li><li><p>Hier siehst du den von uns ermittelten Goldwert des Items. Es handelt sich um einen für D&amp;D sinnvollen Betrag, der für andere Systeme nicht korrekt sein muss. Unser Hauptziel ist es, Beneos-Gegenstände untereinander auszugleichen, sodass ein teureres Item immer im gleichen Verhältnis mächtiger ist als ein günstigeres. Dies ist auch vorteilhaft, wenn du einen magischen Laden hast und faire und ausgewogene Preise für Beneos-Gegenstände anbieten möchtest. Kein anderer Content-Creator macht das, da die Mathematik dahinter recht komplex werden kann. Aber wir haben es gelöst.</p></li><li><p>Jeder Gegenstand hat eine bestimmte Herkunft, und jede Herkunft hat ihr eigenes Symbol. Die Herkunft dient dazu, Gegenstände zu charakterisieren. Beispielsweise haben Vampiric oder Occult-Gegenstände immer etwas Böses oder Unheiliges an sich, während Blessed-Gegenstände göttlicher Natur sind. Wenn Spieler mehrere Gegenstände derselben Herkunft sammeln, erhalten sie zusätzliche Set-Boni, was das Sammeln und Suchen unterstützen soll.</p></li></ol><p></p><h2>ZAUBER DURCHSUCHEN</h2><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/beneos_search_spells.webp\" alt=\"Beneos Spells UI\" /><p>Genau wie Tokens und Gegenstände müssen Zauber über Moulinette installiert und manuell installiert werden. Folge dem Beneos Tokens, Spells &amp; Items-Installationsleitfaden, um zu erfahren, wie das geht.</p><ol><li><p>Hier kannst du Tags verwenden, um alle Zauber zu durchsuchen. Verfügbare Optionen umfassen:</p><ul><li><strong>Spell Type</strong> (Flächenwirkung, Nahkampf, Schutz usw.)</li><li><strong>School</strong> (Beschwörung, Illusion, Nekromantie usw.)</li><li><strong>Level</strong></li><li><strong>Casting Time</strong> (DnD Spezifisch: Aktion, Bonusaktion, Reaktion usw.)</li><li><strong>Class</strong> (Zauberer, Hexenmeister, Warlock usw.)</li></ul></li><li><p>Dieser Button ermöglicht es dem Beneos-Modul, deinen beneos_assets Ordner zu durchsuchen. Alle neu hinzugefügten Tokens, Zauber und Gegenstände werden der Suchmaschine hinzugefügt und können dann in Foundry verwendet werden. Neue Assets sind erst nach einem manuellen Import verfügbar.</p></li><li><p>Hier siehst du, ob die gesuchten Zauber lokal installiert und gefunden wurden. Nur Tokens, Zauber und Gegenstände haben diese Anzeige, da Battlemaps über Moulinette heruntergeladen werden und immer verfügbar sind (vorausgesetzt, du bist ein Beneos Battlemaps-Patron).</p></li></ol><p></p><hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr />"
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1,
+        "ZBYX4B1Ai6kvIouY": 3
+      },
+      "flags": {},
+      "_stats": {
+        "systemId": "dnd5e",
+        "systemVersion": "2.4.1",
+        "coreVersion": "13.351",
+        "createdTime": 1705735224721,
+        "modifiedTime": 1706618615374,
+        "lastModifiedBy": "ZBYX4B1Ai6kvIouY",
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null
+      },
+      "category": null,
+      "_key": "!journal.pages!Q2wVmtfGoydDgvom.2jBuYOPMC7KXFqnr"
+    },
+    {
+      "sort": 200000,
+      "name": "1. VIDEO LEITFADEN",
+      "type": "text",
+      "_id": "SZhcLPv1tALRS1cF",
+      "title": {
+        "show": true,
+        "level": 1
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr /><p></p><h1>Unser Step-by-Step Guide [Deutsch]</h1><iframe width=\"560\" height=\"315\" src=\"https://www.youtube.com/embed/L_hCzz87iVY?si=HHyhWZ1OoD0-hvgU\" title=\"YouTube video player\"></iframe>"
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1,
+        "ZBYX4B1Ai6kvIouY": 3
+      },
+      "flags": {},
+      "_stats": {
+        "systemId": "dnd5e",
+        "systemVersion": "2.4.1",
+        "coreVersion": "13.351",
+        "createdTime": 1705832304139,
+        "modifiedTime": 1706618615374,
+        "lastModifiedBy": "ZBYX4B1Ai6kvIouY",
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null
+      },
+      "category": null,
+      "_key": "!journal.pages!Q2wVmtfGoydDgvom.SZhcLPv1tALRS1cF"
+    },
+    {
+      "sort": 700000,
+      "name": "9. BUG REPORT & KONTAKT",
+      "type": "text",
+      "_id": "UA1mI9upQAxhyupZ",
+      "title": {
+        "show": true,
+        "level": 1
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr /><h1 data-anchor=\"you-have-something-to-report-or-need-assistance?\" style=\"box-sizing:border-box;user-select:text;margin:1rem 0px 0.5rem;padding:0px;font-weight:normal;font-size:2em;border-bottom:2px solid var(--color-underline-header);color:rgb(25, 24, 19);font-family:Signika, sans-serif;font-style:normal;font-variant-ligatures:normal;font-variant-caps:normal;letter-spacing:normal;orphans:2;text-align:start;text-indent:0px;text-transform:none;white-space:normal;widows:2;word-spacing:0px;-webkit-text-stroke-width:0px;text-decoration-thickness:initial;text-decoration-style:initial;text-decoration-color:initial\"><span style=\"font-family:Söhne, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Noto Sans', sans-serif, 'Helvetica Neue', Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'\">Du hast etwas zu melden oder brauchst Hilfe?</span></h1><ul style=\"box-sizing:border-box;user-select:text;margin:0.5em 0px;padding:0px 0px 0px 1.5em;color:rgb(25, 24, 19);font-family:Signika, sans-serif;font-size:14px;font-style:normal;font-variant-ligatures:normal;font-variant-caps:normal;font-weight:400;letter-spacing:normal;orphans:2;text-align:start;text-indent:0px;text-transform:none;white-space:normal;widows:2;word-spacing:0px;-webkit-text-stroke-width:0px;text-decoration-thickness:initial;text-decoration-style:initial;text-decoration-color:initial\"><li style=\"box-sizing:border-box;user-select:text\"><p style=\"box-sizing:border-box;user-select:text;margin:0.5em 0px\"><span style=\"font-family:Signika, sans-serif\">Trete unserem Discord bei, und wir helfen dir in kürzester Zeit!</span></p></li><li style=\"box-sizing:border-box;user-select:text\"><p style=\"box-sizing:border-box;user-select:text;margin:0.5em 0px\"><span style=\"font-family:Signika, sans-serif\"><strong style=\"box-sizing:border-box;user-select:text\">&gt;&gt;&gt;</strong> <a href=\"https://discord.gg/MS6KbX7YQ6\" title=\"Beneos Discord\" style=\"box-sizing:border-box;user-select:text;cursor:pointer;color:var(--color-text-hyperlink)\">DISCORD EINLADUNGS-LINK</a> <strong style=\"box-sizing:border-box;user-select:text\">&lt;&lt;&lt;&lt;</strong></span></p></li></ul>",
+        "markdown": ""
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1,
+        "ZBYX4B1Ai6kvIouY": 3
+      },
+      "flags": {},
+      "_stats": {
+        "systemId": "dnd5e",
+        "systemVersion": "2.4.1",
+        "coreVersion": "13.351",
+        "createdTime": 1705833003203,
+        "modifiedTime": 1706620469460,
+        "lastModifiedBy": "ZBYX4B1Ai6kvIouY",
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null
+      },
+      "category": null,
+      "_key": "!journal.pages!Q2wVmtfGoydDgvom.UA1mI9upQAxhyupZ"
+    },
+    {
+      "sort": 1100000,
+      "name": "DEEP DIVE: LOCK VIEW",
+      "type": "text",
+      "title": {
+        "show": true,
+        "level": 1
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr /><p></p><h2>Bevor du weiterliest</h2><blockquote><p><em>Hier findest du zusätzliche Informationen, die für die Nutzung von Beneos Battlemaps nicht notwendig sind. Alle sinnvollen Funktionen und Einstellungen wurden bereits im Voraus für dich erledigt, und du kannst alles sofort und intuitiv nutzen. Dieser tiefe Einblick ist für diejenigen gedacht, die ihre eigenen Karten mit Lock View-Funktionen versehen möchten oder einfach neugierig sind, wie das Modul funktioniert.</em></p></blockquote><hr /><p></p><h2>Warum Lock View?</h2><p>Lock View ist ein praktisches Modul, das, wie der Name schon sagt, die Bewegungs- und Zoomfähigkeiten der Nutzer einschränkt. Du kannst beispielsweise verhindern, dass Nutzer zoomen oder die Kamera außerhalb eines bestimmten Bereichs bewegen. Für Beneos Battlemaps verwenden wir dies, um zu verhindern, dass Spieler die Kamera außerhalb der Karte/Szenerie bewegen, sodass sie die Navigationsleiste des DMs oder andere für Spieler nicht bestimmte Elemente nicht sehen können.</p><p>Warum tun wir das? Aus zwei wichtigen Gründen. Erstens, um zu verhindern, dass Spieler Elemente sehen, die nicht für sie bestimmt sind. Außerdem hat es sich als sehr hilfreich für die Immersion herausgestellt, wenn man die Szenerien im Vollbild sieht, ohne sich bewegen zu können. Dies verhindert das beiläufige Herumklicken und hilft den Spielern, sich auf die Rollenspielszene zu konzentrieren, für die die Szenerien ja gemacht wurden.</p><p></p><h2>Szenenkonfiguration</h2><p>Wie definieren wir einen bestimmten Bereich? Jede Szene muss einzeln konfiguriert werden, damit Lock View erkennt, dass es hier etwas zu tun gibt. Jede Szenenkonfiguration hat einen neuen Reiter namens \"Lock View\". Hier wählst du das Kästchen \"Bounding Box\" aus und sagst dem Modul damit, dass es auf dieser Szene nach einer Box suchen soll, die für Lock View konfiguriert wurde. Mit der Box \"Force Initial View\" stellst du sicher, dass die Spieler immer in dem von dir definierten Feld landen und nicht \"ausgesperrt\" werden.</p><p></p><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/lockview_scene_config.webp\" alt=\"Lock View Scene Configuration\" /><p></p><h2>Drawing-Konfirguration</h2><p>Nachdem du die Szene konfiguriert hast, gehe zur Szene und zeichne ein Rechteck mit dem \"Drawing Tool\" in der linken Werkzeugleiste. Das Aussehen des Rechtecks ist nicht so wichtig, ich empfehle aber etwas Unauffälliges, da wir mit dieser Box nie wieder interagieren müssen, nachdem sie einmal festgelegt wurde. Wie bei der Szenenkonfiguration hat auch die Konfiguration für das neu gezeichnete Rechteck einen neuen Lock View-Reiter. Dort gibt es nur eine Einstellungsoption. Unter \"Force to bounding box\" im Select-Feld wähle \"Always\" und klicke auf \"Update Drawing\". Damit sagst du dem Lock View-Modul, dass es dieses spezielle Drawing als Bounding Box betrachten und die Kamerabewegung der Spieler entsprechend einschränken soll.</p><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/lockview_bounding_box.webp\" alt=\"Lock View Bounding Box Setup\" /><p></p><h2>Lock View-Einstellungen &amp; Benutzer-/Szenenkonfiguration</h2><p>Lock View-Einstellungen &amp; Benutzer-/Szenenkonfiguration Du kannst alle Spieler von dieser Einschränkung über die Lock View-Modul-Einstellungen befreien, wenn du es nicht benötigst. Normalerweise ist der DM einer Welt immer von jeder Einschränkung ausgenommen. Solltest du dich aber selbst in deinen Bounding Boxes \"gefangen\" finden, kannst du dich dort befreien. Gehe dazu unter \"Configure Settings\" im \"Game Settings\"-Reiter in der oberen rechten Navigationsleiste auf das Modul Lock View.</p><p>In den Lock View-Einstellungen kannst du unter \"User Configuration\" jeden in deiner Welt angelegten Nutzer individuell konfigurieren. Entferne einfach den Haken bei \"Enable\" für den Nutzer, und alle Effekte von Lock View werden für diesen nicht mehr angewendet.</p><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/lockview_settings.webp\" alt=\"Lock View User Settings\" width=\"400\" height=\"769\" /><p></p><p>Unter \"Scene Configuration\" erhältst du eine übersichtliche Liste mit allen in deiner Welt befindlichen Szenen und kannst für jede Szene Einstellungen sehen und individuell festlegen.</p><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/lockview_settings_scene_config.webp\" alt=\"Lock View Scene Settings\" /><p></p><hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr />"
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1,
+        "ZBYX4B1Ai6kvIouY": 3
+      },
+      "flags": {
+        "core": {}
+      },
+      "_stats": {
+        "systemId": "dnd5e",
+        "systemVersion": "2.4.1",
+        "coreVersion": "13.351",
+        "createdTime": 1692785219051,
+        "modifiedTime": 1706645392503,
+        "lastModifiedBy": "ZBYX4B1Ai6kvIouY",
+        "compendiumSource": "JournalEntry.Q5xvdypjD1tGOro5.JournalEntryPage.ABmARMffLNdtbDCy",
+        "duplicateSource": null,
+        "exportSource": null
+      },
+      "_id": "SLCZbPelOrCWInbl",
+      "category": null,
+      "_key": "!journal.pages!Q2wVmtfGoydDgvom.SLCZbPelOrCWInbl"
+    },
+    {
+      "sort": 562500,
+      "name": "5. BENEOS TOKENS, ZAUBER UND ITEMS",
+      "type": "text",
+      "_id": "Rl1q5fBbCPagzIyQ",
+      "title": {
+        "show": true,
+        "level": 1
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<h2 data-anchor=\"beneos-tokens,-spells-and-items\" style=\"box-sizing:border-box;user-select:text;margin:1rem 0px 0.5rem;padding:0px;font-weight:normal;font-size:1.5em;border-bottom:1px solid var(--color-underline-header);color:rgb(25, 24, 19);font-family:Signika, sans-serif;font-style:normal;font-variant-ligatures:normal;font-variant-caps:normal;letter-spacing:normal;orphans:2;text-align:start;text-indent:0px;text-transform:none;white-space:normal;widows:2;word-spacing:0px;-webkit-text-stroke-width:0px;text-decoration-thickness:initial;text-decoration-style:initial;text-decoration-color:initial\"><span style=\"font-family:Signika, sans-serif\">BENEOS TOKENS, SPELLS &amp; ITEMS</span></h2><iframe width=\"560\" height=\"315\" src=\"https://www.youtube.com/embed/-Ep7Z_vKlrs?si=ryaId8JpWmH8H8vI\" title=\"YouTube video player\" style=\"box-sizing:border-box;user-select:text;color:rgb(25, 24, 19);font-family:Signika, sans-serif;font-size:14px;font-style:normal;font-variant-ligatures:normal;font-variant-caps:normal;font-weight:400;letter-spacing:normal;orphans:2;text-align:start;text-indent:0px;text-transform:none;white-space:normal;widows:2;word-spacing:0px;-webkit-text-stroke-width:0px;text-decoration-thickness:initial;text-decoration-style:initial;text-decoration-color:initial\"></iframe><p style=\"box-sizing:border-box;user-select:text;margin:0.5em 0px;color:rgb(25, 24, 19);font-family:Signika, sans-serif;font-size:14px;font-style:normal;font-variant-ligatures:normal;font-variant-caps:normal;font-weight:400;letter-spacing:normal;orphans:2;text-indent:0px;text-transform:none;white-space:normal;widows:2;word-spacing:0px;-webkit-text-stroke-width:0px;text-decoration-thickness:initial;text-decoration-style:initial;text-decoration-color:initial;text-align:start\"><span style=\"font-family:Signika, sans-serif\">Beneos Tokens, Spells und Items bieten alles, was ein Dungeon Master benötigt. Jede Woche veröffentlichen wir hochwertige 3D-Kreaturen, um deine Welt zu bevölkern und deine Spieler in Angst und Schrecken zu versetzen. Während diese Kreaturen unglaubliche Details aufweisen, komplett mit eigenen Intro-Sequenzen, um jedes bedrohliche Detail eines Monsters vor dem Kampf zu präsentieren, liegt ihre wahre Stärke in ihrem Design. Der Gedanke und die Kreativität, die in jede Kreatur fließen, stellen sicher, dass sie substanziell wirken, spannende Fähigkeiten bieten und dabei nicht zu weit vom traditionellen DnD-Design abweichen. Im Gegensatz zu anderen, die oft Regeln neu erfinden, weil ihnen die Klarheit in ihren Ideen fehlt, halten wir die Balance. Zusätzlich bieten wir maßgeschneiderte Gegenstände und Zauber an, die mit stilvoll gestalteten Karten kommen, die ausgedruckt und an realen Spieltischen verwendet werden können. Mit der Beneos-Suchmaschine kannst du schnell das perfekte Monster basierend auf bevorzugtem Biom oder Kreaturen-Spielstil finden. Gegenstände, Zauber und Kampfkarten können ebenfalls einfach durchsucht werden.</span></p><h2 data-anchor=\"setup-and-installation-guide\" style=\"box-sizing:border-box;user-select:text;margin:1rem 0px 0.5rem;padding:0px;font-weight:normal;font-size:1.5em;border-bottom:1px solid var(--color-underline-header);color:rgb(25, 24, 19);font-family:Signika, sans-serif;font-style:normal;font-variant-ligatures:normal;font-variant-caps:normal;letter-spacing:normal;orphans:2;text-align:start;text-indent:0px;text-transform:none;white-space:normal;widows:2;word-spacing:0px;-webkit-text-stroke-width:0px;text-decoration-thickness:initial;text-decoration-style:initial;text-decoration-color:initial\"><span style=\"font-family:Signika, sans-serif\"><br class=\"Apple-interchange-newline\" />SETUP AND INSTALLATIONS-VIDEO</span></h2><iframe width=\"560\" height=\"315\" src=\"https://www.youtube.com/embed/kH94lv2HQrw?si=YgiJjO27ubIwBUAv\" title=\"YouTube video player\" style=\"box-sizing:border-box;user-select:text;color:rgb(25, 24, 19);font-family:Signika, sans-serif;font-size:14px;font-style:normal;font-variant-ligatures:normal;font-variant-caps:normal;font-weight:400;letter-spacing:normal;orphans:2;text-align:start;text-indent:0px;text-transform:none;white-space:normal;widows:2;word-spacing:0px;-webkit-text-stroke-width:0px;text-decoration-thickness:initial;text-decoration-style:initial;text-decoration-color:initial\"></iframe>"
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1,
+        "ZBYX4B1Ai6kvIouY": 3
+      },
+      "flags": {},
+      "_stats": {
+        "systemId": "dnd5e",
+        "systemVersion": "2.4.1",
+        "coreVersion": "13.351",
+        "createdTime": 1706619376800,
+        "modifiedTime": 1706619627738,
+        "lastModifiedBy": "ZBYX4B1Ai6kvIouY",
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null
+      },
+      "category": null,
+      "_key": "!journal.pages!Q2wVmtfGoydDgvom.Rl1q5fBbCPagzIyQ"
+    },
+    {
+      "sort": 575000,
+      "name": "6. INSTALLIERE SHOP INHALTE",
+      "type": "text",
+      "_id": "sUE7ybHYYg4ApV8d",
+      "title": {
+        "show": true,
+        "level": 1
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<p>Über unseren Webshop <a href=\"https://beneos-battlemaps.com/\" title=\"beneos-battlemaps.com\">beneos-battlemaps.com</a> können Maps, Spells, Tokens und andere zusätzliche Inhalte für kleines Geld gekauft werden.</p><p></p><h3>Beneos Tokens, Spells und Items</h3><p>Beneos Tokens, Spells und Items werden wie im @UUID[.Rl1q5fBbCPagzIyQ#setup-and-installations-video]{SETUP AND INSTALLATIONS-VIDEO} beschrieben, heruntergeladen und lokal in Deinem Foundry Ordner abgelegt, damit das Beneos Modul diese finden kann.</p><p></p><h3>Beneos Battlemaps</h3><p>Beneos Battlemaps Inhalte, wie Map Packs und Abenteuer, werden von Dir selbst In Deiner Welt mit der Zip Datei installiert. Das ist super einfach und steht in nichts dem Moulinette download nach, mit dem Vorteil, dass man die zip datei archivieren kann und zu jeder Zeit, auch ohne Internetverbindung, in beste Qualität seienr Geschichte hinzufügen kann.</p><p></p><p>Gehe dazu wie folgt vor:</p><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/scene_packer_a.webp\" alt=\"Scene Packer Settings\" /><p>Gehe über \"Game Settings\" oben rechts in der FoundryVTT Navigationsleiste in \"Configure Settings\". Unter dem Reiter \"Library: Scene Packer\" klickst Du auf \"Open Importer Wizard\". Foundry fragt Dich nun nach der Position der Zip-Datei und öffnet Deinen File Explorer. Wähle den Ort Deiner Zip Datei aus und klicke auf \"Submit\" und das archiv wird entpackt und fertig vorbereitet in Deine Welt importiert. Das Zip Archiv wird danach nicht mehr benötigt und kann verschoben, oder gelöscht werden.</p><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/scene_packer_b.webp\" alt=\"Submit Zip File\" />"
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1,
+        "ZBYX4B1Ai6kvIouY": 3
+      },
+      "flags": {},
+      "_stats": {
+        "systemId": "dnd5e",
+        "systemVersion": "2.4.1",
+        "coreVersion": "13.351",
+        "createdTime": 1706619400499,
+        "modifiedTime": 1706619686431,
+        "lastModifiedBy": "ZBYX4B1Ai6kvIouY",
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null
+      },
+      "category": null,
+      "_key": "!journal.pages!Q2wVmtfGoydDgvom.sUE7ybHYYg4ApV8d"
+    },
+    {
+      "sort": 1700000,
+      "name": "DEEP DIVE: FX MASTER",
+      "type": "text",
+      "_id": "HBHLui4WLYFWpPbt",
+      "title": {
+        "show": true,
+        "level": 1
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr /><p></p><h2>Bevor du weiterliest</h2><blockquote><p><em>Hier findest du zusätzliche Informationen, die für die Nutzung von Beneos Battlemaps nicht benötigt werden. Alle sinnvollen Funktionen und Einstellungen wurden bereits für dich vorgenommen, sodass du alles sofort und intuitiv nutzen kannst. Dieser tiefe Einblick ist für diejenigen gedacht, die Fx Master-Funktionen zu ihren eigenen Karten hinzufügen möchten oder einfach neugierig sind, wie das Modul funktioniert.</em></p></blockquote><hr /><p></p><h2>Warum FX Master?</h2><p>FX Master ist ein reines Effekt-Tool. Im Grunde ist es eine Bibliothek von Bild- und Partikeleffekten, die individuell für bestimmte Szenen mit zahlreichen Einstellungen definiert und gespeichert werden können. Besonders die älteren Veröffentlichungen, die noch mit der älteren Unreal Engine und einem weniger erfahrenen Ich erstellt wurden, profitieren von fallenden Blättern, schärferen, kontrastreicheren Bildern oder Nebel und Vögeln. FX Master gibt mir noch mehr Möglichkeiten, einzelne Szenen in der Postproduktion so zu gestalten, wie ich sie mir vorgestellt habe. Auch du kannst mit ihm die Stimmung derselben Karte komplett verändern. Mit blauen Glühwürmchen und einem Nachtfilter verwandelst du einen taghellen Wald in ein Fey-Wild-Erlebnis. Oder mit dem Nebel-Effekt könnte es auch der Swalich Wald aus Curse of Strahd sein.</p><p></p><h2>Wie benutze ich FX Master?</h2><p>FX Master ist unglaublich einfach zu bedienen und ebenso einfach zu erreichen. Sobald du FX Master in deiner Welt aktiviert hast, hast du ein neues Symbol in deiner Werkzeugleiste auf der linken Seite - den Zauberstab. Die wichtigsten Einstellungen verbergen sich hinter \"Partikeleffekte\" und \"Filtereffekte\" und werden individuell für jede Szene gespeichert.</p><p></p><h2>Partikeleffekte</h2><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/fx_master_a.webp\" alt=\"FX Master Particle Effects\" /><p>Wie der Name schon sagt, findest du hier alle Effekte, die etwas Bewegendes auf die Karte legen. Jeder Partikeleffekt hat Einstellungen wie Geschwindigkeit, Dichte, Farbe, Größe usw. Mit Partikeleffekten kannst du Vögel über die Karte fliegen lassen, Blätter im Wind wehen oder Regen/Schnee auf die Karte fallen lassen. Die Einstellungen sind selbsterklärend. Spiel ein wenig herum - es ist immer Versuch und Irrtum.</p><p></p><h2>Filtereffekte</h2><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/fx_master_b.webp\" alt=\"FX Master Filter Effects\" /><p>Hier findest du alles, was die Karte selbst verändert. Du kannst Farbanpassungen vornehmen sowie Blitze oder einen coolen Unterwassereffekt auf die Karte legen. Es gibt viele spannende Einstellungsmöglichkeiten, aber im Grunde musst du dazu nichts sagen. Spiel einfach herum und schau, was dir gefällt.</p><p></p><h2>FX Master Einstellungen speichern</h2><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/fx_master_c.webp\" alt=\"FX Master Save Settings\" /><p>Du kannst FX Master Einstellungen speichern und auf andere Karten anwenden Sobald du eine Karte so konfiguriert hast, wie du es möchtest, d.h., Filter- und Partikeleffekte ausgewählt und konfiguriert hast, sind sie NUR für die aktuelle Szene eingestellt. Um den Effekt auf eine andere Szene anzuwenden, benötigst du ein Makro, das genau die FX Master-Einstellungen dieser Szene speichert. Glücklicherweise geht das mit einem Klick. Mit dem Diskettenspeichersymbol wird deiner Makroliste ein neues Makro hinzugefügt, das alle Änderungen an der aktuellen Szene enthält. Ich empfehle, dem neuen Makro mit einem Rechtsklick einen markanten Namen zu geben, da FX Master alle Makros gleich benennt.</p><p>Ziehe das Makro auf deine Makroleiste, und wann immer du dieses Makro auf einer Szene klickst, werden alle gespeicherten Filter- und Partikeleffekte angewendet. Danach kannst du das Makro löschen.</p><p></p><hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr />"
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1,
+        "ZBYX4B1Ai6kvIouY": 3
+      },
+      "flags": {},
+      "_stats": {
+        "systemId": "dnd5e",
+        "systemVersion": "2.4.1",
+        "coreVersion": "13.351",
+        "createdTime": 1706638461370,
+        "modifiedTime": 1706645382639,
+        "lastModifiedBy": "ZBYX4B1Ai6kvIouY",
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null
+      },
+      "category": null,
+      "_key": "!journal.pages!Q2wVmtfGoydDgvom.HBHLui4WLYFWpPbt"
+    },
+    {
+      "sort": 1800000,
+      "name": "DEEP DIVE: MONKS ACTIVE TILE TRIGGER",
+      "type": "text",
+      "_id": "Bk4Zxjh1k8viPMYd",
+      "title": {
+        "show": true,
+        "level": 1
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<div><div><div><div><hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr /><p></p><h2>Bevor du weiterliest</h2><blockquote><p><em>Hier findest du zusätzliche Informationen, die für die Nutzung von Beneos Battlemaps nicht erforderlich sind. Alle vernünftigen Funktionen und Einstellungen wurden bereits im Voraus für dich erledigt, und du kannst alles sofort und intuitiv nutzen. Dieser tiefe Einblick ist für diejenigen gedacht, die MATT-Funktionen zu ihren eigenen Karten hinzufügen möchten oder einfach neugierig sind, wie das Modul funktioniert.</em></p></blockquote></div><hr /><div><div><p></p><h2>Warum Monks Active Tile Trigger (MATT)?</h2><p>Für diejenigen, die mit dem Modul vertraut sind, stellt sich die Frage gar nicht. MATT ist eines der modernsten, leistungsfähigsten und vielseitigsten Module, die für Foundry verfügbar sind. Es ist ein Alleskönner, der zahlreiche Möglichkeiten bietet, Spielaspekte zu automatisieren oder zu steuern. Beneos verwendet MATT für Funktionen wie:</p><ul><li><p>Start-/Stop-Knöpfe zum Abspielen und Pausieren von Spieler-Intros</p></li><li><p>Klickbasierte Navigation auf der Escalia-Weltkarte</p></li><li><p>Mini-Soundboards auf einigen Szenen (z.B. Barovia Village - Die Kirche)</p></li><li><p>Platzierte Knöpfe für Fallen, Geheimtüren oder andere klickbare Ereignisse auf der Karte</p></li><li><p>Navigationsleiste für das Hauptmenü von Curse of Strahd Mit MATT kannst du Animationen starten, Sounds abspielen, zu Szenen navigieren und vieles mehr.</p></li></ul><p>Alle Funktionen und Kombinationen hier abzudecken, wäre wahnsinnig, und Text ist dafür nicht gut geeignet, besonders nicht in einem Journal. Ich schlage vor, auf YouTube mehr darüber zu suchen, wenn du interessiert bist. Es gibt einige sehr gute Tutorials. Als Nächstes gehe ich auf die Implementierung der Beneos-Funktionen ein.</p><p></p><h2>Wie funktioniert MATT?</h2><p>Wie der Name schon sagt, funktioniert bei Monks Active Tile Trigger alles über Kacheln. In der Kachelkonfiguration gibt es einen neuen Reiter namens \"Triggers\". MATT arbeitet nach dem Ursache-Wirkungs-Prinzip. Das heißt, wenn ein definierter Trigger in \"Setup\" erfüllt wird (ein Klick auf die Kachel, ein Token betritt die Kachel oder verschiedene andere Bedingungen), dann passiert das, was in \"Actions\" definiert ist.</p><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/matt_a.webp\" alt=\"Beneos Intro Start Tile\" /><p>In diesem Beispiel verwende ich eine Kachel als Start&lt;-&gt;Stop-Knopf für die Intro-Sequenzen. Die Intros selbst sind auch eine Kachel, die erst abgespielt wird, wenn man auf die Play-Kachel klickt.</p><p>Wenn du \"Tile Controls\" in der Werkzeugleiste auf der linken Bildschirmseite auswählst, kannst du Kacheln auf dem Canvas anklicken. Klicken wir nun auf meinen Play-Knopf, der einfach nur eine Kachel mit einem Play-Knopf-Bild ist, dann können wir unter \"Triggers\" einstellen, was und wann etwas passieren soll.</p><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/matt_b.webp\" alt=\"MATT Triggers\" /><p>In \"Setup\" werden die Trigger definiert, wann die Aktion ausgeführt werden soll. In diesem Fall wird die Kachel nur ausgelöst, wenn der GM darauf klickt.</p></div><div><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/matt_c.webp\" alt=\"MATT Actions\" /><p>Unter \"Actions\" sieht man, dass ich mehrere Aktionen definiert habe, die mit einem Klick ausgeführt werden. MATT arbeitet sequenziell, beginnend mit dem obersten. Von oben nach unten wird Folgendes getan: 1 - Die Kachel mit der Intro-Sequenz wird zurückgesetzt, damit sie von Anfang an startet (Foundry hat die Eigenheit, WebM-Videos an zufälligen Positionen zu starten). 2 - Dann wird die Kachel mit der Intro-Sequenz gestartet. 3 - Danach wird das Bild der angeklickten Kachel geändert. Dadurch erhält man ein interaktives Feedback, dass die Animation läuft, und der Play-Knopf färbt sich rot und symbolisiert \"Stopp\" für den nächsten Klick. Die Bilder für diesen Effekt sind im Reiter \"Images\" definiert. 4 - Eine Sounddatei wird als zusätzliches Nutzer-Feedback abgespielt. Es gibt einen Klick-Sound, der für alle Spieler und DMs zu hören ist.</p><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/matt_d.webp\" alt=\"MATT Images\" /><p>Im Reiter \"Bilder\", wie bereits erwähnt, werden die Bilder gesammelt, mit denen MATT arbeiten kann. Ich habe hier nur zwei definiert, eines für Start und eines für Stopp, die sich bei einem Klick wechseln. Info: Die Bilder haben aus technischen Gründen unterschiedliche Dateipfade. Wenn ich eine Veröffentlichung mit Moulinette verpacke, wird das zweite Bild nicht exportiert und kann daher beim Herunterladen nicht gefunden werden. Deshalb ist das zweite Bild Teil des Beneos-Moduls, das IMMER installiert sein muss und somit jedem immer zur Verfügung steht.</p><p>Dies war nur ein Beispiel, wie ich MATT nutze. Wenn du MATT für deine eigenen Ideen verwenden möchtest, sieh dir die Kacheln an, die ich benutze, um die Intros zu steuern, das Soundboard zu bauen oder Fallen auszulösen. Es ist erstaunlich, welche coolen Effekte man mit ein wenig Kreativität erschaffen kann.</p><p>Dieses Skript erklärt die Funktionalität und Anwendung von MATT in Beneos, wobei die Vielseitigkeit und das kreative Potenzial zur Verbesserung des Spielerlebnisses hervorgehoben wird.</p><p></p></div></div></div></div></div><hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr />"
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1,
+        "ZBYX4B1Ai6kvIouY": 3
+      },
+      "flags": {},
+      "_stats": {
+        "systemId": "dnd5e",
+        "systemVersion": "2.4.1",
+        "coreVersion": "13.351",
+        "createdTime": 1706638497105,
+        "modifiedTime": 1706645330201,
+        "lastModifiedBy": "ZBYX4B1Ai6kvIouY",
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null
+      },
+      "category": null,
+      "_key": "!journal.pages!Q2wVmtfGoydDgvom.Bk4Zxjh1k8viPMYd"
+    },
+    {
+      "sort": 1900000,
+      "name": "DEEP DIVE: MULTILEVEL TOKENS",
+      "type": "text",
+      "_id": "2roSnOsTjhv2827I",
+      "title": {
+        "show": true,
+        "level": 1
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr /><p></p><h2>Bevor du weiterliest</h2><blockquote><p><em>Hier findest du zusätzliche Informationen, die für die Nutzung von Beneos Battlemaps nicht notwendig sind. Alle sinnvollen Funktionen und Einstellungen wurden dir bereits im Voraus abgenommen, und du kannst alles sofort und intuitiv nutzen. Diese tiefere Einsicht ist für diejenigen gedacht, die MLT-Funktionen zu ihren eigenen Karten hinzufügen möchten oder einfach neugierig darauf sind, wie das Modul funktioniert.</em></p></blockquote><hr /><p></p><h2>Warum Multilevel Tokens?</h2><p>Multilevel Tokens (MLT) ist ein relativ altes Modul, aber es funktioniert immer noch einwandfrei. Es wird verwendet, um Tokens von einem Ort zum anderen zu teleportieren. Mit MLT verbinden wir verschiedene Karten miteinander, sodass Spieler- und DM-Kreaturen unabhängig von einer Karte zur anderen wechseln können. Eine häufig gestellte Frage ist, warum wir MLT verwenden, wenn es modernere Module gibt, die mehr Optionen bieten und ebenfalls Token-Teleportation ermöglichen? Die Antwort liegt darin, wie MLT funktioniert. Im Gegensatz zu anderen Modulen verwendet MLT keine Foundry-IDs, sondern eigene Kennungen. Das bedeutet, dass wir mit MLT im Gegensatz zu (zum Beispiel) Monks Active Tile Triggers (MATT) zwei Veröffentlichungen verbinden können, auch wenn sie nicht Teil desselben Pakets sind. Wenn \"Paket A\" heruntergeladen und später \"Paket B\" wird, funktionieren beide automatisch nahtlos zusammen, ohne zusätzlichen Aufwand. Mit MATT ist das nicht möglich. Man müsste alle Karten als eine riesige Veröffentlichung herunterladen oder alle Teleporter manuell verwalten, was bei mehreren tausend Szenen keinen Spaß machen würde. Glaub mir :)</p><p></p><h2>Wie funktioniert MLT?</h2><p>Einrichtung und Verknüpfung von MLT-Teleportationszonen MLT ist sehr einfach und fehlerfrei zu bedienen. Alles in MLT funktioniert über \"Zeichnungen\" oder Formen, die wir mit dem Zeichenwerkzeug in der linken Werkzeugleiste zeichnen. Wir nennen diese Zeichnungen MLT-Felder.</p><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/mlt_setup_a.webp\" alt=\"MLT Zone\" /><p>Mit dem aktiven MLT-Modul haben wir in den Einstellungen der gezeichneten Form (Beneos verwendet immer Rechtecke) einen neuen Reiter namens \"Multilevel\". Hier findest du alle wichtigen Einstellungen, die du für jeden Teleporter einzeln festlegen musst. Tipp: Du kannst die Formen einfach mit Strg+C kopieren und auf anderen Szenen einfügen.</p><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/mlt_setup_b.webp\" alt=\"MLT Settings\" /><ol><li><p>Hier kannst du festlegen, ob die \"Zeichnung\", oder besser gesagt das MLT-Feld, dessen Konfiguration du geöffnet hast, ein Ziel oder eine Quelle sein soll. MLT sendet Tokens von diesem Feld (Quelle) zu einem anderen Feld (Ziel). Wenn \"Aus\" aktiviert ist, kannst du von diesem aktuellen MLT-Feld zu einem anderen teleportieren. Wenn \"Ein\" aktiv ist, kann man von einem anderen Feld in das aktuelle teleportieren. Wenn beide aktiviert sind, funktioniert es in beide Richtungen.</p></li><li><p>Der Teleport-Identifikator ist das Herzstück von MLT. Hier kannst du einen beliebigen Text eingeben, aber es empfiehlt sich, eine logische Struktur einzuhalten. Wird ein Token vom aktuellen Feld teleportiert, gibt der Identifikator das Ziel an. Das Token wird zu einem anderen Feld mit dem gleichen Identifikator teleportiert. Es ist wichtig, dass immer maximal zwei MLT-Felder den gleichen Identifikator haben. Gibt es drei oder mehr Felder mit dem gleichen Identifikator, wird zufällig ausgewählt, und es könnte unerwartete Fehler geben. Das heißt, Quelle und Ziel werden dadurch definiert, dass sie den gleichen Identifikator haben.</p><ol><li><p>Die Benennungskonvention für MLT bei Beneos lautet wie folgt: <strong>ReleaseNummerA-KartennummerA_ReleaseNummerB-KartennummerB</strong> mit führenden Nullen. Die kleinere Nummer ist immer links. Zum Beispiel wäre es 76-04_76-05 oder 64-04_76-01..</p></li></ol></li><li><p>Mit \"Aktivieren über Kartenknoten\" bleibt das MLT-Feld inaktiv, selbst wenn Tokens hineintreten. Erst wenn ein Spieler auf ein Journal-Icon INNERHALB des MLT-Feldes klickt, wird MLT das Token von hier zum Ziel teleportieren. Das ist sinnvoll, weil MLT-Felder normalerweise unsichtbar sind und Spieler sonst ohne ihr Wissen versehentlich die Szene wechseln könnten. Deshalb haben wir auf allen MLT-Feldern ein einzigartiges Journal-Icon platziert. Dieses Journal-Icon (siehe Spielerbewegung) dient nur dazu, den Spielern zu signalisieren, dass sie hier die Karte verlassen können und steht als \"Knopf\" zur Verfügung, wenn sie es wünschen.ayers that they can leave the map here and is available as a \"button\" if they wish to do so.</p></li><li><p>Token-Klonen ist ein Werkzeug, das ich selten verwende, aber es kann eine coole Ergänzung sein. Token-Klonen bedeutet, dass die Tokens, die IN einem anderen MLT-Feld auf der aktuellen MLT-Oberfläche angezeigt werden (oder umgekehrt), aber nicht teleportiert werden. Bewegt sich ein Token auf Karte A, bewegt es sich auch auf Karte B. Das ist beispielsweise sehr cool, wenn man im zweiten Stock eines Hauses ist und die Tokens sehen kann, die im ersten Stock aktiv sind. Um Token-Klonen zu nutzen, müssen Quell- und Zielfeld des MLT, wie immer, den gleichen Identifikator haben. \"Quelle\" kennzeichnet das Feld, VON DEM Tokens angezeigt werden (im Beispiel wäre das das Feld im ersten Stock) und \"Ziel\" jenes, WO die Tokens angezeigt werden sollen (im Beispiel jenes im zweiten Stock).</p></li></ol><p></p><hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr />"
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1,
+        "ZBYX4B1Ai6kvIouY": 3
+      },
+      "flags": {},
+      "_stats": {
+        "systemId": "dnd5e",
+        "systemVersion": "2.4.1",
+        "coreVersion": "13.351",
+        "createdTime": 1706638533298,
+        "modifiedTime": 1706645363638,
+        "lastModifiedBy": "ZBYX4B1Ai6kvIouY",
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null
+      },
+      "category": null,
+      "_key": "!journal.pages!Q2wVmtfGoydDgvom.2roSnOsTjhv2827I"
+    },
+    {
+      "sort": 2000000,
+      "name": "DEEP DIVE: POI TELEPORTER",
+      "type": "text",
+      "_id": "lOPwk7kOLJPo3Ymf",
+      "title": {
+        "show": true,
+        "level": 1
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr /><p></p><h2>Bevor Du Weiterliest</h2><blockquote><p><em>Hier findest Du zusätzliche Informationen, die nicht notwendig sind, um Beneos Battlemaps zu nutzen. Alle sinnvollen Funktionen und Einstellungen wurden bereits im Voraus für Dich erledigt, und Du kannst alles sofort und intuitiv verwenden. Dieser tiefe Einblick ist für diejenigen gedacht, die PoI-Funktionen zu ihren eigenen Karten hinzufügen möchten oder einfach nur neugierig sind, wie das Modul funktioniert.</em></p></blockquote><hr /><h2><br />Warum Point of Interest Teleporter (PoI)?</h2><p>PoI ist, wie MLT, ein sehr zuverlässiges Modul, das problemlos mit Tausenden von Links und Verbindungen umgeht. Mit PoI verknüpfen wir ebenfalls Karten und Szenen in FoundryVTT, aber für den Spielleiter, nicht die Spieler. PoI bietet Navigationsfähigkeiten für den Spielleiter, sodass er nie den Überblick unter den Tausenden von Szenen und Welten von Beneos verliert. Jede Szene und jedes Release ist immer nach dem gleichen Muster aufgebaut, und alle Point of Interest Teleporter für denselben Zweck haben immer die gleichen Icons und Namenskonventionen. Das macht es benutzerfreundlich und einfach zu bedienen.</p><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/poi_c.webp\" alt=\"Beneos Navigation Bar\" /><p>Für mich war es immer wichtig, nicht nur Karten, sondern Erlebnisse anzubieten. Damit eine Karte sich wie ein Teil eines größeren Ganzen anfühlt, muss sie damit verbunden sein. Dafür sind Point of Interest Teleporter da. Sie führen uns zu Übersichtsszenen, der Weltkarte und von dort zu einer anderen Zone. Sie führen uns zu Intro-Sequenzen oder Sceneries. Jede DM-Navigation, die über Foundry hinausgeht, wird mit PoI realisiert.</p><p></p><h2>Wie funktioniert PoI?</h2><p>PoI funktioniert über Journale. Normalerweise sind Journale dazu gedacht, Informationen zu speichern, wie Notizen oder Geschichtstexte. Für PoI sind die Journale selbst die Information. In der Szenenkonfiguration einer Szene kann man unter \"Ambiente\" im Abschnitt \"Journal Entry\" ein Journal auswählen. Dieses Journal ist nun fest mit dieser Szene verbunden und gibt dem PoI-Modul die benötigten Informationen. Du wirst bemerken, dass JEDE einzelne Szene, ob Battlemap, Scenery oder Intro, ihr eigenes einzigartiges Journal in der Szenenkonfiguration hat. Deshalb gibt es so viele Journale im Beneos Battlemaps-Ordner im Journal Explorer oben rechts. Diese Journale haben keine Informationen; sie dienen lediglich PoI als Verknüpfung.</p><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/poi_a.webp\" alt=\"Scene Configuration\" /><p>Wenn man eines dieser Journale auf den Canvas (die Spielfläche in der Mitte) zieht, kann man darauf rechtsklicken und bekommt eine Auswahl an Optionen. VIEW SCENE bringt dich, den Spielleiter, aber nicht deine Spieler, auf die Szene des Journals, das du auf den Canvas gezogen hast. Das bedeutet, jeder PoI Teleporter zielt immer genau auf eine Szene. ACTIVATE SCENE zwingt alle Nutzer und dich auf die Ziel-Szene. Kurz gesagt, wenn Du in der Szenenkonfiguration ein Journal zuweist, repräsentiert dieses Journal diese Szene. Wo immer dieses Journal platziert ist, bringt ein Rechtsklick darauf dich immer zu der Szene, der dieses Journal zugewiesen ist.</p><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/poi_b.webp\" alt=\"Right Click A Journal\" /><p></p><h2>Mache Journal-Icons auf Deinen Karten sichtbar</h2><p>Wenn Du keine Journal-Icons auf deinen Karten sehen kannst, stelle sicher, dass sie sichtbar gemacht werden! Dazu gehe zur FoundryVTT-Toolbar auf der linken Seite, klicke auf das Banner-Icon und dann auf das Stecknadelkopf-Icon mit der Aufschrift \"Toggle Notes Display\". Dadurch werden alle Journal-Icons dauerhaft sichtbar.</p><img src=\"beneos_assets/beneos_battlemaps/map_assets/icons/how_to/navigation_activate_journals.webp\" alt=\"Activate Journal Entries on your Map\" width=\"200\" height=\"403\" /><p></p><h2>Fehlerbehebung</h2><p>Wenn Du NICHT zur richtigen Ziel-Szene wechselst, liegt das entweder daran, dass keinem Journal-Icon ein Journal zugewiesen wurde, das Journal selbst keiner Karte zugewiesen ist, oder das gleiche Journal mehreren Karten zugewiesen wurde. Es ist wichtig, dass jedes Journal nur einer Szene zugewiesen wird.</p><p></p><hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr />"
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1,
+        "ZBYX4B1Ai6kvIouY": 3
+      },
+      "flags": {},
+      "_stats": {
+        "systemId": "dnd5e",
+        "systemVersion": "2.4.1",
+        "coreVersion": "13.351",
+        "createdTime": 1706638567201,
+        "modifiedTime": 1706645372401,
+        "lastModifiedBy": "ZBYX4B1Ai6kvIouY",
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null
+      },
+      "category": null,
+      "_key": "!journal.pages!Q2wVmtfGoydDgvom.lOPwk7kOLJPo3Ymf"
+    },
+    {
+      "sort": 640625,
+      "name": "8. F.A.Q.",
+      "type": "text",
+      "_id": "9d9JVLPDlzTVB4eF",
+      "title": {
+        "show": true,
+        "level": 1
+      },
+      "image": {},
+      "text": {
+        "format": 1,
+        "content": "<hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr /><p></p><h2>ALLGEMEINE FRAGENs:</h2><p></p><h3>Wo kann ich Hilfe für Beneos-Inhalte finden?</h3><ul><li><p><strong>Antwort</strong>: Der beste Ort, um Hilfe zu finden, ist unser Beneos Discord (@UUID[.UA1mI9upQAxhyupZ]{9. BUG REPORT &amp; KONTAKT}). Wenn du in den FAQ- und Troubleshooting-Kanälen dort suchst, findest du vielleicht schon deine Antwort, ansonsten kannst du gerne eine Frage posten, und wir helfen dir weiter!</p></li></ul><hr /><h3>Darf ich Beneos-Assets (Battlemaps, Tokens, Zauber, Gegenstände usw.) in monetarisierten Streams oder Videos verwenden?</h3><ul><li><p><strong>Antwort</strong>: Ja, ohne Probleme. Aber aus Fairnessgründen bitte ich um eine mündliche Erwähnung oder eine Bildschirmanzeige. Ich freue mich auch sehr über Links zu euren Spielen, damit ich sie in den sozialen Medien teilen kann. Bei Streams mit erwarteten Zuschauerzahlen von über 800 oder Videos mit über 100.000 Aufrufen, bitte ich darum, im Vorfeld mit mir zu sprechen.</p></li></ul><hr /><h3>Darf ich Beneos-Inhalte in anderen Produkten weiterverbreiten oder zum Download anbieten?</h3><ul><li><p><strong>Antwort</strong>: Nein, das ist natürlich nicht ohne Weiteres erlaubt - was hast du denn gedacht? Schreib mich gerne an, wenn du Ideen hast oder Content von mir auf eine andere Art verwenden möchtest, als hier freigegeben wurde.</p></li></ul><p></p><p></p><h2>IMPORT FRAGEN:</h2><h3>Ich habe Szenen mit Moulinette importiert, und ich bekomme entweder einen schwarzen Bildschirm oder einige Elemente zeigen ein prominentes Ausrufezeichen \"!\", was ist passiert?</h3><ul><li><p><strong>Antwort</strong>: Wahrscheinlich gab es ein Problem während deines Moulinette-Downloads, und der Import ist entweder abgebrochen oder es gab einen Fehler. Wenn Foundry den importierten Inhalt (Kartenhintergrund, Handout oder Icon) nicht finden kann, kann es ihn nicht anzeigen. Glücklicherweise ist Moulinette robust und selten fehleranfällig. Jedoch können bei Internetverbindungsproblemen (selbst bei Hochgeschwindigkeitsverbindungen) oder Serverausfällen solche Probleme auftreten. Versuche zuerst, die fehlerhaften Szenen und die zugehörigen Handouts aus den Szenen- und Journal-Seitenleisten zu löschen. Dann versuche erneut, den Inhalt über Moulinette herunterzuladen. Wenn das Problem weiterhin besteht, bitte es in unserem Discord melden. Wir werden mit dir zusammenarbeiten, um es zu beheben. Einen Link zu unserem Discord findest du unter @UUID[.UA1mI9upQAxhyupZ]{9. BUG REPORT &amp; KONTAKT}</p></li></ul><hr /><h3>Wenn ich Moulinette Scenes starte, sehe ich die meisten Beneos-Inhalte nicht. Wo sind sie?</h3><ul><li><p><strong>Antwort</strong>: Moulinette erfordert eine Authentifizierung über Patreon. Dies erfolgt über den 'P'-Button im Moulinette-Kontrollmenü auf der linken Seite des Bildschirms. Nachdem du dich authentifiziert hast, siehst du alle Beneos-Inhalte. Hinweis: Die Authentifizierung öffnet ein neues Browserfenster, in dem du auf 'OK' klicken musst. Wenn du einen Adblocker aktiv hast, kann dies das Öffnen des neuen Fensters stören.</p></li></ul><p></p><h2>FUNKTIONELLE FRAGEN</h2><h3>Die Suchmaschine wird im Beneos-Modul nicht angezeigt</h3><ul><li><p><strong>Antwort</strong>: Überprüfe die Konsole mit F12. Unter \"Konsole\", klicke auf \"Fehler\" und sieh nach, ob ein Fehler auftritt, wenn du auf den Suchmaschinen-Button drückst. Wenn ja, bitte dies in unserem Discord melden, und wir kümmern uns darum. Die Suchmaschine wird außerhalb von Foundry gehostet, um immer aktuell zu sein, und erlaubt uns, Hotfixes ohne Modul-Updates umzusetzen.</p></li></ul><hr /><h3>Meine Spieler oder ich, als DM, können sich auf einer Szene nicht richtig bewegen. Es scheint, als würde etwas unsere Bewegung einschränken.</h3><ul><li><p><strong>Antwort</strong>: Es klingt so, als hättest du ein Problem mit dem Lock-View-Modul. Dieses Modul definiert den Bereich, den Spieler sehen können. Für Sceneries wird immer ein immersiver Vollbildschirm für Spieler angezeigt. Es gibt auch einige Bewegungseinschränkungen auf den Karten, um das Erlebnis zu verbessern, wie das Verhindern, dass Spieler die Navigationsleiste des DMs unter der Karte sehen können. Standardmäßig sind diese Einschränkungen für den DM deaktiviert. Wenn du, als DM, immer noch behindert bist, kannst du den Effekt für den DM oder Spieler in den Lock-View-Einstellungen deaktivieren. Unter Moduleinstellungen -&gt; Lock View -&gt; Benutzerkonfiguration kannst du \"Aktivieren\" für jeden Benutzer/DM, den du nicht betroffen haben möchtest, deaktivieren. Für mehr Informationen lies den @UUID[.SLCZbPelOrCWInbl]{DEEP DIVE: LOCK VIEW}</p></li></ul><hr /><h3>Wenn ich mit der rechten Maustaste auf ein Journal-Icon (POI Teleporter) klicke, um zu einer anderen Szene zu navigieren, werde ich stattdessen zu einer zufälligen Szene geleitet.</h3><ul><li><p><strong>Antwort</strong>: Es scheint, dass das betroffene Journal-Icon auf der Karte kein Zieljournal definiert hat. Foundry leitet den Spieler dann mithilfe des Point of Interest Teleporter-Moduls zu einer scheinbar zufälligen Szene. Um dies zu beheben, kannst du den Link manuell wiederherstellen. Gehe zur 'Journal'-Ebene im linken Seitenmenü. Dann doppelklicke auf das fehlerhafte Journal-Icon (POI Teleporter) auf der Karte, um die Journal-Optionen aufzurufen. Oben, unter \"Journal Entry\", wähle das \"DontTouch-POI-Teleporter-****\" Journal, das auch in der Zielszene eingestellt ist. Um dies zu überprüfen, öffne die Szene, auf die das Journal-Icon zeigen soll (Rechtsklick -&gt; Konfigurieren). Unter \"Ambience\" siehst du, welches Journal dort gespeichert ist. Sobald du das Journal-Icon mit dem Journal der Szene verlinkt hast, sollte der Teleporter nach einem Refresh (F5) funktionieren. Außerdem wären wir dankbar, wenn du kaputte Teleporter in unserem Discord melden könntest, damit wir sie schnell beheben können. Wenn du weitere Hilfe benötigst, gibt es einen Thread in unserem Discord (#map-troubleshooting), der den Prozess (mit Bildern!) erklärt. Für mehr Informationen lies den @UUID[.lOPwk7kOLJPo3Ymf]{DEEP DIVE: POI TELEPORTER}</p></li></ul><hr /><h3>Die Karte hat viele Sounds, woher kommen die?</h3><ul><li><p><strong>Antwort</strong>: Bei allen überarbeiteten Packs werden die Audios als Umgebungsgeräusche auf der 'Sound-Ebene' platziert, die im linken Seitenmenü zugänglich ist. Du kannst die Lautstärke ändern, Geräusche stummschalten oder dort entfernen. Ältere Packs, die vor der Überarbeitung importiert wurden, haben oft Audios direkt in die Hintergrunddatei eingebettet. Diese können mit dem 'Ambience'-Tab in der Audio-Seitenleiste oder mit einem Modul namens 'background volume', das im Foundry-Modul-Manifest verfügbar ist, stummgeschaltet werden.</p></li></ul><hr /><h3>Wenn meine Spieler die Teleportationsbereiche nutzen, werden ihre Token an einen zufälligen oder falschen Ort teleportiert.</h3><ul><li><p>Antwort: Es scheint, als wären die \"Zielkoordinaten\" falsch. Wähle \"Formen\" aus der linken Toolbar und doppelklicke auf den Teleportationsbereich. Unter dem \"Multilevel\"-Tab siehst du den \"Teleport Identifier\", der angibt, wohin der Teleporter führt. Stelle sicher, dass es genau zwei Teleporter mit demselben Identifikator gibt. Wenn es mehrere gibt, wird einer zufällig gewählt. Wenn keiner gesetzt ist, funktioniert der Teleporter überhaupt nicht. Außerdem wären wir dankbar, wenn du fehlerhafte MLT-Teleporter in unserem Discord melden könntest, damit wir sie schnell beheben können. Für mehr Informationen lies den @UUID[.2roSnOsTjhv2827I]{DEEP DIVE: MULTILEVEL TOKENS}</p></li></ul><hr /><h3>Ich sehe Vögel, Nebel oder Regeneffekte auf einigen Karten. Kann ich sie stoppen?</h3><ul><li><p><strong>Antwort</strong>: Die meisten Karten haben Partikeleffekte direkt aus der Unreal Engine. Diese sind Teil des Videos und können nicht geändert werden. Einige Szenen haben jedoch auch Filter und Partikeleffekte, die durch das Foundry-Modul FXMaster erstellt wurden. Um sie für eine Szene zu deaktivieren, kannst du den kleinen \"Zauberstab\" für die FXMaster-Tools in der linken Toolbar öffnen. Mit dem kleinen Mülleimer-Symbol unten kannst du alle Effekte auf der Szene löschen. Für mehr Informationen lies den @UUID[.HBHLui4WLYFWpPbt]{DEEP DIVE: FX MASTER}</p></li></ul><hr /><h3>Warum wird mein Intro nicht abgespielt?</h3><ul><li><p><strong>Antwort</strong>: Die Intros sind so konzipiert, dass sie wiederholbar und fortlaufend sind. Da Spieler oft zu unterschiedlichen Zeiten nach dem Laden auf eine Szene kommen, sind die Videos standardmäßig pausiert. Der DM kann die Videos starten, sobald alle Spieler auf der Szene angekommen sind, um sicherzustellen, dass jeder dasselbe sieht. Der DM kann einfach auf das Start-/Pause-Tile am unteren Rand der Navigation klicken, um es für alle zu starten. Stelle sicher, dass das Modul \"Monks active Tile trigger\" in deiner Welt installiert und aktiviert ist. Für mehr Informationen lies den @UUID[.Bk4Zxjh1k8viPMYd]{DEEP DIVE: MONKS ACTIVE TILE TRIGGER}</p></li></ul><hr /><h3>Meine Kreaturen und Spieler-Token verschwinden manchmal unter Bäumen oder Wänden. Was ist los?</h3><ul><li><p><strong>Antwort</strong>: Um das Erlebnis für alle Teilnehmer zu verbessern, bieten wir mehr als nur einfache Karten an. Wir bemühen uns zusätzlich, alle Objekte, die in der Kartenansicht höher als die Spieler sind, manuell auszuschneiden und sie als Bild \"Foreground\" zu platzieren. Dies verbessert das immersive Erlebnis erheblich und vermittelt ein Gefühl von Raum und Tiefe, wenn man unter Türstürzen hindurchgeht, von knorrigen Ästen überschattet wird oder Teile von Wänden über den Spieler hinausragen. Dies wird mit \"Foreground Layer Tiles\" erreicht. Diese sind wie normale Tiles und können daher über die \"Tile\"-Toolbar auf der linken Seite aufgerufen werden. Im Gegensatz zu Standard-Tiles, die unter Actor-Tokens liegen, sind Overhead Tiles, wie der Name schon sagt, ÜBER den Tokens und werden oft für Dächer verwendet. Um diese Tiles zu bearbeiten, musst du zuerst auf das kleine Haus-Symbol in der Toolbar klicken. Erst dann können Overhead Tiles wie jedes andere Tile mit einem Doppelklick bearbeitet werden. Ein wichtiger Hinweis: Mehrere Overhead Tiles können gleichzeitig überlappen. Zum Beispiel, wenn du möchtest, dass ein Dach versteckt wird, wenn ein Spieler ein Haus betritt, aber nicht die Türbalken und Wände. Um auf die unteren Schichten zuzugreifen, verschiebe die oberen, um auf die darunter liegenden klicken zu können. Denke auch daran, dass Tiles oft gesperrt sind, um versehentliche Bewegungen zu verhindern. Zum Entsperren, Rechtsklick und dann auf das kleine Schloss-Symbol auf der rechten Seite des Tiles klicken. Wir haben dies ausführlich mit Beispielen in @UUID[.yNchfgseQzjDTBMR]{2. SPIELLEITER NAVIGATION &amp; STEUERUNG}</p></li></ul><hr /><h3>Wie entscheide ich, welche Journal-Icons Spieler auf der Karte sehen können?</h3><ul><li><p><strong>Antwort</strong>: Wir haben dies ausführlich in @UUID[.NzMxwvwPt1uN1owI]{3. SPIELER NAVIGATION &amp; STEUERUNG} erklärt</p></li></ul><hr /><h3>Meine Türgeräusche sind zu laut, oder die Karten-Sounds sind zu leise.</h3><ul><li><p><strong>Antwort</strong>: Jeder Spieler und DM muss die Lautstärkeregler für sich selbst anpassen. Playlist passt die DM-Musik an, der Ambiente-Regler passt Karten-Sounds und Sequenzen an und der Interface-Regler steuert Tür-Soundeffekte. Für mehr Informationen lies die Steuerung der Umgebungs- und Türgeräusche. Weitere Informationen dazu findest Du unter @UUID[.yNchfgseQzjDTBMR]{2. SPIELLEITER NAVIGATION &amp; STEUERUNG}</p><p></p></li></ul><hr /><p>&lt; @UUID[.mIGixy2OXWghLxh5]{Zurück zur Übersicht}</p><hr />"
+      },
+      "video": {
+        "controls": true,
+        "volume": 0.5
+      },
+      "src": null,
+      "system": {},
+      "ownership": {
+        "default": -1,
+        "ZBYX4B1Ai6kvIouY": 3
+      },
+      "flags": {},
+      "_stats": {
+        "systemId": "dnd5e",
+        "systemVersion": "2.4.1",
+        "coreVersion": "13.351",
+        "createdTime": 1706645476489,
+        "modifiedTime": 1706646424375,
+        "lastModifiedBy": "ZBYX4B1Ai6kvIouY",
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null
+      },
+      "category": null,
+      "_key": "!journal.pages!Q2wVmtfGoydDgvom.9d9JVLPDlzTVB4eF"
+    }
+  ],
+  "ownership": {
+    "default": 0,
+    "vq0NGLlwRM2vTPNW": 3,
+    "ZBYX4B1Ai6kvIouY": 3
+  },
+  "_stats": {
+    "systemId": "dnd5e",
+    "systemVersion": "2.4.1",
+    "coreVersion": "13.351",
+    "createdTime": 1690797702824,
+    "modifiedTime": 1708351123482,
+    "lastModifiedBy": "ZBYX4B1Ai6kvIouY",
+    "compendiumSource": "JournalEntry.i0FFoK2d6iUNdZgr",
+    "duplicateSource": null,
+    "exportSource": null
+  },
+  "_id": "Q2wVmtfGoydDgvom",
+  "categories": [],
+  "_key": "!journal!Q2wVmtfGoydDgvom"
+}
