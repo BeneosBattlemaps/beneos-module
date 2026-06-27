@@ -160,6 +160,7 @@ export class BeneosWikiWindow extends HandlebarsApplicationMixin(ApplicationV2) 
     const page = WIKI_PAGES[idx] || WIKI_PAGES[0]
     const prev = idx > 0 ? WIKI_PAGES[idx - 1] : null
     const next = idx >= 0 && idx < WIKI_PAGES.length - 1 ? WIKI_PAGES[idx + 1] : null
+    const isHome = page.key === WIKI_DEFAULT_PAGE
 
     return {
       ui,
@@ -170,6 +171,9 @@ export class BeneosWikiWindow extends HandlebarsApplicationMixin(ApplicationV2) 
       results,
       resultCount: results.length,
       noResults: searchMode && results.length === 0,
+      isHome,
+      homeKey: WIKI_DEFAULT_PAGE,
+      homeTitle: this._pageTitle(WIKI_DEFAULT_PAGE),
       current: {
         title: this._pageTitle(page.key),
         cat: this._catLabel(page.category),
@@ -195,10 +199,11 @@ export class BeneosWikiWindow extends HandlebarsApplicationMixin(ApplicationV2) 
       const header = root.closest(".application")?.querySelector(".window-header")
                   ?? root.parentElement?.querySelector(".window-header")
       if (header && !header.querySelector(".bw-header-logo")) {
-        const logo = document.createElement("img")
+        // The round Beneos logo, masked + gold-tinted via CSS (same SVG the
+        // toolbar and Cloud window use), instead of the wide text logo.
+        const logo = document.createElement("i")
         logo.className = "bw-header-logo"
-        logo.src = "modules/beneos-module/assets/wiki/beneos_logo_text.webp"
-        logo.alt = "Beneos Battlemaps"
+        logo.setAttribute("aria-label", "Beneos")
         header.prepend(logo)
       }
     } catch (e) { /* branding is best-effort */ }
@@ -250,6 +255,27 @@ export class BeneosWikiWindow extends HandlebarsApplicationMixin(ApplicationV2) 
     if (main && this._scrollTopPending) {
       this._scrollTopPending = false
       main.scrollTop = 0
+    }
+
+    // Preserve the LEFT NAV scroll position across re-renders, so picking a
+    // page (or opening an image / entering a section) does not jump the nav
+    // back to the top. The article pane still resets to top on page change.
+    const nav = root.querySelector(".bw-navscroll")
+    if (nav) {
+      nav.addEventListener("scroll", () => {
+        if (this._restoringNav) return
+        this._navScrollTop = nav.scrollTop
+      }, { passive: true })
+      // Restore after layout settles (the window flex heights are not final in
+      // _onRender, so an immediate scrollTop clamps to 0). Guard so the
+      // programmatic scroll does not overwrite the saved value.
+      if (this._navScrollTop) {
+        this._restoringNav = true
+        requestAnimationFrame(() => {
+          nav.scrollTop = this._navScrollTop
+          requestAnimationFrame(() => { this._restoringNav = false })
+        })
+      }
     }
   }
 

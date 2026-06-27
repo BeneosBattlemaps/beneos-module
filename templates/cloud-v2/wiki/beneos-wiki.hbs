@@ -52,6 +52,9 @@
   <div class="bn-scroll bw-main" data-wiki-main>
     <img class="bw-compass" src="modules/beneos-module/assets/wiki/beneos_compas.webp" alt="" />
     <article class="bw-article">
+      {{#unless isHome}}
+        <a class="bw-home" data-action="gotoPage" data-page-key="{{homeKey}}">&lsaquo; {{homeTitle}}</a>
+      {{/unless}}
       <div class="bw-eyebrow">{{current.cat}}</div>
       <h1 class="bw-title">{{current.title}}</h1>
       <div class="bw-rule"></div>
