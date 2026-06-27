@@ -65,7 +65,7 @@ function entryKey(e) {
 function positionsOf(entry) {
   if (Array.isArray(entry?.positions) && entry.positions.length) return entry.positions;
   if (entry?.x != null && entry?.y != null) {
-    return [{ x: entry.x, y: entry.y, elevation: entry.elevation, rotation: entry.rotation, width: entry.width, height: entry.height, hidden: !!entry.hidden }];
+    return [{ x: entry.x, y: entry.y, elevation: entry.elevation, rotation: entry.rotation, width: entry.width, height: entry.height, hidden: !!entry.hidden, disposition: entry.disposition }];
   }
   return [];
 }
@@ -89,6 +89,8 @@ function dedupeByCreature(list) {
 export class BeneosCreatureInstaller {
   /** @type {BeneosCreatureInstaller|null} */
   static instance = null;
+  /** @type {boolean} whether the canvas/scene listeners are bound */
+  static _hooked = false;
 
   constructor() {
     this.scene = null;
@@ -102,21 +104,41 @@ export class BeneosCreatureInstaller {
 
   /* --------------------------------------------------------------- lifecycle */
 
-  static boot() {
+  /**
+   * Register the scene/canvas listeners. Runs on `setup`, i.e. BEFORE the first
+   * `canvasReady` fires, so the initial scene draw is never missed (this was the
+   * cause of the "drawer absent after reload until a scene switch" bug: the
+   * listeners used to be registered only on `ready`, which can land after the
+   * initial canvasReady). Guarded so it only binds once.
+   */
+  static registerHooks() {
+    if (BeneosCreatureInstaller._hooked) return;
+    BeneosCreatureInstaller._hooked = true;
     const refresh = () => BeneosCreatureInstaller.get().attachToActiveScene();
     Hooks.on("canvasReady", refresh);
     // The flag may be (un)set on the active scene while it is open (admin scan).
     Hooks.on("updateScene", (scene) => {
       if (scene?.id === canvas?.scene?.id) refresh();
     });
+  }
+
+  static boot() {
+    const refresh = () => BeneosCreatureInstaller.get().attachToActiveScene();
+    // Belt and suspenders: registerHooks() normally already ran on `setup`; call
+    // it again here in case the module loaded late (setup missed).
+    BeneosCreatureInstaller.registerHooks();
     // Expose a refresh hook so the login/support flow can flip the drawer into
     // the patron state after a successful auth without a scene reload.
     game.beneos = game.beneos || {};
     game.beneos.creatureInstaller = BeneosCreatureInstaller.get();
     // On a hard reload (F5) canvasReady often fires BEFORE this ready hook, so the
-    // listener above would miss the initial draw and the drawer would only appear
-    // after switching scenes. Attach immediately if the canvas is already up.
+    // setup-registered listener handled the initial draw already; this is just a
+    // fallback if the canvas is already up.
     if (canvas?.ready) refresh();
+    // Final safety net against load-order races (another module's updateScene /
+    // a late flag migration firing before our listeners were bound): one deferred
+    // attach. attachToActiveScene() is idempotent, so an extra call is harmless.
+    setTimeout(() => { try { refresh(); } catch (e) { /* render() already logs */ } }, 300);
   }
 
   static get() {
@@ -242,9 +264,22 @@ export class BeneosCreatureInstaller {
     // stored flag: it is alternative iff it was neither placed on the map (no
     // positions) nor assigned 1:1 to an SRD (not a replacedBy target). Anything
     // placed or assigned is a regular creature and must never show the ALT tag.
-    const hasPositions = positionsOf(entry).length > 0;
+    const positions = positionsOf(entry);
+    const hasPositions = positions.length > 0;
     const isAssigned = !!(premium && assignedKeys && assignedKeys.has(entryKey(entry)));
     const alternative = premium && !hasPositions && !isAssigned;
+    // Disposition to the players: captured per placement, else the actor's
+    // prototype. Drives the disc ring colour (hostile/neutral/friendly/secret) so
+    // the GM sees what is actually hostile at a glance. Alternatives keep their
+    // blue ring (a suggestion, not a placed combatant), so no disposition ring.
+    const dispRaw = positions.find(p => typeof p.disposition === "number")?.disposition;
+    const disposition = (typeof dispRaw === "number") ? dispRaw
+      : (typeof actor?.prototypeToken?.disposition === "number" ? actor.prototypeToken.disposition : null);
+    const dispClass = alternative ? null
+      : disposition === -1 ? "hostile"
+      : disposition === 1 ? "friendly"
+      : disposition === -2 ? "secret"
+      : disposition === 0 ? "neutral" : null;
     // SRD discs use local token art; premium guests/uninstalled use the CDN
     // thumbnail; an installed premium token can use its real local art.
     let img = null;
@@ -274,6 +309,8 @@ export class BeneosCreatureInstaller {
       needsInstall: premium && isPatron && !installed && !!entry.tokenKey,
       // Alternatives: optional swap suggestions, never auto-placed. Derived above.
       alternative,
+      // Players disposition -> disc ring colour class (null = no disposition ring).
+      dispClass,
       // Assignment link viz: own key + (for SRD) the assigned Beneos' key/name.
       key: entryKey(entry),
       linkedKey: entry.replacedBy ? entryKey(entry.replacedBy) : null,
@@ -655,15 +692,35 @@ export class BeneosCreatureInstaller {
     return actor;
   }
 
-  /** Build a TokenDocument object for `actor` at the given position, restoring
-   *  the authored visibility (hidden) state for that placement. */
-  async #buildToken(actor, pos) {
-    const td = await actor.getTokenDocument({
-      x: pos.x, y: pos.y,
-      elevation: pos.elevation ?? 0,
-      rotation: pos.rotation ?? 0,
-      hidden: !!pos.hidden
-    });
+  /**
+   * Build a TokenDocument object for `actor` at the given stored placement.
+   *  - `full` (default): the placement IS this actor's own token, so restore the
+   *    entire authored setup (name/displayName, appearance, vision, light, bars,
+   *    flags, delta, disposition, ...). The stored `_id`/`actorId` are dropped so
+   *    getTokenDocument assigns a fresh token id and points actorId at the
+   *    resolved world actor (SRD: same id via keepId import; Beneos: new id).
+   *  - `!full`: the placement belongs to a DIFFERENT actor (an assigned Beneos
+   *    taking an SRD's slot). Keep only the placement subset so the Beneos keeps
+   *    its own appearance/vision but inherits position + disposition.
+   * Entries captured before the full-token migration only carry the subset
+   * fields; in that case `full` degrades gracefully to the same result.
+   */
+  async #buildToken(actor, pos, { full = true } = {}) {
+    let data;
+    if (full) {
+      data = foundry.utils.deepClone(pos);
+      delete data._id;
+      delete data.actorId;
+    } else {
+      data = {
+        x: pos.x, y: pos.y,
+        elevation: pos.elevation ?? 0,
+        rotation: pos.rotation ?? 0,
+        hidden: !!pos.hidden
+      };
+      if (typeof pos.disposition === "number") data.disposition = pos.disposition;
+    }
+    const td = await actor.getTokenDocument(data);
     return td.toObject();
   }
 
@@ -682,9 +739,9 @@ export class BeneosCreatureInstaller {
     const placedBeneos = new Set();
     let missing = 0;
 
-    const placeAll = async (actor, positions) => {
+    const placeAll = async (actor, positions, full) => {
       for (const pos of positions) {
-        try { tokenDocs.push(await this.#buildToken(actor, pos)); }
+        try { tokenDocs.push(await this.#buildToken(actor, pos, { full })); }
         catch (e) { console.error("beneos | creature-installer: token build failed", pos, e); missing++; }
       }
     };
@@ -696,12 +753,14 @@ export class BeneosCreatureInstaller {
       if (srd.replacedBy) beneosActor = await this.#resolveOrInstall(srd.replacedBy, { allowInstall });
       if (beneosActor) {
         placedBeneos.add(entryKey(srd.replacedBy));
-        await placeAll(beneosActor, positions);     // assigned Beneos at every SRD position
+        // Assigned Beneos at the SRD slot: keep the Beneos's own appearance, only
+        // take position + disposition from the SRD placement (subset).
+        await placeAll(beneosActor, positions, false);
         continue;
       }
       const srdActor = this.resolveActor(srd);
       if (!srdActor) { missing += positions.length; continue; }
-      await placeAll(srdActor, positions);           // free SRD fallback
+      await placeAll(srdActor, positions, true);     // free SRD at its own placement -> full restore
     }
 
     // Standalone Beneos creatures at their own position(s). Alternatives have no
@@ -713,7 +772,7 @@ export class BeneosCreatureInstaller {
       if (!positions.length) continue;
       const actor = await this.#resolveOrInstall(b, { allowInstall });
       if (!actor) { missing++; continue; }
-      await placeAll(actor, positions);
+      await placeAll(actor, positions, true);        // standalone Beneos at its own placement -> full restore
     }
 
     if (tokenDocs.length) await scene.createEmbeddedDocuments("Token", tokenDocs);
@@ -734,7 +793,7 @@ export class BeneosCreatureInstaller {
       const positions = positionsOf(entry);
       if (!actor) { missing += positions.length || 1; continue; }
       for (const pos of positions) {
-        try { tokenDocs.push(await this.#buildToken(actor, pos)); }
+        try { tokenDocs.push(await this.#buildToken(actor, pos, { full: true })); }
         catch (e) { console.error("beneos | creature-installer: token build failed", entry, e); missing++; }
       }
     }
@@ -784,6 +843,13 @@ Hooks.once("init", () => {
       default: {}
     });
   } catch (e) { console.error("beneos | creature-installer setting register failed", e); }
+});
+
+// Bind the canvas/scene listeners as early as possible (before the first
+// canvasReady) so the drawer never misses the initial scene draw.
+Hooks.once("setup", () => {
+  try { BeneosCreatureInstaller.registerHooks(); }
+  catch (e) { console.error("beneos | creature-installer hook register failed", e); }
 });
 
 Hooks.once("ready", () => {

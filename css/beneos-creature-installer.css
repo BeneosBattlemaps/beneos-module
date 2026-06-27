@@ -242,8 +242,11 @@
 }
 #beneos-creature-installer .bci-disc:hover .bci-badge { transform: scale(1.1); }
 #beneos-creature-installer .bci-name {
-  font-size: 11px; line-height: 1.15; text-align: center; color: #c2b59a;
-  width: 100%;
+  /* Clean sans (not the decorative serif) so the small labels stay legible in the
+     compact drawer. */
+  font-family: "Signika", "Segoe UI", system-ui, sans-serif;
+  font-size: 11px; line-height: 1.2; font-weight: 600; letter-spacing: .1px;
+  text-align: center; color: #d8cdb6; width: 100%;
 }
 #beneos-creature-installer .bci-col-beneos .bci-name { color: #e0c690; }
 
@@ -342,12 +345,18 @@
 
 /* ------------------------------------------ iteration 2: availability marks */
 
-/* a locally-installed creature gets a soft green ring + a corner check, and the
-   grab cursor (it is draggable to the canvas via native Actor-drop) */
-#beneos-creature-installer .bci-disc.bci-available { box-shadow: 0 0 0 2px rgba(126, 162, 126, .55), inset 0 2px 6px rgba(0, 0, 0, .6); }
-#beneos-creature-installer .bci-disc.bci-available.bci-disc-beneos {
-  box-shadow: 0 0 0 2px rgba(126, 162, 126, .55), 0 0 10px rgba(216, 178, 94, .35), inset 0 2px 6px rgba(0, 0, 0, .6);
-}
+/* An installed/resolvable creature is draggable (grab cursor) and carries the
+   green corner check as the INSTALL indicator. The disc RING now encodes the
+   creature's disposition to the players (see below), not the install status, so
+   the GM sees at a glance what is hostile / neutral / friendly. */
+#beneos-creature-installer .bci-disc.bci-available { box-shadow: inset 0 2px 6px rgba(0, 0, 0, .6); }
+#beneos-creature-installer .bci-disc.bci-available.bci-disc-beneos { box-shadow: 0 0 8px rgba(216, 178, 94, .28), inset 0 2px 6px rgba(0, 0, 0, .6); }
+/* Disposition ring (hostile / neutral / friendly / secret). Overrides the plain
+   available ring; alternatives keep their blue ring (no disposition class). */
+#beneos-creature-installer .bci-disc.bci-available.bci-disp-hostile  { box-shadow: 0 0 0 2px rgba(200, 66, 58, .9), 0 0 7px rgba(200, 66, 58, .4), inset 0 2px 6px rgba(0, 0, 0, .6); }
+#beneos-creature-installer .bci-disc.bci-available.bci-disp-neutral  { box-shadow: 0 0 0 2px rgba(212, 178, 92, .85), inset 0 2px 6px rgba(0, 0, 0, .6); }
+#beneos-creature-installer .bci-disc.bci-available.bci-disp-friendly { box-shadow: 0 0 0 2px rgba(110, 172, 110, .85), inset 0 2px 6px rgba(0, 0, 0, .6); }
+#beneos-creature-installer .bci-disc.bci-available.bci-disp-secret   { box-shadow: 0 0 0 2px rgba(156, 112, 194, .85), inset 0 2px 6px rgba(0, 0, 0, .6); }
 #beneos-creature-installer .bci-check {
   position: absolute; bottom: -2px; right: -2px;
   width: 16px; height: 16px; border-radius: 50%;

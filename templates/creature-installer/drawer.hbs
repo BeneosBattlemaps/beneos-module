@@ -67,7 +67,7 @@
         <div class="bci-bed">
           {{#each srd}}
             <div class="bci-tokencol">
-              <div class="bci-disc bci-disc-srd bci-shape-{{shape}} {{#if available}}bci-available{{/if}}" draggable="{{draggable}}" data-uuid="{{uuid}}" data-key="{{key}}" data-name="{{name}}" {{#if linkedKey}}data-linked="{{linkedKey}}"{{/if}} title="{{#if available}}{{localize 'BENEOS.CreatureInstaller.OpenSheetHint'}}{{else}}{{name}}{{/if}}">
+              <div class="bci-disc bci-disc-srd bci-shape-{{shape}} {{#if available}}bci-available{{/if}} {{#if dispClass}}bci-disp-{{dispClass}}{{/if}}" draggable="{{draggable}}" data-uuid="{{uuid}}" data-key="{{key}}" data-name="{{name}}" {{#if linkedKey}}data-linked="{{linkedKey}}"{{/if}} title="{{#if available}}{{localize 'BENEOS.CreatureInstaller.OpenSheetHint'}}{{else}}{{name}}{{/if}}">
                 {{#if img}}<img src="{{img}}" alt="{{name}}" draggable="false" onerror="this.style.display='none'">{{/if}}
                 {{#if available}}<span class="bci-check" title="{{localize 'BENEOS.CreatureInstaller.Available'}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span>{{/if}}
               </div>
@@ -91,7 +91,7 @@
           <div class="bci-bed {{#unless isPatron}}bci-bed-deemphasised{{/unless}}">
             {{#each beneos}}
               <div class="bci-tokencol">
-                <div class="bci-disc bci-disc-beneos bci-shape-{{shape}} {{#if available}}bci-available{{/if}} {{#if alternative}}bci-alt{{/if}} {{#if needsInstall}}bci-needsinstall{{/if}}" draggable="{{draggable}}" data-uuid="{{uuid}}" data-key="{{key}}" data-name="{{name}}" data-tokenkey="{{tokenKey}}" title="{{#if alternative}}{{localize 'BENEOS.CreatureInstaller.AlternativeTooltip'}}{{else if available}}{{localize 'BENEOS.CreatureInstaller.OpenSheetHint'}}{{else}}{{name}}{{/if}}">
+                <div class="bci-disc bci-disc-beneos bci-shape-{{shape}} {{#if available}}bci-available{{/if}} {{#if alternative}}bci-alt{{/if}} {{#if needsInstall}}bci-needsinstall{{/if}} {{#if dispClass}}bci-disp-{{dispClass}}{{/if}}" draggable="{{draggable}}" data-uuid="{{uuid}}" data-key="{{key}}" data-name="{{name}}" data-tokenkey="{{tokenKey}}" title="{{#if alternative}}{{localize 'BENEOS.CreatureInstaller.AlternativeTooltip'}}{{else if available}}{{localize 'BENEOS.CreatureInstaller.OpenSheetHint'}}{{else}}{{name}}{{/if}}">
                   {{#if img}}<img src="{{img}}" alt="{{name}}" draggable="false" onerror="this.style.display='none'">{{/if}}
                   {{#if alternative}}<span class="bci-alt-badge" title="{{localize 'BENEOS.CreatureInstaller.AlternativeTooltip'}}">{{localize 'BENEOS.CreatureInstaller.AltShort'}}</span>{{/if}}
                   {{#if available}}
