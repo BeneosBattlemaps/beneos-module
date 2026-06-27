@@ -8142,6 +8142,8 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 
 /* Punkt 3: compatible-adventure chip in the drawer (acronym + tooltip). */
 .beneos-cloud-app .bc-drawer-compat { margin: 2px 0 8px; }
+/* Bundle "Compatible with: <campaign>" chip on the result card + bundle drawer. */
+.beneos-cloud-app .bc-card-compat { margin: 2px 0 4px; }
 .beneos-cloud-app .bc-compat-chip {
   display: inline-flex;
   align-items: center;

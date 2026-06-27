@@ -5803,6 +5803,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     let filtered = list
     const q = (this._textFilter || "").trim().toLowerCase()
     if (q) filtered = filtered.filter(b => String(b?.name || "").toLowerCase().includes(q))
+    // The existing Campaign/adventure dropdown narrows the bundle list in place
+    // (same control the release view uses). Match the selected campaign against
+    // each bundle's own campaign field (admin-set "Compatible with").
+    const advSel = String(this.element?.querySelector("#bmap-adventure")?.value || "").trim()
+    if (advSel && advSel.toLowerCase() !== "any") {
+      const want = advSel.toLowerCase()
+      filtered = filtered.filter(b => String(b?.campaign || "").toLowerCase().includes(want))
+    }
     const totalMatches = filtered.length
     const limit = this.loadedCount
     const hasMore = totalMatches > limit
@@ -5836,9 +5844,20 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         }
       })
       const totalBytes = members.reduce((s, m) => s + (m._sizeBytes || 0), 0)
+      // Compatible-with chip: the admin sets a campaign per bundle ("Curse of
+      // Strahd"). Localize it via the shared i18n matrix (raw fallback) and show
+      // the spelled-out full name (not the acronym the release cards use).
+      let compatibleCampaign = ""
+      const campRaw = String(b?.campaign || "").trim()
+      if (campRaw) {
+        const loc = game.beneos?.databaseHolder?.localizeTag?.("battlemap.adventure", campRaw)
+        const chip = this.#adventureChip((loc && loc !== campRaw) ? loc : campRaw)
+        compatibleCampaign = chip?.fullName || campRaw
+      }
       return {
         key:              b.id,
         name:             b.name || b.id,
+        compatibleCampaign,
         assetType:        "bmap",
         dragType:         "bmap",
         dragMode:         "noop",

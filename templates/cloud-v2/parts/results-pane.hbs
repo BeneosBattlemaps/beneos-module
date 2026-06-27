@@ -281,6 +281,13 @@
                 <span class="bc-status-chip bc-status-beneos" data-tooltip="Beneos Original (non-SRD)">{{card.beneosChip}}</span>
               {{/if}}
             </div>
+            {{!-- Bundle compatible-with chip: spelled-out campaign name set per
+                 bundle in the admin. Only bundle cards carry compatibleCampaign. --}}
+            {{#if card.compatibleCampaign}}
+              <div class="bc-card-compat">
+                <span class="bc-compat-chip"><i class="fa-solid fa-book-skull"></i>{{localize "BENEOS.Cloud.Drawer.CompatibleWith"}}: {{card.compatibleCampaign}}</span>
+              </div>
+            {{/if}}
             <div class="bc-card-tags">
               {{!-- Wave B-9-fix-Y2: card chips render through a unified
                    tag-descriptor array built in #enrichCard. The tag row
@@ -756,6 +763,11 @@
         {{#if drawer.asset.isBundleCard}}
         <section class="bc-drawer-section bc-drawer-bundle-members">
           <h4 class="bc-drawer-section-h">{{localize "BENEOS.Cloud.Bmap.BundleMembers"}} ({{drawer.asset.memberCount}})</h4>
+          {{#if drawer.asset.compatibleCampaign}}
+            <div class="bc-card-compat">
+              <span class="bc-compat-chip"><i class="fa-solid fa-book-skull"></i>{{localize "BENEOS.Cloud.Drawer.CompatibleWith"}}: {{drawer.asset.compatibleCampaign}}</span>
+            </div>
+          {{/if}}
           <p class="bc-bundle-total">{{localize "BENEOS.Cloud.Bmap.BundleTotalSize"}}: <strong>{{drawer.asset.totalSizeLabel}}</strong></p>
           {{!-- Many GB at once: large one-shot installs can fail depending on the
                connection and especially the game server's capacity. --}}
