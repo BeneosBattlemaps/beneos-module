@@ -56,6 +56,10 @@ export class BeneosAnalytics {
   static isEnabled() {
     try {
       if (!game.user?.isGM) return false
+      // Dev instances run the internal beneos-dev tools module (only developers
+      // have it). Never send telemetry from such a world, so development noise and
+      // deliberately provoked errors stay out of the production analytics.
+      if (game.modules?.get("beneos-dev")?.active) return false
       return !!game.settings.get(this.moduleId(), "beneos-analytics-enabled")
     } catch (_) { return false }
   }
@@ -235,39 +239,96 @@ export class BeneosAnalytics {
   // Anonymous class/level composition of the party. No names, no IDs, no stats.
   static _partySnapshot() {
     try {
-      const actors = (game.actors?.contents || []).filter(a => a.type === "character" && a.hasPlayerOwner)
       const sys = game.system?.id || ""
-      if (!actors.length) return { system_id: sys, party_size: 0, party_avg_level: 0 }
+      const owned = (game.actors?.contents || []).filter(a => a.hasPlayerOwner)
+
+      // Diagnostic: which actor types are player-owned in this system. Lets the
+      // backend reveal what counts as a player character per system and surface
+      // systems we do not yet detect (those show party_size 0 with a non-character
+      // type here). Just type strings + counts, no names or IDs.
+      const typeCounts = {}
+      for (const a of owned) { const t = a.type || "?"; typeCounts[t] = (typeCounts[t] || 0) + 1 }
+      const ownedActorTypes = Object.entries(typeCounts).map(([type, n]) => ({ type, n }))
+
+      // Player characters: dnd5e, pf2e and daggerheart all use the "character"
+      // actor type. ownedActorTypes above exposes systems that differ.
+      const actors = owned.filter(a => a.type === "character")
+      if (!actors.length) {
+        return { system_id: sys, party_size: 0, party_avg_level: 0, owned_actor_types: ownedActorTypes }
+      }
+
+      let pcSheet = ""
+      try { pcSheet = actors[0]?.sheet?.constructor?.name || "" } catch (_) {}
 
       const classes = []
       const levels = []
       for (const a of actors) {
-        let level = 0
-        let classId = "unknown"
-        if (sys === "dnd5e") {
-          const keys = a.system?.classes ? Object.keys(a.system.classes) : []
-          classId = keys[0] || "unknown"
-          level = Number(a.system?.details?.level) || 0
-        } else if (sys === "pf2e") {
-          classId = a.system?.details?.class?.name
-            || a.items?.find?.(i => i.type === "class")?.name
-            || "unknown"
-          level = Number(a.system?.details?.level?.value) || 0
-        } else {
-          level = Number(a.system?.details?.level?.value ?? a.system?.details?.level) || 0
-        }
-        levels.push(level)
-        if (sys === "dnd5e" || sys === "pf2e") {
-          classes.push({ class_id: this.sanitize(classId, 32), level })
-        }
+        const { classId, level } = this._resolvePcClass(sys, a)
+        if (level) levels.push(level)
+        if (classId && classId !== "unknown") classes.push({ class_id: this.sanitize(classId, 32), level: level || 0 })
       }
       const avg = levels.length
         ? Math.round((levels.reduce((s, n) => s + n, 0) / levels.length) * 10) / 10
         : 0
-      const snap = { system_id: sys, party_size: actors.length, party_avg_level: avg }
+      const snap = {
+        system_id: sys,
+        party_size: actors.length,
+        party_avg_level: avg,
+        pc_actor_type: "character",
+        pc_sheet: this.sanitize(pcSheet, 48),
+        owned_actor_types: ownedActorTypes
+      }
       if (classes.length) snap.party_classes = classes
       return snap
     } catch (_) { return null }
+  }
+
+  // Per-system player-character class + level resolver. Returns { classId, level }.
+  // Kept system-specific because each game system models classes differently.
+  static _resolvePcClass(sys, a) {
+    try {
+      if (sys === "dnd5e") {
+        // Modern dnd5e stores classes as embedded items of type "class"; the legacy
+        // a.system.classes map no longer populates, which is why class previously
+        // came through as "unknown". Prefer the class items, take the highest-level
+        // one as the primary class.
+        const items = a.items?.contents || a.items || []
+        const classItems = items.filter(i => i.type === "class")
+        let classId = "unknown"
+        if (classItems.length) {
+          const primary = classItems.slice().sort((x, y) => (Number(y.system?.levels) || 0) - (Number(x.system?.levels) || 0))[0]
+          classId = primary?.name || "unknown"
+        } else if (a.system?.classes) {
+          classId = Object.keys(a.system.classes)[0] || "unknown"
+        }
+        return { classId, level: Number(a.system?.details?.level) || 0 }
+      }
+      if (sys === "pf2e") {
+        // pf2e: class is an embedded item of type "class". Animal companions and
+        // familiars are player-owned "character" actors without a real class item,
+        // so they resolve to "unknown" and drop out of the class breakdown.
+        const items = a.items?.contents || a.items || []
+        const classItem = items.find(i => i.type === "class")
+        const classId = classItem?.name || a.system?.details?.class?.name || "unknown"
+        return { classId, level: Number(a.system?.details?.level?.value) || 0 }
+      }
+      if (sys === "daggerheart") {
+        // VERIFY these paths against a live Daggerheart system before relying on the
+        // numbers: this dev environment has no Daggerheart install. Best-effort: the
+        // class is most likely an embedded item of type "class"; level lives under
+        // system.level(.value).
+        const items = a.items?.contents || a.items || []
+        const classItem = items.find(i => i.type === "class")
+        const classId = classItem?.name
+          || a.system?.class?.name || a.system?.class?.value || a.system?.details?.class?.name
+          || "unknown"
+        const level = Number(a.system?.level?.value ?? a.system?.level ?? a.system?.details?.level?.value ?? a.system?.details?.level) || 0
+        return { classId, level }
+      }
+      // Generic fallback: best-effort level only, no class breakdown.
+      const level = Number(a.system?.details?.level?.value ?? a.system?.details?.level) || 0
+      return { classId: "unknown", level }
+    } catch (_) { return { classId: "unknown", level: 0 } }
   }
 
   /********************************************************************************** */

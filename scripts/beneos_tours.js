@@ -6,11 +6,57 @@
  */
 
 import { BeneosUtility } from "./beneos_utility.js";
+import { BeneosCloudWindowV2 } from "./cloud-v2/cloud-window-v2.mjs";
 
 const MODULE_ID = "beneos-module";
 
 // V13/V14 compat: use namespaced Tour if available
 const TourBase = foundry.nue?.Tour ?? Tour;
+
+/* Open the Beneos Cloud window (or reuse the open one) and wait until its
+ * tab strip is in the DOM. Used by the Setup Tour's cloud-* steps so each
+ * step can reliably target Cloud-window elements. */
+async function openCloudWindowForTour(timeoutMs = 6000) {
+  let el = document.getElementById("beneos-cloud-window-v2");
+  if (!el) {
+    try { new BeneosCloudWindowV2().render({ force: true }); }
+    catch (e) { console.warn("[Beneos] Tour | could not open Cloud window:", e); }
+  }
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    el = document.getElementById("beneos-cloud-window-v2");
+    if (el && el.querySelector(".bc-tab")) return el;
+    await new Promise(r => setTimeout(r, 150));
+  }
+  return el;
+}
+
+/* Make sure a scene is active/viewed so Foundry renders the left toolbar (the
+ * Beneos button lives there). If the world has no scene at all, create a blank
+ * one. Used by the Setup Tour before it points at the toolbar. */
+async function ensureActiveSceneForTour() {
+  try {
+    if (canvas?.scene && canvas?.ready) return canvas.scene;
+    let scene = game.scenes?.active || game.scenes?.contents?.[0];
+    if (!scene) {
+      scene = await Scene.create({
+        name: "Beneos Setup",
+        width: 1920, height: 1080, padding: 0,
+        grid: { type: 1, size: 100 },
+        backgroundColor: "#0b0b10"
+      });
+    }
+    if (scene) {
+      if (typeof scene.view === "function") await scene.view();
+      else if (typeof scene.activate === "function") await scene.activate();
+      for (let i = 0; i < 20 && !canvas?.ready; i++) await new Promise(r => setTimeout(r, 150));
+    }
+    return scene;
+  } catch (e) {
+    console.warn("[Beneos] Tour | ensureActiveSceneForTour failed:", e);
+    return null;
+  }
+}
 
 /**
  * Map of Foundry scene IDs to their corresponding tutorial tour IDs.
@@ -1259,249 +1305,161 @@ class BeneosSetupTour extends TourBase {
     clearStaleTourTooltips();
     cleanupTourElements();
 
-    // setup-complete: ask the auto-install question BEFORE super._preStep
-    // renders the "Setup Complete" tooltip. "Yes" → run the install and skip
-    // the tooltip entirely (they appeared simultaneously before, which was
-    // redundant — the tour effectively continues inside the tutorial scene
-    // after the reload). "No" → fall through so the tooltip serves as the
-    // natural wrap-up of the Setup Tour.
-    if (this.currentStep?.id === "setup-complete") {
-      const proceed = await _confirmAutoInstall();
-      if (proceed) {
-        await this._runAutoInstall();
-        return;
-      }
-    }
     await super._preStep();
     const stepId = this.currentStep.id;
 
-    if (stepId === "mou-toolbar") {
+    // prepare-canvas: Foundry's left toolbar only exists when a scene is
+    // active. Make sure one is (creating a blank scene if the world has none)
+    // so the next step can highlight the Beneos toolbar button.
+    if (stepId === "prepare-canvas") {
+      await ensureActiveSceneForTour();
+    }
+
+    // open-cloud: ensure a scene (belt-and-suspenders), then highlight the
+    // Beneos toolbar button. If still absent, the selector is nulled so the
+    // tooltip floats.
+    if (stepId === "open-cloud") {
+      await ensureActiveSceneForTour();
       this._safeguardSelector();
     }
 
-    if (stepId === "mou-tools") {
-      activateMoulinetteToolbar();
-      await new Promise(r => setTimeout(r, 600));
-      // Target the last tool button (user auth icon — the person icon)
-      this._trySelector("#scene-controls-tools li:last-child button") ||
-      this._trySelector("#scene-controls-tools li:last-child");
-      // Also highlight the Moulinette parent button
-      document.querySelector('button[data-control="moulinette"]')?.classList.add("tour-highlight");
+    // cloud-tabs: make sure the Cloud window is open, then point at the tab strip.
+    if (stepId === "cloud-tabs") {
+      await openCloudWindowForTour();
+      await new Promise(r => setTimeout(r, 400));
+      this._trySelector("#beneos-cloud-window-v2 nav.bc-tab-strip") ||
+      this._trySelector("#beneos-cloud-window-v2 .bc-tab-strip") ||
+      this._trySelector("#beneos-cloud-window-v2");
+      const strip = document.querySelector("#beneos-cloud-window-v2 nav.bc-tab-strip, #beneos-cloud-window-v2 .bc-tab-strip");
+      if (strip) this._applySpotlight(strip, 6);
     }
 
-    if (stepId === "mou-auth-open") {
-      await openMoulinetteUser();
-      await new Promise(r => setTimeout(r, 800));
-      this._trySelector("#mou-user");
-    }
-
-    if (stepId === "mou-auth-explain") {
-      this._trySelector("#mou-user");
-    }
-
-    if (stepId === "mou-browser-open") {
-      // V14 reliability: instead of fire-and-wait-1500ms, actively poll for
-      // the cloud window after each open attempt. V14 occasionally drops the
-      // first searchUI call (especially right after closing #mou-user) — we
-      // give it up to 4s, then retry once with a fresh API call.
-      closeMoulinetteWindow("mou-user");
-      // Wait for the user window to actually leave the DOM before triggering
-      // searchUI. Without this, V14 can race: the close animation hasn't
-      // finished, searchUI fires, and Moulinette internally suppresses the
-      // new render because the previous window is still flagged as active.
-      const userGone = await waitForElementGone("#mou-user", 1500);
-      if (!userGone) {
-        BeneosUtility?.debugMessage?.("Beneos Setup Tour | mou-browser-open: #mou-user did not close in 1.5s, proceeding anyway");
-      }
-
-      const tryOpen = async () => {
-        const mouApi = getMoulinette()?.api;
-        if (mouApi?.searchUI) {
-          try { await mouApi.searchUI("mou-cloud", "Map", {}); return; }
-          catch (e) { console.warn("[Beneos] Tour | mouApi.searchUI threw, falling back to mou.browser.render:", e); }
-        }
-        try { await openMoulinetteBrowser(); }
-        catch (e) { console.warn("[Beneos] Tour | openMoulinetteBrowser failed:", e); }
-      };
-
-      const waitForBrowser = async (timeoutMs) => {
-        const start = Date.now();
-        while (Date.now() - start < timeoutMs) {
-          const el = document.querySelector("#mou-cloud") ||
-                     document.querySelector("#mou-browser") ||
-                     document.querySelector(".browser");
-          if (el) return el;
-          await new Promise(r => setTimeout(r, 150));
-        }
-        return null;
-      };
-
-      let opened = null;
-      for (let attempt = 1; attempt <= 2 && !opened; attempt++) {
-        await tryOpen();
-        opened = await waitForBrowser(4000);
-        if (!opened && attempt < 2) {
-          console.warn(`[Beneos] Tour | mou-browser-open: attempt ${attempt} did not render the cloud window, retrying`);
-          await new Promise(r => setTimeout(r, 500));
-        }
-      }
-
-      if (!opened) {
-        // Hard failure after 2 attempts. Surface a notification so the GM
-        // knows why the tour is now anchored to the body — they can either
-        // open Moulinette manually and click Next, or restart the tour.
-        ui.notifications.warn(game.i18n.localize("BENEOS.Notifications.Tours.MoulinetteUnavailable"));
-        console.error("[Beneos] Tour | mou-browser-open: Moulinette cloud window did not render after 2 attempts. Subsequent tour steps will float.");
-        return;
-      }
-
-      // Anchor tooltip to whichever window ID actually rendered.
-      this._trySelector("#mou-browser") ||
-      this._trySelector("#mou-cloud") ||
-      this._trySelector(".browser");
-    }
-
-    if (stepId === "mou-browser-creator") {
-      // Filter to Beneos as creator. Same await-then-fallback pattern as
-      // mou-browser-open above (without the close+open prelude).
-      const mouApi = getMoulinette()?.api;
-      if (mouApi?.searchUI) {
-        try { await mouApi.searchUI("mou-cloud", "Map", { creator: "Beneos Battlemaps" }); }
-        catch (e) { console.warn("[Beneos] Tour | searchUI(creator) failed:", e); }
-      }
-      await new Promise(r => setTimeout(r, 1500));
-      // Point tooltip at the Creator <select> and dim the rest so the user's
-      // eye is pulled to the right field (was ambiguous between Creator/Pack).
-      const creatorSelect = document.querySelector("#creator-select");
-      if (creatorSelect) {
-        this._trySelector("#creator-select");
-        this._applySpotlight(creatorSelect, 8);
+    // cloud-signin: point at the sign-in button (logged out) or the account
+    // chip (logged in), so the step works in both states.
+    if (stepId === "cloud-signin") {
+      await openCloudWindowForTour();
+      await new Promise(r => setTimeout(r, 300));
+      const target = document.querySelector("#beneos-cloud-window-v2 button[data-action='openLogin']") ||
+                     document.querySelector("#beneos-cloud-window-v2 .beneos-cloud-login-button") ||
+                     document.querySelector("#beneos-cloud-window-v2 .bc-account-chip");
+      if (target) {
+        if (!target.id) target.id = "beneos-tour-signin-target";
+        this._trySelector(`#${target.id}`);
+        this._applySpotlight(target, 8);
       } else {
-        this._trySelector("#mou-cloud .filters") ||
-        this._trySelector("#mou-browser .filters") ||
-        this._trySelector(".browser .filters") ||
-        this._trySelector("#mou-cloud") ||
-        this._trySelector("#mou-browser") ||
-        this._trySelector(".browser");
+        this._trySelector("#beneos-cloud-window-v2 .bc-status-footer") ||
+        this._trySelector("#beneos-cloud-window-v2");
       }
     }
 
-    if (stepId === "mou-browser-pack") {
-      // Filter to specific pack
-      const mouApi = getMoulinette()?.api;
-      if (mouApi?.searchUI) {
-        try {
-          await mouApi.searchUI("mou-cloud", "Map", {
-            creator: "Beneos Battlemaps",
-            pack: "- Beneos Getting Started Tour"
-          });
-        } catch (e) { console.warn("[Beneos] Tour | searchUI(pack) failed:", e); }
-      }
-      await new Promise(r => setTimeout(r, 1500));
-      // Point tooltip at the Pack <select> (one row below Creator), spotlight
-      // it, and release focus so arrow-key tour nav doesn't iterate options.
-      const packSelect = document.querySelector("#pack-select");
-      if (packSelect) {
-        this._trySelector("#pack-select");
-        this._applySpotlight(packSelect, 8);
-        try { packSelect.blur(); } catch (e) {}
-        try { document.activeElement?.blur?.(); } catch (e) {}
+    // cloud-patreon: keep focus on the account/footer area while we explain
+    // Patreon linking and access.
+    if (stepId === "cloud-patreon") {
+      await openCloudWindowForTour();
+      const footer = document.querySelector("#beneos-cloud-window-v2 .bc-status-footer") ||
+                     document.querySelector("#beneos-cloud-window-v2 .bc-account-chip");
+      if (footer) {
+        if (!footer.id) footer.id = "beneos-tour-footer-target";
+        this._trySelector(`#${footer.id}`);
+        this._applySpotlight(footer, 6);
       } else {
-        this._trySelector("#mou-cloud .content") ||
-        this._trySelector("#mou-browser .content") ||
-        this._trySelector(".browser .content") ||
-        this._trySelector("#mou-cloud") ||
-        this._trySelector("#mou-browser") ||
-        this._trySelector(".browser");
+        this._trySelector("#beneos-cloud-window-v2");
       }
     }
 
-    if (stepId === "mou-install-pack") {
-      // Point the user at the "Start Here" scene row. Moulinette renders the
-      // per-row action buttons only on :hover, so dispatch mouseenter to
-      // populate .menu, mark the row to keep overlay/menu visible, then
-      // spotlight that one row.
-      const browser = getMoulinette()?.browser;
-      const asset = browser?.currentAssets?.find(a => a.name?.includes("Start Here"));
-      // V14: row lives under #mou-cloud (searchUI), V13: under #mou-browser
-      // (mou.browser.render). Try both before falling back to .browser class.
-      const row = asset
-        ? (document.querySelector(`#mou-cloud .asset.inline[data-id="${asset.id}"]`) ||
-           document.querySelector(`#mou-browser .asset.inline[data-id="${asset.id}"]`) ||
-           document.querySelector(`.browser .asset.inline[data-id="${asset.id}"]`))
-        : null;
-      if (row) {
-        row.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
-        row.dispatchEvent(new MouseEvent("mouseover",  { bubbles: true }));
-        row.classList.add("beneos-tour-row-focus");
-        await new Promise(r => setTimeout(r, 300));
-        if (!row.id) row.id = "beneos-tour-target-row";
-        this._trySelector(`#${row.id}`);
-        this._applySpotlight(row, 6);
-      } else {
-        this._trySelector("#mou-cloud .content") ||
-        this._trySelector("#mou-browser .content") ||
-        this._trySelector(".browser .content") ||
-        this._trySelector("#mou-cloud") ||
-        this._trySelector("#mou-browser") ||
-        this._trySelector(".browser");
-      }
-    }
-
-    if (stepId === "mou-scenepacker") {
-      // Login gate: if the user skipped the Moulinette Patreon login, the
-      // pack download will silently fail. Detect the missing patron state
-      // (Patreon link present in the DOM), force the user through the
-      // login flow with a blocking dialog + Moulinette user window +
-      // passive polling, and only proceed once authentication is detected.
-      if (!_isMoulinetteLoggedIn()) {
-        await _requireMoulinetteLogin();
-        const loggedIn = await _waitForMoulinetteLogin();
-        if (!loggedIn) {
-          // User gave up or Moulinette never reported success — loop them
-          // back to the explicit auth step so they can try the manual flow.
-          this.stepIndex = 4; // mou-auth-open
-          return this._preStep();
-        }
-        // Login confirmed — fall through and let the normal
-        // mou-scenepacker preStep work finish the install path.
-      }
-
-      // Use Moulinette's internal API to trigger ScenePacker import directly
-      // Action ID 2 = "Import w. ScenePacker"
+    // cloud-find-tour: drive the Cloud window to Maps -> Releases, search
+    // "tour", and spotlight the Getting Started Tour release so the user can
+    // install it in the next step.
+    if (stepId === "cloud-find-tour") {
+      const el = await openCloudWindowForTour();
       try {
-        const browser = getMoulinette()?.browser;
-        if (browser?.currentAssets && browser.collection) {
-          const asset = browser.currentAssets.find(a =>
-            a.name?.includes("Start Here")
-          );
-          if (asset) {
-            BeneosUtility.debugMessage("Beneos Tour | Triggering ScenePacker import for:", asset.name);
-            await browser.collection.executeAction(2, asset);
-            // Wait for MoulinetteImporter window to render
-            await new Promise(r => setTimeout(r, 4000));
-          } else {
-            console.warn("Beneos Tour | Asset 'Start Here' not found in currentAssets");
-          }
+        // Maps tab.
+        (el?.querySelector("#beneos-radio-bmap")
+          || [...(el?.querySelectorAll(".bc-tab") || [])].find(t => /maps/i.test(t.textContent)))?.click();
+        await new Promise(r => setTimeout(r, 400));
+        // Releases view.
+        el?.querySelector('button[data-bmap-view="releases"]')?.click();
+        await new Promise(r => setTimeout(r, 300));
+        // Search "tour".
+        const search = el?.querySelector("#beneos-search-text");
+        if (search) {
+          search.value = "tour";
+          search.dispatchEvent(new Event("input", { bubbles: true }));
+          search.dispatchEvent(new KeyboardEvent("keyup", { key: "r", bubbles: true }));
         }
-      } catch (e) {
-        console.warn("Beneos Tour | Could not auto-open ScenePacker:", e);
-      }
-
-      // Find and highlight the "Import All" button
-      const importAllBtn = document.querySelector('button[name="import-all"]');
-      if (importAllBtn) {
-        importAllBtn.id = "beneos-scenepacker-import-all";
-        importAllBtn.classList.add("tour-highlight");
-        this._trySelector("#beneos-scenepacker-import-all");
-        this._applySpotlight(importAllBtn, 8);
+      } catch (e) { console.warn("[Beneos] Tour | cloud-find-tour drive failed:", e); }
+      const card = await this._waitForGettingStartedCard(7000);
+      if (card) {
+        if (!card.id) card.id = "beneos-tour-card-target";
+        this._trySelector(`#${card.id}`);
+        this._applySpotlight(card, 6);
+      } else {
+        this._trySelector("#beneos-cloud-window-v2 .bc-results") ||
+        this._trySelector("#beneos-cloud-window-v2");
       }
     }
 
-    // Note: setup-complete is handled at the top of _preStep (before
-    // super._preStep) via _runAutoInstall, so the tooltip and the install
-    // dialog no longer overlap. On "no", the tooltip renders here with no
-    // extra per-step logic needed — it serves as the tour's wrap-up cue.
+    // cloud-install: spotlight the Getting Started Tour's Install button. The
+    // user clicks it themselves to install it (we never auto-click).
+    if (stepId === "cloud-install") {
+      await openCloudWindowForTour();
+      const card = this._findGettingStartedCard()
+                || document.querySelector("#beneos-cloud-window-v2 .bc-result-card");
+      const installBtn = card?.querySelector(".bc-action-install")
+                      || card?.querySelector(".bc-card-button-primary")
+                      || document.querySelector("#beneos-cloud-window-v2 .bc-action-install");
+      if (installBtn) {
+        if (!installBtn.id) installBtn.id = "beneos-tour-install-target";
+        this._trySelector(`#${installBtn.id}`);
+        this._applySpotlight(installBtn, 8);
+      } else {
+        this._trySelector("#beneos-cloud-window-v2");
+      }
+    }
+
+    // setup-complete: no _preStep action; complete() opens the Start Here scene.
+  }
+
+  /* Locate the Getting Started Tour release card in the Cloud results. */
+  _findGettingStartedCard() {
+    const cards = [...document.querySelectorAll("#beneos-cloud-window-v2 .bc-result-card")];
+    return cards.find(c => {
+      const key = (c.getAttribute("data-asset-key") || "").toLowerCase();
+      const txt = (c.textContent || "").toLowerCase();
+      return key.includes("getting") || key.includes("start") || key.includes("tour")
+          || /getting started|start here/.test(txt);
+    }) || null;
+  }
+
+  /* Wait for the Getting Started card to appear; fall back to the first result. */
+  async _waitForGettingStartedCard(timeoutMs) {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const gs = this._findGettingStartedCard();
+      if (gs) return gs;
+      await new Promise(r => setTimeout(r, 200));
+    }
+    return document.querySelector("#beneos-cloud-window-v2 .bc-result-card");
+  }
+
+  /* After the Setup Tour wraps up, open the Getting Started Tour scene if it
+   * got installed during the tour. Viewing it triggers the canvasReady hook
+   * that auto-starts the scene-based tutorial. Non-blocking; never throws. */
+  async complete() {
+    await super.complete();
+    const START_HERE_ID = "0A8yWjm42oAg0vnw";
+    (async () => {
+      const start = Date.now();
+      while (Date.now() - start < 90000) {
+        const scene = game.scenes?.get(START_HERE_ID) || game.scenes?.getName?.("Start Here");
+        if (scene) {
+          try { await (typeof scene.view === "function" ? scene.view() : scene.activate()); }
+          catch (e) { console.warn("[Beneos] Tour | open Start Here failed:", e); }
+          return;
+        }
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    })();
   }
 }
 
@@ -1659,6 +1617,17 @@ Hooks.once("init", () => {
     restricted: false
   });
 
+  // Open the Beneos documentation wiki, sits right next to the Setup Tour
+  // button in Module Settings.
+  game.settings.registerMenu(MODULE_ID, "documentationMenu", {
+    name: "BENEOS.Settings.Documentation.Name",
+    label: "BENEOS.Settings.Documentation.Label",
+    hint: "BENEOS.Settings.Documentation.Hint",
+    icon: "fas fa-book-open",
+    type: BeneosOpenDocumentation,
+    restricted: false
+  });
+
   game.settings.register(MODULE_ID, "sceneTourPending", {
     scope: "client",
     type: Boolean,
@@ -1715,6 +1684,16 @@ function startTourByKey(tourKey) {
 
 export class BeneosStartSetupTour extends FormApplication {
   render() { startTourByKey("setup"); return this; }
+}
+
+// Module Settings button handler: open the documentation wiki. FormApplication
+// shell that never actually renders a form, it just triggers the opener.
+export class BeneosOpenDocumentation extends FormApplication {
+  render() {
+    try { game.beneos?.openWiki?.(); }
+    catch (e) { console.warn("[Beneos] Open Documentation failed:", e); }
+    return this;
+  }
 }
 
 /* ================================================================== */
@@ -6206,18 +6185,16 @@ Hooks.once("setup", async () => {
     canBeResumed: false,
     restricted: true,
     steps: _localizeSteps("Setup", [
-      { id: "welcome-intro", selector: "", tooltipDirection: "CENTER" },
+      { id: "welcome-intro",   selector: "", tooltipDirection: "CENTER" },
       { id: "setup-languages", selector: "", tooltipDirection: "CENTER" },
-      { id: "mou-toolbar", selector: `button[data-control="moulinette"]`, tooltipDirection: "RIGHT" },
-      { id: "mou-tools", selector: "", tooltipDirection: "RIGHT" },
-      { id: "mou-auth-open", selector: "", tooltipDirection: "RIGHT" },
-      { id: "mou-auth-explain", selector: "", tooltipDirection: "RIGHT" },
-      { id: "mou-browser-open", selector: "", tooltipDirection: "RIGHT" },
-      { id: "mou-browser-creator", selector: "", tooltipDirection: "RIGHT" },
-      { id: "mou-browser-pack", selector: "", tooltipDirection: "RIGHT" },
-      { id: "mou-install-pack", selector: "", tooltipDirection: "RIGHT" },
-      { id: "mou-scenepacker", selector: "", tooltipDirection: "UP" },
-      { id: "setup-complete", selector: "", tooltipDirection: "CENTER" }
+      { id: "prepare-canvas",  selector: "", tooltipDirection: "CENTER" },
+      { id: "open-cloud",      selector: `[data-control="beneos"]`, tooltipDirection: "RIGHT" },
+      { id: "cloud-tabs",      selector: "", tooltipDirection: "DOWN" },
+      { id: "cloud-signin",    selector: "", tooltipDirection: "UP" },
+      { id: "cloud-patreon",   selector: "", tooltipDirection: "UP" },
+      { id: "cloud-find-tour", selector: "", tooltipDirection: "LEFT" },
+      { id: "cloud-install",   selector: "", tooltipDirection: "LEFT" },
+      { id: "setup-complete",  selector: "", tooltipDirection: "CENTER" }
     ])
   }));
 
