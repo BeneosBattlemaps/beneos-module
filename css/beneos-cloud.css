@@ -600,6 +600,17 @@
   color: var(--bc-text);
   font-weight: 500;
   font-size: 15px;
+  /* Foundry V13 + dnd5e draw a coloured (red) underline on .window-title via
+     text-decoration / border-bottom / box-shadow depending on version. Strip all
+     three so the title reads clean and stays in the gold palette, not red. */
+  text-decoration: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+.beneos-cloud-login-dialog .window-header,
+.beneos-cloud-login-dialog .window-header * {
+  text-decoration: none !important;
 }
 /* Close-button (X) — Wave B-9-fix-57 rebuild.
    V13 sets fa-xmark as a class directly on the button (the icon class
@@ -710,8 +721,11 @@
   font-size: 11px;
   color: var(--bc-text-dim);
 }
-/* OTP code dialog: resend button (secondary, low-prominence) */
+/* OTP code dialog: resend button (secondary, low-prominence). During the cooldown a
+   subtle fill sweeps left to right; when full the button becomes interactive. */
 .beneos-cloud-login-dialog .bc-login-form__resend {
+  position: relative;
+  overflow: hidden;
   align-self: flex-start;
   background: transparent;
   color: var(--bc-accent);
@@ -721,14 +735,32 @@
   font-family: var(--bc-font-ui);
   font-size: 12px;
   cursor: pointer;
+  opacity: 1;
 }
-.beneos-cloud-login-dialog .bc-login-form__resend:hover:not(:disabled) {
+/* The fill. Very low-contrast so it reads as a gentle sweep, not a loud progress bar. */
+.beneos-cloud-login-dialog .bc-login-form__resend-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0%;
+  background: rgba(255, 255, 255, 0.07);
+  transition: width 1s linear;
+  pointer-events: none;
+}
+.beneos-cloud-login-dialog .bc-login-form__resend-label {
+  position: relative;
+  z-index: 1;
+}
+.beneos-cloud-login-dialog .bc-login-form__resend:hover:not(.is-cooling) {
   border-color: var(--bc-accent);
   color: var(--bc-accent-strong);
 }
-.beneos-cloud-login-dialog .bc-login-form__resend:disabled {
-  opacity: 0.5;
+/* During cooldown: greyed, non-interactive. Only the fill moves. */
+.beneos-cloud-login-dialog .bc-login-form__resend.is-cooling {
+  color: var(--bc-text-dim);
   cursor: default;
+  opacity: 1;
 }
 /* OTP code dialog: inline "no email?" help */
 .beneos-cloud-login-dialog .bc-login-form__help {

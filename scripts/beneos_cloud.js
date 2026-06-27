@@ -559,6 +559,9 @@ export class BeneosCloudLogin extends FormApplication {
   async codeDialog(email, userId, ttl) {
     const RESEND_COOLDOWN = 60 // mirrors the server-side OTP_RESEND_COOLDOWN
     let expiresAt = Date.now() + (Number(ttl) || 600) * 1000
+    // The first code was just sent before this dialog opened, so the resend starts
+    // on cooldown. We track start + ready so the button can fill from left to right.
+    let resendStartedAt = Date.now()
     let resendReadyAt = Date.now() + RESEND_COOLDOWN * 1000
     let countdownTimer = null
 
@@ -576,7 +579,10 @@ export class BeneosCloudLogin extends FormApplication {
         <input type="text" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" class="bc-login-form__input" />
       </div>
       <p class="bc-login-form__ttl" data-bc-ttl>${game.i18n.format("BENEOS.Cloud.ConnectAccount.CodeExpiresIn", { time: fmt((expiresAt - Date.now()) / 1000) })}</p>
-      <button type="button" class="bc-login-form__resend" data-bc-resend disabled>${game.i18n.localize("BENEOS.Cloud.ConnectAccount.Resend")}</button>
+      <button type="button" class="bc-login-form__resend is-cooling" data-bc-resend disabled>
+        <span class="bc-login-form__resend-fill" data-bc-resend-fill></span>
+        <span class="bc-login-form__resend-label" data-bc-resend-label>${game.i18n.localize("BENEOS.Cloud.ConnectAccount.ResendCooldown")}</span>
+      </button>
       <div class="bc-login-form__help">
         <strong>${game.i18n.localize("BENEOS.Cloud.CodeHelp.Title")}</strong>
         <ul>
@@ -598,23 +604,35 @@ export class BeneosCloudLogin extends FormApplication {
           const root = dialog.element
           const ttlEl = root.querySelector("[data-bc-ttl]")
           const resendBtn = root.querySelector("[data-bc-resend]")
+          const fillEl = root.querySelector("[data-bc-resend-fill]")
+          const labelEl = root.querySelector("[data-bc-resend-label]")
 
           const tick = () => {
-            const remainTtl = (expiresAt - Date.now()) / 1000
+            const now = Date.now()
+            // Expiry countdown above the button.
+            const remainTtl = (expiresAt - now) / 1000
             if (ttlEl) {
               ttlEl.textContent = remainTtl > 0
                 ? game.i18n.format("BENEOS.Cloud.ConnectAccount.CodeExpiresIn", { time: fmt(remainTtl) })
                 : game.i18n.localize("BENEOS.Cloud.ConnectAccount.CodeExpired")
             }
-            if (resendBtn) {
-              const remainCd = Math.ceil((resendReadyAt - Date.now()) / 1000)
-              if (remainCd > 0) {
-                resendBtn.disabled = true
-                resendBtn.textContent = game.i18n.format("BENEOS.Cloud.ConnectAccount.ResendCooldown", { seconds: remainCd })
-              } else {
-                resendBtn.disabled = false
-                resendBtn.textContent = game.i18n.localize("BENEOS.Cloud.ConnectAccount.Resend")
-              }
+            if (!resendBtn) return
+            // Resend cooldown shows as a subtle left-to-right fill (no numbers, no
+            // pressure). While filling, the label is greyed + non-interactive; once
+            // full the button becomes a clear "resend" call to action.
+            const cooling = now < resendReadyAt
+            if (cooling) {
+              const span = resendReadyAt - resendStartedAt
+              const pct = span > 0 ? Math.min(100, Math.max(0, ((now - resendStartedAt) / span) * 100)) : 100
+              if (fillEl) fillEl.style.width = pct + "%"
+              resendBtn.disabled = true
+              resendBtn.classList.add("is-cooling")
+              if (labelEl) labelEl.textContent = game.i18n.localize("BENEOS.Cloud.ConnectAccount.ResendCooldown")
+            } else {
+              if (fillEl) fillEl.style.width = "100%"
+              resendBtn.disabled = false
+              resendBtn.classList.remove("is-cooling")
+              if (labelEl) labelEl.textContent = game.i18n.localize("BENEOS.Cloud.ConnectAccount.Resend")
             }
           }
           tick()
@@ -624,14 +642,28 @@ export class BeneosCloudLogin extends FormApplication {
             if (resendBtn.disabled) return
             resendBtn.disabled = true
             const res = await this.requestCode(email, userId)
+            const now = Date.now()
             if (res.status === 'ok') {
-              expiresAt = Date.now() + (Number(res.ttl) || 600) * 1000
-              resendReadyAt = Date.now() + RESEND_COOLDOWN * 1000
+              expiresAt = now + (Number(res.ttl) || 600) * 1000
+              resendStartedAt = now
+              resendReadyAt = now + RESEND_COOLDOWN * 1000
               ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Notification.CodeSent"))
               this.scheduleDeliveryCheck(email)
             } else if (res.status === 'rate_limited') {
-              // Honour the server's retry window so the button matches reality.
-              resendReadyAt = Date.now() + (Number(res.retryAfter) || RESEND_COOLDOWN) * 1000
+              // Honour the server's retry window so the fill matches reality.
+              resendStartedAt = now
+              resendReadyAt = now + (Number(res.retryAfter) || RESEND_COOLDOWN) * 1000
+            } else {
+              // Request failed: let the user try again right away.
+              resendReadyAt = now
+            }
+            // Snap the fill back to 0 without animating backwards, then resume.
+            if (fillEl) {
+              const prev = fillEl.style.transition
+              fillEl.style.transition = "none"
+              fillEl.style.width = "0%"
+              void fillEl.offsetWidth // force reflow so the reset is not animated
+              fillEl.style.transition = prev
             }
             tick()
           })
