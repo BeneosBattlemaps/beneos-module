@@ -157,7 +157,51 @@ function registerHowToNoteHandler() {
   _howToWrapped = true;
 }
 
+// Belt-and-suspenders: also bind a direct pointer listener on each "How to
+// Use" note placeable. Not every interaction path routes a real click through
+// Note.prototype._onClickLeft, so this guarantees the click opens the docs,
+// the same way POI Teleporter binds its own per-note listeners. Idempotent per
+// placeable via a marker flag.
+function bindHowToNote(note, attempt = 0) {
+  if (!note || note._beneosHowToBound) return;
+  if (!isHowToUseNote(note)) return;
+  // The real interaction target is the note's ControlIcon (where the
+  // MouseInteractionManager listens and where PIXI pointer events land). It is
+  // created during draw(), which can be slightly after this fires, so retry
+  // until it exists, then bind there.
+  const target = note.mouseInteractionManager?.target;
+  if (!target || typeof target.on !== "function") {
+    if (attempt < 20) setTimeout(() => bindHowToNote(note, attempt + 1), 150);
+    return;
+  }
+  note._beneosHowToBound = true;
+  const open = (event) => {
+    try { event?.stopPropagation?.(); } catch (e) {}
+    try { game.beneos?.openWiki?.("overview"); } catch (e) {}
+  };
+  try {
+    target.eventMode = "static";
+    target.cursor = "pointer";
+    // pointerdown covers both mouse buttons; rightdown is what POI uses, bind
+    // it too so a right-click also opens the docs on these unlinked notes.
+    target.on("pointerdown", open);
+    target.on("rightdown", open);
+  } catch (e) {
+    note._beneosHowToBound = false;
+    console.warn("[Beneos] Could not bind How-to note listener:", e);
+  }
+}
+
+function bindAllHowToNotes() {
+  if (!canvas?.ready) return;
+  for (const note of (canvas.notes?.placeables || [])) bindHowToNote(note);
+}
+
+Hooks.on("canvasReady", bindAllHowToNotes);
+Hooks.on("drawNote", bindHowToNote);
+
 Hooks.once("ready", () => {
   updateHooks();
   registerHowToNoteHandler();
+  bindAllHowToNotes();
 });
