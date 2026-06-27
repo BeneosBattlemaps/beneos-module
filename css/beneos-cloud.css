@@ -1703,12 +1703,13 @@
   font-size: 20px;
   opacity: 0.85;
 }
-/* onerror fallback logo: contain + dim so it reads as a placeholder, not as
-   the actual map cover. */
+/* onerror fallback: a round, alpha-clean Beneos badge centered on the dark
+   panel gradient (replaces the old black-square knockout logo). object-fit:
+   contain keeps the round badge from stretching into the 16:9 corners. */
 .beneos-cloud-app img.bc-thumb-fallback {
   object-fit: contain;
-  opacity: 0.45;
-  padding: 16%;
+  opacity: 0.7;
+  padding: 14%;
   background: linear-gradient(135deg, var(--bc-card) 0%, var(--bc-bg-panel) 100%);
 }
 
@@ -8187,5 +8188,28 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 }
 
 /* ===== #5 Bundle drawer member list ===== */
-.bc-bundle-members { margin: 0; padding-left: 20px; display: grid; gap: 3px; font-size: 12px; }
+.bc-bundle-members { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 12px; }
 .bc-bundle-members li { line-height: 1.35; }
+
+/* Bundle drawer: total size + at-your-own-risk warning. */
+.bc-bundle-total { margin: 0 0 4px; font-size: 12px; }
+.bc-bundle-risk {
+  margin: 0 0 8px; padding: 6px 8px; font-size: 11px; line-height: 1.4;
+  color: var(--bc-warn-text, #f0c674);
+  background: rgba(240, 198, 116, 0.08);
+  border: 1px solid rgba(240, 198, 116, 0.3);
+  border-radius: 4px;
+}
+.bc-bundle-risk i { margin-right: 4px; }
+.bc-bundle-members-hint { margin: 6px 0 0; font-size: 11px; opacity: 0.75; }
+
+/* Per-release row: name (grows) + size + optional check + install button. */
+.bc-bundle-member {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 6px; border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.bc-bundle-member.is-installed { background: rgba(111, 207, 82, 0.07); }
+.bc-bundle-member-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bc-bundle-member-size { flex: 0 0 auto; font-variant-numeric: tabular-nums; opacity: 0.8; }
+.bc-bundle-member-install { flex: 0 0 auto; padding: 2px 8px; }

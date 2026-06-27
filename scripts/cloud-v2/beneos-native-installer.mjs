@@ -32,6 +32,7 @@ const FETCH_BACKOFF_MS    = [500, 1500, 4000]
 const FETCH_INACTIVITY_MS = 30000       // abort if no bytes received for 30s
 const FETCH_TOTAL_MS      = 300000      // hard per-attempt safety cap (5 min)
 const MANIFEST_MAX_REFRESH = 2          // signed-URL refreshes per install
+const DOWNLOAD_CONCURRENCY = 6          // parallel asset transfers (moderate: gentle on the shared-hosting origin)
 
 // Failure categories. Kept as plain strings so the report module can map them
 // to headlines/guidance without importing this module (avoids a load cycle).
@@ -78,6 +79,14 @@ export function classifyTransferError(err, status = null) {
 // deliberately narrow so tokens/spells/items refs are never touched.
 const PACK_SOURCE_PREFIX   = "beneos_assets/beneos_battlemaps/"
 const CLOUD_INSTALL_PREFIX = "beneos_assets/cloud/battlemaps/"
+// Self-contained packs bundle every local asset a document references, including
+// module-owned icons (modules/...), the scene thumbnail (worlds/<author-world>/...)
+// and other non-beneos content. Those are relocated under this packaged namespace
+// on install so they survive the customer disabling beneos-module or migrating
+// worlds. The per-asset original->packaged mapping is built in #classifyPack.
+const PACKAGED_INSTALL_PREFIX = "beneos_assets/cloud/packaged/"
+
+const stripLeadSlash = (p) => String(p).replace(/^\/+/, "")
 
 /** Swap the pack-source asset prefix for the cloud-install prefix in a string. */
 function toCloudAssetPath(p) {
@@ -87,19 +96,41 @@ function toCloudAssetPath(p) {
 }
 
 /**
- * Deep-walk a parsed document and relocate every
- * `beneos_assets/beneos_battlemaps/` reference into the cloud namespace so the
- * document's asset paths match where #downloadAssets wrote the files. Mutates
- * in place. Scoped to the narrow prefix above -> tokens/spells/items untouched.
+ * Map a single asset-reference string to where the file was actually installed:
+ *  1. beneos_assets/beneos_battlemaps/ -> beneos_assets/cloud/battlemaps/ (prefix swap)
+ *  2. any non-beneos path that was bundled+relocated -> its packaged target,
+ *     via an EXACT lookup in `remap` (keyed by the decoded, slash-stripped path).
+ * The exact lookup means only strings whose file was packed get rewritten —
+ * non-asset strings (journal HTML, flags) and the separate token/spell/item
+ * refs under beneos_assets/ are never touched.
  */
-function rewriteDocAssetPaths(value) {
-  if (typeof value === "string") return toCloudAssetPath(value)
+function remapAssetString(s, remap) {
+  if (typeof s !== "string") return s
+  const swapped = toCloudAssetPath(s)
+  if (swapped !== s) return swapped
+  if (remap && remap.size) {
+    let key = stripLeadSlash(s)
+    try { key = stripLeadSlash(decodeURIComponent(s)) } catch (_) { /* keep raw key */ }
+    const target = remap.get(key)
+    if (target) return s.startsWith("/") ? "/" + target : target
+  }
+  return s
+}
+
+/**
+ * Deep-walk a parsed document and relocate every bundled asset reference to its
+ * installed location (battlemaps namespace + the packaged namespace via `remap`).
+ * Mutates in place. Scoped so tokens/spells/items refs under beneos_assets/ and
+ * non-asset strings stay untouched.
+ */
+function rewriteDocAssetPaths(value, remap) {
+  if (typeof value === "string") return remapAssetString(value, remap)
   if (Array.isArray(value)) {
-    for (let i = 0; i < value.length; i++) value[i] = rewriteDocAssetPaths(value[i])
+    for (let i = 0; i < value.length; i++) value[i] = rewriteDocAssetPaths(value[i], remap)
     return value
   }
   if (value && typeof value === "object") {
-    for (const k of Object.keys(value)) value[k] = rewriteDocAssetPaths(value[k])
+    for (const k of Object.keys(value)) value[k] = rewriteDocAssetPaths(value[k], remap)
     return value
   }
   return value
@@ -146,6 +177,9 @@ export class BeneosNativeBattlemapInstaller {
     this.progress  = null
     this._manifestRefreshes = 0
     this._urlByTarget = new Map() // target/relPath -> current signed URL (refreshable)
+    this._packagedRemap = new Map() // original asset path -> packaged install target (self-contained relocation)
+    this._dirPromises = new Map() // dir -> in-flight #ensureDir promise (dedupe under parallel transfers)
+    this._refreshInFlight = null  // shared in-flight signed-URL refresh (dedupe concurrent 403s)
     this._sceneScope  = null      // { assetRelPaths:Set, sceneIds:Set } when scene-scoped
   }
 
@@ -272,6 +306,9 @@ export class BeneosNativeBattlemapInstaller {
       await this.#downloadAssets(installAssets)
       await this.#importDocuments(jsons)
       await this.#verifyAndRepair(installAssets)
+      // Native packs strip the author-world scene.thumb path (it would 404 here),
+      // so regenerate thumbnails from the now-uploaded backgrounds.
+      await this.#regenerateSceneThumbs()
 
       // Second install layer: the scenes' creatureInstaller flag references
       // Beneos creatures (cloud tokenKeys). Pull them from the cloud when the
@@ -374,6 +411,28 @@ export class BeneosNativeBattlemapInstaller {
   }
 
   /**
+   * Regenerate scene thumbnails. Native packs strip the author-world `thumb`
+   * path (it would 404 in the customer world), so imported scenes arrive with no
+   * thumb; render a fresh one from the now-installed background. Best-effort and
+   * non-fatal (e.g. a video background that won't snapshot just stays thumbless
+   * until the GM opens the scene).
+   */
+  async #regenerateSceneThumbs() {
+    const scenes = (this._importedScenes || [])
+      .map(s => game.scenes?.get(String(s.id)))
+      .filter(sc => sc && !sc.thumb)
+    if (!scenes.length) return
+    for (const scene of scenes) {
+      try {
+        const t = await scene.createThumbnail()
+        if (t?.thumb) await scene.update({ thumb: t.thumb })
+      } catch (e) {
+        console.warn(`BeneosNativeInstaller | thumbnail regen failed for "${scene.name}"`, e?.message || e)
+      }
+    }
+  }
+
+  /**
    * Persist the install + ping the download log, but only when at least one
    * scene was actually imported and the caller handed us release metadata.
    */
@@ -473,7 +532,7 @@ export class BeneosNativeBattlemapInstaller {
       packageId: this.packageId,
       label:     this.label,
       env:       this.#envFingerprint(),
-      totals:    { assets: 0, ok: 0, repaired: 0, failed: 0, docsCreated: 0, docsUpdated: 0, docsSkippedExisting: 0, docsFailed: 0, skippedPackageOwned: 0 },
+      totals:    { assets: 0, ok: 0, repaired: 0, failed: 0, docsCreated: 0, docsUpdated: 0, docsSkippedExisting: 0, docsFailed: 0, packagedAssets: 0 },
       assetFailures: [], // {target, category, attempts, lastError}
       docFailures:   [], // {type, id, error}
       preflight:     null,
@@ -541,19 +600,24 @@ export class BeneosNativeBattlemapInstaller {
     const assets = []
     const jsons  = {}
     this._urlByTarget = new Map()
+    this._packagedRemap = new Map()
     for (const [relPath, url] of Object.entries(packInfo)) {
       if (relPath === "mtte.json" || relPath === "beneos-pack-manifest.json") continue
       if (relPath.startsWith("data/assets/")) {
-        const target = toCloudAssetPath(relPath.substring("data/assets/".length))
-        // Package-owned paths (modules/<id>/…, systems/<id>/…) are provided by
-        // the installed package itself — e.g. the pack bundles beneos-module's
-        // own ability icons under modules/beneos-module/icons/. Re-uploading
-        // them would (a) write into a module/system folder, which Foundry warns
-        // is unsafe (a package update wipes them), and (b) be redundant. Skip
-        // them: the imported docs reference the existing package files directly.
-        if (/^(modules|systems)\//.test(target)) {
-          this._result.totals.skippedPackageOwned = (this._result.totals.skippedPackageOwned || 0) + 1
-          continue
+        const rawRel = relPath.substring("data/assets/".length)
+        let target = toCloudAssetPath(rawRel)
+        // Self-contained relocation: anything that did NOT land in a beneos_assets
+        // namespace (modules/<id>/…, worlds/<author-world>/… scene thumbs,
+        // icons/…, systems/…) is bundled by the pack. We must NOT write it back
+        // into modules/ or systems/ (Foundry warns that's unsafe and a package
+        // update would wipe it), so relocate it under the packaged namespace and
+        // remember the original->packaged mapping so #importDocuments rewrites the
+        // document references to match. Shared paths across releases map to the
+        // same target, so re-installs dedupe (existing files are skipped).
+        if (!/^beneos_assets\//i.test(target)) {
+          target = PACKAGED_INSTALL_PREFIX + stripLeadSlash(target)
+          this._packagedRemap.set(stripLeadSlash(rawRel), target)
+          this._result.totals.packagedAssets = (this._result.totals.packagedAssets || 0) + 1
         }
         assets.push({ url, target, relPath })
         this._urlByTarget.set(target, url)
@@ -738,8 +802,19 @@ export class BeneosNativeBattlemapInstaller {
     return plan
   }
 
-  /** Re-mint signed URLs (signatures expire after ~2h; slow installs outrun them). */
-  async #refreshManifest() {
+  /**
+   * Re-mint signed URLs (signatures expire after ~2h; slow installs outrun them).
+   * Deduped: under parallel transfers many 403s arrive at once — they must share
+   * ONE refresh (a single getPackInfo) instead of each burning the small
+   * MANIFEST_MAX_REFRESH budget and stampeding the origin.
+   */
+  #refreshManifest() {
+    if (this._refreshInFlight) return this._refreshInFlight
+    this._refreshInFlight = this.#doRefreshManifest().finally(() => { this._refreshInFlight = null })
+    return this._refreshInFlight
+  }
+
+  async #doRefreshManifest() {
     if (this._manifestRefreshes >= MANIFEST_MAX_REFRESH) return false
     this._manifestRefreshes += 1
     try {
@@ -886,12 +961,31 @@ export class BeneosNativeBattlemapInstaller {
     return { ok: true }
   }
 
+  /**
+   * Memoized #ensureDir: under parallel transfers, many files target the same
+   * directory; ensure each path's mkdir-p runs ONCE (shared promise) instead of
+   * firing hundreds of concurrent createDirectory calls. A failed ensure is
+   * evicted so a later (sequential repair) pass can retry it.
+   */
+  #ensureDirOnce(dir) {
+    if (!dir) return Promise.resolve({ ok: true })
+    let p = this._dirPromises.get(dir)
+    if (!p) {
+      p = this.#ensureDir(dir).then(r => {
+        if (!r.ok) this._dirPromises.delete(dir)
+        return r
+      })
+      this._dirPromises.set(dir, p)
+    }
+    return p
+  }
+
   /** Download + upload one asset. Returns {ok} or {ok:false, category, error}. */
   async #transferOne(a) {
     const dir  = a.target.includes("/") ? a.target.substring(0, a.target.lastIndexOf("/")) : ""
     const file = a.target.substring(a.target.lastIndexOf("/") + 1)
     if (dir) {
-      const d = await this.#ensureDir(dir)
+      const d = await this.#ensureDirOnce(dir)
       if (!d.ok) return { ok: false, category: d.category, error: d.error }
     }
     let blob
@@ -930,6 +1024,23 @@ export class BeneosNativeBattlemapInstaller {
 
   // ---- Phases --------------------------------------------------------------
 
+  /**
+   * Run `worker(item, index)` over `items` with at most `concurrency` in flight.
+   * Workers pull from a shared cursor; resolves when every item is processed.
+   * Single-threaded JS -> shared-counter mutations inside the worker are safe.
+   * A worker must not throw (handle per-item errors itself).
+   */
+  async #runPool(items, concurrency, worker) {
+    const n = items.length
+    if (n === 0) return
+    let next = 0
+    const lanes = Math.max(1, Math.min(concurrency, n))
+    const runLane = async () => {
+      for (let i = next++; i < n; i = next++) await worker(items[i], i)
+    }
+    await Promise.all(Array.from({ length: lanes }, runLane))
+  }
+
   async #downloadAssets(assets) {
     const total = assets.length
     this._result.totals.assets = total
@@ -943,16 +1054,20 @@ export class BeneosNativeBattlemapInstaller {
       this._result.totals.ok += total
       return
     }
+    // Fast first pass: download up to DOWNLOAD_CONCURRENCY assets in parallel.
+    // Anything that fails here is re-fetched ONE AT A TIME in #verifyAndRepair
+    // (the hardened single-stream fallback for a bad/saturated connection).
     this.progress.handleStatusMessage("Downloading scene assets")
     this.progress.revealPhase?.("assets", { status: "active", current: 0, total })
-    for (let i = 0; i < total; i++) {
-      const a = assets[i]
+    let done = 0
+    await this.#runPool(assets, DOWNLOAD_CONCURRENCY, async (a) => {
       const res = await this.#transferOne(a)
       if (res.ok) this._result.totals.ok += 1
       else this.#recordAssetFailure(a.target, res.category, res.error)
-      this.progress.handleAssetProgress("Assets", total, i + 1)
-      this.progress.revealPhase?.("assets", { status: "active", current: i + 1, total })
-    }
+      done += 1
+      this.progress.handleAssetProgress("Assets", total, done)
+      this.progress.revealPhase?.("assets", { status: "active", current: done, total })
+    })
     this.progress.revealPhase?.("assets", { status: "done", current: total, total })
   }
 
@@ -1022,7 +1137,7 @@ export class BeneosNativeBattlemapInstaller {
       if (arr.length === 0) continue
       // Punkt 8: reveal this phase with its real document count.
       this.progress.revealPhase?.(meta.phaseKey, { status: "active", current: 0, total: arr.length })
-      for (let i = 0; i < arr.length; i++) arr[i] = rewriteDocAssetPaths(arr[i])
+      for (let i = 0; i < arr.length; i++) arr[i] = rewriteDocAssetPaths(arr[i], this._packagedRemap)
 
       // Playlists grow, they are never replaced: the export ships each release's
       // playlist with only the few sounds that release uses (same playlist _id +
@@ -1184,15 +1299,20 @@ export class BeneosNativeBattlemapInstaller {
       if (a) byTarget.set(a.target, a)
     }
     if (!this._isForge) {
-      for (const a of assets) {
-        if (byTarget.has(a.target)) continue
+      // HEAD-checks are cheap + read-only -> run them in parallel.
+      await this.#runPool(assets, DOWNLOAD_CONCURRENCY, async (a) => {
+        if (byTarget.has(a.target)) return
         if (!(await this.#headCheck(a.target))) byTarget.set(a.target, a)
-      }
+      })
     }
     const candidates = [...byTarget.values()]
     if (candidates.length === 0) return
 
-    this.progress.handleStatusMessage(`Repairing ${candidates.length} asset(s)`)
+    // Hardened fallback: re-fetch failed/missing assets ONE AT A TIME. A single
+    // stream is gentler on a bad/saturated connection than the parallel first
+    // pass, so flaky transfers are far more likely to complete on this retry
+    // (slower, but robust).
+    this.progress.handleStatusMessage(`Retrying ${candidates.length} asset(s) one at a time`)
     for (let i = 0; i < candidates.length; i++) {
       const a = candidates[i]
       const res = await this.#transferOne(a)

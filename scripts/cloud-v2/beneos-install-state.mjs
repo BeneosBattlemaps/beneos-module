@@ -210,6 +210,66 @@ export class BeneosPreInstallDialog {
     }
   }
 
+  /**
+   * Bundle "install entire bundle" per-release prompt. A release already in the
+   * world raises this 3-way choice so a single one never aborts the whole run:
+   *   overwrite -> reinstall it; skip -> leave it, continue with the next;
+   *   stop -> stop the bundle run here. The "apply to all remaining" checkbox
+   * lets the caller remember the choice for the rest of the run.
+   * Returns Promise<{ choice:"overwrite"|"skip"|"stop", applyAll:boolean }>.
+   */
+  static async confirmBundleMemberOverwrite({ name } = {}) {
+    const DialogV2 = foundry?.applications?.api?.DialogV2
+    const L = (key, fallback) => {
+      try { const s = game.i18n.localize(key); if (s && s !== key) return s } catch (_) {}
+      return fallback
+    }
+    // Too old to ask -> default to skip (never destroys an existing install).
+    if (!DialogV2?.wait) return { choice: "skip", applyAll: false }
+
+    const safeName = foundry.utils.escapeHTML(String(name || ""))
+    const title = L("BENEOS.Cloud.Bmap.MemberOverwrite.Title", "Already in your world")
+    const body  = L("BENEOS.Cloud.Bmap.MemberOverwrite.Body",
+      "'%name%' is already in your world. Overwrite it, skip it, or stop the bundle?")
+      .replace("%name%", safeName)
+    const applyAllLabel = L("BENEOS.Cloud.Bmap.MemberOverwrite.ApplyAll",
+      "Apply to all remaining already-installed releases")
+    const content =
+      `<p style="line-height:1.5">${body}</p>` +
+      `<label style="display:flex;gap:.4rem;align-items:center;margin-top:.5rem">` +
+      `<input type="checkbox" name="applyAll"> ${foundry.utils.escapeHTML(applyAllLabel)}</label>`
+
+    // The third callback arg is the dialog instance in some Foundry builds and the
+    // rendered HTMLElement in others; the clicked button shares the dialog's form.
+    // Try all three so the checkbox read works regardless of the build.
+    const readApplyAll = (button, dialog) => {
+      try {
+        const fromBtn = button?.form?.elements?.applyAll
+        if (fromBtn) return !!fromBtn.checked
+        const root = dialog?.element ?? dialog
+        return !!root?.querySelector?.('input[name="applyAll"]')?.checked
+      } catch (_) { return false }
+    }
+    try {
+      const r = await DialogV2.wait({
+        window: { title },
+        content,
+        buttons: [
+          { action: "overwrite", label: L("BENEOS.Cloud.Bmap.MemberOverwrite.Overwrite", "Overwrite"),
+            callback: (_e, b, dialog) => ({ choice: "overwrite", applyAll: readApplyAll(b, dialog) }) },
+          { action: "skip", label: L("BENEOS.Cloud.Bmap.MemberOverwrite.Skip", "Skip"), default: true,
+            callback: (_e, b, dialog) => ({ choice: "skip", applyAll: readApplyAll(b, dialog) }) },
+          { action: "stop", label: L("BENEOS.Cloud.Bmap.MemberOverwrite.Stop", "Stop bundle"),
+            callback: () => ({ choice: "stop", applyAll: false }) },
+        ],
+        rejectClose: false,
+      })
+      return r || { choice: "stop", applyAll: false }
+    } catch (_e) {
+      return { choice: "stop", applyAll: false }
+    }
+  }
+
   static #formatDate(iso) {
     if (!iso) return "unknown"
     try {

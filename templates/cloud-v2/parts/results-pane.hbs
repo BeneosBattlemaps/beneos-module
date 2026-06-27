@@ -204,9 +204,10 @@
                    404) never shows a broken-image icon. --}}
               {{#if card.isBmap}}
                 <img src="{{card.thumbUrl}}" alt="{{card.name}}" loading="lazy" draggable="false"
-                     onerror="this.onerror=null;this.src='modules/beneos-module/ui/beneos_logo_bw.svg';this.classList.add('bc-thumb-fallback');" />
+                     onerror="this.onerror=null;this.src='modules/beneos-module/ui/beneos_thumb_placeholder.svg';this.classList.add('bc-thumb-fallback');" />
               {{else}}
-                <img src="{{card.thumbUrl}}" alt="{{card.name}}" loading="lazy" draggable="false" />
+                <img src="{{card.thumbUrl}}" alt="{{card.name}}" loading="lazy" draggable="false"
+                     onerror="this.onerror=null;this.src='modules/beneos-module/ui/beneos_thumb_placeholder.svg';this.classList.add('bc-thumb-fallback');" />
               {{/if}}
             {{else}}
               <div class="bc-card-thumb-placeholder"></div>
@@ -436,7 +437,18 @@
               </button>
             {{else if card.isCloudAvailable}}
               {{#if card.isBmap}}
-                {{#if card.isReleaseCard}}
+                {{#if card.isBundleCard}}
+                  {{!-- Bundle card: NO bc-action-install button (that would route
+                       the bundle UUID through the single-bmap/Moulinette path and
+                       throw "no Moulinette download info"). This button has no
+                       install class, so the card-click handler opens the drawer,
+                       where the size warning + per-release install buttons live. --}}
+                  <button type="button" class="bc-card-button bc-card-button-primary"
+                          data-tooltip="{{localize 'BENEOS.Cloud.Bmap.BundleViewButton'}}">
+                    <i class="fa-solid fa-layer-group"></i>
+                    {{localize "BENEOS.Cloud.Bmap.BundleViewButton"}}
+                  </button>
+                {{else if card.isReleaseCard}}
                   {{!-- Plan §18.7: release-card "Install via Beneos Cloud"
                        button (native installer, primary) + Moulinette-legacy
                        fallback. The legacy button resolves the release's
@@ -738,14 +750,30 @@
         </section>
         {{/if}}
 
-        {{!-- #5: bundle drawer , member list (install order) + one sequential
-             "Install Bundle" button. Skips the per-asset install action below. --}}
+        {{!-- #5: bundle drawer , per-release rows (size + install button +
+             installed check) + a sequential "Install entire bundle" button.
+             Skips the per-asset install action below. --}}
         {{#if drawer.asset.isBundleCard}}
         <section class="bc-drawer-section bc-drawer-bundle-members">
           <h4 class="bc-drawer-section-h">{{localize "BENEOS.Cloud.Bmap.BundleMembers"}} ({{drawer.asset.memberCount}})</h4>
+          <p class="bc-bundle-total">{{localize "BENEOS.Cloud.Bmap.BundleTotalSize"}}: <strong>{{drawer.asset.totalSizeLabel}}</strong></p>
+          {{!-- Many GB at once: large one-shot installs can fail depending on the
+               connection and especially the game server's capacity. --}}
+          <p class="bc-bundle-risk"><i class="fa-solid fa-triangle-exclamation"></i> {{localize "BENEOS.Cloud.Bmap.BundleRiskWarning"}}</p>
           <ol class="bc-bundle-members">
             {{#each drawer.asset.members as |m|}}
-              <li>{{m.name}}</li>
+              <li class="bc-bundle-member{{#if m.installed}} is-installed{{/if}}">
+                <span class="bc-bundle-member-name">{{m.name}}</span>
+                <span class="bc-bundle-member-size">{{m.sizeLabel}}</span>
+                {{#if m.installed}}<i class="fa-solid fa-circle-check bc-bmap-installed-check" data-tooltip="{{localize 'BENEOS.Cloud.Bmap.MemberInstalledTooltip'}}"></i>{{/if}}
+                <button type="button" class="bc-card-button bc-card-button-primary bc-bundle-member-install"
+                        data-action="installBundleMember"
+                        data-bundle-id="{{drawer.asset.key}}"
+                        data-member-index="{{m.index}}"
+                        data-tooltip="{{localize 'BENEOS.Cloud.Bmap.BundleMemberInstallTooltip'}}">
+                  <i class="fa-solid fa-cloud-arrow-down"></i>
+                </button>
+              </li>
             {{/each}}
           </ol>
         </section>
@@ -760,6 +788,7 @@
               <i class="fa-solid fa-cloud-arrow-down"></i>
               {{localize "BENEOS.Cloud.Bmap.InstallBundle"}}
             </button>
+            <p class="bc-bundle-members-hint">{{localize "BENEOS.Cloud.Bmap.BundleInstalledMembersHint"}}</p>
           {{/if}}
         </div>
         {{else}}

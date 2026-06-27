@@ -312,6 +312,28 @@
     </section>
     {{/if}}
     {{/unless}}
+    {{!-- A3: Show filter (All / Installed / Not installed / New / Updated) for
+         the release view, identical to token/item/spell. Shares the global
+         #installation-selector / this.showFilter state; applied to releases in
+         #buildReleaseCards. --}}
+    {{#if bmapViewIsReleases}}
+    <section class="bc-sidebar-group">
+      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Show"}}</header>
+      <div class="bc-sidebar-field">
+        <select class="bc-select beneos-selector" id="installation-selector">
+          <option value="any"          {{#if showFilterIsAny}}selected{{/if}}>{{localize "BENEOS.Cloud.Filter.InstallAny"}}</option>
+          <option value="installed"    {{#if showFilterIsInstalled}}selected{{/if}}>{{localize "BENEOS.Cloud.Filter.InstallInstalled"}}</option>
+          <option value="notinstalled" {{#if showFilterIsNotInstalled}}selected{{/if}}>{{localize "BENEOS.Cloud.Filter.InstallNotInstalled"}}</option>
+          {{#if hasNewAssets}}
+            <option value="new"        {{#if showFilterIsNew}}selected{{/if}}>{{localize "BENEOS.Cloud.Filter.InstallOnlyNew"}}</option>
+          {{/if}}
+          {{#if hasUpdatedAssets}}
+            <option value="updated"    {{#if showFilterIsUpdated}}selected{{/if}}>{{localize "BENEOS.Cloud.Filter.InstallOnlyUpdated"}}</option>
+          {{/if}}
+        </select>
+      </div>
+    </section>
+    {{/if}}
   {{/if}}
 
   {{#if (eq searchMode "item")}}

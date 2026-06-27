@@ -1344,11 +1344,22 @@ export class BeneosCloud {
     // as "send full catalog". `since` is intentionally an absolute server-
     // time value (not the local clock) — see beneos-cloud-last-content-
     // fetch-server-time setting registration in beneos_utility.js.
+    // Tier-3 delta only works as an INCREMENT on an already-populated in-memory
+    // catalog. availableContent is a per-session field (resets to empty on every
+    // Foundry reload) while the cursor is PERSISTED in settings, so the first
+    // fetch of a fresh session must be FULL: otherwise the server returns only a
+    // delta and mergeAvailableContent merges it into an empty list, leaving almost
+    // every asset falsely reading as "out of sync" until an auto-resync fires.
+    // Force a full fetch until the catalog is populated this session.
     let sinceTs = 0
-    try {
-      const v = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-last-content-fetch-server-time")
-      if (typeof v === "number" && v > 0) sinceTs = v
-    } catch (e) { /* setting not registered yet */ }
+    const ac = this.availableContent
+    const populated = !!(ac && ((ac.tokens?.length || 0) + (ac.items?.length || 0) + (ac.spells?.length || 0)) > 0)
+    if (populated) {
+      try {
+        const v = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-last-content-fetch-server-time")
+        if (typeof v === "number" && v > 0) sinceTs = v
+      } catch (e) { /* setting not registered yet */ }
+    }
     let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_content=1&foundryId=${encodeURIComponent(userId)}`
     if (sinceTs > 0) url += `&since=${encodeURIComponent(sinceTs)}`
     try {

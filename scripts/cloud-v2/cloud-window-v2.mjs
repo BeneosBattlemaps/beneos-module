@@ -167,6 +167,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       switchBmapRes:           BeneosCloudWindowV2._onSwitchBmapRes,
       switchBmapView:          BeneosCloudWindowV2._onSwitchBmapView,
       installBundle:           BeneosCloudWindowV2._onCloudBundleInstall,
+      installBundleMember:     BeneosCloudWindowV2._onCloudBundleMemberInstall,
       retryLoadReleases:       BeneosCloudWindowV2._onRetryLoadReleases,
       openExternal:            BeneosCloudWindowV2._onOpenExternal,
       openPatchlog:            BeneosCloudWindowV2._onOpenPatchlog,
@@ -497,6 +498,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       let hasNewForUserAssets = false
       if (this.searchMode === "bmap") {
         hasNewAssets = true
+        // A5: surface the "Only updated" option when at least one installed
+        // release has a newer cloud version available.
+        hasUpdatedAssets = this.#bmapHasUpdatedReleases()
       } else if (this.searchMode === "token" || this.searchMode === "item" || this.searchMode === "spell") {
         const dbHolder = game.beneos?.databaseHolder
         const all = dbHolder?.getAll?.(this.searchMode) || {}
@@ -551,6 +555,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // Task 4: in Bundles view only the Campaign filter is offered (bundles
         // are module-specific); the template hides the other bmap filters.
         bmapViewIsBundles: this.searchMode === "bmap" && this._bmapActiveView() === "bundles",
+        // A3: the Show dropdown is offered in the release view (where filtering
+        // by New/Updated/installed at release granularity makes sense).
+        bmapViewIsReleases: this.searchMode === "bmap" && this._bmapActiveView() === "releases",
         // Item-side
         // Wave B-8k-5: collapse "Light Armor +1/+2/…" into "Light Armor"
         // before sorting so the dropdown isn't cluttered with modded
@@ -914,21 +921,34 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       if (type === "bmap")  dbHolder.processInstalledBattlemap?.(data)
     }
 
-    // Battlemaps have no updated_ts feed; flag the highest release as NEW
-    // so the group divider, NEW chip, and "Only New" show-filter all light
-    // up the same way they do for tokens/items/spells. The pack pipeline
-    // numbers releases ascending via the DB-key prefix ("01-…" before
-    // "02-…"), so max(recency) over the bmap catalogue is "newest release".
+    // Battlemaps: a scene is "New" when its release was PUBLISHED within the
+    // last NEW_WINDOW_DAYS days (release_date) AND the release is not installed,
+    // mirroring the release-card rule in #buildReleaseCards. The old "highest
+    // release-number cohort = NEW" logic ignored release_date and only ever set
+    // isNew=true (never false), so a long-published or merely recently-UPDATED
+    // release wrongly kept the NEW chip (a stale flag left on the cached
+    // databaseHolder record). isNew is now ALWAYS assigned (true OR false), which
+    // clears any stale/cohort/DB-baked true. Update is handled per card (installed
+    // + newer updated_date), so an updated-but-not-installed release shows no chip.
     if (type === "bmap") {
-      let maxRelease = 0
-      for (const [k] of entries) {
-        const r = this.#recencyOf("bmap", k)
-        if (r > maxRelease) maxRelease = r
+      const NEW_WINDOW_DAYS = 30
+      const now = Date.now()
+      const installedByDir = new Map()
+      const isInstalled = (relDir) => {
+        if (!relDir) return false
+        if (installedByDir.has(relDir)) return installedByDir.get(relDir)
+        const v = (BeneosInstallState.findByReleaseDir(relDir)?.length || 0) > 0
+        installedByDir.set(relDir, v); return v
       }
-      if (maxRelease > 0) {
-        for (const [k, data] of entries) {
-          if (this.#recencyOf("bmap", k) === maxRelease) data.isNew = true
+      for (const [, data] of entries) {
+        const relDir = data?.properties?.release_dir || ""
+        const rd = relDir ? (this.#releaseDateInfo(relDir)?.releaseDate || "") : ""
+        let isNew = false
+        if (rd && !isInstalled(relDir)) {
+          const ageDays = (now - Date.parse(rd)) / 86400000
+          isNew = Number.isFinite(ageDays) && ageDays >= 0 && ageDays <= NEW_WINDOW_DAYS
         }
+        data.isNew = isNew   // always set -> clears any stale true
       }
     }
 
@@ -3127,6 +3147,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     if (type === "item")  cloud.importItemFromCloud(key, undefined, false, { gated: true })
     if (type === "spell") cloud.importSpellsFromCloud(key, undefined, false, { gated: true })
     if (type === "bmap") {
+      // Defensive: a bundle key must never reach the single-bmap path (it would
+      // fall through to the Moulinette no-terms notice). Bundle cards open their
+      // drawer instead; the drawer wires installBundle / installBundleMember.
+      if (this._bundleList?.some(b => b.id === key)) return
       // Plan §13: cloud-migrated entries route through the new install
       // pipeline with a chosen scope. The drawer template emits three
       // buttons with data-bmap-scope="scene|pair|release"; the card-grid
@@ -4631,7 +4655,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
    * native installer downloads + imports without scene-packer in the
    * loop, suppressing the toast spam and the gray wizard.
    */
-  static async _onCloudBattlemapInstallNative(_event, bmapKey, installScope = "scene") {
+  static async _onCloudBattlemapInstallNative(_event, bmapKey, installScope = "scene", opts = {}) {
     const dbHolder = game.beneos?.databaseHolder
     const bmapData = dbHolder?.getAll?.("bmap")?.[bmapKey]
     let props = bmapData?.properties || {}
@@ -4648,6 +4672,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         displayName = r.display_name || bmapKey
         installScope = "release"
       }
+    }
+    // Bundle-member fallback: a bundle-exclusive release may be absent from both
+    // the catalog and the release index, but the bundle member carries its own
+    // variant_dirs / name / cover. Treat bmapKey as the release_dir directly.
+    if (!releaseDir && opts.variantDirs) {
+      releaseDir   = String(bmapKey)
+      displayName  = opts.displayName || bmapKey
+      installScope = "release"
     }
     if (!releaseDir) {
       ui.notifications.warn(`Catalog entry "${bmapKey}" is missing release_dir.`)
@@ -4678,6 +4710,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       ? (variant === "HD" ? (releaseEntry.cover_url_hd || releaseEntry.cover_url_4k)
                           : (releaseEntry.cover_url_4k || releaseEntry.cover_url_hd))
       : null
+    if (!coverUrl && opts.coverUrl) coverUrl = opts.coverUrl
     if (!coverUrl && props.thumbnail) {
       coverUrl = `https://www.beneos-database.com/data/battlemaps/thumbnails/${props.thumbnail}`
     }
@@ -4687,7 +4720,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // use it instead of constructing <release_dir>_<VARIANT>, which no longer
     // exists on disk and threw "Package not found". Legacy construction stays
     // as a fallback.
-    const vdirs = (releaseEntry && releaseEntry.variant_dirs) || props.variant_dirs || null
+    const vdirs = (releaseEntry && releaseEntry.variant_dirs) || props.variant_dirs || opts.variantDirs || null
     let packId = null
     if (vdirs && typeof vdirs === "object") {
       packId = isSingle
@@ -4740,17 +4773,21 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         coverUrl,
         sceneSlugs,
         record,
+        // Bundle "install entire bundle" pre-decides overwrite per release, so
+        // it forces it here to skip the installer's own per-release dialog.
+        overwrite: opts.overwrite === true,
       })
     } catch (err) {
       console.warn("BeneosCloudWindowV2 | native install failed", { packId, sceneSlugs, err })
       ui.notifications.error(`Native install failed for ${displayName}: ${err?.message || err}`)
-      return
+      return null
     }
     // Teil 3: refresh the installed-marker + update state for this release.
     // Skip when the user cancelled the overwrite dialog (nothing changed).
     if (inst && !inst._cancelled) {
       try { await this.#refreshAfterBmapInstall?.(releaseDir) } catch (_) {}
     }
+    return inst
   }
 
   static async _onCloudBattlemapInstall(_event, bmapKey, installScope = "scene") {
@@ -5203,11 +5240,38 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const view = this._bmapActiveView()
     if (view === "individual") return false
     if (view === "bundles" && filterId === "bmap-adventure") return false  // campaign filters bundles in place
+    // Release view: the Campaign/adventure filter narrows releases IN PLACE
+    // (release granularity is where it makes the most sense). Any OTHER active
+    // filter flips to Individual Maps as before. So only keep the release view
+    // when Campaign is the SOLE active bmap filter.
+    if (view === "releases" && this.#bmapOnlyCampaignActive()) return false
     if (this.#hasActiveFilter("bmap")) {
       this._bmapViewMode = "individual"
       return view === "bundles"
     }
     return false
+  }
+
+  // True iff the Campaign/adventure dropdown is the ONLY active bmap filter
+  // (no text, no biome chips, no other bmap dropdown). The Show dropdown
+  // (installation-selector) is typed token/item/spell, so it is not counted
+  // here and never forces a flip out of the release view.
+  #bmapOnlyCampaignActive() {
+    if (this._textFilter) return false
+    if (this.bmapBiomeFilters?.size > 0) return false
+    const root = this.element
+    if (!root) return false
+    let campaignActive = false
+    for (const def of V2_FILTER_DEFS) {
+      if (!def.types?.includes("bmap")) continue
+      const sel = root.querySelector("#" + def.selector)
+      if (!sel) continue
+      const v = String(sel.value || "").toLowerCase()
+      if (!v || v === "any") continue
+      if (def.selector === "bmap-adventure") campaignActive = true
+      else return false   // another bmap dropdown is active -> not campaign-only
+    }
+    return campaignActive
   }
 
   // Plan §13: resolution toggle handler. Persists, re-renders just the
@@ -5342,9 +5406,16 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     if (q) {
       filtered = filtered.filter(r => String(r?.display_name || "").toLowerCase().includes(q))
     }
+    // A2: in the release view the Campaign/adventure dropdown narrows releases
+    // IN PLACE (every other bmap filter auto-switches to Individual Maps). Match
+    // the selected adventure against each release's representative adventure.
+    const advSel = String(this.element?.querySelector("#bmap-adventure")?.value || "").trim()
+    if (advSel && advSel.toLowerCase() !== "any") {
+      const want = advSel.toLowerCase()
+      filtered = filtered.filter(r => this.#releaseAdventureRaw(r.release_dir).toLowerCase().includes(want))
+    }
     const variant     = this._bmapActiveResolution() === "HD" ? "HD" : "4K"
     const variantHas  = (r) => Array.isArray(r?.variants_available) && r.variants_available.includes(variant)
-    const totalMatches = filtered.length
     const limit        = this.loadedCount
 
     // Feature 4 (free maps): when the user lacks battlemaps-campaign access
@@ -5501,14 +5572,29 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       }
     })
 
+    // A4: the Show dropdown (All / Installed / Not installed / New / Updated)
+    // filters releases too, mirroring token/item/spell. Uses the per-card flags
+    // computed above, so NEW and (most importantly) every UPDATED release is
+    // selectable in the release view.
+    const show = this.showFilter || "any"
+    let shown = cards
+    if (show && show !== "any") {
+      shown = cards.filter(c =>
+        show === "installed"    ? c.bmapInstalled :
+        show === "notinstalled" ? !c.bmapInstalled :
+        show === "new"          ? c.isNew :
+        show === "updated"      ? c.isUpdate : true)
+    }
+    const totalMatches = shown.length
+
     // Feature 4: group-sort + section dividers, only when grouping is active
     // (user lacks campaign access). A STABLE sort preserves the newest-first
     // order within each group. Patrons keep the flat list with no dividers.
-    let ordered = cards
+    let ordered = shown
     if (!hasCampaign) {
       const rank = (gk) => gk === "free" ? -1 : gk === "locked" ? 9999
                          : gk === "new" ? 0 : gk === "update" ? 1 : 2
-      ordered = cards.slice().sort((a, b) => rank(a.groupKind) - rank(b.groupKind))
+      ordered = shown.slice().sort((a, b) => rank(a.groupKind) - rank(b.groupKind))
     }
     const hasMore = totalMatches > limit
     const visible = hasMore ? ordered.slice(0, limit) : ordered
@@ -5551,6 +5637,33 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       this._releaseFreeMap = map
     }
     return this._releaseFreeMap.get(releaseDir) === true
+  }
+
+  // A2/A4: raw representative adventure of a release (for the in-place Campaign
+  // filter on the release view). Reuses the memoized adventure map built by
+  // #releaseAdventureChip.
+  #releaseAdventureRaw(releaseDir) {
+    if (!releaseDir) return ""
+    if (!this._releaseAdventureMap) this.#releaseAdventureChip(releaseDir)
+    return this._releaseAdventureMap?.get(releaseDir) || ""
+  }
+
+  // A5: does any installed release have a newer cloud version? Drives the
+  // "Only updated" show-filter option on the battlemap tab.
+  #bmapHasUpdatedReleases() {
+    const list = Array.isArray(this._releaseList) ? this._releaseList : []
+    for (const r of list) {
+      const installs = BeneosInstallState.findByReleaseDir(r.release_dir)
+      if (!installs.length) continue
+      const chosen = installs[0]
+      const di = this.#releaseDateInfo(r.release_dir) || null
+      const instAt = chosen.installedAt ? Date.parse(chosen.installedAt) : NaN
+      const updAt  = di?.updatedDate ? Date.parse(di.updatedDate) : NaN
+      if (Number.isFinite(instAt) && Number.isFinite(updAt) && updAt > instAt) return true
+      const curSig = String(r?.content_signature || "")
+      if (curSig !== "" && chosen.sourceSignature !== "" && chosen.sourceSignature !== curSig) return true
+    }
+    return false
   }
 
   // Punkt 3: map a release_dir to its compatible-adventure chip by sampling a
@@ -5664,6 +5777,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     if (this._bundleList || this._bundlesLoading) return
     this._bundlesLoading = true
     this._bundlesLoadError = null
+    // The bundle drawer shows per-release sizes + installed-checks, both of which
+    // come from the release index (bytes_per_variant) — make sure it's loaded so
+    // #buildBundleCards can enrich the members synchronously.
+    try { await this.#ensureReleasesLoaded?.() } catch (_e) {}
     try {
       const mgr = window.BeneosScenePacker
       const bundles = (mgr && typeof mgr.listBundles === "function") ? await mgr.listBundles() : []
@@ -5690,11 +5807,35 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const limit = this.loadedCount
     const hasMore = totalMatches > limit
     const sliced = hasMore ? filtered.slice(0, limit) : filtered
+    const variant = this._bmapActiveResolution?.() === "HD" ? "HD" : "4K"
     const cards = sliced.map(b => {
       const canInstall = b?.can_install !== false
-      const members = Array.isArray(b?.members)
+      const rawMembers = Array.isArray(b?.members)
         ? [...b.members].sort((m1, m2) => (m1.sort_order || 0) - (m2.sort_order || 0))
         : []
+      // Enrich every member with its on-disk size (release index bytes_per_variant)
+      // + installed-state so the drawer can show a per-release size, a checkmark,
+      // and wire a per-release install button. release_dir is the release index key.
+      const members = rawMembers.map((m, i) => {
+        const relDir = String(m.release_dir || "")
+        const vdirs  = m.variant_dirs || {}
+        const rel    = relDir ? this._releaseIndex?.get?.(relDir) : null
+        const bpv    = rel?.bytes_per_variant || {}
+        const sizeBytes = Number(bpv[variant] || bpv["4K"] || bpv["HD"] || 0) || 0
+        const coverUrl  = rel ? (variant === "HD" ? (rel.cover_url_hd || rel.cover_url_4k)
+                                                  : (rel.cover_url_4k || rel.cover_url_hd)) : null
+        return {
+          index:        i,
+          name:         m.name || relDir,
+          release_dir:  relDir,
+          variant_dirs: vdirs,
+          sizeLabel:    sizeBytes ? this.#formatBytes(sizeBytes) : "—",
+          installed:    relDir ? (BeneosInstallState.findByReleaseDir(relDir).length > 0) : false,
+          coverUrl,
+          _sizeBytes:   sizeBytes,
+        }
+      })
+      const totalBytes = members.reduce((s, m) => s + (m._sizeBytes || 0), 0)
       return {
         key:              b.id,
         name:             b.name || b.id,
@@ -5711,6 +5852,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         bytesLabel:       "",
         sceneCount:       0,
         memberCount:      Number(b.member_count || members.length),
+        totalSizeLabel:   totalBytes ? this.#formatBytes(totalBytes) : "—",
         members,
         description:      b.description || "",
         variantLabel:     "",
@@ -5733,8 +5875,38 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     }
   }
 
-  // #5: install every member release of a bundle, sequentially in sort_order,
-  // from a single click. One confirmation, progress notifications per member.
+  // #5b: install ONE release of a bundle (the per-release button in the drawer).
+  // Reuses the full native single-release pipeline (cover/record/overwrite dialog/
+  // progress window/installed-marker refresh) via _onCloudBattlemapInstallNative,
+  // with the member's own variant_dirs as a fallback when the release index lacks
+  // the entry (a bundle-exclusive release).
+  static async _onCloudBundleMemberInstall(event, target) {
+    event.preventDefault()
+    const bundleId = target?.dataset?.bundleId
+    const idx      = Number(target?.dataset?.memberIndex)
+    const bundle   = (this._bundleList || []).find(b => b.id === bundleId)
+    const members  = Array.isArray(bundle?.members)
+      ? [...bundle.members].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+      : []
+    const m = members[idx]
+    if (!m) { ui.notifications.warn("This bundle release could not be resolved."); return }
+    const relDir = String(m.release_dir || "")
+    if (!relDir) { ui.notifications.warn(`"${m.name || "release"}" is missing release_dir.`); return }
+    const rel     = this._releaseIndex?.get?.(relDir)
+    const variant = this._bmapActiveResolution?.() === "HD" ? "HD" : "4K"
+    const coverUrl = rel ? (variant === "HD" ? (rel.cover_url_hd || rel.cover_url_4k)
+                                             : (rel.cover_url_4k || rel.cover_url_hd)) : null
+    await BeneosCloudWindowV2._onCloudBattlemapInstallNative.call(
+      this, event, relDir, "release",
+      { variantDirs: m.variant_dirs || {}, displayName: m.name || relDir, coverUrl }
+    )
+  }
+
+  // #5: install every release of a bundle sequentially (sort_order). Each install
+  // opens its own native progress window. Already-installed releases raise a
+  // per-release prompt (overwrite / skip / stop) so a single "already in your
+  // world" never aborts the whole run; an "apply to all remaining" choice is
+  // remembered for the rest of this run. A per-release failure is counted, not fatal.
   static async _onCloudBundleInstall(event, target) {
     event.preventDefault()
     const bundleId = target?.dataset?.bundleId
@@ -5743,29 +5915,55 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       ui.notifications.warn("This bundle has no installable releases.")
       return
     }
-    const NativeInstaller = globalThis.BeneosNativeBattlemapInstaller
-    if (!NativeInstaller) {
+    if (!globalThis.BeneosNativeBattlemapInstaller) {
       ui.notifications.error("BeneosNativeBattlemapInstaller is not loaded")
       return
     }
-    const variant = this._bmapActiveResolution() === "HD" ? "HD" : "4K"
+    try { await this.#ensureReleasesLoaded?.() } catch (_) {}
+    const variant = this._bmapActiveResolution?.() === "HD" ? "HD" : "4K"
     const members = [...bundle.members].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
     const total = members.length
-    let idx = 0
-    for (const m of members) {
-      idx++
-      const dirs = m.variant_dirs || {}
-      const packId = dirs[variant] || dirs["4K"] || dirs["HD"] || dirs["SINGLE"] || Object.values(dirs)[0]
-      if (!packId) { console.warn("BeneosCloudWindowV2 | bundle member has no pack dir", m); continue }
-      ui.notifications.info(game.i18n.format("BENEOS.Cloud.Bmap.BundleInstalling", { current: idx, total }))
+    let installed = 0, skipped = 0, failed = 0
+    let remembered = null // "overwrite" | "skip" applied to all remaining installed releases
+    for (let idx = 0; idx < members.length; idx++) {
+      const m = members[idx]
+      const relDir = String(m.release_dir || "")
+      if (!relDir) { console.warn("BeneosCloudWindowV2 | bundle member has no release_dir", m); skipped++; continue }
+      let overwrite = false
+      if (BeneosInstallState.findByReleaseDir(relDir).length > 0) {
+        let choice = remembered
+        if (!choice) {
+          const res = await BeneosPreInstallDialog.confirmBundleMemberOverwrite({
+            name: m.name || relDir, index: idx + 1, total,
+          })
+          choice = res.choice
+          if (res.applyAll && (choice === "overwrite" || choice === "skip")) remembered = choice
+        }
+        if (choice === "stop") break
+        if (choice === "skip") { skipped++; continue }
+        overwrite = true
+      }
+      ui.notifications.info(game.i18n.format("BENEOS.Cloud.Bmap.BundleInstalling", { current: idx + 1, total }))
+      const rel = this._releaseIndex?.get?.(relDir)
+      const coverUrl = rel ? (variant === "HD" ? (rel.cover_url_hd || rel.cover_url_4k)
+                                               : (rel.cover_url_4k || rel.cover_url_hd)) : null
       try {
-        await NativeInstaller.install({ packageId: packId, label: `${bundle.name}: ${m.name}` })
+        const inst = await BeneosCloudWindowV2._onCloudBattlemapInstallNative.call(
+          this, event, relDir, "release",
+          { variantDirs: m.variant_dirs || {}, displayName: m.name || relDir, coverUrl, overwrite }
+        )
+        if (inst && inst._cancelled) skipped++
+        else installed++
       } catch (e) {
         console.warn("BeneosCloudWindowV2 | bundle member install failed", m.name, e)
-        ui.notifications.error(`Install failed for ${m.name}: ${e?.message || e}`)
+        ui.notifications.error(`Install failed for ${m.name || relDir}: ${e?.message || e}`)
+        failed++
       }
     }
-    ui.notifications.info(`Bundle "${bundle.name}" installed (${total} releases).`)
+    ui.notifications.info(game.i18n.format("BENEOS.Cloud.Bmap.BundleSummary", {
+      name: bundle.name, installed, skipped, failed,
+    }))
+    try { await this.#refreshAfterBmapInstall?.(null) } catch (_) {}
   }
 
   // Plan §33.6 - render an install timestamp for the badge tooltip. Same
@@ -5848,6 +6046,7 @@ export class BeneosCloudSettingsV2 extends HandlebarsApplicationMixin(Applicatio
     },
     actions: {
       startSetupTour: BeneosCloudSettingsV2._onStartSetupTour,
+      openDocumentation: BeneosCloudSettingsV2._onOpenDocumentation,
       openModuleSettings: BeneosCloudSettingsV2._onOpenModuleSettings,
       disconnectAccount: BeneosCloudSettingsV2._onDisconnectAccount,
       openLogin:         BeneosCloudSettingsV2._onOpenLoginFromSettings,
@@ -5947,6 +6146,16 @@ export class BeneosCloudSettingsV2 extends HandlebarsApplicationMixin(Applicatio
       new BeneosStartSetupTour().render(true)
     } catch (err) {
       console.warn("[Beneos Cloud Settings] setup-tour trigger failed", err)
+    }
+  }
+
+  static async _onOpenDocumentation(_event, _target) {
+    // Close this settings modal, then open the documentation wiki.
+    try { this.close() } catch (e) {}
+    try {
+      game.beneos?.openWiki?.()
+    } catch (err) {
+      console.warn("[Beneos Cloud Settings] open-documentation failed", err)
     }
   }
 

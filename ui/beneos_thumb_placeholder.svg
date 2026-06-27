@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Beneos">
+  <defs>
+    <radialGradient id="bcph-bg" cx="50%" cy="38%" r="72%">
+      <stop offset="0%" stop-color="#3a3326"/>
+      <stop offset="100%" stop-color="#1a1813"/>
+    </radialGradient>
+  </defs>
+  <circle cx="60" cy="60" r="57" fill="url(#bcph-bg)" stroke="#d8b66a" stroke-width="2" stroke-opacity="0.5"/>
+  <circle cx="60" cy="60" r="49" fill="none" stroke="#d8b66a" stroke-width="1" stroke-opacity="0.25"/>
+  <text x="60" y="80" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="60" font-weight="700" fill="#d8b66a" fill-opacity="0.85">B</text>
+</svg>
