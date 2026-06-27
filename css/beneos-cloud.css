@@ -704,6 +704,47 @@
   border-color: var(--bc-accent);
 }
 
+/* OTP code dialog: live expiry countdown */
+.beneos-cloud-login-dialog .bc-login-form__ttl {
+  margin: 0;
+  font-size: 11px;
+  color: var(--bc-text-dim);
+}
+/* OTP code dialog: resend button (secondary, low-prominence) */
+.beneos-cloud-login-dialog .bc-login-form__resend {
+  align-self: flex-start;
+  background: transparent;
+  color: var(--bc-accent);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius);
+  padding: 5px 10px;
+  font-family: var(--bc-font-ui);
+  font-size: 12px;
+  cursor: pointer;
+}
+.beneos-cloud-login-dialog .bc-login-form__resend:hover:not(:disabled) {
+  border-color: var(--bc-accent);
+  color: var(--bc-accent-strong);
+}
+.beneos-cloud-login-dialog .bc-login-form__resend:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+/* OTP code dialog: inline "no email?" help */
+.beneos-cloud-login-dialog .bc-login-form__help {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--bc-text-muted);
+}
+.beneos-cloud-login-dialog .bc-login-form__help ul {
+  margin: 4px 0 0;
+  padding-left: 16px;
+}
+.beneos-cloud-login-dialog .bc-login-form__help li {
+  margin: 2px 0;
+}
+
 /* Dialog button row — keep buttons compact, right-align, gold accent on primary */
 .beneos-cloud-login-dialog .form-footer,
 .beneos-cloud-login-dialog .dialog-buttons {

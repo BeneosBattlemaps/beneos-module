@@ -461,33 +461,17 @@ export class BeneosCloudLogin extends FormApplication {
     }
     email = email.trim()
 
-    // Step 1: request a code.
-    let reqURL = `${BeneosUtility.cloudBase()}/foundry-otp-request.php?email=${encodeURIComponent(email)}&foundryId=${encodeURIComponent(userId)}`
-    let sent = false
-    try {
-      const resp = await fetch(reqURL, { credentials: 'same-origin' })
-      game.beneos?.cloud?.markServerStatus?.(resp, null)
-      if (!resp.ok) {
-        if (resp.status >= 500) ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginServerOffline"))
-        else ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.LoginHttpError", { status: resp.status }))
-        return
-      }
-      const data = await resp.json()
-      sent = (data.result === 'OK')
-    } catch (err) {
-      game.beneos?.cloud?.markServerStatus?.(null, err)
-      console.error("BENEOS Cloud OTP request error:", err)
-      ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginServerOffline"))
-      return
-    }
-    if (!sent) {
-      ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginFailed"))
-      return
-    }
+    // Step 1: request a code (shared with the in-dialog "resend" button).
+    const first = await this.requestCode(email, userId)
+    if (first.status !== 'ok') return
     ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Notification.CodeSent"))
 
-    // Step 2: collect the code and verify it.
-    const codeData = await this.codeDialog()
+    // A code can still bounce after the server accepted the send. Poll the delivery
+    // status once, shortly after, and warn the user if the address is undeliverable.
+    this.scheduleDeliveryCheck(email)
+
+    // Step 2: collect the code (with live TTL, resend + help) and verify it.
+    const codeData = await this.codeDialog(email, userId, first.ttl)
     if (!codeData || typeof codeData !== "object" || !codeData.code?.trim()) return
     const code = codeData.code.trim()
 
@@ -513,15 +497,96 @@ export class BeneosCloudLogin extends FormApplication {
   }
 
   /********************************************************************************** */
-  // Small second-step dialog asking for the 6-digit code. Same look as the login dialog.
-  async codeDialog() {
+  // Requests an OTP for an email. Used both for the initial send and the resend button,
+  // so the rate limit, suppression and TTL handling live in one place. Returns a small
+  // status object; only emits notifications for the failure cases the caller shares.
+  // @returns {Promise<{status:'ok'|'rate_limited'|'undeliverable'|'error', ttl:number, retryAfter:number}>}
+  async requestCode(email, userId) {
+    const reqURL = `${BeneosUtility.cloudBase()}/foundry-otp-request.php?email=${encodeURIComponent(email)}&foundryId=${encodeURIComponent(userId)}`
+    try {
+      const resp = await fetch(reqURL, { credentials: 'same-origin' })
+      game.beneos?.cloud?.markServerStatus?.(resp, null)
+      if (!resp.ok) {
+        if (resp.status >= 500) ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginServerOffline"))
+        else ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.LoginHttpError", { status: resp.status }))
+        return { status: 'error', ttl: 0, retryAfter: 0 }
+      }
+      const data = await resp.json()
+      if (data.result === 'OK') {
+        return { status: 'ok', ttl: Number(data.ttl) || 600, retryAfter: 0 }
+      }
+      if (data.result === 'rate_limited') {
+        const retryAfter = Number(data.retry_after) || 0
+        ui.notifications.warn(game.i18n.format("BENEOS.Cloud.Notification.CodeRateLimited", { seconds: retryAfter }))
+        return { status: 'rate_limited', ttl: 0, retryAfter }
+      }
+      if (data.result === 'undeliverable') {
+        ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.CodeUndeliverable"))
+        return { status: 'undeliverable', ttl: 0, retryAfter: 0 }
+      }
+      ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginFailed"))
+      return { status: 'error', ttl: 0, retryAfter: 0 }
+    } catch (err) {
+      game.beneos?.cloud?.markServerStatus?.(null, err)
+      console.error("BENEOS Cloud OTP request error:", err)
+      ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginServerOffline"))
+      return { status: 'error', ttl: 0, retryAfter: 0 }
+    }
+  }
+
+  /********************************************************************************** */
+  // One-shot, delayed delivery-status poll. If the address hard-bounced / was blocked,
+  // tell the user plainly instead of leaving them waiting for a code that never arrives.
+  scheduleDeliveryCheck(email) {
+    setTimeout(async () => {
+      try {
+        const url = `${BeneosUtility.cloudBase()}/foundry-otp-status.php?email=${encodeURIComponent(email)}`
+        const resp = await fetch(url, { credentials: 'same-origin' })
+        if (!resp.ok) return
+        const data = await resp.json()
+        if (data.result === 'OK' && data.deliverable === false) {
+          ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.CodeUndeliverable"))
+        }
+      } catch (err) {
+        // Best-effort only; never block login on the status probe.
+      }
+    }, 6000)
+  }
+
+  /********************************************************************************** */
+  // Second-step dialog: enter the 6-digit code. Adds a live "expires in M:SS" countdown,
+  // a rate-limited "resend" button, and inline help for when no email arrives.
+  async codeDialog(email, userId, ttl) {
+    const RESEND_COOLDOWN = 60 // mirrors the server-side OTP_RESEND_COOLDOWN
+    let expiresAt = Date.now() + (Number(ttl) || 600) * 1000
+    let resendReadyAt = Date.now() + RESEND_COOLDOWN * 1000
+    let countdownTimer = null
+
+    const fmt = (totalSeconds) => {
+      const s = Math.max(0, Math.floor(totalSeconds))
+      const m = Math.floor(s / 60)
+      const r = s % 60
+      return `${m}:${r.toString().padStart(2, "0")}`
+    }
+
     const content = `<section class="bc-login-form">
       <p class="bc-login-form__hint">${game.i18n.localize("BENEOS.Cloud.ConnectAccount.CodeDescription")}</p>
       <div class="bc-login-form__field">
         <label for="code" class="bc-login-form__label">${game.i18n.localize("BENEOS.Cloud.ConnectAccount.CodeLabel")}</label>
         <input type="text" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" class="bc-login-form__input" />
       </div>
+      <p class="bc-login-form__ttl" data-bc-ttl>${game.i18n.format("BENEOS.Cloud.ConnectAccount.CodeExpiresIn", { time: fmt((expiresAt - Date.now()) / 1000) })}</p>
+      <button type="button" class="bc-login-form__resend" data-bc-resend disabled>${game.i18n.localize("BENEOS.Cloud.ConnectAccount.Resend")}</button>
+      <div class="bc-login-form__help">
+        <strong>${game.i18n.localize("BENEOS.Cloud.CodeHelp.Title")}</strong>
+        <ul>
+          <li>${game.i18n.localize("BENEOS.Cloud.CodeHelp.CheckSpam")}</li>
+          <li>${game.i18n.localize("BENEOS.Cloud.CodeHelp.UsePatreonEmail")}</li>
+          <li>${game.i18n.localize("BENEOS.Cloud.CodeHelp.WaitMinutes")}</li>
+        </ul>
+      </div>
     </section>`
+
     let result = null
     try {
       result = await foundry.applications.api.DialogV2.wait({
@@ -529,6 +594,51 @@ export class BeneosCloudLogin extends FormApplication {
         classes: ["dialog", "app", "window-app", "beneos-cloud-app", "beneos-cloud-login-dialog"],
         content,
         rejectClose: false,
+        render: (event, dialog) => {
+          const root = dialog.element
+          const ttlEl = root.querySelector("[data-bc-ttl]")
+          const resendBtn = root.querySelector("[data-bc-resend]")
+
+          const tick = () => {
+            const remainTtl = (expiresAt - Date.now()) / 1000
+            if (ttlEl) {
+              ttlEl.textContent = remainTtl > 0
+                ? game.i18n.format("BENEOS.Cloud.ConnectAccount.CodeExpiresIn", { time: fmt(remainTtl) })
+                : game.i18n.localize("BENEOS.Cloud.ConnectAccount.CodeExpired")
+            }
+            if (resendBtn) {
+              const remainCd = Math.ceil((resendReadyAt - Date.now()) / 1000)
+              if (remainCd > 0) {
+                resendBtn.disabled = true
+                resendBtn.textContent = game.i18n.format("BENEOS.Cloud.ConnectAccount.ResendCooldown", { seconds: remainCd })
+              } else {
+                resendBtn.disabled = false
+                resendBtn.textContent = game.i18n.localize("BENEOS.Cloud.ConnectAccount.Resend")
+              }
+            }
+          }
+          tick()
+          countdownTimer = setInterval(tick, 1000)
+
+          resendBtn?.addEventListener("click", async () => {
+            if (resendBtn.disabled) return
+            resendBtn.disabled = true
+            const res = await this.requestCode(email, userId)
+            if (res.status === 'ok') {
+              expiresAt = Date.now() + (Number(res.ttl) || 600) * 1000
+              resendReadyAt = Date.now() + RESEND_COOLDOWN * 1000
+              ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Notification.CodeSent"))
+              this.scheduleDeliveryCheck(email)
+            } else if (res.status === 'rate_limited') {
+              // Honour the server's retry window so the button matches reality.
+              resendReadyAt = Date.now() + (Number(res.retryAfter) || RESEND_COOLDOWN) * 1000
+            }
+            tick()
+          })
+        },
+        close: () => {
+          if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null }
+        },
         buttons: [{
           action: "verify",
           label: game.i18n.localize("BENEOS.Cloud.ConnectAccount.VerifyCode"),
@@ -545,6 +655,8 @@ export class BeneosCloudLogin extends FormApplication {
       })
     } catch (e) {
       result = null
+    } finally {
+      if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null }
     }
     return result
   }
