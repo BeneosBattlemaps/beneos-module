@@ -291,9 +291,15 @@ export class BeneosCreatureInstaller {
     } else {
       img = entry.art || (actor?.prototypeToken?.texture?.src) || actor?.img || null;
     }
+    // Animated token art (.webm/.mp4/...) cannot display in an <img> (the disc
+    // renders empty, e.g. the Creeping Hut or the Lake Zarovich rowboat). Flag it
+    // so the template renders a muted looping <video> representor instead. The
+    // asset ships locally with the battlemap, so this stays offline-safe.
+    const isVideo = /\.(webm|mp4|m4v|ogv)(\?.*)?$/i.test(img || "");
     return {
       ...entry,
       img,
+      isVideo,
       shape: entry.shape || (premium ? "square" : "round"),
       installed,
       available: installed,                 // locally resolvable -> visible + draggable

@@ -161,6 +161,10 @@
   width: 1px; align-self: stretch;
   background: linear-gradient(180deg, transparent, rgba(184, 154, 99, .4), transparent);
 }
+/* SRD-only scene (no Beneos creatures): the Beneos column + divider are not
+   rendered, so the drawer collapses to a single compact column instead of a
+   1040px panel with one lonely column. */
+#beneos-creature-installer .bci-root.bci-srd-only { width: min(560px, 95vw); }
 
 #beneos-creature-installer .bci-group-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 #beneos-creature-installer .bci-grp-title { font-family: "Cinzel", serif; font-size: 12px; letter-spacing: 1.5px; }
@@ -220,6 +224,16 @@
 #beneos-creature-installer .bci-disc img { display: block; pointer-events: none; -webkit-user-drag: none; user-select: none; }
 #beneos-creature-installer .bci-shape-square img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 #beneos-creature-installer .bci-shape-round img { width: 100%; height: 100%; object-fit: contain; padding: 3px; box-sizing: border-box; }
+/* Animated token art (.webm/.mp4) renders as a muted looping <video> representor
+   so the disc never shows an empty circle. Mirror the <img> sizing/clip/ghosting. */
+#beneos-creature-installer .bci-disc video { display: block; pointer-events: none; -webkit-user-drag: none; user-select: none; }
+#beneos-creature-installer .bci-shape-square video { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+#beneos-creature-installer .bci-shape-round video { width: 100%; height: 100%; object-fit: contain; padding: 3px; box-sizing: border-box; }
+#beneos-creature-installer .bci-disc-beneos:not(.bci-available) video { opacity: .5; }
+#beneos-creature-installer.bci-state-not_connected .bci-disc-beneos video,
+#beneos-creature-installer.bci-state-connected_nonpatron .bci-disc-beneos video { opacity: .32; }
+#beneos-creature-installer .bci-disc-beneos.bci-needsinstall video { filter: grayscale(1) brightness(.62); transition: filter .85s ease; }
+#beneos-creature-installer .bci-disc-beneos.bci-installed-fx video { filter: none; }
 
 #beneos-creature-installer .bci-disc-srd { border: 2px solid #6f5c3b; }
 

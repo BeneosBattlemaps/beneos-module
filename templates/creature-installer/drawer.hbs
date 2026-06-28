@@ -9,7 +9,7 @@
     <i class="beneos-icon-logo"></i>
   </button>
 {{else}}
-<div class="bci-root bci-state-{{state}}">
+<div class="bci-root bci-state-{{state}}{{#unless hasBeneos}} bci-srd-only{{/unless}}">
 
   {{!-- collapsed bookmark tab (always visible) --}}
   <button type="button" class="bci-tab {{#if pulse}}bci-pulse{{/if}}" data-action="toggle" title="{{localize 'BENEOS.CreatureInstaller.TabTooltip'}}">
@@ -32,6 +32,9 @@
         <span class="bci-count">{{totalCount}} {{localize 'BENEOS.CreatureInstaller.CountSuffix'}}</span>
       </div>
       <div class="bci-header-right">
+        {{!-- account chip + login CTA only matter when the scene actually offers
+              Beneos creatures; on an SRD-only scene this is pointless noise. --}}
+        {{#if hasBeneos}}
         {{#if isPatron}}
           <div class="bci-chip bci-chip-patron">
             <svg class="bci-ico-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.5L12 17.8 6.1 20.6l1.2-6.5L2.5 9l6.6-.9z"/></svg>
@@ -44,6 +47,7 @@
             <span>{{localize 'BENEOS.CreatureInstaller.ChipNotConnected'}}</span>
             <a class="bci-link" data-action="login">{{localize 'BENEOS.CreatureInstaller.LogIn'}}</a>
           </div>
+        {{/if}}
         {{/if}}
         <label class="bci-hide" title="{{localize 'BENEOS.CreatureInstaller.HideTooltip'}}">
           <input type="checkbox" data-action="hide" {{#if hidden}}checked{{/if}}>
@@ -68,7 +72,7 @@
           {{#each srd}}
             <div class="bci-tokencol">
               <div class="bci-disc bci-disc-srd bci-shape-{{shape}} {{#if available}}bci-available{{/if}} {{#if dispClass}}bci-disp-{{dispClass}}{{/if}}" draggable="{{draggable}}" data-uuid="{{uuid}}" data-key="{{key}}" data-name="{{name}}" {{#if linkedKey}}data-linked="{{linkedKey}}"{{/if}} title="{{#if available}}{{localize 'BENEOS.CreatureInstaller.OpenSheetHint'}}{{else}}{{name}}{{/if}}">
-                {{#if img}}<img src="{{img}}" alt="{{name}}" draggable="false" onerror="this.style.display='none'">{{/if}}
+                {{#if img}}{{#if isVideo}}<video src="{{img}}" muted loop autoplay playsinline preload="metadata" draggable="false"></video>{{else}}<img src="{{img}}" alt="{{name}}" draggable="false" onerror="this.style.display='none'">{{/if}}{{/if}}
                 {{#if available}}<span class="bci-check" title="{{localize 'BENEOS.CreatureInstaller.Available'}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span>{{/if}}
               </div>
               <span class="bci-name">{{name}}</span>
@@ -78,6 +82,10 @@
         </div>
       </div>
 
+      {{!-- The entire Beneos column + its Patreon/login gate only render when the
+            scene actually has Beneos creatures. On an SRD-only scene we do not
+            advertise premium content (no empty column, no support/login CTA). --}}
+      {{#if hasBeneos}}
       <div class="bci-divider"></div>
 
       {{!-- Beneos creatures --}}
@@ -92,7 +100,7 @@
             {{#each beneos}}
               <div class="bci-tokencol">
                 <div class="bci-disc bci-disc-beneos bci-shape-{{shape}} {{#if available}}bci-available{{/if}} {{#if alternative}}bci-alt{{/if}} {{#if needsInstall}}bci-needsinstall{{/if}} {{#if dispClass}}bci-disp-{{dispClass}}{{/if}}" draggable="{{draggable}}" data-uuid="{{uuid}}" data-key="{{key}}" data-name="{{name}}" data-tokenkey="{{tokenKey}}" title="{{#if alternative}}{{localize 'BENEOS.CreatureInstaller.AlternativeTooltip'}}{{else if available}}{{localize 'BENEOS.CreatureInstaller.OpenSheetHint'}}{{else}}{{name}}{{/if}}">
-                  {{#if img}}<img src="{{img}}" alt="{{name}}" draggable="false" onerror="this.style.display='none'">{{/if}}
+                  {{#if img}}{{#if isVideo}}<video src="{{img}}" muted loop autoplay playsinline preload="metadata" draggable="false"></video>{{else}}<img src="{{img}}" alt="{{name}}" draggable="false" onerror="this.style.display='none'">{{/if}}{{/if}}
                   {{#if alternative}}<span class="bci-alt-badge" title="{{localize 'BENEOS.CreatureInstaller.AlternativeTooltip'}}">{{localize 'BENEOS.CreatureInstaller.AltShort'}}</span>{{/if}}
                   {{#if available}}
                     <span class="bci-check" title="{{localize 'BENEOS.CreatureInstaller.Available'}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span>
@@ -121,6 +129,7 @@
           {{/unless}}
         </div>
       </div>
+      {{/if}}
 
     </div>
 
@@ -135,6 +144,9 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6-7-11a7 7 0 0114 0c0 5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
         <span>{{localize 'BENEOS.CreatureInstaller.PlaceSrd'}}</span>
       </button>
+      {{!-- No Beneos creatures in this scene -> only "Place Free"; no gold
+            install/place button and no "Support to add Beneos creatures" CTA. --}}
+      {{#if hasBeneos}}
       {{#if isPatron}}
         {{#if btnInstall}}
           <button type="button" class="bci-btn bci-btn-gold bci-btn-grow bci-btn-install" data-action="installAll">
@@ -157,6 +169,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l4 5 5-7 5 7 4-5-2 12H5z"/></svg>
           <span>{{localize 'BENEOS.CreatureInstaller.SupportToAdd'}}</span>
         </button>
+      {{/if}}
       {{/if}}
     </footer>
   </section>
