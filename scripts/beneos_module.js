@@ -668,7 +668,8 @@ Hooks.on("preUpdateActor", (actor, changes) => {
     const nameChanged = typeof changes?.name === "string"
     const sys = changes?.system
     const statFields = []
-    if (sys?.attributes?.hp !== undefined) statFields.push("hp")
+    // HP changes constantly during play, so it is not a reskin / variant-demand
+    // signal. Deliberately not tracked (an HP-only edit emits no actor_modify_stats).
     if (sys?.attributes?.ac !== undefined) statFields.push("ac")
     if (sys?.abilities !== undefined) statFields.push("abilities")
     if (sys?.details?.cr !== undefined) statFields.push("cr")

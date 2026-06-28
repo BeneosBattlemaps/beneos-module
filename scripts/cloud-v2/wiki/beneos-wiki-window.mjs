@@ -234,6 +234,26 @@ export class BeneosWikiWindow extends HandlebarsApplicationMixin(ApplicationV2) 
       })
     })
 
+    // In-body jump links: <a data-wiki-jump="anchor-id"> smooth-scrolls the
+    // article pane to the element carrying that id. This powers a page's own
+    // table of contents and its "back to top" links (e.g. the FAQ). We use a
+    // data attribute rather than href="#id" on purpose: a real hash href makes
+    // the browser navigate (and pollutes the URL), whereas the data-attribute
+    // pattern (the same one wikilinks use) keeps the click fully in our hands.
+    const jumpPane = root.querySelector("[data-wiki-main]")
+    root.querySelectorAll(".bn-body a[data-wiki-jump]").forEach((a) => {
+      a.addEventListener("click", (ev) => {
+        ev.preventDefault()
+        const id = a.getAttribute("data-wiki-jump")
+        if (!id || !jumpPane) return
+        const target = jumpPane.querySelector(`[id="${CSS.escape(id)}"]`)
+        if (!target) return
+        const top = jumpPane.scrollTop
+          + (target.getBoundingClientRect().top - jumpPane.getBoundingClientRect().top) - 10
+        jumpPane.scrollTo({ top: Math.max(0, top), behavior: "smooth" })
+      })
+    })
+
     // In-body action buttons: <a data-wiki-launch="setup-tour|open-cloud">.
     // Lets the Welcome page carry working launchers for the Setup Tour and
     // the Cloud window without leaving the i18n-driven content model.

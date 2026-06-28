@@ -322,3 +322,68 @@
   transition: color .15s;
 }
 .beneos-wiki .bw-article .bw-home:hover { color: #f4d493; }
+
+/* FAQ table of contents: a grouped, clickable index of every question that
+   sits at the top of the FAQ article. Jump links are handled in JS (smooth
+   scroll within the article pane), so they never touch the URL hash. */
+.beneos-wiki .bn-body .bn-faq-toc {
+  margin: 1.4em 0 2em;
+  padding: 16px 18px 6px;
+  border: 1px solid rgba(198, 154, 92, .30);
+  border-radius: 10px;
+  background: rgba(198, 154, 92, .05);
+}
+.beneos-wiki .bn-body .bn-faq-toc-head {
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #9a7c45;
+  margin-bottom: 12px;
+}
+.beneos-wiki .bn-body .bn-faq-toc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 6px 26px;
+}
+.beneos-wiki .bn-body .bn-faq-toc-sec { break-inside: avoid; margin-bottom: 14px; }
+.beneos-wiki .bn-body .bn-faq-toc-h {
+  display: block;
+  font-family: 'Cinzel', serif;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #e6c98a;
+  border-bottom: 1px solid rgba(198, 154, 92, .22);
+  padding-bottom: 4px;
+  margin-bottom: 5px;
+}
+.beneos-wiki .bn-body .bn-faq-toc-h:hover { color: #f4d493; border-bottom-color: rgba(244, 212, 147, .5); }
+.beneos-wiki .bn-body .bn-faq-toc-sec ul { list-style: none; margin: 0; padding: 0; }
+.beneos-wiki .bn-body .bn-faq-toc-sec li { margin: 0; }
+.beneos-wiki .bn-body .bn-faq-toc-sec li a {
+  display: block;
+  padding: 2px 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #b6ad97;
+  border-bottom: none;
+}
+.beneos-wiki .bn-body .bn-faq-toc-sec li a:hover { color: #f4d493; }
+
+/* Scroll margin so a jumped-to question is not flush against the pane top. */
+.beneos-wiki .bn-body h2[id], .beneos-wiki .bn-body h3[id] { scroll-margin-top: 12px; }
+
+/* "Back to questions" link after each FAQ section. */
+.beneos-wiki .bn-body .bn-faq-back { margin: .4em 0 1.9em; text-align: right; }
+.beneos-wiki .bn-body .bn-faq-back a {
+  font-family: 'Cinzel', serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #8d7a4f;
+  border-bottom: none;
+}
+.beneos-wiki .bn-body .bn-faq-back a::before { content: "\2191\00a0"; }
+.beneos-wiki .bn-body .bn-faq-back a:hover { color: #e2ba6f; }

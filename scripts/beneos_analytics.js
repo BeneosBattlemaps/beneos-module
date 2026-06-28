@@ -389,8 +389,14 @@ export class BeneosAnalytics {
   static _beneosBattlemapKey(scene) {
     try {
       const src = String(this._sceneBackgroundSrc(scene))
-      const file = src.split("?")[0].split("/").pop() || ""
-      return this.sanitize(file, 64)
+      const segs = src.split("?")[0].split("/").filter(Boolean)
+      const file = segs.pop() || ""
+      // The containing folder carries the release + map name (e.g.
+      // beneos_bm_0031_..._barovia), whereas the bare file is often a generic
+      // variant name like 4k_bm.webm that collides across releases. Prefer the
+      // folder for a meaningful key; fall back to the file when there is no folder.
+      const folder = segs.pop() || ""
+      return this.sanitize(folder || file, 96)
     } catch (_) { return "" }
   }
 

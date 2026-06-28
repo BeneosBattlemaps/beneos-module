@@ -30,7 +30,7 @@
     "multilevel-tokens":   { "title": "Multilevel Tokens",                "search": "mlt multilevel tokens levels regions teleport clone players navigator floors" },
     "cloud-window":        { "title": "The Beneos Cloud Window",          "search": "cloud window search engine browse tokens items spells battlemaps filters grid list resolution install" },
     "login-accounts":      { "title": "Login & Your Beneos Account",      "search": "login account passwordless email patreon shopify membership sign in connect disconnect" },
-    "installing-content":  { "title": "Installing Tokens, Spells & Items","search": "install download tokens spells items actors compendium import update" },
+    "installing-content":  { "title": "Installing Creatures, Spells & Loot","search": "install download creatures tokens spells loot items actors compendium import update" },
     "creature-codex":      { "title": "The Creature Codex",               "search": "creature codex bestiary tactics lore abilities pdf read aloud download creatures" },
     "combat-autopilot":    { "title": "Combat Autopilot",                 "search": "autopilot combat round ability tracker cooldown reminder creature encounter" },
     "foreshadowing":       { "title": "Foreshadowing & Immersion",        "search": "foreshadowing immersion hooks hints death prompt read aloud narration mood" },
