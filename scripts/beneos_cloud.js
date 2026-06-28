@@ -510,7 +510,10 @@ export class BeneosCloudLogin extends FormApplication {
   // status object; only emits notifications for the failure cases the caller shares.
   // @returns {Promise<{status:'ok'|'new_account'|'rate_limited'|'undeliverable'|'error', ttl:number, retryAfter:number}>}
   async requestCode(email, userId, confirmCreate = false) {
-    let reqURL = `${BeneosUtility.cloudBase()}/foundry-otp-request.php?email=${encodeURIComponent(email)}&foundryId=${encodeURIComponent(userId)}`
+    // otpv=2 marks this client as understanding the new responses (new_account /
+    // rate_limited / undeliverable). The server keeps legacy behavior for clients
+    // that omit it, so the hardened endpoint is safe to deploy before this module ships.
+    let reqURL = `${BeneosUtility.cloudBase()}/foundry-otp-request.php?email=${encodeURIComponent(email)}&foundryId=${encodeURIComponent(userId)}&otpv=2`
     if (confirmCreate) reqURL += `&confirmCreate=1`
     try {
       const resp = await fetch(reqURL, { credentials: 'same-origin' })
