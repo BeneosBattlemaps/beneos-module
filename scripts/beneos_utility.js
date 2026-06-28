@@ -144,6 +144,23 @@ export class BeneosUtility {
       restricted: true
     })
 
+    // Last successfully-logged-in Cloud email, kept ONLY on this machine
+    // (scope: 'client' -> browser localStorage, never synced to the world DB,
+    // the server, or other players). Used to pre-fill the login form after an
+    // accidental logout so the GM can't fat-finger the address into a typo'd
+    // inbox or a forked ghost account. Stored base64-obfuscated (see
+    // BeneosCloudLogin.rememberLoginEmail) so it isn't plainly readable in
+    // localStorage; that's obfuscation, not encryption (an email shown back to
+    // the user can't be truly secured client-side). config:false hides it from
+    // the settings UI.
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-cloud-last-email', {
+      name: 'Last Beneos Cloud login email (local prefill only)',
+      default: "",
+      type: String,
+      scope: 'client',
+      config: false
+    })
+
     game.settings.register(BeneosUtility.moduleID(), 'beneos-cloud-base-url', {
       name: 'Beneos Cloud base URL (advanced)',
       hint: 'Override the Beneos Cloud base URL for testing against a dev server. Leave empty for the production cloud (https://beneos.cloud).',
