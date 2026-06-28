@@ -8229,6 +8229,19 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 }
 .beneos-cloud-app .bc-compat-chip i { font-size: 11px; opacity: 0.85; }
 
+/* Subtle bundle variant: campaign name only, no icon/label, muted + small so
+   it doesn't glow or dominate the card. Full "Compatible with: <name>" sits in
+   the tooltip. */
+.beneos-cloud-app .bc-compat-chip-subtle {
+  padding: 1px 8px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--bc-text-muted, rgba(255, 255, 255, 0.6));
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
 /* Punkt 4: prominent full-width install buttons in the drawer. The text is
    centered both axes and the button fills the drawer width so the primary
    action can't be missed. Applies to the cloud Install, Install Entire

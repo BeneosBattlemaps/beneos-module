@@ -5906,6 +5906,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         }
       })
       const totalBytes = members.reduce((s, m) => s + (m._sizeBytes || 0), 0)
+      // Bundle counts as installed once every member release is present in this
+      // world. Surfaces a green check on the card + drawer so the GM can walk a
+      // campaign's bundles top-to-bottom and see at a glance what's done.
+      const bundleInstalled = members.length > 0 && members.every(m => m.installed)
       // Compatible-with chip: the admin sets a campaign per bundle ("Curse of
       // Strahd"). Localize it via the shared i18n matrix (raw fallback) and show
       // the spelled-out full name (not the acronym the release cards use).
@@ -5927,6 +5931,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         isBmap:           true,
         isBundleCard:     true,
         bundleScope:      true,
+        bundleInstalled,
         isCloudAvailable: canInstall,
         cloudReady:       true,
         thumbUrl:         b.cover_url || null,

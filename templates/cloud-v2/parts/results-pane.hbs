@@ -273,6 +273,12 @@
                      data-tooltip="{{localize 'BENEOS.Cloud.Card.InstalledOn'}} {{card.installedOnLabel}}"></i>
                 {{/unless}}
               {{/if}}
+              {{!-- Bundle-level installed marker: every member release present in
+                   this world -> the whole bundle reads as installed. --}}
+              {{#if card.bundleInstalled}}
+                <i class="fa-solid fa-circle-check bc-bmap-installed-check"
+                   data-tooltip="{{localize 'BENEOS.Cloud.Bmap.BundleInstalledTooltip'}}"></i>
+              {{/if}}
               {{#if card.isFree}}
                 <span class="bc-status-chip bc-status-free" data-tooltip="{{localize 'BENEOS.Patreon.FreeSection.Description'}}">{{localize "BENEOS.Patreon.FreeBadge"}}</span>
               {{/if}}
@@ -280,11 +286,13 @@
                 <span class="bc-status-chip bc-status-beneos" data-tooltip="Beneos Original (non-SRD)">{{card.beneosChip}}</span>
               {{/if}}
             </div>
-            {{!-- Bundle compatible-with chip: spelled-out campaign name set per
-                 bundle in the admin. Only bundle cards carry compatibleCampaign. --}}
+            {{!-- Bundle compatible-with chip: subtle campaign name only. No
+                 icon, no "Compatible with:" label (that lives in the tooltip).
+                 Only bundle cards carry compatibleCampaign. --}}
             {{#if card.compatibleCampaign}}
               <div class="bc-card-compat">
-                <span class="bc-compat-chip"><i class="fa-solid fa-book-skull"></i>{{localize "BENEOS.Cloud.Drawer.CompatibleWith"}}: {{card.compatibleCampaign}}</span>
+                <span class="bc-compat-chip bc-compat-chip-subtle"
+                      data-tooltip="{{localize 'BENEOS.Cloud.Drawer.CompatibleWith'}}: {{card.compatibleCampaign}}">{{card.compatibleCampaign}}</span>
               </div>
             {{/if}}
             <div class="bc-card-tags">
@@ -769,10 +777,13 @@
              Skips the per-asset install action below. --}}
         {{#if drawer.asset.isBundleCard}}
         <section class="bc-drawer-section bc-drawer-bundle-members">
-          <h4 class="bc-drawer-section-h">{{localize "BENEOS.Cloud.Bmap.BundleMembers"}} ({{drawer.asset.memberCount}})</h4>
+          <h4 class="bc-drawer-section-h">{{localize "BENEOS.Cloud.Bmap.BundleMembers"}} ({{drawer.asset.memberCount}})
+            {{#if drawer.asset.bundleInstalled}}<i class="fa-solid fa-circle-check bc-bmap-installed-check" data-tooltip="{{localize 'BENEOS.Cloud.Bmap.BundleInstalledTooltip'}}"></i>{{/if}}
+          </h4>
           {{#if drawer.asset.compatibleCampaign}}
             <div class="bc-card-compat">
-              <span class="bc-compat-chip"><i class="fa-solid fa-book-skull"></i>{{localize "BENEOS.Cloud.Drawer.CompatibleWith"}}: {{drawer.asset.compatibleCampaign}}</span>
+              <span class="bc-compat-chip bc-compat-chip-subtle"
+                    data-tooltip="{{localize 'BENEOS.Cloud.Drawer.CompatibleWith'}}: {{drawer.asset.compatibleCampaign}}">{{drawer.asset.compatibleCampaign}}</span>
             </div>
           {{/if}}
           {{!-- Bundle description: always shown unblurred (the shared
