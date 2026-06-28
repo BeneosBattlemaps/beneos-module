@@ -5517,6 +5517,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // of firing the install pipeline.
       const canInstall = r?.can_install !== false   // default true if backend doesn't set
       const unlockHint = r?.unlock_hint || null
+      // Logged out (anonymous showcase): every card shows a "Sign In" action
+      // (download after sign-in) instead of an install button, exactly like the
+      // Individual Maps tab. Install stays gated on isLoggedIn() at click time.
+      const loggedOut = !(game.beneos?.cloud?.isLoggedIn?.())
 
       // Task 1: New / Updated chips (date + install-status combined).
       //  - Updated: the release is installed AND the cloud has a newer version
@@ -5616,9 +5620,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
               ? `Installed ${installState.variantInstalled || "single-variant"} on ${this.#formatInstallDate(installState.installedAt)} (${installState.sceneCount} scenes). Release updated since install.`
               : `Installed ${installState.variantInstalled || "single-variant"} on ${this.#formatInstallDate(installState.installedAt)} (${installState.sceneCount} scenes).`)
           : "",
-        // Plan §20 W4.2 - locked-card fields. Card renders dimmed with a
-        // CTA-button that opens unlockHint.url in a new tab.
-        isReleaseLocked:      !canInstall || (groupKind === "locked"),
+        // Plan §20 W4.2 - locked-card fields. Locked == genuinely gated content
+        // (non-free, not installed, no access). FREE releases are NEVER locked
+        // (groupKind is "free"), so anonymous browsers see them with the FREE
+        // badge, not a lock. Drives the small top-right lock badge on the thumb.
+        isReleaseLocked:      groupKind === "locked",
+        // Logged out -> "Sign In" action button (download after sign-in).
+        needsLogin:           loggedOut,
         unlockUrl:            unlockHint?.url   || "https://www.patreon.com/BeneosBattlemaps",
         unlockLabel:          unlockHint?.label || "Unlock via Patreon",
         unlockType:           unlockHint?.type  || "generic",
@@ -5869,6 +5877,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const hasMore = totalMatches > limit
     const sliced = hasMore ? filtered.slice(0, limit) : filtered
     const variant = this._bmapActiveResolution?.() === "HD" ? "HD" : "4K"
+    const loggedOut = !(game.beneos?.cloud?.isLoggedIn?.())
     const cards = sliced.map(b => {
       const canInstall = b?.can_install !== false
       const rawMembers = Array.isArray(b?.members)
@@ -5932,6 +5941,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         visibleTagDescriptors: [],
         moreTagsCount:    0,
         isReleaseLocked:  !canInstall,
+        // Logged out -> "Sign In" action; logged-in non-patron locked bundle ->
+        // "Join Patreon" (needsLogin is checked before isLocked in the template).
+        needsLogin:       loggedOut,
+        isLocked:         !canInstall,
         unlockUrl:        b?.unlock_hint?.url || "",
         unlockLabel:      b?.unlock_hint?.label || "Unlock via Patreon",
       }

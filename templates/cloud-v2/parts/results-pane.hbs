@@ -239,15 +239,14 @@
             {{else if card.dlBadgeStale}}
               <span class="bc-dl-status bc-dl-stale" data-tooltip="{{card.dlBadgeTooltip}}">!</span>
             {{/if}}
-            {{!-- Plan §20 W4.2 release-locked overlay. Sits over the cover
-                 thumb so the user instantly sees "no access" without reading
-                 the action row. Click-handler in the card-click dispatcher
-                 short-circuits to window.open(unlock_url) for these cards. --}}
+            {{!-- Locked storefront card: keep the cover thumbnail fully visible
+                 (marketing) and only mark it with a small lock badge in the
+                 top-right corner. The action row carries the Sign In / Join
+                 Patreon CTA. --}}
             {{#if card.isReleaseLocked}}
-              <div class="bc-release-locked-overlay" data-tooltip="{{card.unlockLabel}}">
-                <i class="fa-solid fa-lock"></i>
-                <span class="bc-release-locked-cta">{{localize "BENEOS.Cloud.Bmap.Release.UnlockCta"}}</span>
-              </div>
+              <span class="bc-lock-badge" data-tooltip="{{card.unlockLabel}}">
+                <i class="fa-solid fa-lock"></i><span>{{localize "BENEOS.Cloud.Bmap.Release.UnlockCta"}}</span>
+              </span>
             {{/if}}
           </div>
 

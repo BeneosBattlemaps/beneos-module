@@ -1995,44 +1995,32 @@
  * the cover thumb with a lock icon + CTA chip. Clicks pass through to the
  * card's data-action handler which short-circuits to window.open(unlockUrl).
  * Card body underneath stays dimmed so the release info stays scannable. */
-.beneos-cloud-app .bc-card-thumb .bc-release-locked-overlay {
+/* Small lock badge in the top-right corner of a locked storefront card. The
+ * cover thumbnail, name and New/Updated chips stay FULLY visible (marketing);
+ * only this little pill signals "locked". Replaces the old full-cover overlay
+ * + body dimming. */
+.beneos-cloud-app .bc-card-thumb .bc-lock-badge {
   position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(2px);
-  color: var(--bc-text-primary, #f0e3c8);
+  top: 6px;
+  right: 6px;
   z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bc-warn, #e0b53e);
+  background: rgba(0,0,0,0.62);
+  border: 1px solid color-mix(in srgb, var(--bc-warn, #e0b53e) 55%, transparent);
+  backdrop-filter: blur(3px);
   pointer-events: none;
 }
-.beneos-cloud-app .bc-card-thumb .bc-release-locked-overlay i {
-  font-size: 28px;
-  color: var(--bc-warn, #e0b53e);
-  filter: drop-shadow(0 0 4px rgba(0,0,0,0.6));
-}
-.beneos-cloud-app .bc-card-thumb .bc-release-locked-overlay .bc-release-locked-cta {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  padding: 4px 10px;
-  border-radius: 12px;
-  background: rgba(0,0,0,0.6);
-  border: 1px solid color-mix(in srgb, var(--bc-warn, #e0b53e) 55%, transparent);
-  color: var(--bc-warn, #e0b53e);
-}
-/* Locked release-cards get a dimmed body to reinforce the no-access state.
- * The cover overlay above is already strong enough on its own; this just
- * keeps the visual grouping consistent. Selector matches the article class
- * emitted by results-pane.hbs (bc-result-card + bc-release-locked). */
-.beneos-cloud-app .bc-result-card.bc-release-locked .bc-card-body,
-.beneos-cloud-app .bc-result-card.bc-release-locked .bc-card-meta,
-.beneos-cloud-app .bc-result-card.bc-release-locked .bc-card-name-row {
-  opacity: 0.55;
+.beneos-cloud-app .bc-card-thumb .bc-lock-badge i {
+  font-size: 10px;
 }
 
 /* Hide ALL in-name status chips in grid mode (BENEOS + NEW + UPDATE)
