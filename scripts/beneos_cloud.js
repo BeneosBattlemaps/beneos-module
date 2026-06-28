@@ -462,7 +462,15 @@ export class BeneosCloudLogin extends FormApplication {
     email = email.trim()
 
     // Step 1: request a code (shared with the in-dialog "resend" button).
-    const first = await this.requestCode(email, userId)
+    let first = await this.requestCode(email, userId)
+    // Unknown email: confirm before creating a fresh account so a typo (especially into
+    // an address the user also owns) does not silently fork their identity away from
+    // their Patreon/shop entitlements. Only confirmed requests actually send a code.
+    if (first.status === 'new_account') {
+      const confirmed = await this.confirmNewAccountDialog(email)
+      if (!confirmed) return
+      first = await this.requestCode(email, userId, true)
+    }
     if (first.status !== 'ok') return
     ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Notification.CodeSent"))
 
@@ -500,9 +508,10 @@ export class BeneosCloudLogin extends FormApplication {
   // Requests an OTP for an email. Used both for the initial send and the resend button,
   // so the rate limit, suppression and TTL handling live in one place. Returns a small
   // status object; only emits notifications for the failure cases the caller shares.
-  // @returns {Promise<{status:'ok'|'rate_limited'|'undeliverable'|'error', ttl:number, retryAfter:number}>}
-  async requestCode(email, userId) {
-    const reqURL = `${BeneosUtility.cloudBase()}/foundry-otp-request.php?email=${encodeURIComponent(email)}&foundryId=${encodeURIComponent(userId)}`
+  // @returns {Promise<{status:'ok'|'new_account'|'rate_limited'|'undeliverable'|'error', ttl:number, retryAfter:number}>}
+  async requestCode(email, userId, confirmCreate = false) {
+    let reqURL = `${BeneosUtility.cloudBase()}/foundry-otp-request.php?email=${encodeURIComponent(email)}&foundryId=${encodeURIComponent(userId)}`
+    if (confirmCreate) reqURL += `&confirmCreate=1`
     try {
       const resp = await fetch(reqURL, { credentials: 'same-origin' })
       game.beneos?.cloud?.markServerStatus?.(resp, null)
@@ -514,6 +523,10 @@ export class BeneosCloudLogin extends FormApplication {
       const data = await resp.json()
       if (data.result === 'OK') {
         return { status: 'ok', ttl: Number(data.ttl) || 600, retryAfter: 0 }
+      }
+      if (data.result === 'new_account') {
+        // Caller decides whether to confirm; no notification here.
+        return { status: 'new_account', ttl: 0, retryAfter: 0 }
       }
       if (data.result === 'rate_limited') {
         const retryAfter = Number(data.retry_after) || 0
@@ -551,6 +564,38 @@ export class BeneosCloudLogin extends FormApplication {
         // Best-effort only; never block login on the status probe.
       }
     }, 6000)
+  }
+
+  /********************************************************************************** */
+  // Confirm creating a brand-new Beneos account for an unknown email. The big onboarding
+  // pitfall is a typo / wrong address that forks identity away from the user's Patreon /
+  // shop email, so the copy nudges them to use the exact one. Returns true to proceed.
+  async confirmNewAccountDialog(email) {
+    const content = `<section class="bc-login-form">
+      <p class="bc-login-form__hint">${game.i18n.format("BENEOS.Cloud.ConnectAccount.NewAccountConfirmBody", { email })}</p>
+    </section>`
+    let result = false
+    try {
+      result = await foundry.applications.api.DialogV2.wait({
+        window: { title: game.i18n.localize("BENEOS.Cloud.ConnectAccount.NewAccountConfirmTitle") },
+        classes: ["dialog", "app", "window-app", "beneos-cloud-app", "beneos-cloud-login-dialog"],
+        content,
+        rejectClose: false,
+        buttons: [{
+          action: "create",
+          label: game.i18n.localize("BENEOS.Cloud.ConnectAccount.NewAccountConfirmCreate"),
+          default: true,
+          callback: () => true
+        }, {
+          action: "cancel",
+          label: game.i18n.localize("BENEOS.Cloud.Login.Cancel"),
+          callback: () => false
+        }]
+      })
+    } catch (e) {
+      result = false
+    }
+    return result === true
   }
 
   /********************************************************************************** */
@@ -641,7 +686,9 @@ export class BeneosCloudLogin extends FormApplication {
           resendBtn?.addEventListener("click", async () => {
             if (resendBtn.disabled) return
             resendBtn.disabled = true
-            const res = await this.requestCode(email, userId)
+            // By the time this dialog is open the account creation is already confirmed
+            // (or the account exists), so a resend must always send, never re-prompt.
+            const res = await this.requestCode(email, userId, true)
             const now = Date.now()
             if (res.status === 'ok') {
               expiresAt = now + (Number(res.ttl) || 600) * 1000
