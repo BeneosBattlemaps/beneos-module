@@ -776,6 +776,17 @@
 .beneos-cloud-login-dialog .bc-login-form__help li {
   margin: 2px 0;
 }
+/* Resend confirm dialog: the address shown back to the user, made prominent so a typo
+   stands out. */
+.beneos-cloud-login-dialog .bc-login-form__email {
+  margin: 4px 0 0;
+  text-align: center;
+  font-family: var(--bc-font-ui);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--bc-accent);
+  word-break: break-all;
+}
 
 /* Dialog button row — keep buttons compact, right-align, gold accent on primary */
 .beneos-cloud-login-dialog .form-footer,

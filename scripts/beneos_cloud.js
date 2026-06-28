@@ -221,9 +221,41 @@ export class BeneosCloudLogin extends FormApplication {
   }
 
   /********************************************************************************** */
+  // Recall the last successfully-used login email (this machine only). Stored
+  // base64-obfuscated; returns "" on any miss/corruption so the field just
+  // starts empty.
+  recallLoginEmail() {
+    try {
+      const raw = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-last-email") || ""
+      if (!raw) return ""
+      return decodeURIComponent(escape(atob(raw)))
+    } catch (_) {
+      return ""
+    }
+  }
+
+  // Persist the email after a successful login so the next login can pre-fill
+  // it. Client scope -> stays in this browser's localStorage, never leaves the
+  // machine. Base64 is light obfuscation (not encryption) so a casual glance at
+  // localStorage doesn't expose the address. Non-fatal on failure.
+  async rememberLoginEmail(email) {
+    try {
+      const v = (email || "").trim()
+      const enc = v ? btoa(unescape(encodeURIComponent(v))) : ""
+      await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-last-email", enc)
+    } catch (_) {
+      /* storing the prefill hint must never block login */
+    }
+  }
+
   async loginDialog() {
 
-    let content = await renderTemplate("modules/beneos-module/templates/beneos-cloud-login.html", {})
+    // Pre-fill the email field with the last address that logged in on this
+    // machine (recovers gracefully from an accidental logout; the OTP code is
+    // still required, so this is convenience, not an auth bypass). The field
+    // stays editable, which doubles as the "use a different email" reset.
+    const savedEmail = this.recallLoginEmail()
+    let content = await renderTemplate("modules/beneos-module/templates/beneos-cloud-login.html", { email: savedEmail })
 
     // Wave B-9-fix-57: rejectClose: false so closing via the X header
     // button resolves with null (matches Cancel) instead of throwing.
@@ -480,6 +512,8 @@ export class BeneosCloudLogin extends FormApplication {
 
     // Step 2: collect the code (with live TTL, resend + help) and verify it.
     const codeData = await this.codeDialog(email, userId, first.ttl)
+    // User decided the address was wrong while resending: restart at the email step.
+    if (codeData && codeData.changeEmail) { return this.loginRequest() }
     if (!codeData || typeof codeData !== "object" || !codeData.code?.trim()) return
     const code = codeData.code.trim()
 
@@ -493,6 +527,8 @@ export class BeneosCloudLogin extends FormApplication {
       }
       const data = await resp.json()
       if (data.result === 'OK') {
+        // Remember the verified address (this machine only) for next time.
+        this.rememberLoginEmail(email)
         this.pollForAccess(userId)
       } else {
         ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.CodeInvalid"))
@@ -602,6 +638,40 @@ export class BeneosCloudLogin extends FormApplication {
   }
 
   /********************************************************************************** */
+  // Asked on the second+ resend: if a code never arrives, the likeliest cause is a typo
+  // in the address. Shows the exact email and lets the user confirm or go back to edit it.
+  // Returns "yes" (resend), "change" (edit email), or null (dismissed).
+  async confirmEmailDialog(email) {
+    const safeEmail = String(email).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+    const content = `<section class="bc-login-form">
+      <p class="bc-login-form__hint">${game.i18n.localize("BENEOS.Cloud.ConnectAccount.ResendConfirmBody")}</p>
+      <p class="bc-login-form__email">${safeEmail}</p>
+    </section>`
+    let result = null
+    try {
+      result = await foundry.applications.api.DialogV2.wait({
+        window: { title: game.i18n.localize("BENEOS.Cloud.ConnectAccount.ResendConfirmTitle") },
+        classes: ["dialog", "app", "window-app", "beneos-cloud-app", "beneos-cloud-login-dialog"],
+        content,
+        rejectClose: false,
+        buttons: [{
+          action: "yes",
+          label: game.i18n.localize("BENEOS.Cloud.ConnectAccount.ResendConfirmYes"),
+          default: true,
+          callback: () => "yes"
+        }, {
+          action: "change",
+          label: game.i18n.localize("BENEOS.Cloud.ConnectAccount.ResendConfirmEdit"),
+          callback: () => "change"
+        }]
+      })
+    } catch (e) {
+      result = null
+    }
+    return result
+  }
+
+  /********************************************************************************** */
   // Second-step dialog: enter the 6-digit code. Adds a live "expires in M:SS" countdown,
   // a rate-limited "resend" button, and inline help for when no email arrives.
   async codeDialog(email, userId, ttl) {
@@ -612,6 +682,8 @@ export class BeneosCloudLogin extends FormApplication {
     let resendStartedAt = Date.now()
     let resendReadyAt = Date.now() + RESEND_COOLDOWN * 1000
     let countdownTimer = null
+    let resendCount = 0          // first resend is frictionless; from the 2nd we re-check the email
+    let wantsEmailChange = false // set when the user picks "change email" in the confirm dialog
 
     const fmt = (totalSeconds) => {
       const s = Math.max(0, Math.floor(totalSeconds))
@@ -688,12 +760,20 @@ export class BeneosCloudLogin extends FormApplication {
 
           resendBtn?.addEventListener("click", async () => {
             if (resendBtn.disabled) return
-            resendBtn.disabled = true
+            resendBtn.disabled = true // also guards against double-clicks during the confirm dialog
+            // From the second resend on, the likeliest reason no code arrives is a typo in
+            // the address. Show it and ask before sending again; let the user go back to edit.
+            if (resendCount >= 1) {
+              const answer = await this.confirmEmailDialog(email)
+              if (answer === 'change') { wantsEmailChange = true; dialog.close(); return }
+              if (answer !== 'yes') { tick(); return } // dismissed: re-enable per cooldown, no send
+            }
             // By the time this dialog is open the account creation is already confirmed
             // (or the account exists), so a resend must always send, never re-prompt.
             const res = await this.requestCode(email, userId, true)
             const now = Date.now()
             if (res.status === 'ok') {
+              resendCount++
               expiresAt = now + (Number(res.ttl) || 600) * 1000
               resendStartedAt = now
               resendReadyAt = now + RESEND_COOLDOWN * 1000
@@ -740,6 +820,7 @@ export class BeneosCloudLogin extends FormApplication {
     } finally {
       if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null }
     }
+    if (wantsEmailChange) return { changeEmail: true }
     return result
   }
 
