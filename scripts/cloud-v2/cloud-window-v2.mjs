@@ -746,6 +746,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         bmapViewIsBundles: this._bmapActiveView() === "bundles",
         bmapReleasesLoading: !!this._releaseLoading && this._releaseList === null,
         bmapReleasesError:   (!this._releaseLoading && this._releaseLoadError) ? String(this._releaseLoadError) : null,
+        bmapReleasesNeedsLogin: this.searchMode === "bmap" && !!this._releaseNeedsLogin,
         drawer: {
           open: !!drawerAsset,
           asset: drawerAsset || null,
@@ -890,6 +891,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // list. Releases mode reroutes the entire pipeline to release cards.
     if (type === "bmap") {
       const bmapView = this._bmapActiveView()
+      // Self-heal: if we previously flagged "needs login" but a Foundry ID is
+      // now present (the user logged in since), clear the flag so the next
+      // fetch retries (it lazily (re)creates the manager) without a reload.
+      if (this._releaseNeedsLogin) {
+        let fid = ""
+        try { fid = game.settings.get("beneos-module", "beneos-cloud-foundry-id") || "" } catch (_e) {}
+        if (fid) this._releaseNeedsLogin = false
+      }
       if (bmapView === "bundles") {
         this.#ensureBundlesLoaded()
         return this.#buildBundleCards()
@@ -1455,8 +1464,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // track local battlemap installs at all — installs flow through
     // Moulinette (until the cloud-bmap pipeline ships in B-8). For V2,
     // bmaps are cloud-only previews; force the flags accordingly.
-    const isInstalled      = assetType === "bmap" ? false : !!data.isInstalled
-    const isCloudAvailable = assetType === "bmap" ? true  : !!data.isCloudAvailable
+    const isInstalled = assetType === "bmap" ? false : !!data.isInstalled
     let dragMode = data.dragMode || "none"
 
     // Teil 3: battlemap installed-marker (green check + "Installed on" tooltip)
@@ -1467,6 +1475,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // when its release has a record (installing the release puts these scenes
     // in the world). Update = the install predates the online updated_date or
     // the content signature changed.
+    // (Computed BEFORE isCloudAvailable below, which uses bmapInstalled.)
     let bmapInstalled = false, bmapInstalledOn = "", bmapUpdate = false
     if (assetType === "bmap" && props.release_dir) {
       const installs = BeneosInstallState.findByReleaseDir(props.release_dir)
@@ -1495,6 +1504,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const cardCampaign = assetType === "bmap" ? "battlemaps" : "tokens"
     const hasCampaign = !!game.beneos?.cloud?.hasCampaignAccess?.(cardCampaign)
     const isFree   = props.free_content === true
+    // bmaps have no local install tracking, but they are NOT unconditionally
+    // cloud-available: a map is only installable when the user actually has
+    // access (campaign / free / its release already installed). Forcing this
+    // true made isLocked never fire for maps, so locked maps wrongly showed an
+    // install button instead of the "Join Patreon" CTA.
+    const isCloudAvailable = assetType === "bmap"
+      ? (hasCampaign || isFree || bmapInstalled)
+      : !!data.isCloudAvailable
     const isLocked = !isCloudAvailable && !isInstalled && !hasCampaign && !isFree
     if (isLocked) dragMode = "none"
     // Pre-compute the three state flags that feed both the card-object
@@ -1502,7 +1519,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // consts, the catch-all condition has to re-evaluate the same
     // expressions inline, which is brittle when one of them changes.
     const cardIsIncompatible = !isInstalled && BeneosUtility.isHardBlockedKind(assetType)
-    const cardNeedsLogin = assetType !== "bmap" && !(game.beneos?.cloud?.isLoggedIn?.())
+    // Maps now install through the native cloud pipeline (login required), so
+    // they are no longer exempt from the sign-in gate: logged out, a map card
+    // shows "Sign In" (opens the login dialog) instead of a broken install
+    // button that throws "manager missing".
+    const cardNeedsLogin = !(game.beneos?.cloud?.isLoggedIn?.())
     // Feature 5: battlemaps now respect offline too (the bmap exemption is
     // gone). Offline -> the card shows the "Offline" state and drops its remote
     // thumbnail so the result list isn't flooded with broken images.
@@ -1939,9 +1960,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // card so the install button can render a tailored label/tooltip
       // instead of the generic "Not Available" when the real reason
       // is the user being signed out or the server being unreachable.
-      // Bmaps stay exempt — they don't go through Beneos Cloud at all
-      // (the install path is Moulinette), so neither sign-in nor cloud
-      // reachability is relevant. The Moulinette button always renders.
+      // Bmaps are NO LONGER exempt — they now install through the native
+      // Beneos Cloud pipeline (login required), so logged out a map card
+      // shows "Sign In" exactly like Creatures/Spells/Loot.
       needsLogin: cardNeedsLogin,
       isOfflineCard: cardIsOffline,
       // Catch-all sync flag: when none of the previous branches match
@@ -3190,6 +3211,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         || inReleaseIndex
         || !!(props.cloud_release_id && props.cloud_scene_slug && props.release_dir)
       if (cloudReady && !forceLegacy) {
+        // The native installer needs a Beneos Cloud session (Foundry ID) to
+        // mint the asset URLs. Logged out it would throw "manager missing", so
+        // block with a clean "please sign in" toast instead. Defense-in-depth:
+        // logged-out map cards already render "Sign In" rather than Install,
+        // but the drawer / other entry points could still reach here.
+        if (!game.beneos?.cloud?.isLoggedIn?.()) { this.#notifyInstallBlocked("login", key); return }
         const scope = btn?.dataset?.bmapScope || (isReleaseCard ? "release" : "scene")
         const idForLog = isReleaseCard ? key : (props.cloud_release_id || "(unknown)")
         try { console.log("[beneos-bm] native install", idForLog, scope, key) } catch (_) {}
@@ -5223,7 +5250,19 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   _bmapActiveView() {
     if (this._bmapViewMode === "individual") return "individual"
     if (this._bmapViewMode === "bundles") return "bundles"
-    return "releases"
+    if (this._bmapViewMode === "releases") return "releases"
+    // No explicit toggle yet: releases/bundles come from the authenticated
+    // cloud endpoint. Logged out, default to the PUBLIC catalog (Individual
+    // Maps) so all maps stay browseable + locked (free vs. Patreon), exactly
+    // like the Creatures/Spells/Loot tabs. Logged in, keep the grouped
+    // Releases view as the default.
+    return this.#isCloudConnected() ? "releases" : "individual"
+  }
+
+  // True when a Beneos Cloud Foundry ID is present (the user is connected).
+  // Same signal the release-fetch self-heal uses; cheap + render-safe.
+  #isCloudConnected() {
+    try { return !!(game.settings.get("beneos-module", "beneos-cloud-foundry-id") || "") } catch (_e) { return false }
   }
 
   // Task 4: when the user applies a filter while browsing Releases or Bundles,
@@ -5310,9 +5349,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // #ensureReleasesLoaded runs from scratch.
   static _onRetryLoadReleases(event, target) {
     event.preventDefault()
-    this._releaseLoadError = null
-    this._releaseList      = null
-    this._releaseIndex     = null
+    this._releaseLoadError  = null
+    this._releaseNeedsLogin = false
+    this._releaseList       = null
+    this._releaseIndex      = null
     try {
       const mgr = window.BeneosScenePacker
       if (mgr) mgr._releasesCache = null   // drop the manager-side cache too
@@ -5333,9 +5373,18 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   async #fetchReleasesWithBackoff() {
     // Manager-missing is a hard structural error, not a transient
     // network blip — no point retrying it.
-    const mgr = window.BeneosScenePacker
+    let mgr = window.BeneosScenePacker
+    // The manager is created lazily once a Foundry ID exists. A user who logged
+    // in AFTER world load has no manager yet (the `ready` init ran while logged
+    // out) -> ensure it on demand so logging in works without a full reload.
+    if ((!mgr || typeof mgr.listReleases !== "function") && typeof window.ensureBeneosScenePacker === "function") {
+      try { mgr = await window.ensureBeneosScenePacker() } catch (_e) {}
+    }
     if (!mgr || typeof mgr.listReleases !== "function") {
-      throw new Error("scenepacker manager missing")
+      // Still no manager -> the user is not connected to Beneos Cloud. Surface a
+      // dedicated "needs login" sentinel instead of a generic error, so the UI
+      // shows a friendly prompt rather than an endless spinner.
+      throw new Error("BENEOS_NEEDS_LOGIN")
     }
     const delays = [2000, 8000]   // gaps between attempts; final attempt is immediate
     let lastErr = null
@@ -5353,9 +5402,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   }
 
   async #ensureReleasesLoaded() {
-    if (this._releaseIndex || this._releaseLoading) return
+    // Bail on ANY settled outcome (loaded, in-flight, errored, or needs-login).
+    // Without the error/needs-login guards a failed fetch left _releaseIndex
+    // null + _releaseLoading false, so every re-render re-attempted -> the fetch
+    // threw again -> re-render -> ... an infinite loop that spammed the console
+    // and froze the "Loading releases..." spinner when logged out.
+    if (this._releaseIndex || this._releaseLoading || this._releaseLoadError || this._releaseNeedsLogin) return
     this._releaseLoading = true
     this._releaseLoadError = null
+    this._releaseNeedsLogin = false
     try {
       const releases = await this.#fetchReleasesWithBackoff()
       const list = Array.isArray(releases) ? [...releases] : []
@@ -5376,8 +5431,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       this._releaseList  = list
       this._releaseIndex = new Map(list.map(r => [r.release_dir, r]))
     } catch (e) {
-      this._releaseLoadError = e?.message || String(e)
-      console.warn("BeneosCloudWindowV2 | listReleases failed after retries", e)
+      if (e?.message === "BENEOS_NEEDS_LOGIN") {
+        // Expected logged-out state, not an error: flag it so the template
+        // shows a friendly "log in" prompt. No console noise.
+        this._releaseNeedsLogin = true
+      } else {
+        this._releaseLoadError = e?.message || String(e)
+        console.warn("BeneosCloudWindowV2 | listReleases failed after retries", e)
+      }
     } finally {
       this._releaseLoading = false
     }

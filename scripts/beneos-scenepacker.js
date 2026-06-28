@@ -41,7 +41,9 @@ export class BeneosScenePackerManager {
             console.warn('BeneosScenePackerManager | Could not retrieve Foundry ID from Beneos settings:', e);
         }
         
-        console.warn('BeneosScenePackerManager | No Foundry ID available - please connect to Beneos Cloud');
+        // Expected when the user is simply logged out — keep it quiet (debug,
+        // not a warning) so the console isn't noisy on every reload.
+        console.debug('BeneosScenePackerManager | No Foundry ID available - please connect to Beneos Cloud');
         return false;
     }
 
@@ -308,28 +310,34 @@ export class BeneosScenePackerManager {
     }
 }
 
-// Instance globale
-let beneosScenePackerManager = null;
-
-// Hook d'initialisation
-Hooks.once('ready', async () => {
-
-    // Créer l'instance globale
-    const beneosScenePackerManager = new BeneosScenePackerManager();
-
-    // Initialiser
-    const initialized = await beneosScenePackerManager.initialize();
-
-    if (initialized) {
-        // Exposer dans le scope global pour accès facile
-        window.BeneosScenePacker = beneosScenePackerManager;
-
-        // Ajouter un bouton dans l'interface Moulinette (si disponible)
-        // TODO: Intégrer dans l'UI Moulinette existante
-    } else {
-        console.warn('BeneosScenePackerManager | Not initialized - authentication required');
+/**
+ * Idempotently ensure window.BeneosScenePacker exists. Returns the manager when
+ * the user is connected to Beneos Cloud (a Foundry ID is present), else null.
+ *
+ * The manager used to be created once in the `ready` hook only. A user who
+ * logged in AFTER world load therefore never got a manager (the hook had
+ * already run and failed init), so Maps stayed broken until a full reload.
+ * Callers now lazily ensure it on demand, so logging in works without F5.
+ */
+export async function ensureBeneosScenePacker() {
+    if (window.BeneosScenePacker) return window.BeneosScenePacker;
+    try {
+        const mgr = new BeneosScenePackerManager();
+        if (await mgr.initialize()) {
+            window.BeneosScenePacker = mgr;
+            return mgr;
+        }
+    } catch (e) {
+        console.warn('BeneosScenePackerManager | ensure failed:', e);
     }
-});
+    return null;
+}
+
+// Expose for non-module scripts (e.g. the login flow can re-ensure on connect).
+window.ensureBeneosScenePacker = ensureBeneosScenePacker;
+
+// Try once at ready (covers the common "already logged in at load" case).
+Hooks.once('ready', () => { ensureBeneosScenePacker(); });
 
 /* =================================================================== */
 /*  Post-install manifest scan (H1, Battlemap Install Hardening Wave 1) */

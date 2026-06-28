@@ -666,29 +666,23 @@ export class BeneosUtility {
 
   /********************************************************************************** */
   static reloadInternalSettings() {
-    try {
-      this.beneosTokens = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-tokenconfig'))
+    // These are the legacy local stores of installed token/spell/item JSON
+    // (world settings), separate from the public cloud catalog. On a fresh
+    // world they are empty/unset, so parse them tolerantly: empty -> {} with no
+    // noise; only a non-empty-but-broken value is a real error worth warning.
+    const loadJsonSetting = (key, label) => {
+      const raw = game.settings.get(BeneosUtility.moduleID(), key)
+      if (raw === undefined || raw === null || String(raw).trim() === "") return {}
+      try {
+        return JSON.parse(raw)
+      } catch {
+        console.warn(`[Beneos] ${label} JSON loading error`)
+        return {}
+      }
     }
-    catch {
-      console.warn("[Beneos] Token JSON loading error")
-      this.beneosTokens = {}
-    }
-
-    try {
-      this.beneosSpells = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-spellconfig'))
-    }
-    catch {
-      console.warn("[Beneos] Spell JSON loading error")
-      this.beneosSpells = {}
-    }
-
-    try {
-      this.beneosItems = JSON.parse(game.settings.get(BeneosUtility.moduleID(), 'beneos-json-itemconfig'))
-    }
-    catch {
-      console.warn("[Beneos] Item JSON loading error")
-      this.beneosItems = {}
-    }
+    this.beneosTokens = loadJsonSetting('beneos-json-tokenconfig', 'Token')
+    this.beneosSpells = loadJsonSetting('beneos-json-spellconfig', 'Spell')
+    this.beneosItems  = loadJsonSetting('beneos-json-itemconfig', 'Item')
   }
 
   /********************************************************************************** */

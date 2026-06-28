@@ -543,6 +543,14 @@
         <i class="fa-solid fa-circle-notch fa-spin"></i>
         <p>{{localize "BENEOS.Cloud.Bmap.LoadingReleases"}}</p>
       </div>
+    {{else if bmapReleasesNeedsLogin}}
+      {{!-- Logged out: releases come from an authenticated endpoint, so there
+           is nothing to load until the user connects. Friendly prompt instead
+           of an endless spinner; the view self-heals after login. --}}
+      <div class="bc-results-empty">
+        <i class="fa-solid fa-right-to-bracket"></i>
+        <p>{{localize "BENEOS.Cloud.Bmap.ReleasesNeedLogin"}}</p>
+      </div>
     {{else if bmapReleasesError}}
       {{!-- Plan §23.1: the lazy fetch failed after 3 backoff attempts.
            Inline error card with a Retry button so the operator does

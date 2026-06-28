@@ -908,6 +908,14 @@
   font-size: 32px;
   opacity: 0.5;
 }
+/* Constrain the empty-state / login-hint copy so a full sentence reads as a
+   centered block instead of an edge-to-edge italic line. */
+.beneos-cloud-app .bc-results-empty p {
+  max-width: 380px;
+  margin: 0 auto;
+  text-align: center;
+  line-height: 1.5;
+}
 
 /* Wave B-8d: group dividers + per-group card tints. Default-sorted
  * lists (no filter active) split into New → Update → Rest; with any
