@@ -279,7 +279,16 @@ export class BeneosCloudLogin extends FormApplication {
             // Passwordless: email only. We email a one-time code (login for existing
             // accounts, registration for new ones), then verify it in connectWithCode().
             const emailEl = button.form.elements.email
-            return { mode: "otp", email: emailEl ? emailEl.value : "" }
+            return { mode: "otp", action: "login", email: emailEl ? emailEl.value : "" }
+          },
+        }, {
+          // Same email + code flow; "create" just signals new-account intent so the
+          // flow sends straight away (and the form hint already explains the Patreon-email tip).
+          action: "create",
+          label: game.i18n.localize("BENEOS.Cloud.ConnectAccount.CreateAccountButton"),
+          callback: (event, button, dialog) => {
+            const emailEl = button.form.elements.email
+            return { mode: "otp", action: "create", email: emailEl ? emailEl.value : "" }
           },
         }, {
           action: "cancel",
@@ -331,7 +340,7 @@ export class BeneosCloudLogin extends FormApplication {
     // Passwordless path: the user clicked "Connect with email code" in the dialog.
     // Hand off to the one-time-code flow; the email+password branch below is skipped.
     if (loginData.mode === "otp") {
-      return this.connectWithCode((loginData.email || "").trim(), userId)
+      return this.connectWithCode((loginData.email || "").trim(), userId, { createIntent: loginData.action === "create" })
     }
 
     // Wave B-9-fix-57: validate that BOTH fields were filled. Empty
@@ -485,20 +494,23 @@ export class BeneosCloudLogin extends FormApplication {
   // Passwordless login (steps 1 + 2): ask the Cloud to email a one-time code, then
   // verify it. On success it reuses pollForAccess() exactly like the password path,
   // so login state, settings and the V2 re-render are handled by the same code.
-  async connectWithCode(email, userId) {
+  async connectWithCode(email, userId, opts = {}) {
     if (!game.user.isGM) return
     if (!email || !email.trim()) {
       ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Notification.LoginIncomplete"))
       return
     }
     email = email.trim()
+    // The "Create account" button signals new-account intent: the user already chose to
+    // create one, so we send straight away (confirmCreate) and skip the extra gate.
+    const createIntent = opts.createIntent === true
 
     // Step 1: request a code (shared with the in-dialog "resend" button).
-    let first = await this.requestCode(email, userId)
-    // Unknown email: confirm before creating a fresh account so a typo (especially into
-    // an address the user also owns) does not silently fork their identity away from
-    // their Patreon/shop entitlements. Only confirmed requests actually send a code.
-    if (first.status === 'new_account') {
+    let first = await this.requestCode(email, userId, createIntent)
+    // Unknown email via the plain "Login" button: confirm before creating a fresh account
+    // so a typo (especially into an address the user also owns) does not silently fork
+    // their identity away from their Patreon/shop entitlements.
+    if (!createIntent && first.status === 'new_account') {
       const confirmed = await this.confirmNewAccountDialog(email)
       if (!confirmed) return
       first = await this.requestCode(email, userId, true)
