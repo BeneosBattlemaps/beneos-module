@@ -775,23 +775,40 @@
               <span class="bc-compat-chip"><i class="fa-solid fa-book-skull"></i>{{localize "BENEOS.Cloud.Drawer.CompatibleWith"}}: {{drawer.asset.compatibleCampaign}}</span>
             </div>
           {{/if}}
+          {{!-- Bundle description: always shown unblurred (the shared
+               description block below is suppressed for bundles so it can't
+               render a blurred duplicate when logged out). --}}
+          {{#if drawer.asset.description}}
+            <div class="bc-drawer-description bc-bundle-description">{{{drawer.asset.description}}}</div>
+          {{/if}}
           <p class="bc-bundle-total">{{localize "BENEOS.Cloud.Bmap.BundleTotalSize"}}: <strong>{{drawer.asset.totalSizeLabel}}</strong></p>
-          {{!-- Many GB at once: large one-shot installs can fail depending on the
-               connection and especially the game server's capacity. --}}
-          <p class="bc-bundle-risk"><i class="fa-solid fa-triangle-exclamation"></i> {{localize "BENEOS.Cloud.Bmap.BundleRiskWarning"}}</p>
+          {{!-- Informational heads-up: a full bundle pulls a lot of data at
+               once; if the server/connection can't keep up, install the
+               releases individually. Neutral tone, not an error. --}}
+          <p class="bc-bundle-risk"><i class="fa-solid fa-circle-info"></i> {{localize "BENEOS.Cloud.Bmap.BundleRiskWarning"}}</p>
           <ol class="bc-bundle-members">
             {{#each drawer.asset.members as |m|}}
               <li class="bc-bundle-member{{#if m.installed}} is-installed{{/if}}">
                 <span class="bc-bundle-member-name">{{m.name}}</span>
                 <span class="bc-bundle-member-size">{{m.sizeLabel}}</span>
                 {{#if m.installed}}<i class="fa-solid fa-circle-check bc-bmap-installed-check" data-tooltip="{{localize 'BENEOS.Cloud.Bmap.MemberInstalledTooltip'}}"></i>{{/if}}
-                <button type="button" class="bc-card-button bc-card-button-primary bc-bundle-member-install"
-                        data-action="installBundleMember"
-                        data-bundle-id="{{drawer.asset.key}}"
-                        data-member-index="{{m.index}}"
-                        data-tooltip="{{localize 'BENEOS.Cloud.Bmap.BundleMemberInstallTooltip'}}">
-                  <i class="fa-solid fa-cloud-arrow-down"></i>
-                </button>
+                {{#if drawer.asset.isReleaseLocked}}
+                  {{!-- Logged out / no access: list the release but make the
+                       per-member download non-functional (red lock + tooltip). --}}
+                  <a class="bc-card-button bc-card-button-locked bc-bundle-member-install"
+                     href="{{@root.joinPatreonUrl}}" target="_blank" rel="noopener noreferrer"
+                     data-tooltip="{{localize 'BENEOS.Cloud.Bmap.BundleMemberLockedTooltip'}}">
+                    <i class="fa-solid fa-lock"></i>
+                  </a>
+                {{else}}
+                  <button type="button" class="bc-card-button bc-card-button-primary bc-bundle-member-install"
+                          data-action="installBundleMember"
+                          data-bundle-id="{{drawer.asset.key}}"
+                          data-member-index="{{m.index}}"
+                          data-tooltip="{{localize 'BENEOS.Cloud.Bmap.BundleMemberInstallTooltip'}}">
+                    <i class="fa-solid fa-cloud-arrow-down"></i>
+                  </button>
+                {{/if}}
               </li>
             {{/each}}
           </ol>
@@ -950,12 +967,15 @@
         {{/if}}
         </div> {{!-- /.bc-drawer-summary --}}
 
+        {{#unless drawer.asset.isBundleCard}}
         {{#if drawer.asset.description}}
           {{!-- Wave B-9-fix-23: description gets a clamp + "Read more"
                toggle in grid mode for tokens, where the column width is
                narrow and the column-3 vertical space is tight. The
                button is rendered always; #wireResultListeners hides it
-               at runtime if the description fits without clamping. --}}
+               at runtime if the description fits without clamping.
+               Bundles render their own unblurred description above, so this
+               shared block is suppressed for them. --}}
           <div class="bc-drawer-description{{#if drawer.asset.isLocked}} bc-drawer-blur{{/if}}" data-bc-description>
             {{{drawer.asset.description}}}
           </div>
@@ -967,6 +987,7 @@
           </button>
           {{/unless}}
         {{/if}}
+        {{/unless}}
 
         {{!-- Patron-gated full description from the locally-installed
              Foundry item or spell document. Only set by #enrichCard when

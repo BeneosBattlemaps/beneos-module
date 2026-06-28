@@ -8262,17 +8262,31 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 .bc-bundle-members { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 12px; }
 .bc-bundle-members li { line-height: 1.35; }
 
-/* Bundle drawer: total size + at-your-own-risk warning. */
+/* Bundle drawer: own (unblurred) description block. */
+.bc-bundle-description { margin: 0 0 8px; font-size: 12px; line-height: 1.45; opacity: 0.9; }
+
+/* Bundle drawer: total size + informational heads-up (neutral, not an error). */
 .bc-bundle-total { margin: 0 0 4px; font-size: 12px; }
 .bc-bundle-risk {
   margin: 0 0 8px; padding: 6px 8px; font-size: 11px; line-height: 1.4;
-  color: var(--bc-warn-text, #f0c674);
-  background: rgba(240, 198, 116, 0.08);
-  border: 1px solid rgba(240, 198, 116, 0.3);
+  color: var(--bc-text-muted, rgba(255, 255, 255, 0.7));
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 4px;
 }
-.bc-bundle-risk i { margin-right: 4px; }
+.bc-bundle-risk i { margin-right: 4px; opacity: 0.8; }
 .bc-bundle-members-hint { margin: 6px 0 0; font-size: 11px; opacity: 0.75; }
+
+/* Logged-out / no-access per-member download: red, non-functional, tooltip. */
+.bc-card-button-locked {
+  color: #f08a8a;
+  background: rgba(220, 90, 90, 0.18);
+  border: 1px solid rgba(220, 90, 90, 0.55);
+  cursor: help;
+  display: inline-flex; align-items: center; justify-content: center;
+  text-decoration: none;
+}
+.bc-card-button-locked:hover { background: rgba(220, 90, 90, 0.28); }
 
 /* Per-release row: name (grows) + size + optional check + install button. */
 .bc-bundle-member {
