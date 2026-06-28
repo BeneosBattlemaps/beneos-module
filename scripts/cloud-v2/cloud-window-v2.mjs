@@ -5250,19 +5250,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   _bmapActiveView() {
     if (this._bmapViewMode === "individual") return "individual"
     if (this._bmapViewMode === "bundles") return "bundles"
-    if (this._bmapViewMode === "releases") return "releases"
-    // No explicit toggle yet: releases/bundles come from the authenticated
-    // cloud endpoint. Logged out, default to the PUBLIC catalog (Individual
-    // Maps) so all maps stay browseable + locked (free vs. Patreon), exactly
-    // like the Creatures/Spells/Loot tabs. Logged in, keep the grouped
-    // Releases view as the default.
-    return this.#isCloudConnected() ? "releases" : "individual"
-  }
-
-  // True when a Beneos Cloud Foundry ID is present (the user is connected).
-  // Same signal the release-fetch self-heal uses; cheap + render-safe.
-  #isCloudConnected() {
-    try { return !!(game.settings.get("beneos-module", "beneos-cloud-foundry-id") || "") } catch (_e) { return false }
+    // Default to the grouped Releases view for EVERYONE. Logged out, releases +
+    // bundles load anonymously from the cloud (view-only showcase: every row
+    // comes back can_install=false + an unlock CTA), so there's no longer a
+    // reason to fall back to Individual Maps. Individual stays one toggle away.
+    return "releases"
   }
 
   // Task 4: when the user applies a filter while browsing Releases or Bundles,

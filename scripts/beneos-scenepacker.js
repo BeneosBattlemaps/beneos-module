@@ -41,10 +41,14 @@ export class BeneosScenePackerManager {
             console.warn('BeneosScenePackerManager | Could not retrieve Foundry ID from Beneos settings:', e);
         }
         
-        // Expected when the user is simply logged out — keep it quiet (debug,
-        // not a warning) so the console isn't noisy on every reload.
-        console.debug('BeneosScenePackerManager | No Foundry ID available - please connect to Beneos Cloud');
-        return false;
+        // Logged out: still create the manager in ANONYMOUS mode so the public
+        // storefront (list_releases / list_bundles / scenes) works for browsing.
+        // The server returns can_install=false for anonymous callers, and the
+        // install path stays gated on game.beneos.cloud.isLoggedIn() — NOT on
+        // manager existence — so logged-out users can browse but not download.
+        this.sessionId = 'anonymous';
+        console.debug('BeneosScenePackerManager | No Foundry ID - anonymous browse mode');
+        return true;
     }
 
     /**
@@ -97,14 +101,13 @@ export class BeneosScenePackerManager {
      * @returns {Promise<Array>}
      */
     async listReleases({ refresh = false } = {}) {
-        if (!this.sessionId) {
-            throw new Error('No Foundry ID available. Please connect to Beneos Cloud first.');
-        }
+        // No login gate: logged out, we still list (anonymous, view-only). The
+        // server returns can_install=false for the 'anonymous' session.
         if (!refresh && this._releasesCache) return this._releasesCache;
         const response = await fetch(this.apiEndpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ s: this.sessionId, a: 'list_releases' })
+            body: new URLSearchParams({ s: this.sessionId || 'anonymous', a: 'list_releases' })
         });
         const data = await response.json();
         if (data.status !== 'ok') throw new Error(data.message || 'Failed to list releases');
@@ -121,13 +124,11 @@ export class BeneosScenePackerManager {
      * @returns {Promise<Array>}
      */
     async listReleaseScenes(releaseDir, variant = '') {
-        if (!this.sessionId) {
-            throw new Error('No Foundry ID available. Please connect to Beneos Cloud first.');
-        }
+        // Anonymous-capable (drawer scene list is part of the public showcase).
         const response = await fetch(this.apiEndpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ s: this.sessionId, a: 'list_release_scenes', release_dir: releaseDir, variant: variant || '' })
+            body: new URLSearchParams({ s: this.sessionId || 'anonymous', a: 'list_release_scenes', release_dir: releaseDir, variant: variant || '' })
         });
         const data = await response.json();
         if (data.status !== 'ok') throw new Error(data.message || 'Failed to list release scenes');
@@ -141,14 +142,12 @@ export class BeneosScenePackerManager {
      * @returns {Promise<Array>}
      */
     async listBundles({ refresh = false } = {}) {
-        if (!this.sessionId) {
-            throw new Error('No Foundry ID available. Please connect to Beneos Cloud first.');
-        }
+        // No login gate: logged out, we still list (anonymous, view-only).
         if (!refresh && this._bundlesCache) return this._bundlesCache;
         const response = await fetch(this.apiEndpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ s: this.sessionId, a: 'list_bundles' })
+            body: new URLSearchParams({ s: this.sessionId || 'anonymous', a: 'list_bundles' })
         });
         const data = await response.json();
         if (data.status !== 'ok') throw new Error(data.message || 'Failed to list bundles');
