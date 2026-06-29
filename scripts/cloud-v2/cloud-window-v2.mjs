@@ -1519,7 +1519,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // "Join Patreon" CTA instead of the install button and refuses drag.
     const cardCampaign = assetType === "bmap" ? "battlemaps" : "tokens"
     const hasCampaign = !!game.beneos?.cloud?.hasCampaignAccess?.(cardCampaign)
-    const isFree   = props.free_content === true
+    // Free status: prefer the dynamic cloud free list (driven by the "Free"
+    // tier); fall back to the catalog free_content flag when it is absent (e.g.
+    // bmaps, which carry no token/item/spell free list).
+    const cloudFree = game.beneos?.cloud?.isFreeAsset?.(assetType, data.key)
+    const isFree   = (cloudFree === null || cloudFree === undefined) ? (props.free_content === true) : cloudFree
     // bmaps have no local install tracking, but they are NOT unconditionally
     // cloud-available: a map is only installable when the user actually has
     // access (campaign / free / its release already installed). Forcing this

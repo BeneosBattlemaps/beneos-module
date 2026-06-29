@@ -1649,6 +1649,33 @@ export class BeneosCloud {
     return set.has(key.toLowerCase().replaceAll("-", "_"))
   }
 
+  // Free allowlist (assets in any "Free" tier), delivered by get_content. The
+  // single dynamic source of truth for free status: change the Free tier in the
+  // admin panel and the next full fetch reflects it. Only refreshed on a full
+  // fetch (server sends `free: null` on delta polls).
+  setFreeSet(free) {
+    if (!free || typeof free !== "object") return
+    const toSet = (arr) => {
+      const s = new Set()
+      if (Array.isArray(arr)) {
+        for (const k of arr) {
+          if (typeof k === "string") s.add(k.toLowerCase().replaceAll("-", "_"))
+        }
+      }
+      return s
+    }
+    this.freeSet = { token: toSet(free.token), item: toSet(free.item), spell: toSet(free.spell) }
+  }
+
+  // True when the asset is in the cloud Free tier. Returns null when the free
+  // list is unknown so callers can fall back to the catalog free_content flag.
+  isFreeAsset(type, key) {
+    const set = this.freeSet && this.freeSet[type]
+    if (!set) return null
+    if (!key || typeof key !== "string") return false
+    return set.has(key.toLowerCase().replaceAll("-", "_"))
+  }
+
   // Fix #B2: returns a promise so callers (e.g. loginAttempt, search engine
   // open) can await content readiness before they read availableContent. The
   // function still no-ops gracefully on network/server errors; callers are not
@@ -1701,6 +1728,10 @@ export class BeneosCloud {
         // polls so the search engine can hide not-yet-published catalog entries.
         if (data.data?.published) {
           game.beneos.cloud.setPublishedSet(data.data.published)
+        }
+        // Free allowlist (dynamic Free-tier membership) — same full-fetch contract.
+        if (data.data?.free) {
+          game.beneos.cloud.setFreeSet(data.data.free)
         }
         // Lock the cursor to the server's clock so the next fetch is
         // resistant to local-clock drift. If the server (pre-Tier3) did
