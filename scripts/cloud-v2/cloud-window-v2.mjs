@@ -939,7 +939,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const cloud = game.beneos?.cloud
       if (cloud?.publishedSet) {
         entries = entries.filter(([k, data]) => {
-          if (data?.properties?.free_content === true) return true
+          if (cloud.isFreeAsset?.(type, k) === true) return true
           if (data?.isInstalled || data?.isCloudAvailable) return true
           return cloud.isPublished(type, k)
         })
@@ -1046,7 +1046,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const tabHasCampaign = !!game.beneos?.cloud?.hasCampaignAccess?.(tabCampaign)
       const groupRank = (data) => {
         if (!tabHasCampaign) {
-          if (data?.properties?.free_content === true) return -1
+          // Free status: token/item/spell from the cloud Free tier (data.free);
+          // battlemaps from their own catalog free_content scene flag.
+          const dFree = (type === "bmap")
+            ? (data?.properties?.free_content === true)
+            : (game.beneos?.cloud?.isFreeAsset?.(type, data?.key) === true)
+          if (dFree) return -1
           const dInstalled = type === "bmap" ? false : !!data?.isInstalled
           const dAvail     = type === "bmap" ? true  : !!data?.isCloudAvailable
           if (!dAvail && !dInstalled) return 9999
@@ -1519,11 +1524,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // "Join Patreon" CTA instead of the install button and refuses drag.
     const cardCampaign = assetType === "bmap" ? "battlemaps" : "tokens"
     const hasCampaign = !!game.beneos?.cloud?.hasCampaignAccess?.(cardCampaign)
-    // Free status: prefer the dynamic cloud free list (driven by the "Free"
-    // tier); fall back to the catalog free_content flag when it is absent (e.g.
-    // bmaps, which carry no token/item/spell free list).
-    const cloudFree = game.beneos?.cloud?.isFreeAsset?.(assetType, data.key)
-    const isFree   = (cloudFree === null || cloudFree === undefined) ? (props.free_content === true) : cloudFree
+    // Free status, single source of truth: token/item/spell come SOLELY from the
+    // cloud "Free" tier (data.free) — the catalog free_content flag is ignored for
+    // them (stale/unmaintained, must have no effect). Battlemaps keep their own
+    // catalog free_content, which IS kept current via the admin Free-Content checkbox.
+    const isFree = (assetType === "bmap")
+      ? (props.free_content === true)
+      : (game.beneos?.cloud?.isFreeAsset?.(assetType, data.key) === true)
     // bmaps have no local install tracking, but they are NOT unconditionally
     // cloud-available: a map is only installable when the user actually has
     // access (campaign / free / its release already installed). Forcing this

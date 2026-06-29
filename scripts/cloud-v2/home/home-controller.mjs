@@ -339,8 +339,13 @@ export class HomeController {
     const cloudLoggedIn  = !!cloud?.isLoggedIn?.()
     const hasTokenAccess = cloudLoggedIn && !!cloud?.hasCampaignAccess?.("tokens")
     const hasMapAccess   = cloudLoggedIn && !!cloud?.hasCampaignAccess?.("battlemaps")
+    // Free status: token/item/spell from the cloud "Free" tier (data.free, the
+    // dynamic source of truth); battlemaps from their own catalog free_content.
+    const isFreeData = (type, data) => (type === "bmap")
+      ? (data?.properties?.free_content === true)
+      : (cloud?.isFreeAsset?.(type, data?.key) === true)
     const isAccessible = (type, data) => {
-      if (data?.properties?.free_content === true) return true
+      if (isFreeData(type, data)) return true
       if (type === "bmap") return hasMapAccess
       return hasTokenAccess
     }
@@ -358,7 +363,7 @@ export class HomeController {
       let accessible = 0
       let freeCount  = 0
       for (const data of entries) {
-        if (data?.properties?.free_content === true) freeCount++
+        if (isFreeData(type, data)) freeCount++
         if (isAccessible(type, data)) accessible++
       }
       const categoryPatron = type === "bmap" ? hasMapAccess : hasTokenAccess

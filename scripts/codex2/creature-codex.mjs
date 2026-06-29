@@ -246,7 +246,10 @@ export async function buildCreatureDetailCtx({ tokenKey, activeTab, activeTactic
   const _strip = (k) => String(k ?? "").replace(/_\d+$/, "");
   const _dbInfo = _info(_worldFlag.tokenKey) ?? _info(tokenKey)
                ?? _info(_strip(_worldFlag.fullId)) ?? _info(_strip(tokenKey));
-  const isFree = _dbInfo?.properties?.free_content === true;
+  // Free status from the cloud "Free" tier (data.free), the dynamic source of
+  // truth — not the stale catalog free_content flag. Missing key -> not free.
+  const _freeKey = _worldFlag.tokenKey ?? tokenKey ?? _strip(_worldFlag.fullId) ?? _strip(tokenKey);
+  const isFree = game.beneos?.cloud?.isFreeAsset?.("token", _freeKey) === true;
 
   // Image paths: normalize so the template's <img src> and inline
   // background-image rules resolve from the page root. Foundry usually

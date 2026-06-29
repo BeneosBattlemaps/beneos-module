@@ -1413,16 +1413,19 @@ export class BeneosCloud {
     // entries surface as installable.
     const db = game.beneos?.databaseHolder
     const ts = Math.floor(Date.now() / 1000)
-    const collect = (raw, includeAll) => {
+    // Free entries come from the cloud "Free" tier (data.free, the dynamic
+    // source of truth) instead of the stale catalog free_content flag. Requires
+    // a prior real fetch to have populated freeSet; degrades to "no free" offline.
+    const collect = (raw, type, includeAll) => {
       if (!raw) return []
       return Object.entries(raw)
-        .filter(([_, data]) => includeAll || data?.properties?.free_content === true)
+        .filter(([key]) => includeAll || this.isFreeAsset(type, key) === true)
         .map(([key]) => ({ key, updated_ts: ts }))
     }
     this.availableContent = {
-      tokens: collect(db?.tokenData?.content, !!tokens),
-      items:  collect(db?.itemData?.content,  !!tokens),
-      spells: collect(db?.spellData?.content, !!tokens)
+      tokens: collect(db?.tokenData?.content, "token", !!tokens),
+      items:  collect(db?.itemData?.content,  "item",  !!tokens),
+      spells: collect(db?.spellData?.content, "spell", !!tokens)
     }
     console.warn("[Beneos] simulatePatron applied", {
       payload: this.lastLoginPayload,

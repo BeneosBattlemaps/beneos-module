@@ -339,7 +339,7 @@ export class BeneosDatabaseHolder {
     if (tokenData.installed == "notinstalled") {
       tokenData.isCloudAvailable = game.beneos.cloud.isTokenAvailable(tokenData.key)
       if (!tokenData.isCloudAvailable
-          && tokenData.properties?.free_content === true
+          && game.beneos.cloud.isFreeAsset?.("token", tokenData.key) === true
           && game.beneos.cloud.isLoggedIn?.()) {
         tokenData.isCloudAvailable = true
       }
@@ -388,13 +388,11 @@ export class BeneosDatabaseHolder {
     itemData.isCloudAvailable = false
     if (itemData.installed === "notinstalled") {
       itemData.isCloudAvailable = game.beneos.cloud.isItemAvailable(itemData.key)
-      // Free items are always cloud-available for logged-in users. The
-      // cloud backend serves them to any account regardless of Patreon
-      // status; surfacing them as installable here means non-patrons
-      // see a real Install button instead of a generic "Unavailable"
-      // pill on the marketing-targeted free content.
+      // Free items are always cloud-available for logged-in users. Free status
+      // comes from the cloud "Free" tier (data.free), the single dynamic source
+      // of truth — not the stale catalog free_content flag.
       if (!itemData.isCloudAvailable
-          && itemData.properties?.free_content === true
+          && game.beneos.cloud.isFreeAsset?.("item", itemData.key) === true
           && game.beneos.cloud.isLoggedIn?.()) {
         itemData.isCloudAvailable = true
       }
@@ -444,7 +442,7 @@ export class BeneosDatabaseHolder {
     if (spellData.installed == "notinstalled") {
       spellData.isCloudAvailable = game.beneos.cloud.isSpellAvailable(spellData.key)
       if (!spellData.isCloudAvailable
-          && spellData.properties?.free_content === true
+          && game.beneos.cloud.isFreeAsset?.("spell", spellData.key) === true
           && game.beneos.cloud.isLoggedIn?.()) {
         spellData.isCloudAvailable = true
       }
