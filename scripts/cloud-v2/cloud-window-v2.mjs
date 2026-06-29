@@ -930,6 +930,22 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       if (type === "bmap")  dbHolder.processInstalledBattlemap?.(data)
     }
 
+    // Published-gate: hide catalog entries not assigned to any tier yet (the
+    // cloud allowlist via get_content), unless the user already owns/installed
+    // them or they are free. Mirrors the storefront "Your Library" gate so
+    // un-released drafts never surface in the search engine. bmap is gated by
+    // its own campaign/free logic and is left untouched.
+    if (type === "token" || type === "item" || type === "spell") {
+      const cloud = game.beneos?.cloud
+      if (cloud?.publishedSet) {
+        entries = entries.filter(([k, data]) => {
+          if (data?.properties?.free_content === true) return true
+          if (data?.isInstalled || data?.isCloudAvailable) return true
+          return cloud.isPublished(type, k)
+        })
+      }
+    }
+
     // Battlemaps: a scene is "New" when its release was PUBLISHED within the
     // last NEW_WINDOW_DAYS days (release_date) AND the release is not installed,
     // mirroring the release-card rule in #buildReleaseCards. The old "highest

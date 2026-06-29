@@ -1618,6 +1618,37 @@ export class BeneosCloud {
     return false
   }
 
+  // Published-asset allowlist (filename-keyed per type), delivered by the cloud
+  // get_content endpoint. Lets the search engine hide catalog entries that are
+  // not assigned to any tier yet. Stored as normalised Sets; only refreshed on
+  // a full fetch (the server sends `published: null` on delta polls).
+  setPublishedSet(published) {
+    if (!published || typeof published !== "object") return
+    const toSet = (arr) => {
+      const s = new Set()
+      if (Array.isArray(arr)) {
+        for (const k of arr) {
+          if (typeof k === "string") s.add(k.toLowerCase().replaceAll("-", "_"))
+        }
+      }
+      return s
+    }
+    this.publishedSet = {
+      token: toSet(published.token),
+      item:  toSet(published.item),
+      spell: toSet(published.spell)
+    }
+  }
+
+  // True when the published allowlist is unknown (no gate yet) OR the key is in
+  // it. Returns true on absence so a missing/old server never blanks the library.
+  isPublished(type, key) {
+    const set = this.publishedSet && this.publishedSet[type]
+    if (!set) return true
+    if (!key || typeof key !== "string") return true
+    return set.has(key.toLowerCase().replaceAll("-", "_"))
+  }
+
   // Fix #B2: returns a promise so callers (e.g. loginAttempt, search engine
   // open) can await content readiness before they read availableContent. The
   // function still no-ops gracefully on network/server errors; callers are not
@@ -1665,6 +1696,11 @@ export class BeneosCloud {
           game.beneos.cloud.mergeAvailableContent(data.data)
         } else {
           game.beneos.cloud.setAvailableContent(data.data)
+        }
+        // Published allowlist: only present on a full fetch; kept across delta
+        // polls so the search engine can hide not-yet-published catalog entries.
+        if (data.data?.published) {
+          game.beneos.cloud.setPublishedSet(data.data.published)
         }
         // Lock the cursor to the server's clock so the next fetch is
         // resistant to local-clock drift. If the server (pre-Tier3) did
