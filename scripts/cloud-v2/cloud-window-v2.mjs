@@ -103,11 +103,6 @@ const V2_FILTER_DEFS = [
   { types: ["bmap"],  selector: "bmap-adventure",         prop: "adventure"     },
   { types: ["bmap"],  selector: "bmap-grid",              prop: "grid"          },
   { types: ["bmap"],  selector: "kind-selector",          prop: "type"          },
-  // Wave B-9-fix-29: release filter — narrow bmap results to a single
-  // release pack. The dropdown value is the full download_pack string
-  // (e.g. "Crystal Cave - 01"); searchByProperty does a substring match
-  // on the property, which works exactly for the unique pack names.
-  { types: ["bmap"],  selector: "release-selector",       prop: "download_pack" },
   // Items
   { types: ["item"],  selector: "item-type",              prop: "item_type"     },
   { types: ["item"],  selector: "rarity-selector",        prop: "rarity"        },
@@ -511,27 +506,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
           if (hasNewAssets && hasUpdatedAssets && hasNewForUserAssets) break
         }
       }
-      const releaseList = {}
-      if (this.searchMode === "bmap") {
-        const dbHolder = game.beneos?.databaseHolder
-        const all = dbHolder?.getAll?.("bmap") || {}
-        const seen = new Map()
-        for (const data of Object.values(all)) {
-          const pack = data?.properties?.download_pack
-          if (!pack || typeof pack !== "string") continue
-          if (seen.has(pack)) continue
-          const idx = pack.lastIndexOf(" - ")
-          if (idx < 0) continue
-          const name = pack.slice(0, idx).trim()
-          const numStr = pack.slice(idx + 3).trim()
-          const num = parseInt(numStr, 10)
-          if (!Number.isFinite(num)) continue
-          seen.set(pack, { num, name, label: `${num} - ${name}`, key: pack })
-        }
-        const sorted = [...seen.values()].sort((a, b) => a.num - b.num)
-        releaseList.any = { key: "any", value: "Any" }
-        for (const r of sorted) releaseList[r.key] = { key: r.key, value: r.label }
-      }
       // Wave B-8k-4: capitalise every dropdown label and lift "Any" to
       // the top across all filter lists (token + bmap + item + spell).
       // Rarity already has its custom order so it skips this step.
@@ -551,7 +525,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         bmapBrightness: orderList(context.bmapBrightness, "battlemap.brightness"),
         adventureList:  orderList(context.adventureList, "battlemap.adventure"),
         gridList:       orderList(context.gridList),
-        releaseList:    releaseList,
         // Task 4: in Bundles view only the Campaign filter is offered (bundles
         // are module-specific); the template hides the other bmap filters.
         bmapViewIsBundles: this.searchMode === "bmap" && this._bmapActiveView() === "bundles",

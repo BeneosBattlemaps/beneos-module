@@ -298,20 +298,6 @@
       </select>
     </section>
     {{/if}}
-    {{!-- Wave B-9-fix-29: release filter — narrows bmap results to a
-         single pack ("96 - DiA 00 …"). Useful when the user references
-         a specific pack number from a Beneos overview map. Hidden in
-         Bundles view (Task 4). --}}
-    {{#unless bmapViewIsBundles}}
-    {{#if releaseList}}
-    <section class="bc-sidebar-group">
-      <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Release"}}</header>
-      <select class="bc-select beneos-selector" id="release-selector">
-        {{selectOptions releaseList nameAttr="key" valueAttr="key" labelAttr="value"}}
-      </select>
-    </section>
-    {{/if}}
-    {{/unless}}
     {{!-- A3: Show filter (All / Installed / Not installed / New / Updated) for
          the release view, identical to token/item/spell. Shares the global
          #installation-selector / this.showFilter state; applied to releases in
