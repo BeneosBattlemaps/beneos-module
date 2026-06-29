@@ -127,6 +127,13 @@ Hooks.once('ready', () => {
   // because `game.beneos.databaseHolder` is undefined.
   BeneosDatabaseHolder.loadDatabaseFiles().then(() => {
     game.beneos.databaseHolder = BeneosDatabaseHolder;
+    // Load the public Free/Published allowlists right after the catalog so the
+    // cloud browser groups free content green and hides drafts even when the
+    // user is logged OUT (free stays click-to-login). Re-render the browser if
+    // it is already open when the lists arrive.
+    game.beneos?.cloud?.loadPublicAllowlists?.().then(() => {
+      try { game.beneos?.cloudWindowV2?.render?.({ parts: ["results"] }); } catch (e) { /* window not open */ }
+    });
   }).catch(e => {
     console.warn("Beneos | databaseHolder eager load failed:", e);
   });

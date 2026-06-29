@@ -1679,6 +1679,25 @@ export class BeneosCloud {
     return set.has(key.toLowerCase().replaceAll("-", "_"))
   }
 
+  // Public Free + Published allowlists (catalog-wide, NO login required). Lets the
+  // LOGGED-OUT cloud browser still group free content green and hide unpublished
+  // drafts, exactly like the storefront — the assets stay click-to-login. Logged-in
+  // get_content fetches refresh the same sets, so this is a no-harm pre-population.
+  async loadPublicAllowlists() {
+    try {
+      const r = await fetch(`${BeneosUtility.cloudBase()}/foundry-manager.php?get_public_data=1`, { credentials: 'same-origin' })
+      const d = await r.json()
+      if (d && d.result === 'OK' && d.data) {
+        if (d.data.published) this.setPublishedSet(d.data.published)
+        if (d.data.free) this.setFreeSet(d.data.free)
+      }
+      return d
+    } catch (e) {
+      console.warn("BeneosModule: loadPublicAllowlists failed", e)
+      return null
+    }
+  }
+
   // Fix #B2: returns a promise so callers (e.g. loginAttempt, search engine
   // open) can await content readiness before they read availableContent. The
   // function still no-ops gracefully on network/server errors; callers are not
