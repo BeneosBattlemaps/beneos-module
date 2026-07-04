@@ -1490,6 +1490,24 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
+  // Decides whether THIS client should perform a persisted token-document
+  // mutation (dead-FX / variant swap). Foundry only lets OWNER/GM write a token,
+  // so reactive automation must run on exactly one privileged client to avoid
+  // both "lacks permission" errors on player clients and double-writes when
+  // several GMs are connected. Preference: the single active GM (always has the
+  // rights). If no GM is connected, fall back to exactly one owner client that
+  // actually has update rights, so GM-less sessions still get the effect.
+  static beneosIsTokenWriter(tokenDoc) {
+    if (!tokenDoc) return false
+    const activeGM = game.users?.activeGM
+    if (activeGM) return activeGM.isSelf
+    if (!tokenDoc.canUserModify?.(game.user, "update")) return false
+    const owners = (game.users?.players ?? []).filter(u => u.active && tokenDoc.testUserPermission(u, "OWNER"))
+    const primary = owners.sort((a, b) => a.id.localeCompare(b.id))[0]
+    return (primary?.id ?? game.user.id) === game.user.id
+  }
+
+  /********************************************************************************** */
   static removeTokenFromActorId(actorId) {
     let isRemoved = false
     for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
@@ -1956,6 +1974,13 @@ export class BeneosUtility {
     if (token === null || token == undefined) {
       return
     }
+    // Manual HUD action: only the acting user runs it, so gate on THEIR rights
+    // (not the GM-writer, which would block an owning player's own click). Shows
+    // a friendly note instead of a red core error if they lack update rights.
+    if (!token.document.canUserModify(game.user, "update")) {
+      ui.notifications?.warn(game.i18n.localize("BENEOS.TokenSwitchNoPermission"))
+      return
+    }
     let tokenData = BeneosUtility.getTokenDataFromKey(fullKey)
     if (!tokenData) return
     // Stage 5/6: mode-preserving variant switch. If the placed token
@@ -1969,37 +1994,47 @@ export class BeneosUtility {
     const newImage = isTopDownMode
       ? (BeneosUtility.beneosDerivedTopPath(tokenData) || tokenData.token)
       : tokenData.token
-    await token.document.setFlag(BeneosUtility.moduleID(), "fullKey", tokenData.fullId)
     // Stage 6: probe-based scale. Pass `newImage` (the actual webp
     // path we're swapping TO) so getScaleFactor can detect mode from
     // the suffix and pick 1.1 vs 1.25 correctly.
     let scaleFactor = this.getScaleFactor(token, newImage)
-    // Stage 13d-9: per-mode anchor — same swap-with-mode pattern as
+    // Stage 13d-9: per-mode anchor, same swap-with-mode pattern as
     // scale. Mode is decided by the destination image's suffix
     // (-top.webp = topdown, otherwise tokenized).
     const newMode = newImage.includes("-top.webp") ? "topdown" : "tokenized"
     // Stage 13d-10: pass newImage so variant-specific anchors apply.
     const newAnchor = BeneosUtility.getBeneosAnchor(token.actor, newMode, newImage)
     //BeneosUtility.debugMessage(">>>>>>>>>>> UPDATE TOKEN CHANGE", fullKey, tokenData, newImage)
-    await token.document.update({ img: newImage, scale: scaleFactor, rotation: 1.0 })
-    if (foundry.utils.isNewerVersion(game.version, "11")) {
-      // Stage 7: V13-conformant scale path. texture.scaleX/Y is the
-      // canonical schema field; setting it here keeps the token's
-      // scale in sync with the new mode (1.25 for top-down, 1.1 for
-      // 2.5D) when variant-switching in the change-skin HUD.
-      await token.document.update({
-        "texture.src": newImage,
-        "texture.scaleX": scaleFactor,
-        "texture.scaleY": scaleFactor,
-        "texture.anchorX": newAnchor.x,
-        "texture.anchorY": newAnchor.y
-      })
+    try {
+      await token.document.setFlag(BeneosUtility.moduleID(), "fullKey", tokenData.fullId)
+      await token.document.update({ img: newImage, scale: scaleFactor, rotation: 1.0 })
+      if (foundry.utils.isNewerVersion(game.version, "11")) {
+        // Stage 7: V13-conformant scale path. texture.scaleX/Y is the
+        // canonical schema field; setting it here keeps the token's
+        // scale in sync with the new mode (1.25 for top-down, 1.1 for
+        // 2.5D) when variant-switching in the change-skin HUD.
+        await token.document.update({
+          "texture.src": newImage,
+          "texture.scaleX": scaleFactor,
+          "texture.scaleY": scaleFactor,
+          "texture.anchorX": newAnchor.x,
+          "texture.anchorY": newAnchor.y
+        })
+      }
+    } catch (err) {
+      console.warn("[Beneos] forceChangeToken: token.document update failed", err)
+      ui.notifications?.error(`Beneos: token swap failed (${err?.message || "unknown"})`)
+      return
     }
     //canvas.scene.updateEmbeddedDocuments("Token", [({ _id: token.id, img: finalimage, scale: 1.0, rotation: 0 })])
     let actor = token.actor
     if (actor && actor.type == "character") {
       let actorImage = tokenData.avatar
-      actor.update({ 'token.img': actorImage })
+      try {
+        await actor.update({ 'token.img': actorImage })
+      } catch (err) {
+        console.warn("[Beneos] forceChangeToken: actor.update failed (prototype out of sync)", err)
+      }
     }
     return
   }
@@ -2067,6 +2102,12 @@ export class BeneosUtility {
     if (!token) return
     const actor = token.actor
     if (!actor) return
+    // Manual HUD action: gate on the acting user's own rights so a missing
+    // permission shows a friendly note instead of a red core error.
+    if (!token.document.canUserModify(game.user, "update")) {
+      ui.notifications?.warn(game.i18n.localize("BENEOS.TokenSwitchNoPermission"))
+      return
+    }
     // Stage 8: source-of-truth is the placed token's own texture.src.
     // Stage 7's actor.prototypeToken.texture.src was the synthetic
     // delta-actor property for unlinked tokens, which could go stale
@@ -2162,6 +2203,14 @@ export class BeneosUtility {
       return
     }
 
+    // Only the single privileged writer (active GM, else one owner client)
+    // performs the persisted FX mutations below. Every other client returns
+    // here, which stops the "lacks permission to update Token" errors that
+    // fired on player clients whenever a Beneos creature reached 0 HP.
+    if (!BeneosUtility.beneosIsTokenWriter(token.document)) {
+      return
+    }
+
     let actorData = token.actor
     if (!actorData || actorData.flags.world.beneos == undefined) {
       return
@@ -2203,7 +2252,9 @@ export class BeneosUtility {
     if (BeneosUtility.beneosHealth[token.id] == 0 && hp > 0) {
       BeneosUtility.debugMessage("[BENEOS MODULE] Standing")
       token.state = "standing"
-      TokenMagic.deleteFilters(token);
+      if (typeof TokenMagic !== 'undefined') {
+        TokenMagic.deleteFilters(token);
+      }
     }
     BeneosUtility.beneosHealth[token.id] = hp // Store current HP value
   }

@@ -25,6 +25,7 @@ export const WIKI_CATEGORIES = [
   "account",
   "setup",
   "play",
+  "worldmaps",
   "creatures",
   "items",
   "deepdive",
@@ -49,6 +50,11 @@ export const WIKI_PAGES = [
   { key: "player-navigation", category: "play" },
   { key: "ambience-sound",    category: "play" },
   { key: "performance",       category: "play" },
+
+  { key: "worldmap-escalia",  category: "worldmaps" },
+  { key: "landing-strahd",    category: "worldmaps" },
+  { key: "landing-avernus",   category: "worldmaps" },
+  { key: "landing-build",     category: "worldmaps" },
 
   { key: "creature-codex",    category: "creatures" },
   { key: "combat-autopilot",  category: "creatures" },

@@ -240,13 +240,22 @@ Hooks.once('ready', () => {
 
   /********************************************************************************** */
   Hooks.on('updateActor', (actor, changeData) => {
+    // Match the sibling hooks: bail on a non-ready canvas / disabled module so
+    // canvas.tokens is safe to touch (this also avoids a throw during scene load
+    // on the GM client). The single-writer gate (active GM, else one owner) lives
+    // in BeneosUtility.updateToken, so every client may enter here but only the
+    // writer performs the persisted FX mutation. That is what stops the
+    // "lacks permission to update Token" errors on player clients.
+    if (!BeneosUtility.isBeneosModule() || !canvas.ready) {
+      return
+    }
+    if (changeData?.system?.attributes?.hp?.value === undefined) {
+      return
+    }
     let tokens = canvas.tokens.placeables.filter(t => t.document.actorId == actor.id)
-    //console.log(">>>>>>>>><", tokens)
     for (let token of tokens) {
       if (BeneosUtility.checkIsBeneosToken(token)) {
-        if (changeData?.system?.attributes?.hp?.value == 0 || changeData?.system?.attributes?.hp?.value > 0) {
-          BeneosUtility.updateToken(token.id, changeData)
-        }
+        BeneosUtility.updateToken(token.id, changeData)
       }
     }
   })
@@ -981,6 +990,84 @@ Hooks.on("deleteItem", (item, options) => {
 // The Actor-sidebar button (`renderActorDirectory` hook) was removed in
 // the same wave — Beneos now ships Creatures + Loot + Spells, so a
 // single Actor-tab entry no longer fits the module's surface.
+// Wave B-9-fix-71: shared opener for the Beneos Cloud window. Extracted from
+// the open-cloud tool's onChange so BOTH the scene-control activation path AND
+// the direct toolbar-button click listener (renderSceneControls hook below)
+// run the exact same logic. The in-progress lock dedupes the two paths down to
+// a single open + a single start sound, which fixes the stacked-sound report.
+function openBeneosCloudWindow() {
+  // The in-progress lock catches duplicate dispatch (V13 fires the button
+  // onChange twice per click) AND the parallel direct-click listener.
+  if (Hooks._beneosOpenCloudInProgress) return
+  // No-op when the Cloud window is already on screen. Per user direction:
+  // toolbar-button = open; window-X / ESC = close. Strict === true so transient
+  // states (closing, undefined) fall through to the open path.
+  try {
+    const existing = game.beneos?.cloudWindowV2
+    if (existing && existing.rendered === true) return
+  } catch (e) {}
+  Hooks._beneosOpenCloudInProgress = true
+  // Safety net: if the regular reset (120 ms after launcher render) is dropped
+  // (browser tab throttling, mid-open error), the lock would otherwise stay
+  // true forever and dead-end the toolbar. Force-clear after 5 s.
+  setTimeout(() => {
+    if (Hooks._beneosOpenCloudInProgress) {
+      console.warn("Beneos | open-cloud lock stuck >5s, forcing reset")
+      Hooks._beneosOpenCloudInProgress = false
+    }
+  }, 5000)
+  try {
+    const src = "modules/beneos-module/ui/sfx/beneos_start.ogg"
+    const helper = foundry.audio?.AudioHelper
+                ?? (typeof AudioHelper !== "undefined" ? AudioHelper : null)
+    helper?.play?.({ src, volume: 0.5, autoplay: true, loop: false }, false)
+  } catch (e) {}
+  // Stage 11: synchronous splash-overlay. Cold-open of the cloud window
+  // triggers up to 5 sequential CDN fetches in
+  // BeneosDatabaseHolder.loadDatabaseFiles plus template compilation, a total
+  // 2-5s of dead silence between the click sound and the first paint. Inject a
+  // fixed-position overlay BEFORE the deferred render so the user sees Foundry
+  // isn't frozen. Removed by V2's _onRender hook.
+  if (!document.getElementById("beneos-cloud-loading-splash")) {
+    try {
+      const splash = document.createElement("div")
+      splash.id = "beneos-cloud-loading-splash"
+      const splashText = game.i18n?.localize?.("BENEOS.Cloud.Loading.Splash")
+                      || "Loading Beneos Cloud…"
+      splash.innerHTML = `
+        <div class="beneos-loading-splash-card">
+          <div class="beneos-loading-splash-spinner"></div>
+          <div class="beneos-loading-splash-text">${splashText}</div>
+        </div>
+      `
+      document.body.appendChild(splash)
+    } catch (e) { /* splash is best-effort, never block the open */ }
+  }
+  // Defer the heavy work outside Foundry's click handler so the scene-controls
+  // activation stack unwinds first. V13's _updatePosition reads
+  // `el.parentElement.offsetWidth` which can be null when the render fires
+  // inside the same JS task as the click.
+  setTimeout(() => {
+    try {
+      new BeneosCloudWindowV2().render({ force: true })
+    } catch (e) {
+      console.error(e)
+      // Stage 11: if the launcher throws synchronously, strip the splash so it
+      // doesn't hang forever.
+      document.getElementById("beneos-cloud-loading-splash")?.remove()
+    }
+    // Switch focus back to Token Controls. The "beneos" group has no canvas
+    // tools, so leaving it focused after the cloud window opens would strand
+    // the user. Defer once more so the controls switch happens after the cloud
+    // window's first paint (avoids a second render-time race).
+    setTimeout(() => {
+      try { ui.controls?.activate?.({ control: "tokens", tool: "select" }) }
+      catch (e) {}
+      Hooks._beneosOpenCloudInProgress = false
+    }, 120)
+  }, 0)
+}
+
 Hooks.on("getSceneControlButtons", (controls) => {
   if (!game.user?.isGM) return
   controls.beneos = {
@@ -988,7 +1075,11 @@ Hooks.on("getSceneControlButtons", (controls) => {
     title: game.i18n.localize("BENEOS.Toolbar.Title"),
     // Wave B-9-fix-44: Beneos logo SVG via the masked CSS class.
     icon: "beneos-icon-logo",
-    order: 99,
+    // Keep the Beneos logo pinned to the very bottom of the left toolbar.
+    // Foundry sorts groups by `order` ascending; core + other modules top out
+    // around 100 (e.g. the effects group at order 100), so 200 reliably lands
+    // us last regardless of which extra groups a world has installed.
+    order: 200,
     visible: true,
     tools: {
       "open-cloud": {
@@ -998,100 +1089,38 @@ Hooks.on("getSceneControlButtons", (controls) => {
         order: 1,
         visible: true,
         button: true,
-        // Wave B-9-fix-52: V13 dispatches onChange twice for a single
-        // click on a button-tool when both the control AND the tool
-        // change in the same activation cycle (#postActivate fires the
-        // tool onChange via #onToolChange, and #onChangeTool can fire
-        // it again directly for `button: true` tools). The duplicate
-        // fire makes the start sound stack on itself; debounce the
-        // handler to a single trigger per ~600ms so a user-visible
-        // double-click also still gets one open + one sound.
-        //
-        // Plus: do the window render and control switch on a setTimeout
-        // so we leave the scene-controls activation stack before any
-        // ApplicationV2 render. V13's _updatePosition reads
-        // `el.parentElement.offsetWidth` which can be null when the
-        // render fires inside the same JS task as the click — yields
-        // "Cannot read properties of null (reading 'offsetWidth')".
-        onChange: () => {
-          // V13 dispatches onChange TWICE per click on button-tools
-          // (see Wave B-9-fix-52 below). The in-progress lock catches
-          // the duplicate dispatch.
-          if (Hooks._beneosOpenCloudInProgress) return
-          // No-op when the Cloud window is already on screen. Per
-          // user direction: toolbar-button = open; window-X / ESC =
-          // close. Strict === true so transient states (closing,
-          // undefined) fall through to the open path.
-          try {
-            const existing = game.beneos?.cloudWindowV2
-            if (existing && existing.rendered === true) return
-          } catch (e) {}
-          Hooks._beneosOpenCloudInProgress = true
-          // Safety net: if the regular reset (120 ms after launcher
-          // render) is dropped — browser tab throttling, mid-open
-          // error — the lock would otherwise stay true forever and
-          // dead-end the toolbar. Force-clear after 5 s.
-          setTimeout(() => {
-            if (Hooks._beneosOpenCloudInProgress) {
-              console.warn("Beneos | open-cloud lock stuck >5s, forcing reset")
-              Hooks._beneosOpenCloudInProgress = false
-            }
-          }, 5000)
-          try {
-            const src = "modules/beneos-module/ui/sfx/beneos_start.ogg"
-            const helper = foundry.audio?.AudioHelper
-                        ?? (typeof AudioHelper !== "undefined" ? AudioHelper : null)
-            helper?.play?.({ src, volume: 0.5, autoplay: true, loop: false }, false)
-          } catch (e) {}
-          // Stage 11: synchronous splash-overlay. Cold-open of the
-          // cloud window triggers up to 5 sequential CDN fetches in
-          // BeneosDatabaseHolder.loadDatabaseFiles plus template
-          // compilation — total 2-5s of dead silence between the
-          // click sound and the first paint. Inject a fixed-position
-          // overlay BEFORE the deferred render so the user sees
-          // Foundry isn't frozen. Removed by V2's _onRender hook.
-          if (!document.getElementById("beneos-cloud-loading-splash")) {
-            try {
-              const splash = document.createElement("div")
-              splash.id = "beneos-cloud-loading-splash"
-              const splashText = game.i18n?.localize?.("BENEOS.Cloud.Loading.Splash")
-                              || "Loading Beneos Cloud…"
-              splash.innerHTML = `
-                <div class="beneos-loading-splash-card">
-                  <div class="beneos-loading-splash-spinner"></div>
-                  <div class="beneos-loading-splash-text">${splashText}</div>
-                </div>
-              `
-              document.body.appendChild(splash)
-            } catch (e) { /* splash is best-effort, never block the open */ }
-          }
-          // Defer the heavy work outside Foundry's click handler so the
-          // scene-controls activation stack unwinds first.
-          setTimeout(() => {
-            try {
-              new BeneosCloudWindowV2().render({ force: true })
-            } catch (e) {
-              console.error(e)
-              // Stage 11: if the launcher throws synchronously,
-              // strip the splash so it doesn't hang forever.
-              document.getElementById("beneos-cloud-loading-splash")?.remove()
-            }
-            // Switch focus back to Token Controls — the "beneos" group
-            // has no canvas tools, so leaving it focused after the cloud
-            // window opens would strand the user. Defer once more so the
-            // controls switch happens after the cloud window's first
-            // paint (avoids a second render-time race).
-            setTimeout(() => {
-              try { ui.controls?.activate?.({ control: "tokens", tool: "select" }) }
-              catch (e) {}
-              Hooks._beneosOpenCloudInProgress = false
-            }, 120)
-          }, 0)
-        }
+        // Wave B-9-fix-71: the heavy open logic lives in the shared
+        // openBeneosCloudWindow() above. This onChange fires when the user
+        // activates the beneos group from the canvas-tool side. The same
+        // function is also bound as a direct click listener on the group
+        // button (renderSceneControls hook below) so the logo opens the
+        // window even while another group's sub-toolbar is active; the
+        // in-progress lock dedupes the two paths to one open + one sound.
+        onChange: () => openBeneosCloudWindow()
       }
     },
     activeTool: "open-cloud"
   }
+})
+
+// Wave B-9-fix-71: bind a direct click listener on the Beneos group button in
+// the left toolbar. The bug: when another group's sub-toolbar is open (e.g.
+// "Beneos Dev Tools"), clicking the Beneos logo did nothing: V13 buffers the
+// open-cloud onChange and only flushes it on the next clean group activation,
+// so the window opened (and the start sounds stacked) only after the user left
+// the other sub-toolbar. All group buttons live permanently in the DOM
+// regardless of the active group, so a capture-phase click listener on our own
+// button fires synchronously and opens the window from anywhere. We do NOT
+// stop propagation: Foundry still activates the group normally (keeping the
+// open-wiki sub-tool reachable), and the in-progress lock dedupes the parallel
+// onChange so there is exactly one open and one sound.
+Hooks.on("renderSceneControls", (app, element) => {
+  if (!game.user?.isGM) return
+  const root = element instanceof HTMLElement ? element : element?.[0]
+  const btn = root?.querySelector?.('button[data-control="beneos"]')
+  if (!btn || btn.dataset.beneosBound === "1") return
+  btn.dataset.beneosBound = "1"
+  btn.addEventListener("click", () => openBeneosCloudWindow(), true)
 })
 
 /********************************************************************************** */

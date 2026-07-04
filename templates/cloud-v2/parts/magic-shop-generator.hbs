@@ -102,6 +102,13 @@
       {{/if}}
     </header>
 
+    {{#if isDemo}}
+      <div class="blg-demo-badge">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        <span>{{localize "BENEOS.MagicShop.DemoBadge"}}</span>
+      </div>
+    {{/if}}
+
     <div class="blg-scroll-body">
     {{#if hasDefaultItems}}
       <section class="blg-shop-section blg-shop-default-section">

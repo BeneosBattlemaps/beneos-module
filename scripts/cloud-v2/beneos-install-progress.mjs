@@ -60,6 +60,39 @@ const STATUS_KEY_TO_PHASE = new Map([
   ["unrelated",     "unrelated"],
 ])
 
+// Modal-style click blocker shown while an install is running so the user
+// cannot click around / interrupt it. Sits just under the progress window
+// (which is forced above it) and is removed the moment the install leaves the
+// "running" state or the window closes, so the completion buttons stay usable.
+const _BENEOS_INSTALL_BACKDROP_ID = "beneos-install-progress-backdrop"
+function _setInstallProgressBackdrop(win, on) {
+  try {
+    let bd = document.getElementById(_BENEOS_INSTALL_BACKDROP_ID)
+    if (on) {
+      if (!bd) {
+        bd = document.createElement("div")
+        bd.id = _BENEOS_INSTALL_BACKDROP_ID
+        bd.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.45);cursor:progress;"
+        const swallow = (e) => { e.stopPropagation(); e.preventDefault() }
+        bd.addEventListener("pointerdown", swallow, true)
+        bd.addEventListener("mousedown", swallow, true)
+        bd.addEventListener("click", swallow, true)
+        bd.addEventListener("contextmenu", swallow, true)
+        bd.addEventListener("wheel", swallow, { capture: true, passive: false })
+        document.body.appendChild(bd)
+      }
+      // Sit exactly one layer BELOW the progress window (which Foundry keeps as
+      // the top-most app after bringToFront). That blocks the canvas and every
+      // other window/UI panel while leaving the progress window interactive,
+      // without fighting Foundry's own z-index bookkeeping.
+      const z = Number(win?.element?.style?.zIndex) || 200
+      bd.style.zIndex = String(Math.max(1, z - 1))
+    } else {
+      if (bd) bd.remove()
+    }
+  } catch (_e) {}
+}
+
 export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(ApplicationV2) {
 
   static DEFAULT_OPTIONS = {
@@ -90,6 +123,15 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
     if (existing) await existing.close({ force: true })
     const win = new BeneosBattlemapInstallProgress({ label, coverUrl, subtitle, packageId })
     await win.render(true)
+    // Bring the progress window to the foreground and close the Beneos Cloud
+    // window so the install feedback is the sole focus and the interface does
+    // not get cluttered. Applies to every native install.
+    try { win.bringToFront?.() } catch (_e) {}
+    try {
+      const cloud = game.beneos?.cloudWindowV2
+        ?? Object.values(foundry.applications.instances ?? {}).find(a => a?.element?.id === "beneos-cloud-window-v2")
+      await cloud?.close?.()
+    } catch (_e) {}
     return win
   }
 
@@ -176,6 +218,14 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
     this._firstSceneId     = null
     this._failedCount      = 0    // live failed-transfer count (robust installer)
     this._reportOpener     = null // () => void, set by the native installer
+
+    // Getting Started Tour: this release auto-launches its first scene (the
+    // "Start Here" welcome scene, whose canvasReady starts the tour) via a short
+    // countdown once the install finishes. Detected by name so a normal
+    // battlemap install keeps the plain "Open first scene" button.
+    this._autoStartTour      = /getting[\s_-]*started/i.test(`${label} ${packageId}`)
+    this._autoStartCountdown = null   // seconds remaining while the countdown runs
+    this._autoStartTimer     = null
   }
 
   /* ========== Engine event handlers (called from attach()) ========== */
@@ -343,6 +393,7 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
       if (v.status === "active" || v.status === "pending") v.status = "done"
     }
     this.render(false)
+    this.#maybeAutoLaunchTour()
   }
 
   markCompleted({ noChanges = false } = {}) {
@@ -358,6 +409,7 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
       if (v.status === "active" || v.status === "pending") v.status = "done"
     }
     this.render(false)
+    this.#maybeAutoLaunchTour()
   }
 
   markFailed(message) {
@@ -369,6 +421,65 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
       if (v.status === "active") v.status = "error"
     }
     this.render(false)
+  }
+
+  /* ========== Interaction blocker ========== */
+
+  // Show the modal click-blocker only while the install is running; drop it as
+  // soon as it completes/fails (so the completion buttons stay clickable) or
+  // the window closes.
+  async _onRender(context, options) {
+    await super._onRender(context, options)
+    _setInstallProgressBackdrop(this, this._state === "running")
+  }
+
+  bringToFront() {
+    const r = super.bringToFront?.()
+    // Re-sync the blocker under the window's new z-index after Foundry bumps it.
+    if (this._state === "running") _setInstallProgressBackdrop(this, true)
+    return r
+  }
+
+  async close(options) {
+    if (this._autoStartTimer) { clearInterval(this._autoStartTimer); this._autoStartTimer = null }
+    _setInstallProgressBackdrop(this, false)
+    return super.close(options)
+  }
+
+  /* ========== Getting Started auto-launch ========== */
+
+  // Kick off the 3-second countdown that opens the first scene (the "Start Here"
+  // welcome scene, whose canvasReady starts the Getting Started tour). Only for
+  // the Getting Started release, and only once a first scene is known.
+  #maybeAutoLaunchTour() {
+    if (!this._autoStartTour || !this._firstSceneId) return
+    if (this._autoStartTimer) return
+    // Tell the tour orchestrator we own the post-install handoff so it does not
+    // also pop its own "start the tutorial?" dialog on the releaseInstalled hook.
+    try { globalThis.__beneosGsAutoStartOwned = true } catch (_e) {}
+    this._autoStartCountdown = 3
+    this.render(false)
+    this._autoStartTimer = setInterval(() => {
+      this._autoStartCountdown -= 1
+      if (this._autoStartCountdown > 0) { this.render(false); return }
+      clearInterval(this._autoStartTimer); this._autoStartTimer = null
+      this._autoStartCountdown = null
+      this.#launchFirstScene()
+    }, 1000)
+  }
+
+  #launchFirstScene() {
+    const scene = this._firstSceneId ? game.scenes?.get?.(this._firstSceneId) : null
+    try { this.close({ force: true }) } catch (_e) {}
+    // Open the scene a tick after the window closes so its canvasReady
+    // auto-start (the Getting Started tour) is not covered by the closing window.
+    setTimeout(() => {
+      try {
+        if (!scene) return
+        if (typeof scene.view === "function") scene.view()
+        else scene.activate?.()
+      } catch (_e) {}
+    }, 150)
   }
 
   /* ========== Render context ========== */
@@ -429,6 +540,13 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
       completedMessage: this._completedMessage,
       closeDisabled:    this._state === "running",
       showOpenScenes:   (this._state === "completed" || this._state === "completed-with-issues") && !!this._firstSceneId,
+      // Getting Started auto-launch: a hint while installing, then a live
+      // countdown once complete. Distinct from the plain "Open first scene".
+      autoStartTour:    this._autoStartTour,
+      autoStartHint:    this._autoStartTour && this._state === "running",
+      autoStartMessage: (this._autoStartTour && this._autoStartCountdown != null)
+        ? game.i18n.format("BENEOS.Cloud.Bmap.InstallProgress.AutoStartCountdown", { seconds: this._autoStartCountdown })
+        : null,
       hasIssues:        this._state === "completed-with-issues",
       failedCount:      this._failedCount,
       failedLabel:      this._failedCount ? this.#failedLabel(this._failedCount) : null,
@@ -489,10 +607,23 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
   }
 
   static _onOpenFirstScene(_event, _target) {
+    // "Start now" during the Getting Started countdown: cancel the timer.
+    if (this._autoStartTimer) {
+      clearInterval(this._autoStartTimer); this._autoStartTimer = null; this._autoStartCountdown = null
+    }
     const id = this._firstSceneId
     if (!id) return
     const scene = game.scenes?.get?.(id)
     if (!scene) return
+    // For the Getting Started auto-launch, close the window first so the tour is
+    // not covered, then open the scene (its canvasReady starts the tour).
+    if (this._autoStartTour) {
+      try { this.close({ force: true }) } catch (_e) {}
+      setTimeout(() => {
+        try { (typeof scene.view === "function" ? scene.view() : scene.activate?.()) } catch (_e) {}
+      }, 150)
+      return
+    }
     // Task E: open the scene on the canvas (view) , the most useful action for
     // "the map is ready". Fall back to the sheet if view isn't available.
     if (typeof scene.view === "function") scene.view()

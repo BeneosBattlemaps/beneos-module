@@ -1,0 +1,29 @@
+<blockquote><p><strong>Before you read:</strong> you do not need to build anything here to enjoy Beneos. The Escalia world map ships ready to use. This page is for GMs who want to know how it is put together, edit it, or build a world map of their own.</p></blockquote>
+<hr />
+<p>Terra Escalia is the world map you meet in the Setup Guide. It is the home world of the Beneos creatures and releases, one big painted continent you can hang your whole campaign on. Under the art it is not magic, just four ordinary Foundry pieces stacked on top of each other. Once you see the four, you can change any of them, or rebuild the whole thing for your own setting.</p>
+
+<h2 id="wm-blocks">The four building blocks</h2>
+
+<h3 id="wm-map">1. The map itself</h3>
+<p>The base is a single large image, placed as a background and a tile on an 8000 by 8000 scene. Nothing clever. If you want your own world, this is the layer you swap: drop in your own painting and everything below still works the same way.</p>
+
+<h3 id="wm-poi">2. Points of interest</h3>
+<p>Every location marker on the map is a Foundry map <strong>Note</strong> with a journal pinned to it. The little castle, city, cave and harbour icons you see are those notes. Right-click one and its journal opens, which is how a player reads about a place or jumps to its scene. Each marker is labelled with the release it belongs to, for example <em>Castle Dourcrag [Release 48]</em>, so you can tell at a glance what is installed and what is still to come. This is the same system covered in <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporters</a>, so head there to add, move, or relink your own markers.</p>
+<img src="modules/beneos-module/assets/wiki/shot_worldmap-escalia_1.webp" alt="The Terra Escalia world map with its point-of-interest markers" />
+
+<h3 id="wm-nav">3. The navigation bar</h3>
+<p>Top right sits a small navigation bar. It runs on <a class="wikilink" data-page="dd-monks-active-tiles">Monks Active Tile Triggers</a>: an invisible clickable tile lies over a visible text label, and clicking the invisible tile jumps you to another scene. That is the whole trick behind every Beneos menu, world map and landing page. The <a class="wikilink" data-page="dd-monks-active-tiles">MATT deep dive</a> walks through building one step by step.</p>
+
+<h3 id="wm-atmosphere">4. Atmosphere: weather and light</h3>
+<p>The map is not static. Two layers give it life. <a class="wikilink" data-page="dd-fxmaster">FXMaster</a> drifts clouds and a thin fog across the continent and sends birds over it, all particle effects saved on the scene. On top of that sit dozens of animated <strong>Lights</strong>, tinted and set to pulse, throwing a soft ghostly glow over the seas and the land so the whole map breathes a little instead of sitting flat.</p>
+<img src="modules/beneos-module/assets/wiki/shot_worldmap-escalia_2.webp" alt="Drifting clouds and ghostly light over the Escalia coastline" />
+
+<h2 id="wm-build">Edit it, or build your own</h2>
+<p>Because the four layers are independent, you can touch any one without breaking the others:</p>
+<ul>
+<li><strong>Move or add locations:</strong> drag the map notes where you want them and link each to its journal or scene. See <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporters</a>.</li>
+<li><strong>Swap the map:</strong> replace the background image with your own world. The notes, nav bar and effects stay put.</li>
+<li><strong>Change the mood:</strong> open the FXMaster wand and trade the clouds for rain, snow, or a night filter. See the <a class="wikilink" data-page="dd-fxmaster">FXMaster deep dive</a>.</li>
+<li><strong>Retune the light:</strong> add, recolour, or animate lights to match your setting. A cold blue reads as a haunted coast; a low orange reads as a burning one.</li>
+</ul>
+<p>Want the map to double as a campaign hub with a full menu and sub-scenes? That is exactly what the <a class="wikilink" data-page="landing-avernus">Descent into Avernus</a> and <a class="wikilink" data-page="landing-strahd">Curse of Strahd</a> landing pages do, and <a class="wikilink" data-page="landing-build">Build Your Own Landing Page</a> shows how to assemble one.</p>

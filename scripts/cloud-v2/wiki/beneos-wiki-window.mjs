@@ -46,8 +46,20 @@ export class BeneosWikiWindow extends HandlebarsApplicationMixin(ApplicationV2) 
   constructor(options = {}) {
     super(options)
     this._query = ""
-    this._activeKey = this._restoreActiveKey(options.startPage)
+    const { key, anchor } = BeneosWikiWindow._parseTarget(options.startPage)
+    this._activeKey = this._restoreActiveKey(key)
+    // A section to scroll to once the article has rendered (from a
+    // "pageKey#anchor" target), consumed in _onRender.
+    this._pendingAnchor = anchor
     this._plainCache = {}
+  }
+
+  /* Split a "pageKey" or "pageKey#anchor" target into its parts. */
+  static _parseTarget(target) {
+    if (typeof target !== "string" || !target) return { key: null, anchor: null }
+    const hash = target.indexOf("#")
+    if (hash < 0) return { key: target, anchor: null }
+    return { key: target.slice(0, hash), anchor: target.slice(hash + 1) || null }
   }
 
   get title() {
@@ -277,6 +289,15 @@ export class BeneosWikiWindow extends HandlebarsApplicationMixin(ApplicationV2) 
       main.scrollTop = 0
     }
 
+    // If we arrived via a "pageKey#anchor" target, scroll to that section once
+    // layout has settled (the window flex heights are not final in _onRender,
+    // so scroll after two paints, same guard the nav-restore uses above).
+    if (main && this._pendingAnchor) {
+      const anchor = this._pendingAnchor
+      this._pendingAnchor = null
+      requestAnimationFrame(() => requestAnimationFrame(() => this._scrollToAnchor(anchor)))
+    }
+
     // Preserve the LEFT NAV scroll position across re-renders, so picking a
     // page (or opening an image / entering a section) does not jump the nav
     // back to the top. The article pane still resets to top on page change.
@@ -299,13 +320,33 @@ export class BeneosWikiWindow extends HandlebarsApplicationMixin(ApplicationV2) 
     }
   }
 
-  _goto(key) {
-    if (key === this._activeKey && !this._query) return
+  _goto(key, anchor = null) {
+    // Already on this page (and not filtering by a search): no re-render, but
+    // still honour an explicit section jump so a "same page, other section"
+    // link works.
+    if (key === this._activeKey && !this._query) {
+      if (anchor) requestAnimationFrame(() => this._scrollToAnchor(anchor))
+      return
+    }
     this._activeKey = key
     this._query = ""
     this._scrollTopPending = true
+    this._pendingAnchor = anchor
     this._saveState()
     this.render()
+  }
+
+  /* Smooth-scroll the article pane to the element carrying the given id.
+   * Reuses the same maths as the in-body data-wiki-jump handler and never
+   * touches the URL hash. */
+  _scrollToAnchor(anchor) {
+    const pane = this.element?.querySelector("[data-wiki-main]")
+    if (!pane || !anchor) return
+    const target = pane.querySelector(`[id="${CSS.escape(anchor)}"]`)
+    if (!target) return
+    const top = pane.scrollTop
+      + (target.getBoundingClientRect().top - pane.getBoundingClientRect().top) - 10
+    pane.scrollTo({ top: Math.max(0, top), behavior: "smooth" })
   }
 
   /* Launch an in-Foundry action from a Welcome-page button. */
@@ -349,14 +390,55 @@ export class BeneosWikiWindow extends HandlebarsApplicationMixin(ApplicationV2) 
     this.render()
   }
 
+  /* ---------------------------------------------------- link-target helpers */
+
+  /* Enumerate every valid documentation-link target: each page, plus every
+   * section anchor (an id on an h2/h3 heading in the article body). Powers
+   * game.beneos.listDocTargets() and the Dev Tools hub. Restricting to h2/h3
+   * ids skips the TOC container / back-to-top anchors, which are not sections. */
+  static docTargets() {
+    const parser = new DOMParser()
+    return WIKI_PAGES.map((p) => {
+      const titleKey = `BENEOS.Wiki.Page.${p.key}.Title`
+      const title = game.i18n.localize(titleKey)
+      const body = game.i18n.localize(`BENEOS.Wiki.Page.${p.key}.Body`)
+      const sections = []
+      try {
+        const doc = parser.parseFromString(body || "", "text/html")
+        for (const el of doc.querySelectorAll("h2[id], h3[id]")) {
+          const anchor = el.getAttribute("id")
+          if (!anchor) continue
+          const label = (el.textContent || "").replace(/\s+/g, " ").trim()
+          sections.push({ anchor, label, target: `${p.key}#${anchor}` })
+        }
+      } catch (e) { /* a malformed body just yields no sections */ }
+      return { page: p.key, title: title === titleKey ? p.key : title, target: p.key, sections }
+    })
+  }
+
+  /* True if "pageKey" or "pageKey#anchor" resolves to a real page (and, when an
+   * anchor is given, a real id in that page's body). Used to validate the
+   * @doc[...] markers authored into map-note labels. */
+  static isValidDocTarget(target) {
+    const { key, anchor } = BeneosWikiWindow._parseTarget(target)
+    if (!key || !WIKI_PAGES.some((p) => p.key === key)) return false
+    if (!anchor) return true
+    const body = game.i18n.localize(`BENEOS.Wiki.Page.${key}.Body`)
+    try {
+      const doc = new DOMParser().parseFromString(body || "", "text/html")
+      return !!doc.querySelector(`[id="${CSS.escape(anchor)}"]`)
+    } catch (e) { return false }
+  }
+
   /* ----------------------------------------------------------------- open */
 
   /* Singleton-ish opener: reuse an existing instance, optionally jump to a
    * specific page. Exposed via game.beneos.openWiki(pageKey). */
   static open(startPage = null) {
+    const { key, anchor } = BeneosWikiWindow._parseTarget(startPage)
     let win = BeneosWikiWindow._instance
     if (win && win.rendered) {
-      if (startPage) win._goto(startPage)
+      if (key) win._goto(key, anchor)
       win.bringToFront?.()
       return win
     }
@@ -373,6 +455,10 @@ export class BeneosWikiWindow extends HandlebarsApplicationMixin(ApplicationV2) 
 Hooks.once("init", () => {
   game.beneos = game.beneos || {}
   game.beneos.openWiki = (pageKey = null) => BeneosWikiWindow.open(pageKey)
+  // Discoverability helpers for the "@doc[pageKey#anchor]" note markers: list
+  // every valid target and validate one. Also consumed by the beneos-dev hub.
+  game.beneos.listDocTargets = () => BeneosWikiWindow.docTargets()
+  game.beneos.isValidDocTarget = (target) => BeneosWikiWindow.isValidDocTarget(target)
 })
 
 // Add a "Documentation" tool to the Beneos scene-controls group created in

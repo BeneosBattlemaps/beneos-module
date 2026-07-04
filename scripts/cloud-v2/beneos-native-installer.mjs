@@ -30,6 +30,7 @@ import { BeneosInstallState, BeneosPreInstallDialog, beneosLogModuleInstall } fr
 const FETCH_MAX_ATTEMPTS  = 3            // transient retries per asset
 const FETCH_BACKOFF_MS    = [500, 1500, 4000]
 const FETCH_INACTIVITY_MS = 30000       // abort if no bytes received for 30s
+const FETCH_INACTIVITY_CHECK_MS = 5000  // how often the single inactivity watcher polls
 const FETCH_TOTAL_MS      = 300000      // hard per-attempt safety cap (5 min)
 const MANIFEST_MAX_REFRESH = 2          // signed-URL refreshes per install
 const DOWNLOAD_CONCURRENCY = 6          // parallel asset transfers (moderate: gentle on the shared-hosting origin)
@@ -353,16 +354,19 @@ export class BeneosNativeBattlemapInstaller {
 
   /**
    * Task E: which scene the "Open" button should open. Single-scene install ->
-   * the clicked (primary) scene; release -> the "Overview" scene if present,
-   * else the first imported scene. The pack carries no active/initial-view flag.
+   * the clicked (primary) scene; release -> the "Start Here" welcome scene if
+   * present (the Getting Started pack's intended entry point), else the
+   * "Overview" scene, else the first imported scene. The pack carries no
+   * active/initial-view flag, so we resolve it by scene name.
    */
   #pickOpenSceneId() {
     if (this._sceneScope?.primarySceneId) return this._sceneScope.primarySceneId
     const scenes = this._importedScenes || []
     if (!scenes.length) return null
+    const startHere = scenes.find(s => /^\s*start\s*here\s*$/i.test(s.name))
     const exact = scenes.find(s => /^\s*overview\s*$/i.test(s.name))
     const loose = scenes.find(s => /overview/i.test(s.name))
-    return (exact || loose || scenes[0]).id
+    return (startHere || exact || loose || scenes[0]).id
   }
 
   // ---- Teil 2: existence / overwrite / install-record helpers --------------
@@ -851,17 +855,25 @@ export class BeneosNativeBattlemapInstaller {
    */
   async #fetchOnce(url) {
     const controller = new AbortController()
-    let inactivity = null
-    const armInactivity = () => {
-      if (inactivity) clearTimeout(inactivity)
-      inactivity = setTimeout(() => controller.abort(new DOMException("inactivity timeout", "AbortError")), FETCH_INACTIVITY_MS)
-    }
+    // Inactivity guard WITHOUT per-chunk timer churn: record the timestamp of
+    // the last received bytes and let a single low-frequency watcher abort if
+    // the gap exceeds FETCH_INACTIVITY_MS. The previous version re-armed a
+    // clearTimeout/setTimeout pair on every streamed chunk, which dominated the
+    // main thread on weak hardware during large downloads (thousands of timer
+    // ops). One interval keeps the exact same behaviour (abort on a genuine
+    // stall, never on a slow-but-progressing line) at a fraction of the cost.
+    let lastByteAt = performance.now()
+    const inactivityWatch = setInterval(() => {
+      if (performance.now() - lastByteAt > FETCH_INACTIVITY_MS) {
+        controller.abort(new DOMException("inactivity timeout", "AbortError"))
+      }
+    }, FETCH_INACTIVITY_CHECK_MS)
     const total = setTimeout(() => controller.abort(new DOMException("total timeout", "AbortError")), FETCH_TOTAL_MS)
     try {
-      armInactivity()
       const resp = await fetch(url, { signal: controller.signal })
       if (!resp.ok) throw new TransferError(`HTTP ${resp.status}`, classifyTransferError(null, resp.status), resp.status)
       const type = resp.headers.get("content-type") || "application/octet-stream"
+      lastByteAt = performance.now()
       if (!resp.body || typeof resp.body.getReader !== "function") {
         return await resp.blob() // environment without streaming
       }
@@ -870,7 +882,7 @@ export class BeneosNativeBattlemapInstaller {
       for (;;) {
         const { done, value } = await reader.read()
         if (done) break
-        if (value) { chunks.push(value); armInactivity() }
+        if (value) { chunks.push(value); lastByteAt = performance.now() }
       }
       return new Blob(chunks, { type })
     } catch (err) {
@@ -878,7 +890,7 @@ export class BeneosNativeBattlemapInstaller {
       const cat = err?.name === "AbortError" ? INSTALL_ERROR.TIMEOUT : classifyTransferError(err, null)
       throw new TransferError(err?.message || String(err), cat, null)
     } finally {
-      if (inactivity) clearTimeout(inactivity)
+      clearInterval(inactivityWatch)
       clearTimeout(total)
     }
   }
@@ -903,6 +915,9 @@ export class BeneosNativeBattlemapInstaller {
     }
     let url = initialUrl
     let transient = 0
+    // `guard` is the hard upper bound on loop turns: transient failures are
+    // capped by FETCH_MAX_ATTEMPTS, but a SIGNATURE refresh `continue`s without
+    // bumping `transient`, so guard backstops a pathological refresh loop.
     for (let guard = 0; guard < 8; guard++) {
       try {
         return await this.#fetchOnce(url)

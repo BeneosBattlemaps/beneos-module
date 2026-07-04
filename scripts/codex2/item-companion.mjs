@@ -16,7 +16,7 @@
 // toggles them back on for that session.
 
 
-import { getLootFlags } from "../loot/loot-schema.mjs";
+import { getLootFlags, beneosCloudCardPaths, isBeneosSrdItem } from "../loot/loot-schema.mjs";
 import { OriginsRegistry } from "../loot/origins-registry.mjs";
 import { ORIGIN_META, RARITY_COLOR, RARITY_MODIFIER } from "./origin-meta.mjs";
 
@@ -157,8 +157,16 @@ export class ItemCompanion {
       : Number(goldRaw).toLocaleString(game.i18n?.lang || "en-US");
     const weight  = raw.weight ?? null;
 
-    const frontCard = render.frontCardWebp || null;
-    const backCard  = render.backCardWebp  || null;
+    // Prefer the reconstructed local cloud path (heals SRD items whose stored
+    // render paths point to the wrong location); fall back to the stored value.
+    const cloudCards = beneosCloudCardPaths(this.item);
+    const frontCard = cloudCards.front || render.frontCardWebp || null;
+    const backCard  = cloudCards.back  || render.backCardWebp  || null;
+
+    // SRD items have no Origin: suppress the emblem + "Origin" label for them
+    // (they would otherwise render a "??" placeholder glyph and a stray label).
+    const isSrd = isBeneosSrdItem(this.item, flags);
+    const hasOrigin = !isSrd && !!(slug && (meta || def));
 
     const isNamed = !!flags.origin?.isNamed;
     const pips = Array.from({ length: 5 }, (_, i) => ({
@@ -172,6 +180,7 @@ export class ItemCompanion {
       glow: meta?.glow ?? "#d4a857",
       ring: meta?.ring ?? "#f0d486",
       iconUrl: meta?.image ?? null,
+      hasOrigin,
       displayName: def?.display_name ?? card.frontTitle ?? this.item?.name ?? "Unknown",
       lore: def?.lore ?? "",
       isNamed,

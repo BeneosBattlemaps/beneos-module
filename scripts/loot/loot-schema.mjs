@@ -29,3 +29,26 @@ export function isBeneosLootItem(itemDoc) {
 export function isBeneosSpell(itemDoc) {
   return !!getSpellFlags(itemDoc);
 }
+
+// The installer always uploads the item cards to a fixed local location keyed
+// by the install itemKey (world.beneos.itemKey), regardless of the item's
+// source: beneos_assets/cloud/items/<key>/<key>-front.webp (and -back.webp).
+// The stored loot.render.*CardWebp paths come straight from the server JSON and
+// are NOT rewritten on install, so for SRD items (different key convention)
+// they point nowhere. Reconstructing from the itemKey heals that at render
+// time (and stays correct for Originals, same folder as the working icon).
+export function beneosCloudCardPaths(itemDoc) {
+  const key = itemDoc?.getFlag?.("world", "beneos")?.itemKey;
+  if (!key) return { front: null, back: null };
+  const base = `beneos_assets/cloud/items/${key}/${key}`;
+  return { front: `${base}-front.webp`, back: `${base}-back.webp` };
+}
+
+// SRD classification per the project standard (same rule as
+// BeneosUtility.SRD_KEY_RE). SRD items have no Origin, so the panels must not
+// try to render an origin emblem / "Origin" label for them.
+export function isBeneosSrdItem(itemDoc, loot) {
+  const key  = String(itemDoc?.getFlag?.("world", "beneos")?.itemKey || "");
+  const slug = String(loot?.origin?.slug || "").toLowerCase();
+  return /(?:^|[-_])srd[-_]/i.test(key) || slug === "srd";
+}

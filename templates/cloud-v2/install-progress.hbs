@@ -103,6 +103,20 @@
       {{/if}}
     {{/if}}
 
+    {{!-- Getting Started: hint while installing, live countdown once done. --}}
+    {{#if autoStartHint}}
+      <div class="bcip-autostart-hint">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        <span>{{localize "BENEOS.Cloud.Bmap.InstallProgress.AutoStartHint"}}</span>
+      </div>
+    {{/if}}
+    {{#if autoStartMessage}}
+      <div class="bcip-success bcip-autostart-countdown">
+        <i class="fa-solid fa-hourglass-half fa-spin"></i>
+        <span>{{autoStartMessage}}</span>
+      </div>
+    {{/if}}
+
   </div>
 
   <footer class="bcip-actions">
@@ -117,7 +131,7 @@
       <button type="button" class="bc-card-button bc-card-button-primary"
               data-action="openFirstScene">
         <i class="fa-solid fa-image"></i>
-        {{localize "BENEOS.Cloud.Bmap.InstallProgress.OpenFirstScene"}}
+        {{#if autoStartTour}}{{localize "BENEOS.Cloud.Bmap.InstallProgress.StartNow"}}{{else}}{{localize "BENEOS.Cloud.Bmap.InstallProgress.OpenFirstScene"}}{{/if}}
       </button>
     {{/if}}
     <button type="button" class="bc-card-button{{#if closeDisabled}} bc-card-button-disabled{{/if}}"

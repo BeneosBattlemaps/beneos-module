@@ -6,14 +6,14 @@
 <div class="beneos-card-flipper" data-flipped="{{flipped}}" data-act="flip" role="button" tabindex="0" aria-label="Flip card">
   <div class="card-face card-face--front">
     {{#if frontCard}}
-      <img src="{{frontCard}}" alt="Front of card" loading="lazy">
+      <img src="{{frontCard}}" alt="Front of card" loading="lazy" onerror="this.remove()">
     {{else}}
       <div class="card-face--placeholder">No front image</div>
     {{/if}}
   </div>
   <div class="card-face card-face--back">
     {{#if backCard}}
-      <img src="{{backCard}}" alt="Back of card" loading="lazy">
+      <img src="{{backCard}}" alt="Back of card" loading="lazy" onerror="this.remove()">
     {{else}}
       <div class="card-face--placeholder">No back image</div>
     {{/if}}

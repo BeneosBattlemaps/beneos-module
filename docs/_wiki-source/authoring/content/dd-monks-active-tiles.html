@@ -23,3 +23,15 @@
 <img src="modules/beneos-module/assets/wiki/matt_d.webp" alt="MATT images tab" />
 <p>The Images tab collects the images MATT switches between. Here just two, start and stop, swapped each click. A technical note: the two images live under different file paths. When we pack a release, the second image is not exported and would be missing on download. So the second image ships inside the Beneos Module itself, which is always installed and therefore always available.</p>
 <p>That was one example. To build your own ideas, inspect the tiles we use to control intros, build soundboards, or trigger traps. With a little creativity you can make genuinely cool interactive effects. Foreground tiles can carry MATT triggers too, covered in our <a class="wikilink" data-page="dd-foreground-tiles">foreground tiles deep dive</a>.</p>
+<h2>Build a navigator</h2>
+<p>The clickable menus on the <a class="wikilink" data-page="worldmap-escalia">Escalia world map</a> and on both campaign landing pages, <a class="wikilink" data-page="landing-avernus">Descent into Avernus</a> and <a class="wikilink" data-page="landing-strahd">Curse of Strahd</a>, are all the same MATT trick. A navigation button is two tiles: an invisible clickable tile sitting on top of a visible text label. The label is just there to be seen; the invisible tile does the work. Click it, and MATT jumps you to another scene.</p>
+<p>The fastest way to make one is to copy a button that already exists, but here is the whole thing from scratch:</p>
+<ol>
+<li>Place a small tile where the button should sit and give it a transparent or near-transparent image. This is the clickable trigger.</li>
+<li>Double-click it, open the <strong>Triggers</strong> tab, and under <strong>Setup</strong> set it to fire on a click.</li>
+<li>Under <strong>Actions</strong>, add <strong>Change Scene</strong>, then use the small edit icon beside it to pick the destination scene from your Scene browser.</li>
+<li>Behind the trigger, place a visible text tile or button image so players know it is there to click.</li>
+<li>Right-click the trigger and toggle its active state on. That is one working navigation point.</li>
+</ol>
+<img src="modules/beneos-module/assets/wiki/matt_navigator.webp" alt="A navigation tile with a Change Scene action in the Triggers tab" />
+<p>Repeat this for each destination, then copy the finished bar onto every scene in the set. When the target scenes carry navigation back to each other, you have a menu your players can walk around on their own. That is exactly how the Beneos hubs are built, so open one and take it apart to see a full example. To reveal or hide a button as the campaign advances, show or hide its text tile and toggle the trigger's active state. For the bigger picture of how these menus fit together into a campaign hub, see <a class="wikilink" data-page="landing-build">Build Your Own Landing Page</a>.</p>

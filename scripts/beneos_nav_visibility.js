@@ -127,6 +127,33 @@ function isHowToUseNote(note) {
   return typeof src === "string" && src.includes(HOWTO_NOTE_ICON);
 }
 
+// A note whose Label carries a hidden "@doc[<pageKey>[#<anchor>]]" marker opens
+// that exact documentation location on click. Authors just append the marker in
+// the Note config Label field, e.g. "Garage @doc[landing-avernus#la-garage]";
+// the marker is stripped from the visible label (see the text wrapper below).
+// The "@doc[" prefix is distinct enough that it never collides with ordinary
+// bracketed labels such as the world-map POIs "Castle Dourcrag [Release 48]".
+const DOC_MARKER_RE = /@doc\[([^\]]+)\]/i;
+
+function docTargetOf(note) {
+  const text = note?.document?.text;
+  if (typeof text !== "string") return null;
+  const m = text.match(DOC_MARKER_RE);
+  return m ? m[1].trim() : null;
+}
+
+function strippedNoteLabel(text) {
+  if (typeof text !== "string" || text.indexOf("@doc[") < 0) return text;
+  return text.replace(DOC_MARKER_RE, "").replace(/\s{2,}/g, " ").trim();
+}
+
+// The documentation location a click on this note should open: an explicit
+// @doc[...] target wins; otherwise the plain "How to Use" help note opens the
+// documentation front page; anything else is not ours.
+function wikiTargetForNote(note) {
+  return docTargetOf(note) || (isHowToUseNote(note) ? "overview" : null);
+}
+
 let _howToWrapped = false;
 function registerHowToNoteHandler() {
   if (_howToWrapped) return;
@@ -137,23 +164,34 @@ function registerHowToNoteHandler() {
   // CONFIG.Note.objectClass resolves to the active Note placeable class in
   // both V13 and V14, so we wrap there rather than a namespace path.
   const base = "CONFIG.Note.objectClass.prototype";
-  const open = function () {
-    try { game.beneos?.openWiki?.("overview"); }
-    catch (e) { console.warn("[Beneos] How-to note open failed:", e); }
-  };
   for (const method of ["_onClickLeft", "_onClickRight", "_onClickLeft2", "_onClickRight2"]) {
     try {
       libWrapper.register(MODULE_ID, `${base}.${method}`, function (wrapped, ...args) {
-        if (isHowToUseNote(this) && typeof game.beneos?.openWiki === "function") {
-          open();
+        const target = wikiTargetForNote(this);
+        if (target && typeof game.beneos?.openWiki === "function") {
+          try { game.beneos.openWiki(target); }
+          catch (e) { console.warn("[Beneos] Doc note open failed:", e); }
           return;
         }
         return wrapped(...args);
       }, "MIXED");
     } catch (e) {
-      console.warn(`[Beneos] Could not wrap Note.${method} for the How-to handler:`, e);
+      console.warn(`[Beneos] Could not wrap Note.${method} for the docs handler:`, e);
     }
   }
+
+  // Hide the "@doc[...]" marker from the visible note label while keeping it in
+  // document.text for routing. Wrap the placeable's label accessor so the
+  // on-canvas label and the hover tooltip show only the human text; notes
+  // without a marker are returned untouched.
+  try {
+    libWrapper.register(MODULE_ID, `${base}.text`, function (wrapped, ...args) {
+      return strippedNoteLabel(wrapped(...args));
+    }, "WRAPPER");
+  } catch (e) {
+    console.warn("[Beneos] Could not wrap Note.text to hide the docs marker:", e);
+  }
+
   _howToWrapped = true;
 }
 
@@ -164,7 +202,7 @@ function registerHowToNoteHandler() {
 // placeable via a marker flag.
 function bindHowToNote(note, attempt = 0) {
   if (!note || note._beneosHowToBound) return;
-  if (!isHowToUseNote(note)) return;
+  if (!isHowToUseNote(note) && !docTargetOf(note)) return;
   // The real interaction target is the note's ControlIcon (where the
   // MouseInteractionManager listens and where PIXI pointer events land). It is
   // created during draw(), which can be slightly after this fires, so retry
@@ -175,9 +213,17 @@ function bindHowToNote(note, attempt = 0) {
     return;
   }
   note._beneosHowToBound = true;
+  // If this note carries a @doc[...] marker that does not resolve to a real
+  // documentation page/section, warn once so authoring typos are not silent.
+  const marker = docTargetOf(note);
+  if (marker && game.beneos?.isValidDocTarget && game.beneos.isValidDocTarget(marker) === false) {
+    console.warn(`[Beneos] Note doc marker "@doc[${marker}]" does not resolve to a documentation page/section. See game.beneos.listDocTargets() for valid targets.`);
+  }
   const open = (event) => {
     try { event?.stopPropagation?.(); } catch (e) {}
-    try { game.beneos?.openWiki?.("overview"); } catch (e) {}
+    const target = wikiTargetForNote(note);
+    if (!target) return;
+    try { game.beneos?.openWiki?.(target); } catch (e) {}
   };
   try {
     target.eventMode = "static";

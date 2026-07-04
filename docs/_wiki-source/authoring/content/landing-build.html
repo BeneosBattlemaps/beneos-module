@@ -1,0 +1,35 @@
+<blockquote><p><strong>Before you read:</strong> nothing here is required to use Beneos. This page is for the GM who has seen the <a class="wikilink" data-page="landing-avernus">Avernus</a> and <a class="wikilink" data-page="landing-strahd">Barovia</a> hubs and thought, I want one of those for my own world.</p></blockquote>
+<hr />
+<p>A landing page looks fancy, but it is only ever the same four ideas wearing different art. Once you can name them, you can build a hub for any campaign, or take one of ours apart and rebuild it as your own.</p>
+
+<h2>The recipe</h2>
+<ol class="bw-steps">
+<li><strong>A set of scenes.</strong> One home page plus a scene for each thing your players need: a map, a headquarters, a cast page, whatever your story wants. A landing page is just these scenes grouped in a folder.</li>
+<li><strong>A navigation bar.</strong> On every scene, a small menu that jumps to the others. This is the one moving part, and it runs on <a class="wikilink" data-page="dd-monks-active-tiles">Monks Active Tile Triggers</a>.</li>
+<li><strong>Reveal on demand.</strong> Content that starts hidden and appears when the party earns it: an NPC, a contract, an artefact, a vehicle. In Foundry that is nothing more than a tile or drawing you right-click and <strong>Toggle Visibility State</strong>.</li>
+<li><strong>Points of interest.</strong> On the map scenes, journal markers players can open, and travel through. See <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporters</a>.</li>
+</ol>
+
+<h2>Build it step by step</h2>
+<h3>1. Lay out your scenes</h3>
+<p>Decide what your hub needs and make a scene for each, plus a home page. Keep them together in one Scene folder so the set is easy to find and move. The fastest start is to copy one of our landing pages and swap the art, since the wiring is already done.</p>
+<h3>2. Wire the navigation</h3>
+<p>Give the home page a row of buttons, one per scene, then repeat that bar on every scene so players can move freely from anywhere. Each button is an invisible clickable tile over a visible text label, with a <strong>Change Scene</strong> action behind it. The <a class="wikilink" data-page="dd-monks-active-tiles">Monks Active Tiles deep dive</a> has a full walkthrough for building a navigator, and copying an existing button is by far the easiest way in.</p>
+<h3>3. Set the home page active by default</h3>
+<p>Make the home page the scene players see when they log in, and keep it active at the start of each session. From there they reach everything you have opened to them.</p>
+<h3>4. Hide what is not earned yet</h3>
+<p>Start with only the essentials visible, and keep the rest hidden. As the campaign moves, reveal a navigation point, an NPC, or a reward by toggling its visibility. That slow unveiling is what makes a hub feel alive instead of a static menu.</p>
+<h3>5. Dress it up</h3>
+<p>A landing page is a stage, so light it. Add an ambient track under the scene's <a class="wikilink" data-page="ambience-sound">Ambience</a> tab, and use <a class="wikilink" data-page="dd-fxmaster">FXMaster</a> for weather and mood. A session title on the home page, edited with the drawing tools, sets the tone before anyone speaks.</p>
+
+<h2>Link a spot to its guide</h2>
+<p>You can drop a help marker anywhere on a scene that opens the documentation straight to the right place, so a curious player clicks once and lands on the exact guide. Place a map <strong>Note</strong> with the Beneos help icon, then use its <strong>Label</strong> to point it:</p>
+<ul>
+<li><strong>Just the docs:</strong> a plain help note (no marker) opens the documentation front page, the same as the help icon on every Beneos scene.</li>
+<li><strong>A specific article:</strong> add <code>@doc[landing-avernus]</code> to the label and it opens that article.</li>
+<li><strong>A specific section:</strong> add <code>@doc[landing-avernus#la-garage]</code> and it jumps straight to that part of the article.</li>
+</ul>
+<p>The <code>@doc[...]</code> marker is never shown on the map; only the text before it is, so a label like <code>Garage guide @doc[landing-avernus#la-garage]</code> reads simply as "Garage guide". The page name is the article's key from the documentation sidebar, and the section names come from each article's own headings. Left click or right click both open it.</p>
+
+<h2>Learn from the ones we shipped</h2>
+<p>The quickest teacher is a working example. Open the <a class="wikilink" data-page="landing-avernus">Descent into Avernus</a> hub for the full toolkit, a headquarters table, a hexcrawl world map, a garage of rewards, or the <a class="wikilink" data-page="landing-strahd">Curse of Strahd</a> hub for a book of quests and a wall of faces. Take the parts that fit your story and leave the rest.</p>

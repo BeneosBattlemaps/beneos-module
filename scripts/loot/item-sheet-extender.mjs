@@ -1,4 +1,4 @@
-import { getLootFlags } from "./loot-schema.mjs";
+import { getLootFlags, beneosCloudCardPaths, isBeneosSrdItem } from "./loot-schema.mjs";
 import { OriginsRegistry } from "./origins-registry.mjs";
 
 const TEMPLATE_PATH = "modules/beneos-module/templates/loot/item-sheet-extras.hbs";
@@ -39,7 +39,7 @@ export class ItemSheetExtender {
     // Avoid double-injection (sheet can re-render multiple times).
     if (root.querySelector(":scope .beneos-loot-extras[data-beneos-loot]")) return;
 
-    const ctx = ItemSheetExtender._buildContext(loot);
+    const ctx = ItemSheetExtender._buildContext(loot, item);
     const html = await renderTemplate(TEMPLATE_PATH, ctx);
 
     // dnd5e V2 ItemSheet renders the description text inside
@@ -114,15 +114,26 @@ export class ItemSheetExtender {
     });
   }
 
-  static _buildContext(loot) {
-    const originDef = loot.origin?.slug ? OriginsRegistry.get(loot.origin.slug) : null;
-    const originIconPath = loot.origin?.slug ? OriginsRegistry.iconPath(loot.origin.slug, "color") : null;
+  static _buildContext(loot, item) {
+    // SRD items have no Origin: force the badge off (belt-and-suspenders on top
+    // of the template's {{#if originDef}} gate, in case a stray slug is set).
+    const isSrd = isBeneosSrdItem(item, loot);
+    const originDef = (!isSrd && loot.origin?.slug) ? OriginsRegistry.get(loot.origin.slug) : null;
+    const originIconPath = (!isSrd && loot.origin?.slug) ? OriginsRegistry.iconPath(loot.origin.slug, "color") : null;
+
+    // Prefer the reconstructed local cloud path (fixes SRD items whose stored
+    // render paths point nowhere); fall back to the stored render values.
+    const cloudCards = beneosCloudCardPaths(item);
+    const frontCard = cloudCards.front || loot.render?.frontCardWebp || null;
+    const backCard  = cloudCards.back  || loot.render?.backCardWebp  || null;
 
     return {
       loot,
       originDef,
       originIconPath,
-      hasCards: !!(loot.render?.frontCardWebp || loot.render?.backCardWebp),
+      frontCard,
+      backCard,
+      hasCards: !!(frontCard || backCard),
       tierTooltip: ItemSheetExtender._tierTooltip(loot.tier?.number),
     };
   }

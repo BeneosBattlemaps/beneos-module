@@ -827,6 +827,21 @@
   background: var(--bc-accent-line);
   color: var(--bc-accent-strong);
 }
+/* Wave B-9-fix-71: the default ("connect") button is autofocused when the
+   dialog opens, and Foundry paints its classic focus glow with
+   `box-shadow: 0 0 … var(--color-shadow-primary)`, which is #ff0000. That
+   red flash read as an out-of-place eye-catcher. Override the focus state to
+   the Beneos gold so the accent stays on-brand. animation:none belts-and-braces
+   against any core pulse keyframe on the default button. */
+.beneos-cloud-login-dialog button[data-action]:focus,
+.beneos-cloud-login-dialog button[data-action]:focus-visible,
+.beneos-cloud-login-dialog button.default:focus,
+.beneos-cloud-login-dialog button.default:focus-visible {
+  outline: 1px solid var(--bc-accent-line);
+  outline-offset: 1px;
+  box-shadow: 0 0 6px 1px rgba(245, 201, 146, 0.55);
+  animation: none;
+}
 
 /* ---- Results pane (Wave B-5: native V2 cards) ---- */
 
@@ -1957,13 +1972,25 @@
   top: auto;
   right: auto;
 }
-/* FREE-Badge in grid mode sits at top-left of the thumb so it doesn't
-   collide with NEW/UPDATE (bottom-left) or BENEOS (bottom-right). */
+/* FREE-Badge in grid mode sits just OUTSIDE the square thumbnail, to its
+   left (right edge flush against the thumb's left edge), so it never covers
+   the spell/loot icon. The card has overflow:visible, so it can sit in the
+   gutter beside the centered icon. */
 .beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-thumb .bc-thumb-chip.bc-status-free {
   top: 6px;
-  left: 6px;
+  right: 100%;
+  left: auto;
   bottom: auto;
-  right: auto;
+  margin-right: 4px;
+}
+
+/* Lazy-loaded thumbnails (data-bc-lazy is removed by the shared observer the
+   moment the real src is assigned). While still pending the element shows the
+   brand placeholder dimmed, so a card scrolling into view reads as "loading",
+   never as a broken image; it fades to full opacity once the real image is in. */
+.beneos-cloud-app img[data-bc-lazy] {
+  opacity: 0.4;
+  transition: opacity 0.25s ease;
 }
 .beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-thumb-chip {
   display: none;
@@ -2420,6 +2447,13 @@
 .beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-spell .bc-drawer-body > .bc-drawer-description {
   grid-column: 2;
   grid-row: 2;
+  /* min-width:0 lets the description shrink to the 1fr track instead of being
+     sized by its content (grid/flex items default to min-width:auto), which is
+     what let long unbroken text run out past the column. overflow-wrap breaks
+     over-long words/URLs. Together with the clamp + overflow:hidden the text
+     stays inside the column and the Read-more never overlaps it. */
+  min-width: 0;
+  overflow-wrap: anywhere;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
@@ -2619,6 +2653,11 @@
    so the labeled button no longer overflows the narrow actions column /
    triggers a horizontal scrollbar. Grid-mode keeps the "Codex" label. */
 .beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-action-codex span {
+  display: none;
+}
+/* List-mode: the Open button (installed items/spells) is icon-only too, same
+   reasoning as the Codex button above. Grid-mode keeps the "Open" label. */
+.beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-action-open span {
   display: none;
 }
 /* V12: Update-pill carries two label spans. Default (list-mode etc.):
@@ -3666,20 +3705,18 @@ i.beneos-icon-logo {
    as a ::before pseudo-element on top of the button so Foundry's
    ui-control rules continue to size and background-fill the button.
    Wave B-9-fix-65: dropped the cream-circle backplate.
-   Wave B-9-fix-67: bump the tile size by locally overriding
-   --control-size. Foundry's li.ui-control / button.ui-control read
-   the variable via `width: var(--control-size); height: var(--control-size)`
-   (foundry2.css:5564) so the override only resizes our tile — other
-   Foundry tools keep their 32px size. Logo fills ~88% of the larger
-   tile so the brand mark reads at first glance. */
-#scene-controls li:has(button.beneos-icon-logo),
-.scene-controls li:has(button.beneos-icon-logo) {
-  --control-size: 40px;
-}
+   Wave B-9-fix-72: keep the TILE at Foundry's default size (32px, same as
+   every other group button) so the toolbar width is unchanged and the active
+   group's tool flyout is not pushed out of the layout. We only enlarge the
+   LOGO inside that tile so the brand mark fills the square. Dropping the
+   button padding plus flex:0 0 auto on the ::before lets the icon span the
+   full 30px content box (32px tile minus the 1px border each side) instead of
+   collapsing as a shrinking flex item. */
 button.beneos-icon-logo {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
   background-color: var(--control-bg-color, rgba(20, 20, 20, 0.85));
   border: 1px solid var(--control-border-color, rgba(255, 255, 255, 0.1));
   color: var(--control-icon-color, #ddd);
@@ -3687,8 +3724,12 @@ button.beneos-icon-logo {
 button.beneos-icon-logo::before {
   content: "";
   display: block;
-  width: 36px;
-  height: 36px;
+  /* flex:0 0 auto keeps the icon (a flex item) at full size; without it the
+     icon shrank inside the button's flex box. 27px sits inside the unchanged
+     32px tile (10% smaller than the earlier 30px fill). */
+  flex: 0 0 auto;
+  width: 27px;
+  height: 27px;
   background: currentColor;
   -webkit-mask: url("../icons/beneos_logo.svg") center / contain no-repeat;
           mask: url("../icons/beneos_logo.svg") center / contain no-repeat;
@@ -4357,6 +4398,29 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
   text-align: center;
   border-bottom: 1px solid var(--blg-border);
   padding-bottom: 10px;
+}
+/* Onboarding-tour read-only preview badge. Shown above the result list when
+   the Loot/Shop generator runs in demoMode. Makes clear the result is a
+   scripted preview of paid Beneos Creatures & Spells content. */
+.beneos-loot-generator .blg-demo-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 10px auto 4px;
+  padding: 7px 14px;
+  max-width: 90%;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--blg-accent, #f5c992);
+  background: linear-gradient(90deg, rgba(245, 201, 146, 0.08), rgba(245, 201, 146, 0.18), rgba(245, 201, 146, 0.08));
+  border: 1px solid var(--blg-accent, #f5c992);
+  text-align: center;
+}
+.beneos-loot-generator .blg-demo-badge i {
+  opacity: 0.9;
 }
 .beneos-loot-generator .blg-title {
   margin: 0 0 4px;
@@ -8055,6 +8119,24 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   background: rgba(127, 217, 154, 0.12);
   border: 1px solid rgba(127, 217, 154, 0.35);
   color: #b8e8c5;
+}
+/* Getting Started auto-launch hint (while installing) + live countdown (once
+   complete). The hint is a muted info line; the countdown reuses the gold
+   accent so it reads as the imminent action. */
+.beneos-cloud-app .bcip-autostart-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--bc-text-muted, rgba(255,255,255,0.6));
+}
+.beneos-cloud-app .bcip-autostart-hint i { color: var(--bc-accent, #f5c992); opacity: 0.9; }
+.beneos-cloud-app .bcip-success.bcip-autostart-countdown {
+  background: rgba(245, 201, 146, 0.12);
+  border: 1px solid rgba(245, 201, 146, 0.40);
+  color: #f5c992;
+  font-weight: 600;
 }
 
 /* Second install layer: "Adding Beneos Creatures" block. Gold when the user is

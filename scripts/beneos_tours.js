@@ -150,15 +150,15 @@ const FAREWELL_POST_VIDEO_SOUND_ID    = "7ecc25df4dad44bd";
  * personal playlists are never touched.
  */
 const TOUR_AUDIO_MAP = {
-  "tutorial-start-here":        { music: { p: "pQpsDUhEtL0Q27vJ", s: "sycGtPyfkbz5IhCa" } },
-  "tutorial-page-1-overview":   { music: { p: "pQpsDUhEtL0Q27vJ", s: "sycGtPyfkbz5IhCa" } },
-  "tutorial-page-2-battlemaps": { music: { p: "pQpsDUhEtL0Q27vJ", s: "sycGtPyfkbz5IhCa" } },
-  "tutorial-page-3-sceneries":  { music: { p: "pQpsDUhEtL0Q27vJ", s: "sycGtPyfkbz5IhCa" }, env: { p: "7031JEHB2Swfyye9", s: "pSdWUnS7WncdVfZv" } },
+  "tutorial-start-here":        { music: { p: "pQpsDUhEtL0Q27vJ", s: "va7jWRBof0MYLtVt" } },
+  "tutorial-page-1-overview":   { music: { p: "pQpsDUhEtL0Q27vJ", s: "va7jWRBof0MYLtVt" } },
+  "tutorial-page-2-battlemaps": { music: { p: "pQpsDUhEtL0Q27vJ", s: "va7jWRBof0MYLtVt" } },
+  "tutorial-page-3-sceneries":  { music: { p: "pQpsDUhEtL0Q27vJ", s: "va7jWRBof0MYLtVt" }, env: { p: "7031JEHB2Swfyye9", s: "pSdWUnS7WncdVfZv" } },
   "tutorial-page-4-intro":      { music: null },
-  "tutorial-page-5-world-map":  { music: { p: "pQpsDUhEtL0Q27vJ", s: "sycGtPyfkbz5IhCa" } },
-  "tutorial-page-6-creatures":  { music: { p: "pQpsDUhEtL0Q27vJ", s: "sycGtPyfkbz5IhCa" } },
-  "tutorial-page-7-loot":       { music: { p: "pQpsDUhEtL0Q27vJ", s: "sycGtPyfkbz5IhCa" } },
-  "tutorial-page-8-spells":     { music: { p: "pQpsDUhEtL0Q27vJ", s: "sycGtPyfkbz5IhCa" } },
+  "tutorial-page-5-world-map":  { music: { p: "pQpsDUhEtL0Q27vJ", s: "va7jWRBof0MYLtVt" } },
+  "tutorial-page-6-creatures":  { music: { p: "pQpsDUhEtL0Q27vJ", s: "va7jWRBof0MYLtVt" } },
+  "tutorial-page-7-loot":       { music: { p: "pQpsDUhEtL0Q27vJ", s: "va7jWRBof0MYLtVt" } },
+  "tutorial-page-8-spells":     { music: { p: "pQpsDUhEtL0Q27vJ", s: "va7jWRBof0MYLtVt" } },
   "tutorial-page-9-contacts":   { music: { p: "pQpsDUhEtL0Q27vJ", s: "mkZYCCk9xSiVIU9t" } }
 };
 
@@ -174,11 +174,37 @@ const MANAGED_AUDIO_KEYS = (() => {
 })();
 
 /**
+ * Music opt-out + volume-respect state for the whole Getting Started run.
+ * Because the tour transitions between pages via scene.activate() (no page
+ * reload), these module-level flags survive the entire run within a session.
+ *
+ *  - _beneosTourMusicOptOut: the GM manually stopped the managed tour music
+ *    on some page. Once set, no page re-starts the music (including the Page 9
+ *    switch). Cleared if the GM manually starts it again, or when a fresh run
+ *    begins (GM leaves the tour, then re-enters).
+ *  - _beneosTourAudioBaselineDone: the audio-volume floor was already applied
+ *    once this run. Prevents re-clamping the Music volume on every page so a
+ *    GM who lowers/raises it keeps their setting.
+ *  - _beneosTourAudioSelfChangeUntil: timestamp window (ms) during which the
+ *    tour itself is starting/stopping managed sounds. The updatePlaylistSound
+ *    hook ignores changes inside this window so only real GM clicks flip the
+ *    opt-out.
+ */
+let _beneosTourMusicOptOut = false;
+let _beneosTourAudioBaselineDone = false;
+let _beneosTourAudioSelfChangeUntil = 0;
+
+// Call immediately BEFORE any tour-initiated playSound/stopSound on a managed
+// sound so the updatePlaylistSound hook treats the resulting doc update as
+// tour-driven (not a GM opt-out). 800ms comfortably spans the async update.
+const beneosMarkTourAudioSelfChange = () => { _beneosTourAudioSelfChangeUntil = Date.now() + 800; };
+
+/**
  * Stop every sound listed in MANAGED_AUDIO_KEYS that is currently playing.
  * Called when the GM leaves a tutorial scene for a non-tutorial scene, so
  * the Foundry-global tour playlist does not keep playing on unrelated
  * scenes (e.g. another Moulinette pack). Tour start paths always re-apply
- * the desired music via _applyTourAudio() so stopping here is safe — the
+ * the desired music via _applyTourAudio() so stopping here is safe: the
  * next tour entry will restart what it needs.
  */
 const stopAllManagedTourAudio = () => {
@@ -187,7 +213,7 @@ const stopAllManagedTourAudio = () => {
       const [pId, sId] = key.split(".");
       const pl = game.playlists.get(pId);
       const snd = pl?.sounds.get(sId);
-      if (snd?.playing) pl.stopSound(snd);
+      if (snd?.playing) { beneosMarkTourAudioSelfChange(); pl.stopSound(snd); }
     }
   } catch (e) {
     console.warn("Beneos Tutorial Tour | stopAllManagedTourAudio failed:", e);
@@ -273,6 +299,7 @@ const NEXT_SOUND_OVERRIDES = {
   "p1-lore-journal":  "beneos_click.ogg",
   "p1-help-journal":  "beneos_click.ogg",
   "p1-pin-activated": "beneos_click.ogg",
+  "bm-drawer-open":          "beneos_click.ogg",
   "bm-handout-1":            "beneos_click.ogg",
   "bm-handout-2":            "beneos_click.ogg",
   "bm-share-image":          "beneos_click.ogg",
@@ -300,8 +327,9 @@ const NEXT_SOUND_OVERRIDES = {
   "ct-search-install":         "beneos_click.ogg",
   "ct-place-token":            "beneos_roar.ogg",
   "ct-context-menu":           "beneos_click.ogg",
+  "ct-skin-switch":            "beneos_swoosh.ogg",
   "ct-skin-alternate":         "beneos_swoosh.ogg",
-  "ct-skin-switch-back":       "beneos_click.ogg",
+  "ct-skin-switch-back":       "beneos_swoosh.ogg",
   "ct-death-icon":             "beneos_monster_dead.ogg",
   "ct-character-sheet":        "beneos_click.ogg",
   "ct-biography-tactical":     "beneos_click.ogg",
@@ -313,12 +341,31 @@ const NEXT_SOUND_OVERRIDES = {
   "ct-journal-during-combat":  "beneos_swoosh.ogg",
   "ct-journal-death":          "beneos_swoosh.ogg",
   "ct-token-rotation":         "beneos_click.ogg",
-  "ct-rotation-setting":       "beneos_click.ogg",
+  "ct-rotation-setting":       "beneos_type.ogg",
+  "ct-codex-open":             "beneos_swoosh.ogg",
+  "ct-codex-tactical":         "beneos_click.ogg",
+  "ct-codex-foreshadow":       "beneos_click.ogg",
+  "ct-codex-hooks":            "beneos_click.ogg",
+  "ct-codex-theater":          "beneos_click.ogg",
+  "ct-codex-starter":          "beneos_click.ogg",
+  "ct-codex-prompts":          "beneos_click.ogg",
+  "ct-codex-death":            "beneos_click.ogg",
   "ct-creatures-complete":     "beneos_swoosh.ogg",
 
   // Page 7 — Loot tour
   "lt-title":                  "beneos_swoosh.ogg",
-  "lt-foundry-view":           "beneos_swoosh.ogg",
+  "lt-foundry-view":           "beneos_click.ogg",
+  "lt-item-modifier":          "beneos_click.ogg",
+  "lt-item-summary":           "beneos_swoosh.ogg",
+  "lt-item-codex-btn":         "beneos_click.ogg",
+  "lt-item-codex":             "beneos_swoosh.ogg",
+  "lt-item-lgc-btn":           "beneos_click.ogg",
+  "lt-item-lgc":               "beneos_swoosh.ogg",
+  "lt-radar-live":             "beneos_notification.ogg",
+  "lt-loot-open":              "beneos_click.ogg",
+  "lt-loot-tier":              "beneos_click.ogg",
+  "lt-loot-roll":              "beneos_click.ogg",
+  "lt-codex-detail":           "beneos_swoosh.ogg",
 
   // Page 8 — Spells tour
   "sp-card":                   "beneos_swoosh.ogg",
@@ -767,23 +814,55 @@ async function openMoulinetteBrowser() {
 }
 
 /**
- * Open Moulinette's cloud search UI pre-filtered to a specific Beneos pack.
+ * Open the Beneos Cloud search window pre-filtered to a search term.
  * Used by the per-scene quick-download tiles: each demo scene has a small
- * decorative tile in the top-left that opens this filtered view so the GM
- * can grab the matching release without hunting through Moulinette manually.
- * `filters` is an object of `{ creator, pack, terms }` — any subset is fine;
- * unknown keys are safely ignored by Moulinette.
+ * decorative tile in the top-left that opens the cloud window on the right
+ * tab with a search term so the GM can grab the matching release without
+ * hunting manually. Replaces the former Moulinette hand-off now that content
+ * is distributed through the Beneos Cloud and the Beneos search engine.
+ *
+ * @param {object}  opts
+ * @param {string} [opts.mode="bmap"]  Cloud tab to open ("bmap", "token", "item", "spell").
+ * @param {string} [opts.terms=""]     Text query to pre-fill the search field with.
+ * @param {string} [opts.view=null]    Battlemap sub-view to force: "releases",
+ *                                      "individual" or "bundles". Bundle releases
+ *                                      (e.g. "Modular Mega Dungeon") only show in
+ *                                      the Bundles view; without this a text search
+ *                                      lands in Releases/Individual Maps where the
+ *                                      bundle is invisible.
  */
-function openMoulinetteWithFilter(filters = {}) {
+async function openCloudWithSearch({ mode = "bmap", terms = "", view = null } = {}) {
   try {
-    const mou = game.modules.get("moulinette");
-    if (!mou?.api?.searchUI) {
-      ui.notifications.warn(game.i18n.localize("BENEOS.Notifications.Tours.MoulinetteUnavailable"));
-      return;
+    const { BeneosCloudWindowV2 } = await import("./cloud-v2/cloud-window-v2.mjs");
+    let win = game.beneos?.cloudWindowV2;
+    if (!win || !win.rendered) {
+      win = new BeneosCloudWindowV2();
+      await win.render({ force: true });
+      // Give the freshly-rendered window a beat to wire its listeners.
+      await new Promise(r => setTimeout(r, 600));
+    } else {
+      try { win.bringToFront?.(); } catch (e) {}
     }
-    mou.api.searchUI("mou-cloud", "Map", filters);
+    // Mirror _onSwitchTab: set the active tab and seed the text filter on the
+    // instance, then re-render the affected parts so both the sidebar input
+    // and the result list reflect the query.
+    win.searchMode = mode;
+    win._textFilter = terms || "";
+    // The quick-download tiles always want the grouped Releases view. Force it
+    // (unless a caller overrides via `view`) so a search never lands in the
+    // Individual-Maps or Bundles view that a prior manual switch left active.
+    if (mode === "bmap") win._bmapViewMode = view || "releases";
+    await win.render({ parts: ["header", "home", "sidebar", "results"] });
+    await new Promise(r => setTimeout(r, 250));
+    // Reflect the query into the visible input so the GM sees what was searched.
+    try {
+      const input = win.element?.querySelector?.("#beneos-search-text");
+      if (input) input.value = terms || "";
+    } catch (e) {}
+    return win;
   } catch (e) {
-    console.warn("Beneos | Moulinette search failed:", e);
+    console.warn("Beneos | Tour cloud search failed:", e);
+    return null;
   }
 }
 
@@ -815,6 +894,18 @@ function cleanupTourElements() {
   // returns early or errors out, _removeSpotlight may not run — leaves the
   // dim overlay locked over the screen until full tour exit.
   document.querySelectorAll(".beneos-spotlight-piece").forEach(el => el.remove());
+  // Close the Beneos Wiki window if a tour step opened it (p1-help-journal).
+  // It is an ApplicationV2, so _closeOpenedJournals does not cover it.
+  closeBeneosWikiWindow();
+}
+
+/** Close the Beneos Wiki documentation window if it is open. Best-effort. */
+function closeBeneosWikiWindow() {
+  try {
+    for (const [, app] of (foundry.applications?.instances ?? [])) {
+      if (app?.element?.id === "beneos-wiki-window") { try { app.close(); } catch (e) {} }
+    }
+  } catch (e) {}
 }
 
 /**
@@ -1224,6 +1315,10 @@ class BeneosSetupTour extends TourBase {
     document.body.classList.add("tour-active");
     cleanupTourElements();
     _installTourTooltipGuard(this);
+    // Reset the once-per-run guard for the cloud-install auto-install so a fresh
+    // tour run installs again, while navigating back/forth within a run does not
+    // re-fire the install.
+    this._autoInstallFired = false;
     const result = await super.start();
     this._playSound("beneos_start.ogg");
     return result;
@@ -1334,6 +1429,22 @@ class BeneosSetupTour extends TourBase {
       if (strip) this._applySpotlight(strip, 6);
     }
 
+    // cloud-library: explain that both Patreon studios' content lives here and
+    // that every area has free content usable with a free account. Keep the
+    // Cloud window open with the tab strip highlighted.
+    if (stepId === "cloud-library") {
+      await openCloudWindowForTour();
+      await new Promise(r => setTimeout(r, 300));
+      const strip = document.querySelector("#beneos-cloud-window-v2 nav.bc-tab-strip, #beneos-cloud-window-v2 .bc-tab-strip");
+      if (strip) {
+        this._trySelector("#beneos-cloud-window-v2 nav.bc-tab-strip") ||
+        this._trySelector("#beneos-cloud-window-v2 .bc-tab-strip");
+        this._applySpotlight(strip, 6);
+      } else {
+        this._trySelector("#beneos-cloud-window-v2");
+      }
+    }
+
     // cloud-signin: point at the sign-in button (logged out) or the account
     // chip (logged in), so the step works in both states.
     if (stepId === "cloud-signin") {
@@ -1367,27 +1478,15 @@ class BeneosSetupTour extends TourBase {
       }
     }
 
-    // cloud-find-tour: drive the Cloud window to Maps -> Releases, search
-    // "tour", and spotlight the Getting Started Tour release so the user can
-    // install it in the next step.
+    // cloud-find-tour: open Maps on the Releases view and search the exact
+    // release name. openCloudWithSearch forces `_bmapViewMode = "releases"` and
+    // seeds the text filter WITHOUT firing the raw input event that would
+    // auto-switch the window to the Individual-Maps view (where the release
+    // does not appear). Then spotlight the Getting Started Tour release.
     if (stepId === "cloud-find-tour") {
-      const el = await openCloudWindowForTour();
       try {
-        // Maps tab.
-        (el?.querySelector("#beneos-radio-bmap")
-          || [...(el?.querySelectorAll(".bc-tab") || [])].find(t => /maps/i.test(t.textContent)))?.click();
-        await new Promise(r => setTimeout(r, 400));
-        // Releases view.
-        el?.querySelector('button[data-bmap-view="releases"]')?.click();
-        await new Promise(r => setTimeout(r, 300));
-        // Search "tour".
-        const search = el?.querySelector("#beneos-search-text");
-        if (search) {
-          search.value = "tour";
-          search.dispatchEvent(new Event("input", { bubbles: true }));
-          search.dispatchEvent(new KeyboardEvent("keyup", { key: "r", bubbles: true }));
-        }
-      } catch (e) { console.warn("[Beneos] Tour | cloud-find-tour drive failed:", e); }
+        await openCloudWithSearch({ mode: "bmap", terms: "Beneos Getting Started Tour", view: "releases" });
+      } catch (e) { console.warn("[Beneos] Tour | cloud-find-tour search failed:", e); }
       const card = await this._waitForGettingStartedCard(7000);
       if (card) {
         if (!card.id) card.id = "beneos-tour-card-target";
@@ -1399,11 +1498,16 @@ class BeneosSetupTour extends TourBase {
       }
     }
 
-    // cloud-install: spotlight the Getting Started Tour's Install button. The
-    // user clicks it themselves to install it (we never auto-click).
+    // cloud-install: the Getting Started Tour pack is "free without account",
+    // so the tour installs it automatically (user chose auto-install). We
+    // spotlight the Install button and fire it once per tour run. The click goes
+    // through the normal gated install path, which now bypasses the sign-in
+    // requirement for this public_download release, so an anonymous user gets it
+    // without creating an account first.
     if (stepId === "cloud-install") {
       await openCloudWindowForTour();
-      const card = this._findGettingStartedCard()
+      const card = await this._waitForGettingStartedCard(7000)
+                || this._findGettingStartedCard()
                 || document.querySelector("#beneos-cloud-window-v2 .bc-result-card");
       const installBtn = card?.querySelector(".bc-action-install")
                       || card?.querySelector(".bc-card-button-primary")
@@ -1412,6 +1516,20 @@ class BeneosSetupTour extends TourBase {
         if (!installBtn.id) installBtn.id = "beneos-tour-install-target";
         this._trySelector(`#${installBtn.id}`);
         this._applySpotlight(installBtn, 8);
+        // Auto-install once per run. The guard is reset in start(); navigating
+        // back and forth within a run will not re-trigger the download.
+        if (!this._autoInstallFired) {
+          this._autoInstallFired = true;
+          try { installBtn.click(); }
+          catch (e) { console.warn("[Beneos] Tour | auto-install failed:", e); }
+          // The native installer now owns the screen: its progress window comes
+          // to the front, closes the Cloud window, and blocks interaction while
+          // running (see beneos-install-progress.mjs). Exit the Setup Tour a beat
+          // later so there is no tour box to abort mid-install; when the install
+          // completes, the beneos.releaseInstalled hook hands off to the Start
+          // Here scene which auto-starts the Getting Started tour.
+          setTimeout(() => { try { this.exit(); } catch (e) {} }, 700);
+        }
       } else {
         this._trySelector("#beneos-cloud-window-v2");
       }
@@ -2306,14 +2424,6 @@ class BeneosTutorialSceneTour extends TourBase {
    */
   async _triggerMLTTeleport(drawingId, tokenIdOrUuid) {
     const mlt = game.multilevel;
-    if (!mlt) {
-      console.warn("Beneos Tutorial Tour | game.multilevel not initialised — MLT module missing?");
-      return false;
-    }
-    if (typeof mlt._isPrimaryGamemaster === "function" && !mlt._isPrimaryGamemaster()) {
-      console.warn("Beneos Tutorial Tour | Not primary GM — MLT teleport aborted");
-      return false;
-    }
     const scene = canvas.scene;
     if (!scene) return false;
     const dId = drawingId.includes(".") ? drawingId.split(".").pop() : drawingId;
@@ -2324,37 +2434,64 @@ class BeneosTutorialSceneTour extends TourBase {
       return false;
     }
     const tokenDoc = tokenPlaceable.document;
-    try {
-      // Step 1: move the token into the centre of the "in" drawing so that
-      // MLT's position mapping produces a sensible destination. Pass
-      // `mlt_bypass: true` so MLT's own updateToken hook does NOT also try
-      // to run the teleport logic (which would cause a double teleport).
-      const gs = canvas.grid?.size ?? 100;
-      const shape = drawing.shape;
-      const drawX = drawing.x ?? 0;
-      const drawY = drawing.y ?? 0;
-      const w = shape?.width ?? gs;
-      const h = shape?.height ?? gs;
-      const cx = drawX + w / 2;
-      const cy = drawY + h / 2;
+    const gs = canvas.grid?.size ?? 100;
+    const centreOn = async (d) => {
+      const cx = (d.x ?? 0) + (d.shape?.width ?? gs) / 2;
+      const cy = (d.y ?? 0) + (d.shape?.height ?? gs) / 2;
       const tokenW = (tokenDoc.width ?? 1) * gs;
       const tokenH = (tokenDoc.height ?? 1) * gs;
-      await tokenDoc.update(
-        { x: cx - tokenW / 2, y: cy - tokenH / 2 },
-        { mlt_bypass: true }
-      );
-      // Tiny pause so the update fully propagates before we fire the teleport
-      await new Promise(r => setTimeout(r, 100));
-      // Step 2: directly invoke MLT's internal teleport activation. This
-      // bypasses _doTeleport's region-containment + _lastTeleport checks
-      // and goes straight to _activateTeleport → _mapPosition → queued
-      // token update + _notifyGmTeleport chat message.
-      mlt._activateTeleport(scene, drawing, [tokenDoc]);
-      return true;
-    } catch (e) {
-      console.warn("Beneos Tutorial Tour | MLT _activateTeleport threw:", e);
+      await tokenDoc.update({ x: cx - tokenW / 2, y: cy - tokenH / 2 }, { mlt_bypass: true });
+    };
+    const isPrimary = mlt && (typeof mlt._isPrimaryGamemaster !== "function" || mlt._isPrimaryGamemaster());
+
+    // Primary GM with MLT: run the REAL teleport so it also emits the MLT chat
+    // notification that bm-follow-players highlights. mlt_bypass on the pre-move
+    // stops MLT's own updateToken hook from double-firing the teleport.
+    if (mlt && isPrimary) {
+      try {
+        await centreOn(drawing);
+        await new Promise(r => setTimeout(r, 100));
+        mlt._activateTeleport(scene, drawing, [tokenDoc]);
+        return true;
+      } catch (e) {
+        console.warn("Beneos Tutorial Tour | MLT _activateTeleport threw, falling back to direct move:", e);
+      }
+    }
+
+    // No MLT, or this client is NOT the primary GM (MLT's _activateTeleport
+    // no-ops off the primary, so the demo would otherwise stall with the token
+    // stuck in the source teleporter). Move the token directly to the LINKED
+    // destination teleporter so the teleport is shown on whatever GM client is
+    // driving the tour. mlt_bypass keeps other clients from re-teleporting it.
+    const dest = this._findLinkedTeleporter(scene, drawing);
+    if (!dest) {
+      console.warn("Beneos Tutorial Tour | MLT teleport: no linked destination teleporter found");
       return false;
     }
+    try {
+      await centreOn(dest);
+      return true;
+    } catch (e) {
+      console.warn("Beneos Tutorial Tour | MLT teleport fallback move failed:", e);
+      return false;
+    }
+  }
+
+  /**
+   * Find the teleporter drawing linked to `source` — another drawing on the
+   * same scene sharing the same multilevel-tokens `teleportId`. Used by the
+   * teleport fallback so the tour can move a token to the destination without
+   * MLT's primary-GM-only activation.
+   */
+  _findLinkedTeleporter(scene, source) {
+    const NS = "multilevel-tokens";
+    const tid = source?.flags?.[NS]?.teleportId;
+    if (!tid) return null;
+    for (const d of scene.drawings) {
+      if (d.id === source.id) continue;
+      if (d.flags?.[NS]?.teleportId === tid) return d;
+    }
+    return null;
   }
 
   /**
@@ -2653,21 +2790,28 @@ class BeneosTutorialSceneTour extends TourBase {
   _applyTourAudio() {
     try {
       const desired = TOUR_AUDIO_MAP[this.id] ?? {};
+      const musicKey = desired.music ? `${desired.music.p}.${desired.music.s}` : null;
       const desiredKeys = new Set();
-      if (desired.music) desiredKeys.add(`${desired.music.p}.${desired.music.s}`);
-      if (desired.env)   desiredKeys.add(`${desired.env.p}.${desired.env.s}`);
+      if (musicKey) desiredKeys.add(musicKey);
+      if (desired.env) desiredKeys.add(`${desired.env.p}.${desired.env.s}`);
+      // Stop every managed sound that does not belong on this page.
       for (const key of MANAGED_AUDIO_KEYS) {
         if (desiredKeys.has(key)) continue;
         const [pId, sId] = key.split(".");
         const pl = game.playlists.get(pId);
         const snd = pl?.sounds.get(sId);
-        if (snd?.playing) pl.stopSound(snd);
+        if (snd?.playing) { beneosMarkTourAudioSelfChange(); pl.stopSound(snd); }
       }
+      // Start the desired sounds. If the GM manually muted the tour music
+      // earlier this run, honor that choice and never re-start the Music key
+      // (Env is unaffected). The music keeps playing across pages because an
+      // already-playing sound is left untouched (no gap, no restart).
       for (const key of desiredKeys) {
+        if (key === musicKey && _beneosTourMusicOptOut) continue;
         const [pId, sId] = key.split(".");
         const pl = game.playlists.get(pId);
         const snd = pl?.sounds.get(sId);
-        if (snd && !snd.playing) pl.playSound(snd);
+        if (snd && !snd.playing) { beneosMarkTourAudioSelfChange(); pl.playSound(snd); }
       }
     } catch (e) {
       console.warn("Beneos Tutorial Tour | _applyTourAudio failed:", e);
@@ -2693,6 +2837,12 @@ class BeneosTutorialSceneTour extends TourBase {
       const legacyPl = game.playlists.get(FAREWELL_PLAYLIST_ID);
       const legacySnd = legacyPl?.sounds.get(FAREWELL_SOUND_ID);
       if (legacySnd?.playing) legacyPl.stopSound(legacySnd);
+      // Also stop the managed Page 9 tour music so the CoS theme does not play
+      // over the reward video. Guarded so this tour-driven stop is not read as
+      // a GM opt-out. Fired at fn-farewell, right before the video is revealed.
+      const musicPl = game.playlists.get("pQpsDUhEtL0Q27vJ");
+      const musicSnd = musicPl?.sounds.get("mkZYCCk9xSiVIU9t");
+      if (musicSnd?.playing) { beneosMarkTourAudioSelfChange(); musicPl.stopSound(musicSnd); }
     } catch (e) {}
   }
 
@@ -2837,7 +2987,7 @@ class BeneosTutorialSceneTour extends TourBase {
    * @param {string} opts.id       Identifier suffix used for the DOM id
    * @param {{x: number, y: number}} [opts.offset]  Pixel offset from the canvas point
    */
-  _createFakeContextMenu({ canvasX, canvasY, items, id, offset = { x: 24, y: 0 } }) {
+  _createFakeContextMenu({ canvasX, canvasY, items, id, offset = { x: 24, y: 0 }, style = "default" }) {
     let screenX = 0, screenY = 0;
     try {
       const screen = canvas.stage.toGlobal({ x: canvasX, y: canvasY });
@@ -2846,6 +2996,51 @@ class BeneosTutorialSceneTour extends TourBase {
     } catch (e) {
       console.warn("Beneos Tutorial Tour | Failed to compute screen position:", e);
     }
+
+    // POI variant: reuse the real Points-of-Interest Teleporter menu styling
+    // (#poi-tp-ctx-menu + .poi-menu-* classes from poi-teleport.css) so the
+    // tour demo looks identical to a real navigator right-click. We only add
+    // inline style overrides (no new CSS): the real menu is canvas-scaled at
+    // 45px and z-index 10; for a fixed tour overlay we shrink the font and
+    // lift it above the tour fade.
+    if (style === "poi") {
+      const menu = document.createElement("div");
+      menu.id = "poi-tp-ctx-menu";
+      Object.assign(menu.style, {
+        position: "fixed",
+        left: `${screenX + offset.x}px`,
+        top: `${screenY + offset.y}px`,
+        fontSize: "17px",
+        minWidth: "220px",
+        zIndex: "10005",
+        pointerEvents: "none",
+        transform: "none"
+      });
+      const ul = document.createElement("ul");
+      ul.classList.add("poi-menu-list");
+      for (const item of items) {
+        const li = document.createElement("li");
+        li.classList.add("poi-menu-option");
+        const iconSpan = document.createElement("span");
+        iconSpan.classList.add("poi-option-icon");
+        if (item.icon) {
+          const i = document.createElement("i");
+          i.className = item.icon;
+          iconSpan.appendChild(i);
+        }
+        const titleSpan = document.createElement("span");
+        titleSpan.classList.add("poi-option-title");
+        titleSpan.textContent = item.label;
+        li.appendChild(iconSpan);
+        li.appendChild(titleSpan);
+        ul.appendChild(li);
+      }
+      menu.appendChild(ul);
+      document.body.appendChild(menu);
+      this._fakeContextMenus.push(menu);
+      return menu;
+    }
+
     const menu = document.createElement("div");
     menu.id = `beneos-fake-context-menu-${id}`;
     menu.classList.add("beneos-fake-context-menu");
@@ -3001,11 +3196,22 @@ class BeneosTutorialSceneTour extends TourBase {
     cleanupTourElements();
     _installTourTooltipGuard(this);
     await this._ensureUnpaused();
-    // On every auto-starting scene tour (Welcome + page tours), enforce the
-    // baseline audio floors so the ambient + music playlists are actually
-    // audible during the tutorial. Module-started tours (Setup) extend
-    // TourBase directly and opt out of this.
-    await this._ensureMinAudioVolume();
+    // Fresh run starting at the Welcome scene: reset the per-run audio state so
+    // the music plays and the volume floor is (re)applied. Direct entry into a
+    // later page from a non-tutorial scene is reset in the canvasReady handler,
+    // so reviewing any single page later always begins with music on.
+    if (this.id === "tutorial-start-here") {
+      _beneosTourMusicOptOut = false;
+      _beneosTourAudioBaselineDone = false;
+    }
+    // Enforce the baseline audio floors ONCE per run so the ambient + music
+    // playlists are audible when the tutorial begins. After that we never
+    // re-clamp: a GM who lowers or raises the Music volume keeps their setting.
+    // Module-started tours (Setup) extend TourBase directly and opt out of this.
+    if (!_beneosTourAudioBaselineDone) {
+      await this._ensureMinAudioVolume();
+      _beneosTourAudioBaselineDone = true;
+    }
     // For the Overview tour, ensure the demo-state (hidden pins + placeholder
     // tiles) is active. This is a backup for when the tour is triggered
     // manually and the canvasReady hook pre-hide didn't fire.
@@ -3077,6 +3283,21 @@ class BeneosTutorialSceneTour extends TourBase {
         if (stale?.length) await canvas.scene.deleteEmbeddedDocuments("Token", stale.map(t => t.id));
       } catch (e) {}
     }
+    // Battlemap tour: blank slate — creatures live in the drawer, not on the
+    // map. Remove any tokens a previous run of the drawer steps placed
+    // (Trained Fighter / Aberrant Tyrant) so each run starts clean.
+    if (this.id === "tutorial-page-2-battlemaps") {
+      this._tourPlacedTokenIds = [];
+      try {
+        const flag = canvas.scene?.getFlag("beneos-module", "creatureInstaller");
+        const names = [
+          ...(flag?.srdCreatures || []).filter(c => /trained fighter/i.test(c.name || "")),
+          ...(flag?.beneosCreatures || []).filter(c => /aberrant tyrant/i.test(c.name || ""))
+        ].map(c => (c.name || "").toLowerCase());
+        const stale = canvas.tokens?.placeables.filter(t => names.includes((t.actor?.name || t.name || "").toLowerCase()));
+        if (stale?.length) await canvas.scene.deleteEmbeddedDocuments("Token", stale.map(t => t.id));
+      } catch (e) {}
+    }
     // Apply this tour's Music + Environment, stopping any managed sound
     // from a previous tour that doesn't belong here.
     this._applyTourAudio();
@@ -3128,6 +3349,36 @@ class BeneosTutorialSceneTour extends TourBase {
       }
       this._lootOriginalSorts = [];
       try { game.items.get("6QYFmLk3ne0HNXZA")?.sheet?.close(); } catch (e) {}
+      // Blank slate: strip the demo Beneos item off any Goblin it was left on by
+      // a previous run of the item-attune flow. exit() is sync, so fire-and-forget.
+      try {
+        const srcName = game.items.get("6QYFmLk3ne0HNXZA")?.name;
+        for (const a of game.actors.filter(x => /goblin/i.test(x.name))) {
+          const stale = a.items.filter(it => it.name === srcName && it.getFlag?.("beneos-module", "loot")?.origin?.slug === "sanctified");
+          if (stale.length) a.deleteEmbeddedDocuments("Item", stale.map(it => it.id));
+        }
+      } catch (e) {}
+      // Remove the Item-Radar ping the tour fired, so the world's active-ping
+      // list is left clean. exit() is sync -> fire-and-forget.
+      try {
+        const pings = game.settings.get("beneos-module", "beneos-lgc-active-pings");
+        if (Array.isArray(pings) && this._tourPingId) {
+          const filtered = pings.filter(p => p?.id !== this._tourPingId);
+          if (filtered.length !== pings.length) game.settings.set("beneos-module", "beneos-lgc-active-pings", filtered);
+        }
+      } catch (e) {}
+      this._tourGoblinActorId = null;
+      this._tourGoblinItemId = null;
+      this._tourPingId = null;
+      // Restore the real token-access check if the radar stub was left on.
+      try {
+        const cloud = game.beneos?.cloud;
+        if (cloud) {
+          const real = this._tourOrigHasAccess || cloud.hasCampaignAccess?._beneosRealAccess;
+          if (real) cloud.hasCampaignAccess = real;
+        }
+        this._tourOrigHasAccess = null;
+      } catch (e) {}
     }
     // Spells tour: close the demo spell sheet opened by sp-foundry-view
     if (this.id === "tutorial-page-8-spells") {
@@ -3191,6 +3442,21 @@ class BeneosTutorialSceneTour extends TourBase {
         const actor = game.actors.get("q5thcJTwfi7uHZLA") ?? game.actors.find(a => a.name.toLowerCase().includes("rot cerf"));
         if (actor?.sheet?.rendered) actor.sheet.close();
       } catch (e) {}
+      // Remove any codex content/tokenKey the tour injected onto the Rot Cerf.
+      try {
+        const rotId = this._tourInjectedCodexContent || this._tourInjectedCodexTokenKey;
+        if (rotId) {
+          const rot = game.actors.get(rotId);
+          if (rot) {
+            const unset = {};
+            if (this._tourInjectedCodexContent) unset["flags.-=beneos"] = null;
+            if (this._tourInjectedCodexTokenKey) unset["flags.world.beneos.-=tokenKey"] = null;
+            if (Object.keys(unset).length) rot.update(unset);
+          }
+          this._tourInjectedCodexContent = null;
+          this._tourInjectedCodexTokenKey = null;
+        }
+      } catch (e) {}
       this._restoreBeneosFlag();
     }
     // Dismiss any context menu left by sc-static-maps step
@@ -3203,13 +3469,16 @@ class BeneosTutorialSceneTour extends TourBase {
     }
     this._removeSpotlight();
     document.body.classList.remove("beneos-no-fade");
-    // Stop every tour-managed sound. Without this, manually aborting a tour
-    // (X-button, Esc, or navigating to a non-tutorial scene) leaves the
-    // Foundry-global tour playlist running. It then "follows" the GM onto
-    // unrelated scenes (e.g. other Moulinette packs), overriding the scene's
-    // own ambient sound. A later tour entry restarts what it needs via
-    // _applyTourAudio(), so stopping here is always safe.
-    stopAllManagedTourAudio();
+    // NOTE: we deliberately do NOT stop the tour music here. exit() fires on
+    // every page-to-page transition (the canvasReady auto-start exits the
+    // previous tour before starting the next), and with multiple GM clients
+    // connected each client runs this. Stopping here made the shared playlist
+    // sound toggle off/on across the scene swap, so Foundry tore down and
+    // recreated the Sound from 0 -> the music audibly restarted every page.
+    // The music must run continuously. Genuine tour-leave is handled by the
+    // non-tutorial canvasReady branch (stopAllManagedTourAudio), and the next
+    // tutorial page's _applyTourAudio() keeps the right track playing (it is a
+    // no-op while the sound is already playing).
     _restoreTourTooltipGuard(this);
     tourCleanup(this);
     return super.exit();
@@ -3256,6 +3525,49 @@ class BeneosTutorialSceneTour extends TourBase {
       }
       this._lootOriginalSorts = [];
       try { game.items.get("6QYFmLk3ne0HNXZA")?.sheet?.close(); } catch (e) {}
+      // Remove the Beneos item we dropped onto the demo Goblin + close its sheet.
+      try {
+        const goblin = this._tourGoblinActorId ? game.actors.get(this._tourGoblinActorId) : null;
+        if (goblin) {
+          if (this._tourGoblinItemId && goblin.items.get(this._tourGoblinItemId)) {
+            await goblin.deleteEmbeddedDocuments("Item", [this._tourGoblinItemId]);
+          }
+          if (goblin.sheet?.rendered) goblin.sheet.close();
+        }
+      } catch (e) {}
+      // Remove the Item-Radar ping the tour fired, so the world's active-ping
+      // list is left clean.
+      try {
+        const pings = game.settings.get("beneos-module", "beneos-lgc-active-pings");
+        if (Array.isArray(pings) && this._tourPingId) {
+          const filtered = pings.filter(p => p?.id !== this._tourPingId);
+          if (filtered.length !== pings.length) await game.settings.set("beneos-module", "beneos-lgc-active-pings", filtered);
+        }
+      } catch (e) {}
+      // Close any Beneos feature windows opened by the item tour.
+      try {
+        for (const [, app] of (foundry.applications?.instances ?? [])) {
+          const cl = app?.element?.classList;
+          if (app?.element?.id === "beneos-lgc" || cl?.contains?.("beneos-lgc") ||
+              cl?.contains?.("beneos-loot-generator") || cl?.contains?.("beneos-magic-shop") ||
+              app?.element?.id === "beneos-codex" || cl?.contains?.("beneos-codex") ||
+              app?.element?.id === "beneos-cloud-window-v2" || cl?.contains?.("beneos-cloud-app")) {
+            try { app.close(); } catch (e) {}
+          }
+        }
+      } catch (e) {}
+      this._tourGoblinActorId = null;
+      this._tourGoblinItemId = null;
+      this._tourPingId = null;
+      // Restore the real token-access check if the radar stub was left on.
+      try {
+        const cloud = game.beneos?.cloud;
+        if (cloud) {
+          const real = this._tourOrigHasAccess || cloud.hasCampaignAccess?._beneosRealAccess;
+          if (real) cloud.hasCampaignAccess = real;
+        }
+        this._tourOrigHasAccess = null;
+      } catch (e) {}
     }
     if (this.id === "tutorial-page-8-spells") {
       try { game.items.get("2iY3M4R5kl1aFPub")?.sheet?.close(); } catch (e) {}
@@ -3307,6 +3619,15 @@ class BeneosTutorialSceneTour extends TourBase {
         const actor = game.actors.get("q5thcJTwfi7uHZLA") ?? game.actors.find(a => a.name.toLowerCase().includes("rot cerf"));
         if (actor?.sheet?.rendered) actor.sheet.close();
       } catch (e) {}
+    }
+    // Battlemap tour: remove the creatures the drawer steps placed, leaving the
+    // scene clean (creatures belong in the drawer). Idempotent for re-runs.
+    if (this.id === "tutorial-page-2-battlemaps" && this._tourPlacedTokenIds?.length) {
+      try {
+        const ids = this._tourPlacedTokenIds.filter(id => canvas.scene?.tokens?.get(id));
+        if (ids.length) await canvas.scene.deleteEmbeddedDocuments("Token", ids);
+      } catch (e) {}
+      this._tourPlacedTokenIds = [];
     }
     // Dismiss any context menu left by sc-static-maps step
     try { document.querySelector('#context-menu')?.remove(); } catch (e) {}
@@ -3714,18 +4035,29 @@ class BeneosTutorialSceneTour extends TourBase {
     }
 
     if (stepId === "p1-help-journal") {
-      // Step B: open the Beneos documentation journal. Same screen-marker
-      // approach as p1-lore-journal — prevents the tooltip from dismissing
-      // when the user accidentally hovers over the open journal.
-      // German users get the German documentation journal; all other
-      // locales share the English one (no other translations exist).
-      const journalId = game.i18n.lang === "de" ? "Q2wVmtfGoydDgvom" : "Q5xvdypjD1tGOro5";
-      const sheet = await this._openJournal(journalId);
-      await new Promise(r => setTimeout(r, 700));
-      const el = sheet?.element;
-      const sheetEl = el?.getBoundingClientRect ? el : el?.[0];
-      if (sheetEl?.getBoundingClientRect) {
-        const rect = sheetEl.getBoundingClientRect();
+      // Step B: open the in-module Beneos documentation. This used to open a
+      // static journal; the module now ships an information framework
+      // (BeneosWikiWindow), the same window the documentation toolbar icon
+      // opens. We open it on its default "overview" page and anchor the
+      // tour tooltip to a screen marker over the window so hovering the
+      // window does not dismiss the tooltip.
+      let wikiEl = null;
+      try {
+        if (typeof game.beneos?.openWiki === "function") {
+          game.beneos.openWiki();
+        } else {
+          const { BeneosWikiWindow } = await import("./cloud-v2/wiki/beneos-wiki-window.mjs");
+          BeneosWikiWindow.open();
+        }
+      } catch (e) { console.warn("Beneos Tutorial Tour | wiki open failed:", e); }
+      // Wait for the window to render, then anchor to it.
+      for (let i = 0; i < 20 && !wikiEl; i++) {
+        wikiEl = document.querySelector("#beneos-wiki-window");
+        if (!wikiEl) await new Promise(r => setTimeout(r, 150));
+      }
+      await new Promise(r => setTimeout(r, 300));
+      if (wikiEl?.getBoundingClientRect) {
+        const rect = wikiEl.getBoundingClientRect();
         this._createScreenMarker({
           x: rect.left, y: rect.top, w: rect.width, h: rect.height,
           id: "p1-help-journal-anchor"
@@ -3775,17 +4107,21 @@ class BeneosTutorialSceneTour extends TourBase {
       await this._panTo({ x: coords.x + coords.w / 2, y: coords.y + coords.h / 2, scale: 0.7, sound: false });
       this._createCanvasMarker({ ...coords, id: "p1-continue", highlight: true });
       this._trySelector("#beneos-tour-marker-p1-continue");
-      // Render a visual-only fake context menu next to the teleporter showing
-      // the typical Beneos right-click options.
+      // Render a visual-only fake context menu next to the teleporter, styled
+      // exactly like a real Points-of-Interest Teleporter navigator menu
+      // (reuses poi-teleport.css). Labels come from the POI module's own i18n
+      // so they match the real menu in every language; English fallback.
+      const L = (k, fb) => { const s = game.i18n.localize(k); return (s && s !== k) ? s : fb; };
       this._createFakeContextMenu({
         canvasX: coords.x + coords.w,
         canvasY: coords.y + coords.h / 2,
         offset: { x: 24, y: -40 },
         id: "p1-continue",
+        style: "poi",
         items: [
-          { icon: "fas fa-bullhorn", label: "Activate Scene" },
-          { icon: "fas fa-eye",      label: "View Scene" },
-          { icon: "fas fa-download", label: "Preload Scene" }
+          { icon: "fas fa-eye fa-fw",      label: L("poitp.view", "View Scene") },
+          { icon: "fas fa-bullseye fa-fw", label: L("poitp.activate", "Activate Scene") },
+          { icon: "fas fa-download fa-fw", label: L("poitp.preLoadScene", "Preload Scene") }
         ]
       });
     }
@@ -3968,6 +4304,229 @@ class BeneosTutorialSceneTour extends TourBase {
           });
         }
       } catch (e) {}
+    }
+
+    /* ====================================================================
+       Page 2 Creature Drawer steps. Beneos creatures no longer sit on the
+       map by default; they live in the Creature Drawer (this scene carries
+       a real creatureInstaller flag). We explain the drawer here and place
+       the creatures the teleporter demo needs (Trained Fighter) plus a bonus
+       reference creature (Aberrant Tyrant) at their flag coordinates, so the
+       later bm-player-field-moved step has a token to control.
+       ==================================================================== */
+    const bmEnsureDrawer = async ({ expanded = true } = {}) => {
+      document.body.classList.add("beneos-no-fade");
+      try {
+        const initial = canvas.scene?.initial;
+        if (initial && Number.isFinite(initial.scale)) {
+          await this._panTo({ x: initial.x, y: initial.y, scale: initial.scale, duration: 500, sound: false });
+        }
+      } catch (e) {}
+      try {
+        const { BeneosCreatureInstaller } = await import("./creature-installer/creature-installer.mjs");
+        const inst = BeneosCreatureInstaller.get?.();
+        if (inst) {
+          try { await inst.setHidden(false); } catch (e) {}
+          inst.expanded = expanded;
+          inst.attachToActiveScene?.();
+          await new Promise(r => setTimeout(r, 600));
+          // attachToActiveScene forces expanded=false on a scene change; re-assert
+          // our requested state and re-render so it sticks.
+          if (inst.expanded !== expanded) {
+            inst.expanded = expanded;
+            try { inst.render?.(); } catch (e) {}
+            await new Promise(r => setTimeout(r, 250));
+          }
+        }
+      } catch (e) { console.warn("Beneos Tutorial Tour | Page 2 drawer setup failed:", e); }
+    };
+    const bmCollapseDrawer = async () => {
+      try {
+        const { BeneosCreatureInstaller } = await import("./creature-installer/creature-installer.mjs");
+        const inst = BeneosCreatureInstaller.get?.();
+        if (inst) { inst.expanded = false; try { inst.render?.(); } catch (e) {} await new Promise(r => setTimeout(r, 200)); }
+      } catch (e) {}
+    };
+    // Place one creature from its creatureInstaller flag entry (positions[0] is
+    // a full token document). Resolves the actor robustly, skips duplicates,
+    // and records the placed id so bm-complete can remove it again. An optional
+    // posOverride {x,y} forces the drop coordinate (used by the teleporter demo
+    // so the knight always starts at the source teleporter, regardless of the
+    // flag's stored — and historically unreliable — coordinate).
+    const bmPlaceFromFlagEntry = async (entry, posOverride = null) => {
+      if (!entry?.positions?.length) return null;
+      const pos = entry.positions[0];
+      let actorId = pos.actorId || entry.actorId;
+      if (actorId && !game.actors.get(actorId)) actorId = null;
+      if (!actorId && entry.name) actorId = game.actors.getName(entry.name)?.id ?? null;
+      if (!actorId) { console.warn("Beneos Tutorial Tour | drawer place: actor not found for", entry.name); return null; }
+      if (canvas.tokens?.placeables.some(t => t.document?.actorId === actorId)) {
+        return canvas.tokens.placeables.find(t => t.document?.actorId === actorId) ?? null;
+      }
+      const td = foundry.utils.deepClone(pos);
+      delete td._id; delete td._movementHistory; delete td._regions; delete td.delta;
+      td.actorId = actorId;
+      if (posOverride && Number.isFinite(posOverride.x) && Number.isFinite(posOverride.y)) {
+        td.x = posOverride.x; td.y = posOverride.y;
+      }
+      try {
+        const [created] = await canvas.scene.createEmbeddedDocuments("Token", [td]);
+        if (created) { (this._tourPlacedTokenIds ??= []).push(created.id); return canvas.tokens.get(created.id) ?? null; }
+      } catch (e) { console.warn("Beneos Tutorial Tour | drawer place failed for", entry.name, e); }
+      return null;
+    };
+    // Start coordinate for the teleporter demo: two grid cells directly above
+    // the source (bottom) teleporter region "lX676XA39rdDuOLN", snapped so the
+    // token sits inside its horizontal span. bm-player-field-moved then nudges
+    // the knight two cells DOWN into the teleporter, and bm-follow-players warps
+    // it to the destination teleporter. Derived from live geometry so it stays
+    // correct even if the map or the flag coordinate changes.
+    const bmSourceTeleportStart = () => {
+      const grid = canvas.scene?.grid?.size || 100;
+      const src = canvas.scene?.drawings?.get("lX676XA39rdDuOLN");
+      if (!src) return { x: 2000, y: 2800 };
+      const y = Math.round(src.y) - 2 * grid;
+      const spanCenterX = src.x + (src.shape?.width || grid) / 2;
+      const x = Math.floor(spanCenterX / grid) * grid;
+      return { x, y };
+    };
+    const bmDrawerScreenMarker = (id) => {
+      this._createScreenMarker({ x: window.innerWidth / 2 - 200, y: window.innerHeight - 120, w: 400, h: 80, id });
+      this._trySelector("#beneos-screen-marker-" + id);
+    };
+
+    if (stepId === "bm-drawer-button") {
+      // Show the collapsed drawer handle ("Add Creatures") WITHOUT opening it.
+      // The step text ends with "Let's open the creature drawer"; clicking Next
+      // plays a click (NEXT_SOUND_OVERRIDES for bm-drawer-open) and opens it.
+      await bmEnsureDrawer({ expanded: false });
+      const tab = document.querySelector("#beneos-creature-installer .bci-tab");
+      if (tab) {
+        this._applySpotlight(tab, 8);
+        tab.id = tab.id || "beneos-tour-bm-drawer-button-anchor";
+        this._trySelector("#" + tab.id);
+      } else {
+        bmDrawerScreenMarker("bm-drawer-button");
+      }
+    }
+
+    if (stepId === "bm-drawer-open") {
+      // Expand the drawer and explain it (free defaults on the left, premium
+      // Beneos creatures on the right). The click SFX fires via _renderStep.
+      await bmEnsureDrawer({ expanded: true });
+      const panel = document.querySelector("#beneos-creature-installer .bci-panel");
+      const target = panel || document.querySelector("#beneos-creature-installer .bci-tab");
+      if (target) {
+        this._applySpotlight(target, 8);
+        target.id = target.id || "beneos-tour-bm-drawer-open-anchor";
+        this._trySelector("#" + target.id);
+      } else {
+        bmDrawerScreenMarker("bm-drawer-open");
+      }
+    }
+
+    if (stepId === "bm-drawer-hide") {
+      await bmEnsureDrawer({ expanded: true });
+      const hide = document.querySelector("#beneos-creature-installer .bci-hide");
+      if (hide) {
+        this._applySpotlight(hide, 8);
+        hide.id = hide.id || "beneos-tour-bm-drawer-hide-anchor";
+        this._trySelector("#" + hide.id);
+      } else {
+        const panel = document.querySelector("#beneos-creature-installer .bci-panel");
+        if (panel) { this._applySpotlight(panel, 8); panel.id = panel.id || "beneos-tour-bm-drawer-hide-anchor"; this._trySelector("#" + panel.id); }
+        else { bmDrawerScreenMarker("bm-drawer-hide"); }
+      }
+    }
+
+    if (stepId === "bm-drawer-buttons") {
+      // Highlight BOTH bottom buttons: "Place free creatures on map" and
+      // "Support to add Beneos creatures". One click places everything.
+      await bmEnsureDrawer({ expanded: true });
+      const dark = document.querySelector("#beneos-creature-installer .bci-btn-dark");
+      const gold = document.querySelector("#beneos-creature-installer .bci-btn-gold");
+      const targets = [dark, gold].filter(Boolean);
+      if (targets.length) {
+        this._applySpotlight(targets, 8);
+        const anchor = dark || gold;
+        anchor.id = anchor.id || "beneos-tour-bm-drawer-buttons-anchor";
+        this._trySelector("#" + anchor.id);
+      } else {
+        const panel = document.querySelector("#beneos-creature-installer .bci-panel");
+        if (panel) { this._applySpotlight(panel, 8); panel.id = panel.id || "beneos-tour-bm-drawer-buttons-anchor"; this._trySelector("#" + panel.id); }
+        else { bmDrawerScreenMarker("bm-drawer-buttons"); }
+      }
+    }
+
+    if (stepId === "bm-drawer-click-sheet") {
+      // Demonstrate that clicking a creature in the drawer opens its sheet:
+      // a quick-access shortcut to this scene's creatures.
+      await bmEnsureDrawer({ expanded: true });
+      let disc = document.querySelector('#beneos-creature-installer .bci-disc[data-uuid*="0kffK0uqEseXCTQi"]')
+              ?? [...document.querySelectorAll('#beneos-creature-installer .bci-disc[data-uuid]')].find(d => /trained fighter/i.test(d.dataset?.name || ""))
+              ?? document.querySelector('#beneos-creature-installer .bci-col-srd .bci-disc[data-uuid]');
+      let actor = null;
+      try {
+        const uuid = disc?.dataset?.uuid;
+        const doc = uuid ? await fromUuid(uuid) : null;
+        actor = doc?.documentName === "Actor" ? doc : (doc?.actor ?? null);
+      } catch (e) {}
+      if (!actor) actor = game.actors.get("0kffK0uqEseXCTQi") ?? game.actors.getName("Trained Fighter");
+      if (actor) {
+        try { await actor.sheet.render(true); this._openedJournals.push("__sheet:" + actor.id); } catch (e) {}
+        await new Promise(r => setTimeout(r, 700));
+        const el = actor.sheet?.element?.[0] ?? actor.sheet?.element;
+        if (el?.getBoundingClientRect) {
+          const rect = el.getBoundingClientRect();
+          this._createScreenMarker({ x: rect.left, y: rect.top, w: rect.width, h: rect.height, id: "bm-drawer-click-sheet" });
+          this._trySelector("#beneos-screen-marker-bm-drawer-click-sheet");
+          return;
+        }
+      }
+      bmDrawerScreenMarker("bm-drawer-click-sheet");
+    }
+
+    if (stepId === "bm-drawer-placed") {
+      // Close the demo actor sheet, then place ONLY the Trained Fighter (used by
+      // the teleporter demo) at the SOURCE teleporter start — NOT the flag's
+      // stored coordinate, which has flipped to the destination tile and left
+      // the knight at the wrong end of the teleport. Collapse the drawer.
+      // CENTER message step; the swoosh zoom happens in bm-drawer-show-creature.
+      try {
+        const tfActor = game.actors.get("0kffK0uqEseXCTQi") ?? game.actors.getName("Trained Fighter");
+        if (tfActor?.sheet?.rendered) await tfActor.sheet.close();
+      } catch (e) {}
+      await bmEnsureDrawer({ expanded: true });
+      try {
+        const flag = canvas.scene?.getFlag(MODULE_ID, "creatureInstaller");
+        const tf = flag?.srdCreatures?.find(c => /trained fighter/i.test(c.name || ""));
+        if (tf) await bmPlaceFromFlagEntry(tf, bmSourceTeleportStart());
+      } catch (e) { console.warn("Beneos Tutorial Tour | bm-drawer-placed failed:", e); }
+      await new Promise(r => setTimeout(r, 300));
+      await bmCollapseDrawer();
+    }
+
+    if (stepId === "bm-drawer-show-creature") {
+      // Zoom in on the freshly placed Trained Fighter with a swoosh so the user
+      // clearly sees which creature was dragged out of the drawer. Locate the
+      // token at runtime (flag position 2800,2000) instead of a hardcoded guess
+      // so the camera always lands ON it. The previous fixed coordinate had x/y
+      // swapped (panned to 2050,2850 while the token is at 2850,2050) so the
+      // zoom framed an empty patch of map and the creature looked absent.
+      document.body.classList.add("beneos-no-fade");
+      const tf = canvas.tokens?.placeables.find(t => t.document?.actorId === "0kffK0uqEseXCTQi")
+              ?? canvas.tokens?.placeables.find(t => /trained fighter/i.test(t.actor?.name || t.name || ""));
+      let coords, center;
+      if (tf) {
+        coords = { x: tf.document.x - 100, y: tf.document.y - 100, w: tf.w + 200, h: tf.h + 200 };
+        center = { x: tf.center.x, y: tf.center.y };
+      } else {
+        coords = { x: 2700, y: 1900, w: 300, h: 300 };
+        center = { x: 2850, y: 2050 };
+      }
+      await this._panTo({ x: center.x, y: center.y, scale: 0.95, duration: 700, sound: true });
+      this._createCanvasMarker({ ...coords, id: "bm-drawer-show-creature", highlight: true });
+      this._trySelector("#beneos-tour-marker-bm-drawer-show-creature");
     }
 
     if (stepId === "bm-player-navigators") {
@@ -4723,7 +5282,28 @@ class BeneosTutorialSceneTour extends TourBase {
                  ?? game.actors.find(a => a.name?.toLowerCase().includes("rot cerf"));
       const ref = actor?.img || actor?.prototypeToken?.texture?.src || "";
       const slash = ref.lastIndexOf("/");
-      if (slash >= 0) return `${ref.slice(0, slash + 1)}${filename}`;
+      // The dead-variant sprite is a RELEASE asset that lives in the Getting-
+      // Started map folder (map_assets/getting_started/), NOT in the per-token
+      // beneos_tokens/184-rot_cerf/ folder the live token/top-down variants load
+      // from. Derive it from the beneos_assets/ prefix so the death step's icon
+      // actually resolves (otherwise it 404s and the dead sprite is invisible).
+      if (/_dead\.webp$/i.test(filename) || filename.includes("-token_dead")) {
+        const dm = ref.match(/^(.*?)beneos_assets\//);
+        const dprefix = dm ? dm[1] : "";
+        return `${dprefix}beneos_assets/beneos_battlemaps/map_assets/getting_started/${filename}`;
+      }
+      // The flat -token files live next to the actor portrait, and the top-down
+      // variants (-top.webp) live in the per-token subfolder "184-rot_cerf/".
+      // Append that subfolder for top-down files unless the folder already IS
+      // the token subfolder (shipped-world layout).
+      const withSubfolder = (folder) =>
+        (filename.includes("-top.webp") && folder && !/184-rot_cerf\/?$/.test(folder.replace(/\/$/, "")))
+          ? `${folder}184-rot_cerf/`
+          : folder;
+      if (slash >= 0) {
+        const folder = withSubfolder(ref.slice(0, slash + 1));
+        return `${folder}${filename}`;
+      }
       // Last-resort fallback: derive prefix from the on-canvas token, then
       // append the historic asset folder. Only reached if the actor has no img.
       const token = canvas.tokens?.placeables.find(t => t.actor?.id === "q5thcJTwfi7uHZLA"
@@ -4731,7 +5311,8 @@ class BeneosTutorialSceneTour extends TourBase {
       const src = token?.document?.texture?.src || "";
       const m = src.match(/^(.*?)beneos_assets\//);
       const prefix = m ? m[1] : "";
-      return `${prefix}beneos_assets/beneos_battlemaps/map_assets/getting_started/${filename}`;
+      const base = `${prefix}beneos_assets/beneos_battlemaps/map_assets/getting_started/`;
+      return `${withSubfolder(base)}${filename}`;
     };
 
     // Swap the Rot Cerf token's texture to a demo asset.
@@ -4741,6 +5322,26 @@ class BeneosTutorialSceneTour extends TourBase {
       if (!token) return;
       if (!this._savedRotCerfTexture) this._savedRotCerfTexture = token.document.texture.src;
       await token.document.update({ "texture.src": ctRotCerfAsset(filename) });
+    };
+
+    // Ensure the Rot Cerf drop-shadow renders. The FX engine only runs when the
+    // actor is a recognized Beneos creature (flags.world.beneos.tokenKey set);
+    // during the tour the actor may only carry the rendering flag, so inject the
+    // tokenKey (tracked for cleanup, same key the codex step uses) and re-apply.
+    const ctApplyTokenShadow = async () => {
+      const actor = game.actors.get("q5thcJTwfi7uHZLA") ?? game.actors.find(a => a.name?.toLowerCase().includes("rot cerf"));
+      const token = canvas.tokens?.placeables.find(t => t.actor?.name?.toLowerCase().includes("rot cerf"));
+      if (!actor) return;
+      try {
+        if (!actor.getFlag("world", "beneos")?.tokenKey) {
+          await actor.update({ "flags.world.beneos.tokenKey": "184-rot_cerf" });
+          if (!this._tourInjectedCodexTokenKey) this._tourInjectedCodexTokenKey = actor.id;
+        }
+      } catch (e) {}
+      try {
+        const { BeneosFXEngine } = await import("./cloud-v2/beneos-fx.mjs");
+        if (token && BeneosFXEngine?.applyForToken) BeneosFXEngine.applyForToken(token);
+      } catch (e) { console.warn("Beneos Tutorial Tour | shadow apply failed:", e); }
     };
 
     // Helper: anchor the tour tooltip in upper-third center of the canvas
@@ -4928,6 +5529,25 @@ class BeneosTutorialSceneTour extends TourBase {
       document.body.classList.add("beneos-no-fade");
       await ctEnsureCloudOpen();
       this._trySelector(".beneos_search_engine");
+    }
+
+    if (stepId === "ct-cloud-free") {
+      document.body.classList.add("beneos-no-fade");
+      await ctEnsureCloudOpen();
+      await new Promise(r => setTimeout(r, 400));
+      // Spotlight the free, installable cards (free_content -> cloud-available),
+      // so the user sees there is free content in every area.
+      const freeCards = [...document.querySelectorAll(".beneos_search_engine .bc-card-cloudavailable, .beneos_search_engine .bc-result-card.bc-card-cloudavailable")].slice(0, 6);
+      if (freeCards.length) {
+        this._applySpotlight(freeCards, 6);
+        const anchor = freeCards[0];
+        anchor.id = anchor.id || "beneos-tour-cloud-free-anchor";
+        this._trySelector("#" + anchor.id);
+      } else {
+        const results = document.querySelector(".beneos_search_engine .bc-results, .beneos_search_engine");
+        if (results) { this._applySpotlight(results, 6); }
+        this._trySelector(".beneos_search_engine .bc-results") || this._trySelector(".beneos_search_engine");
+      }
     }
 
     if (stepId === "ct-cloud-account") {
@@ -5127,6 +5747,11 @@ class BeneosTutorialSceneTour extends TourBase {
     // Helper: open the real Token HUD and inject Beneos-style icons directly
     // into its .left/.right columns. Bypasses the complex Beneos compendium
     // requirements so the icons ALWAYS render for the tour demo.
+    // Open the real Token HUD and inject look-alike icons that match the REAL
+    // Beneos token interface (the placed demo token is not in the registry, so
+    // the module's own icons don't render). We reuse the real CSS classes +
+    // data-actions + SVGs: the Creature Codex button (left), the Top-Down/2.5D
+    // style toggle and the skin-variant switcher (right).
     const ctOpenTokenHUDWithIcons = async () => {
       const token = canvas.tokens?.placeables.find(t => t.actor?.name?.toLowerCase().includes("rot cerf"));
       if (!token) return null;
@@ -5135,21 +5760,31 @@ class BeneosTutorialSceneTour extends TourBase {
       await new Promise(r => setTimeout(r, 400));
       const hud = document.querySelector("#token-hud");
       if (!hud) return null;
-      // Inject journal icon on LEFT
+      // LEFT: Creature Codex button (real data-action + Beneos logo).
       const leftCol = hud.querySelector(".col.left, div.left");
-      if (leftCol && !leftCol.querySelector(".beneos-tour-fake-journal")) {
-        const jIcon = document.createElement("div");
-        jIcon.className = "control-icon beneos-tour-fake-journal";
-        jIcon.innerHTML = `<img src="modules/beneos-module/icons/beneos_icon_open_journal.svg" style="width:100%;height:100%;filter:invert(1)">`;
-        leftCol.appendChild(jIcon);
+      if (leftCol && !leftCol.querySelector(".beneos-tour-fake-codex")) {
+        const c = document.createElement("div");
+        c.className = "control-icon beneos-tour-fake-codex";
+        c.dataset.action = "beneosToken-animselector";
+        c.innerHTML = `<img class="beneosJournalAction" src="modules/beneos-module/icons/beneos_logo.svg" style="width:100%;height:100%;">`;
+        leftCol.appendChild(c);
       }
-      // Inject skin icon on RIGHT
+      // RIGHT: Top-Down/2.5D style toggle + skin-variant switcher.
       const rightCol = hud.querySelector(".col.right, div.right");
-      if (rightCol && !rightCol.querySelector(".beneos-tour-fake-skin")) {
-        const sIcon = document.createElement("div");
-        sIcon.className = "control-icon beneos-tour-fake-skin";
-        sIcon.innerHTML = `<img src="modules/beneos-module/icons/beneos_icon_change_skin.svg" style="width:100%;height:100%;filter:invert(1)">`;
-        rightCol.appendChild(sIcon);
+      if (rightCol && !rightCol.querySelector(".beneos-tour-fake-style")) {
+        const s = document.createElement("div");
+        s.className = "control-icon beneos-token-style-toggle beneos-tour-fake-style";
+        s.dataset.action = "beneosToken-style";
+        s.innerHTML = `<i class="fa-solid fa-down-long" style="font-size:20px;"></i>`;
+        rightCol.appendChild(s);
+      }
+      if (rightCol && !rightCol.querySelector(".beneos-tour-fake-variants")) {
+        const v = document.createElement("div");
+        v.className = "control-icon beneos-token-variants beneos-tour-fake-variants";
+        v.dataset.action = "beneosToken-variantlector";
+        v.style.position = "relative";
+        v.innerHTML = `<img src="modules/beneos-module/icons/beneos_icon_change_skin.svg" style="width:100%;height:100%;filter:invert(1)"><span class="beneos-skin-number-over">1/2</span>`;
+        rightCol.appendChild(v);
       }
       return hud;
     };
@@ -5159,19 +5794,13 @@ class BeneosTutorialSceneTour extends TourBase {
       await this._panTo({ x: 2710 + 150, y: 1744 + 150, scale: 0.9, duration: 500, sound: false });
       const hud = await ctOpenTokenHUDWithIcons();
       if (hud) {
-        const jEl = hud.querySelector(".beneos-tour-fake-journal");
-        const sEl = hud.querySelector(".beneos-tour-fake-skin");
-        this._applySpotlight([jEl, sEl, hud].filter(Boolean), 8);
-        // Anchor tooltip to the RIGHTMOST element (skin icon) so the box appears
-        // to the right of it — leaves the portrait + both icons visible between
-        // the creature frame and the tour box.
-        if (sEl) {
-          sEl.id = sEl.id || "beneos-tour-hud-right-anchor";
-          this._trySelector("#" + sEl.id);
-        } else {
-          hud.id = hud.id || "beneos-tour-hud-anchor";
-          this._trySelector("#" + hud.id);
-        }
+        const codex = hud.querySelector(".beneos-tour-fake-codex");
+        const style = hud.querySelector(".beneos-tour-fake-style");
+        const variants = hud.querySelector(".beneos-tour-fake-variants");
+        this._applySpotlight([codex, style, variants, hud].filter(Boolean), 8);
+        const anchor = variants || style || hud;
+        anchor.id = anchor.id || "beneos-tour-hud-anchor";
+        this._trySelector("#" + anchor.id);
       } else {
         const coords = { x: 2710 - 80, y: 1744 - 80, w: 440, h: 440 };
         this._createCanvasMarker({ ...coords, id: "ct-context-menu", highlight: true });
@@ -5181,28 +5810,35 @@ class BeneosTutorialSceneTour extends TourBase {
 
     if (stepId === "ct-skin-switch") {
       document.body.classList.add("beneos-no-fade");
-      // Just open the HUD with icons and highlight the skin button — DON'T
-      // swap the skin yet. The actual swap happens in the next step so the
-      // user first reads "click here", then sees the result.
-      const hud = await ctOpenTokenHUDWithIcons();
-      const skinIcon = hud?.querySelector(".beneos-tour-fake-skin");
-      if (skinIcon) {
-        skinIcon.id = skinIcon.id || "beneos-tour-skin-anchor";
-        this._applySpotlight(skinIcon, 10);
-        this._trySelector("#" + skinIcon.id);
-      } else {
-        const coords = { x: 2710 - 80, y: 1744 - 80, w: 440, h: 440 };
-        this._createCanvasMarker({ ...coords, id: "ct-skin-switch", highlight: true });
-        this._trySelector("#beneos-tour-marker-ct-skin-switch");
-      }
+      // Actually switch the token to its TOP-DOWN variant so the user sees the
+      // difference (the 2.5D token becomes a flat top-down token).
+      try { canvas.hud?.token?.close?.(); } catch (e) {}
+      try { await ctSwapRotCerfTexture("184-rot_cerf-1-top.webp"); } catch (e) {}
+      // Make sure the top-down token keeps its Beneos drop-shadow.
+      try { await ctApplyTokenShadow(); } catch (e) {}
+      await new Promise(r => setTimeout(r, 350));
+      await this._panTo({ x: 2710 + 150, y: 1744 + 150, scale: 0.95, duration: 500, sound: false });
+      // Release selection so the yellow control outline is gone, and use an
+      // INVISIBLE anchor to the RIGHT of the token's actual right edge (no
+      // highlight frame) so the box sits beside the creature, not over it.
+      try { canvas.tokens?.placeables.find(t => t.actor?.name?.toLowerCase().includes("rot cerf"))?.release?.(); } catch (e) {}
+      const stoken = canvas.tokens?.placeables.find(t => t.actor?.name?.toLowerCase().includes("rot cerf"));
+      const sgrid = canvas.grid?.size ?? canvas.dimensions?.size ?? 100;
+      const stx = stoken ? stoken.document.x : 2710;
+      const sty = stoken ? stoken.document.y : 1744;
+      const stw = stoken ? (stoken.w ?? (stoken.document.width * sgrid)) : 200;
+      const sth = stoken ? (stoken.h ?? (stoken.document.height * sgrid)) : 200;
+      const coords = { x: stx + stw + 40, y: sty + sth / 2 - 100, w: 50, h: 200 };
+      this._createCanvasMarker({ ...coords, id: "ct-skin-switch" });
+      this._trySelector("#beneos-tour-marker-ct-skin-switch");
     }
 
     if (stepId === "ct-skin-alternate") {
       document.body.classList.add("beneos-no-fade");
-      // NOW swap to Skin 2 — clear HUD first so the texture-update token re-
-      // render doesn't fight the open HUD.
+      // Switch to a different VARIANT while staying in top-down, to show that
+      // variants exist separately for both the top-down and 2.5D tokens.
       try { canvas.hud?.token?.close?.(); } catch (e) {}
-      try { await ctSwapRotCerfTexture("184-rot_cerf-2-token.webp"); } catch (e) {}
+      try { await ctSwapRotCerfTexture("184-rot_cerf-2-top.webp"); } catch (e) {}
       await new Promise(r => setTimeout(r, 350));
       ctCenterAnchor("ct-skin-alternate");
     }
@@ -5212,10 +5848,18 @@ class BeneosTutorialSceneTour extends TourBase {
       // Just swap back to Skin 1 — no HUD, no spotlight, full-canvas visible
       try { canvas.hud?.token?.close?.(); } catch (e) {}
       try { await ctSwapRotCerfTexture("184-rot_cerf-1-token.webp"); } catch (e) {}
+      try { await ctApplyTokenShadow(); } catch (e) {}
       await new Promise(r => setTimeout(r, 250));
-      // Place an invisible marker NEXT TO the creature so the tour box
-      // appears beside the token (not at the top edge of the viewport).
-      const coords = { x: 2710 + 120, y: 1744 - 40, w: 50, h: 200 };
+      try { canvas.tokens?.placeables.find(t => t.actor?.name?.toLowerCase().includes("rot cerf"))?.release?.(); } catch (e) {}
+      // Anchor to the RIGHT of the token's actual right edge so the tour box
+      // sits BESIDE the 2.5D token instead of on top of it.
+      const token = canvas.tokens?.placeables.find(t => t.actor?.name?.toLowerCase().includes("rot cerf"));
+      const grid = canvas.grid?.size ?? canvas.dimensions?.size ?? 100;
+      const tx = token ? token.document.x : 2710;
+      const ty = token ? token.document.y : 1744;
+      const tw = token ? (token.w ?? (token.document.width * grid)) : 200;
+      const th = token ? (token.h ?? (token.document.height * grid)) : 200;
+      const coords = { x: tx + tw + 40, y: ty + th / 2 - 100, w: 50, h: 200 };
       this._createCanvasMarker({ ...coords, id: "ct-skin-switch-back" });
       this._trySelector("#beneos-tour-marker-ct-skin-switch-back");
     }
@@ -5274,208 +5918,16 @@ class BeneosTutorialSceneTour extends TourBase {
         this._trySelector('.app[class*="actor"]');
     }
 
-    // Helper: scroll the DnD5e NPC sheet to a given fraction of its height.
-    // The real scrollable container on NPC sheets is `.sheet-body` (overflow:hidden auto).
-    const ctScrollSheet = (sheetEl, fraction) => {
-      const candidates = [
-        '.dnd5e2.sheet.actor.npc .sheet-body',
-        '.sheet-body',
-        '.tab[data-tab="biography"] .editor-container',
-        '.tab[data-tab="biography"]',
-        '.window-content'
-      ];
-      for (const sel of candidates) {
-        const el = sheetEl?.matches?.(sel) ? sheetEl : sheetEl?.querySelector(sel);
-        if (el && el.scrollHeight > el.clientHeight + 20) {
-          el.scrollTop = el.scrollHeight * fraction;
-          return el;
-        }
-      }
-      return null;
-    };
-
-    if (stepId === "ct-biography-tactical") {
-      document.body.classList.add("beneos-no-fade");
-      // Click Biography tab + scroll to the Tactical Guide
-      try {
-        const actor = game.actors.get("q5thcJTwfi7uHZLA")
-                   ?? game.actors.find(a => a.name.toLowerCase().includes("rot cerf"));
-        if (actor?.sheet?.rendered) {
-          const sheetEl = actor.sheet.element?.[0] || actor.sheet.element;
-          // DnD5e 5.x ApplicationV2 — changeTab() is the reliable API (DOM .click() does nothing)
-          try { actor.sheet.changeTab("biography", "primary"); } catch (e) {
-            // Fallback to DOM click for older sheet versions
-            try { sheetEl?.querySelector('nav.tabs [data-tab="biography"]')?.click(); } catch (e2) {}
-          }
-          await new Promise(r => setTimeout(r, 500));
-          // Scroll so the Tactical Guide heading image is near the top
-          const scrollBox = ctScrollSheet(sheetEl, 0.45);
-          const guideImg = sheetEl?.querySelector('img[src*="guide_tactical_guide.webp"]');
-          if (scrollBox && guideImg) {
-            const scrollRect = scrollBox.getBoundingClientRect();
-            const imgRect = guideImg.getBoundingClientRect();
-            scrollBox.scrollTop += (imgRect.top - scrollRect.top) - 12;
-          }
-          await new Promise(r => setTimeout(r, 200));
-          if (scrollBox) {
-            scrollBox.id = scrollBox.id || "beneos-tour-bio-scroll";
-            this._trySelector("#" + scrollBox.id);
-            return;
-          }
-          const bioTab = sheetEl?.querySelector('.tab[data-tab="biography"]');
-          if (bioTab) {
-            bioTab.id = bioTab.id || "beneos-tour-bio-tab";
-            this._trySelector("#" + bioTab.id);
-            return;
-          }
-        }
-      } catch (e) {}
-      this._trySelector('.dnd5e.sheet.actor') ||
-        this._trySelector('.actor.sheet') ||
-        this._trySelector('.app[class*="actor"]');
-    }
-
-    if (stepId === "ct-tactical-detail") {
-      document.body.classList.add("beneos-no-fade");
-      // Scroll further down into the Tactical Guide
-      try {
-        const actor = game.actors.get("q5thcJTwfi7uHZLA")
-                   ?? game.actors.find(a => a.name.toLowerCase().includes("rot cerf"));
-        if (actor?.sheet?.rendered) {
-          // Make sure we're still on biography in case the user flipped tabs
-          try { actor.sheet.changeTab("biography", "primary"); } catch (e) {}
-          await new Promise(r => setTimeout(r, 200));
-          const sheetEl = actor.sheet.element?.[0] || actor.sheet.element;
-          const scrolled = ctScrollSheet(sheetEl, 0.75);
-          if (scrolled) {
-            scrolled.id = scrolled.id || "beneos-tour-bio-scroll";
-            this._trySelector("#" + scrolled.id);
-            return;
-          }
-        }
-      } catch (e) {}
-      this._trySelector('.dnd5e.sheet.actor') ||
-        this._trySelector('.actor.sheet') ||
-        this._trySelector('.app[class*="actor"]');
-    }
-
-    // Helper: open the Rot Cerf journal in MULTIPLE-page view mode and navigate
-    // to a given page without re-rendering. In Foundry V14, the view mode is
-    // a private field (#mode) accessed via the public `isMultiple` getter.
-    // We MUST pass mode via render() options — setting _viewMode directly is
-    // a no-op because the private field isn't accessible.
-    //
-    // In MULTIPLE mode, `goToPage()` uses scrollIntoView() on the already-rendered
-    // page element → no flicker. In SINGLE mode, Foundry re-renders → flicker.
-    const ctOpenJournalPage = async (pageId) => {
-      const journal = game.journal.get("Dc3QiEyRe6H2aV8w");
-      if (!journal) return null;
-      const sheet = journal.sheet;
-      // V14 value is JournalEntrySheet.VIEW_MODES.MULTIPLE = 2
-      const MULTIPLE = sheet.constructor?.VIEW_MODES?.MULTIPLE ?? 2;
-
-      if (!sheet.rendered) {
-        await sheet.render(true, { pageId, mode: MULTIPLE });
-        this._openedJournals.push("Dc3QiEyRe6H2aV8w");
-        await new Promise(r => setTimeout(r, 500));
-        return sheet;
-      }
-      // Already rendered — if already in MULTIPLE mode, just scroll (no flicker)
-      if (sheet.isMultiple && typeof sheet.goToPage === "function") {
-        try { sheet.goToPage(pageId); } catch (e) {}
-        await new Promise(r => setTimeout(r, 200));
-        return sheet;
-      }
-      // Otherwise switch mode (this does re-render once, but subsequent calls won't)
-      await sheet.render(true, { pageId, mode: MULTIPLE });
-      await new Promise(r => setTimeout(r, 300));
-      return sheet;
-    };
-
-    if (stepId === "ct-journal-open") {
-      // Close the actor sheet and open the creature journal on the first page
-      try {
-        const actor = game.actors.get("q5thcJTwfi7uHZLA")
-                   ?? game.actors.find(a => a.name.toLowerCase().includes("rot cerf"));
-        if (actor?.sheet?.rendered) actor.sheet.close();
-      } catch (e) {}
-      await ctOpenJournalPage("a6628c70657b4c23");
-      this._trySelector('.journal-entry-sheet, .journal-sheet, .app[class*="journal"]');
-    }
-
-    if (stepId === "ct-journal-fullbody") {
-      await ctOpenJournalPage("a6628c70657b4c23");
-      // Open the full-body ImagePopout right here so the user sees the art
-      // at full size in this step (no need for a separate step to click).
-      try {
-        const journal = game.journal.get("Dc3QiEyRe6H2aV8w");
-        const page = journal?.pages.get("a6628c70657b4c23");
-        const PopoutCls = foundry.applications?.apps?.ImagePopout ?? globalThis.ImagePopout;
-        if (page?.src && PopoutCls && !this._imagePopout?.rendered) {
-          this._imagePopout = new PopoutCls({
-            src: page.src,
-            caption: page.image?.caption,
-            window: { title: page.name || "Rot Cerf" }
-          });
-          await this._imagePopout.render(true);
-          await new Promise(r => setTimeout(r, 500));
-        }
-      } catch (e) {
-        console.warn("Beneos Tutorial Tour | ImagePopout failed:", e);
-      }
-      // Anchor to the popout if opened, else the journal
-      const popoutEl = this._imagePopout?.element?.[0] ?? this._imagePopout?.element
-                    ?? document.querySelector('.image-popout, [class*="image-popout"]');
-      if (popoutEl instanceof HTMLElement) {
-        popoutEl.id = popoutEl.id || "beneos-tour-popout-anchor";
-        this._trySelector("#" + popoutEl.id);
-      } else {
-        this._trySelector('.journal-entry-sheet, .journal-sheet, .app[class*="journal"]');
-      }
-    }
-
-    // Helper: switch to Immersive Integration page (smooth) and scroll to an image anchor
-    const ctJournalScrollTo = async (imageName) => {
-      // Ensure any image popout opened by ct-journal-fullbody-popout is closed
-      try { this._imagePopout?.close(); this._imagePopout = null; } catch (e) {}
-      try {
-        await ctOpenJournalPage("ca4b04404f7944bd");
-        const journalWin = document.querySelector('.journal-entry-sheet, .journal-sheet, .app[class*="journal"]');
-        const img = journalWin?.querySelector(`img[src*="${imageName}"]`)
-                 ?? document.querySelector(`img[src*="${imageName}"]`);
-        if (img) img.scrollIntoView({ behavior: "smooth", block: "start" });
-      } catch (e) {}
-    };
-
-    if (stepId === "ct-journal-lore") {
-      await ctJournalScrollTo("journal_lore.webp");
-      this._trySelector('.journal-entry-sheet, .journal-sheet, .app[class*="journal"]');
-    }
-    if (stepId === "ct-journal-story") {
-      await ctJournalScrollTo("journal_story_prompts.webp");
-      this._trySelector('.journal-entry-sheet, .journal-sheet, .app[class*="journal"]');
-    }
-    if (stepId === "ct-journal-foreshadowing") {
-      await ctJournalScrollTo("journal_foreshadowing.webp");
-      this._trySelector('.journal-entry-sheet, .journal-sheet, .app[class*="journal"]');
-    }
-    if (stepId === "ct-journal-before-combat") {
-      await ctJournalScrollTo("journal_before_combat.webp");
-      this._trySelector('.journal-entry-sheet, .journal-sheet, .app[class*="journal"]');
-    }
-    if (stepId === "ct-journal-during-combat") {
-      await ctJournalScrollTo("journal_during_combat.webp");
-      this._trySelector('.journal-entry-sheet, .journal-sheet, .app[class*="journal"]');
-    }
-    if (stepId === "ct-journal-death") {
-      await ctJournalScrollTo("journal_death_prompt.webp");
-      this._trySelector('.journal-entry-sheet, .journal-sheet, .app[class*="journal"]');
-    }
-
     if (stepId === "ct-token-rotation") {
       document.body.classList.add("beneos-no-fade");
       // Close the journal so the canvas demonstration is unobstructed
       try { await this._closeOpenedJournals(); } catch (e) {}
+      // Close the Rot Cerf character sheet opened in ct-character-sheet so it
+      // doesn't stay open over the rotation + codex section.
+      try {
+        const actor = game.actors.get("q5thcJTwfi7uHZLA") ?? game.actors.find(a => a.name.toLowerCase().includes("rot cerf"));
+        if (actor?.sheet?.rendered) await actor.sheet.close();
+      } catch (e) {}
       // Pan back to the token
       await this._panTo({ x: 2710 + 150, y: 1744 + 150, scale: 0.7, duration: 500, sound: false });
       // Move the Rot Cerf 3 squares to the right AND rotate 90° (270 in Foundry's
@@ -5562,9 +6014,316 @@ class BeneosTutorialSceneTour extends TourBase {
       }
     }
 
+    /* ====================================================================
+       Creature Codex section: open the REAL Creature Codex for the Rot Cerf,
+       fully unlocked and centered, covering every aspect (overview, tactical
+       guide, lore, PDF, autopilot). The codex reads content from the actor's
+       flags.beneos.content and unlocks for free creatures (isFreeAsset). In
+       the shipped Getting Started world the Rot Cerf ships with that content
+       and is free; in a stripped dev world we inject the content from the
+       pack JSON and set the tokenKey so it resolves as free, then clean both
+       up in ct-creatures-complete. No change to the codex feature itself.
+       ==================================================================== */
+    // Prefer the BASE world actor (the placed token is unlinked, so its
+    // token.actor is a synthetic delta whose updates would not persist and
+    // would not be found by findActorByTokenKey).
+    const ctRotCerfActor = () =>
+      (game.actors.get("q5thcJTwfi7uHZLA")
+        ?? game.actors.find(a => /rot cerf/i.test(a.name))
+        ?? canvas.tokens?.placeables.find(t => t.actor?.name?.toLowerCase().includes("rot cerf"))?.actor);
+    const ctResolveCreatureActor = () => ctRotCerfActor();
+    // Ensure the Rot Cerf has full codex content + a free-resolving tokenKey so
+    // the Creature Codex renders rich and unlocked. Transient: tracked for
+    // removal in ct-creatures-complete. Skipped entirely when the actor already
+    // carries content (the shipped world).
+    const ctEnsureRotCerfCodexContent = async () => {
+      const rot = ctRotCerfActor();
+      if (!rot) return null;
+      try {
+        const update = {};
+        if (!rot.flags?.beneos?.content) {
+          const url = "/beneos_assets/beneos_battlemaps/map_assets/getting_started/184-rot_cerf/actor-184-rot_cerf.json";
+          const resp = await fetch(url);
+          if (resp.ok) {
+            const json = await resp.json();
+            if (json?.flags?.beneos) {
+              update["flags.beneos"] = json.flags.beneos;
+              this._tourInjectedCodexContent = rot.id;
+            }
+          }
+        }
+        // tokenKey lets isFreeAsset("token","184-rot_cerf") resolve -> codex unlocks.
+        if (!rot.flags?.world?.beneos?.tokenKey) {
+          update["flags.world.beneos.tokenKey"] = "184-rot_cerf";
+          this._tourInjectedCodexTokenKey = rot.id;
+        }
+        if (Object.keys(update).length) await rot.update(update);
+      } catch (e) { console.warn("Beneos Tutorial Tour | codex content inject failed:", e); }
+      return rot;
+    };
+    // Center the codex window on screen (default opens top-left).
+    const ctCenterCodex = () => {
+      try {
+        for (const [, app] of (foundry.applications?.instances ?? [])) {
+          if (app?.element?.classList?.contains("beneos-creature-codex-window")) {
+            const W = 980, H = 720;
+            app.setPosition({ left: Math.max(0, (window.innerWidth - W) / 2), top: Math.max(0, (window.innerHeight - H) / 2), width: W, height: H });
+          }
+        }
+      } catch (e) {}
+    };
+    const ctCloseFeatureWindows = () => {
+      try {
+        for (const [, app] of (foundry.applications?.instances ?? [])) {
+          const el = app?.element;
+          if (!el?.classList) continue;
+          if (el.classList.contains("beneos-creature-codex-window") ||
+              el.id === "beneos-combat-autopilot" ||
+              el.classList.contains("beneos-combat-autopilot")) {
+            try { app.close(); } catch (e) {}
+          }
+        }
+      } catch (e) {}
+    };
+    // Dock the tour tooltip to the SIDE of a window (right if there's room,
+    // else left, else below) via a thin screen marker + dynamic direction, so
+    // the box never covers the window content the user is meant to read.
+    const ctDockBeside = (windowEl, id, gap = 6) => {
+      if (!windowEl?.getBoundingClientRect) return false;
+      const r = windowEl.getBoundingClientRect();
+      const boxW = 320;
+      let side, mx, my = r.top + Math.min(r.height / 2, 220);
+      if (window.innerWidth - r.right > boxW) { side = "RIGHT"; mx = r.right + gap; }
+      else if (r.left > boxW) { side = "LEFT"; mx = r.left - gap; }
+      else { side = "DOWN"; mx = r.left + r.width / 2; my = r.bottom + gap; }
+      this._createScreenMarker({ x: mx - 5, y: my - 60, w: 10, h: 120, id: "dock-" + id });
+      const sel = "#beneos-screen-marker-dock-" + id;
+      if (document.querySelector(sel)) {
+        try { this.steps[this.stepIndex].tooltipDirection = side; } catch (e) {}
+        this._trySelector(sel);
+        return true;
+      }
+      return false;
+    };
+
+    // Helper: switch the open codex to a tab and spotlight its body. Codex is
+    // unlocked (free creature), so tab clicks actually switch.
+    const ctCodexTab = async (tabId) => {
+      const w = document.querySelector(".beneos-creature-codex-window");
+      if (!w) return;
+      try { w.querySelector(`.cdx-tab[data-cdx-tab="${tabId}"]`)?.click(); } catch (e) {}
+      await new Promise(r => setTimeout(r, 400));
+      ctCenterCodex();
+      const fresh = document.querySelector(".beneos-creature-codex-window");
+      // Spotlight the TAB BAR together with the body so the tab strip at the top
+      // stays visible (it was getting clipped when only the body was lit).
+      const tabs = fresh?.querySelector(".cdx-creature-tabs, .cdx-tabs");
+      const body = fresh?.querySelector(".cdx-creature-body") || fresh;
+      const spots = [tabs, body].filter(Boolean);
+      if (spots.length) this._applySpotlight(spots, 6);
+      if (!ctDockBeside(fresh, "codex")) this._trySelector(".beneos-creature-codex-window");
+    };
+    // Switch to a codex tab (and optionally an inner sub-tab), scroll a specific
+    // element into view and spotlight IT (not the whole body), then dock beside.
+    const ctCodexScrollSpot = async (tabId, selector, subSel) => {
+      const w = document.querySelector(".beneos-creature-codex-window");
+      if (!w) return;
+      try { w.querySelector(`.cdx-tab[data-cdx-tab="${tabId}"]`)?.click(); } catch (e) {}
+      await new Promise(r => setTimeout(r, 400));
+      if (subSel) {
+        try { document.querySelector(".beneos-creature-codex-window")?.querySelector(subSel)?.click(); } catch (e) {}
+        await new Promise(r => setTimeout(r, 350));
+      }
+      ctCenterCodex();
+      const fresh = document.querySelector(".beneos-creature-codex-window");
+      const target = fresh?.querySelector(selector) || fresh?.querySelector(".cdx-creature-body") || fresh;
+      if (target) {
+        try { target.scrollIntoView({ block: "center" }); } catch (e) {}
+        await new Promise(r => setTimeout(r, 250));
+        this._applySpotlight(target, 8);
+      }
+      if (!ctDockBeside(fresh, "codex")) this._trySelector(".beneos-creature-codex-window");
+    };
+
+    if (stepId === "ct-codex-access") {
+      document.body.classList.add("beneos-no-fade");
+      // Close the Settings config dialog opened in ct-rotation-setting so it
+      // doesn't linger over the token HUD demonstration.
+      try { game.settings.sheet?.close(); } catch (e) {}
+      try {
+        for (const [, app] of (foundry.applications?.instances ?? [])) {
+          const el = app?.element;
+          if (el && (el.id === "client-settings" || /settings-config|settings/.test(el.id || "") || app?.constructor?.name === "SettingsConfig")) {
+            try { app.close(); } catch (e) {}
+          }
+        }
+      } catch (e) {}
+      await new Promise(r => setTimeout(r, 200));
+      // Rotate the token back to its correct orientation (we spun it earlier to
+      // demo token rotation), then open the token HUD and point at the Beneos
+      // icon that opens the Creature Codex — this is how a user actually gets there.
+      try {
+        const token = canvas.tokens?.placeables.find(t => t.actor?.name?.toLowerCase().includes("rot cerf"));
+        if (token && token.document.rotation !== 0) await token.document.update({ rotation: 0 });
+      } catch (e) {}
+      const grid = canvas.grid?.size ?? canvas.dimensions?.size ?? 100;
+      await this._panTo({ x: 2710 + 3 * grid + 150, y: 1744 + 150, scale: 0.9, duration: 500, sound: false });
+      const hud = await ctOpenTokenHUDWithIcons();
+      if (hud) {
+        const codex = hud.querySelector(".beneos-tour-fake-codex");
+        // Spotlight ONLY the Beneos logo in the HUD (not the whole HUD) so the
+        // user sees exactly which icon opens the Creature Codex.
+        if (codex) {
+          try { codex.scrollIntoView?.({ block: "center" }); } catch (e) {}
+          this._applySpotlight(codex, 6);
+        }
+        const anchor = codex || hud;
+        anchor.id = anchor.id || "beneos-tour-codex-access-anchor";
+        this._trySelector("#" + anchor.id);
+      } else {
+        const coords = { x: 2710 + 3 * grid - 80, y: 1744 - 80, w: 440, h: 440 };
+        this._createCanvasMarker({ ...coords, id: "ct-codex-access" });
+        this._trySelector("#beneos-tour-marker-ct-codex-access");
+      }
+    }
+
+    if (stepId === "ct-codex-open") {
+      document.body.classList.add("beneos-no-fade");
+      // Close the token HUD from ct-codex-access before opening the codex.
+      try { canvas.hud?.token?.close?.(); } catch (e) {}
+      // Pan back to default so nothing competes with the centered codex.
+      try {
+        const initial = canvas.scene?.initial;
+        if (initial && Number.isFinite(initial.scale)) {
+          await this._panTo({ x: initial.x, y: initial.y, scale: initial.scale, duration: 400, sound: false });
+        }
+      } catch (e) {}
+      const actor = await ctEnsureRotCerfCodexContent();
+      if (actor) {
+        try { await game.beneos.codex.openForActor(actor); } catch (e) { console.warn("Beneos Tutorial Tour | codex open failed:", e); }
+        await new Promise(r => setTimeout(r, 1000));
+      }
+      ctCenterCodex();
+      await new Promise(r => setTimeout(r, 150));
+      const w = document.querySelector(".beneos-creature-codex-window");
+      if (w) {
+        this._applySpotlight(w, 6);
+        if (!ctDockBeside(w, "codex")) this._trySelector(".beneos-creature-codex-window");
+      }
+    }
+
+    if (stepId === "ct-codex-overview") {
+      document.body.classList.add("beneos-no-fade");
+      await ctCodexTab("overview");
+    }
+
+    if (stepId === "ct-codex-allies") {
+      document.body.classList.add("beneos-no-fade");
+      // Stay on the overview and highlight the Recommended Allies list.
+      await ctCodexScrollSpot("overview", ".cdx-ally-list");
+    }
+
+    if (stepId === "ct-codex-tactical") {
+      document.body.classList.add("beneos-no-fade");
+      await ctCodexTab("tactics");
+    }
+
+    if (stepId === "ct-codex-abilities") {
+      document.body.classList.add("beneos-no-fade");
+      // Tactics tab -> Abilities sub-tab, highlight the action-type filter.
+      await ctCodexScrollSpot("tactics", ".cdx-ability-filter", '.cdx-tactics-sub[data-cdx-sub="abilities"]');
+    }
+
+    if (stepId === "ct-codex-foreshadow") {
+      document.body.classList.add("beneos-no-fade");
+      await ctCodexScrollSpot("foreshadow", ".cdx-foreshadow");
+    }
+
+    if (stepId === "ct-codex-hooks") {
+      document.body.classList.add("beneos-no-fade");
+      await ctCodexScrollSpot("hooks", ".cdx-hooks");
+    }
+
+    if (stepId === "ct-codex-theater") {
+      document.body.classList.add("beneos-no-fade");
+      // Combat Theater intro: switch to the tab and show it from the top so the
+      // GM sees this is where all the read-aloud texts live.
+      await ctCodexTab("theater");
+    }
+
+    if (stepId === "ct-codex-starter") {
+      document.body.classList.add("beneos-no-fade");
+      // The Combat Starter (First Appearance) read-aloud text.
+      await ctCodexScrollSpot("theater", ".cdx-blockquote-dramatic");
+    }
+
+    if (stepId === "ct-codex-prompts") {
+      document.body.classList.add("beneos-no-fade");
+      // The ability read-aloud prompts (key abilities, with narration).
+      await ctCodexScrollSpot("theater", ".cdx-prompts");
+    }
+
+    if (stepId === "ct-codex-death") {
+      document.body.classList.add("beneos-no-fade");
+      // The Death Prompt, auto-fires at 0 HP for a cinematic finish.
+      await ctCodexScrollSpot("theater", ".cdx-blockquote-death");
+    }
+
+    if (stepId === "ct-codex-pdf") {
+      document.body.classList.add("beneos-no-fade");
+      ctCenterCodex();
+      const w = document.querySelector(".beneos-creature-codex-window");
+      const pdfBtn = w?.querySelector('[data-action="cdx-download-pdf"]');
+      // Highlight the PDF button, but dock the tour box beside the window so it
+      // never covers the button.
+      if (pdfBtn) this._applySpotlight(pdfBtn, 8);
+      else if (w) this._applySpotlight(w.querySelector(".cdx-creature-hero") || w, 6);
+      if (!ctDockBeside(w, "codex") && w) this._trySelector(".beneos-creature-codex-window");
+    }
+
+    if (stepId === "ct-autopilot") {
+      document.body.classList.add("beneos-no-fade");
+      // Close the codex so the autopilot window is the sole focus.
+      try {
+        for (const [, app] of (foundry.applications?.instances ?? [])) {
+          if (app?.element?.classList?.contains("beneos-creature-codex-window")) { try { app.close(); } catch (e) {} }
+        }
+      } catch (e) {}
+      const actor = await ctEnsureRotCerfCodexContent();
+      if (actor) {
+        try {
+          const { BeneosCombatAutopilotWindow } = await import("./codex2/combat-autopilot-window.mjs");
+          await BeneosCombatAutopilotWindow.openForActor(actor, 1);
+        } catch (e) { console.warn("Beneos Tutorial Tour | autopilot open failed:", e); }
+        await new Promise(r => setTimeout(r, 900));
+      }
+      const ap = document.querySelector("#beneos-combat-autopilot, .beneos-combat-autopilot");
+      if (ap) {
+        this._applySpotlight(ap, 6);
+        if (!ctDockBeside(ap, "autopilot")) { ap.id = ap.id || "beneos-tour-autopilot-anchor"; this._trySelector("#" + ap.id); }
+      }
+    }
+
     if (stepId === "ct-creatures-complete") {
       // Close the journal + settings window + restore the moved token
       await this._closeOpenedJournals();
+      ctCloseFeatureWindows();
+      // Remove the codex content + tokenKey we injected onto the Rot Cerf for
+      // the demo, so the actor returns to its prior (stripped) state.
+      try {
+        const rotId = this._tourInjectedCodexContent || this._tourInjectedCodexTokenKey;
+        if (rotId) {
+          const rot = game.actors.get(rotId);
+          if (rot) {
+            const unset = {};
+            if (this._tourInjectedCodexContent) unset["flags.-=beneos"] = null;
+            if (this._tourInjectedCodexTokenKey) unset["flags.world.beneos.-=tokenKey"] = null;
+            if (Object.keys(unset).length) await rot.update(unset);
+          }
+          this._tourInjectedCodexContent = null;
+          this._tourInjectedCodexTokenKey = null;
+        }
+      } catch (e) {}
       try { game.settings.sheet?.close(); } catch (e) {}
       try {
         const chatTab = document.querySelector('[data-tab="chat"]');
@@ -5714,19 +6473,65 @@ class BeneosTutorialSceneTour extends TourBase {
           await this._panTo({ x: initial.x, y: initial.y, scale: initial.scale, duration: 600, sound: false });
         }
       } catch (e) {}
-      // Open the item sheet (item ID supplied by the user)
+      // Open the item sheet; the Beneos ItemCompanion flip-card attaches on the
+      // right (the item carries beneos-module.loot flags).
+      let sheetEl = null;
       try {
         const item = game.items.get("6QYFmLk3ne0HNXZA");
         if (item) {
           await item.sheet.render(true);
-          await new Promise(r => setTimeout(r, 600));
+          await new Promise(r => setTimeout(r, 800));
+          sheetEl = item.sheet.element?.[0] ?? item.sheet.element;
         }
       } catch (e) {
         console.warn("Beneos Tutorial Tour | Failed to open item sheet:", e);
       }
-      // Anchor the tour to the item sheet window
-      this._trySelector('.app[class*="item"], .item.sheet, [class*="item-sheet"], .dnd5e.sheet.item')
-        || ltCenterAnchor("lt-foundry-view");
+      // Trigger the Tap-to-Flip once so the user sees the card rotate.
+      try {
+        for (let i = 0; i < 12; i++) {
+          const flipper = document.querySelector(".beneos-card-flipper");
+          if (flipper) { flipper.dataset.flipped = "true"; break; }
+          await new Promise(r => setTimeout(r, 200));
+        }
+      } catch (e) {}
+      await new Promise(r => setTimeout(r, 400));
+      // Dock the tour box to the RIGHT of the ItemCompanion flip-CARD, not the
+      // Foundry item sheet. The companion is a separate node (".beneos-companion
+      // --side") floating to the right of the sheet; its right edge is where the
+      // card ends, so we dock beside THAT (otherwise the box lands on the card).
+      const companionEl = document.querySelector('.beneos-companion--side, .beneos-companion[data-companion-mode="side"]');
+      const sheetWin = (sheetEl?.closest?.(".app, .application")) || sheetEl
+                    || document.querySelector('.dnd5e2.sheet.item, .dnd5e.sheet.item, .app[class*="item"]');
+      const dockTarget = companionEl || sheetWin;
+      if (companionEl) this._applySpotlight(companionEl, 8);
+      if (!ctDockBeside(dockTarget, "item-window")) {
+        this._trySelector('.dnd5e2.sheet.item, .dnd5e.sheet.item, .app[class*="item"]') || ltCenterAnchor("lt-foundry-view");
+      }
+    }
+
+    // Stay on the item card, scroll the companion down to the Set-bonus
+    // contributions + the Rarity Modifier and dwell on what those mean.
+    if (stepId === "lt-item-modifier") {
+      try {
+        const item = game.items.get("6QYFmLk3ne0HNXZA");
+        if (item && !item.sheet?.rendered) { await item.sheet.render(true); await new Promise(r => setTimeout(r, 700)); }
+      } catch (e) {}
+      const companionEl = document.querySelector('.beneos-companion--side, .beneos-companion[data-companion-mode="side"]');
+      let modRow = null, contrib = null;
+      for (let i = 0; i < 12; i++) {
+        modRow  = companionEl?.querySelector?.(".bc-modifier-row");
+        contrib = companionEl?.querySelector?.(".bc-contributes");
+        if (modRow || contrib) break;
+        await new Promise(r => setTimeout(r, 200));
+      }
+      const focus = contrib || modRow;
+      if (focus) { try { focus.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) {} await new Promise(r => setTimeout(r, 450)); }
+      const spots = [modRow, contrib].filter(Boolean);
+      if (spots.length) this._applySpotlight(spots, 8);
+      const dockTarget = companionEl || document.querySelector('.dnd5e2.sheet.item, .dnd5e.sheet.item');
+      if (!ctDockBeside(dockTarget, "item-window")) {
+        (focus && (focus.id = focus.id || "beneos-tour-item-modifier") && this._trySelector("#" + focus.id)) || ltCenterAnchor("lt-item-modifier");
+      }
     }
 
     if (stepId === "lt-pdf-intro") {
@@ -5848,9 +6653,727 @@ class BeneosTutorialSceneTour extends TourBase {
       this._trySelector('[data-tab="items"]') || ltCenterAnchor("lt-item-folder");
     }
 
+    /* ====================================================================
+       New Beneos item-feature steps: Set-Bonus tab (attunement), Item Radar
+       (Live Game Control), and the read-only Loot/Shop generator demos.
+       ==================================================================== */
+    const ltCloseFeatureWindows = () => {
+      try {
+        for (const [, app] of (foundry.applications?.instances ?? [])) {
+          const el = app?.element;
+          if (!el) continue;
+          const cl = el.classList;
+          if (el.id === "beneos-lgc" || cl?.contains("beneos-lgc") ||
+              cl?.contains("beneos-loot-generator") || cl?.contains("beneos-magic-shop") ||
+              el.id === "beneos-codex" || cl?.contains("beneos-codex") ||
+              el.id === "beneos-cloud-window-v2" || cl?.contains("beneos-cloud-app")) {
+            try { app.close(); } catch (e) {}
+          }
+        }
+      } catch (e) {}
+    };
+    // Find an open ApplicationV2 window by one of its element classes.
+    const ltFindApp = (cls) => {
+      for (const [, app] of (foundry.applications?.instances ?? [])) {
+        if (app?.element?.classList?.contains?.(cls)) return app;
+      }
+      return null;
+    };
+    // Build DEMO_LOOT-shaped result objects from the REAL world Beneos items
+    // (the "Beneos Items" folder), so the loot generator deals actual items.
+    const ltBuildLootResults = () => {
+      const RARITY_NORM = { common: "Common", uncommon: "Uncommon", rare: "Rare", veryrare: "Very Rare", legendary: "Legendary", artifact: "Legendary" };
+      const RARITY_TIER = { "Common": 1, "Uncommon": 2, "Rare": 3, "Very Rare": 3, "Legendary": 4 };
+      const titleCase = (s) => String(s || "").replace(/[-_]/g, " ").replace(/\b\w/g, c => c.toUpperCase()).trim();
+      const toResult = (it) => {
+        const loot = it.getFlag?.("beneos-module", "loot") || {};
+        const key = String(it.system?.rarity || loot.rarity || "").toLowerCase().replace(/[^a-z]/g, "");
+        const rarity = RARITY_NORM[key] || "Uncommon";
+        const price = it.system?.price?.value ?? loot.price ?? 0;
+        const itemType = it.type === "weapon" ? "weapon" : (it.type === "consumable" ? "consumable" : "wondrous");
+        const desc = String(it.system?.description?.value || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+        return {
+          itemKey: "beneos-world-" + it.id,
+          demoThumb: it.img,
+          rolledRarity: rarity,
+          rolledTier: RARITY_TIER[rarity] ?? 2,
+          isFallback: false,
+          item: { name: it.name, description: desc || "A Beneos set item.", properties: { rarity, item_type: itemType, origin: titleCase(loot.origin?.slug), price } }
+        };
+      };
+      let items = game.items.filter(i => i.folder?.id === "QwWs3EOaJUZSYs27" && i.getFlag?.("beneos-module", "loot")?.origin?.slug);
+      if (!items.length) items = game.items.filter(i => i.getFlag?.("beneos-module", "loot")?.origin?.slug);
+      return { results: items.slice(0, 3).map(toResult), wondrous: items[3] ? toResult(items[3]) : null };
+    };
+    // Resolve the demo "player" (a Goblin) for the item -> attune -> set-tab flow.
+    const ltResolveGoblin = () => {
+      if (this._tourGoblinActorId) { const a = game.actors.get(this._tourGoblinActorId); if (a) return a; }
+      const onScene = canvas.tokens?.placeables.find(t => /goblin/i.test(t.actor?.name || ""))?.actor;
+      return onScene ?? game.actors.getName("Goblin Crookshank") ?? game.actors.find(a => /goblin/i.test(a.name));
+    };
+    const ltGoblinBeneosItem = (goblin) => {
+      if (!goblin) return null;
+      if (this._tourGoblinItemId) { const it = goblin.items.get(this._tourGoblinItemId); if (it) return it; }
+      return goblin.items.find(it => it.getFlag?.("beneos-module", "loot")?.origin?.slug === "sanctified")
+          ?? goblin.items.find(it => it.getFlag?.("beneos-module", "loot")?.origin?.slug);
+    };
+
+    if (stepId === "lt-item-add") {
+      // Close the item sheet, resolve the Goblin, and drop the featured Beneos
+      // item (Irontide Raid-Mask, sanctified) into its inventory. We force the
+      // copy to be a magical, attunement-required item so the next step can
+      // attune it (the Beneos Sets tab only injects for attuned Origin items).
+      try { game.items.get("6QYFmLk3ne0HNXZA")?.sheet?.close(); } catch (e) {}
+      const goblin = ltResolveGoblin();
+      if (goblin) {
+        this._tourGoblinActorId = goblin.id;
+        try {
+          let item = ltGoblinBeneosItem(goblin);
+          if (!item) {
+            const src = game.items.get("6QYFmLk3ne0HNXZA");
+            if (src) {
+              const obj = src.toObject();
+              obj.system = obj.system || {};
+              obj.system.properties = Array.from(new Set([...(obj.system.properties || []), "mgc"]));
+              obj.system.attunement = "required";
+              const [created] = await goblin.createEmbeddedDocuments("Item", [obj]);
+              item = created;
+            }
+          }
+          if (item) this._tourGoblinItemId = item.id;
+        } catch (e) { console.warn("Beneos Tutorial Tour | add item to goblin failed:", e); }
+        try { await goblin.sheet.render(true); await new Promise(r => setTimeout(r, 1200)); } catch (e) {}
+        // Switch to the Inventory tab so the user can see the item now sits in
+        // the actor's equipment, then spotlight that specific row.
+        try { goblin.sheet.changeTab?.("inventory", "primary"); await new Promise(r => setTimeout(r, 400)); } catch (e) {}
+      }
+      const root = goblin?.sheet?.element instanceof HTMLElement ? goblin.sheet.element : (goblin?.sheet?.element?.[0] ?? document.getElementById(goblin?.sheet?.id));
+      const win = root?.closest?.(".app, .application") || root;
+      let row = null;
+      try {
+        if (this._tourGoblinItemId && root?.querySelector) {
+          row = root.querySelector(`[data-item-id="${this._tourGoblinItemId}"]`);
+          if (row) { row.scrollIntoView?.({ block: "center" }); this._applySpotlight(row, 8); }
+        }
+      } catch (e) {}
+      // Dock the box well clear of the sheet's right edge so it never covers the
+      // inventory list or the incoming Beneos tab column.
+      if (!ctDockBeside(win, "goblin-sheet", 28)) this._trySelector('.dnd5e2.sheet.actor, .actor.sheet, .app[class*="actor"]') || ltCenterAnchor("lt-item-add");
+    }
+
+    // Robustly resolve an actor sheet's root HTML element (ApplicationV2 returns
+    // a bare HTMLElement, not a jQuery array).
+    const ltSheetRoot = (actor) => {
+      const el = actor?.sheet?.element;
+      if (el instanceof HTMLElement) return el;
+      return el?.[0] ?? (actor?.sheet?.id ? document.getElementById(actor.sheet.id) : null);
+    };
+    // Wait (up to ~2.4s) for the Beneos Sets NAV BUTTON to appear after a render.
+    // Important: query only `a.beneos-tab-button` (the injected nav anchor), NOT
+    // `[data-tab="beneos-sets"]` which also matches the content SECTION.
+    const ltWaitBeneosTab = async (actor) => {
+      for (let i = 0; i < 12; i++) {
+        const root = ltSheetRoot(actor);
+        const btn = root?.querySelector?.('a.beneos-tab-button');
+        if (btn) return btn;
+        await new Promise(r => setTimeout(r, 200));
+      }
+      return null;
+    };
+    // Reliably make the Beneos Sets tab the VISIBLE tab. changeTab only updates
+    // the tab state, not the injected section's `.active` class, so on a freshly
+    // re-opened sheet the section can stay display:none. Clicking the nav button
+    // fires the module's own handler (ActorSetBonusTab._activateTab), which
+    // toggles the section visible. Poll until the section actually shows.
+    const ltShowBeneosSetTab = async (actor) => {
+      const navBtn = await ltWaitBeneosTab(actor);
+      for (let i = 0; i < 16; i++) {
+        const root = ltSheetRoot(actor);
+        const section = root?.querySelector?.('.beneos-set-bonus-tab, section[data-tab="beneos-sets"]');
+        if (section && section.classList.contains('active') && section.offsetParent !== null) {
+          return { root, section, navBtn };
+        }
+        try { navBtn?.click(); } catch (e) {}
+        try { actor.sheet.changeTab?.("beneos-sets", "primary"); } catch (e) {}
+        await new Promise(r => setTimeout(r, 200));
+      }
+      const root = ltSheetRoot(actor);
+      return { root, section: root?.querySelector?.('.beneos-set-bonus-tab, section[data-tab="beneos-sets"]'), navBtn };
+    };
+
+    if (stepId === "lt-item-attune") {
+      // Attune the item -> the Beneos Sets nav button appears on the sheet.
+      const goblin = ltResolveGoblin();
+      try {
+        const item = ltGoblinBeneosItem(goblin);
+        if (item) await item.update({ "system.attuned": true });
+      } catch (e) { console.warn("Beneos Tutorial Tour | attune failed:", e); }
+      if (goblin) { try { await goblin.sheet.render(true); await new Promise(r => setTimeout(r, 600)); } catch (e) {} }
+      const navBtn = await ltWaitBeneosTab(goblin);
+      // Show the Inventory tab so the added item is visible as real equipment,
+      // then spotlight the Beneos nav icon AND that item row together, so the
+      // user sees both the new tab AND that the item is actually equipped.
+      try { goblin?.sheet?.changeTab?.("inventory", "primary"); await new Promise(r => setTimeout(r, 400)); } catch (e) {}
+      const root = ltSheetRoot(goblin);
+      let itemRow = null;
+      try {
+        if (this._tourGoblinItemId && root?.querySelector) {
+          itemRow = root.querySelector(`[data-item-id="${this._tourGoblinItemId}"]`);
+          if (itemRow) itemRow.scrollIntoView?.({ block: "center" });
+        }
+      } catch (e) {}
+      const spots = [navBtn, itemRow].filter(Boolean);
+      if (spots.length) this._applySpotlight(spots, 10);
+      const win = root?.closest?.(".app, .application") || root;
+      if (!ctDockBeside(win, "goblin-sheet", 28)) this._trySelector('.dnd5e2.sheet.actor, .actor.sheet') || ltCenterAnchor("lt-item-attune");
+    }
+
+    if (stepId === "lt-set-tab") {
+      // Open + reveal the Beneos Sets tab on the Goblin's sheet (clicking the nav
+      // button is the reliable path; changeTab alone can leave the injected
+      // section hidden). Spotlight the nav ICON and the opened tab body together.
+      const goblin = ltResolveGoblin();
+      const { root, section: tabEl, navBtn } = await ltShowBeneosSetTab(goblin);
+      const spots = [navBtn, tabEl].filter(Boolean);
+      if (spots.length) this._applySpotlight(spots, 8);
+      const win = root?.closest?.(".app, .application") || root;
+      // Dock the box well to the right so it never overlaps the tab icon column.
+      if (!ctDockBeside(win, "goblin-sheet", 32)) {
+        const anchor = tabEl || navBtn;
+        if (anchor) { anchor.id = anchor.id || "beneos-tour-set-tab-anchor"; this._trySelector("#" + anchor.id); }
+        else ltCenterAnchor("lt-set-tab");
+      }
+    }
+
+    // The Item Radar (LGC) is a paid feature: without token access its composer
+    // renders blurred behind a Join-Patreon overlay. For the tour we reveal it
+    // (client-side only, no access granted) so the user sees how it works.
+    const ltUnlockRadar = () => {
+      try {
+        const w = document.querySelector("#beneos-lgc, .beneos-lgc");
+        if (!w) return;
+        w.querySelectorAll(".beneos-paywall-wrap.is-locked").forEach(el => el.classList.remove("is-locked"));
+        w.querySelectorAll(".beneos-paywall-overlay").forEach(el => el.remove());
+      } catch (e) {}
+    };
+    // Temporarily report token access so the LGC radar renders fully unlocked and
+    // the user can freely change distance/direction WITHOUT the paywall overlay
+    // re-appearing on every re-render. Restored when the radar section is left.
+    const ltStubTokenAccess = (on) => {
+      try {
+        const cloud = game.beneos?.cloud;
+        if (!cloud) return;
+        if (on) {
+          if (!this._tourOrigHasAccess) {
+            const cur = cloud.hasCampaignAccess;
+            // Never capture a previously-installed stub as the "original" (that
+            // would make the real function unrecoverable on restore).
+            const orig = cur?._beneosRealAccess || (cur?.bind ? cur.bind(cloud) : cur);
+            this._tourOrigHasAccess = orig;
+            const stub = (k) => (k === "tokens") ? true : (orig ? orig(k) : false);
+            stub._beneosRealAccess = orig;
+            cloud.hasCampaignAccess = stub;
+          }
+        } else {
+          const cur = cloud.hasCampaignAccess;
+          const real = this._tourOrigHasAccess || cur?._beneosRealAccess;
+          if (real) cloud.hasCampaignAccess = real;
+          this._tourOrigHasAccess = null;
+        }
+      } catch (e) {}
+    };
+
+    // ----- Item philosophy + where the GM tools live (Codex + Game Control) -----
+    if (stepId === "lt-item-summary") {
+      // Close the Goblin sheet and pan to the default view for a calm summary.
+      try { ltResolveGoblin()?.sheet?.close(); } catch (e) {}
+      await new Promise(r => setTimeout(r, 200));
+      try {
+        const initial = canvas.scene?.initial;
+        if (initial && Number.isFinite(initial.scale)) await this._panTo({ x: initial.x, y: initial.y, scale: initial.scale, duration: 500, sound: false });
+      } catch (e) {}
+      ltCenterAnchor("lt-item-summary");
+    }
+
+    if (stepId === "lt-item-codex-btn") {
+      // Open the Beneos module (Cloud window) and highlight its Codex button.
+      await openCloudWindowForTour();
+      await new Promise(r => setTimeout(r, 500));
+      const win = document.getElementById("beneos-cloud-window-v2");
+      const btn = win?.querySelector('[data-action="openCodex"]');
+      if (btn) {
+        try { btn.scrollIntoView?.({ block: "center" }); } catch (e) {}
+        this._applySpotlight(btn, 8);
+        btn.id = btn.id || "beneos-tour-codex-btn";
+        this._trySelector("#" + btn.id);
+      } else if (win) {
+        this._applySpotlight(win, 6);
+        if (!ctDockBeside(win, "cloud")) this._trySelector("#beneos-cloud-window-v2");
+      } else { ltCenterAnchor("lt-item-codex-btn"); }
+    }
+
+    if (stepId === "lt-item-codex") {
+      // Click the Codex button -> the Beneos Codex opens (all static content).
+      const win = document.getElementById("beneos-cloud-window-v2") || await openCloudWindowForTour();
+      try { win?.querySelector('[data-action="openCodex"]')?.click(); } catch (e) {}
+      await new Promise(r => setTimeout(r, 1300));
+      // Close the Beneos Cloud (module) window now that the Codex is open, so it
+      // does not sit in front and cover the Codex. lt-item-lgc-btn re-opens the
+      // cloud window afterwards to point at the Game Control button.
+      try {
+        const cloudApp = Array.from(foundry.applications.instances.values())
+          .find(a => a?.element?.id === "beneos-cloud-window-v2");
+        cloudApp?.close?.();
+      } catch (e) {}
+      await new Promise(r => setTimeout(r, 300));
+      const codex = document.querySelector("#beneos-codex, .beneos-codex");
+      if (codex) {
+        codex.id = codex.id || "beneos-tour-codex-hub";
+        const body = codex.querySelector(".codex-body, .codex-content, .item-origins-layout") || codex;
+        this._applySpotlight(body, 6);
+        if (!ctDockBeside(codex, "codex-hub")) this._trySelector("#" + codex.id);
+      } else { ltCenterAnchor("lt-item-codex"); }
+    }
+
+    if (stepId === "lt-item-lgc-btn") {
+      // Close the codex, bring the Beneos module forward, highlight Game Control.
+      try {
+        for (const [, app] of (foundry.applications?.instances ?? [])) {
+          const cl = app?.element?.classList;
+          if (app?.element?.id === "beneos-codex" || cl?.contains?.("beneos-codex")) { try { app.close(); } catch (e) {} }
+        }
+      } catch (e) {}
+      const win = document.getElementById("beneos-cloud-window-v2") || await openCloudWindowForTour();
+      await new Promise(r => setTimeout(r, 400));
+      const btn = win?.querySelector('[data-action="openLgc"]');
+      if (btn) {
+        try { btn.scrollIntoView?.({ block: "center" }); } catch (e) {}
+        this._applySpotlight(btn, 8);
+        btn.id = btn.id || "beneos-tour-lgc-btn";
+        this._trySelector("#" + btn.id);
+      } else if (win) { this._applySpotlight(win, 6); this._trySelector("#beneos-cloud-window-v2"); }
+      else { ltCenterAnchor("lt-item-lgc-btn"); }
+    }
+
+    if (stepId === "lt-item-lgc") {
+      // Click Game Control -> the LGC opens (live-session tools). Unlock it for
+      // the demo and close the cloud window so the LGC is the sole focus.
+      ltStubTokenAccess(true);
+      const win = document.getElementById("beneos-cloud-window-v2") || await openCloudWindowForTour();
+      try { win?.querySelector('[data-action="openLgc"]')?.click(); } catch (e) {}
+      await new Promise(r => setTimeout(r, 1000));
+      try {
+        const cloudApp = Array.from(foundry.applications.instances.values()).find(a => a?.element?.id === "beneos-cloud-window-v2");
+        cloudApp?.close?.();
+      } catch (e) {}
+      await new Promise(r => setTimeout(r, 300));
+      const lgc = document.querySelector("#beneos-lgc, .beneos-lgc");
+      if (lgc) {
+        this._applySpotlight(lgc, 6);
+        if (!ctDockBeside(lgc, "lgc-intro")) this._trySelector("#beneos-lgc") || this._trySelector(".beneos-lgc");
+      } else { ltCenterAnchor("lt-item-lgc"); }
+    }
+
+    if (stepId === "lt-radar-intro") {
+      // Report token access for the whole radar section so the composer never
+      // re-locks while the user plays with it (restored in lt-loot-open + cleanup).
+      ltStubTokenAccess(true);
+      // Close the demo Goblin sheet, open the GM Live Game Control, Radar tab,
+      // and unlock the paywalled composer for the demo.
+      try { ltResolveGoblin()?.sheet?.close(); } catch (e) {}
+      try {
+        for (const [, app] of (foundry.applications?.instances ?? [])) {
+          if (app?.element?.classList?.contains?.("sheet") && (app?.document?.documentName === "Actor")) { try { app.close(); } catch (e) {} }
+        }
+      } catch (e) {}
+      try {
+        const { BeneosLiveGameControl } = await import("./lgc/beneos-lgc.mjs");
+        BeneosLiveGameControl.open();
+      } catch (e) { console.warn("Beneos Tutorial Tour | LGC open failed:", e); }
+      await new Promise(r => setTimeout(r, 900));
+      const w = document.querySelector("#beneos-lgc, .beneos-lgc");
+      if (w) {
+        try { w.querySelector('[data-action="lgc-tab"][data-tab="radar"]')?.click(); } catch (e) {}
+        await new Promise(r => setTimeout(r, 300));
+        ltUnlockRadar();
+        await new Promise(r => setTimeout(r, 150));
+        ltUnlockRadar();
+        const body = w.querySelector(".radar-body") || w;
+        this._applySpotlight(body, 6);
+        if (!ctDockBeside(w, "radar")) this._trySelector("#beneos-lgc") || this._trySelector(".beneos-lgc");
+      } else {
+        ltCenterAnchor("lt-radar-intro");
+      }
+    }
+
+    // Resolve the live LGC instance so we can drive its composer + fire a ping.
+    const ltGetLgc = async () => {
+      try { const m = await import("./lgc/beneos-lgc.mjs"); return { m, lgc: m.BeneosLiveGameControl?._instance ?? null }; }
+      catch (e) { return { m: null, lgc: null }; }
+    };
+
+    if (stepId === "lt-radar-compose") {
+      ltUnlockRadar();
+      // Pre-load the composer with the Goblin's origin (sanctified) at a close
+      // range, so the real ping fired in the next step lands in-range (1 attuned
+      // item => 1 mile) and swings the compass hard (intensity-close).
+      const { lgc } = await ltGetLgc();
+      if (lgc) {
+        lgc._composer = lgc._composer || {};
+        lgc._composer.originSlug = "sanctified";
+        lgc._composer.distanceFt = 1000;   // ~0.19 mi, well within the 1-mile range
+        lgc._composer.directionDeg = 45;   // NE
+        lgc._composerExpanded = true;
+        lgc._originDropdownOpen = false;
+        try { await lgc.render(false); await new Promise(r => setTimeout(r, 300)); } catch (e) {}
+        ltUnlockRadar();
+      }
+      const w = document.querySelector("#beneos-lgc, .beneos-lgc");
+      if (w) {
+        const composer = w.querySelector(".composer-grid, .composer") || w.querySelector(".radar-body") || w;
+        this._applySpotlight(composer, 6);
+        if (!ctDockBeside(w, "radar")) { composer.id = composer.id || "beneos-tour-radar-composer"; this._trySelector("#" + composer.id); }
+      } else {
+        ltCenterAnchor("lt-radar-compose");
+      }
+    }
+
+    if (stepId === "lt-radar-ping") {
+      // Ensure the set-bonus feature is on (kill-switch) so the ping actually
+      // dispatches sound + whispers, then fire the REAL ping.
+      try { if (game.settings.get("beneos-module", "beneos-loot-set-bonuses") === false) await game.settings.set("beneos-module", "beneos-loot-set-bonuses", true); } catch (e) {}
+      ltUnlockRadar();
+      const { m, lgc } = await ltGetLgc();
+      if (m && lgc) {
+        try {
+          lgc._composer = lgc._composer || {};
+          lgc._composer.originSlug = "sanctified";
+          lgc._composer.distanceFt = lgc._composer.distanceFt || 1000;
+          lgc._composer.directionDeg = 45;
+          // _onPingAdd writes the world setting, plays beneos_ping.ogg for the
+          // GM, and whispers the attuned players (the Goblin's owner falls back
+          // to the GM, so the DM sees the chat card).
+          await m.BeneosLiveGameControl._onPingAdd.call(lgc);
+          await new Promise(r => setTimeout(r, 500));
+          const pings = m.BeneosLiveGameControl._getPings();
+          if (pings?.[0]?.id) this._tourPingId = pings[0].id;
+        } catch (e) { console.warn("Beneos Tutorial Tour | radar ping failed:", e); }
+      }
+      const w = document.querySelector("#beneos-lgc, .beneos-lgc");
+      if (w) {
+        // Firing collapses the composer; spotlight the active-ping list / body.
+        const body = w.querySelector(".ping-list, .active-pings, .radar-body") || w;
+        this._applySpotlight(body, 6);
+        if (!ctDockBeside(w, "radar")) this._trySelector("#beneos-lgc") || this._trySelector(".beneos-lgc");
+      } else {
+        ltCenterAnchor("lt-radar-ping");
+      }
+    }
+
+    if (stepId === "lt-radar-chat") {
+      // Switch the sidebar to chat and spotlight the private ping whisper card
+      // the attuned player just received.
+      try { document.querySelector('[data-tab="chat"]')?.click(); await new Promise(r => setTimeout(r, 300)); } catch (e) {}
+      let card = null;
+      for (let i = 0; i < 15; i++) {
+        const cards = document.querySelectorAll(".beneos-ping-whisper");
+        if (cards.length) { card = cards[cards.length - 1]; break; }
+        await new Promise(r => setTimeout(r, 200));
+      }
+      if (card) {
+        const msgEl = card.closest(".chat-message, li.message, .message") || card;
+        try { msgEl.scrollIntoView?.({ block: "center" }); } catch (e) {}
+        await new Promise(r => setTimeout(r, 250));
+        this._applySpotlight(msgEl, 8);
+        // Dock the box beside the ping CARD itself (it sits at the bottom of the
+        // chat), not the whole sidebar — otherwise the box floats up near the top.
+        if (!ctDockBeside(msgEl, "radar-chat", 12)) { msgEl.id = msgEl.id || "beneos-tour-ping-chat"; this._trySelector("#" + msgEl.id); }
+      } else {
+        ltCenterAnchor("lt-radar-chat");
+      }
+    }
+
+    if (stepId === "lt-radar-compass") {
+      // Close the GM Live Game Control window now, so nothing covers the
+      // player-side Item Radar we are about to show on the character sheet.
+      ltCloseFeatureWindows();
+      await new Promise(r => setTimeout(r, 150));
+      // Reopen the Goblin sheet and OPEN + reveal the Beneos Sets tab (this is
+      // essential — the user needs to actually see the compass, not just have it
+      // present in a hidden tab). Then scroll down to the Item Radar compass. The
+      // ping from lt-radar-ping still lives in the world setting, so the needle
+      // points toward the nearby sanctified origin.
+      const goblin = ltResolveGoblin();
+      let root = null, compass = null;
+      if (goblin) {
+        try { await goblin.sheet.render(true); await new Promise(r => setTimeout(r, 800)); } catch (e) {}
+        const shown = await ltShowBeneosSetTab(goblin);
+        root = shown.root;
+        // Poll until the compass is actually laid out + visible before scrolling.
+        for (let i = 0; i < 16; i++) {
+          compass = root?.querySelector?.(".beneos-sense-compass");
+          if (compass && compass.offsetParent !== null && compass.getBoundingClientRect().height > 0) break;
+          await new Promise(r => setTimeout(r, 200));
+          root = ltSheetRoot(goblin);
+        }
+      }
+      if (compass) {
+        try { compass.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) {}
+        await new Promise(r => setTimeout(r, 500));
+        this._applySpotlight(compass, 8);
+      }
+      root = root || ltSheetRoot(goblin);
+      const win = root?.closest?.(".app, .application") || root;
+      if (!ctDockBeside(win, "goblin-sheet", 28)) {
+        if (compass) { compass.id = compass.id || "beneos-tour-compass"; this._trySelector("#" + compass.id); }
+        else ltCenterAnchor("lt-radar-compass");
+      }
+    }
+
+    if (stepId === "lt-radar-live") {
+      // Prove the radar is LIVE: change the active ping's bearing + pull it closer
+      // and the needle on the still-open character sheet swings in real time.
+      const goblin = ltResolveGoblin();
+      let root = ltSheetRoot(goblin);
+      if (!root?.querySelector?.(".beneos-sense-compass")) {
+        try { await goblin?.sheet?.render(true); await new Promise(r => setTimeout(r, 700)); } catch (e) {}
+        const shown = await ltShowBeneosSetTab(goblin); root = shown.root;
+      }
+      try {
+        const pings = game.settings.get("beneos-module", "beneos-lgc-active-pings");
+        if (Array.isArray(pings) && pings.length) {
+          const target = pings.find(p => p.id === this._tourPingId) || pings[0];
+          if (target) { target.directionDeg = 210; target.distanceFt = 600; await game.settings.set("beneos-module", "beneos-lgc-active-pings", pings); }
+        }
+      } catch (e) {}
+      await new Promise(r => setTimeout(r, 1000));
+      root = ltSheetRoot(goblin);
+      const compass = root?.querySelector?.(".beneos-sense-compass");
+      if (compass) {
+        try { compass.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) {}
+        await new Promise(r => setTimeout(r, 300));
+        this._applySpotlight(compass, 8);
+      }
+      const win = root?.closest?.(".app, .application") || root;
+      if (!ctDockBeside(win, "goblin-sheet", 28)) {
+        if (compass) { compass.id = compass.id || "beneos-tour-compass-live"; this._trySelector("#" + compass.id); }
+        else ltCenterAnchor("lt-radar-live");
+      }
+    }
+
+    // Loot-generator DOM helpers (the shop window shares the .beneos-loot-
+    // generator class, so scope loot queries to :not(.beneos-magic-shop)).
+    const ltLootWin = () => document.querySelector(".beneos-loot-generator:not(.beneos-magic-shop)");
+    const ltLootApp = () => this._tourLootApp ?? (() => { for (const [, a] of (foundry.applications?.instances ?? [])) { const cl = a?.element?.classList; if (cl?.contains?.("beneos-loot-generator") && !cl?.contains?.("beneos-magic-shop")) return a; } return null; })();
+
+    if (stepId === "lt-loot-open") {
+      // Leaving the radar section: restore the real token-access check.
+      ltStubTokenAccess(false);
+      // Open the Loot Generator and rewind the demo to STEP 1 (bias picker) so
+      // the user walks the full wizard rather than landing on a finished result.
+      ltCloseFeatureWindows();
+      try { ltResolveGoblin()?.sheet?.close(); } catch (e) {}
+      await new Promise(r => setTimeout(r, 200));
+      let app = null;
+      try {
+        const { BeneosLootGenerator } = await import("./cloud-v2/loot-generator.mjs");
+        app = await BeneosLootGenerator.openDemo();
+        if (app) {
+          app.step = 1; app.bias = null; app.tier = null; app.results = []; app.gold = 0;
+          app.treasures = []; app.wondrous = null; app.rolling = false; app.rerollCount = 0;
+          try { await app.render({ parts: ["body"] }); } catch (e) {}
+        }
+      } catch (e) { console.warn("Beneos Tutorial Tour | loot open failed:", e); }
+      this._tourLootApp = app;
+      await new Promise(r => setTimeout(r, 800));
+      const w = ltLootWin();
+      if (w) {
+        w.id = w.id || "beneos-tour-loot-gen";
+        const bias = w.querySelector(".blg-step-bias, .blg-bias-row") || w;
+        this._applySpotlight(bias, 8);
+        if (!ctDockBeside(w, "loot")) this._trySelector("#" + w.id);
+      } else { ltCenterAnchor("lt-loot-open"); }
+    }
+
+    if (stepId === "lt-loot-tier") {
+      // Pick a rarity bias and advance to the tier picker (step 2).
+      const app = ltLootApp();
+      if (app) {
+        app.bias = "higher"; app.step = 2;
+        try { await app.render({ parts: ["body"] }); await new Promise(r => setTimeout(r, 400)); } catch (e) {}
+      }
+      const w = ltLootWin();
+      if (w) {
+        const tier = w.querySelector(".blg-step-tier, .blg-tier-grid") || w;
+        this._applySpotlight(tier, 8);
+        if (!ctDockBeside(w, "loot")) { w.id = w.id || "beneos-tour-loot-gen"; this._trySelector("#" + w.id); }
+      } else { ltCenterAnchor("lt-loot-tier"); }
+    }
+
+    if (stepId === "lt-loot-roll") {
+      // Pick a tier -> show the dice/loading animation -> reveal the three real
+      // Beneos items with the staggered card-drop (_onRender adds .blg-reveal).
+      const app = ltLootApp();
+      if (app) {
+        app.tier = 3; app.step = 3; app.rolling = true; app.results = []; app.gold = 0; app.wondrous = null;
+        try { await app.render({ parts: ["body"] }); } catch (e) {}
+        // Dice-roll sound effect over the loading/roll animation.
+        try {
+          const helper = foundry.audio?.AudioHelper ?? (typeof AudioHelper !== "undefined" ? AudioHelper : null);
+          helper?.play?.({ src: CONFIG?.sounds?.dice || "sounds/dice.wav", volume: 0.8, autoplay: true, loop: false }, false);
+        } catch (e) {}
+        await new Promise(r => setTimeout(r, 2300));
+        const payload = ltBuildLootResults();
+        app.results = payload.results; app.wondrous = payload.wondrous; app.gold = 1800; app.rolling = false;
+        try { await app.render({ parts: ["body"] }); } catch (e) {}
+        await new Promise(r => setTimeout(r, 1000));
+      }
+      const w = ltLootWin();
+      if (w) {
+        const results = w.querySelector(".blg-results") || w.querySelector(".blg-scroll-body") || w;
+        this._applySpotlight(results, 8);
+        if (!ctDockBeside(w, "loot")) { w.id = w.id || "beneos-tour-loot-gen"; this._trySelector("#" + w.id); }
+      } else { ltCenterAnchor("lt-loot-roll"); }
+    }
+
+    if (stepId === "lt-loot-reroll") {
+      // Spotlight the reroll button (deal a fresh hand for the party).
+      const w = ltLootWin();
+      if (w) {
+        const reroll = w.querySelector('[data-action="reroll"]');
+        if (reroll) { try { reroll.scrollIntoView?.({ block: "center" }); } catch (e) {} this._applySpotlight(reroll, 10); }
+        if (!ctDockBeside(w, "loot")) { w.id = w.id || "beneos-tour-loot-gen"; this._trySelector("#" + w.id); }
+      } else { ltCenterAnchor("lt-loot-reroll"); }
+    }
+
+    if (stepId === "lt-loot-claim") {
+      // Spotlight the gold hoard + one-click Claim button.
+      const w = ltLootWin();
+      if (w) {
+        const gold = w.querySelector('.blg-hoard-gold') || w.querySelector('[data-action="claimGold"]');
+        if (gold) { try { gold.scrollIntoView?.({ block: "center" }); } catch (e) {} this._applySpotlight(gold, 10); }
+        if (!ctDockBeside(w, "loot")) { w.id = w.id || "beneos-tour-loot-gen"; this._trySelector("#" + w.id); }
+      } else { ltCenterAnchor("lt-loot-claim"); }
+    }
+
+    if (stepId === "lt-shop-open") {
+      // Close the loot demo, open the Shop Generator, rewind to STEP 1 (shop-
+      // type picker). Keep the demo shop items in memory for the later reveal.
+      ltCloseFeatureWindows();
+      await new Promise(r => setTimeout(r, 200));
+      let app = null;
+      try {
+        const { BeneosMagicShopGenerator, DEMO_SHOP } = await import("./cloud-v2/magic-shop-generator.mjs");
+        app = await BeneosMagicShopGenerator.openDemo();
+        if (app) {
+          this._tourShopDefaults = { shopType: app.shopType ?? DEMO_SHOP?.shopType, size: app.size ?? DEMO_SHOP?.size };
+          app.step = 1; app.shopType = null; app.size = null; app.rolling = false; app.saving = false; app.rerollCount = 0;
+          try { await app.render({ parts: ["body"] }); } catch (e) {}
+        }
+      } catch (e) { console.warn("Beneos Tutorial Tour | shop open failed:", e); }
+      this._tourShopApp = app;
+      await new Promise(r => setTimeout(r, 800));
+      const w = document.querySelector(".beneos-magic-shop");
+      if (w) {
+        w.id = w.id || "beneos-tour-shop-gen";
+        const picker = w.querySelector(".blg-step-shop-type, .blg-shop-type-grid") || w;
+        this._applySpotlight(picker, 8);
+        if (!ctDockBeside(w, "shop")) this._trySelector("#" + w.id);
+      } else { ltCenterAnchor("lt-shop-open"); }
+    }
+
+    if (stepId === "lt-shop-size") {
+      // Choose the shop type and advance to the size + name step (step 2).
+      const app = this._tourShopApp ?? ltFindApp("beneos-magic-shop");
+      if (app) {
+        app.shopType = this._tourShopDefaults?.shopType ?? "magic_shop"; app.step = 2;
+        try { await app.render({ parts: ["body"] }); await new Promise(r => setTimeout(r, 400)); } catch (e) {}
+      }
+      const w = document.querySelector(".beneos-magic-shop");
+      if (w) {
+        const sizes = w.querySelector(".blg-step-shop-size, .blg-shop-size-grid") || w;
+        this._applySpotlight(sizes, 8);
+        if (!ctDockBeside(w, "shop")) { w.id = w.id || "beneos-tour-shop-gen"; this._trySelector("#" + w.id); }
+      } else { ltCenterAnchor("lt-shop-size"); }
+    }
+
+    if (stepId === "lt-shop-roll") {
+      // Pick a size -> stocking animation -> reveal the fully stocked shop.
+      const app = this._tourShopApp ?? ltFindApp("beneos-magic-shop");
+      if (app) {
+        app.size = this._tourShopDefaults?.size ?? "medium"; app.step = 3; app.rolling = true;
+        try { await app.render({ parts: ["body"] }); } catch (e) {}
+        await new Promise(r => setTimeout(r, 2300));
+        app.step = 4; app.rolling = false;
+        try { await app.render({ parts: ["body"] }); } catch (e) {}
+        await new Promise(r => setTimeout(r, 1000));
+      }
+      const w = document.querySelector(".beneos-magic-shop");
+      if (w) {
+        const body = w.querySelector(".blg-scroll-body") || w;
+        this._applySpotlight(body, 8);
+        if (!ctDockBeside(w, "shop")) { w.id = w.id || "beneos-tour-shop-gen"; this._trySelector("#" + w.id); }
+      } else { ltCenterAnchor("lt-shop-roll"); }
+    }
+
+    if (stepId === "lt-shop-save") {
+      // Spotlight the reroll + save-to-world buttons.
+      const w = document.querySelector(".beneos-magic-shop");
+      if (w) {
+        const save = w.querySelector('[data-action="saveShop"]');
+        const reroll = w.querySelector('[data-action="reroll"]');
+        const spots = [save, reroll].filter(Boolean);
+        if (spots.length) { try { (save || reroll).scrollIntoView?.({ block: "center" }); } catch (e) {} this._applySpotlight(spots, 10); }
+        if (!ctDockBeside(w, "shop")) { w.id = w.id || "beneos-tour-shop-gen"; this._trySelector("#" + w.id); }
+      } else { ltCenterAnchor("lt-shop-save"); }
+    }
+
+    if (stepId === "lt-codex-origins") {
+      // Everything so far lives in the Beneos Codex. Open it on the Origins
+      // overview so the user sees the full gallery of Origins + their set bonuses.
+      ltCloseFeatureWindows();
+      await new Promise(r => setTimeout(r, 200));
+      try {
+        const mod = await import("./codex2/beneos-codex.mjs");
+        mod.BeneosCodex?.open?.("items", "origins");
+      } catch (e) { console.warn("Beneos Tutorial Tour | codex open failed:", e); }
+      await new Promise(r => setTimeout(r, 1100));
+      const w = document.querySelector("#beneos-codex, .beneos-codex");
+      if (w) {
+        w.id = w.id || "beneos-tour-codex";
+        const gallery = w.querySelector(".item-origins-layout, .codex-body, .codex-content") || w;
+        this._applySpotlight(gallery, 6);
+        if (!ctDockBeside(w, "codex")) this._trySelector("#" + w.id);
+      } else { ltCenterAnchor("lt-codex-origins"); }
+    }
+
+    if (stepId === "lt-codex-detail") {
+      // Open a single Origin's full page so the user sees the depth: lore, set
+      // tiers with rules, and the live simulator. The origin detail is normally
+      // Patreon-clamped; we briefly report token access so the full page renders
+      // for the demo (restored right after, no access actually granted).
+      const cloud = game.beneos?.cloud;
+      const origHas = cloud?.hasCampaignAccess?.bind?.(cloud) ?? cloud?.hasCampaignAccess;
+      try {
+        if (cloud) cloud.hasCampaignAccess = (k) => (k === "tokens") ? true : (origHas ? origHas(k) : false);
+        const mod = await import("./codex2/beneos-codex.mjs");
+        mod.BeneosCodex?.open?.("items", "origins", "sanctified");
+        await new Promise(r => setTimeout(r, 1200));
+      } catch (e) { console.warn("Beneos Tutorial Tour | codex detail open failed:", e); }
+      finally { try { if (cloud && origHas) cloud.hasCampaignAccess = origHas; } catch (e) {} }
+      const w = document.querySelector("#beneos-codex, .beneos-codex");
+      if (w) {
+        w.id = w.id || "beneos-tour-codex";
+        const detail = w.querySelector(".origin-detail, .item-origin-detail, .codex-detail, .item-origins-layout, .codex-body") || w;
+        this._applySpotlight(detail, 6);
+        if (!ctDockBeside(w, "codex")) this._trySelector("#" + w.id);
+      } else { ltCenterAnchor("lt-codex-detail"); }
+    }
+
     if (stepId === "lt-loot-complete") {
       // Close the item sheet from earlier steps, then pan to default view
       try { game.items.get("6QYFmLk3ne0HNXZA")?.sheet?.close(); } catch (e) {}
+      ltCloseFeatureWindows();
       // Switch sidebar back to chat for the wrap-up
       try {
         const chatTab = document.querySelector('[data-tab="chat"]');
@@ -6058,17 +7581,28 @@ class BeneosTutorialSceneTour extends TourBase {
 function _installTourTooltipGuard(tour) {
   if (!game.tooltip || tour._tourGuardInstalled) return;
   if (typeof game.tooltip.activate === "function") {
-    tour._origActivateTour = game.tooltip.activate.bind(game.tooltip);
-    game.tooltip.activate = (element, options = {}) => {
+    // Recursion-proof: if a guard is already installed (e.g. a scene-transition
+    // where the previous tour's guard lingers), reuse its captured TRUE original
+    // instead of wrapping the guard again — wrapping a guard makes activate() call
+    // itself forever. The guard closes over `orig` (stable), not tour._origActivateTour.
+    const current = game.tooltip.activate;
+    const orig = current._beneosTourOrig || current.bind(game.tooltip);
+    tour._origActivateTour = orig;
+    const guard = (element, options = {}) => {
       const cssClass = String(options?.cssClass ?? "");
-      if (cssClass.includes("tour")) return tour._origActivateTour(element, options);
+      if (cssClass.includes("tour")) return orig(element, options);
       // External activation (playlist volume slider, etc.) — ignored so the
       // tour box stays put. Percentage tooltips resume once the tour exits.
     };
+    guard._beneosTourOrig = orig;
+    game.tooltip.activate = guard;
   }
   if (typeof game.tooltip.dismissLockedTooltips === "function") {
-    tour._origDismissLockedTour = game.tooltip.dismissLockedTooltips.bind(game.tooltip);
-    game.tooltip.dismissLockedTooltips = () => {};
+    const cur = game.tooltip.dismissLockedTooltips;
+    tour._origDismissLockedTour = cur._beneosTourOrig || cur.bind(game.tooltip);
+    const g = () => {};
+    g._beneosTourOrig = tour._origDismissLockedTour;
+    game.tooltip.dismissLockedTooltips = g;
   }
   tour._tourGuardInstalled = true;
 }
@@ -6190,6 +7724,7 @@ Hooks.once("setup", async () => {
       { id: "prepare-canvas",  selector: "", tooltipDirection: "CENTER" },
       { id: "open-cloud",      selector: `[data-control="beneos"]`, tooltipDirection: "RIGHT" },
       { id: "cloud-tabs",      selector: "", tooltipDirection: "DOWN" },
+      { id: "cloud-library",   selector: "", tooltipDirection: "DOWN" },
       { id: "cloud-signin",    selector: "", tooltipDirection: "UP" },
       { id: "cloud-patreon",   selector: "", tooltipDirection: "UP" },
       { id: "cloud-find-tour", selector: "", tooltipDirection: "LEFT" },
@@ -6294,6 +7829,13 @@ Hooks.once("setup", async () => {
       { id: "bm-handout-2", selector: "", tooltipDirection: "LEFT" },
       { id: "bm-share-image", selector: "", tooltipDirection: "UP" },
       { id: "bm-navigation-recap", selector: "", tooltipDirection: "CENTER" },
+      { id: "bm-drawer-button", selector: "", tooltipDirection: "UP" },
+      { id: "bm-drawer-open", selector: "", tooltipDirection: "UP" },
+      { id: "bm-drawer-hide", selector: "", tooltipDirection: "UP" },
+      { id: "bm-drawer-buttons", selector: "", tooltipDirection: "UP" },
+      { id: "bm-drawer-click-sheet", selector: "", tooltipDirection: "UP" },
+      { id: "bm-drawer-placed", selector: "", tooltipDirection: "CENTER" },
+      { id: "bm-drawer-show-creature", selector: "", tooltipDirection: "DOWN" },
       { id: "bm-player-navigators", selector: "", tooltipDirection: "UP" },
       { id: "bm-player-icon", selector: "", tooltipDirection: "UP" },
       { id: "bm-player-field", selector: "", tooltipDirection: "UP" },
@@ -6394,6 +7936,7 @@ Hooks.once("setup", async () => {
       { id: "ct-welcome", selector: "", tooltipDirection: "DOWN" },
       { id: "ct-actor-directory", selector: "", tooltipDirection: "RIGHT" },
       { id: "ct-cloud-open", selector: "", tooltipDirection: "LEFT" },
+      { id: "ct-cloud-free", selector: "", tooltipDirection: "LEFT" },
       { id: "ct-cloud-account", selector: "", tooltipDirection: "RIGHT" },
       { id: "ct-categories", selector: "", tooltipDirection: "LEFT" },
       { id: "ct-filter-biome", selector: "", tooltipDirection: "RIGHT" },
@@ -6414,18 +7957,22 @@ Hooks.once("setup", async () => {
       { id: "ct-death-icon-setting", selector: "", tooltipDirection: "RIGHT" },
       { id: "ct-character-sheet", selector: "", tooltipDirection: "LEFT" },
       { id: "ct-design-philosophy", selector: "", tooltipDirection: "LEFT" },
-      { id: "ct-biography-tactical", selector: "", tooltipDirection: "LEFT" },
-      { id: "ct-tactical-detail", selector: "", tooltipDirection: "LEFT" },
-      { id: "ct-journal-open", selector: "", tooltipDirection: "LEFT" },
-      { id: "ct-journal-fullbody", selector: "", tooltipDirection: "LEFT" },
-      { id: "ct-journal-lore", selector: "", tooltipDirection: "LEFT" },
-      { id: "ct-journal-story", selector: "", tooltipDirection: "LEFT" },
-      { id: "ct-journal-foreshadowing", selector: "", tooltipDirection: "LEFT" },
-      { id: "ct-journal-before-combat", selector: "", tooltipDirection: "LEFT" },
-      { id: "ct-journal-during-combat", selector: "", tooltipDirection: "LEFT" },
-      { id: "ct-journal-death", selector: "", tooltipDirection: "LEFT" },
       { id: "ct-token-rotation", selector: "", tooltipDirection: "LEFT" },
       { id: "ct-rotation-setting", selector: "", tooltipDirection: "RIGHT" },
+      { id: "ct-codex-access", selector: "", tooltipDirection: "LEFT" },
+      { id: "ct-codex-open", selector: "", tooltipDirection: "CENTER" },
+      { id: "ct-codex-overview", selector: "", tooltipDirection: "CENTER" },
+      { id: "ct-codex-allies", selector: "", tooltipDirection: "CENTER" },
+      { id: "ct-codex-tactical", selector: "", tooltipDirection: "CENTER" },
+      { id: "ct-codex-abilities", selector: "", tooltipDirection: "CENTER" },
+      { id: "ct-codex-foreshadow", selector: "", tooltipDirection: "CENTER" },
+      { id: "ct-codex-hooks", selector: "", tooltipDirection: "CENTER" },
+      { id: "ct-codex-theater", selector: "", tooltipDirection: "CENTER" },
+      { id: "ct-codex-starter", selector: "", tooltipDirection: "CENTER" },
+      { id: "ct-codex-prompts", selector: "", tooltipDirection: "CENTER" },
+      { id: "ct-codex-death", selector: "", tooltipDirection: "CENTER" },
+      { id: "ct-codex-pdf", selector: "", tooltipDirection: "CENTER" },
+      { id: "ct-autopilot", selector: "", tooltipDirection: "CENTER" },
       { id: "ct-creatures-complete", selector: "", tooltipDirection: "CENTER" },
       { id: "ct-loot-spells-next", selector: "", tooltipDirection: "CENTER" }
     ])
@@ -6455,9 +8002,35 @@ Hooks.once("setup", async () => {
       { id: "lt-set-bonus", selector: "", tooltipDirection: "LEFT" },
       { id: "lt-origin-sense", selector: "", tooltipDirection: "LEFT" },
       { id: "lt-foundry-view", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-item-modifier", selector: "", tooltipDirection: "LEFT" },
       { id: "lt-pdf-intro", selector: "", tooltipDirection: "LEFT" },
       { id: "lt-pdf-page6", selector: "", tooltipDirection: "LEFT" },
       { id: "lt-item-folder", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-item-add", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-item-attune", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-set-tab", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-item-summary", selector: "", tooltipDirection: "CENTER" },
+      { id: "lt-item-codex-btn", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-item-codex", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-item-lgc-btn", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-item-lgc", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-radar-intro", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-radar-compose", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-radar-ping", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-radar-chat", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-radar-compass", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-radar-live", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-loot-open", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-loot-tier", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-loot-roll", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-loot-reroll", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-loot-claim", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-shop-open", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-shop-size", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-shop-roll", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-shop-save", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-codex-origins", selector: "", tooltipDirection: "LEFT" },
+      { id: "lt-codex-detail", selector: "", tooltipDirection: "LEFT" },
       { id: "lt-loot-complete", selector: "", tooltipDirection: "CENTER" }
     ])
   }));
@@ -6519,14 +8092,18 @@ Hooks.once("setup", async () => {
   const CONTACTS_SCENE_ID = "dWgZnsQYC2QDt7Kk";
   // Handlers keyed by SCENE ID → { TILE ID → handler }. Every tutorial scene
   // has at least one invisible tile on top of a decorative text box that
-  // opens Moulinette pre-filtered to the relevant pack/creator/terms.
+  // opens the Beneos Cloud search window pre-filtered to a relevant map term.
   // The Contacts scene additionally keeps its original four action-tile
-  // handlers (Discord, beneos.cloud, Mega Dungeon download, Cloud search).
+  // handlers (Discord, beneos.cloud, web shop, Patreon links).
   const SCENE_TILE_HANDLERS = {
     // Contacts / Farewell scene — the 4 existing action tiles + the new
     // quick-download tile in the top-left.
     "dWgZnsQYC2QDt7Kk": {
-      "yuRN7VDZ0bfcRhOx": () => openMoulinetteWithFilter({ creator: "Beneos Battlemaps", pack: "Modular Dungeon B - 63-64" }),
+      // Release name per the GM: "Modular Mega Dungeon". Opens on the Releases
+      // tab (forced by openCloudWithSearch) so the search never lands on the
+      // Bundle or Individual-Maps tab. This is the DOWNLOAD drawing (2RK...),
+      // not the old overlapping tile it replaces.
+      "2RK5IJ2NnvaXaewZ": () => openCloudWithSearch({ mode: "bmap", terms: "Modular Mega Dungeon" }),
       "UbYZoxyfcf5xQ1sJ": () => window.open("https://beneos.cloud/", "_blank", "noopener"),
       "OrdZJUbt0u3YDd8w": async () => {
         try {
@@ -6535,47 +8112,49 @@ Hooks.once("setup", async () => {
         } catch (e) { console.warn("Beneos | Cloud window launch failed:", e); }
       },
       "SidVYdtkooJ3H52J": () => window.open("https://discord.gg/MS6KbX7YQ6", "_blank", "noopener"),
-      "huvDEibZyu30B47y": () => openMoulinetteWithFilter({ terms: "BM: Spire Monastery", creator: "Beneos Battlemaps", pack: "00 Single Map Releases - 01" }),
+      // The release name carries the "Monestary" spelling; "Spire Monastery"
+      // matches nothing, so search the exact catalogued term.
+      "huvDEibZyu30B47y": () => openCloudWithSearch({ mode: "bmap", terms: "Spire Monestary" }),
       "uaAecFJ5vcGmZatj": () => window.open("https://www.patreon.com/cw/BeneosBattlemaps", "_blank", "noopener"),
       "9sgVlpqG6FWQew0x": () => window.open("https://www.patreon.com/cw/BeneosTokens", "_blank", "noopener")
     },
     // Welcome / Start Here
     "0A8yWjm42oAg0vnw": {
-      "b8WFRDx8Tardl9tq": () => openMoulinetteWithFilter({ terms: "BM: Spire Monastery", creator: "Beneos Battlemaps", pack: "00 Single Map Releases - 01" }),
+      "b8WFRDx8Tardl9tq": () => openCloudWithSearch({ mode: "bmap", terms: "Spire Monestary" }),
       "1wMJVxGzBtenMvkr": () => window.open("https://www.patreon.com/cw/BeneosBattlemaps", "_blank", "noopener"),
       "G9RiERlYL85bMKPF": () => window.open("https://www.patreon.com/cw/BeneosTokens", "_blank", "noopener")
     },
     // Page 1 — Overview
     "7C7jvaaI3W1gFFZ3": {
-      "UWnbhn66Sj8soskv": () => openMoulinetteWithFilter({ creator: "Beneos Battlemaps", pack: "The Ashuur Fire Temple - 68" })
+      "UWnbhn66Sj8soskv": () => openCloudWithSearch({ mode: "bmap", terms: "Fire Temple" })
     },
     // Page 2 — Battlemap
     "M0uzfpdYcLJveveu": {
-      "lpZ93iKjrWFM6uoH": () => openMoulinetteWithFilter({ creator: "Beneos Battlemaps", pack: "The Ashuur Fire Temple - 68" })
+      "lpZ93iKjrWFM6uoH": () => openCloudWithSearch({ mode: "bmap", terms: "Fire Temple" })
     },
     // Page 3 — Scenery
     "oQFWGxrKGYbhsE22": {
-      "fd0UGnKuTCEZ6gkc": () => openMoulinetteWithFilter({ creator: "Beneos Battlemaps", pack: "The Ashuur Fire Temple - 68" })
+      "fd0UGnKuTCEZ6gkc": () => openCloudWithSearch({ mode: "bmap", terms: "Fire Temple" })
     },
-    // Page 4 — Intro Sequences
+    // Page 4 — Intro Sequences (same Fire Temple map, kept consistent)
     "sBm7NH23HJ2gv6lA": {
-      "tbiLC6GPRXjxdemd": () => openMoulinetteWithFilter({ creator: "Beneos Battlemaps", pack: "The Ashuur Fire Temple - 68" })
+      "tbiLC6GPRXjxdemd": () => openCloudWithSearch({ mode: "bmap", terms: "Fire Temple" })
     },
     // Page 5 — World Map
     "HNcl2IS9T6JuFxL6": {
-      "ky6z4AxdrY1mt7NK": () => openMoulinetteWithFilter({ creator: "Beneos Battlemaps", pack: "00 Beneos Escalia World Map" })
+      "ky6z4AxdrY1mt7NK": () => openCloudWithSearch({ mode: "bmap", terms: "Escalia World map" })
     },
     // Page 6 — Creatures / Tokens
     "u0wKs5Gmwgqr8NK0": {
-      "hMx3Y8SewlgG1ItS": () => openMoulinetteWithFilter({ terms: "necromancers", creator: "Beneos Battlemaps", pack: "00 Single Map Releases - 01" })
+      "hMx3Y8SewlgG1ItS": () => openCloudWithSearch({ mode: "bmap", terms: "Necromancers Kitchen" })
     },
     // Page 7 — Loot / Items
     "B0h1UkhCXoKatFx4": {
-      "3nERH9xZRQD0lIZx": () => openMoulinetteWithFilter({ terms: "Monk", creator: "Beneos Battlemaps", pack: "00 Single Map Releases - 01" })
+      "3nERH9xZRQD0lIZx": () => openCloudWithSearch({ mode: "bmap", terms: "Monk Dojo" })
     },
     // Page 8 — Spells
     "e8XNodRWUYixtEjd": {
-      "BjOsigMoJ4J7gVfW": () => openMoulinetteWithFilter({ creator: "Beneos Battlemaps", pack: "Old Cemetery - 93" })
+      "BjOsigMoJ4J7gVfW": () => openCloudWithSearch({ mode: "bmap", terms: "Old Cemetery" })
     }
   };
   // Foundry's MouseInteractionManager routes every canvas click through
@@ -6602,20 +8181,24 @@ Hooks.once("setup", async () => {
     try { pt = event.getLocalPosition(canvas.stage); }
     catch (e) { console.warn("[Beneos Tours] _sceneTileClickHit: failed to compute world coords", e); return false; }
     if (!Number.isFinite(pt.x) || !Number.isFinite(pt.y)) return false;
-    for (const [tileId, handler] of Object.entries(handlers)) {
-      // Resolve the tile document. `canvas.tiles.get` returns the Tile
-      // PLACEABLE only once the tile layer has drawn, which can miss tiles
-      // on newly-loaded scenes. Falling back to the scene's embedded
-      // document collection (`canvas.scene.tiles`) is the authoritative
-      // source and works even before placeables materialise.
-      const placeable = canvas.tiles?.get(tileId);
-      const doc = placeable?.document ?? canvas.scene?.tiles?.get(tileId) ?? null;
+    for (const [elemId, handler] of Object.entries(handlers)) {
+      // Resolve the clickable as a Tile first, then a Drawing. `canvas.tiles.get`
+      // returns the placeable only once the layer has drawn, which can miss
+      // elements on newly-loaded scenes, so fall back to the scene's embedded
+      // document collections (the authoritative source). Tiles expose
+      // width/height directly; a Drawing's size lives on `doc.shape`.
+      let doc = canvas.tiles?.get(elemId)?.document ?? canvas.scene?.tiles?.get(elemId) ?? null;
+      let w = doc?.width ?? 0;
+      let h = doc?.height ?? 0;
       if (!doc) {
-        console.debug(`Beneos | scene-tile click: tile ${tileId} not found on scene ${sceneId}`);
+        doc = canvas.drawings?.get(elemId)?.document ?? canvas.scene?.drawings?.get(elemId) ?? null;
+        w = doc?.shape?.width ?? 0;
+        h = doc?.shape?.height ?? 0;
+      }
+      if (!doc) {
+        console.debug(`Beneos | scene-tile click: element ${elemId} not found on scene ${sceneId}`);
         continue;
       }
-      const w = doc.width ?? 0;
-      const h = doc.height ?? 0;
       if (!w || !h) continue;
       if (pt.x >= doc.x && pt.x <= doc.x + w
        && pt.y >= doc.y && pt.y <= doc.y + h) {
@@ -6663,20 +8246,23 @@ Hooks.once("setup", async () => {
     }
   });
 
-  /* ---- ScenePacker import hooks: flag for auto-start after reload ----
+  /* ---- Beneos Cloud install hook: flag for auto-start after install ----
+   *   Fired by BeneosCloudWindowV2._onCloudBattlemapInstallNative once a
+   *   release finished installing natively (no Scene-Packer / Moulinette).
    *   When the inline Setup-Tour Yes-flow is active (_autoInstallActive),
    *   we skip the pending-flag write and the _maybeHandInstallComplete
-   *   bridge entirely — the inline flow owns the activation and showing
-   *   an additional confirmation dialog on top of it would overlap. */
-  Hooks.on("ScenePacker.importAllComplete", (data) => {
-    if (!data.adventureName?.includes(TUTORIAL_ADVENTURE_NAME)) return;
+   *   bridge entirely — the inline flow owns the activation. We only react
+   *   to the Getting Started pack so unrelated battlemap installs never
+   *   trigger the tutorial auto-start. */
+  Hooks.on("beneos.releaseInstalled", (data) => {
+    const name = `${data?.displayName || ""} ${data?.releaseDir || ""}`;
+    if (!/getting[\s_-]*started/i.test(name)) return;
     if (_autoInstallActive) return;
-    game.settings.set(MODULE_ID, "sceneTourPending", true);
-    _maybeHandInstallComplete();
-  });
-  Hooks.on("ScenePacker.importMoulinetteComplete", (data) => {
-    if (!data.info?.name?.includes(TUTORIAL_ADVENTURE_NAME)) return;
-    if (_autoInstallActive) return;
+    // The install-progress window owns the post-install hand-off: it runs its
+    // own 3-second countdown and opens the Start Here scene. Skip our dialog so
+    // the user is not asked twice. The flag is set in the progress window's
+    // markCompleted(), which runs before this hook fires.
+    if (globalThis.__beneosGsAutoStartOwned) { globalThis.__beneosGsAutoStartOwned = false; return; }
     game.settings.set(MODULE_ID, "sceneTourPending", true);
     _maybeHandInstallComplete();
   });
@@ -7628,6 +9214,37 @@ async function _confirmStartTutorial() {
 /* ================================================================== */
 
 /**
+ * Detect a GM manually starting/stopping the managed tour music while a
+ * tutorial tour is active. Stopping it = the GM does not want tour music, so
+ * we opt out and no later page re-starts it. Starting it again clears the
+ * opt-out. Changes the tour itself makes (page 4 stop, page 5 start, etc.) are
+ * marked via beneosMarkTourAudioSelfChange() and ignored here.
+ *
+ * In Foundry V13, toggling a PlaylistSound's playing state is persisted on the
+ * parent Playlist document (updatePlaylist fires with a `sounds` array of
+ * `{playing, _id}` entries) rather than as an updatePlaylistSound event, so we
+ * listen here. Entries without a `playing` field (e.g. a volume drag) never
+ * affect the opt-out.
+ */
+Hooks.on("updatePlaylist", (playlist, changes) => {
+  try {
+    if (!game.user?.isGM) return;
+    if (!Array.isArray(changes?.sounds)) return;
+    if (Date.now() < _beneosTourAudioSelfChangeUntil) return;
+    const activeId = TourBase.activeTour?.id;
+    if (!activeId || !activeId.startsWith("tutorial-")) return;
+    for (const sc of changes.sounds) {
+      if (!sc || !("playing" in sc)) continue;
+      if (!MANAGED_AUDIO_KEYS.has(`${playlist.id}.${sc._id}`)) continue;
+      if (sc.playing === false) _beneosTourMusicOptOut = true;
+      else if (sc.playing === true) _beneosTourMusicOptOut = false;
+    }
+  } catch (e) {
+    console.warn("Beneos Tutorial Tour | updatePlaylist opt-out handler failed:", e);
+  }
+});
+
+/**
  * On every scene entry, check if the scene has a registered tutorial tour.
  * If yes and the user is a GM and no other tour is already running, start it.
  * Skip-conditions are cheap (a few property checks) so this has negligible
@@ -7652,6 +9269,11 @@ Hooks.on("canvasReady", async () => {
     // them. Without this guard the Getting Started tour music "follows"
     // the GM onto unrelated scenes (e.g. other Moulinette packs).
     stopAllManagedTourAudio();
+    // Leaving the tour ends the run: reset the per-run audio state. Any later
+    // direct entry into a tutorial scene (e.g. the GM clicks a single page to
+    // review it) then starts fresh with music on and the volume floor applied.
+    _beneosTourMusicOptOut = false;
+    _beneosTourAudioBaselineDone = false;
     return;
   }
 

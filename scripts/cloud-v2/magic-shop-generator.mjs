@@ -103,6 +103,51 @@ function rollIntInclusive(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min
 }
 
+// Read-only Demo payload for the onboarding tour. Mirrors DEMO_LOOT in
+// loot-generator.mjs: a fully deterministic, hardcoded shop shown with the
+// real reveal animation but no cloud roll, no world write, no access change.
+// Icons are Foundry core assets so they always load offline.
+const _demoItem = (itemKey, name, rarity, price, type, kind, thumb, desc) => ({
+  itemKey, kind, rarity, tier: 2,
+  demoThumb: thumb,
+  item: { name, description: desc, properties: { rarity, item_type: type, price } }
+})
+export const DEMO_SHOP = {
+  shopType: "magic_shop",
+  shopTypeLabel: "Magic Shop",
+  size: "medium",
+  shopName: "The Gilded Griffon",
+  shopCash: 3200,
+  items: [
+    _demoItem("demo-potion-greater-healing", "Potion of Greater Healing", "Uncommon", 150, "potion", "healing",
+      "icons/consumables/potions/bottle-round-corked-red.webp",
+      "Drink as a bonus action to regain 4d4 + 4 hit points. Always stocked by Beneos magic shops."),
+    _demoItem("demo-tideglass-dagger", "Tideglass Dagger", "Rare", 8000, "weapon", "loot",
+      "icons/weapons/daggers/dagger-curved-blue.webp",
+      "A Beneos set item. On a hit, release the stored tide for an extra 1d6 cold damage."),
+    _demoItem("demo-emberward-circlet", "Emberward Circlet", "Uncommon", 1200, "wondrous", "loot",
+      "icons/magic/holy/chalice-glowing-gold.webp",
+      "While attuned, you have resistance to fire damage and shed dim light."),
+    _demoItem("demo-spellbloom-wand", "Spellbloom Wand", "Rare", 6000, "wand", "loot",
+      "icons/weapons/wands/wand-gem-violet.webp",
+      "A Beneos spell focus. Holds 7 charges; spend one to cast Magic Missile from a stored bloom.")
+  ],
+  defaultItems: [
+    _demoItem("demo-potion-healing", "Potion of Healing", "Common", 50, "potion", "loot",
+      "icons/consumables/potions/bottle-round-corked-red.webp",
+      "Regain 2d4 + 2 hit points."),
+    _demoItem("demo-everburning-torch", "Everburning Torch", "Common", 110, "wondrous", "loot",
+      "icons/sundries/lights/torch-brown-lit.webp",
+      "Sheds bright light in a 20-foot radius without consuming fuel."),
+    _demoItem("demo-rope-of-mending", "Rope of Mending", "Common", 90, "wondrous", "loot",
+      "icons/sundries/survival/rope-wrapped-brown.webp",
+      "Cut it and speak the command word to make it whole again."),
+    _demoItem("demo-traveler-cloak", "Traveler's Cloak", "Uncommon", 400, "wondrous", "loot",
+      "icons/equipment/back/cape-layered-red.webp",
+      "While worn, you have advantage on saving throws against harsh weather.")
+  ]
+}
+
 export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(ApplicationV2) {
 
   static DEFAULT_OPTIONS = {
@@ -151,10 +196,41 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
     this.rolling = false
     this.rerollCount = 0
     this.saving = false
+    this.demoMode = false           // Onboarding-tour read-only preview (see openDemo).
   }
 
   get title() {
     return game.i18n.localize("BENEOS.MagicShop.WindowTitle") || "Beneos Magic Shop"
+  }
+
+  /**
+   * Open the shop generator in read-only demo mode for the onboarding tour.
+   * Shows a fixed, deterministic shop with the full reveal animation but never
+   * rolls against the cloud, writes to the world, or unlocks the real feature.
+   */
+  static async openDemo() {
+    const app = new this()
+    app.demoMode = true
+    app.step = 4
+    app.rolling = false
+    app.saving = false
+    app.shopType = DEMO_SHOP.shopType
+    app.size = DEMO_SHOP.size
+    app.shopName = DEMO_SHOP.shopName
+    app.shopCash = DEMO_SHOP.shopCash
+    app.items        = DEMO_SHOP.items.map(x => foundry.utils.deepClone(x))
+    app.defaultItems = DEMO_SHOP.defaultItems.map(x => foundry.utils.deepClone(x))
+    await app.render({ force: true })
+    return app
+  }
+
+  // Read-only demo guard. Returns true (and shows a one-line notice) when the
+  // window is in onboarding-tour preview mode.
+  #demoBlocked() {
+    if (!this.demoMode) return false
+    ui.notifications?.info?.(game.i18n.localize("BENEOS.MagicShop.DemoNotice")
+      || "This is a preview. The Shop Generator is part of Beneos Creatures & Spells.")
+    return true
   }
 
   /* ---------- View prep ---------- */
@@ -212,7 +288,9 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
     })
     // Patreon gate: only active Creatures/Spells/Loot (tokens) patrons can use
     // the generator; everyone else sees the controls blurred behind a join CTA.
-    ctx.hasTokenAccess = !!game.beneos?.cloud?.hasCampaignAccess?.("tokens")
+    // Demo mode (onboarding tour) shows the controls unblurred but inert.
+    ctx.isDemo = this.demoMode === true
+    ctx.hasTokenAccess = ctx.isDemo ? true : !!game.beneos?.cloud?.hasCampaignAccess?.("tokens")
     ctx.joinPatreonUrl = "https://www.patreon.com/c/BeneosTokens"
     return ctx
   }
@@ -222,9 +300,11 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
     const props = item?.properties || {}
     const rarity = x.rarity || extractRarity(item) || "Common"
     const isInstalled = !!BeneosUtility.isItemLoaded?.(x.itemKey)
-    const thumbUrl = props.icon
-      ? `https://www.beneos-database.com/data/items/thumbnails/${props.icon}`
-      : null
+    const thumbUrl = x.demoThumb
+      ? x.demoThumb
+      : (props.icon
+        ? `https://www.beneos-database.com/data/items/thumbnails/${props.icon}`
+        : null)
     const priceN = Number(props.price) || 0
     const priceLabel = priceN ? priceN.toLocaleString("en-US") + " gp" : "—"
     const description = this.#trimDescription(item?.description)
@@ -293,6 +373,7 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
   // pools by `properties.shop` containing this key). Auto-advances to
   // size selection.
   static async _onPickShopType(event, target) {
+    if (this.#demoBlocked()) return
     const key = target?.dataset?.shopType
     if (!key) return
     this.shopType = key
@@ -301,6 +382,7 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
   }
 
   static async _onPickSize(event, target) {
+    if (this.#demoBlocked()) return
     const key = target?.dataset?.size
     if (!SHOP_SIZES[key]) return
     this.size = key
@@ -319,6 +401,7 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
   }
 
   static async _onReroll(event, target) {
+    if (this.#demoBlocked()) return
     if (this.rolling || this.saving) return
     this.rolling = true
     // Punkt 3 v4: switch back to the loading step so the Stocking
@@ -335,6 +418,7 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
   }
 
   static async _onRestart(event, target) {
+    if (this.#demoBlocked()) return
     if (this.saving) return
     // Capture shop name from input before restart so it survives.
     const input = this.element?.querySelector("#blg-shop-name")
@@ -353,6 +437,7 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
   }
 
   static async _onRollSlot(event, target) {
+    if (this.#demoBlocked()) return
     if (this.rolling || this.saving) return
     const idx = Number(target?.dataset?.slotIdx)
     if (Number.isNaN(idx)) return
@@ -372,6 +457,7 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
   }
 
   static async _onRemoveSlot(event, target) {
+    if (this.#demoBlocked()) return
     if (this.rolling || this.saving) return
     const idx = Number(target?.dataset?.slotIdx)
     if (Number.isNaN(idx)) return
@@ -380,6 +466,7 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
   }
 
   static async _onInstallPick(event, target) {
+    if (this.#demoBlocked()) return
     const key = target?.dataset?.itemKey
     if (!key) return
     try {
@@ -394,6 +481,7 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
   // (installPick / removeSlot / rollSlot) win the closest-action
   // resolution, so this only fires when the user clicks the card body.
   static async _onOpenItem(event, target) {
+    if (this.#demoBlocked()) return
     const key = target?.dataset?.itemKey
     if (!key) return
     if (!BeneosUtility.isItemLoaded?.(key)) {
@@ -417,6 +505,7 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
   // poolWarning flag when the pool is exhausted so the template can
   // show a red message.
   static async _onAddDefaultSlot(event, target) {
+    if (this.#demoBlocked()) return
     if (this.rolling || this.saving) return
     const all = this.#allItems().filter(([, it]) => matchesShop(it, this.shopType))
     const used = new Set([...this.items, ...this.defaultItems].map(x => x.itemKey))
@@ -443,6 +532,7 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
   // Punkt 3 v5: Plus-Button on the Special-Items section. Re-uses the
   // same per-slot loot-roll logic the initial #runRoll uses.
   static async _onAddSpecialSlot(event, target) {
+    if (this.#demoBlocked()) return
     if (this.rolling || this.saving) return
     const all = this.#allItems().filter(([, it]) => matchesShop(it, this.shopType))
     const pick = this.#rollOneLoot(all, [...this.items, ...this.defaultItems])
@@ -456,6 +546,7 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
   }
 
   static async _onSaveShop(event, target) {
+    if (this.#demoBlocked()) return
     if (this.rolling || this.saving) return
     // Punkt 3 v4: roleplay/atmosphere items are gone. Both special
     // items and default-inventory items are persisted to the world.

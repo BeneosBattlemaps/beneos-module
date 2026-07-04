@@ -203,10 +203,10 @@
                    logo so a single failed remote thumb (offline mid-session /
                    404) never shows a broken-image icon. --}}
               {{#if card.isBmap}}
-                <img src="{{card.thumbUrl}}" alt="{{card.name}}" loading="lazy" draggable="false"
+                <img data-bc-lazy data-src="{{card.thumbUrl}}" src="modules/beneos-module/ui/beneos_thumb_placeholder.svg" alt="{{card.name}}" draggable="false"
                      onerror="this.onerror=null;this.src='modules/beneos-module/ui/beneos_thumb_placeholder.svg';this.classList.add('bc-thumb-fallback');" />
               {{else}}
-                <img src="{{card.thumbUrl}}" alt="{{card.name}}" loading="lazy" draggable="false"
+                <img data-bc-lazy data-src="{{card.thumbUrl}}" src="modules/beneos-module/ui/beneos_thumb_placeholder.svg" alt="{{card.name}}" draggable="false"
                      onerror="this.onerror=null;this.src='modules/beneos-module/ui/beneos_thumb_placeholder.svg';this.classList.add('bc-thumb-fallback');" />
               {{/if}}
             {{else}}
@@ -406,6 +406,15 @@
                         data-tooltip="{{localize 'BENEOS.Cloud.Card.Codex'}}">
                   <i class="fa-solid fa-book-open"></i>
                   <span>{{localize "BENEOS.Cloud.Card.Codex"}}</span>
+                </button>
+              {{/if}}
+              {{#if card.showOpenButton}}
+                <button type="button" class="bc-card-button bc-action-open"
+                        data-asset-key="{{card.key}}"
+                        data-asset-type="{{card.assetType}}"
+                        data-tooltip="{{localize 'BENEOS.Cloud.Card.OpenTooltip'}}">
+                  <i class="fa-solid fa-up-right-from-square"></i>
+                  <span>{{localize "BENEOS.Cloud.Card.Open"}}</span>
                 </button>
               {{/if}}
             {{else if card.isOfflineCard}}
@@ -737,8 +746,8 @@
               {{#each drawer.scenes as |sc|}}
                 <div class="bc-scene-row">
                   <div class="bc-scene-row-thumbs">
-                    {{#if sc.thumbnail}}<div class="bc-scene-thumb" data-bc-zoom="{{sc.thumbnail}}"><img loading="lazy" decoding="async" src="{{sc.thumbnail}}" alt="" onload="this.classList.add('bc-img-loaded')"></div>{{/if}}
-                    {{#if sc.sibling_thumbnail}}<div class="bc-scene-thumb" data-bc-zoom="{{sc.sibling_thumbnail}}"><img loading="lazy" decoding="async" src="{{sc.sibling_thumbnail}}" alt="" onload="this.classList.add('bc-img-loaded')"></div>{{/if}}
+                    {{#if sc.thumbnail}}<div class="bc-scene-thumb" data-bc-zoom="{{sc.thumbnail}}"><img data-bc-lazy decoding="async" data-src="{{sc.thumbnail}}" alt="" onload="this.classList.add('bc-img-loaded')"></div>{{/if}}
+                    {{#if sc.sibling_thumbnail}}<div class="bc-scene-thumb" data-bc-zoom="{{sc.sibling_thumbnail}}"><img data-bc-lazy decoding="async" data-src="{{sc.sibling_thumbnail}}" alt="" onload="this.classList.add('bc-img-loaded')"></div>{{/if}}
                   </div>
                   <div class="bc-scene-row-title">{{sc.name}}</div>
                 </div>
@@ -759,8 +768,8 @@
               {{#each drawer.scenes as |sc|}}
                 <div class="bc-scene-row">
                   <div class="bc-scene-row-thumbs">
-                    {{#if sc.thumbnail}}<div class="bc-scene-thumb" data-bc-zoom="{{sc.thumbnail}}"><img loading="lazy" decoding="async" src="{{sc.thumbnail}}" alt="" onload="this.classList.add('bc-img-loaded')"></div>{{/if}}
-                    {{#if sc.sibling_thumbnail}}<div class="bc-scene-thumb" data-bc-zoom="{{sc.sibling_thumbnail}}"><img loading="lazy" decoding="async" src="{{sc.sibling_thumbnail}}" alt="" onload="this.classList.add('bc-img-loaded')"></div>{{/if}}
+                    {{#if sc.thumbnail}}<div class="bc-scene-thumb" data-bc-zoom="{{sc.thumbnail}}"><img data-bc-lazy decoding="async" data-src="{{sc.thumbnail}}" alt="" onload="this.classList.add('bc-img-loaded')"></div>{{/if}}
+                    {{#if sc.sibling_thumbnail}}<div class="bc-scene-thumb" data-bc-zoom="{{sc.sibling_thumbnail}}"><img data-bc-lazy decoding="async" data-src="{{sc.sibling_thumbnail}}" alt="" onload="this.classList.add('bc-img-loaded')"></div>{{/if}}
                   </div>
                   <div class="bc-scene-row-title">{{sc.name}}</div>
                 </div>
@@ -871,6 +880,17 @@
                 <i class="fa-solid fa-circle-check"></i>
                 {{localize "BENEOS.Cloud.Card.Installed"}}
               </span>
+            {{/if}}
+            {{#if drawer.asset.showOpenButton}}
+              {{!-- Own row (block) so the labeled Open button never introduces a
+                   horizontal scrollbar next to the Installed/Update element. --}}
+              <button type="button" class="bc-card-button bc-card-button-block bc-action-open"
+                      data-asset-key="{{drawer.asset.key}}"
+                      data-asset-type="{{drawer.asset.assetType}}"
+                      data-tooltip="{{localize 'BENEOS.Cloud.Card.OpenTooltip'}}">
+                <i class="fa-solid fa-up-right-from-square"></i>
+                {{localize "BENEOS.Cloud.Card.Open"}}
+              </button>
             {{/if}}
           {{else if drawer.asset.isOfflineCard}}
             <span class="bc-state-pill bc-state-offline">

@@ -67,6 +67,13 @@
       {{/if}}
     </header>
 
+    {{#if isDemo}}
+      <div class="blg-demo-badge">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        <span>{{localize "BENEOS.LootGen.DemoBadge"}}</span>
+      </div>
+    {{/if}}
+
     <div class="blg-scroll-body">
     {{#if rolling}}
       <div class="blg-rolling">

@@ -268,7 +268,7 @@
                         data-target-name="{{this.name}}"
                       {{/if}}>
                 {{#if this.thumb}}
-                  <img src="{{this.thumb}}" alt="" loading="lazy"
+                  <img data-bc-lazy data-src="{{this.thumb}}" src="modules/beneos-module/ui/beneos_thumb_placeholder.svg" alt=""
                        class="bc-rail-tile-thumb"
                        onerror="this.style.visibility='hidden'" />
                 {{else}}
@@ -291,7 +291,7 @@
                         data-target-name="{{this.name}}"
                       {{/if}}>
                 {{#if this.thumb}}
-                  <img src="{{this.thumb}}" alt="" loading="lazy"
+                  <img data-bc-lazy data-src="{{this.thumb}}" src="modules/beneos-module/ui/beneos_thumb_placeholder.svg" alt=""
                        class="bc-rail-tile-thumb"
                        onerror="this.style.visibility='hidden'" />
                 {{else}}

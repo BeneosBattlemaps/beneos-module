@@ -36,15 +36,15 @@
     <details class="beneos-loot-cards">
       <summary>{{localize "BENEOS.Loot.Card.Toggle"}}</summary>
       <div class="beneos-loot-cards-grid">
-        {{#if loot.render.frontCardWebp}}
+        {{#if frontCard}}
           <figure>
-            <img src="{{loot.render.frontCardWebp}}" alt="{{localize 'BENEOS.Loot.Card.Front'}}" />
+            <img src="{{frontCard}}" alt="{{localize 'BENEOS.Loot.Card.Front'}}" onerror="this.closest('figure')?.remove()" />
             <figcaption>{{localize "BENEOS.Loot.Card.Front"}}</figcaption>
           </figure>
         {{/if}}
-        {{#if loot.render.backCardWebp}}
+        {{#if backCard}}
           <figure>
-            <img src="{{loot.render.backCardWebp}}" alt="{{localize 'BENEOS.Loot.Card.Back'}}" />
+            <img src="{{backCard}}" alt="{{localize 'BENEOS.Loot.Card.Back'}}" onerror="this.closest('figure')?.remove()" />
             <figcaption>{{localize "BENEOS.Loot.Card.Back"}}</figcaption>
           </figure>
         {{/if}}

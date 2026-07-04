@@ -159,6 +159,60 @@ const BIAS_DEFS = [
   { key: "higher", labelKey: "BENEOS.LootGen.Bias.Higher", icon: "fa-solid fa-arrow-trend-up" }
 ]
 
+// Read-only Demo payload for the onboarding tour. The real generator is
+// Patreon/paid-gated (hasCampaignAccess("tokens")); the tour cannot unlock it
+// without creating an abuse vector, so the demo plays a fully deterministic,
+// hardcoded result with the same reveal animation. No cloud roll, no world
+// write, no access change. Icons are Foundry core assets so they always load
+// offline. The names make clear this is Beneos creature & spell loot.
+export const DEMO_LOOT = {
+  bias: "higher",
+  tier: 3,
+  gold: 4200,
+  results: [
+    {
+      itemKey: "demo-emberward-circlet",
+      demoThumb: "icons/magic/holy/chalice-glowing-gold.webp",
+      rolledRarity: "Uncommon", rolledTier: 2, isFallback: false,
+      item: {
+        name: "Emberward Circlet",
+        description: "Recovered from a fallen Beneos creature. While attuned, you have resistance to fire damage and shed dim light in a 5-foot radius.",
+        properties: { rarity: "Uncommon", item_type: "wondrous", origin: "Emberward", price: 1200 }
+      }
+    },
+    {
+      itemKey: "demo-tideglass-dagger",
+      demoThumb: "icons/weapons/daggers/dagger-curved-blue.webp",
+      rolledRarity: "Rare", rolledTier: 3, isFallback: false,
+      item: {
+        name: "Tideglass Dagger",
+        description: "A Beneos set item. On a hit, the blade can release the stored tide, dealing an extra 1d6 cold damage and slowing the target until your next turn.",
+        properties: { rarity: "Rare", item_type: "weapon", origin: "Tideglass", price: 8000 }
+      }
+    },
+    {
+      itemKey: "demo-sovereign-warblade",
+      demoThumb: "icons/weapons/swords/greatsword-blue.webp",
+      rolledRarity: "Legendary", rolledTier: 4, isFallback: false,
+      item: {
+        name: "Sovereign Warblade",
+        description: "A legendary Beneos artifact weapon. While attuned, you gain a +3 bonus to attack and damage rolls and can call its banner to rally nearby allies once per long rest.",
+        properties: { rarity: "Legendary", item_type: "weapon", origin: "Sovereign", price: 120000 }
+      }
+    }
+  ],
+  wondrous: {
+    itemKey: "demo-cloak-of-the-rot-cerf",
+    demoThumb: "icons/equipment/back/cape-layered-red.webp",
+    rolledRarity: "Very Rare", rolledTier: 3, isFallback: false,
+    item: {
+      name: "Cloak of the Rot Cerf",
+      description: "Woven from the Rot Cerf's shed bloom. While attuned, you can cast Misty Step once per short rest, leaving behind a burst of harmless spores.",
+      properties: { rarity: "Very Rare", item_type: "wondrous", origin: "Rot Cerf", price: 24000 }
+    }
+  }
+}
+
 export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV2) {
 
   static DEFAULT_OPTIONS = {
@@ -203,10 +257,34 @@ export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV
     this.poolWarning = null         // Punkt 3 v5b: "loot" when Add-Loot-Slot exhausts the matching pool.
     this.rerollCount = 0
     this.rolling = false
+    this.demoMode = false           // Onboarding-tour read-only preview (see openDemo).
   }
 
   get title() {
     return game.i18n.localize("BENEOS.LootGen.WindowTitle") || "Beneos Loot Generator"
+  }
+
+  /**
+   * Open the generator in read-only demo mode for the onboarding tour. Plays a
+   * fixed, deterministic loot result with the full reveal animation but never
+   * rolls against the cloud, writes to the world, or unlocks the real feature.
+   * The window's action buttons (install / claim / reroll / save) are neutered
+   * while demoMode is set.
+   */
+  static async openDemo() {
+    const app = new this()
+    app.demoMode = true
+    app.bias = DEMO_LOOT.bias
+    app.tier = DEMO_LOOT.tier
+    app.step = 3
+    app.rolling = false
+    app.gold = DEMO_LOOT.gold
+    app.treasures = []
+    // Deep-clone the payload so repeated demos never mutate the shared const.
+    app.results  = DEMO_LOOT.results.map(r => foundry.utils.deepClone(r))
+    app.wondrous = foundry.utils.deepClone(DEMO_LOOT.wondrous)
+    await app.render({ force: true })
+    return app
   }
 
   /* ---------- View prep ---------- */
@@ -241,7 +319,9 @@ export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV
     ctx.poolWarningLoot = this.poolWarning === "loot"
     // Patreon gate: only active Creatures/Spells/Loot (tokens) patrons can use
     // the generator; everyone else sees the controls blurred behind a join CTA.
-    ctx.hasTokenAccess = !!game.beneos?.cloud?.hasCampaignAccess?.("tokens")
+    // Demo mode (onboarding tour) shows the controls unblurred but inert.
+    ctx.isDemo = this.demoMode === true
+    ctx.hasTokenAccess = ctx.isDemo ? true : !!game.beneos?.cloud?.hasCampaignAccess?.("tokens")
     ctx.joinPatreonUrl = "https://www.patreon.com/c/BeneosTokens"
     return ctx
   }
@@ -264,9 +344,11 @@ export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV
     const props = item?.properties || {}
     const rarity = r.rolledRarity
     const isInstalled = !!BeneosUtility.isItemLoaded?.(itemKey)
-    const thumbUrl = props.icon
-      ? `https://www.beneos-database.com/data/items/thumbnails/${props.icon}`
-      : null
+    const thumbUrl = r.demoThumb
+      ? r.demoThumb
+      : (props.icon
+        ? `https://www.beneos-database.com/data/items/thumbnails/${props.icon}`
+        : null)
     const probabilityPct = this.#computeProbability(r)
     let crossTierMarker = null
     if (RARITY_ORDER.indexOf(rarity) >= RARITY_ORDER.indexOf("Rare")) {
@@ -367,7 +449,18 @@ export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV
 
   /* ---------- Actions ---------- */
 
+  // Read-only demo guard. Returns true (and shows a one-line notice) when the
+  // window is in onboarding-tour preview mode, so callers bail before doing any
+  // cloud roll or world write.
+  #demoBlocked() {
+    if (!this.demoMode) return false
+    ui.notifications?.info?.(game.i18n.localize("BENEOS.LootGen.DemoNotice")
+      || "This is a preview. The Loot Generator is part of Beneos Creatures & Spells.")
+    return true
+  }
+
   static async _onPickBias(event, target) {
+    if (this.#demoBlocked()) return
     const key = target?.dataset?.bias
     if (!key || !RARITY_WEIGHTS[key]) return
     this.bias = key
@@ -378,6 +471,7 @@ export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV
   }
 
   static async _onGoNext(event, target) {
+    if (this.#demoBlocked()) return
     if (this.step === 1 && this.bias) {
       this.step = 2
       await this.render({ parts: ["body"] })
@@ -385,6 +479,7 @@ export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV
   }
 
   static async _onPickTier(event, target) {
+    if (this.#demoBlocked()) return
     const t = Number(target?.dataset?.tier)
     if (![1, 2, 3, 4].includes(t)) return
     this.tier = t
@@ -402,6 +497,7 @@ export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV
   }
 
   static async _onReroll(event, target) {
+    if (this.#demoBlocked()) return
     if (this.rolling) return
     this.rolling = true
     this.results = []
@@ -416,6 +512,7 @@ export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV
   }
 
   static async _onRestart(event, target) {
+    if (this.#demoBlocked()) return
     this.step = 1
     this.bias = null
     this.tier = null
@@ -431,6 +528,7 @@ export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV
   }
 
   static async _onInstallPick(event, target) {
+    if (this.#demoBlocked()) return
     const key = target?.dataset?.itemKey
     if (!key) return
     try {
@@ -447,6 +545,7 @@ export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV
   // roll. No upper limit; DM uses it to top up underwhelming rolls.
   // Sets `poolWarning = "loot"` when the pool is fully exhausted.
   static async _onAddLootSlot(event, target) {
+    if (this.#demoBlocked()) return
     if (this.rolling) return
     const all = this.#allItems()
     const used = [
@@ -518,6 +617,7 @@ export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV
   // installing first if needed. Inner buttons (installPick / claimGold)
   // win the closest-action resolution.
   static async _onOpenItem(event, target) {
+    if (this.#demoBlocked()) return
     const key = target?.dataset?.itemKey
     if (!key) return
     if (!BeneosUtility.isItemLoaded?.(key)) {
@@ -541,6 +641,7 @@ export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV
   // character. Adds to system.currency.gp (dnd5e). Other systems get
   // a defensive warning rather than a silent no-op.
   static async _onClaimGold(event, target) {
+    if (this.#demoBlocked()) return
     if (!this.gold) return
     if (game.system?.id !== "dnd5e") {
       ui.notifications?.warn?.(game.i18n.format("BENEOS.LootGen.Notify.SystemRequired", { system: game.system?.id ?? "unknown" }))

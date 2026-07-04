@@ -749,8 +749,22 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // entries; scrolling to the bottom of .bc-result-list adds another page.
   // Mirrors v1's relevance-first ordering by inheriting BeneosDatabaseHolder's
   // sort. The cap stays on the client — server is not hit; the database JSON
-  // is already in memory and image thumbnails lazy-load via `loading="lazy"`.
+  // is already in memory and thumbnails lazy-load via the shared observer
+  // (#wireLazyImages).
   static RESULTS_PAGE = 100
+
+  // Distance in px from the bottom of the result list at which the next page
+  // starts loading.
+  static SCROLL_LOAD_THRESHOLD = 200
+
+  // ----- Virtualization (list mode) -----
+  // Kill-switch: set false to fall back to rendering every card in the DOM.
+  static VIRTUALIZE = true
+  // Only window once the list is large enough to be worth it.
+  static VIRTUALIZE_MIN_ROWS = 60
+  // Extra px above and below the viewport kept rendered, so fast scrolling
+  // never flashes blanks and the lazy observer still preloads.
+  static VIRTUALIZE_OVERSCAN_PX = 800
 
   // Wave B-8b/c: CR steps are non-uniform — D&D 5e uses fractional CRs
   // below 1 (1/8, 1/4, 1/2). The slider runs 0..(STEPS.length-1) with
@@ -1948,6 +1962,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       isInstalled,
       // Installed creatures get a "Codex" button that opens the Creature Codex.
       showCodexButton: isInstalled && assetType === "token",
+      // Installed items/spells get an "Open" button that opens the local sheet
+      // so the user can jump straight to the imported document.
+      showOpenButton: isInstalled && (assetType === "item" || assetType === "spell"),
       isCloudAvailable,
       // Hard-blocked kinds on non-dnd5e systems (Loot, Spells on Pathfinder
       // and friends). Used by the action-area renderer to swap the Install
@@ -2863,6 +2880,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       actions.querySelectorAll(".bc-action-install").forEach(btn => {
         btn.addEventListener("click", (event) => this.#onInstallClick(event, btn))
       })
+      // Re-bind the "Open" button (installed items/spells) after the in-place swap.
+      actions.querySelectorAll(".bc-action-open").forEach(btn => {
+        btn.addEventListener("click", (event) => this.#onOpenClick(event, btn))
+      })
     }
   }
 
@@ -2880,6 +2901,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
           + ` data-asset-key="${card.key}" data-asset-type="${card.assetType}"`
           + ` data-tooltip="${localize("BENEOS.Cloud.Card.UpdateTooltip")}">`
           + `<i class="fa-solid fa-rotate"></i></button>`
+      }
+      if (card.showOpenButton) {
+        html += `<button type="button" class="bc-card-button bc-action-open"`
+          + ` data-asset-key="${card.key}" data-asset-type="${card.assetType}"`
+          + ` data-tooltip="${localize("BENEOS.Cloud.Card.OpenTooltip")}">`
+          + `<i class="fa-solid fa-up-right-from-square"></i>`
+          + `<span>${localize("BENEOS.Cloud.Card.Open")}</span></button>`
       }
       return html
     }
@@ -3211,12 +3239,18 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         || inReleaseIndex
         || !!(props.cloud_release_id && props.cloud_scene_slug && props.release_dir)
       if (cloudReady && !forceLegacy) {
-        // The native installer needs a Beneos Cloud session (Foundry ID) to
-        // mint the asset URLs. Logged out it would throw "manager missing", so
-        // block with a clean "please sign in" toast instead. Defense-in-depth:
-        // logged-out map cards already render "Sign In" rather than Install,
-        // but the drawer / other entry points could still reach here.
-        if (!game.beneos?.cloud?.isLoggedIn?.()) { this.#notifyInstallBlocked("login", key); return }
+        // "Free without account" (2026-07-01): an allowlisted release
+        // (public_download) installs without a Cloud session. The anonymous
+        // scenepacker manager (sessionId='anonymous') mints its URLs and the
+        // backend serves the allowlisted pack to anonymous callers, so skip the
+        // sign-in gate for it. Every other release still needs a login: the
+        // native installer would otherwise throw "manager missing", so we block
+        // with a clean "please sign in" toast. Defense-in-depth: logged-out map
+        // cards already render "Sign In" rather than Install, but the drawer /
+        // other entry points could still reach here.
+        const relForPublic = this._releaseIndex?.get?.(key)
+        const isPublicRelease = !!(relForPublic?.public_download || props.public_download)
+        if (!isPublicRelease && !game.beneos?.cloud?.isLoggedIn?.()) { this.#notifyInstallBlocked("login", key); return }
         const scope = btn?.dataset?.bmapScope || (isReleaseCard ? "release" : "scene")
         const idForLog = isReleaseCard ? key : (props.cloud_release_id || "(unknown)")
         try { console.log("[beneos-bm] native install", idForLog, scope, key) } catch (_) {}
@@ -3235,6 +3269,27 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         BeneosCloudWindowV2._onMoulinetteInstall.call(this, event, key)
       }
     }
+  }
+
+  // Open button on an installed item/spell card → render the local sheet so the
+  // user can jump straight to the imported document instead of hunting for it in
+  // the Items directory / compendium. Prefer the world copy (default install
+  // target); fall back to the compendium document via the cached id.
+  async #onOpenClick(event, btn) {
+    event.preventDefault()
+    event.stopPropagation()
+    const key = btn?.dataset?.assetKey
+    const type = btn?.dataset?.assetType
+    if (!key || (type !== "item" && type !== "spell")) return
+    const flagKey = type === "spell" ? "spellKey" : "itemKey"
+    let doc = game.items?.find?.(d => d.getFlag?.("world", "beneos")?.[flagKey] === key)
+    if (!doc) {
+      const packName = type === "spell" ? "world.beneos_module_spells" : "world.beneos_module_items"
+      const id = type === "spell" ? BeneosUtility.getSpellId?.(key) : BeneosUtility.getItemId?.(key)
+      if (id) { try { doc = await game.packs?.get?.(packName)?.getDocument?.(id) } catch (_) {} }
+    }
+    if (doc) { doc.sheet.render(true); return }
+    ui.notifications?.warn?.(game.i18n.localize("BENEOS.Cloud.Card.OpenNotFound"))
   }
 
   // Wave B-9-fix-46 → fix-47: sequentially fire imports for every key
@@ -3274,6 +3329,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     this.#wireSidebarListeners()
     this.#wireResultListeners()
     this.#wireScrollLoader()
+    this.#wireLazyImages(this.element, { reset: true })
+    this.#setupVirtualization()
     this.#wireVariantListeners()
     this.#refreshFilterInfoIcons()
     this.#injectSelectDividers()
@@ -3396,11 +3453,20 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const list = this.element?.querySelector(".bc-result-list")
     if (!list || list._beneosScrollBound) return
     list._beneosScrollBound = true
+    // rAF-throttle: coalesce the burst of scroll events into one layout read
+    // per frame instead of measuring scrollHeight/scrollTop/clientHeight (a
+    // forced reflow) on every single scroll event.
+    let rafPending = false
     list.addEventListener("scroll", () => {
-      if (this._loadingMore || !this._hasMoreResults) return
-      const distanceFromBottom = list.scrollHeight - list.scrollTop - list.clientHeight
-      if (distanceFromBottom < 200) this.#loadMore(list)
-    })
+      if (rafPending) return
+      rafPending = true
+      requestAnimationFrame(() => {
+        rafPending = false
+        if (this._loadingMore || !this._hasMoreResults) return
+        const distanceFromBottom = list.scrollHeight - list.scrollTop - list.clientHeight
+        if (distanceFromBottom < BeneosCloudWindowV2.SCROLL_LOAD_THRESHOLD) this.#loadMore(list)
+      })
+    }, { passive: true })
   }
 
   // Capture scroll position, bump the page, re-render, restore scroll. The
@@ -3446,6 +3512,177 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // doesn't end up scrolled past the new shorter list's end.
   #resetPagination() {
     this.loadedCount = BeneosCloudWindowV2.RESULTS_PAGE
+  }
+
+  /* ========== Lazy thumbnails (perf) ========== */
+
+  // One shared IntersectionObserver loads card/scene/rail thumbnails only as
+  // they approach the viewport, then unobserves each image the moment its load
+  // is triggered. This replaces native loading="lazy" on the (potentially
+  // many hundreds of) result cards: native lazy keeps every pending image
+  // registered and re-evaluates them on each layout pass, which showed up in
+  // performance traces as multi-second IntersectionObserver::computeIntersections.
+  // Here only not-yet-triggered, viewport-near images are ever observed.
+  #ensureLazyObserver() {
+    if (this._lazyObserver) return this._lazyObserver
+    this._lazyObserver = new IntersectionObserver((entries, obs) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue
+        const img = entry.target
+        obs.unobserve(img)
+        const src = img.dataset?.src
+        if (src) img.src = src
+        img.removeAttribute("data-bc-lazy")
+      }
+    }, { root: null, rootMargin: "300px" })
+    return this._lazyObserver
+  }
+
+  // Observe every not-yet-loaded lazy image under `root`. Pass reset=true on a
+  // full re-render to drop stale observations of replaced DOM nodes; pass
+  // reset=false when appending new cards so existing observations stay intact.
+  #wireLazyImages(root = this.element, { reset = false } = {}) {
+    if (reset && this._lazyObserver) {
+      this._lazyObserver.disconnect()
+      this._lazyObserver = null
+    }
+    const scope = root || this.element
+    if (!scope) return
+    const obs = this.#ensureLazyObserver()
+    for (const img of scope.querySelectorAll("img[data-bc-lazy]")) obs.observe(img)
+  }
+
+  /* ========== Virtualization / windowing (list mode, perf) ========== */
+
+  // Keep only a window of cards (visible viewport + overscan) actually rendered;
+  // every other card stays in the DOM but is display:none, so the browser does
+  // no layout/style/intersection work for it. Off-window cards are NOT removed
+  // from the DOM, so their per-card listeners, selection state, loaded images
+  // and install-progress class toggles (which target nodes via
+  // querySelector[data-asset-key]) all keep working untouched. Off-window space
+  // is reserved with list padding (not spacer elements) so the flex row-gap math
+  // stays exact and the scrollbar geometry is unchanged. List mode only; grid
+  // mode renders every card as before.
+  #teardownVirtualization() {
+    const st = this._virt
+    if (!st) return
+    try {
+      const list = st.list
+      if (list) {
+        list.style.position = st.origPosition ?? ""
+        list.style.flex = st.origFlex ?? ""
+        list.style.height = st.origHeight ?? ""
+        for (const r of st.rows) r.el.style.display = ""
+        st.topSpacer?.remove()
+        st.bottomSpacer?.remove()
+        if (st.onScroll) list.removeEventListener("scroll", st.onScroll)
+      }
+    } catch (e) { /* best-effort */ }
+    this._virt = null
+  }
+
+  #setupVirtualization() {
+    this.#teardownVirtualization()
+    if (!BeneosCloudWindowV2.VIRTUALIZE) return
+    const list = this.element?.querySelector(".bc-result-list")
+    if (!list) return
+    if (list.classList.contains("bc-view-grid")) return   // list mode only
+    if (!list.clientHeight) return                          // not laid out yet
+    const rowEls = [...list.querySelectorAll(".bc-result-card, .bc-result-divider")]
+    if (rowEls.length < BeneosCloudWindowV2.VIRTUALIZE_MIN_ROWS) return
+    // The list is `flex: 1 1 auto` with no definite height: in this app shell it
+    // grows to its content height instead of being a fixed-height scroll
+    // viewport, so a large reserve-padding would inflate it. Pin it to the real
+    // available height (parent box bottom minus the list's own top, i.e. minus
+    // the results-meta header) and take it out of flex so the height is
+    // authoritative. The reserve-padding then only adds scrollable content.
+    const parentRect = list.parentElement.getBoundingClientRect()
+    const viewportH = Math.max(100, Math.round(parentRect.bottom - list.getBoundingClientRect().top))
+    const origPosition = list.style.position
+    if (getComputedStyle(list).position === "static") list.style.position = "relative"
+    // Single read pass while every row is still visible -> one reflow.
+    const rows = rowEls.map(el => ({ el, top: el.offsetTop, h: el.offsetHeight }))
+    const total = list.scrollHeight
+    const cs = getComputedStyle(list)
+    const gap = parseFloat(cs.rowGap) || 0
+    const padTop = parseFloat(cs.paddingTop) || 0
+    const padBottom = parseFloat(cs.paddingBottom) || 0
+    // Reserve off-window space with real child elements (NOT padding): padding
+    // counts toward the element's own box height (box-sizing: border-box), so a
+    // multi-thousand-px reserve-padding would inflate the viewport. Spacer
+    // children add to scrollHeight only, keeping clientHeight = the pinned
+    // viewport.
+    const mkSpacer = () => { const d = document.createElement("div"); d.className = "bc-virt-spacer"; d.setAttribute("aria-hidden", "true"); d.style.flex = "0 0 auto"; d.style.width = "1px"; d.style.pointerEvents = "none"; d.style.display = "none"; return d }
+    const topSpacer = mkSpacer()
+    const bottomSpacer = mkSpacer()
+    list.insertBefore(topSpacer, list.firstChild)
+    list.appendChild(bottomSpacer)
+    const st = {
+      list, rows, total, gap, padTop, padBottom, topSpacer, bottomSpacer,
+      origPosition, origFlex: list.style.flex, origHeight: list.style.height,
+      firstShown: -1, lastShown: -1, rafPending: false, onScroll: null
+    }
+    list.style.flex = "none"
+    list.style.height = viewportH + "px"
+    this._virt = st
+    st.onScroll = () => {
+      if (st.rafPending) return
+      st.rafPending = true
+      requestAnimationFrame(() => { st.rafPending = false; this.#computeVirtualWindow() })
+    }
+    list.addEventListener("scroll", st.onScroll, { passive: true })
+    this.#computeVirtualWindow()
+  }
+
+  #computeVirtualWindow() {
+    const st = this._virt
+    if (!st) return
+    const { list, rows, total } = st
+    const over = BeneosCloudWindowV2.VIRTUALIZE_OVERSCAN_PX
+    const vTop = list.scrollTop - over
+    const vBot = list.scrollTop + list.clientHeight + over
+    let first = -1, last = -1
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i]
+      if (r.top + r.h >= vTop && r.top <= vBot) { if (first < 0) first = i; last = i }
+    }
+    if (first < 0) { first = 0; last = 0 }
+    if (first === st.firstShown && last === st.lastShown) return
+    st.firstShown = first; st.lastShown = last
+    const obs = this._lazyObserver
+    for (let i = 0; i < rows.length; i++) {
+      const el = rows[i].el
+      const inWin = i >= first && i <= last
+      if (inWin) {
+        if (el.style.display === "none") {
+          el.style.display = ""
+          if (obs) for (const img of el.querySelectorAll("img[data-bc-lazy]")) obs.observe(img)
+        }
+      } else if (el.style.display !== "none") {
+        if (obs) for (const img of el.querySelectorAll("img[data-bc-lazy]")) obs.unobserve(img)
+        el.style.display = "none"
+      }
+    }
+    // Reserve the off-window space with padding (offsetTop already accounts for
+    // the list's own padding + row gaps, so this keeps content positions exact).
+    // Reserve off-window space with the spacer children. offsetTop already
+    // accounts for the list's padding and inter-row gaps; one extra flex gap
+    // appears between a shown spacer and its adjacent visible row, so subtract
+    // one gap. Spacers hide entirely at the list ends (no gap then).
+    const { topSpacer, bottomSpacer, gap, padTop, padBottom } = st
+    if (first > 0) {
+      topSpacer.style.height = Math.max(0, rows[first].top - padTop - gap) + "px"
+      topSpacer.style.display = ""
+    } else {
+      topSpacer.style.display = "none"
+    }
+    const lastRow = rows[last]
+    if (last < rows.length - 1) {
+      bottomSpacer.style.height = Math.max(0, total - padBottom - gap - (lastRow.top + lastRow.h)) + "px"
+      bottomSpacer.style.display = ""
+    } else {
+      bottomSpacer.style.display = "none"
+    }
   }
 
   /* ========== Variant carousel (Wave B-6) ========== */
@@ -4074,6 +4311,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       card.addEventListener("click", async (event) => {
         if (event.target.closest(".bc-action-install")) return
         if (event.target.closest(".bc-action-codex")) return
+        if (event.target.closest(".bc-action-open")) return
         // Wave B-8e: clickable tag inside the card — let the dedicated
         // tag listener handle it and stop the card from also opening
         // the drawer. The tag listener calls stopPropagation, but this
@@ -4143,6 +4381,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         }
         game.beneos?.codex?.openForActor?.(actor)
       })
+    })
+
+    // Open button on installed item/spell cards → open the local sheet.
+    resultsRegion.querySelectorAll(".bc-action-open").forEach(btn => {
+      btn.addEventListener("click", (event) => this.#onOpenClick(event, btn))
     })
 
     // Wave B-8e: clickable result-card and drawer tags. data-filter-type
@@ -4813,6 +5056,17 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // Skip when the user cancelled the overwrite dialog (nothing changed).
     if (inst && !inst._cancelled) {
       try { await this.#refreshAfterBmapInstall?.(releaseDir) } catch (_) {}
+      // Broadcast a generic release-installed signal so other systems (e.g. the
+      // Getting Started tour's auto-start-after-install bridge) can react
+      // without depending on Scene-Packer. Best-effort, never throws.
+      try {
+        Hooks.callAll("beneos.releaseInstalled", {
+          releaseDir,
+          displayName,
+          scope: installScope,
+          variant: isSingle ? "" : variant,
+        })
+      } catch (_) {}
     }
     return inst
   }
@@ -5551,9 +5805,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       }
       // Feature 4: free/locked grouping for non-patrons (logged out). A free
       // release floats to the top; everything else not installed is locked.
+      // "Free without account" (2026-07-01): the backend marks an allowlisted
+      // release public_download; it is installable even logged out, so it groups
+      // like free (floats to top, never locked) AND drops the Sign-In requirement
+      // below. Kept separate from isFree because a normal free release still needs
+      // a Cloud account to download, whereas a public one does not.
+      const isPublic = !!r?.public_download
       const isFree   = this.#releaseIsFree(r.release_dir)
-      const isLocked = !hasCampaign && !isFree && !installed
-      const groupKind = (!hasCampaign && isFree)   ? "free"
+      const isLocked = !hasCampaign && !isFree && !isPublic && !installed
+      const groupKind = (!hasCampaign && (isFree || isPublic)) ? "free"
                       : (!hasCampaign && isLocked) ? "locked"
                       : isUpdate ? "update" : (isNew ? "new" : "regular")
 
@@ -5570,7 +5830,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // branch instead of the install buttons. Offline cards route into the
         // offline branch (both are checked before isCloudAvailable).
         isCloudAvailable:     (groupKind === "locked") ? false : canInstall,
-        isFree,
+        isFree:               isFree || isPublic,
+        // "Free without account": read by the install click-gate to bypass the
+        // logged-in requirement for this one release.
+        publicDownload:       isPublic,
         isLocked:             groupKind === "locked",
         isOfflineCard:        isOffline,
         cloudReady:           true,
@@ -5625,8 +5888,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // (groupKind is "free"), so anonymous browsers see them with the FREE
         // badge, not a lock. Drives the small top-right lock badge on the thumb.
         isReleaseLocked:      groupKind === "locked",
-        // Logged out -> "Sign In" action button (download after sign-in).
-        needsLogin:           loggedOut,
+        // Logged out -> "Sign In" action button (download after sign-in). A
+        // public_download release is exempt: it installs without an account, so
+        // it keeps the Install button even when logged out.
+        needsLogin:           loggedOut && !isPublic,
         unlockUrl:            unlockHint?.url   || "https://www.patreon.com/BeneosBattlemaps",
         unlockLabel:          unlockHint?.label || "Unlock via Patreon",
         unlockType:           unlockHint?.type  || "generic",
@@ -6088,6 +6353,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
 
   async _onClose(options) {
     this.#stopQuoteCycle()
+    this.#teardownVirtualization()
+    if (this._lazyObserver) { this._lazyObserver.disconnect(); this._lazyObserver = null }
     if (game.beneos?.cloudWindowV2 === this) game.beneos.cloudWindowV2 = undefined
     if (game.beneos?.searchEngine === this) game.beneos.searchEngine = undefined
     if (game.beneosTokens?.searchEngine === this) game.beneosTokens.searchEngine = undefined
