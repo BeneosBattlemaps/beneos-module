@@ -893,19 +893,37 @@ export class BeneosCloud {
     }
   }
 
-  // Stage 9: 60s probe loop, only active while serverOffline is true.
+  // Stage 9: probe loop, only active while serverOffline is true.
   // Hits the existing ?check=1 healthcheck endpoint and lets
   // markServerStatus flip the flag back when the server returns.
+  // Exponential backoff (60s, 2min, 4min, 8min, cap 10min): when the server
+  // is down because of overload, thousands of worlds probing every 60s made
+  // the outage worse. The delay resets to 60s once the server answers again.
   startServerProbeLoop() {
     if (this._serverProbeHandle) return
-    this._serverProbeHandle = setInterval(() => {
-      if (!this.serverOffline) return
-      const userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id") || ""
-      const url = `${BeneosUtility.cloudBase()}/foundry-manager.php?check=1&foundryId=${encodeURIComponent(userId)}&_t=${Date.now()}`
-      fetch(url, { credentials: 'same-origin' })
-        .then(r => this.markServerStatus(r, null))
-        .catch(err => this.markServerStatus(null, err))
-    }, 60000)
+    this._serverProbeDelayMs = 60000
+    const scheduleNext = () => {
+      this._serverProbeHandle = setTimeout(() => {
+        this._serverProbeHandle = null
+        if (!this.serverOffline) {
+          this._serverProbeDelayMs = 60000
+          scheduleNext()
+          return
+        }
+        const userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id") || ""
+        const url = `${BeneosUtility.cloudBase()}/foundry-manager.php?check=1&foundryId=${encodeURIComponent(userId)}&_t=${Date.now()}`
+        fetch(url, { credentials: 'same-origin' })
+          .then(r => this.markServerStatus(r, null))
+          .catch(err => this.markServerStatus(null, err))
+          .finally(() => {
+            this._serverProbeDelayMs = this.serverOffline
+              ? Math.min(this._serverProbeDelayMs * 2, 600000)
+              : 60000
+            scheduleNext()
+          })
+      }, this._serverProbeDelayMs)
+    }
+    scheduleNext()
   }
 
   // Fix #E3: idempotency lock for in-flight imports. Keys look like

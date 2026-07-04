@@ -15,7 +15,9 @@
 import { BeneosUtility } from "./beneos_utility.js";
 
 const ANALYTICS_ENDPOINT = "https://beneos.cloud/api-analytics.php";
-const FLUSH_INTERVAL_MS = 5 * 60 * 1000;
+// 15 min instead of 5: the ingest is the most frequent recurring request per
+// world and events are not time-critical (OVH DB budget, plan 2026-07-04).
+const FLUSH_INTERVAL_MS = 15 * 60 * 1000;
 const SESSION_SAMPLE_MS = 60 * 1000;
 const QUEUE_FLUSH_THRESHOLD = 50;
 const MAX_BATCH = 50;
