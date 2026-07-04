@@ -1,0 +1,29 @@
+<blockquote><p><strong>Avant de lire :</strong> tu n'as rien à construire ici pour profiter de Beneos. La carte du monde d'Escalia est livrée prête à l'emploi. Cette page s'adresse aux MJ qui veulent savoir comment elle est assemblée, la modifier, ou construire leur propre carte du monde.</p></blockquote>
+<hr />
+<p>Terra Escalia est la carte du monde que tu rencontres dans le guide de configuration. C'est le monde d'origine des créatures et releases Beneos, un grand continent peint sur lequel tu peux accrocher toute ta campagne. Sous l'illustration, il n'y a rien de magique, juste quatre éléments Foundry ordinaires empilés les uns sur les autres. Une fois que tu vois les quatre, tu peux modifier n'importe lequel, ou reconstruire le tout pour ton propre univers.</p>
+
+<h2 id="wm-blocks">Les quatre briques de base</h2>
+
+<h3 id="wm-map">1. La carte elle-même</h3>
+<p>La base est une seule grande image, placée comme fond et comme tile sur une scène de 8000 par 8000. Rien de sorcier. Si tu veux ton propre monde, c'est la couche à remplacer : dépose ta propre illustration et tout ce qui suit fonctionne exactement pareil.</p>
+
+<h3 id="wm-poi">2. Les points d'intérêt</h3>
+<p>Chaque marqueur de lieu sur la carte est une <strong>note</strong> de carte Foundry avec un journal épinglé dessus. Les petites icônes de château, de ville, de grotte et de port que tu vois sont ces notes. Fais un clic droit sur l'une d'elles et son journal s'ouvre : c'est ainsi qu'un joueur lit des informations sur un lieu ou saute vers sa scène. Chaque marqueur est étiqueté avec le release auquel il appartient, par exemple <em>Castle Dourcrag [Release 48]</em>, tu vois donc d'un coup d'œil ce qui est installé et ce qui reste à venir. C'est le même système que celui couvert dans <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporters</a>, rends-toi là-bas pour ajouter, déplacer ou relier tes propres marqueurs.</p>
+<img src="modules/beneos-module/assets/wiki/shot_worldmap-escalia_1.webp" alt="La carte du monde Terra Escalia avec ses marqueurs de points d'intérêt" />
+
+<h3 id="wm-nav">3. La barre de navigation</h3>
+<p>En haut à droite se trouve une petite barre de navigation. Elle fonctionne grâce à <a class="wikilink" data-page="dd-monks-active-tiles">Monks Active Tile Triggers</a> : une tile cliquable invisible recouvre un libellé de texte visible, et cliquer sur la tile invisible te fait sauter vers une autre scène. C'est toute l'astuce derrière chaque menu, carte du monde et page d'accueil Beneos. L'<a class="wikilink" data-page="dd-monks-active-tiles">approfondissement MATT</a> explique comment en construire une, étape par étape.</p>
+
+<h3 id="wm-atmosphere">4. L'atmosphère : météo et lumière</h3>
+<p>La carte n'est pas statique. Deux couches lui donnent vie. <a class="wikilink" data-page="dd-fxmaster">FXMaster</a> fait dériver des nuages et un fin brouillard à travers le continent et y envoie des oiseaux, tous des effets de particules sauvegardés sur la scène. Par-dessus se trouvent des dizaines de <strong>lumières</strong> animées, teintées et réglées pour pulser, jetant une lueur douce et fantomatique sur les mers et les terres, pour que toute la carte respire un peu au lieu de rester figée.</p>
+<img src="modules/beneos-module/assets/wiki/shot_worldmap-escalia_2.webp" alt="Nuages dérivants et lumière fantomatique sur la côte d'Escalia" />
+
+<h2 id="wm-build">La modifier, ou construire la tienne</h2>
+<p>Comme les quatre couches sont indépendantes, tu peux toucher à n'importe laquelle sans casser les autres :</p>
+<ul>
+<li><strong>Déplacer ou ajouter des lieux :</strong> glisse les notes de carte où tu veux et relie chacune à son journal ou sa scène. Voir <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporters</a>.</li>
+<li><strong>Remplacer la carte :</strong> remplace l'image de fond par ton propre monde. Les notes, la barre de navigation et les effets restent en place.</li>
+<li><strong>Changer l'ambiance :</strong> ouvre la baguette FXMaster et échange les nuages contre de la pluie, de la neige, ou un filtre de nuit. Voir l'<a class="wikilink" data-page="dd-fxmaster">approfondissement FXMaster</a>.</li>
+<li><strong>Réajuster la lumière :</strong> ajoute, recolore ou anime des lumières pour coller à ton univers. Un bleu froid évoque une côte hantée ; un orange bas évoque une côte en flammes.</li>
+</ul>
+<p>Tu veux que la carte serve aussi de hub de campagne avec un menu complet et des sous-scènes ? C'est exactement ce que font les pages d'accueil <a class="wikilink" data-page="landing-avernus">Descent into Avernus</a> et <a class="wikilink" data-page="landing-strahd">Curse of Strahd</a>, et <a class="wikilink" data-page="landing-build">Construis ta propre page d'accueil</a> montre comment en assembler une.</p>

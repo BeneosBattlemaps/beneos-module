@@ -1,0 +1,25 @@
+<blockquote><p><strong>Antes de ler:</strong> nada disto é necessário para usar Beneos Battlemaps. Tudo já vem configurado e funciona direto da caixa. Este mergulho profundo é para quem quer adicionar funções de Point of Interest aos próprios mapas, ou está apenas curioso sobre como funciona.</p></blockquote>
+<hr />
+<h2>O que o POI faz</h2>
+<p>O Point of Interest Teleporter (PoI), assim como o Multilevel Tokens, é sólido como rocha: ele lida com milhares de links sem reclamar. O PoI conecta mapas e cenas para o Mestre, não para os jogadores. Ele dá a você navegação por milhares de cenas e mundos Beneos sem perder o rumo. Toda cena e todo release seguem o mesmo padrão, e teleportadores com o mesmo propósito sempre usam os mesmos ícones e nomes.</p>
+<img src="modules/beneos-module/assets/wiki/poi_c.webp" alt="Barra de navegação Beneos" />
+<p>Queríamos entregar experiências, não apenas mapas. Um mapa só parece parte de um todo maior quando está conectado a um. Esse é o trabalho dos Point of Interest Teleporters: eles levam você a cenas de visão geral, ao mapa-múndi e adiante para outra zona, para sequências de intro, para sceneries. Qualquer navegação do Mestre além do Foundry puro roda sobre o PoI.</p>
+<h2>Como o POI funciona</h2>
+<p>O PoI funciona através de diários. Normalmente um diário guarda notas ou texto de história. Para o PoI, o próprio diário é a informação. Na Configuração da Cena, escolha um diário em <strong>Journal Entry</strong>, na seção <strong>Ambience</strong>. Esse diário agora está vinculado à cena e dá ao PoI o que ele precisa. Toda cena (battlemap, scenery, intro) tem seu próprio diário único. É por isso que a pasta Beneos Battlemaps no explorador de diários guarda tantos diários: eles não armazenam nada, servem apenas como links para o PoI.</p>
+<img src="modules/beneos-module/assets/wiki/poi_a.webp" alt="Configuração da cena" />
+<p>Arraste um desses diários para o canvas e clique nele com o botão direito (1) para ver as opções. <strong>View Scene</strong> leva você (não seus jogadores) para a cena do diário. <strong>Activate Scene</strong> força todo mundo, você incluído, para a cena de destino. Ou seja, cada teleportador PoI aponta para exatamente uma cena. Atribua um diário na Configuração da Cena e esse diário passa a representar aquela cena. Onde quer que você o coloque, um clique com o botão direito leva você até lá.</p>
+<img src="modules/beneos-module/assets/wiki/poi_b.webp" alt="Clique com o botão direito em um diário" />
+<h2>Deixe os ícones visíveis</h2>
+<p>Sem ícones de diário nos seus mapas? Ative-os. Na barra de ferramentas do Foundry à esquerda, clique no ícone de estandarte (notas) (1) e depois no ícone de alfinete rotulado <strong>Toggle Notes Display</strong> (2). Todos os ícones de diário ficam visíveis.</p>
+<img src="modules/beneos-module/assets/wiki/navigation_activate_journals.webp" alt="Ative as entradas de diário no seu mapa" />
+<h2>Destino não instalado? Instale na hora</h2>
+<p>Se um teleportador aponta para um release que você ainda não instalou, não precisa sair caçando. Clique com o botão direito no ícone e escolha <strong>Install Missing Pack</strong>. Um diálogo mostra o release, deixa você escolher <strong>4K ou HD</strong> com o tamanho do download (1) e o instala direto no seu mundo. Quando terminar, clique com o botão direito no ícone de novo e viaje. Isso é exclusivo do Mestre.</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-install_1.webp" alt="O diálogo Install Missing Pack com a escolha de download entre 4K e HD">
+
+<h2>Encontre o que está faltando</h2>
+<p>Rodando um mundo grande importado e sem saber quais links estão quebrados? Abra <strong>Configurações de Módulos, Beneos Teleporter, Open Audit Window</strong>. Ele varre todas as cenas e lista cada teleportador quebrado ou faltando: a cena de origem, o destino pretendido, o status e o release que você precisaria instalar. <strong>Go to Source</strong> pula o canvas até a nota para você corrigir.</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-audit_1.webp" alt="A janela de auditoria do POI listando destinos de teleportadores faltando e seus releases">
+
+<h2>Solução de problemas</h2>
+<p>Um teleportador que cai na cena errada costuma ser uma de três coisas: nenhum diário atribuído ao ícone, o diário não atribuído a um mapa, ou o mesmo diário atribuído a mais de um mapa. Cada diário deve pertencer a exatamente uma cena.</p>
+<p>Para os ícones voltados ao Mestre durante o jogo, veja <a class="wikilink" data-page="dm-navigation">Navegação do Mestre</a>. Para o movimento conduzido pelos jogadores, veja <a class="wikilink" data-page="multilevel-tokens">Multilevel Tokens</a>.</p>

@@ -1,0 +1,30 @@
+<blockquote><p><strong>Než začneš číst:</strong> nic z toho není potřeba k používání Beneos Battlemaps. Vše je pro tebe připravené a funguje hned po instalaci. Tenhle hloubkový průvodce je pro každého, kdo chce stejný pocit hloubky vybudovat na vlastních mapách, nebo je prostě jen zvědavý, jak to funguje.</p></blockquote>
+<hr />
+<p>Na rozdíl od ostatních hloubkových průvodců nepotřebují dlaždice popředí žádný doprovodný modul. Jsou součástí jádra Foundry VTT, takže vše zde funguje rovnou.</p>
+<h2>Co jsou dlaždice popředí</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_a.webp" alt="Příklad dlaždice popředí" />
+<p>Přemýšlel jsi někdy, jak tokeny procházejí pod stromy, trámy nebo zárubněmi dveří? Dlaždice popředí. Jsou to obyčejné dlaždice položené <strong>nad</strong> tokeny místo pod nimi. Tokeny mizí za vším, co nad nimi logicky stojí, a scéna tím získává skutečnou hloubku: hráč procházející pod pokroucenou větví, dveřním otvorem, kolem převislé zdi.</p>
+<p>Abychom toho dosáhli, ručně vyřezáváme každý objekt vyšší než hráči a pokládáme ho jako obrázek popředí navrch. Je to práce navíc, ale je to velká část toho, proč Beneos mapa působí jako prostor, a ne jako plochý obrázek.</p>
+<h2>Jak se k dlaždicím popředí dostat</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_b.webp" alt="Přístup k dlaždicím popředí" />
+<p>Pokud chceš dlaždice popředí změnit nebo deaktivovat, klikni na <strong>Tile Controls</strong> v levém panelu nástrojů. Vrstva popředí je ve výchozím stavu skrytá, aby na ni nešlo kliknout omylem. Klikni na ikonu domečku a všechny dlaždice popředí se dají vybírat jako každá jiná dlaždice.</p>
+<p>Pozor: na některých mapách se několik dlaždic popředí překrývá (místy až osm, třeba střecha plus její dveřní trámy plus kus zdi). Kliknutí vybere vždycky tu nejvrchnější. K té pod ní se dostaneš tak, že vrchní odsuneš stranou, klikneš na tu pod ní a pak ji vrátíš zpátky. Dlaždice bývají zamčené proti nechtěnému posunutí, takže nejdřív klikni na dlaždici pravým tlačítkem a odemkni ji malou ikonou zámku. Dlaždice popředí má obvykle přesně velikost mapy, což tě ušetří žonglování se spoustou malých dlaždic.</p>
+<h2>Nastavení dlaždic popředí</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_c.webp" alt="Nastavení dlaždice popředí" />
+<p>Jakmile je vrstva popředí přes ikonu domečku klikatelná, dvojklikem na libovolnou dlaždici otevřeš její nastavení jako u běžné dlaždice. Dlaždici popředí můžeš před hráči skrýt a přes Monks Active Tile Trigger na ni navěsit automatizaci, která za určitých podmínek spustí akce. Víc v našem <a class="wikilink" data-page="dd-monks-active-tiles">hloubkovém průvodci Monks Active Tile Trigger</a>. Dlaždice popředí mohou být i video soubory a částečně průhledná videa dělají krásné efekty, třeba vlnící se koruny stromů. Video dlaždice ale stojí výkon, takže je používáme střídmě. Jak udržet animované mapy plynulé, popisuje stránka <a class="wikilink" data-page="performance">Výkon</a>.</p>
+<h3>Povýšení dlaždice do popředí</h3>
+<p>Pokud chceš z běžné dlaždice udělat dlaždici popředí, zaškrtni <strong>Is Overhead?</strong>. Pozor, samotné zaškrtnutí <strong>Is Roof?</strong> nestačí: to ovlivňuje jen výpočet dohledu tokenů na dálku, ne to, jestli se dlaždice vykresluje nad tokeny.</p>
+<h3>Režimy zakrývání</h3>
+<p><strong>Occlusion Mode</strong> určuje, jak se dlaždice popředí chová, když se pod ní pohybuje token. Čtyři možnosti:</p>
+<table>
+<thead>
+<tr><th>Režim</th><th>Chování</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>None</strong></td><td>Dlaždice se zobrazuje vždy. Správná volba pro většinu případů.</td></tr>
+<tr><td><strong>Fade</strong></td><td>Celá dlaždice se vytratí. Užitečné pro střechu, která má zmizet, když jsou pod ní tokeny.</td></tr>
+<tr><td><strong>Radial</strong></td><td>Dlaždice zůstává zobrazená a vytratí se jen malá oblast kolem tokenu, nastavená posuvníkem Occlusion Alpha. Vytracená oblast je malá a pevná, takže token může vypadat, že stojí na dlaždici, a ne pod ní.</td></tr>
+<tr><td><strong>Vision</strong></td><td>Vytratí jen ty části, které token skutečně vidí aktivním viděním tokenu. V praxi hráči vidí dlaždici zřetelně jen tehdy, když je ve stínu, což není zrovna intuitivní.</td></tr>
+</tbody>
+</table>
+<p>Jak tohle všechno zapadá do vedení scény z pozice PJ, popisuje stránka <a class="wikilink" data-page="dm-navigation">Navigace PJ</a>.</p>

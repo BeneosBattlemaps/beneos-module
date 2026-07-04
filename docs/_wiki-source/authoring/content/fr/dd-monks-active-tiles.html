@@ -1,0 +1,37 @@
+<blockquote><p><strong>Avant de lire :</strong> rien de tout cela n'est nécessaire pour utiliser les Beneos Battlemaps. Tout est déjà configuré pour toi et fonctionne dès l'installation. Cette plongée technique s'adresse à qui veut ajouter des fonctions Monk's Active Tile Triggers à ses propres cartes, ou est simplement curieux de comprendre comment ça marche.</p></blockquote>
+<hr />
+<p>Monk's Active Tile Triggers (MATT en abrégé) est l'un des modules d'automatisation les plus puissants pour Foundry VTT. C'est un module compagnon, il ne fait pas partie du module Beneos, assure-toi donc qu'il est installé et actif. Voir <a class="wikilink" data-page="requirements">Prérequis</a> pour la liste complète.</p>
+<h2>À quoi nous sert MATT</h2>
+<p>MATT est un couteau suisse pour automatiser ou contrôler des parties d'une scène. Nous l'utilisons pour :</p>
+<ul>
+<li>Des boutons de lecture et d'arrêt qui lancent et mettent en pause les séquences d'intro pour les joueurs.</li>
+<li>La navigation au clic sur la carte du monde d'Escalia.</li>
+<li>Des mini tables de mixage sur certaines scènes (par exemple Barovia Village, The Church).</li>
+<li>Des boutons placés pour les pièges, portes secrètes ou autres événements cliquables.</li>
+<li>La barre de navigation du menu principal de Curse of Strahd.</li>
+</ul>
+<p>MATT peut lancer des animations, jouer des sons, sauter vers des scènes et bien plus encore. Couvrir chaque fonction ici serait écrasant, et une page de wiki n'est pas le bon format pour ça. Pour approfondir, il existe d'excellents tutoriels vidéo en ligne. Ci-dessous, nous montrons comment nous utilisons MATT pour que tu puisses bâtir tes propres idées dessus.</p>
+<h2>Comment MATT fonctionne</h2>
+<p>Tout dans MATT passe par les tuiles. La configuration de tuile gagne un nouvel onglet appelé <strong>Triggers</strong>. MATT fonctionne par cause et effet : quand un déclencheur défini dans <strong>Setup</strong> est rempli (un clic, un token entrant sur la tuile, ou bien d'autres conditions), ce qui est défini dans <strong>Actions</strong> se produit.</p>
+<img src="modules/beneos-module/assets/wiki/matt_a.webp" alt="Tuile de lancement d'intro Beneos" />
+<p>Dans cet exemple, une tuile sert de bouton de lecture et d'arrêt pour les séquences d'intro. L'intro est elle aussi une tuile, et elle ne se lance que lorsque tu cliques sur la tuile bouton de lecture.</p>
+<p>Sélectionne <strong>Contrôles des tuiles</strong> dans la barre d'outils gauche pour cliquer sur les tuiles du canevas. En cliquant sur notre bouton de lecture (une tuile avec une image de bouton play), nous pouvons définir sous <strong>Triggers</strong> ce qui doit se passer et quand.</p>
+<img src="modules/beneos-module/assets/wiki/matt_b.webp" alt="Onglet Triggers de MATT" />
+<p>Dans <strong>Setup</strong>, tu définis quand l'action s'exécute. Ici, la tuile ne se déclenche que lorsque le MJ clique dessus.</p>
+<img src="modules/beneos-module/assets/wiki/matt_c.webp" alt="Onglet Actions de MATT" />
+<p>Sous <strong>Actions</strong>, plusieurs actions sont enchaînées sur un seul clic. MATT les exécute de haut en bas. Ici : la tuile qui contient l'intro est réinitialisée pour repartir du début (Foundry a la manie de démarrer les vidéos webm à des positions aléatoires), puis la tuile d'intro est lancée, puis l'image de la tuile cliquée est échangée pour que le bouton play devienne rouge et se lise comme un bouton stop la fois suivante, et enfin un son de clic joue en retour pour tous les joueurs et le MJ. Les images d'échange sont définies dans l'onglet <strong>Images</strong>.</p>
+<img src="modules/beneos-module/assets/wiki/matt_d.webp" alt="Onglet Images de MATT" />
+<p>L'onglet Images rassemble les images entre lesquelles MATT bascule. Ici seulement deux, lecture et arrêt, échangées à chaque clic. Une note technique : les deux images vivent sous des chemins de fichiers différents. Quand nous empaquetons une release, la seconde image n'est pas exportée et manquerait au téléchargement. La seconde image est donc livrée dans le module Beneos lui-même, qui est toujours installé et donc toujours disponible.</p>
+<p>C'était un exemple. Pour bâtir tes propres idées, inspecte les tuiles que nous utilisons pour contrôler les intros, construire des tables de mixage ou déclencher des pièges. Avec un peu de créativité, tu peux créer des effets interactifs vraiment sympas. Les tuiles de premier plan peuvent aussi porter des déclencheurs MATT, comme expliqué dans notre <a class="wikilink" data-page="dd-foreground-tiles">plongée technique sur les tuiles de premier plan</a>.</p>
+<h2>Construire un navigateur</h2>
+<p>Les menus cliquables de la <a class="wikilink" data-page="worldmap-escalia">carte du monde d'Escalia</a> et des deux pages d'accueil de campagne, <a class="wikilink" data-page="landing-avernus">Descent into Avernus</a> et <a class="wikilink" data-page="landing-strahd">Curse of Strahd</a>, reposent tous sur la même astuce MATT. Un bouton de navigation, ce sont deux tuiles : une tuile cliquable invisible posée sur une étiquette de texte visible. L'étiquette n'est là que pour être vue ; c'est la tuile invisible qui fait le travail. Clique dessus, et MATT te fait sauter vers une autre scène.</p>
+<p>Le plus rapide est de copier un bouton existant, mais voici la méthode complète depuis zéro :</p>
+<ol>
+<li>Place une petite tuile là où le bouton doit se trouver et donne-lui une image transparente ou presque transparente. C'est le déclencheur cliquable.</li>
+<li>Double-clique dessus, ouvre l'onglet <strong>Triggers</strong>, et sous <strong>Setup</strong> règle-la pour se déclencher au clic.</li>
+<li>Sous <strong>Actions</strong>, ajoute <strong>Change Scene</strong>, puis utilise la petite icône d'édition à côté pour choisir la scène de destination dans ton navigateur de Scènes.</li>
+<li>Derrière le déclencheur, place une tuile de texte visible ou une image de bouton pour que les joueurs sachent qu'il y a quelque chose à cliquer.</li>
+<li>Fais un clic droit sur le déclencheur et active son état. Et voilà un point de navigation fonctionnel.</li>
+</ol>
+<img src="modules/beneos-module/assets/wiki/matt_navigator.webp" alt="Une tuile de navigation avec une action Change Scene dans l'onglet Triggers" />
+<p>Répète l'opération pour chaque destination, puis copie la barre finie sur chaque scène de l'ensemble. Quand les scènes cibles portent une navigation qui ramène les unes vers les autres, tu as un menu que tes joueurs peuvent parcourir seuls. C'est exactement ainsi que les hubs Beneos sont construits, ouvre-en un et démonte-le pour voir un exemple complet. Pour révéler ou masquer un bouton à mesure que la campagne avance, affiche ou masque sa tuile de texte et bascule l'état actif du déclencheur. Pour la vue d'ensemble sur la façon dont ces menus s'assemblent en hub de campagne, voir <a class="wikilink" data-page="landing-build">Construire sa propre page d'accueil</a>.</p>

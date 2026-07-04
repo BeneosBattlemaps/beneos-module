@@ -1,0 +1,28 @@
+<blockquote><p><strong>Než začneš číst:</strong> nic z toho není potřeba k používání Beneos Battlemaps. Vše je pro tebe připravené a funguje hned po instalaci. Tenhle hloubkový průvodce je pro každého, kdo chce přidat funkce Multilevel Tokens na vlastní mapy, nebo je prostě jen zvědavý, jak to funguje.</p></blockquote>
+<hr />
+<h2>Co MLT dělá</h2>
+<p>Multilevel Tokens (MLT) je starší modul, který stále funguje bezchybně. Teleportuje tokeny z jednoho místa na druhé a nechává postavy hráčů i PJ pohybovat se mezi mapami nezávisle. Proč MLT místo novějších modulů, které také teleportují tokeny? Kvůli tomu, jak funguje. MLT nepoužívá ID z Foundry, používá vlastní identifikátory. To znamená, že na rozdíl od Monks Active Tiles můžeme propojit dva release, i když nejsou součástí stejného balíčku. Stáhneš balíček A, později balíček B, a spolupracují automaticky. S Monks Active Tiles bychom museli každou mapu stahovat jako jeden obří release nebo udržovat každý teleport ručně, což při několika tisících scén není žádná zábava. Věř nám.</p>
+<h2>Jak MLT funguje</h2>
+<p>Vše v MLT funguje přes kresby, tvary vytvořené kreslicím nástrojem v levém panelu nástrojů. Říkáme jim MLT pole. Jejich nastavení a propojení je jednoduché a bezchybné.</p>
+<img src="modules/beneos-module/assets/wiki/mlt_setup_a.webp" alt="MLT zóna" />
+<p>S aktivním MLT získá nastavení nakresleného tvaru (Beneos vždy používá obdélníky) novou záložku jménem <strong>Multilevel</strong>. Vše, co každý teleport potřebuje, se nastavuje tady, pro každé pole zvlášť. Tip: tvary kopíruj přes Ctrl+C a vkládej je na jiné scény.</p>
+<img src="modules/beneos-module/assets/wiki/mlt_setup_b.webp" alt="Nastavení MLT" />
+<ol>
+<li><strong>Zdroj nebo cíl.</strong> MLT posílá tokeny ze zdrojového pole do cílového pole. Zaškrtni <strong>Out</strong> pro teleport z tohoto pole. Zaškrtni <strong>In</strong> pro teleport do něj. Zaškrtni obojí pro obousměrné cestování.</li>
+<li><strong>Identifikátor teleportu.</strong> Jádro MLT. Zadej libovolný text, ale drž ho logický. Když token opustí toto pole, identifikátor ukazuje na cíl: token jde do druhého pole se stejným identifikátorem. Identifikátor by měla sdílet jen dvě pole. Při třech a více MLT vybírá náhodně, což způsobuje chyby. Zkrátka, zdroj a cíl jsou spárované sdílením identifikátoru.
+<ol>
+<li>Konvence pojmenování Beneos je <strong>ČísloReleaseA-ČísloMapyA_ČísloReleaseB-ČísloMapyB</strong> s vedoucími nulami, menší číslo vlevo. Například 76-04_76-05, nebo 64-04_76-01.</li>
+</ol>
+</li>
+<li><strong>Aktivace přes Map Node.</strong> Když je tohle zapnuté, pole zůstává neaktivní, i když do něj tokeny vstoupí. Teleport spustí jen kliknutí na ikonu deníku uvnitř pole. To je důležité, protože MLT pole jsou obvykle neviditelná a hráči by jinak mohli měnit scény omylem. Proto na každé pole dáváme jedinečnou ikonu deníku: říká hráčům, že tady mohou mapu opustit, a slouží jako tlačítko, pokud se tak rozhodnou.</li>
+<li><strong>Klonování tokenů.</strong> Vzácnější, ale šikovné. Klonování zobrazí tokeny z jiného MLT pole na aktuální ploše (nebo obráceně), aniž by je teleportovalo. Pohni tokenem na mapě A a pohne se i na mapě B. Skvělé pro sledování tokenů v prvním patře, zatímco stojíš ve druhém. Zdrojové a cílové pole sdílejí stejný identifikátor jako vždy. <strong>Source</strong> je pole, ze kterého se tokeny zobrazují (tady první patro), <strong>Target</strong> je místo, kde se ukazují (druhé patro).</li>
+</ol>
+<h2>Sleduj své hráče</h2>
+<p>Když hráč projde teleportem, dostaneš soukromou kartu do chatu: kdo se teleportoval, do které scény, a tlačítko <strong>Zobrazit scénu</strong>, které tě k němu rovnou přenese. Už žádné dumání, kam se družina zatoulala. Ve výchozím stavu je to zapnuté; pokud to někdy budeš chtít vypnout, přepni <strong>Notify GM on teleport</strong> v nastavení modulu.</p>
+<img src="modules/beneos-module/assets/wiki/shot_mlt-chat_1.webp" alt="Chatová karta jen pro PJ ukazující token teleportovaný do scény s tlačítkem Zobrazit scénu">
+
+<h2>Přidej zvuk teleportu</h2>
+<p>Chceš, aby hráči při použití teleportu něco slyšeli? Otevři Drawing Config pole <strong>In</strong>, přejdi na záložku <strong>Multilevel</strong> a nastav <strong>Teleport sound</strong>. Přehraje se cestujícím hráčům i tobě, když se teleport spustí. Drobnost, která ten moment prodá.</p>
+<img src="modules/beneos-module/assets/wiki/shot_mlt-sound_1.webp" alt="Rozbalovací nabídka Teleport sound na záložce Multilevel v Drawing Config">
+
+<p>Jak to vypadá z pohledu hráčů, popisuje <a class="wikilink" data-page="player-navigation">Navigace hráčů</a>. Skoky mezi scénami na straně PJ popisuje <a class="wikilink" data-page="poi-teleporter">POI Teleporter</a>.</p>

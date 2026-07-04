@@ -1,0 +1,25 @@
+<blockquote><p><strong>Než začneš číst:</strong> nic z toho nepotřebuješ k používání Beneos Battlemaps. Vše je nastaveno za tebe a funguje hned po instalaci. Tento hloubkový průvodce je pro každého, kdo chce přidat funkce Point of Interest na vlastní mapy, nebo je prostě zvědavý, jak to funguje.</p></blockquote>
+<hr />
+<h2>Co POI dělá</h2>
+<p>Point of Interest Teleporter (PoI) je, stejně jako Multilevel Tokens, jako skála: zvládne tisíce propojení bez zaváhání. PoI propojuje mapy a scény pro PJ, ne pro hráče. Dává ti navigaci napříč tisíci scén a světů Beneos, aniž bys ztratil přehled. Každá scéna a release sledují stejný vzorec a teleporty se stejným účelem používají vždy stejné ikony a názvy.</p>
+<img src="modules/beneos-module/assets/wiki/poi_c.webp" alt="Navigační lišta Beneos" />
+<p>Chtěli jsme dodávat zážitky, ne jen mapy. Mapa působí jako součást většího celku, jen když je s ním propojená. Přesně to je práce Point of Interest teleportů: vezmou tě na přehledové scény, na mapu světa a dál do jiné zóny, k intro sekvencím, ke scenériím. Veškerá navigace PJ nad rámec čistého Foundry běží na PoI.</p>
+<h2>Jak POI funguje</h2>
+<p>PoI funguje přes deníky. Normálně deník uchovává poznámky nebo text příběhu. Pro PoI je informací samotný deník. V konfiguraci scény vyber deník pod <strong>Journal Entry</strong> v sekci <strong>Ambience</strong>. Tím je deník propojený se scénou a dává PoI, co potřebuje. Každá scéna (battlemapa, scenérie, intro) má svůj vlastní jedinečný deník. Proto složka Beneos Battlemaps v průzkumníku deníků obsahuje tolik deníků: nic neuchovávají, slouží jen jako odkazy pro PoI.</p>
+<img src="modules/beneos-module/assets/wiki/poi_a.webp" alt="Konfigurace scény" />
+<p>Přetáhni jeden z těchto deníků na plátno a klikni na něj pravým tlačítkem (1) pro možnosti. <strong>View Scene</strong> vezme tebe (ne tvé hráče) na scénu deníku. <strong>Activate Scene</strong> přesune na cílovou scénu všechny, včetně tebe. Každý PoI teleport tedy míří přesně na jednu scénu. Přiřaď deník v konfiguraci scény a tento deník pak danou scénu reprezentuje. Ať ho umístíš kamkoli, pravé kliknutí tě tam vezme.</p>
+<img src="modules/beneos-module/assets/wiki/poi_b.webp" alt="Pravé kliknutí na deník" />
+<h2>Zviditelnění ikon</h2>
+<p>Nevidíš na mapách ikony deníků? Zapni je. V panelu nástrojů Foundry vlevo klikni na ikonu praporku (poznámky) (1) a pak na ikonu špendlíku s popiskem <strong>Toggle Notes Display</strong> (2). Všechny ikony deníků zůstanou viditelné.</p>
+<img src="modules/beneos-module/assets/wiki/navigation_activate_journals.webp" alt="Aktivace záznamů deníku na mapě" />
+<h2>Cíl není nainstalovaný? Nainstaluj ho na místě</h2>
+<p>Pokud teleport míří na release, který jsi ještě nenainstaloval, nemusíš ho hledat. Klikni na ikonu pravým tlačítkem a zvol <strong>Install Missing Pack</strong>. Dialog ukáže release, nechá tě vybrat <strong>4K nebo HD</strong> s velikostí stahování (1) a nainstaluje ho rovnou do tvého světa. Až skončí, klikni na ikonu pravým tlačítkem znovu a cestuj. Tohle je jen pro PJ.</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-install_1.webp" alt="Dialog Install Missing Pack s volbou stahování 4K a HD">
+
+<h2>Najdi, co chybí</h2>
+<p>Vedeš velký importovaný svět a nevíš jistě, které odkazy jsou rozbité? Otevři <strong>nastavení modulu, Beneos Teleporter, Open Audit Window</strong>. Projde každou scénu a vypíše každý rozbitý nebo chybějící teleport: zdrojovou scénu, zamýšlený cíl, stav a release, který bys musel nainstalovat. <strong>Go to Source</strong> skočí plátnem na poznámku, abys to mohl opravit.</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-audit_1.webp" alt="Okno POI Audit se seznamem chybějících cílů teleportů a jejich releasů">
+
+<h2>Řešení potíží</h2>
+<p>Teleport, který přistane na špatné scéně, je obvykle jedna ze tří věcí: ikoně není přiřazen žádný deník, deník není přiřazen k mapě, nebo je stejný deník přiřazen k více mapám. Každý deník musí patřit přesně jedné scéně.</p>
+<p>Ikony pro PJ během hry popisuje <a class="wikilink" data-page="dm-navigation">navigace PJ</a>. Pohyb řízený hráči popisuje <a class="wikilink" data-page="multilevel-tokens">Multilevel Tokens</a>.</p>

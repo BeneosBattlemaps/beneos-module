@@ -1,0 +1,35 @@
+<blockquote><p><strong>閱讀之前：</strong>使用 Beneos 不需要這裡的任何內容。這一頁是給看過<a class="wikilink" data-page="landing-avernus">阿弗納斯</a>和<a class="wikilink" data-page="landing-strahd">巴洛維亞</a>樞紐頁、心想「我也要為自己的世界弄一個」的 GM。</p></blockquote>
+<hr />
+<p>著陸頁看起來很花俏，但它始終只是同樣四個點子換上不同的美術。一旦你能說出它們的名字，就能為任何戰役打造一個樞紐，或者把我們的拆開來重組成你自己的。</p>
+
+<h2>配方</h2>
+<ol class="bw-steps">
+<li><strong>一組場景。</strong>一個首頁，加上玩家需要的每樣東西各一個場景：一張地圖、一個總部、一頁登場人物，隨你的故事需要。著陸頁不過是把這些場景收進一個資料夾。</li>
+<li><strong>一條導航列。</strong>在每個場景上放一個能跳轉到其他場景的小選單。這是唯一會動的部件，由 <a class="wikilink" data-page="dd-monks-active-tiles">Monks Active Tile Triggers</a> 驅動。</li>
+<li><strong>按需揭示。</strong>一開始隱藏、等隊伍掙得後才出現的內容：一個 NPC、一份契約、一件神器、一輛載具。在 Foundry 中，這不過是一個你右鍵點擊並<strong>切換可見狀態</strong>的圖塊或繪圖。</li>
+<li><strong>興趣點。</strong>在地圖場景上放置玩家可以開啟並藉此移動的日誌標記。見 <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporters</a>。</li>
+</ol>
+
+<h2>一步一步打造</h2>
+<h3>1. 規劃你的場景</h3>
+<p>決定你的樞紐需要什麼，為每一項建一個場景，再加一個首頁。把它們放在同一個場景資料夾裡，整組內容才好找好搬。最快的起步方式是複製我們的一個著陸頁再換掉美術，因為接線都已經完成了。</p>
+<h3>2. 接上導航</h3>
+<p>在首頁放一排按鈕，每個場景一個，然後把這條導航列複製到每個場景上，讓玩家能從任何地方自由移動。每個按鈕都是一個隱形的可點擊圖塊疊在可見的文字標籤上，背後接一個 <strong>Change Scene</strong> 動作。<a class="wikilink" data-page="dd-monks-active-tiles">Monks Active Tiles 深度解析</a>有打造導航器的完整教學，而複製一個現成按鈕是目前最容易的入門方式。</p>
+<h3>3. 把首頁預設為啟用</h3>
+<p>讓首頁成為玩家登入時看到的場景，並在每次遊戲開始時保持啟用。他們從那裡可以抵達你已向他們開放的一切。</p>
+<h3>4. 隱藏還沒掙得的東西</h3>
+<p>一開始只顯示必要的內容，其餘保持隱藏。隨著戰役推進，透過切換可見性揭示一個導航點、一個 NPC 或一份獎勵。這種緩慢的揭幕正是讓樞紐顯得鮮活而不是靜態選單的關鍵。</p>
+<h3>5. 好好布置</h3>
+<p>著陸頁是一座舞台，所以要為它打光。在場景的<a class="wikilink" data-page="ambience-sound">環境</a>分頁下加入一條環境音軌，並用 <a class="wikilink" data-page="dd-fxmaster">FXMaster</a> 營造天氣與氛圍。用繪圖工具編輯的首頁遊戲標題，在任何人開口之前就定下基調。</p>
+
+<h2>把地點連到它的指南</h2>
+<p>你可以在場景的任何位置放一個說明標記，直接打開文件的正確位置，好奇的玩家點一下就能落在正確的指南上。放置一個帶 Beneos 說明圖示的地圖<strong>筆記</strong>，然後用它的<strong>標籤</strong>來指向目標：</p>
+<ul>
+<li><strong>只開文件：</strong>一個純說明筆記（不加標記）會打開文件首頁，和每個 Beneos 場景上的說明圖示相同。</li>
+<li><strong>特定文章：</strong>在標籤中加入 <code>@doc[landing-avernus]</code>，就會打開該文章。</li>
+<li><strong>特定章節：</strong>加入 <code>@doc[landing-avernus#la-garage]</code>，就會直接跳到文章的該部分。</li>
+</ul>
+<p><code>@doc[...]</code> 標記永遠不會顯示在地圖上；只有它前面的文字會顯示，所以像 <code>Garage guide @doc[landing-avernus#la-garage]</code> 這樣的標籤，看起來就只是「Garage guide」。頁面名稱是文件側邊欄中該文章的鍵值，章節名稱則來自各文章自己的標題。左鍵或右鍵點擊都能打開。</p>
+
+<h2>從我們出品的範例中學習</h2>
+<p>最快的老師是一個能運作的範例。打開 <a class="wikilink" data-page="landing-avernus">Descent into Avernus</a> 樞紐可以看到完整的工具組，一張總部桌面、一張六角格探索世界地圖、一間獎勵車庫；或者打開 <a class="wikilink" data-page="landing-strahd">Curse of Strahd</a> 樞紐，那裡有一本任務之書和一面人物之牆。拿走適合你故事的部分，其餘的留下。</p>

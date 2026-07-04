@@ -1,0 +1,85 @@
+<blockquote><p><strong>Bevor du weiterliest:</strong> Die Landing Page funktioniert out of the box. Aktiv setzen, Spieler einladen, läuft. Alles Folgende ist für den SL, der sie souverän fahren oder für eine eigene Kampagne umbiegen will. Sie ist für Höllen-Settings gebaut und passt zu Abenteuern wie <em>Descent into Avernus</em>, aber nichts hindert dich, sie für jede infernalische Geschichte zu nutzen.</p></blockquote>
+<hr />
+<p>Die Avernus-Landing-Page ist nicht eine Szene. Sie ist ein kleines Set aus Szenen, verdrahtet zu einem Hub, in dem sich deine Spieler selbstständig bewegen können: eine Startseite, ein Hauptquartier-Tisch, eine Seite mit Gesichtern, die sie getroffen haben, eine Höllen-Weltkarte und eine Garage für die Kriegsmaschinen, die sie erbeuten. Du gibst jeden Teil frei, wenn die Kampagne ihn sich verdient hat.</p>
+
+<nav class="bn-faq-toc" id="la-top" aria-label="Auf dieser Seite">
+<div class="bn-faq-toc-head">Auf dieser Seite</div>
+<div class="bn-faq-toc-grid">
+<div class="bn-faq-toc-sec">
+<ul>
+<li><a data-wiki-jump="la-landing">Landing Page &amp; Navigation</a></li>
+<li><a data-wiki-jump="la-table">Der Spieler-Tisch</a></li>
+<li><a data-wiki-jump="la-characters">Die Charakter-Seite</a></li>
+</ul>
+</div>
+<div class="bn-faq-toc-sec">
+<ul>
+<li><a data-wiki-jump="la-worldmap">Die Höllen-Weltkarte</a></li>
+<li><a data-wiki-jump="la-regional">Regionalkarten</a></li>
+<li><a data-wiki-jump="la-garage">Die Garage</a></li>
+</ul>
+</div>
+</div>
+</nav>
+
+<h2 id="la-landing">Landing Page &amp; Navigation</h2>
+<p>Das ist das Erste, was deine Spieler beim Einloggen sehen, halte sie also zu Sessionbeginn standardmäßig aktiv. Von hier erreichen sie jede Szene, die du für sie freigeschaltet hast. Am Anfang sind nur der Spieler-Tisch und die Charakter-Seite offen; den Rest, die Weltkarte, die Garage, schaltest du frei, wenn die Geschichte dort ankommt.</p>
+<img src="modules/beneos-module/assets/wiki/shot_landing-avernus_1.webp" alt="Die Avernus-Landing-Page mit ihrem Navigationsmenü" />
+<h3>Session-Titel</h3>
+<p>Gib jeder Session auf der Landing Page einen atmosphärischen Titel: eine Sessionnummer und eine kleine unheilvolle Andeutung dessen, was kommt. Das setzt die Stimmung, bevor ein Wort gesprochen ist. Nimm die <strong>Drawing Tools</strong> aus der linken Toolbar und doppelklicke den Titeltext, um ihn zu bearbeiten. Passt er nicht zu deiner Geschichte, blende den Titel und seine Leiste komplett aus.</p>
+<h3>Wie die Navigation funktioniert</h3>
+<p>Jeder Button besteht aus zwei Tiles: einem unsichtbaren klickbaren Tile über einem sichtbaren Text-Label, betrieben von <a class="wikilink" data-page="dd-monks-active-tiles">Monks Active Tile Triggers</a>. Um einen Navigationspunkt für Spieler zu öffnen: Wähle <strong>Tile Controls</strong>, schieb das unsichtbare Tile beiseite, rechtsklicke das Text-Tile darunter und wähle <strong>Toggle Visibility State</strong>, um es zu zeigen, schieb das unsichtbare Tile zurück über das Label und sperre es, dann rechtsklicke das unsichtbare Tile und schalte seinen Aktiv-Status ein. Mach dasselbe auf den anderen Seiten, damit die Navigation nahtlos bleibt, egal wo die Spieler sind.</p>
+<h3>Wenn MATT mal zwischen zwei Updates hängt</h3>
+<p>Monks Active Tile Triggers ist nach einem großen Foundry-Versionssprung oft eines der letzten Module, das nachzieht. Für diese kurzen Zeitfenster liefern die Seiten eine <strong>Backup-Navigation</strong> aus gewöhnlichen Journal-Icons mit, derselben Sorte wie überall auf Beneos-Maps. Gib deinen Spielern Besitzrechte an diesen Journals und zieh die Icons auf die Leiste, dann können sie per Rechtsklick reisen, bis MATT wieder aktuell ist. In neunundneunzig von hundert Fällen kannst du das ignorieren.</p>
+<h3>Hintergrundmusik</h3>
+<p>Jede Szene hier trägt ihre eigene Soundquelle, die startet, wenn du sie betrittst. Szenen mit demselben Track spielen ohne Lücke weiter, während du zwischen ihnen wechselst. Zum Ändern oder Stummschalten rechtsklicke die Szene, öffne <strong>Configure</strong> und leere oder ersetze im <strong>Ambience</strong>-Tab die Scene Playlist. Mehr unter <a class="wikilink" data-page="ambience-sound">Ambience &amp; Sound</a>.</p>
+<p class="bn-faq-back"><a data-wiki-jump="la-top">Zurück nach oben</a></p>
+
+<h2 id="la-table">Der Spieler-Tisch</h2>
+<p>Der Spieler-Tisch ist das Hauptquartier der Gruppe, alles Nötige auf einer Fläche versammelt. Lies ihn als Basis in einer Höhle, einem Dungeon, wo immer deine Geschichte will. Wenn du nicht das offizielle Modul spielst, schalte das animierte Logo in der oberen Ecke aus und setz dein eigenes ein.</p>
+<img src="modules/beneos-module/assets/wiki/shot_landing-avernus_2.webp" alt="Die Hauptquartier-Szene mit dem Spieler-Tisch" />
+<h3>Infernalische Verträge</h3>
+<p>Wenn ein Spieler einen Teufelspakt unterschreibt, enthülle den Vertrag auf dem Tisch, indem du sein Bild rechtsklickst und sichtbar machst. Schreib die eigentlichen Bedingungen in ein Journal, teile es und zieh es auf den sichtbaren Vertrag, damit die Spieler ihre eigenen Deals jederzeit nachlesen können.</p>
+<h3>Seelenmünzen</h3>
+<p>Neben den Verträgen steht eine kleine Truhe zum Verwalten der Seelenmünzen. Verbirg das Tile, das sie abdeckt, um die Truhe für deine Spieler zu öffnen, und zeige oder verbirg dann einzelne Münzen, wenn ihr Hort wächst und schrumpft. Ein kleiner Zähler darunter zeigt die Summe auf einen Blick, bis neunzehn.</p>
+<h3>Das Questlog</h3>
+<p>Das große Buch auf dem Tisch ist das gemeinsame Questlog der Gruppe. Tippe Quest-Titel mit dem Textwerkzeug, hake die Checkbox-Tiles ab, wenn Aufträge erledigt sind, oder markiere einen abgeschlossenen mit einem X. Das Buch nimmt auch Handouts und Bilder auf, es dient also nebenbei als Pinnwand für alles, was sich die Gruppe merken muss.</p>
+<h3>Spieler-Sheets</h3>
+<p>Unten rechts liegt eine Reihe Spieler-Sheets, sechs vorbereitet für eine Sechsergruppe. Aktiviere eines pro Spieler, benenne die Platzhalter nach deinen Charakteren um und verknüpfe dann den versteckten Token jedes Sheets über <strong>Open Configuration</strong> und <strong>Represented Actor</strong> mit dem richtigen Charakter. Danach kann ein Spieler sein Sheet doppelklicken, um seinen eigenen Charakter zu öffnen, Inventar und Zauber zu prüfen oder die TP direkt vom Tisch aus anzupassen. Du brauchst mehr als sechs? Kopiere ein Sheet und richte es genauso ein.</p>
+<p class="bn-faq-back"><a data-wiki-jump="la-top">Zurück nach oben</a></p>
+
+<h2 id="la-characters">Die Charakter-Seite</h2>
+<p>Kampagnen häufen schnell Gesichter an. Auf dieser Seite behalten deine Spieler im Blick, wen sie wo getroffen haben. Die Charaktere sind nach Ort gruppiert, verteilt über drei Unterseiten, es ist also Platz für die Besetzung einer ganzen Kampagne.</p>
+<img src="modules/beneos-module/assets/wiki/shot_landing-avernus_3.webp" alt="Die Charakter-Seite mit NSC-Porträts, nach Ort gruppiert" />
+<p>Jedes Porträt ist ein echter Actor aus deinem Actor-Verzeichnis. Zum Enthüllen wähle <strong>Token Controls</strong>, klicke den Token des Charakters, dann Rechtsklick und <strong>Toggle Visibility State</strong>. Spieler sehen nie den Statblock, aber sobald ein Gesicht sichtbar ist, können sie den Namen per Hover lesen. Um einen eigenen NSC hinzuzufügen, zieh den Actor auf die Szene, öffne seine Token-Konfiguration und setze <strong>Display Name</strong> auf "Hovered by Anyone", damit Spieler den Namen lesen können, sobald du ihn zeigst.</p>
+<p class="bn-faq-back"><a data-wiki-jump="la-top">Zurück nach oben</a></p>
+
+<h2 id="la-worldmap">Die Höllen-Weltkarte</h2>
+<p>Lass dich von dieser Szene nicht erschlagen. Sie trägt viel SL-Maschinerie, aber deine Spieler sehen immer nur die Landschaft und ihren eigenen Token. Nutze so viel oder so wenig, wie deine Gruppe will; ein One-Shot kann jeden Marker ignorieren und bekommt trotzdem eine gute Karte.</p>
+<img src="modules/beneos-module/assets/wiki/shot_landing-avernus_4.webp" alt="Die Höllen-Hexcrawl-Weltkarte, aufgeteilt in Regionen mit Buchstaben" />
+<h3>Ein Hexcrawl durch die Hölle</h3>
+<p>Die Karte hat sechzig Hexfelder, beschriftet von A1 bis J6, jedes ein eigenes Biom: Wüste, brennende Ebenen, Lavafelder. Jedes Hexfeld enthält mindestens einen Point of Interest, markiert durch ein Journal-Icon, das du zum Lesen doppelklickst. Selbst ohne einen einzigen POI läuft das Raster allein schon als Survival-Crawl durch eine höllische Ödnis. Sie baut auf der Struktur auf, die The Alexandrian populär gemacht hat, erweitert um Third-Party- und Homebrew-Inhalte, und jede externe Quelle ist im jeweiligen POI verlinkt.</p>
+<h3>Die POI-Farben lesen</h3>
+<p>Die Point-of-Interest-Icons sind farbcodiert, damit du auf einen Blick weißt, woher jeder stammt: <strong>Blau</strong> für offizielle <em>Descent into Avernus</em>-Inhalte, <strong>Lila</strong> für kostenloses Third-Party-Material von The Alexandrian und <strong>Gelb</strong> für zusätzliche Third-Party-Inhalte, die du anderswo kaufen kannst, mit Links und Autoren in jedem Journal genannt.</p>
+<h3>Einen Ort für Spieler enthüllen</h3>
+<p>Wenn die Gruppe einen Ort entdeckt, gib ihr das Journal frei: Wähle <strong>Journal Notes</strong>, klicke das Icon auf dem Hexfeld, finde seinen Titel im Journal-Tab, Rechtsklick, <strong>Configure Ownership</strong>, und setze es für alle Spieler auf Beobachter. Jetzt können sie es selbstständig öffnen und erkunden. Der Nebel des Krieges hält den Rest verborgen, bis ihr Token dort ankommt.</p>
+<h3>Zwei Arten, sie zu spielen</h3>
+<p>Du kannst alles auf dieser einen globalen Karte spielen, was für die meisten Gruppen völlig reicht, oder die sechs Buchstaben-Regionen (A bis F) wie sechs Räume eines Dungeons behandeln und für jede in eine detaillierte Regionalkarte eintauchen. Mehr dazu direkt unten.</p>
+<h3>Eine einfachere Karte, und künftiges Wachstum</h3>
+<p>Wenn dir das detaillierte Raster zu voll ist, gibt es unter den Tiles eine reduzierte Version mit weniger POIs, auf die du wechseln kannst. Und die Karte wächst: Ausgegraute Icons sind Orte, die noch kommen, und die Installation des passenden Releases schaltet sie automatisch frei. Fahre mit der Maus über ein Icon, um zu sehen, zu welchem Release es gehört.</p>
+<p class="bn-faq-back"><a data-wiki-jump="la-top">Zurück nach oben</a></p>
+
+<h2 id="la-regional">Regionalkarten</h2>
+<p>Regionalkarten sind Nahaufnahmen einzelner Gebiete der globalen Karte, jede in voller Qualität gerendert, sodass jeder Point of Interest klar lesbar ist, wie ein Level in einem Videospiel. Das Hex-Layout entspricht exakt der globalen Karte, die Verbindungen sind also dieselben; nur der Detailgrad ändert sich. Deine Spieler ziehen als Gruppe von Hexfeld zu Hexfeld und können eine Region verlassen, um die nächste zu betreten.</p>
+<p>Am Rand einer Region sitzen Navigations-Hexfelder, markiert durch einen Pfeil und ein Journal-Icon. Ein Token, das dort steht, kann in Pfeilrichtung reisen, und du löst die Bewegung aus, indem du auf das Auge des Journals klickst. Eine Minimap in der oberen linken Ecke zeigt alle Regionen auf einen Blick. Auf Regionalkarten sind die POIs am rechten Rand aufgelistet statt auf den Hexfeldern, was verhindert, dass ein versehentlicher Klick jemanden teleportiert. Jede Region hat außerdem ihre eigene Tilt-Shift-Scenery, die Welt als kleines Diorama, falls das die Immersion an deinem Tisch erhöht.</p>
+<p class="bn-faq-back"><a data-wiki-jump="la-top">Zurück nach oben</a></p>
+
+<h2 id="la-garage">Die Garage</h2>
+<p>Die Garage ist der Ort, an dem die Gruppe die infernalischen Kriegsmaschinen präsentiert, die sie erbeutet hat. Sie startet leer, nur ein animierter Hintergrund, und füllt sich, wenn deine Spieler sich Fahrzeuge verdienen. Fünf sind mitgeliefert; gib sie einzeln heraus oder parke stattdessen deine eigenen Entwürfe hier.</p>
+<img src="modules/beneos-module/assets/wiki/shot_landing-avernus_5.webp" alt="Die infernalische Garage, in der erbeutete Kriegsmaschinen ausgestellt werden" />
+<p>Um ein Fahrzeug zu enthüllen, wähle <strong>Tile Controls</strong>, klicke die Maschine mit dem Select-Drawings-Werkzeug an, dann Rechtsklick und <strong>Toggle Visibility State</strong>. Mach dasselbe mit dem Zeichenwerkzeug für sein Namensschild, damit die Plakette daneben erscheint.</p>
+<p>Ein SL-Trick: Verwebe die Garage, den Tisch und die anderen Hinterzimmer als Taschendimension in die Geschichte, in die die Gruppe eintreten kann, eine mobile Basis für Verhandlungen, Lagerung oder das Vorführen ihrer Flotte. Damit sie kein kostenloser sicherer Hafen wird, gib ihr Zähne: Der Ort wurde für Teufel gebaut, es ist also brutal heiß, und eine Stunde darin kostet einen Menschen einen Grad Erschöpfung.</p>
+<p class="bn-faq-back"><a data-wiki-jump="la-top">Zurück nach oben</a></p>
+
+<hr />
+<p>Du willst so einen Hub für deine eigene Kampagne bauen? Siehe <a class="wikilink" data-page="landing-build">Baue deine eigene Landing Page</a>, und für die Navigation selbst die <a class="wikilink" data-page="dd-monks-active-tiles">Monks-Active-Tiles-Vertiefung</a>.</p>

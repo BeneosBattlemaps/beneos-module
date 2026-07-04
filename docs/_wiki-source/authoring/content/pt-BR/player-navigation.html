@@ -1,0 +1,29 @@
+<p>Os jogadores também se movem entre mapas, não só os Mestres. Os atores dos personagens viajam por conta própria em pontos específicos do mapa, sem precisar de nenhuma ação do Mestre. Isso roda sobre o módulo Multilevel Tokens, então garanta que ele esteja instalado e ativo. Usar é ridiculamente simples. Quer entender a tecnologia, ou posicionar seus próprios navegadores? Leia o mergulho técnico de <a class="wikilink" data-page="multilevel-tokens">Multilevel Tokens</a>. Não é obrigatório, já que preparamos tudo pra você.</p>
+<h2>Como funcionam os teleportadores de jogadores</h2>
+<p>O Multilevel Tokens conecta dois lugares: uma origem e um destino. Nós já pré-definimos pra onde cada teleportador de jogador leva. Cada campo de teleporte (visível só pros Mestres) carrega um ícone de diário. O jogador clica nele, o token do personagem salta da origem pro destino, e a cena muda apenas pra esse jogador. Se o Mestre clicar em um ícone de diário numa zona de teleporte, todos os tokens se movem, de jogadores e não jogadores.</p>
+<p>Você não é obrigado a deixar os jogadores circularem livremente, mas isso pode gerar uma exploração empolgante e narrativamente envolvente. Acompanhe onde cada jogador está. Quando um jogador anuncia uma troca de cena, essa é sua deixa pra descrever o novo local como deve ser. Dois tipos de ícone controlam os teleportadores.</p>
+<h2>O que os ícones significam</h2>
+<table>
+<thead>
+<tr><th>Ícone</th><th>Significado</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><img src="modules/beneos-module/assets/wiki/shot_player-navigation_1.webp" alt="Ícone do navegador de jogador" /></td>
+<td><strong>Navegador de jogador.</strong> O ícone padrão que os jogadores veem quando chegam perto o suficiente. Eles não conseguem vê-lo através de paredes; precisam alcançar a saída da cena pra interagir. Se um jogador clicar nele enquanto um personagem que ele controla está na zona de teleporte (invisível pra ele), esse personagem viaja pra cena de destino, e a cena muda apenas pra esse jogador.</td>
+</tr>
+<tr>
+<td><img src="modules/beneos-module/assets/wiki/shot_player-navigation_2.webp" alt="Ícone do navegador oculto do Mestre" /></td>
+<td><strong>Navegador oculto do Mestre.</strong> Mesmo efeito do navegador de jogador, mas invisível pros jogadores e inutilizável por eles. Serve pra caminhos não óbvios: portas secretas, rotas a serem descobertas ou abertas depois. Quando você decidir que os jogadores podem seguir adiante, clique nele e eles teleportam pro destino. Ótimo pra armadilhas, caminhos liberados, portas entreabertas.</td>
+</tr>
+</tbody>
+</table>
+<h2>Quem vê quais ícones</h2>
+<p>Um jogador só vê um ícone de diário se o diário tiver sido liberado pra ele ou pra todos os jogadores. Coloque cinco ícones mas libere cada diário pra um único jogador, e cada um vê apenas o seu. Use isso pra dar notas privadas aos jogadores, ou pra manter a navegação do Mestre separada da navegação dos jogadores.</p>
+<img src="modules/beneos-module/assets/wiki/dm_journal_permission.webp" alt="Alterar permissão do diário" />
+<p>Defina a permissão de um diário como faria com um token. Abra o navegador de diários via <strong>Diário</strong> na barra de navegação superior direita. Clique com o botão direito no diário e escolha <strong>Configurar Propriedade</strong>. <strong>Todos os Jogadores</strong> concede acesso a todos no mundo (Mestres excluídos). Abaixo disso, defina regras por jogador. Normalmente você concede permissão ao jogador pretendido e deixa o resto em paz.</p>
+<ul>
+<li><strong>Proprietário:</strong> direitos plenos de leitura e edição.</li>
+<li><strong>Observador:</strong> pode ver o diário, não pode editá-lo.</li>
+<li><strong>Nenhum:</strong> não pode ver nem editar. Este é o padrão pra todos os diários de navegação do Mestre, como o Point of Interest Teleporter.</li>
+</ul>

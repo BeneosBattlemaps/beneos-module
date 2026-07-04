@@ -1,0 +1,59 @@
+<blockquote><p><strong>Bevor du weiterliest:</strong> Die Landing Page läuft, sobald du sie aktiv setzt. Alles Folgende ist für den SL, der mit ihr arbeiten oder sie für eine andere Geschichte umbauen will. Sie ist für Gothic-Horror gemacht und passt zu <em>Curse of Strahd</em>, aber die Bausteine eignen sich für jede düstere Kampagne.</p></blockquote>
+<hr />
+<p>Wie ihr infernalischer Cousin ist die Barovia-Landing-Page ein kleines Set aus Szenen, verbunden zu einem Hub: eine Startseite, die Barovia-Karte, eine Wand mit Gesichtern, die die Gruppe getroffen hat, ein Buch mit drei Tabs und ein Tisch für die Tarokka-Lesung. Du gibst jeden Teil frei, wenn die Kampagne dort ankommt. Wenn du die <a class="wikilink" data-page="landing-avernus">Descent into Avernus</a>-Seite schon gelesen hast, wird dir das meiste hier vertraut vorkommen; sie teilen dasselbe Grundgerüst.</p>
+
+<nav class="bn-faq-toc" id="ls-top" aria-label="Auf dieser Seite">
+<div class="bn-faq-toc-head">Auf dieser Seite</div>
+<div class="bn-faq-toc-grid">
+<div class="bn-faq-toc-sec">
+<ul>
+<li><a data-wiki-jump="ls-landing">Landing Page &amp; Navigation</a></li>
+<li><a data-wiki-jump="ls-map">Die Barovia-Karte</a></li>
+<li><a data-wiki-jump="ls-characters">Die Charakter-Seite</a></li>
+</ul>
+</div>
+<div class="bn-faq-toc-sec">
+<ul>
+<li><a data-wiki-jump="ls-book">Das Buch: Quests, Notizen, Artefakte</a></li>
+<li><a data-wiki-jump="ls-tarokka">Die Tarokka-Lesung</a></li>
+</ul>
+</div>
+</div>
+</nav>
+
+<h2 id="ls-landing">Landing Page &amp; Navigation</h2>
+<p>Das ist die Seite, auf der deine Spieler beim Einloggen landen, halte sie also zu Sessionbeginn standardmäßig aktiv. Ein animiertes Barovia-Menü rahmt den ganzen Hub, und von hier erreichen deine Spieler jede Szene, die du ihnen geöffnet hast.</p>
+<img src="modules/beneos-module/assets/wiki/shot_landing-strahd_1.webp" alt="Die Curse-of-Strahd-Landing-Page mit ihrem gotischen Menü" />
+<p>Die Navigationsleiste ist wie jedes Beneos-Menü gebaut: ein unsichtbares klickbares Tile über einem sichtbaren Text-Label, betrieben von <a class="wikilink" data-page="dd-monks-active-tiles">Monks Active Tile Triggers</a>. Um ein Ziel für Spieler zu öffnen, zeige sein Text-Tile und schalte seinen unsichtbaren Trigger ein; die <a class="wikilink" data-page="dd-monks-active-tiles">MATT-Vertiefung</a> führt dich durch. Jede Szene trägt außerdem ihren eigenen Ambience-Track, den du im <a class="wikilink" data-page="ambience-sound">Ambience</a>-Tab der Szene ändern oder stummschalten kannst.</p>
+<p class="bn-faq-back"><a data-wiki-jump="ls-top">Zurück nach oben</a></p>
+
+<h2 id="ls-map">Die Barovia-Karte</h2>
+<p>Eine vollständige Karte von Barovia, bereit, das Herz der Kampagne zu sein. Nutze sie als Übersicht der Spieler über das Tal: wo sie sind, wo sie waren und wo der Nebel noch alles verbirgt. Sie verhält sich wie jede Beneos-Map, du kannst also Point-of-Interest-Marker darauf setzen und sie mit Szenen und Journals verknüpfen. Wie du die verdrahtest, steht unter <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporter</a>.</p>
+<p class="bn-faq-back"><a data-wiki-jump="ls-top">Zurück nach oben</a></p>
+
+<h2 id="ls-characters">Die Charakter-Seite</h2>
+<p>Barovia ist ein kleiner Ort mit langem Gedächtnis, und die Gruppe wird seinen Leuten wieder und wieder begegnen. Diese Seite behält sie im Blick, gruppiert nach dem Ort der Begegnung: das Dorf Barovia, Durst Manor, das Vistani-Lager, Argynvostholt, Old Bonegrinder, Vallaki, Krezk, die Ruinen von Berez, der Bernsteintempel, die Werwolfhöhle, die Wizards of Wine, Castle Ravenloft.</p>
+<img src="modules/beneos-module/assets/wiki/shot_landing-strahd_2.webp" alt="Die Charakter-Seite mit Barovia-NSCs, nach Ort gruppiert" />
+<p>Jedes Porträt ist ein echter Actor. Zum Enthüllen wähle <strong>Token Controls</strong>, klicke den Token, dann Rechtsklick und <strong>Toggle Visibility State</strong>. Spieler sehen das Gesicht und per Hover den Namen, aber nie den Statblock. Eigene Dorfbewohner fügst du genauso hinzu: Actor hineinziehen, den Display Name seines Tokens auf "Hovered by Anyone" setzen und ihn zeigen, wenn die Gruppe ihm begegnet.</p>
+<p class="bn-faq-back"><a data-wiki-jump="ls-top">Zurück nach oben</a></p>
+
+<h2 id="ls-book">Das Buch: Quests, Notizen, Artefakte</h2>
+<p>Das Herzstück ist ein Buch mit drei Tabs, erreichbar über zwei kleine Unternavigationspunkte am Fuß der Seiten. Jeder Tab ist eine eigene Szene mit eigener Aufgabe.</p>
+<h3>Quests</h3>
+<p>Der Quest-Tab ist die gemeinsame To-do-Liste der Gruppe. Die Idee ist simpel: Du notierst die Aufträge hier, damit deine Spieler immer wissen, was offen ist, ohne dass du dich wiederholst. Tippe den Titel einer Quest mit dem Textwerkzeug ins Textfeld und hake sie ab, wenn sie erledigt ist. Jede Checkbox ist ein Tile, das du umschaltest: leer lassen, den Haken zeigen oder mit dem Textwerkzeug ein X daraufsetzen für einen abgeschlossenen Auftrag.</p>
+<img src="modules/beneos-module/assets/wiki/shot_landing-strahd_3.webp" alt="Der Quest-Tab des Buchs mit editierbaren Titeln und Checkboxen" />
+<h3>Spieler-Notizen</h3>
+<p>Der zweite Tab ist ein schlichtes Journal, eine Seite pro angemeldetem Spieler, damit jeder seinen eigenen Platz hat, um Theorien, Namen und halb erinnerte Warnungen zu kritzeln. Es ist das gewöhnliche Foundry-Journal, das du schon kennst, nur dort geparkt, wo die Gruppe es immer findet.</p>
+<h3>Artefakte</h3>
+<p>Der dritte Tab verfolgt die drei Schätze, die den Kampf gegen Strahd wenden können: das Heilige Symbol von Ravenkind, das Sonnenschwert, den Foliant des Strahd und die Ikone von Ravenloft. Jeder bleibt verborgen, bis er verdient ist. Bekommt die Gruppe einen in die Hände, wähle sein Tile und <strong>Toggle Visibility State</strong>, um ihn auf der Seite zu enthüllen, damit die Gruppe über die Kampagne hinweg zusehen kann, wie ihr Arsenal wächst.</p>
+<img src="modules/beneos-module/assets/wiki/shot_landing-strahd_4.webp" alt="Der Artefakte-Tab mit den Curse-of-Strahd-Reliquien, eine nach der anderen enthüllt" />
+<p class="bn-faq-back"><a data-wiki-jump="ls-top">Zurück nach oben</a></p>
+
+<h2 id="ls-tarokka">Die Tarokka-Lesung</h2>
+<p>Die letzte Seite ist für die Tarokka-Lesung, das Kartenlegen, das jede Curse-of-Strahd-Runde anders startet. Sie ist eine Auslegefläche: ein Spread aus fünf Kartenplätzen, die deine Spieler mit den Karten füllen, die ihre Lesung ergeben hat.</p>
+<img src="modules/beneos-module/assets/wiki/shot_landing-strahd_5.webp" alt="Die Tarokka-Seite mit fünf Kartenplätzen, bereit zum Füllen" />
+<p>Eine ehrliche Anmerkung dazu, was wir liefern und was nicht. Wir liefern kein Tarokka-Deck mit. Wir halten nicht die Rechte am offiziellen, und es gibt viel zu viele wunderbare Fan-Decks, als dass wir eines für dich auswählen sollten. Bring also dein eigenes mit: Führe deine Lesung durch, wie du magst, und ersetze dann die fünf Platzhalter-Tiles durch Bilder der gezogenen Karten. Von da an kann die ganze Gruppe zu jedem Zeitpunkt der Kampagne sehen, welche Schicksale die Karten ihnen zugeteilt haben.</p>
+<p class="bn-faq-back"><a data-wiki-jump="ls-top">Zurück nach oben</a></p>
+
+<hr />
+<p>Du willst so einen Hub für deine eigene Kampagne bauen? Siehe <a class="wikilink" data-page="landing-build">Baue deine eigene Landing Page</a>, und für die Navigation selbst die <a class="wikilink" data-page="dd-monks-active-tiles">Monks-Active-Tiles-Vertiefung</a>.</p>

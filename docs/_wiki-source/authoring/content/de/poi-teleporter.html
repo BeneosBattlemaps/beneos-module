@@ -1,0 +1,25 @@
+<blockquote><p><strong>Bevor du weiterliest:</strong> Nichts davon ist nötig, um Beneos Battlemaps zu nutzen. Alles ist für dich eingerichtet und funktioniert out of the box. Dieser Deep Dive ist für alle, die eigenen Karten Point-of-Interest-Funktionen hinzufügen wollen oder einfach neugierig sind, wie es funktioniert.</p></blockquote>
+<hr />
+<h2>Was POI macht</h2>
+<p>Der Point of Interest Teleporter (PoI) ist, wie Multilevel Tokens, grundsolide: Er verkraftet Tausende Verknüpfungen ohne zu murren. PoI verknüpft Karten und Szenen für den SL, nicht für die Spieler. Er gibt dir Navigation über Tausende Beneos-Szenen und -Welten hinweg, ohne den Überblick zu verlieren. Jede Szene und jedes Release folgt demselben Muster, und Teleporter mit demselben Zweck nutzen immer dieselben Icons und Namen.</p>
+<img src="modules/beneos-module/assets/wiki/poi_c.webp" alt="Beneos-Navigationsleiste" />
+<p>Wir wollten Erlebnisse ausliefern, nicht nur Karten. Eine Karte fühlt sich erst als Teil eines größeren Ganzen an, wenn sie mit einem verbunden ist. Genau das ist der Job der Point of Interest Teleporter: Sie bringen dich zu Übersichtsszenen, zur Weltkarte und weiter in eine andere Zone, zu Intro-Sequenzen, zu Sceneries. Jede SL-Navigation jenseits von purem Foundry läuft über PoI.</p>
+<h2>Wie POI funktioniert</h2>
+<p>PoI arbeitet über Journale. Normalerweise speichert ein Journal Notizen oder Story-Text. Bei PoI ist das Journal selbst die Information. Wähle in der Szenenkonfiguration einer Szene unter <strong>Journaleintrag</strong> im Abschnitt <strong>Umgebung</strong> ein Journal aus. Dieses Journal ist jetzt mit der Szene verknüpft und gibt PoI, was es braucht. Jede Szene (Battlemap, Scenery, Intro) hat ihr eigenes, eindeutiges Journal. Deshalb liegen im Beneos-Battlemaps-Ordner des Journal-Explorers so viele Journale: Sie speichern nichts, sie dienen nur als Verknüpfungen für PoI.</p>
+<img src="modules/beneos-module/assets/wiki/poi_a.webp" alt="Szenenkonfiguration" />
+<p>Zieh eines dieser Journale auf die Spielfläche und rechtsklicke es (1) für die Optionen. <strong>Szene ansehen</strong> bringt dich (nicht deine Spieler) zur Szene des Journals. <strong>Szene aktivieren</strong> zwingt alle, dich eingeschlossen, auf die Zielszene. Jeder PoI-Teleporter zielt also auf genau eine Szene. Weise in der Szenenkonfiguration ein Journal zu, und dieses Journal steht für diese Szene. Wo immer du es platzierst, ein Rechtsklick bringt dich dorthin.</p>
+<img src="modules/beneos-module/assets/wiki/poi_b.webp" alt="Rechtsklick auf ein Journal" />
+<h2>Icons sichtbar machen</h2>
+<p>Keine Journal-Icons auf deinen Karten? Schalte sie ein. Klicke in der Foundry-Werkzeugleiste links auf das Banner-Icon (Notizen) (1), dann auf das Stecknadel-Icon mit der Beschriftung <strong>Notizen anzeigen umschalten</strong> (2). Alle Journal-Icons bleiben sichtbar.</p>
+<img src="modules/beneos-module/assets/wiki/navigation_activate_journals.webp" alt="Journaleinträge auf deiner Karte aktivieren" />
+<h2>Ziel nicht installiert? Installiere es direkt an Ort und Stelle</h2>
+<p>Wenn ein Teleporter auf ein Release zeigt, das du noch nicht installiert hast, musst du es nicht lange suchen. Rechtsklicke das Icon und wähle <strong>Install Missing Pack</strong>. Ein Dialog zeigt das Release, lässt dich <strong>4K oder HD</strong> samt Download-Größe wählen (1) und installiert es direkt in deine Welt. Sobald es fertig ist, rechtsklicke das Icon erneut und reise los. Das ist SL-exklusiv.</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-install_1.webp" alt="Der Install-Missing-Pack-Dialog mit der Wahl zwischen 4K- und HD-Download">
+
+<h2>Finde, was fehlt</h2>
+<p>Du betreibst eine große importierte Welt und weißt nicht, welche Verknüpfungen kaputt sind? Öffne <strong>Moduleinstellungen, Beneos Teleporter, Audit-Fenster öffnen</strong>. Es scannt jede Szene und listet jeden kaputten oder fehlenden Teleporter auf: die Quell-Szene, das beabsichtigte Ziel, den Status und das Release, das du installieren müsstest. <strong>Zur Quelle navigieren</strong> springt mit der Spielfläche zur Notiz, damit du sie reparieren kannst.</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-audit_1.webp" alt="Das POI-Audit-Fenster mit fehlenden Teleporter-Zielen und ihren Releases">
+
+<h2>Fehlerbehebung</h2>
+<p>Ein Teleporter, der in der falschen Szene landet, hat meist eine von drei Ursachen: Dem Icon ist kein Journal zugewiesen, das Journal ist keiner Karte zugewiesen, oder dasselbe Journal ist mehr als einer Karte zugewiesen. Jedes Journal muss zu genau einer Szene gehören.</p>
+<p>Für die SL-Icons im laufenden Spiel siehe <a class="wikilink" data-page="dm-navigation">SL-Navigation</a>. Für spielergesteuerte Bewegung siehe <a class="wikilink" data-page="multilevel-tokens">Multilevel Tokens</a>.</p>

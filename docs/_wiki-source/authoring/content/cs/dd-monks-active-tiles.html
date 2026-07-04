@@ -1,0 +1,37 @@
+<blockquote><p><strong>Než začneš číst:</strong> nic z toho není potřeba k používání Beneos Battlemaps. Vše je pro tebe připravené a funguje hned po instalaci. Tenhle hloubkový průvodce je pro každého, kdo chce přidat funkce Monks Active Tile Trigger na vlastní mapy, nebo je prostě jen zvědavý, jak to funguje.</p></blockquote>
+<hr />
+<p>Monks Active Tile Trigger (zkráceně MATT) je jeden z nejmocnějších automatizačních modulů pro Foundry VTT. Je to doprovodný modul, není součástí modulu Beneos, takže se ujisti, že je nainstalovaný a aktivní. Úplný seznam najdeš v <a class="wikilink" data-page="requirements">Požadavcích</a>.</p>
+<h2>K čemu MATT používáme</h2>
+<p>MATT je všestranný nástroj pro automatizaci a ovládání částí scény. Používáme ho na:</p>
+<ul>
+<li>Tlačítka start a stop, která spouštějí a pozastavují hráčské intro sekvence.</li>
+<li>Klikací navigaci na mapě světa Escalia.</li>
+<li>Mini soundboardy na některých scénách (například Barovia Village, The Church).</li>
+<li>Umístěná tlačítka pro pasti, tajné dveře a další klikací události.</li>
+<li>Navigační lištu hlavního menu Curse of Strahd.</li>
+</ul>
+<p>MATT umí spouštět animace, přehrávat zvuky, skákat mezi scénami a mnohem víc. Pokrýt tady každou funkci by bylo zahlcující a wiki stránka je pro to špatný formát. Kdo chce jít do hloubky, najde online výborné video tutoriály. Níže projdeme, jak MATT používáme my, aby sis na tom mohl postavit vlastní nápady.</p>
+<h2>Jak MATT funguje</h2>
+<p>Vše v MATT funguje přes dlaždice. Konfigurace dlaždice získá novou záložku jménem <strong>Triggers</strong>. MATT běží na principu příčiny a následku: když je splněn spouštěč definovaný v <strong>Setup</strong> (kliknutí, token vstupující na dlaždici nebo řada dalších podmínek), stane se to, co je definováno v <strong>Actions</strong>.</p>
+<img src="modules/beneos-module/assets/wiki/matt_a.webp" alt="Startovací dlaždice Beneos intra" />
+<p>V tomto příkladu je dlaždice tlačítkem start a stop pro intro sekvence. Intro je také dlaždice a přehraje se jen tehdy, když klikneš na dlaždici s tlačítkem play.</p>
+<p>Vyber <strong>Tile Controls</strong> v levém panelu nástrojů, abys mohl klikat na dlaždice na plátně. Kliknutím na naše tlačítko play (dlaždici s obrázkem tlačítka přehrávání) můžeme pod <strong>Triggers</strong> definovat, co se má stát a kdy.</p>
+<img src="modules/beneos-module/assets/wiki/matt_b.webp" alt="Záložka MATT triggers" />
+<p>V <strong>Setup</strong> definuješ, kdy se akce spustí. Tady se dlaždice spustí jen tehdy, když na ni klikne PJ.</p>
+<img src="modules/beneos-module/assets/wiki/matt_c.webp" alt="Záložka MATT actions" />
+<p>Pod <strong>Actions</strong> je na jediné kliknutí navázáno několik akcí. MATT je provádí shora dolů. Tady: dlaždice s intrem se resetuje, aby začínalo od začátku (Foundry má zvláštnost, že webm videa spouští na náhodných pozicích), pak se intro dlaždice spustí, potom se vymění obrázek kliknuté dlaždice, aby tlačítko play zčervenalo a příště působilo jako tlačítko stop, a nakonec se přehraje klikací zvuk jako zpětná vazba pro všechny hráče i PJ. Vyměňované obrázky jsou definované v záložce <strong>Images</strong>.</p>
+<img src="modules/beneos-module/assets/wiki/matt_d.webp" alt="Záložka MATT images" />
+<p>Záložka Images shromažďuje obrázky, mezi kterými MATT přepíná. Tady jen dva, start a stop, prohazované při každém kliknutí. Technická poznámka: oba obrázky leží pod různými cestami k souborům. Když balíme release, druhý obrázek se neexportuje a při stažení by chyběl. Proto je druhý obrázek dodáván přímo v modulu Beneos, který je vždy nainstalovaný, a tedy vždy dostupný.</p>
+<p>To byl jeden příklad. Pokud chceš stavět vlastní nápady, prozkoumej dlaždice, kterými ovládáme intra, stavíme soundboardy nebo spouštíme pasti. S trochou kreativity vytvoříš opravdu povedené interaktivní efekty. MATT triggery mohou nést i dlaždice popředí, viz náš <a class="wikilink" data-page="dd-foreground-tiles">hloubkový průvodce dlaždicemi popředí</a>.</p>
+<h2>Postav si navigátor</h2>
+<p>Klikací menu na <a class="wikilink" data-page="worldmap-escalia">mapě světa Escalia</a> i na obou úvodních stránkách kampaní, <a class="wikilink" data-page="landing-avernus">Descent into Avernus</a> a <a class="wikilink" data-page="landing-strahd">Curse of Strahd</a>, jsou všechna postavená na stejném MATT triku. Navigační tlačítko jsou dvě dlaždice: neviditelná klikací dlaždice ležící na viditelném textovém popisku. Popisek je tam jen na koukání; práci odvádí neviditelná dlaždice. Klikni na ni a MATT tě přenese do jiné scény.</p>
+<p>Nejrychlejší způsob, jak jedno vyrobit, je zkopírovat tlačítko, které už existuje, ale tady je celý postup od nuly:</p>
+<ol>
+<li>Umísti malou dlaždici tam, kde má tlačítko sedět, a dej jí průhledný nebo téměř průhledný obrázek. To je klikací spouštěč.</li>
+<li>Dvojklikem ji otevři, přejdi na záložku <strong>Triggers</strong> a v <strong>Setup</strong> nastav spouštění na kliknutí.</li>
+<li>Pod <strong>Actions</strong> přidej <strong>Change Scene</strong> a malou ikonou úprav vedle ní vyber cílovou scénu z prohlížeče scén.</li>
+<li>Za spouštěč umísti viditelnou textovou dlaždici nebo obrázek tlačítka, aby hráči věděli, že se tam dá kliknout.</li>
+<li>Klikni na spouštěč pravým tlačítkem a přepni jeho aktivní stav na zapnuto. A máš jeden funkční navigační bod.</li>
+</ol>
+<img src="modules/beneos-module/assets/wiki/matt_navigator.webp" alt="Navigační dlaždice s akcí Change Scene v záložce Triggers" />
+<p>Zopakuj to pro každý cíl a hotovou lištu pak zkopíruj na každou scénu v sadě. Když cílové scény nesou navigaci zpátky mezi sebou, máš menu, po kterém se hráči mohou pohybovat sami. Přesně takhle jsou postavené huby Beneos, takže si jeden otevři a rozeber, abys viděl kompletní příklad. Pokud chceš tlačítko odhalit nebo skrýt s postupem kampaně, zobraz nebo skryj jeho textovou dlaždici a přepni aktivní stav spouštěče. Celkový obrázek, jak tato menu skládají dohromady kampaňový hub, dává stránka <a class="wikilink" data-page="landing-build">Postav si vlastní úvodní stránku</a>.</p>

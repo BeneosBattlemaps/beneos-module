@@ -1,0 +1,30 @@
+<blockquote><p><strong>Antes de ler:</strong> nada disto é necessário pra usar as Beneos Battlemaps. Tudo já vem configurado e funciona direto da caixa. Este mergulho técnico é pra quem quer construir a mesma sensação de profundidade nos próprios mapas, ou só está curioso pra saber como funciona.</p></blockquote>
+<hr />
+<p>Diferente dos outros mergulhos técnicos, tiles de primeiro plano não precisam de módulo companheiro. Eles fazem parte do núcleo do Foundry VTT, então tudo aqui funciona direto da caixa.</p>
+<h2>O que são tiles de primeiro plano</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_a.webp" alt="Exemplo de tile de primeiro plano" />
+<p>Já se perguntou como os tokens andam por baixo de árvores, vigas ou batentes de porta? Tiles de primeiro plano. São tiles comuns colocados <strong>por cima</strong> dos tokens em vez de por baixo. Os tokens desaparecem atrás de qualquer coisa que logicamente fique acima deles, o que dá profundidade real à cena: um jogador passando sob um galho retorcido, atravessando uma porta, contornando uma parede saliente.</p>
+<p>Pra conseguir isso, recortamos manualmente cada objeto mais alto que os jogadores e o colocamos como imagem de primeiro plano por cima. Trabalho extra, mas é uma parte importante do que faz um mapa Beneos parecer um espaço em vez de uma imagem plana.</p>
+<h2>Alcançando os tiles de primeiro plano</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_b.webp" alt="Acessar tiles de primeiro plano" />
+<p>Para alterar ou desativar tiles de primeiro plano, clique em <strong>Controles de Tiles</strong> na barra de ferramentas esquerda. A camada de primeiro plano fica oculta por padrão, pra você não clicar nela sem querer. Clique no ícone de casa e todos os tiles de primeiro plano ficam selecionáveis como qualquer outro tile.</p>
+<p>Atenção: em alguns mapas, vários tiles de primeiro plano se sobrepõem (até oito em certos pontos, digamos um telhado mais as vigas da porta mais um trecho de parede). O clique sempre seleciona o tile de cima. Pra alcançar um que está embaixo, afaste o de cima, clique no de baixo e depois devolva o primeiro ao lugar. Os tiles costumam vir travados contra movimento acidental, então clique com o botão direito em um tile e clique no pequeno ícone de cadeado pra destravá-lo primeiro. Geralmente o tile de primeiro plano tem exatamente o tamanho do mapa, o que evita ficar lidando com um monte de tiles pequenos.</p>
+<h2>Configurações do tile de primeiro plano</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_c.webp" alt="Configurações do tile de primeiro plano" />
+<p>Com a camada de primeiro plano clicável via ícone de casa, dê um clique duplo em qualquer tile pra abrir suas configurações como um tile normal. Você pode ocultar um tile de primeiro plano dos jogadores e anexar automação com o Monk's Active Tile Triggers pra executar ações sob certas condições. Mais no nosso <a class="wikilink" data-page="dd-monks-active-tiles">mergulho técnico do Monk's Active Tile Triggers</a>. Tiles de primeiro plano também podem ser arquivos de vídeo, e vídeos parcialmente transparentes criam efeitos lindos como copas de árvores balançando. Tiles de vídeo custam desempenho, então usamos com moderação. Pra manter mapas animados fluidos, veja <a class="wikilink" data-page="performance">Desempenho</a>.</p>
+<h3>Promovendo um tile ao primeiro plano</h3>
+<p>Para transformar um tile normal em tile de primeiro plano, marque <strong>Is Overhead?</strong>. Note que marcar apenas <strong>Is Roof?</strong> não basta: isso só afeta como o alcance de visão do token é calculado a distância, não se o tile é renderizado acima dos tokens.</p>
+<h3>Modos de oclusão</h3>
+<p>O <strong>Occlusion Mode</strong> controla como um tile de primeiro plano se comporta quando um token passa por baixo dele. As quatro opções:</p>
+<table>
+<thead>
+<tr><th>Modo</th><th>Comportamento</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>None</strong></td><td>O tile é sempre exibido. O certo pra maioria dos casos.</td></tr>
+<tr><td><strong>Fade</strong></td><td>O tile inteiro desaparece gradualmente. Útil pra um telhado que deve sumir quando os tokens estão embaixo dele.</td></tr>
+<tr><td><strong>Radial</strong></td><td>Mantém o tile visível e esmaece só uma pequena área em volta do token, definida pelo controle Occlusion Alpha. A área esmaecida é pequena e fixa, então o token pode parecer estar em cima do tile em vez de embaixo.</td></tr>
+<tr><td><strong>Vision</strong></td><td>Esmaece apenas as partes que um token realmente vê com visão de token ativa. Na prática os jogadores só veem o tile com clareza quando ele está na sombra, o que não é muito intuitivo.</td></tr>
+</tbody>
+</table>
+<p>Pra ver como tudo isso se encaixa na condução de uma cena como Mestre, veja <a class="wikilink" data-page="dm-navigation">Navegação do Mestre</a>.</p>

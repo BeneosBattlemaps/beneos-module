@@ -1,0 +1,28 @@
+<blockquote><p><strong>Abans de llegir:</strong> res d'això no és necessari per fer servir Beneos Battlemaps. Tot ve configurat de fàbrica i funciona sense tocar res. Aquesta immersió tècnica és per a qui vulgui afegir funcions de Multilevel Tokens als seus propis mapes, o per a qui simplement tingui curiositat per saber com funciona.</p></blockquote>
+<hr />
+<h2>Què fa MLT</h2>
+<p>Multilevel Tokens (MLT) és un mòdul veterà que encara funciona impecablement. Teleporta tokens d'un lloc a un altre, permetent que les criatures de jugadors i del DJ es moguin de manera independent entre mapes. Per què MLT en lloc de mòduls més nous que també teleporten tokens? Per com funciona. MLT no fa servir IDs de Foundry, fa servir els seus propis identificadors. Això vol dir que, a diferència de Monk's Active Tile Triggers, podem enllaçar dues releases encara que no formin part del mateix pack. Descarrega el Pack A, més tard el Pack B, i funcionen junts automàticament. Amb Monk's Active Tile Triggers hauries de descarregar tots els mapes com una release gegant o mantenir cada teleportador a mà, cosa que no té cap gràcia amb diversos milers d'escenes. Creu-nos.</p>
+<h2>Com funciona MLT</h2>
+<p>A MLT tot funciona a través de dibuixos, formes fetes amb l'eina de dibuix de la barra d'eines esquerra. En diem camps MLT. Configurar-los i enllaçar-los és senzill i a prova d'errors.</p>
+<img src="modules/beneos-module/assets/wiki/mlt_setup_a.webp" alt="Zona MLT" />
+<p>Amb MLT actiu, la configuració d'una forma dibuixada (Beneos sempre fa servir rectangles) guanya una pestanya nova anomenada <strong>Multilevel</strong>. Aquí configures tot el que necessita cada teleportador, camp per camp. Consell: copia formes amb Ctrl+C i enganxa-les a altres escenes.</p>
+<img src="modules/beneos-module/assets/wiki/mlt_setup_b.webp" alt="Configuració MLT" />
+<ol>
+<li><strong>Origen o destinació.</strong> MLT envia tokens d'un camp d'origen a un camp de destinació. Marca <strong>Out</strong> per teleportar des d'aquest camp. Marca <strong>In</strong> per teleportar-hi cap a dins. Marca tots dos per a viatges d'anada i tornada.</li>
+<li><strong>Identificador de teleportació.</strong> El nucli de MLT. Introdueix qualsevol text, però mantén-lo lògic. Quan un token surt d'aquest camp, l'identificador apunta a la destinació: el token va a l'altre camp amb el mateix identificador. Només dos camps haurien de compartir un identificador. Amb tres o més, MLT tria a l'atzar, cosa que provoca errors. En resum, origen i destinació s'aparellen compartint un identificador.
+<ol>
+<li>La convenció de noms de Beneos és <strong>NúmeroDeReleaseA-NúmeroDeMapaA_NúmeroDeReleaseB-NúmeroDeMapaB</strong> amb zeros a l'esquerra i el número més petit a l'esquerra. Per exemple 76-04_76-05, o 64-04_76-01.</li>
+</ol>
+</li>
+<li><strong>Activate via Map Node.</strong> Amb això activat, el camp es manté inactiu encara que hi entrin tokens. Només un clic a una icona de diari dins del camp dispara la teleportació. Això importa perquè els camps MLT solen ser invisibles i els jugadors podrien canviar d'escena per accident. Per això posem una icona de diari única a cada camp: indica als jugadors que aquí poden sortir del mapa, i fa de botó si ho decideixen.</li>
+<li><strong>Clonació de tokens.</strong> Més rara però elegant. La clonació mostra els tokens d'un altre camp MLT a la superfície actual (o a la inversa) sense teleportar-los. Mou un token al Mapa A i també es mou al Mapa B. Genial per veure els tokens de la primera planta mentre ets a la segona. Els camps d'origen i destinació comparteixen el mateix identificador, com sempre. <strong>Source</strong> és el camp des del qual es mostren els tokens (aquí la primera planta), <strong>Target</strong> és on es mostren (la segona planta).</li>
+</ol>
+<h2>Segueix els teus jugadors</h2>
+<p>Quan un jugador travessa un teleportador, reps una targeta de xat privada: qui s'ha teleportat, a quina escena, i un botó <strong>View Scene</strong> que et porta directament amb ell. S'ha acabat preguntar-se on s'ha ficat el grup. Està activat per defecte; commuta-ho a <strong>Notify GM on teleport</strong> a la configuració del mòdul si mai ho vols desactivar.</p>
+<img src="modules/beneos-module/assets/wiki/shot_mlt-chat_1.webp" alt="La targeta de xat només per al DJ mostrant un token teleportat a una escena amb un botó View Scene">
+
+<h2>Afegeix un so de teleportació</h2>
+<p>Vols que els jugadors sentin alguna cosa quan fan servir un teleportador? Obre la Drawing Config del camp <strong>In</strong>, ves a la pestanya <strong>Multilevel</strong> i configura un <strong>Teleport sound</strong>. Sona per als jugadors que viatgen i per a tu quan es dispara la teleportació. Un petit detall que fa creïble el moment.</p>
+<img src="modules/beneos-module/assets/wiki/shot_mlt-sound_1.webp" alt="El desplegable Teleport sound a la pestanya Multilevel de la Drawing Config">
+
+<p>Per saber com ho veuen els jugadors, consulta <a class="wikilink" data-page="player-navigation">Navegació dels jugadors</a>. Per als salts d'escena del costat del DJ, consulta <a class="wikilink" data-page="poi-teleporter">POI Teleporter</a>.</p>

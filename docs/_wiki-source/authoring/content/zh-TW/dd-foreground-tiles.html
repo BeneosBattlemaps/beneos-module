@@ -1,0 +1,30 @@
+<blockquote><p><strong>閱讀之前：</strong>使用 Beneos Battlemaps 完全不需要這些知識。一切都已為你設置好，開箱即用。這篇深度解析是給那些想在自己的地圖上營造同樣深度感，或單純好奇它如何運作的人。</p></blockquote>
+<hr />
+<p>與其他深度解析不同，前景圖塊不需要任何配套模組。它們是 FoundryVTT 核心的一部分，所以這裡的一切都是開箱即用。</p>
+<h2>什麼是前景圖塊</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_a.webp" alt="前景圖塊範例" />
+<p>有沒有想過 Token 是怎麼走到樹木、橫樑或門框底下的？答案是前景圖塊。它們就是普通的圖塊，只是放在 Token 的<strong>上方</strong>而不是下方。Token 會消失在任何邏輯上位於其上方的物體後面，這讓場景擁有真實的深度：玩家從盤根錯節的樹枝下走過、穿過門口、經過懸出的牆體。</p>
+<p>為了做到這一點，我們手動裁切出每個比玩家高的物件，並把它作為前景圖像放在最上層。這是額外的工夫，但正是它讓 Beneos 地圖給人身處空間之中的感覺，而不是一張平面圖片。</p>
+<h2>存取前景圖塊</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_b.webp" alt="存取前景圖塊" />
+<p>要修改或停用前景圖塊，點擊左側工具列的 <strong>Tile Controls</strong>。前景圖層預設是隱藏的，這樣你就不會誤點到它。點擊房子圖示後，所有前景圖塊就會像其他圖塊一樣可以選取。</p>
+<p>注意：在某些地圖上會有多個前景圖塊重疊（有的地方多達八個，比如屋頂加上門樑再加上一段牆）。點擊時永遠選取的是最上層的圖塊。要選到下面的那個，先把上層的移開，點選下方的圖塊，再把它放回去。圖塊通常會鎖定以防意外移動，所以要先右鍵點擊圖塊，再點小鎖圖示解除鎖定。前景圖塊通常和整張地圖一樣大，這省去了你在一堆小圖塊之間來回折騰。</p>
+<h2>前景圖塊設定</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_c.webp" alt="前景圖塊設定" />
+<p>透過房子圖示讓前景圖層可以點選後，雙擊任何圖塊就能像普通圖塊一樣開啟它的設定。你可以對玩家隱藏前景圖塊，也可以用 Monks Active Tile Trigger 附加自動化，在特定條件下執行動作。詳情見我們的 <a class="wikilink" data-page="dd-monks-active-tiles">Monks Active Tile Trigger 深度解析</a>。前景圖塊也可以是影片檔，帶部分透明的影片能做出很棒的效果，比如隨風搖曳的樹梢。影片圖塊會消耗效能，所以我們用得很節制。想讓動態地圖保持流暢，請參閱<a class="wikilink" data-page="performance">效能</a>。</p>
+<h3>把圖塊提升為前景圖塊</h3>
+<p>要把普通圖塊變成前景圖塊，勾選 <strong>Is Overhead?</strong>。注意只勾選 <strong>Is Roof?</strong> 是不夠的：那只影響遠距離下 Token 視野範圍的計算方式，並不決定圖塊是否顯示在 Token 上方。</p>
+<h3>遮蔽模式</h3>
+<p><strong>遮蔽模式</strong>控制當 Token 移動到前景圖塊下方時圖塊的行為。四個選項：</p>
+<table>
+<thead>
+<tr><th>模式</th><th>行為</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>無</strong></td><td>圖塊始終顯示。適用於大多數情況。</td></tr>
+<tr><td><strong>淡出</strong></td><td>整個圖塊淡出。適合 Token 位於其下時應該淡出的屋頂。</td></tr>
+<tr><td><strong>放射狀</strong></td><td>保持圖塊顯示，只淡化 Token 周圍的一小塊區域，透過遮蔽透明度滑桿設定。淡化區域小而固定，所以 Token 看起來可能像是站在圖塊上方而不是下方。</td></tr>
+<tr><td><strong>視覺</strong></td><td>只淡化 Token 以啟用的 Token 視覺實際看到的部分。實際上玩家只有在圖塊處於陰影中時才能清楚看到它，不太直覺。</td></tr>
+</tbody>
+</table>
+<p>想瞭解這一切如何融入 DM 主持場景的流程，請參閱 <a class="wikilink" data-page="dm-navigation">DM 導航</a>。</p>

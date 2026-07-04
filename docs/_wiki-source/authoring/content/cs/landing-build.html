@@ -1,0 +1,35 @@
+<blockquote><p><strong>Než začneš číst:</strong> nic z toho není k používání Beneos potřeba. Tahle stránka je pro PJ, který viděl huby <a class="wikilink" data-page="landing-avernus">Avernus</a> a <a class="wikilink" data-page="landing-strahd">Barovia</a> a řekl si: takový chci pro svůj vlastní svět.</p></blockquote>
+<hr />
+<p>Úvodní stránka vypadá honosně, ale vždycky jsou to jen stejné čtyři nápady v jiném kabátě. Jakmile je umíš pojmenovat, postavíš hub pro jakoukoli kampaň, nebo jeden z našich rozebereš a přestavíš na vlastní.</p>
+
+<h2>Recept</h2>
+<ol class="bw-steps">
+<li><strong>Sada scén.</strong> Jedna domovská stránka plus scéna pro každou věc, kterou hráči potřebují: mapa, hlavní štáb, stránka postav, cokoli si tvůj příběh žádá. Úvodní stránka jsou prostě tyhle scény seskupené ve složce.</li>
+<li><strong>Navigační lišta.</strong> Na každé scéně malé menu, které skáče na ostatní. To je jediná pohyblivá součástka a běží na <a class="wikilink" data-page="dd-monks-active-tiles">Monks Active Tile Triggers</a>.</li>
+<li><strong>Odhalování na vyžádání.</strong> Obsah, který začíná skrytý a objeví se, jakmile si ho družina zaslouží: cizí postava, smlouva, artefakt, vozidlo. Ve Foundry to není nic víc než dlaždice nebo kresba, na kterou klikneš pravým a zvolíš <strong>Přepnout stav viditelnosti</strong>.</li>
+<li><strong>Body zájmu.</strong> Na mapových scénách deníkové značky, které hráči mohou otevírat a cestovat skrz ně. Viz <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporters</a>.</li>
+</ol>
+
+<h2>Postav to krok za krokem</h2>
+<h3>1. Rozvrhni si scény</h3>
+<p>Rozhodni, co tvůj hub potřebuje, a pro každou věc vytvoř scénu, plus domovskou stránku. Drž je pohromadě v jedné složce scén, aby se sada snadno hledala a přesouvala. Nejrychlejší start je zkopírovat jednu z našich úvodních stránek a vyměnit grafiku, protože zapojení už je hotové.</p>
+<h3>2. Zapoj navigaci</h3>
+<p>Dej domovské stránce řadu tlačítek, jedno na scénu, a pak tuhle lištu zopakuj na každé scéně, aby se hráči mohli volně pohybovat odkudkoli. Každé tlačítko je neviditelná klikací dlaždice na viditelném textovém popisku, s akcí <strong>Change Scene</strong> za ní. <a class="wikilink" data-page="dd-monks-active-tiles">Hloubkový průvodce Monks Active Tiles</a> obsahuje kompletní návod na stavbu navigátoru, a zkopírování existujícího tlačítka je zdaleka nejjednodušší cesta.</p>
+<h3>3. Nastav domovskou stránku jako výchozí aktivní</h3>
+<p>Udělej z domovské stránky scénu, kterou hráči uvidí po přihlášení, a na začátku každého sezení ji nech aktivní. Odtamtud se dostanou ke všemu, co jsi jim otevřel.</p>
+<h3>4. Skryj, co si ještě nezasloužili</h3>
+<p>Začni jen s viditelnými základy a zbytek nech skrytý. Jak kampaň postupuje, odhaluj navigační bod, cizí postavu nebo odměnu přepínáním viditelnosti. Právě tohle postupné odkrývání dělá z hubu živou věc místo statického menu.</p>
+<h3>5. Nazdob to</h3>
+<p>Úvodní stránka je jeviště, tak ho nasviť. Přidej ambientní stopu v záložce <a class="wikilink" data-page="ambience-sound">Ambience</a> scény a použij <a class="wikilink" data-page="dd-fxmaster">FXMaster</a> pro počasí a náladu. Titulek sezení na domovské stránce, upravený kreslicími nástroji, udá tón dřív, než kdokoli promluví.</p>
+
+<h2>Propoj místo s jeho návodem</h2>
+<p>Kamkoli na scénu můžeš položit značku nápovědy, která otevře dokumentaci rovnou na správném místě, takže zvědavý hráč klikne jednou a přistane přesně na tom správném návodu. Umísti mapovou <strong>poznámku</strong> s ikonou nápovědy Beneos a jejím <strong>popiskem</strong> ji nasměruj:</p>
+<ul>
+<li><strong>Jen dokumentace:</strong> obyčejná poznámka nápovědy (bez značky) otevře úvodní stránku dokumentace, stejně jako ikona nápovědy na každé Beneos scéně.</li>
+<li><strong>Konkrétní článek:</strong> přidej do popisku <code>@doc[landing-avernus]</code> a otevře se daný článek.</li>
+<li><strong>Konkrétní sekce:</strong> přidej <code>@doc[landing-avernus#la-garage]</code> a skočí rovnou na tu část článku.</li>
+</ul>
+<p>Značka <code>@doc[...]</code> se na mapě nikdy nezobrazuje; vidět je jen text před ní, takže popisek jako <code>Garage guide @doc[landing-avernus#la-garage]</code> se čte prostě jako „Garage guide". Název stránky je klíč článku z postranního panelu dokumentace a názvy sekcí pocházejí z nadpisů každého článku. Otevře ho levé i pravé kliknutí.</p>
+
+<h2>Uč se od těch, které jsme vydali</h2>
+<p>Nejrychlejší učitel je fungující příklad. Otevři hub <a class="wikilink" data-page="landing-avernus">Descent into Avernus</a> pro kompletní sadu nástrojů, stůl hlavního štábu, hexcrawlovou mapu světa, garáž odměn, nebo hub <a class="wikilink" data-page="landing-strahd">Curse of Strahd</a> pro knihu úkolů a stěnu tváří. Vezmi si díly, které sedí tvému příběhu, a zbytek nech být.</p>

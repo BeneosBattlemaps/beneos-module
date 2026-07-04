@@ -1,0 +1,28 @@
+<blockquote><p><strong>읽기 전에:</strong> Beneos Battlemaps를 사용하는 데 이 내용은 전혀 필요하지 않아요. 모든 것이 미리 설정되어 있어서 바로 작동해요. 이 심층 분석은 Multilevel Tokens 기능을 자신의 맵에 직접 추가하고 싶거나, 그냥 어떻게 작동하는지 궁금한 분들을 위한 거예요.</p></blockquote>
+<hr />
+<h2>MLT가 하는 일</h2>
+<p>Multilevel Tokens(MLT)는 오래됐지만 여전히 완벽하게 작동하는 모듈이에요. 토큰을 한 곳에서 다른 곳으로 텔레포트해서, 플레이어와 DM의 크리처가 맵 사이를 독립적으로 이동할 수 있게 해줘요. 토큰을 텔레포트하는 더 새로운 모듈들 대신 왜 MLT일까요? 작동 방식 때문이에요. MLT는 Foundry ID를 쓰지 않고 자체 식별자를 사용해요. 그 덕분에 Monks Active Tiles와 달리, 같은 팩에 속하지 않은 두 릴리스도 연결할 수 있어요. 팩 A를 다운로드하고 나중에 팩 B를 다운로드해도 자동으로 함께 작동해요. Monks Active Tiles였다면 모든 맵을 하나의 거대한 릴리스로 다운로드하거나 모든 텔레포터를 손으로 관리해야 했을 거예요, 수천 개의 씬에서는 전혀 즐겁지 않은 일이죠. 믿으셔도 돼요.</p>
+<h2>MLT의 작동 방식</h2>
+<p>MLT의 모든 것은 드로잉, 즉 왼쪽 도구 모음의 드로잉 도구로 만든 도형을 통해 작동해요. 우리는 이것을 MLT 필드라고 불러요. 설정하고 연결하는 과정은 간단하고 오류가 없어요.</p>
+<img src="modules/beneos-module/assets/wiki/mlt_setup_a.webp" alt="MLT 영역" />
+<p>MLT가 활성화되면 그린 도형의 설정(Beneos는 항상 직사각형을 써요)에 <strong>Multilevel</strong>이라는 새 탭이 생겨요. 각 텔레포터에 필요한 모든 것을 필드별로 여기서 설정해요. 팁: Ctrl+C로 도형을 복사해서 다른 씬에 붙여넣을 수 있어요.</p>
+<img src="modules/beneos-module/assets/wiki/mlt_setup_b.webp" alt="MLT 설정" />
+<ol>
+<li><strong>출발지 또는 목적지.</strong> MLT는 출발 필드에서 목적지 필드로 토큰을 보내요. <strong>Out</strong>에 체크하면 이 필드에서 텔레포트해서 나가요. <strong>In</strong>에 체크하면 이 필드로 텔레포트해서 들어와요. 양방향 이동이라면 둘 다 체크하세요.</li>
+<li><strong>텔레포트 식별자.</strong> MLT의 핵심이에요. 아무 텍스트나 입력할 수 있지만, 논리적으로 유지하세요. 토큰이 이 필드를 떠나면 식별자가 목적지를 가리켜요: 토큰은 같은 식별자를 가진 다른 필드로 이동해요. 하나의 식별자는 필드 두 개만 공유해야 해요. 세 개 이상이면 MLT가 무작위로 선택해서 오류가 생겨요. 요약하면, 출발지와 목적지는 식별자를 공유함으로써 짝이 돼요.
+<ol>
+<li>Beneos 명명 규칙은 <strong>릴리스번호A-맵번호A_릴리스번호B-맵번호B</strong>이고, 앞자리 0을 붙이고 작은 숫자를 왼쪽에 둬요. 예를 들어 76-04_76-05 또는 64-04_76-01이에요.</li>
+</ol>
+</li>
+<li><strong>맵 노드로 활성화.</strong> 이것을 켜면 토큰이 필드에 들어와도 필드가 비활성 상태로 유지돼요. 필드 안의 저널 아이콘을 클릭해야만 텔레포트가 발동해요. MLT 필드는 보통 보이지 않아서 플레이어가 실수로 씬을 바꿀 수 있기 때문에 이게 중요해요. 그래서 우리는 모든 필드에 고유한 저널 아이콘을 올려 둬요: 플레이어에게 여기서 맵을 떠날 수 있다고 알려주고, 원한다면 버튼 역할도 해요.</li>
+<li><strong>토큰 복제.</strong> 드물지만 멋진 기능이에요. 복제는 다른 MLT 필드의 토큰을 텔레포트하지 않고 현재 화면에 표시해요(반대도 가능해요). 맵 A에서 토큰을 움직이면 맵 B에서도 움직여요. 2층에 서서 1층의 토큰을 보기에 아주 좋아요. 출발지와 목적지 필드는 언제나처럼 같은 식별자를 공유해요. <strong>Source</strong>는 토큰을 가져와 표시할 원본 필드(여기서는 1층)이고, <strong>Target</strong>은 토큰이 표시되는 곳(2층)이에요.</li>
+</ol>
+<h2>플레이어 따라가기</h2>
+<p>플레이어가 텔레포터를 통과하면 비공개 채팅 카드를 받아요: 누가, 어느 씬으로 텔레포트했는지, 그리고 바로 그들에게 점프하는 <strong>씬 보기</strong> 버튼까지. 파티가 어디로 사라졌는지 더 이상 궁금해할 필요가 없어요. 기본으로 켜져 있고, 끄고 싶다면 모듈 설정의 <strong>Notify GM on teleport</strong>에서 전환하세요.</p>
+<img src="modules/beneos-module/assets/wiki/shot_mlt-chat_1.webp" alt="토큰이 씬으로 텔레포트했음을 보여주는 GM 전용 채팅 카드와 씬 보기 버튼">
+
+<h2>텔레포트 사운드 추가하기</h2>
+<p>플레이어가 텔레포터를 쓸 때 소리가 나면 좋겠나요? <strong>In</strong> 필드의 드로잉 구성을 열고 <strong>Multilevel</strong> 탭에서 <strong>Teleport sound</strong>를 설정하세요. 이동하는 플레이어와 텔레포트가 발동할 때의 여러분에게 재생돼요. 그 순간을 살려주는 작은 디테일이에요.</p>
+<img src="modules/beneos-module/assets/wiki/shot_mlt-sound_1.webp" alt="드로잉 구성의 Multilevel 탭에 있는 Teleport sound 드롭다운">
+
+<p>플레이어에게 이것이 어떻게 보이는지는 <a class="wikilink" data-page="player-navigation">플레이어 내비게이션</a>을 보세요. DM 쪽 씬 점프는 <a class="wikilink" data-page="poi-teleporter">POI Teleporter</a>를 보세요.</p>

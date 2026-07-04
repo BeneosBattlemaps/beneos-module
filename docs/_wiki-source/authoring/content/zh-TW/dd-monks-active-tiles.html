@@ -1,0 +1,37 @@
+<blockquote><p><strong>閱讀之前：</strong>使用 Beneos Battlemaps 完全不需要這些知識。一切都已為你設置好，開箱即用。這篇深度解析是給那些想在自己的地圖上加入 Monks Active Tile Trigger 功能，或單純好奇它如何運作的人。</p></blockquote>
+<hr />
+<p>Monks Active Tile Trigger（簡稱 MATT）是 Foundry VTT 最強大的自動化模組之一。它是配套模組，不屬於 Beneos 模組，所以請確認它已安裝並啟用。完整清單見<a class="wikilink" data-page="requirements">系統需求</a>。</p>
+<h2>我們用 MATT 做什麼</h2>
+<p>MATT 是自動化或控制場景各部分的全能工具。我們用它來做：</p>
+<ul>
+<li>播放與暫停玩家開場動畫序列的開始和停止按鈕。</li>
+<li>Escalia 世界地圖上基於點擊的導航。</li>
+<li>某些場景上的迷你音效板（例如巴洛維亞村、教堂）。</li>
+<li>陷阱、暗門或其他可點擊事件的放置式按鈕。</li>
+<li>Curse of Strahd 主選單的導航列。</li>
+</ul>
+<p>MATT 可以啟動動畫、播放音效、跳轉場景，還有更多功能。在這裡涵蓋每個功能會讓人不知所措，而且 wiki 頁面也不是合適的載體。想深入學習，網路上有非常出色的影片教學。下面我們示範自己如何使用 MATT，讓你可以在此基礎上發展自己的想法。</p>
+<h2>MATT 如何運作</h2>
+<p>MATT 的一切都透過圖塊運作。圖塊設定會多出一個名為 <strong>Triggers</strong> 的新分頁。MATT 以因果方式運作：當 <strong>Setup</strong> 中定義的觸發條件滿足時（一次點擊、Token 進入圖塊，或許多其他條件），<strong>Actions</strong> 中定義的事情就會發生。</p>
+<img src="modules/beneos-module/assets/wiki/matt_a.webp" alt="Beneos 開場動畫啟動圖塊" />
+<p>在這個範例中，一個圖塊是開場動畫序列的開始和停止按鈕。開場動畫本身也是一個圖塊，只有當你點擊播放按鈕圖塊時它才會播放。</p>
+<p>在左側工具列選擇 <strong>Tile Controls</strong>，就能點選畫布上的圖塊。點擊我們的播放按鈕（一個帶播放鍵圖像的圖塊），就可以在 <strong>Triggers</strong> 下定義何時發生什麼。</p>
+<img src="modules/beneos-module/assets/wiki/matt_b.webp" alt="MATT 觸發分頁" />
+<p>在 <strong>Setup</strong> 中定義動作何時執行。這裡的圖塊只有在 GM 點擊時才會觸發。</p>
+<img src="modules/beneos-module/assets/wiki/matt_c.webp" alt="MATT 動作分頁" />
+<p>在 <strong>Actions</strong> 下，多個動作被串接到同一次點擊上。MATT 由上到下依序執行。這裡的流程是：先重設承載開場動畫的圖塊，讓它從頭開始播放（Foundry 有個怪癖，會從隨機位置開始播放 webm 影片），接著啟動開場動畫圖塊，然後替換被點擊圖塊的圖像，讓播放按鈕變成紅色，下次看起來就是停止按鈕，最後播放一個點擊音效，作為給所有玩家和 DM 的回饋。替換用的圖像在 <strong>Images</strong> 分頁中定義。</p>
+<img src="modules/beneos-module/assets/wiki/matt_d.webp" alt="MATT 圖像分頁" />
+<p>Images 分頁收錄 MATT 切換用的圖像。這裡只有兩張，開始和停止，每次點擊互換。一個技術細節：這兩張圖像存放在不同的檔案路徑下。我們打包發行版時，第二張圖像不會被匯出，下載後就會缺失。所以第二張圖像放在 Beneos 模組本身裡面，模組永遠會安裝，因此圖像永遠可用。</p>
+<p>以上只是一個範例。想實現自己的想法，可以研究我們用來控制開場動畫、建立音效板或觸發陷阱的圖塊。發揮一點創意，你就能做出真正酷炫的互動效果。前景圖塊也可以承載 MATT 觸發器，詳見我們的<a class="wikilink" data-page="dd-foreground-tiles">前景圖塊深度解析</a>。</p>
+<h2>打造一個導航器</h2>
+<p><a class="wikilink" data-page="worldmap-escalia">Escalia 世界地圖</a>上的可點擊選單，以及兩個戰役著陸頁（<a class="wikilink" data-page="landing-avernus">Descent into Avernus</a> 和 <a class="wikilink" data-page="landing-strahd">Curse of Strahd</a>）上的選單，用的都是同一個 MATT 技巧。一個導航按鈕由兩個圖塊組成：一個隱形的可點擊圖塊疊在一個可見的文字標籤上。標籤只是給人看的；隱形圖塊才是幹活的。點擊它，MATT 就會把你跳轉到另一個場景。</p>
+<p>最快的做法是複製一個現成的按鈕，不過這裡是從零開始的完整步驟：</p>
+<ol>
+<li>在按鈕應該出現的位置放一個小圖塊，並給它一張透明或接近透明的圖像。這就是可點擊的觸發器。</li>
+<li>雙擊它，開啟 <strong>Triggers</strong> 分頁，在 <strong>Setup</strong> 下設定為點擊時觸發。</li>
+<li>在 <strong>Actions</strong> 下新增 <strong>Change Scene</strong>，然後用旁邊的小編輯圖示從場景瀏覽器中選擇目標場景。</li>
+<li>在觸發器後方放一個可見的文字圖塊或按鈕圖像，讓玩家知道這裡可以點擊。</li>
+<li>右鍵點擊觸發器並開啟它的啟用狀態。這樣一個可用的導航點就完成了。</li>
+</ol>
+<img src="modules/beneos-module/assets/wiki/matt_navigator.webp" alt="一個導航圖塊，Triggers 分頁中設有 Change Scene 動作" />
+<p>對每個目的地重複這個步驟，然後把完成的導航列複製到這組場景的每一個場景上。當目標場景之間都設有互相往返的導航時，你就有了一個玩家可以自行遊走的選單。Beneos 的樞紐頁正是這樣建造的，開啟一個拆解看看，就是完整的範例。想隨著戰役推進顯示或隱藏某個按鈕，只要顯示或隱藏它的文字圖塊，並切換觸發器的啟用狀態即可。想瞭解這些選單如何組合成一個戰役樞紐的全貌，請參閱<a class="wikilink" data-page="landing-build">打造你自己的著陸頁</a>。</p>

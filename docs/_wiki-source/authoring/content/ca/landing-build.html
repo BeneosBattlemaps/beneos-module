@@ -1,0 +1,35 @@
+<blockquote><p><strong>Abans de llegir:</strong> res d'aquí no és necessari per fer servir Beneos. Aquesta pàgina és per al DJ que ha vist els hubs d'<a class="wikilink" data-page="landing-avernus">Avernus</a> i <a class="wikilink" data-page="landing-strahd">Barovia</a> i ha pensat: en vull un per al meu propi món.</p></blockquote>
+<hr />
+<p>Una pàgina d'inici sembla sofisticada, però en el fons sempre són les mateixes quatre idees amb art diferent. Quan les sàpigues anomenar, podràs construir un hub per a qualsevol campanya, o desmuntar un dels nostres i reconstruir-lo com a teu.</p>
+
+<h2>La recepta</h2>
+<ol class="bw-steps">
+<li><strong>Un conjunt d'escenes.</strong> Una pàgina principal més una escena per a cada cosa que els teus jugadors necessitin: un mapa, un quarter general, una pàgina de repartiment, el que la teva història demani. Una pàgina d'inici no és més que aquestes escenes agrupades en una carpeta.</li>
+<li><strong>Una barra de navegació.</strong> A cada escena, un petit menú que salta a les altres. Aquesta és l'única peça mòbil, i funciona amb <a class="wikilink" data-page="dd-monks-active-tiles">Monk's Active Tile Triggers</a>.</li>
+<li><strong>Revelar sota demanda.</strong> Contingut que comença amagat i apareix quan el grup se'l guanya: un PNJ, un contracte, un artefacte, un vehicle. A Foundry això no és res més que una rajola o un dibuix on fas clic dret i <strong>Toggle Visibility State</strong>.</li>
+<li><strong>Punts d'interès.</strong> A les escenes de mapa, marcadors de diari que els jugadors poden obrir, i a través dels quals poden viatjar. Consulta <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporters</a>.</li>
+</ol>
+
+<h2>Construeix-lo pas a pas</h2>
+<h3>1. Planteja les teves escenes</h3>
+<p>Decideix què necessita el teu hub i crea una escena per a cada cosa, més una pàgina principal. Mantén-les juntes en una sola carpeta d'escenes perquè el conjunt sigui fàcil de trobar i de moure. La manera més ràpida de començar és copiar una de les nostres pàgines d'inici i canviar-ne l'art, ja que el cablatge ja està fet.</p>
+<h3>2. Cableja la navegació</h3>
+<p>Dona a la pàgina principal una fila de botons, un per escena, i repeteix aquesta barra a cada escena perquè els jugadors puguin moure's lliurement des de qualsevol lloc. Cada botó és una rajola clicable invisible sobre una etiqueta de text visible, amb una acció <strong>Change Scene</strong> al darrere. La <a class="wikilink" data-page="dd-monks-active-tiles">immersió tècnica de Monk's Active Tile Triggers</a> té una guia completa per construir un navegador, i copiar un botó existent és de llarg el camí més fàcil.</p>
+<h3>3. Deixa la pàgina principal activa per defecte</h3>
+<p>Fes que la pàgina principal sigui l'escena que els jugadors veuen quan inicien sessió, i mantén-la activa al començament de cada sessió. Des d'allà arriben a tot el que els hagis obert.</p>
+<h3>4. Amaga el que encara no s'han guanyat</h3>
+<p>Comença amb només l'essencial visible, i mantén la resta amagada. A mesura que la campanya avança, revela un punt de navegació, un PNJ o una recompensa commutant-ne la visibilitat. Aquest desvelament lent és el que fa que un hub se senti viu en lloc de ser un menú estàtic.</p>
+<h3>5. Vesteix-lo</h3>
+<p>Una pàgina d'inici és un escenari, així que il·lumina'l. Afegeix una pista d'ambient a la pestanya <a class="wikilink" data-page="ambience-sound">Ambience</a> de l'escena, i fes servir <a class="wikilink" data-page="dd-fxmaster">FXMaster</a> per al clima i l'atmosfera. Un títol de sessió a la pàgina principal, editat amb les eines de dibuix, marca el to abans que ningú parli.</p>
+
+<h2>Enllaça un punt amb la seva guia</h2>
+<p>Pots deixar un marcador d'ajuda en qualsevol lloc d'una escena que obri la documentació directament al lloc correcte, així un jugador curiós fa un clic i aterra a la guia exacta. Col·loca una <strong>Note</strong> de mapa amb la icona d'ajuda de Beneos i fes servir el seu camp <strong>Label</strong> per apuntar-la:</p>
+<ul>
+<li><strong>Només la documentació:</strong> una nota d'ajuda simple (sense marcador) obre la portada de la documentació, igual que la icona d'ajuda de cada escena Beneos.</li>
+<li><strong>Un article concret:</strong> afegeix <code>@doc[landing-avernus]</code> a l'etiqueta i s'obrirà aquell article.</li>
+<li><strong>Una secció concreta:</strong> afegeix <code>@doc[landing-avernus#la-garage]</code> i saltarà directament a aquella part de l'article.</li>
+</ul>
+<p>El marcador <code>@doc[...]</code> no es mostra mai al mapa; només es veu el text que hi ha abans, així que una etiqueta com <code>Garage guide @doc[landing-avernus#la-garage]</code> es llegeix simplement com "Garage guide". El nom de pàgina és la clau de l'article a la barra lateral de la documentació, i els noms de secció surten dels encapçalaments de cada article. Tant el clic esquerre com el dret l'obren.</p>
+
+<h2>Aprèn dels que hem publicat</h2>
+<p>El mestre més ràpid és un exemple funcional. Obre el hub de <a class="wikilink" data-page="landing-avernus">Descent into Avernus</a> per veure el joc d'eines complet, una taula de quarter general, un mapa del món de hexcrawl, un garatge de recompenses, o el hub de <a class="wikilink" data-page="landing-strahd">Curse of Strahd</a> per a un llibre de missions i una paret de cares. Agafa les parts que encaixin amb la teva història i deixa la resta.</p>

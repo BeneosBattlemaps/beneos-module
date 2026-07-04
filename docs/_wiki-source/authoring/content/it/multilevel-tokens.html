@@ -1,0 +1,28 @@
+<blockquote><p><strong>Prima di leggere:</strong> nulla di tutto questo è necessario per usare Beneos Battlemaps. Tutto è già configurato per te e funziona subito. Questo approfondimento è per chi vuole aggiungere funzioni di Multilevel Tokens alle proprie mappe, o è semplicemente curioso di sapere come funziona.</p></blockquote>
+<hr />
+<h2>Cosa fa MLT</h2>
+<p>Multilevel Tokens (MLT) è un modulo datato che funziona ancora alla perfezione. Teletrasporta i token da un punto all'altro, permettendo alle creature dei giocatori e del Master di muoversi in modo indipendente tra le mappe. Perché MLT invece di moduli più recenti che pure teletrasportano i token? Per come funziona. MLT non usa gli ID di Foundry, usa identificatori propri. Questo significa che, a differenza di Monk's Active Tile Triggers, possiamo collegare due release anche quando non fanno parte dello stesso pack. Scarica il Pack A, poi più tardi il Pack B, e funzionano insieme automaticamente. Con Monk's Active Tile Triggers dovresti scaricare ogni mappa come un'unica gigantesca release o mantenere a mano ogni teletrasporto, il che non è divertente su diverse migliaia di scene. Fidati.</p>
+<h2>Come funziona MLT</h2>
+<p>In MLT tutto funziona tramite i disegni, forme create con lo Strumento di Disegno nella barra degli strumenti a sinistra. Noi li chiamiamo campi MLT. Configurarli e collegarli è semplice e a prova di errore.</p>
+<img src="modules/beneos-module/assets/wiki/mlt_setup_a.webp" alt="Zona MLT" />
+<p>Con MLT attivo, le impostazioni di una forma disegnata (Beneos usa sempre rettangoli) guadagnano una nuova scheda chiamata <strong>Multilevel</strong>. Imposta qui tutto ciò che serve a ogni teletrasporto, campo per campo. Suggerimento: copia le forme con Ctrl+C e incollale su altre scene.</p>
+<img src="modules/beneos-module/assets/wiki/mlt_setup_b.webp" alt="Impostazioni MLT" />
+<ol>
+<li><strong>Sorgente o destinazione.</strong> MLT invia i token da un campo sorgente a un campo di destinazione. Spunta <strong>Out</strong> per teletrasportare da questo campo. Spunta <strong>In</strong> per teletrasportare al suo interno. Spuntale entrambe per il viaggio bidirezionale.</li>
+<li><strong>Identificatore di teletrasporto.</strong> Il cuore di MLT. Inserisci un testo qualsiasi, ma tienilo logico. Quando un token lascia questo campo, l'identificatore indica la destinazione: il token va all'altro campo con lo stesso identificatore. Solo due campi dovrebbero condividere un identificatore. Con tre o più MLT sceglie a caso, il che causa errori. In breve, sorgente e destinazione si accoppiano condividendo un identificatore.
+<ol>
+<li>La convenzione di denominazione Beneos è <strong>NumeroReleaseA-NumeroMappaA_NumeroReleaseB-NumeroMappaB</strong> con zeri iniziali, numero più piccolo a sinistra. Per esempio 76-04_76-05, oppure 64-04_76-01.</li>
+</ol>
+</li>
+<li><strong>Attivazione tramite Map Node.</strong> Con questa opzione attiva, il campo resta inattivo anche quando i token ci entrano. Solo un clic su un'icona di journal dentro il campo fa scattare il teletrasporto. È importante perché i campi MLT di solito sono invisibili e i giocatori potrebbero altrimenti cambiare scena per sbaglio. Per questo mettiamo un'icona di journal riconoscibile su ogni campo: dice ai giocatori che qui possono lasciare la mappa, e funge da pulsante se decidono di farlo.</li>
+<li><strong>Clonazione dei token.</strong> Più rara ma carina. La clonazione mostra i token di un altro campo MLT sulla superficie corrente (o il contrario) senza teletrasportarli. Muovi un token sulla Mappa A e si muove anche sulla Mappa B. Ottimo per vedere i token del primo piano mentre ti trovi al secondo. I campi sorgente e destinazione condividono lo stesso identificatore come sempre. <strong>Source</strong> è il campo da cui vengono presi i token da mostrare (qui il primo piano), <strong>Target</strong> è dove vengono mostrati (il secondo piano).</li>
+</ol>
+<h2>Segui i tuoi giocatori</h2>
+<p>Quando un giocatore attraversa un teletrasporto, ricevi una carta chat privata: chi si è teletrasportato, verso quale scena, e un pulsante <strong>Visualizza Scena</strong> che ti porta subito da loro. Basta chiedersi dove sia finito il gruppo. È attivo di default; disattivalo sotto <strong>Notifica il GM al teletrasporto</strong> nelle impostazioni del modulo se non lo vuoi.</p>
+<img src="modules/beneos-module/assets/wiki/shot_mlt-chat_1.webp" alt="La carta chat visibile solo al GM che mostra un token teletrasportato in una scena con un pulsante Visualizza Scena">
+
+<h2>Aggiungere un suono di teletrasporto</h2>
+<p>Vuoi che i giocatori sentano qualcosa quando usano un teletrasporto? Apri la Configurazione del Disegno del campo <strong>In</strong>, vai alla scheda <strong>Multilevel</strong> e imposta un <strong>Suono di teletrasporto</strong>. Viene riprodotto per i giocatori che viaggiano e per te quando il teletrasporto si attiva. Un piccolo tocco che vende il momento.</p>
+<img src="modules/beneos-module/assets/wiki/shot_mlt-sound_1.webp" alt="Il menu a tendina del suono di teletrasporto nella scheda Multilevel della Configurazione del Disegno">
+
+<p>Per come appare ai giocatori, vedi <a class="wikilink" data-page="player-navigation">Navigazione dei giocatori</a>. Per i salti di scena lato Master, vedi <a class="wikilink" data-page="poi-teleporter">POI Teleporter</a>.</p>

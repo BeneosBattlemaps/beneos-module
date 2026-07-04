@@ -1,0 +1,37 @@
+<blockquote><p><strong>Abans de llegir:</strong> res d'això no és necessari per fer servir Beneos Battlemaps. Tot ve configurat de fàbrica i funciona sense tocar res. Aquesta immersió tècnica és per a qui vulgui afegir funcions de Monk's Active Tile Triggers als seus propis mapes, o per a qui simplement tingui curiositat per saber com funciona.</p></blockquote>
+<hr />
+<p>Monk's Active Tile Triggers (MATT per abreujar) és un dels mòduls d'automatització més potents de Foundry VTT. És un mòdul complementari, no forma part del Beneos Module, així que assegura't que estigui instal·lat i actiu. Consulta <a class="wikilink" data-page="requirements">Requisits</a> per veure la llista completa.</p>
+<h2>Per a què fem servir MATT</h2>
+<p>MATT és un totterreny per automatitzar o controlar parts d'una escena. Nosaltres el fem servir per a:</p>
+<ul>
+<li>Botons d'inici i aturada que reprodueixen i pausen les seqüències d'intro per a jugadors.</li>
+<li>Navegació basada en clics al mapa del món d'Escalia.</li>
+<li>Mini taules de so en algunes escenes (per exemple Barovia Village, The Church).</li>
+<li>Botons col·locats per a trampes, portes secretes o altres esdeveniments clicables.</li>
+<li>La barra de navegació del menú principal de Curse of Strahd.</li>
+</ul>
+<p>MATT pot iniciar animacions, reproduir sons, saltar a escenes i molt més. Cobrir aquí totes les seves funcions seria aclaparador, i una pàgina de wiki és el format equivocat per fer-ho. Per aprofundir-hi, hi ha excel·lents videotutorials en línia. A sota repassem com fem servir MATT nosaltres perquè puguis construir les teves pròpies idees a partir d'aquí.</p>
+<h2>Com funciona MATT</h2>
+<p>A MATT tot funciona a través de rajoles. La configuració de la rajola guanya una pestanya nova anomenada <strong>Triggers</strong>. MATT es basa en causa i efecte: quan es compleix un activador definit a <strong>Setup</strong> (un clic, un token que entra a la rajola o moltes altres condicions), passa el que estigui definit a <strong>Actions</strong>.</p>
+<img src="modules/beneos-module/assets/wiki/matt_a.webp" alt="Rajola d'inici d'intro de Beneos" />
+<p>En aquest exemple, una rajola fa de botó d'inici i aturada de les seqüències d'intro. La intro també és una rajola, i només es reprodueix quan fas clic a la rajola del botó de reproducció.</p>
+<p>Selecciona <strong>Tile Controls</strong> a la barra d'eines esquerra per fer clic a les rajoles del llenç. Fent clic al nostre botó de reproducció (una rajola amb una imatge de botó de play) podem definir a <strong>Triggers</strong> què ha de passar i quan.</p>
+<img src="modules/beneos-module/assets/wiki/matt_b.webp" alt="Pestanya de triggers de MATT" />
+<p>A <strong>Setup</strong> defineixes quan s'executa l'acció. Aquí, la rajola només s'activa quan el DJ hi fa clic.</p>
+<img src="modules/beneos-module/assets/wiki/matt_c.webp" alt="Pestanya d'accions de MATT" />
+<p>A <strong>Actions</strong>, diverses accions estan encadenades a un sol clic. MATT les executa de dalt a baix. Aquí: la rajola que conté la intro es reinicia perquè comenci des del principi (Foundry té la peculiaritat de començar els vídeos webm en posicions aleatòries), després s'inicia la rajola de la intro, després s'intercanvia la imatge de la rajola clicada perquè el botó de reproducció es torni vermell i es llegeixi com un botó d'aturada la propera vegada, i finalment sona un so de clic com a retorn per a tots els jugadors i el DJ. Les imatges d'intercanvi es defineixen a la pestanya <strong>Images</strong>.</p>
+<img src="modules/beneos-module/assets/wiki/matt_d.webp" alt="Pestanya d'imatges de MATT" />
+<p>La pestanya Images recull les imatges entre les quals MATT alterna. Aquí només dues, inici i aturada, intercanviades a cada clic. Una nota tècnica: les dues imatges viuen sota rutes de fitxer diferents. Quan empaquetem una release, la segona imatge no s'exporta i faltaria en descarregar-la. Per això la segona imatge s'inclou dins del mateix Beneos Module, que sempre està instal·lat i per tant sempre disponible.</p>
+<p>Això era un exemple. Per construir les teves pròpies idees, inspecciona les rajoles que fem servir per controlar intros, muntar taules de so o activar trampes. Amb una mica de creativitat pots crear efectes interactius realment espectaculars. Les rajoles de primer pla també poden portar triggers de MATT, com s'explica a la nostra <a class="wikilink" data-page="dd-foreground-tiles">immersió tècnica de rajoles de primer pla</a>.</p>
+<h2>Construeix un navegador</h2>
+<p>Els menús clicables del <a class="wikilink" data-page="worldmap-escalia">mapa del món d'Escalia</a> i de les dues pàgines d'inici de campanya, <a class="wikilink" data-page="landing-avernus">Descent into Avernus</a> i <a class="wikilink" data-page="landing-strahd">Curse of Strahd</a>, són tots el mateix truc de MATT. Un botó de navegació són dues rajoles: una rajola clicable invisible col·locada sobre una etiqueta de text visible. L'etiqueta només hi és per ser vista; la rajola invisible fa la feina. Fes-hi clic i MATT et salta a una altra escena.</p>
+<p>La manera més ràpida de fer-ne un és copiar un botó que ja existeixi, però aquí tens el procés sencer des de zero:</p>
+<ol>
+<li>Col·loca una rajola petita on hagi d'anar el botó i dona-li una imatge transparent o gairebé transparent. Aquest és l'activador clicable.</li>
+<li>Fes-hi doble clic, obre la pestanya <strong>Triggers</strong> i, a <strong>Setup</strong>, configura que s'activi amb un clic.</li>
+<li>A <strong>Actions</strong>, afegeix <strong>Change Scene</strong> i fes servir la petita icona d'edició del costat per triar l'escena de destinació al teu navegador d'escenes.</li>
+<li>Darrere de l'activador, col·loca una rajola de text visible o una imatge de botó perquè els jugadors sàpiguen que hi poden fer clic.</li>
+<li>Fes clic dret a l'activador i activa'n l'estat actiu. Ja tens un punt de navegació funcional.</li>
+</ol>
+<img src="modules/beneos-module/assets/wiki/matt_navigator.webp" alt="Una rajola de navegació amb una acció Change Scene a la pestanya Triggers" />
+<p>Repeteix-ho per a cada destinació i després copia la barra acabada a cada escena del conjunt. Quan les escenes de destinació porten navegació de tornada entre elles, tens un menú pel qual els teus jugadors poden passejar-se sols. Així és exactament com estan construïts els hubs de Beneos, així que obre'n un i desmunta'l per veure un exemple complet. Per revelar o amagar un botó a mesura que avança la campanya, mostra o amaga la seva rajola de text i commuta l'estat actiu de l'activador. Per a la visió global de com aquests menús encaixen en un hub de campanya, consulta <a class="wikilink" data-page="landing-build">Construeix la teva pròpia pàgina d'inici</a>.</p>

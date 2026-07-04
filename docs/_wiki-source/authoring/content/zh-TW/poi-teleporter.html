@@ -1,0 +1,25 @@
+<blockquote><p><strong>閱讀之前：</strong>使用 Beneos Battlemaps 完全不需要這些內容。一切都已為你設定好，開箱即用。這篇深入解析是為想在自己的地圖上加入 Point of Interest 功能，或單純好奇它如何運作的人準備的。</p></blockquote>
+<hr />
+<h2>POI 是做什麼的</h2>
+<p>Point of Interest Teleporter（PoI）和 Multilevel Tokens 一樣穩如磐石：處理數千條連結也毫無怨言。PoI 連結地圖與場景，服務的是 DM，不是玩家。它讓你在數千個 Beneos 場景與世界之間導航而不迷失方向。每個場景與發行版本都遵循同一套模式，用途相同的傳送點永遠使用相同的圖示與名稱。</p>
+<img src="modules/beneos-module/assets/wiki/poi_c.webp" alt="Beneos 導航列" />
+<p>我們想要提供的是體驗，不只是地圖。一張地圖只有在與更大的整體相連時，才會讓人感覺是其中的一部分。這正是 Point of Interest Teleporter 的工作：它帶你前往總覽場景、世界地圖、再前往另一個區域、開場序列、場景畫面。任何超出原生 Foundry 的 DM 導航，都建立在 PoI 之上。</p>
+<h2>POI 如何運作</h2>
+<p>PoI 透過日誌運作。日誌通常用來存放筆記或故事文字；對 PoI 來說，日誌本身就是資訊。在場景的場景設定中，於<strong>環境氛圍（Ambience）</strong>區塊的<strong>日誌條目（Journal Entry）</strong>下選擇一個日誌。這個日誌現在就連結到該場景，並提供 PoI 所需的資訊。每個場景（戰鬥地圖、場景畫面、開場動畫）都有自己獨一無二的日誌。這就是為什麼日誌瀏覽器裡的 Beneos Battlemaps 資料夾有這麼多日誌：它們不儲存任何內容，只是作為 PoI 的連結。</p>
+<img src="modules/beneos-module/assets/wiki/poi_a.webp" alt="場景設定" />
+<p>把其中一個日誌拖到畫布上，對它按右鍵（1）就會出現選項。<strong>檢視場景</strong>會把你（而不是你的玩家）帶到該日誌的場景。<strong>啟用場景</strong>會強制所有人（包括你）進入目標場景。所以每個 PoI 傳送點都精確對應一個場景。在場景設定中指定一個日誌，該日誌就代表那個場景。無論你把它放在哪裡，按右鍵都能帶你過去。</p>
+<img src="modules/beneos-module/assets/wiki/poi_b.webp" alt="對日誌按右鍵" />
+<h2>讓圖示顯示出來</h2>
+<p>地圖上看不到日誌圖示？把它們打開。在左側的 Foundry 工具列點擊旗幟（筆記）圖示（1），再點擊標示為<strong>切換筆記顯示（Toggle Notes Display）</strong>的圖釘圖示（2）。所有日誌圖示就會保持可見。</p>
+<img src="modules/beneos-module/assets/wiki/navigation_activate_journals.webp" alt="在地圖上啟用日誌條目" />
+<h2>目的地尚未安裝？當場安裝</h2>
+<p>如果傳送點指向一個你尚未安裝的發行版本，不必到處去找。對圖示按右鍵，選擇 <strong>Install Missing Pack</strong>。對話框會顯示該發行版本，讓你選擇 <strong>4K 或 HD</strong> 並顯示下載大小（1），然後直接安裝到你的世界。完成後，再次對圖示按右鍵即可前往。此功能僅供 GM 使用。</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-install_1.webp" alt="Install Missing Pack 對話框，提供 4K 與 HD 下載選擇">
+
+<h2>找出缺少的部分</h2>
+<p>經營一個大型匯入世界，不確定哪些連結壞了？開啟<strong>模組設定、Beneos Teleporter、開啟稽核視窗</strong>。它會掃描每個場景，列出每個損壞或缺少的傳送點：來源場景、預定目標、狀態，以及需要安裝的發行版本。<strong>前往來源</strong>會把畫布跳轉到該筆記，方便你修復。</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-audit_1.webp" alt="POI 稽核視窗，列出缺少的傳送點目的地及其發行版本">
+
+<h2>疑難排解</h2>
+<p>傳送點落在錯誤場景，通常是三種情況之一：圖示沒有指定日誌、日誌沒有指定給任何地圖，或同一個日誌被指定給多張地圖。每個日誌必須恰好屬於一個場景。</p>
+<p>遊戲中 DM 端的圖示請見 <a class="wikilink" data-page="dm-navigation">DM 導航</a>。玩家驅動的移動請見 <a class="wikilink" data-page="multilevel-tokens">Multilevel Tokens</a>。</p>

@@ -1,0 +1,30 @@
+<blockquote><p><strong>Zanim zaczniesz czytać:</strong> nic z tego nie jest potrzebne, aby korzystać z Beneos Battlemaps. Wszystko jest przygotowane za Ciebie i działa od razu. To dogłębne omówienie jest dla każdego, kto chce zbudować takie samo poczucie głębi na własnych mapach albo po prostu jest ciekaw, jak to działa.</p></blockquote>
+<hr />
+<p>W przeciwieństwie do pozostałych dogłębnych omówień, kafelki pierwszego planu nie wymagają żadnego modułu towarzyszącego. Są częścią rdzenia Foundry VTT, więc wszystko opisane tutaj działa od razu.</p>
+<h2>Czym są kafelki pierwszego planu</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_a.webp" alt="Przykład kafelka pierwszego planu" />
+<p>Zastanawiasz się, jak to możliwe, że tokeny chodzą pod drzewami, belkami czy futrynami? Kafelki pierwszego planu. To zwykłe kafelki umieszczone <strong>nad</strong> tokenami zamiast pod nimi. Tokeny znikają za wszystkim, co logicznie znajduje się nad nimi, co daje scenie prawdziwą głębię: gracz przechodzący pod sękatą gałęzią, przez drzwi, obok nawisającego muru.</p>
+<p>Aby to osiągnąć, ręcznie wycinamy każdy obiekt wyższy od graczy i umieszczamy go jako obraz pierwszego planu na wierzchu. Dodatkowa praca, ale to duża część tego, dzięki czemu mapa Beneos jest odbierana jako przestrzeń, a nie płaski obrazek.</p>
+<h2>Dostęp do kafelków pierwszego planu</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_b.webp" alt="Dostęp do kafelków pierwszego planu" />
+<p>Aby zmienić lub dezaktywować kafelki pierwszego planu, kliknij <strong>Tile Controls</strong> na lewym pasku narzędzi. Warstwa pierwszego planu jest domyślnie ukryta, żeby nie dało się jej kliknąć przypadkiem. Kliknij ikonę domku, a wszystkie kafelki pierwszego planu staną się zaznaczalne jak każdy inny kafelek.</p>
+<p>Uwaga: na niektórych mapach kilka kafelków pierwszego planu nachodzi na siebie (miejscami nawet osiem, na przykład dach plus jego belki drzwiowe plus fragment muru). Kliknięcie zawsze zaznacza kafelek najwyższy. Aby dostać się do tego pod spodem, odsuń górny na bok, kliknij ten poniżej, a potem odłóż górny z powrotem. Kafelki są często zablokowane przed przypadkowym przesunięciem, więc kliknij kafelek prawym przyciskiem i kliknij małą ikonę kłódki, aby go najpierw odblokować. Zwykle kafelek pierwszego planu ma dokładnie rozmiar mapy, co oszczędza Ci żonglowania mnóstwem małych kafelków.</p>
+<h2>Ustawienia kafelków pierwszego planu</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_c.webp" alt="Ustawienia kafelka pierwszego planu" />
+<p>Gdy warstwa pierwszego planu jest klikalna dzięki ikonie domku, kliknij dwukrotnie dowolny kafelek, aby otworzyć jego ustawienia jak w zwykłym kafelku. Możesz ukryć kafelek pierwszego planu przed graczami oraz podpiąć automatyzację przez Monks Active Tile Trigger, aby wykonywać akcje pod pewnymi warunkami. Więcej w naszym <a class="wikilink" data-page="dd-monks-active-tiles">dogłębnym omówieniu Monks Active Tile Trigger</a>. Kafelki pierwszego planu mogą być też plikami wideo, a częściowo przezroczyste wideo daje urocze efekty, jak falujące korony drzew. Kafelki wideo kosztują wydajność, więc używamy ich oszczędnie. O utrzymaniu płynności animowanych map przeczytasz w <a class="wikilink" data-page="performance">Wydajności</a>.</p>
+<h3>Awans kafelka do pierwszego planu</h3>
+<p>Aby zamienić zwykły kafelek w kafelek pierwszego planu, zaznacz <strong>Is Overhead?</strong>. Zwróć uwagę, że samo zaznaczenie <strong>Is Roof?</strong> nie wystarczy: wpływa ono tylko na to, jak z dystansu liczony jest zasięg widzenia tokenów, a nie na to, czy kafelek renderuje się nad tokenami.</p>
+<h3>Tryby przesłaniania</h3>
+<p><strong>Occlusion Mode</strong> steruje tym, jak kafelek pierwszego planu zachowuje się, gdy token wchodzi pod niego. Cztery opcje:</p>
+<table>
+<thead>
+<tr><th>Tryb</th><th>Zachowanie</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>None</strong></td><td>Kafelek jest zawsze wyświetlany. Właściwy w większości przypadków.</td></tr>
+<tr><td><strong>Fade</strong></td><td>Cały kafelek zanika. Przydatny dla dachu, który powinien znikać, gdy tokeny są pod nim.</td></tr>
+<tr><td><strong>Radial</strong></td><td>Zostawia kafelek widoczny i wygasza tylko mały obszar wokół tokena, ustawiany suwakiem Occlusion Alpha. Wygaszony obszar jest mały i stały, więc token może wyglądać, jakby stał na kafelku, a nie pod nim.</td></tr>
+<tr><td><strong>Vision</strong></td><td>Wygasza tylko te fragmenty, które token faktycznie widzi przy aktywnym widzeniu tokena. W praktyce gracze widzą kafelek wyraźnie tylko wtedy, gdy jest w cieniu, co nie jest zbyt intuicyjne.</td></tr>
+</tbody>
+</table>
+<p>O tym, jak to wszystko wpisuje się w prowadzenie sceny jako MG, przeczytasz w <a class="wikilink" data-page="dm-navigation">Nawigacji MG</a>.</p>

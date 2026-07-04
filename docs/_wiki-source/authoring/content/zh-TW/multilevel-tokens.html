@@ -1,0 +1,28 @@
+<blockquote><p><strong>閱讀之前：</strong>使用 Beneos Battlemaps 完全不需要這些知識。一切都已為你設置好，開箱即用。這篇深度解析是給那些想在自己的地圖上加入 Multilevel Tokens 功能，或單純好奇它如何運作的人。</p></blockquote>
+<hr />
+<h2>MLT 做什麼</h2>
+<p>Multilevel Tokens（MLT）是一個年代久遠但依然運作無瑕的模組。它把 Token 從一個地方傳送到另一個地方，讓玩家和 DM 的生物能各自獨立地在地圖之間移動。為什麼選 MLT 而不是同樣能傳送 Token 的新模組？因為它的運作方式。MLT 不使用 Foundry ID，它使用自己的識別碼。這意味著和 Monks Active Tiles 不同，即使兩個發行版不屬於同一個資料包，我們也能把它們連結起來。先下載資料包 A，之後再下載資料包 B，它們會自動協同運作。用 Monks Active Tiles 的話，你就得把每張地圖打包成一個巨大的發行版，或者手動維護每一個傳送點，面對數千個場景那可不好玩。相信我們。</p>
+<h2>MLT 如何運作</h2>
+<p>MLT 的一切都透過繪圖運作，也就是用左側工具列的繪圖工具畫出的形狀。我們稱之為 MLT 區域。設置和連結它們既簡單又不易出錯。</p>
+<img src="modules/beneos-module/assets/wiki/mlt_setup_a.webp" alt="MLT 區域" />
+<p>啟用 MLT 後，畫出的形狀（Beneos 一律使用矩形）的設定會多出一個名為 <strong>Multilevel</strong> 的新分頁。每個傳送點需要的一切都在這裡逐一設定。提示：可以用 Ctrl+C 複製形狀，貼到其他場景上。</p>
+<img src="modules/beneos-module/assets/wiki/mlt_setup_b.webp" alt="MLT 設定" />
+<ol>
+<li><strong>來源或目的地。</strong>MLT 把 Token 從來源區域送到目的地區域。勾選 <strong>Out</strong> 表示從此區域傳送出去。勾選 <strong>In</strong> 表示傳送進來。兩者都勾就是雙向通行。</li>
+<li><strong>傳送識別碼。</strong>MLT 的核心。可以輸入任何文字，但請保持邏輯清晰。當 Token 離開此區域時，識別碼指向目的地：Token 會前往帶有相同識別碼的另一個區域。同一個識別碼只應由兩個區域共用。三個或更多的話，MLT 會隨機挑選，導致錯誤。簡而言之，來源和目的地是透過共用識別碼配對的。
+<ol>
+<li>Beneos 的命名慣例是<strong>發行版編號A-地圖編號A_發行版編號B-地圖編號B</strong>，前面補零，較小的編號在左邊。例如 76-04_76-05，或 64-04_76-01。</li>
+</ol>
+</li>
+<li><strong>透過地圖節點啟動。</strong>開啟後，即使 Token 進入區域，該區域也保持不作用。只有點擊區域內的日誌圖示才會觸發傳送。這一點很重要，因為 MLT 區域通常是隱形的，玩家可能會不小心切換場景。所以我們在每個區域上放一個獨特的日誌圖示：它告訴玩家這裡可以離開地圖，而且在他們願意時就是那顆按鈕。</li>
+<li><strong>Token 複製。</strong>比較少見但很妙。複製功能會把另一個 MLT 區域的 Token 顯示在當前的表面上（或反過來），但不傳送它們。在地圖 A 上移動一個 Token，它在地圖 B 上也會跟著移動。站在二樓時想看到一樓的 Token，這功能再好不過。來源和目的地區域照樣共用同一個識別碼。<strong>Source</strong> 是 Token 被顯示出來的來源區域（這裡是一樓），<strong>Target</strong> 是它們顯示的位置（二樓）。</li>
+</ol>
+<h2>跟上你的玩家</h2>
+<p>當玩家穿過傳送點時，你會收到一張私密聊天卡：誰傳送了、到哪個場景，還有一個<strong>檢視場景</strong>按鈕能直接把你跳到他們身邊。再也不用納悶隊伍晃到哪去了。這功能預設開啟；如果想關掉，可以在模組設定的<strong>傳送時通知 GM</strong> 中切換。</p>
+<img src="modules/beneos-module/assets/wiki/shot_mlt-chat_1.webp" alt="僅 GM 可見的聊天卡，顯示 Token 傳送到某場景，附檢視場景按鈕">
+
+<h2>加入傳送音效</h2>
+<p>想讓玩家在使用傳送點時聽到聲音？開啟 <strong>In</strong> 區域的繪圖設定，前往 <strong>Multilevel</strong> 分頁，設定一個<strong>傳送音效</strong>。它會為移動的玩家播放，傳送觸發時你也聽得到。一個小小的點綴，卻讓那一刻更有說服力。</p>
+<img src="modules/beneos-module/assets/wiki/shot_mlt-sound_1.webp" alt="繪圖設定 Multilevel 分頁上的傳送音效下拉選單">
+
+<p>想知道這在玩家眼中是什麼樣子，請參閱<a class="wikilink" data-page="player-navigation">玩家導航</a>。DM 端的場景跳轉請參閱 <a class="wikilink" data-page="poi-teleporter">POI Teleporter</a>。</p>

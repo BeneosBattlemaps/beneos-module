@@ -1,0 +1,37 @@
+<blockquote><p><strong>Zanim zaczniesz czytać:</strong> nic z tego nie jest potrzebne, aby korzystać z Beneos Battlemaps. Wszystko jest przygotowane za Ciebie i działa od razu. To dogłębne omówienie jest dla każdego, kto chce dodać funkcje Monks Active Tile Trigger do własnych map albo po prostu jest ciekaw, jak to działa.</p></blockquote>
+<hr />
+<p>Monks Active Tile Trigger (w skrócie MATT) to jeden z najpotężniejszych modułów automatyzacji dla Foundry VTT. To moduł towarzyszący, nie część modułu Beneos, więc upewnij się, że jest zainstalowany i aktywny. Pełną listę znajdziesz w <a class="wikilink" data-page="requirements">Wymaganiach</a>.</p>
+<h2>Do czego używamy MATT</h2>
+<p>MATT to wszechstronne narzędzie do automatyzowania lub sterowania częściami sceny. Używamy go do:</p>
+<ul>
+<li>Przycisków start i stop, które odtwarzają i pauzują sekwencje intro dla graczy.</li>
+<li>Nawigacji opartej na kliknięciach na mapie świata Escalia.</li>
+<li>Mini soundboardów na niektórych scenach (na przykład Barovia Village, The Church).</li>
+<li>Rozmieszczonych przycisków dla pułapek, sekretnych drzwi i innych klikalnych zdarzeń.</li>
+<li>Paska nawigacji w menu głównym Curse of Strahd.</li>
+</ul>
+<p>MATT potrafi uruchamiać animacje, odtwarzać dźwięki, przeskakiwać między scenami i wiele więcej. Opisanie tutaj każdej funkcji byłoby przytłaczające, a strona wiki to zły format na coś takiego. Aby wejść głębiej, w sieci są znakomite tutoriale wideo. Poniżej pokazujemy, jak my używamy MATT, żebyś mógł budować na tym własne pomysły.</p>
+<h2>Jak działa MATT</h2>
+<p>Wszystko w MATT działa przez kafelki. Konfiguracja kafelka zyskuje nową zakładkę o nazwie <strong>Triggers</strong>. MATT działa na zasadzie przyczyny i skutku: gdy spełni się wyzwalacz zdefiniowany w <strong>Setup</strong> (kliknięcie, wejście tokena na kafelek albo wiele innych warunków), dzieje się to, co zdefiniowano w <strong>Actions</strong>.</p>
+<img src="modules/beneos-module/assets/wiki/matt_a.webp" alt="Kafelek startowy intro Beneos" />
+<p>W tym przykładzie kafelek jest przyciskiem start i stop dla sekwencji intro. Intro też jest kafelkiem i odtwarza się dopiero po kliknięciu kafelka z przyciskiem odtwarzania.</p>
+<p>Wybierz <strong>Tile Controls</strong> na lewym pasku narzędzi, aby klikać kafelki na kanwie. Kliknięcie naszego przycisku odtwarzania (kafelka z obrazkiem przycisku play) pozwala nam zdefiniować w <strong>Triggers</strong>, co ma się wydarzyć i kiedy.</p>
+<img src="modules/beneos-module/assets/wiki/matt_b.webp" alt="Zakładka triggers w MATT" />
+<p>W <strong>Setup</strong> definiujesz, kiedy akcja się uruchamia. Tutaj kafelek wyzwala się tylko wtedy, gdy kliknie go MG.</p>
+<img src="modules/beneos-module/assets/wiki/matt_c.webp" alt="Zakładka actions w MATT" />
+<p>W <strong>Actions</strong> do jednego kliknięcia podpięto łańcuch kilku akcji. MATT wykonuje je od góry do dołu. Tutaj: kafelek z intro jest resetowany, żeby zaczynał od początku (Foundry ma dziwactwo startowania wideo webm w losowych miejscach), potem kafelek intro jest uruchamiany, potem obrazek klikniętego kafelka jest podmieniany, żeby przycisk play stał się czerwony i następnym razem czytał się jako przycisk stop, a na końcu odtwarzany jest dźwięk kliknięcia jako informacja zwrotna dla wszystkich graczy i MG. Obrazki do podmiany definiuje się w zakładce <strong>Images</strong>.</p>
+<img src="modules/beneos-module/assets/wiki/matt_d.webp" alt="Zakładka images w MATT" />
+<p>Zakładka Images zbiera obrazki, między którymi MATT się przełącza. Tutaj tylko dwa, start i stop, podmieniane przy każdym kliknięciu. Uwaga techniczna: oba obrazki leżą pod różnymi ścieżkami plików. Gdy pakujemy release, drugi obrazek nie jest eksportowany i brakowałoby go po pobraniu. Dlatego drugi obrazek jest dostarczany w samym module Beneos, który jest zawsze zainstalowany, a więc zawsze dostępny.</p>
+<p>To był jeden przykład. Aby budować własne pomysły, przyjrzyj się kafelkom, którymi sterujemy intrami, budujemy soundboardy albo wyzwalamy pułapki. Z odrobiną kreatywności zrobisz naprawdę fajne interaktywne efekty. Kafelki pierwszego planu też mogą nosić wyzwalacze MATT, co opisuje nasze <a class="wikilink" data-page="dd-foreground-tiles">dogłębne omówienie kafelków pierwszego planu</a>.</p>
+<h2>Zbuduj nawigator</h2>
+<p>Klikalne menu na <a class="wikilink" data-page="worldmap-escalia">mapie świata Escalia</a> i na obu stronach startowych kampanii, <a class="wikilink" data-page="landing-avernus">Descent into Avernus</a> oraz <a class="wikilink" data-page="landing-strahd">Curse of Strahd</a>, to wszystko ten sam trik MATT. Przycisk nawigacyjny to dwa kafelki: niewidzialny klikalny kafelek leżący na widocznej etykiecie tekstowej. Etykieta jest tylko po to, żeby było ją widać; pracę wykonuje niewidzialny kafelek. Kliknij go, a MATT przenosi Cię do innej sceny.</p>
+<p>Najszybszy sposób to skopiowanie istniejącego przycisku, ale oto cała procedura od zera:</p>
+<ol>
+<li>Umieść mały kafelek tam, gdzie ma siedzieć przycisk, i daj mu przezroczysty lub prawie przezroczysty obrazek. To jest klikalny wyzwalacz.</li>
+<li>Kliknij go dwukrotnie, otwórz zakładkę <strong>Triggers</strong> i w <strong>Setup</strong> ustaw wyzwalanie na kliknięcie.</li>
+<li>W <strong>Actions</strong> dodaj <strong>Change Scene</strong>, a potem małą ikoną edycji obok wybierz scenę docelową z przeglądarki Scen.</li>
+<li>Za wyzwalaczem umieść widoczny kafelek tekstowy lub obrazek przycisku, żeby gracze wiedzieli, że jest tam co klikać.</li>
+<li>Kliknij wyzwalacz prawym przyciskiem i włącz jego stan aktywności. To jeden działający punkt nawigacyjny.</li>
+</ol>
+<img src="modules/beneos-module/assets/wiki/matt_navigator.webp" alt="Kafelek nawigacyjny z akcją Change Scene w zakładce Triggers" />
+<p>Powtórz to dla każdego celu, a potem skopiuj gotowy pasek na każdą scenę zestawu. Gdy sceny docelowe niosą nawigację z powrotem do siebie nawzajem, masz menu, po którym Twoi gracze mogą chodzić samodzielnie. Dokładnie tak zbudowane są huby Beneos, więc otwórz jeden i rozbierz go na części, aby zobaczyć pełny przykład. Aby odsłonić lub ukryć przycisk w miarę postępu kampanii, pokaż lub ukryj jego kafelek tekstowy i przełącz stan aktywności wyzwalacza. Szerszy obraz tego, jak te menu składają się w hub kampanii, znajdziesz w <a class="wikilink" data-page="landing-build">Zbuduj własną stronę startową</a>.</p>

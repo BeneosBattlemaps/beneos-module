@@ -1,0 +1,25 @@
+<blockquote><p><strong>읽기 전에:</strong> Beneos Battlemaps를 사용하는 데 이 내용은 전혀 필요하지 않아요. 모든 것이 미리 설정되어 있고 바로 작동해요. 이 심층 분석은 자신의 맵에 Point of Interest 기능을 추가하고 싶거나, 어떻게 작동하는지 궁금한 분들을 위한 거예요.</p></blockquote>
+<hr />
+<h2>POI가 하는 일</h2>
+<p>Point of Interest Teleporter(PoI)는 Multilevel Tokens처럼 아주 견고해요: 수천 개의 링크도 불평 없이 처리해요. PoI는 플레이어가 아니라 DM을 위해 맵과 씬을 연결해요. 수천 개의 Beneos 씬과 월드를 길을 잃지 않고 오갈 수 있는 내비게이션을 제공해요. 모든 씬과 릴리스는 같은 패턴을 따르고, 같은 용도의 텔레포터는 항상 같은 아이콘과 이름을 사용해요.</p>
+<img src="modules/beneos-module/assets/wiki/poi_c.webp" alt="Beneos 내비게이션 바" />
+<p>저희는 단순한 맵이 아니라 경험을 제공하고 싶었어요. 맵이 더 큰 전체의 일부처럼 느껴지려면 실제로 그 전체와 연결되어 있어야 하죠. 그것이 Point of Interest Teleporter의 역할이에요: 오버뷰 씬으로, 월드 맵으로, 그리고 다른 구역으로, 인트로 시퀀스로, 시너리로 데려다줘요. 순수 Foundry를 넘어서는 모든 DM 내비게이션은 PoI 위에서 돌아가요.</p>
+<h2>POI가 작동하는 방식</h2>
+<p>PoI는 저널을 통해 작동해요. 보통 저널은 메모나 이야기 텍스트를 담죠. PoI에서는 저널 자체가 정보예요. 씬의 씬 구성에서 <strong>Ambience</strong> 섹션의 <strong>Journal Entry</strong> 항목으로 저널을 선택하세요. 이제 그 저널은 씬에 연결되어 PoI에 필요한 것을 제공해요. 모든 씬(배틀맵, 시너리, 인트로)에는 각자 고유한 저널이 있어요. 저널 탐색기의 Beneos Battlemaps 폴더에 저널이 그렇게 많은 이유가 바로 이거예요: 아무것도 저장하지 않고, PoI를 위한 링크 역할만 해요.</p>
+<img src="modules/beneos-module/assets/wiki/poi_a.webp" alt="씬 구성" />
+<p>이 저널 중 하나를 캔버스에 끌어다 놓고 우클릭하면(1) 옵션이 나와요. <strong>View Scene</strong>은 (플레이어가 아니라) 여러분만 그 저널의 씬으로 데려가요. <strong>Activate Scene</strong>은 여러분을 포함한 모두를 대상 씬으로 강제 이동시켜요. 그러니까 각 PoI 텔레포터는 정확히 하나의 씬을 목표로 해요. 씬 구성에서 저널을 지정하면 그 저널이 그 씬을 대표해요. 어디에 놓든, 우클릭하면 그곳으로 이동해요.</p>
+<img src="modules/beneos-module/assets/wiki/poi_b.webp" alt="저널 우클릭" />
+<h2>아이콘 보이게 하기</h2>
+<p>맵에 저널 아이콘이 안 보이나요? 켜 주세요. 왼쪽 Foundry 도구 모음에서 배너(노트) 아이콘(1)을 클릭한 다음, <strong>노트 표시 토글</strong>이라고 표시된 핀 머리 아이콘(2)을 클릭하세요. 모든 저널 아이콘이 계속 표시돼요.</p>
+<img src="modules/beneos-module/assets/wiki/navigation_activate_journals.webp" alt="맵에서 저널 항목 활성화" />
+<h2>목적지가 설치되어 있지 않다면? 그 자리에서 설치하세요</h2>
+<p>텔레포터가 아직 설치하지 않은 릴리스를 가리킨다면, 찾아 헤맬 필요 없어요. 아이콘을 우클릭하고 <strong>Install Missing Pack</strong>을 선택하세요. 대화 상자가 릴리스를 보여 주고, 다운로드 크기와 함께 <strong>4K 또는 HD</strong>를 고르게 한 다음(1), 여러분의 월드에 바로 설치해 줘요. 완료되면 아이콘을 다시 우클릭해서 이동하세요. GM 전용이에요.</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-install_1.webp" alt="4K와 HD 다운로드 선택이 있는 Install Missing Pack 대화 상자">
+
+<h2>누락된 것 찾기</h2>
+<p>크게 가져온 월드를 운영 중인데 어떤 링크가 깨졌는지 확실하지 않나요? <strong>모듈 설정, Beneos Teleporter, Open Audit Window</strong>를 여세요. 모든 씬을 스캔해서 깨졌거나 누락된 텔레포터를 하나씩 나열해요: 출발 씬, 의도된 목적지, 상태, 그리고 설치해야 할 릴리스. <strong>Go to Source</strong>는 캔버스를 해당 노트로 이동시켜서 바로 고칠 수 있게 해 줘요.</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-audit_1.webp" alt="누락된 텔레포터 목적지와 해당 릴리스를 나열한 POI Audit 창">
+
+<h2>문제 해결</h2>
+<p>텔레포터가 엉뚱한 씬으로 데려간다면 보통 세 가지 중 하나예요: 아이콘에 저널이 지정되지 않았거나, 저널이 어느 맵에도 지정되지 않았거나, 같은 저널이 둘 이상의 맵에 지정된 경우예요. 각 저널은 정확히 하나의 씬에 속해야 해요.</p>
+<p>플레이 중 DM용 아이콘은 <a class="wikilink" data-page="dm-navigation">DM 내비게이션</a>을, 플레이어가 직접 하는 이동은 <a class="wikilink" data-page="multilevel-tokens">Multilevel Tokens</a>를 보세요.</p>

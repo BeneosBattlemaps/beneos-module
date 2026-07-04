@@ -1,0 +1,29 @@
+<blockquote><p><strong>お読みになる前に：</strong>Beneosを楽しむために、ここで何かを作る必要はありません。Escaliaワールドマップは、すぐ使える状態で提供されます。このページは、その組み立て方を知りたい、編集したい、あるいは自分だけのワールドマップを作りたいGMのためのものです。</p></blockquote>
+<hr />
+<p>Terra Escaliaは、セットアップガイドで出会うワールドマップです。Beneosのクリーチャーとリリースのホームワールドであり、キャンペーン全体を託せる、大きく描き込まれたひとつの大陸です。アートの下にあるのは魔法ではなく、重ね合わされた4つのごく普通のFoundryパーツです。この4つが見えれば、どれでも好きに変えられますし、自分の世界観に合わせて丸ごと作り直すこともできます。</p>
+
+<h2 id="wm-blocks">4つの構成要素</h2>
+
+<h3 id="wm-map">1. マップそのもの</h3>
+<p>ベースは1枚の大きな画像で、8000×8000のシーンに背景およびタイルとして配置されています。凝ったことは何もしていません。自分の世界を作りたいなら、差し替えるのはこのレイヤーです。自分の描いた地図を置けば、それ以外はすべて今までどおり機能します。</p>
+
+<h3 id="wm-poi">2. ポイントオブインタレスト</h3>
+<p>マップ上のロケーションマーカーはすべて、ジャーナルがピン留めされたFoundryのマップ<strong>ノート</strong>です。目にする小さな城、都市、洞窟、港のアイコンがそのノートです。右クリックするとジャーナルが開き、プレイヤーはそこで場所について読んだり、そのシーンへジャンプしたりします。各マーカーには所属リリースがラベル付けされています。たとえば<em>Castle Dourcrag [Release 48]</em>のように、何がインストール済みで何がこれから来るのかがひと目でわかります。これは<a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporter</a>で解説しているのと同じシステムなので、マーカーの追加、移動、再リンクはそちらをご覧ください。</p>
+<img src="modules/beneos-module/assets/wiki/shot_worldmap-escalia_1.webp" alt="ポイントオブインタレストのマーカーを備えたTerra Escaliaワールドマップ" />
+
+<h3 id="wm-nav">3. ナビゲーションバー</h3>
+<p>右上には小さなナビゲーションバーがあります。これは<a class="wikilink" data-page="dd-monks-active-tiles">Monk's Active Tile Triggers</a>で動いています。見えるテキストラベルの上に、クリック可能な透明タイルが重ねてあり、その透明タイルをクリックすると別のシーンにジャンプします。Beneosのすべてのメニュー、ワールドマップ、ランディングページの裏にあるトリックはこれだけです。<a class="wikilink" data-page="dd-monks-active-tiles">MATT詳細解説</a>では、実際に作る手順をステップバイステップで紹介しています。</p>
+
+<h3 id="wm-atmosphere">4. 雰囲気：天候と光</h3>
+<p>このマップは静止していません。2つのレイヤーが命を吹き込んでいます。<a class="wikilink" data-page="dd-fxmaster">FXMaster</a>が大陸の上に雲と薄い霧を漂わせ、鳥を飛ばします。これらはすべてシーンに保存されたパーティクルエフェクトです。その上に、色付けされ脈動するよう設定された何十ものアニメーション<strong>ライト</strong>が配置され、海と大地に淡く幻想的な輝きを投げかけて、マップ全体が平坦に沈み込まず、かすかに呼吸しているように見せています。</p>
+<img src="modules/beneos-module/assets/wiki/shot_worldmap-escalia_2.webp" alt="Escaliaの海岸線に漂う雲と幻想的な光" />
+
+<h2 id="wm-build">編集する、あるいは自分で作る</h2>
+<p>4つのレイヤーは互いに独立しているので、他を壊さずにどれか1つだけ手を入れられます：</p>
+<ul>
+<li><strong>ロケーションを移動・追加する：</strong>マップノートを好きな場所にドラッグし、それぞれをジャーナルまたはシーンにリンクします。<a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporter</a>をご覧ください。</li>
+<li><strong>マップを差し替える：</strong>背景画像を自分の世界に置き換えます。ノート、ナビバー、エフェクトはそのまま残ります。</li>
+<li><strong>ムードを変える：</strong>FXMasterの杖を開き、雲を雨や雪、夜のフィルターに置き換えます。<a class="wikilink" data-page="dd-fxmaster">FXMaster詳細解説</a>をご覧ください。</li>
+<li><strong>光を調整し直す：</strong>世界観に合わせてライトを追加、色変更、アニメーション化します。冷たい青なら呪われた海岸に、低く灯るオレンジなら燃える海岸に見えます。</li>
+</ul>
+<p>マップを、フルメニューとサブシーン付きのキャンペーンハブとしても使いたいですか？それこそまさに<a class="wikilink" data-page="landing-avernus">Descent into Avernus</a>と<a class="wikilink" data-page="landing-strahd">Curse of Strahd</a>のランディングページがやっていることです。<a class="wikilink" data-page="landing-build">ランディングページを自作する</a>では、その組み立て方を紹介しています。</p>

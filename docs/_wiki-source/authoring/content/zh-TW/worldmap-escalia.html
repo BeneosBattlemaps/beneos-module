@@ -1,0 +1,29 @@
+<blockquote><p><strong>閱讀之前：</strong>要享受 Beneos，你不需要在這裡建造任何東西。Escalia 世界地圖出廠即可使用。本頁是為想知道它如何組成、想編輯它，或想打造自己世界地圖的 GM 準備的。</p></blockquote>
+<hr />
+<p>Terra Escalia 是你在設定指南中見到的那張世界地圖。它是 Beneos 生物與發行版本的故鄉，一整片手繪大陸，足以承載你的整個戰役。在美術之下沒有什麼魔法，只是四個普通的 Foundry 元件層層疊起。一旦看懂這四層，你就能改動其中任何一層，或為你自己的設定重建整張地圖。</p>
+
+<h2 id="wm-blocks">四個基本組件</h2>
+
+<h3 id="wm-map">1. 地圖本身</h3>
+<p>底層是一張大圖，在一個 8000 乘 8000 的場景上同時作為背景與圖塊放置。沒有任何花招。如果你想要自己的世界，要換的就是這一層：放進你自己的畫作，下面的其他層照常運作。</p>
+
+<h3 id="wm-poi">2. 興趣點</h3>
+<p>地圖上的每個地點標記都是一個釘上日誌的 Foundry 地圖<strong>筆記（Note）</strong>。你看到的小城堡、城市、洞穴與港口圖示就是這些筆記。對其中一個按右鍵就會開啟它的日誌，玩家就是這樣閱讀一個地點的介紹，或跳轉到它的場景。每個標記都標註了所屬的發行版本，例如 <em>Castle Dourcrag [Release 48]</em>，讓你一眼就能分辨哪些已安裝、哪些還在路上。這和 <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporter</a> 介紹的是同一套系統，想新增、移動或重新連結你自己的標記，請前往該頁。</p>
+<img src="modules/beneos-module/assets/wiki/shot_worldmap-escalia_1.webp" alt="Terra Escalia 世界地圖及其興趣點標記" />
+
+<h3 id="wm-nav">3. 導航列</h3>
+<p>右上角有一條小小的導航列。它建立在 <a class="wikilink" data-page="dd-monks-active-tiles">Monks Active Tile Triggers</a> 之上：一個看不見的可點擊圖塊疊在可見的文字標籤上，點擊那個隱形圖塊就會跳到另一個場景。這就是每個 Beneos 選單、世界地圖與登陸頁面背後的全部把戲。<a class="wikilink" data-page="dd-monks-active-tiles">MATT 深入解析</a>會一步步示範怎麼做出一個。</p>
+
+<h3 id="wm-atmosphere">4. 氛圍：天氣與光</h3>
+<p>這張地圖不是靜止的。有兩個圖層賦予它生命。<a class="wikilink" data-page="dd-fxmaster">FXMaster</a> 讓雲朵與薄霧飄過大陸，並讓飛鳥掠過其上，這些粒子效果都儲存在場景上。在那之上還有數十個動畫化的<strong>光源</strong>，經過染色並設為脈動，為海洋與陸地灑上柔和的幽光，讓整張地圖微微呼吸，而不是平躺在那裡。</p>
+<img src="modules/beneos-module/assets/wiki/shot_worldmap-escalia_2.webp" alt="Escalia 海岸線上飄移的雲朵與幽光" />
+
+<h2 id="wm-build">編輯它，或打造你自己的</h2>
+<p>因為這四層彼此獨立，你可以動其中任何一層而不破壞其他層：</p>
+<ul>
+<li><strong>移動或新增地點：</strong>把地圖筆記拖到你想要的位置，並把每個筆記連結到它的日誌或場景。請見 <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporter</a>。</li>
+<li><strong>更換地圖：</strong>把背景圖換成你自己的世界。筆記、導航列與特效都會留在原位。</li>
+<li><strong>改變氛圍：</strong>打開 FXMaster 魔杖，把雲朵換成雨、雪或夜晚濾鏡。請見 <a class="wikilink" data-page="dd-fxmaster">FXMaster 深入解析</a>。</li>
+<li><strong>重調光線：</strong>新增、改色或加上動畫，讓光源符合你的設定。冷藍色讀起來是鬧鬼的海岸；低沉的橘色讀起來是燃燒中的海岸。</li>
+</ul>
+<p>想讓這張地圖兼作戰役中樞，附上完整選單與子場景？<a class="wikilink" data-page="landing-avernus">Descent into Avernus</a> 與 <a class="wikilink" data-page="landing-strahd">Curse of Strahd</a> 的登陸頁面做的正是這件事，而<a class="wikilink" data-page="landing-build">打造你自己的登陸頁面</a>會示範如何組裝一個。</p>

@@ -1,0 +1,29 @@
+<blockquote><p><strong>Antes de leer:</strong> no necesitas construir nada aquí para disfrutar de Beneos. El mapa del mundo de Escalia se entrega listo para usar. Esta página es para los DJ que quieran saber cómo está montado, editarlo o construir su propio mapa del mundo.</p></blockquote>
+<hr />
+<p>Terra Escalia es el mapa del mundo que conoces en la guía de configuración. Es el mundo natal de las criaturas y releases de Beneos, un gran continente pintado del que puedes colgar toda tu campaña. Bajo el arte no hay magia, solo cuatro piezas ordinarias de Foundry apiladas una sobre otra. Una vez que ves las cuatro, puedes cambiar cualquiera de ellas, o reconstruirlo todo para tu propia ambientación.</p>
+
+<h2 id="wm-blocks">Los cuatro bloques de construcción</h2>
+
+<h3 id="wm-map">1. El mapa en sí</h3>
+<p>La base es una única imagen grande, colocada como fondo y como tile en una escena de 8000 por 8000. Nada ingenioso. Si quieres tu propio mundo, esta es la capa que sustituyes: pon tu propia pintura y todo lo demás sigue funcionando igual.</p>
+
+<h3 id="wm-poi">2. Puntos de interés</h3>
+<p>Cada marcador de localización en el mapa es una <strong>Nota</strong> de mapa de Foundry con un journal anclado. Los pequeños iconos de castillo, ciudad, cueva y puerto que ves son esas notas. Haz clic derecho en una y se abre su journal, que es como un jugador lee sobre un lugar o salta a su escena. Cada marcador está etiquetado con el release al que pertenece, por ejemplo <em>Castle Dourcrag [Release 48]</em>, para que veas de un vistazo qué está instalado y qué está por llegar. Es el mismo sistema explicado en <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporters</a>, así que ve allí para añadir, mover o reenlazar tus propios marcadores.</p>
+<img src="modules/beneos-module/assets/wiki/shot_worldmap-escalia_1.webp" alt="El mapa del mundo de Terra Escalia con sus marcadores de puntos de interés" />
+
+<h3 id="wm-nav">3. La barra de navegación</h3>
+<p>Arriba a la derecha hay una pequeña barra de navegación. Funciona con <a class="wikilink" data-page="dd-monks-active-tiles">Monk's Active Tile Triggers</a>: un tile clicable invisible descansa sobre una etiqueta de texto visible, y hacer clic en el tile invisible te salta a otra escena. Ese es todo el truco detrás de cada menú, mapa del mundo y página de inicio de Beneos. La <a class="wikilink" data-page="dd-monks-active-tiles">guía a fondo de MATT</a> explica cómo construir una paso a paso.</p>
+
+<h3 id="wm-atmosphere">4. Atmósfera: clima y luz</h3>
+<p>El mapa no es estático. Dos capas le dan vida. <a class="wikilink" data-page="dd-fxmaster">FXMaster</a> desliza nubes y una niebla fina sobre el continente y envía pájaros por encima, todo efectos de partículas guardados en la escena. Encima de eso hay docenas de <strong>Luces</strong> animadas, tintadas y configuradas para pulsar, arrojando un suave resplandor fantasmal sobre los mares y la tierra, de forma que todo el mapa respira un poco en lugar de quedarse plano.</p>
+<img src="modules/beneos-module/assets/wiki/shot_worldmap-escalia_2.webp" alt="Nubes a la deriva y luz fantasmal sobre la costa de Escalia" />
+
+<h2 id="wm-build">Edítalo, o construye el tuyo</h2>
+<p>Como las cuatro capas son independientes, puedes tocar cualquiera sin romper las demás:</p>
+<ul>
+<li><strong>Mueve o añade localizaciones:</strong> arrastra las notas del mapa a donde quieras y enlaza cada una a su journal o escena. Mira <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporters</a>.</li>
+<li><strong>Sustituye el mapa:</strong> reemplaza la imagen de fondo por tu propio mundo. Las notas, la barra de navegación y los efectos se quedan en su sitio.</li>
+<li><strong>Cambia el ambiente:</strong> abre la varita de FXMaster y cambia las nubes por lluvia, nieve o un filtro nocturno. Mira la <a class="wikilink" data-page="dd-fxmaster">guía a fondo de FXMaster</a>.</li>
+<li><strong>Reajusta la luz:</strong> añade, recolorea o anima luces para que encajen con tu ambientación. Un azul frío se lee como una costa encantada; un naranja bajo, como una en llamas.</li>
+</ul>
+<p>¿Quieres que el mapa funcione también como hub de campaña con un menú completo y subescenas? Eso es exactamente lo que hacen las páginas de inicio de <a class="wikilink" data-page="landing-avernus">Descent into Avernus</a> y <a class="wikilink" data-page="landing-strahd">Curse of Strahd</a>, y <a class="wikilink" data-page="landing-build">Construye tu propia página de inicio</a> muestra cómo montar una.</p>

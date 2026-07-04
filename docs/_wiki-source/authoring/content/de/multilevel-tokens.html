@@ -1,0 +1,28 @@
+<blockquote><p><strong>Bevor du weiterliest:</strong> Nichts davon ist nötig, um Beneos Battlemaps zu nutzen. Alles ist für dich eingerichtet und funktioniert out of the box. Diese Vertiefung ist für alle, die Multilevel-Tokens-Funktionen in ihre eigenen Maps einbauen wollen oder einfach neugierig sind, wie es funktioniert.</p></blockquote>
+<hr />
+<h2>Was MLT macht</h2>
+<p>Multilevel Tokens (MLT) ist ein altes Modul, das immer noch tadellos funktioniert. Es teleportiert Tokens von einem Ort zum anderen und lässt Spieler- und SL-Kreaturen unabhängig zwischen Maps wechseln. Warum MLT statt neuerer Module, die ebenfalls Tokens teleportieren? Wegen seiner Funktionsweise. MLT nutzt keine Foundry-IDs, sondern eigene Bezeichner. Das heißt, anders als bei Monks Active Tiles können wir zwei Releases verknüpfen, auch wenn sie nicht Teil desselben Packs sind. Lade Pack A herunter, später Pack B, und sie arbeiten automatisch zusammen. Mit Monks Active Tiles müsstest du jede Map als ein riesiges Release herunterladen oder jeden Teleporter von Hand pflegen, was über mehrere tausend Szenen keinen Spaß macht. Glaub uns.</p>
+<h2>Wie MLT funktioniert</h2>
+<p>Alles in MLT läuft über Zeichnungen, Formen, die mit dem Drawing Tool in der linken Toolbar erstellt werden. Wir nennen sie MLT-Felder. Sie einzurichten und zu verknüpfen ist simpel und fehlerfrei.</p>
+<img src="modules/beneos-module/assets/wiki/mlt_setup_a.webp" alt="MLT-Zone" />
+<p>Mit aktivem MLT bekommen die Einstellungen einer gezeichneten Form (Beneos verwendet immer Rechtecke) einen neuen Tab namens <strong>Multilevel</strong>. Stelle hier pro Feld alles ein, was jeder Teleporter braucht. Tipp: Kopiere Formen mit Strg+C und füge sie auf anderen Szenen ein.</p>
+<img src="modules/beneos-module/assets/wiki/mlt_setup_b.webp" alt="MLT-Einstellungen" />
+<ol>
+<li><strong>Quelle oder Ziel.</strong> MLT schickt Tokens von einem Quellfeld zu einem Zielfeld. Hake <strong>Out</strong> an, um aus diesem Feld zu teleportieren. Hake <strong>In</strong> an, um in es hinein zu teleportieren. Hake beides an für Reisen in beide Richtungen.</li>
+<li><strong>Teleport-Bezeichner.</strong> Der Kern von MLT. Gib beliebigen Text ein, aber bleib logisch. Verlässt ein Token dieses Feld, zeigt der Bezeichner auf das Ziel: Der Token geht zum anderen Feld mit demselben Bezeichner. Nur zwei Felder sollten sich einen Bezeichner teilen. Bei drei oder mehr wählt MLT zufällig, was Fehler verursacht. Kurz: Quelle und Ziel werden durch einen gemeinsamen Bezeichner gepaart.
+<ol>
+<li>Die Beneos-Namenskonvention ist <strong>ReleaseNummerA-MapNummerA_ReleaseNummerB-MapNummerB</strong> mit führenden Nullen, kleinere Nummer links. Zum Beispiel 76-04_76-05 oder 64-04_76-01.</li>
+</ol>
+</li>
+<li><strong>Aktivierung über Map Node.</strong> Ist das an, bleibt das Feld inaktiv, selbst wenn Tokens es betreten. Erst ein Klick auf ein Journal-Icon im Feld löst den Teleport aus. Das ist wichtig, weil MLT-Felder normalerweise unsichtbar sind und Spieler sonst aus Versehen die Szene wechseln könnten. Deshalb setzen wir auf jedes Feld ein eindeutiges Journal-Icon: Es sagt den Spielern, dass sie die Map hier verlassen können, und dient als Button, falls sie es wollen.</li>
+<li><strong>Token-Klonen.</strong> Seltener, aber fein. Klonen zeigt die Tokens eines anderen MLT-Feldes auf der aktuellen Fläche (oder umgekehrt), ohne sie zu teleportieren. Bewege einen Token auf Map A, und er bewegt sich auch auf Map B. Großartig, um Tokens im Erdgeschoss zu sehen, während du im ersten Stock stehst. Quell- und Zielfeld teilen sich wie immer denselben Bezeichner. <strong>Source</strong> ist das Feld, aus dem Tokens angezeigt werden (hier das Erdgeschoss), <strong>Target</strong> ist der Ort, an dem sie erscheinen (der erste Stock).</li>
+</ol>
+<h2>Folge deinen Spielern</h2>
+<p>Wenn ein Spieler durch einen Teleporter tritt, bekommst du eine private Chat-Karte: wer teleportiert ist, zu welcher Szene, und einen <strong>View Scene</strong>-Button, der dich direkt zu ihm springen lässt. Nie wieder rätseln, wohin die Gruppe abgewandert ist. Es ist standardmäßig an; schalte es unter <strong>Notify GM on teleport</strong> in den Moduleinstellungen um, falls du es je aus willst.</p>
+<img src="modules/beneos-module/assets/wiki/shot_mlt-chat_1.webp" alt="Die nur für den SL sichtbare Chat-Karte über einen zu einer Szene teleportierten Token mit View-Scene-Button">
+
+<h2>Einen Teleport-Sound hinzufügen</h2>
+<p>Sollen deine Spieler etwas hören, wenn sie einen Teleporter nutzen? Öffne die Drawing Config des <strong>In</strong>-Feldes, gehe zum <strong>Multilevel</strong>-Tab und setze einen <strong>Teleport sound</strong>. Er spielt für die reisenden Spieler und für dich, wenn der Teleport auslöst. Ein kleines Detail, das den Moment verkauft.</p>
+<img src="modules/beneos-module/assets/wiki/shot_mlt-sound_1.webp" alt="Das Teleport-Sound-Dropdown im Multilevel-Tab der Drawing Config">
+
+<p>Wie das für Spieler aussieht, steht unter <a class="wikilink" data-page="player-navigation">Spieler-Navigation</a>. Für Szenensprünge auf SL-Seite siehe <a class="wikilink" data-page="poi-teleporter">POI Teleporter</a>.</p>

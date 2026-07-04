@@ -1,0 +1,30 @@
+<blockquote><p><strong>Abans de llegir:</strong> res d'això no és necessari per fer servir Beneos Battlemaps. Tot ve configurat de fàbrica i funciona sense tocar res. Aquesta immersió tècnica és per a qui vulgui construir la mateixa sensació de profunditat als seus propis mapes, o per a qui simplement tingui curiositat per saber com funciona.</p></blockquote>
+<hr />
+<p>A diferència de les altres immersions tècniques, les rajoles de primer pla no necessiten cap mòdul complementari. Formen part del nucli de Foundry VTT, així que tot el que hi ha aquí funciona des del primer moment.</p>
+<h2>Què són les rajoles de primer pla</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_a.webp" alt="Exemple de rajola de primer pla" />
+<p>T'has preguntat mai com és que els tokens caminen per sota d'arbres, bigues o marcs de porta? Rajoles de primer pla. Són rajoles normals col·locades <strong>per sobre</strong> dels tokens en comptes de per sota. Els tokens desapareixen darrere de qualsevol cosa que lògicament quedi per damunt seu, i això dona a l'escena una profunditat real: un jugador passant sota una branca retorçada, travessant una porta, vorejant un mur que sobresurt.</p>
+<p>Per aconseguir-ho, retallem manualment cada objecte més alt que els jugadors i el col·loquem com a imatge de primer pla al damunt. És feina extra, però és una gran part del que fa que un mapa Beneos se senti com un espai i no com una imatge plana.</p>
+<h2>Accedir a les rajoles de primer pla</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_b.webp" alt="Accedir a les rajoles de primer pla" />
+<p>Per canviar o desactivar rajoles de primer pla, fes clic a <strong>Tile Controls</strong> a la barra d'eines esquerra. La capa de primer pla està amagada per defecte perquè no hi puguis fer clic per accident. Fes clic a la icona de la casa i totes les rajoles de primer pla es tornen seleccionables com qualsevol altra rajola.</p>
+<p>Atenció: en alguns mapes se superposen diverses rajoles de primer pla (fins a vuit en alguns punts, per exemple un sostre més les bigues de la porta més una secció de mur). Fer clic sempre selecciona la rajola de dalt. Per arribar a una de sota, aparta la de dalt, fes clic a la de sota i després torna-la al seu lloc. Sovint les rajoles estan bloquejades contra moviments accidentals, així que fes clic dret a una rajola i fes clic a la petita icona del cadenat per desbloquejar-la primer. Normalment la rajola de primer pla té exactament la mida del mapa, cosa que t'estalvia haver de fer malabars amb moltes rajoles petites.</p>
+<h2>Configuració de les rajoles de primer pla</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_c.webp" alt="Configuració de les rajoles de primer pla" />
+<p>Amb la capa de primer pla clicable via la icona de la casa, fes doble clic a qualsevol rajola per obrir-ne la configuració com en una rajola normal. Pots amagar una rajola de primer pla als jugadors, i afegir-hi automatització amb Monk's Active Tile Triggers per executar accions sota certes condicions. Més detalls a la nostra <a class="wikilink" data-page="dd-monks-active-tiles">immersió tècnica de Monk's Active Tile Triggers</a>. Les rajoles de primer pla també poden ser fitxers de vídeo, i els vídeos parcialment transparents creen efectes preciosos com capçades d'arbres que es gronxen. Les rajoles de vídeo tenen un cost de rendiment, així que les fem servir amb moderació. Per mantenir fluids els mapes animats, consulta <a class="wikilink" data-page="performance">Rendiment</a>.</p>
+<h3>Convertir una rajola en rajola de primer pla</h3>
+<p>Per convertir una rajola normal en una de primer pla, marca <strong>Is Overhead?</strong>. Tingues en compte que marcar només <strong>Is Roof?</strong> no és suficient: això només afecta com es calcula el camp de visió del token a distància, no si la rajola es mostra per sobre dels tokens.</p>
+<h3>Modes d'oclusió</h3>
+<p>L'<strong>Occlusion Mode</strong> controla com es comporta una rajola de primer pla quan un token es mou per sota seu. Les quatre opcions:</p>
+<table>
+<thead>
+<tr><th>Mode</th><th>Comportament</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>None</strong></td><td>La rajola es mostra sempre. L'opció adequada per a la majoria de casos.</td></tr>
+<tr><td><strong>Fade</strong></td><td>Tota la rajola s'esvaeix. Útil per a un sostre que s'hauria d'esvair quan els tokens són a sota.</td></tr>
+<tr><td><strong>Radial</strong></td><td>Manté la rajola visible i només esvaeix una petita àrea al voltant del token, ajustable amb el control lliscant Occlusion Alpha. L'àrea esvaïda és petita i fixa, així que el token pot semblar que està a sobre de la rajola en comptes de a sota.</td></tr>
+<tr><td><strong>Vision</strong></td><td>Només esvaeix les parts que un token realment veu amb la visió de token activa. A la pràctica, els jugadors només veuen la rajola amb claredat quan és a l'ombra, cosa que no resulta gaire intuïtiva.</td></tr>
+</tbody>
+</table>
+<p>Per saber com encaixa tot això a l'hora de dirigir una escena com a DJ, consulta <a class="wikilink" data-page="dm-navigation">Navegació del DJ</a>.</p>

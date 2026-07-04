@@ -1,0 +1,29 @@
+<p>不只 DM，玩家也能在地圖之間移動。他們的角色 Actor 會在地圖上的特定位置自行移動，完全不需要 DM 介入。這由 Multilevel Tokens 模組驅動，所以請確認它已安裝並啟用。使用起來非常簡單。想瞭解背後的技術，或想放置自己的導航點？請閱讀 <a class="wikilink" data-page="multilevel-tokens">Multilevel Tokens</a> 深度解析。不讀也沒關係，因為我們已經為你準備好一切。</p>
+<h2>玩家傳送點如何運作</h2>
+<p>Multilevel Tokens 連接兩個地點：一個起點和一個目的地。每個玩家傳送點通往哪裡，我們都已預先設定好。每個傳送區域（只有 DM 看得到）都帶有一個日誌圖示。玩家點擊它，他的角色 Token 就從起點跳到目的地，而且只有該玩家的畫面會切換場景。如果 DM 點擊傳送區域中的日誌圖示，則所有 Token 一起移動，無論是玩家還是非玩家。</p>
+<p>你沒有義務讓玩家自由走動，但這能催生刺激且富有敘事張力的探索。記好每位玩家的位置。當玩家宣告切換場景時，那就是你好好描述新地點的信號。有兩種圖示類型控制傳送點。</p>
+<h2>圖示的含義</h2>
+<table>
+<thead>
+<tr><th>圖示</th><th>含義</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><img src="modules/beneos-module/assets/wiki/shot_player-navigation_1.webp" alt="玩家導航器圖示" /></td>
+<td><strong>玩家導航器。</strong>玩家靠得夠近時就會看到的標準圖示。他們無法隔牆看到它；必須抵達場景出口才能互動。如果玩家點擊它，而他控制的角色正站在傳送區域內（該區域對他們隱形），那個角色就會前往目標場景，且只有該玩家的畫面切換場景。</td>
+</tr>
+<tr>
+<td><img src="modules/beneos-module/assets/wiki/shot_player-navigation_2.webp" alt="隱藏的 DM 導航器圖示" /></td>
+<td><strong>隱藏的 DM 導航器。</strong>效果與玩家導航器相同，但對玩家隱形且無法使用。它服務於不明顯的路徑：暗門、稍後才被發現或開通的路線。當你決定玩家可以繼續前進時，點擊它，他們就會傳送到目的地。非常適合陷阱、清理過的通道、半開的門。</td>
+</tr>
+</tbody>
+</table>
+<h2>誰能看到哪些圖示</h2>
+<p>只有當日誌已釋出給某位玩家或所有玩家時，該玩家才能看到它的日誌圖示。放五個圖示，但把每個日誌只釋出給一位玩家，每位玩家就只會看到自己的那一個。用這個方法給玩家私人筆記，或者把 DM 導航和玩家導航分開。</p>
+<img src="modules/beneos-module/assets/wiki/dm_journal_permission.webp" alt="變更日誌權限" />
+<p>設定日誌的權限就像設定 Token 一樣。透過右上導航列的<strong>日誌</strong>開啟日誌瀏覽器。右鍵點擊日誌並選擇<strong>配置所有權</strong>。<strong>所有玩家</strong>會授予世界中所有人存取權（DM 除外）。其下方可以設定個別玩家的規則。通常的做法是授予目標玩家權限，其他人保持原樣。</p>
+<ul>
+<li><strong>擁有者：</strong>完整的閱讀和編輯權限。</li>
+<li><strong>觀察者：</strong>可以看到日誌，不能編輯。</li>
+<li><strong>無：</strong>既看不到也不能編輯。這是所有 DM 導航日誌的預設值，例如 Point of Interest Teleporter。</li>
+</ul>

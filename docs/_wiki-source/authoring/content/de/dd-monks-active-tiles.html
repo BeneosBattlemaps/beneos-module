@@ -1,0 +1,37 @@
+<blockquote><p><strong>Bevor du weiterliest:</strong> Nichts davon ist nötig, um Beneos Battlemaps zu nutzen. Alles ist für dich eingerichtet und funktioniert out of the box. Diese Vertiefung ist für alle, die Monks-Active-Tile-Trigger-Funktionen in ihre eigenen Maps einbauen wollen oder einfach neugierig sind, wie es funktioniert.</p></blockquote>
+<hr />
+<p>Monks Active Tile Trigger (kurz MATT) ist eines der mächtigsten Automatisierungsmodule für Foundry VTT. Es ist ein Begleitmodul, nicht Teil des Beneos-Moduls, stelle also sicher, dass es installiert und aktiv ist. Die vollständige Liste findest du unter <a class="wikilink" data-page="requirements">Voraussetzungen</a>.</p>
+<h2>Wofür wir MATT nutzen</h2>
+<p>MATT ist ein Allrounder, um Teile einer Szene zu automatisieren oder zu steuern. Wir nutzen es für:</p>
+<ul>
+<li>Start- und Stopp-Buttons, die die Spieler-Introsequenzen abspielen und pausieren.</li>
+<li>Klick-Navigation auf der Escalia-Weltkarte.</li>
+<li>Mini-Soundboards auf einigen Szenen (zum Beispiel Barovia Village, The Church).</li>
+<li>Platzierte Buttons für Fallen, Geheimtüren oder andere klickbare Ereignisse.</li>
+<li>Die Navigationsleiste für das Hauptmenü von Curse of Strahd.</li>
+</ul>
+<p>MATT kann Animationen starten, Sounds abspielen, zu Szenen springen und vieles mehr. Jede Funktion hier abzudecken wäre erschlagend, und eine Wiki-Seite ist dafür das falsche Format. Wer tiefer einsteigen will, findet online exzellente Video-Tutorials. Unten zeigen wir, wie wir MATT einsetzen, damit du darauf deine eigenen Ideen aufbauen kannst.</p>
+<h2>Wie MATT funktioniert</h2>
+<p>Alles in MATT läuft über Tiles. Die Tile-Konfiguration bekommt einen neuen Tab namens <strong>Triggers</strong>. MATT arbeitet nach Ursache und Wirkung: Wenn ein unter <strong>Setup</strong> definierter Trigger erfüllt ist (ein Klick, ein Token betritt das Tile oder viele andere Bedingungen), passiert das, was unter <strong>Actions</strong> definiert ist.</p>
+<img src="modules/beneos-module/assets/wiki/matt_a.webp" alt="Beneos-Intro-Start-Tile" />
+<p>In diesem Beispiel ist ein Tile der Start- und Stopp-Button für die Introsequenzen. Das Intro ist ebenfalls ein Tile und spielt nur, wenn du den Play-Button-Tile anklickst.</p>
+<p>Wähle <strong>Tile Controls</strong> in der linken Toolbar, um Tiles auf dem Canvas anzuklicken. Ein Klick auf unseren Play-Button (ein Tile mit einem Play-Button-Bild) lässt uns unter <strong>Triggers</strong> definieren, was wann passieren soll.</p>
+<img src="modules/beneos-module/assets/wiki/matt_b.webp" alt="MATT-Triggers-Tab" />
+<p>Unter <strong>Setup</strong> legst du fest, wann die Aktion läuft. Hier triggert das Tile nur, wenn der SL es anklickt.</p>
+<img src="modules/beneos-module/assets/wiki/matt_c.webp" alt="MATT-Actions-Tab" />
+<p>Unter <strong>Actions</strong> sind mehrere Aktionen an einen einzigen Klick gekettet. MATT arbeitet sie von oben nach unten ab. Hier: Das Tile mit dem Intro wird zurückgesetzt, damit es von vorn beginnt (Foundry hat die Eigenheit, webm-Videos an zufälligen Positionen zu starten), dann wird das Intro-Tile gestartet, dann wird das Bild des angeklickten Tiles getauscht, damit der Play-Button rot wird und beim nächsten Mal als Stopp-Button lesbar ist, und zum Schluss spielt ein Klick-Sound als Feedback für alle Spieler und den SL. Die Tauschbilder werden im <strong>Images</strong>-Tab definiert.</p>
+<img src="modules/beneos-module/assets/wiki/matt_d.webp" alt="MATT-Images-Tab" />
+<p>Der Images-Tab sammelt die Bilder, zwischen denen MATT wechselt. Hier nur zwei, Start und Stopp, getauscht bei jedem Klick. Eine technische Anmerkung: Die beiden Bilder liegen unter verschiedenen Dateipfaden. Wenn wir ein Release packen, wird das zweite Bild nicht exportiert und würde beim Download fehlen. Deshalb liegt das zweite Bild im Beneos-Modul selbst, das immer installiert und damit immer verfügbar ist.</p>
+<p>Das war ein Beispiel. Um eigene Ideen zu bauen, schau dir die Tiles an, mit denen wir Intros steuern, Soundboards bauen oder Fallen auslösen. Mit etwas Kreativität kannst du richtig coole interaktive Effekte bauen. Auch Vordergrund-Tiles können MATT-Trigger tragen, mehr dazu in unserer <a class="wikilink" data-page="dd-foreground-tiles">Vordergrund-Tiles-Vertiefung</a>.</p>
+<h2>Einen Navigator bauen</h2>
+<p>Die klickbaren Menüs auf der <a class="wikilink" data-page="worldmap-escalia">Escalia-Weltkarte</a> und auf beiden Kampagnen-Landing-Pages, <a class="wikilink" data-page="landing-avernus">Descent into Avernus</a> und <a class="wikilink" data-page="landing-strahd">Curse of Strahd</a>, sind alle derselbe MATT-Trick. Ein Navigations-Button besteht aus zwei Tiles: einem unsichtbaren klickbaren Tile, das auf einem sichtbaren Text-Label liegt. Das Label ist nur zum Anschauen da; das unsichtbare Tile erledigt die Arbeit. Klick es an, und MATT springt zu einer anderen Szene.</p>
+<p>Am schnellsten baust du einen, indem du einen bestehenden Button kopierst, aber hier ist das Ganze von Grund auf:</p>
+<ol>
+<li>Platziere ein kleines Tile dort, wo der Button sitzen soll, und gib ihm ein transparentes oder fast transparentes Bild. Das ist der klickbare Trigger.</li>
+<li>Doppelklicke es, öffne den <strong>Triggers</strong>-Tab und stelle es unter <strong>Setup</strong> so ein, dass es bei einem Klick auslöst.</li>
+<li>Füge unter <strong>Actions</strong> die Aktion <strong>Change Scene</strong> hinzu und wähle über das kleine Bearbeiten-Icon daneben die Zielszene aus deinem Szenen-Browser.</li>
+<li>Platziere hinter dem Trigger ein sichtbares Text-Tile oder Button-Bild, damit Spieler wissen, dass es dort etwas zu klicken gibt.</li>
+<li>Rechtsklicke den Trigger und schalte seinen Aktiv-Status ein. Das ist ein funktionierender Navigationspunkt.</li>
+</ol>
+<img src="modules/beneos-module/assets/wiki/matt_navigator.webp" alt="Ein Navigations-Tile mit einer Change-Scene-Aktion im Triggers-Tab" />
+<p>Wiederhole das für jedes Ziel und kopiere die fertige Leiste dann auf jede Szene des Sets. Wenn die Zielszenen Navigation zueinander tragen, hast du ein Menü, in dem sich deine Spieler selbstständig bewegen können. Genau so sind die Beneos-Hubs gebaut, öffne also einen und nimm ihn auseinander, um ein vollständiges Beispiel zu sehen. Um einen Button im Laufe der Kampagne einzublenden oder zu verbergen, zeige oder verstecke sein Text-Tile und schalte den Aktiv-Status des Triggers um. Für das größere Bild, wie diese Menüs zu einem Kampagnen-Hub zusammenwachsen, siehe <a class="wikilink" data-page="landing-build">Baue deine eigene Landing Page</a>.</p>

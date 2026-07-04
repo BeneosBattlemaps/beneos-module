@@ -1,0 +1,25 @@
+<blockquote><p><strong>Zanim zaczniesz czytać:</strong> nic z tego nie jest potrzebne, aby korzystać z Beneos Battlemaps. Wszystko jest skonfigurowane za Ciebie i działa od razu. To dogłębne omówienie jest dla każdego, kto chce dodać funkcje Point of Interest do własnych map albo jest po prostu ciekaw, jak to działa.</p></blockquote>
+<hr />
+<h2>Co robi POI</h2>
+<p>Point of Interest Teleporter (PoI), podobnie jak Multilevel Tokens, jest skałą: obsługuje tysiące połączeń bez narzekania. PoI łączy mapy i sceny dla MG, nie dla graczy. Daje Ci nawigację po tysiącach scen i światów Beneos bez gubienia orientacji. Każda scena i release trzyma się tego samego wzorca, a teleportery o tym samym przeznaczeniu zawsze używają tych samych ikon i nazw.</p>
+<img src="modules/beneos-module/assets/wiki/poi_c.webp" alt="Pasek nawigacji Beneos" />
+<p>Chcieliśmy dostarczać doświadczenia, nie tylko mapy. Mapa czuje się częścią większej całości tylko wtedy, gdy jest z nią połączona. To zadanie Point of Interest Teleporterów: zabierają Cię do scen poglądowych, na mapę świata i dalej do innej strefy, do sekwencji intro, do scenerii. Cała nawigacja MG wykraczająca poza czyste Foundry działa na PoI.</p>
+<h2>Jak działa POI</h2>
+<p>PoI działa poprzez dzienniki. Normalnie dziennik przechowuje notatki lub tekst fabularny. Dla PoI sam dziennik jest informacją. W Scene Configuration sceny wybierz dziennik w polu <strong>Journal Entry</strong> w sekcji <strong>Ambience</strong>. Ten dziennik jest teraz połączony ze sceną i daje PoI to, czego potrzebuje. Każda scena (battlemapa, sceneria, intro) ma własny, unikalny dziennik. Dlatego folder Beneos Battlemaps w eksploratorze dzienników zawiera tak wiele dzienników: niczego nie przechowują, służą tylko jako łącza dla PoI.</p>
+<img src="modules/beneos-module/assets/wiki/poi_a.webp" alt="Konfiguracja sceny" />
+<p>Przeciągnij jeden z tych dzienników na mapę i kliknij go prawym przyciskiem (1), aby zobaczyć opcje. <strong>View Scene</strong> zabiera Ciebie (nie Twoich graczy) do sceny dziennika. <strong>Activate Scene</strong> przenosi wszystkich, łącznie z Tobą, na scenę docelową. Każdy teleporter PoI celuje więc w dokładnie jedną scenę. Przypisz dziennik w Scene Configuration, a ten dziennik reprezentuje tę scenę. Gdziekolwiek go umieścisz, kliknięcie prawym przyciskiem Cię tam zabiera.</p>
+<img src="modules/beneos-module/assets/wiki/poi_b.webp" alt="Kliknij dziennik prawym przyciskiem" />
+<h2>Uczyń ikony widocznymi</h2>
+<p>Nie widzisz ikon dzienników na swoich mapach? Włącz je. Na lewym pasku narzędzi Foundry kliknij ikonę proporczyka (notatek) (1), a potem ikonę pinezki podpisaną <strong>Toggle Notes Display</strong> (2). Wszystkie ikony dzienników pozostaną widoczne.</p>
+<img src="modules/beneos-module/assets/wiki/navigation_activate_journals.webp" alt="Aktywuj wpisy dziennika na swojej mapie" />
+<h2>Cel niezainstalowany? Zainstaluj go od ręki</h2>
+<p>Jeśli teleporter wskazuje release, którego jeszcze nie zainstalowałeś, nie musisz go szukać. Kliknij ikonę prawym przyciskiem i wybierz <strong>Install Missing Pack</strong>. Okno dialogowe pokazuje release, pozwala wybrać <strong>4K lub HD</strong> wraz z rozmiarem pobierania (1) i instaluje go prosto do Twojego świata. Gdy skończy, kliknij ikonę prawym przyciskiem ponownie i podróżuj. To funkcja tylko dla MG.</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-install_1.webp" alt="Okno dialogowe Install Missing Pack z wyborem pobierania 4K i HD">
+
+<h2>Znajdź to, czego brakuje</h2>
+<p>Prowadzisz duży zaimportowany świat i nie wiesz, które połączenia są zepsute? Otwórz <strong>Ustawienia modułów, Beneos Teleporter, Open Audit Window</strong>. Narzędzie skanuje każdą scenę i wypisuje każdy zepsuty lub brakujący teleporter: scenę źródłową, zamierzony cel, status i release, który trzeba by zainstalować. <strong>Go to Source</strong> przeskakuje mapą do notatki, abyś mógł ją naprawić.</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-audit_1.webp" alt="Okno audytu POI z listą brakujących celów teleporterów i ich release'ów">
+
+<h2>Rozwiązywanie problemów</h2>
+<p>Teleporter, który ląduje na złej scenie, to zwykle jedna z trzech rzeczy: brak dziennika przypisanego do ikony, dziennik nieprzypisany do mapy albo ten sam dziennik przypisany do więcej niż jednej mapy. Każdy dziennik musi należeć do dokładnie jednej sceny.</p>
+<p>Ikony dla MG w trakcie gry omawia <a class="wikilink" data-page="dm-navigation">nawigacja MG</a>. Ruch sterowany przez graczy opisuje <a class="wikilink" data-page="multilevel-tokens">Multilevel Tokens</a>.</p>

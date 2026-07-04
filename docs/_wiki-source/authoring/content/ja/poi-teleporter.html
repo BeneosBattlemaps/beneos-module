@@ -1,0 +1,25 @@
+<blockquote><p><strong>お読みになる前に：</strong>ここに書かれている内容は、Beneos Battlemapsを使うために必要なものではありません。すべては設定済みで、そのまま動作します。この解説は、Point of Interest機能を自作マップに追加したい方や、単に仕組みが気になる方のためのものです。</p></blockquote>
+<hr />
+<h2>POIができること</h2>
+<p>Point of Interest Teleporter（PoI）は、Multilevel Tokensと同じく非常に堅牢で、何千ものリンクも問題なく処理します。PoIはプレイヤーではなくDMのために、マップとシーンをリンクします。何千ものBeneosのシーンやワールドを、迷子にならずに移動できるナビゲーションを提供してくれます。すべてのシーンとリリースは同じパターンに従い、同じ目的のテレポーターには常に同じアイコンと名前が使われます。</p>
+<img src="modules/beneos-module/assets/wiki/poi_c.webp" alt="Beneosナビゲーションバー" />
+<p>私たちが届けたかったのは、ただのマップではなく体験です。マップがより大きな全体の一部だと感じられるのは、実際につながっている時だけです。それこそがPoint of Interest Teleporterの仕事です。オーバービューシーンへ、ワールドマップへ、さらに別のゾーンへ、イントロシーケンスへ、シーナリーへと連れて行ってくれます。素のFoundryを超えるDMナビゲーションはすべてPoIの上で動いています。</p>
+<h2>POIの仕組み</h2>
+<p>PoIはジャーナルを介して機能します。通常、ジャーナルはメモやストーリーテキストを保存するものですが、PoIにとってはジャーナルそのものが情報です。シーンのシーン設定で、<strong>アンビエンス</strong>セクションの<strong>ジャーナルエントリ</strong>からジャーナルを選びます。これでそのジャーナルはシーンにリンクされ、PoIに必要な情報を提供します。すべてのシーン（バトルマップ、シーナリー、イントロ）には、それぞれ固有のジャーナルがあります。ジャーナルエクスプローラーのBeneos Battlemapsフォルダに大量のジャーナルが入っているのはこのためです。それらは何も保存しておらず、PoIのリンクとして機能しているだけです。</p>
+<img src="modules/beneos-module/assets/wiki/poi_a.webp" alt="シーン設定" />
+<p>これらのジャーナルのひとつをキャンバスにドラッグして右クリックすると（1）、オプションが表示されます。<strong>View Scene</strong>は、（プレイヤーではなく）あなただけをジャーナルのシーンに連れて行きます。<strong>Activate Scene</strong>は、あなたを含む全員を対象シーンに強制移動させます。つまり、各PoIテレポーターはちょうど1つのシーンを指します。シーン設定でジャーナルを割り当てると、そのジャーナルはそのシーンを表すようになります。どこに置いても、右クリックすればそこへ移動できます。</p>
+<img src="modules/beneos-module/assets/wiki/poi_b.webp" alt="ジャーナルを右クリック" />
+<h2>アイコンを表示させる</h2>
+<p>マップにジャーナルアイコンが表示されていませんか？オンにしましょう。左側のFoundryツールバーで、バナー（ノート）アイコン（1）をクリックし、次に<strong>Toggle Notes Display</strong>と表示されるピンの頭のアイコン（2）をクリックします。これですべてのジャーナルアイコンが表示されたままになります。</p>
+<img src="modules/beneos-module/assets/wiki/navigation_activate_journals.webp" alt="マップ上のジャーナルエントリをアクティベート" />
+<h2>目的地が未インストール？その場でインストール</h2>
+<p>テレポーターが、まだインストールしていないリリースを指している場合、探し回る必要はありません。アイコンを右クリックして<strong>Install Missing Pack</strong>を選んでください。ダイアログにリリースが表示され、ダウンロードサイズとともに<strong>4KかHD</strong>を選べて（1）、そのままワールドにインストールされます。完了したら、もう一度アイコンを右クリックして移動しましょう。これはGM専用です。</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-install_1.webp" alt="4KとHDのダウンロード選択があるInstall Missing Packダイアログ">
+
+<h2>足りないものを見つける</h2>
+<p>大きなインポート済みワールドを運用していて、どのリンクが壊れているかわからない？<strong>モジュール設定、Beneos Teleporter、Open Audit Window</strong>を開いてください。すべてのシーンをスキャンし、壊れている、または欠けているテレポーターを一覧表示します。ソースシーン、本来のターゲット、ステータス、そしてインストールが必要なリリースがわかります。<strong>Go to Source</strong>でキャンバスがそのノートにジャンプするので、その場で修正できます。</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-audit_1.webp" alt="欠けているテレポーターの目的地とそのリリースを一覧表示するPOI監査ウィンドウ">
+
+<h2>トラブルシューティング</h2>
+<p>テレポーターが間違ったシーンに到着する場合、原因はたいてい3つのうちのどれかです。アイコンにジャーナルが割り当てられていない、ジャーナルがどのマップにも割り当てられていない、または同じジャーナルが複数のマップに割り当てられている。各ジャーナルは、ちょうど1つのシーンに属していなければなりません。</p>
+<p>プレイ中のDM向けアイコンについては<a class="wikilink" data-page="dm-navigation">DMナビゲーション</a>を、プレイヤー主導の移動については<a class="wikilink" data-page="multilevel-tokens">Multilevel Tokens</a>をご覧ください。</p>

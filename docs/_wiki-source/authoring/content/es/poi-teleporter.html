@@ -1,0 +1,25 @@
+<blockquote><p><strong>Antes de leer:</strong> nada de esto es necesario para usar Beneos Battlemaps. Todo viene configurado y funciona desde el primer momento. Esta guía a fondo es para quien quiera añadir funciones de Point of Interest a sus propios mapas, o simplemente sienta curiosidad por cómo funciona.</p></blockquote>
+<hr />
+<h2>Qué hace POI</h2>
+<p>Point of Interest Teleporter (PoI), como Multilevel Tokens, es sólido como una roca: maneja miles de enlaces sin quejarse. PoI enlaza mapas y escenas para el DJ, no para los jugadores. Te da navegación a través de miles de escenas y mundos de Beneos sin perder el hilo. Cada escena y release sigue el mismo patrón, y los teleportadores con el mismo propósito usan siempre los mismos iconos y nombres.</p>
+<img src="modules/beneos-module/assets/wiki/poi_c.webp" alt="Barra de navegación de Beneos" />
+<p>Queríamos entregar experiencias, no solo mapas. Un mapa se siente parte de un todo mayor solo cuando está conectado a uno. Ese es el trabajo de los Point of Interest Teleporters: te llevan a las escenas generales, al mapa del mundo, y de ahí a otra zona, a las secuencias de intro, a las sceneries. Toda la navegación del DJ más allá del Foundry básico funciona con PoI.</p>
+<h2>Cómo funciona POI</h2>
+<p>PoI funciona a través de journals. Normalmente un journal guarda notas o texto de historia. Para PoI, el propio journal es la información. En la Configuración de escena de una escena, elige un journal bajo <strong>Journal Entry</strong> en la sección <strong>Ambience</strong>. Ese journal queda ahora vinculado a la escena y le da a PoI lo que necesita. Cada escena (battlemap, scenery, intro) tiene su propio journal único. Por eso la carpeta Beneos Battlemaps del explorador de journals contiene tantos journals: no guardan nada, solo sirven como enlaces para PoI.</p>
+<img src="modules/beneos-module/assets/wiki/poi_a.webp" alt="Configuración de escena" />
+<p>Arrastra uno de estos journals al lienzo y haz clic derecho sobre él (1) para ver las opciones. <strong>View Scene</strong> te lleva (a ti, no a tus jugadores) a la escena del journal. <strong>Activate Scene</strong> fuerza a todos, incluido tú, a la escena de destino. Así, cada teleportador PoI apunta exactamente a una escena. Asigna un journal en la Configuración de escena y ese journal representa esa escena. Allí donde lo coloques, el clic derecho te lleva a ella.</p>
+<img src="modules/beneos-module/assets/wiki/poi_b.webp" alt="Clic derecho sobre un journal" />
+<h2>Haz visibles los iconos</h2>
+<p>¿No hay iconos de journal en tus mapas? Actívalos. En la barra de herramientas de Foundry a la izquierda, haz clic en el icono de estandarte (notas) (1), y luego en el icono de chincheta llamado <strong>Toggle Notes Display</strong> (2). Todos los iconos de journal permanecen visibles.</p>
+<img src="modules/beneos-module/assets/wiki/navigation_activate_journals.webp" alt="Activar las entradas de journal en tu mapa" />
+<h2>¿Destino sin instalar? Instálalo en el acto</h2>
+<p>Si un teleportador apunta a un release que todavía no has instalado, no tienes que salir a buscarlo. Haz clic derecho en el icono y elige <strong>Install Missing Pack</strong>. Un diálogo muestra el release, te deja elegir <strong>4K o HD</strong> con el tamaño de descarga (1) y lo instala directamente en tu mundo. Cuando termine, vuelve a hacer clic derecho en el icono y viaja. Esto es solo para el DJ.</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-install_1.webp" alt="El diálogo Install Missing Pack con la elección de descarga entre 4K y HD">
+
+<h2>Encuentra lo que falta</h2>
+<p>¿Diriges un mundo grande importado y no sabes qué enlaces están rotos? Abre <strong>Module Settings, Beneos Teleporter, Open Audit Window</strong>. Escanea cada escena y lista cada teleportador roto o ausente: la escena de origen, el destino previsto, el estado y el release que necesitarías instalar. <strong>Go to Source</strong> salta con el lienzo hasta la nota para que puedas arreglarla.</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-audit_1.webp" alt="La ventana de auditoría de POI listando destinos de teleportador ausentes y sus releases">
+
+<h2>Resolución de problemas</h2>
+<p>Un teleportador que acaba en la escena equivocada suele ser una de tres cosas: ningún journal asignado al icono, el journal no asignado a un mapa, o el mismo journal asignado a más de un mapa. Cada journal debe pertenecer exactamente a una escena.</p>
+<p>Para los iconos que ve el DJ durante el juego, mira <a class="wikilink" data-page="dm-navigation">Navegación del DJ</a>. Para el movimiento dirigido por los jugadores, mira <a class="wikilink" data-page="multilevel-tokens">Multilevel Tokens</a>.</p>

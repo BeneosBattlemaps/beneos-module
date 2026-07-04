@@ -1,0 +1,35 @@
+<blockquote><p><strong>Bevor du weiterliest:</strong> Nichts hier ist nötig, um Beneos zu nutzen. Diese Seite ist für den SL, der die <a class="wikilink" data-page="landing-avernus">Avernus</a>- und <a class="wikilink" data-page="landing-strahd">Barovia</a>-Hubs gesehen und gedacht hat: So einen will ich für meine eigene Welt.</p></blockquote>
+<hr />
+<p>Eine Landing Page sieht schick aus, aber es sind immer nur dieselben vier Ideen in unterschiedlicher Grafik. Sobald du sie benennen kannst, baust du einen Hub für jede Kampagne, oder nimmst einen von unseren auseinander und baust ihn als deinen eigenen wieder auf.</p>
+
+<h2>Das Rezept</h2>
+<ol class="bw-steps">
+<li><strong>Ein Set aus Szenen.</strong> Eine Startseite plus eine Szene für alles, was deine Spieler brauchen: eine Karte, ein Hauptquartier, eine Besetzungsseite, was immer deine Geschichte will. Eine Landing Page ist nichts weiter als diese Szenen, gruppiert in einem Ordner.</li>
+<li><strong>Eine Navigationsleiste.</strong> Auf jeder Szene ein kleines Menü, das zu den anderen springt. Das ist das einzige bewegliche Teil, und es läuft über <a class="wikilink" data-page="dd-monks-active-tiles">Monks Active Tile Triggers</a>.</li>
+<li><strong>Enthüllen nach Bedarf.</strong> Inhalte, die verborgen starten und erscheinen, wenn die Gruppe sie sich verdient: ein NSC, ein Vertrag, ein Artefakt, ein Fahrzeug. In Foundry ist das nichts weiter als ein Tile oder eine Zeichnung, die du rechtsklickst und mit <strong>Toggle Visibility State</strong> umschaltest.</li>
+<li><strong>Points of Interest.</strong> Auf den Kartenszenen Journal-Marker, die Spieler öffnen können, und durch die sie reisen. Siehe <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporter</a>.</li>
+</ol>
+
+<h2>Schritt für Schritt bauen</h2>
+<h3>1. Lege deine Szenen an</h3>
+<p>Entscheide, was dein Hub braucht, und lege für jedes eine Szene an, plus eine Startseite. Halte sie zusammen in einem Szenen-Ordner, damit das Set leicht zu finden und zu verschieben ist. Der schnellste Start ist, eine unserer Landing Pages zu kopieren und die Grafik zu tauschen, denn die Verdrahtung ist schon erledigt.</p>
+<h3>2. Verdrahte die Navigation</h3>
+<p>Gib der Startseite eine Reihe von Buttons, einen pro Szene, und wiederhole diese Leiste dann auf jeder Szene, damit sich Spieler von überall frei bewegen können. Jeder Button ist ein unsichtbares klickbares Tile über einem sichtbaren Text-Label, mit einer <strong>Change Scene</strong>-Aktion dahinter. Die <a class="wikilink" data-page="dd-monks-active-tiles">Monks-Active-Tiles-Vertiefung</a> hat eine komplette Anleitung zum Bau eines Navigators, und einen bestehenden Button zu kopieren ist mit Abstand der einfachste Einstieg.</p>
+<h3>3. Setze die Startseite standardmäßig aktiv</h3>
+<p>Mach die Startseite zu der Szene, die Spieler beim Einloggen sehen, und halte sie zu Beginn jeder Session aktiv. Von dort erreichen sie alles, was du ihnen geöffnet hast.</p>
+<h3>4. Verbirg, was noch nicht verdient ist</h3>
+<p>Starte mit nur dem Nötigsten sichtbar und halte den Rest verborgen. Während die Kampagne voranschreitet, enthüllst du einen Navigationspunkt, einen NSC oder eine Belohnung, indem du die Sichtbarkeit umschaltest. Dieses langsame Enthüllen lässt einen Hub lebendig wirken statt wie ein statisches Menü.</p>
+<h3>5. Richte die Bühne her</h3>
+<p>Eine Landing Page ist eine Bühne, also beleuchte sie. Füge einen Ambience-Track im <a class="wikilink" data-page="ambience-sound">Ambience</a>-Tab der Szene hinzu und nutze <a class="wikilink" data-page="dd-fxmaster">FXMaster</a> für Wetter und Stimmung. Ein Session-Titel auf der Startseite, bearbeitet mit den Zeichenwerkzeugen, setzt den Ton, bevor jemand spricht.</p>
+
+<h2>Einen Ort mit seinem Guide verknüpfen</h2>
+<p>Du kannst überall auf einer Szene einen Hilfe-Marker platzieren, der die Dokumentation direkt an der richtigen Stelle öffnet, ein neugieriger Spieler klickt einmal und landet im exakt passenden Guide. Platziere eine Karten-<strong>Note</strong> mit dem Beneos-Hilfe-Icon und nutze dann ihr <strong>Label</strong>, um sie auszurichten:</p>
+<ul>
+<li><strong>Nur die Doku:</strong> Eine schlichte Hilfe-Note (ohne Marker) öffnet die Startseite der Dokumentation, genauso wie das Hilfe-Icon auf jeder Beneos-Szene.</li>
+<li><strong>Ein bestimmter Artikel:</strong> Füge <code>@doc[landing-avernus]</code> zum Label hinzu, und sie öffnet diesen Artikel.</li>
+<li><strong>Ein bestimmter Abschnitt:</strong> Füge <code>@doc[landing-avernus#la-garage]</code> hinzu, und sie springt direkt zu diesem Teil des Artikels.</li>
+</ul>
+<p>Der <code>@doc[...]</code>-Marker wird nie auf der Karte angezeigt; nur der Text davor, ein Label wie <code>Garage guide @doc[landing-avernus#la-garage]</code> liest sich also schlicht als "Garage guide". Der Seitenname ist der Schlüssel des Artikels aus der Dokumentations-Seitenleiste, und die Abschnittsnamen stammen aus den Überschriften des jeweiligen Artikels. Linksklick oder Rechtsklick öffnen beide.</p>
+
+<h2>Lerne von denen, die wir ausgeliefert haben</h2>
+<p>Der schnellste Lehrer ist ein funktionierendes Beispiel. Öffne den <a class="wikilink" data-page="landing-avernus">Descent into Avernus</a>-Hub für den vollen Werkzeugkasten, einen Hauptquartier-Tisch, eine Hexcrawl-Weltkarte, eine Garage voller Belohnungen, oder den <a class="wikilink" data-page="landing-strahd">Curse of Strahd</a>-Hub für ein Questbuch und eine Wand voller Gesichter. Nimm die Teile, die zu deiner Geschichte passen, und lass den Rest liegen.</p>

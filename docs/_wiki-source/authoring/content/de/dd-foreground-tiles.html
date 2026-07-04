@@ -1,0 +1,30 @@
+<blockquote><p><strong>Bevor du weiterliest:</strong> Nichts davon ist nötig, um Beneos Battlemaps zu nutzen. Alles ist für dich eingerichtet und funktioniert out of the box. Diese Vertiefung ist für alle, die denselben Tiefeneffekt in ihre eigenen Maps bauen wollen oder einfach neugierig sind, wie es funktioniert.</p></blockquote>
+<hr />
+<p>Anders als die anderen Vertiefungen brauchen Vordergrund-Tiles kein Begleitmodul. Sie sind Teil des FoundryVTT-Kerns, alles hier funktioniert also out of the box.</p>
+<h2>Was Vordergrund-Tiles sind</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_a.webp" alt="Beispiel für ein Vordergrund-Tile" />
+<p>Hast du dich je gefragt, wie Tokens unter Bäumen, Balken oder Türrahmen hindurchlaufen? Vordergrund-Tiles. Das sind gewöhnliche Tiles, die <strong>über</strong> den Tokens platziert werden statt darunter. Tokens verschwinden hinter allem, was logisch über ihnen liegt, und das gibt der Szene echte Tiefe: ein Spieler, der unter einem knorrigen Ast hindurchgeht, durch einen Türbogen, an einer überhängenden Mauer vorbei.</p>
+<p>Dafür schneiden wir jedes Objekt, das höher ist als die Spieler, manuell aus und legen es als Vordergrundbild obendrauf. Extra-Arbeit, aber ein großer Teil dessen, was eine Beneos-Map wie einen Raum wirken lässt statt wie ein flaches Bild.</p>
+<h2>Vordergrund-Tiles erreichen</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_b.webp" alt="Zugriff auf Vordergrund-Tiles" />
+<p>Um Vordergrund-Tiles zu ändern oder zu deaktivieren, klicke auf <strong>Tile Controls</strong> in der linken Toolbar. Die Vordergrund-Ebene ist standardmäßig ausgeblendet, damit du sie nicht aus Versehen anklickst. Klicke auf das Haus-Icon, und alle Vordergrund-Tiles werden auswählbar wie jedes andere Tile.</p>
+<p>Achtung: Auf manchen Maps überlappen sich mehrere Vordergrund-Tiles (stellenweise bis zu acht, etwa ein Dach plus seine Türbalken plus ein Mauerstück). Ein Klick wählt immer das oberste Tile. Um an eines darunter zu kommen, schieb das obere beiseite, klicke das darunter an und leg es dann zurück. Tiles sind oft gegen versehentliches Verschieben gesperrt, also Rechtsklick auf ein Tile und das kleine Schloss-Icon anklicken, um es erst zu entsperren. Meist ist das Vordergrund-Tile exakt so groß wie die Map, das erspart dir das Jonglieren mit vielen kleinen Tiles.</p>
+<h2>Einstellungen von Vordergrund-Tiles</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_c.webp" alt="Einstellungen von Vordergrund-Tiles" />
+<p>Ist die Vordergrund-Ebene über das Haus-Icon klickbar, öffnet ein Doppelklick auf jedes Tile seine Einstellungen wie bei einem normalen Tile. Du kannst ein Vordergrund-Tile vor Spielern verbergen und mit Monks Active Tile Trigger Automatisierungen anhängen, die unter bestimmten Bedingungen Aktionen ausführen. Mehr dazu in unserer <a class="wikilink" data-page="dd-monks-active-tiles">Monks-Active-Tile-Trigger-Vertiefung</a>. Vordergrund-Tiles können auch Videodateien sein, und teiltransparente Videos ergeben wunderschöne Effekte wie wiegende Baumkronen. Video-Tiles kosten Performance, wir setzen sie also sparsam ein. Wie animierte Maps flüssig bleiben, steht unter <a class="wikilink" data-page="performance">Performance</a>.</p>
+<h3>Ein Tile zum Vordergrund-Tile machen</h3>
+<p>Um ein normales Tile in ein Vordergrund-Tile zu verwandeln, setze den Haken bei <strong>Is Overhead?</strong>. Beachte, dass der Haken bei <strong>Is Roof?</strong> allein nicht reicht: Der beeinflusst nur, wie die Sichtweite von Tokens aus der Ferne berechnet wird, nicht ob das Tile über den Tokens gerendert wird.</p>
+<h3>Occlusion-Modi</h3>
+<p><strong>Occlusion Mode</strong> steuert, wie sich ein Vordergrund-Tile verhält, wenn sich ein Token darunter bewegt. Die vier Optionen:</p>
+<table>
+<thead>
+<tr><th>Modus</th><th>Verhalten</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>None</strong></td><td>Das Tile wird immer angezeigt. Richtig für die meisten Fälle.</td></tr>
+<tr><td><strong>Fade</strong></td><td>Das ganze Tile blendet aus. Nützlich für ein Dach, das verschwinden soll, wenn Tokens darunter stehen.</td></tr>
+<tr><td><strong>Radial</strong></td><td>Lässt das Tile sichtbar und blendet nur einen kleinen Bereich um den Token aus, einstellbar über den Occlusion-Alpha-Regler. Der ausgeblendete Bereich ist klein und fest, der Token kann also so wirken, als stünde er auf dem Tile statt darunter.</td></tr>
+<tr><td><strong>Vision</strong></td><td>Blendet nur die Teile aus, die ein Token mit aktiver Token-Sicht tatsächlich sieht. In der Praxis sehen Spieler das Tile nur dann klar, wenn es im Schatten liegt, was nicht besonders intuitiv ist.</td></tr>
+</tbody>
+</table>
+<p>Wie all das ins Leiten einer Szene als SL passt, steht unter <a class="wikilink" data-page="dm-navigation">SL-Navigation</a>.</p>

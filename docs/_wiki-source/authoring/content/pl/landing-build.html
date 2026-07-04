@@ -1,0 +1,35 @@
+<blockquote><p><strong>Zanim zaczniesz czytać:</strong> nic z tego nie jest wymagane, aby korzystać z Beneos. Ta strona jest dla MG, który zobaczył huby <a class="wikilink" data-page="landing-avernus">Avernusa</a> i <a class="wikilink" data-page="landing-strahd">Barovii</a> i pomyślał: chcę taki dla własnego świata.</p></blockquote>
+<hr />
+<p>Strona startowa wygląda efektownie, ale to zawsze te same cztery pomysły w różnych szatach graficznych. Gdy potrafisz je nazwać, zbudujesz hub do dowolnej kampanii albo rozbierzesz jeden z naszych i złożysz go po swojemu.</p>
+
+<h2>Przepis</h2>
+<ol class="bw-steps">
+<li><strong>Zestaw scen.</strong> Strona główna plus scena dla każdej rzeczy, której potrzebują Twoi gracze: mapa, kwatera główna, strona obsady, czegokolwiek chce Twoja historia. Strona startowa to po prostu te sceny zebrane w jednym folderze.</li>
+<li><strong>Pasek nawigacji.</strong> Na każdej scenie małe menu, które przeskakuje do pozostałych. To jedyna ruchoma część i działa na <a class="wikilink" data-page="dd-monks-active-tiles">Monks Active Tile Triggers</a>.</li>
+<li><strong>Odsłanianie na żądanie.</strong> Treści, które zaczynają ukryte i pojawiają się, gdy drużyna na nie zapracuje: BN, kontrakt, artefakt, pojazd. W Foundry to nic więcej niż kafelek lub rysunek, który klikasz prawym i wybierasz <strong>Przełącz stan widoczności</strong>.</li>
+<li><strong>Punkty zainteresowania.</strong> Na scenach map: znaczniki dziennika, które gracze mogą otwierać i przez które mogą podróżować. Zobacz <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporters</a>.</li>
+</ol>
+
+<h2>Zbuduj to krok po kroku</h2>
+<h3>1. Rozplanuj sceny</h3>
+<p>Zdecyduj, czego potrzebuje Twój hub, i zrób scenę dla każdej rzeczy, plus stronę główną. Trzymaj je razem w jednym folderze Scen, aby zestaw był łatwy do znalezienia i przenoszenia. Najszybszy start to skopiowanie jednej z naszych stron startowych i podmiana grafik, bo okablowanie jest już zrobione.</p>
+<h3>2. Okabluj nawigację</h3>
+<p>Daj stronie głównej rząd przycisków, po jednym na scenę, a potem powtórz ten pasek na każdej scenie, aby gracze mogli poruszać się swobodnie skądkolwiek. Każdy przycisk to niewidzialny klikalny kafelek nad widoczną etykietą tekstową, z akcją <strong>Change Scene</strong> za nim. <a class="wikilink" data-page="dd-monks-active-tiles">Dogłębne omówienie Monks Active Tiles</a> zawiera pełny poradnik budowy nawigatora, a skopiowanie istniejącego przycisku to zdecydowanie najłatwiejsza droga.</p>
+<h3>3. Ustaw stronę główną jako domyślnie aktywną</h3>
+<p>Zrób ze strony głównej scenę, którą gracze widzą po zalogowaniu, i trzymaj ją aktywną na początku każdej sesji. Stamtąd docierają do wszystkiego, co im otworzysz.</p>
+<h3>4. Ukryj to, co jeszcze niezasłużone</h3>
+<p>Zacznij tylko z niezbędnymi elementami widocznymi, a resztę trzymaj w ukryciu. W miarę postępu kampanii odsłaniaj punkt nawigacyjny, BN-a lub nagrodę, przełączając ich widoczność. To powolne odkrywanie sprawia, że hub czuje się żywy, a nie jak statyczne menu.</p>
+<h3>5. Ubierz to</h3>
+<p>Strona startowa to scena teatralna, więc ją oświetl. Dodaj ścieżkę ambientową w zakładce <a class="wikilink" data-page="ambience-sound">Otoczenie</a> sceny i użyj <a class="wikilink" data-page="dd-fxmaster">FXMaster</a> do pogody i nastroju. Tytuł sesji na stronie głównej, edytowany narzędziami rysowania, nadaje ton, zanim ktokolwiek się odezwie.</p>
+
+<h2>Połącz miejsce z jego przewodnikiem</h2>
+<p>W dowolnym miejscu sceny możesz położyć znacznik pomocy, który otwiera dokumentację prosto we właściwym miejscu, więc ciekawski gracz klika raz i ląduje na dokładnie tym przewodniku. Umieść na mapie <strong>Notatkę</strong> z ikoną pomocy Beneos, a potem użyj jej <strong>Etykiety</strong>, aby ją wycelować:</p>
+<ul>
+<li><strong>Tylko dokumentacja:</strong> zwykła notatka pomocy (bez znacznika) otwiera stronę główną dokumentacji, tak samo jak ikona pomocy na każdej scenie Beneos.</li>
+<li><strong>Konkretny artykuł:</strong> dodaj <code>@doc[landing-avernus]</code> do etykiety, a otworzy ten artykuł.</li>
+<li><strong>Konkretna sekcja:</strong> dodaj <code>@doc[landing-avernus#la-garage]</code>, a przeskoczy prosto do tej części artykułu.</li>
+</ul>
+<p>Znacznik <code>@doc[...]</code> nigdy nie jest pokazywany na mapie; widoczny jest tylko tekst przed nim, więc etykieta taka jak <code>Garage guide @doc[landing-avernus#la-garage]</code> czyta się po prostu jako "Garage guide". Nazwa strony to klucz artykułu z panelu bocznego dokumentacji, a nazwy sekcji pochodzą z nagłówków każdego artykułu. Otwiera go zarówno lewy, jak i prawy przycisk myszy.</p>
+
+<h2>Ucz się od tych, które wydaliśmy</h2>
+<p>Najszybszym nauczycielem jest działający przykład. Otwórz hub <a class="wikilink" data-page="landing-avernus">Descent into Avernus</a> po pełny zestaw narzędzi, stół kwatery głównej, heksową mapę świata, garaż nagród, albo hub <a class="wikilink" data-page="landing-strahd">Curse of Strahd</a> po księgę zadań i ścianę twarzy. Weź części, które pasują do Twojej historii, a resztę zostaw.</p>

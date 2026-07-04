@@ -1,0 +1,25 @@
+<blockquote><p><strong>Antes de leres:</strong> nada disto é necessário para usar o Beneos Battlemaps. Está tudo configurado para ti e funciona logo à partida. Este mergulho a fundo é para quem quer adicionar funções de Point of Interest aos seus próprios mapas, ou tem simplesmente curiosidade sobre como funciona.</p></blockquote>
+<hr />
+<h2>O que o POI faz</h2>
+<p>O Point of Interest Teleporter (PoI), tal como o Multilevel Tokens, é sólido como rocha: lida com milhares de ligações sem se queixar. O PoI liga mapas e cenas para o Mestre, não para os jogadores. Dá-te navegação por milhares de cenas e mundos Beneos sem perderes o rumo. Cada cena e release segue o mesmo padrão, e os teleportadores com o mesmo propósito usam sempre os mesmos ícones e nomes.</p>
+<img src="modules/beneos-module/assets/wiki/poi_c.webp" alt="Barra de navegação Beneos" />
+<p>Quisemos entregar experiências, não apenas mapas. Um mapa só parece parte de um todo maior quando está ligado a um. Esse é o trabalho dos Point of Interest Teleporters: levam-te a cenas de visão geral, ao mapa do mundo e daí a outra zona, a sequências de intro, a sceneries. Toda a navegação do Mestre para lá do Foundry puro corre sobre o PoI.</p>
+<h2>Como o POI funciona</h2>
+<p>O PoI funciona através de journals. Normalmente um journal guarda notas ou texto de história. Para o PoI, o próprio journal é a informação. Na Configuração de Cena de uma cena, escolhe um journal em <strong>Journal Entry</strong> na secção <strong>Ambience</strong>. Esse journal fica agora ligado à cena e dá ao PoI o que ele precisa. Cada cena (battlemap, scenery, intro) tem o seu próprio journal único. É por isso que a pasta Beneos Battlemaps no explorador de journals tem tantos journals: não guardam nada, servem apenas de ligações para o PoI.</p>
+<img src="modules/beneos-module/assets/wiki/poi_a.webp" alt="Configuração de cena" />
+<p>Arrasta um destes journals para o canvas e faz clique direito nele (1) para veres as opções. <strong>View Scene</strong> leva-te (a ti, não aos teus jogadores) para a cena do journal. <strong>Activate Scene</strong> força toda a gente, tu incluído, a ir para a cena de destino. Assim, cada teleportador PoI aponta exatamente para uma cena. Atribui um journal na Configuração de Cena e esse journal passa a representar essa cena. Onde quer que o coloques, o clique direito leva-te até lá.</p>
+<img src="modules/beneos-module/assets/wiki/poi_b.webp" alt="Clique direito num journal" />
+<h2>Tornar os ícones visíveis</h2>
+<p>Não vês ícones de journal nos teus mapas? Ativa-os. Na barra de ferramentas do Foundry à esquerda, clica no ícone de estandarte (notas) (1) e depois no ícone de alfinete chamado <strong>Toggle Notes Display</strong> (2). Todos os ícones de journal ficam visíveis.</p>
+<img src="modules/beneos-module/assets/wiki/navigation_activate_journals.webp" alt="Ativar entradas de journal no teu mapa" />
+<h2>Destino não instalado? Instala-o na hora</h2>
+<p>Se um teleportador apontar para um release que ainda não instalaste, não tens de andar à caça dele. Faz clique direito no ícone e escolhe <strong>Install Missing Pack</strong>. Um diálogo mostra o release, deixa-te escolher <strong>4K ou HD</strong> com o tamanho do download (1) e instala-o diretamente no teu mundo. Quando terminar, faz clique direito no ícone outra vez e viaja. Isto é exclusivo do Mestre.</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-install_1.webp" alt="O diálogo Install Missing Pack com a escolha de download entre 4K e HD">
+
+<h2>Encontra o que falta</h2>
+<p>Tens um mundo grande importado e não sabes que ligações estão partidas? Abre <strong>Module Settings, Beneos Teleporter, Open Audit Window</strong>. A ferramenta analisa todas as cenas e lista cada teleportador partido ou em falta: a cena de origem, o destino pretendido, o estado e o release que precisarias de instalar. <strong>Go to Source</strong> salta com o canvas até à nota para a poderes corrigir.</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-audit_1.webp" alt="A janela de auditoria POI a listar destinos de teleportadores em falta e os seus releases">
+
+<h2>Resolução de problemas</h2>
+<p>Um teleportador que aterra na cena errada é normalmente uma de três coisas: nenhum journal atribuído ao ícone, o journal não atribuído a um mapa, ou o mesmo journal atribuído a mais do que um mapa. Cada journal tem de pertencer exatamente a uma cena.</p>
+<p>Para os ícones virados para o Mestre durante o jogo, vê <a class="wikilink" data-page="dm-navigation">Navegação do Mestre</a>. Para o movimento conduzido pelos jogadores, vê <a class="wikilink" data-page="multilevel-tokens">Multilevel Tokens</a>.</p>

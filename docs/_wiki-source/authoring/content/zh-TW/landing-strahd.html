@@ -1,0 +1,59 @@
+<blockquote><p><strong>閱讀之前：</strong>著陸頁在你設為啟用的那一刻就能運作。以下內容是給想要操作它，或想為另一個故事重建它的 GM。它是為哥德恐怖遊戲打造，並與 <em>Curse of Strahd</em> 搭配，但這些部件適合任何黑暗戰役。</p></blockquote>
+<hr />
+<p>和它的煉獄表親一樣，巴洛維亞著陸頁是一小組場景串接成的樞紐：一個首頁、巴洛維亞地圖、一面隊伍見過的人物之牆、一本有三個分頁的書，以及一張進行塔羅卡（Tarokka）占卜的桌子。你隨著戰役的推進逐步揭露每個部分。如果你已經讀過 <a class="wikilink" data-page="landing-avernus">Descent into Avernus</a> 那一頁，這裡大部分機制都會很眼熟；它們共用同一副骨架。</p>
+
+<nav class="bn-faq-toc" id="ls-top" aria-label="本頁內容">
+<div class="bn-faq-toc-head">本頁內容</div>
+<div class="bn-faq-toc-grid">
+<div class="bn-faq-toc-sec">
+<ul>
+<li><a data-wiki-jump="ls-landing">著陸頁與導航</a></li>
+<li><a data-wiki-jump="ls-map">巴洛維亞地圖</a></li>
+<li><a data-wiki-jump="ls-characters">角色頁面</a></li>
+</ul>
+</div>
+<div class="bn-faq-toc-sec">
+<ul>
+<li><a data-wiki-jump="ls-book">那本書：任務、筆記、神器</a></li>
+<li><a data-wiki-jump="ls-tarokka">塔羅卡占卜</a></li>
+</ul>
+</div>
+</div>
+</nav>
+
+<h2 id="ls-landing">著陸頁與導航</h2>
+<p>這是玩家登入時落地的頁面，所以在遊戲開始時請預設保持它為啟用狀態。一個動態的巴洛維亞選單框住整個樞紐，你的玩家從這裡可以抵達你已向他們開放的每一個場景。</p>
+<img src="modules/beneos-module/assets/wiki/shot_landing-strahd_1.webp" alt="Curse of Strahd 著陸頁及其哥德風選單" />
+<p>導航列的構造和每個 Beneos 選單相同：一個隱形的可點擊圖塊疊在可見的文字標籤上，由 <a class="wikilink" data-page="dd-monks-active-tiles">Monks Active Tile Triggers</a> 驅動。要為玩家開放一個目的地，顯示它的文字圖塊並開啟它的隱形觸發器；<a class="wikilink" data-page="dd-monks-active-tiles">MATT 深度解析</a>有完整步驟。每個場景還帶有自己的環境音軌，你可以在場景的<a class="wikilink" data-page="ambience-sound">環境</a>分頁下更換或靜音。</p>
+<p class="bn-faq-back"><a data-wiki-jump="ls-top">回到頁首</a></p>
+
+<h2 id="ls-map">巴洛維亞地圖</h2>
+<p>一張完整的巴洛維亞地圖，準備好坐鎮戰役的核心。把它當作玩家對山谷的總覽：他們在哪裡、去過哪裡、迷霧還遮著哪裡。它的行為和任何 Beneos 地圖一樣，所以你可以在上面放置興趣點標記，並把它們連結到場景和日誌。接線方法見 <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporters</a>。</p>
+<p class="bn-faq-back"><a data-wiki-jump="ls-top">回到頁首</a></p>
+
+<h2 id="ls-characters">角色頁面</h2>
+<p>巴洛維亞是個記憶悠長的小地方，隊伍會一次又一次遇見這裡的人。這個頁面幫忙記住他們，依相遇地點分組：巴洛維亞村、德斯特宅邸、維斯塔尼營地、阿金沃斯特堡、老磨骨坊、瓦拉基、克雷斯克、貝雷茲廢墟、琥珀神殿、狼人巢穴、葡萄酒法師酒莊、拉文洛夫特城堡。</p>
+<img src="modules/beneos-module/assets/wiki/shot_landing-strahd_2.webp" alt="角色頁面，巴洛維亞 NPC 依地點分組" />
+<p>每張肖像都是真實的 Actor。要揭示一個，選取 <strong>Token Controls</strong>，點擊 Token，然後右鍵點擊並<strong>切換可見狀態</strong>。玩家看得到面孔，游標移上去看得到名字，但永遠看不到數值表。用同樣方式加入你自己的村民：把 Actor 拖進來，把它 Token 的顯示名稱設為「任何人懸停時」，等隊伍遇見他們時再顯示。</p>
+<p class="bn-faq-back"><a data-wiki-jump="ls-top">回到頁首</a></p>
+
+<h2 id="ls-book">那本書：任務、筆記、神器</h2>
+<p>核心是一本有三個分頁的書，透過頁面底部的兩個小型子導航點進入。每個分頁都是一個獨立的場景，各司其職。</p>
+<h3>任務</h3>
+<p>任務分頁是隊伍共用的待辦清單。想法很簡單：你把工作記在這裡，玩家就隨時知道還有哪些事情未完成，你也不用一再重複。用文字工具把任務標題輸入文字欄位，完成時做上標記。每個核取方塊都是一個可切換的圖塊：留空、顯示勾號，或者用文字工具打上 X 表示工作已了結。</p>
+<img src="modules/beneos-module/assets/wiki/shot_landing-strahd_3.webp" alt="書的任務分頁，附可編輯標題與核取方塊" />
+<h3>玩家筆記</h3>
+<p>第二個分頁是一本普通日誌，每位連線的玩家分到一頁，讓每個人都有自己的空間塗寫推理、名字和記了一半的警告。它就是你已經熟悉的 Foundry 日誌，只是停放在隊伍永遠找得到的地方。</p>
+<h3>神器</h3>
+<p>第三個分頁追蹤能夠扭轉對抗 Strahd 之戰的珍寶：鴉族聖徽、太陽聖劍、斯特拉德之書，以及拉文洛夫特聖像。每件都隱藏著，直到被掙得為止。當隊伍把其中一件拿到手，選取它的圖塊並<strong>切換可見狀態</strong>，把它揭示在頁面上，讓整個團隊看著他們的武庫在戰役中逐步壯大。</p>
+<img src="modules/beneos-module/assets/wiki/shot_landing-strahd_4.webp" alt="神器分頁，Curse of Strahd 聖物逐一揭示" />
+<p class="bn-faq-back"><a data-wiki-jump="ls-top">回到頁首</a></p>
+
+<h2 id="ls-tarokka">塔羅卡占卜</h2>
+<p>最後一頁是給塔羅卡占卜用的，正是這場抽牌讓每一輪 Curse of Strahd 都有不同的開局。它是一個攤牌的桌面：五個牌位，由你的玩家放上占卜抽出的牌。</p>
+<img src="modules/beneos-module/assets/wiki/shot_landing-strahd_5.webp" alt="塔羅卡頁面，五個牌位等待放牌" />
+<p>坦白說明我們提供什麼、不提供什麼。我們不附贈塔羅卡牌組。官方牌組的版權不在我們手上，而美麗的粉絲自製牌組又多到我們沒法替你挑。所以請自備：按你喜歡的方式進行占卜，然後把五個占位圖塊換成你抽到的牌的圖像。從那之後，整個團隊在戰役的任何時刻都能看到，命運之牌究竟給了他們什麼。</p>
+<p class="bn-faq-back"><a data-wiki-jump="ls-top">回到頁首</a></p>
+
+<hr />
+<p>想為自己的戰役打造一個這樣的樞紐？見<a class="wikilink" data-page="landing-build">打造你自己的著陸頁</a>，導航本身則見 <a class="wikilink" data-page="dd-monks-active-tiles">Monks Active Tiles 深度解析</a>。</p>

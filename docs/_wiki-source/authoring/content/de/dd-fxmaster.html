@@ -1,0 +1,18 @@
+<blockquote><p><strong>Bevor du weiterliest:</strong> Nichts davon ist nötig, um Beneos Battlemaps zu nutzen. Alles ist für dich eingerichtet und funktioniert out of the box. Dieser Deep Dive ist für alle, die eigenen Karten FXMaster-Funktionen hinzufügen wollen oder einfach neugierig sind, wie es funktioniert.</p></blockquote>
+<hr />
+<p>FXMaster ist ein Begleitmodul und kein Teil des Beneos-Moduls, stell also sicher, dass es installiert und aktiv ist. Die vollständige Liste findest du unter <a class="wikilink" data-page="requirements">Voraussetzungen</a>.</p>
+<h2>Wetter und Stimmung einer Karte ändern</h2>
+<p>FXMaster ist das Werkzeug, um zu verändern, wie sich eine Karte anfühlt: Regen, Nebel, Glutfunken, treibende Blätter, ein schwererer Himmel. Im Kern ist es eine Bibliothek aus Bild- und Partikeleffekten, die pro Szene konfiguriert und gespeichert werden. Gerade unsere älteren Releases (gebaut auf einer älteren Engine von einer weniger erfahrenen Version von uns) profitieren von einer Schicht fallender Blätter, mehr Kontrast oder etwas Nebel und Vögeln. FXMaster formt eine Szene nachträglich in Richtung des Looks, den du dir vorgestellt hast. Du kannst die Stimmung einer Karte komplett verändern: Blaue Glühwürmchen plus Nachtfilter machen aus einem hellen Tageswald ein Feenreich, und dichter Nebel lässt denselben Wald wie die Svalich-Wälder aus Curse of Strahd wirken.</p>
+<h2>So benutzt du FXMaster</h2>
+<p>Leicht zu erreichen, leicht zu bedienen. Mit aktivem FXMaster erscheint ein neues Icon in der linken Werkzeugleiste, der Zauberstab. Die zwei Einstellungen, die du am häufigsten brauchst, sind <strong>Partikeleffekte</strong> und <strong>Filtereffekte</strong>, beide werden pro Szene gespeichert.</p>
+<h2>Partikeleffekte</h2>
+<img src="modules/beneos-module/assets/wiki/fx_master_a.webp" alt="FXMaster-Partikeleffekte" />
+<p>Das ist alles, was der Karte Bewegung hinzufügt. Jeder Effekt hat Einstellungen wie Geschwindigkeit, Dichte, Farbe und Größe. Schick Vögel über die Karte, lass Blätter im Wind wehen, lass Regen oder Schnee auf die Szene fallen. Die Einstellungen sind größtenteils selbsterklärend, also probier dich aus: Es ist ein bisschen Trial-and-Error.</p>
+<h2>Filtereffekte</h2>
+<img src="modules/beneos-module/assets/wiki/fx_master_b.webp" alt="FXMaster-Filtereffekte" />
+<p>Das ist alles, was die Karte selbst verändert. Passe die Farbe an, füge Blitze hinzu oder leg einen Unterwassereffekt über die Szene. Viele Einstellungen belohnen das Ausprobieren, also teste sie und behalte, was dir gefällt.</p>
+<h2>Einstellungen speichern und wiederverwenden</h2>
+<img src="modules/beneos-module/assets/wiki/fx_master_c.webp" alt="FXMaster-Einstellungen speichern" />
+<p>Hast du eine Szene so konfiguriert, wie du sie willst? Die Filter- und Partikeleffekte gelten nur für diese Szene. Um den Look auf eine andere Szene zu übertragen, brauchst du ein Makro, das die exakten Einstellungen speichert, und das ist nur ein Klick. Nutze das Disketten-Speichersymbol, und ein neues Makro landet mit allen Änderungen der aktuellen Szene in deiner Makroliste. Rechtsklicke das Makro und gib ihm einen eindeutigen Namen, denn FXMaster benennt jedes gespeicherte Makro gleich.</p>
+<p>Zieh das Makro auf deine Makroleiste. Führe es auf einer Szene aus, und alle gespeicherten Filter- und Partikeleffekte werden angewendet. Lösche es danach, wenn du es nicht mehr brauchst.</p>
+<p>Um alle Effekte von einer Szene zu entfernen, öffne die Zauberstab-Werkzeugleiste und nutze das kleine Mülleimer-Icon ganz unten.</p>

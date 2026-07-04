@@ -1,0 +1,25 @@
+<blockquote><p><strong>Prima di leggere:</strong> niente di tutto questo è necessario per usare Beneos Battlemaps. Tutto è già configurato per te e funziona subito. Questo approfondimento è per chi vuole aggiungere le funzioni Point of Interest alle proprie mappe, o è semplicemente curioso di capire come funziona.</p></blockquote>
+<hr />
+<h2>Cosa fa POI</h2>
+<p>Point of Interest Teleporter (PoI), come Multilevel Tokens, è solidissimo: gestisce migliaia di collegamenti senza fare una piega. PoI collega mappe e scene per il Master, non per i giocatori. Ti dà una navigazione attraverso migliaia di scene e mondi Beneos senza perdere l'orientamento. Ogni scena e release segue lo stesso schema, e i teletrasporti con lo stesso scopo usano sempre le stesse icone e gli stessi nomi.</p>
+<img src="modules/beneos-module/assets/wiki/poi_c.webp" alt="Barra di navigazione Beneos" />
+<p>Volevamo pubblicare esperienze, non solo mappe. Una mappa dà la sensazione di far parte di un insieme più grande solo quando è connessa a uno. Questo è il compito dei Point of Interest Teleporter: ti portano alle scene panoramiche, alla mappa del mondo e da lì a un'altra zona, alle sequenze intro, alle scenery. Tutta la navigazione del Master oltre il Foundry di base si appoggia a PoI.</p>
+<h2>Come funziona POI</h2>
+<p>PoI funziona tramite i journal. Normalmente un journal contiene appunti o testo narrativo. Per PoI, il journal stesso è l'informazione. Nella configurazione della scena, scegli un journal sotto <strong>Journal Entry</strong> nella sezione <strong>Ambience</strong>. Quel journal è ora collegato alla scena e dà a PoI ciò che gli serve. Ogni scena (battlemap, scenery, intro) ha il proprio journal unico. Ecco perché la cartella Beneos Battlemaps nel Journal Explorer contiene così tanti journal: non memorizzano nulla, servono solo da collegamenti per PoI.</p>
+<img src="modules/beneos-module/assets/wiki/poi_a.webp" alt="Configurazione della scena" />
+<p>Trascina uno di questi journal sul canvas e cliccalo con il tasto destro (1) per le opzioni. <strong>View Scene</strong> porta te (non i tuoi giocatori) alla scena del journal. <strong>Activate Scene</strong> forza tutti, te incluso, sulla scena di destinazione. Ogni teletrasporto PoI punta quindi esattamente a una scena. Assegna un journal nella configurazione della scena e quel journal rappresenta quella scena. Ovunque lo piazzi, un clic con il tasto destro ti porta lì.</p>
+<img src="modules/beneos-module/assets/wiki/poi_b.webp" alt="Clic con il tasto destro su un journal" />
+<h2>Rendere visibili le icone</h2>
+<p>Nessuna icona journal sulle tue mappe? Attivale. Nella barra degli strumenti di Foundry a sinistra, clicca l'icona a forma di stendardo (note) (1), poi l'icona a puntina chiamata <strong>Toggle Notes Display</strong> (2). Tutte le icone journal restano visibili.</p>
+<img src="modules/beneos-module/assets/wiki/navigation_activate_journals.webp" alt="Attiva le voci journal sulla tua mappa" />
+<h2>Destinazione non installata? Installala al volo</h2>
+<p>Se un teletrasporto punta a una release che non hai ancora installato, non devi andare a cercarla. Clicca con il tasto destro sull'icona e scegli <strong>Install Missing Pack</strong>. Un dialogo mostra la release, ti lascia scegliere <strong>4K o HD</strong> con la dimensione del download (1) e la installa direttamente nel tuo mondo. Quando ha finito, clicca di nuovo con il tasto destro sull'icona e parti. Funzione riservata al Master.</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-install_1.webp" alt="Il dialogo Install Missing Pack con la scelta di download tra 4K e HD">
+
+<h2>Trova cosa manca</h2>
+<p>Gestisci un grande mondo importato e non sai quali collegamenti sono rotti? Apri <strong>Impostazioni dei moduli, Beneos Teleporter, Open Audit Window</strong>. Scansiona ogni scena ed elenca ogni teletrasporto rotto o mancante: la scena di origine, la destinazione prevista, lo stato e la release che dovresti installare. <strong>Go to Source</strong> sposta il canvas sulla nota, così puoi sistemarla.</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-audit_1.webp" alt="La finestra POI Audit con l'elenco delle destinazioni di teletrasporto mancanti e le loro release">
+
+<h2>Risoluzione dei problemi</h2>
+<p>Un teletrasporto che finisce sulla scena sbagliata di solito dipende da una di tre cose: nessun journal assegnato all'icona, il journal non assegnato a una mappa, o lo stesso journal assegnato a più di una mappa. Ogni journal deve appartenere esattamente a una scena.</p>
+<p>Per le icone lato Master durante il gioco, vedi <a class="wikilink" data-page="dm-navigation">Navigazione del Master</a>. Per gli spostamenti guidati dai giocatori, vedi <a class="wikilink" data-page="multilevel-tokens">Multilevel Tokens</a>.</p>

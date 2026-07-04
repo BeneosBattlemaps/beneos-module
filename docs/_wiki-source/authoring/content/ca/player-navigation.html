@@ -1,0 +1,29 @@
+<p>Els jugadors també es mouen entre mapes, no només els DJs. Els seus actors de personatge viatgen sols en punts concrets del mapa, sense que el DJ hagi d'intervenir. Això funciona amb el mòdul Multilevel Tokens, així que assegura't que estigui instal·lat i actiu. Fer-lo servir és facilíssim. Vols conèixer la tecnologia, o col·locar els teus propis navegadors? Llegeix la immersió tècnica de <a class="wikilink" data-page="multilevel-tokens">Multilevel Tokens</a>. No cal que ho facis, ja que t'ho hem preparat tot.</p>
+<h2>Com funcionen els teleportadors de jugadors</h2>
+<p>Multilevel Tokens connecta dos llocs: un origen i una destinació. Nosaltres ja hem predefinit on porta cada teleportador de jugadors. Cada camp de teleportació (visible només per als DJs) porta una icona de diari. Un jugador hi fa clic, el seu token de personatge salta de l'origen a la destinació, i l'escena canvia només per a aquell jugador. Si el DJ fa clic a una icona de diari dins d'una zona de teleportació, tots els tokens es mouen, tant de jugadors com de no jugadors.</p>
+<p>No estàs obligat a deixar que els jugadors es moguin lliurement, però pot impulsar una exploració emocionant i narrativament captivadora. Tingues present on és cada jugador. Quan un jugador anuncia un canvi d'escena, aquest és el teu senyal per descriure bé la nova ubicació. Dos tipus d'icona controlen els teleportadors.</p>
+<h2>Què signifiquen les icones</h2>
+<table>
+<thead>
+<tr><th>Icona</th><th>Significat</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><img src="modules/beneos-module/assets/wiki/shot_player-navigation_1.webp" alt="Icona de navegador de jugador" /></td>
+<td><strong>Navegador de jugador.</strong> La icona estàndard que els jugadors veuen quan s'hi acosten prou. No la poden veure a través de les parets; han d'arribar a la sortida de l'escena per interactuar-hi. Si un jugador hi fa clic mentre un personatge que controla és dins la zona de teleportació (invisible per a ell), aquell personatge viatja a l'escena de destinació, i l'escena canvia només per a aquell jugador.</td>
+</tr>
+<tr>
+<td><img src="modules/beneos-module/assets/wiki/shot_player-navigation_2.webp" alt="Icona de navegador ocult del DJ" /></td>
+<td><strong>Navegador ocult del DJ.</strong> Mateix efecte que el navegador de jugador, però invisible per als jugadors i inutilitzable per part seva. Serveix per a camins no evidents: portes secretes, rutes per descobrir o obrir més endavant. Quan decideixis que els jugadors poden avançar, fes-hi clic i es teleporten a la destinació. Genial per a trampes, camins desbrossats, portes entreobertes.</td>
+</tr>
+</tbody>
+</table>
+<h2>Qui veu quines icones</h2>
+<p>Els jugadors només veuen una icona de diari si el seu diari se'ls ha concedit a ells o a tots els jugadors. Col·loca cinc icones però concedeix cada diari a un sol jugador, i cada jugador només veurà la seva. Fes-ho servir per donar notes privades als jugadors, o per mantenir la navegació del DJ separada de la dels jugadors.</p>
+<img src="modules/beneos-module/assets/wiki/dm_journal_permission.webp" alt="Canvia els permisos del diari" />
+<p>Configura els permisos d'un diari igual que ho faries amb un token. Obre el navegador de diaris via <strong>Journal</strong> a la barra de navegació superior dreta. Fes clic dret al diari i tria <strong>Configure Ownership</strong>. <strong>All Players</strong> dona accés a tothom del món (DJs exclosos). A sota, defineix regles per jugador. Normalment concedeixes el permís al jugador previst i deixes la resta com està.</p>
+<ul>
+<li><strong>Owner:</strong> drets complets de lectura i edició.</li>
+<li><strong>Observer:</strong> pot veure el diari, no pot editar-lo.</li>
+<li><strong>None:</strong> no pot ni veure'l ni editar-lo. Aquest és el valor per defecte de tots els diaris de navegació del DJ, com el Point of Interest Teleporter.</li>
+</ul>

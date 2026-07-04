@@ -1,0 +1,25 @@
+<blockquote><p><strong>Avant de lire :</strong> rien de tout cela n'est nécessaire pour utiliser Beneos Battlemaps. Tout est déjà configuré pour toi et fonctionne directement. Cet approfondissement s'adresse à ceux qui veulent ajouter des fonctions Point of Interest à leurs propres cartes, ou qui sont simplement curieux de savoir comment cela marche.</p></blockquote>
+<hr />
+<h2>Ce que fait POI</h2>
+<p>Point of Interest Teleporter (PoI), comme Multilevel Tokens, est d'une solidité à toute épreuve : il gère des milliers de liens sans broncher. PoI relie cartes et scènes pour le MJ, pas pour les joueurs. Il t'offre une navigation à travers des milliers de scènes et mondes Beneos sans jamais perdre le fil. Chaque scène et chaque release suit le même schéma, et les téléporteurs qui servent le même but utilisent toujours les mêmes icônes et les mêmes noms.</p>
+<img src="modules/beneos-module/assets/wiki/poi_c.webp" alt="Barre de navigation Beneos" />
+<p>Nous voulions livrer des expériences, pas seulement des cartes. Une carte ne donne l'impression de faire partie d'un tout que si elle y est connectée. C'est le travail des Point of Interest Teleporters : ils t'emmènent vers les scènes d'ensemble, la carte du monde, puis vers une autre zone, vers les séquences d'intro, vers les sceneries. Toute la navigation MJ au-delà du Foundry de base repose sur PoI.</p>
+<h2>Comment fonctionne POI</h2>
+<p>PoI fonctionne via les journaux. Normalement, un journal stocke des notes ou du texte narratif. Pour PoI, le journal lui-même est l'information. Dans la configuration d'une scène, choisis un journal sous <strong>Article de journal</strong> dans la section <strong>Ambiance</strong>. Ce journal est désormais lié à la scène et fournit à PoI ce dont il a besoin. Chaque scène (battlemap, scenery, intro) possède son propre journal unique. C'est pour cela que le dossier Beneos Battlemaps de l'explorateur de journaux contient autant de journaux : ils ne stockent rien, ils servent simplement de liens pour PoI.</p>
+<img src="modules/beneos-module/assets/wiki/poi_a.webp" alt="Configuration de scène" />
+<p>Glisse l'un de ces journaux sur le canvas et fais un clic droit dessus (1) pour voir les options. <strong>Voir la scène</strong> t'emmène (toi, pas tes joueurs) vers la scène du journal. <strong>Activer la scène</strong> force tout le monde, toi compris, vers la scène cible. Chaque téléporteur PoI cible donc exactement une scène. Assigne un journal dans la configuration de scène et ce journal représente cette scène. Où que tu le places, un clic droit t'y emmène.</p>
+<img src="modules/beneos-module/assets/wiki/poi_b.webp" alt="Clic droit sur un journal" />
+<h2>Rendre les icônes visibles</h2>
+<p>Pas d'icônes de journal sur tes cartes ? Active-les. Dans la barre d'outils Foundry à gauche, clique sur l'icône de bannière (notes) (1), puis sur l'icône d'épingle nommée <strong>Afficher les notes</strong> (2). Toutes les icônes de journal restent visibles.</p>
+<img src="modules/beneos-module/assets/wiki/navigation_activate_journals.webp" alt="Activer les articles de journal sur ta carte" />
+<h2>Destination non installée ? Installe-la sur place</h2>
+<p>Si un téléporteur pointe vers un release que tu n'as pas encore installé, pas besoin de partir à sa recherche. Fais un clic droit sur l'icône et choisis <strong>Install Missing Pack</strong>. Un dialogue affiche le release, te laisse choisir <strong>4K ou HD</strong> avec la taille de téléchargement (1), et l'installe directement dans ton monde. Une fois terminé, refais un clic droit sur l'icône et voyage. Réservé au MJ.</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-install_1.webp" alt="Le dialogue Install Missing Pack avec le choix de téléchargement 4K ou HD">
+
+<h2>Trouver ce qui manque</h2>
+<p>Tu gères un grand monde importé et tu ne sais pas quels liens sont cassés ? Ouvre <strong>Paramètres des modules, Beneos Teleporter, Open Audit Window</strong>. L'outil analyse chaque scène et liste chaque téléporteur cassé ou manquant : la scène source, la cible prévue, le statut, et le release qu'il faudrait installer. <strong>Go to Source</strong> déplace le canvas vers la note pour que tu puisses corriger.</p>
+<img src="modules/beneos-module/assets/wiki/shot_poi-audit_1.webp" alt="La fenêtre d'audit POI listant les destinations de téléporteur manquantes et leurs releases">
+
+<h2>Dépannage</h2>
+<p>Un téléporteur qui atterrit sur la mauvaise scène vient généralement de l'une de ces trois causes : aucun journal assigné à l'icône, le journal non assigné à une carte, ou le même journal assigné à plusieurs cartes. Chaque journal doit appartenir à exactement une scène.</p>
+<p>Pour les icônes côté MJ en cours de partie, voir <a class="wikilink" data-page="dm-navigation">Navigation MJ</a>. Pour les déplacements pilotés par les joueurs, voir <a class="wikilink" data-page="multilevel-tokens">Multilevel Tokens</a>.</p>

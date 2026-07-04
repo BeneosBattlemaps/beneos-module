@@ -1,0 +1,35 @@
+<blockquote><p><strong>Antes de leres:</strong> nada aqui é necessário para usar o Beneos. Esta página é para o Mestre que viu os hubs de <a class="wikilink" data-page="landing-avernus">Avernus</a> e <a class="wikilink" data-page="landing-strahd">Barovia</a> e pensou: quero um destes para o meu próprio mundo.</p></blockquote>
+<hr />
+<p>Uma página de entrada parece sofisticada, mas nunca é mais do que as mesmas quatro ideias vestidas com arte diferente. Assim que souberes dar-lhes nome, consegues construir um hub para qualquer campanha, ou desmontar um dos nossos e reconstruí-lo à tua maneira.</p>
+
+<h2>A receita</h2>
+<ol class="bw-steps">
+<li><strong>Um conjunto de cenas.</strong> Uma página inicial mais uma cena para cada coisa de que os teus jogadores precisam: um mapa, um quartel-general, uma página de elenco, o que a tua história pedir. Uma página de entrada são só estas cenas agrupadas numa pasta.</li>
+<li><strong>Uma barra de navegação.</strong> Em cada cena, um pequeno menu que salta para as outras. Esta é a única peça em movimento, e corre sobre o <a class="wikilink" data-page="dd-monks-active-tiles">Monk's Active Tile Triggers</a>.</li>
+<li><strong>Revelar a pedido.</strong> Conteúdo que começa escondido e aparece quando o grupo o merece: um NPC, um contrato, um artefacto, um veículo. No Foundry isso não passa de um tile ou desenho em que clicas com o botão direito e usas <strong>Toggle Visibility State</strong>.</li>
+<li><strong>Pontos de interesse.</strong> Nas cenas de mapa, marcadores de journal que os jogadores podem abrir, e através dos quais podem viajar. Vê <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporters</a>.</li>
+</ol>
+
+<h2>Constrói passo a passo</h2>
+<h3>1. Dispõe as tuas cenas</h3>
+<p>Decide do que o teu hub precisa e cria uma cena para cada coisa, mais uma página inicial. Mantém-nas juntas numa pasta de Scenes para o conjunto ser fácil de encontrar e mover. O arranque mais rápido é copiar uma das nossas páginas de entrada e trocar a arte, já que a cablagem está feita.</p>
+<h3>2. Liga a navegação</h3>
+<p>Dá à página inicial uma fila de botões, um por cena, e repete depois essa barra em todas as cenas, para os jogadores se moverem livremente a partir de qualquer lugar. Cada botão é um tile clicável invisível sobre um rótulo de texto visível, com uma ação <strong>Change Scene</strong> por trás. O <a class="wikilink" data-page="dd-monks-active-tiles">mergulho técnico do Monk's Active Tiles</a> tem um passo a passo completo para construir um navegador, e copiar um botão existente é de longe a entrada mais fácil.</p>
+<h3>3. Define a página inicial como ativa por predefinição</h3>
+<p>Faz da página inicial a cena que os jogadores veem quando entram, e mantém-na ativa no início de cada sessão. A partir dela alcançam tudo o que lhes abriste.</p>
+<h3>4. Esconde o que ainda não foi merecido</h3>
+<p>Começa apenas com o essencial visível e mantém o resto escondido. À medida que a campanha avança, revela um ponto de navegação, um NPC ou uma recompensa alternando a sua visibilidade. Esse desvendar lento é o que faz um hub parecer vivo em vez de um menu estático.</p>
+<h3>5. Veste-o a preceito</h3>
+<p>Uma página de entrada é um palco, por isso ilumina-o. Adiciona uma faixa ambiente no separador <a class="wikilink" data-page="ambience-sound">Ambience</a> da cena, e usa o <a class="wikilink" data-page="dd-fxmaster">FXMaster</a> para meteorologia e ambiente. Um título de sessão na página inicial, editado com as ferramentas de desenho, define o tom antes de alguém falar.</p>
+
+<h2>Ligar um ponto ao seu guia</h2>
+<p>Podes largar um marcador de ajuda em qualquer ponto de uma cena que abre a documentação diretamente no sítio certo, para um jogador curioso clicar uma vez e aterrar no guia exato. Coloca uma <strong>Note</strong> de mapa com o ícone de ajuda Beneos e usa depois o seu <strong>Label</strong> para a apontar:</p>
+<ul>
+<li><strong>Só a documentação:</strong> uma nota de ajuda simples (sem marcador) abre a página inicial da documentação, tal como o ícone de ajuda em todas as cenas Beneos.</li>
+<li><strong>Um artigo específico:</strong> acrescenta <code>@doc[landing-avernus]</code> ao rótulo e ela abre esse artigo.</li>
+<li><strong>Uma secção específica:</strong> acrescenta <code>@doc[landing-avernus#la-garage]</code> e ela salta diretamente para essa parte do artigo.</li>
+</ul>
+<p>O marcador <code>@doc[...]</code> nunca é mostrado no mapa; só o texto antes dele aparece, pelo que um rótulo como <code>Garage guide @doc[landing-avernus#la-garage]</code> se lê simplesmente como "Garage guide". O nome da página é a chave do artigo na barra lateral da documentação, e os nomes das secções vêm dos títulos do próprio artigo. Tanto o clique esquerdo como o direito o abrem.</p>
+
+<h2>Aprende com os que já lançámos</h2>
+<p>O professor mais rápido é um exemplo a funcionar. Abre o hub de <a class="wikilink" data-page="landing-avernus">Descent into Avernus</a> para o conjunto completo de ferramentas, uma mesa de quartel-general, um mapa do mundo em hexcrawl, uma garagem de recompensas, ou o hub de <a class="wikilink" data-page="landing-strahd">Curse of Strahd</a> para um livro de missões e uma parede de caras. Leva as partes que servem a tua história e deixa o resto.</p>

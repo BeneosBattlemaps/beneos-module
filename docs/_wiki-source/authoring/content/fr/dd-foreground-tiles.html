@@ -1,0 +1,30 @@
+<blockquote><p><strong>Avant de lire :</strong> rien de tout cela n'est nécessaire pour utiliser les Beneos Battlemaps. Tout est déjà configuré pour toi et fonctionne dès l'installation. Cette plongée technique s'adresse à qui veut recréer la même sensation de profondeur sur ses propres cartes, ou est simplement curieux de comprendre comment ça marche.</p></blockquote>
+<hr />
+<p>Contrairement aux autres plongées techniques, les tuiles de premier plan ne demandent aucun module compagnon. Elles font partie du cœur de Foundry VTT, tout ce qui suit fonctionne donc tel quel.</p>
+<h2>Ce que sont les tuiles de premier plan</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_a.webp" alt="Exemple de tuile de premier plan" />
+<p>Tu t'es déjà demandé comment les tokens passent sous les arbres, les poutres ou les encadrements de portes ? Les tuiles de premier plan. Ce sont des tuiles ordinaires placées <strong>au-dessus</strong> des tokens au lieu d'en dessous. Les tokens disparaissent derrière tout ce qui se trouve logiquement au-dessus d'eux, ce qui donne à la scène une vraie profondeur : un joueur qui passe sous une branche noueuse, franchit une porte, longe un mur en surplomb.</p>
+<p>Pour y parvenir, nous détourons à la main chaque objet plus haut que les joueurs et le plaçons comme image de premier plan par-dessus. Un travail supplémentaire, mais c'est une grande partie de ce qui fait qu'une carte Beneos ressemble à un espace plutôt qu'à une image plate.</p>
+<h2>Atteindre les tuiles de premier plan</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_b.webp" alt="Accéder aux tuiles de premier plan" />
+<p>Pour modifier ou désactiver les tuiles de premier plan, clique sur <strong>Contrôles des tuiles</strong> dans la barre d'outils gauche. Le calque de premier plan est masqué par défaut pour éviter les clics accidentels. Clique sur l'icône de maison et toutes les tuiles de premier plan deviennent sélectionnables comme n'importe quelle autre tuile.</p>
+<p>Attention : sur certaines cartes, plusieurs tuiles de premier plan se superposent (jusqu'à huit par endroits, par exemple un toit plus ses poutres de porte plus une section de mur). Un clic sélectionne toujours la tuile du dessus. Pour atteindre celle du dessous, écarte celle du dessus, clique sur celle en dessous, puis remets tout en place. Les tuiles sont souvent verrouillées contre les déplacements accidentels, fais donc un clic droit sur une tuile et clique sur la petite icône de cadenas pour la déverrouiller d'abord. En général, la tuile de premier plan fait exactement la taille de la carte, ce qui t'évite de jongler avec une foule de petites tuiles.</p>
+<h2>Réglages des tuiles de premier plan</h2>
+<img src="modules/beneos-module/assets/wiki/dm_ol_tile_c.webp" alt="Réglages des tuiles de premier plan" />
+<p>Une fois le calque de premier plan cliquable via l'icône de maison, double-clique sur n'importe quelle tuile pour ouvrir ses réglages comme pour une tuile normale. Tu peux masquer une tuile de premier plan aux joueurs, et y attacher de l'automatisation avec Monk's Active Tile Triggers pour exécuter des actions sous certaines conditions. Plus de détails dans notre <a class="wikilink" data-page="dd-monks-active-tiles">plongée technique Monk's Active Tile Triggers</a>. Les tuiles de premier plan peuvent aussi être des fichiers vidéo, et les vidéos partiellement transparentes créent de jolis effets comme des cimes d'arbres qui ondulent. Les tuiles vidéo coûtent en performance, nous les utilisons donc avec parcimonie. Pour garder les cartes animées fluides, voir <a class="wikilink" data-page="performance">Performance</a>.</p>
+<h3>Promouvoir une tuile au premier plan</h3>
+<p>Pour transformer une tuile normale en tuile de premier plan, coche <strong>Superposée (Is Overhead?)</strong>. Note que cocher seulement <strong>Toit (Is Roof?)</strong> ne suffit pas : cela n'affecte que le calcul de la portée de vision des tokens à distance, pas le fait que la tuile s'affiche au-dessus des tokens.</p>
+<h3>Modes d'occlusion</h3>
+<p>Le <strong>Mode d'occlusion</strong> contrôle le comportement d'une tuile de premier plan quand un token passe dessous. Les quatre options :</p>
+<table>
+<thead>
+<tr><th>Mode</th><th>Comportement</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Aucun</strong></td><td>La tuile est toujours affichée. Le bon choix dans la plupart des cas.</td></tr>
+<tr><td><strong>Fondu</strong></td><td>Toute la tuile s'estompe. Utile pour un toit qui doit disparaître quand des tokens sont dessous.</td></tr>
+<tr><td><strong>Radial</strong></td><td>Garde la tuile affichée et n'estompe qu'une petite zone autour du token, réglée avec le curseur d'alpha d'occlusion. La zone estompée est petite et fixe, le token peut donc sembler posé sur la tuile plutôt que dessous.</td></tr>
+<tr><td><strong>Vision</strong></td><td>N'estompe que les parties qu'un token voit réellement avec sa vision active. En pratique, les joueurs ne voient clairement la tuile que lorsqu'elle est dans l'ombre, ce qui n'est pas très intuitif.</td></tr>
+</tbody>
+</table>
+<p>Pour savoir comment tout cela s'intègre à la gestion d'une scène en tant que MJ, voir <a class="wikilink" data-page="dm-navigation">Navigation MJ</a>.</p>

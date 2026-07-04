@@ -1,0 +1,37 @@
+<blockquote><p><strong>Antes de ler:</strong> nada disto é necessário pra usar as Beneos Battlemaps. Tudo já vem configurado e funciona direto da caixa. Este mergulho técnico é pra quem quer adicionar funções do Monk's Active Tile Triggers aos próprios mapas, ou só está curioso pra saber como funciona.</p></blockquote>
+<hr />
+<p>O Monk's Active Tile Triggers (MATT, pra encurtar) é um dos módulos de automação mais poderosos do Foundry VTT. Ele é um módulo companheiro, não faz parte do Módulo Beneos, então garanta que esteja instalado e ativo. Veja <a class="wikilink" data-page="requirements">Requisitos</a> pra lista completa.</p>
+<h2>Pra que usamos o MATT</h2>
+<p>O MATT é um faz-tudo pra automatizar ou controlar partes de uma cena. Nós o usamos para:</p>
+<ul>
+<li>Botões de iniciar e parar que tocam e pausam as sequências de intro dos jogadores.</li>
+<li>Navegação por clique no mapa-múndi de Escalia.</li>
+<li>Mini soundboards em algumas cenas (por exemplo Barovia Village, The Church).</li>
+<li>Botões posicionados pra armadilhas, portas secretas ou outros eventos clicáveis.</li>
+<li>A barra de navegação do menu principal de Curse of Strahd.</li>
+</ul>
+<p>O MATT pode iniciar animações, tocar sons, pular pra cenas e muito mais. Cobrir cada função aqui seria demais, e uma página de wiki é o formato errado pra isso. Pra se aprofundar, há ótimos tutoriais em vídeo online. Abaixo mostramos como usamos o MATT pra você construir suas próprias ideias em cima.</p>
+<h2>Como o MATT funciona</h2>
+<p>Tudo no MATT funciona através de tiles. A configuração do Tile ganha uma nova aba chamada <strong>Triggers</strong>. O MATT roda em causa e efeito: quando um gatilho definido em <strong>Setup</strong> é atendido (um clique, um token entrando no tile, ou várias outras condições), acontece o que estiver definido em <strong>Actions</strong>.</p>
+<img src="modules/beneos-module/assets/wiki/matt_a.webp" alt="Tile de iniciar a intro Beneos" />
+<p>Neste exemplo, um tile é o botão de iniciar e parar das sequências de intro. A intro também é um tile, e ela só toca quando você clica no tile do botão de play.</p>
+<p>Selecione <strong>Controles de Tiles</strong> na barra de ferramentas esquerda pra clicar em tiles no canvas. Clicando no nosso botão de play (um tile com a imagem de um botão de play), podemos definir em <strong>Triggers</strong> o que deve acontecer e quando.</p>
+<img src="modules/beneos-module/assets/wiki/matt_b.webp" alt="Aba de triggers do MATT" />
+<p>Em <strong>Setup</strong> você define quando a ação roda. Aqui o tile só dispara quando o Mestre clica nele.</p>
+<img src="modules/beneos-module/assets/wiki/matt_c.webp" alt="Aba de actions do MATT" />
+<p>Em <strong>Actions</strong>, várias ações são encadeadas a um único clique. O MATT as executa de cima pra baixo. Aqui: o tile que carrega a intro é resetado pra começar do início (o Foundry tem a mania de iniciar vídeos webm em posições aleatórias), depois o tile da intro é iniciado, depois a imagem do tile clicado é trocada pra que o botão de play fique vermelho e passe a funcionar como botão de parar da próxima vez, e por fim um som de clique toca como feedback pra todos os jogadores e o Mestre. As imagens de troca são definidas na aba <strong>Images</strong>.</p>
+<img src="modules/beneos-module/assets/wiki/matt_d.webp" alt="Aba de imagens do MATT" />
+<p>A aba Images reúne as imagens entre as quais o MATT alterna. Aqui apenas duas, iniciar e parar, trocadas a cada clique. Uma nota técnica: as duas imagens ficam em caminhos de arquivo diferentes. Quando empacotamos um release, a segunda imagem não é exportada e ficaria faltando no download. Por isso a segunda imagem vem dentro do próprio Módulo Beneos, que está sempre instalado e portanto sempre disponível.</p>
+<p>Esse foi um exemplo. Pra construir suas próprias ideias, inspecione os tiles que usamos pra controlar intros, montar soundboards ou disparar armadilhas. Com um pouco de criatividade dá pra criar efeitos interativos genuinamente legais. Tiles de primeiro plano também podem carregar gatilhos do MATT, tema do nosso <a class="wikilink" data-page="dd-foreground-tiles">mergulho técnico de tiles de primeiro plano</a>.</p>
+<h2>Construa um navegador</h2>
+<p>Os menus clicáveis do <a class="wikilink" data-page="worldmap-escalia">mapa-múndi de Escalia</a> e das duas landing pages de campanha, <a class="wikilink" data-page="landing-avernus">Descent into Avernus</a> e <a class="wikilink" data-page="landing-strahd">Curse of Strahd</a>, são todos o mesmo truque de MATT. Um botão de navegação são dois tiles: um tile clicável invisível em cima de um rótulo de texto visível. O rótulo só está lá pra ser visto; o tile invisível faz o trabalho. Clique nele e o MATT te leva pra outra cena.</p>
+<p>O jeito mais rápido de fazer um é copiar um botão que já existe, mas aqui vai o processo inteiro do zero:</p>
+<ol>
+<li>Coloque um tile pequeno onde o botão deve ficar e dê a ele uma imagem transparente ou quase transparente. Este é o gatilho clicável.</li>
+<li>Dê um clique duplo nele, abra a aba <strong>Triggers</strong> e, em <strong>Setup</strong>, configure pra disparar com um clique.</li>
+<li>Em <strong>Actions</strong>, adicione <strong>Change Scene</strong> e use o pequeno ícone de edição ao lado pra escolher a cena de destino no seu navegador de Cenas.</li>
+<li>Atrás do gatilho, coloque um tile de texto visível ou uma imagem de botão pra que os jogadores saibam que aquilo está lá pra ser clicado.</li>
+<li>Clique com o botão direito no gatilho e ative seu estado. Pronto, um ponto de navegação funcionando.</li>
+</ol>
+<img src="modules/beneos-module/assets/wiki/matt_navigator.webp" alt="Um tile de navegação com uma ação Change Scene na aba Triggers" />
+<p>Repita isso pra cada destino e depois copie a barra pronta pra todas as cenas do conjunto. Quando as cenas de destino carregam navegação de volta umas pras outras, você tem um menu pelo qual seus jogadores podem circular sozinhos. É exatamente assim que os hubs Beneos são construídos, então abra um e desmonte-o pra ver um exemplo completo. Pra revelar ou esconder um botão conforme a campanha avança, mostre ou esconda seu tile de texto e alterne o estado ativo do gatilho. Pra visão maior de como esses menus se juntam em um hub de campanha, veja <a class="wikilink" data-page="landing-build">Construa Sua Própria Landing Page</a>.</p>

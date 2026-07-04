@@ -1,0 +1,29 @@
+<blockquote><p><strong>Abans de llegir:</strong> no cal que construeixis res d'això per gaudir de Beneos. El mapa del món d'Escalia arriba a punt per fer servir. Aquesta pàgina és per a DJs que vulguin saber com està muntat, editar-lo, o construir un mapa del món propi.</p></blockquote>
+<hr />
+<p>Terra Escalia és el mapa del món que coneixes a la guia de configuració. És el món natal de les criatures i releases de Beneos, un gran continent pintat on pots penjar tota la teva campanya. Sota l'art no hi ha màgia, només quatre peces corrents de Foundry apilades l'una sobre l'altra. Un cop veus les quatre, pots canviar-ne qualsevol, o reconstruir-ho tot per a la teva pròpia ambientació.</p>
+
+<h2 id="wm-blocks">Els quatre blocs de construcció</h2>
+
+<h3 id="wm-map">1. El mapa en si</h3>
+<p>La base és una única imatge gran, col·locada com a fons i com a tile en una escena de 8000 per 8000. Res d'enginyós. Si vols el teu propi món, aquesta és la capa que canvies: posa-hi la teva pròpia pintura i tot el que hi ha a sota continua funcionant igual.</p>
+
+<h3 id="wm-poi">2. Punts d'interès</h3>
+<p>Cada marcador d'ubicació al mapa és una <strong>Nota</strong> de mapa de Foundry amb un diari fixat. Les petites icones de castell, ciutat, cova i port que veus són aquestes notes. Fes clic dret en una i s'obre el seu diari, que és com un jugador llegeix sobre un lloc o salta a la seva escena. Cada marcador porta l'etiqueta de la release a què pertany, per exemple <em>Castle Dourcrag [Release 48]</em>, així que veus d'un cop d'ull què està instal·lat i què encara ha d'arribar. És el mateix sistema cobert a <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporters</a>, així que ves-hi per afegir, moure o reenllaçar els teus propis marcadors.</p>
+<img src="modules/beneos-module/assets/wiki/shot_worldmap-escalia_1.webp" alt="El mapa del món de Terra Escalia amb els seus marcadors de punts d'interès" />
+
+<h3 id="wm-nav">3. La barra de navegació</h3>
+<p>A dalt a la dreta hi ha una petita barra de navegació. Funciona amb <a class="wikilink" data-page="dd-monks-active-tiles">Monks Active Tile Triggers</a>: un tile invisible clicable jeu sobre una etiqueta de text visible, i fer clic al tile invisible et salta a una altra escena. Aquest és tot el truc darrere de cada menú, mapa del món i landing page de Beneos. La <a class="wikilink" data-page="dd-monks-active-tiles">immersió a fons de MATT</a> t'ensenya a construir-ne una pas a pas.</p>
+
+<h3 id="wm-atmosphere">4. Atmosfera: temps i llum</h3>
+<p>El mapa no és estàtic. Dues capes li donen vida. <a class="wikilink" data-page="dd-fxmaster">FXMaster</a> fa lliscar núvols i una boira fina sobre el continent i hi envia ocells per damunt, tot efectes de partícules desats a l'escena. Al damunt hi ha desenes de <strong>Llums</strong> animades, tenyides i configurades per pulsar, projectant una lluïssor suau i fantasmal sobre els mars i la terra, perquè tot el mapa respiri una mica en lloc de quedar-se pla.</p>
+<img src="modules/beneos-module/assets/wiki/shot_worldmap-escalia_2.webp" alt="Núvols a la deriva i llum fantasmal sobre la costa d'Escalia" />
+
+<h2 id="wm-build">Edita'l, o construeix el teu</h2>
+<p>Com que les quatre capes són independents, pots tocar-ne qualsevol sense trencar les altres:</p>
+<ul>
+<li><strong>Mou o afegeix ubicacions:</strong> arrossega les notes de mapa on vulguis i enllaça cadascuna amb el seu diari o escena. Consulta <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporters</a>.</li>
+<li><strong>Canvia el mapa:</strong> substitueix la imatge de fons pel teu propi món. Les notes, la barra de navegació i els efectes es queden al seu lloc.</li>
+<li><strong>Canvia l'ambient:</strong> obre la vareta de FXMaster i canvia els núvols per pluja, neu o un filtre de nit. Consulta la <a class="wikilink" data-page="dd-fxmaster">immersió a fons de FXMaster</a>.</li>
+<li><strong>Reajusta la llum:</strong> afegeix, recoloreix o anima llums perquè encaixin amb la teva ambientació. Un blau fred es llegeix com una costa encantada; un taronja baix, com una costa en flames.</li>
+</ul>
+<p>Vols que el mapa faci també de hub de campanya amb un menú complet i subescenes? Això és exactament el que fan les landing pages de <a class="wikilink" data-page="landing-avernus">Descent into Avernus</a> i <a class="wikilink" data-page="landing-strahd">Curse of Strahd</a>, i <a class="wikilink" data-page="landing-build">Construeix la teva pròpia landing page</a> ensenya com muntar-ne una.</p>

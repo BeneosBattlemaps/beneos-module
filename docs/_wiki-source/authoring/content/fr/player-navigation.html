@@ -1,0 +1,29 @@
+<p>Les joueurs aussi se déplacent entre les cartes, pas seulement les MJ. Leurs acteurs de personnages voyagent seuls à des points précis de la carte, sans aucune intervention du MJ. Cela repose sur le module Multilevel Tokens, assure-toi donc qu'il est installé et actif. Son utilisation est enfantine. Tu veux la technologie, ou placer tes propres navigateurs ? Lis la plongée technique <a class="wikilink" data-page="multilevel-tokens">Multilevel Tokens</a>. Ce n'est pas obligatoire, puisque nous avons tout préparé pour toi.</p>
+<h2>Comment fonctionnent les téléporteurs de joueurs</h2>
+<p>Multilevel Tokens relie deux endroits : une origine et une destination. Nous avons prédéfini où mène chaque téléporteur de joueur. Chaque champ de téléportation (visible seulement des MJ) porte une icône de journal. Un joueur clique dessus, son token de personnage saute de l'origine à la destination, et la scène change pour ce joueur uniquement. Si le MJ clique sur une icône de journal dans une zone de téléportation, tous les tokens se déplacent, joueurs et non-joueurs confondus.</p>
+<p>Rien ne t'oblige à laisser les joueurs vagabonder librement, mais cela peut nourrir une exploration passionnante et narrativement prenante. Garde la trace d'où se trouve chaque joueur. Quand un joueur annonce un changement de scène, c'est ton signal pour décrire correctement le nouveau lieu. Deux types d'icônes contrôlent les téléporteurs.</p>
+<h2>Ce que signifient les icônes</h2>
+<table>
+<thead>
+<tr><th>Icône</th><th>Signification</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><img src="modules/beneos-module/assets/wiki/shot_player-navigation_1.webp" alt="Icône de navigateur joueur" /></td>
+<td><strong>Navigateur joueur.</strong> L'icône standard que les joueurs voient une fois assez proches. Ils ne peuvent pas la voir à travers les murs ; ils doivent atteindre la sortie de la scène pour interagir. Si un joueur clique dessus alors qu'un personnage qu'il contrôle se tient dans la zone de téléportation (invisible pour lui), ce personnage voyage vers la scène cible, et la scène change pour ce joueur uniquement.</td>
+</tr>
+<tr>
+<td><img src="modules/beneos-module/assets/wiki/shot_player-navigation_2.webp" alt="Icône de navigateur MJ caché" /></td>
+<td><strong>Navigateur MJ caché.</strong> Même effet que le navigateur joueur, mais invisible pour les joueurs et inutilisable par eux. Il sert les chemins non évidents : portes secrètes, routes à découvrir ou à ouvrir plus tard. Quand tu décides que les joueurs peuvent avancer, clique dessus et ils se téléportent vers la destination. Parfait pour les pièges, les passages dégagés, les portes entrouvertes.</td>
+</tr>
+</tbody>
+</table>
+<h2>Qui voit quelles icônes</h2>
+<p>Les joueurs ne voient une icône de journal que si son journal leur a été accordé, à eux ou à tous les joueurs. Place cinq icônes mais accorde chaque journal à un seul joueur, et chaque joueur ne verra que la sienne. Utilise cela pour donner aux joueurs des notes privées, ou pour séparer la navigation MJ de la navigation joueur.</p>
+<img src="modules/beneos-module/assets/wiki/dm_journal_permission.webp" alt="Modifier les permissions d'un journal" />
+<p>Règle les permissions d'un journal comme tu le ferais pour un token. Ouvre le navigateur de journaux via <strong>Journal</strong> dans la barre de navigation en haut à droite. Fais un clic droit sur le journal et choisis <strong>Configurer les permissions</strong>. <strong>Tous les joueurs</strong> accorde l'accès à tout le monde dans le monde (MJ exclus). En dessous, définis des règles par joueur. En général, tu accordes la permission au joueur visé et laisses le reste tranquille.</p>
+<ul>
+<li><strong>Propriétaire :</strong> droits complets de lecture et d'édition.</li>
+<li><strong>Observateur :</strong> peut voir le journal, ne peut pas l'éditer.</li>
+<li><strong>Aucun :</strong> ne peut ni le voir ni l'éditer. C'est le réglage par défaut de tous les journaux de navigation MJ, comme le Point of Interest Teleporter.</li>
+</ul>

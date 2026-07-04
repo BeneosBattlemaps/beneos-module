@@ -1,0 +1,28 @@
+<blockquote><p><strong>Avant de lire :</strong> rien de tout cela n'est nécessaire pour utiliser les Beneos Battlemaps. Tout est déjà configuré pour toi et fonctionne dès l'installation. Cette plongée technique s'adresse à qui veut ajouter des fonctions Multilevel Tokens à ses propres cartes, ou est simplement curieux de comprendre comment ça marche.</p></blockquote>
+<hr />
+<h2>Ce que fait MLT</h2>
+<p>Multilevel Tokens (MLT) est un module ancien qui fonctionne toujours parfaitement. Il téléporte des tokens d'un endroit à un autre, permettant aux créatures des joueurs et du MJ de se déplacer indépendamment entre les cartes. Pourquoi MLT plutôt que des modules plus récents qui téléportent aussi des tokens ? À cause de son fonctionnement. MLT n'utilise pas les identifiants de Foundry, il utilise les siens. Cela signifie que, contrairement à Monk's Active Tile Triggers, nous pouvons relier deux releases même quand elles ne font pas partie du même pack. Télécharge le Pack A, puis plus tard le Pack B, et ils fonctionnent ensemble automatiquement. Avec Monk's Active Tile Triggers, il faudrait télécharger chaque carte dans une release géante ou entretenir chaque téléporteur à la main, ce qui n'a rien de drôle sur plusieurs milliers de scènes. Crois-nous.</p>
+<h2>Comment MLT fonctionne</h2>
+<p>Tout dans MLT passe par les dessins, des formes créées avec l'outil de dessin de la barre d'outils gauche. Nous les appelons champs MLT. Les configurer et les relier est simple et sans risque d'erreur.</p>
+<img src="modules/beneos-module/assets/wiki/mlt_setup_a.webp" alt="Zone MLT" />
+<p>Avec MLT actif, les réglages d'une forme dessinée (Beneos utilise toujours des rectangles) gagnent un nouvel onglet appelé <strong>Multilevel</strong>. Règle ici tout ce dont chaque téléporteur a besoin, champ par champ. Astuce : copie les formes avec Ctrl+C et colle-les sur d'autres scènes.</p>
+<img src="modules/beneos-module/assets/wiki/mlt_setup_b.webp" alt="Réglages MLT" />
+<ol>
+<li><strong>Source ou destination.</strong> MLT envoie les tokens d'un champ source vers un champ destination. Coche <strong>Out</strong> pour téléporter depuis ce champ. Coche <strong>In</strong> pour téléporter vers lui. Coche les deux pour un voyage aller-retour.</li>
+<li><strong>Identifiant de téléportation.</strong> Le cœur de MLT. Saisis n'importe quel texte, mais reste logique. Quand un token quitte ce champ, l'identifiant pointe vers la destination : le token va vers l'autre champ portant le même identifiant. Seuls deux champs doivent partager un identifiant. À trois ou plus, MLT choisit au hasard, ce qui provoque des erreurs. En bref, source et destination sont appariées par un identifiant commun.
+<ol>
+<li>La convention de nommage Beneos est <strong>NuméroDeReleaseA-NuméroDeCarteA_NuméroDeReleaseB-NuméroDeCarteB</strong> avec des zéros initiaux, le plus petit numéro à gauche. Par exemple 76-04_76-05, ou 64-04_76-01.</li>
+</ol>
+</li>
+<li><strong>Activation via Map Node.</strong> Avec cette option, le champ reste inactif même quand des tokens y entrent. Seul un clic sur une icône de journal à l'intérieur du champ déclenche la téléportation. C'est important parce que les champs MLT sont généralement invisibles et que les joueurs pourraient sinon changer de scène par accident. Nous plaçons donc une icône de journal unique sur chaque champ : elle indique aux joueurs qu'ils peuvent quitter la carte ici, et sert de bouton s'ils le choisissent.</li>
+<li><strong>Clonage de tokens.</strong> Plus rare mais élégant. Le clonage affiche les tokens d'un autre champ MLT sur la surface actuelle (ou l'inverse) sans les téléporter. Déplace un token sur la carte A et il se déplace aussi sur la carte B. Idéal pour voir les tokens du rez-de-chaussée pendant que tu es à l'étage. Champs source et destination partagent le même identifiant, comme toujours. <strong>Source</strong> est le champ d'où les tokens sont affichés (le rez-de-chaussée ici), <strong>Target</strong> est l'endroit où ils apparaissent (l'étage).</li>
+</ol>
+<h2>Suis tes joueurs</h2>
+<p>Quand un joueur franchit un téléporteur, tu reçois une carte de chat privée : qui s'est téléporté, vers quelle scène, et un bouton <strong>Voir la scène</strong> qui te propulse directement à ses côtés. Fini de te demander où le groupe est parti vagabonder. C'est activé par défaut ; désactive-le sous <strong>Notifier le MJ lors d'une téléportation</strong> dans les paramètres du module si tu ne le veux plus.</p>
+<img src="modules/beneos-module/assets/wiki/shot_mlt-chat_1.webp" alt="La carte de chat réservée au MJ montrant un token téléporté vers une scène avec un bouton Voir la scène">
+
+<h2>Ajouter un son de téléportation</h2>
+<p>Tu veux que les joueurs entendent quelque chose quand ils utilisent un téléporteur ? Ouvre la configuration de dessin du champ <strong>In</strong>, va dans l'onglet <strong>Multilevel</strong> et règle un <strong>son de téléportation</strong>. Il joue pour les joueurs qui voyagent et pour toi quand la téléportation se déclenche. Une petite touche qui vend le moment.</p>
+<img src="modules/beneos-module/assets/wiki/shot_mlt-sound_1.webp" alt="Le menu déroulant du son de téléportation dans l'onglet Multilevel de la configuration de dessin">
+
+<p>Pour voir ce que cela donne côté joueurs, voir <a class="wikilink" data-page="player-navigation">Navigation des joueurs</a>. Pour les sauts de scène côté MJ, voir <a class="wikilink" data-page="poi-teleporter">POI Teleporter</a>.</p>

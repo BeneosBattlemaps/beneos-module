@@ -1,0 +1,29 @@
+<blockquote><p><strong>읽기 전에:</strong> Beneos를 즐기기 위해 여기서 무언가를 직접 만들 필요는 없어요. Escalia 월드 맵은 바로 사용할 수 있는 상태로 제공돼요. 이 페이지는 맵이 어떻게 조립되어 있는지 알고 싶거나, 편집하거나, 자기만의 월드 맵을 만들고 싶은 GM을 위한 거예요.</p></blockquote>
+<hr />
+<p>Terra Escalia는 Setup Guide에서 만나게 되는 월드 맵이에요. Beneos 크리처와 릴리스들의 고향 세계이고, 캠페인 전체를 걸어 둘 수 있는 커다란 그림 대륙 하나예요. 그림 아래에는 마법이 아니라 그저 평범한 Foundry 요소 네 개가 겹쳐 있을 뿐이에요. 이 네 가지를 파악하면 어느 것이든 바꿀 수 있고, 자신의 세계관에 맞게 전체를 다시 만들 수도 있어요.</p>
+
+<h2 id="wm-blocks">네 가지 구성 요소</h2>
+
+<h3 id="wm-map">1. 맵 자체</h3>
+<p>기반은 8000 x 8000 씬에 배경과 타일로 배치된 커다란 이미지 한 장이에요. 특별한 기술은 없어요. 자기만의 세계를 원한다면 이 레이어만 교체하면 돼요: 여러분의 그림을 넣어도 아래의 나머지는 똑같이 작동해요.</p>
+
+<h3 id="wm-poi">2. 관심 지점</h3>
+<p>맵 위의 모든 위치 마커는 저널이 고정된 Foundry 맵 <strong>노트</strong>예요. 눈에 보이는 작은 성, 도시, 동굴, 항구 아이콘들이 바로 그 노트들이에요. 하나를 우클릭하면 저널이 열리고, 이것이 플레이어가 장소에 대해 읽거나 해당 씬으로 이동하는 방식이에요. 각 마커에는 속한 릴리스가 표시돼요. 예를 들어 <em>Castle Dourcrag [Release 48]</em>처럼요. 그래서 무엇이 설치되어 있고 무엇이 아직 나오지 않았는지 한눈에 알 수 있어요. 이것은 <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporter</a>에서 다루는 것과 같은 시스템이니, 마커를 추가하거나 옮기거나 다시 연결하려면 그쪽을 보세요.</p>
+<img src="modules/beneos-module/assets/wiki/shot_worldmap-escalia_1.webp" alt="관심 지점 마커가 표시된 Terra Escalia 월드 맵" />
+
+<h3 id="wm-nav">3. 내비게이션 바</h3>
+<p>오른쪽 위에 작은 내비게이션 바가 있어요. <a class="wikilink" data-page="dd-monks-active-tiles">Monk's Active Tile Triggers</a>로 작동해요: 눈에 보이는 텍스트 라벨 위에 보이지 않는 클릭 가능한 타일이 놓여 있고, 그 보이지 않는 타일을 클릭하면 다른 씬으로 이동해요. 모든 Beneos 메뉴, 월드 맵, 랜딩 페이지 뒤에 숨은 트릭이 전부 이거예요. <a class="wikilink" data-page="dd-monks-active-tiles">MATT 심층 분석</a>에서 하나를 단계별로 만드는 과정을 따라가 볼 수 있어요.</p>
+
+<h3 id="wm-atmosphere">4. 분위기: 날씨와 빛</h3>
+<p>맵은 정지해 있지 않아요. 두 개의 레이어가 생명을 불어넣어요. <a class="wikilink" data-page="dd-fxmaster">FXMaster</a>가 대륙 위로 구름과 옅은 안개를 흘려보내고 새들을 날려요. 전부 씬에 저장된 파티클 효과예요. 그 위에는 색이 입혀지고 맥동하도록 설정된 수십 개의 애니메이션 <strong>조명</strong>이 놓여, 바다와 대지 위에 부드럽고 유령 같은 빛을 드리워요. 덕분에 맵 전체가 평평하게 있지 않고 조금씩 숨 쉬는 것처럼 보여요.</p>
+<img src="modules/beneos-module/assets/wiki/shot_worldmap-escalia_2.webp" alt="Escalia 해안선 위로 흐르는 구름과 유령 같은 빛" />
+
+<h2 id="wm-build">편집하거나, 직접 만들어 보세요</h2>
+<p>네 레이어가 서로 독립적이기 때문에, 다른 레이어를 망가뜨리지 않고 어느 하나만 손댈 수 있어요:</p>
+<ul>
+<li><strong>위치 이동이나 추가:</strong> 맵 노트를 원하는 곳으로 끌어다 놓고 각각을 해당 저널이나 씬에 연결하세요. <a class="wikilink" data-page="poi-teleporter">Point of Interest Teleporter</a>를 보세요.</li>
+<li><strong>맵 교체:</strong> 배경 이미지를 자신의 세계로 바꾸세요. 노트, 내비게이션 바, 효과는 그대로 유지돼요.</li>
+<li><strong>분위기 변경:</strong> FXMaster 지팡이를 열고 구름을 비, 눈, 야간 필터로 바꿔 보세요. <a class="wikilink" data-page="dd-fxmaster">FXMaster 심층 분석</a>을 보세요.</li>
+<li><strong>빛 다시 조율하기:</strong> 세계관에 맞게 조명을 추가하거나, 색을 바꾸거나, 애니메이션을 적용하세요. 차가운 파란빛은 유령 들린 해안처럼, 낮게 깔린 주황빛은 불타는 해안처럼 읽혀요.</li>
+</ul>
+<p>맵을 전체 메뉴와 하위 씬을 갖춘 캠페인 허브로도 쓰고 싶나요? 그게 바로 <a class="wikilink" data-page="landing-avernus">Descent into Avernus</a>와 <a class="wikilink" data-page="landing-strahd">Curse of Strahd</a> 랜딩 페이지가 하는 일이고, <a class="wikilink" data-page="landing-build">나만의 랜딩 페이지 만들기</a>에서 조립 방법을 보여 줘요.</p>

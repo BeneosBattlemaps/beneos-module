@@ -1,0 +1,29 @@
+<p>Los jugadores también se mueven entre mapas, no solo los DJ. Sus actores de personaje viajan por sí solos en puntos concretos del mapa, sin que el DJ tenga que intervenir. Esto funciona con el módulo Multilevel Tokens, así que asegúrate de que está instalado y activo. Usarlo es facilísimo. ¿Quieres conocer la tecnología, o colocar tus propios navegadores? Lee el análisis a fondo de <a class="wikilink" data-page="multilevel-tokens">Multilevel Tokens</a>. No es obligatorio, porque lo hemos preparado todo por ti.</p>
+<h2>Cómo funcionan los teleportadores de jugadores</h2>
+<p>Multilevel Tokens conecta dos lugares: un origen y un destino. Nosotros hemos predefinido a dónde lleva cada teleportador de jugadores. Cada campo de teleportador (visible solo para los DJ) lleva un icono de diario. Un jugador hace clic en él, su token de personaje salta del origen al destino y la escena cambia solo para ese jugador. Si el DJ hace clic en un icono de diario dentro de una zona de teleportación, se mueven todos los tokens, tanto de jugadores como de no jugadores.</p>
+<p>No estás obligado a dejar que los jugadores deambulen libremente, pero puede impulsar una exploración emocionante y narrativamente absorbente. Lleva la cuenta de dónde está cada jugador. Cuando un jugador anuncie un cambio de escena, esa es tu señal para describir bien la nueva ubicación. Dos tipos de icono controlan los teleportadores.</p>
+<h2>Qué significan los iconos</h2>
+<table>
+<thead>
+<tr><th>Icono</th><th>Significado</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><img src="modules/beneos-module/assets/wiki/shot_player-navigation_1.webp" alt="Icono de navegador de jugador" /></td>
+<td><strong>Navegador de jugador.</strong> El icono estándar que los jugadores ven cuando se acercan lo suficiente. No pueden verlo a través de las paredes; deben llegar a la salida de la escena para interactuar. Si un jugador hace clic en él mientras un personaje que controla está dentro de la zona de teletransporte (invisible para él), ese personaje viaja a la escena de destino y la escena cambia solo para ese jugador.</td>
+</tr>
+<tr>
+<td><img src="modules/beneos-module/assets/wiki/shot_player-navigation_2.webp" alt="Icono de navegador oculto del DJ" /></td>
+<td><strong>Navegador oculto del DJ.</strong> Mismo efecto que el navegador de jugador, pero invisible para los jugadores e inutilizable por ellos. Sirve para rutas no evidentes: puertas secretas, caminos por descubrir o por abrir más adelante. Cuando decidas que los jugadores pueden avanzar, haz clic en él y se teletransportarán al destino. Genial para trampas, caminos despejados, puertas entreabiertas.</td>
+</tr>
+</tbody>
+</table>
+<h2>Quién ve qué iconos</h2>
+<p>Un jugador solo ve un icono de diario si ese diario se le ha compartido a él o a todos los jugadores. Coloca cinco iconos pero comparte cada diario con un solo jugador, y cada jugador verá únicamente el suyo. Usa esto para dar notas privadas a los jugadores, o para mantener la navegación del DJ separada de la de los jugadores.</p>
+<img src="modules/beneos-module/assets/wiki/dm_journal_permission.webp" alt="Cambiar los permisos de un diario" />
+<p>Configura los permisos de un diario igual que harías con un token. Abre el navegador de diarios mediante <strong>Diarios</strong> en la barra de navegación superior derecha. Haz clic derecho en el diario y elige <strong>Configurar propiedad</strong>. <strong>Todos los jugadores</strong> concede acceso a todos en el mundo (los DJ quedan excluidos). Debajo, define reglas por jugador. Normalmente concedes el permiso al jugador previsto y dejas el resto tal cual.</p>
+<ul>
+<li><strong>Propietario:</strong> derechos completos de lectura y edición.</li>
+<li><strong>Observador:</strong> puede ver el diario, no puede editarlo.</li>
+<li><strong>Ninguno:</strong> no puede verlo ni editarlo. Es el valor por defecto de todos los diarios de navegación del DJ, como el Point of Interest Teleporter.</li>
+</ul>
