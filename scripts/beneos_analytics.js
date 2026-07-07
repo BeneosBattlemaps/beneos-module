@@ -374,10 +374,11 @@ export class BeneosAnalytics {
   }
 
   static _sceneBackgroundSrc(scene) {
-    return scene?.firstLevel?.background?.src
-        ?? scene?.background?.src
-        ?? scene?.img
-        ?? ""
+    // V14 moved the background onto scene.firstLevel; reading the deprecated
+    // top-level scene.background logs a warning on every canvas draw. Only touch
+    // it on a V13-shaped scene (no firstLevel).
+    if (scene?.firstLevel) return scene.firstLevel.background?.src ?? scene?.img ?? ""
+    return scene?.background?.src ?? scene?.img ?? ""
   }
 
   static _isBeneosScene(scene) {

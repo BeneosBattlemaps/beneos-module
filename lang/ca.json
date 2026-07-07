@@ -1399,6 +1399,7 @@
   "BENEOS.MagicShop.AddSpecialTooltip": "Afegir un altre item especial",
   "BENEOS.MagicShop.PoolExhaustedDefault": "No hi ha més items per defecte disponibles per a aquest tipus de botiga.",
   "BENEOS.MagicShop.PoolExhaustedSpecial": "No hi ha més items especials disponibles per a aquest tipus de botiga.",
+  "BENEOS.MagicShop.ThinPool": "{shop} només té uns quants ítems etiquetats, així que la botiga ha quedat poc assortida. Afegeix més ítems d'aquesta categoria a la base de dades d'ítems de Beneos.",
   "BENEOS.MagicShop.DragToInstall": "Arrossega per instal·lar",
   "BENEOS.MagicShop.Delivered": "Ja lliurat",
   "BENEOS.MagicShop.HealingTooltip": "Poció de curació garantida",

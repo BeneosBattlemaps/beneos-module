@@ -1399,6 +1399,7 @@
   "BENEOS.MagicShop.AddSpecialTooltip": "新增另一件特殊物品",
   "BENEOS.MagicShop.PoolExhaustedDefault": "此商店類型沒有更多可用的預設物品。",
   "BENEOS.MagicShop.PoolExhaustedSpecial": "此商店類型沒有更多可用的特殊物品。",
+  "BENEOS.MagicShop.ThinPool": "{shop} 只有少數已標記的物品，因此商店庫存不足。請在 Beneos 物品資料庫中為此類別新增更多物品。",
   "BENEOS.MagicShop.DragToInstall": "拖曳以安裝",
   "BENEOS.MagicShop.Delivered": "已交付",
   "BENEOS.MagicShop.HealingTooltip": "保證的治療藥水",

@@ -1399,6 +1399,7 @@
   "BENEOS.MagicShop.AddSpecialTooltip": "특별 아이템을 하나 더 추가",
   "BENEOS.MagicShop.PoolExhaustedDefault": "이 상점 유형에는 더 이상 사용 가능한 기본 아이템이 없어요.",
   "BENEOS.MagicShop.PoolExhaustedSpecial": "이 상점 유형에는 더 이상 사용 가능한 특별 아이템이 없어요.",
+  "BENEOS.MagicShop.ThinPool": "{shop}에 태그된 아이템이 적어 상점이 충분히 채워지지 않았어요. Beneos 아이템 데이터베이스에서 이 카테고리에 아이템을 더 추가하세요.",
   "BENEOS.MagicShop.DragToInstall": "끌어다 놓아 설치",
   "BENEOS.MagicShop.Delivered": "이미 전달됨",
   "BENEOS.MagicShop.HealingTooltip": "보장된 치유 물약",

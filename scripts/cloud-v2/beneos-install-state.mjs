@@ -306,7 +306,11 @@ export async function beneosLogModuleInstall({ assetId, variant, sceneCount }) {
       method:      "POST",
       headers:     { "Content-Type": "application/x-www-form-urlencoded" },
       body,
-      credentials: "include",
+      // Auth runs through the s= body param, not a cookie, so we must NOT send
+      // credentials: the server's CDN sends Access-Control-Allow-Origin: '*',
+      // which the browser rejects for a credentialed cross-origin request
+      // (the CORS error seen in the install logs). "omit" keeps this call clean.
+      credentials: "omit",
     })
   } catch (_e) {
     // intentional swallow — tracking is best-effort

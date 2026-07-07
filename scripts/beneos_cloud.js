@@ -469,6 +469,9 @@ export class BeneosCloudLogin extends FormApplication {
             // battlemap_patron / campaigns in the same session.
             game.beneos.cloud.lastLoginPayload = data
             game.beneos.cloud.setLoginStatus(true)
+            // F7: re-point the ScenePacker session + drop stale caches so the
+            // re-render below shows unlocked install buttons without a reload.
+            game.beneos.cloud.refreshCloudBrowseSession()
             ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Notification.Connected"))
             // Fix #B-5d / Issue #A5: no more `window.location.reload()`. Refresh the
             // available-content map and re-render the open search-engine in place.
@@ -994,6 +997,9 @@ export class BeneosCloud {
         BeneosUtility.debugMessage("BENEOS Cloud login data", data)
         if (data.result == 'OK') {
           game.beneos.cloud.setLoginStatus(true)
+          // F7: re-point the ScenePacker session + drop stale browse caches so
+          // the storefront reflects the new entitlement without a reload.
+          game.beneos.cloud.refreshCloudBrowseSession()
           await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", data.patreon_status)
           await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-token-patron", !!data.token_patron)
           await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-battlemap-patron", !!data.battlemap_patron)
@@ -1016,6 +1022,32 @@ export class BeneosCloud {
       })
   }
 
+  /**
+   * F7: after any auth change (interactive login, init auto-login, disconnect)
+   * the browse layer must pick up the new identity WITHOUT a world reload. The
+   * ScenePacker manager holds a `sessionId` (the Foundry ID) plus cached
+   * release/bundle lists, and the V2 window memoizes its release list/index and
+   * free-map. None of these were refreshed on login, so a stale `anonymous`
+   * session lingered: install buttons stayed "locked" and free maps stayed
+   * unfetchable until a reload. This re-points the session and drops the caches,
+   * mirroring the manual Retry button (_onRetryLoadReleases).
+   */
+  refreshCloudBrowseSession() {
+    const foundryId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id") || "anonymous"
+    const mgr = window.BeneosScenePacker
+    if (mgr) {
+      mgr.sessionId      = foundryId
+      mgr._releasesCache = null
+      mgr._bundlesCache  = null
+    }
+    const v2cls = game.beneos?.cloudWindowV2?.constructor
+    if (v2cls) {
+      v2cls._releaseList    = null
+      v2cls._releaseIndex   = null
+      v2cls._releaseFreeMap = null
+    }
+  }
+
   async disconnect() {
     this.setLoginStatus(false)
     await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-foundry-id", "")
@@ -1023,6 +1055,9 @@ export class BeneosCloud {
     await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-token-patron", false)
     await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-battlemap-patron", false)
     this.lastLoginPayload = null
+    // F7: reset the ScenePacker session to anonymous + drop caches so the
+    // storefront re-locks correctly without a reload.
+    this.refreshCloudBrowseSession()
     // Fix #B-5d / Issue #A5: no full GUI reload. Clear the available-content map,
     // surface a notification, and re-render the V2 window if it's open.
     this.availableContent = { tokens: [], items: [], spells: [] }
@@ -1888,6 +1923,21 @@ export class BeneosCloud {
         for (let i = 0; i < itemObjectData.effects.length; i++) {
           let effect = itemObjectData.effects[i]
           effect.img = effect.img.replaceAll("beneos_assets/beneos_items/", "beneos_assets/cloud/items/")
+        }
+      }
+
+      // F4: the flip-card renderer (item-companion / item-sheet-extender) reads
+      // the front/back/icon card paths from flags.beneos-module.loot.render.*Webp.
+      // The authored item bakes the LEGACY beneos_assets/beneos_items/ path into
+      // those, but the cards are uploaded to beneos_assets/cloud/items/ , so
+      // without this rewrite the card <img> 404s on a fresh install (the
+      // description/effect/img rewrites above missed these fields).
+      const lootRender = foundry.utils.getProperty(itemObjectData, "flags.beneos-module.loot.render")
+      if (lootRender && typeof lootRender === "object") {
+        for (const k of ["frontCardWebp", "backCardWebp", "iconWebp"]) {
+          if (typeof lootRender[k] === "string") {
+            lootRender[k] = lootRender[k].replaceAll("beneos_assets/beneos_items/", "beneos_assets/cloud/items/")
+          }
         }
       }
 

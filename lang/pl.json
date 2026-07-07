@@ -1399,6 +1399,7 @@
   "BENEOS.MagicShop.AddSpecialTooltip": "Dodaj kolejny specjalny przedmiot",
   "BENEOS.MagicShop.PoolExhaustedDefault": "Brak więcej domyślnych przedmiotów dla tego typu sklepu.",
   "BENEOS.MagicShop.PoolExhaustedSpecial": "Brak więcej specjalnych przedmiotów dla tego typu sklepu.",
+  "BENEOS.MagicShop.ThinPool": "{shop} ma tylko kilka oznaczonych przedmiotów, więc sklep jest słabo zaopatrzony. Dodaj więcej przedmiotów tej kategorii w bazie danych przedmiotów Beneos.",
   "BENEOS.MagicShop.DragToInstall": "Przeciągnij, aby zainstalować",
   "BENEOS.MagicShop.Delivered": "Już dostarczone",
   "BENEOS.MagicShop.HealingTooltip": "Gwarantowana mikstura lecznicza",

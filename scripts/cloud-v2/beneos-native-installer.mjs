@@ -306,9 +306,18 @@ export class BeneosNativeBattlemapInstaller {
       // when applicable; #importDocuments reads this._sceneScope to filter).
       await this.#downloadAssets(installAssets)
       await this.#importDocuments(jsons)
+      // F1: a battlemap pack always ships scene documents. If the server
+      // returned NO Scene.json at all (the entitlement gate keeps the binary
+      // assets public+signed but withholds the scene documents for a caller
+      // without access), the install would silently leave downloaded files with
+      // zero scenes , exactly the "maps in the folder but no scenes" report.
+      // Fail loudly with the existing membership message instead of half-installing.
+      if (!this._importedScenes?.length && !jsons["data/Scene.json"]) {
+        throw new Error(game.i18n.localize("BENEOS.Cloud.Bmap.PoiInstall.NoAccess"))
+      }
       await this.#verifyAndRepair(installAssets)
-      // Native packs strip the author-world scene.thumb path (it would 404 here),
-      // so regenerate thumbnails from the now-uploaded backgrounds.
+      // F5: #importDocuments nulls the author-world scene.thumb path (it would
+      // 404 here), so regenerate thumbnails from the now-uploaded backgrounds.
       await this.#regenerateSceneThumbs()
 
       // Second install layer: the scenes' creatureInstaller flag references
@@ -1147,6 +1156,12 @@ export class BeneosNativeBattlemapInstaller {
       // button afterwards (Overview scene for a release, the scene itself for a
       // single-scene install).
       if (relPath === "data/Scene.json") {
+        // F5: drop the author-world `thumb` path. It points at a <id>-thumb.webp
+        // that does not exist in the customer world, so the scene sidebar shows
+        // a 404 placeholder. Clearing it lets #regenerateSceneThumbs (which only
+        // acts on thumbless scenes) render a fresh thumbnail from the installed
+        // background after import.
+        for (const d of arr) { if (d && typeof d === "object") d.thumb = null }
         this._importedScenes = arr.map(d => ({ id: String(d?._id), name: String(d?.name || "") }))
       }
       if (arr.length === 0) continue

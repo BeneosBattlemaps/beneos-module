@@ -146,13 +146,20 @@ export class BeneosForge extends HandlebarsApplicationMixin(ApplicationV2) {
     let item = null;
     try { item = await fromUuid(data.uuid); } catch (_) {}
     if (!item) { ui.notifications?.warn?.(game.i18n.localize("BENEOS.Forge.NotAnItem")); return; }
-    // An already-Beneos item can't be re-forged for an Echo, but its Origin
-    // can be reassigned. Switch to "change" mode and preselect its Origin.
-    if (isForged(item) || isBeneosLootItem(item)) {
+    // A Beneos item that already carries a REAL Origin can't be re-forged for
+    // an Echo, but its Origin can be reassigned: switch to "change" mode and
+    // preselect it. A plain or SRD base item (origin slug "srd" or none) is a
+    // forge target , keep "forge" mode and do NOT clobber a previously chosen
+    // Origin. Overwriting it with the "srd" sentinel (which has no ORIGIN_META
+    // entry) is exactly what reset the picker and rendered the broken image.
+    const droppedSlug = getLootFlags(item)?.origin?.slug || null;
+    const hasRealOrigin = (isForged(item) || isBeneosLootItem(item)) && droppedSlug && droppedSlug !== "srd";
+    if (hasRealOrigin) {
       this._mode = "change";
-      this._originSlug = getLootFlags(item)?.origin?.slug || null;
+      this._originSlug = droppedSlug;
     } else {
       this._mode = "forge";
+      // Preserve this._originSlug: a base/SRD item drop keeps the user's pick.
     }
     this._itemUuid = item.uuid;
     this._itemName = item.name;

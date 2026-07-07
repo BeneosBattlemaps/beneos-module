@@ -1399,6 +1399,7 @@
   "BENEOS.MagicShop.AddSpecialTooltip": "Ein weiteres besonderes Item hinzufügen",
   "BENEOS.MagicShop.PoolExhaustedDefault": "Keine weiteren Standard-Items für diesen Ladentyp verfügbar.",
   "BENEOS.MagicShop.PoolExhaustedSpecial": "Keine weiteren besonderen Items für diesen Ladentyp verfügbar.",
+  "BENEOS.MagicShop.ThinPool": "{shop} hat nur wenige getaggte Items, daher ist der Laden unvollständig bestückt. Ergänze mehr Items dieser Kategorie in der Beneos-Item-Datenbank.",
   "BENEOS.MagicShop.DragToInstall": "Zum Installieren ziehen",
   "BENEOS.MagicShop.Delivered": "Bereits geliefert",
   "BENEOS.MagicShop.HealingTooltip": "Garantierter Heiltrank",

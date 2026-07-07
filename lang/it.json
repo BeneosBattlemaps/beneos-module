@@ -1399,6 +1399,7 @@
   "BENEOS.MagicShop.AddSpecialTooltip": "Aggiungi un altro oggetto speciale",
   "BENEOS.MagicShop.PoolExhaustedDefault": "Nessun altro oggetto standard disponibile per questo tipo di negozio.",
   "BENEOS.MagicShop.PoolExhaustedSpecial": "Nessun altro oggetto speciale disponibile per questo tipo di negozio.",
+  "BENEOS.MagicShop.ThinPool": "{shop} ha solo pochi oggetti taggati, quindi il negozio è poco fornito. Aggiungi altri oggetti di questa categoria nel database oggetti Beneos.",
   "BENEOS.MagicShop.DragToInstall": "Trascina per installare",
   "BENEOS.MagicShop.Delivered": "Già consegnato",
   "BENEOS.MagicShop.HealingTooltip": "Pozione di guarigione garantita",

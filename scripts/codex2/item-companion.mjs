@@ -39,9 +39,18 @@ export class ItemCompanion {
     const item = sheet?.item ?? sheet?.document ?? sheet?.object ?? null;
     if (!item || item.documentName !== "Item") return;
     const flags = getLootFlags(item);
-    if (!flags?.origin?.slug) return;
+    if (!flags) return;
+    // F4: mount whenever the item is a Beneos card item. We used to require an
+    // origin.slug, so a Beneos item whose authored loot block is missing that
+    // datum (e.g. Hallowblight Strain) mounted nothing , the right pane stayed
+    // blank. The card renderer already handles a missing origin (the SRD path
+    // suppresses the emblem/label), so gate on "has a resolvable card OR a real
+    // origin" instead of on the origin alone.
+    const cardPaths = beneosCloudCardPaths(item);
+    const hasCard = !!(cardPaths.front || flags.render?.frontCardWebp);
+    if (!hasCard && !flags.origin?.slug) return;
 
-    if (CONFIG?.debug?.hooks) console.log(`Beneos | Companion attaching to "${item.name}" (origin=${flags.origin.slug})`);
+    if (CONFIG?.debug?.hooks) console.log(`Beneos | Companion attaching to "${item.name}" (origin=${flags.origin?.slug ?? "none"})`);
 
     let inst = INSTANCES.get(sheet);
     if (!inst) {

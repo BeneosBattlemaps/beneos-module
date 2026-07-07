@@ -1399,6 +1399,7 @@
   "BENEOS.MagicShop.AddSpecialTooltip": "Přidat další speciální item",
   "BENEOS.MagicShop.PoolExhaustedDefault": "Pro tento typ obchodu nejsou další běžné itemy.",
   "BENEOS.MagicShop.PoolExhaustedSpecial": "Pro tento typ obchodu nejsou další speciální itemy.",
+  "BENEOS.MagicShop.ThinPool": "{shop} má jen několik označených itemů, takže obchod zůstal málo zásobený. Přidej více itemů této kategorie do databáze itemů Beneos.",
   "BENEOS.MagicShop.DragToInstall": "Přetáhni pro instalaci",
   "BENEOS.MagicShop.Delivered": "Již dodáno",
   "BENEOS.MagicShop.HealingTooltip": "Zaručený léčivý lektvar",

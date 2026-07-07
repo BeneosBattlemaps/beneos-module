@@ -1399,6 +1399,7 @@
   "BENEOS.MagicShop.AddSpecialTooltip": "別の特別アイテムを追加",
   "BENEOS.MagicShop.PoolExhaustedDefault": "このショップタイプに利用できるデフォルトアイテムはもうありません。",
   "BENEOS.MagicShop.PoolExhaustedSpecial": "このショップタイプに利用できる特別アイテムはもうありません。",
+  "BENEOS.MagicShop.ThinPool": "{shop} にはタグ付けされたアイテムがわずかしかないため、ショップの品揃えが少なくなりました。Beneos アイテムデータベースでこのカテゴリのアイテムを追加してください。",
   "BENEOS.MagicShop.DragToInstall": "ドラッグしてインストール",
   "BENEOS.MagicShop.Delivered": "配達済み",
   "BENEOS.MagicShop.HealingTooltip": "確定の回復ポーション",

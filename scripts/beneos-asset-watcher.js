@@ -298,18 +298,27 @@ const _sceneRefs = (scene) => {
   const push = (path, kind, entity, field) => {
     if (isBeneosPath(path)) out.push(_ref(path, kind, "Scene", entity ?? scene, field));
   };
-  push(scene.background?.src, "background", scene, "background.src");
-  const fgRaw = typeof scene.foreground === "string" ? scene.foreground : scene.foreground?.src;
-  if (isBeneosPath(fgRaw)) {
-    out.push(_ref(
-      fgRaw,
-      "foreground",
-      "Scene",
-      scene,
-      typeof scene.foreground === "string" ? "foreground" : "foreground.src"
-    ));
+  // V14 relocated the scene background/foreground onto scene.firstLevel (Level).
+  // Reading the deprecated top-level scene.background/foreground logs a warning
+  // on every canvas draw (seen in the install logs), so branch on firstLevel:
+  // track the Level paths on V14, the legacy top-level paths only on a
+  // V13-shaped scene that has no firstLevel.
+  if (scene.firstLevel) {
+    push(scene.firstLevel.background?.src, "firstLevelBg", scene, "firstLevel.background.src");
+    push(scene.firstLevel.foreground?.src, "foreground", scene, "firstLevel.foreground.src");
+  } else {
+    push(scene.background?.src, "background", scene, "background.src");
+    const fgRaw = typeof scene.foreground === "string" ? scene.foreground : scene.foreground?.src;
+    if (isBeneosPath(fgRaw)) {
+      out.push(_ref(
+        fgRaw,
+        "foreground",
+        "Scene",
+        scene,
+        typeof scene.foreground === "string" ? "foreground" : "foreground.src"
+      ));
+    }
   }
-  push(scene.firstLevel?.background?.src, "firstLevelBg", scene, "firstLevel.background.src");
   for (const t of scene.tiles ?? []) {
     if (isBeneosPath(t.texture?.src)) {
       out.push(_ref(t.texture.src, "tile", "Tile", t, "texture.src", "Scene", scene));

@@ -102,92 +102,86 @@ export class BeneosDatabaseHolder {
     let localStorage = BeneosUtility.getLocalStorage()
     this.isOffline = false
 
-    try {
-      let tokenData = await foundry.utils.fetchJsonWithTimeout(tokenDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
-      this.tokenData = tokenData
-      localStorage.tokenData = structuredClone(tokenData)
-    } catch (err) {
-      if (localStorage.tokenData) {
-        this.tokenData = structuredClone(localStorage.tokenData)
-        this.isOffline = true
-        ui.notifications.info(game.i18n.localize("BENEOS.Notifications.Search.TokenDbLocal"))
-      } else {
-        ui.notifications.error(game.i18n.format("BENEOS.Notifications.Search.TokenDbError", { message: err.message, url: tokenDBURL }))
-      }
-    }
-    try {
-      let bmapData = await foundry.utils.fetchJsonWithTimeout(battlemapDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
-      this.bmapData = bmapData
-      localStorage.bmapData = structuredClone(bmapData)
-    } catch {
-      if (localStorage.bmapData) {
-        this.bmapData = structuredClone(localStorage.bmapData)
-        this.isOffline = true
-        ui.notifications.info(game.i18n.localize("BENEOS.Notifications.Search.BattlemapDbLocal"))
-      } else {
-        ui.notifications.error(game.i18n.localize("BENEOS.Notifications.Search.BattlemapDbError"))
-      }
-    }
-    try {
-      let itemData = await foundry.utils.fetchJsonWithTimeout(itemDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
-      this.itemData = itemData
-      localStorage.itemData = structuredClone(itemData)
-    } catch {
-      if (localStorage.itemData) {
-        this.itemData = structuredClone(localStorage.itemData)
-        this.isOffline = true
-        ui.notifications.info(game.i18n.localize("BENEOS.Notifications.Search.ItemDbLocal"))
-      } else {
-        ui.notifications.error(game.i18n.localize("BENEOS.Notifications.Search.ItemDbError"))
-      }
-    }
-    try {
-      let spellData = await foundry.utils.fetchJsonWithTimeout(spellDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
-      this.spellData = spellData
-      localStorage.spellData = structuredClone(spellData)
-    } catch {
-      if (localStorage.spellData) {
-        this.spellData = structuredClone(localStorage.spellData)
-        this.isOffline = true
-        ui.notifications.info(game.i18n.localize("BENEOS.Notifications.Search.SpellDbLocal"))
-      } else {
-        ui.notifications.error(game.i18n.localize("BENEOS.Notifications.Search.SpellDbError"))
-      }
-    }
-    try {
-      let commonData = await foundry.utils.fetchJsonWithTimeout(commonDBURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
-      this.commonData = commonData
-      localStorage.commonData = structuredClone(commonData)
-    } catch {
-      if (localStorage.commonData) {
-        this.commonData = structuredClone(localStorage.commonData)
-        this.isOffline = true
-        ui.notifications.info(game.i18n.localize("BENEOS.Notifications.Search.CommonDbLocal"))
-      } else {
-        ui.notifications.error(game.i18n.localize("BENEOS.Notifications.Search.CommonDbError"))
-      }
-    }
-
+    // Feature A: the six DB JSONs load through one helper (#loadOneDb) that adds
+    // a local-cache + offline layer:
+    //  - When the browser is offline we skip the doomed network round-trip and
+    //    use the persisted copy immediately (no timeout wait).
+    //  - Online we keep cache:"no-cache", which REVALIDATES against the CDN's
+    //    ETag/Last-Modified: an unchanged DB comes back as a tiny 304 with the
+    //    body served from the browser cache (server relief, no re-download),
+    //    while a newer DB is pulled fresh , exactly "use local until a newer one
+    //    is available". Any failure falls back to the persisted copy + isOffline.
+    // The persisted copy lives in the world-scoped `beneos-database-local-storage`
+    // setting (BeneosUtility.get/saveLocalStorage), same store as before.
+    await this.#loadOneDb(tokenDBURL, "tokenData", localStorage, {
+      notifLocal: "BENEOS.Notifications.Search.TokenDbLocal",
+      notifError: (err) => game.i18n.format("BENEOS.Notifications.Search.TokenDbError", { message: err?.message, url: tokenDBURL }),
+    })
+    await this.#loadOneDb(battlemapDBURL, "bmapData", localStorage, {
+      notifLocal: "BENEOS.Notifications.Search.BattlemapDbLocal",
+      notifError: "BENEOS.Notifications.Search.BattlemapDbError",
+    })
+    await this.#loadOneDb(itemDBURL, "itemData", localStorage, {
+      notifLocal: "BENEOS.Notifications.Search.ItemDbLocal",
+      notifError: "BENEOS.Notifications.Search.ItemDbError",
+    })
+    await this.#loadOneDb(spellDBURL, "spellData", localStorage, {
+      notifLocal: "BENEOS.Notifications.Search.SpellDbLocal",
+      notifError: "BENEOS.Notifications.Search.SpellDbError",
+    })
+    await this.#loadOneDb(commonDBURL, "commonData", localStorage, {
+      notifLocal: "BENEOS.Notifications.Search.CommonDbLocal",
+      notifError: "BENEOS.Notifications.Search.CommonDbError",
+    })
     // Controlled-vocabulary tag-translation matrix (biomes, schools, rarities,
     // origins, ...). Best-effort: a failure here must not break the DB load;
-    // the localizeTag helper falls back to the raw value when it is absent.
-    try {
-      let i18nMatrix = await foundry.utils.fetchJsonWithTimeout(i18nMatrixURL, { cache: "no-cache", method: 'GET', 'Content-Type': 'application/json' })
-      this.i18nMatrix = i18nMatrix
-      this._i18nLcIndex = null // reset the lazy lowercase index on (re)load
-      localStorage.i18nMatrix = structuredClone(i18nMatrix)
-    } catch {
-      if (localStorage.i18nMatrix) {
-        this.i18nMatrix = structuredClone(localStorage.i18nMatrix)
-        this._i18nLcIndex = null
-      } else {
-        this.i18nMatrix = null
-      }
-    }
+    // the localizeTag helper falls back to the raw value when it is absent. No
+    // error toast, and the lazy lowercase index is reset via resetI18n.
+    await this.#loadOneDb(i18nMatrixURL, "i18nMatrix", localStorage, { resetI18n: true })
 
     BeneosUtility.saveLocalStorage(localStorage)
 
     this.buildSearchData()
+  }
+
+  /********************************************************************************** */
+  // Feature A: load one DB JSON with a local-cache + offline layer. Sets
+  // this[prop] to the loaded (or cached) data and mirrors it into the persisted
+  // `store` blob. opts: { notifLocal, notifError, resetI18n }.
+  //  - notifLocal : i18n key shown (info) when we fall back to the local copy.
+  //  - notifError : i18n key OR (err)=>string shown (error) when there is no
+  //                 local copy to fall back to. Omit for best-effort DBs.
+  //  - resetI18n  : also clear the lazy lowercase i18n index on (re)load.
+  static async #loadOneDb(url, prop, store, opts = {}) {
+    const cached = store[prop]
+    const useCache = () => {
+      this[prop] = structuredClone(cached)
+      this.isOffline = true
+      if (opts.resetI18n) this._i18nLcIndex = null
+      if (opts.notifLocal) ui.notifications.info(game.i18n.localize(opts.notifLocal))
+    }
+
+    // Offline: skip the network entirely and use the persisted copy.
+    if (typeof navigator !== "undefined" && navigator.onLine === false && cached) {
+      useCache()
+      return
+    }
+
+    try {
+      const data = await foundry.utils.fetchJsonWithTimeout(url, { cache: "no-cache", method: "GET", "Content-Type": "application/json" })
+      this[prop] = data
+      store[prop] = structuredClone(data)
+      if (opts.resetI18n) this._i18nLcIndex = null
+    } catch (err) {
+      if (cached) {
+        useCache()
+      } else if (opts.notifError) {
+        const msg = typeof opts.notifError === "function" ? opts.notifError(err) : game.i18n.localize(opts.notifError)
+        ui.notifications.error(msg)
+      } else {
+        this[prop] = null
+      }
+    }
   }
 
   /********************************************************************************** */
@@ -813,7 +807,11 @@ export class BeneosDatabaseHolder {
         if ((comp == "<" && item.properties.price <= price) || (comp == ">" && item.properties.price > price)) {
           newResults[key] = structuredClone(item)
         }
-      } else if (item?.properties[propertyName]) {
+      } else if (item?.properties[propertyName] != null) {
+        // F6: a truthy check dropped numeric rarity 0 (Common), so Common items
+        // never surfaced in the rarity filter. Guard on != null so 0 (and other
+        // falsy-but-present values) still match; empty strings fall through the
+        // string branch harmlessly.
         if (typeof (item.properties[propertyName]) == "string" || typeof (item.properties[propertyName]) == "number") {
           if (strict) {
             if (item.properties[propertyName].toString().toLowerCase() == value.toString()) {

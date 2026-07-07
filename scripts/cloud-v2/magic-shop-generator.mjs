@@ -622,6 +622,15 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
     this.defaultItems = this.#rollDefaultItems(all, items)
     // Punkt 3 v3-fix: shop's cash on hand for buying back from PCs.
     this.shopCash = this.#rollShopCash()
+    // F2: honest signal for a thin shop pool. The shop is driven entirely by
+    // `properties.shop` in the item DB; when a category has too few tagged
+    // items the shop comes out under-filled (we no longer stuff it with
+    // mis-tiered filler). Tell the GM it is a data-coverage gap, not a bug.
+    const thinPool = !!this.shopType &&
+      (all.length === 0 || items.length < slots || this.defaultItems.length < DEFAULT_ITEM_COUNT)
+    if (thinPool) {
+      ui.notifications?.info?.(game.i18n.format("BENEOS.MagicShop.ThinPool", { shop: shopLabel(this.shopType) }))
+    }
     this.step = 4
     this.rolling = false
     await this.render({ parts: ["body"] })
@@ -718,16 +727,14 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
         tier: realTier
       }
     }
-    // Last-resort fallback: anything from the trimmed pool.
-    const pick = randomChoice(all)
-    if (!pick) return null
-    return {
-      itemKey: pick[0],
-      item: pick[1],
-      kind: "loot",
-      rarity: extractRarity(pick[1]) || "Common",
-      tier: itemTier(pick[1])
-    }
+    // F2: NO arbitrary last-resort pick. The old fallback grabbed any item from
+    // the pool ignoring both rarity AND tier, which is exactly what produced the
+    // "wrong tier / far too expensive" items when a shop's `properties.shop`
+    // pool is too thin. Returning null instead leaves the shop honestly
+    // under-filled (the caller surfaces a thin-pool notice) rather than stuffing
+    // it with mis-priced goods. The tier-relaxed, rarity-honouring pool above is
+    // the last legitimate step.
+    return null
   }
 
   /* ---------- Save pipeline ---------- */
