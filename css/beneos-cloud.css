@@ -3725,11 +3725,12 @@ button.beneos-icon-logo::before {
   content: "";
   display: block;
   /* flex:0 0 auto keeps the icon (a flex item) at full size; without it the
-     icon shrank inside the button's flex box. 27px sits inside the unchanged
-     32px tile (10% smaller than the earlier 30px fill). */
+     icon shrank inside the button's flex box. 21.6px sits inside the unchanged
+     32px tile (20% smaller than the earlier 27px, so the brand mark is less
+     dominant in the toolbar). */
   flex: 0 0 auto;
-  width: 27px;
-  height: 27px;
+  width: 21.6px;
+  height: 21.6px;
   background: currentColor;
   -webkit-mask: url("../icons/beneos_logo.svg") center / contain no-repeat;
           mask: url("../icons/beneos_logo.svg") center / contain no-repeat;
@@ -5075,9 +5076,9 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
-  max-height: 480px;
-  overflow-y: auto;
-  padding-right: 4px;
+  /* No inner scroll: the Special-Items list renders at full height and the
+     single outer .blg-scroll-body scrollbar handles the whole result. Nested
+     sub-category scrollbars made short lists scroll inside a taller frame. */
 }
 .beneos-magic-shop .blg-shop-item {
   position: relative;
@@ -5375,13 +5376,9 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 6px;
-  /* Punkt 3 v5e: cap the default-inventory grid so the outer modal
-     scroll stays inactive in normal use. Together with the existing
-     480 px Special-Items cap and the 85vh modal frame, the user
-     sees only the inner Special-Items scrollbar — no double-scroll. */
-  max-height: 150px;
-  overflow-y: auto;
-  padding-right: 4px;
+  /* No inner scroll: the Default-Inventory grid renders at full height. Only the
+     outer .blg-scroll-body (within the 85vh modal frame) scrolls, so every item
+     is visible by scrolling the page instead of a cramped sub-category box. */
 }
 .beneos-magic-shop .blg-shop-item-default {
   /* Punkt 3 v5b: vertical stack — icon on top, full-width name below.

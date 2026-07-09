@@ -1075,10 +1075,12 @@ Hooks.on("getSceneControlButtons", (controls) => {
     title: game.i18n.localize("BENEOS.Toolbar.Title"),
     // Wave B-9-fix-44: Beneos logo SVG via the masked CSS class.
     icon: "beneos-icon-logo",
-    // Keep the Beneos logo pinned to the very bottom of the left toolbar.
-    // Foundry sorts groups by `order` ascending; core + other modules top out
-    // around 100 (e.g. the effects group at order 100), so 200 reliably lands
-    // us last regardless of which extra groups a world has installed.
+    // Keep the Beneos logo pinned to the very bottom of the left toolbar. A high
+    // `order` gets us past the core groups (effects tops out at 100), but that
+    // alone is not enough: some modules (e.g. Moulinette) register their group
+    // WITHOUT an `order`, so Foundry's sort can still leave them below us. The
+    // renderSceneControls hook below therefore also physically moves our button
+    // to be the last child of the toolbar on every render.
     order: 200,
     visible: true,
     tools: {
@@ -1118,7 +1120,17 @@ Hooks.on("renderSceneControls", (app, element) => {
   if (!game.user?.isGM) return
   const root = element instanceof HTMLElement ? element : element?.[0]
   const btn = root?.querySelector?.('button[data-control="beneos"]')
-  if (!btn || btn.dataset.beneosBound === "1") return
+  if (!btn) return
+  // Pin the Beneos logo to the very bottom of the left toolbar, below every
+  // other group. `order: 200` handles the core groups, but modules that register
+  // without an `order` (e.g. Moulinette) can still sort after us, so we move our
+  // button to be the last child of its container on every render.
+  const item = btn.closest("li") || btn
+  const parent = item.parentElement
+  if (parent && parent.lastElementChild !== item) parent.appendChild(item)
+  // Wave B-9-fix-71 (see the block comment above): bind the direct click
+  // listener exactly once so the logo opens the cloud window from anywhere.
+  if (btn.dataset.beneosBound === "1") return
   btn.dataset.beneosBound = "1"
   btn.addEventListener("click", () => openBeneosCloudWindow(), true)
 })

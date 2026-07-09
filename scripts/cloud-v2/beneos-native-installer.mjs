@@ -25,6 +25,7 @@
  */
 
 import { BeneosInstallState, BeneosPreInstallDialog, beneosLogModuleInstall } from "./beneos-install-state.mjs"
+import { packNeedsV14Migration, migrateSceneForV14 } from "./beneos-v14-scene-migration.mjs"
 
 // ---- Transfer config -------------------------------------------------------
 const FETCH_MAX_ATTEMPTS  = 3            // transient retries per asset
@@ -1156,12 +1157,23 @@ export class BeneosNativeBattlemapInstaller {
       // button afterwards (Overview scene for a release, the scene itself for a
       // single-scene install).
       if (relPath === "data/Scene.json") {
-        // F5: drop the author-world `thumb` path. It points at a <id>-thumb.webp
-        // that does not exist in the customer world, so the scene sidebar shows
-        // a 404 placeholder. Clearing it lets #regenerateSceneThumbs (which only
-        // acts on thumbless scenes) render a fresh thumbnail from the installed
-        // background after import.
-        for (const d of arr) { if (d && typeof d === "object") d.thumb = null }
+        // V13 -> V14 import bridge. Foundry migrates worlds across core versions,
+        // but raw createDocuments() bypasses that migration, so a V13-authored
+        // pack installed into a V14 world needs the conversions applied here:
+        // scene background/foreground/backgroundColor -> scene.levels[0], tile
+        // occlusion.mode -> occlusion.modes, and tile top-left -> anchor-point
+        // coordinates. Gated per scene on the pack origin (_stats.coreVersion), so
+        // V13 installs and future V14-authored packs are byte-identical. Runs
+        // BEFORE rewriteDocAssetPaths so the relocated background src (now under
+        // levels[0].background.src) still gets remapped into the cloud namespace.
+        // Full analysis: J:\Beneos_programming\_testing\v13_v14_scene_differential_2026-07-07.md.
+        for (const d of arr) {
+          if (!d || typeof d !== "object") continue
+          // F5: drop the author-world `thumb` path (a <id>-thumb.webp that 404s in
+          // the customer world). #regenerateSceneThumbs renders a fresh one after.
+          d.thumb = null
+          if (packNeedsV14Migration(d)) migrateSceneForV14(d)
+        }
         this._importedScenes = arr.map(d => ({ id: String(d?._id), name: String(d?.name || "") }))
       }
       if (arr.length === 0) continue

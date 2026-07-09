@@ -83,6 +83,22 @@ function matchesShop(item, shopType) {
   return tags.includes(shopType)
 }
 
+// The 22 Deck of Many Things cards live in the item DB as ordinary SRD "Trinket"
+// records, but they are not tradeable goods: each represents the effect of a
+// randomly drawn card, and roughly half of those effects are purely harmful, so
+// no player would ever buy one and no shop should stock them. The DB carries no
+// field that marks them, so we exclude them by their canonical SRD keys. This is
+// a fixed, canonical D&D set that does not change, keyed here so a shop never
+// offers a "card" the way it offers real merchandise.
+const DECK_OF_MANY_THINGS_KEYS = new Set([
+  "0000_srd_balance", "0000_srd_comet",  "0000_srd_donjon", "0000_srd_euryale",
+  "0000_srd_fates",   "0000_srd_flames", "0000_srd_fool",   "0000_srd_gem",
+  "0000_srd_idiot",   "0000_srd_jester", "0000_srd_key",    "0000_srd_knight",
+  "0000_srd_moon",    "0000_srd_rogue",  "0000_srd_ruin",   "0000_srd_skull",
+  "0000_srd_star",    "0000_srd_sun",    "0000_srd_talons", "0000_srd_throne",
+  "0000_srd_vizier",  "0000_srd_void"
+])
+
 // Punkt 3 v4: number of "default inventory" items rolled per shop.
 // Rendered as 2 rows × 5 columns above the special-items section.
 const DEFAULT_ITEM_COUNT = 10
@@ -670,7 +686,9 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
   #allItems() {
     const content = game.beneos?.databaseHolder?.itemData?.content
     if (!content) return []
-    return Object.entries(content)
+    // Drop the Deck of Many Things cards here, at the single source every shop
+    // pool draws from, so they never surface in shop-type discovery or any roll.
+    return Object.entries(content).filter(([key]) => !DECK_OF_MANY_THINGS_KEYS.has(key))
   }
 
   // Roll a healing potion appropriate for the shop tier mix. Skips

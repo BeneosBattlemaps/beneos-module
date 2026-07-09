@@ -60,39 +60,6 @@ const STATUS_KEY_TO_PHASE = new Map([
   ["unrelated",     "unrelated"],
 ])
 
-// Modal-style click blocker shown while an install is running so the user
-// cannot click around / interrupt it. Sits just under the progress window
-// (which is forced above it) and is removed the moment the install leaves the
-// "running" state or the window closes, so the completion buttons stay usable.
-const _BENEOS_INSTALL_BACKDROP_ID = "beneos-install-progress-backdrop"
-function _setInstallProgressBackdrop(win, on) {
-  try {
-    let bd = document.getElementById(_BENEOS_INSTALL_BACKDROP_ID)
-    if (on) {
-      if (!bd) {
-        bd = document.createElement("div")
-        bd.id = _BENEOS_INSTALL_BACKDROP_ID
-        bd.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.45);cursor:progress;"
-        const swallow = (e) => { e.stopPropagation(); e.preventDefault() }
-        bd.addEventListener("pointerdown", swallow, true)
-        bd.addEventListener("mousedown", swallow, true)
-        bd.addEventListener("click", swallow, true)
-        bd.addEventListener("contextmenu", swallow, true)
-        bd.addEventListener("wheel", swallow, { capture: true, passive: false })
-        document.body.appendChild(bd)
-      }
-      // Sit exactly one layer BELOW the progress window (which Foundry keeps as
-      // the top-most app after bringToFront). That blocks the canvas and every
-      // other window/UI panel while leaving the progress window interactive,
-      // without fighting Foundry's own z-index bookkeeping.
-      const z = Number(win?.element?.style?.zIndex) || 200
-      bd.style.zIndex = String(Math.max(1, z - 1))
-    } else {
-      if (bd) bd.remove()
-    }
-  } catch (_e) {}
-}
-
 export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(ApplicationV2) {
 
   static DEFAULT_OPTIONS = {
@@ -123,15 +90,10 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
     if (existing) await existing.close({ force: true })
     const win = new BeneosBattlemapInstallProgress({ label, coverUrl, subtitle, packageId })
     await win.render(true)
-    // Bring the progress window to the foreground and close the Beneos Cloud
-    // window so the install feedback is the sole focus and the interface does
-    // not get cluttered. Applies to every native install.
+    // Bring the progress window to the foreground but leave the Beneos Cloud
+    // window OPEN and interactive, so the user can keep searching/installing
+    // while an install runs. The progress window simply floats on top.
     try { win.bringToFront?.() } catch (_e) {}
-    try {
-      const cloud = game.beneos?.cloudWindowV2
-        ?? Object.values(foundry.applications.instances ?? {}).find(a => a?.element?.id === "beneos-cloud-window-v2")
-      await cloud?.close?.()
-    } catch (_e) {}
     return win
   }
 
@@ -423,26 +385,8 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
     this.render(false)
   }
 
-  /* ========== Interaction blocker ========== */
-
-  // Show the modal click-blocker only while the install is running; drop it as
-  // soon as it completes/fails (so the completion buttons stay clickable) or
-  // the window closes.
-  async _onRender(context, options) {
-    await super._onRender(context, options)
-    _setInstallProgressBackdrop(this, this._state === "running")
-  }
-
-  bringToFront() {
-    const r = super.bringToFront?.()
-    // Re-sync the blocker under the window's new z-index after Foundry bumps it.
-    if (this._state === "running") _setInstallProgressBackdrop(this, true)
-    return r
-  }
-
   async close(options) {
     if (this._autoStartTimer) { clearInterval(this._autoStartTimer); this._autoStartTimer = null }
-    _setInstallProgressBackdrop(this, false)
     return super.close(options)
   }
 

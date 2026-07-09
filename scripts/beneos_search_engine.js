@@ -308,7 +308,14 @@ export class BeneosDatabaseHolder {
       }
     } else {
       const updMs  = this.beneosParseDateMs(props.updated_date)
-      const instMs = Number(installTS) || 0
+      // installTS is stored in seconds for tokens but in milliseconds for items
+      // and spells; normalize to milliseconds (a real seconds timestamp is
+      // < 1e12) so it compares like-for-like against the millisecond
+      // updated_date. Without this a seconds install date is always smaller than
+      // the millisecond catalog date, so every installed token read as "update
+      // available" forever, even right after a successful install/update.
+      let instMs = Number(installTS) || 0
+      if (instMs > 0 && instMs < 1e12) instMs *= 1000
       if (updMs != null && instMs > 0 && updMs > instMs) isUpdate = true
       if (!isUpdate && cloudHash && installHash && cloudHash !== installHash) isUpdate = true
     }

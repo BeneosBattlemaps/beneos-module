@@ -1196,6 +1196,7 @@
   "BENEOS.Cloud.Notification.BlockedOffline": "Beneos Cloud est hors ligne. Cet asset ne peut pas être téléchargé pour l'instant. Réessaie une fois de retour en ligne.",
   "BENEOS.Cloud.Notification.BlockedLogin": "Connecte-toi à Beneos Cloud pour télécharger cet asset. Ouvre la fenêtre Beneos Cloud pour te connecter.",
   "BENEOS.Cloud.Notification.BlockedPatreon": "Ceci est un contenu réservé au Patreon. Rejoins la campagne Beneos Creatures, Spells & Loot sur Patreon pour le débloquer.",
+  "BENEOS.Cloud.Notification.BlockedUpdatePatreon": "Seuls les Patrons Beneos actifs peuvent télécharger les mises à jour. Rejoins la campagne Beneos Patreon correspondante pour mettre à jour cet élément.",
   "BENEOS.Patreon.FreeBadge": "GRATUIT",
   "BENEOS.Patreon.LockedSectionHeader": "Contenu réservé au Patreon ou à la boutique",
   "BENEOS.Patreon.FreeSection.Creatures": "Créatures gratuites",

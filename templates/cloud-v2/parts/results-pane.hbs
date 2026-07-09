@@ -393,11 +393,12 @@
                 </span>
               {{/if}}
               {{#if card.isUpdate}}
-                <button type="button" class="bc-card-button bc-card-button-primary bc-action-install bc-action-update"
+                <button type="button" class="bc-card-button bc-card-button-primary bc-action-install bc-action-update{{#if card.updateLocked}} bc-update-locked{{/if}}"
                         data-asset-key="{{card.key}}"
                         data-asset-type="{{card.assetType}}"
-                        data-tooltip="{{localize 'BENEOS.Cloud.Card.UpdateTooltip'}}">
-                  <i class="fa-solid fa-rotate"></i>
+                        {{#if card.updateLocked}}data-update-locked="true"{{/if}}
+                        data-tooltip="{{#if card.updateLocked}}{{localize 'BENEOS.Cloud.Notification.BlockedUpdatePatreon'}}{{else}}{{localize 'BENEOS.Cloud.Card.UpdateTooltip'}}{{/if}}">
+                  <i class="fa-solid {{#if card.updateLocked}}fa-lock{{else}}fa-rotate{{/if}}"></i>
                 </button>
               {{/if}}
               {{#if card.showCodexButton}}

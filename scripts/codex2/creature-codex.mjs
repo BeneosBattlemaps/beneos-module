@@ -213,11 +213,30 @@ export function findActorByTokenKey(tokenKey) {
   return null;
 }
 
+/**
+ * Resolve the actor for the codex the same way the drag pipeline does: a world
+ * actor if one exists, otherwise the installed COMPENDIUM actor
+ * (world.beneos_module_actors). "Installed" for a Beneos creature means the
+ * actor lives in that compendium (the install pipeline and card drag both work
+ * off it), so a creature that shows the green "installed" frame must open its
+ * codex even when it was never dragged into the world actor directory. Async
+ * because a compendium document has to be fetched via fromUuid.
+ */
+export async function resolveCodexActor(tokenKey) {
+  const world = findActorByTokenKey(tokenKey);
+  if (world) return world;
+  const drag = game.beneos?.BeneosUtility?.resolveBeneosDragData?.("Actor", tokenKey);
+  if (drag?.uuid) {
+    try { return await fromUuid(drag.uuid); } catch (_) { return null; }
+  }
+  return null;
+}
+
 /** Build the Handlebars context for the creature-detail page.
  *  Returns { ready: false, ... } if the actor cannot be resolved so the
  *  template can render an inline "not found" stub instead of crashing. */
 export async function buildCreatureDetailCtx({ tokenKey, activeTab, activeTacticsSub, activeAbilityFilter, codex: codexState }) {
-  const actor = findActorByTokenKey(tokenKey);
+  const actor = await resolveCodexActor(tokenKey);
   if (!actor) {
     return { ready: false, tokenKey, reason: "actor-not-found" };
   }

@@ -1196,6 +1196,7 @@
   "BENEOS.Cloud.Notification.BlockedOffline": "Beneos Cloud가 오프라인이에요. 지금은 이 에셋을 다운로드할 수 없어요. 다시 온라인이 되면 시도하세요.",
   "BENEOS.Cloud.Notification.BlockedLogin": "이 에셋을 다운로드하려면 Beneos Cloud에 로그인하세요. Beneos Cloud 창을 열어 로그인하세요.",
   "BENEOS.Cloud.Notification.BlockedPatreon": "이것은 Patreon 전용 콘텐츠예요. 잠금을 해제하려면 Patreon에서 Beneos Creatures, Spells & Loot 캠페인에 가입하세요.",
+  "BENEOS.Cloud.Notification.BlockedUpdatePatreon": "활성 Beneos 후원자만 업데이트를 다운로드할 수 있어요. 이 자산을 업데이트하려면 해당 Beneos Patreon 캠페인에 다시 가입하세요.",
   "BENEOS.Patreon.FreeBadge": "무료",
   "BENEOS.Patreon.LockedSectionHeader": "Patreon 또는 상점 전용 콘텐츠",
   "BENEOS.Patreon.FreeSection.Creatures": "무료 크리처",

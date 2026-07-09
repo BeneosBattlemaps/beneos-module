@@ -1196,6 +1196,7 @@
   "BENEOS.Cloud.Notification.BlockedOffline": "Beneos Cloud jest offline. Tego zasobu nie można teraz pobrać. Spróbuj ponownie, gdy wrócisz online.",
   "BENEOS.Cloud.Notification.BlockedLogin": "Zaloguj się do Beneos Cloud, aby pobrać ten zasób. Otwórz okno Beneos Cloud, aby się zalogować.",
   "BENEOS.Cloud.Notification.BlockedPatreon": "To treść dostępna tylko na Patreon. Dołącz do kampanii Beneos Creatures, Spells & Loot na Patreon, aby ją odblokować.",
+  "BENEOS.Cloud.Notification.BlockedUpdatePatreon": "Tylko aktywni patroni Beneos mogą pobierać aktualizacje. Dołącz ponownie do odpowiedniej kampanii Beneos Patreon, aby zaktualizować ten zasób.",
   "BENEOS.Patreon.FreeBadge": "DARMOWE",
   "BENEOS.Patreon.LockedSectionHeader": "Treści tylko z Patreona lub ze sklepu",
   "BENEOS.Patreon.FreeSection.Creatures": "Darmowe stworzenia",

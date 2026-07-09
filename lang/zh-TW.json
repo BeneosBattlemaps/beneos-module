@@ -1196,6 +1196,7 @@
   "BENEOS.Cloud.Notification.BlockedOffline": "Beneos Cloud 離線中。目前無法下載此素材。重新連線後請再試一次。",
   "BENEOS.Cloud.Notification.BlockedLogin": "登入 Beneos Cloud 以下載此素材。開啟 Beneos Cloud 視窗以登入。",
   "BENEOS.Cloud.Notification.BlockedPatreon": "這是僅供 Patreon 的內容。在 Patreon 上加入 Beneos Creatures, Spells & Loot 活動以解鎖。",
+  "BENEOS.Cloud.Notification.BlockedUpdatePatreon": "只有現役 Beneos 贊助者才能下載更新。請重新加入對應的 Beneos Patreon 方案以更新此資源。",
   "BENEOS.Patreon.FreeBadge": "免費",
   "BENEOS.Patreon.LockedSectionHeader": "Patreon 或商店限定內容",
   "BENEOS.Patreon.FreeSection.Creatures": "免費生物",

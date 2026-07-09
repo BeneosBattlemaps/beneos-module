@@ -7,6 +7,7 @@
 
 import { BeneosCodex } from "./beneos-codex.mjs";
 import { BeneosCreatureCodexWindow } from "./creature-codex-window.mjs";
+import { resolveCodexActor, findActorByTokenKey } from "./creature-codex.mjs";
 import { BeneosCombatPromptEngine } from "./combat-prompt-engine.mjs";
 // Side-effect: registers the NPC-sheet "Beneos Comment" hover panel.
 import "./sheet-ability-comment.mjs";
@@ -125,6 +126,11 @@ Hooks.once("ready", async () => {
   game.beneos.codex = {
     ...prev,
     open: (...segs) => BeneosCodex.open(...segs),
+    // Actor resolution for the cloud-v2 card codex button. resolveCodexActor
+    // also finds installed COMPENDIUM actors (not just world.actors), so the
+    // codex opens for every creature the "installed" frame marks as installed.
+    resolveCodexActor: (tokenKey) => resolveCodexActor(tokenKey),
+    findActorByTokenKey: (tokenKey) => findActorByTokenKey(tokenKey),
     /** Token-HUD / sheet-header / context-menu route. Opens a
      *  standalone per-creature window (BeneosCreatureCodexWindow), so
      *  multiple creature codices can be open in parallel during a

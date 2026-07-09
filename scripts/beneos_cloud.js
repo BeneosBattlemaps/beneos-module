@@ -1040,11 +1040,15 @@ export class BeneosCloud {
       mgr._releasesCache = null
       mgr._bundlesCache  = null
     }
-    const v2cls = game.beneos?.cloudWindowV2?.constructor
-    if (v2cls) {
-      v2cls._releaseList    = null
-      v2cls._releaseIndex   = null
-      v2cls._releaseFreeMap = null
+    // _releaseList / _releaseIndex / _releaseFreeMap live on the WINDOW INSTANCE
+    // (ApplicationV2 action handlers like _onRetryLoadReleases run with this =
+    // the instance), so clear them there , not on the constructor. Only present
+    // while the cloud window is open; a fresh instance loads fresh anyway.
+    const v2 = game.beneos?.cloudWindowV2
+    if (v2) {
+      v2._releaseList    = null
+      v2._releaseIndex   = null
+      v2._releaseFreeMap = null
     }
   }
 

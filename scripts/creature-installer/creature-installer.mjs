@@ -187,7 +187,13 @@ export class BeneosCreatureInstaller {
     const scene = canvas?.scene;
     const data = scene?.getFlag?.(FLAG_SCOPE, FLAG_KEY);
     const hasContent = data && ((data.srdCreatures?.length ?? 0) > 0 || (data.beneosCreatures?.length ?? 0) > 0);
-    if (!game.user?.isGM || !scene || !hasContent) {
+    // Alternate-creature tokens only belong on battlemaps. Beneos scenes carry a
+    // "BM: " name prefix for battlemaps and "SC: " for sceneries; sceneries (and
+    // overview/tour scenes) never need creature tokens, so the drawer stays
+    // hidden there. Prefix-tolerant of the space after the colon seen in real
+    // world data (e.g. "BM: 1F").
+    const isBattlemap = /^BM\s*:/i.test(String(scene?.name || ""));
+    if (!game.user?.isGM || !scene || !hasContent || !isBattlemap) {
       this.destroy();
       return;
     }

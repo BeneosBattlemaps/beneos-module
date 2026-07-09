@@ -105,7 +105,9 @@ const V2_FILTER_DEFS = [
   { types: ["bmap"],  selector: "kind-selector",          prop: "type"          },
   // Items
   { types: ["item"],  selector: "item-type",              prop: "item_type"     },
-  { types: ["item"],  selector: "rarity-selector",        prop: "rarity"        },
+  // Rarity matches exactly (strict): the values "common"/"rare" are substrings of
+  // "uncommon"/"very rare", so a substring match would over-select.
+  { types: ["item"],  selector: "rarity-selector",        prop: "rarity", strict: true },
   { types: ["item"],  selector: "origin-selector",        prop: "origin"        },
   // Wave B-8i-3: tier dropdown for items (was already in dbHolder.getData()
   // as `tier` but had no V2 surface).
@@ -1038,8 +1040,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
           const dFree = (type === "bmap")
             ? (data?.properties?.free_content === true)
             : (game.beneos?.cloud?.isFreeAsset?.(type, data?.key) === true)
-          if (dFree) return -1
           const dInstalled = type === "bmap" ? false : !!data?.isInstalled
+          // Only NOT-installed free assets float to the top Free section. An
+          // installed asset (even a free one) belongs in the "All Installed"
+          // section, matching its groupKind (isFree && !isInstalled). Without the
+          // !dInstalled guard the sort rank and groupKind disagreed, interleaving
+          // installed-free and free cards and emitting a divider per card.
+          if (dFree && !dInstalled) return -1
           const dAvail     = type === "bmap" ? true  : !!data?.isCloudAvailable
           if (!dAvail && !dInstalled) return 9999
         }
@@ -1528,6 +1535,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       : !!data.isCloudAvailable
     const isLocked = !isCloudAvailable && !isInstalled && !hasCampaign && !isFree
     if (isLocked) dragMode = "none"
+    // Installed asset with a pending update the user is no longer entitled to
+    // (Patreon access lost or downgraded, or it was installed under a paid
+    // account and the user is now on Free). The update cannot be fetched, so the
+    // update button shows a "patrons only" notice instead of running a download
+    // that would fail silently. Only tokens/items/spells track a local install;
+    // battlemaps have their own release-locked path.
+    const updateLocked = assetType !== "bmap" && isInstalled && !!data.isUpdate && !hasCampaign && !isFree
     // Pre-compute the three state flags that feed both the card-object
     // and the isOutOfSync catch-all detection. Without these as named
     // consts, the catch-all condition has to re-evaluate the same
@@ -2003,6 +2017,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       installedOnLabel: bmapInstalledOn,
       isFree,
       isLocked,
+      updateLocked,
       dragMode,
       dragType,
       documentId,
@@ -2054,7 +2069,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // the Free-Section header + Locked-Section behaviour for the
       // patron-aware UX. Patrons see the original New/Update/Regular
       // partitioning so nothing changes for paying users.
-      groupKind: (!hasCampaign && isFree)   ? "free"
+      // An installed asset is never grouped/coloured as "free": it already owns
+      // the green "installed" border + Installed pill + Codex button, so lumping
+      // it into the green Free section (alongside not-installed free cards that
+      // show a Sign-In button) made owned and not-yet-owned cards look identical.
+      // isLocked already excludes installed cards; new/update stay intact.
+      groupKind: (!hasCampaign && isFree && !isInstalled) ? "free"
               :  (!hasCampaign && isLocked) ? "locked"
               :  (data?.isNew    ? "new"
               :  (data?.isUpdate ? "update" : "regular")),
@@ -2394,7 +2414,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       if (found) {
         const t = dbHolder?.localizeTag?.("item.rarity", found.key)
         const value = (t && t !== found.key) ? t : bucket.canonical
-        out.push({ key: found.key, value })
+        // Emit the canonical lowercase rarity string as the option key/value so
+        // it matches the item DB's `properties.rarity` ("Common", "Very Rare", …)
+        // exactly. The raw list sometimes keys rarity numerically ("0".."5"),
+        // which never matched the string the items actually store, so selecting a
+        // rarity returned nothing.
+        out.push({ key: bucket.canonical.toLowerCase(), value })
       }
     }
     return out
@@ -2571,7 +2596,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // optional-chained call quietly no-op'd and every dropdown filter
       // returned all entries. Bug had been latent since B-4. Call the
       // static directly on the class.
-      const filtered = dbHolder.searchByProperty?.(type, def.prop, value, results)
+      const filtered = dbHolder.searchByProperty?.(type, def.prop, value, results, def.strict === true)
       if (filtered) results = filtered
       const afterCount = Object.keys(results).length
       if (globalThis.BeneosUtility?.isDebug?.()) console.log(`[Beneos V2] filter "${def.selector}" → after=${afterCount}`)
@@ -3819,6 +3844,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       || !!(game.beneos?.databaseHolder?.getIsOffline?.() ?? game.beneos?.databaseHolder?.isOffline)
     if (offline) return "offline"
     if (!cloud?.isLoggedIn?.()) return "login"
+    // Installed asset whose pending update the user is no longer entitled to.
+    // The update button carries data-update-locked; block the download and show
+    // the patrons-only notice instead of letting it fail silently.
+    if (el?.dataset?.updateLocked === "true") return "updatePatron"
     const locked = el?.dataset?.bcLocked === "true"
       || el?.classList?.contains?.("bc-card-locked")
       || el?.closest?.(".bc-result-card")?.classList?.contains?.("bc-card-locked")
@@ -3831,9 +3860,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // visually. The card is matched by asset key.
   #notifyInstallBlocked(reason, assetKey) {
     const key = {
-      offline: "BENEOS.Cloud.Notification.BlockedOffline",
-      login:   "BENEOS.Cloud.Notification.BlockedLogin",
-      patreon: "BENEOS.Cloud.Notification.BlockedPatreon",
+      offline:      "BENEOS.Cloud.Notification.BlockedOffline",
+      login:        "BENEOS.Cloud.Notification.BlockedLogin",
+      patreon:      "BENEOS.Cloud.Notification.BlockedPatreon",
+      updatePatron: "BENEOS.Cloud.Notification.BlockedUpdatePatreon",
     }[reason] || "BENEOS.Cloud.Notification.BlockedPatreon"
     try { ui.notifications?.warn?.(game.i18n.localize(key)) } catch (_) {}
     this.#flashCardError(assetKey)
@@ -4198,8 +4228,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // (sidebar-form.hbs guards on searchMode "item").
     const comingSoon = () =>
       ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Filter.ComingSoon"))
+    // Origin Set Bonuses: open the Beneos Codex on the item tab's Origins
+    // sub-tab, where the per-origin set-bonus rules live (same pattern as the
+    // Loot/Shop buttons below).
     const originBtn = root.querySelector("#bc-origin-set-bonuses")
-    if (originBtn) originBtn.addEventListener("click", comingSoon)
+    if (originBtn) originBtn.addEventListener("click", () => {
+      game.beneos?.codex?.open?.("items", "origins")
+    })
     const tierBtn = root.querySelector("#bc-tier-upgrade-mechanic")
     if (tierBtn) tierBtn.addEventListener("click", comingSoon)
     // Loot Generator: open the Beneos Codex on the item-codex Loot tab (which
@@ -4370,11 +4405,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
 
     // Codex button on installed creature cards → open the Creature Codex.
     resultsRegion.querySelectorAll(".bc-action-codex").forEach(btn => {
-      btn.addEventListener("click", (event) => {
+      btn.addEventListener("click", async (event) => {
         event.preventDefault()
         event.stopPropagation()
         const key = btn.dataset.assetKey
-        const actor = game.beneos?.codex?.findActorByTokenKey?.(key)
+        // Resolve world OR installed-compendium actor (same source as the green
+        // "installed" frame), not just game.actors — a compendium-installed
+        // creature has no world-directory actor but must still open its codex.
+        const actor = (await game.beneos?.codex?.resolveCodexActor?.(key))
+          ?? game.beneos?.codex?.findActorByTokenKey?.(key)
         if (!actor) {
           ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Card.CodexNotFound"))
           return

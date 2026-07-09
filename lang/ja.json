@@ -1196,6 +1196,7 @@
   "BENEOS.Cloud.Notification.BlockedOffline": "Beneos Cloudはオフラインです。このアセットは現在ダウンロードできません。オンラインに戻ったら再度お試しください。",
   "BENEOS.Cloud.Notification.BlockedLogin": "このアセットをダウンロードするにはBeneos Cloudにサインインしてください。Beneos Cloudウィンドウを開いてサインインします。",
   "BENEOS.Cloud.Notification.BlockedPatreon": "これはPatreon限定コンテンツです。ロックを解除するにはPatreonでBeneos Creatures, Spells & Lootキャンペーンに参加してください。",
+  "BENEOS.Cloud.Notification.BlockedUpdatePatreon": "アップデートをダウンロードできるのはアクティブなBeneosパトロンのみです。この素材を更新するには、対応するBeneos Patreonキャンペーンに再度参加してください。",
   "BENEOS.Patreon.FreeBadge": "無料",
   "BENEOS.Patreon.LockedSectionHeader": "Patreon またはショップ限定コンテンツ",
   "BENEOS.Patreon.FreeSection.Creatures": "無料クリーチャー",

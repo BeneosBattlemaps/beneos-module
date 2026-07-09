@@ -72,10 +72,13 @@ export async function ensureCodexFlags(actor) {
       biographyHash:   BeneosCreatureCodexParser.fnv1aHash(actor.system?.details?.biography?.value ?? "")
     }
   }
-  // Only attempt a write when the GM is current user — players opening
-  // the codex must not trigger a server-side update. The flag will be
-  // synthesised in memory for them and the next GM open persists it.
-  if (game.user?.isGM) {
+  // Only attempt a write when the GM is current user AND the actor is a WORLD
+  // actor. Players opening the codex must not trigger a server-side update; and
+  // a compendium actor (actor.pack set — e.g. an installed creature that lives
+  // only in the locked world.beneos_module_actors pack) cannot and should not be
+  // mutated on open. In both cases the flag is synthesised in memory for display,
+  // and the next GM open of a real world actor persists it.
+  if (game.user?.isGM && !actor.pack) {
     try { await actor.setFlag(MODULE_ID, FLAG_KEY, next) }
     catch (err) { console.warn("[beneos-codex] could not persist codex flag", err) }
   }
