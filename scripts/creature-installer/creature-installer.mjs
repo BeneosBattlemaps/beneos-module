@@ -183,7 +183,7 @@ export class BeneosCreatureInstaller {
     } catch (e) { console.error("beneos | creature-installer markSeen failed", e); }
   }
 
-  attachToActiveScene() {
+  attachToActiveScene({ force = false } = {}) {
     const scene = canvas?.scene;
     const data = scene?.getFlag?.(FLAG_SCOPE, FLAG_KEY);
     const hasContent = data && ((data.srdCreatures?.length ?? 0) > 0 || (data.beneosCreatures?.length ?? 0) > 0);
@@ -191,8 +191,12 @@ export class BeneosCreatureInstaller {
     // "BM: " name prefix for battlemaps and "SC: " for sceneries; sceneries (and
     // overview/tour scenes) never need creature tokens, so the drawer stays
     // hidden there. Prefix-tolerant of the space after the colon seen in real
-    // world data (e.g. "BM: 1F").
-    const isBattlemap = /^BM\s*:/i.test(String(scene?.name || ""));
+    // world data (e.g. "BM: 1F"). Two escape hatches keep flag/content/GM
+    // required: the tutorial tour forces the drawer onto its "Page 2: Battlemaps"
+    // demo page via force:true; and a scene may opt in permanently by setting
+    // `alwaysShow: true` on its creatureInstaller flag (e.g. a non-"BM:" demo
+    // scene that should carry the drawer outside the tour too).
+    const isBattlemap = force || data?.alwaysShow === true || /^BM\s*:/i.test(String(scene?.name || ""));
     if (!game.user?.isGM || !scene || !hasContent || !isBattlemap) {
       this.destroy();
       return;
@@ -332,6 +336,11 @@ export class BeneosCreatureInstaller {
 
   async buildContext() {
     const hidden = this.isHidden();
+    // No data (e.g. a forced render on a scene whose flag was cleared, or a race
+    // where render() runs after destroy()) -> fall back to the collapsed logo
+    // instead of dereferencing a null `data`. Mirrors the null-safe reads in
+    // attachToActiveScene(); never hard-crash the drawer.
+    if (!this.data) return { logo: true };
     // Hidden + collapsed -> show only the restore logo. Hidden + expanded means
     // the GM peeked it open via the logo; render the full drawer (hide checkbox
     // stays checked) without clearing the per-scene hide choice.

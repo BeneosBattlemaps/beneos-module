@@ -27,6 +27,20 @@ const MAX_FLUSH_FAILURES = 3;   // consecutive failures before the session circu
 const ERROR_THROTTLE_MS = 60 * 1000;
 const ACTOR_MODIFY_THROTTLE_MS = 30 * 1000;
 const BACKUP_KEY = "beneos-analytics-queue-backup";
+const BREADCRUMB_MAX = 5;                         // last N event types kept for error context
+const CODEX_THROTTLE_MS = 10 * 60 * 1000;         // same creature+section max once per 10 min
+const SPELL_CAST_SESSION_CAP = 20;                // per spell key per session (macro-spam guard)
+const ITEM_ADD_WINDOW_MS = 5 * 1000;              // bulk-import aggregation window
+const SCENE_TIME_MIN_S = 60;                      // ignore sub-minute visits
+const SCENE_TIME_CAP_S = 6 * 3600;                // idle/overnight cap per visit
+const MODINV_INTERVAL_MS = 7 * 24 * 3600 * 1000;  // module inventory at most weekly
+const MODINV_CHUNK_JSON_MAX = 1800;               // stay under the server payload cap
+// Events suppressed while the getting-started tour auto-installs its creature,
+// so the scripted install does not read as organic play.
+const TOUR_SUPPRESSED_EVENTS = new Set([
+  "canvas_drop_local", "canvas_drop_cloud", "combat_add", "combat_remove",
+  "actor_modify_name", "actor_modify_stats", "install_initiated"
+]);
 
 export class BeneosAnalytics {
 
@@ -43,6 +57,14 @@ export class BeneosAnalytics {
   static _flushing = false
   static _consecutiveFailures = 0
   static _disabledForSession = false
+  static _breadcrumbs = []                 // last N {t, ts} event types (error context)
+  static _codexThrottle = new Map()        // "tokenKey|section" -> last emit ts
+  static _spellCastCounts = new Map()      // spellKey -> casts this session
+  static _itemAddBuffer = new Map()        // "slug|parentType" -> count (5s window)
+  static _itemAddTimer = null
+  static _combats = new Map()              // combatId -> { battlemapKey, roster: Map }
+  static _currentScene = null              // { key, ts } for time-on-map deltas
+  static suppressTourTracking = false      // set by the tour auto-install
 
   /********************************************************************************** */
   static moduleId() { return BeneosUtility.moduleID() }
@@ -99,7 +121,12 @@ export class BeneosAnalytics {
   // promoted to dedicated columns; everything else becomes the JSON payload.
   static track(eventType, payload = {}) {
     if (!this.isEnabled() || this._disabledForSession) return
+    if (this.suppressTourTracking && TOUR_SUPPRESSED_EVENTS.has(String(eventType))) return
     try {
+      // Breadcrumb ring buffer: event types only (no payload), attached to
+      // beneos_error so we know what happened right before a failure.
+      this._breadcrumbs.push({ t: String(eventType).slice(0, 32), ts: Date.now() })
+      if (this._breadcrumbs.length > BREADCRUMB_MAX) this._breadcrumbs.shift()
       this.queue.push(this._buildEvent(eventType, payload))
       // Hard-cap the in-memory queue so a stalled endpoint cannot grow it without
       // bound (the localStorage backup is already capped at MAX_BACKUP).
@@ -209,6 +236,41 @@ export class BeneosAnalytics {
       })
       const party = this._partySnapshot()
       if (party) this.track("world_party_snapshot", party)
+      this._emitModuleInventory()
+    } catch (_) { /* swallow */ }
+  }
+
+  // Full active-module list (minus Beneos modules and their required
+  // dependencies), at most weekly per browser+world, chunked so no payload
+  // exceeds the server cap.
+  static _emitModuleInventory() {
+    try {
+      const stampKey = `beneos-analytics-modinv-ts:${game.world?.id || ""}`
+      const last = Number(window.localStorage?.getItem(stampKey) || 0)
+      if (Date.now() - last < MODINV_INTERVAL_MS) return
+
+      // Beneos family + declared required dependencies: always present, so
+      // they would only clutter the "what else do our users run" top list.
+      const skip = new Set([
+        "beneos-module", "beneos-tableplay", "beneos-dev",
+        "multilevel-tokens", "poi-teleport", "moulinette",
+        "monks-active-tiles", "fxmaster", "lib-wrapper"
+      ])
+      const mods = [...game.modules].filter(m => m?.active && !skip.has(m.id)).map(m => String(m.id).slice(0, 48))
+      if (!mods.length) return
+
+      // Chunk so each event's JSON stays under the server payload cap.
+      const chunks = []
+      let cur = []
+      for (const id of mods) {
+        cur.push(id)
+        if (JSON.stringify(cur).length > MODINV_CHUNK_JSON_MAX - 100) { chunks.push(cur); cur = [] }
+      }
+      if (cur.length) chunks.push(cur)
+      chunks.forEach((mds, i) => {
+        this.track("module_inventory", { chunk: i + 1, chunks: chunks.length, mods: mds })
+      })
+      try { window.localStorage?.setItem(stampKey, String(Date.now())) } catch (_) {}
     } catch (_) { /* swallow */ }
   }
 
@@ -355,11 +417,196 @@ export class BeneosAnalytics {
   }
 
   /********************************************************************************** */
+  // Combat encounter summaries: ONE combat_encounter event per fight, carrying
+  // rounds-in-initiative per Beneos creature plus the full (capped) roster for
+  // co-occurrence. Player characters are NEVER named: they enter the roster as
+  // the literal "player-character". Foreign NPC names are sanitized.
+  static _combatRosterKey(combatant) {
+    try {
+      const actor = combatant?.actor
+      if (actor?.type === "character" || actor?.hasPlayerOwner) return "player-character"
+      const token = BeneosUtility.getToken?.(combatant.tokenId) ?? combatant?.token
+      const beneosKey = this.beneosAssetId(token) || this.beneosAssetId(actor)
+      if (beneosKey) return { key: String(beneosKey).slice(0, 64), beneos: true }
+      // Foreign NPC: lowercase, strip copy suffixes/digits, keep it short.
+      let name = String(actor?.name || combatant?.name || "npc").toLowerCase()
+      name = name.replace(/\(\d+\)\s*$/, "").replace(/\s+\d+\s*$/, "")
+      name = name.replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 24)
+      return { key: name || "npc", beneos: false }
+    } catch (_) { return { key: "npc", beneos: false } }
+  }
+
+  static combatantAdded(combatant) {
+    try {
+      const combatId = combatant?.combat?.id || game.combat?.id
+      if (!combatId) return
+      let c = this._combats.get(combatId)
+      if (!c) {
+        c = { battlemapKey: this._isBeneosScene(canvas?.scene) ? this._beneosBattlemapKey(canvas.scene) : "", roster: new Map() }
+        this._combats.set(combatId, c)
+      }
+      const round = Number(combatant?.combat?.round ?? game.combat?.round) || 0
+      const rk = this._combatRosterKey(combatant)
+      const key = typeof rk === "string" ? rk : rk.key
+      const isBeneos = typeof rk === "string" ? false : rk.beneos
+      c.roster.set(combatant.id || `${key}:${c.roster.size}`, { key, isBeneos, addRound: round, removeRound: null })
+    } catch (_) { /* swallow */ }
+  }
+
+  static combatantRemoved(combatant) {
+    try {
+      const combatId = combatant?.combat?.id || game.combat?.id
+      const c = combatId ? this._combats.get(combatId) : null
+      if (!c) return
+      const entry = c.roster.get(combatant.id)
+      if (entry && entry.removeRound === null) {
+        entry.removeRound = Number(combatant?.combat?.round ?? game.combat?.round) || entry.addRound
+      }
+    } catch (_) { /* swallow */ }
+  }
+
+  static combatEnded(combat) {
+    try {
+      const c = combat?.id ? this._combats.get(combat.id) : null
+      if (combat?.id) this._combats.delete(combat.id)
+      if (!c) return
+      this._emitCombatEncounter(c, Number(combat?.round) || 0)
+    } catch (_) { /* swallow */ }
+  }
+
+  static _emitCombatEncounter(c, finalRound) {
+    try {
+      const entries = [...c.roster.values()]
+      if (entries.length < 2) return                       // misclick filter
+      if (!entries.some(e => e.isBeneos)) return           // only fights with Beneos creatures
+      const totalRounds = Math.max(1, finalRound || 1)
+
+      const roundsOf = (e) => {
+        const add = Math.max(1, e.addRound || 1)           // round 0 = setup counts as 1
+        const rem = Math.max(add, e.removeRound ?? totalRounds)
+        return Math.max(1, rem - add + 1)
+      }
+
+      // Beneos creatures: rounds per asset key (max over duplicate tokens).
+      const beneos = new Map()
+      for (const e of entries.filter(x => x.isBeneos)) {
+        const r = roundsOf(e)
+        const prev = beneos.get(e.key)
+        if (!prev || r > prev.r) beneos.set(e.key, { a: e.key, r })
+      }
+
+      // Roster: merged per key with count + max rounds, capped at 20 entries.
+      const roster = new Map()
+      for (const e of entries) {
+        const r = roundsOf(e)
+        const prev = roster.get(e.key)
+        if (prev) { prev.n++; if (r > prev.r) prev.r = r }
+        else roster.set(e.key, { k: e.key, n: 1, r })
+      }
+      const rosterList = [...roster.values()].sort((x, y) => y.r - x.r).slice(0, 20)
+
+      this.track("combat_encounter", {
+        battlemap_key: c.battlemapKey || "",
+        total_rounds: totalRounds,
+        beneos: [...beneos.values()].slice(0, 15),
+        roster: rosterList
+      })
+    } catch (_) { /* swallow */ }
+  }
+
+  /********************************************************************************** */
+  // Codex engagement: one event per creature+section, throttled per session.
+  static trackCodexSection(tokenKey, section) {
+    try {
+      if (!tokenKey || !section) return
+      const key = `${tokenKey}|${section}`
+      const now = Date.now()
+      if (now - (this._codexThrottle.get(key) || 0) < CODEX_THROTTLE_MS) return
+      this._codexThrottle.set(key, now)
+      this.track("codex_section", {
+        asset_id: String(tokenKey).slice(0, 32),
+        token_key: this.sanitize(String(tokenKey), 64),
+        section: this.sanitize(String(section), 32)
+      })
+    } catch (_) { /* swallow */ }
+  }
+
+  // Spell casts (dnd5e activity hooks), capped per spell per session.
+  static trackSpellCast(spellKey, caster) {
+    try {
+      if (!spellKey) return
+      const n = (this._spellCastCounts.get(spellKey) || 0) + 1
+      this._spellCastCounts.set(spellKey, n)
+      if (n > SPELL_CAST_SESSION_CAP) return
+      this.track("spell_cast", {
+        asset_id: String(spellKey).slice(0, 32),
+        spell_key: this.sanitize(String(spellKey), 64),
+        caster: caster === "pc" ? "pc" : "npc"
+      })
+    } catch (_) { /* swallow */ }
+  }
+
+  // Item-added events, aggregated over a short window so a generated shop's
+  // bulk import produces one event per origin instead of dozens.
+  static trackItemAdded(originSlug, parentType) {
+    try {
+      if (!originSlug) return
+      const pt = parentType === "character" ? "character" : (parentType === "npc" ? "npc" : "other")
+      const key = `${originSlug}|${pt}`
+      this._itemAddBuffer.set(key, (this._itemAddBuffer.get(key) || 0) + 1)
+      if (this._itemAddTimer) return
+      this._itemAddTimer = setTimeout(() => {
+        try {
+          this._itemAddTimer = null
+          const buf = this._itemAddBuffer
+          this._itemAddBuffer = new Map()
+          for (const [k, count] of buf) {
+            const [origin_slug, parent_type] = k.split("|")
+            this.track("item_added", { origin_slug: this.sanitize(origin_slug, 48), parent_type, count })
+          }
+        } catch (_) { /* swallow */ }
+      }, ITEM_ADD_WINDOW_MS)
+    } catch (_) { /* swallow */ }
+  }
+
+  // Delivery self-healing signals (asset repair, signature mismatch, retries).
+  static trackSelfRepair(assetId, reason) {
+    try {
+      const fp = `self_repair|${reason || ""}`
+      const now = Date.now()
+      if (now - (this._errorThrottle.get(fp) || 0) < ERROR_THROTTLE_MS) return
+      this._errorThrottle.set(fp, now)
+      this.track("self_repair", {
+        asset_id: assetId ? String(assetId).slice(0, 32) : null,
+        reason: this.sanitize(String(reason || "unknown"), 32)
+      })
+    } catch (_) { /* swallow */ }
+  }
+
+  static trackDownloadRetry(assetId, attempt) {
+    try {
+      const fp = `download_retry|${assetId || ""}`
+      const now = Date.now()
+      if (now - (this._errorThrottle.get(fp) || 0) < ERROR_THROTTLE_MS) return
+      this._errorThrottle.set(fp, now)
+      this.track("download_retry", {
+        asset_id: assetId ? String(assetId).slice(0, 32) : null,
+        attempt: Math.max(1, Number(attempt) || 1)
+      })
+    } catch (_) { /* swallow */ }
+  }
+
+  /********************************************************************************** */
   // Scene activation. Tracks distinct scenes per session (for maps/session)
   // and emits a one-time scene_activate per Beneos battlemap.
   static trackSceneActivate(scene) {
     try {
       if (!scene?.id) return
+      // Time-on-map: close the previous Beneos map's visit before switching.
+      this._closeSceneTime()
+      if (this._isBeneosScene(scene)) {
+        this._currentScene = { key: this._beneosBattlemapKey(scene), ts: Date.now() }
+      }
       const fresh = !this._distinctScenes.has(scene.id)
       this._distinctScenes.add(scene.id)
       if (fresh && this._isBeneosScene(scene)) {
@@ -370,6 +617,20 @@ export class BeneosAnalytics {
           })
         })
       }
+    } catch (_) { /* swallow */ }
+  }
+
+  // Emit the time spent on the previously active Beneos map. Visits under a
+  // minute are noise; longer than the cap means an idle/overnight tab.
+  static _closeSceneTime() {
+    try {
+      const cur = this._currentScene
+      this._currentScene = null
+      if (!cur?.key) return
+      let seconds = Math.round((Date.now() - cur.ts) / 1000)
+      if (seconds < SCENE_TIME_MIN_S) return
+      if (seconds > SCENE_TIME_CAP_S) seconds = SCENE_TIME_CAP_S
+      this.track("scene_time", { battlemap_key: cur.key, seconds })
     } catch (_) { /* swallow */ }
   }
 
@@ -421,7 +682,8 @@ export class BeneosAnalytics {
           scene_id_hash: hash,
           message: this.sanitize(err?.message || String(err || ""), 200),
           stack_top_line: stackTop,
-          module_version: this.moduleVersion()
+          module_version: this.moduleVersion(),
+          ...this._errorContext()
         })
       })
     } catch (_) { /* swallow */ }
@@ -443,6 +705,16 @@ export class BeneosAnalytics {
   }
 
   static _onUnload() {
+    // Close the open map visit and summarise still-running combats with the
+    // rounds measured so far, so a hard world-close loses neither.
+    try { this._closeSceneTime() } catch (_) {}
+    try {
+      for (const [id, c] of this._combats) {
+        this._combats.delete(id)
+        const combat = game.combats?.get?.(id)
+        this._emitCombatEncounter(c, Number(combat?.round) || 0)
+      }
+    } catch (_) {}
     try {
       const durationMin = Math.max(0, Math.round((Date.now() - this._sessionStart) / 60000))
       this.track("session_player_count", {
@@ -526,9 +798,26 @@ export class BeneosAnalytics {
         stack_top_line: stackTop,
         context: context ? String(context).slice(0, 32) : null,
         asset_id: assetId || null,
-        module_version: this.moduleVersion()
+        module_version: this.moduleVersion(),
+        ...this._errorContext()
       })
     } catch (_) { /* swallow */ }
+  }
+
+  // Environment snapshot attached to every error: under which conditions did
+  // it happen (Foundry/system versions, active Beneos map, hosting) plus the
+  // last few event types as breadcrumbs. ~250 chars, stays under the payload cap.
+  static _errorContext() {
+    try {
+      const scene = canvas?.scene
+      return {
+        foundry_version: String(game.version || game.data?.version || "").slice(0, 16),
+        system: `${game.system?.id || ""}/${game.system?.version || ""}`.slice(0, 32),
+        battlemap_key: this._isBeneosScene(scene) ? this._beneosBattlemapKey(scene) : "",
+        hosting: this.detectHostingType(),
+        breadcrumbs: this._breadcrumbs.map(b => b.t)
+      }
+    } catch (_) { return {} }
   }
 
   static _stackTopLine(stack) {

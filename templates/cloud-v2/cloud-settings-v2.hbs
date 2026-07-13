@@ -105,46 +105,6 @@
       </div>
     </div>
 
-    {{#if creatorMode}}
-      {{!-- Dev: Test Personas. Simulates Patreon membership states
-           without an actual login — used during V2 development to
-           preview the patron-aware UI in all five permutations. Only
-           visible when the beneos-creator-mode setting is true. --}}
-      <div class="bc-settings-row bc-settings-row-dev">
-        <div class="bc-settings-row-meta">
-          <div class="bc-settings-row-label">{{localize "BENEOS.Cloud.Settings.DevPersonas.Header"}}</div>
-          <div class="bc-settings-row-hint">{{localize "BENEOS.Cloud.Settings.DevPersonas.Description"}}</div>
-        </div>
-        <div class="bc-settings-row-control bc-settings-personas">
-          <button type="button" class="bc-card-button bc-card-button-primary"
-                  data-action="simulatePersona" data-persona="full">
-            <i class="fa-solid fa-crown"></i>
-            <span>{{localize "BENEOS.Cloud.Settings.DevPersonas.FullPatron"}}</span>
-          </button>
-          <button type="button" class="bc-card-button"
-                  data-action="simulatePersona" data-persona="tokens">
-            <i class="fa-solid fa-dragon"></i>
-            <span>{{localize "BENEOS.Cloud.Settings.DevPersonas.TokenOnly"}}</span>
-          </button>
-          <button type="button" class="bc-card-button"
-                  data-action="simulatePersona" data-persona="battlemaps">
-            <i class="fa-solid fa-map"></i>
-            <span>{{localize "BENEOS.Cloud.Settings.DevPersonas.BattlemapOnly"}}</span>
-          </button>
-          <button type="button" class="bc-card-button"
-                  data-action="simulatePersona" data-persona="free">
-            <i class="fa-solid fa-gift"></i>
-            <span>{{localize "BENEOS.Cloud.Settings.DevPersonas.Free"}}</span>
-          </button>
-          <button type="button" class="bc-card-button bc-card-button-danger"
-                  data-action="simulatePersona" data-persona="reset">
-            <i class="fa-solid fa-rotate-left"></i>
-            <span>{{localize "BENEOS.Cloud.Settings.DevPersonas.Reset"}}</span>
-          </button>
-        </div>
-      </div>
-    {{/if}}
-
     {{!-- All module settings — opens Foundry's own module-settings panel
          (jumped straight to the Beneos category). This modal intentionally
          carries only the fast-access options; every advanced / rarely-used

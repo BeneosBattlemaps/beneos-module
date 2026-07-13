@@ -1231,6 +1231,40 @@ body.theme-dark .beneos-info-box,
 }
 
 /* =======================================================================================
+   Beneos Spell-Description (system.description.value aus dem Card Creator,
+   Renderer buildSpellDescriptionFromFlags@v2). Die HTML traegt keine
+   Farb-Inline-Styles mehr; Highlights (bsd-heading), Stats-Box (bsd-statsbox)
+   und Download-Link (bsd-download) werden hier je Theme gefaerbt.
+   Light = exakt der bisherige Look (Beneos-Rot, helle Box),
+   Dark  = Beneos-Gold (--bc-accent) mit dunkel abgesetzter Box.
+   ======================================================================================= */
+.beneos-spell-desc .bsd-heading {
+  color: #71120f;
+}
+.beneos-spell-desc .bsd-statsbox {
+  background: #ededed;
+  border: 1px solid #d2b48c;
+}
+.beneos-spell-desc .bsd-download {
+  color: #e32b1b;
+}
+
+body.theme-dark .beneos-spell-desc .bsd-heading,
+.application.theme-dark .beneos-spell-desc .bsd-heading {
+  color: var(--bc-accent, #f5c992);
+}
+body.theme-dark .beneos-spell-desc .bsd-statsbox,
+.application.theme-dark .beneos-spell-desc .bsd-statsbox {
+  background: rgba(245, 201, 146, 0.08);
+  border-color: var(--bc-accent-line, rgba(245, 201, 146, 0.3));
+  color: var(--bc-text, #ebe9e5);
+}
+body.theme-dark .beneos-spell-desc .bsd-download,
+.application.theme-dark .beneos-spell-desc .bsd-download {
+  color: var(--bc-danger, #d88270);
+}
+
+/* =======================================================================================
    Beneos News Box — Setup-Tour CI (siehe beneos_tours.js:336-575, 2165-2205)
    Dunkler Body, Gold-Akzente, pulsierender Gold-Glow-Border. Eigener Kontrast,
    daher in beiden Foundry-Themes (Dark/Light) lesbar.

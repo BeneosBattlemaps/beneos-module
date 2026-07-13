@@ -2747,19 +2747,6 @@
   color: #f7c7b9;
 }
 
-/* Persona-Simulator (dev-only): horizontal wrap of preset buttons. The
-   right column of the settings row needs to grow so the buttons line up
-   instead of stacking awkwardly inside the narrower control column. */
-.beneos-cloud-app .bc-settings-row-dev .bc-settings-row-control.bc-settings-personas {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: flex-end;
-  align-items: center;
-}
-.beneos-cloud-app .bc-settings-row-dev .bc-settings-row-control.bc-settings-personas .bc-card-button {
-  flex: 0 1 auto;
-}
 .beneos-cloud-app .bc-settings-row-account .bc-account-chip {
   margin-right: 6px;
   vertical-align: -2px;
@@ -6495,6 +6482,11 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
 .beneos-cloud-app .bc-news-pinned .bc-news-title {
   font-size: 18px;
   -webkit-line-clamp: 3;
+  /* Pinned headline stays Beneos-gold in every Foundry colour scheme. The base
+     .bc-news-title inherits var(--bc-text), which flips dark under the light
+     theme even though the cloud-window chrome itself never changes; a fixed gold
+     keeps the headline consistent regardless of the active mode. */
+  color: #f5c992;
 }
 
 /* CTA button rendered inside a news card (small, secondary). Click is

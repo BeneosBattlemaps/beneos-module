@@ -1437,65 +1437,6 @@ export class BeneosCloud {
     return false
   }
 
-  // Dev-only helper: simulate a Patreon membership state for local
-  // UX testing without an actual server login. Manipulates persistent
-  // settings + in-memory payload + connected flag in lockstep, so the
-  // patron-aware UI behaves as if the user signed in fresh with the
-  // given role. Reset by calling disconnect().
-  //
-  // Also stubs availableContent so simulated personas can actually
-  // install assets — patrons get every catalogue key, free accounts get
-  // only the entries flagged properties.free_content === true in the
-  // public database. Without this stub the Free-Section would render
-  // but every card would fall back to the legacy "Not Available" path.
-  async simulatePatron({ tokens = false, battlemaps = false, freeAccount = false } = {}) {
-    const isPatron = tokens || battlemaps
-    this.setLoginStatus(true)
-    this.lastLoginPayload = {
-      result: "OK",
-      information: "User found (simulated)",
-      patreon_status: isPatron ? "active_patron" : (freeAccount ? "free" : "no_patreon"),
-      token_patron: !!tokens,
-      battlemap_patron: !!battlemaps,
-      campaigns: [tokens && "tokens", battlemaps && "battlemaps"].filter(Boolean),
-      foundryId: "simulated"
-    }
-    await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-token-patron", !!tokens)
-    await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-battlemap-patron", !!battlemaps)
-    await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status",
-      isPatron ? "active_patron" : (freeAccount ? "free" : "no_patreon"))
-    // Build a stub availableContent so cards have a real Install path.
-    // Patron of a campaign → all keys from that campaign's catalogue
-    // are available. Free / non-patron → only properties.free_content
-    // entries surface as installable.
-    const db = game.beneos?.databaseHolder
-    const ts = Math.floor(Date.now() / 1000)
-    // Free entries come from the cloud "Free" tier (data.free, the dynamic
-    // source of truth) instead of the stale catalog free_content flag. Requires
-    // a prior real fetch to have populated freeSet; degrades to "no free" offline.
-    const collect = (raw, type, includeAll) => {
-      if (!raw) return []
-      return Object.entries(raw)
-        .filter(([key]) => includeAll || this.isFreeAsset(type, key) === true)
-        .map(([key]) => ({ key, updated_ts: ts }))
-    }
-    this.availableContent = {
-      tokens: collect(db?.tokenData?.content, "token", !!tokens),
-      items:  collect(db?.itemData?.content,  "item",  !!tokens),
-      spells: collect(db?.spellData?.content, "spell", !!tokens)
-    }
-    console.warn("[Beneos] simulatePatron applied", {
-      payload: this.lastLoginPayload,
-      stubCounts: {
-        tokens: this.availableContent.tokens.length,
-        items:  this.availableContent.items.length,
-        spells: this.availableContent.spells.length
-      }
-    })
-    const v2 = game.beneos?.cloudWindowV2
-    if (v2) v2.render({ parts: ["home", "sidebar", "results", "footer"] })
-  }
-
   setLoginStatus(status) {
     this.cloudConnected = status
     // Reset Tier-3 delta cursor on every auth-status change so the next

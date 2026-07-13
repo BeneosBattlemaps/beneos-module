@@ -4,6 +4,38 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.4.0 # 2026-07-13 | Beneos 4.0
+
+**Battlemaps via Beneos Cloud**
+- New: **Battlemap downloads now run through the Beneos Cloud.** Maps are downloaded and installed directly by the module. Moulinette is no longer required and no longer used.
+- New: **Creature drawer.** Clicking a release opens a drawer with a large cover and a scene list showing exactly what is included and what is already installed.
+- New: **Bundle downloads.** Bundles install all their releases in sequence with one click. Bundle cards show a campaign chip and a green check when everything is installed.
+- New: **Pre-install dialog.** Before a download starts you pick the variant (4K or HD) and see the download size.
+- New: **Download protection and auto-repair.** Every downloaded file is verified. Faulty or incomplete installations are detected and repaired automatically where possible; otherwise you get a clear failure report.
+- New: **Manual ZIP import.** Foundry ZIPs downloaded from the website can be imported into a world directly through the module.
+- New: **Free maps.** Free releases can be installed without a Patreon membership.
+- New: **Browse before login.** The full map catalog is visible while logged out; downloads stay account-gated.
+- Improved: Scene ambience playlists are merged without duplicate tracks when installing multiple releases.
+
+**Creature Drawer**
+- New: **Creature Drawer on battlemaps.** Beneos battlemap scenes now carry a drawer with thematically fitting free and Beneos creatures. Drag and drop places them on the map; missing creatures are downloaded and installed automatically.
+
+**Beneos Cloud and Your Library**
+- New: **One cloud for both Patreons.** A single Beneos account now covers Beneos Battlemaps, Beneos Creatures Spells and Loot, and shop purchases. The cloud detects your memberships and purchases automatically.
+- New: **Your Library online.** Your personal library at beneos-battlemaps.com lists all your downloads in one place (map ZIPs per tier, Foundry packs). Free content can be downloaded online with a free account.
+- Improved: **Login flow.** The one-time-code login got a resend button with countdown, email confirmation before account creation and email prefill.
+
+**Documentation**
+- New: **In-module documentation.** A built-in wiki window documents every module feature, available in all 13 languages.
+
+**Content**
+- Improved: **All maps re-encoded.** Map files load about 30 percent faster, loop better and use fewer system resources.
+- Improved: **Ambiences for every map**, including older releases.
+- Improved: Thousands of fixes across existing Foundry scenes.
+- Improved: Search engine performance for browsing, finding and downloading.
+
+**Also part of Beneos 4.0** (shipped in recent module updates, see entries below): top-down tokens for every creature, the Creature Codex and Combat Autopilot, item Origins with set bonuses and the Item Radar, the loot and shop generators, and the Beneos Tour in 13 languages.
+
 ### 14.3.1 # 2026-06-15
 - Improved: **Plays nicer with other modules.** Beneos now hooks into Foundry's drag-and-drop through libWrapper, so it no longer clashes with other modules that touch the same drop handling.
 

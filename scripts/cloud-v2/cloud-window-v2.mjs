@@ -6446,8 +6446,7 @@ export class BeneosCloudSettingsV2 extends HandlebarsApplicationMixin(Applicatio
       openModuleSettings: BeneosCloudSettingsV2._onOpenModuleSettings,
       disconnectAccount: BeneosCloudSettingsV2._onDisconnectAccount,
       openLogin:         BeneosCloudSettingsV2._onOpenLoginFromSettings,
-      openAccountOnline: BeneosCloudSettingsV2._onOpenAccountOnline,
-      simulatePersona:   BeneosCloudSettingsV2._onSimulatePersona
+      openAccountOnline: BeneosCloudSettingsV2._onOpenAccountOnline
     }
   }
 
@@ -6461,8 +6460,7 @@ export class BeneosCloudSettingsV2 extends HandlebarsApplicationMixin(Applicatio
     const patreonStatus = cloud?.getPatreonStatus?.() ?? ""
     return {
       isCloudLoggedIn:    isLoggedIn,
-      patreonStatus,
-      creatorMode:        !!this._safeGetSetting("beneos-creator-mode")
+      patreonStatus
     }
   }
 
@@ -6626,28 +6624,5 @@ export class BeneosCloudSettingsV2 extends HandlebarsApplicationMixin(Applicatio
   // footer "Account" button used to carry before it moved in here.
   static _onOpenAccountOnline(_event, _target) {
     BeneosUtility.openPostInNewTab?.("https://beneos.cloud/", {})
-  }
-
-  // Dev-only: dispatch to BeneosCloud.simulatePatron() based on the
-  // clicked button's data-persona attribute. Re-renders both this modal
-  // and the main cloud window so the patron-aware UI updates in lockstep.
-  static async _onSimulatePersona(event, target) {
-    const cloud = game.beneos?.cloud
-    if (!cloud?.simulatePatron) return
-    const persona = target?.dataset?.persona
-    const presets = {
-      "full":      { tokens: true,  battlemaps: true  },
-      "tokens":    { tokens: true,  battlemaps: false },
-      "battlemaps":{ tokens: false, battlemaps: true  },
-      "free":      { tokens: false, battlemaps: false, freeAccount: true },
-    }
-    if (persona === "reset") {
-      await cloud.disconnect()
-    } else if (presets[persona]) {
-      await cloud.simulatePatron(presets[persona])
-    } else {
-      return
-    }
-    try { this.render({ parts: ["form"] }) } catch (e) {}
   }
 }

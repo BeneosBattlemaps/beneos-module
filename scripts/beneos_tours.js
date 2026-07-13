@@ -121,7 +121,9 @@ const FAREWELL_DRAWING_IDS = [
   "smJrGTYsp2KFo3Cj", "dJkovVmnEIcVHaU6", "2RK5IJ2NnvaXaewZ",
   "k9t6KITRPuAltRfm"
 ];
-const FAREWELL_TOKEN_IDS   = ["Cbuc8hdl0vYMTYed", "VTMbQnRgyoRDUkXX", "hcsnrL9is8G1gTbA"];
+// Tokens are hidden by iterating the live scene placeables (see
+// _runFarewellVideoSequence) rather than a fixed id list, because token ids are
+// regenerated whenever the tour scene is rebuilt.
 const FAREWELL_PLAYLIST_ID = "K5RzRMzyN0EjfJru";
 const FAREWELL_SOUND_ID    = "xqoLFHkuOuGjIOTf";
 // Post-video farewell ambient. The Contacts scene's own playlist-sound
@@ -1059,6 +1061,15 @@ class BeneosSetupTour extends TourBase {
     // path here is the single source of truth for this install.
     _autoInstallActive = true;
 
+    // Telemetry attribution: the scripted rot_cerf install must not read as
+    // organic play, so Layer-2 events (canvas drops, combat, modifies) are
+    // suppressed for the duration; the tour itself is counted explicitly.
+    // The server additionally excludes the rot_cerf keys from install stats.
+    try {
+      game.beneos?.analytics?.track("feature_used", { feature: "tour-install" });
+      if (game.beneos?.analytics) game.beneos.analytics.suppressTourTracking = true;
+    } catch (_) {}
+
     // Shared post-install activation: runs on whichever ScenePacker
     // completion hook fires first. `handled` is closed-over so all watchdogs
     // and the hook bail out if any one of them already fired.
@@ -1082,6 +1093,7 @@ class BeneosSetupTour extends TourBase {
       if (handled) return;
       handled = true;
       clearWatchdogs();
+      try { if (game.beneos?.analytics) game.beneos.analytics.suppressTourTracking = false; } catch (_) {}
       _hideInstallOverlay();
       // Click-blocker cleanup. _hideInstallOverlay only removes our own
       // overlay element. Foundry's tour layer (`.tour-fadeout`, `.tour-overlay`,
@@ -1165,6 +1177,7 @@ class BeneosSetupTour extends TourBase {
         _hideInstallOverlay();
       } finally {
         _autoInstallActive = false;
+        try { if (game.beneos?.analytics) game.beneos.analytics.suppressTourTracking = false; } catch (_) {}
       }
     };
     Hooks.once("ScenePacker.importMoulinetteComplete", onInstallDone);
@@ -2894,7 +2907,12 @@ class BeneosTutorialSceneTour extends TourBase {
     try {
       // 1. Hide drawings + tokens (placeable + primary-group sprite).
       for (const id of FAREWELL_DRAWING_IDS) snapshotAndHide(canvas.drawings?.get(id));
-      for (const id of FAREWELL_TOKEN_IDS)   snapshotAndHide(canvas.tokens?.get(id));
+      // Hide every token on the farewell scene. Token ids are regenerated when
+      // the tour scene is re-imported/rebuilt (unlike drawings, which keep
+      // theirs), so a hard-coded id list silently stopped matching and left the
+      // creatures on top of the reward video. Iterating the live placeables
+      // keeps the effect working regardless of the current token ids.
+      for (const token of (canvas.tokens?.placeables ?? [])) snapshotAndHide(token);
 
       // 2. Ambient volume → 70% for the reward video. Video tiles route their
       // audio through the ambient channel. `inputToVolume` converts the
@@ -4328,7 +4346,11 @@ class BeneosTutorialSceneTour extends TourBase {
         if (inst) {
           try { await inst.setHidden(false); } catch (e) {}
           inst.expanded = expanded;
-          inst.attachToActiveScene?.();
+          // force:true bypasses the drawer's "BM:"-name guard so the tour can show
+          // it on "Page 2: Battlemaps" (a non-"BM:" page that carries a real
+          // creatureInstaller flag); without it attachToActiveScene() would
+          // destroy() the drawer and the follow-up render() would hit null data.
+          inst.attachToActiveScene?.({ force: true });
           await new Promise(r => setTimeout(r, 600));
           // attachToActiveScene forces expanded=false on a scene change; re-assert
           // our requested state and re-render so it sticks.
@@ -7614,6 +7636,31 @@ function _installTourTooltipGuard(tour) {
  * client/applications/sidebar/document-directory.mjs:627-631).
  */
 async function _expandSidebarFolder(folderId) {
+  // Expand any collapsed ANCESTOR folders first. A target folder nested inside a
+  // collapsed parent (e.g. "Beneos Loot"/"Beneos Spells" moved under the
+  // "_Beneos: Getting Started Tour" item folder) is not visible or anchorable in
+  // the sidebar until every parent is open. Walk the parent chain top-down via
+  // the Folder documents and open each collapsed ancestor. Folder ids are stable
+  // (only the name/parent changed), so the caller can keep passing the same id.
+  try {
+    const chain = [];
+    let cur = game.folders?.get(folderId);
+    let guard = 0;
+    while (cur && guard++ < 12) {
+      const parent = cur.folder;
+      cur = (typeof parent === "string") ? game.folders?.get(parent) : parent;
+      if (!cur?.id) break;
+      chain.unshift(cur.id);
+    }
+    for (const ancId of chain) {
+      const ancEl = document.querySelector(`.directory-item.folder[data-folder-id="${ancId}"]`)
+                 ?? document.querySelector(`[data-folder-id="${ancId}"]`);
+      if (ancEl && !ancEl.classList.contains("expanded")) {
+        (ancEl.querySelector(".folder-header") ?? ancEl).click();
+        await new Promise(r => setTimeout(r, 200));
+      }
+    }
+  } catch (e) {}
   const folderEl = document.querySelector(`.directory-item.folder[data-folder-id="${folderId}"]`)
                 ?? document.querySelector(`[data-folder-id="${folderId}"]`);
   if (!folderEl) return null;

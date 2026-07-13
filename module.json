@@ -1,7 +1,7 @@
 {
   "title": "Beneos Module",
   "description": "Features for Beneos Battlemaps, Creatures, Spells and Loot",
-  "version": "14.3.1",
+  "version": "14.4.0",
   "socket": true,
   "compatibility": {
     "minimum": "13",
@@ -9,7 +9,7 @@
   },
   "url": "https://github.com/BeneosBattlemaps/beneos-module",
   "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-module/main/module.json",
-  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/14.3.1.zip",
+  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/14.4.0.zip",
   "scripts": [
     "scripts/beneosfx.js"
   ],
@@ -56,11 +56,11 @@
     { "lang": "fr",    "name": "Français",                "path": "lang/fr.json" },
     { "lang": "cs",    "name": "Čeština",                 "path": "lang/cs.json" },
     { "lang": "ca",    "name": "Català",                  "path": "lang/ca.json" },
-    { "lang": "ko",    "name": "한국어",                    "path": "lang/ko.json" },
+    { "lang": "ko",    "name": "한국어",                   "path": "lang/ko.json" },
     { "lang": "es",    "name": "Español",                 "path": "lang/es.json" },
     { "lang": "pt-BR", "name": "Português (Brasil)",      "path": "lang/pt-BR.json" },
-    { "lang": "ja",    "name": "日本語",                    "path": "lang/ja.json" },
-    { "lang": "zh-TW", "name": "繁體中文",                  "path": "lang/zh-TW.json" },
+    { "lang": "ja",    "name": "日本語",                   "path": "lang/ja.json" },
+    { "lang": "zh-TW", "name": "繁體中文",                 "path": "lang/zh-TW.json" },
     { "lang": "pl",    "name": "Polski",                  "path": "lang/pl.json" },
     { "lang": "pt-PT", "name": "Português (Portugal)",    "path": "lang/pt-PT.json" },
     { "lang": "it",    "name": "Italiano",                "path": "lang/it.json" }
@@ -103,14 +103,6 @@
         "id": "lib-wrapper",
         "type": "module",
         "manifest": "https://github.com/ruipin/fvtt-lib-wrapper/releases/latest/download/module.json",
-        "compatibility": {}
-      }
-    ],
-    "recommends": [
-	  {
-        "id": "moulinette",
-        "type": "module",
-        "manifest": "https://github.com/Moulinette-Craft/moulinette-foundryvtt-module/releases/latest/download/module.json",
         "compatibility": {}
       }
     ]

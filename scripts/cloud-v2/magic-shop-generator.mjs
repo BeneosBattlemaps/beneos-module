@@ -590,6 +590,17 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
     await this.render({ parts: ["body"] })
     try {
       await this.#saveToWorld(shopName)
+      // Telemetry: a shop the GM actually saves (not just opened the tool).
+      try {
+        const mix = SHOP_SIZES[this.size]?.tierMix || {}
+        const tiers = Object.keys(mix).map(Number).filter(n => !isNaN(n))
+        game.beneos?.analytics?.track("shop_generated", {
+          shop_type: this.shopType || "misc",
+          size: this.size || "",
+          tier_min: tiers.length ? Math.min(...tiers) : 0,
+          tier_max: tiers.length ? Math.max(...tiers) : 0
+        })
+      } catch (_) {}
       ui.notifications.info(game.i18n.format("BENEOS.MagicShop.SaveSuccess", { name: `${typeLabel} / ${shopName}`, count: total }))
     } catch (err) {
       console.error("[Beneos MagicShop] save failed", err)

@@ -400,6 +400,9 @@ export class BeneosRepairDialog {
     let result;
     try {
       result = await applyMappings({ mappings, directReplacements }, scope, scope === "scene" ? scene : null, progressCb);
+      // Telemetry: broken asset paths existed and the module repaired them
+      // (feeds the delivery-error rate; throttled per reason).
+      try { game.beneos?.analytics?.trackSelfRepair?.(null, "missing_file"); } catch (_) {}
     } catch (e) {
       console.error("Beneos Asset Repair | applyMappings failed:", e);
       try { progress.close(); } catch (er) {}

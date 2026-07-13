@@ -5,6 +5,7 @@
 // can be open in parallel during combat (one per token).
 
 import { buildCreatureDetailCtx, openImagePopout, attachItemSheetContextMenu, openAllyCloudSearch, flashPaywallDenied, mountEmberField } from "./creature-codex.mjs";
+import { BeneosAnalytics } from "../beneos_analytics.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -73,6 +74,8 @@ export class BeneosCreatureCodexWindow extends HandlebarsApplicationMixin(Applic
     win._tokenKey = tokenKey;
     win._actorId = actor.id;
     win.render({ force: true });
+    // Codex engagement telemetry: opening lands on the overview section.
+    try { BeneosAnalytics.trackCodexSection(tokenKey, "overview"); } catch (_) {}
     return win;
   }
 
@@ -111,6 +114,7 @@ export class BeneosCreatureCodexWindow extends HandlebarsApplicationMixin(Applic
     const tab = target.dataset.cdxTab;
     if (!tab) return;
     this._activeTab = tab;
+    try { BeneosAnalytics.trackCodexSection(this._tokenKey, tab); } catch (_) {}
     this.render(false);
   }
   static _onTacticsSub(_ev, target) {
@@ -118,6 +122,7 @@ export class BeneosCreatureCodexWindow extends HandlebarsApplicationMixin(Applic
     const sub = target.dataset.cdxSub;
     if (!sub) return;
     this._tacticsSub = sub;
+    try { BeneosAnalytics.trackCodexSection(this._tokenKey, `tactics.${sub}`); } catch (_) {}
     this.render(false);
   }
   static _onAbilityFilter(_ev, target) {

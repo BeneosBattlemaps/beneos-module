@@ -415,7 +415,12 @@ export class BeneosNativeBattlemapInstaller {
   #isStale(prior) {
     if (!prior) return true
     const sig = String(this.record?.contentSignature || "")
-    if (sig && prior.sourceSignature && prior.sourceSignature !== sig) return true
+    if (sig && prior.sourceSignature && prior.sourceSignature !== sig) {
+      // Telemetry: local install no longer matches the online signature, the
+      // module heals itself with a fresh download (throttled per reason).
+      try { game.beneos?.analytics?.trackSelfRepair?.(this.record?.assetId || "", "signature_mismatch") } catch (_) {}
+      return true
+    }
     const upd = String(this.record?.updatedDate || "")
     if (upd && prior.installedAt) {
       const i = Date.parse(prior.installedAt), u = Date.parse(upd)
@@ -941,6 +946,9 @@ export class BeneosNativeBattlemapInstaller {
         }
         transient += 1
         if (transient >= FETCH_MAX_ATTEMPTS) throw err
+        // Telemetry: a transient transfer failure with an actual retry ahead
+        // (feeds the per-country delivery error rate; throttled per asset).
+        try { game.beneos?.analytics?.trackDownloadRetry?.(this.record?.assetId || "", transient) } catch (_) {}
         await this.#sleep(FETCH_BACKOFF_MS[transient - 1] || 4000)
       }
     }

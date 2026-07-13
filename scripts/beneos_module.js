@@ -288,6 +288,9 @@ Hooks.once('ready', () => {
         const assetId = BeneosAnalytics.beneosAssetId(token)
         if (assetId) BeneosAnalytics.track("combat_add", { asset_id: assetId })
       }
+      // Encounter summary state: every combatant (also non-Beneos) joins the
+      // roster so co-occurrence and rounds-in-initiative can be measured.
+      BeneosAnalytics.combatantAdded(combatant)
     } catch (_) {}
   })
 
@@ -305,8 +308,55 @@ Hooks.once('ready', () => {
         const assetId = BeneosAnalytics.beneosAssetId(token)
         if (assetId) BeneosAnalytics.track("combat_remove", { asset_id: assetId })
       }
+      BeneosAnalytics.combatantRemoved(combatant)
     } catch (_) {}
   })
+
+  /********************************************************************************** */
+  // Combat deleted = fight over: emit ONE combat_encounter summary (rounds per
+  // Beneos creature, battlemap, co-occurrence roster).
+  Hooks.on('deleteCombat', (combat) => {
+    if (!game.user.isGM || !BeneosUtility.isBeneosModule()) {
+      return
+    }
+    try { BeneosAnalytics.combatEnded(combat) } catch (_) {}
+  })
+
+  /********************************************************************************** */
+  // Item lands on a sheet: Beneos spell onto a player character (real spell
+  // adoption) and Beneos loot items with an origin imprint (PC vs NPC split).
+  Hooks.on('createItem', (item) => {
+    if (!game.user.isGM || !BeneosUtility.isBeneosModule()) {
+      return
+    }
+    try {
+      const parentType = item?.parent?.type || ""
+      const spellKey = item?.flags?.world?.beneos?.spellKey
+      if (spellKey && item.type === "spell" && parentType === "character") {
+        BeneosAnalytics.track("spell_added_to_pc", { asset_id: String(spellKey).slice(0, 32), spell_key: spellKey })
+      }
+      const originSlug = item?.flags?.["beneos-module"]?.loot?.origin?.slug
+      if (originSlug && item?.parent) {
+        BeneosAnalytics.trackItemAdded(originSlug, parentType)
+      }
+    } catch (_) {}
+  })
+
+  /********************************************************************************** */
+  // Beneos spell actually cast (dnd5e). 4.x fires dnd5e.postUseActivity, older
+  // 3.x builds fire dnd5e.useItem; both are registered defensively and the
+  // session cap in trackSpellCast keeps duplicates/macro spam harmless.
+  const beneosTrackSpellUse = (item) => {
+    try {
+      if (!game.user.isGM) return
+      const spellKey = item?.flags?.world?.beneos?.spellKey
+      if (!spellKey || item?.type !== "spell") return
+      const caster = (item?.parent?.type === "character") ? "pc" : "npc"
+      BeneosAnalytics.trackSpellCast(spellKey, caster)
+    } catch (_) {}
+  }
+  Hooks.on('dnd5e.postUseActivity', (activity) => beneosTrackSpellUse(activity?.item))
+  Hooks.on('dnd5e.useItem', (item) => beneosTrackSpellUse(item))
 
   /********************************************************************************** */
   Hooks.on('createToken', (token) => {
