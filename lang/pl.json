@@ -1507,6 +1507,8 @@
   "BENEOS.Cloud.Filter.Battlemap": "Tylko battlemapa",
   "BENEOS.Cloud.Notification.MoulinetteSearch": "Otwarto Moulinette. Wyszukaj: {name}",
   "BENEOS.Cloud.Install.AssetsMissing": "Nie udało się zainstalować {count} zasobów i mogą być widoczne jako brakujące. Sprawdź konsolę lub zainstaluj pakiet ponownie.",
+  "BENEOS.Cloud.Install.ConvertedUploads": "{count} plik(i) zostały przekonwertowane na inny format przez moduł zewnętrzny (np. Media Optimizer) podczas instalacji. Beneos automatycznie dostosował wszystkie odwołania.",
+  "BENEOS.Cloud.Install.Report.ConvertedUploads": "{count} przesłane pliki zostały przekonwertowane na inny format przez moduł zewnętrzny (np. Media Optimizer). Beneos automatycznie dostosował wszystkie odwołania, to nie jest błąd.",
   "BENEOS.Cloud.Login.WindowTitle": "Beneos Cloud · Logowanie",
   "BENEOS.Cloud.Login.Description": "Zaloguj się do swojego konta Beneos Cloud. Dane logowania nigdy nie są zapisywane lokalnie.",
   "BENEOS.Cloud.Login.NoAccount": "Nie masz jeszcze konta?",

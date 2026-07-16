@@ -1507,6 +1507,8 @@
   "BENEOS.Cloud.Filter.Battlemap": "Només battlemap",
   "BENEOS.Cloud.Notification.MoulinetteSearch": "S'ha obert Moulinette. Si us plau, cerca: {name}",
   "BENEOS.Cloud.Install.AssetsMissing": "No s'han pogut instal·lar {count} recurs(os) i poden aparèixer com a absents. Comprova la consola o reinstal·la el paquet.",
+  "BENEOS.Cloud.Install.ConvertedUploads": "{count} fitxer(s) s'han convertit a un altre format per un mòdul de tercers (com Media Optimizer) durant la instal·lació. Beneos ha ajustat totes les referències automàticament.",
+  "BENEOS.Cloud.Install.Report.ConvertedUploads": "{count} fitxer(s) pujat(s) s'han convertit a un altre format per un mòdul de tercers (com Media Optimizer). Beneos ha ajustat totes les referències automàticament, això no és un error.",
   "BENEOS.Cloud.Login.WindowTitle": "Beneos Cloud · Inici de sessió",
   "BENEOS.Cloud.Login.Description": "Inicia la sessió al teu compte Beneos Cloud. Les credencials no s'emmagatzemen mai localment.",
   "BENEOS.Cloud.Login.NoAccount": "Encara no tens compte?",

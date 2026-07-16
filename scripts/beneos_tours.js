@@ -1833,6 +1833,30 @@ export class BeneosOpenDocumentation extends FormApplication {
 
 const TUTORIAL_ADVENTURE_NAME = "Getting Started";
 
+/* Assets the Getting Started Tour swaps in or fetches at RUNTIME only.
+ * No packed document references them, so the beneos-dev release packer
+ * cannot discover them by scanning the exported documents. The packer
+ * reads this list via game.beneos.api.gettingStartedRuntimeAssets()
+ * (release-map entry flag "runtimeAssetsApi") and ships the files with
+ * the tour ZIP. Every runtime-only asset the tour touches MUST be listed
+ * here, and the tour call sites derive their filenames from this map so
+ * packing can never drift out of sync with the tour. */
+const GETTING_STARTED_RUNTIME_ASSETS = Object.freeze({
+  topDownSkin1: "beneos_assets/beneos_battlemaps/map_assets/getting_started/184-rot_cerf/184-rot_cerf-1-top.webp",
+  topDownSkin2: "beneos_assets/beneos_battlemaps/map_assets/getting_started/184-rot_cerf/184-rot_cerf-2-top.webp",
+  codexContent: "beneos_assets/beneos_battlemaps/map_assets/getting_started/184-rot_cerf/actor-184-rot_cerf.json"
+});
+const gettingStartedRuntimeAssetFile = (key) => GETTING_STARTED_RUNTIME_ASSETS[key].split("/").pop();
+
+// Expose the list for the beneos-dev release packer (same self-register
+// pattern as beneos-release-install-api.mjs). game.beneos is created at
+// init by beneos_module.js.
+Hooks.once("ready", () => {
+  if (!game.beneos) return;
+  game.beneos.api = game.beneos.api || {};
+  game.beneos.api.gettingStartedRuntimeAssets = () => Object.values(GETTING_STARTED_RUNTIME_ASSETS);
+});
+
 class BeneosTutorialSceneTour extends TourBase {
 
   /** Tracked canvas-coordinate marker elements (in #hud) for cleanup */
@@ -5835,7 +5859,7 @@ class BeneosTutorialSceneTour extends TourBase {
       // Actually switch the token to its TOP-DOWN variant so the user sees the
       // difference (the 2.5D token becomes a flat top-down token).
       try { canvas.hud?.token?.close?.(); } catch (e) {}
-      try { await ctSwapRotCerfTexture("184-rot_cerf-1-top.webp"); } catch (e) {}
+      try { await ctSwapRotCerfTexture(gettingStartedRuntimeAssetFile("topDownSkin1")); } catch (e) {}
       // Make sure the top-down token keeps its Beneos drop-shadow.
       try { await ctApplyTokenShadow(); } catch (e) {}
       await new Promise(r => setTimeout(r, 350));
@@ -5860,7 +5884,7 @@ class BeneosTutorialSceneTour extends TourBase {
       // Switch to a different VARIANT while staying in top-down, to show that
       // variants exist separately for both the top-down and 2.5D tokens.
       try { canvas.hud?.token?.close?.(); } catch (e) {}
-      try { await ctSwapRotCerfTexture("184-rot_cerf-2-top.webp"); } catch (e) {}
+      try { await ctSwapRotCerfTexture(gettingStartedRuntimeAssetFile("topDownSkin2")); } catch (e) {}
       await new Promise(r => setTimeout(r, 350));
       ctCenterAnchor("ct-skin-alternate");
     }
@@ -6064,7 +6088,7 @@ class BeneosTutorialSceneTour extends TourBase {
       try {
         const update = {};
         if (!rot.flags?.beneos?.content) {
-          const url = "/beneos_assets/beneos_battlemaps/map_assets/getting_started/184-rot_cerf/actor-184-rot_cerf.json";
+          const url = "/" + GETTING_STARTED_RUNTIME_ASSETS.codexContent;
           const resp = await fetch(url);
           if (resp.ok) {
             const json = await resp.json();

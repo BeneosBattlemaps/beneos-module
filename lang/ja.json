@@ -1507,6 +1507,8 @@
   "BENEOS.Cloud.Filter.Battlemap": "バトルマップのみ",
   "BENEOS.Cloud.Notification.MoulinetteSearch": "Moulinette を開きました。次を検索してください: {name}",
   "BENEOS.Cloud.Install.AssetsMissing": "{count} 個のアセットをインストールできず、欠落として表示される場合があります。コンソールを確認するか、パックを再インストールしてください。",
+  "BENEOS.Cloud.Install.ConvertedUploads": "{count} 件のファイルがインストール中にサードパーティモジュール（Media Optimizer など）によって別形式に変換されました。Beneos はすべての参照を自動的に調整しました。",
+  "BENEOS.Cloud.Install.Report.ConvertedUploads": "{count} 件のアップロードファイルがサードパーティモジュール（Media Optimizer など）によって別形式に変換されました。Beneos はすべての参照を自動的に調整しました。これはエラーではありません。",
   "BENEOS.Cloud.Login.WindowTitle": "Beneos Cloud · サインイン",
   "BENEOS.Cloud.Login.Description": "Beneos Cloud アカウントにサインインします。認証情報はローカルに保存されません。",
   "BENEOS.Cloud.Login.NoAccount": "アカウントをお持ちでない方",

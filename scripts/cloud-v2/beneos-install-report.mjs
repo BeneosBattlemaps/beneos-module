@@ -148,6 +148,15 @@ export class BeneosInstallReport {
       { ok: t.ok ?? 0, assets: t.assets ?? 0, repaired: t.repaired ?? 0, failed: assetFailures.length, docs: docFailures.length },
       "{ok}/{assets} assets installed ({repaired} repaired), {failed} asset(s) and {docs} document(s) failed.")
 
+    // Info, not a failure: a third-party module (e.g. Media Optimizer)
+    // converted uploads to another format; references were adjusted.
+    const convertedBlock = (t.convertedUploads > 0)
+      ? `<p style="background:rgba(146,201,245,0.10);border-left:3px solid #92c9f5;padding:8px;border-radius:2px;font-size:0.9em;">
+           ${esc(_f("BENEOS.Cloud.Install.Report.ConvertedUploads", { count: t.convertedUploads },
+             "{count} uploaded file(s) were converted to another format by a third-party module (such as Media Optimizer). Beneos adjusted all references automatically, this is not an error."))}
+         </p>`
+      : ""
+
     const catLabel = (c) => esc(_l(`BENEOS.Cloud.Install.Report.Cat.${c}`, c))
 
     const assetRows = assetFailures.map(f => {
@@ -191,6 +200,7 @@ export class BeneosInstallReport {
         <p>${esc(guidance)}</p>
         ${preflightBlock}
         <p style="font-size:0.9em;color:#b8b6b3;">${esc(summary)}</p>
+        ${convertedBlock}
         ${assetBlock}
         ${docBlock}
         ${envBlock}
@@ -215,6 +225,9 @@ export class BeneosInstallReport {
       `Dominant issue: ${dominant}`,
       `Totals: assets ${t.assets ?? 0} (ok ${t.ok ?? 0}, repaired ${t.repaired ?? 0}, failed ${assetFailures.length}), documents failed ${docFailures.length}`,
     ]
+    if (t.convertedUploads > 0) {
+      lines.push(`Converted uploads: ${t.convertedUploads} file(s) rewritten by a third-party upload module (e.g. Media Optimizer); references adjusted automatically.`)
+    }
     if (result.preflight && result.preflight.ok === false) {
       lines.push(`Pre-flight write check FAILED: ${result.preflight.category} , ${result.preflight.error || ""}`)
     }

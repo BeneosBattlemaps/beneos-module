@@ -1507,6 +1507,8 @@
   "BENEOS.Cloud.Filter.Battlemap": "Solo battlemap",
   "BENEOS.Cloud.Notification.MoulinetteSearch": "Moulinette aperto. Cerca: {name}",
   "BENEOS.Cloud.Install.AssetsMissing": "Impossibile installare {count} risorsa/e, potrebbero apparire come mancanti. Controlla la console o reinstalla il pacchetto.",
+  "BENEOS.Cloud.Install.ConvertedUploads": "{count} file sono stati convertiti in un altro formato da un modulo di terze parti (come Media Optimizer) durante l'installazione. Beneos ha aggiornato automaticamente tutti i riferimenti.",
+  "BENEOS.Cloud.Install.Report.ConvertedUploads": "{count} file caricati sono stati convertiti in un altro formato da un modulo di terze parti (come Media Optimizer). Beneos ha aggiornato automaticamente tutti i riferimenti, non è un errore.",
   "BENEOS.Cloud.Login.WindowTitle": "Beneos Cloud · Accedi",
   "BENEOS.Cloud.Login.Description": "Accedi al tuo account Beneos Cloud. Le credenziali non vengono mai salvate localmente.",
   "BENEOS.Cloud.Login.NoAccount": "Non hai ancora un account?",

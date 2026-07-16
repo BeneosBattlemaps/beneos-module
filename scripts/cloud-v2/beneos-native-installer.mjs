@@ -102,19 +102,29 @@ function toCloudAssetPath(p) {
  *  1. beneos_assets/beneos_battlemaps/ -> beneos_assets/cloud/battlemaps/ (prefix swap)
  *  2. any non-beneos path that was bundled+relocated -> its packaged target,
  *     via an EXACT lookup in `remap` (keyed by the decoded, slash-stripped path).
- * The exact lookup means only strings whose file was packed get rewritten —
+ *  3. either result -> its converted filename via `uploadRemap`, when a
+ *     third-party upload converter (e.g. Media Optimizer turning .svg into
+ *     .webp) wrote the file under a different name than we sent.
+ * The exact lookups mean only strings whose file was packed get rewritten:
  * non-asset strings (journal HTML, flags) and the separate token/spell/item
  * refs under beneos_assets/ are never touched.
  */
-function remapAssetString(s, remap) {
+function remapAssetString(s, remap, uploadRemap) {
   if (typeof s !== "string") return s
   const swapped = toCloudAssetPath(s)
-  if (swapped !== s) return swapped
+  if (swapped !== s) {
+    const converted = (uploadRemap && uploadRemap.size) ? uploadRemap.get(stripLeadSlash(swapped)) : null
+    if (!converted) return swapped
+    return swapped.startsWith("/") ? "/" + converted : converted
+  }
   if (remap && remap.size) {
     let key = stripLeadSlash(s)
     try { key = stripLeadSlash(decodeURIComponent(s)) } catch (_) { /* keep raw key */ }
-    const target = remap.get(key)
-    if (target) return s.startsWith("/") ? "/" + target : target
+    let target = remap.get(key)
+    if (target) {
+      if (uploadRemap && uploadRemap.size) target = uploadRemap.get(target) || target
+      return s.startsWith("/") ? "/" + target : target
+    }
   }
   return s
 }
@@ -125,14 +135,14 @@ function remapAssetString(s, remap) {
  * Mutates in place. Scoped so tokens/spells/items refs under beneos_assets/ and
  * non-asset strings stay untouched.
  */
-function rewriteDocAssetPaths(value, remap) {
-  if (typeof value === "string") return remapAssetString(value, remap)
+function rewriteDocAssetPaths(value, remap, uploadRemap) {
+  if (typeof value === "string") return remapAssetString(value, remap, uploadRemap)
   if (Array.isArray(value)) {
-    for (let i = 0; i < value.length; i++) value[i] = rewriteDocAssetPaths(value[i], remap)
+    for (let i = 0; i < value.length; i++) value[i] = rewriteDocAssetPaths(value[i], remap, uploadRemap)
     return value
   }
   if (value && typeof value === "object") {
-    for (const k of Object.keys(value)) value[k] = rewriteDocAssetPaths(value[k], remap)
+    for (const k of Object.keys(value)) value[k] = rewriteDocAssetPaths(value[k], remap, uploadRemap)
     return value
   }
   return value
@@ -180,6 +190,7 @@ export class BeneosNativeBattlemapInstaller {
     this._manifestRefreshes = 0
     this._urlByTarget = new Map() // target/relPath -> current signed URL (refreshable)
     this._packagedRemap = new Map() // original asset path -> packaged install target (self-contained relocation)
+    this._uploadRemap = new Map()   // install target -> path actually written (third-party upload converters, e.g. Media Optimizer)
     this._dirPromises = new Map() // dir -> in-flight #ensureDir promise (dedupe under parallel transfers)
     this._refreshInFlight = null  // shared in-flight signed-URL refresh (dedupe concurrent 403s)
     this._sceneScope  = null      // { assetRelPaths:Set, sceneIds:Set } when scene-scoped
@@ -335,6 +346,12 @@ export class BeneosNativeBattlemapInstaller {
       // installed-marker + update-available state and future re-installs detect
       // presence. Only on a real install (>=1 scene imported).
       await this.#recordInstallIfAny()
+
+      // Third-party upload converters (e.g. Media Optimizer) are transparent to
+      // the user; tell them their files were adapted, not silently renamed.
+      if (this._uploadRemap.size) {
+        try { ui.notifications.info(game.i18n.format("BENEOS.Cloud.Install.ConvertedUploads", { count: this._uploadRemap.size })) } catch (_) {}
+      }
 
       result.totals.failed = result.assetFailures.length
       const failureCount = result.assetFailures.length + result.docFailures.length
@@ -551,7 +568,7 @@ export class BeneosNativeBattlemapInstaller {
       packageId: this.packageId,
       label:     this.label,
       env:       this.#envFingerprint(),
-      totals:    { assets: 0, ok: 0, repaired: 0, failed: 0, docsCreated: 0, docsUpdated: 0, docsSkippedExisting: 0, docsFailed: 0, packagedAssets: 0 },
+      totals:    { assets: 0, ok: 0, repaired: 0, failed: 0, docsCreated: 0, docsUpdated: 0, docsSkippedExisting: 0, docsFailed: 0, packagedAssets: 0, convertedUploads: 0 },
       assetFailures: [], // {target, category, attempts, lastError}
       docFailures:   [], // {type, id, error}
       preflight:     null,
@@ -1029,7 +1046,38 @@ export class BeneosNativeBattlemapInstaller {
     }
     const up = await this.#safeUpload(dir, new File([blob], file, { type: blob.type }))
     if (!up.ok) return { ok: false, category: up.category, error: up.error }
+    this.#noteUploadRename(a, file, up.path)
     return { ok: true }
+  }
+
+  /**
+   * Detect a third-party upload converter: modules like Media Optimizer wrap
+   * FilePicker.upload and write a CONVERTED file (e.g. every .svg becomes a
+   * rasterized .webp), so the name we sent never exists on the server and the
+   * verify pass would fail every such asset (real case: Sqyre user, 11 svg map
+   * icons, 2026-07-14). The upload response carries the path actually written;
+   * when its basename differs from what we sent, record target -> actual so
+   * document refs and the verify pass follow the converted file. Compared by
+   * basename only: The Forge answers with a foreign URL prefix for every
+   * upload, and that must not register as a rename.
+   */
+  #noteUploadRename(a, sentName, returnedPath) {
+    if (!returnedPath) return
+    let base = String(returnedPath).split("?")[0].split("/").pop()
+    try { base = decodeURIComponent(base) } catch (_) { /* keep raw */ }
+    if (!base || base === sentName) { this._uploadRemap.delete(a.target); return }
+    const dir = a.target.includes("/") ? a.target.substring(0, a.target.lastIndexOf("/")) : ""
+    const actual = dir ? `${dir}/${base}` : base
+    if (this._uploadRemap.get(a.target) !== actual) {
+      this._uploadRemap.set(a.target, actual)
+      console.warn(`BeneosNativeInstaller | upload converted by another module: ${a.target} -> ${actual}`)
+    }
+    this._result.totals.convertedUploads = this._uploadRemap.size
+  }
+
+  /** Where an asset actually lives on the server (converted name when a third-party module renamed it). */
+  #installedPath(a) {
+    return this._uploadRemap.get(a.target) || a.target
   }
 
   /** Probe-write into the cloud namespace so a write-blocking host fails fast. */
@@ -1187,7 +1235,7 @@ export class BeneosNativeBattlemapInstaller {
       if (arr.length === 0) continue
       // Punkt 8: reveal this phase with its real document count.
       this.progress.revealPhase?.(meta.phaseKey, { status: "active", current: 0, total: arr.length })
-      for (let i = 0; i < arr.length; i++) arr[i] = rewriteDocAssetPaths(arr[i], this._packagedRemap)
+      for (let i = 0; i < arr.length; i++) arr[i] = rewriteDocAssetPaths(arr[i], this._packagedRemap, this._uploadRemap)
 
       // Playlists grow, they are never replaced: the export ships each release's
       // playlist with only the few sounds that release uses (same playlist _id +
@@ -1352,7 +1400,7 @@ export class BeneosNativeBattlemapInstaller {
       // HEAD-checks are cheap + read-only -> run them in parallel.
       await this.#runPool(assets, DOWNLOAD_CONCURRENCY, async (a) => {
         if (byTarget.has(a.target)) return
-        if (!(await this.#headCheck(a.target))) byTarget.set(a.target, a)
+        if (!(await this.#headCheck(this.#installedPath(a)))) byTarget.set(a.target, a)
       })
     }
     const candidates = [...byTarget.values()]
@@ -1367,7 +1415,7 @@ export class BeneosNativeBattlemapInstaller {
       const a = candidates[i]
       const res = await this.#transferOne(a)
       let ok = res.ok
-      if (ok && !this._isForge) ok = await this.#headCheck(a.target) // confirm on disk
+      if (ok && !this._isForge) ok = await this.#headCheck(this.#installedPath(a)) // confirm on disk
       if (ok) {
         this.#clearAssetFailure(a.target)
         this._result.totals.repaired += 1

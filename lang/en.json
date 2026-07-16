@@ -1507,6 +1507,10 @@
   "BENEOS.Cloud.Filter.Battlemap": "Battlemap only",
   "BENEOS.Cloud.Notification.MoulinetteSearch": "Moulinette opened. Please search for: {name}",
   "BENEOS.Cloud.Install.AssetsMissing": "{count} asset(s) could not be installed and may appear as missing. Check the console or reinstall the pack.",
+
+  "BENEOS.Cloud.Install.ConvertedUploads": "{count} file(s) were converted to another format by a third-party module (such as Media Optimizer) during install. Beneos adjusted all references automatically.",
+
+  "BENEOS.Cloud.Install.Report.ConvertedUploads": "{count} uploaded file(s) were converted to another format by a third-party module (such as Media Optimizer). Beneos adjusted all references automatically, this is not an error.",
   "BENEOS.Cloud.Login.WindowTitle": "Beneos Cloud · Sign in",
   "BENEOS.Cloud.Login.Description": "Sign in to your Beneos Cloud account. Credentials are never stored locally.",
   "BENEOS.Cloud.Login.NoAccount": "Don't have an account?",
