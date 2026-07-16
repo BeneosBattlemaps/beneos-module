@@ -155,13 +155,13 @@ const TOUR_AUDIO_MAP = {
   "tutorial-start-here":        { music: { p: "pQpsDUhEtL0Q27vJ", s: "va7jWRBof0MYLtVt" } },
   "tutorial-page-1-overview":   { music: { p: "pQpsDUhEtL0Q27vJ", s: "va7jWRBof0MYLtVt" } },
   "tutorial-page-2-battlemaps": { music: { p: "pQpsDUhEtL0Q27vJ", s: "va7jWRBof0MYLtVt" } },
-  "tutorial-page-3-sceneries":  { music: { p: "pQpsDUhEtL0Q27vJ", s: "va7jWRBof0MYLtVt" }, env: { p: "7031JEHB2Swfyye9", s: "pSdWUnS7WncdVfZv" } },
+  "tutorial-page-3-sceneries":  { music: { p: "pQpsDUhEtL0Q27vJ", s: "va7jWRBof0MYLtVt" }, env: { p: "7031JEHB2Swfyye9", s: "BkSvW3mlucErTl3x" } },
   "tutorial-page-4-intro":      { music: null },
   "tutorial-page-5-world-map":  { music: { p: "pQpsDUhEtL0Q27vJ", s: "va7jWRBof0MYLtVt" } },
   "tutorial-page-6-creatures":  { music: { p: "pQpsDUhEtL0Q27vJ", s: "va7jWRBof0MYLtVt" } },
   "tutorial-page-7-loot":       { music: { p: "pQpsDUhEtL0Q27vJ", s: "va7jWRBof0MYLtVt" } },
   "tutorial-page-8-spells":     { music: { p: "pQpsDUhEtL0Q27vJ", s: "va7jWRBof0MYLtVt" } },
-  "tutorial-page-9-contacts":   { music: { p: "pQpsDUhEtL0Q27vJ", s: "mkZYCCk9xSiVIU9t" } }
+  "tutorial-page-9-contacts":   { music: { p: "pQpsDUhEtL0Q27vJ", s: "RlbjGCEmW0kpWmR9" } }
 };
 
 // Union of every Music + Env key any tour manages. Iterated at tour start
@@ -2913,7 +2913,7 @@ class BeneosTutorialSceneTour extends TourBase {
       // over the reward video. Guarded so this tour-driven stop is not read as
       // a GM opt-out. Fired at fn-farewell, right before the video is revealed.
       const musicPl = game.playlists.get("pQpsDUhEtL0Q27vJ");
-      const musicSnd = musicPl?.sounds.get("mkZYCCk9xSiVIU9t");
+      const musicSnd = musicPl?.sounds.get("RlbjGCEmW0kpWmR9");
       if (musicSnd?.playing) { beneosMarkTourAudioSelfChange(); musicPl.stopSound(musicSnd); }
     } catch (e) {}
   }
@@ -5180,7 +5180,7 @@ class BeneosTutorialSceneTour extends TourBase {
       // beat doesn't feel silent.
       try {
         const pl = game.playlists.get("pQpsDUhEtL0Q27vJ");
-        const snd = pl?.sounds.get("sycGtPyfkbz5IhCa");
+        const snd = pl?.sounds.get("va7jWRBof0MYLtVt");
         if (snd && !snd.playing) pl.playSound(snd);
       } catch (e) {}
       // Stop the video
