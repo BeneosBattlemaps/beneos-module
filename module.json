@@ -5,7 +5,7 @@
   "socket": true,
   "compatibility": {
     "minimum": "13",
-    "verified": "14"
+    "verified": "14.365"
   },
   "url": "https://github.com/BeneosBattlemaps/beneos-module",
   "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-module/main/module.json",

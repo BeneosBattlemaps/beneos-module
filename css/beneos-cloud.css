@@ -26,6 +26,32 @@
   flex-direction: column !important;
 }
 
+/* Theme-Immunisierung: Die Beneos-Cloud-App (Hauptfenster + alle Dialoge, die
+   die .beneos-cloud-app-Klasse tragen) ist bewusst immer dunkel gestylt. Foundry
+   V13 faerbt generische Elemente (Ueberschriften h1-h6, DialogV2-Buttons, Links,
+   Formular-Labels) aber ueber seine eigenen Theme-Farbvariablen, die im Light-
+   Mode dunkel werden — dunkler Text auf unserem dunklen Grund, unlesbar. Wir
+   pinnen die Foundry-Farbvariablen hier auf die Beneos-Werte, damit die App in
+   Dark UND Light Mode identisch aussieht. Nicht existierende Variablen sind
+   wirkungslos (kein Kollateral). Sichtbare Beneos-Akzente (Gold) setzen ihre
+   Farbe weiterhin selbst. */
+.beneos-cloud-app {
+  --color-text-primary:        var(--bc-text);
+  --color-text-secondary:      var(--bc-text-muted);
+  --color-text-subtle:         var(--bc-text-dim);
+  --color-text-emphatic:       var(--bc-text);
+  --color-text-dark-primary:   var(--bc-text);
+  --color-text-dark-secondary: var(--bc-text-muted);
+  --color-text-light-primary:  var(--bc-text);
+  --color-text-light-heading:  var(--bc-text);
+  --color-text-light-highlight: var(--bc-accent-soft);
+  --color-text-hyperlink:      var(--bc-accent);
+  --color-text-anchor:         var(--bc-accent);
+  --color-form-label:          var(--bc-text);
+  --color-form-label-hover:    var(--bc-accent-soft);
+  --color-form-hint:           var(--bc-text-muted);
+}
+
 /* The Foundry window-content wrapper becomes our grid container.
    IMPORTANT: scoped to the cloud-window-v2 ID only. Previously this
    rule also matched `.beneos-cloud-app .window-content`, but that
@@ -6306,7 +6332,10 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-  color: var(--bc-text);
+  /* !important schlaegt Foundrys Light-Theme-Regel (.theme-light .application h3),
+     die durch den h3-Tag eine hoehere Spezifitaet als unsere Klasse hat und den
+     Titel sonst dunkel-auf-dunkel faerbt. */
+  color: var(--bc-text) !important;
 }
 /* Small "News" chip above the section title: signals these are external,
    server-updated news (not in-app system messages). */
@@ -6473,7 +6502,9 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
   font-weight: 700;
   line-height: 1.32;
   letter-spacing: 0;
-  color: var(--bc-text);
+  /* !important: Foundrys .theme-light .application h4 (Tag-Selektor) wuerde die
+     Rolling-News-Titel sonst dunkel-auf-dunkel faerben. */
+  color: var(--bc-text) !important;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -6482,11 +6513,11 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
 .beneos-cloud-app .bc-news-pinned .bc-news-title {
   font-size: 18px;
   -webkit-line-clamp: 3;
-  /* Pinned headline stays Beneos-gold in every Foundry colour scheme. The base
-     .bc-news-title inherits var(--bc-text), which flips dark under the light
-     theme even though the cloud-window chrome itself never changes; a fixed gold
-     keeps the headline consistent regardless of the active mode. */
-  color: #f5c992;
+  /* Pinned headline stays Beneos-gold in every Foundry colour scheme. !important
+     is required because Foundry's light-theme rule (.theme-light .application h4)
+     carries the h4 tag and therefore outranks this class-only selector — without
+     it the headline flips to dark-on-dark and becomes unreadable in Bright Mode. */
+  color: var(--bc-accent) !important;
 }
 
 /* CTA button rendered inside a news card (small, secondary). Click is
@@ -7047,6 +7078,9 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
   font-size: 22px;
   font-weight: 700;
   line-height: 1.2;
+  /* !important: schlaegt Foundrys .theme-light .application h1 (Tag-Regel), die
+     den Detail-Titel im Bright Mode sonst dunkel-auf-dunkel faerbt. */
+  color: var(--bc-text) !important;
 }
 .bc-news-detail-body {
   font-size: 14px;
@@ -7086,6 +7120,53 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
 }
 .bc-news-detail-cta i {
   font-size: 11px;
+}
+
+/* News-Detail-Dialog (DialogV2.prompt mit classes ["beneos-cloud-app",
+   "beneos-news-detail-dialog"]). Foundrys DialogV2 rendert den Schliessen-Button
+   und das Header-X als generische Elemente, die im Light-Mode dunklen Text
+   bekommen — auf unserem dunklen Dialog-Grund unlesbar. Wir stylen sie explizit
+   in Beneos-Farben, analog zum Login-Dialog, damit sie in beiden Themes gleich
+   und lesbar sind. */
+.beneos-news-detail-dialog .form-footer,
+.beneos-news-detail-dialog .dialog-buttons {
+  display: flex !important;
+  gap: var(--bc-space-2) !important;
+  justify-content: flex-end !important;
+  padding-top: var(--bc-space-3) !important;
+  border-top: 1px solid var(--bc-border) !important;
+}
+.beneos-news-detail-dialog button,
+.beneos-news-detail-dialog button[data-action] {
+  background: var(--bc-accent-dim) !important;
+  color: var(--bc-accent-soft) !important;
+  border: 1px solid var(--bc-accent-line) !important;
+  border-radius: var(--bc-radius);
+  padding: 7px 14px;
+  font-family: var(--bc-font-ui);
+  font-size: 12px;
+  cursor: pointer;
+  flex: 0 0 auto !important;
+  min-width: 90px;
+  width: auto !important;
+}
+.beneos-news-detail-dialog button:hover,
+.beneos-news-detail-dialog button[data-action]:hover {
+  background: var(--bc-accent-line) !important;
+  color: var(--bc-accent-strong) !important;
+  border-color: var(--bc-accent) !important;
+}
+.beneos-news-detail-dialog button i {
+  color: inherit !important;
+}
+/* Header-X (Fenster schliessen) */
+.beneos-news-detail-dialog .window-header button.close,
+.beneos-news-detail-dialog .window-header .header-control {
+  color: var(--bc-text) !important;
+}
+.beneos-news-detail-dialog .window-header button.close:hover,
+.beneos-news-detail-dialog .window-header .header-control:hover {
+  color: var(--bc-accent-soft) !important;
 }
 
 /* ============================================================

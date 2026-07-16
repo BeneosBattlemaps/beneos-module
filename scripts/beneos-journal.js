@@ -80,7 +80,8 @@
 
   /* ---------- RESIZE PER SHEET RENDER ----------------------- */
   function resizeSheet(app, html) {
-    const map = html[0]?.querySelector?.('.beneos-node-map');
+    const root = html?.jquery ? html[0] : html;
+    const map = root?.querySelector?.('.beneos-node-map');
     if (!map) return;
     const need = map.scrollWidth + 60;
     const curW = app.element?.width?.() ?? 0;
@@ -90,16 +91,20 @@
       pos.minWidth = need;
       app.setPosition(pos);
     }
-    $(html).find('.journal-entry-content, .journal-page-content')
+    $(root).find('.journal-entry-content, .journal-page-content')
       .css({ maxWidth: need - 60, margin: 0 });
   }
 
   function observeSheet(app, html) {
+    // AppV2-/Fremd-Sheets (z.B. monks-enhanced-journal) liefern ein
+    // HTMLElement statt jQuery; ohne Node darf observe() nie laufen
+    const root = html?.jquery ? html[0] : html;
+    if (!(root instanceof HTMLElement)) return;
     // sofort versuchen
     resizeSheet(app, html);
     // zur Sicherheit nach DOM-Änderung erneut
     const ob = new MutationObserver(() => resizeSheet(app, html));
-    ob.observe(html[0], { childList: true, subtree: true });
+    ob.observe(root, { childList: true, subtree: true });
     setTimeout(() => ob.disconnect(), 1500); // kurz beobachten, dann aus
   }
 

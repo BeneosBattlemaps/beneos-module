@@ -561,6 +561,43 @@ export class BeneosNativeBattlemapInstaller {
     this.progress.setCreatureBlock?.({ present: true, isPatron: true, count: keys.length, installed: ok, state: "done" })
   }
 
+  // Pack-Actors sind dnd5e-authored. In fremden Systemen (pf2e, pf1, ...)
+  // wirft das 1:1-Anlegen "Failed data preparation" beim Dokument-Init
+  // (z.B. system.traits.size als String "med" im pf2e-DataModel). Deshalb
+  // wird der Actor dort auf ein System-Geruest reduziert: fuer pf2e das
+  // generic_npc_pf2.json aus dem Cloud-Token-Pfad, sonst ein leerer Actor
+  // des system-eigenen npc-Typs (Schema-Defaults fuellen den Rest).
+  // _id, Name, Bild, prototypeToken (Core-Schema, systemneutral), folder
+  // und flags bleiben erhalten, damit Szenen-Referenzen und das
+  // creatureInstaller-Flag weiter aufloesen.
+  async #swapActorsForForeignSystem(arr) {
+    let template = null
+    if (game.system.id === "pf2e") {
+      try {
+        const r = await fetch("modules/beneos-module/scripts/generic_npc_pf2.json")
+        template = await r.json()
+      } catch (e) {
+        console.warn("BeneosNativeInstaller | generic_npc_pf2.json unavailable, falling back to bare npc", e)
+      }
+    }
+    const types = (game.documentTypes?.Actor || []).filter(t => t !== "base")
+    const npcType = template?.type || (types.includes("npc") ? "npc" : (types[0] || "npc"))
+    return arr.map(src => {
+      if (!src || typeof src !== "object") return src
+      const out = template ? foundry.utils.deepClone(template) : {}
+      out._id = src._id
+      out.name = src.name
+      out.type = npcType
+      if (src.img) out.img = src.img
+      if (src.prototypeToken) out.prototypeToken = foundry.utils.deepClone(src.prototypeToken)
+      if (src.folder !== undefined) out.folder = src.folder
+      if (src.flags) out.flags = foundry.utils.deepClone(src.flags)
+      if (src.ownership) out.ownership = src.ownership
+      if (src.sort !== undefined) out.sort = src.sort
+      return out
+    })
+  }
+
   // ---- Result + environment ------------------------------------------------
 
   #newResult() {
@@ -730,6 +767,19 @@ export class BeneosNativeBattlemapInstaller {
       if (sc?.playlist) playlistIds.add(String(sc.playlist))
       for (const t of (Array.isArray(sc?.tokens) ? sc.tokens : [])) {
         if (t?.actorId) actorIds.add(String(t.actorId))
+      }
+      // Drawer-Modell: Szenen liefern ihre Kreaturen nicht mehr als platzierte
+      // Tokens, sondern im creatureInstaller-Flag. Die dort referenzierten
+      // (SRD-)Actors gehoeren zur Szenen-Closure, sonst fehlen sie dem Drawer
+      // nach einem Einzelszenen-Install.
+      const ci = sc?.flags?.["beneos-module"]?.creatureInstaller
+      for (const list of [ci?.srdCreatures, ci?.beneosCreatures]) {
+        for (const e of (Array.isArray(list) ? list : [])) {
+          if (e?.actorId) actorIds.add(String(e.actorId))
+          for (const p of (Array.isArray(e?.positions) ? e.positions : [])) {
+            if (p?.actorId) actorIds.add(String(p.actorId))
+          }
+        }
       }
     }
 
@@ -1232,6 +1282,10 @@ export class BeneosNativeBattlemapInstaller {
         }
         this._importedScenes = arr.map(d => ({ id: String(d?._id), name: String(d?.name || "") }))
       }
+      // System-Bruecke fuer Nicht-dnd5e-Welten (siehe #swapActorsForForeignSystem).
+      if (relPath === "data/Actor.json" && game.system.id !== "dnd5e") {
+        arr = await this.#swapActorsForForeignSystem(arr)
+      }
       if (arr.length === 0) continue
       // Punkt 8: reveal this phase with its real document count.
       this.progress.revealPhase?.(meta.phaseKey, { status: "active", current: 0, total: arr.length })
@@ -1445,6 +1499,10 @@ export class BeneosNativeBattlemapInstaller {
   // ---- Reporting -----------------------------------------------------------
 
   async #showReport(result) {
+    // Telemetrie: ein Summary-Event pro fehlgeschlagenem Install-Lauf, damit
+    // Installationsfehler (permission/quota/notfound/...) im Analytics-
+    // Dashboard sichtbar werden und nicht nur im Client-Report-Dialog.
+    try { game.beneos?.analytics?.trackInstallError?.(result) } catch (_) { /* swallow */ }
     try {
       const mod = await import("./beneos-install-report.mjs")
       const open = () => mod.BeneosInstallReport.show(result, {

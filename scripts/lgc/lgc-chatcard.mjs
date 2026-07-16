@@ -132,13 +132,21 @@ export async function createPingWhispers(ping, dispatch) {
   }
 }
 
-// Hook into renderChatMessage to bind click handler on the open-sheet
+// Hook into chat-message rendering to bind the click handler on the open-sheet
 // button. Also restores the .pulse class state from the persisted flag.
+// Foundry V14 renamed the hook renderChatMessage -> renderChatMessageHTML (and
+// no longer fires the old name). V13 already fires renderChatMessageHTML too, so
+// we register on the new name when the ChatMessageHTML pipeline exists and fall
+// back to the legacy name on older cores. Registering on exactly one avoids the
+// double-invocation that would happen if we bound both on V13.
 let _hookWired = false;
 export function registerLgcChatcardHook() {
   if (_hookWired) return;
   _hookWired = true;
-  Hooks.on("renderChatMessage", (message, html, _data) => {
+  const CHAT_RENDER_HOOK = foundry?.applications?.sidebar?.tabs?.ChatLog
+    ? "renderChatMessageHTML"
+    : "renderChatMessage";
+  Hooks.on(CHAT_RENDER_HOOK, (message, html, _data) => {
     const root = (html instanceof HTMLElement) ? html
               : (html?.[0] instanceof HTMLElement) ? html[0]
               : null;
@@ -171,7 +179,10 @@ export function registerLgcChatcardHook() {
       // Mark read: stop the pulse on this client + persist so it does
       // not re-pulse on next render anywhere.
       card.classList.remove("pulse");
-      if (game.user?.isGM || message.user?.id === game.user?.id || (message.whisper ?? []).includes(game.user?.id)) {
+      // V14 removed ChatMessage#user in favour of ChatMessage#author; fall back
+      // to #user for V13.
+      const msgAuthorId = (message.author ?? message.user)?.id;
+      if (game.user?.isGM || msgAuthorId === game.user?.id || (message.whisper ?? []).includes(game.user?.id)) {
         try { await message.setFlag(MOD, FLAG_READ, true); } catch (_) {}
       }
     });

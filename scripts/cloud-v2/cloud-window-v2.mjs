@@ -1133,7 +1133,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const isUpdatePending  = (card.isUpdate && card.isInstalled)
       if (card.groupKind === "new" && isInstallableNow) {
         groupBulkKeys.new.push(card.key)
-      } else if (card.groupKind === "update" && isUpdatePending) {
+      }
+      // Update-Kandidaten unabhaengig vom groupKind sammeln: bei aktivem
+      // Filter wird die "update"-Gruppe oben auf "regular" degradiert, und
+      // damit verschwand der "Install all updates"-Eintrag aus dem Kebab-
+      // Menue, obwohl Updates anstehen. Patron-gesperrte Updates bleiben
+      // draussen.
+      if (isUpdatePending && !card.updateLocked) {
         groupBulkKeys.update.push(card.key)
       }
       if (isInstallableNow || isUpdatePending) {

@@ -396,9 +396,12 @@ Hooks.once('ready', () => {
         let index = token.texture.src.lastIndexOf("/") + 1
         let pattern = token.texture.src.substr(0, index) + "*"
         const browseOptions = { wildcard: true }
+        // V14: the bare global FilePicker is a deprecated alias; resolve the
+        // namespaced implementation with a V13 fallback.
+        const FP = foundry.applications?.apps?.FilePicker?.implementation ?? FilePicker
         if (/\.s3\./.test(pattern)) {
           source = "s3"
-          const { bucket, keyPrefix } = FilePicker.parseS3URL(pattern)
+          const { bucket, keyPrefix } = FP.parseS3URL(pattern)
           if (bucket) {
             browseOptions.bucket = bucket
             pattern = keyPrefix
@@ -406,7 +409,7 @@ Hooks.once('ready', () => {
         }
         else if (pattern.startsWith("icons/")) source = "public"
         try {
-          const content = await FilePicker.browse(source, pattern, browseOptions)
+          const content = await FP.browse(source, pattern, browseOptions)
           this._tokenImages = content.files
         } catch (err) {
           this._tokenImages = []

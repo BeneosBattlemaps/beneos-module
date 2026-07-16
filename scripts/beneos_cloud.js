@@ -938,6 +938,23 @@ export class BeneosCloud {
   // a permanent lock.
   inflightImports = new Set()
 
+  // Globale Serialisierung aller Compendium-Installs (token/item/spell):
+  // importXToCompendium entsperrt world.beneos_module_* am Anfang und sperrt
+  // am Ende wieder. Zwei PARALLELE Laeufe (verschiedene Assets, schnelle
+  // Einzel-Klicks) hebeln sich dabei gegenseitig aus: Lauf A sperrt wieder,
+  // waehrend Lauf B noch Folder.create im Pack macht -> "You may not create
+  // documents in the locked compendium". Der inflight-Guard oben ist nur
+  // pro Asset-Key und verhindert das nicht. Deshalb laufen alle Installs
+  // als FIFO-Kette strikt nacheinander.
+  installQueue = Promise.resolve()
+
+  enqueueInstall(job) {
+    const link = this.installQueue.then(job)
+    // Kette darf nie abreissen; der Fehler erreicht den Aufrufer ueber `link`.
+    this.installQueue = link.catch(() => { })
+    return link
+  }
+
   // Batch-install error log: each entry records an asset whose post-install
   // health-check found missing aspects. Cleared at the start of batchInstall
   // and rendered in updateInstalledAssets when the last asset of the batch
@@ -1786,6 +1803,73 @@ export class BeneosCloud {
     BeneosUtility.debugMessage("No world import set to true")
   }
 
+  // PF2e-Weg fuer Items/Spells: analog zum generic_npc_pf2-Token-Pfad wird
+  // statt des dnd5e-Dokuments ein minimales pf2e-World-Item erzeugt (equipment
+  // bzw. spell), das Name, Beneos-Bilder und Beschreibung uebernimmt. Die
+  // Schema-Defaults fuellt das pf2e-System selbst; die dnd5e-Compendien
+  // (world.beneos_module_*) bleiben unangetastet, weil sie dnd5e-only sind.
+  async importGenericPF2Documents(assetArray, kind) {
+    const isSpell = kind === "spell"
+    const cloudBase = isSpell ? "spells" : "items"
+    const legacyBase = isSpell ? "beneos_assets/beneos_spells/" : "beneos_assets/beneos_items/"
+    const folderName = isSpell ? "Beneos Spells" : "Beneos Loot"
+    let created = 0
+    for (let key in assetArray) {
+      try {
+        const data = assetArray[key]
+        const json = isSpell ? data.spellJSON : data.itemJSON
+        const images = isSpell ? data.spellImage : data.itemImage
+        if (!json || !images) continue
+        const finalFolder = `beneos_assets/cloud/${cloudBase}/${key}`
+        for (const dir of ["beneos_assets", "beneos_assets/cloud", `beneos_assets/cloud/${cloudBase}`, finalFolder]) {
+          try {
+            await foundry.applications.apps.FilePicker.implementation.createDirectory("data", dir)
+          } catch (err) {
+            BeneosUtility.debugMessage("Directory already exists")
+          }
+        }
+        for (const aspect of ["front", "back", "icon"]) {
+          const part = images[aspect]
+          if (!part?.image64) continue
+          const resp = await fetch(`data:image/webp;base64,${part.image64}`)
+          const file = new File([await resp.blob()], part.filename, { type: "image/webp" })
+          await _beneosSafeUpload(finalFolder, file, `${kind} ${key} ${aspect} (pf2e)`)
+        }
+        const description = String(json.system?.description?.value || "").replaceAll(legacyBase, `beneos_assets/cloud/${cloudBase}/`)
+        const flags = foundry.utils.deepClone(json.flags || {})
+        const lootRender = foundry.utils.getProperty(flags, "beneos-module.loot.render")
+        if (lootRender && typeof lootRender === "object") {
+          for (const k of ["frontCardWebp", "backCardWebp", "iconWebp"]) {
+            if (typeof lootRender[k] === "string") lootRender[k] = lootRender[k].replaceAll(legacyBase, `beneos_assets/cloud/${cloudBase}/`)
+          }
+        }
+        const docData = {
+          name: json.name,
+          type: isSpell ? "spell" : "equipment",
+          img: images.icon?.filename ? `${finalFolder}/${images.icon.filename}` : json.img,
+          system: { description: { value: description } },
+          flags
+        }
+        if (isSpell) {
+          docData.system.level = { value: Math.max(1, Number(json.system?.level) || 1) }
+        }
+        let folder = game.folders.find(f => f.type === "Item" && f.name === folderName)
+        if (!folder) folder = await Folder.create({ name: folderName, type: "Item" })
+        if (folder) docData.folder = folder.id
+        const existing = game.items.find(i => i.name === docData.name && i.img === docData.img)
+        if (existing) {
+          BeneosUtility.debugMessage("Deleting existing pf2e world item", existing.id)
+          try { await existing.delete() } catch (err) { console.warn("[Beneos Cloud] Error deleting existing pf2e item", err) }
+        }
+        await Item.create(docData)
+        created++
+      } catch (err) {
+        console.warn(`[Beneos Cloud] PF2e ${kind} import failed for ${key}`, err)
+      }
+    }
+    BeneosUtility.debugMessage(`PF2e ${kind} import done`, created)
+  }
+
   async importItemToCompendium(itemArray, event, isBatch = false) {
     // Fix #C5: a single install must always world-import. Reset stale flag from a
     // crashed earlier batch so this install behaves deterministically.
@@ -1803,7 +1887,7 @@ export class BeneosCloud {
 
     let itemPack
     if (game.system.id == "pf2e") {
-      return
+      return this.importGenericPF2Documents(itemArray, "item")
     } else {
       itemPack = game.packs.get("world.beneos_module_items")
 
@@ -1999,7 +2083,7 @@ export class BeneosCloud {
 
     let spellPack
     if (game.system.id == "pf2e") {
-      return
+      return this.importGenericPF2Documents(spellArray, "spell")
     } else {
       spellPack = game.packs.get("world.beneos_module_spells")
     }
@@ -3407,7 +3491,9 @@ export class BeneosCloud {
 
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
     let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_token=1&foundryId=${encodeURIComponent(userId)}&tokenKey=${encodeURIComponent(tokenKey)}`
-    return fetch(url, { credentials: 'same-origin' })
+    // Ueber die globale FIFO (enqueueInstall), damit parallele Einzel-Klicks
+    // auf verschiedene Assets sich nicht im Compendium-Lock ueberholen.
+    return this.enqueueInstall(() => fetch(url, { credentials: 'same-origin' })
       .then(response => response.json())
       .then(async function (data) {
         if (data.result == 'OK') {
@@ -3429,7 +3515,7 @@ export class BeneosCloud {
         // Fix #B-1d: discard pending drops AND surface a notification so the
         // user understands why nothing appeared on the canvas.
         game.beneos.cloud.discardPendingCanvasDrops(tokenKey)
-      })
+      }))
       .finally(() => {
         game.beneos.cloud.inflightImports.delete(lockKey)
       })
@@ -3454,7 +3540,8 @@ export class BeneosCloud {
 
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
     let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_item=1&foundryId=${encodeURIComponent(userId)}&itemKey=${encodeURIComponent(itemKey)}`
-    return fetch(url, { credentials: 'same-origin' })
+    // Globale FIFO, siehe importTokenFromCloud.
+    return this.enqueueInstall(() => fetch(url, { credentials: 'same-origin' })
       .then(response => response.json())
       .then(async function (data) {
         if (data.result == 'OK') {
@@ -3472,7 +3559,7 @@ export class BeneosCloud {
       .catch(err => {
         console.error("BeneosModule: item import error for", itemKey, err)
         game.beneos.cloud.discardPendingItemDrops?.(itemKey)
-      })
+      }))
       .finally(() => {
         game.beneos.cloud.inflightImports.delete(lockKey)
       })
@@ -3493,7 +3580,8 @@ export class BeneosCloud {
 
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
     let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_spell=1&foundryId=${encodeURIComponent(userId)}&spellKey=${encodeURIComponent(spellKey)}`
-    return fetch(url, { credentials: 'same-origin' })
+    // Globale FIFO, siehe importTokenFromCloud.
+    return this.enqueueInstall(() => fetch(url, { credentials: 'same-origin' })
       .then(response => response.json())
       .then(async function (data) {
         if (data.result == 'OK') {
@@ -3510,7 +3598,7 @@ export class BeneosCloud {
       .catch(err => {
         console.error("BeneosModule: spell import error for", spellKey, err)
         game.beneos.cloud.discardPendingItemDrops?.(spellKey)
-      })
+      }))
       .finally(() => {
         game.beneos.cloud.inflightImports.delete(lockKey)
       })
@@ -3543,19 +3631,22 @@ export class BeneosCloud {
           let fetchUrl = data.data.download_url.replace('/download/', '/download-fetch/')
           BeneosUtility.debugMessage("Downloading battlemap from URL", fetchUrl)
 
-          // Create the directory structure if it doesn't exist
+          // Create the directory structure if it doesn't exist. V14: the bare
+          // global FilePicker is a deprecated alias; use the namespaced
+          // implementation like the rest of this file.
+          const FP = foundry.applications?.apps?.FilePicker?.implementation ?? FilePicker
           try {
-            await FilePicker.createDirectory("data", "beneos_assets", {});
+            await FP.createDirectory("data", "beneos_assets", {});
           } catch (err) {
             BeneosUtility.debugMessage("Directory beneos_assets already exists")
           }
           try {
-            await FilePicker.createDirectory("data", "beneos_assets/cloud", {});
+            await FP.createDirectory("data", "beneos_assets/cloud", {});
           } catch (err) {
             BeneosUtility.debugMessage("Directory beneos_assets/cloud already exists")
           }
           try {
-            await FilePicker.createDirectory("data", "beneos_assets/cloud/battlemaps", {});
+            await FP.createDirectory("data", "beneos_assets/cloud/battlemaps", {});
           } catch (err) {
             BeneosUtility.debugMessage("Directory beneos_assets/cloud/battlemaps already exists")
           }

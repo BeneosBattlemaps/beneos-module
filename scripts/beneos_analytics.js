@@ -596,6 +596,45 @@ export class BeneosAnalytics {
     } catch (_) { /* swallow */ }
   }
 
+  // One summary event per failed install run (native battlemap installer).
+  // Carries the classified failure picture (INSTALL_ERROR categories) so the
+  // dashboard can separate our bugs (notfound/signature/server) from user
+  // environments (permission/quota/network/timeout). One event per run, not
+  // per asset: keeps well under the 50-event batch and 2000-byte payload caps.
+  static trackInstallError(result) {
+    try {
+      if (!result) return
+      const failures = Array.isArray(result.assetFailures) ? result.assetFailures : []
+      const docFailed = Array.isArray(result.docFailures) ? result.docFailures.length : 0
+      if (!result.fatalCategory && failures.length === 0 && docFailed === 0) return
+      const fp = `install_error|${result.packageId || ""}`
+      const now = Date.now()
+      if (now - (this._errorThrottle.get(fp) || 0) < ERROR_THROTTLE_MS) return
+      this._errorThrottle.set(fp, now)
+      const categories = {}
+      for (const f of failures) {
+        const c = String(f?.category || "unknown")
+        categories[c] = (categories[c] || 0) + 1
+      }
+      const sample = failures[0] || null
+      this.track("install_error", {
+        asset_id: result.packageId ? String(result.packageId).slice(0, 32) : null,
+        asset_type: "battlemap",
+        fatal_category: result.fatalCategory ? this.sanitize(String(result.fatalCategory), 32) : null,
+        fatal_message: result.fatalError ? this.sanitize(String(result.fatalError), 200) : null,
+        categories,
+        assets_failed: failures.length,
+        assets_ok: Number(result.totals?.ok) || 0,
+        docs_failed: docFailed,
+        sample_target: sample ? this.sanitize(String(sample.target || ""), 96) : null,
+        sample_message: sample ? this.sanitize(String(sample.lastError || ""), 200) : null,
+        system: this.sanitize(String(result.env?.system || ""), 32),
+        foundry: this.sanitize(String(result.env?.foundry || ""), 16),
+        forge: result.env?.forge === "yes"
+      })
+    } catch (_) { /* swallow */ }
+  }
+
   /********************************************************************************** */
   // Scene activation. Tracks distinct scenes per session (for maps/session)
   // and emits a one-time scene_activate per Beneos battlemap.
