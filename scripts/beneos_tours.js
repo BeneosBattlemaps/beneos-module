@@ -1848,6 +1848,41 @@ const GETTING_STARTED_RUNTIME_ASSETS = Object.freeze({
 });
 const gettingStartedRuntimeAssetFile = (key) => GETTING_STARTED_RUNTIME_ASSETS[key].split("/").pop();
 
+/** HEAD-probe a Data-relative path (same pattern as beneosTopVariantExists). */
+async function beneosTourFileExists(path) {
+  try {
+    const resp = await fetch("/" + encodeURI(String(path).replace(/^\/+/, "")), { method: "HEAD" });
+    return resp.ok;
+  } catch (_e) { return false; }
+}
+
+/* Resolve a runtime-swapped tour asset so it loads in the dev world AND on a
+ * customer install, where the native installer relocates every packed
+ * beneos_assets/beneos_battlemaps/ file to beneos_assets/cloud/battlemaps/.
+ * Preference order:
+ *  1. scene.flags.world.beneos.customAssets (written by beneos-dev, packed
+ *     with the scene; the installer rewrites the stored strings to the
+ *     installed location, so a basename match yields the correct local path),
+ *  2. the literal dev path (HEAD probe),
+ *  3. the dev path with the installer's battlemap relocation applied.
+ * Falls back to the literal dev path when nothing probes OK. */
+async function beneosResolveTourAssetPath(devPath) {
+  const repair = globalThis.beneosAssetPathRepair?.resolve ?? ((p) => p);
+  const base = String(devPath).split("/").pop().toLowerCase();
+  const flagged = (canvas?.scene?.getFlag?.("world", "beneos")?.customAssets ?? [])
+    .find(p => typeof p === "string" && p.split("/").pop().toLowerCase() === base);
+  const repaired = repair(devPath);
+  const candidates = [];
+  if (flagged) candidates.push(flagged.replace(/^\/+/, ""));
+  candidates.push(repaired);
+  const cloud = repaired.replace(/beneos_assets\/beneos_battlemaps\//i, "beneos_assets/cloud/battlemaps/");
+  if (cloud !== repaired) candidates.push(cloud);
+  for (const c of candidates) {
+    if (await beneosTourFileExists(c)) return c;
+  }
+  return repaired;
+}
+
 // Expose the list for the beneos-dev release packer (same self-register
 // pattern as beneos-release-install-api.mjs). game.beneos is created at
 // init by beneos_module.js.
@@ -5056,7 +5091,7 @@ class BeneosTutorialSceneTour extends TourBase {
       // Play the navigate SFX (different path than the standard helper expects)
       try {
         const helper = foundry.audio?.AudioHelper;
-        const src = globalThis.beneosAssetPathRepair.resolve("beneos_assets/beneos_battlemaps/map_assets/sfx/sfx_navigate.ogg");
+        const src = await beneosResolveTourAssetPath("beneos_assets/beneos_battlemaps/map_assets/sfx/sfx_navigate.ogg");
         if (helper?.play) {
           helper.play({ src, volume: 0.5, autoplay: true, loop: false }, false);
         }
@@ -5151,8 +5186,15 @@ class BeneosTutorialSceneTour extends TourBase {
       // Stop the video
       await this._playTileVideo("4sIUsXFBVfEEmgsc", false);
       // Explicit, deterministic icon restore (do not rely on _restoreTileTextures alone —
-      // the saved entry was unreliable in practice).
-      const ORIG_ICON = globalThis.beneosAssetPathRepair.resolve("beneos_assets/beneos_battlemaps/map_assets/icons/icon_stop_play.webp");
+      // the saved entry was unreliable in practice). Resolve the icon at its
+      // INSTALLED location: prefer the src saved at swap time (the shipped
+      // scene's real path), else probe dev/cloud locations. The previous
+      // hardcoded dev path 404'd on customer installs (battlemaps is relocated
+      // to cloud/battlemaps) and persisted a broken tile texture.
+      const savedIconSrc = this._modifiedTileTextures.find(t => t.id === "cIJhkHCxygIioaB7")?.src;
+      const ORIG_ICON = (savedIconSrc && await beneosTourFileExists(savedIconSrc))
+        ? savedIconSrc
+        : await beneosResolveTourAssetPath("beneos_assets/beneos_battlemaps/map_assets/icons/icon_stop_play.webp");
       try {
         const iconTile = canvas.tiles?.get("cIJhkHCxygIioaB7");
         if (iconTile) await iconTile.document.update({ texture: { src: ORIG_ICON } });
@@ -5363,11 +5405,17 @@ class BeneosTutorialSceneTour extends TourBase {
 
     // Swap the Rot Cerf token's texture to a demo asset.
     // Saves the ORIGINAL texture on the first swap for cleanup.
+    // The dead sprite is a runtime-only release asset: resolve it through the
+    // scene's customAssets flag / install-location probe so it also loads on
+    // customer installs (the raw dev path 404s there, see
+    // beneosResolveTourAssetPath).
     const ctSwapRotCerfTexture = async (filename) => {
       const token = canvas.tokens?.placeables.find(t => t.actor?.name?.toLowerCase().includes("rot cerf"));
       if (!token) return;
       if (!this._savedRotCerfTexture) this._savedRotCerfTexture = token.document.texture.src;
-      await token.document.update({ "texture.src": ctRotCerfAsset(filename) });
+      const isDead = /_dead\.webp$/i.test(filename) || filename.includes("-token_dead");
+      const src = isDead ? await beneosResolveTourAssetPath(ctRotCerfAsset(filename)) : ctRotCerfAsset(filename);
+      await token.document.update({ "texture.src": src });
     };
 
     // Ensure the Rot Cerf drop-shadow renders. The FX engine only runs when the
@@ -6088,7 +6136,7 @@ class BeneosTutorialSceneTour extends TourBase {
       try {
         const update = {};
         if (!rot.flags?.beneos?.content) {
-          const url = "/" + GETTING_STARTED_RUNTIME_ASSETS.codexContent;
+          const url = "/" + await beneosResolveTourAssetPath(GETTING_STARTED_RUNTIME_ASSETS.codexContent);
           const resp = await fetch(url);
           if (resp.ok) {
             const json = await resp.json();
