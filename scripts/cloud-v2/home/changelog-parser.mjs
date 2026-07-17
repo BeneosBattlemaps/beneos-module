@@ -2,7 +2,10 @@
    Returns the most recent `limit` version blocks as structured objects so the
    Patchlog window can render them without re-parsing markdown at view time. */
 
-const HEADER_RE = /^###\s+([0-9]+\.[0-9]+\.[0-9]+)\s+#\s+([0-9]{4}-[0-9]{2}-[0-9]{2})\s*$/
+// Header form: "### 14.4.0 # 2026-07-13" with an optional " | Label" suffix
+// (e.g. "| Beneos 4.0"). The label is captured but optional, so a labelled
+// version header is no longer skipped (which previously hid the newest entry).
+const HEADER_RE = /^###\s+([0-9]+\.[0-9]+\.[0-9]+)\s+#\s+([0-9]{4}-[0-9]{2}-[0-9]{2})\s*(?:\|\s*(.+?))?\s*$/
 const BULLET_RE = /^-\s+(New|Improved|Fixed|Added|Updated|Changed):\s*(.+)$/i
 
 const TYPE_NORMALIZE = {
@@ -44,6 +47,7 @@ export function parseChangelog(markdown, limit = 2) {
       current = {
         version: headerMatch[1],
         date: headerMatch[2],
+        label: headerMatch[3] ? headerMatch[3].trim() : "",
         entries: { new: [], improved: [], fixed: [] }
       }
       continue

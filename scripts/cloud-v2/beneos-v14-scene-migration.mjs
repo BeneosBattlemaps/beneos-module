@@ -35,9 +35,13 @@
  * bridge deliberately touches only Scene documents and their tiles.
  */
 
-// Stable per-scene embedded id for the level we synthesize. Embedded ids are
-// scoped to their parent scene, so a fixed value is safe across scenes.
-const BENEOS_LEVEL_ID = "beneosLevel00001"
+// Stable per-scene embedded id for the level we synthesize. MUST be Foundry's
+// native default-level id: TokenDocument.level defaults to "defaultLevel0000",
+// and V13 pack tokens carry no level at all, so they land on that default. A
+// custom id here (the former "beneosLevel00001") makes every imported token
+// reference a level that does not exist in the scene, and V14 then renders
+// none of them (empty CoS landing-page Characters scene, 2026-07-17).
+const BENEOS_LEVEL_ID = "defaultLevel0000"
 // Fallback letterbox/background colour for a Beneos scene that shipped without
 // an explicit backgroundColor (Beneos maps are dark-themed; keeps the padding
 // near-black instead of the light V14 default).

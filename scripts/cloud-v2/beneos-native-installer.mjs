@@ -110,7 +110,9 @@ function toCloudAssetPath(p) {
  * refs under beneos_assets/ are never touched.
  */
 function remapAssetString(s, remap, uploadRemap) {
-  if (typeof s !== "string") return s
+  // Empty strings are never asset refs. Guard hard so a bogus remap entry
+  // keyed "" (e.g. from a ZIP directory entry) can never rewrite empty fields.
+  if (typeof s !== "string" || s === "") return s
   const swapped = toCloudAssetPath(s)
   if (swapped !== s) {
     const converted = (uploadRemap && uploadRemap.size) ? uploadRemap.get(stripLeadSlash(swapped)) : null
@@ -676,6 +678,13 @@ export class BeneosNativeBattlemapInstaller {
     this._packagedRemap = new Map()
     for (const [relPath, url] of Object.entries(packInfo)) {
       if (relPath === "mtte.json" || relPath === "beneos-pack-manifest.json") continue
+      // ZIP directory entries (name ends with "/") are folders, not files: no
+      // bytes to install, and "data/assets/" itself would register the empty
+      // string in _packagedRemap, which then rewrites EVERY empty document
+      // field into a path (real-world case: all 123 CoS landing-page actors
+      // rejected by dnd5e formula validation). 99 of 282 archive ZIPs carry
+      // such entries (7-Zip style packing), so skip them outright.
+      if (relPath.endsWith("/")) continue
       if (relPath.startsWith("data/assets/")) {
         const rawRel = relPath.substring("data/assets/".length)
         let target = toCloudAssetPath(rawRel)
@@ -1376,21 +1385,39 @@ export class BeneosNativeBattlemapInstaller {
         this.progress.revealPhase?.(meta.phaseKey, { status: "done", current: arr.length, total: arr.length })
         continue
       }
+      // Foundry does NOT throw on per-document validation failures inside
+      // createDocuments: invalid docs are logged to the console, silently
+      // dropped, and only the valid rest is created. Count against what
+      // actually came back so rejected docs land in docFailures (and the
+      // report) instead of being reported as created.
+      const recordRejected = (requested, created) => {
+        const okIds = new Set((created || []).map(x => String(x.id)))
+        for (const d of requested) {
+          if (!okIds.has(String(d?._id))) {
+            this._result.docFailures.push({ type: meta.phaseKey, id: d?._id || "?", name: d?.name || "", error: "Rejected during document validation (see browser console)" })
+          }
+        }
+      }
       try {
-        await docClass.createDocuments(toCreate, { keepId: true })
-        this._result.totals.docsCreated += toCreate.length
+        const created = await docClass.createDocuments(toCreate, { keepId: true })
+        this._result.totals.docsCreated += created.length
+        recordRejected(toCreate, created)
         if (overwritten) this._result.totals.docsUpdated += overwritten
       } catch (err) {
         console.warn(`BeneosNativeInstaller | createDocuments failed for ${relPath}`, err)
         let ok = 0
         for (const d of toCreate) {
           try {
-            await docClass.createDocuments([d], { keepId: true })
-            ok += 1
-            this._result.totals.docsCreated += 1
+            const cr = await docClass.createDocuments([d], { keepId: true })
+            if (cr.length) {
+              ok += 1
+              this._result.totals.docsCreated += 1
+            } else {
+              recordRejected([d], cr)
+            }
           } catch (e2) {
             console.warn(`BeneosNativeInstaller | doc create skipped (${d?._id})`, e2?.message || e2)
-            this._result.docFailures.push({ type: meta.phaseKey, id: d?._id || "?", error: String(e2?.message || e2) })
+            this._result.docFailures.push({ type: meta.phaseKey, id: d?._id || "?", name: d?.name || "", error: String(e2?.message || e2) })
           }
           this.progress.handleAssetProgress(meta.phaseKey, toCreate.length, ok)
         }

@@ -7,6 +7,7 @@
 
 import { BeneosUtility } from "./beneos_utility.js";
 import { BeneosCloudWindowV2 } from "./cloud-v2/cloud-window-v2.mjs";
+import { maybeShowUpdateNotice } from "./cloud-v2/home/update-check.mjs";
 
 const MODULE_ID = "beneos-module";
 
@@ -1781,6 +1782,17 @@ Hooks.once("init", () => {
     scope: "world",
     type: Boolean,
     default: false,
+    config: false
+  });
+
+  // Version the GM chose to skip in the "update available" notice. When it
+  // equals the online version, the notice stays hidden; a later, still newer
+  // version has a different value and shows the notice again. World-scope for
+  // the same reason as the tour-prompt settings above.
+  game.settings.register(MODULE_ID, "updateNoticeDismissedVersion", {
+    scope: "world",
+    type: String,
+    default: "",
     config: false
   });
 });
@@ -8492,6 +8504,12 @@ Hooks.once("ready", async () => {
   // News popup was replaced by the Home tab in the Beneos Cloud window
   // (cloud-window-v2.mjs). Users see the latest news the moment they open
   // the Cloud window, so the legacy intrusive popup on world-ready is gone.
+
+  // Update notice runs last: both popup paths above return early, so reaching
+  // here means no other Beneos window opened this load and the notice never
+  // stacks. Fully self-guarding (GM-only, offline-safe, skip-version aware).
+  try { await maybeShowUpdateNotice(); }
+  catch (err) { console.warn("[Beneos] Update notice failed:", err); }
 });
 
 /**

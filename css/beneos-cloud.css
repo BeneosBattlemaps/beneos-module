@@ -6907,6 +6907,97 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
 }
 
 /* ============================================================
+   Update notice (world-start "newer version available" dialog).
+   Uses the blue --bc-update* accent to read as informational, not
+   as an error/success state.
+   ============================================================ */
+.beneos-update-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--bc-text);
+  padding: 4px 2px;
+}
+.beneos-update-notice__head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.beneos-update-notice__logo {
+  height: 44px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+.beneos-update-notice__intro {
+  margin: 0;
+  color: var(--bc-text);
+  line-height: 1.5;
+}
+/* Versions box: bordered card holding the version rows on the left and the
+   patch-notes button on the right. */
+.beneos-update-notice__box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 16px;
+  border: 1px solid var(--bc-update-line);
+  border-radius: var(--bc-radius);
+  background: var(--bc-update-dim);
+}
+.beneos-update-notice__patchnotes {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--bc-update-line);
+  border-radius: var(--bc-radius);
+  background: var(--bc-card);
+  color: var(--bc-update-strong);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.beneos-update-notice__patchnotes:hover {
+  background: var(--bc-update-line);
+  border-color: var(--bc-update);
+}
+.beneos-update-notice__versions {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content max-content;
+  align-items: baseline;
+  gap: 6px 12px;
+}
+/* let each dt/dd fall into the shared two-column grid so labels and versions
+   line up in tidy columns instead of being pushed to opposite edges */
+.beneos-update-notice__versions > div {
+  display: contents;
+}
+.beneos-update-notice__versions dt {
+  color: var(--bc-text-muted);
+  text-align: right;
+}
+.beneos-update-notice__versions dd {
+  margin: 0;
+  font-family: var(--bc-font-mono);
+}
+.beneos-update-notice__versions dd.is-new {
+  color: var(--bc-update-strong);
+  font-weight: 600;
+}
+.beneos-update-notice__skip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--bc-text-muted);
+  font-size: 0.92em;
+  cursor: pointer;
+}
+
+/* ============================================================
    Patch log (inline section on the Home tab — and shared block
    styles for the changelog cards)
    ============================================================ */

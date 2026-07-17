@@ -4,6 +4,18 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.4.1 # 2026-07-17
+
+**Fixes**
+- Fixed: Installing a map release through the manual ZIP import could silently drop every bundled creature on affected releases, leaving character and NPC pages empty. All bundled actors now import correctly.
+- Fixed: On Foundry V14, tokens from an installed map could stay invisible even though their actors were present. Placed tokens now render as expected.
+- Fixed: The install report now lists every document that failed to import, instead of showing a clean result while content was quietly missing.
+- Improved: The Beneos Tour resolves its assets at their installed location and no longer points at a few dead ambience sounds.
+- Improved: Reliability and reporting of the cloud installer and the V13-to-V14 import bridge.
+
+**New**
+- New: Update notification. When a newer Beneos Module version is available, a notice on world start shows your installed version, the available version, and a Patchnotes button that opens the in-module change log.
+
 ### 14.4.0 # 2026-07-13 | Beneos 4.0
 
 **Battlemaps via Beneos Cloud**
