@@ -165,6 +165,14 @@ function wikiTargetForNote(note) {
   return docTargetOf(note) || (isHowToUseNote(note) ? "overview" : null);
 }
 
+// While the "Beneos Dev Tools" window (beneos-dev) is open, doc routing is
+// suspended so an author can reach the note's own config sheet again; with
+// routing active every click would open the documentation instead. End users
+// never have that window, so their behaviour is unchanged.
+function docClickSuppressed() {
+  return !!foundry.applications?.instances?.get?.("beneos-dev-tools")?.rendered;
+}
+
 let _howToWrapped = false;
 function registerHowToNoteHandler() {
   if (_howToWrapped) return;
@@ -178,7 +186,7 @@ function registerHowToNoteHandler() {
   for (const method of ["_onClickLeft", "_onClickRight", "_onClickLeft2", "_onClickRight2"]) {
     try {
       libWrapper.register(MODULE_ID, `${base}.${method}`, function (wrapped, ...args) {
-        const target = wikiTargetForNote(this);
+        const target = docClickSuppressed() ? null : wikiTargetForNote(this);
         if (target && typeof game.beneos?.openWiki === "function") {
           try { game.beneos.openWiki(target); }
           catch (e) { console.warn("[Beneos] Doc note open failed:", e); }
@@ -231,6 +239,9 @@ function bindHowToNote(note, attempt = 0) {
     console.warn(`[Beneos] Note doc marker "@doc[${marker}]" does not resolve to a documentation page/section. See game.beneos.listDocTargets() for valid targets.`);
   }
   const open = (event) => {
+    // Let the event travel on untouched while the dev-tools window is open,
+    // so the normal note interaction (select, open config) still works.
+    if (docClickSuppressed()) return;
     try { event?.stopPropagation?.(); } catch (e) {}
     const target = wikiTargetForNote(note);
     if (!target) return;
