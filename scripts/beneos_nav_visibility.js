@@ -127,16 +127,27 @@ function isHowToUseNote(note) {
   return typeof src === "string" && src.includes(HOWTO_NOTE_ICON);
 }
 
-// A note whose Label carries a hidden "@doc[<pageKey>[#<anchor>]]" marker opens
-// that exact documentation location on click. Authors just append the marker in
-// the Note config Label field, e.g. "Garage @doc[landing-avernus#la-garage]";
-// the marker is stripped from the visible label (see the text wrapper below).
-// The "@doc[" prefix is distinct enough that it never collides with ordinary
+// A note carrying a documentation target "<pageKey>[#<anchor>]" opens that
+// exact documentation location on click. Preferred home of the target is the
+// flag flags["beneos-module"].docTarget (written through the beneos-dev Note
+// config field), so the Label stays plain readable tooltip text. Legacy notes
+// instead hide an "@doc[...]" marker inside the Label, e.g. "Garage
+// @doc[landing-avernus#la-garage]"; that marker is stripped from the visible
+// label (see the text wrapper below) and keeps working as a fallback. The
+// "@doc[" prefix is distinct enough that it never collides with ordinary
 // bracketed labels such as the world-map POIs "Castle Dourcrag [Release 48]".
 const DOC_MARKER_RE = /@doc\[([^\]]+)\]/i;
 
 function docTargetOf(note) {
-  const text = note?.document?.text;
+  const d = note?.document;
+  if (!d) return null;
+  const flagged = d.getFlag?.(MODULE_ID, "docTarget");
+  if (typeof flagged === "string" && flagged.trim()) {
+    // Tolerate a full "@doc[...]" marker pasted into the flag.
+    const fm = flagged.match(DOC_MARKER_RE);
+    return (fm ? fm[1] : flagged).trim();
+  }
+  const text = d.text;
   if (typeof text !== "string") return null;
   const m = text.match(DOC_MARKER_RE);
   return m ? m[1].trim() : null;
