@@ -3367,62 +3367,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     this.#injectSelectDividers()
     this.#updateTitleBadge(context)
     this.#injectTitleQuote()
-    this.#wireHomeHero()
     // Stage 11: tear down the open-splash injected in
     // beneos_module.js's toolbar handler. _onRender runs after the
     // V2 window is in DOM — clean handover with no flicker.
     document.getElementById("beneos-cloud-loading-splash")?.remove()
-  }
-
-  // Hero rotation for the Home tab. Cycles slides every 7s and pauses
-  // on hover. Manual dot navigation jumps to a specific slide and
-  // restarts the timer. Re-binds cleanly on each render (the dataset
-  // flag stops double-binding within the same DOM).
-  #wireHomeHero() {
-    if (this._heroTimer) {
-      clearInterval(this._heroTimer)
-      this._heroTimer = null
-    }
-    const hero = this.element?.querySelector("[data-bc-hero]")
-    if (!hero) return
-    const slides = [...hero.querySelectorAll(".bc-hero-slide")]
-    const dots = [...hero.querySelectorAll(".bc-hero-dot")]
-    if (slides.length <= 1) return
-    const interval = parseInt(hero.dataset.bcHeroInterval, 10) || 7000
-
-    let activeIndex = slides.findIndex(s => s.classList.contains("is-active"))
-    if (activeIndex < 0) activeIndex = 0
-
-    const setActive = (idx) => {
-      activeIndex = (idx + slides.length) % slides.length
-      slides.forEach((s, i) => s.classList.toggle("is-active", i === activeIndex))
-      dots.forEach((d, i) => d.classList.toggle("is-active", i === activeIndex))
-    }
-
-    const start = () => {
-      stop()
-      this._heroTimer = setInterval(() => setActive(activeIndex + 1), interval)
-    }
-    const stop = () => {
-      if (this._heroTimer) { clearInterval(this._heroTimer); this._heroTimer = null }
-    }
-
-    // Force-apply the initial active state explicitly. The Handlebars
-    // template tags the first slide with .is-active, but if the cycle
-    // re-binds after a re-render and the existing classes get dropped
-    // by a different code path, this guarantees something is visible.
-    setActive(activeIndex)
-
-    hero.addEventListener("mouseenter", stop)
-    hero.addEventListener("mouseleave", start)
-    dots.forEach((dot, i) => {
-      dot.addEventListener("click", (e) => {
-        e.preventDefault()
-        setActive(i)
-        start()
-      })
-    })
-    start()
   }
 
   // Wave B-8k-4: insert a disabled "──────────" option after the Any

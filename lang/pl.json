@@ -266,6 +266,7 @@
   "BENEOS.Settings.SetupTour.Label": "Uruchom przewodnik konfiguracji",
   "BENEOS.Settings.ShowNav.Name": "Pokaż nawigację MG graczom",
   "BENEOS.Settings.ShowNav.Hint": "Sprawia, że kafelki nawigacyjne Beneos i ikony notatek na mapie są widoczne dla graczy. Zwykle lepiej zostawić wyłączone, te elementy są przeznaczone dla MG.",
+  "BENEOS.Scene.StaticMap.Unavailable": "Brak dostępnej statycznej wersji tej mapy.",
   "BENEOS.Tour.PostInstall.Title": "Uruchomić samouczek Beneos?",
   "BENEOS.Tour.PostInstall.Content": "<p>Treści Beneos Getting Started zostały zainstalowane.</p><p>Chcesz teraz uruchomić <strong>Samouczek Beneos</strong>? Przeprowadzi Cię przez wszystkie funkcje modułu na serii scen demonstracyjnych.</p><p>Jeśli powiesz <strong>Nie</strong>, możesz go uruchomić w dowolnym momencie z <strong>Ustawienia → Ustawienia modułów → Beneos</strong>.</p>",
   "BENEOS.Tour.PostInstall.Yes": "Tak, uruchom samouczek",

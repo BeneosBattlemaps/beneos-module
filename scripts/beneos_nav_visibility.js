@@ -11,7 +11,12 @@
  * When "Show DM navigation to players" is enabled, no hooks exist = zero overhead.
  */
 
-const BENEOS_NAV_PATH = "beneos_battlemaps/map_assets/icons/";
+// Matches all battlemap path schemes in the field, because the same icons live
+// under beneos_assets/beneos_battlemaps/map_assets/icons/ (local + Moulinette)
+// and under beneos_assets/cloud/battlemaps/map_assets/icons/ (cloud install).
+// Pinning this to the literal "beneos_battlemaps" folder made the whole feature
+// silently do nothing on every cloud-installed release.
+const BENEOS_NAV_PATH = /battlemaps\/map_assets\/icons\//i;
 const MODULE_ID = "beneos-module";
 const SETTING_SHOW_NAV = "showNavToPlayers";
 
@@ -22,7 +27,7 @@ let _canvasReadyHookId = null;
 const BENEOS_NAV_EXCEPTION = "icon_leave.svg";
 
 function isBeneosNavAsset(path) {
-  if (!path?.includes(BENEOS_NAV_PATH)) return false;
+  if (!path || !BENEOS_NAV_PATH.test(path)) return false;
   if (path.includes(BENEOS_NAV_EXCEPTION)) return false;
   return true;
 }

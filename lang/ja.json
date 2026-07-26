@@ -266,6 +266,7 @@
   "BENEOS.Settings.SetupTour.Label": "セットアップツアーを開始",
   "BENEOS.Settings.ShowNav.Name": "DMナビゲーションをプレイヤーに表示",
   "BENEOS.Settings.ShowNav.Hint": "Beneosナビゲーションタイルとマップノートアイコンをプレイヤーに表示します。通常は無効のままにしておくのがおすすめです, これらの要素はDM専用です。",
+  "BENEOS.Scene.StaticMap.Unavailable": "このマップには静止画バージョンがありません。",
   "BENEOS.Tour.PostInstall.Title": "Beneosチュートリアルを開始しますか？",
   "BENEOS.Tour.PostInstall.Content": "<p>Beneos Getting Startedコンテンツがインストールされました。</p><p>今すぐ<strong>Beneosチュートリアル</strong>を開始しますか？デモシーンのガイド付きシーケンスで、モジュールのすべての機能を案内します。</p><p><strong>いいえ</strong>を選ぶと、<strong>設定 → モジュール設定 → Beneos</strong>からいつでも開始できます。</p>",
   "BENEOS.Tour.PostInstall.Yes": "はい、チュートリアルを開始",

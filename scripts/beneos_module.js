@@ -1,3 +1,8 @@
+// Patches Foundry's sidebar folder tree builder for large worlds. Listed in
+// module.json as well, but imported here so an existing installation picks it up
+// on a page reload instead of only after a server restart, since Foundry caches
+// the module manifest at startup.
+import "./beneos-tree-performance.js";
 import "./beneos_tours.js";
 import { libWrapper } from "./shim.js";
 import { BeneosUtility } from "./beneos_utility.js";
@@ -1189,82 +1194,112 @@ Hooks.on("renderSceneControls", (app, element) => {
 })
 
 /********************************************************************************** */
-Hooks.on("getSceneDirectoryEntryContext", (html, options) => {
-  options.push({
-    name: "Use Animated Map",
-    icon: `<img class="beneos-scene-menu-icon" src="modules/beneos-module/icons/icon_video.svg" width="16" height="16" />`,
-    callback: async function (li) {
-      BeneosUtility.switchPhase(li.data("documentId"), "toAnimated");
-    },
-    condition: li => {
-      return BeneosUtility.isSwitchableBeneosBattlemap(li.data("documentId"), "webp")
-    },
-  });
-  options.push({
-    name: "Use Static Map",
-    icon: `<img class="beneos-scene-menu-icon" src="modules/beneos-module/icons/icon_image.svg" width="16px" height="16px" />`,
-    callback: async function (li) {
-      BeneosUtility.switchPhase(li.data("documentId"), "toStatic");
-    },
-    condition: li => {
-      return BeneosUtility.isSwitchableBeneosBattlemap(li.data("documentId"), "webm")
-    },
-  });
-});
-
+/* Static / animated battlemap switch in the scene context menu.                      */
+/*                                                                                    */
+/* One registration covers both places the switch is documented to appear: the scene  */
+/* navigation bar and the Scene Directory. Foundry V13 and V14 both fire              */
+/* getSceneContextOptions for either (scene-navigation.mjs and document-directory.mjs */
+/* pass hookName explicitly). The former getSceneDirectoryEntryContext and            */
+/* getSceneNavigationContext hooks were V12 names and had stopped firing.             */
+/*                                                                                    */
+/* Exactly one entry is offered per scene, matching the wiki and the onboarding tour: */
+/* "Use Static Map" while the map is animated, "Use Animated Map" once it is a still. */
+/* If the still is missing on disk the entry is still shown, but red and inert, so    */
+/* the GM learns why instead of silently getting no menu at all.                      */
 /********************************************************************************** */
-Hooks.on("getSceneContextOptions", (html, options) => {
-  BeneosUtility.debugMessage("BeneosModule - getSceneContextOptions", html, options)
-  let menuEntry1 = {
+
+// ContextMenu runs with jQuery: false in V13/V14 and jQuery goes away entirely in
+// V15, so read the id off the element itself. The nav bar tags its <li> with
+// data-scene-id, the directory uses data-entry-id.
+function beneosSceneIdFromMenuTarget(li) {
+  const el = (li instanceof HTMLElement) ? li : li?.[0]
+  if (!el) return null
+  return el.dataset?.sceneId || el.dataset?.entryId
+    || el.closest?.("[data-scene-id]")?.dataset?.sceneId
+    || el.closest?.("[data-entry-id]")?.dataset?.entryId
+    || null
+}
+
+Hooks.on("getSceneContextOptions", (app, options) => {
+  const stateOf = li => BeneosUtility.getStaticSwitchState(beneosSceneIdFromMenuTarget(li))
+
+  // V14 deprecates ContextMenuEntry#name in favour of #label and warns when only
+  // `name` is present; V13 reads `name` exclusively. Supplying both is correct on
+  // either and warning-free. The labels stay English on purpose: the wiki page and
+  // the tour quote them verbatim in all 13 languages.
+  const entry = (label, iconClass, wanted) => ({
+    name: label,
+    label: label,
+    icon: `<i class="${iconClass}"></i>`,
+    condition: li => {
+      const state = stateOf(li)
+      return !!state && state.command === wanted
+    },
+    callback: li => BeneosUtility.switchPhase(beneosSceneIdFromMenuTarget(li), wanted)
+  })
+
+  const toStatic = entry("Use Static Map", "fa-regular fa-image", "toStatic")
+  const toAnimated = entry("Use Animated Map", "fa-regular fa-video", "toAnimated")
+
+  // The unavailable variant replaces "Use Static Map" whenever the still is known
+  // to be missing, so the two conditions stay mutually exclusive.
+  const baseStaticCondition = toStatic.condition
+  toStatic.condition = li => baseStaticCondition(li) && stateOf(li).available !== false
+  const unavailable = {
     name: "Use Static Map",
+    label: "Use Static Map",
     icon: `<i class="fa-regular fa-image"></i>`,
-    condition: li => {
-      let sceneId = $(li).data("sceneId") || $(li).data("entryId")
-      return BeneosUtility.isSwitchableBeneosBattlemap(sceneId, "webm")
-    },
-    callback: async li => {
-      let sceneId = $(li).data("sceneId") || $(li).data("entryId")
-      BeneosUtility.switchPhase(sceneId, "toStatic");
-    }
+    classes: "beneos-static-unavailable",
+    condition: li => baseStaticCondition(li) && stateOf(li).available === false,
+    callback: () => ui.notifications.warn(game.i18n.localize("BENEOS.Scene.StaticMap.Unavailable"))
   }
-  let menuEntry2 = {
-    name: "Use Animated Map",
-    icon: `<i class="fa-regular fa-video"></i>`,
-    condition: li => {
-      let sceneId = $(li).data("sceneId") || $(li).data("entryId")
-      return BeneosUtility.isSwitchableBeneosBattlemap(sceneId, "webp")
-    },
-    callback: async li => {
-      let sceneId = $(li).data("sceneId") || $(li).data("entryId")
-      BeneosUtility.switchPhase(sceneId, "toAnimated");
-    }
-  }
-  options.push(menuEntry1);
-  options.push(menuEntry2);
-  return options;
+
+  options.push(toStatic, unavailable, toAnimated)
+  return options
 })
 
 /********************************************************************************** */
-Hooks.on("getSceneNavigationContext", (html, options) => {
-  let menuEntry1 = {
-    name: "Use Static Map",
-    icon: `<img class="beneos-active-scene-menu-icon" src="modules/beneos-module/icons/icon_image.svg" width="16" height="16" />`,
-    condition: li => BeneosUtility.isSwitchableBeneosBattlemap(li.data("sceneId"), "webm"),
-    callback: async li => {
-      let sceneId = li.data("sceneId")
-      BeneosUtility.switchPhase(sceneId, "toStatic");
-    }
+Hooks.once("ready", () => {
+  if (!game.user.isGM) return
+
+  // The ContextMenu builds its <li> itself and marks the icon inert in V14, so a
+  // data-tooltip cannot be attached declaratively. Delegate instead and drive the
+  // core tooltip manager directly.
+  document.body.addEventListener("pointerover", ev => {
+    const el = ev.target?.closest?.("#context-menu li.beneos-static-unavailable")
+    if (!el) return
+    game.tooltip.activate(el, { text: game.i18n.localize("BENEOS.Scene.StaticMap.Unavailable") })
+  })
+
+  const restored = BeneosUtility.loadMapAssetProbeCache()
+  if (restored) BeneosUtility.debugMessage(`Static switch: ${restored} probe result(s) restored from the local cache`)
+  warmStaticSwitchCacheWhenIdle()
+})
+
+// Keep the availability cache warm before anyone right-clicks, and drop it when
+// new files land on disk.
+//
+// The warm-up used to run straight out of the render hook. Both hooks fire on
+// every sidebar and navigation redraw, so in a world with a few thousand scenes
+// that put a full walk over every scene, and potentially a burst of HEAD
+// requests, inside the render frame. Coalescing the calls and handing them to an
+// idle callback keeps the work off the frame that is trying to paint, without
+// changing what ends up in the cache.
+let warmStaticSwitchHandle = null
+function warmStaticSwitchCacheWhenIdle() {
+  if (warmStaticSwitchHandle !== null) return
+  const run = () => {
+    warmStaticSwitchHandle = null
+    BeneosUtility.warmStaticSwitchCache()
   }
-  let menuEntry2 = {
-    name: "Use Animated Map",
-    icon: `<img class="beneos-active-scene-menu-icon" src="modules/beneos-module/icons/icon_video.svg" width="16" height="16" />`,
-    condition: li => BeneosUtility.isSwitchableBeneosBattlemap(li.data("sceneId"), "webp"),
-    callback: async li => {
-      let sceneId = li.data("sceneId")
-      BeneosUtility.switchPhase(sceneId, "toAnimated");
-    }
-  }
-  options.push(menuEntry1);
-  options.push(menuEntry2);
-  return options;
-});
+  warmStaticSwitchHandle = (typeof requestIdleCallback === "function")
+    ? requestIdleCallback(run, { timeout: 2000 })
+    : setTimeout(run, 250)
+}
+
+Hooks.on("renderSceneNavigation", () => warmStaticSwitchCacheWhenIdle())
+Hooks.on("renderSceneDirectory", () => warmStaticSwitchCacheWhenIdle())
+Hooks.on("beneos.releaseInstalled", () => {
+  BeneosUtility.clearStaticSwitchCache()
+  warmStaticSwitchCacheWhenIdle()
+})

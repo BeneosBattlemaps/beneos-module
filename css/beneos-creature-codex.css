@@ -1840,12 +1840,21 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
 }
 .cdx-ref-action i { margin-right: 5px; color: #b89146; }
 
-/* NPC-sheet "Beneos Comment" hover panel (M8.3.29). Floats below the default
-   dnd5e item tooltip at the sheet's left edge. pointer-events:none so it
-   never blocks hovering the sheet underneath. */
+/* NPC-sheet "Beneos Comment" hover panel (M8.3.29). Docks flush under the
+   default dnd5e item tooltip, taking over its measured width, so the two read
+   as one card. pointer-events:none so it never blocks hovering the sheet
+   underneath.
+
+   Visibility mirrors the core #tooltip: same visibility/opacity mechanic and
+   the same 500ms transition, driven by the same `active` class. That is what
+   makes the two boxes fade in together on a first hover and swap without a
+   fade when the pointer moves to another row while a tooltip is already up.
+   Note: max-width only applies to the fallback (no native tooltip on the row);
+   when docked, an explicit inline width is set from the measured box. */
 .beneos-comment-pop {
   position: fixed;
   z-index: 100000;
+  box-sizing: border-box;
   max-width: 340px;
   padding: 8px 12px 10px;
   background: rgba(18, 14, 9, 0.97);
@@ -1853,6 +1862,14 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
   border-radius: 6px;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
   pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transition: visibility 0s 500ms, opacity 500ms;
+}
+.beneos-comment-pop.active {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 500ms;
 }
 .beneos-comment-pop-head {
   font-family: "Geist", sans-serif;

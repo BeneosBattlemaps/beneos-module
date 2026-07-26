@@ -1137,6 +1137,15 @@
   margin-right: 8px;
 }
 
+/* "Use Static Map" when the still is missing on disk: shown, but flagged as
+   unavailable. The entry stays clickable so the tooltip and the warning are
+   reachable, it just does not change the scene. */
+#context-menu li.context-item.beneos-static-unavailable,
+#context-menu li.context-item.beneos-static-unavailable:hover,
+#context-menu li.context-item.beneos-static-unavailable i {
+  color: #d9534f;
+}
+
 
 .beneos-margin-left {
   margin-left: 4rem;

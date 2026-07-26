@@ -266,6 +266,7 @@
   "BENEOS.Settings.SetupTour.Label": "啟動設定導覽",
   "BENEOS.Settings.ShowNav.Name": "向玩家顯示 DM 導航",
   "BENEOS.Settings.ShowNav.Hint": "讓 Beneos 導航圖塊和地圖筆記圖示對玩家可見。通常建議保持關閉, 這些元素是給 DM 專用的。",
+  "BENEOS.Scene.StaticMap.Unavailable": "這張地圖沒有可用的靜態版本。",
   "BENEOS.Tour.PostInstall.Title": "啟動 Beneos 教學？",
   "BENEOS.Tour.PostInstall.Content": "<p>Beneos Getting Started 內容已安裝完成。</p><p>要現在啟動<strong>Beneos 教學</strong>嗎？它會透過一系列示範場景引導你瞭解模組的所有功能。</p><p>如果選擇<strong>否</strong>，你可以隨時從<strong>設定 → 模組設定 → Beneos</strong>啟動。</p>",
   "BENEOS.Tour.PostInstall.Yes": "是，啟動教學",

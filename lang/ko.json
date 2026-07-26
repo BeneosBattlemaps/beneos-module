@@ -266,6 +266,7 @@
   "BENEOS.Settings.SetupTour.Label": "설정 투어 시작",
   "BENEOS.Settings.ShowNav.Name": "DM 내비게이션을 플레이어에게 표시",
   "BENEOS.Settings.ShowNav.Hint": "Beneos 내비게이션 타일과 맵 노트 아이콘을 플레이어에게 보이게 해요. 보통은 비활성 상태로 두는 것이 좋아요, 이 요소들은 DM 전용이에요.",
+  "BENEOS.Scene.StaticMap.Unavailable": "이 맵에는 정적 버전이 없습니다.",
   "BENEOS.Tour.PostInstall.Title": "Beneos 튜토리얼을 시작할까요?",
   "BENEOS.Tour.PostInstall.Content": "<p>Beneos Getting Started 콘텐츠가 설치되었어요.</p><p>지금 <strong>Beneos 튜토리얼</strong>을 시작하시겠어요? 데모 씬을 따라가며 모듈의 모든 기능을 안내해 드려요.</p><p><strong>아니오</strong>를 선택하면 <strong>설정 → 모듈 설정 → Beneos</strong>에서 언제든 시작할 수 있어요.</p>",
   "BENEOS.Tour.PostInstall.Yes": "네, 튜토리얼 시작",

@@ -266,6 +266,7 @@
   "BENEOS.Settings.SetupTour.Label": "Start Setup Tour",
   "BENEOS.Settings.ShowNav.Name": "Show DM Navigation to Players",
   "BENEOS.Settings.ShowNav.Hint": "Makes Beneos navigation tiles and map note icons visible to players. Usually best left disabled - these elements are intended for the GM.",
+  "BENEOS.Scene.StaticMap.Unavailable": "No static version available for this map.",
   "BENEOS.Tour.PostInstall.Title": "Start Beneos Tutorial?",
   "BENEOS.Tour.PostInstall.Content": "<p>The Beneos Getting Started content has been installed.</p><p>Would you like to start the <strong>Beneos Tutorial</strong> now? It walks you through every feature of the module on a guided sequence of demo scenes.</p><p>If you say <strong>No</strong>, you can launch it any time from <strong>Settings → Module Settings → Beneos</strong>.</p>",
   "BENEOS.Tour.PostInstall.Yes": "Yes, start the tutorial",

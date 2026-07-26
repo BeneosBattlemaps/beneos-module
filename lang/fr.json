@@ -266,6 +266,7 @@
   "BENEOS.Settings.SetupTour.Label": "Lancer la tour de configuration",
   "BENEOS.Settings.ShowNav.Name": "Afficher la navigation MJ aux joueurs",
   "BENEOS.Settings.ShowNav.Hint": "Rend les tuiles de navigation Beneos et les icônes de notes de carte visibles pour les joueurs. En général, il vaut mieux laisser cette option désactivée, ces éléments sont destinés au MJ.",
+  "BENEOS.Scene.StaticMap.Unavailable": "Aucune version statique n'est disponible pour cette carte.",
   "BENEOS.Tour.PostInstall.Title": "Lancer le tutoriel Beneos ?",
   "BENEOS.Tour.PostInstall.Content": "<p>Le contenu Beneos Getting Started a été installé.</p><p>Souhaites-tu lancer le <strong>Tutoriel Beneos</strong> maintenant ? Il te guide à travers chaque fonctionnalité du module sur une séquence de scènes de démo.</p><p>Si tu dis <strong>Non</strong>, tu pourras le lancer à tout moment depuis <strong>Paramètres → Paramètres des modules → Beneos</strong>.</p>",
   "BENEOS.Tour.PostInstall.Yes": "Oui, lancer le tutoriel",

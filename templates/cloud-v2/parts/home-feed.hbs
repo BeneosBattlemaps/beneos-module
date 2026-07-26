@@ -1,76 +1,15 @@
-{{!-- Beneos Cloud V2 — Home tab feed.
+{{!-- Beneos Cloud V2 Home tab feed.
      Spans the sidebar+results grid area when searchMode === "home". Built
-     around three blocks: featured hero rotation, news grid (1 pinned + 4
-     rolling), and "What's new in library" rails per category. --}}
+     around two blocks: a news grid (latest 6, newest first) and the
+     "What's new in library" rails per category. --}}
 <section class="bc-home" data-bc-region="home">
   {{#if isHome}}
-
-  {{!-- ============ Hero rotation ============ --}}
-  {{#if home.heroHasSlides}}
-    <div class="bc-home-hero" data-bc-hero
-         data-bc-hero-count="{{home.hero.length}}"
-         data-bc-hero-interval="7000">
-      {{#each home.hero}}
-        <article class="bc-hero-slide{{#if @first}} is-active{{/if}}"
-                 data-hero-index="{{@index}}"
-                 data-news-id="{{this.id}}">
-          {{#if this.imageBase64}}
-            <img class="bc-hero-image" src="{{this.imageBase64}}" alt="" loading="lazy" />
-          {{else}}
-            <div class="bc-hero-image bc-hero-image-fallback" aria-hidden="true"></div>
-          {{/if}}
-          <div class="bc-hero-overlay">
-            <div class="bc-hero-eyebrow">
-              {{#if this.isPinned}}
-                <span class="bc-hero-badge bc-hero-badge-pinned">
-                  <i class="fas fa-thumbtack"></i>
-                  {{localize "BENEOS.Cloud.Home.News.Pinned"}}
-                </span>
-              {{/if}}
-              <span class="bc-hero-date">{{this.formattedDate}}</span>
-            </div>
-            <h2 class="bc-hero-title">{{this.title}}</h2>
-            {{#if this.ctaString}}
-              <div class="bc-hero-actions">
-                {{#if this.ctaUrl}}
-                  <button type="button" class="bc-hero-cta"
-                          data-action="openNewsCta"
-                          data-news-cta-url="{{this.ctaUrl}}"
-                          data-news-id="{{this.id}}">
-                    {{this.ctaString}}
-                    <i class="fas fa-arrow-up-right-from-square"></i>
-                  </button>
-                {{else}}
-                  <button type="button" class="bc-hero-cta"
-                          data-action="openNewsDetail"
-                          data-news-id="{{this.id}}">
-                    {{this.ctaString}}
-                  </button>
-                {{/if}}
-              </div>
-            {{/if}}
-          </div>
-        </article>
-      {{/each}}
-      {{#if home.heroHasMultiple}}
-        <nav class="bc-hero-dots" aria-label="Featured slides">
-          {{#each home.hero}}
-            <button type="button" class="bc-hero-dot{{#if @first}} is-active{{/if}}"
-                    data-hero-jump="{{@index}}"
-                    aria-label="Slide {{this.slideNumber}}"></button>
-          {{/each}}
-        </nav>
-      {{/if}}
-    </div>
-  {{/if}}
 
   {{!-- ============ News grid ============ --}}
   <section class="bc-home-section bc-home-news">
     <header class="bc-home-section-head">
       <div class="bc-home-section-head-text">
-        <span class="bc-news-chip"><i class="fa-solid fa-rss" aria-hidden="true"></i> {{localize "BENEOS.Cloud.Home.News.Chip"}}</span>
         <h3 class="bc-home-section-title">{{localize "BENEOS.Cloud.Home.News.SectionTitle"}}</h3>
-        <p class="bc-home-section-sub">{{localize "BENEOS.Cloud.Home.News.SectionSub"}}</p>
       </div>
       <div class="bc-home-section-head-actions">
         <button type="button"
@@ -84,45 +23,10 @@
     </header>
 
     {{#if home.hasAnyNews}}
+      {{!-- Latest 6 news, newest first (1,2,3 / 4,5,6). All cards equal size;
+           a small pin marker flags a pinned entry without special sizing. --}}
       <div class="bc-news-grid">
-
-        {{#if home.pinned}}
-          <article class="bc-news-card bc-news-pinned{{#if home.pinned.isUnread}} is-unread{{/if}}"
-                   data-news-id="{{home.pinned.id}}"
-                   data-action="openNewsDetail">
-            <div class="bc-news-card-media">
-              {{#if home.pinned.imageBase64}}
-                <img src="{{home.pinned.imageBase64}}" alt="" loading="lazy" />
-              {{else}}
-                <div class="bc-news-card-media-fallback" aria-hidden="true"></div>
-              {{/if}}
-              <span class="bc-news-pin-mark" aria-label="Pinned">
-                <i class="fas fa-thumbtack"></i>
-              </span>
-            </div>
-            <div class="bc-news-card-body">
-              <div class="bc-news-card-meta">
-                <span class="bc-news-pin-label">{{localize "BENEOS.Cloud.Home.News.Pinned"}}</span>
-              </div>
-              <h4 class="bc-news-title">{{home.pinned.title}}</h4>
-              {{#if home.pinned.preview}}
-                <p class="bc-news-preview">{{home.pinned.preview}}</p>
-              {{/if}}
-              {{#if home.pinned.ctaUrl}}{{#if home.pinned.ctaString}}
-                <div class="bc-news-card-cta">
-                  <button type="button" class="bc-news-cta-btn"
-                          data-action="openNewsCta"
-                          data-news-cta-url="{{home.pinned.ctaUrl}}">
-                    {{home.pinned.ctaString}}
-                    <i class="fas fa-arrow-up-right-from-square"></i>
-                  </button>
-                </div>
-              {{/if}}{{/if}}
-            </div>
-          </article>
-        {{/if}}
-
-        {{#each home.rolling}}
+        {{#each home.news}}
           <article class="bc-news-card{{#if this.isUnread}} is-unread{{/if}}"
                    data-news-id="{{this.id}}"
                    data-action="openNewsDetail">
@@ -131,6 +35,11 @@
                 <img src="{{this.imageBase64}}" alt="" loading="lazy" />
               {{else}}
                 <div class="bc-news-card-media-fallback" aria-hidden="true"></div>
+              {{/if}}
+              {{#if this.isPinned}}
+                <span class="bc-news-pin-mark" aria-label="Pinned">
+                  <i class="fas fa-thumbtack"></i>
+                </span>
               {{/if}}
             </div>
             <div class="bc-news-card-body">

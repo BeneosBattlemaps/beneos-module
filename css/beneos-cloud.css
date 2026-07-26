@@ -6150,139 +6150,6 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
   font-size: 13px;
 }
 
-/* ---- Hero ----
-   Container itself carries a visible Beneos-gradient background so the
-   280px area always reads as the hero even if every slide failed to
-   paint (no slide image, no fallback div, race condition, …). The
-   slides paint over the gradient when they're ready.
-   flex-shrink: 0 is critical — without it the column-flex parent
-   collapses the hero to 0 height when content+sidebar overflow. */
-.beneos-cloud-app .bc-home-hero {
-  position: relative;
-  width: 100%;
-  height: 280px;
-  flex-shrink: 0;
-  border-radius: 0;
-  overflow: hidden;
-  border: 1px solid var(--bc-border);
-  background:
-    linear-gradient(135deg, var(--bc-accent) 0%, var(--bc-accent-soft) 35%, var(--bc-bg-elevated) 85%),
-    radial-gradient(circle at 78% 25%, var(--bc-accent-strong) 0%, transparent 55%);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-}
-.beneos-cloud-app .bc-hero-slide {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  transition: opacity 0.6s ease;
-  pointer-events: none;
-}
-.beneos-cloud-app .bc-hero-slide.is-active {
-  opacity: 1;
-  pointer-events: auto;
-}
-.beneos-cloud-app .bc-hero-image {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-}
-.beneos-cloud-app .bc-hero-image-fallback {
-  /* The container already paints the gradient; this layer is a
-     transparent passthrough so the overlay (eyebrow + title + CTA)
-     stays readable on top of the container gradient. */
-  background: transparent;
-}
-.beneos-cloud-app .bc-hero-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 12px;
-  padding: 24px 28px;
-  background: linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,0.72) 100%);
-  color: #fff;
-}
-.beneos-cloud-app .bc-hero-eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--bc-accent-soft);
-}
-.beneos-cloud-app .bc-hero-badge-pinned {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 2px 8px;
-  background: var(--bc-accent);
-  color: var(--bc-bg);
-  border-radius: 999px;
-  font-size: 11px;
-}
-.beneos-cloud-app .bc-hero-date {
-  color: rgba(255,255,255,0.78);
-}
-.beneos-cloud-app .bc-hero-title {
-  margin: 0;
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1.15;
-  text-shadow: 0 2px 12px rgba(0,0,0,0.55);
-}
-.beneos-cloud-app .bc-hero-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 4px;
-}
-.beneos-cloud-app .bc-hero-cta {
-  padding: 9px 18px;
-  background: var(--bc-accent);
-  color: var(--bc-bg);
-  border: none;
-  border-radius: var(--bc-radius);
-  font-weight: 600;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.12s, transform 0.12s;
-}
-.beneos-cloud-app .bc-hero-cta:hover {
-  background: var(--bc-accent-strong);
-  transform: translateY(-1px);
-}
-.beneos-cloud-app .bc-hero-dots {
-  position: absolute;
-  bottom: 14px;
-  right: 20px;
-  display: flex;
-  gap: 6px;
-}
-/* Horizontal-bar dot indicators (3 semi-transparent slim rectangles).
-   Active state turns gold without scaling, so the bar row stays clean. */
-.beneos-cloud-app .bc-hero-dot {
-  width: 28px;
-  height: 4px;
-  padding: 0;
-  background: rgba(255, 255, 255, 0.28);
-  border: none;
-  border-radius: 2px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.beneos-cloud-app .bc-hero-dot:hover {
-  background: rgba(255, 255, 255, 0.55);
-}
-.beneos-cloud-app .bc-hero-dot.is-active {
-  background: var(--bc-accent);
-  transform: none;
-}
-
 /* ---- Home sections (News + Recent) ---- */
 .beneos-cloud-app .bc-home-section {
   display: flex;
@@ -6337,51 +6204,17 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
      Titel sonst dunkel-auf-dunkel faerbt. */
   color: var(--bc-text) !important;
 }
-/* Small "News" chip above the section title: signals these are external,
-   server-updated news (not in-app system messages). */
-.beneos-cloud-app .bc-news-chip {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin-bottom: 3px;
-  padding: 2px 9px;
-  border-radius: 999px;
-  background: var(--bc-accent-dim);
-  border: 1px solid var(--bc-accent-line);
-  color: var(--bc-accent-soft);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-.beneos-cloud-app .bc-news-chip i { font-size: 9px; color: var(--bc-accent); }
 .beneos-cloud-app .bc-home-section-sub {
   margin: 0;
   font-size: 13px;
   color: var(--bc-text-muted);
 }
 
-/* ---- News grid ---- */
+/* ---- News grid: latest 6, equal cards, newest first (1,2,3 / 4,5,6) ---- */
 .beneos-cloud-app .bc-news-grid {
   display: grid;
-  grid-template-columns: 1.6fr 1fr 1fr;
-  grid-template-rows: auto auto;
+  grid-template-columns: repeat(3, 1fr);
   gap: 14px;
-}
-.beneos-cloud-app .bc-news-pinned {
-  grid-column: 1 / 2;
-  grid-row: 1 / 3;
-}
-/* The pinned card reads as the headline: a gold-tinted border + faint glow set
-   it apart from the rolling cards. Compound selector so it beats the base
-   .bc-news-card border (same specificity, defined later in the file). */
-.beneos-cloud-app .bc-news-card.bc-news-pinned {
-  border-color: var(--bc-accent-line);
-  box-shadow: 0 0 0 1px var(--bc-accent-dim) inset;
-}
-.beneos-cloud-app .bc-news-card.bc-news-pinned:hover {
-  border-color: var(--bc-accent);
 }
 .beneos-cloud-app .bc-news-card {
   position: relative;
@@ -6423,9 +6256,6 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
      picture ends and the text panel begins. */
   border-bottom: 1px solid var(--bc-border-strong);
 }
-.beneos-cloud-app .bc-news-pinned .bc-news-card-media {
-  aspect-ratio: 16 / 11;
-}
 .beneos-cloud-app .bc-news-card-media img {
   width: 100%;
   height: 100%;
@@ -6459,10 +6289,8 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
   flex-direction: column;
   gap: 6px;
 }
-/* Pinned card has more vertical room than the rolling tiles, so it shows a
-   short body preview below the title to use the space well. */
-/* News preview: a short body teaser under the title. Rolling cards clamp to
-   2 lines (compact); the larger pinned card overrides to ~6 for breathing room. */
+/* News preview: a short body teaser under the title, clamped to 2 lines so
+   all six equal cards stay compact. */
 .beneos-cloud-app .bc-news-preview {
   margin: 2px 0 0;
   font-size: 12.5px;
@@ -6472,9 +6300,6 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
-}
-.beneos-cloud-app .bc-news-pinned .bc-news-preview {
-  -webkit-line-clamp: 6;
 }
 .beneos-cloud-app .bc-news-card-meta {
   display: flex;
@@ -6510,16 +6335,6 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
   -webkit-line-clamp: 2;
   overflow: hidden;
 }
-.beneos-cloud-app .bc-news-pinned .bc-news-title {
-  font-size: 18px;
-  -webkit-line-clamp: 3;
-  /* Pinned headline stays Beneos-gold in every Foundry colour scheme. !important
-     is required because Foundry's light-theme rule (.theme-light .application h4)
-     carries the h4 tag and therefore outranks this class-only selector — without
-     it the headline flips to dark-on-dark and becomes unreadable in Bright Mode. */
-  color: var(--bc-accent) !important;
-}
-
 /* CTA button rendered inside a news card (small, secondary). Click is
    handled by the openNewsCta action; stopPropagation in the action
    handler prevents the surrounding card's openNewsDetail from firing. */
@@ -6900,9 +6715,10 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
   .beneos-cloud-app .bc-news-grid {
     grid-template-columns: 1fr 1fr;
   }
-  .beneos-cloud-app .bc-news-pinned {
-    grid-column: 1 / -1;
-    grid-row: auto;
+}
+@media (max-width: 560px) {
+  .beneos-cloud-app .bc-news-grid {
+    grid-template-columns: 1fr;
   }
 }
 

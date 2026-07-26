@@ -266,6 +266,7 @@
   "BENEOS.Settings.SetupTour.Label": "Spustit průvodce nastavením",
   "BENEOS.Settings.ShowNav.Name": "Zobrazit PJ navigaci hráčům",
   "BENEOS.Settings.ShowNav.Hint": "Zviditelní navigační dlaždice a ikony poznámek na mapě pro hráče. Obvykle je lepší nechat vypnuté, tyto prvky jsou určené pro PJ.",
+  "BENEOS.Scene.StaticMap.Unavailable": "Pro tuto mapu není k dispozici statická verze.",
   "BENEOS.Tour.PostInstall.Title": "Spustit tutoriál Beneos?",
   "BENEOS.Tour.PostInstall.Content": "<p>Obsah Beneos Getting Started byl nainstalován.</p><p>Chceš nyní spustit <strong>Tutoriál Beneos</strong>? Provede tě všemi funkcemi modulu na sérii demo scén.</p><p>Pokud řekneš <strong>Ne</strong>, můžeš ho spustit kdykoliv z <strong>Nastavení → Nastavení modulů → Beneos</strong>.</p>",
   "BENEOS.Tour.PostInstall.Yes": "Ano, spustit tutoriál",

@@ -266,6 +266,7 @@
   "BENEOS.Settings.SetupTour.Label": "Iniciar tour de configuración",
   "BENEOS.Settings.ShowNav.Name": "Mostrar navegación del DJ a los jugadores",
   "BENEOS.Settings.ShowNav.Hint": "Hace visibles los tiles de navegación Beneos y los iconos de notas del mapa para los jugadores. Normalmente es mejor dejarlo desactivado, estos elementos son para el DJ.",
+  "BENEOS.Scene.StaticMap.Unavailable": "No hay ninguna versión estática disponible para este mapa.",
   "BENEOS.Tour.PostInstall.Title": "¿Iniciar el tutorial Beneos?",
   "BENEOS.Tour.PostInstall.Content": "<p>El contenido Beneos Getting Started se ha instalado.</p><p>¿Quieres iniciar el <strong>Tutorial Beneos</strong> ahora? Te guía por todas las funciones del módulo en una secuencia de escenas de demostración.</p><p>Si dices <strong>No</strong>, puedes iniciarlo en cualquier momento desde <strong>Configuración → Configuración de módulos → Beneos</strong>.</p>",
   "BENEOS.Tour.PostInstall.Yes": "Sí, iniciar el tutorial",

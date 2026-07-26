@@ -260,29 +260,23 @@ function subInfoFor(type, data) {
   return ""
 }
 
-function buildHeroSlides(newsItems) {
-  if (!newsItems.length) return []
-  const pinned = newsItems.find(n => n.isPinned)
-  const rolling = newsItems.filter(n => !n.isPinned)
-  const slides = []
-  if (pinned) slides.push(pinned)
-  for (const n of rolling) {
-    if (slides.length >= 3) break
-    slides.push(n)
-  }
-  return slides
+// Parse a news item's timestamp for recency sorting. Prefers the plain
+// `date` (YYYY-MM-DD) and falls back to `createdAt`; unparseable values
+// sort to the bottom.
+function newsSortValue(n) {
+  const t = Date.parse(n?.date || n?.createdAt || "")
+  return Number.isNaN(t) ? 0 : t
 }
 
-function partitionNews(newsItems, readIds) {
-  const pinned = newsItems.find(n => n.isPinned) || null
-  const rolling = newsItems.filter(n => !n.isPinned).slice(0, 4)
-  const decorate = (n) => n
-    ? { ...n, isUnread: !readIds.has(n.id), formattedDate: formatDate(n.date) }
-    : null
-  return {
-    pinned: decorate(pinned),
-    rolling: rolling.map(decorate)
-  }
+// Latest N news, newest first (pure recency, so the Home grid fills
+// 1,2,3 / 4,5,6 left-to-right). Each item is decorated with read-state
+// and a display date. Pinned entries keep their `isPinned` flag for the
+// small pin marker but get no positional priority.
+function selectLatestNews(newsItems, readIds, limit = 6) {
+  return [...newsItems]
+    .sort((a, b) => newsSortValue(b) - newsSortValue(a))
+    .slice(0, limit)
+    .map(n => ({ ...n, isUnread: !readIds.has(n.id), formattedDate: formatDate(n.date) }))
 }
 
 function formatDate(iso) {
@@ -310,12 +304,7 @@ export class HomeController {
     ensureBmapHydrated()
 
     const readIds = getReadNewsIds()
-    const { pinned, rolling } = partitionNews(news, readIds)
-    const hero = buildHeroSlides(news).map((n, i) => ({
-      ...n,
-      formattedDate: formatDate(n.date),
-      slideNumber: i + 1
-    }))
+    const news6 = selectLatestNews(news, readIds, 6)
 
     const rails = RAIL_CATEGORIES.map(type => {
       const { news: railNew, updates: railUpdates } = pickRailItems(type)
@@ -407,13 +396,8 @@ export class HomeController {
     }
 
     return {
-      hero,
-      heroHasSlides: hero.length > 0,
-      heroHasMultiple: hero.length > 1,
-      pinned,
-      rolling,
-      hasRolling: rolling.length > 0,
-      hasAnyNews: !!pinned || rolling.length > 0,
+      news: news6,
+      hasAnyNews: news6.length > 0,
       rails,
       stats,
       status,

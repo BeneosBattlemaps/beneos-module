@@ -266,6 +266,7 @@
   "BENEOS.Settings.SetupTour.Label": "Avvia il tour di configurazione",
   "BENEOS.Settings.ShowNav.Name": "Mostra la navigazione del Master ai giocatori",
   "BENEOS.Settings.ShowNav.Hint": "Rende visibili ai giocatori le tile di navigazione Beneos e le icone delle note mappa. Normalmente è meglio lasciarlo disattivato, questi elementi sono pensati per il Master.",
+  "BENEOS.Scene.StaticMap.Unavailable": "Nessuna versione statica disponibile per questa mappa.",
   "BENEOS.Tour.PostInstall.Title": "Avviare il tutorial Beneos?",
   "BENEOS.Tour.PostInstall.Content": "<p>I contenuti Beneos Getting Started sono stati installati.</p><p>Vuoi avviare il <strong>Tutorial Beneos</strong> adesso? Ti guida attraverso tutte le funzionalità del modulo in una sequenza di scene dimostrative.</p><p>Se scegli <strong>No</strong>, puoi avviarlo in qualsiasi momento da <strong>Impostazioni → Impostazioni moduli → Beneos</strong>.</p>",
   "BENEOS.Tour.PostInstall.Yes": "Sì, avvia il tutorial",

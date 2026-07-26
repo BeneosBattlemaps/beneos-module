@@ -3,6 +3,9 @@ import { BeneosTableTop } from "./beneos-table-top.js";
 import { BeneosDatabaseHolder, BeneosModuleMenu } from "./beneos_search_engine.js";
 import { ClassCounter } from "./count-class-ready.js";
 import { BeneosCloud, BeneosCloudLogin, BeneosCloudSettings, BeneosCloudAccountMenu, BeneosOrphanCleanupMenu, BeneosManualZipImportMenu } from "./beneos_cloud.js";
+// Asset existence probe, shared with the missing-asset watcher: srcExists plus
+// a no-store HEAD that also rejects HTML fallback pages answering 200.
+import { headCheck as beneosHeadCheck } from "./beneos-asset-watcher.js";
 
 /********************************************************************************* */
 globalThis.BENEOS_MODULE_NAME = "Beneos Module"
@@ -960,7 +963,12 @@ export class BeneosUtility {
     let statsBeneos = { maps: {}, tokens: {}, items: {}, spells: {} }
     for (let scene of game.scenes) {
       let bgSrc = BeneosUtility.getSceneBackgroundSrc(scene)
-      if (bgSrc?.includes('beneos-battlemaps-universe')) {
+      // Matches all three battlemap path schemes in the field: the local
+      // authoring path (beneos_assets/beneos_battlemaps/), the Moulinette
+      // adventure path (.../beneos-battlemaps-universe/...) and the cloud
+      // install namespace (beneos_assets/cloud/battlemaps/). Checking only
+      // the Moulinette one used to drop every locally and cloud-installed map.
+      if (BeneosUtility.BENEOS_BATTLEMAP_DIR.test(bgSrc || '')) {
         statsBeneos.maps[bgSrc] = (statsBeneos.maps[bgSrc]) ? statsBeneos.maps[bgSrc] + 1 : 1
       }
     }
@@ -1283,31 +1291,203 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
-  static isSwitchableBeneosBattlemap(sceneId, fileType) {
-    let scene = game.scenes.get(sceneId)
-    if (!scene) return undefined
-    let srcPath = BeneosUtility.getSceneBackgroundSrc(scene)
-    let tileId = "scene"
+  /* Static / animated battlemap switching                                             */
+  /*                                                                                   */
+  /* Beneos ships every battlemap and scenery video as <name>.webm plus a matching     */
+  /* <name>.webp still, side by side in the same folder. What identifies such a file   */
+  /* is the FILENAME, never the folder: the very same map lives under                  */
+  /*   beneos_assets/beneos_battlemaps/...        (local authoring install)            */
+  /*   beneos_assets/cloud/battlemaps/...         (cloud installer namespace)          */
+  /*   moulinette/adventures/<pack>/beneos_assets/beneos_battlemaps/...  (Moulinette)  */
+  /* Matching on the folder is what used to hide the switch on every cloud-installed   */
+  /* release. The suffix also draws the right line against battlemap OVERLAYS: an      */
+  /* animated trap or effect tile is not a battlemap, has no still, and must never be  */
+  /* switched. Intro sequences and previews fall out for the same reason.              */
+  /********************************************************************************** */
 
+  // <anything>[-_/]<4k|hd>_<bm|scen|sc>[_<n>].<webm|webp>
+  static BENEOS_MAP_FILE = /(?:^|[-_/])(?:4k|hd)_(?:bm|scen|sc)(?:_\d+)?\.(?:webm|webp)$/i
 
-    if (!srcPath) {
-      for (let tile of scene.tiles) {
-        if (tile.texture?.src?.toLowerCase().match(/beneos_battlemaps/) &&
-          (tile.texture?.src?.toLowerCase().match(/4k/) || tile.texture?.src?.toLowerCase().match(/hd/))) {
-          srcPath = tile.texture.src
-          tileId = tile.id
-          break
-        }
+  // Any of the three battlemap path schemes above. Used for coarse "is this a
+  // Beneos battlemap asset at all" questions, never for the switch itself.
+  static BENEOS_BATTLEMAP_DIR = /battlemaps\//i
+
+  // Probe results for still/animated counterparts, keyed by full asset path.
+  // Populated asynchronously; the context-menu condition can only read it
+  // synchronously, hence the cache. Cleared when a release is installed.
+  static _mapAssetProbe = new Map()
+
+  /**
+   * Every switchable battlemap reference on a scene: the background when it is
+   * one, plus every tile that carries one. Both are collected, not just the
+   * background, because rotated maps are placed as a rotated tile on a scene
+   * whose background is empty, and some scenes carry a non-Beneos background
+   * next to the real battlemap tile.
+   * @returns {Array<{kind: "scene"|"tile", id?: string, src: string}>}
+   */
+  static collectStaticSwitchTargets(scene) {
+    const targets = []
+    if (!scene) return targets
+    const bg = BeneosUtility.getSceneBackgroundSrc(scene)
+    if (bg && BeneosUtility.BENEOS_MAP_FILE.test(bg)) targets.push({ kind: "scene", src: bg })
+    for (const tile of scene.tiles) {
+      const src = tile.texture?.src
+      if (src && BeneosUtility.BENEOS_MAP_FILE.test(src)) targets.push({ kind: "tile", id: tile.id, src })
+    }
+    return targets
+  }
+
+  /** Swap a battlemap reference to its still / animated counterpart. Anchored
+   *  on the extension so a folder containing "webm" can never be mangled. */
+  static toStaticPath(src) { return String(src).replace(/\.webm$/i, ".webp") }
+  static toAnimatedPath(src) { return String(src).replace(/\.webp$/i, ".webm") }
+
+  /**
+   * What the scene can currently be switched to: "toStatic" while any target is
+   * still animated, "toAnimated" once everything is a still, or null when the
+   * scene carries no Beneos battlemap at all.
+   */
+  static getStaticSwitchState(sceneId) {
+    if (!game.user.isGM) return null
+    const scene = game.scenes.get(sceneId)
+    if (!scene) return null
+    const targets = BeneosUtility.collectStaticSwitchTargets(scene)
+    if (!targets.length) return null
+
+    const animated = targets.some(t => /\.webm$/i.test(t.src))
+    const command = animated ? "toStatic" : "toAnimated"
+    const wanted = targets.map(t => ({
+      ...t,
+      target: animated ? BeneosUtility.toStaticPath(t.src) : BeneosUtility.toAnimatedPath(t.src)
+    }))
+
+    // Unknown counterparts are treated as available: the probe runs in the
+    // background and switchPhase verifies again before touching the scene, so
+    // an un-probed entry can never break a map.
+    const probes = wanted.map(w => BeneosUtility._mapAssetProbe.get(w.target))
+    const available = !probes.includes(false)
+    if (probes.includes(undefined)) BeneosUtility.warmMapAssetProbe(wanted.map(w => w.target))
+
+    return { command, targets: wanted, available }
+  }
+
+  /** Probe the given asset paths once each and remember the result. */
+  static async warmMapAssetProbe(paths) {
+    const todo = [...new Set(paths)].filter(p => p && !BeneosUtility._mapAssetProbe.has(p))
+    if (!todo.length) return
+    // Reserve the keys up front so overlapping warm-ups do not probe twice.
+    for (const p of todo) BeneosUtility._mapAssetProbe.set(p, undefined)
+    const queue = [...todo]
+    const worker = async () => {
+      while (queue.length) {
+        const path = queue.shift()
+        let ok = true
+        try { ok = (await beneosHeadCheck(path))?.ok !== false }
+        catch (e) { ok = true }
+        BeneosUtility._mapAssetProbe.set(path, ok)
       }
     }
+    await Promise.all(Array.from({ length: Math.min(8, queue.length) }, worker))
+    BeneosUtility.scheduleMapAssetProbeCacheSave()
+  }
 
-    if (srcPath && game.user.isGM && !(srcPath.toLowerCase().match(/intro/)) && srcPath.toLowerCase().match(/beneos_battlemaps/) &&
-      (srcPath.toLowerCase().match(/4k/) || srcPath.toLowerCase().match(/hd/)) &&
-      (srcPath.toLowerCase().includes(fileType))) {
-      return tileId
-    } else {
-      return undefined
+  /********************************************************************************** */
+  /* Persisting the probe results.                                                    */
+  /*                                                                                  */
+  /* Foundry serves data files with `Cache-Control: no-store`, so the browser can      */
+  /* never reuse a probe on its own and every reload used to re-check every asset      */
+  /* from scratch. In the Universe world that is 1893 requests before anyone has       */
+  /* even right-clicked a scene. The results are per client, not per world state, so   */
+  /* they belong in localStorage rather than in a world setting, which would be a      */
+  /* document write on every change.                                                   */
+  /*                                                                                  */
+  /* Staleness is bounded three ways: the module version, an age limit, and the        */
+  /* explicit clear on beneos.releaseInstalled. On top of that switchPhase re-checks   */
+  /* live before it writes to a scene, so a stale entry can mislead a menu label but   */
+  /* can never point a scene at a file that is not there.                              */
+  /********************************************************************************** */
+  static _probeCacheMaxAgeMs = 7 * 24 * 60 * 60 * 1000
+  static _probeCacheSaveTimer = null
+
+  static _probeCacheKey() {
+    return `beneos-map-asset-probe:${game.world?.id ?? "unknown"}`
+  }
+
+  static _probeCacheVersion() {
+    return game.modules.get(BeneosUtility.moduleID())?.version ?? "0"
+  }
+
+  static loadMapAssetProbeCache() {
+    try {
+      const raw = window.localStorage.getItem(BeneosUtility._probeCacheKey())
+      if (!raw) return 0
+      const data = JSON.parse(raw)
+      if (data?.version !== BeneosUtility._probeCacheVersion()) return 0
+      if (!data.savedAt || ((Date.now() - data.savedAt) > BeneosUtility._probeCacheMaxAgeMs)) return 0
+      let restored = 0
+      for (const [path, ok] of Object.entries(data.results ?? {})) {
+        BeneosUtility._mapAssetProbe.set(path, ok)
+        restored++
+      }
+      return restored
+    } catch (e) {
+      console.warn("[Beneos] could not read the asset probe cache, re-probing:", e)
+      return 0
     }
+  }
+
+  static scheduleMapAssetProbeCacheSave() {
+    clearTimeout(BeneosUtility._probeCacheSaveTimer)
+    BeneosUtility._probeCacheSaveTimer = setTimeout(() => BeneosUtility.saveMapAssetProbeCache(), 2000)
+  }
+
+  static saveMapAssetProbeCache() {
+    try {
+      const results = {}
+      for (const [path, ok] of BeneosUtility._mapAssetProbe) {
+        if (ok !== undefined) results[path] = ok
+      }
+      window.localStorage.setItem(BeneosUtility._probeCacheKey(), JSON.stringify({
+        version: BeneosUtility._probeCacheVersion(),
+        savedAt: Date.now(),
+        results
+      }))
+    } catch (e) {
+      // Quota exceeded or storage disabled. The in-memory cache still works for
+      // this session, so this is not worth interrupting anyone over.
+      console.warn("[Beneos] could not persist the asset probe cache:", e)
+    }
+  }
+
+  /** Warm the probe cache for every scene that could offer the switch. */
+  static warmStaticSwitchCache() {
+    if (!game.user.isGM) return
+    const paths = []
+    for (const scene of game.scenes) {
+      for (const t of BeneosUtility.collectStaticSwitchTargets(scene)) {
+        paths.push(/\.webm$/i.test(t.src) ? BeneosUtility.toStaticPath(t.src) : BeneosUtility.toAnimatedPath(t.src))
+      }
+    }
+    BeneosUtility.warmMapAssetProbe(paths)
+  }
+
+  static clearStaticSwitchCache() {
+    BeneosUtility._mapAssetProbe.clear()
+    clearTimeout(BeneosUtility._probeCacheSaveTimer)
+    try { window.localStorage.removeItem(BeneosUtility._probeCacheKey()) }
+    catch (e) { /* storage disabled, nothing persisted to drop */ }
+  }
+
+  /********************************************************************************** */
+  /** Kept for backwards compatibility with external callers: returns "scene",
+   *  a tile id, or undefined, for the requested direction. */
+  static isSwitchableBeneosBattlemap(sceneId, fileType) {
+    const state = BeneosUtility.getStaticSwitchState(sceneId)
+    if (!state) return undefined
+    const wanted = (fileType === "webm") ? "toStatic" : "toAnimated"
+    if (state.command !== wanted) return undefined
+    const first = state.targets[0]
+    return (first.kind === "scene") ? "scene" : first.id
   }
 
   /********************************************************************************** */
@@ -1322,31 +1502,44 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
-  static switchPhase(sceneId, command) {
-    let tileId = this.isSwitchableBeneosBattlemap(sceneId, command == "toStatic" ? "webm" : "webp")
-    let scene = game.scenes.get(sceneId)
+  static async switchPhase(sceneId, command) {
+    const scene = game.scenes.get(sceneId)
+    const state = BeneosUtility.getStaticSwitchState(sceneId)
+    if (!scene || !state) return
+    if (command && command !== state.command) return
 
-    if (scene) {
-      let tile
-      if (tileId != "scene") {
-        tile = scene.tiles.get(tileId)
-      }
-
-      //BeneosUtility.debugMessage("Scene : ", scene)
-      let srcPath = (tile) ? tile.texture.src : BeneosUtility.getSceneBackgroundSrc(scene)
-      if (command == "toStatic") {
-        srcPath = srcPath.replace("webm", "webp")
-      } else {
-        srcPath = srcPath.replace("webp", "webm")
-      }
-      BeneosUtility.debugMessage("New path : ", srcPath)
-      if (tile) {
-        scene.updateEmbeddedDocuments("Tile", [({ _id: tile.id, 'texture.src': srcPath })])
-      } else {
-        BeneosUtility.updateSceneBackgroundSrc(scene, srcPath)
-      }
-      //scene.background.src = srcPath
+    // Verify on disk before writing. A missing counterpart would otherwise
+    // leave the scene pointing at a file that does not exist.
+    //
+    // This deliberately re-checks instead of trusting _mapAssetProbe. That cache
+    // survives reloads now, so an entry may predate a file being deleted, and it
+    // only ever drives a menu label. Here a scene is about to be rewritten, so a
+    // few HEAD requests on an explicit user action are the right trade.
+    const missing = []
+    for (const t of state.targets) {
+      let ok = true
+      try { ok = (await beneosHeadCheck(t.target))?.ok !== false }
+      catch (e) { ok = true }
+      BeneosUtility._mapAssetProbe.set(t.target, ok)
+      if (!ok) missing.push(t.target)
     }
+    BeneosUtility.scheduleMapAssetProbeCacheSave()
+    if (missing.length) {
+      ui.notifications.warn(game.i18n.localize("BENEOS.Scene.StaticMap.Unavailable"))
+      BeneosUtility.debugMessage("Static switch aborted, missing asset(s): ", missing)
+      // Re-render both menus so the entry turns red now that we know.
+      ui.nav?.render()
+      ui.scenes?.render()
+      return
+    }
+
+    const tileUpdates = state.targets.filter(t => t.kind === "tile")
+      .map(t => ({ _id: t.id, "texture.src": t.target }))
+    const background = state.targets.find(t => t.kind === "scene")
+
+    BeneosUtility.debugMessage("Static switch: ", { command: state.command, targets: state.targets })
+    if (background) await BeneosUtility.updateSceneBackgroundSrc(scene, background.target)
+    if (tileUpdates.length) await scene.updateEmbeddedDocuments("Tile", tileUpdates)
   }
 
   /********************************************************************************** */
