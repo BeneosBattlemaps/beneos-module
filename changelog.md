@@ -4,7 +4,7 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
-### 14.5.0 # 2026-07-26
+### 14.4.2 # 2026-07-26
 
 **Fixes**
 - Fixed: "Install Missing Pack" on a Point of Interest pin could download the wrong release. Which release you got depended on the order of entries in a catalog file, so releases 5, 8, 15 and 16 reliably installed a Single Map pack instead of the battlemap release of the same number, and roughly a dozen more numbers were one reshuffle away from the same fate.
