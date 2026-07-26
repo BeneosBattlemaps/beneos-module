@@ -31,6 +31,7 @@
 	  "css/beneos-wiki.css"
   ],
   "esmodules": [
+    "scripts/beneos-tree-performance.js",
     "scripts/beneos-asset-path-repair.js",
     "scripts/beneos_tours.js",
     "scripts/beneos_module.js",

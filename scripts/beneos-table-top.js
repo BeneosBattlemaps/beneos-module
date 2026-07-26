@@ -23,29 +23,57 @@ export class BeneosTableTop {
   }
 
   /******************************************************************************** */
+  /**
+   * Restore the values tabletop mode overrode, across every scene in the world.
+   *
+   * Everything here is batched on purpose. Foundry rebuilds a collection's whole
+   * folder tree on every write to a top-level document, so the previous version,
+   * which awaited up to two separate scene.update() calls per scene plus two
+   * writes per user drawing, cost one rebuild and one server round trip each. In
+   * a world with a few thousand scenes that ran for minutes with the interface
+   * frozen. One updateDocuments call for all scenes means one rebuild, and the
+   * drawings of a scene are handled in one update plus one delete.
+   *
+   * @param {boolean} value   The new tabletop mode state.
+   */
   static async manageTableTopMode(value) {
+    // Enabling overrides nothing, so there is nothing to restore.
+    if (value) return;
 
-    for (let scene of game.scenes) {
-      let beneosTTFlags = scene.getFlag(BeneosUtility.moduleID(), "beneos-tt-flags");
-      if (beneosTTFlags === undefined) {
-        beneosTTFlags = {};
-      }
+    const moduleId = BeneosUtility.moduleID();
+    const sceneUpdates = [];
+    const drawingWork = [];
 
-      if (!value) { // When disable, restore default values
-        if (beneosTTFlags.gridOpacity !== undefined) {
-          await scene.update({ 'grid.alpha': beneosTTFlags.gridOpacity });
-        }
-        if (beneosTTFlags.tokenVisionSaved !== undefined) {
-          await scene.update({ 'tokenVision': beneosTTFlags.tokenVisionSaved });
-        }
-        for (let d of scene.drawings) {
-          let isUserDrawing = d.getFlag('beneos-module', 'user-view');
-          if (isUserDrawing) {
-            await d.setFlag("beneos-module", "user-view", false);
-            await scene.deleteEmbeddedDocuments('Drawing', [d.id]);
-          }
-        }
+    for (const scene of game.scenes) {
+      const beneosTTFlags = scene.getFlag(moduleId, "beneos-tt-flags") ?? {};
+
+      const update = { _id: scene.id };
+      let hasUpdate = false;
+      if (beneosTTFlags.gridOpacity !== undefined) {
+        update["grid.alpha"] = beneosTTFlags.gridOpacity;
+        hasUpdate = true;
       }
+      if (beneosTTFlags.tokenVisionSaved !== undefined) {
+        update["tokenVision"] = beneosTTFlags.tokenVisionSaved;
+        hasUpdate = true;
+      }
+      if (hasUpdate) sceneUpdates.push(update);
+
+      const userDrawingIds = scene.drawings
+        .filter(drawing => drawing.getFlag(moduleId, "user-view"))
+        .map(drawing => drawing.id);
+      if (userDrawingIds.length) drawingWork.push({ scene, ids: userDrawingIds });
+    }
+
+    if (sceneUpdates.length) await Scene.updateDocuments(sceneUpdates);
+
+    for (const { scene, ids } of drawingWork) {
+      // The flag is cleared before deleting because preDeleteDrawing refuses to
+      // remove a drawing that still carries "user-view". That guard is only
+      // registered once BeneosTableTop.init() runs, which is currently disabled,
+      // but clearing it first keeps this correct either way.
+      await scene.updateEmbeddedDocuments("Drawing", ids.map(id => ({ _id: id, [`flags.${moduleId}.user-view`]: false })));
+      await scene.deleteEmbeddedDocuments("Drawing", ids);
     }
   }
 
@@ -719,12 +747,25 @@ export class BeneosTableTop {
       // Check the user  
       let userData = this.tableTopConfig.performanceModePerUsers.find(u => u.id == game.userId);
       if (userData && userData.perfMode) {
+        // The interval only cleared itself once it had actually paused a playing
+        // video. If the video never starts, or the scene is torn down and
+        // sourceElement goes away, it kept ticking every 200 ms and threw on the
+        // missing element each time. Bound the attempts and stop on a vanished
+        // element, and drop any interval left over from a previous scene.
+        clearInterval(BeneosTableTop.videoPause);
+        let attemptsLeft = 50; // give up after 10 s at 200 ms
+        const stopPolling = () => {
+          clearInterval(BeneosTableTop.videoPause);
+          BeneosTableTop.videoPause = undefined;
+        };
         BeneosTableTop.videoPause = setInterval(() => {
-          if ( !canvas.primary.background.sourceElement.paused) {
-            canvas.primary.background.sourceElement.pause(0)
-            clearInterval(BeneosTableTop.videoPause);
-            BeneosTableTop.videoPause = undefined;
+          const source = canvas.primary?.background?.sourceElement;
+          if (!source) return stopPolling();          // scene torn down or replaced
+          if (!source.paused) {                       // it started playing, pause it once
+            source.pause(0);
+            return stopPolling();
           }
+          if (--attemptsLeft <= 0) stopPolling();     // it never started, give up
         }, 200);
       }  
     }

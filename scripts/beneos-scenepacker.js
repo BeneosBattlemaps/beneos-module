@@ -14,7 +14,7 @@
  * the GM finds out at install-time instead of later when the scene 404s.
  */
 
-import { scanSceneSilent, headCheck, isBeneosPath } from "./beneos-asset-watcher.js";
+import { scanSceneSilent, headCheck, isBeneosPath, mapWithConcurrency } from "./beneos-asset-watcher.js";
 import { BeneosUtility } from "./beneos_utility.js";
 
 export class BeneosScenePackerManager {
@@ -572,14 +572,16 @@ function collectPathsFromNewEntities(newDocs) {
   return [...paths];
 }
 
-// HEAD-fetch each path and split into present / missing. Bulk-parallel for
-// speed (paths are independent). On the missing side, attach the priority
-// so the caller can sort.
+// HEAD-fetch each path and split into present / missing. Paths are independent,
+// so they run in parallel, but with a bounded number in flight: an unbounded
+// Promise.all over a large pack's asset list floods the browser's connection
+// queue and stalls the rest of the page. On the missing side, attach the
+// priority so the caller can sort.
 async function checkPathsOnDisk(paths) {
-  const results = await Promise.all(paths.map(async (p) => {
+  const results = await mapWithConcurrency(paths, async (p) => {
     const r = await headCheck(p);
     return { path: p, ok: r.ok, status: r.status };
-  }));
+  });
   const missing = results
     .filter(r => !r.ok)
     .map(r => ({ path: r.path, priority: assetPriorityOf(r.path) }));

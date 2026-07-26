@@ -433,26 +433,45 @@ const collectBeneosRefs = (scene) => _sceneRefs(scene);
 
 // Existence check for missing-asset detection.
 //
-// Two-step: foundry.utils.srcExists first (FilePicker-aware, matches
-// what loadTexture sees), then a raw HEAD with cache: "no-store" to
-// defeat stale browser caches AND inspect Content-Type — some Foundry
-// hosting setups answer 200 with an HTML error/fallback page for
-// missing assets, which would otherwise look like a successful probe.
+// One HEAD per path. This used to run foundry.utils.srcExists first and then a
+// second raw HEAD, but srcExists is itself nothing more than
+// `fetchWithTimeout(src, {method: "HEAD"}).then(resp => resp.status < 400)`, and
+// its early return only fired when the asset was MISSING. Present assets, which
+// is nearly all of them, therefore paid two round trips for one answer. In the
+// Universe world that meant 1893 assets turning into 3786 requests on every page
+// load. The single request below answers both questions the two used to: the
+// status says whether the file is there, and the content type catches hosting
+// setups that answer 200 with an HTML error page for a missing asset.
+//
+// `cache: "no-store"` is gone because it never bought anything: Foundry already
+// serves data files with `Cache-Control: no-store`, so a browser cache hit was
+// impossible either way. Repeat probing is avoided by the persistent result
+// cache in BeneosUtility instead.
+//
+// Plain fetch with an abort timeout, not foundry.utils.fetchWithTimeout: that
+// helper throws an HttpError on any non-ok response, which would turn a clean
+// 404 into a generic failure and lose the status code this function is
+// contracted to report. The timeout keeps a stalled request from pinning a
+// worker slot indefinitely.
 //
 // Function name kept as `headCheck` for back-compat with external
 // callers; return shape matches the old { ok, status? } contract.
+const HEAD_TIMEOUT_MS = 30000;
+
 const headCheck = async (path) => {
   try {
-    let exists;
-    try { exists = await foundry.utils.srcExists(path); }
-    catch (e) { exists = null; }
-    if (exists === false) return { ok: false, status: 404 };
+    // Percent-encoding a path that is already encoded would turn "%20" into
+    // "%2520" and report a present asset as missing, so encode only raw paths.
+    // Encoding at all is what keeps "#" and "?" in a filename from being parsed
+    // as a fragment or query.
+    const url = /%[0-9A-Fa-f]{2}/.test(path)
+      ? path
+      : path.split("/").map(encodeURIComponent).join("/");
 
-    // Belt-and-suspenders raw HEAD: forces revalidation against the
-    // server even if the browser has a stale cached HEAD response, and
-    // lets us reject HTML-fallback "200 OK" pages by content-type.
-    const url = path.split("/").map(encodeURIComponent).join("/");
-    const resp = await fetch(url, { method: "HEAD", cache: "no-store" });
+    const signal = (typeof AbortSignal?.timeout === "function")
+      ? AbortSignal.timeout(HEAD_TIMEOUT_MS)
+      : undefined;
+    const resp = await fetch(url, { method: "HEAD", signal });
     if (!resp.ok) return { ok: false, status: resp.status };
     const ct = (resp.headers.get("content-type") || "").toLowerCase();
     if (ct.startsWith("text/html") && !/\.html?$/i.test(path)) {
@@ -698,6 +717,36 @@ Hooks.on("canvasReady", async () => {
   catch (e) { WARN("check failed:", e); }
 });
 
+/**
+ * Run an async mapper over items with a bounded number of calls in flight.
+ *
+ * The probe helpers used to fan out with a plain `Promise.all` over every path
+ * at once. A whole-world scan reaches tens of thousands of paths, which floods
+ * the browser's connection queue and starves everything else on the page. Eight
+ * concurrent requests is what the static-switch warm-up has always used and it
+ * keeps a local Foundry server busy without crowding anything out.
+ *
+ * Exported so scenepacker and the repair dialog can share one implementation.
+ *
+ * @param {Iterable} items
+ * @param {(item: any, index: number) => Promise<any>} mapper
+ * @param {number} [limit=8]
+ * @returns {Promise<any[]>}   Results in input order.
+ */
+export const mapWithConcurrency = async (items, mapper, limit = 8) => {
+  const list = [...items];
+  const results = new Array(list.length);
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < list.length) {
+      const index = cursor++;
+      results[index] = await mapper(list[index], index);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, list.length) }, worker));
+  return results;
+};
+
 // Probe each ref's path via HEAD; returns refs annotated with `ok`.
 // Deduplicated per path to avoid hammering the disk with the same lookup.
 const _probeRefs = async (refs) => {
@@ -706,10 +755,10 @@ const _probeRefs = async (refs) => {
     if (!byPath.has(r.path)) byPath.set(r.path, []);
     byPath.get(r.path).push(r);
   }
-  const probed = await Promise.all([...byPath.keys()].map(async p => {
+  const probed = await mapWithConcurrency([...byPath.keys()], async p => {
     const r = await headCheck(p);
     return { path: p, ok: r.ok };
-  }));
+  });
   const okByPath = new Map(probed.map(p => [p.path, p.ok]));
   return refs.map(r => ({ ...r, ok: okByPath.get(r.path) ?? false }));
 };
