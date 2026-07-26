@@ -1,35 +1,44 @@
 /**
  * Public release-install API for external callers (poi-teleport).
  *
- * Exposes a single stable entry point on `game.beneos.api`:
+ * Entry points on `game.beneos.api`:
  *
- *   game.beneos.api.installReleaseByNumber(releaseNum, { mapHint, typeHint })
+ *   resolveReleaseForJournal(journalId, opts)  -> resolution, no UI, no side effects
+ *   installReleaseForTarget({ journalId, ... }) -> resolve, confirm, install
+ *   installReleaseByNumber(releaseNum, opts)   -> legacy adapter, unchanged signature
+ *   capabilities                               -> { poiIndex: 1 }
  *
- * The POI Teleporter calls this when a GM clicks "Install Missing Pack" on a
- * Beneos map-note whose target scene is not in the world. The release number
- * comes from the note's `flags["poi-teleport"].releaseHint`.
+ * The POI Teleporter calls this when a GM right-clicks a Beneos map-note whose
+ * target scene is not in the world.
  *
- * Flow:
- *   1. Resolve the POI's reference to a CLOUD-READY release (a listReleases()
- *      entry) via the parsed number, a local-catalog number->release_dir bridge,
- *      or a display_name match. Releases that exist only in the local catalog
- *      (not yet on the cloud) resolve to null.
- *   2. Not cloud-ready / not found -> open the cloud browser so the user can
- *      find it manually (no error notification).
- *   3. No access (not logged in / not an active battlemaps patron) -> open the
- *      cloud window focused on the release so its drawer shows the Join Patreon
- *      state.
- *   4. Access -> confirmation dialog with a 4K/HD choice and the download size,
- *      persist the chosen resolution, then DELEGATE the whole-release install to
- *      the cloud window's proven installer (_onCloudBattlemapInstallNative,
- *      scope "release"), which derives the correct packId from variant_dirs and
- *      uses the release cover.
+ * Why the shape changed
+ * ---------------------
+ * The release NUMBER is not a usable key. It is parsed out of a journal name
+ * frozen at pack time, it drops letter suffixes (0020b became 20), and it is
+ * ambiguous between the main series and the single-map series. Matching it
+ * against other names then compounded the error. Resolution is now keyed on the
+ * target JournalEntry id against an index built from the packages themselves.
  *
- * This file is intentionally self-contained: it registers its own ready hook
- * and attaches to game.beneos.api itself, so it never edits beneos_module.js
- * or the cloud window. The only shared touch is its esmodule entry in
- * module.json.
+ * Two rules govern everything below:
+ *   - Installing the wrong pack is worse than installing nothing. It costs the
+ *     user gigabytes and does not fix their pin. So every guessing stage that
+ *     could not verify its answer was removed rather than tightened.
+ *   - POI must also stay harmless in third-party worlds. Beneos-ness is decided
+ *     by the index (a foreign document id is never in it), never by a fuzzy name.
+ *
+ * Resolution order, each stage returning early:
+ *   1. index by journal id      -> `p[0]`, or a definitive "no package provides
+ *                                  a scene for this" when `p` is empty
+ *   2. index by exact journal name (for pins whose journal document is gone)
+ *   3. local catalog by release token, side series excluded, unique match only
+ *   4. give up honestly and open the cloud browser
+ *
+ * This file stays self-contained: it registers its own hooks and attaches to
+ * game.beneos.api itself, so it never edits beneos_module.js or the cloud window.
  */
+
+import { getPoiIndex, entryById, entryByName, releaseInfo, indexVersion } from "./beneos-poi-index.mjs"
+import { BeneosInstallState } from "./beneos-install-state.mjs"
 
 const MODULE_ID = "beneos-module"
 const RES_SETTING = "battlemap-active-resolution"
@@ -193,42 +202,19 @@ async function openCloudWindowOnRelease(release) {
 }
 
 /**
- * Extract a Beneos release number from a single identifier string. The catalog
- * encodes the number several ways and NONE of them is a guaranteed bare integer:
- *   - pack / release_dir slug:  `bm_0011_cos_barovia_village` (optionally
- *     `beneos_`-prefixed) -> 11
- *   - per-scene catalog key:    `11-00_1F-4K_Still_Battlemap_GRIDLESS` -> 11
- *   - download_pack label:      `Barovia Village - 11` -> 11
- * Returns NaN when no number is found.
+ * Release token of an on-disk release_dir, letter suffix preserved:
+ * `bm_0057b` -> "57b", `bm_0005` -> "5". Empty for every side series, which is
+ * exactly what we want: those must never be reachable through a bare number.
  */
-function releaseNumFromString(s) {
-  const str = String(s || "")
-  // `bm_0011_slug` / `beneos_bm_0011_...` (the `beneos_` prefix is OPTIONAL;
-  // requiring it was the original bug that left release 11 unresolved).
-  let m = str.match(/(?:^|[^a-z0-9])bm_0*(\d+)[_-]/i)
-  if (m) return parseInt(m[1], 10)
-  // Catalog key `11-00_...` / `11_08_...` (leading number, then sep + digit).
-  m = str.match(/^0*(\d+)[-_]\d/)
-  if (m) return parseInt(m[1], 10)
-  // download_pack trailing `… - 11`.
-  m = str.match(/-\s*0*(\d+)\s*$/)
-  if (m) return parseInt(m[1], 10)
-  return NaN
+function releaseTokenFromDir(dir) {
+  const m = /^bm_(\d{4})([a-z]?)$/.exec(String(dir || "").trim())
+  return m ? `${parseInt(m[1], 10)}${m[2]}` : ""
 }
 
-/**
- * Does a release object (from listReleases) belong to the given release number?
- * Matches against release_num (bare integer) OR the number encoded in
- * release_dir / pack / download_pack, so a POI's parsed number resolves even
- * when release_num is formatted differently than the bare integer.
- */
-function releaseMatchesNumber(r, want) {
-  const direct = parseInt(r?.release_num, 10)
-  if (Number.isFinite(direct) && direct === want) return true
-  for (const f of [r?.release_dir, r?.pack, r?.download_pack]) {
-    if (releaseNumFromString(f) === want) return true
-  }
-  return false
+/** Normalise a token from either side of the comparison ("0020b" -> "20b"). */
+function normalizeToken(token) {
+  const m = /^0*(\d+)([a-z]?)$/i.exec(String(token || "").trim())
+  return m ? `${parseInt(m[1], 10)}${(m[2] || "").toLowerCase()}` : ""
 }
 
 /** Fetch the cloud-ready release list, or [] on any failure. */
@@ -245,78 +231,52 @@ async function safeListReleases() {
 }
 
 /**
- * Bridge a release number to its on-disk release_dir using the LOCAL bmap
- * catalog (`databaseHolder.getAll("bmap")`). The catalog lists every release
- * (cloud-ready or not); each per-scene entry carries `properties.release_dir`,
- * which is exactly the key the cloud window indexes releases by
- * (`_releaseIndex`, see `_onCloudBattlemapInstallNative`). We only return the
- * release_dir string; whether that release is actually installable is decided
- * afterwards by checking it against listReleases().
+ * Last-resort bridge from a release token to an on-disk release_dir, using the
+ * LOCAL bmap catalog. Deliberately far stricter than its predecessor:
+ *
+ *   - only `properties.release_dir` is read. The old version also mined the
+ *     per-scene catalog KEY and `download_pack`, which is why `bm_single_map_0005`
+ *     could claim the number 5 and steal it from `bm_0005`. Which one won was
+ *     decided by the key order of a JSON file we do not control.
+ *   - every side series is excluded up front. A destination must never send the
+ *     user into a single-map, bundle, combo, tour, landing or extras package
+ *     just because the digits happened to line up.
+ *   - the token keeps its letter suffix, so `bm_0057b` is reachable and, more
+ *     importantly, "57" no longer silently matches it.
+ *   - a non-unique result yields "" rather than a first-match-wins pick.
+ *
  * @returns {string} release_dir or "".
  */
-function catalogReleaseDirForNumber(want) {
-  if (!Number.isFinite(want)) return ""
+function catalogReleaseDirForToken(token) {
+  const want = normalizeToken(token)
+  if (!want) return ""
   const catalog = game.beneos?.databaseHolder?.getAll?.("bmap")
   if (!catalog || typeof catalog !== "object") return ""
+
+  const hits = new Set()
   for (const key in catalog) {
-    const props = catalog[key]?.properties || {}
-    const num = [props.release_dir, props.pack, props.download_pack, key]
-      .map(releaseNumFromString)
-      .find(n => Number.isFinite(n))
-    if (num === want && props.release_dir) return String(props.release_dir).trim()
+    const dir = String(catalog[key]?.properties?.release_dir || "").trim()
+    if (!dir) continue
+    if (releaseTokenFromDir(dir) === want) hits.add(dir)
   }
-  return ""
+  return hits.size === 1 ? [...hits][0] : ""
+}
+
+/** Look up one cloud-ready release by its release_dir. */
+function findCloudRelease(list, releaseDir) {
+  if (!releaseDir) return null
+  return list.find(r => String(r?.release_dir || "") === releaseDir) || null
 }
 
 /**
- * Resolve a POI's release reference to a CLOUD-READY release object (an entry of
- * listReleases()), or null. The install path works exclusively with these, so a
- * non-cloud-ready release (present only in the local catalog) resolves to null
- * and the caller opens the cloud browser instead of forcing a 404 install.
- *
- * Order: (a) number match directly in listReleases; (b) number -> release_dir
- * via the local catalog, then exact release_dir lookup in listReleases;
- * (c) display_name match for special releases without a number.
- * @returns {Promise<object|null>}
+ * Strip the trailing release number from a cloud display name, since the number
+ * is rendered separately. "Barovia Village - 11" -> "Barovia Village".
  */
-async function resolveCloudRelease(releaseNum, name) {
-  const list = await safeListReleases()
-  if (!list.length) return null
-
-  const want = parseInt(releaseNum, 10)
-  if (Number.isFinite(want)) {
-    let rel = list.find(r => releaseMatchesNumber(r, want))
-    if (rel) return rel
-    const dir = catalogReleaseDirForNumber(want)
-    if (dir) {
-      rel = list.find(r => String(r?.release_dir || "") === dir)
-      if (rel) return rel
-    }
-  }
-
-  if (name) {
-    const q = normalizeReleaseName(name)
-    if (q) {
-      const norm = r => normalizeReleaseName(r?.display_name)
-      return list.find(r => norm(r) === q)
-          || list.find(r => { const n = norm(r); return n && (n.includes(q) || q.includes(n)) })
-          || null
-    }
-  }
-  return null
-}
-
-/**
- * Normalise a release / journal name to a comparable search term:
- * strip the teleporter prefix, collapse separators, lowercase.
- */
-function normalizeReleaseName(s) {
-  return String(s || "")
-    .replace(/^DontTouch-POI-Teleporter-?/i, "")
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase()
+function cleanDisplayName(s) {
+  // U+2013 and U+2014 are the two longer separator code points that turn up in
+  // legacy display names next to the plain hyphen.
+  const SEPARATORS = "-" + String.fromCharCode(0x2013, 0x2014)
+  return String(s || "").replace(new RegExp(`\\s*[${SEPARATORS}]\\s*\\d{1,4}[a-z]?\\s*$`, "i"), "").trim()
 }
 
 /**
@@ -356,44 +316,176 @@ async function runNativeReleaseInstall(releaseDir, list) {
   }
 }
 
+/** Empty resolution, so every caller can read the same fields unconditionally. */
+function emptyResolution(resolvedBy = "none") {
+  return {
+    found: false, kind: "unknown", releaseDir: null, cloudId: null,
+    title: null, label: null, series: null, sceneName: null,
+    installed: false, cloudReady: false, ambiguous: false, candidates: [],
+    resolvedBy, indexVersion: null
+  }
+}
+
 /**
- * Public entry point. See file header for the full flow.
- * @param {number} [releaseNum]           Beneos release number (e.g. 46).
+ * Resolve a teleporter target to the release that ships its destination scene.
+ * Pure lookup: no dialogs, no downloads, no notifications. POI calls this to
+ * BUILD ITS MESSAGE, which is why it has to exist separately from the install.
+ *
+ * `found: false` with `resolvedBy: "index"` is a strong statement, not a
+ * failure: the index knows this journal and knows that no package provides a
+ * scene for it. The caller must then stop, not fall through to guessing.
+ *
+ * @param {string} journalId              target JournalEntry id (note.entryId)
  * @param {object} [opts]
- * @param {number} [opts.mapHint]         scene number within the release (unused for whole-release install; kept for future per-map scope)
- * @param {string} [opts.typeHint]        type code (BM/SC) hint (reserved)
- * @param {string} [opts.name]            target journal name; used to resolve special releases (no number) via display_name match
+ * @param {string} [opts.journalName]     name, for the exact-name fallback and display
+ * @param {string} [opts.releaseToken]    release token incl. letter suffix ("57b")
+ * @param {number} [opts.releaseHint]     legacy numeric hint, used only if no token
+ * @returns {Promise<object>} resolution
  */
-export async function installReleaseByNumber(releaseNum, { mapHint, typeHint, name } = {}) {
-  const cloud = game.beneos?.cloud
+export async function resolveReleaseForJournal(journalId, { journalName, releaseToken, releaseHint } = {}) {
+  const index = await getPoiIndex()
+  const out = emptyResolution()
+  out.indexVersion = indexVersion(index)
 
-  // Resolve to a CLOUD-READY release object (a listReleases entry). A release
-  // that exists only in the local catalog (not yet on the cloud) resolves to
-  // null on purpose.
-  const release = await resolveCloudRelease(releaseNum, name)
+  // --- stage 1: the document id, which is the only stable key we have.
+  let entry = entryById(index, journalId)
+  let resolvedBy = "index"
 
-  // (2) Not cloud-ready / not found -> silently open the browser so the user
-  // can find it manually (no extra notification, per the agreed behaviour).
-  if (!release) {
-    await openCloudWindowOnRelease(null)
-    return
+  // --- stage 2: exact name, for pins whose journal document is gone from the world.
+  if (!entry && journalName) {
+    entry = entryByName(index, journalName)
+    if (entry) resolvedBy = "index-name"
   }
 
-  // (3) No access -> open the window focused on the release (Join Patreon state).
+  if (entry) {
+    out.kind = entry.k === "c" ? "content" : entry.k === "t" ? "teleport" : "unknown"
+    out.resolvedBy = resolvedBy
+
+    // A content journal (documentation, navigation, lore) is not a destination.
+    // It must never produce an install offer, no matter what its name looks like.
+    if (out.kind === "content") return out
+
+    if (entry.p?.length) {
+      out.releaseDir = entry.p[0]
+      out.found = true
+      out.ambiguous = entry.p.length > 1
+      out.candidates = entry.p.map(dir => {
+        const ri = releaseInfo(index, dir)
+        return { releaseDir: dir, title: ri?.title || dir, label: ri?.label || "" }
+      })
+      const scene = (entry.s || []).find(s => s.r === out.releaseDir) || (entry.s || [])[0]
+      out.sceneName = scene?.t || null
+    } else {
+      // Known journal, but no package anywhere ships a scene for it. Definitive.
+      return out
+    }
+  }
+
+  // --- stage 3: local catalog by token. Unique main-series match only.
+  if (!out.releaseDir) {
+    const token = releaseToken || (Number.isFinite(Number(releaseHint)) ? String(releaseHint) : "")
+    const dir = catalogReleaseDirForToken(token)
+    if (dir) {
+      out.releaseDir = dir
+      out.found = true
+      out.kind = "teleport"
+      out.resolvedBy = "catalog-number"
+    } else {
+      // --- stage 4: honest give-up. No further stage may guess.
+      return out
+    }
+  }
+
+  // Enrich from the index, then let the cloud's own naming win where available.
+  const info = releaseInfo(index, out.releaseDir)
+  if (info) {
+    out.title = info.title || null
+    out.label = info.series === "bm" ? (info.label || "") : ""
+    out.series = info.series || null
+  }
+
+  const list = await safeListReleases()
+  const cloudRelease = findCloudRelease(list, out.releaseDir)
+  if (cloudRelease) {
+    out.cloudReady = true
+    out.cloudId = cloudRelease.cloud_release_id || null
+    const display = cleanDisplayName(cloudRelease.display_name)
+    if (display) out.title = display
+  }
+  if (!out.title) out.title = out.releaseDir
+
+  try { out.installed = BeneosInstallState.findByReleaseDir(out.releaseDir).length > 0 } catch (_e) { /* ignore */ }
+
+  return out
+}
+
+/**
+ * Cheap Beneos-ness test for a single journal id: a map lookup after the index
+ * is loaded once, with no release list and no network.
+ *
+ * POI needs this on every note of every scene it draws, so it must stay cheap,
+ * and it must be separate from resolveReleaseForJournal() for exactly that
+ * reason. A document id from a third-party world is never in the index, so this
+ * can not produce a false positive on somebody else's content.
+ *
+ * @param {string} journalId
+ * @returns {Promise<""|"teleport"|"content">}
+ */
+export async function classifyBeneosJournal(journalId) {
+  if (!journalId) return ""
+  const entry = entryById(await getPoiIndex(), journalId)
+  if (!entry) return ""
+  if (entry.k === "t") return "teleport"
+  if (entry.k === "c") return "content"
+  return ""
+}
+
+/**
+ * Resolve and, when possible, install the release that provides a teleporter
+ * target. Same confirm / access / delegate flow as before, but it can no longer
+ * be pointed at a package that does not contain the destination.
+ *
+ * @param {object} opts
+ * @param {string} [opts.journalId]    target JournalEntry id (preferred key)
+ * @param {string} [opts.journalName]  target journal name
+ * @param {string} [opts.releaseToken] release token incl. letter suffix
+ * @param {number} [opts.releaseHint]  legacy numeric hint
+ * @returns {Promise<object>} { status, ...resolution }
+ */
+export async function installReleaseForTarget(opts = {}) {
+  const cloud = game.beneos?.cloud
+  const res = await resolveReleaseForJournal(opts.journalId, opts)
+  const done = (status) => ({ status, ...res })
+
+  // Content journals get an info text from POI, never a download.
+  if (res.kind === "content") return done("content")
+
+  // Nothing verified: open the browser and let the user decide. We deliberately
+  // do NOT fall back to a name or number guess here.
+  if (!res.found || !res.releaseDir) {
+    await openCloudWindowOnRelease(null)
+    return done("not-found")
+  }
+
+  const list = await safeListReleases()
+  const release = findCloudRelease(list, res.releaseDir)
+  if (!release) {
+    // Known destination, but the release is not cloud-ready for this user.
+    await openCloudWindowOnRelease(null)
+    return done("browser-opened")
+  }
+
   const loggedIn = cloud?.isLoggedIn?.() === true
   const hasAccess = loggedIn && cloud?.hasCampaignAccess?.("battlemaps") === true
   if (!hasAccess) {
     ui.notifications?.info?.(L("BENEOS.Cloud.Bmap.PoiInstall.NoAccess",
       "An active Beneos Battlemaps membership is required to install this release."))
     await openCloudWindowOnRelease(release)
-    return
+    return done("no-access")
   }
 
-  // (4) Access -> confirm (4K/HD + real size from listReleases), persist the
-  // chosen resolution, then delegate the whole-release install to the proven
-  // cloud-window installer (which reads the setting + derives the right packId).
   const choice = await promptInstall(release)
-  if (!choice) return
+  if (!choice) return done("cancelled")
 
   const vi = variantInfo(release)
   let variant = ""
@@ -404,9 +496,31 @@ export async function installReleaseByNumber(releaseNum, { mapHint, typeHint, na
     try { await game.settings.set(MODULE_ID, RES_SETTING, variant) } catch (_e) { /* ignore */ }
   }
 
-  // listReleases() is cached after resolveCloudRelease(), so this is a cheap
-  // re-read used only to pre-seed the delegated window's release index.
-  await runNativeReleaseInstall(release.release_dir, await safeListReleases())
+  await runNativeReleaseInstall(release.release_dir, list)
+  return done("installed")
+}
+
+/**
+ * Legacy entry point, signature unchanged so older poi-teleport builds in the
+ * field keep working. They now benefit from the hardened resolution without any
+ * update on their side: the fuzzy name stage is gone and the catalog stage no
+ * longer confuses the main series with the single-map series.
+ *
+ * @param {number} [releaseNum]     Beneos release number (e.g. 46).
+ * @param {object} [opts]
+ * @param {string} [opts.journalId] target journal id, when the caller knows it
+ * @param {number} [opts.mapHint]   scene number within the release (whole-release install)
+ * @param {string} [opts.typeHint]  type code (BM/SC)
+ * @param {string} [opts.name]      target journal name
+ */
+export async function installReleaseByNumber(releaseNum, { journalId, mapHint, typeHint, name } = {}) {
+  return installReleaseForTarget({
+    journalId,
+    journalName: name,
+    releaseHint: releaseNum,
+    mapHint,
+    typeHint
+  })
 }
 
 // Self-register on the public API surface. game.beneos is created at init by
@@ -415,4 +529,10 @@ Hooks.once("ready", () => {
   if (!game.beneos) return
   game.beneos.api = game.beneos.api || {}
   game.beneos.api.installReleaseByNumber = installReleaseByNumber
+  game.beneos.api.installReleaseForTarget = installReleaseForTarget
+  game.beneos.api.resolveReleaseForJournal = resolveReleaseForJournal
+  game.beneos.api.classifyBeneosJournal = classifyBeneosJournal
+  // Capability marker rather than function sniffing: `typeof fn === "function"`
+  // only proves a name exists, not that it honours this contract.
+  game.beneos.api.capabilities = Object.assign({}, game.beneos.api.capabilities, { poiIndex: 1 })
 })

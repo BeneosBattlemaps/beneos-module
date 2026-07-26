@@ -4,6 +4,23 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.5.0 # 2026-07-26
+
+**Fixes**
+- Fixed: "Install Missing Pack" on a Point of Interest pin could download the wrong release. Which release you got depended on the order of entries in a catalog file, so releases 5, 8, 15 and 16 reliably installed a Single Map pack instead of the battlemap release of the same number, and roughly a dozen more numbers were one reshuffle away from the same fate.
+- Fixed: Releases with a letter suffix (20b, 42b, 42c, 46b, 47b, 53b, 57b, 57c, 70b, 70c, 93b) could not be reached at all. The suffix was dropped, so a pin pointing into "Vallaki Streets" (20b) installed "Coffin Makers Shop" (20).
+- Fixed: A pin whose release could not be identified fell through to a name similarity match that could start a multi-gigabyte download of a completely unrelated pack.
+- Fixed: Destinations that live in a release whose name does not carry their number now resolve correctly. The Barovia region map is the largest case: over 400 pins across 34 releases pointed at it, and every one of them offered the wrong download.
+
+**New**
+- New: Beneos now ships a destination index built from the release packages themselves. A teleporter pin is resolved by the identity of its target journal, not by a number parsed out of a journal name, so the answer no longer depends on naming that was frozen when the pack was built.
+- New: The install prompt names the release it is about to download and the destination scene inside it, instead of showing only a release number.
+- New: When no release provides a destination, Beneos says so plainly instead of proposing a download. Installing the wrong pack costs you disk space and does not fix the pin, so an honest "unknown" is now preferred over a guess.
+
+**Improved**
+- Improved: The index refreshes itself from the Beneos Cloud in the background and falls back to the copy shipped with the module, so resolution keeps working offline.
+- Improved: Public API for the Point of Interest Teleporter. `installReleaseByNumber` keeps working unchanged for older versions of that module, and they benefit from the corrected resolution without needing an update.
+
 ### 14.4.1 # 2026-07-17
 
 **Fixes**
