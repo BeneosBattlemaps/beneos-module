@@ -4,6 +4,18 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.4.4 # 2026-07-30
+
+**Fixes**
+- Fixed: Content you bought in the shop showed up as locked in the Beneos Cloud browser, with a "Join Patreon" button where the Install button belonged. The module decided access from your Patreon membership alone and ignored the answer the server had already given it, so a purchase, an admin gift and loyalty content were all treated as if you owned nothing. Access now follows the server, which knows about every way a release can be unlocked.
+- Fixed: The same wrong check also hid individual maps of a release you had paid for.
+
+**New**
+- New: Locked map releases now offer a "Buy pack" button next to "Join Patreon". It links straight to that release's shop page and only appears when the release is actually for sale, so it never leads to a dead page. One purchase unlocks the release permanently, with no membership required.
+
+**Removed**
+- Removed: The Moulinette installer. Every map in the catalogue installs through the Beneos Cloud pipeline, so the second install button, the marketplace hand-off and the Scene-Packer import path are gone. Existing worlds are untouched: the repair that keeps older Moulinette-installed asset paths working stays in place.
+
 ### 14.4.3 # 2026-07-30
 
 **Fixes**

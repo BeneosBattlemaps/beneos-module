@@ -171,8 +171,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       openNewsDetail:          BeneosCloudWindowV2._onOpenNewsDetail,
       openNewsCta:             BeneosCloudWindowV2._onOpenNewsCta,
       switchToCategory:        BeneosCloudWindowV2._onSwitchToCategory,
-      openRailEntity:          BeneosCloudWindowV2._onOpenRailEntity,
-      openMoulinetteForMap:    BeneosCloudWindowV2._onOpenMoulinetteForMap
+      openRailEntity:          BeneosCloudWindowV2._onOpenRailEntity
     }
   }
 
@@ -1533,13 +1532,26 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       : (game.beneos?.cloud?.isFreeAsset?.(assetType, data.key) === true)
     // bmaps have no local install tracking, but they are NOT unconditionally
     // cloud-available: a map is only installable when the user actually has
-    // access (campaign / free / its release already installed). Forcing this
-    // true made isLocked never fire for maps, so locked maps wrongly showed an
-    // install button instead of the "Join Patreon" CTA.
+    // access. Forcing this true made isLocked never fire for maps, so locked
+    // maps wrongly showed an install button instead of the "Join Patreon" CTA.
+    //
+    // Access comes from the SERVER: list_releases carries can_install per
+    // release, which already accounts for tier, shop purchase, gift and
+    // loyalty. An individual map inherits its parent release's verdict. Asking
+    // only hasCampaign here locked shop buyers out of maps they had paid for
+    // (reported 2026-07-30). hasCampaign stays as the fallback for cards whose
+    // release is not in the index yet.
+    const bmapRelease = (assetType === "bmap" && props.release_dir)
+      ? (this._releaseIndex?.get?.(props.release_dir) || null)
+      : null
+    const bmapReleaseCanInstall = bmapRelease ? (bmapRelease.can_install !== false) : false
+    // An individual map inherits its parent release's shop product, so a locked
+    // scene card can offer the same "Buy pack" route as the release card.
+    const bmapShopUrl = bmapRelease?.shop_url || null
     const isCloudAvailable = assetType === "bmap"
-      ? (hasCampaign || isFree || bmapInstalled)
+      ? (bmapReleaseCanInstall || hasCampaign || isFree || bmapInstalled)
       : !!data.isCloudAvailable
-    const isLocked = !isCloudAvailable && !isInstalled && !hasCampaign && !isFree
+    const isLocked = !isCloudAvailable && !isInstalled && !isFree
     if (isLocked) dragMode = "none"
     // Installed asset with a pending update the user is no longer entitled to
     // (Patreon access lost or downgraded, or it was installed under a paid
@@ -2080,10 +2092,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // it into the green Free section (alongside not-installed free cards that
       // show a Sign-In button) made owned and not-yet-owned cards look identical.
       // isLocked already excludes installed cards; new/update stay intact.
+      // isLocked now follows the server verdict, so it no longer needs the
+      // !hasCampaign guard here: a bought or gifted map must never land in the
+      // locked group just because the buyer holds no Patreon membership.
       groupKind: (!hasCampaign && isFree && !isInstalled) ? "free"
-              :  (!hasCampaign && isLocked) ? "locked"
+              :  (isLocked) ? "locked"
               :  (data?.isNew    ? "new"
               :  (data?.isUpdate ? "update" : "regular")),
+      shopUrl: bmapShopUrl,
       // Wave B-8e: clickable tags. For every tag the template renders,
       // expose two parallel fields:
       //   - <tag>Tooltip  → string from commonData.hover or null
@@ -2964,32 +2980,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
             + ` data-bmap-scope="release" data-bmap-release-card="true" data-bmap-native="true"`
             + ` data-tooltip="${localize("BENEOS.Cloud.Bmap.InstallNativeReleaseTooltip")}">`
             + `<i class="fa-solid fa-layer-group"></i></button>`
-            + `<button type="button" class="bc-card-button bc-action-install bc-install-legacy"`
-            + ` data-asset-key="${card.key}" data-asset-type="${card.assetType}"`
-            + ` data-bmap-legacy="true"`
-            + ` data-tooltip="${localize("BENEOS.Cloud.Bmap.LegacyMoulinetteTooltip")}">`
-            + `<i class="fa-solid fa-cube"></i></button>`
         }
-        // Plan §18.7 individual-map: single Beneos Cloud button (native) +
-        // Moulinette-legacy fallback below. The native button routes
-        // through #onInstallClick (data-bmap-native="true") to
+        // Individual map: same native pipeline, scene scope. Routes through
+        // #onInstallClick (data-bmap-native="true") to
         // BeneosNativeBattlemapInstaller.
-        if (card.cloudReady) {
-          return `<button type="button" class="bc-card-button bc-card-button-primary bc-action-install"`
-            + ` data-asset-key="${card.key}" data-asset-type="${card.assetType}"`
-            + ` data-bmap-scope="scene" data-bmap-native="true"`
-            + ` data-tooltip="${localize("BENEOS.Cloud.Bmap.InstallNativeSceneTooltip")}">`
-            + `<i class="fa-solid fa-cloud-arrow-down"></i></button>`
-            + `<button type="button" class="bc-card-button bc-action-install bc-install-legacy"`
-            + ` data-asset-key="${card.key}" data-asset-type="${card.assetType}"`
-            + ` data-bmap-legacy="true"`
-            + ` data-tooltip="${localize("BENEOS.Cloud.Bmap.LegacyMoulinetteTooltip")}">`
-            + `<i class="fa-solid fa-cube"></i></button>`
-        }
-        return `<button type="button" class="bc-card-button bc-card-button-primary bc-action-install bc-action-moulinette"`
+        return `<button type="button" class="bc-card-button bc-card-button-primary bc-action-install"`
           + ` data-asset-key="${card.key}" data-asset-type="${card.assetType}"`
-          + ` data-tooltip="${localize("BENEOS.Cloud.Card.MoulinetteTooltip")}">`
-          + `<i class="fa-solid fa-cube"></i> ${localize("BENEOS.Cloud.Card.Moulinette")}</button>`
+          + ` data-bmap-scope="scene" data-bmap-native="true"`
+          + ` data-tooltip="${localize("BENEOS.Cloud.Bmap.InstallNativeSceneTooltip")}">`
+          + `<i class="fa-solid fa-cloud-arrow-down"></i></button>`
       }
       return `<button type="button" class="bc-card-button bc-card-button-primary bc-action-install"`
         + ` data-asset-key="${card.key}" data-asset-type="${card.assetType}"`
@@ -3235,17 +3234,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // pipeline with a chosen scope. The drawer template emits three
       // buttons with data-bmap-scope="scene|pair|release"; the card-grid
       // emits a single button without that attr, which defaults to scene.
-      // Unmigrated entries (no cloud_release_id) still fall back to the
-      // Moulinette searchUI hand-off.
-      // Plan §13.3.6 dual-button: a button can carry data-bmap-legacy="true"
-      // to force the Moulinette path even when cloud_release_id is set.
-      // Lets the user A/B-test cloud vs legacy side by side during migration.
       // Plan §15.1 release-card path: release cards live outside the catalog,
       // so the cloud-ready check falls back to the release index.
       const dbHolder = game.beneos?.databaseHolder
       const bmapData = dbHolder?.getAll?.("bmap")?.[key]
       const props = bmapData?.properties || {}
-      const forceLegacy = btn?.dataset?.bmapLegacy === "true"
       const isReleaseCardAttr = btn?.dataset?.bmapReleaseCard === "true"
       // Drawer paths can open for a release-card too — the drawer.asset is
       // synthesized without the data-bmap-release-card attr. Fall back to
@@ -3254,9 +3247,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const isReleaseCard = isReleaseCardAttr || (inReleaseIndex && !props.cloud_release_id)
       // Plan §20 W4.2 - locked release short-circuit. When the cloud responded
       // can_install=false on this release we open the unlock-CTA URL (Patreon
-      // join / shop purchase) instead of firing the install pipeline. The
-      // Moulinette legacy button stays clickable next to it for the cards
-      // that have a legacy match - that path doesn't require cloud access.
+      // join / shop purchase) instead of firing the install pipeline.
       if (isReleaseCard) {
         const rel = this._releaseIndex?.get?.(key)
         if (rel && rel.can_install === false) {
@@ -3266,10 +3257,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
           return
         }
       }
+      // Every catalog scene carries the three cloud fields (verified 2026-07-30:
+      // 2071 of 2071), so this is effectively always true. Kept as a guard so a
+      // malformed catalog entry fails with a clean notice instead of throwing
+      // inside the installer.
       const cloudReady = isReleaseCard
         || inReleaseIndex
         || !!(props.cloud_release_id && props.cloud_scene_slug && props.release_dir)
-      if (cloudReady && !forceLegacy) {
+      if (cloudReady) {
         // "Free without account" (2026-07-01): an allowlisted release
         // (public_download) installs without a Cloud session. The anonymous
         // scenepacker manager (sessionId='anonymous') mints its URLs and the
@@ -3285,19 +3280,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         const scope = btn?.dataset?.bmapScope || (isReleaseCard ? "release" : "scene")
         const idForLog = isReleaseCard ? key : (props.cloud_release_id || "(unknown)")
         try { console.log("[beneos-bm] native install", idForLog, scope, key) } catch (_) {}
-        // Cloud install is ALWAYS the in-house native installer now. The legacy
-        // scene-packer route (_onCloudBattlemapInstall -> MoulinetteImporter) is
-        // retired so a Beneos Cloud install never touches scene-packer. The
-        // Moulinette-legacy button still routes to the marketplace handoff below
-        // (forceLegacy), which opens the Moulinette platform, not our installer.
+        // Cloud install is ALWAYS the in-house native installer. Scene-packer
+        // and the Moulinette marketplace hand-off were both retired in 14.4.4.
         BeneosCloudWindowV2._onCloudBattlemapInstallNative.call(this, event, key, scope)
       } else {
-        try { console.log("[beneos-bm] legacy moulinette install", props.cloud_release_id || "(unmigrated)", key) } catch (_) {}
-        // .call(this): _onMoulinetteInstall reads this._releaseIndex to
-        // resolve a release_dir key (release-card legacy clicks) to its
-        // Moulinette creator + pack. Without the instance context the
-        // release path would silently fall through to the no-terms notice.
-        BeneosCloudWindowV2._onMoulinetteInstall.call(this, event, key)
+        try { console.warn("[beneos-bm] catalog entry lacks cloud fields", key) } catch (_) {}
+        this.#notifyInstallBlocked("unavailable", key)
       }
     }
   }
@@ -3818,6 +3806,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       login:        "BENEOS.Cloud.Notification.BlockedLogin",
       patreon:      "BENEOS.Cloud.Notification.BlockedPatreon",
       updatePatron: "BENEOS.Cloud.Notification.BlockedUpdatePatreon",
+      unavailable:  "BENEOS.Cloud.Notification.BlockedUnavailable",
     }[reason] || "BENEOS.Cloud.Notification.BlockedPatreon"
     try { ui.notifications?.warn?.(game.i18n.localize(key)) } catch (_) {}
     this.#flashCardError(assetKey)
@@ -4771,19 +4760,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     })
   }
 
-  // Home-tab Maps-rail tile click: delegate to the existing Moulinette
-  // hand-off so the browser opens the right map-pack filter exactly like
-  // the Maps-tab does. data-target-key holds the bmap key.
-  static _onOpenMoulinetteForMap(event, target) {
-    event.preventDefault()
-    event.stopPropagation?.()
-    const key = target?.dataset?.targetKey
-    if (!key) return
-    // .call(this): pass the instance so release_dir keys resolve via
-    // this._releaseIndex inside _onMoulinetteInstall (see #onInstallClick).
-    BeneosCloudWindowV2._onMoulinetteInstall.call(this, event, key)
-  }
-
   // News CTA: opens the news item's cta_url in a new browser tab.
   // stopPropagation prevents the surrounding news-card data-action
   // (openNewsDetail) from firing as well when the user clicks the
@@ -5062,296 +5038,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       } catch (_) {}
     }
     return inst
-  }
-
-  static async _onCloudBattlemapInstall(_event, bmapKey, installScope = "scene") {
-    const dbHolder = game.beneos?.databaseHolder
-    const bmapData = dbHolder?.getAll?.("bmap")?.[bmapKey]
-    let props = bmapData?.properties || {}
-    let releaseDir = String(props.release_dir || "").trim()
-    let sceneSlug  = String(props.cloud_scene_slug || "").trim()
-
-    // Plan §15.1 release-card path: the install button on a release card
-    // carries the release_dir as its asset-key (the catalog has no entry
-    // with that key). Fall back to the lazy-loaded release index when the
-    // catalog lookup came up empty so the click still wires through to
-    // the existing install pipeline.
-    if (!releaseDir && this._releaseIndex?.get) {
-      const r = this._releaseIndex.get(bmapKey)
-      if (r) {
-        releaseDir = r.release_dir
-        // Synthesize the bits the rest of the function reads from props
-        // so the release-scope branch downstream has what it needs. The
-        // scene-slug stays empty (we never need it for release scope).
-        props = {
-          release_dir:        r.release_dir,
-          cloud_release_id:   r.cloud_release_id,
-          cloud_nb_variants:  r.nb_variants,
-          cloud_scene_slug:   "", // unused for release scope
-        }
-        if (installScope !== "release") {
-          // A release-card was clicked with a scene/pair scope — that
-          // shouldn't happen given how the card emits data-bmap-scope,
-          // but be defensive: install the full release rather than a
-          // missing slug.
-          installScope = "release"
-        }
-      }
-    }
-    if (!releaseDir || (installScope !== "release" && !sceneSlug)) {
-      ui.notifications.warn(`Catalog entry "${bmapKey}" is missing release_dir or cloud_scene_slug.`)
-      return
-    }
-    const nbVariants = Number(props.cloud_nb_variants ?? props.nb_variants ?? 0) || 0
-    const isSingle = nbVariants === 1
-    // Pick the active resolution. Single-variant releases skip the read.
-    let variant = ""
-    if (!isSingle) {
-      variant = "4K"
-      try {
-        const v = game.settings.get("beneos-module", "battlemap-active-resolution")
-        if (v === "HD" || v === "4K") variant = v
-      } catch (_) {
-        try {
-          const v2 = game.settings.get("beneos-module", "battlemap-default-resolution")
-          if (v2 === "HD" || v2 === "4K") variant = v2
-        } catch (_e) { /* both unset; default 4K */ }
-      }
-    }
-    const buildPackId = (slug) => isSingle ? `${releaseDir}_${slug}` : `${releaseDir}_${variant}_${slug}`
-    const mgr = window.BeneosScenePacker
-    if (!mgr) {
-      ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Notification.MoulinetteUnavailable") || "Beneos cloud installer not ready")
-      return
-    }
-    const variantLabel = isSingle ? "" : ` (${variant})`
-    const mapName = bmapData?.name || bmapKey
-
-    // Plan §18 — pass the hero cover into the install-progress window.
-    // For release-card clicks the cover comes from list_releases (already
-    // cached on _releaseIndex). For individual-map clicks fall back to the
-    // catalog thumbnail. The progress window degrades gracefully when null.
-    const releaseEntry = this._releaseIndex?.get?.(releaseDir) || null
-    const hdMode = !isSingle && variant === "HD"
-    const releaseCover = releaseEntry
-      ? (hdMode ? (releaseEntry.cover_url_hd || releaseEntry.cover_url_4k)
-                : (releaseEntry.cover_url_4k || releaseEntry.cover_url_hd))
-      : null
-    const sceneThumb = props.thumbnail
-      ? `https://www.beneos-database.com/data/battlemaps/thumbnails/${props.thumbnail}`
-      : null
-
-    // Resolve the install queue based on scope. Sibling resolution: the catalog
-    // exposes a `sibling` key naming the partner catalog entry; we look it up
-    // and pull its cloud_scene_slug too. Release scope passes the full pack dir
-    // (<release_dir>_<variant> or <release_dir>) — MoulinetteImporter then walks
-    // every scene of the release in one shot.
-    const queue = []
-    if (installScope === "release") {
-      const packId = isSingle ? releaseDir : `${releaseDir}_${variant}`
-      queue.push({ packId, label: mapName + variantLabel, coverUrl: releaseCover })
-    } else if (installScope === "pair") {
-      queue.push({ packId: buildPackId(sceneSlug), label: mapName + variantLabel, coverUrl: releaseCover || sceneThumb })
-      const siblingKey = String(props.sibling || "").trim()
-      const siblingEntry = siblingKey ? dbHolder?.getAll?.("bmap")?.[siblingKey] : null
-      const siblingSlug = String(siblingEntry?.properties?.cloud_scene_slug || "").trim()
-      if (siblingSlug) {
-        const siblingThumb = siblingEntry?.properties?.thumbnail
-          ? `https://www.beneos-database.com/data/battlemaps/thumbnails/${siblingEntry.properties.thumbnail}`
-          : null
-        queue.push({
-          packId: buildPackId(siblingSlug),
-          label:  (siblingEntry?.name || siblingKey) + variantLabel,
-          coverUrl: releaseCover || siblingThumb,
-        })
-      } else {
-        ui.notifications.warn(`Sibling for "${bmapKey}" is missing cloud_scene_slug — installing only this scene.`)
-      }
-    } else {
-      queue.push({ packId: buildPackId(sceneSlug), label: mapName + variantLabel, coverUrl: releaseCover || sceneThumb })
-    }
-
-    // Plan §33.6 — pre-install dialog. If the world already has any variant
-    // of this release recorded, warn the user before the importer runs. The
-    // dialog is skipped for fresh installs (no record on this releaseDir).
-    const existingInstalls = BeneosInstallState.findByReleaseDir(releaseDir)
-    if (existingInstalls.length) {
-      const okToProceed = await BeneosPreInstallDialog.confirm({
-        existingInstalls,
-        releaseDir,
-        newVariant:          isSingle ? "" : variant,
-        releaseDisplayName:  bmapData?.name || releaseEntry?.display_name || releaseDir,
-      })
-      if (!okToProceed) {
-        return
-      }
-      // Variant-switch: drop the old record so the world only ever tracks
-      // one variant per release. Same-variant reinstall keeps the key and
-      // overwrites it on success.
-      const newVariantStr = isSingle ? "" : variant
-      for (const e of existingInstalls) {
-        if ((e.variant || "") !== newVariantStr) {
-          await BeneosInstallState.forget({ releaseDir, variant: e.variant || "" })
-        }
-      }
-    }
-
-    // Plan §33.6 — capture scene-ids the upcoming importPackage creates so
-    // recordInstall stores the link. The scene-packer importer fires
-    // "ScenePacker.importMoulinetteComplete" with {sceneID, actorID, info}
-    // once per imported pack; we collect them until the install loop ends.
-    const installedSceneIds = []
-    const hookId = Hooks.on("ScenePacker.importMoulinetteComplete", (payload) => {
-      const sid = payload?.sceneID
-      if (sid) installedSceneIds.push(String(sid))
-    })
-
-    // Sequential install: MoulinetteImporter is per-scene idempotent so a pair
-    // install is just two awaits. Errors on one entry do not abort the rest;
-    // we surface them individually to the user. The progress window itself is
-    // the user-facing status — we keep the legacy info-toast off so the user
-    // sees only the Beneos UI (Plan §18 toast-suppress).
-    let anySuccess = false
-    for (const job of queue) {
-      try {
-        await mgr.importPackage(job.packId, { label: job.label, coverUrl: job.coverUrl })
-        anySuccess = true
-      } catch (err) {
-        console.warn("BeneosCloudWindowV2 | cloud install failed", job, err)
-        ui.notifications.error(`Cloud install failed for ${job.label}: ${err?.message || err}`)
-      }
-    }
-    Hooks.off("ScenePacker.importMoulinetteComplete", hookId)
-
-    // Plan §33.6 — persist the install record + ping cluster031 log_download.
-    // Only on success: a fully-failed install must not leave a stale install
-    // marker that hides the "missing scenes" symptom on the next render.
-    if (anySuccess) {
-      const assetId = String(releaseEntry?.cloud_release_id || props.cloud_release_id || "")
-      const sourceSig = String(releaseEntry?.content_signature || "")
-      try {
-        await BeneosInstallState.recordInstall({
-          releaseDir,
-          variant:         isSingle ? "" : variant,
-          assetId,
-          sceneIds:        installedSceneIds,
-          sourceSignature: sourceSig,
-          sceneCount:      installedSceneIds.length,
-        })
-      } catch (e) {
-        console.warn("BeneosCloudWindowV2 | recordInstall failed", e)
-      }
-      const labelVariant = isSingle ? "" : (variant === "HD" ? "Foundry_HD" : "Foundry_4K")
-      beneosLogModuleInstall({
-        assetId,
-        variant:    labelVariant,
-        sceneCount: installedSceneIds.length,
-      })
-    }
-  }
-
-  /**
-   * Wave B-5c → Wave B-7: Battlemap install hand-off to Moulinette. Until
-   * the cloud battlemap pipeline is live (Wave B-8 server side), clicking
-   * the Moulinette button on a bmap card opens Moulinette's search UI
-   * pre-filtered by the bmap's download_pack / download_creator /
-   * download_terms — same call the v1 search engine uses
-   * (`beneos_search_engine.js:1158`). The user lands on the matching map
-   * directly instead of having to find it in Moulinette by hand.
-   */
-  static async _onMoulinetteInstall(_event, bmapKey) {
-    const dbHolder = game.beneos?.databaseHolder
-    const catalog = dbHolder?.getAll?.("bmap") || {}
-    let bmapData = catalog[bmapKey]
-    let props = bmapData?.properties || {}
-    let displayName = bmapData?.name || bmapKey
-    // Release-card path: bmapKey is a release_dir, which is not a catalog
-    // entry, so it carries no download_* fields. Resolve the Moulinette
-    // creator/pack from a representative catalog scene of that release. We
-    // read download_pack from the scene (not the release display name)
-    // because the Moulinette pack title can differ from how the release is
-    // labelled in the library (e.g. a pack titled "Crystal Case" whose
-    // release shows as "Crystal Cave"). Release scope drops the per-scene
-    // term so the whole pack shows on Moulinette instead of a single map.
-    if (!props.download_pack && !props.download_creator && this._releaseIndex?.get) {
-      const rel = this._releaseIndex.get(bmapKey)
-      if (rel) {
-        const relDir = String(rel.release_dir || bmapKey)
-        let repProps = null
-        for (const k in catalog) {
-          const p = catalog[k]?.properties
-          if (p && String(p.release_dir || "") === relDir && (p.download_pack || p.download_creator)) { repProps = p; break }
-        }
-        if (repProps) {
-          props = {
-            download_creator: repProps.download_creator || "",
-            download_pack:    repProps.download_pack    || "",
-            download_terms:   "" // release scope: show the whole pack, not one scene
-          }
-          displayName = rel.display_name || relDir
-          bmapData = { name: displayName }
-        }
-      }
-    }
-    const mou = game.modules?.get?.("moulinette")
-    if (!mou?.api?.searchUI) {
-      ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Notification.MoulinetteUnavailable"))
-      return
-    }
-    if (!props.download_terms && !props.download_pack && !props.download_creator) {
-      ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Notification.MoulinetteNoTerms"))
-      return
-    }
-    // Creator + Pack combined narrows Moulinette's cloud browser to the exact
-    // Beneos pack (creator alone or a bare term like "Tavern" would surface
-    // many other creators). Same call the Beneos tour uses (beneos_tours.js,
-    // mou-browser-pack step).
-    const filters = {
-      terms:   props.download_terms   || "",
-      creator: props.download_creator || "",
-      pack:    props.download_pack    || ""
-    }
-    // Moulinette's searchUI throws ("Cannot set properties of undefined
-    // (setting 'collection')") if its cloud browser hasn't finished its first
-    // render+load yet: the internal filterPrefs settings object is only built
-    // once the browser's initial load completes. So render the browser, poll
-    // until isInitialLoadCompleted, then apply the filter (with one retry to
-    // cover the brief window where the flag flips before filterPrefs is set).
-    const isBrowserOpen = () => !!document.querySelector("#mou-cloud, #mou-browser")
-    // Prefer the browser's own async search() over the public searchUI()
-    // wrapper: searchUI fires browser.search WITHOUT awaiting it, so a
-    // cold-start failure escapes as an unhandled rejection we can't trap and
-    // would print a scary console error on this customer-facing path. Calling
-    // browser.search directly lets us await + catch + retry cleanly. Fall
-    // back to searchUI on Moulinette builds that don't expose browser.search.
-    const runSearch = () => (typeof mou.browser?.search === "function")
-      ? mou.browser.search("mou-cloud", "Map", filters)
-      : mou.api.searchUI("mou-cloud", "Map", filters)
-    try {
-      if (!isBrowserOpen() || !mou.browser?.isInitialLoadCompleted) {
-        try { mou.browser?.render?.(true) } catch (_) {}
-        const deadline = Date.now() + 8000
-        while (Date.now() < deadline) {
-          await new Promise(r => setTimeout(r, 200))
-          if (isBrowserOpen() && mou.browser?.isInitialLoadCompleted) break
-        }
-        // Settle: isInitialLoadCompleted can flip true a tick before the
-        // browser's filter-prefs object is wired up (which search() writes to).
-        await new Promise(r => setTimeout(r, 500))
-      }
-      try {
-        await runSearch()
-      } catch (innerErr) {
-        // Retry once after a short settle for the cold-start race above.
-        await new Promise(r => setTimeout(r, 700))
-        await runSearch()
-      }
-    } catch (err) {
-      console.warn("BeneosModule: Moulinette searchUI failed", err)
-      ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Notification.MoulinetteUnavailable"))
-      return
-    }
-    ui.notifications.info(game.i18n.format("BENEOS.Cloud.Notification.MoulinetteSearch", { name: displayName }))
   }
 
   static _onOpenLogin(_event, _target) {
@@ -5805,9 +5491,16 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // a Cloud account to download, whereas a public one does not.
       const isPublic = !!r?.public_download
       const isFree   = this.#releaseIsFree(r.release_dir)
-      const isLocked = !hasCampaign && !isFree && !isPublic && !installed
+      // The SERVER decides access, not the local Patreon flag. can_install
+      // already covers every path that grants a release: an active tier, a shop
+      // purchase, an admin gift, loyalty. Gating on hasCampaign instead made
+      // every shop buyer without a Patreon membership see their own purchase as
+      // locked with a Join-Patreon button (reported 2026-07-30). For anonymous
+      // sessions the backend returns can_install=false, so the logged-out lock
+      // still works.
+      const isLocked = !canInstall && !isFree && !isPublic && !installed
       const groupKind = (!hasCampaign && (isFree || isPublic)) ? "free"
-                      : (!hasCampaign && isLocked) ? "locked"
+                      : isLocked ? "locked"
                       : isUpdate ? "update" : (isNew ? "new" : "regular")
 
       return {
@@ -5823,6 +5516,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // branch instead of the install buttons. Offline cards route into the
         // offline branch (both are checked before isCloudAvailable).
         isCloudAvailable:     (groupKind === "locked") ? false : canInstall,
+        // Shop product for this release, resolved server-side in list_releases.
+        // null when no ACTIVE product exists (extras, tour packs), which keeps
+        // the "Buy pack" CTA from rendering a dead link.
+        shopUrl:              r?.shop_url || null,
         isFree:               isFree || isPublic,
         // "Free without account": read by the install click-gate to bypass the
         // logged-in requirement for this one release.

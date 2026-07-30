@@ -1965,6 +1965,28 @@
 .beneos-cloud-app .bc-card-button-join-patron i {
   font-size: 14px;
 }
+/* Buy-pack CTA, rendered under the Patreon button on locked cards when the
+   release has an active shop product. Beneos gold rather than Patreon red, so
+   the two routes read as different offers: membership versus permanent purchase. */
+.beneos-cloud-app .bc-card-button-buy-pack {
+  background: rgba(224, 168, 74, 0.16);
+  color: #e0a84a;
+  border: 1px solid rgba(224, 168, 74, 0.5);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.beneos-cloud-app .bc-card-button-buy-pack:hover {
+  background: rgba(224, 168, 74, 0.3);
+  color: #fff1d6;
+  border-color: #e0a84a;
+  text-decoration: none;
+}
+.beneos-cloud-app .bc-card-button-buy-pack i {
+  font-size: 13px;
+}
 /* Punkt 2 v2: all three chips (BENEOS, NEW, UPDATE) move into the thumb
  * in grid mode via duplicate `.bc-thumb-chip` instances rendered by the
  * template. Position is relative to `.bc-card-thumb` (position:relative

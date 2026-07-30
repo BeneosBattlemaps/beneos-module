@@ -435,6 +435,14 @@
                 <i class="fa-solid fa-right-to-bracket"></i>
                 {{localize "BENEOS.Cloud.Card.SignIn"}}
               </button>
+              {{#if card.shopUrl}}
+              <a class="bc-card-button bc-card-button-buy-pack"
+                 href="{{card.shopUrl}}" target="_blank" rel="noopener noreferrer"
+                 data-tooltip="{{localize 'BENEOS.Cloud.Card.BuyPackTooltip'}}">
+                <i class="fa-solid fa-cart-shopping"></i>
+                <span>{{localize "BENEOS.Cloud.Card.BuyPack"}}</span>
+              </a>
+              {{/if}}
             {{else if card.isLocked}}
               {{!-- Patron-gate: the user is signed in but lacks the
                    Patreon-campaign membership that unlocks this card.
@@ -448,6 +456,17 @@
                 <i class="fa-brands fa-patreon"></i>
                 <span>{{localize "BENEOS.Patreon.JoinPatron"}}</span>
               </a>
+              {{!-- Second way in: buy this one release outright. Only rendered
+                   when the backend resolved an ACTIVE shop product for it, so
+                   extras and tour packs show no dead link. --}}
+              {{#if card.shopUrl}}
+              <a class="bc-card-button bc-card-button-buy-pack"
+                 href="{{card.shopUrl}}" target="_blank" rel="noopener noreferrer"
+                 data-tooltip="{{localize 'BENEOS.Cloud.Card.BuyPackTooltip'}}">
+                <i class="fa-solid fa-cart-shopping"></i>
+                <span>{{localize "BENEOS.Cloud.Card.BuyPack"}}</span>
+              </a>
+              {{/if}}
             {{else if card.isIncompatible}}
               {{!-- Hard-blocked Loot/Spell on a non-dnd5e system. The button
                    stays clickable so the GM can read the explanation dialog
@@ -473,11 +492,11 @@
                     {{localize "BENEOS.Cloud.Bmap.BundleViewButton"}}
                   </button>
                 {{else if card.isReleaseCard}}
-                  {{!-- Plan §18.7: release-card "Install via Beneos Cloud"
-                       button (native installer, primary) + Moulinette-legacy
-                       fallback. The legacy button resolves the release's
-                       creator + pack from a representative catalog scene and
-                       hands off to Moulinette's cloud browser. --}}
+                  {{!-- Release-card install through the native Beneos pipeline.
+                       The Moulinette-legacy fallback was removed in 14.4.4: all
+                       2071 catalog scenes carry cloud_release_id +
+                       cloud_scene_slug + release_dir, so nothing needs the
+                       marketplace handoff any more. --}}
                   <button type="button" class="bc-card-button bc-card-button-primary bc-action-install{{#if card.isUpdate}} bc-action-update{{/if}}"
                           data-asset-key="{{card.key}}"
                           data-asset-type="{{card.assetType}}"
@@ -488,18 +507,8 @@
                     <i class="fa-solid {{#if card.isUpdate}}fa-rotate{{else}}fa-cloud-arrow-down{{/if}}"></i>
                     {{#if card.isUpdate}}{{localize "BENEOS.Cloud.Card.Update"}}{{else}}{{localize "BENEOS.Cloud.Card.Install"}}{{/if}}
                   </button>
-                  <button type="button" class="bc-card-button bc-action-install bc-install-legacy"
-                          data-asset-key="{{card.key}}"
-                          data-asset-type="{{card.assetType}}"
-                          data-bmap-legacy="true"
-                          data-tooltip="{{localize 'BENEOS.Cloud.Bmap.LegacyMoulinetteTooltip'}}">
-                    <i class="fa-solid fa-cube"></i>
-                  </button>
-                {{else if card.cloudReady}}
-                  {{!-- Plan §18.7 single cloud button: native installer
-                       (Beneos-owned pipeline) + Moulinette-legacy fallback
-                       drunter fuer maps die noch nicht auf der cloud
-                       sind oder bei nativer install-Probleme. --}}
+                {{else}}
+                  {{!-- Individual map: same native pipeline, scene scope. --}}
                   <button type="button" class="bc-card-button bc-card-button-primary bc-action-install{{#if card.isUpdate}} bc-action-update{{/if}}"
                           data-asset-key="{{card.key}}"
                           data-asset-type="{{card.assetType}}"
@@ -509,21 +518,6 @@
                     <i class="fa-solid {{#if card.isUpdate}}fa-rotate{{else}}fa-cloud-arrow-down{{/if}}"></i>
                     {{#if card.isUpdate}}{{localize "BENEOS.Cloud.Card.Update"}}{{else}}{{localize "BENEOS.Cloud.Card.Install"}}{{/if}}
                   </button>
-                  <button type="button" class="bc-card-button bc-action-install bc-install-legacy"
-                          data-asset-key="{{card.key}}"
-                          data-asset-type="{{card.assetType}}"
-                          data-bmap-legacy="true"
-                          data-tooltip="{{localize 'BENEOS.Cloud.Bmap.LegacyMoulinetteTooltip'}}">
-                    <i class="fa-solid fa-cube"></i>
-                  </button>
-                {{else}}
-                <button type="button" class="bc-card-button bc-card-button-primary bc-action-install bc-action-moulinette"
-                        data-asset-key="{{card.key}}"
-                        data-asset-type="{{card.assetType}}"
-                        data-tooltip="{{localize 'BENEOS.Cloud.Card.MoulinetteTooltip'}}">
-                  <i class="fa-solid fa-cube"></i>
-                  {{localize "BENEOS.Cloud.Card.Moulinette"}}
-                </button>
                 {{/if}}
               {{else}}
                 <button type="button" class="bc-card-button bc-card-button-primary bc-action-install"
@@ -904,6 +898,14 @@
               <i class="fa-solid fa-right-to-bracket"></i>
               {{localize "BENEOS.Cloud.Card.SignIn"}}
             </button>
+            {{#if drawer.asset.shopUrl}}
+            <a class="bc-card-button bc-card-button-buy-pack"
+               href="{{drawer.asset.shopUrl}}" target="_blank" rel="noopener noreferrer"
+               data-tooltip="{{localize 'BENEOS.Cloud.Card.BuyPackTooltip'}}">
+              <i class="fa-solid fa-cart-shopping"></i>
+              <span>{{localize "BENEOS.Cloud.Card.BuyPack"}}</span>
+            </a>
+            {{/if}}
           {{else if drawer.asset.isLocked}}
             {{!-- Same Patron-gate as the list card: signed in but missing
                  the Patreon-campaign membership that would unlock this
@@ -915,6 +917,14 @@
               <i class="fa-brands fa-patreon"></i>
               <span>{{localize "BENEOS.Patreon.JoinPatron"}}</span>
             </a>
+            {{#if drawer.asset.shopUrl}}
+            <a class="bc-card-button bc-card-button-buy-pack"
+               href="{{drawer.asset.shopUrl}}" target="_blank" rel="noopener noreferrer"
+               data-tooltip="{{localize 'BENEOS.Cloud.Card.BuyPackTooltip'}}">
+              <i class="fa-solid fa-cart-shopping"></i>
+              <span>{{localize "BENEOS.Cloud.Card.BuyPack"}}</span>
+            </a>
+            {{/if}}
           {{else if drawer.asset.isIncompatible}}
             {{!-- Same hard-block render as the card-grid version. --}}
             <button type="button" class="bc-card-button bc-action-install bc-action-incompatible"
@@ -958,24 +968,6 @@
                   {{localize "BENEOS.Cloud.Bmap.InstallRelease"}}
                 </button>
                 {{/if}}
-                {{!-- Plan §13.3.6 dual-button: Moulinette legacy stays
-                     directly below as a search-UI fallback for catalog
-                     entries that aren't on the cloud yet. --}}
-                <button type="button" class="bc-card-button bc-card-button-block bc-action-install bc-install-legacy"
-                        data-asset-key="{{drawer.asset.key}}"
-                        data-asset-type="{{drawer.asset.assetType}}"
-                        data-bmap-legacy="true"
-                        data-tooltip="{{localize 'BENEOS.Cloud.Bmap.LegacyMoulinetteTooltip'}}">
-                  <i class="fa-solid fa-cube"></i>
-                  {{localize "BENEOS.Cloud.Bmap.LegacyMoulinette"}}
-                </button>
-              {{else}}
-              <button type="button" class="bc-card-button bc-card-button-primary bc-action-install bc-action-moulinette"
-                      data-asset-key="{{drawer.asset.key}}"
-                      data-asset-type="{{drawer.asset.assetType}}">
-                <i class="fa-solid fa-cube"></i>
-                {{localize "BENEOS.Cloud.Card.Moulinette"}}
-              </button>
               {{/if}}
             {{else}}
               {{!-- Wave B-9-fix-46: when more than one card is selected

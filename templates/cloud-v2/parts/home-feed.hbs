@@ -167,15 +167,10 @@
 
             {{#each this.newItems}}
               <button type="button" class="bc-rail-tile"
-                      {{#if (eq this.type "bmap")}}
-                        data-action="openMoulinetteForMap"
-                        data-target-key="{{this.key}}"
-                      {{else}}
-                        data-action="openRailEntity"
-                        data-target-tab="{{this.type}}"
-                        data-target-key="{{this.key}}"
-                        data-target-name="{{this.name}}"
-                      {{/if}}>
+                      data-action="openRailEntity"
+                      data-target-tab="{{this.type}}"
+                      data-target-key="{{this.key}}"
+                      data-target-name="{{this.name}}">
                 {{#if this.thumb}}
                   <img data-bc-lazy data-src="{{this.thumb}}" src="modules/beneos-module/ui/beneos_thumb_placeholder.svg" alt=""
                        class="bc-rail-tile-thumb"
@@ -190,15 +185,10 @@
 
             {{#each this.updatedItems}}
               <button type="button" class="bc-rail-tile"
-                      {{#if (eq this.type "bmap")}}
-                        data-action="openMoulinetteForMap"
-                        data-target-key="{{this.key}}"
-                      {{else}}
-                        data-action="openRailEntity"
-                        data-target-tab="{{this.type}}"
-                        data-target-key="{{this.key}}"
-                        data-target-name="{{this.name}}"
-                      {{/if}}>
+                      data-action="openRailEntity"
+                      data-target-tab="{{this.type}}"
+                      data-target-key="{{this.key}}"
+                      data-target-name="{{this.name}}">
                 {{#if this.thumb}}
                   <img data-bc-lazy data-src="{{this.thumb}}" src="modules/beneos-module/ui/beneos_thumb_placeholder.svg" alt=""
                        class="bc-rail-tile-thumb"
