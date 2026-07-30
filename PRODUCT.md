@@ -53,7 +53,7 @@ The mechanism a neighbouring asset shop cannot truthfully copy: **the preparatio
 - **Two separate Patreon campaigns**, neither includes the other: "Beneos Battlemaps" and "Beneos Creatures, Spells & Loot" (this exact wording is canonical). Membership and shop purchases both unlock cloud downloads.
 - **Beneos Cloud** (PHP on OVH) holds entitlements and serves signed download URLs; the **Foundry module** consumes them through a cloud browser and a native battlemap installer.
 - **Identity runs on email**, no shared SSO yet. The same person can arrive as a Patreon member, a Shopify customer, or both.
-- **Release rhythm** the surfaces must accommodate: roughly two battlemap releases a month plus a backlog of over 1.800 maps, one creature every two weeks, 4 to 7 spells around the 20th, 1 to 7 loot items around the 10th.
+- **Release rhythm** the surfaces must accommodate: roughly two battlemap releases a month plus a backlog of over 2.000 maps, two or more creatures a month, 4 to 7 spells around the 20th, 1 to 7 loot items around the 10th. **The creature rate fluctuates.** Customer-facing copy must never promise a weekly creature; "two or more creatures a month" is the wording that holds in every month. The storefront claimed "1 creature weekly" in two places until 2026-07-28.
 - **Legacy tiers** exist and stay valid: Patreon historically forbade changing a tier's price, so new tiers were opened and old ones hidden. Hidden tiers still hold active paying members with full download rights, which is why the cloud resolves more tiers than are publicly visible.
 - **Manual grants** exist alongside Patreon tiers (sponsors, gifts, support cases) and must be treated as full membership everywhere.
 

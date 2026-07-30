@@ -77,9 +77,7 @@ export class BeneosFXEditor extends HandlebarsApplicationMixin(ApplicationV2) {
    * mid-session OFF-toggle stops further writes.
    */
   static _canOpen() {
-    try {
-      return !!game.settings.get("beneos-module", "beneos-creator-mode")
-    } catch (e) { return false }
+    return BeneosUtility.isBeneosCreatorMode()
   }
 
   /**

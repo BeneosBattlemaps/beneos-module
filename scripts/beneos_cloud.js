@@ -2529,16 +2529,27 @@ export class BeneosCloud {
         // Merge, damit auch teilweise gesetzte Overrides respektiert
         // werden (z.B. nur topDownScale gesetzt, tokenizedScale aus
         // Cloud).
+        //
+        // Der Merge laeuft ueber ALLE Felder, nicht mehr ueber eine feste
+        // Liste. Die alte Whitelist kannte nur topDownScale,
+        // tokenizedScale, fx und fxEnabled. Jedes Cloud-Update loeschte
+        // damit still die Anchor-Werte, die variants-Map mit den
+        // Scale- und Anchor-Werten je Variante und die modusabhaengigen
+        // FX-Listen fxTokenized und fxTopdown. Genau die Felder also, aus
+        // denen Top-Down seine individuellen Werte und die Kreaturen ihre
+        // Effekte beziehen.
         const existingRendering = beneosFlag.rendering || {}
         const cloudRendering = newData?.flags?.world?.beneos?.rendering || {}
-        const mergedRendering = {
-          topDownScale:   existingRendering.topDownScale   ?? cloudRendering.topDownScale   ?? null,
-          tokenizedScale: existingRendering.tokenizedScale ?? cloudRendering.tokenizedScale ?? null,
-          fx: (existingRendering.fx && existingRendering.fx.length > 0)
-            ? existingRendering.fx
-            : (cloudRendering.fx || []),
-          fxEnabled: existingRendering.fxEnabled !== undefined ? existingRendering.fxEnabled : true
+        const mergedRendering = { ...cloudRendering }
+        for (const [key, value] of Object.entries(existingRendering)) {
+          // User-Override gewinnt, aber nur wenn er wirklich etwas aussagt:
+          // null, undefined und leere Listen duerfen den Cloud-Wert nicht
+          // verdraengen.
+          if (value === null || value === undefined) continue
+          if (Array.isArray(value) && value.length === 0) continue
+          mergedRendering[key] = value
         }
+        if (mergedRendering.fxEnabled === undefined) mergedRendering.fxEnabled = true
         // Stage 13a-Polish: backfill isBeneosCreature on every cloud-
         // update — Pre-Polish-Tokens (no explicit marker yet) get the
         // flag set silently the next time the cloud ships a refresh.
@@ -3111,20 +3122,11 @@ export class BeneosCloud {
           // tokenizedScale) still apply.
           try {
             const installStyle = game.settings.get(BeneosUtility.moduleID(), "beneos-default-install-style")
-            const cloudRendering = actorData?.flags?.world?.beneos?.rendering || null
             const topAssetAvailable = !!(topData?.image64 && topData?.filename && topData._beneosUploaded)
             if (installStyle === "topdown" && topAssetAvailable
               && actorData.prototypeToken.texture.src.includes("-token.webp")) {
               actorData.prototypeToken.texture.src =
                 actorData.prototypeToken.texture.src.replace("-token.webp", "-top.webp")
-              const topDownScale = (typeof cloudRendering?.topDownScale === "number" && cloudRendering.topDownScale > 0)
-                ? cloudRendering.topDownScale
-                : BeneosUtility.BENEOS_SCALE_TOPDOWN
-              if (actorData.prototypeToken.texture) {
-                actorData.prototypeToken.texture.scaleX = topDownScale
-                actorData.prototypeToken.texture.scaleY = topDownScale
-              }
-              actorData.prototypeToken.scale = topDownScale
             } else if (installStyle === "topdown" && !topAssetAvailable) {
               // User picked Top-Down as default but the cloud response did
               // not include a top variant. Keep the prototype on 2.5D and
@@ -3135,24 +3137,28 @@ export class BeneosCloud {
                   || `Beneos: Top-Down variant unavailable for ${actorData.name} — falling back to 2.5D.`
                 )
               } catch (e) { /* notifications not ready yet */ }
-              if (cloudRendering?.tokenizedScale
-                && typeof cloudRendering.tokenizedScale === "number" && cloudRendering.tokenizedScale > 0) {
-                if (actorData.prototypeToken.texture) {
-                  actorData.prototypeToken.texture.scaleX = cloudRendering.tokenizedScale
-                  actorData.prototypeToken.texture.scaleY = cloudRendering.tokenizedScale
-                }
-                actorData.prototypeToken.scale = cloudRendering.tokenizedScale
-              }
-            } else if (installStyle !== "topdown" && cloudRendering?.tokenizedScale
-              && typeof cloudRendering.tokenizedScale === "number" && cloudRendering.tokenizedScale > 0) {
-              // 2.5D install path can pick up a per-token tokenized-scale
-              // override (e.g. a giant creature sized larger than 1.1).
-              if (actorData.prototypeToken.texture) {
-                actorData.prototypeToken.texture.scaleX = cloudRendering.tokenizedScale
-                actorData.prototypeToken.texture.scaleY = cloudRendering.tokenizedScale
-              }
-              actorData.prototypeToken.scale = cloudRendering.tokenizedScale
             }
+            // Scale UND Anchor aus demselben Resolver wie ueberall sonst.
+            // Vorher wurde hier nur der Scale von Hand aus dem Flag
+            // gelesen: ohne Varianten-Praezedenz (die `-2-top.webp` also
+            // mit dem Wert der `-1` versorgt) und ohne Anchor, weshalb
+            // Top-Down-Prototypes auf 0.5/0.5 stehenblieben, bis der
+            // Anwender einmal den HUD-Toggle betaetigte.
+            const finalSrc = actorData.prototypeToken.texture.src
+            // Der Resolver liest die Flags ueber getFlag. Hier liegt aber
+            // noch kein Actor-Dokument vor, nur der rohe Cloud-JSON, also
+            // reichen wir einen minimalen Traeger mit derselben Signatur
+            // durch statt die Aufloesungslogik zu duplizieren.
+            const flagCarrier = { getFlag: (scope, key) => actorData?.flags?.[scope]?.[key] }
+            const profile = BeneosUtility.getBeneosRenderProfile(flagCarrier, finalSrc)
+            if (actorData.prototypeToken.texture) {
+              actorData.prototypeToken.texture.scaleX = profile.scale
+              actorData.prototypeToken.texture.scaleY = profile.scale
+              actorData.prototypeToken.texture.anchorX = profile.anchorX
+              actorData.prototypeToken.texture.anchorY = profile.anchorY
+            }
+            // `prototypeToken.scale` war ein V9-Feld und wird von V13 beim
+            // Anlegen des Dokuments verworfen, also ersatzlos entfernt.
           } catch (e) { /* setting not registered yet — fall back to 2.5D */ }
           let actor = new CONFIG.Actor.documentClass(actorData);
           if (actor) {

@@ -335,10 +335,14 @@ export class BeneosUtility {
     // get auto-persisted into flags.world.beneos.rendering via the
     // preUpdateActor hook in beneos_module.js. End-User mode (default)
     // keeps Foundry-State edits out of the flag namespace, so cloud
-    // re-installs reset the canvas state cleanly. Activation is via
-    // console only — config:false hides the toggle from the Foundry
-    // settings dialog, since this is internal team tooling and not
-    // something end-users should ever flip.
+    // re-installs reset the canvas state cleanly. config:false hides the
+    // toggle from the Foundry settings dialog, since this is internal
+    // team tooling and not something end-users should ever flip.
+    //
+    // Der Regelfall braucht diesen Schalter gar nicht mehr: sobald die
+    // Beneos Development Tools in der Welt aktiv sind, gilt Creator-Mode
+    // automatisch (siehe isBeneosCreatorMode). Der gespeicherte Wert
+    // bleibt als manueller Weg fuer Welten ohne beneos-dev erhalten.
     // Aktivierung: game.settings.set("beneos-module", "beneos-creator-mode", true)
     game.settings.register(BeneosUtility.moduleID(), 'beneos-creator-mode', {
       name: 'Beneos Creator Mode (internal)',
@@ -1634,8 +1638,17 @@ export class BeneosUtility {
     let tokenData = BeneosUtility.getTokenImageInfo(object.texture.src)
     object.setFlag(BeneosUtility.moduleID(), "fullKey", tokenData.fullKey)
     object.setFlag("core", "randomizeVideo", false)
-    let scaleFactor = this.getScaleFactor(token, object.texture.src)
-    canvas.scene.updateEmbeddedDocuments("Token", [({ _id: token.id, scale: scaleFactor })])
+    // Frueher stand hier ein Update auf das Feld `scale`. Das ist ein
+    // V9-Feld, das TokenDocument in V13 nicht mehr kennt. Der Aufruf
+    // lief fehlerfrei durch und bewirkte nichts, weshalb ein per
+    // Drag-and-Drop abgelegter Token weder Scale noch Anchor aus den
+    // Flags bekam. Kanonisch sind texture.scaleX/scaleY/anchorX/anchorY.
+    const renderUpdate = BeneosUtility.beneosRenderUpdateFor(object)
+    const scene = object.parent ?? canvas.scene
+    if (renderUpdate && scene) {
+      scene.updateEmbeddedDocuments("Token", [renderUpdate], { beneosRenderSync: true })
+        .catch(err => console.warn("[Beneos] newTokenSetup render update failed", err))
+    }
     setTimeout(function () {
       BeneosUtility.updateToken(token.id, { forceupdate: true })
     }, 500)
@@ -2000,9 +2013,13 @@ export class BeneosUtility {
   // Stage 13d-10: variant index from a Beneos texture path
   // (`…-2-top.webp` → "2", `…-1-token.webp` → "1"). Returned as string
   // so it indexes the JSON variants map directly.
+  // Stage 13d-13: die Endung ist jetzt offen. Ein Autor, der noch am
+  // Rendern ist, hat oft `-1-top.png` auf dem Token; mit der alten
+  // webp-Bindung galt das als variantenlos und der Wert landete nur im
+  // Top-Level. Der Query-String-Zweig faengt Cache-Buster wie `?v=2`.
   static beneosVariantFromSrc(src) {
     if (typeof src !== "string") return null
-    const m = /-(\d+)-(?:top|token)\.webp$/i.exec(src)
+    const m = /-(\d+)-(?:top|token)\.[a-z0-9]+(?:\?|$)/i.exec(src)
     return m ? m[1] : null
   }
 
@@ -2054,18 +2071,390 @@ export class BeneosUtility {
     const isTopDown = (mode === "topdown")
     const xKey = isTopDown ? "topDownAnchorX" : "tokenizedAnchorX"
     const yKey = isTopDown ? "topDownAnchorY" : "tokenizedAnchorY"
+    // Stage 13d-12: achsenweise aufloesen. Vorher verlangte der
+    // Varianten-Zweig BEIDE Achsen als Zahl und fiel sonst komplett auf
+    // das Top-Level zurueck. Eine Einzelachsen-Anpassung im Creator-Mode
+    // schreibt aber genau eine Achse in variants[N], womit die gerade
+    // gesetzte Korrektur beim Lesen wieder verschwand. Praezedenz bleibt
+    // pro Achse: variants[N] vor Top-Level vor Konstante.
     const variant = BeneosUtility.beneosVariantFromSrc(src)
-    if (variant && rendering.variants && rendering.variants[variant]) {
-      const ve = rendering.variants[variant]
-      if (typeof ve[xKey] === "number" && typeof ve[yKey] === "number") {
-        return { x: ve[xKey], y: ve[yKey] }
+    const ve = (variant && rendering.variants) ? rendering.variants[variant] : null
+    const pick = (key) => {
+      if (ve && typeof ve[key] === "number") return ve[key]
+      if (typeof rendering[key] === "number") return rendering[key]
+      return null
+    }
+    const ax = pick(xKey)
+    const ay = pick(yKey)
+    return {
+      x: (ax === null) ? fallback.x : ax,
+      y: (ay === null) ? fallback.y : ay
+    }
+  }
+
+  /********************************************************************************** */
+  // Stage 13d-13: der eine Schreiber fuer Scale- und Anchor-Werte in
+  // flags.world.beneos.rendering. Vorher lag diese Logik doppelt in
+  // beneos_module.js (_beneosCreatorPersistScale und -Anchor), und sie musste
+  // schon zweimal nachgebessert werden: erst um die Variantenmap, dann um die
+  // achsenweise Anchor-Aufloesung. Eine dritte Kopie im dev-Tool waere die
+  // naechste Divergenz gewesen, deshalb steht sie jetzt hier und wird von
+  // beiden Seiten benutzt.
+  //
+  // Optionen:
+  //   src        Texturpfad, aus dem Modus und Variante abgeleitet werden
+  //   mode       "topdown" | "tokenized", ueberstimmt die Ableitung. Noetig bei
+  //              Pfaden, aus denen sich der Modus nicht ergibt
+  //   variant    ueberstimmt die Ableitung aus src; null erzwingt "keine Variante"
+  //   scale      positive Zahl oder null
+  //   anchorX/Y  Zahl oder null, einzeln setzbar
+  //   createFlag legt flags.world.beneos an, wenn es fehlt. Standard false,
+  //              damit der Endkunden-Pfad sich unveraendert verhaelt
+  //
+  // Rueckgabe: { rendering, created, changed } oder null, wenn nichts zu tun war.
+  static async beneosPersistRenderValues(worldActor, {
+    src = null, mode = null, variant = undefined,
+    scale = null, anchorX = null, anchorY = null,
+    createFlag = false
+  } = {}) {
+    if (!worldActor) return null
+    const beneosFlag = worldActor.getFlag("world", "beneos")
+    if (!beneosFlag && !createFlag) return null   // kein Beneos-Actor, stiller Ausstieg wie bisher
+
+    const effSrc = src || worldActor.prototypeToken?.texture?.src || ""
+    const effMode = (mode === "topdown" || mode === "tokenized")
+      ? mode
+      : BeneosUtility.beneosRenderMode(effSrc)
+    const effVariant = (variant === undefined)
+      ? BeneosUtility.beneosVariantFromSrc(effSrc)
+      : variant
+
+    const isTopDown = (effMode === "topdown")
+    const scaleKey = isTopDown ? "topDownScale" : "tokenizedScale"
+    const xKey = isTopDown ? "topDownAnchorX" : "tokenizedAnchorX"
+    const yKey = isTopDown ? "topDownAnchorY" : "tokenizedAnchorY"
+
+    const current = beneosFlag?.rendering || {}
+    // Der Vergleich laeuft gegen den tatsaechlich wirksamen Wert, also gegen
+    // den Varianteneintrag falls vorhanden. Gegen das Top-Level zu vergleichen
+    // wuerde eine Anpassung an einer Variante als "keine Aenderung" verwerfen.
+    const effective = (effVariant && current.variants?.[effVariant])
+      ? current.variants[effVariant]
+      : current
+
+    const wantScale = (typeof scale === "number" && scale > 0) && effective[scaleKey] !== scale
+    const wantX = Number.isFinite(anchorX) && effective[xKey] !== anchorX
+    const wantY = Number.isFinite(anchorY) && effective[yKey] !== anchorY
+    const created = !beneosFlag
+    if (!wantScale && !wantX && !wantY) {
+      return { rendering: current, created: false, changed: false }
+    }
+
+    const rendering = { ...current }
+    if (effVariant) {
+      const variants = { ...(rendering.variants || {}) }
+      const entry = { ...(variants[effVariant] || {}) }
+      if (wantScale) entry[scaleKey] = scale
+      if (wantX) entry[xKey] = anchorX
+      if (wantY) entry[yKey] = anchorY
+      variants[effVariant] = entry
+      rendering.variants = variants
+    }
+    // Variante 1 ist die Leitvariante: ihr Wert bleibt zusaetzlich der
+    // Top-Level-Default fuer Varianten ohne eigenen Eintrag. Ohne erkennbare
+    // Variante gibt es nur den Top-Level-Pfad.
+    if (!effVariant || effVariant === "1") {
+      if (wantScale) rendering[scaleKey] = scale
+      if (wantX) rendering[xKey] = anchorX
+      if (wantY) rendering[yKey] = anchorY
+    }
+
+    // Dotted path statt setFlag("world","beneos", vollesObjekt): setFlag
+    // ersetzt den kompletten Teilbaum, ein Fehler in der Spread-Kette wuerde
+    // also tokenKey, fullId oder contentSignature verlieren. Der dotted path
+    // kann strukturell nur rendering treffen. Das ist besonders wichtig, seit
+    // der Block auch neu angelegt wird: dort waere sonst gar kein
+    // Geschwisterobjekt vorhanden, das man versehentlich mitschreiben koennte.
+    // render:false haelt den Actor-Directory-Rebuild aus dem Klickpfad heraus.
+    try {
+      await worldActor.update(
+        { "flags.world.beneos.rendering": rendering },
+        { beneosRenderSync: true, render: false }
+      )
+    } catch (err) {
+      console.warn("[Beneos] persist render values failed", err)
+      return null
+    }
+    BeneosUtility.debugMessage("[Beneos] persisted render values",
+      { mode: effMode, variant: effVariant, scale, anchorX, anchorY, created }, "on", worldActor.name)
+    return { rendering, created, changed: true }
+  }
+
+  /********************************************************************************** */
+  // Stage 13d-13: dieselbe Praezedenzkette wie getBeneosScale und
+  // getBeneosAnchor, aber OHNE Fallback auf die Konstanten. Fehlt ein Wert,
+  // steht dort null.
+  //
+  // Der Unterschied ist fuer eine Anzeige entscheidend: getBeneosRenderProfile
+  // liefert bei einem Actor ohne rendering-Flag stumm 1.1 und 0.5/0.5, und
+  // damit kann ein Werkzeug "gespeicherter Wert ist 1.1" nicht von "es ist
+  // ueberhaupt nichts gespeichert" unterscheiden. Es wuerde also eine
+  // Abweichung anzeigen, wo gar kein Vergleichswert existiert.
+  static getBeneosRenderOverrides(actor, mode, src = null) {
+    const empty = { scale: null, anchorX: null, anchorY: null, hasFlag: false }
+    if (!actor) return empty
+    const rendering = actor.getFlag?.("world", "beneos")?.rendering
+    if (!rendering) return empty
+
+    const isTopDown = (mode === "topdown")
+    const scaleKey = isTopDown ? "topDownScale" : "tokenizedScale"
+    const xKey = isTopDown ? "topDownAnchorX" : "tokenizedAnchorX"
+    const yKey = isTopDown ? "topDownAnchorY" : "tokenizedAnchorY"
+
+    const variant = BeneosUtility.beneosVariantFromSrc(src)
+    const ve = (variant && rendering.variants) ? rendering.variants[variant] : null
+    const pick = (key, positiveOnly = false) => {
+      const ok = (v) => typeof v === "number" && (!positiveOnly || v > 0)
+      if (ve && ok(ve[key])) return ve[key]
+      if (ok(rendering[key])) return rendering[key]
+      return null
+    }
+    return {
+      scale: pick(scaleKey, true),
+      anchorX: pick(xKey),
+      anchorY: pick(yKey),
+      hasFlag: true
+    }
+  }
+
+  /********************************************************************************** */
+  // Creator-Mode: gilt automatisch, sobald die Beneos Development Tools
+  // (Modul-ID "beneos-dev") in der Welt aktiv sind. Dieses Modul liegt
+  // ausschliesslich auf Entwickler-Instanzen, seine Anwesenheit ist also
+  // das ehrlichste Signal dafuer, dass hier autorisiert wird und
+  // Scale-, Anchor- und FX-Aenderungen zurueck in die Flags gehoeren.
+  // Dieselbe Erkennung nutzt bereits beneos_analytics.js, um Dev-
+  // Instanzen von der Telemetrie auszunehmen.
+  //
+  // Bewusst abgeleitet statt beim Start in die Einstellung geschrieben:
+  // so schaltet ein deaktiviertes beneos-dev den Modus von selbst wieder
+  // ab, statt einen einmal gesetzten Wert zurueckzulassen.
+  // Nur fuer GMs. Alles, was der Modus freischaltet, schreibt in
+  // Welt-Actor-Flags; auf einem Spieler-Client wuerden diese Versuche an
+  // den Rechten scheitern und nur Warnungen produzieren. Vor der
+  // Automatik war das kein Thema, weil die Einstellung client-scoped und
+  // standardmaessig aus war. Mit beneos-dev in der Welt gaelte sie sonst
+  // fuer jeden verbundenen Spieler mit.
+  static isBeneosCreatorMode() {
+    if (!game.user?.isGM) return false
+    if (game.modules?.get("beneos-dev")?.active) return true
+    try {
+      return !!game.settings.get(BeneosUtility.moduleID(), "beneos-creator-mode")
+    } catch (e) {
+      return false  // Einstellung bei sehr fruehem Init noch nicht registriert
+    }
+  }
+
+  /********************************************************************************** */
+  // Render-Profil: Modus, Scale und Anchor fuer genau einen Texturpfad.
+  //
+  // Content-Regel: 2.5D (`-token.webp`) ist pauschal, Scale 1.1 bei
+  // Anchor 0.5/0.5. Top-Down (`-top.webp`) ist dynamisch, weil die
+  // Draufsicht-Formate je Kreatur und je Variante anders ausfallen.
+  // Beide Faelle laufen bewusst durch denselben Resolver, damit ein
+  // kuenftiger 2.5D-Sonderwert aus dem dev-Tool nicht an einer
+  // Sonderbehandlung scheitert.
+  // Stage 13d-13: erkennt `-top` bei jeder Endung, nicht mehr nur bei webp.
+  // Ein korrekt benanntes `-top.png` galt vorher als 2.5D, der Wert landete
+  // also in tokenizedScale und die Draufsicht blieb ungespeichert. Der alte
+  // includes-Zweig bleibt als ODER stehen: er trifft auch Pfade, bei denen
+  // `-top.webp` nicht am Ende steht (Ordnername, Cache-Buster), und die
+  // sollen ihre bisherige Einordnung behalten. Diese Funktion entscheidet,
+  // in welchen Flag-Key rund 970 Varianten geschrieben werden.
+  static beneosRenderMode(src) {
+    if (typeof src !== "string") return "tokenized"
+    const isTop = /-top\.[a-z0-9]+(?:\?|$)/i.test(src) || src.includes("-top.webp")
+    return isTop ? "topdown" : "tokenized"
+  }
+
+  // Stage 13d-13: laesst sich der Modus ueberhaupt aus dem Pfad ableiten?
+  // Bei einem Platzhalter-SVG, einem Roh-Render oder einer Wildcard ist die
+  // Antwort nein, und dann muss der Modus von aussen kommen statt geraten
+  // zu werden. beneosRenderMode wuerde in diesen Faellen stumm "tokenized"
+  // liefern, was fuer eine Draufsicht die falsche Flag-Ebene ist.
+  static beneosRenderModeDerivable(src) {
+    return typeof src === "string" && /-(?:top|token)\.[a-z0-9]+(?:\?|$)/i.test(src)
+  }
+
+  static getBeneosRenderProfile(actor, src) {
+    const mode = BeneosUtility.beneosRenderMode(src)
+    const anchor = BeneosUtility.getBeneosAnchor(actor, mode, src)
+    return {
+      mode,
+      scale: BeneosUtility.getBeneosScale(actor, mode, src),
+      anchorX: anchor.x,
+      anchorY: anchor.y
+    }
+  }
+
+  // Flaches Update-Objekt. `prefix` ist "texture" fuer ein
+  // TokenDocument und "prototypeToken.texture" fuer den Actor.
+  static beneosRenderPatch(profile, prefix = "texture") {
+    return {
+      [`${prefix}.scaleX`]: profile.scale,
+      [`${prefix}.scaleY`]: profile.scale,
+      [`${prefix}.anchorX`]: profile.anchorX,
+      [`${prefix}.anchorY`]: profile.anchorY
+    }
+  }
+
+  /********************************************************************************** */
+  // Stempel-Mechanik. Jedes Mal, wenn das Modul Scale/Anchor selbst
+  // setzt, legt es dieselben Werte unter flags.beneos-module.renderStamp
+  // ab. Nur so laesst sich spaeter unterscheiden, ob ein abweichender
+  // Wert von uns stammt oder ob der GM den Token bewusst umskaliert hat
+  // (vergroesserter Boss). Der Szenen-Sync fasst nur unberuehrte Tokens
+  // an.
+  static BENEOS_RENDER_EPSILON = 0.0005
+
+  static beneosNearlyEqual(a, b) {
+    return Math.abs((a ?? 0) - (b ?? 0)) < BeneosUtility.BENEOS_RENDER_EPSILON
+  }
+
+  static beneosRenderStamp(profile) {
+    return { scaleX: profile.scale, anchorX: profile.anchorX, anchorY: profile.anchorY }
+  }
+
+  // true = unveraendert seit unserem letzten Schreiben, false = vom
+  // Anwender angepasst, null = noch nie gestempelt (Alt-Bestand).
+  static beneosRenderStampMatches(doc, texture) {
+    const stamp = doc?.getFlag?.(BeneosUtility.moduleID(), "renderStamp")
+    if (!stamp) return null
+    return BeneosUtility.beneosNearlyEqual(texture?.scaleX, stamp.scaleX)
+      && BeneosUtility.beneosNearlyEqual(texture?.anchorX, stamp.anchorX)
+      && BeneosUtility.beneosNearlyEqual(texture?.anchorY, stamp.anchorY)
+  }
+
+  static beneosRenderInSync(texture, profile) {
+    return BeneosUtility.beneosNearlyEqual(texture?.scaleX, profile.scale)
+      && BeneosUtility.beneosNearlyEqual(texture?.scaleY, profile.scale)
+      && BeneosUtility.beneosNearlyEqual(texture?.anchorX, profile.anchorX)
+      && BeneosUtility.beneosNearlyEqual(texture?.anchorY, profile.anchorY)
+  }
+
+  /********************************************************************************** */
+  // Ein Token-Update gegen sein Flag-Profil bauen, oder null wenn nichts
+  // zu tun ist. Gibt das Update-Objekt zurueck statt selbst zu schreiben,
+  // damit der Szenen-Sync alle Tokens in einem einzigen
+  // updateEmbeddedDocuments buendeln kann.
+  static beneosRenderUpdateFor(tokenDoc, { respectStamp = true } = {}) {
+    if (!tokenDoc) return null
+    const actor = tokenDoc.actor
+    if (!BeneosUtility.isBeneosCreature(actor)) return null
+    const texture = tokenDoc.texture
+    if (!texture?.src) return null
+    const profile = BeneosUtility.getBeneosRenderProfile(actor, texture.src)
+    const stampKey = `flags.${BeneosUtility.moduleID()}.renderStamp`
+    const stampState = BeneosUtility.beneosRenderStampMatches(tokenDoc, texture)
+
+    if (BeneosUtility.beneosRenderInSync(texture, profile)) {
+      // Werte stimmen bereits. Fehlt aber der Stempel, waere eine
+      // spaetere manuelle Anpassung nicht mehr von unserem eigenen Wert
+      // zu unterscheiden, also einmalig nachtragen.
+      if (stampState !== null) return null
+      return { _id: tokenDoc.id, [stampKey]: BeneosUtility.beneosRenderStamp(profile) }
+    }
+
+    if (respectStamp && stampState === false) {
+      BeneosUtility.debugMessage("[Beneos Render] manual override kept for", tokenDoc.name)
+      return null
+    }
+
+    return {
+      _id: tokenDoc.id,
+      ...BeneosUtility.beneosRenderPatch(profile),
+      [stampKey]: BeneosUtility.beneosRenderStamp(profile)
+    }
+  }
+
+  /********************************************************************************** */
+  // Szenen-Sync: zieht jeden platzierten Beneos-Token auf Scale und
+  // Anchor aus seinen Flags. Laeuft beim Szenenwechsel, damit auch
+  // laengst platzierte Kreaturen die Werte bekommen. Genau ein Client
+  // schreibt (beneosIsTokenWriter), sonst wuerden Spieler-Clients
+  // Permission-Fehler werfen und mehrere GMs doppelt schreiben.
+  static async syncSceneRenderProfiles(scene) {
+    const target = scene || canvas?.scene
+    if (!target) return 0
+    const updates = []
+    const actorIds = new Set()
+    for (const tokenDoc of target.tokens) {
+      if (!BeneosUtility.beneosIsTokenWriter(tokenDoc)) continue
+      const update = BeneosUtility.beneosRenderUpdateFor(tokenDoc)
+      if (!update) continue
+      updates.push(update)
+      if (tokenDoc.actorId) actorIds.add(tokenDoc.actorId)
+    }
+    if (updates.length) {
+      try {
+        await target.updateEmbeddedDocuments("Token", updates, { beneosRenderSync: true })
+        BeneosUtility.debugMessage(
+          `[Beneos Render] synced ${updates.length} token(s) on "${target.name}"`)
+      } catch (err) {
+        console.warn("[Beneos] scene render-sync failed", err)
       }
     }
-    const ax = rendering[xKey]
-    const ay = rendering[yKey]
-    return {
-      x: (typeof ax === "number") ? ax : fallback.x,
-      y: (typeof ay === "number") ? ay : fallback.y
+    // Prototype mitziehen, damit kuenftige Drag-and-Drops die richtigen
+    // Werte direkt erben statt nachtraeglich korrigiert zu werden.
+    for (const actorId of actorIds) {
+      await BeneosUtility.syncActorPrototypeRenderProfile(game.actors.get(actorId))
+    }
+    return updates.length
+  }
+
+  /********************************************************************************** */
+  // Prototype-Reparatur. Dieselbe Stempel-Regel wie beim Token: ein vom
+  // Anwender bewusst gesetzter Prototype-Scale bleibt stehen.
+  // Stage 13d-13: requireBeneosCreature ist optional geworden. Der Standard
+  // bleibt streng, damit der Szenen-Sync und alle Endkunden-Pfade unveraendert
+  // arbeiten. Nur das dev-Tool setzt ihn auf false, wenn es eine Kreatur
+  // justiert, die noch nicht registriert ist. Ein Nachbau dieser Funktion dort
+  // waere gefaehrlicher als die Option: die Stempel-Regel unten
+  // (null = nie gestempelt, false = bewusster Anwender-Override, true = unser
+  // Wert) ist der einzige Teil, dessen falsche Kopie still Kundendaten
+  // ueberschreibt.
+  static async syncActorPrototypeRenderProfile(actor, { requireBeneosCreature = true } = {}) {
+    if (!actor) return false
+    if (requireBeneosCreature && !BeneosUtility.isBeneosCreature(actor)) return false
+    if (!actor.canUserModify?.(game.user, "update")) return false
+    const texture = actor.prototypeToken?.texture
+    if (!texture?.src) return false
+    const profile = BeneosUtility.getBeneosRenderProfile(actor, texture.src)
+    const stampState = BeneosUtility.beneosRenderStampMatches(actor, texture)
+    if (BeneosUtility.beneosRenderInSync(texture, profile)) {
+      if (stampState !== null) return false
+      try {
+        await actor.setFlag(BeneosUtility.moduleID(), "renderStamp",
+          BeneosUtility.beneosRenderStamp(profile))
+      } catch (err) {
+        console.warn("[Beneos] prototype stamp failed", err)
+      }
+      return false
+    }
+    if (stampState === false) {
+      BeneosUtility.debugMessage("[Beneos Render] manual prototype override kept for", actor.name)
+      return false
+    }
+    try {
+      await actor.update({
+        ...BeneosUtility.beneosRenderPatch(profile, "prototypeToken.texture"),
+        [`flags.${BeneosUtility.moduleID()}.renderStamp`]: BeneosUtility.beneosRenderStamp(profile)
+      }, { beneosRenderSync: true })
+      BeneosUtility.debugMessage("[Beneos Render] prototype repaired for", actor.name, profile)
+      return true
+    } catch (err) {
+      console.warn("[Beneos] prototype render-sync failed", err)
+      return false
     }
   }
 
@@ -2132,6 +2521,9 @@ export class BeneosUtility {
   // before calling don't need to pass it explicitly.
   // Stage 13a: delegates to getBeneosScale once mode is resolved, so
   // per-token Flag-Overrides take precedence over the constants.
+  // Nur noch Kompatibilitaets-Shim: die Aufrufer im Modul gehen ueber
+  // getBeneosRenderProfile, das Scale und Anchor gemeinsam aufloest.
+  // Bleibt fuer Console-Nutzung und Fremdaufrufer erhalten.
   static getScaleFactor(token, newImage = undefined, mode) {
     // Stage 13d-10: hoist probeSrc out of the mode-derivation branch
     // so the variant-aware getBeneosScale call below can always see
@@ -2187,48 +2579,36 @@ export class BeneosUtility {
     const newImage = isTopDownMode
       ? (BeneosUtility.beneosDerivedTopPath(tokenData) || tokenData.token)
       : tokenData.token
-    // Stage 6: probe-based scale. Pass `newImage` (the actual webp
-    // path we're swapping TO) so getScaleFactor can detect mode from
-    // the suffix and pick 1.1 vs 1.25 correctly.
-    let scaleFactor = this.getScaleFactor(token, newImage)
-    // Stage 13d-9: per-mode anchor, same swap-with-mode pattern as
-    // scale. Mode is decided by the destination image's suffix
-    // (-top.webp = topdown, otherwise tokenized).
-    const newMode = newImage.includes("-top.webp") ? "topdown" : "tokenized"
-    // Stage 13d-10: pass newImage so variant-specific anchors apply.
-    const newAnchor = BeneosUtility.getBeneosAnchor(token.actor, newMode, newImage)
+    // Scale und Anchor kommen aus dem Ziel-Bild: sein Suffix entscheidet
+    // den Modus (-top.webp = topdown, sonst tokenized) und seine
+    // Variantennummer entscheidet, welcher Flag-Eintrag gewinnt.
+    const profile = BeneosUtility.getBeneosRenderProfile(token.actor, newImage)
     //BeneosUtility.debugMessage(">>>>>>>>>>> UPDATE TOKEN CHANGE", fullKey, tokenData, newImage)
     try {
       await token.document.setFlag(BeneosUtility.moduleID(), "fullKey", tokenData.fullId)
-      await token.document.update({ img: newImage, scale: scaleFactor, rotation: 1.0 })
-      if (foundry.utils.isNewerVersion(game.version, "11")) {
-        // Stage 7: V13-conformant scale path. texture.scaleX/Y is the
-        // canonical schema field; setting it here keeps the token's
-        // scale in sync with the new mode (1.25 for top-down, 1.1 for
-        // 2.5D) when variant-switching in the change-skin HUD.
-        await token.document.update({
-          "texture.src": newImage,
-          "texture.scaleX": scaleFactor,
-          "texture.scaleY": scaleFactor,
-          "texture.anchorX": newAnchor.x,
-          "texture.anchorY": newAnchor.y
-        })
-      }
+      // Hier stand zuvor ein zweiter Update-Aufruf mit { img, scale,
+      // rotation: 1.0 }. `img` und `scale` sind V9-Felder und verpufften,
+      // `rotation: 1.0` drehte den Token aber bei jedem Variantenwechsel
+      // tatsaechlich um 1 Grad. Der kanonische texture.*-Update unten
+      // traegt alles Noetige.
+      await token.document.update({
+        "texture.src": newImage,
+        ...BeneosUtility.beneosRenderPatch(profile),
+        [`flags.${BeneosUtility.moduleID()}.renderStamp`]: BeneosUtility.beneosRenderStamp(profile)
+      }, { beneosRenderSync: true })
     } catch (err) {
       console.warn("[Beneos] forceChangeToken: token.document update failed", err)
       ui.notifications?.error(`Beneos: token swap failed (${err?.message || "unknown"})`)
       return
     }
-    //canvas.scene.updateEmbeddedDocuments("Token", [({ _id: token.id, img: finalimage, scale: 1.0, rotation: 0 })])
-    let actor = token.actor
-    if (actor && actor.type == "character") {
-      let actorImage = tokenData.avatar
-      try {
-        await actor.update({ 'token.img': actorImage })
-      } catch (err) {
-        console.warn("[Beneos] forceChangeToken: actor.update failed (prototype out of sync)", err)
-      }
-    }
+    // Hier folgte ein Update auf `token.img` fuer Actors vom Typ
+    // "character". Auch das ist V9-Schema, das V13 verwirft, der Block
+    // war also seit Jahren wirkungslos. Ersatzlos entfernt und bewusst
+    // nicht nachgebaut: anders als der Stilwechsel darf ein
+    // Variantenwechsel den Prototype gar nicht mitziehen, denn im
+    // Beneos-Modell ist jede Variante ein eigener Actor
+    // (siehe getActorIdVariant). Der Wechsel gilt nur fuer den einen
+    // angeklickten Token auf der Canvas.
     return
   }
 
@@ -2339,31 +2719,40 @@ export class BeneosUtility {
     // constants.
     // Stage 13d-10: newSrc carries the variant suffix, so the resolver
     // can look up per-variant scale/anchor in flags.world.beneos.rendering.variants.
-    const newScale = BeneosUtility.getBeneosScale(actor, newStyle, newSrc)
-    const newAnchor = BeneosUtility.getBeneosAnchor(actor, newStyle, newSrc)
+    // Token und Prototype teilen sich dasselbe Profil, damit die beiden
+    // nach dem Wechsel garantiert nicht auseinanderlaufen.
+    const profile = BeneosUtility.getBeneosRenderProfile(actor, newSrc)
+    const stampKey = `flags.${BeneosUtility.moduleID()}.renderStamp`
+    const stamp = BeneosUtility.beneosRenderStamp(profile)
 
     try {
       await token.document.update({
         "texture.src": newSrc,
-        "texture.scaleX": newScale,
-        "texture.scaleY": newScale,
-        "texture.anchorX": newAnchor.x,
-        "texture.anchorY": newAnchor.y
-      })
+        ...BeneosUtility.beneosRenderPatch(profile),
+        [stampKey]: stamp
+      }, { beneosRenderSync: true })
     } catch (err) {
       console.warn("[Beneos] toggleTokenStyle: token.document.update failed", err)
       ui.notifications?.error(`Beneos: token swap failed (${err?.message || "unknown"})`)
       return
     }
 
+    // Der Prototype gehoert dem WELT-Actor. Beneos-Tokens sind unlinked,
+    // `token.actor` ist deshalb der synthetische Delta-Actor, und ein
+    // prototypeToken-Update darauf landete im Delta des platzierten
+    // Tokens statt beim Actor. Der Prototype blieb dadurch stumm auf dem
+    // alten Stil stehen, und jede spaeter abgelegte Kopie kam wieder im
+    // alten Modus auf die Canvas. Aufloesung ueber actorId, genauso wie
+    // es der Creator-Mode-Hook macht.
+    const worldActor = token.document.actorId
+      ? game.actors.get(token.document.actorId)
+      : null
     try {
-      await actor.update({
+      await (worldActor ?? actor).update({
         "prototypeToken.texture.src": newSrc,
-        "prototypeToken.texture.scaleX": newScale,
-        "prototypeToken.texture.scaleY": newScale,
-        "prototypeToken.texture.anchorX": newAnchor.x,
-        "prototypeToken.texture.anchorY": newAnchor.y
-      })
+        ...BeneosUtility.beneosRenderPatch(profile, "prototypeToken.texture"),
+        [stampKey]: stamp
+      }, { beneosRenderSync: true })
     } catch (err) {
       console.warn("[Beneos] toggleTokenStyle: actor.update failed (prototype out of sync)", err)
     }
@@ -2485,6 +2874,11 @@ export class BeneosUtility {
         }
       }
     }
+    // Laengst platzierte Kreaturen auf Scale und Anchor aus ihren Flags
+    // ziehen. Bewusst nicht awaited: der Szenenaufbau soll nicht auf die
+    // Datenbankschreibvorgaenge warten.
+    BeneosUtility.syncSceneRenderProfiles(canvas.scene)
+      .catch(err => console.warn("[Beneos] canvasReady render-sync failed", err))
   }
 
   /* -------------------------------------------- */

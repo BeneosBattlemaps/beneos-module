@@ -581,7 +581,7 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
   // Editor-Window mit Live-Auto-Save für Drop-Shadow-Parameter. End-
   // User-Modus zeigt diesen Button gar nicht.
   try {
-    const creatorMode = game.settings.get(BeneosUtility.moduleID(), "beneos-creator-mode")
+    const creatorMode = BeneosUtility.isBeneosCreatorMode()
     if (creatorMode && BeneosUtility.isBeneosCreature(token)) {
       const tooltipText = game.i18n.localize("BENEOS.FXEditor.Title")
       const $fxBtn = $(`
@@ -610,36 +610,47 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
 })
 
 /********************************************************************************** */
-// Drag-from-variant-strip bridge: the variant drag-handler and the
-// pending-canvas-drop drain both set BeneosUtility._pendingDropStyle to
-// "topdown" only AFTER they have verified that the -top.webp counterpart
-// is actually present on disk. This hook trusts that upstream gate and
-// performs the synchronous texture swap here — preCreateToken cannot
-// await an async FS probe and still mutate the document, so the check
-// has to live upstream.
+// Zentrale Stelle fuer jede Form von Drop: dieser Hook feuert bei jeder
+// Token-Erzeugung, egal ob aus dem Actor-Verzeichnis, aus einem
+// Compendium, aus dem Cloud-Fenster oder aus der Variantenleiste. Er
+// setzt Scale und Anchor aus den Flags, damit der Token schon im ersten
+// gezeichneten Frame richtig sitzt.
+//
+// Zusaetzlich die Drag-from-variant-strip-Bruecke: der Variant-Drag-
+// Handler und der Pending-Canvas-Drop-Drain setzen
+// BeneosUtility._pendingDropStyle erst dann auf "topdown", wenn sie das
+// Vorhandensein der -top.webp auf der Platte geprueft haben. Dieser Hook
+// vertraut auf dieses vorgelagerte Gate und macht den Texturtausch
+// synchron, denn preCreateToken kann keine asynchrone Dateipruefung
+// abwarten und danach noch das Dokument aendern.
 Hooks.on("preCreateToken", (tokenDoc, data, options, userId) => {
   try {
     const pending = BeneosUtility._pendingDropStyle
     BeneosUtility._pendingDropStyle = null
-    if (pending !== "topdown") return
-    const src = data?.texture?.src || tokenDoc?.texture?.src || ""
-    if (!src.includes("-token.webp")) return
-    const newSrc = src.replace("-token.webp", "-top.webp")
-    // Stage 13d-10: pass newSrc so variant-specific scale/anchor apply
-    // when the placed variant is not the `-1` default. Also lift the
-    // anchor (previously only set on toggle), otherwise the token sits
-    // visually off-center until the user clicks the HUD swap once.
-    const topDownScale = BeneosUtility.getBeneosScale(tokenDoc?.actor, "topdown", newSrc)
-    const topDownAnchor = BeneosUtility.getBeneosAnchor(tokenDoc?.actor, "topdown", newSrc)
-    tokenDoc.updateSource({
-      "texture.src": newSrc,
-      "texture.scaleX": topDownScale,
-      "texture.scaleY": topDownScale,
-      "texture.anchorX": topDownAnchor.x,
-      "texture.anchorY": topDownAnchor.y
-    })
+    const actor = tokenDoc?.actor
+    if (!BeneosUtility.isBeneosCreature(actor)) return
+
+    let src = data?.texture?.src || tokenDoc?.texture?.src || ""
+    if (!src) return
+    const patch = {}
+    if (pending === "topdown" && src.includes("-token.webp")) {
+      src = src.replace("-token.webp", "-top.webp")
+      patch["texture.src"] = src
+    }
+
+    // Scale und Anchor werden jetzt bei JEDEM Beneos-Drop gesetzt, nicht
+    // mehr nur im Top-Down-Zweig. Der 2.5D-Drop lief vorher komplett
+    // ohne Flag-Werte durch und lebte allein von dem, was zufaellig im
+    // Prototype stand. Synchron per updateSource, damit der Token schon
+    // im ersten gezeichneten Frame richtig sitzt und nicht sichtbar
+    // nachspringt.
+    const profile = BeneosUtility.getBeneosRenderProfile(actor, src)
+    Object.assign(patch, BeneosUtility.beneosRenderPatch(profile))
+    patch[`flags.${BeneosUtility.moduleID()}.renderStamp`] =
+      BeneosUtility.beneosRenderStamp(profile)
+    tokenDoc.updateSource(patch)
   } catch (err) {
-    console.warn("[Beneos] preCreateToken style override failed", err)
+    console.warn("[Beneos] preCreateToken render override failed", err)
   }
 })
 
@@ -658,22 +669,16 @@ Hooks.on("preCreateToken", (tokenDoc, data, options, userId) => {
 // game.actors.get(tokenDoc.actorId)) so the flag survives in
 // actor.toObject().flags for Foundry's Right-Click → Export Data
 // roundtrip.
+// Stage 13d-13: die Merge-Logik liegt jetzt in
+// BeneosUtility.beneosPersistRenderValues, weil sie auch das dev-Tool braucht
+// und zwei Kopien schon zweimal auseinandergelaufen sind. Hier bleibt nur der
+// Creator-Mode-Vertrag: kein neuer Flag-Block (createFlag false), damit ein
+// Fremd-Actor beim Endkunden weiterhin unangetastet bleibt.
 function _beneosCreatorPersistScale(worldActor, newScale, newTextureSrc) {
-  if (!worldActor) return
   if (!(typeof newScale === "number" && newScale > 0)) return
-  const beneosFlag = worldActor.getFlag("world", "beneos")
-  if (!beneosFlag) return  // not a Beneos creature — silent skip
-  const src = newTextureSrc || worldActor.prototypeToken?.texture?.src || ""
-  const mode = src.includes("-top.webp") ? "topdown" : "tokenized"
-  const flagKey = mode === "topdown" ? "topDownScale" : "tokenizedScale"
-  const rendering = { ...(beneosFlag.rendering || {}), [flagKey]: newScale }
-  worldActor.setFlag("world", "beneos", { ...beneosFlag, rendering }).then(() => {
-    BeneosUtility.debugMessage(
-      "[Beneos Creator-Mode] persisted", flagKey, "=", newScale, "on", worldActor.name
-    )
-  }).catch(err => {
-    console.warn("[Beneos] Creator-Mode setFlag failed", err)
-  })
+  BeneosUtility.beneosPersistRenderValues(worldActor, {
+    src: newTextureSrc, scale: newScale, createFlag: false
+  }).catch(err => console.warn("[Beneos] Creator-Mode scale persist failed", err))
 }
 
 // Stage 13d-11: anchor auto-save, mirror of the scale path. Detects
@@ -682,37 +687,24 @@ function _beneosCreatorPersistScale(worldActor, newScale, newTextureSrc) {
 // of ax/ay actually changed (a single-axis edit is the common case);
 // no-op for non-Beneos actors.
 function _beneosCreatorPersistAnchor(worldActor, ax, ay, newTextureSrc) {
-  if (!worldActor) return
   if (!Number.isFinite(ax) && !Number.isFinite(ay)) return
-  const beneosFlag = worldActor.getFlag("world", "beneos")
-  if (!beneosFlag) return
-  const src = newTextureSrc || worldActor.prototypeToken?.texture?.src || ""
-  const mode = src.includes("-top.webp") ? "topdown" : "tokenized"
-  const xKey = mode === "topdown" ? "topDownAnchorX" : "tokenizedAnchorX"
-  const yKey = mode === "topdown" ? "topDownAnchorY" : "tokenizedAnchorY"
-  const current = beneosFlag.rendering || {}
-  // Idempotency: skip if neither axis would actually change.
-  const xChanged = Number.isFinite(ax) && current[xKey] !== ax
-  const yChanged = Number.isFinite(ay) && current[yKey] !== ay
-  if (!xChanged && !yChanged) return
-  const rendering = { ...current }
-  if (xChanged) rendering[xKey] = ax
-  if (yChanged) rendering[yKey] = ay
-  worldActor.setFlag("world", "beneos", { ...beneosFlag, rendering }).then(() => {
-    const parts = []
-    if (xChanged) parts.push(`${xKey}=${ax}`)
-    if (yChanged) parts.push(`${yKey}=${ay}`)
-    BeneosUtility.debugMessage("[Beneos Creator-Mode] persisted anchor", parts.join(", "), "on", worldActor.name)
-  }).catch(err => {
-    console.warn("[Beneos] Creator-Mode anchor setFlag failed", err)
-  })
+  BeneosUtility.beneosPersistRenderValues(worldActor, {
+    src: newTextureSrc,
+    anchorX: Number.isFinite(ax) ? ax : null,
+    anchorY: Number.isFinite(ay) ? ay : null,
+    createFlag: false
+  }).catch(err => console.warn("[Beneos] Creator-Mode anchor persist failed", err))
 }
 
 // Path 1: Designer edits Scale via Actor-Sheet → Prototype-Token-Tab.
 // Update lands directly on the Actor-Document, prototypeToken-Sub.
 Hooks.on("preUpdateActor", (actor, changes, options, userId) => {
   try {
-    if (!game.settings.get(BeneosUtility.moduleID(), "beneos-creator-mode")) return
+    if (!BeneosUtility.isBeneosCreatorMode()) return
+    // Der Render-Sync schreibt genau die Werte, die er zuvor aus den
+    // Flags gelesen hat. Wuerde Creator-Mode sie zurueckschreiben,
+    // entstuende eine Schleife aus Lesen und Schreiben desselben Werts.
+    if (options?.beneosRenderSync) return
     const proto = changes?.prototypeToken
     if (!proto) return
     const newSrc = proto?.texture?.src ?? actor.prototypeToken?.texture?.src ?? ""
@@ -766,7 +758,10 @@ Hooks.on("preUpdateActor", (actor, changes) => {
 // Cloud roundtrip), not on the synthetic delta of the placed token.
 Hooks.on("preUpdateToken", (tokenDoc, changes, options, userId) => {
   try {
-    if (!game.settings.get(BeneosUtility.moduleID(), "beneos-creator-mode")) return
+    if (!BeneosUtility.isBeneosCreatorMode()) return
+    // Siehe preUpdateActor: unsere eigenen Sync-Schreibvorgaenge duerfen
+    // nicht als Designer-Eingabe zurueck in die Flags wandern.
+    if (options?.beneosRenderSync) return
     const newSrc = changes?.texture?.src ?? tokenDoc?.texture?.src ?? ""
     const worldActor = tokenDoc.actorId ? game.actors.get(tokenDoc.actorId) : null
     if (!worldActor) return
@@ -794,6 +789,25 @@ Hooks.on("canvasReady", () => {
     BeneosFXEngine.refreshAll()
   } catch (err) {
     console.warn("[Beneos FX] canvasReady refresh failed", err)
+  }
+})
+
+// Kalter Pfad fuer frisch abgelegte Tokens. createToken loest keinen der
+// Trigger oben aus: die Flags unter world.beneos.rendering aendern sich
+// nicht und texture.src auch nicht, der updateToken-Hook filtert also
+// weg. Ergebnis war, dass ein per Drag-and-Drop platzierter Token seinen
+// Schlagschatten erst beim naechsten Szenenwechsel bekam. drawToken
+// feuert dagegen bei jedem Zeichnen des Placeables, also beim Drop, beim
+// Szenenaufbau und beim Mesh-Neuaufbau nach einem Texturwechsel.
+// applyForToken ist idempotent (raeumt zuerst die eigenen
+// beneosFxId-Filter ab, Partikel- und Render-Layer-Systeme laufen
+// diff-basiert weiter) und steigt bei Nicht-Beneos-Tokens sofort aus,
+// die zusaetzlichen Aufrufe kosten daher praktisch nichts.
+Hooks.on("drawToken", token => {
+  try {
+    BeneosFXEngine.applyForToken(token)
+  } catch (err) {
+    console.warn("[Beneos FX] drawToken apply failed", err)
   }
 })
 

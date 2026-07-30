@@ -84,12 +84,24 @@ export class BeneosModuleMenu extends Dialog {
 
       let myActor = this.actor
       await myActor.update({ 'img': tokenData.avatar })
-      if (myActor.token) {
-        await myActor.token.update({ texture: { src: tokenData.token } })
-        await myActor.prototypeToken.update({ texture: { src: tokenData.token } })
-      } else {
-        await myActor.prototypeToken.update({ texture: { src: tokenData.token } })
+      // Mit der Textur wandern auch Scale und Anchor mit. Vorher wurde
+      // nur texture.src getauscht, sodass ein hier zugewiesener
+      // Beneos-Token auf der alten Groesse des Ziel-Actors sitzenblieb.
+      const profile = BeneosUtility.getBeneosRenderProfile(myActor, tokenData.token)
+      const texturePatch = {
+        src: tokenData.token,
+        scaleX: profile.scale, scaleY: profile.scale,
+        anchorX: profile.anchorX, anchorY: profile.anchorY
       }
+      const stamp = BeneosUtility.beneosRenderStamp(profile)
+      if (myActor.token) {
+        await myActor.token.update({
+          texture: texturePatch,
+          flags: { [BeneosUtility.moduleID()]: { renderStamp: stamp } }
+        }, { beneosRenderSync: true })
+      }
+      await myActor.prototypeToken.update({ texture: texturePatch }, { beneosRenderSync: true })
+      await myActor.setFlag(BeneosUtility.moduleID(), "renderStamp", stamp)
     })
   }
 }

@@ -4,6 +4,17 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.4.3 # 2026-07-30
+
+**Fixes**
+- Fixed: A top-down token whose image was not a `.webp` was treated as a 2.5D token. Mode detection only recognised the exact string `-top.webp`, so a correctly named `-top.png` had its scale stored under `tokenizedScale` and the carefully sized top-down view was silently lost. Variant detection had the same restriction: `-2-top.png` counted as having no variant, so its value overwrote the shared default instead of the variant entry.
+- Fixed: The creator mode wrote scale and anchor as a full replacement of the `flags.world.beneos` subtree. It now writes only the `rendering` path, so sibling data such as `tokenKey` or the content signature can no longer be lost by an error in that code.
+
+**Internal**
+- The two creator-mode writers were merged into one place, `BeneosUtility.beneosPersistRenderValues`. Both the automatic save and the Beneos Development Tools now go through it, so the variant map, the leading-variant rule and the per-axis anchor handling cannot drift apart again. It also awaits its write and reports back, which the old fire-and-forget version could not.
+- New `BeneosUtility.getBeneosRenderOverrides` reads the stored scale and anchor without falling back to the built-in defaults, so a tool can tell "nothing is stored" from "the stored value is 1.1".
+- `syncActorPrototypeRenderProfile` takes an option to skip the Beneos-creature check. The default is unchanged.
+
 ### 14.4.2 # 2026-07-26
 
 **Fixes**
