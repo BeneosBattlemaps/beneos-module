@@ -75,10 +75,12 @@ export class BeneosNativeUninstaller {
   }
 
   /**
-   * Confirmation gate. Says exactly what is about to happen, including the part
-   * we cannot do (removing the emptied files themselves), because a user who
-   * finds leftover empty folders afterwards should have been told, not
-   * surprised. Cancel is the default button.
+   * Confirmation gate. Two sentences: what disappears, and what it buys. The
+   * earlier version also spelled out that placed tokens go with the scenes,
+   * that foreign playlist tracks survive, and that Foundry cannot delete the
+   * emptied files themselves. All true, all noise at the moment of decision:
+   * "everything it installed is deleted" already covers the first two, and the
+   * third is module internals a GM never needs to act on. Cancel is default.
    * @returns {Promise<boolean>} true => proceed
    */
   static async confirm({ name = "" } = {}) {
@@ -87,22 +89,16 @@ export class BeneosNativeUninstaller {
     const safeName = foundry.utils.escapeHTML(String(name || ""))
     const title = localize("BENEOS.Cloud.Uninstall.Title", "Remove this release from your world?")
     const intro = (localize("BENEOS.Cloud.Uninstall.Intro",
-      "Everything '%name%' installed will be deleted from THIS world: its scenes, actors, journals, items and folders.")
+      "'%name%' and everything it installed will be deleted from this world.")
     ).replace("%name%", safeName)
-    const warnEdits = localize("BENEOS.Cloud.Uninstall.WarnEdits",
-      "Tokens you placed on those scenes and any manual edits to them are lost with them.")
-    const warnPlaylist = localize("BENEOS.Cloud.Uninstall.WarnPlaylist",
-      "Only this release's tracks are taken out of your playlists; every other track stays where it is.")
     const warnFiles = localize("BENEOS.Cloud.Uninstall.WarnFiles",
-      "The downloaded files are emptied so the disk space is freed. Foundry gives modules no way to delete files, so empty files and their folders stay behind and can only be removed through your host's file manager.")
+      "The downloaded files are emptied, so the disk space is freed.")
     const question = localize("BENEOS.Cloud.Uninstall.Question", "Continue?")
 
     try {
       const proceed = await DialogV2.confirm({
         window:  { title },
         content: `<p style="line-height:1.5">${intro}</p>`
-               + `<p style="line-height:1.5">${warnEdits}</p>`
-               + `<p style="line-height:1.5">${warnPlaylist}</p>`
                + `<p style="line-height:1.5">${warnFiles}</p>`
                + `<p style="line-height:1.5"><strong>${question}</strong></p>`,
         yes:     { label: localize("BENEOS.Cloud.Uninstall.Yes", "Remove"), default: false },

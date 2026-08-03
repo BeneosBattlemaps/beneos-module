@@ -1498,6 +1498,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // the content signature changed.
     // (Computed BEFORE isCloudAvailable below, which uses bmapInstalled.)
     let bmapInstalled = false, bmapInstalledOn = "", bmapUpdate = false
+    let bmapUninstallVariant = "", bmapUninstallPackageId = "", bmapReleaseName = ""
     if (assetType === "bmap" && props.release_dir) {
       const installs = BeneosInstallState.findByReleaseDir(props.release_dir)
       if (installs.length) {
@@ -1505,6 +1506,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         bmapInstalled   = true
         bmapInstalledOn = this.#formatInstallDate(chosen.installedAt)
         const rel        = this._releaseIndex?.get?.(props.release_dir) || null
+        // A single map card can only offer removal of its WHOLE release: the
+        // uninstaller works off the pack manifest and has no per-scene view.
+        // Carrying the release's own name here is what keeps the confirmation
+        // honest, since the card itself is titled after one map.
+        bmapReleaseName        = String(rel?.display_name || props.release_dir)
+        bmapUninstallVariant   = String(chosen.variant || "")
+        bmapUninstallPackageId = String((rel?.variant_dirs || {})[chosen.variant]
+          || Object.values(rel?.variant_dirs || {})[0] || "")
         const curSig     = String(rel?.content_signature || "")
         const updatedDate = this.#releaseDateInfo(props.release_dir)?.updatedDate || ""
         const sigStale   = !!(curSig && chosen.sourceSignature && chosen.sourceSignature !== curSig)
@@ -2034,6 +2043,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // Teil 3: marker-only installed state for battlemap scene cards.
       bmapInstalled,
       installedOnLabel: bmapInstalledOn,
+      // Same uninstall affordance as the release card, aimed at the parent
+      // release. Only a GM, and only when the pack dir could be resolved: with
+      // no packageId the handler has nothing to describe and would refuse.
+      canUninstall:         bmapInstalled && !!bmapUninstallPackageId && !!game.user?.isGM,
+      uninstallVariant:     bmapUninstallVariant,
+      uninstallPackageId:   bmapUninstallPackageId,
+      uninstallReleaseDir:  String(props.release_dir || ""),
+      uninstallReleaseName: bmapReleaseName,
       isFree,
       isLocked,
       updateLocked,
@@ -5607,9 +5624,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // Uninstall affordance: only for a GM, only on a release that really is
         // in this world, and always against the variant that was ACTUALLY
         // installed (which may differ from the resolution toggle the user is
-        // currently looking at).
+        // currently looking at). The release-dir/name pair is spelled out even
+        // though it equals key/name here, so the template's uninstall block is
+        // literally the same markup on a release card and on a single map card,
+        // where key/name describe the SCENE and would name the wrong thing.
         canUninstall:         installed && !!game.user?.isGM,
         uninstallVariant:     installState?.variantInstalled || "",
+        uninstallReleaseDir:  r.release_dir,
+        uninstallReleaseName: r.display_name || r.release_dir,
         uninstallPackageId:   installed
           ? ((r?.variant_dirs || {})[installState.variantInstalled] || Object.values(r?.variant_dirs || {})[0] || "")
           : "",

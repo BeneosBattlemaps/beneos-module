@@ -505,7 +505,10 @@
                           data-bmap-native="true"
                           data-tooltip="{{localize 'BENEOS.Cloud.Bmap.InstallNativeReleaseTooltip'}}">
                     <i class="fa-solid {{#if card.isUpdate}}fa-rotate{{else}}fa-cloud-arrow-down{{/if}}"></i>
-                    {{#if card.isUpdate}}{{localize "BENEOS.Cloud.Card.Update"}}{{else}}{{localize "BENEOS.Cloud.Card.Install"}}{{/if}}
+                    {{!-- An installed release stays re-installable, so the button
+                         stays; saying "Install" on something already in the world
+                         is what confused people. --}}
+                    {{#if card.isUpdate}}{{localize "BENEOS.Cloud.Card.Update"}}{{else if card.bmapInstalled}}{{localize "BENEOS.Cloud.Card.InstallAgain"}}{{else}}{{localize "BENEOS.Cloud.Card.Install"}}{{/if}}
                   </button>
                   {{!-- Counterpart to the install button: take the whole release
                        back out of this world and free the disk space it uses.
@@ -513,8 +516,8 @@
                   {{#if card.canUninstall}}
                     <button type="button" class="bc-card-button bc-card-button-danger bc-action-uninstall"
                             data-action="uninstallRelease"
-                            data-release-dir="{{card.key}}"
-                            data-release-name="{{card.name}}"
+                            data-release-dir="{{card.uninstallReleaseDir}}"
+                            data-release-name="{{card.uninstallReleaseName}}"
                             data-release-variant="{{card.uninstallVariant}}"
                             data-package-id="{{card.uninstallPackageId}}"
                             data-tooltip="{{localize 'BENEOS.Cloud.Uninstall.ButtonTooltip'}}">
@@ -530,8 +533,23 @@
                           data-bmap-native="true"
                           data-tooltip="{{localize 'BENEOS.Cloud.Bmap.InstallNativeSceneTooltip'}}">
                     <i class="fa-solid {{#if card.isUpdate}}fa-rotate{{else}}fa-cloud-arrow-down{{/if}}"></i>
-                    {{#if card.isUpdate}}{{localize "BENEOS.Cloud.Card.Update"}}{{else}}{{localize "BENEOS.Cloud.Card.Install"}}{{/if}}
+                    {{#if card.isUpdate}}{{localize "BENEOS.Cloud.Card.Update"}}{{else if card.bmapInstalled}}{{localize "BENEOS.Cloud.Card.InstallAgain"}}{{else}}{{localize "BENEOS.Cloud.Card.Install"}}{{/if}}
                   </button>
+                  {{!-- Same trash button as on the release card, and it removes
+                       the WHOLE release, not this one map: the uninstaller works
+                       off the pack manifest and knows no per-scene split. The
+                       confirmation names the release for exactly that reason. --}}
+                  {{#if card.canUninstall}}
+                    <button type="button" class="bc-card-button bc-card-button-danger bc-action-uninstall"
+                            data-action="uninstallRelease"
+                            data-release-dir="{{card.uninstallReleaseDir}}"
+                            data-release-name="{{card.uninstallReleaseName}}"
+                            data-release-variant="{{card.uninstallVariant}}"
+                            data-package-id="{{card.uninstallPackageId}}"
+                            data-tooltip="{{localize 'BENEOS.Cloud.Uninstall.ButtonTooltip'}}">
+                      <i class="fa-solid fa-trash"></i>
+                    </button>
+                  {{/if}}
                 {{/if}}
               {{else}}
                 <button type="button" class="bc-card-button bc-card-button-primary bc-action-install"
