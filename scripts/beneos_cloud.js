@@ -3557,10 +3557,26 @@ export class BeneosCloud {
       .then(async function (data) {
         if (data.result == 'OK') {
           game.beneos.cloud.importAsset = "Token"
-          _beneosReportCloudMetadata("token", tokenKey, data.data.token)
+          // Continue under the name the CLOUD uses for this asset, which can
+          // differ from the one we asked for: some map packs reference their
+          // creatures as "NNN_name" while the catalog knows them as "NNN-name"
+          // (found 2026-08-03). The delivered image filenames always follow the
+          // catalog, and the install folder, the flags and the post-install
+          // health check are all built from the key, so keeping the requested
+          // spelling produced a folder whose contents nothing could find again.
+          const cloudKey = String(data?.data?.token?.filename || "") || tokenKey
+          if (cloudKey !== tokenKey) {
+            console.warn(`[Beneos Cloud] token '${tokenKey}' is '${cloudKey}' in the catalog; installing under the catalog name`)
+            const drops = game.beneos.cloud.pendingCanvasDrops.get(tokenKey)
+            if (drops) {
+              game.beneos.cloud.pendingCanvasDrops.set(cloudKey, drops)
+              game.beneos.cloud.pendingCanvasDrops.delete(tokenKey)
+            }
+          }
+          _beneosReportCloudMetadata("token", cloudKey, data.data.token)
           // Fix #E3: await so the lock is only released after the full import (including
           // file uploads, compendium writes and search-engine re-render) has settled.
-          await game.beneos.cloud.importTokenToCompendium({ [`${tokenKey}`]: data.data.token }, event, isBatch)
+          await game.beneos.cloud.importTokenToCompendium({ [`${cloudKey}`]: data.data.token }, event, isBatch)
         } else {
           console.warn("[Beneos Cloud] Error in importing Token from BeneosCloud", data, tokenKey)
           ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.ImportErrorToken"))
