@@ -32,9 +32,20 @@ const FETCH_MAX_ATTEMPTS  = 3            // transient retries per asset
 const FETCH_BACKOFF_MS    = [500, 1500, 4000]
 const FETCH_INACTIVITY_MS = 30000       // abort if no bytes received for 30s
 const FETCH_INACTIVITY_CHECK_MS = 5000  // how often the single inactivity watcher polls
-const FETCH_TOTAL_MS      = 300000      // hard per-attempt safety cap (5 min)
+const FETCH_TOTAL_MS      = 300000      // floor for the per-attempt safety cap (5 min)
+const FETCH_HEADER_MS     = 60000       // budget until the response headers arrive
+const FETCH_TOTAL_MAX_MS  = 1800000     // ceiling for the per-attempt safety cap (30 min)
+const FETCH_MIN_RATE_BPS  = 5 * 1024    // slowest line we still wait out (5 KB/s)
 const MANIFEST_MAX_REFRESH = 2          // signed-URL refreshes per install
 const DOWNLOAD_CONCURRENCY = 6          // parallel asset transfers (moderate: gentle on the shared-hosting origin)
+// Adaptive concurrency: six lanes split a thin pipe into six trickles, which
+// keeps every single connection open for minutes and makes large files far more
+// likely to die mid-body. We only ever reduce, never raise, so a healthy line
+// behaves exactly as before.
+const ADAPTIVE_MIN_BYTES  = 4 * 1024 * 1024  // judge throughput only after this much moved
+const ADAPTIVE_SAMPLE_MIN = 512 * 1024       // ignore transfers this small: latency, not bandwidth, dominates them
+const ADAPTIVE_SLOW_BPS   = 80 * 1024        // below this PER-LANE rate, thin the pool
+const ADAPTIVE_MIN_LANES  = 2                // floor: never serialize a healthy install
 
 // Failure categories. Kept as plain strings so the report module can map them
 // to headlines/guidance without importing this module (avoids a load cycle).
@@ -189,6 +200,12 @@ export class BeneosNativeBattlemapInstaller {
     // scope falls back to the full release so the user never gets nothing.
     this.sceneSlugs = (Array.isArray(sceneSlugs) && sceneSlugs.length) ? sceneSlugs.filter(Boolean) : null
     this.progress  = null
+    // Rolling PER-CONNECTION download throughput, used to thin the transfer
+    // pool on a slow line (see #maybeThrottleLanes). Counts only time a fetch
+    // was actually streaming, so the upload half of the transfer never drags
+    // the measurement down. Reset at the start of the asset phase.
+    this._netBytes = 0
+    this._netMs    = 0
     this._manifestRefreshes = 0
     this._urlByTarget = new Map() // target/relPath -> current signed URL (refreshable)
     this._packagedRemap = new Map() // original asset path -> packaged install target (self-contained relocation)
@@ -938,14 +955,37 @@ export class BeneosNativeBattlemapInstaller {
 
   #sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 
+  /** Parse a `Content-Range: bytes <start>-<end>/<total>` response header. */
+  #parseContentRange(value) {
+    const m = /^bytes\s+(\d+)-(\d+)\/(\d+|\*)$/i.exec(String(value || "").trim())
+    if (!m) return null
+    return { start: Number(m[1]), end: Number(m[2]), total: m[3] === "*" ? null : Number(m[3]) }
+  }
+
   /**
    * Single fetch attempt with an INACTIVITY timeout: the request is aborted
    * only if no bytes arrive for FETCH_INACTIVITY_MS, so a genuinely slow but
-   * progressing download (Raspberry Pi / slow line) is never killed. A total
-   * cap (FETCH_TOTAL_MS) is the last-resort safety net. Returns a Blob.
+   * progressing download (Raspberry Pi / slow line) is never killed.
+   *
+   * `carry` accumulates the bytes received across attempts: whatever arrived
+   * before a mid-body failure is kept, and the next attempt asks for the rest
+   * with a Range header instead of restarting at byte zero. Our delivery
+   * endpoint answers those with a real 206 (scenepacker-files.php), so a
+   * transfer that dies at 80% resumes at 80%.
+   *
+   * The total cap is armed in two stages: a short window until the headers
+   * arrive, then a window derived from Content-Length. The old fixed 5 minutes
+   * made large files on thin lines mathematically impossible to finish (a 24 MB
+   * asset at 42 KB/s needs ~10 min), so they failed deterministically on every
+   * attempt. Returns a Blob.
    */
-  async #fetchOnce(url) {
+  async #fetchOnce(url, carry) {
     const controller = new AbortController()
+    // Per-attempt throughput sample (see #maybeThrottleLanes). Recorded in the
+    // finally block so an aborted transfer still contributes: a lane crawling
+    // at 40 KB/s until it dies is precisely the signal we want.
+    let attemptBytes = 0
+    let streamStart  = 0
     // Inactivity guard WITHOUT per-chunk timer churn: record the timestamp of
     // the last received bytes and let a single low-frequency watcher abort if
     // the gap exceeds FETCH_INACTIVITY_MS. The previous version re-armed a
@@ -959,23 +999,135 @@ export class BeneosNativeBattlemapInstaller {
         controller.abort(new DOMException("inactivity timeout", "AbortError"))
       }
     }, FETCH_INACTIVITY_CHECK_MS)
-    const total = setTimeout(() => controller.abort(new DOMException("total timeout", "AbortError")), FETCH_TOTAL_MS)
+    let total = setTimeout(() => controller.abort(new DOMException("header timeout", "AbortError")), FETCH_HEADER_MS)
     try {
-      const resp = await fetch(url, { signal: controller.signal })
+      const resumeFrom = carry.bytes > 0 ? carry.bytes : 0
+      const init = { signal: controller.signal }
+      if (resumeFrom > 0) init.headers = { Range: `bytes=${resumeFrom}-` }
+      const resp = await fetch(url, init)
+      // 416 on a resume means the requested range starts past the end. That is
+      // only good news if we actually hold the whole file, so confirm against
+      // the total size the server reports in its Content-Range before believing
+      // it. Without that check a spurious 416 would pass a partial file as done.
+      if (resumeFrom > 0 && resp.status === 416) {
+        const totalOnly = /\/\s*(\d+)\s*$/.exec(String(resp.headers.get("content-range") || ""))
+        const knownTotal = totalOnly ? Number(totalOnly[1]) : null
+        if (knownTotal == null || knownTotal === carry.bytes) {
+          return new Blob(carry.chunks, { type: carry.type || "application/octet-stream" })
+        }
+        carry.chunks = []
+        carry.bytes = 0
+        throw new TransferError(`range rejected at ${resumeFrom}/${knownTotal}, restarting`, INSTALL_ERROR.NETWORK, 416)
+      }
       if (!resp.ok) throw new TransferError(`HTTP ${resp.status}`, classifyTransferError(null, resp.status), resp.status)
-      const type = resp.headers.get("content-type") || "application/octet-stream"
+
+      // Range safety. A server or proxy that ignores Range answers 200 with the
+      // FULL body; appending that to the bytes we already hold would silently
+      // produce a corrupt file that passes every later check.
+      //
+      // Content-Range would be the natural thing to verify against, but it is
+      // NOT a CORS-safelisted response header, so cross-origin it reads as null
+      // even though the server sends it (measured against beneos.cloud). Only
+      // Content-Length is exposed, so the fallback check is arithmetic: what is
+      // still coming plus what we already hold must equal the size the first
+      // response advertised. Same-origin (ZIP-less dev setups, proxies) the
+      // real header is there and takes precedence.
+      if (resumeFrom > 0) {
+        let sane = false
+        if (resp.status === 206) {
+          const cr = this.#parseContentRange(resp.headers.get("content-range"))
+          if (cr) {
+            sane = cr.start === resumeFrom
+            if (cr.total != null) carry.total = cr.total
+          } else if (carry.total != null) {
+            const remaining = Number(resp.headers.get("content-length"))
+            sane = Number.isFinite(remaining) && remaining > 0 && (carry.bytes + remaining === carry.total)
+          }
+        }
+        if (!sane) {
+          // Drop the partial buffer. A 200 here means the peer ignored Range and
+          // is about to send the whole file, which we can simply take. A 206 we
+          // could not validate must not be consumed at all, because its body is
+          // a fragment: restart the asset from byte zero instead.
+          carry.chunks = []
+          carry.bytes = 0
+          if (resp.status === 206) {
+            throw new TransferError("unverifiable partial response, restarting", INSTALL_ERROR.NETWORK, 206)
+          }
+        }
+      }
+
+      const type = resp.headers.get("content-type") || carry.type || "application/octet-stream"
+      carry.type = type
+
+      // Expected total size, used both for the time budget and as a truncation
+      // guard. Skipped when the body is content-encoded, because then the
+      // advertised length is the compressed size while the reader yields the
+      // decoded bytes, which would flag every such response as truncated.
+      let expected = null
+      const enc = (resp.headers.get("content-encoding") || "").toLowerCase()
+      if (!enc || enc === "identity") {
+        const cl = Number(resp.headers.get("content-length"))
+        if (resp.status === 206) {
+          // On a validated 206 the total is either already known from the first
+          // attempt or derivable from what we hold plus what is still coming.
+          expected = carry.total ?? (Number.isFinite(cl) && cl > 0 ? carry.bytes + cl : null)
+        } else if (Number.isFinite(cl) && cl > 0) {
+          expected = cl
+          carry.total = cl   // remembered so a later resume can validate itself
+        }
+      }
+
+      // Re-arm the safety cap now that the size is known: enough time to finish
+      // the remaining bytes at a very slow but real rate, floored at the old
+      // value and ceilinged so a wedged connection still ends eventually. The
+      // inactivity watcher above remains the actual hang guard.
+      clearTimeout(total)
+      const budgetMs = expected != null
+        ? Math.min(FETCH_TOTAL_MAX_MS, Math.max(FETCH_TOTAL_MS, ((expected - carry.bytes) / FETCH_MIN_RATE_BPS) * 1000))
+        : FETCH_TOTAL_MS
+      total = setTimeout(() => controller.abort(new DOMException("total timeout", "AbortError")), budgetMs)
+
       lastByteAt = performance.now()
+      streamStart = lastByteAt
       if (!resp.body || typeof resp.body.getReader !== "function") {
-        return await resp.blob() // environment without streaming
+        // Environment without streaming: take the whole body in one piece.
+        const buf = new Uint8Array(await resp.arrayBuffer())
+        carry.chunks.push(buf)
+        carry.bytes += buf.length
+        attemptBytes += buf.length
+      } else {
+        const reader = resp.body.getReader()
+        for (;;) {
+          const { done, value } = await reader.read()
+          if (done) break
+          if (value) {
+            carry.chunks.push(value)
+            carry.bytes += value.length
+            attemptBytes += value.length
+            lastByteAt = performance.now()
+          }
+        }
       }
-      const reader = resp.body.getReader()
-      const chunks = []
-      for (;;) {
-        const { done, value } = await reader.read()
-        if (done) break
-        if (value) { chunks.push(value); lastByteAt = performance.now() }
+
+      // Truncation guard: a body that ends cleanly but short used to pass as a
+      // success and left a broken asset on disk. Treated as transient so the
+      // retry resumes from where it stopped.
+      //
+      // Only a SHORT body counts. Receiving MORE than Content-Length advertised
+      // means the response was compressed in transit: the header carries the
+      // encoded size while the reader yields the decoded bytes. Content-Encoding
+      // is not reliably visible to us cross-origin, so the byte counts are the
+      // only honest signal. Measured against beneos.cloud: folders.json arrives
+      // as 5609 bytes against a Content-Length of 1017, while binary assets
+      // (webp/webm/ogg) match exactly. Flagging that as truncation made every
+      // compressed JSON retry until its budget ran out.
+      if (expected != null && carry.bytes > expected) {
+        carry.total = null   // the advertised size was the encoded one: useless for resume arithmetic
+      } else if (expected != null && carry.bytes < expected) {
+        throw new TransferError(`incomplete body: ${carry.bytes}/${expected} bytes`, INSTALL_ERROR.NETWORK, null)
       }
-      return new Blob(chunks, { type })
+      return new Blob(carry.chunks, { type })
     } catch (err) {
       if (err instanceof TransferError) throw err
       const cat = err?.name === "AbortError" ? INSTALL_ERROR.TIMEOUT : classifyTransferError(err, null)
@@ -983,6 +1135,13 @@ export class BeneosNativeBattlemapInstaller {
     } finally {
       clearInterval(inactivityWatch)
       clearTimeout(total)
+      // Only samples big enough to be bandwidth-bound count. A burst of tiny
+      // files is dominated by round-trip latency and would make a perfectly
+      // healthy connection look slow.
+      if (streamStart && attemptBytes >= ADAPTIVE_SAMPLE_MIN) {
+        this._netBytes += attemptBytes
+        this._netMs    += Math.max(1, performance.now() - streamStart)
+      }
     }
   }
 
@@ -1006,12 +1165,18 @@ export class BeneosNativeBattlemapInstaller {
     }
     let url = initialUrl
     let transient = 0
+    // Bytes received so far, kept ACROSS attempts so a failure mid-body resumes
+    // with a Range request instead of restarting at zero. Survives a signed-URL
+    // refresh too: same file, same offset, only the URL changes.
+    const carry = { chunks: [], bytes: 0, type: null, total: null }
     // `guard` is the hard upper bound on loop turns: transient failures are
-    // capped by FETCH_MAX_ATTEMPTS, but a SIGNATURE refresh `continue`s without
-    // bumping `transient`, so guard backstops a pathological refresh loop.
-    for (let guard = 0; guard < 8; guard++) {
+    // capped by FETCH_MAX_ATTEMPTS, but a SIGNATURE refresh and a partial-body
+    // resume both `continue` without bumping `transient`, so guard backstops a
+    // pathological loop. Refreshes are separately capped by MANIFEST_MAX_REFRESH.
+    for (let guard = 0; guard < 32; guard++) {
+      const bytesBefore = carry.bytes
       try {
-        return await this.#fetchOnce(url)
+        return await this.#fetchOnce(url, carry)
       } catch (err) {
         const cat = err.category || INSTALL_ERROR.UNKNOWN
         if (cat === INSTALL_ERROR.NOTFOUND) throw err
@@ -1019,6 +1184,17 @@ export class BeneosNativeBattlemapInstaller {
           const fresh = await this.#refreshManifestFor(targetOrRelPath)
           if (fresh) { url = fresh; continue }
           throw err
+        }
+        // An attempt that moved bytes forward is progress, not a failed try: on
+        // a thin line a large asset may well need several resumes, and burning
+        // the retry budget on them would reintroduce the very failure this
+        // fixes. Only attempts that gained nothing count against the limit.
+        if (carry.bytes > bytesBefore) {
+          // Still a real delivery interruption, so it stays in the telemetry:
+          // otherwise resuming would hide exactly the per-country error rate
+          // this signal exists to surface.
+          try { game.beneos?.analytics?.trackDownloadRetry?.(this.record?.assetId || "", transient + 1) } catch (_) {}
+          continue
         }
         transient += 1
         if (transient >= FETCH_MAX_ATTEMPTS) throw err
@@ -1169,16 +1345,49 @@ export class BeneosNativeBattlemapInstaller {
    * Workers pull from a shared cursor; resolves when every item is processed.
    * Single-threaded JS -> shared-counter mutations inside the worker are safe.
    * A worker must not throw (handle per-item errors itself).
+   *
+   * Optional `budget` ({ lanes }) lets a caller shrink the pool while it runs:
+   * a lane retires itself between items once the pool exceeds the budget. It
+   * retires rather than aborts, so in-flight transfers always finish.
    */
-  async #runPool(items, concurrency, worker) {
+  async #runPool(items, concurrency, worker, budget = null) {
     const n = items.length
     if (n === 0) return
     let next = 0
     const lanes = Math.max(1, Math.min(concurrency, n))
+    let active = lanes
     const runLane = async () => {
-      for (let i = next++; i < n; i = next++) await worker(items[i], i)
+      for (let i = next++; i < n; i = next++) {
+        await worker(items[i], i)
+        if (budget && active > Math.max(1, budget.lanes)) { active -= 1; return }
+      }
     }
     await Promise.all(Array.from({ length: lanes }, runLane))
+  }
+
+  /**
+   * Thin the pool once when the measured PER-LANE rate shows the line cannot
+   * carry six streams. Six lanes on a 250 KB/s link give each file ~42 KB/s,
+   * which holds a single connection open for minutes and is what makes large
+   * assets die mid-body. Two lanes on the same link move each file 3x faster.
+   *
+   * Per-lane rather than aggregate on purpose: aggregate over wall-clock would
+   * also count the upload half of each transfer, where no download bytes
+   * arrive, and would therefore understate a healthy line by roughly half.
+   *
+   * Deliberately one-way (never raises past DOWNLOAD_CONCURRENCY) and only
+   * judged once enough bandwidth-bound bytes have moved, so a fast connection
+   * is never mistaken for a slow one.
+   */
+  #maybeThrottleLanes(budget) {
+    if (this._zipEntries) return                              // ZIP source: no network to measure
+    if (!budget || budget.lanes <= ADAPTIVE_MIN_LANES) return // already thinned
+    if (this._netBytes < ADAPTIVE_MIN_BYTES) return           // too little data to judge
+    if (this._netMs < 1000) return
+    const bps = (this._netBytes / this._netMs) * 1000
+    if (bps >= ADAPTIVE_SLOW_BPS) return
+    budget.lanes = ADAPTIVE_MIN_LANES
+    console.warn(`BeneosNativeInstaller | thin line (~${Math.round(bps / 1024)} KB/s per stream), reducing to ${budget.lanes} parallel transfers`)
   }
 
   async #downloadAssets(assets) {
@@ -1200,6 +1409,9 @@ export class BeneosNativeBattlemapInstaller {
     this.progress.handleStatusMessage("Downloading scene assets")
     this.progress.revealPhase?.("assets", { status: "active", current: 0, total })
     let done = 0
+    const budget = { lanes: DOWNLOAD_CONCURRENCY }
+    this._netBytes = 0
+    this._netMs    = 0
     await this.#runPool(assets, DOWNLOAD_CONCURRENCY, async (a) => {
       const res = await this.#transferOne(a)
       if (res.ok) this._result.totals.ok += 1
@@ -1207,7 +1419,8 @@ export class BeneosNativeBattlemapInstaller {
       done += 1
       this.progress.handleAssetProgress("Assets", total, done)
       this.progress.revealPhase?.("assets", { status: "active", current: done, total })
-    })
+      this.#maybeThrottleLanes(budget)
+    }, budget)
     this.progress.revealPhase?.("assets", { status: "done", current: total, total })
   }
 
