@@ -98,10 +98,18 @@ export class BeneosNativeUninstaller {
     try {
       const proceed = await DialogV2.confirm({
         window:  { title },
+        // Scoping class only, no theme classes: this styles the Remove button
+        // and nothing else, and cannot leak into other Foundry dialogs.
+        classes: ["bc-uninstall-confirm"],
         content: `<p style="line-height:1.5">${intro}</p>`
                + `<p style="line-height:1.5">${warnFiles}</p>`
                + `<p style="line-height:1.5"><strong>${question}</strong></p>`,
-        yes:     { label: localize("BENEOS.Cloud.Uninstall.Yes", "Remove"), default: false },
+        // The destructive choice carries a trash icon and danger colours. It
+        // used to wear a checkmark and look exactly like Cancel next to it,
+        // which is the wrong signal on the button that deletes scenes, actors
+        // and journals. Cancel keeps the default focus.
+        yes:     { label: localize("BENEOS.Cloud.Uninstall.Yes", "Remove"), default: false,
+                   icon: "fa-solid fa-trash", class: "bc-danger-button" },
         no:      { label: localize("BENEOS.Cloud.Uninstall.Cancel", "Cancel"), default: true },
         rejectClose: false,
       })

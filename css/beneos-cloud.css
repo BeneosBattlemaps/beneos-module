@@ -2814,6 +2814,24 @@
   border-color: var(--bc-danger, #d56b52);
 }
 
+/* Remove button inside the uninstall confirmation. NOT prefixed with
+   .beneos-cloud-app: the dialog is a core Foundry window and lives outside the
+   cloud app, so it is scoped by the class the dialog itself carries. It picks
+   up the same danger red as the trash button on the card, and fills in on
+   hover, so the button that deletes scenes and actors no longer looks exactly
+   like the Cancel button beside it. */
+.bc-uninstall-confirm button.bc-danger-button {
+  color: #d56b52;
+  border-color: #d56b52;
+  background: rgba(213, 107, 82, 0.10);
+}
+.bc-uninstall-confirm button.bc-danger-button:hover,
+.bc-uninstall-confirm button.bc-danger-button:focus {
+  color: #f7c7b9;
+  border-color: #d56b52;
+  background: rgba(213, 107, 82, 0.32);
+}
+
 .beneos-cloud-app .bc-settings-row-account .bc-account-chip {
   margin-right: 6px;
   vertical-align: -2px;
