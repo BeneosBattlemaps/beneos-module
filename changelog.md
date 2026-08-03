@@ -4,6 +4,19 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.4.5 # 2026-08-03 | in progress
+
+**New**
+- New: Remove an installed release from your world again. A trash button sits next to the install button on any release you have installed, and on the individual maps that belong to it. After a confirmation it takes the release's scenes, actors, journals, items and folders back out of the world, removes its tracks from your playlists and frees the disk space its downloads occupied. Maps that another installed release still needs are left alone. Removal always covers a whole release, so the button on an individual map removes that map's release.
+
+**Fixes**
+- Fixed: Large downloads failed on slow or unstable connections. Every retry restarted the file from the beginning, six parallel downloads split a thin line into trickles, and a fixed time limit made the biggest files impossible to finish. An interrupted transfer now continues where it stopped, the number of parallel downloads drops to two when the connection cannot carry six, and the time limit scales with the size of the file.
+- Fixed: The Beneos Cloud browser could show you as a patron while every release stayed locked with a "Join Patreon" button. It happened when the cloud no longer recognised the sign-in stored in that world, for example after signing in from many different worlds. The module kept the old patron state forever instead of noticing. It now clears the stale sign-in and asks you to sign in again, which restores your access. Being offline never clears anything.
+- Fixed: "Only installed" and the other entries of the Show filter had no effect on individual maps. The list kept showing everything while the filter read as active.
+
+**Improved**
+- Improved: The install button on a release that is already in your world now reads "Install Again", so it is clear that the release is installed and the button offers a fresh copy rather than a first install.
+
 ### 14.4.4 # 2026-07-30
 
 **Fixes**
