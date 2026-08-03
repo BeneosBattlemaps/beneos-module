@@ -46,6 +46,10 @@ const ADAPTIVE_MIN_BYTES  = 4 * 1024 * 1024  // judge throughput only after this
 const ADAPTIVE_SAMPLE_MIN = 512 * 1024       // ignore transfers this small: latency, not bandwidth, dominates them
 const ADAPTIVE_SLOW_BPS   = 80 * 1024        // below this PER-LANE rate, thin the pool
 const ADAPTIVE_MIN_LANES  = 2                // floor: never serialize a healthy install
+// Uninstall stubs: Foundry exposes no file-delete API to modules, so the
+// uninstaller reclaims disk space by overwriting assets with a 1-byte file.
+// Anything this small is a stub (or a corpse), never a real asset.
+export const STUB_MAX_BYTES = 8
 
 // Failure categories. Kept as plain strings so the report module can map them
 // to headlines/guidance without importing this module (avoids a load cycle).
@@ -224,6 +228,29 @@ export class BeneosNativeBattlemapInstaller {
     const inst = new BeneosNativeBattlemapInstaller({ packageId, label, coverUrl, sceneSlugs, overwrite, record, source })
     await inst.run()
     return inst
+  }
+
+  /**
+   * Read-only view of what a release consists of: every asset's install target
+   * and the URL map for the document collections. Writes nothing, touches no
+   * world document, opens no UI.
+   *
+   * The uninstaller needs exactly this to work out what belongs to a release,
+   * and it must be the SAME derivation the installer uses, or the two would
+   * drift apart and uninstall would start missing files. Hence a thin static
+   * wrapper around the existing classification instead of a second copy of it.
+   *
+   * @returns {Promise<{assets: Array, jsons: Object, packInfo: Object}>}
+   */
+  static async describePack({ packageId, source = null } = {}) {
+    const inst = new BeneosNativeBattlemapInstaller({ packageId, source })
+    // #classifyPack counts packaged assets into _result, which run() normally
+    // creates. Give it a throwaway so the read-only path does not depend on the
+    // install lifecycle.
+    inst._result = { totals: {} }
+    const packInfo = await inst.#loadPackInfo()
+    const { assets, jsons } = inst.#classifyPack(packInfo)
+    return { assets, jsons, packInfo }
   }
 
   async run() {
@@ -1722,7 +1749,14 @@ export class BeneosNativeBattlemapInstaller {
 
   /**
    * Robust existence check against the data store: cache-busted HEAD that also
-   * rejects hosts which answer 200 with an HTML error page for missing files.
+   * rejects hosts which answer 200 with an HTML error page for missing files,
+   * and rejects uninstall stubs.
+   *
+   * Foundry gives modules no way to delete a file, so the uninstaller frees
+   * space by overwriting each asset with a 1-byte placeholder. Such a file
+   * answers 200 and would otherwise pass as a healthy asset, which would let the
+   * repair pass wave a broken file through on a later reinstall. Anything at or
+   * below STUB_MAX_BYTES counts as missing; no real asset is that small.
    */
   async #headCheck(target) {
     try {
@@ -1730,6 +1764,8 @@ export class BeneosNativeBattlemapInstaller {
       const r = await fetch(url, { method: "HEAD" })
       if (!r.ok) return false
       if (/text\/html/i.test(r.headers.get("content-type") || "")) return false
+      const len = Number(r.headers.get("content-length"))
+      if (Number.isFinite(len) && len <= STUB_MAX_BYTES) return false
       return true
     } catch (_) {
       return false
