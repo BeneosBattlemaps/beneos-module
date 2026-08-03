@@ -2795,6 +2795,25 @@
   color: #f7c7b9;
 }
 
+/* Uninstall (trash) on an installed release card: icon-only, sits next to the
+   install button and must never stretch to share the row width with it. Kept
+   visually quiet until hovered so a destructive action does not compete with
+   the primary install call to action. */
+.beneos-cloud-app .bc-card-button.bc-action-uninstall {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+  padding: 6px 9px;
+  background: transparent;
+  color: var(--bc-text-dim, #9a9186);
+  border-color: var(--bc-border);
+}
+.beneos-cloud-app .bc-card-button.bc-action-uninstall:hover {
+  background: rgba(213, 107, 82, 0.18);
+  color: var(--bc-danger, #d56b52);
+  border-color: var(--bc-danger, #d56b52);
+}
+
 .beneos-cloud-app .bc-settings-row-account .bc-account-chip {
   margin-right: 6px;
   vertical-align: -2px;

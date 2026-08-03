@@ -19,9 +19,26 @@ import { BeneosUtility } from "./beneos_utility.js";
 
 export class BeneosScenePackerManager {
     constructor() {
-        this.serverUrl = 'https://beneos.cloud';
-        this.apiEndpoint = `${this.serverUrl}/api-scenepacker.php`;
         this.sessionId = null; // En fait c'est le foundryId, mais on garde le nom pour compatibilité avec le code
+    }
+
+    /**
+     * Cloud host for the battlemap storefront. This used to be hard-wired to the
+     * production cloud while every other cloud call went through
+     * BeneosUtility.cloudBase(), so a world pointed at the dev cloud asked DEV
+     * for its Patreon status and LIVE for its releases. The dev-only Foundry ID
+     * is unknown to live, which answers can_install=false on every release: the
+     * storefront showed a patron who owns nothing, with no free section, and
+     * nothing in the module's own state hinted at why. Read through a getter
+     * rather than the constructor so switching the setting takes effect without
+     * rebuilding the manager.
+     */
+    get serverUrl() {
+        return BeneosUtility.cloudBase();
+    }
+
+    get apiEndpoint() {
+        return `${this.serverUrl}/api-scenepacker.php`;
     }
 
     /**

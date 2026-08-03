@@ -163,6 +163,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       switchView:              BeneosCloudWindowV2._onSwitchView,
       switchBmapRes:           BeneosCloudWindowV2._onSwitchBmapRes,
       switchBmapView:          BeneosCloudWindowV2._onSwitchBmapView,
+      uninstallRelease:        BeneosCloudWindowV2._onCloudReleaseUninstall,
       installBundle:           BeneosCloudWindowV2._onCloudBundleInstall,
       installBundleMember:     BeneosCloudWindowV2._onCloudBundleMemberInstall,
       retryLoadReleases:       BeneosCloudWindowV2._onRetryLoadReleases,
@@ -5040,6 +5041,55 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     return inst
   }
 
+  /**
+   * Trash button on an installed release card: the counter-move to the install
+   * button next to it. Confirms, removes the release from this world, frees the
+   * disk space, then refreshes the card through the same path an install uses so
+   * the marker disappears immediately.
+   */
+  static async _onCloudReleaseUninstall(event, target) {
+    event.preventDefault()
+    event.stopPropagation()   // the card itself is clickable; do not open the drawer
+
+    if (!game.user?.isGM) {
+      ui.notifications?.warn?.(game.i18n.localize("BENEOS.Cloud.Uninstall.GmOnly")
+        || "Only a Gamemaster can remove a release from the world.")
+      return
+    }
+
+    const releaseDir  = String(target?.dataset?.releaseDir || "")
+    const packageId   = String(target?.dataset?.packageId || "")
+    const variant     = String(target?.dataset?.releaseVariant || "")
+    const displayName = String(target?.dataset?.releaseName || releaseDir)
+    if (!releaseDir || !packageId) {
+      ui.notifications?.error?.(game.i18n.localize("BENEOS.Cloud.Uninstall.NoTarget")
+        || "Could not work out which release to remove.")
+      return
+    }
+
+    const Uninstaller = globalThis.BeneosNativeUninstaller
+    if (!Uninstaller) {
+      ui.notifications?.error?.("BeneosNativeUninstaller is not loaded")
+      return
+    }
+
+    if (!(await Uninstaller.confirm({ name: displayName }))) return
+
+    let inst = null
+    try {
+      inst = await Uninstaller.uninstall({ releaseDir, variant, packageId, label: displayName })
+    } catch (err) {
+      console.error("BeneosCloudWindowV2 | uninstall failed", err)
+      ui.notifications?.error?.(game.i18n.localize("BENEOS.Cloud.Uninstall.Failed")
+        || "Removing the release failed. See the browser console.")
+      return
+    }
+
+    try { await this.#refreshAfterBmapInstall?.(releaseDir) } catch (_) {}
+    try { Hooks.callAll("beneos.releaseUninstalled", { releaseDir, displayName, variant }) } catch (_) {}
+    return inst
+  }
+
   static _onOpenLogin(_event, _target) {
     const login = new BeneosCloudLogin("searchEngineV2")
     login.render()
@@ -5554,6 +5604,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // install/Moulinette buttons (an installed map stays re-installable).
         bmapInstalled:        installed,
         installedOnLabel:     installState ? this.#formatInstallDate(installState.installedAt) : "",
+        // Uninstall affordance: only for a GM, only on a release that really is
+        // in this world, and always against the variant that was ACTUALLY
+        // installed (which may differ from the resolution toggle the user is
+        // currently looking at).
+        canUninstall:         installed && !!game.user?.isGM,
+        uninstallVariant:     installState?.variantInstalled || "",
+        uninstallPackageId:   installed
+          ? ((r?.variant_dirs || {})[installState.variantInstalled] || Object.values(r?.variant_dirs || {})[0] || "")
+          : "",
         groupKind,
         visibleTagDescriptors: [],
         moreTagsCount:        0,
