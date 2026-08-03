@@ -1497,34 +1497,19 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // in the world). Update = the install predates the online updated_date or
     // the content signature changed.
     // (Computed BEFORE isCloudAvailable below, which uses bmapInstalled.)
-    let bmapInstalled = false, bmapInstalledOn = "", bmapUpdate = false
-    let bmapUninstallVariant = "", bmapUninstallPackageId = "", bmapReleaseName = ""
-    if (assetType === "bmap" && props.release_dir) {
-      const installs = BeneosInstallState.findByReleaseDir(props.release_dir)
-      if (installs.length) {
-        const chosen = installs[0]
-        bmapInstalled   = true
-        bmapInstalledOn = this.#formatInstallDate(chosen.installedAt)
-        const rel        = this._releaseIndex?.get?.(props.release_dir) || null
-        // A single map card can only offer removal of its WHOLE release: the
-        // uninstaller works off the pack manifest and has no per-scene view.
-        // Carrying the release's own name here is what keeps the confirmation
-        // honest, since the card itself is titled after one map.
-        bmapReleaseName        = String(rel?.display_name || props.release_dir)
-        bmapUninstallVariant   = String(chosen.variant || "")
-        bmapUninstallPackageId = String((rel?.variant_dirs || {})[chosen.variant]
-          || Object.values(rel?.variant_dirs || {})[0] || "")
-        const curSig     = String(rel?.content_signature || "")
-        const updatedDate = this.#releaseDateInfo(props.release_dir)?.updatedDate || ""
-        const sigStale   = !!(curSig && chosen.sourceSignature && chosen.sourceSignature !== curSig)
-        let dateStale = false
-        if (updatedDate && chosen.installedAt) {
-          const i = Date.parse(chosen.installedAt), u = Date.parse(updatedDate)
-          dateStale = Number.isFinite(i) && Number.isFinite(u) && i < u
-        }
-        bmapUpdate = sigStale || dateStale
-      }
-    }
+    // A single map card can only offer removal of its WHOLE release: the
+    // uninstaller works off the pack manifest and has no per-scene view. The
+    // release's own name travels with it so the confirmation names the release
+    // and not the one map the card is titled after.
+    const bmapInfo = (assetType === "bmap")
+      ? this.#bmapInstallInfo(props.release_dir)
+      : this.#bmapInstallInfo("")
+    const bmapInstalled          = bmapInfo.installed
+    const bmapInstalledOn        = bmapInfo.installedOn
+    const bmapUpdate             = bmapInfo.update
+    const bmapReleaseName        = bmapInfo.releaseName
+    const bmapUninstallVariant   = bmapInfo.variant
+    const bmapUninstallPackageId = bmapInfo.packageId
 
     // Patron-aware per-card flags. isFree surfaces the green "FREE" badge
     // and groups the card into the Free section for non-patrons. isLocked
@@ -2584,6 +2569,35 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     }
 
     let results = Object.fromEntries(entries)
+
+    // The Show filter for battlemaps, which the V2_FILTER_DEFS loop below
+    // cannot serve: its installation-selector entry is registered for tokens,
+    // items and spells only, because those carry an `installed` property in the
+    // catalog. A map does not. Its state lives in the world's install record,
+    // and a single map inherits it from its release. Without this branch
+    // "Only installed" was a no-op in the Individual Maps view: the chip read
+    // as active while the list still showed everything.
+    if (type === "bmap") {
+      const show = this.showFilter
+      if (show && show.toLowerCase() !== "any") {
+        const kept = {}
+        for (const [k, v] of Object.entries(results)) {
+          const releaseDir = String(v?.properties?.release_dir || v?.release_dir || "")
+          const info = this.#bmapInstallInfo(releaseDir)
+          let keep = true
+          if (show === "installed")         keep = info.installed
+          else if (show === "notinstalled") keep = !info.installed
+          else if (show === "updated")      keep = info.update
+          // `isNew` was just written onto every bmap entry by the caller, with
+          // the same recency rule the release cards use. Read it rather than
+          // deriving a second opinion here.
+          else if (show === "new")          keep = !!v?.isNew
+          if (keep) kept[k] = v
+        }
+        results = kept
+      }
+    }
+
     for (const def of V2_FILTER_DEFS) {
       // Wave B-8h-1: skip filters that don't apply to the current asset
       // type. Without this guard, stale values on the previous tab's
@@ -6090,6 +6104,45 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       name: bundle.name, installed, skipped, failed,
     }))
     try { await this.#refreshAfterBmapInstall?.(null) } catch (_) {}
+  }
+
+  /**
+   * Install state of a battlemap RELEASE, for any card that belongs to it.
+   * A single map has no install record of its own: Foundry scene ids are not
+   * in the catalog, so a map counts as installed when its release does.
+   *
+   * Shared by the card enrichment (green check, "Install Again", trash button)
+   * and by the Show filter, which used to reach a different conclusion than
+   * the cards it was filtering.
+   *
+   * @param {string} releaseDir
+   * @returns {{installed: boolean, installedOn: string, update: boolean,
+   *            releaseName: string, variant: string, packageId: string}}
+   */
+  #bmapInstallInfo(releaseDir) {
+    const none = { installed: false, installedOn: "", update: false, releaseName: "", variant: "", packageId: "" }
+    if (!releaseDir) return none
+    const installs = BeneosInstallState.findByReleaseDir(releaseDir)
+    if (!installs.length) return none
+    const chosen = installs[0]
+    const rel    = this._releaseIndex?.get?.(releaseDir) || null
+    const curSig      = String(rel?.content_signature || "")
+    const updatedDate = this.#releaseDateInfo(releaseDir)?.updatedDate || ""
+    const sigStale    = !!(curSig && chosen.sourceSignature && chosen.sourceSignature !== curSig)
+    let dateStale = false
+    if (updatedDate && chosen.installedAt) {
+      const i = Date.parse(chosen.installedAt), u = Date.parse(updatedDate)
+      dateStale = Number.isFinite(i) && Number.isFinite(u) && i < u
+    }
+    return {
+      installed:   true,
+      installedOn: this.#formatInstallDate(chosen.installedAt),
+      update:      sigStale || dateStale,
+      releaseName: String(rel?.display_name || releaseDir),
+      variant:     String(chosen.variant || ""),
+      packageId:   String((rel?.variant_dirs || {})[chosen.variant]
+        || Object.values(rel?.variant_dirs || {})[0] || ""),
+    }
   }
 
   // Plan §33.6 - render an install timestamp for the badge tooltip. Same
