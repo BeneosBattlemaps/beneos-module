@@ -2393,5 +2393,6 @@
   "BENEOS.Cloud.Uninstall.SharedUnknown": "Nepodařilo se zkontrolovat všechna ostatní nainstalovaná vydání, proto zůstaly stažené soubory nedotčené. Dokumenty světa byly odebrány.",
   "BENEOS.Cloud.Uninstall.GmOnly": "Vydání ze světa může odebrat pouze Vypravěč.",
   "BENEOS.Cloud.Uninstall.NoTarget": "Nepodařilo se zjistit, které vydání odebrat.",
-  "BENEOS.Cloud.Uninstall.Failed": "Odebrání vydání se nezdařilo. Viz konzole prohlížeče."
+  "BENEOS.Cloud.Uninstall.Failed": "Odebrání vydání se nezdařilo. Viz konzole prohlížeče.",
+  "BENEOS.Cloud.SessionExpired": "Beneos Cloud už nezná přihlášení tohoto světa, proto byl uložený přístup z Patreonu odstraněn. Otevři okno Beneos Cloud a přihlas se znovu, aby se obnovil."
 }

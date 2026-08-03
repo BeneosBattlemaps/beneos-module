@@ -2393,5 +2393,6 @@
   "BENEOS.Cloud.Uninstall.SharedUnknown": "ほかのインストール済みリリースをすべて確認できなかったため、ダウンロード済みのファイルはそのままにしました。ワールドのドキュメントは削除しました。",
   "BENEOS.Cloud.Uninstall.GmOnly": "リリースをワールドから削除できるのはゲームマスターだけです。",
   "BENEOS.Cloud.Uninstall.NoTarget": "どのリリースを削除するのか判別できませんでした。",
-  "BENEOS.Cloud.Uninstall.Failed": "リリースの削除に失敗しました。ブラウザーのコンソールを確認してください。"
+  "BENEOS.Cloud.Uninstall.Failed": "リリースの削除に失敗しました。ブラウザーのコンソールを確認してください。",
+  "BENEOS.Cloud.SessionExpired": "Beneos Cloud はこのワールドのログインを認識できなくなったため、保存されていた Patreon のアクセス権を消去しました。Beneos Cloud ウィンドウを開き、もう一度サインインして復元してください。"
 }

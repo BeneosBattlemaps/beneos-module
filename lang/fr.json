@@ -2393,5 +2393,6 @@
   "BENEOS.Cloud.Uninstall.SharedUnknown": "Impossible de vérifier toutes les autres sorties installées, les fichiers téléchargés ont donc été laissés intacts. Les documents du monde ont été retirés.",
   "BENEOS.Cloud.Uninstall.GmOnly": "Seul un Maître de Jeu peut retirer une sortie du monde.",
   "BENEOS.Cloud.Uninstall.NoTarget": "Impossible de déterminer quelle sortie retirer.",
-  "BENEOS.Cloud.Uninstall.Failed": "Le retrait de la sortie a échoué. Voir la console du navigateur."
+  "BENEOS.Cloud.Uninstall.Failed": "Le retrait de la sortie a échoué. Voir la console du navigateur.",
+  "BENEOS.Cloud.SessionExpired": "Beneos Cloud ne reconnaît plus la connexion de ce monde, l'accès Patreon enregistré a donc été effacé. Ouvrez la fenêtre Beneos Cloud et reconnectez-vous pour le rétablir."
 }

@@ -1027,6 +1027,20 @@ export class BeneosCloud {
           // Fix #B2: await the available-content fetch so the search UI sees the
           // populated map on the next render, not an empty placeholder.
           await game.beneos.cloud.checkAvailableContent()
+        } else {
+          // The cloud answered, and it does not know this Foundry ID any more.
+          // That happens for real users: the cloud keeps only the 15 newest
+          // Foundry bindings per account, so a GM with many worlds loses the
+          // oldest ones. The patron flags live in world settings and used to
+          // survive that, which left the storefront claiming "Full Patron"
+          // while every release came back locked and no free section appeared
+          // (reported 2026-08-03). Drop the claim so the UI asks for a fresh
+          // sign-in instead of promising access the server will refuse.
+          //
+          // Only an ANSWERED request lands here. Network failures and HTTP
+          // errors are thrown above and handled in .catch, so being offline
+          // never wipes a valid entitlement.
+          await game.beneos.cloud.clearStaleEntitlement(data?.information || "")
         }
       })
       .catch(err => {
@@ -1037,6 +1051,45 @@ export class BeneosCloud {
         game.beneos.cloud.markServerStatus(null, err)
         console.warn("BENEOS Cloud loginAttempt network error:", err)
       })
+  }
+
+  /**
+   * The cloud no longer recognises this world's Foundry ID. Forget the patron
+   * claim that was persisted from an earlier, working session so the UI stops
+   * promising access the server will refuse, and tell the GM what to do about
+   * it. Idempotent: with nothing left to clear it does nothing at all, so the
+   * repeated init check cannot loop on notifications.
+   *
+   * The Foundry ID itself is kept. A fresh sign-in reuses it and rebinds the
+   * same identity, which keeps the world's install history meaningful.
+   *
+   * @param {string} serverInformation  the server's own wording, for the log
+   */
+  async clearStaleEntitlement(serverInformation = "") {
+    this.setLoginStatus(false)
+    this.lastLoginPayload = null
+    if (!game.user?.isGM) return          // world settings are GM-writable only
+
+    const M = BeneosUtility.moduleID()
+    const had = ["beneos-cloud-patreon-status", "beneos-cloud-token-patron", "beneos-cloud-battlemap-patron"]
+      .some(key => {
+        try { const v = game.settings.get(M, key); return v === true || (typeof v === "string" && v && v !== "no_patreon") }
+        catch (_e) { return false }
+      })
+    if (!had) return
+
+    console.warn(`BENEOS Cloud | this world's Foundry ID is unknown to the cloud (${serverInformation || "no detail"}); `
+      + "clearing the stored Patreon entitlement so the storefront stops showing patron access")
+    try {
+      await game.settings.set(M, "beneos-cloud-patreon-status", "no_patreon")
+      await game.settings.set(M, "beneos-cloud-token-patron", false)
+      await game.settings.set(M, "beneos-cloud-battlemap-patron", false)
+    } catch (e) {
+      console.warn("BENEOS Cloud | could not clear the stale entitlement", e)
+      return
+    }
+    this.refreshCloudBrowseSession()
+    ui.notifications?.warn?.(game.i18n.localize("BENEOS.Cloud.SessionExpired"))
   }
 
   /**

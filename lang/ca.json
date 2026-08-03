@@ -2393,5 +2393,6 @@
   "BENEOS.Cloud.Uninstall.SharedUnknown": "No s'han pogut comprovar totes les altres versions instal·lades, de manera que els fitxers descarregats s'han deixat intactes. Els documents del món sí que s'han eliminat.",
   "BENEOS.Cloud.Uninstall.GmOnly": "Només un Mestre de Joc pot eliminar una versió del món.",
   "BENEOS.Cloud.Uninstall.NoTarget": "No s'ha pogut determinar quina versió s'ha d'eliminar.",
-  "BENEOS.Cloud.Uninstall.Failed": "L'eliminació de la versió ha fallat. Consulta la consola del navegador."
+  "BENEOS.Cloud.Uninstall.Failed": "L'eliminació de la versió ha fallat. Consulta la consola del navegador.",
+  "BENEOS.Cloud.SessionExpired": "Beneos Cloud ja no reconeix l'inici de sessió d'aquest món, així que s'ha esborrat l'accés de Patreon desat. Obre la finestra de Beneos Cloud i torna a iniciar la sessió per recuperar-lo."
 }

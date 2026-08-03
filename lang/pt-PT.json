@@ -2393,5 +2393,6 @@
   "BENEOS.Cloud.Uninstall.SharedUnknown": "Não foi possível verificar todas as outras versões instaladas, pelo que os ficheiros descarregados ficaram intactos. Os documentos do mundo foram removidos.",
   "BENEOS.Cloud.Uninstall.GmOnly": "Apenas um Mestre de Jogo pode remover uma versão do mundo.",
   "BENEOS.Cloud.Uninstall.NoTarget": "Não foi possível determinar que versão remover.",
-  "BENEOS.Cloud.Uninstall.Failed": "A remoção da versão falhou. Consulte a consola do navegador."
+  "BENEOS.Cloud.Uninstall.Failed": "A remoção da versão falhou. Consulte a consola do navegador.",
+  "BENEOS.Cloud.SessionExpired": "A Beneos Cloud já não reconhece a sessão deste mundo, pelo que o acesso do Patreon guardado foi removido. Abra a janela da Beneos Cloud e inicie sessão novamente para o restaurar."
 }

@@ -8,7 +8,12 @@
    Once installed, the codex offers "View PDF" via the embedded viewer.
    ============================================================= */
 
-const API_BASE = "https://beneos.cloud"
+import { BeneosUtility } from "../beneos_utility.js"
+
+/** Cloud host, following the world's dev-server override like every other call. */
+function apiBase() {
+  try { return BeneosUtility.cloudBase() } catch (_e) { return "https://beneos.cloud" }
+}
 
 /** Local cloud folder that already holds the creature's token assets. */
 function pdfDataFolder(assetKey) {
@@ -54,7 +59,7 @@ function resolveFoundryId() {
 }
 
 export async function requestPdfUrl({ foundryId, assetKey }) {
-  const url = new URL(`${API_BASE}/foundry-manager.php`)
+  const url = new URL(`${apiBase()}/foundry-manager.php`)
   url.searchParams.set("foundryId", foundryId)
   url.searchParams.set("get_asset_pdf", "1")
   url.searchParams.set("assetKey", assetKey)

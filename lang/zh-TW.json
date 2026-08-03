@@ -2393,5 +2393,6 @@
   "BENEOS.Cloud.Uninstall.SharedUnknown": "無法檢查所有其他已安裝的發行版，因此已下載的檔案維持原狀。世界文件已移除。",
   "BENEOS.Cloud.Uninstall.GmOnly": "只有遊戲主持人可以從世界移除發行版。",
   "BENEOS.Cloud.Uninstall.NoTarget": "無法判斷要移除哪個發行版。",
-  "BENEOS.Cloud.Uninstall.Failed": "移除發行版失敗。請查看瀏覽器主控台。"
+  "BENEOS.Cloud.Uninstall.Failed": "移除發行版失敗。請查看瀏覽器主控台。",
+  "BENEOS.Cloud.SessionExpired": "Beneos Cloud 已無法辨識這個世界的登入，因此已清除儲存的 Patreon 存取權限。請開啟 Beneos Cloud 視窗重新登入以恢復。"
 }

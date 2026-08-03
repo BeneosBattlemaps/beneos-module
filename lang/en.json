@@ -2393,5 +2393,6 @@
   "BENEOS.Cloud.Uninstall.SharedUnknown": "Could not check every other installed release, so the downloaded files were left alone. The world documents were removed.",
   "BENEOS.Cloud.Uninstall.GmOnly": "Only a Gamemaster can remove a release from the world.",
   "BENEOS.Cloud.Uninstall.NoTarget": "Could not work out which release to remove.",
-  "BENEOS.Cloud.Uninstall.Failed": "Removing the release failed. See the browser console."
+  "BENEOS.Cloud.Uninstall.Failed": "Removing the release failed. See the browser console.",
+  "BENEOS.Cloud.SessionExpired": "Beneos Cloud no longer recognises this world's sign-in, so the stored Patreon access was cleared. Open the Beneos Cloud window and sign in again to restore it."
 }

@@ -2393,5 +2393,6 @@
   "BENEOS.Cloud.Uninstall.SharedUnknown": "Nicht alle anderen installierten Releases konnten geprüft werden, deshalb blieben die heruntergeladenen Dateien unangetastet. Die Weltdokumente wurden entfernt.",
   "BENEOS.Cloud.Uninstall.GmOnly": "Nur ein Spielleiter kann ein Release aus der Welt entfernen.",
   "BENEOS.Cloud.Uninstall.NoTarget": "Es war nicht feststellbar, welches Release entfernt werden soll.",
-  "BENEOS.Cloud.Uninstall.Failed": "Das Entfernen des Releases ist fehlgeschlagen. Siehe Browser-Konsole."
+  "BENEOS.Cloud.Uninstall.Failed": "Das Entfernen des Releases ist fehlgeschlagen. Siehe Browser-Konsole.",
+  "BENEOS.Cloud.SessionExpired": "Die Beneos Cloud kennt die Anmeldung dieser Welt nicht mehr, der gespeicherte Patreon-Zugang wurde deshalb entfernt. Melde dich im Beneos-Cloud-Fenster neu an, um ihn wiederherzustellen."
 }

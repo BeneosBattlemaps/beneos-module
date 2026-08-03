@@ -2393,5 +2393,6 @@
   "BENEOS.Cloud.Uninstall.SharedUnknown": "Nie udało się sprawdzić wszystkich innych zainstalowanych wydań, więc pobrane pliki pozostały nietknięte. Dokumenty świata zostały usunięte.",
   "BENEOS.Cloud.Uninstall.GmOnly": "Tylko Mistrz Gry może usunąć wydanie ze świata.",
   "BENEOS.Cloud.Uninstall.NoTarget": "Nie udało się ustalić, które wydanie usunąć.",
-  "BENEOS.Cloud.Uninstall.Failed": "Usunięcie wydania nie powiodło się. Sprawdź konsolę przeglądarki."
+  "BENEOS.Cloud.Uninstall.Failed": "Usunięcie wydania nie powiodło się. Sprawdź konsolę przeglądarki.",
+  "BENEOS.Cloud.SessionExpired": "Beneos Cloud nie rozpoznaje już logowania tego świata, więc zapisany dostęp z Patreona został usunięty. Otwórz okno Beneos Cloud i zaloguj się ponownie, aby go przywrócić."
 }

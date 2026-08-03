@@ -2393,5 +2393,6 @@
   "BENEOS.Cloud.Uninstall.SharedUnknown": "Não foi possível verificar todos os outros lançamentos instalados, então os arquivos baixados não foram tocados. Os documentos do mundo foram removidos.",
   "BENEOS.Cloud.Uninstall.GmOnly": "Somente um Mestre pode remover um lançamento do mundo.",
   "BENEOS.Cloud.Uninstall.NoTarget": "Não foi possível determinar qual lançamento remover.",
-  "BENEOS.Cloud.Uninstall.Failed": "Falha ao remover o lançamento. Veja o console do navegador."
+  "BENEOS.Cloud.Uninstall.Failed": "Falha ao remover o lançamento. Veja o console do navegador.",
+  "BENEOS.Cloud.SessionExpired": "A Beneos Cloud não reconhece mais o login deste mundo, então o acesso do Patreon armazenado foi removido. Abra a janela da Beneos Cloud e entre novamente para restaurá-lo."
 }
