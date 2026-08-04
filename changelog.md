@@ -13,9 +13,11 @@ All notable changes to this module will be documented in this file.
 - Fixed: Large downloads failed on slow or unstable connections. Every retry restarted the file from the beginning, six parallel downloads split a thin line into trickles, and a fixed time limit made the biggest files impossible to finish. An interrupted transfer now continues where it stopped, the number of parallel downloads drops to two when the connection cannot carry six, and the time limit scales with the size of the file.
 - Fixed: The Beneos Cloud browser could show you as a patron while every release stayed locked with a "Join Patreon" button. It happened when the cloud no longer recognised the sign-in stored in that world, for example after signing in from many different worlds. The module kept the old patron state forever instead of noticing. It now clears the stale sign-in and asks you to sign in again, which restores your access. Being offline never clears anything.
 - Fixed: "Only installed" and the other entries of the Show filter had no effect on individual maps. The list kept showing everything while the filter read as active.
+- Fixed: A journal could go missing during an install while everything else arrived. One handout page had been saved without a name years ago, and Foundry refuses to create such a page, which cost the whole journal and left the map's note pin pointing at nothing. Pages without a name are now given one during the install, so the journal arrives intact.
 
 **Improved**
 - Improved: The install button on a release that is already in your world now reads "Install Again", so it is clear that the release is installed and the button offers a fresh copy rather than a first install.
+- Improved: Installing a release no longer sends the module through every scene in your world to check which maps can be switched to a still image. It now checks only the scenes the release just brought in, which removes a burst of pointless requests after every install.
 
 ### 14.4.4 # 2026-07-30
 

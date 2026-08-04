@@ -1313,7 +1313,16 @@ function warmStaticSwitchCacheWhenIdle() {
 
 Hooks.on("renderSceneNavigation", () => warmStaticSwitchCacheWhenIdle())
 Hooks.on("renderSceneDirectory", () => warmStaticSwitchCacheWhenIdle())
-Hooks.on("beneos.releaseInstalled", () => {
+Hooks.on("beneos.releaseInstalled", (data) => {
+  // Scoped refresh when the install told us which scenes it brought in. Only
+  // those can have gained or lost a still, so dropping the whole cache and
+  // re-walking the world would just re-probe every other release for nothing.
+  const sceneIds = Array.isArray(data?.sceneIds) ? data.sceneIds.filter(Boolean) : []
+  if (sceneIds.length) {
+    BeneosUtility.refreshStaticSwitchCacheForScenes(sceneIds)
+    return
+  }
+  // Fallback for callers that do not carry scene ids: the old full clear.
   BeneosUtility.clearStaticSwitchCache()
   warmStaticSwitchCacheWhenIdle()
 })

@@ -5066,6 +5066,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
           displayName,
           scope: installScope,
           variant: isSingle ? "" : variant,
+          // The scenes this run imported. releaseDir is the catalog key
+          // ("bm_0113"), NOT the on-disk asset folder ("113_arasek_stockyard"),
+          // so it cannot be matched against asset paths. The scene ids can, and
+          // they let the static-switch probe cache refresh just this release.
+          sceneIds: (inst._importedScenes || []).map(s => String(s.id)).filter(Boolean),
         })
       } catch (_) {}
     }

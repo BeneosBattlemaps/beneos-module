@@ -241,6 +241,7 @@
   "BENEOS.Cloud.Bmap.PoiInstall.Install": "설치",
   "BENEOS.Cloud.Bmap.PoiInstall.Cancel": "취소",
   "BENEOS.Cloud.Bmap.PoiInstall.NotFound": "이 릴리스는 아직 BENEOS 클라우드 카탈로그에 없습니다. 클라우드 브라우저를 엽니다.",
+  "BENEOS.Cloud.Bmap.Install.UntitledPage": "제목 없는 페이지 {n}",
   "BENEOS.Cloud.Bmap.PoiInstall.NoAccess": "이 릴리스를 설치하려면 활성 BENEOS Battlemaps 멤버십이 필요합니다.",
   "BENEOS.Cloud.Bmap.PoiInstall.InstallerMissing": "BENEOS 설치 프로그램이 준비되지 않았습니다. 잠시 후 다시 시도해 주세요.",
   "BENEOS.Cloud.Bmap.PoiInstall.WindowMissing": "BENEOS 클라우드 창을 사용할 수 없습니다.",

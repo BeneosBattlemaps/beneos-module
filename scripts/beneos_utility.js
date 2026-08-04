@@ -1475,6 +1475,32 @@ export class BeneosUtility {
     BeneosUtility.warmMapAssetProbe(paths)
   }
 
+  /**
+   * Re-probe only the scenes a freshly installed release brought in.
+   *
+   * Installing used to drop the WHOLE probe cache and walk the entire world
+   * again, which fired a burst of HEAD requests for every other release in it,
+   * including the 404s for older ones that ship no still. The install already
+   * knows its scene ids, and files can only have appeared for those, so nothing
+   * outside them needs re-checking. Deleting before warming is mandatory:
+   * warmMapAssetProbe reserves its keys and skips any that are already set.
+   */
+  static async refreshStaticSwitchCacheForScenes(sceneIds) {
+    if (!game.user.isGM) return
+    const paths = []
+    for (const id of new Set((sceneIds || []).map(String))) {
+      const scene = game.scenes.get(id)
+      if (!scene) continue
+      for (const t of BeneosUtility.collectStaticSwitchTargets(scene)) {
+        paths.push(/\.webm$/i.test(t.src) ? BeneosUtility.toStaticPath(t.src) : BeneosUtility.toAnimatedPath(t.src))
+      }
+    }
+    if (!paths.length) return
+    for (const p of paths) BeneosUtility._mapAssetProbe.delete(p)
+    await BeneosUtility.warmMapAssetProbe(paths)
+    BeneosUtility.scheduleMapAssetProbeCacheSave()
+  }
+
   static clearStaticSwitchCache() {
     BeneosUtility._mapAssetProbe.clear()
     clearTimeout(BeneosUtility._probeCacheSaveTimer)

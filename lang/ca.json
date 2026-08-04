@@ -241,6 +241,7 @@
   "BENEOS.Cloud.Bmap.PoiInstall.Install": "Instal·la",
   "BENEOS.Cloud.Bmap.PoiInstall.Cancel": "Cancel·la",
   "BENEOS.Cloud.Bmap.PoiInstall.NotFound": "Aquesta release encara no està disponible al catàleg del núvol de Beneos. S'obrirà el navegador del núvol.",
+  "BENEOS.Cloud.Bmap.Install.UntitledPage": "Pàgina sense títol {n}",
   "BENEOS.Cloud.Bmap.PoiInstall.NoAccess": "Cal una subscripció activa a Beneos Battlemaps per instal·lar aquesta release.",
   "BENEOS.Cloud.Bmap.PoiInstall.InstallerMissing": "L'instal·lador de Beneos no està a punt. Torna-ho a provar d'aquí a un moment.",
   "BENEOS.Cloud.Bmap.PoiInstall.WindowMissing": "La finestra del núvol de Beneos no està disponible.",

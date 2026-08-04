@@ -241,6 +241,7 @@
   "BENEOS.Cloud.Bmap.PoiInstall.Install": "Nainstalovat",
   "BENEOS.Cloud.Bmap.PoiInstall.Cancel": "Zrušit",
   "BENEOS.Cloud.Bmap.PoiInstall.NotFound": "Tato verze zatím není dostupná v katalogu Beneos Cloud. Otevírám prohlížeč cloudu.",
+  "BENEOS.Cloud.Bmap.Install.UntitledPage": "Nepojmenovaná stránka {n}",
   "BENEOS.Cloud.Bmap.PoiInstall.NoAccess": "K instalaci této verze je vyžadováno aktivní členství Beneos Battlemaps.",
   "BENEOS.Cloud.Bmap.PoiInstall.InstallerMissing": "Instalátor Beneos není připraven. Zkuste to prosím za okamžik znovu.",
   "BENEOS.Cloud.Bmap.PoiInstall.WindowMissing": "Okno Beneos Cloud není dostupné.",

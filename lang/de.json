@@ -241,6 +241,7 @@
   "BENEOS.Cloud.Bmap.PoiInstall.Install": "Installieren",
   "BENEOS.Cloud.Bmap.PoiInstall.Cancel": "Abbrechen",
   "BENEOS.Cloud.Bmap.PoiInstall.NotFound": "Dieses Release ist noch nicht im Beneos-Cloud-Katalog verfügbar. Der Cloud-Browser wird geöffnet.",
+  "BENEOS.Cloud.Bmap.Install.UntitledPage": "Unbenannte Seite {n}",
   "BENEOS.Cloud.Bmap.PoiInstall.NoAccess": "Für die Installation dieses Releases ist eine aktive Beneos-Battlemaps-Mitgliedschaft erforderlich.",
   "BENEOS.Cloud.Bmap.PoiInstall.InstallerMissing": "Der Beneos-Installer ist nicht bereit. Bitte versuche es gleich noch einmal.",
   "BENEOS.Cloud.Bmap.PoiInstall.WindowMissing": "Das Beneos-Cloud-Fenster ist nicht verfügbar.",

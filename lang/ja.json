@@ -241,6 +241,7 @@
   "BENEOS.Cloud.Bmap.PoiInstall.Install": "インストール",
   "BENEOS.Cloud.Bmap.PoiInstall.Cancel": "キャンセル",
   "BENEOS.Cloud.Bmap.PoiInstall.NotFound": "このリリースはまだBENEOSクラウドのカタログにありません。クラウドブラウザを開きます。",
+  "BENEOS.Cloud.Bmap.Install.UntitledPage": "無題のページ {n}",
   "BENEOS.Cloud.Bmap.PoiInstall.NoAccess": "このリリースをインストールするには、有効な Beneos Battlemaps メンバーシップが必要です。",
   "BENEOS.Cloud.Bmap.PoiInstall.InstallerMissing": "BENEOSインストーラーの準備ができていません。少し待ってから再度お試しください。",
   "BENEOS.Cloud.Bmap.PoiInstall.WindowMissing": "BENEOSクラウドウィンドウを利用できません。",

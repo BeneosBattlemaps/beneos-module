@@ -1531,6 +1531,26 @@ export class BeneosNativeBattlemapInstaller {
         }
         this._importedScenes = arr.map(d => ({ id: String(d?._id), name: String(d?.name || "") }))
       }
+      // A journal page whose name is an empty string costs the WHOLE journal.
+      // JournalEntryPage#name is a StringField({required: true, blank: false}),
+      // so Foundry's clean() turns "" into undefined and the create then fails
+      // with "name: may not be undefined" , a message that points away from the
+      // real cause. createDocuments() throws for the entire batch, the per-doc
+      // retry below re-throws for this one, and the release installs with a note
+      // pin that leads nowhere. Give the page a name instead of losing it, and
+      // warn so the pack stays findable rather than being silently patched.
+      if (relPath === "data/JournalEntry.json") {
+        for (const d of arr) {
+          if (!Array.isArray(d?.pages)) continue
+          d.pages.forEach((page, idx) => {
+            if (!page || typeof page !== "object") return
+            if (String(page.name ?? "").trim()) return
+            page.name = game.i18n.format("BENEOS.Cloud.Bmap.Install.UntitledPage", { n: idx + 1 })
+            console.warn(`BeneosNativeInstaller | journal page without a name, renamed to "${page.name}"`,
+              { journal: d.name, journalId: d._id, pageId: page._id, pack: this.packageId })
+          })
+        }
+      }
       // System-Bruecke fuer Nicht-dnd5e-Welten (siehe #swapActorsForForeignSystem).
       if (relPath === "data/Actor.json" && game.system.id !== "dnd5e") {
         arr = await this.#swapActorsForForeignSystem(arr)

@@ -241,6 +241,7 @@
   "BENEOS.Cloud.Bmap.PoiInstall.Install": "安裝",
   "BENEOS.Cloud.Bmap.PoiInstall.Cancel": "取消",
   "BENEOS.Cloud.Bmap.PoiInstall.NotFound": "此發行版本尚未在 BENEOS 雲端目錄中提供。正在開啟雲端瀏覽器。",
+  "BENEOS.Cloud.Bmap.Install.UntitledPage": "未命名頁面 {n}",
   "BENEOS.Cloud.Bmap.PoiInstall.NoAccess": "需要有效的 Beneos Battlemaps 會員資格才能安裝此發行版本。",
   "BENEOS.Cloud.Bmap.PoiInstall.InstallerMissing": "BENEOS 安裝程式尚未就緒。請稍後再試一次。",
   "BENEOS.Cloud.Bmap.PoiInstall.WindowMissing": "BENEOS 雲端視窗無法使用。",
