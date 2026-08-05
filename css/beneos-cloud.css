@@ -8583,8 +8583,13 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   100% { opacity: 1; transform: scale(1); }
 }
 
+/* The overshoot lives in the keyframes above, deliberately and to a known
+   amount. The easing only decelerates: a back-out curve on top of an
+   overshooting keyframe stacks the two, which measured 1.10 where 1.06 was
+   written and is what pushed the wide card outside the list and got it
+   clipped. */
 .bwn-pop {
-  animation: bwn-pop-in 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+  animation: bwn-pop-in 0.44s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: var(--bwn-d, 0ms);
 }
 
