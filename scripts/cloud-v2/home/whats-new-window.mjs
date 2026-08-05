@@ -94,7 +94,7 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
       try { enabled = game.settings.get(BeneosUtility.moduleID(), SETTING_ENABLED) !== false }
       catch (_e) { enabled = true }
       if (!enabled) return false
-      if (!game.beneos?.cloud?.isLoggedIn?.()) return false
+      if (!(await BeneosWhatsNewWindow.#waitForCloudLogin())) return false
 
       const payload = await fetchWhatsNew()
       if (!payload) return false
@@ -107,6 +107,30 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
       console.warn("[Beneos What's New] Could not present:", err)
       return false
     }
+  }
+
+  /**
+   * The cloud login resolves through an async round trip that is still in
+   * flight when the ready hook runs, so asking isLoggedIn() right away always
+   * answered no and the popup never appeared on a real world start.
+   *
+   * A stored foundry id is the cheap, synchronous signal that this world has an
+   * account at all: without one we bail instantly and the update notice behind
+   * us is not delayed. With one we wait for the connection to come up, bounded,
+   * because a world start is not time critical but an endless wait would be.
+   */
+  static async #waitForCloudLogin(timeoutMs = 15000, stepMs = 500) {
+    let storedId = ""
+    try { storedId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id") || "" }
+    catch (_e) { storedId = "" }
+    if (!storedId || storedId === "anonymous") return false
+
+    const deadline = Date.now() + timeoutMs
+    while (Date.now() < deadline) {
+      if (game.beneos?.cloud?.isLoggedIn?.()) return true
+      await new Promise(resolve => setTimeout(resolve, stepMs))
+    }
+    return false
   }
 
   async _prepareContext() {
