@@ -4,9 +4,10 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
-### 14.4.5 # 2026-08-03 | in progress
+### 14.4.5 # 2026-08-05
 
 **New**
+- New: When you start your world, Beneos tells you what your account has gained since you last looked. Downloads unlocked by your Patreon support and content you bought in the shop are shown as two separate cards, each listing the releases, creatures, items and spells that are new for you, with their release image at full size. Click an entry and you land on it in the Beneos Cloud window, ready to install. The window only appears when there is genuinely something new for your account, it is shown to Game Masters only, and it can be switched off in the module settings. What you confirmed is remembered on your Beneos account rather than in the world, so a purchase is celebrated once instead of again in every world you open.
 - New: Remove an installed release from your world again. A trash button sits next to the install button on any release you have installed, and on the individual maps that belong to it. After a confirmation it takes the release's scenes, actors, journals, items and folders back out of the world, removes its tracks from your playlists and frees the disk space its downloads occupied. Maps that another installed release still needs are left alone. Removal always covers a whole release, so the button on an individual map removes that map's release.
 
 **Fixes**
