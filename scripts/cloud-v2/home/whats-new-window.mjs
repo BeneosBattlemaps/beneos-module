@@ -16,7 +16,11 @@ import { ackWhatsNew, fetchWhatsNew } from "../services/whats-new-api.mjs"
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
 
 const SETTING_ENABLED = "beneos-whatsnew-enabled"
-const NOTIFY_SFX = "modules/beneos-module/ui/sfx/beneos_notification.ogg"
+// Own sound, not the shared notification one: this window is a reward, not an
+// alert. Probed once per session because a missing file would otherwise make
+// Foundry's audio helper log an error on every single card.
+const NOTIFY_SFX = "modules/beneos-module/ui/sfx/beneos_update.ogg"
+let sfxAvailable = null
 
 // Same CDN roots and lookup chain the Home rails use (home-controller.mjs
 // thumbnailFor). Battlemaps are the exception: their cover is served from the
@@ -222,10 +226,31 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
     }
     // The reveal sound belongs to the card, not to the window: it plays again
     // when the second card comes up.
-    try {
-      const helper = foundry.audio?.AudioHelper
-      if (helper?.play) helper.play({ src: NOTIFY_SFX, volume: 0.5, autoplay: true, loop: false }, false)
-    } catch (_e) { /* no audio context yet */ }
+    BeneosWhatsNewWindow.#playRevealSfx()
+  }
+
+  /**
+   * Play the reveal sound, once the file has been confirmed to exist. The probe
+   * runs once per session and its result is remembered: without it a module
+   * build that ships without the sound would log an audio error for every card
+   * a user ever sees, which is a lot of noise for something purely decorative.
+   */
+  static #playRevealSfx() {
+    const play = () => {
+      try {
+        const helper = foundry.audio?.AudioHelper
+        if (helper?.play) helper.play({ src: NOTIFY_SFX, volume: 0.5, autoplay: true, loop: false }, false)
+      } catch (_e) { /* no audio context yet */ }
+    }
+    if (sfxAvailable === true) { play(); return }
+    if (sfxAvailable === false) return
+    fetch(NOTIFY_SFX, { method: "HEAD" })
+      .then(response => {
+        sfxAvailable = response.ok
+        if (sfxAvailable) play()
+        else console.debug(`[Beneos What's New] reveal sound missing, staying silent: ${NOTIFY_SFX}`)
+      })
+      .catch(() => { sfxAvailable = false })
   }
 
   static async _onAdvance(event, _target) {
