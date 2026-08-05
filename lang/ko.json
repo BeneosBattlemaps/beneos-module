@@ -2406,6 +2406,10 @@
   "BENEOS.Cloud.WhatsNew.DontShowAgain": "다시 표시하지 않기",
   "BENEOS.Cloud.WhatsNew.More": "외 {count}개",
   "BENEOS.Cloud.WhatsNew.ClickHint": "항목을 클릭하면 Beneos Cloud 창에서 열립니다.",
+  "BENEOS.Cloud.WhatsNew.GroupMaps": "새 맵 팩",
+  "BENEOS.Cloud.WhatsNew.GroupCreatures": "새 크리처",
+  "BENEOS.Cloud.WhatsNew.GroupItems": "새 아이템",
+  "BENEOS.Cloud.WhatsNew.GroupSpells": "새 주문",
   "BENEOS.Settings.WhatsNewEnabled.Name": "월드 시작 시 새 소식 표시",
   "BENEOS.Settings.WhatsNewEnabled.Hint": "월드 시작 시 마지막 확인 이후 계정에 해제된 항목을 짧은 창으로 보여줍니다. GM에게만 표시됩니다."
 }

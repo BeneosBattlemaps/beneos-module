@@ -2406,6 +2406,10 @@
   "BENEOS.Cloud.WhatsNew.DontShowAgain": "不再顯示",
   "BENEOS.Cloud.WhatsNew.More": "另有 {count} 項",
   "BENEOS.Cloud.WhatsNew.ClickHint": "點選項目即可在 Beneos Cloud 視窗中開啟。",
+  "BENEOS.Cloud.WhatsNew.GroupMaps": "新的地圖包",
+  "BENEOS.Cloud.WhatsNew.GroupCreatures": "新的生物",
+  "BENEOS.Cloud.WhatsNew.GroupItems": "新的物品",
+  "BENEOS.Cloud.WhatsNew.GroupSpells": "新的法術",
   "BENEOS.Settings.WhatsNewEnabled.Name": "世界啟動時顯示新內容",
   "BENEOS.Settings.WhatsNewEnabled.Hint": "世界啟動時開啟簡短視窗，列出自上次確認後帳號解鎖的內容。僅顯示給 GM。"
 }

@@ -2406,6 +2406,10 @@
   "BENEOS.Cloud.WhatsNew.DontShowAgain": "Do not show this again",
   "BENEOS.Cloud.WhatsNew.More": "and {count} more",
   "BENEOS.Cloud.WhatsNew.ClickHint": "Click an entry to open it in the Beneos Cloud window.",
+  "BENEOS.Cloud.WhatsNew.GroupMaps": "New map packs",
+  "BENEOS.Cloud.WhatsNew.GroupCreatures": "New creatures",
+  "BENEOS.Cloud.WhatsNew.GroupItems": "New items",
+  "BENEOS.Cloud.WhatsNew.GroupSpells": "New spells",
   "BENEOS.Settings.WhatsNewEnabled.Name": "Show new releases on world start",
   "BENEOS.Settings.WhatsNewEnabled.Hint": "Opens a short window on world start listing what your account unlocked since you last confirmed it. Shown to Game Masters only."
 }

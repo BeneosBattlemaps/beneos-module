@@ -8443,14 +8443,21 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 
 /* ==========================================================================
    What's-new popup (beneos-whatsnew-window)
-   Shown once per world start when the account gained something. Colours come
-   from the shared --bc-* tokens only, so the window follows the active Beneos
-   theme and inherits the .beneos-cloud-app text pinning that keeps it readable
-   in Foundry's bright mode.
+
+   Shown once per world start when the account gained something. The reveal is
+   the point of the window, not decoration: the card wipes in, then each group
+   announces itself with a heading and its entries pop in one after the other,
+   so the user watches the haul arrive instead of finding a finished list.
+
+   Colours come from the shared --bc-* tokens only, so the window follows the
+   active Beneos theme and inherits the .beneos-cloud-app text pinning that
+   keeps it readable in Foundry's bright mode.
    ========================================================================== */
 
 .beneos-whatsnew-window .window-content { padding: 0; overflow: hidden; }
 
+/* Wipes in from the left. clip-path rather than a slide, so the card uncovers
+   itself in place and nothing travels across the canvas behind it. */
 .bwn-card {
   display: flex;
   flex-direction: column;
@@ -8459,7 +8466,12 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   padding: var(--bc-space-5, 16px);
   gap: var(--bc-space-3, 10px);
   background: var(--bc-bg-panel, #17150f);
-  animation: bf-reveal-pop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  animation: bwn-wipe-in 0.5s cubic-bezier(0.22, 0.9, 0.28, 1) both;
+}
+
+@keyframes bwn-wipe-in {
+  from { clip-path: inset(0 100% 0 0); opacity: 0.2; }
+  to   { clip-path: inset(0 0 0 0);    opacity: 1; }
 }
 
 .bwn-head {
@@ -8476,8 +8488,8 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   position: absolute;
   top: 46%;
   left: 50%;
-  width: 260px;
-  height: 130px;
+  width: 320px;
+  height: 150px;
   border-radius: 50%;
   pointer-events: none;
   background: radial-gradient(ellipse at center, var(--bc-accent-dim, rgba(245, 201, 146, 0.22)) 0%, transparent 70%);
@@ -8498,7 +8510,7 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   position: relative;
   margin: 0;
   font-family: var(--bc-font-display, serif);
-  font-size: 19px;
+  font-size: 21px;
   line-height: 1.25;
   color: var(--bc-accent, #f5c992);
   text-wrap: balance;
@@ -8517,71 +8529,113 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   overflow-y: auto;
   overflow-x: hidden;
   margin: 0;
-  padding: 0;
-  list-style: none;
+  padding: 0 var(--bc-space-2, 6px) 0 0;
   display: flex;
   flex-direction: column;
-  gap: var(--bc-space-2, 6px);
+  gap: var(--bc-space-5, 16px);
 }
 
-/* Staggered reveal. --bwn-i is capped in the window so a long list does not
-   spend seconds animating its tail. */
-.bwn-row {
-  /* Must not shrink: the list is a flex column, and without this the rows are
-     squeezed to the container height while the uncropped cover keeps its own
-     size and spills out of its row. */
-  flex: 0 0 auto;
-  animation: bwn-row-in 0.34s ease both;
-  animation-delay: calc(var(--bwn-i, 0) * 55ms);
-}
+.bwn-group { flex: 0 0 auto; }
 
-@keyframes bwn-row-in {
-  from { opacity: 0; transform: translateY(9px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.bwn-entry {
+/* Every animated part is scheduled by a single --bwn-d handed down from the
+   window, so headings and entries share one timeline and the order on screen
+   is exactly the order in the markup. */
+.bwn-group-title {
   display: flex;
   align-items: center;
   gap: var(--bc-space-3, 10px);
+  margin: 0 0 var(--bc-space-3, 10px);
+  font-family: var(--bc-font-display, serif);
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  color: var(--bc-accent, #f5c992);
+  animation: bwn-title-in 0.4s ease both;
+  animation-delay: var(--bwn-d, 0ms);
+}
+
+.bwn-group-title::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--bc-accent-line, rgba(245, 201, 146, 0.25));
+}
+
+@keyframes bwn-title-in {
+  from { opacity: 0; transform: translateX(-14px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* The pop. Overshoots slightly and settles, which is what makes an unlock read
+   as something arriving rather than something merely appearing. */
+@keyframes bwn-pop-in {
+  0%   { opacity: 0; transform: scale(0.55) rotate(-2.5deg); }
+  62%  { opacity: 1; transform: scale(1.06) rotate(1deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+/* Wide map cards get their own, much flatter overshoot. A full-width element
+   scaled to 1.06 is wider than the scrolling list, and the list clips
+   horizontally, so the big cover would be shaved off at both edges mid-pop.
+   The reserved side padding on .bwn-maps below leaves room for what is left. */
+@keyframes bwn-pop-in-wide {
+  0%   { opacity: 0; transform: scale(0.88); }
+  60%  { opacity: 1; transform: scale(1.025); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.bwn-pop {
+  animation: bwn-pop-in 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+  animation-delay: var(--bwn-d, 0ms);
+}
+
+.bwn-map.bwn-pop { animation-name: bwn-pop-in-wide; }
+
+/* ---- Maps: one big card each, the cover carries the sale ---- */
+
+/* Side padding is not decoration: it is the room the pop needs to overshoot
+   without being clipped by the scrolling list. */
+.bwn-maps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bc-space-4, 12px);
+  padding-inline: 12px;
+}
+
+.bwn-map {
+  display: block;
   width: 100%;
-  /* Foundry gives every button a fixed control height. Without releasing it the
-     row stays at input height and the uncropped cover spills out of it. */
+  /* Foundry gives every button a fixed control height; released here so the
+     cover decides how tall the card is. */
   height: auto;
   min-height: 0;
   line-height: normal;
-  padding: var(--bc-space-2, 6px);
+  padding: 0;
+  overflow: hidden;
   text-align: left;
   border: 1px solid var(--bc-border, #2e2920);
-  border-radius: var(--bc-radius, 5px);
+  border-radius: var(--bc-radius-lg, 10px);
   background: var(--bc-card, #242019);
   color: var(--bc-text, #ebe9e5);
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.bwn-entry:hover {
-  background: var(--bc-card-hover, #2c2720);
-  border-color: var(--bc-accent-line, rgba(245, 201, 146, 0.35));
-  transform: translateX(2px);
+.bwn-map:hover {
+  border-color: var(--bc-accent-line, rgba(245, 201, 146, 0.45));
+  box-shadow: var(--bc-shadow-pop, 0 6px 20px rgba(0, 0, 0, 0.45));
 }
 
-/* The release image is the selling point, so it is never cropped. The box is
-   16:9, the size a battlemap cover is produced in, and `contain` lets a square
-   token or item thumbnail sit inside it whole rather than being cut to fit. */
-.bwn-thumb {
-  flex: 0 0 auto;
+/* 16:9, the format release covers are produced in, and never cropped. */
+.bwn-map-cover {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 160px;
-  height: 90px;
-  border-radius: 3px;
-  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 16 / 9;
   background: var(--bc-bg, #0f0e0c);
 }
 
-.bwn-thumb img {
+.bwn-map-cover img {
   max-width: 100%;
   max-height: 100%;
   width: auto;
@@ -8590,13 +8644,79 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   display: block;
 }
 
-/* Wraps instead of cutting off: with the larger cover box there is room for a
-   second line, and a truncated release title reads worse than a taller row. */
-.bwn-name {
+.bwn-map-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--bc-space-3, 10px);
+  padding: var(--bc-space-3, 10px) var(--bc-space-4, 12px);
+}
+
+.bwn-map-name {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+/* ---- Creatures, items, spells: square tiles in a grid ---- */
+
+.bwn-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--bc-space-3, 10px);
+  /* Same reason as .bwn-maps: leaves the pop room to overshoot at the edges.
+     Measured against the widest frame of the reveal, not guessed. */
+  padding-inline: 12px;
+}
+
+.bwn-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bc-space-2, 6px);
+  height: auto;
+  min-height: 0;
+  line-height: normal;
+  padding: var(--bc-space-2, 6px);
+  text-align: center;
+  border: 1px solid var(--bc-border, #2e2920);
+  border-radius: var(--bc-radius, 5px);
+  background: var(--bc-card, #242019);
+  color: var(--bc-text, #ebe9e5);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.bwn-tile:hover {
+  background: var(--bc-card-hover, #2c2720);
+  border-color: var(--bc-accent-line, rgba(245, 201, 146, 0.45));
+  transform: translateY(-2px);
+}
+
+/* Square, and the artwork is shown whole inside it. */
+.bwn-tile-art {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--bc-bg, #0f0e0c);
+}
+
+.bwn-tile-art img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.bwn-tile-name {
+  font-size: 12px;
+  line-height: 1.25;
   overflow-wrap: anywhere;
 }
 
@@ -8617,6 +8737,8 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   text-align: center;
   font-size: 11px;
   color: var(--bc-text-dim, #8b8375);
+  animation: bwn-title-in 0.4s ease both;
+  animation-delay: var(--bwn-d, 0ms);
 }
 
 .bwn-foot {
@@ -8641,8 +8763,8 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 }
 
 .bwn-confirm {
-  min-width: 180px;
-  padding: 7px 18px;
+  min-width: 200px;
+  padding: 8px 20px;
   border: 1px solid var(--bc-accent-line, rgba(245, 201, 146, 0.35));
   border-radius: var(--bc-radius, 5px);
   background: var(--bc-accent-dim, rgba(245, 201, 146, 0.16));
@@ -8654,14 +8776,22 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 
 .bwn-confirm:hover { background: var(--bc-accent-soft, rgba(245, 201, 146, 0.28)); }
 
-/* Performance mode and the reduced-motion preference both drop the motion but
-   keep the layout, same rule the Forge reveal follows. */
+/* Performance mode and the reduced-motion preference drop the motion and show
+   the finished card, same rule the Forge reveal follows. */
 body.beneos-perf-mode .bwn-card,
-body.beneos-perf-mode .bwn-row,
-body.beneos-perf-mode .bwn-burst {
+body.beneos-perf-mode .bwn-burst,
+body.beneos-perf-mode .bwn-pop,
+body.beneos-perf-mode .bwn-group-title,
+body.beneos-perf-mode .bwn-overflow {
   animation: none;
+  clip-path: none;
+  opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bwn-card, .bwn-row, .bwn-burst { animation: none; }
+  .bwn-card, .bwn-burst, .bwn-pop, .bwn-group-title, .bwn-overflow {
+    animation: none;
+    clip-path: none;
+    opacity: 1;
+  }
 }

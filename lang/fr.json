@@ -2406,6 +2406,10 @@
   "BENEOS.Cloud.WhatsNew.DontShowAgain": "Ne plus afficher",
   "BENEOS.Cloud.WhatsNew.More": "et {count} de plus",
   "BENEOS.Cloud.WhatsNew.ClickHint": "Cliquez sur une entrée pour l'ouvrir dans la fenêtre Beneos Cloud.",
+  "BENEOS.Cloud.WhatsNew.GroupMaps": "Nouveaux packs de cartes",
+  "BENEOS.Cloud.WhatsNew.GroupCreatures": "Nouvelles créatures",
+  "BENEOS.Cloud.WhatsNew.GroupItems": "Nouveaux objets",
+  "BENEOS.Cloud.WhatsNew.GroupSpells": "Nouveaux sorts",
   "BENEOS.Settings.WhatsNewEnabled.Name": "Afficher les nouveautés au démarrage du monde",
   "BENEOS.Settings.WhatsNewEnabled.Hint": "Ouvre au démarrage du monde une courte fenêtre listant ce que votre compte a débloqué depuis votre dernière confirmation. Visible uniquement par les MJ."
 }

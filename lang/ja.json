@@ -2406,6 +2406,10 @@
   "BENEOS.Cloud.WhatsNew.DontShowAgain": "今後表示しない",
   "BENEOS.Cloud.WhatsNew.More": "他 {count} 件",
   "BENEOS.Cloud.WhatsNew.ClickHint": "項目をクリックするとBeneos Cloudウィンドウで開きます。",
+  "BENEOS.Cloud.WhatsNew.GroupMaps": "新しいマップパック",
+  "BENEOS.Cloud.WhatsNew.GroupCreatures": "新しいクリーチャー",
+  "BENEOS.Cloud.WhatsNew.GroupItems": "新しいアイテム",
+  "BENEOS.Cloud.WhatsNew.GroupSpells": "新しい呪文",
   "BENEOS.Settings.WhatsNewEnabled.Name": "ワールド起動時に新着を表示",
   "BENEOS.Settings.WhatsNewEnabled.Hint": "ワールド起動時に、前回の確認以降にアカウントで解放された内容を短いウィンドウで表示します。GMにのみ表示されます。"
 }

@@ -2406,6 +2406,10 @@
   "BENEOS.Cloud.WhatsNew.DontShowAgain": "Non mostrare più",
   "BENEOS.Cloud.WhatsNew.More": "e altri {count}",
   "BENEOS.Cloud.WhatsNew.ClickHint": "Fai clic su una voce per aprirla nella finestra Beneos Cloud.",
+  "BENEOS.Cloud.WhatsNew.GroupMaps": "Nuovi pacchetti di mappe",
+  "BENEOS.Cloud.WhatsNew.GroupCreatures": "Nuove creature",
+  "BENEOS.Cloud.WhatsNew.GroupItems": "Nuovi oggetti",
+  "BENEOS.Cloud.WhatsNew.GroupSpells": "Nuovi incantesimi",
   "BENEOS.Settings.WhatsNewEnabled.Name": "Mostra le novità all'avvio del mondo",
   "BENEOS.Settings.WhatsNewEnabled.Hint": "All'avvio del mondo apre una breve finestra con ciò che il tuo account ha sbloccato dall'ultima conferma. Visibile solo ai GM."
 }

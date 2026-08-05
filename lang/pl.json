@@ -2406,6 +2406,10 @@
   "BENEOS.Cloud.WhatsNew.DontShowAgain": "Nie pokazuj ponownie",
   "BENEOS.Cloud.WhatsNew.More": "i {count} więcej",
   "BENEOS.Cloud.WhatsNew.ClickHint": "Kliknij pozycję, aby otworzyć ją w oknie Beneos Cloud.",
+  "BENEOS.Cloud.WhatsNew.GroupMaps": "Nowe paczki map",
+  "BENEOS.Cloud.WhatsNew.GroupCreatures": "Nowe stwory",
+  "BENEOS.Cloud.WhatsNew.GroupItems": "Nowe przedmioty",
+  "BENEOS.Cloud.WhatsNew.GroupSpells": "Nowe zaklęcia",
   "BENEOS.Settings.WhatsNewEnabled.Name": "Pokazuj nowości przy starcie świata",
   "BENEOS.Settings.WhatsNewEnabled.Hint": "Przy starcie świata otwiera krótkie okno z tym, co Twoje konto odblokowało od ostatniego potwierdzenia. Widoczne tylko dla MG."
 }

@@ -2406,6 +2406,10 @@
   "BENEOS.Cloud.WhatsNew.DontShowAgain": "Příště nezobrazovat",
   "BENEOS.Cloud.WhatsNew.More": "a dalších {count}",
   "BENEOS.Cloud.WhatsNew.ClickHint": "Klikni na položku a otevři ji v okně Beneos Cloud.",
+  "BENEOS.Cloud.WhatsNew.GroupMaps": "Nové balíčky map",
+  "BENEOS.Cloud.WhatsNew.GroupCreatures": "Nové bytosti",
+  "BENEOS.Cloud.WhatsNew.GroupItems": "Nové předměty",
+  "BENEOS.Cloud.WhatsNew.GroupSpells": "Nová kouzla",
   "BENEOS.Settings.WhatsNewEnabled.Name": "Zobrazovat novinky při startu světa",
   "BENEOS.Settings.WhatsNewEnabled.Hint": "Při startu světa otevře krátké okno s tím, co tvůj účet odemkl od posledního potvrzení. Vidí jej jen vypravěči."
 }

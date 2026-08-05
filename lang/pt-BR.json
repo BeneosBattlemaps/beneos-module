@@ -2406,6 +2406,10 @@
   "BENEOS.Cloud.WhatsNew.DontShowAgain": "Não mostrar novamente",
   "BENEOS.Cloud.WhatsNew.More": "e mais {count}",
   "BENEOS.Cloud.WhatsNew.ClickHint": "Clique em um item para abri-lo na janela do Beneos Cloud.",
+  "BENEOS.Cloud.WhatsNew.GroupMaps": "Novos pacotes de mapas",
+  "BENEOS.Cloud.WhatsNew.GroupCreatures": "Novas criaturas",
+  "BENEOS.Cloud.WhatsNew.GroupItems": "Novos itens",
+  "BENEOS.Cloud.WhatsNew.GroupSpells": "Novas magias",
   "BENEOS.Settings.WhatsNewEnabled.Name": "Mostrar novidades ao iniciar o mundo",
   "BENEOS.Settings.WhatsNewEnabled.Hint": "Abre ao iniciar o mundo uma janela curta com o que sua conta liberou desde a última confirmação. Exibida apenas para mestres."
 }

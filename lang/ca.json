@@ -2406,6 +2406,10 @@
   "BENEOS.Cloud.WhatsNew.DontShowAgain": "No ho tornis a mostrar",
   "BENEOS.Cloud.WhatsNew.More": "i {count} més",
   "BENEOS.Cloud.WhatsNew.ClickHint": "Fes clic en una entrada per obrir-la a la finestra de Beneos Cloud.",
+  "BENEOS.Cloud.WhatsNew.GroupMaps": "Nous paquets de mapes",
+  "BENEOS.Cloud.WhatsNew.GroupCreatures": "Noves criatures",
+  "BENEOS.Cloud.WhatsNew.GroupItems": "Nous objectes",
+  "BENEOS.Cloud.WhatsNew.GroupSpells": "Nous encanteris",
   "BENEOS.Settings.WhatsNewEnabled.Name": "Mostra les novetats en iniciar el món",
   "BENEOS.Settings.WhatsNewEnabled.Hint": "En iniciar el món obre una finestra breu amb el que el teu compte ha desbloquejat des de la darrera confirmació. Només es mostra als DJ."
 }

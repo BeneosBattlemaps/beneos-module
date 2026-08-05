@@ -2406,6 +2406,10 @@
   "BENEOS.Cloud.WhatsNew.DontShowAgain": "No volver a mostrar",
   "BENEOS.Cloud.WhatsNew.More": "y {count} más",
   "BENEOS.Cloud.WhatsNew.ClickHint": "Haz clic en una entrada para abrirla en la ventana de Beneos Cloud.",
+  "BENEOS.Cloud.WhatsNew.GroupMaps": "Nuevos packs de mapas",
+  "BENEOS.Cloud.WhatsNew.GroupCreatures": "Nuevas criaturas",
+  "BENEOS.Cloud.WhatsNew.GroupItems": "Nuevos objetos",
+  "BENEOS.Cloud.WhatsNew.GroupSpells": "Nuevos hechizos",
   "BENEOS.Settings.WhatsNewEnabled.Name": "Mostrar novedades al iniciar el mundo",
   "BENEOS.Settings.WhatsNewEnabled.Hint": "Abre al iniciar el mundo una ventana breve con lo que tu cuenta ha desbloqueado desde la última confirmación. Solo se muestra a los DJ."
 }

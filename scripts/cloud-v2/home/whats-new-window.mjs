@@ -39,6 +39,25 @@ const TYPE_LABEL_KEY = {
   spell: "BENEOS.Cloud.Tab.Spells"
 }
 
+// Reveal order. Maps lead because their cover is the strongest thing the window
+// has to show; each group announces itself before its entries arrive.
+// `wide` gets the big 16:9 card, everything else a square tile.
+const GROUPS = [
+  { type: "bmap", wide: true, titleKey: "BENEOS.Cloud.WhatsNew.GroupMaps" },
+  { type: "token", wide: false, titleKey: "BENEOS.Cloud.WhatsNew.GroupCreatures" },
+  { type: "item", wide: false, titleKey: "BENEOS.Cloud.WhatsNew.GroupItems" },
+  { type: "spell", wide: false, titleKey: "BENEOS.Cloud.WhatsNew.GroupSpells" }
+]
+
+// Reveal timing in milliseconds. The card wipes in first, then the sequence
+// runs. The per-entry step shrinks on a big haul so twenty-four unlocks do not
+// take half a minute to finish arriving.
+const REVEAL_START = 420
+const REVEAL_TITLE_HOLD = 260
+const REVEAL_STEP_SMALL = 130
+const REVEAL_STEP_LARGE = 60
+const REVEAL_STEP_THRESHOLD = 10
+
 /** Server asset type to the type string the module's catalog and tabs use. */
 function toModuleType(serverType) {
   return String(serverType) === "battlemap" ? "bmap" : String(serverType)
@@ -56,9 +75,9 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
       resizable: false,
       minimizable: false
     },
-    // Wide enough that a 16:9 release cover can be shown uncropped next to the
-    // title: the cover is the selling point, so it is never cut to fit.
-    position: { width: 660, height: 680 },
+    // Wide enough for a full-width 16:9 release cover: the cover is the selling
+    // point, so it gets the room and is never cut to fit.
+    position: { width: 720, height: 760 },
     actions: {
       whatsNewAdvance: BeneosWhatsNewWindow._onAdvance,
       whatsNewOpen: BeneosWhatsNewWindow._onOpenEntry
@@ -154,30 +173,51 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
       return catalogs[type]
     }
 
-    const items = (card?.bucket?.items ?? []).map((entry, i) => {
+    const entries = (card?.bucket?.items ?? []).map(entry => {
       const type = toModuleType(entry.type)
       return {
         key: entry.key,
         name: entry.name || entry.key,
         type,
         typeLabel: game.i18n.localize(TYPE_LABEL_KEY[type] ?? ""),
-        thumbnail: this.#thumbnailFor(type, entry.key, entry.thumbnailUrl, catalogFor),
-        // Drives the staggered reveal in CSS; capped so a long list does not
-        // end up waiting seconds for its last row.
-        revealIndex: Math.min(i, 14)
+        thumbnail: this.#thumbnailFor(type, entry.key, entry.thumbnailUrl, catalogFor)
       }
     })
+
+    // One timeline across the whole card: every heading and every entry gets an
+    // absolute delay, so the browser plays them in written order without the
+    // window having to drive the sequence from JavaScript.
+    const step = entries.length > REVEAL_STEP_THRESHOLD ? REVEAL_STEP_LARGE : REVEAL_STEP_SMALL
+    let clock = REVEAL_START
+    const groups = []
+    for (const group of GROUPS) {
+      const items = entries.filter(e => e.type === group.type)
+      if (!items.length) continue
+      const titleDelay = clock
+      clock += REVEAL_TITLE_HOLD
+      for (const item of items) {
+        item.delay = clock
+        clock += step
+      }
+      groups.push({
+        title: game.i18n.localize(group.titleKey),
+        isWide: group.wide,
+        titleDelay,
+        items
+      })
+    }
 
     const overflow = card?.bucket?.overflow ?? 0
     return {
       kind: card?.kind ?? "patreon",
+      groups,
+      overflowDelay: clock,
       headline: game.i18n.localize(card?.kind === "shop"
         ? "BENEOS.Cloud.WhatsNew.ShopHeadline"
         : "BENEOS.Cloud.WhatsNew.PatreonHeadline"),
       subline: game.i18n.localize(card?.kind === "shop"
         ? "BENEOS.Cloud.WhatsNew.ShopSubline"
         : "BENEOS.Cloud.WhatsNew.PatreonSubline"),
-      items,
       overflow,
       overflowLabel: overflow > 0
         ? game.i18n.format("BENEOS.Cloud.WhatsNew.More", { count: overflow })

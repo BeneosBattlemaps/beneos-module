@@ -1,5 +1,14 @@
-{{!-- "What's new" card. One bucket per render; the window swaps cardIndex and
-      re-renders this part, so the reveal animation replays for the second card. --}}
+{{!-- Images load eagerly on purpose. The list scrolls and most entries start
+      below its fold, so loading="lazy" left them unloaded until the user
+      scrolled, and the pop then revealed an empty frame. A card carries at most
+      two dozen thumbnails, which is worth loading up front for a reveal that
+      lands.
+
+      "What's new" card. One bucket per render; the window swaps cardIndex and
+      re-renders this part, so the whole reveal replays for the second card.
+      Every animated element carries its own --bwn-d delay, computed in one
+      sequence by the window, so headings and entries arrive strictly in the
+      order they are written here. --}}
 <div class="bwn-card bwn-card--{{kind}}">
 
   <header class="bwn-head">
@@ -9,24 +18,52 @@
     <p class="bwn-subline">{{subline}}</p>
   </header>
 
-  <ol class="bwn-list">
-    {{#each items}}
-    <li class="bwn-row" style="--bwn-i: {{this.revealIndex}}">
-      <button type="button" class="bwn-entry" data-action="whatsNewOpen"
-              data-entry-key="{{this.key}}"
-              data-entry-type="{{this.type}}"
-              data-entry-name="{{this.name}}">
-        <span class="bwn-thumb">
-          {{#if this.thumbnail}}<img src="{{this.thumbnail}}" alt="" loading="lazy">{{/if}}
-        </span>
-        <span class="bwn-name">{{this.name}}</span>
-        {{#if this.typeLabel}}<span class="bwn-chip">{{this.typeLabel}}</span>{{/if}}
-      </button>
-    </li>
-    {{/each}}
-  </ol>
+  <div class="bwn-list">
+    {{#each groups}}
+    <section class="bwn-group">
+      <h3 class="bwn-group-title" style="--bwn-d: {{this.titleDelay}}ms">{{this.title}}</h3>
 
-  {{#if overflowLabel}}<p class="bwn-overflow">{{overflowLabel}}</p>{{/if}}
+      {{#if this.isWide}}
+      <div class="bwn-maps">
+        {{#each this.items}}
+        <button type="button" class="bwn-map bwn-pop" style="--bwn-d: {{this.delay}}ms"
+                data-action="whatsNewOpen"
+                data-entry-key="{{this.key}}"
+                data-entry-type="{{this.type}}"
+                data-entry-name="{{this.name}}">
+          <span class="bwn-map-cover">
+            {{#if this.thumbnail}}<img src="{{this.thumbnail}}" alt="" decoding="async">{{/if}}
+          </span>
+          <span class="bwn-map-foot">
+            <span class="bwn-map-name">{{this.name}}</span>
+            {{#if this.typeLabel}}<span class="bwn-chip">{{this.typeLabel}}</span>{{/if}}
+          </span>
+        </button>
+        {{/each}}
+      </div>
+      {{else}}
+      <div class="bwn-tiles">
+        {{#each this.items}}
+        <button type="button" class="bwn-tile bwn-pop" style="--bwn-d: {{this.delay}}ms"
+                data-action="whatsNewOpen"
+                data-entry-key="{{this.key}}"
+                data-entry-type="{{this.type}}"
+                data-entry-name="{{this.name}}">
+          <span class="bwn-tile-art">
+            {{#if this.thumbnail}}<img src="{{this.thumbnail}}" alt="" decoding="async">{{/if}}
+          </span>
+          <span class="bwn-tile-name">{{this.name}}</span>
+        </button>
+        {{/each}}
+      </div>
+      {{/if}}
+    </section>
+    {{/each}}
+
+    {{#if overflowLabel}}
+    <p class="bwn-overflow" style="--bwn-d: {{overflowDelay}}ms">{{overflowLabel}}</p>
+    {{/if}}
+  </div>
 
   <footer class="bwn-foot">
     <p class="bwn-hint">{{hintLabel}}</p>

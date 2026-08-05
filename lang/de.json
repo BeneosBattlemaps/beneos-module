@@ -2406,6 +2406,10 @@
   "BENEOS.Cloud.WhatsNew.DontShowAgain": "Nicht mehr anzeigen",
   "BENEOS.Cloud.WhatsNew.More": "und {count} weitere",
   "BENEOS.Cloud.WhatsNew.ClickHint": "Klicke einen Eintrag an, um ihn im Beneos-Cloud-Fenster zu öffnen.",
+  "BENEOS.Cloud.WhatsNew.GroupMaps": "Neue Map-Packs",
+  "BENEOS.Cloud.WhatsNew.GroupCreatures": "Neue Kreaturen",
+  "BENEOS.Cloud.WhatsNew.GroupItems": "Neue Gegenstände",
+  "BENEOS.Cloud.WhatsNew.GroupSpells": "Neue Zauber",
   "BENEOS.Settings.WhatsNewEnabled.Name": "Neue Veröffentlichungen beim Weltstart zeigen",
   "BENEOS.Settings.WhatsNewEnabled.Hint": "Öffnet beim Weltstart ein kurzes Fenster mit allem, was dein Konto seit der letzten Bestätigung freigeschaltet hat. Wird nur Spielleitern gezeigt."
 }
