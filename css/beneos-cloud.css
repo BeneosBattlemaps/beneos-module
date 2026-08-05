@@ -8454,6 +8454,19 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
    keeps it readable in Foundry's bright mode.
    ========================================================================== */
 
+/* The frame itself fades up, so the window comes into being rather than being
+   suddenly present with an animation running inside it. Opacity only:
+   ApplicationV2 drives position through inline styles, and animating a
+   transform here would fight it. */
+.beneos-whatsnew-window {
+  animation: bwn-window-in 0.34s ease-out both;
+}
+
+@keyframes bwn-window-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 .beneos-whatsnew-window .window-content { padding: 0; overflow: hidden; }
 
 /* Wipes in from the left. clip-path rather than a slide, so the card uncovers
@@ -8466,7 +8479,9 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   padding: var(--bc-space-5, 16px);
   gap: var(--bc-space-3, 10px);
   background: var(--bc-bg-panel, #17150f);
-  animation: bwn-wipe-in 0.5s cubic-bezier(0.22, 0.9, 0.28, 1) both;
+  /* Starts after the frame has faded up, so the order reads: window appears,
+     opening note, then the card uncovers itself, then the unlocks arrive. */
+  animation: bwn-wipe-in 0.5s cubic-bezier(0.22, 0.9, 0.28, 1) 0.22s both;
 }
 
 @keyframes bwn-wipe-in {
@@ -8478,7 +8493,8 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   position: relative;
   flex: 0 0 auto;
   text-align: center;
-  padding: var(--bc-space-4, 12px) var(--bc-space-3, 10px) var(--bc-space-3, 10px);
+  /* Left padding keeps the headline clear of the logo beside it. */
+  padding: var(--bc-space-4, 12px) var(--bc-space-3, 10px) var(--bc-space-3, 10px) 64px;
   border-bottom: 1px solid var(--bc-accent-line, rgba(245, 201, 146, 0.25));
 }
 
@@ -8494,6 +8510,19 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   pointer-events: none;
   background: radial-gradient(ellipse at center, var(--bc-accent-dim, rgba(245, 201, 146, 0.22)) 0%, transparent 70%);
   animation: bf-glow-pulse 3.2s ease-in-out infinite;
+}
+
+/* Sits beside the headline rather than in the flow, so the headline stays
+   optically centred in the card no matter how long it is. */
+.bwn-logo {
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  width: 54px;
+  height: auto;
+  transform: translateY(-50%);
+  pointer-events: none;
+  user-select: none;
 }
 
 .bwn-counter {
@@ -8523,10 +8552,16 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   color: var(--bc-text-muted, #b6ad9d);
 }
 
+/* The scrollbar is decided once by the window, never by the browser watching
+   the content. During a pop an entry is briefly larger than its final size,
+   which grew the scroll area just enough for `auto` to flash a scrollbar in and
+   out, and every flash shifted the whole card sideways. Hidden by default; the
+   window adds is-scrolling when the finished content genuinely does not fit,
+   and then the bar is there from the first frame and never moves again. */
 .bwn-list {
   flex: 1 1 auto;
   min-height: 0;
-  overflow-y: auto;
+  overflow-y: hidden;
   overflow-x: hidden;
   margin: 0;
   padding: 0 var(--bc-space-2, 6px) 0 0;
@@ -8534,6 +8569,8 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   flex-direction: column;
   gap: var(--bc-space-5, 16px);
 }
+
+.bwn-list.is-scrolling { overflow-y: scroll; }
 
 .bwn-group { flex: 0 0 auto; }
 
@@ -8567,21 +8604,15 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 
 /* The pop. Overshoots slightly and settles, which is what makes an unlock read
    as something arriving rather than something merely appearing. */
+/* Pure scale, no rotation. A rotating card re-rasterises its text and its cover
+   on every frame and lands on fractional pixels, which is what made the reveal
+   look jittery and the layout appear to nudge itself as each entry settled. */
 @keyframes bwn-pop-in {
-  0%   { opacity: 0; transform: scale(0.55) rotate(-2.5deg); }
-  62%  { opacity: 1; transform: scale(1.06) rotate(1deg); }
-  100% { opacity: 1; transform: scale(1) rotate(0); }
-}
-
-/* Wide map cards get their own, much flatter overshoot. A full-width element
-   scaled to 1.06 is wider than the scrolling list, and the list clips
-   horizontally, so the big cover would be shaved off at both edges mid-pop.
-   The reserved side padding on .bwn-maps below leaves room for what is left. */
-@keyframes bwn-pop-in-wide {
-  0%   { opacity: 0; transform: scale(0.88); }
-  60%  { opacity: 1; transform: scale(1.025); }
+  0%   { opacity: 0; transform: scale(0.62); }
+  58%  { opacity: 1; transform: scale(1.05); }
   100% { opacity: 1; transform: scale(1); }
 }
+
 
 /* The overshoot lives in the keyframes above, deliberately and to a known
    amount. The easing only decelerates: a back-out curve on top of an
@@ -8589,19 +8620,87 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
    written and is what pushed the wide card outside the list and got it
    clipped. */
 .bwn-pop {
+  position: relative;
+  /* Promotes each entry to its own layer for the length of the reveal, so the
+     browser composites the scale instead of repainting the cover every frame.
+     Bounded by the payload cap, so this is at most two dozen layers. */
+  will-change: transform, opacity;
+  backface-visibility: hidden;
   animation: bwn-pop-in 0.44s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: var(--bwn-d, 0ms);
 }
 
-.bwn-map.bwn-pop { animation-name: bwn-pop-in-wide; }
+/* The glint: a warm halo that swells out of the entry as it lands. Drawn on a
+   pseudo-element so it costs no markup and cannot be hit by the pointer. */
+.bwn-pop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 45%,
+    var(--bc-accent-soft, rgba(245, 201, 146, 0.28)) 0%,
+    var(--bc-accent-dim, rgba(245, 201, 146, 0.16)) 35%,
+    transparent 68%);
+  opacity: 0;
+  animation: bwn-glint 0.85s ease-out both;
+  animation-delay: var(--bwn-d, 0ms);
+}
+
+/* Six sparks over the artwork, twinkling once as the entry arrives. Static
+   gradient stops rather than particles: no elements, no timers, one layer.
+   Each spark is a bright core inside a soft halo, and the layer is composited
+   with screen so it stays visible over a bright cover as well as a dark one. */
+.bwn-pop::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background-image:
+    radial-gradient(circle, rgba(255, 252, 242, 1) 0 3px, rgba(245, 201, 146, 0.55) 4.5px, transparent 9px),
+    radial-gradient(circle, rgba(255, 252, 242, 1) 0 2.2px, rgba(245, 201, 146, 0.5) 3.4px, transparent 7px),
+    radial-gradient(circle, rgba(255, 252, 242, 1) 0 2.6px, rgba(245, 201, 146, 0.5) 4px, transparent 8px),
+    radial-gradient(circle, rgba(255, 252, 242, 1) 0 1.8px, rgba(245, 201, 146, 0.45) 3px, transparent 6px),
+    radial-gradient(circle, rgba(255, 252, 242, 1) 0 2.4px, rgba(245, 201, 146, 0.5) 3.6px, transparent 7.5px),
+    radial-gradient(circle, rgba(255, 252, 242, 1) 0 1.6px, rgba(245, 201, 146, 0.45) 2.6px, transparent 5.5px);
+  background-position: 19% 24%, 78% 31%, 63% 73%, 32% 69%, 50% 15%, 88% 62%;
+  background-repeat: no-repeat;
+  opacity: 0;
+  animation: bwn-sparkle 0.8s ease-out both;
+  animation-delay: var(--bwn-d, 0ms);
+}
+
+@keyframes bwn-glint {
+  0%   { opacity: 0;    transform: scale(0.7); }
+  30%  { opacity: 0.75; }
+  100% { opacity: 0;    transform: scale(1.18); }
+}
+
+@keyframes bwn-sparkle {
+  0%   { opacity: 0; transform: scale(0.75); }
+  35%  { opacity: 1; }
+  70%  { opacity: 0.5; }
+  100% { opacity: 0; transform: scale(1.14); }
+}
+
+/* Map cards used to need a flatter overshoot of their own, back when one card
+   filled the whole width and 1.06 of that was wider than the list. At two per
+   row they fit inside the reserved side padding like the tiles do, so both
+   layouts now share one pop. */
 
 /* ---- Maps: one big card each, the cover carries the sale ---- */
 
-/* Side padding is not decoration: it is the room the pop needs to overshoot
+/* Two covers per row. auto-fill rather than a hard repeat(2), so the layout
+   survives a narrower window by dropping to one column instead of squeezing
+   both covers into something unreadable.
+   Side padding is not decoration: it is the room the pop needs to overshoot
    without being clipped by the scrolling list. */
 .bwn-maps {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: var(--bc-space-4, 12px);
   padding-inline: 12px;
 }
@@ -8622,10 +8721,16 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   background: var(--bc-card, #242019);
   color: var(--bc-text, #ebe9e5);
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.15s ease,
+              box-shadow 0.18s ease;
 }
 
+/* Lifts towards the pointer. The window strips the reveal class once an entry
+   has landed, otherwise the pop's fill-mode would keep its own transform
+   applied and this would never move. */
 .bwn-map:hover {
+  transform: translateY(-4px) scale(1.015);
   border-color: var(--bc-accent-line, rgba(245, 201, 146, 0.45));
   box-shadow: var(--bc-shadow-pop, 0 6px 20px rgba(0, 0, 0, 0.45));
 }
@@ -8659,7 +8764,7 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 .bwn-map-name {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 15px;
+  font-size: 13.5px;
   line-height: 1.3;
   overflow-wrap: anywhere;
 }
@@ -8689,13 +8794,17 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   background: var(--bc-card, #242019);
   color: var(--bc-text, #ebe9e5);
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.15s ease,
+              background 0.15s ease,
+              box-shadow 0.18s ease;
 }
 
 .bwn-tile:hover {
   background: var(--bc-card-hover, #2c2720);
   border-color: var(--bc-accent-line, rgba(245, 201, 146, 0.45));
-  transform: translateY(-2px);
+  transform: translateY(-5px) scale(1.03);
+  box-shadow: var(--bc-shadow-pop, 0 6px 20px rgba(0, 0, 0, 0.45));
 }
 
 /* Square, and the artwork is shown whole inside it. */
@@ -8783,6 +8892,8 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 
 /* Performance mode and the reduced-motion preference drop the motion and show
    the finished card, same rule the Forge reveal follows. */
+body.beneos-perf-mode.beneos-whatsnew-window,
+body.beneos-perf-mode .beneos-whatsnew-window,
 body.beneos-perf-mode .bwn-card,
 body.beneos-perf-mode .bwn-burst,
 body.beneos-perf-mode .bwn-pop,
@@ -8791,12 +8902,19 @@ body.beneos-perf-mode .bwn-overflow {
   animation: none;
   clip-path: none;
   opacity: 1;
+  will-change: auto;
 }
 
+body.beneos-perf-mode .bwn-pop::before,
+body.beneos-perf-mode .bwn-pop::after { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
+  .beneos-whatsnew-window,
   .bwn-card, .bwn-burst, .bwn-pop, .bwn-group-title, .bwn-overflow {
     animation: none;
     clip-path: none;
     opacity: 1;
+    will-change: auto;
   }
+  .bwn-pop::before, .bwn-pop::after { display: none; }
 }

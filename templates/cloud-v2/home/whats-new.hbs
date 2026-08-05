@@ -12,6 +12,10 @@
 <div class="bwn-card bwn-card--{{kind}}">
 
   <header class="bwn-head">
+    {{!-- Says where the window comes from. Without it the popup arrives on
+          world start with nothing naming its source. --}}
+    <img class="bwn-logo" src="modules/beneos-module/icons/beneos_Logo.webp"
+         alt="Beneos" draggable="false">
     {{#if showCounter}}<span class="bwn-counter">{{counterLabel}}</span>{{/if}}
     <span class="bwn-burst" aria-hidden="true"></span>
     <h2 class="bwn-headline">{{headline}}</h2>

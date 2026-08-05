@@ -16,11 +16,18 @@ import { ackWhatsNew, fetchWhatsNew } from "../services/whats-new-api.mjs"
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
 
 const SETTING_ENABLED = "beneos-whatsnew-enabled"
-// Own sound, not the shared notification one: this window is a reward, not an
-// alert. Probed once per session because a missing file would otherwise make
-// Foundry's audio helper log an error on every single card.
-const NOTIFY_SFX = "modules/beneos-module/ui/sfx/beneos_update.ogg"
-let sfxAvailable = null
+// One sound when the window arrives, one per unlock as it lands. The opening
+// note is a swoosh rather than a notification chime: the window is a reward,
+// not an alert, and a chime on top of the run of unlock notes was too much.
+// Each file is probed once per session, because a missing file would otherwise
+// make Foundry's audio helper log an error on every single card.
+const SFX_OPEN = "modules/beneos-module/ui/sfx/beneos_swoosh.ogg"
+const SFX_SPAWN = "modules/beneos-module/ui/sfx/beneos_achievement.ogg"
+// Both turned down by a fifth from where they started. The spawn note sits
+// lower again because it fires once per unlock.
+const SFX_VOLUME_OPEN = 0.4
+const SFX_VOLUME_SPAWN = 0.24
+const sfxAvailable = new Map()
 
 // Same CDN roots and lookup chain the Home rails use (home-controller.mjs
 // thumbnailFor). Battlemaps are the exception: their cover is served from the
@@ -50,13 +57,17 @@ const GROUPS = [
 ]
 
 // Reveal timing in milliseconds. The card wipes in first, then the sequence
-// runs. The per-entry step shrinks on a big haul so twenty-four unlocks do not
-// take half a minute to finish arriving.
-const REVEAL_START = 420
-const REVEAL_TITLE_HOLD = 260
-const REVEAL_STEP_SMALL = 130
-const REVEAL_STEP_LARGE = 60
-const REVEAL_STEP_THRESHOLD = 10
+// runs: heading, then its entries one every REVEAL_STEP. Half a second between
+// unlocks is deliberate and set by hand. It is slow enough to watch each one
+// land instead of seeing a list assemble itself, which is the whole point of
+// the window. The confirm button works throughout, so a long haul never traps
+// anyone behind the animation.
+// Late enough that the window has faded up and the card has finished wiping in
+// before the first heading appears, so the opening note gets an empty card to
+// itself.
+const REVEAL_START = 900
+const REVEAL_TITLE_HOLD = 400
+const REVEAL_STEP = 500
 
 /** Server asset type to the type string the module's catalog and tabs use. */
 function toModuleType(serverType) {
@@ -124,6 +135,9 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
 
       const win = new BeneosWhatsNewWindow(payload)
       if (!win.cards.length) return false
+      // Before the first frame, so the opening note is heard the moment the
+      // window appears and every later note lands on its own unlock.
+      await BeneosWhatsNewWindow.#preloadSfx()
       await win.render({ force: true })
       return true
     } catch (err) {
@@ -187,7 +201,7 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
     // One timeline across the whole card: every heading and every entry gets an
     // absolute delay, so the browser plays them in written order without the
     // window having to drive the sequence from JavaScript.
-    const step = entries.length > REVEAL_STEP_THRESHOLD ? REVEAL_STEP_LARGE : REVEAL_STEP_SMALL
+    const step = REVEAL_STEP
     let clock = REVEAL_START
     const groups = []
     for (const group of GROUPS) {
@@ -264,33 +278,141 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
     } catch (err) {
       console.warn("[Beneos What's New] Render wiring failed:", err)
     }
-    // The reveal sound belongs to the card, not to the window: it plays again
-    // when the second card comes up.
-    BeneosWhatsNewWindow.#playRevealSfx()
+    // Both sounds belong to the card, not to the window: they play again when
+    // the second card comes up.
+    BeneosWhatsNewWindow.#playSfx(SFX_OPEN, SFX_VOLUME_OPEN)
+    this.#scheduleSpawnSounds()
+    this.#releasePopAfterLanding()
+    this.#settleScrollbar()
   }
 
   /**
-   * Play the reveal sound, once the file has been confirmed to exist. The probe
-   * runs once per session and its result is remembered: without it a module
-   * build that ships without the sound would log an audio error for every card
-   * a user ever sees, which is a lot of noise for something purely decorative.
+   * One sound per unlock, fired on the same schedule the CSS uses, so the note
+   * lands with the pop rather than in a burst at the end.
+   *
+   * The timers are owned by the window and cleared before every render and on
+   * close. Without that, advancing to the shop card or closing the window early
+   * would leave the previous card's notes playing into an empty screen.
    */
-  static #playRevealSfx() {
+  #scheduleSpawnSounds() {
+    this.#clearSpawnSounds()
+    this.spawnTimers = []
+    const nodes = this.element?.querySelectorAll?.('[data-action="whatsNewOpen"]') ?? []
+    for (const node of nodes) {
+      const delay = parseInt(node.style.getPropertyValue("--bwn-d"), 10)
+      if (!Number.isFinite(delay)) continue
+      this.spawnTimers.push(setTimeout(() => {
+        // Quieter than the opening note: two dozen of these in a row should
+        // read as a run of small rewards, not as an alarm.
+        BeneosWhatsNewWindow.#playSfx(SFX_SPAWN, SFX_VOLUME_SPAWN)
+      }, Math.max(0, delay)))
+    }
+  }
+
+  /**
+   * Drop the reveal class once an entry has landed.
+   *
+   * Two reasons, and the first is a real defect rather than housekeeping: the
+   * pop runs with fill-mode both, so its final transform stays applied forever
+   * and silently wins over the hover lift, which would never move. Removing the
+   * class hands the element back to normal styling. It also releases the
+   * compositor layer the reveal asked for, which there is no reason to keep.
+   */
+  #releasePopAfterLanding() {
+    for (const node of this.element?.querySelectorAll?.(".bwn-pop") ?? []) {
+      node.addEventListener("animationend", event => {
+        if (event.animationName !== "bwn-pop-in") return
+        node.classList.remove("bwn-pop")
+        node.style.willChange = "auto"
+      }, { once: false })
+    }
+  }
+
+  /**
+   * Decide the scrollbar once, before the reveal starts.
+   *
+   * Left to `overflow-y: auto` the browser re-decides on every frame, and a
+   * popping entry is briefly larger than its final size: just enough to grow
+   * the scroll area, flash a scrollbar in, and shift the whole card sideways
+   * for a few frames. Measured with the list clipped, so the transient size of
+   * the animation cannot influence the answer, only the finished layout can.
+   *
+   * The entries already occupy their space while still invisible (the reveal
+   * fills backwards), so the finished height is known from the first frame.
+   */
+  #settleScrollbar() {
+    const list = this.element?.querySelector?.(".bwn-list")
+    if (!list) return
+    const decide = () => {
+      list.classList.remove("is-scrolling")
+      if (list.scrollHeight > list.clientHeight + 1) list.classList.add("is-scrolling")
+    }
+    decide()
+    // A second pass after layout has settled: covers wrap their titles onto a
+    // second line at some window widths, which changes the answer.
+    requestAnimationFrame(() => requestAnimationFrame(decide))
+  }
+
+  #clearSpawnSounds() {
+    for (const timer of this.spawnTimers ?? []) clearTimeout(timer)
+    this.spawnTimers = []
+  }
+
+  _onClose(options) {
+    this.#clearSpawnSounds()
+    super._onClose?.(options)
+  }
+
+  /**
+   * Play a sound once the file has been confirmed to exist. The probe runs once
+   * per file per session and the answer is remembered: without it a module build
+   * that ships without a sound would log an audio error for every card, and for
+   * the spawn note for every single unlock, which is a lot of noise for
+   * something purely decorative.
+   */
+  static #playSfx(src, volume) {
+    // Only a missing file silences playback, and that is decided by asking the
+    // server for it, once. A failed preload must never silence anything: it can
+    // fail for reasons that have nothing to do with the file being there, and
+    // treating that as "missing" turned the whole window mute.
+    if (sfxAvailable.get(src) === false) return
     const play = () => {
       try {
         const helper = foundry.audio?.AudioHelper
-        if (helper?.play) helper.play({ src: NOTIFY_SFX, volume: 0.5, autoplay: true, loop: false }, false)
+        if (helper?.play) helper.play({ src, volume, autoplay: true, loop: false }, false)
       } catch (_e) { /* no audio context yet */ }
     }
-    if (sfxAvailable === true) { play(); return }
-    if (sfxAvailable === false) return
-    fetch(NOTIFY_SFX, { method: "HEAD" })
+    if (sfxAvailable.get(src) === true) { play(); return }
+    fetch(src, { method: "HEAD" })
       .then(response => {
-        sfxAvailable = response.ok
-        if (sfxAvailable) play()
-        else console.debug(`[Beneos What's New] reveal sound missing, staying silent: ${NOTIFY_SFX}`)
+        sfxAvailable.set(src, response.ok)
+        if (response.ok) play()
+        else console.debug(`[Beneos What's New] sound missing, staying silent: ${src}`)
       })
-      .catch(() => { sfxAvailable = false })
+      .catch(() => { /* leave undecided, try again next time */ })
+  }
+
+  /**
+   * Load both sounds into the audio cache before the window opens.
+   *
+   * Without this the notes do not follow the reveal, they arrive in a heap: the
+   * first play triggers the fetch and decode, every play started while that is
+   * still running waits on the same buffer, and they all fire together the
+   * moment it resolves. Preloading makes each timed play immediate, which is
+   * what turns the run of unlocks into a click, click, click.
+   *
+   * Purely an optimisation. A preload that fails says nothing about whether the
+   * file exists, so it is swallowed and playback still goes ahead; the timing
+   * is then merely as good as the browser manages on its own.
+   */
+  static async #preloadSfx() {
+    const helper = foundry.audio?.AudioHelper
+    if (!helper?.preloadSound) return
+    await Promise.all([SFX_OPEN, SFX_SPAWN].map(src =>
+      Promise.resolve()
+        .then(() => helper.preloadSound(src))
+        .catch(err => console.debug(`[Beneos What's New] preload skipped for ${src}:`, err?.message ?? err))
+    ))
   }
 
   static async _onAdvance(event, _target) {
