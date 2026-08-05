@@ -445,6 +445,19 @@ export class BeneosUtility {
       config: false
     })
 
+    // World-start "What's new" popup. Client scope so one GM can switch it off
+    // without deciding for everyone else. The "seen" cursor itself is NOT stored
+    // here: it lives on the cloud account, so a purchase is celebrated once
+    // across all worlds and machines instead of once per world.
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-whatsnew-enabled', {
+      name: 'BENEOS.Settings.WhatsNewEnabled.Name',
+      hint: 'BENEOS.Settings.WhatsNewEnabled.Hint',
+      type: Boolean,
+      scope: 'client',
+      default: true,
+      config: true
+    })
+
     game.settings.register(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', {
       name: 'Global JSON config for tokens',
       type: String,

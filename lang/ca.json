@@ -2394,5 +2394,18 @@
   "BENEOS.Cloud.Uninstall.GmOnly": "Només un Mestre de Joc pot eliminar una versió del món.",
   "BENEOS.Cloud.Uninstall.NoTarget": "No s'ha pogut determinar quina versió s'ha d'eliminar.",
   "BENEOS.Cloud.Uninstall.Failed": "L'eliminació de la versió ha fallat. Consulta la consola del navegador.",
-  "BENEOS.Cloud.SessionExpired": "Beneos Cloud ja no reconeix l'inici de sessió d'aquest món, així que s'ha esborrat l'accés de Patreon desat. Obre la finestra de Beneos Cloud i torna a iniciar la sessió per recuperar-lo."
+  "BENEOS.Cloud.SessionExpired": "Beneos Cloud ja no reconeix l'inici de sessió d'aquest món, així que s'ha esborrat l'accés de Patreon desat. Obre la finestra de Beneos Cloud i torna a iniciar la sessió per recuperar-lo.",
+  "BENEOS.Cloud.WhatsNew.Title": "Novetats per a tu",
+  "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Noves descàrregues pel teu suport a Patreon",
+  "BENEOS.Cloud.WhatsNew.PatreonSubline": "Desbloquejat per al teu compte des de la teva darrera visita.",
+  "BENEOS.Cloud.WhatsNew.ShopHeadline": "Noves compres de la botiga desbloquejades",
+  "BENEOS.Cloud.WhatsNew.ShopSubline": "Gràcies. La teva compra està a punt per instal·lar.",
+  "BENEOS.Cloud.WhatsNew.Counter": "Targeta {current} de {total}",
+  "BENEOS.Cloud.WhatsNew.Next": "Següent",
+  "BENEOS.Cloud.WhatsNew.Confirm": "Confirmar",
+  "BENEOS.Cloud.WhatsNew.DontShowAgain": "No ho tornis a mostrar",
+  "BENEOS.Cloud.WhatsNew.More": "i {count} més",
+  "BENEOS.Cloud.WhatsNew.ClickHint": "Fes clic en una entrada per obrir-la a la finestra de Beneos Cloud.",
+  "BENEOS.Settings.WhatsNewEnabled.Name": "Mostra les novetats en iniciar el món",
+  "BENEOS.Settings.WhatsNewEnabled.Hint": "En iniciar el món obre una finestra breu amb el que el teu compte ha desbloquejat des de la darrera confirmació. Només es mostra als DJ."
 }

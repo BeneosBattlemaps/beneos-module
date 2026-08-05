@@ -1,0 +1,39 @@
+{{!-- "What's new" card. One bucket per render; the window swaps cardIndex and
+      re-renders this part, so the reveal animation replays for the second card. --}}
+<div class="bwn-card bwn-card--{{kind}}">
+
+  <header class="bwn-head">
+    {{#if showCounter}}<span class="bwn-counter">{{counterLabel}}</span>{{/if}}
+    <span class="bwn-burst" aria-hidden="true"></span>
+    <h2 class="bwn-headline">{{headline}}</h2>
+    <p class="bwn-subline">{{subline}}</p>
+  </header>
+
+  <ol class="bwn-list">
+    {{#each items}}
+    <li class="bwn-row" style="--bwn-i: {{this.revealIndex}}">
+      <button type="button" class="bwn-entry" data-action="whatsNewOpen"
+              data-entry-key="{{this.key}}"
+              data-entry-type="{{this.type}}"
+              data-entry-name="{{this.name}}">
+        <span class="bwn-thumb">
+          {{#if this.thumbnail}}<img src="{{this.thumbnail}}" alt="" loading="lazy">{{/if}}
+        </span>
+        <span class="bwn-name">{{this.name}}</span>
+        {{#if this.typeLabel}}<span class="bwn-chip">{{this.typeLabel}}</span>{{/if}}
+      </button>
+    </li>
+    {{/each}}
+  </ol>
+
+  {{#if overflowLabel}}<p class="bwn-overflow">{{overflowLabel}}</p>{{/if}}
+
+  <footer class="bwn-foot">
+    <p class="bwn-hint">{{hintLabel}}</p>
+    <label class="bwn-optout">
+      <input type="checkbox" name="beneos-whatsnew-optout"> {{optOutLabel}}
+    </label>
+    <button type="button" class="bwn-confirm" data-action="whatsNewAdvance">{{buttonLabel}}</button>
+  </footer>
+
+</div>

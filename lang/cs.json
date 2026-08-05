@@ -2394,5 +2394,18 @@
   "BENEOS.Cloud.Uninstall.GmOnly": "Vydání ze světa může odebrat pouze Vypravěč.",
   "BENEOS.Cloud.Uninstall.NoTarget": "Nepodařilo se zjistit, které vydání odebrat.",
   "BENEOS.Cloud.Uninstall.Failed": "Odebrání vydání se nezdařilo. Viz konzole prohlížeče.",
-  "BENEOS.Cloud.SessionExpired": "Beneos Cloud už nezná přihlášení tohoto světa, proto byl uložený přístup z Patreonu odstraněn. Otevři okno Beneos Cloud a přihlas se znovu, aby se obnovil."
+  "BENEOS.Cloud.SessionExpired": "Beneos Cloud už nezná přihlášení tohoto světa, proto byl uložený přístup z Patreonu odstraněn. Otevři okno Beneos Cloud a přihlas se znovu, aby se obnovil.",
+  "BENEOS.Cloud.WhatsNew.Title": "Novinky pro tebe",
+  "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Nové soubory za tvou podporu na Patreonu",
+  "BENEOS.Cloud.WhatsNew.PatreonSubline": "Odemčeno pro tvůj účet od poslední návštěvy.",
+  "BENEOS.Cloud.WhatsNew.ShopHeadline": "Odemčeny nové nákupy z obchodu",
+  "BENEOS.Cloud.WhatsNew.ShopSubline": "Děkujeme. Tvůj nákup je připraven k instalaci.",
+  "BENEOS.Cloud.WhatsNew.Counter": "Karta {current} z {total}",
+  "BENEOS.Cloud.WhatsNew.Next": "Další",
+  "BENEOS.Cloud.WhatsNew.Confirm": "Potvrdit",
+  "BENEOS.Cloud.WhatsNew.DontShowAgain": "Příště nezobrazovat",
+  "BENEOS.Cloud.WhatsNew.More": "a dalších {count}",
+  "BENEOS.Cloud.WhatsNew.ClickHint": "Klikni na položku a otevři ji v okně Beneos Cloud.",
+  "BENEOS.Settings.WhatsNewEnabled.Name": "Zobrazovat novinky při startu světa",
+  "BENEOS.Settings.WhatsNewEnabled.Hint": "Při startu světa otevře krátké okno s tím, co tvůj účet odemkl od posledního potvrzení. Vidí jej jen vypravěči."
 }

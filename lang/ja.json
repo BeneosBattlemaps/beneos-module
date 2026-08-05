@@ -2394,5 +2394,18 @@
   "BENEOS.Cloud.Uninstall.GmOnly": "リリースをワールドから削除できるのはゲームマスターだけです。",
   "BENEOS.Cloud.Uninstall.NoTarget": "どのリリースを削除するのか判別できませんでした。",
   "BENEOS.Cloud.Uninstall.Failed": "リリースの削除に失敗しました。ブラウザーのコンソールを確認してください。",
-  "BENEOS.Cloud.SessionExpired": "Beneos Cloud はこのワールドのログインを認識できなくなったため、保存されていた Patreon のアクセス権を消去しました。Beneos Cloud ウィンドウを開き、もう一度サインインして復元してください。"
+  "BENEOS.Cloud.SessionExpired": "Beneos Cloud はこのワールドのログインを認識できなくなったため、保存されていた Patreon のアクセス権を消去しました。Beneos Cloud ウィンドウを開き、もう一度サインインして復元してください。",
+  "BENEOS.Cloud.WhatsNew.Title": "あなたへの新着",
+  "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Patreon支援への新しいダウンロード",
+  "BENEOS.Cloud.WhatsNew.PatreonSubline": "前回の確認以降にアカウントで解放されました。",
+  "BENEOS.Cloud.WhatsNew.ShopHeadline": "ショップ購入分が解放されました",
+  "BENEOS.Cloud.WhatsNew.ShopSubline": "ありがとうございます。購入分をインストールできます。",
+  "BENEOS.Cloud.WhatsNew.Counter": "カード {current} / {total}",
+  "BENEOS.Cloud.WhatsNew.Next": "次へ",
+  "BENEOS.Cloud.WhatsNew.Confirm": "確認",
+  "BENEOS.Cloud.WhatsNew.DontShowAgain": "今後表示しない",
+  "BENEOS.Cloud.WhatsNew.More": "他 {count} 件",
+  "BENEOS.Cloud.WhatsNew.ClickHint": "項目をクリックするとBeneos Cloudウィンドウで開きます。",
+  "BENEOS.Settings.WhatsNewEnabled.Name": "ワールド起動時に新着を表示",
+  "BENEOS.Settings.WhatsNewEnabled.Hint": "ワールド起動時に、前回の確認以降にアカウントで解放された内容を短いウィンドウで表示します。GMにのみ表示されます。"
 }

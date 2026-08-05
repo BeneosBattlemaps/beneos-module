@@ -2394,5 +2394,18 @@
   "BENEOS.Cloud.Uninstall.GmOnly": "Only a Gamemaster can remove a release from the world.",
   "BENEOS.Cloud.Uninstall.NoTarget": "Could not work out which release to remove.",
   "BENEOS.Cloud.Uninstall.Failed": "Removing the release failed. See the browser console.",
-  "BENEOS.Cloud.SessionExpired": "Beneos Cloud no longer recognises this world's sign-in, so the stored Patreon access was cleared. Open the Beneos Cloud window and sign in again to restore it."
+  "BENEOS.Cloud.SessionExpired": "Beneos Cloud no longer recognises this world's sign-in, so the stored Patreon access was cleared. Open the Beneos Cloud window and sign in again to restore it.",
+  "BENEOS.Cloud.WhatsNew.Title": "New for you",
+  "BENEOS.Cloud.WhatsNew.PatreonHeadline": "New downloads for your Patreon support",
+  "BENEOS.Cloud.WhatsNew.PatreonSubline": "Unlocked for your account since your last visit.",
+  "BENEOS.Cloud.WhatsNew.ShopHeadline": "New shop purchases unlocked",
+  "BENEOS.Cloud.WhatsNew.ShopSubline": "Thank you. Your purchase is ready to install.",
+  "BENEOS.Cloud.WhatsNew.Counter": "Card {current} of {total}",
+  "BENEOS.Cloud.WhatsNew.Next": "Next",
+  "BENEOS.Cloud.WhatsNew.Confirm": "Confirm",
+  "BENEOS.Cloud.WhatsNew.DontShowAgain": "Do not show this again",
+  "BENEOS.Cloud.WhatsNew.More": "and {count} more",
+  "BENEOS.Cloud.WhatsNew.ClickHint": "Click an entry to open it in the Beneos Cloud window.",
+  "BENEOS.Settings.WhatsNewEnabled.Name": "Show new releases on world start",
+  "BENEOS.Settings.WhatsNewEnabled.Hint": "Opens a short window on world start listing what your account unlocked since you last confirmed it. Shown to Game Masters only."
 }

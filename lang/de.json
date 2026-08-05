@@ -2394,5 +2394,18 @@
   "BENEOS.Cloud.Uninstall.GmOnly": "Nur ein Spielleiter kann ein Release aus der Welt entfernen.",
   "BENEOS.Cloud.Uninstall.NoTarget": "Es war nicht feststellbar, welches Release entfernt werden soll.",
   "BENEOS.Cloud.Uninstall.Failed": "Das Entfernen des Releases ist fehlgeschlagen. Siehe Browser-Konsole.",
-  "BENEOS.Cloud.SessionExpired": "Die Beneos Cloud kennt die Anmeldung dieser Welt nicht mehr, der gespeicherte Patreon-Zugang wurde deshalb entfernt. Melde dich im Beneos-Cloud-Fenster neu an, um ihn wiederherzustellen."
+  "BENEOS.Cloud.SessionExpired": "Die Beneos Cloud kennt die Anmeldung dieser Welt nicht mehr, der gespeicherte Patreon-Zugang wurde deshalb entfernt. Melde dich im Beneos-Cloud-Fenster neu an, um ihn wiederherzustellen.",
+  "BENEOS.Cloud.WhatsNew.Title": "Neu für dich",
+  "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Neue Downloads für deine Patreon-Unterstützung",
+  "BENEOS.Cloud.WhatsNew.PatreonSubline": "Seit deinem letzten Besuch für dein Konto freigeschaltet.",
+  "BENEOS.Cloud.WhatsNew.ShopHeadline": "Neue Shop-Käufe freigeschaltet",
+  "BENEOS.Cloud.WhatsNew.ShopSubline": "Danke. Dein Kauf ist bereit zur Installation.",
+  "BENEOS.Cloud.WhatsNew.Counter": "Karte {current} von {total}",
+  "BENEOS.Cloud.WhatsNew.Next": "Weiter",
+  "BENEOS.Cloud.WhatsNew.Confirm": "Bestätigen",
+  "BENEOS.Cloud.WhatsNew.DontShowAgain": "Nicht mehr anzeigen",
+  "BENEOS.Cloud.WhatsNew.More": "und {count} weitere",
+  "BENEOS.Cloud.WhatsNew.ClickHint": "Klicke einen Eintrag an, um ihn im Beneos-Cloud-Fenster zu öffnen.",
+  "BENEOS.Settings.WhatsNewEnabled.Name": "Neue Veröffentlichungen beim Weltstart zeigen",
+  "BENEOS.Settings.WhatsNewEnabled.Hint": "Öffnet beim Weltstart ein kurzes Fenster mit allem, was dein Konto seit der letzten Bestätigung freigeschaltet hat. Wird nur Spielleitern gezeigt."
 }

@@ -8440,3 +8440,228 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 .bc-bundle-member-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bc-bundle-member-size { flex: 0 0 auto; font-variant-numeric: tabular-nums; opacity: 0.8; }
 .bc-bundle-member-install { flex: 0 0 auto; padding: 2px 8px; }
+
+/* ==========================================================================
+   What's-new popup (beneos-whatsnew-window)
+   Shown once per world start when the account gained something. Colours come
+   from the shared --bc-* tokens only, so the window follows the active Beneos
+   theme and inherits the .beneos-cloud-app text pinning that keeps it readable
+   in Foundry's bright mode.
+   ========================================================================== */
+
+.beneos-whatsnew-window .window-content { padding: 0; overflow: hidden; }
+
+.bwn-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: var(--bc-space-5, 16px);
+  gap: var(--bc-space-3, 10px);
+  background: var(--bc-bg-panel, #17150f);
+  animation: bf-reveal-pop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.bwn-head {
+  position: relative;
+  flex: 0 0 auto;
+  text-align: center;
+  padding: var(--bc-space-4, 12px) var(--bc-space-3, 10px) var(--bc-space-3, 10px);
+  border-bottom: 1px solid var(--bc-accent-line, rgba(245, 201, 146, 0.25));
+}
+
+/* Soft halo behind the headline. Reuses the Forge reveal pulse, which already
+   carries the translate(-50%, -50%) the centring needs. */
+.bwn-burst {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  width: 260px;
+  height: 130px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, var(--bc-accent-dim, rgba(245, 201, 146, 0.22)) 0%, transparent 70%);
+  animation: bf-glow-pulse 3.2s ease-in-out infinite;
+}
+
+.bwn-counter {
+  display: inline-block;
+  margin-bottom: var(--bc-space-2, 6px);
+  font-family: var(--bc-font-mono, monospace);
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--bc-text-dim, #8b8375);
+}
+
+.bwn-headline {
+  position: relative;
+  margin: 0;
+  font-family: var(--bc-font-display, serif);
+  font-size: 19px;
+  line-height: 1.25;
+  color: var(--bc-accent, #f5c992);
+  text-wrap: balance;
+}
+
+.bwn-subline {
+  position: relative;
+  margin: var(--bc-space-2, 6px) 0 0;
+  font-size: 12px;
+  color: var(--bc-text-muted, #b6ad9d);
+}
+
+.bwn-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--bc-space-2, 6px);
+}
+
+/* Staggered reveal. --bwn-i is capped in the window so a long list does not
+   spend seconds animating its tail. */
+.bwn-row {
+  /* Must not shrink: the list is a flex column, and without this the rows are
+     squeezed to the container height while the uncropped cover keeps its own
+     size and spills out of its row. */
+  flex: 0 0 auto;
+  animation: bwn-row-in 0.34s ease both;
+  animation-delay: calc(var(--bwn-i, 0) * 55ms);
+}
+
+@keyframes bwn-row-in {
+  from { opacity: 0; transform: translateY(9px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.bwn-entry {
+  display: flex;
+  align-items: center;
+  gap: var(--bc-space-3, 10px);
+  width: 100%;
+  /* Foundry gives every button a fixed control height. Without releasing it the
+     row stays at input height and the uncropped cover spills out of it. */
+  height: auto;
+  min-height: 0;
+  line-height: normal;
+  padding: var(--bc-space-2, 6px);
+  text-align: left;
+  border: 1px solid var(--bc-border, #2e2920);
+  border-radius: var(--bc-radius, 5px);
+  background: var(--bc-card, #242019);
+  color: var(--bc-text, #ebe9e5);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.bwn-entry:hover {
+  background: var(--bc-card-hover, #2c2720);
+  border-color: var(--bc-accent-line, rgba(245, 201, 146, 0.35));
+  transform: translateX(2px);
+}
+
+/* The release image is the selling point, so it is never cropped. The box is
+   16:9, the size a battlemap cover is produced in, and `contain` lets a square
+   token or item thumbnail sit inside it whole rather than being cut to fit. */
+.bwn-thumb {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 160px;
+  height: 90px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--bc-bg, #0f0e0c);
+}
+
+.bwn-thumb img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+/* Wraps instead of cutting off: with the larger cover box there is room for a
+   second line, and a truncated release title reads worse than a taller row. */
+.bwn-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.bwn-chip {
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--bc-border-strong, #3d372c);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bc-text-dim, #8b8375);
+}
+
+.bwn-overflow {
+  flex: 0 0 auto;
+  margin: 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--bc-text-dim, #8b8375);
+}
+
+.bwn-foot {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--bc-space-2, 6px);
+  padding-top: var(--bc-space-3, 10px);
+  border-top: 1px solid var(--bc-border, #2e2920);
+}
+
+.bwn-hint { margin: 0; font-size: 11px; color: var(--bc-text-dim, #8b8375); }
+
+.bwn-optout {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--bc-text-muted, #b6ad9d);
+  cursor: pointer;
+}
+
+.bwn-confirm {
+  min-width: 180px;
+  padding: 7px 18px;
+  border: 1px solid var(--bc-accent-line, rgba(245, 201, 146, 0.35));
+  border-radius: var(--bc-radius, 5px);
+  background: var(--bc-accent-dim, rgba(245, 201, 146, 0.16));
+  color: var(--bc-accent, #f5c992);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.bwn-confirm:hover { background: var(--bc-accent-soft, rgba(245, 201, 146, 0.28)); }
+
+/* Performance mode and the reduced-motion preference both drop the motion but
+   keep the layout, same rule the Forge reveal follows. */
+body.beneos-perf-mode .bwn-card,
+body.beneos-perf-mode .bwn-row,
+body.beneos-perf-mode .bwn-burst {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bwn-card, .bwn-row, .bwn-burst { animation: none; }
+}

@@ -2394,5 +2394,18 @@
   "BENEOS.Cloud.Uninstall.GmOnly": "Solo un Director de Juego puede eliminar una versión del mundo.",
   "BENEOS.Cloud.Uninstall.NoTarget": "No se pudo determinar qué versión eliminar.",
   "BENEOS.Cloud.Uninstall.Failed": "No se pudo eliminar la versión. Consulta la consola del navegador.",
-  "BENEOS.Cloud.SessionExpired": "Beneos Cloud ya no reconoce el inicio de sesión de este mundo, por lo que se ha borrado el acceso de Patreon guardado. Abre la ventana de Beneos Cloud e inicia sesión de nuevo para recuperarlo."
+  "BENEOS.Cloud.SessionExpired": "Beneos Cloud ya no reconoce el inicio de sesión de este mundo, por lo que se ha borrado el acceso de Patreon guardado. Abre la ventana de Beneos Cloud e inicia sesión de nuevo para recuperarlo.",
+  "BENEOS.Cloud.WhatsNew.Title": "Novedades para ti",
+  "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Nuevas descargas por tu apoyo en Patreon",
+  "BENEOS.Cloud.WhatsNew.PatreonSubline": "Desbloqueado para tu cuenta desde tu última visita.",
+  "BENEOS.Cloud.WhatsNew.ShopHeadline": "Nuevas compras de la tienda desbloqueadas",
+  "BENEOS.Cloud.WhatsNew.ShopSubline": "Gracias. Tu compra está lista para instalar.",
+  "BENEOS.Cloud.WhatsNew.Counter": "Tarjeta {current} de {total}",
+  "BENEOS.Cloud.WhatsNew.Next": "Siguiente",
+  "BENEOS.Cloud.WhatsNew.Confirm": "Confirmar",
+  "BENEOS.Cloud.WhatsNew.DontShowAgain": "No volver a mostrar",
+  "BENEOS.Cloud.WhatsNew.More": "y {count} más",
+  "BENEOS.Cloud.WhatsNew.ClickHint": "Haz clic en una entrada para abrirla en la ventana de Beneos Cloud.",
+  "BENEOS.Settings.WhatsNewEnabled.Name": "Mostrar novedades al iniciar el mundo",
+  "BENEOS.Settings.WhatsNewEnabled.Hint": "Abre al iniciar el mundo una ventana breve con lo que tu cuenta ha desbloqueado desde la última confirmación. Solo se muestra a los DJ."
 }

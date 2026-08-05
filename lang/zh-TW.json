@@ -2394,5 +2394,18 @@
   "BENEOS.Cloud.Uninstall.GmOnly": "只有遊戲主持人可以從世界移除發行版。",
   "BENEOS.Cloud.Uninstall.NoTarget": "無法判斷要移除哪個發行版。",
   "BENEOS.Cloud.Uninstall.Failed": "移除發行版失敗。請查看瀏覽器主控台。",
-  "BENEOS.Cloud.SessionExpired": "Beneos Cloud 已無法辨識這個世界的登入，因此已清除儲存的 Patreon 存取權限。請開啟 Beneos Cloud 視窗重新登入以恢復。"
+  "BENEOS.Cloud.SessionExpired": "Beneos Cloud 已無法辨識這個世界的登入，因此已清除儲存的 Patreon 存取權限。請開啟 Beneos Cloud 視窗重新登入以恢復。",
+  "BENEOS.Cloud.WhatsNew.Title": "為你準備的新內容",
+  "BENEOS.Cloud.WhatsNew.PatreonHeadline": "感謝你的 Patreon 支持，有新的下載",
+  "BENEOS.Cloud.WhatsNew.PatreonSubline": "自你上次確認後已為你的帳號解鎖。",
+  "BENEOS.Cloud.WhatsNew.ShopHeadline": "新的商店購買已解鎖",
+  "BENEOS.Cloud.WhatsNew.ShopSubline": "感謝你。你的購買項目已可安裝。",
+  "BENEOS.Cloud.WhatsNew.Counter": "第 {current} 張，共 {total} 張",
+  "BENEOS.Cloud.WhatsNew.Next": "下一步",
+  "BENEOS.Cloud.WhatsNew.Confirm": "確認",
+  "BENEOS.Cloud.WhatsNew.DontShowAgain": "不再顯示",
+  "BENEOS.Cloud.WhatsNew.More": "另有 {count} 項",
+  "BENEOS.Cloud.WhatsNew.ClickHint": "點選項目即可在 Beneos Cloud 視窗中開啟。",
+  "BENEOS.Settings.WhatsNewEnabled.Name": "世界啟動時顯示新內容",
+  "BENEOS.Settings.WhatsNewEnabled.Hint": "世界啟動時開啟簡短視窗，列出自上次確認後帳號解鎖的內容。僅顯示給 GM。"
 }

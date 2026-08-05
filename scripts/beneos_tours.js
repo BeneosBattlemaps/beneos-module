@@ -8,6 +8,7 @@
 import { BeneosUtility } from "./beneos_utility.js";
 import { BeneosCloudWindowV2 } from "./cloud-v2/cloud-window-v2.mjs";
 import { maybeShowUpdateNotice } from "./cloud-v2/home/update-check.mjs";
+import { BeneosWhatsNewWindow } from "./cloud-v2/home/whats-new-window.mjs";
 
 const MODULE_ID = "beneos-module";
 
@@ -8504,6 +8505,21 @@ Hooks.once("ready", async () => {
   // News popup was replaced by the Home tab in the Beneos Cloud window
   // (cloud-window-v2.mjs). Users see the latest news the moment they open
   // the Cloud window, so the legacy intrusive popup on world-ready is gone.
+
+  // --- Hierarchy gate 4: "What's new" for this account. Not a revival of the
+  // old news popup: that one fired for everyone on every load with globally
+  // identical content, which is exactly why it was removed. This one only
+  // appears when the signed-in account actually gained something since it last
+  // confirmed the window, and the cursor for that lives on the cloud account.
+  // present() is fully self-guarding (GM, logged in, setting on, cloud
+  // reachable, non-empty result) and returns false when nothing was shown, so
+  // the update notice below still gets its turn on a quiet load.
+  try {
+    const shown = await BeneosWhatsNewWindow.present();
+    if (shown) return; // owns this load — don't stack the update notice on top
+  } catch (err) {
+    console.warn("[Beneos] What's new popup failed:", err);
+  }
 
   // Update notice runs last: both popup paths above return early, so reaching
   // here means no other Beneos window opened this load and the notice never

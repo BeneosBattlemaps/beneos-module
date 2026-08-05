@@ -2394,5 +2394,18 @@
   "BENEOS.Cloud.Uninstall.GmOnly": "Seul un Maître de Jeu peut retirer une sortie du monde.",
   "BENEOS.Cloud.Uninstall.NoTarget": "Impossible de déterminer quelle sortie retirer.",
   "BENEOS.Cloud.Uninstall.Failed": "Le retrait de la sortie a échoué. Voir la console du navigateur.",
-  "BENEOS.Cloud.SessionExpired": "Beneos Cloud ne reconnaît plus la connexion de ce monde, l'accès Patreon enregistré a donc été effacé. Ouvrez la fenêtre Beneos Cloud et reconnectez-vous pour le rétablir."
+  "BENEOS.Cloud.SessionExpired": "Beneos Cloud ne reconnaît plus la connexion de ce monde, l'accès Patreon enregistré a donc été effacé. Ouvrez la fenêtre Beneos Cloud et reconnectez-vous pour le rétablir.",
+  "BENEOS.Cloud.WhatsNew.Title": "Nouveau pour vous",
+  "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Nouveaux téléchargements pour votre soutien Patreon",
+  "BENEOS.Cloud.WhatsNew.PatreonSubline": "Débloqué pour votre compte depuis votre dernière visite.",
+  "BENEOS.Cloud.WhatsNew.ShopHeadline": "Nouveaux achats de la boutique débloqués",
+  "BENEOS.Cloud.WhatsNew.ShopSubline": "Merci. Votre achat est prêt à être installé.",
+  "BENEOS.Cloud.WhatsNew.Counter": "Carte {current} sur {total}",
+  "BENEOS.Cloud.WhatsNew.Next": "Suivant",
+  "BENEOS.Cloud.WhatsNew.Confirm": "Confirmer",
+  "BENEOS.Cloud.WhatsNew.DontShowAgain": "Ne plus afficher",
+  "BENEOS.Cloud.WhatsNew.More": "et {count} de plus",
+  "BENEOS.Cloud.WhatsNew.ClickHint": "Cliquez sur une entrée pour l'ouvrir dans la fenêtre Beneos Cloud.",
+  "BENEOS.Settings.WhatsNewEnabled.Name": "Afficher les nouveautés au démarrage du monde",
+  "BENEOS.Settings.WhatsNewEnabled.Hint": "Ouvre au démarrage du monde une courte fenêtre listant ce que votre compte a débloqué depuis votre dernière confirmation. Visible uniquement par les MJ."
 }

@@ -2394,5 +2394,18 @@
   "BENEOS.Cloud.Uninstall.GmOnly": "Solo un Game Master può rimuovere una release dal mondo.",
   "BENEOS.Cloud.Uninstall.NoTarget": "Non è stato possibile stabilire quale release rimuovere.",
   "BENEOS.Cloud.Uninstall.Failed": "Rimozione della release non riuscita. Vedi la console del browser.",
-  "BENEOS.Cloud.SessionExpired": "Beneos Cloud non riconosce più l'accesso di questo mondo, quindi l'accesso Patreon memorizzato è stato rimosso. Apri la finestra Beneos Cloud e accedi di nuovo per ripristinarlo."
+  "BENEOS.Cloud.SessionExpired": "Beneos Cloud non riconosce più l'accesso di questo mondo, quindi l'accesso Patreon memorizzato è stato rimosso. Apri la finestra Beneos Cloud e accedi di nuovo per ripristinarlo.",
+  "BENEOS.Cloud.WhatsNew.Title": "Novità per te",
+  "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Nuovi download per il tuo sostegno su Patreon",
+  "BENEOS.Cloud.WhatsNew.PatreonSubline": "Sbloccato per il tuo account dalla tua ultima visita.",
+  "BENEOS.Cloud.WhatsNew.ShopHeadline": "Nuovi acquisti dal negozio sbloccati",
+  "BENEOS.Cloud.WhatsNew.ShopSubline": "Grazie. Il tuo acquisto è pronto per l'installazione.",
+  "BENEOS.Cloud.WhatsNew.Counter": "Scheda {current} di {total}",
+  "BENEOS.Cloud.WhatsNew.Next": "Avanti",
+  "BENEOS.Cloud.WhatsNew.Confirm": "Conferma",
+  "BENEOS.Cloud.WhatsNew.DontShowAgain": "Non mostrare più",
+  "BENEOS.Cloud.WhatsNew.More": "e altri {count}",
+  "BENEOS.Cloud.WhatsNew.ClickHint": "Fai clic su una voce per aprirla nella finestra Beneos Cloud.",
+  "BENEOS.Settings.WhatsNewEnabled.Name": "Mostra le novità all'avvio del mondo",
+  "BENEOS.Settings.WhatsNewEnabled.Hint": "All'avvio del mondo apre una breve finestra con ciò che il tuo account ha sbloccato dall'ultima conferma. Visibile solo ai GM."
 }

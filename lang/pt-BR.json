@@ -2394,5 +2394,18 @@
   "BENEOS.Cloud.Uninstall.GmOnly": "Somente um Mestre pode remover um lançamento do mundo.",
   "BENEOS.Cloud.Uninstall.NoTarget": "Não foi possível determinar qual lançamento remover.",
   "BENEOS.Cloud.Uninstall.Failed": "Falha ao remover o lançamento. Veja o console do navegador.",
-  "BENEOS.Cloud.SessionExpired": "A Beneos Cloud não reconhece mais o login deste mundo, então o acesso do Patreon armazenado foi removido. Abra a janela da Beneos Cloud e entre novamente para restaurá-lo."
+  "BENEOS.Cloud.SessionExpired": "A Beneos Cloud não reconhece mais o login deste mundo, então o acesso do Patreon armazenado foi removido. Abra a janela da Beneos Cloud e entre novamente para restaurá-lo.",
+  "BENEOS.Cloud.WhatsNew.Title": "Novidades para você",
+  "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Novos downloads pelo seu apoio no Patreon",
+  "BENEOS.Cloud.WhatsNew.PatreonSubline": "Liberado para sua conta desde sua última visita.",
+  "BENEOS.Cloud.WhatsNew.ShopHeadline": "Novas compras da loja liberadas",
+  "BENEOS.Cloud.WhatsNew.ShopSubline": "Obrigado. Sua compra está pronta para instalar.",
+  "BENEOS.Cloud.WhatsNew.Counter": "Cartão {current} de {total}",
+  "BENEOS.Cloud.WhatsNew.Next": "Avançar",
+  "BENEOS.Cloud.WhatsNew.Confirm": "Confirmar",
+  "BENEOS.Cloud.WhatsNew.DontShowAgain": "Não mostrar novamente",
+  "BENEOS.Cloud.WhatsNew.More": "e mais {count}",
+  "BENEOS.Cloud.WhatsNew.ClickHint": "Clique em um item para abri-lo na janela do Beneos Cloud.",
+  "BENEOS.Settings.WhatsNewEnabled.Name": "Mostrar novidades ao iniciar o mundo",
+  "BENEOS.Settings.WhatsNewEnabled.Hint": "Abre ao iniciar o mundo uma janela curta com o que sua conta liberou desde a última confirmação. Exibida apenas para mestres."
 }
