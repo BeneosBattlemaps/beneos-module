@@ -4,6 +4,25 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.4.6 # 2026-08-07
+
+**New**
+- New: The what's-new window now shows everything Beneos has released, not only what your account can reach. Entries you do not hold yet carry a lock and their group offers the way in: the matching Patreon campaign, or a sign-in when the world has no account. Supporters of one campaign no longer miss what the other one published, and a world without an account sees the window at all. The celebration stays reserved for what is actually yours.
+
+**Fixes**
+- Fixed: Every install reported actors, items, macros, cards and rolltables as failed, even though the map pack had arrived complete. Those five files are empty in every pack, and being empty is exactly what broke them: compressed in transit they announce a size larger than their contents, which the module read as an interrupted download. It then tried to resume a file that was never incomplete. Nothing was ever missing from your world, but the report said otherwise and there was no way to tell a real failure from this one.
+- Fixed: Beneos creatures placed on a map used the artwork from the author's own copy instead of the one installed in your world. On a map that placed such a creature the token could show the wrong image or none at all.
+- Fixed: Starting a world could leave the what's-new window closed and the update notice with it. Foundry keeps audio locked until you have clicked something, and the window waited for a sound that could never load. It now carries on either way.
+- Fixed: A world with no internet connection waited fifteen seconds at start for a sign-in that could not happen, then showed the window as though no account existed. Offline worlds now stay silent.
+- Fixed: The close button in the news and sign-in dialogs was a wide empty box with no cross in it.
+- Fixed: The new-content rows on the Home tab were not sorted and showed whatever the catalogue happened to list first, which is why SRD entries appeared under "new". They are now ordered by publication date, newest first. A quiet correction to an old creature also no longer marks it as new.
+
+**Improved**
+- Improved: The Home tab rows are a release timeline again. They used to list only what you did not own yet, so an account that owns the current release saw a single tile under "new creatures". They now show what Beneos published lately, the same list whether you are signed in or not, with your ownership deciding the badge rather than whether the entry appears at all.
+- Improved: The what's-new window reveals your unlocks one after another instead of listing them at once, each with its artwork shown whole and a note as it lands. Map packs get a full-width cover, creatures, items and spells a grid of tiles. A large haul still finishes in about two seconds, and reduced-motion settings show the finished card as before.
+- Improved: The gold filter for items runs on a logarithmic track. Most items cost a few thousand gold against a maximum in the hundreds of thousands, so the old linear slider spent almost its whole travel on a handful of expensive pieces.
+- Improved: News cards on the Home tab line up. The link and the publication date sit on a fixed footer line, so a row of cards no longer reads as ragged, and the date is shown in your own language.
+
 ### 14.4.5 # 2026-08-05
 
 **New**
