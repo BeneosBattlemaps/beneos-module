@@ -461,12 +461,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const crMinIndex = BeneosCloudWindowV2.CR_STEPS.indexOf(this.crMin)
       const crMaxIndex = BeneosCloudWindowV2.CR_STEPS.indexOf(this.crMax)
       const crStepsMax = BeneosCloudWindowV2.CR_STEPS.length - 1
-      // Wave B-8i-3: item gold range slider — same dual-thumb pattern as
-      // CR. The slider's max is computed from the dataset so it matches
-      // whatever's actually available; min stays at 0.
+      // Wave B-8i-3: item gold range slider, same dual-thumb pattern as CR.
+      // The upper bound is computed from the dataset so it matches whatever is
+      // actually available; min stays at 0.
       const goldMaxAvailable = this.#getMaxItemPrice()
       const effectiveGoldMax = this.goldMax ?? goldMaxAvailable
-      const goldRangeLabel = `${this.goldMin} – ${effectiveGoldMax}`
+      const goldRangeLabel = `${this.#formatGold(this.goldMin)} - ${this.#formatGold(effectiveGoldMax)}`
+      // The two inputs carry positions on the log track, not gold amounts.
+      const goldMinPos = this.#goldValueToPos(this.goldMin, goldMaxAvailable)
+      const goldMaxPos = this.#goldValueToPos(effectiveGoldMax, goldMaxAvailable)
       // Top-Down Stage 2: surface the persisted default install style
       // so the token-tab can render its radio in the correct state.
       let installStyle = "tokenized"
@@ -576,6 +579,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         goldMaxAvailable,
         goldMin: this.goldMin,
         goldMax: effectiveGoldMax,
+        goldMinPos,
+        goldMaxPos,
+        goldSliderSteps: BeneosCloudWindowV2.GOLD_SLIDER_STEPS,
         goldRangeLabel,
         installStyle
       }
@@ -779,6 +785,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
     21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
   static CR_NO_LIMIT = 30
+  // Positions on the gold slider. The track is logarithmic (see
+  // #goldPosToValue), so this is a resolution, not a range: 200 positions over
+  // four orders of magnitude put roughly six percent between neighbours, fine
+  // enough that dragging feels continuous and coarse enough that the rounded
+  // numbers never repeat.
+  static GOLD_SLIDER_STEPS = 200
   // Wave B-8c: source group now uses inclusion semantics (default all
   // checked, user unchecks to exclude). Each entry has a display label
   // (Patreon shows as "Beneos Originals" because that's what users
@@ -2693,6 +2705,50 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // `properties.price` so the slider's max bound matches what the DB
   // actually offers. Floored at 100 so the slider isn't degenerate
   // (some servers may not have prices yet).
+  /**
+   * Slider position to gold, on a logarithmic scale.
+   *
+   * Item prices span four orders of magnitude: half the catalogue sits under
+   * 2000 gp while a handful of pieces reach the high six figures. On a linear
+   * track that puts 84 percent of the items into the first tenth of the slider
+   * and leaves half the deciles with nothing in them at all, so the useful part
+   * of the range is untouchable with a mouse. The log track spends its travel
+   * where the items are.
+   *
+   * Both ends are exact: position 0 is 0 gold and the last position is the
+   * dataset maximum, which is what keeps the "full range, filter off" check
+   * from excluding the most expensive item. Everything between is rounded to
+   * two significant digits, because a thumb that stops on 1873 reads as a
+   * glitch where 1900 reads as a choice. The step of the scale is about six
+   * percent, well above that rounding, so no two positions collapse onto the
+   * same number.
+   */
+  #goldPosToValue(pos, maxPrice) {
+    const steps = BeneosCloudWindowV2.GOLD_SLIDER_STEPS
+    const p = Math.max(0, Math.min(steps, Number(pos) || 0))
+    if (p <= 0) return 0
+    if (p >= steps) return maxPrice
+    const raw = Math.pow(maxPrice + 1, p / steps) - 1
+    if (raw <= 10) return Math.round(raw)
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)) - 1)
+    return Math.round(raw / mag) * mag
+  }
+
+  /** The inverse, for putting a stored filter back onto the track. */
+  #goldValueToPos(value, maxPrice) {
+    const steps = BeneosCloudWindowV2.GOLD_SLIDER_STEPS
+    const v = Math.max(0, Math.min(maxPrice, Number(value) || 0))
+    if (v <= 0) return 0
+    if (v >= maxPrice) return steps
+    return Math.round(Math.log(v + 1) / Math.log(maxPrice + 1) * steps)
+  }
+
+  /** Gold amount as the reader's locale writes it, so 360000 reads as 360,000. */
+  #formatGold(value) {
+    try { return Number(value).toLocaleString(game.i18n?.lang || undefined) }
+    catch (_e) { return String(value) }
+  }
+
   #getMaxItemPrice() {
     const dbHolder = game.beneos?.databaseHolder
     if (!dbHolder) return 1000
@@ -4093,22 +4149,29 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     }
 
     // Wave B-8i-3: gold dual-thumb slider for items. Same pattern as CR
-    // (input event + debounced commit + DOM-re-query in setTimeout) but
-    // uses the actual numeric value directly — no STEPS array since the
-    // slider is linear from 0 to maxPrice.
+    // (input event + debounced commit + DOM-re-query in setTimeout), and like
+    // CR the input value is a position, not the filtered number: the track is
+    // logarithmic because item prices span four orders of magnitude.
     const goldMinEl = root.querySelector("#bc-gold-min")
     const goldMaxEl = root.querySelector("#bc-gold-max")
     const goldDisplay = root.querySelector("#bc-gold-display")
     const goldFill = root.querySelector("[data-bc-slider-fill='gold']")
+    // Read once. Resolving it inside the handler would rescan the whole item
+    // catalogue on every tick of the drag.
+    const goldMaxAvailable = Number(goldMinEl?.dataset?.bcGoldMaxAvailable) || this.#getMaxItemPrice()
     const updateGoldDisplay = () => {
       if (!goldMinEl || !goldMaxEl) return
-      const lo = parseInt(goldMinEl.value, 10) || 0
-      const hi = parseInt(goldMaxEl.value, 10) || 0
-      if (goldDisplay) goldDisplay.textContent = `${lo} – ${hi}`
+      const loPos = parseInt(goldMinEl.value, 10) || 0
+      const hiPos = parseInt(goldMaxEl.value, 10) || 0
+      if (goldDisplay) {
+        goldDisplay.textContent = `${this.#formatGold(this.#goldPosToValue(loPos, goldMaxAvailable))} - ${this.#formatGold(this.#goldPosToValue(hiPos, goldMaxAvailable))}`
+      }
       if (goldFill) {
-        const max = parseInt(goldMaxEl.max, 10) || 1
-        goldFill.style.left = `${(lo / max) * 100}%`
-        goldFill.style.right = `${100 - (hi / max) * 100}%`
+        // The strip follows the positions, not the amounts, so it stays in
+        // step with where the thumbs actually are.
+        const steps = parseInt(goldMaxEl.max, 10) || 1
+        goldFill.style.left = `${(loPos / steps) * 100}%`
+        goldFill.style.right = `${100 - (hiPos / steps) * 100}%`
       }
     }
     const enforceGoldOrder = (changed) => {
@@ -4126,8 +4189,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         const liveMin = this.element?.querySelector("#bc-gold-min")
         const liveMax = this.element?.querySelector("#bc-gold-max")
         if (!liveMin || !liveMax) return
-        this.goldMin = parseInt(liveMin.value, 10) || 0
-        this.goldMax = parseInt(liveMax.value, 10) || null
+        // Positions in, gold out. The filter itself keeps comparing real
+        // amounts, so nothing downstream needs to know about the track.
+        this.goldMin = this.#goldPosToValue(parseInt(liveMin.value, 10) || 0, goldMaxAvailable)
+        const hi = this.#goldPosToValue(parseInt(liveMax.value, 10) || 0, goldMaxAvailable)
+        this.goldMax = hi > 0 ? hi : null
         this.#resetPagination()
         this.#renderResults(["results"])
       }, 250)

@@ -6342,8 +6342,12 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
   border-radius: 50%;
   font-size: 11px;
 }
+/* Takes the slack in the card, so the footer below can be pushed to the
+   bottom edge. Cards in a row are already equal height (grid stretch); this is
+   what makes the button land at the same place in each of them. */
 .beneos-cloud-app .bc-news-card-body {
-  padding: 12px 14px 14px;
+  flex: 1 1 auto;
+  padding: 12px 14px 6px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -6397,8 +6401,24 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
 /* CTA button rendered inside a news card (small, secondary). Click is
    handled by the openNewsCta action; stopPropagation in the action
    handler prevents the surrounding card's openNewsDetail from firing. */
-.beneos-cloud-app .bc-news-card-cta {
-  margin-top: 6px;
+/* Bottom strip of the card: "read the full post" on the left, the day and
+   month on the right, on one line. margin-top: auto is what fixes it to the
+   bottom edge no matter how tall the title and teaser above turned out. */
+.beneos-cloud-app .bc-news-card-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px 12px;
+}
+/* Pushed right by its own margin rather than by space-between, so it still
+   sits on the right edge when there is no button beside it. */
+.beneos-cloud-app .bc-news-date {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--bc-text-muted);
+  white-space: nowrap;
 }
 .beneos-cloud-app .bc-news-cta-btn {
   display: inline-flex;

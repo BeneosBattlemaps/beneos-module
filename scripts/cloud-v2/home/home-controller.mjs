@@ -276,7 +276,45 @@ function selectLatestNews(newsItems, readIds, limit = 6) {
   return [...newsItems]
     .sort((a, b) => newsSortValue(b) - newsSortValue(a))
     .slice(0, limit)
-    .map(n => ({ ...n, isUnread: !readIds.has(n.id), formattedDate: formatDate(n.date) }))
+    .map(n => {
+      const hasCta = !!(n.ctaUrl && n.ctaString)
+      const dateLabel = formatDayMonth(n.date || n.createdAt)
+      return {
+        ...n,
+        isUnread: !readIds.has(n.id),
+        formattedDate: formatDate(n.date),
+        dateLabel,
+        hasCta,
+        // The footer row carries the button on the left and the date on the
+        // right. Decided here rather than in the template so an entry with
+        // neither does not leave an empty strip at the bottom of the card.
+        hasFooter: hasCta || !!dateLabel
+      }
+    })
+}
+
+// Day and month in the reader's language, "July 14" in English, "14. Juli" in
+// German. The year is left out on purpose: the card footer is a narrow strip,
+// and the feed only ever shows the last handful of posts, where the year says
+// nothing.
+function formatDayMonth(iso) {
+  const d = parseFeedDate(iso)
+  if (!d) return ""
+  try {
+    return new Intl.DateTimeFormat(game.i18n?.lang || undefined, { month: "long", day: "numeric" }).format(d)
+  } catch (_e) {
+    return d.toLocaleDateString(undefined, { month: "long", day: "numeric" })
+  }
+}
+
+// A bare "YYYY-MM-DD" is read as UTC midnight by the Date constructor, which
+// lands on the previous day for everyone west of Greenwich. The feed dates are
+// calendar days, not instants, so they are built as local dates.
+function parseFeedDate(iso) {
+  if (!iso) return null
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/)
+  const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(iso)
+  return Number.isNaN(d.getTime()) ? null : d
 }
 
 function formatDate(iso) {

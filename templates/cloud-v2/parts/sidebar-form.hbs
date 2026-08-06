@@ -323,9 +323,13 @@
   {{/if}}
 
   {{#if (eq searchMode "item")}}
-    {{!-- Wave B-8i-3: gold range slider — dual-thumb min/max, exact same
+    {{!-- Wave B-8i-3: gold range slider, dual-thumb min/max, exact same
          visual pattern as the CR slider. Max bound is computed from the
-         dataset so the user always sees the actual range available. --}}
+         dataset so the user always sees the actual range available.
+         The two inputs carry positions on a logarithmic track, not gold
+         amounts: prices span four orders of magnitude and a linear track left
+         most of its length empty. The gold value shown comes from the
+         position, see #goldPosToValue. --}}
     <section class="bc-sidebar-group">
       <header class="bc-sidebar-heading">{{localize "BENEOS.Cloud.Filter.Gold"}}</header>
       <div class="bc-slider-wrap">
@@ -336,9 +340,10 @@
         <div class="bc-slider-dual">
           <div class="bc-slider-fill" data-bc-slider-fill="gold"></div>
           <input type="range" id="bc-gold-min" class="bc-slider bc-slider-thumb-min"
-                 min="0" max="{{goldMaxAvailable}}" step="10" value="{{goldMin}}" />
+                 min="0" max="{{goldSliderSteps}}" step="1" value="{{goldMinPos}}"
+                 data-bc-gold-max-available="{{goldMaxAvailable}}" />
           <input type="range" id="bc-gold-max" class="bc-slider bc-slider-thumb-max"
-                 min="0" max="{{goldMaxAvailable}}" step="10" value="{{goldMax}}" />
+                 min="0" max="{{goldSliderSteps}}" step="1" value="{{goldMaxPos}}" />
         </div>
       </div>
     </section>

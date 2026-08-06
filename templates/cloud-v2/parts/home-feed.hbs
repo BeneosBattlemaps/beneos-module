@@ -47,17 +47,25 @@
               {{#if this.preview}}
                 <p class="bc-news-preview">{{this.preview}}</p>
               {{/if}}
-              {{#if this.ctaUrl}}{{#if this.ctaString}}
-                <div class="bc-news-card-cta">
+            </div>
+            {{!-- Footer row, pinned to the bottom of the card by CSS so the
+                 button sits at the same height on every card whatever the
+                 title and teaser above it do. Button left, date right. --}}
+            {{#if this.hasFooter}}
+              <div class="bc-news-card-foot">
+                {{#if this.hasCta}}
                   <button type="button" class="bc-news-cta-btn"
                           data-action="openNewsCta"
                           data-news-cta-url="{{this.ctaUrl}}">
                     {{this.ctaString}}
                     <i class="fas fa-arrow-up-right-from-square"></i>
                   </button>
-                </div>
-              {{/if}}{{/if}}
-            </div>
+                {{/if}}
+                {{#if this.dateLabel}}
+                  <time class="bc-news-date">{{this.dateLabel}}</time>
+                {{/if}}
+              </div>
+            {{/if}}
           </article>
         {{/each}}
       </div>
