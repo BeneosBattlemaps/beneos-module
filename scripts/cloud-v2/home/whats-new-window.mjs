@@ -140,6 +140,11 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
    * was opened, so the caller can keep its "only one Beneos window per load"
    * rule. Never throws and never notifies: if anything is missing, the world
    * simply starts without a popup.
+   *
+   * This window is the least important thing that happens at world start. Every
+   * branch below therefore fails towards silence, and nothing here is allowed to
+   * hold up the rest of the boot. An offline world never opens it and never logs
+   * anything louder than a debug line.
    */
   static async present() {
     try {
@@ -148,9 +153,20 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
       try { enabled = game.settings.get(BeneosUtility.moduleID(), SETTING_ENABLED) !== false }
       catch (_e) { enabled = true }
       if (!enabled) return false
-      // Not a gate any more, an input. A world without an account still gets the
-      // release list, it just gets it under a neutral headline with a way in.
-      const loggedIn = await BeneosWhatsNewWindow.#waitForCloudLogin()
+      // Cheapest gate first, before any waiting: no network, no window, and in
+      // particular no fifteen second wait for a login that cannot happen.
+      if (BeneosWhatsNewWindow.#isOffline()) return false
+
+      const storedId = BeneosWhatsNewWindow.#storedFoundryId()
+      let loggedIn = false
+      if (storedId) {
+        loggedIn = await BeneosWhatsNewWindow.#waitForCloudLogin()
+        // A world that HAS an account must never be shown the account-free
+        // card. If the login is slow, expired or unreachable, the honest answer
+        // is to stay quiet: guessing "not signed in" would put a stack of Join
+        // Patreon buttons in front of a paying customer.
+        if (!loggedIn) return false
+      }
 
       const payload = await fetchWhatsNew({ loggedIn })
       if (!payload) return false
@@ -163,31 +179,50 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
       await win.render({ force: true })
       return true
     } catch (err) {
-      console.warn("[Beneos What's New] Could not present:", err)
+      // Debug, not warn: an unreachable cloud is an ordinary condition for this
+      // window, not a fault the user needs to read about at every world start.
+      console.debug("[Beneos What's New] not shown:", err?.message ?? err)
       return false
     }
   }
 
   /**
-   * The cloud login resolves through an async round trip that is still in
-   * flight when the ready hook runs, so asking isLoggedIn() right away always
-   * answered no and the popup never appeared on a real world start.
+   * Whether there is any point in trying.
    *
-   * A stored foundry id is the cheap, synchronous signal that this world has an
-   * account at all: without one we answer no straight away and the window takes
-   * the account-free route, so nothing behind us is held up. With one we wait
-   * for the connection to come up, bounded, because a world start is not time
-   * critical but an endless wait would be.
+   * Two independent signals, because neither alone covers the cases that
+   * matter. navigator.onLine is only trusted in the negative: true means
+   * "attached to a network", which a Foundry server on a LAN with no way out
+   * also reports. The module's own serverOffline flag covers exactly that gap,
+   * because it is set the moment one of its own requests fails at the network
+   * level, and it is usually already set by the time this window is asked, the
+   * login attempt having run first.
    */
-  static async #waitForCloudLogin(timeoutMs = 15000, stepMs = 500) {
+  static #isOffline() {
+    if (!!globalThis.navigator && globalThis.navigator.onLine === false) return true
+    return game.beneos?.cloud?.serverOffline === true
+  }
+
+  static #storedFoundryId() {
     let storedId = ""
     try { storedId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id") || "" }
     catch (_e) { storedId = "" }
-    if (!storedId || storedId === "anonymous") return false
+    return (!storedId || storedId === "anonymous") ? "" : storedId
+  }
 
+  /**
+   * The cloud login resolves through an async round trip that is still in
+   * flight when the ready hook runs, so asking isLoggedIn() right away always
+   * answered no and the popup never appeared on a real world start. Hence the
+   * bounded wait: a world start is not time critical, an endless wait would be.
+   *
+   * Only called when this world has a stored account. Drops out the moment the
+   * connection goes away, so an offline start never spends the full budget.
+   */
+  static async #waitForCloudLogin(timeoutMs = 15000, stepMs = 500) {
     const deadline = Date.now() + timeoutMs
     while (Date.now() < deadline) {
       if (game.beneos?.cloud?.isLoggedIn?.()) return true
+      if (BeneosWhatsNewWindow.#isOffline()) return false
       await new Promise(resolve => setTimeout(resolve, stepMs))
     }
     return false

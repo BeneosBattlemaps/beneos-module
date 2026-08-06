@@ -160,7 +160,10 @@ export async function ackWhatsNew(serverTime, { loggedIn = true } = {}) {
     const data = await fetchJson(url)
     return String(data?.result).toUpperCase() === "OK"
   } catch (err) {
-    console.warn("[Beneos What's New] Failed to acknowledge:", err)
+    // Losing the connection while the window is open is not a fault worth a
+    // warning. The cursor simply stays where it is and the window comes back
+    // next time, which is the harmless direction to fail in.
+    console.debug("[Beneos What's New] could not acknowledge:", err?.message ?? err)
     return false
   }
 }

@@ -8509,16 +8509,17 @@ Hooks.once("ready", async () => {
   // --- Hierarchy gate 4: "What's new" for this account. Not a revival of the
   // old news popup: that one fired for everyone on every load with globally
   // identical content, which is exactly why it was removed. This one only
-  // appears when the signed-in account actually gained something since it last
-  // confirmed the window, and the cursor for that lives on the cloud account.
-  // present() is fully self-guarding (GM, logged in, setting on, cloud
-  // reachable, non-empty result) and returns false when nothing was shown, so
-  // the update notice below still gets its turn on a quiet load.
+  // appears when there is something released to show, and the cursor for that
+  // lives on the cloud account. present() is fully self-guarding (GM, setting
+  // on, online, cloud reachable, non-empty result) and returns false when
+  // nothing was shown, so the update notice below still gets its turn on a
+  // quiet load. It is also the least important thing in this hierarchy: an
+  // offline world skips it before it waits on anything.
   try {
     const shown = await BeneosWhatsNewWindow.present();
-    if (shown) return; // owns this load — don't stack the update notice on top
+    if (shown) return; // owns this load, do not stack the update notice on top
   } catch (err) {
-    console.warn("[Beneos] What's new popup failed:", err);
+    console.debug("[Beneos] What's new popup skipped:", err?.message ?? err);
   }
 
   // Update notice runs last: both popup paths above return early, so reaching
