@@ -517,15 +517,22 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
    * Purely an optimisation. A preload that fails says nothing about whether the
    * file exists, so it is swallowed and playback still goes ahead; the timing
    * is then merely as good as the browser manages on its own.
+   *
+   * Bounded, and that bound is load-bearing. Foundry keeps its audio locked
+   * until the page has seen a user gesture, and a world load reaches the ready
+   * hook before the user has clicked anything, so preloadSound() returns a
+   * promise that simply never settles. Awaiting it without a limit hangs the
+   * whole world-start chain: no window, and no update notice behind it either.
+   * Waiting a moment for a nicety is fine, waiting forever is not.
    */
-  static async #preloadSfx() {
+  static async #preloadSfx(timeoutMs = 1500) {
     const helper = foundry.audio?.AudioHelper
     if (!helper?.preloadSound) return
-    await Promise.all([SFX_OPEN, SFX_SPAWN].map(src =>
-      Promise.resolve()
-        .then(() => helper.preloadSound(src))
-        .catch(err => console.debug(`[Beneos What's New] preload skipped for ${src}:`, err?.message ?? err))
-    ))
+    const bounded = (src) => Promise.race([
+      Promise.resolve().then(() => helper.preloadSound(src)),
+      new Promise(resolve => setTimeout(resolve, timeoutMs))
+    ]).catch(err => console.debug(`[Beneos What's New] preload skipped for ${src}:`, err?.message ?? err))
+    await Promise.all([SFX_OPEN, SFX_SPAWN].map(bounded))
   }
 
   static async _onAdvance(event, _target) {
