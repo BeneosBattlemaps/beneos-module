@@ -1069,7 +1069,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // Pre-compute recency once per entry so the comparator stays O(1)
       // and the cloud-TS lookup doesn't fan out across O(n log n) calls.
       const recency = new Map()
-      for (const [k] of entries) recency.set(k, this.#recencyOf(type, k))
+      for (const [k, d] of entries) recency.set(k, this.#recencyOf(type, k, d))
       entries.sort((a, b) => {
         const ra = groupRank(a[1]); const rb = groupRank(b[1])
         if (ra !== rb) return ra - rb
@@ -2480,31 +2480,24 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
 
   /* ========== Filters ========== */
 
-  // Comparable "newness" per asset; higher = newer. Tokens/items/spells
-  // read updated_ts from the cloud's availableContent feed (Unix-seconds).
-  // Battlemaps have no TS feed, so we parse the release-number prefix
-  // from the DB key — the content pipeline assigns those in release
-  // order ("01-…" before "02-…"). Falls back to 0 when nothing is known,
-  // which lets the alphabetic tie-breaker take over.
-  #recencyOf(type, key) {
-    const cloud = game.beneos?.cloud
-    if (type === "token" && cloud?.getTokenTS) {
-      const ts = cloud.getTokenTS(key)
-      return Number.isFinite(ts) ? ts : 0
-    }
-    if (type === "item" && cloud?.getItemTS) {
-      const ts = cloud.getItemTS(key)
-      return Number.isFinite(ts) ? ts : 0
-    }
-    if (type === "spell" && cloud?.getSpellTS) {
-      const ts = cloud.getSpellTS(key)
-      return Number.isFinite(ts) ? ts : 0
-    }
+  // Comparable "newness" per asset; higher = newer.
+  //
+  // Publication date, not the cloud updated_ts. The feed's timestamp moves on
+  // every revision, so a creature from last year that got a quiet correction
+  // sorted above the release that actually came out this week, and the list
+  // headed "newest first" led with the oldest content in the catalog.
+  //
+  // Battlemaps keep the release-number prefix from the DB key: the content
+  // pipeline assigns those in release order ("01-" before "02-"), which is the
+  // same ordering their dates would give. Falls back to 0 when nothing is
+  // known, which lets the alphabetic tie-breaker take over.
+  #recencyOf(type, key, data) {
     if (type === "bmap") {
       const m = String(key || "").match(/^(\d+)/)
       return m ? parseInt(m[1], 10) || 0 : 0
     }
-    return 0
+    const ms = Date.parse(data?.properties?.release_date || "")
+    return Number.isFinite(ms) ? ms : 0
   }
 
   // Tiered relevance score for the free-text search. Returns 0 when

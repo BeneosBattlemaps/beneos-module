@@ -92,21 +92,26 @@ function pickRailItems(type) {
   return { news: [], updates: [] }
 }
 
-// Pure rail selection for token/item/spell. Like pickBmapItems, this
-// bypasses the data.isNew-mutation route because BeneosDatabaseHolder
-// .getAll(type) returns a structuredClone — any flag set on one
-// snapshot is lost in the next getAll call. We recompute NEW/UPD here
-// from the canonical sources: cloud TS vs. local install TS, with the
-// same 30-day cutoff that BeneosDatabaseHolder.processInstalledX uses
-// (beneos_search_engine.js:234-390).
+// Rail selection for token/item/spell.
+//
+// The rail does not decide what counts as new any more, it asks the same
+// processor the result cards use (BeneosDatabaseHolder.processInstalledX, which
+// runs beneosComputeNewUpdate). Its own rule compared the cloud updated_ts
+// against a 30-day window, so a quietly revised creature from last year read as
+// a release, and the two views disagreed about the very same asset.
+//
+// It also sorts now. The old loop kept the first twelve matches it happened to
+// walk past and stopped, so which creatures reached the rail was decided by the
+// order of the catalog JSON: the file starts with SRD entries, and that is what
+// the rail showed under the heading "new". Sorting happens before the cap, or
+// the cap would keep cutting the wrong twelve.
 //
 // Logged-out fallback: cloud.getXTS() reads from availableContent which
-// is only populated after login. Without login, every cloudTS is 0 and
-// the rail would be empty. To still show new content for non-patrons /
-// signed-out users we fall back to the key-prefix release-number
-// heuristic (works for all 4 asset types — DB JSONs use NNN-/NNNN_
-// prefixes that increase with each release). UPDATE is intentionally
-// not shown when logged out — nothing locally installed to compare.
+// is only populated after login. Without login there is no install state to
+// compare against, so we fall back to the key-prefix release-number heuristic
+// (works for all 4 asset types, DB JSONs use NNN-/NNNN_ prefixes that increase
+// with each release). UPDATE is intentionally not shown when logged out,
+// nothing locally installed to compare.
 function pickTimedItems(type) {
   const dbHolder = game.beneos?.databaseHolder
   const cloud    = game.beneos?.cloud
@@ -117,43 +122,44 @@ function pickTimedItems(type) {
   const cloudLoggedIn = !!cloud?.isLoggedIn?.()
   if (!cloudLoggedIn) return pickByReleasePrefix(type, entries)
 
-  const t30days    = 30 * 24 * 60 * 60
-  const tNow30Days = Math.floor(Date.now() / 1000) - t30days
-
-  const getCloudTS = (key) =>
-      type === "token" ? cloud?.getTokenTS?.(key)
-    : type === "item"  ? cloud?.getItemTS?.(key)
-    : type === "spell" ? cloud?.getSpellTS?.(key)
-    : 0
-  const getInstallTS = (key) =>
-      type === "token" ? BeneosUtility.getTokenInstallTS?.(key)
-    : type === "item"  ? BeneosUtility.getItemInstallTS?.(key)
-    : type === "spell" ? BeneosUtility.getSpellInstallTS?.(key)
-    : 0
+  const process = type === "token" ? dbHolder?.processInstalledToken
+                : type === "item"  ? dbHolder?.processInstalledItem
+                : dbHolder?.processInstalledSpell
 
   const news = []
   const updates = []
   for (const [key, data] of entries) {
     if (!data) continue
-    const cloudTS = Number(getCloudTS(key) || 0)
-    const installed = data?.installed === "installed"
-    if (installed) {
-      const installTS = Number(getInstallTS(key) || 0)
-      if (cloudTS > installTS && updates.length < RAIL_LIMIT_PER_GROUP) {
-        const c = buildRailCard(type, key, data)
-        c.isUpdate = true
-        c.isNew = false
-        updates.push(c)
-      }
-    } else if (cloudTS > 0 && cloudTS >= tNow30Days && news.length < RAIL_LIMIT_PER_GROUP) {
+    // Mutates our own clone only; getAll() handed us a fresh copy.
+    try { process?.call(dbHolder, data) } catch (_e) { continue }
+    if (data.isUpdate) {
+      const c = buildRailCard(type, key, data)
+      c.isUpdate = true
+      c.isNew = false
+      updates.push(c)
+    } else if (data.isNew) {
       const c = buildRailCard(type, key, data)
       c.isNew = true
       c.isUpdate = false
       news.push(c)
     }
-    if (news.length >= RAIL_LIMIT_PER_GROUP && updates.length >= RAIL_LIMIT_PER_GROUP) break
   }
-  return { news, updates }
+  return { news: sortRailCards(news).slice(0, RAIL_LIMIT_PER_GROUP),
+           updates: sortRailCards(updates).slice(0, RAIL_LIMIT_PER_GROUP) }
+}
+
+/**
+ * Newest first: publication date, then the release number carried in the key,
+ * then the name. The release number is the tie-breaker rather than the primary
+ * key because a whole wave shares one date, and inside a wave the numbering is
+ * what tells them apart.
+ */
+function sortRailCards(cards) {
+  return cards.sort((a, b) => {
+    if (a.releaseMs !== b.releaseMs) return (b.releaseMs || 0) - (a.releaseMs || 0)
+    if (a.releaseNum !== b.releaseNum) return (b.releaseNum || 0) - (a.releaseNum || 0)
+    return String(a.name || "").localeCompare(String(b.name || ""))
+  })
 }
 
 // Pure bmap rail selection. Bypasses the isNew-mutation route because
@@ -213,12 +219,17 @@ function buildRailCard(type, key, data) {
             || data?.name
             || key
   const sub = subInfoFor(type, data)
+  const relMs = Date.parse(data?.properties?.release_date || "")
+  const relNum = String(key || "").match(/^(\d+)/)
   const card = {
     type,
     key,
     name,
     sub,
     thumb,
+    // Sort keys, carried on the card so the comparator stays cheap.
+    releaseMs: Number.isFinite(relMs) ? relMs : 0,
+    releaseNum: relNum ? (parseInt(relNum[1], 10) || 0) : 0,
     isNew: !!data.isNew,
     isUpdate: !!data.isUpdate
   }
@@ -227,6 +238,14 @@ function buildRailCard(type, key, data) {
     card.mouPack    = props.download_pack    || ""
     card.mouCreator = props.download_creator || ""
     card.mouTerms   = props.download_terms   || ""
+    // The per-scene preview lives on the CDN and is published by the catalog
+    // pipeline, which can lag a fresh release by a cycle. The release cover is
+    // served from the cloud itself and is there as soon as the release is, so
+    // it stands in rather than leaving an empty tile. Wired as a fallback on
+    // the element, not as a replacement, so the scene preview still wins the
+    // moment it appears.
+    const releaseId = props.cloud_release_id || ""
+    if (releaseId) card.thumbFallback = `https://beneos.cloud/release-thumbnails/${releaseId}.webp`
     // Highest-release bmaps from pickBmapItems are always treated as new
     card.isNew = true
   }

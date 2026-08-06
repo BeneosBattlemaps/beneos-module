@@ -180,9 +180,14 @@
                       data-target-key="{{this.key}}"
                       data-target-name="{{this.name}}">
                 {{#if this.thumb}}
+                  {{!-- Faellt das Szenenbild aus, tritt das Release-Cover an
+                       seine Stelle; erst wenn auch das fehlt, wird die Kachel
+                       leer. Eine bildlose Kachel ist das schlechteste Ergebnis
+                       und trifft sonst genau die frischesten Releases. --}}
                   <img data-bc-lazy data-src="{{this.thumb}}" src="modules/beneos-module/ui/beneos_thumb_placeholder.svg" alt=""
                        class="bc-rail-tile-thumb"
-                       onerror="this.style.visibility='hidden'" />
+                       data-fallback="{{this.thumbFallback}}"
+                       onerror="if (this.dataset.fallback &amp;&amp; this.src !== this.dataset.fallback) { this.src = this.dataset.fallback } else { this.style.visibility='hidden' }" />
                 {{else}}
                   <span class="bc-rail-tile-thumb bc-rail-tile-thumb-fallback" aria-hidden="true"></span>
                 {{/if}}
@@ -198,9 +203,14 @@
                       data-target-key="{{this.key}}"
                       data-target-name="{{this.name}}">
                 {{#if this.thumb}}
+                  {{!-- Faellt das Szenenbild aus, tritt das Release-Cover an
+                       seine Stelle; erst wenn auch das fehlt, wird die Kachel
+                       leer. Eine bildlose Kachel ist das schlechteste Ergebnis
+                       und trifft sonst genau die frischesten Releases. --}}
                   <img data-bc-lazy data-src="{{this.thumb}}" src="modules/beneos-module/ui/beneos_thumb_placeholder.svg" alt=""
                        class="bc-rail-tile-thumb"
-                       onerror="this.style.visibility='hidden'" />
+                       data-fallback="{{this.thumbFallback}}"
+                       onerror="if (this.dataset.fallback &amp;&amp; this.src !== this.dataset.fallback) { this.src = this.dataset.fallback } else { this.style.visibility='hidden' }" />
                 {{else}}
                   <span class="bc-rail-tile-thumb bc-rail-tile-thumb-fallback" aria-hidden="true"></span>
                 {{/if}}

@@ -145,6 +145,10 @@ export class BeneosDatabaseHolder {
       notifLocal: "BENEOS.Notifications.Search.CommonDbLocal",
       notifError: "BENEOS.Notifications.Search.CommonDbError",
     })
+    // The catalogs were just replaced, so the memoised "newest release date per
+    // catalog" that decides the NEW chip is stale. Clearing it here is what
+    // makes a fresh release show up without a Foundry restart.
+    this.beneosResetNewestReleaseMs()
     // Controlled-vocabulary tag-translation matrix (biomes, schools, rarities,
     // origins, ...). Best-effort: a failure here must not break the DB load;
     // the localizeTag helper falls back to the raw value when it is absent. No
@@ -292,32 +296,40 @@ export class BeneosDatabaseHolder {
   }
 
   /********************************************************************************** */
-  // Teil 4: unified New/Updated computation for token/item/spell.
-  //  - New: the asset's catalog release_date (publication) is within the
-  //    "new asset" window (default 30 days) AND it is not yet installed.
+  // Teil 4: unified New/Updated computation for token/item/spell. The single
+  // place that decides which chip an asset carries; the Home rails read the
+  // same answer, so rail and result list can no longer disagree.
+  //
+  //  - New: the asset is not installed AND it belongs to the newest published
+  //    wave of its catalog, that is its release_date equals the newest
+  //    release_date in that catalog.
   //  - Updated: it IS installed and the online version is newer than the local
-  //    install — compared via the catalog updated_date vs the local install
+  //    install, compared via the catalog updated_date against the local install
   //    date, with a content-signature mismatch as the fallback signal.
-  // Falls back to the legacy updated_ts window for "new" only when release_date
-  // is absent, so un-backfilled catalogs keep working and the new rule
-  // auto-activates once the date fields arrive. (The old `ts > installTS`
-  // update check compared unix-seconds against milliseconds and could never
-  // fire, so update relied solely on the hash mismatch — the date comparison
-  // below is what actually makes time-based updates work.)
-  static beneosComputeNewUpdate(data, { ts, installTS, cloudHash, installHash } = {}) {
+  //  - Neither otherwise. An asset that was quietly revised but never installed
+  //    stays silent on purpose: an update is only news to someone who holds the
+  //    older copy.
+  //
+  // "Newest wave" rather than a rolling window because the release cadence is
+  // irregular. A window says nothing during a quiet month and lights up two
+  // waves during a busy one; the wave rule always marks exactly what came last.
+  //
+  // There is deliberately NO fallback to the cloud updated_ts. It used to fill
+  // in when release_date was missing, and that is what turned every revision
+  // into a NEW chip. Without a publication date the honest answer is no chip.
+  // (The old `ts > installTS` update check compared unix-seconds against
+  // milliseconds and could never fire, so update relied solely on the hash
+  // mismatch; the date comparison below is what actually makes time-based
+  // updates work.)
+  static beneosComputeNewUpdate(data, { type, installTS, cloudHash, installHash } = {}) {
     const props = data?.properties || {}
     const installed = data?.installed === "installed"
-    const windowSec = BeneosUtility.getNewAssetWindowSeconds()
     let isNew = false, isUpdate = false
 
     if (!installed) {
       const relMs = this.beneosParseDateMs(props.release_date)
-      if (relMs != null) {
-        const ageDays = (Date.now() - relMs) / 86400000
-        isNew = ageDays >= 0 && ageDays <= (windowSec / 86400)
-      } else if (ts) {
-        isNew = ts >= (Math.floor(Date.now() / 1000) - windowSec)
-      }
+      const newestMs = this.beneosNewestReleaseMs(type)
+      isNew = relMs != null && newestMs != null && relMs === newestMs
     } else {
       const updMs  = this.beneosParseDateMs(props.updated_date)
       // installTS is stored in seconds for tokens but in milliseconds for items
@@ -332,6 +344,38 @@ export class BeneosDatabaseHolder {
       if (!isUpdate && cloudHash && installHash && cloudHash !== installHash) isUpdate = true
     }
     return { isNew, isUpdate }
+  }
+
+  /**
+   * Newest release_date in a catalog, in milliseconds, or null when the catalog
+   * carries no usable date at all.
+   *
+   * Read straight from the stored catalog rather than through getAll(), which
+   * hands out a structuredClone of the whole category: cloning 700 entries to
+   * find one maximum, once per card, would be the most expensive line in the
+   * render. Memoised for the same reason, and cleared in loadDatabaseFiles(),
+   * the only place a catalog is replaced.
+   */
+  static beneosNewestReleaseMs(type) {
+    if (!this._newestReleaseMs) this._newestReleaseMs = {}
+    if (this._newestReleaseMs[type] !== undefined) return this._newestReleaseMs[type]
+    const source = type === "token" ? this.tokenData?.content
+                 : type === "item"  ? this.itemData?.content
+                 : type === "spell" ? this.spellData?.content
+                 : type === "bmap"  ? this.bmapData?.content
+                 : null
+    let max = null
+    for (const key in (source || {})) {
+      const ms = this.beneosParseDateMs(source[key]?.properties?.release_date)
+      if (ms != null && (max === null || ms > max)) max = ms
+    }
+    this._newestReleaseMs[type] = max
+    return max
+  }
+
+  /** Forget the memoised newest dates. Called when a catalog is (re)loaded. */
+  static beneosResetNewestReleaseMs() {
+    this._newestReleaseMs = {}
   }
 
   static beneosParseDateMs(s) {
@@ -369,11 +413,10 @@ export class BeneosDatabaseHolder {
     }
 
     // Prepare update/new status (Teil 4: unified release_date / updated_date)
-    let tokenTS = game.beneos.cloud.getTokenTS(tokenData.key)
     tokenData.isNewForUser = !!game.beneos.cloud.getTokenIsNewForUser(tokenData.key)
     {
       const f = this.beneosComputeNewUpdate(tokenData, {
-        ts:          tokenTS,
+        type:        "token",
         installTS:   BeneosUtility.getTokenInstallTS(tokenData.key),
         cloudHash:   game.beneos.cloud.getTokenHash(tokenData.key),
         installHash: BeneosUtility.getTokenInstallHash(tokenData.key),
@@ -415,11 +458,10 @@ export class BeneosDatabaseHolder {
     itemData.isInstallable = (itemData.isInstalled || itemData.isCloudAvailable)
 
     // Prepare update/new status (Teil 4: unified release_date / updated_date)
-    let itemTS = game.beneos.cloud.getItemTS(itemData.key)
     itemData.isNewForUser = !!game.beneos.cloud.getItemIsNewForUser(itemData.key)
     {
       const f = this.beneosComputeNewUpdate(itemData, {
-        ts:          itemTS,
+        type:        "item",
         installTS:   BeneosUtility.getItemInstallTS(itemData.key),
         cloudHash:   game.beneos.cloud.getItemHash(itemData.key),
         installHash: BeneosUtility.getItemInstallHash(itemData.key),
@@ -468,11 +510,10 @@ export class BeneosDatabaseHolder {
       //spellData.picture = BeneosUtility.getLocalAvatarPicture(spellData.key)
     }
     // Prepare update/new status (Teil 4: unified release_date / updated_date)
-    let spellTS = game.beneos.cloud.getSpellTS(spellData.key)
     spellData.isNewForUser = !!game.beneos.cloud.getSpellIsNewForUser(spellData.key)
     {
       const f = this.beneosComputeNewUpdate(spellData, {
-        ts:          spellTS,
+        type:        "spell",
         installTS:   BeneosUtility.getSpellInstallTS(spellData.key),
         cloudHash:   game.beneos.cloud.getSpellHash(spellData.key),
         installHash: BeneosUtility.getSpellInstallHash(spellData.key),
