@@ -2395,7 +2395,7 @@
   "BENEOS.Cloud.Uninstall.NoTarget": "Nepodařilo se zjistit, které vydání odebrat.",
   "BENEOS.Cloud.Uninstall.Failed": "Odebrání vydání se nezdařilo. Viz konzole prohlížeče.",
   "BENEOS.Cloud.SessionExpired": "Beneos Cloud už nezná přihlášení tohoto světa, proto byl uložený přístup z Patreonu odstraněn. Otevři okno Beneos Cloud a přihlas se znovu, aby se obnovil.",
-  "BENEOS.Cloud.WhatsNew.Title": "Novinky pro tebe",
+  "BENEOS.Cloud.WhatsNew.Title": "Beneos Updates",
   "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Nové soubory za tvou podporu na Patreonu",
   "BENEOS.Cloud.WhatsNew.PatreonSubline": "Odemčeno pro tvůj účet od poslední návštěvy.",
   "BENEOS.Cloud.WhatsNew.ShopHeadline": "Odemčeny nové nákupy z obchodu",
@@ -2408,8 +2408,13 @@
   "BENEOS.Cloud.WhatsNew.ClickHint": "Klikni na položku a otevři ji v okně Beneos Cloud.",
   "BENEOS.Cloud.WhatsNew.GroupMaps": "Nové balíčky map",
   "BENEOS.Cloud.WhatsNew.GroupCreatures": "Nové bytosti",
-  "BENEOS.Cloud.WhatsNew.GroupItems": "Nové předměty",
+  "BENEOS.Cloud.WhatsNew.GroupItems": "Nová kořist",
   "BENEOS.Cloud.WhatsNew.GroupSpells": "Nová kouzla",
+  "BENEOS.Cloud.WhatsNew.PublicHeadline": "Nové vydání od Beneos",
+  "BENEOS.Cloud.WhatsNew.PublicSubline": "Vydáno od tvé poslední návštěvy.",
+  "BENEOS.Cloud.WhatsNew.JoinPatreon": "Přidat se na Patreon",
+  "BENEOS.Cloud.WhatsNew.LoginToDownload": "Přihlásit se ke stažení",
+  "BENEOS.Cloud.WhatsNew.Locked": "Pro tvůj účet zatím neodemčeno",
   "BENEOS.Settings.WhatsNewEnabled.Name": "Zobrazovat novinky při startu světa",
   "BENEOS.Settings.WhatsNewEnabled.Hint": "Při startu světa otevře krátké okno s tím, co tvůj účet odemkl od posledního potvrzení. Vidí jej jen vypravěči."
 }

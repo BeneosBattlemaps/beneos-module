@@ -2395,7 +2395,7 @@
   "BENEOS.Cloud.Uninstall.NoTarget": "No s'ha pogut determinar quina versió s'ha d'eliminar.",
   "BENEOS.Cloud.Uninstall.Failed": "L'eliminació de la versió ha fallat. Consulta la consola del navegador.",
   "BENEOS.Cloud.SessionExpired": "Beneos Cloud ja no reconeix l'inici de sessió d'aquest món, així que s'ha esborrat l'accés de Patreon desat. Obre la finestra de Beneos Cloud i torna a iniciar la sessió per recuperar-lo.",
-  "BENEOS.Cloud.WhatsNew.Title": "Novetats per a tu",
+  "BENEOS.Cloud.WhatsNew.Title": "Beneos Updates",
   "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Noves descàrregues pel teu suport a Patreon",
   "BENEOS.Cloud.WhatsNew.PatreonSubline": "Desbloquejat per al teu compte des de la teva darrera visita.",
   "BENEOS.Cloud.WhatsNew.ShopHeadline": "Noves compres de la botiga desbloquejades",
@@ -2408,8 +2408,13 @@
   "BENEOS.Cloud.WhatsNew.ClickHint": "Fes clic en una entrada per obrir-la a la finestra de Beneos Cloud.",
   "BENEOS.Cloud.WhatsNew.GroupMaps": "Nous paquets de mapes",
   "BENEOS.Cloud.WhatsNew.GroupCreatures": "Noves criatures",
-  "BENEOS.Cloud.WhatsNew.GroupItems": "Nous objectes",
+  "BENEOS.Cloud.WhatsNew.GroupItems": "Nou botí",
   "BENEOS.Cloud.WhatsNew.GroupSpells": "Nous encanteris",
+  "BENEOS.Cloud.WhatsNew.PublicHeadline": "Novetats de Beneos",
+  "BENEOS.Cloud.WhatsNew.PublicSubline": "Publicat des de la teva darrera visita.",
+  "BENEOS.Cloud.WhatsNew.JoinPatreon": "Uneix-te a Patreon",
+  "BENEOS.Cloud.WhatsNew.LoginToDownload": "Inicia sessió per descarregar",
+  "BENEOS.Cloud.WhatsNew.Locked": "Encara no desbloquejat per al teu compte",
   "BENEOS.Settings.WhatsNewEnabled.Name": "Mostra les novetats en iniciar el món",
   "BENEOS.Settings.WhatsNewEnabled.Hint": "En iniciar el món obre una finestra breu amb el que el teu compte ha desbloquejat des de la darrera confirmació. Només es mostra als DJ."
 }

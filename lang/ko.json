@@ -2395,7 +2395,7 @@
   "BENEOS.Cloud.Uninstall.NoTarget": "어떤 릴리스를 제거할지 확인할 수 없습니다.",
   "BENEOS.Cloud.Uninstall.Failed": "릴리스 제거에 실패했습니다. 브라우저 콘솔을 확인하세요.",
   "BENEOS.Cloud.SessionExpired": "Beneos Cloud가 이 월드의 로그인을 더 이상 인식하지 못해 저장된 Patreon 접근 권한을 지웠습니다. Beneos Cloud 창을 열고 다시 로그인하면 복구됩니다.",
-  "BENEOS.Cloud.WhatsNew.Title": "새로운 항목",
+  "BENEOS.Cloud.WhatsNew.Title": "Beneos Updates",
   "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Patreon 후원에 대한 새 다운로드",
   "BENEOS.Cloud.WhatsNew.PatreonSubline": "마지막 확인 이후 계정에 해제되었습니다.",
   "BENEOS.Cloud.WhatsNew.ShopHeadline": "새 상점 구매가 해제되었습니다",
@@ -2408,8 +2408,13 @@
   "BENEOS.Cloud.WhatsNew.ClickHint": "항목을 클릭하면 Beneos Cloud 창에서 열립니다.",
   "BENEOS.Cloud.WhatsNew.GroupMaps": "새 맵 팩",
   "BENEOS.Cloud.WhatsNew.GroupCreatures": "새 크리처",
-  "BENEOS.Cloud.WhatsNew.GroupItems": "새 아이템",
+  "BENEOS.Cloud.WhatsNew.GroupItems": "새 전리품",
   "BENEOS.Cloud.WhatsNew.GroupSpells": "새 주문",
+  "BENEOS.Cloud.WhatsNew.PublicHeadline": "새 Beneos 릴리스",
+  "BENEOS.Cloud.WhatsNew.PublicSubline": "마지막 확인 이후 공개되었습니다.",
+  "BENEOS.Cloud.WhatsNew.JoinPatreon": "Patreon 참여",
+  "BENEOS.Cloud.WhatsNew.LoginToDownload": "로그인하고 내려받기",
+  "BENEOS.Cloud.WhatsNew.Locked": "아직 계정에 해제되지 않았습니다",
   "BENEOS.Settings.WhatsNewEnabled.Name": "월드 시작 시 새 소식 표시",
   "BENEOS.Settings.WhatsNewEnabled.Hint": "월드 시작 시 마지막 확인 이후 계정에 해제된 항목을 짧은 창으로 보여줍니다. GM에게만 표시됩니다."
 }

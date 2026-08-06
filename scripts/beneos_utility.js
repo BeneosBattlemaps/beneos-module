@@ -458,6 +458,19 @@ export class BeneosUtility {
       config: true
     })
 
+    // Seen-marker for worlds with no cloud account. Signed-in worlds keep their
+    // cursor on the account so a purchase is celebrated once everywhere; a world
+    // without an account has nothing to hang that on, so the marker lives here.
+    // Client scope for the same reason the toggle above is: it belongs to the
+    // person looking at the screen, not to the world.
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-whatsnew-anon-seen-at', {
+      name: 'Beneos what is new marker (no account)',
+      type: Number,
+      scope: 'client',
+      default: 0,
+      config: false
+    })
+
     game.settings.register(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', {
       name: 'Global JSON config for tokens',
       type: String,

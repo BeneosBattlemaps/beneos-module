@@ -8489,13 +8489,17 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   to   { clip-path: inset(0 0 0 0);    opacity: 1; }
 }
 
+/* No rule under the header. It was drawn from the same colour and the same
+   single pixel as the rule in a group heading, and sitting a few pixels above
+   the first one it read as the same line repeated rather than as a division.
+   The content now simply starts with the first heading; the extra bottom
+   padding carries the separation instead. */
 .bwn-head {
   position: relative;
   flex: 0 0 auto;
   text-align: center;
   /* Left padding keeps the headline clear of the logo beside it. */
-  padding: var(--bc-space-4, 12px) var(--bc-space-3, 10px) var(--bc-space-3, 10px) 64px;
-  border-bottom: 1px solid var(--bc-accent-line, rgba(245, 201, 146, 0.25));
+  padding: var(--bc-space-4, 12px) var(--bc-space-3, 10px) var(--bc-space-5, 16px) 64px;
 }
 
 /* Soft halo behind the headline. Reuses the Forge reveal pulse, which already
@@ -8577,9 +8581,13 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 /* Every animated part is scheduled by a single --bwn-d handed down from the
    window, so headings and entries share one timeline and the order on screen
    is exactly the order in the markup. */
+/* The row is held at the height of a button whether it carries one or not.
+   Without this a group with a call to action is five pixels taller than one
+   without, and the spacing down the card visibly stutters from group to group. */
 .bwn-group-title {
   display: flex;
   align-items: center;
+  min-height: 22px;
   gap: var(--bc-space-3, 10px);
   margin: 0 0 var(--bc-space-3, 10px);
   font-family: var(--bc-font-display, serif);
@@ -8590,11 +8598,69 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   animation-delay: var(--bwn-d, 0ms);
 }
 
-.bwn-group-title::after {
-  content: "";
+.bwn-group-label {
+  flex: 0 0 auto;
+}
+
+/* A real element, not a pseudo one: the call-to-action buttons have to sit to
+   the right of the rule, and a pseudo-element cannot have siblings after it. */
+.bwn-group-rule {
   flex: 1 1 auto;
   height: 1px;
   background: var(--bc-accent-line, rgba(245, 201, 146, 0.25));
+}
+
+/* "Join Patreon" and "Login to download", shown on a group the account cannot
+   reach. Quiet by default: they name the missing step without competing with
+   the artwork the window is there to show.
+
+   The three height declarations are load-bearing. Foundry gives every button in
+   its interface a fixed control height, which here would push the heading row
+   to twice its size and make every group with a button taller than one without,
+   shifting the layout mid-reveal. */
+.bwn-cta {
+  flex: 0 0 auto;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  line-height: normal;
+  margin: 0;
+  padding: 3px 10px;
+  border: 1px solid var(--bc-accent-line, rgba(245, 201, 146, 0.45));
+  border-radius: 999px;
+  background: transparent;
+  color: var(--bc-accent, #f5c992);
+  font-family: var(--bc-font, sans-serif);
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease,
+              border-color 0.15s ease,
+              box-shadow 0.15s ease;
+}
+
+/* The hover deliberately does not move the button. These sit in a heading, the
+   heading of the first group sits flush against the top of the scrolling list,
+   and a lift of even two pixels slid that button up under the header where it
+   was clipped out of sight. The emphasis is carried by the glow instead, which
+   cannot leave the box. */
+.bwn-cta:hover {
+  background: var(--bc-accent-dim, rgba(245, 201, 146, 0.16));
+  border-color: var(--bc-accent, #f5c992);
+  box-shadow: 0 0 0 1px var(--bc-accent-dim, rgba(245, 201, 146, 0.16)),
+              0 0 10px var(--bc-accent-dim, rgba(245, 201, 146, 0.16));
+}
+
+/* The paid step carries a filled mark so it reads as the stronger of the two
+   when both are offered. */
+.bwn-cta--patreon {
+  border-color: var(--bc-accent, #f5c992);
+  background: var(--bc-accent-dim, rgba(245, 201, 146, 0.16));
+}
+
+.bwn-cta--patreon:hover {
+  background: var(--bc-accent-soft, rgba(245, 201, 146, 0.28));
 }
 
 @keyframes bwn-title-in {
@@ -8737,6 +8803,7 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 
 /* 16:9, the format release covers are produced in, and never cropped. */
 .bwn-map-cover {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -8809,6 +8876,7 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 
 /* Square, and the artwork is shown whole inside it. */
 .bwn-tile-art {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -8832,6 +8900,51 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   font-size: 12px;
   line-height: 1.25;
   overflow-wrap: anywhere;
+}
+
+/* ---- Locked: shown, but not reachable from this account yet ---- */
+
+/* No glint and no sparks on a locked entry. It still pops in, so the list keeps
+   its rhythm and nothing looks skipped, but the celebration is reserved for what
+   the account actually gained; the spawn note is held back for the same reason,
+   in the window. */
+.bwn-pop.is-locked::before,
+.bwn-pop.is-locked::after { display: none; }
+
+/* The damping sits on the picture frame, never on the button. A filter on the
+   button would open its own isolation context, and the sparkles of the reveal
+   are composited with screen against what is behind them, so they would stop
+   showing on exactly the entries that most need the attention.
+   Kept mild on purpose: the cover is the sales pitch, and greying it out would
+   argue against the button right above it. */
+.bwn-map.is-locked .bwn-map-cover,
+.bwn-tile.is-locked .bwn-tile-art {
+  filter: saturate(0.72) brightness(0.8);
+}
+
+.bwn-map.is-locked,
+.bwn-tile.is-locked {
+  border-color: var(--bc-border, #2e2920);
+}
+
+/* Inside the frame, so it adds no height and the layout cannot move while the
+   entries are still popping in. */
+.bwn-lock {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--bc-accent-line, rgba(245, 201, 146, 0.45));
+  background: rgba(12, 11, 9, 0.78);
+  color: var(--bc-accent, #f5c992);
+  font-size: 10px;
+  pointer-events: none;
 }
 
 .bwn-chip {

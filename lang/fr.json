@@ -2395,7 +2395,7 @@
   "BENEOS.Cloud.Uninstall.NoTarget": "Impossible de déterminer quelle sortie retirer.",
   "BENEOS.Cloud.Uninstall.Failed": "Le retrait de la sortie a échoué. Voir la console du navigateur.",
   "BENEOS.Cloud.SessionExpired": "Beneos Cloud ne reconnaît plus la connexion de ce monde, l'accès Patreon enregistré a donc été effacé. Ouvrez la fenêtre Beneos Cloud et reconnectez-vous pour le rétablir.",
-  "BENEOS.Cloud.WhatsNew.Title": "Nouveau pour vous",
+  "BENEOS.Cloud.WhatsNew.Title": "Beneos Updates",
   "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Nouveaux téléchargements pour votre soutien Patreon",
   "BENEOS.Cloud.WhatsNew.PatreonSubline": "Débloqué pour votre compte depuis votre dernière visite.",
   "BENEOS.Cloud.WhatsNew.ShopHeadline": "Nouveaux achats de la boutique débloqués",
@@ -2408,8 +2408,13 @@
   "BENEOS.Cloud.WhatsNew.ClickHint": "Cliquez sur une entrée pour l'ouvrir dans la fenêtre Beneos Cloud.",
   "BENEOS.Cloud.WhatsNew.GroupMaps": "Nouveaux packs de cartes",
   "BENEOS.Cloud.WhatsNew.GroupCreatures": "Nouvelles créatures",
-  "BENEOS.Cloud.WhatsNew.GroupItems": "Nouveaux objets",
+  "BENEOS.Cloud.WhatsNew.GroupItems": "Nouveau butin",
   "BENEOS.Cloud.WhatsNew.GroupSpells": "Nouveaux sorts",
+  "BENEOS.Cloud.WhatsNew.PublicHeadline": "Nouveautés Beneos",
+  "BENEOS.Cloud.WhatsNew.PublicSubline": "Publié depuis votre dernière visite.",
+  "BENEOS.Cloud.WhatsNew.JoinPatreon": "Rejoindre le Patreon",
+  "BENEOS.Cloud.WhatsNew.LoginToDownload": "Se connecter pour télécharger",
+  "BENEOS.Cloud.WhatsNew.Locked": "Pas encore débloqué pour votre compte",
   "BENEOS.Settings.WhatsNewEnabled.Name": "Afficher les nouveautés au démarrage du monde",
   "BENEOS.Settings.WhatsNewEnabled.Hint": "Ouvre au démarrage du monde une courte fenêtre listant ce que votre compte a débloqué depuis votre dernière confirmation. Visible uniquement par les MJ."
 }

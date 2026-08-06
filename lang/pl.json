@@ -2395,7 +2395,7 @@
   "BENEOS.Cloud.Uninstall.NoTarget": "Nie udało się ustalić, które wydanie usunąć.",
   "BENEOS.Cloud.Uninstall.Failed": "Usunięcie wydania nie powiodło się. Sprawdź konsolę przeglądarki.",
   "BENEOS.Cloud.SessionExpired": "Beneos Cloud nie rozpoznaje już logowania tego świata, więc zapisany dostęp z Patreona został usunięty. Otwórz okno Beneos Cloud i zaloguj się ponownie, aby go przywrócić.",
-  "BENEOS.Cloud.WhatsNew.Title": "Nowości dla Ciebie",
+  "BENEOS.Cloud.WhatsNew.Title": "Beneos Updates",
   "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Nowe pliki za Twoje wsparcie na Patreonie",
   "BENEOS.Cloud.WhatsNew.PatreonSubline": "Odblokowane dla Twojego konta od ostatniej wizyty.",
   "BENEOS.Cloud.WhatsNew.ShopHeadline": "Odblokowano nowe zakupy ze sklepu",
@@ -2408,8 +2408,13 @@
   "BENEOS.Cloud.WhatsNew.ClickHint": "Kliknij pozycję, aby otworzyć ją w oknie Beneos Cloud.",
   "BENEOS.Cloud.WhatsNew.GroupMaps": "Nowe paczki map",
   "BENEOS.Cloud.WhatsNew.GroupCreatures": "Nowe stwory",
-  "BENEOS.Cloud.WhatsNew.GroupItems": "Nowe przedmioty",
+  "BENEOS.Cloud.WhatsNew.GroupItems": "Nowy łup",
   "BENEOS.Cloud.WhatsNew.GroupSpells": "Nowe zaklęcia",
+  "BENEOS.Cloud.WhatsNew.PublicHeadline": "Nowe wydania Beneos",
+  "BENEOS.Cloud.WhatsNew.PublicSubline": "Wydane od Twojej ostatniej wizyty.",
+  "BENEOS.Cloud.WhatsNew.JoinPatreon": "Dołącz na Patreonie",
+  "BENEOS.Cloud.WhatsNew.LoginToDownload": "Zaloguj się, aby pobrać",
+  "BENEOS.Cloud.WhatsNew.Locked": "Jeszcze nieodblokowane dla Twojego konta",
   "BENEOS.Settings.WhatsNewEnabled.Name": "Pokazuj nowości przy starcie świata",
   "BENEOS.Settings.WhatsNewEnabled.Hint": "Przy starcie świata otwiera krótkie okno z tym, co Twoje konto odblokowało od ostatniego potwierdzenia. Widoczne tylko dla MG."
 }

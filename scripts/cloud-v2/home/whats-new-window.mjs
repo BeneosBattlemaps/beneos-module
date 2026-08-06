@@ -1,16 +1,24 @@
-/* "What's new" popup shown once per world start when the signed-in account has
-   gained something since it last confirmed the window.
+/* "What's new" popup shown once per world start when something has been
+   released since the window was last confirmed.
 
    Two buckets are shown one after the other, never side by side: what the
    account gained through its Patreon support, and what it gained by buying in
    the shop. They read very differently to the customer, so each gets its own
    headline and its own reveal.
 
+   The window does not only show what the account holds. Beneos runs two Patreon
+   campaigns and most customers support one of them, so a window filtered by
+   ownership would hide half of every release week from exactly the people worth
+   telling. Everything released is shown; what the account cannot reach carries a
+   lock mark, and its group heading carries the button that would fix that. A
+   world with no account at all sees the same list under a neutral headline.
+
    The cursor lives on the server (users.last_whatsnew_seen_at) and is only
    moved when the user actually confirms the last card. Closing the window with
    the X leaves it untouched, so the announcement comes back next time. */
 
 import { BeneosUtility } from "../../beneos_utility.js"
+import { BeneosCloudLogin } from "../../beneos_cloud.js"
 import { ackWhatsNew, fetchWhatsNew } from "../services/whats-new-api.mjs"
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
@@ -46,14 +54,22 @@ const TYPE_LABEL_KEY = {
   spell: "BENEOS.Cloud.Tab.Spells"
 }
 
+// The two Patreon campaigns, and where a group has to send someone who is not
+// in the right one. Creatures, loot and spells all come out of the same
+// campaign, so they share a key and a destination.
+const CAMPAIGN_URL = {
+  battlemaps: "https://www.patreon.com/cw/BeneosBattlemaps",
+  tokens: "https://www.patreon.com/cw/BeneosTokens"
+}
+
 // Reveal order. Maps lead because their cover is the strongest thing the window
 // has to show; each group announces itself before its entries arrive.
 // `wide` gets the big 16:9 card, everything else a square tile.
 const GROUPS = [
-  { type: "bmap", wide: true, titleKey: "BENEOS.Cloud.WhatsNew.GroupMaps" },
-  { type: "token", wide: false, titleKey: "BENEOS.Cloud.WhatsNew.GroupCreatures" },
-  { type: "item", wide: false, titleKey: "BENEOS.Cloud.WhatsNew.GroupItems" },
-  { type: "spell", wide: false, titleKey: "BENEOS.Cloud.WhatsNew.GroupSpells" }
+  { type: "bmap", wide: true, campaign: "battlemaps", titleKey: "BENEOS.Cloud.WhatsNew.GroupMaps" },
+  { type: "token", wide: false, campaign: "tokens", titleKey: "BENEOS.Cloud.WhatsNew.GroupCreatures" },
+  { type: "item", wide: false, campaign: "tokens", titleKey: "BENEOS.Cloud.WhatsNew.GroupItems" },
+  { type: "spell", wide: false, campaign: "tokens", titleKey: "BENEOS.Cloud.WhatsNew.GroupSpells" }
 ]
 
 // Reveal timing in milliseconds. The card wipes in first, then the sequence
@@ -82,7 +98,9 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
     tag: "section",
     window: {
       title: "BENEOS.Cloud.WhatsNew.Title",
-      icon: "fas fa-gift",
+      // No icon in the title bar. The logo in the card already says who this is
+      // from, and a second mark beside it was one too many.
+      icon: false,
       resizable: false,
       minimizable: false
     },
@@ -91,7 +109,9 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
     position: { width: 720, height: 760 },
     actions: {
       whatsNewAdvance: BeneosWhatsNewWindow._onAdvance,
-      whatsNewOpen: BeneosWhatsNewWindow._onOpenEntry
+      whatsNewOpen: BeneosWhatsNewWindow._onOpenEntry,
+      whatsNewJoin: BeneosWhatsNewWindow._onJoinCampaign,
+      whatsNewLogin: BeneosWhatsNewWindow._onLogin
     }
   }
 
@@ -128,9 +148,11 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
       try { enabled = game.settings.get(BeneosUtility.moduleID(), SETTING_ENABLED) !== false }
       catch (_e) { enabled = true }
       if (!enabled) return false
-      if (!(await BeneosWhatsNewWindow.#waitForCloudLogin())) return false
+      // Not a gate any more, an input. A world without an account still gets the
+      // release list, it just gets it under a neutral headline with a way in.
+      const loggedIn = await BeneosWhatsNewWindow.#waitForCloudLogin()
 
-      const payload = await fetchWhatsNew()
+      const payload = await fetchWhatsNew({ loggedIn })
       if (!payload) return false
 
       const win = new BeneosWhatsNewWindow(payload)
@@ -152,9 +174,10 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
    * answered no and the popup never appeared on a real world start.
    *
    * A stored foundry id is the cheap, synchronous signal that this world has an
-   * account at all: without one we bail instantly and the update notice behind
-   * us is not delayed. With one we wait for the connection to come up, bounded,
-   * because a world start is not time critical but an endless wait would be.
+   * account at all: without one we answer no straight away and the window takes
+   * the account-free route, so nothing behind us is held up. With one we wait
+   * for the connection to come up, bounded, because a world start is not time
+   * critical but an endless wait would be.
    */
   static async #waitForCloudLogin(timeoutMs = 15000, stepMs = 500) {
     let storedId = ""
@@ -187,12 +210,18 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
       return catalogs[type]
     }
 
+    // Shop entries are paid for and therefore always reachable, whatever the
+    // Patreon situation is. Only the release card can hold locked rows.
+    const isShopCard = card?.kind === "shop"
+    const access = this.#campaignAccess()
+
     const entries = (card?.bucket?.items ?? []).map(entry => {
       const type = toModuleType(entry.type)
       return {
         key: entry.key,
         name: entry.name || entry.key,
         type,
+        locked: !isShopCard && entry.owned !== true,
         typeLabel: game.i18n.localize(TYPE_LABEL_KEY[type] ?? ""),
         thumbnail: this.#thumbnailFor(type, entry.key, entry.thumbnailUrl, catalogFor)
       }
@@ -213,12 +242,35 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
         item.delay = clock
         clock += step
       }
+      // The campaign flag answers the common case ("you support the other
+      // Patreon"); the per-entry check catches the rarer one, where someone is
+      // in the right campaign but on a tier that does not cover this drop.
+      const hasCampaign = isShopCard || access[group.campaign] === true
       groups.push({
         title: game.i18n.localize(group.titleKey),
         isWide: group.wide,
         titleDelay,
-        items
+        items,
+        showJoin: !hasCampaign || items.some(item => item.locked),
+        showLogin: !isShopCard && !access.loggedIn,
+        joinUrl: CAMPAIGN_URL[group.campaign]
       })
+    }
+
+    // The Patreon headline is a thank-you, and it only holds if the whole card
+    // is in fact a download for this account. One locked row already makes it
+    // false: a card that says "new downloads for your Patreon support" over a
+    // list of covers with locks on them tells the reader the opposite of what
+    // they can see.
+    const thanksForSupport = access.loggedIn && !entries.some(entry => entry.locked)
+    let headlineKey = "BENEOS.Cloud.WhatsNew.PublicHeadline"
+    let sublineKey = "BENEOS.Cloud.WhatsNew.PublicSubline"
+    if (isShopCard) {
+      headlineKey = "BENEOS.Cloud.WhatsNew.ShopHeadline"
+      sublineKey = "BENEOS.Cloud.WhatsNew.ShopSubline"
+    } else if (thanksForSupport) {
+      headlineKey = "BENEOS.Cloud.WhatsNew.PatreonHeadline"
+      sublineKey = "BENEOS.Cloud.WhatsNew.PatreonSubline"
     }
 
     const overflow = card?.bucket?.overflow ?? 0
@@ -226,12 +278,11 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
       kind: card?.kind ?? "patreon",
       groups,
       overflowDelay: clock,
-      headline: game.i18n.localize(card?.kind === "shop"
-        ? "BENEOS.Cloud.WhatsNew.ShopHeadline"
-        : "BENEOS.Cloud.WhatsNew.PatreonHeadline"),
-      subline: game.i18n.localize(card?.kind === "shop"
-        ? "BENEOS.Cloud.WhatsNew.ShopSubline"
-        : "BENEOS.Cloud.WhatsNew.PatreonSubline"),
+      headline: game.i18n.localize(headlineKey),
+      subline: game.i18n.localize(sublineKey),
+      joinLabel: game.i18n.localize("BENEOS.Cloud.WhatsNew.JoinPatreon"),
+      loginLabel: game.i18n.localize("BENEOS.Cloud.WhatsNew.LoginToDownload"),
+      lockedLabel: game.i18n.localize("BENEOS.Cloud.WhatsNew.Locked"),
       overflow,
       overflowLabel: overflow > 0
         ? game.i18n.format("BENEOS.Cloud.WhatsNew.More", { count: overflow })
@@ -246,6 +297,28 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
       optOutLabel: game.i18n.localize("BENEOS.Cloud.WhatsNew.DontShowAgain"),
       hintLabel: game.i18n.localize("BENEOS.Cloud.WhatsNew.ClickHint")
     }
+  }
+
+  /**
+   * Which of the two Patreon campaigns this account supports.
+   *
+   * Read from the module's own cloud singleton, not from the popup payload: it
+   * already keeps these flags, persisted from the login response, and a second
+   * source for the same fact would be a second thing to keep in step.
+   *
+   * Logged out forces both to false. The flags survive a restart on purpose, so
+   * a world whose account signed out would otherwise still claim the support of
+   * whoever was signed in last.
+   */
+  #campaignAccess() {
+    const loggedIn = !!this.payload?.loggedIn
+    const cloud = game.beneos?.cloud
+    const has = (campaign) => {
+      if (!loggedIn) return false
+      try { return cloud?.hasCampaignAccess?.(campaign) === true }
+      catch (_e) { return false }
+    }
+    return { loggedIn, battlemaps: has("battlemaps"), tokens: has("tokens") }
   }
 
   /** Server URL first (battlemaps), else the catalog lookup chain. */
@@ -293,11 +366,16 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
    * The timers are owned by the window and cleared before every render and on
    * close. Without that, advancing to the shop card or closing the window early
    * would leave the previous card's notes playing into an empty screen.
+   *
+   * Locked entries stay silent. The note is the reward for having unlocked
+   * something; sounding it over content the account cannot reach would spend the
+   * reward on a disappointment, and it is what separates the two kinds of row
+   * here as clearly as the lock mark does.
    */
   #scheduleSpawnSounds() {
     this.#clearSpawnSounds()
     this.spawnTimers = []
-    const nodes = this.element?.querySelectorAll?.('[data-action="whatsNewOpen"]') ?? []
+    const nodes = this.element?.querySelectorAll?.('[data-action="whatsNewOpen"]:not(.is-locked)') ?? []
     for (const node of nodes) {
       const delay = parseInt(node.style.getPropertyValue("--bwn-d"), 10)
       if (!Number.isFinite(delay)) continue
@@ -424,9 +502,28 @@ export class BeneosWhatsNewWindow extends HandlebarsApplicationMixin(Application
     }
     // Last card confirmed: this is the only path that moves the cursor.
     this.acknowledged = true
-    try { await ackWhatsNew(this.payload?.serverTime) }
+    try { await ackWhatsNew(this.payload?.serverTime, { loggedIn: !!this.payload?.loggedIn }) }
     catch (err) { console.warn("[Beneos What's New] Acknowledge failed:", err) }
     await this.close()
+  }
+
+  /**
+   * Open the Patreon campaign this group belongs to. The window stays open and
+   * the cursor stays put: someone who steps out to look at a campaign page
+   * should come back to the rest of the list, and should see it again next
+   * world start if they never got round to confirming it.
+   */
+  static _onJoinCampaign(event, target) {
+    event.preventDefault()
+    const url = target?.dataset?.url
+    if (url) window.open(url, "_blank", "noopener,noreferrer")
+  }
+
+  /** Open the cloud login. Same reasoning as above: window and cursor untouched. */
+  static _onLogin(event, _target) {
+    event.preventDefault()
+    try { new BeneosCloudLogin("whatsNew").render(true) }
+    catch (err) { console.warn("[Beneos What's New] Could not open the login:", err) }
   }
 
   /**

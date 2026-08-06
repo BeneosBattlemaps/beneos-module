@@ -11,9 +11,19 @@
      server precisely so the answer is always computed fresh.
    - Reading never acknowledges. fetchWhatsNew() only reads; ackWhatsNew() is a
      separate call the window makes after the user confirmed. An aborted popup
-     therefore comes back on the next world load. */
+     therefore comes back on the next world load.
+
+   A world without a cloud account takes the second route: the same release list
+   with nothing marked as owned, and the marker kept in a client setting because
+   there is no account for the server to hang one on. That local marker is the
+   one exception to the no-cache rule above, and a safe one: it stores a
+   timestamp, never the content. */
 
 const FETCH_TIMEOUT_MS = 6000
+// Marker for worlds with no cloud account. The signed-in cursor stays on the
+// server (users.last_whatsnew_seen_at) so a purchase is celebrated once across
+// all worlds; this one cannot be shared, there is nothing to share it by.
+const ANON_CURSOR_SETTING = "beneos-whatsnew-anon-seen-at"
 
 // Session circuit-breaker: after one failure we stop hitting the endpoint for
 // the rest of the session. A world start is not worth retrying in a loop, and
@@ -33,6 +43,16 @@ function cloudBase() {
 function foundryId() {
   try { return game.settings.get(moduleId(), "beneos-cloud-foundry-id") || "" }
   catch (_e) { return "" }
+}
+
+function anonCursor() {
+  try { return Number(game.settings.get(moduleId(), ANON_CURSOR_SETTING)) || 0 }
+  catch (_e) { return 0 }
+}
+
+async function setAnonCursor(ts) {
+  try { await game.settings.set(moduleId(), ANON_CURSOR_SETTING, Number(ts) || 0) }
+  catch (err) { console.warn("[Beneos What's New] Could not store local marker:", err) }
 }
 
 async function fetchJson(url) {
@@ -61,39 +81,55 @@ function normalizeBucket(raw) {
       type: String(entry?.type ?? ""),
       source: String(entry?.source ?? ""),
       thumbnailUrl: String(entry?.thumbnail_url ?? ""),
-      unlockedTs: Number(entry?.unlocked_ts ?? 0)
+      unlockedTs: Number(entry?.unlocked_ts ?? 0),
+      // Default false, not true: an old server that does not send the field
+      // yet would otherwise present locked content as ready to install.
+      owned: entry?.owned === true
     })).filter(entry => entry.key !== ""),
     overflow: Math.max(0, Number(raw?.overflow ?? 0))
   }
 }
 
 /**
- * Read what is new for this account. Never throws and never acknowledges.
- * Returns null when there is nothing to show or nothing to ask (logged out,
- * offline, endpoint down, first sight of an existing account).
+ * Read what is new. Never throws and never acknowledges.
+ *
+ * With an account this is "what the cloud released, and what of it you hold";
+ * without one it is the same release list with nothing held. Returns null when
+ * there is nothing to show or nothing to ask (offline, endpoint down, first
+ * sight of this world or account).
+ *
+ * @param {{loggedIn?: boolean}} options
  */
-export async function fetchWhatsNew() {
+export async function fetchWhatsNew({ loggedIn = true } = {}) {
   if (liveBlockedForSession) return null
   const id = foundryId()
-  if (!id || id === "anonymous") return null
+  const signedIn = loggedIn && !!id && id !== "anonymous"
   const isOffline = !!globalThis.navigator && globalThis.navigator.onLine === false
   if (isOffline) return null
 
   try {
-    const url = `${cloudBase()}/foundry-manager.php?foundryId=${encodeURIComponent(id)}&get_whats_new=1`
+    const url = signedIn
+      ? `${cloudBase()}/foundry-manager.php?foundryId=${encodeURIComponent(id)}&get_whats_new=1`
+      : `${cloudBase()}/foundry-manager.php?get_whats_new=1&since=${anonCursor()}`
     const data = await fetchJson(url)
     if (String(data?.result).toUpperCase() !== "OK" || !data?.data) {
       throw new Error(`Unexpected payload: ${JSON.stringify(data).slice(0, 120)}`)
     }
     const payload = data.data
-    // firstRun means the server just stamped the cursor for a pre-existing
-    // account and deliberately returned nothing. Not an error, just silence.
-    if (payload.firstRun === true) return null
+    // firstRun means the cursor was never set and the server deliberately
+    // returned nothing: a world that has been around for months should not open
+    // with a backlog of everything it missed. Not an error, just silence. For an
+    // account the server stamps it; without one we stamp it here.
+    if (payload.firstRun === true) {
+      if (!signedIn) await setAnonCursor(payload.serverTime)
+      return null
+    }
     const patreon = normalizeBucket(payload.patreon)
     const shop = normalizeBucket(payload.shop)
     if (!patreon.items.length && !shop.items.length) return null
     return {
       serverTime: Number(payload.serverTime ?? 0),
+      loggedIn: signedIn,
       patreon,
       shop
     }
@@ -110,10 +146,15 @@ export async function fetchWhatsNew() {
  * future announcements. Failure is silent: the popup simply reappears next time,
  * which is the harmless direction to fail in.
  */
-export async function ackWhatsNew(serverTime) {
+export async function ackWhatsNew(serverTime, { loggedIn = true } = {}) {
   const id = foundryId()
   const ts = Number(serverTime ?? 0)
-  if (!id || id === "anonymous" || !(ts > 0)) return false
+  if (!(ts > 0)) return false
+  const signedIn = loggedIn && !!id && id !== "anonymous"
+  if (!signedIn) {
+    await setAnonCursor(ts)
+    return true
+  }
   try {
     const url = `${cloudBase()}/foundry-manager.php?foundryId=${encodeURIComponent(id)}&whats_new_ack=1&ts=${ts}`
     const data = await fetchJson(url)

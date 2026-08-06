@@ -2395,7 +2395,7 @@
   "BENEOS.Cloud.Uninstall.NoTarget": "Es war nicht feststellbar, welches Release entfernt werden soll.",
   "BENEOS.Cloud.Uninstall.Failed": "Das Entfernen des Releases ist fehlgeschlagen. Siehe Browser-Konsole.",
   "BENEOS.Cloud.SessionExpired": "Die Beneos Cloud kennt die Anmeldung dieser Welt nicht mehr, der gespeicherte Patreon-Zugang wurde deshalb entfernt. Melde dich im Beneos-Cloud-Fenster neu an, um ihn wiederherzustellen.",
-  "BENEOS.Cloud.WhatsNew.Title": "Neu für dich",
+  "BENEOS.Cloud.WhatsNew.Title": "Beneos Updates",
   "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Neue Downloads für deine Patreon-Unterstützung",
   "BENEOS.Cloud.WhatsNew.PatreonSubline": "Seit deinem letzten Besuch für dein Konto freigeschaltet.",
   "BENEOS.Cloud.WhatsNew.ShopHeadline": "Neue Shop-Käufe freigeschaltet",
@@ -2408,8 +2408,13 @@
   "BENEOS.Cloud.WhatsNew.ClickHint": "Klicke einen Eintrag an, um ihn im Beneos-Cloud-Fenster zu öffnen.",
   "BENEOS.Cloud.WhatsNew.GroupMaps": "Neue Map-Packs",
   "BENEOS.Cloud.WhatsNew.GroupCreatures": "Neue Kreaturen",
-  "BENEOS.Cloud.WhatsNew.GroupItems": "Neue Gegenstände",
+  "BENEOS.Cloud.WhatsNew.GroupItems": "Neue Beute",
   "BENEOS.Cloud.WhatsNew.GroupSpells": "Neue Zauber",
+  "BENEOS.Cloud.WhatsNew.PublicHeadline": "Neue Beneos-Veröffentlichungen",
+  "BENEOS.Cloud.WhatsNew.PublicSubline": "Seit deinem letzten Besuch veröffentlicht.",
+  "BENEOS.Cloud.WhatsNew.JoinPatreon": "Patreon beitreten",
+  "BENEOS.Cloud.WhatsNew.LoginToDownload": "Zum Download anmelden",
+  "BENEOS.Cloud.WhatsNew.Locked": "Für dein Konto noch nicht freigeschaltet",
   "BENEOS.Settings.WhatsNewEnabled.Name": "Neue Veröffentlichungen beim Weltstart zeigen",
   "BENEOS.Settings.WhatsNewEnabled.Hint": "Öffnet beim Weltstart ein kurzes Fenster mit allem, was dein Konto seit der letzten Bestätigung freigeschaltet hat. Wird nur Spielleitern gezeigt."
 }

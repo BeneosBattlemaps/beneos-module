@@ -2395,7 +2395,7 @@
   "BENEOS.Cloud.Uninstall.NoTarget": "Não foi possível determinar que versão remover.",
   "BENEOS.Cloud.Uninstall.Failed": "A remoção da versão falhou. Consulte a consola do navegador.",
   "BENEOS.Cloud.SessionExpired": "A Beneos Cloud já não reconhece a sessão deste mundo, pelo que o acesso do Patreon guardado foi removido. Abra a janela da Beneos Cloud e inicie sessão novamente para o restaurar.",
-  "BENEOS.Cloud.WhatsNew.Title": "Novidades para si",
+  "BENEOS.Cloud.WhatsNew.Title": "Beneos Updates",
   "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Novas transferências pelo seu apoio no Patreon",
   "BENEOS.Cloud.WhatsNew.PatreonSubline": "Desbloqueado para a sua conta desde a sua última visita.",
   "BENEOS.Cloud.WhatsNew.ShopHeadline": "Novas compras da loja desbloqueadas",
@@ -2408,8 +2408,13 @@
   "BENEOS.Cloud.WhatsNew.ClickHint": "Clique numa entrada para a abrir na janela do Beneos Cloud.",
   "BENEOS.Cloud.WhatsNew.GroupMaps": "Novos pacotes de mapas",
   "BENEOS.Cloud.WhatsNew.GroupCreatures": "Novas criaturas",
-  "BENEOS.Cloud.WhatsNew.GroupItems": "Novos itens",
+  "BENEOS.Cloud.WhatsNew.GroupItems": "Novo espólio",
   "BENEOS.Cloud.WhatsNew.GroupSpells": "Novos feitiços",
+  "BENEOS.Cloud.WhatsNew.PublicHeadline": "Novos lançamentos Beneos",
+  "BENEOS.Cloud.WhatsNew.PublicSubline": "Lançado desde a sua última visita.",
+  "BENEOS.Cloud.WhatsNew.JoinPatreon": "Aderir ao Patreon",
+  "BENEOS.Cloud.WhatsNew.LoginToDownload": "Iniciar sessão para transferir",
+  "BENEOS.Cloud.WhatsNew.Locked": "Ainda não desbloqueado para a sua conta",
   "BENEOS.Settings.WhatsNewEnabled.Name": "Mostrar novidades ao iniciar o mundo",
   "BENEOS.Settings.WhatsNewEnabled.Hint": "Abre ao iniciar o mundo uma janela curta com o que a sua conta desbloqueou desde a última confirmação. Apenas visível para mestres."
 }

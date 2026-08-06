@@ -25,18 +25,35 @@
   <div class="bwn-list">
     {{#each groups}}
     <section class="bwn-group">
-      <h3 class="bwn-group-title" style="--bwn-d: {{this.titleDelay}}ms">{{this.title}}</h3>
+      {{!-- The rule is a real element rather than a pseudo one so the buttons
+            can sit to the right of it. They offer exactly the step this group
+            is missing: a sign-in for a world with no account, the matching
+            Patreon for content the account cannot reach. --}}
+      <h3 class="bwn-group-title" style="--bwn-d: {{this.titleDelay}}ms">
+        <span class="bwn-group-label">{{this.title}}</span>
+        <span class="bwn-group-rule" aria-hidden="true"></span>
+        {{#if this.showLogin}}
+        <button type="button" class="bwn-cta" data-action="whatsNewLogin">{{../loginLabel}}</button>
+        {{/if}}
+        {{#if this.showJoin}}
+        <button type="button" class="bwn-cta bwn-cta--patreon" data-action="whatsNewJoin"
+                data-url="{{this.joinUrl}}">{{../joinLabel}}</button>
+        {{/if}}
+      </h3>
 
       {{#if this.isWide}}
       <div class="bwn-maps">
         {{#each this.items}}
-        <button type="button" class="bwn-map bwn-pop" style="--bwn-d: {{this.delay}}ms"
+        <button type="button" class="bwn-map bwn-pop{{#if this.locked}} is-locked{{/if}}" style="--bwn-d: {{this.delay}}ms"
                 data-action="whatsNewOpen"
                 data-entry-key="{{this.key}}"
                 data-entry-type="{{this.type}}"
                 data-entry-name="{{this.name}}">
           <span class="bwn-map-cover">
             {{#if this.thumbnail}}<img src="{{this.thumbnail}}" alt="" decoding="async">{{/if}}
+            {{!-- Inside the frame on purpose: a mark that added height would
+                  change the row size mid-reveal and shift the whole card. --}}
+            {{#if this.locked}}<span class="bwn-lock" title="{{../../lockedLabel}}"><i class="fas fa-lock"></i></span>{{/if}}
           </span>
           <span class="bwn-map-foot">
             <span class="bwn-map-name">{{this.name}}</span>
@@ -48,13 +65,14 @@
       {{else}}
       <div class="bwn-tiles">
         {{#each this.items}}
-        <button type="button" class="bwn-tile bwn-pop" style="--bwn-d: {{this.delay}}ms"
+        <button type="button" class="bwn-tile bwn-pop{{#if this.locked}} is-locked{{/if}}" style="--bwn-d: {{this.delay}}ms"
                 data-action="whatsNewOpen"
                 data-entry-key="{{this.key}}"
                 data-entry-type="{{this.type}}"
                 data-entry-name="{{this.name}}">
           <span class="bwn-tile-art">
             {{#if this.thumbnail}}<img src="{{this.thumbnail}}" alt="" decoding="async">{{/if}}
+            {{#if this.locked}}<span class="bwn-lock" title="{{../../lockedLabel}}"><i class="fas fa-lock"></i></span>{{/if}}
           </span>
           <span class="bwn-tile-name">{{this.name}}</span>
         </button>
