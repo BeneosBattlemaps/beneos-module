@@ -50,6 +50,15 @@ const ADAPTIVE_MIN_LANES  = 2                // floor: never serialize a healthy
 // uninstaller reclaims disk space by overwriting assets with a 1-byte file.
 // Anything this small is a stub (or a corpse), never a real asset.
 export const STUB_MAX_BYTES = 8
+// Content types a CDN compresses in transit. For these, Content-Length carries
+// the ENCODED size while the body reader yields DECODED bytes, so the two must
+// never be compared. Content-Encoding would state this outright, but it is not
+// a CORS-safelisted response header: cross-origin it reads as empty even when
+// the server compresses. Content-Type is safelisted, and it is also what
+// decides whether a CDN compresses at all, so it is the only honest signal we
+// have. Binary assets (webm/webp/ogg) are already compressed and pass through
+// untouched, which is exactly where the size arithmetic stays trustworthy.
+const COMPRESSIBLE_TYPE = /^(?:text\/|application\/(?:json|javascript|x-javascript|xml)|image\/svg\+xml)/i
 
 // Failure categories. Kept as plain strings so the report module can map them
 // to headlines/guidance without importing this module (avoids a load cycle).
@@ -1032,6 +1041,13 @@ export class BeneosNativeBattlemapInstaller {
     }, FETCH_INACTIVITY_CHECK_MS)
     let total = setTimeout(() => controller.abort(new DOMException("header timeout", "AbortError")), FETCH_HEADER_MS)
     try {
+      // A body known to arrive compressed cannot be resumed (see carry.noResume
+      // below): drop what we hold and take it from the top.
+      if (carry.noResume && carry.bytes > 0) {
+        carry.chunks = []
+        carry.bytes = 0
+        carry.total = null
+      }
       const resumeFrom = carry.bytes > 0 ? carry.bytes : 0
       const init = { signal: controller.signal }
       if (resumeFrom > 0) init.headers = { Range: `bytes=${resumeFrom}-` }
@@ -1091,13 +1107,24 @@ export class BeneosNativeBattlemapInstaller {
       const type = resp.headers.get("content-type") || carry.type || "application/octet-stream"
       carry.type = type
 
-      // Expected total size, used both for the time budget and as a truncation
-      // guard. Skipped when the body is content-encoded, because then the
-      // advertised length is the compressed size while the reader yields the
-      // decoded bytes, which would flag every such response as truncated.
-      let expected = null
+      // Was this body compressed in transit? Content-Encoding answers that
+      // directly but is invisible cross-origin (see COMPRESSIBLE_TYPE), so the
+      // content type has to stand in for it. Both are consulted: same-origin
+      // and behind a proxy that exposes the header, the real answer wins.
       const enc = (resp.headers.get("content-encoding") || "").toLowerCase()
-      if (!enc || enc === "identity") {
+      const encoded = (!!enc && enc !== "identity") || COMPRESSIBLE_TYPE.test(type)
+
+      // A Range request against a compressed body returns a fragment of the
+      // gzip stream with no header, which no browser can decode: the fetch dies
+      // with ERR_CONTENT_DECODING_FAILED. Such bodies are only ever taken
+      // whole, so a retry restarts at zero instead of resuming.
+      if (encoded) carry.noResume = true
+
+      // Expected total size, used both for the time budget and as a truncation
+      // guard. Only meaningful when the advertised length and the bytes we
+      // count are measured in the same units, i.e. on an uncompressed body.
+      let expected = null
+      if (!encoded) {
         const cl = Number(resp.headers.get("content-length"))
         if (resp.status === 206) {
           // On a validated 206 the total is either already known from the first
@@ -1220,7 +1247,12 @@ export class BeneosNativeBattlemapInstaller {
         // a thin line a large asset may well need several resumes, and burning
         // the retry budget on them would reintroduce the very failure this
         // fixes. Only attempts that gained nothing count against the limit.
-        if (carry.bytes > bytesBefore) {
+        //
+        // A body that cannot be resumed (carry.noResume) is exempt: it restarts
+        // at zero every time, so bytes received are repeated work, not ground
+        // gained, and crediting them would let a dying line loop until the
+        // guard runs out instead of failing after FETCH_MAX_ATTEMPTS.
+        if (carry.bytes > bytesBefore && !carry.noResume) {
           // Still a real delivery interruption, so it stays in the telemetry:
           // otherwise resuming would hide exactly the per-country error rate
           // this signal exists to surface.
@@ -1495,7 +1527,15 @@ export class BeneosNativeBattlemapInstaller {
         raw = JSON.parse(await blob.text())
       } catch (err) {
         console.warn(`BeneosNativeInstaller | could not fetch ${relPath}`, err)
-        this._result.docFailures.push({ type: meta.phaseKey, id: "(all)", error: String(err?.message || err) })
+        // Keep the category the transfer layer already worked out. Without it
+        // the report has nothing to reason about and falls back to "unknown"
+        // for every document failure, which is the one verdict that helps
+        // nobody reading it.
+        this._result.docFailures.push({
+          type: meta.phaseKey, id: "(all)",
+          category: err?.category || INSTALL_ERROR.UNKNOWN,
+          error: String(err?.message || err),
+        })
         continue
       }
 

@@ -126,8 +126,16 @@ export class BeneosInstallReport {
     if (result.fatalCategory) return result.fatalCategory
     const counts = {}
     for (const f of (result.assetFailures || [])) counts[f.category] = (counts[f.category] || 0) + 1
+    // Document failures count too, but only behind the asset ones: a transfer
+    // that never delivered the bytes explains a document that never appeared,
+    // and the reverse is not true. Only the whole-class failures carry a
+    // category; per-document rejections are validation errors with no
+    // transport cause to name.
+    for (const f of (result.docFailures || [])) {
+      if (f.category) counts[f.category] = (counts[f.category] || 0) + 1
+    }
     const cats = Object.keys(counts)
-    if (cats.length === 0) return result.docFailures?.length ? "unknown" : "unknown"
+    if (cats.length === 0) return "unknown"
     cats.sort((a, b) => (counts[b] - counts[a])
       || (CATEGORY_PRIORITY.indexOf(a) - CATEGORY_PRIORITY.indexOf(b)))
     return cats[0]
