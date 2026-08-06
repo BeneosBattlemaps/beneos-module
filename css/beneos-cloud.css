@@ -824,7 +824,11 @@
   margin-top: var(--bc-space-3) !important;
   border-top: 1px solid var(--bc-border) !important;
 }
-.beneos-cloud-login-dialog button[data-action] {
+/* Body buttons only. Foundry's close control in the title bar is also a
+   button[data-action], and the blanket form of this rule stripped its Font
+   Awesome family and stretched it to the 80px minimum: same defect as in the
+   news dialog below, same fix. */
+.beneos-cloud-login-dialog .window-content button[data-action] {
   background: var(--bc-card);
   color: var(--bc-text);
   border: 1px solid var(--bc-border);
@@ -838,18 +842,18 @@
   min-width: 80px;
   width: auto !important;
 }
-.beneos-cloud-login-dialog button[data-action]:hover {
+.beneos-cloud-login-dialog .window-content button[data-action]:hover {
   background: var(--bc-card-hover);
   border-color: var(--bc-border-strong);
 }
-.beneos-cloud-login-dialog button[data-action="login"],
-.beneos-cloud-login-dialog button.default {
+.beneos-cloud-login-dialog .window-content button[data-action="login"],
+.beneos-cloud-login-dialog .window-content button.default {
   background: var(--bc-accent-dim);
   color: var(--bc-accent-soft);
   border-color: var(--bc-accent-line);
 }
-.beneos-cloud-login-dialog button[data-action="login"]:hover,
-.beneos-cloud-login-dialog button.default:hover {
+.beneos-cloud-login-dialog .window-content button[data-action="login"]:hover,
+.beneos-cloud-login-dialog .window-content button.default:hover {
   background: var(--bc-accent-line);
   color: var(--bc-accent-strong);
 }
@@ -859,10 +863,10 @@
    red flash read as an out-of-place eye-catcher. Override the focus state to
    the Beneos gold so the accent stays on-brand. animation:none belts-and-braces
    against any core pulse keyframe on the default button. */
-.beneos-cloud-login-dialog button[data-action]:focus,
-.beneos-cloud-login-dialog button[data-action]:focus-visible,
-.beneos-cloud-login-dialog button.default:focus,
-.beneos-cloud-login-dialog button.default:focus-visible {
+.beneos-cloud-login-dialog .window-content button[data-action]:focus,
+.beneos-cloud-login-dialog .window-content button[data-action]:focus-visible,
+.beneos-cloud-login-dialog .window-content button.default:focus,
+.beneos-cloud-login-dialog .window-content button.default:focus-visible {
   outline: 1px solid var(--bc-accent-line);
   outline-offset: 1px;
   box-shadow: 0 0 6px 1px rgba(245, 201, 146, 0.55);
@@ -7122,8 +7126,16 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
   padding-top: var(--bc-space-3) !important;
   border-top: 1px solid var(--bc-border) !important;
 }
-.beneos-news-detail-dialog button,
-.beneos-news-detail-dialog button[data-action] {
+/* Buttons in the dialog body only.
+   This used to be a blanket "any button in this dialog" rule meant for the
+   footer, and it also caught Foundry's close control in the title bar. That
+   control is an icon button whose glyph comes from its own Font Awesome family;
+   overriding font-family left it with nothing to draw, and the 90px minimum
+   plus the wide padding turned the corner into a broad empty slab instead of a
+   close box. Scoped to the window content, the control keeps Foundry's own
+   styling and is square again. */
+.beneos-news-detail-dialog .window-content button,
+.beneos-news-detail-dialog .window-content button[data-action] {
   background: var(--bc-accent-dim) !important;
   color: var(--bc-accent-soft) !important;
   border: 1px solid var(--bc-accent-line) !important;
@@ -7136,19 +7148,27 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
   min-width: 90px;
   width: auto !important;
 }
-.beneos-news-detail-dialog button:hover,
-.beneos-news-detail-dialog button[data-action]:hover {
+.beneos-news-detail-dialog .window-content button:hover,
+.beneos-news-detail-dialog .window-content button[data-action]:hover {
   background: var(--bc-accent-line) !important;
   color: var(--bc-accent-strong) !important;
   border-color: var(--bc-accent) !important;
 }
-.beneos-news-detail-dialog button i {
+.beneos-news-detail-dialog .window-content button i {
   color: inherit !important;
 }
-/* Header-X (Fenster schliessen) */
+/* Close control in the title bar. Only the colour is ours; the square box and
+   the glyph are Foundry's, and belong to it, so the dialog closes the way every
+   other window in the interface does. The zeroed padding and minimum are a
+   guard against the body rule above ever reaching in here again. */
 .beneos-news-detail-dialog .window-header button.close,
 .beneos-news-detail-dialog .window-header .header-control {
   color: var(--bc-text) !important;
+  min-width: 0;
+  width: var(--header-control-size, 24px);
+  padding: 0;
+  background: none;
+  border: 0;
 }
 .beneos-news-detail-dialog .window-header button.close:hover,
 .beneos-news-detail-dialog .window-header .header-control:hover {
