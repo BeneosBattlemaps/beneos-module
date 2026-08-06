@@ -20,7 +20,15 @@
  * builds its own DOM/overlay (it does NOT modify beneos_module.js). Drag-and-drop
  * reuses Foundry's native Actor-drop ({type:"Actor", uuid}) so no custom
  * dropCanvasData handler is needed.
+ *
+ * The one import is the system-compatibility gate: it has to run ONCE per
+ * install run, and the cloud install would otherwise ask per creature. There is
+ * no global BeneosUtility to reach it through - the `globalThis.BeneosUtility`
+ * reads elsewhere in the module resolve to undefined and are swallowed by their
+ * optional chaining.
  */
+
+import { BeneosUtility } from "../beneos_utility.js";
 
 const MODULE_ID = "beneos-module";
 const FLAG_SCOPE = "beneos-module";
@@ -318,8 +326,10 @@ export class BeneosCreatureInstaller {
       // Actor-drop). Premium that is not installed yet stays non-draggable and
       // is handled by the install-on-place button instead.
       draggable: installed,
-      // Patron, premium, not yet installed -> "+" install affordance.
-      showInstallBadge: premium && isPatron && !installed && !alternative,
+      // Patron, premium, not yet installed -> "+" install affordance. Needs the
+      // same tokenKey test as needsInstall below: a not-yet-published source
+      // creature has no key, so nothing could install it and the "+" would lie.
+      showInstallBadge: premium && isPatron && !installed && !alternative && !!entry.tokenKey,
       // Any accessible premium not yet in the world (incl. alternatives) can be
       // cloud-installed from the drawer -> grayscale + part of "Install Beneos".
       needsInstall: premium && isPatron && !installed && !!entry.tokenKey,
@@ -630,7 +640,21 @@ export class BeneosCreatureInstaller {
 
   async _on_placeBeneos(ev, el) {
     if (this.accountState() !== "patron") { this._on_support(); return; }
+    this._compatRun = undefined;
     await this.#withBusy(el, () => this.#placeBestVersion());
+  }
+
+  /**
+   * System-compatibility gate, asked once per user action instead of once per
+   * creature. On dnd5e this returns true without a dialog; everywhere else the
+   * cloud install would otherwise prompt for every single creature it fetches.
+   * Reset at the start of each action that can install (place / install all).
+   */
+  async #compatOk() {
+    if (this._compatRun === undefined) {
+      this._compatRun = await BeneosUtility.confirmSystemCompat("token");
+    }
+    return this._compatRun;
   }
 
   /**
@@ -643,6 +667,7 @@ export class BeneosCreatureInstaller {
     if (this.accountState() !== "patron") { this._on_support(); return; }
     const root = this.host;
     if (!root) return;
+    this._compatRun = undefined;
 
     // Unique accessible-but-not-installed Beneos tokenKeys (one creature may appear once).
     const seen = new Set();
@@ -655,6 +680,12 @@ export class BeneosCreatureInstaller {
     });
     const total = queue.length;
     if (!total) { this.render(); return; }
+
+    // Gate ONCE for the whole run, before any UI state changes - mirrors the
+    // canvas-drop path in beneos_cloud.js. Without this each importTokenFromCloud
+    // prompts for system compatibility on its own, so a scene with nine creatures
+    // asked the same question nine times.
+    if (!await this.#compatOk()) return;
 
     const setProgress = (done) => {
       const span = el?.querySelector("span");
@@ -670,7 +701,7 @@ export class BeneosCreatureInstaller {
       const discs = [...root.querySelectorAll(`.bci-disc-beneos[data-tokenkey="${CSS.escape(tokenKey)}"]`)];
       discs.forEach(d => d.classList.add("bci-installing"));   // gold pulsing rim while loading
       try {
-        await game.beneos?.cloud?.importTokenFromCloud?.(tokenKey, undefined, false);
+        await game.beneos?.cloud?.importTokenFromCloud?.(tokenKey, undefined, false, { gated: true });
         // grayscale 0% -> colour 100% + green check on completion
         discs.forEach(d => { d.classList.remove("bci-needsinstall", "bci-installing"); d.classList.add("bci-installed-fx", "bci-available"); });
       } catch (e) {
@@ -725,13 +756,23 @@ export class BeneosCreatureInstaller {
    *    its own appearance/vision but inherits position + disposition.
    * Entries captured before the full-token migration only carry the subset
    * fields; in that case `full` degrades gracefully to the same result.
+   *
+   * `premium` drops the stored texture block. A Beneos placement was authored
+   * against the author's own copy under beneos_assets/beneos_tokens/, but the
+   * cloud install writes the creature to beneos_assets/cloud/tokens/ - and map
+   * packages must not ship the premium art that would make the authored path
+   * resolve. Falling back to the actor's prototype gives the customer the file
+   * that is actually on their disk, plus the scale/anchor of the rendering mode
+   * they chose (2.5D or top-down). Everything else the author set up - size,
+   * name, vision, light, bars, disposition - still comes from the placement.
    */
-  async #buildToken(actor, pos, { full = true } = {}) {
+  async #buildToken(actor, pos, { full = true, premium = false } = {}) {
     let data;
     if (full) {
       data = foundry.utils.deepClone(pos);
       delete data._id;
       delete data.actorId;
+      if (premium) delete data.texture;
     } else {
       data = {
         x: pos.x, y: pos.y,
@@ -760,9 +801,9 @@ export class BeneosCreatureInstaller {
     const placedBeneos = new Set();
     let missing = 0;
 
-    const placeAll = async (actor, positions, full) => {
+    const placeAll = async (actor, positions, opts) => {
       for (const pos of positions) {
-        try { tokenDocs.push(await this.#buildToken(actor, pos, { full })); }
+        try { tokenDocs.push(await this.#buildToken(actor, pos, opts)); }
         catch (e) { console.error("beneos | creature-installer: token build failed", pos, e); missing++; }
       }
     };
@@ -776,12 +817,14 @@ export class BeneosCreatureInstaller {
         placedBeneos.add(entryKey(srd.replacedBy));
         // Assigned Beneos at the SRD slot: keep the Beneos's own appearance, only
         // take position + disposition from the SRD placement (subset).
-        await placeAll(beneosActor, positions, false);
+        await placeAll(beneosActor, positions, { full: false });
         continue;
       }
       const srdActor = this.resolveActor(srd);
       if (!srdActor) { missing += positions.length; continue; }
-      await placeAll(srdActor, positions, true);     // free SRD at its own placement -> full restore
+      // Free SRD at its own placement -> full restore, texture included: its art
+      // ships with the map package, so the authored path resolves.
+      await placeAll(srdActor, positions, { full: true });
     }
 
     // Standalone Beneos creatures at their own position(s). Alternatives have no
@@ -793,7 +836,9 @@ export class BeneosCreatureInstaller {
       if (!positions.length) continue;
       const actor = await this.#resolveOrInstall(b, { allowInstall });
       if (!actor) { missing++; continue; }
-      await placeAll(actor, positions, true);        // standalone Beneos at its own placement -> full restore
+      // Standalone Beneos at its own placement -> full restore, but the texture
+      // comes from the installed actor (see #buildToken).
+      await placeAll(actor, positions, { full: true, premium: true });
     }
 
     if (tokenDocs.length) await scene.createEmbeddedDocuments("Token", tokenDocs);
@@ -801,7 +846,7 @@ export class BeneosCreatureInstaller {
     else if (tokenDocs.length) ui.notifications?.info(game.i18n.format("BENEOS.CreatureInstaller.Placed", { n: tokenDocs.length }));
   }
 
-  async #placeEntries(entries, { allowInstall }) {
+  async #placeEntries(entries, { allowInstall, premium = false }) {
     const scene = this.scene;
     if (!scene) return;
     const tokenDocs = [];
@@ -814,7 +859,7 @@ export class BeneosCreatureInstaller {
       const positions = positionsOf(entry);
       if (!actor) { missing += positions.length || 1; continue; }
       for (const pos of positions) {
-        try { tokenDocs.push(await this.#buildToken(actor, pos, { full: true })); }
+        try { tokenDocs.push(await this.#buildToken(actor, pos, { full: true, premium })); }
         catch (e) { console.error("beneos | creature-installer: token build failed", entry, e); missing++; }
       }
     }
@@ -828,10 +873,13 @@ export class BeneosCreatureInstaller {
     }
   }
 
-  /** Install a Beneos token by key via the cloud importer, then resolve it. */
+  /** Install a Beneos token by key via the cloud importer, then resolve it.
+   *  Gated through #compatOk so a placement that has to fetch several creatures
+   *  asks once, not once per creature. */
   async #installToken(tokenKey) {
+    if (!await this.#compatOk()) return null;
     try {
-      await game.beneos?.cloud?.importTokenFromCloud?.(tokenKey, undefined, false);
+      await game.beneos?.cloud?.importTokenFromCloud?.(tokenKey, undefined, false, { gated: true });
     } catch (e) {
       console.error("beneos | creature-installer: install failed", tokenKey, e);
     }

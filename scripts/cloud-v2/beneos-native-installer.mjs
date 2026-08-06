@@ -823,15 +823,19 @@ export class BeneosNativeBattlemapInstaller {
       }
       // Drawer-Modell: Szenen liefern ihre Kreaturen nicht mehr als platzierte
       // Tokens, sondern im creatureInstaller-Flag. Die dort referenzierten
-      // (SRD-)Actors gehoeren zur Szenen-Closure, sonst fehlen sie dem Drawer
+      // SRD-Actors gehoeren zur Szenen-Closure, sonst fehlen sie dem Drawer
       // nach einem Einzelszenen-Install.
+      //
+      // NUR srdCreatures. Beneos-Kreaturen gehoeren nicht ins Kartenpaket,
+      // sie kommen ueber #installBeneosCreatures aus der Cloud und nur fuer
+      // Unterstuetzer. Stand hier auch beneosCreatures, holte ein
+      // Einzelszenen-Install einen faelschlich mitgepackten Premium-Actor in
+      // die Welt - ohne Registry-Eintrag, also ohne HUD und ohne Aktualisierung.
       const ci = sc?.flags?.["beneos-module"]?.creatureInstaller
-      for (const list of [ci?.srdCreatures, ci?.beneosCreatures]) {
-        for (const e of (Array.isArray(list) ? list : [])) {
-          if (e?.actorId) actorIds.add(String(e.actorId))
-          for (const p of (Array.isArray(e?.positions) ? e.positions : [])) {
-            if (p?.actorId) actorIds.add(String(p.actorId))
-          }
+      for (const e of (Array.isArray(ci?.srdCreatures) ? ci.srdCreatures : [])) {
+        if (e?.actorId) actorIds.add(String(e.actorId))
+        for (const p of (Array.isArray(e?.positions) ? e.positions : [])) {
+          if (p?.actorId) actorIds.add(String(p.actorId))
         }
       }
     }
