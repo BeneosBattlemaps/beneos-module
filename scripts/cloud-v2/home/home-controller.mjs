@@ -86,66 +86,41 @@ function refreshAssetFlags(type) {
   }
 }
 
+// One rail per category, and it is a timeline, not a shopping list.
+//
+// It used to list only what carried a NEW or UPDATE chip for this account,
+// which meant everything already installed disappeared and everything from an
+// earlier wave with it. The result was a single tile under "new creatures" on
+// an account that owns the current wave. What belongs here is what Beneos
+// published, newest first, going back: the reader wants to see what has been
+// happening, not what is missing from their library.
+//
+// Ownership therefore decides nothing about the selection. It still decides the
+// chip, so an entry the account can update says so, but it stays in the row
+// either way. The same list is shown signed in and signed out, because a
+// release is not a property of an account; the catalog is all this needs and it
+// is on disk even offline.
 function pickRailItems(type) {
-  if (type === "bmap") return pickBmapItems()
-  if (type === "token" || type === "item" || type === "spell") return pickTimedItems(type)
-  return { news: [], updates: [] }
-}
-
-// Rail selection for token/item/spell.
-//
-// The rail does not decide what counts as new any more, it asks the same
-// processor the result cards use (BeneosDatabaseHolder.processInstalledX, which
-// runs beneosComputeNewUpdate). Its own rule compared the cloud updated_ts
-// against a 30-day window, so a quietly revised creature from last year read as
-// a release, and the two views disagreed about the very same asset.
-//
-// It also sorts now. The old loop kept the first twelve matches it happened to
-// walk past and stopped, so which creatures reached the rail was decided by the
-// order of the catalog JSON: the file starts with SRD entries, and that is what
-// the rail showed under the heading "new". Sorting happens before the cap, or
-// the cap would keep cutting the wrong twelve.
-//
-// Logged-out fallback: cloud.getXTS() reads from availableContent which
-// is only populated after login. Without login there is no install state to
-// compare against, so we fall back to the key-prefix release-number heuristic
-// (works for all 4 asset types, DB JSONs use NNN-/NNNN_ prefixes that increase
-// with each release). UPDATE is intentionally not shown when logged out,
-// nothing locally installed to compare.
-function pickTimedItems(type) {
   const dbHolder = game.beneos?.databaseHolder
-  const cloud    = game.beneos?.cloud
-  const all      = dbHolder?.getAll?.(type) || {}
-  const entries  = Object.entries(all)
+  const all = dbHolder?.getAll?.(type) || {}
+  const entries = Object.entries(all)
   if (!entries.length) return { news: [], updates: [] }
 
-  const cloudLoggedIn = !!cloud?.isLoggedIn?.()
-  if (!cloudLoggedIn) return pickByReleasePrefix(type, entries)
-
+  // Chips only. A failure here costs a marker, never the tile.
   const process = type === "token" ? dbHolder?.processInstalledToken
                 : type === "item"  ? dbHolder?.processInstalledItem
-                : dbHolder?.processInstalledSpell
+                : type === "spell" ? dbHolder?.processInstalledSpell
+                : null
 
-  const news = []
-  const updates = []
+  const cards = []
   for (const [key, data] of entries) {
     if (!data) continue
-    // Mutates our own clone only; getAll() handed us a fresh copy.
-    try { process?.call(dbHolder, data) } catch (_e) { continue }
-    if (data.isUpdate) {
-      const c = buildRailCard(type, key, data)
-      c.isUpdate = true
-      c.isNew = false
-      updates.push(c)
-    } else if (data.isNew) {
-      const c = buildRailCard(type, key, data)
-      c.isNew = true
-      c.isUpdate = false
-      news.push(c)
-    }
+    if (process) { try { process.call(dbHolder, data) } catch (_e) { /* marker only */ } }
+    cards.push(buildRailCard(type, key, data))
   }
-  return { news: sortRailCards(news).slice(0, RAIL_LIMIT_PER_GROUP),
-           updates: sortRailCards(updates).slice(0, RAIL_LIMIT_PER_GROUP) }
+  // Sorted before the cap. Capping first would keep whichever twelve the
+  // catalog file happens to list first, which is how this went wrong before.
+  return { news: sortRailCards(cards).slice(0, RAIL_LIMIT_PER_GROUP), updates: [] }
 }
 
 /**
@@ -160,56 +135,6 @@ function sortRailCards(cards) {
     if (a.releaseNum !== b.releaseNum) return (b.releaseNum || 0) - (a.releaseNum || 0)
     return String(a.name || "").localeCompare(String(b.name || ""))
   })
-}
-
-// Pure bmap rail selection. Bypasses the isNew-mutation route because
-// BeneosDatabaseHolder.getAll("bmap") returns a structuredClone — any
-// data.isNew=true on one snapshot is lost in the next getAll call. So
-// we do it pure: read once, sort by release-prefix (^\d+), keep the
-// entries that match the highest release.
-// Release-prefix fallback for token/item/spell when the user is not
-// logged in (cloud TS unavailable). Sorts entries by the leading-digits
-// release number from the key and returns the top N. Items with prefix
-// "0" (e.g. "000-srd_*") are excluded — those are SRD content, not new
-// Beneos releases.
-function pickByReleasePrefix(type, entries) {
-  const annotated = entries.map(([key, data]) => {
-    const m = String(key || "").match(/^(\d+)/)
-    const release = m ? (parseInt(m[1], 10) || 0) : 0
-    return { key, data, release }
-  })
-  const byReleaseDesc = annotated
-    .filter(a => a.release > 0 && a.data)
-    .sort((a, b) => b.release - a.release)
-  if (!byReleaseDesc.length) return { news: [], updates: [] }
-  const news = byReleaseDesc
-    .slice(0, RAIL_LIMIT_PER_GROUP)
-    .map(({ key, data }) => {
-      const card = buildRailCard(type, key, data)
-      card.isNew = true
-      card.isUpdate = false
-      return card
-    })
-  return { news, updates: [] }
-}
-
-function pickBmapItems() {
-  const all = game.beneos?.databaseHolder?.getAll?.("bmap") || {}
-  const entries = Object.entries(all)
-  if (!entries.length) return { news: [], updates: [] }
-  const annotated = entries.map(([key, data]) => {
-    const m = String(key || "").match(/^(\d+)/)
-    const release = m ? (parseInt(m[1], 10) || 0) : 0
-    return { key, data, release }
-  })
-  let maxRelease = 0
-  for (const a of annotated) if (a.release > maxRelease) maxRelease = a.release
-  if (maxRelease <= 0) return { news: [], updates: [] }
-  const news = annotated
-    .filter(a => a.release === maxRelease && a.data)
-    .slice(0, RAIL_LIMIT_PER_GROUP)
-    .map(({ key, data }) => buildRailCard("bmap", key, data))
-  return { news, updates: [] }
 }
 
 function buildRailCard(type, key, data) {
@@ -246,8 +171,6 @@ function buildRailCard(type, key, data) {
     // moment it appears.
     const releaseId = props.cloud_release_id || ""
     if (releaseId) card.thumbFallback = `https://beneos.cloud/release-thumbnails/${releaseId}.webp`
-    // Highest-release bmaps from pickBmapItems are always treated as new
-    card.isNew = true
   }
   return card
 }
@@ -364,13 +287,12 @@ export class HomeController {
     const news6 = selectLatestNews(news, readIds, 6)
 
     const rails = RAIL_CATEGORIES.map(type => {
-      const { news: railNew, updates: railUpdates } = pickRailItems(type)
+      const { news: railItems } = pickRailItems(type)
       return {
         type,
         labelKey: categoryLabelKey(type),
-        newItems: railNew,
-        updatedItems: railUpdates,
-        hasContent: railNew.length > 0 || railUpdates.length > 0,
+        newItems: railItems,
+        hasContent: railItems.length > 0,
         emptyKey: "BENEOS.Cloud.Home.Recent.Empty"
       }
     })

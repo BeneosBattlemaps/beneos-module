@@ -180,42 +180,27 @@
                       data-target-key="{{this.key}}"
                       data-target-name="{{this.name}}">
                 {{#if this.thumb}}
-                  {{!-- Faellt das Szenenbild aus, tritt das Release-Cover an
-                       seine Stelle; erst wenn auch das fehlt, wird die Kachel
-                       leer. Eine bildlose Kachel ist das schlechteste Ergebnis
-                       und trifft sonst genau die frischesten Releases. --}}
+                  {{!-- Faellt das Bild aus, tritt bei Karten das Release-Cover
+                       an seine Stelle, sonst der Platzhalter. Frisch
+                       veroeffentlichte Assets sind manchmal im Katalog, bevor
+                       ihr Bild auf dem CDN liegt, und das trifft genau die
+                       Kacheln, die zuerst angesehen werden. Eine Kachel mit
+                       Rahmen und Namen ist besser als eine unsichtbare.
+                       Das Merkmal placeheld verhindert eine Schleife, falls
+                       auch der Platzhalter fehlschlaegt. --}}
                   <img data-bc-lazy data-src="{{this.thumb}}" src="modules/beneos-module/ui/beneos_thumb_placeholder.svg" alt=""
                        class="bc-rail-tile-thumb"
                        data-fallback="{{this.thumbFallback}}"
-                       onerror="if (this.dataset.fallback &amp;&amp; this.src !== this.dataset.fallback) { this.src = this.dataset.fallback } else { this.style.visibility='hidden' }" />
+                       onerror="if (this.dataset.fallback &amp;&amp; this.src !== this.dataset.fallback) { this.src = this.dataset.fallback } else if (!this.dataset.placeheld) { this.dataset.placeheld = '1'; this.src = 'modules/beneos-module/ui/beneos_thumb_placeholder.svg' }" />
                 {{else}}
                   <span class="bc-rail-tile-thumb bc-rail-tile-thumb-fallback" aria-hidden="true"></span>
                 {{/if}}
                 <span class="bc-rail-tile-name">{{this.name}}</span>
-                <span class="bc-rail-tile-chip bc-rail-chip-new">{{localize "BENEOS.Cloud.Card.New"}}</span>
-              </button>
-            {{/each}}
-
-            {{#each this.updatedItems}}
-              <button type="button" class="bc-rail-tile"
-                      data-action="openRailEntity"
-                      data-target-tab="{{this.type}}"
-                      data-target-key="{{this.key}}"
-                      data-target-name="{{this.name}}">
-                {{#if this.thumb}}
-                  {{!-- Faellt das Szenenbild aus, tritt das Release-Cover an
-                       seine Stelle; erst wenn auch das fehlt, wird die Kachel
-                       leer. Eine bildlose Kachel ist das schlechteste Ergebnis
-                       und trifft sonst genau die frischesten Releases. --}}
-                  <img data-bc-lazy data-src="{{this.thumb}}" src="modules/beneos-module/ui/beneos_thumb_placeholder.svg" alt=""
-                       class="bc-rail-tile-thumb"
-                       data-fallback="{{this.thumbFallback}}"
-                       onerror="if (this.dataset.fallback &amp;&amp; this.src !== this.dataset.fallback) { this.src = this.dataset.fallback } else { this.style.visibility='hidden' }" />
-                {{else}}
-                  <span class="bc-rail-tile-thumb bc-rail-tile-thumb-fallback" aria-hidden="true"></span>
+                {{#if this.isUpdate}}
+                  <span class="bc-rail-tile-chip bc-rail-chip-upd">{{localize "BENEOS.Cloud.Card.Update"}}</span>
+                {{else if this.isNew}}
+                  <span class="bc-rail-tile-chip bc-rail-chip-new">{{localize "BENEOS.Cloud.Card.New"}}</span>
                 {{/if}}
-                <span class="bc-rail-tile-name">{{this.name}}</span>
-                <span class="bc-rail-tile-chip bc-rail-chip-upd">{{localize "BENEOS.Cloud.Card.Update"}}</span>
               </button>
             {{/each}}
 
