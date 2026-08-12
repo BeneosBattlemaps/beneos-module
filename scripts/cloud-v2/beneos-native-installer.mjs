@@ -710,13 +710,18 @@ export class BeneosNativeBattlemapInstaller {
     // (#importDocuments). With the beta switch off this branch does not exist.
     // See scripts/stream/stream-install.mjs.
     const stream = globalThis.BeneosStream
-    if (stream?.enabled() && this.source?.kind !== "zip") {
+    // mayRun(), not enabled(): the one-time confirmation that a backup exists
+    // is the condition for writing into an existing world, and asking for it is
+    // pointless if the install starts anyway when it is refused.
+    if (stream?.mayRun?.() && this.source?.kind !== "zip") {
       const { release, variant } = stream.releaseFromPackage(this.packageId)
       const manifest = await stream.loadStreamManifest(release, variant)
       const built = stream.buildStreamPack(manifest, release, variant)
       this._streamTargets = built.streamTargets
-      console.log(`Beneos Stream | ${release}/${variant}: ${built.streamTargets.size} files stay at the edge, `
-        + `${Math.round(built.edgeBytes / 1048576)} MB, ${Math.round(built.localBytes / 1048576)} MB installed locally`)
+      console.log(`Beneos Stream | ${release}/${variant}: ${built.streamTargets.size} files stay remote `
+        + `(${Math.round(built.edgeBytes / 1048576)} MB per release, `
+        + `${Math.round((built.sharedBytes || 0) / 1048576)} MB shared), `
+        + `${Math.round(built.localBytes / 1048576)} MB installed, ${built.skipped || 0} not shipped`)
       return built.packInfo
     }
     if (this.source?.kind === "zip") {

@@ -5441,6 +5441,19 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // off into its own helper so #ensureReleasesLoaded keeps the same
   // shape (state-set + finally + re-render).
   async #fetchReleasesWithBackoff() {
+    // Closed beta only. With the streaming switch on, the release list comes
+    // from the beta gate instead of the cloud, so a tester browses and installs
+    // through this window exactly as a customer does rather than through the
+    // developer console. Everything downstream reads release_dir, nb_variants
+    // and variant_dirs, which the gate's catalogue carries under those names,
+    // so this is the single place the beta touches the live window. With the
+    // switch off the branch is not entered and the code path below is
+    // character-for-character the one that ran before.
+    const stream = globalThis.BeneosStream
+    if (stream?.enabled() && typeof stream.listReleases === "function") {
+      return await stream.listReleases()
+    }
+
     // Manager-missing is a hard structural error, not a transient
     // network blip — no point retrying it.
     let mgr = window.BeneosScenePacker

@@ -21,13 +21,28 @@
  */
 
 import { localCacheEnabled, streamEnabled, streamHost } from "./stream-settings.mjs"
-import { reportFailure } from "./stream-report.mjs"
+import { reportFailure, reportedSoFar } from "./stream-report.mjs"
 
 const CACHE_NAME = "beneos-stream-v1"
 const TTL_MS = 72 * 60 * 60 * 1000
 const STAMP_HEADER = "x-beneos-stored"
 
+// How many failures are worth keeping the address of. Past this the counters
+// keep counting; only the list stops growing, so a broken release cannot fill
+// memory during a session.
+const FAILURE_LOG_MAX = 200
+
 let installed = false
+
+const counts = {}
+const failures = []
+
+function count(reason, url) {
+  counts[reason] = (counts[reason] || 0) + 1
+  if (reason !== "ok" && url && failures.length < FAILURE_LOG_MAX) {
+    failures.push({ reason, url })
+  }
+}
 
 /** Is this a request for our own delivery gate? */
 function ours(url) {
@@ -98,24 +113,67 @@ export function installStreamFetch() {
     const store = localCacheEnabled() ? await openStore() : null
     if (store) {
       const hit = await fromStore(store, url)
-      if (hit) return hit.clone()
+      if (hit) {
+        count("store-hit")
+        return hit.clone()
+      }
     }
 
     let response
     try {
       response = await original(input, init)
     } catch (err) {
+      count("network", url)
       reportFailure({ url, reason: "network", detail: String(err).slice(0, 200) })
       throw err
     }
 
     if (!response.ok) {
+      count("status", url)
       reportFailure({ url, reason: "status", detail: String(response.status) })
-    } else if (store) {
-      await toStore(store, url, response)
+    } else if (response.headers.get("x-beneos-denied")) {
+      // The one failure mode nobody could see. A refusal answers 200 with a
+      // transparent pixel, on purpose: an error would paint a hazard icon over
+      // the scene and set off a burst of retries. But `response.ok` is then
+      // true, so the branch above never fired, the store refused the placeholder
+      // without saying so, and the tile simply rendered nothing. No hazard icon,
+      // no console line, no report. A failure that leaves no trace cannot be
+      // measured, and round three of the beta programme exists to measure it.
+      count("denied", url)
+      reportFailure({ url, reason: "denied", detail: "placeholder returned" })
+      console.warn(`Beneos Stream | denied by the gate: ${url}`)
+    } else {
+      count("ok")
+      const fault = response.headers.get("x-beneos-fault")
+      if (fault) {
+        count(`fault:${fault}`, url)
+        console.warn(`Beneos Stream | injected fault "${fault}": ${url}`)
+      }
+      if (store) await toStore(store, url, response)
     }
     return response
   }
+}
+
+/**
+ * What happened this session, per reason.
+ *
+ * Counting is not the same as reporting: a report is deduplicated per address
+ * and batched to the gate, which is right for collecting an outage but useless
+ * to a tester who needs to know whether a scene produced three failures or
+ * three hundred.
+ */
+export function diagnose() {
+  return {
+    counts: { ...counts },
+    failures: [...failures],
+    reported: reportedSoFar(),
+  }
+}
+
+export function resetDiagnosis() {
+  for (const key of Object.keys(counts)) delete counts[key]
+  failures.length = 0
 }
 
 /** Pull a whole list of addresses into the store before anyone clicks. */

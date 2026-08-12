@@ -6,10 +6,19 @@
  * all: the documents carry the address of the gate instead, and the browser
  * fetches the bytes the first time a scene is actually opened.
  *
- * The split runs along the file type, not the size. Video and sound go to the
- * edge, images and JSON stay local. Measured over the fifteen beta releases:
- * 18.08 GB moves to the edge and 1.31 GB stays on the customer's disk, so an
- * install shrinks by a factor of fourteen.
+ * The split is not decided here. Every manifest entry carries the role it was
+ * given when the release was prepared, and this file only obeys it. Five roles
+ * occur, and the module treats each differently:
+ *
+ *   edge    an address per release, behind the key check
+ *   shared  one address for content several releases have in common, no key
+ *   local   downloaded into the world; the pictures a failed edge must not take
+ *   doc     the document collections
+ *   skip    not downloaded and not rewritten: the client already has the file
+ *
+ * Measured over the fifteen beta releases: 18.98 GB moves to the edge, 0.03 GB
+ * collapses into the shared space, 0.38 GB stays on the customer's disk, and
+ * 0.01 GB is not shipped at all.
  *
  * Two things are deliberately NOT done here.
  *
@@ -23,19 +32,35 @@
  * appears in no manifest, so it cannot be rewritten by accident.
  */
 
-import { assetUrl, streamEnabled } from "./stream-settings.mjs"
+import { assetUrl, streamBase, streamEnabled, streamKey } from "./stream-settings.mjs"
 
 const PACK_SOURCE_PREFIX = "beneos_assets/beneos_battlemaps/"
 const CLOUD_INSTALL_PREFIX = "beneos_assets/cloud/battlemaps/"
+const PACKAGED_INSTALL_PREFIX = "beneos_assets/cloud/packaged/"
 const DOC_DIR = "_docs/"
 
 const stripLeadSlash = (p) => String(p).replace(/^\/+/, "")
 
-/** Where a packed asset ends up in the world. Mirrors the installer's own rule. */
+/**
+ * Where a packed asset ends up in the world. Mirrors the installer's own rule,
+ * both halves of it (beneos-native-installer.mjs:755-770).
+ *
+ * The second half matters now and did not before. Anything that does not land
+ * in a `beneos_assets/` namespace is relocated under the packaged prefix,
+ * because writing it back into `modules/` or `icons/` would be overwritten by
+ * the next package update. While only video and sound were streamed the point
+ * never came up, since both always sit under `beneos_assets/`. With pictures
+ * streamed it comes up at once: the scene thumbnails under `worlds/` would get
+ * a key that matches nothing after the rewrite, and the second pass would walk
+ * silently past them.
+ */
 function installedPath(inWorld) {
-  return inWorld.includes(PACK_SOURCE_PREFIX)
+  const swapped = inWorld.includes(PACK_SOURCE_PREFIX)
     ? inWorld.split(PACK_SOURCE_PREFIX).join(CLOUD_INSTALL_PREFIX)
     : inWorld
+  return /^beneos_assets\//i.test(swapped)
+    ? swapped
+    : PACKAGED_INSTALL_PREFIX + stripLeadSlash(swapped)
 }
 
 /**
@@ -83,26 +108,68 @@ export function buildStreamPack(manifest, release, variant) {
   const streamTargets = new Map()
   let edgeBytes = 0
   let localBytes = 0
+  let sharedBytes = 0
+  let skipped = 0
 
   for (const entry of manifest.entries) {
     const key = stripLeadSlash(entry.key)
-    const url = assetUrl(release, variant, key)
 
     if (key.startsWith(DOC_DIR)) {
-      packInfo[`data/${key.slice(DOC_DIR.length)}`] = url
+      packInfo[`data/${key.slice(DOC_DIR.length)}`] = assetUrl(release, variant, key)
       continue
     }
+
+    // Neither downloaded nor rewritten. The reference is left exactly as the
+    // document wrote it, because Foundry resolves `icons/...` against its own
+    // installation and the module's own icons ship with the module. Verified
+    // by checksum on 2026-08-12, not assumed: all 345 module-owned files in the
+    // beta packages are byte-identical to the installed ones.
+    if (entry.role === "skip") {
+      skipped += 1
+      continue
+    }
+
+    // Never enter packInfo: an entry there would be downloaded.
     if (entry.role === "edge") {
-      // Never enters packInfo: an entry there would be downloaded.
-      streamTargets.set(stripLeadSlash(installedPath(key)), url)
+      streamTargets.set(stripLeadSlash(installedPath(key)),
+                        assetUrl(release, variant, key))
       edgeBytes += entry.bytes || 0
       continue
     }
-    packInfo[`data/assets/${key}`] = url
+    if (entry.role === "shared") {
+      // The address does not follow from release and variant, so it cannot be
+      // derived and is read from the manifest. A shared entry without one is
+      // dropped to the per-release address rather than guessed at.
+      const url = entry.url || assetUrl(release, variant, key)
+      streamTargets.set(stripLeadSlash(installedPath(key)), url)
+      sharedBytes += entry.bytes || 0
+      continue
+    }
+
+    packInfo[`data/assets/${key}`] = assetUrl(release, variant, key)
     localBytes += entry.bytes || 0
   }
 
-  return { packInfo, streamTargets, edgeBytes, localBytes }
+  return { packInfo, streamTargets, edgeBytes, localBytes, sharedBytes, skipped }
+}
+
+/**
+ * The beta release listing, in the shape the cloud window's own listing has.
+ *
+ * The beta has no database behind it: the gate filters a static catalogue
+ * against the key and returns the rows unchanged, so the window can render and
+ * install from them without knowing where they came from.
+ */
+export async function listReleases() {
+  const response = await fetch(`${streamBase().replace(/\/+$/, "")}/catalog/${streamKey()}`)
+  if (!response.ok) {
+    throw new Error(`beta catalogue unavailable (${response.status})`)
+  }
+  const body = await response.json()
+  if (!Array.isArray(body?.releases)) {
+    throw new Error("beta catalogue malformed")
+  }
+  return body.releases
 }
 
 /**

@@ -12,9 +12,9 @@
  */
 
 import { registerStreamSettings, streamEnabled, streamKey, streamBase, streamHost } from "./stream-settings.mjs"
-import { installStreamFetch, storeStatus, clearStore, prewarm } from "./stream-fetch.mjs"
+import { installStreamFetch, storeStatus, clearStore, prewarm, diagnose, resetDiagnosis } from "./stream-fetch.mjs"
 import { betaMayRun, ensureAcknowledged } from "./stream-guard.mjs"
-import { loadStreamManifest, buildStreamPack, applyStreamAddresses, streamUrlsOf, releaseFromPackage } from "./stream-install.mjs"
+import { loadStreamManifest, buildStreamPack, applyStreamAddresses, streamUrlsOf, releaseFromPackage, listReleases } from "./stream-install.mjs"
 import { reportedSoFar } from "./stream-report.mjs"
 
 Hooks.once("init", () => {
@@ -37,9 +37,12 @@ Hooks.once("init", () => {
     buildStreamPack,
     applyStreamAddresses,
     streamUrlsOf,
+    listReleases,
     prewarm,
     storeStatus,
     clearStore,
+    diagnose,
+    resetDiagnosis,
     reportedSoFar,
   }
   globalThis.BeneosStream = api
