@@ -261,17 +261,18 @@ document.head.appendChild(WATCHER_CSS);
 
 const isBeneosPath = (src) => {
   if (!src || typeof src !== "string") return false;
-  if (/^https?:\/\//i.test(src)) {
-    // Beta: Beneos Stream. Absolute addresses are skipped as a rule, because a
-    // HEAD against a foreign host cannot tell "really gone" from "blocked by
-    // the browser". Our own delivery gate is the exception: it answers HEAD and
-    // allows the origin, so the check works there and streamed scenes are not
-    // silently exempt from it.
-    try {
-      const host = globalThis.BeneosStream?.enabled() ? globalThis.BeneosStream.host?.() : "";
-      return Boolean(host) && new URL(src).host === host;
-    } catch (_) { return false; }
-  }
+  // Absolute addresses are not this watcher's business, and that includes the
+  // ones the streaming beta puts into scenes.
+  //
+  // Letting them through was tried on 2026-08-12 and produced a false alarm on
+  // every streamed asset: headCheck percent-encodes each path segment, which
+  // turns "https:" into "https%3A", so the address falls apart and the request
+  // lands nowhere. A customer with a perfectly working scene got a dialog
+  // telling them two files were missing, which is worse than not checking.
+  //
+  // Streamed media has its own monitoring anyway: scripts/stream/stream-report.mjs
+  // reports every failed fetch to the gate, which is the place that can act on it.
+  if (/^https?:\/\//i.test(src)) return false;
   return BENEOS_PATH_RE.test(src);
 };
 
