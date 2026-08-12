@@ -84,6 +84,11 @@ export class BeneosAnalytics {
       // have it). Never send telemetry from such a world, so development noise and
       // deliberately provoked errors stay out of the production analytics.
       if (game.modules?.get("beneos-dev")?.active) return false
+      // Same reasoning for the streaming beta: a world running it produces
+      // errors and timings that describe the beta, not the product, and mixing
+      // them into the live figures would corrupt exactly the numbers the beta
+      // is meant to be judged against.
+      if (globalThis.BeneosStream?.enabled()) return false
       return !!game.settings.get(this.moduleId(), "beneos-analytics-enabled")
     } catch (_) { return false }
   }

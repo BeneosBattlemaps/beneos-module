@@ -1,15 +1,15 @@
 {
   "title": "Beneos Module",
   "description": "Features for Beneos Battlemaps, Creatures, Spells and Loot",
-  "version": "14.4.6",
+  "version": "14.5.0-beta.1",
   "socket": true,
   "compatibility": {
     "minimum": "13",
     "verified": "14.365"
   },
   "url": "https://github.com/BeneosBattlemaps/beneos-module",
-  "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-module/main/module.json",
-  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/14.4.6.zip",
+  "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-module/stream-beta/module.json",
+  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/14.5.0-beta.1.zip",
   "scripts": [
     "scripts/beneosfx.js"
   ],
@@ -50,7 +50,8 @@
 	"scripts/lgc/beneos-lgc.mjs",
 	"scripts/codex2/item-companion.mjs",
 	"scripts/creature-installer/creature-installer.mjs",
-	"scripts/cloud-v2/wiki/beneos-wiki-window.mjs"
+	"scripts/cloud-v2/wiki/beneos-wiki-window.mjs",
+	"scripts/stream/beneos-stream.mjs"
   ],
   "languages": [
     { "lang": "en",    "name": "English",                 "path": "lang/en.json" },

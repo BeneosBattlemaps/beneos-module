@@ -705,6 +705,20 @@ export class BeneosNativeBattlemapInstaller {
    *           same, so unpack + storage stay byte-identical to a cloud install.
    */
   async #loadPackInfo() {
+    // Beta: Beneos Stream. The heavy files never enter packInfo, so nothing
+    // downloads them; their addresses are applied to the documents further down
+    // (#importDocuments). With the beta switch off this branch does not exist.
+    // See scripts/stream/stream-install.mjs.
+    const stream = globalThis.BeneosStream
+    if (stream?.enabled() && this.source?.kind !== "zip") {
+      const { release, variant } = stream.releaseFromPackage(this.packageId)
+      const manifest = await stream.loadStreamManifest(release, variant)
+      const built = stream.buildStreamPack(manifest, release, variant)
+      this._streamTargets = built.streamTargets
+      console.log(`Beneos Stream | ${release}/${variant}: ${built.streamTargets.size} files stay at the edge, `
+        + `${Math.round(built.edgeBytes / 1048576)} MB, ${Math.round(built.localBytes / 1048576)} MB installed locally`)
+      return built.packInfo
+    }
     if (this.source?.kind === "zip") {
       const entries = (this.source.entries instanceof Map)
         ? this.source.entries
@@ -1603,6 +1617,17 @@ export class BeneosNativeBattlemapInstaller {
       // Punkt 8: reveal this phase with its real document count.
       this.progress.revealPhase?.(meta.phaseKey, { status: "active", current: 0, total: arr.length })
       for (let i = 0; i < arr.length; i++) arr[i] = rewriteDocAssetPaths(arr[i], this._packagedRemap, this._uploadRemap)
+
+      // Beta: Beneos Stream. Second pass over the paths the line above just
+      // produced, swapping the ones that stay at the edge for their gate
+      // address. Deliberately after the fact and not inside remapAssetString:
+      // that function returns early after its prefix swap, so a battlemap path
+      // never reaches its exact-match table, and bending it would put a beta
+      // concern into the middle of the live install path.
+      if (this._streamTargets?.size) {
+        const apply = globalThis.BeneosStream?.applyStreamAddresses
+        if (apply) for (let i = 0; i < arr.length; i++) arr[i] = apply(arr[i], this._streamTargets)
+      }
 
       // Playlists grow, they are never replaced: the export ships each release's
       // playlist with only the few sounds that release uses (same playlist _id +

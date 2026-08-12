@@ -261,7 +261,17 @@ document.head.appendChild(WATCHER_CSS);
 
 const isBeneosPath = (src) => {
   if (!src || typeof src !== "string") return false;
-  if (/^https?:\/\//i.test(src)) return false;
+  if (/^https?:\/\//i.test(src)) {
+    // Beta: Beneos Stream. Absolute addresses are skipped as a rule, because a
+    // HEAD against a foreign host cannot tell "really gone" from "blocked by
+    // the browser". Our own delivery gate is the exception: it answers HEAD and
+    // allows the origin, so the check works there and streamed scenes are not
+    // silently exempt from it.
+    try {
+      const host = globalThis.BeneosStream?.enabled() ? globalThis.BeneosStream.host?.() : "";
+      return Boolean(host) && new URL(src).host === host;
+    } catch (_) { return false; }
+  }
   return BENEOS_PATH_RE.test(src);
 };
 
