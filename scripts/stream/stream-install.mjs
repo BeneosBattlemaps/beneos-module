@@ -83,8 +83,14 @@ export function releaseFromPackage(packageId) {
  * `doc` is a document collection.
  */
 export async function loadStreamManifest(release, variant) {
-  const url = assetUrl(release, variant, "stream-manifest.json")
-  const response = await fetch(url)
+  // Cache-busted on purpose. The manifest decides, per file, whether it is
+  // downloaded or stays an address, and it lives at a fixed address whose
+  // content changes every time a release is prepared again. Measured on
+  // 2026-08-12: a re-published release installed from the previous run's
+  // manifest, held at the edge, and pulled down 62 files that should have
+  // stayed remote. Nothing failed and nothing was logged.
+  const url = `${assetUrl(release, variant, "stream-manifest.json")}?t=${Date.now()}`
+  const response = await fetch(url, { cache: "no-store" })
   if (!response.ok) {
     throw new Error(`stream manifest unavailable (${response.status}) for ${release}/${variant}`)
   }

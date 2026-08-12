@@ -44,6 +44,20 @@ function count(reason, url) {
   }
 }
 
+/**
+ * A file that decides rather than one that is shown.
+ *
+ * The store must pass these through in both directions, and the read side is
+ * the half that matters. Lookups use `ignoreSearch`, which is right for assets
+ * whose signature rotates in the query, but it makes a cache-busting query on
+ * the manifest do nothing at all: on 2026-08-12 a re-published release kept
+ * installing from a three-day-old manifest held here, and the write-side guard
+ * alone did not help because the stale copy was already in the store.
+ */
+function isControl(url) {
+  return /stream-manifest\.json/i.test(String(url))
+}
+
 /** Is this a request for our own delivery gate? */
 function ours(url) {
   const host = streamHost()
@@ -89,6 +103,7 @@ async function toStore(store, url, response) {
   // A denied asset answers 200 with a placeholder pixel. Storing that would
   // freeze the denial in place for three days, long after the right returns.
   if (!response.ok || response.headers.get("x-beneos-denied")) return
+  if (isControl(url)) return
   try { await store.put(url, await stamped(response.clone())) } catch (_) { /* quota, opaque, ignore */ }
 }
 
@@ -110,7 +125,7 @@ export function installStreamFetch() {
     const url = typeof input === "string" ? input : input?.url
     if (!url || !ours(url)) return original(input, init)
 
-    const store = localCacheEnabled() ? await openStore() : null
+    const store = (localCacheEnabled() && !isControl(url)) ? await openStore() : null
     if (store) {
       const hit = await fromStore(store, url)
       if (hit) {
