@@ -153,8 +153,14 @@ function installSceneGuard() {
   if (!Scene?.prototype?.view || Scene.prototype.view.__beneosStream) return
 
   const original = Scene.prototype.view
+  // Foundry reaches `view` more than once for a single click, so a naive
+  // refusal produced the same sentence twice in a row. Measured 2026-08-12.
+  let lastRefusal = { id: "", at: 0 }
   const wrapped = async function beneosStreamView(...args) {
     if (streamEnabled() && isOffline() && hasStreamedContent(this)) {
+      const now = Date.now()
+      if (lastRefusal.id === this.id && now - lastRefusal.at < 5000) return this
+      lastRefusal = { id: this.id, at: now }
       // Warn, not error: this is a state of the world, not a fault of the
       // software, and the module's own convention reserves error for faults.
       ui.notifications?.warn?.(

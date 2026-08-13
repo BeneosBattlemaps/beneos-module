@@ -122,7 +122,13 @@ export function buildStreamPack(manifest, release, variant) {
     const key = stripLeadSlash(entry.key)
 
     if (key.startsWith(DOC_DIR)) {
-      packInfo[`data/${key.slice(DOC_DIR.length)}`] = assetUrl(release, variant, key)
+      // Cache-busted for the same reason as the manifest. A document collection
+      // is rewritten every time a release is prepared again, and it sits at a
+      // fixed address; without this the edge answers with the version it has
+      // been holding, and the install builds a world from documents that no
+      // longer describe the package it just fetched.
+      packInfo[`data/${key.slice(DOC_DIR.length)}`] =
+        `${assetUrl(release, variant, key)}?t=${Date.now()}`
       continue
     }
 

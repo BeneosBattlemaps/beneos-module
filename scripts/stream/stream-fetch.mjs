@@ -81,7 +81,7 @@ function count(reason, url) {
  * alone did not help because the stale copy was already in the store.
  */
 function isControl(url) {
-  return /stream-manifest\.json/i.test(String(url))
+  return /stream-manifest\.json/i.test(String(url)) || /\/_docs\//i.test(String(url))
 }
 
 /** Is this a request for our own delivery gate? */
