@@ -20,12 +20,38 @@
  * to the gate cut, video running, 59 frames per second.
  */
 
-import { localCacheEnabled, streamEnabled, streamHost } from "./stream-settings.mjs"
+import { budgetFor, localCacheEnabled, streamEnabled, streamHost } from "./stream-settings.mjs"
 import { reportFailure, reportedSoFar } from "./stream-report.mjs"
+import { noteResult } from "./stream-online.mjs"
 
 const CACHE_NAME = "beneos-stream-v1"
 const TTL_MS = 72 * 60 * 60 * 1000
 const STAMP_HEADER = "x-beneos-stored"
+
+/**
+ * Every request in flight, so a watchdog can end them all at once.
+ *
+ * Foundry has no way to do this. A scene draw waits on `Promise.allSettled`
+ * over every texture, and nothing in that chain has a timeout, so one transfer
+ * that neither completes nor errors parks the draw forever: `canvas.loading`
+ * stays true and `Scene#view` then refuses every further scene change for the
+ * rest of the session. Aborting turns the stall into an error, and an error is
+ * something Foundry survives.
+ */
+const inFlight = new Set()
+
+export function abortAll(reason = "watchdog") {
+  let n = 0
+  for (const controller of [...inFlight]) {
+    try { controller.abort(reason); n += 1 } catch (_) { /* already gone */ }
+  }
+  inFlight.clear()
+  return n
+}
+
+export function inFlightCount() {
+  return inFlight.size
+}
 
 // How many failures are worth keeping the address of. Past this the counters
 // keep counting; only the list stops growing, so a broken release cannot fill
@@ -134,17 +160,56 @@ export function installStreamFetch() {
       }
     }
 
+    // A budget of our own, because Foundry has none. `TextureLoader` sets no
+    // deadline, PIXI hands the URL to a bare `fetch` without a signal, and
+    // Foundry's own `fetchWithTimeout` is used nowhere on the asset path. The
+    // budget follows the file type: a picture that takes half a minute is
+    // broken, a video that takes two is merely large.
+    //
+    // The deadline deliberately outlives the `await` below. `fetch` resolves as
+    // soon as the headers arrive, while PIXI then reads the body with `.blob()`
+    // and a seventy-megabyte video spends almost all of its time in that second
+    // half. A timer cleared on the header would guard the part that never
+    // stalls and leave the part that does. Aborting a request whose body has
+    // already been read is a no-op, so letting it run costs nothing.
+    const controller = new AbortController()
+    const budget = budgetFor(url)
+    inFlight.add(controller)
+    const release = () => { inFlight.delete(controller) }
+    const timer = budget > 0
+      ? setTimeout(() => {
+          try { controller.abort("timeout") } catch (_) { /* already settled */ }
+          release()
+        }, budget)
+      : null
+
+    const callerSignal = init?.signal
+    const signal = (callerSignal && AbortSignal.any)
+      ? AbortSignal.any([callerSignal, controller.signal])
+      : controller.signal
+
     let response
     try {
-      response = await original(input, init)
+      response = await original(input, { ...(init || {}), signal })
     } catch (err) {
-      count("network", url)
-      reportFailure({ url, reason: "network", detail: String(err).slice(0, 200) })
+      if (timer) clearTimeout(timer)
+      release()
+      const aborted = controller.signal.aborted
+      const reason = aborted ? "timeout" : "network"
+      count(reason, url)
+      noteResult(false, reason)
+      reportFailure({ url, reason, detail: aborted
+        ? `no answer within ${Math.round(budget / 1000)} s`
+        : String(err).slice(0, 200) })
       throw err
     }
 
     if (!response.ok) {
       count("status", url)
+      // An answer with a status is proof the gate is reachable, whatever it
+      // says. Counting it as a connection failure would put a world with one
+      // expired release into permanent "offline".
+      noteResult(true)
       reportFailure({ url, reason: "status", detail: String(response.status) })
     } else if (response.headers.get("x-beneos-denied")) {
       // The one failure mode nobody could see. A refusal answers 200 with a
@@ -155,10 +220,12 @@ export function installStreamFetch() {
       // no console line, no report. A failure that leaves no trace cannot be
       // measured, and round three of the beta programme exists to measure it.
       count("denied", url)
+      noteResult(true)
       reportFailure({ url, reason: "denied", detail: "placeholder returned" })
       console.warn(`Beneos Stream | denied by the gate: ${url}`)
     } else {
       count("ok")
+      noteResult(true)
       const fault = response.headers.get("x-beneos-fault")
       if (fault) {
         count(`fault:${fault}`, url)

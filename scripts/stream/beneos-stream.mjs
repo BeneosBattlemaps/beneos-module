@@ -11,8 +11,11 @@
  * branch: a tester can go back by pointing the manifest at main again.
  */
 
-import { registerStreamSettings, streamEnabled, streamKey, streamBase, streamHost } from "./stream-settings.mjs"
-import { installStreamFetch, storeStatus, clearStore, prewarm, diagnose, resetDiagnosis } from "./stream-fetch.mjs"
+import { registerStreamSettings, streamEnabled, streamKey, streamBase, streamHost, pinStillsEnabled } from "./stream-settings.mjs"
+import { installStreamFetch, storeStatus, clearStore, prewarm, diagnose, resetDiagnosis, abortAll } from "./stream-fetch.mjs"
+import { installStreamCanvas, drawStatus, videoTilesOf } from "./stream-canvas.mjs"
+import { installStreamOnline, onlineStatus, streamState, isOffline, hasStreamedContent } from "./stream-online.mjs"
+import { installStreamIndicator } from "./stream-indicator.mjs"
 import { betaMayRun, ensureAcknowledged } from "./stream-guard.mjs"
 import { loadStreamManifest, buildStreamPack, applyStreamAddresses, streamUrlsOf, releaseFromPackage, listReleases } from "./stream-install.mjs"
 import { reportedSoFar } from "./stream-report.mjs"
@@ -22,7 +25,12 @@ Hooks.once("init", () => {
 
   // Only patch when the switch is on. An off beta must cost nothing, not even
   // a wrapped fetch.
-  if (streamEnabled()) installStreamFetch()
+  if (streamEnabled()) {
+    installStreamFetch()
+    installStreamOnline()
+    installStreamCanvas()
+    installStreamIndicator()
+  }
 
   // The installer reaches for this rather than importing the beta directly, so
   // the live code path keeps no hard dependency on a beta module.
@@ -44,6 +52,15 @@ Hooks.once("init", () => {
     diagnose,
     resetDiagnosis,
     reportedSoFar,
+    // Connection and watchdog, the parts the test programme reads
+    state: () => streamState(),
+    offline: () => isOffline(),
+    onlineStatus,
+    drawStatus,
+    videoTilesOf,
+    hasStreamedContent,
+    abortAll,
+    pinStills: () => pinStillsEnabled(),
   }
   globalThis.BeneosStream = api
   game.beneos = game.beneos || {}
@@ -60,6 +77,7 @@ Hooks.once("ready", async () => {
   const store = await storeStatus()
   console.log(
     `Beneos Stream | beta active | gate ${streamBase()} | key ${streamKey() ? "set" : "MISSING"} | ` +
+    `${streamState()} | pin-stills ${pinStillsEnabled() ? "on" : "off"} | ` +
     `store ${store.entries} entries, ${store.usageMB} MB of ${store.quotaGB} GB, persisted=${store.persisted}`
   )
 })

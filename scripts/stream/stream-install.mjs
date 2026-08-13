@@ -32,7 +32,7 @@
  * appears in no manifest, so it cannot be rewritten by accident.
  */
 
-import { assetUrl, streamBase, streamEnabled, streamKey } from "./stream-settings.mjs"
+import { assetUrl, pinStillsEnabled, streamBase, streamEnabled, streamKey } from "./stream-settings.mjs"
 
 const PACK_SOURCE_PREFIX = "beneos_assets/beneos_battlemaps/"
 const CLOUD_INSTALL_PREFIX = "beneos_assets/cloud/battlemaps/"
@@ -116,6 +116,7 @@ export function buildStreamPack(manifest, release, variant) {
   let localBytes = 0
   let sharedBytes = 0
   let skipped = 0
+  let pinned = 0
 
   for (const entry of manifest.entries) {
     const key = stripLeadSlash(entry.key)
@@ -132,6 +133,18 @@ export function buildStreamPack(manifest, release, variant) {
     // beta packages are byte-identical to the installed ones.
     if (entry.role === "skip") {
       skipped += 1
+      continue
+    }
+
+    // The cautious variant, off by default. The manifest marks per file whether
+    // it is one of the pictures a scene needs in order to draw at all; with the
+    // switch on those are downloaded instead of streamed. Keeping the mark in
+    // the manifest rather than in the role is what lets the two forms be
+    // compared by reloading rather than by preparing and publishing again.
+    if (entry.pin && pinStillsEnabled()) {
+      packInfo[`data/assets/${key}`] = assetUrl(release, variant, key)
+      localBytes += entry.bytes || 0
+      pinned += 1
       continue
     }
 
@@ -156,7 +169,7 @@ export function buildStreamPack(manifest, release, variant) {
     localBytes += entry.bytes || 0
   }
 
-  return { packInfo, streamTargets, edgeBytes, localBytes, sharedBytes, skipped }
+  return { packInfo, streamTargets, edgeBytes, localBytes, sharedBytes, skipped, pinned }
 }
 
 /**
