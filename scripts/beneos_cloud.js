@@ -2348,6 +2348,12 @@ export class BeneosCloud {
    *   - World actors the DM has renamed are left untouched.
    *   - Scene tokens whose name still matches the originalName get their
    *     visuals (texture, name) refreshed; renamed scene tokens are skipped.
+   *   - Exception: a token the creature drawer renamed itself when it took an
+   *     SRD's slot (flag beneos-module.replacedName, still equal to the current
+   *     name). That name belongs to the adventure, not to the GM, so the token
+   *     is refreshed like any other but keeps its name. Without the exception
+   *     every 1:1 replacement would fall out of the refresh below, and with it
+   *     out of the item/effect renewal that only runs for matched tokens.
    *
    * Lazy migration: actors installed before originalName was tracked have
    * no flag yet — for those we treat the current compendium name as the
@@ -2409,12 +2415,19 @@ export class BeneosCloud {
           if (!actor) continue
           const flag = actor.getFlag("world", "beneos") || {}
           const baseline = flag.originalName ?? compendiumName
-          if (token.name !== baseline) continue
-          tokenUpdates.push({
+          // The drawer stamps replacedName when it puts this creature into an
+          // SRD's slot. Equal to the current name means we set it, so refresh
+          // the token but leave the adventure's name alone. Any other deviation
+          // is the GM's own renaming and stays untouched.
+          const ownRename = token.getFlag?.(BeneosUtility.moduleID(), "replacedName")
+          const isOwnRename = !!ownRename && ownRename === token.name
+          if (token.name !== baseline && !isOwnRename) continue
+          const tokenUpdate = {
             _id: token.id,
-            name: compendiumName,
             "texture.src": imported.prototypeToken.texture.src
-          })
+          }
+          if (!isOwnRename) tokenUpdate.name = compendiumName
+          tokenUpdates.push(tokenUpdate)
           matchedTokens++
         }
         if (tokenUpdates.length) {

@@ -4,6 +4,14 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.4.7 # 2026-08-13
+
+**Improved**
+- Improved: A Beneos creature that replaces a free one on a map now keeps that creature's name, nameplate setting and disposition. Adventure modules address their NPCs by the name on the map, so the generic thief called "Harald" stays "Harald" after the upgrade, and everything the module hangs on that name keeps working. Only the token on the map is renamed: the creature in your world, its prototype and the drawer keep the Beneos name, and artwork, size and statblock stay untouched.
+
+**Fixes**
+- Fixed: A creature placed that way dropped out of later updates. Re-installing it refreshed every other token but skipped the renamed one, leaving it with the old artwork and the old statblock. The module now tells its own renaming apart from yours: it refreshes the token and leaves the name alone, while a creature you renamed yourself stays untouched as before.
+
 ### 14.4.6 # 2026-08-07
 
 **New**
