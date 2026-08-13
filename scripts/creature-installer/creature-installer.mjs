@@ -753,9 +753,15 @@ export class BeneosCreatureInstaller {
    *    resolved world actor (SRD: same id via keepId import; Beneos: new id).
    *  - `!full`: the placement belongs to a DIFFERENT actor (an assigned Beneos
    *    taking an SRD's slot). Keep only the placement subset so the Beneos keeps
-   *    its own appearance/vision but inherits position + disposition.
+   *    its own appearance/vision but inherits position, disposition and IDENTITY
+   *    (name + nameplate visibility). Identity travels because an adventure
+   *    addresses the NPC by the name on the map, not by the statblock behind it:
+   *    the module's "Harald" must stay "Harald" after a generic SRD thief is
+   *    upgraded to a Beneos creature, or every reference in that module breaks.
+   *    Only the token document is written; the world actor and its prototype
+   *    keep the Beneos name, which is also what the drawer keeps showing.
    * Entries captured before the full-token migration only carry the subset
-   * fields; in that case `full` degrades gracefully to the same result.
+   * fields; `inheritName` is the fallback for those, taken from the drawer entry.
    *
    * `premium` drops the stored texture block. A Beneos placement was authored
    * against the author's own copy under beneos_assets/beneos_tokens/, but the
@@ -766,7 +772,7 @@ export class BeneosCreatureInstaller {
    * they chose (2.5D or top-down). Everything else the author set up - size,
    * name, vision, light, bars, disposition - still comes from the placement.
    */
-  async #buildToken(actor, pos, { full = true, premium = false } = {}) {
+  async #buildToken(actor, pos, { full = true, premium = false, inheritName = null } = {}) {
     let data;
     if (full) {
       data = foundry.utils.deepClone(pos);
@@ -781,6 +787,19 @@ export class BeneosCreatureInstaller {
         hidden: !!pos.hidden
       };
       if (typeof pos.disposition === "number") data.disposition = pos.disposition;
+      // Identity of the slot, not of the creature (see the doc block above).
+      // displayName travels with it, otherwise the inherited name could sit on a
+      // token whose Beneos prototype never shows a nameplate.
+      const name = pos.name || inheritName;
+      if (name) {
+        data.name = name;
+        if (typeof pos.displayName === "number") data.displayName = pos.displayName;
+        // Records that WE renamed this token, not the GM. The cloud update
+        // cascade skips renamed tokens to protect the GM's own naming; without
+        // this marker an assigned Beneos would silently drop out of every later
+        // image and statblock refresh (see _propagateTokenUpdateToWorld).
+        data.flags = { ...(data.flags || {}), [MODULE_ID]: { replacedName: name } };
+      }
     }
     const td = await actor.getTokenDocument(data);
     return td.toObject();
@@ -790,8 +809,8 @@ export class BeneosCreatureInstaller {
    * "Place Beneos Creatures on Map" - the best version of every slot:
    *  - each SRD slot: its assigned Beneos at the SRD's position, else the SRD itself;
    *  - any standalone Beneos (not used as a replacement) at its own position.
-   *  No duplicates. Assigned Beneos keep their own size; only x/y/elev/rot come
-   *  from the SRD slot they replace.
+   *  No duplicates. Assigned Beneos keep their own size and art; x/y/elev/rot,
+   *  disposition and the name come from the SRD slot they replace.
    */
   async #placeBestVersion() {
     const scene = this.scene;
@@ -816,8 +835,9 @@ export class BeneosCreatureInstaller {
       if (beneosActor) {
         placedBeneos.add(entryKey(srd.replacedBy));
         // Assigned Beneos at the SRD slot: keep the Beneos's own appearance, only
-        // take position + disposition from the SRD placement (subset).
-        await placeAll(beneosActor, positions, { full: false });
+        // take position, disposition and identity from the SRD placement (subset).
+        // srd.name is the fallback for pre-full-token entries, which store no name.
+        await placeAll(beneosActor, positions, { full: false, inheritName: srd.name });
         continue;
       }
       const srdActor = this.resolveActor(srd);
