@@ -11,13 +11,13 @@
  * branch: a tester can go back by pointing the manifest at main again.
  */
 
-import { registerStreamSettings, streamEnabled, streamKey, streamBase, streamHost, pinStillsEnabled } from "./stream-settings.mjs"
+import { registerStreamSettings, streamEnabled, streamKey, streamBase, streamHost, pinStillsEnabled, installMode, downloadMode } from "./stream-settings.mjs"
 import { installStreamFetch, storeStatus, clearStore, prewarm, diagnose, resetDiagnosis, abortAll } from "./stream-fetch.mjs"
 import { installStreamCanvas, drawStatus, videoTilesOf } from "./stream-canvas.mjs"
 import { installStreamOnline, onlineStatus, streamState, isOffline, hasStreamedContent } from "./stream-online.mjs"
 import { installStreamIndicator } from "./stream-indicator.mjs"
 import { betaMayRun, ensureAcknowledged } from "./stream-guard.mjs"
-import { loadStreamManifest, buildStreamPack, applyStreamAddresses, streamUrlsOf, releaseFromPackage, listReleases } from "./stream-install.mjs"
+import { loadStreamManifest, buildStreamPack, applyStreamAddresses, restoreLocalVideos, streamUrlsOf, releaseFromPackage, listReleases } from "./stream-install.mjs"
 import { reportedSoFar } from "./stream-report.mjs"
 
 Hooks.once("init", () => {
@@ -44,6 +44,9 @@ Hooks.once("init", () => {
     loadStreamManifest,
     buildStreamPack,
     applyStreamAddresses,
+    restoreLocalVideos,
+    installMode: () => installMode(),
+    downloadMode: () => downloadMode(),
     streamUrlsOf,
     listReleases,
     prewarm,
@@ -77,7 +80,7 @@ Hooks.once("ready", async () => {
   const store = await storeStatus()
   console.log(
     `Beneos Stream | beta active | gate ${streamBase()} | key ${streamKey() ? "set" : "MISSING"} | ` +
-    `${streamState()} | pin-stills ${pinStillsEnabled() ? "on" : "off"} | ` +
+    `${streamState()} | install ${installMode()} | pin-stills ${pinStillsEnabled() ? "on" : "off"} | ` +
     `store ${store.entries} entries, ${store.usageMB} MB of ${store.quotaGB} GB, persisted=${store.persisted}`
   )
 })

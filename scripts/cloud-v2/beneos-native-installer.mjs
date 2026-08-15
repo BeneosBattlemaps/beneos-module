@@ -718,7 +718,8 @@ export class BeneosNativeBattlemapInstaller {
       const manifest = await stream.loadStreamManifest(release, variant)
       const built = stream.buildStreamPack(manifest, release, variant)
       this._streamTargets = built.streamTargets
-      console.log(`Beneos Stream | ${release}/${variant}: ${built.streamTargets.size} files stay remote `
+      console.log(`Beneos Stream | ${release}/${variant} | mode ${built.download ? "download" : "stream"} | `
+        + `${built.streamTargets.size} files stay remote `
         + `(${Math.round(built.edgeBytes / 1048576)} MB per release, `
         + `${Math.round((built.sharedBytes || 0) / 1048576)} MB shared), `
         + `${Math.round(built.localBytes / 1048576)} MB installed, ${built.skipped || 0} not shipped`)
@@ -1632,6 +1633,14 @@ export class BeneosNativeBattlemapInstaller {
       if (this._streamTargets?.size) {
         const apply = globalThis.BeneosStream?.applyStreamAddresses
         if (apply) for (let i = 0; i < arr.length; i++) arr[i] = apply(arr[i], this._streamTargets)
+      }
+
+      // Beta: measuring mode. Nothing stays at the edge here, so the pass above
+      // has nothing to do; instead the video goes back into its tile, because a
+      // file on the customer's own disk has no business sitting in a flag.
+      if (relPath === "data/Scene.json" && globalThis.BeneosStream?.downloadMode?.()) {
+        const restore = globalThis.BeneosStream?.restoreLocalVideos
+        if (restore) for (let i = 0; i < arr.length; i++) arr[i] = restore(arr[i])
       }
 
       // Playlists grow, they are never replaced: the export ships each release's

@@ -32,12 +32,17 @@
  * appears in no manifest, so it cannot be rewritten by accident.
  */
 
-import { assetUrl, pinStillsEnabled, streamBase, streamEnabled, streamKey } from "./stream-settings.mjs"
+import { assetUrl, downloadMode, pinStillsEnabled, streamBase, streamEnabled, streamKey } from "./stream-settings.mjs"
 
 const PACK_SOURCE_PREFIX = "beneos_assets/beneos_battlemaps/"
 const CLOUD_INSTALL_PREFIX = "beneos_assets/cloud/battlemaps/"
 const PACKAGED_INSTALL_PREFIX = "beneos_assets/cloud/packaged/"
 const DOC_DIR = "_docs/"
+
+// Same three constants the preparation tool writes and the canvas hook reads.
+const FLAG_SCOPE = "beneos-module"
+const FLAG_KEY = "stream"
+const ROLE_VIDEO = "stream-video"
 
 const stripLeadSlash = (p) => String(p).replace(/^\/+/, "")
 
@@ -112,6 +117,7 @@ export async function loadStreamManifest(release, variant) {
 export function buildStreamPack(manifest, release, variant) {
   const packInfo = {}
   const streamTargets = new Map()
+  const download = downloadMode()
   let edgeBytes = 0
   let localBytes = 0
   let sharedBytes = 0
@@ -147,10 +153,23 @@ export function buildStreamPack(manifest, release, variant) {
     // switch on those are downloaded instead of streamed. Keeping the mark in
     // the manifest rather than in the role is what lets the two forms be
     // compared by reloading rather than by preparing and publishing again.
-    if (entry.pin && pinStillsEnabled()) {
+    if (!download && entry.pin && pinStillsEnabled()) {
       packInfo[`data/assets/${key}`] = assetUrl(release, variant, key)
       localBytes += entry.bytes || 0
       pinned += 1
+      continue
+    }
+
+    // The measuring mode. Every remaining file is fetched and written into the
+    // world, so the release lands on disk exactly as the cloud route lands it
+    // and the two routes differ in one thing only: where the bytes came from.
+    // `streamTargets` stays empty, which makes the second pass a no-op by
+    // itself, and the video is put back into its tile further down.
+    if (download) {
+      packInfo[`data/assets/${key}`] = entry.role === "shared"
+        ? (entry.url || assetUrl(release, variant, key))
+        : assetUrl(release, variant, key)
+      localBytes += entry.bytes || 0
       continue
     }
 
@@ -175,7 +194,7 @@ export function buildStreamPack(manifest, release, variant) {
     localBytes += entry.bytes || 0
   }
 
-  return { packInfo, streamTargets, edgeBytes, localBytes, sharedBytes, skipped, pinned }
+  return { packInfo, streamTargets, edgeBytes, localBytes, sharedBytes, skipped, pinned, download }
 }
 
 /**
@@ -223,6 +242,41 @@ export function applyStreamAddresses(value, streamTargets) {
     return value
   }
   return value
+}
+
+/**
+ * Undo the scene rebuild for a downloaded release.
+ *
+ * The preparation tool takes the video out of the tile and parks its address in
+ * a flag, because a video inside the document sits in the scene's load barrier
+ * and a stalled one there can wedge the client for the rest of the session.
+ * That reasoning holds for a streamed video and for nothing else: a downloaded
+ * one lies on the customer's own disk, loads at local speed, and belongs in the
+ * document where every other Foundry feature can see it.
+ *
+ * The address in the flag has already been rewritten by the installer's own
+ * pass, because that pass walks the whole document and does not stop at flags.
+ * So by the time this runs the flag holds the installed local path, which is
+ * exactly what belongs in `texture.src`.
+ *
+ * The flag is removed afterwards. Left in place it would make the scene count
+ * as streamed: the canvas hook would try to fetch a video that is already there,
+ * and the offline guard would refuse to open a scene that needs no connection.
+ */
+export function restoreLocalVideos(doc) {
+  const tiles = doc?.tiles
+  if (!Array.isArray(tiles)) return doc
+
+  for (const tile of tiles) {
+    const scope = tile?.flags?.[FLAG_SCOPE]
+    const mark = scope?.[FLAG_KEY]
+    if (mark?.role !== ROLE_VIDEO || !mark.video) continue
+    tile.texture = tile.texture || {}
+    tile.texture.src = mark.video
+    delete scope[FLAG_KEY]
+    if (!Object.keys(scope).length) delete tile.flags[FLAG_SCOPE]
+  }
+  return doc
 }
 
 /** Every gate address a release variant will ever ask for. Feeds the prewarm. */

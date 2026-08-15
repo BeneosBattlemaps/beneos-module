@@ -20,7 +20,7 @@
  * to the gate cut, video running, 59 frames per second.
  */
 
-import { budgetFor, localCacheEnabled, streamEnabled, streamHost } from "./stream-settings.mjs"
+import { budgetFor, downloadMode, localCacheEnabled, streamEnabled, streamHost } from "./stream-settings.mjs"
 import { reportFailure, reportedSoFar } from "./stream-report.mjs"
 import { noteResult } from "./stream-online.mjs"
 
@@ -151,7 +151,14 @@ export function installStreamFetch() {
     const url = typeof input === "string" ? input : input?.url
     if (!url || !ours(url)) return original(input, init)
 
-    const store = (localCacheEnabled() && !isControl(url)) ? await openStore() : null
+    // In the measuring mode neither of the two applies, and both would falsify
+    // the measurement. The store would answer the second run of a comparison
+    // from the first one, and the per-file deadline is a streaming rule: it is
+    // meant to keep a scene from parking on one slow video, while an install has
+    // deadlines of its own that are sized to the file (installer 31-48) and must
+    // be the same on both routes or the comparison measures this module.
+    const measuring = downloadMode()
+    const store = (!measuring && localCacheEnabled() && !isControl(url)) ? await openStore() : null
     if (store) {
       const hit = await fromStore(store, url)
       if (hit) {
@@ -173,7 +180,7 @@ export function installStreamFetch() {
     // stalls and leave the part that does. Aborting a request whose body has
     // already been read is a no-op, so letting it run costs nothing.
     const controller = new AbortController()
-    const budget = budgetFor(url)
+    const budget = measuring ? 0 : budgetFor(url)
     inFlight.add(controller)
     const release = () => { inFlight.delete(controller) }
     const timer = budget > 0
@@ -226,6 +233,12 @@ export function installStreamFetch() {
     } else {
       count("ok")
       noteResult(true)
+      // The number the whole delivery question turns on. A dense network of
+      // nodes is worth nothing if every file is a miss, and for a catalogue this
+      // long that is the case the moment the edge lifetime is short. Counted per
+      // answer rather than reasoned about.
+      const edge = response.headers.get("x-beneos-cache")
+      if (edge) count(`edge:${edge.toLowerCase()}`)
       const fault = response.headers.get("x-beneos-fault")
       if (fault) {
         count(`fault:${fault}`, url)

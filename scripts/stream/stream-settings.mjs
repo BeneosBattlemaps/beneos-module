@@ -19,6 +19,7 @@ export const SETTING = {
   localCache: "beneos-stream-local-cache",
   acknowledged: "beneos-stream-backup-acknowledged",
   pinStills: "beneos-stream-pin-stills",
+  installMode: "beneos-stream-install-mode",
   budgetImage: "beneos-stream-budget-image",
   budgetVideo: "beneos-stream-budget-video",
   budgetAudio: "beneos-stream-budget-audio",
@@ -27,6 +28,9 @@ export const SETTING = {
 }
 
 const DEFAULT_BASE = "https://gate.beneos.stream"
+
+/** What an installation does with the files the manifest lists. */
+export const INSTALL_MODE = { stream: "stream", download: "download" }
 
 // Seconds, not milliseconds: these are numbers an operator reads and changes at
 // a table, and a value in milliseconds invites a factor-of-a-thousand mistake.
@@ -85,6 +89,27 @@ export function registerStreamSettings() {
     ...world, type: Boolean, default: false,
   })
 
+  // Not a streaming setting at all, and that is the point.
+  //
+  // In `download` the same bucket serves an ordinary installation: every file is
+  // fetched and written into the world exactly as the cloud route does it, and
+  // nothing stays an address. That turns the beta into a measuring instrument
+  // for a question that has been open since June, namely whether the object
+  // store delivers a release faster than the origin does. Both routes then differ
+  // in one thing only, where the bytes come from, which is what makes the
+  // comparison worth anything.
+  //
+  // It also matters for a customer report from Australia: 45 minutes for an
+  // install that used to take fifteen. The origin sits in Gravelines with two
+  // hours of edge lifetime, the gate holds thirty days and fills one edge entry
+  // for all customers at once.
+  game.settings.register(MODULE_ID, SETTING.installMode, {
+    name: "Beneos Stream, what an install does",
+    hint: "stream keeps media remote. download fetches everything, like an ordinary install.",
+    ...world, type: String, default: INSTALL_MODE.stream,
+    choices: { [INSTALL_MODE.stream]: "Stream", [INSTALL_MODE.download]: "Download" },
+  })
+
   for (const [what, seconds] of Object.entries(DEFAULT_BUDGET)) {
     game.settings.register(MODULE_ID, SETTING[`budget${what[0].toUpperCase()}${what.slice(1)}`], {
       name: `Beneos Stream budget, ${what} (seconds)`,
@@ -128,6 +153,16 @@ export function streamHost() {
 
 export function pinStillsEnabled() {
   return Boolean(read(SETTING.pinStills, false))
+}
+
+/** `stream` or `download`. Anything unreadable counts as `stream`. */
+export function installMode() {
+  const value = String(read(SETTING.installMode, INSTALL_MODE.stream) || "").trim()
+  return value === INSTALL_MODE.download ? INSTALL_MODE.download : INSTALL_MODE.stream
+}
+
+export function downloadMode() {
+  return installMode() === INSTALL_MODE.download
 }
 
 const seconds = (key, fallback) => {
