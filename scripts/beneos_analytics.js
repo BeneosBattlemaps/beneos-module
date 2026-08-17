@@ -33,8 +33,23 @@ const SPELL_CAST_SESSION_CAP = 20;                // per spell key per session (
 const ITEM_ADD_WINDOW_MS = 5 * 1000;              // bulk-import aggregation window
 const SCENE_TIME_MIN_S = 60;                      // ignore sub-minute visits
 const SCENE_TIME_CAP_S = 6 * 3600;                // idle/overnight cap per visit
+// Actor types that count as a player character, lowercased. Not a guess: every
+// entry beyond "character" was observed in the field on a player-owned actor in
+// a world that reported party_size 0. See _partySnapshot.
+const PC_ACTOR_TYPES = new Set([
+  "character", "player", "playercharacter", "pc", "hero", "protagonist",
+  "vampire", "mortal", "werewolf", "mage"
+]);
+
 const MODINV_INTERVAL_MS = 7 * 24 * 3600 * 1000;  // module inventory at most weekly
-const MODINV_CHUNK_JSON_MAX = 1800;               // stay under the server payload cap
+// Chunk budget for the module inventory.
+//
+// This said 1800 and the comment said "stay under the server payload cap",
+// which was true of the SERVER cap (2000) and wrong about the CLIENT one
+// (PAYLOAD_MAX, 1000). Every chunk that actually filled up was therefore
+// discarded before it was ever sent. Measured on 2026-08-17: 476 of 751
+// module_inventory events arrived empty, 63 percent.
+const MODINV_CHUNK_JSON_MAX = 900;                // must stay under PAYLOAD_MAX
 // Events suppressed while the getting-started tour auto-installs its creature,
 // so the scripted install does not read as organic play.
 const TOUR_SUPPRESSED_EVENTS = new Set([
@@ -135,12 +150,16 @@ export class BeneosAnalytics {
     } catch (_) { /* telemetry must never throw into a hook */ }
   }
 
+  // The client-side payload cap. The server discards anything over 2000 bytes,
+  // so staying under this keeps events intact end to end.
+  static PAYLOAD_MAX = 1000
+
   static _buildEvent(eventType, payload) {
     const p = payload || {}
     const { asset_id = null, asset_type = null, bytes = null, ...rest } = p
     let data = rest
     try {
-      if (JSON.stringify(rest).length > 1000) data = { _truncated: true }
+      if (JSON.stringify(rest).length > this.PAYLOAD_MAX) data = this._shrink(rest)
     } catch (_) { data = {} }
     return {
       event_type: String(eventType).slice(0, 32),
@@ -152,6 +171,47 @@ export class BeneosAnalytics {
       client_version: this.moduleVersion(),
       world_id_hash: this._worldIdHash
     }
+  }
+
+  // Shrink an oversized payload instead of throwing it away.
+  //
+  // WHY THIS EXISTS. The previous line was
+  //     if (JSON.stringify(rest).length > 1000) data = { _truncated: true }
+  // which replaced the ENTIRE payload with a flag. Measured in the data lake on
+  // 2026-08-17: 229 of 13.561 world_party_snapshot events arrived carrying
+  // nothing but `_truncated`, so their party size, classes and system were
+  // gone; and 476 of 751 module_inventory chunks arrived empty, which is 63
+  // percent of everything that event has ever reported.
+  //
+  // Scalars are what analysis needs and they are tiny. Arrays are what blows
+  // the budget. So keep every scalar, then trim the arrays from the largest
+  // down until it fits, and say per field how much was dropped. A short list
+  // plus an honest count beats a flag that means "we had it and threw it out".
+  static _shrink(rest) {
+    try {
+      const out = {}
+      const arrays = []
+      for (const [k, v] of Object.entries(rest)) {
+        if (Array.isArray(v)) arrays.push([k, v])
+        else out[k] = v
+      }
+      // Largest array first: trimming it frees the most room.
+      arrays.sort((a, b) => JSON.stringify(b[1]).length - JSON.stringify(a[1]).length)
+      for (const [k, v] of arrays) {
+        let keep = v.length
+        while (keep > 0) {
+          const probe = { ...out, [k]: v.slice(0, keep) }
+          if (JSON.stringify(probe).length <= this.PAYLOAD_MAX - 40) break
+          keep = keep > 8 ? Math.floor(keep / 2) : keep - 1
+        }
+        if (keep > 0) out[k] = v.slice(0, keep)
+        if (keep < v.length) out[`${k}_dropped`] = v.length - keep
+      }
+      out._shrunk = true
+      // Last resort: even the scalars do not fit. Then say so rather than lie.
+      if (JSON.stringify(out).length > this.PAYLOAD_MAX) return { _truncated: true }
+      return out
+    } catch (_) { return { _truncated: true } }
   }
 
   /********************************************************************************** */
@@ -314,9 +374,19 @@ export class BeneosAnalytics {
       for (const a of owned) { const t = a.type || "?"; typeCounts[t] = (typeCounts[t] || 0) + 1 }
       const ownedActorTypes = Object.entries(typeCounts).map(([type, n]) => ({ type, n }))
 
-      // Player characters: dnd5e, pf2e and daggerheart all use the "character"
-      // actor type. ownedActorTypes above exposes systems that differ.
-      const actors = owned.filter(a => a.type === "character")
+      // Player characters.
+      //
+      // THIS USED TO BE `a.type === "character"` AND IT UNDERCOUNTED. Measured
+      // in the data lake on 2026-08-17: of 2.503 snapshots reporting party_size
+      // 0, the 1.025 that carry the type diagnostic split into 947 worlds with
+      // genuinely no player-owned actor (real empty worlds) and 78 that DO have
+      // player-owned actors we simply failed to recognise. Their types read
+      // `player`, `hero`, `vampire`, and `Player` with a capital P.
+      //
+      // So: compare case-insensitively and accept the type names other systems
+      // use. `group` and `vehicle` are deliberately absent, they are not
+      // characters. ownedActorTypes above still exposes whatever we miss next.
+      const actors = owned.filter(a => PC_ACTOR_TYPES.has(String(a.type || "").toLowerCase()))
       if (!actors.length) {
         return { system_id: sys, party_size: 0, party_avg_level: 0, owned_actor_types: ownedActorTypes }
       }
@@ -338,7 +408,9 @@ export class BeneosAnalytics {
         system_id: sys,
         party_size: actors.length,
         party_avg_level: avg,
-        pc_actor_type: "character",
+        // Was actually matched, not a hardcoded claim. Before this line said
+        // "character" unconditionally, which hid exactly the mismatch above.
+        pc_actor_type: [...new Set(actors.map(a => this.sanitize(String(a.type || "?"), 24)))].sort().join(","),
         pc_sheet: this.sanitize(pcSheet, 48),
         owned_actor_types: ownedActorTypes
       }
@@ -719,7 +791,11 @@ export class BeneosAnalytics {
         this.track("battlemap_error", {
           battlemap_key: this._beneosBattlemapKey(scene),
           scene_id_hash: hash,
-          message: this.sanitize(err?.message || String(err || ""), 200),
+          message: this.sanitize(this._splitStackPackages(err?.message || String(err || "")).message, 200),
+          stack_packages: (() => {
+            const p = this._splitStackPackages(err?.message || String(err || "")).packages
+            return p ? this.sanitize(p, 180) : null
+          })(),
           stack_top_line: stackTop,
           module_version: this.moduleVersion(),
           ...this._errorContext()
@@ -825,7 +901,8 @@ export class BeneosAnalytics {
   static _captureError(err, context, assetId) {
     try {
       const errorClass = (err?.name || err?.constructor?.name || "Error").slice(0, 128)
-      const message = this.sanitize(err?.message || String(err || ""), 200)
+      const geteilt = this._splitStackPackages(err?.message || String(err || ""))
+      const message = this.sanitize(geteilt.message, 200)
       const stackTop = this._stackTopLine(err?.stack || "")
       const fp = `${errorClass}|${stackTop}`
       const now = Date.now()
@@ -834,6 +911,9 @@ export class BeneosAnalytics {
       this.track("beneos_error", {
         error_class: errorClass,
         message,
+        // Own field, so neither the 200-character cut nor the per-user
+        // variation of the list can touch the message itself.
+        stack_packages: geteilt.packages ? this.sanitize(geteilt.packages, 180) : null,
         stack_top_line: stackTop,
         context: context ? String(context).slice(0, 32) : null,
         asset_id: assetId || null,
@@ -872,6 +952,34 @@ export class BeneosAnalytics {
   /********************************************************************************** */
   // Trim to `max`, collapse whitespace, mask anything that looks like a long
   // token/secret/id pasted into a search box or surfaced in an error message.
+  // Split Foundry's own package attribution off the message.
+  //
+  // Foundry core appends "[Detected 2 packages: lib-wrapper(1.13.5.1),
+  // beneos-module(14.4.6)]" to error messages: the packages whose code appears
+  // in the stack. That is genuinely useful, and it was being destroyed twice.
+  //
+  // Measured in the data lake on 2026-08-17, over 2.158 error events carrying
+  // such a list:
+  //
+  //   - The list sits at the END of the message, and sanitize() cuts at 200
+  //     characters. 297 lists arrived cut in half, closing bracket and all.
+  //   - The list varies with the user's stack, so the same bug produced a
+  //     different message per user. 82 of 226 distinct messages were nothing
+  //     but this variation, which fragments any grouping by message.
+  //
+  // Both go away if the list travels in its own field: the message keeps its
+  // full 200 characters for the actual error, and the attribution arrives whole.
+  static _splitStackPackages(message) {
+    const s = String(message || "")
+    // Closed form first, then the form that Foundry itself already truncated.
+    const m = s.match(/\s*\[Detected [^\]]*\]/) || s.match(/\s*\[Detected .*$/)
+    if (!m) return { message: s, packages: null }
+    return {
+      message: (s.slice(0, m.index) + s.slice(m.index + m[0].length)).trim(),
+      packages: m[0].trim()
+    }
+  }
+
   static sanitize(str, max = 200) {
     try {
       let s = String(str ?? "")
