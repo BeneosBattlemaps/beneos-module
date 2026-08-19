@@ -891,7 +891,38 @@ export class BeneosAnalytics {
       // variant name like 4k_bm.webm that collides across releases. Prefer the
       // folder for a meaningful key; fall back to the file when there is no folder.
       const folder = segs.pop() || ""
-      return this.sanitize(folder || file, 96)
+      return this._pathKey(folder || file, 96)
+    } catch (_) { return "" }
+  }
+
+  /**
+   * Ein Pfadfragment als Schluessel, ohne die Geheimnismaskierung.
+   *
+   * WARUM NICHT sanitize. Dort ersetzt `[A-Za-z0-9_-]{32,}` jede lange Kette
+   * durch `<id>`, damit ein versehentlich eingefuegtes Kennwort oder eine
+   * Kennung aus einem Suchfeld nicht im Lake landet. Ein Battlemap-Ordnername
+   * ist genau so eine Kette und genau kein Geheimnis:
+   * `24-08_ravenloft_1f_grand_landing` hat exakt 32 Zeichen und wurde
+   * vollstaendig durch `<id>` ersetzt, obwohl der Pfad sauber war.
+   *
+   * GEMESSEN im Data Lake am 2026-08-19: 6.439 Ereignisse aus 403 Welten
+   * tragen die Maskierungsspur, bei 2.322 davon ist der ganze Schluessel weg.
+   * Der Anteil haengt daran, was der Schluessel bedeutet: 14.3.1 schickte den
+   * Dateinamen und war zu 0,1 Prozent betroffen, weil der Punkt vor der
+   * Endung die Kette unterbricht. 14.4.x schickt den Ordnernamen und ist es
+   * zu 5,5 bis 9,6 Prozent. Der Fehler kam also mit 14.4.0 am 30. Juni.
+   *
+   * NUR HIER UND NICHT IN sanitize SELBST. Bei `message` ist die Maskierung
+   * richtig: dort landen Fehlertexte, in die Nutzereingaben geraten koennen.
+   * Der Schutz bleibt, wo er gebraucht wird, und faellt nur fuer einen Wert
+   * weg, der immer aus einem Beneos-Assetpfad stammt. Nichtbeneos-Szenen
+   * schicken diesen Schluessel gar nicht.
+   *
+   * Kappung und Zusammenziehen von Leerraum bleiben unveraendert.
+   */
+  static _pathKey(str, max = 96) {
+    try {
+      return String(str ?? "").replace(/\s+/g, " ").trim().slice(0, max)
     } catch (_) { return "" }
   }
 

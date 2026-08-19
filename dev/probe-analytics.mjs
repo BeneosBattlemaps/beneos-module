@@ -182,5 +182,64 @@ Z._daten = { kaputt: null, auchKaputt: { assetId: "x" } };
 pruefe("beschaedigte Eintraege werfen nicht",
   Z.findAssetIdByScene("abc123"), "");
 
+// ---------------------------------------------------------------------------
+// Der Schluessel einer Battlemap
+// ---------------------------------------------------------------------------
+//
+// Die Geheimnismaskierung in sanitize ersetzt jede Kette aus 32 oder mehr
+// Buchstaben, Ziffern, Unterstrichen und Bindestrichen durch "<id>". Genau so
+// sieht ein Battlemap-Ordnername aus. Gemessen im Data Lake am 2026-08-19:
+// 6.439 Ereignisse aus 403 Welten tragen die Spur, bei 2.322 ist der ganze
+// Schluessel weg.
+//
+// Geprueft wird beides: dass der Schluessel heil durchkommt, UND dass die
+// Maskierung dort weiterlebt, wo sie hingehoert. Ohne den zweiten Teil wuerde
+// die Probe eine weggeraeumte Schutzfunktion durchwinken.
+const P = new Function(`
+  return class T {
+    static ${methode("sanitize")}
+    static ${methode("_pathKey")}
+    static ${methode("_sceneBackgroundSrc")}
+    static ${methode("_beneosBattlemapKey")}
+  }
+`)();
+
+const szene = (src) => ({ background: { src } });
+
+// Der gemessene Regressionsfall: exakt 32 Zeichen, also genau an der Schwelle.
+const grenzfall = "24-08_ravenloft_1f_grand_landing";
+pruefe("der Ordnername hat wirklich 32 Zeichen", grenzfall.length, 32);
+pruefe("der Grenzfall wird NICHT mehr maskiert",
+  P._beneosBattlemapKey(szene(
+    `beneos_assets/beneos_battlemaps/4k/24_cos_ravenloft_1f/${grenzfall}/${grenzfall}-4k_bm.webm`)),
+  grenzfall);
+
+pruefe("auch ein langer Ordnername bleibt ganz",
+  P._beneosBattlemapKey(szene(
+    "beneos_assets/beneos_battlemaps/4k/95_goblin_cave_city/95-18_goblin_cave_monolith_4f_ladder/95-18_goblin_cave_monolith_4f_ladder-4k_bm.webm")),
+  "95-18_goblin_cave_monolith_4f_ladder");
+
+// Kurze Namen waren nie betroffen und muessen sich weiter gleich verhalten.
+pruefe("ein kurzer Ordnername bleibt unveraendert",
+  P._beneosBattlemapKey(szene("beneos_assets/x/14_yester_total/4k_bm.webm")),
+  "14_yester_total");
+
+pruefe("ohne Ordner faellt es auf den Dateinamen zurueck",
+  P._beneosBattlemapKey(szene("4k_bm.webm")), "4k_bm.webm");
+
+pruefe("ein Abfrageanhang zaehlt nicht zum Schluessel",
+  P._beneosBattlemapKey(szene(`a/${grenzfall}/bild.webm?v=12345`)), grenzfall);
+
+pruefe("keine Szene gibt leer", P._beneosBattlemapKey(null), "");
+
+// Die Kappung bleibt.
+pruefe("ueberlange Schluessel werden weiter bei 96 gekappt",
+  P._beneosBattlemapKey(szene(`a/${"x".repeat(200)}/b.webm`)).length, 96);
+
+// Und der Schutz lebt dort weiter, wo Nutzertext ankommt.
+pruefe("sanitize maskiert lange Ketten unveraendert weiter",
+  P.sanitize(`Fehler bei ${"a".repeat(40)} aufgetreten`),
+  "Fehler bei <id> aufgetreten");
+
 console.log(fehler ? `\n${fehler} Proben gescheitert` : "\nAlle Proben bestanden");
 process.exit(fehler ? 1 : 0);
