@@ -905,12 +905,20 @@ export class BeneosAnalytics {
    * `24-08_ravenloft_1f_grand_landing` hat exakt 32 Zeichen und wurde
    * vollstaendig durch `<id>` ersetzt, obwohl der Pfad sauber war.
    *
-   * GEMESSEN im Data Lake am 2026-08-19: 6.439 Ereignisse aus 403 Welten
-   * tragen die Maskierungsspur, bei 2.322 davon ist der ganze Schluessel weg.
-   * Der Anteil haengt daran, was der Schluessel bedeutet: 14.3.1 schickte den
-   * Dateinamen und war zu 0,1 Prozent betroffen, weil der Punkt vor der
-   * Endung die Kette unterbricht. 14.4.x schickt den Ordnernamen und ist es
-   * zu 5,5 bis 9,6 Prozent. Der Fehler kam also mit 14.4.0 am 30. Juni.
+   * GEMESSEN im Data Lake am 2026-08-19 ueber 33.766 `scene_activate`:
+   * 5.532 tragen die Maskierungsspur, also 16,4 Prozent.
+   *
+   * DER PUNKT SCHUETZT NICHT. Nur die Endung steht hinter ihm, die lange
+   * Kette davor wird trotzdem ersetzt, und `..._grand_landing-4k_bm.webm`
+   * kommt als `<id>.webm` an. Deshalb ist ausgerechnet 14.3.1 mit dem
+   * Dateinamen am staerksten betroffen (29,1 Prozent), waehrend 14.4.x mit
+   * dem kuerzeren Ordnernamen bei 5,5 bis 9,6 Prozent liegt. Der Fehler kam
+   * NICHT mit 14.4.0; er war immer da und hat sich mit 14.4.0 verkleinert.
+   *
+   * Wer nur auf den vollstaendig ersetzten Wert `<id>` zaehlt, sieht 4,4
+   * Prozent und unterschaetzt den Schaden um das Vierfache. Die 3.983
+   * `<id>.webm` fehlen in dieser Zaehlung, und sie sind der groesste
+   * Einzelposten der ganzen Rangliste.
    *
    * NUR HIER UND NICHT IN sanitize SELBST. Bei `message` ist die Maskierung
    * richtig: dort landen Fehlertexte, in die Nutzereingaben geraten koennen.
