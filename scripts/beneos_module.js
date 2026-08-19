@@ -372,7 +372,7 @@ Hooks.once('ready', () => {
     try {
       if (BeneosUtility.checkIsBeneosToken(token)) {
         const assetId = BeneosAnalytics.beneosAssetId(token)
-        if (assetId) BeneosAnalytics.track("canvas_drop_local", { asset_id: assetId })
+        if (assetId) BeneosAnalytics.trackOnScene("canvas_drop_local", { asset_id: assetId })
       }
     } catch (_) {}
   })
@@ -928,7 +928,7 @@ Hooks.on("dropCanvasData", (canvas, data) => {
   game.beneos?.cloud?.handlePendingCanvasDrop?.(canvas, data)
   try {
     const assetId = data?.beneosTokenKey || data?.beneosItemKey || null
-    if (assetId) BeneosAnalytics.track("canvas_drop_cloud", { asset_id: assetId })
+    if (assetId) BeneosAnalytics.trackOnScene("canvas_drop_cloud", { asset_id: assetId })
   } catch (_) {}
   return false
 })

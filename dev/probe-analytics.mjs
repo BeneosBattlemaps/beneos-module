@@ -102,5 +102,85 @@ pruefe("aussichtsloser Fall bleibt gekennzeichnet",
 pruefe("kleine Nutzlast bleibt inhaltlich gleich",
   K._shrink({ a: 1, b: [1, 2, 3] }).b, [1, 2, 3]);
 
+// ---------------------------------------------------------------------------
+// Die Zahl verbundener Spieler
+// ---------------------------------------------------------------------------
+//
+// Sie entscheidet, ob eine Szenenzeit eine Spielrunde war oder eine
+// Vorbereitung. Zwei Dinge muessen stimmen: der Spielleiter zaehlt NICHT mit,
+// sonst ergibt jede Vorbereitung eine Eins und ist von einer Runde mit einem
+// Spieler nicht zu unterscheiden. Und ohne `game` kommt null zurueck und nicht
+// null die Zahl: das eine heisst nicht ermittelbar, das andere niemand da.
+const S = new Function(`
+  return class T {
+    static ${methode("_connectedPlayers")}
+  }
+`)();
+
+const mitUsern = (liste) => { globalThis.game = { users: liste }; return S._connectedPlayers(); };
+
+pruefe("der Spielleiter zaehlt nicht mit",
+  mitUsern([{ active: true, isGM: true }, { active: true, isGM: false }]), 1);
+pruefe("allein am Tisch ist eine Null und keine Luecke",
+  mitUsern([{ active: true, isGM: true }]), 0);
+pruefe("abgemeldete Spieler zaehlen nicht",
+  mitUsern([{ active: false, isGM: false }, { active: true, isGM: false }]), 1);
+pruefe("eine echte Runde",
+  mitUsern([{ active: true, isGM: true }, { active: true, isGM: false },
+            { active: true, isGM: false }, { active: true, isGM: false }]), 3);
+
+globalThis.game = undefined;
+pruefe("ohne Foundry kommt null und nicht die Zahl null",
+  S._connectedPlayers(), null);
+
+// ---------------------------------------------------------------------------
+// Szene zu Asset
+// ---------------------------------------------------------------------------
+//
+// Aus derselben Datei geschnitten wie oben, damit die Probe nicht eine Kopie
+// prueft. Eine unbekannte Szene muss "" liefern und nicht undefined: der
+// Sender laesst das Feld dann weg, und genau das soll geschehen. Eine leere
+// Kennung im Ereignis wuerde behaupten, die Szene habe kein Asset, obwohl die
+// Wahrheit lautet, dass diese Welt vor dem Setting installiert hat.
+const zustand = readFileSync(
+  join(hier, "..", "scripts", "cloud-v2", "beneos-install-state.mjs"), "utf8")
+  .replace(/\r\n/g, "\n");
+
+const zustandsMethode = (name) => {
+  const i = zustand.indexOf(`  static ${name}(`);
+  if (i < 0) throw new Error(`${name} nicht gefunden`);
+  const ende = zustand.indexOf("\n  }\n", i);
+  return zustand.slice(i, ende + 5).replace(/^\s*static /, "");
+};
+
+const Z = new Function(`
+  return class T {
+    static _daten = {}
+    static getAll() { return this._daten }
+    static ${zustandsMethode("findAssetIdByScene")}
+  }
+`)();
+
+Z._daten = {
+  "bm_0005_cos_the_death_house": {
+    releaseDir: "bm_0005_cos_the_death_house", assetId: "6a3a4c16ea600",
+    sceneIds: ["abc123", "def456"]
+  },
+  "bm_0011_cos_barovia_4k": {
+    releaseDir: "bm_0011_cos_barovia", variant: "4k", assetId: "6a3a5000aaaa",
+    sceneIds: ["ghi789"]
+  }
+};
+
+pruefe("bekannte Szene findet ihr Asset", Z.findAssetIdByScene("def456"), "6a3a4c16ea600");
+pruefe("zweite Ablage wird auch durchsucht", Z.findAssetIdByScene("ghi789"), "6a3a5000aaaa");
+pruefe("unbekannte Szene liefert leer und nicht undefined",
+  Z.findAssetIdByScene("gibtesnicht"), "");
+pruefe("ohne Szenenkennung leer", Z.findAssetIdByScene(null), "");
+
+Z._daten = { kaputt: null, auchKaputt: { assetId: "x" } };
+pruefe("beschaedigte Eintraege werfen nicht",
+  Z.findAssetIdByScene("abc123"), "");
+
 console.log(fehler ? `\n${fehler} Proben gescheitert` : "\nAlle Proben bestanden");
 process.exit(fehler ? 1 : 0);

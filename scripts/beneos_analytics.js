@@ -13,6 +13,10 @@
 /********************************************************************************* */
 
 import { BeneosUtility } from "./beneos_utility.js";
+// Resolves a scene id back to the asset it was installed from. No import
+// cycle: install-state pulls in beneos_utility, and nothing in that chain
+// reaches back here.
+import { BeneosInstallState } from "./cloud-v2/beneos-install-state.mjs";
 
 const ANALYTICS_ENDPOINT = "https://beneos.cloud/api-analytics.php";
 // 15 min instead of 5: the ingest is the most frequent recurring request per
@@ -78,7 +82,8 @@ export class BeneosAnalytics {
   static _itemAddBuffer = new Map()        // "slug|parentType" -> count (5s window)
   static _itemAddTimer = null
   static _combats = new Map()              // combatId -> { battlemapKey, roster: Map }
-  static _currentScene = null              // { key, ts } for time-on-map deltas
+  static _currentScene = null              // { key, assetId, ts } for time-on-map deltas
+  static _activeSceneHash = null           // hash of the active scene, for mid-play events
   static suppressTourTracking = false      // set by the tour auto-install
 
   /********************************************************************************** */
@@ -716,19 +721,118 @@ export class BeneosAnalytics {
       // Time-on-map: close the previous Beneos map's visit before switching.
       this._closeSceneTime()
       if (this._isBeneosScene(scene)) {
-        this._currentScene = { key: this._beneosBattlemapKey(scene), ts: Date.now() }
+        // Resolve the asset HERE, not when the visit closes. scene_time fires
+        // on the way out, and by then canvas.scene is already the next map.
+        // Carrying the id along is the only way the two events can agree on
+        // which battlemap they are talking about.
+        this._currentScene = {
+          key:     this._beneosBattlemapKey(scene),
+          assetId: this._sceneAssetId(scene),
+          ts:      Date.now()
+        }
       }
+      // Den Hash der AKTIVEN Szene merken, unabhaengig davon ob sie von uns
+      // ist. Ereignisse, die spaeter im Spiel feuern, etwa das Ablegen einer
+      // Kreatur, koennen ihn dann ohne eigene Rechnung mitschicken. Ohne
+      // diesen Merkposten muesste jede solche Stelle asynchron werden.
+      this._sha256(scene.id).then(h => { this._activeSceneHash = h })
       const fresh = !this._distinctScenes.has(scene.id)
       this._distinctScenes.add(scene.id)
       if (fresh && this._isBeneosScene(scene)) {
         this._sha256(scene.id).then(hash => {
-          this.track("scene_activate", {
+          const payload = {
             battlemap_key: this._beneosBattlemapKey(scene),
             scene_id_hash: hash
-          })
+          }
+          // Only when known. An empty asset_id would claim the scene has no
+          // asset, and the truth is that this world installed before the
+          // install-state existed.
+          const assetId = this._currentScene?.assetId
+          if (assetId) payload.asset_id = assetId
+          this.track("scene_activate", payload)
         })
       }
     } catch (_) { /* swallow */ }
+  }
+
+  /**
+   * The asset a scene was installed from, or "" when unknown.
+   *
+   * WHY THIS SITS NEXT TO _beneosBattlemapKey AND DOES NOT REPLACE IT
+   *
+   * battlemap_key is a fragment of the background path and changed meaning
+   * between client versions: file name up to 14.3.0, folder name from 14.4.0.
+   * Old clients therefore send `4k_bm.webm`, which is the same string across
+   * releases. Measured in the Data Lake on 2026-08-19: it resolves for 54
+   * percent of scene activations.
+   *
+   * The install-state knows the answer exactly, but only for worlds that
+   * installed through the module after that feature shipped. Neither source
+   * covers everything, so both ship, and the Lake prefers the exact one.
+   */
+  static _sceneAssetId(scene) {
+    try {
+      return BeneosInstallState.findAssetIdByScene(scene?.id) || ""
+    } catch (_) {
+      return ""
+    }
+  }
+
+  /**
+   * Verbundene Spieler ohne den Spielleiter, oder null wenn nicht ermittelbar.
+   *
+   * OHNE DEN SPIELLEITER, weil er immer da ist. Wer ihn mitzaehlt, bekommt bei
+   * jeder Vorbereitungssitzung eine Eins und kann sie nicht von einer Runde
+   * mit einem einzigen Spieler unterscheiden. Genau diese Unterscheidung ist
+   * der Zweck der Zahl.
+   *
+   * `null` und nicht `0` im Fehlerfall: null heisst nicht ermittelbar, null
+   * hiesse niemand da.
+   */
+  /**
+   * Der Hash der aktiven Szene, oder null.
+   *
+   * Er wird beim Szenenwechsel berechnet und gemerkt. Ereignisse, die
+   * mittendrin feuern, holen ihn hier ab, statt selbst asynchron zu werden.
+   *
+   * Direkt nach einem Wechsel kann er kurz fehlen, weil die Berechnung ein
+   * Versprechen ist. Dann bleibt das Feld weg. Ein leerer Hash waere
+   * schlechter als keiner: er sieht aus wie eine Szene und ist keine.
+   */
+  static _sceneHashNow() {
+    return this._activeSceneHash || null
+  }
+
+  /**
+   * Ein Ereignis senden und die aktive Szene mit angeben.
+   *
+   * WOZU. Ereignisse wie das Ablegen einer Kreatur tragen bisher nur deren
+   * Assetkennung. Damit laesst sich sagen, welche Kreaturen zusammen benutzt
+   * werden, aber nicht, AUF WELCHER KARTE. Genau diese Verbindung ist die
+   * Grundlage fuer einen Buendelzuschnitt: wer Death House spielt, braucht
+   * welche Gegner?
+   *
+   * Als eigene Methode und nicht als zwei Zeilen an den Aufrufstellen, damit
+   * die Regel an einem Ort steht: fehlt der Hash, faellt das Feld weg. Ein
+   * leerer Hash sieht aus wie eine Szene und ist keine.
+   */
+  static trackOnScene(eventType, payload = {}) {
+    const hash = this._sceneHashNow()
+    this.track(eventType, hash ? { ...payload, scene_id_hash: hash } : payload)
+  }
+
+  static _connectedPlayers() {
+    try {
+      const users = game?.users
+      if (!users) return null
+      let n = 0
+      for (const u of users) {
+        if (u?.active && !u?.isGM) n++
+      }
+      return n
+    } catch (_) {
+      return null
+    }
   }
 
   // Emit the time spent on the previously active Beneos map. Visits under a
@@ -741,7 +845,23 @@ export class BeneosAnalytics {
       let seconds = Math.round((Date.now() - cur.ts) / 1000)
       if (seconds < SCENE_TIME_MIN_S) return
       if (seconds > SCENE_TIME_CAP_S) seconds = SCENE_TIME_CAP_S
-      this.track("scene_time", { battlemap_key: cur.key, seconds })
+      const payload = { battlemap_key: cur.key, seconds }
+      if (cur.assetId) payload.asset_id = cur.assetId
+      // WAS DIE STUFE "GESPIELT" AUSMACHT.
+      //
+      // Ohne diese Zahl kann die Auswertung nicht zwischen einer Karte
+      // unterscheiden, die zwanzig Minuten am Tisch lag, und einer, die
+      // jemand allein vorbereitet hat. Die Nutzungsleiter im Data Lake fuehrt
+      // die Stufe deshalb als "nicht messbar", und die einzige Naeherung ist
+      // die Sitzungszeile, die nur rund 263 der 857 Welten deckt.
+      //
+      // Gezaehlt werden verbundene Nutzer ohne den Spielleiter selbst. Null
+      // ist ein gueltiger Wert und heisst allein; es wird nicht weggelassen,
+      // sonst waere spaeter nicht zu unterscheiden, ob niemand da war oder ob
+      // ein alter Client die Zahl nicht schickt.
+      const spieler = this._connectedPlayers()
+      if (spieler !== null) payload.players_connected = spieler
+      this.track("scene_time", payload)
     } catch (_) { /* swallow */ }
   }
 
@@ -787,9 +907,15 @@ export class BeneosAnalytics {
       const now = Date.now()
       if (now - (this._errorThrottle.get(fp) || 0) < ERROR_THROTTLE_MS) return
       this._errorThrottle.set(fp, now)
+      const assetId = this._sceneAssetId(scene)
       this._sha256(scene.id).then(hash => {
         this.track("battlemap_error", {
           battlemap_key: this._beneosBattlemapKey(scene),
+          // Damit ein Fehler dem Release zugeordnet werden kann, aus dem die
+          // Karte stammt. Ueber battlemap_key allein geht das nur bei gut der
+          // Haelfte, und gerade bei einer kaputten Szene ist die Frage
+          // "welches Release" die erste.
+          ...(assetId ? { asset_id: assetId } : {}),
           scene_id_hash: hash,
           message: this.sanitize(this._splitStackPackages(err?.message || String(err || "")).message, 200),
           stack_packages: (() => {

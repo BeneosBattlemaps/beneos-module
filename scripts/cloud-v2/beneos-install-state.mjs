@@ -47,6 +47,46 @@ export class BeneosInstallState {
   }
 
   /**
+   * Resolve a Foundry scene id back to the asset it was installed from.
+   *
+   * WHY THIS EXISTS
+   *
+   * Analytics ships `battlemap_key` with every scene event, and that key is a
+   * fragment cut out of the background path. Its meaning changed with the
+   * client: up to 14.3.0 it was the file name, from 14.4.0 the folder name.
+   * Old clients therefore send values like `4k_bm.webm`, which are identical
+   * across releases and cannot be resolved. Measured in the Data Lake on
+   * 2026-08-19: only 54 percent of scene activations carry a key that maps to
+   * a release at all.
+   *
+   * The mapping was here the whole time. recordInstall already stores the
+   * assetId next to the scene ids it created; nothing new has to be captured,
+   * only read back.
+   *
+   * NO CACHE, ON PURPOSE. This class states at the top that settings storage
+   * is the source of truth and that we never cache to avoid stale reads. A
+   * scene switch happens a few times per session, and the scan walks a handful
+   * of releases with a few dozen ids each. Caching would trade a cost nobody
+   * can measure for a class of bug that is hard to see: a world that installs
+   * a release mid-session would keep reporting the old mapping.
+   *
+   * Returns "" when the scene is unknown, which is the normal case for worlds
+   * that imported a release before this feature shipped, and for battlemaps
+   * copied in by hand. Callers must treat "" as "not known", never as "not a
+   * Beneos scene".
+   */
+  static findAssetIdByScene(sceneId) {
+    if (!sceneId) return ""
+    const all = this.getAll()
+    for (const entry of Object.values(all)) {
+      if (!entry || typeof entry !== "object") continue
+      if (!Array.isArray(entry.sceneIds)) continue
+      if (entry.sceneIds.includes(sceneId)) return String(entry.assetId || "")
+    }
+    return ""
+  }
+
+  /**
    * Persist one install. Key format: `<releaseDir>_<variant>` (variant = ""
    * for single-variant releases). Idempotent: replacing the same key
    * overwrites scene-ids + timestamp + signature for the new install.
