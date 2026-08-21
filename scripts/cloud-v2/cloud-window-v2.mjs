@@ -588,6 +588,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     }
     if (partId === "results") {
       const { cards, totalMatches, hasMore, groupBulkKeys } = this.#buildCards()
+      // Held for the search telemetry below. Without it we can count what was
+      // searched for but never whether anything came back, which is exactly the
+      // question the hit rate needs. Case C5 of the analysis catalogue was
+      // blocked on this and on nothing else.
+      this._lastMatchCount = Number(totalMatches) || 0
+      this._lastCardCount = cards?.length || 0
       // Wave B-8g-3 / B-8i-1: cache the per-group keys on the instance
       // so the bulk-install click handler can read them back without
       // rebuilding the whole card list. `matching` is the full filtered
@@ -3994,17 +4000,25 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       textInput.addEventListener("keyup", (event) => {
         if (event.key === "Enter") { event.preventDefault(); return }
         clearTimeout(this._textSearchTimer)
-        this._textSearchTimer = setTimeout(() => {
+        this._textSearchTimer = setTimeout(async () => {
           this._textFilter = textInput.value || ""
           // Wave B-5e-fix-4: filter change -> back to first page.
           this.#resetPagination()
           const leftBundles = this.#maybeAutoSwitchBmapView("text")   // Task 4
-          this.#renderResults(leftBundles ? ["sidebar", "results"] : ["results"])
+          // AWAITED on purpose. The render is what computes the match count, and
+          // the event below reports it; firing the event first reported the
+          // count of the PREVIOUS search.
+          await this.#renderResults(leftBundles ? ["sidebar", "results"] : ["results"])
           try {
             if (this._textFilter) {
               BeneosAnalytics.track("search_query", {
                 query: BeneosAnalytics.sanitize(this._textFilter, 64),
-                tab: this.searchMode
+                tab: this.searchMode,
+                // Whether the search found anything. Zero is the interesting
+                // value: it is a customer looking for something we do not have,
+                // or do not have under the name they used.
+                result_count: this._lastMatchCount ?? null,
+                shown_count: this._lastCardCount ?? null
               })
             }
           } catch (_) {}

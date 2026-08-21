@@ -13,6 +13,10 @@
 /********************************************************************************* */
 
 import { BeneosUtility } from "./beneos_utility.js";
+// Resolves a scene id back to the asset it was installed from. No import
+// cycle: install-state pulls in beneos_utility, and nothing in that chain
+// reaches back here.
+import { BeneosInstallState } from "./cloud-v2/beneos-install-state.mjs";
 
 const ANALYTICS_ENDPOINT = "https://beneos.cloud/api-analytics.php";
 // 15 min instead of 5: the ingest is the most frequent recurring request per
@@ -33,8 +37,23 @@ const SPELL_CAST_SESSION_CAP = 20;                // per spell key per session (
 const ITEM_ADD_WINDOW_MS = 5 * 1000;              // bulk-import aggregation window
 const SCENE_TIME_MIN_S = 60;                      // ignore sub-minute visits
 const SCENE_TIME_CAP_S = 6 * 3600;                // idle/overnight cap per visit
+// Actor types that count as a player character, lowercased. Not a guess: every
+// entry beyond "character" was observed in the field on a player-owned actor in
+// a world that reported party_size 0. See _partySnapshot.
+const PC_ACTOR_TYPES = new Set([
+  "character", "player", "playercharacter", "pc", "hero", "protagonist",
+  "vampire", "mortal", "werewolf", "mage"
+]);
+
 const MODINV_INTERVAL_MS = 7 * 24 * 3600 * 1000;  // module inventory at most weekly
-const MODINV_CHUNK_JSON_MAX = 1800;               // stay under the server payload cap
+// Chunk budget for the module inventory.
+//
+// This said 1800 and the comment said "stay under the server payload cap",
+// which was true of the SERVER cap (2000) and wrong about the CLIENT one
+// (PAYLOAD_MAX, 1000). Every chunk that actually filled up was therefore
+// discarded before it was ever sent. Measured on 2026-08-17: 476 of 751
+// module_inventory events arrived empty, 63 percent.
+const MODINV_CHUNK_JSON_MAX = 900;                // must stay under PAYLOAD_MAX
 // Events suppressed while the getting-started tour auto-installs its creature,
 // so the scripted install does not read as organic play.
 const TOUR_SUPPRESSED_EVENTS = new Set([
@@ -63,7 +82,8 @@ export class BeneosAnalytics {
   static _itemAddBuffer = new Map()        // "slug|parentType" -> count (5s window)
   static _itemAddTimer = null
   static _combats = new Map()              // combatId -> { battlemapKey, roster: Map }
-  static _currentScene = null              // { key, ts } for time-on-map deltas
+  static _currentScene = null              // { key, assetId, ts } for time-on-map deltas
+  static _activeSceneHash = null           // hash of the active scene, for mid-play events
   static suppressTourTracking = false      // set by the tour auto-install
 
   /********************************************************************************** */
@@ -140,12 +160,16 @@ export class BeneosAnalytics {
     } catch (_) { /* telemetry must never throw into a hook */ }
   }
 
+  // The client-side payload cap. The server discards anything over 2000 bytes,
+  // so staying under this keeps events intact end to end.
+  static PAYLOAD_MAX = 1000
+
   static _buildEvent(eventType, payload) {
     const p = payload || {}
     const { asset_id = null, asset_type = null, bytes = null, ...rest } = p
     let data = rest
     try {
-      if (JSON.stringify(rest).length > 1000) data = { _truncated: true }
+      if (JSON.stringify(rest).length > this.PAYLOAD_MAX) data = this._shrink(rest)
     } catch (_) { data = {} }
     return {
       event_type: String(eventType).slice(0, 32),
@@ -157,6 +181,47 @@ export class BeneosAnalytics {
       client_version: this.moduleVersion(),
       world_id_hash: this._worldIdHash
     }
+  }
+
+  // Shrink an oversized payload instead of throwing it away.
+  //
+  // WHY THIS EXISTS. The previous line was
+  //     if (JSON.stringify(rest).length > 1000) data = { _truncated: true }
+  // which replaced the ENTIRE payload with a flag. Measured in the data lake on
+  // 2026-08-17: 229 of 13.561 world_party_snapshot events arrived carrying
+  // nothing but `_truncated`, so their party size, classes and system were
+  // gone; and 476 of 751 module_inventory chunks arrived empty, which is 63
+  // percent of everything that event has ever reported.
+  //
+  // Scalars are what analysis needs and they are tiny. Arrays are what blows
+  // the budget. So keep every scalar, then trim the arrays from the largest
+  // down until it fits, and say per field how much was dropped. A short list
+  // plus an honest count beats a flag that means "we had it and threw it out".
+  static _shrink(rest) {
+    try {
+      const out = {}
+      const arrays = []
+      for (const [k, v] of Object.entries(rest)) {
+        if (Array.isArray(v)) arrays.push([k, v])
+        else out[k] = v
+      }
+      // Largest array first: trimming it frees the most room.
+      arrays.sort((a, b) => JSON.stringify(b[1]).length - JSON.stringify(a[1]).length)
+      for (const [k, v] of arrays) {
+        let keep = v.length
+        while (keep > 0) {
+          const probe = { ...out, [k]: v.slice(0, keep) }
+          if (JSON.stringify(probe).length <= this.PAYLOAD_MAX - 40) break
+          keep = keep > 8 ? Math.floor(keep / 2) : keep - 1
+        }
+        if (keep > 0) out[k] = v.slice(0, keep)
+        if (keep < v.length) out[`${k}_dropped`] = v.length - keep
+      }
+      out._shrunk = true
+      // Last resort: even the scalars do not fit. Then say so rather than lie.
+      if (JSON.stringify(out).length > this.PAYLOAD_MAX) return { _truncated: true }
+      return out
+    } catch (_) { return { _truncated: true } }
   }
 
   /********************************************************************************** */
@@ -319,9 +384,19 @@ export class BeneosAnalytics {
       for (const a of owned) { const t = a.type || "?"; typeCounts[t] = (typeCounts[t] || 0) + 1 }
       const ownedActorTypes = Object.entries(typeCounts).map(([type, n]) => ({ type, n }))
 
-      // Player characters: dnd5e, pf2e and daggerheart all use the "character"
-      // actor type. ownedActorTypes above exposes systems that differ.
-      const actors = owned.filter(a => a.type === "character")
+      // Player characters.
+      //
+      // THIS USED TO BE `a.type === "character"` AND IT UNDERCOUNTED. Measured
+      // in the data lake on 2026-08-17: of 2.503 snapshots reporting party_size
+      // 0, the 1.025 that carry the type diagnostic split into 947 worlds with
+      // genuinely no player-owned actor (real empty worlds) and 78 that DO have
+      // player-owned actors we simply failed to recognise. Their types read
+      // `player`, `hero`, `vampire`, and `Player` with a capital P.
+      //
+      // So: compare case-insensitively and accept the type names other systems
+      // use. `group` and `vehicle` are deliberately absent, they are not
+      // characters. ownedActorTypes above still exposes whatever we miss next.
+      const actors = owned.filter(a => PC_ACTOR_TYPES.has(String(a.type || "").toLowerCase()))
       if (!actors.length) {
         return { system_id: sys, party_size: 0, party_avg_level: 0, owned_actor_types: ownedActorTypes }
       }
@@ -343,7 +418,9 @@ export class BeneosAnalytics {
         system_id: sys,
         party_size: actors.length,
         party_avg_level: avg,
-        pc_actor_type: "character",
+        // Was actually matched, not a hardcoded claim. Before this line said
+        // "character" unconditionally, which hid exactly the mismatch above.
+        pc_actor_type: [...new Set(actors.map(a => this.sanitize(String(a.type || "?"), 24)))].sort().join(","),
         pc_sheet: this.sanitize(pcSheet, 48),
         owned_actor_types: ownedActorTypes
       }
@@ -649,19 +726,118 @@ export class BeneosAnalytics {
       // Time-on-map: close the previous Beneos map's visit before switching.
       this._closeSceneTime()
       if (this._isBeneosScene(scene)) {
-        this._currentScene = { key: this._beneosBattlemapKey(scene), ts: Date.now() }
+        // Resolve the asset HERE, not when the visit closes. scene_time fires
+        // on the way out, and by then canvas.scene is already the next map.
+        // Carrying the id along is the only way the two events can agree on
+        // which battlemap they are talking about.
+        this._currentScene = {
+          key:     this._beneosBattlemapKey(scene),
+          assetId: this._sceneAssetId(scene),
+          ts:      Date.now()
+        }
       }
+      // Den Hash der AKTIVEN Szene merken, unabhaengig davon ob sie von uns
+      // ist. Ereignisse, die spaeter im Spiel feuern, etwa das Ablegen einer
+      // Kreatur, koennen ihn dann ohne eigene Rechnung mitschicken. Ohne
+      // diesen Merkposten muesste jede solche Stelle asynchron werden.
+      this._sha256(scene.id).then(h => { this._activeSceneHash = h })
       const fresh = !this._distinctScenes.has(scene.id)
       this._distinctScenes.add(scene.id)
       if (fresh && this._isBeneosScene(scene)) {
         this._sha256(scene.id).then(hash => {
-          this.track("scene_activate", {
+          const payload = {
             battlemap_key: this._beneosBattlemapKey(scene),
             scene_id_hash: hash
-          })
+          }
+          // Only when known. An empty asset_id would claim the scene has no
+          // asset, and the truth is that this world installed before the
+          // install-state existed.
+          const assetId = this._currentScene?.assetId
+          if (assetId) payload.asset_id = assetId
+          this.track("scene_activate", payload)
         })
       }
     } catch (_) { /* swallow */ }
+  }
+
+  /**
+   * The asset a scene was installed from, or "" when unknown.
+   *
+   * WHY THIS SITS NEXT TO _beneosBattlemapKey AND DOES NOT REPLACE IT
+   *
+   * battlemap_key is a fragment of the background path and changed meaning
+   * between client versions: file name up to 14.3.0, folder name from 14.4.0.
+   * Old clients therefore send `4k_bm.webm`, which is the same string across
+   * releases. Measured in the Data Lake on 2026-08-19: it resolves for 54
+   * percent of scene activations.
+   *
+   * The install-state knows the answer exactly, but only for worlds that
+   * installed through the module after that feature shipped. Neither source
+   * covers everything, so both ship, and the Lake prefers the exact one.
+   */
+  static _sceneAssetId(scene) {
+    try {
+      return BeneosInstallState.findAssetIdByScene(scene?.id) || ""
+    } catch (_) {
+      return ""
+    }
+  }
+
+  /**
+   * Verbundene Spieler ohne den Spielleiter, oder null wenn nicht ermittelbar.
+   *
+   * OHNE DEN SPIELLEITER, weil er immer da ist. Wer ihn mitzaehlt, bekommt bei
+   * jeder Vorbereitungssitzung eine Eins und kann sie nicht von einer Runde
+   * mit einem einzigen Spieler unterscheiden. Genau diese Unterscheidung ist
+   * der Zweck der Zahl.
+   *
+   * `null` und nicht `0` im Fehlerfall: null heisst nicht ermittelbar, null
+   * hiesse niemand da.
+   */
+  /**
+   * Der Hash der aktiven Szene, oder null.
+   *
+   * Er wird beim Szenenwechsel berechnet und gemerkt. Ereignisse, die
+   * mittendrin feuern, holen ihn hier ab, statt selbst asynchron zu werden.
+   *
+   * Direkt nach einem Wechsel kann er kurz fehlen, weil die Berechnung ein
+   * Versprechen ist. Dann bleibt das Feld weg. Ein leerer Hash waere
+   * schlechter als keiner: er sieht aus wie eine Szene und ist keine.
+   */
+  static _sceneHashNow() {
+    return this._activeSceneHash || null
+  }
+
+  /**
+   * Ein Ereignis senden und die aktive Szene mit angeben.
+   *
+   * WOZU. Ereignisse wie das Ablegen einer Kreatur tragen bisher nur deren
+   * Assetkennung. Damit laesst sich sagen, welche Kreaturen zusammen benutzt
+   * werden, aber nicht, AUF WELCHER KARTE. Genau diese Verbindung ist die
+   * Grundlage fuer einen Buendelzuschnitt: wer Death House spielt, braucht
+   * welche Gegner?
+   *
+   * Als eigene Methode und nicht als zwei Zeilen an den Aufrufstellen, damit
+   * die Regel an einem Ort steht: fehlt der Hash, faellt das Feld weg. Ein
+   * leerer Hash sieht aus wie eine Szene und ist keine.
+   */
+  static trackOnScene(eventType, payload = {}) {
+    const hash = this._sceneHashNow()
+    this.track(eventType, hash ? { ...payload, scene_id_hash: hash } : payload)
+  }
+
+  static _connectedPlayers() {
+    try {
+      const users = game?.users
+      if (!users) return null
+      let n = 0
+      for (const u of users) {
+        if (u?.active && !u?.isGM) n++
+      }
+      return n
+    } catch (_) {
+      return null
+    }
   }
 
   // Emit the time spent on the previously active Beneos map. Visits under a
@@ -674,7 +850,23 @@ export class BeneosAnalytics {
       let seconds = Math.round((Date.now() - cur.ts) / 1000)
       if (seconds < SCENE_TIME_MIN_S) return
       if (seconds > SCENE_TIME_CAP_S) seconds = SCENE_TIME_CAP_S
-      this.track("scene_time", { battlemap_key: cur.key, seconds })
+      const payload = { battlemap_key: cur.key, seconds }
+      if (cur.assetId) payload.asset_id = cur.assetId
+      // WAS DIE STUFE "GESPIELT" AUSMACHT.
+      //
+      // Ohne diese Zahl kann die Auswertung nicht zwischen einer Karte
+      // unterscheiden, die zwanzig Minuten am Tisch lag, und einer, die
+      // jemand allein vorbereitet hat. Die Nutzungsleiter im Data Lake fuehrt
+      // die Stufe deshalb als "nicht messbar", und die einzige Naeherung ist
+      // die Sitzungszeile, die nur rund 263 der 857 Welten deckt.
+      //
+      // Gezaehlt werden verbundene Nutzer ohne den Spielleiter selbst. Null
+      // ist ein gueltiger Wert und heisst allein; es wird nicht weggelassen,
+      // sonst waere spaeter nicht zu unterscheiden, ob niemand da war oder ob
+      // ein alter Client die Zahl nicht schickt.
+      const spieler = this._connectedPlayers()
+      if (spieler !== null) payload.players_connected = spieler
+      this.track("scene_time", payload)
     } catch (_) { /* swallow */ }
   }
 
@@ -704,7 +896,46 @@ export class BeneosAnalytics {
       // variant name like 4k_bm.webm that collides across releases. Prefer the
       // folder for a meaningful key; fall back to the file when there is no folder.
       const folder = segs.pop() || ""
-      return this.sanitize(folder || file, 96)
+      return this._pathKey(folder || file, 96)
+    } catch (_) { return "" }
+  }
+
+  /**
+   * Ein Pfadfragment als Schluessel, ohne die Geheimnismaskierung.
+   *
+   * WARUM NICHT sanitize. Dort ersetzt `[A-Za-z0-9_-]{32,}` jede lange Kette
+   * durch `<id>`, damit ein versehentlich eingefuegtes Kennwort oder eine
+   * Kennung aus einem Suchfeld nicht im Lake landet. Ein Battlemap-Ordnername
+   * ist genau so eine Kette und genau kein Geheimnis:
+   * `24-08_ravenloft_1f_grand_landing` hat exakt 32 Zeichen und wurde
+   * vollstaendig durch `<id>` ersetzt, obwohl der Pfad sauber war.
+   *
+   * GEMESSEN im Data Lake am 2026-08-19 ueber 33.766 `scene_activate`:
+   * 5.532 tragen die Maskierungsspur, also 16,4 Prozent.
+   *
+   * DER PUNKT SCHUETZT NICHT. Nur die Endung steht hinter ihm, die lange
+   * Kette davor wird trotzdem ersetzt, und `..._grand_landing-4k_bm.webm`
+   * kommt als `<id>.webm` an. Deshalb ist ausgerechnet 14.3.1 mit dem
+   * Dateinamen am staerksten betroffen (29,1 Prozent), waehrend 14.4.x mit
+   * dem kuerzeren Ordnernamen bei 5,5 bis 9,6 Prozent liegt. Der Fehler kam
+   * NICHT mit 14.4.0; er war immer da und hat sich mit 14.4.0 verkleinert.
+   *
+   * Wer nur auf den vollstaendig ersetzten Wert `<id>` zaehlt, sieht 4,4
+   * Prozent und unterschaetzt den Schaden um das Vierfache. Die 3.983
+   * `<id>.webm` fehlen in dieser Zaehlung, und sie sind der groesste
+   * Einzelposten der ganzen Rangliste.
+   *
+   * NUR HIER UND NICHT IN sanitize SELBST. Bei `message` ist die Maskierung
+   * richtig: dort landen Fehlertexte, in die Nutzereingaben geraten koennen.
+   * Der Schutz bleibt, wo er gebraucht wird, und faellt nur fuer einen Wert
+   * weg, der immer aus einem Beneos-Assetpfad stammt. Nichtbeneos-Szenen
+   * schicken diesen Schluessel gar nicht.
+   *
+   * Kappung und Zusammenziehen von Leerraum bleiben unveraendert.
+   */
+  static _pathKey(str, max = 96) {
+    try {
+      return String(str ?? "").replace(/\s+/g, " ").trim().slice(0, max)
     } catch (_) { return "" }
   }
 
@@ -720,11 +951,21 @@ export class BeneosAnalytics {
       const now = Date.now()
       if (now - (this._errorThrottle.get(fp) || 0) < ERROR_THROTTLE_MS) return
       this._errorThrottle.set(fp, now)
+      const assetId = this._sceneAssetId(scene)
       this._sha256(scene.id).then(hash => {
         this.track("battlemap_error", {
           battlemap_key: this._beneosBattlemapKey(scene),
+          // Damit ein Fehler dem Release zugeordnet werden kann, aus dem die
+          // Karte stammt. Ueber battlemap_key allein geht das nur bei gut der
+          // Haelfte, und gerade bei einer kaputten Szene ist die Frage
+          // "welches Release" die erste.
+          ...(assetId ? { asset_id: assetId } : {}),
           scene_id_hash: hash,
-          message: this.sanitize(err?.message || String(err || ""), 200),
+          message: this.sanitize(this._splitStackPackages(err?.message || String(err || "")).message, 200),
+          stack_packages: (() => {
+            const p = this._splitStackPackages(err?.message || String(err || "")).packages
+            return p ? this.sanitize(p, 180) : null
+          })(),
           stack_top_line: stackTop,
           module_version: this.moduleVersion(),
           ...this._errorContext()
@@ -830,7 +1071,8 @@ export class BeneosAnalytics {
   static _captureError(err, context, assetId) {
     try {
       const errorClass = (err?.name || err?.constructor?.name || "Error").slice(0, 128)
-      const message = this.sanitize(err?.message || String(err || ""), 200)
+      const geteilt = this._splitStackPackages(err?.message || String(err || ""))
+      const message = this.sanitize(geteilt.message, 200)
       const stackTop = this._stackTopLine(err?.stack || "")
       const fp = `${errorClass}|${stackTop}`
       const now = Date.now()
@@ -839,6 +1081,9 @@ export class BeneosAnalytics {
       this.track("beneos_error", {
         error_class: errorClass,
         message,
+        // Own field, so neither the 200-character cut nor the per-user
+        // variation of the list can touch the message itself.
+        stack_packages: geteilt.packages ? this.sanitize(geteilt.packages, 180) : null,
         stack_top_line: stackTop,
         context: context ? String(context).slice(0, 32) : null,
         asset_id: assetId || null,
@@ -877,6 +1122,34 @@ export class BeneosAnalytics {
   /********************************************************************************** */
   // Trim to `max`, collapse whitespace, mask anything that looks like a long
   // token/secret/id pasted into a search box or surfaced in an error message.
+  // Split Foundry's own package attribution off the message.
+  //
+  // Foundry core appends "[Detected 2 packages: lib-wrapper(1.13.5.1),
+  // beneos-module(14.4.6)]" to error messages: the packages whose code appears
+  // in the stack. That is genuinely useful, and it was being destroyed twice.
+  //
+  // Measured in the data lake on 2026-08-17, over 2.158 error events carrying
+  // such a list:
+  //
+  //   - The list sits at the END of the message, and sanitize() cuts at 200
+  //     characters. 297 lists arrived cut in half, closing bracket and all.
+  //   - The list varies with the user's stack, so the same bug produced a
+  //     different message per user. 82 of 226 distinct messages were nothing
+  //     but this variation, which fragments any grouping by message.
+  //
+  // Both go away if the list travels in its own field: the message keeps its
+  // full 200 characters for the actual error, and the attribution arrives whole.
+  static _splitStackPackages(message) {
+    const s = String(message || "")
+    // Closed form first, then the form that Foundry itself already truncated.
+    const m = s.match(/\s*\[Detected [^\]]*\]/) || s.match(/\s*\[Detected .*$/)
+    if (!m) return { message: s, packages: null }
+    return {
+      message: (s.slice(0, m.index) + s.slice(m.index + m[0].length)).trim(),
+      packages: m[0].trim()
+    }
+  }
+
   static sanitize(str, max = 200) {
     try {
       let s = String(str ?? "")
