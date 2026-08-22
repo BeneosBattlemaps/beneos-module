@@ -20,7 +20,7 @@
  * to the gate cut, video running, 59 frames per second.
  */
 
-import { budgetFor, downloadMode, localCacheEnabled, streamEnabled, streamHost } from "./stream-settings.mjs"
+import { budgetFor, downloadMode, localCacheEnabled, streamEnabled, streamHost, streamMode } from "./stream-settings.mjs"
 import { reportFailure, reportedSoFar } from "./stream-report.mjs"
 import { noteResult } from "./stream-online.mjs"
 
@@ -59,6 +59,18 @@ export function inFlightCount() {
 const FAILURE_LOG_MAX = 200
 
 let installed = false
+
+/**
+ * Haengt der Ersatz wirklich?
+ *
+ * Gebraucht, weil das Ausbleiben des Einbaus die teuerste Art von Fehler war,
+ * die dieser Zweig bisher hatte: nichts stuerzt ab, nichts warnt, die Szene
+ * zeichnet sich normal, und nur der Speicher bleibt leer. Wer das nicht
+ * abfragen kann, findet es erst, wenn jemand die Eintraege zaehlt.
+ */
+export function streamFetchInstalled() {
+  return installed
+}
 
 const counts = {}
 const failures = []
@@ -134,7 +146,19 @@ async function toStore(store, url, response) {
 }
 
 export function installStreamFetch() {
-  if (installed || !streamEnabled()) return
+  // Am Modus, nicht an streamEnabled(). Letzteres verlangt bereits einen
+  // Schluessel, und den holt sich eine frisch eingeschaltete Welt erst im
+  // ready-Hook. An streamEnabled() gehaengt liefe die erste Sitzung nach dem
+  // Einschalten ganz ohne Speicher, und zwar stillschweigend.
+  //
+  // Nachruesten nach `ready` ist keine Loesung: gemessen am 22.08.2026 auf
+  // Foundry 14.365 feuert `canvasReady` fuenf Millisekunden VOR `ready`, die
+  // erste Szene ist dann laengst gezeichnet.
+  //
+  // Ohne Schluessel ist der Einbau untaetig, denn der Ersatz greift nur bei
+  // Adressen auf dem Tor-Host, und ohne Schluessel steht keine solche Adresse
+  // in einem Dokument.
+  if (installed || !streamMode()) return
   installed = true
 
   // Images arrive through a worker thread unless this is off. See the file

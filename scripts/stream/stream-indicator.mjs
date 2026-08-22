@@ -11,7 +11,7 @@
  * button. This is the same dot in three colours.
  */
 
-import { streamEnabled } from "./stream-settings.mjs"
+import { streamEnabled, streamMode } from "./stream-settings.mjs"
 import { onStreamState, onlineStatus, streamState } from "./stream-online.mjs"
 
 const DOT_CLASS = "beneos-stream-dot"
@@ -74,7 +74,11 @@ function paint() {
 }
 
 export function installStreamIndicator() {
-  if (!streamEnabled()) return
+  // Am Modus, nicht an streamEnabled(): siehe die Begruendung in
+  // installStreamFetch. `paint()` prueft weiterhin auf streamEnabled() und
+  // zeichnet ohne Schluessel nichts, der Punkt taucht also erst auf, wenn es
+  // etwas anzuzeigen gibt.
+  if (!streamMode()) return
   // Runs after the module's own renderSceneControls handler, which is what puts
   // the button in its final place.
   Hooks.on("renderSceneControls", () => paint())

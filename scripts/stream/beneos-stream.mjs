@@ -1,9 +1,14 @@
 /**
  * Entry point of the Beneos Stream beta.
  *
- * Everything hangs in the `init` hook. That is early enough: the canvas draws
- * after `ready`, so the fetch redirection and the PIXI flag are in place before
- * a single texture is asked for, and settings are readable there.
+ * Everything hangs in the `init` hook, and it has to. Settings are readable
+ * there, and it is the last hook that is reliably ahead of the first texture.
+ *
+ * Korrektur vom 22.08.2026: hier stand, die Leinwand zeichne NACH `ready`.
+ * Gemessen auf Foundry 14.365 ist die Reihenfolge init, setup, canvasInit,
+ * canvasReady, ready, und zwischen den letzten beiden liegen fuenf
+ * Millisekunden. Die erste Szene ist fertig, bevor `ready` feuert. Wer den
+ * Einbau nach `ready` verschiebt, verliert sie.
  *
  * This is the ONLY file of the beta referenced from module.json. With the main
  * switch off, `installStreamFetch` returns immediately, nothing is patched, and
@@ -12,7 +17,7 @@
  */
 
 import { registerStreamSettings, streamEnabled, streamKey, streamBase, streamHost, pinStillsEnabled, installMode, downloadMode, streamMode, ensureStreamKey } from "./stream-settings.mjs"
-import { installStreamFetch, storeStatus, clearStore, prewarm, diagnose, resetDiagnosis, abortAll, sichereSpeicher } from "./stream-fetch.mjs"
+import { installStreamFetch, storeStatus, clearStore, prewarm, diagnose, resetDiagnosis, abortAll, sichereSpeicher, streamFetchInstalled } from "./stream-fetch.mjs"
 import { installStreamCanvas, drawStatus, videoTilesOf } from "./stream-canvas.mjs"
 import { installStreamOnline, onlineStatus, streamState, isOffline, hasStreamedContent } from "./stream-online.mjs"
 import { installStreamIndicator } from "./stream-indicator.mjs"
@@ -25,7 +30,22 @@ Hooks.once("init", () => {
 
   // Only patch when the switch is on. An off beta must cost nothing, not even
   // a wrapped fetch.
-  if (streamEnabled()) {
+  //
+  // Am Modus, nicht an streamEnabled(). Gemessen am 22.08.2026 auf The Forge:
+  // eine Welt, die ihren Schluessel erst im ready-Hook bekommt, hatte in genau
+  // dieser Sitzung keinen fetch-Ersatz, keinen Wachhund, keine Leinwandhilfe
+  // und keine Anzeige. Der Speicher blieb bei null Eintraegen, ohne dass etwas
+  // darauf hingewiesen haette. Erst der naechste Weltstart haengte alles ein.
+  //
+  // Nachruesten nach `ready` scheidet aus: dieselbe Messung ergab die
+  // Reihenfolge init, setup, canvasInit, canvasReady, ready, mit nur fuenf
+  // Millisekunden zwischen den letzten beiden. Die erste Szene ist gezeichnet,
+  // bevor `ready` feuert. Der Kommentar oben in dieser Datei behauptete das
+  // Gegenteil und ist damit widerlegt.
+  //
+  // Ohne Schluessel bleiben alle vier untaetig: jede von ihnen prueft in ihren
+  // Behandlern weiterhin auf streamEnabled().
+  if (streamMode()) {
     installStreamFetch()
     installStreamOnline()
     installStreamCanvas()
@@ -84,6 +104,18 @@ Hooks.once("ready", async () => {
   if (!streamEnabled()) {
     console.log("Beneos Stream | Modus an, aber kein Schluessel. Es wird nichts ausgeliefert.")
     return
+  }
+
+  // Der Modus laesst sich auch mitten in einer Sitzung umlegen, und dann ist
+  // `init` laengst vorbei. Ohne diese Zeile liefe die Welt genau wie vor dem
+  // Fix vom 22.08.2026 weiter: Szenen zeichnen, Speicher bleibt leer, nichts
+  // sagt etwas. Ein Fehler, der keine Spur hinterlaesst, wird nicht gefunden.
+  if (!streamFetchInstalled()) {
+    const text = "Beneos Stream | Der Speicher ist NICHT eingehaengt. Der Modus wurde vermutlich "
+      + "waehrend dieser Sitzung eingeschaltet. Bitte die Welt neu laden, sonst wird nichts "
+      + "zwischengespeichert und jede Szene kommt in jeder Sitzung erneut ueber die Leitung."
+    console.warn(text)
+    ui.notifications?.warn(text)
   }
 
   // First activation in this world asks once, then never again.

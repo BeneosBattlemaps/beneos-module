@@ -19,7 +19,7 @@
  * tells the truth.
  */
 
-import { streamBase, streamEnabled } from "./stream-settings.mjs"
+import { streamBase, streamEnabled, streamMode } from "./stream-settings.mjs"
 
 // Probing while the answer is already known is pointless traffic. These follow
 // the cloud client's own probe loop: start soon, then back off.
@@ -195,7 +195,15 @@ export function hasStreamedContent(scene) {
 }
 
 export function installStreamOnline() {
-  if (!streamEnabled()) return
+  // Am Modus, nicht an streamEnabled(): siehe die Begruendung in
+  // installStreamFetch. Der Schluessel entsteht erst in `ready`, und ein
+  // Wachhund, der in genau dieser Sitzung nicht eingehaengt wird, fehlt bis
+  // zum naechsten Weltstart.
+  //
+  // Untaetig bleibt der Einbau von selbst: `probeOnce` und die Szenenwache
+  // pruefen weiterhin auf streamEnabled() und kehren ohne Schluessel sofort
+  // zurueck. Es wird also nichts gemessen und nichts gemeldet, bis er da ist.
+  if (!streamMode()) return
   installSceneGuard()
 
   // The browser knows one half of the answer for free. Only the negative one.
