@@ -134,12 +134,130 @@ export function streamEnabled() {
   return Boolean(read(SETTING.mode, false)) && Boolean(read(SETTING.key, ""))
 }
 
+/**
+ * Nur der Schalter, ohne die Frage nach dem Schluessel.
+ *
+ * Gebraucht an genau einer Stelle: dort, wo der Schluessel geholt wird. An
+ * `streamEnabled()` gehaengt liefe das ins Leere, denn diese Pruefung verlangt
+ * bereits einen Schluessel, und eine Welt ohne kaeme nie dazu, sich einen zu
+ * besorgen.
+ */
+export function streamMode() {
+  return Boolean(read(SETTING.mode, false))
+}
+
 export function streamKey() {
   return String(read(SETTING.key, "") || "").trim()
 }
 
 export function streamBase() {
   return String(read(SETTING.base, DEFAULT_BASE) || DEFAULT_BASE).replace(/\/+$/, "")
+}
+
+/* ------------------------------------------------- den Schluessel besorgen */
+
+/**
+ * Die Kennung dieser Welt: SHA-256 ueber `game.world.id`, 64 Zeichen Hex.
+ *
+ * Bewusst dieselbe Bildung wie in der Telemetrie (`beneos_analytics.js`), aber
+ * hier noch einmal in vier Zeilen statt ueber deren Klasse. Grund: die
+ * Telemetrie schaltet sich ab, sobald das Streaming laeuft
+ * (`beneos_analytics.js:111`). Wer sich auf sie stuetzte, haette eine
+ * Abhaengigkeit auf etwas, das in genau diesem Fall nicht arbeitet.
+ */
+async function weltKennung() {
+  try {
+    const roh = new TextEncoder().encode(String(game.world?.id || ""))
+    const buf = await crypto.subtle.digest("SHA-256", roh)
+    return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("")
+  } catch (_) {
+    return ""
+  }
+}
+
+/**
+ * Holt den Streaming-Schluessel dieser Welt bei der Cloud und legt ihn ab.
+ *
+ * ER WIRD NIE UEBERSCHRIEBEN
+ *
+ * Steht schon einer da, wird er als `vorhanden` mitgeschickt und behalten. Der
+ * Schluessel steckt im Pfad jeder gestreamten Adresse und damit in jedem
+ * Szenendokument auf der Platte; ein neuer machte jede installierte Szene
+ * unsichtbar. Das Mitschicken dient nur dazu, dass die Cloud den bis dahin
+ * handgetippten Schluessel in ihre Verwaltung uebernehmen kann.
+ *
+ * WARUM NICHT HINTER streamEnabled()
+ *
+ * Diese Pruefung verlangt einen nicht leeren Schluessel. Eine Welt ohne
+ * Schluessel kaeme also nie dazu, sich einen zu holen. Aufgerufen wird deshalb
+ * am Modus allein.
+ *
+ * Die Anmeldung laeuft wie ueberall gegen `api-scenepacker.php`: `s=` traegt
+ * die `beneos-cloud-foundry-id`, und `credentials` bleibt aus, weil der Rand
+ * `Access-Control-Allow-Origin: *` schickt und der Browser das mit
+ * Anmeldedaten ablehnt.
+ *
+ * @returns {Promise<string>} der gueltige Schluessel, oder "" wenn es nicht ging
+ */
+export async function ensureStreamKey() {
+  const vorhanden = streamKey()
+
+  const welt = await weltKennung()
+  if (!welt) {
+    console.warn("Beneos Stream | Weltkennung nicht bildbar, Schluessel wird nicht geholt")
+    return vorhanden
+  }
+
+  let sid = ""
+  try { sid = String(game.settings.get(MODULE_ID, "beneos-cloud-foundry-id") || "") } catch (_) { sid = "" }
+  if (!sid) {
+    // Ohne Anmeldung gibt es keinen Schluessel. Das ist kein Fehler, sondern
+    // der Zustand vor dem ersten Cloud-Login.
+    console.log("Beneos Stream | noch keine Cloud-Anmeldung, Schluessel wird spaeter geholt")
+    return vorhanden
+  }
+
+  const basis = (globalThis.BeneosUtility?.cloudBase?.() || "https://beneos.cloud").replace(/\/+$/, "")
+  const body = new URLSearchParams({
+    s: sid,
+    a: "get_stream_key",
+    world_hash: welt,
+    label: String(game.world?.title || "").slice(0, 96),
+  })
+  if (vorhanden) body.set("vorhanden", vorhanden)
+
+  try {
+    const antwort = await fetch(`${basis}/api-scenepacker.php`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+      credentials: "omit",
+    })
+    const daten = await antwort.json()
+    if (daten?.status !== "ok" || !daten?.stream_key) {
+      console.warn("Beneos Stream | Schluessel nicht erhalten:", daten?.message || antwort.status)
+      return vorhanden
+    }
+
+    if (daten.stream_key !== vorhanden) {
+      // Nur schreiben, wenn sich wirklich etwas aendert. Eine Einstellung zu
+      // setzen ist in Foundry ein Weltschreibvorgang und wird an alle Spieler
+      // verteilt; das bei jedem Weltstart zu tun waere Laerm ohne Anlass.
+      await game.settings.set(MODULE_ID, SETTING.key, String(daten.stream_key))
+      console.log(`Beneos Stream | Schluessel ${vorhanden ? "ersetzt" : "erhalten"}, Spiegel: ${daten.spiegel || "ueber den Takt"}`)
+    }
+    if (daten.base) {
+      const sauber = String(daten.base).replace(/\/+$/, "")
+      if (sauber && sauber !== streamBase()) await game.settings.set(MODULE_ID, SETTING.base, sauber)
+    }
+    return String(daten.stream_key)
+  } catch (e) {
+    // Ein Netzfehler darf den Weltstart nicht aufhalten. Ohne Schluessel
+    // bleibt das Streaming schlicht aus, und der naechste Start versucht es
+    // wieder.
+    console.warn("Beneos Stream | Schluessel konnte nicht geholt werden:", e?.message || e)
+    return vorhanden
+  }
 }
 
 export function localCacheEnabled() {

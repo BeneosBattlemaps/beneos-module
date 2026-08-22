@@ -11,8 +11,8 @@
  * branch: a tester can go back by pointing the manifest at main again.
  */
 
-import { registerStreamSettings, streamEnabled, streamKey, streamBase, streamHost, pinStillsEnabled, installMode, downloadMode } from "./stream-settings.mjs"
-import { installStreamFetch, storeStatus, clearStore, prewarm, diagnose, resetDiagnosis, abortAll } from "./stream-fetch.mjs"
+import { registerStreamSettings, streamEnabled, streamKey, streamBase, streamHost, pinStillsEnabled, installMode, downloadMode, streamMode, ensureStreamKey } from "./stream-settings.mjs"
+import { installStreamFetch, storeStatus, clearStore, prewarm, diagnose, resetDiagnosis, abortAll, sichereSpeicher } from "./stream-fetch.mjs"
 import { installStreamCanvas, drawStatus, videoTilesOf } from "./stream-canvas.mjs"
 import { installStreamOnline, onlineStatus, streamState, isOffline, hasStreamedContent } from "./stream-online.mjs"
 import { installStreamIndicator } from "./stream-indicator.mjs"
@@ -71,11 +71,29 @@ Hooks.once("init", () => {
 })
 
 Hooks.once("ready", async () => {
-  if (!streamEnabled()) return
+  // Am Modus, nicht an streamEnabled(): letzteres verlangt bereits einen
+  // Schluessel, und eine frisch eingeschaltete Welt hat noch keinen. Sie kaeme
+  // sonst nie dazu, sich einen zu holen.
+  if (!streamMode()) return
   if (!game.user?.isGM) return
+
+  // Der Schluessel dieser Welt. Holt ihn beim ersten Mal, uebernimmt einen
+  // handgetippten und laesst ihn danach in Ruhe.
+  await ensureStreamKey()
+
+  if (!streamEnabled()) {
+    console.log("Beneos Stream | Modus an, aber kein Schluessel. Es wird nichts ausgeliefert.")
+    return
+  }
 
   // First activation in this world asks once, then never again.
   await ensureAcknowledged()
+
+  // Direkt nach dem Dialog um die Speicherzusage bitten. Die Reihenfolge ist
+  // kein Zufall: eine Nutzerhandlung unmittelbar davor erhoeht die Aussicht,
+  // dass Chrome zusagt. Ohne Zusage darf der Browser den Cache bei
+  // Plattenknappheit raeumen, und genau daran haengt das Offline-Versprechen.
+  const zusage = await sichereSpeicher()
 
   const store = await storeStatus()
   console.log(
@@ -83,4 +101,17 @@ Hooks.once("ready", async () => {
     `${streamState()} | install ${installMode()} | pin-stills ${pinStillsEnabled() ? "on" : "off"} | ` +
     `store ${store.entries} entries, ${store.usageMB} MB of ${store.quotaGB} GB, persisted=${store.persisted}`
   )
+  // Getrennt protokolliert, weil es eine Aussage ueber die HALTBARKEIT ist und
+  // nicht ueber den Fuellstand. Wer beides in eine Zeile schreibt, liest die
+  // wichtigere Zahl irgendwann ueber.
+  if (zusage.zugesagt === true) {
+    console.log("Beneos Stream | Speicher ist dauerhaft, der Browser raeumt ihn nicht von selbst")
+  } else if (zusage.zugesagt === false) {
+    console.warn(
+      "Beneos Stream | KEINE Speicherzusage. Der Browser darf den Offline-Bestand bei " +
+      "Plattenknappheit jederzeit verwerfen. Offline gilt nur, solange er ihn haelt."
+    )
+  } else {
+    console.warn("Beneos Stream | Speicherzusage nicht erfragbar, dieser Browser kennt die Schnittstelle nicht")
+  }
 })

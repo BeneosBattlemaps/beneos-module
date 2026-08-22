@@ -289,6 +289,47 @@ export async function prewarm(urls, onProgress) {
   return { warmed, failed }
 }
 
+/**
+ * Den Browser um eine Zusage bitten, den Speicher nicht zu raeumen.
+ *
+ * WARUM DAS NOETIG IST
+ *
+ * Ohne Zusage ist der Cache "best effort": der Browser darf ihn bei
+ * Plattenknappheit wegwerfen, ohne zu fragen. Das Offline-Versprechen der
+ * Kundenkommunikation haengt genau daran (OP-PRJ-043).
+ *
+ * WAS AM 22.08.2026 GEMESSEN WURDE
+ *
+ * Das Modul hat bis dahin `persisted()` nur GELESEN und nie `persist()`
+ * GERUFEN. Die Zusage konnte also gar nicht erteilt werden; das protokollierte
+ * `persisted=false` war kein abgelehnter Antrag, sondern ein nie gestellter.
+ *
+ * Ein ausdruecklicher Antrag im Pruefstand ergab trotzdem `false`, bei einem
+ * Kontingent von 10,74 GB. Das ist allerdings unter einem frischen
+ * Browserprofil gemessen, und Chrome entscheidet nach Nutzungsverlauf. Ein
+ * Kunde, der seine Welt taeglich oeffnet, kann dieselbe Frage mit `true`
+ * beantwortet bekommen. Die Messung schliesst also die Zusage nicht aus, sie
+ * beweist sie nur nicht.
+ *
+ * Daraus folgt der Umgang: fragen, die Antwort festhalten, und dem Kunden
+ * sagen, was er wirklich hat. Ein pauschales Offline-Versprechen ist ohne
+ * diese Antwort nicht zu halten.
+ *
+ * Gerufen wird das direkt nach dem Bestaetigungsdialog, weil eine
+ * Nutzerhandlung die Aussicht auf eine Zusage erhoeht.
+ *
+ * @returns {Promise<{gefragt:boolean, zugesagt:boolean|null}>}
+ */
+export async function sichereSpeicher() {
+  try {
+    if (!navigator.storage?.persist) return { gefragt: false, zugesagt: null }
+    if (await navigator.storage.persisted()) return { gefragt: false, zugesagt: true }
+    return { gefragt: true, zugesagt: await navigator.storage.persist() }
+  } catch (_) {
+    return { gefragt: false, zugesagt: null }
+  }
+}
+
 /** What the store currently holds for us, and how much room is left. */
 export async function storeStatus() {
   const out = { entries: 0, quotaGB: null, usageMB: null, persisted: null }

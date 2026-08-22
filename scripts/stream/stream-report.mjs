@@ -10,7 +10,7 @@
  * has no business in the live figures.
  */
 
-import { streamBase, streamEnabled, streamKey } from "./stream-settings.mjs"
+import { streamBase, streamEnabled } from "./stream-settings.mjs"
 
 // One report per address per session. A broken scene would otherwise send one
 // report per retry per asset, which buries the signal it is meant to carry.
@@ -31,7 +31,15 @@ async function flush() {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        key: streamKey(),
+        // Der Kundenschluessel wird NICHT mitgeschickt.
+        //
+        // Er stand hier bis zum 22.08.2026. Das Tor wirft ihn seinerseits weg
+        // und begruendet das in `handleReport`: der Schluessel benennt eine
+        // Person, und ein Diagnosekanal ist der falsche Ort dafuer. Ihn
+        // trotzdem zu senden hiess, ihn ueber eine unangemeldete Route zu
+        // schicken, damit ihn die Gegenseite anschliessend verwirft. Die Welt
+        // leistet fuer die Gruppierung dasselbe und sagt nichts darueber, wer
+        // am Tisch sitzt.
         world: game?.world?.id ?? null,
         foundry: game?.version ?? null,
         entries: batch,
