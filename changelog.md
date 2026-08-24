@@ -6,6 +6,9 @@ All notable changes to this module will be documented in this file.
 
 ### 14.4.7 # 2026-08-24
 
+**Changed**
+- Changed: Usage statistics are now also sent from worlds that are not signed in to the Beneos Cloud. Until now the module only reported once an account had signed in, which meant a world that installed the module and never signed in was invisible to us: we could not tell it apart from a world where the module was never installed at all. Such a world now reports under a random identifier stored in the world itself, with no account attached to it. Nothing else changes: the same events, no address, no world or user name. The setting that turns usage statistics off still turns all of it off, signed in or not.
+
 **Improved**
 - Improved: A Beneos creature that replaces a free one on a map now keeps that creature's name, nameplate setting and disposition. Adventure modules address their NPCs by the name on the map, so the generic thief called "Harald" stays "Harald" after the upgrade, and everything the module hangs on that name keeps working. Only the token on the map is renamed: the creature in your world, its prototype and the drawer keep the Beneos name, and artwork, size and statblock stay untouched.
 - Improved: When an install cannot finish, the report now names the one cause it used to leave blank: the file arrived but could not be read back afterwards. That is what happens when another module converts your uploads or your host refuses to serve a file type, and knowing it saves you looking for a fault on your side.
