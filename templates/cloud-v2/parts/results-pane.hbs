@@ -681,7 +681,11 @@
                         data-variant-style="{{v.style}}"
                         data-asset-key="{{v.assetKey}}"
                         data-actor-id="{{v.actorId}}"
-                        data-bc-locked="{{drawer.asset.isLocked}}"
+                        {{!-- @root for the same reason as the bundle members below:
+                             inside this each the context is the variant, so a bare
+                             drawer.asset.* is empty and #installBlockReason's
+                             dataset.bcLocked === "true" test could never fire. --}}
+                        data-bc-locked="{{@root.drawer.asset.isLocked}}"
                         draggable="true"
                         data-tooltip="{{#if v.isInstalled}}{{localize 'BENEOS.Cloud.Drawer.VariantTooltip'}} {{v.index}}{{#if (eq v.style 'topdown')}} · {{localize 'BENEOS.Cloud.Drawer.StyleTopDown'}}{{else}} · {{localize 'BENEOS.Cloud.Drawer.StyleTokenized'}}{{/if}}{{else}}{{localize 'BENEOS.Cloud.Drawer.VariantTooltip'}} {{v.index}}{{#if (eq v.style 'topdown')}} · {{localize 'BENEOS.Cloud.Drawer.StyleTopDown'}}{{else}} · {{localize 'BENEOS.Cloud.Drawer.StyleTokenized'}}{{/if}} · {{localize 'BENEOS.Cloud.Drawer.DragInstalls'}}{{/if}}">
                   <img src="{{v.thumbUrl}}" alt="Variant {{v.index}} {{v.style}}" draggable="false"
@@ -839,7 +843,13 @@
                 <span class="bc-bundle-member-name">{{m.name}}</span>
                 <span class="bc-bundle-member-size">{{m.sizeLabel}}</span>
                 {{#if m.installed}}<i class="fa-solid fa-circle-check bc-bmap-installed-check" data-tooltip="{{localize 'BENEOS.Cloud.Bmap.MemberInstalledTooltip'}}"></i>{{/if}}
-                {{#if drawer.asset.isReleaseLocked}}
+                {{!-- @root, not drawer.*: inside this each the context is the
+                     member, so a bare drawer.asset.* resolves against `m` and
+                     yields nothing. That is how data-bundle-id shipped empty and
+                     every per-release install answered "This bundle release could
+                     not be resolved" (Discord 2026-08-24), and how the lock below
+                     never rendered for a user without access. --}}
+                {{#if @root.drawer.asset.isReleaseLocked}}
                   {{!-- Logged out / no access: list the release but make the
                        per-member download non-functional (red lock + tooltip). --}}
                   <a class="bc-card-button bc-card-button-locked bc-bundle-member-install"
@@ -850,7 +860,7 @@
                 {{else}}
                   <button type="button" class="bc-card-button bc-card-button-primary bc-bundle-member-install"
                           data-action="installBundleMember"
-                          data-bundle-id="{{drawer.asset.key}}"
+                          data-bundle-id="{{@root.drawer.asset.key}}"
                           data-member-index="{{m.index}}"
                           data-tooltip="{{localize 'BENEOS.Cloud.Bmap.BundleMemberInstallTooltip'}}">
                     <i class="fa-solid fa-cloud-arrow-down"></i>
