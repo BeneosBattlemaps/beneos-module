@@ -39,11 +39,6 @@ const CLOUD_INSTALL_PREFIX = "beneos_assets/cloud/battlemaps/"
 const PACKAGED_INSTALL_PREFIX = "beneos_assets/cloud/packaged/"
 const DOC_DIR = "_docs/"
 
-// Same three constants the preparation tool writes and the canvas hook reads.
-const FLAG_SCOPE = "beneos-module"
-const FLAG_KEY = "stream"
-const ROLE_VIDEO = "stream-video"
-
 const stripLeadSlash = (p) => String(p).replace(/^\/+/, "")
 
 /**
@@ -244,40 +239,19 @@ export function applyStreamAddresses(value, streamTargets) {
   return value
 }
 
-/**
- * Undo the scene rebuild for a downloaded release.
+/*
+ * `restoreLocalVideos` stand hier bis zum 2026-08-23 und ist ersatzlos
+ * entfallen.
  *
- * The preparation tool takes the video out of the tile and parks its address in
- * a flag, because a video inside the document sits in the scene's load barrier
- * and a stalled one there can wedge the client for the rest of the session.
- * That reasoning holds for a streamed video and for nothing else: a downloaded
- * one lies on the customer's own disk, loads at local speed, and belongs in the
- * document where every other Foundry feature can see it.
+ * Es baute den Szenenumbau fuer ein heruntergeladenes Release zurueck: Video
+ * aus der Markierung zurueck in die Kachel, Markierung weg. Noetig war das,
+ * weil die Aufbereitung den Umbau vorgekocht ins Paket legte und der
+ * Download-Weg ihn deshalb erst wieder loswerden musste.
  *
- * The address in the flag has already been rewritten by the installer's own
- * pass, because that pass walks the whole document and does not stop at flags.
- * So by the time this runs the flag holds the installed local path, which is
- * exactly what belongs in `texture.src`.
- *
- * The flag is removed afterwards. Left in place it would make the scene count
- * as streamed: the canvas hook would try to fetch a video that is already there,
- * and the offline guard would refuse to open a scene that needs no connection.
+ * Seit dem Umbau rechnet ihn `stream-scenes.mjs` beim Installieren, und zwar
+ * nur im Streaming-Modus. Ein heruntergeladenes Release bekommt die
+ * Originaldokumente und braucht keinen Rueckbau mehr.
  */
-export function restoreLocalVideos(doc) {
-  const tiles = doc?.tiles
-  if (!Array.isArray(tiles)) return doc
-
-  for (const tile of tiles) {
-    const scope = tile?.flags?.[FLAG_SCOPE]
-    const mark = scope?.[FLAG_KEY]
-    if (mark?.role !== ROLE_VIDEO || !mark.video) continue
-    tile.texture = tile.texture || {}
-    tile.texture.src = mark.video
-    delete scope[FLAG_KEY]
-    if (!Object.keys(scope).length) delete tile.flags[FLAG_SCOPE]
-  }
-  return doc
-}
 
 /** Every gate address a release variant will ever ask for. Feeds the prewarm. */
 export function streamUrlsOf(streamTargets) {

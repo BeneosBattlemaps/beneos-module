@@ -22,7 +22,8 @@ import { installStreamCanvas, drawStatus, videoTilesOf } from "./stream-canvas.m
 import { installStreamOnline, onlineStatus, streamState, isOffline, hasStreamedContent } from "./stream-online.mjs"
 import { installStreamIndicator } from "./stream-indicator.mjs"
 import { betaMayRun, ensureAcknowledged } from "./stream-guard.mjs"
-import { loadStreamManifest, buildStreamPack, applyStreamAddresses, restoreLocalVideos, streamUrlsOf, releaseFromPackage, listReleases } from "./stream-install.mjs"
+import { loadStreamManifest, buildStreamPack, applyStreamAddresses, streamUrlsOf, releaseFromPackage, listReleases } from "./stream-install.mjs"
+import { rebuildScenesForStream, stillPathFor } from "./stream-scenes.mjs"
 import { reportedSoFar } from "./stream-report.mjs"
 
 Hooks.once("init", () => {
@@ -64,7 +65,12 @@ Hooks.once("init", () => {
     loadStreamManifest,
     buildStreamPack,
     applyStreamAddresses,
-    restoreLocalVideos,
+    // Seit dem 2026-08-23 rechnet das Modul den Szenenumbau selbst, statt ihn
+    // vorgekocht aus dem Paket zu nehmen. `restoreLocalVideos` ist damit weg:
+    // es gibt nichts mehr zurueckzubauen, weil im Download-Modus gar nichts
+    // umgebaut wird.
+    rebuildScenesForStream,
+    stillPathFor,
     installMode: () => installMode(),
     downloadMode: () => downloadMode(),
     streamUrlsOf,

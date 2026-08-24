@@ -1630,17 +1630,28 @@ export class BeneosNativeBattlemapInstaller {
       // that function returns early after its prefix swap, so a battlemap path
       // never reaches its exact-match table, and bending it would put a beta
       // concern into the middle of the live install path.
+      // Beta: Beneos Stream. The scene rebuild, seit dem 2026-08-23 hier statt
+      // im Paket. Das Video verlaesst das Dokument und seine Adresse zieht in
+      // eine Markierung, weil ein Video in `texture.src` in der Ladeschranke
+      // der Szene haengt und Foundry dort nirgends eine Frist kennt.
+      //
+      // Reihenfolge ist Absicht: NACH dem Pfadumschreiben, damit hier
+      // Installationspfade stehen, und VOR dem Adressenpass darunter, der
+      // Standbild und geparkte Videoadresse dann gemeinsam auf das Gate zieht.
+      //
+      // Nur im Streaming-Modus. Ein heruntergeladenes Video liegt auf der
+      // eigenen Platte, laedt in Ortsgeschwindigkeit und gehoert ins Dokument,
+      // wo jede andere Foundry-Funktion es sieht. Frueher stand hier deshalb
+      // ein Rueckbau; der wird nicht mehr gebraucht, weil gar nichts mehr
+      // umgebaut ankommt.
+      if (relPath === "data/Scene.json" && this._streamTargets?.size) {
+        const rebuild = globalThis.BeneosStream?.rebuildScenesForStream
+        if (rebuild) await rebuild(arr)
+      }
+
       if (this._streamTargets?.size) {
         const apply = globalThis.BeneosStream?.applyStreamAddresses
         if (apply) for (let i = 0; i < arr.length; i++) arr[i] = apply(arr[i], this._streamTargets)
-      }
-
-      // Beta: measuring mode. Nothing stays at the edge here, so the pass above
-      // has nothing to do; instead the video goes back into its tile, because a
-      // file on the customer's own disk has no business sitting in a flag.
-      if (relPath === "data/Scene.json" && globalThis.BeneosStream?.downloadMode?.()) {
-        const restore = globalThis.BeneosStream?.restoreLocalVideos
-        if (restore) for (let i = 0; i < arr.length; i++) arr[i] = restore(arr[i])
       }
 
       // Playlists grow, they are never replaced: the export ships each release's
