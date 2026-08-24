@@ -76,6 +76,7 @@ export class BeneosAnalytics {
   static _flushing = false
   static _consecutiveFailures = 0
   static _disabledForSession = false
+  static _unloadDone = false               // Sitzungsabschluss genau einmal
   static _breadcrumbs = []                 // last N {t, ts} event types (error context)
   static _codexThrottle = new Map()        // "tokenKey|section" -> last emit ts
   static _spellCastCounts = new Map()      // spellKey -> casts this session
@@ -95,6 +96,48 @@ export class BeneosAnalytics {
 
   static getFoundryId() {
     try { return game.settings.get(this.moduleId(), "beneos-cloud-foundry-id") || "" } catch (_) { return "" }
+  }
+
+  /**
+   * Die Kennung, unter der ein Stapel gesendet wird.
+   *
+   * Angemeldet: die echte Cloud-Kennung, unveraendert wie bisher.
+   * Nicht angemeldet: `anon:` plus eine gewuerfelte, in der Welt abgelegte
+   * Kette.
+   *
+   * WARUM DAS PRAEFIX. Eine anonyme Kennung darf niemals zufaellig auf ein
+   * echtes Konto treffen, und beide Arten muessen auf den ersten Blick
+   * unterscheidbar sein, ohne dass jemand nachschlagen muss. Der Server
+   * ueberspringt fuer `anon:` die Kontoaufloesung ganz, statt sie ins Leere
+   * laufen zu lassen: sonst waechst dort spaeter eine Ersatzregel und ordnet
+   * die Zeilen doch jemandem zu.
+   *
+   * WARUM SIE ERHALTEN BLEIBT. Ohne Ablage in der Welt zaehlte dieselbe Welt
+   * jeden Abend als neue, und die Zahl "wie viele Welten laufen ohne Konto"
+   * waere die Zahl der Sitzungen. Die Kennung wird beim Anmelden NICHT
+   * geloescht: eine spaetere Anmeldung soll die anonyme Zeit derselben Welt
+   * zuordenbar machen (so entschieden am 2026-08-24), und dafuer muss sie
+   * ueberleben.
+   *
+   * Gibt "" nur zurueck, wenn das Setting nicht erreichbar ist. Dann bleibt
+   * der Stapel liegen wie zuvor.
+   */
+  static getSendeKennung() {
+    const echt = this.getFoundryId()
+    if (echt) return echt
+    try {
+      let anon = game.settings.get(this.moduleId(), "beneos-analytics-anon-id") || ""
+      if (!anon) {
+        anon = foundry.utils.randomID(32)
+        // Nicht abgewartet: die Kennung liegt bereits in der Variablen, und
+        // der Stapel soll nicht auf einen Datenbankschreibvorgang warten.
+        // Schlaegt das Schreiben fehl, wuerfelt die naechste Sitzung neu; das
+        // kostet eine doppelt gezaehlte Welt, keinen verlorenen Stapel.
+        game.settings.set(this.moduleId(), "beneos-analytics-anon-id", anon)
+          .catch(() => {})
+      }
+      return `anon:${anon}`
+    } catch (_) { return "" }
   }
 
   static isEnabled() {
@@ -129,7 +172,25 @@ export class BeneosAnalytics {
     this._sessionSampler = setInterval(() => this._sampleSession(), SESSION_SAMPLE_MS)
     this._sampleSession()
 
+    // DREI HAKEN, WEIL EINER NICHT REICHT.
+    //
+    // `beforeunload` feuert beim gewollten Schliessen. Es feuert NICHT, wenn
+    // der Browser einen Hintergrundtab verwirft, wenn das Geraet einschlaeft
+    // oder wenn Foundry abstuerzt. Genau dann gehen die Ereignisse verloren,
+    // die es nur einmal je Sitzung gibt: session_player_count, das letzte
+    // scene_time und ein laufendes combat_encounter.
+    //
+    // `pagehide` deckt den Verwurf ab, `visibilitychange` auf hidden das
+    // Wegwischen auf dem Tablet. Alle drei laufen auf denselben Abschluss,
+    // und `_unloadDone` verhindert, dass die Sitzungszeile dreimal gezaehlt
+    // wird. Die Marke wird beim Wiederauftauchen NICHT zurueckgesetzt: die
+    // Sitzung ist dann bereits abgerechnet, und eine zweite Abrechnung waere
+    // eine erfundene zweite Sitzung.
     window.addEventListener("beforeunload", () => this._onUnload())
+    window.addEventListener("pagehide", () => this._onUnload())
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") this._onUnload()
+    })
     this._installErrorCapture()
 
     // Backlogged events from a previous session can flush now.
@@ -140,7 +201,12 @@ export class BeneosAnalytics {
   // Queue one event. `payload` may carry asset_id / asset_type / bytes which are
   // promoted to dedicated columns; everything else becomes the JSON payload.
   static track(eventType, payload = {}) {
-    if (!this.isEnabled() || this._disabledForSession) return
+    // `_disabledForSession` stand hier frueher mit und hat nach drei
+    // Fehlversuchen auch das AUFZEICHNEN abgeschaltet, nicht nur das Senden.
+    // Eine Stoerung um acht Uhr loeschte damit den ganzen Abend danach. Jetzt
+    // wird weiter gesammelt, gedeckelt bei MAX_QUEUE, und beim Schliessen ins
+    // Backup geschrieben; die naechste Sitzung sendet es nach.
+    if (!this.isEnabled()) return
     if (this.suppressTourTracking && TOUR_SUPPRESSED_EVENTS.has(String(eventType))) return
     try {
       // Breadcrumb ring buffer: event types only (no payload), attached to
@@ -225,7 +291,12 @@ export class BeneosAnalytics {
   static async flush(useBeacon = false) {
     if (this._disabledForSession) return
     if (!this.queue.length) return
-    const foundryId = this.getFoundryId()
+    // Frueher stand hier `getFoundryId()` und ein Abbruch, wenn sie fehlt.
+    // Eine nie angemeldete Welt hat damit NIE gesendet, auch kein world_open,
+    // und war in jeder Auswertung nicht von einer nicht installierten zu
+    // unterscheiden. Jetzt sendet sie unter einer anonymen Kennung; nur wenn
+    // auch die nicht zu beschaffen ist, bleibt der Stapel liegen.
+    const foundryId = this.getSendeKennung()
     if (!foundryId) return // cannot attribute yet, keep queued
 
     const url = `${ANALYTICS_ENDPOINT}?ingest=1&foundryId=${encodeURIComponent(foundryId)}`
@@ -276,9 +347,26 @@ export class BeneosAnalytics {
     this._disabledForSession = true
     try { if (this._flushTimer) clearInterval(this._flushTimer) } catch (_) {}
     this._flushTimer = null
-    this.queue = []
-    try { window.localStorage?.removeItem(BACKUP_KEY) } catch (_) {}
-    try { console.warn("Beneos | analytics endpoint unreachable, telemetry paused for this session.") } catch (_) {}
+    // FRUEHER STAND HIER `this.queue = []` UND EIN removeItem AUF DAS BACKUP.
+    //
+    // Damit kostete jede unerreichbare Gegenstelle die vollstaendige Sitzung:
+    // drei Fehlversuche, und alles Gemessene war weg, auch das, was lange vor
+    // der Stoerung entstanden war. Ein Hotelnetz, eine Firewall oder ein
+    // kurzer Ausfall unserer Seite loeschte einen Spielabend.
+    //
+    // Die Sorge dahinter war, dass eine tote Gegenstelle die Warteschlange
+    // wachsen laesst. Das erledigt bereits die Deckelung bei MAX_QUEUE: das
+    // aelteste faellt heraus, der Speicher bleibt beschraenkt. Es brauchte
+    // nie eine Loeschung.
+    //
+    // Warteschlange und Backup bleiben also stehen. Der Sendeversuch ruht nur
+    // bis zum naechsten Weltstart, und dann geht der Rueckstand raus.
+    try {
+      if (this.queue.length && window.localStorage) {
+        window.localStorage.setItem(BACKUP_KEY, JSON.stringify(this.queue.slice(0, MAX_BACKUP)))
+      }
+    } catch (_) {}
+    try { console.warn("Beneos | analytics endpoint unreachable, telemetry paused for this session (queued for the next one).") } catch (_) {}
   }
 
   /********************************************************************************** */
@@ -1139,6 +1227,9 @@ export class BeneosAnalytics {
   }
 
   static _onUnload() {
+    // Genau einmal je Sitzung, egal welcher der drei Haken zuerst kommt.
+    if (this._unloadDone) return
+    this._unloadDone = true
     // Close the open map visit and summarise still-running combats with the
     // rounds measured so far, so a hard world-close loses neither.
     try { this._closeSceneTime() } catch (_) {}

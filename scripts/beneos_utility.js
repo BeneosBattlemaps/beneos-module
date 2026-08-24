@@ -147,6 +147,33 @@ export class BeneosUtility {
       restricted: true
     })
 
+    // Eine Zufallskennung fuer Welten OHNE Cloud-Anmeldung.
+    //
+    // WARUM SIE GEBRAUCHT WIRD. Die Telemetrie haengte bisher vollstaendig an
+    // 'beneos-cloud-foundry-id', und die entsteht erst beim erfolgreichen
+    // Login. Eine Welt, die das Modul startet und sich nie anmeldet, hat
+    // deshalb kein einziges Ereignis erzeugt, nicht einmal world_open. Genau
+    // dieser Fall ist der interessante: bei den stillen Patrons war nicht zu
+    // unterscheiden zwischen "nie installiert", "installiert und nie
+    // geoeffnet" und "geoeffnet und nie angemeldet". Drei verschiedene
+    // Befunde, drei verschiedene Massnahmen, kein Weg sie zu trennen.
+    //
+    // WAS SIE NICHT IST. Kein Personenbezug, keine Ableitung aus Welt-, Nutzer-
+    // oder Rechnerdaten, keine Adresse. Eine gewuerfelte Kette, die in dieser
+    // Welt liegen bleibt, damit dieselbe Welt ueber Sitzungen hinweg als
+    // dieselbe zaehlt und nicht jeden Abend als neue.
+    //
+    // DER SCHALTER GILT WEITER. 'beneos-analytics-enabled' entscheidet vorher;
+    // ist er aus, wird auch anonym nichts gesendet.
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-analytics-anon-id', {
+      name: 'Internal random id for unattributed telemetry',
+      default: "",
+      type: String,
+      scope: 'world',
+      config: false,
+      restricted: true
+    })
+
     // Last successfully-logged-in Cloud email, kept ONLY on this machine
     // (scope: 'client' -> browser localStorage, never synced to the world DB,
     // the server, or other players). Used to pre-fill the login form after an
