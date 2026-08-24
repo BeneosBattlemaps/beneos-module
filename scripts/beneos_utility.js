@@ -1,7 +1,6 @@
 /********************************************************************************* */
 import { BeneosTableTop } from "./beneos-table-top.js";
 import { BeneosDatabaseHolder, BeneosModuleMenu } from "./beneos_search_engine.js";
-import { ClassCounter } from "./count-class-ready.js";
 import { BeneosCloud, BeneosCloudLogin, BeneosCloudSettings, BeneosCloudAccountMenu, BeneosOrphanCleanupMenu, BeneosManualZipImportMenu } from "./beneos_cloud.js";
 // Asset existence probe, shared with the missing-asset watcher: srcExists plus
 // a no-store HEAD that also rejects HTML fallback pages answering 200.
@@ -989,14 +988,24 @@ export class BeneosUtility {
     // filters on Beneos tokens) is installed once in beneos_module.js's
     // ready hook.
 
-    if (game.user.isGM) {
-      let stats = this.countBeneosAssetsUsage()
-      try {
-        ClassCounter.registerUsageCount('beneos-module', { beneosStats: stats })
-      } catch (e) {
-        BeneosUtility.debugMessage("Unable to register usage count, not important", e)
-      }
-    }
+    // HIER STAND EIN FREMDER ZAEHLDIENST, UND ER IST AM 2026-08-24 ENTFERNT
+    // WORDEN.
+    //
+    // `ClassCounter.registerUsageCount` schickte bei jeder
+    // Spielleitersitzung eine dauerhafte Weltkennung, die Adresse der
+    // Kundeninstanz (`game.data.addresses.remote`), die Sprache und neun
+    // Bestandszahlen per POST an `uberwald.me/fvtt_appcount`.
+    //
+    // Zwei Gruende, keiner davon Geschmack:
+    //
+    // 1. Der Aufruf fragte `beneos-analytics-enabled` NICHT ab. Wer die
+    //    Statistik im Modul abschaltete, sendete trotzdem, und zwar an einen
+    //    Dritten. Ein Schalter, an dem etwas vorbeilaeuft, ist kein Schalter.
+    // 2. Der Dienst stammt aus der Zeit vor der Beneos-Cloud. Alles, was er
+    //    lieferte, liefert die eigene Erhebung inzwischen genauer und ohne
+    //    Adresse: `world_open`, `hosting_environment`, `module_inventory`.
+    //
+    // Mit ihm faellt `countBeneosAssetsUsage()`, das nur ihn bedient hat.
 
   }
 
@@ -1015,40 +1024,6 @@ export class BeneosUtility {
     }
   }
 
-  /********************************************************************************** */
-  static countBeneosAssetsUsage() {
-    let statsBeneos = { maps: {}, tokens: {}, items: {}, spells: {} }
-    for (let scene of game.scenes) {
-      let bgSrc = BeneosUtility.getSceneBackgroundSrc(scene)
-      // Matches all three battlemap path schemes in the field: the local
-      // authoring path (beneos_assets/beneos_battlemaps/), the Moulinette
-      // adventure path (.../beneos-battlemaps-universe/...) and the cloud
-      // install namespace (beneos_assets/cloud/battlemaps/). Checking only
-      // the Moulinette one used to drop every locally and cloud-installed map.
-      if (BeneosUtility.BENEOS_BATTLEMAP_DIR.test(bgSrc || '')) {
-        statsBeneos.maps[bgSrc] = (statsBeneos.maps[bgSrc]) ? statsBeneos.maps[bgSrc] + 1 : 1
-      }
-    }
-    for (let item of game.items) {
-      if (item?.img?.includes('beneos_assets')) {
-        let itemData = this.getItemSpellImageInfo(item.img)
-        if (item.type == 'spell') {
-          statsBeneos.spells[itemData.itemKey] = (statsBeneos.spells[itemData.itemKey]) ? statsBeneos.spells[itemData.itemKey] + 1 : 1
-        } else {
-          statsBeneos.items[itemData.itemKey] = (statsBeneos.items[itemData.itemKey]) ? statsBeneos.items[itemData.itemKey] + 1 : 1
-        }
-      }
-    }
-    for (let actor of game.actors) {
-      if (actor?.prototypeToken?.texture?.src?.includes('beneos_assets')) {
-        let tokenData = this.getTokenImageInfo(actor.prototypeToken.texture.src)
-        if (tokenData?.fullKey) {
-          statsBeneos.tokens[tokenData.fullKey] = (statsBeneos.tokens[tokenData.fullKey]) ? statsBeneos.tokens[tokenData.fullKey] + 1 : 1
-        }
-      }
-    }
-    return statsBeneos
-  }
 
   /********************************************************************************** */
   // Beneos assets are authored against dnd5e. The compatibility model has two
