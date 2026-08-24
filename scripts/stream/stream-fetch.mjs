@@ -103,6 +103,41 @@ function ours(url) {
   try { return new URL(url, location.href).host === host } catch (_) { return false }
 }
 
+/**
+ * Eine Abweisung des Tors, einmal je Release und Variante gemeldet.
+ *
+ * Das Tor beantwortet ein fehlendes Recht mit 200 und einem durchsichtigen
+ * Pixel, damit Foundry kein Warndreieck ueber die Szene legt und keine
+ * Wiederholungslawine ausloest. Sichtbar wird es nur ueber `X-Beneos-Denied`,
+ * und deshalb gehoert eine Meldung dazu.
+ *
+ * Aber nur eine. Gesperrt ist nie eine einzelne Datei, sondern das Release; bei
+ * einer Szene mit Overlays waeren das zwanzig gelbe Zeilen fuer einen einzigen
+ * Sachverhalt. Ein Foundry-Nutzer, der sein Konsolenlog durchsieht, liest
+ * zwanzig gelbe Zeilen als zwanzig Fehler seines Moduls.
+ *
+ * Der Schluessel ist Release und Variante aus der Adresse, denn genau daran
+ * haengt das Recht. Die Zaehlung laeuft trotzdem ueber jede Datei weiter, sie
+ * steht in `diagnose()`.
+ */
+const abgewiesen = new Map()
+
+function meldeAbweisung(url) {
+  let schluessel = "unbekannt"
+  try {
+    const teile = new URL(url, location.href).pathname.split("/").filter(Boolean)
+    // /a/<schluessel>/<release>/<variante>/<pfad...>
+    if (teile[0] === "a" && teile.length >= 4) schluessel = `${teile[2]}/${teile[3]}`
+  } catch (_) { /* Adresse unlesbar, dann eben gesammelt unter "unbekannt" */ }
+
+  const zahl = (abgewiesen.get(schluessel) || 0) + 1
+  abgewiesen.set(schluessel, zahl)
+  if (zahl > 1) return
+  console.warn(`Beneos Stream | Das Tor liefert fuer ${schluessel} kein Material. `
+    + "Meist ist die Mitgliedschaft oder die Miete abgelaufen. "
+    + "Weitere Dateien desselben Releases werden nicht mehr einzeln gemeldet.")
+}
+
 async function openStore() {
   try { return await caches.open(CACHE_NAME) } catch (_) { return null }
 }
@@ -174,6 +209,15 @@ export function installStreamFetch() {
   globalThis.fetch = async function beneosStreamFetch(input, init) {
     const url = typeof input === "string" ? input : input?.url
     if (!url || !ours(url)) return original(input, init)
+
+    // Der Berichtskanal geht am Ersatz vorbei.
+    //
+    // `/report` liegt auf demselben Host wie die Assets, lief also bisher durch
+    // diese Funktion. Antwortet er einmal nicht mit 2xx, meldet der Fehlerkanal
+    // seinen eigenen Fehlschlag an sich selbst und zaehlt ihn als Ausfall der
+    // Auslieferung. Ein Melder, der sich selbst meldet, verfaelscht genau die
+    // Zahl, fuer die er da ist.
+    if (/\/report(\?|$)/.test(url)) return original(input, init)
 
     // In the measuring mode neither of the two applies, and both would falsify
     // the measurement. The store would answer the second run of a comparison
@@ -253,7 +297,15 @@ export function installStreamFetch() {
       count("denied", url)
       noteResult(true)
       reportFailure({ url, reason: "denied", detail: "placeholder returned" })
-      console.warn(`Beneos Stream | denied by the gate: ${url}`)
+      // Einmal je Szene, nicht je Datei.
+      //
+      // Eine abgelaufene Miete sperrt nicht eine Datei, sondern das ganze
+      // Release. Eine Zeile je abgewiesener Datei sind bei einer Szene mit
+      // Overlays schnell zwanzig gelbe Zeilen fuer einen einzigen Sachverhalt,
+      // und ein Foundry-Nutzer, der sein Log liest, haelt das fuer zwanzig
+      // Fehler. Gesammelt wird nach Release und Variante, die beide in der
+      // Adresse stehen.
+      meldeAbweisung(url)
     } else {
       count("ok")
       noteResult(true)

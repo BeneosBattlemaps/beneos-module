@@ -1355,16 +1355,63 @@ export class BeneosUtility {
    * next to the real battlemap tile.
    * @returns {Array<{kind: "scene"|"tile", id?: string, src: string}>}
    */
+  /**
+   * Traegt die Szene Streaming-Markierungen?
+   *
+   * Erkennungsmerkmal ist die Kachel, die der Streaming-Umbau einfuegt: leere
+   * Textur, Rolle in `flags["beneos-module"].stream`. Der Hintergrund allein
+   * taugt nicht, denn er ist bei beiden Formen ein Standbild.
+   */
+  static isStreamedScene(scene) {
+    if (!scene?.tiles) return false
+    for (const tile of scene.tiles) {
+      if (tile.flags?.["beneos-module"]?.stream?.role) return true
+    }
+    return false
+  }
+
   static collectStaticSwitchTargets(scene) {
     const targets = []
     if (!scene) return targets
+
+    // Eine gestreamte Szene hat keinen Umschalter, und das ist kein Mangel.
+    //
+    // Sie zeigt ohnehin erst das Standbild und laesst das Video nachkommen; ein
+    // Schalter "auf statisch" haette hier nichts umzuschalten. Vor allem aber
+    // stehen ihre Adressen auf dem Tor, sind also absolut, und die Probe unten
+    // hat sie bis zum 2026-08-24 prozentkodiert gegen den eigenen
+    // Foundry-Server geschickt: sechzehn rote Zeilen im Konsolenlog je
+    // Installation, und danach war der Menueeintrag dauerhaft als nicht
+    // verfuegbar vermerkt, samt Eintrag im localStorage.
+    //
+    // Bewusst frueh und ohne Probe. Was ein Spielleiter wirklich will, naemlich
+    // das Video einer gestreamten Szene aus Leistungsgruenden gar nicht erst zu
+    // holen, ist eine eigene Sache und keine Umbenennung von Dateiendungen.
+    if (BeneosUtility.isStreamedScene(scene)) return targets
+
     const bg = BeneosUtility.getSceneBackgroundSrc(scene)
-    if (bg && BeneosUtility.BENEOS_MAP_FILE.test(bg)) targets.push({ kind: "scene", src: bg })
+    if (bg && !BeneosUtility.isAbsoluteRef(bg) && BeneosUtility.BENEOS_MAP_FILE.test(bg)) {
+      targets.push({ kind: "scene", src: bg })
+    }
     for (const tile of scene.tiles) {
       const src = tile.texture?.src
-      if (src && BeneosUtility.BENEOS_MAP_FILE.test(src)) targets.push({ kind: "tile", id: tile.id, src })
+      if (src && !BeneosUtility.isAbsoluteRef(src) && BeneosUtility.BENEOS_MAP_FILE.test(src)) {
+        targets.push({ kind: "tile", id: tile.id, src })
+      }
     }
     return targets
+  }
+
+  /**
+   * Adressen, die nicht in die eigene Welt zeigen.
+   *
+   * Zweite Sicherung neben `isStreamedScene()`: eine Szene kann eine gestreamte
+   * Kachel neben einer oertlichen tragen, und dann darf die eine geprueft
+   * werden und die andere nicht. Der Umschalter arbeitet ausschliesslich auf
+   * Pfaden der eigenen Welt.
+   */
+  static isAbsoluteRef(src) {
+    return typeof src === "string" && (/^(https?:)?\/\//i.test(src) || /^data:/i.test(src))
   }
 
   /** Swap a battlemap reference to its still / animated counterpart. Anchored
@@ -1456,6 +1503,15 @@ export class BeneosUtility {
       if (!data.savedAt || ((Date.now() - data.savedAt) > BeneosUtility._probeCacheMaxAgeMs)) return 0
       let restored = 0
       for (const [path, ok] of Object.entries(data.results ?? {})) {
+        // Altlast vom 2026-08-24 und davor: bis dahin probte der Umschalter
+        // auch absolute Tor-Adressen, bekam wegen der Prozentkodierung immer
+        // 404 und schrieb das Ergebnis hierher. Wer diese Eintraege
+        // zurueckliest, haelt den Umschalter fuer jede gestreamte Szene
+        // dauerhaft fuer nicht verfuegbar, auch nachdem die Ursache behoben
+        // ist. Sie werden beim Lesen verworfen; neu geschrieben werden sie
+        // nicht mehr, weil `collectStaticSwitchTargets` sie gar nicht erst
+        // sammelt.
+        if (BeneosUtility.isAbsoluteRef(path)) continue
         BeneosUtility._mapAssetProbe.set(path, ok)
         restored++
       }

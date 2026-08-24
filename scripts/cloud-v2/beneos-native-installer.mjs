@@ -1644,9 +1644,18 @@ export class BeneosNativeBattlemapInstaller {
       // wo jede andere Foundry-Funktion es sieht. Frueher stand hier deshalb
       // ein Rueckbau; der wird nicht mehr gebraucht, weil gar nichts mehr
       // umgebaut ankommt.
+      //
+      // `_streamTargets` wird mitgegeben, und zwar nicht als Beiwerk: seine
+      // Schluessel sind genau die Dateien, die dieses Release mitbringt. Der
+      // Umbau leitete den Namen des Standbilds bis zum 2026-08-24 aus dem Video
+      // ab und schrieb ihn ungeprueft ins Dokument. 337 Videos im Bestand haben
+      // keins, und fuer jedes davon forderte Foundry bei JEDEM Oeffnen der
+      // Szene eine Datei an, die es nicht gibt, mit einer roten Zeile im
+      // Konsolenlog des Kunden. Mit der Liste faellt das weg: was nicht
+      // drinsteht, wird nicht angefordert.
       if (relPath === "data/Scene.json" && this._streamTargets?.size) {
         const rebuild = globalThis.BeneosStream?.rebuildScenesForStream
-        if (rebuild) await rebuild(arr)
+        if (rebuild) await rebuild(arr, new Set(this._streamTargets.keys()))
       }
 
       if (this._streamTargets?.size) {

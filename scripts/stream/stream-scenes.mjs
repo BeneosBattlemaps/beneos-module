@@ -235,7 +235,37 @@ function alreadyDone(tiles) {
  * the stock: 1859 of 2138 scenes carry the video in the background, and 253
  * carry it as a tile, of which 65 are rotated by 90, 180 or 270 degrees.
  */
-export async function rebuildScene(scene, report) {
+/**
+ * Gibt es dieses Standbild ueberhaupt?
+ *
+ * `bekannt` ist die Schluesselmenge des Manifests, also die Liste der Dateien,
+ * die dieses Release wirklich mitbringt. Ohne sie hat der Umbau den Namen aus
+ * dem Video abgeleitet und ungeprueft ins Dokument geschrieben.
+ *
+ * Warum das nicht bleiben durfte: 337 von rund 4.000 Videos im Bestand haben
+ * kein Standbild im Paket, gemessen am 2026-08-24, die meisten davon
+ * Intro-Sequenzen. Fuer jedes davon forderte Foundry eine Datei an, die es
+ * nicht gibt, und schrieb eine rote 404-Zeile in das Konsolenlog des Kunden.
+ * Bei JEDEM Oeffnen der Szene erneut, denn eine Fehlantwort wird nicht
+ * zwischengespeichert.
+ *
+ * Ein 404 laesst sich nachtraeglich nicht verschlucken: der `fetch`-Ersatz des
+ * Moduls sitzt hinter dem Ereignis, der Browser hat die Zeile bereits
+ * geschrieben, wenn der Antwortkopf eintrifft. Die einzige Loesung ist, gar
+ * nicht erst anzufragen.
+ *
+ * Ohne `bekannt` verhaelt sich der Umbau wie frueher. Das ist Absicht: eine
+ * aeltere Modulfassung oder ein Aufruf von Hand soll nicht stumm die Haelfte
+ * der Arbeit auslassen.
+ */
+function standbildVorhanden(still, bekannt) {
+  if (!still) return false
+  if (!bekannt) return true
+  if (typeof bekannt.has === "function") return bekannt.has(still)
+  return false
+}
+
+export async function rebuildScene(scene, report, bekannt) {
   const sid = String(scene?._id || "")
   const sname = String(scene?.name || sid)
   if (!Array.isArray(scene.tiles)) scene.tiles = []
@@ -256,11 +286,17 @@ export async function rebuildScene(scene, report) {
       report?.skipped?.push(`${sname}: unknown grid type ${scene?.grid?.type}`)
       return
     }
-    const still = stillPathFor(bgSrc)
-    if (!still) {
+    const abgeleitet = stillPathFor(bgSrc)
+    if (!abgeleitet) {
       report?.skipped?.push(`${sname}: cannot derive a still name from ${bgSrc}`)
       return
     }
+    // Kein Standbild im Paket: der Hintergrund bleibt LEER statt auf eine
+    // Datei zu zeigen, die es nicht gibt. Foundry zeichnet dann das Gitter,
+    // fordert nichts an und meldet nichts. Das Video fuellt die Kachel, sobald
+    // es da ist, und danach sieht die Szene aus wie jede andere.
+    const still = standbildVorhanden(abgeleitet, bekannt) ? abgeleitet : ""
+    if (!still) report?.stillless?.push(bgSrc)
 
     tiles.unshift({
       _id: await stableId(sid, bgSrc, "video"),
@@ -302,9 +338,26 @@ export async function rebuildScene(scene, report) {
     const srcTile = videoTiles[index]
     const tex = srcTile.texture || {}
     const video = tex.src || ""
-    const still = stillPathFor(video)
-    if (!still) {
+    const abgeleitet = stillPathFor(video)
+    if (!abgeleitet) {
       report?.skipped?.push(`${sname}: cannot derive a still name from ${video}`)
+      continue
+    }
+
+    // Kein Standbild im Paket: KEINE Zwillingskachel. Eine Kachel, die auf eine
+    // fehlende Datei zeigt, bekaeme von Foundry das Warndreieck ueber die halbe
+    // Szene gelegt und erzeugte bei jedem Oeffnen eine 404-Zeile. Die
+    // Originalkachel wird trotzdem geleert und traegt die Markierung, damit das
+    // Video die Zeichenschranke verlaesst und spaeter nachkommt.
+    const still = standbildVorhanden(abgeleitet, bekannt) ? abgeleitet : ""
+    if (!still) {
+      report?.stillless?.push(video)
+      tex.src = ""
+      srcTile.texture = tex
+      srcTile.flags = srcTile.flags || {}
+      srcTile.flags[FLAG_SCOPE] = srcTile.flags[FLAG_SCOPE] || {}
+      srcTile.flags[FLAG_SCOPE][FLAG_KEY] = { role: ROLE_VIDEO, partner: "", video }
+      report?.changes?.push({ scene: sname, action: "video-only", video, still: "" })
       continue
     }
 
@@ -350,14 +403,22 @@ export async function rebuildScene(scene, report) {
  * so the paths written here are the installed ones and the second pass turns
  * both the still and the parked video address into gate addresses.
  */
-export async function rebuildScenesForStream(scenes) {
-  const report = { changes: [], skipped: [] }
+export async function rebuildScenesForStream(scenes, bekannt) {
+  const report = { changes: [], skipped: [], stillless: [] }
   if (!Array.isArray(scenes)) return report
   for (const scene of scenes) {
-    if (scene && typeof scene === "object") await rebuildScene(scene, report)
+    if (scene && typeof scene === "object") await rebuildScene(scene, report, bekannt)
   }
+  // Bewusst `log` und nicht `warn`. Uebersprungene Szenen und fehlende
+  // Standbilder sind erwartbare Zustaende mit einem definierten Verhalten, kein
+  // Fehlschlag. Eine gelbe Zeile im Konsolenlog liest ein Foundry-Nutzer als
+  // Defekt seines Moduls, und das waere hier schlicht falsch.
   if (report.skipped.length) {
-    console.warn("beneos-stream | scene rebuild skipped:", report.skipped)
+    console.log("Beneos Stream | Szenenumbau uebersprungen:", report.skipped)
+  }
+  if (report.stillless.length) {
+    console.log(`Beneos Stream | ${report.stillless.length} Video(s) ohne Standbild im Paket. `
+      + "Diese Szenen bleiben grau, bis das Video ankommt; es wird nichts angefordert.")
   }
   return report
 }

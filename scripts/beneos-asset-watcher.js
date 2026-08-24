@@ -471,6 +471,33 @@ const HEAD_TIMEOUT_MS = 30000;
 
 const headCheck = async (path) => {
   try {
+    // Eine absolute Adresse wird hier NICHT geprueft, und die Antwort ist
+    // "weiss ich nicht", nicht "fehlt".
+    //
+    // Die Kodierung unten arbeitet segmentweise und macht aus "https:" ein
+    // "https%3A". Damit ist die Adresse kein absoluter URL mehr, sondern ein
+    // relativer Pfad, den der Browser gegen den Foundry-Server aufloest. Das
+    // Ergebnis ist ein 404 auf eine Adresse, die es nie gab, und eine rote
+    // Zeile im Konsolenlog des Kunden.
+    //
+    // Gemessen am 2026-08-24: das Installieren eines Releases mit acht Szenen
+    // erzeugte so sechzehn Fehlerzeilen, weil der Umschalter zwischen
+    // statischer und animierter Karte jede gestreamte Szene zweimal probte.
+    // Ein Modul, das im Log Fehler wirft, gilt bei Foundry-Nutzern als defekt,
+    // auch wenn nichts kaputt ist.
+    //
+    // `isBeneosPath()` weist dieselben Adressen seit dem 2026-08-12 mit
+    // derselben Begruendung ab; der Schutz sass nur am Watcher-Pfad und nicht
+    // an dieser Funktion, die auch von aussen gerufen wird.
+    //
+    // Warum -2 und nicht ok:false: der Aufrufer soll eine ungeprueft
+    // gebliebene Adresse von einer nachweislich fehlenden unterscheiden
+    // koennen. Wer das nicht auswertet, bekommt wie bisher ein falsches
+    // "fehlt", aber wenigstens keine Netzanfrage.
+    if (/^(https?:)?\/\//i.test(path) || /^data:/i.test(path)) {
+      return { ok: false, status: -2, note: "absolute-url-not-probed" };
+    }
+
     // Percent-encoding a path that is already encoded would turn "%20" into
     // "%2520" and report a present asset as missing, so encode only raw paths.
     // Encoding at all is what keeps "#" and "?" in a filename from being parsed

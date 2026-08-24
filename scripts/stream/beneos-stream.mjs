@@ -142,14 +142,25 @@ Hooks.once("ready", async () => {
   // Getrennt protokolliert, weil es eine Aussage ueber die HALTBARKEIT ist und
   // nicht ueber den Fuellstand. Wer beides in eine Zeile schreibt, liest die
   // wichtigere Zahl irgendwann ueber.
+  // Alle drei als gewoehnliche Zeile, keine Warnung.
+  //
+  // Die Ablehnung ist nach eigener Messung der NORMALFALL und nicht die
+  // Ausnahme: Chrome entscheidet nach Nutzungsverlauf, und eine frisch
+  // eingerichtete Welt hat keinen. Eine gelbe Zeile bei fast jedem Weltstart
+  // ist keine Warnung mehr, sondern Rauschen, und ein Foundry-Nutzer, der sein
+  // Log durchsieht, haelt sie fuer einen Defekt des Moduls.
+  //
+  // Der Sachverhalt bleibt vollstaendig protokolliert, nur eben in der Farbe,
+  // die ihm zusteht. Wer das Offline-Versprechen pruefen will, liest
+  // `storeStatus().persisted`.
   if (zusage.zugesagt === true) {
     console.log("Beneos Stream | Speicher ist dauerhaft, der Browser raeumt ihn nicht von selbst")
   } else if (zusage.zugesagt === false) {
-    console.warn(
-      "Beneos Stream | KEINE Speicherzusage. Der Browser darf den Offline-Bestand bei " +
-      "Plattenknappheit jederzeit verwerfen. Offline gilt nur, solange er ihn haelt."
+    console.log(
+      "Beneos Stream | Keine Speicherzusage des Browsers. Der Offline-Bestand darf bei " +
+      "Plattenknappheit verworfen werden; Offline gilt, solange der Browser ihn haelt."
     )
   } else {
-    console.warn("Beneos Stream | Speicherzusage nicht erfragbar, dieser Browser kennt die Schnittstelle nicht")
+    console.log("Beneos Stream | Speicherzusage nicht erfragbar, dieser Browser kennt die Schnittstelle nicht")
   }
 })
