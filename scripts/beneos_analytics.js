@@ -172,24 +172,41 @@ export class BeneosAnalytics {
     this._sessionSampler = setInterval(() => this._sampleSession(), SESSION_SAMPLE_MS)
     this._sampleSession()
 
-    // DREI HAKEN, WEIL EINER NICHT REICHT.
+    // DREI HAKEN, UND ZWEI VERSCHIEDENE HANDLUNGEN. DER UNTERSCHIED IST HIER
+    // DAS GANZE THEMA.
     //
     // `beforeunload` feuert beim gewollten Schliessen. Es feuert NICHT, wenn
-    // der Browser einen Hintergrundtab verwirft, wenn das Geraet einschlaeft
-    // oder wenn Foundry abstuerzt. Genau dann gehen die Ereignisse verloren,
-    // die es nur einmal je Sitzung gibt: session_player_count, das letzte
-    // scene_time und ein laufendes combat_encounter.
+    // der Browser einen Hintergrundtab verwirft oder Foundry abstuerzt. Genau
+    // dann gehen die Ereignisse verloren, die es nur einmal je Sitzung gibt:
+    // session_player_count, das letzte scene_time, ein laufendes
+    // combat_encounter. `pagehide` deckt das ab.
     //
-    // `pagehide` deckt den Verwurf ab, `visibilitychange` auf hidden das
-    // Wegwischen auf dem Tablet. Alle drei laufen auf denselben Abschluss,
-    // und `_unloadDone` verhindert, dass die Sitzungszeile dreimal gezaehlt
-    // wird. Die Marke wird beim Wiederauftauchen NICHT zurueckgesetzt: die
-    // Sitzung ist dann bereits abgerechnet, und eine zweite Abrechnung waere
-    // eine erfundene zweite Sitzung.
+    // `visibilitychange` auf hidden feuert bei etwas voellig anderem: bei
+    // jedem Reiterwechsel, jedem Minimieren, jedem Alt-Tab. Das ist KEIN
+    // Sitzungsende. Wer es als eines behandelt, richtet drei Schaeden an, und
+    // zwar bei jedem Spielleiter, der einmal in ein anderes Fenster schaut:
+    //
+    //   1. session_player_count ginge mit einer viel zu kurzen Dauer raus.
+    //   2. _closeSceneTime() setzt _currentScene auf null. Danach wird bis
+    //      zum naechsten canvasReady KEINE Spielzeit mehr gemessen. Bleibt
+    //      der Spielleiter auf derselben Karte, ist der ganze restliche Abend
+    //      weg. Ausgerechnet die Messung, um die es hier geht.
+    //   3. Laufende Kaempfe wuerden abgerechnet und aus _combats entfernt,
+    //      also mit den Runden bis zum Alt-Tab statt mit denen bis zum Ende.
+    //
+    // Deshalb: beim Verstecken wird nur GESICHERT, nicht abgeschlossen. Der
+    // Abschluss bleibt den beiden Haken vorbehalten, die wirklich ein Ende
+    // bedeuten.
+    //
+    // Was bleibt, ist der Fall, dass ein verworfener Hintergrundreiter auch
+    // kein `pagehide` mehr bekommt. Dann fehlt die Sitzungszeile, aber die
+    // gesammelten Ereignisse liegen in der Sicherung und gehen beim naechsten
+    // Weltstart hinaus. Ein fehlender Abschluss ist verkraftbar, eine
+    // erfundene zweite Sitzung nicht.
     window.addEventListener("beforeunload", () => this._onUnload())
     window.addEventListener("pagehide", () => this._onUnload())
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden") this._onUnload()
+      if (document.visibilityState === "hidden") this._onHide()
     })
     this._installErrorCapture()
 
@@ -361,11 +378,7 @@ export class BeneosAnalytics {
     //
     // Warteschlange und Backup bleiben also stehen. Der Sendeversuch ruht nur
     // bis zum naechsten Weltstart, und dann geht der Rueckstand raus.
-    try {
-      if (this.queue.length && window.localStorage) {
-        window.localStorage.setItem(BACKUP_KEY, JSON.stringify(this.queue.slice(0, MAX_BACKUP)))
-      }
-    } catch (_) {}
+    this._sichern()
     try { console.warn("Beneos | analytics endpoint unreachable, telemetry paused for this session (queued for the next one).") } catch (_) {}
   }
 
@@ -742,8 +755,14 @@ export class BeneosAnalytics {
           const buf = this._itemAddBuffer
           this._itemAddBuffer = new Map()
           for (const [k, count] of buf) {
-            const [origin_slug, parent_type] = k.split("|")
-            this.track("item_added", { origin_slug: this.sanitize(origin_slug, 48), parent_type, count })
+            const [origin_slug, parent_type, asset] = k.split("|")
+            const nutzlast = { parent_type, count }
+            if (origin_slug) nutzlast.origin_slug = this.sanitize(origin_slug, 48)
+            // Als asset_id, nicht als Nutzlastfeld: nur so landet der Wert in
+            // der eigenen Spalte und laesst sich gegen die Installationen und
+            // den Katalog joinen.
+            if (asset) nutzlast.asset_id = asset
+            this.track("item_added", nutzlast)
           }
         } catch (_) { /* swallow */ }
       }, ITEM_ADD_WINDOW_MS)
@@ -1226,8 +1245,41 @@ export class BeneosAnalytics {
     } catch (_) { /* swallow */ }
   }
 
+  /**
+   * Der Reiter verschwindet aus dem Blick, die Sitzung laeuft weiter.
+   *
+   * Sichern und wegschicken, sonst nichts. Kein Sitzungsabschluss, keine
+   * Szene geschlossen, kein Kampf abgerechnet. Siehe die Begruendung an den
+   * Haken in start().
+   *
+   * Der Nutzen ist trotzdem gross: genau hier verliert der Browser einen
+   * Reiter, wenn ihm der Speicher ausgeht, und ohne diese Sicherung waere
+   * alles seit dem letzten Sendetakt weg. Der Takt sind fuenfzehn Minuten.
+   */
+  static _onHide() {
+    if (this._unloadDone) return
+    try { this.flush(true) } catch (_) {}
+    this._sichern()
+  }
+
+  /**
+   * Die Warteschlange in den Browserspeicher legen.
+   *
+   * Gekappt bei MAX_BACKUP. Die aeltesten gewinnen, weil die Warteschlange
+   * bei Ueberlauf schon die neuesten behaelt; beides zusammen deckt die
+   * Sitzung von beiden Enden ab.
+   */
+  static _sichern() {
+    try {
+      if (this.queue.length && window.localStorage) {
+        window.localStorage.setItem(BACKUP_KEY, JSON.stringify(this.queue.slice(0, MAX_BACKUP)))
+      }
+    } catch (_) {}
+  }
+
   static _onUnload() {
-    // Genau einmal je Sitzung, egal welcher der drei Haken zuerst kommt.
+    // Genau einmal je Sitzung, egal welcher der beiden Abschlusshaken zuerst
+    // kommt. `visibilitychange` gehoert ausdruecklich nicht dazu.
     if (this._unloadDone) return
     this._unloadDone = true
     // Close the open map visit and summarise still-running combats with the
@@ -1252,11 +1304,7 @@ export class BeneosAnalytics {
       })
     } catch (_) { /* swallow */ }
     try { this.flush(true) } catch (_) {}
-    try {
-      if (this.queue.length && window.localStorage) {
-        window.localStorage.setItem(BACKUP_KEY, JSON.stringify(this.queue.slice(0, MAX_BACKUP)))
-      }
-    } catch (_) {}
+    this._sichern()
   }
 
   /********************************************************************************** */
