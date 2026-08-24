@@ -3284,7 +3284,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       BeneosAnalytics.track("install_initiated", {
         asset_id: key,
         asset_type: type,
-        time_since_drawer_open_ms: sinceMs
+        time_since_drawer_open_ms: sinceMs,
+        ...(this.#analyticsSearchId() ? { search_id: this.#analyticsSearchId() } : {})
       })
     } catch (_) {}
     // Wave B-9-fix-46: if the user has Ctrl+click-built a multi-select
@@ -3566,6 +3567,31 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // doesn't end up scrolled past the new shorter list's end.
   #resetPagination() {
     this.loadedCount = BeneosCloudWindowV2.RESULTS_PAGE
+  }
+
+  /**
+   * Die Kennung der laufenden Suche, oder "" wenn sie zu alt ist.
+   *
+   * WARUM EINE FRIST
+   *
+   * Ohne sie klebt die Kennung der Vormittagssuche noch am Install um vier
+   * Uhr nachmittags, und die Auswertung liest daraus einen Trichter, den es
+   * nie gab. Die Frist ist grosszuegig genug fuer den ueblichen Weg
+   * (suchen, stoebern, aufklappen, installieren) und kurz genug, dass eine
+   * liegengebliebene Sitzung nichts mehr faelscht.
+   *
+   * Sie wird bewusst nicht bei jedem Klick verlaengert. Die Kennung soll die
+   * SUCHE beschreiben, nicht die Anwesenheit im Fenster.
+   */
+  static ANALYTICS_SEARCH_TTL_MS = 10 * 60 * 1000
+
+  #analyticsSearchId() {
+    try {
+      const s = this._analyticsSearch
+      if (!s?.id || !s?.ts) return ""
+      if (Date.now() - s.ts > BeneosCloudWindowV2.ANALYTICS_SEARCH_TTL_MS) return ""
+      return s.id
+    } catch (_) { return "" }
   }
 
   /* ========== Lazy thumbnails (perf) ========== */
@@ -4011,7 +4037,21 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
           await this.#renderResults(leftBundles ? ["sidebar", "results"] : ["results"])
           try {
             if (this._textFilter) {
+              // Eine Kennung je Suche, damit Suche, Aufklappen und
+              // Installieren als EIN Vorgang lesbar werden. Bisher waren das
+              // drei unverbundene Ereignisse: man sah, dass gesucht wurde,
+              // und man sah, dass installiert wurde, aber nie, ob das eine
+              // aus dem anderen folgte. Die Frage "fuehrt unsere Suche zum
+              // Fund" war damit nicht beantwortbar.
+              //
+              // Kein Personenbezug: eine Zufallskette, die mit dem Fenster
+              // stirbt, und ausserdem der Grund fuer die Frist unten.
+              this._analyticsSearch = {
+                id: foundry.utils.randomID(10),
+                ts: Date.now()
+              }
               BeneosAnalytics.track("search_query", {
+                search_id: this._analyticsSearch.id,
                 query: BeneosAnalytics.sanitize(this._textFilter, 64),
                 tab: this.searchMode,
                 // Whether the search found anything. Zero is the interesting
@@ -4420,7 +4460,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         this.selectedAssetKey = key
         try {
           this._analyticsDrawerOpen = { key, ts: Date.now() }
-          BeneosAnalytics.track("result_drawer_open", { asset_id: key, asset_type: this.searchMode })
+          BeneosAnalytics.track("result_drawer_open", {
+            asset_id: key,
+            asset_type: this.searchMode,
+            ...(this.#analyticsSearchId() ? { search_id: this.#analyticsSearchId() } : {})
+          })
         } catch (_) {}
         this.#showLoading()
         // Task C: yield one frame so the loading overlay actually PAINTS before

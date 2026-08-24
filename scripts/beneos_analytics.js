@@ -636,11 +636,16 @@ export class BeneosAnalytics {
 
   // Item-added events, aggregated over a short window so a generated shop's
   // bulk import produces one event per origin instead of dozens.
-  static trackItemAdded(originSlug, parentType) {
+  static trackItemAdded(originSlug, parentType, itemKey) {
     try {
-      if (!originSlug) return
+      // Frueher stand hier `if (!originSlug) return`, und damit war jeder
+      // installierte Beneos-Gegenstand ohne Loot-Herkunft still verworfen.
+      // Jetzt reicht eines von beiden; nur wenn gar nichts identifiziert,
+      // gibt es nichts zu melden.
+      const ik = itemKey ? String(itemKey).slice(0, 32) : ""
+      if (!originSlug && !ik) return
       const pt = parentType === "character" ? "character" : (parentType === "npc" ? "npc" : "other")
-      const key = `${originSlug}|${pt}`
+      const key = `${originSlug || ""}|${pt}|${ik}`
       this._itemAddBuffer.set(key, (this._itemAddBuffer.get(key) || 0) + 1)
       if (this._itemAddTimer) return
       this._itemAddTimer = setTimeout(() => {
@@ -671,15 +676,67 @@ export class BeneosAnalytics {
     } catch (_) { /* swallow */ }
   }
 
-  static trackDownloadRetry(assetId, attempt) {
+  // `reason` ist die INSTALL_ERROR-Kategorie des Fehlschlags, also warum
+  // wiederholt wurde. Sie steht im Fingerabdruck, weil sonst die Drosselung
+  // pro Asset den zweiten, andersartigen Fehler derselben Datei schluckt und
+  // genau der die interessante Zeile waere.
+  static trackDownloadRetry(assetId, attempt, reason) {
     try {
-      const fp = `download_retry|${assetId || ""}`
+      const grund = this.sanitize(String(reason || "unknown"), 24)
+      const fp = `download_retry|${assetId || ""}|${grund}`
       const now = Date.now()
       if (now - (this._errorThrottle.get(fp) || 0) < ERROR_THROTTLE_MS) return
       this._errorThrottle.set(fp, now)
       this.track("download_retry", {
         asset_id: assetId ? String(assetId).slice(0, 32) : null,
-        attempt: Math.max(1, Number(attempt) || 1)
+        attempt: Math.max(1, Number(attempt) || 1),
+        reason: grund
+      })
+    } catch (_) { /* swallow */ }
+  }
+
+  /**
+   * Ein Ereignis je abgeschlossenem Installlauf, gelungen oder mit Teilfehler.
+   *
+   * WARUM ES DAS BISHER NICHT GAB, UND WAS DAS GEKOSTET HAT
+   *
+   * Es gab `install_initiated` beim Klick und `install_error` beim Scheitern,
+   * aber nichts dazwischen. Gemessen am 2026-08-24: 18.601 Anfaenge, null
+   * Abschluesse. Damit war die naheliegendste Frage des ganzen Trichters nicht
+   * zu beantworten, naemlich wie viele Installationen ueberhaupt ankommen.
+   * Ein Nutzer, der abbricht, und einer, dem alles gelingt, sahen in den Daten
+   * gleich aus.
+   *
+   * WARUM EIN TEILFEHLER MITZAEHLT
+   *
+   * Er ist ein Abschluss, kein Abbruch. Die Karte liegt im Szenenverzeichnis,
+   * nur nicht vollstaendig. Wie schlimm es war, steht in `failed`, und der
+   * eigene `install_error` traegt die Einzelheiten. Beide Ereignisse zaehlen
+   * heisst denselben Lauf zweimal zaehlen.
+   *
+   * `bytes` wandert in `_buildEvent` in die eigene Spalte
+   * `bytes_transferred`, die seit jeher existiert und bei jedem Ereignis auf
+   * NULL stand.
+   */
+  static trackInstallCompleted(info) {
+    try {
+      if (!info) return
+      const t = info.totals || {}
+      this.track("install_completed", {
+        asset_id: info.packageId ? String(info.packageId).slice(0, 32) : null,
+        asset_type: "battlemap",
+        bytes: Number(info.bytes) || 0,
+        duration_ms: Math.max(0, Number(info.durationMs) || 0),
+        assets: Number(t.assets) || 0,
+        ok: Number(t.ok) || 0,
+        repaired: Number(t.repaired) || 0,
+        failed: Number(info.failed) || 0,
+        docs_created: Number(t.docsCreated) || 0,
+        docs_updated: Number(t.docsUpdated) || 0,
+        // Ein Lauf, der nur eine einzelne Szene holt, ist etwas anderes als
+        // ein ganzes Paket. Ohne diese Unterscheidung sieht ein Paket mit
+        // vierzig Szenen im Mittel so aus wie vierzig kleine Installationen.
+        scoped: !!info.scoped
       })
     } catch (_) { /* swallow */ }
   }

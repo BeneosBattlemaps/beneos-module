@@ -341,8 +341,20 @@ Hooks.once('ready', () => {
         BeneosAnalytics.track("spell_added_to_pc", { asset_id: String(spellKey).slice(0, 32), spell_key: spellKey })
       }
       const originSlug = item?.flags?.["beneos-module"]?.loot?.origin?.slug
+      // Der Schluessel des installierten Beneos-Gegenstands, gesetzt beim
+      // Import (beneos_cloud.js). Ohne ihn traegt item_added nur den
+      // Herkunfts-Slug des Loot-Generators, und die 802 gepflegten
+      // Gegenstands-Assets waren in der Nutzungsauswertung vollstaendig
+      // unsichtbar: es gab Downloads, aber keine einzige Zeile, die sagt,
+      // welcher Gegenstand je an einer Figur landete.
+      const itemKey = item?.flags?.world?.beneos?.itemKey
       if (originSlug && item?.parent) {
-        BeneosAnalytics.trackItemAdded(originSlug, parentType)
+        BeneosAnalytics.trackItemAdded(originSlug, parentType, itemKey)
+      } else if (itemKey && item?.parent) {
+        // Ein installierter Gegenstand ohne Loot-Herkunft. Das ist der
+        // Normalfall beim Ziehen aus dem Kompendium und war bisher gar kein
+        // Ereignis, weil die Bedingung oben am Slug haengt.
+        BeneosAnalytics.trackItemAdded("", parentType, itemKey)
       }
     } catch (_) {}
   })

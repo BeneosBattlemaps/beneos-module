@@ -274,6 +274,7 @@ export class BeneosNativeBattlemapInstaller {
 
     const result = this.#newResult()
     this._result = result
+    this._startedAt = Date.now()
     this._importedScenes = []   // Task E: {id,name} of imported scenes
     this._fp     = foundry.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker
     this._isForge = typeof ForgeVTT !== "undefined" && ForgeVTT.usingTheForge === true
@@ -410,6 +411,30 @@ export class BeneosNativeBattlemapInstaller {
 
       result.totals.failed = result.assetFailures.length
       const failureCount = result.assetFailures.length + result.docFailures.length
+
+      // HIER, VOR DER VERZWEIGUNG, UND NICHT IN #showReport.
+      //
+      // Der Bericht oeffnet sich nur, wenn etwas schiefging. Ein sauber
+      // durchgelaufener Install kam damit in keiner Telemetrie vor: es gab
+      // 18.601 install_initiated und kein einziges Gegenstueck. Ein Abbruch
+      // war von einem Erfolg nicht unterscheidbar, und damit war die
+      // Erfolgsquote der Installation nicht berechenbar.
+      //
+      // Ein Teilfehler zaehlt bewusst mit. Er ist ein Abschluss, kein
+      // Abbruch; wie schlimm er war, steht in `failed` und ausserdem im
+      // eigenen install_error. Wer die beiden Ereignisse zusammenzaehlt,
+      // wuerde sonst doppelt sehen, was einmal passiert ist.
+      try {
+        game.beneos?.analytics?.trackInstallCompleted?.({
+          packageId: this.packageId,
+          bytes:     result.totals.bytes || 0,
+          durationMs: Date.now() - (this._startedAt || Date.now()),
+          totals:    result.totals,
+          failed:    failureCount,
+          scoped:    !!this.sceneSlugs,
+        })
+      } catch (_) { /* swallow */ }
+
       if (failureCount > 0) {
         if (typeof this.progress.markCompletedWithIssues === "function") {
           this.progress.markCompletedWithIssues({ failed: failureCount })
@@ -660,7 +685,7 @@ export class BeneosNativeBattlemapInstaller {
       packageId: this.packageId,
       label:     this.label,
       env:       this.#envFingerprint(),
-      totals:    { assets: 0, ok: 0, repaired: 0, failed: 0, docsCreated: 0, docsUpdated: 0, docsSkippedExisting: 0, docsFailed: 0, packagedAssets: 0, convertedUploads: 0 },
+      totals:    { assets: 0, ok: 0, repaired: 0, failed: 0, docsCreated: 0, docsUpdated: 0, docsSkippedExisting: 0, docsFailed: 0, packagedAssets: 0, convertedUploads: 0, bytes: 0 },
       assetFailures: [], // {target, category, attempts, lastError}
       docFailures:   [], // {type, id, error}
       preflight:     null,
@@ -1234,7 +1259,14 @@ export class BeneosNativeBattlemapInstaller {
     for (let guard = 0; guard < 32; guard++) {
       const bytesBefore = carry.bytes
       try {
-        return await this.#fetchOnce(url, carry)
+        const blob = await this.#fetchOnce(url, carry)
+        // Das Uebertragungsvolumen eines Laufs. Die Spalte `bytes_transferred`
+        // wartet seit jeher darauf und stand bei jedem Ereignis auf NULL, weil
+        // keine einzige Aufrufstelle im Modul sie je uebergeben hat. Gezaehlt
+        // wird der ausgelieferte Koerper, nicht die Wiederholungen: sonst
+        // meldet eine schlechte Leitung ein groesseres Paket.
+        try { this._result.totals.bytes = (this._result.totals.bytes || 0) + carry.bytes } catch (_) {}
+        return blob
       } catch (err) {
         const cat = err.category || INSTALL_ERROR.UNKNOWN
         if (cat === INSTALL_ERROR.NOTFOUND) throw err
@@ -1256,14 +1288,18 @@ export class BeneosNativeBattlemapInstaller {
           // Still a real delivery interruption, so it stays in the telemetry:
           // otherwise resuming would hide exactly the per-country error rate
           // this signal exists to surface.
-          try { game.beneos?.analytics?.trackDownloadRetry?.(this.record?.assetId || "", transient + 1) } catch (_) {}
+          // `cat` ist der Grund, nicht nur die Nummer des Versuchs. Ohne ihn
+          // sind Netzabbruch, Zeitueberschreitung und Signaturfehler in einer
+          // Zahl verschmolzen, und die haeufigste Frage zu diesem Ereignis
+          // ("liegt es an uns oder an der Leitung") bleibt unbeantwortbar.
+          try { game.beneos?.analytics?.trackDownloadRetry?.(this.record?.assetId || "", transient + 1, cat) } catch (_) {}
           continue
         }
         transient += 1
         if (transient >= FETCH_MAX_ATTEMPTS) throw err
         // Telemetry: a transient transfer failure with an actual retry ahead
         // (feeds the per-country delivery error rate; throttled per asset).
-        try { game.beneos?.analytics?.trackDownloadRetry?.(this.record?.assetId || "", transient) } catch (_) {}
+        try { game.beneos?.analytics?.trackDownloadRetry?.(this.record?.assetId || "", transient, cat) } catch (_) {}
         await this.#sleep(FETCH_BACKOFF_MS[transient - 1] || 4000)
       }
     }
