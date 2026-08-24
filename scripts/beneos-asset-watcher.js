@@ -242,12 +242,21 @@ WATCHER_CSS.textContent = `
   .beneos-asset-watcher-dialog .beneos-rd-action:hover {
     background: #3a3228 !important;
   }
+  /* Kein Rand links.
+   *
+   * Ein 3px-Farbstreifen an einer Kante ist die abgegriffenste Art, einen
+   * Hinweiskasten zu markieren, und er schiebt den Text gegen den Rest des
+   * Dialogs aus der Flucht. Dieselbe Entscheidung ist am 2026-08-24 in
+   * js/beneos.js fuer die Nutzerliste getroffen worden.
+   *
+   * Der Ton traegt es allein, er muss dafuer nur kraeftig genug sein: 6 Prozent
+   * Deckkraft verschwinden auf dunklem Grund, und genau deshalb brauchte es
+   * bisher die Kante. */
   .beneos-asset-watcher-dialog .beneos-rd-education {
     margin: 0.6em 0;
-    padding: 0.5em;
-    background: rgba(245, 201, 146, 0.06);
-    border-left: 3px solid #f5c992;
-    border-radius: 2px;
+    padding: 0.6em 0.7em;
+    background: rgba(245, 201, 146, 0.13);
+    border-radius: 3px;
   }
   .beneos-asset-watcher-dialog .beneos-rd-education p {
     margin: 0.4em 0;
