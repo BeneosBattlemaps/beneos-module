@@ -519,7 +519,12 @@ export class BeneosAnalytics {
       if (!combatId) return
       let c = this._combats.get(combatId)
       if (!c) {
-        c = { battlemapKey: this._isBeneosScene(canvas?.scene) ? this._beneosBattlemapKey(canvas.scene) : "", roster: new Map() }
+        const aufKarte = this._isBeneosScene(canvas?.scene)
+        c = {
+          battlemapKey:  aufKarte ? this._beneosBattlemapKey(canvas.scene) : "",
+          battlemapPack: aufKarte ? this._scenePack(canvas.scene) : "",
+          roster: new Map()
+        }
         this._combats.set(combatId, c)
       }
       const round = Number(combatant?.combat?.round ?? game.combat?.round) || 0
@@ -582,12 +587,18 @@ export class BeneosAnalytics {
       }
       const rosterList = [...roster.values()].sort((x, y) => y.r - x.r).slice(0, 20)
 
-      this.track("combat_encounter", {
+      const nutzlast = {
         battlemap_key: c.battlemapKey || "",
         total_rounds: totalRounds,
         beneos: [...beneos.values()].slice(0, 15),
         roster: rosterList
-      })
+      }
+      // Nur wenn ableitbar. Die Nutzlast dieses Ereignisses ist die groesste
+      // im ganzen Modul, und der Server verwirft sie ab 8000 Byte
+      // VOLLSTAENDIG statt zu kuerzen. Ein leeres Feld waere hier also nicht
+      // nur bedeutungslos, sondern bezahlt.
+      if (c.battlemapPack) nutzlast.battlemap_pack = c.battlemapPack
+      this.track("combat_encounter", nutzlast)
     } catch (_) { /* swallow */ }
   }
 
@@ -727,6 +738,7 @@ export class BeneosAnalytics {
         // which battlemap they are talking about.
         this._currentScene = {
           key:     this._beneosBattlemapKey(scene),
+          pack:    this._scenePack(scene),
           assetId: this._sceneAssetId(scene),
           ts:      Date.now()
         }
@@ -749,6 +761,9 @@ export class BeneosAnalytics {
           // install-state existed.
           const assetId = this._currentScene?.assetId
           if (assetId) payload.asset_id = assetId
+          // Dasselbe Prinzip: fehlt heisst "nicht ableitbar", nicht "keins".
+          const pack = this._scenePack(scene)
+          if (pack) payload.battlemap_pack = pack
           this.track("scene_activate", payload)
         })
       }
@@ -776,6 +791,26 @@ export class BeneosAnalytics {
     } catch (_) {
       return ""
     }
+  }
+
+  /**
+   * Das Paket einer Szene, exakt wenn moeglich, sonst aus dem Pfad.
+   *
+   * Zwei Quellen, und keine deckt allein alles ab. Der Install-State kennt
+   * die Katalogkennung `bm_0113_arasek_stockyard`, aber nur fuer Welten, die
+   * ueber das Modul installiert haben. Der Pfad deckt jede Beneos-Szene ab,
+   * auch handkopierte und ueber ZIP importierte, liefert aber die
+   * Plattenform `113_arasek_stockyard`.
+   *
+   * Der exakte Wert gewinnt. Die Auswertung erkennt an der Form, welche der
+   * beiden sie vor sich hat, und muss dafuer nichts nachschlagen.
+   */
+  static _scenePack(scene) {
+    try {
+      const genau = BeneosInstallState.findReleaseDirByScene(scene?.id)
+      if (genau) return this._pathKey(genau, 96)
+    } catch (_) { /* weiter mit dem Pfad */ }
+    return this._beneosBattlemapPack(scene)
   }
 
   /**
@@ -847,6 +882,7 @@ export class BeneosAnalytics {
       if (seconds > SCENE_TIME_CAP_S) seconds = SCENE_TIME_CAP_S
       const payload = { battlemap_key: cur.key, seconds }
       if (cur.assetId) payload.asset_id = cur.assetId
+      if (cur.pack) payload.battlemap_pack = cur.pack
       // WAS DIE STUFE "GESPIELT" AUSMACHT.
       //
       // Ohne diese Zahl kann die Auswertung nicht zwischen einer Karte
@@ -892,6 +928,65 @@ export class BeneosAnalytics {
       // folder for a meaningful key; fall back to the file when there is no folder.
       const folder = segs.pop() || ""
       return this._pathKey(folder || file, 96)
+    } catch (_) { return "" }
+  }
+
+  /**
+   * Das Paket, aus dem eine Szene stammt, oder "" wenn nicht ableitbar.
+   *
+   * WARUM ES DIESE FUNKTION BRAUCHT
+   *
+   * `battlemap_key` ist der SZENEN-Ordner, nicht das Paket. Der Pfad lautet
+   *
+   *   beneos_assets/cloud/battlemaps/4k/113_arasek_stockyard/113-02_stockyard_warehouse_1f/<datei>
+   *                                     \____ Paket ______/  \______ Szene ______________/
+   *
+   * und `_beneosBattlemapKey` poppt Datei, poppt Szene und wirft das Paket,
+   * das im selben Array direkt daneben liegt, weg. Die Auswertung hat daraus
+   * jahrelang die fuehrende Zahl als Paketnummer gelesen, obwohl es die
+   * Szenennummer IM Paket ist: `01_tser_pool_camp` landete bei
+   * `bm_0001_crystal_case`, und `bm_0001` sammelte neunzehn fremde Schluessel
+   * ein.
+   *
+   * GEMESSEN im Data Lake am 2026-08-24 ueber 60 Tage und 46.549 Ereignisse
+   * `scene_activate` plus `scene_time`: KEIN einziges traegt eine
+   * Paketkennung. 33.656 tragen die mehrdeutige Nummernform, 12.893 sind gar
+   * nicht zuordenbar (Platzhalter, `4k_bm.webm` und Aehnliches). Ein Viertel
+   * der zugeordneten Spielzeit lag damit beim falschen Paket.
+   *
+   * WARUM EIN EIGENES FELD UND KEIN UMBAU VON battlemap_key
+   *
+   * Der Schluessel hat zwischen 14.3.0 und 14.4.0 schon einmal die Bedeutung
+   * gewechselt, vom Dateinamen zum Ordnernamen, und damit die
+   * Vergleichbarkeit mit allem Aelteren zerrissen. Das passiert kein zweites
+   * Mal. `battlemap_key` bleibt bitgleich, das Paket kommt daneben.
+   *
+   * DIE PLATTENSCHREIBWEISE, NICHT DIE KATALOGSCHREIBWEISE
+   *
+   * Hier faellt `113_arasek_stockyard` an, der Katalog fuehrt
+   * `bm_0113_arasek_stockyard`. Die Abbildung ueber die Nummer ist eindeutig
+   * und Sache der Auswertung. Wer es exakt braucht, nimmt
+   * `_sceneReleaseDir`, das den Katalognamen kennt, aber nur fuer Welten, die
+   * ueber das Modul installiert haben. Beide gehen mit, keins deckt allein
+   * alles ab.
+   */
+  static _beneosBattlemapPack(scene) {
+    try {
+      const src = String(this._sceneBackgroundSrc(scene))
+      const segs = src.split("?")[0].split("/").filter(Boolean)
+      segs.pop()                       // Datei
+      const folder = segs.pop() || ""  // Szenenordner, das ist battlemap_key
+      const pack = segs.pop() || ""
+      // Ohne Szenenordner gibt es auch kein Paket darueber: dann stand die
+      // Datei direkt im Paketordner und `folder` ist bereits das Paket.
+      // Ein leerer Rueckgabewert heisst "nicht ableitbar", niemals "keins".
+      if (!folder) return ""
+      // Die Zwischenstufen des Cloud-Pfads sind kein Paket. Ohne diesen
+      // Riegel meldet eine flach abgelegte Szene `4k` als Paketkennung, und
+      // das saehe in der Auswertung aus wie ein echtes Paket mit sehr viel
+      // Spielzeit.
+      if (/^(4k|hd|2k|8k|battlemaps|cloud|beneos_assets|scenes?|data|assets)$/i.test(pack)) return ""
+      return this._pathKey(pack, 96)
     } catch (_) { return "" }
   }
 
@@ -947,6 +1042,7 @@ export class BeneosAnalytics {
       if (now - (this._errorThrottle.get(fp) || 0) < ERROR_THROTTLE_MS) return
       this._errorThrottle.set(fp, now)
       const assetId = this._sceneAssetId(scene)
+      const pack = this._scenePack(scene)
       this._sha256(scene.id).then(hash => {
         this.track("battlemap_error", {
           battlemap_key: this._beneosBattlemapKey(scene),
@@ -955,6 +1051,7 @@ export class BeneosAnalytics {
           // Haelfte, und gerade bei einer kaputten Szene ist die Frage
           // "welches Release" die erste.
           ...(assetId ? { asset_id: assetId } : {}),
+          ...(pack ? { battlemap_pack: pack } : {}),
           scene_id_hash: hash,
           message: this.sanitize(this._splitStackPackages(err?.message || String(err || "")).message, 200),
           stack_packages: (() => {
@@ -1098,6 +1195,11 @@ export class BeneosAnalytics {
         foundry_version: String(game.version || game.data?.version || "").slice(0, 16),
         system: `${game.system?.id || ""}/${game.system?.version || ""}`.slice(0, 32),
         battlemap_key: this._isBeneosScene(scene) ? this._beneosBattlemapKey(scene) : "",
+        // Ein Fehler, der nur auf einem Paket auftritt, ist ein Paketfehler.
+        // Das war ueber battlemap_key allein nicht zu sehen, weil dessen
+        // fuehrende Zahl die Szene meint und nicht das Release.
+        ...(this._isBeneosScene(scene) && this._scenePack(scene)
+              ? { battlemap_pack: this._scenePack(scene) } : {}),
         hosting: this.detectHostingType(),
         breadcrumbs: this._breadcrumbs.map(b => b.t)
       }

@@ -87,6 +87,45 @@ export class BeneosInstallState {
   }
 
   /**
+   * The release a scene was installed from, in catalogue spelling, or "".
+   *
+   * WHY THIS EXISTS NEXT TO findAssetIdByScene
+   *
+   * The asset id is a cloud hash like `6a3a4c16ea600`. It is exact, but it
+   * says nothing to anyone reading a report, and it does not join against the
+   * catalogue, which is keyed on `bm_0113_arasek_stockyard`. Telemetry needs
+   * the readable one.
+   *
+   * THE VARIANT IS PART OF THE ANSWER, NOT DECORATION
+   *
+   * `bm_0057b_forest_a_horror` and `bm_0057c_forest_a_winter` are different
+   * products. `recordInstall` stores `variant` separately from `releaseDir`,
+   * so if the server ever hands us a bare `bm_0057` plus a variant, dropping
+   * the variant would collapse three releases into one. That collapse has
+   * already cost us once in the packer. It is appended when it is not already
+   * part of the directory name.
+   *
+   * Returns "" for worlds that installed before the install-state existed and
+   * for hand-copied battlemaps. Callers must treat "" as "not known", never
+   * as "not a Beneos scene" - the path-derived pack covers those.
+   */
+  static findReleaseDirByScene(sceneId) {
+    if (!sceneId) return ""
+    const all = this.getAll()
+    for (const entry of Object.values(all)) {
+      if (!entry || typeof entry !== "object") continue
+      if (!Array.isArray(entry.sceneIds)) continue
+      if (!entry.sceneIds.includes(sceneId)) continue
+      const dir = String(entry.releaseDir || "")
+      if (!dir) return ""
+      const variant = String(entry.variant || "")
+      if (!variant || dir.includes(variant)) return dir
+      return `${dir}_${variant}`
+    }
+    return ""
+  }
+
+  /**
    * Persist one install. Key format: `<releaseDir>_<variant>` (variant = ""
    * for single-variant releases). Idempotent: replacing the same key
    * overwrites scene-ids + timestamp + signature for the new install.
