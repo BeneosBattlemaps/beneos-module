@@ -323,7 +323,22 @@ export async function rebuildScene(scene, report, bekannt) {
     scene.background = background
     scene.background.src = still
     report?.changes?.push({ scene: sname, action: "background-to-tile", video: bgSrc, still })
-    return
+    // KEIN return. Bis zum 2026-08-24 stand hier einer, geerbt aus der
+    // Python-Kette, und er war der gefaehrlichste Fehler des ganzen Umbaus.
+    //
+    // Eine Szene kann ein Video im Hintergrund UND Videos in Kacheln tragen.
+    // Gemessen an "BM: Dragon Chamber" aus bm_0067: Hintergrundvideo plus zwei
+    // Aktionsvideos als Kacheln. Der Abbruch behandelte den Hintergrund und
+    // liess die beiden Kacheln stehen, mit dem Video in `texture.src`.
+    //
+    // Damit greift genau die Zeichenschranke, die dieser Umbau vermeiden soll:
+    // `Canvas#draw` wartet auf jede Textur, `VideoResource.load()` kennt keine
+    // Frist, und ein haengendes Video parkt die Leinwand fuer den Rest der
+    // Sitzung. Ohne eine einzige Fehlermeldung, denn ein Warten ist kein
+    // Fehler.
+    //
+    // Die unten eingefuegte Kachel stoert nicht: sie ist leer, und der Filter
+    // von Form zwei sucht nach `texture.src`.
   }
 
   // --- shape two: the video is already a tile ------------------------------
