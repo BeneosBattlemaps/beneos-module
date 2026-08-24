@@ -96,18 +96,30 @@ export class BeneosInstallState {
    * catalogue, which is keyed on `bm_0113_arasek_stockyard`. Telemetry needs
    * the readable one.
    *
-   * THE VARIANT IS PART OF THE ANSWER, NOT DECORATION
+   * THE VARIANT IS THE RESOLUTION, NOT THE PRODUCT. DO NOT APPEND IT.
    *
-   * `bm_0057b_forest_a_horror` and `bm_0057c_forest_a_winter` are different
-   * products. `recordInstall` stores `variant` separately from `releaseDir`,
-   * so if the server ever hands us a bare `bm_0057` plus a variant, dropping
-   * the variant would collapse three releases into one. That collapse has
-   * already cost us once in the packer. It is appended when it is not already
-   * part of the directory name.
+   * This was written the other way round first, on the assumption that
+   * `variant` might carry the product letter of `bm_0057b` vs `bm_0057c`.
+   * Measured in a live world on 2026-08-24 across all eleven install records:
+   * `variant` is "HD" or "4K" every single time. The product letter lives in
+   * `releaseDir` itself (`bm_0078b`). Appending the variant would have turned
+   * `bm_0078b` into `bm_0078b_4K`, which matches nothing in the catalogue.
+   *
+   * THE `beneos_` PREFIX IS OPTIONAL AND MUST GO
+   *
+   * The same world holds both spellings side by side, depending on how old
+   * the install is: `bm_0112` and `beneos_bm_0048_dourcrag_castle_day`. The
+   * catalogue keys on `bm_0048_dourcrag_castle_day`, so the prefix is
+   * stripped. What remains matches the catalogue either exactly or as a
+   * prefix (`bm_0112` -> `bm_0112_dia_mirror_of_mephistar`), and the special
+   * namespaces `bm_tour_`, `bm_single_map_` and `bm_extras_` survive that
+   * unharmed because nothing about them is rewritten.
    *
    * Returns "" for worlds that installed before the install-state existed and
    * for hand-copied battlemaps. Callers must treat "" as "not known", never
-   * as "not a Beneos scene" - the path-derived pack covers those.
+   * as "not a Beneos scene". There is deliberately no fallback: see
+   * `_beneosBattlemapDir` in beneos_analytics.js for why the path cannot
+   * stand in for this.
    */
   static findReleaseDirByScene(sceneId) {
     if (!sceneId) return ""
@@ -116,11 +128,8 @@ export class BeneosInstallState {
       if (!entry || typeof entry !== "object") continue
       if (!Array.isArray(entry.sceneIds)) continue
       if (!entry.sceneIds.includes(sceneId)) continue
-      const dir = String(entry.releaseDir || "")
-      if (!dir) return ""
-      const variant = String(entry.variant || "")
-      if (!variant || dir.includes(variant)) return dir
-      return `${dir}_${variant}`
+      const dir = String(entry.releaseDir || "").replace(/^beneos_/, "")
+      return dir
     }
     return ""
   }
