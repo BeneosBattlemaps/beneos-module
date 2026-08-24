@@ -20,7 +20,7 @@
  * through #fetchAsset (inactivity-timeout + exponential backoff + signed-URL
  * refresh on 403) and #safeUpload (catches throws AND silent no-path failures,
  * which is also the Forge success signal). Failures are classified
- * (permission/quota/timeout/network/signature/notfound/server) and surfaced in
+ * (permission/quota/timeout/network/signature/notfound/server/verify) and surfaced in
  * a transparent report instead of a silent miss.
  */
 
@@ -70,6 +70,12 @@ export const INSTALL_ERROR = {
   SIGNATURE:  "signature",
   NOTFOUND:   "notfound",
   SERVER:     "server",
+  // Download and upload both reported success, but reading the file back from
+  // the data store afterwards fails. Never produced by classifyTransferError:
+  // it is the verify pass telling us the transfer layer was lied to. Real
+  // causes are third-party upload converters and hosts that refuse to serve
+  // .svg as an image, so it must not be filed under UNKNOWN.
+  VERIFY:     "verify",
   UNKNOWN:    "unknown",
 }
 
@@ -1841,7 +1847,11 @@ export class BeneosNativeBattlemapInstaller {
         this.#clearAssetFailure(a.target)
         this._result.totals.repaired += 1
       } else {
-        this.#recordAssetFailure(a.target, res.category || INSTALL_ERROR.UNKNOWN, res.error || new Error("still missing after repair"))
+        // No category means #transferOne returned ok and only the HEAD above
+        // said no: that is VERIFY, not UNKNOWN. Filing it as UNKNOWN cost a
+        // whole support round on 2026-08-21, because the report then names no
+        // cause at all for the one failure mode whose cause we do know.
+        this.#recordAssetFailure(a.target, res.category || INSTALL_ERROR.VERIFY, res.error || new Error("still missing after repair"))
       }
       this.progress.handleAssetProgress("Repair", candidates.length, i + 1)
     }
