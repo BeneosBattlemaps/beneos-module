@@ -851,7 +851,8 @@ export class BeneosAnalytics {
   // One summary event per failed install run (native battlemap installer).
   // Carries the classified failure picture (INSTALL_ERROR categories) so the
   // dashboard can separate our bugs (notfound/signature/server) from user
-  // environments (permission/quota/network/timeout). One event per run, not
+  // environments (permission/quota/network/timeout) and from third-party
+  // interference (verify: uploaded fine, unreadable afterwards). One event per run, not
   // per asset: keeps well under the 50-event batch and 2000-byte payload caps.
   static trackInstallError(result) {
     try {
@@ -883,6 +884,73 @@ export class BeneosAnalytics {
         system: this.sanitize(String(result.env?.system || ""), 32),
         foundry: this.sanitize(String(result.env?.foundry || ""), 16),
         forge: result.env?.forge === "yes"
+      })
+    } catch (_) { /* swallow */ }
+  }
+
+  /********************************************************************************** */
+  // Incomplete token/item/spell install. The battlemap path has reported its
+  // failures since forever; the cloud path had no counterpart, so a creature
+  // that installed with a missing aspect was invisible to us and reached us
+  // only if the customer happened to write on Discord. Emits the same
+  // `install_error` event so both paths land in one dashboard.
+  //
+  // `health` is the object from _beneosValidateInstalledAsset AFTER the repair
+  // pass, so what arrives here is what actually stayed broken.
+  static trackAssetInstallError(kind, key, health) {
+    try {
+      const missing = Array.isArray(health?.aspectsMissing) ? health.aspectsMissing : []
+      if (missing.length === 0) return
+      const fp = `install_error|${kind}|${key || ""}`
+      const now = Date.now()
+      if (now - (this._errorThrottle.get(fp) || 0) < ERROR_THROTTLE_MS) return
+      this._errorThrottle.set(fp, now)
+      this.track("install_error", {
+        asset_id: key ? String(key).slice(0, 32) : null,
+        asset_type: this.sanitize(String(kind || "unknown"), 16),
+        fatal_category: "verify",
+        categories: { verify: missing.length },
+        assets_failed: missing.length,
+        assets_ok: Math.max(0, (Number(health?.aspectsExpected) || 0) - missing.length),
+        docs_failed: 0,
+        sample_target: this.sanitize(missing.join(", "), 96),
+        sample_message: "aspect missing on disk after repair pass",
+        system: this.sanitize(String(game.system?.id || ""), 32),
+        foundry: this.sanitize(String(game.version || ""), 16),
+        forge: typeof ForgeVTT !== "undefined" && ForgeVTT?.usingTheForge === true
+      })
+    } catch (_) { /* swallow */ }
+  }
+
+  /********************************************************************************** */
+  // The server refused an asset the user asked for. Not a fault: the entitlement
+  // gate did its job. It is reported because a refusal is invisible to us
+  // otherwise, and a run of them means the module is offering something it
+  // cannot deliver - which is exactly how the 2026-08-24 case surfaced, through
+  // a Discord post rather than through us.
+  //
+  // `reason` is what the server sent: "loyalty" (a monthly reward this user has
+  // no grant for) or "tier". Absent on pre-2026-08-24 servers.
+  static trackAssetRefused(kind, key, reason) {
+    try {
+      const why = this.sanitize(String(reason || "unknown"), 16)
+      const fp = `install_error|refused|${kind}|${key || ""}`
+      const now = Date.now()
+      if (now - (this._errorThrottle.get(fp) || 0) < ERROR_THROTTLE_MS) return
+      this._errorThrottle.set(fp, now)
+      this.track("install_error", {
+        asset_id: key ? String(key).slice(0, 32) : null,
+        asset_type: this.sanitize(String(kind || "unknown"), 16),
+        fatal_category: "entitlement",
+        categories: { entitlement: 1 },
+        assets_failed: 1,
+        assets_ok: 0,
+        docs_failed: 0,
+        sample_target: why,
+        sample_message: "server refused: not entitled",
+        system: this.sanitize(String(game.system?.id || ""), 32),
+        foundry: this.sanitize(String(game.version || ""), 16),
+        forge: typeof ForgeVTT !== "undefined" && ForgeVTT?.usingTheForge === true
       })
     } catch (_) { /* swallow */ }
   }
