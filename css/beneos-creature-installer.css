@@ -456,6 +456,34 @@
 #beneos-creature-installer .bci-col-beneos .bci-disc-beneos.bci-alt ~ .bci-name,
 #beneos-creature-installer .bci-tokencol:has(.bci-alt) .bci-name { color: #a9cae6; }
 
+/* Out of this user's reach (a monthly reward they hold no grant for, a tier they
+   do not have). Shown and named, never offered. The dashed gold ring above means
+   "placeholder, install me" and would be a false promise here, so it is replaced
+   by a quiet matte ring. No lock icon, no lootbox treatment: this is a statement
+   of fact, not a sales pitch. */
+#beneos-creature-installer .bci-disc-beneos.bci-blocked,
+#beneos-creature-installer .bci-disc-beneos.bci-blocked:not(.bci-available) {
+  border: 2px solid #5a4d36;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, .6);
+}
+#beneos-creature-installer .bci-disc-beneos.bci-blocked img,
+#beneos-creature-installer .bci-disc-beneos.bci-blocked video {
+  filter: grayscale(1) brightness(.55); opacity: .55;
+}
+#beneos-creature-installer .bci-disc-beneos.bci-blocked:hover { transform: none; }
+#beneos-creature-installer .bci-blocked-badge {
+  position: absolute; bottom: -4px; right: -4px;
+  font-family: "Cinzel", serif; font-size: 8px; font-weight: 700; letter-spacing: .5px;
+  color: #d8cdb6; background: #2a241a; border: 1px solid #6f5c3b;
+  border-radius: 6px; padding: 0 4px; line-height: 1.4;
+}
+#beneos-creature-installer .bci-tokencol:has(.bci-blocked) .bci-name { color: #9c8f78; }
+#beneos-creature-installer .bci-blocked-notes { margin: 6px 2px 0; }
+#beneos-creature-installer .bci-blocked-note {
+  font-family: "Signika", "Segoe UI", system-ui, sans-serif;
+  font-size: 11px; line-height: 1.35; color: #a99c84; margin: 2px 0;
+}
+
 /* focus mode: while a link is hovered, grey out every creature except the two
    linked ones so the pairing is unmistakable (:has scopes to the token column). */
 #beneos-creature-installer.bci-focus-link .bci-tokencol { filter: grayscale(1); opacity: .35; transition: filter .12s ease-out, opacity .12s ease-out; }

@@ -669,6 +669,10 @@ export class BeneosDatabaseHolder {
     for (let key in this.itemData.content) {
       let itemData = this.itemData.content[key]
       if (itemData && typeof (itemData) == "object") {
+        // The catalog key is turned into its dashed form for the id lookups
+        // below, but the folder on disk keeps the underscore. Hold on to the
+        // untouched slug, the card paths need it.
+        const slug = key
         if (/^\d+_/.test(key)) {
           key = key.replace(/^(\d+)_/, '$1-');
         }
@@ -683,8 +687,13 @@ export class BeneosDatabaseHolder {
         this.processInstalledItem(itemData)
         if (itemData.isInstalled) {
           itemData.itemId = BeneosUtility.getItemId(key)
-          itemData.card_front = BeneosUtility.getBeneosItemDataPath() + "/" + key + "/" + key + "-front.webp"
-          itemData.card_back = BeneosUtility.getBeneosItemDataPath() + "/" + key + "/" + key + "-back.webp"
+          // Cloud namespace, not the authoring one. getBeneosItemDataPath()
+          // resolves to beneos_assets/beneos_items/, which only exists on an
+          // authoring machine; the installer writes to beneos_assets/cloud/
+          // items/. Together with the dashed key this preview pointed at a
+          // folder no customer has ever had.
+          itemData.card_front = `beneos_assets/cloud/items/${slug}/${slug}-front.webp`
+          itemData.card_back = `beneos_assets/cloud/items/${slug}/${slug}-back.webp`
         }
       }
     }
@@ -692,6 +701,7 @@ export class BeneosDatabaseHolder {
     for (let key in this.spellData.content) {
       let spellData = this.spellData.content[key]
       if (spellData && typeof (spellData) == "object") {
+        const slug = key
         if (/^\d+_/.test(key)) {
           key = key.replace(/^(\d+)_/, '$1-');
         }
@@ -707,8 +717,12 @@ export class BeneosDatabaseHolder {
         this.processInstalledSpell(spellData)
         if (spellData.isInstalled) {
           spellData.spellId = BeneosUtility.getSpellId(key)
-          spellData.card_front = BeneosUtility.getBeneosSpellDataPath() + "/" + key + "/" + key + "-front.webp"
-          spellData.card_back = BeneosUtility.getBeneosSpellDataPath() + "/" + "spell_card_back.webp"
+          // Same two fixes as the item block above, plus a third: the back
+          // used to be the shared spell_card_back.webp from the spells root.
+          // That is the old card architecture. Every spell carries its own
+          // back today, and the shared file is never uploaded to a customer.
+          spellData.card_front = `beneos_assets/cloud/spells/${slug}/${slug}-front.webp`
+          spellData.card_back = `beneos_assets/cloud/spells/${slug}/${slug}-back.webp`
         }
       }
     }

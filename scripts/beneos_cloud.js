@@ -1,5 +1,9 @@
 import { BeneosUtility } from "./beneos_utility.js"
 import { BeneosInfoBox } from "./beneos_info_box.js"
+// No import cycle: beneos_analytics pulls in beneos_utility and
+// cloud-v2/beneos-install-state, and neither reaches back here.
+import { BeneosAnalytics } from "./beneos_analytics.js"
+import { normalizeEmbeddedItems } from "./cloud-v2/beneos-ability-icons.mjs"
 
 // FilePicker.upload(..., { notify: false }) used to swallow failures
 // (disk full, permissions, server reject) — the await would resolve,
@@ -33,6 +37,34 @@ async function _beneosSafeUpload(folder, file, label) {
   return result
 }
 
+// Probe a single installed file. Mirrors #headCheck in the battlemap
+// installer (scripts/cloud-v2/beneos-native-installer.mjs), which the token
+// path never inherited:
+//   - route prefix: a bare "/path" 404s on every Foundry served under a
+//     subpath, which would fail EVERY aspect instead of the broken one
+//   - cache bust: a stale 404 from a probe taken before the upload landed
+//     must not outlive it
+//   - stub guard: the uninstaller cannot delete, it overwrites with a 1-byte
+//     placeholder that answers 200 and would pass as a healthy asset
+const BENEOS_STUB_MAX_BYTES = 8
+function _beneosUsingTheForge() {
+  return typeof ForgeVTT !== "undefined" && ForgeVTT?.usingTheForge === true
+}
+async function _beneosProbeInstalledFile(path) {
+  try {
+    const base = "/" + String(path).replace(/^\/+/, "")
+    const url = (foundry.utils?.getRoute?.(base) || base) + "?_b=" + Date.now()
+    const res = await fetch(url, { method: "HEAD" })
+    if (!res.ok) return false
+    if (/text\/html/i.test(res.headers.get("content-type") || "")) return false
+    const len = Number(res.headers.get("content-length"))
+    if (Number.isFinite(len) && len <= BENEOS_STUB_MAX_BYTES) return false
+    return true
+  } catch (err) {
+    return false
+  }
+}
+
 // Post-install health-check: after a token/item/spell has been processed,
 // HEAD-probe each expected asset aspect on disk. Catches partial installs
 // where the cloud response was missing an aspect (forgotten field) or an
@@ -40,40 +72,59 @@ async function _beneosSafeUpload(folder, file, label) {
 // list of missing aspect labels so callers can aggregate batch results
 // later; emits a console.warn + ui.notifications.warn per asset when
 // anything is missing.
-async function _beneosValidateInstalledAsset(kind, key, variantCount = 1) {
+//
+// For tokens the caller passes `tokenImages` from the cloud response, not a
+// count. Two reasons. The filename is read from the response instead of being
+// rebuilt as `${key}-${i}-top.webp`, because the upload uses the server's
+// filename (see importTokenToCompendium) and a naming drift between the two
+// would report a file that is sitting right there. And top-down is now
+// mandatory per product rule, so a variant that ships without one is a real
+// failure and gets reported with its own label rather than being skipped.
+//
+// On The Forge every probe is skipped. Assets live behind a foreign asset
+// library prefix there, so probing "/beneos_assets/..." would mark every
+// single aspect as missing. Same reasoning as the battlemap installer.
+// `source` carries the images from the cloud response: the tokenImages array
+// for tokens, the itemImage/spellImage bag for the other two. Each expected
+// entry keeps a reference to its payload, which is what makes the repair pass
+// below possible without asking the server again. A bare number is still
+// accepted from older callers and falls back to the naming convention.
+async function _beneosValidateInstalledAsset(kind, key, source = 1) {
   if (!key) return { aspectsExpected: 0, aspectsMissing: [] }
+  if (_beneosUsingTheForge()) return { aspectsExpected: 0, aspectsMissing: [] }
   const expected = []
   if (kind === "token") {
     const folder = `beneos_assets/cloud/tokens/${key}`
-    for (let i = 1; i <= variantCount; i++) {
-      expected.push({ folder, file: `${key}-${i}-token.webp`,   label: `variant ${i} token` })
-      expected.push({ folder, file: `${key}-${i}-avatar.webp`,  label: `variant ${i} avatar` })
-      expected.push({ folder, file: `${key}-${i}-journal.webp`, label: `variant ${i} journal` })
-      expected.push({ folder, file: `${key}-${i}-top.webp`,     label: `variant ${i} top` })
+    const images = Array.isArray(source)
+      ? source
+      : Array.from({ length: Number(source) || 1 }, () => null)
+    const ASPECTS = ["token", "avatar", "journal", "top"]
+    images.forEach((img, idx) => {
+      const i = idx + 1
+      for (const aspect of ASPECTS) {
+        const data = img?.[aspect]
+        expected.push({
+          folder,
+          file: data?.filename || `${key}-${i}-${aspect}.webp`,
+          label: `variant ${i} ${aspect}`,
+          data
+        })
+      }
+    })
+  } else if (kind === "item" || kind === "spell") {
+    const folder = `beneos_assets/cloud/${kind === "item" ? "items" : "spells"}/${key}`
+    const bag = (source && typeof source === "object" && !Array.isArray(source)) ? source : null
+    for (const aspect of ["icon", "front", "back"]) {
+      const data = bag?.[aspect]
+      expected.push({ folder, file: data?.filename || `${key}-${aspect}.webp`, label: aspect, data })
     }
-  } else if (kind === "item") {
-    const folder = `beneos_assets/cloud/items/${key}`
-    expected.push({ folder, file: `${key}-icon.webp`,  label: "icon" })
-    expected.push({ folder, file: `${key}-front.webp`, label: "front" })
-    expected.push({ folder, file: `${key}-back.webp`,  label: "back" })
-  } else if (kind === "spell") {
-    const folder = `beneos_assets/cloud/spells/${key}`
-    expected.push({ folder, file: `${key}-icon.webp`,  label: "icon" })
-    expected.push({ folder, file: `${key}-front.webp`, label: "front" })
-    expected.push({ folder, file: `${key}-back.webp`,  label: "back" })
   } else {
     return { aspectsExpected: 0, aspectsMissing: [] }
   }
 
   const missing = []
   await Promise.allSettled(expected.map(async (e) => {
-    const url = `/${e.folder}/${e.file}`
-    try {
-      const res = await fetch(url, { method: "HEAD" })
-      if (!res.ok) missing.push(e.label)
-    } catch (err) {
-      missing.push(e.label)
-    }
+    if (!(await _beneosProbeInstalledFile(`${e.folder}/${e.file}`))) missing.push(e.label)
   }))
 
   if (missing.length > 0) {
@@ -83,11 +134,60 @@ async function _beneosValidateInstalledAsset(kind, key, variantCount = 1) {
         game.i18n.format("BENEOS.Cloud.Notification.PostInstallIncomplete", {
           kind, key, count: missing.length, total: expected.length, aspects: missing.join(", ")
         })
-        || `Beneos: ${kind} '${key}' install incomplete — ${missing.length}/${expected.length} aspect(s) missing: ${missing.join(", ")}`
+        || `Beneos: ${kind} '${key}' install incomplete, ${missing.length}/${expected.length} aspect(s) missing: ${missing.join(", ")}`
       )
     } catch (e) { /* notifications not ready */ }
   }
-  return { aspectsExpected: expected.length, aspectsMissing: missing }
+  return { aspectsExpected: expected.length, aspectsMissing: missing, expected }
+}
+
+// Repair pass for the token/item/spell path. The battlemap installer has had
+// one since forever (#verifyAndRepair in cloud-v2/beneos-native-installer.mjs);
+// here a missing aspect was terminal and the user was told to re-install the
+// whole asset by hand.
+//
+// The transport differs from the battlemap side: the bytes already came down
+// inside the JSON response as base64, so there is nothing to re-download. What
+// failed is the upload, and that is what gets retried, one file at a time
+// rather than in the parallel burst of the first pass. Aspects the server
+// never delivered (no image64) cannot be repaired from here and stay missing;
+// that is a catalog defect, not a transfer problem.
+//
+// Mutates `health.aspectsMissing` in place so callers see the post-repair
+// truth, and returns the number of files recovered.
+async function _beneosRepairMissingAspects(kind, key, health) {
+  if (!health || !Array.isArray(health.expected) || health.aspectsMissing.length === 0) return 0
+  if (_beneosUsingTheForge()) return 0
+  const stillMissing = new Set(health.aspectsMissing)
+  const candidates = health.expected.filter(e => stillMissing.has(e.label))
+  let repaired = 0
+
+  for (const e of candidates) {
+    if (!e.data?.image64 || !e.data?.filename) continue // server never sent it
+    try {
+      const resp = await fetch(`data:image/webp;base64,${e.data.image64}`)
+      const blob = await resp.blob()
+      const file = new File([blob], e.data.filename, { type: "image/webp" })
+      const up = await _beneosSafeUpload(e.folder, file, `${kind} ${key} ${e.label} (repair)`)
+      if (!up?.path) continue
+      if (!(await _beneosProbeInstalledFile(`${e.folder}/${e.file}`))) continue
+      stillMissing.delete(e.label)
+      repaired += 1
+    } catch (err) {
+      console.warn(`[Beneos Cloud] Repair of ${kind} ${key} ${e.label} threw`, err)
+    }
+  }
+
+  health.aspectsMissing = health.aspectsMissing.filter(l => stillMissing.has(l))
+  if (repaired > 0) {
+    console.warn(`[Beneos Cloud] Repair pass recovered ${repaired} aspect(s) for ${kind} ${key}; ${health.aspectsMissing.length} still missing`)
+  }
+  return repaired
+}
+
+// Telemetry is never allowed to break an install, so the call is wrapped.
+function _beneosTrackAssetInstallError(kind, key, health) {
+  try { BeneosAnalytics.trackAssetInstallError(kind, key, health) } catch (_) { /* swallow */ }
 }
 
 // Compendium UI refresh helper. After a fresh import the open compendium
@@ -101,6 +201,21 @@ async function _beneosRefreshOpenPackWindows(pack) {
   for (const app of apps) {
     try { await app.render(false) } catch (e) { /* per-app render failed */ }
   }
+}
+
+// A refused import, put into words the user can act on. The server answers a
+// refusal with `reason: "loyalty" | "tier"`; anything older answers without one
+// and we keep the previous generic wording.
+//
+// Until 2026-08-24 every refusal produced the same "Error importing token"
+// regardless of cause, so a supporter who ran into a reward from a month they
+// were not subscribed in had no way to tell that apart from a real fault. `kind`
+// is "Token" | "Item" | "Spell" and matches the ImportError* key suffix.
+function _beneosRefusalMessage(kind, data) {
+  const reason = String(data?.reason || "")
+  if (reason === "loyalty") return game.i18n.localize("BENEOS.Cloud.Notification.RefusedLoyalty")
+  if (reason === "tier") return game.i18n.localize("BENEOS.Cloud.Notification.RefusedTier")
+  return game.i18n.localize(`BENEOS.Cloud.Notification.ImportError${kind}`)
 }
 
 // Server-side asset-aspect manifest consumer. The cloud now ships a
@@ -1747,6 +1862,60 @@ export class BeneosCloud {
     return set.has(key.toLowerCase().replaceAll("-", "_"))
   }
 
+  // Loyalty allowlist (published reward assets with NO tier link), delivered by
+  // get_content and get_public_data. These are the monthly supporter rewards:
+  // reachable only through a permanent grant to the patrons who were subscribed
+  // that month, never through a tier. Same normalisation as the two sets above.
+  setLoyaltySet(loyalty) {
+    if (!loyalty || typeof loyalty !== "object") return
+    const toSet = (arr) => {
+      const s = new Set()
+      if (Array.isArray(arr)) {
+        for (const k of arr) {
+          if (typeof k === "string") s.add(k.toLowerCase().replaceAll("-", "_"))
+        }
+      }
+      return s
+    }
+    this.loyaltySet = { token: toSet(loyalty.token), item: toSet(loyalty.item), spell: toSet(loyalty.spell) }
+  }
+
+  // True when the asset is a monthly reward with no tier link. False when the
+  // list is unknown, so an old server or a failed fetch never invents a reason
+  // the user cannot act on — the caller then falls back to its generic wording.
+  isLoyaltyAsset(type, key) {
+    const set = this.loyaltySet && this.loyaltySet[type]
+    if (!set) return false
+    if (!key || typeof key !== "string") return false
+    return set.has(key.toLowerCase().replaceAll("-", "_"))
+  }
+
+  // Why a token is (not) installable for THIS user. The creature-installer drawer
+  // used to ask only "is this a token patron?" and offered a "+" on every missing
+  // creature, including rewards from months the user was not subscribed in. The
+  // server then refused and all the user saw was a generic import error next to a
+  // success message (Discord report 2026-08-24).
+  //
+  //   "ok"          -> in this user's catalog, install away
+  //   "not_patron"  -> no token-campaign access at all
+  //   "loyalty"     -> a monthly reward, and this user has no grant for it
+  //   "unavailable" -> patron, but the asset is not in their catalog (draft,
+  //                    tier they don't hold, ...)
+  //
+  // Order matters: a patron WITH the grant has the token in availableContent even
+  // though it also sits in the loyalty list, so "ok" has to win. An empty
+  // availableContent means the catalog has not arrived yet — answer "ok" so a
+  // slow fetch never blanks the drawer, mirroring isPublished's fail-open rule.
+  getTokenAccessState(key) {
+    if (!key || typeof key !== "string") return "ok"
+    const content = this.availableContent?.tokens
+    if (!Array.isArray(content) || content.length === 0) return "ok"
+    if (this._beneosFindCloudAsset(content, key)) return "ok"
+    if (!this.hasCampaignAccess?.("tokens")) return "not_patron"
+    if (this.isLoyaltyAsset("token", key)) return "loyalty"
+    return "unavailable"
+  }
+
   // Public Free + Published allowlists (catalog-wide, NO login required). Lets the
   // LOGGED-OUT cloud browser still group free content green and hide unpublished
   // drafts, exactly like the storefront — the assets stay click-to-login. Logged-in
@@ -1758,6 +1927,7 @@ export class BeneosCloud {
       if (d && d.result === 'OK' && d.data) {
         if (d.data.published) this.setPublishedSet(d.data.published)
         if (d.data.free) this.setFreeSet(d.data.free)
+        if (d.data.loyalty) this.setLoyaltySet(d.data.loyalty)
       }
       return d
     } catch (e) {
@@ -1822,6 +1992,11 @@ export class BeneosCloud {
         // Free allowlist (dynamic Free-tier membership) — same full-fetch contract.
         if (data.data?.free) {
           game.beneos.cloud.setFreeSet(data.data.free)
+        }
+        // Loyalty allowlist (monthly rewards without a tier link) — same contract.
+        // Drives the reason the creature-installer shows for an unreachable token.
+        if (data.data?.loyalty) {
+          game.beneos.cloud.setLoyaltySet(data.data.loyalty)
         }
         // Lock the cursor to the server's clock so the next fetch is
         // resistant to local-clock drift. If the server (pre-Tier3) did
@@ -2094,9 +2269,11 @@ export class BeneosCloud {
           console.error("BeneosModule: Item import failed for", itemKey)
         }
       }
-      const _bnHealthItem = await _beneosValidateInstalledAsset("item", itemKey, 1)
-      if (isBatch && _bnHealthItem.aspectsMissing.length > 0) {
+      const _bnHealthItem = await _beneosValidateInstalledAsset("item", itemKey, itemData?.itemImage)
+      await _beneosRepairMissingAspects("item", itemKey, _bnHealthItem)
+      if (_bnHealthItem.aspectsMissing.length > 0) {
         this.importErrors.push({ kind: "item", key: itemKey, missing: _bnHealthItem.aspectsMissing })
+        _beneosTrackAssetInstallError("item", itemKey, _bnHealthItem)
       }
     }
 
@@ -2273,9 +2450,11 @@ export class BeneosCloud {
           console.error("BeneosModule: Spell import failed for", spellKey)
         }
       }
-      const _bnHealthSpell = await _beneosValidateInstalledAsset("spell", spellKey, 1)
-      if (isBatch && _bnHealthSpell.aspectsMissing.length > 0) {
+      const _bnHealthSpell = await _beneosValidateInstalledAsset("spell", spellKey, spellData?.spellImage)
+      await _beneosRepairMissingAspects("spell", spellKey, _bnHealthSpell)
+      if (_bnHealthSpell.aspectsMissing.length > 0) {
         this.importErrors.push({ kind: "spell", key: spellKey, missing: _bnHealthSpell.aspectsMissing })
+        _beneosTrackAssetInstallError("spell", spellKey, _bnHealthSpell)
       }
     }
     let toSave = JSON.stringify(BeneosUtility.beneosSpells)
@@ -3132,10 +3311,13 @@ export class BeneosCloud {
         file = new File([blob], tokenData.tokenImages[i].avatar.filename, { type: "image/webp" });
         await _beneosSafeUpload(finalFolder, file, `token ${tokenKey} variant ${i + 1} avatar`);
 
-        // Top-Down Stage 1: optional `*-top.webp` companion. Cloud
-        // delivers the field on every response once the backend patch
-        // is live; while it isn't (or for tokens whose top-asset isn't
-        // rendered yet) we silently skip and leave a debug hint.
+        // `*-top.webp` companion. Top-down used to be optional here: a
+        // variant that shipped without one was skipped with nothing but a
+        // debug line, while the post-install check demanded all four aspects
+        // and reported a file that was never supposed to exist. Product rule
+        // since 2026-08-21: a creature is only correct WITH a top-down, so a
+        // missing one is a real defect in the catalog and gets said out loud
+        // instead of being swallowed.
         const topData = tokenData.tokenImages[i].top
         if (topData?.image64 && topData?.filename) {
           const topResp = await fetch(`data:image/webp;base64,${topData.image64}`);
@@ -3148,8 +3330,9 @@ export class BeneosCloud {
           const topUpload = await _beneosSafeUpload(finalFolder, topFile, `token ${tokenKey} variant ${i + 1} top`);
           topData._beneosUploaded = !!(topUpload && topUpload.path)
         } else {
-          BeneosUtility.debugMessage(
-            "[Beneos] No top-down variant in cloud response for token", tokenKey, "variant", i + 1
+          console.warn(
+            `[Beneos Cloud] Token ${tokenKey} variant ${i + 1} ships without a top-down image. `
+            + `Top-down is mandatory; this variant should not be in the catalog.`
           )
         }
 
@@ -3225,7 +3408,20 @@ export class BeneosCloud {
             }
             // `prototypeToken.scale` war ein V9-Feld und wird von V13 beim
             // Anlegen des Dokuments verworfen, also ersatzlos entfernt.
-          } catch (e) { /* setting not registered yet — fall back to 2.5D */ }
+          } catch (e) { /* setting not registered yet, fall back to 2.5D */ }
+          // The import used to rewrite exactly two fields, actorData.img and
+          // prototypeToken.texture.src, and never looked at the embedded
+          // items. Anything they carried survived verbatim, including spell
+          // icons pointing into the authoring asset tree. Normalise them here,
+          // the last moment before the document exists.
+          try {
+            const _bnIcons = await normalizeEmbeddedItems(actorData)
+            if (_bnIcons > 0) {
+              console.log(`Beneos | ${tokenKey}: ${_bnIcons} embedded item icon(s) redirected to the module icon pool`)
+            }
+          } catch (err) {
+            console.warn("Beneos | embedded item normalisation failed, importing as authored", err)
+          }
           let actor = new CONFIG.Actor.documentClass(actorData);
           if (actor) {
             // Search if we have already an actor with the same name in the compendium
@@ -3367,9 +3563,17 @@ export class BeneosCloud {
           ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.TokenInstallError", { key: tokenKey }))
         }
       }
-      const _bnHealthToken = await _beneosValidateInstalledAsset("token", tokenKey, tokenData?.tokenImages?.length || 1)
-      if (isBatch && _bnHealthToken.aspectsMissing.length > 0) {
+      // Pass the images themselves, not their count: the expectation is then
+      // built from what the server actually offered, filenames included.
+      const _bnHealthToken = await _beneosValidateInstalledAsset("token", tokenKey, tokenData?.tokenImages || 1)
+      // Anything still missing after the first pass gets one sequential retry
+      // before it counts as a failure, mirroring the battlemap installer.
+      await _beneosRepairMissingAspects("token", tokenKey, _bnHealthToken)
+      // Used to be gated on isBatch, so a single install recorded nothing at
+      // all and neither the summary nor telemetry ever saw it.
+      if (_bnHealthToken.aspectsMissing.length > 0) {
         this.importErrors.push({ kind: "token", key: tokenKey, missing: _bnHealthToken.aspectsMissing })
+        _beneosTrackAssetInstallError("token", tokenKey, _bnHealthToken)
       }
 
       let toSave = JSON.stringify(BeneosUtility.beneosTokens)
@@ -3592,9 +3796,10 @@ export class BeneosCloud {
           await game.beneos.cloud.importTokenToCompendium({ [`${cloudKey}`]: data.data.token }, event, isBatch)
         } else {
           console.warn("[Beneos Cloud] Error in importing Token from BeneosCloud", data, tokenKey)
-          ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.ImportErrorToken"))
+          ui.notifications.error(_beneosRefusalMessage("Token", data))
+          BeneosAnalytics.trackAssetRefused?.("token", tokenKey, data?.reason)
           // Fix #B-1d: drop any pending canvas drops on server reject; user
-          // already saw the generic error notification, no second one needed.
+          // already saw the error notification, no second one needed.
           game.beneos.cloud.pendingCanvasDrops.delete(tokenKey)
         }
       })
@@ -3638,7 +3843,8 @@ export class BeneosCloud {
           await game.beneos.cloud.importItemToCompendium({ [`${itemKey}`]: data.data.item }, event, isBatch)
         } else {
           console.warn("[Beneos Cloud] Error in importing Item from BeneosCloud", data, itemKey)
-          ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.ImportErrorItem"))
+          ui.notifications.error(_beneosRefusalMessage("Item", data))
+          BeneosAnalytics.trackAssetRefused?.("item", itemKey, data?.reason)
           // Wave B-9-fix-41: clear any pending actor-sheet drops for this key
           // so they don't dangle waiting for an install that never happened.
           game.beneos.cloud.discardPendingItemDrops?.(itemKey)
@@ -3678,7 +3884,8 @@ export class BeneosCloud {
           await game.beneos.cloud.importSpellToCompendium({ [`${spellKey}`]: data.data.spell }, event, isBatch)
         } else {
           console.warn("[Beneos Cloud] Error in importing Spell from BeneosCloud", data, spellKey)
-          ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.ImportErrorSpell"))
+          ui.notifications.error(_beneosRefusalMessage("Spell", data))
+          BeneosAnalytics.trackAssetRefused?.("spell", spellKey, data?.reason)
           // Wave B-9-fix-41: drop pending actor-sheet drops on failure.
           game.beneos.cloud.discardPendingItemDrops?.(spellKey)
         }

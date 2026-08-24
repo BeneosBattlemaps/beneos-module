@@ -275,9 +275,38 @@ export class BeneosCreatureInstaller {
 
   /* ----------------------------------------------------------- render context */
 
+  /**
+   * Why this creature cannot be installed for THIS user, or null when it can be.
+   * Only ever set for a patron: for everyone else the whole Beneos column already
+   * sits behind the support gate, and badging every disc on top of that is noise.
+   *
+   * Before this existed the drawer offered a "+" on every missing Beneos creature
+   * as soon as the user held any token-campaign access. Monthly rewards are not
+   * covered by that - they belong to the patrons who were subscribed in that
+   * month. The server refused them correctly, but the user only saw a generic
+   * "Error importing token" and, because the import does not throw on a refusal,
+   * a success message right next to it (Discord report 2026-08-24,
+   * 000-month_1_bone_hag on the Shadow Realm Mountains maps).
+   */
+  #blockInfo(entry, { premium, isPatron, installed }) {
+    if (!premium || !isPatron || installed || !entry?.tokenKey) return null;
+    const state = game.beneos?.cloud?.getTokenAccessState?.(entry.tokenKey) ?? "ok";
+    if (state === "ok") return null;
+    // not_patron should not reach this branch (isPatron is true), but a stale
+    // campaign flag could still produce it; keep sane wording for that case.
+    const suffix = state === "loyalty" ? "Loyalty" : state === "not_patron" ? "NotPatron" : "Unavailable";
+    return {
+      state,
+      label: game.i18n.localize(`BENEOS.CreatureInstaller.Blocked.${suffix}.Short`),
+      tooltip: game.i18n.localize(`BENEOS.CreatureInstaller.Blocked.${suffix}.Body`)
+    };
+  }
+
   decorate(entry, { premium, isPatron, assignedKeys }) {
     const actor = this.resolveActor(entry);
     const installed = !!actor;
+    // Entitlement per creature, not per account (see #blockInfo).
+    const block = this.#blockInfo(entry, { premium, isPatron, installed });
     // A Beneos creature is an "alternative" purely by DERIVATION, never by a stale
     // stored flag: it is alternative iff it was neither placed on the map (no
     // positions) nor assigned 1:1 to an SRD (not a replacedBy target). Anything
@@ -329,10 +358,16 @@ export class BeneosCreatureInstaller {
       // Patron, premium, not yet installed -> "+" install affordance. Needs the
       // same tokenKey test as needsInstall below: a not-yet-published source
       // creature has no key, so nothing could install it and the "+" would lie.
-      showInstallBadge: premium && isPatron && !installed && !alternative && !!entry.tokenKey,
+      // `!block` for the same reason: a reward this user has no grant for cannot
+      // be installed either, so offering the affordance would be a false promise.
+      showInstallBadge: premium && isPatron && !installed && !alternative && !!entry.tokenKey && !block,
       // Any accessible premium not yet in the world (incl. alternatives) can be
       // cloud-installed from the drawer -> grayscale + part of "Install Beneos".
-      needsInstall: premium && isPatron && !installed && !!entry.tokenKey,
+      needsInstall: premium && isPatron && !installed && !!entry.tokenKey && !block,
+      // Out of reach for this user: shown, named, but not installable.
+      blocked: !!block,
+      blockLabel: block?.label || null,
+      blockTooltip: block?.tooltip || null,
       // Alternatives: optional swap suggestions, never auto-placed. Derived above.
       alternative,
       // Players disposition -> disc ring colour class (null = no disposition ring).
@@ -364,7 +399,15 @@ export class BeneosCreatureInstaller {
     for (const s of (this.data.srdCreatures || [])) if (s.replacedBy) assignedKeys.add(entryKey(s.replacedBy));
     const srd = dedupeByCreature(this.data.srdCreatures).map(e => this.decorate(e, { premium: false, isPatron, assignedKeys }));
     const beneos = dedupeByCreature(this.data.beneosCreatures).map(e => this.decorate(e, { premium: true, isPatron, assignedKeys }));
-    const missingCount = isPatron ? beneos.filter(c => !c.installed).length : 0;
+    // "Missing" means missing AND obtainable. A reward this user has no grant for
+    // is not missing, it is simply not theirs, and counting it would promise a
+    // number the install button can never work off.
+    const missingCount = isPatron ? beneos.filter(c => !c.installed && !c.blocked).length : 0;
+    const blockedCount = beneos.filter(c => c.blocked).length;
+    // One line per distinct reason under the Beneos row. A tooltip alone hides the
+    // explanation behind a hover; the whole point of this is that the GM can read
+    // why without touching anything. In practice this is a single line.
+    const blockNotes = [...new Set(beneos.filter(c => c.blocked).map(c => c.blockTooltip).filter(Boolean))];
     // Gold-button state machine: not connected -> support; patron with any
     // accessible-but-not-installed Beneos -> install (cloud); all installed and
     // something to auto-place -> place; all installed but only alternatives (no
@@ -392,6 +435,9 @@ export class BeneosCreatureInstaller {
       hasSrd: srd.length > 0,
       hasBeneos: beneos.length > 0,
       missingCount,
+      blockedCount,
+      hasBlocked: blockedCount > 0,
+      blockNotes,
       beneosMissing,
       beneosBtn,
       btnInstall: beneosBtn === "install",
@@ -696,18 +742,29 @@ export class BeneosCreatureInstaller {
     el?.setAttribute("disabled", "");
     setProgress(0);
 
-    let done = 0, failed = 0;
+    let done = 0, failed = 0, installed = 0;
     for (const tokenKey of queue) {
       const discs = [...root.querySelectorAll(`.bci-disc-beneos[data-tokenkey="${CSS.escape(tokenKey)}"]`)];
       discs.forEach(d => d.classList.add("bci-installing"));   // gold pulsing rim while loading
+      let ok = false;
       try {
         await game.beneos?.cloud?.importTokenFromCloud?.(tokenKey, undefined, false, { gated: true });
-        // grayscale 0% -> colour 100% + green check on completion
-        discs.forEach(d => { d.classList.remove("bci-needsinstall", "bci-installing"); d.classList.add("bci-installed-fx", "bci-available"); });
+        // A refused import does NOT throw: importTokenFromCloud handles a server
+        // rejection inline (notification + cleanup) and resolves normally. The
+        // catch below therefore never fires for the most common failure of all,
+        // which is why this loop used to report "Installed N" right next to a red
+        // error. Ask the world instead of trusting the call to have worked.
+        ok = !!this.resolveActor({ tokenKey });
       } catch (e) {
         console.error("beneos | creature-installer: install failed", tokenKey, e);
-        discs.forEach(d => d.classList.remove("bci-installing"));
+      }
+      if (ok) {
+        installed++;
+        // grayscale 0% -> colour 100% + green check on completion
+        discs.forEach(d => { d.classList.remove("bci-needsinstall", "bci-installing"); d.classList.add("bci-installed-fx", "bci-available"); });
+      } else {
         failed++;
+        discs.forEach(d => d.classList.remove("bci-installing"));
       }
       done++;
       setProgress(done);
@@ -716,7 +773,7 @@ export class BeneosCreatureInstaller {
     el?.classList.remove("bci-installing-btn");
     el?.classList.add("bci-glow");   // brief triumphant glow
     if (failed) ui.notifications?.warn(game.i18n.format("BENEOS.CreatureInstaller.PlacedWithMissing", { n: failed }));
-    else ui.notifications?.info(game.i18n.format("BENEOS.CreatureInstaller.InstallDone", { n: total }));
+    if (installed) ui.notifications?.info(game.i18n.format("BENEOS.CreatureInstaller.InstallDone", { n: installed }));
     // Re-render after the glow so the button recomputes to "Place ..." (or place-empty).
     setTimeout(() => this.render(), 950);
   }
