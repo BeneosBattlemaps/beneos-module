@@ -212,21 +212,64 @@ export async function listReleases() {
 }
 
 /**
+ * Medienadressen in HTML. Dieselbe Regex steht seit jeher dreimal im Modul, in
+ * beneos-asset-path-repair.js:626, beneos-asset-watcher.js:409 und
+ * beneos-scenepacker.js:563. Sie wird hier bewusst in derselben Form benutzt,
+ * damit vier Stellen dieselbe Vorstellung davon haben, was eine Medienadresse
+ * in HTML ist.
+ */
+const HTML_SRC_RE = /<(?:img|video|source|audio)\b[^>]*\bsrc\s*=\s*(["'])([^"']+)\1/gi
+
+/** Die Gate-Adresse zu einem installierten Pfad, oder null. */
+function gateAdresseFuer(wert, streamTargets) {
+  let key = stripLeadSlash(wert)
+  try { key = stripLeadSlash(decodeURIComponent(wert)) } catch (_) { /* keep raw key */ }
+  return streamTargets.get(key) || null
+}
+
+/**
  * Second pass over a document: swap installed paths for gate addresses.
  *
  * Runs after the installer's own rewrite, on the paths that rewrite produced.
  * Exact matches only, and only against the map built from this release's file
  * list, so anything the customer put there stays as it is.
+ *
+ * DER ZWEITE TREFFERTYP, seit dem 25.08.2026: Adressen mitten im HTML.
+ *
+ * Bis dahin gab es genau einen Treffertyp, den Nachschlag auf einem GANZEN
+ * Feldwert. Ein `text.content` einer Journalseite beginnt mit `<p>`, trifft nie
+ * einen Schluessel und ging unveraendert durch. Gemeldet vom Betreiber an einem
+ * Handout: die Bildseite zeigte auf die Cloud, die Textseite daneben, die man
+ * den Spielern aufdeckt, zeigte weiter auf die Platte.
+ *
+ * Gemessen in der Pruefwelt: 256 von 282 Textseiten tragen ein Bild im HTML,
+ * zusammen 438 Adressen. Im Download-Modus faellt das nicht auf, weil die Datei
+ * dann wirklich dort liegt; nur beim Streaming zeigt sie ins Leere.
+ *
+ * Der Nachschlag trifft ohne Umrechnung, und das ist kein Zufall: `streamTargets`
+ * ist mit dem INSTALLIERTEN Pfad verschluesselt, und `toCloudAssetPath()` im
+ * Installer arbeitet mit `split/join`, tauscht den Praefix also auch mitten im
+ * HTML. Beide Seiten sprechen dieselbe Form.
  */
 export function applyStreamAddresses(value, streamTargets) {
   if (!streamTargets || !streamTargets.size) return value
 
   if (typeof value === "string") {
     if (value === "") return value
-    let key = stripLeadSlash(value)
-    try { key = stripLeadSlash(decodeURIComponent(value)) } catch (_) { /* keep raw key */ }
-    const target = streamTargets.get(key)
-    return target || value
+    const target = gateAdresseFuer(value, streamTargets)
+    if (target) return target
+
+    // Der Vorfilter haelt die Regex von den zehntausenden gewoehnlichen
+    // Feldwerten fern, die nie HTML sind.
+    if (!value.includes("<") || !value.includes("src=")) return value
+    return value.replace(HTML_SRC_RE, (treffer, anfuehrung, src) => {
+      const ziel = gateAdresseFuer(src, streamTargets)
+      if (!ziel) return treffer
+      // Nur das Anfuehrungspaar tauschen, damit Attribute davor und dahinter
+      // unberuehrt bleiben. Technik uebernommen aus _rewriteHtml,
+      // beneos-asset-path-repair.js:628-638.
+      return treffer.replace(`${anfuehrung}${src}${anfuehrung}`, `${anfuehrung}${ziel}${anfuehrung}`)
+    })
   }
   if (Array.isArray(value)) {
     for (let i = 0; i < value.length; i++) value[i] = applyStreamAddresses(value[i], streamTargets)

@@ -1033,9 +1033,128 @@ export async function findReferenceSources(paths) {
   return result;
 }
 
+/* ============================================================== */
+/*  Bilder im Journaltext einer gestreamten Welt                    */
+/* ============================================================== */
+
+// Der installierte Praefix und seine Entsprechung im Manifest. Das Gate liefert
+// unter dem Manifestschluessel, die Welt haelt den installierten Pfad.
+const CLOUD_BM_PREFIX = "beneos_assets/cloud/battlemaps/";
+const PACK_BM_PREFIX = "beneos_assets/beneos_battlemaps/";
+// Alles, was der Installer aus fremden Baeumen umgesiedelt hat, traegt seinen
+// Manifestschluessel unverändert hinter diesem Praefix.
+const CLOUD_PACKAGED_PREFIX = "beneos_assets/cloud/packaged/";
+
+/** Der Teil einer Gate-Adresse bis einschliesslich der Variante, oder null. */
+function _gatePraefix(adresse) {
+  if (typeof adresse !== "string") return null;
+  const m = adresse.match(/^(https?:\/\/[^/]+\/a\/[^/]+\/[^/]+\/[^/]+\/)/);
+  return m ? m[1] : null;
+}
+
+/** Vom installierten Pfad zurueck auf den Manifestschluessel. */
+function _manifestSchluessel(installiert) {
+  if (installiert.startsWith(CLOUD_BM_PREFIX)) {
+    return PACK_BM_PREFIX + installiert.slice(CLOUD_BM_PREFIX.length);
+  }
+  if (installiert.startsWith(CLOUD_PACKAGED_PREFIX)) {
+    return installiert.slice(CLOUD_PACKAGED_PREFIX.length);
+  }
+  return null;
+}
+
+/**
+ * Bilder im Journaltext einer gestreamten Welt auf das Gate umbiegen.
+ *
+ * WOZU. Bis zum 25.08.2026 schrieb der Streaming-Installationsweg nur Adressen
+ * um, die ALLEIN in einem Feldwert stehen. Ein Handout hat aber zwei Seiten: die
+ * Bildseite traegt ihre Adresse in `page.src` und wurde umgeschrieben, die
+ * Textseite daneben traegt sie im HTML und blieb auf dem lokalen Pfad stehen.
+ * Genau diese zweite Seite deckt die Spielleitung den Spielern auf.
+ *
+ * Der Installationsweg ist repariert; das hier holt nach, was bereits in Welten
+ * steht. Gemessen in der Pruefwelt: 256 von 282 Textseiten, 438 Adressen.
+ *
+ * ES WIRD NICHT GERATEN. Der Massstab ist eine Gate-Adresse, die dasselbe
+ * Journal bereits traegt, meist aus seiner Bildseite. Daraus kommt der Praefix
+ * mit Schluessel, Release und Variante. Ein Journal ohne einen solchen Massstab
+ * wird benannt und uebersprungen, nicht mit einem fremden Release versehen.
+ *
+ * @return {Promise<{journale:number, seiten:number, adressen:number, ohneMassstab:string[]}>}
+ */
+export async function heileJournalGateAdressen({ trocken = false } = {}) {
+  const bericht = { journale: 0, seiten: 0, adressen: 0, ohneMassstab: [] };
+  if (!game.user?.isGM) return bericht;
+
+  for (const journal of game.journal ?? []) {
+    // Erst sehen, ob ueberhaupt etwas zu tun ist.
+    let offen = false;
+    for (const page of journal.pages) {
+      const html = page.text?.content;
+      if (typeof html !== "string" || !html.includes("src=")) continue;
+      for (const treffer of html.matchAll(HTML_SRC_RE)) {
+        if (_manifestSchluessel(stripLeadSlashLocal(treffer[2]))) { offen = true; break; }
+      }
+      if (offen) break;
+    }
+    if (!offen) continue;
+
+    // Den Massstab suchen: irgendeine Gate-Adresse desselben Journals.
+    let praefix = null;
+    for (const page of journal.pages) {
+      praefix = _gatePraefix(page.src);
+      if (praefix) break;
+      const html = page.text?.content;
+      if (typeof html !== "string") continue;
+      for (const treffer of html.matchAll(HTML_SRC_RE)) {
+        praefix = _gatePraefix(treffer[2]);
+        if (praefix) break;
+      }
+      if (praefix) break;
+    }
+    if (!praefix) { bericht.ohneMassstab.push(journal.name); continue; }
+
+    const updates = [];
+    for (const page of journal.pages) {
+      const html = page.text?.content;
+      if (typeof html !== "string" || !html.includes("src=")) continue;
+      let getroffen = 0;
+      const neu = html.replace(HTML_SRC_RE, (ganz, anfuehrung, src) => {
+        const schluessel = _manifestSchluessel(stripLeadSlashLocal(src));
+        if (!schluessel) return ganz;
+        getroffen++;
+        return ganz.replace(`${anfuehrung}${src}${anfuehrung}`, `${anfuehrung}${praefix}${schluessel}${anfuehrung}`);
+      });
+      if (!getroffen) continue;
+      updates.push({ _id: page.id, "text.content": neu });
+      bericht.seiten++;
+      bericht.adressen += getroffen;
+    }
+    if (!updates.length) continue;
+    bericht.journale++;
+    if (!trocken) await journal.updateEmbeddedDocuments("JournalEntryPage", updates);
+  }
+
+  if (bericht.seiten) {
+    console.log(`Beneos Stream | ${bericht.adressen} Bild(er) im Journaltext auf das Gate umgebogen, `
+      + `${bericht.seiten} Seite(n) in ${bericht.journale} Journal(en)`);
+  }
+  if (bericht.ohneMassstab.length) {
+    console.log(`Beneos Stream | ${bericht.ohneMassstab.length} Journal(e) ohne Massstab uebersprungen, `
+      + `darunter: ${bericht.ohneMassstab.slice(0, 3).join(", ")}`);
+  }
+  return bericht;
+}
+
+/** Lokale Kopie, damit diese Datei ohne Import aus dem Streaming-Zweig auskommt. */
+function stripLeadSlashLocal(p) {
+  return String(p ?? "").replace(/^\/+/, "");
+}
+
 globalThis.beneosAssetPathRepair = {
   getPrefix: beneosGetAssetPrefix,
   resolve: beneosResolvePath,
+  heileJournalGateAdressen,
   repairScene: (scene) => _repairSceneTiles(scene ?? canvas.scene),
   repairPlaylist: _repairTutorialPlaylist,
   clearCache: () => { _cachedPrefix = null; },

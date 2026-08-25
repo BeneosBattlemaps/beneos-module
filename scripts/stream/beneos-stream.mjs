@@ -153,6 +153,15 @@ Hooks.once("ready", async () => {
   // Der Sachverhalt bleibt vollstaendig protokolliert, nur eben in der Farbe,
   // die ihm zusteht. Wer das Offline-Versprechen pruefen will, liest
   // `storeStatus().persisted`.
+  // Bilder im Journaltext, die vor dem 25.08.2026 installiert wurden, zeigen
+  // noch auf die Platte statt auf das Gate. Einmal geradeziehen; danach findet
+  // der Lauf nichts mehr und kostet einen Durchlauf ueber die Journale.
+  try {
+    await globalThis.beneosAssetPathRepair?.heileJournalGateAdressen?.()
+  } catch (err) {
+    console.log(`Beneos Stream | Journalheilung uebersprungen: ${String(err).slice(0, 140)}`)
+  }
+
   if (zusage.zugesagt === true) {
     console.log("Beneos Stream | Speicher ist dauerhaft, der Browser raeumt ihn nicht von selbst")
   } else if (zusage.zugesagt === false) {
