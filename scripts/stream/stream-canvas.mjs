@@ -116,6 +116,129 @@ function onCanvasInit(canvas) {
  *
  * @return {() => void} entfernt die Anzeige wieder, mehrfach aufrufbar
  */
+const ABZEICHEN_TEXT = "Beneos Streaming - Loading"
+
+// Text und Ring entstehen auf einer 2D-Zeichenflaeche und werden als Textur
+// eingehaengt. Nicht ueber PIXI.Text: dessen Aufrufform hat sich zwischen PIXI 7
+// und 8 geaendert, und eine Ladeanzeige, die beim Fassungswechsel selbst zum
+// Fehler wird, ist die Umkehrung ihres Zwecks. `Texture.from(<canvas>)` gilt in
+// beiden unveraendert.
+let _textTextur = null
+let _ringTextur = null
+
+function textTextur(P) {
+  if (_textTextur) return _textTextur
+  const dpr = 2
+  const schrift = `600 13px Signika, "Signika", sans-serif`
+  const mess = document.createElement("canvas").getContext("2d")
+  mess.font = schrift
+  const breite = Math.ceil(mess.measureText(ABZEICHEN_TEXT).width)
+  const c = document.createElement("canvas")
+  c.width = (breite + 4) * dpr
+  c.height = 18 * dpr
+  const ctx = c.getContext("2d")
+  ctx.scale(dpr, dpr)
+  ctx.font = schrift
+  ctx.textBaseline = "middle"
+  ctx.fillStyle = "#efe6d8"
+  ctx.fillText(ABZEICHEN_TEXT, 2, 9)
+  _textTextur = P.Texture.from(c)
+  _textTextur.__breite = breite + 4
+  _textTextur.__hoehe = 18
+  return _textTextur
+}
+
+function ringTextur(P) {
+  if (_ringTextur) return _ringTextur
+  const g = 64
+  const c = document.createElement("canvas")
+  c.width = c.height = g
+  const ctx = c.getContext("2d")
+  ctx.lineWidth = 7
+  ctx.lineCap = "round"
+  ctx.strokeStyle = "rgba(245, 201, 146, 0.22)"
+  ctx.beginPath(); ctx.arc(g / 2, g / 2, g / 2 - 6, 0, Math.PI * 2); ctx.stroke()
+  ctx.strokeStyle = "#f5c992"
+  ctx.beginPath(); ctx.arc(g / 2, g / 2, g / 2 - 6, -Math.PI / 2, Math.PI * 0.75); ctx.stroke()
+  _ringTextur = P.Texture.from(c)
+  return _ringTextur
+}
+
+/**
+ * Das Schild oben rechts an einer Flaeche, deren Video noch unterwegs ist.
+ *
+ * Es erscheint fuer JEDE wartende Flaeche, auch fuer die mit Standbild. Ohne es
+ * sieht ein Kunde eine stehende Karte und weiss nicht, ob sie so gemeint ist
+ * oder ob etwas klemmt.
+ *
+ * Es bleibt auf dem Bildschirm gleich gross. Ein Schild, dessen Masse an der
+ * Kachel haengen, ist auf einer 4000er Karte beim Herauszoomen unlesbar und
+ * beim Hineinzoomen ein Plakat. Deshalb wird die Zoomstufe je Bild
+ * herausgerechnet.
+ *
+ * @return {() => void} entfernt das Schild wieder, mehrfach aufrufbar
+ */
+function ladeAbzeichen(doc) {
+  const P = globalThis.PIXI
+  const ebene = canvas?.tiles
+  if (!P?.Sprite || !P?.Texture?.WHITE || !ebene?.addChild) return () => {}
+  const b = Number(doc?.width) || 0
+  if (b <= 0) return () => {}
+
+  const H = 26           // Hoehe des Schilds in Bildschirmpunkten
+  const R = 15           // Durchmesser des Rings
+  const RAND = 8         // Innenabstand
+  const ECKE = 10        // Abstand zur Kachelecke
+
+  const text = textTextur(P)
+  const plattenB = RAND + R + 7 + text.__breite + RAND
+
+  const behaelter = new P.Container()
+  behaelter.eventMode = "none"
+  behaelter.position.set((Number(doc.x) || 0) + b, Number(doc.y) || 0)
+
+  const platte = new P.Sprite(P.Texture.WHITE)
+  platte.tint = 0x0b0b10
+  platte.alpha = 0.82
+  platte.position.set(-(plattenB + ECKE), ECKE)
+  platte.width = plattenB
+  platte.height = H
+  behaelter.addChild(platte)
+
+  const ring = new P.Sprite(ringTextur(P))
+  ring.anchor.set(0.5)
+  ring.width = ring.height = R
+  ring.position.set(-(plattenB + ECKE) + RAND + R / 2, ECKE + H / 2)
+  behaelter.addChild(ring)
+
+  const schrift = new P.Sprite(text)
+  schrift.width = text.__breite
+  schrift.height = text.__hoehe
+  schrift.position.set(-(plattenB + ECKE) + RAND + R + 7, ECKE + (H - text.__hoehe) / 2)
+  behaelter.addChild(schrift)
+
+  ebene.addChild(behaelter)
+
+  const start = Date.now()
+  const schritt = () => {
+    // Zoomstufe herausrechnen, damit das Schild am Bildschirm gleich gross
+    // bleibt. Ohne das waere es auf einer 4000er Karte kaum zu finden.
+    const z = canvas?.stage?.scale?.x || 1
+    behaelter.scale.set(1 / z)
+    ring.rotation = ((Date.now() - start) / 900) * Math.PI * 2
+  }
+  canvas.app?.ticker?.add?.(schritt)
+  schritt()
+
+  let weg = false
+  return () => {
+    if (weg) return
+    weg = true
+    canvas.app?.ticker?.remove?.(schritt)
+    try { behaelter.destroy({ children: true }) } catch (_) { /* Leinwand schon abgebaut */ }
+  }
+}
+
 function ladeAnzeige(doc) {
   const P = globalThis.PIXI
   const ebene = canvas?.tiles
@@ -190,7 +313,14 @@ async function fillInVideos() {
   // schwarz, solange das erste Video lief.
   const hinweise = new Map()
   for (const { tile } of wanted) {
-    if (tile?.flags?.[FLAG_SCOPE]?.[FLAG_KEY]?.partner === "") hinweise.set(tile.id, ladeAnzeige(tile))
+    const teile = []
+    // Das Schild bekommt JEDE wartende Flaeche. Auch mit Standbild sieht der
+    // Kunde sonst eine stehende Karte und weiss nicht, ob sie so gemeint ist.
+    teile.push(ladeAbzeichen(tile))
+    // Die grosse Flaeche nur dort, wo es kein Standbild gibt und also gar nichts
+    // zu sehen waere.
+    if (tile?.flags?.[FLAG_SCOPE]?.[FLAG_KEY]?.partner === "") teile.push(ladeAnzeige(tile))
+    hinweise.set(tile.id, () => { for (const w of teile) w() })
   }
   const alleWeg = () => { for (const weg of hinweise.values()) weg() }
 
