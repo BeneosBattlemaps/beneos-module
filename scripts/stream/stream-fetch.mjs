@@ -258,6 +258,34 @@ export function installStreamFetch() {
         }, budget)
       : null
 
+    // Gezaehlt wird am ABBRUCH, nicht erst im Fang darunter.
+    //
+    // Der Kommentar oben sagt richtig, dass der Zeitgeber das `await` ueberlebt,
+    // weil `fetch` schon bei den Kopfzeilen auflöst und ein grosses Video seine
+    // ganze Zeit im Lesen des Rumpfs verbringt. Genau daraus folgte aber ein
+    // Loch: trifft der Abbruch den Rumpf, wird die Ablehnung in PIXI geworfen
+    // und nicht hier, und der Fang unten sieht sie nie.
+    //
+    // Gemessen am 25.08.2026 als TC-PRJ-STR-022: Budget auf 10 Sekunden, Video
+    // ueber eine gedrosselte Leitung. Der Abbruch fand statt, die Szene blieb
+    // stehen, und `diagnose()` zaehlte NICHTS. Ein Kunde haette die Bewegung
+    // verloren, ohne dass irgendwo eine Zahl davon wusste.
+    let abbruchGezaehlt = false
+    const zaehleAbbruch = () => {
+      if (abbruchGezaehlt) return
+      abbruchGezaehlt = true
+      count("timeout", url)
+      noteResult(false, "timeout")
+      reportFailure({ url, reason: "timeout",
+        detail: `no answer within ${Math.round(budget / 1000)} s` })
+    }
+    // Nur das eigene Budget. Ein Abbruch der Leinwandaufsicht traegt den Grund
+    // "draw-budget" und wird dort schon einmal gemeldet; ihn hier ein zweites
+    // Mal zu zaehlen machte aus einem Vorfall zwei.
+    controller.signal.addEventListener("abort", () => {
+      if (controller.signal.reason === "timeout") zaehleAbbruch()
+    }, { once: true })
+
     const callerSignal = init?.signal
     const signal = (callerSignal && AbortSignal.any)
       ? AbortSignal.any([callerSignal, controller.signal])
@@ -269,13 +297,13 @@ export function installStreamFetch() {
     } catch (err) {
       if (timer) clearTimeout(timer)
       release()
-      const aborted = controller.signal.aborted
-      const reason = aborted ? "timeout" : "network"
-      count(reason, url)
-      noteResult(false, reason)
-      reportFailure({ url, reason, detail: aborted
-        ? `no answer within ${Math.round(budget / 1000)} s`
-        : String(err).slice(0, 200) })
+      if (controller.signal.aborted) {
+        zaehleAbbruch()
+      } else {
+        count("network", url)
+        noteResult(false, "network")
+        reportFailure({ url, reason: "network", detail: String(err).slice(0, 200) })
+      }
       throw err
     }
 
