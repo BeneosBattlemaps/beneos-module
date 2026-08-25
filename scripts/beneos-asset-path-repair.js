@@ -32,10 +32,36 @@ const MOULINETTE_MULTIPACK_RE = /^moulinette\/(adventures|images|sounds|scenes)\
 // legacy repair (see _repairSceneTiles / _repairTutorialPlaylist).
 const BENEOS_CLOUD_NAMESPACE_RE = /(^|\/)beneos_assets\/cloud\//i;
 
+// Eine absolute Adresse ist kein Pfad-Praefix, sondern eine Auslieferung.
+//
+// Seit dem Streaming steht in `scene.background.src` eine Gate-Adresse der Form
+// https://gate.beneos.stream/a/<schluessel>/<release>/<variante>/beneos_assets/...
+// Ohne diese Schranke nimmt beneosGetAssetPrefix() genau diese Zeichenkette als
+// den Ort, an dem beim Kunden die Assets liegen, und klebt sie danach vor JEDE
+// Kachel JEDER Szene. Da der Praefix zwischengespeichert wird und die erste
+// gefundene Szene gewinnt, traegt danach ein ganzes Release die Adresse eines
+// ANDEREN Releases.
+//
+// Gemessen am 25.08.2026: bm_0111 wurde nach bm_0067 installiert, und danach
+// zeigten seine Overlay- und Symbolkacheln auf
+// .../beneos_bm_0067_white_dragon_lair/4k/beneos_assets/.../0111/111-03-ol.webp,
+// mit 404 und Gefahrensymbol auf jeder Karte. Weil ausgerechnet das
+// Overlay fehlt, das Schatten und Details traegt, wirkte die Karte zugleich
+// flach und zu hell.
+const ABSOLUTE_RE = /^(?:https?:)?\/\/|^data:/i;
+
 let _cachedPrefix = null;
+
+/** Der Teil vor `beneos_assets/`, auch bei absoluten Adressen. */
+function _praefixVon(s) {
+  if (typeof s !== "string") return null;
+  const m = s.replace(/\\/g, "/").match(ASSET_RE);
+  return m ? m[1] : null;
+}
 
 function _probe(s) {
   if (typeof s !== "string") return null;
+  if (ABSOLUTE_RE.test(s)) return null;
   const m = s.replace(/\\/g, "/").match(ASSET_RE);
   return m ? m[1] : null;
 }
@@ -82,6 +108,10 @@ async function _repairSceneTiles(scene) {
     // moulinette/<...>/ prefix, which would then be wrongly prepended here and
     // 404 the (already correct) cloud paths.
     if (BENEOS_CLOUD_NAMESPACE_RE.test(norm)) continue;
+    // Eine ausgelieferte Adresse wird nie umgeschrieben. Sie zeigt schon dahin,
+    // wo die Datei wirklich liegt, und ein davorgesetzter Plattenpfad macht aus
+    // ihr einen Pfad, den es nirgends gibt.
+    if (ABSOLUTE_RE.test(norm)) continue;
     const idx = norm.indexOf(ASSET_MARKER);
     if (idx < 0) continue;
     if (norm.slice(0, idx) === prefix) continue;
@@ -120,6 +150,46 @@ async function _repairTutorialPlaylist() {
   }
 }
 
+/**
+ * Bereits verbogene Welten geradeziehen.
+ *
+ * Der Fehler oben hat in ausgelieferte Welten geschrieben, und die Szenen
+ * tragen danach das Flag, das den Reparaturlauf ein zweites Mal verhindert. Es
+ * braucht also einen eigenen Weg zurueck, und er darf nicht raten.
+ *
+ * Er raet auch nicht: der Szenenhintergrund einer gestreamten Szene traegt die
+ * RICHTIGE Adresse, weil sie nicht von dieser Datei stammt, sondern vom
+ * Szenenumbau des Streamings. Jede Kachel derselben Szene gehoert zum selben
+ * Release, also ist der Hintergrund der Massstab. Eine Kachel, deren Adresse
+ * einen anderen Praefix traegt, bekommt den des Hintergrunds.
+ *
+ * Nichts passiert, wenn der Hintergrund kein absoluter Pfad ist. Damit ruehrt
+ * dieser Lauf eine Welt ohne Streaming nicht an.
+ */
+async function _heileStreamPraefixe(scene) {
+  if (!game.user.isGM) return;
+  const hintergrund = scene?.background?.src;
+  if (typeof hintergrund !== "string" || !ABSOLUTE_RE.test(hintergrund)) return;
+  const soll = _praefixVon(hintergrund);
+  if (!soll) return;
+
+  const updates = [];
+  for (const tile of scene.tiles) {
+    const src = tile.texture?.src;
+    if (typeof src !== "string" || !ABSOLUTE_RE.test(src)) continue;
+    const ist = _praefixVon(src);
+    // Kein `beneos_assets/` im Pfad heisst: die Adresse folgt einer anderen
+    // Regel, etwa dem inhaltsadressierten Raum. Finger weg.
+    if (ist === null || ist === soll) continue;
+    updates.push({ _id: tile.id, "texture.src": soll + src.slice(ist.length) });
+  }
+  if (!updates.length) return;
+
+  await scene.updateEmbeddedDocuments("Tile", updates);
+  console.log(`Beneos Asset Repair | ${updates.length} Kachel(n) auf den Praefix `
+    + `der Szene "${scene.name}" zurueckgesetzt`);
+}
+
 Hooks.once("ready", () => {
   _repairTutorialPlaylist().catch(e =>
     console.warn("Beneos Asset Repair | Playlist repair failed:", e));
@@ -130,6 +200,8 @@ Hooks.on("canvasReady", canvas => {
   if (!scene) return;
   _repairSceneTiles(scene).catch(e =>
     console.warn("Beneos Asset Repair | Tile repair failed:", e));
+  _heileStreamPraefixe(scene).catch(e =>
+    console.warn("Beneos Asset Repair | Praefix-Heilung fehlgeschlagen:", e));
 });
 
 /* ============================================================== */
