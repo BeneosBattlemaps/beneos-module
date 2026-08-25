@@ -1140,8 +1140,14 @@ export async function heileJournalGateAdressen({ trocken = false } = {}) {
       + `${bericht.seiten} Seite(n) in ${bericht.journale} Journal(en)`);
   }
   if (bericht.ohneMassstab.length) {
-    console.log(`Beneos Stream | ${bericht.ohneMassstab.length} Journal(e) ohne Massstab uebersprungen, `
-      + `darunter: ${bericht.ohneMassstab.slice(0, 3).join(", ")}`);
+    // Das ist in aller Regel KEIN Befund. Ein Journal ganz ohne Gate-Adresse
+    // gehoert meist zu einem Release, das der Kunde herunterlädt statt streamt;
+    // dann liegt die Datei wirklich unter dem lokalen Pfad und ein Umbiegen
+    // waere der Fehler. Gemessen in der Pruefwelt am 25.08.2026: 97 solcher
+    // Journale, und fuer jedes lag der Ordner tatsaechlich auf der Platte.
+    console.log(`Beneos Stream | ${bericht.ohneMassstab.length} Journal(e) unberuehrt gelassen, weil sie `
+      + `keine einzige Gate-Adresse tragen. Das ist der Normalfall fuer Releases, die auf der Platte `
+      + `liegen. Namen stehen in ohneMassstab.`);
   }
   return bericht;
 }
