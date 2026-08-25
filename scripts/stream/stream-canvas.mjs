@@ -199,6 +199,12 @@ async function fillInVideos() {
       const placeable = canvas.tiles?.get?.(tile.id) ?? canvas.tiles?.placeables?.find(p => p.id === tile.id)
       if (!placeable) { hinweise.get(tile.id)?.(); continue }
       try {
+        // Ohne Flaeche kein Bild. Muss VOR dem Laden passieren, damit das
+        // Standbild sofort steht und nicht erst mit dem Video.
+        if (!(await stelleFlaecheSicher(placeable, tile?.flags?.[FLAG_SCOPE]?.[FLAG_KEY]?.partner))) {
+          console.warn(`Beneos Stream | "${tile.id}" bekommt keine Zeichenflaeche, das Video bleibt unsichtbar`)
+          continue
+        }
         const texture = await foundry.canvas.loadTexture(url)
         if (!texture) continue
         // The scene may have been left while the video was still coming.
@@ -222,25 +228,64 @@ async function fillInVideos() {
   }
 }
 
+// Ein Bildpunkt, durchsichtig. Nur als Notnagel, wenn es zu einem Video kein
+// Standbild gibt: Foundry braucht IRGENDEINEN Pfad, um ueberhaupt eine
+// Zeichenflaeche zu bauen, und dieser hier kostet keine Anfrage.
+const LEERE_FLAECHE = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+
 /**
- * Swap a loaded video texture onto a tile that is currently showing nothing.
+ * Der Kachel eine Zeichenflaeche verschaffen.
  *
- * The document is left alone. Writing the address into `texture.src` would put
- * the video back into the load barrier on the next draw, which is the whole
- * thing this file exists to avoid, and it would also write a customer-specific
- * address into a document that gets exported and shared.
+ * DER FEHLER, DEN DAS BEHEBT, gemessen am 25.08.2026 an "BM: Giant Turtle
+ * Island Swimming": das Video lief, die Textur war gueltig und wurde laufend
+ * neu hochgeladen, und auf dem Bildschirm aenderte sich ueber 28 Millionen
+ * Bildpunkte hinweg NICHTS. Foundry zeichnet eine Kachel ueber ihr `mesh`, und
+ * das entsteht nur, wenn im Dokument ein Bildpfad steht. Der Szenenumbau liess
+ * `texture.src` leer, also gab es kein mesh, und `placeable.texture` zu setzen
+ * hiess, eine Textur an ein Objekt zu haengen, das nie auf den Bildschirm kommt.
+ *
+ * Der Pfad, den die Flaeche bekommt, ist das Standbild. Es ist ein Bild und
+ * damit fuer die Zeichenschranke ungefaehrlich; ein Video an dieser Stelle
+ * waere genau das, was diese Datei verhindert.
+ *
+ * `updateSource` statt `update`: der Wert bleibt im Arbeitsspeicher und wird
+ * nicht in die Welt geschrieben. Damit heilt das auch Welten, die schon mit
+ * leerer Kachel installiert sind, ohne ihre Dokumente anzufassen.
+ */
+async function stelleFlaecheSicher(placeable, standbild) {
+  if (placeable?.mesh) return true
+  const src = standbild || LEERE_FLAECHE
+  try {
+    placeable.document.updateSource({ texture: { src } })
+    await placeable.draw()
+  } catch (err) {
+    console.debug(`Beneos Stream | Zeichenflaeche fehlgeschlagen: ${String(err).slice(0, 120)}`)
+  }
+  return Boolean(placeable?.mesh)
+}
+
+/**
+ * Swap a loaded video texture onto a tile that is currently showing its still.
+ *
+ * Der Tausch geht auf das `mesh`, nicht auf das Placeable: das Placeable haelt
+ * die Textur nur, gezeichnet wird das mesh.
+ *
+ * KEIN `refreshTexture` danach. Dieses Flag laesst Foundry die Textur aus dem
+ * DOKUMENT neu holen, und dort steht das Standbild. Der Tausch waere im selben
+ * Atemzug wieder zurueckgenommen.
  */
 async function applyVideoTexture(placeable, texture) {
-  const mesh = placeable.mesh ?? placeable
+  const mesh = placeable.mesh
+  if (!mesh) return false
   placeable.texture = texture
-  if (mesh) mesh.texture = texture
+  mesh.texture = texture
   const source = texture.baseTexture?.resource?.source
   if (source instanceof HTMLVideoElement) {
     source.loop = true
     source.muted = true
     try { await game.video?.play?.(source, { loop: true, volume: 0 }) } catch (_) { /* gesture gate */ }
   }
-  placeable.renderFlags?.set?.({ refreshTexture: true, redraw: true })
+  return true
 }
 
 export function installStreamCanvas() {
