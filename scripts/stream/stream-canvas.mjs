@@ -410,11 +410,36 @@ async function applyVideoTexture(placeable, texture) {
   placeable.texture = texture
   mesh.texture = texture
   const source = texture.baseTexture?.resource?.source
-  if (source instanceof HTMLVideoElement) {
-    source.loop = true
-    source.muted = true
-    try { await game.video?.play?.(source, { loop: true, volume: 0 }) } catch (_) { /* gesture gate */ }
+  if (!(source instanceof HTMLVideoElement)) return true
+
+  // Was mit dem Video geschieht, steht im Dokument und wird hier NICHT
+  // entschieden.
+  //
+  // Bis zum 25.08.2026 stand hier `loop: true, muted: true, play()`, fuer jedes
+  // Video. Gemessen ueber 51 Videokacheln der Pruefwelt sagen die Dokumente
+  // etwas anderes: 44 wollen von selbst starten, 7 ausdruecklich nicht, und die
+  // fuenf Intro-Sequenzen tragen Lautstaerke 1. Ein Intro wird von der
+  // Spielleitung gestartet, wenn alle Spieler auf der Szene sind, ueber einen
+  // Auslöser von Monks Active Tiles. Es selbst anzuwerfen nimmt ihr genau die
+  // Entscheidung ab, um die es dabei geht, und das erzwungene Stummschalten
+  // haette dem Intro zusaetzlich den Ton genommen.
+  const cfg = placeable.document?.video ?? {}
+  const loop = cfg.loop !== false
+  const lautstaerke = Number(cfg.volume ?? 0)
+  source.loop = loop
+
+  if (cfg.autoplay === false) {
+    // Auf dem ersten Bild stehen bleiben. Das Standbild liegt ohnehin darunter,
+    // also aendert sich fuer den Betrachter nichts, bis jemand auf Start drueckt.
+    try { source.pause(); source.currentTime = 0 } catch (_) { /* noch nicht bereit */ }
+    return true
   }
+
+  // Ein Ton ohne vorherige Nutzergeste wird vom Browser abgewiesen, und die
+  // Abweisung nimmt das ganze Abspielen mit. Stumm nur dort, wo das Dokument
+  // ohnehin keine Lautstaerke will.
+  source.muted = lautstaerke <= 0
+  try { await game.video?.play?.(source, { loop, volume: lautstaerke }) } catch (_) { /* gesture gate */ }
   return true
 }
 
