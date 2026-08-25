@@ -182,27 +182,43 @@ async function fillInVideos() {
   const wanted = videoTilesOf(scene)
   if (!wanted.length) return
 
-  for (const { tile, url } of wanted) {
-    const placeable = canvas.tiles?.get?.(tile.id) ?? canvas.tiles?.placeables?.find(p => p.id === tile.id)
-    if (!placeable) continue
-    // Ohne Standbild zeigt die Flaeche bis zum Video den schwarzen Hintergrund
-    // der Szene, und schwarz sagt niemandem, dass etwas unterwegs ist.
-    const partner = tile?.flags?.[FLAG_SCOPE]?.[FLAG_KEY]?.partner
-    const hinweisWeg = partner === "" ? ladeAnzeige(tile) : () => {}
-    try {
-      const texture = await foundry.canvas.loadTexture(url)
-      if (!texture) continue
-      // The scene may have been left while the video was still coming.
-      if (canvas.scene?.id !== scene.id) return
-      await applyVideoTexture(placeable, texture)
-    } catch (err) {
-      // Already counted and reported by the fetch wrapper. One quiet line here,
-      // never a red message: an unreachable video is the expected outcome of a
-      // bad connection, not a defect.
-      console.debug(`Beneos Stream | no motion for "${scene.name}": ${String(err).slice(0, 120)}`)
-    } finally {
-      hinweisWeg()
+  // Alle Hinweise VOR der Schleife, nicht in ihr. Die Videos kommen
+  // nacheinander, und ein Hinweis, der erst gesetzt wird, wenn die Kachel an
+  // die Reihe kommt, erscheint auf der dritten Flaeche erst, wenn die ersten
+  // beiden Videos schon da sind. Gemessen am 25.08.2026 an "BM: Dragon
+  // Chamber": drei Videokacheln, und die beiden ohne Standbild blieben
+  // schwarz, solange das erste Video lief.
+  const hinweise = new Map()
+  for (const { tile } of wanted) {
+    if (tile?.flags?.[FLAG_SCOPE]?.[FLAG_KEY]?.partner === "") hinweise.set(tile.id, ladeAnzeige(tile))
+  }
+  const alleWeg = () => { for (const weg of hinweise.values()) weg() }
+
+  try {
+    for (const { tile, url } of wanted) {
+      const placeable = canvas.tiles?.get?.(tile.id) ?? canvas.tiles?.placeables?.find(p => p.id === tile.id)
+      if (!placeable) { hinweise.get(tile.id)?.(); continue }
+      try {
+        const texture = await foundry.canvas.loadTexture(url)
+        if (!texture) continue
+        // The scene may have been left while the video was still coming.
+        if (canvas.scene?.id !== scene.id) return
+        await applyVideoTexture(placeable, texture)
+      } catch (err) {
+        // Already counted and reported by the fetch wrapper. One quiet line here,
+        // never a red message: an unreachable video is the expected outcome of a
+        // bad connection, not a defect.
+        console.debug(`Beneos Stream | no motion for "${scene.name}": ${String(err).slice(0, 120)}`)
+      } finally {
+        // Jede Flaeche gibt ihren Hinweis frei, sobald ihr eigenes Video da ist
+        // oder feststeht, dass es nicht kommt.
+        hinweise.get(tile.id)?.()
+      }
     }
+  } finally {
+    // Szenenwechsel mitten im Nachladen, oder eine Kachel, die gar nicht erst
+    // gezeichnet wurde: nichts darf stehenbleiben.
+    alleWeg()
   }
 }
 
