@@ -462,6 +462,40 @@ async function stelleFlaecheSicher(placeable, standbild) {
 // nicht auf, weil dort das Video selbst in `texture.src` steht.
 const videoTexturen = new Map()
 
+/**
+ * Den Abspielwunsch eines Dokumentwechsels ausfuehren.
+ *
+ * Foundry macht das selbst in `Tile#_refreshVideo`, aber gleich in der ersten
+ * Zeile steht dort
+ *
+ *     if ( !this.texture || !this.#unlinkedVideo ) return
+ *
+ * `#unlinkedVideo` setzt Foundry nur, wenn es das Videoelement SELBST angelegt
+ * hat, also wenn im Dokument ein Video steht. Bei uns steht dort das Standbild,
+ * folglich steigt Foundry aus und der Startbefehl verpufft.
+ *
+ * Genau das passiert beim Startknopf einer Intro-Szene: Monks Active Tiles ruft
+ * `entity.update({video}, {playVideo: true, offset})`, Foundry zeichnet die
+ * Kachel neu und spielt nichts ab.
+ */
+function fuehreAbspielwunschAus(doc, options) {
+  const placeable = doc?.object
+  if (!placeable) return
+  legeVideoWiederAuf(placeable)
+  const el = placeable.sourceElement
+  if (!(el instanceof HTMLVideoElement)) return
+  const cfg = doc.video ?? {}
+  const playing = options?.playVideo ?? (cfg.autoplay === true)
+  const volume = Number(cfg.volume ?? 0)
+  el.muted = volume <= 0
+  game.video?.play?.(el, {
+    playing,
+    loop: cfg.loop !== false,
+    offset: options?.offset,
+    volume
+  })
+}
+
 /** Nach jedem Neuzeichnen das Video zurueck auf die Kachel legen. */
 function legeVideoWiederAuf(placeable) {
   const flag = placeable?.document?.flags?.[FLAG_SCOPE]?.[FLAG_KEY]
@@ -522,6 +556,14 @@ export function installStreamCanvas() {
   // Aenderungen.
   Hooks.on("drawTile", legeVideoWiederAuf)
   Hooks.on("refreshTile", legeVideoWiederAuf)
+  // Und den Abspielwunsch ausfuehren, den Foundry bei uns nicht ausfuehrt.
+  // Verzoegert, weil das Neuzeichnen der Kachel erst im naechsten Bild passiert
+  // und der Griff auf `sourceElement` sonst die alte Textur trifft.
+  Hooks.on("updateTile", (doc, changed, options) => {
+    if (!videoTexturen.has(doc.id)) return
+    if (!("playVideo" in (options || {})) && !("offset" in (options || {})) && !("video" in (changed || {}))) return
+    setTimeout(() => fuehreAbspielwunschAus(doc, options), 60)
+  })
   Hooks.on("canvasReady", () => {
     clearWatchdog()
     // Not awaited on purpose, see fillInVideos.
