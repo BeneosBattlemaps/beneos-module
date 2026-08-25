@@ -326,15 +326,20 @@ async function fillInVideos() {
 
   try {
     for (const { tile, url } of wanted) {
-      const placeable = canvas.tiles?.get?.(tile.id) ?? canvas.tiles?.placeables?.find(p => p.id === tile.id)
+      const finde = () => canvas.tiles?.get?.(tile.id) ?? canvas.tiles?.placeables?.find(p => p.id === tile.id)
+      let placeable = finde()
       if (!placeable) { hinweise.get(tile.id)?.(); continue }
       try {
         // Ohne Flaeche kein Bild. Muss VOR dem Laden passieren, damit das
         // Standbild sofort steht und nicht erst mit dem Video.
         if (!(await stelleFlaecheSicher(placeable, tile?.flags?.[FLAG_SCOPE]?.[FLAG_KEY]?.partner))) {
-          console.warn(`Beneos Stream | "${tile.id}" bekommt keine Zeichenflaeche, das Video bleibt unsichtbar`)
+          console.log(`Beneos Stream | "${scene.name}": keine Zeichenflaeche fuer eine Videokachel, `
+            + `das Video bleibt unsichtbar. Die Spielleitung muss die Szene einmal oeffnen.`)
           continue
         }
+        // Ein Dokumentwechsel ersetzt das Placeable, also neu holen.
+        placeable = finde()
+        if (!placeable?.mesh) continue
         const texture = await foundry.canvas.loadTexture(url)
         if (!texture) continue
         // The scene may have been left while the video was still coming.
@@ -378,20 +383,40 @@ const LEERE_FLAECHE = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAA
  * damit fuer die Zeichenschranke ungefaehrlich; ein Video an dieser Stelle
  * waere genau das, was diese Datei verhindert.
  *
- * `updateSource` statt `update`: der Wert bleibt im Arbeitsspeicher und wird
- * nicht in die Welt geschrieben. Damit heilt das auch Welten, die schon mit
- * leerer Kachel installiert sind, ohne ihre Dokumente anzufassen.
+ * DER ZWEITE ANLAUF, und warum der erste falsch war.
+ *
+ * Zuerst stand hier `updateSource()` plus `placeable.draw()`, um die Welt nicht
+ * zu beschreiben. Das hat Foundry ausserhalb seines eigenen Ablaufs gezwungen,
+ * den Zustand der Kachel neu zu berechnen, und dabei stuerzte
+ * `Tile#_refreshState` (foundry.mjs:119784) ab:
+ *
+ *     const foreground = this.layer.active && ui.controls.control.tools?.foreground.active
+ *
+ * Der Absturz haengt an der Werkzeugleiste, nicht an der Kachel, und er
+ * wiederholte sich im Takt der Leinwand. Danach war die Kachel unbrauchbar und
+ * das Intro liess sich nicht mehr starten.
+ *
+ * Also der Weg, den Foundry vorsieht: ein echtes `update()` auf dem Dokument.
+ * Foundry zeichnet daraufhin selbst neu, in seiner eigenen Reihenfolge. Es ist
+ * ein Schreibvorgang in die Welt, aber genau einer je Kachel und genau der,
+ * den ein frisch installiertes Release ab jetzt ohnehin mitbringt.
+ *
+ * Nur die Spielleitung darf das. Ein Spieler wartet auf die Aenderung, die die
+ * Spielleitung ausloest.
  */
 async function stelleFlaecheSicher(placeable, standbild) {
   if (placeable?.mesh) return true
+  if (!game.user?.isGM) return false
   const src = standbild || LEERE_FLAECHE
   try {
-    placeable.document.updateSource({ texture: { src } })
-    await placeable.draw()
+    await placeable.document.update({ "texture.src": src }, { diff: false })
   } catch (err) {
     console.debug(`Beneos Stream | Zeichenflaeche fehlgeschlagen: ${String(err).slice(0, 120)}`)
+    return false
   }
-  return Boolean(placeable?.mesh)
+  // Nach einem Dokumentwechsel ist das Placeable ein anderes Objekt.
+  const neu = canvas.tiles?.get?.(placeable.id) ?? canvas.tiles?.placeables?.find(p => p.id === placeable.id)
+  return Boolean(neu?.mesh)
 }
 
 /**

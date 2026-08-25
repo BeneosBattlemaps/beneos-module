@@ -300,10 +300,18 @@ export async function rebuildScene(scene, report, bekannt) {
 
     tiles.unshift({
       _id: await stableId(sid, bgSrc, "video"),
-      // Empty on purpose. The still is already the scene background and covers
-      // the same rectangle, so the tile has nothing to show until the video
-      // arrives.
-      texture: texture(""),
+      // Das Standbild, nicht leer.
+      //
+      // Bis zum 25.08.2026 stand hier eine leere Adresse, mit der Begruendung,
+      // der Hintergrund zeige das Standbild ohnehin. Das stimmt, uebersieht aber,
+      // wie Foundry zeichnet: eine Kachel ohne `texture.src` bekommt gar kein
+      // `mesh`, und ohne mesh gibt es nichts, worauf sich die Videotextur legen
+      // liesse. Das Video lief dann unsichtbar weiter.
+      //
+      // Ein Bild ist fuer die Zeichenschranke ungefaehrlich, ein Video waere es
+      // nicht. Deshalb steht hier das Standbild und die Videoadresse in der
+      // Markierung.
+      texture: texture(still),
       x: rect.x,
       y: rect.y,
       width: rect.width,
@@ -347,7 +355,6 @@ export async function rebuildScene(scene, report, bekannt) {
 
   // Below everything, and distinct per twin: sort ties are resolved by document
   // order, which is not something to rely on.
-  const floor = lowestSort(tiles) - 1
 
   for (let index = 0; index < videoTiles.length; index++) {
     const srcTile = videoTiles[index]
@@ -376,38 +383,25 @@ export async function rebuildScene(scene, report, bekannt) {
       continue
     }
 
-    const twin = {
-      _id: await stableId(sid, video, "still"),
-      texture: texture(still, tex.rotation || 0),
-      x: srcTile.x,
-      y: srcTile.y,
-      width: srcTile.width,
-      height: srcTile.height,
-      elevation: srcTile.elevation || 0,
-      sort: floor - index,
-      // Rotation is a document field, not a texture field, and 65 of the 253
-      // video tiles in the stock use it. Copying it verbatim is what makes the
-      // twin line up.
-      rotation: srcTile.rotation || 0,
-      alpha: srcTile.alpha ?? 1,
-      // A hidden video must not gain a visible still.
-      hidden: Boolean(srcTile.hidden),
-      locked: true,
-      restrictions: { light: false, weather: false },
-      occlusion: { mode: 0, alpha: 0 },
-      video: { loop: false, autoplay: false, volume: 0 },
-      flags: marker(ROLE_STILL, video)
-    }
-    tiles.splice(tiles.indexOf(srcTile), 0, twin)
-
-    // The video leaves the document the same way it does in shape one.
+    // KEINE Zwillingskachel mehr, seit dem 25.08.2026.
+    //
+    // Bis dahin bekam die Szene eine zweite Kachel mit dem Standbild, und die
+    // Originalkachel wurde geleert. Das sah richtig aus und war es nicht:
+    // Foundry baut fuer eine Kachel ohne `texture.src` kein `mesh`, und ohne
+    // mesh gibt es nichts, worauf die Videotextur gelegt werden koennte. Das
+    // Video lief unsichtbar, waehrend der Zwilling das Standbild zeigte.
+    //
+    // Das Standbild gehoert deshalb auf die Kachel selbst. Sie behaelt damit
+    // von sich aus Drehung, Hoehe, Sichtbarkeit und alle Ausloeser fremder
+    // Module, die an ihrer Kennung haengen. Ein Bild ist fuer die
+    // Zeichenschranke ungefaehrlich, ein Video waere es nicht.
+    tex.src = still
     srcTile.texture = tex
-    tex.src = ""
     srcTile.flags = srcTile.flags || {}
     srcTile.flags[FLAG_SCOPE] = srcTile.flags[FLAG_SCOPE] || {}
     srcTile.flags[FLAG_SCOPE][FLAG_KEY] = { role: ROLE_VIDEO, partner: still, video }
 
-    report?.changes?.push({ scene: sname, action: "twin-tile", video, still })
+    report?.changes?.push({ scene: sname, action: "still-on-tile", video, still })
   }
 }
 
