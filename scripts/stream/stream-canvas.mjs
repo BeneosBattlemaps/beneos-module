@@ -221,6 +221,10 @@ function ladeAbzeichen(doc) {
 
   const start = Date.now()
   const schritt = () => {
+    // Beim Szenenwechsel raeumt Foundry die Ebene ab und zerstoert ihre Kinder,
+    // ohne dass jemand diesen Takt abmeldet. Ein Zugriff danach wirft
+    // "Cannot read properties of null (reading 'scale')" bei JEDEM Bild.
+    if (behaelter.destroyed) { canvas?.app?.ticker?.remove?.(schritt); return }
     // Zoomstufe herausrechnen, damit das Schild am Bildschirm gleich gross
     // bleibt. Ohne das waere es auf einer 4000er Karte kaum zu finden.
     const z = canvas?.stage?.scale?.x || 1
@@ -279,6 +283,9 @@ function ladeAnzeige(doc) {
   // der Bilder, sonst laeuft er auf einer schnellen Maschine schneller.
   const start = Date.now()
   const schritt = () => {
+    // Siehe ladeAbzeichen: ein Szenenwechsel zerstoert den Behaelter, ohne
+    // diesen Takt abzumelden.
+    if (behaelter.destroyed) { canvas?.app?.ticker?.remove?.(schritt); return }
     const t = ((Date.now() - start) % 1400) / 1400
     strich.position.x = -bahnB / 2 + (bahnB - laeufer) * (t < 0.5 ? t * 2 : (1 - t) * 2)
   }
