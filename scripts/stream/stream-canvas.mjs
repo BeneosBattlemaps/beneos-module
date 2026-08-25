@@ -451,9 +451,33 @@ async function stelleFlaecheSicher(placeable, standbild) {
  * DOKUMENT neu holen, und dort steht das Standbild. Der Tausch waere im selben
  * Atemzug wieder zurueckgenommen.
  */
+// Welche Videotextur zu welcher Kachel gehoert, fuer die Dauer einer Szene.
+//
+// WOZU, gemessen am 25.08.2026: Monks Active Tiles startet ein Video ueber
+//   entity.update({ video }, { diff: false, playVideo: true, offset })
+// Jeder Dokumentwechsel laesst Foundry die Kachel neu zeichnen, und dabei holt
+// es die Textur wieder aus `texture.src`. Dort steht seit heute das Standbild.
+// Das Video war damit weg, bevor der Startbefehl ueberhaupt griff, und der
+// Knopf tat scheinbar nichts. Auf einer NICHT gestreamten Szene faellt das
+// nicht auf, weil dort das Video selbst in `texture.src` steht.
+const videoTexturen = new Map()
+
+/** Nach jedem Neuzeichnen das Video zurueck auf die Kachel legen. */
+function legeVideoWiederAuf(placeable) {
+  const flag = placeable?.document?.flags?.[FLAG_SCOPE]?.[FLAG_KEY]
+  if (flag?.role !== "stream-video") return
+  const tex = videoTexturen.get(placeable.id)
+  if (!tex || tex.baseTexture?.destroyed) return
+  if (!placeable.mesh) return
+  if (placeable.mesh.texture === tex) return
+  placeable.texture = tex
+  placeable.mesh.texture = tex
+}
+
 async function applyVideoTexture(placeable, texture) {
   const mesh = placeable.mesh
   if (!mesh) return false
+  videoTexturen.set(placeable.id, texture)
   placeable.texture = texture
   mesh.texture = texture
   const source = texture.baseTexture?.resource?.source
@@ -492,13 +516,24 @@ async function applyVideoTexture(placeable, texture) {
 
 export function installStreamCanvas() {
   Hooks.on("canvasInit", onCanvasInit)
+  // Nach jedem Neuzeichnen einer Kachel das Video zurueck auflegen, siehe
+  // videoTexturen. Beide Haken, weil Foundry je nach Anlass nur einen davon
+  // feuert: `drawTile` beim vollen Neuaufbau, `refreshTile` bei kleineren
+  // Aenderungen.
+  Hooks.on("drawTile", legeVideoWiederAuf)
+  Hooks.on("refreshTile", legeVideoWiederAuf)
   Hooks.on("canvasReady", () => {
     clearWatchdog()
     // Not awaited on purpose, see fillInVideos.
     fillInVideos()
   })
   // A draw that fails for any other reason must not leave the watchdog armed.
-  Hooks.on("canvasTearDown", clearWatchdog)
+  Hooks.on("canvasTearDown", () => {
+    clearWatchdog()
+    // Die Texturen gehoeren zur abgebauten Szene und wuerden sonst auf
+    // zerstoerte Objekte zeigen.
+    videoTexturen.clear()
+  })
 }
 
 /** For the test programme: what the watchdog would currently be waiting on. */
