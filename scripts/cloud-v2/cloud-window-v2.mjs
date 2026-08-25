@@ -3242,13 +3242,18 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // step, leading to "locked compendium" errors mid-batch.
       // Stage 14: cancel-check before each iteration — keeps in-flight
       // imports atomic but stops the queue cleanly.
+      // Ein Lauf aus dem Cloud-Fenster ist EIN Vorgang, auch wenn der Nutzer
+      // mehrere Treffer auf einmal installiert. `search` unterscheidet ihn vom
+      // Drawer, wo die Kreatur ungefragt mitkommt.
+      const vorgang = cloud.neuerErwerbsvorgang?.() ?? ""
+      const kontext = { gated: true, surface: "search", interaction: vorgang }
       await this.#withSuppressedInfoToasts(async () => {
         for (const key of keys) {
           if (this._bulkInstall?.cancelled) break
           this.notifyInstallStarted?.(key)
-          if (type === "token") await cloud.importTokenFromCloud?.(key, undefined, false, { gated: true })
-          else if (type === "item")  await cloud.importItemFromCloud?.(key, undefined, false, { gated: true })
-          else if (type === "spell") await cloud.importSpellsFromCloud?.(key, undefined, false, { gated: true })
+          if (type === "token") await cloud.importTokenFromCloud?.(key, undefined, false, kontext)
+          else if (type === "item")  await cloud.importItemFromCloud?.(key, undefined, false, kontext)
+          else if (type === "spell") await cloud.importSpellsFromCloud?.(key, undefined, false, kontext)
           this.#tickInstallProgress()
         }
       })

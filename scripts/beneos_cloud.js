@@ -3744,6 +3744,53 @@ export class BeneosCloud {
     }
   }
 
+  /**
+   * Haengt Oberflaeche und Vorgang an eine Installationsadresse.
+   *
+   * WARUM DAS NOETIG IST
+   *
+   * Eine Kreatur kommt auf drei Wegen: sie wird beim Installieren einer Karte
+   * mitgeliefert (`scene_install`), sie haengt am Creature Drawer einer Szene
+   * (`drawer`), oder der Spielleiter hat sie selbst gesucht (`search`). Fuer den
+   * Server war das bisher derselbe Aufruf und dieselbe Zeile. Der Unterschied
+   * ist aber die eigentliche Frage: hundert Kreaturen ueber fuenf Wochen einzeln
+   * geholt ist ein anderes Verhalten als der ganze Rueckstand an Tag eins.
+   *
+   * `interaction` haelt einen Lauf zusammen. Ein Drawer-Lauf holt dutzende
+   * Kreaturen; ohne gemeinsame Kennung waeren das dutzende Vorgaenge.
+   *
+   * Fehlt beides, bleibt die Adresse unveraendert und der Server traegt
+   * `unknown` ein. Das ist Absicht: geraten wird nicht.
+   */
+  _erwerbsAnhang(opts = {}) {
+    let anhang = ""
+    const flaeche = String(opts?.surface || "")
+    if (["drawer", "search", "scene_install", "codex"].includes(flaeche)) {
+      anhang += `&surface=${encodeURIComponent(flaeche)}`
+    }
+    const vorgang = String(opts?.interaction || "").replace(/[^a-f0-9]/gi, "").slice(0, 32)
+    if (vorgang) anhang += `&interaction=${encodeURIComponent(vorgang)}`
+    return anhang
+  }
+
+  /**
+   * Eine neue Vorgangskennung fuer einen Installationslauf.
+   *
+   * Der Server nimmt nur [a-f0-9] an, die Spalte ist CHAR(32). `randomID` liefert
+   * base62; die Nicht-Hex-Zeichen einfach auf "0" abzubilden wuerde drei Viertel
+   * des Alphabets zusammenfallen lassen. Deshalb echte Hexziffern, mit
+   * `randomID` nur als Rueckfall, falls die Krypto-Schnittstelle fehlt.
+   */
+  neuerErwerbsvorgang() {
+    try {
+      const b = new Uint8Array(16)
+      globalThis.crypto.getRandomValues(b)
+      return Array.from(b, x => x.toString(16).padStart(2, "0")).join("")
+    } catch (_) {
+      return foundry.utils.randomID(32).toLowerCase().replace(/[^a-f0-9]/g, "0")
+    }
+  }
+
   // Wave B-9-fix-47: returns the Promise so multi-install loops can
   // sequence pipelines and avoid the compendium-lock race.
   //
@@ -3766,7 +3813,7 @@ export class BeneosCloud {
     this.inflightImports.add(lockKey)
 
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
-    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_token=1&foundryId=${encodeURIComponent(userId)}&tokenKey=${encodeURIComponent(tokenKey)}`
+    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_token=1&foundryId=${encodeURIComponent(userId)}&tokenKey=${encodeURIComponent(tokenKey)}` + this._erwerbsAnhang(opts)
     // Ueber die globale FIFO (enqueueInstall), damit parallele Einzel-Klicks
     // auf verschiedene Assets sich nicht im Compendium-Lock ueberholen.
     return this.enqueueInstall(() => fetch(url, { credentials: 'same-origin' })
@@ -3832,7 +3879,7 @@ export class BeneosCloud {
     this.inflightImports.add(lockKey)
 
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
-    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_item=1&foundryId=${encodeURIComponent(userId)}&itemKey=${encodeURIComponent(itemKey)}`
+    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_item=1&foundryId=${encodeURIComponent(userId)}&itemKey=${encodeURIComponent(itemKey)}` + this._erwerbsAnhang(opts)
     // Globale FIFO, siehe importTokenFromCloud.
     return this.enqueueInstall(() => fetch(url, { credentials: 'same-origin' })
       .then(response => response.json())
@@ -3873,7 +3920,7 @@ export class BeneosCloud {
     this.inflightImports.add(lockKey)
 
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
-    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_spell=1&foundryId=${encodeURIComponent(userId)}&spellKey=${encodeURIComponent(spellKey)}`
+    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_spell=1&foundryId=${encodeURIComponent(userId)}&spellKey=${encodeURIComponent(spellKey)}` + this._erwerbsAnhang(opts)
     // Globale FIFO, siehe importTokenFromCloud.
     return this.enqueueInstall(() => fetch(url, { credentials: 'same-origin' })
       .then(response => response.json())

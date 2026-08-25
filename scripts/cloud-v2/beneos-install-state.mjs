@@ -375,7 +375,7 @@ export class BeneosPreInstallDialog {
  * Errors are swallowed: tracking must never block an install or surface to
  * the user (the install itself already succeeded if we reached this point).
  */
-export async function beneosLogModuleInstall({ assetId, variant, sceneCount }) {
+export async function beneosLogModuleInstall({ assetId, variant, sceneCount, interaction }) {
   try {
     const mgr = window.BeneosScenePacker
     const sid = mgr?.sessionId
@@ -387,7 +387,14 @@ export async function beneosLogModuleInstall({ assetId, variant, sceneCount }) {
       a:        "log_download",
       asset_id: String(assetId),
       source:   "module",
+      // Ein Release ist ein Paket, auch wenn zwanzig Karten darin liegen. Die
+      // Vorgangskennung stammt vom Installationslauf und ist dieselbe wie bei
+      // den Kreaturen, die mit diesem Release mitkommen; beides zusammen ist
+      // EINE Handlung des Nutzers.
+      surface:  "scene_install",
+      scope:    "pack",
     })
+    if (interaction)        body.set("interaction_id", String(interaction))
     if (variant)            body.set("variant",     String(variant))
     if (sceneCount != null) body.set("scene_count", String(sceneCount))
     await fetch(apiEndpoint, {

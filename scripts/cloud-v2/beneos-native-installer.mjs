@@ -198,6 +198,12 @@ export class BeneosNativeBattlemapInstaller {
     if (!packageId) throw new Error("BeneosNativeBattlemapInstaller: packageId is required")
     this.packageId = packageId
     this.label     = label || packageId
+    // Kennung dieses Installationslaufs. Ein Release bringt Karten UND die
+    // Kreaturen mit, die auf ihnen stehen; das ist EINE Handlung des Nutzers.
+    // Ohne gemeinsame Kennung stuende jede mitgelieferte Kreatur als eigener
+    // Griff in der Auswertung.
+    this.erwerbsvorgang = (globalThis.game?.beneos?.cloud?.neuerErwerbsvorgang?.())
+      || foundry.utils.randomID(32).toLowerCase().replace(/[^a-f0-9]/g, "0")
     this.coverUrl  = coverUrl
     // Pack source: cloud (default — signed URLs via BeneosScenePacker.getPackInfo)
     // or a local ZIP ({ kind:"zip", entries: Map<relPath, Uint8Array> }) for the
@@ -577,7 +583,8 @@ export class BeneosNativeBattlemapInstaller {
     try {
       const labelVariant = this.record.variant === "HD" ? "Foundry_HD"
                          : this.record.variant === "4K" ? "Foundry_4K" : ""
-      beneosLogModuleInstall({ assetId: this.record.assetId || "", variant: labelVariant, sceneCount: sceneIds.length })
+      beneosLogModuleInstall({ assetId: this.record.assetId || "", variant: labelVariant,
+        sceneCount: sceneIds.length, interaction: this.erwerbsvorgang })
     } catch (_) {}
   }
 
@@ -635,7 +642,9 @@ export class BeneosNativeBattlemapInstaller {
     let ok = 0
     for (const key of keys) {
       try {
-        await cloud.importTokenFromCloud(key, undefined, false, { gated: true })
+        // scene_install: diese Kreatur kam mit der Karte, sie wurde nicht gesucht.
+        await cloud.importTokenFromCloud(key, undefined, false,
+          { gated: true, surface: "scene_install", interaction: this.erwerbsvorgang })
         ok += 1
       } catch (e) {
         console.warn("BeneosNativeInstaller | Beneos creature install failed", key, e?.message || e)

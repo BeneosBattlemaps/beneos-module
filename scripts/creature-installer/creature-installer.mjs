@@ -742,13 +742,20 @@ export class BeneosCreatureInstaller {
     el?.setAttribute("disabled", "");
     setProgress(0);
 
+    // EINE Vorgangskennung fuer den ganzen Lauf. Ein Drawer holt dutzende
+    // Kreaturen auf einen Klick; ohne gemeinsame Kennung stuenden sie in der
+    // Auswertung als dutzende einzelne Griffe, und genau die Verwechslung soll
+    // die Messung verhindern.
+    const vorgang = game.beneos?.cloud?.neuerErwerbsvorgang?.() ?? "";
+
     let done = 0, failed = 0, installed = 0;
     for (const tokenKey of queue) {
       const discs = [...root.querySelectorAll(`.bci-disc-beneos[data-tokenkey="${CSS.escape(tokenKey)}"]`)];
       discs.forEach(d => d.classList.add("bci-installing"));   // gold pulsing rim while loading
       let ok = false;
       try {
-        await game.beneos?.cloud?.importTokenFromCloud?.(tokenKey, undefined, false, { gated: true });
+        await game.beneos?.cloud?.importTokenFromCloud?.(tokenKey, undefined, false,
+          { gated: true, surface: "drawer", interaction: vorgang });
         // A refused import does NOT throw: importTokenFromCloud handles a server
         // rejection inline (notification + cleanup) and resolves normally. The
         // catch below therefore never fires for the most common failure of all,
@@ -952,11 +959,17 @@ export class BeneosCreatureInstaller {
 
   /** Install a Beneos token by key via the cloud importer, then resolve it.
    *  Gated through #compatOk so a placement that has to fetch several creatures
-   *  asks once, not once per creature. */
-  async #installToken(tokenKey) {
+   *  asks once, not once per creature.
+   *
+   *  `vorgang` reicht die Kennung des laufenden Setzvorgangs durch, damit eine
+   *  Platzierung, die mehrere Kreaturen nachladen muss, EIN Vorgang bleibt.
+   *  Ohne Kennung erzeugt der Server eine eigene, was hier richtig ist: dann war
+   *  es tatsaechlich ein einzelner Griff. */
+  async #installToken(tokenKey, vorgang = "") {
     if (!await this.#compatOk()) return null;
     try {
-      await game.beneos?.cloud?.importTokenFromCloud?.(tokenKey, undefined, false, { gated: true });
+      await game.beneos?.cloud?.importTokenFromCloud?.(tokenKey, undefined, false,
+        { gated: true, surface: "drawer", interaction: vorgang });
     } catch (e) {
       console.error("beneos | creature-installer: install failed", tokenKey, e);
     }
