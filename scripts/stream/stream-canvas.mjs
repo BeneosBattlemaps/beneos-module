@@ -363,10 +363,16 @@ async function fillInVideos() {
   }
 }
 
-// Ein Bildpunkt, durchsichtig. Nur als Notnagel, wenn es zu einem Video kein
-// Standbild gibt: Foundry braucht IRGENDEINEN Pfad, um ueberhaupt eine
-// Zeichenflaeche zu bauen, und dieser hier kostet keine Anfrage.
-const LEERE_FLAECHE = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+// Zwei durchsichtige Bildpunkte aus dem Modul. Nur als Notnagel, wenn es zu
+// einem Video kein Standbild gibt: Foundry braucht IRGENDEINEN Pfad, um
+// ueberhaupt eine Zeichenflaeche zu bauen.
+//
+// Eine Datei und keine data-Adresse. Foundry schreibt eine data-Adresse, die in
+// ein Dokument geraet, als Datei in die Welt; gemessen am 25.08.2026 entstand
+// dabei `worlds/<welt>/assets/tiles/<id>-texture-src.gif`. Das Modul liegt
+// ohnehin auf jeder Platte, `icons/` ist im Manifest als `skip` gefuehrt, also
+// kostet dieser Pfad weder eine Anfrage noch eine Datei in der Welt.
+const LEERE_FLAECHE = "modules/beneos-module/icons/beneos_blank.webp"
 
 /**
  * Der Kachel eine Zeichenflaeche verschaffen.
