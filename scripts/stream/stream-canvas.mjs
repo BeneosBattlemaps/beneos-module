@@ -97,6 +97,80 @@ function onCanvasInit(canvas) {
 }
 
 /**
+ * Ein Ladehinweis auf einer Flaeche, die noch nichts zeigt.
+ *
+ * Nur fuer den Fall, dass es zu diesem Video KEIN Standbild gibt, erkennbar an
+ * `partner === ""`. Wo eines liegt, traegt die Flaeche laengst die Karte, und
+ * dann waere ein Hinweis nichts als Stoerung.
+ *
+ * Kein Bild im Modul. Die Anzeige entsteht aus `PIXI.Texture.WHITE`, dem
+ * einzigen Zeichenweg, den PIXI 7 (Foundry 13) und PIXI 8 (Foundry 14)
+ * unveraendert teilen. `Graphics.beginFill()` gibt es in PIXI 8 nicht mehr, und
+ * ein Ladehinweis, der beim Fassungswechsel selbst zum Fehler wird, waere die
+ * Umkehrung seines Zwecks.
+ *
+ * Sie haengt an der Kachelebene, nicht an der Kachel: Kinder der Ebene liegen in
+ * Szenenkoordinaten, und die stehen im Dokument. Wer sie in die Kachel haengt,
+ * haengt sie in einen Raum, dessen Ursprung sich zwischen den Foundry-Fassungen
+ * schon verschoben hat.
+ *
+ * @return {() => void} entfernt die Anzeige wieder, mehrfach aufrufbar
+ */
+function ladeAnzeige(doc) {
+  const P = globalThis.PIXI
+  const ebene = canvas?.tiles
+  if (!P?.Sprite || !P?.Texture?.WHITE || !ebene?.addChild) return () => {}
+
+  const b = Number(doc?.width) || 0
+  const h = Number(doc?.height) || 0
+  if (b <= 0 || h <= 0) return () => {}
+
+  const flaeche = (tint, alpha, x, y, w, hh) => {
+    const s = new P.Sprite(P.Texture.WHITE)
+    s.tint = tint
+    s.alpha = alpha
+    s.position.set(x, y)
+    s.width = w
+    s.height = hh
+    return s
+  }
+
+  // Balkenmasse an der Flaeche, nicht in Bildpunkten: dieselbe Anzeige sitzt auf
+  // einer 4000er Karte und auf einem 500er Overlay.
+  const bahnB = Math.min(b * 0.34, b - 4)
+  const bahnH = Math.max(4, Math.round(h * 0.012))
+  const laeufer = Math.max(2, bahnB * 0.28)
+
+  const behaelter = new P.Container()
+  behaelter.eventMode = "none"
+  behaelter.position.set((Number(doc.x) || 0) + b / 2, (Number(doc.y) || 0) + h / 2)
+  behaelter.angle = Number(doc.rotation) || 0
+
+  behaelter.addChild(flaeche(0x0b0b10, 0.92, -b / 2, -h / 2, b, h))
+  behaelter.addChild(flaeche(0x2a2a33, 0.9, -bahnB / 2, -bahnH / 2, bahnB, bahnH))
+  const strich = flaeche(0xf5c992, 0.95, -bahnB / 2, -bahnH / 2, laeufer, bahnH)
+  behaelter.addChild(strich)
+  ebene.addChild(behaelter)
+
+  // Der Weg des Laeufers haengt an der verstrichenen Zeit und nicht an der Zahl
+  // der Bilder, sonst laeuft er auf einer schnellen Maschine schneller.
+  const start = Date.now()
+  const schritt = () => {
+    const t = ((Date.now() - start) % 1400) / 1400
+    strich.position.x = -bahnB / 2 + (bahnB - laeufer) * (t < 0.5 ? t * 2 : (1 - t) * 2)
+  }
+  canvas.app?.ticker?.add?.(schritt)
+
+  let weg = false
+  return () => {
+    if (weg) return
+    weg = true
+    canvas.app?.ticker?.remove?.(schritt)
+    try { behaelter.destroy({ children: true }) } catch (_) { /* Leinwand schon abgebaut */ }
+  }
+}
+
+/**
  * Put the motion in, once the scene is standing.
  *
  * Deliberately after `canvasReady` and deliberately not awaited by anything: a
@@ -111,6 +185,10 @@ async function fillInVideos() {
   for (const { tile, url } of wanted) {
     const placeable = canvas.tiles?.get?.(tile.id) ?? canvas.tiles?.placeables?.find(p => p.id === tile.id)
     if (!placeable) continue
+    // Ohne Standbild zeigt die Flaeche bis zum Video den schwarzen Hintergrund
+    // der Szene, und schwarz sagt niemandem, dass etwas unterwegs ist.
+    const partner = tile?.flags?.[FLAG_SCOPE]?.[FLAG_KEY]?.partner
+    const hinweisWeg = partner === "" ? ladeAnzeige(tile) : () => {}
     try {
       const texture = await foundry.canvas.loadTexture(url)
       if (!texture) continue
@@ -122,6 +200,8 @@ async function fillInVideos() {
       // never a red message: an unreachable video is the expected outcome of a
       // bad connection, not a defect.
       console.debug(`Beneos Stream | no motion for "${scene.name}": ${String(err).slice(0, 120)}`)
+    } finally {
+      hinweisWeg()
     }
   }
 }
