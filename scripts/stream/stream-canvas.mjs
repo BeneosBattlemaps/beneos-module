@@ -414,15 +414,24 @@ async function stelleFlaecheSicher(placeable, standbild) {
   if (placeable?.mesh) return true
   if (!game.user?.isGM) return false
   const src = standbild || LEERE_FLAECHE
+  const id = placeable.id
   try {
     await placeable.document.update({ "texture.src": src }, { diff: false })
   } catch (err) {
     console.debug(`Beneos Stream | Zeichenflaeche fehlgeschlagen: ${String(err).slice(0, 120)}`)
     return false
   }
-  // Nach einem Dokumentwechsel ist das Placeable ein anderes Objekt.
-  const neu = canvas.tiles?.get?.(placeable.id) ?? canvas.tiles?.placeables?.find(p => p.id === placeable.id)
-  return Boolean(neu?.mesh)
+  // Auf das Neuzeichnen warten. `update()` kommt zurueck, sobald das Dokument
+  // steht; das Placeable wird danach ersetzt und sein mesh erst dann gebaut.
+  // Gemessen am 25.08.2026: ohne dieses Warten bekamen zwei von vier Szenen
+  // beim ALLERERSTEN Oeffnen kein Video, weil der Griff eine Wimper zu frueh kam.
+  // Betrifft nur den ersten Aufruf je Kachel; danach steht der Pfad im Dokument.
+  for (let i = 0; i < 60; i++) {
+    const neu = canvas.tiles?.get?.(id) ?? canvas.tiles?.placeables?.find(p => p.id === id)
+    if (neu?.mesh) return true
+    await new Promise(r => setTimeout(r, 50))
+  }
+  return false
 }
 
 /**
