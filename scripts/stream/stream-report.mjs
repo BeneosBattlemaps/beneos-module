@@ -11,6 +11,7 @@
  */
 
 import { streamBase, streamEnabled } from "./stream-settings.mjs"
+import { isOffline } from "./stream-online.mjs"
 
 // One report per address per session. A broken scene would otherwise send one
 // report per retry per asset, which buries the signal it is meant to carry.
@@ -24,6 +25,17 @@ function key(entry) {
 
 async function flush() {
   if (flushing || !queue.length) return
+  // Ohne Verbindung wird nicht gemeldet.
+  //
+  // Der Melder liegt auf demselben Host wie die Assets. Steht fest, dass der
+  // Host nicht erreichbar ist, erzeugt der Versuch genau eine weitere rote
+  // Zeile im Konsolenlog des Kunden, und zwar ueber einen Ausfall, den er
+  // ohnehin schon kennt. Gemessen am 26.08.2026 in TC-PRJ-STR-001: einer der
+  // drei verbliebenen Fehler beim Weltstart ohne Netz war dieser.
+  //
+  // Die Warteschlange bleibt stehen. Kommt die Verbindung zurueck, geht der
+  // naechste Lauf mit allem, was sich angesammelt hat.
+  if (isOffline()) return
   flushing = true
   const batch = queue.splice(0, queue.length)
   try {

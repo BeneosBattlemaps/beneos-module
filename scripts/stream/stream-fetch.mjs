@@ -22,7 +22,7 @@
 
 import { budgetFor, downloadMode, localCacheEnabled, maxConcurrent, streamEnabled, streamHost, streamMode } from "./stream-settings.mjs"
 import { reportFailure, reportedSoFar } from "./stream-report.mjs"
-import { noteResult } from "./stream-online.mjs"
+import { isOffline, noteResult } from "./stream-online.mjs"
 
 const CACHE_NAME = "beneos-stream-v1"
 const TTL_MS = 72 * 60 * 60 * 1000
@@ -233,6 +233,64 @@ function meldeAbweisung(url) {
     + "Weitere Dateien desselben Releases werden nicht mehr einzeln gemeldet.")
 }
 
+/**
+ * Ohne Verbindung wird gar nicht erst gefragt.
+ *
+ * TC-PRJ-STR-001, durchgefallen am 25.08.2026: bei gesperrtem Netz startete die
+ * Welt vollstaendig, aber die Konsole trug **65 Fehler und 9 Warnungen**, alle
+ * aus der Szene, die beim Start schon aktiv war. Jede davon ist eine Zeile, die
+ * der Browser schreibt, sobald eine Anfrage scheitert, und die kein Modulcode
+ * nachtraeglich verschlucken kann: der `fetch`-Ersatz sitzt hinter dem
+ * Ereignis, und ein Service Worker liesse sich unterhalb `/modules/` nicht
+ * registrieren.
+ *
+ * Die einzige Stelle, an der die Zeile verhindert werden kann, liegt also
+ * davor: nicht anfragen. Steht der Zustand auf `offline`, antwortet der Ersatz
+ * selbst, mit demselben Mittel, das auch das Tor bei fehlendem Recht benutzt,
+ * einem durchsichtigen Bildpunkt. PIXI bekommt eine gueltige Antwort, malt
+ * kein Gefahrensymbol und wiederholt nichts.
+ *
+ * `unbekannt` genuegt dafuer ausdruecklich NICHT. Nur eine gemessene Abwesenheit
+ * rechtfertigt es, eine Anfrage zu unterschlagen; im Zweifel wird gefragt.
+ */
+const PIXEL = Uint8Array.from(atob(
+  "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+), c => c.charCodeAt(0))
+
+function offlineAntwort(url) {
+  meldeOffline(url)
+  count("offline", url)
+  return new Response(PIXEL, {
+    status: 200,
+    headers: { "Content-Type": "image/gif", "x-beneos-offline": "1" },
+  })
+}
+
+/**
+ * Einmal je Release, nicht je Datei. Dieselbe Begruendung wie bei
+ * `meldeAbweisung`: eine Szene mit Overlays erzeugte sonst zwanzig Zeilen fuer
+ * einen einzigen Sachverhalt.
+ */
+const offlineGemeldet = new Map()
+
+function meldeOffline(url) {
+  let schluessel = "unbekannt"
+  try {
+    const teile = new URL(url, location.href).pathname.split("/").filter(Boolean)
+    if (teile[0] === "a" && teile.length >= 4) schluessel = `${teile[2]}/${teile[3]}`
+  } catch (_) { /* Adresse unlesbar */ }
+  const zahl = (offlineGemeldet.get(schluessel) || 0) + 1
+  offlineGemeldet.set(schluessel, zahl)
+  if (zahl > 1) return
+  // `debug`, nicht `warn`: die fehlende Verbindung ist ein Zustand der Welt und
+  // kein Fehler des Moduls, und der Kunde erfaehrt sie ueber die Szenenwache in
+  // Worten. Das Konsolenlog bleibt sauber, wie es die Vorgabe vom 24.08.2026
+  // verlangt.
+  console.debug(`Beneos Stream | keine Verbindung, ${schluessel} wird nicht `
+    + "angefordert. Weitere Dateien desselben Releases werden nicht mehr "
+    + "einzeln vermerkt.")
+}
+
 async function openStore() {
   try { return await caches.open(CACHE_NAME) } catch (_) { return null }
 }
@@ -329,6 +387,11 @@ export function installStreamFetch() {
         return hit.clone()
       }
     }
+
+    // Nach dem Speicher, vor allem anderen: was lokal liegt, wird auch ohne
+    // Verbindung geliefert, und genau das ist der Sinn des Speichers. Erst wenn
+    // es die Leitung braeuchte, entscheidet der Zustand.
+    if (!measuring && isOffline()) return offlineAntwort(url)
 
     // Erst ab hier zaehlt eine Anfrage als Verkehr. Ein Speichertreffer belegt
     // die Leitung nicht und darf deshalb auch keinen Platz kosten; stuende der

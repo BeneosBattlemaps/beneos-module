@@ -31,9 +31,25 @@ const PROBE_TIMEOUT_MS = 8 * 1000
 // still answers. Not offline, but not healthy either.
 const DEGRADED_AFTER = 3
 
-const STATE = { online: "online", offline: "offline", degraded: "degraded" }
+const STATE = { unbekannt: "unbekannt", online: "online", offline: "offline", degraded: "degraded" }
 
-let state = STATE.online
+/**
+ * Der Anfangszustand ist NICHT "online".
+ *
+ * Bis zum 26.08.2026 stand hier `STATE.online`, und das war eine Behauptung
+ * ohne Grundlage: beim Weltstart hat noch niemand mit dem Tor gesprochen. Die
+ * Folge war TC-PRJ-STR-001, durchgefallen am 25.08.2026. Bei gesperrtem Netz
+ * startete die Welt zwar vollstaendig, aber die Konsole trug **65 Fehler und 9
+ * Warnungen**, alle aus der Szene, die beim Start schon aktiv war. Die
+ * Szenenwache konnte nichts ausrichten: sie umhuellt `Scene#view`, und eine
+ * beim Start aktive Szene zeichnet Foundry ueber `canvasInit`, ohne `view` je
+ * zu rufen. Selbst am richtigen Ort haette sie nichts zu pruefen gehabt, denn
+ * der Zustand log.
+ *
+ * `unbekannt` heisst: noch nicht gemessen. Es sperrt nichts, denn eine Welt
+ * darf nicht warten, bis das Tor geantwortet hat. Es erlaubt nur auch nichts.
+ */
+let state = STATE.unbekannt
 let consecutiveFailures = 0
 let probeTimer = null
 let probeDelay = PROBE_MIN_MS
@@ -67,6 +83,27 @@ function setState(next, why) {
 }
 
 /**
+ * Die erste Probe, so frueh wie moeglich, und ohne den Weltstart aufzuhalten.
+ *
+ * Gemessene Hookfolge auf Foundry 14.365: `init` 3599 ms, `canvasInit` 7868 ms.
+ * Zwischen dem Einbau und dem ersten Zeichnen liegen also gut vier Sekunden,
+ * und eine Probe mit acht Sekunden Frist ist in aller Regel lange vorher
+ * zurueck. Wer erst beim Zeichnen fragt, muesste warten; wer hier fragt,
+ * wartet nie.
+ *
+ * Bewusst ohne `await` an der Aufrufstelle: schlaegt die Probe fehl, ist der
+ * Zustand rechtzeitig `offline`; ist sie langsam, zeichnet die Welt eben unter
+ * `unbekannt`, und das ist genau der Zustand von vorher, also kein Rueckschritt.
+ */
+export async function ersteProbe() {
+  // Ebenfalls am Modus, aus demselben Grund wie in `probeOnce`.
+  if (!streamMode()) return state
+  if (await probeOnce()) setState(STATE.online, "erste Probe beim Weltstart")
+  else setState(STATE.offline, "erste Probe beim Weltstart blieb ohne Antwort")
+  return state
+}
+
+/**
  * One request against the gate's liveness route.
  *
  * Deliberately not one of the asset addresses: those carry the customer key and
@@ -74,7 +111,19 @@ function setState(next, why) {
  * question.
  */
 async function probeOnce() {
-  if (!streamEnabled()) return false
+  // Am Modus, nicht am Schluessel.
+  //
+  // `streamEnabled()` verlangt einen nicht leeren Schluessel, und den holt sich
+  // eine Welt erst im `ready`-Hook. Die Probe lief deshalb beim Einbau ins
+  // Leere und kehrte sofort mit `false` zurueck, ohne je gefragt zu haben, und
+  // der Zustand blieb bis zum ersten gescheiterten Asset unbestimmt. Gemessen
+  // am 26.08.2026: bei gesperrtem Tor stand der Zustand beim ersten
+  // Szenenwechsel auf `online`, die Szene wurde gezeichnet, und es entstanden
+  // zwanzig Netzfehler.
+  //
+  // `/health` ist die eine Adresse des Tors, die keinen Schluessel braucht,
+  // ausdruecklich damit sie ohne Berechtigung gefragt werden kann.
+  if (!streamMode()) return false
   if (navigator.onLine === false) return false
   const controller = new AbortController()
   const timer = setTimeout(() => { try { controller.abort() } catch (_) {} }, PROBE_TIMEOUT_MS)
@@ -213,6 +262,12 @@ export function installStreamOnline() {
   })
 
   if (navigator.onLine === false) setState(STATE.offline, "offline at startup")
+
+  // Sofort fragen, aber auf nichts warten. Siehe `ersteProbe`: bis die erste
+  // Szene gezeichnet wird, vergehen auf Foundry 14.365 gut vier Sekunden, und
+  // die Antwort ist dann da. Ohne diese Zeile bliebe der Zustand bis zum
+  // ersten gescheiterten Asset `unbekannt`, und genau dann ist es zu spaet.
+  ersteProbe().catch(() => { /* eine Probe darf den Weltstart nie stoeren */ })
 }
 
 /** For the test programme and the status dot. */

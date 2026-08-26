@@ -17,6 +17,11 @@ import { onStreamState, onlineStatus, streamState } from "./stream-online.mjs"
 const DOT_CLASS = "beneos-stream-dot"
 
 const LOOK = {
+  // Grau, solange niemand mit dem Tor gesprochen hat. Bis zum 26.08.2026 begann
+  // der Zustand auf "online" und der Punkt war von der ersten Sekunde an gruen,
+  // ohne dass etwas geprueft worden waere. Er dauert nur wenige Sekunden: die
+  // erste Probe laeuft beim Einbau los.
+  unbekannt: { title: "Beneos Stream: connection not checked yet", colour: "#8a8a8a" },
   online: { title: "Beneos Stream: connected", colour: "#5db075" },
   degraded: { title: "Beneos Stream: answers are failing, the connection is unreliable", colour: "#e0a33a" },
   offline: { title: "Beneos Stream: no connection, streamed scenes cannot be opened", colour: "#c9503f" },
