@@ -112,11 +112,22 @@ function hexPadding(sceneWidth, sceneHeight, padding, size, columns) {
  * `background.src` bei allen fuenf Szenen als leer, waehrend das Rohdokument
  * vom Tor sie gefuellt hatte.
  *
+ * Die Wanderung macht das Modul SELBST, siehe `beneos-v14-scene-migration.mjs`:
+ * `migrateSceneBackground` schiebt den Hintergrund in die Stufe und
+ * `stripLegacySceneFields` loescht danach `scene.background`. Sie laeuft im
+ * Installer vor dem Umbau. Wer hier etwas aendert, sollte dort nachsehen.
+ *
  * Entschieden wird nach dem Inhalt und nicht nach der Fassungsnummer: es
  * gewinnt die Form, die wirklich eine Adresse traegt. Eine Abfrage auf
  * `game.version` waere hier falsch, weil die Wanderung am Dokument haengt und
- * nicht am Programm, und dieselbe Funktion laeuft auch ueber Rohdokumente, die
- * noch gar nicht durch Foundry gegangen sind.
+ * nicht am Programm. Und sie reicht nicht: ein kuenftig unter V14 exportiertes
+ * Paket kommt bereits in Stufenform an und wird von `packNeedsV14Migration`
+ * bewusst uebersprungen. Der Umbau muss diese Form also ohnehin lesen koennen,
+ * ganz gleich welche Fassung laeuft.
+ *
+ * `scene.firstLevel`, wie es vier andere Stellen im Modul benutzen, taugt hier
+ * NICHT: das ist ein Zugriff am fertigen Foundry-Dokument, und diese Funktion
+ * laeuft ueber rohe Objekte, die noch keins sind. Deshalb `levels[0]`.
  */
 function hintergrundVon(scene) {
   const stufe = Array.isArray(scene?.levels) ? scene.levels[0] : null
