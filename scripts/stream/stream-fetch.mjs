@@ -20,7 +20,7 @@
  * to the gate cut, video running, 59 frames per second.
  */
 
-import { budgetFor, downloadMode, localCacheEnabled, streamEnabled, streamHost, streamMode } from "./stream-settings.mjs"
+import { budgetFor, downloadMode, localCacheEnabled, maxConcurrent, streamEnabled, streamHost, streamMode } from "./stream-settings.mjs"
 import { reportFailure, reportedSoFar } from "./stream-report.mjs"
 import { noteResult } from "./stream-online.mjs"
 
@@ -51,6 +51,101 @@ export function abortAll(reason = "watchdog") {
 
 export function inFlightCount() {
   return inFlight.size
+}
+
+/**
+ * Der Gleichzeitigkeitsdeckel, an der einzigen Stelle, die ihn halten kann.
+ *
+ * Bis zum 26.08.2026 wurde er auf `canvas.loadTexturesOptions.maxConcurrent`
+ * gesetzt, und dort steht er auch: die Einstellung liest ihren Wert korrekt
+ * zurueck. Nur haelt Foundrys Texturlader sich nicht daran. Gemessen als
+ * TC-PRJ-STR-018 am 25.08.2026: Deckel auf 2, im Netzmitschnitt **elf**
+ * gleichzeitige Anfragen gegen das Tor.
+ *
+ * Der `fetch`-Ersatz ist der einzige Punkt, durch den wirklich jede Anfrage
+ * laeuft, gleich ob Foundry, PIXI oder das Modul sie stellt. Also deckelt er.
+ *
+ * Der Platz gilt, solange Bytes fliessen, und nicht nur bis zu den Kopfzeilen:
+ * ein Deckel, der beim Antwortkopf freigibt, deckelt nichts, denn die Leitung
+ * belegt der Rumpf. Er wird an zwei Stellen frei, und beide sind noetig:
+ * wenn der Rumpf durch ist, und wenn das Budget zuschlaegt. Ohne die zweite
+ * haelt eine Anfrage, deren Rumpf niemand liest, ihren Platz fuer immer.
+ *
+ * Gedeckelt wird nur, was an das Tor geht. Foundrys eigener Verkehr zur Welt
+ * darf nie in einer Warteschlange stehen, sonst haelt das Modul die Sitzung an.
+ */
+const wartend = []
+let laufend = 0
+
+function slotFreigeben() {
+  if (laufend > 0) laufend -= 1
+  const naechster = wartend.shift()
+  if (naechster) naechster()
+}
+
+async function slotHolen(cap) {
+  if (!(cap > 0)) return
+  if (laufend < cap) { laufend += 1; return }
+  await new Promise(weiter => wartend.push(weiter))
+  laufend += 1
+}
+
+/** Wieviele Abrufe stehen gerade wirklich auf der Leitung. */
+export function laufendeAbrufe() {
+  return { laufend, wartend: wartend.length }
+}
+
+/**
+ * Das Budget an den Rumpf koppeln, statt es blind weiterlaufen zu lassen.
+ *
+ * Der Zeitgeber muss das `await` auf die Kopfzeilen ueberleben, denn `fetch`
+ * loest schon dort auf, waehrend PIXI danach den Rumpf liest und ein grosses
+ * Video fast seine ganze Zeit in diesem zweiten Teil verbringt. Bis zum
+ * 26.08.2026 lief er deshalb einfach weiter und wurde im Erfolgsfall NIE
+ * geloescht. Der Kommentar dazu sagte, ein Abbruch auf eine fertig gelesene
+ * Anfrage koste nichts. Das galt, bis am 25.08. ein Zaehler an den Abbruch
+ * gehaengt wurde: seither meldete jede erfolgreiche Anfrage nach Ablauf ihres
+ * Budgets eine Zeitueberschreitung, die es nie gab.
+ *
+ * Gemessen auf The Forge 14.365 am 26.08.2026 bei der Installation von bm_0112:
+ * 44 mal `ok` und zugleich 43 mal `timeout` bei 49 Anfragen, die alle
+ * durchliefen, und 29 dieser Falschmeldungen gingen ueber `/report` an das Tor.
+ *
+ * Der Rumpf wird deshalb durchgereicht und dabei gezaehlt. Laeuft er durch,
+ * feuert `flush` und beendet Zeitgeber und Eintrag in `inFlight`. Bricht der
+ * Leser mittendrin ab, feuert `flush` NICHT, der Zeitgeber laeuft weiter und
+ * meldet, was er soll: ein Rumpf, der nicht fertig wurde. Genau dieser Fall ist
+ * TC-PRJ-STR-022, und genau ihn sollte der Zaehler von 25.08. abdecken.
+ *
+ * Die gezaehlten Bytes wandern in die Meldung. Ein Melder, der sagt "nichts
+ * kam an", ist etwas anderes als einer, der sagt "es blieb bei 3 von 30 MB
+ * stehen", und der Unterschied entscheidet, wo man sucht.
+ */
+function rumpfBeobachten(response, fertig) {
+  if (!response?.body || typeof TransformStream !== "function") {
+    // Kein Rumpf zum Beobachten (204, HEAD, Speichertreffer). Sofort fertig,
+    // sonst haenge der Zeitgeber an etwas, das es nicht gibt.
+    fertig(0)
+    return response
+  }
+  let bytes = 0
+  const wacht = new TransformStream({
+    transform(stueck, ctrl) { bytes += stueck?.byteLength || 0; ctrl.enqueue(stueck) },
+    flush() { fertig(bytes) }
+  })
+  try {
+    return new Response(response.body.pipeThrough(wacht), {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers
+    })
+  } catch (_) {
+    // Ein Ursprung, dessen Rumpf sich nicht umhaengen laesst. Dann lieber die
+    // Antwort unveraendert liefern als die Szene zu verlieren; der Zeitgeber
+    // verhaelt sich fuer diese eine Anfrage wie vor dem Umbau.
+    fertig(0)
+    return response
+  }
 }
 
 // How many failures are worth keeping the address of. Past this the counters
@@ -235,6 +330,16 @@ export function installStreamFetch() {
       }
     }
 
+    // Erst ab hier zaehlt eine Anfrage als Verkehr. Ein Speichertreffer belegt
+    // die Leitung nicht und darf deshalb auch keinen Platz kosten; stuende der
+    // Deckel davor, wartete eine Szene, die vollstaendig aus dem Speicher kommt,
+    // auf Plaetze, die niemand braucht. Steuerdateien laufen bewusst mit: sie
+    // sind klein, aber sie gehen ueber dieselbe Leitung.
+    const deckel = measuring ? 0 : maxConcurrent()
+    await slotHolen(deckel)
+    let slotOffen = deckel > 0
+    const slotWeg = () => { if (slotOffen) { slotOffen = false; slotFreigeben() } }
+
     // A budget of our own, because Foundry has none. `TextureLoader` sets no
     // deadline, PIXI hands the URL to a bare `fetch` without a signal, and
     // Foundry's own `fetchWithTimeout` is used nowhere on the asset path. The
@@ -255,6 +360,11 @@ export function installStreamFetch() {
       ? setTimeout(() => {
           try { controller.abort("timeout") } catch (_) { /* already settled */ }
           release()
+          // Der Platz muss auch hier zurueck. Trifft der Abbruch den Rumpf,
+          // feuert `flush` nie, und ohne diese Zeile haelt eine haengende
+          // Anfrage ihren Platz bis zum Ende der Sitzung. Bei einem Deckel von
+          // zwei genuegen zwei solche Anfragen, um die Szene stillzulegen.
+          slotWeg()
         }, budget)
       : null
 
@@ -271,13 +381,29 @@ export function installStreamFetch() {
     // stehen, und `diagnose()` zaehlte NICHTS. Ein Kunde haette die Bewegung
     // verloren, ohne dass irgendwo eine Zahl davon wusste.
     let abbruchGezaehlt = false
+    let bytesBisher = 0
+    // Sobald der Rumpf durch ist, gibt es nichts mehr zu bewachen. Ohne diese
+    // Sperre meldete jede erfolgreiche Anfrage nach Ablauf ihres Budgets eine
+    // Zeitueberschreitung; siehe `rumpfBeobachten`.
+    let fertig = false
     const zaehleAbbruch = () => {
-      if (abbruchGezaehlt) return
+      if (abbruchGezaehlt || fertig) return
       abbruchGezaehlt = true
       count("timeout", url)
       noteResult(false, "timeout")
+      const wieweit = bytesBisher > 0
+        ? `stalled after ${Math.round(bytesBisher / 1024)} KB`
+        : "no answer"
       reportFailure({ url, reason: "timeout",
-        detail: `no answer within ${Math.round(budget / 1000)} s` })
+        detail: `${wieweit} within ${Math.round(budget / 1000)} s` })
+    }
+    const beenden = bytes => {
+      if (fertig) return
+      fertig = true
+      bytesBisher = bytes
+      if (timer) clearTimeout(timer)
+      release()
+      slotWeg()
     }
     // Nur das eigene Budget. Ein Abbruch der Leinwandaufsicht traegt den Grund
     // "draw-budget" und wird dort schon einmal gemeldet; ihn hier ein zweites
@@ -295,11 +421,13 @@ export function installStreamFetch() {
     try {
       response = await original(input, { ...(init || {}), signal })
     } catch (err) {
-      if (timer) clearTimeout(timer)
-      release()
       if (controller.signal.aborted) {
+        // Erst zaehlen, dann beenden: `beenden` setzt die Sperre, die
+        // `zaehleAbbruch` verstummen laesst, und hier ist der Abbruch echt.
         zaehleAbbruch()
+        beenden(0)
       } else {
+        beenden(0)
         count("network", url)
         noteResult(false, "network")
         reportFailure({ url, reason: "network", detail: String(err).slice(0, 200) })
@@ -348,9 +476,22 @@ export function installStreamFetch() {
         count(`fault:${fault}`, url)
         console.warn(`Beneos Stream | injected fault "${fault}": ${url}`)
       }
-      if (store) await toStore(store, url, response)
     }
-    return response
+
+    // Der Rumpf bekommt seine Aufsicht, und zwar fuer JEDEN Ausgang.
+    //
+    // Auch eine Antwort mit Fehlerstatus und auch eine Abweisung tragen einen
+    // Rumpf, den irgendwer liest; ohne die Kopplung liefe deren Zeitgeber weiter
+    // und meldete spaeter eine Zeitueberschreitung, die es nicht gab.
+    //
+    // Vor dem Speicher, damit `toStore` den beobachteten Rumpf klont und nicht
+    // den urspruenglichen. Sonst haette der Klon einen eigenen, unbeobachteten
+    // Strom, und `flush` feuerte erst, wenn PIXI seine Haelfte leergelesen hat.
+    const beobachtet = rumpfBeobachten(response, beenden)
+    if (response.ok && !response.headers.get("x-beneos-denied") && store) {
+      await toStore(store, url, beobachtet)
+    }
+    return beobachtet
   }
 }
 

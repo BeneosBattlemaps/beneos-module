@@ -28,7 +28,7 @@
  */
 
 import { drawBudget, maxConcurrent, streamEnabled } from "./stream-settings.mjs"
-import { abortAll, inFlightCount } from "./stream-fetch.mjs"
+import { abortAll, inFlightCount, laufendeAbrufe } from "./stream-fetch.mjs"
 import { reportFailure } from "./stream-report.mjs"
 
 const FLAG_SCOPE = "beneos-module"
@@ -86,6 +86,13 @@ function onCanvasInit(canvas) {
 
   // The only window in which this can be changed: `Canvas##draw` reads it right
   // after this hook and before it starts loading.
+  //
+  // Der eigentliche Deckel sitzt seit dem 26.08.2026 NICHT mehr hier, sondern
+  // in `stream-fetch.mjs`. Diese Zeile bleibt trotzdem stehen: sie kostet
+  // nichts, und sie hilft dem Teil der Abrufe, den Foundry doch nach ihr
+  // richtet. Verlassen darf sich niemand darauf. Gemessen als TC-PRJ-STR-018
+  // am 25.08.2026: Wert auf 2 gesetzt, Wert liest sich als 2 zurueck, und im
+  // Netzmitschnitt liefen elf Anfragen gleichzeitig gegen das Tor.
   const cap = maxConcurrent()
   if (cap > 0 && canvas?.loadTexturesOptions) canvas.loadTexturesOptions.maxConcurrent = cap
 
@@ -578,12 +585,24 @@ export function installStreamCanvas() {
   })
 }
 
-/** For the test programme: what the watchdog would currently be waiting on. */
+/**
+ * For the test programme: what the watchdog would currently be waiting on.
+ *
+ * `inFlight` zaehlte bis zum 26.08.2026 nicht laufende Abrufe, sondern Abrufe
+ * mit laufendem Budget, und die beiden liefen weit auseinander: der Eintrag
+ * wurde im Erfolgsfall nie entfernt, weil `release()` allein im Fehlerzweig
+ * stand. Die Zahl stieg damit ueber eine Sitzung monoton an und beantwortete
+ * die Frage, fuer die sie da ist, nie. Sie ist jetzt ehrlich, und `wartend`
+ * daneben zeigt, was der Deckel gerade zurueckhaelt.
+ */
 export function drawStatus() {
+  const deckel = laufendeAbrufe()
   return {
     armed: Boolean(watchdog),
     waitedMs: drawStartedAt ? Date.now() - drawStartedAt : 0,
     inFlight: inFlightCount(),
+    aufDerLeitung: deckel.laufend,
+    wartend: deckel.wartend,
     loading: Boolean(canvas?.loading),
   }
 }
