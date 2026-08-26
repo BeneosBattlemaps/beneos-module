@@ -245,6 +245,53 @@ function installSceneGuard() {
 }
 
 /**
+ * Ohne Verbindung wird auch kein Klang geholt.
+ *
+ * Der `fetch`-Ersatz deckt Bilder und Videos ab, aber nicht den Klang: den holt
+ * ein `<audio>`-Element, und das geht an `fetch` vorbei. Gemessen auf The Forge
+ * 14.365 am 26.08.2026 in TC-PRJ-STR-001: trotz bekanntem Offline entstanden
+ * zwei rote Zeilen fuer eine Ambience-Datei, waehrend Bilder und Videos still
+ * blieben.
+ *
+ * `Sound#load` ist die eine Stelle, durch die jeder Klang laeuft, gleich ob aus
+ * einer Playlist, einer Szene oder einem Makro. Steht fest, dass das Tor nicht
+ * erreichbar ist, kehrt sie ohne zu laden zurueck. `loaded` bleibt damit falsch,
+ * Foundry spielt nichts und meldet nichts, und der Klang fehlt genau so, wie er
+ * ohne Verbindung ohnehin fehlen wuerde.
+ *
+ * Ein Wurf waere hier falsch: eine Playlist, die auf einen Fehler laeuft, zieht
+ * ihre eigene Fehlerbehandlung nach sich, und die schreibt wieder ins Log.
+ */
+function installKlangWache() {
+  const Sound = foundry.audio?.Sound ?? globalThis.Sound
+  if (!Sound?.prototype?.load || Sound.prototype.load.__beneosStream) return
+
+  const original = Sound.prototype.load
+  const wrapped = async function beneosStreamSoundLoad(...args) {
+    const src = String(this?.src || "")
+    if (streamEnabled() && isOffline() && src.includes(hostVomTor())) {
+      // Einmal je Sitzung genuegt. Eine Playlist mit zwanzig Stuecken erzeugte
+      // sonst zwanzig Zeilen fuer denselben Sachverhalt.
+      if (!klangGemeldet) {
+        klangGemeldet = true
+        console.debug("Beneos Stream | keine Verbindung, gestreamte Klaenge "
+          + "werden nicht geladen")
+      }
+      return this
+    }
+    return original.apply(this, args)
+  }
+  wrapped.__beneosStream = true
+  Sound.prototype.load = wrapped
+}
+
+let klangGemeldet = false
+
+function hostVomTor() {
+  try { return new URL(streamBase()).host } catch (_) { return " " }
+}
+
+/**
  * Does this scene depend on the gate at all?
  *
  * A world holds installed scenes next to streamed ones, and a scene that lives
@@ -280,6 +327,7 @@ export function installStreamOnline() {
   // zurueck. Es wird also nichts gemessen und nichts gemeldet, bis er da ist.
   if (!streamMode()) return
   installSceneGuard()
+  installKlangWache()
 
   // The browser knows one half of the answer for free. Only the negative one.
   globalThis.addEventListener("offline", () => setState(STATE.offline, "browser event"))

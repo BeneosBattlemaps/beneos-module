@@ -205,15 +205,38 @@ function registerHowToNoteHandler() {
   }
 
   // Hide the "@doc[...]" marker from the visible note label while keeping it in
-  // document.text for routing. Wrap the placeable's label accessor so the
-  // on-canvas label and the hover tooltip show only the human text; notes
-  // without a marker are returned untouched.
-  try {
-    libWrapper.register(MODULE_ID, `${base}.text`, function (wrapped, ...args) {
-      return strippedNoteLabel(wrapped(...args));
-    }, "WRAPPER");
-  } catch (e) {
-    console.warn("[Beneos] Could not wrap Note.text to hide the docs marker:", e);
+  // document.text for routing. Notes without a marker are returned untouched.
+  //
+  // Der Ort dieses Zugriffs hat sich mit Foundry 14 verschoben. Auf 13 sass er
+  // als `text` auf dem Placeable; auf 14 gibt es dort weder `text` noch `label`,
+  // auch nicht in der Erbkette, und der sichtbare Text kommt als `label` vom
+  // DOKUMENT. Gemessen auf The Forge 14.365 am 26.08.2026.
+  //
+  // Ohne diese Unterscheidung scheiterte die Anmeldung bei libWrapper mit
+  // "target does not exist", und zwar sichtbar: eine gelbe Zeile bei jedem
+  // Weltstart. Schwerer wog, dass die Funktion dahinter still tot war und der
+  // Kunde den Marker `@doc[...]` mitten in der Notiz auf der Karte las.
+  //
+  // Beide Ziele werden versucht, und es genuegt, wenn eines existiert. Ein
+  // kuenftiges Foundry, das den Zugriff wieder verschiebt, faellt damit auf
+  // dieselbe Meldung zurueck statt auf einen stillen Ausfall.
+  const textZiele = [
+    "CONFIG.Note.documentClass.prototype.label",
+    `${base}.text`,
+  ];
+  let textGehaengt = false;
+  for (const ziel of textZiele) {
+    try {
+      libWrapper.register(MODULE_ID, ziel, function (wrapped, ...args) {
+        return strippedNoteLabel(wrapped(...args));
+      }, "WRAPPER");
+      textGehaengt = true;
+    } catch (_) { /* dieses Ziel gibt es auf dieser Fassung nicht */ }
+  }
+  if (!textGehaengt) {
+    console.warn("[Beneos] Der Marker in Notiztexten laesst sich auf dieser "
+      + "Foundry-Fassung nicht verbergen: weder NoteDocument#label noch "
+      + "Note#text sind vorhanden.");
   }
 
   _howToWrapped = true;
