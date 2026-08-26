@@ -98,6 +98,55 @@ function hexPadding(sceneWidth, sceneHeight, padding, size, columns) {
 }
 
 /**
+ * Der Hintergrund einer Szene, in beiden Formen.
+ *
+ * Foundry 14 verschiebt `Scene#background` nach `levels[0].background` und die
+ * Geometrie getrennt davon nach `levels[0].textures`. Das obere Feld bleibt als
+ * veralteter Platzhalter bestehen und traegt dann eine LEERE Adresse.
+ *
+ * Wer nur oben liest, bekommt auf V14 nichts und baut die Szene stillschweigend
+ * nicht um. Genau das ist am 26.08.2026 auf The Forge passiert, Foundry 14.365,
+ * bei den Releases 0088 und 0092: das Video blieb im Hintergrund stehen, es
+ * entstand keine Streaming-Kachel, und damit greift die Zeichenschranke, die
+ * dieser ganze Umbau vermeiden soll. Der Mitschnitt am echten Aufruf zeigte
+ * `background.src` bei allen fuenf Szenen als leer, waehrend das Rohdokument
+ * vom Tor sie gefuellt hatte.
+ *
+ * Entschieden wird nach dem Inhalt und nicht nach der Fassungsnummer: es
+ * gewinnt die Form, die wirklich eine Adresse traegt. Eine Abfrage auf
+ * `game.version` waere hier falsch, weil die Wanderung am Dokument haengt und
+ * nicht am Programm, und dieselbe Funktion laeuft auch ueber Rohdokumente, die
+ * noch gar nicht durch Foundry gegangen sind.
+ */
+function hintergrundVon(scene) {
+  const stufe = Array.isArray(scene?.levels) ? scene.levels[0] : null
+  const neu = stufe?.background ?? null
+  const alt = scene?.background ?? null
+
+  if (neu?.src) return { bild: neu, lage: stufe.textures ?? neu, wo: "level" }
+  if (alt?.src) return { bild: alt, lage: alt, wo: "szene" }
+  if (neu) return { bild: neu, lage: stufe.textures ?? neu, wo: "level" }
+  return { bild: alt ?? {}, lage: alt ?? {}, wo: "szene" }
+}
+
+/**
+ * Schreibt die Hintergrundadresse dorthin zurueck, wo sie gelesen wurde.
+ *
+ * Auf V14 ist das `levels[0].background`. Das veraltete obere Feld wird bewusst
+ * NICHT mitgepflegt: Foundry liest es dort nicht mehr, und zwei Orte fuer
+ * dieselbe Angabe sind genau die Sorte Kopie, bei der eine still von der
+ * anderen abweicht.
+ */
+function setzeHintergrundQuelle(scene, hg, src) {
+  if (hg.wo === "level") {
+    hg.bild.src = src
+    return
+  }
+  if (!scene.background) scene.background = {}
+  scene.background.src = src
+}
+
+/**
  * The rectangle the background image is drawn into.
  *
  * A tile given exactly these coordinates covers what the background covered,
@@ -108,6 +157,9 @@ function hexPadding(sceneWidth, sceneHeight, padding, size, columns) {
  * Verified against a shipped scene: BM: Asteroid Battle, 4000x2500, padding
  * 0.25, grid 100 yields x=1000, y=700, and the shipped tile sits at exactly
  * 1000, 700.
+ *
+ * Der Versatz kommt seit dem 26.08.2026 ueber `hintergrundVon`, weil er auf V14
+ * nicht mehr beim Bild steht, sondern unter `levels[0].textures`.
  */
 export function sceneRect(scene) {
   const grid = scene?.grid || {}
@@ -131,10 +183,10 @@ export function sceneRect(scene) {
     return null
   }
 
-  const background = scene?.background || {}
+  const lage = hintergrundVon(scene).lage
   return {
-    x: x - (background.offsetX || 0),
-    y: y - (background.offsetY || 0),
+    x: x - (lage.offsetX || 0),
+    y: y - (lage.offsetY || 0),
     width: sceneWidth,
     height: sceneHeight
   }
@@ -276,8 +328,8 @@ export async function rebuildScene(scene, report, bekannt) {
     return
   }
 
-  const background = scene.background || {}
-  const bgSrc = background.src || ""
+  const hg = hintergrundVon(scene)
+  const bgSrc = hg.bild.src || ""
 
   // --- shape one: the video sits in the background -------------------------
   if (bgSrc && isVideo(bgSrc)) {
@@ -328,9 +380,8 @@ export async function rebuildScene(scene, report, bekannt) {
       flags: marker(ROLE_VIDEO, still, bgSrc)
     })
 
-    scene.background = background
-    scene.background.src = still
-    report?.changes?.push({ scene: sname, action: "background-to-tile", video: bgSrc, still })
+    setzeHintergrundQuelle(scene, hg, still)
+    report?.changes?.push({ scene: sname, action: "background-to-tile", video: bgSrc, still, wo: hg.wo })
     // KEIN return. Bis zum 2026-08-24 stand hier einer, geerbt aus der
     // Python-Kette, und er war der gefaehrlichste Fehler des ganzen Umbaus.
     //
