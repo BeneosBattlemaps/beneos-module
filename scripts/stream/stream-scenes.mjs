@@ -242,6 +242,41 @@ export async function stableId(...parts) {
 }
 
 /** A texture block shaped like the ones the packs already ship. */
+/**
+ * Wo liegt der Bezugspunkt einer neu eingefuegten Kachel?
+ *
+ * Foundry 13 nimmt `Tile#x/y` als linke obere Ecke und rechnet den Ankerpunkt
+ * selbst dazu. Foundry 14 nimmt dieselben Felder als **Ankerpunkt**, und der
+ * Anker steht auf 0,5, also in der Mitte. Dieselben Zahlen bedeuten damit auf
+ * den beiden Fassungen zwei verschiedene Orte, und die Kachel liegt auf 14 um
+ * ihre halbe Groesse nach links oben verschoben.
+ *
+ * Gemessen auf The Forge 14.365 am 26.08.2026 an `BM: Ravine Path`: die Kachel
+ * stand auf 800/500 bei 3200 mal 1800, gezeichnet wurde sie ab -800/-400,
+ * waehrend der Hintergrund korrekt bei 800/500 begann.
+ *
+ * Fuer die Kacheln AUS DEM PAKET macht diese Umrechnung bereits
+ * `migrateTile()` in `beneos-v14-scene-migration.mjs`, und sie macht es richtig;
+ * der Vergleich Rohdokument gegen Welt war an allen vier Paketkacheln exakt.
+ * Nur die hier neu erzeugte Kachel entsteht NACH jener Wanderung und wurde
+ * deshalb nie umgerechnet.
+ *
+ * Die Fassung des Programms ist hier der richtige Massstab und nicht die des
+ * Dokuments: diese Kachel gibt es im Paket nicht, sie entsteht gerade eben, und
+ * wie ihre Zahlen gelesen werden, entscheidet allein das laufende Foundry.
+ *
+ * Der Anker bleibt auf 0,5 statt auf 0. Er ist zugleich der Drehpunkt, und mit
+ * 0,5 dreht diese Kachel wie jede andere Kachel des Pakets. Ein Anker von 0
+ * wuerde auf beiden Fassungen ebenfalls richtig liegen, aber um die Ecke drehen.
+ */
+function ankerLage(rect, ax = 0.5, ay = 0.5) {
+  if ((game.release?.generation ?? 13) < 14) return { x: rect.x, y: rect.y }
+  return {
+    x: Math.round(rect.x + rect.width * ax),
+    y: Math.round(rect.y + rect.height * ay)
+  }
+}
+
 function texture(src, rotation = 0) {
   return {
     src,
@@ -375,8 +410,8 @@ export async function rebuildScene(scene, report, bekannt) {
       // nicht. Deshalb steht hier das Standbild und die Videoadresse in der
       // Markierung.
       texture: texture(still),
-      x: rect.x,
-      y: rect.y,
+      // Ankerpunkt statt Ecke, sobald Foundry 14 laeuft. Siehe `ankerLage`.
+      ...ankerLage(rect),
       width: rect.width,
       height: rect.height,
       elevation: 0,
