@@ -257,9 +257,52 @@ const PIXEL = Uint8Array.from(atob(
   "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
 ), c => c.charCodeAt(0))
 
+/**
+ * Kann ein durchsichtiger Bildpunkt diese Anfrage sinnvoll ersetzen?
+ *
+ * Nur dort, wo der Aufrufer ein Bild oder ein Video erwartet. Klang steht
+ * bewusst nicht in der Liste: den holt ein `<audio>`-Element, das hier nie
+ * vorbeikommt, und ein Bild waere fuer es genauso unverstaendlich wie ein
+ * Bild fuer einen JSON-Leser.
+ */
+function istMedium(url) {
+  return /\.(webp|png|jpe?g|gif|svg|webm|mp4|ogv)(\?|$)/i.test(String(url))
+}
+
 function offlineAntwort(url) {
   meldeOffline(url)
   count("offline", url)
+
+  // Steuerdateien bekommen KEINEN Bildpunkt, sondern einen ehrlichen Fehler.
+  //
+  // Der Bildpunkt ist fuer Bilder und Videos richtig: PIXI bekommt eine
+  // gueltige Antwort und malt kein Gefahrensymbol. Fuer ein Manifest oder ein
+  // Szenendokument ist er falsch, denn der Aufrufer will JSON lesen und
+  // bekommt Bytes, die keines sind.
+  //
+  // Gemessen am 27.08.2026 in TC-PRJ-STR-041: eine Installation ohne Netz
+  // scheiterte mit der Meldung
+  //   `Failed to execute 'json' on 'Response': Unexpected token 'G', "GIF89a`
+  // und damit an einer Zeichenkette, die niemand deuten kann. Der Kunde liest
+  // dort einen Programmfehler, wo er "keine Verbindung" lesen muesste.
+  //
+  // 503 ist der richtige Status: der Dienst ist vorhanden und gerade nicht
+  // erreichbar. Der Rumpf ist JSON, damit ein Aufrufer, der `json()` ruft,
+  // eine lesbare Antwort bekommt statt einer zweiten Ausnahme.
+  //
+  // Entschieden wird nach dem, was der Bildpunkt ERSETZEN kann, und nicht nach
+  // `isControl`. Das deckt nur Manifest und Szenendokumente; der Katalog liegt
+  // auf `/catalog/<schluessel>` und traegt gar keine Endung, waere also durch
+  // das Raster gefallen. Umgekehrt gilt: ein Bildpunkt hilft nur dort, wo ein
+  // Bild erwartet wird. Im Zweifel scheitert die Anfrage lesbar, statt Bytes zu
+  // liefern, die niemand deuten kann.
+  if (!istMedium(url)) {
+    return new Response(JSON.stringify({ error: "offline", detail: "no connection to the gate" }), {
+      status: 503,
+      headers: { "Content-Type": "application/json", "x-beneos-offline": "1" },
+    })
+  }
+
   return new Response(PIXEL, {
     status: 200,
     headers: { "Content-Type": "image/gif", "x-beneos-offline": "1" },
