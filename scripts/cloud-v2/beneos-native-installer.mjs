@@ -263,6 +263,36 @@ export class BeneosNativeBattlemapInstaller {
   }
 
   async run() {
+    // Ohne Netz gar nicht erst anfangen.
+    //
+    // Jede Uebertragung hier laeuft durch #fetchAsset, und das ist auf
+    // Ausdauer gebaut: drei Versuche, dazwischen Wartezeiten, und eine
+    // Sicherheitsgrenze, die bei FETCH_TOTAL_MS beginnt, also bei fuenf
+    // Minuten je Versuch. Das ist richtig fuer eine schwache Leitung und
+    // falsch fuer gar keine.
+    //
+    // Gemessen am 27.08.2026 als TC-PRJ-STR-041 auf Foundry 13.351: eine
+    // Installation ohne Netz lief **ueber drei Minuten** ohne Abbruch, ohne
+    // eine einzige Meldung und ohne Wurf. Die Welt blieb dabei unversehrt,
+    // 71 Szenen vorher wie nachher, aber der Kunde sass vor einem
+    // Fortschrittsfenster, das nichts sagte.
+    //
+    // `navigator.onLine` ist nur in einer Richtung verlaesslich, und genau die
+    // wird hier benutzt: sagt der Browser "kein Netz", dann stimmt das. Sagt er
+    // "Netz", kann trotzdem die Route nach draussen fehlen; dafuer bleibt die
+    // gewoehnliche Fehlerbehandlung zustaendig, die nach dem ersten
+    // fehlgeschlagenen Abruf greift.
+    if (navigator.onLine === false) {
+      const satz = game.i18n?.localize?.("BENEOS.InstallNoNetwork")
+      const text = (satz && satz !== "BENEOS.InstallNoNetwork")
+        ? satz
+        : `Beneos: "${this.label || this.packageId}" cannot be installed, there is `
+          + "no network connection. Nothing was written to your world.";
+      ui.notifications?.warn?.(text)
+      console.debug(`Beneos Installer | ${this.packageId}: aborted before start, browser reports no network`)
+      return this.#newResult()
+    }
+
     const ProgressWindow = globalThis.BeneosBattlemapInstallProgress
     if (!ProgressWindow) throw new Error("BeneosBattlemapInstallProgress not loaded")
 
