@@ -151,6 +151,26 @@ async function _repairTutorialPlaylist() {
 }
 
 /**
+ * Den Szenenhintergrund lesen, ohne Foundry 14 eine Verfallswarnung zu
+ * entlocken.
+ *
+ * Ab Foundry 14 liegt der Hintergrund in `levels[0].background`, und das alte
+ * `Scene#background` ist nur noch ein Zugriffspfad, der bei jedem Lesen warnt
+ * und in Version 16 verschwindet. Gemessen auf The Forge 14.365 am 26.08.2026:
+ * drei Warnungen je Sitzung kamen allein aus dieser Datei.
+ *
+ * Der Rueckfall geht bewusst auf `_source` und nicht auf `scene.background`.
+ * `_source` ist der rohe Datensatz und loest die Warnung nicht aus; auf
+ * Foundry 13 traegt er denselben Wert, den der alte Zugriff geliefert haette.
+ * Beide Wege sind noetig, weil ein Pack je nach Herkunft mal migriert und mal
+ * unmigriert ankommt.
+ */
+function _hintergrundQuelle(scene) {
+  const stufe = Array.isArray(scene?.levels) ? scene.levels[0] : null;
+  return stufe?.background?.src || scene?._source?.background?.src || null;
+}
+
+/**
  * Bereits verbogene Welten geradeziehen.
  *
  * Der Fehler oben hat in ausgelieferte Welten geschrieben, und die Szenen
@@ -168,7 +188,7 @@ async function _repairTutorialPlaylist() {
  */
 async function _heileStreamPraefixe(scene) {
   if (!game.user.isGM) return;
-  const hintergrund = scene?.background?.src;
+  const hintergrund = _hintergrundQuelle(scene);
   if (typeof hintergrund !== "string" || !ABSOLUTE_RE.test(hintergrund)) return;
   const soll = _praefixVon(hintergrund);
   if (!soll) return;
