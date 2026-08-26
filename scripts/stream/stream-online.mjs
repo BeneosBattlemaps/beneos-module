@@ -235,7 +235,14 @@ export function hasStreamedContent(scene) {
   const host = (() => { try { return new URL(streamBase()).host } catch (_) { return "" } })()
   if (!host) return false
   const remote = (src) => typeof src === "string" && src.includes(host)
-  if (remote(scene?.background?.src) || remote(scene?.foreground)) return true
+  // Nicht ueber `scene.background`: ab Foundry 14 ist das ein veralteter
+  // Zugriffspfad, der bei jedem Lesen warnt und in Version 16 verschwindet.
+  // Gemessen auf The Forge 14.365 am 26.08.2026, diese Zeile erzeugte eine der
+  // drei Warnungen des Weltstarts. Dritte Stelle derselben Fehlerklasse nach
+  // dc08cca und 39b675e. `_source` ist der rohe Datensatz und warnt nicht.
+  const stufe = Array.isArray(scene?.levels) ? scene.levels[0] : null
+  const hintergrund = stufe?.background?.src || scene?._source?.background?.src || null
+  if (remote(hintergrund) || remote(scene?._source?.foreground)) return true
   for (const tile of scene?.tiles ?? []) {
     if (remote(tile?.texture?.src)) return true
     if (remote(tile?.flags?.["beneos-module"]?.stream?.video)) return true
