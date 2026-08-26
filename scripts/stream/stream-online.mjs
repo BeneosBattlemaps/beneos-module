@@ -173,7 +173,26 @@ export function noteResult(ok, reason) {
   if (!streamEnabled()) return
   if (ok) {
     consecutiveFailures = 0
-    if (state !== STATE.online) setState(STATE.online, "an asset arrived")
+    // Ein Erfolg heilt `offline` NICHT. Das darf allein die Probe.
+    //
+    // Eine gelungene Antwort beweist nicht, dass das Tor erreichbar ist: der
+    // Browser bedient sie moeglicherweise aus seinem eigenen Zwischenspeicher,
+    // und der antwortet auch ohne jede Leitung mit 200. Gemessen auf The Forge
+    // 14.365 am 26.08.2026 bei gesperrtem Tor: der Zustand sprang mitten im
+    // Zeichnen von `offline` auf `online` zurueck, die Szenenwache schaltete
+    // sich damit ab, und es entstanden 25 Netzfehler an einer Szene, die haette
+    // abgelehnt werden muessen.
+    //
+    // Aus `degraded` heilt ein Erfolg weiterhin, denn `degraded` heisst "das
+    // Tor antwortet, aber die Assets scheitern", und dagegen ist eine
+    // angekommene Datei das richtige Gegenargument.
+    //
+    // Der Preis ist eine Verzoegerung bis zur naechsten Probe. Genau das
+    // verlangt TC-PRJ-STR-005: der Punkt wird von selbst gruen, spaetestens
+    // nach dem laufenden Sondenabstand.
+    if (state === STATE.degraded || state === STATE.unbekannt) {
+      setState(STATE.online, "an asset arrived")
+    }
     return
   }
   if (navigator.onLine === false) {

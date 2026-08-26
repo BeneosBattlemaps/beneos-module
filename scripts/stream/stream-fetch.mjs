@@ -328,7 +328,14 @@ async function fromStore(store, url) {
 async function toStore(store, url, response) {
   // A denied asset answers 200 with a placeholder pixel. Storing that would
   // freeze the denial in place for three days, long after the right returns.
+  //
+  // Dasselbe gilt fuer den Bildpunkt, den der Ersatz bei bekanntem Offline
+  // selbst liefert. Er traegt `x-beneos-offline`, ist eine gueltige
+  // 200-Antwort und waere ohne diese Zeile drei Tage lang der gespeicherte
+  // Inhalt der Datei: die Verbindung kaeme zurueck, und der Kunde saehe
+  // trotzdem eine leere Flaeche, bis der Eintrag verfaellt.
   if (!response.ok || response.headers.get("x-beneos-denied")) return
+  if (response.headers.get("x-beneos-offline")) return
   if (isControl(url)) return
   try { await store.put(url, await stamped(response.clone())) } catch (_) { /* quota, opaque, ignore */ }
 }
