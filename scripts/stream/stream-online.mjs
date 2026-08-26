@@ -269,7 +269,10 @@ function installKlangWache() {
   const original = Sound.prototype.load
   const wrapped = async function beneosStreamSoundLoad(...args) {
     const src = String(this?.src || "")
-    if (streamEnabled() && isOffline() && src.includes(hostVomTor())) {
+    // `hostVomTor()` darf null liefern, und `includes(null)` sucht nach dem
+    // Text "null" statt nichts zu finden. Also erst pruefen, dann vergleichen.
+    const tor = hostVomTor()
+    if (tor && streamEnabled() && isOffline() && src.includes(tor)) {
       // Einmal je Sitzung genuegt. Eine Playlist mit zwanzig Stuecken erzeugte
       // sonst zwanzig Zeilen fuer denselben Sachverhalt.
       if (!klangGemeldet) {
