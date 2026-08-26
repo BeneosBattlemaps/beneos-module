@@ -288,7 +288,10 @@ function installKlangWache() {
 let klangGemeldet = false
 
 function hostVomTor() {
-  try { return new URL(streamBase()).host } catch (_) { return " " }
+  // Kein Platzhalter, sondern nichts: ein leerer Text wuerde von
+  // `String.includes` in JEDER Adresse gefunden und die Wache auf alles
+  // anwenden, was gerade geladen wird.
+  try { return new URL(streamBase()).host } catch (_) { return null }
 }
 
 /**
