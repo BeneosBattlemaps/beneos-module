@@ -591,6 +591,20 @@ export function installStreamFetch() {
       }
     }
 
+    // Eine Antwort, die niemand auslesen wird, ist hier zu Ende.
+    //
+    // Die Kopplung an den Rumpf unten setzt voraus, dass ihn jemand liest: erst
+    // dann feuert `flush` und beendet den Zeitgeber. Bei einer Fehlermeldung
+    // oder einer Abweisung tut das niemand. PIXI verwirft die Antwort, der
+    // Rumpf bleibt ungelesen, und der Zeitgeber laeuft bis zum Budget durch und
+    // meldet eine Zeitueberschreitung, die es nicht gab.
+    //
+    // Gemessen am 27.08.2026 als TC-PRJ-STR-032 auf Foundry 13.351: bei
+    // eingeschaltetem 404-Fehler zaehlte `diagnose()` **`status: 18` und
+    // zugleich `timeout: 12`**. Dieselbe Fehlerklasse wie in 7ec22a1, nur eine
+    // Ebene tiefer.
+    if (!response.ok || response.headers.get("x-beneos-denied")) beenden(0)
+
     // Der Rumpf bekommt seine Aufsicht, und zwar fuer JEDEN Ausgang.
     //
     // Auch eine Antwort mit Fehlerstatus und auch eine Abweisung tragen einen
