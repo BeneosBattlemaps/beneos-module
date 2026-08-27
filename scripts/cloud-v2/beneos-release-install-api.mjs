@@ -467,6 +467,30 @@ export async function installReleaseForTarget(opts = {}) {
     return done("not-found")
   }
 
+  // Ohne Verbindung endet der Weg hier, und zwar mit einem Satz.
+  //
+  // Alles bis hierher ist ortsfest: `resolveReleaseForJournal` liest den
+  // POI-Index, und der liegt als mitgelieferte Kopie im Modul und als
+  // gespeicherte Kopie im Datenverzeichnis. Ein Pin, dessen Ziel schon
+  // installiert ist, springt ohnehin lokal und kommt hier nie an.
+  //
+  // Ab der naechsten Zeile wird es teuer: `listReleases` fragt die Cloud, und
+  // schlaegt das fehl, oeffnet der Weg das Cloud-Fenster, das dann seinerseits
+  // ohne Verbindung am Katalog haengt. Der Kunde sieht ein Fenster, das nichts
+  // sagt, obwohl die Antwort feststeht: was nicht auf der Platte liegt, kann
+  // ohne Leitung nicht dorthin kommen.
+  //
+  // `navigator.onLine` wird nur in der verlaesslichen Richtung benutzt: sagt
+  // der Browser "kein Netz", stimmt das. Sagt er "Netz", kann die Route nach
+  // draussen trotzdem fehlen, und dafuer bleibt die gewoehnliche
+  // Fehlerbehandlung weiter unten zustaendig.
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    ui.notifications?.warn?.(L("BENEOS.Cloud.Bmap.PoiInstall.NoNetwork",
+      "This destination is not installed yet, and there is no network connection to fetch it. "
+      + "Reconnect and click the pin again."))
+    return done("offline")
+  }
+
   const list = await safeListReleases()
   const release = findCloudRelease(list, res.releaseDir)
   if (!release) {

@@ -186,6 +186,19 @@ const JSON_FILE_TO_PHASE = {
   "data/RollTable.json":    { phaseKey: "rolltables", collection: "tables",    docClass: () => globalThis.RollTable },
 }
 
+/**
+ * Liest die Hintergrundadresse eines fertigen Szenendokuments aus dem Rohsatz.
+ *
+ * Foundry 14 verschiebt den Hintergrund nach `levels[0].background`; das obere
+ * `Scene#background` loest zwar noch auf, warnt dabei aber und verschwindet in
+ * V16. `_source` umgeht die Warnung, und die Betreibervorgabe vom 24.08.2026
+ * verlangt null Warnungen im Konsolenlog.
+ */
+function hintergrundQuelle(scene) {
+  const src = scene?._source
+  return src?.levels?.[0]?.background?.src || src?.background?.src || ""
+}
+
 export class BeneosNativeBattlemapInstaller {
 
   constructor({ packageId, label = "", coverUrl = null, sceneSlugs = null, overwrite = false, record = null, source = null } = {}) {
@@ -534,15 +547,55 @@ export class BeneosNativeBattlemapInstaller {
   /**
    * Regenerate scene thumbnails. Native packs strip the author-world `thumb`
    * path (it would 404 in the customer world), so imported scenes arrive with no
-   * thumb; render a fresh one from the now-installed background. Best-effort and
-   * non-fatal (e.g. a video background that won't snapshot just stays thumbless
-   * until the GM opens the scene).
+   * thumb.
+   *
+   * Im Streaming wird dafuer NICHT gerendert. `Scene#createThumbnail` laedt jede
+   * sichtbare Kachel und die Hintergrundtextur in voller Aufloesung, nur um
+   * daraus 300x100 zu machen. Gemessen am 27.08.2026 ueber die Manifeste:
+   * `bm_0011` zieht so 37,19 MB fuer 26 Vorschaubilder, `bm_0093b` 22,07 MB fuer
+   * 13. Ein Release soll gestreamt rund 7 MB kosten, das Vorschaubild allein
+   * kostet also das Fuenffache des ganzen Release.
+   *
+   * Stattdessen zeigt `thumb` auf das Standbild, das der Szenenumbau eine Zeile
+   * vorher in den Hintergrund geschrieben hat. `thumb` ist ein FilePathField und
+   * prueft nur die Dateiendung, eine Gate-Adresse auf `.webp` geht also durch;
+   * dieselbe Adresse steht ohnehin schon in `background.src`. Das Verzeichnis
+   * traegt `loading="lazy"` (V13 wie V14), holt also nur sichtbare Zeilen, und
+   * die geholten Bytes sind kein Verlust: dieselbe Datei braucht die Szene beim
+   * Oeffnen.
+   *
+   * Ohne Streaming bleibt es beim Rendern. Dort liegen die Dateien lokal, das
+   * kostet keine Leitung.
    */
   async #regenerateSceneThumbs() {
     const scenes = (this._importedScenes || [])
       .map(s => game.scenes?.get(String(s.id)))
       .filter(sc => sc && !sc.thumb)
     if (!scenes.length) return
+
+    if (this._streamTargets?.size) {
+      const updates = []
+      for (const scene of scenes) {
+        const still = hintergrundQuelle(scene)
+        // Eine Flaeche ohne Standbild bleibt ohne Vorschaubild. Das Video zu
+        // holen, um daraus eines zu rendern, waere genau der Aufwand, den diese
+        // Aenderung abstellt. Seit Aufgabe 40 fehlt im Bestand kein Standbild.
+        if (!still || /\.(webm|mp4|m4v|ogv)$/i.test(still)) continue
+        updates.push({ _id: scene.id, thumb: still })
+      }
+      if (updates.length) {
+        try {
+          await Scene.implementation.updateDocuments(updates)
+        } catch (e) {
+          console.warn("BeneosNativeInstaller | thumbnail assignment failed", e?.message || e)
+        }
+      }
+      return
+    }
+
+    // Best-effort und nicht fatal (ein Videohintergrund, der sich nicht
+    // abbilden laesst, bleibt ohne Vorschaubild, bis der Spielleiter die Szene
+    // oeffnet).
     for (const scene of scenes) {
       try {
         const t = await scene.createThumbnail()
