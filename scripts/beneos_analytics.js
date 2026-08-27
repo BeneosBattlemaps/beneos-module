@@ -76,6 +76,7 @@ export class BeneosAnalytics {
   static _flushing = false
   static _consecutiveFailures = 0
   static _disabledForSession = false
+  static _unloadDone = false               // Sitzungsabschluss genau einmal
   static _breadcrumbs = []                 // last N {t, ts} event types (error context)
   static _codexThrottle = new Map()        // "tokenKey|section" -> last emit ts
   static _spellCastCounts = new Map()      // spellKey -> casts this session
@@ -95,6 +96,48 @@ export class BeneosAnalytics {
 
   static getFoundryId() {
     try { return game.settings.get(this.moduleId(), "beneos-cloud-foundry-id") || "" } catch (_) { return "" }
+  }
+
+  /**
+   * Die Kennung, unter der ein Stapel gesendet wird.
+   *
+   * Angemeldet: die echte Cloud-Kennung, unveraendert wie bisher.
+   * Nicht angemeldet: `anon:` plus eine gewuerfelte, in der Welt abgelegte
+   * Kette.
+   *
+   * WARUM DAS PRAEFIX. Eine anonyme Kennung darf niemals zufaellig auf ein
+   * echtes Konto treffen, und beide Arten muessen auf den ersten Blick
+   * unterscheidbar sein, ohne dass jemand nachschlagen muss. Der Server
+   * ueberspringt fuer `anon:` die Kontoaufloesung ganz, statt sie ins Leere
+   * laufen zu lassen: sonst waechst dort spaeter eine Ersatzregel und ordnet
+   * die Zeilen doch jemandem zu.
+   *
+   * WARUM SIE ERHALTEN BLEIBT. Ohne Ablage in der Welt zaehlte dieselbe Welt
+   * jeden Abend als neue, und die Zahl "wie viele Welten laufen ohne Konto"
+   * waere die Zahl der Sitzungen. Die Kennung wird beim Anmelden NICHT
+   * geloescht: eine spaetere Anmeldung soll die anonyme Zeit derselben Welt
+   * zuordenbar machen (so entschieden am 2026-08-24), und dafuer muss sie
+   * ueberleben.
+   *
+   * Gibt "" nur zurueck, wenn das Setting nicht erreichbar ist. Dann bleibt
+   * der Stapel liegen wie zuvor.
+   */
+  static getSendeKennung() {
+    const echt = this.getFoundryId()
+    if (echt) return echt
+    try {
+      let anon = game.settings.get(this.moduleId(), "beneos-analytics-anon-id") || ""
+      if (!anon) {
+        anon = foundry.utils.randomID(32)
+        // Nicht abgewartet: die Kennung liegt bereits in der Variablen, und
+        // der Stapel soll nicht auf einen Datenbankschreibvorgang warten.
+        // Schlaegt das Schreiben fehl, wuerfelt die naechste Sitzung neu; das
+        // kostet eine doppelt gezaehlte Welt, keinen verlorenen Stapel.
+        game.settings.set(this.moduleId(), "beneos-analytics-anon-id", anon)
+          .catch(() => {})
+      }
+      return `anon:${anon}`
+    } catch (_) { return "" }
   }
 
   static isEnabled() {
@@ -134,7 +177,42 @@ export class BeneosAnalytics {
     this._sessionSampler = setInterval(() => this._sampleSession(), SESSION_SAMPLE_MS)
     this._sampleSession()
 
+    // DREI HAKEN, UND ZWEI VERSCHIEDENE HANDLUNGEN. DER UNTERSCHIED IST HIER
+    // DAS GANZE THEMA.
+    //
+    // `beforeunload` feuert beim gewollten Schliessen. Es feuert NICHT, wenn
+    // der Browser einen Hintergrundtab verwirft oder Foundry abstuerzt. Genau
+    // dann gehen die Ereignisse verloren, die es nur einmal je Sitzung gibt:
+    // session_player_count, das letzte scene_time, ein laufendes
+    // combat_encounter. `pagehide` deckt das ab.
+    //
+    // `visibilitychange` auf hidden feuert bei etwas voellig anderem: bei
+    // jedem Reiterwechsel, jedem Minimieren, jedem Alt-Tab. Das ist KEIN
+    // Sitzungsende. Wer es als eines behandelt, richtet drei Schaeden an, und
+    // zwar bei jedem Spielleiter, der einmal in ein anderes Fenster schaut:
+    //
+    //   1. session_player_count ginge mit einer viel zu kurzen Dauer raus.
+    //   2. _closeSceneTime() setzt _currentScene auf null. Danach wird bis
+    //      zum naechsten canvasReady KEINE Spielzeit mehr gemessen. Bleibt
+    //      der Spielleiter auf derselben Karte, ist der ganze restliche Abend
+    //      weg. Ausgerechnet die Messung, um die es hier geht.
+    //   3. Laufende Kaempfe wuerden abgerechnet und aus _combats entfernt,
+    //      also mit den Runden bis zum Alt-Tab statt mit denen bis zum Ende.
+    //
+    // Deshalb: beim Verstecken wird nur GESICHERT, nicht abgeschlossen. Der
+    // Abschluss bleibt den beiden Haken vorbehalten, die wirklich ein Ende
+    // bedeuten.
+    //
+    // Was bleibt, ist der Fall, dass ein verworfener Hintergrundreiter auch
+    // kein `pagehide` mehr bekommt. Dann fehlt die Sitzungszeile, aber die
+    // gesammelten Ereignisse liegen in der Sicherung und gehen beim naechsten
+    // Weltstart hinaus. Ein fehlender Abschluss ist verkraftbar, eine
+    // erfundene zweite Sitzung nicht.
     window.addEventListener("beforeunload", () => this._onUnload())
+    window.addEventListener("pagehide", () => this._onUnload())
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") this._onHide()
+    })
     this._installErrorCapture()
 
     // Backlogged events from a previous session can flush now.
@@ -145,7 +223,12 @@ export class BeneosAnalytics {
   // Queue one event. `payload` may carry asset_id / asset_type / bytes which are
   // promoted to dedicated columns; everything else becomes the JSON payload.
   static track(eventType, payload = {}) {
-    if (!this.isEnabled() || this._disabledForSession) return
+    // `_disabledForSession` stand hier frueher mit und hat nach drei
+    // Fehlversuchen auch das AUFZEICHNEN abgeschaltet, nicht nur das Senden.
+    // Eine Stoerung um acht Uhr loeschte damit den ganzen Abend danach. Jetzt
+    // wird weiter gesammelt, gedeckelt bei MAX_QUEUE, und beim Schliessen ins
+    // Backup geschrieben; die naechste Sitzung sendet es nach.
+    if (!this.isEnabled()) return
     if (this.suppressTourTracking && TOUR_SUPPRESSED_EVENTS.has(String(eventType))) return
     try {
       // Breadcrumb ring buffer: event types only (no payload), attached to
@@ -230,7 +313,12 @@ export class BeneosAnalytics {
   static async flush(useBeacon = false) {
     if (this._disabledForSession) return
     if (!this.queue.length) return
-    const foundryId = this.getFoundryId()
+    // Frueher stand hier `getFoundryId()` und ein Abbruch, wenn sie fehlt.
+    // Eine nie angemeldete Welt hat damit NIE gesendet, auch kein world_open,
+    // und war in jeder Auswertung nicht von einer nicht installierten zu
+    // unterscheiden. Jetzt sendet sie unter einer anonymen Kennung; nur wenn
+    // auch die nicht zu beschaffen ist, bleibt der Stapel liegen.
+    const foundryId = this.getSendeKennung()
     if (!foundryId) return // cannot attribute yet, keep queued
 
     const url = `${ANALYTICS_ENDPOINT}?ingest=1&foundryId=${encodeURIComponent(foundryId)}`
@@ -281,9 +369,22 @@ export class BeneosAnalytics {
     this._disabledForSession = true
     try { if (this._flushTimer) clearInterval(this._flushTimer) } catch (_) {}
     this._flushTimer = null
-    this.queue = []
-    try { window.localStorage?.removeItem(BACKUP_KEY) } catch (_) {}
-    try { console.warn("Beneos | analytics endpoint unreachable, telemetry paused for this session.") } catch (_) {}
+    // FRUEHER STAND HIER `this.queue = []` UND EIN removeItem AUF DAS BACKUP.
+    //
+    // Damit kostete jede unerreichbare Gegenstelle die vollstaendige Sitzung:
+    // drei Fehlversuche, und alles Gemessene war weg, auch das, was lange vor
+    // der Stoerung entstanden war. Ein Hotelnetz, eine Firewall oder ein
+    // kurzer Ausfall unserer Seite loeschte einen Spielabend.
+    //
+    // Die Sorge dahinter war, dass eine tote Gegenstelle die Warteschlange
+    // wachsen laesst. Das erledigt bereits die Deckelung bei MAX_QUEUE: das
+    // aelteste faellt heraus, der Speicher bleibt beschraenkt. Es brauchte
+    // nie eine Loeschung.
+    //
+    // Warteschlange und Backup bleiben also stehen. Der Sendeversuch ruht nur
+    // bis zum naechsten Weltstart, und dann geht der Rueckstand raus.
+    this._sichern()
+    try { console.warn("Beneos | analytics endpoint unreachable, telemetry paused for this session (queued for the next one).") } catch (_) {}
   }
 
   /********************************************************************************** */
@@ -524,7 +625,12 @@ export class BeneosAnalytics {
       if (!combatId) return
       let c = this._combats.get(combatId)
       if (!c) {
-        c = { battlemapKey: this._isBeneosScene(canvas?.scene) ? this._beneosBattlemapKey(canvas.scene) : "", roster: new Map() }
+        const aufKarte = this._isBeneosScene(canvas?.scene)
+        c = {
+          battlemapKey:  aufKarte ? this._beneosBattlemapKey(canvas.scene) : "",
+          battlemapPack: aufKarte ? this._scenePack(canvas.scene) : "",
+          roster: new Map()
+        }
         this._combats.set(combatId, c)
       }
       const round = Number(combatant?.combat?.round ?? game.combat?.round) || 0
@@ -587,12 +693,18 @@ export class BeneosAnalytics {
       }
       const rosterList = [...roster.values()].sort((x, y) => y.r - x.r).slice(0, 20)
 
-      this.track("combat_encounter", {
+      const nutzlast = {
         battlemap_key: c.battlemapKey || "",
         total_rounds: totalRounds,
         beneos: [...beneos.values()].slice(0, 15),
         roster: rosterList
-      })
+      }
+      // Nur wenn ableitbar. Die Nutzlast dieses Ereignisses ist die groesste
+      // im ganzen Modul, und der Server verwirft sie ab 8000 Byte
+      // VOLLSTAENDIG statt zu kuerzen. Ein leeres Feld waere hier also nicht
+      // nur bedeutungslos, sondern bezahlt.
+      if (c.battlemapPack) nutzlast.battlemap_pack = c.battlemapPack
+      this.track("combat_encounter", nutzlast)
     } catch (_) { /* swallow */ }
   }
 
@@ -630,11 +742,16 @@ export class BeneosAnalytics {
 
   // Item-added events, aggregated over a short window so a generated shop's
   // bulk import produces one event per origin instead of dozens.
-  static trackItemAdded(originSlug, parentType) {
+  static trackItemAdded(originSlug, parentType, itemKey) {
     try {
-      if (!originSlug) return
+      // Frueher stand hier `if (!originSlug) return`, und damit war jeder
+      // installierte Beneos-Gegenstand ohne Loot-Herkunft still verworfen.
+      // Jetzt reicht eines von beiden; nur wenn gar nichts identifiziert,
+      // gibt es nichts zu melden.
+      const ik = itemKey ? String(itemKey).slice(0, 32) : ""
+      if (!originSlug && !ik) return
       const pt = parentType === "character" ? "character" : (parentType === "npc" ? "npc" : "other")
-      const key = `${originSlug}|${pt}`
+      const key = `${originSlug || ""}|${pt}|${ik}`
       this._itemAddBuffer.set(key, (this._itemAddBuffer.get(key) || 0) + 1)
       if (this._itemAddTimer) return
       this._itemAddTimer = setTimeout(() => {
@@ -643,8 +760,14 @@ export class BeneosAnalytics {
           const buf = this._itemAddBuffer
           this._itemAddBuffer = new Map()
           for (const [k, count] of buf) {
-            const [origin_slug, parent_type] = k.split("|")
-            this.track("item_added", { origin_slug: this.sanitize(origin_slug, 48), parent_type, count })
+            const [origin_slug, parent_type, asset] = k.split("|")
+            const nutzlast = { parent_type, count }
+            if (origin_slug) nutzlast.origin_slug = this.sanitize(origin_slug, 48)
+            // Als asset_id, nicht als Nutzlastfeld: nur so landet der Wert in
+            // der eigenen Spalte und laesst sich gegen die Installationen und
+            // den Katalog joinen.
+            if (asset) nutzlast.asset_id = asset
+            this.track("item_added", nutzlast)
           }
         } catch (_) { /* swallow */ }
       }, ITEM_ADD_WINDOW_MS)
@@ -665,15 +788,67 @@ export class BeneosAnalytics {
     } catch (_) { /* swallow */ }
   }
 
-  static trackDownloadRetry(assetId, attempt) {
+  // `reason` ist die INSTALL_ERROR-Kategorie des Fehlschlags, also warum
+  // wiederholt wurde. Sie steht im Fingerabdruck, weil sonst die Drosselung
+  // pro Asset den zweiten, andersartigen Fehler derselben Datei schluckt und
+  // genau der die interessante Zeile waere.
+  static trackDownloadRetry(assetId, attempt, reason) {
     try {
-      const fp = `download_retry|${assetId || ""}`
+      const grund = this.sanitize(String(reason || "unknown"), 24)
+      const fp = `download_retry|${assetId || ""}|${grund}`
       const now = Date.now()
       if (now - (this._errorThrottle.get(fp) || 0) < ERROR_THROTTLE_MS) return
       this._errorThrottle.set(fp, now)
       this.track("download_retry", {
         asset_id: assetId ? String(assetId).slice(0, 32) : null,
-        attempt: Math.max(1, Number(attempt) || 1)
+        attempt: Math.max(1, Number(attempt) || 1),
+        reason: grund
+      })
+    } catch (_) { /* swallow */ }
+  }
+
+  /**
+   * Ein Ereignis je abgeschlossenem Installlauf, gelungen oder mit Teilfehler.
+   *
+   * WARUM ES DAS BISHER NICHT GAB, UND WAS DAS GEKOSTET HAT
+   *
+   * Es gab `install_initiated` beim Klick und `install_error` beim Scheitern,
+   * aber nichts dazwischen. Gemessen am 2026-08-24: 18.601 Anfaenge, null
+   * Abschluesse. Damit war die naheliegendste Frage des ganzen Trichters nicht
+   * zu beantworten, naemlich wie viele Installationen ueberhaupt ankommen.
+   * Ein Nutzer, der abbricht, und einer, dem alles gelingt, sahen in den Daten
+   * gleich aus.
+   *
+   * WARUM EIN TEILFEHLER MITZAEHLT
+   *
+   * Er ist ein Abschluss, kein Abbruch. Die Karte liegt im Szenenverzeichnis,
+   * nur nicht vollstaendig. Wie schlimm es war, steht in `failed`, und der
+   * eigene `install_error` traegt die Einzelheiten. Beide Ereignisse zaehlen
+   * heisst denselben Lauf zweimal zaehlen.
+   *
+   * `bytes` wandert in `_buildEvent` in die eigene Spalte
+   * `bytes_transferred`, die seit jeher existiert und bei jedem Ereignis auf
+   * NULL stand.
+   */
+  static trackInstallCompleted(info) {
+    try {
+      if (!info) return
+      const t = info.totals || {}
+      this.track("install_completed", {
+        asset_id: info.packageId ? String(info.packageId).slice(0, 32) : null,
+        asset_type: "battlemap",
+        bytes: Number(info.bytes) || 0,
+        duration_ms: Math.max(0, Number(info.durationMs) || 0),
+        assets: Number(t.assets) || 0,
+        ok: Number(t.ok) || 0,
+        repaired: Number(t.repaired) || 0,
+        failed: Number(info.failed) || 0,
+        docs_created: Number(t.docsCreated) || 0,
+        docs_updated: Number(t.docsUpdated) || 0,
+        // Ein Lauf, der nur eine einzelne Szene holt, ist etwas anderes als
+        // ein ganzes Paket. Ohne diese Unterscheidung sieht ein Paket mit
+        // vierzig Szenen im Mittel so aus wie vierzig kleine Installationen.
+        scoped: !!info.scoped
       })
     } catch (_) { /* swallow */ }
   }
@@ -681,7 +856,8 @@ export class BeneosAnalytics {
   // One summary event per failed install run (native battlemap installer).
   // Carries the classified failure picture (INSTALL_ERROR categories) so the
   // dashboard can separate our bugs (notfound/signature/server) from user
-  // environments (permission/quota/network/timeout). One event per run, not
+  // environments (permission/quota/network/timeout) and from third-party
+  // interference (verify: uploaded fine, unreadable afterwards). One event per run, not
   // per asset: keeps well under the 50-event batch and 2000-byte payload caps.
   static trackInstallError(result) {
     try {
@@ -718,6 +894,73 @@ export class BeneosAnalytics {
   }
 
   /********************************************************************************** */
+  // Incomplete token/item/spell install. The battlemap path has reported its
+  // failures since forever; the cloud path had no counterpart, so a creature
+  // that installed with a missing aspect was invisible to us and reached us
+  // only if the customer happened to write on Discord. Emits the same
+  // `install_error` event so both paths land in one dashboard.
+  //
+  // `health` is the object from _beneosValidateInstalledAsset AFTER the repair
+  // pass, so what arrives here is what actually stayed broken.
+  static trackAssetInstallError(kind, key, health) {
+    try {
+      const missing = Array.isArray(health?.aspectsMissing) ? health.aspectsMissing : []
+      if (missing.length === 0) return
+      const fp = `install_error|${kind}|${key || ""}`
+      const now = Date.now()
+      if (now - (this._errorThrottle.get(fp) || 0) < ERROR_THROTTLE_MS) return
+      this._errorThrottle.set(fp, now)
+      this.track("install_error", {
+        asset_id: key ? String(key).slice(0, 32) : null,
+        asset_type: this.sanitize(String(kind || "unknown"), 16),
+        fatal_category: "verify",
+        categories: { verify: missing.length },
+        assets_failed: missing.length,
+        assets_ok: Math.max(0, (Number(health?.aspectsExpected) || 0) - missing.length),
+        docs_failed: 0,
+        sample_target: this.sanitize(missing.join(", "), 96),
+        sample_message: "aspect missing on disk after repair pass",
+        system: this.sanitize(String(game.system?.id || ""), 32),
+        foundry: this.sanitize(String(game.version || ""), 16),
+        forge: typeof ForgeVTT !== "undefined" && ForgeVTT?.usingTheForge === true
+      })
+    } catch (_) { /* swallow */ }
+  }
+
+  /********************************************************************************** */
+  // The server refused an asset the user asked for. Not a fault: the entitlement
+  // gate did its job. It is reported because a refusal is invisible to us
+  // otherwise, and a run of them means the module is offering something it
+  // cannot deliver - which is exactly how the 2026-08-24 case surfaced, through
+  // a Discord post rather than through us.
+  //
+  // `reason` is what the server sent: "loyalty" (a monthly reward this user has
+  // no grant for) or "tier". Absent on pre-2026-08-24 servers.
+  static trackAssetRefused(kind, key, reason) {
+    try {
+      const why = this.sanitize(String(reason || "unknown"), 16)
+      const fp = `install_error|refused|${kind}|${key || ""}`
+      const now = Date.now()
+      if (now - (this._errorThrottle.get(fp) || 0) < ERROR_THROTTLE_MS) return
+      this._errorThrottle.set(fp, now)
+      this.track("install_error", {
+        asset_id: key ? String(key).slice(0, 32) : null,
+        asset_type: this.sanitize(String(kind || "unknown"), 16),
+        fatal_category: "entitlement",
+        categories: { entitlement: 1 },
+        assets_failed: 1,
+        assets_ok: 0,
+        docs_failed: 0,
+        sample_target: why,
+        sample_message: "server refused: not entitled",
+        system: this.sanitize(String(game.system?.id || ""), 32),
+        foundry: this.sanitize(String(game.version || ""), 16),
+        forge: typeof ForgeVTT !== "undefined" && ForgeVTT?.usingTheForge === true
+      })
+    } catch (_) { /* swallow */ }
+  }
+
+  /********************************************************************************** */
   // Scene activation. Tracks distinct scenes per session (for maps/session)
   // and emits a one-time scene_activate per Beneos battlemap.
   static trackSceneActivate(scene) {
@@ -732,6 +975,8 @@ export class BeneosAnalytics {
         // which battlemap they are talking about.
         this._currentScene = {
           key:     this._beneosBattlemapKey(scene),
+          pack:    this._scenePack(scene),
+          dir:     this._beneosBattlemapDir(scene),
           assetId: this._sceneAssetId(scene),
           ts:      Date.now()
         }
@@ -754,6 +999,15 @@ export class BeneosAnalytics {
           // install-state existed.
           const assetId = this._currentScene?.assetId
           if (assetId) payload.asset_id = assetId
+          // Dasselbe Prinzip: fehlt heisst "nicht ableitbar", nicht "keins".
+          const pack = this._scenePack(scene)
+          if (pack) payload.battlemap_pack = pack
+          // Der Ordner ist kein Paket und behauptet auch keins zu sein. Er
+          // geht mit, weil sich aus den Welten MIT Install-State die
+          // Abbildung Ordner zu Release lernen laesst, und die hilft dann
+          // den Welten ohne.
+          const dir = this._beneosBattlemapDir(scene)
+          if (dir) payload.battlemap_dir = dir
           this.track("scene_activate", payload)
         })
       }
@@ -781,6 +1035,32 @@ export class BeneosAnalytics {
     } catch (_) {
       return ""
     }
+  }
+
+  /**
+   * Das Paket einer Szene, oder "" wenn es nicht bekannt ist.
+   *
+   * EINE QUELLE, UND KEIN ERSATZ DAFUER.
+   *
+   * Der Install-State kennt das Release, aus dem eine Szene stammt, weil er
+   * beim Installieren die Szenenkennungen mitgeschrieben hat. Er ist die
+   * einzige Quelle im Modul, die das WEISS statt es aus einem Pfad zu
+   * schliessen.
+   *
+   * Frueher stand hier ein Rueckfall auf den Pfad. Der ist gestrichen: der
+   * Ordner ueber der Szene ist nicht das Release, siehe
+   * `_beneosBattlemapDir`. Ein Rueckfall haette die Deckung erhoeht und die
+   * Richtigkeit gesenkt, und genau diese Art Tausch hat den Fehler erzeugt,
+   * der hier repariert wird.
+   *
+   * Leer heisst: diese Welt hat vor dem Install-State installiert, oder die
+   * Karte wurde von Hand kopiert. Das ist ein Befund und keine Luecke.
+   */
+  static _scenePack(scene) {
+    try {
+      const genau = BeneosInstallState.findReleaseDirByScene(scene?.id)
+      return genau ? this._pathKey(genau, 96) : ""
+    } catch (_) { return "" }
   }
 
   /**
@@ -852,6 +1132,8 @@ export class BeneosAnalytics {
       if (seconds > SCENE_TIME_CAP_S) seconds = SCENE_TIME_CAP_S
       const payload = { battlemap_key: cur.key, seconds }
       if (cur.assetId) payload.asset_id = cur.assetId
+      if (cur.pack) payload.battlemap_pack = cur.pack
+      if (cur.dir) payload.battlemap_dir = cur.dir
       // WAS DIE STUFE "GESPIELT" AUSMACHT.
       //
       // Ohne diese Zahl kann die Auswertung nicht zwischen einer Karte
@@ -897,6 +1179,56 @@ export class BeneosAnalytics {
       // folder for a meaningful key; fall back to the file when there is no folder.
       const folder = segs.pop() || ""
       return this._pathKey(folder || file, 96)
+    } catch (_) { return "" }
+  }
+
+  /**
+   * Der ORDNER ueber dem Szenenordner. Ausdruecklich KEIN Paket.
+   *
+   * WARUM DIESE FUNKTION NICHT MEHR `_beneosBattlemapPack` HEISST
+   *
+   * Sie hiess so, und die Annahme dahinter war falsch. Der Pfad lautet
+   *
+   *   .../4k/48_dourcrag_castle_1f/48-01_dourcrag_1f_bright_a/<datei>
+   *          \____ Ordner _______/  \______ Szene __________/
+   *
+   * und es lag nahe, den Ordner als Paket zu lesen und seine fuehrende Zahl
+   * als Releasenummer. GEMESSEN in einer laufenden Welt am 2026-08-24:
+   * dasselbe Release `bm_0048_dourcrag_castle_day` liegt in ZWEI Ordnern,
+   * `48_dourcrag_castle_1f` und `49_dourcrag_castle_2f_3f`. Und
+   * `bm_0049_dourcrag_castle_horror` ist ein eigenes, verkauftes Release.
+   *
+   * Der Pfad haette also die Obergeschosse von Dourcrag Castle Day als
+   * Dourcrag Castle Horror gemeldet. Das ist derselbe Fehler, den dieses
+   * Feld abschaffen sollte, nur eine Ebene hoeher.
+   *
+   * WAS ER TROTZDEM WERT IST
+   *
+   * Er ist ein stabiler, ehrlicher Ordnername. Aus den Welten, die einen
+   * Install-State fuehren, laesst sich die Abbildung Ordner zu Release
+   * lernen und spaeter auf die Welten anwenden, die keinen haben. Deshalb
+   * geht er mit, aber unter einem Namen, der nichts verspricht:
+   * `battlemap_dir`.
+   *
+   * Das Paket selbst kommt ausschliesslich aus dem Install-State, siehe
+   * `_scenePack`. Wo der nichts weiss, wird nichts behauptet.
+   */
+  static _beneosBattlemapDir(scene) {
+    try {
+      const src = String(this._sceneBackgroundSrc(scene))
+      const segs = src.split("?")[0].split("/").filter(Boolean)
+      segs.pop()                       // Datei
+      const folder = segs.pop() || ""  // Szenenordner, das ist battlemap_key
+      const dir = segs.pop() || ""
+      // Ohne Szenenordner gibt es auch nichts darueber: dann stand die Datei
+      // direkt im Ordner und `folder` ist bereits er selbst.
+      // Ein leerer Rueckgabewert heisst "nicht ableitbar", niemals "keiner".
+      if (!folder) return ""
+      // Die Zwischenstufen des Cloud-Pfads sind kein Ordner im gemeinten
+      // Sinn. Ohne diesen Riegel meldet eine flach abgelegte Szene `4k`, und
+      // das saehe spaeter aus wie eine Ablage mit sehr viel Spielzeit.
+      if (/^(4k|hd|2k|8k|battlemaps|cloud|beneos_assets|scenes?|data|assets)$/i.test(dir)) return ""
+      return this._pathKey(dir, 96)
     } catch (_) { return "" }
   }
 
@@ -952,6 +1284,8 @@ export class BeneosAnalytics {
       if (now - (this._errorThrottle.get(fp) || 0) < ERROR_THROTTLE_MS) return
       this._errorThrottle.set(fp, now)
       const assetId = this._sceneAssetId(scene)
+      const pack = this._scenePack(scene)
+      const dir = this._beneosBattlemapDir(scene)
       this._sha256(scene.id).then(hash => {
         this.track("battlemap_error", {
           battlemap_key: this._beneosBattlemapKey(scene),
@@ -960,6 +1294,11 @@ export class BeneosAnalytics {
           // Haelfte, und gerade bei einer kaputten Szene ist die Frage
           // "welches Release" die erste.
           ...(assetId ? { asset_id: assetId } : {}),
+          ...(pack ? { battlemap_pack: pack } : {}),
+          // Bei einem Fehler ist der Ordner die Spur zur Datei auf der
+          // Platte. Er steht hier auch dann, wenn das Release unbekannt ist,
+          // und genau dann braucht ihn jemand.
+          ...(dir ? { battlemap_dir: dir } : {}),
           scene_id_hash: hash,
           message: this.sanitize(this._splitStackPackages(err?.message || String(err || "")).message, 200),
           stack_packages: (() => {
@@ -989,7 +1328,43 @@ export class BeneosAnalytics {
     } catch (_) { /* swallow */ }
   }
 
+  /**
+   * Der Reiter verschwindet aus dem Blick, die Sitzung laeuft weiter.
+   *
+   * Sichern und wegschicken, sonst nichts. Kein Sitzungsabschluss, keine
+   * Szene geschlossen, kein Kampf abgerechnet. Siehe die Begruendung an den
+   * Haken in start().
+   *
+   * Der Nutzen ist trotzdem gross: genau hier verliert der Browser einen
+   * Reiter, wenn ihm der Speicher ausgeht, und ohne diese Sicherung waere
+   * alles seit dem letzten Sendetakt weg. Der Takt sind fuenfzehn Minuten.
+   */
+  static _onHide() {
+    if (this._unloadDone) return
+    try { this.flush(true) } catch (_) {}
+    this._sichern()
+  }
+
+  /**
+   * Die Warteschlange in den Browserspeicher legen.
+   *
+   * Gekappt bei MAX_BACKUP. Die aeltesten gewinnen, weil die Warteschlange
+   * bei Ueberlauf schon die neuesten behaelt; beides zusammen deckt die
+   * Sitzung von beiden Enden ab.
+   */
+  static _sichern() {
+    try {
+      if (this.queue.length && window.localStorage) {
+        window.localStorage.setItem(BACKUP_KEY, JSON.stringify(this.queue.slice(0, MAX_BACKUP)))
+      }
+    } catch (_) {}
+  }
+
   static _onUnload() {
+    // Genau einmal je Sitzung, egal welcher der beiden Abschlusshaken zuerst
+    // kommt. `visibilitychange` gehoert ausdruecklich nicht dazu.
+    if (this._unloadDone) return
+    this._unloadDone = true
     // Close the open map visit and summarise still-running combats with the
     // rounds measured so far, so a hard world-close loses neither.
     try { this._closeSceneTime() } catch (_) {}
@@ -1012,11 +1387,7 @@ export class BeneosAnalytics {
       })
     } catch (_) { /* swallow */ }
     try { this.flush(true) } catch (_) {}
-    try {
-      if (this.queue.length && window.localStorage) {
-        window.localStorage.setItem(BACKUP_KEY, JSON.stringify(this.queue.slice(0, MAX_BACKUP)))
-      }
-    } catch (_) {}
+    this._sichern()
   }
 
   /********************************************************************************** */
@@ -1099,10 +1470,18 @@ export class BeneosAnalytics {
   static _errorContext() {
     try {
       const scene = canvas?.scene
+      const unsere = this._isBeneosScene(scene)
+      // Einmal ermitteln, nicht zweimal: die Vorlage stand hier mit zwei
+      // Aufrufen derselben Funktion, und bei jedem Fehler zaehlt jede Zeile.
+      const pack = unsere ? this._scenePack(scene) : ""
       return {
         foundry_version: String(game.version || game.data?.version || "").slice(0, 16),
         system: `${game.system?.id || ""}/${game.system?.version || ""}`.slice(0, 32),
-        battlemap_key: this._isBeneosScene(scene) ? this._beneosBattlemapKey(scene) : "",
+        battlemap_key: unsere ? this._beneosBattlemapKey(scene) : "",
+        // Ein Fehler, der nur auf einem Release auftritt, ist ein
+        // Releasefehler. Ueber battlemap_key allein war das nicht zu sehen,
+        // weil dessen fuehrende Zahl die Szene meint und nicht das Release.
+        ...(pack ? { battlemap_pack: pack } : {}),
         hosting: this.detectHostingType(),
         breadcrumbs: this._breadcrumbs.map(b => b.t)
       }

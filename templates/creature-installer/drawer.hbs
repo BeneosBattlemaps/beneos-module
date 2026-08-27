@@ -99,11 +99,15 @@
           <div class="bci-bed {{#unless isPatron}}bci-bed-deemphasised{{/unless}}">
             {{#each beneos}}
               <div class="bci-tokencol">
-                <div class="bci-disc bci-disc-beneos bci-shape-{{shape}} {{#if available}}bci-available{{/if}} {{#if alternative}}bci-alt{{/if}} {{#if needsInstall}}bci-needsinstall{{/if}} {{#if dispClass}}bci-disp-{{dispClass}}{{/if}}" draggable="{{draggable}}" data-uuid="{{uuid}}" data-key="{{key}}" data-name="{{name}}" data-tokenkey="{{tokenKey}}" title="{{#if alternative}}{{localize 'BENEOS.CreatureInstaller.AlternativeTooltip'}}{{else if available}}{{localize 'BENEOS.CreatureInstaller.OpenSheetHint'}}{{else}}{{name}}{{/if}}">
+                <div class="bci-disc bci-disc-beneos bci-shape-{{shape}} {{#if available}}bci-available{{/if}} {{#if alternative}}bci-alt{{/if}} {{#if needsInstall}}bci-needsinstall{{/if}} {{#if blocked}}bci-blocked{{/if}} {{#if dispClass}}bci-disp-{{dispClass}}{{/if}}" draggable="{{draggable}}" data-uuid="{{uuid}}" data-key="{{key}}" data-name="{{name}}" data-tokenkey="{{tokenKey}}" title="{{#if blocked}}{{blockTooltip}}{{else if alternative}}{{localize 'BENEOS.CreatureInstaller.AlternativeTooltip'}}{{else if available}}{{localize 'BENEOS.CreatureInstaller.OpenSheetHint'}}{{else}}{{name}}{{/if}}">
                   {{#if img}}{{#if isVideo}}<video src="{{img}}" muted loop autoplay playsinline preload="metadata" draggable="false"></video>{{else}}<img src="{{img}}" alt="{{name}}" draggable="false" onerror="this.style.display='none'">{{/if}}{{/if}}
                   {{#if alternative}}<span class="bci-alt-badge" title="{{localize 'BENEOS.CreatureInstaller.AlternativeTooltip'}}">{{localize 'BENEOS.CreatureInstaller.AltShort'}}</span>{{/if}}
                   {{#if available}}
                     <span class="bci-check" title="{{localize 'BENEOS.CreatureInstaller.Available'}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span>
+                  {{else if blocked}}
+                    {{!-- Out of this user's reach: named, never offered. No lock, no
+                          special effect; the reason lives in the tooltip + footnote. --}}
+                    <span class="bci-blocked-badge" title="{{blockTooltip}}">{{blockLabel}}</span>
                   {{else if showInstallBadge}}
                     <span class="bci-badge">+</span>
                   {{/if}}
@@ -113,6 +117,14 @@
             {{/each}}
             {{#unless hasBeneos}}<p class="bci-empty">{{localize 'BENEOS.CreatureInstaller.NoBeneos'}}</p>{{/unless}}
           </div>
+
+          {{!-- Why some creatures above are shown but cannot be installed. Stated
+                in plain text rather than hidden in a tooltip, one line per reason. --}}
+          {{#if hasBlocked}}
+            <div class="bci-blocked-notes">
+              {{#each blockNotes}}<p class="bci-blocked-note">{{this}}</p>{{/each}}
+            </div>
+          {{/if}}
 
           {{#unless isPatron}}
             <div class="bci-gate">

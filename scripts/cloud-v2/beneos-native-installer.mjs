@@ -20,7 +20,7 @@
  * through #fetchAsset (inactivity-timeout + exponential backoff + signed-URL
  * refresh on 403) and #safeUpload (catches throws AND silent no-path failures,
  * which is also the Forge success signal). Failures are classified
- * (permission/quota/timeout/network/signature/notfound/server) and surfaced in
+ * (permission/quota/timeout/network/signature/notfound/server/verify) and surfaced in
  * a transparent report instead of a silent miss.
  */
 
@@ -70,6 +70,12 @@ export const INSTALL_ERROR = {
   SIGNATURE:  "signature",
   NOTFOUND:   "notfound",
   SERVER:     "server",
+  // Download and upload both reported success, but reading the file back from
+  // the data store afterwards fails. Never produced by classifyTransferError:
+  // it is the verify pass telling us the transfer layer was lied to. Real
+  // causes are third-party upload converters and hosts that refuse to serve
+  // .svg as an image, so it must not be filed under UNKNOWN.
+  VERIFY:     "verify",
   UNKNOWN:    "unknown",
 }
 
@@ -225,6 +231,12 @@ export class BeneosNativeBattlemapInstaller {
     if (!packageId) throw new Error("BeneosNativeBattlemapInstaller: packageId is required")
     this.packageId = packageId
     this.label     = label || packageId
+    // Kennung dieses Installationslaufs. Ein Release bringt Karten UND die
+    // Kreaturen mit, die auf ihnen stehen; das ist EINE Handlung des Nutzers.
+    // Ohne gemeinsame Kennung stuende jede mitgelieferte Kreatur als eigener
+    // Griff in der Auswertung.
+    this.erwerbsvorgang = (globalThis.game?.beneos?.cloud?.neuerErwerbsvorgang?.())
+      || foundry.utils.randomID(32).toLowerCase().replace(/[^a-f0-9]/g, "0")
     this.coverUrl  = coverUrl
     // Pack source: cloud (default — signed URLs via BeneosScenePacker.getPackInfo)
     // or a local ZIP ({ kind:"zip", entries: Map<relPath, Uint8Array> }) for the
@@ -337,6 +349,7 @@ export class BeneosNativeBattlemapInstaller {
 
     const result = this.#newResult()
     this._result = result
+    this._startedAt = Date.now()
     this._importedScenes = []   // Task E: {id,name} of imported scenes
     this._fp     = foundry.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker
     this._isForge = typeof ForgeVTT !== "undefined" && ForgeVTT.usingTheForge === true
@@ -473,6 +486,30 @@ export class BeneosNativeBattlemapInstaller {
 
       result.totals.failed = result.assetFailures.length
       const failureCount = result.assetFailures.length + result.docFailures.length
+
+      // HIER, VOR DER VERZWEIGUNG, UND NICHT IN #showReport.
+      //
+      // Der Bericht oeffnet sich nur, wenn etwas schiefging. Ein sauber
+      // durchgelaufener Install kam damit in keiner Telemetrie vor: es gab
+      // 18.601 install_initiated und kein einziges Gegenstueck. Ein Abbruch
+      // war von einem Erfolg nicht unterscheidbar, und damit war die
+      // Erfolgsquote der Installation nicht berechenbar.
+      //
+      // Ein Teilfehler zaehlt bewusst mit. Er ist ein Abschluss, kein
+      // Abbruch; wie schlimm er war, steht in `failed` und ausserdem im
+      // eigenen install_error. Wer die beiden Ereignisse zusammenzaehlt,
+      // wuerde sonst doppelt sehen, was einmal passiert ist.
+      try {
+        game.beneos?.analytics?.trackInstallCompleted?.({
+          packageId: this.packageId,
+          bytes:     result.totals.bytes || 0,
+          durationMs: Date.now() - (this._startedAt || Date.now()),
+          totals:    result.totals,
+          failed:    failureCount,
+          scoped:    !!this.sceneSlugs,
+        })
+      } catch (_) { /* swallow */ }
+
       if (failureCount > 0) {
         if (typeof this.progress.markCompletedWithIssues === "function") {
           this.progress.markCompletedWithIssues({ failed: failureCount })
@@ -649,7 +686,8 @@ export class BeneosNativeBattlemapInstaller {
     try {
       const labelVariant = this.record.variant === "HD" ? "Foundry_HD"
                          : this.record.variant === "4K" ? "Foundry_4K" : ""
-      beneosLogModuleInstall({ assetId: this.record.assetId || "", variant: labelVariant, sceneCount: sceneIds.length })
+      beneosLogModuleInstall({ assetId: this.record.assetId || "", variant: labelVariant,
+        sceneCount: sceneIds.length, interaction: this.erwerbsvorgang })
     } catch (_) {}
   }
 
@@ -707,7 +745,9 @@ export class BeneosNativeBattlemapInstaller {
     let ok = 0
     for (const key of keys) {
       try {
-        await cloud.importTokenFromCloud(key, undefined, false, { gated: true })
+        // scene_install: diese Kreatur kam mit der Karte, sie wurde nicht gesucht.
+        await cloud.importTokenFromCloud(key, undefined, false,
+          { gated: true, surface: "scene_install", interaction: this.erwerbsvorgang })
         ok += 1
       } catch (e) {
         console.warn("BeneosNativeInstaller | Beneos creature install failed", key, e?.message || e)
@@ -763,7 +803,7 @@ export class BeneosNativeBattlemapInstaller {
       packageId: this.packageId,
       label:     this.label,
       env:       this.#envFingerprint(),
-      totals:    { assets: 0, ok: 0, repaired: 0, failed: 0, docsCreated: 0, docsUpdated: 0, docsSkippedExisting: 0, docsFailed: 0, packagedAssets: 0, convertedUploads: 0 },
+      totals:    { assets: 0, ok: 0, repaired: 0, failed: 0, docsCreated: 0, docsUpdated: 0, docsSkippedExisting: 0, docsFailed: 0, packagedAssets: 0, convertedUploads: 0, bytes: 0 },
       assetFailures: [], // {target, category, attempts, lastError}
       docFailures:   [], // {type, id, error}
       preflight:     null,
@@ -1357,7 +1397,14 @@ export class BeneosNativeBattlemapInstaller {
     for (let guard = 0; guard < 32; guard++) {
       const bytesBefore = carry.bytes
       try {
-        return await this.#fetchOnce(url, carry)
+        const blob = await this.#fetchOnce(url, carry)
+        // Das Uebertragungsvolumen eines Laufs. Die Spalte `bytes_transferred`
+        // wartet seit jeher darauf und stand bei jedem Ereignis auf NULL, weil
+        // keine einzige Aufrufstelle im Modul sie je uebergeben hat. Gezaehlt
+        // wird der ausgelieferte Koerper, nicht die Wiederholungen: sonst
+        // meldet eine schlechte Leitung ein groesseres Paket.
+        try { this._result.totals.bytes = (this._result.totals.bytes || 0) + carry.bytes } catch (_) {}
+        return blob
       } catch (err) {
         const cat = err.category || INSTALL_ERROR.UNKNOWN
         if (cat === INSTALL_ERROR.NOTFOUND) throw err
@@ -1379,14 +1426,18 @@ export class BeneosNativeBattlemapInstaller {
           // Still a real delivery interruption, so it stays in the telemetry:
           // otherwise resuming would hide exactly the per-country error rate
           // this signal exists to surface.
-          try { game.beneos?.analytics?.trackDownloadRetry?.(this.record?.assetId || "", transient + 1) } catch (_) {}
+          // `cat` ist der Grund, nicht nur die Nummer des Versuchs. Ohne ihn
+          // sind Netzabbruch, Zeitueberschreitung und Signaturfehler in einer
+          // Zahl verschmolzen, und die haeufigste Frage zu diesem Ereignis
+          // ("liegt es an uns oder an der Leitung") bleibt unbeantwortbar.
+          try { game.beneos?.analytics?.trackDownloadRetry?.(this.record?.assetId || "", transient + 1, cat) } catch (_) {}
           continue
         }
         transient += 1
         if (transient >= FETCH_MAX_ATTEMPTS) throw err
         // Telemetry: a transient transfer failure with an actual retry ahead
         // (feeds the per-country delivery error rate; throttled per asset).
-        try { game.beneos?.analytics?.trackDownloadRetry?.(this.record?.assetId || "", transient) } catch (_) {}
+        try { game.beneos?.analytics?.trackDownloadRetry?.(this.record?.assetId || "", transient, cat) } catch (_) {}
         await this.#sleep(FETCH_BACKOFF_MS[transient - 1] || 4000)
       }
     }
@@ -1967,7 +2018,11 @@ export class BeneosNativeBattlemapInstaller {
         this.#clearAssetFailure(a.target)
         this._result.totals.repaired += 1
       } else {
-        this.#recordAssetFailure(a.target, res.category || INSTALL_ERROR.UNKNOWN, res.error || new Error("still missing after repair"))
+        // No category means #transferOne returned ok and only the HEAD above
+        // said no: that is VERIFY, not UNKNOWN. Filing it as UNKNOWN cost a
+        // whole support round on 2026-08-21, because the report then names no
+        // cause at all for the one failure mode whose cause we do know.
+        this.#recordAssetFailure(a.target, res.category || INSTALL_ERROR.VERIFY, res.error || new Error("still missing after repair"))
       }
       this.progress.handleAssetProgress("Repair", candidates.length, i + 1)
     }

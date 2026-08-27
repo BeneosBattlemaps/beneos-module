@@ -27,7 +27,7 @@ function priorityOf(path) {
 }
 
 // Order used to pick the dominant (most actionable) category on ties.
-const CATEGORY_PRIORITY = ["permission", "quota", "signature", "server", "network", "timeout", "notfound", "unknown"]
+const CATEGORY_PRIORITY = ["permission", "quota", "signature", "server", "network", "timeout", "verify", "notfound", "unknown"]
 
 function _l(key, fallback) {
   try { if (game.i18n?.has?.(key)) return game.i18n.localize(key) } catch (_) {}
@@ -53,6 +53,7 @@ const HEADLINE_FALLBACK = {
   network:    "The connection dropped while downloading some files.",
   timeout:    "Some downloads stalled and timed out.",
   notfound:   "Some files could not be found on Beneos Cloud.",
+  verify:     "Some files were uploaded successfully, but your server does not hand them back.",
   unknown:    "Some files could not be installed.",
 }
 const GUIDANCE_FALLBACK = {
@@ -63,6 +64,7 @@ const GUIDANCE_FALLBACK = {
   network:    "Check your internet connection and click Retry. Large packs on slow lines may need a second attempt.",
   timeout:    "Click Retry. On a very slow connection, a large battlemap video can take a while.",
   notfound:   "Please send us the copied report on Discord so we can fix the catalog entry.",
+  verify:     "This is almost always another module rewriting uploads (an image optimizer such as Media Optimizer converts every .svg into a .webp), or a host that refuses to serve .svg as an image. Disable image optimizer modules, click Retry, then enable them again. If none are active, send us the copied report on Discord.",
   unknown:    "Click Retry. If it persists, send us the copied report on Discord.",
 }
 

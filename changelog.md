@@ -4,13 +4,19 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
-### 14.4.7 # 2026-08-13
+### 14.4.7 # 2026-08-24
 
 **Improved**
-- Improved: A Beneos creature that replaces a free one on a map now keeps that creature's name, nameplate setting and disposition. Adventure modules address their NPCs by the name on the map, so the generic thief called "Harald" stays "Harald" after the upgrade, and everything the module hangs on that name keeps working. Only the token on the map is renamed: the creature in your world, its prototype and the drawer keep the Beneos name, and artwork, size and statblock stay untouched.
+- Improved: A Beneos creature that replaces a free one on a map now keeps that creature's name, nameplate setting and disposition.
+- Improved: When an install cannot finish, the report now names the one cause it
 
 **Fixes**
-- Fixed: A creature placed that way dropped out of later updates. Re-installing it refreshed every other token but skipped the renamed one, leaving it with the old artwork and the old statblock. The module now tells its own renaming apart from yours: it refreshes the token and leaves the name alone, while a creature you renamed yourself stays untouched as before.
+- Fixed: A creature placed that way dropped out of later updates. Re-installing it refreshed every other token but skipped the renamed one, leaving it with the old token and the old statblock. The module now tells its own renaming apart from yours: it refreshes the token and leaves the name alone, while a creature you renamed yourself stays untouched as before.
+- Fixed: Installing a single map out of a bundle always failed with "This bundle release could not be resolved".
+- Fixed: A scene's creature drawer offered creatures you have no claim to, such as a monthly loyalty reward from a month you were not a supporter.
+- Fixed: Spell and item cards could show a missing image. The module built the path to the front and back of a card from a misspelled name, so both sides sometimes pointed at files that do not exist.
+- Fixed: Some spells and abilities on a Beneos creature used icons from a wrong location, which showed up as a blank icon on the sheet. They now use the module's own icon set.
+- Fixed: Installing a creature could report an aspect as missing when the creature was complete. 
 
 ### 14.4.6 # 2026-08-07
 

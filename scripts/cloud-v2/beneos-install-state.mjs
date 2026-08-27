@@ -87,6 +87,54 @@ export class BeneosInstallState {
   }
 
   /**
+   * The release a scene was installed from, in catalogue spelling, or "".
+   *
+   * WHY THIS EXISTS NEXT TO findAssetIdByScene
+   *
+   * The asset id is a cloud hash like `6a3a4c16ea600`. It is exact, but it
+   * says nothing to anyone reading a report, and it does not join against the
+   * catalogue, which is keyed on `bm_0113_arasek_stockyard`. Telemetry needs
+   * the readable one.
+   *
+   * THE VARIANT IS THE RESOLUTION, NOT THE PRODUCT. DO NOT APPEND IT.
+   *
+   * This was written the other way round first, on the assumption that
+   * `variant` might carry the product letter of `bm_0057b` vs `bm_0057c`.
+   * Measured in a live world on 2026-08-24 across all eleven install records:
+   * `variant` is "HD" or "4K" every single time. The product letter lives in
+   * `releaseDir` itself (`bm_0078b`). Appending the variant would have turned
+   * `bm_0078b` into `bm_0078b_4K`, which matches nothing in the catalogue.
+   *
+   * THE `beneos_` PREFIX IS OPTIONAL AND MUST GO
+   *
+   * The same world holds both spellings side by side, depending on how old
+   * the install is: `bm_0112` and `beneos_bm_0048_dourcrag_castle_day`. The
+   * catalogue keys on `bm_0048_dourcrag_castle_day`, so the prefix is
+   * stripped. What remains matches the catalogue either exactly or as a
+   * prefix (`bm_0112` -> `bm_0112_dia_mirror_of_mephistar`), and the special
+   * namespaces `bm_tour_`, `bm_single_map_` and `bm_extras_` survive that
+   * unharmed because nothing about them is rewritten.
+   *
+   * Returns "" for worlds that installed before the install-state existed and
+   * for hand-copied battlemaps. Callers must treat "" as "not known", never
+   * as "not a Beneos scene". There is deliberately no fallback: see
+   * `_beneosBattlemapDir` in beneos_analytics.js for why the path cannot
+   * stand in for this.
+   */
+  static findReleaseDirByScene(sceneId) {
+    if (!sceneId) return ""
+    const all = this.getAll()
+    for (const entry of Object.values(all)) {
+      if (!entry || typeof entry !== "object") continue
+      if (!Array.isArray(entry.sceneIds)) continue
+      if (!entry.sceneIds.includes(sceneId)) continue
+      const dir = String(entry.releaseDir || "").replace(/^beneos_/, "")
+      return dir
+    }
+    return ""
+  }
+
+  /**
    * Persist one install. Key format: `<releaseDir>_<variant>` (variant = ""
    * for single-variant releases). Idempotent: replacing the same key
    * overwrites scene-ids + timestamp + signature for the new install.
@@ -327,7 +375,7 @@ export class BeneosPreInstallDialog {
  * Errors are swallowed: tracking must never block an install or surface to
  * the user (the install itself already succeeded if we reached this point).
  */
-export async function beneosLogModuleInstall({ assetId, variant, sceneCount }) {
+export async function beneosLogModuleInstall({ assetId, variant, sceneCount, interaction }) {
   try {
     const mgr = window.BeneosScenePacker
     const sid = mgr?.sessionId
@@ -339,7 +387,14 @@ export async function beneosLogModuleInstall({ assetId, variant, sceneCount }) {
       a:        "log_download",
       asset_id: String(assetId),
       source:   "module",
+      // Ein Release ist ein Paket, auch wenn zwanzig Karten darin liegen. Die
+      // Vorgangskennung stammt vom Installationslauf und ist dieselbe wie bei
+      // den Kreaturen, die mit diesem Release mitkommen; beides zusammen ist
+      // EINE Handlung des Nutzers.
+      surface:  "scene_install",
+      scope:    "pack",
     })
+    if (interaction)        body.set("interaction_id", String(interaction))
     if (variant)            body.set("variant",     String(variant))
     if (sceneCount != null) body.set("scene_count", String(sceneCount))
     await fetch(apiEndpoint, {

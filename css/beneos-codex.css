@@ -1,5 +1,13 @@
+/* Fonts first. CSS drops every @import that follows a rule, so this line
+   has to stay at the very top of the file. It used to sit at line 25 (after
+   the italic-free ruleset) and a second time mid-file at the companion-styles
+   seam; both were silently discarded, which cost EB Garamond and Geist on
+   every client. Cinzel and Signika only survived because beneos-wiki.css and
+   beneos-creature-installer.css import them from a valid position. */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Geist:wght@300;400;500;600;700&family=Signika:wght@400;500;600;700&display=swap');
+
 /* ============================================================
-   Beneos Codex — Design Tokens + Hub/Item/Creature/World/Companion
+   Beneos Codex, Design Tokens + Hub/Item/Creature/World/Companion
    Merged from React-design-bundle:
      - origin-bonis/project/styles.css       (design tokens + hub + gallery)
      - origin-bonis/project/codex-views.css  (sub-codex pages + tabs)
@@ -7,7 +15,7 @@
    Scope: M7 (BeneosCodex ApplicationV2 + Item-Sheet-Companion)
    ============================================================ */
 
-/* M7.8 — Italic-free policy: Foundry-style readability over flair.
+/* M7.8, Italic-free policy: Foundry-style readability over flair.
    Browser default for <em>/<i>/<cite> is italic; override across the
    Beneos scope and replace the visual emphasis with weight + color. */
 .beneos-codex em, .beneos-codex i, .beneos-codex cite,
@@ -22,10 +30,8 @@
    Tone: gothic-fantasy codex (Diablo/parchment)
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Geist:wght@300;400;500;600;700&display=swap');
-
 :root {
-  /* ——— Base palette (matched to Beneos Cloud reference) ——— */
+  /* Base palette (matched to Beneos Cloud reference) */
   --bg-void:        #07060a;
   --bg-base:        #0d0a08;
   --bg-panel:       #16110c;
@@ -2766,12 +2772,14 @@ body.beneos-perf-mode .codex-sub-hero .csh-title {
 
 /* ===== companion-styles.css ===== */
 /* ============================================================
-   Beneos Item Companion — design exploration styles
+   Beneos Item Companion, design exploration styles
    Goal: extend the Foundry D&D 5e item sheet without modifying it.
    Three patterns laid out for comparison.
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Geist:wght@300;400;500;600;700&family=Signika:wght@400;500;600;700&display=swap');
+/* The @import that used to stand here was dead: it followed ~2760 lines of
+   rules. Its font list, including Signika, now sits in the single import at
+   the top of this file. */
 
 :root {
   /* Beneos accent (same as Codex) */
