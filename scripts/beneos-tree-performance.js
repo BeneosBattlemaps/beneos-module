@@ -226,12 +226,25 @@ export function buildFastTree(collection, folders, entries) {
 
 /** Walk up from an object until the prototype that owns `initializeTree`. */
 function locatePrototype() {
+  // Die Einstiege werden als Funktionen gefuehrt, nicht als Werte.
+  //
+  // Ein Array wertet alle Eintraege aus, sobald es entsteht. Der dritte greift
+  // auf das globale `Scenes` zu, und das ist seit Foundry 13 veraltet: der
+  // Zugriff allein schreibt eine Warnung ins Konsolenlog, auch wenn der Wert
+  // nie gebraucht wird, weil schon der erste Einstieg trifft. Gemessen am
+  // 27.08.2026 auf 13.351: genau eine Warnung je Weltstart, aus dieser Zeile.
+  //
+  // Der Rueckfall bleibt trotzdem stehen. Er deckt Foundry 12 ab, wo es den
+  // Namensraum `foundry.documents.collections` noch nicht gibt, und dort ist
+  // der Zugriff nicht veraltet. Foundry 15 entfernt ihn; bis dahin ist die
+  // dritte Zeile die einzige Stelle im Modul, die ihn ueberhaupt benutzt.
   const seeds = [
-    globalThis.foundry?.documents?.collections?.Scenes?.prototype,
-    globalThis.foundry?.documents?.collections?.Journal?.prototype,
-    globalThis.Scenes?.prototype
+    () => globalThis.foundry?.documents?.collections?.Scenes?.prototype,
+    () => globalThis.foundry?.documents?.collections?.Journal?.prototype,
+    () => globalThis.Scenes?.prototype
   ];
-  for (const seed of seeds) {
+  for (const gibSeed of seeds) {
+    const seed = gibSeed();
     let proto = seed;
     while (proto) {
       if (Object.prototype.hasOwnProperty.call(proto, "initializeTree")) return proto;
