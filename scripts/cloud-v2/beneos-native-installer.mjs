@@ -199,6 +199,26 @@ function hintergrundQuelle(scene) {
   return src?.levels?.[0]?.background?.src || src?.background?.src || ""
 }
 
+/**
+ * Das Standbild einer Szene, deren Hintergrund leer ist.
+ *
+ * Gemessen am 27.08.2026 an `bm_0011`: von 26 Szenen haben zwei gar keinen
+ * Hintergrund, beide "Player Intro". Bei ihnen sitzt das Video in einer Kachel,
+ * und das dazugehoerige Standbild steht nicht im Hintergrund, sondern als
+ * `partner` in der Markierung dieser Kachel. Ohne diesen Zweig blieben genau
+ * diese Szenen ohne Vorschaubild, obwohl ihr Standbild bekannt ist.
+ *
+ * Ein leerer `partner` bedeutet, dass es kein Standbild gibt (Aufgabe 48, die
+ * Flaeche bekommt dann einen Ladehinweis). Dann bleibt es beim leeren Ergebnis.
+ */
+function standbildAusKachel(scene) {
+  for (const tile of scene?._source?.tiles || []) {
+    const flag = tile?.flags?.["beneos-module"]?.stream
+    if (flag?.role === "stream-video" && flag.partner) return flag.partner
+  }
+  return ""
+}
+
 export class BeneosNativeBattlemapInstaller {
 
   constructor({ packageId, label = "", coverUrl = null, sceneSlugs = null, overwrite = false, record = null, source = null } = {}) {
@@ -576,7 +596,7 @@ export class BeneosNativeBattlemapInstaller {
     if (this._streamTargets?.size) {
       const updates = []
       for (const scene of scenes) {
-        const still = hintergrundQuelle(scene)
+        const still = hintergrundQuelle(scene) || standbildAusKachel(scene)
         // Eine Flaeche ohne Standbild bleibt ohne Vorschaubild. Das Video zu
         // holen, um daraus eines zu rendern, waere genau der Aufwand, den diese
         // Aenderung abstellt. Seit Aufgabe 40 fehlt im Bestand kein Standbild.
