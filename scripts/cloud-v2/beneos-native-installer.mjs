@@ -26,6 +26,7 @@
 
 import { BeneosInstallState, BeneosPreInstallDialog, beneosLogModuleInstall } from "./beneos-install-state.mjs"
 import { packNeedsV14Migration, migrateSceneForV14 } from "./beneos-v14-scene-migration.mjs"
+import { platzierteBeneosSchluessel } from "../creature-installer/alternativen.mjs"
 
 // ---- Transfer config -------------------------------------------------------
 const FETCH_MAX_ATTEMPTS  = 3            // transient retries per asset
@@ -200,6 +201,9 @@ const JSON_FILE_TO_PHASE = {
  * V16. `_source` umgeht die Warnung, und die Betreibervorgabe vom 24.08.2026
  * verlangt null Warnungen im Konsolenlog.
  */
+/** Videodateien, zu denen das Modul sein Standbild ueber den Namen ableitet. */
+const VIDEO_ENDUNG = /\.(webm|mp4|m4v|ogv)$/i
+
 function hintergrundQuelle(scene) {
   const src = scene?._source
   return src?.levels?.[0]?.background?.src || src?.background?.src || ""
@@ -271,6 +275,8 @@ export class BeneosNativeBattlemapInstaller {
     this._dirPromises = new Map() // dir -> in-flight #ensureDir promise (dedupe under parallel transfers)
     this._refreshInFlight = null  // shared in-flight signed-URL refresh (dedupe concurrent 403s)
     this._sceneScope  = null      // { assetRelPaths:Set, sceneIds:Set } when scene-scoped
+    this._sceneDocs   = null      // Merker fuer data/Scene.json, siehe #szenenDokumente
+    this._creatureKeys = null     // Beneos-Kreaturen dieser Installation, siehe #collectBeneosCreatureKeys
   }
 
   /**
@@ -441,6 +447,10 @@ export class BeneosNativeBattlemapInstaller {
       // out with "0 of N" from the start and fills to "N of N" as it runs ,
       // the user sees the full scope immediately. Phases with 0 stay hidden.
       this.progress.handleStatusMessage("Reading pack contents")
+      // Die Kreaturen VOR dem Plan sammeln, damit ihre Zeile von Anfang an eine
+      // Zahl traegt. Das kostet nichts: `data/Scene.json` liegt zu diesem
+      // Zeitpunkt bereits im Merker (#szenenDokumente).
+      try { this._creatureKeys = await this.#collectBeneosCreatureKeys(jsons) } catch (_) { this._creatureKeys = [] }
       const phasePlan = await this.#buildPhasePlan(packInfo, installAssets)
       if (typeof this.progress.setPhasePlan === "function") this.progress.setPhasePlan(phasePlan)
       else this.progress.beginNativeRun?.()
@@ -467,7 +477,7 @@ export class BeneosNativeBattlemapInstaller {
       // Beneos creatures (cloud tokenKeys). Pull them from the cloud when the
       // user is an active token-patron; otherwise leave the standard import
       // untouched. Same for cloud + manual-ZIP installs.
-      await this.#installBeneosCreatures(jsons)
+      await this.#installBeneosCreatures()
 
       // Task E: tell the progress window which scene the "Open" button opens.
       const openSceneId = this.#pickOpenSceneId()
@@ -476,7 +486,9 @@ export class BeneosNativeBattlemapInstaller {
       // Teil 2/3: persist the install so the cloud window can render the
       // installed-marker + update-available state and future re-installs detect
       // presence. Only on a real install (>=1 scene imported).
+      this.progress.revealPhase?.("finalize", { status: "active" })
       await this.#recordInstallIfAny()
+      this.progress.revealPhase?.("finalize", { status: "done" })
 
       // Third-party upload converters (e.g. Media Optimizer) are transparent to
       // the user; tell them their files were adapted, not silently renamed.
@@ -559,16 +571,38 @@ export class BeneosNativeBattlemapInstaller {
    * Best-effort — a fetch/parse failure returns [] (no false "already present").
    */
   async #readReleaseSceneIds(jsons) {
-    const url = jsons?.["data/Scene.json"]
-    if (!url) return []
+    return (await this.#szenenDokumente(jsons)).map(d => String(d?._id || "")).filter(Boolean)
+  }
+
+  /**
+   * Die Szenendokumente des Pakets, einmal geholt und einmal geparst.
+   *
+   * `data/Scene.json` wurde vorher je Lauf mehrfach einzeln geholt: fuer die
+   * Existenzpruefung, fuer die Szenen-Closure eines Einzelszenen-Installs und
+   * fuer die Kreaturensammlung. Der Merker macht daraus einen Abruf und ist
+   * zugleich die Voraussetzung dafuer, die Kreaturenzahl schon VOR dem
+   * Phasenplan zu kennen, ohne dafuer zu bezahlen.
+   *
+   * Ein Fehlschlag wird gemerkt wie ein Erfolg. Alle Aufrufer lesen ein leeres
+   * Ergebnis als "keine Aussage", ein zweiter Versuch kostete nur denselben
+   * Fehler noch einmal.
+   *
+   * Bewusst NICHT von `#importDocuments` benutzt: dort werden die Dokumente an
+   * Ort und Stelle umgeschrieben (Pfade, V14-Wanderung, `thumb`), und ein
+   * gemerkter Satz duerfte diese Mutationen nicht tragen.
+   */
+  async #szenenDokumente(quelle) {
+    if (this._sceneDocs) return this._sceneDocs
+    const url = quelle?.["data/Scene.json"]
+    if (!url) return (this._sceneDocs = [])
     try {
       const raw = JSON.parse(await (await this.#fetchAsset(url, "data/Scene.json")).text())
-      const arr = Array.isArray(raw) ? raw : (raw && typeof raw === "object" ? Object.values(raw) : [])
-      return arr.map(d => String(d?._id || "")).filter(Boolean)
+      this._sceneDocs = Array.isArray(raw) ? raw : (raw && typeof raw === "object" ? Object.values(raw) : [])
     } catch (e) {
-      console.warn("BeneosNativeInstaller | could not read Scene.json for existence check", e?.message || e)
-      return []
+      console.warn("BeneosNativeInstaller | could not read Scene.json", e?.message || e)
+      this._sceneDocs = []
     }
+    return this._sceneDocs
   }
 
   /** The stored install record for this release + variant, or null. */
@@ -630,30 +664,32 @@ export class BeneosNativeBattlemapInstaller {
       .filter(sc => sc && !sc.thumb)
     if (!scenes.length) return
 
-    if (this._streamTargets?.size) {
-      const updates = []
-      for (const scene of scenes) {
-        const still = hintergrundQuelle(scene) || standbildAusKachel(scene)
-        // Eine Flaeche ohne Standbild bleibt ohne Vorschaubild. Das Video zu
-        // holen, um daraus eines zu rendern, waere genau der Aufwand, den diese
-        // Aenderung abstellt. Seit Aufgabe 40 fehlt im Bestand kein Standbild.
-        if (!still || /\.(webm|mp4|m4v|ogv)$/i.test(still)) continue
-        updates.push({ _id: scene.id, thumb: still })
+    const total = scenes.length
+    this.progress.revealPhase?.("thumbs", { status: "active", current: 0, total })
+
+    // Erster Durchgang: fuer jede Szene versuchen, ihr Standbild zu benennen.
+    // Was hier gelingt, kostet keine Rechnung; was nicht gelingt, geht in den
+    // zweiten Durchgang und wird gerendert.
+    const updates = []
+    const rendern = []
+    let fertig = 0
+    for (const scene of scenes) {
+      const still = await this.#standbildFuer(scene)
+      if (still) updates.push({ _id: scene.id, thumb: still })
+      else rendern.push(scene)
+      this.progress.revealPhase?.("thumbs", { status: "active", current: ++fertig, total })
+    }
+    if (updates.length) {
+      try {
+        await Scene.implementation.updateDocuments(updates)
+      } catch (e) {
+        console.warn("BeneosNativeInstaller | thumbnail assignment failed", e?.message || e)
       }
-      if (updates.length) {
-        try {
-          await Scene.implementation.updateDocuments(updates)
-        } catch (e) {
-          console.warn("BeneosNativeInstaller | thumbnail assignment failed", e?.message || e)
-        }
-      }
-      return
     }
 
-    // Best-effort und nicht fatal (ein Videohintergrund, der sich nicht
-    // abbilden laesst, bleibt ohne Vorschaubild, bis der Spielleiter die Szene
-    // oeffnet).
-    for (const scene of scenes) {
+    // Zweiter Durchgang, best-effort und nicht fatal: ein Videohintergrund ohne
+    // Standbild bleibt ohne Vorschaubild, bis der Spielleiter die Szene oeffnet.
+    for (const scene of rendern) {
       try {
         const t = await scene.createThumbnail()
         if (t?.thumb) await scene.update({ thumb: t.thumb })
@@ -661,6 +697,52 @@ export class BeneosNativeBattlemapInstaller {
         console.warn(`BeneosNativeInstaller | thumbnail regen failed for "${scene.name}"`, e?.message || e)
       }
     }
+    if (rendern.length) {
+      console.log(`BeneosNativeInstaller | ${updates.length} scene preview(s) from still images, ${rendern.length} rendered`)
+    }
+    this.progress.revealPhase?.("thumbs", { status: "done", current: total, total })
+  }
+
+  /**
+   * Die Adresse des Standbilds einer Szene, oder leer.
+   *
+   * Zwei Formen, eine Regel. Beim Streaming steht die Adresse des Standbilds
+   * schon im Hintergrund, der Szenenumbau hat sie eine Zeile vorher dorthin
+   * geschrieben. Im Download-Betrieb steht dort das Video, und der Nachbar
+   * heisst nach der Beneos-Namensregel wie das Video mit der Endung `.webp`.
+   * Dieselbe Regel, nach der der Packer das Standbild seit dem 27.08.2026
+   * mitnimmt und nach der der Leser es beim Streamen sucht.
+   *
+   * Die Existenz wird BELEGT, nicht angenommen: `#headCheck` fragt den
+   * endgueltigen Pfad und ist damit gegen jede Umschreibung aus
+   * `_packagedRemap` und `_uploadRemap` unempfindlich, anders als ein Abgleich
+   * gegen die geplanten Zieladressen.
+   */
+  async #standbildFuer(scene) {
+    const quelle = hintergrundQuelle(scene) || standbildAusKachel(scene)
+    if (!quelle) return ""
+    if (!VIDEO_ENDUNG.test(quelle)) return quelle
+    // Beim Streaming zeigt der Hintergrund nie auf ein Video; steht dort eines,
+    // ist es der lokale Download-Fall.
+    if (this._streamTargets?.size) return ""
+    const nachbar = quelle.replace(VIDEO_ENDUNG, ".webp")
+    return (await this.#bildVorhanden(nachbar)) ? nachbar : ""
+  }
+
+  /**
+   * Liegt unter dieser Adresse wirklich eine Datei?
+   *
+   * `#headCheck` stellt der Adresse einen Schraegstrich voran und taugt damit
+   * nur fuer einen Pfad relativ zur Foundry-Wurzel. Auf einem Hosting kann der
+   * Uploadweg dagegen eine vollstaendige Adresse zurueckgeben; die wuerde
+   * dadurch zerstoert und jede Probe faelschlich fehlschlagen.
+   */
+  async #bildVorhanden(pfad) {
+    if (!/^(https?:)?\/\//i.test(pfad)) return this.#headCheck(pfad)
+    try {
+      const r = await fetch(pfad, { method: "HEAD" })
+      return r.ok && !/text\/html/i.test(r.headers.get("content-type") || "")
+    } catch (_) { return false }
   }
 
   /**
@@ -694,28 +776,32 @@ export class BeneosNativeBattlemapInstaller {
   // ---- Beneos-Creatures (second install layer) -----------------------------
 
   /**
-   * Collect the Beneos (cloud) creature tokenKeys referenced by the installed
-   * scenes' `flags["beneos-module"].creatureInstaller.beneosCreatures[]`. SRD
-   * creatures (no tokenKey) are already packed as Actors and ignored here.
+   * Die Beneos-Kreaturen, die diese Installation aus der Cloud holt.
+   *
+   * Quelle ist `flags["beneos-module"].creatureInstaller.beneosCreatures[]` der
+   * Zielszenen. Freie Kreaturen tragen keinen `tokenKey`, liegen als Actor im
+   * Paket und kommen hier nicht vor.
+   *
+   * **Nur was auf der Karte steht.** Alternativen sind Vorschlaege fuer den
+   * Spielleiter, keine Bestandteile der Karte. Sie im voraus mitzuinstallieren
+   * kostete Leitung und Platte fuer Kreaturen, die er vielleicht nie benutzt.
+   * Wer eine haben will, holt sie sich in der Lade einzeln (Betreiberentscheid
+   * vom 27.08.2026). Massstab ist `platzierteBeneosSchluessel()`, dieselbe
+   * Regel, nach der die Lade ihre ALT-Markierung zeichnet.
+   *
+   * Die Vereinigung ueber die Szenen ist gewollt: eine Kreatur, die in
+   * irgendeiner Zielszene steht, gehoert zur Installation, auch wenn sie in
+   * einer anderen nur vorgeschlagen wird.
    */
   async #collectBeneosCreatureKeys(jsons) {
-    const url = jsons?.["data/Scene.json"]
-    if (!url) return []
-    let arr
-    try {
-      const raw = JSON.parse(await (await this.#fetchAsset(url, "data/Scene.json")).text())
-      arr = Array.isArray(raw) ? raw : (raw && typeof raw === "object" ? Object.values(raw) : [])
-    } catch (_) { return [] }
+    const arr = await this.#szenenDokumente(jsons)
+    if (!arr.length) return []
     const want = (this._targetSceneIds?.length) ? new Set(this._targetSceneIds.map(String)) : null
     const keys = new Set()
     for (const sc of arr) {
       if (want && !want.has(String(sc?._id))) continue
       const ci = sc?.flags?.["beneos-module"]?.creatureInstaller
-      const list = Array.isArray(ci?.beneosCreatures) ? ci.beneosCreatures : []
-      for (const c of list) {
-        const k = (c?.tokenKey != null) ? String(c.tokenKey).trim() : ""
-        if (k) keys.add(k)
-      }
+      for (const k of platzierteBeneosSchluessel(ci)) keys.add(k)
     }
     return [...keys]
   }
@@ -726,9 +812,8 @@ export class BeneosNativeBattlemapInstaller {
    * block (grey + red X) and the standard map import stands. Actors-only — the
    * Creature-Drawer handles placement when a scene is opened.
    */
-  async #installBeneosCreatures(jsons) {
-    let keys = []
-    try { keys = await this.#collectBeneosCreatureKeys(jsons) } catch (_) {}
+  async #installBeneosCreatures() {
+    const keys = this._creatureKeys ?? []
     if (!keys.length) return   // no creature block for releases without Beneos creatures
 
     const cloud = game.beneos?.cloud
@@ -737,26 +822,68 @@ export class BeneosNativeBattlemapInstaller {
       state: isPatron ? "active" : "skipped" })
 
     if (!isPatron || typeof cloud?.importTokenFromCloud !== "function") {
+      this.progress.revealPhase?.("creatures", { status: "skipped", current: 0, total: keys.length })
       this._result.creatures = { present: true, patron: isPatron, installed: 0, total: keys.length }
       return
     }
 
-    this.progress.handleStatusMessage?.(`Adding ${keys.length} Beneos creature(s)`)
-    let ok = 0
+    // Zugriff je Kreatur, nicht je Konto. Der kontoweite `hasCampaignAccess`
+    // sagt nur, dass ueberhaupt ein Zugang zur Kreaturen-Kampagne besteht.
+    // Monatsbelohnungen haengen dagegen an dauerhaften Anrechten: ein Patron
+    // ohne Anrecht bekam hier bisher eine Anfrage, die der Server zu Recht
+    // ablehnte. Dieselbe Pruefung benutzt die Lade seit dem 24.08.2026.
+    // Ein Uebersprungenes ist KEIN Fehlschlag und gehoert nicht in den Bericht.
+    const holbar = []
+    let uebersprungen = 0
     for (const key of keys) {
+      let zustand = "ok"
+      try { zustand = cloud.getTokenAccessState?.(key) ?? "ok" } catch (_) {}
+      if (zustand === "ok") holbar.push(key)
+      else uebersprungen += 1
+    }
+    if (uebersprungen) {
+      console.log(`BeneosNativeInstaller | ${uebersprungen} Beneos creature(s) skipped: no grant for this user`)
+    }
+
+    const total = holbar.length
+    this.progress.setCreatureBlock?.({ present: true, isPatron: true, count: total, installed: 0, state: "active" })
+    if (!total) {
+      this.progress.revealPhase?.("creatures", { status: "skipped", current: 0, total: 0 })
+      this._result.creatures = { present: true, patron: true, installed: 0, total: 0, skipped: uebersprungen }
+      this.progress.setCreatureBlock?.({ present: true, isPatron: true, count: 0, installed: 0, state: "done" })
+      return
+    }
+
+    this.progress.revealPhase?.("creatures", { status: "active", current: 0, total })
+    this.progress.handleStatusMessage?.(`Adding ${total} Beneos creature(s)`)
+    let ok = 0
+    for (let i = 0; i < total; i++) {
+      const key = holbar[i]
       try {
         // scene_install: diese Kreatur kam mit der Karte, sie wurde nicht gesucht.
         await cloud.importTokenFromCloud(key, undefined, false,
           { gated: true, surface: "scene_install", interaction: this.erwerbsvorgang })
-        ok += 1
       } catch (e) {
         console.warn("BeneosNativeInstaller | Beneos creature install failed", key, e?.message || e)
         this._result.docFailures.push({ type: "creature", id: key, error: String(e?.message || e) })
       }
-      this.progress.setCreatureBlock?.({ present: true, isPatron: true, count: keys.length, installed: ok, state: "active" })
+      // Gezaehlt wird, was danach wirklich in der Welt steht. Eine Ablehnung
+      // durch den Server wirft NICHT, sie loest die Zusage normal auf; wer dem
+      // Rueckgabewert glaubt, meldet einen Erfolg, den es nicht gab.
+      if (this.#kreaturInWelt(key)) ok += 1
+      this.progress.revealPhase?.("creatures", { status: "active", current: i + 1, total })
+      this.progress.setCreatureBlock?.({ present: true, isPatron: true, count: total, installed: ok, state: "active" })
     }
-    this._result.creatures = { present: true, patron: true, installed: ok, total: keys.length }
-    this.progress.setCreatureBlock?.({ present: true, isPatron: true, count: keys.length, installed: ok, state: "done" })
+    this.progress.revealPhase?.("creatures", { status: "done", current: total, total })
+    this._result.creatures = { present: true, patron: true, installed: ok, total, skipped: uebersprungen }
+    this.progress.setCreatureBlock?.({ present: true, isPatron: true, count: total, installed: ok, state: "done" })
+  }
+
+  /** Steht die Kreatur zu diesem Schluessel als Weltaktor da? */
+  #kreaturInWelt(key) {
+    try {
+      return !!game.actors?.find(a => a.flags?.world?.beneos?.tokenKey === key)
+    } catch (_) { return false }
   }
 
   // Pack-Actors sind dnd5e-authored. In fremden Systemen (pf2e, pf1, ...)
@@ -981,7 +1108,9 @@ export class BeneosNativeBattlemapInstaller {
       } catch (e) { console.warn("BeneosNativeInstaller | could not read", rel, e?.message || e); return [] }
     }
 
-    const sceneDocs = (await loadDocs("data/Scene.json")).filter(d => sceneIds.has(String(d?._id)))
+    // Ueber den Merker, nicht ueber loadDocs: dieselbe Datei holt die
+    // Kreatursammlung gleich noch einmal.
+    const sceneDocs = (await this.#szenenDokumente(packInfo)).filter(d => sceneIds.has(String(d?._id)))
 
     const journalIds = new Set(), playlistIds = new Set(), actorIds = new Set()
     for (const sc of sceneDocs) {
@@ -1090,12 +1219,23 @@ export class BeneosNativeBattlemapInstaller {
     const plan = []
     const add = (key, total) => { if (Number(total) > 0) plan.push({ key, total: Number(total) }) }
     add("assets", installAssets.length)
+    // Die vier Schritte nach dem Dokumentimport. Ohne sie stand die Leiste auf
+    // 100 Prozent, waehrend Pruefung, Vorschaubilder und Kreaturen noch liefen.
+    // `finalize` traegt keine Zahl, nur sein Gewicht; es ist ein einzelner
+    // Schritt, keine Menge.
+    const nachlauf = (szenenzahl) => {
+      add("verify", installAssets.length)
+      add("thumbs", szenenzahl)
+      add("creatures", (this._creatureKeys || []).length)
+      plan.push({ key: "finalize", total: null })
+    }
     if (this._sceneScope) {
       add("data",      this._sceneScope.folderIds?.size   || 0)
       add("scenes",    this._sceneScope.sceneIds?.size     || 0)
       add("journals",  this._sceneScope.journalIds?.size   || 0)
       add("playlists", this._sceneScope.playlistIds?.size  || 0)
       add("actors",    this._sceneScope.actorIds?.size     || 0)
+      nachlauf(this._sceneScope.sceneIds?.size || 0)
       return plan
     }
     // Full release: folder count + document counts from mtte.json.
@@ -1106,14 +1246,21 @@ export class BeneosNativeBattlemapInstaller {
         add("data", Array.isArray(arr) ? arr.length : Object.keys(arr || {}).length)
       }
     } catch (_) {}
+    let szenenzahl = 0
     try {
       const mUrl = packInfo["mtte.json"]
       if (mUrl) {
         const counts = (JSON.parse(await (await this.#fetchAsset(mUrl, "mtte.json")).text()))?.counts || {}
         const MAP = { Scene: "scenes", Actor: "actors", JournalEntry: "journals", Item: "items", Macro: "macros", Playlist: "playlists", Cards: "cards", RollTable: "rolltables" }
         for (const [src, key] of Object.entries(MAP)) add(key, counts[src])
+        szenenzahl = Number(counts.Scene) || 0
       }
     } catch (_) {}
+    // Faellt `mtte.json` aus, tragen die Szenendokumente die Zahl. Ohne diesen
+    // Rueckfall bliebe die Zeile fuer die Vorschaubilder verborgen, obwohl der
+    // Schritt laeuft, und die Leiste waere wieder zu frueh voll.
+    if (!szenenzahl) szenenzahl = (this._sceneDocs || []).length
+    nachlauf(szenenzahl)
     return plan
   }
 
@@ -1989,6 +2136,8 @@ export class BeneosNativeBattlemapInstaller {
    */
   async #verifyAndRepair(assets) {
     this.progress.handleStatusMessage("Verifying installed assets")
+    const gesamt = assets.length
+    this.progress.revealPhase?.("verify", { status: "active", current: 0, total: gesamt })
     const byTarget = new Map()
     for (const f of this._result.assetFailures) {
       const a = assets.find(x => x.target === f.target)
@@ -1996,13 +2145,19 @@ export class BeneosNativeBattlemapInstaller {
     }
     if (!this._isForge) {
       // HEAD-checks are cheap + read-only -> run them in parallel.
+      let geprueft = 0
       await this.#runPool(assets, DOWNLOAD_CONCURRENCY, async (a) => {
-        if (byTarget.has(a.target)) return
-        if (!(await this.#headCheck(this.#installedPath(a)))) byTarget.set(a.target, a)
+        if (!byTarget.has(a.target)) {
+          if (!(await this.#headCheck(this.#installedPath(a)))) byTarget.set(a.target, a)
+        }
+        this.progress.revealPhase?.("verify", { status: "active", current: ++geprueft, total: gesamt })
       })
     }
     const candidates = [...byTarget.values()]
-    if (candidates.length === 0) return
+    if (candidates.length === 0) {
+      this.progress.revealPhase?.("verify", { status: "done", current: gesamt, total: gesamt })
+      return
+    }
 
     // Hardened fallback: re-fetch failed/missing assets ONE AT A TIME. A single
     // stream is gentler on a bad/saturated connection than the parallel first
@@ -2026,6 +2181,7 @@ export class BeneosNativeBattlemapInstaller {
       }
       this.progress.handleAssetProgress("Repair", candidates.length, i + 1)
     }
+    this.progress.revealPhase?.("verify", { status: "done", current: gesamt, total: gesamt })
   }
 
   /**

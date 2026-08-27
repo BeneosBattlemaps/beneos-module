@@ -40,6 +40,14 @@ const PHASE_DEFS = [
   { key: "cards",      labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Cards",     countSource: "Cards", weight: 0.2 },
   { key: "rolltables", labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.RollTables", countSource: "RollTable", weight: 0.2 },
   { key: "unrelated",  labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Unrelated", countSource: null,    weight: 0.5 },
+  // Der Nachlauf. Diese vier liefen frueher unsichtbar, waehrend die Leiste
+  // schon auf 100 Prozent stand: die Pruefung der Dateien, die Vorschaubilder
+  // und die Kreaturen aus der Cloud sind echte Netzarbeit, und `finalize` ist
+  // der Abschluss. Erst mit ihnen im Nenner heisst "voll" auch "fertig".
+  // Reihenfolge zaehlt: `_prepareContext` liest diese Liste von oben nach unten.
+  { key: "verify",     labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Verify",    countSource: null,    weight: 0.8 },
+  { key: "thumbs",     labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Thumbs",    countSource: null,    weight: 1.0 },
+  { key: "creatures",  labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Creatures", countSource: null,    weight: 2.0 },
   { key: "finalize",   labelKey: "BENEOS.Cloud.Bmap.InstallProgress.Phase.Finalize",  countSource: null,    weight: 0.3 },
 ]
 
@@ -219,11 +227,14 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
    */
   setPhasePlan(plan) {
     this._nativeMode = true
-    const present = new Map((Array.isArray(plan) ? plan : []).map(p => [p.key, Number(p.total) || 0]))
+    // `total: null` heisst "ein Schritt, keine Menge" (etwa `finalize`). Die
+    // Phase zaehlt dann mit ihrem Gewicht, zeigt aber kein "0 von 0", was eine
+    // Menge behaupten wuerde, die es nicht gibt.
+    const present = new Map((Array.isArray(plan) ? plan : []).map(p => [p.key, p.total == null ? null : (Number(p.total) || 0)]))
     for (const [k, v] of this._phases) {
       if (k === "manifest" || k === "system") { v.status = "done"; v.current = null; v.total = null; v.count = null; continue }
       if (present.has(k)) {
-        v.status = "pending"; v.total = present.get(k); v.current = 0; v.count = null
+        v.status = "pending"; v.total = present.get(k); v.current = (v.total == null) ? null : 0; v.count = null
       } else {
         v.status = "hidden"; v.current = null; v.total = null; v.count = null
       }
@@ -499,7 +510,9 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
         isPatron:   this._creatureBlock.isPatron,
         state:      this._creatureBlock.state,
         countLabel: `${this._creatureBlock.installed}/${this._creatureBlock.count}`,
-        showCount:  this._creatureBlock.isPatron && this._creatureBlock.state === "done",
+        // Schon waehrend des Laufs, nicht erst danach. Die Zahl erst am Ende zu
+        // zeigen war die Stelle, an der das Fenster fertig aussah und nicht war.
+        showCount:  this._creatureBlock.isPatron && this._creatureBlock.state !== "skipped",
       } : null,
     }
   }

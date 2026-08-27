@@ -109,7 +109,11 @@
                           special effect; the reason lives in the tooltip + footnote. --}}
                     <span class="bci-blocked-badge" title="{{blockTooltip}}">{{blockLabel}}</span>
                   {{else if showInstallBadge}}
-                    <span class="bci-badge">+</span>
+                    {{!-- Klickbar: holt genau diese eine Kreatur. Seit die
+                          Karteninstallation die Alternativen nicht mehr
+                          mitbringt, ist das ihr Einzelweg. --}}
+                    <span class="bci-badge" role="button" tabindex="0"
+                          title="{{localize 'BENEOS.CreatureInstaller.InstallOne'}}">+</span>
                   {{/if}}
                 </div>
                 <span class="bci-name">{{name}}</span>

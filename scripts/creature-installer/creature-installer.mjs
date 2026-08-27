@@ -29,6 +29,11 @@
  */
 
 import { BeneosUtility } from "../beneos_utility.js";
+// Die Regel, was eine Alternative ist, liegt bewusst ausserhalb: der
+// Karteninstallierer entscheidet nach derselben Regel, welche Kreaturen er
+// ueberhaupt holt. Laufen die beiden auseinander, installiert die Karte etwas
+// anderes, als die Lade zeigt.
+import { entryKey, positionsOf, istPlatziert, zugewieseneSchluessel } from "./alternativen.mjs";
 
 const MODULE_ID = "beneos-module";
 const FLAG_SCOPE = "beneos-module";
@@ -61,21 +66,6 @@ const TOKEN_THUMB_BASE = "https://www.beneos-database.com/data/tokens/thumbnails
 function renderTemplateCompat(path, data) {
   const rt = foundry.applications?.handlebars?.renderTemplate ?? globalThis.renderTemplate;
   return rt(path, data);
-}
-
-// Stable identity for a creature entry (and for an assignment reference).
-function entryKey(e) {
-  return e?.fullId || e?.tokenKey || e?.name || null;
-}
-
-// All canvas placements of a creature entry. Supports the positions[] model and
-// upgrades legacy single-x/y entries. Each position carries its own hidden flag.
-function positionsOf(entry) {
-  if (Array.isArray(entry?.positions) && entry.positions.length) return entry.positions;
-  if (entry?.x != null && entry?.y != null) {
-    return [{ x: entry.x, y: entry.y, elevation: entry.elevation, rotation: entry.rotation, width: entry.width, height: entry.height, hidden: !!entry.hidden, disposition: entry.disposition }];
-  }
-  return [];
 }
 
 const positionKey = (p) => `${Math.round(p.x ?? 0)},${Math.round(p.y ?? 0)},${p.hidden ? 1 : 0}`;
@@ -312,9 +302,7 @@ export class BeneosCreatureInstaller {
     // positions) nor assigned 1:1 to an SRD (not a replacedBy target). Anything
     // placed or assigned is a regular creature and must never show the ALT tag.
     const positions = positionsOf(entry);
-    const hasPositions = positions.length > 0;
-    const isAssigned = !!(premium && assignedKeys && assignedKeys.has(entryKey(entry)));
-    const alternative = premium && !hasPositions && !isAssigned;
+    const alternative = premium && !istPlatziert(entry, assignedKeys);
     // Disposition to the players: captured per placement, else the actor's
     // prototype. Drives the disc ring colour (hostile/neutral/friendly/secret) so
     // the GM sees what is actually hostile at a glance. Alternatives keep their
@@ -360,7 +348,12 @@ export class BeneosCreatureInstaller {
       // creature has no key, so nothing could install it and the "+" would lie.
       // `!block` for the same reason: a reward this user has no grant for cannot
       // be installed either, so offering the affordance would be a false promise.
-      showInstallBadge: premium && isPatron && !installed && !alternative && !!entry.tokenKey && !block,
+      //
+      // Alternativen tragen das Plus jetzt AUCH. Frueher waren sie davon
+      // ausgenommen, weil die Karteninstallation sie ohnehin mitbrachte und ein
+      // Plus damit nie erschienen waere. Seit sie nicht mehr mitkommen
+      // (Betreiberentscheid 27.08.2026), ist das Plus ihr einziger Einzelweg.
+      showInstallBadge: premium && isPatron && !installed && !!entry.tokenKey && !block,
       // Any accessible premium not yet in the world (incl. alternatives) can be
       // cloud-installed from the drawer -> grayscale + part of "Install Beneos".
       needsInstall: premium && isPatron && !installed && !!entry.tokenKey && !block,
@@ -395,8 +388,7 @@ export class BeneosCreatureInstaller {
     const isPatron = state === "patron";
     // Keys of Beneos creatures that are assigned 1:1 to an SRD (replacedBy targets);
     // these are regular creatures, never alternatives.
-    const assignedKeys = new Set();
-    for (const s of (this.data.srdCreatures || [])) if (s.replacedBy) assignedKeys.add(entryKey(s.replacedBy));
+    const assignedKeys = zugewieseneSchluessel(this.data);
     const srd = dedupeByCreature(this.data.srdCreatures).map(e => this.decorate(e, { premium: false, isPatron, assignedKeys }));
     const beneos = dedupeByCreature(this.data.beneosCreatures).map(e => this.decorate(e, { premium: true, isPatron, assignedKeys }));
     // "Missing" means missing AND obtainable. A reward this user has no grant for
@@ -539,6 +531,18 @@ export class BeneosCreatureInstaller {
         if (!uuid) return;
         try { (await fromUuid(uuid))?.sheet?.render(true); }
         catch (e) { console.warn("beneos | creature-installer: open sheet failed", uuid, e); }
+      });
+    });
+
+    // Das Plus holt genau diese eine Kreatur. `stopPropagation`, damit der
+    // Scheiben-Klick darunter (Sheet oeffnen) nicht mitfeuert, sobald die
+    // Scheibe nach der Installation ziehbar wird und ihren Handler bekommt.
+    root.querySelectorAll(".bci-disc-beneos .bci-badge").forEach(badge => {
+      badge.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const disc = badge.closest(".bci-disc-beneos");
+        this.#installOne(disc?.dataset?.tokenkey, disc);
       });
     });
 
@@ -783,6 +787,53 @@ export class BeneosCreatureInstaller {
     if (installed) ui.notifications?.info(game.i18n.format("BENEOS.CreatureInstaller.InstallDone", { n: installed }));
     // Re-render after the glow so the button recomputes to "Place ..." (or place-empty).
     setTimeout(() => this.render(), 950);
+  }
+
+  /**
+   * Das Plus auf einer Scheibe: genau DIESE eine Kreatur holen.
+   *
+   * Seit die Karteninstallation die Alternativen nicht mehr mitbringt, ist das
+   * hier ihr Weg in die Welt. Der Goldknopf bleibt daneben stehen und holt
+   * weiterhin alle fehlenden auf einmal; wer nur eine will, soll nicht dreissig
+   * bekommen.
+   *
+   * Derselbe Weg wie im Goldknopf, mit denselben zwei Vorsichtsmassnahmen: die
+   * Systemfrage faellt einmal je Nutzerhandlung, und ob es geklappt hat, sagt
+   * die Welt und nicht der Rueckgabewert.
+   */
+  async #installOne(tokenKey, disc) {
+    if (!tokenKey) return;
+    if (this.accountState() !== "patron") { this._on_support(); return; }
+    if (this._installingOne) return;          // Doppelklick auf dieselbe Scheibe
+    this._installingOne = true;
+    this._compatRun = undefined;
+    const root = this.host;
+    const discs = root
+      ? [...root.querySelectorAll(`.bci-disc-beneos[data-tokenkey="${CSS.escape(tokenKey)}"]`)]
+      : (disc ? [disc] : []);
+    try {
+      if (!await this.#compatOk()) return;
+      discs.forEach(d => d.classList.add("bci-installing"));
+      let ok = false;
+      try {
+        await game.beneos?.cloud?.importTokenFromCloud?.(tokenKey, undefined, false,
+          { gated: true, surface: "drawer", interaction: game.beneos?.cloud?.neuerErwerbsvorgang?.() ?? "" });
+        ok = !!this.resolveActor({ tokenKey });
+      } catch (e) {
+        console.error("beneos | creature-installer: single install failed", tokenKey, e);
+      }
+      if (ok) {
+        discs.forEach(d => { d.classList.remove("bci-needsinstall", "bci-installing"); d.classList.add("bci-installed-fx", "bci-available"); });
+        ui.notifications?.info(game.i18n.format("BENEOS.CreatureInstaller.InstallDone", { n: 1 }));
+      } else {
+        discs.forEach(d => d.classList.remove("bci-installing"));
+      }
+      // Neu zeichnen, damit die Scheibe ziehbar wird und der Goldknopf seinen
+      // Zustand neu rechnet.
+      setTimeout(() => this.render(), 600);
+    } finally {
+      this._installingOne = false;
+    }
   }
 
   _on_login() { this.#openCloud(); }

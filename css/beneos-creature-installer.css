@@ -253,8 +253,12 @@
   font-family: "Cinzel", serif; font-weight: 700; font-size: 11px;
   display: flex; align-items: center; justify-content: center;
   transition: transform .15s ease-out;
+  /* Das Plus ist eine Schaltflaeche, kein Abzeichen: ein Klick holt genau diese
+     eine Kreatur. */
+  cursor: pointer;
 }
 #beneos-creature-installer .bci-disc:hover .bci-badge { transform: scale(1.1); }
+#beneos-creature-installer .bci-badge:hover { transform: scale(1.35); background: #e6c98a; }
 #beneos-creature-installer .bci-name {
   /* Clean sans (not the decorative serif) so the small labels stay legible in the
      compact drawer. */
