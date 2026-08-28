@@ -5231,7 +5231,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       return
     }
 
-    if (!(await Uninstaller.confirm({ name: displayName }))) return
+    // releaseDir + variant reichen den Installationsvermerk an den Dialog: ein
+    // gestreamtes Release darf keinen Speicherplatz versprechen, den es nie
+    // belegt hat.
+    if (!(await Uninstaller.confirm({ name: displayName, releaseDir, variant }))) return
 
     let inst = null
     try {

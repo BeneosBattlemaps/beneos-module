@@ -302,12 +302,17 @@ export class BeneosNativeBattlemapInstaller {
    *
    * @returns {Promise<{assets: Array, jsons: Object, packInfo: Object}>}
    */
-  static async describePack({ packageId, source = null } = {}) {
+  static async describePack({ packageId, source = null, mode = "" } = {}) {
     const inst = new BeneosNativeBattlemapInstaller({ packageId, source })
     // #classifyPack counts packaged assets into _result, which run() normally
     // creates. Give it a throwaway so the read-only path does not depend on the
     // install lifecycle.
     inst._result = { totals: {} }
+    // Describe the release AS IT WAS INSTALLED, not as today's switch would
+    // install it. Setting the field at all (even to "") is what marks this as
+    // a description run; an install leaves it undefined and keeps asking the
+    // switch. See #loadPackInfo and BeneosInstallState.recordInstall.
+    inst._describeMode = mode === "stream" || mode === "download" ? mode : ""
     const packInfo = await inst.#loadPackInfo()
     const { assets, jsons } = inst.#classifyPack(packInfo)
     return { assets, jsons, packInfo }
@@ -754,6 +759,14 @@ export class BeneosNativeBattlemapInstaller {
     const sceneIds = (this._importedScenes || []).map(s => String(s.id)).filter(Boolean)
     if (!sceneIds.length) return
     try {
+      // Der Modus wird an der Wirkung abgelesen, nicht am Schalter.
+      //
+      // `_streamTargets` fuellt sich ausschliesslich im Streaming-Zweig von
+      // #loadPackInfo, und es enthaelt genau die Dateien, die NICHT auf die
+      // Platte gehen. Ist es leer, liegt alles lokal, ganz gleich ob der
+      // Schalter an war: die vorsichtige Variante des Streamings laedt
+      // bewusst alles herunter und muss beim Entfernen wie ein gewoehnlicher
+      // Download behandelt werden.
       await BeneosInstallState.recordInstall({
         releaseDir:      this.record.releaseDir,
         variant:         this.record.variant || "",
@@ -761,6 +774,7 @@ export class BeneosNativeBattlemapInstaller {
         sceneIds,
         sourceSignature: this.record.contentSignature || "",
         sceneCount:      sceneIds.length,
+        mode:            this._streamTargets?.size > 0 ? "stream" : "download",
       })
     } catch (e) {
       console.warn("BeneosNativeInstaller | recordInstall failed", e)
@@ -983,7 +997,24 @@ export class BeneosNativeBattlemapInstaller {
     // mayRun(), not enabled(): the one-time confirmation that a backup exists
     // is the condition for writing into an existing world, and asking for it is
     // pointless if the install starts anyway when it is refused.
-    if (stream?.mayRun?.() && this.source?.kind !== "zip") {
+    //
+    // EINE BESCHREIBUNG FRAGT DEN SCHALTER NICHT.
+    //
+    // Seit dem 28.08.2026 kann `describePack` sagen, wie ein Release damals
+    // installiert wurde. Der Schalter von heute beantwortet eine andere Frage
+    // und lag bis dahin in beide Richtungen falsch: mit eingeschaltetem
+    // Streaming behielt ein heruntergeladenes Release alle schweren Dateien,
+    // waehrend der Dialog den Platz versprach; ohne Streaming bekam ein
+    // gestreamtes Release eine volle Pfadliste, die es so nie gab.
+    //
+    // Unbekannt ("") nimmt bewusst den vollen Weg. Er ist die sichere
+    // Obermenge: Dateien, die nicht auf der Platte liegen, werden beim
+    // Raeumen ohnehin uebersprungen.
+    const beschreibt = typeof this._describeMode === "string"
+    const perStream = beschreibt
+      ? (this._describeMode === "stream" && Boolean(stream?.loadStreamManifest))
+      : Boolean(stream?.mayRun?.())
+    if (perStream && this.source?.kind !== "zip") {
       const { release, variant } = stream.releaseFromPackage(this.packageId)
       const manifest = await stream.loadStreamManifest(release, variant)
       const built = stream.buildStreamPack(manifest, release, variant)

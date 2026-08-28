@@ -83,7 +83,7 @@ export class BeneosNativeUninstaller {
    * third is module internals a GM never needs to act on. Cancel is default.
    * @returns {Promise<boolean>} true => proceed
    */
-  static async confirm({ name = "" } = {}) {
+  static async confirm({ name = "", releaseDir = "", variant = "" } = {}) {
     const DialogV2 = foundry?.applications?.api?.DialogV2
     if (!DialogV2?.confirm) return false   // cannot ask -> never destroy anything
     const safeName = foundry.utils.escapeHTML(String(name || ""))
@@ -91,8 +91,15 @@ export class BeneosNativeUninstaller {
     const intro = (localize("BENEOS.Cloud.Uninstall.Intro",
       "'%name%' and everything it installed will be deleted from this world.")
     ).replace("%name%", safeName)
-    const warnFiles = localize("BENEOS.Cloud.Uninstall.WarnFiles",
-      "The downloaded files are emptied, so the disk space is freed.")
+    // A streamed release has almost nothing on disk to free, and promising the
+    // space back would be a plain untruth on the button that deletes scenes.
+    // Unknown installs keep the old sentence: they predate streaming, so their
+    // files really are on disk.
+    const warnFiles = this.#recordedMode(releaseDir, variant) === "stream"
+      ? localize("BENEOS.Cloud.Uninstall.WarnFilesStream",
+          "This release is streamed, so only a little disk space is freed.")
+      : localize("BENEOS.Cloud.Uninstall.WarnFiles",
+          "The downloaded files are emptied, so the disk space is freed.")
     const question = localize("BENEOS.Cloud.Uninstall.Question", "Continue?")
 
     try {
@@ -129,13 +136,26 @@ export class BeneosNativeUninstaller {
     const ui_ = ui.notifications
     ui_?.info?.(localize("BENEOS.Cloud.Uninstall.Started", "Removing release from this world..."))
 
+    // Wie wurde dieses Release installiert? Der Vermerk weiss es, der Schalter
+    // von heute nicht. Siehe BeneosInstallState.recordInstall.
+    const modus = BeneosNativeUninstaller.#recordedMode(this.releaseDir, this.variant)
+
     let target
     try {
-      target = await BeneosNativeBattlemapInstaller.describePack({ packageId: this.packageId })
+      target = await BeneosNativeBattlemapInstaller.describePack({
+        packageId: this.packageId, mode: modus,
+      })
     } catch (err) {
       this.#fail("describePack", err)
-      ui_?.error?.(localize("BENEOS.Cloud.Uninstall.ManifestFailed",
-        "Could not read the release manifest. Nothing was changed."))
+      // Ein gestreamtes Release braucht das Manifest vom Tor, und ohne Netz
+      // gibt es das nicht. Die Meldung sagt deshalb, was fehlt und was hilft,
+      // statt nur festzustellen, dass nichts geschehen ist.
+      ui_?.error?.(modus === "stream"
+        ? localize("BENEOS.Cloud.Uninstall.ManifestFailedStream",
+            "This release is streamed, so removing it needs a connection to Beneos. "
+          + "Nothing was changed. Please try again when you are online.")
+        : localize("BENEOS.Cloud.Uninstall.ManifestFailed",
+            "Could not read the release manifest. Nothing was changed."))
       return this
     }
 
@@ -180,6 +200,23 @@ export class BeneosNativeUninstaller {
    * treated as claiming everything it might own: we skip file clearing for this
    * run rather than risk gutting an install we could not inspect.
    */
+  /**
+   * How a release was installed, from its own record.
+   *
+   * Returns "stream", "download", or "" for installs written before the field
+   * existed. "" deliberately reaches describePack unchanged, where it means
+   * "describe the whole release": the safe superset, because files that are
+   * not on disk are skipped when clearing anyway.
+   */
+  static #recordedMode(releaseDir, variant) {
+    try {
+      const key = variant ? `${releaseDir}_${variant}` : releaseDir
+      const entry = BeneosInstallState.getAll()?.[key]
+      const m = String(entry?.mode || "")
+      return m === "stream" || m === "download" ? m : ""
+    } catch (_) { return "" }
+  }
+
   async #assetsClaimedByOtherInstalls() {
     const claimed = new Set()
     const myKey = this.variant ? `${this.releaseDir}_${this.variant}` : this.releaseDir
@@ -197,7 +234,13 @@ export class BeneosNativeUninstaller {
         continue
       }
       try {
-        const other = await BeneosNativeBattlemapInstaller.describePack({ packageId: pkg })
+        // Jedes fremde Release wird so beschrieben, wie es installiert wurde.
+        // Mit dem Schalter von heute fielen bei eingeschaltetem Streaming die
+        // heruntergeladenen Dateien der anderen Releases aus dieser Menge
+        // heraus, obwohl sie auf der Platte liegen und gebraucht werden.
+        const other = await BeneosNativeBattlemapInstaller.describePack({
+          packageId: pkg, mode: String(entry.mode || ""),
+        })
         for (const a of other.assets) claimed.add(a.target)
       } catch (err) {
         this.#fail("describeOtherPack", err)

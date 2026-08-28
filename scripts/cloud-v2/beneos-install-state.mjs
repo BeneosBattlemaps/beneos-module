@@ -138,8 +138,26 @@ export class BeneosInstallState {
    * Persist one install. Key format: `<releaseDir>_<variant>` (variant = ""
    * for single-variant releases). Idempotent: replacing the same key
    * overwrites scene-ids + timestamp + signature for the new install.
+   *
+   * `mode` RECORDS HOW THIS RELEASE WAS INSTALLED, AND IT MATTERS AT REMOVAL.
+   *
+   * Until 2026-08-28 this record held no mode, and the uninstaller therefore
+   * had to ask today's stream switch what a release installed weeks ago looks
+   * like on disk. That is a different question, and it gave the wrong answer
+   * in both directions: with streaming on, a downloaded release kept all its
+   * heavy files while the dialog promised the space back; with streaming off,
+   * a streamed release was described with a full path list that mostly does
+   * not exist.
+   *
+   * Three values, and the third is not a defect:
+   *   "download"  every file of the release lies on disk
+   *   "stream"    the heavy files stay at Beneos, only light ones are local
+   *   ""          unknown, written before this field existed. Callers MUST
+   *               treat it as "describe the full release", never as
+   *               "download", because the full list is the safe superset:
+   *               files that are not there are skipped anyway.
    */
-  static async recordInstall({ releaseDir, variant, assetId, sceneIds, sourceSignature, sceneCount }) {
+  static async recordInstall({ releaseDir, variant, assetId, sceneIds, sourceSignature, sceneCount, mode }) {
     if (!releaseDir) return
     const all = this.getAll()
     const key = variant ? `${releaseDir}_${variant}` : releaseDir
@@ -151,6 +169,7 @@ export class BeneosInstallState {
       sceneCount:      Number(sceneCount || (Array.isArray(sceneIds) ? sceneIds.length : 0)),
       installedAt:     new Date().toISOString(),
       sourceSignature: String(sourceSignature || ""),
+      mode:            mode === "stream" || mode === "download" ? mode : "",
     }
     try {
       await game.settings.set(BeneosUtility.moduleID(), SETTING_KEY, all)
