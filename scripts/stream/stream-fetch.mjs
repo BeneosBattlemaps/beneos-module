@@ -368,6 +368,38 @@ async function fromStore(store, url) {
   return null
 }
 
+/**
+ * Liegen ALLE diese Adressen frisch im Speicher?
+ *
+ * Eine reine Frage, ohne Nebenwirkung: anders als `fromStore` loescht sie
+ * nichts und holt keinen Rumpf. Sie beantwortet allein, ob eine Szene ohne
+ * Leitung vollstaendig gezeichnet werden koennte.
+ *
+ * Gebraucht wird sie von der Szenenwache. Die lehnte bis zum 2026-08-28 jede
+ * Szene mit Toradressen ab, sobald der Zustand `offline` war, auch wenn deren
+ * Dateien laengst hier lagen. Gemessen an einer Szene, die Sekunden vorher noch
+ * in 406 ms mit laufendem Video aufgebaut hatte: bei echtem Offline abgelehnt.
+ * Das widerspricht dem Sinn der zehn Gigabyte.
+ *
+ * Bewusst streng: **eine** fehlende Datei genuegt fuer ein Nein. Eine halb
+ * gezeichnete Szene ist schlechter als eine ehrliche Ablehnung, denn sie sieht
+ * aus wie ein Fehler und nicht wie eine Ansage.
+ */
+export async function alleImSpeicher(urls) {
+  const liste = [...new Set((urls || []).filter(u => typeof u === "string" && ours(u)))]
+  if (!liste.length) return false
+  if (!localCacheEnabled()) return false
+  const store = await openStore()
+  if (!store) return false
+  for (const url of liste) {
+    try {
+      const hit = await store.match(url, { ignoreSearch: true })
+      if (!hit || !fresh(hit)) return false
+    } catch (_) { return false }
+  }
+  return true
+}
+
 async function toStore(store, url, response) {
   // A denied asset answers 200 with a placeholder pixel. Storing that would
   // freeze the denial in place for three days, long after the right returns.

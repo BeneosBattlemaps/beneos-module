@@ -226,6 +226,27 @@ function installSceneGuard() {
   let lastRefusal = { id: "", at: 0 }
   const wrapped = async function beneosStreamView(...args) {
     if (streamEnabled() && isOffline() && hasStreamedContent(this)) {
+      // Liegt die Szene vollstaendig im Speicher, wird sie NICHT abgelehnt.
+      //
+      // Bis zum 2026-08-28 fehlte diese Frage, und die Wache sperrte auch aus,
+      // was ohne Leitung tadellos gezeichnet haette. Gemessen an einer Szene,
+      // die Sekunden zuvor in 406 ms mit laufendem Video aufgebaut hatte: bei
+      // echtem Offline abgelehnt. Das nimmt dem Streaming genau den Vorteil,
+      // fuer den die zehn Gigabyte da sind.
+      //
+      // Die Frage ist streng: eine fehlende Datei genuegt fuer eine Ablehnung,
+      // denn eine halb gezeichnete Szene sieht aus wie ein Fehler und nicht wie
+      // eine Ansage.
+      // Der Import steht hier und nicht oben: `stream-fetch.mjs` importiert
+      // diese Datei bereits, ein Gegenimport waere ein Zirkelbezug. Zur
+      // Laufzeit ist das Modul laengst geladen, der Aufruf kostet nichts.
+      try {
+        const { alleImSpeicher } = await import("./stream-fetch.mjs")
+        if (await alleImSpeicher(streamAdressenVon(this))) {
+          console.debug(`Beneos Stream | "${this.name}" liegt vollstaendig im Speicher, wird trotz offline gezeichnet`)
+          return original.apply(this, args)
+        }
+      } catch (_) { /* ein kaputter Speicher darf die Wache nicht aushebeln */ }
       const now = Date.now()
       if (lastRefusal.id === this.id && now - lastRefusal.at < 5000) return this
       lastRefusal = { id: this.id, at: now }
@@ -303,6 +324,31 @@ function hostVomTor() {
  * A world holds installed scenes next to streamed ones, and a scene that lives
  * entirely on disk must open whether or not there is a connection.
  */
+/**
+ * Jede Toradresse, die diese Szene zum Zeichnen braucht.
+ *
+ * Dieselben Stellen, die `hasStreamedContent` prueft, nur sammelnd statt
+ * fragend. Gebraucht wird sie, um vor einer Ablehnung nachzusehen, ob der
+ * Zwischenspeicher die Szene ohnehin tragen wuerde.
+ */
+export function streamAdressenVon(scene) {
+  const host = (() => { try { return new URL(streamBase()).host } catch (_) { return "" } })()
+  if (!host) return []
+  const remote = (src) => typeof src === "string" && src.includes(host)
+  const raus = []
+  const stufe = scene?.firstLevel ?? (Array.isArray(scene?.levels) ? scene.levels[0] : null)
+  for (const s of [stufe?.background?.src, scene?._source?.background?.src,
+                   stufe?.foreground?.src, scene?._source?.foreground]) {
+    if (remote(s)) raus.push(s)
+  }
+  for (const tile of scene?.tiles ?? []) {
+    if (remote(tile?.texture?.src)) raus.push(tile.texture.src)
+    const v = tile?.flags?.["beneos-module"]?.stream?.video
+    if (remote(v)) raus.push(v)
+  }
+  return [...new Set(raus)]
+}
+
 export function hasStreamedContent(scene) {
   const host = (() => { try { return new URL(streamBase()).host } catch (_) { return "" } })()
   if (!host) return false
