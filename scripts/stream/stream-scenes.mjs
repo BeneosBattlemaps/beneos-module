@@ -277,6 +277,32 @@ function ankerLage(rect, ax = 0.5, ay = 0.5) {
   }
 }
 
+/**
+ * Die Verdeckung dieser Kachel, in der Form der laufenden Foundry-Fassung.
+ *
+ * Derselbe Grund wie bei `ankerLage`, und derselbe Fehler auf der anderen Seite:
+ * V14 hat das Einzelfeld `occlusion.mode` durch die Menge `occlusion.modes`
+ * ersetzt, und die Menge weist den alten Wert NONE, also 0, zurueck.
+ * `migrateTile()` in `beneos-v14-scene-migration.mjs` raeumt das fuer jede
+ * Kachel AUS DEM PAKET auf. Diese Kachel entsteht danach und traegt die alte
+ * Form deshalb erneut herein.
+ *
+ * Gemessen am 28.08.2026 auf Foundry 14.360 an `bm_0018` im Streaming-Betrieb:
+ * die Installation legte **null** Szenen an, alle 32 abgelehnt mit
+ * `tiles: 0: occlusion: modes: 0: 0 is not a valid choice`. Index 0 ist genau
+ * die Kachel, die hier entsteht. Weil die Kachel im Szenendokument eingebettet
+ * ist, faellt daran nicht die Kachel aus, sondern die ganze Szene. Der
+ * Download-Betrieb blieb heil, weil dort `streamTargets` leer ist und dieser
+ * Umbau gar nicht laeuft.
+ *
+ * Die leere Menge ist die richtige Entsprechung von NONE: die Kachel soll
+ * nichts verdecken.
+ */
+function verdeckung() {
+  if ((game.release?.generation ?? 13) < 14) return { mode: 0, alpha: 0 }
+  return { modes: [], alpha: 0 }
+}
+
 function texture(src, rotation = 0) {
   return {
     src,
@@ -421,7 +447,7 @@ export async function rebuildScene(scene, report, bekannt) {
       hidden: false,
       locked: true,
       restrictions: { light: false, weather: false },
-      occlusion: { mode: 0, alpha: 0 },
+      occlusion: verdeckung(),
       video: { loop: true, autoplay: true, volume: 0 },
       flags: marker(ROLE_VIDEO, still, bgSrc)
     })
