@@ -311,10 +311,29 @@ export function hasStreamedContent(scene) {
   // Zugriffspfad, der bei jedem Lesen warnt und in Version 16 verschwindet.
   // Gemessen auf The Forge 14.365 am 26.08.2026, diese Zeile erzeugte eine der
   // drei Warnungen des Weltstarts. Dritte Stelle derselben Fehlerklasse nach
-  // dc08cca und 39b675e. `_source` ist der rohe Datensatz und warnt nicht.
-  const stufe = Array.isArray(scene?.levels) ? scene.levels[0] : null
+  // dc08cca und 39b675e.
+  //
+  // ABER: die Fassung, die dabei entstand, war auf V14 blind, und das ist
+  // teurer als die Warnung. Sie las `Array.isArray(scene.levels)` und fiel
+  // sonst auf `scene._source.background` zurueck. Beides greift hier ins
+  // Leere. Diese Funktion bekommt das FERTIGE Dokument aus `Scene#view`, dort
+  // sind die Stufen eine Collection und kein Array; und `_source.background`
+  // loescht die eigene Wanderung, `beneos-v14-scene-migration.mjs`,
+  // `stripLegacySceneFields()`. Damit fiel die ganze Hintergrundpruefung aus,
+  // jede Szene mit lokalen Kachelbildern galt als nicht gestreamt, und die
+  // Szenenwache liess sie durch.
+  //
+  // Gemessen am 2026-08-28 auf Foundry 14.360 bei gesperrtem Tor: die Szene
+  // wurde gezeichnet statt abgelehnt, Hintergrund 1 Pixel, zehn Platzhalter,
+  // und die einzige Meldung war Foundrys eigenes `SCENE.Loading`.
+  //
+  // `firstLevel` ist der Dokumentzugriff und warnt nicht. Vier andere Stellen
+  // im Modul benutzen ihn bereits, unter anderem `beneos_utility.js:1014`.
+  // Der Rueckfall auf `_source` bleibt fuer V13, wo es keine Stufen gibt.
+  const stufe = scene?.firstLevel ?? (Array.isArray(scene?.levels) ? scene.levels[0] : null)
   const hintergrund = stufe?.background?.src || scene?._source?.background?.src || null
-  if (remote(hintergrund) || remote(scene?._source?.foreground)) return true
+  const vordergrund = stufe?.foreground?.src || scene?._source?.foreground || null
+  if (remote(hintergrund) || remote(vordergrund)) return true
   for (const tile of scene?.tiles ?? []) {
     if (remote(tile?.texture?.src)) return true
     if (remote(tile?.flags?.["beneos-module"]?.stream?.video)) return true
