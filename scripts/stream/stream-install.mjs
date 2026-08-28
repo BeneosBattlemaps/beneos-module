@@ -12,7 +12,11 @@
  *
  *   edge    an address per release, behind the key check
  *   shared  one address for content several releases have in common, no key
- *   local   downloaded into the world; the pictures a failed edge must not take
+ *   local   downloaded into the world. Two kinds of picture end up here: the
+ *           ones a failed edge must not take, and, since 2026-08-28, everything
+ *           an Actor or Item document names. The second kind is not about size
+ *           but about where it is shown: a portrait in a sidebar directory is a
+ *           plain <img>, and a plain <img> never passes this module.
  *   doc     the document collections
  *   skip    not downloaded and not rewritten: the client already has the file
  *
@@ -185,6 +189,25 @@ export function buildStreamPack(manifest, release, variant) {
       continue
     }
 
+    // `local`: wird installiert und bleibt es. Seit dem 2026-08-28 vergibt der
+    // Manifestbauer die Rolle fuer alles, was ein Actor- oder Item-Dokument als
+    // Bild nennt. Grund ist nicht die Groesse, sondern der Ort: ein Portrait im
+    // Verzeichnis der Seitenleiste ist ein gewoehnliches `<img>`, und ein `<img>`
+    // laeuft an diesem Modul vorbei. Kein Zwischenspeicher, kein Wachhund, keine
+    // Erkennung eines fehlenden Netzes, keine Behandlung einer Ablehnung. Wer
+    // durch das Verzeichnis scrollt, fragt sonst je Zeile ungeschuetzt den Rand,
+    // fuer Kreaturen, die er nur sieht.
+    if (entry.role === "local") {
+      packInfo[`data/assets/${key}`] = assetUrl(release, variant, key)
+      localBytes += entry.bytes || 0
+      continue
+    }
+
+    // Eine Rolle, die dieses Modul nicht kennt. Herunterladen ist die richtige
+    // Ausfallrichtung, denn eine Datei auf der Platte fehlt nie. Sie aber
+    // stillschweigend zu behandeln, verschluckt einen Tippfehler im Manifest
+    // genauso wie eine kuenftige Rolle, und beides gehoert gesagt.
+    console.warn(`Beneos Stream | unbekannte Rolle "${entry.role}" fuer ${key}, wird heruntergeladen`)
     packInfo[`data/assets/${key}`] = assetUrl(release, variant, key)
     localBytes += entry.bytes || 0
   }
