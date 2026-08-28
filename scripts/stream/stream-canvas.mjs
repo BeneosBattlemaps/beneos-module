@@ -111,10 +111,18 @@ function onCanvasInit(canvas) {
  * dann waere ein Hinweis nichts als Stoerung.
  *
  * Kein Bild im Modul. Die Anzeige entsteht aus `PIXI.Texture.WHITE`, dem
- * einzigen Zeichenweg, den PIXI 7 (Foundry 13) und PIXI 8 (Foundry 14)
- * unveraendert teilen. `Graphics.beginFill()` gibt es in PIXI 8 nicht mehr, und
- * ein Ladehinweis, der beim Fassungswechsel selbst zum Fehler wird, waere die
- * Umkehrung seines Zwecks.
+ * einzigen Zeichenweg, den PIXI 7 und PIXI 8 unveraendert teilen.
+ * `Graphics.beginFill()` gibt es in PIXI 8 nicht mehr, und ein Ladehinweis, der
+ * beim Fassungswechsel selbst zum Fehler wird, waere die Umkehrung seines
+ * Zwecks. Die Wahl bleibt also richtig.
+ *
+ * Die Zuordnung darunter war es nicht: hier stand, Foundry 14 fahre PIXI 8.
+ * Am 2026-08-28 auf Foundry 14.360 gemessen, `PIXI.VERSION` gibt **7.4.3**.
+ * Foundry 14 bringt weiterhin PIXI 7. Das ist mehr als eine Fussnote, denn an
+ * derselben Annahme haengt der Schalter in `stream-fetch.mjs`, der
+ * `preferWorkers` abschaltet: er greift auf `PIXI.loadTextures.config`, und
+ * dieser Pfad gehoert PIXI 7. Gemessen steht `preferWorkers` auf 14.360 auf
+ * `false`, der Schalter kommt also an.
  *
  * Sie haengt an der Kachelebene, nicht an der Kachel: Kinder der Ebene liegen in
  * Szenenkoordinaten, und die stehen im Dokument. Wer sie in die Kachel haengt,
