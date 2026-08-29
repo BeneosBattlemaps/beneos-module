@@ -29,7 +29,7 @@
  * er den Abend kostet.
  */
 
-import { MODULE_ID, SETTING, streamEnabled, assetUrl } from "./stream-settings.mjs"
+import { MODULE_ID, SETTING, streamEnabled, assetUrl, streamKey, streamBase } from "./stream-settings.mjs"
 import { offlineGehalten, offlineHalten, offlineFreigeben } from "./stream-fetch.mjs"
 import { streamAdressenVon } from "./stream-online.mjs"
 import { loadStreamManifest } from "./stream-install.mjs"
@@ -117,10 +117,52 @@ export function istZugesagt(release, variant, karte) {
 }
 
 /**
- * Eine Karte zusagen: erst holen, dann eintragen.
+ * Das Tor um eine Karte bitten, oder sie ihm zurueckgeben.
+ *
+ * WARUM DAS TOR UND NICHT DIESES MODUL ENTSCHEIDET
+ *
+ * Die Pruefung weiter unten kennt nur den Vorrat DIESER Welt. Das Kontingent
+ * gilt aber je Konto, und ein Kunde kann sich in zehn Sekunden eine zweite
+ * Welt anlegen. Nur das Tor sieht alle Welten eines Kontos zusammen.
+ *
+ * Ausserdem kennt nur das Tor die Groessen aus erster Hand. Eine Zahl, die der
+ * Gezaehlte selbst liefert, ist keine Abrechnung: der Schluessel steht im
+ * Klartext in jedem Szenendokument, wer ihn kennt, schickt Null.
+ *
+ * Die Pruefung im Modul bleibt trotzdem stehen. Sie erspart im Normalfall
+ * einen Abruf und eine Wartezeit, und sie kann dem Kunden sofort sagen, warum
+ * es nicht geht. Sie ist Komfort, nicht die Grenze.
+ */
+async function torFragen(weg, methode = "GET") {
+  const schluessel = streamKey()
+  if (!schluessel) return { ok: false, grund: "kein-schluessel" }
+  const basis = streamBase().replace(/\/+$/, "")
+  try {
+    const r = await fetch(`${basis}/offline/${encodeURIComponent(schluessel)}${weg}`,
+      { method: methode })
+    let inhalt = null
+    try { inhalt = await r.json() } catch (_) { inhalt = null }
+    if (!r.ok && r.status !== 409) {
+      return { ok: false, grund: "tor-fehler", status: r.status, inhalt }
+    }
+    return { ok: Boolean(inhalt && inhalt.ok), status: r.status, inhalt }
+  } catch (e) {
+    // Kein Netz. Eine Karte offline zu nehmen heisst, sie zu holen, und das
+    // braucht ohnehin das Tor. Also ist das hier kein Sonderfall, sondern
+    // derselbe Fall, nur frueher erkannt.
+    return { ok: false, grund: "kein-netz" }
+  }
+}
+
+const kartenWeg = (release, variant, karte) =>
+  `/${encodeURIComponent(release)}/${encodeURIComponent(variant)}/${encodeURIComponent(karte)}`
+
+/**
+ * Eine Karte zusagen: erst das Tor fragen, dann holen, dann eintragen.
  *
  * Die Reihenfolge ist bindend. Ein Eintrag, dessen Dateien nicht liegen, waere
- * genau die Luege, die dieses Verzeichnis aufdecken soll.
+ * genau die Luege, die dieses Verzeichnis aufdecken soll. Und ein Holen ohne
+ * Zusage des Tors waere ein Kontingent, das nur diese eine Welt kennt.
  */
 export async function karteZusagen({ release, variant, karte, name, urls, bytes, onProgress }) {
   if (!streamEnabled()) return { ok: false, grund: "kein-streaming" }
@@ -150,12 +192,32 @@ export async function karteZusagen({ release, variant, karte, name, urls, bytes,
     }
   }
 
+  // Das Tor fragen, BEVOR ein Byte fliesst. Sagt es nein, wird nicht geholt.
+  const zusage = await torFragen(kartenWeg(release, variant, karte))
+  if (!zusage.ok) {
+    if (zusage.status === 409 && zusage.inhalt?.reason === "quota") {
+      return {
+        ok: false, grund: "kontingent",
+        belegt: zusage.inhalt.used, grenze: zusage.inhalt.quota,
+        braucht: zusage.inhalt.needs, frei: zusage.inhalt.free,
+      }
+    }
+    return { ok: false, grund: zusage.grund || "tor-abgelehnt", status: zusage.status }
+  }
+
   const ergebnis = await offlineHalten(liste, onProgress)
-  if (ergebnis.deckelErreicht) return { ok: false, grund: "deckel", ergebnis }
+  if (ergebnis.deckelErreicht) {
+    // Nicht geholt heisst nicht gehalten: die Zusage sofort zurueckgeben,
+    // sonst zaehlt das Tor Bytes, die nirgends liegen.
+    await torFragen(kartenWeg(release, variant, karte) + "/release", "POST")
+    return { ok: false, grund: "deckel", ergebnis }
+  }
   if (ergebnis.fehlgeschlagen > 0) {
     // Halb gehalten ist schlechter als gar nicht: die Karte belegt Platz und
-    // zeichnet trotzdem nicht. Also zuruecknehmen, was schon liegt.
+    // zeichnet trotzdem nicht. Also zuruecknehmen, was schon liegt, und die
+    // Zusage gleich mit.
     await offlineFreigeben(liste)
+    await torFragen(kartenWeg(release, variant, karte) + "/release", "POST")
     return { ok: false, grund: "unvollstaendig", ergebnis }
   }
 
@@ -174,7 +236,15 @@ export async function karteZusagen({ release, variant, karte, name, urls, bytes,
   return { ok: true, ergebnis }
 }
 
-/** Eine Zusage zuruecknehmen. Die Bytes bleiben zunaechst liegen. */
+/**
+ * Eine Zusage zuruecknehmen. Die Bytes bleiben zunaechst liegen.
+ *
+ * Das Tor wird gefragt, sein Ergebnis aber nicht abgewartet in dem Sinn, dass
+ * ein Fehlschlag die Ruecknahme verhinderte. Der Kunde hat die Karte im Modul
+ * freigegeben; ihm das zu verweigern, weil das Tor gerade nicht antwortet,
+ * hiesse, sein Kontingent zu sperren statt es zu fuehren. Beim naechsten
+ * Weltstart laeuft der Abgleich ohnehin.
+ */
 export async function karteLoesen(release, variant, karte) {
   const alle = lies()
   const id = karteId(release, variant, karte)
@@ -183,7 +253,8 @@ export async function karteLoesen(release, variant, karte) {
   await offlineFreigeben(eintrag.urls || [])
   delete alle[id]
   await schreib(alle)
-  return { ok: true }
+  const beimTor = await torFragen(kartenWeg(release, variant, karte) + "/release", "POST")
+  return { ok: true, beimTor: beimTor.ok }
 }
 
 // ---- Von der Szene zur Karte ------------------------------------------
