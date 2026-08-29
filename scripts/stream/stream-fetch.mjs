@@ -438,7 +438,93 @@ export async function alleImSpeicher(urls) {
   return true
 }
 
-async function toStore(store, url, response) {
+/**
+ * Wieviel Platz die gehaltenen Karten hoechstens belegen duerfen.
+ *
+ * Nicht alles: bliebe kein Raum fuer den laufenden Betrieb, koennte der
+ * Spielleiter zwar dreissig Karten vorhalten, aber keine einunddreissigste
+ * mehr ansehen, ohne dass etwas nachlaedt. Sieben Zehntel lassen bei einem
+ * gemessenen Kontingent von rund 10 GB etwa 3 GB fuer den Alltag, und das ist
+ * ein Vielfaches dessen, was eine Sitzung braucht.
+ */
+const KEEP_ANTEIL = 0.7
+
+/**
+ * Was der Speicher gerade haelt, getrennt nach den beiden Arten.
+ *
+ * `estimate()` misst den ganzen Ursprung, also auch Foundrys eigene Ablagen.
+ * Fuer die Frage "wieviel Raum habe ich noch" ist genau das richtig; fuer die
+ * Frage "was kann ich raeumen" zaehlt allein der eigene Speicher, und der wird
+ * hier durchgegangen.
+ */
+export async function speicherLage() {
+  const lage = { kontingent: 0, belegtGesamt: 0, gehalten: 0, wegwerf: 0, gehalteneDateien: 0, wegwerfDateien: 0 }
+  try {
+    const est = await navigator.storage?.estimate?.()
+    if (est) { lage.kontingent = est.quota || 0; lage.belegtGesamt = est.usage || 0 }
+    const store = await openStore()
+    if (!store) return lage
+    for (const anfrage of await store.keys()) {
+      const hit = await store.match(anfrage)
+      if (!hit) continue
+      const bytes = Number(hit.headers.get("content-length") || 0)
+      if (hit.headers.get(KEEP_HEADER)) { lage.gehalten += bytes; lage.gehalteneDateien++ }
+      else { lage.wegwerf += bytes; lage.wegwerfDateien++ }
+    }
+  } catch (_) { /* melde, was gezaehlt wurde */ }
+  return lage
+}
+
+/**
+ * Platz schaffen, ohne eine einzige gehaltene Karte anzufassen.
+ *
+ * WARUM DAS NOETIG IST, UND ZWAR DRINGEND
+ *
+ * Der Speicher haelt zweierlei: dauerhaft gehaltene Karten und Wegwerfware aus
+ * dem laufenden Betrieb. Bis zum 29.08.2026 gab es dafuer keine Regel. `put`
+ * scheiterte bei vollem Speicher, der Fehler wurde stumm verschluckt, und die
+ * Folge war die schlimmere von zwei moeglichen: wer sich vor einer Sitzung
+ * durch genug Szenen geblaettert hatte, konnte **keine Karte mehr offline
+ * nehmen**, ohne dass irgendetwas es ihm gesagt haette.
+ *
+ * Geraeumt wird nach Ablagezeitpunkt, aelteste zuerst. Das ist eine Naeherung
+ * an "am laengsten nicht gebraucht" und bewusst gewaehlt: den Zeitpunkt bei
+ * jedem Treffer fortzuschreiben hiesse, jede gelesene Datei neu abzulegen, und
+ * das kostet bei einem Video mehr als es einbringt.
+ *
+ * Chrome raeumt bei echtem Speicherdruck uebrigens ganz anders, naemlich den
+ * gesamten Ursprung auf einmal. Dagegen hilft diese Regel nicht, dagegen hilft
+ * die Pruefung beim Weltstart.
+ */
+export async function raumSchaffen(noetig) {
+  if (!(noetig > 0)) return true
+  const store = await openStore()
+  if (!store) return false
+
+  const wegwerf = []
+  try {
+    for (const anfrage of await store.keys()) {
+      const hit = await store.match(anfrage)
+      if (!hit || hit.headers.get(KEEP_HEADER)) continue
+      wegwerf.push({
+        url: anfrage.url,
+        stamp: Number(hit.headers.get(STAMP_HEADER) || 0),
+        bytes: Number(hit.headers.get("content-length") || 0),
+      })
+    }
+  } catch (_) { return false }
+
+  wegwerf.sort((a, b) => a.stamp - b.stamp)
+  let frei = 0
+  for (const e of wegwerf) {
+    if (frei >= noetig) break
+    try { await store.delete(e.url, { ignoreSearch: true }); frei += e.bytes } catch (_) { /* weiter */ }
+  }
+  if (frei > 0) console.log(`Beneos Stream | Speicher: ${Math.round(frei / 1048576)} MB Wegwerfware geraeumt`)
+  return frei >= noetig
+}
+
+async function toStore(store, url, response, keep = false) {
   // A denied asset answers 200 with a placeholder pixel. Storing that would
   // freeze the denial in place for three days, long after the right returns.
   //
@@ -447,10 +533,25 @@ async function toStore(store, url, response) {
   // 200-Antwort und waere ohne diese Zeile drei Tage lang der gespeicherte
   // Inhalt der Datei: die Verbindung kaeme zurueck, und der Kunde saehe
   // trotzdem eine leere Flaeche, bis der Eintrag verfaellt.
-  if (!response.ok || response.headers.get("x-beneos-denied")) return
-  if (response.headers.get("x-beneos-offline")) return
-  if (isControl(url)) return
-  try { await store.put(url, await stamped(response.clone())) } catch (_) { /* quota, opaque, ignore */ }
+  if (!response.ok || response.headers.get("x-beneos-denied")) return false
+  if (response.headers.get("x-beneos-offline")) return false
+  if (isControl(url)) return false
+
+  // Einmal in einen Rumpf lesen, statt zweimal zu klonen: ein zweiter Versuch
+  // nach dem Raeumen braucht denselben Inhalt, und ein verbrauchter Rumpf
+  // waere dann nicht mehr da.
+  let daten, bytes
+  try {
+    const gestempelt = await stamped(response.clone(), keep)
+    daten = await gestempelt.blob()
+    bytes = daten.size
+    const kopf = new Headers(gestempelt.headers)
+    const bauen = () => new Response(daten, { status: 200, headers: kopf })
+    try { await store.put(url, bauen()); return true } catch (_) { /* voll, gleich weiter */ }
+    // Etwas Luft ueber den reinen Bedarf, damit nicht jede zweite Datei raeumt.
+    if (!(await raumSchaffen(Math.max(bytes * 2, 32 * 1048576)))) return false
+    try { await store.put(url, bauen()); return true } catch (_) { return false }
+  } catch (_) { return false }
 }
 
 export function installStreamFetch() {
@@ -724,7 +825,10 @@ export async function prewarm(urls, onProgress) {
     try {
       if (await fromStore(store, url)) { warmed++; onProgress?.(warmed + failed, urls.length); continue }
       const response = await fetch(url)
-      if (response.ok) { await toStore(store, url, response); warmed++ } else { failed++ }
+      // Seit dem 29.08.2026 sagt `toStore`, ob es wirklich abgelegt hat. Ein
+      // voller Speicher zaehlte vorher als Erfolg.
+      if (response.ok && await toStore(store, url, response)) warmed++
+      else failed++
     } catch (_) { failed++ }
     onProgress?.(warmed + failed, urls.length)
   }
@@ -745,10 +849,19 @@ export async function prewarm(urls, onProgress) {
  */
 export async function offlineHalten(urls, onProgress) {
   const liste = [...new Set((urls || []).filter(u => typeof u === "string" && ours(u)))]
-  const ergebnis = { gehalten: 0, geholt: 0, fehlgeschlagen: 0, bytes: 0 }
+  const ergebnis = { gehalten: 0, geholt: 0, fehlgeschlagen: 0, bytes: 0, deckelErreicht: false }
   if (!liste.length || !localCacheEnabled()) return ergebnis
   const store = await openStore()
   if (!store) return ergebnis
+
+  // Der Deckel wird EINMAL vorab geprueft, nicht je Datei. Eine Karte halb zu
+  // halten waere das schlechteste Ergebnis: sie belegt Platz und zeichnet
+  // trotzdem nicht.
+  const lage = await speicherLage()
+  if (lage.kontingent > 0 && lage.gehalten >= lage.kontingent * KEEP_ANTEIL) {
+    ergebnis.deckelErreicht = true
+    return ergebnis
+  }
 
   let fertig = 0
   for (const url of liste) {
@@ -760,19 +873,22 @@ export async function offlineHalten(urls, onProgress) {
         hit = null
       }
       if (hit) {
-        if (!hit.headers.get(KEEP_HEADER)) await store.put(url, await stamped(hit.clone(), true))
+        // Schon da, nur noch nicht zugesagt. Der Rumpf wird dabei nicht neu
+        // geholt; `toStore` legt denselben Inhalt mit Stempel wieder ab.
+        if (!hit.headers.get(KEEP_HEADER)) await toStore(store, url, hit.clone(), true)
         ergebnis.gehalten++
         ergebnis.bytes += Number(hit.headers.get("content-length") || 0)
       } else {
         const antwort = await fetch(url)
-        if (!antwort.ok
-          || antwort.headers.get("x-beneos-denied")
-          || antwort.headers.get("x-beneos-offline")) {
-          ergebnis.fehlgeschlagen++
-        } else {
-          await store.put(url, await stamped(antwort.clone(), true))
+        // `toStore` weist Ablehnungen und Ersatzantworten selbst ab und
+        // schafft bei vollem Speicher Platz, indem es Wegwerfware raeumt.
+        // Genau das fehlte bis zum 29.08.2026: ein voller Speicher liess das
+        // Halten stillschweigend scheitern.
+        if (await toStore(store, url, antwort, true)) {
           ergebnis.geholt++
           ergebnis.bytes += Number(antwort.headers.get("content-length") || 0)
+        } else {
+          ergebnis.fehlgeschlagen++
         }
       }
     } catch (_) { ergebnis.fehlgeschlagen++ }

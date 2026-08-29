@@ -18,7 +18,8 @@
 
 import { registerStreamSettings, streamEnabled, streamKey, streamBase, streamHost, pinStillsEnabled, installMode, downloadMode, streamMode, ensureStreamKey } from "./stream-settings.mjs"
 import { installStreamFetch, storeStatus, clearStore, prewarm, diagnose, resetDiagnosis, abortAll, sichereSpeicher, streamFetchInstalled,
-         offlineHalten, offlineFreigeben, offlineGehalten, offlineBestand, alleZusagenLoesen } from "./stream-fetch.mjs"
+         offlineHalten, offlineFreigeben, offlineGehalten, offlineBestand, alleZusagenLoesen,
+         speicherLage, raumSchaffen } from "./stream-fetch.mjs"
 import { installStreamCanvas, drawStatus, videoTilesOf } from "./stream-canvas.mjs"
 import { installStreamOnline, onlineStatus, streamState, isOffline, hasStreamedContent } from "./stream-online.mjs"
 import { installStreamIndicator } from "./stream-indicator.mjs"
@@ -87,6 +88,10 @@ Hooks.once("init", () => {
     offlineGehalten,
     offlineBestand,
     alleZusagenLoesen,
+    // Die Hausordnung im Speicher: was liegt wo, und Platz schaffen, ohne eine
+    // gehaltene Karte anzufassen.
+    speicherLage,
+    raumSchaffen,
     diagnose,
     resetDiagnosis,
     reportedSoFar,
