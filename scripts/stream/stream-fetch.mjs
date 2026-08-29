@@ -29,6 +29,33 @@ const TTL_MS = 72 * 60 * 60 * 1000
 const STAMP_HEADER = "x-beneos-stored"
 
 /**
+ * Der Dauerstempel: diese Datei haelt der Kunde bewusst offline vor.
+ *
+ * Er hebt die 72-Stunden-Frist auf, und das ist der ganze Unterschied zwischen
+ * "war zufaellig noch da" und "ist zugesagt". Betreiberentscheidung vom
+ * 2026-08-28.
+ *
+ * WARUM HIER UND NICHT IM SZENENDOKUMENT
+ *
+ * Der Entwurf in `architektur.md:213-219` wollte die Adressen der Szene auf
+ * oertliche Pfade zurueckschreiben. Das ist verworfen, aus drei am Quelltext
+ * belegten Gruenden: `applyStreamAddresses` ist eine Einbahnstrasse ohne
+ * Rueckwaertsabbildung, die Toradresse traegt den Paketpfad statt des
+ * installierten, und der Szenenumbau haelt nicht fest, ob er eine Kachel
+ * erzeugt oder nur veraendert hat. Ein Rueckbau koennte also nicht
+ * entscheiden, ob er loeschen oder zuruecksetzen muss, und zwar in Dokumenten,
+ * an denen ein Spielleiter monatelang gebaut hat.
+ *
+ * Die Szene behaelt deshalb IMMER ihre Toradresse. Ob sie ohne Leitung laeuft,
+ * entscheidet allein, ob ihre Dateien hier liegen. Der Rueckweg ist damit ein
+ * Loeschbefehl statt eines Reparaturlaufs.
+ *
+ * Nicht `x-beneos-offline`: den traegt bereits die Ersatzantwort bei bekanntem
+ * Offline, und `toStore` erkennt sie ausdruecklich daran.
+ */
+const KEEP_HEADER = "x-beneos-keep"
+
+/**
  * Every request in flight, so a watchdog can end them all at once.
  *
  * Foundry has no way to do this. A scene draw waits on `Promise.allSettled`
@@ -338,15 +365,26 @@ async function openStore() {
   try { return await caches.open(CACHE_NAME) } catch (_) { return null }
 }
 
-function stamped(response) {
+/**
+ * `keep` setzt den Dauerstempel; ohne ihn bleibt ein vorhandener stehen, weil
+ * `new Headers(response.headers)` ihn mitnimmt. Entfernt wird er nur an einer
+ * einzigen Stelle, in `offlineFreigeben`, und das ist Absicht: ein
+ * versehentliches Ueberschreiben soll nicht stillschweigend eine Zusage
+ * zuruecknehmen.
+ */
+function stamped(response, keep = false) {
   const headers = new Headers(response.headers)
   headers.set(STAMP_HEADER, String(Date.now()))
+  if (keep) headers.set(KEEP_HEADER, "1")
   return response.blob().then((body) => new Response(body, {
     status: response.status, statusText: response.statusText, headers,
   }))
 }
 
 function fresh(hit) {
+  // Der Dauerstempel schlaegt die Frist. Alles Weitere, von `fromStore` ueber
+  // `alleImSpeicher` bis zur Szenenwache, haengt an dieser einen Zeile.
+  if (hit.headers.get(KEEP_HEADER)) return true
   const stamp = Number(hit.headers.get(STAMP_HEADER) || 0)
   return stamp > 0 && (Date.now() - stamp) < TTL_MS
 }
@@ -691,6 +729,143 @@ export async function prewarm(urls, onProgress) {
     onProgress?.(warmed + failed, urls.length)
   }
   return { warmed, failed }
+}
+
+/**
+ * Diese Adressen dauerhaft vorhalten.
+ *
+ * Was schon liegt, bekommt nur den Stempel; was fehlt, wird geholt. Der
+ * Fortschritt zaehlt Adressen, der Aufrufer rechnet ihn in Karten um, weil ein
+ * Kunde in Karten denkt und nicht in Dateien.
+ *
+ * Abgewiesene und Ersatzantworten werden NICHT gehalten. Sie einzufrieren
+ * hiesse, eine Ablehnung dauerhaft zu machen, und genau davor schuetzt sich
+ * `toStore` seit jeher; hier gilt es aus demselben Grund und dauerhaft
+ * schwerer.
+ */
+export async function offlineHalten(urls, onProgress) {
+  const liste = [...new Set((urls || []).filter(u => typeof u === "string" && ours(u)))]
+  const ergebnis = { gehalten: 0, geholt: 0, fehlgeschlagen: 0, bytes: 0 }
+  if (!liste.length || !localCacheEnabled()) return ergebnis
+  const store = await openStore()
+  if (!store) return ergebnis
+
+  let fertig = 0
+  for (const url of liste) {
+    try {
+      let hit = await store.match(url, { ignoreSearch: true })
+      // Ein abgelaufener Eintrag ohne Stempel ist kein Treffer, sondern Ballast.
+      if (hit && !hit.headers.get(KEEP_HEADER) && !fresh(hit)) {
+        await store.delete(url, { ignoreSearch: true })
+        hit = null
+      }
+      if (hit) {
+        if (!hit.headers.get(KEEP_HEADER)) await store.put(url, await stamped(hit.clone(), true))
+        ergebnis.gehalten++
+        ergebnis.bytes += Number(hit.headers.get("content-length") || 0)
+      } else {
+        const antwort = await fetch(url)
+        if (!antwort.ok
+          || antwort.headers.get("x-beneos-denied")
+          || antwort.headers.get("x-beneos-offline")) {
+          ergebnis.fehlgeschlagen++
+        } else {
+          await store.put(url, await stamped(antwort.clone(), true))
+          ergebnis.geholt++
+          ergebnis.bytes += Number(antwort.headers.get("content-length") || 0)
+        }
+      }
+    } catch (_) { ergebnis.fehlgeschlagen++ }
+    onProgress?.(++fertig, liste.length)
+  }
+  return ergebnis
+}
+
+/**
+ * Die Zusage zuruecknehmen. Die Bytes bleiben zunaechst liegen.
+ *
+ * Der Zeitstempel wird dabei auf jetzt gesetzt, nicht der alte gelassen. Eine
+ * monatelang gehaltene Datei waere sonst in derselben Sekunde abgelaufen, in
+ * der ein Fehlgriff sie freigibt, und der Kunde muesste sie neu holen. So hat
+ * er die gewoehnlichen 72 Stunden Puffer.
+ */
+export async function offlineFreigeben(urls) {
+  const liste = [...new Set((urls || []).filter(u => typeof u === "string" && ours(u)))]
+  if (!liste.length) return { geloest: 0 }
+  const store = await openStore()
+  if (!store) return { geloest: 0 }
+
+  let geloest = 0
+  for (const url of liste) {
+    try {
+      const hit = await store.match(url, { ignoreSearch: true })
+      if (!hit || !hit.headers.get(KEEP_HEADER)) continue
+      const headers = new Headers(hit.headers)
+      headers.delete(KEEP_HEADER)
+      headers.set(STAMP_HEADER, String(Date.now()))
+      const body = await hit.blob()
+      await store.put(url, new Response(body, { status: hit.status, statusText: hit.statusText, headers }))
+      geloest++
+    } catch (_) { /* ein kaputter Eintrag darf den Rest nicht aufhalten */ }
+  }
+  return { geloest }
+}
+
+/** Sind ALLE diese Adressen dauerhaft gehalten? Eine fehlende genuegt fuer Nein. */
+export async function offlineGehalten(urls) {
+  const liste = [...new Set((urls || []).filter(u => typeof u === "string" && ours(u)))]
+  if (!liste.length) return false
+  const store = await openStore()
+  if (!store) return false
+  for (const url of liste) {
+    try {
+      const hit = await store.match(url, { ignoreSearch: true })
+      if (!hit || !hit.headers.get(KEEP_HEADER)) return false
+    } catch (_) { return false }
+  }
+  return true
+}
+
+/**
+ * Was dauerhaft gehalten wird, fuer die Standanzeige.
+ *
+ * Zaehlt Adressen und Bytes ueber den ganzen Speicher. Das ist ein Lauf ueber
+ * alle Eintraege und gehoert deshalb nicht in eine Schleife, sondern an den
+ * Weltstart und hinter jede Aenderung.
+ */
+export async function offlineBestand() {
+  const out = { dateien: 0, bytes: 0 }
+  try {
+    const store = await openStore()
+    if (!store) return out
+    for (const anfrage of await store.keys()) {
+      const hit = await store.match(anfrage)
+      if (!hit?.headers.get(KEEP_HEADER)) continue
+      out.dateien++
+      out.bytes += Number(hit.headers.get("content-length") || 0)
+    }
+  } catch (_) { /* melde, was gezaehlt wurde */ }
+  return out
+}
+
+/**
+ * Jede Zusage zuruecknehmen, ohne die Bytes zu loeschen.
+ *
+ * Das ist der Verfall beim Ende der Berechtigung. Die Dateien laufen danach in
+ * die gewoehnliche 72-Stunden-Frist, statt sofort zu verschwinden: wer seine
+ * Mitgliedschaft am selben Abend erneuert, verliert seine Sitzung nicht.
+ */
+export async function alleZusagenLoesen() {
+  const store = await openStore()
+  if (!store) return { geloest: 0 }
+  const adressen = []
+  try {
+    for (const anfrage of await store.keys()) {
+      const hit = await store.match(anfrage)
+      if (hit?.headers.get(KEEP_HEADER)) adressen.push(anfrage.url)
+    }
+  } catch (_) { return { geloest: 0 } }
+  return offlineFreigeben(adressen)
 }
 
 /**
