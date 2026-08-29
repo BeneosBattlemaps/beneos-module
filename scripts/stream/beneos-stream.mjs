@@ -17,8 +17,7 @@
  */
 
 import { registerStreamSettings, streamEnabled, streamKey, streamBase, streamHost, pinStillsEnabled, installMode, downloadMode, streamMode, ensureStreamKey } from "./stream-settings.mjs"
-import { installStreamFetch, storeStatus, clearStore, prewarm, diagnose, resetDiagnosis, abortAll, sichereSpeicher, streamFetchInstalled,
-         offlineHalten, offlineFreigeben, offlineGehalten, offlineBestand, alleZusagenLoesen } from "./stream-fetch.mjs"
+import { installStreamFetch, storeStatus, clearStore, prewarm, diagnose, resetDiagnosis, abortAll, sichereSpeicher, streamFetchInstalled } from "./stream-fetch.mjs"
 import { installStreamCanvas, drawStatus, videoTilesOf } from "./stream-canvas.mjs"
 import { installStreamOnline, onlineStatus, streamState, isOffline, hasStreamedContent } from "./stream-online.mjs"
 import { installStreamIndicator } from "./stream-indicator.mjs"
@@ -79,14 +78,6 @@ Hooks.once("init", () => {
     prewarm,
     storeStatus,
     clearStore,
-    // Das Offline-Kontingent. Halten, freigeben, nachsehen, zaehlen, und der
-    // Verfall beim Ende der Berechtigung. Die Szenendokumente bleiben dabei
-    // unangetastet; gehalten wird im Speicher des Browsers.
-    offlineHalten,
-    offlineFreigeben,
-    offlineGehalten,
-    offlineBestand,
-    alleZusagenLoesen,
     diagnose,
     resetDiagnosis,
     reportedSoFar,
