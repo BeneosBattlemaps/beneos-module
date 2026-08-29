@@ -72,6 +72,16 @@ function ensureStyle() {
       box-shadow: inset 3px 0 0 0 rgba(111, 207, 82, 0.85);
       background: rgba(111, 207, 82, 0.07);
     }
+    /* Der Eintrag, der nicht mehr ins Kontingent passt: sichtbar, aber
+       erkennbar nicht zum Klicken. Der Klick fuehrt trotzdem irgendwohin,
+       naemlich zu einer Erklaerung mit Zahlen. */
+    #context-menu li.beneos-offline-voll,
+    .beneos-offline-voll {
+      color: #c9503f;
+      opacity: 0.75;
+    }
+    #context-menu li.beneos-offline-voll i { color: #c9503f; }
+
     .${KLASSE} .entry-name::after,
     .${KLASSE} .scene-name::after {
       content: "";
@@ -131,10 +141,34 @@ export function installStreamSceneUi() {
       },
     })
 
-    options.push(
-      eintrag("BENEOS.Stream.Offline.Keep", "Keep offline", "fa-regular fa-hard-drive", false),
-      eintrag("BENEOS.Stream.Offline.Release", "Stream again", "fa-regular fa-cloud", true),
-    )
+    const halten = eintrag("BENEOS.Stream.Offline.Keep", "Keep offline",
+      "fa-regular fa-hard-drive", false)
+    const loesen = eintrag("BENEOS.Stream.Offline.Release", "Stream again",
+      "fa-regular fa-cloud", true)
+
+    // Passt die Karte nicht mehr ins Kontingent, erscheint derselbe Eintrag
+    // rot und untaetig, statt zu fehlen. Ein fehlender Eintrag sieht aus wie
+    // ein Defekt; ein roter erklaert sich. Dasselbe Muster benutzt das Modul
+    // schon fuer die Static-Umschaltung ohne Standbild.
+    const grundBedingung = halten.condition
+    halten.condition = li => grundBedingung(li) && zustandVon(li)?.passt !== false
+    const zuGross = {
+      name: localize("BENEOS.Stream.Offline.Keep", "Keep offline"),
+      label: localize("BENEOS.Stream.Offline.Keep", "Keep offline"),
+      icon: `<i class="fa-regular fa-hard-drive"></i>`,
+      classes: "beneos-offline-voll",
+      condition: li => grundBedingung(li) && zustandVon(li)?.passt === false,
+      callback: li => {
+        const z = zustandVon(li)
+        const mb = n => Math.round((n || 0) / 1048576)
+        ui.notifications?.warn(game.i18n.format("BENEOS.Stream.Offline.QuotaExceeded",
+          { name: z?.karte?.name || "", needs: mb(z?.karte?.bytes), free: mb(z?.frei) })
+          || `This map needs ${mb(z?.karte?.bytes)} MB, but only ${mb(z?.frei)} MB of your offline `
+           + `quota is free. Release another map first.`)
+      },
+    }
+
+    options.push(halten, zuGross, loesen)
     return options
   })
 

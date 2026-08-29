@@ -122,10 +122,33 @@ export function istZugesagt(release, variant, karte) {
  * Die Reihenfolge ist bindend. Ein Eintrag, dessen Dateien nicht liegen, waere
  * genau die Luege, die dieses Verzeichnis aufdecken soll.
  */
-export async function karteZusagen({ release, variant, karte, name, urls, onProgress }) {
+export async function karteZusagen({ release, variant, karte, name, urls, bytes, onProgress }) {
   if (!streamEnabled()) return { ok: false, grund: "kein-streaming" }
   const liste = [...new Set((urls || []).filter(Boolean))]
   if (!liste.length) return { ok: false, grund: "keine-dateien" }
+
+  // DAS KONTINGENT WIRD VOR DEM HOLEN GEPRUEFT, NICHT DANACH.
+  //
+  // Bis zum 29.08.2026 gab es diese Pruefung gar nicht. `offlineHalten` kennt
+  // nur den Deckel des BROWSERS, also sieben Zehntel dessen, was der Browser
+  // hergibt; gemessen waren das 7,3 GB statt der vereinbarten 3. Das
+  // Kontingent stand in der Anzeige und wirkte nirgends.
+  //
+  // Geprueft wird vorher, weil eine Karte, die erst geholt und dann abgelehnt
+  // wird, ihre Bytes bereits verbraucht hat. Die Groesse steht dafuer im
+  // Manifest und kommt ueber `karteZuSzene` mit.
+  //
+  // Das ist Komfort, keine Sicherung: wer seinen Schluessel kennt, kann am
+  // Modul vorbei holen. Die verbindliche Grenze zieht das Tor.
+  const schon = vorratsstand().bytes
+  const grenze = kontingent()
+  const braucht = Number(bytes) || 0
+  if (braucht > 0 && schon + braucht > grenze) {
+    return {
+      ok: false, grund: "kontingent",
+      belegt: schon, grenze, braucht, frei: Math.max(0, grenze - schon),
+    }
+  }
 
   const ergebnis = await offlineHalten(liste, onProgress)
   if (ergebnis.deckelErreicht) return { ok: false, grund: "deckel", ergebnis }
@@ -141,7 +164,10 @@ export async function karteZusagen({ release, variant, karte, name, urls, onProg
     release, variant, karte,
     name: String(name || karte),
     urls: liste,
-    bytes: Number(ergebnis.bytes) || 0,
+    // Die Groesse aus dem Manifest hat Vorrang vor der gemessenen: sie ist
+    // dieselbe Zahl, gegen die vorher geprueft wurde, und `content-length`
+    // fehlt bei manchen Antworten ganz.
+    bytes: braucht || Number(ergebnis.bytes) || 0,
     seit: Date.now(),
   }
   await schreib(alle)
@@ -247,8 +273,15 @@ export async function karteZuSzene(scene) {
   // laeuft: der Schluessel darin kann sich drehen, der Pfad nicht.
   const pfade = new Set(adressen.map(a => zerlegeAdresse(a)?.pfad).filter(Boolean))
 
+  // Die Groessen stehen je Datei in `entries`. Sie hier mitzugeben ist die
+  // Bedingung dafuer, dass das Kontingent VOR dem Holen geprueft werden kann:
+  // wer erst holt und dann rechnet, hat die Bytes bereits auf der Platte.
+  const groesse = new Map()
+  for (const e of m.entries || []) groesse.set(e.key, Number(e.bytes) || 0)
+
   for (const platz of m.places) {
     if (!(platz.files || []).some(f => pfade.has(f))) continue
+    const dateien = platz.files || []
     return {
       release: erste.release,
       variant: erste.variant,
@@ -258,20 +291,30 @@ export async function karteZuSzene(scene) {
       // Die vollen Adressen ALLER Dateien der Karte, nicht nur der dieser
       // Szene: eine Karte ist Battlemap und Szenerie zusammen, und wer nur die
       // eine haelt, hat beim Umschalten auf die andere doch wieder ein Loch.
-      urls: (platz.files || []).map(f => assetUrl(erste.release, erste.variant, f)),
-      bytes: 0,
+      urls: dateien.map(f => assetUrl(erste.release, erste.variant, f)),
+      bytes: dateien.reduce((s, f) => s + (groesse.get(f) || 0), 0),
     }
   }
   return null
 }
 
-/** Der Zustand einer Szene fuer die Oberflaeche, in einem Aufruf. */
+/**
+ * Der Zustand einer Szene fuer die Oberflaeche, in einem Aufruf.
+ *
+ * `passt` sagt, ob diese Karte ins verbleibende Kontingent geht. Es steht hier
+ * und nicht erst im Klick, damit das Kontextmenue den Eintrag gleich als
+ * untaetig zeigen kann, statt den Spielleiter klicken zu lassen und ihm dann
+ * abzusagen.
+ */
 export async function szenenzustand(scene) {
   const karte = await karteZuSzene(scene)
   if (!karte) return { bekannt: false }
+  const zugesagt = istZugesagt(karte.release, karte.variant, karte.karte)
+  const frei = Math.max(0, kontingent() - vorratsstand().bytes)
   return {
-    bekannt: true, karte,
-    zugesagt: istZugesagt(karte.release, karte.variant, karte.karte),
+    bekannt: true, karte, zugesagt,
+    passt: zugesagt || karte.bytes <= frei,
+    frei,
   }
 }
 
@@ -382,9 +425,17 @@ export async function schalteKarte(sceneId) {
       || `Fetching "${k.name}" for offline use...`)
     ergebnis = await karteZusagen({ ...k, name: k.name })
     if (ergebnis.ok) {
-      const mb = Math.round((ergebnis.ergebnis?.bytes || 0) / 1048576)
+      const mb = Math.round((ergebnis.ergebnis?.bytes || k.bytes || 0) / 1048576)
       ui.notifications?.info(game.i18n.format("BENEOS.Stream.Offline.Kept", { name: k.name, mb })
         || `"${k.name}" is available offline (${mb} MB).`)
+    } else if (ergebnis.grund === "kontingent") {
+      // Mit Zahlen, nicht nur mit einem Nein: der Spielleiter soll sehen, ob
+      // eine einzige Karte freizugeben genuegt oder ob er umplanen muss.
+      const mb = n => Math.round(n / 1048576)
+      ui.notifications?.warn(game.i18n.format("BENEOS.Stream.Offline.QuotaExceeded",
+        { name: k.name, needs: mb(ergebnis.braucht), free: mb(ergebnis.frei) })
+        || `"${k.name}" needs ${mb(ergebnis.braucht)} MB, but only ${mb(ergebnis.frei)} MB of your `
+         + `offline quota is free. Release another map first.`)
     } else if (ergebnis.grund === "deckel") {
       ui.notifications?.warn(game.i18n.localize("BENEOS.Stream.Offline.QuotaFull")
         || "Your offline storage is full. Release a map before keeping another one.")
