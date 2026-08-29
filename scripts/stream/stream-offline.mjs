@@ -29,8 +29,10 @@
  * er den Abend kostet.
  */
 
-import { MODULE_ID, SETTING, streamEnabled } from "./stream-settings.mjs"
+import { MODULE_ID, SETTING, streamEnabled, assetUrl } from "./stream-settings.mjs"
 import { offlineGehalten, offlineHalten, offlineFreigeben } from "./stream-fetch.mjs"
+import { streamAdressenVon } from "./stream-online.mjs"
+import { loadStreamManifest } from "./stream-install.mjs"
 
 /**
  * Vierzehn Tage ohne gueltige Berechtigung, dann fallen die Zusagen.
@@ -126,6 +128,226 @@ export async function karteLoesen(release, variant, karte) {
   delete alle[id]
   await schreib(alle)
   return { ok: true }
+}
+
+// ---- Von der Szene zur Karte ------------------------------------------
+
+/**
+ * Die Manifeste dieser Sitzung, damit ein Rechtsklick nicht jedes Mal das Tor
+ * fragt. Ein Manifest ist wenige hundert Kilobyte und aendert sich waehrend
+ * einer Sitzung nicht; die Karte einer Szene aendert sich nie.
+ */
+const manifestCache = new Map()
+
+async function manifestVon(release, variant) {
+  const id = `${release}|${variant}`
+  if (manifestCache.has(id)) return manifestCache.get(id)
+  try {
+    const m = await loadStreamManifest(release, variant)
+    manifestCache.set(id, m)
+    return m
+  } catch (_) {
+    manifestCache.set(id, null)   // auch ein Fehlschlag wird gemerkt, sonst haemmert jeder Klick
+    return null
+  }
+}
+
+/**
+ * Release, Variante und Dateipfad aus einer Toradresse zurueckgewinnen.
+ *
+ * Form: `<tor>/a/<schluessel>/<release>/<variante>/<pfad...>`. Der Pfad ist
+ * beim Bauen je Abschnitt kodiert worden, also wird er je Abschnitt wieder
+ * entschluesselt.
+ */
+function zerlegeAdresse(url) {
+  try {
+    const u = new URL(url)
+    const teile = u.pathname.replace(/^\/+/, "").split("/")
+    if (teile[0] !== "a" || teile.length < 5) return null
+    return {
+      release: decodeURIComponent(teile[2]),
+      variant: decodeURIComponent(teile[3]),
+      pfad: teile.slice(4).map(decodeURIComponent).join("/"),
+    }
+  } catch (_) { return null }
+}
+
+/**
+ * Welche Karte gehoert zu dieser Szene?
+ *
+ * NICHT ueber die Szenen-Kennung aus dem Paket. Die steht zwar im Manifest,
+ * aber ob sie den Import in eine Welt unveraendert uebersteht, haengt am
+ * Packer und ist damit eine Annahme. Die Dateipfade dagegen stehen in den
+ * Toradressen der Szene selbst und sind genau das, was ausgeliefert wurde.
+ *
+ * Gibt `null` zurueck, wenn die Szene nichts Gestreamtes traegt, wenn das
+ * Manifest nicht erreichbar ist, oder wenn es noch kein `places` fuehrt. Der
+ * dritte Fall ist waehrend der Umstellung der Normalfall: die ausgelieferten
+ * Manifeste tragen das Feld erst nach ihrer Neuerzeugung.
+ */
+export async function karteZuSzene(scene) {
+  const adressen = streamAdressenVon(scene)
+  if (!adressen.length) return null
+  const erste = zerlegeAdresse(adressen[0])
+  if (!erste) return null
+
+  const m = await manifestVon(erste.release, erste.variant)
+  if (!m?.places?.length) return null
+
+  // Die Pfade dieser Szene, damit der Vergleich nicht ueber ganze Adressen
+  // laeuft: der Schluessel darin kann sich drehen, der Pfad nicht.
+  const pfade = new Set(adressen.map(a => zerlegeAdresse(a)?.pfad).filter(Boolean))
+
+  for (const platz of m.places) {
+    if (!(platz.files || []).some(f => pfade.has(f))) continue
+    return {
+      release: erste.release,
+      variant: erste.variant,
+      karte: platz.id,
+      name: platz.name || platz.id,
+      kind: platz.kind || "",
+      // Die vollen Adressen ALLER Dateien der Karte, nicht nur der dieser
+      // Szene: eine Karte ist Battlemap und Szenerie zusammen, und wer nur die
+      // eine haelt, hat beim Umschalten auf die andere doch wieder ein Loch.
+      urls: (platz.files || []).map(f => assetUrl(erste.release, erste.variant, f)),
+      bytes: 0,
+    }
+  }
+  return null
+}
+
+/** Der Zustand einer Szene fuer die Oberflaeche, in einem Aufruf. */
+export async function szenenzustand(scene) {
+  const karte = await karteZuSzene(scene)
+  if (!karte) return { bekannt: false }
+  return {
+    bekannt: true, karte,
+    zugesagt: istZugesagt(karte.release, karte.variant, karte.karte),
+  }
+}
+
+/**
+ * Der vorgewaermte Zustand je Szene, damit die Oberflaeche synchron antworten
+ * kann.
+ *
+ * Foundrys Kontextmenue fragt seine `condition` synchron, und das Zeichnen der
+ * Szenenliste wartet auf niemanden. Die Karte einer Szene zu ermitteln braucht
+ * dagegen das Manifest, also einen Abruf. Beides geht nur zusammen, wenn der
+ * Zustand vorher dasteht.
+ *
+ * Dasselbe Verfahren benutzt das Modul seit laengerem fuer die Umschaltung
+ * zwischen statischer und animierter Karte (`warmStaticSwitchCache`), und aus
+ * demselben Grund.
+ */
+const zustandCache = new Map()
+let warmlaufLaeuft = false
+
+/** Synchron, fuer Kontextmenue und Listenmarkierung. Unbekannt heisst: noch nicht gewaermt. */
+export function zustandAusCache(sceneId) {
+  return zustandCache.get(String(sceneId)) || null
+}
+
+/**
+ * Den Zustand aller Szenen ermitteln, die etwas Gestreamtes tragen.
+ *
+ * Mehrere Aufrufe gleichzeitig werden zusammengefasst: das Zeichnen der
+ * Seitenleiste feuert bei jeder Dokumentaenderung, und ein Warmlauf je
+ * Tastendruck waere teurer als der Nutzen.
+ */
+export async function warmeZustaende() {
+  if (warmlaufLaeuft) return { uebersprungen: true }
+  if (!streamEnabled()) return { uebersprungen: "kein-streaming" }
+  warmlaufLaeuft = true
+  let gefunden = 0
+  try {
+    for (const scene of game.scenes ?? []) {
+      const zustand = await szenenzustand(scene)
+      if (!zustand.bekannt) { zustandCache.delete(String(scene.id)); continue }
+      zustandCache.set(String(scene.id), zustand)
+      gefunden++
+    }
+  } catch (err) {
+    console.warn("Beneos Stream | Warmlauf der Offline-Zustaende abgebrochen", err)
+  } finally {
+    warmlaufLaeuft = false
+  }
+  return { gefunden, szenen: game.scenes?.size ?? 0 }
+}
+
+/**
+ * Den Zustand einer einzelnen Szene nachziehen, nach einer Aenderung.
+ *
+ * Billiger als ein voller Warmlauf und genau das, was nach einem Zusagen oder
+ * Loesen gebraucht wird.
+ */
+export async function ziehZustandNach(sceneId) {
+  const scene = game.scenes?.get(String(sceneId))
+  if (!scene) return null
+  const zustand = await szenenzustand(scene)
+  if (zustand.bekannt) zustandCache.set(String(sceneId), zustand)
+  else zustandCache.delete(String(sceneId))
+  return zustand
+}
+
+/**
+ * Alle Szenen einer Karte nachziehen, nicht nur die angeklickte.
+ *
+ * Eine Karte ist Battlemap und Szenerie zusammen. Wer nur die angeklickte
+ * Zeile nachzieht, laesst die Schwesterszene mit dem alten Zustand stehen, und
+ * die Markierung in der Liste widerspricht sich selbst.
+ */
+export async function ziehKarteNach(karte) {
+  const betroffen = []
+  for (const [sceneId, z] of zustandCache) {
+    if (z?.karte?.release === karte.release && z?.karte?.variant === karte.variant
+      && z?.karte?.karte === karte.karte) betroffen.push(sceneId)
+  }
+  for (const id of betroffen) await ziehZustandNach(id)
+  return betroffen.length
+}
+
+/**
+ * Was der Rechtsklick auslöst: zusagen oder lösen, je nach Zustand.
+ *
+ * Alles, was danach stimmen muss, passiert hier und nicht beim Aufrufer:
+ * der Zustand aller Szenen dieser Karte, die Szenenliste, die Navigationszeile.
+ * Foundry zeichnet die Liste immer vollstaendig neu und kennt kein Zeichnen
+ * einzelner Eintraege, also ist ein Neuzeichnen ohnehin unvermeidlich.
+ */
+export async function schalteKarte(sceneId) {
+  const scene = game.scenes?.get(String(sceneId))
+  if (!scene) return { ok: false, grund: "keine-szene" }
+  const zustand = await szenenzustand(scene)
+  if (!zustand.bekannt) return { ok: false, grund: "keine-karte" }
+  const k = zustand.karte
+
+  let ergebnis
+  if (zustand.zugesagt) {
+    ergebnis = await karteLoesen(k.release, k.variant, k.karte)
+    if (ergebnis.ok) {
+      ui.notifications?.info(game.i18n.format("BENEOS.Stream.Offline.Released", { name: k.name })
+        || `"${k.name}" is streamed again.`)
+    }
+  } else {
+    ui.notifications?.info(game.i18n.format("BENEOS.Stream.Offline.Fetching1", { name: k.name })
+      || `Fetching "${k.name}" for offline use...`)
+    ergebnis = await karteZusagen({ ...k, name: k.name })
+    if (ergebnis.ok) {
+      const mb = Math.round((ergebnis.ergebnis?.bytes || 0) / 1048576)
+      ui.notifications?.info(game.i18n.format("BENEOS.Stream.Offline.Kept", { name: k.name, mb })
+        || `"${k.name}" is available offline (${mb} MB).`)
+    } else if (ergebnis.grund === "deckel") {
+      ui.notifications?.warn(game.i18n.localize("BENEOS.Stream.Offline.QuotaFull")
+        || "Your offline storage is full. Release a map before keeping another one.")
+    } else {
+      ui.notifications?.error(game.i18n.format("BENEOS.Stream.Offline.KeepFailed", { name: k.name })
+        || `"${k.name}" could not be fetched completely and was not kept.`)
+    }
+  }
+
+  await ziehKarteNach(k)
+  try { ui.scenes?.render(); ui.nav?.render() } catch (_) { /* Anzeige ist Beiwerk */ }
+  return ergebnis
 }
 
 // ---- Die Berechtigungsuhr ---------------------------------------------

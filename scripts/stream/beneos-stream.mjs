@@ -23,12 +23,15 @@ import { installStreamFetch, storeStatus, clearStore, prewarm, diagnose, resetDi
 import { installStreamCanvas, drawStatus, videoTilesOf } from "./stream-canvas.mjs"
 import { installStreamOnline, onlineStatus, streamState, isOffline, hasStreamedContent } from "./stream-online.mjs"
 import { installStreamIndicator } from "./stream-indicator.mjs"
+import { installStreamSceneUi } from "./stream-scene-ui.mjs"
 import { betaMayRun, ensureAcknowledged } from "./stream-guard.mjs"
 import { loadStreamManifest, buildStreamPack, applyStreamAddresses, streamUrlsOf, releaseFromPackage, listReleases } from "./stream-install.mjs"
 import { rebuildScenesForStream, stillPathFor } from "./stream-scenes.mjs"
 import { reportedSoFar } from "./stream-report.mjs"
 import { beimWeltstart, meldeFehlendenVorrat, meldeVerfall, karteZusagen, karteLoesen,
-         istZugesagt, alleKarten, vorratsstand, verfallsstand, pruefeVorrat, VERFALL_TAGE } from "./stream-offline.mjs"
+         istZugesagt, alleKarten, vorratsstand, verfallsstand, pruefeVorrat, VERFALL_TAGE,
+         karteZuSzene, szenenzustand, zustandAusCache, warmeZustaende, ziehZustandNach,
+         schalteKarte } from "./stream-offline.mjs"
 
 Hooks.once("init", () => {
   registerStreamSettings()
@@ -55,6 +58,10 @@ Hooks.once("init", () => {
     installStreamOnline()
     installStreamCanvas()
     installStreamIndicator()
+    // Rechtsklick und Markierung. Haengen sich nur an Hooks und lesen
+    // ausschliesslich aus dem vorgewaermten Zustand, kosten also nichts,
+    // solange niemand eine Szenenliste zeichnet.
+    installStreamSceneUi()
   }
 
   // The installer reaches for this rather than importing the beta directly, so
@@ -105,6 +112,14 @@ Hooks.once("init", () => {
     verfallsstand,
     pruefeVorrat,
     verfallTage: () => VERFALL_TAGE,
+    // Von der Szene zur Karte, und der vorgewaermte Zustand, den Kontextmenue
+    // und Listenmarkierung synchron lesen muessen.
+    karteZuSzene,
+    szenenzustand,
+    zustandAusCache,
+    warmeZustaende,
+    ziehZustandNach,
+    schalteKarte,
     diagnose,
     resetDiagnosis,
     reportedSoFar,
@@ -208,6 +223,14 @@ Hooks.once("ready", async () => {
   } catch (err) {
     console.warn("Beneos Stream | Offline-Pruefung uebersprungen", err)
   }
+
+  // Den Zustand je Szene vorwaermen, damit Kontextmenue und Listenmarkierung
+  // synchron antworten koennen. Ohne await: die Welt soll nicht auf ein
+  // Manifest warten, und bis der Spielleiter das erste Mal rechtsklickt,
+  // vergehen Sekunden.
+  warmeZustaende().then(r => {
+    if (r?.gefunden) console.log(`Beneos Stream | Offline-Zustand fuer ${r.gefunden} von ${r.szenen} Szenen bereit`)
+  }).catch(() => { })
 
   if (zusage.zugesagt === true) {
     console.log("Beneos Stream | Speicher ist dauerhaft, der Browser raeumt ihn nicht von selbst")
