@@ -52,6 +52,16 @@ const STAMP_HEADER = "x-beneos-stored"
  *
  * Nicht `x-beneos-offline`: den traegt bereits die Ersatzantwort bei bekanntem
  * Offline, und `toStore` erkennt sie ausdruecklich daran.
+ *
+ * GEMESSEN am 2026-08-29 im Pruefstand V13, Welt v13-streaming, an einem
+ * Eintrag, dessen Ablagezeitpunkt kuenstlich 100 Tage in die Vergangenheit
+ * gesetzt wurde:
+ *
+ *   mit Dauerstempel    alleImSpeicher = wahr,   offlineGehalten = wahr
+ *   ohne Dauerstempel   alleImSpeicher = falsch, offlineGehalten = falsch
+ *
+ * Damit laesst die Szenenwache eine gehaltene Karte auch nach Monaten durch,
+ * waehrend gewoehnliche Wegwerfware nach drei Tagen verfaellt.
  */
 const KEEP_HEADER = "x-beneos-keep"
 
@@ -495,6 +505,16 @@ export async function speicherLage() {
  * Chrome raeumt bei echtem Speicherdruck uebrigens ganz anders, naemlich den
  * gesamten Ursprung auf einmal. Dagegen hilft diese Regel nicht, dagegen hilft
  * die Pruefung beim Weltstart.
+ *
+ * GEMESSEN am 2026-08-29 im Pruefstand V13, eine gehaltene Datei neben sechs
+ * Stueck Wegwerfware, verlangt wurde die Haelfte von deren Gewicht:
+ *
+ *   vorher   1 gehalten (0,01 MB), 6 wegwerf (0,67 MB)
+ *   nachher  1 gehalten (0,01 MB), 5 wegwerf (0,10 MB)
+ *
+ * Die gehaltene Datei blieb auch dann unangetastet, als in einem zweiten Lauf
+ * mehr verlangt wurde, als die Wegwerfware ueberhaupt hergab: die Funktion gab
+ * dann `false` zurueck, statt sich am Vorrat zu bedienen.
  */
 export async function raumSchaffen(noetig) {
   if (!(noetig > 0)) return true
