@@ -25,6 +25,10 @@ export const SETTING = {
   budgetAudio: "beneos-stream-budget-audio",
   budgetDraw: "beneos-stream-budget-draw",
   maxConcurrent: "beneos-stream-max-concurrent",
+  // Das Verzeichnis der offline zugesagten Karten, und der Zeitpunkt der
+  // letzten gueltigen Berechtigung. Siehe stream-offline.mjs.
+  offlineHeld: "beneos-stream-offline-held",
+  offlineSeen: "beneos-stream-offline-last-seen",
 }
 
 const DEFAULT_BASE = "https://gate.beneos.stream"
@@ -76,6 +80,21 @@ export function registerStreamSettings() {
   game.settings.register(MODULE_ID, SETTING.acknowledged, {
     name: "Backup acknowledged",
     ...world, type: Boolean, default: false,
+  })
+
+  // Welche Karten der Kunde offline zugesagt hat. Das ist NICHT dasselbe wie
+  // "was liegt im Speicher": genau die Differenz zwischen beidem ist der
+  // Schaden, den die Pruefung beim Weltstart meldet. Siehe stream-offline.mjs.
+  game.settings.register(MODULE_ID, SETTING.offlineHeld, {
+    name: "Offline held maps",
+    ...world, type: Object, default: {},
+  })
+
+  // Wann das Modul zuletzt eine GUELTIGE Berechtigung gesehen hat. Nicht "wann
+  // war es zuletzt online": wer Verbindung hat, aber abgewiesen wird, fuer den
+  // laeuft die Uhr weiter. Daran haengt der Verfall nach vierzehn Tagen.
+  game.settings.register(MODULE_ID, SETTING.offlineSeen, {
+    ...world, type: Number, default: 0,
   })
 
   // Off is the pure form: nothing but the documents lands on the customer's

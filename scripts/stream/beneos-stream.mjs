@@ -27,6 +27,8 @@ import { betaMayRun, ensureAcknowledged } from "./stream-guard.mjs"
 import { loadStreamManifest, buildStreamPack, applyStreamAddresses, streamUrlsOf, releaseFromPackage, listReleases } from "./stream-install.mjs"
 import { rebuildScenesForStream, stillPathFor } from "./stream-scenes.mjs"
 import { reportedSoFar } from "./stream-report.mjs"
+import { beimWeltstart, meldeFehlendenVorrat, meldeVerfall, karteZusagen, karteLoesen,
+         istZugesagt, alleKarten, vorratsstand, verfallsstand, pruefeVorrat, VERFALL_TAGE } from "./stream-offline.mjs"
 
 Hooks.once("init", () => {
   registerStreamSettings()
@@ -92,6 +94,17 @@ Hooks.once("init", () => {
     // gehaltene Karte anzufassen.
     speicherLage,
     raumSchaffen,
+    // Das Verzeichnis der zugesagten Karten und die Frist. Der Speicher weiss,
+    // welche DATEIEN er haelt; erst das Verzeichnis weiss, welche KARTEN
+    // zugesagt sind und wie sie heissen. Die Differenz ist der Schaden.
+    karteZusagen,
+    karteLoesen,
+    istZugesagt,
+    alleKarten,
+    vorratsstand,
+    verfallsstand,
+    pruefeVorrat,
+    verfallTage: () => VERFALL_TAGE,
     diagnose,
     resetDiagnosis,
     reportedSoFar,
@@ -174,6 +187,26 @@ Hooks.once("ready", async () => {
     await globalThis.beneosAssetPathRepair?.heileJournalGateAdressen?.()
   } catch (err) {
     console.log(`Beneos Stream | Journalheilung uebersprungen: ${String(err).slice(0, 140)}`)
+  }
+
+  // Der Offline-Vorrat: Uhr stellen, Verfall pruefen, Fehlendes melden.
+  //
+  // `berechtigt` heisst hier ausdruecklich mehr als "wir haben Internet". Es
+  // heisst, dass das Tor auf die Sonde geantwortet hat UND ein Schluessel
+  // gesetzt ist. Wer online ist, aber abgewiesen wird, hat keine gueltige
+  // Berechtigung gesehen, und fuer den soll die Frist weiterlaufen.
+  try {
+    const bericht = await beimWeltstart({ berechtigt: streamState() === "online" && !!streamKey() })
+    if (bericht?.stand?.fehlend?.length) await meldeFehlendenVorrat(bericht)
+    else if (bericht?.verfallen) await meldeVerfall(bericht.verfallen)
+    else if (bericht?.frist?.warnen) {
+      ui.notifications?.warn(game.i18n.format("BENEOS.Stream.Offline.FristKnapp",
+        { days: bericht.frist.tageOffen })
+        || `Beneos: your offline maps expire in ${bericht.frist.tageOffen} day(s). `
+         + `Open this world while online to renew them.`)
+    }
+  } catch (err) {
+    console.warn("Beneos Stream | Offline-Pruefung uebersprungen", err)
   }
 
   if (zusage.zugesagt === true) {
