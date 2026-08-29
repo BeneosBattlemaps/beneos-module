@@ -1,0 +1,81 @@
+{{!
+  Der Offline-Vorrat. Zuerst der Stand, dann die Frist, dann die Liste:
+  in dieser Reihenfolge, weil ein Spielleiter zuerst wissen will, ob noch
+  Platz ist, und erst danach, was drin liegt.
+}}
+<div class="beneos-ov">
+
+  <section class="beneos-ov-stand">
+    <div class="beneos-ov-zahlen">
+      <span class="beneos-ov-gross">{{belegtGB}}</span>
+      <span class="beneos-ov-klein">von {{grenzeGB}} GB belegt</span>
+      <span class="beneos-ov-rechts">{{anzahl}} Karte(n)</span>
+    </div>
+    <div class="beneos-ov-balken" role="img"
+         aria-label="{{belegtGB}} von {{grenzeGB}} Gigabyte belegt">
+      <span style="width: {{anteil}}%"></span>
+    </div>
+  </section>
+
+  <section class="beneos-ov-frist {{#if fristAbgelaufen}}ist-abgelaufen{{else}}{{#if fristKnapp}}ist-knapp{{/if}}{{/if}}">
+    {{#if fristNie}}
+      <p><strong>Diese Welt hat noch keine Berechtigung geprüft.</strong>
+         Die Frist beginnt zu laufen, sobald sie einmal online war.</p>
+    {{else if fristAbgelaufen}}
+      <p><strong>Die Frist ist abgelaufen.</strong>
+         Diese Welt hat seit mehr als {{verfallTage}} Tagen keine gültige Mitgliedschaft
+         bestätigt. Öffne sie einmal mit Verbindung, dann bleiben die Karten erhalten.</p>
+    {{else}}
+      <p><strong>Noch {{fristTage}} Tag(e) ohne Verbindung.</strong>
+         Offline gehaltene Karten bleiben {{verfallTage}} Tage, gerechnet ab der letzten
+         bestätigten Mitgliedschaft. Jeder Start dieser Welt mit Verbindung stellt die
+         Frist zurück; einmal Vorbereiten genügt, es muss nicht gespielt werden.</p>
+    {{/if}}
+  </section>
+
+  {{#if fehlend}}
+  <section class="beneos-ov-fehlend">
+    <p><strong>{{fehlend}} Karte(n) fehlen im Speicher dieses Browsers</strong> ({{fehlendMB}} MB).
+       Das passiert, wenn Browserdaten gelöscht wurden oder die Welt über eine andere
+       Adresse geöffnet wird als zuvor. Deine Mitgliedschaft ist davon nicht berührt.</p>
+    <button type="button" data-action="repairMissing">
+      <i class="fa-solid fa-rotate"></i> Fehlende Karten neu holen
+    </button>
+  </section>
+  {{/if}}
+
+  {{#if leer}}
+    <section class="beneos-ov-leer">
+      <p>Noch keine Karte offline gestellt.</p>
+      <p class="beneos-ov-hinweis">Rechtsklick auf eine Szene in der Seitenleiste, dann
+         <em>Keep offline</em>. Battlemap und Szenerie einer Karte werden dabei zusammen
+         genommen, weil niemand die eine ohne die andere braucht.</p>
+    </section>
+  {{else}}
+    <ol class="beneos-ov-liste">
+      {{#each karten}}
+      <li class="{{#if this.fehlt}}fehlt{{/if}}">
+        <span class="beneos-ov-name">
+          {{this.name}}
+          {{#if this.fehlt}}<span class="beneos-ov-marke">fehlt</span>{{/if}}
+        </span>
+        <span class="beneos-ov-groesse">{{this.mb}} MB</span>
+        <button type="button" class="beneos-ov-weg" data-action="releaseMap"
+                data-release="{{this.release}}" data-variant="{{this.variant}}"
+                data-karte="{{this.karte}}"
+                aria-label="{{this.name}} wieder streamen">
+          <i class="fa-regular fa-cloud"></i>
+        </button>
+      </li>
+      {{/each}}
+    </ol>
+  {{/if}}
+
+  <footer class="beneos-ov-fuss">
+    <p>Offline gehaltene Karten liegen im Speicher dieses Browsers, nicht auf dem Server.
+       Sie sind damit an diesen Browser gebunden: wer seine Websitedaten löscht, verliert sie.
+       Der Browser stellt dieser Welt insgesamt {{browserGB}} GB zur Verfügung, davon sind
+       {{browserBelegtGB}} GB belegt.</p>
+  </footer>
+
+</div>

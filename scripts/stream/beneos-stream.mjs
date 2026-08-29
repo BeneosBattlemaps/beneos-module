@@ -24,6 +24,7 @@ import { installStreamCanvas, drawStatus, videoTilesOf } from "./stream-canvas.m
 import { installStreamOnline, onlineStatus, streamState, isOffline, hasStreamedContent } from "./stream-online.mjs"
 import { installStreamIndicator } from "./stream-indicator.mjs"
 import { installStreamSceneUi } from "./stream-scene-ui.mjs"
+import { registerOfflineWindow, BeneosOfflineWindow } from "./stream-offline-window.mjs"
 import { betaMayRun, ensureAcknowledged } from "./stream-guard.mjs"
 import { loadStreamManifest, buildStreamPack, applyStreamAddresses, streamUrlsOf, releaseFromPackage, listReleases } from "./stream-install.mjs"
 import { rebuildScenesForStream, stillPathFor } from "./stream-scenes.mjs"
@@ -35,6 +36,11 @@ import { beimWeltstart, meldeFehlendenVorrat, meldeVerfall, karteZusagen, karteL
 
 Hooks.once("init", () => {
   registerStreamSettings()
+
+  // Das Fenster mit dem Offline-Vorrat, erreichbar ueber die
+  // Moduleinstellungen. Muss im init stehen, weil registerMenu dort erwartet
+  // wird; es kostet nichts, solange niemand es oeffnet.
+  registerOfflineWindow()
 
   // Only patch when the switch is on. An off beta must cost nothing, not even
   // a wrapped fetch.
@@ -120,6 +126,8 @@ Hooks.once("init", () => {
     warmeZustaende,
     ziehZustandNach,
     schalteKarte,
+    /** Das Fenster mit dem Offline-Vorrat oeffnen. */
+    offlineFenster: () => BeneosOfflineWindow.open(),
     diagnose,
     resetDiagnosis,
     reportedSoFar,

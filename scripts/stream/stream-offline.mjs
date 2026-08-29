@@ -50,6 +50,36 @@ import { loadStreamManifest } from "./stream-install.mjs"
 export const VERFALL_TAGE = 14
 const TAG_MS = 24 * 60 * 60 * 1000
 
+/**
+ * Das Kontingent, solange das Tor keines nennt.
+ *
+ * Betreiberentscheidung vom 29.08.2026: drei Gigabyte zu Beginn, plus ein
+ * halbes je vollem Monat Mitgliedschaft, gedeckelt bei sieben. Berechnet wird
+ * das in der Cloud beim Bau des Berechtigungssatzes; bis das steht, gilt hier
+ * der Startwert fuer alle.
+ *
+ * Sieben Gigabyte sind nicht willkuerlich: es ist der Anteil des gemessenen
+ * Browserkontingents von rund zehn, den die Hausordnung in `stream-fetch.mjs`
+ * fuer offline gehaltene Dateien reserviert.
+ */
+export const KONTINGENT_VORGABE = 3 * 1024 * 1024 * 1024
+export const KONTINGENT_DECKEL = 7 * 1024 * 1024 * 1024
+
+/**
+ * Wie viel dieser Kunde offline halten darf.
+ *
+ * Liest den Wert aus dem Berechtigungssatz, sobald das Tor ihn mitliefert, und
+ * faellt sonst auf den Startwert zurueck. Die Trennung steht hier und nicht
+ * beim Aufrufer, damit spaeter genau eine Stelle zu aendern ist.
+ */
+export function kontingent() {
+  try {
+    const b = Number(globalThis.BeneosStream?._offlineBytes)
+    if (b > 0) return Math.min(b, KONTINGENT_DECKEL)
+  } catch (_) { }
+  return KONTINGENT_VORGABE
+}
+
 /** Zwei Warnungen, bevor es soweit ist. */
 const WARNUNG_AB_TAGEN = 3
 

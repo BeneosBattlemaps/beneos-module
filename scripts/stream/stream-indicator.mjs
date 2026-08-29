@@ -13,6 +13,7 @@
 
 import { streamEnabled, streamMode } from "./stream-settings.mjs"
 import { onStreamState, onlineStatus, streamState } from "./stream-online.mjs"
+import { vorratsstand, verfallsstand, kontingent } from "./stream-offline.mjs"
 
 const DOT_CLASS = "beneos-stream-dot"
 
@@ -73,9 +74,38 @@ function paint() {
   dot.style.background = look.colour
   // The tooltip carries the detail so the dot itself can stay a dot.
   const status = onlineStatus()
-  host.title = status.changedSecondsAgo === null
+  const zeilen = [status.changedSecondsAgo === null
     ? look.title
-    : `${look.title} (for ${status.changedSecondsAgo} s)`
+    : `${look.title} (for ${status.changedSecondsAgo} s)`]
+
+  // Der Offline-Vorrat gehoert in denselben Tooltip und nicht in eine zweite
+  // Anzeige: es ist dieselbe Frage, naemlich ob diese Welt gerade spielbereit
+  // ist. Der Punkt bleibt dabei ein Punkt.
+  try {
+    const v = vorratsstand()
+    if (v.karten > 0) {
+      const gb = (n) => (n / 1073741824).toFixed(1)
+      zeilen.push(`Offline: ${v.karten} map(s), ${gb(v.bytes)} of ${gb(kontingent())} GB`)
+      const frist = verfallsstand()
+      if (!frist.nie) {
+        zeilen.push(frist.abgelaufen
+          ? "Offline maps have expired, open this world online to renew them"
+          : `Renews for ${frist.tageOffen} more day(s) without a connection`)
+      }
+    }
+  } catch (_) { /* der Punkt darf nie an seiner Beschriftung scheitern */ }
+
+  host.title = zeilen.join("\n")
+
+  // Gelb, sobald die Frist knapp wird, aber nur wenn die Verbindung selbst in
+  // Ordnung ist: ein echter Verbindungsfehler ist die wichtigere Nachricht und
+  // behaelt seine Farbe.
+  try {
+    const frist = verfallsstand()
+    if (state === "online" && vorratsstand().karten > 0 && (frist.warnen || frist.abgelaufen)) {
+      dot.style.background = LOOK.degraded.colour
+    }
+  } catch (_) { }
 }
 
 export function installStreamIndicator() {
