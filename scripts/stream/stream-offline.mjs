@@ -164,20 +164,39 @@ export async function karteLoesen(release, variant, karte) {
 
 /**
  * Die Manifeste dieser Sitzung, damit ein Rechtsklick nicht jedes Mal das Tor
- * fragt. Ein Manifest ist wenige hundert Kilobyte und aendert sich waehrend
- * einer Sitzung nicht; die Karte einer Szene aendert sich nie.
+ * fragt. Ein Manifest ist wenige hundert Kilobyte, die Karte einer Szene
+ * aendert sich nie.
+ *
+ * BEIDE FRISTEN SIND GEMESSEN, NICHT GERATEN.
+ *
+ * Der Vorrat hielt bis zum 29.08.2026 fuer die ganze Sitzung. Am selben Tag
+ * wurden alle Manifeste des Bestands auf Schema 4 gehoben, und eine laufende
+ * Welt fand danach fuer KEINE ihrer 187 Szenen eine Karte, obwohl die neuen
+ * Manifeste am Tor lagen: sie hielt das alte, das noch keine kannte. Erst ein
+ * Neuladen half. Zehn Minuten fangen genau diesen Fall, ohne den Rechtsklick
+ * teuer zu machen.
+ *
+ * Ein Fehlschlag darf nicht so lange gelten. Ein Manifest, das einmal nicht
+ * ankommt, weil das Tor kurz nicht antwortet, machte die Karte sonst fuer die
+ * ganze Sitzung unbekannt, und der Kunde saehe seinen Rechtsklick-Eintrag
+ * ohne Grund nicht mehr. Dreissig Sekunden lassen den naechsten Versuch zu,
+ * ohne bei anhaltender Stoerung zu haemmern.
  */
 const manifestCache = new Map()
+const MANIFEST_FRIST_MS = 10 * 60 * 1000
+const MANIFEST_FEHLER_MS = 30 * 1000
 
 async function manifestVon(release, variant) {
   const id = `${release}|${variant}`
-  if (manifestCache.has(id)) return manifestCache.get(id)
+  const jetzt = Date.now()
+  const gemerkt = manifestCache.get(id)
+  if (gemerkt && jetzt < gemerkt.bis) return gemerkt.wert
   try {
     const m = await loadStreamManifest(release, variant)
-    manifestCache.set(id, m)
+    manifestCache.set(id, { wert: m, bis: jetzt + MANIFEST_FRIST_MS })
     return m
   } catch (_) {
-    manifestCache.set(id, null)   // auch ein Fehlschlag wird gemerkt, sonst haemmert jeder Klick
+    manifestCache.set(id, { wert: null, bis: jetzt + MANIFEST_FEHLER_MS })
     return null
   }
 }
