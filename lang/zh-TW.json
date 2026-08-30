@@ -2472,5 +2472,9 @@
   "BENEOS.Stream.Offline.Later": "稍後",
   "BENEOS.Stream.Offline.Fetching": "正在下載你的離線地圖...",
   "BENEOS.Stream.Offline.Expired": "Beneos：由於 {days} 天未進行會員驗證，{count} 張離線地圖已過期。請在連線狀態下開啟此世界，下次即可保留。",
-  "BENEOS.Stream.Offline.FristKnapp": "Beneos：你的離線地圖將在 {days} 天後過期。請在連線狀態下開啟此世界以更新。"
+  "BENEOS.Stream.Offline.FristKnapp": "Beneos：你的離線地圖將在 {days} 天後過期。請在連線狀態下開啟此世界以更新。",
+  "BENEOS.Cloud.Bmap.Offline": "離線",
+  "BENEOS.Cloud.Bmap.OfflineTooltip": "已安裝在這個世界中的版本，以及其中可離線使用的部分",
+  "BENEOS.Cloud.Bmap.OfflineFullTooltip": "這個版本的所有地圖都可離線使用",
+  "BENEOS.Cloud.Bmap.OfflinePartTooltip": "這個版本的部分地圖可離線使用"
 }

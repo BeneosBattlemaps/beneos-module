@@ -2472,5 +2472,9 @@
   "BENEOS.Stream.Offline.Later": "Més tard",
   "BENEOS.Stream.Offline.Fetching": "S'estan baixant els teus mapes fora de línia...",
   "BENEOS.Stream.Offline.Expired": "Beneos: {count} mapa/es fora de línia han caducat després de {days} dies sense comprovació de subscripció. Obre aquest món en línia per conservar-los la propera vegada.",
-  "BENEOS.Stream.Offline.FristKnapp": "Beneos: els teus mapes fora de línia caduquen d'aquí a {days} dia/es. Obre aquest món en línia per renovar-los."
+  "BENEOS.Stream.Offline.FristKnapp": "Beneos: els teus mapes fora de línia caduquen d'aquí a {days} dia/es. Obre aquest món en línia per renovar-los.",
+  "BENEOS.Cloud.Bmap.Offline": "Fora de línia",
+  "BENEOS.Cloud.Bmap.OfflineTooltip": "Llançaments instal·lats en aquest món, i què n'hi ha disponible fora de línia",
+  "BENEOS.Cloud.Bmap.OfflineFullTooltip": "Tots els mapes d'aquest llançament són disponibles fora de línia",
+  "BENEOS.Cloud.Bmap.OfflinePartTooltip": "Alguns mapes d'aquest llançament són disponibles fora de línia"
 }

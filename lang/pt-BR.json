@@ -2472,5 +2472,9 @@
   "BENEOS.Stream.Offline.Later": "Mais tarde",
   "BENEOS.Stream.Offline.Fetching": "Baixando seus mapas off-line...",
   "BENEOS.Stream.Offline.Expired": "Beneos: {count} mapa(s) off-line expiraram após {days} dias sem verificação de assinatura. Abra este mundo on-line para mantê-los da próxima vez.",
-  "BENEOS.Stream.Offline.FristKnapp": "Beneos: seus mapas off-line expiram em {days} dia(s). Abra este mundo on-line para renová-los."
+  "BENEOS.Stream.Offline.FristKnapp": "Beneos: seus mapas off-line expiram em {days} dia(s). Abra este mundo on-line para renová-los.",
+  "BENEOS.Cloud.Bmap.Offline": "Off-line",
+  "BENEOS.Cloud.Bmap.OfflineTooltip": "Lançamentos instalados neste mundo e o que deles está disponível off-line",
+  "BENEOS.Cloud.Bmap.OfflineFullTooltip": "Todos os mapas deste lançamento estão disponíveis off-line",
+  "BENEOS.Cloud.Bmap.OfflinePartTooltip": "Alguns mapas deste lançamento estão disponíveis off-line"
 }

@@ -2472,5 +2472,9 @@
   "BENEOS.Stream.Offline.Later": "Plus tard",
   "BENEOS.Stream.Offline.Fetching": "Téléchargement de vos cartes hors ligne...",
   "BENEOS.Stream.Offline.Expired": "Beneos : {count} carte(s) hors ligne ont expiré après {days} jours sans vérification d'abonnement. Ouvrez ce monde en ligne pour les conserver la prochaine fois.",
-  "BENEOS.Stream.Offline.FristKnapp": "Beneos : vos cartes hors ligne expirent dans {days} jour(s). Ouvrez ce monde en ligne pour les renouveler."
+  "BENEOS.Stream.Offline.FristKnapp": "Beneos : vos cartes hors ligne expirent dans {days} jour(s). Ouvrez ce monde en ligne pour les renouveler.",
+  "BENEOS.Cloud.Bmap.Offline": "Hors ligne",
+  "BENEOS.Cloud.Bmap.OfflineTooltip": "Les publications installées dans ce monde, et ce qui en est disponible hors ligne",
+  "BENEOS.Cloud.Bmap.OfflineFullTooltip": "Toutes les cartes de cette publication sont disponibles hors ligne",
+  "BENEOS.Cloud.Bmap.OfflinePartTooltip": "Certaines cartes de cette publication sont disponibles hors ligne"
 }

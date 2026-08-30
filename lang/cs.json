@@ -2472,5 +2472,9 @@
   "BENEOS.Stream.Offline.Later": "Později",
   "BENEOS.Stream.Offline.Fetching": "Stahuji tvé offline mapy...",
   "BENEOS.Stream.Offline.Expired": "Beneos: {count} offline map vypršelo po {days} dnech bez ověření členství. Otevři tento svět online, aby ti příště zůstaly.",
-  "BENEOS.Stream.Offline.FristKnapp": "Beneos: tvé offline mapy vyprší za {days} dní. Otevři tento svět online a obnov je."
+  "BENEOS.Stream.Offline.FristKnapp": "Beneos: tvé offline mapy vyprší za {days} dní. Otevři tento svět online a obnov je.",
+  "BENEOS.Cloud.Bmap.Offline": "Offline",
+  "BENEOS.Cloud.Bmap.OfflineTooltip": "Vydání nainstalovaná v tomto světě a co z nich je dostupné offline",
+  "BENEOS.Cloud.Bmap.OfflineFullTooltip": "Každá mapa tohoto vydání je dostupná offline",
+  "BENEOS.Cloud.Bmap.OfflinePartTooltip": "Některé mapy tohoto vydání jsou dostupné offline"
 }

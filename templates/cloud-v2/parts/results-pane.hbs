@@ -67,6 +67,15 @@
           <button type="button"
                   class="bc-view-button{{#if bmapViewIsBundles}} bc-view-active{{/if}}"
                   data-bmap-view="bundles" data-action="switchBmapView">{{localize "BENEOS.Cloud.Bmap.Bundles"}}</button>
+          {{!-- Der Offline-Reiter erscheint nur, wenn Streaming laeuft. Ohne
+                Streaming gibt es keine Offline-Vorraete, und ein Reiter, der
+                immer leer ist, sieht aus wie ein Defekt. --}}
+          {{#if streamOn}}
+          <button type="button"
+                  class="bc-view-button{{#if bmapViewIsOffline}} bc-view-active{{/if}}"
+                  data-bmap-view="offline" data-action="switchBmapView"
+                  data-tooltip="{{localize 'BENEOS.Cloud.Bmap.OfflineTooltip'}}">{{localize "BENEOS.Cloud.Bmap.Offline"}}</button>
+          {{/if}}
         </div>
       </div>
       {{/if}}
@@ -238,6 +247,23 @@
               <span class="bc-dl-status bc-dl-fresh" data-tooltip="{{card.dlBadgeTooltip}}">✓</span>
             {{else if card.dlBadgeStale}}
               <span class="bc-dl-status bc-dl-stale" data-tooltip="{{card.dlBadgeTooltip}}">!</span>
+            {{/if}}
+            {{!-- Der Offline-Stand, nur im Offline-Reiter. Grün heisst: jede
+                 Karte dieses Release liegt hier. Gold heisst: einige, mit der
+                 Zahl daneben. Wer gar nichts offline hat, bekommt kein
+                 Abzeichen, sonst wird die Liste zum Ampelfeld. --}}
+            {{#if card.offlineStand}}
+              {{#if (eq card.offlineStand "voll")}}
+                <span class="bc-offline-badge bc-offline-voll"
+                      data-tooltip="{{localize 'BENEOS.Cloud.Bmap.OfflineFullTooltip'}}">
+                  <i class="fa-regular fa-hard-drive"></i><span>{{card.offlineText}}</span>
+                </span>
+              {{else if (eq card.offlineStand "teil")}}
+                <span class="bc-offline-badge bc-offline-teil"
+                      data-tooltip="{{localize 'BENEOS.Cloud.Bmap.OfflinePartTooltip'}}">
+                  <i class="fa-regular fa-hard-drive"></i><span>{{card.offlineText}}</span>
+                </span>
+              {{/if}}
             {{/if}}
             {{!-- Locked storefront card: keep the cover thumbnail fully visible
                  (marketing) and only mark it with a small lock badge in the

@@ -2472,5 +2472,9 @@
   "BENEOS.Stream.Offline.Later": "Más tarde",
   "BENEOS.Stream.Offline.Fetching": "Descargando tus mapas sin conexión...",
   "BENEOS.Stream.Offline.Expired": "Beneos: {count} mapa(s) sin conexión caducaron tras {days} días sin comprobación de suscripción. Abre este mundo con conexión para conservarlos la próxima vez.",
-  "BENEOS.Stream.Offline.FristKnapp": "Beneos: tus mapas sin conexión caducan en {days} día(s). Abre este mundo con conexión para renovarlos."
+  "BENEOS.Stream.Offline.FristKnapp": "Beneos: tus mapas sin conexión caducan en {days} día(s). Abre este mundo con conexión para renovarlos.",
+  "BENEOS.Cloud.Bmap.Offline": "Sin conexión",
+  "BENEOS.Cloud.Bmap.OfflineTooltip": "Lanzamientos instalados en este mundo, y qué parte está disponible sin conexión",
+  "BENEOS.Cloud.Bmap.OfflineFullTooltip": "Todos los mapas de este lanzamiento están disponibles sin conexión",
+  "BENEOS.Cloud.Bmap.OfflinePartTooltip": "Algunos mapas de este lanzamiento están disponibles sin conexión"
 }

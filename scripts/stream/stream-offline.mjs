@@ -459,7 +459,18 @@ export function szenenImOrdner(folder) {
  * aussehen, als er ist.
  */
 export async function ordnerVorschau(folder) {
-  const szenen = szenenImOrdner(folder)
+  return szenenVorschau(szenenImOrdner(folder))
+}
+
+/**
+ * Dieselbe Vorschau, aber ueber eine beliebige Szenenliste.
+ *
+ * Der Ordner war der erste Aufrufer, das Release im Cloud-Fenster ist der
+ * zweite. Beide fragen dasselbe: was kostet diese Menge Szenen, und was davon
+ * liegt schon. `ordnerVorschau` bleibt als Name stehen, weil die Oberflaeche
+ * ihn kennt; er reicht jetzt nur durch.
+ */
+export async function szenenVorschau(szenen) {
   const karten = new Map()
   let ohneKarte = 0
 
@@ -486,6 +497,71 @@ export async function ordnerVorschau(folder) {
     frei,
     passt: bytes <= frei,
   }
+}
+
+/**
+ * Der Offline-Stand aller installierten Releases, fuer den Reiter im
+ * Cloud-Fenster.
+ *
+ * WARUM DER INSTALLATIONSVERMERK UND NICHT DIE SZENENLISTE
+ *
+ * Die Szenen einer Welt sagen nicht, zu welchem Release sie gehoeren, ohne
+ * dass jemand ihre Dateipfade gegen ein Manifest haelt. Der Vermerk weiss es
+ * seit `9c86c93` selbst, mit Karten und Groessen, und er braucht dafuer keine
+ * Verbindung. Genau das ist hier der Punkt: der Reiter soll auch ohne Netz
+ * etwas zeigen.
+ *
+ * Ein Vermerk aus der Zeit vor jenem Feld traegt keine Karten. Sein Release
+ * erscheint dann mit `unbekannt: true` statt mit einer erfundenen Null, denn
+ * "wir wissen es nicht" und "nichts liegt offline" sind verschiedene Aussagen
+ * und fuehren die Oberflaeche zu verschiedenen Farben.
+ */
+export function releaseOfflineStand() {
+  const alle = BeneosInstallState.getAll()
+  const raus = []
+
+  for (const [, e] of Object.entries(alle)) {
+    if (!e || typeof e !== "object" || !e.releaseDir) continue
+    const variant = String(e.variant || "").toLowerCase()
+
+    if (!Array.isArray(e.karten) || !e.karten.length) {
+      raus.push({
+        release: String(e.releaseDir), variant,
+        unbekannt: true, gesamt: 0, offline: 0, bytes: 0, stand: "unbekannt",
+      })
+      continue
+    }
+
+    let offline = 0
+    let bytes = 0
+    for (const k of e.karten) {
+      if (!istZugesagt(e.releaseDir, variant, k.id)) continue
+      offline++
+      bytes += Number(k.bytes) || 0
+    }
+    raus.push({
+      release: String(e.releaseDir), variant,
+      unbekannt: false,
+      gesamt: e.karten.length,
+      offline,
+      bytes,
+      // Drei Zustaende, nicht zwei: "teilweise" ist der haeufigste Fall, sobald
+      // jemand einzelne Karten fuer einen Abend mitnimmt, und ihn mit "nichts"
+      // zusammenzuwerfen naehme dem Reiter seinen Zweck.
+      stand: offline === 0 ? "keine"
+           : offline >= e.karten.length ? "voll"
+           : "teil",
+    })
+  }
+  return raus
+}
+
+/** Die Szenen eines Release, aus dem Installationsvermerk. */
+export function szenenZuRelease(releaseDir, variant) {
+  const key = variant ? `${releaseDir}_${variant}` : releaseDir
+  const e = BeneosInstallState.getAll()?.[key]
+  const ids = Array.isArray(e?.sceneIds) ? e.sceneIds : []
+  return ids.map(id => game.scenes?.get(String(id))).filter(Boolean)
 }
 
 /**

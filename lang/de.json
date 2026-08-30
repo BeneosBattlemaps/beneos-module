@@ -2472,5 +2472,9 @@
   "BENEOS.Stream.Offline.Later": "Später",
   "BENEOS.Stream.Offline.Fetching": "Deine Offline-Karten werden geladen...",
   "BENEOS.Stream.Offline.Expired": "Beneos: {count} Offline-Karte(n) sind nach {days} Tagen ohne Mitgliedschaftsprüfung verfallen. Öffne diese Welt online, um sie beim nächsten Mal zu behalten.",
-  "BENEOS.Stream.Offline.FristKnapp": "Beneos: Deine Offline-Karten verfallen in {days} Tag(en). Öffne diese Welt online, um sie zu erneuern."
+  "BENEOS.Stream.Offline.FristKnapp": "Beneos: Deine Offline-Karten verfallen in {days} Tag(en). Öffne diese Welt online, um sie zu erneuern.",
+  "BENEOS.Cloud.Bmap.Offline": "Offline",
+  "BENEOS.Cloud.Bmap.OfflineTooltip": "In dieser Welt installierte Releases, und was davon offline verfügbar ist",
+  "BENEOS.Cloud.Bmap.OfflineFullTooltip": "Jede Karte dieses Release ist offline verfügbar",
+  "BENEOS.Cloud.Bmap.OfflinePartTooltip": "Einige Karten dieses Release sind offline verfügbar"
 }

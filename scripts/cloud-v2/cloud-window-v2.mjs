@@ -36,6 +36,8 @@ import { HomeController } from "./home/home-controller.mjs"
 import { BeneosPatchlogWindow } from "./home/patchlog-window.mjs"
 import { fetchNewsFeed, markNewsRead } from "./services/news-api.mjs"
 import { BeneosInstallState, BeneosPreInstallDialog, beneosLogModuleInstall } from "./beneos-install-state.mjs"
+import { streamEnabled } from "../stream/stream-settings.mjs"
+import { releaseOfflineStand } from "../stream/stream-offline.mjs"
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
 
@@ -536,6 +538,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // A3: the Show dropdown is offered in the release view (where filtering
         // by New/Updated/installed at release granularity makes sense).
         bmapViewIsReleases: this.searchMode === "bmap" && this._bmapActiveView() === "releases",
+        bmapViewIsOffline:  this.searchMode === "bmap" && this._bmapActiveView() === "offline",
+        // Der Offline-Reiter haengt am Streaming-Schalter, nicht an der
+        // Verbindung: ohne Streaming gibt es nichts offline zu halten, mit
+        // Streaming aber ohne Netz ist der Reiter gerade dann wichtig.
+        streamOn:           streamEnabled(),
         // Item-side
         // Wave B-8k-5: collapse "Light Armor +1/+2/…" into "Light Armor"
         // before sorting so the dropdown isn't cluttered with modded
@@ -911,8 +918,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         return this.#buildBundleCards()
       }
       this.#ensureReleasesLoaded()
-      if (bmapView === "releases") {
-        return this.#buildReleaseCards()
+      if (bmapView === "releases" || bmapView === "offline") {
+        // Der Offline-Reiter zeigt DIESELBEN Karten wie der Releases-Reiter,
+        // nur eine Teilmenge davon und mit einem zusaetzlichen Abzeichen.
+        // Zwei getrennte Kartenbauer waeren zwei Orte, an denen dasselbe
+        // Release verschieden aussehen kann.
+        return this.#buildReleaseCards(bmapView === "offline")
       }
     }
 
@@ -5394,6 +5405,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   _bmapActiveView() {
     if (this._bmapViewMode === "individual") return "individual"
     if (this._bmapViewMode === "bundles") return "bundles"
+    // Der Offline-Reiter faellt auf Releases zurueck, sobald das Streaming aus
+    // ist. Sonst staende der Kunde vor einer leeren Liste, deren Ursache er
+    // nicht sieht: ohne Streaming gibt es keine Offline-Vorraete, und der
+    // Reiter selbst ist dann auch gar nicht sichtbar.
+    if (this._bmapViewMode === "offline") return streamEnabled() ? "offline" : "releases"
     // Default to the grouped Releases view for EVERYONE. Logged out, releases +
     // bundles load anonymously from the cloud (view-only showcase: every row
     // comes back can_install=false + an unlock CTA), so there's no longer a
@@ -5468,7 +5484,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   static _onSwitchBmapView(event, target) {
     event.preventDefault()
     const v = target.dataset.bmapView
-    if (v !== "releases" && v !== "individual" && v !== "bundles") return
+    if (v !== "releases" && v !== "individual" && v !== "bundles" && v !== "offline") return
     const prev = this._bmapActiveView()
     if (prev === v) return
     this._bmapViewMode = v
@@ -5602,11 +5618,48 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // (key, name, thumbUrl, isBmap, etc.). Resolution toggle picks the
   // cover + byte label live. Debug filter is a no-op here — the backend
   // only returns cloud-ready releases by definition.
-  #buildReleaseCards() {
+  /**
+   * Das Offline-Abzeichen einer Release-Karte.
+   *
+   * Reine Rechnung: sie nimmt den Stand als Parameter herein und liest weder
+   * Uhr noch Speicher noch Einstellungen. Damit laesst sie sich ohne Foundry
+   * pruefen, und genau das ist der Punkt: die drei Zustaende sind die einzige
+   * Stelle, an der dieser Reiter etwas Eigenes entscheidet.
+   *
+   * @param {Map<string,object>|null} stand  Ergebnis von `releaseOfflineStand()`, nach Schluessel
+   * @param {string} releaseDir
+   * @param {string} variante  "" bei einvariantigen Releases
+   */
+  #offlineAbzeichen(stand, releaseDir, variante) {
+    const s = stand?.get(`${releaseDir}|${String(variante || "").toLowerCase()}`)
+      // Ein einvariantiges Release steht im Vermerk mit leerer Variante; ein
+      // zweivariantiges kann in der anderen installiert sein als der Reiter
+      // gerade zeigt. Beides faellt auf den ersten Eintrag desselben Release
+      // zurueck, statt "unbekannt" zu behaupten.
+      || [...(stand?.values() ?? [])].find(x => x.release === releaseDir)
+    if (!s || s.unbekannt) {
+      return { offlineStand: "unbekannt", offlineText: "", offlineTitel: "" }
+    }
+    return {
+      offlineStand: s.stand,
+      offlineText:  s.stand === "voll" ? String(s.gesamt) : `${s.offline} / ${s.gesamt}`,
+      offlineTitel: s.stand,
+      offlineBytes: s.bytes,
+    }
+  }
+
+  /**
+   * @param {boolean} nurOffline  Nur installierte Releases, mit Offline-Abzeichen.
+   */
+  #buildReleaseCards(nurOffline = false) {
     // Task 1: a release counts as "New" when its catalog release_date is within
     // this many days of the newest release in the catalog.
     const RELEASE_NEW_WINDOW_DAYS = 30
     const list = Array.isArray(this._releaseList) ? this._releaseList : []
+    // Der Offline-Stand je Release, einmal je Aufbau geholt statt je Karte.
+    // Er kommt aus dem Installationsvermerk und braucht keine Verbindung.
+    const offlineStand = nurOffline ? new Map(
+      releaseOfflineStand().map(s => [`${s.release}|${s.variant}`, s])) : null
     // Apply text-filter on display_name. The dropdown sidebar filters do
     // not apply to release-view (biome/brightness/grid live on the scene
     // catalog, not on releases — auto-switch heuristic in §13 already
@@ -5636,6 +5689,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // never paged out before the locked one.
     const hasCampaign = !!game.beneos?.cloud?.hasCampaignAccess?.("battlemaps")
     const isOffline   = !!(game.beneos?.databaseHolder?.getIsOffline?.() ?? game.beneos?.databaseHolder?.isOffline)
+
+    // Der Offline-Reiter zeigt nur, was INSTALLIERT ist. Alles andere hat keine
+    // Szenen in dieser Welt, und ohne Szenen gibt es nichts offline zu nehmen.
+    // Das ist keine Luecke, sondern die Bedingung der Sache.
+    if (nurOffline) {
+      filtered = filtered.filter(r => BeneosInstallState.findByReleaseDir(r.release_dir).length > 0)
+    }
 
     const cards = filtered.map(r => {
       const single   = Number(r?.nb_variants || 0) === 1
@@ -5823,6 +5883,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         unlockUrl:            unlockHint?.url   || "https://www.patreon.com/BeneosBattlemaps",
         unlockLabel:          unlockHint?.label || "Unlock via Patreon",
         unlockType:           unlockHint?.type  || "generic",
+        // Der Offline-Stand, nur im Offline-Reiter. Drei Zustaende, nicht zwei:
+        // "teilweise" ist der haeufigste Fall, sobald jemand einzelne Karten
+        // fuer einen Abend mitnimmt. Ein Vermerk aus der Zeit vor dem Feld
+        // `karten` gibt `unbekannt` und bekommt gar kein Abzeichen, statt
+        // faelschlich als leer zu gelten.
+        ...(nurOffline ? this.#offlineAbzeichen(offlineStand, r.release_dir, single ? "" : useV) : {}),
       }
     })
 

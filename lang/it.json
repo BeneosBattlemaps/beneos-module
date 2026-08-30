@@ -2472,5 +2472,9 @@
   "BENEOS.Stream.Offline.Later": "Più tardi",
   "BENEOS.Stream.Offline.Fetching": "Scaricamento delle tue mappe offline...",
   "BENEOS.Stream.Offline.Expired": "Beneos: {count} mappa/e offline sono scadute dopo {days} giorni senza verifica dell'abbonamento. Apri questo mondo online per conservarle la prossima volta.",
-  "BENEOS.Stream.Offline.FristKnapp": "Beneos: le tue mappe offline scadono tra {days} giorno/i. Apri questo mondo online per rinnovarle."
+  "BENEOS.Stream.Offline.FristKnapp": "Beneos: le tue mappe offline scadono tra {days} giorno/i. Apri questo mondo online per rinnovarle.",
+  "BENEOS.Cloud.Bmap.Offline": "Offline",
+  "BENEOS.Cloud.Bmap.OfflineTooltip": "Le uscite installate in questo mondo e ciò che ne è disponibile offline",
+  "BENEOS.Cloud.Bmap.OfflineFullTooltip": "Ogni mappa di questa uscita è disponibile offline",
+  "BENEOS.Cloud.Bmap.OfflinePartTooltip": "Alcune mappe di questa uscita sono disponibili offline"
 }

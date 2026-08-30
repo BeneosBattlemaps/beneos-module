@@ -2081,6 +2081,47 @@
   background: color-mix(in srgb, var(--bc-warn, #e0b53e) 18%, rgba(0,0,0,0.55));
 }
 
+/* Der Offline-Stand eines Release, nur im Offline-Reiter.
+ *
+ * Anders als bc-dl-status kein Kreis, sondern eine Pille: sie traegt eine
+ * Zahl wie "7 / 31", und die passt in keinen 22-Pixel-Kreis. Die Ziffern
+ * stehen tabellarisch, damit beim Blaettern durch dreissig Karten nicht jede
+ * Zahl an einer anderen Stelle sitzt.
+ *
+ * Die zwei Farben sind dieselben, die der Verbindungspunkt und die
+ * Szenenmarkierung schon benutzen. Ein dritter Zustand "gar nichts offline"
+ * bekommt bewusst KEIN Abzeichen: bei ueberwiegend leeren Releases waere die
+ * Liste sonst ein Ampelfeld, in dem das Wichtige untergeht. */
+.beneos-cloud-app .bc-card-thumb .bc-offline-badge {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--bc-line, rgba(255,255,255,0.15));
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px);
+  pointer-events: auto;
+}
+.beneos-cloud-app .bc-card-thumb .bc-offline-badge i { font-size: 10px; }
+.beneos-cloud-app .bc-card-thumb .bc-offline-badge.bc-offline-voll {
+  color: var(--bc-success, #6fcf52);
+  border-color: color-mix(in srgb, var(--bc-success, #6fcf52) 55%, transparent);
+  background: color-mix(in srgb, var(--bc-success, #6fcf52) 18%, rgba(0,0,0,0.55));
+}
+.beneos-cloud-app .bc-card-thumb .bc-offline-badge.bc-offline-teil {
+  color: var(--bc-warn, #e0b53e);
+  border-color: color-mix(in srgb, var(--bc-warn, #e0b53e) 60%, transparent);
+  background: color-mix(in srgb, var(--bc-warn, #e0b53e) 18%, rgba(0,0,0,0.55));
+}
+
 /* Plan §20 W4.2 release-locked overlay. Centered semitransparent block over
  * the cover thumb with a lock icon + CTA chip. Clicks pass through to the
  * card's data-action handler which short-circuits to window.open(unlockUrl).

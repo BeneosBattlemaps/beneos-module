@@ -2472,5 +2472,9 @@
   "BENEOS.Stream.Offline.Later": "後で",
   "BENEOS.Stream.Offline.Fetching": "オフラインマップを取得しています...",
   "BENEOS.Stream.Offline.Expired": "Beneos: メンバーシップの確認がないまま {days} 日が過ぎたため、オフラインマップ {count} 枚が期限切れになりました。次回も保持するには、オンラインでこのワールドを開いてください。",
-  "BENEOS.Stream.Offline.FristKnapp": "Beneos: オフラインマップはあと {days} 日で期限切れになります。オンラインでこのワールドを開いて更新してください。"
+  "BENEOS.Stream.Offline.FristKnapp": "Beneos: オフラインマップはあと {days} 日で期限切れになります。オンラインでこのワールドを開いて更新してください。",
+  "BENEOS.Cloud.Bmap.Offline": "オフライン",
+  "BENEOS.Cloud.Bmap.OfflineTooltip": "このワールドにインストール済みのリリースと、そのうちオフラインで使えるもの",
+  "BENEOS.Cloud.Bmap.OfflineFullTooltip": "このリリースのすべてのマップがオフラインで利用できます",
+  "BENEOS.Cloud.Bmap.OfflinePartTooltip": "このリリースの一部のマップがオフラインで利用できます"
 }
