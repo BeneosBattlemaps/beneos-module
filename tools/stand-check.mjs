@@ -48,12 +48,21 @@ const REPO = join(dirname(fileURLToPath(import.meta.url)), "..")
  * Arbeitsumgebung und nicht zum Modul, und eine Datei, die niemand pflegt,
  * waere schlechter als eine Liste, die im Werkzeug steht und beim Lesen
  * auffaellt. Fehlt ein Pfad, ist das ein weicher Befund.
+ *
+ * `konserve: true` heisst: hier wird bewusst KEIN Stand gefuehrt.
+ *
+ * Betreiberauskunft vom 30.08.2026 zu `v14Data`: eine Konserveninstanz mit
+ * irgendeinem alten Modulstand. Wer dort etwas messen will, kopiert das Modul
+ * hinein und ueberschreibt, was liegt. Ein Rueckstand ist dort deshalb kein
+ * Befund, sondern der vorgesehene Zustand. Ohne diese Unterscheidung meldete
+ * der Pruefer bei jedem Lauf denselben Punkt, und ein Pruefer, der immer
+ * dasselbe meldet, wird nach der dritten Woche ueberlesen.
  */
 const STAENDE = [
   { name: "v13Data",   zweig: "main",        pfad: "D:/PNP_Game/Foundry VTT/FoundryVTT/v13Data/Data/modules/beneos-module" },
   { name: "v13Stream", zweig: "stream-beta", pfad: "D:/PNP_Game/Foundry VTT/FoundryVTT/v13Stream/Data/modules/beneos-module" },
-  { name: "v14Data",   zweig: "main",        pfad: "D:/PNP_Game/Foundry VTT/FoundryVTT/v14Data/Data/modules/beneos-module" },
   { name: "v14Stream", zweig: "stream-beta", pfad: "D:/PNP_Game/Foundry VTT/FoundryVTT/v14Stream/Data/modules/beneos-module" },
+  { name: "v14Data",   konserve: true,       pfad: "D:/PNP_Game/Foundry VTT/FoundryVTT/v14Data/Data/modules/beneos-module" },
 ]
 
 const hart = []
@@ -176,6 +185,15 @@ for (const s of STAENDE) {
 
   const eigen = existsSync(join(s.pfad, "module.json"))
     ? fassungAus(readFileSync(join(s.pfad, "module.json"), "utf8")) : null
+
+  // Eine Konserve wird nur berichtet, nicht beurteilt. Ihre Fassung steht
+  // trotzdem da: wer dort misst, soll auf einen Blick sehen, wie alt der
+  // Stand ist, den er gerade ueberschreiben muesste.
+  if (s.konserve) {
+    zeilen.push([`Konserve ${s.name}`, `${eigen || "?"} (wird nicht gefuehrt, vor einer Messung ueberschreiben)`])
+    continue
+  }
+
   const kopf = gitIn(s.pfad, "rev-parse", "HEAD")
   const soll = git("rev-parse", s.zweig) || git("rev-parse", `origin/${s.zweig}`)
   const schmutz = (gitIn(s.pfad, "status", "--porcelain") || "").split("\n").filter(Boolean).length
