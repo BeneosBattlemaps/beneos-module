@@ -146,17 +146,42 @@ export class BeneosNativeUninstaller {
         packageId: this.packageId, mode: modus,
       })
     } catch (err) {
-      this.#fail("describePack", err)
-      // Ein gestreamtes Release braucht das Manifest vom Tor, und ohne Netz
-      // gibt es das nicht. Die Meldung sagt deshalb, was fehlt und was hilft,
-      // statt nur festzustellen, dass nichts geschehen ist.
-      ui_?.error?.(modus === "stream"
-        ? localize("BENEOS.Cloud.Uninstall.ManifestFailedStream",
-            "This release is streamed, so removing it needs a connection to Beneos. "
-          + "Nothing was changed. Please try again when you are online.")
-        : localize("BENEOS.Cloud.Uninstall.ManifestFailed",
-            "Could not read the release manifest. Nothing was changed."))
-      return this
+      // DER VERMERK ALS ZWEITER WEG, SEIT DEM 30.08.2026.
+      //
+      // `describePack` holt das Manifest vom Tor. Ohne Verbindung gibt es das
+      // nicht, und bis heute endete das Entfernen genau hier: mit einer
+      // ehrlichen Meldung, aber ohne Ergebnis. Die Dateien liegen jedoch
+      // lokal, und lokal wegzuraeumen braucht kein Tor.
+      //
+      // Eine Installation ab heute schreibt ihre Zielpfade in den Vermerk
+      // mit. Sind sie da, wird daraus dieselbe Beschreibung gebaut, die
+      // `describePack` geliefert haette. `jsons` bleibt leer: die
+      // Dokumentsammlungen stehen laengst in der Welt und werden ueber die
+      // Szenenkennungen des Vermerks entfernt, nicht ueber das Paket.
+      //
+      // Fuer aeltere Vermerke aendert sich nichts. `findTargets` gibt dann
+      // null, und null ist NICHT dasselbe wie eine leere Liste: ein
+      // gestreamtes Release hat legitim wenige lokale Dateien, und diese
+      // Unterscheidung verhindert, dass ein unbekannter Vermerk als
+      // "nichts zu raeumen" durchgeht.
+      const gemerkt = BeneosInstallState.findTargets(this.releaseDir, this.variant)
+      if (Array.isArray(gemerkt)) {
+        console.warn("BeneosNativeUninstaller | describePack scheiterte, nehme den "
+          + `Installationsvermerk: ${gemerkt.length} Zielpfade`, err)
+        target = { assets: gemerkt.map(t => ({ target: t, url: "", relPath: t })), jsons: {}, packInfo: {} }
+      } else {
+        this.#fail("describePack", err)
+        // Ein gestreamtes Release braucht das Manifest vom Tor, und ohne Netz
+        // gibt es das nicht. Die Meldung sagt deshalb, was fehlt und was hilft,
+        // statt nur festzustellen, dass nichts geschehen ist.
+        ui_?.error?.(modus === "stream"
+          ? localize("BENEOS.Cloud.Uninstall.ManifestFailedStream",
+              "This release is streamed, so removing it needs a connection to Beneos. "
+            + "Nothing was changed. Please try again when you are online.")
+          : localize("BENEOS.Cloud.Uninstall.ManifestFailed",
+              "Could not read the release manifest. Nothing was changed."))
+        return this
+      }
     }
 
     // Everything another installed release still needs stays untouched.
@@ -243,8 +268,24 @@ export class BeneosNativeUninstaller {
         })
         for (const a of other.assets) claimed.add(a.target)
       } catch (err) {
-        this.#fail("describeOtherPack", err)
-        this._othersUnresolved = true
+        // OHNE DIESEN ZWEITEN RUECKFALL NUETZTE DER ERSTE NICHTS.
+        //
+        // Diese Schleife fragt, was die ANDEREN Installationen beanspruchen.
+        // Scheitert auch nur eine davon, setzt `_othersUnresolved` das Raeumen
+        // fuer den ganzen Lauf aus, und das zu Recht: wer nicht weiss, was
+        // fremde Releases halten, darf nichts loeschen.
+        //
+        // Ohne Netz scheitert aber jede von ihnen, und das eigene Release
+        // liesse sich dann zwar beschreiben, aber immer noch nicht raeumen.
+        // Der Vermerk der fremden Installation beantwortet dieselbe Frage
+        // lokal.
+        const gemerkt = BeneosInstallState.findTargets(entry.releaseDir, entry.variant)
+        if (Array.isArray(gemerkt)) {
+          for (const t of gemerkt) claimed.add(t)
+        } else {
+          this.#fail("describeOtherPack", err)
+          this._othersUnresolved = true
+        }
       }
     }
     return claimed

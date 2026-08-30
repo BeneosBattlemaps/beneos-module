@@ -33,6 +33,7 @@ import { MODULE_ID, SETTING, streamEnabled, assetUrl, streamKey, streamBase } fr
 import { offlineGehalten, offlineHalten, offlineFreigeben } from "./stream-fetch.mjs"
 import { streamAdressenVon } from "./stream-online.mjs"
 import { loadStreamManifest } from "./stream-install.mjs"
+import { BeneosInstallState } from "../cloud-v2/beneos-install-state.mjs"
 
 /**
  * Vierzehn Tage ohne gueltige Berechtigung, dann fallen die Zusagen.
@@ -337,8 +338,34 @@ export async function karteZuSzene(scene) {
   const erste = zerlegeAdresse(adressen[0])
   if (!erste) return null
 
+  // ERST DER INSTALLATIONSVERMERK, DANN DAS TOR.
+  //
+  // Der Vermerk fuehrt seit dem 30.08.2026 die Karten mit, die eine
+  // Installation angelegt hat. Er liegt in der Welt und braucht keine
+  // Verbindung, und genau das ist der Punkt: ohne ihn scheitert jeder
+  // Rechtsklick ohne Netz, also gerade dann, wenn ein Spielleiter vorbereitet.
+  //
+  // Was er NICHT fuehrt, sind die Dateipfade; die machten drei Viertel seiner
+  // Groesse aus. Sie werden hier aus dem Manifest nachgeholt, und wenn das
+  // nicht geht, gibt es die Karte trotzdem, nur ohne `urls`. Der Aufrufer
+  // erkennt das an der leeren Liste: Anzeigen geht, Holen nicht. Ein Holen
+  // ohne Verbindung waere ohnehin aussichtslos.
+  const ausVermerk = BeneosInstallState.findKarteByScene(String(scene?.id || ""))
+
   const m = await manifestVon(erste.release, erste.variant)
-  if (!m?.places?.length) return null
+  if (!m?.places?.length) {
+    if (!ausVermerk) return null
+    return {
+      release: ausVermerk.release || erste.release,
+      variant: ausVermerk.variant || erste.variant,
+      karte:   ausVermerk.karte,
+      name:    ausVermerk.name,
+      kind:    "",
+      urls:    [],
+      bytes:   ausVermerk.bytes,
+      ausVermerk: true,
+    }
+  }
 
   // Die Pfade dieser Szene, damit der Vergleich nicht ueber ganze Adressen
   // laeuft: der Schluessel darin kann sich drehen, der Pfad nicht.

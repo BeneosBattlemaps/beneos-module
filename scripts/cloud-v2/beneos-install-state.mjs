@@ -135,6 +135,68 @@ export class BeneosInstallState {
   }
 
   /**
+   * Die Karte, zu der eine Szene gehoert, aus dem Vermerk statt vom Tor.
+   *
+   * WARUM DAS HIER STEHT UND NICHT IM MANIFEST
+   *
+   * `stream-offline.mjs` fragt fuer jeden Rechtsklick das Tor nach dem
+   * Manifest, um von der Szene zur Karte zu kommen. Ohne Verbindung scheitert
+   * das, und damit fehlt der Menueeintrag genau dann, wenn ein Spielleiter ihn
+   * am ehesten sucht: beim Vorbereiten ohne Netz.
+   *
+   * Die Angabe stand beim Installieren ohnehin zur Verfuegung. Sie wird jetzt
+   * mitgeschrieben, in einer bewusst schmalen Form: Kennung, Name, Groesse und
+   * die Szenen, aus denen die Karte besteht. **Keine Dateipfade.** Die braucht
+   * erst das Holen, und wer holt, ist ohnehin online. Gemessen ueber vier
+   * Releases: die Pfade machen drei Viertel der Groesse aus, und der Vermerk
+   * liegt in einer Welt-Einstellung, die bei jedem Start mitgelesen wird.
+   *
+   * Gibt `null` zurueck, wenn die Szene unbekannt ist ODER der Vermerk aus der
+   * Zeit vor diesem Feld stammt. Beides heisst fuer den Aufrufer dasselbe:
+   * frag das Tor. Ein leeres Ergebnis waere die falsche Antwort, weil es wie
+   * "gehoert zu keiner Karte" aussaehe.
+   */
+  static findKarteByScene(sceneId) {
+    if (!sceneId) return null
+    const all = this.getAll()
+    for (const [key, entry] of Object.entries(all)) {
+      if (!entry || typeof entry !== "object" || !Array.isArray(entry.karten)) continue
+      for (const k of entry.karten) {
+        if (!k || !Array.isArray(k.scenes) || !k.scenes.includes(sceneId)) continue
+        return {
+          release: String(entry.releaseDir || ""),
+          variant: String(entry.variant || "").toLowerCase(),
+          karte:   String(k.id || ""),
+          name:    String(k.name || k.id || ""),
+          bytes:   Number(k.bytes) || 0,
+          scenes:  k.scenes.slice(0),
+        }
+      }
+    }
+    return null
+  }
+
+  /**
+   * Die lokalen Zielpfade eines Release, wie beim Installieren aufgezeichnet.
+   *
+   * Der Deinstallierer beschreibt ein Release sonst ueber `describePack`, und
+   * das holt das Manifest vom Tor. Ohne Verbindung bricht das Entfernen
+   * deshalb ab, obwohl die Dateien lokal liegen und lokal wegkoennen.
+   *
+   * Gibt `null` fuer Vermerke aus der Zeit vor diesem Feld. Der Aufrufer muss
+   * das von einer leeren Liste unterscheiden: ein gestreamtes Release hat
+   * legitim wenige oder gar keine schweren lokalen Dateien, und diese Null
+   * bedeutet nicht "nichts zu tun", sondern "ich weiss es nicht".
+   */
+  static findTargets(releaseDir, variant) {
+    if (!releaseDir) return null
+    const key = variant ? `${releaseDir}_${variant}` : releaseDir
+    const entry = this.getAll()?.[key]
+    if (!entry || !Array.isArray(entry.targets)) return null
+    return entry.targets.slice(0)
+  }
+
+  /**
    * Persist one install. Key format: `<releaseDir>_<variant>` (variant = ""
    * for single-variant releases). Idempotent: replacing the same key
    * overwrites scene-ids + timestamp + signature for the new install.
@@ -157,7 +219,8 @@ export class BeneosInstallState {
    *               "download", because the full list is the safe superset:
    *               files that are not there are skipped anyway.
    */
-  static async recordInstall({ releaseDir, variant, assetId, sceneIds, sourceSignature, sceneCount, mode }) {
+  static async recordInstall({ releaseDir, variant, assetId, sceneIds, sourceSignature, sceneCount, mode,
+                               karten, targets }) {
     if (!releaseDir) return
     const all = this.getAll()
     const key = variant ? `${releaseDir}_${variant}` : releaseDir
@@ -171,6 +234,11 @@ export class BeneosInstallState {
       sourceSignature: String(sourceSignature || ""),
       mode:            mode === "stream" || mode === "download" ? mode : "",
     }
+    // Beide Felder nur setzen, wenn sie etwas enthalten. Ein leeres Feld waere
+    // nicht dasselbe wie ein fehlendes: die Leser unterscheiden "kenne ich
+    // nicht" von "ist leer", und nur das Erste darf ins Netz ausweichen.
+    if (Array.isArray(karten) && karten.length) all[key].karten = karten
+    if (Array.isArray(targets) && targets.length) all[key].targets = targets.slice(0)
     try {
       await game.settings.set(BeneosUtility.moduleID(), SETTING_KEY, all)
     } catch (e) {

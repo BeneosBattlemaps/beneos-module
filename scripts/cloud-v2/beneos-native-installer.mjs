@@ -395,6 +395,20 @@ export class BeneosNativeBattlemapInstaller {
         }
       }
 
+      // Die Zielpfade dieses Laufs fuer den Installationsvermerk aufheben.
+      //
+      // Der Deinstallierer beschreibt ein Release sonst ueber `describePack`,
+      // und das holt sich das Manifest vom Tor. Ohne Verbindung bricht das
+      // Entfernen deshalb ab, obwohl die Dateien lokal liegen und lokal
+      // weggeraeumt werden koennten.
+      //
+      // Genommen wird `installAssets`, nicht `assets`: bei einer auf eine
+      // einzelne Karte verengten Installation legt der Lauf auch nur deren
+      // Dateien an, und der Vermerk soll beschreiben, was wirklich geschrieben
+      // wurde. `assets` waere hier die Liste des ganzen Release und behauptete
+      // Dateien, die es nie gab.
+      this._zielpfade = installAssets.map(a => String(a?.target || "")).filter(Boolean)
+
       // Teil 2: existence check. Work out which Scene documents this run will
       // create, then warn before overwriting scenes already in the world — a
       // re-install/variant-switch resets those scenes, so any placed tokens or
@@ -754,6 +768,83 @@ export class BeneosNativeBattlemapInstaller {
    * Persist the install + ping the download log, but only when at least one
    * scene was actually imported and the caller handed us release metadata.
    */
+  /**
+   * Die Karten dieses Release, in der schmalen Form fuer den Vermerk.
+   *
+   * WARUM DIE DATEIPFADE NICHT MITKOMMEN
+   *
+   * Der Vermerk liegt in einer Welt-Einstellung und wird bei jedem Start
+   * mitgelesen. Gemessen ueber vier Releases machen die Pfade rund drei
+   * Viertel der Groesse aus: mit ihnen waegt das groesste Release 18 KB, ohne
+   * sie unter 3. Gebraucht werden sie erst beim Holen, und wer holt, ist
+   * ohnehin online und hat das Manifest.
+   *
+   * Was hier steht, reicht fuer den Rechtsklick ohne Netz: welche Karte zu
+   * einer Szene gehoert, wie sie heisst, und was sie wiegt. Die Groesse ist
+   * noetig, weil das Menue vorher entscheiden muss, ob die Karte ueberhaupt
+   * noch ins Kontingent passt.
+   *
+   * KARTEN OHNE IMPORTIERTE SZENE FALLEN WEG, UND ZWAR ABSICHTLICH
+   *
+   * Das Manifest fuehrt die Szenenkennungen des PAKETS. Sie ueberleben den
+   * Import, weil der Installer die Dokumente mit ihrer eigenen `_id` anlegt;
+   * `findAssetIdByScene` arbeitet seit Wochen darauf. Sollte sich das je
+   * aendern, findet der Abgleich unten nichts, `karten` bleibt leer, und der
+   * Rechtsklick fragt wieder das Tor. Ein falscher Eintrag waere schlimmer als
+   * gar keiner: er zeigte auf eine Szene, die es nicht gibt.
+   */
+  #kartenFuerVermerk(sceneIds) {
+    const m = this._streamManifest
+    if (!m || !Array.isArray(m.places) || !m.places.length) return []
+    const vorhanden = new Set(sceneIds)
+    const groesse = new Map()
+    for (const e of (m.entries || [])) if (e?.key) groesse.set(String(e.key), Number(e.bytes) || 0)
+
+    const out = []
+    for (const p of m.places) {
+      if (!p || !Array.isArray(p.scenes)) continue
+      const meine = p.scenes.map(String).filter(id => vorhanden.has(id))
+      if (!meine.length) continue
+      out.push({
+        id:     String(p.id || ""),
+        name:   String(p.name || p.id || ""),
+        bytes:  (p.files || []).reduce((s, f) => s + (groesse.get(String(f)) || 0), 0),
+        scenes: meine,
+      })
+    }
+    return out
+  }
+
+  /**
+   * Die Zielpfade dieses Laufs, entdoppelt, und NUR beim Streaming.
+   *
+   * WARUM NICHT IMMER
+   *
+   * Die Pfade sind lang, und der Vermerk liegt in einer Welt-Einstellung, die
+   * bei jedem Start mitgelesen wird. Ein heruntergeladenes Release bringt
+   * ueber zweihundert Dateien mit; fuenfzig solcher Releases waeren rund ein
+   * Megabyte allein an Pfaden.
+   *
+   * Gebraucht wird die Liste fuer den Fall, den die eigene Fehlermeldung des
+   * Deinstallierers benennt: ein GESTREAMTES Release braucht das Manifest vom
+   * Tor, und ohne Netz gibt es das nicht. Dort ist die Liste zugleich kurz,
+   * weil die schweren Dateien gar nicht auf der Platte liegen.
+   *
+   * Ein heruntergeladenes Release beschreibt sich ueber den ScenePacker und
+   * damit ueber Dateien, die ohnehin lokal sind. Sollte sich zeigen, dass es
+   * auch dort klemmt, ist das Weglassen dieser Bedingung eine Zeile.
+   *
+   * Bei einer auf eine Karte verengten Installation beschreibt der Vermerk nur
+   * diese Karte. Ein spaeterer Lauf ueber das ganze Release ueberschreibt den
+   * Eintrag, weil `recordInstall` je Release-Variante einen Schluessel fuehrt
+   * und nicht anhaengt: der Vermerk beschreibt den letzten Stand, nicht die
+   * Summe aller Laeufe.
+   */
+  #zielpfadeFuerVermerk() {
+    if (!(this._streamTargets?.size > 0)) return []
+    return [...new Set(this._zielpfade || [])]
+  }
+
   async #recordInstallIfAny() {
     if (!this.record?.releaseDir) return
     const sceneIds = (this._importedScenes || []).map(s => String(s.id)).filter(Boolean)
@@ -775,6 +866,11 @@ export class BeneosNativeBattlemapInstaller {
         sourceSignature: this.record.contentSignature || "",
         sceneCount:      sceneIds.length,
         mode:            this._streamTargets?.size > 0 ? "stream" : "download",
+        // Karten fuer den Rechtsklick ohne Netz, Zielpfade fuer das Entfernen
+        // ohne Netz. Beide standen in diesem Lauf ohnehin zur Verfuegung und
+        // waren bisher nur nicht aufgehoben worden.
+        karten:          this.#kartenFuerVermerk(sceneIds),
+        targets:         this.#zielpfadeFuerVermerk(),
       })
     } catch (e) {
       console.warn("BeneosNativeInstaller | recordInstall failed", e)
@@ -1019,6 +1115,10 @@ export class BeneosNativeBattlemapInstaller {
       const manifest = await stream.loadStreamManifest(release, variant)
       const built = stream.buildStreamPack(manifest, release, variant)
       this._streamTargets = built.streamTargets
+      // Fuer den Installationsvermerk aufheben. Hier ist die einzige Stelle im
+      // ganzen Lauf, an der das Manifest vorliegt, und ohne es waere die
+      // Kartenzuordnung spaeter nur noch ueber einen zweiten Abruf zu haben.
+      this._streamManifest = manifest
       console.log(`Beneos Stream | ${release}/${variant} | mode ${built.download ? "download" : "stream"} | `
         + `${built.streamTargets.size} files stay remote `
         + `(${Math.round(built.edgeBytes / 1048576)} MB per release, `
