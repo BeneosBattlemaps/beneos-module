@@ -117,7 +117,8 @@ const proben = [
   ["Rueckfall: echte Katalogdatei scheitert -> offline", eineEchte.offline === true],
   ["Rueckfall: alles gelingt -> nicht offline", allesGut.offline === false],
   ["Rueckfall: alles gelingt -> genau 6 Abrufe", allesGut.abrufe === 6],
-  ["Wert 2: totaler Ausfall -> 18 Abrufe statt 6", nichtsGeht.abrufe === 18],
+  ["Wert 2: erste Datei bekommt 3 Versuche", nichtsGeht.abrufe > allesGut.abrufe],
+  ["Deckel: totaler Ausfall bleibt bei 8 statt 18 Abrufen", nichtsGeht.abrufe === 8],
   ["Zeitdeckel wird uebergeben", fetchProtokoll.every(a => a.timeoutMs === 15000)],
 ]
 

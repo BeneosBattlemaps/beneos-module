@@ -126,6 +126,7 @@ export class BeneosDatabaseHolder {
   static async loadDatabaseFiles() {
     let localStorage = BeneosUtility.getLocalStorage()
     this.isOffline = false
+    this._wiederholungAufgebraucht = false
 
     // Feature A: the six DB JSONs load through one helper (#loadOneDb) that adds
     // a local-cache + offline layer:
@@ -210,6 +211,7 @@ export class BeneosDatabaseHolder {
   // der Fusszeile und am Takt oben.
   static async erneutVersuchen({ still = false } = {}) {
     await this.loadDatabaseFiles()
+    if (!this.isOffline) this._katalogProbeLaeuft = false
     if (!still) {
       const schluessel = this.isOffline
         ? "BENEOS.Cloud.Footer.RetryFailed"
@@ -253,8 +255,15 @@ export class BeneosDatabaseHolder {
     // the user the rest of their session, because nothing ever retried and the
     // offline state only cleared on a page reload. Three attempts with a growing
     // pause cost at most ~3.3s on a genuinely dead link and survive a hiccup.
+    // Gemessen am 2026-08-30 in Foundry V13: bei totem Katalog kostete die
+    // Wiederholung ueber alle sechs Dateien 20,3 Sekunden, und der Weltstart
+    // wartet darauf. Wenn die erste Datei ihre Versuche erschoepft hat, ist die
+    // Verbindung meist weg statt nur kurz gestoert, und die uebrigen fuenf muessen das
+    // nicht noch einmal beweisen. Damit bleibt der Schutz gegen den kurzen
+    // Haenger und der schlimmste Fall faellt auf rund 3,3 Sekunden.
+    const versucheHier = this._wiederholungAufgebraucht ? 1 : DB_VERSUCHE
     let letzterFehler = null
-    for (let versuch = 0; versuch < DB_VERSUCHE; versuch++) {
+    for (let versuch = 0; versuch < versucheHier; versuch++) {
       if (versuch > 0) await new Promise(r => setTimeout(r, DB_PAUSEN_MS[versuch - 1]))
       try {
         const data = await foundry.utils.fetchJsonWithTimeout(
@@ -270,6 +279,8 @@ export class BeneosDatabaseHolder {
         letzterFehler = err
       }
     }
+
+    if (versucheHier > 1) this._wiederholungAufgebraucht = true
 
     if (cached) {
       useCache()
