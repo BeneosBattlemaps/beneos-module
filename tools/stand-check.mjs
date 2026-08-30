@@ -16,13 +16,14 @@
  *
  * WAS GEPRUEFT WIRD
  *
- * Fuenf Fragen, jede mit einer Zahl oder einem Pfad als Antwort:
+ * Sechs Fragen, jede mit einer Zahl oder einem Pfad als Antwort:
  *
  *   1. Traegt das hoechste Tag dieselbe Fassung wie `main`?
  *   2. Passen `version` und die `download`-Adresse in `module.json` zusammen?
  *   3. Nennt der Changelog-Kopf die Fassung aus `module.json`?
- *   4. Liegt jeder Pruefstand auf dem Stand seines Zweigs?
- *   5. Traegt ein Pruefstand Aenderungen, die nirgends committet sind?
+ *   4. Wartet ein Zweig darauf, zusammengefuehrt zu werden?
+ *   5. Liegt jeder Pruefstand auf dem Stand seines Zweigs?
+ *   6. Traegt ein Pruefstand Aenderungen, die nirgends committet sind?
  *
  * AUFRUF
  *
@@ -178,7 +179,44 @@ if (!changelog) {
   }
 }
 
-// ---- 4. und 5. Die Pruefstaende ----------------------------------------
+// ---- 4. Zweige, die auf das Zusammenfuehren warten ----------------------
+
+/**
+ * Betreibervorgabe vom 30.08.2026: was ausgeliefert werden soll, liegt auf
+ * `main`. Es soll spaeter nichts zusammenzufuehren sein, nur noch
+ * hochzuladen.
+ *
+ * Auf dieser Maschine arbeiten mehrere Kontexte gleichzeitig am selben
+ * Repository. Ein Zweig, den einer von ihnen anlegt und liegenlaesst, faellt
+ * niemandem auf, bis beim Ausliefern etwas fehlt. Deshalb wird hier gefragt
+ * und nicht darauf vertraut.
+ *
+ * `stream-beta` ist ausgenommen: dass er voraus ist, ist sein Zweck.
+ */
+const SAMMELZWEIGE = ["main", "stream-beta"]
+const zweige = (git("for-each-ref", "--format=%(refname:short)", "refs/heads") || "")
+  .split("\n").map(s => s.trim()).filter(Boolean)
+
+for (const z of zweige) {
+  if (SAMMELZWEIGE.includes(z)) continue
+  const offen = git("rev-list", "--count", `main..${z}`)
+  const inBeta = git("rev-list", "--count", `stream-beta..${z}`)
+  // Ein Zweig, dessen Commits schon in einem Sammelzweig stecken, ist eine
+  // Karteileiche und kein Rueckstand.
+  if (offen === "0" || inBeta === "0") {
+    weich.push(`Zweig ${z} traegt nichts Eigenes mehr und kann weg.`)
+  } else {
+    hart.push(`Zweig ${z} traegt ${offen} Commits, die weder auf main noch in stream-beta stecken. `
+      + "Beim Ausliefern fehlen sie.")
+  }
+}
+
+const wartetAufPush = git("rev-list", "--count", "origin/main..main")
+if (wartetAufPush && wartetAufPush !== "0") {
+  zeilen.push(["main gegen origin", `${wartetAufPush} Commits noch nicht gepusht`])
+}
+
+// ---- 5. und 6. Die Pruefstaende ----------------------------------------
 
 for (const s of STAENDE) {
   if (!existsSync(s.pfad)) { weich.push(`Pruefstand ${s.name} liegt nicht unter ${s.pfad}.`); continue }
@@ -212,11 +250,27 @@ for (const s of STAENDE) {
     + (gleich ? `, aktuell zu ${s.zweig}` : `, ${abstand} Commits hinter ${s.zweig}`)
     + (schmutz ? `, ${schmutz} ungespeicherte Dateien` : "")])
 
+  // Ein Rueckstand wiegt verschieden schwer, je nachdem ob dort gerade jemand
+  // arbeitet.
+  //
+  // Auf dieser Maschine laufen mehrere Kontexte gleichzeitig im selben
+  // Repository. Ein Pruefstand mit ungespeicherten Aenderungen ist eine
+  // BELEGTE Werkbank: dort haelt jemand bewusst einen Stand fest, und ihn
+  // nachzuziehen wuerde fremde Arbeit zerstoeren. Das gehoert gemeldet, aber
+  // nicht als Fehler.
+  //
+  // Gefaehrlich ist der andere Fall: ein sauberer Pruefstand, der veraltet
+  // ist. Dort misst der naechste ahnungslos gegen einen alten Stand, und
+  // genau das ist am 30.08.2026 zwei Tage lang passiert.
   if (!gleich && abstand !== "0") {
-    hart.push(`Pruefstand ${s.name} liegt ${abstand} Commits hinter ${s.zweig}. `
-      + "Eine Messung dort misst einen aelteren Stand.")
-  }
-  if (schmutz) {
+    if (schmutz) {
+      weich.push(`Pruefstand ${s.name} liegt ${abstand} Commits hinter ${s.zweig} und traegt `
+        + `${schmutz} ungespeicherte Aenderungen. Dort arbeitet jemand, nicht nachziehen.`)
+    } else {
+      hart.push(`Pruefstand ${s.name} liegt ${abstand} Commits hinter ${s.zweig}. `
+        + "Eine Messung dort misst einen aelteren Stand.")
+    }
+  } else if (schmutz) {
     weich.push(`Pruefstand ${s.name} traegt ${schmutz} Aenderungen, die nirgends committet sind.`)
   }
 }
