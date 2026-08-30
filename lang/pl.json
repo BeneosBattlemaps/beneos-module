@@ -2481,5 +2481,8 @@
   "BENEOS.Stream.Mode.Offline": "Tryb offline",
   "BENEOS.Stream.Mode.StreamingTooltip": "Wszystkie dane map są strumieniowane z Beneos Cloud. To, co zachowasz offline, pozostaje dostępne bez połączenia.",
   "BENEOS.Stream.Mode.OfflineTooltip": "Brak połączenia z Beneos. Teraz można otworzyć tylko mapy zachowane offline.",
-  "BENEOS.Cloud.Bmap.QuotaTooltip": "Twoja pamięć offline. Zachowuj wydania offline, aby grać bez połączenia z internetem."
+  "BENEOS.Cloud.Bmap.QuotaTooltip": "Twoja pamięć offline. Zachowuj wydania offline, aby grać bez połączenia z internetem.",
+  "BENEOS.Stream.Offline.KeepRelease": "Zachowaj wydanie offline",
+  "BENEOS.Stream.Offline.ReleaseTitle": "Zachować to wydanie offline?",
+  "BENEOS.Stream.Offline.ReleaseEmpty": "To wydanie nie ma w tym świecie strumieniowanych scen."
 }

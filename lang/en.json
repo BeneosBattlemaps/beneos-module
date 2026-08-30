@@ -2481,5 +2481,8 @@
   "BENEOS.Stream.Mode.Offline": "Offline Mode",
   "BENEOS.Stream.Mode.StreamingTooltip": "All map data is streamed from the Beneos Cloud. Maps you keep offline stay available without a connection.",
   "BENEOS.Stream.Mode.OfflineTooltip": "No connection to Beneos. Only maps you kept offline can be opened right now.",
-  "BENEOS.Cloud.Bmap.QuotaTooltip": "Your offline storage. Keep releases offline to play without an internet connection."
+  "BENEOS.Cloud.Bmap.QuotaTooltip": "Your offline storage. Keep releases offline to play without an internet connection.",
+  "BENEOS.Stream.Offline.KeepRelease": "Keep release offline",
+  "BENEOS.Stream.Offline.ReleaseTitle": "Keep this release offline?",
+  "BENEOS.Stream.Offline.ReleaseEmpty": "This release has no streamed scenes in this world."
 }

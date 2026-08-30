@@ -204,6 +204,7 @@
                  data-type="{{card.dragType}}"
                  data-drag-mode="{{card.dragMode}}"
                  data-token-key="{{card.key}}"
+                 {{#if card.offlineRelease}}data-offline-release="{{card.offlineRelease}}" data-offline-variante="{{card.offlineVariante}}"{{/if}}
                  draggable="{{#if card.isDraggable}}true{{else}}false{{/if}}"
                  style="--bc-install-duration: {{card.installDuration}};"
                  tabindex="0">

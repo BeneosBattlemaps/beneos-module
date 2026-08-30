@@ -2481,5 +2481,8 @@
   "BENEOS.Stream.Mode.Offline": "Mode fora de línia",
   "BENEOS.Stream.Mode.StreamingTooltip": "Totes les dades dels mapes es transmeten des del Beneos Cloud. El que mantinguis fora de línia continua disponible sense connexió.",
   "BENEOS.Stream.Mode.OfflineTooltip": "Sense connexió amb Beneos. Ara només es poden obrir els mapes mantinguts fora de línia.",
-  "BENEOS.Cloud.Bmap.QuotaTooltip": "El teu emmagatzematge fora de línia. Mantén llançaments fora de línia per jugar sense connexió a Internet."
+  "BENEOS.Cloud.Bmap.QuotaTooltip": "El teu emmagatzematge fora de línia. Mantén llançaments fora de línia per jugar sense connexió a Internet.",
+  "BENEOS.Stream.Offline.KeepRelease": "Mantén el llançament fora de línia",
+  "BENEOS.Stream.Offline.ReleaseTitle": "Vols mantenir aquest llançament fora de línia?",
+  "BENEOS.Stream.Offline.ReleaseEmpty": "Aquest llançament no té escenes transmeses en aquest món."
 }

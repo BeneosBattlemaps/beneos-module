@@ -2481,5 +2481,8 @@
   "BENEOS.Stream.Mode.Offline": "離線模式",
   "BENEOS.Stream.Mode.StreamingTooltip": "所有地圖資料都從 Beneos 雲端串流。你保留為離線的內容，即使沒有連線也能使用。",
   "BENEOS.Stream.Mode.OfflineTooltip": "未連線到 Beneos。目前只能開啟已保留為離線的地圖。",
-  "BENEOS.Cloud.Bmap.QuotaTooltip": "你的離線儲存空間。將版本保留為離線，就能在沒有網路連線時遊玩。"
+  "BENEOS.Cloud.Bmap.QuotaTooltip": "你的離線儲存空間。將版本保留為離線，就能在沒有網路連線時遊玩。",
+  "BENEOS.Stream.Offline.KeepRelease": "保留版本為離線",
+  "BENEOS.Stream.Offline.ReleaseTitle": "要將這個版本保留為離線嗎？",
+  "BENEOS.Stream.Offline.ReleaseEmpty": "這個版本在這個世界中沒有串流的場景。"
 }

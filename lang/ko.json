@@ -2481,5 +2481,8 @@
   "BENEOS.Stream.Mode.Offline": "오프라인 모드",
   "BENEOS.Stream.Mode.StreamingTooltip": "모든 맵 데이터는 Beneos 클라우드에서 스트리밍됩니다. 오프라인으로 보관한 것은 연결 없이도 사용할 수 있습니다.",
   "BENEOS.Stream.Mode.OfflineTooltip": "Beneos에 연결되어 있지 않습니다. 지금은 오프라인으로 보관한 맵만 열 수 있습니다.",
-  "BENEOS.Cloud.Bmap.QuotaTooltip": "오프라인 저장 공간입니다. 인터넷 없이 플레이하려면 릴리스를 오프라인으로 보관하세요."
+  "BENEOS.Cloud.Bmap.QuotaTooltip": "오프라인 저장 공간입니다. 인터넷 없이 플레이하려면 릴리스를 오프라인으로 보관하세요.",
+  "BENEOS.Stream.Offline.KeepRelease": "릴리스를 오프라인으로 보관",
+  "BENEOS.Stream.Offline.ReleaseTitle": "이 릴리스를 오프라인으로 보관할까요?",
+  "BENEOS.Stream.Offline.ReleaseEmpty": "이 릴리스에는 이 월드에 스트리밍되는 장면이 없습니다."
 }

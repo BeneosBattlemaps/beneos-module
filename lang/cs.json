@@ -2481,5 +2481,8 @@
   "BENEOS.Stream.Mode.Offline": "Režim offline",
   "BENEOS.Stream.Mode.StreamingTooltip": "Všechna data map se streamují z Beneos Cloud. Co si necháš offline, zůstane dostupné i bez připojení.",
   "BENEOS.Stream.Mode.OfflineTooltip": "Žádné připojení k Beneos. Teď lze otevřít jen mapy ponechané offline.",
-  "BENEOS.Cloud.Bmap.QuotaTooltip": "Tvé offline úložiště. Ponech si vydání offline, abys mohl hrát bez připojení k internetu."
+  "BENEOS.Cloud.Bmap.QuotaTooltip": "Tvé offline úložiště. Ponech si vydání offline, abys mohl hrát bez připojení k internetu.",
+  "BENEOS.Stream.Offline.KeepRelease": "Ponechat vydání offline",
+  "BENEOS.Stream.Offline.ReleaseTitle": "Ponechat toto vydání offline?",
+  "BENEOS.Stream.Offline.ReleaseEmpty": "Toto vydání nemá v tomto světě žádné streamované scény."
 }

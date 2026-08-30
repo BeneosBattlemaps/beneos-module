@@ -2481,5 +2481,8 @@
   "BENEOS.Stream.Mode.Offline": "オフラインモード",
   "BENEOS.Stream.Mode.StreamingTooltip": "マップデータはすべて Beneos クラウドからストリーミングされます。オフラインで保持したものは接続がなくても利用できます。",
   "BENEOS.Stream.Mode.OfflineTooltip": "Beneos に接続していません。今はオフラインで保持したマップだけを開けます。",
-  "BENEOS.Cloud.Bmap.QuotaTooltip": "オフライン保存領域です。インターネットなしで遊ぶには、リリースをオフラインで保持してください。"
+  "BENEOS.Cloud.Bmap.QuotaTooltip": "オフライン保存領域です。インターネットなしで遊ぶには、リリースをオフラインで保持してください。",
+  "BENEOS.Stream.Offline.KeepRelease": "リリースをオフラインで保持",
+  "BENEOS.Stream.Offline.ReleaseTitle": "このリリースをオフラインで保持しますか？",
+  "BENEOS.Stream.Offline.ReleaseEmpty": "このリリースには、このワールドにストリーミング対象のシーンがありません。"
 }

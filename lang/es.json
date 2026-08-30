@@ -2481,5 +2481,8 @@
   "BENEOS.Stream.Mode.Offline": "Modo sin conexión",
   "BENEOS.Stream.Mode.StreamingTooltip": "Todos los datos de los mapas se transmiten desde Beneos Cloud. Lo que guardes sin conexión seguirá disponible.",
   "BENEOS.Stream.Mode.OfflineTooltip": "Sin conexión a Beneos. Ahora mismo solo pueden abrirse los mapas guardados sin conexión.",
-  "BENEOS.Cloud.Bmap.QuotaTooltip": "Tu almacenamiento sin conexión. Guarda lanzamientos sin conexión para jugar sin Internet."
+  "BENEOS.Cloud.Bmap.QuotaTooltip": "Tu almacenamiento sin conexión. Guarda lanzamientos sin conexión para jugar sin Internet.",
+  "BENEOS.Stream.Offline.KeepRelease": "Guardar lanzamiento sin conexión",
+  "BENEOS.Stream.Offline.ReleaseTitle": "¿Guardar este lanzamiento sin conexión?",
+  "BENEOS.Stream.Offline.ReleaseEmpty": "Este lanzamiento no tiene escenas transmitidas en este mundo."
 }

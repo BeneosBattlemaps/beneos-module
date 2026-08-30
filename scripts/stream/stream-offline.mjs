@@ -776,8 +776,13 @@ export async function schalteKarte(sceneId) {
  * ist vollstaendig, es ist gewollt, und es wegzuwerfen kostete den Kunden
  * dieselben Bytes noch einmal, wenn er es sich anders ueberlegt.
  */
-export async function ordnerZusagen(folder, { onProgress } = {}) {
-  const vor = await ordnerVorschau(folder)
+export async function ordnerZusagen(folder, opts) {
+  return szenenZusagen(szenenImOrdner(folder), opts)
+}
+
+/** Dieselbe Zusage, ueber eine beliebige Szenenliste. Siehe `szenenVorschau`. */
+export async function szenenZusagen(szenen, { onProgress } = {}) {
+  const vor = await szenenVorschau(szenen)
   const offen = vor.karten.filter(k => !k.zugesagt)
   const bericht = { gesamt: offen.length, geholt: 0, bytes: 0, abbruch: null, karten: [] }
 
@@ -804,7 +809,12 @@ export async function ordnerZusagen(folder, { onProgress } = {}) {
 
 /** Alle zugesagten Karten eines Ordners wieder freigeben. */
 export async function ordnerLoesen(folder) {
-  const vor = await ordnerVorschau(folder)
+  return szenenLoesen(szenenImOrdner(folder))
+}
+
+/** Dieselbe Freigabe, ueber eine beliebige Szenenliste. */
+export async function szenenLoesen(szenen) {
+  const vor = await szenenVorschau(szenen)
   const dran = vor.karten.filter(k => k.zugesagt)
   let geloest = 0
   for (const k of dran) {

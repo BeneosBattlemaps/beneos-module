@@ -6219,6 +6219,47 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
 @media (prefers-reduced-motion: reduce) {
   .beneos-cloud-app .bc-offline-fill { transition: none; }
 }
+
+/* Das kleine Kontextmenue am Rechtsklick einer Release-Kachel.
+ *
+ * Es haengt am `body`, nicht im Fenster: eine Kachel am unteren Rand wuerde
+ * ihr Menue sonst im eigenen Ueberlauf abschneiden. Deshalb steht die Farbe
+ * hier ausgeschrieben statt ueber die Fenstervariablen, die ausserhalb des
+ * Fensters nicht gelten. */
+.bc-offline-menu {
+  position: fixed;
+  z-index: 10000;
+  min-width: 190px;
+  padding: 3px;
+  border-radius: 4px;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  background: #17150f;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+}
+@media (prefers-color-scheme: light) {
+  .bc-offline-menu { background: #ffffff; border-color: rgba(0, 0, 0, 0.18); }
+}
+.bc-offline-menu button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.bc-offline-menu button:hover,
+.bc-offline-menu button:focus-visible {
+  background: rgba(201, 162, 39, 0.18);
+  outline: none;
+}
+.bc-offline-menu button i { width: 14px; text-align: center; opacity: 0.8; }
 .beneos-cloud-app .bc-header-iconbtn {
   display: inline-flex;
   align-items: center;

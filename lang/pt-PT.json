@@ -2481,5 +2481,8 @@
   "BENEOS.Stream.Mode.Offline": "Modo offline",
   "BENEOS.Stream.Mode.StreamingTooltip": "Todos os dados dos mapas são transmitidos do Beneos Cloud. O que mantiver offline continua disponível sem ligação.",
   "BENEOS.Stream.Mode.OfflineTooltip": "Sem ligação à Beneos. Neste momento só podem ser abertos os mapas mantidos offline.",
-  "BENEOS.Cloud.Bmap.QuotaTooltip": "O seu armazenamento offline. Mantenha lançamentos offline para jogar sem ligação à Internet."
+  "BENEOS.Cloud.Bmap.QuotaTooltip": "O seu armazenamento offline. Mantenha lançamentos offline para jogar sem ligação à Internet.",
+  "BENEOS.Stream.Offline.KeepRelease": "Manter lançamento offline",
+  "BENEOS.Stream.Offline.ReleaseTitle": "Manter este lançamento offline?",
+  "BENEOS.Stream.Offline.ReleaseEmpty": "Este lançamento não tem cenas transmitidas neste mundo."
 }

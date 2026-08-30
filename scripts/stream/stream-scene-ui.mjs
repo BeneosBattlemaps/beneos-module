@@ -27,7 +27,7 @@
 import { streamEnabled } from "./stream-settings.mjs"
 import {
   zustandAusCache, schalteKarte, warmeZustaende,
-  ordnerVorschau, ordnerZusagen, ordnerLoesen, szenenImOrdner,
+  szenenVorschau, szenenZusagen, szenenLoesen, szenenImOrdner,
 } from "./stream-offline.mjs"
 
 const KLASSE = "beneos-offline-held"
@@ -212,8 +212,8 @@ function markiere(html) {
  * Knopf gesperrt: der Spielleiter soll sehen, ob eine einzige Freigabe genuegt
  * oder ob er umplanen muss.
  */
-async function ordnerDialog(folder) {
-  const v = await ordnerVorschau(folder)
+async function ordnerDialog(szenen, { titelSchluessel, titelErsatz } = {}) {
+  const v = await szenenVorschau(szenen)
   if (!v.karten.length) {
     ui.notifications?.info(localize("BENEOS.Stream.Offline.FolderEmpty",
       "No streamed Beneos maps in this folder."))
@@ -253,7 +253,8 @@ async function ordnerDialog(folder) {
     </div>`
 
   const bestaetigt = await Dialog.confirm({
-    title: localize("BENEOS.Stream.Offline.FolderTitle", "Keep this folder offline?"),
+    title: localize(titelSchluessel || "BENEOS.Stream.Offline.FolderTitle",
+      titelErsatz || "Keep this folder offline?"),
     content: inhalt,
     yes: () => true, no: () => false, defaultYes: false,
   })
@@ -261,7 +262,7 @@ async function ordnerDialog(folder) {
   if (!v.passt) return   // Der Knopf laesst sich klicken, die Grenze bleibt.
 
   let zaehler = 0
-  const bericht = await ordnerZusagen(folder, {
+  const bericht = await szenenZusagen(szenen, {
     onProgress: ({ index, gesamt, name }) => {
       // Eine Meldung je Karte waere bei dreissig Karten eine Lawine. Nur jede
       // fuenfte, und die erste immer, damit der Spielleiter sieht, dass etwas
@@ -286,14 +287,15 @@ async function ordnerDialog(folder) {
 }
 
 /** Alles unter einem Ordner wieder freigeben, nach Rueckfrage. */
-async function ordnerFreigeben(folder) {
-  const v = await ordnerVorschau(folder)
+async function ordnerFreigeben(szenen, { titelSchluessel, titelErsatz } = {}) {
+  const v = await szenenVorschau(szenen)
   const dran = v.karten.filter(k => k.zugesagt)
   if (!dran.length) return
 
   const bytes = dran.reduce((s, k) => s + (Number(k.bytes) || 0), 0)
   const bestaetigt = await Dialog.confirm({
-    title: localize("BENEOS.Stream.Offline.ReleaseFolderTitle", "Remove offline data?"),
+    title: localize(titelSchluessel || "BENEOS.Stream.Offline.ReleaseFolderTitle",
+      titelErsatz || "Remove offline data?"),
     content: `<p>${formatiere("BENEOS.Stream.Offline.ReleaseFolderBody",
       { n: dran.length, size: menge(bytes) },
       "{n} maps ({size}) will be removed from this browser. They keep streaming as before.")}</p>`,
@@ -301,9 +303,39 @@ async function ordnerFreigeben(folder) {
   })
   if (!bestaetigt) return
 
-  const b = await ordnerLoesen(folder)
+  const b = await szenenLoesen(szenen)
   ui.notifications?.info(formatiere("BENEOS.Stream.Offline.ReleaseFolderDone", { n: b.geloest },
     "{n} maps were removed and stream again."))
+}
+
+/**
+ * Der Rechtsklick auf ein Release, von aussen aufrufbar.
+ *
+ * Das Cloud-Fenster ruft ihn an seinen Release-Kacheln auf. Er reicht die
+ * Szenen des Release in dieselben zwei Dialoge, die der Ordner benutzt: eine
+ * Vorschau mit Zahlen, dann Karte fuer Karte. Ein eigener Weg fuer das
+ * Cloud-Fenster waere ein zweiter Ort, an dem dasselbe Release anders
+ * gerechnet werden koennte.
+ *
+ * @param {object[]} szenen  die Szenen des Release, aus dem Installationsvermerk
+ * @param {"halten"|"loesen"} was
+ */
+export async function releaseOfflineSchalten(szenen, was) {
+  if (!Array.isArray(szenen) || !szenen.length) {
+    ui.notifications?.info(localize("BENEOS.Stream.Offline.ReleaseEmpty",
+      "This release has no streamed scenes in this world."))
+    return
+  }
+  if (was === "loesen") {
+    return ordnerFreigeben(szenen, {
+      titelSchluessel: "BENEOS.Stream.Offline.ReleaseFolderTitle",
+      titelErsatz: "Remove offline data?",
+    })
+  }
+  return ordnerDialog(szenen, {
+    titelSchluessel: "BENEOS.Stream.Offline.ReleaseTitle",
+    titelErsatz: "Keep this release offline?",
+  })
 }
 
 export function installStreamSceneUi() {
@@ -403,7 +435,7 @@ export function installStreamSceneUi() {
         const z = zaehlung(f)
         return z.bekannt > 0 && z.zugesagt < z.bekannt
       },
-      callback: li => { const f = ordnerVon(li); if (f) ordnerDialog(f) },
+      callback: li => { const f = ordnerVon(li); if (f) ordnerDialog(szenenImOrdner(f)) },
     })
 
     options.push({
@@ -415,7 +447,7 @@ export function installStreamSceneUi() {
         const f = ordnerVon(li); if (!f) return false
         return zaehlung(f).zugesagt > 0
       },
-      callback: li => { const f = ordnerVon(li); if (f) ordnerFreigeben(f) },
+      callback: li => { const f = ordnerVon(li); if (f) ordnerFreigeben(szenenImOrdner(f)) },
     })
 
     return options

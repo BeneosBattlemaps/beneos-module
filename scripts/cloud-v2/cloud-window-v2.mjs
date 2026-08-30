@@ -40,8 +40,9 @@ import { streamEnabled } from "../stream/stream-settings.mjs"
 import { streamState } from "../stream/stream-online.mjs"
 import {
   releaseOfflineStand, vorratsanzeige, betriebsanzeige,
-  vorratsstand, kontingent,
+  vorratsstand, kontingent, szenenZuRelease,
 } from "../stream/stream-offline.mjs"
+import { releaseOfflineSchalten } from "../stream/stream-scene-ui.mjs"
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
 
@@ -3476,10 +3477,86 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     this.#injectSelectDividers()
     this.#updateTitleBadge(context)
     this.#injectTitleQuote()
+    this.#wireOfflineContextMenu()
     // Stage 11: tear down the open-splash injected in
     // beneos_module.js's toolbar handler. _onRender runs after the
     // V2 window is in DOM — clean handover with no flicker.
     document.getElementById("beneos-cloud-loading-splash")?.remove()
+  }
+
+  /**
+   * Rechtsklick auf eine Release-Kachel: offline nehmen oder freigeben.
+   *
+   * EIN LISTENER AM BEHAELTER, NICHT EINER JE KARTE
+   *
+   * Die Ergebnisliste zeichnet sich bei jedem Filter neu, und dreissig
+   * Karten mit je einem eigenen Listener waeren dreissig Aufraeumarbeiten,
+   * von denen eine vergessene ein Leck ist. Der Behaelter bleibt derselbe;
+   * das Ereignis findet seine Karte ueber `closest`.
+   *
+   * KEIN FOUNDRY-KONTEXTMENUE
+   *
+   * `ContextMenu` bindet an eine Anwendung mit Verzeichnis-Semantik und
+   * verschwindet in Foundry 15. Hier genuegen zwei Eintraege, und ein
+   * eigenes kleines Menue ist weniger Code als der Umweg.
+   */
+  #wireOfflineContextMenu() {
+    const wurzel = this.element?.querySelector("[data-bc-region='results']")
+    if (!wurzel || wurzel.dataset.bcOfflineMenu === "1") return
+    wurzel.dataset.bcOfflineMenu = "1"
+
+    wurzel.addEventListener("contextmenu", async (ev) => {
+      if (!streamEnabled() || !game.user?.isGM) return
+      const karte = ev.target?.closest?.("[data-offline-release]")
+      if (!karte) return
+      ev.preventDefault()
+      ev.stopPropagation()
+
+      const release = karte.dataset.offlineRelease
+      const variante = karte.dataset.offlineVariante || ""
+      const szenen = szenenZuRelease(release, variante)
+      // Ein Release ohne Szenen in dieser Welt ist nicht installiert. Der
+      // Offline-Reiter zeigt es gar nicht erst; im Releases-Reiter kann es
+      // vorkommen, und dort ist die Meldung die richtige Antwort.
+      const stand = releaseOfflineStand()
+        .find(s => s.release === release && (!variante || s.variant === variante.toLowerCase()))
+
+      await this.#offlineMenue(ev, szenen, Boolean(stand && stand.offline > 0))
+    })
+  }
+
+  /** Das kleine Menue selbst. Zwei Eintraege, je nach Zustand. */
+  async #offlineMenue(ev, szenen, hatOffline) {
+    document.querySelector(".bc-offline-menu")?.remove()
+    const menu = document.createElement("div")
+    menu.className = "bc-offline-menu"
+    menu.style.left = `${ev.clientX}px`
+    menu.style.top = `${ev.clientY}px`
+
+    const eintrag = (icon, text, fn) => {
+      const b = document.createElement("button")
+      b.type = "button"
+      b.innerHTML = `<i class="${icon}"></i><span></span>`
+      b.querySelector("span").textContent = text
+      b.addEventListener("click", async () => { menu.remove(); await fn() })
+      menu.appendChild(b)
+    }
+
+    const t = (k, e) => { try { const s = game.i18n.localize(k); return (s && s !== k) ? s : e } catch (_) { return e } }
+    eintrag("fa-regular fa-hard-drive", t("BENEOS.Stream.Offline.KeepRelease", "Keep release offline"),
+      () => releaseOfflineSchalten(szenen, "halten"))
+    if (hatOffline) {
+      eintrag("fa-regular fa-trash-can", t("BENEOS.Stream.Offline.ReleaseFolder", "Remove Offline Data"),
+        () => releaseOfflineSchalten(szenen, "loesen"))
+    }
+
+    document.body.appendChild(menu)
+    // Beim naechsten Klick irgendwohin wieder weg. `once` raeumt den Listener
+    // selbst ab, und `setTimeout` verhindert, dass der Rechtsklick, der das
+    // Menue oeffnet, es sofort wieder schliesst.
+    setTimeout(() => {
+      window.addEventListener("pointerdown", () => menu.remove(), { once: true })
+    }, 0)
   }
 
   // Wave B-8k-4: insert a disabled "──────────" option after the Any
@@ -5906,6 +5983,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // `karten` gibt `unbekannt` und bekommt gar kein Abzeichen, statt
         // faelschlich als leer zu gelten.
         ...(nurOffline ? this.#offlineAbzeichen(offlineStand, r.release_dir, single ? "" : useV) : {}),
+        // Fuer den Rechtsklick. Getrennte Felder statt eines zusammengesetzten
+        // Schluessels, weil der Leser sie einzeln braucht und ein Trennzeichen
+        // im Releasenamen sonst still das Falsche ergaebe.
+        offlineRelease:  r.release_dir,
+        offlineVariante: single ? "" : useV,
       }
     })
 
