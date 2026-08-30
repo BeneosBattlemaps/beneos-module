@@ -231,6 +231,11 @@ export async function karteZusagen({ release, variant, karte, name, urls, bytes,
     // dieselbe Zahl, gegen die vorher geprueft wurde, und `content-length`
     // fehlt bei manchen Antworten ganz.
     bytes: braucht || Number(ergebnis.bytes) || 0,
+    // Gekauft oder gemietet, so wie das Tor es sieht. Es weiss es als
+    // einziges, denn nur dort liegt der Berechtigungssatz mit seinem
+    // `kind`. Ohne diese Zeile faellt die Auskunft auf den Boden und der
+    // Verfall trifft auch, wer das Release besitzt.
+    permanent: zusage.inhalt?.permanent === true,
     seit: Date.now(),
   }
   await schreib(alle)
@@ -927,9 +932,19 @@ export async function beimWeltstart({ berechtigt }) {
   const frist = verfallsstand()
   if (frist.abgelaufen) {
     const v = await vorratVerfallen()
-    console.log(`Beneos Stream | Offline-Vorrat verfallen: ${v.gefallen} Karten, `
-      + `seit ${VERFALL_TAGE} Tagen keine gueltige Berechtigung`)
-    return { verfallen: v.gefallen, frist }
+    // Zwei Saetze, weil sie zwei verschiedene Dinge melden. "verfallen: 0
+    // Karten" liest sich wie ein Verfall und wuerde jede Fehlersuche in die
+    // falsche Richtung schicken.
+    console.log(v.gefallen > 0
+      ? `Beneos Stream | Offline-Vorrat verfallen: ${v.gefallen} Karten, `
+        + `${v.behalten} gekaufte behalten, `
+        + `seit ${VERFALL_TAGE} Tagen keine gueltige Berechtigung`
+      : `Beneos Stream | Frist abgelaufen, nichts verfallen: alle ${v.behalten} `
+        + `Karten sind gekauft und haengen an keiner Mitgliedschaft`)
+    // Nur abbrechen, wenn wirklich etwas gefallen ist. Wer ausschliesslich
+    // Gekauftes haelt, verliert nichts und braucht trotzdem seine Pruefung;
+    // ohne diese Bedingung bekaeme er sie nach Fristablauf nie wieder.
+    if (v.gefallen > 0) return { verfallen: v.gefallen, behalten: v.behalten, frist }
   }
 
   const stand = await pruefeVorrat()
@@ -1008,17 +1023,33 @@ export async function meldeVerfall(anzahl) {
 }
 
 /**
- * Alle Zusagen fallen lassen, weil die Frist abgelaufen ist.
+ * Die Zusagen fallen lassen, weil die Frist abgelaufen ist.
  *
- * Das Verzeichnis wird dabei GELEERT, nicht nur der Speicher freigegeben.
- * Sonst meldete die naechste Pruefung lauter fehlende Karten und behauptete
- * einen Schaden, wo eine Regel gegriffen hat.
+ * GEKAUFTES BLEIBT.
+ *
+ * Die Frist misst eine Mitgliedschaft, und ein Kauf haengt an keiner. Das Tor
+ * sagt das bei jeder Zusage in einem Wort (`permanent`), und seit dieser
+ * Auskunft wird sie im Verzeichnis mitgefuehrt. Ein Kaeufer, dem sein Vorrat
+ * nach vierzehn Tagen ohne Verbindung wegbricht, hat dieselbe Karte zweimal
+ * bezahlt: einmal mit Geld und einmal mit der Leitung.
+ *
+ * Bei den anderen wird das Verzeichnis GELEERT, nicht nur der Speicher
+ * freigegeben. Sonst meldete die naechste Pruefung lauter fehlende Karten und
+ * behauptete einen Schaden, wo eine Regel gegriffen hat.
+ *
+ * Alte Eintraege ohne das Feld gelten als gemietet und verfallen. Das ist die
+ * vorsichtige Richtung: wer wirklich gekauft hat, holt die Karte beim
+ * naechsten Mal wieder und traegt danach das Merkmal.
  */
 export async function vorratVerfallen() {
   const liste = alleKarten()
+  const bleibt = {}
+  let gefallen = 0
   for (const e of liste) {
+    if (e.permanent === true) { bleibt[karteId(e.release, e.variant, e.karte)] = e; continue }
     try { await offlineFreigeben(e.urls || []) } catch (_) { /* weiter */ }
+    gefallen++
   }
-  await schreib({})
-  return { gefallen: liste.length }
+  await schreib(bleibt)
+  return { gefallen, behalten: liste.length - gefallen }
 }
