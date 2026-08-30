@@ -91,6 +91,57 @@ export function inFlightCount() {
 }
 
 /**
+ * Wer nach einer Adresse fragt, die schon unterwegs ist, wartet mit.
+ *
+ * WARUM ES DAS BRAUCHT
+ *
+ * Der Szenenumbau schreibt dieselbe Standbildadresse an zwei Stellen: in die
+ * neue Videokachel und zurueck in den Szenenhintergrund. Beide Stellen sind
+ * noetig, jede aus ihrem eigenen Grund, und der Adressenpass danach zieht
+ * beide auf dieselbe Toradresse. Foundry fordert sie folglich zweimal an.
+ *
+ * Auf schneller Leitung faellt das nicht auf. Gemessen am 28.08.2026 auf
+ * Foundry 14.360 mit 400 kbit/s: dieselbe Datei lief zweimal ueber die
+ * Leitung, einmal als Kacheltextur, wo sie ankam, und einmal als
+ * Szenenhintergrund, wo sie nach dreissig Sekunden ins Zeitbudget lief und
+ * als 300-Byte-Bildpunkt endete. Der Kunde zahlt den doppelten Weg und
+ * wartet eine halbe Minute auf eine Anfrage, die nichts liefert.
+ *
+ * WARUM NICHT DIE ANTWORT GETEILT WIRD
+ *
+ * Naheliegend waere, das Versprechen der Antwort weiterzureichen. Das geht
+ * nicht: ein `Response`-Rumpf laesst sich genau einmal lesen. Ein Klon davor
+ * loeste das nicht, sondern verschoebe das Problem: die Aufsicht ueber den
+ * Rumpf weiter unten haengt daran, dass IHR Strom gelesen wird, und ein
+ * Empfaenger, der stattdessen an einem Klon liest, laesst den Zeitgeber
+ * durchlaufen und eine Zeitueberschreitung melden, die es nicht gab. Genau
+ * diese Falle steht weiter unten schon zweimal beschrieben.
+ *
+ * Also wartet der Zweite nur, bis der Erste fertig ist, und geht dann seinen
+ * eigenen Weg noch einmal von vorn. Der fuehrt ihn in den Speicher, den der
+ * Erste inzwischen gefuellt hat, und das kostet keine Leitung.
+ *
+ * Zusammengelegt wird nur, was sicher dieselbe Antwort bekommt: kein
+ * Bereichsabruf, kein eigenes Abbruchzeichen, kein anderes Verfahren als GET.
+ * Ein Bereichsabruf mit anderem Ausschnitt bekaeme sonst die falschen Bytes,
+ * und ein Abbruch des Ersten risse den Zweiten mit.
+ */
+const gleicheAdresse = new Map()
+
+/** Nur wenn zwei Anfragen sicher dieselbe Antwort verdienen. */
+function darfWarten(init) {
+  if (!init) return true
+  const verfahren = String(init.method || "GET").toUpperCase()
+  if (verfahren !== "GET") return false
+  if (init.signal) return false
+  try {
+    const kopf = new Headers(init.headers || {})
+    if (kopf.has("range")) return false
+  } catch (_) { return false }
+  return true
+}
+
+/**
  * Der Gleichzeitigkeitsdeckel, an der einzigen Stelle, die ihn halten kann.
  *
  * Bis zum 26.08.2026 wurde er auf `canvas.loadTexturesOptions.maxConcurrent`
@@ -127,9 +178,17 @@ async function slotHolen(cap) {
   laufend += 1
 }
 
-/** Wieviele Abrufe stehen gerade wirklich auf der Leitung. */
+/**
+ * Wieviele Abrufe stehen gerade wirklich auf der Leitung.
+ *
+ * `angemeldet` zaehlt die Adressen, fuer die gerade ein Lauf laeuft, auf den
+ * ein Zweiter warten koennte. Im Ruhezustand muss die Zahl **null** sein: ein
+ * Eintrag, der liegenbleibt, liesse jede weitere Anfrage auf diese Adresse
+ * fuer immer warten, und das faellt erst Stunden spaeter auf. Deshalb steht
+ * sie hier und nicht nur im Kopf des Entwicklers.
+ */
 export function laufendeAbrufe() {
-  return { laufend, wartend: wartend.length }
+  return { laufend, wartend: wartend.length, angemeldet: gleicheAdresse.size }
 }
 
 /**
@@ -441,375 +500,422 @@ export async function alleImSpeicher(urls) {
   if (!store) return false
   for (const url of liste) {
     try {
-      const hit = await store.match(url, { ignoreSearch: true })
-      if (!hit || !fresh(hit)) return false
+        const hit = await store.match(url, { ignoreSearch: true })
+        if (!hit || !fresh(hit)) return false
+      } catch (_) { return false }
+    }
+    return true
+  }
+
+  /**
+   * Wieviel Platz die gehaltenen Karten hoechstens belegen duerfen.
+   *
+   * Nicht alles: bliebe kein Raum fuer den laufenden Betrieb, koennte der
+   * Spielleiter zwar dreissig Karten vorhalten, aber keine einunddreissigste
+   * mehr ansehen, ohne dass etwas nachlaedt. Sieben Zehntel lassen bei einem
+   * gemessenen Kontingent von rund 10 GB etwa 3 GB fuer den Alltag, und das ist
+   * ein Vielfaches dessen, was eine Sitzung braucht.
+   */
+  const KEEP_ANTEIL = 0.7
+
+  /**
+   * Was der Speicher gerade haelt, getrennt nach den beiden Arten.
+   *
+   * `estimate()` misst den ganzen Ursprung, also auch Foundrys eigene Ablagen.
+   * Fuer die Frage "wieviel Raum habe ich noch" ist genau das richtig; fuer die
+   * Frage "was kann ich raeumen" zaehlt allein der eigene Speicher, und der wird
+   * hier durchgegangen.
+   */
+  export async function speicherLage() {
+    const lage = { kontingent: 0, belegtGesamt: 0, gehalten: 0, wegwerf: 0, gehalteneDateien: 0, wegwerfDateien: 0 }
+    try {
+      const est = await navigator.storage?.estimate?.()
+      if (est) { lage.kontingent = est.quota || 0; lage.belegtGesamt = est.usage || 0 }
+      const store = await openStore()
+      if (!store) return lage
+      for (const anfrage of await store.keys()) {
+        const hit = await store.match(anfrage)
+        if (!hit) continue
+        const bytes = Number(hit.headers.get("content-length") || 0)
+        if (hit.headers.get(KEEP_HEADER)) { lage.gehalten += bytes; lage.gehalteneDateien++ }
+        else { lage.wegwerf += bytes; lage.wegwerfDateien++ }
+      }
+    } catch (_) { /* melde, was gezaehlt wurde */ }
+    return lage
+  }
+
+  /**
+   * Platz schaffen, ohne eine einzige gehaltene Karte anzufassen.
+   *
+   * WARUM DAS NOETIG IST, UND ZWAR DRINGEND
+   *
+   * Der Speicher haelt zweierlei: dauerhaft gehaltene Karten und Wegwerfware aus
+   * dem laufenden Betrieb. Bis zum 29.08.2026 gab es dafuer keine Regel. `put`
+   * scheiterte bei vollem Speicher, der Fehler wurde stumm verschluckt, und die
+   * Folge war die schlimmere von zwei moeglichen: wer sich vor einer Sitzung
+   * durch genug Szenen geblaettert hatte, konnte **keine Karte mehr offline
+   * nehmen**, ohne dass irgendetwas es ihm gesagt haette.
+   *
+   * Geraeumt wird nach Ablagezeitpunkt, aelteste zuerst. Das ist eine Naeherung
+   * an "am laengsten nicht gebraucht" und bewusst gewaehlt: den Zeitpunkt bei
+   * jedem Treffer fortzuschreiben hiesse, jede gelesene Datei neu abzulegen, und
+   * das kostet bei einem Video mehr als es einbringt.
+   *
+   * Chrome raeumt bei echtem Speicherdruck uebrigens ganz anders, naemlich den
+   * gesamten Ursprung auf einmal. Dagegen hilft diese Regel nicht, dagegen hilft
+   * die Pruefung beim Weltstart.
+   *
+   * GEMESSEN am 2026-08-29 im Pruefstand V13, eine gehaltene Datei neben sechs
+   * Stueck Wegwerfware, verlangt wurde die Haelfte von deren Gewicht:
+   *
+   *   vorher   1 gehalten (0,01 MB), 6 wegwerf (0,67 MB)
+   *   nachher  1 gehalten (0,01 MB), 5 wegwerf (0,10 MB)
+   *
+   * Die gehaltene Datei blieb auch dann unangetastet, als in einem zweiten Lauf
+   * mehr verlangt wurde, als die Wegwerfware ueberhaupt hergab: die Funktion gab
+   * dann `false` zurueck, statt sich am Vorrat zu bedienen.
+   */
+  export async function raumSchaffen(noetig) {
+    if (!(noetig > 0)) return true
+    const store = await openStore()
+    if (!store) return false
+
+    const wegwerf = []
+    try {
+      for (const anfrage of await store.keys()) {
+        const hit = await store.match(anfrage)
+        if (!hit || hit.headers.get(KEEP_HEADER)) continue
+        wegwerf.push({
+          url: anfrage.url,
+          stamp: Number(hit.headers.get(STAMP_HEADER) || 0),
+          bytes: Number(hit.headers.get("content-length") || 0),
+        })
+      }
+    } catch (_) { return false }
+
+    wegwerf.sort((a, b) => a.stamp - b.stamp)
+    let frei = 0
+    for (const e of wegwerf) {
+      if (frei >= noetig) break
+      try { await store.delete(e.url, { ignoreSearch: true }); frei += e.bytes } catch (_) { /* weiter */ }
+    }
+    if (frei > 0) console.log(`Beneos Stream | Speicher: ${Math.round(frei / 1048576)} MB Wegwerfware geraeumt`)
+    return frei >= noetig
+  }
+
+  async function toStore(store, url, response, keep = false) {
+    // A denied asset answers 200 with a placeholder pixel. Storing that would
+    // freeze the denial in place for three days, long after the right returns.
+    //
+    // Dasselbe gilt fuer den Bildpunkt, den der Ersatz bei bekanntem Offline
+    // selbst liefert. Er traegt `x-beneos-offline`, ist eine gueltige
+    // 200-Antwort und waere ohne diese Zeile drei Tage lang der gespeicherte
+    // Inhalt der Datei: die Verbindung kaeme zurueck, und der Kunde saehe
+    // trotzdem eine leere Flaeche, bis der Eintrag verfaellt.
+    if (!response.ok || response.headers.get("x-beneos-denied")) return false
+    if (response.headers.get("x-beneos-offline")) return false
+    if (isControl(url)) return false
+
+    // Einmal in einen Rumpf lesen, statt zweimal zu klonen: ein zweiter Versuch
+    // nach dem Raeumen braucht denselben Inhalt, und ein verbrauchter Rumpf
+    // waere dann nicht mehr da.
+    let daten, bytes
+    try {
+      const gestempelt = await stamped(response.clone(), keep)
+      daten = await gestempelt.blob()
+      bytes = daten.size
+      const kopf = new Headers(gestempelt.headers)
+      const bauen = () => new Response(daten, { status: 200, headers: kopf })
+      try { await store.put(url, bauen()); return true } catch (_) { /* voll, gleich weiter */ }
+      // Etwas Luft ueber den reinen Bedarf, damit nicht jede zweite Datei raeumt.
+      if (!(await raumSchaffen(Math.max(bytes * 2, 32 * 1048576)))) return false
+      try { await store.put(url, bauen()); return true } catch (_) { return false }
     } catch (_) { return false }
   }
-  return true
-}
 
-/**
- * Wieviel Platz die gehaltenen Karten hoechstens belegen duerfen.
- *
- * Nicht alles: bliebe kein Raum fuer den laufenden Betrieb, koennte der
- * Spielleiter zwar dreissig Karten vorhalten, aber keine einunddreissigste
- * mehr ansehen, ohne dass etwas nachlaedt. Sieben Zehntel lassen bei einem
- * gemessenen Kontingent von rund 10 GB etwa 3 GB fuer den Alltag, und das ist
- * ein Vielfaches dessen, was eine Sitzung braucht.
- */
-const KEEP_ANTEIL = 0.7
-
-/**
- * Was der Speicher gerade haelt, getrennt nach den beiden Arten.
- *
- * `estimate()` misst den ganzen Ursprung, also auch Foundrys eigene Ablagen.
- * Fuer die Frage "wieviel Raum habe ich noch" ist genau das richtig; fuer die
- * Frage "was kann ich raeumen" zaehlt allein der eigene Speicher, und der wird
- * hier durchgegangen.
- */
-export async function speicherLage() {
-  const lage = { kontingent: 0, belegtGesamt: 0, gehalten: 0, wegwerf: 0, gehalteneDateien: 0, wegwerfDateien: 0 }
-  try {
-    const est = await navigator.storage?.estimate?.()
-    if (est) { lage.kontingent = est.quota || 0; lage.belegtGesamt = est.usage || 0 }
-    const store = await openStore()
-    if (!store) return lage
-    for (const anfrage of await store.keys()) {
-      const hit = await store.match(anfrage)
-      if (!hit) continue
-      const bytes = Number(hit.headers.get("content-length") || 0)
-      if (hit.headers.get(KEEP_HEADER)) { lage.gehalten += bytes; lage.gehalteneDateien++ }
-      else { lage.wegwerf += bytes; lage.wegwerfDateien++ }
-    }
-  } catch (_) { /* melde, was gezaehlt wurde */ }
-  return lage
-}
-
-/**
- * Platz schaffen, ohne eine einzige gehaltene Karte anzufassen.
- *
- * WARUM DAS NOETIG IST, UND ZWAR DRINGEND
- *
- * Der Speicher haelt zweierlei: dauerhaft gehaltene Karten und Wegwerfware aus
- * dem laufenden Betrieb. Bis zum 29.08.2026 gab es dafuer keine Regel. `put`
- * scheiterte bei vollem Speicher, der Fehler wurde stumm verschluckt, und die
- * Folge war die schlimmere von zwei moeglichen: wer sich vor einer Sitzung
- * durch genug Szenen geblaettert hatte, konnte **keine Karte mehr offline
- * nehmen**, ohne dass irgendetwas es ihm gesagt haette.
- *
- * Geraeumt wird nach Ablagezeitpunkt, aelteste zuerst. Das ist eine Naeherung
- * an "am laengsten nicht gebraucht" und bewusst gewaehlt: den Zeitpunkt bei
- * jedem Treffer fortzuschreiben hiesse, jede gelesene Datei neu abzulegen, und
- * das kostet bei einem Video mehr als es einbringt.
- *
- * Chrome raeumt bei echtem Speicherdruck uebrigens ganz anders, naemlich den
- * gesamten Ursprung auf einmal. Dagegen hilft diese Regel nicht, dagegen hilft
- * die Pruefung beim Weltstart.
- *
- * GEMESSEN am 2026-08-29 im Pruefstand V13, eine gehaltene Datei neben sechs
- * Stueck Wegwerfware, verlangt wurde die Haelfte von deren Gewicht:
- *
- *   vorher   1 gehalten (0,01 MB), 6 wegwerf (0,67 MB)
- *   nachher  1 gehalten (0,01 MB), 5 wegwerf (0,10 MB)
- *
- * Die gehaltene Datei blieb auch dann unangetastet, als in einem zweiten Lauf
- * mehr verlangt wurde, als die Wegwerfware ueberhaupt hergab: die Funktion gab
- * dann `false` zurueck, statt sich am Vorrat zu bedienen.
- */
-export async function raumSchaffen(noetig) {
-  if (!(noetig > 0)) return true
-  const store = await openStore()
-  if (!store) return false
-
-  const wegwerf = []
-  try {
-    for (const anfrage of await store.keys()) {
-      const hit = await store.match(anfrage)
-      if (!hit || hit.headers.get(KEEP_HEADER)) continue
-      wegwerf.push({
-        url: anfrage.url,
-        stamp: Number(hit.headers.get(STAMP_HEADER) || 0),
-        bytes: Number(hit.headers.get("content-length") || 0),
-      })
-    }
-  } catch (_) { return false }
-
-  wegwerf.sort((a, b) => a.stamp - b.stamp)
-  let frei = 0
-  for (const e of wegwerf) {
-    if (frei >= noetig) break
-    try { await store.delete(e.url, { ignoreSearch: true }); frei += e.bytes } catch (_) { /* weiter */ }
-  }
-  if (frei > 0) console.log(`Beneos Stream | Speicher: ${Math.round(frei / 1048576)} MB Wegwerfware geraeumt`)
-  return frei >= noetig
-}
-
-async function toStore(store, url, response, keep = false) {
-  // A denied asset answers 200 with a placeholder pixel. Storing that would
-  // freeze the denial in place for three days, long after the right returns.
-  //
-  // Dasselbe gilt fuer den Bildpunkt, den der Ersatz bei bekanntem Offline
-  // selbst liefert. Er traegt `x-beneos-offline`, ist eine gueltige
-  // 200-Antwort und waere ohne diese Zeile drei Tage lang der gespeicherte
-  // Inhalt der Datei: die Verbindung kaeme zurueck, und der Kunde saehe
-  // trotzdem eine leere Flaeche, bis der Eintrag verfaellt.
-  if (!response.ok || response.headers.get("x-beneos-denied")) return false
-  if (response.headers.get("x-beneos-offline")) return false
-  if (isControl(url)) return false
-
-  // Einmal in einen Rumpf lesen, statt zweimal zu klonen: ein zweiter Versuch
-  // nach dem Raeumen braucht denselben Inhalt, und ein verbrauchter Rumpf
-  // waere dann nicht mehr da.
-  let daten, bytes
-  try {
-    const gestempelt = await stamped(response.clone(), keep)
-    daten = await gestempelt.blob()
-    bytes = daten.size
-    const kopf = new Headers(gestempelt.headers)
-    const bauen = () => new Response(daten, { status: 200, headers: kopf })
-    try { await store.put(url, bauen()); return true } catch (_) { /* voll, gleich weiter */ }
-    // Etwas Luft ueber den reinen Bedarf, damit nicht jede zweite Datei raeumt.
-    if (!(await raumSchaffen(Math.max(bytes * 2, 32 * 1048576)))) return false
-    try { await store.put(url, bauen()); return true } catch (_) { return false }
-  } catch (_) { return false }
-}
-
-export function installStreamFetch() {
-  // Am Modus, nicht an streamEnabled(). Letzteres verlangt bereits einen
-  // Schluessel, und den holt sich eine frisch eingeschaltete Welt erst im
-  // ready-Hook. An streamEnabled() gehaengt liefe die erste Sitzung nach dem
-  // Einschalten ganz ohne Speicher, und zwar stillschweigend.
-  //
-  // Nachruesten nach `ready` ist keine Loesung: gemessen am 22.08.2026 auf
-  // Foundry 14.365 feuert `canvasReady` fuenf Millisekunden VOR `ready`, die
-  // erste Szene ist dann laengst gezeichnet.
-  //
-  // Ohne Schluessel ist der Einbau untaetig, denn der Ersatz greift nur bei
-  // Adressen auf dem Tor-Host, und ohne Schluessel steht keine solche Adresse
-  // in einem Dokument.
-  if (installed || !streamMode()) return
-  installed = true
-
-  // Images arrive through a worker thread unless this is off. See the file
-  // comment: this is the condition, not a tuning knob.
-  try {
-    if (globalThis.PIXI?.loadTextures?.config) {
-      PIXI.loadTextures.config.preferWorkers = false
-    }
-  } catch (_) { /* older PIXI, nothing to do */ }
-
-  const original = globalThis.fetch.bind(globalThis)
-
-  globalThis.fetch = async function beneosStreamFetch(input, init) {
-    const url = typeof input === "string" ? input : input?.url
-    if (!url || !ours(url)) return original(input, init)
-
-    // Der Berichtskanal geht am Ersatz vorbei.
+  export function installStreamFetch() {
+    // Am Modus, nicht an streamEnabled(). Letzteres verlangt bereits einen
+    // Schluessel, und den holt sich eine frisch eingeschaltete Welt erst im
+    // ready-Hook. An streamEnabled() gehaengt liefe die erste Sitzung nach dem
+    // Einschalten ganz ohne Speicher, und zwar stillschweigend.
     //
-    // `/report` liegt auf demselben Host wie die Assets, lief also bisher durch
-    // diese Funktion. Antwortet er einmal nicht mit 2xx, meldet der Fehlerkanal
-    // seinen eigenen Fehlschlag an sich selbst und zaehlt ihn als Ausfall der
-    // Auslieferung. Ein Melder, der sich selbst meldet, verfaelscht genau die
-    // Zahl, fuer die er da ist.
-    if (/\/report(\?|$)/.test(url)) return original(input, init)
-
-    // In the measuring mode neither of the two applies, and both would falsify
-    // the measurement. The store would answer the second run of a comparison
-    // from the first one, and the per-file deadline is a streaming rule: it is
-    // meant to keep a scene from parking on one slow video, while an install has
-    // deadlines of its own that are sized to the file (installer 31-48) and must
-    // be the same on both routes or the comparison measures this module.
-    const measuring = downloadMode()
-    const store = (!measuring && localCacheEnabled() && !isControl(url)) ? await openStore() : null
-    if (store) {
-      const hit = await fromStore(store, url)
-      if (hit) {
-        count("store-hit")
-        return hit.clone()
-      }
-    }
-
-    // Nach dem Speicher, vor allem anderen: was lokal liegt, wird auch ohne
-    // Verbindung geliefert, und genau das ist der Sinn des Speichers. Erst wenn
-    // es die Leitung braeuchte, entscheidet der Zustand.
-    if (!measuring && isOffline()) return offlineAntwort(url)
-
-    // Erst ab hier zaehlt eine Anfrage als Verkehr. Ein Speichertreffer belegt
-    // die Leitung nicht und darf deshalb auch keinen Platz kosten; stuende der
-    // Deckel davor, wartete eine Szene, die vollstaendig aus dem Speicher kommt,
-    // auf Plaetze, die niemand braucht. Steuerdateien laufen bewusst mit: sie
-    // sind klein, aber sie gehen ueber dieselbe Leitung.
-    const deckel = measuring ? 0 : maxConcurrent()
-    await slotHolen(deckel)
-    let slotOffen = deckel > 0
-    const slotWeg = () => { if (slotOffen) { slotOffen = false; slotFreigeben() } }
-
-    // A budget of our own, because Foundry has none. `TextureLoader` sets no
-    // deadline, PIXI hands the URL to a bare `fetch` without a signal, and
-    // Foundry's own `fetchWithTimeout` is used nowhere on the asset path. The
-    // budget follows the file type: a picture that takes half a minute is
-    // broken, a video that takes two is merely large.
+    // Nachruesten nach `ready` ist keine Loesung: gemessen am 22.08.2026 auf
+    // Foundry 14.365 feuert `canvasReady` fuenf Millisekunden VOR `ready`, die
+    // erste Szene ist dann laengst gezeichnet.
     //
-    // The deadline deliberately outlives the `await` below. `fetch` resolves as
-    // soon as the headers arrive, while PIXI then reads the body with `.blob()`
-    // and a seventy-megabyte video spends almost all of its time in that second
-    // half. A timer cleared on the header would guard the part that never
-    // stalls and leave the part that does. Aborting a request whose body has
-    // already been read is a no-op, so letting it run costs nothing.
-    const controller = new AbortController()
-    const budget = measuring ? 0 : budgetFor(url)
-    inFlight.add(controller)
-    const release = () => { inFlight.delete(controller) }
-    const timer = budget > 0
-      ? setTimeout(() => {
-          try { controller.abort("timeout") } catch (_) { /* already settled */ }
-          release()
-          // Der Platz muss auch hier zurueck. Trifft der Abbruch den Rumpf,
-          // feuert `flush` nie, und ohne diese Zeile haelt eine haengende
-          // Anfrage ihren Platz bis zum Ende der Sitzung. Bei einem Deckel von
-          // zwei genuegen zwei solche Anfragen, um die Szene stillzulegen.
-          slotWeg()
-        }, budget)
-      : null
+    // Ohne Schluessel ist der Einbau untaetig, denn der Ersatz greift nur bei
+    // Adressen auf dem Tor-Host, und ohne Schluessel steht keine solche Adresse
+    // in einem Dokument.
+    if (installed || !streamMode()) return
+    installed = true
 
-    // Gezaehlt wird am ABBRUCH, nicht erst im Fang darunter.
-    //
-    // Der Kommentar oben sagt richtig, dass der Zeitgeber das `await` ueberlebt,
-    // weil `fetch` schon bei den Kopfzeilen auflöst und ein grosses Video seine
-    // ganze Zeit im Lesen des Rumpfs verbringt. Genau daraus folgte aber ein
-    // Loch: trifft der Abbruch den Rumpf, wird die Ablehnung in PIXI geworfen
-    // und nicht hier, und der Fang unten sieht sie nie.
-    //
-    // Gemessen am 25.08.2026 als TC-PRJ-STR-022: Budget auf 10 Sekunden, Video
-    // ueber eine gedrosselte Leitung. Der Abbruch fand statt, die Szene blieb
-    // stehen, und `diagnose()` zaehlte NICHTS. Ein Kunde haette die Bewegung
-    // verloren, ohne dass irgendwo eine Zahl davon wusste.
-    let abbruchGezaehlt = false
-    let bytesBisher = 0
-    // Sobald der Rumpf durch ist, gibt es nichts mehr zu bewachen. Ohne diese
-    // Sperre meldete jede erfolgreiche Anfrage nach Ablauf ihres Budgets eine
-    // Zeitueberschreitung; siehe `rumpfBeobachten`.
-    let fertig = false
-    const zaehleAbbruch = () => {
-      if (abbruchGezaehlt || fertig) return
-      abbruchGezaehlt = true
-      count("timeout", url)
-      noteResult(false, "timeout")
-      const wieweit = bytesBisher > 0
-        ? `stalled after ${Math.round(bytesBisher / 1024)} KB`
-        : "no answer"
-      reportFailure({ url, reason: "timeout",
-        detail: `${wieweit} within ${Math.round(budget / 1000)} s` })
-    }
-    const beenden = bytes => {
-      if (fertig) return
-      fertig = true
-      bytesBisher = bytes
-      if (timer) clearTimeout(timer)
-      release()
-      slotWeg()
-    }
-    // Nur das eigene Budget. Ein Abbruch der Leinwandaufsicht traegt den Grund
-    // "draw-budget" und wird dort schon einmal gemeldet; ihn hier ein zweites
-    // Mal zu zaehlen machte aus einem Vorfall zwei.
-    controller.signal.addEventListener("abort", () => {
-      if (controller.signal.reason === "timeout") zaehleAbbruch()
-    }, { once: true })
-
-    const callerSignal = init?.signal
-    const signal = (callerSignal && AbortSignal.any)
-      ? AbortSignal.any([callerSignal, controller.signal])
-      : controller.signal
-
-    let response
+    // Images arrive through a worker thread unless this is off. See the file
+    // comment: this is the condition, not a tuning knob.
     try {
-      response = await original(input, { ...(init || {}), signal })
-    } catch (err) {
-      if (controller.signal.aborted) {
-        // Erst zaehlen, dann beenden: `beenden` setzt die Sperre, die
-        // `zaehleAbbruch` verstummen laesst, und hier ist der Abbruch echt.
-        zaehleAbbruch()
-        beenden(0)
-      } else {
-        beenden(0)
-        count("network", url)
-        noteResult(false, "network")
-        reportFailure({ url, reason: "network", detail: String(err).slice(0, 200) })
+      if (globalThis.PIXI?.loadTextures?.config) {
+        PIXI.loadTextures.config.preferWorkers = false
       }
-      throw err
-    }
+    } catch (_) { /* older PIXI, nothing to do */ }
 
-    if (!response.ok) {
-      count("status", url)
-      // An answer with a status is proof the gate is reachable, whatever it
-      // says. Counting it as a connection failure would put a world with one
-      // expired release into permanent "offline".
-      noteResult(true)
-      reportFailure({ url, reason: "status", detail: String(response.status) })
-    } else if (response.headers.get("x-beneos-denied")) {
-      // The one failure mode nobody could see. A refusal answers 200 with a
-      // transparent pixel, on purpose: an error would paint a hazard icon over
-      // the scene and set off a burst of retries. But `response.ok` is then
-      // true, so the branch above never fired, the store refused the placeholder
-      // without saying so, and the tile simply rendered nothing. No hazard icon,
-      // no console line, no report. A failure that leaves no trace cannot be
-      // measured, and round three of the beta programme exists to measure it.
-      count("denied", url)
-      noteResult(true)
-      reportFailure({ url, reason: "denied", detail: "placeholder returned" })
-      // Einmal je Szene, nicht je Datei.
+    const original = globalThis.fetch.bind(globalThis)
+
+    globalThis.fetch = async function beneosStreamFetch(input, init) {
+      const url = typeof input === "string" ? input : input?.url
+      if (!url || !ours(url)) return original(input, init)
+
+      // Der Berichtskanal geht am Ersatz vorbei.
       //
-      // Eine abgelaufene Miete sperrt nicht eine Datei, sondern das ganze
-      // Release. Eine Zeile je abgewiesener Datei sind bei einer Szene mit
-      // Overlays schnell zwanzig gelbe Zeilen fuer einen einzigen Sachverhalt,
-      // und ein Foundry-Nutzer, der sein Log liest, haelt das fuer zwanzig
-      // Fehler. Gesammelt wird nach Release und Variante, die beide in der
-      // Adresse stehen.
-      meldeAbweisung(url)
-    } else {
-      count("ok")
-      noteResult(true)
-      // The number the whole delivery question turns on. A dense network of
-      // nodes is worth nothing if every file is a miss, and for a catalogue this
-      // long that is the case the moment the edge lifetime is short. Counted per
-      // answer rather than reasoned about.
-      const edge = response.headers.get("x-beneos-cache")
-      if (edge) count(`edge:${edge.toLowerCase()}`)
-      const fault = response.headers.get("x-beneos-fault")
-      if (fault) {
-        count(`fault:${fault}`, url)
-        console.warn(`Beneos Stream | injected fault "${fault}": ${url}`)
+      // `/report` liegt auf demselben Host wie die Assets, lief also bisher durch
+      // diese Funktion. Antwortet er einmal nicht mit 2xx, meldet der Fehlerkanal
+      // seinen eigenen Fehlschlag an sich selbst und zaehlt ihn als Ausfall der
+      // Auslieferung. Ein Melder, der sich selbst meldet, verfaelscht genau die
+      // Zahl, fuer die er da ist.
+      if (/\/report(\?|$)/.test(url)) return original(input, init)
+
+      // In the measuring mode neither of the two applies, and both would falsify
+      // the measurement. The store would answer the second run of a comparison
+      // from the first one, and the per-file deadline is a streaming rule: it is
+      // meant to keep a scene from parking on one slow video, while an install has
+      // deadlines of its own that are sized to the file (installer 31-48) and must
+      // be the same on both routes or the comparison measures this module.
+      const measuring = downloadMode()
+      const store = (!measuring && localCacheEnabled() && !isControl(url)) ? await openStore() : null
+      if (store) {
+        const hit = await fromStore(store, url)
+        if (hit) {
+          count("store-hit")
+          return hit.clone()
+        }
       }
-    }
 
-    // Eine Antwort, die niemand auslesen wird, ist hier zu Ende.
-    //
-    // Die Kopplung an den Rumpf unten setzt voraus, dass ihn jemand liest: erst
-    // dann feuert `flush` und beendet den Zeitgeber. Bei einer Fehlermeldung
-    // oder einer Abweisung tut das niemand. PIXI verwirft die Antwort, der
-    // Rumpf bleibt ungelesen, und der Zeitgeber laeuft bis zum Budget durch und
-    // meldet eine Zeitueberschreitung, die es nicht gab.
-    //
-    // Gemessen am 27.08.2026 als TC-PRJ-STR-032 auf Foundry 13.351: bei
-    // eingeschaltetem 404-Fehler zaehlte `diagnose()` **`status: 18` und
-    // zugleich `timeout: 12`**. Dieselbe Fehlerklasse wie in 7ec22a1, nur eine
-    // Ebene tiefer.
-    if (!response.ok || response.headers.get("x-beneos-denied")) beenden(0)
+      // Nach dem Speicher, vor allem anderen: was lokal liegt, wird auch ohne
+      // Verbindung geliefert, und genau das ist der Sinn des Speichers. Erst wenn
+      // es die Leitung braeuchte, entscheidet der Zustand.
+      if (!measuring && isOffline()) return offlineAntwort(url)
 
-    // Der Rumpf bekommt seine Aufsicht, und zwar fuer JEDEN Ausgang.
-    //
-    // Auch eine Antwort mit Fehlerstatus und auch eine Abweisung tragen einen
-    // Rumpf, den irgendwer liest; ohne die Kopplung liefe deren Zeitgeber weiter
-    // und meldete spaeter eine Zeitueberschreitung, die es nicht gab.
-    //
-    // Vor dem Speicher, damit `toStore` den beobachteten Rumpf klont und nicht
-    // den urspruenglichen. Sonst haette der Klon einen eigenen, unbeobachteten
-    // Strom, und `flush` feuerte erst, wenn PIXI seine Haelfte leergelesen hat.
-    const beobachtet = rumpfBeobachten(response, beenden)
-    if (response.ok && !response.headers.get("x-beneos-denied") && store) {
-      await toStore(store, url, beobachtet)
+      // Laeuft schon jemand fuer diese Adresse? Dann mitwarten statt zweimal
+      // holen. Die Begruendung steht bei `gleicheAdresse` ganz oben.
+      //
+      // Im Messmodus nicht: dort soll jede Anfrage ihren eigenen Weg gehen,
+      // sonst misst der Vergleich diese Zusammenlegung statt der Leitung.
+      const kannWarten = !measuring && darfWarten(init)
+      if (kannWarten) {
+        const laeuft = gleicheAdresse.get(url)
+        if (laeuft) {
+          count("zusammengelegt")
+          // Ein Fehlschlag des Ersten darf den Zweiten nicht mitreissen: er
+          // versucht es dann selbst, und das ist genau richtig.
+          try { await laeuft } catch (_) { /* der Erste ist gescheitert */ }
+          if (store) {
+            const hit = await fromStore(store, url)
+            if (hit) { count("store-hit"); return hit.clone() }
+          }
+          // Kein Speicher, oder der Erste hat nichts hinterlassen. Dann von
+          // hier aus normal weiter, als haette es kein Warten gegeben.
+        }
+      }
+
+      // Der eigene Lauf wird angemeldet, damit ein Zweiter ihn findet. Das
+      // Versprechen traegt keinen Wert; es sagt nur "fertig". Abgemeldet wird
+      // im `finally` ganz unten, damit kein Ausgang den Eintrag stehenlaesst:
+      // ein liegengebliebener Eintrag liesse jede weitere Anfrage auf diese
+      // Adresse fuer immer warten.
+      let fertigMelden = () => {}
+      if (kannWarten) {
+        const eigenerLauf = new Promise(r => { fertigMelden = r })
+        gleicheAdresse.set(url, eigenerLauf)
+        // Der Wert wird nur entfernt, wenn er noch der eigene ist. Sonst
+        // loeschte ein spaet zurueckkehrender erster Lauf den Eintrag eines
+        // zweiten, der laengst selbst laeuft.
+        fertigMelden = (urspruenglich => () => {
+          if (gleicheAdresse.get(url) === eigenerLauf) gleicheAdresse.delete(url)
+          urspruenglich()
+        })(fertigMelden)
+      }
+
+      try {
+
+      // Erst ab hier zaehlt eine Anfrage als Verkehr. Ein Speichertreffer belegt
+      // die Leitung nicht und darf deshalb auch keinen Platz kosten; stuende der
+      // Deckel davor, wartete eine Szene, die vollstaendig aus dem Speicher kommt,
+      // auf Plaetze, die niemand braucht. Steuerdateien laufen bewusst mit: sie
+      // sind klein, aber sie gehen ueber dieselbe Leitung.
+      const deckel = measuring ? 0 : maxConcurrent()
+      await slotHolen(deckel)
+      let slotOffen = deckel > 0
+      const slotWeg = () => { if (slotOffen) { slotOffen = false; slotFreigeben() } }
+
+      // A budget of our own, because Foundry has none. `TextureLoader` sets no
+      // deadline, PIXI hands the URL to a bare `fetch` without a signal, and
+      // Foundry's own `fetchWithTimeout` is used nowhere on the asset path. The
+      // budget follows the file type: a picture that takes half a minute is
+      // broken, a video that takes two is merely large.
+      //
+      // The deadline deliberately outlives the `await` below. `fetch` resolves as
+      // soon as the headers arrive, while PIXI then reads the body with `.blob()`
+      // and a seventy-megabyte video spends almost all of its time in that second
+      // half. A timer cleared on the header would guard the part that never
+      // stalls and leave the part that does. Aborting a request whose body has
+      // already been read is a no-op, so letting it run costs nothing.
+      const controller = new AbortController()
+      const budget = measuring ? 0 : budgetFor(url)
+      inFlight.add(controller)
+      const release = () => { inFlight.delete(controller) }
+      const timer = budget > 0
+        ? setTimeout(() => {
+            try { controller.abort("timeout") } catch (_) { /* already settled */ }
+            release()
+            // Der Platz muss auch hier zurueck. Trifft der Abbruch den Rumpf,
+            // feuert `flush` nie, und ohne diese Zeile haelt eine haengende
+            // Anfrage ihren Platz bis zum Ende der Sitzung. Bei einem Deckel von
+            // zwei genuegen zwei solche Anfragen, um die Szene stillzulegen.
+            slotWeg()
+          }, budget)
+        : null
+
+      // Gezaehlt wird am ABBRUCH, nicht erst im Fang darunter.
+      //
+      // Der Kommentar oben sagt richtig, dass der Zeitgeber das `await` ueberlebt,
+      // weil `fetch` schon bei den Kopfzeilen auflöst und ein grosses Video seine
+      // ganze Zeit im Lesen des Rumpfs verbringt. Genau daraus folgte aber ein
+      // Loch: trifft der Abbruch den Rumpf, wird die Ablehnung in PIXI geworfen
+      // und nicht hier, und der Fang unten sieht sie nie.
+      //
+      // Gemessen am 25.08.2026 als TC-PRJ-STR-022: Budget auf 10 Sekunden, Video
+      // ueber eine gedrosselte Leitung. Der Abbruch fand statt, die Szene blieb
+      // stehen, und `diagnose()` zaehlte NICHTS. Ein Kunde haette die Bewegung
+      // verloren, ohne dass irgendwo eine Zahl davon wusste.
+      let abbruchGezaehlt = false
+      let bytesBisher = 0
+      // Sobald der Rumpf durch ist, gibt es nichts mehr zu bewachen. Ohne diese
+      // Sperre meldete jede erfolgreiche Anfrage nach Ablauf ihres Budgets eine
+      // Zeitueberschreitung; siehe `rumpfBeobachten`.
+      let fertig = false
+      const zaehleAbbruch = () => {
+        if (abbruchGezaehlt || fertig) return
+        abbruchGezaehlt = true
+        count("timeout", url)
+        noteResult(false, "timeout")
+        const wieweit = bytesBisher > 0
+          ? `stalled after ${Math.round(bytesBisher / 1024)} KB`
+          : "no answer"
+        reportFailure({ url, reason: "timeout",
+          detail: `${wieweit} within ${Math.round(budget / 1000)} s` })
+      }
+      const beenden = bytes => {
+        if (fertig) return
+        fertig = true
+        bytesBisher = bytes
+        if (timer) clearTimeout(timer)
+        release()
+        slotWeg()
+      }
+      // Nur das eigene Budget. Ein Abbruch der Leinwandaufsicht traegt den Grund
+      // "draw-budget" und wird dort schon einmal gemeldet; ihn hier ein zweites
+      // Mal zu zaehlen machte aus einem Vorfall zwei.
+      controller.signal.addEventListener("abort", () => {
+        if (controller.signal.reason === "timeout") zaehleAbbruch()
+      }, { once: true })
+
+      const callerSignal = init?.signal
+      const signal = (callerSignal && AbortSignal.any)
+        ? AbortSignal.any([callerSignal, controller.signal])
+        : controller.signal
+
+      let response
+      try {
+        response = await original(input, { ...(init || {}), signal })
+      } catch (err) {
+        if (controller.signal.aborted) {
+          // Erst zaehlen, dann beenden: `beenden` setzt die Sperre, die
+          // `zaehleAbbruch` verstummen laesst, und hier ist der Abbruch echt.
+          zaehleAbbruch()
+          beenden(0)
+        } else {
+          beenden(0)
+          count("network", url)
+          noteResult(false, "network")
+          reportFailure({ url, reason: "network", detail: String(err).slice(0, 200) })
+        }
+        throw err
+      }
+
+      if (!response.ok) {
+        count("status", url)
+        // An answer with a status is proof the gate is reachable, whatever it
+        // says. Counting it as a connection failure would put a world with one
+        // expired release into permanent "offline".
+        noteResult(true)
+        reportFailure({ url, reason: "status", detail: String(response.status) })
+      } else if (response.headers.get("x-beneos-denied")) {
+        // The one failure mode nobody could see. A refusal answers 200 with a
+        // transparent pixel, on purpose: an error would paint a hazard icon over
+        // the scene and set off a burst of retries. But `response.ok` is then
+        // true, so the branch above never fired, the store refused the placeholder
+        // without saying so, and the tile simply rendered nothing. No hazard icon,
+        // no console line, no report. A failure that leaves no trace cannot be
+        // measured, and round three of the beta programme exists to measure it.
+        count("denied", url)
+        noteResult(true)
+        reportFailure({ url, reason: "denied", detail: "placeholder returned" })
+        // Einmal je Szene, nicht je Datei.
+        //
+        // Eine abgelaufene Miete sperrt nicht eine Datei, sondern das ganze
+        // Release. Eine Zeile je abgewiesener Datei sind bei einer Szene mit
+        // Overlays schnell zwanzig gelbe Zeilen fuer einen einzigen Sachverhalt,
+        // und ein Foundry-Nutzer, der sein Log liest, haelt das fuer zwanzig
+        // Fehler. Gesammelt wird nach Release und Variante, die beide in der
+        // Adresse stehen.
+        meldeAbweisung(url)
+      } else {
+        count("ok")
+        noteResult(true)
+        // The number the whole delivery question turns on. A dense network of
+        // nodes is worth nothing if every file is a miss, and for a catalogue this
+        // long that is the case the moment the edge lifetime is short. Counted per
+        // answer rather than reasoned about.
+        const edge = response.headers.get("x-beneos-cache")
+        if (edge) count(`edge:${edge.toLowerCase()}`)
+        const fault = response.headers.get("x-beneos-fault")
+        if (fault) {
+          count(`fault:${fault}`, url)
+          console.warn(`Beneos Stream | injected fault "${fault}": ${url}`)
+        }
+      }
+
+      // Eine Antwort, die niemand auslesen wird, ist hier zu Ende.
+      //
+      // Die Kopplung an den Rumpf unten setzt voraus, dass ihn jemand liest: erst
+      // dann feuert `flush` und beendet den Zeitgeber. Bei einer Fehlermeldung
+      // oder einer Abweisung tut das niemand. PIXI verwirft die Antwort, der
+      // Rumpf bleibt ungelesen, und der Zeitgeber laeuft bis zum Budget durch und
+      // meldet eine Zeitueberschreitung, die es nicht gab.
+      //
+      // Gemessen am 27.08.2026 als TC-PRJ-STR-032 auf Foundry 13.351: bei
+      // eingeschaltetem 404-Fehler zaehlte `diagnose()` **`status: 18` und
+      // zugleich `timeout: 12`**. Dieselbe Fehlerklasse wie in 7ec22a1, nur eine
+      // Ebene tiefer.
+      if (!response.ok || response.headers.get("x-beneos-denied")) beenden(0)
+
+      // Der Rumpf bekommt seine Aufsicht, und zwar fuer JEDEN Ausgang.
+      //
+      // Auch eine Antwort mit Fehlerstatus und auch eine Abweisung tragen einen
+      // Rumpf, den irgendwer liest; ohne die Kopplung liefe deren Zeitgeber weiter
+      // und meldete spaeter eine Zeitueberschreitung, die es nicht gab.
+      //
+      // Vor dem Speicher, damit `toStore` den beobachteten Rumpf klont und nicht
+      // den urspruenglichen. Sonst haette der Klon einen eigenen, unbeobachteten
+      // Strom, und `flush` feuerte erst, wenn PIXI seine Haelfte leergelesen hat.
+      const beobachtet = rumpfBeobachten(response, beenden)
+      if (response.ok && !response.headers.get("x-beneos-denied") && store) {
+        await toStore(store, url, beobachtet)
+      }
+      return beobachtet
+    } finally {
+      // Immer, auch bei Fehler und Abbruch. Ein liegengebliebener Eintrag
+      // liesse jede weitere Anfrage auf diese Adresse fuer immer warten.
+      fertigMelden()
     }
-    return beobachtet
   }
 }
 
