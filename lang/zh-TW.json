@@ -1518,6 +1518,7 @@
   "BENEOS.Cloud.Filter.Grid": "格線大小",
   "BENEOS.Cloud.Filter.Scenery": "僅場景畫面",
   "BENEOS.Cloud.Filter.Battlemap": "僅戰鬥地圖",
+  "BENEOS.Cloud.Install.NoPackDir": "無法連線至 Beneos Cloud，因此目前無法安裝此版本。連線恢復後請再試一次。",
   "BENEOS.Cloud.Install.AssetsMissing": "{count} 個資源無法安裝，可能顯示為遺失。請檢查主控台或重新安裝此包。",
   "BENEOS.Cloud.Install.ConvertedUploads": "{count} 個檔案在安裝期間被第三方模組（如 Media Optimizer）轉換為其他格式。Beneos 已自動調整所有引用。",
   "BENEOS.Cloud.Install.Report.ConvertedUploads": "{count} 個上傳的檔案被第三方模組（如 Media Optimizer）轉換為其他格式。Beneos 已自動調整所有引用，這不是錯誤。",

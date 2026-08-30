@@ -1518,6 +1518,7 @@
   "BENEOS.Cloud.Filter.Grid": "Velikost mřížky",
   "BENEOS.Cloud.Filter.Scenery": "Pouze scenérie",
   "BENEOS.Cloud.Filter.Battlemap": "Pouze battlemapa",
+  "BENEOS.Cloud.Install.NoPackDir": "Beneos Cloud je nedostupny, takze tuto verzi nyni nelze nainstalovat. Zkuste to znovu, az bude spojeni obnoveno.",
   "BENEOS.Cloud.Install.AssetsMissing": "{count} assetů se nepodařilo nainstalovat a mohou se zobrazovat jako chybějící. Zkontrolujte konzoli nebo balíček nainstalujte znovu.",
   "BENEOS.Cloud.Install.ConvertedUploads": "{count} soubor(y) byly během instalace převedeny do jiného formátu modulem třetí strany (např. Media Optimizer). Beneos automaticky upravil všechny odkazy.",
   "BENEOS.Cloud.Install.Report.ConvertedUploads": "{count} nahrané soubory byly převedeny do jiného formátu modulem třetí strany (např. Media Optimizer). Beneos automaticky upravil všechny odkazy, nejde o chybu.",

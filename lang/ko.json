@@ -1518,6 +1518,7 @@
   "BENEOS.Cloud.Filter.Grid": "그리드 크기",
   "BENEOS.Cloud.Filter.Scenery": "시너리만",
   "BENEOS.Cloud.Filter.Battlemap": "배틀맵만",
+  "BENEOS.Cloud.Install.NoPackDir": "Beneos Cloud에 연결할 수 없어 지금은 이 릴리스를 설치할 수 없습니다. 연결이 복구되면 다시 시도하세요.",
   "BENEOS.Cloud.Install.AssetsMissing": "{count}개의 에셋을 설치하지 못해 누락된 것으로 표시될 수 있습니다. 콘솔을 확인하거나 팩을 다시 설치하세요.",
   "BENEOS.Cloud.Install.ConvertedUploads": "{count}개 파일이 설치 중 서드파티 모듈(Media Optimizer 등)에 의해 다른 형식으로 변환되었습니다. Beneos가 모든 참조를 자동으로 조정했습니다.",
   "BENEOS.Cloud.Install.Report.ConvertedUploads": "{count}개의 업로드된 파일이 서드파티 모듈(Media Optimizer 등)에 의해 다른 형식으로 변환되었습니다. Beneos가 모든 참조를 자동으로 조정했습니다. 오류가 아닙니다.",

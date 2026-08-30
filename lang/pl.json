@@ -1518,6 +1518,7 @@
   "BENEOS.Cloud.Filter.Grid": "Rozmiar siatki",
   "BENEOS.Cloud.Filter.Scenery": "Tylko sceneria",
   "BENEOS.Cloud.Filter.Battlemap": "Tylko battlemapa",
+  "BENEOS.Cloud.Install.NoPackDir": "Beneos Cloud jest niedostepny, wiec tego wydania nie mozna teraz zainstalowac. Sprobuj ponownie, gdy polaczenie wroci.",
   "BENEOS.Cloud.Install.AssetsMissing": "Nie udało się zainstalować {count} zasobów i mogą być widoczne jako brakujące. Sprawdź konsolę lub zainstaluj pakiet ponownie.",
   "BENEOS.Cloud.Install.ConvertedUploads": "{count} plik(i) zostały przekonwertowane na inny format przez moduł zewnętrzny (np. Media Optimizer) podczas instalacji. Beneos automatycznie dostosował wszystkie odwołania.",
   "BENEOS.Cloud.Install.Report.ConvertedUploads": "{count} przesłane pliki zostały przekonwertowane na inny format przez moduł zewnętrzny (np. Media Optimizer). Beneos automatycznie dostosował wszystkie odwołania, to nie jest błąd.",

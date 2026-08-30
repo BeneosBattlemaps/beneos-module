@@ -1518,6 +1518,7 @@
   "BENEOS.Cloud.Filter.Grid": "グリッドサイズ",
   "BENEOS.Cloud.Filter.Scenery": "シーナリーのみ",
   "BENEOS.Cloud.Filter.Battlemap": "バトルマップのみ",
+  "BENEOS.Cloud.Install.NoPackDir": "Beneos Cloud に接続できないため、このリリースは現在インストールできません。接続が回復してからもう一度お試しください。",
   "BENEOS.Cloud.Install.AssetsMissing": "{count} 個のアセットをインストールできず、欠落として表示される場合があります。コンソールを確認するか、パックを再インストールしてください。",
   "BENEOS.Cloud.Install.ConvertedUploads": "{count} 件のファイルがインストール中にサードパーティモジュール（Media Optimizer など）によって別形式に変換されました。Beneos はすべての参照を自動的に調整しました。",
   "BENEOS.Cloud.Install.Report.ConvertedUploads": "{count} 件のアップロードファイルがサードパーティモジュール（Media Optimizer など）によって別形式に変換されました。Beneos はすべての参照を自動的に調整しました。これはエラーではありません。",
