@@ -431,6 +431,27 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
    * drawer state. Other parts inherit the root context as-is.
    */
   async _preparePartContext(partId, context) {
+    // Die Streaming-Werte VOR der Verzweigung, weil mehrere Teile sie brauchen.
+    //
+    // Sie standen zuerst im `sidebar`-Zweig, zwischen den Filterlisten, und
+    // waren damit im Ergebnisbereich nie zu sehen: der Offline-Reiter und die
+    // Speicherleiste fehlten im gerenderten Fenster vollstaendig. Gemessen im
+    // Pruefstand am 30.08.2026, `streamEnabled()` gab true und der Kontext des
+    // Templates trug die Felder trotzdem nicht.
+    context = {
+      ...context,
+      // Der Offline-Reiter haengt am Streaming-Schalter, nicht an der
+      // Verbindung: ohne Streaming gibt es nichts offline zu halten, mit
+      // Streaming aber ohne Netz ist der Reiter gerade dann wichtig.
+      streamOn: streamEnabled(),
+      bmapViewIsOffline: this.searchMode === "bmap" && this._bmapActiveView() === "offline",
+      // Die Speicherleiste, nur auf dem Maps-Reiter: anderswo gibt es nichts
+      // offline zu nehmen, und eine Leiste ohne Bezug ist Rauschen.
+      offlineVorrat: (this.searchMode === "bmap" && streamEnabled())
+        ? vorratsanzeige(vorratsstand().bytes, kontingent())
+        : null,
+    }
+
     // Der Betriebszustand im Fensterkopf. Nur bei eingeschaltetem Streaming:
     // ohne es wird gar nichts gestreamt, und die Anzeige haette nichts zu
     // sagen. Der Zustand kommt aus `streamState()`, derselben Quelle, aus der
@@ -551,16 +572,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // A3: the Show dropdown is offered in the release view (where filtering
         // by New/Updated/installed at release granularity makes sense).
         bmapViewIsReleases: this.searchMode === "bmap" && this._bmapActiveView() === "releases",
-        bmapViewIsOffline:  this.searchMode === "bmap" && this._bmapActiveView() === "offline",
-        // Der Offline-Reiter haengt am Streaming-Schalter, nicht an der
-        // Verbindung: ohne Streaming gibt es nichts offline zu halten, mit
-        // Streaming aber ohne Netz ist der Reiter gerade dann wichtig.
-        streamOn:           streamEnabled(),
-        // Die Speicherleiste, nur auf dem Maps-Reiter: anderswo gibt es nichts
-        // offline zu nehmen, und eine Leiste ohne Bezug ist Rauschen.
-        offlineVorrat:      (this.searchMode === "bmap" && streamEnabled())
-          ? vorratsanzeige(vorratsstand().bytes, kontingent())
-          : null,
         // Item-side
         // Wave B-8k-5: collapse "Light Armor +1/+2/…" into "Light Armor"
         // before sorting so the dropdown isn't cluttered with modded
