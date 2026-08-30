@@ -50,4 +50,16 @@
       {{localize "BENEOS.Cloud.Tab.Spells"}}
     </button>
   </nav>
+  {{!-- Der Betriebszustand, rechts im Kopf. Er steht hier und nicht in der
+        Ergebnisleiste, weil er fuer das ganze Fenster gilt und nicht nur fuer
+        die Karten. Das Wort "Streaming" traegt drei der vier Zustaende: der
+        Kunde soll sehen, DASS gestreamt wird. Die Farbe traegt die Wahrheit
+        und stimmt mit dem Verbindungspunkt am Beneos-Knopf ueberein. --}}
+  {{#if streamMode}}
+  <div class="bc-stream-mode" data-bc-stream-state="{{streamMode.zustand}}"
+       data-tooltip="{{localize streamMode.tipp}}">
+    <i class="bc-stream-mode-dot" style="background: {{streamMode.farbe}}"></i>
+    <span style="color: {{streamMode.farbe}}">{{localize streamMode.schluessel}}</span>
+  </div>
+  {{/if}}
 </header>

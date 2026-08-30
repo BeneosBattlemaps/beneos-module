@@ -2476,5 +2476,10 @@
   "BENEOS.Cloud.Bmap.Offline": "Offline",
   "BENEOS.Cloud.Bmap.OfflineTooltip": "Vydání nainstalovaná v tomto světě a co z nich je dostupné offline",
   "BENEOS.Cloud.Bmap.OfflineFullTooltip": "Každá mapa tohoto vydání je dostupná offline",
-  "BENEOS.Cloud.Bmap.OfflinePartTooltip": "Některé mapy tohoto vydání jsou dostupné offline"
+  "BENEOS.Cloud.Bmap.OfflinePartTooltip": "Některé mapy tohoto vydání jsou dostupné offline",
+  "BENEOS.Stream.Mode.Streaming": "Režim streamování",
+  "BENEOS.Stream.Mode.Offline": "Režim offline",
+  "BENEOS.Stream.Mode.StreamingTooltip": "Všechna data map se streamují z Beneos Cloud. Co si necháš offline, zůstane dostupné i bez připojení.",
+  "BENEOS.Stream.Mode.OfflineTooltip": "Žádné připojení k Beneos. Teď lze otevřít jen mapy ponechané offline.",
+  "BENEOS.Cloud.Bmap.QuotaTooltip": "Tvé offline úložiště. Ponech si vydání offline, abys mohl hrát bez připojení k internetu."
 }

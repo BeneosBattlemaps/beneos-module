@@ -37,7 +37,11 @@ import { BeneosPatchlogWindow } from "./home/patchlog-window.mjs"
 import { fetchNewsFeed, markNewsRead } from "./services/news-api.mjs"
 import { BeneosInstallState, BeneosPreInstallDialog, beneosLogModuleInstall } from "./beneos-install-state.mjs"
 import { streamEnabled } from "../stream/stream-settings.mjs"
-import { releaseOfflineStand } from "../stream/stream-offline.mjs"
+import { streamState } from "../stream/stream-online.mjs"
+import {
+  releaseOfflineStand, vorratsanzeige, betriebsanzeige,
+  vorratsstand, kontingent,
+} from "../stream/stream-offline.mjs"
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
 
@@ -426,6 +430,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
    * drawer state. Other parts inherit the root context as-is.
    */
   async _preparePartContext(partId, context) {
+    // Der Betriebszustand im Fensterkopf. Nur bei eingeschaltetem Streaming:
+    // ohne es wird gar nichts gestreamt, und die Anzeige haette nichts zu
+    // sagen. Der Zustand kommt aus `streamState()`, derselben Quelle, aus der
+    // auch der Verbindungspunkt am Beneos-Knopf liest; zwei Anzeigen im selben
+    // Bild, die sich widersprechen, waeren schlimmer als eine fehlende.
+    if (partId === "header") {
+      return { ...context, streamMode: streamEnabled() ? betriebsanzeige(streamState()) : null }
+    }
     // Home tab: news feed + Recent rails + Hero rotation. Heavy work
     // (network fetch, db iteration) lives in HomeController so this
     // method stays focused on routing.
@@ -543,6 +555,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // Verbindung: ohne Streaming gibt es nichts offline zu halten, mit
         // Streaming aber ohne Netz ist der Reiter gerade dann wichtig.
         streamOn:           streamEnabled(),
+        // Die Speicherleiste, nur auf dem Maps-Reiter: anderswo gibt es nichts
+        // offline zu nehmen, und eine Leiste ohne Bezug ist Rauschen.
+        offlineVorrat:      (this.searchMode === "bmap" && streamEnabled())
+          ? vorratsanzeige(vorratsstand().bytes, kontingent())
+          : null,
         // Item-side
         // Wave B-8k-5: collapse "Light Armor +1/+2/…" into "Light Armor"
         // before sorting so the dropdown isn't cluttered with modded

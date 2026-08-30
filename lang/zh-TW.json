@@ -2476,5 +2476,10 @@
   "BENEOS.Cloud.Bmap.Offline": "離線",
   "BENEOS.Cloud.Bmap.OfflineTooltip": "已安裝在這個世界中的版本，以及其中可離線使用的部分",
   "BENEOS.Cloud.Bmap.OfflineFullTooltip": "這個版本的所有地圖都可離線使用",
-  "BENEOS.Cloud.Bmap.OfflinePartTooltip": "這個版本的部分地圖可離線使用"
+  "BENEOS.Cloud.Bmap.OfflinePartTooltip": "這個版本的部分地圖可離線使用",
+  "BENEOS.Stream.Mode.Streaming": "串流模式",
+  "BENEOS.Stream.Mode.Offline": "離線模式",
+  "BENEOS.Stream.Mode.StreamingTooltip": "所有地圖資料都從 Beneos 雲端串流。你保留為離線的內容，即使沒有連線也能使用。",
+  "BENEOS.Stream.Mode.OfflineTooltip": "未連線到 Beneos。目前只能開啟已保留為離線的地圖。",
+  "BENEOS.Cloud.Bmap.QuotaTooltip": "你的離線儲存空間。將版本保留為離線，就能在沒有網路連線時遊玩。"
 }

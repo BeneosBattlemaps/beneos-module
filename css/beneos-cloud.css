@@ -6148,6 +6148,77 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
   gap: var(--bc-space-2);
   padding: 0 var(--bc-space-3);
 }
+
+/* Der Betriebszustand rechts im Kopf.
+ *
+ * `flex: none`, weil die Reiterleiste daneben `flex: 1 1 auto` traegt und
+ * diese Anzeige sonst zusammengedrueckt wuerde, sobald die Reiter eng werden.
+ * Ihr Text ist kurz und darf nicht umbrechen: "Streaming Mode" ueber zwei
+ * Zeilen sieht aus wie ein Fehler.
+ *
+ * Punkt UND Wort tragen dieselbe Farbe, weil der Punkt am Beneos-Knopf
+ * ebenfalls faerbt und beide dieselbe Quelle lesen. Wer beide im Blick hat,
+ * soll nicht zwei verschiedene Aussagen sehen. */
+.beneos-cloud-app .bc-stream-mode {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 var(--bc-space-3);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  cursor: help;
+}
+.beneos-cloud-app .bc-stream-mode .bc-stream-mode-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+/* Die Speicherleiste unter der Filterzeile.
+ *
+ * Eine eigene Zeile, bewusst niedrig: sie ist Auskunft, kein Bedienelement,
+ * und darf den Karten keinen Platz nehmen. Die Zahlen stehen tabellarisch,
+ * damit sie beim Wachsen des Vorrats nicht springen. */
+.beneos-cloud-app .bc-offline-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--bc-space-2);
+  padding: 3px var(--bc-space-3) 7px;
+  font-size: 11.5px;
+  color: var(--bc-text-dim, rgba(255,255,255,0.6));
+  cursor: help;
+}
+.beneos-cloud-app .bc-offline-bar > i { font-size: 11px; flex: none; }
+.beneos-cloud-app .bc-offline-track {
+  flex: 1 1 auto;
+  max-width: 260px;
+  height: 5px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgba(128, 128, 128, 0.22);
+}
+.beneos-cloud-app .bc-offline-fill {
+  display: block;
+  height: 100%;
+  background: var(--bc-success, #6fcf52);
+  transition: width 220ms ease;
+}
+/* Ab neun Zehnteln ist die Frage nicht mehr "wie viel habe ich noch",
+   sondern "was muss weg". Die Farbe sagt das, bevor der Balken voll ist. */
+.beneos-cloud-app .bc-offline-fill.bc-offline-knapp {
+  background: var(--bc-warn, #e0b53e);
+}
+.beneos-cloud-app .bc-offline-zahlen {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+@media (prefers-reduced-motion: reduce) {
+  .beneos-cloud-app .bc-offline-fill { transition: none; }
+}
 .beneos-cloud-app .bc-header-iconbtn {
   display: inline-flex;
   align-items: center;

@@ -144,6 +144,26 @@
     </div>
   {{/if}}
 
+  {{#if offlineVorrat}}
+  {{!-- Der Offline-Vorrat: eine eigene schmale Zeile UNTER der Filterleiste,
+        nicht in ihr. Sie gilt fuer das ganze Fenster, nicht fuer die
+        Umschalter daneben, und in der Leiste hinge sie zwischen Knoepfen, mit
+        denen sie nichts zu tun hat.
+
+        Nur auf dem Maps-Reiter, weil es nur dort etwas offline zu nehmen gibt.
+        Der Tooltip sagt, WOZU das gut ist; der Balken allein beantwortet nur
+        "wieviel habe ich noch". --}}
+  <div class="bc-offline-bar" data-tooltip="{{localize 'BENEOS.Cloud.Bmap.QuotaTooltip'}}">
+    <i class="fa-regular fa-hard-drive"></i>
+    <div class="bc-offline-track" role="img"
+         aria-label="{{offlineVorrat.belegtText}} / {{offlineVorrat.grenzeText}}">
+      <span class="bc-offline-fill{{#if offlineVorrat.knapp}} bc-offline-knapp{{/if}}"
+            style="width: {{offlineVorrat.prozent}}%"></span>
+    </div>
+    <span class="bc-offline-zahlen">{{offlineVorrat.belegtText}} / {{offlineVorrat.grenzeText}}</span>
+  </div>
+  {{/if}}
+
   {{#if cards.length}}
     <div class="bc-result-list{{#if viewIsGrid}} bc-view-grid{{/if}}">
       {{#each cards as |card|}}

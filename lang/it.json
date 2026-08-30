@@ -2476,5 +2476,10 @@
   "BENEOS.Cloud.Bmap.Offline": "Offline",
   "BENEOS.Cloud.Bmap.OfflineTooltip": "Le uscite installate in questo mondo e ciò che ne è disponibile offline",
   "BENEOS.Cloud.Bmap.OfflineFullTooltip": "Ogni mappa di questa uscita è disponibile offline",
-  "BENEOS.Cloud.Bmap.OfflinePartTooltip": "Alcune mappe di questa uscita sono disponibili offline"
+  "BENEOS.Cloud.Bmap.OfflinePartTooltip": "Alcune mappe di questa uscita sono disponibili offline",
+  "BENEOS.Stream.Mode.Streaming": "Modalità streaming",
+  "BENEOS.Stream.Mode.Offline": "Modalità offline",
+  "BENEOS.Stream.Mode.StreamingTooltip": "Tutti i dati delle mappe sono trasmessi dal Beneos Cloud. Ciò che mantieni offline resta disponibile senza connessione.",
+  "BENEOS.Stream.Mode.OfflineTooltip": "Nessuna connessione a Beneos. Ora si possono aprire solo le mappe mantenute offline.",
+  "BENEOS.Cloud.Bmap.QuotaTooltip": "Il tuo spazio offline. Mantieni le uscite offline per giocare senza connessione a Internet."
 }

@@ -2476,5 +2476,10 @@
   "BENEOS.Cloud.Bmap.Offline": "오프라인",
   "BENEOS.Cloud.Bmap.OfflineTooltip": "이 월드에 설치된 릴리스와 그중 오프라인에서 쓸 수 있는 것",
   "BENEOS.Cloud.Bmap.OfflineFullTooltip": "이 릴리스의 모든 맵을 오프라인에서 사용할 수 있습니다",
-  "BENEOS.Cloud.Bmap.OfflinePartTooltip": "이 릴리스의 일부 맵을 오프라인에서 사용할 수 있습니다"
+  "BENEOS.Cloud.Bmap.OfflinePartTooltip": "이 릴리스의 일부 맵을 오프라인에서 사용할 수 있습니다",
+  "BENEOS.Stream.Mode.Streaming": "스트리밍 모드",
+  "BENEOS.Stream.Mode.Offline": "오프라인 모드",
+  "BENEOS.Stream.Mode.StreamingTooltip": "모든 맵 데이터는 Beneos 클라우드에서 스트리밍됩니다. 오프라인으로 보관한 것은 연결 없이도 사용할 수 있습니다.",
+  "BENEOS.Stream.Mode.OfflineTooltip": "Beneos에 연결되어 있지 않습니다. 지금은 오프라인으로 보관한 맵만 열 수 있습니다.",
+  "BENEOS.Cloud.Bmap.QuotaTooltip": "오프라인 저장 공간입니다. 인터넷 없이 플레이하려면 릴리스를 오프라인으로 보관하세요."
 }

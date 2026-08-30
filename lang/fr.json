@@ -2476,5 +2476,10 @@
   "BENEOS.Cloud.Bmap.Offline": "Hors ligne",
   "BENEOS.Cloud.Bmap.OfflineTooltip": "Les publications installées dans ce monde, et ce qui en est disponible hors ligne",
   "BENEOS.Cloud.Bmap.OfflineFullTooltip": "Toutes les cartes de cette publication sont disponibles hors ligne",
-  "BENEOS.Cloud.Bmap.OfflinePartTooltip": "Certaines cartes de cette publication sont disponibles hors ligne"
+  "BENEOS.Cloud.Bmap.OfflinePartTooltip": "Certaines cartes de cette publication sont disponibles hors ligne",
+  "BENEOS.Stream.Mode.Streaming": "Mode streaming",
+  "BENEOS.Stream.Mode.Offline": "Mode hors ligne",
+  "BENEOS.Stream.Mode.StreamingTooltip": "Toutes les données des cartes sont diffusées depuis le Beneos Cloud. Ce que vous gardez hors ligne reste disponible sans connexion.",
+  "BENEOS.Stream.Mode.OfflineTooltip": "Aucune connexion à Beneos. Seules les cartes gardées hors ligne peuvent être ouvertes.",
+  "BENEOS.Cloud.Bmap.QuotaTooltip": "Votre stockage hors ligne. Gardez des publications hors ligne pour jouer sans connexion Internet."
 }

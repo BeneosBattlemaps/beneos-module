@@ -556,6 +556,71 @@ export function releaseOfflineStand() {
   return raus
 }
 
+/**
+ * Wie der Betriebszustand oben im Cloud-Fenster heisst und aussieht.
+ *
+ * DAS WORT IST DER ZWECK, NICHT DER STATUS.
+ *
+ * Betreiberentscheidung vom 30.08.2026: der Kunde soll sehen, DASS gestreamt
+ * wird, damit sich das Wort setzt. Deshalb steht "Streaming" da, solange
+ * gestreamt wird, auch bei einer wackligen Verbindung. Nur wenn wirklich
+ * nichts mehr fliesst, heisst es "Offline".
+ *
+ * Das Wort traegt drei von vier Zustaenden, die Farbe traegt die Wahrheit.
+ * Beides zusammen widerspricht dem Verbindungspunkt am Beneos-Knopf nicht: er
+ * liest dieselbe Quelle und benutzt genau diese vier Farben.
+ *
+ * Reine Rechnung: der Zustand kommt als Parameter herein, damit sie ohne
+ * Foundry pruefbar bleibt.
+ *
+ * @param {"unbekannt"|"online"|"degraded"|"offline"} zustand
+ */
+export function betriebsanzeige(zustand) {
+  const offline = zustand === "offline"
+  return {
+    zustand,
+    offline,
+    schluessel: offline ? "BENEOS.Stream.Mode.Offline" : "BENEOS.Stream.Mode.Streaming",
+    ersatz:     offline ? "Offline Mode" : "Streaming Mode",
+    tipp:       offline ? "BENEOS.Stream.Mode.OfflineTooltip" : "BENEOS.Stream.Mode.StreamingTooltip",
+    farbe: zustand === "online"   ? "#5db075"
+         : zustand === "degraded" ? "#e0a33a"
+         : offline                ? "#c9503f"
+         :                          "#8a8a8a",
+  }
+}
+
+/**
+ * Der Offline-Vorrat als Anzeigewerte: Balkenlaenge und zwei Zahlen.
+ *
+ * Reine Rechnung ueber zwei hereingereichte Werte, damit sie ohne Foundry
+ * pruefbar bleibt. Die Werte selbst holt der Aufrufer aus `vorratsstand()`
+ * und `kontingent()`, denselben Quellen, aus denen auch das Vorratsfenster
+ * und der Punkt-Tooltip lesen. Eine zweite Rechnung waere eine zweite
+ * Wahrheit.
+ *
+ * `knapp` ab neun Zehnteln: von da an ist die Frage nicht mehr "wie viel habe
+ * ich noch", sondern "was muss weg", und die Farbe soll das sagen, bevor der
+ * Balken voll ist.
+ */
+export function vorratsanzeige(belegt, grenze) {
+  const b = Math.max(0, Number(belegt) || 0)
+  const g = Math.max(1, Number(grenze) || 1)
+  const gb = n => n >= 1073741824
+    ? `${(n / 1073741824).toFixed(1)} GB`
+    : `${Math.round(n / 1048576)} MB`
+  return {
+    belegt: b,
+    grenze: g,
+    // Gedeckelt: ein Balken, der aus seinem Kasten laeuft, ist keine Anzeige.
+    // Ueberschreiten kann der Vorrat, wenn das Kontingent nachtraeglich sinkt.
+    prozent: Math.min(100, Math.round((b / g) * 100)),
+    knapp: b / g >= 0.9,
+    belegtText: gb(b),
+    grenzeText: gb(g),
+  }
+}
+
 /** Die Szenen eines Release, aus dem Installationsvermerk. */
 export function szenenZuRelease(releaseDir, variant) {
   const key = variant ? `${releaseDir}_${variant}` : releaseDir
