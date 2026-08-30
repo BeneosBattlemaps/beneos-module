@@ -936,14 +936,32 @@ export class BeneosAnalytics {
   //
   // `reason` is what the server sent: "loyalty" (a monthly reward this user has
   // no grant for) or "tier". Absent on pre-2026-08-24 servers.
+  //
+  // DER EIGENE EREIGNISNAME, SEIT DEM 30.08.2026
+  //
+  // Bis dahin ging diese Zeile als `install_error` hinaus. Das war bequem, weil
+  // die Nutzlast dieselbe ist, sagte aber etwas anderes als der Vorgang: der
+  // Kunde hat auf ein Treugeschenk geklickt, fuer das ihm die Monate fehlen,
+  // und das Rechtetor hat richtig entschieden. Gescheitert ist nichts.
+  //
+  // Serverseitig zaehlt `_trigger-install-health.php` jede Zeile mit dem Namen
+  // `install_error` und vergleicht sie gegen die vierzehn Tage davor. Weil es
+  // diesen Melder in jener Grundlinie noch nicht gab, mass die Probe seine
+  // Einfuehrung als Verschlechterung und meldete fuenfzig Laeufe lang einen
+  // Fehler, den es nicht gibt: 59 gegen erwartete 10,1. Vor dem 26.08.2026 in
+  // 26 Tagen null solche Zeilen, danach 7, 7, 8, 25, 33.
+  //
+  // Der Server muss `asset_refused` in `$ALLOWED_EVENTS` fuehren, sonst
+  // verwirft er die Zeile STILL. Er tut es seit `c6011fd`, und dieser Deploy
+  // kam bewusst zuerst.
   static trackAssetRefused(kind, key, reason) {
     try {
       const why = this.sanitize(String(reason || "unknown"), 16)
-      const fp = `install_error|refused|${kind}|${key || ""}`
+      const fp = `asset_refused|${kind}|${key || ""}`
       const now = Date.now()
       if (now - (this._errorThrottle.get(fp) || 0) < ERROR_THROTTLE_MS) return
       this._errorThrottle.set(fp, now)
-      this.track("install_error", {
+      this.track("asset_refused", {
         asset_id: key ? String(key).slice(0, 32) : null,
         asset_type: this.sanitize(String(kind || "unknown"), 16),
         fatal_category: "entitlement",
