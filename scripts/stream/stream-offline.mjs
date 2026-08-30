@@ -417,6 +417,78 @@ export async function szenenzustand(scene) {
 }
 
 /**
+ * Alle Szenen eines Ordners, samt Unterordnern.
+ *
+ * Rekursiv, weil ein Spielleiter seine Kampagne gliedert und "alles hier
+ * drunter" das ist, was er beim Rechtsklick auf einen Ordner meint. Foundrys
+ * `getSubfolders(true)` liefert die Unterordner in beliebiger Tiefe.
+ */
+export function szenenImOrdner(folder) {
+  if (!folder) return []
+  const raus = []
+  const gesehen = new Set()
+  const sammle = f => {
+    for (const s of (f?.contents ?? [])) {
+      const id = String(s?.id || "")
+      if (!id || gesehen.has(id)) continue
+      gesehen.add(id)
+      raus.push(s)
+    }
+  }
+  sammle(folder)
+  for (const unter of (folder.getSubfolders?.(true) ?? [])) sammle(unter)
+  return raus
+}
+
+/**
+ * Was ein Ordner offline kosten wuerde, und was davon schon liegt.
+ *
+ * DIE VORSCHAU IST NICHT SCHMUCK, SONDERN DIE BEDINGUNG.
+ *
+ * Ein Release wiegt zwischen 0,4 und 2,0 GB, das Kontingent beginnt bei 3.
+ * Ein Fehlgriff raeumt damit das halbe Kontingent, und die Ruecknahme kostet
+ * den Kunden zwar nichts, aber der erneute Griff kostet ihn die Bytes noch
+ * einmal. Wer auf einen Ordner klickt, muss vorher sehen, worauf er klickt.
+ *
+ * Gezaehlt wird je KARTE, nicht je Szene: Battlemap und Szenerie sind zwei
+ * Szenen und eine Karte, und ein Ordner mit zwoelf Szenen kostet oft nur sechs
+ * Karten. Die Entdopplung laeuft ueber die Kartenkennung.
+ *
+ * `bytes` ist die Summe der noch NICHT zugesagten Karten. Was schon liegt,
+ * kostet nichts mehr, und es als Kosten auszuweisen liesse den Ordner teurer
+ * aussehen, als er ist.
+ */
+export async function ordnerVorschau(folder) {
+  const szenen = szenenImOrdner(folder)
+  const karten = new Map()
+  let ohneKarte = 0
+
+  for (const scene of szenen) {
+    const zustand = zustandAusCache(String(scene?.id || "")) || await szenenzustand(scene)
+    if (!zustand?.bekannt) { ohneKarte++; continue }
+    const k = zustand.karte
+    const id = `${k.release}|${k.variant}|${k.karte}`
+    if (karten.has(id)) continue
+    karten.set(id, { ...k, zugesagt: zustand.zugesagt })
+  }
+
+  const liste = [...karten.values()]
+  const offen = liste.filter(k => !k.zugesagt)
+  const bytes = offen.reduce((s, k) => s + (Number(k.bytes) || 0), 0)
+  const frei = Math.max(0, kontingent() - vorratsstand().bytes)
+  return {
+    szenen: szenen.length,
+    ohneKarte,
+    karten: liste,
+    schonDa: liste.length - offen.length,
+    offen: offen.length,
+    bytes,
+    frei,
+    passt: bytes <= frei,
+  }
+}
+
+/**
  * Der vorgewaermte Zustand je Szene, damit die Oberflaeche synchron antworten
  * kann.
  *
@@ -546,6 +618,60 @@ export async function schalteKarte(sceneId) {
   await ziehKarteNach(k)
   try { ui.scenes?.render(); ui.nav?.render() } catch (_) { /* Anzeige ist Beiwerk */ }
   return ergebnis
+}
+
+/**
+ * Einen ganzen Ordner offline nehmen, Karte fuer Karte.
+ *
+ * WARUM NACHEINANDER UND NICHT ALLES AUF EINMAL
+ *
+ * Jede Karte fuehrt ihre eigene Zusage beim Tor, und das Kontingent kann
+ * mitten im Lauf voll werden. Wer alles parallel losschickt, bekommt eine
+ * unvorhersehbare Teilmenge und weiss hinterher nicht, welche. Nacheinander
+ * heisst: die Reihenfolge ist die des Ordners, und beim ersten Nein ist
+ * Schluss, mit einer Zahl statt einem Achselzucken.
+ *
+ * ABGEBROCHEN WIRD NICHT ZURUECKGEROLLT. Was schon liegt, bleibt liegen: es
+ * ist vollstaendig, es ist gewollt, und es wegzuwerfen kostete den Kunden
+ * dieselben Bytes noch einmal, wenn er es sich anders ueberlegt.
+ */
+export async function ordnerZusagen(folder, { onProgress } = {}) {
+  const vor = await ordnerVorschau(folder)
+  const offen = vor.karten.filter(k => !k.zugesagt)
+  const bericht = { gesamt: offen.length, geholt: 0, bytes: 0, abbruch: null, karten: [] }
+
+  for (const [i, k] of offen.entries()) {
+    onProgress?.({ index: i, gesamt: offen.length, name: k.name })
+    const e = await karteZusagen({ ...k, name: k.name })
+    if (e.ok) {
+      bericht.geholt++
+      bericht.bytes += Number(e.ergebnis?.bytes || k.bytes || 0)
+      bericht.karten.push(k.name)
+      await ziehKarteNach(k)
+      continue
+    }
+    // Der erste Fehlschlag beendet den Lauf. Weiterzumachen hiesse, dem
+    // Spielleiter eine Luecke mitten in seinem Ordner zu hinterlassen, die er
+    // erst beim Spielen bemerkt.
+    bericht.abbruch = { name: k.name, ...e }
+    break
+  }
+
+  try { ui.scenes?.render(); ui.nav?.render() } catch (_) { }
+  return bericht
+}
+
+/** Alle zugesagten Karten eines Ordners wieder freigeben. */
+export async function ordnerLoesen(folder) {
+  const vor = await ordnerVorschau(folder)
+  const dran = vor.karten.filter(k => k.zugesagt)
+  let geloest = 0
+  for (const k of dran) {
+    const e = await karteLoesen(k.release, k.variant, k.karte)
+    if (e.ok) { geloest++; await ziehKarteNach(k) }
+  }
+  try { ui.scenes?.render(); ui.nav?.render() } catch (_) { }
+  return { gesamt: dran.length, geloest }
 }
 
 // ---- Die Berechtigungsuhr ---------------------------------------------
