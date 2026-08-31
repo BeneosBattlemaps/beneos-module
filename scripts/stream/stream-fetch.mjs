@@ -673,6 +673,11 @@ export async function alleImSpeicher(urls) {
    * Die gehaltene Datei blieb auch dann unangetastet, als in einem zweiten Lauf
    * mehr verlangt wurde, als die Wegwerfware ueberhaupt hergab: die Funktion gab
    * dann `false` zurueck, statt sich am Vorrat zu bedienen.
+   *
+   * BERICHTIGUNG vom 2026-08-31. Der Satz oben stimmt nur fuer die gehaltene
+   * Ware. Die Wegwerfware war in diesem zweiten Lauf sehr wohl weg, und zwar
+   * vollstaendig; geprueft worden war damals nur die Rueckgabe. Behoben durch
+   * die Vorabsumme weiter unten.
    */
   export async function raumSchaffen(noetig) {
     if (!(noetig > 0)) return true
@@ -691,6 +696,30 @@ export async function alleImSpeicher(urls) {
         })
       }
     } catch (_) { return false }
+
+    // Erst rechnen, dann raeumen.
+    //
+    // Bis zum 31.08.2026 lief die Schleife unten einfach los und hoerte auf,
+    // wenn genug frei war ODER die Liste zu Ende ging. Reichte die Wegwerfware
+    // nicht, war am Ende ALLES geloescht und die Rueckgabe trotzdem `false`.
+    // Der Kunde bekam also eine Absage und hatte gleichzeitig seinen ganzen
+    // Zwischenspeicher verloren, den er danach Stueck fuer Stueck neu holt.
+    //
+    // GEMESSEN am 2026-08-31 im Pruefstand V14: 8.310.380 Bytes Wegwerfware,
+    // verlangt wurden 60.739.180. Rueckgabe `false`, Wegwerfware danach 0.
+    // Die Messung vom 29.08. hatte nur die Rueckgabe geprueft und den Fall
+    // deshalb als bestanden gefuehrt.
+    //
+    // Die Vorabsumme benutzt dieselbe Byte-Quelle wie die Schleife. Traegt ein
+    // Eintrag keine Laengenangabe, zaehlt er hier mit null, aber er braechte in
+    // der Schleife auch nichts ein: beide Seiten irren gleich, und der Irrtum
+    // geht zur sicheren Seite, naemlich nicht raeumen.
+    const gesamt = wegwerf.reduce((s, e) => s + e.bytes, 0)
+    if (gesamt < noetig) {
+      console.log(`Beneos Stream | Speicher: ${Math.round(gesamt / 1048576)} MB Wegwerfware `
+        + `reichen nicht fuer ${Math.round(noetig / 1048576)} MB, nichts geraeumt`)
+      return false
+    }
 
     wegwerf.sort((a, b) => a.stamp - b.stamp)
     let frei = 0
