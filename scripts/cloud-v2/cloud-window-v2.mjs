@@ -5895,34 +5895,35 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   }
 
   /**
-   * Der Anzeigename einer Katalogzeile, mit garantierter Releasenummer.
+   * Der Anzeigename einer Katalogzeile, ohne die angehaengte Releasenummer.
    *
-   * Der Server schickt sie heute in `display_name` mit ("Bone Brambles
-   * (0114)"), und genau deshalb steht sie an der Kachel. Eine zweite Quelle
-   * gab es nicht: `release_num` kam in jeder Zeile mit und wurde nirgends
-   * gelesen.
+   * Der Server fuehrt sie in `display_name` mit ("Bone Brambles (0114)").
+   * Betreiberdirektive vom 31.08.2026: an der Kachel soll sie nicht stehen.
    *
-   * Angehaengt wird nur, was fehlt. Steht irgendwo im Namen bereits diese
-   * Zahl, bleibt er unangetastet; ein Release namens "Tower of 100 Steps"
-   * bekaeme sonst seine Nummer nicht, weil "100" zufaellig darin vorkommt,
-   * deshalb wird auf die Zahl mit Wortgrenzen geprueft und nicht auf einen
-   * Teilstring.
+   * Abgeschnitten wird nur eine abschliessende Klammer, die genau die Nummer
+   * dieser Zeile traegt. Ohne diese Bindung an `release_num` fiele auch eine
+   * Klammer, die etwas anderes bedeutet, etwa "Modular Cave (Winter)" oder
+   * ein Release, dessen Name auf eine Jahreszahl endet.
+   *
+   * `display_name` bleibt unangetastet. Suche, Installationsvermerk und die
+   * Rueckfrage beim Entfernen arbeiten weiter mit der Nummer, dort ist die
+   * Eindeutigkeit wichtiger als die Optik.
    *
    * @param {object} r Katalogzeile aus `list_releases`
    */
-  #releaseNameMitNummer(r) {
+  #releaseNameOhneNummer(r) {
     const name = String(r?.display_name || r?.release_dir || "")
     const num = r?.release_num
     if (num === null || num === undefined || num === "") return name
     const roh = String(num).trim()
-    if (!roh) return name
+    if (!/^\d+$/.test(roh)) return name
     // Die Nummer steht im Katalog als Zahl (114), im Namen aber vierstellig
-    // aufgefuellt ("(0114)"). Beide Formen gelten als vorhanden.
-    const formen = [roh, roh.padStart(4, "0")]
-    for (const f of new Set(formen)) {
-      if (new RegExp(`(^|[^0-9])0*${f}([^0-9]|$)`).test(name)) return name
-    }
-    return `${name} (${roh.padStart(4, "0")})`
+    // aufgefuellt ("(0114)"). Varianten haengen einen Buchstaben an und teilen
+    // sich die Zahl mit ihrem Stammrelease: "Old Cemetery (0093b)" traegt
+    // ebenfalls die 93. Ohne den optionalen Buchstaben behielten die elf
+    // Variantenreleases ihre Klammer, waehrend alle anderen sie verloren.
+    const gekuerzt = name.replace(new RegExp(`\\s*\\(0*${roh}[a-z]?\\)\\s*$`, "i"), "")
+    return gekuerzt.trim() || name
   }
 
   /**
@@ -6168,18 +6169,17 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
 
       return {
         key:                  r.release_dir,
-        // DIE RELEASENUMMER HAT JETZT EINE ZWEITE QUELLE.
+        // DIE RELEASENUMMER STEHT NICHT AN DER KACHEL.
         //
-        // Sie stand bisher nur deshalb an der Kachel, weil der Server sie in
-        // `display_name` mitschickt. Das Feld `release_num` kam mit, wurde
-        // aber in keiner einzigen Vorlage gelesen. Faellt die Nummer
-        // serverseitig einmal aus dem Namen, verschwindet sie damit restlos,
-        // und der Betreiber hat am 31.08.2026 ausdruecklich verlangt, dass sie
-        // bleibt.
+        // Der Server fuehrt sie in `display_name` ("Bone Brambles (0114)"),
+        // und genau dort stand sie deshalb auch. Betreiberdirektive vom
+        // 31.08.2026: in der Uebersicht soll nur der Name stehen.
         //
-        // Angehaengt wird nur, was fehlt. Traegt der Servername die Nummer
-        // schon, bleibt er Zeichen fuer Zeichen wie er ist.
-        name:                 this.#releaseNameMitNummer(r),
+        // Entfernt wird ausschliesslich eine abschliessende Klammer mit
+        // genau der Nummer dieser Zeile, gebunden an `release_num`. Der
+        // Rohname bleibt daneben erhalten und traegt weiter Suche,
+        // Installationsvermerk und die Rueckfrage beim Entfernen.
+        name:                 this.#releaseNameOhneNummer(r),
         assetType:            "bmap",
         dragType:             "bmap",
         dragMode:             "noop",
