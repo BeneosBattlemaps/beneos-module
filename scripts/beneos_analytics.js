@@ -931,14 +931,26 @@ export class BeneosAnalytics {
   //
   // `reason` is what the server sent: "loyalty" (a monthly reward this user has
   // no grant for) or "tier". Absent on pre-2026-08-24 servers.
+  //
+  // Der Name ist seit dem 31.08.2026 `asset_refused` und nicht mehr
+  // `install_error`. Der Server nimmt ihn seit dem 30.08.2026 an; die
+  // Modulseite hat die Umstellung damals nicht mitgemacht, und dadurch stand
+  // der Takt `install-health` 161 Laeufe lang auf rot. Ueber sieben Tage
+  // gemessen stellte diese eine Meldung 152 von 280 gezaehlten
+  // Installationsfehlern, also 54 Prozent von etwas, das gar nicht scheitert.
+  //
+  // Der Server bruecken alte Klienten am Eingang (`analytics_ereignisname` in
+  // api-analytics.php), weil ein Kunde sein Modul aktualisiert, wann er will.
+  // Diese Zeile hier ist trotzdem noetig: sonst haengt der richtige Name auf
+  // Dauer an einer Umschreibung statt am Absender.
   static trackAssetRefused(kind, key, reason) {
     try {
       const why = this.sanitize(String(reason || "unknown"), 16)
-      const fp = `install_error|refused|${kind}|${key || ""}`
+      const fp = `asset_refused|${kind}|${key || ""}`
       const now = Date.now()
       if (now - (this._errorThrottle.get(fp) || 0) < ERROR_THROTTLE_MS) return
       this._errorThrottle.set(fp, now)
-      this.track("install_error", {
+      this.track("asset_refused", {
         asset_id: key ? String(key).slice(0, 32) : null,
         asset_type: this.sanitize(String(kind || "unknown"), 16),
         fatal_category: "entitlement",
