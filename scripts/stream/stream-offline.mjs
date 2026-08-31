@@ -33,7 +33,7 @@ import { MODULE_ID, SETTING, streamEnabled, assetUrl, streamKey, streamBase } fr
 import { offlineGehalten, offlineHalten, offlineFreigeben } from "./stream-fetch.mjs"
 import { streamAdressenVon } from "./stream-online.mjs"
 import { loadStreamManifest } from "./stream-install.mjs"
-import { BeneosInstallState } from "../cloud-v2/beneos-install-state.mjs"
+import { BeneosInstallState, releaseKern } from "../cloud-v2/beneos-install-state.mjs"
 
 /**
  * Vierzehn Tage ohne gueltige Berechtigung, dann fallen die Zusagen.
@@ -292,10 +292,21 @@ export async function releaseLoesen(release, variant) {
   const rel = String(release || "")
   const v = String(variant || "").toLowerCase()
   const alle = lies()
-  const treffer = Object.entries(alle).filter(([, e]) =>
-    e && typeof e === "object"
-    && String(e.release || "") === rel
-    && String(e.variant || "").toLowerCase() === v)
+  const passt = (e) => e && typeof e === "object"
+    && String(e.variant || "").toLowerCase() === v
+  let treffer = Object.entries(alle).filter(([, e]) => passt(e) && String(e.release || "") === rel)
+
+  // Der Deinstallierer kommt mit der Schreibweise des Katalogs, das
+  // Verzeichnis kann die des Vermerks tragen. Ohne diesen Rueckfall blieben
+  // genau die alten Eintraege gebucht, deren Release entfernt wird, und das
+  // ist das Leck, das diese Funktion schliessen soll. Siehe `releaseKern`.
+  if (!treffer.length) {
+    const kern = releaseKern(rel)
+    if (kern) {
+      treffer = Object.entries(alle).filter(([, e]) =>
+        passt(e) && releaseKern(String(e.release || "")) === kern)
+    }
+  }
 
   if (!treffer.length) return { ok: true, geloest: 0, bytes: 0, beimTor: 0 }
 
@@ -313,7 +324,10 @@ export async function releaseLoesen(release, variant) {
 
   let beimTor = 0
   for (const [, e] of treffer) {
-    const antwort = await torFragen(kartenWeg(rel, e.variant, e.karte) + "/release", "POST")
+    // `e.release`, nicht `rel`: gebucht wurde unter der Schreibweise des
+    // Vermerks. Wer hier die des Katalogs schickte, loeste beim Tor eine
+    // Karte, die es dort nicht gibt, und liesse die echte stehen.
+    const antwort = await torFragen(kartenWeg(e.release, e.variant, e.karte) + "/release", "POST")
     if (antwort.ok) beimTor++
   }
   return { ok: true, geloest: treffer.length, bytes, beimTor }

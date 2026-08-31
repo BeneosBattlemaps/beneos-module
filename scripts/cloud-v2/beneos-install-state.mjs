@@ -16,6 +16,37 @@ import { BeneosUtility } from "../beneos_utility.js"
 const SETTING_KEY = "battlemap-installs"
 
 /**
+ * Der Kern eines Release-Schluessels: alles bis einschliesslich seiner Nummer.
+ *
+ * WARUM ES DEN KERN BRAUCHT
+ *
+ * Der Vermerk traegt zwei Schreibweisen desselben Release. Aeltere Eintraege
+ * stehen kurz als `bm_0006`, neuere lang als
+ * `beneos_bm_0111_giant_turtle_island`. Der Katalog kennt nur die Langform.
+ * Gemessen am 2026-08-30 in der V14-Pruefwelt: sechs von sechzehn Vermerken
+ * fanden sich im Offline-Reiter nicht wieder, obwohl ihre Szenen in der Welt
+ * lagen. Fuer den Kunden sieht das aus, als sei ein Release verschwunden.
+ *
+ * DIE NUMMER ALLEIN REICHT NICHT. `bm_extras_0002` und ein gedachtes `bm_0002`
+ * traegen dieselbe Zahl und sind verschiedene Releases; ebenso trennt nur der
+ * angehaengte Buchstabe die Varianten `0057`, `0057b` und `0057c`. Deshalb
+ * bleibt alles vor der Nummer stehen und der Buchstabe dahinter gehoert dazu.
+ *
+ * `beneos_` faellt weg, weil genau dieses Wort die beiden Schreibweisen
+ * unterscheidet.
+ *
+ * @param {string} releaseDir
+ * @returns {string} etwa "bm_0111", "bm_extras_0002", oder "" ohne Nummer
+ */
+export function releaseKern(releaseDir) {
+  const teile = String(releaseDir || "").toLowerCase().split("_").filter(Boolean)
+  if (teile[0] === "beneos") teile.shift()
+  const bis = teile.findIndex(t => /^\d+[a-z]?$/.test(t))
+  if (bis < 0) return ""
+  return teile.slice(0, bis + 1).join("_")
+}
+
+/**
  * Static accessor — Foundry's settings storage is the source of truth; we
  * never cache to avoid stale reads across re-renders.
  */
@@ -42,6 +73,25 @@ export class BeneosInstallState {
     for (const [key, entry] of Object.entries(all)) {
       if (!entry || typeof entry !== "object") continue
       if (entry.releaseDir === releaseDir) out.push(entry)
+    }
+    if (out.length) return out
+
+    // ERST WENN DIE GENAUE SCHREIBWEISE NICHTS FINDET, WIRD ueBER DIE NUMMER
+    // GESUCHT, UND NIE DANEBEN.
+    //
+    // Der Vermerk traegt zwei Schreibweisen desselben Release, der Katalog nur
+    // eine. Ein Eintrag aus der Kurzform faende sich sonst nie wieder, obwohl
+    // seine Szenen in der Welt liegen; im Offline-Reiter fehlten dadurch sechs
+    // von sechzehn Releases. Siehe `releaseKern` oben.
+    //
+    // Die Reihenfolge ist die Aussage: passt die Schreibweise, gilt sie. Der
+    // Kern ist der Rueckfall, nicht die Regel, damit eine genaue Uebereinstimmung
+    // nie von einer ungenauen verdraengt wird.
+    const kern = releaseKern(releaseDir)
+    if (!kern) return out
+    for (const [, entry] of Object.entries(all)) {
+      if (!entry || typeof entry !== "object" || !entry.releaseDir) continue
+      if (releaseKern(entry.releaseDir) === kern) out.push(entry)
     }
     return out
   }

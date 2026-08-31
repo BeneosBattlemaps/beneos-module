@@ -35,7 +35,8 @@ import { BeneosMagicShopGenerator } from "./magic-shop-generator.mjs"
 import { HomeController } from "./home/home-controller.mjs"
 import { BeneosPatchlogWindow } from "./home/patchlog-window.mjs"
 import { fetchNewsFeed, markNewsRead } from "./services/news-api.mjs"
-import { BeneosInstallState, BeneosPreInstallDialog, beneosLogModuleInstall } from "./beneos-install-state.mjs"
+import { BeneosInstallState, BeneosPreInstallDialog, beneosLogModuleInstall,
+         releaseKern } from "./beneos-install-state.mjs"
 import { streamEnabled } from "../stream/stream-settings.mjs"
 import { streamState } from "../stream/stream-online.mjs"
 import {
@@ -5766,6 +5767,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // gerade zeigt. Beides faellt auf den ersten Eintrag desselben Release
       // zurueck, statt "unbekannt" zu behaupten.
       || [...(stand?.values() ?? [])].find(x => x.release === releaseDir)
+      // Letzter Rueckfall: der Vermerk traegt die Kurzschreibweise, der Katalog
+      // die lange. Ohne den Kernvergleich stuende dieselbe Kachel auf
+      // "unbekannt", obwohl ihre Karten zugesagt sind. Siehe `releaseKern`.
+      || [...(stand?.values() ?? [])].find(x =>
+           releaseKern(x.release) && releaseKern(x.release) === releaseKern(releaseDir))
     if (!s || s.unbekannt) {
       return { offlineStand: "unbekannt", offlineText: "", offlineTitel: "" }
     }
