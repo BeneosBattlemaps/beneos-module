@@ -617,9 +617,17 @@ export async function szenenzustand(scene) {
   if (!karte) return { bekannt: false }
   const zugesagt = istZugesagt(karte.release, karte.variant, karte.karte)
   const frei = Math.max(0, kontingent() - vorratsstand().bytes)
+  // Dieselbe Rechnung wie in `szenenVorschau`: was diese Karte wirklich kostet,
+  // sind ihre eigenen Bytes plus die geteilten Dateien, die noch nicht liegen.
+  const schonGeteilt = liesGeteilt()
+  const geteiltBytes = (karte.geteilt || [])
+    .filter(g => g?.url && !schonGeteilt[g.url])
+    .reduce((s, g) => s + (Number(g.bytes) || 0), 0)
+  const kostet = (Number(karte.bytes) || 0) + geteiltBytes
   return {
     bekannt: true, karte, zugesagt,
-    passt: zugesagt || karte.bytes <= frei,
+    kostet, geteiltBytes,
+    passt: zugesagt || kostet <= frei,
     frei,
   }
 }
@@ -702,7 +710,32 @@ export async function szenenVorschau(szenen) {
 
   const liste = [...karten.values()]
   const offen = liste.filter(k => !k.zugesagt)
-  const bytes = offen.reduce((s, k) => s + (Number(k.bytes) || 0), 0)
+
+  // DIE GETEILTEN DATEIEN GEHOEREN IN DIE VORSCHAU, SONST LUEGT SIE.
+  //
+  // Gemessen am 31.08.2026 auf 14.360: die Vorschau nannte 6.037.384 Bytes,
+  // der Vorrat wuchs danach um 6.282.734. Die Differenz von 245.350 waren die
+  // geteilten Dateien, die erst beim Holen dazukamen. Bei der ersten Karte
+  // einer frischen Welt ist die Abweichung der ganze Symbolsatz.
+  //
+  // Das ist nicht nur eine schiefe Anzeige: `passt` entscheidet, ob der
+  // Rechtsklick ueberhaupt angeboten wird. Eine zu kleine Zahl sagt dicht vor
+  // der Grenze "geht noch" und laesst die Zusage danach am Kontingent
+  // scheitern.
+  //
+  // Gezaehlt wird nur, was noch NICHT liegt, und jede Adresse nur einmal, auch
+  // wenn mehrere Karten des Ordners sie brauchen.
+  const schonGeteilt = liesGeteilt()
+  const neueGeteilte = new Map()
+  for (const k of offen) {
+    for (const g of k.geteilt || []) {
+      if (!g?.url || schonGeteilt[g.url] || neueGeteilte.has(g.url)) continue
+      neueGeteilte.set(g.url, Number(g.bytes) || 0)
+    }
+  }
+  const geteiltBytes = [...neueGeteilte.values()].reduce((s, n) => s + n, 0)
+
+  const bytes = offen.reduce((s, k) => s + (Number(k.bytes) || 0), 0) + geteiltBytes
   const frei = Math.max(0, kontingent() - vorratsstand().bytes)
   return {
     szenen: szenen.length,
@@ -711,6 +744,10 @@ export async function szenenVorschau(szenen) {
     schonDa: liste.length - offen.length,
     offen: offen.length,
     bytes,
+    // Getrennt ausgewiesen, damit eine Oberflaeche sagen kann, warum die Summe
+    // groesser ist als die Summe der Karten.
+    geteiltBytes,
+    geteiltDateien: neueGeteilte.size,
     frei,
     passt: bytes <= frei,
   }
