@@ -577,10 +577,24 @@
                          is what confused people. --}}
                     {{#if card.isUpdate}}{{localize "BENEOS.Cloud.Card.Update"}}{{else if card.bmapInstalled}}{{localize "BENEOS.Cloud.Card.InstallAgain"}}{{else}}{{localize "BENEOS.Cloud.Card.Install"}}{{/if}}
                   </button>
-                  {{!-- Counterpart to the install button: take the whole release
-                       back out of this world and free the disk space it uses.
-                       Only shown to a GM on a release that is actually here. --}}
-                  {{#if card.canUninstall}}
+                  {{!-- IM OFFLINE-REITER MEINT DER ZWEITE KNOPF DEN VORRAT,
+                       SONST DIE WELT.
+                       Betreiberbefund vom 2026-08-31: derselbe Muelleimer an
+                       beiden Stellen liess den Spielleiter das Release aus der
+                       Welt werfen, wo er nur die Offline-Daten freigeben
+                       wollte. Im Offline-Reiter steht deshalb ein Wort statt
+                       eines Bildes, und der Muelleimer ist dort gar nicht
+                       erst da. Das Entfernen aus der Welt bleibt dem
+                       Releases-Reiter. --}}
+                  {{#if card.canFreeOffline}}
+                    <button type="button" class="bc-card-button bc-card-button-secondary bc-action-free-offline"
+                            data-action="releaseOfflineFreigeben"
+                            data-release-dir="{{card.offlineRelease}}"
+                            data-release-variant="{{card.offlineVariante}}"
+                            data-tooltip="{{localize 'BENEOS.Stream.Offline.FreeTooltip'}}">
+                      {{localize "BENEOS.Stream.Offline.Release"}}
+                    </button>
+                  {{else if card.canUninstall}}
                     <button type="button" class="bc-card-button bc-card-button-danger bc-action-uninstall"
                             data-action="uninstallRelease"
                             data-release-dir="{{card.uninstallReleaseDir}}"

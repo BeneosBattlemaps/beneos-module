@@ -877,8 +877,35 @@ export function vorratsanzeige(belegt, grenze) {
 
 /** Die Szenen eines Release, aus dem Installationsvermerk. */
 export function szenenZuRelease(releaseDir, variant) {
+  const alle = BeneosInstallState.getAll() || {}
   const key = variant ? `${releaseDir}_${variant}` : releaseDir
-  const e = BeneosInstallState.getAll()?.[key]
+  let e = alle[key]
+
+  // DIE SCHREIBWEISE DES KATALOGS IST NICHT DIE DES VERMERKS.
+  //
+  // Der Aufrufer kommt aus dem Cloud-Fenster und kennt nur die Katalogform
+  // `beneos_bm_0011_cos_barovia_village`. Aeltere Vermerke stehen kurz als
+  // `bm_0011`. Der genaue Nachschlag verfehlte dann, und der Freigabeknopf im
+  // Offline-Reiter meldete am 31.08.2026 "keine Szenen in dieser Welt",
+  // obwohl die Karte offline lag.
+  //
+  // Derselbe Rueckfall wie in `findByReleaseDir`: erst genau, dann ueber den
+  // Release-Kern. Die Variante zaehlt dabei ohne Ruecksicht auf Gross- und
+  // Kleinschreibung, denn auch dort weichen Katalog und Vermerk voneinander ab.
+  if (!e) {
+    const kern = releaseKern(releaseDir)
+    const v = String(variant || "").toLowerCase()
+    if (kern) {
+      for (const eintrag of Object.values(alle)) {
+        if (!eintrag || typeof eintrag !== "object" || !eintrag.releaseDir) continue
+        if (releaseKern(eintrag.releaseDir) !== kern) continue
+        if (v && String(eintrag.variant || "").toLowerCase() !== v) continue
+        e = eintrag
+        break
+      }
+    }
+  }
+
   const ids = Array.isArray(e?.sceneIds) ? e.sceneIds : []
   return ids.map(id => game.scenes?.get(String(id))).filter(Boolean)
 }

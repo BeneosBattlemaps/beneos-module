@@ -41,7 +41,7 @@ import { streamEnabled } from "../stream/stream-settings.mjs"
 import { streamState } from "../stream/stream-online.mjs"
 import {
   releaseOfflineStand, vorratsanzeige, betriebsanzeige,
-  vorratsstand, kontingent, szenenZuRelease,
+  vorratsstand, kontingent, szenenZuRelease, alleKarten,
 } from "../stream/stream-offline.mjs"
 import { releaseOfflineSchalten } from "../stream/stream-scene-ui.mjs"
 
@@ -451,8 +451,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // leere Liste sagt einen Satz statt gar nichts. Betreiberwunsch vom
       // 31.08.2026. Anklickbar bleibt er in beiden Faellen, sonst koennte man
       // den erklaerenden Satz nie lesen.
-      offlineVorhanden: streamEnabled()
-        && releaseOfflineStand().some(s => s.stand === "teil" || s.stand === "voll"),
+      // Gefragt wird die Buchhaltung, nicht der Installationsvermerk. Dessen
+      // Zustand ist bei Eintraegen ohne das Feld `karten` "unbekannt", und der
+      // Reiter blieb dadurch gedaempft, obwohl etwas offline lag.
+      offlineVorhanden: streamEnabled() && vorratsstand().karten > 0,
       // Die Speicherleiste, nur auf dem Maps-Reiter: anderswo gibt es nichts
       // offline zu nehmen, und eine Leiste ohne Bezug ist Rauschen.
       offlineVorrat: (this.searchMode === "bmap" && streamEnabled())
@@ -6025,15 +6027,20 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // Betreiberbefund vom 31.08.2026: "extrem viel offline verfuegbar", und
     // zwei Listen mit demselben Inhalt verwirren nur.
     //
-    // `keine` und `unbekannt` fallen beide heraus. Sie sagen Verschiedenes,
-    // aber fuer diese Frage dasselbe: hier liegt nichts offline. Installiert
-    // zu sein bleibt trotzdem Bedingung, denn `releaseOfflineStand` liest den
-    // Installationsvermerk und kennt gar nichts anderes.
+    // GEFRAGT WIRD DAS VERZEICHNIS DER ZUSAGEN, NICHT DER INSTALLATIONSVERMERK.
+    //
+    // Der erste Anlauf am 31.08.2026 nahm `releaseOfflineStand()`, und der
+    // leitet seinen Zustand aus dem Feld `karten` des Vermerks ab. Fuenfzehn
+    // von siebzehn Vermerken dieser Welt tragen es nicht, weil sie aus der
+    // Zeit davor stammen; ihr Zustand heisst "unbekannt", und eine frisch
+    // zugesagte Karte verschwand damit sofort wieder aus dem Reiter.
+    //
+    // `alleKarten()` ist die Buchhaltung selbst: dort steht je Karte, welchem
+    // Release sie gehoert. Sie braucht keinen Vermerk und kann deshalb nicht
+    // "unbekannt" sein.
     if (nurOffline) {
       const liegtOffline = new Set(
-        releaseOfflineStand()
-          .filter(s => s.stand === "teil" || s.stand === "voll")
-          .map(s => releaseKern(s.release) || s.release))
+        alleKarten().map(k => releaseKern(k.release) || String(k.release || "")))
       filtered = filtered.filter(r =>
         liegtOffline.has(releaseKern(r.release_dir) || r.release_dir))
     }
