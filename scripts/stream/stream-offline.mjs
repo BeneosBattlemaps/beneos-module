@@ -30,7 +30,7 @@
  */
 
 import { MODULE_ID, SETTING, streamEnabled, assetUrl, streamKey, streamBase } from "./stream-settings.mjs"
-import { offlineGehalten, offlineHalten, offlineFreigeben } from "./stream-fetch.mjs"
+import { offlineGehalten, offlineHalten, offlineFreigeben, alleImSpeicher } from "./stream-fetch.mjs"
 import { streamAdressenVon } from "./stream-online.mjs"
 import { loadStreamManifest } from "./stream-install.mjs"
 import { BeneosInstallState, releaseKern } from "../cloud-v2/beneos-install-state.mjs"
@@ -106,10 +106,56 @@ export function alleKarten() {
   return Object.values(lies()).filter(e => e && typeof e === "object")
 }
 
-/** Was die zugesagten Karten zusammen wiegen, und wie viele es sind. */
+// ---- Der Gemeinschaftsvorrat -------------------------------------------
+
+function liesGeteilt() {
+  try { return game.settings.get(MODULE_ID, SETTING.offlineGeteilt) || {} }
+  catch (_) { return {} }
+}
+
+async function schreibGeteilt(alle) {
+  try { await game.settings.set(MODULE_ID, SETTING.offlineGeteilt, alle) }
+  catch (e) { console.warn("Beneos Stream | Gemeinschaftsvorrat nicht schreibbar", e) }
+}
+
+/**
+ * Eine geteilte Datei erkennt man an ihrem Pfad.
+ *
+ * `map_assets/` ist der Ordner, in dem die Symbole und Hilfsbilder liegen, die
+ * jede Beneos-Szene zieht: Kompass, Bedienleiste, Stop-Symbol. Sie gehoeren
+ * keinem Ort im Manifest, deshalb kennt sie keine Karte.
+ *
+ * Die Regel steht bewusst an EINER Stelle. Wer sie an zwei Orten schreibt,
+ * bekommt frueher oder spaeter zwei verschiedene Antworten auf dieselbe Datei,
+ * und dann liegt etwas im Vorrat, das niemand mehr freigibt.
+ */
+export function istGeteilteDatei(url) {
+  return /\/map_assets\//.test(String(url || ""))
+}
+
+/** Was der Gemeinschaftsvorrat wiegt, und wie viele Dateien er fuehrt. */
+export function geteilterStand() {
+  const alle = Object.values(liesGeteilt()).filter(e => e && typeof e === "object")
+  return { dateien: alle.length, bytes: alle.reduce((s, e) => s + (Number(e.bytes) || 0), 0) }
+}
+
+/**
+ * Was die zugesagten Karten zusammen wiegen, und wie viele es sind.
+ *
+ * Der Gemeinschaftsvorrat zaehlt MIT, aber nur einmal. Er liegt genauso im
+ * Speicher des Kunden wie eine Karte, und ein Kontingent, das ihn nicht sieht,
+ * waere um seine Groesse zu grosszuegig. `karten` bleibt die Zahl der Karten,
+ * denn das ist die Einheit, in der der Kunde denkt.
+ */
 export function vorratsstand() {
   const liste = alleKarten()
-  return { karten: liste.length, bytes: liste.reduce((s, e) => s + (Number(e.bytes) || 0), 0) }
+  const geteilt = geteilterStand()
+  return {
+    karten: liste.length,
+    bytes: liste.reduce((s, e) => s + (Number(e.bytes) || 0), 0) + geteilt.bytes,
+    geteiltBytes: geteilt.bytes,
+    geteiltDateien: geteilt.dateien,
+  }
 }
 
 /** Ist diese Karte zugesagt? Reine Frage an das Verzeichnis, nicht an den Speicher. */
@@ -165,10 +211,18 @@ const kartenWeg = (release, variant, karte) =>
  * genau die Luege, die dieses Verzeichnis aufdecken soll. Und ein Holen ohne
  * Zusage des Tors waere ein Kontingent, das nur diese eine Welt kennt.
  */
-export async function karteZusagen({ release, variant, karte, name, urls, bytes, onProgress }) {
+export async function karteZusagen({ release, variant, karte, name, urls, bytes, geteilt, onProgress }) {
   if (!streamEnabled()) return { ok: false, grund: "kein-streaming" }
   const liste = [...new Set((urls || []).filter(Boolean))]
   if (!liste.length) return { ok: false, grund: "keine-dateien" }
+
+  // Die geteilten Dateien dieser Karte, aufgeteilt in "liegt schon" und "muss
+  // noch geholt werden". Nur das Zweite kostet Kontingent, und nur das Zweite
+  // wird geholt. Siehe `istGeteilteDatei`.
+  const geteiltVorrat = liesGeteilt()
+  const geteiltListe = (geteilt || []).filter(g => g?.url)
+  const geteiltNeu = geteiltListe.filter(g => !geteiltVorrat[g.url])
+  const geteiltNeuBytes = geteiltNeu.reduce((s, g) => s + (Number(g.bytes) || 0), 0)
 
   // DAS KONTINGENT WIRD VOR DEM HOLEN GEPRUEFT, NICHT DANACH.
   //
@@ -185,7 +239,9 @@ export async function karteZusagen({ release, variant, karte, name, urls, bytes,
   // Modul vorbei holen. Die verbindliche Grenze zieht das Tor.
   const schon = vorratsstand().bytes
   const grenze = kontingent()
-  const braucht = Number(bytes) || 0
+  // Die noch fehlenden geteilten Dateien zaehlen mit. Sie liegen sonst im
+  // Speicher, ohne dass das Kontingent sie kennt.
+  const braucht = (Number(bytes) || 0) + geteiltNeuBytes
   if (braucht > 0 && schon + braucht > grenze) {
     return {
       ok: false, grund: "kontingent",
@@ -222,15 +278,51 @@ export async function karteZusagen({ release, variant, karte, name, urls, bytes,
     return { ok: false, grund: "unvollstaendig", ergebnis }
   }
 
+  // DIE GETEILTEN DATEIEN NACH DER KARTE, NICHT VORHER.
+  //
+  // Scheitert die Karte, sind sie umsonst geholt. Scheitern SIE, ist die Karte
+  // trotzdem etwas wert: sie zeichnet, nur ohne ihre Symbole. Deshalb bricht
+  // ein Fehlschlag hier die Zusage nicht ab, er wird vermerkt.
+  //
+  // Eingetragen wird nur, was wirklich liegt. Ein Eintrag ohne Bytes waere
+  // dieselbe Luege, die das Kartenverzeichnis vermeiden soll, nur eine Ebene
+  // tiefer, und niemand wuerde ihn je wieder los.
+  const meineId = karteId(release, variant, karte)
+  let geteiltGeholt = 0, geteiltFehlt = 0
+  if (geteiltListe.length) {
+    const vorrat = liesGeteilt()
+    if (geteiltNeu.length) {
+      const erg = await offlineHalten(geteiltNeu.map(g => g.url))
+      geteiltFehlt = Number(erg.fehlgeschlagen) || 0
+      for (const g of geteiltNeu) {
+        if (!(await alleImSpeicher([g.url]))) continue
+        vorrat[g.url] = { bytes: Number(g.bytes) || 0, karten: [meineId] }
+        geteiltGeholt++
+      }
+    }
+    // Auch die schon liegenden bekommen diese Karte als Verweis, sonst gaebe
+    // die erste geloeste Karte Dateien frei, die eine zweite noch braucht.
+    for (const g of geteiltListe) {
+      const e = vorrat[g.url]
+      if (!e) continue
+      e.karten = [...new Set([...(e.karten || []), meineId])]
+    }
+    await schreibGeteilt(vorrat)
+  }
+
   const alle = lies()
-  alle[karteId(release, variant, karte)] = {
+  alle[meineId] = {
     release, variant, karte,
     name: String(name || karte),
     urls: liste,
     // Die Groesse aus dem Manifest hat Vorrang vor der gemessenen: sie ist
     // dieselbe Zahl, gegen die vorher geprueft wurde, und `content-length`
     // fehlt bei manchen Antworten ganz.
-    bytes: braucht || Number(ergebnis.bytes) || 0,
+    //
+    // NUR DIE EIGENEN BYTES. Die geteilten stehen im Gemeinschaftsvorrat und
+    // werden von `vorratsstand` dort gezaehlt; sie hier mitzuschreiben hiesse,
+    // sie doppelt zu zaehlen.
+    bytes: (Number(bytes) || 0) || Number(ergebnis.bytes) || 0,
     // Gekauft oder gemietet, so wie das Tor es sieht. Es weiss es als
     // einziges, denn nur dort liegt der Berechtigungssatz mit seinem
     // `kind`. Ohne diese Zeile faellt die Auskunft auf den Boden und der
@@ -239,7 +331,38 @@ export async function karteZusagen({ release, variant, karte, name, urls, bytes,
     seit: Date.now(),
   }
   await schreib(alle)
-  return { ok: true, ergebnis }
+  return { ok: true, ergebnis, geteiltGeholt, geteiltFehlt }
+}
+
+/**
+ * Diese Karte aus dem Gemeinschaftsvorrat austragen.
+ *
+ * Eine geteilte Datei geht erst, wenn KEINE Karte sie mehr braucht. Wer sie
+ * mit der ersten Karte freigaebe, risse den anderen ihre Symbole weg, und der
+ * Kunde saehe seine uebrigen Offline-Karten wieder abgelehnt, ohne dass er
+ * etwas an ihnen getan haette.
+ *
+ * @returns {{freigegeben: number, bytes: number}}
+ */
+async function geteiltAustragen(kartenIds) {
+  const weg = new Set(kartenIds)
+  const vorrat = liesGeteilt()
+  const frei = []
+  let bytes = 0
+  for (const [url, e] of Object.entries(vorrat)) {
+    if (!e || typeof e !== "object") { delete vorrat[url]; continue }
+    const rest = (e.karten || []).filter(id => !weg.has(id))
+    if (rest.length) { e.karten = rest; continue }
+    frei.push(url)
+    bytes += Number(e.bytes) || 0
+    delete vorrat[url]
+  }
+  if (frei.length) {
+    try { await offlineFreigeben(frei) }
+    catch (err) { console.warn("Beneos Stream | geteilte Dateien nicht freigegeben", err) }
+  }
+  await schreibGeteilt(vorrat)
+  return { freigegeben: frei.length, bytes }
 }
 
 /**
@@ -259,8 +382,9 @@ export async function karteLoesen(release, variant, karte) {
   await offlineFreigeben(eintrag.urls || [])
   delete alle[id]
   await schreib(alle)
+  const geteilt = await geteiltAustragen([id])
   const beimTor = await torFragen(kartenWeg(release, variant, karte) + "/release", "POST")
-  return { ok: true, beimTor: beimTor.ok }
+  return { ok: true, beimTor: beimTor.ok, geteilt }
 }
 
 /**
@@ -321,6 +445,7 @@ export async function releaseLoesen(release, variant) {
   // Welteinstellung, und je Karte zu schreiben hiesse, bei einem Release mit
   // zwoelf Karten zwoelf Mal dieselbe Einstellung zu setzen.
   await schreib(alle)
+  const geteilt = await geteiltAustragen(treffer.map(([id]) => id))
 
   let beimTor = 0
   for (const [, e] of treffer) {
@@ -330,7 +455,7 @@ export async function releaseLoesen(release, variant) {
     const antwort = await torFragen(kartenWeg(e.release, e.variant, e.karte) + "/release", "POST")
     if (antwort.ok) beimTor++
   }
-  return { ok: true, geloest: treffer.length, bytes, beimTor }
+  return { ok: true, geloest: treffer.length, bytes, beimTor, geteilt }
 }
 
 // ---- Von der Szene zur Karte ------------------------------------------
@@ -466,6 +591,14 @@ export async function karteZuSzene(scene) {
       // eine haelt, hat beim Umschalten auf die andere doch wieder ein Loch.
       urls: dateien.map(f => assetUrl(erste.release, erste.variant, f)),
       bytes: dateien.reduce((s, f) => s + (groesse.get(f) || 0), 0),
+      // DIE GETEILTEN DATEIEN DIESER SZENE, GETRENNT GEFUEHRT.
+      //
+      // Sie gehoeren zu keinem Ort im Manifest, werden aber gebraucht, damit
+      // die Szene ohne Leitung vollstaendig zeichnet. Getrennt, weil sie
+      // mehreren Karten gehoeren und deshalb nur einmal zaehlen duerfen.
+      geteilt: adressen
+        .filter(istGeteilteDatei)
+        .map(u => ({ url: u, bytes: groesse.get(zerlegeAdresse(u)?.pfad) || 0 })),
     }
   }
   return null
@@ -554,8 +687,17 @@ export async function szenenVorschau(szenen) {
     if (!zustand?.bekannt) { ohneKarte++; continue }
     const k = zustand.karte
     const id = `${k.release}|${k.variant}|${k.karte}`
-    if (karten.has(id)) continue
-    karten.set(id, { ...k, zugesagt: zustand.zugesagt })
+    if (karten.has(id)) {
+      // Dieselbe Karte, zweite Szene. Ihre Kartendateien sind dieselben, ihre
+      // GETEILTEN koennen sich unterscheiden: Battlemap und Szenerie eines
+      // Ortes ziehen nicht zwangslaeufig dieselben Symbole. Vereinigen statt
+      // ueberspringen, sonst fehlte der zweiten Szene offline ihr Kompass.
+      const da = karten.get(id)
+      const bekannt = new Set((da.geteilt || []).map(g => g.url))
+      for (const g of k.geteilt || []) if (!bekannt.has(g.url)) (da.geteilt ||= []).push(g)
+      continue
+    }
+    karten.set(id, { ...k, geteilt: [...(k.geteilt || [])], zugesagt: zustand.zugesagt })
   }
 
   const liste = [...karten.values()]
@@ -1114,12 +1256,20 @@ export async function meldeVerfall(anzahl) {
 export async function vorratVerfallen() {
   const liste = alleKarten()
   const bleibt = {}
+  const gefalleneIds = []
   let gefallen = 0
   for (const e of liste) {
-    if (e.permanent === true) { bleibt[karteId(e.release, e.variant, e.karte)] = e; continue }
+    const id = karteId(e.release, e.variant, e.karte)
+    if (e.permanent === true) { bleibt[id] = e; continue }
     try { await offlineFreigeben(e.urls || []) } catch (_) { /* weiter */ }
+    gefalleneIds.push(id)
     gefallen++
   }
   await schreib(bleibt)
-  return { gefallen, behalten: liste.length - gefallen }
+  // Die verfallenen Karten aus dem Gemeinschaftsvorrat austragen. Bleibt eine
+  // gekaufte Karte, bleiben auch ihre Symbole; erst wenn keine Karte mehr auf
+  // eine geteilte Datei zeigt, geht sie. Ohne diesen Schritt lagen 13,85 MB
+  // Symbole unbegrenzt im Speicher eines Kunden, der gar nichts mehr haelt.
+  const geteilt = gefalleneIds.length ? await geteiltAustragen(gefalleneIds) : { freigegeben: 0, bytes: 0 }
+  return { gefallen, behalten: liste.length - gefallen, geteilt }
 }

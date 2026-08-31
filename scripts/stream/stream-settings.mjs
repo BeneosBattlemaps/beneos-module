@@ -29,6 +29,9 @@ export const SETTING = {
   // letzten gueltigen Berechtigung. Siehe stream-offline.mjs.
   offlineHeld: "beneos-stream-offline-held",
   offlineSeen: "beneos-stream-offline-last-seen",
+  // Der Gemeinschaftsvorrat: die geteilten Dateien, die mehrere Karten
+  // brauchen. Sie liegen einmal und zaehlen einmal. Siehe stream-offline.mjs.
+  offlineGeteilt: "beneos-stream-offline-shared",
 }
 
 const DEFAULT_BASE = "https://gate.beneos.stream"
@@ -95,6 +98,33 @@ export function registerStreamSettings() {
   // laeuft die Uhr weiter. Daran haengt der Verfall nach vierzehn Tagen.
   game.settings.register(MODULE_ID, SETTING.offlineSeen, {
     ...world, type: Number, default: 0,
+  })
+
+  // DER GEMEINSCHAFTSVORRAT, UND WARUM ER EIN EIGENES VERZEICHNIS BRAUCHT.
+  //
+  // Eine Szene besteht nicht nur aus ihrer Karte. Sie zieht ausserdem geteilte
+  // Dateien aus `map_assets/`, also Symbole wie den Kompass und die Leiste am
+  // unteren Rand. Der Kartenvorrat holt sie nicht, denn eine Karte ist im
+  // Manifest ein Ort mit seinen Videos und Standbildern.
+  //
+  // Gemessen am 31.08.2026 in der V14-Pruefwelt: 170 von 219 gestreamten
+  // Szenen tragen solche Dateien, 117 verschiedene insgesamt, zusammen 13,85
+  // MB. Die Szenenwache fragt nach ALLEN Dateien einer Szene, also lehnte sie
+  // 78 Prozent der Karten auch dann ab, wenn ihre Videos vollstaendig im
+  // Speicher lagen. Das Offline-Versprechen war fuer die meisten Karten
+  // wirkungslos.
+  //
+  // Sie gehoeren nicht in den Kartenvorrat, weil sie sonst je Karte erneut
+  // zaehlten: dieselben paar Symbole bei zwanzig Karten waeren das Zwanzigfache
+  // derselben Bytes. Betreiberentscheidung vom 31.08.2026: einmal holen, einmal
+  // zaehlen.
+  //
+  // Form: { "<adresse>": { bytes, karten: ["<release>|<variant>|<karte>"] } }
+  // Die Kartenliste ist die Verweiszaehlung. Faellt die letzte Karte weg, wird
+  // die Datei freigegeben.
+  game.settings.register(MODULE_ID, SETTING.offlineGeteilt, {
+    name: "Offline shared assets",
+    ...world, type: Object, default: {},
   })
 
   // Off is the pure form: nothing but the documents lands on the customer's
