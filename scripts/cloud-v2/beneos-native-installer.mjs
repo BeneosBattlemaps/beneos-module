@@ -917,9 +917,13 @@ export class BeneosNativeBattlemapInstaller {
         karten:          this.#kartenFuerVermerk(sceneIds),
         targets:         this.#zielpfadeFuerVermerk(),
         // Der Anzeigename, damit der Offline-Reiter ohne Katalog eine Kachel
-        // beschriften kann. `this.label` ist derselbe Name, der waehrend der
-        // Installation im Fortschrittsfenster steht.
-        displayName:     this.label || "",
+        // beschriften kann.
+        //
+        // ERST DER VERMERKNAME, DANN DAS FENSTERSCHILD. `this.label` traegt
+        // die Variantenklammer, weil das Fortschrittsfenster sie zeigen soll;
+        // im Vermerk steht die Variante als eigenes Feld daneben, und beides
+        // zusammen ergab im Offline-Reiter "Bone Brambles (0114) (4K)".
+        displayName:     this.record?.displayName || this.label || "",
         // Die Dokumente des Pakets, damit das Entfernen ohne Netz nicht auf
         // halbem Weg stehenbleibt.
         docs:            this.#dokumenteFuerVermerk(),

@@ -5304,6 +5304,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       assetId:          String(releaseEntry?.cloud_release_id || props.cloud_release_id || ""),
       contentSignature: String(releaseEntry?.content_signature || ""),
       updatedDate:      this.#releaseDateInfo(releaseDir)?.updatedDate || "",
+      // DER NAME OHNE VARIANTENKLAMMER, EIGENS FUER DEN VERMERK.
+      //
+      // `label` weiter unten traegt sie mit Absicht: im Fortschrittsfenster
+      // will man wissen, ob gerade 4K oder HD laeuft. Im Vermerk ist sie
+      // falsch, denn dort steht die Variante ohnehin als eigenes Feld daneben.
+      // Bis zum 31.08.2026 wanderte `label` in den Vermerk, und der
+      // Offline-Reiter zeigte danach "Bone Brambles (0114) (4K)".
+      displayName:      displayName,
     }
     let inst = null
     try {
@@ -5802,6 +5810,37 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   }
 
   /**
+   * Der Anzeigename einer Katalogzeile, mit garantierter Releasenummer.
+   *
+   * Der Server schickt sie heute in `display_name` mit ("Bone Brambles
+   * (0114)"), und genau deshalb steht sie an der Kachel. Eine zweite Quelle
+   * gab es nicht: `release_num` kam in jeder Zeile mit und wurde nirgends
+   * gelesen.
+   *
+   * Angehaengt wird nur, was fehlt. Steht irgendwo im Namen bereits diese
+   * Zahl, bleibt er unangetastet; ein Release namens "Tower of 100 Steps"
+   * bekaeme sonst seine Nummer nicht, weil "100" zufaellig darin vorkommt,
+   * deshalb wird auf die Zahl mit Wortgrenzen geprueft und nicht auf einen
+   * Teilstring.
+   *
+   * @param {object} r Katalogzeile aus `list_releases`
+   */
+  #releaseNameMitNummer(r) {
+    const name = String(r?.display_name || r?.release_dir || "")
+    const num = r?.release_num
+    if (num === null || num === undefined || num === "") return name
+    const roh = String(num).trim()
+    if (!roh) return name
+    // Die Nummer steht im Katalog als Zahl (114), im Namen aber vierstellig
+    // aufgefuellt ("(0114)"). Beide Formen gelten als vorhanden.
+    const formen = [roh, roh.padStart(4, "0")]
+    for (const f of new Set(formen)) {
+      if (new RegExp(`(^|[^0-9])0*${f}([^0-9]|$)`).test(name)) return name
+    }
+    return `${name} (${roh.padStart(4, "0")})`
+  }
+
+  /**
    * Das Paketverzeichnis zu einer Variante, ohne Ruecksicht auf Gross- und
    * Kleinschreibung.
    *
@@ -6039,7 +6078,18 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
 
       return {
         key:                  r.release_dir,
-        name:                 r.display_name || r.release_dir,
+        // DIE RELEASENUMMER HAT JETZT EINE ZWEITE QUELLE.
+        //
+        // Sie stand bisher nur deshalb an der Kachel, weil der Server sie in
+        // `display_name` mitschickt. Das Feld `release_num` kam mit, wurde
+        // aber in keiner einzigen Vorlage gelesen. Faellt die Nummer
+        // serverseitig einmal aus dem Namen, verschwindet sie damit restlos,
+        // und der Betreiber hat am 31.08.2026 ausdruecklich verlangt, dass sie
+        // bleibt.
+        //
+        // Angehaengt wird nur, was fehlt. Traegt der Servername die Nummer
+        // schon, bleibt er Zeichen fuer Zeichen wie er ist.
+        name:                 this.#releaseNameMitNummer(r),
         assetType:            "bmap",
         dragType:             "bmap",
         dragMode:             "noop",
