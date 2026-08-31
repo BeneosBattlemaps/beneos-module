@@ -176,9 +176,16 @@ function stopProbe() {
  * `NameNotResolved`, also den Fehler eines Kunden ohne Route. Beide Male
  * dasselbe Ergebnis.
  *
- * Die Heilung nach oben bleibt unveraendert. Der Kommentar bei `noteAsset`
+ * Die Heilung nach oben bleibt unveraendert. Der Kommentar in `noteResult`
  * warnt vor einem Fehler vom 26.08., bei dem der Zustand mitten im Zeichnen
  * zurueck auf `online` sprang; dieser Zweig ist hier nicht angefasst.
+ *
+ * DIESE AENDERUNG ALLEIN GENUEGT NICHT, und das ist am 01.09.2026 gemessen
+ * worden: die Sonde konnte gar nicht scheitern. `probeOnce` ruft `fetch`, also
+ * den Ersatz aus `stream-fetch.mjs`, und dessen Vorrat hielt die Antwort auf
+ * `/health`. Die Probe bestaetigte sich selbst, ohne dass ein Byte ueber die
+ * Leitung ging. Erst seit `/health` dort als Steuerdatei gilt, kann eine
+ * gescheiterte Sonde hier ueberhaupt ankommen.
  */
 function startProbe() {
   if (probeTimer) return

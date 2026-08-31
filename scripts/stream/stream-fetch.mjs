@@ -296,11 +296,34 @@ function count(reason, url) {
  * Kunde sieht ueberall nur das B. Gemessen in der App am 31.08.2026: ueber
  * den Ersatz 0 von 143 Titelbildern aus der gepflegten Quelle, ueber
  * XMLHttpRequest und den nativen fetch zur selben Sekunde 139 von 143.
+ *
+ * `/health` kam am 01.09.2026 dazu, und dieser Fall ist der schwerste der
+ * drei. Es ist die Adresse, mit der `probeOnce` in `stream-online.mjs` prueft,
+ * ob das Tor ueberhaupt antwortet. Die Probe ruft `fetch`, also DIESEN Ersatz.
+ * Lag die Antwort im Vorrat, bestaetigte die Probe sich selbst: sie meldete
+ * Erfolg, ohne dass je ein Byte ueber die Leitung ging. `cache: "no-store"` an
+ * der Aufrufstelle half nicht, denn es wirkt auf den Zwischenspeicher des
+ * Browsers und nicht auf den Vorrat des Moduls.
+ *
+ * Die Folge war, dass der Verbindungswaechter aus `degraded` immer wieder nach
+ * `online` heilte und den Zustand `offline` nie erreichte. Weil die Szenenwache
+ * `isOffline()` fragt, griff sie damit nie: eine Szene ohne Vorrat wurde
+ * gezeichnet statt abgelehnt, mit einem einzigen Bildpunkt als Hintergrund.
+ *
+ * GEMESSEN am 2026-09-01 im Pruefstand V14 auf 14.360, bei gesperrtem Tor:
+ * `/health` lag mit Status 200 im Vorrat, 13 Minuten alt. Zur selben Sekunde
+ * gab der Weg ueber den Ersatz `ok: true, status: 200`, ein XMLHttpRequest
+ * daran vorbei `status: 0`. Die Leitung war also nachweislich tot, und die
+ * Probe sagte trotzdem ja.
+ *
+ * Die Altlast raeumt der Aufraeumlauf in `installStreamFetch` von selbst: er
+ * entfernt beim Start jeden Eintrag, den `isControl` erfasst.
  */
 function isControl(url) {
   return /stream-manifest\.json/i.test(String(url))
     || /\/_docs\//i.test(String(url))
     || /\/catalog\//i.test(String(url))
+    || /\/health(\?|$)/i.test(String(url))
 }
 
 /** Is this a request for our own delivery gate? */
