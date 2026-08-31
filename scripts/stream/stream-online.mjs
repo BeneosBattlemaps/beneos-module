@@ -53,6 +53,9 @@ let state = STATE.unbekannt
 let consecutiveFailures = 0
 let probeTimer = null
 let probeDelay = PROBE_MIN_MS
+// Gescheiterte Sonden in Folge. Siehe `startProbe`: erst die zweite macht aus
+// einem Verdacht die Aussage, dass das Tor wirklich nicht antwortet.
+let fehlgeschlageneSonden = 0
 let lastChangeAt = 0
 const listeners = new Set()
 
@@ -143,20 +146,69 @@ function stopProbe() {
   if (probeTimer) clearTimeout(probeTimer)
   probeTimer = null
   probeDelay = PROBE_MIN_MS
+  fehlgeschlageneSonden = 0
 }
 
+/**
+ * Die laufende Sonde, und sie schaltet in BEIDE Richtungen.
+ *
+ * WARUM SIE DAS SEIT DEM 31.08.2026 TUT
+ *
+ * Vorher konnte sie nur nach oben: ein Erfolg heilte nach `online`, ein
+ * Misserfolg verdoppelte bloss die Wartezeit. Nach `offline` fuehrte allein
+ * der einmalige Uebergang weiter unten, und der haengt an `state ===
+ * STATE.online`. War der Zustand einmal `degraded`, wurde er nie wieder
+ * erreicht.
+ *
+ * Die Folge traf genau den Alltagsfall aus TC-PRJ-STR-003, ein Heimnetz ohne
+ * Route nach draussen: der eigene Foundry-Server antwortet, `navigator.onLine`
+ * bleibt wahr, nur das Tor ist weg. Der Waechter blieb dann dauerhaft auf
+ * `degraded`, und weil die Szenenwache `isOffline()` fragt, griff sie nie.
+ *
+ * GEMESSEN am 2026-08-31 im Pruefstand V14 auf 14.360: 829 abgewiesene
+ * Anfragen, 59 Fehlschlaege in Folge, Zustand durchgehend `degraded`. Eine
+ * Szene ohne Vorrat wurde gezeichnet statt abgelehnt, mit einem einzigen
+ * Bildpunkt als Hintergrund und dem gewoehnlichen Ladehinweis als einziger
+ * Meldung. TC-PRJ-STR-002 verlangt das Gegenteil.
+ *
+ * Der naheliegende Einwand ist geprueft: der Lauf wurde mit zwei unabhaengigen
+ * Sperrmethoden wiederholt, einmal ueber abgewiesene Adressen und einmal ueber
+ * `NameNotResolved`, also den Fehler eines Kunden ohne Route. Beide Male
+ * dasselbe Ergebnis.
+ *
+ * Die Heilung nach oben bleibt unveraendert. Der Kommentar bei `noteAsset`
+ * warnt vor einem Fehler vom 26.08., bei dem der Zustand mitten im Zeichnen
+ * zurueck auf `online` sprang; dieser Zweig ist hier nicht angefasst.
+ */
 function startProbe() {
   if (probeTimer) return
   const tick = async () => {
     probeTimer = null
     if (await probeOnce()) {
       setState(STATE.online, "probe succeeded")
+      fehlgeschlageneSonden = 0
       return
     }
+    fehlgeschlageneSonden += 1
     // Growing gaps rather than a steady drum: a table that stays offline for an
     // hour should not produce a hundred and twenty requests.
+    //
+    // Die Verdopplung steht VOR dem Zustandswechsel, weil `setState` ueber
+    // `startProbe` selbst schon den naechsten Lauf setzt und dabei den Wert
+    // liest, der dann gilt.
     probeDelay = Math.min(probeDelay * 2, PROBE_MAX_MS)
-    probeTimer = setTimeout(tick, probeDelay)
+
+    // Zwei hintereinander, nicht eine. `PROBE_TIMEOUT_MS` steht auf acht
+    // Sekunden, und auf einer schmalen Leitung reisst eine einzelne Sonde
+    // dieses Budget, ohne dass die Verbindung weg waere. Der Preis ist ein
+    // Sondenabstand Verzoegerung, bis die Szenenwache greift.
+    if (fehlgeschlageneSonden >= 2 && state === STATE.degraded) {
+      setState(STATE.offline, "zwei Sonden hintereinander ohne Antwort")
+    }
+    // Nur setzen, wenn nicht schon einer laeuft: der Zustandswechsel eben hat
+    // ueber `startProbe` moeglicherweise bereits einen gesetzt, und zwei
+    // Zeitgeber nebeneinander verdoppeln die Last auf dem Tor dauerhaft.
+    if (!probeTimer) probeTimer = setTimeout(tick, probeDelay)
   }
   probeTimer = setTimeout(tick, probeDelay)
 }
