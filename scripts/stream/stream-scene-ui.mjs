@@ -108,7 +108,8 @@ function ensureStyle() {
       color: #c9503f;
       opacity: 0.75;
     }
-    #context-menu li.beneos-offline-voll i { color: #c9503f; }
+    /* Die Regel fuer das Symbol im Eintrag ist weg, weil die Eintraege seit
+       dem 2026-08-31 keines mehr tragen. */
 
     .${KLASSE} .entry-name::after,
     .${KLASSE} .scene-name::after {
@@ -346,10 +347,13 @@ export function installStreamSceneUi() {
 
     const zustandVon = li => zustandAusCache(szeneAusMenue(li))
 
-    const eintrag = (schluessel, ersatz, icon, wennZugesagt) => ({
+    // KEIN SYMBOL. Betreibervorgabe vom 31.08.2026: Icons sind in diesen
+    // Menues nicht vorgesehen. Foundrys Schnittstelle verlangt das Feld
+    // trotzdem, deshalb steht dort eine leere Zeichenkette und kein Bild.
+    const eintrag = (schluessel, ersatz, wennZugesagt) => ({
       name: localize(schluessel, ersatz),
       label: localize(schluessel, ersatz),
-      icon: `<i class="${icon}"></i>`,
+      icon: "",
       condition: li => {
         if (!streamEnabled()) return false
         const z = zustandVon(li)
@@ -361,14 +365,12 @@ export function installStreamSceneUi() {
       },
     })
 
-    const halten = eintrag("BENEOS.Stream.Offline.Keep", "Keep offline",
-      "fa-regular fa-hard-drive", false)
+    const halten = eintrag("BENEOS.Stream.Offline.Keep", "Keep offline", false)
     // "Stream again" beschrieb die Folge, nicht die Handlung, und liess offen,
     // ob dabei etwas verschwindet. "Remove Offline Data" sagt, was passiert:
     // die Dateien gehen weg, die Karte laeuft danach wieder ueber die Leitung.
     // Betreiberentscheidung vom 30.08.2026.
-    const loesen = eintrag("BENEOS.Stream.Offline.Release", "Remove Offline Data",
-      "fa-regular fa-trash-can", true)
+    const loesen = eintrag("BENEOS.Stream.Offline.Release", "Remove Offline Data", true)
 
     // Passt die Karte nicht mehr ins Kontingent, erscheint derselbe Eintrag
     // rot und untaetig, statt zu fehlen. Ein fehlender Eintrag sieht aus wie
@@ -379,7 +381,7 @@ export function installStreamSceneUi() {
     const zuGross = {
       name: localize("BENEOS.Stream.Offline.Keep", "Keep offline"),
       label: localize("BENEOS.Stream.Offline.Keep", "Keep offline"),
-      icon: `<i class="fa-regular fa-hard-drive"></i>`,
+      icon: "",
       classes: "beneos-offline-voll",
       condition: li => grundBedingung(li) && zustandVon(li)?.passt === false,
       callback: li => {
@@ -428,7 +430,7 @@ export function installStreamSceneUi() {
     options.push({
       name:  localize("BENEOS.Stream.Offline.KeepFolder", "Keep all offline"),
       label: localize("BENEOS.Stream.Offline.KeepFolder", "Keep all offline"),
-      icon:  `<i class="fa-regular fa-hard-drive"></i>`,
+      icon:  "",
       condition: li => {
         if (!streamEnabled()) return false
         const f = ordnerVon(li); if (!f) return false
@@ -441,7 +443,7 @@ export function installStreamSceneUi() {
     options.push({
       name:  localize("BENEOS.Stream.Offline.ReleaseFolder", "Remove Offline Data"),
       label: localize("BENEOS.Stream.Offline.ReleaseFolder", "Remove Offline Data"),
-      icon:  `<i class="fa-regular fa-trash-can"></i>`,
+      icon:  "",
       condition: li => {
         if (!streamEnabled()) return false
         const f = ordnerVon(li); if (!f) return false

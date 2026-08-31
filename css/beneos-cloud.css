@@ -6256,11 +6256,23 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
   border-radius: 4px;
   border: 1px solid rgba(128, 128, 128, 0.35);
   background: #17150f;
+  /* DIE SCHRIFTFARBE GEHOERT HIERHER, GENAU WIE DER HINTERGRUND.
+   *
+   * Der Knopf weiter unten trug `color: inherit`, und weil das Menue am `body`
+   * haengt, erbte es Foundrys Grundfarbe nahe Weiss statt der Beneos-Schrift.
+   * Betreiberbefund vom 2026-08-31: "sehr weiss und schlecht leserlich".
+   * Derselbe Gedanke, der den Hintergrund ausgeschrieben hat, hat die Schrift
+   * vergessen. */
+  color: #e8e0d0;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
   font-size: 13px;
 }
 @media (prefers-color-scheme: light) {
-  .bc-offline-menu { background: #ffffff; border-color: rgba(0, 0, 0, 0.18); }
+  .bc-offline-menu {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.18);
+    color: #2a2117;
+  }
 }
 .bc-offline-menu button {
   display: flex;
@@ -6281,7 +6293,9 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
   background: rgba(201, 162, 39, 0.18);
   outline: none;
 }
-.bc-offline-menu button i { width: 14px; text-align: center; opacity: 0.8; }
+/* Die Regel fuer das Symbol vor dem Eintrag ist weg, weil das Symbol weg ist.
+ * Icons sind bei Beneos in Menues nicht vorgesehen, und dieses Menue traegt
+ * seit dem 2026-08-31 nur noch Text. */
 .beneos-cloud-app .bc-header-iconbtn {
   display: inline-flex;
   align-items: center;

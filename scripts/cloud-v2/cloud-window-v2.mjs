@@ -3552,20 +3552,28 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     menu.style.left = `${ev.clientX}px`
     menu.style.top = `${ev.clientY}px`
 
-    const eintrag = (icon, text, fn) => {
+    // KEIN SYMBOL VOR DEM EINTRAG.
+    //
+    // Betreibervorgabe vom 31.08.2026: Icons sind in diesen Menues nicht
+    // vorgesehen. Der Text traegt die Bedeutung allein, und zwei Eintraege
+    // brauchen keine Bildsprache, um unterscheidbar zu sein.
+    //
+    // `textContent` statt `innerHTML`, weil der Text aus einer Sprachdatei
+    // kommt und dort irgendwann ein Zeichen stehen kann, das als Markierung
+    // gelesen wuerde.
+    const eintrag = (text, fn) => {
       const b = document.createElement("button")
       b.type = "button"
-      b.innerHTML = `<i class="${icon}"></i><span></span>`
-      b.querySelector("span").textContent = text
+      b.textContent = text
       b.addEventListener("click", async () => { menu.remove(); await fn() })
       menu.appendChild(b)
     }
 
     const t = (k, e) => { try { const s = game.i18n.localize(k); return (s && s !== k) ? s : e } catch (_) { return e } }
-    eintrag("fa-regular fa-hard-drive", t("BENEOS.Stream.Offline.KeepRelease", "Keep release offline"),
+    eintrag(t("BENEOS.Stream.Offline.KeepRelease", "Keep release offline"),
       () => releaseOfflineSchalten(szenen, "halten"))
     if (hatOffline) {
-      eintrag("fa-regular fa-trash-can", t("BENEOS.Stream.Offline.ReleaseFolder", "Remove Offline Data"),
+      eintrag(t("BENEOS.Stream.Offline.ReleaseFolder", "Remove Offline Data"),
         () => releaseOfflineSchalten(szenen, "loesen"))
     }
 
