@@ -3742,33 +3742,58 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // registered and re-evaluates them on each layout pass, which showed up in
   // performance traces as multi-second IntersectionObserver::computeIntersections.
   // Here only not-yet-triggered, viewport-near images are ever observed.
-  #ensureLazyObserver() {
-    if (this._lazyObserver) return this._lazyObserver
-    this._lazyObserver = new IntersectionObserver((entries, obs) => {
+  // The root matters. rootMargin only widens the root's own rectangle; a
+  // clipping ancestor in between still cuts the element away at its exact
+  // edge. With root=null the result list clipped every card below its bottom
+  // edge, so the 300px preload never happened and each thumbnail only started
+  // loading once it was already on screen, leaving the placeholder visible for
+  // as long as the (full-size) cover took. One observer per scroll container.
+  #ensureLazyObserver(scroller = null) {
+    if (!this._lazyObservers) this._lazyObservers = new Map()
+    const vorhanden = this._lazyObservers.get(scroller)
+    if (vorhanden) return vorhanden
+    const obs = new IntersectionObserver((entries, self) => {
       for (const entry of entries) {
         if (!entry.isIntersecting) continue
         const img = entry.target
-        obs.unobserve(img)
+        self.unobserve(img)
         const src = img.dataset?.src
         if (src) img.src = src
         img.removeAttribute("data-bc-lazy")
       }
-    }, { root: null, rootMargin: "300px" })
-    return this._lazyObserver
+    }, { root: scroller, rootMargin: "600px" })
+    this._lazyObservers.set(scroller, obs)
+    return obs
+  }
+
+  // Nearest ancestor that scrolls, within this window. That element clips the
+  // image, so it has to be the observer root.
+  #scrollAhne(el) {
+    let e = el?.parentElement
+    while (e && e !== this.element) {
+      const ov = getComputedStyle(e).overflowY
+      if (ov === "auto" || ov === "scroll") return e
+      e = e.parentElement
+    }
+    return null
+  }
+
+  // Observe one image against the container that actually clips it.
+  #beobachteLazy(img) {
+    this.#ensureLazyObserver(this.#scrollAhne(img)).observe(img)
   }
 
   // Observe every not-yet-loaded lazy image under `root`. Pass reset=true on a
   // full re-render to drop stale observations of replaced DOM nodes; pass
   // reset=false when appending new cards so existing observations stay intact.
   #wireLazyImages(root = this.element, { reset = false } = {}) {
-    if (reset && this._lazyObserver) {
-      this._lazyObserver.disconnect()
-      this._lazyObserver = null
+    if (reset && this._lazyObservers) {
+      for (const obs of this._lazyObservers.values()) obs.disconnect()
+      this._lazyObservers = null
     }
     const scope = root || this.element
     if (!scope) return
-    const obs = this.#ensureLazyObserver()
-    for (const img of scope.querySelectorAll("img[data-bc-lazy]")) obs.observe(img)
+    for (const img of scope.querySelectorAll("img[data-bc-lazy]")) this.#beobachteLazy(img)
   }
 
   /* ========== Virtualization / windowing (list mode, perf) ========== */
@@ -3868,17 +3893,18 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     if (first < 0) { first = 0; last = 0 }
     if (first === st.firstShown && last === st.lastShown) return
     st.firstShown = first; st.lastShown = last
-    const obs = this._lazyObserver
     for (let i = 0; i < rows.length; i++) {
       const el = rows[i].el
       const inWin = i >= first && i <= last
       if (inWin) {
         if (el.style.display === "none") {
           el.style.display = ""
-          if (obs) for (const img of el.querySelectorAll("img[data-bc-lazy]")) obs.observe(img)
+          for (const img of el.querySelectorAll("img[data-bc-lazy]")) this.#beobachteLazy(img)
         }
       } else if (el.style.display !== "none") {
-        if (obs) for (const img of el.querySelectorAll("img[data-bc-lazy]")) obs.unobserve(img)
+        for (const img of el.querySelectorAll("img[data-bc-lazy]")) {
+          for (const obs of this._lazyObservers?.values() || []) obs.unobserve(img)
+        }
         el.style.display = "none"
       }
     }
@@ -6794,7 +6820,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   async _onClose(options) {
     this.#stopQuoteCycle()
     this.#teardownVirtualization()
-    if (this._lazyObserver) { this._lazyObserver.disconnect(); this._lazyObserver = null }
+    if (this._lazyObservers) {
+      for (const obs of this._lazyObservers.values()) obs.disconnect()
+      this._lazyObservers = null
+    }
     if (game.beneos?.cloudWindowV2 === this) game.beneos.cloudWindowV2 = undefined
     if (game.beneos?.searchEngine === this) game.beneos.searchEngine = undefined
     if (game.beneosTokens?.searchEngine === this) game.beneosTokens.searchEngine = undefined
