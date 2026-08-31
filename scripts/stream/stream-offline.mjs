@@ -263,6 +263,62 @@ export async function karteLoesen(release, variant, karte) {
   return { ok: true, beimTor: beimTor.ok }
 }
 
+/**
+ * Jede Zusage eines Release zuruecknehmen.
+ *
+ * DER DEINSTALLIERER MUSS DAS RUFEN, SONST ENTSTEHT EIN LECK, DAS DER KUNDE
+ * NICHT SEHEN UND NICHT BEHEBEN KANN.
+ *
+ * `forget()` loescht den Installationsvermerk. Ohne ihn kennt
+ * `releaseOfflineStand()` das Release nicht mehr, es verschwindet aus dem
+ * Offline-Reiter, und seine Karten sind ueber die Oberflaeche nicht mehr
+ * anzuklicken. Beim Tor bleiben sie trotzdem gebucht. Bei 3 GB Kontingent und
+ * Karten zu rund 70 MB kostet jedes Entfernen-und-neu-Installieren also
+ * dauerhaft Platz ohne sichtbare Ursache.
+ *
+ * ANDERS ALS BEIM VERFALL BLEIBEN GEKAUFTE KARTEN NICHT VERSCHONT. Der Verfall
+ * nimmt einem Kunden etwas weg, deshalb schuetzt `permanent` dort. Hier hat er
+ * selbst auf Entfernen geklickt und will die Dateien los sein; ihm ausgerechnet
+ * das Gekaufte dazulassen, waere die falsche Freundlichkeit.
+ *
+ * Ohne Netz wird trotzdem lokal geloest, aus demselben Grund wie bei
+ * `karteLoesen`: ein stummes Tor darf das Kontingent des Kunden nicht sperren.
+ * Der Abgleich laeuft beim naechsten Weltstart.
+ *
+ * @param {string} release   Verzeichnisname des Release
+ * @param {string} variant   Variante, Gross- und Kleinschreibung egal
+ */
+export async function releaseLoesen(release, variant) {
+  const rel = String(release || "")
+  const v = String(variant || "").toLowerCase()
+  const alle = lies()
+  const treffer = Object.entries(alle).filter(([, e]) =>
+    e && typeof e === "object"
+    && String(e.release || "") === rel
+    && String(e.variant || "").toLowerCase() === v)
+
+  if (!treffer.length) return { ok: true, geloest: 0, bytes: 0, beimTor: 0 }
+
+  let bytes = 0
+  for (const [id, e] of treffer) {
+    try { await offlineFreigeben(e.urls || []) }
+    catch (err) { console.warn("Beneos Stream | Bytes einer Karte nicht freigegeben", id, err) }
+    bytes += Number(e.bytes) || 0
+    delete alle[id]
+  }
+  // Ein Schreibvorgang fuer alle: das Verzeichnis liegt in einer
+  // Welteinstellung, und je Karte zu schreiben hiesse, bei einem Release mit
+  // zwoelf Karten zwoelf Mal dieselbe Einstellung zu setzen.
+  await schreib(alle)
+
+  let beimTor = 0
+  for (const [, e] of treffer) {
+    const antwort = await torFragen(kartenWeg(rel, e.variant, e.karte) + "/release", "POST")
+    if (antwort.ok) beimTor++
+  }
+  return { ok: true, geloest: treffer.length, bytes, beimTor }
+}
+
 // ---- Von der Szene zur Karte ------------------------------------------
 
 /**

@@ -31,6 +31,7 @@
 
 import { BeneosInstallState } from "./beneos-install-state.mjs"
 import { BeneosNativeBattlemapInstaller } from "./beneos-native-installer.mjs"
+import { releaseLoesen } from "../stream/stream-offline.mjs"
 
 /** Document collections to remove, children before the folders that hold them. */
 const DOC_PATHS = [
@@ -193,6 +194,24 @@ export class BeneosNativeUninstaller {
     await this.#removePlaylistTracks(docs.playlists)
     await this.#deleteFolders(docs.folders)
     await this.#clearAssetFiles(target.assets, claimedByOthers)
+
+    // VOR `forget`, NICHT DANACH. Der Vermerk ist der einzige Weg zurueck zu
+    // den Karten dieses Release: ist er weg, kennt `releaseOfflineStand()` das
+    // Release nicht mehr, es verschwindet aus dem Offline-Reiter, und seine
+    // Zusagen bleiben beim Tor gebucht, ohne dass der Kunde sie noch loesen
+    // koennte. Das Kontingent verlaere bei jedem Entfernen still Platz.
+    //
+    // Ein Fehlschlag haelt das Entfernen nicht auf. Die Dokumente sind zu
+    // diesem Zeitpunkt bereits weg; abzubrechen hinterliesse eine halb
+    // entfernte Welt, um eine Buchung zu retten, die der naechste Weltstart
+    // ohnehin abgleicht.
+    try {
+      const geloest = await releaseLoesen(this.releaseDir, this.variant)
+      if (geloest.geloest > 0) {
+        console.log(`BeneosNativeUninstaller | ${this.label}: ${geloest.geloest} Offline-Zusagen geloest, `
+          + `${(geloest.bytes / 1048576).toFixed(1)} MB Kontingent frei, ${geloest.beimTor} beim Tor bestaetigt`)
+      }
+    } catch (err) { this.#fail("releaseLoesen", err) }
 
     try { await BeneosInstallState.forget({ releaseDir: this.releaseDir, variant: this.variant }) }
     catch (err) { this.#fail("forget", err) }
