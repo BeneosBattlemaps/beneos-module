@@ -96,6 +96,20 @@ export function classifyTransferError(err, status = null) {
   if (status === 429) return INSTALL_ERROR.SERVER
   if (typeof status === "number" && status >= 500) return INSTALL_ERROR.SERVER
   const msg = String(err?.message || err || "").toLowerCase()
+  // Ein fehlendes Paket erreicht uns nicht als 404. `sp_fail()` in
+  // api-scenepacker.php antwortet mit HTTP 200 und schreibt den Fehler in den
+  // Rumpf, und `getPackInfo()` in beneos-scenepacker.js liest den Statuscode
+  // ueberhaupt nicht: es parst die Antwort, wirft `new Error(data.message)`
+  // und dieser Error traegt kein `status`. Die Statuszeile oben kann den Fall
+  // also nie sehen, egal was der Server sendet.
+  //
+  // Am 30.08.2026 kostete das die einzige Kategorie mit hartem Alarm. Ein
+  // Kunde bekam bei 77 verschiedenen Battlemaps in acht Sekunden "Package not
+  // found"; alle 77 wurden als `unknown` gemeldet, und die Grenze fuer
+  // `notfound` (drei, Grundlinie null) blieb bei null stehen. Der Melder
+  // schlug erst ueber den Mengenfaktor an, zwei Tage spaeter und ohne die
+  // Ursache zu nennen.
+  if (/not found|notfound|no such file|enoent/.test(msg))                          return INSTALL_ERROR.NOTFOUND
   if (/permission|forbidden|not allowed|eacces|read-?only|erofs|denied/.test(msg)) return INSTALL_ERROR.PERMISSION
   if (/quota|enospc|no space|disk full|insufficient storage|\b507\b/.test(msg))    return INSTALL_ERROR.QUOTA
   if (/abort|timed out|timeout/.test(msg))                                         return INSTALL_ERROR.TIMEOUT
