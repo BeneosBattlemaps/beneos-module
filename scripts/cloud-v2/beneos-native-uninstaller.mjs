@@ -272,9 +272,27 @@ export class BeneosNativeUninstaller {
       if (!entry || typeof entry !== "object" || !entry.releaseDir) continue
       const pkg = await this.#packageIdFor(entry.releaseDir, entry.variant)
       if (!pkg) {
-        // Unknown pack dir: assume it owns what we are about to clear.
-        this.#fail("resolveOtherRelease", new Error(`no pack dir for ${entry.releaseDir} (${entry.variant || "single"})`))
-        this._othersUnresolved = true
+        // HIER STAND EIN NACKTES `continue`, UND ES MACHTE DEN RUECKFALL
+        // WEITER UNTEN UNERREICHBAR.
+        //
+        // `#packageIdFor` ruft `listReleases()`, und das ist ein Netzaufruf.
+        // Ohne Verbindung gibt er fuer JEDE fremde Installation null, der
+        // Sprung setzte `_othersUnresolved`, und `#clearAssetFiles` liess das
+        // Raeumen fuer den ganzen Lauf aus. Der Rueckfall auf den
+        // Installationsvermerk, der genau fuer diesen Fall gebaut wurde, sass
+        // im `catch` dahinter und lief nie.
+        //
+        // Der Vermerk beantwortet dieselbe Frage lokal und braucht kein
+        // Verzeichnis. Erst wenn auch er nichts weiss, bleibt die Vorsicht
+        // stehen: wer nicht weiss, was fremde Releases halten, darf nichts
+        // loeschen.
+        const gemerkt = BeneosInstallState.findTargets(entry.releaseDir, entry.variant)
+        if (Array.isArray(gemerkt)) {
+          for (const t of gemerkt) claimed.add(t)
+        } else {
+          this.#fail("resolveOtherRelease", new Error(`no pack dir for ${entry.releaseDir} (${entry.variant || "single"})`))
+          this._othersUnresolved = true
+        }
         continue
       }
       try {
