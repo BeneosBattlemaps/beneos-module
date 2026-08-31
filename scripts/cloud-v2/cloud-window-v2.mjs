@@ -172,6 +172,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       switchBmapRes:           BeneosCloudWindowV2._onSwitchBmapRes,
       switchBmapView:          BeneosCloudWindowV2._onSwitchBmapView,
       uninstallRelease:        BeneosCloudWindowV2._onCloudReleaseUninstall,
+      releaseOfflineFreigeben: BeneosCloudWindowV2._onReleaseOfflineFreigeben,
       installBundle:           BeneosCloudWindowV2._onCloudBundleInstall,
       installBundleMember:     BeneosCloudWindowV2._onCloudBundleMemberInstall,
       retryLoadReleases:       BeneosCloudWindowV2._onRetryLoadReleases,
@@ -5360,6 +5361,49 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
    * disk space, then refreshes the card through the same path an install uses so
    * the marker disappears immediately.
    */
+  /**
+   * Die Offline-Daten eines Release freigeben, ohne es aus der Welt zu nehmen.
+   *
+   * DER KNOPF IM OFFLINE-REITER MEINT DEN OFFLINE-VORRAT, NICHT DIE WELT.
+   *
+   * Bis zum 31.08.2026 zeigte dort derselbe Muelleimer wie im Releases-Reiter,
+   * und er warf das ganze Release samt Szenen, Journalen und Dateien hinaus.
+   * Betreiberbefund aus dem Testlauf: "dann entferne ich das Release aus der
+   * Welt und nicht aus dem Offlinezustand", und die intuitive Erwartung ist
+   * die andere.
+   *
+   * Zwei Reiter, zwei Bedeutungen, jede eindeutig. Das Entfernen aus der Welt
+   * bleibt dem Releases-Reiter vorbehalten.
+   *
+   * Gerufen wird derselbe Weg wie im Rechtsklickmenue, `releaseOfflineSchalten`
+   * mit "loesen". Er fragt selbst nach und meldet selbst, was freigeworden ist.
+   */
+  static async _onReleaseOfflineFreigeben(event, target) {
+    event.preventDefault()
+    event.stopPropagation()   // die Kachel ist anklickbar, kein Schubfach oeffnen
+
+    if (!game.user?.isGM) {
+      ui.notifications?.warn?.(game.i18n.localize("BENEOS.Cloud.Uninstall.GmOnly")
+        || "Only a Gamemaster can change offline data.")
+      return
+    }
+    const release  = String(target?.dataset?.releaseDir || "")
+    const variante = String(target?.dataset?.releaseVariant || "")
+    if (!release) return
+
+    const szenen = szenenZuRelease(release, variante)
+    if (!szenen.length) {
+      // Kein Fehler, sondern eine Auskunft: der Vermerk kennt das Release, die
+      // Welt hat seine Szenen aber nicht mehr. Ohne Szenen gibt es nichts zu
+      // loesen, und das gehoert gesagt statt stillschweigend zu geschehen.
+      ui.notifications?.warn?.(game.i18n.localize("BENEOS.Stream.Offline.NoScenes")
+        || "This release has no scenes in this world, so there is nothing to free.")
+      return
+    }
+    await releaseOfflineSchalten(szenen, "loesen")
+    try { await this.render(false) } catch (_) {}
+  }
+
   static async _onCloudReleaseUninstall(event, target) {
     event.preventDefault()
     event.stopPropagation()   // the card itself is clickable; do not open the drawer
@@ -6233,6 +6277,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // im Releasenamen sonst still das Falsche ergaebe.
         offlineRelease:  r.release_dir,
         offlineVariante: single ? "" : useV,
+        // Der Knopf, der nur die Offline-Daten freigibt. Er steht allein im
+        // Offline-Reiter, wo die Kachel per Bauart etwas offline haelt; im
+        // Releases-Reiter waere er ein zweiter Muelleimer neben dem ersten.
+        canFreeOffline:  nurOffline && !!game.user?.isGM,
       }
     })
 

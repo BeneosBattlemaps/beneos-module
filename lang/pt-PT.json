@@ -2443,6 +2443,8 @@
   "BENEOS.Settings.WhatsNewEnabled.Hint": "Abre ao iniciar o mundo uma janela curta com o que a sua conta desbloqueou desde a última confirmação. Apenas visível para mestres.",
   "BENEOS.Stream.Offline.Keep": "Manter offline",
   "BENEOS.Stream.Offline.Release": "Remover dados offline",
+  "BENEOS.Stream.Offline.FreeTooltip": "Liberta os dados offline deste lançamento. O lançamento continua no seu mundo e mantém-se em streaming.",
+  "BENEOS.Stream.Offline.NoScenes": "Este lançamento não tem cenas neste mundo, por isso não há nada para libertar.",
   "BENEOS.Stream.Offline.KeepFolder": "Manter tudo offline",
   "BENEOS.Stream.Offline.ReleaseFolder": "Remover dados offline",
   "BENEOS.Stream.Offline.SceneTooltip": "Disponível offline: {name} ({size})",

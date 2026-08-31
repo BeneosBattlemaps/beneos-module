@@ -2443,6 +2443,8 @@
   "BENEOS.Settings.WhatsNewEnabled.Hint": "Przy starcie świata otwiera krótkie okno z tym, co Twoje konto odblokowało od ostatniego potwierdzenia. Widoczne tylko dla MG.",
   "BENEOS.Stream.Offline.Keep": "Zachowaj offline",
   "BENEOS.Stream.Offline.Release": "Usuń dane offline",
+  "BENEOS.Stream.Offline.FreeTooltip": "Zwalnia dane offline tego wydania. Wydanie pozostaje w świecie i nadal jest strumieniowane.",
+  "BENEOS.Stream.Offline.NoScenes": "To wydanie nie ma scen w tym świecie, nie ma więc czego zwalniać.",
   "BENEOS.Stream.Offline.KeepFolder": "Zachowaj wszystko offline",
   "BENEOS.Stream.Offline.ReleaseFolder": "Usuń dane offline",
   "BENEOS.Stream.Offline.SceneTooltip": "Dostępne offline: {name} ({size})",

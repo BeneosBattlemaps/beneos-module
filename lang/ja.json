@@ -2443,6 +2443,8 @@
   "BENEOS.Settings.WhatsNewEnabled.Hint": "ワールド起動時に、前回の確認以降にアカウントで解放された内容を短いウィンドウで表示します。GMにのみ表示されます。",
   "BENEOS.Stream.Offline.Keep": "オフラインで保持",
   "BENEOS.Stream.Offline.Release": "オフラインデータを削除",
+  "BENEOS.Stream.Offline.FreeTooltip": "このリリースのオフラインデータを解放します。リリースはワールドに残り、ストリーミングは続きます。",
+  "BENEOS.Stream.Offline.NoScenes": "このリリースにはこのワールドにシーンがないため、解放するものがありません。",
   "BENEOS.Stream.Offline.KeepFolder": "すべてオフラインで保持",
   "BENEOS.Stream.Offline.ReleaseFolder": "オフラインデータを削除",
   "BENEOS.Stream.Offline.SceneTooltip": "オフラインで利用可能: {name}（{size}）",

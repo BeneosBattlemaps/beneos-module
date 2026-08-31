@@ -2443,6 +2443,8 @@
   "BENEOS.Settings.WhatsNewEnabled.Hint": "월드 시작 시 마지막 확인 이후 계정에 해제된 항목을 짧은 창으로 보여줍니다. GM에게만 표시됩니다.",
   "BENEOS.Stream.Offline.Keep": "오프라인으로 보관",
   "BENEOS.Stream.Offline.Release": "오프라인 데이터 삭제",
+  "BENEOS.Stream.Offline.FreeTooltip": "이 릴리스의 오프라인 데이터를 해제합니다. 릴리스는 월드에 남아 계속 스트리밍됩니다.",
+  "BENEOS.Stream.Offline.NoScenes": "이 릴리스에는 이 월드에 장면이 없어 해제할 것이 없습니다.",
   "BENEOS.Stream.Offline.KeepFolder": "모두 오프라인으로 보관",
   "BENEOS.Stream.Offline.ReleaseFolder": "오프라인 데이터 삭제",
   "BENEOS.Stream.Offline.SceneTooltip": "오프라인 사용 가능: {name} ({size})",

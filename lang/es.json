@@ -2443,6 +2443,8 @@
   "BENEOS.Settings.WhatsNewEnabled.Hint": "Abre al iniciar el mundo una ventana breve con lo que tu cuenta ha desbloqueado desde la última confirmación. Solo se muestra a los DJ.",
   "BENEOS.Stream.Offline.Keep": "Guardar sin conexión",
   "BENEOS.Stream.Offline.Release": "Eliminar datos sin conexión",
+  "BENEOS.Stream.Offline.FreeTooltip": "Libera los datos sin conexión de este lanzamiento. El lanzamiento permanece en tu mundo y sigue transmitiéndose.",
+  "BENEOS.Stream.Offline.NoScenes": "Este lanzamiento no tiene escenas en este mundo, así que no hay nada que liberar.",
   "BENEOS.Stream.Offline.KeepFolder": "Guardar todo sin conexión",
   "BENEOS.Stream.Offline.ReleaseFolder": "Eliminar datos sin conexión",
   "BENEOS.Stream.Offline.SceneTooltip": "Disponible sin conexión: {name} ({size})",

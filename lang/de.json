@@ -2443,6 +2443,8 @@
   "BENEOS.Settings.WhatsNewEnabled.Hint": "Öffnet beim Weltstart ein kurzes Fenster mit allem, was dein Konto seit der letzten Bestätigung freigeschaltet hat. Wird nur Spielleitern gezeigt.",
   "BENEOS.Stream.Offline.Keep": "Offline behalten",
   "BENEOS.Stream.Offline.Release": "Offline-Daten entfernen",
+  "BENEOS.Stream.Offline.FreeTooltip": "Gibt die Offline-Daten dieses Release frei. Das Release bleibt in der Welt und streamt weiter.",
+  "BENEOS.Stream.Offline.NoScenes": "Dieses Release hat keine Szenen in dieser Welt, es gibt also nichts freizugeben.",
   "BENEOS.Stream.Offline.KeepFolder": "Alle offline behalten",
   "BENEOS.Stream.Offline.ReleaseFolder": "Offline-Daten entfernen",
   "BENEOS.Stream.Offline.SceneTooltip": "Offline verfügbar: {name} ({size})",

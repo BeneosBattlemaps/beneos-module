@@ -2443,6 +2443,8 @@
   "BENEOS.Settings.WhatsNewEnabled.Hint": "En iniciar el món obre una finestra breu amb el que el teu compte ha desbloquejat des de la darrera confirmació. Només es mostra als DJ.",
   "BENEOS.Stream.Offline.Keep": "Mantén fora de línia",
   "BENEOS.Stream.Offline.Release": "Elimina les dades fora de línia",
+  "BENEOS.Stream.Offline.FreeTooltip": "Allibera les dades fora de línia d'aquesta publicació. La publicació es queda al teu món i continua transmetent-se.",
+  "BENEOS.Stream.Offline.NoScenes": "Aquesta publicació no té escenes en aquest món, així que no hi ha res a alliberar.",
   "BENEOS.Stream.Offline.KeepFolder": "Mantén-ho tot fora de línia",
   "BENEOS.Stream.Offline.ReleaseFolder": "Elimina les dades fora de línia",
   "BENEOS.Stream.Offline.SceneTooltip": "Disponible fora de línia: {name} ({size})",

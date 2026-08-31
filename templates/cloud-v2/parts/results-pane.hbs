@@ -475,22 +475,21 @@
                 <i class="fa-solid fa-cloud-slash"></i>
                 {{localize "BENEOS.Cloud.Card.Offline"}}
               </span>
-              {{!-- Entfernen bleibt ohne Verbindung erreichbar. Installieren
-                   braucht die Cloud, Aufraeumen nicht: der Installationsvermerk
-                   weiss lokal, was hier liegt. Bis hierher war der Loeschen-Knopf
-                   allein im Zweig `isCloudAvailable` zu Hause, und damit war
-                   ausgerechnet der Fall unbedienbar, fuer den der Offline-Reiter
-                   gebaut wurde. Dieselbe Markierung wie oben, damit ein Knopf
-                   nicht an zwei Stellen verschieden heisst. --}}
-              {{#if card.canUninstall}}
-                <button type="button" class="bc-card-button bc-card-button-danger bc-action-uninstall"
-                        data-action="uninstallRelease"
-                        data-release-dir="{{card.uninstallReleaseDir}}"
-                        data-release-name="{{card.uninstallReleaseName}}"
-                        data-release-variant="{{card.uninstallVariant}}"
-                        data-package-id="{{card.uninstallPackageId}}"
-                        data-tooltip="{{localize 'BENEOS.Cloud.Uninstall.ButtonTooltip'}}">
-                  <i class="fa-solid fa-trash"></i>
+              {{!-- IM OFFLINE-REITER MEINT DER KNOPF DEN OFFLINE-VORRAT, NICHT
+                   DIE WELT.
+                   Bis zum 2026-08-31 stand hier derselbe Muelleimer wie im
+                   Releases-Reiter, und er warf das ganze Release samt Szenen
+                   und Journalen hinaus. Betreiberbefund aus dem Testlauf: die
+                   intuitive Erwartung ist die andere. Deshalb eigene Aktion,
+                   eigene Beschriftung und ein Wort statt eines Bildes, damit
+                   die beiden Knoepfe nicht mehr gleich aussehen. --}}
+              {{#if card.canFreeOffline}}
+                <button type="button" class="bc-card-button bc-card-button-secondary bc-action-free-offline"
+                        data-action="releaseOfflineFreigeben"
+                        data-release-dir="{{card.offlineRelease}}"
+                        data-release-variant="{{card.offlineVariante}}"
+                        data-tooltip="{{localize 'BENEOS.Stream.Offline.FreeTooltip'}}">
+                  {{localize "BENEOS.Stream.Offline.Release"}}
                 </button>
               {{/if}}
             {{else if card.needsLogin}}

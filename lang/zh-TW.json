@@ -2443,6 +2443,8 @@
   "BENEOS.Settings.WhatsNewEnabled.Hint": "世界啟動時開啟簡短視窗，列出自上次確認後帳號解鎖的內容。僅顯示給 GM。",
   "BENEOS.Stream.Offline.Keep": "保留離線",
   "BENEOS.Stream.Offline.Release": "移除離線資料",
+  "BENEOS.Stream.Offline.FreeTooltip": "釋放此發行版的離線資料。發行版會留在世界中並繼續串流。",
+  "BENEOS.Stream.Offline.NoScenes": "此發行版在這個世界中沒有場景，因此沒有可釋放的內容。",
   "BENEOS.Stream.Offline.KeepFolder": "全部保留離線",
   "BENEOS.Stream.Offline.ReleaseFolder": "移除離線資料",
   "BENEOS.Stream.Offline.SceneTooltip": "可離線使用：{name}（{size}）",

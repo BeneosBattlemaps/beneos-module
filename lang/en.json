@@ -2443,6 +2443,8 @@
   "BENEOS.Settings.WhatsNewEnabled.Hint": "Opens a short window on world start listing what your account unlocked since you last confirmed it. Shown to Game Masters only.",
   "BENEOS.Stream.Offline.Keep": "Keep offline",
   "BENEOS.Stream.Offline.Release": "Remove Offline Data",
+  "BENEOS.Stream.Offline.FreeTooltip": "Free the offline data of this release. The release stays in your world and keeps streaming.",
+  "BENEOS.Stream.Offline.NoScenes": "This release has no scenes in this world, so there is nothing to free.",
   "BENEOS.Stream.Offline.KeepFolder": "Keep all offline",
   "BENEOS.Stream.Offline.ReleaseFolder": "Remove Offline Data",
   "BENEOS.Stream.Offline.SceneTooltip": "Available offline: {name} ({size})",

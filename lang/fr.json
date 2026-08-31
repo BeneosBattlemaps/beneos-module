@@ -2443,6 +2443,8 @@
   "BENEOS.Settings.WhatsNewEnabled.Hint": "Ouvre au démarrage du monde une courte fenêtre listant ce que votre compte a débloqué depuis votre dernière confirmation. Visible uniquement par les MJ.",
   "BENEOS.Stream.Offline.Keep": "Garder hors ligne",
   "BENEOS.Stream.Offline.Release": "Supprimer les données hors ligne",
+  "BENEOS.Stream.Offline.FreeTooltip": "Libère les données hors ligne de cette sortie. La sortie reste dans votre monde et continue d'être diffusée.",
+  "BENEOS.Stream.Offline.NoScenes": "Cette sortie n'a aucune scène dans ce monde, il n'y a donc rien à libérer.",
   "BENEOS.Stream.Offline.KeepFolder": "Tout garder hors ligne",
   "BENEOS.Stream.Offline.ReleaseFolder": "Supprimer les données hors ligne",
   "BENEOS.Stream.Offline.SceneTooltip": "Disponible hors ligne : {name} ({size})",

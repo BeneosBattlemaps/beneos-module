@@ -2443,6 +2443,8 @@
   "BENEOS.Settings.WhatsNewEnabled.Hint": "Při startu světa otevře krátké okno s tím, co tvůj účet odemkl od posledního potvrzení. Vidí jej jen vypravěči.",
   "BENEOS.Stream.Offline.Keep": "Ponechat offline",
   "BENEOS.Stream.Offline.Release": "Odstranit offline data",
+  "BENEOS.Stream.Offline.FreeTooltip": "Uvolní offline data tohoto vydání. Vydání zůstane ve světě a dál se streamuje.",
+  "BENEOS.Stream.Offline.NoScenes": "Toto vydání nemá v tomto světě žádné scény, není tedy co uvolnit.",
   "BENEOS.Stream.Offline.KeepFolder": "Ponechat vše offline",
   "BENEOS.Stream.Offline.ReleaseFolder": "Odstranit offline data",
   "BENEOS.Stream.Offline.SceneTooltip": "Dostupné offline: {name} ({size})",
