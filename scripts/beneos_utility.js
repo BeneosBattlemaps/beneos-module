@@ -788,98 +788,237 @@ export class BeneosUtility {
 
 
   /********************************************************************************** */
+  // A missing file and an unreachable server look identical to a single HEAD
+  // request, and srcExists is nothing more than one HEAD with no retry. One
+  // hiccup on a slow drive or a sleeping network share used to be enough to
+  // delete a creature from the compendium. Every probe is therefore counted and
+  // retried once, and as soon as the failures dominate the run is declared an
+  // outage: an unreachable storage must not look like a data loss.
+  static #OUTAGE_MIN_PROBES = 5
+  static #OUTAGE_FAIL_RATIO = 0.5
+
+  static async #probeAsset(src, probe) {
+    if (!src) return true
+    // Once the run is judged an outage, stop probing. Every further answer would
+    // be noise, and on a world with hundreds of creatures the retries alone
+    // would add minutes to the world load.
+    if (probe.outage) return true
+    probe.total++
+    let ret = await foundry.utils.srcExists(src)
+    if (!ret) {
+      await new Promise(resolve => setTimeout(resolve, 250))
+      ret = await foundry.utils.srcExists(src)
+    }
+    if (ret) return true
+    probe.failed++
+    // Nur der Zeitsparer. Das eigentliche Urteil faellt am Ende in #isOutage(),
+    // weil es die Gesamtzahl braucht: hier steht sie noch nicht fest.
+    if (probe.total >= BeneosUtility.#OUTAGE_MIN_PROBES &&
+      (probe.failed / probe.total) >= BeneosUtility.#OUTAGE_FAIL_RATIO) {
+      probe.outage = true
+    }
+    return false
+  }
+
+  // Zwei Wege in dasselbe Urteil, und beide werden gebraucht.
+  //
+  // Der Anteilsweg faengt die grosse Welt: ab fuenf Messungen genuegt die Haelfte.
+  // Der Alles-Weg faengt die kleine. Eine Welt mit drei Assets erreicht die fuenf
+  // nie, und ohne diesen Zweig loeschte ein Ausfall dort am 2026-08-31 gemessen
+  // alle drei Kreaturen, samt Chatmeldung und ohne jede Warnung.
+  //
+  // Warum das Alles-Urteil erst am Ende faellt: waehrend der Schleife ist nach dem
+  // ersten Fehlschlag immer failed === total, ein Urteil an dieser Stelle wuerde
+  // also schon bei einer einzigen wirklich fehlenden Datei den ganzen Lauf
+  // abwuergen und die Selbstheilung stilllegen.
+  static #isOutage(probe) {
+    if (probe.total === 0) return false
+    if (probe.outage) return true
+    return probe.failed === probe.total
+  }
+
+  /********************************************************************************** */
   static async verifySettingsAgainstCompendium() {
-    let toSave = false
+    let actorPack = BeneosUtility.getActorPack()
+    let itemPack = BeneosUtility.getItemPack()
+    let spellPack = BeneosUtility.getSpellPack()
+    if (!actorPack || !itemPack || !spellPack) return
+
+    // The whole check reads the pack indexes, and an index that has not been
+    // built yet is empty. An empty index makes every registry entry look
+    // orphaned, which would wipe the registry of a perfectly healthy world.
+    // Build them first: afterwards an empty index really does mean an empty pack.
+    await actorPack.getIndex()
+    await itemPack.getIndex()
+    await spellPack.getIndex()
+    BeneosUtility.packIndexReady = true
+
+    let probe = { total: 0, failed: 0, outage: false }
     let actorDelete = []
     let itemDelete = []
     let spellDelete = []
-    let actorPack = BeneosUtility.getActorPack()
+    // Nothing is removed from the registry while the loops run. The outage
+    // verdict is only known at the end, and a run that turns out to be an outage
+    // must leave the registry exactly as it found it.
+    let tokenDrop = []
+    let itemDrop = []
+    let spellDrop = []
+
     for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
       if (token?.actorId && !actorPack.index.some(i => i._id == token.actorId)) {
         BeneosUtility.debugMessage("Beneos Compendium actor not found for token", fullKey, token.actorId)
-        delete this.beneosTokens[fullKey]
-        toSave = true
+        tokenDrop.push(fullKey)
       } else {
         // Check if the image/token are still present in the filesystem
         // Get the actor from the compendium
         let actor = actorPack.index.find(i => i._id == token.actorId)
         if (actor) {
-          let ret = await foundry.utils.srcExists(actor.img)
+          let ret = await BeneosUtility.#probeAsset(actor.img, probe)
           if (ret && actor.prototypeToken?.texture?.src) {
-            ret = await foundry.utils.srcExists(actor.prototypeToken.texture.src)
+            ret = await BeneosUtility.#probeAsset(actor.prototypeToken.texture.src, probe)
           }
           if (!ret) {
-            BeneosUtility.debugMessage("Beneos Compendium actor image not found for token", fullKey, actor.prototypeToken?.texture?.src)
+            BeneosUtility.debugMessage("Beneos Compendium actor image not found for token", fullKey, actor.img)
             actorDelete.push(actor._id)
-            delete this.beneosTokens[fullKey]
-            toSave = true
+            tokenDrop.push(fullKey)
           }
         }
       }
     }
 
-    let itemPack = game.packs.get("world.beneos_module_items")
     for (let [fullKey, item] of Object.entries(this.beneosItems)) {
       if (item.itemId && !itemPack.index.some(i => i._id == item.itemId)) {
         BeneosUtility.debugMessage("Beneos Compendium item not found for item", fullKey, item.itemId)
-        delete this.beneosItems[fullKey]
-        toSave = true
+        itemDrop.push(fullKey)
       } else {
         let itemC = itemPack.index.find(i => i._id == item.itemId)
         if (itemC) {
-          let ret = await foundry.utils.srcExists(itemC.img)
+          let ret = await BeneosUtility.#probeAsset(itemC.img, probe)
           if (!ret) {
             BeneosUtility.debugMessage("Beneos Compendium item image not found for item", fullKey, itemC.img)
             itemDelete.push(itemC._id)
-            delete this.beneosItems[fullKey]
-            toSave = true
+            itemDrop.push(fullKey)
           }
         }
       }
     }
 
-    let spellPack = game.packs.get("world.beneos_module_spells")
     for (let [fullKey, spell] of Object.entries(this.beneosSpells)) {
       if (spell.spellId && !spellPack.index.some(i => i._id == spell.spellId)) {
         BeneosUtility.debugMessage("Beneos Compendium spell not found for spell", fullKey, spell.spellId)
-        delete this.beneosSpells[fullKey]
-        toSave = true
+        spellDrop.push(fullKey)
       } else {
         let spellC = spellPack.index.find(i => i._id == spell.spellId)
         if (spellC) {
-          let ret = await foundry.utils.srcExists(spellC.img)
+          let ret = await BeneosUtility.#probeAsset(spellC.img, probe)
           if (!ret) {
-            BeneosUtility.debugMessage("Beneos Compendium item image not found for item", fullKey, spellC.img)
+            BeneosUtility.debugMessage("Beneos Compendium spell image not found for spell", fullKey, spellC.img)
             spellDelete.push(spellC._id)
-            delete this.beneosSpells[fullKey]
-            toSave = true
+            spellDrop.push(fullKey)
           }
         }
       }
     }
 
-    if (game.user.isGM && toSave) {
-      let packName = "world.beneos_module_actors"
-      await BeneosUtility.lockUnlockAllPacks(false) // Unlock the packs before deleting
-      for (let id of actorDelete) {
-        await Actor.deleteDocuments([id], { pack: packName })
-      }
-      for (let id of itemDelete) {
-        await Item.deleteDocuments([id], { pack: "world.beneos_module_items" })
-      }
-      for (let id of spellDelete) {
-        await Item.deleteDocuments([id], { pack: "world.beneos_module_spells" })
-      }
-      await BeneosUtility.lockUnlockAllPacks(true) // Lock the packs after deleting
-
-      game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', JSON.stringify(this.beneosTokens))
-      game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', JSON.stringify(this.beneosItems))
-      game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', JSON.stringify(this.beneosSpells))
-      // Post chat message to inform the user that the world will reload
-      ChatMessage.create({
-        content: `<div class="beneos-module"><p>Some Beneos files have been deleted or are corrupted. Affected assets must be downloaded again. Please refresh Foundry VTT with (F5 on Windows) to complete this.</p></div>`,
-      });
+    if (BeneosUtility.#isOutage(probe)) {
+      console.warn(`Beneos | Asset check aborted: ${probe.failed} of ${probe.total} reachability probes failed. Treating this as a storage or network outage, nothing was removed.`)
+      return
     }
+
+    let toSave = tokenDrop.length > 0 || itemDrop.length > 0 || spellDrop.length > 0
+    if (!toSave) return
+
+    for (let fullKey of tokenDrop) delete this.beneosTokens[fullKey]
+    for (let fullKey of itemDrop) delete this.beneosItems[fullKey]
+    for (let fullKey of spellDrop) delete this.beneosSpells[fullKey]
+
+    if (!game.user.isGM) return
+
+    await BeneosUtility.lockUnlockAllPacks(false) // Unlock the packs before deleting
+    for (let id of actorDelete) {
+      await Actor.deleteDocuments([id], { pack: "world.beneos_module_actors" })
+    }
+    for (let id of itemDelete) {
+      await Item.deleteDocuments([id], { pack: "world.beneos_module_items" })
+    }
+    for (let id of spellDelete) {
+      await Item.deleteDocuments([id], { pack: "world.beneos_module_spells" })
+    }
+    await BeneosUtility.lockUnlockAllPacks(true) // Lock the packs after deleting
+
+    // These three writes used to be fired without await, immediately followed by
+    // a chat message telling the user to press F5. The refresh killed them: the
+    // compendium documents were gone while the registry still claimed them, so
+    // every card read "installed" and offered no way to download it again. The
+    // reload prompt must never overtake the write it depends on.
+    await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', JSON.stringify(this.beneosTokens))
+    await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', JSON.stringify(this.beneosItems))
+    await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', JSON.stringify(this.beneosSpells))
+
+    // Post chat message to inform the user that the world will reload
+    ChatMessage.create({
+      content: `<div class="beneos-module"><p>${game.i18n.localize("BENEOS.Cleanup.AssetsReset")}</p></div>`,
+    });
+  }
+
+  /********************************************************************************** */
+  // Support path for a world that already fell into the trap: the compendium
+  // documents are gone while the registry still claims them, so every card reads
+  // "installed" and offers no download. Drops each registry entry whose
+  // compendium document no longer resolves and puts those assets back on offer.
+  //
+  // Deliberately touches the network at no point. That is what separates it from
+  // verifySettingsAgainstCompendium: it can state that a document is missing,
+  // never that a file is, and therefore no outage can mislead it.
+  static async pruneOrphanRegistry() {
+    if (!game.user.isGM) {
+      ui.notifications?.warn?.(game.i18n.localize("BENEOS.Cleanup.RepairGMOnly"))
+      return { tokens: 0, items: 0, spells: 0 }
+    }
+
+    let actorPack = BeneosUtility.getActorPack()
+    let itemPack = BeneosUtility.getItemPack()
+    let spellPack = BeneosUtility.getSpellPack()
+    for (let pack of [actorPack, itemPack, spellPack]) {
+      if (pack) await pack.getIndex()
+    }
+    BeneosUtility.packIndexReady = true
+
+    // An entry without an id has nothing to resolve against and is left alone:
+    // it already reads as not installed, and it may still carry the journal and
+    // folder assignment of the asset.
+    const prune = (registry, pack, idField) => {
+      let removed = 0
+      if (!pack) return removed
+      for (let [fullKey, entry] of Object.entries(registry)) {
+        let id = entry?.[idField]
+        if (!id || pack.index.get(id)) continue
+        delete registry[fullKey]
+        removed++
+      }
+      return removed
+    }
+
+    let result = {
+      tokens: prune(this.beneosTokens, actorPack, "actorId"),
+      items: prune(this.beneosItems, itemPack, "itemId"),
+      spells: prune(this.beneosSpells, spellPack, "spellId"),
+    }
+
+    if (result.tokens) {
+      await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', JSON.stringify(this.beneosTokens))
+    }
+    if (result.items) {
+      await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', JSON.stringify(this.beneosItems))
+    }
+    if (result.spells) {
+      await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', JSON.stringify(this.beneosSpells))
+    }
+
+    let total = result.tokens + result.items + result.spells
+    console.log("Beneos | pruneOrphanRegistry", result)
+    ui.notifications?.info?.(game.i18n.format("BENEOS.Cleanup.RepairDone", { count: total }))
+    return result
   }
 
   /********************************************************************************** */
@@ -2001,19 +2140,29 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
-  // Punkt 1 — installed-status validation. The cache is necessary but not
+  // Punkt 1 - installed-status validation. The cache is necessary but not
   // sufficient: a stale entry can survive after the user deletes the
   // compendium document manually. We treat the asset as "installed" only
   // when the cache claims it AND the referenced compendium id resolves in
   // the pack index. If the index isn't ready yet (early boot), fall back to
   // the cache so the search engine doesn't flicker every asset to
   // "installable" before packs finish loading.
+  //
+  // That fallback used to trigger on `index.size === 0` alone, which is the
+  // same state a world lands in after the asset check emptied the pack. Reading
+  // an empty index as "installed" left such a world with no way back: every
+  // card claimed installed and none offered a download. Readiness is therefore
+  // tracked explicitly - once the indexes have been built, an empty index is an
+  // answer, not an excuse.
+  static packIndexReady = false
+
   static #compendiumHasId(packName, id) {
     if (!id) return false
     const pack = game.packs?.get?.(packName)
     if (!pack) return true
     const index = pack.index
-    if (!index || index.size === 0) return true
+    if (!index) return true
+    if (index.size === 0 && !BeneosUtility.packIndexReady) return true
     return !!index.get?.(id) || !!index.has?.(id)
   }
 
