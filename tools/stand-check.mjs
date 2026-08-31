@@ -125,7 +125,20 @@ function hoeher(a, b) {
 const tags = (git("tag") || "").split("\n").map(s => s.trim())
   .filter(t => /^\d+\.\d+\.\d+$/.test(t))
 const hoechstesTag = tags.length ? tags.reduce((a, b) => hoeher(a, b)) : null
-const mainFassung = fassungVonZweig("origin/main") || fassungVonZweig("main")
+// DER LOKALE `main` GILT, NICHT `origin/main`.
+//
+// Hier stand die umgekehrte Reihenfolge, und sie machte den Pruefer an genau
+// der Stelle blind, fuer die er gebaut wurde. Am 2026-08-31 trug der lokale
+// `main` die Fassung 14.4.8 als noch nicht gepushten Commit, waehrend origin
+// bei 14.4.7 stand. Der Pruefer las origin, fand dieselbe Zahl wie das
+// hoechste Tag und meldete "gleich, ausgeliefert". Ausgeliefert war aber eine
+// Fassung, und eine zweite lag ungetaggt daneben.
+//
+// `main` ist laut Runbook die Sammelstelle fuer die naechste Auslieferung,
+// nicht der ausgelieferte Stand. Wer den ausgelieferten Stand wissen will,
+// liest das Tag. Der Rueckstand gegen origin steht weiter unten als eigene
+// Zeile und geht dadurch nicht verloren.
+const mainFassung = fassungVonZweig("main") || fassungVonZweig("origin/main")
 
 zeilen.push(["hoechstes Tag", hoechstesTag || "(keines)"])
 zeilen.push(["main traegt", mainFassung || "(unbekannt)"])
@@ -147,7 +160,7 @@ if (!mainFassung) {
 
 // ---- 2. version gegen die download-Adresse -----------------------------
 
-const modulJson = git("show", "origin/main:module.json") || git("show", "main:module.json")
+const modulJson = git("show", "main:module.json") || git("show", "origin/main:module.json")
 try {
   const m = JSON.parse(modulJson)
   const inAdresse = String(m.download || "").match(/tags\/([^/]+)\.zip/)?.[1] || null
@@ -159,7 +172,7 @@ try {
 
 // ---- 3. Der Changelog-Kopf ---------------------------------------------
 
-const changelog = git("show", "origin/main:changelog.md") || git("show", "main:changelog.md")
+const changelog = git("show", "main:changelog.md") || git("show", "origin/main:changelog.md")
 if (!changelog) {
   weich.push("Kein changelog.md auf main gefunden.")
 } else {
