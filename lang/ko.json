@@ -2480,6 +2480,8 @@
   "BENEOS.Cloud.Bmap.OfflineTooltip": "이 컴퓨터에 보관되어 연결 없이도 표시되는 맵",
   "BENEOS.Cloud.Bmap.OfflineEmptyTitle": "지도를 테이블로 가져가세요",
   "BENEOS.Cloud.Bmap.OfflineEmptyHint": "지도, 폴더 또는 릴리스를 마우스 오른쪽 버튼으로 클릭하고 \"오프라인으로 보관\"을 선택하세요. 이 컴퓨터에 남아 있어, 인터넷이 닿지 않는 곳에서도 플레이하는 테이블에서 세션을 그대로 진행할 수 있습니다.",
+  "BENEOS.Cloud.Bmap.OfflineStorageOffTitle": "브라우저가 저장소를 제공하지 않습니다",
+  "BENEOS.Cloud.Bmap.OfflineStorageOffHint": "오프라인 맵에는 브라우저 저장소가 필요하지만 지금은 사용할 수 없습니다. 대개 손상된 브라우저 프로필이 원인입니다. 다시 시작해도 잘 해결되지 않으며, 새 프로필이면 해결됩니다. 그때까지는 모든 것이 연결을 통해 불러옵니다.",
   "BENEOS.Cloud.Bmap.OfflineFullTooltip": "이 릴리스의 모든 맵을 오프라인에서 사용할 수 있습니다",
   "BENEOS.Cloud.Bmap.OfflinePartTooltip": "이 릴리스의 일부 맵을 오프라인에서 사용할 수 있습니다",
   "BENEOS.Stream.Mode.Streaming": "스트리밍 모드",

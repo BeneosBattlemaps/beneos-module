@@ -2480,6 +2480,8 @@
   "BENEOS.Cloud.Bmap.OfflineTooltip": "Cartes conservées sur cet ordinateur, qui s'affichent sans connexion",
   "BENEOS.Cloud.Bmap.OfflineEmptyTitle": "Emportez vos cartes à votre table",
   "BENEOS.Cloud.Bmap.OfflineEmptyHint": "Clic droit sur une carte, un dossier ou une sortie, puis \"Garder hors ligne\". Elle reste sur cet ordinateur, pour que votre partie tourne à toutes les tables où vous jouez, même là où aucun accès internet n'arrive.",
+  "BENEOS.Cloud.Bmap.OfflineStorageOffTitle": "Ton navigateur ne fournit pas son stockage",
+  "BENEOS.Cloud.Bmap.OfflineStorageOffHint": "Les cartes hors ligne ont besoin du stockage du navigateur, et il n'est pas disponible pour le moment. La cause habituelle est un profil de navigateur endommagé. Redémarrer aide rarement, un profil neuf oui. En attendant, tout passe par la connexion.",
   "BENEOS.Cloud.Bmap.OfflineFullTooltip": "Toutes les cartes de cette publication sont disponibles hors ligne",
   "BENEOS.Cloud.Bmap.OfflinePartTooltip": "Certaines cartes de cette publication sont disponibles hors ligne",
   "BENEOS.Stream.Mode.Streaming": "Mode streaming",

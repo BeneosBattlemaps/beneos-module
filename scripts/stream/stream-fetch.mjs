@@ -446,8 +446,91 @@ function meldeOffline(url) {
     + "einzeln vermerkt.")
 }
 
+/**
+ * Der letzte Ausfall des Browserspeichers, oder null. Siehe `openStore`.
+ */
+let speicherAusfall = null
+
+/**
+ * Der Vorrat, oder null, wenn der Browser ihn nicht hergibt.
+ *
+ * WARUM DER FEHLER NICHT MEHR STILL VERSCHWINDET
+ *
+ * Bis zum 31.08.2026 stand hier ein leeres `catch`. Faellt der Speicher des
+ * Ursprungs aus, laeuft das Modul dann dauerhaft ohne Vorrat weiter: kein
+ * Offline-Betrieb, keine gehaltenen Karten, und jede Szene wird bei jedem
+ * Anschauen neu ueber die Leitung geholt. Weder Konsole noch Oberflaeche
+ * sagten dazu ein Wort.
+ *
+ * Genau das ist an diesem Tag im Pruefstand eingetreten. In der V14-App gab
+ * `caches.open` dreimal hintereinander `UnknownError: Failed to execute 'open'
+ * on 'CacheStorage': Unexpected internal error`, `indexedDB.open` ebenfalls,
+ * und `navigator.storage.estimate()` warf beim Rechnen. Ursache war ein
+ * beschaedigtes Chromium-Profil, nicht die App: dieselbe App auf demselben
+ * Ursprung mit frischem Profil meldete 2,6 TB freies Kontingent. Von aussen
+ * sah der Betrieb normal aus, und der Betreiber meldete ausdruecklich "keine
+ * Fehlermeldungen im Log".
+ *
+ * `warn`, nicht `debug`: anders als eine fehlende Verbindung ist das kein
+ * Zustand der Welt, sondern ein Ausfall, der von allein nicht zurueckgeht.
+ * Gemeldet wird trotzdem nur beim ersten Mal, denn diese Funktion liegt auf
+ * jedem Abrufweg und wuerde das Protokoll sonst fluten.
+ *
+ * Erholt sich der Speicher, faellt der Vermerk weg. Das ist Absicht: die
+ * Oberflaeche soll den Hinweis dann nicht weiter zeigen.
+ */
 async function openStore() {
-  try { return await caches.open(CACHE_NAME) } catch (_) { return null }
+  try {
+    const store = await caches.open(CACHE_NAME)
+    speicherAusfall = null
+    return store
+  } catch (fehler) {
+    count("store:unavailable")
+    if (!speicherAusfall) {
+      speicherAusfall = {
+        name: String(fehler?.name || "Fehler"),
+        text: String(fehler?.message || fehler).slice(0, 200),
+        seit: Date.now(),
+      }
+      console.warn("Beneos Stream | Der Browser gibt seinen Speicher nicht her: "
+        + `${speicherAusfall.name}, ${speicherAusfall.text}. `
+        + "Offline-Betrieb und gehaltene Karten stehen damit nicht zur Verfuegung, "
+        + "und jede Szene wird bei jedem Anschauen neu geholt. Haeufigste Ursache "
+        + "ist ein beschaedigtes Browserprofil.")
+    }
+    return null
+  }
+}
+
+/**
+ * Der Stand des Speicherausfalls, fuer Oberflaeche und Diagnose.
+ *
+ * Getrennt von `diagnose()`, weil der Offline-Reiter ihn bei jedem Zeichnen
+ * braucht und die Diagnose einen ganzen Zaehlersatz kopiert.
+ */
+export function speicherAusfallStand() {
+  return speicherAusfall ? { ...speicherAusfall } : null
+}
+
+/**
+ * Die Adressen aller Dateien, die den Dauerstempel tragen.
+ *
+ * `offlineBestand()` zaehlt sie nur. Fuer den Abgleich gegen die Zusagenliste
+ * braucht es die Adressen selbst, sonst laesst sich nicht sagen, welche
+ * gehaltene Datei zu keiner Zusage mehr gehoert.
+ */
+export async function gehalteneAdressen() {
+  const raus = []
+  try {
+    const store = await openStore()
+    if (!store) return raus
+    for (const anfrage of await store.keys()) {
+      const hit = await store.match(anfrage)
+      if (!hit?.headers.get(KEEP_HEADER)) continue
+      raus.push({ url: anfrage.url, bytes: Number(hit.headers.get("content-length") || 0) })
+    }
+  } catch (_) { /* melde, was gefunden wurde */ }
+  return raus
 }
 
 /**
@@ -972,6 +1055,10 @@ export function diagnose() {
     counts: { ...counts },
     failures: [...failures],
     reported: reportedSoFar(),
+    // Ohne diese Zeile ist ein ausgefallener Browserspeicher aus der Diagnose
+    // nicht zu erkennen. Er zeigt sich sonst nur als Fehlen von `store-hit`,
+    // und das laesst sich von einem einfach leeren Vorrat nicht unterscheiden.
+    speicherAusfall: speicherAusfallStand(),
   }
 }
 

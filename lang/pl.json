@@ -2480,6 +2480,8 @@
   "BENEOS.Cloud.Bmap.OfflineTooltip": "Mapy przechowywane na tym komputerze, które wyświetlają się bez połączenia",
   "BENEOS.Cloud.Bmap.OfflineEmptyTitle": "Zabierz swoje mapy na stół",
   "BENEOS.Cloud.Bmap.OfflineEmptyHint": "Kliknij prawym przyciskiem mapę, folder lub wydanie i wybierz \"Zachowaj offline\". Zostanie na tym komputerze, aby twoja sesja działała przy każdym stole, przy którym grasz, nawet tam, gdzie nie dociera internet.",
+  "BENEOS.Cloud.Bmap.OfflineStorageOffTitle": "Twoja przeglądarka nie udostępnia pamięci",
+  "BENEOS.Cloud.Bmap.OfflineStorageOffHint": "Mapy offline potrzebują pamięci przeglądarki, a ta jest teraz niedostępna. Zwykle przyczyną jest uszkodzony profil przeglądarki. Ponowne uruchomienie rzadko pomaga, nowy profil tak. Do tego czasu wszystko idzie przez połączenie.",
   "BENEOS.Cloud.Bmap.OfflineFullTooltip": "Każda mapa tego wydania jest dostępna offline",
   "BENEOS.Cloud.Bmap.OfflinePartTooltip": "Niektóre mapy tego wydania są dostępne offline",
   "BENEOS.Stream.Mode.Streaming": "Tryb strumieniowania",

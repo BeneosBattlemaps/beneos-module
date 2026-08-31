@@ -30,7 +30,8 @@
  */
 
 import { MODULE_ID, SETTING, streamEnabled, assetUrl, streamKey, streamBase } from "./stream-settings.mjs"
-import { offlineGehalten, offlineHalten, offlineFreigeben, alleImSpeicher } from "./stream-fetch.mjs"
+import { offlineGehalten, offlineHalten, offlineFreigeben, alleImSpeicher,
+         gehalteneAdressen } from "./stream-fetch.mjs"
 import { streamAdressenVon } from "./stream-online.mjs"
 import { loadStreamManifest } from "./stream-install.mjs"
 import { BeneosInstallState, releaseKern } from "../cloud-v2/beneos-install-state.mjs"
@@ -1166,6 +1167,89 @@ export async function pruefeVorrat() {
 }
 
 /**
+ * Adressen vergleichbar machen.
+ *
+ * Der Speicher fuehrt die Adresse so, wie sie angefordert wurde, die
+ * Zusagenliste so, wie sie im Manifest steht. Ein angehaengter Parameter
+ * genuegt, damit dieselbe Datei zweimal verschieden aussieht, und ein
+ * Abgleich, der das nicht abfaengt, haelt eine gedeckte Datei fuer verwaist.
+ */
+function adresseNormal(url) {
+  try { const u = new URL(String(url)); u.search = ""; u.hash = ""; return u.href }
+  catch (_) { return String(url) }
+}
+
+/**
+ * Die Zusagenliste lesen, ohne Auffangnetz.
+ *
+ * `lies()` gibt bei jedem Fehler ein leeres Verzeichnis zurueck, und fuer die
+ * Anzeige ist das richtig. Fuer den Abgleich unten waere es gefaehrlich: eine
+ * momentan unlesbare Einstellung saehe aus wie "nichts zugesagt", und dann
+ * loeste der Abgleich den gesamten Offline-Vorrat des Kunden.
+ */
+function zusagenStreng() {
+  const roh = game.settings.get(MODULE_ID, SETTING.offlineHeld)
+  if (roh === undefined || roh === null) throw new Error("Zusagenliste nicht lesbar")
+  return roh
+}
+
+/**
+ * Gehaltene Dateien loesen, zu denen keine Zusage mehr gehoert.
+ *
+ * WARUM ES DIESE FUNKTION BRAUCHT
+ *
+ * Der Dauerstempel liegt an der Datei, die Zusage steht in einer Einstellung
+ * der Welt. Laufen beide auseinander, entsteht ein Block, den kein Weg mehr
+ * freigibt: `raumSchaffen` laesst gehaltene Ware absichtlich stehen, und
+ * `offlineFreigeben` wird ueber die Zusagenliste angestossen, in der die Datei
+ * nicht mehr steht. Der Platz bleibt dann dauerhaft belegt und zaehlt gegen
+ * das Kontingent des Kunden, das in der Grundausstattung drei Gigabyte betraegt.
+ *
+ * GEMESSEN am 2026-08-31 im Pruefstand V13: vier Dateien aus einem Release,
+ * zusammen 16.279.444 Bytes, Alter 1,3 Tage, bei leerer Zusagenliste. Die
+ * Entstehung ist mit `a358619` behoben, die Altlast blieb liegen. Ohne diesen
+ * Abgleich traegt sie jeder Kunde weiter, der vor dem Update eine Karte offline
+ * hatte und wieder entfernt hat.
+ *
+ * Geloest heisst nicht geloescht: der Dauerstempel faellt, die Bytes bleiben als
+ * Wegwerfware liegen und werden geraeumt, wenn Platz gebraucht wird. Wer die
+ * Karte gleich danach erneut zusagt, zahlt sie deshalb nicht noch einmal.
+ *
+ * Der Gemeinschaftsvorrat zaehlt als Deckung mit. Seine Dateien gehoeren keiner
+ * einzelnen Karte, tragen aber zu Recht den Dauerstempel.
+ */
+export async function verwaisteLoesen() {
+  const leer = { geprueft: 0, verwaist: 0, bytes: 0, geloest: 0 }
+  let gedeckt
+  try {
+    gedeckt = new Set()
+    for (const e of Object.values(zusagenStreng())) {
+      if (!e || typeof e !== "object") continue
+      for (const u of (e.urls || [])) gedeckt.add(adresseNormal(u))
+    }
+    for (const u of Object.keys(liesGeteilt())) gedeckt.add(adresseNormal(u))
+  } catch (fehler) {
+    // Im Zweifel nichts anfassen. Ein uebersehener Block kostet Platz, ein
+    // faelschlich geloester Vorrat kostet den Kunden seine Offline-Karten.
+    console.warn("Beneos Stream | Abgleich der gehaltenen Dateien uebersprungen, "
+      + `Zusagenliste nicht sicher lesbar: ${fehler?.message || fehler}`)
+    return { ...leer, uebersprungen: "zusagen-unlesbar" }
+  }
+
+  const gehalten = await gehalteneAdressen()
+  if (!gehalten.length) return leer
+
+  const verwaist = gehalten.filter(g => !gedeckt.has(adresseNormal(g.url)))
+  if (!verwaist.length) return { ...leer, geprueft: gehalten.length }
+
+  const bytes = verwaist.reduce((s, v) => s + (Number(v.bytes) || 0), 0)
+  const erg = await offlineFreigeben(verwaist.map(v => v.url))
+  console.log(`Beneos Stream | ${verwaist.length} gehaltene Datei(en) ohne Zusage geloest, `
+    + `${Math.round(bytes / 1048576)} MB wieder raeumbar`)
+  return { geprueft: gehalten.length, verwaist: verwaist.length, bytes, geloest: erg.geloest || 0 }
+}
+
+/**
  * Die fehlenden Karten neu holen.
  *
  * Getrennt von der Pruefung, weil das Holen Zeit und Leitung kostet und der
@@ -1196,11 +1280,17 @@ export async function vorratHeilen(fehlend, onProgress) {
  */
 export async function beimWeltstart({ berechtigt }) {
   if (!streamEnabled()) return { uebersprungen: "kein-streaming" }
+
+  // Der Abgleich steht VOR jedem Abbruch, und das ist der ganze Punkt: eine
+  // leere Zusagenliste ist genau die Lage, in der verwaiste Dauerstempel
+  // liegenbleiben. Stuende er weiter unten, faende er sie nie.
+  const verwaist = await verwaisteLoesen()
+
   if (!alleKarten().length) {
     // Nichts zugesagt, nichts zu pruefen. Die Uhr laeuft trotzdem mit, damit
     // sie nicht bei der ersten Zusage schon abgelaufen ist.
     if (berechtigt) await berechtigungGesehen()
-    return { uebersprungen: "nichts-zugesagt" }
+    return { uebersprungen: "nichts-zugesagt", verwaist }
   }
 
   if (berechtigt) await berechtigungGesehen()
@@ -1229,7 +1319,7 @@ export async function beimWeltstart({ berechtigt }) {
     + `vollstaendig, ${Math.round(vorrat.bytes / 1048576)} MB zugesagt, `
     + (frist.nie ? "Frist laeuft noch nicht" : `noch ${frist.tageOffen} Tage`))
 
-  return { stand, frist, vorrat }
+  return { stand, frist, vorrat, verwaist }
 }
 
 // ---- Was der Kunde davon sieht ----------------------------------------

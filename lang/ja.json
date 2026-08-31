@@ -2480,6 +2480,8 @@
   "BENEOS.Cloud.Bmap.OfflineTooltip": "このコンピューターに保存され、接続がなくても表示されるマップ",
   "BENEOS.Cloud.Bmap.OfflineEmptyTitle": "マップをテーブルに持ち込む",
   "BENEOS.Cloud.Bmap.OfflineEmptyHint": "マップ、フォルダー、またはリリースを右クリックして「オフラインで保持」を選びます。このコンピューターに残るので、インターネットの届かない場所でも、遊ぶテーブルでそのままセッションを進められます。",
+  "BENEOS.Cloud.Bmap.OfflineStorageOffTitle": "ブラウザがストレージを提供していません",
+  "BENEOS.Cloud.Bmap.OfflineStorageOffHint": "オフラインのマップにはブラウザのストレージが必要ですが、現在利用できません。多くの場合、ブラウザのプロファイルの破損が原因です。再起動ではほとんど直らず、新しいプロファイルなら直ります。それまではすべて接続経由で読み込まれます。",
   "BENEOS.Cloud.Bmap.OfflineFullTooltip": "このリリースのすべてのマップがオフラインで利用できます",
   "BENEOS.Cloud.Bmap.OfflinePartTooltip": "このリリースの一部のマップがオフラインで利用できます",
   "BENEOS.Stream.Mode.Streaming": "ストリーミングモード",

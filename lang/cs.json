@@ -2480,6 +2480,8 @@
   "BENEOS.Cloud.Bmap.OfflineTooltip": "Mapy uložené v tomto počítači, které se vykreslí i bez připojení",
   "BENEOS.Cloud.Bmap.OfflineEmptyTitle": "Vezmi si mapy ke stolu",
   "BENEOS.Cloud.Bmap.OfflineEmptyHint": "Klepni pravým tlačítkem na mapu, složku nebo vydání a zvol \"Ponechat offline\". Zůstane v tomto počítači, aby tvoje sezení běželo u každého stolu, kde hraješ, i tam, kam internet nedosáhne.",
+  "BENEOS.Cloud.Bmap.OfflineStorageOffTitle": "Tvůj prohlížeč neposkytuje úložiště",
+  "BENEOS.Cloud.Bmap.OfflineStorageOffHint": "Offline mapy potřebují úložiště prohlížeče, které teď není dostupné. Obvyklou příčinou je poškozený profil prohlížeče. Restart pomůže zřídka, nový profil ano. Do té doby vše běží přes připojení.",
   "BENEOS.Cloud.Bmap.OfflineFullTooltip": "Každá mapa tohoto vydání je dostupná offline",
   "BENEOS.Cloud.Bmap.OfflinePartTooltip": "Některé mapy tohoto vydání jsou dostupné offline",
   "BENEOS.Stream.Mode.Streaming": "Režim streamování",

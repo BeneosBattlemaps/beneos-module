@@ -19,7 +19,7 @@
 import { registerStreamSettings, streamEnabled, streamKey, streamBase, streamHost, pinStillsEnabled, installMode, downloadMode, streamMode, ensureStreamKey } from "./stream-settings.mjs"
 import { installStreamFetch, storeStatus, clearStore, prewarm, diagnose, resetDiagnosis, abortAll, sichereSpeicher, streamFetchInstalled,
          offlineHalten, offlineFreigeben, offlineGehalten, offlineBestand, alleZusagenLoesen,
-         speicherLage, raumSchaffen } from "./stream-fetch.mjs"
+         speicherLage, raumSchaffen, speicherAusfallStand, gehalteneAdressen } from "./stream-fetch.mjs"
 import { installStreamCanvas, drawStatus, videoTilesOf } from "./stream-canvas.mjs"
 import { installStreamOnline, onlineStatus, streamState, isOffline, hasStreamedContent } from "./stream-online.mjs"
 import { installStreamIndicator } from "./stream-indicator.mjs"
@@ -32,7 +32,7 @@ import { reportedSoFar } from "./stream-report.mjs"
 import { beimWeltstart, meldeFehlendenVorrat, meldeVerfall, karteZusagen, karteLoesen,
          istZugesagt, alleKarten, vorratsstand, verfallsstand, pruefeVorrat, VERFALL_TAGE,
          karteZuSzene, szenenzustand, zustandAusCache, warmeZustaende, ziehZustandNach,
-         schalteKarte } from "./stream-offline.mjs"
+         schalteKarte, verwaisteLoesen } from "./stream-offline.mjs"
 
 Hooks.once("init", () => {
   registerStreamSettings()
@@ -107,6 +107,13 @@ Hooks.once("init", () => {
     // gehaltene Karte anzufassen.
     speicherLage,
     raumSchaffen,
+    // Was der Speicher haelt, und was davon zu keiner Zusage mehr gehoert.
+    // `speicherAusfallStand` beantwortet die Frage, die vorher niemand stellen
+    // konnte: laeuft das Modul gerade ganz ohne Vorrat, weil der Browser seinen
+    // Speicher nicht hergibt.
+    speicherAusfallStand,
+    gehalteneAdressen,
+    verwaisteLoesen,
     // Das Verzeichnis der zugesagten Karten und die Frist. Der Speicher weiss,
     // welche DATEIEN er haelt; erst das Verzeichnis weiss, welche KARTEN
     // zugesagt sind und wie sie heissen. Die Differenz ist der Schaden.

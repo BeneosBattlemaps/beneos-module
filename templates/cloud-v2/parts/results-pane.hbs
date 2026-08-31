@@ -694,6 +694,14 @@
           {{localize "BENEOS.Cloud.Bmap.Retry"}}
         </button>
       </div>
+    {{else if bmapOfflineSpeicherAus}}
+      {{!-- Der Browser gibt seinen Speicher nicht her. Der einladende Leertext
+           unten waere hier falsch: er fordert zu einem Rechtsklick auf, der
+           nichts bewirken kann. Stattdessen der Grund und der Weg heraus. --}}
+      <div class="bc-results-empty">
+        <p>{{localize "BENEOS.Cloud.Bmap.OfflineStorageOffTitle"}}</p>
+        <p class="bc-results-error-detail">{{localize "BENEOS.Cloud.Bmap.OfflineStorageOffHint"}}</p>
+      </div>
     {{else if bmapViewIsOffline}}
       {{!-- Der Offline-Reiter listet nur, was wirklich offline liegt. Ist das
            nichts, ist "keine Treffer" die falsche Auskunft: es wurde nichts

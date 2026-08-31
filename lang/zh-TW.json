@@ -2480,6 +2480,8 @@
   "BENEOS.Cloud.Bmap.OfflineTooltip": "保存在這台電腦上的地圖，沒有連線也能顯示",
   "BENEOS.Cloud.Bmap.OfflineEmptyTitle": "把地圖帶到牌桌上",
   "BENEOS.Cloud.Bmap.OfflineEmptyHint": "在地圖、資料夾或發行版上按右鍵，選擇「保留離線」。內容會留在這台電腦上，讓你的團在任何牌桌都跑得動，即使在沒有網路的地方也一樣。",
+  "BENEOS.Cloud.Bmap.OfflineStorageOffTitle": "瀏覽器未提供儲存空間",
+  "BENEOS.Cloud.Bmap.OfflineStorageOffHint": "離線地圖需要瀏覽器的儲存空間，但目前無法使用。多半是瀏覽器設定檔損毀造成的。重新啟動通常沒有幫助，換一個新的設定檔才有用。在那之前，所有內容都會透過連線讀取。",
   "BENEOS.Cloud.Bmap.OfflineFullTooltip": "這個版本的所有地圖都可離線使用",
   "BENEOS.Cloud.Bmap.OfflinePartTooltip": "這個版本的部分地圖可離線使用",
   "BENEOS.Stream.Mode.Streaming": "串流模式",

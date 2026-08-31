@@ -2480,6 +2480,8 @@
   "BENEOS.Cloud.Bmap.OfflineTooltip": "Mapas guardados en este equipo, que se muestran sin conexión",
   "BENEOS.Cloud.Bmap.OfflineEmptyTitle": "Lleva tus mapas a la mesa",
   "BENEOS.Cloud.Bmap.OfflineEmptyHint": "Haz clic derecho en un mapa, una carpeta o una publicación y elige \"Guardar sin conexión\". Se queda en este ordenador, para que tu partida funcione en cualquier mesa donde juegues, incluso donde no llega internet.",
+  "BENEOS.Cloud.Bmap.OfflineStorageOffTitle": "Tu navegador no facilita su almacenamiento",
+  "BENEOS.Cloud.Bmap.OfflineStorageOffHint": "Los mapas sin conexión necesitan el almacenamiento del navegador, y ahora mismo no está disponible. Lo habitual es un perfil de navegador dañado. Reiniciar rara vez ayuda, un perfil nuevo sí. Hasta entonces todo pasa por la conexión.",
   "BENEOS.Cloud.Bmap.OfflineFullTooltip": "Todos los mapas de este lanzamiento están disponibles sin conexión",
   "BENEOS.Cloud.Bmap.OfflinePartTooltip": "Algunos mapas de este lanzamiento están disponibles sin conexión",
   "BENEOS.Stream.Mode.Streaming": "Modo streaming",

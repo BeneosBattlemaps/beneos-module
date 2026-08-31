@@ -447,6 +447,16 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // Streaming aber ohne Netz ist der Reiter gerade dann wichtig.
       streamOn: streamEnabled(),
       bmapViewIsOffline: this.searchMode === "bmap" && this._bmapActiveView() === "offline",
+      // Gibt der Browser seinen Speicher nicht her, ist der Reiter zwangslaeufig
+      // leer, und der einladende Leertext waere dann eine Luege: der Rechtsklick
+      // hilft nicht, weil nichts abgelegt werden kann. Am 31.08.2026 lief genau
+      // dieser Zustand einen ganzen Tag unbemerkt, weil ihn nichts anzeigte.
+      //
+      // Die Bedingung traegt den Reiter mit, damit der Hinweis nicht auch bei
+      // einer ergebnislosen Suche in den anderen Reitern erscheint.
+      bmapOfflineSpeicherAus: this.searchMode === "bmap"
+        && this._bmapActiveView() === "offline"
+        && !!game.beneos?.stream?.speicherAusfallStand?.(),
       // Liegt ueberhaupt etwas offline? Der Reiter ist sonst gedaempft, und die
       // leere Liste sagt einen Satz statt gar nichts. Betreiberwunsch vom
       // 31.08.2026. Anklickbar bleibt er in beiden Faellen, sonst koennte man

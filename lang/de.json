@@ -2480,6 +2480,8 @@
   "BENEOS.Cloud.Bmap.OfflineTooltip": "Karten, die auf diesem Rechner liegen und ohne Verbindung zeichnen",
   "BENEOS.Cloud.Bmap.OfflineEmptyTitle": "Nimm deine Karten mit an den Tisch",
   "BENEOS.Cloud.Bmap.OfflineEmptyHint": "Rechtsklick auf eine Karte, einen Ordner oder ein Release, dann \"Offline behalten\". Sie bleibt auf diesem Rechner, damit deine Runde an jedem Tisch läuft, auch dort, wo kein Internet hinkommt.",
+  "BENEOS.Cloud.Bmap.OfflineStorageOffTitle": "Dein Browser gibt seinen Speicher nicht her",
+  "BENEOS.Cloud.Bmap.OfflineStorageOffHint": "Offline-Karten brauchen den Speicher des Browsers, und der ist gerade nicht verfügbar. Meist steckt ein beschädigtes Browserprofil dahinter. Ein Neustart hilft selten, ein frisches Profil schon. Bis dahin läuft alles über die Verbindung.",
   "BENEOS.Cloud.Bmap.OfflineFullTooltip": "Jede Karte dieses Release ist offline verfügbar",
   "BENEOS.Cloud.Bmap.OfflinePartTooltip": "Einige Karten dieses Release sind offline verfügbar",
   "BENEOS.Stream.Mode.Streaming": "Streaming-Modus",

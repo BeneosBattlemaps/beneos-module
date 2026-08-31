@@ -2480,6 +2480,8 @@
   "BENEOS.Cloud.Bmap.OfflineTooltip": "Mappe conservate su questo computer, che si disegnano senza connessione",
   "BENEOS.Cloud.Bmap.OfflineEmptyTitle": "Porta le tue mappe al tavolo",
   "BENEOS.Cloud.Bmap.OfflineEmptyHint": "Clic destro su una mappa, una cartella o una pubblicazione, poi \"Mantieni offline\". Resta su questo computer, così la tua sessione gira a ogni tavolo dove giochi, anche dove internet non arriva.",
+  "BENEOS.Cloud.Bmap.OfflineStorageOffTitle": "Il tuo browser non fornisce la sua memoria",
+  "BENEOS.Cloud.Bmap.OfflineStorageOffHint": "Le mappe offline hanno bisogno della memoria del browser, che al momento non è disponibile. Di solito la causa è un profilo del browser danneggiato. Riavviare serve di rado, un profilo nuovo sì. Fino ad allora tutto passa dalla connessione.",
   "BENEOS.Cloud.Bmap.OfflineFullTooltip": "Ogni mappa di questa uscita è disponibile offline",
   "BENEOS.Cloud.Bmap.OfflinePartTooltip": "Alcune mappe di questa uscita sono disponibili offline",
   "BENEOS.Stream.Mode.Streaming": "Modalità streaming",
