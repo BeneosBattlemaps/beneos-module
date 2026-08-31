@@ -282,9 +282,25 @@ function count(reason, url) {
  * the manifest do nothing at all: on 2026-08-12 a re-published release kept
  * installing from a three-day-old manifest held here, and the write-side guard
  * alone did not help because the stale copy was already in the store.
+ *
+ * Der Katalog gehoert dazu und fehlte hier bis zum 31.08.2026. Er liegt auf
+ * `/catalog/<schluessel>` und traegt keine Endung, fiel also durch beide
+ * Muster und wurde 72 Stunden gehalten. Der Kommentar ueber `istMedium` hatte
+ * diese Luecke bereits benannt, ohne sie zu schliessen.
+ *
+ * Die Folge war schwer: der Server hatte die Titelbilder am 30.08. auf die
+ * gepflegte Datei umgestellt, der gehaltene Katalog zeigte aber weiter auf
+ * Szenen-Assets, und die lehnt das Tor im freien Raum mit 403 und
+ * `{"error":"not-free"}` ab. Chrome blockt diese JSON-Antwort auf eine
+ * Bildanfrage mit ORB, der onerror-Rueckfall setzt den Platzhalter, und der
+ * Kunde sieht ueberall nur das B. Gemessen in der App am 31.08.2026: ueber
+ * den Ersatz 0 von 143 Titelbildern aus der gepflegten Quelle, ueber
+ * XMLHttpRequest und den nativen fetch zur selben Sekunde 139 von 143.
  */
 function isControl(url) {
-  return /stream-manifest\.json/i.test(String(url)) || /\/_docs\//i.test(String(url))
+  return /stream-manifest\.json/i.test(String(url))
+    || /\/_docs\//i.test(String(url))
+    || /\/catalog\//i.test(String(url))
 }
 
 /** Is this a request for our own delivery gate? */
@@ -656,6 +672,30 @@ export async function alleImSpeicher(urls) {
         PIXI.loadTextures.config.preferWorkers = false
       }
     } catch (_) { /* older PIXI, nothing to do */ }
+
+    // Steuerdateien aus dem Vorrat raeumen, die eine frueher zu enge Fassung
+    // von `isControl` dort abgelegt hat.
+    //
+    // Die Leseseite fragt `isControl` selbst ab, ein Altbestand wird also nicht
+    // mehr ausgeliefert. Liegen bleibt er trotzdem, und `speicherLage` zaehlt
+    // ihn als Wegwerfware: das Kontingent des Kunden waere um Eintraege
+    // verkuerzt, die nie wieder jemand liest. Ohne diesen Schritt traegt jede
+    // Bestandswelt ihren alten Katalog bis zum Ablauf der 72 Stunden mit.
+    //
+    // Bewusst ohne await: das Aufraeumen darf den Einbau des Ersatzes nicht
+    // verzoegern, und es ist fuer die Richtigkeit nicht noetig.
+    void (async () => {
+      try {
+        const store = await openStore()
+        if (!store) return
+        let geraeumt = 0
+        for (const anfrage of await store.keys()) {
+          if (!isControl(anfrage.url)) continue
+          try { await store.delete(anfrage, { ignoreSearch: true }); geraeumt++ } catch (_) { /* weiter */ }
+        }
+        if (geraeumt) console.log(`Beneos Stream | Speicher: ${geraeumt} Steuerdatei(en) geraeumt, die dort nicht hingehoeren`)
+      } catch (_) { /* ein kaputter Speicher darf den Einbau nicht aufhalten */ }
+    })()
 
     const original = globalThis.fetch.bind(globalThis)
 
