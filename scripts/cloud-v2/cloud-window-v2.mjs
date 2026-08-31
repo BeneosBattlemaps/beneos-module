@@ -3748,6 +3748,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // edge, so the 300px preload never happened and each thumbnail only started
   // loading once it was already on screen, leaving the placeholder visible for
   // as long as the (full-size) cover took. One observer per scroll container.
+  // Two kinds of target carry data-bc-lazy: the <img> of the thumbnail, which
+  // gets its src, and the .bc-card-bg backdrop, which gets a background-image.
+  // Both point at the same cover, so the second one is a cache hit.
   #ensureLazyObserver(scroller = null) {
     if (!this._lazyObservers) this._lazyObservers = new Map()
     const vorhanden = this._lazyObservers.get(scroller)
@@ -3755,11 +3758,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const obs = new IntersectionObserver((entries, self) => {
       for (const entry of entries) {
         if (!entry.isIntersecting) continue
-        const img = entry.target
-        self.unobserve(img)
-        const src = img.dataset?.src
-        if (src) img.src = src
-        img.removeAttribute("data-bc-lazy")
+        const ziel = entry.target
+        self.unobserve(ziel)
+        const src = ziel.dataset?.src
+        const bg = ziel.dataset?.bg
+        if (src) ziel.src = src
+        else if (bg) ziel.style.backgroundImage = `url(${JSON.stringify(bg)})`
+        ziel.removeAttribute("data-bc-lazy")
       }
     }, { root: scroller, rootMargin: "600px" })
     this._lazyObservers.set(scroller, obs)
@@ -3778,9 +3783,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     return null
   }
 
-  // Observe one image against the container that actually clips it.
-  #beobachteLazy(img) {
-    this.#ensureLazyObserver(this.#scrollAhne(img)).observe(img)
+  // Observe one target against the container that actually clips it.
+  #beobachteLazy(ziel) {
+    this.#ensureLazyObserver(this.#scrollAhne(ziel)).observe(ziel)
   }
 
   // Observe every not-yet-loaded lazy image under `root`. Pass reset=true on a
@@ -3793,7 +3798,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     }
     const scope = root || this.element
     if (!scope) return
-    for (const img of scope.querySelectorAll("img[data-bc-lazy]")) this.#beobachteLazy(img)
+    for (const ziel of scope.querySelectorAll("[data-bc-lazy]")) this.#beobachteLazy(ziel)
   }
 
   /* ========== Virtualization / windowing (list mode, perf) ========== */
@@ -3899,11 +3904,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       if (inWin) {
         if (el.style.display === "none") {
           el.style.display = ""
-          for (const img of el.querySelectorAll("img[data-bc-lazy]")) this.#beobachteLazy(img)
+          for (const ziel of el.querySelectorAll("[data-bc-lazy]")) this.#beobachteLazy(ziel)
         }
       } else if (el.style.display !== "none") {
-        for (const img of el.querySelectorAll("img[data-bc-lazy]")) {
-          for (const obs of this._lazyObservers?.values() || []) obs.unobserve(img)
+        for (const ziel of el.querySelectorAll("[data-bc-lazy]")) {
+          for (const obs of this._lazyObservers?.values() || []) obs.unobserve(ziel)
         }
         el.style.display = "none"
       }

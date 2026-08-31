@@ -213,8 +213,15 @@
                  tabindex="0">
 
           {{!-- Design test: the release cover as a dimmed, blurred backdrop
-               behind the whole row (list mode only; CSS hides it in grid). --}}
-          {{#if card.isReleaseCard}}{{#if card.thumbUrl}}<div class="bc-card-bg" style="background-image: url('{{card.thumbUrl}}');"></div>{{/if}}{{/if}}
+               behind the whole row (list mode only; CSS hides it in grid).
+               The url goes into data-bg, not into an inline style: an inline
+               background-image starts downloading the moment the card is
+               parsed, for every card in the list at once. With 100 cards and
+               covers of 0.3 to 2.4 MB that queued tens of megabytes ahead of
+               the 160x90 thumbnails, so the placeholder stayed up for a long
+               time even though nothing was broken. Now the same lazy observer
+               that swaps the thumbnail fills this in. --}}
+          {{#if card.isReleaseCard}}{{#if card.thumbUrl}}<div class="bc-card-bg" data-bc-lazy data-bg="{{card.thumbUrl}}"></div>{{/if}}{{/if}}
 
           <div class="bc-card-thumb">
             {{#if card.isOfflineCard}}
