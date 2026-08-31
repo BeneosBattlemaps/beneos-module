@@ -5796,6 +5796,28 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   }
 
   /**
+   * Das Paketverzeichnis zu einer Variante, ohne Ruecksicht auf Gross- und
+   * Kleinschreibung.
+   *
+   * Der Katalog fuehrt "4K" und "HD", der Installationsvermerk kann "hd"
+   * tragen. Ein direkter Nachschlag verfehlt dann und faellt auf den ersten
+   * Eintrag zurueck, also auf die falsche Variante. Die Begruendung mit der
+   * Messung steht an der Aufrufstelle.
+   *
+   * @param {Object<string,string>|undefined} dirs
+   * @param {string} variante
+   */
+  #paketVerzeichnis(dirs, variante) {
+    const d = dirs || {}
+    const v = String(variante || "")
+    if (d[v]) return d[v]
+    const treffer = Object.keys(d).find(k => k.toLowerCase() === v.toLowerCase())
+    // Der Rueckfall auf den ersten Eintrag bleibt fuer einvariantige Releases,
+    // deren Vermerk gar keine Variante traegt.
+    return treffer ? d[treffer] : (Object.values(d)[0] || "")
+  }
+
+  /**
    * Die installierten Releases als Katalogzeilen, gebaut aus dem Vermerk.
    *
    * OHNE DIESE FUNKTION IST DER OFFLINE-REITER GENAU DANN LEER, WENN MAN IHN
@@ -6058,8 +6080,23 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         uninstallVariant:     installState?.variantInstalled || "",
         uninstallReleaseDir:  r.release_dir,
         uninstallReleaseName: r.display_name || r.release_dir,
+        // DIE SCHREIBWEISE DER VARIANTE ENTSCHEIDET HIER UEBER DAS RICHTIGE
+        // PAKET, UND SIE IST NICHT EINHEITLICH.
+        //
+        // Der Katalog fuehrt `variant_dirs` unter "4K" und "HD", der
+        // Installationsvermerk kann "hd" klein tragen. Gemessen am 31.08.2026
+        // an `beneos_bm_0003_temple_of_light`: Vermerk "hd", Nachschlag
+        // fehlgeschlagen, und der alte Rueckfall auf den ERSTEN Eintrag
+        // lieferte das 4K-Verzeichnis fuer eine HD-Installation.
+        //
+        // Die Folge waere still gewesen: die Dokumente verschwinden, denn sie
+        // haengen an ihren Kennungen, die HD-Dateien blieben liegen, weil das
+        // 4K-Manifest andere Pfade nennt, und gemeldet haette es niemand.
+        //
+        // Der Rueckfall auf den ersten Eintrag bleibt, aber erst nach dem
+        // Vergleich ohne Ruecksicht auf Gross- und Kleinschreibung.
         uninstallPackageId:   installed
-          ? ((r?.variant_dirs || {})[installState.variantInstalled] || Object.values(r?.variant_dirs || {})[0] || "")
+          ? (this.#paketVerzeichnis(r?.variant_dirs, installState.variantInstalled) || "")
           : "",
         groupKind,
         visibleTagDescriptors: [],
