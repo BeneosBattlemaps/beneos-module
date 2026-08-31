@@ -845,7 +845,19 @@ export class BeneosNativeBattlemapInstaller {
    * Summe aller Laeufe.
    */
   #zielpfadeFuerVermerk() {
-    if (!(this._streamTargets?.size > 0)) return []
+    // NULL UND LEERE LISTE SIND HIER VERSCHIEDENE AUSSAGEN, UND SIE WAREN ES
+    // BIS ZUM 31.08.2026 NICHT.
+    //
+    // Vorher gab diese Stelle in beiden Faellen `[]` zurueck. `recordInstall`
+    // schrieb eine leere Liste nicht, und `findTargets` gab danach null. Fuer
+    // ein heruntergeladenes Release war das richtig, denn dort ist die Liste
+    // wirklich unbekannt. Fuer ein vollstaendig gestreamtes Release war es
+    // falsch: seine Liste IST leer, und der Deinstallierer las das als "ich
+    // weiss es nicht" und verweigerte ohne Netz die Arbeit.
+    //
+    // null  = unbekannt, der Deinstallierer muss das Manifest holen
+    // []    = bekannt, dieses Release hat keine eigenen Dateien auf der Platte
+    if (!(this._streamTargets?.size > 0)) return null
     return [...new Set(this._zielpfade || [])]
   }
 

@@ -330,11 +330,25 @@ export class BeneosInstallState {
       sourceSignature: String(sourceSignature || ""),
       mode:            mode === "stream" || mode === "download" ? mode : "",
     }
-    // Beide Felder nur setzen, wenn sie etwas enthalten. Ein leeres Feld waere
-    // nicht dasselbe wie ein fehlendes: die Leser unterscheiden "kenne ich
-    // nicht" von "ist leer", und nur das Erste darf ins Netz ausweichen.
+    // Die Leser unterscheiden "kenne ich nicht" von "ist leer", und nur das
+    // Erste darf ins Netz ausweichen. Genau deshalb entscheidet bei `targets`
+    // die ANWESENHEIT der Liste und nicht ihre Laenge.
+    //
+    // BIS ZUM 31.08.2026 STAND HIER `&& targets.length`, UND DAS MACHTE JEDES
+    // VOLLSTAENDIG GESTREAMTE RELEASE OHNE NETZ UNENTFERNBAR.
+    //
+    // Ein gestreamtes Release legt fast nichts auf der Platte ab, und im
+    // Grenzfall gar nichts. Die leere Liste wurde dann nicht geschrieben,
+    // `findTargets` gab null, und der Deinstallierer las das als "ich weiss
+    // nicht, was hier liegt" und brach mit "removing it needs a connection"
+    // ab. Gemessen an `beneos_bm_single_map_0003_green_temple_boss_arena`:
+    // frisch installiert, gesperrter Torhost, Entfernen abgebrochen, obwohl
+    // der Vermerk alles wusste.
+    //
+    // Eine leere Liste ist hier eine AUSSAGE: dieses Release hat keine eigenen
+    // Dateien auf der Platte. Sie gehoert aufgeschrieben.
     if (Array.isArray(karten) && karten.length) all[key].karten = karten
-    if (Array.isArray(targets) && targets.length) all[key].targets = targets.slice(0)
+    if (Array.isArray(targets)) all[key].targets = targets.slice(0)
     // DER NAME GEHOERT IN DEN VERMERK, WEIL DER KATALOG OHNE NETZ NICHT KOMMT.
     //
     // Der Offline-Reiter baut seine Kacheln aus diesem Vermerk, sobald
