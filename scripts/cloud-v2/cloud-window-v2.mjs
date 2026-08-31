@@ -36,7 +36,7 @@ import { HomeController } from "./home/home-controller.mjs"
 import { BeneosPatchlogWindow } from "./home/patchlog-window.mjs"
 import { fetchNewsFeed, markNewsRead } from "./services/news-api.mjs"
 import { BeneosInstallState, BeneosPreInstallDialog, beneosLogModuleInstall,
-         releaseKern } from "./beneos-install-state.mjs"
+         releaseKern, anzeigename } from "./beneos-install-state.mjs"
 import { streamEnabled } from "../stream/stream-settings.mjs"
 import { streamState } from "../stream/stream-online.mjs"
 import {
@@ -5360,7 +5360,19 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const packageId   = String(target?.dataset?.packageId || "")
     const variant     = String(target?.dataset?.releaseVariant || "")
     const displayName = String(target?.dataset?.releaseName || releaseDir)
-    if (!releaseDir || !packageId) {
+    // DAS PAKETVERZEICHNIS WAR PFLICHT, UND DAMIT WAR ENTFERNEN OHNE NETZ
+    // UNMOEGLICH.
+    //
+    // Es kommt aus `variant_dirs` des Katalogs, und der Katalog kommt aus dem
+    // Netz. Ohne Verbindung stand hier also immer eine Absage, obwohl der
+    // Installationsvermerk seit `9c86c93` alles Noetige lokal fuehrt und der
+    // Deinstallierer genau darauf zurueckfaellt, wenn das Manifest ausbleibt.
+    //
+    // Entschieden wird jetzt am Vermerk statt am Verzeichnis. Kennt auch er
+    // das Release nicht, bleibt die Absage: dann ist wirklich nicht bekannt,
+    // was entfernt werden soll.
+    const imVermerk = BeneosInstallState.findByReleaseDir(releaseDir).length > 0
+    if (!releaseDir || (!packageId && !imVermerk)) {
       ui.notifications?.error?.(game.i18n.localize("BENEOS.Cloud.Uninstall.NoTarget")
         || "Could not work out which release to remove.")
       return
@@ -5784,13 +5796,71 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   }
 
   /**
+   * Die installierten Releases als Katalogzeilen, gebaut aus dem Vermerk.
+   *
+   * OHNE DIESE FUNKTION IST DER OFFLINE-REITER GENAU DANN LEER, WENN MAN IHN
+   * BRAUCHT.
+   *
+   * Die Kacheln entstehen sonst aus `#ensureReleasesLoaded`, und das ist ein
+   * Netzabruf. Faellt die Verbindung aus, gibt es keine Kachel, also auch
+   * keinen Loeschen-Knopf und keinen Rechtsklick. Der Kunde, dem mitten im
+   * Spielabend das Internet ausfaellt, steht damit ausgerechnet vor der
+   * Oberflaeche, die fuer diesen Fall gebaut wurde, und sie ist leer.
+   *
+   * Der Installationsvermerk weiss alles Noetige und braucht keine Verbindung:
+   * Verzeichnis, Variante, Szenenzahl, Karten und seit dieser Fassung den
+   * Anzeigenamen.
+   *
+   * WAS FEHLT, IST DAS TITELBILD, und das ist Absicht statt Mangel. Es ist
+   * eine Toradresse und laedt ohne Netz nicht. Eine Kachel ohne Bild ist
+   * bedienbar, eine fehlende Kachel nicht.
+   */
+  #vermerkAlsReleases() {
+    const nachRelease = new Map()
+    for (const [, e] of Object.entries(BeneosInstallState.getAll())) {
+      if (!e || typeof e !== "object" || !e.releaseDir) continue
+      const dir = String(e.releaseDir)
+      if (!nachRelease.has(dir)) nachRelease.set(dir, [])
+      nachRelease.get(dir).push(e)
+    }
+    const raus = []
+    for (const [dir, eintraege] of nachRelease) {
+      // Eine leere Variante ist der einvariantige Fall. Sie traegt trotzdem
+      // "4K" nach aussen, weil der Kachelbau aus `variants_available` seine
+      // Aufloesung waehlt und mit einer leeren Zeichenkette nichts anfangen
+      // koennte.
+      const varianten = [...new Set(eintraege.map(e => String(e.variant || "4K")))]
+      const mitName = eintraege.find(e => e.displayName)
+      raus.push({
+        release_dir:         dir,
+        display_name:        mitName?.displayName || anzeigename(dir),
+        nb_variants:         varianten.length,
+        variants_available:  varianten,
+        cover_url_4k:        null,
+        cover_url_hd:        null,
+        bytes_per_variant:   {},
+        content_signature:   "",
+        // Ohne Katalog ist ueber ein Recht nichts bekannt. Installieren steht
+        // hier ohnehin nicht zur Debatte: der Reiter zeigt, was schon liegt.
+        can_install:         false,
+        _ausVermerk:         true,
+      })
+    }
+    return raus
+  }
+
+  /**
    * @param {boolean} nurOffline  Nur installierte Releases, mit Offline-Abzeichen.
    */
   #buildReleaseCards(nurOffline = false) {
     // Task 1: a release counts as "New" when its catalog release_date is within
     // this many days of the newest release in the catalog.
     const RELEASE_NEW_WINDOW_DAYS = 30
-    const list = Array.isArray(this._releaseList) ? this._releaseList : []
+    let list = Array.isArray(this._releaseList) ? this._releaseList : []
+    // Kam der Katalog nicht, baut der Offline-Reiter aus dem Vermerk. Nur
+    // dieser Reiter, und nur wenn wirklich nichts da ist: die anderen Ansichten
+    // zeigen den ganzen Laden und koennen aus einem Vermerk nicht entstehen.
+    if (nurOffline && !list.length) list = this.#vermerkAlsReleases()
     // Der Offline-Stand je Release, einmal je Aufbau geholt statt je Karte.
     // Er kommt aus dem Installationsvermerk und braucht keine Verbindung.
     const offlineStand = nurOffline ? new Map(
@@ -5944,7 +6014,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // logged-in requirement for this one release.
         publicDownload:       isPublic,
         isLocked:             groupKind === "locked",
-        isOfflineCard:        isOffline,
+        // Eine Kachel aus dem Vermerk ist IMMER eine Offline-Kachel, auch wenn
+        // die Verbindungsanzeige gerade etwas anderes behauptet. Sie existiert
+        // nur, weil der Katalog nicht kam; ohne diese Zeile fiele sie durch
+        // jeden Zweig der Vorlage und truege gar keinen Knopf.
+        isOfflineCard:        isOffline || r._ausVermerk === true,
         cloudReady:           true,
         isReleaseCard:        true,
         releaseScope:         true,

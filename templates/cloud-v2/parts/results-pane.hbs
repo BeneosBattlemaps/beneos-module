@@ -472,6 +472,24 @@
                 <i class="fa-solid fa-cloud-slash"></i>
                 {{localize "BENEOS.Cloud.Card.Offline"}}
               </span>
+              {{!-- Entfernen bleibt ohne Verbindung erreichbar. Installieren
+                   braucht die Cloud, Aufraeumen nicht: der Installationsvermerk
+                   weiss lokal, was hier liegt. Bis hierher war der Loeschen-Knopf
+                   allein im Zweig `isCloudAvailable` zu Hause, und damit war
+                   ausgerechnet der Fall unbedienbar, fuer den der Offline-Reiter
+                   gebaut wurde. Dieselbe Markierung wie oben, damit ein Knopf
+                   nicht an zwei Stellen verschieden heisst. --}}
+              {{#if card.canUninstall}}
+                <button type="button" class="bc-card-button bc-card-button-danger bc-action-uninstall"
+                        data-action="uninstallRelease"
+                        data-release-dir="{{card.uninstallReleaseDir}}"
+                        data-release-name="{{card.uninstallReleaseName}}"
+                        data-release-variant="{{card.uninstallVariant}}"
+                        data-package-id="{{card.uninstallPackageId}}"
+                        data-tooltip="{{localize 'BENEOS.Cloud.Uninstall.ButtonTooltip'}}">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              {{/if}}
             {{else if card.needsLogin}}
               {{!-- Wave B-9-fix-58: not signed in. The button triggers
                    the V2 login dialog via the existing openLogin action

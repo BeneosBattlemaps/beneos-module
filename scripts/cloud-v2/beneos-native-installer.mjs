@@ -362,6 +362,10 @@ export class BeneosNativeBattlemapInstaller {
     this._result = result
     this._startedAt = Date.now()
     this._importedScenes = []   // Task E: {id,name} of imported scenes
+    // Die Dokumentkennungen des Pakets, je Datei des Manifests. Sie wandern in
+    // den Installationsvermerk, damit das Entfernen ohne Netz dieselbe Liste
+    // hat wie mit Netz. Siehe die Begruendung an der Fuellstelle.
+    this._packDocIds = { byPath: {}, playlists: [] }
     this._fp     = foundry.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker
     this._isForge = typeof ForgeVTT !== "undefined" && ForgeVTT.usingTheForge === true
     this._source = this._isForge ? "forgevtt" : "data"
@@ -845,6 +849,35 @@ export class BeneosNativeBattlemapInstaller {
     return [...new Set(this._zielpfade || [])]
   }
 
+  /**
+   * Die Dokumente des Pakets in der Form, die der Deinstallierer braucht.
+   *
+   * Er baut sie sonst aus dem Manifest, und das kommt vom Tor. Diese Fassung
+   * kommt aus dem Lauf, der die Dokumente angelegt hat, und braucht danach
+   * keine Verbindung mehr.
+   *
+   * Nur Kennungen, kein Inhalt. Der Deinstallierer liest ohnehin nichts
+   * anderes: er loescht Dokumente ueber ihre Kennung, raeumt Ordner nur wenn
+   * sie danach leer sind, und nimmt aus einer geteilten Playlist genau die
+   * Klaenge dieses Release heraus.
+   *
+   * Gibt `null`, wenn nichts aufgezeichnet wurde. Null heisst "ich weiss es
+   * nicht" und ist nicht dasselbe wie eine leere Liste; der Leser muss
+   * unterscheiden koennen, ob ein Release keine Journale hat oder ob der
+   * Vermerk aus der Zeit vor diesem Feld stammt.
+   */
+  #dokumenteFuerVermerk() {
+    const byPath = this._packDocIds?.byPath || {}
+    const playlists = this._packDocIds?.playlists || []
+    const pfade = Object.keys(byPath)
+    if (!pfade.length && !playlists.length) return null
+    const raus = { byPath: {}, playlists }
+    for (const p of pfade) {
+      if (byPath[p]?.length) raus.byPath[p] = byPath[p]
+    }
+    return raus
+  }
+
   async #recordInstallIfAny() {
     if (!this.record?.releaseDir) return
     const sceneIds = (this._importedScenes || []).map(s => String(s.id)).filter(Boolean)
@@ -871,6 +904,13 @@ export class BeneosNativeBattlemapInstaller {
         // waren bisher nur nicht aufgehoben worden.
         karten:          this.#kartenFuerVermerk(sceneIds),
         targets:         this.#zielpfadeFuerVermerk(),
+        // Der Anzeigename, damit der Offline-Reiter ohne Katalog eine Kachel
+        // beschriften kann. `this.label` ist derselbe Name, der waehrend der
+        // Installation im Fortschrittsfenster steht.
+        displayName:     this.label || "",
+        // Die Dokumente des Pakets, damit das Entfernen ohne Netz nicht auf
+        // halbem Weg stehenbleibt.
+        docs:            this.#dokumenteFuerVermerk(),
       })
     } catch (e) {
       console.warn("BeneosNativeInstaller | recordInstall failed", e)
@@ -2095,6 +2135,22 @@ export class BeneosNativeBattlemapInstaller {
         if (apply) for (let i = 0; i < arr.length; i++) arr[i] = apply(arr[i], this._streamTargets)
       }
 
+      // WAS DAS PAKET AN DOKUMENTEN MITBRINGT, WIRD HIER FESTGEHALTEN.
+      //
+      // Beim Entfernen liest der Deinstallierer dieselben Listen sonst noch
+      // einmal aus dem Manifest, und das Manifest kommt vom Tor. Ohne
+      // Verbindung blieben deshalb Szenen, Journale, Kreaturen und Ordner in
+      // der Welt stehen, waehrend Dateien und Vermerk verschwanden: eine halb
+      // entfernte Installation, die niemand mehr aufloesen kann.
+      //
+      // Aufgehoben wird `arr` und nicht `toCreate`. Gefragt ist, was dem
+      // Release GEHOERT, nicht was dieser Lauf neu angelegt hat; bei einer
+      // Neuinstallation ueber einen bestehenden Stand waere `toCreate` fast
+      // leer und der Vermerk danach blind.
+      if (relPath !== "data/Playlist.json") {
+        this._packDocIds.byPath[relPath] = arr.map(d => String(d?._id || "")).filter(Boolean)
+      }
+
       // Playlists grow, they are never replaced: the export ships each release's
       // playlist with only the few sounds that release uses (same playlist _id +
       // sound _ids). On install we MERGE — add the pack's PlaylistSound(s) not
@@ -2234,6 +2290,17 @@ export class BeneosNativeBattlemapInstaller {
     let created = 0, soundsAdded = 0, done = 0
     for (const pl of arr) {
       const id = String(pl?._id || "")
+      // Eine Playlist gehoert dem Release nur mit IHREN Klaengen. Der
+      // Deinstallierer nimmt genau diese heraus und loescht die Playlist erst,
+      // wenn sie danach leer ist; ohne die Klangkennungen wuerde er entweder
+      // nichts entfernen oder eine geteilte Playlist mitreissen.
+      if (id) {
+        this._packDocIds.playlists.push({
+          id,
+          sounds: (Array.isArray(pl.sounds) ? pl.sounds : [])
+            .map(s => String(s?._id || "")).filter(Boolean),
+        })
+      }
       const existing = id ? coll?.get?.(id) : null
       try {
         if (!existing) {

@@ -47,6 +47,31 @@ export function releaseKern(releaseDir) {
 }
 
 /**
+ * Ein lesbarer Name aus dem Verzeichnisnamen, fuer Vermerke ohne eigenen.
+ *
+ * Nur ein Rueckfall. Der echte Name steht seit dieser Fassung im Vermerk; hier
+ * geht es um die Eintraege, die vorher entstanden sind. Sie sonst mit
+ * `beneos_bm_0113_arasek_stockyard` zu beschriften waere zwar ehrlich, aber
+ * fuer den Kunden unbrauchbar.
+ *
+ * `beneos_bm_0113_arasek_stockyard` gibt "Arasek Stockyard (0113)".
+ * `bm_0006` gibt "Release 0006", weil dort schlicht kein Titel steht.
+ *
+ * @param {string} releaseDir
+ */
+export function anzeigename(releaseDir) {
+  const teile = String(releaseDir || "").split("_").filter(Boolean)
+  if (teile[0]?.toLowerCase() === "beneos") teile.shift()
+  const i = teile.findIndex(t => /^\d+[a-z]?$/.test(t))
+  if (i < 0) return String(releaseDir || "")
+  const nummer = teile[i]
+  const rest = teile.slice(i + 1).filter(t => t.toLowerCase() !== "foundry")
+  if (!rest.length) return `Release ${nummer}`
+  const titel = rest.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(" ")
+  return `${titel} (${nummer})`
+}
+
+/**
  * Static accessor — Foundry's settings storage is the source of truth; we
  * never cache to avoid stale reads across re-renders.
  */
@@ -247,6 +272,27 @@ export class BeneosInstallState {
   }
 
   /**
+   * Die Dokumente eines Release, wie beim Installieren aufgezeichnet.
+   *
+   * Gegenstueck zu `findTargets`, fuer denselben Zweck und mit derselben
+   * Regel: `null` heisst "ich weiss es nicht", nicht "es gibt keine". Ein
+   * Vermerk aus der Zeit vor diesem Feld gibt null, und der Aufrufer muss dann
+   * sagen, dass er die Dokumente nicht raeumen konnte, statt es zu verschweigen.
+   *
+   * @returns {{byPath: Object<string,string[]>, playlists: Array<{id:string,sounds:string[]}>}|null}
+   */
+  static findDocs(releaseDir, variant) {
+    if (!releaseDir) return null
+    const key = variant ? `${releaseDir}_${variant}` : releaseDir
+    const d = this.getAll()?.[key]?.docs
+    if (!d || typeof d !== "object") return null
+    return {
+      byPath: (d.byPath && typeof d.byPath === "object") ? d.byPath : {},
+      playlists: Array.isArray(d.playlists) ? d.playlists : [],
+    }
+  }
+
+  /**
    * Persist one install. Key format: `<releaseDir>_<variant>` (variant = ""
    * for single-variant releases). Idempotent: replacing the same key
    * overwrites scene-ids + timestamp + signature for the new install.
@@ -270,7 +316,7 @@ export class BeneosInstallState {
    *               files that are not there are skipped anyway.
    */
   static async recordInstall({ releaseDir, variant, assetId, sceneIds, sourceSignature, sceneCount, mode,
-                               karten, targets }) {
+                               karten, targets, displayName, docs }) {
     if (!releaseDir) return
     const all = this.getAll()
     const key = variant ? `${releaseDir}_${variant}` : releaseDir
@@ -289,6 +335,18 @@ export class BeneosInstallState {
     // nicht" von "ist leer", und nur das Erste darf ins Netz ausweichen.
     if (Array.isArray(karten) && karten.length) all[key].karten = karten
     if (Array.isArray(targets) && targets.length) all[key].targets = targets.slice(0)
+    // DER NAME GEHOERT IN DEN VERMERK, WEIL DER KATALOG OHNE NETZ NICHT KOMMT.
+    //
+    // Der Offline-Reiter baut seine Kacheln aus diesem Vermerk, sobald
+    // `list_releases` scheitert. Alles Noetige stand schon hier, nur der Name
+    // nicht, und ein Verzeichnisname ist kein Kachelname. Aeltere Vermerke
+    // leiten ihn ueber `anzeigename()` aus `releaseDir` ab; das ist schlechter
+    // als der echte, aber besser als eine Kachel ohne Beschriftung.
+    if (displayName) all[key].displayName = String(displayName)
+    // Die Dokumentkennungen des Pakets. Ohne sie kann das Entfernen ohne Netz
+    // Dateien freigeben, aber keine Szene, kein Journal und keinen Ordner aus
+    // der Welt nehmen; genau das waere die halb entfernte Installation.
+    if (docs && typeof docs === "object") all[key].docs = docs
     try {
       await game.settings.set(BeneosUtility.moduleID(), SETTING_KEY, all)
     } catch (e) {

@@ -63,6 +63,9 @@ export class BeneosNativeUninstaller {
     this.packageId  = packageId
     this.label      = label || releaseDir
     this._fp        = foundry.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker
+    // Gesetzt nur, wenn das Manifest ausblieb und der Installationsvermerk
+    // einsprang. Null heisst: es gilt der gewoehnliche Weg ueber das Tor.
+    this._docsAusVermerk = null
     this.result = {
       docsDeleted: 0, foldersDeleted: 0, tracksRemoved: 0, playlistsDeleted: 0,
       filesCleared: 0, bytesFreed: 0, filesSkippedShared: 0, errors: [],
@@ -167,8 +170,22 @@ export class BeneosNativeUninstaller {
       // "nichts zu raeumen" durchgeht.
       const gemerkt = BeneosInstallState.findTargets(this.releaseDir, this.variant)
       if (Array.isArray(gemerkt)) {
+        // Die Dokumente kommen aus demselben Vermerk. Ohne sie gaebe dieser
+        // Weg zwar die Dateien frei, liesse aber Szenen, Journale, Kreaturen
+        // und Ordner in der Welt stehen, waehrend der Vermerk verschwindet:
+        // eine halb entfernte Installation, die danach niemand mehr aufloesen
+        // kann. Ein Vermerk aus der Zeit vor diesem Feld gibt null, und dann
+        // wird das gesagt statt verschwiegen.
+        this._docsAusVermerk = BeneosInstallState.findDocs(this.releaseDir, this.variant)
+        if (!this._docsAusVermerk) {
+          this.#fail("docsAusVermerk", new Error(
+            "Der Installationsvermerk dieses Release stammt aus der Zeit vor der "
+            + "Dokumentaufzeichnung. Ohne Verbindung lassen sich seine Szenen, Journale "
+            + "und Ordner nicht bestimmen; sie bleiben stehen."))
+        }
         console.warn("BeneosNativeUninstaller | describePack scheiterte, nehme den "
-          + `Installationsvermerk: ${gemerkt.length} Zielpfade`, err)
+          + `Installationsvermerk: ${gemerkt.length} Zielpfade, `
+          + `Dokumente ${this._docsAusVermerk ? "aus dem Vermerk" : "UNBEKANNT"}`, err)
         target = { assets: gemerkt.map(t => ({ target: t, url: "", relPath: t })), jsons: {}, packInfo: {} }
       } else {
         this.#fail("describePack", err)
@@ -188,7 +205,9 @@ export class BeneosNativeUninstaller {
     // Everything another installed release still needs stays untouched.
     const claimedByOthers = await this.#assetsClaimedByOtherInstalls()
 
-    const docs = await this.#loadPackDocs(target.jsons)
+    const docs = this._docsAusVermerk
+      ? this.#docsAusVermerk(this._docsAusVermerk)
+      : await this.#loadPackDocs(target.jsons)
 
     await this.#deleteDocuments(docs)
     await this.#removePlaylistTracks(docs.playlists)
@@ -345,6 +364,28 @@ export class BeneosNativeUninstaller {
   }
 
   /** Fetch and parse the pack's document collections. Missing ones are simply absent. */
+  /**
+   * Dieselbe Struktur wie `#loadPackDocs`, aber aus dem Installationsvermerk
+   * und ohne einen einzigen Abruf.
+   *
+   * Der Deinstallierer liest von einem Dokument ohnehin nur seine Kennung, von
+   * einer Playlist zusaetzlich die Kennungen ihrer Klaenge. Genau das steht im
+   * Vermerk, und deshalb genuegen hier Attrappen mit `_id`.
+   *
+   * @param {{byPath: Object<string,string[]>, playlists: Array<{id:string,sounds:string[]}>}} vermerk
+   */
+  #docsAusVermerk(vermerk) {
+    const alsDoc = (ids) => (Array.isArray(ids) ? ids : []).map(id => ({ _id: String(id) }))
+    const out = { byKey: {}, folders: [], playlists: [] }
+    for (const spec of DOC_PATHS) out.byKey[spec.key] = alsDoc(vermerk.byPath?.[spec.path])
+    out.folders = alsDoc(vermerk.byPath?.["data/folders.json"])
+    out.playlists = (vermerk.playlists || []).map(p => ({
+      _id: String(p?.id || ""),
+      sounds: alsDoc(p?.sounds),
+    })).filter(p => p._id)
+    return out
+  }
+
   async #loadPackDocs(jsons) {
     const out = { byKey: {}, folders: [], playlists: [] }
     const read = async (relPath) => {
