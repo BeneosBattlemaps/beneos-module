@@ -1079,6 +1079,28 @@
   color: var(--bc-bg);
 }
 
+/* Der dritte Zustand: der Reiter gibt es, aber es liegt nichts darin.
+ *
+ * Betreiberwunsch vom 2026-08-31. Bis dahin kannte der Reiter zwei Zustaende,
+ * Streaming an oder aus, und stand im Ruhezustand so kraeftig da wie die drei
+ * Reiter mit Inhalt.
+ *
+ * Gedaempft, nicht gesperrt. Er bleibt anklickbar, sonst koennte den
+ * erklaerenden Satz im leeren Reiter niemand lesen. Deshalb auch kein
+ * `pointer-events: none` und kein Grau der Nichtbedienbarkeit, sondern nur
+ * weniger Deckkraft.
+ *
+ * Der aktive Zustand gewinnt: wer den Reiter offen hat, sieht ihn voll, auch
+ * wenn er leer ist. Sonst verlaere die Leiste beim Hineinklicken ihre Anzeige,
+ * welcher Reiter gerade offen ist. */
+.beneos-cloud-app .bc-view-button.bc-view-idle {
+  opacity: 0.45;
+}
+.beneos-cloud-app .bc-view-button.bc-view-idle:hover,
+.beneos-cloud-app .bc-view-button.bc-view-idle.bc-view-active {
+  opacity: 1;
+}
+
 /* Plan §13: bmap-only toolbar — resolution + view-mode segments. Sits
    above the existing Grid/List toggle. Each segment reuses the same
    .bc-view-toggle / .bc-view-button shells so the visual language stays

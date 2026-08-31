@@ -70,9 +70,12 @@
           {{!-- Der Offline-Reiter erscheint nur, wenn Streaming laeuft. Ohne
                 Streaming gibt es keine Offline-Vorraete, und ein Reiter, der
                 immer leer ist, sieht aus wie ein Defekt. --}}
+          {{!-- Gedaempft, solange nichts offline liegt, aber weiterhin
+                anklickbar: sonst koennte niemand den erklaerenden Satz im
+                leeren Reiter lesen. --}}
           {{#if streamOn}}
           <button type="button"
-                  class="bc-view-button{{#if bmapViewIsOffline}} bc-view-active{{/if}}"
+                  class="bc-view-button{{#if bmapViewIsOffline}} bc-view-active{{/if}}{{#unless offlineVorhanden}} bc-view-idle{{/unless}}"
                   data-bmap-view="offline" data-action="switchBmapView"
                   data-tooltip="{{localize 'BENEOS.Cloud.Bmap.OfflineTooltip'}}">{{localize "BENEOS.Cloud.Bmap.Offline"}}</button>
           {{/if}}
@@ -670,6 +673,15 @@
         <button type="button" class="bc-btn-secondary" data-action="retryLoadReleases">
           {{localize "BENEOS.Cloud.Bmap.Retry"}}
         </button>
+      </div>
+    {{else if bmapViewIsOffline}}
+      {{!-- Der Offline-Reiter listet nur, was wirklich offline liegt. Ist das
+           nichts, ist "keine Treffer" die falsche Auskunft: es wurde nichts
+           gesucht. Der Satz sagt stattdessen, wofuer der Reiter da ist und
+           wie man etwas hineinbekommt. --}}
+      <div class="bc-results-empty">
+        <p>{{localize "BENEOS.Cloud.Bmap.OfflineEmptyTitle"}}</p>
+        <p class="bc-results-error-detail">{{localize "BENEOS.Cloud.Bmap.OfflineEmptyHint"}}</p>
       </div>
     {{else}}
       <div class="bc-results-empty">

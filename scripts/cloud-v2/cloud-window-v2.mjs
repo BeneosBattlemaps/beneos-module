@@ -446,6 +446,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // Streaming aber ohne Netz ist der Reiter gerade dann wichtig.
       streamOn: streamEnabled(),
       bmapViewIsOffline: this.searchMode === "bmap" && this._bmapActiveView() === "offline",
+      // Liegt ueberhaupt etwas offline? Der Reiter ist sonst gedaempft, und die
+      // leere Liste sagt einen Satz statt gar nichts. Betreiberwunsch vom
+      // 31.08.2026. Anklickbar bleibt er in beiden Faellen, sonst koennte man
+      // den erklaerenden Satz nie lesen.
+      offlineVorhanden: streamEnabled()
+        && releaseOfflineStand().some(s => s.stand === "teil" || s.stand === "voll"),
       // Die Speicherleiste, nur auf dem Maps-Reiter: anderswo gibt es nichts
       // offline zu nehmen, und eine Leiste ohne Bezug ist Rauschen.
       offlineVorrat: (this.searchMode === "bmap" && streamEnabled())
@@ -5917,11 +5923,28 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const hasCampaign = !!game.beneos?.cloud?.hasCampaignAccess?.("battlemaps")
     const isOffline   = !!(game.beneos?.databaseHolder?.getIsOffline?.() ?? game.beneos?.databaseHolder?.isOffline)
 
-    // Der Offline-Reiter zeigt nur, was INSTALLIERT ist. Alles andere hat keine
-    // Szenen in dieser Welt, und ohne Szenen gibt es nichts offline zu nehmen.
-    // Das ist keine Luecke, sondern die Bedingung der Sache.
+    // DER OFFLINE-REITER ZEIGT, WAS OFFLINE LIEGT. NICHT, WAS INSTALLIERT IST.
+    //
+    // Hier stand bis zum 31.08.2026 die Bedingung "ist installiert", und das
+    // machte den Reiter zur zweiten Kopie der Releases-Liste. Gemessen in der
+    // V13-Pruefwelt: 16 Kacheln im Offline-Reiter, waehrend NULL Karten und
+    // NULL Bytes offline lagen. Nach Zustand: 15 Releases "unbekannt", 2
+    // "keine", kein einziges "teil" oder "voll".
+    //
+    // Betreiberbefund vom 31.08.2026: "extrem viel offline verfuegbar", und
+    // zwei Listen mit demselben Inhalt verwirren nur.
+    //
+    // `keine` und `unbekannt` fallen beide heraus. Sie sagen Verschiedenes,
+    // aber fuer diese Frage dasselbe: hier liegt nichts offline. Installiert
+    // zu sein bleibt trotzdem Bedingung, denn `releaseOfflineStand` liest den
+    // Installationsvermerk und kennt gar nichts anderes.
     if (nurOffline) {
-      filtered = filtered.filter(r => BeneosInstallState.findByReleaseDir(r.release_dir).length > 0)
+      const liegtOffline = new Set(
+        releaseOfflineStand()
+          .filter(s => s.stand === "teil" || s.stand === "voll")
+          .map(s => releaseKern(s.release) || s.release))
+      filtered = filtered.filter(r =>
+        liegtOffline.has(releaseKern(r.release_dir) || r.release_dir))
     }
 
     const cards = filtered.map(r => {
