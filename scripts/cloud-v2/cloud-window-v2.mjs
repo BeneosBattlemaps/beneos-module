@@ -6054,7 +6054,27 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // null when no ACTIVE product exists (extras, tour packs), which keeps
         // the "Buy pack" CTA from rendering a dead link.
         shopUrl:              r?.shop_url || null,
-        isFree:               isFree || isPublic,
+        // HIER STAND `isFree || isPublic`, UND DAMIT WURDE AUS EINER
+        // ANMELDEFREIHEIT EIN PREISVERSPRECHEN.
+        //
+        // Der Kommentar dreissig Zeilen weiter oben verlangt genau das
+        // Gegenteil: getrennt halten, weil ein freies Release trotzdem ein
+        // Konto braucht und ein oeffentliches nicht. Getrennt gehalten wurde
+        // es bis zu dieser Zeile.
+        //
+        // Gemessen am 31.08.2026 im Streaming-Betrieb: der Stream-Katalog
+        // setzt `public_download` bedingungslos fuer JEDES Release, damit ein
+        // abgemeldeter Tester einen Installations- statt eines Anmeldeknopfs
+        // sieht (`generate-stream-catalog.php`). 143 von 143. Das gruene
+        // Abzeichen stand damit an jedem Release, real frei sind vier.
+        //
+        // Ein Bildschirmfoto aus der Beta las sich so wie ein Gratisangebot
+        // ueber den ganzen Katalog.
+        //
+        // `isPublic` behaelt seine Wirkung auf die Gruppierung und auf die
+        // Anmeldepflicht. Nur die Anzeige haengt jetzt allein an der echten
+        // Frei-Eigenschaft.
+        isFree:               isFree,
         // "Free without account": read by the install click-gate to bypass the
         // logged-in requirement for this one release.
         publicDownload:       isPublic,
