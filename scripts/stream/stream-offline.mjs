@@ -82,8 +82,27 @@ export function kontingent() {
   return KONTINGENT_VORGABE
 }
 
-/** Zwei Warnungen, bevor es soweit ist. */
-const WARNUNG_AB_TAGEN = 3
+/**
+ * Das Warnfenster, und warum es die halbe Frist ist.
+ *
+ * Bis zum 2026-09-01 stand hier 3. Die Warnung haengt aber an WELTSTARTS,
+ * der Verfall an TAGEN, und drei Tage sind kuerzer als der uebliche
+ * Spielrhythmus einer Gruppe. Gemessen am 30.08.2026: gewarnt wurde bei 3, 2
+ * und 1 Tag Restlaufzeit, also dreimal bei taeglichem Spiel. Wer alle zwei
+ * Wochen spielt, sah dagegen **keine einzige** Warnung und verlor seinen
+ * Vorrat ohne Vorankuendigung. Das war die eigentliche Luecke, nicht die Zahl.
+ *
+ * Sieben Tage liegen ueber dem Zweiwochenrhythmus: bei vierzehn Tagen Frist
+ * faellt in jedes Warnfenster mindestens ein Weltstart, auch wenn nur alle
+ * zwei Wochen gespielt wird.
+ */
+const WARNUNG_AB_TAGEN = 7
+
+/**
+ * Hoechstens zwei Warnungen je Frist, sonst wird aus dem Hinweis Rauschen.
+ * Betreibervorgabe vom 28.08.2026, umgesetzt am 01.09.2026.
+ */
+const WARNUNGEN_HOECHSTENS = 2
 
 // ---- Das Verzeichnis ---------------------------------------------------
 
@@ -1255,8 +1274,31 @@ export async function szenenLoesen(szenen) {
  * das ist der Unterschied, an dem der Verfall haengt.
  */
 export async function berechtigungGesehen() {
-  try { await game.settings.set(MODULE_ID, SETTING.offlineSeen, Date.now()) }
+  try {
+    await game.settings.set(MODULE_ID, SETTING.offlineSeen, Date.now())
+    // Neue Frist, neue Warnungen. Bliebe der Zaehler stehen, bekaeme ein Kunde
+    // nach seiner ersten Fristverlaengerung nie wieder eine Vorwarnung.
+    if (Number(game.settings.get(MODULE_ID, SETTING.offlineWarnungen)) !== 0) {
+      await game.settings.set(MODULE_ID, SETTING.offlineWarnungen, 0)
+    }
+  }
   catch (_) { /* eine nicht schreibbare Einstellung darf den Start nicht anhalten */ }
+}
+
+/**
+ * Eine ausgesprochene Warnung festhalten.
+ *
+ * Getrennt von `verfallsstand`, und das ist der Punkt: dort wird nur gelesen.
+ * Die Anzeige am Zustandspunkt und das Offline-Fenster fragen denselben Stand
+ * ab, und wuerde die Abfrage mitzaehlen, verbrauchte ein Blick auf den Punkt
+ * eine der beiden Warnungen.
+ */
+export async function warnungGezaehlt() {
+  try {
+    const n = Number(game.settings.get(MODULE_ID, SETTING.offlineWarnungen)) || 0
+    await game.settings.set(MODULE_ID, SETTING.offlineWarnungen, n + 1)
+    return n + 1
+  } catch (_) { return 0 }
 }
 
 /**
@@ -1267,15 +1309,25 @@ export async function berechtigungGesehen() {
  * Vorrat zu nehmen, bevor sie einen hat, waere absurd.
  */
 export function verfallsstand() {
-  let zuletzt = 0
+  let zuletzt = 0, gewarnt = 0
   try { zuletzt = Number(game.settings.get(MODULE_ID, SETTING.offlineSeen)) || 0 } catch (_) { }
-  if (!zuletzt) return { nie: true, tageOffen: VERFALL_TAGE, abgelaufen: false, warnen: false }
+  try { gewarnt = Number(game.settings.get(MODULE_ID, SETTING.offlineWarnungen)) || 0 } catch (_) { }
+  if (!zuletzt) {
+    return { nie: true, tageOffen: VERFALL_TAGE, abgelaufen: false, warnen: false, imFenster: false, gewarnt }
+  }
   const vergangen = (Date.now() - zuletzt) / TAG_MS
   const tageOffen = Math.max(0, Math.ceil(VERFALL_TAGE - vergangen))
+  // `imFenster` und `warnen` sind zwei verschiedene Fragen, und sie
+  // auseinanderzuhalten ist der ganze Umbau. Die Anzeige will wissen, ob es
+  // knapp wird, also `imFenster`; sie soll den Hinweis auch am dritten
+  // Weltstart noch zeigen. Die Meldung beim Weltstart will wissen, ob sie
+  // sprechen darf, also `warnen`, und die ist auf zwei gedeckelt.
+  const imFenster = !!(tageOffen <= WARNUNG_AB_TAGEN && tageOffen > 0)
   return {
     nie: false, zuletzt, tageOffen,
     abgelaufen: vergangen >= VERFALL_TAGE,
-    warnen: !!(tageOffen <= WARNUNG_AB_TAGEN && tageOffen > 0),
+    imFenster, gewarnt,
+    warnen: imFenster && gewarnt < WARNUNGEN_HOECHSTENS,
   }
 }
 

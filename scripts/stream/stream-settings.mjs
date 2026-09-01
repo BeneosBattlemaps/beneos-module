@@ -29,6 +29,9 @@ export const SETTING = {
   // letzten gueltigen Berechtigung. Siehe stream-offline.mjs.
   offlineHeld: "beneos-stream-offline-held",
   offlineSeen: "beneos-stream-offline-last-seen",
+  // Wie viele Verfallswarnungen diese Frist schon ausgesprochen hat. Siehe
+  // stream-offline.mjs, `verfallsstand`.
+  offlineWarnungen: "beneos-stream-offline-warnungen",
   // Der Gemeinschaftsvorrat: die geteilten Dateien, die mehrere Karten
   // brauchen. Sie liegen einmal und zaehlen einmal. Siehe stream-offline.mjs.
   offlineGeteilt: "beneos-stream-offline-shared",
@@ -97,6 +100,17 @@ export function registerStreamSettings() {
   // war es zuletzt online": wer Verbindung hat, aber abgewiesen wird, fuer den
   // laeuft die Uhr weiter. Daran haengt der Verfall nach vierzehn Tagen.
   game.settings.register(MODULE_ID, SETTING.offlineSeen, {
+    ...world, type: Number, default: 0,
+  })
+
+  // WARUM DIE WARNUNGEN GEZAEHLT WERDEN MUESSEN.
+  //
+  // Die Warnung haengt an Weltstarts, der Verfall an Tagen. Ohne Zaehler sieht
+  // ein Spielleiter, der taeglich startet, jede Warnung erneut, und die
+  // Vorgabe des Betreibers lautete zwei. Der Zaehler faellt auf null zurueck,
+  // sobald eine gueltige Berechtigung gesehen wurde: dann beginnt eine neue
+  // Frist, und sie verdient ihre eigenen Warnungen.
+  game.settings.register(MODULE_ID, SETTING.offlineWarnungen, {
     ...world, type: Number, default: 0,
   })
 

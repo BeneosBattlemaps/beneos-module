@@ -150,7 +150,9 @@ export class BeneosOfflineWindow extends HandlebarsApplicationMixin(ApplicationV
       // und das ist kein Verfall, sondern ein frischer Anfang.
       fristNie: frist.nie,
       fristTage: frist.tageOffen,
-      fristKnapp: frist.warnen,
+      // `imFenster`, nicht `warnen`: das Fenster zeigt einen Zustand, es
+      // verbraucht keine der zwei Warnungen.
+      fristKnapp: frist.imFenster,
       fristAbgelaufen: frist.abgelaufen,
       verfallTage: VERFALL_TAGE,
       // Was der Browser dazu sagt. Ohne Zusage darf er bei Plattenknappheit

@@ -102,7 +102,9 @@ function paint() {
   // behaelt seine Farbe.
   try {
     const frist = verfallsstand()
-    if (state === "online" && vorratsstand().karten > 0 && (frist.warnen || frist.abgelaufen)) {
+    // `imFenster` und nicht `warnen`: die Meldung beim Weltstart ist auf zwei
+    // gedeckelt, die Farbe nicht. Sie soll knapp bleiben, solange es knapp ist.
+    if (state === "online" && vorratsstand().karten > 0 && (frist.imFenster || frist.abgelaufen)) {
       dot.style.background = LOOK.degraded.colour
     }
   } catch (_) { }

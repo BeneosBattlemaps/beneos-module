@@ -33,7 +33,7 @@ import { beimWeltstart, meldeFehlendenVorrat, meldeVerfall, karteZusagen, karteL
          istZugesagt, alleKarten, vorratsstand, verfallsstand, pruefeVorrat, VERFALL_TAGE,
          karteZuSzene, szenenzustand, zustandAusCache, warmeZustaende, ziehZustandNach,
          schalteKarte, verwaisteLoesen, geteilteLuecken, geteilteWaisen, geteilterStand,
-         vorratHeilen } from "./stream-offline.mjs"
+         vorratHeilen, warnungGezaehlt } from "./stream-offline.mjs"
 
 Hooks.once("init", () => {
   registerStreamSettings()
@@ -244,6 +244,9 @@ Hooks.once("ready", async () => {
         { days: bericht.frist.tageOffen })
         || `Beneos: your offline maps expire in ${bericht.frist.tageOffen} day(s). `
          + `Open this world while online to renew them.`)
+      // Erst sprechen, dann zaehlen. Andersherum verlöre ein Kunde eine seiner
+      // zwei Warnungen, wenn das Schreiben der Einstellung scheitert.
+      await warnungGezaehlt()
     }
   } catch (err) {
     console.warn("Beneos Stream | Offline-Pruefung uebersprungen", err)
