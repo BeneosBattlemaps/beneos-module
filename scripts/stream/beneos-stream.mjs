@@ -32,7 +32,8 @@ import { reportedSoFar } from "./stream-report.mjs"
 import { beimWeltstart, meldeFehlendenVorrat, meldeVerfall, karteZusagen, karteLoesen,
          istZugesagt, alleKarten, vorratsstand, verfallsstand, pruefeVorrat, VERFALL_TAGE,
          karteZuSzene, szenenzustand, zustandAusCache, warmeZustaende, ziehZustandNach,
-         schalteKarte, verwaisteLoesen } from "./stream-offline.mjs"
+         schalteKarte, verwaisteLoesen, geteilteLuecken, geteilterStand,
+         vorratHeilen } from "./stream-offline.mjs"
 
 Hooks.once("init", () => {
   registerStreamSettings()
@@ -114,6 +115,12 @@ Hooks.once("init", () => {
     speicherAusfallStand,
     gehalteneAdressen,
     verwaisteLoesen,
+    // Derselbe Abgleich in der Gegenrichtung: ein Verzeichniseintrag, dessen
+    // Datei nicht mehr liegt. Die beiden gehoeren zusammen, denn Verzeichnis
+    // und Speicher koennen in BEIDE Richtungen auseinanderlaufen.
+    geteilteLuecken,
+    geteilterStand,
+    vorratHeilen,
     // Das Verzeichnis der zugesagten Karten und die Frist. Der Speicher weiss,
     // welche DATEIEN er haelt; erst das Verzeichnis weiss, welche KARTEN
     // zugesagt sind und wie sie heissen. Die Differenz ist der Schaden.

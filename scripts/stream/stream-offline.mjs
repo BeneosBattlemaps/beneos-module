@@ -30,8 +30,8 @@
  */
 
 import { MODULE_ID, SETTING, streamEnabled, assetUrl, streamKey, streamBase } from "./stream-settings.mjs"
-import { offlineGehalten, offlineHalten, offlineFreigeben, alleImSpeicher,
-         gehalteneAdressen } from "./stream-fetch.mjs"
+import { offlineGehalten, offlineHalten, offlineFreigeben,
+         gehalteneAdressen, speicherAusfallStand } from "./stream-fetch.mjs"
 import { streamAdressenVon } from "./stream-online.mjs"
 import { loadStreamManifest } from "./stream-install.mjs"
 import { BeneosInstallState, releaseKern } from "../cloud-v2/beneos-install-state.mjs"
@@ -134,9 +134,32 @@ export function istGeteilteDatei(url) {
   return /\/map_assets\//.test(String(url || ""))
 }
 
-/** Was der Gemeinschaftsvorrat wiegt, und wie viele Dateien er fuehrt. */
+/**
+ * Die geteilten Adressen EINER Karte.
+ *
+ * Das Kartenverzeichnis fuehrt unter `urls` nur die eigenen Dateien; die
+ * geteilten stehen im Gemeinschaftsvorrat, und die Zugehoerigkeit haengt dort
+ * an der Besitzerliste `karten`. Wer die Vollstaendigkeit einer Karte prueft,
+ * braucht beide Haelften, sonst prueft er zwei Fuenftel und nennt das ganz.
+ */
+function geteilteVonKarte(id, vorrat = liesGeteilt()) {
+  const raus = []
+  for (const [url, e] of Object.entries(vorrat)) {
+    if (e && typeof e === "object" && (e.karten || []).includes(id)) raus.push(url)
+  }
+  return raus
+}
+
+/**
+ * Was der Gemeinschaftsvorrat wiegt, und wie viele Dateien er fuehrt.
+ *
+ * Markierte Eintraege zaehlen nicht mit. Ein `fehlt`-Vermerk sagt, dass die
+ * Datei nicht mehr im Speicher liegt; sie zu berechnen hiesse, dem Kunden
+ * Kontingent fuer Bytes abzuziehen, die er gar nicht hat. Siehe
+ * `geteilteLuecken`.
+ */
 export function geteilterStand() {
-  const alle = Object.values(liesGeteilt()).filter(e => e && typeof e === "object")
+  const alle = Object.values(liesGeteilt()).filter(e => e && typeof e === "object" && !e.fehlt)
   return { dateien: alle.length, bytes: alle.reduce((s, e) => s + (Number(e.bytes) || 0), 0) }
 }
 
@@ -217,13 +240,30 @@ export async function karteZusagen({ release, variant, karte, name, urls, bytes,
   const liste = [...new Set((urls || []).filter(Boolean))]
   if (!liste.length) return { ok: false, grund: "keine-dateien" }
 
-  // Die geteilten Dateien dieser Karte, aufgeteilt in "liegt schon" und "muss
-  // noch geholt werden". Nur das Zweite kostet Kontingent, und nur das Zweite
-  // wird geholt. Siehe `istGeteilteDatei`.
+  // ZWEI FRAGEN, ZWEI LISTEN.
+  //
+  // "Kostet Kontingent" und "muss geholt werden" sind nicht dasselbe, und sie
+  // in einer Liste zu fuehren war der Fehler. Das Verzeichnis des
+  // Gemeinschaftsvorrats und der Speicher koennen auseinanderlaufen: Chrome
+  // raeumt unter Druck einen ganzen Ursprung, das Verzeichnis bleibt stehen.
+  // Ein Filter, der nur das Verzeichnis fragt, ueberspringt dann genau die
+  // Dateien, die fehlen, und die Luecke wird nie wieder geschlossen.
+  //
+  // GEMESSEN am 2026-09-01 im Pruefstand V14: eine zugesagte Karte brauchte
+  // fuenf Adressen, zwei lagen im Speicher, die drei geteilten fehlten. Die
+  // Szene wurde ohne Verbindung abgelehnt, obwohl der Kunde sie ausdruecklich
+  // offline gestellt hatte.
   const geteiltVorrat = liesGeteilt()
   const geteiltListe = (geteilt || []).filter(g => g?.url)
-  const geteiltNeu = geteiltListe.filter(g => !geteiltVorrat[g.url])
-  const geteiltNeuBytes = geteiltNeu.reduce((s, g) => s + (Number(g.bytes) || 0), 0)
+  // Unbekannt heisst: das Verzeichnis kennt sie nicht, oder es fuehrt sie als
+  // fehlend. Nur das kostet Kontingent, denn was das Verzeichnis ungemarkt
+  // fuehrt, zaehlt `geteilterStand` bereits mit; beides zu zaehlen hiesse,
+  // dieselbe Datei doppelt zu berechnen.
+  const geteiltUnbekannt = geteiltListe.filter(g => !geteiltVorrat[g.url] || geteiltVorrat[g.url].fehlt)
+  const geteiltNeuBytes = geteiltUnbekannt.reduce((s, g) => s + (Number(g.bytes) || 0), 0)
+  // Die zweite Liste, "liegt nicht im Speicher", entsteht erst weiter unten.
+  // Sie kostet einen Speicherzugriff je Datei, und den soll niemand bezahlen,
+  // dessen Zusage gleich am Kontingent oder am Tor scheitert.
 
   // DAS KONTINGENT WIRD VOR DEM HOLEN GEPRUEFT, NICHT DANACH.
   //
@@ -292,12 +332,29 @@ export async function karteZusagen({ release, variant, karte, name, urls, bytes,
   let geteiltGeholt = 0, geteiltFehlt = 0
   if (geteiltListe.length) {
     const vorrat = liesGeteilt()
-    if (geteiltNeu.length) {
-      const erg = await offlineHalten(geteiltNeu.map(g => g.url))
+    // Zu holen heisst: liegt nicht im Speicher. Obermenge von `geteiltUnbekannt`,
+    // denn ein Eintrag ohne Datei ist genau der Zustand, den `geteilteLuecken`
+    // aufraeumt; er entsteht aber auch mitten in einer Sitzung, wenn der Browser
+    // unter Speicherdruck den ganzen Ursprung raeumt.
+    const geteiltZuHolen = []
+    for (const g of geteiltListe) {
+      if (!(await offlineGehalten([g.url]))) geteiltZuHolen.push(g)
+    }
+    if (geteiltZuHolen.length) {
+      const erg = await offlineHalten(geteiltZuHolen.map(g => g.url))
       geteiltFehlt = Number(erg.fehlgeschlagen) || 0
-      for (const g of geteiltNeu) {
-        if (!(await alleImSpeicher([g.url]))) continue
-        vorrat[g.url] = { bytes: Number(g.bytes) || 0, karten: [meineId] }
+      for (const g of geteiltZuHolen) {
+        // `offlineGehalten` und nicht `alleImSpeicher`: Letzteres nickt auch
+        // frische Wegwerfware ohne Dauerstempel ab, und die raeumt der naechste
+        // `raumSchaffen` weg. Dann stuende wieder ein Eintrag im Verzeichnis
+        // ohne Datei dahinter, also genau der Zustand, den dieser Umbau
+        // beseitigt.
+        if (!(await offlineGehalten([g.url]))) continue
+        // Die Besitzerliste erhalten. `geteiltZuHolen` enthaelt auch Dateien,
+        // die das Verzeichnis bereits fuehrt, deren Datei aber fehlte; sie
+        // pauschal auf `[meineId]` zu setzen naehme allen anderen Karten ihren
+        // Verweis, und die erste geloeste Karte risse ihnen die Symbole weg.
+        vorrat[g.url] = { bytes: Number(g.bytes) || 0, karten: vorrat[g.url]?.karten || [] }
         geteiltGeholt++
       }
     }
@@ -1150,12 +1207,23 @@ export function verfallsstand() {
  * unvollstaendig. Eine halb gezeichnete Karte ist schlechter als eine
  * ehrliche Ansage, denn sie sieht aus wie ein Fehler und nicht wie eine
  * Auskunft.
+ *
+ * DIE GETEILTEN DATEIEN ZAEHLEN MIT, und ohne sie war diese Pruefung wertlos.
+ * Bis zum 2026-09-01 sah sie nur `urls`, also die eigenen Dateien der Karte.
+ * Die Szenenwache fragt daneben `alleImSpeicher(streamAdressenVon(szene))` und
+ * damit ueber ALLE Adressen der Szene. Gemessen im Pruefstand V14: die Pruefung
+ * meldete zwei von zwei Dateien und damit "vollstaendig", die Wache fand drei
+ * von fuenf fehlend und lehnte ab. Zwei Stellen, zwei Antworten, und der Kunde
+ * sah nur die Ablehnung, ohne je eine Meldung ueber den fehlenden Vorrat
+ * bekommen zu haben.
  */
 export async function pruefeVorrat() {
   const liste = alleKarten()
+  const vorrat = liesGeteilt()
   const fehlend = []
   for (const e of liste) {
-    if (await offlineGehalten(e.urls || [])) continue
+    const id = karteId(e.release, e.variant, e.karte)
+    if (await offlineGehalten([...(e.urls || []), ...geteilteVonKarte(id, vorrat)])) continue
     fehlend.push(e)
   }
   return {
@@ -1250,20 +1318,127 @@ export async function verwaisteLoesen() {
 }
 
 /**
+ * Eintraege des Gemeinschaftsvorrats vermerken, deren Datei nicht mehr liegt.
+ *
+ * WARUM ES DIESE FUNKTION BRAUCHT
+ *
+ * `verwaisteLoesen` deckt die eine Richtung ab: eine gehaltene Datei, zu der
+ * keine Zusage mehr gehoert. Die Gegenrichtung fing bis zum 2026-09-01 niemand
+ * ab. Der Gemeinschaftsvorrat hat zwei Haelften, die getrennt leben: das
+ * Verzeichnis ist eine Einstellung der Welt, der Inhalt liegt im Speicher des
+ * Browsers. Faellt der Inhalt weg, bleibt das Verzeichnis stehen und
+ * behauptet weiter, die Datei sei da.
+ *
+ * Das machte die Luecke unheilbar, denn `karteZusagen` ueberspringt, was das
+ * Verzeichnis fuehrt. GEMESSEN im Pruefstand V14: eine zugesagte Karte brauchte
+ * fuenf Adressen, zwei lagen im Speicher, die drei geteilten fehlten, und die
+ * Szene wurde ohne Verbindung abgelehnt.
+ *
+ * `clearStore` ist nur der schnellste Weg in diesen Zustand. Der Kunde kommt
+ * ohne jedes Zutun hin: Chrome raeumt unter Speicherdruck einen ganzen
+ * Ursprung, nicht einzelne Eintraege.
+ *
+ * VERMERKT, NICHT AUSGETRAGEN. Der Eintrag traegt die Besitzerliste, also
+ * welche Karten diese Datei brauchen. Wer ihn austraegt, verliert genau die
+ * Auskunft, die `vorratHeilen` braucht, um sie nachzuholen. Der Vermerk `fehlt`
+ * nimmt die Datei aus der Kontingentrechnung und laesst die Zugehoerigkeit
+ * stehen; das Holen loescht ihn, indem es den Eintrag neu schreibt.
+ *
+ * @returns {Promise<{geprueft:number, fehlend:number, bytes:number}>}
+ */
+export async function geteilteLuecken() {
+  const leer = { geprueft: 0, fehlend: 0, bytes: 0 }
+
+  // DAS SICHERHEITSNETZ IST PFLICHT.
+  //
+  // Bei ausgefallenem Speicher gibt `openStore` null zurueck, und dann
+  // antwortet `offlineGehalten` auf JEDE Adresse mit falsch. Ohne diese Abfrage
+  // saehe ein einziger Speicherausfall aus wie ein vollstaendig geraeumter
+  // Vorrat, und der Kunde bekaeme fuer jede seiner Karten eine Meldung, die
+  // nicht stimmt. Der Ausfall wird in `stream-fetch.mjs` festgehalten, sobald
+  // ein Zugriff scheitert; `beimWeltstart` fasst den Speicher unmittelbar davor
+  // ueber `verwaisteLoesen` an, der Stand ist also frisch.
+  if (speicherAusfallStand()) return { ...leer, uebersprungen: "speicher-aus" }
+
+  const vorrat = liesGeteilt()
+  const eintraege = Object.entries(vorrat).filter(([, e]) => e && typeof e === "object")
+  if (!eintraege.length) return leer
+
+  // EIN Lauf ueber den Speicher, nicht einer je Datei. `offlineGehalten` oeffnet
+  // den Speicher bei jedem Aufruf neu; bei einem Verzeichnis mit dreissig
+  // Dateien waeren das dreissig Oeffnungen im Startpfad der Welt. `verwaisteLoesen`
+  // benutzt dieselbe Quelle, und dass beide Abgleiche denselben Stand lesen,
+  // ist mehr als eine Ersparnis: sonst koennten sie sich widersprechen.
+  const gehalten = new Set((await gehalteneAdressen()).map(g => adresseNormal(g.url)))
+
+  let fehlend = 0, bytes = 0, geaendert = 0
+  for (const [url, e] of eintraege) {
+    if (gehalten.has(adresseNormal(url))) {
+      // Ein Vermerk, der sich erledigt hat. Er muss auch dann verschwinden,
+      // wenn in diesem Lauf sonst nichts fehlt, sonst bliebe die Datei
+      // dauerhaft aus der Kontingentrechnung heraus.
+      if (e.fehlt) { delete e.fehlt; geaendert++ }
+      continue
+    }
+    if (!e.fehlt) { e.fehlt = true; geaendert++ }
+    fehlend++
+    bytes += Number(e.bytes) || 0
+  }
+  if (geaendert) {
+    await schreibGeteilt(vorrat)
+    // Nur bei einer Aenderung. Ein Kunde, der die Meldung wegklickt und nicht
+    // heilt, bekaeme diese Zeile sonst bei jedem Weltstart, und eine Zeile, die
+    // immer dasteht, liest nach der dritten Woche niemand mehr.
+    console.log(`Beneos Stream | Gemeinschaftsvorrat: ${fehlend} von ${eintraege.length} `
+      + `Datei(en) nicht mehr im Speicher, ${Math.round(bytes / 1048576)} MB, als fehlend vermerkt`)
+  }
+  return { geprueft: eintraege.length, fehlend, bytes }
+}
+
+/**
  * Die fehlenden Karten neu holen.
  *
  * Getrennt von der Pruefung, weil das Holen Zeit und Leitung kostet und der
  * Kunde es entscheiden soll. Wer offline ist, bekommt hier nichts, und das
  * ist richtig: dann ist ohnehin nichts zu holen.
+ *
+ * Die geteilten Dateien werden mitgeholt. Ohne sie heilte der Lauf die Karte
+ * nur zur Haelfte: sie zeichnete weiterhin nicht, und die naechste Pruefung
+ * meldete sie erneut. Der Vermerk `fehlt` faellt dabei, aber nur fuer die
+ * Dateien, die danach wirklich liegen.
  */
 export async function vorratHeilen(fehlend, onProgress) {
-  const summe = { geholt: 0, fehlgeschlagen: 0, karten: 0 }
+  const summe = { geholt: 0, fehlgeschlagen: 0, karten: 0, geteiltGeholt: 0 }
+  const vorrat = liesGeteilt()
+  let geaendert = 0
   for (const e of fehlend || []) {
+    const id = karteId(e.release, e.variant, e.karte)
     const r = await offlineHalten(e.urls || [], onProgress)
     summe.geholt += r.geholt + r.gehalten
     summe.fehlgeschlagen += r.fehlgeschlagen
-    if (!r.fehlgeschlagen) summe.karten++
+
+    let geteiltFehlt = 0
+    for (const url of geteilteVonKarte(id, vorrat)) {
+      let liegt = await offlineGehalten([url])
+      if (!liegt) {
+        await offlineHalten([url], onProgress)
+        // Nach dem Holen noch einmal fragen statt dem Rueckgabewert zu
+        // glauben: der Deckel kann zugeschlagen haben, und ein Eintrag ohne
+        // Datei ist genau die Luege, die dieser Umbau beseitigt.
+        liegt = await offlineGehalten([url])
+        if (liegt) summe.geteiltGeholt++
+      }
+      if (!liegt) { geteiltFehlt++; continue }
+      if (vorrat[url].fehlt) { delete vorrat[url].fehlt; geaendert++ }
+    }
+    summe.fehlgeschlagen += geteiltFehlt
+    // Vollstaendig heisst beides: die eigenen Dateien UND die geteilten. Eine
+    // Karte, die nur ihre eigenen bekommen hat, wird von der naechsten Pruefung
+    // wieder als fehlend gemeldet, und sie hier zu zaehlen waere eine Zusage,
+    // die der naechste Weltstart widerruft.
+    if (!r.fehlgeschlagen && !geteiltFehlt) summe.karten++
   }
+  if (geaendert) await schreibGeteilt(vorrat)
   return summe
 }
 
@@ -1286,11 +1461,16 @@ export async function beimWeltstart({ berechtigt }) {
   // liegenbleiben. Stuende er weiter unten, faende er sie nie.
   const verwaist = await verwaisteLoesen()
 
+  // Danach der Abgleich in der Gegenrichtung, und in dieser Reihenfolge: der
+  // Vermerk verlaesst sich darauf, dass der Speicher gerade angefasst wurde
+  // und ein Ausfall deshalb bekannt ist. Siehe `geteilteLuecken`.
+  const luecken = await geteilteLuecken()
+
   if (!alleKarten().length) {
     // Nichts zugesagt, nichts zu pruefen. Die Uhr laeuft trotzdem mit, damit
     // sie nicht bei der ersten Zusage schon abgelaufen ist.
     if (berechtigt) await berechtigungGesehen()
-    return { uebersprungen: "nichts-zugesagt", verwaist }
+    return { uebersprungen: "nichts-zugesagt", verwaist, luecken }
   }
 
   if (berechtigt) await berechtigungGesehen()
@@ -1310,7 +1490,7 @@ export async function beimWeltstart({ berechtigt }) {
     // Nur abbrechen, wenn wirklich etwas gefallen ist. Wer ausschliesslich
     // Gekauftes haelt, verliert nichts und braucht trotzdem seine Pruefung;
     // ohne diese Bedingung bekaeme er sie nach Fristablauf nie wieder.
-    if (v.gefallen > 0) return { verfallen: v.gefallen, behalten: v.behalten, frist }
+    if (v.gefallen > 0) return { verfallen: v.gefallen, behalten: v.behalten, frist, verwaist, luecken }
   }
 
   const stand = await pruefeVorrat()
@@ -1319,7 +1499,7 @@ export async function beimWeltstart({ berechtigt }) {
     + `vollstaendig, ${Math.round(vorrat.bytes / 1048576)} MB zugesagt, `
     + (frist.nie ? "Frist laeuft noch nicht" : `noch ${frist.tageOffen} Tage`))
 
-  return { stand, frist, vorrat, verwaist }
+  return { stand, frist, vorrat, verwaist, luecken }
 }
 
 // ---- Was der Kunde davon sieht ----------------------------------------
