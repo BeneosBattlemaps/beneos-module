@@ -1130,6 +1130,8 @@
   "BENEOS.Cloud.Footer.AccountSettings": "계정",
   "BENEOS.Cloud.Footer.AccountSettingsTooltip": "Beneos Cloud 계정 설정을 새 탭에서 열기",
   "BENEOS.Cloud.Card.New": "신규",
+  "BENEOS.Cloud.Card.LoyaltyLockedBadge": "로열티",
+  "BENEOS.Cloud.Card.LoyaltyLockedTooltip": "해당 월에 활동한 후원자를 위한 월간 보상입니다. 계정에 해당 충성 개월이 없습니다.",
   "BENEOS.Cloud.Card.Update": "업데이트",
   "BENEOS.Cloud.Card.MoreTags": "+{count}개 더",
   "BENEOS.Cloud.Card.MoreTagsTooltip": "더 많은 태그가 숨겨져 있습니다, 서랍을 열어 전체를 확인하세요.",

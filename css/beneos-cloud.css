@@ -1970,6 +1970,17 @@
   font-weight: 700;
   letter-spacing: 0.06em;
 }
+/* Monatsbelohnung ohne Anspruch. Bernstein, weil es weder ein Fehler ist noch
+   ein Angebot: die Kreatur gehoert jemand anderem, und der Klick erklaert das.
+   Bewusst NICHT das Rot der Patreon-Werbung, die auf gesperrten Kacheln sitzt;
+   dort ist die Kachel tot, hier bleibt sie anklickbar. */
+.beneos-cloud-app .bc-status-chip.bc-status-loyalty {
+  background: rgba(196, 138, 22, 0.20);
+  color: #d9a441;
+  border: 1px solid rgba(196, 138, 22, 0.45);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
 /* Join-Patreon CTA on locked cards. Patreon brand red so the button
    reads as an external paywall, not as a regular install action. */
 .beneos-cloud-app .bc-card-button-join-patron {
@@ -2050,12 +2061,20 @@
    left (right edge flush against the thumb's left edge), so it never covers
    the spell/loot icon. The card has overflow:visible, so it can sit in the
    gutter beside the centered icon. */
-.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-thumb .bc-thumb-chip.bc-status-free {
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-thumb .bc-thumb-chip.bc-status-free,
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-thumb .bc-thumb-chip.bc-status-loyalty {
   top: 6px;
   right: 100%;
   left: auto;
   bottom: auto;
   margin-right: 4px;
+}
+/* Beide zugleich kann es nicht geben: eine Monatsbelohnung ist nie frei. Sollte
+   der Katalog das je behaupten, sitzt das zweite Abzeichen darunter statt
+   uebereinander. */
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-thumb .bc-thumb-chip.bc-status-free
+  ~ .bc-thumb-chip.bc-status-loyalty {
+  top: 30px;
 }
 
 /* Lazy-loaded thumbnails (data-bc-lazy is removed by the shared observer the

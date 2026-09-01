@@ -1130,6 +1130,8 @@
   "BENEOS.Cloud.Footer.AccountSettings": "Konto",
   "BENEOS.Cloud.Footer.AccountSettingsTooltip": "Beneos Cloud-Kontoeinstellungen in einem neuen Tab öffnen",
   "BENEOS.Cloud.Card.New": "Neu",
+  "BENEOS.Cloud.Card.LoyaltyLockedBadge": "TREUE",
+  "BENEOS.Cloud.Card.LoyaltyLockedTooltip": "Monatsbelohnung fuer Patrons, die in jenem Monat aktiv waren. Deinem Konto fehlen diese Treuemonate.",
   "BENEOS.Cloud.Card.Update": "Aktualisieren",
   "BENEOS.Cloud.Card.MoreTags": "+{count} weitere",
   "BENEOS.Cloud.Card.MoreTagsTooltip": "Weitere Tags ausgeblendet, öffne die Schublade, um alle zu sehen.",

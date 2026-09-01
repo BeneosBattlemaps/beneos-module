@@ -1130,6 +1130,8 @@
   "BENEOS.Cloud.Footer.AccountSettings": "Compte",
   "BENEOS.Cloud.Footer.AccountSettingsTooltip": "Obre la configuració del compte Beneos Cloud en una pestanya nova",
   "BENEOS.Cloud.Card.New": "Nou",
+  "BENEOS.Cloud.Card.LoyaltyLockedBadge": "FIDELITAT",
+  "BENEOS.Cloud.Card.LoyaltyLockedTooltip": "Recompensa mensual per a mecenes actius aquell mes. El teu compte no te aquests mesos de fidelitat.",
   "BENEOS.Cloud.Card.Update": "Actualitza",
   "BENEOS.Cloud.Card.MoreTags": "+{count} més",
   "BENEOS.Cloud.Card.MoreTagsTooltip": "Hi ha més etiquetes amagades, obre el calaix per veure-les totes.",

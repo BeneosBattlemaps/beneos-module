@@ -1130,6 +1130,8 @@
   "BENEOS.Cloud.Footer.AccountSettings": "アカウント",
   "BENEOS.Cloud.Footer.AccountSettingsTooltip": "Beneos Cloud のアカウント設定を新しいタブで開く",
   "BENEOS.Cloud.Card.New": "新着",
+  "BENEOS.Cloud.Card.LoyaltyLockedBadge": "ロイヤルティ",
+  "BENEOS.Cloud.Card.LoyaltyLockedTooltip": "その月に支援していたパトロン向けの月次報酬です。あなたのアカウントにはその継続月がありません。",
   "BENEOS.Cloud.Card.Update": "更新",
   "BENEOS.Cloud.Card.MoreTags": "+{count} 件",
   "BENEOS.Cloud.Card.MoreTagsTooltip": "他のタグは非表示です, ドロワーを開いて全てを表示。",

@@ -1130,6 +1130,8 @@
   "BENEOS.Cloud.Footer.AccountSettings": "帳號",
   "BENEOS.Cloud.Footer.AccountSettingsTooltip": "在新分頁中開啟 Beneos Cloud 帳號設定",
   "BENEOS.Cloud.Card.New": "新增",
+  "BENEOS.Cloud.Card.LoyaltyLockedBadge": "忠誠獎勵",
+  "BENEOS.Cloud.Card.LoyaltyLockedTooltip": "給當月活躍贊助者的每月獎勵。你的帳號沒有那些忠誠月份。",
   "BENEOS.Cloud.Card.Update": "更新",
   "BENEOS.Cloud.Card.MoreTags": "+{count} 個",
   "BENEOS.Cloud.Card.MoreTagsTooltip": "其他標籤已隱藏, 開啟抽屜以查看全部。",

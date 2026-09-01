@@ -267,6 +267,11 @@
             {{#if card.isFree}}
               <span class="bc-status-chip bc-status-free bc-thumb-chip" data-tooltip="{{localize 'BENEOS.Patreon.FreeSection.Description'}}">{{localize "BENEOS.Patreon.FreeBadge"}}</span>
             {{/if}}
+            {{!-- Monatsbelohnung, fuer die diesem Konto die Treuemonate fehlen.
+                  Die Kachel bleibt anklickbar, der Klick erklaert weiter. --}}
+            {{#if card.istTreugeschenkOhneAnspruch}}
+              <span class="bc-status-chip bc-status-loyalty bc-thumb-chip" data-tooltip="{{localize 'BENEOS.Cloud.Card.LoyaltyLockedTooltip'}}">{{localize "BENEOS.Cloud.Card.LoyaltyLockedBadge"}}</span>
+            {{/if}}
             {{#if card.beneosChip}}
               <span class="bc-status-chip bc-status-beneos bc-thumb-chip" data-tooltip="Beneos Original (non-SRD)">{{card.beneosChip}}</span>
             {{/if}}

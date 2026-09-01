@@ -1130,6 +1130,8 @@
   "BENEOS.Cloud.Footer.AccountSettings": "Účet",
   "BENEOS.Cloud.Footer.AccountSettingsTooltip": "Otevři nastavení účtu Beneos Cloud v nové záložce",
   "BENEOS.Cloud.Card.New": "Nový",
+  "BENEOS.Cloud.Card.LoyaltyLockedBadge": "VERNOST",
+  "BENEOS.Cloud.Card.LoyaltyLockedTooltip": "Mesicni odmena pro patrony aktivni v danem mesici. Tvuj ucet tyto mesice vernosti nema.",
   "BENEOS.Cloud.Card.Update": "Aktualizovat",
   "BENEOS.Cloud.Card.MoreTags": "+{count} dalších",
   "BENEOS.Cloud.Card.MoreTagsTooltip": "Další tagy skryté, otevři šuplík pro zobrazení všech.",

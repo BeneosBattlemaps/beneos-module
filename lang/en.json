@@ -1130,6 +1130,8 @@
   "BENEOS.Cloud.Footer.AccountSettings": "Account",
   "BENEOS.Cloud.Footer.AccountSettingsTooltip": "Open Beneos Cloud account settings in a new tab",
   "BENEOS.Cloud.Card.New": "New",
+  "BENEOS.Cloud.Card.LoyaltyLockedBadge": "LOYALTY",
+  "BENEOS.Cloud.Card.LoyaltyLockedTooltip": "Monthly reward for patrons who were active that month. Your account does not have those loyalty months.",
   "BENEOS.Cloud.Card.Update": "Update",
   "BENEOS.Cloud.Card.MoreTags": "+{count} more",
   "BENEOS.Cloud.Card.MoreTagsTooltip": "More tags hidden - open the drawer to see the full set.",

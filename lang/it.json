@@ -1130,6 +1130,8 @@
   "BENEOS.Cloud.Footer.AccountSettings": "Account",
   "BENEOS.Cloud.Footer.AccountSettingsTooltip": "Apri le impostazioni dell'account Beneos Cloud in una nuova scheda",
   "BENEOS.Cloud.Card.New": "Nuovo",
+  "BENEOS.Cloud.Card.LoyaltyLockedBadge": "FEDELTA",
+  "BENEOS.Cloud.Card.LoyaltyLockedTooltip": "Ricompensa mensile per i sostenitori attivi in quel mese. Il tuo account non ha quei mesi di fedelta.",
   "BENEOS.Cloud.Card.Update": "Aggiorna",
   "BENEOS.Cloud.Card.MoreTags": "+{count} altri",
   "BENEOS.Cloud.Card.MoreTagsTooltip": "Altri tag nascosti, apri il pannello per vedere tutto.",

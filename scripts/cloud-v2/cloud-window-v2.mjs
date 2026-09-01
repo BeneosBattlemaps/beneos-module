@@ -1633,6 +1633,27 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // that would fail silently. Only tokens/items/spells track a local install;
     // battlemaps have their own release-locked path.
     const updateLocked = assetType !== "bmap" && isInstalled && !!data.isUpdate && !hasCampaign && !isFree
+    // TREUGESCHENK OHNE ANSPRUCH, UND WARUM DAS KEIN `isLocked` IST.
+    //
+    // Eine Monatsbelohnung gehoert nur denen, die in jenem Monat gezahlt haben.
+    // Ein heutiger Patron hat Kampagnenzugang, `isCloudAvailable` ist also
+    // wahr, und die Kachel sah bis zum 2026-09-01 aus wie jede andere. GEMESSEN
+    // vom 26. bis 30.08.2026: sieben Kunden klickten 78 Mal auf solche
+    // Kreaturen, einer davon 24 Mal in vierzig Minuten. Die Absage war jedes
+    // Mal richtig und jedes Mal eine Ueberraschung.
+    //
+    // Der Zustand ist vor dem Klick bekannt, `getTokenAccessState` liefert ihn
+    // seit dem 24.08.2026; benutzt hat ihn bisher nur der Installierer.
+    //
+    // NICHT `isLocked`: das nimmt der Kachel den Ziehgriff und ersetzt den
+    // Knopf durch eine Werbung. Hier soll der Kunde weiterklicken duerfen, denn
+    // der Klick erklaert ihm, woran es liegt. Gesperrt waere er still
+    // ausgeschlossen, und niemand sagt ihm, wie er drankommt.
+    const istTreugeschenkOhneAnspruch = assetType === "token" && !isInstalled
+      && (() => {
+        try { return game.beneos?.cloud?.getTokenAccessState?.(data.key) === "loyalty" }
+        catch (_) { return false }
+      })()
     // Pre-compute the three state flags that feed both the card-object
     // and the isOutOfSync catch-all detection. Without these as named
     // consts, the catch-all condition has to re-evaluate the same
@@ -2117,6 +2138,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       isFree,
       isLocked,
       updateLocked,
+      istTreugeschenkOhneAnspruch,
       dragMode,
       dragType,
       documentId,
