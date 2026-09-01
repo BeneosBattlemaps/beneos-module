@@ -864,12 +864,56 @@ export class BeneosAnalytics {
       const now = Date.now()
       if (now - (this._errorThrottle.get(fp) || 0) < ERROR_THROTTLE_MS) return
       this._errorThrottle.set(fp, now)
+      const docs = Array.isArray(result.docFailures) ? result.docFailures : []
       const categories = {}
       for (const f of failures) {
         const c = String(f?.category || "unknown")
         categories[c] = (categories[c] || 0) + 1
       }
+      // Dokumentfehler zaehlen unter ihrem eigenen Schluessel mit.
+      //
+      // Gemessen am 2026-09-01 ueber 21 Tage: von 398 install_error tragen 47
+      // in 26 Welten NUR Dokumentfehler, also assets_failed 0 und keinen
+      // toedlichen Fehler. Fuer die kam bisher `categories: {}` an, weil die
+      // Schleife oben ausschliesslich ueber assetFailures laeuft. Ein leerer
+      // Beutel ist von "wir wissen es nicht" nicht unterscheidbar.
+      //
+      // Der Praefix `doc:` haelt die beiden Welten auseinander: eine
+      // Zusammenfassung, die `notfound` zaehlt, meint eine Datei, keine
+      // Dokumentzeile, und beide in denselben Topf zu werfen macht die
+      // Fehlerquote unlesbar. Wo ein Dokumentfehler eine eigene Klassifikation
+      // traegt (der Zweig, der das Dokumentbuendel gar nicht erst laden
+      // konnte), wird sie uebernommen statt verworfen.
+      for (const d of docs) {
+        const c = `doc:${String(d?.category || d?.type || "unknown")}`
+        categories[c] = (categories[c] || 0) + 1
+      }
+
+      // Die Stichprobe kommt aus den Assets, wenn es welche gibt: eine
+      // Uebertragung, die die Bytes nie geliefert hat, erklaert ein Dokument,
+      // das nie erschien, und umgekehrt gilt das nicht.
+      //
+      // Ohne Assetfehler war `sample_target` und `sample_message` bisher immer
+      // NULL, in allen 47 gemessenen Faellen. Der Bericht am Bildschirm des
+      // Kunden nennt Art, Kennung und Grund; die Telemetrie warf genau das weg
+      // und lieferte nur eine Anzahl. Damit war jeder reine Dokumentfehler
+      // nicht nachverfolgbar, auch wenn er 53 Dokumente betraf.
       const sample = failures[0] || null
+      const docSample = sample ? null : (docs[0] || null)
+      const sampleTarget = sample
+        ? String(sample.target || "")
+        : (docSample ? `${docSample.type || "doc"}/${docSample.name || docSample.id || "?"}` : "")
+      // Der Kollisionszweig des Installers baut seine Meldung mit dem Namen der
+      // Szene, die BEREITS in der Welt liegt: `_id already used by a different
+      // scene "<Name>"`. Dieser Name gehoert dem Kunden, nicht uns, und der
+      // Bericht am Bildschirm ist der richtige Ort dafuer, die Telemetrie nicht.
+      // sanitize() faengt ihn nicht, es maskiert nur Zeichenketten ab 32 Stellen.
+      // Deshalb faellt hier jeder Text in Anfuehrungszeichen weg. Der Rest der
+      // Meldung, also der Grund, bleibt lesbar.
+      const sampleMessage = sample
+        ? String(sample.lastError || "")
+        : (docSample ? String(docSample.error || "").replace(/"[^"]*"/g, '"<name>"') : "")
+
       this.track("install_error", {
         asset_id: result.packageId ? String(result.packageId).slice(0, 32) : null,
         asset_type: "battlemap",
@@ -879,8 +923,8 @@ export class BeneosAnalytics {
         assets_failed: failures.length,
         assets_ok: Number(result.totals?.ok) || 0,
         docs_failed: docFailed,
-        sample_target: sample ? this.sanitize(String(sample.target || ""), 96) : null,
-        sample_message: sample ? this.sanitize(String(sample.lastError || ""), 200) : null,
+        sample_target: sampleTarget ? this.sanitize(sampleTarget, 96) : null,
+        sample_message: sampleMessage ? this.sanitize(sampleMessage, 200) : null,
         system: this.sanitize(String(result.env?.system || ""), 32),
         foundry: this.sanitize(String(result.env?.foundry || ""), 16),
         forge: result.env?.forge === "yes"
