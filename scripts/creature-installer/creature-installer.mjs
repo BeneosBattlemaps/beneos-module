@@ -331,11 +331,12 @@ export class BeneosCreatureInstaller {
     // thumbnail; an installed premium token can use its real local art.
     let img = null;
     let imgFallback = null;
+    let imgFallback2 = null;
     if (premium) {
       const installedArt = installed ? (actor.prototypeToken?.texture?.src || actor.img) : null;
       const embedded = entry.thumbnailData || null;   // offline-safe base64 preview
       const cdn = entry.thumbnail ? TOKEN_THUMB_BASE + entry.thumbnail : null;
-      img = (isPatron && installedArt) || embedded || cdn || installedArt || null;
+      img = (isPatron && installedArt) || cdn || embedded || installedArt || null;
       // DER RUECKFALL, WEIL DIE KETTE OBEN NUR AUF LEER PRUEFT, NICHT AUF TOT.
       //
       // `installedArt` gewinnt, sobald es irgendeinen String liefert. Ob die
@@ -348,10 +349,19 @@ export class BeneosCreatureInstaller {
       // "BM: Bloody Snow Field" ohne Bild, daneben andere mit. Alle galten als
       // installiert.
       //
-      // Die eingebettete Vorschau steht vorn, weil sie ohne Verbindung traegt.
-      // Sie ist nur dann ein Rueckfall, wenn sie nicht ohnehin schon gewaehlt
-      // wurde; dasselbe gilt fuer die Miniatur.
-      imgFallback = [embedded, cdn].find(u => u && u !== img) || null;
+      // Die Miniatur steht vor der eingebetteten Vorschau, weil sie schaerfer
+      // ist: gemessen am 2026-09-01 traegt `thumbnailData` 64 Pixel Kanten-
+      // laenge, die Scheibe ist groesser. Ohne Verbindung faellt die Miniatur
+      // aus, und dann traegt die eingebettete Vorschau weiter, deshalb bleiben
+      // beide in der Kette statt nur einer.
+      //
+      // Zwei Rueckfaelle, nicht einer: gewinnt oben `installedArt`, sind sowohl
+      // Miniatur als auch Vorschau noch ungenutzt. Mit nur einem Rueckfall
+      // endet der Fall "lokale Datei tot UND keine Verbindung" im Platzhalter,
+      // obwohl `embedded` genau dafuer da ist.
+      const rueckfaelle = [cdn, embedded].filter(u => u && u !== img);
+      imgFallback = rueckfaelle[0] || null;
+      imgFallback2 = rueckfaelle[1] || null;
     } else {
       img = entry.art || (actor?.prototypeToken?.texture?.src) || actor?.img || null;
     }
@@ -364,6 +374,7 @@ export class BeneosCreatureInstaller {
       ...entry,
       img,
       imgFallback,
+      imgFallback2,
       isVideo,
       shape: entry.shape || (premium ? "square" : "round"),
       installed,
