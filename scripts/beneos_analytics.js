@@ -866,9 +866,33 @@ export class BeneosAnalytics {
       this._errorThrottle.set(fp, now)
       const docs = Array.isArray(result.docFailures) ? result.docFailures : []
       const categories = {}
+      // Endungen der gescheiterten Dateien, gezaehlt.
+      //
+      // Der Grund ist ein Fall, der sich mit einer einzelnen Stichprobe nicht
+      // klaeren liess. Gemessen am 2026-09-01 ueber 60 Tage: 16 Laeufe in 4 von
+      // 82 Welten meldeten 9 bis 12 fehlende Dateien nach dem Reparaturlauf,
+      // und `sample_target` nannte jedes Mal eines der beiden Kartensymbole,
+      // `icon_handout.svg` oder `icon_battlemap.svg`. Im Ordner liegen 12 SVG
+      // neben 8 WebP; die Zahlen passen also auf "alle SVG scheitern, sonst
+      // nichts", beweisen es aber nicht, weil nur EIN Ziel mitgeschickt wird.
+      //
+      // Der Quelltext des Installers nennt als bekannte Ursachenklasse
+      // Fremdmodule, die beim Hochladen umwandeln, und Hoster, die .svg nicht
+      // als Bild ausliefern (siehe INSTALL_ERROR.VERIFY). Beide wuerden genau
+      // nach Endung treffen. Eine Endungszaehlung kostet ein paar Byte und
+      // beantwortet die Frage beim naechsten Vorfall, statt sie offen zu lassen.
+      //
+      // Nur die Endung, nie der Pfad: die Endung ist unsere, der Pfad kann in
+      // die Welt des Kunden zeigen.
+      const endungen = {}
       for (const f of failures) {
         const c = String(f?.category || "unknown")
         categories[c] = (categories[c] || 0) + 1
+        const t = String(f?.target || "")
+        const punkt = t.lastIndexOf(".")
+        const e = punkt > 0 ? t.slice(punkt + 1).toLowerCase() : ""
+        const key = /^[a-z0-9]{1,8}$/.test(e) ? e : "(ohne)"
+        endungen[key] = (endungen[key] || 0) + 1
       }
       // Dokumentfehler zaehlen unter ihrem eigenen Schluessel mit.
       //
@@ -920,6 +944,7 @@ export class BeneosAnalytics {
         fatal_category: result.fatalCategory ? this.sanitize(String(result.fatalCategory), 32) : null,
         fatal_message: result.fatalError ? this.sanitize(String(result.fatalError), 200) : null,
         categories,
+        failed_ext: failures.length ? endungen : null,
         assets_failed: failures.length,
         assets_ok: Number(result.totals?.ok) || 0,
         docs_failed: docFailed,
