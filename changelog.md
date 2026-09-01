@@ -4,11 +4,26 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.4.8 # 2026-09-01
+
+**Fixes**
+- Fixed: A world could lock itself out of its own creatures. When the storage location was briefly unreachable, the module read that as data loss and removed the creature documents. Afterwards every entry still reported as installed, so no card offered a way to put them back. Reachability is now measured twice, and a failure that hits everything at once is treated as an outage: nothing is removed. A world already stuck in that state can be freed by running `game.beneos.repairRegistry()` in the console, which touches nothing on the network.
+- Fixed: On a self-hosted server behind a reverse proxy, an install could stop with "Some files could not be installed" and name no cause at all. The server was rejecting the upload because the file was too large for it (HTTP 413) and the module never got to see that answer. The report now names the cause and the setting to change, the install stops before the download instead of after it, and it no longer offers a retry that cannot succeed. If this happens to you, the setting is `client_max_body_size` in nginx or Nginx Proxy Manager.
+- Fixed: A creature in a scene's creature drawer could show an empty dark disc instead of its artwork when the local token art failed to load. An animated token that failed had no fallback at all and left the disc blank.
+- Fixed: When the drawer did fall back to another image, it used the embedded preview at 64 pixels even though a 400-pixel thumbnail was sitting right next to it, so the picture looked blurry on a larger disc. The sharper source is used first now, and the embedded preview stays as the fallback that works without a connection.
+
+**Improved**
+- Improved: When an install stops before it starts, the message now describes the cause it actually found. It used to say "check write permissions or hosting policy" for all eight causes it can tell apart, which pointed in the wrong direction for seven of them. A full disk now says the disk is full, a sign-in problem says so, and a size limit names the setting.
+- Improved: The two place buttons in a scene's creature drawer are hidden when there is nothing for them to place, instead of sitting there greyed out and unresponsive. Each button is judged on its own: the golden one still appears when your Beneos creatures carry their own positions, even with no free creature on the map. The install button always stays, because installing does not depend on positions.
+
 ### 14.4.7 # 2026-08-24
 
 **Improved**
 - Improved: A Beneos creature that replaces a free one on a map now keeps that creature's name, nameplate setting and disposition.
-- Improved: When an install cannot finish, the report now names the one cause it
+- Improved: When an install cannot finish, the report now names the one cause it can be certain of: a file that uploaded successfully but that your own server will not hand back. That case used to be filed as "unknown", so the report said nothing about the one failure whose cause is known.
+
+**Changed**
+- Changed: The module now tells Beneos which part of the interface a download came from: a map install, a scene's creature drawer, or a search you ran yourself. Everything from a single click is grouped as one action, so installing a whole backlog on day one is no longer counted the same way as picking creatures one at a time over weeks. No new information about you is collected, and where the surface is not known the module says so rather than guessing.
 
 **Fixes**
 - Fixed: A creature placed that way dropped out of later updates. Re-installing it refreshed every other token but skipped the renamed one, leaving it with the old token and the old statblock. The module now tells its own renaming apart from yours: it refreshes the token and leaves the name alone, while a creature you renamed yourself stays untouched as before.
