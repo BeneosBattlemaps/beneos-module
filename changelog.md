@@ -7,20 +7,20 @@ All notable changes to this module will be documented in this file.
 ### 14.4.8 # 2026-09-01
 
 **Fixes**
-- Fixed: An install could stop with "Package not found" for a release that is on the server, entitled, and perfectly fine. When the release list had not loaded, the module guessed the package name from the release name instead, and that guess has not matched a real folder since the packages were renamed. It fired exactly when the connection was shaky, which turned a network problem into a message about missing goods. One world hit this 77 times in eight seconds on August 30th. Now a release that the module cannot look up is not installed at all, and the message says the cloud is unreachable and to try again.
-- Fixed: The cloud window could go completely empty when the search catalog could not be refreshed. It now keeps showing the list it last saved, says so in the footer, and offers a Refresh button. A failure of the tag-translation table, which is purely cosmetic and was fetched without any notice, can no longer take the whole window offline for a session.
-- Fixed: A world could lock itself out of its own creatures. When the storage location was briefly unreachable, the module read that as data loss and removed the creature documents. Afterwards every entry still reported as installed, so no card offered a way to put them back. Reachability is now measured twice, and a failure that hits everything at once is treated as an outage: nothing is removed. A world already stuck in that state can be freed by running `game.beneos.repairRegistry()` in the console, which touches nothing on the network.
-- Fixed: On a self-hosted server behind a reverse proxy, an install could stop with "Some files could not be installed" and name no cause at all. The server was rejecting the upload because the file was too large for it (HTTP 413) and the module never got to see that answer. The report now names the cause and the setting to change, the install stops before the download instead of after it, and it no longer offers a retry that cannot succeed. If this happens to you, the setting is `client_max_body_size` in nginx or Nginx Proxy Manager.
-- Fixed: A creature in a scene's creature drawer could show an empty dark disc instead of its artwork when the local token art failed to load. An animated token that failed had no fallback at all and left the disc blank.
-- Fixed: When the drawer did fall back to another image, it used the embedded preview at 64 pixels even though a 400-pixel thumbnail was sitting right next to it, so the picture looked blurry on a larger disc. The sharper source is used first now, and the embedded preview stays as the fallback that works without a connection.
+- Fixed: An install could stop with "Package not found" for a release that is on the server, entitled, and perfectly fine. 
+- Fixed: The cloud window could go completely empty when the search catalog could not be refreshed. 
+- Fixed: A world could lock itself out of its own creatures.
+- Fixed: On a self-hosted server behind a reverse proxy, an install could stop with "Some files could not be installed" and name no cause at all. The server was rejecting the upload because the file was too large for it (HTTP 413) and the module never got to see that answer. The report now names the cause and the setting to change, the install stops before the download instead of after it, and it no longer offers a retry that cannot succeed. 
+- Fixed: A creature in a scene's creature drawer could show an empty dark disc instead of its artwork when the local token art failed to load.
+- Fixed: When the drawer did fall back to another image, it used the embedded preview at 64 
 
 **Improved**
-- Improved: When an install stops before it starts, the message now describes the cause it actually found. It used to say "check write permissions or hosting policy" for all eight causes it can tell apart, which pointed in the wrong direction for seven of them. A full disk now says the disk is full, a sign-in problem says so, and a size limit names the setting.
-- Improved: The two place buttons in a scene's creature drawer are hidden when there is nothing for them to place, instead of sitting there greyed out and unresponsive. Each button is judged on its own: the golden one still appears when your Beneos creatures carry their own positions, even with no free creature on the map. The install button always stays, because installing does not depend on positions.
+- Improved: When an install stops before it starts, the message now describes the cause it actually found.
+- Improved: The two place buttons in a scene's creature drawer are hidden when there is nothing for them to place, instead of sitting there greyed out and unresponsive.
 - Improved: A missing package is now reported as what it is instead of as "unknown". The failure report tells you the cause, and our own alerting reacts to three of them instead of waiting for a pile.
 
 **Privacy**
-- Changed: When an install fails and the module tells us about it, a scene name from your own world can no longer travel with the report. One of the messages we send named an existing scene of yours to explain an ID collision. That name is yours, so it is now removed before the report leaves your computer. The reason for the failure is still sent, because that is what the report is for.
+- Changed: When an install fails and you send a report, a scene name from your own world can no longer travel with the report since it is not needed.
 
 ### 14.4.7 # 2026-08-24
 
