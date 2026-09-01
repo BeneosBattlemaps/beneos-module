@@ -376,15 +376,39 @@ export async function karteZusagen({ release, variant, karte, name, urls, bytes,
   // Die noch fehlenden geteilten Dateien zaehlen mit. Sie liegen sonst im
   // Speicher, ohne dass das Kontingent sie kennt.
   const braucht = (Number(bytes) || 0) + geteiltNeuBytes
-  if (braucht > 0 && schon + braucht > grenze) {
+  // DIESE SCHAETZUNG DARF NUR NOCH ABLEHNEN, WENN NIEMAND ZU FRAGEN IST.
+  //
+  // Seit dem 01.09.2026 zaehlt das Tor je INHALT statt je Adresse: dieselbe
+  // Tonspur in zwei Releases kostet einmal. Diese Rechnung hier kann das nicht
+  // nachvollziehen, denn das Kartenverzeichnis fuehrt bewusst keine Dateipfade,
+  // sie machten drei Viertel seiner Groesse aus. Sie summiert also weiter je
+  // Karte und liegt damit systematisch zu hoch.
+  //
+  // Zu hoch ist die sichere Richtung, aber nicht die richtige: sie liegt genau
+  // in dem Fall zu hoch, fuer den die Umstellung gemacht wurde. Gemessen ueber
+  // die 286 ausgelieferten Manifeste teilen sich Releases einer
+  // Kampagnenfamilie 40 bis 52 Prozent ihrer Bytes. Wer die fuenfte
+  // Vallaki-Karte offline nimmt, bekaeme hier "Kontingent voll", waehrend das
+  // Tor sie laengst durchgelassen haette.
+  //
+  // Deshalb entscheidet die Schaetzung nicht mehr, sie warnt nur noch. Sie
+  // lehnt allein dann ab, wenn das Tor nicht erreichbar ist; ohne Verbindung
+  // ist ohnehin nichts zu holen, und dann ist eine zu strenge Schaetzung
+  // besser als gar keine.
+  const zuEng = braucht > 0 && schon + braucht > grenze
+
+  // Das Tor fragen, BEVOR ein Byte fliesst. Sagt es nein, wird nicht geholt.
+  const zusage = await torFragen(kartenWeg(release, variant, karte))
+  if (!zusage.ok && zuEng && zusage.grund === "kein-netz") {
+    // Keine Leitung UND die eigene Rechnung sagt voll. Das ist der einzige
+    // Fall, in dem die Schaetzung das letzte Wort hat. Ausdruecklich NICHT bei
+    // "kein-schluessel": das ist kein Kontingentproblem, und eine
+    // Kontingentmeldung wuerde dort in die falsche Richtung zeigen.
     return {
       ok: false, grund: "kontingent",
       belegt: schon, grenze, braucht, frei: Math.max(0, grenze - schon),
     }
   }
-
-  // Das Tor fragen, BEVOR ein Byte fliesst. Sagt es nein, wird nicht geholt.
-  const zusage = await torFragen(kartenWeg(release, variant, karte))
   if (!zusage.ok) {
     if (zusage.status === 409 && zusage.inhalt?.reason === "quota") {
       return {
