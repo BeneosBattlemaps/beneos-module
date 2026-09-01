@@ -386,9 +386,23 @@ function hostVomTor() {
 /**
  * Jede Toradresse, die diese Szene zum Zeichnen braucht.
  *
- * Dieselben Stellen, die `hasStreamedContent` prueft, nur sammelnd statt
- * fragend. Gebraucht wird sie, um vor einer Ablehnung nachzusehen, ob der
- * Zwischenspeicher die Szene ohnehin tragen wuerde.
+ * Weiter gefasst als `hasStreamedContent`: die Frage dort lautet "haengt diese
+ * Szene ueberhaupt am Tor", die Frage hier "was genau braucht sie". Gebraucht
+ * wird sie, um vor einer Ablehnung nachzusehen, ob der Zwischenspeicher die
+ * Szene ohnehin tragen wuerde, und um zu wissen, was eine Offline-Zusage holen
+ * muss.
+ *
+ * DIE SYMBOLE DER KARTENMARKER GEHOEREN DAZU, und bis zum 2026-09-01 fehlten
+ * sie. Gemessen an drei Szenen auf beiden Fassungen: das Szenendokument trug
+ * 12 bis 17 Toradressen, diese Funktion kannte 5 bis 8, und die Differenz waren
+ * jedes Mal die SVG-Symbole der Notizen. Eine offline gestellte Karte war damit
+ * nie vollstaendig: der Hintergrund kam, die sieben bis neun Marker scheiterten
+ * mit 25 Konsolenfehlern, und die Szenenwache meldete trotzdem "vollstaendig",
+ * weil sie nur ihre eigene, zu kurze Liste fragte.
+ *
+ * Die Symbole stehen ausschliesslich in `notes[].texture.src`, gemessen auf
+ * 13.351 und 14.360 mit je 25 Notizen. Das alte Feld `icon` traegt in beiden
+ * Fassungen nichts und wird deshalb nicht gelesen.
  */
 export function streamAdressenVon(scene) {
   const host = (() => { try { return new URL(streamBase()).host } catch (_) { return "" } })()
@@ -404,6 +418,12 @@ export function streamAdressenVon(scene) {
     if (remote(tile?.texture?.src)) raus.push(tile.texture.src)
     const v = tile?.flags?.["beneos-module"]?.stream?.video
     if (remote(v)) raus.push(v)
+  }
+  // ZULETZT, und das ist keine Geschmacksfrage: `karteZuSzene` zerlegt
+  // `adressen[0]`, um Release und Fassung zu bestimmen. Stuenden die Symbole
+  // vorn, laege dort ein Pfad aus `map_assets/`, der zu keiner Karte gehoert.
+  for (const note of scene?.notes ?? []) {
+    if (remote(note?.texture?.src)) raus.push(note.texture.src)
   }
   return [...new Set(raus)]
 }

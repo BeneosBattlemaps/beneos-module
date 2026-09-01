@@ -151,6 +151,80 @@ function geteilteVonKarte(id, vorrat = liesGeteilt()) {
 }
 
 /**
+ * Ein Index von jeder eigenen Adresse auf die geteilten Dateien ihrer Szene.
+ *
+ * WARUM ES DEN INDEX BRAUCHT
+ *
+ * Das Verzeichnis des Gemeinschaftsvorrats fuehrt, was beim Zusagen bekannt
+ * war. Das ist zu wenig, sobald das Modul lernt, eine bisher uebersehene Stelle
+ * im Szenendokument zu lesen: die neuen Adressen stehen dort nicht, und eine
+ * Pruefung, die nur das Verzeichnis fragt, meldet die Karte weiter als
+ * vollstaendig, waehrend die Szenenwache sie ablehnt. GEMESSEN am 2026-09-01,
+ * nachdem die Symbole der Kartenmarker dazukamen: Wache 14 von 17 Adressen und
+ * "unvollstaendig", Pruefung "2 von 2 vollstaendig". Genau der Widerspruch, den
+ * dieser Umbau beseitigen soll.
+ *
+ * DIE ZUORDNUNG LAEUFT UEBER DIE ADRESSEN, NICHT UEBER DEN INSTALLATIONSVERMERK.
+ * Der fuehrt seit dem 30.08.2026 ein Feld `karten` mit den Szenen je Karte,
+ * aber nur fuer Installationen seit diesem Tag. Gemessen im Pruefstand: 3 von
+ * 18 Vermerken tragen es. Ausgerechnet die Altbestaende, um die es hier geht,
+ * faenden sich darueber nie.
+ *
+ * Der Karteneintrag fuehrt seine eigenen Dateien in `urls`. Eine Szene gehoert
+ * zur Karte, wenn eine dieser Adressen in ihr vorkommt. Das ist netzfrei,
+ * braucht kein Manifest und benutzt in `streamAdressenVon` dieselbe Funktion
+ * wie die Szenenwache; die beiden koennen damit nicht mehr auseinanderlaufen.
+ *
+ * Einmal je Pruefung gebaut, nicht je Karte: sonst liefe der Weltstart bei
+ * dreissig Zusagen dreissigmal ueber alle Szenen der Welt.
+ */
+function geteilterIndex() {
+  const index = new Map()
+  for (const szene of game.scenes ?? []) {
+    const adressen = streamAdressenVon(szene) || []
+    const geteilt = adressen.filter(istGeteilteDatei)
+    if (!geteilt.length) continue
+    for (const u of adressen) {
+      if (istGeteilteDatei(u)) continue
+      let eintrag = index.get(u)
+      if (!eintrag) { eintrag = { szenen: [], geteilt: new Set() }; index.set(u, eintrag) }
+      eintrag.szenen.push(szene.id)
+      for (const g of geteilt) eintrag.geteilt.add(g)
+    }
+  }
+  return index
+}
+
+/**
+ * Alle geteilten Adressen einer Karte, aus dem Verzeichnis UND aus ihren Szenen.
+ *
+ * Ohne Abkuerzung nach dem ersten Treffer. Eine Karte ist Battlemap und
+ * Szenerie zusammen, also mindestens zwei Szenen, und dass beide dieselben
+ * Symbole tragen ist eine plausible Annahme, keine gemessene. Die Vereinigung
+ * kostet einen Durchlauf ueber zwei bis vier Adressen und macht die Annahme
+ * ueberfluessig.
+ */
+function geteilteAdressenDerKarte(e, vorrat = liesGeteilt(), index = null) {
+  const raus = new Set(geteilteVonKarte(karteId(e.release, e.variant, e.karte), vorrat))
+  const idx = index || geteilterIndex()
+  for (const u of (e.urls || [])) {
+    const treffer = idx.get(u)
+    if (!treffer) continue
+    for (const g of treffer.geteilt) raus.add(g)
+  }
+  return [...raus]
+}
+
+/** Die Szenen einer Karte, ueber dieselbe Zuordnung wie ihre geteilten Dateien. */
+function szenenDerKarte(e, index) {
+  const raus = new Set()
+  for (const u of (e.urls || [])) {
+    for (const id of (index.get(u)?.szenen || [])) raus.add(id)
+  }
+  return [...raus]
+}
+
+/**
  * Was der Gemeinschaftsvorrat wiegt, und wie viele Dateien er fuehrt.
  *
  * Markierte Eintraege zaehlen nicht mit. Ein `fehlt`-Vermerk sagt, dass die
@@ -627,7 +701,14 @@ export async function karteZuSzene(scene) {
 
   // Die Pfade dieser Szene, damit der Vergleich nicht ueber ganze Adressen
   // laeuft: der Schluessel darin kann sich drehen, der Pfad nicht.
-  const pfade = new Set(adressen.map(a => zerlegeAdresse(a)?.pfad).filter(Boolean))
+  //
+  // OHNE die geteilten Dateien. Sie gehoeren zu keinem Ort, und wuerde je ein
+  // Ort eine von ihnen fuehren, faende JEDE Szene mit demselben Symbol diesen
+  // einen Ort. Gemessen am 2026-09-01 fuehrt kein Ort eine map_assets-Datei,
+  // 0 von 28 Orten ueber 94 Dateien; die Zeile schuetzt also nicht gegen den
+  // heutigen Bestand, sondern gegen ein spaeteres Manifest.
+  const pfade = new Set(adressen.filter(a => !istGeteilteDatei(a))
+    .map(a => zerlegeAdresse(a)?.pfad).filter(Boolean))
 
   // Die Groessen stehen je Datei in `entries`. Sie hier mitzugeben ist die
   // Bedingung dafuer, dass das Kontingent VOR dem Holen geprueft werden kann:
@@ -1221,9 +1302,11 @@ export async function pruefeVorrat() {
   const liste = alleKarten()
   const vorrat = liesGeteilt()
   const fehlend = []
+  // Der Index laeuft ueber alle Szenen der Welt. Ohne Zusagen gibt es nichts zu
+  // pruefen, und dann soll er auch nicht gebaut werden.
+  const index = liste.length ? geteilterIndex() : new Map()
   for (const e of liste) {
-    const id = karteId(e.release, e.variant, e.karte)
-    if (await offlineGehalten([...(e.urls || []), ...geteilteVonKarte(id, vorrat)])) continue
+    if (await offlineGehalten([...(e.urls || []), ...geteilteAdressenDerKarte(e, vorrat, index)])) continue
     fehlend.push(e)
   }
   return {
@@ -1458,10 +1541,20 @@ export async function geteilteLuecken() {
  * nur zur Haelfte: sie zeichnete weiterhin nicht, und die naechste Pruefung
  * meldete sie erneut. Der Vermerk `fehlt` faellt dabei, aber nur fuer die
  * Dateien, die danach wirklich liegen.
+ *
+ * WOHER DIE ADRESSEN KOMMEN, und warum aus zwei Quellen. Das Verzeichnis
+ * fuehrt, was beim Zusagen bekannt war. Kommt spaeter eine Datei dazu, weil
+ * das Modul einen bisher uebersehenen Ort im Szenendokument liest, steht sie
+ * dort nicht, und das Heilen faende sie nie. Genau das ist am 2026-09-01 mit
+ * den Symbolen der Kartenmarker passiert: die Pruefung meldete die Karte
+ * danach zu Recht als unvollstaendig, und der Knopf "Fetch now" haette sie
+ * nicht reparieren koennen. Deshalb wird die Karte ueber ihre Szene frisch
+ * aufgeloest, und die Vereinigung beider Listen geholt.
  */
 export async function vorratHeilen(fehlend, onProgress) {
   const summe = { geholt: 0, fehlgeschlagen: 0, karten: 0, geteiltGeholt: 0 }
   const vorrat = liesGeteilt()
+  const index = geteilterIndex()
   let geaendert = 0
   for (const e of fehlend || []) {
     const id = karteId(e.release, e.variant, e.karte)
@@ -1469,8 +1562,25 @@ export async function vorratHeilen(fehlend, onProgress) {
     summe.geholt += r.geholt + r.gehalten
     summe.fehlgeschlagen += r.fehlgeschlagen
 
+    // Die frische Aufloesung ueber die Szene, wenn sie zu haben ist. Ohne Netz
+    // gibt `karteZuSzene` keine Adressen her, dann bleibt es beim Verzeichnis;
+    // das ist richtig, denn ohne Netz ist ohnehin nichts zu holen.
+    // Die Groessen. `geteilteAdressenDerKarte` liefert die Adressen netzfrei,
+    // aber nicht ihre Bytes; die stehen im Manifest. Ein Eintrag ohne Bytes
+    // liesse das Kontingent mit null rechnen. Beim Heilen ist Verbindung da,
+    // der Abruf ist also der richtige Ort dafuer. Scheitert er, wird trotzdem
+    // geholt, nur mit einer Null in der Rechnung.
+    const groessen = new Map()
+    for (const szenenId of szenenDerKarte(e, index)) {
+      const szene = game.scenes?.get(szenenId)
+      if (!szene) continue
+      let karte = null
+      try { karte = await karteZuSzene(szene) } catch (_) { continue }
+      for (const g of (karte?.geteilt || [])) if (g?.url) groessen.set(g.url, Number(g.bytes) || 0)
+    }
+
     let geteiltFehlt = 0
-    for (const url of geteilteVonKarte(id, vorrat)) {
+    for (const url of geteilteAdressenDerKarte(e, vorrat, index)) {
       let liegt = await offlineGehalten([url])
       if (!liegt) {
         await offlineHalten([url], onProgress)
@@ -1481,6 +1591,18 @@ export async function vorratHeilen(fehlend, onProgress) {
         if (liegt) summe.geteiltGeholt++
       }
       if (!liegt) { geteiltFehlt++; continue }
+      // Eintragen, was noch nicht im Verzeichnis steht. Ohne diese Zeile fiele
+      // eine frisch gefundene Datei beim naechsten Weltstart als verwaist auf
+      // und verloere ihren Dauerstempel, obwohl eine Karte sie braucht.
+      if (!vorrat[url]) {
+        vorrat[url] = { bytes: groessen.get(url) || 0, karten: [id] }
+        geaendert++
+        continue
+      }
+      if (!(vorrat[url].karten || []).includes(id)) {
+        vorrat[url].karten = [...new Set([...(vorrat[url].karten || []), id])]
+        geaendert++
+      }
       if (vorrat[url].fehlt) { delete vorrat[url].fehlt; geaendert++ }
     }
     summe.fehlgeschlagen += geteiltFehlt
