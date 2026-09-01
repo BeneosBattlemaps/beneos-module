@@ -6,7 +6,7 @@
  *   resolveReleaseForJournal(journalId, opts)  -> resolution, no UI, no side effects
  *   installReleaseForTarget({ journalId, ... }) -> resolve, confirm, install
  *   installReleaseByNumber(releaseNum, opts)   -> legacy adapter, unchanged signature
- *   capabilities                               -> { poiIndex: 1 }
+ *   capabilities                               -> { poiIndex: 2 }
  *
  * The POI Teleporter calls this when a GM right-clicks a Beneos map-note whose
  * target scene is not in the world.
@@ -320,10 +320,75 @@ async function runNativeReleaseInstall(releaseDir, list) {
 function emptyResolution(resolvedBy = "none") {
   return {
     found: false, kind: "unknown", releaseDir: null, cloudId: null,
-    title: null, label: null, series: null, sceneName: null,
+    title: null, label: null, series: null, sceneName: null, sceneId: null,
     installed: false, cloudReady: false, ambiguous: false, candidates: [],
+    // Graded install verdict. null everywhere means "not decidable", which is
+    // the honest state for an old index that carries no scene id, and must
+    // never be read as false. See describeInstall() for what fills these.
+    destinationRecorded: null, destinationInWorld: null,
+    installedSceneCount: 0, releaseSceneCount: 0,
     resolvedBy, indexVersion: null
   }
+}
+
+/**
+ * The verdict itself, as a pure function of four measured values.
+ *
+ * WHY THE ROW COUNT WAS NOT ENOUGH
+ *
+ * Up to here the answer was `findByReleaseDir(dir).length > 0`, one boolean
+ * meaning "the registry knows this release". POI turned that into "the release
+ * is installed but ships no scene for this pin, please report this to Beneos".
+ * The two statements are not the same, and three ordinary situations pull them
+ * apart, none of them a packaging defect:
+ *
+ *   - a scene-scoped install writes the whole release dir with the ids of the
+ *     scenes it imported (beneos-native-installer #recordInstallIfAny), and its
+ *     dependency closure pulls in the JOURNALS the scene's pins point at
+ *     without their target scenes. Journal present, destination absent,
+ *     registry says yes.
+ *   - a bundle run stopped or skipped after some members were written.
+ *   - the user deleted the scene after installing it.
+ *
+ * In all three the customer was told to file a report that is not one. The
+ * index has carried the destination's scene id all along (measured on index
+ * 6f8a5c6b: of 2173 teleport journals, 2143 name a providing package, and all
+ * 2143 of those carry the scene id), so the question can simply be asked
+ * properly.
+ *
+ * `null` means NOT DECIDABLE and must never be read as false: an index too old
+ * to name a scene id has to leave the question open rather than answer it.
+ *
+ * @param {object} m
+ * @param {?string} m.sceneId            destination scene id from the index
+ * @param {boolean} m.rowExists          the registry holds a row for this release
+ * @param {boolean} m.sceneRecorded      that row's ids include the destination
+ * @param {boolean} m.sceneInWorld       the scene document is in this world
+ * @param {number}  m.installedSceneCount
+ * @param {number}  m.releaseSceneCount
+ */
+export function gradeInstall({ sceneId, rowExists, sceneRecorded, sceneInWorld,
+                               installedSceneCount, releaseSceneCount }) {
+  return {
+    installed: Boolean(rowExists),
+    destinationRecorded: sceneId ? Boolean(sceneRecorded) : null,
+    destinationInWorld: sceneId ? Boolean(sceneInWorld) : null,
+    installedSceneCount: Number(installedSceneCount || 0),
+    releaseSceneCount: Number(releaseSceneCount || 0),
+  }
+}
+
+/** Collect the four values gradeInstall() needs, then write its answer onto `out`. */
+function describeInstall(out, index) {
+  const sceneId = out.sceneId
+  Object.assign(out, gradeInstall({
+    sceneId,
+    rowExists: BeneosInstallState.findByReleaseDir(out.releaseDir).length > 0,
+    sceneRecorded: sceneId ? BeneosInstallState.hasScene(out.releaseDir, sceneId) : false,
+    sceneInWorld: sceneId ? Boolean(game.scenes?.get?.(sceneId)) : false,
+    installedSceneCount: BeneosInstallState.installedSceneIds(out.releaseDir).size,
+    releaseSceneCount: releaseInfo(index, out.releaseDir)?.scenes,
+  }))
 }
 
 /**
@@ -340,7 +405,11 @@ function emptyResolution(resolvedBy = "none") {
  * @param {string} [opts.journalName]     name, for the exact-name fallback and display
  * @param {string} [opts.releaseToken]    release token incl. letter suffix ("57b")
  * @param {number} [opts.releaseHint]     legacy numeric hint, used only if no token
- * @returns {Promise<object>} resolution
+ * @returns {Promise<object>} resolution, incl. the graded install verdict from
+ *                            describeInstall(). `installed` alone answers "does
+ *                            the registry know this release"; only
+ *                            `destinationRecorded` and `destinationInWorld`
+ *                            answer whether THIS destination is here.
  */
 export async function resolveReleaseForJournal(journalId, { journalName, releaseToken, releaseHint } = {}) {
   const index = await getPoiIndex()
@@ -375,6 +444,10 @@ export async function resolveReleaseForJournal(journalId, { journalName, release
       })
       const scene = (entry.s || []).find(s => s.r === out.releaseDir) || (entry.s || [])[0]
       out.sceneName = scene?.t || null
+      // The scene document id, which is what makes "is THIS destination here"
+      // answerable at all. Stable across installs, so it joins the index
+      // against both the install registry and game.scenes.
+      out.sceneId = scene?.i || null
     } else {
       // Known journal, but no package anywhere ships a scene for it. Definitive.
       return out
@@ -414,7 +487,7 @@ export async function resolveReleaseForJournal(journalId, { journalName, release
   }
   if (!out.title) out.title = out.releaseDir
 
-  try { out.installed = BeneosInstallState.findByReleaseDir(out.releaseDir).length > 0 } catch (_e) { /* ignore */ }
+  try { describeInstall(out, index) } catch (_e) { /* ignore */ }
 
   return out
 }
@@ -534,5 +607,11 @@ Hooks.once("ready", () => {
   game.beneos.api.classifyBeneosJournal = classifyBeneosJournal
   // Capability marker rather than function sniffing: `typeof fn === "function"`
   // only proves a name exists, not that it honours this contract.
-  game.beneos.api.capabilities = Object.assign({}, game.beneos.api.capabilities, { poiIndex: 1 })
+  //
+  // 2: the resolution carries the destination's scene id and the graded install
+  // verdict (destinationRecorded / destinationInWorld). POI must gate its new
+  // message branches on >= 2, because against a version-1 module those fields
+  // are absent and "absent" would read as "not recorded", which is exactly the
+  // false accusation this change removes.
+  game.beneos.api.capabilities = Object.assign({}, game.beneos.api.capabilities, { poiIndex: 2 })
 })

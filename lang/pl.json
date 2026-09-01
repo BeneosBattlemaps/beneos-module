@@ -1214,6 +1214,7 @@
   "BENEOS.Patreon.FreeSection.Description": "Pobierz je za darmo z kontem Beneos Cloud, bez członkostwa na Patreonie i bez zakupów.",
   "BENEOS.Cloud.Card.Installed": "Zainstalowane",
   "BENEOS.Cloud.Card.InstalledOn": "Zainstalowano",
+  "BENEOS.Cloud.Card.InstalledPartial": "Częściowo zainstalowane: {have} z {want} scen",
   "BENEOS.Cloud.Card.Codex": "Kodeks",
   "BENEOS.Cloud.Card.CodexNotFound": "To stworzenie nie jest zainstalowane lokalnie.",
   "BENEOS.Cloud.Card.Open": "Otwórz",

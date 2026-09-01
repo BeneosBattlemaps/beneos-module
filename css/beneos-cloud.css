@@ -1941,6 +1941,18 @@
   font-size: 0.95em;
   flex: 0 0 auto;
 }
+/* Partly installed. The release is in this world but not all of its scenes are,
+   which happens whenever a single map was installed out of a pack. Not
+   green, because the marker's job here is to say "not finished", and not the
+   gold of the update badge, which already means something else. Same colour as
+   .bc-dl-partial on the thumb, so both markers on one card tell one story.
+   Written out rather than taken from a variable so it survives the bright
+   theme, where an unpinned value has flipped dark-on-dark before. */
+.beneos-cloud-app .bc-bmap-partial-check {
+  color: #7fb2d9;
+  font-size: 0.95em;
+  flex: 0 0 auto;
+}
 .beneos-cloud-app .bc-status-chip.bc-status-free {
   background: rgba(27, 146, 0, 0.22);
   color: var(--bc-success, #6fcf52);
@@ -2079,6 +2091,14 @@
   color: var(--bc-warn, #e0b53e);
   border-color: color-mix(in srgb, var(--bc-warn, #e0b53e) 60%, transparent);
   background: color-mix(in srgb, var(--bc-warn, #e0b53e) 18%, rgba(0,0,0,0.55));
+}
+/* Partly installed. Deliberately NOT the gold of bc-dl-stale: gold means "there
+   is a newer version", this means "not all of it is here". Two different jobs
+   must not share a colour, or the badge stops carrying information. */
+.beneos-cloud-app .bc-card-thumb .bc-dl-status.bc-dl-partial {
+  color: #7fb2d9;
+  border-color: rgba(127, 178, 217, 0.6);
+  background: rgba(127, 178, 217, 0.18);
 }
 
 /* Plan §20 W4.2 release-locked overlay. Centered semitransparent block over

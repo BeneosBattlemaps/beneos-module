@@ -211,6 +211,20 @@ export async function getPoiIndex() {
   return out
 }
 
+/**
+ * The index if it is already in memory, otherwise null. Never loads, never
+ * awaits.
+ *
+ * The cloud window builds its release cards synchronously and may not block on
+ * a file read for a cosmetic badge, so it warms the index once with
+ * getPoiIndex() and reads it through this afterwards. A null here means "not
+ * loaded yet", which every caller must treat as "cannot tell" rather than as
+ * an answer.
+ */
+export function peekPoiIndex() {
+  return _index
+}
+
 /** Normalise a journal name for the name fallback: exact match after cleanup, never a substring. */
 export function normalizeJournalName(s) {
   return String(s || "").replace(/\s+/g, " ").trim().toLowerCase()
@@ -242,7 +256,15 @@ export function entryByName(index, journalName) {
   return nameMap(index).get(normalizeJournalName(journalName)) || null
 }
 
-/** Release metadata as recorded in the index, or null. */
+/**
+ * Release metadata as recorded in the index, or null.
+ *
+ * `scenes` is the number of scenes the package ships and is the denominator of
+ * the completeness test: it is counted from the pack at build time, so it is
+ * the only figure that does not depend on what a particular world did. Measured
+ * on index 6f8a5c6b: present on all 143 releases. A release the index does not
+ * know yields null, and callers must then not claim incompleteness.
+ */
 export function releaseInfo(index, releaseDir) {
   if (!index || !releaseDir) return null
   const r = index.releases?.[releaseDir]

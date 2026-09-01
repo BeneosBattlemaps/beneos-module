@@ -234,10 +234,12 @@
                  when the release is installed in this world (sourceSignature
                  still matches the cloud), gold "!" when the cloud has a newer
                  version since the world install. --}}
-            {{#if card.dlBadgeFresh}}
-              <span class="bc-dl-status bc-dl-fresh" data-tooltip="{{card.dlBadgeTooltip}}">✓</span>
-            {{else if card.dlBadgeStale}}
+            {{#if card.dlBadgeStale}}
               <span class="bc-dl-status bc-dl-stale" data-tooltip="{{card.dlBadgeTooltip}}">!</span>
+            {{else if card.dlBadgePartial}}
+              <span class="bc-dl-status bc-dl-partial" data-tooltip="{{card.dlBadgeTooltip}}">◐</span>
+            {{else if card.dlBadgeFresh}}
+              <span class="bc-dl-status bc-dl-fresh" data-tooltip="{{card.dlBadgeTooltip}}">✓</span>
             {{/if}}
             {{!-- Locked storefront card: keep the cover thumbnail fully visible
                  (marketing) and only mark it with a small lock badge in the
@@ -269,8 +271,16 @@
                    two states don't compete. --}}
               {{#if card.bmapInstalled}}
                 {{#unless card.isUpdate}}
-                  <i class="fa-solid fa-circle-check bc-bmap-installed-check"
-                     data-tooltip="{{localize 'BENEOS.Cloud.Card.InstalledOn'}} {{card.installedOnLabel}}"></i>
+                  {{!-- Present is not complete: a release the user took a single
+                       map out of gets a half marker and a count, not the green
+                       check that says "this one is done". --}}
+                  {{#if card.bmapPartial}}
+                    <i class="fa-solid fa-circle-half-stroke bc-bmap-partial-check"
+                       data-tooltip="{{card.bmapCoverageLabel}}"></i>
+                  {{else}}
+                    <i class="fa-solid fa-circle-check bc-bmap-installed-check"
+                       data-tooltip="{{localize 'BENEOS.Cloud.Card.InstalledOn'}} {{card.installedOnLabel}}"></i>
+                  {{/if}}
                 {{/unless}}
               {{/if}}
               {{!-- Bundle-level installed marker: every member release present in

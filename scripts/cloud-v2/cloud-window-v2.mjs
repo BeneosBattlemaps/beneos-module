@@ -36,6 +36,7 @@ import { HomeController } from "./home/home-controller.mjs"
 import { BeneosPatchlogWindow } from "./home/patchlog-window.mjs"
 import { fetchNewsFeed, markNewsRead } from "./services/news-api.mjs"
 import { BeneosInstallState, BeneosPreInstallDialog, beneosLogModuleInstall } from "./beneos-install-state.mjs"
+import { getPoiIndex, peekPoiIndex, releaseInfo } from "./beneos-poi-index.mjs"
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
 
@@ -371,6 +372,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const cloud = game.beneos?.cloud
     const dbHolder = game.beneos?.databaseHolder
     const dbData = dbHolder?.getData?.() ?? {}
+    // The partly-installed marker needs the POI index, which is where each
+    // release's scene count lives. Warm it once here and read it synchronously
+    // from then on: the card build has no await to spare, and a badge that
+    // appears only on the second open of the window is worse than no badge.
+    // Only on the tab that shows it. A failure here is not an error: an index we
+    // cannot read simply means every install keeps reading as complete.
+    if (this.searchMode === "bmap") {
+      try { await getPoiIndex() } catch (_e) { /* badge degrades to "complete" */ }
+    }
     // Wave B-9-fix-36: surface the module version + tab-aware Patreon
     // URL to the footer template. Maps belongs to the BeneosBattlemaps
     // Patreon, everything else (creatures / loot / spells) to the
@@ -1528,6 +1538,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const bmapReleaseName        = bmapInfo.releaseName
     const bmapUninstallVariant   = bmapInfo.variant
     const bmapUninstallPackageId = bmapInfo.packageId
+    // NO partial marker on a single-map card, deliberately. The completeness we
+    // can measure is the RELEASE's, and this card is one scene out of it: a map
+    // the user installed exactly as a single map is complete as far as they are
+    // concerned, and "Partly installed: 1 of 14 scenes" on it would be a second
+    // false statement rather than the end of one. The reason it cannot be
+    // measured per map is two lines above: Foundry scene ids are not in the
+    // catalog. The release card carries the marker.
 
     // Patron-aware per-card flags. isFree surfaces the green "FREE" badge
     // and groups the card into the Free section for non-patrons. isLocked
@@ -5633,6 +5650,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // check the active-variant first, then fall back to "any variant".
       // is_stale compares stored sourceSignature against the freshly
       // fetched content_signature on list_releases.
+      // ONE reading per card, then passed around. Three separate calls not only
+      // re-read the world setting each time, they can also straddle a cloud
+      // index refresh and leave the name row and the tooltip of the SAME card
+      // disagreeing about the scene count.
+      const bmapInfo = this.#bmapInstallInfo(r.release_dir)
+      const bmapCoverageLabel = this.#bmapCoverageLabel(bmapInfo)
+
       let installState = null
       const installs = BeneosInstallState.findByReleaseDir(r.release_dir)
       if (installs.length) {
@@ -5648,6 +5672,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
           variantMatch:     !!matchActive,
           installedAt:      chosen.installedAt || "",
           sceneCount:       chosen.sceneCount || (chosen.sceneIds?.length || 0),
+          // Read through the shared funnel rather than counting here: the card
+          // and the Show filter reaching different conclusions is exactly the
+          // bug #bmapInstallInfo was introduced to end.
+          partial:          bmapInfo.partial,
         }
       }
 
@@ -5762,6 +5790,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // install/Moulinette buttons (an installed map stays re-installable).
         bmapInstalled:        installed,
         installedOnLabel:     installState ? this.#formatInstallDate(installState.installedAt) : "",
+        bmapPartial:          !!installState?.partial,
+        bmapCoverageLabel,
         // Uninstall affordance: only for a GM, only on a release that really is
         // in this world, and always against the variant that was ACTUALLY
         // installed (which may differ from the resolution toggle the user is
@@ -5787,13 +5817,19 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // keyed off the unified isUpdate so the thumb badge agrees with the
         // name-row marker + update chip (a date-based update with a matching
         // signature would otherwise still show the green "fresh" tick).
+        // A partly installed release must not keep the green tick either, or the
+        // thumb would go on claiming "done" while the name row says 3 of 14.
+        // Same precedence as the name row: update beats partial beats complete.
         installState,
-        dlBadgeFresh:         installed && !isUpdate,
+        dlBadgeFresh:         installed && !isUpdate && !installState?.partial,
         dlBadgeStale:         installed && isUpdate,
+        dlBadgePartial:       installed && !isUpdate && !!installState?.partial,
         dlBadgeTooltip:       installState
           ? (isUpdate
               ? `Installed ${installState.variantInstalled || "single-variant"} on ${this.#formatInstallDate(installState.installedAt)} (${installState.sceneCount} scenes). Release updated since install.`
-              : `Installed ${installState.variantInstalled || "single-variant"} on ${this.#formatInstallDate(installState.installedAt)} (${installState.sceneCount} scenes).`)
+              : installState.partial
+                ? bmapCoverageLabel
+                : `Installed ${installState.variantInstalled || "single-variant"} on ${this.#formatInstallDate(installState.installedAt)} (${installState.sceneCount} scenes).`)
           : "",
         // Plan §20 W4.2 - locked-card fields. Locked == genuinely gated content
         // (non-free, not installed, no access). FREE releases are NEVER locked
@@ -6071,13 +6107,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         const sizeBytes = Number(bpv[variant] || bpv["4K"] || bpv["HD"] || 0) || 0
         const coverUrl  = rel ? (variant === "HD" ? (rel.cover_url_hd || rel.cover_url_4k)
                                                   : (rel.cover_url_4k || rel.cover_url_hd)) : null
+        const memberInfo = this.#bmapInstallInfo(relDir)
         return {
           index:        i,
           name:         m.name || relDir,
           release_dir:  relDir,
           variant_dirs: vdirs,
           sizeLabel:    sizeBytes ? this.#formatBytes(sizeBytes) : "—",
-          installed:    relDir ? (BeneosInstallState.findByReleaseDir(relDir).length > 0) : false,
+          installed:    relDir ? memberInfo.installed : false,
+          partial:      relDir ? memberInfo.partial : false,
           coverUrl,
           _sizeBytes:   sizeBytes,
         }
@@ -6086,7 +6124,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // Bundle counts as installed once every member release is present in this
       // world. Surfaces a green check on the card + drawer so the GM can walk a
       // campaign's bundles top-to-bottom and see at a glance what's done.
-      const bundleInstalled = members.length > 0 && members.every(m => m.installed)
+      //
+      // COMPLETE, not merely present. A member the user took a single map out
+      // of would otherwise tick the box for the whole campaign, which is the
+      // one reading of this check nobody wants: the GM walks the bundle list to
+      // find out what is still missing.
+      const bundleInstalled = members.length > 0 && members.every(m => m.installed && !m.partial)
       // Compatible-with chip: the admin sets a campaign per bundle ("Curse of
       // Strahd"). Localize it via the shared i18n matrix (raw fallback) and show
       // the spelled-out full name (not the acronym the release cards use).
@@ -6242,16 +6285,32 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
    * and by the Show filter, which used to reach a different conclusion than
    * the cards it was filtering.
    *
+   * PRESENT IS NOT THE SAME AS COMPLETE. A scene-scoped install writes the
+   * whole release dir with a single scene id, so a release the user took one
+   * map out of used to carry the same green check as one they installed in
+   * full. `partial` separates the two by counting: the ids this world actually
+   * recorded against the scene count the POI index read out of the pack.
+   *
+   * A release the index does not know (too new, or a namespace the index does
+   * not cover) yields want = 0 and is reported as complete. Claiming
+   * incompleteness on a release we cannot count would be the worse error.
+   *
    * @param {string} releaseDir
    * @returns {{installed: boolean, installedOn: string, update: boolean,
-   *            releaseName: string, variant: string, packageId: string}}
+   *            releaseName: string, variant: string, packageId: string,
+   *            partial: boolean, sceneCoverage: {have: number, want: number}}}
    */
   #bmapInstallInfo(releaseDir) {
-    const none = { installed: false, installedOn: "", update: false, releaseName: "", variant: "", packageId: "" }
+    const none = {
+      installed: false, installedOn: "", update: false, releaseName: "", variant: "", packageId: "",
+      partial: false, sceneCoverage: { have: 0, want: 0 },
+    }
     if (!releaseDir) return none
     const installs = BeneosInstallState.findByReleaseDir(releaseDir)
     if (!installs.length) return none
     const chosen = installs[0]
+    const have = BeneosInstallState.installedSceneIds(releaseDir).size
+    const want = Number(releaseInfo(peekPoiIndex(), releaseDir)?.scenes || 0)
     const rel    = this._releaseIndex?.get?.(releaseDir) || null
     const curSig      = String(rel?.content_signature || "")
     const updatedDate = this.#releaseDateInfo(releaseDir)?.updatedDate || ""
@@ -6269,7 +6328,34 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       variant:     String(chosen.variant || ""),
       packageId:   String((rel?.variant_dirs || {})[chosen.variant]
         || Object.values(rel?.variant_dirs || {})[0] || ""),
+      // have === 0 is "the record predates the id tracking", not "nothing is
+      // installed". Claiming 0 of 14 on a world that installed the release in
+      // full before this feature shipped would be the loudest false statement
+      // of the lot, so an empty set stays undecided.
+      partial:     want > 0 && have > 0 && have < want,
+      sceneCoverage: { have, want },
     }
+  }
+
+  /**
+   * Tooltip for the partly-installed marker. Empty for anything else, so the
+   * template can use it as the sole carrier of the partial state's explanation
+   * instead of assembling numbers in Handlebars.
+   *
+   * @param {object} info result of #bmapInstallInfo
+   * @returns {string}
+   */
+  #bmapCoverageLabel(info) {
+    if (!info?.partial) return ""
+    const c = info.sceneCoverage || { have: 0, want: 0 }
+    // No English literal as a fallback. The key is present in all thirteen
+    // language files, so the fallback is unreachable, and an unreachable
+    // English sentence still ships to every customer.
+    try {
+      const s = game.i18n.format("BENEOS.Cloud.Card.InstalledPartial", { have: c.have, want: c.want })
+      if (s && s !== "BENEOS.Cloud.Card.InstalledPartial") return s
+    } catch (_e) { /* fall through */ }
+    return ""
   }
 
   // Plan §33.6 - render an install timestamp for the badge tooltip. Same

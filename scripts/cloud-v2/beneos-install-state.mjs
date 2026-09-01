@@ -47,6 +47,47 @@ export class BeneosInstallState {
   }
 
   /**
+   * Every scene id this world installed from a release, across all variants.
+   *
+   * WHY THE UNION AND NOT THE FIRST ROW
+   *
+   * findByReleaseDir may legitimately return two rows for one release (4K and
+   * HD side by side). Scene ids come out of the pack and are identical in both
+   * variants, so the union deduplicates by itself and is the only reading that
+   * survives a variant switch mid-campaign.
+   *
+   * WHY THIS EXISTS AT ALL
+   *
+   * A row in this registry says "this release was installed here". It does NOT
+   * say the whole release arrived: a scene-scoped install writes the release
+   * dir with a single scene id (beneos-native-installer #recordInstallIfAny).
+   * Every caller that wants to know whether ONE PARTICULAR scene is present
+   * has to look at the ids, not at the row count. Reading the row count alone
+   * is what made the POI teleporter tell users a release was broken when they
+   * had simply installed one map out of fourteen.
+   *
+   * Returns an empty Set for unknown releases and for worlds that installed
+   * before this registry existed. That is "not known", never "not installed".
+   */
+  static installedSceneIds(releaseDir) {
+    const out = new Set()
+    for (const entry of this.findByReleaseDir(releaseDir)) {
+      if (!Array.isArray(entry.sceneIds)) continue
+      for (const id of entry.sceneIds) {
+        const s = String(id || "")
+        if (s) out.add(s)
+      }
+    }
+    return out
+  }
+
+  /** Did any install of this release bring that particular scene? */
+  static hasScene(releaseDir, sceneId) {
+    if (!releaseDir || !sceneId) return false
+    return this.installedSceneIds(releaseDir).has(String(sceneId))
+  }
+
+  /**
    * Resolve a Foundry scene id back to the asset it was installed from.
    *
    * WHY THIS EXISTS
@@ -136,19 +177,41 @@ export class BeneosInstallState {
 
   /**
    * Persist one install. Key format: `<releaseDir>_<variant>` (variant = ""
-   * for single-variant releases). Idempotent: replacing the same key
-   * overwrites scene-ids + timestamp + signature for the new install.
+   * for single-variant releases). Timestamp and signature always describe the
+   * latest run; the scene ids ACCUMULATE.
+   *
+   * WHY THE IDS ARE UNIONED AND NOT REPLACED
+   *
+   * A run reports only the scenes it imported itself. Replacing therefore
+   * turned "installed map 3 of this pack, then map 7" into a record that knows
+   * about map 7 alone, and the world would keep reporting one scene out of
+   * fourteen no matter how many maps the user collected one by one. Since the
+   * completeness of this record now drives what the customer is told, that
+   * undercount is the same class of false statement the record exists to end.
+   *
+   * The cost is a stale id when a repack DROPS a scene: the union keeps it and
+   * the release then looks more complete than it is. That is the direction we
+   * want to err in. Over-reporting completeness costs a missing hint; under-
+   * reporting it accuses the customer's install of being broken.
    */
   static async recordInstall({ releaseDir, variant, assetId, sceneIds, sourceSignature, sceneCount }) {
     if (!releaseDir) return
     const all = this.getAll()
     const key = variant ? `${releaseDir}_${variant}` : releaseDir
+    const vereinigt = new Set(Array.isArray(all[key]?.sceneIds) ? all[key].sceneIds.map(String) : [])
+    for (const id of (Array.isArray(sceneIds) ? sceneIds : [])) {
+      const s = String(id || "")
+      if (s) vereinigt.add(s)
+    }
     all[key] = {
       releaseDir,
       variant:         variant || "",
       assetId:         String(assetId || ""),
-      sceneIds:        Array.isArray(sceneIds) ? sceneIds.slice(0) : [],
-      sceneCount:      Number(sceneCount || (Array.isArray(sceneIds) ? sceneIds.length : 0)),
+      sceneIds:        [...vereinigt],
+      // Was THIS run's size, not the record's. The two drifted apart the moment
+      // the ids started accumulating, and the badge reads the ids. The passed
+      // count only stands in for a run that reported no ids at all.
+      sceneCount:      vereinigt.size || Number(sceneCount || 0),
       installedAt:     new Date().toISOString(),
       sourceSignature: String(sourceSignature || ""),
     }
