@@ -1519,6 +1519,7 @@
   "BENEOS.Cloud.Filter.Grid": "Tamanho da grelha",
   "BENEOS.Cloud.Filter.Scenery": "Apenas scenery",
   "BENEOS.Cloud.Filter.Battlemap": "Apenas battlemap",
+  "BENEOS.Cloud.Install.NoPackDir": "O Beneos Cloud esta inacessivel, por isso esta versao nao pode ser instalada agora. Tenta novamente assim que a ligacao voltar.",
   "BENEOS.Cloud.Install.AssetsMissing": "Não foi possível instalar {count} recurso(s) e podem aparecer como em falta. Verifique a consola ou reinstale o pacote.",
   "BENEOS.Cloud.Install.ConvertedUploads": "{count} ficheiro(s) foram convertidos para outro formato por um módulo de terceiros (como o Media Optimizer) durante a instalação. O Beneos ajustou todas as referências automaticamente.",
   "BENEOS.Cloud.Install.Report.ConvertedUploads": "{count} ficheiro(s) carregado(s) foram convertidos para outro formato por um módulo de terceiros (como o Media Optimizer). O Beneos ajustou todas as referências automaticamente, isto não é um erro.",

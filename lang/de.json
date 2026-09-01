@@ -1525,6 +1525,7 @@
   "BENEOS.Cloud.Filter.Grid": "Rastergröße",
   "BENEOS.Cloud.Filter.Scenery": "Nur Szenerien",
   "BENEOS.Cloud.Filter.Battlemap": "Nur Battlemaps",
+  "BENEOS.Cloud.Install.NoPackDir": "Die Beneos Cloud ist nicht erreichbar, deshalb laesst sich dieses Release gerade nicht installieren. Versuche es erneut, sobald die Verbindung wieder steht.",
   "BENEOS.Cloud.Install.AssetsMissing": "{count} Asset(s) konnten nicht installiert werden und werden moeglicherweise als fehlend angezeigt. Pruefe die Konsole oder installiere das Pack neu.",
   "BENEOS.Cloud.Install.ConvertedUploads": "{count} Datei(en) wurden während der Installation von einem Drittmodul (z. B. Media Optimizer) in ein anderes Format konvertiert. Beneos hat alle Verweise automatisch angepasst.",
   "BENEOS.Cloud.Install.Report.ConvertedUploads": "{count} hochgeladene Datei(en) wurden von einem Drittmodul (z. B. Media Optimizer) in ein anderes Format konvertiert. Beneos hat alle Verweise automatisch angepasst, das ist kein Fehler.",

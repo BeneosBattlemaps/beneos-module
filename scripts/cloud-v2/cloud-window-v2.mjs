@@ -5136,10 +5136,27 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     }
 
     // packId = the ACTUAL on-disk pack dir (the WHOLE release). list_releases
-    // returns variant_dirs (post-greenfield beneos_<pack_slug>_foundry_<variant_lc>);
-    // use it instead of constructing <release_dir>_<VARIANT>, which no longer
-    // exists on disk and threw "Package not found". Legacy construction stays
-    // as a fallback.
+    // returns variant_dirs (post-greenfield beneos_<pack_slug>_foundry_<variant_lc>).
+    //
+    // GERATEN WIRD NICHT MEHR.
+    //
+    // Hier stand bis zum 30.08.2026 ein Rueckfall, der den Namen selbst baute:
+    // `<release_dir>_<VARIANT>`. Der Kommentar darueber sagte im selben Atemzug,
+    // dass dieser Name auf der Platte NICHT MEHR EXISTIERT und genau die Meldung
+    // "Package not found" ausloest. Er stammte aus der Zeit vor der Umbenennung,
+    // als der Name berechenbar war, und blieb als Notnagel stehen.
+    //
+    // Ein Notnagel, der sicher bricht, ist keiner. Er greift genau dann, wenn
+    // die Katalogabfrage nicht durchkam, also bei wackliger Leitung, und
+    // verwandelt ein Verbindungsproblem in eine Meldung ueber fehlende Ware.
+    //
+    // Gemessen am 30.08.2026: eine einzige Kundenwelt erzeugte damit 77 solcher
+    // Fehlschlaege in einer Stunde, bei 170 Nachladeversuchen im selben Fenster.
+    // Alle 77 Pakete lagen auf dem Server, waren freigegeben und loesten
+    // serverseitig sauber auf. Der Kunde sah trotzdem "Paket nicht gefunden".
+    //
+    // Betreiberentscheidung vom selben Tag: entweder es geht, oder es geht
+    // nicht. Ohne Katalogeintrag wird nicht installiert und ehrlich gemeldet.
     const vdirs = (releaseEntry && releaseEntry.variant_dirs) || props.variant_dirs || opts.variantDirs || null
     let packId = null
     if (vdirs && typeof vdirs === "object") {
@@ -5147,7 +5164,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         ? (vdirs.SINGLE || vdirs["4K"] || vdirs["HD"] || Object.values(vdirs)[0])
         : (vdirs[variant] || vdirs["4K"] || vdirs["HD"] || vdirs.SINGLE || Object.values(vdirs)[0])
     }
-    if (!packId) packId = isSingle ? releaseDir : `${releaseDir}_${variant}`
+    if (!packId) {
+      ui.notifications?.warn(game.i18n.localize("BENEOS.Cloud.Install.NoPackDir")
+        || "Beneos Cloud is unreachable, so this release cannot be installed right now. "
+         + "Try again once the connection is back.")
+      console.warn("BeneosCloudWindowV2 | kein Verzeichnis fuer das Release, "
+        + "Katalog nicht geladen", { releaseDir, variant, hatKatalogeintrag: Boolean(releaseEntry) })
+      return
+    }
 
     // Punkt 7: scene scope. For an individual map ("Install") we install ONLY
     // the selected scene plus its sibling (battlemap + scenery), not the whole

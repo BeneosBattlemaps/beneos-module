@@ -1519,6 +1519,7 @@
   "BENEOS.Cloud.Filter.Grid": "Tamaño de cuadrícula",
   "BENEOS.Cloud.Filter.Scenery": "Solo escenarios",
   "BENEOS.Cloud.Filter.Battlemap": "Solo battlemaps",
+  "BENEOS.Cloud.Install.NoPackDir": "No se puede acceder a Beneos Cloud, por lo que esta version no se puede instalar ahora mismo. Intentalo de nuevo cuando vuelva la conexion.",
   "BENEOS.Cloud.Install.AssetsMissing": "No se pudieron instalar {count} recurso(s) y pueden aparecer como ausentes. Revisa la consola o reinstala el paquete.",
   "BENEOS.Cloud.Install.ConvertedUploads": "{count} archivo(s) fueron convertidos a otro formato por un módulo de terceros (como Media Optimizer) durante la instalación. Beneos ajustó todas las referencias automáticamente.",
   "BENEOS.Cloud.Install.Report.ConvertedUploads": "{count} archivo(s) subido(s) fueron convertidos a otro formato por un módulo de terceros (como Media Optimizer). Beneos ajustó todas las referencias automáticamente, esto no es un error.",
