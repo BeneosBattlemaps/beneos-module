@@ -330,11 +330,28 @@ export class BeneosCreatureInstaller {
     // SRD discs use local token art; premium guests/uninstalled use the CDN
     // thumbnail; an installed premium token can use its real local art.
     let img = null;
+    let imgFallback = null;
     if (premium) {
       const installedArt = installed ? (actor.prototypeToken?.texture?.src || actor.img) : null;
       const embedded = entry.thumbnailData || null;   // offline-safe base64 preview
       const cdn = entry.thumbnail ? TOKEN_THUMB_BASE + entry.thumbnail : null;
       img = (isPatron && installedArt) || embedded || cdn || installedArt || null;
+      // DER RUECKFALL, WEIL DIE KETTE OBEN NUR AUF LEER PRUEFT, NICHT AUF TOT.
+      //
+      // `installedArt` gewinnt, sobald es irgendeinen String liefert. Ob die
+      // Datei dahinter existiert, weiss hier niemand: das entscheidet erst der
+      // Browser beim Laden. Zeigt der Pfad ins Leere, blieb bis zum 2026-09-01
+      // eine leere dunkle Scheibe stehen, obwohl mit `cdn` eine funktionierende
+      // Adresse danebenlag und `embedded` sogar ohne Netz auskommt.
+      //
+      // Gemeldet am 2026-09-01 aus der Sync-Welt: mehrere Kreaturen der Szene
+      // "BM: Bloody Snow Field" ohne Bild, daneben andere mit. Alle galten als
+      // installiert.
+      //
+      // Die eingebettete Vorschau steht vorn, weil sie ohne Verbindung traegt.
+      // Sie ist nur dann ein Rueckfall, wenn sie nicht ohnehin schon gewaehlt
+      // wurde; dasselbe gilt fuer die Miniatur.
+      imgFallback = [embedded, cdn].find(u => u && u !== img) || null;
     } else {
       img = entry.art || (actor?.prototypeToken?.texture?.src) || actor?.img || null;
     }
@@ -346,6 +363,7 @@ export class BeneosCreatureInstaller {
     return {
       ...entry,
       img,
+      imgFallback,
       isVideo,
       shape: entry.shape || (premium ? "square" : "round"),
       installed,

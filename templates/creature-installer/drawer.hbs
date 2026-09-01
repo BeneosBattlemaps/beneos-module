@@ -72,7 +72,11 @@
           {{#each srd}}
             <div class="bci-tokencol">
               <div class="bci-disc bci-disc-srd bci-shape-{{shape}} {{#if available}}bci-available{{/if}} {{#if dispClass}}bci-disp-{{dispClass}}{{/if}}" draggable="{{draggable}}" data-uuid="{{uuid}}" data-key="{{key}}" data-name="{{name}}" {{#if linkedKey}}data-linked="{{linkedKey}}"{{/if}} title="{{#if available}}{{localize 'BENEOS.CreatureInstaller.OpenSheetHint'}}{{else}}{{name}}{{/if}}">
-                {{#if img}}{{#if isVideo}}<video src="{{img}}" muted loop autoplay playsinline preload="metadata" draggable="false"></video>{{else}}<img src="{{img}}" alt="{{name}}" draggable="false" onerror="this.style.display='none'">{{/if}}{{/if}}
+                {{!-- Laedt die lokale Art nicht, wird auf die Miniatur zurueckgefallen und
+                      erst danach auf den Platzhalter. Vorher blieb eine leere Scheibe
+                      stehen: das <img> versteckte sich, das <video> hatte gar keinen
+                      Fehlerfall. Gemeldet am 2026-09-01. --}}
+                {{#if img}}{{#if isVideo}}<video src="{{img}}" muted loop autoplay playsinline preload="metadata" draggable="false" onerror="this.hidden=true;const i=this.nextElementSibling;if(i){i.hidden=false;i.src=i.dataset.src}"></video><img hidden data-src="{{#if imgFallback}}{{imgFallback}}{{else}}modules/beneos-module/ui/beneos_thumb_placeholder.svg{{/if}}" alt="{{name}}" draggable="false" onerror="this.onerror=null;this.src='modules/beneos-module/ui/beneos_thumb_placeholder.svg'">{{else}}<img src="{{img}}" alt="{{name}}" draggable="false" {{#if imgFallback}}data-fb="{{imgFallback}}" {{/if}}onerror="if(this.dataset.fb){this.src=this.dataset.fb;delete this.dataset.fb}else{this.onerror=null;this.src='modules/beneos-module/ui/beneos_thumb_placeholder.svg'}">{{/if}}{{/if}}
                 {{#if available}}<span class="bci-check" title="{{localize 'BENEOS.CreatureInstaller.Available'}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span>{{/if}}
               </div>
               <span class="bci-name">{{name}}</span>
@@ -100,7 +104,11 @@
             {{#each beneos}}
               <div class="bci-tokencol">
                 <div class="bci-disc bci-disc-beneos bci-shape-{{shape}} {{#if available}}bci-available{{/if}} {{#if alternative}}bci-alt{{/if}} {{#if needsInstall}}bci-needsinstall{{/if}} {{#if blocked}}bci-blocked{{/if}} {{#if dispClass}}bci-disp-{{dispClass}}{{/if}}" draggable="{{draggable}}" data-uuid="{{uuid}}" data-key="{{key}}" data-name="{{name}}" data-tokenkey="{{tokenKey}}" title="{{#if blocked}}{{blockTooltip}}{{else if alternative}}{{localize 'BENEOS.CreatureInstaller.AlternativeTooltip'}}{{else if available}}{{localize 'BENEOS.CreatureInstaller.OpenSheetHint'}}{{else}}{{name}}{{/if}}">
-                  {{#if img}}{{#if isVideo}}<video src="{{img}}" muted loop autoplay playsinline preload="metadata" draggable="false"></video>{{else}}<img src="{{img}}" alt="{{name}}" draggable="false" onerror="this.style.display='none'">{{/if}}{{/if}}
+                  {{!-- Laedt die lokale Art nicht, wird auf die Miniatur zurueckgefallen und
+                      erst danach auf den Platzhalter. Vorher blieb eine leere Scheibe
+                      stehen: das <img> versteckte sich, das <video> hatte gar keinen
+                      Fehlerfall. Gemeldet am 2026-09-01. --}}
+                {{#if img}}{{#if isVideo}}<video src="{{img}}" muted loop autoplay playsinline preload="metadata" draggable="false" onerror="this.hidden=true;const i=this.nextElementSibling;if(i){i.hidden=false;i.src=i.dataset.src}"></video><img hidden data-src="{{#if imgFallback}}{{imgFallback}}{{else}}modules/beneos-module/ui/beneos_thumb_placeholder.svg{{/if}}" alt="{{name}}" draggable="false" onerror="this.onerror=null;this.src='modules/beneos-module/ui/beneos_thumb_placeholder.svg'">{{else}}<img src="{{img}}" alt="{{name}}" draggable="false" {{#if imgFallback}}data-fb="{{imgFallback}}" {{/if}}onerror="if(this.dataset.fb){this.src=this.dataset.fb;delete this.dataset.fb}else{this.onerror=null;this.src='modules/beneos-module/ui/beneos_thumb_placeholder.svg'}">{{/if}}{{/if}}
                   {{#if alternative}}<span class="bci-alt-badge" title="{{localize 'BENEOS.CreatureInstaller.AlternativeTooltip'}}">{{localize 'BENEOS.CreatureInstaller.AltShort'}}</span>{{/if}}
                   {{#if available}}
                     <span class="bci-check" title="{{localize 'BENEOS.CreatureInstaller.Available'}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span>
