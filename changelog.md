@@ -4,6 +4,45 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.5.0-beta.5 # 2026-09-01
+
+Twenty commits since beta.4. The version had not moved in any of them, so no
+tester would have been offered an update; that is what this bump is for.
+
+**Fixed, offline storage**
+- Fixed: A map you took offline could be refused without a connection. The
+  directory of shared files and the browser's storage could drift apart, and
+  nothing reconciled them. The world start now checks in both directions.
+- Fixed: The marker symbols of a scene were in no store at all. Seven of a
+  scene's twelve gate addresses were unknown to both the offline promise and
+  the scene guard, so an offline map was never complete. Measured: 25 console
+  errors on a drawn scene, now zero.
+- Fixed: Shared files whose maps had all been released kept their permanent
+  stamp and counted against the quota forever.
+- Fixed: Making room deleted the whole store when the throwaway files were not
+  enough to cover the request, instead of leaving it alone.
+- Fixed: A browser that refuses its own storage is now reported once, with a
+  dedicated empty text in the offline tab, instead of silently holding nothing.
+
+**Fixed, connection**
+- Fixed: The connection watcher could not reach the offline state during play,
+  so the scene guard never engaged. A scene that could not load was drawn blind
+  instead of refused with a plain-language notice.
+- Fixed: The health probe answered itself out of the module's own store, which
+  is why the watcher never saw an outage.
+
+**Improved**
+- Improved: Expiry warnings now start at half the term and are capped at two.
+  A group that plays every other week previously saw no warning at all and lost
+  its offline maps without notice.
+- Improved: A loyalty reward you are not entitled to now carries a badge and a
+  tooltip on its card, before you click it. The card stays clickable; the
+  refusal explains what is missing.
+- Improved: Release numbers no longer clutter the card caption.
+- Improved: The offline tab lists what is actually offline and says so when
+  nothing is.
+
+
 ### 14.4.7 # 2026-08-24
 
 **Improved**
