@@ -1523,6 +1523,7 @@
   "BENEOS.Cloud.Install.Report.ConvertedUploads": "{count} przesłane pliki zostały przekonwertowane na inny format przez moduł zewnętrzny (np. Media Optimizer). Beneos automatycznie dostosował wszystkie odwołania, to nie jest błąd.",
   "BENEOS.Cloud.Install.Report.Cat.permission": "zapis zablokowany",
   "BENEOS.Cloud.Install.Report.Cat.quota": "brak miejsca",
+  "BENEOS.Cloud.Install.Report.Cat.toolarge": "za duży plik",
   "BENEOS.Cloud.Install.Report.Cat.signature": "link wygasł",
   "BENEOS.Cloud.Install.Report.Cat.server": "błąd chmury",
   "BENEOS.Cloud.Install.Report.Cat.network": "połączenie",

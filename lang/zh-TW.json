@@ -1523,6 +1523,7 @@
   "BENEOS.Cloud.Install.Report.ConvertedUploads": "{count} 個上傳的檔案被第三方模組（如 Media Optimizer）轉換為其他格式。Beneos 已自動調整所有引用，這不是錯誤。",
   "BENEOS.Cloud.Install.Report.Cat.permission": "寫入遭封鎖",
   "BENEOS.Cloud.Install.Report.Cat.quota": "空間不足",
+  "BENEOS.Cloud.Install.Report.Cat.toolarge": "檔案過大",
   "BENEOS.Cloud.Install.Report.Cat.signature": "連結已過期",
   "BENEOS.Cloud.Install.Report.Cat.server": "雲端錯誤",
   "BENEOS.Cloud.Install.Report.Cat.network": "連線",

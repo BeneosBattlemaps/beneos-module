@@ -1529,6 +1529,7 @@
   "BENEOS.Cloud.Install.Report.Cat.timeout": "Zeitüberschreitung",
   "BENEOS.Cloud.Install.Report.Cat.verify": "nicht rücklesbar",
   "BENEOS.Cloud.Install.Report.Cat.notfound": "nicht in der Cloud",
+  "BENEOS.Cloud.Install.Report.Cat.toolarge": "zu gross",
   "BENEOS.Cloud.Install.Report.Cat.unknown": "unbekannt",
   "BENEOS.Cloud.Login.WindowTitle": "Beneos Cloud · Anmelden",
   "BENEOS.Cloud.Login.Description": "Melde dich bei deinem Beneos Cloud-Konto an. Zugangsdaten werden niemals lokal gespeichert.",

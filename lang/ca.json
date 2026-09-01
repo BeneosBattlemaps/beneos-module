@@ -1523,6 +1523,7 @@
   "BENEOS.Cloud.Install.Report.ConvertedUploads": "{count} fitxer(s) pujat(s) s'han convertit a un altre format per un mòdul de tercers (com Media Optimizer). Beneos ha ajustat totes les referències automàticament, això no és un error.",
   "BENEOS.Cloud.Install.Report.Cat.permission": "escriptura bloquejada",
   "BENEOS.Cloud.Install.Report.Cat.quota": "sense espai",
+  "BENEOS.Cloud.Install.Report.Cat.toolarge": "massa gran",
   "BENEOS.Cloud.Install.Report.Cat.signature": "enllaç caducat",
   "BENEOS.Cloud.Install.Report.Cat.server": "error del núvol",
   "BENEOS.Cloud.Install.Report.Cat.network": "connexió",

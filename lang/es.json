@@ -1523,6 +1523,7 @@
   "BENEOS.Cloud.Install.Report.ConvertedUploads": "{count} archivo(s) subido(s) fueron convertidos a otro formato por un módulo de terceros (como Media Optimizer). Beneos ajustó todas las referencias automáticamente, esto no es un error.",
   "BENEOS.Cloud.Install.Report.Cat.permission": "escritura bloqueada",
   "BENEOS.Cloud.Install.Report.Cat.quota": "sin espacio",
+  "BENEOS.Cloud.Install.Report.Cat.toolarge": "demasiado grande",
   "BENEOS.Cloud.Install.Report.Cat.signature": "enlace caducado",
   "BENEOS.Cloud.Install.Report.Cat.server": "error de nube",
   "BENEOS.Cloud.Install.Report.Cat.network": "conexión",

@@ -1523,6 +1523,7 @@
   "BENEOS.Cloud.Install.Report.ConvertedUploads": "{count}개의 업로드된 파일이 서드파티 모듈(Media Optimizer 등)에 의해 다른 형식으로 변환되었습니다. Beneos가 모든 참조를 자동으로 조정했습니다. 오류가 아닙니다.",
   "BENEOS.Cloud.Install.Report.Cat.permission": "쓰기 차단",
   "BENEOS.Cloud.Install.Report.Cat.quota": "저장 공간 부족",
+  "BENEOS.Cloud.Install.Report.Cat.toolarge": "용량 초과",
   "BENEOS.Cloud.Install.Report.Cat.signature": "링크 만료",
   "BENEOS.Cloud.Install.Report.Cat.server": "클라우드 오류",
   "BENEOS.Cloud.Install.Report.Cat.network": "연결",

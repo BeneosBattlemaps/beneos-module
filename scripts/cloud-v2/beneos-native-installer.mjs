@@ -50,6 +50,14 @@ const ADAPTIVE_MIN_LANES  = 2                // floor: never serialize a healthy
 // uninstaller reclaims disk space by overwriting assets with a 1-byte file.
 // Anything this small is a stub (or a corpse), never a real asset.
 export const STUB_MAX_BYTES = 8
+// Size of the pre-flight body probe. Above nginx's 1 MB default so a proxy
+// that would refuse every asset is caught before the first download, and small
+// enough that paying it once per install is not felt.
+const PREFLIGHT_SIZE_PROBE_BYTES = 2 * 1024 * 1024
+// How often a single run may ask the server about its request-size ceiling.
+// The answer is a server setting, so it does not change between assets; a
+// second ask only repeats what the first already returned.
+const MAX_SIZE_PROBES = 2
 // Content types a CDN compresses in transit. For these, Content-Length carries
 // the ENCODED size while the body reader yields DECODED bytes, so the two must
 // never be compared. Content-Encoding would state this outright, but it is not
@@ -70,6 +78,14 @@ export const INSTALL_ERROR = {
   SIGNATURE:  "signature",
   NOTFOUND:   "notfound",
   SERVER:     "server",
+  // The user's own delivery chain refused the upload because of its SIZE, not
+  // its content: a reverse proxy in front of Foundry answers HTTP 413. nginx
+  // ships with client_max_body_size 1m, and a Cloudflare proxy or tunnel on
+  // Free/Pro caps request bodies at 100 MB. The Foundry server itself never
+  // sends this. Kept apart from PERMISSION because the fix is a different
+  // config file, and apart from UNKNOWN because it is the one host failure we
+  // can name exactly. Not retryable: the same bytes are refused every time.
+  TOOLARGE:   "toolarge",
   // Download and upload both reported success, but reading the file back from
   // the data store afterwards fails. Never produced by classifyTransferError:
   // it is the verify pass telling us the transfer layer was lied to. Real
@@ -91,16 +107,34 @@ class TransferError extends Error {
 
 /** Map an error + optional HTTP status to a failure category. */
 export function classifyTransferError(err, status = null) {
+  const msg = String(err?.message || err || "").toLowerCase()
+  // Ahead of every status test on purpose. A proxy that refuses a body for its
+  // size does not always say 413: some answer 400, some 500, and only the page
+  // body names the cause. Behind the status tests, such a 500 would be read as
+  // a temporary server fault and retried forever against a limit that never
+  // moves. The wordings are the ones nginx, Apache, Caddy and Cloudflare
+  // actually emit, including nginx's "client intended to send too large body".
+  if (/entity too large|content too large|payload too large|too large body|request body too large|body exceeded/.test(msg)) return INSTALL_ERROR.TOOLARGE
+  if (status === 413) return INSTALL_ERROR.TOOLARGE
   if (status === 404) return INSTALL_ERROR.NOTFOUND
   if (status === 401 || status === 403) return INSTALL_ERROR.SIGNATURE
   if (status === 429) return INSTALL_ERROR.SERVER
   if (typeof status === "number" && status >= 500) return INSTALL_ERROR.SERVER
-  const msg = String(err?.message || err || "").toLowerCase()
   if (/permission|forbidden|not allowed|eacces|read-?only|erofs|denied/.test(msg)) return INSTALL_ERROR.PERMISSION
   if (/quota|enospc|no space|disk full|insufficient storage|\b507\b/.test(msg))    return INSTALL_ERROR.QUOTA
   if (/abort|timed out|timeout/.test(msg))                                         return INSTALL_ERROR.TIMEOUT
   if (/network|failed to fetch|networkerror|err_|load failed|connection/.test(msg)) return INSTALL_ERROR.NETWORK
   return INSTALL_ERROR.UNKNOWN
+}
+
+/**
+ * Shorten an error response body to something a log line and the copied report
+ * can carry. Proxies answer with a full HTML page, so tags are dropped and the
+ * result is capped: we only ever want the sentence that names the cause
+ * ("client intended to send too large body", "Request Entity Too Large").
+ */
+function errorBodyExcerpt(text) {
+  return String(text || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160)
 }
 
 // Beneos cloud-install namespace. Battlemap packs are authored against
@@ -237,6 +271,8 @@ export class BeneosNativeBattlemapInstaller {
     this._uploadRemap = new Map()   // install target -> path actually written (third-party upload converters, e.g. Media Optimizer)
     this._dirPromises = new Map() // dir -> in-flight #ensureDir promise (dedupe under parallel transfers)
     this._refreshInFlight = null  // shared in-flight signed-URL refresh (dedupe concurrent 403s)
+    this._toolargeMinBytes = Infinity // smallest upload this server refused for its size; Infinity until measured
+    this._sizeProbesLeft = MAX_SIZE_PROBES // budget for asking the server about its request-size ceiling
     this._sceneScope  = null      // { assetRelPaths:Set, sceneIds:Set } when scene-scoped
   }
 
@@ -1334,8 +1370,108 @@ export class BeneosNativeBattlemapInstaller {
     } catch (err) {
       return { ok: false, category: classifyTransferError(err, err?.status ?? null), error: err }
     }
-    if (!result?.path) return { ok: false, category: INSTALL_ERROR.UNKNOWN, error: new Error("upload returned no path") }
-    return { ok: true, path: result.path }
+    if (result?.path) return { ok: true, path: result.path }
+    return this.#diagnoseFailedUpload(dir, file)
+  }
+
+  /**
+   * FilePicker.upload answered without a path, and that is the whole of what
+   * Foundry tells us. It posts with plain fetch (which does not reject on a
+   * 4xx), then parses the response as JSON; when a reverse proxy answered with
+   * an HTML error page that parse throws, and its catch block returns an empty
+   * object. Its own 413 branch tests for a foundry.utils.HttpError that cannot
+   * be constructed on that path, so it is dead code. The status is therefore
+   * gone before we ever see it, and every host refusal was filed as UNKNOWN.
+   * A customer had to read his own browser console to find the 413 that the
+   * installer already held in its hands (Discord, 2026-09-01).
+   *
+   * So we ask the server ourselves, once, with a THROWAWAY body of the same
+   * size. The real asset is never re-sent: a managed host wraps
+   * FilePicker.upload to route writes into its own storage, and posting the
+   * asset directly would bypass that wrapper and put the file where the host
+   * does not serve it, while reporting success. A probe file is safe to place
+   * wrong. The answer is never turned into a success either; it only names the
+   * cause of a failure that already happened.
+   *
+   * On The Forge there is nothing to ask: uploads go to the Assets Library,
+   * not to POST /upload.
+   */
+  async #diagnoseFailedUpload(dir, file) {
+    const unknown  = () => ({ ok: false, category: INSTALL_ERROR.UNKNOWN, error: new Error("upload returned no path") })
+    const toolarge = (bytes) => ({
+      ok: false,
+      category: INSTALL_ERROR.TOOLARGE,
+      error: new TransferError(`upload refused: ${Math.round(bytes / 1024)} KB is over this server's request size limit`, INSTALL_ERROR.TOOLARGE, 413),
+    })
+    if (this._isForge) return unknown()
+    const size = Number(file?.size)
+    if (!Number.isFinite(size)) return unknown()
+    // A request-size ceiling belongs to the server, not to the file, so it is
+    // measured once and then applied. Every later file at or above the smallest
+    // size already refused is refused for the same reason, without asking again.
+    if (size >= this._toolargeMinBytes) return toolarge(size)
+    // Budget. A server that fails uploads for some OTHER reason (full disk,
+    // exhausted quota) fails every asset, and the second probe carries no
+    // information the first did not. Without this cap a 150-asset release would
+    // add a full second upload attempt per file against a server already at its
+    // limit.
+    if (this._sizeProbesLeft <= 0) return unknown()
+    this._sizeProbesLeft -= 1
+    return (await this.#serverRefusesSize(dir, size)) ? toolarge(size) : unknown()
+  }
+
+  /**
+   * Ask whether this server refuses a request body of `bytes`, by offering it
+   * one. True only for a proven size refusal (HTTP 413, or a proxy that says so
+   * in the body under another status).
+   *
+   * The response body of a proxy error page routinely carries server names,
+   * versions and internal host names. It is written to the console for the
+   * person debugging their own server, and deliberately NOT into the error
+   * message, because that one travels into our telemetry as sample_message.
+   */
+  async #serverRefusesSize(dir, bytes) {
+    const name = "beneos-size-probe.txt"
+    let res
+    try {
+      const fd = new FormData()
+      fd.set("source", this._source)
+      fd.set("target", dir)
+      fd.set("upload", new File([new Blob([new Uint8Array(bytes)], { type: "text/plain" })], name, { type: "text/plain" }))
+      res = await fetch(this._fp.uploadURL, { method: "POST", body: fd })
+    } catch (err) {
+      console.debug("BeneosNativeInstaller | size probe could not be sent", err)
+      return false
+    }
+    if (res.ok) {
+      await this.#stubProbeFile(dir, name)
+      return false
+    }
+    const detail  = errorBodyExcerpt(await res.text().catch(() => ""))
+    const refused = classifyTransferError(new Error(detail), res.status) === INSTALL_ERROR.TOOLARGE
+    if (refused) {
+      this._toolargeMinBytes = Math.min(this._toolargeMinBytes, bytes)
+      console.warn(`BeneosNativeInstaller | this server refuses uploads at ${Math.round(bytes / 1024)} KB (HTTP ${res.status}). That is a request-size limit in your reverse proxy, not in Foundry. nginx: client_max_body_size 0; Server said: ${detail}`)
+    } else {
+      console.warn(`BeneosNativeInstaller | size probe rejected for another reason (HTTP ${res.status}): ${detail}`)
+    }
+    return refused
+  }
+
+  /**
+   * Reclaim the probe file the way the uninstaller reclaims assets: Foundry
+   * gives modules no file-delete, so it is overwritten with a single byte.
+   * Goes through FilePicker.upload rather than #safeUpload, so a failure here
+   * can never re-enter the diagnosis path that called us.
+   */
+  async #stubProbeFile(dir, name) {
+    const stub = new File([new Blob(["x"], { type: "text/plain" })], name, { type: "text/plain" })
+    try {
+      const r = await this._fp.upload(this._source, dir, stub, {}, { notify: false })
+      if (!r?.path) console.warn(`BeneosNativeInstaller | size probe left behind at ${dir}/${name}`)
+    } catch (e) {
+      console.warn(`BeneosNativeInstaller | size probe left behind at ${dir}/${name}`, e)
+    }
   }
 
   /**
@@ -1440,7 +1576,42 @@ export class BeneosNativeBattlemapInstaller {
     const probe = new File([new Blob(["beneos write ok"], { type: "text/plain" })], "beneos-write-test.txt", { type: "text/plain" })
     const up = await this.#safeUpload(dir, probe)
     if (!up.ok) return { ok: false, category: up.category, error: up.error }
-    return { ok: true }
+    return this.#preflightSizeCheck(dir)
+  }
+
+  /**
+   * Second probe, on size rather than on permission. Those 15 bytes above pass
+   * on ANY server, including one whose reverse proxy caps request bodies at
+   * nginx's default client_max_body_size of 1 MB. That server then refuses
+   * every single real asset, and the customer paid for the whole download
+   * first. Only a body above the common ceiling proves the ceiling is absent.
+   *
+   * Deliberately small: 2 MB catches the nginx default, which is the case that
+   * actually happens, and costs one bounded write. A higher ceiling (a
+   * Cloudflare proxy or tunnel stops at 100 MB on Free/Pro) is caught per file
+   * by #diagnoseFailedUpload, so it does not need to be bought here.
+   *
+   * Two simplifications are taken on purpose, because the manifest carries no
+   * file sizes and asking for them would cost a round trip per asset:
+   *  - the probe is a fixed 2 MB rather than the largest asset of THIS run, so
+   *    a release whose files all stay under the proxy limit can still be
+   *    stopped here. No Beneos release is that small in practice.
+   *  - it is skipped when nothing large is planned, even though the verify pass
+   *    can still write single files in that case; those are then classified
+   *    individually by #diagnoseFailedUpload instead.
+   */
+  async #preflightSizeCheck(dir) {
+    // The Forge writes into the customer's paid Assets Library and has no
+    // reverse proxy of theirs in the path, so the probe could only ever cost
+    // them quota for an answer that cannot apply.
+    if (this._isForge) return { ok: true }
+    if (this._skipSource) return { ok: true }   // no bulk write planned this run
+    if (!(await this.#serverRefusesSize(dir, PREFLIGHT_SIZE_PROBE_BYTES))) return { ok: true }
+    return {
+      ok: false,
+      category: INSTALL_ERROR.TOOLARGE,
+      error: new TransferError(`server refuses uploads at ${Math.round(PREFLIGHT_SIZE_PROBE_BYTES / 1024)} KB`, INSTALL_ERROR.TOOLARGE, 413),
+    }
   }
 
   #preflightMessage(category) {
@@ -1827,15 +1998,23 @@ export class BeneosNativeBattlemapInstaller {
    */
   async #verifyAndRepair(assets) {
     this.progress.handleStatusMessage("Verifying installed assets")
+    // A file the server refused for its SIZE is refused again, byte for byte,
+    // every time it is offered. Repairing it re-downloads the whole asset from
+    // the cloud only to be turned away by the same proxy rule, so it is left
+    // out of the repair pass entirely and keeps the category that names its
+    // cause. It is missing on disk, so the HEAD pass below would otherwise
+    // pick it straight back up.
+    const hopeless = new Set(this._result.assetFailures.filter(f => f.category === INSTALL_ERROR.TOOLARGE).map(f => f.target))
     const byTarget = new Map()
     for (const f of this._result.assetFailures) {
+      if (hopeless.has(f.target)) continue
       const a = assets.find(x => x.target === f.target)
       if (a) byTarget.set(a.target, a)
     }
     if (!this._isForge) {
       // HEAD-checks are cheap + read-only -> run them in parallel.
       await this.#runPool(assets, DOWNLOAD_CONCURRENCY, async (a) => {
-        if (byTarget.has(a.target)) return
+        if (byTarget.has(a.target) || hopeless.has(a.target)) return
         if (!(await this.#headCheck(this.#installedPath(a)))) byTarget.set(a.target, a)
       })
     }

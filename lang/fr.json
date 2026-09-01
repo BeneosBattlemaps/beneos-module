@@ -1523,6 +1523,7 @@
   "BENEOS.Cloud.Install.Report.ConvertedUploads": "{count} fichier(s) téléversé(s) ont été convertis dans un autre format par un module tiers (comme Media Optimizer). Beneos a ajusté toutes les références automatiquement, ce n'est pas une erreur.",
   "BENEOS.Cloud.Install.Report.Cat.permission": "écriture bloquée",
   "BENEOS.Cloud.Install.Report.Cat.quota": "espace insuffisant",
+  "BENEOS.Cloud.Install.Report.Cat.toolarge": "trop volumineux",
   "BENEOS.Cloud.Install.Report.Cat.signature": "lien expiré",
   "BENEOS.Cloud.Install.Report.Cat.server": "erreur cloud",
   "BENEOS.Cloud.Install.Report.Cat.network": "connexion",

@@ -27,7 +27,10 @@ function priorityOf(path) {
 }
 
 // Order used to pick the dominant (most actionable) category on ties.
-const CATEGORY_PRIORITY = ["permission", "quota", "signature", "server", "network", "timeout", "verify", "notfound", "unknown"]
+// "toolarge" leads: it is the only host failure whose exact cause and exact
+// remedy we know, and it must never be hidden behind a vaguer category that
+// happened to hit more files.
+const CATEGORY_PRIORITY = ["toolarge", "permission", "quota", "signature", "server", "network", "timeout", "verify", "notfound", "unknown"]
 
 function _l(key, fallback) {
   try { if (game.i18n?.has?.(key)) return game.i18n.localize(key) } catch (_) {}
@@ -47,6 +50,7 @@ function esc(s) {
 // are localised (WIP: en-only for now). Keyed by failure category.
 const HEADLINE_FALLBACK = {
   permission: "Your server blocked writing files to beneos_assets/cloud/battlemaps/.",
+  toolarge:   "A proxy in front of your Foundry server rejected the files because they are too big (HTTP 413).",
   quota:      "Your server ran out of storage space (quota exceeded).",
   signature:  "Some download links expired during a very slow install.",
   server:     "Beneos Cloud returned temporary errors during the transfer.",
@@ -58,6 +62,7 @@ const HEADLINE_FALLBACK = {
 }
 const GUIDANCE_FALLBACK = {
   permission: "Check that Foundry is allowed to write files (on The Forge: Assets settings; self-host: folder permissions / read-only mounts). Then click Retry.",
+  toolarge:   "This is a setting of your own reverse proxy, not of Foundry and not of Beneos. Retrying cannot help until it is raised. nginx or Nginx Proxy Manager: set 'client_max_body_size 0;' for the Foundry site (in Nginx Proxy Manager it goes into the Advanced tab), then reload nginx. Caddy: 'request_body { max_size 0 }'. Apache: 'LimitRequestBody 0'. If your traffic also runs through a Cloudflare proxy or tunnel, note that Free and Pro cap uploads at 100 MB and that limit cannot be raised; almost all Beneos assets stay well below it, only a few HD bonus videos do not. Once the limit is raised, reopen the Beneos cloud window and install this release again; everything already on disk is kept and only the missing files are fetched.",
   quota:      "Free up disk space or raise your hosting storage quota, then click Retry.",
   signature:  "Just click Retry , the installer refreshes the download links automatically.",
   server:     "Wait a moment and click Retry. If it keeps happening, send us the report on Discord.",
@@ -87,7 +92,7 @@ export class BeneosInstallReport {
     const content    = this.#buildContent(result, assetFailures, docFailures, dominant)
 
     const buttons = {}
-    if (typeof opts.onRetry === "function") {
+    if (typeof opts.onRetry === "function" && !this.#retryIsPointless(result, assetFailures, docFailures)) {
       buttons.retry = {
         icon: '<i class="fas fa-rotate-right"></i>',
         label: _l("BENEOS.Cloud.Install.Report.Retry", "Retry install"),
@@ -122,6 +127,20 @@ export class BeneosInstallReport {
     }, { classes: ["beneos-asset-watcher-dialog"], width: 560 })
     dlg.render(true)
     return dlg
+  }
+
+  /**
+   * Hide Retry when every failure is a size refusal. Such a run cannot end any
+   * other way until the user changes a server setting, so the button would only
+   * spend the whole download again to arrive at the same report. Any other
+   * failure alongside it keeps the button, because that one may well pass on a
+   * second attempt.
+   */
+  static #retryIsPointless(result, assetFailures, docFailures) {
+    if (result?.fatalCategory === "toolarge") return true   // pre-flight already proved it
+    if (docFailures.length) return false
+    if (!assetFailures.length) return false
+    return assetFailures.every(f => f.category === "toolarge")
   }
 
   static #dominantCategory(result) {

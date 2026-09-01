@@ -1523,6 +1523,7 @@
   "BENEOS.Cloud.Install.Report.ConvertedUploads": "{count} 件のアップロードファイルがサードパーティモジュール（Media Optimizer など）によって別形式に変換されました。Beneos はすべての参照を自動的に調整しました。これはエラーではありません。",
   "BENEOS.Cloud.Install.Report.Cat.permission": "書き込み拒否",
   "BENEOS.Cloud.Install.Report.Cat.quota": "容量不足",
+  "BENEOS.Cloud.Install.Report.Cat.toolarge": "サイズ超過",
   "BENEOS.Cloud.Install.Report.Cat.signature": "リンク期限切れ",
   "BENEOS.Cloud.Install.Report.Cat.server": "クラウドエラー",
   "BENEOS.Cloud.Install.Report.Cat.network": "接続",
