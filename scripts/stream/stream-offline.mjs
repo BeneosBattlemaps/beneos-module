@@ -1318,6 +1318,58 @@ export async function verwaisteLoesen() {
 }
 
 /**
+ * Eintraege des Gemeinschaftsvorrats austragen, auf die keine Zusage mehr zeigt.
+ *
+ * WARUM DAS NICHT NUR AUFRAEUMEN IST
+ *
+ * `verwaisteLoesen` nimmt jeden Schluessel des Verzeichnisses als Deckung. Ein
+ * Eintrag, dessen Karten alle geloest sind, schuetzt seine Datei damit
+ * dauerhaft: `raumSchaffen` laesst gehaltene Ware absichtlich stehen, und
+ * `offlineFreigeben` wird ueber die Zusagenliste angestossen, in der die Karte
+ * nicht mehr steht. Der Platz bleibt belegt und zaehlt gegen das Kontingent.
+ * Derselbe Block wie in `verwaisteLoesen`, nur eine Ebene hoeher.
+ *
+ * GEMESSEN am 2026-09-01 im Pruefstand V14: 3 von 6 Eintraegen fuehrten als
+ * einzigen Besitzer ein Release, dessen Karte laengst geloest war.
+ *
+ * Deshalb steht dieser Schritt VOR `verwaisteLoesen`. Danach waere die Deckung
+ * dieses Laufs bereits falsch berechnet.
+ *
+ * Die Freigabe uebernimmt `geteiltAustragen`: es kennt die Besitzerlogik und
+ * gibt eine Datei erst frei, wenn wirklich keine Karte mehr auf sie zeigt.
+ */
+export async function geteilteWaisen() {
+  const leer = { geprueft: 0, tot: 0, freigegeben: 0, bytes: 0 }
+  let zugesagte
+  try {
+    // Streng lesen, ohne Auffangnetz. `lies()` gaebe bei einem Lesefehler ein
+    // leeres Verzeichnis zurueck, und dann saehe JEDER Eintrag verwaist aus.
+    zugesagte = new Set(Object.keys(zusagenStreng()))
+  } catch (fehler) {
+    console.warn("Beneos Stream | Abgleich des Gemeinschaftsvorrats uebersprungen, "
+      + `Zusagenliste nicht sicher lesbar: ${fehler?.message || fehler}`)
+    return { ...leer, uebersprungen: "zusagen-unlesbar" }
+  }
+
+  const vorrat = liesGeteilt()
+  const eintraege = Object.entries(vorrat).filter(([, e]) => e && typeof e === "object")
+  if (!eintraege.length) return leer
+
+  const tote = new Set()
+  for (const [, e] of eintraege) {
+    for (const id of (e.karten || [])) if (!zugesagte.has(id)) tote.add(id)
+  }
+  if (!tote.size) return { ...leer, geprueft: eintraege.length }
+
+  const erg = await geteiltAustragen([...tote])
+  if (erg.freigegeben) {
+    console.log(`Beneos Stream | Gemeinschaftsvorrat: ${erg.freigegeben} Datei(en) ohne zugesagte `
+      + `Karte ausgetragen, ${Math.round(erg.bytes / 1048576)} MB wieder raeumbar`)
+  }
+  return { geprueft: eintraege.length, tot: tote.size, freigegeben: erg.freigegeben, bytes: erg.bytes }
+}
+
+/**
  * Eintraege des Gemeinschaftsvorrats vermerken, deren Datei nicht mehr liegt.
  *
  * WARUM ES DIESE FUNKTION BRAUCHT
@@ -1459,18 +1511,23 @@ export async function beimWeltstart({ berechtigt }) {
   // Der Abgleich steht VOR jedem Abbruch, und das ist der ganze Punkt: eine
   // leere Zusagenliste ist genau die Lage, in der verwaiste Dauerstempel
   // liegenbleiben. Stuende er weiter unten, faende er sie nie.
+  // Drei Abgleiche, und ihre Reihenfolge ist bindend.
+  //
+  // Zuerst die toten Eintraege des Gemeinschaftsvorrats: sie gelten sonst als
+  // Deckung, und der zweite Schritt rechnete mit einer falschen.
+  const waisen = await geteilteWaisen()
+  // Dann die gehaltenen Dateien ohne Zusage.
   const verwaist = await verwaisteLoesen()
-
-  // Danach der Abgleich in der Gegenrichtung, und in dieser Reihenfolge: der
-  // Vermerk verlaesst sich darauf, dass der Speicher gerade angefasst wurde
-  // und ein Ausfall deshalb bekannt ist. Siehe `geteilteLuecken`.
+  // Zuletzt die Gegenrichtung, Eintrag ohne Datei. Er steht hinten, weil sein
+  // Sicherheitsnetz darauf baut, dass der Speicher gerade angefasst wurde und
+  // ein Ausfall deshalb bekannt ist. Siehe `geteilteLuecken`.
   const luecken = await geteilteLuecken()
 
   if (!alleKarten().length) {
     // Nichts zugesagt, nichts zu pruefen. Die Uhr laeuft trotzdem mit, damit
     // sie nicht bei der ersten Zusage schon abgelaufen ist.
     if (berechtigt) await berechtigungGesehen()
-    return { uebersprungen: "nichts-zugesagt", verwaist, luecken }
+    return { uebersprungen: "nichts-zugesagt", waisen, verwaist, luecken }
   }
 
   if (berechtigt) await berechtigungGesehen()
@@ -1490,7 +1547,7 @@ export async function beimWeltstart({ berechtigt }) {
     // Nur abbrechen, wenn wirklich etwas gefallen ist. Wer ausschliesslich
     // Gekauftes haelt, verliert nichts und braucht trotzdem seine Pruefung;
     // ohne diese Bedingung bekaeme er sie nach Fristablauf nie wieder.
-    if (v.gefallen > 0) return { verfallen: v.gefallen, behalten: v.behalten, frist, verwaist, luecken }
+    if (v.gefallen > 0) return { verfallen: v.gefallen, behalten: v.behalten, frist, waisen, verwaist, luecken }
   }
 
   const stand = await pruefeVorrat()
@@ -1499,7 +1556,7 @@ export async function beimWeltstart({ berechtigt }) {
     + `vollstaendig, ${Math.round(vorrat.bytes / 1048576)} MB zugesagt, `
     + (frist.nie ? "Frist laeuft noch nicht" : `noch ${frist.tageOffen} Tage`))
 
-  return { stand, frist, vorrat, verwaist, luecken }
+  return { stand, frist, vorrat, waisen, verwaist, luecken }
 }
 
 // ---- Was der Kunde davon sieht ----------------------------------------

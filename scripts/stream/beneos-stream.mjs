@@ -32,7 +32,7 @@ import { reportedSoFar } from "./stream-report.mjs"
 import { beimWeltstart, meldeFehlendenVorrat, meldeVerfall, karteZusagen, karteLoesen,
          istZugesagt, alleKarten, vorratsstand, verfallsstand, pruefeVorrat, VERFALL_TAGE,
          karteZuSzene, szenenzustand, zustandAusCache, warmeZustaende, ziehZustandNach,
-         schalteKarte, verwaisteLoesen, geteilteLuecken, geteilterStand,
+         schalteKarte, verwaisteLoesen, geteilteLuecken, geteilteWaisen, geteilterStand,
          vorratHeilen } from "./stream-offline.mjs"
 
 Hooks.once("init", () => {
@@ -119,6 +119,9 @@ Hooks.once("init", () => {
     // Datei nicht mehr liegt. Die beiden gehoeren zusammen, denn Verzeichnis
     // und Speicher koennen in BEIDE Richtungen auseinanderlaufen.
     geteilteLuecken,
+    // Und der dritte Abgleich: ein Eintrag, auf den keine Zusage mehr zeigt.
+    // Er steht im Weltstart vorn, weil er sonst als Deckung mitzaehlt.
+    geteilteWaisen,
     geteilterStand,
     vorratHeilen,
     // Das Verzeichnis der zugesagten Karten und die Frist. Der Speicher weiss,
