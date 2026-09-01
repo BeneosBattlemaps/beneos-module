@@ -155,6 +155,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       openLogin:               BeneosCloudWindowV2._onOpenLogin,
       openCloudSettings:       BeneosCloudWindowV2._onOpenCloudSettings,
       openSettings:            BeneosCloudWindowV2._onOpenSettings,
+      retryCatalog:            BeneosCloudWindowV2._onRetryCatalog,
       openCodex:               BeneosCloudWindowV2._onOpenCodex,
       openLgc:                 BeneosCloudWindowV2._onOpenLgc,
       resetFilters:            BeneosCloudWindowV2._onResetFilters,
@@ -1603,8 +1604,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // Feature 5: battlemaps now respect offline too (the bmap exemption is
     // gone). Offline -> the card shows the "Offline" state and drops its remote
     // thumbnail so the result list isn't flooded with broken images.
-    const cardIsOffline = !!(game.beneos?.databaseHolder?.getIsOffline?.()
-                            ?? game.beneos?.databaseHolder?.isOffline)
+    // 14.4.8: an den echten Serverausfall gebunden statt an den Katalogzustand.
+    // Die Pille sagt "offline" und das Weglassen des Vorschaubildes setzt voraus,
+    // dass nichts geht. Bei einem bloss veralteten Suchindex geht aber alles:
+    // Vorschaubilder und Downloads laufen ueber beneos.cloud, nicht ueber den
+    // Katalog-Host. Vorher log die Karte den Nutzer an.
+    const cardIsOffline = game.beneos?.cloud?.serverOffline === true
     const dragType = assetType === "spell" ? "Item" : (assetType === "item" ? "Item" : "Actor")
     const documentId = isInstalled
       ? (BeneosUtility.getActorId?.(key) || BeneosUtility.getItemId?.(key) || BeneosUtility.getSpellId?.(key) || "")
@@ -3917,8 +3922,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // available assets are never locked, so this never false-blocks them.
   #installBlockReason(type, el) {
     const cloud = game.beneos?.cloud
+    // 14.4.8: nur der Server blockt. Der Katalogzustand stand hier bis dahin
+    // gleichberechtigt daneben und hat Installationen verhindert, die
+    // funktioniert haetten: der Installer arbeitet aus packInfo von
+    // api-scenepacker.php auf beneos.cloud und ruft den Katalog-Host
+    // www.beneos-database.com an keiner Stelle auf. Ein veralteter Suchindex
+    // ist damit kein Grund, einen Download zu verweigern.
     const offline = cloud?.serverOffline === true
-      || !!(game.beneos?.databaseHolder?.getIsOffline?.() ?? game.beneos?.databaseHolder?.isOffline)
     if (offline) return "offline"
     if (!cloud?.isLoggedIn?.()) return "login"
     // Installed asset whose pending update the user is no longer entitled to.
@@ -5276,6 +5286,20 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
 
   // Settings modal companion. Single instance per click — if one is
   // already open, just bring it to focus instead of stacking copies.
+  // Holt den Katalog sofort neu, statt den Nutzer auf einen Neustart der Welt zu
+  // verweisen. Bis 14.4.7 war das Neuladen der einzige Weg aus dem Zustand, weil
+  // loadDatabaseFiles() nur im ready-Hook lief.
+  static async _onRetryCatalog(_event, target) {
+    const holder = game.beneos?.databaseHolder
+    if (!holder?.erneutVersuchen) return
+    if (target) target.disabled = true
+    try {
+      await holder.erneutVersuchen()
+    } finally {
+      if (target) target.disabled = false
+    }
+  }
+
   static _onOpenSettings(_event, _target) {
     const existing = Object.values(foundry.applications.instances ?? {})
       .find(a => a instanceof BeneosCloudSettingsV2)
@@ -5636,7 +5660,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // (cheap, no remote calls), then group-sort + slice so the Free section is
     // never paged out before the locked one.
     const hasCampaign = !!game.beneos?.cloud?.hasCampaignAccess?.("battlemaps")
-    const isOffline   = !!(game.beneos?.databaseHolder?.getIsOffline?.() ?? game.beneos?.databaseHolder?.isOffline)
+    // 14.4.8: wie bei den uebrigen Karten an den echten Serverausfall gebunden.
+    // Releaselisten kommen aus api-scenepacker.php auf beneos.cloud und haben mit
+    // dem Katalog-Host nichts zu tun; ein veralteter Suchindex darf sie nicht
+    // als offline ausweisen.
+    const isOffline   = game.beneos?.cloud?.serverOffline === true
 
     const cards = filtered.map(r => {
       const single   = Number(r?.nb_variants || 0) === 1
