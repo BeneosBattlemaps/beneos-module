@@ -597,6 +597,152 @@ async function fromStore(store, url) {
   return null
 }
 
+/* --------------------------------------------------- gleicher Inhalt ------ */
+
+/**
+ * Dieselbe Datei unter einer anderen Adresse finden.
+ *
+ * WAS DAS LOEST
+ *
+ * Ein Release liefert seine Dateien unter `/a/<schluessel>/<release>/<variante>/<pfad>`
+ * aus. Zwei Releases derselben Kampagne teilen sich oft dieselben Bytes, vor
+ * allem Tonspuren: gemessen am 2026-09-01 ueber 286 Manifeste sind es 11,95 GB
+ * innerhalb eines Releases und weitere 4,45 GB darueber hinaus. Aus Kundensicht
+ * 6,4 Prozent im Mittel, in einer Kampagnenfamilie aber 40 bis 52 Prozent.
+ *
+ * Seit dem 2026-09-01 ZAEHLT das Tor solche Bytes nur einmal (Bauform C, erste
+ * Haelfte). Der VERKEHR lief unveraendert weiter: oeffnet die Gruppe eine Szene
+ * aus Release B, holt der Browser die 10-MB-Tonspur erneut, obwohl sie unter
+ * der Adresse von Release A schon im Speicher liegt. Der Speicher fuehrt seine
+ * Eintraege unter der vollen Adresse, und die traegt Release und Variante.
+ *
+ * WARUM EIN VERZEICHNIS UND KEINE INHALTSADRESSIERUNG
+ *
+ * Ein inhaltsadressierter Auslieferungsweg gab es bis zum 2026-08-23, und er ist
+ * gestrichen worden: er war der einzige Schritt, der den Gesamtbestand kennen
+ * musste, und damit der einzige Grund, warum ein Release nicht fuer sich allein
+ * aufbereitbar war. Diese Entscheidung bleibt unangetastet. Die Adressen
+ * aendern sich nicht, kein Release muss ein anderes kennen; nur der Klient
+ * merkt sich nebenbei, welche Adressen denselben Inhalt tragen.
+ *
+ * WOHER DIE PRUEFSUMMEN KOMMEN
+ *
+ * Aus den Manifesten, die das Modul ohnehin laedt. Jeder Eintrag traegt seit
+ * Schema 3 ein `sha256`. Gemeldet wird von `loadStreamManifest`, der einzigen
+ * Stelle, ueber die ein Manifest in dieses Modul gelangt.
+ *
+ * WAS BEWUSST NICHT PASSIERT
+ *
+ * Der Treffer wird NICHT unter der angefragten Adresse abgelegt. Sonst laege
+ * die Datei doppelt und der Gewinn waere weg. Wer sie dauerhaft haelt, geht
+ * ueber `offlineHalten`, und das legt sie absichtlich unter ihrer eigenen
+ * Adresse ab: die Szenenwache und der Vorratsbestand fragen je Adresse, und ein
+ * Umbau dieser Buchfuehrung ist eine eigene Aufgabe mit eigener Messreihe.
+ * Gespart wird hier der Verkehr, nicht der Platz.
+ */
+const shaZuAdresse = new Map()   // Adresse ohne Abfrageteil -> sha256
+const adressenZuSha = new Map()  // sha256 -> Set der Adressen
+
+/**
+ * Deckel gegen unbegrenztes Wachstum.
+ *
+ * Ein grosses Paket traegt einige tausend Eintraege, und eine Sitzung kann viele
+ * Manifeste laden. Der Deckel ist keine Genauigkeitsfrage: wird er erreicht,
+ * findet der Nachschlag seltener etwas, und die Datei wird geholt wie vorher.
+ * Ein voller Speicher darf niemals schlechter sein als gar keiner.
+ */
+const VERZEICHNIS_DECKEL = 20000
+let deckelGemeldet = false
+
+/**
+ * Der Abfrageteil faellt weg, genau wie bei `store.match(..., ignoreSearch)`.
+ * Sonst waere `datei.webm?t=1` ein anderer Schluessel als `datei.webm`.
+ */
+function ohneAbfrage(url) {
+  const s = String(url || "")
+  const i = s.indexOf("?")
+  return i < 0 ? s : s.slice(0, i)
+}
+
+/**
+ * Adressen und ihre Pruefsummen melden. Wird von `loadStreamManifest` gerufen.
+ *
+ * @param {Array<[string, string]>} paare Adresse und sha256, je Manifesteintrag.
+ */
+export function merkePruefsummen(paare) {
+  if (!Array.isArray(paare)) return 0
+  let neu = 0
+  for (const paar of paare) {
+    if (!Array.isArray(paar) || paar.length < 2) continue
+    const adresse = ohneAbfrage(paar[0])
+    const sha = String(paar[1] || "").toLowerCase()
+    // Die Formpruefung ist keine Zierde. Ein leeres oder verstuemmeltes Feld
+    // wuerde sonst alle Dateien ohne Pruefsumme zu einer einzigen Klasse
+    // zusammenfassen, und der Nachschlag lieferte fremde Bytes aus.
+    if (!adresse || !/^[a-f0-9]{64}$/.test(sha)) continue
+    if (shaZuAdresse.get(adresse) === sha) continue
+    if (shaZuAdresse.size >= VERZEICHNIS_DECKEL) {
+      if (!deckelGemeldet) {
+        deckelGemeldet = true
+        console.log(`Beneos Stream | Pruefsummenverzeichnis voll bei ${VERZEICHNIS_DECKEL} Eintraegen, weitere werden nicht gemerkt`)
+      }
+      break
+    }
+    shaZuAdresse.set(adresse, sha)
+    let liste = adressenZuSha.get(sha)
+    if (!liste) { liste = new Set(); adressenZuSha.set(sha, liste) }
+    liste.add(adresse)
+    neu++
+  }
+  return neu
+}
+
+/**
+ * Interne Kopfzeilen abstreifen, bevor ein Treffer nach draussen geht.
+ *
+ * Der Treffer stammt aus dem Eintrag einer ANDEREN Adresse und traegt deren
+ * Stempel, moeglicherweise auch deren Dauerstempel. Wer die Antwort danach
+ * ablegt, etwa `prewarm` mit `keep = false`, wuerde den fremden Dauerstempel
+ * mitkopieren: eine Datei waere dauerhaft gehalten, die niemand zugesagt hat,
+ * und sie belegte stillschweigend das Kontingent des Kunden.
+ */
+async function ohneInterneKopfzeilen(hit) {
+  const headers = new Headers(hit.headers)
+  headers.delete(STAMP_HEADER)
+  headers.delete(KEEP_HEADER)
+  return new Response(await hit.blob(), {
+    status: hit.status, statusText: hit.statusText, headers,
+  })
+}
+
+/**
+ * Liegt derselbe Inhalt unter einer anderen Adresse frisch im Speicher?
+ *
+ * Gibt `null` zurueck, wenn die Pruefsumme unbekannt ist, wenn keine zweite
+ * Adresse sie traegt, oder wenn keine davon im Speicher liegt. In allen drei
+ * Faellen laeuft der Abruf weiter wie bisher.
+ */
+async function ausGleichemInhalt(store, url) {
+  const adresse = ohneAbfrage(url)
+  const sha = shaZuAdresse.get(adresse)
+  if (!sha) return null
+  const kandidaten = adressenZuSha.get(sha)
+  if (!kandidaten || kandidaten.size < 2) return null
+  for (const andere of kandidaten) {
+    if (andere === adresse) continue
+    const hit = await fromStore(store, andere)
+    if (hit) return hit
+  }
+  return null
+}
+
+/** Nur fuer den Pruefstand: der Stand des Verzeichnisses. */
+export function pruefsummenStand() {
+  let mehrfach = 0
+  for (const liste of adressenZuSha.values()) if (liste.size > 1) mehrfach++
+  return { adressen: shaZuAdresse.size, pruefsummen: adressenZuSha.size, mehrfach, deckel: VERZEICHNIS_DECKEL }
+}
+
 /**
  * Liegen ALLE diese Adressen frisch im Speicher?
  *
@@ -861,6 +1007,19 @@ export async function alleImSpeicher(urls) {
           count("store-hit")
           return hit.clone()
         }
+        // Nichts unter DIESER Adresse. Liegt derselbe Inhalt unter einer
+        // anderen? Siehe `ausGleichemInhalt`: zwei Releases derselben Kampagne
+        // teilen sich vor allem ihre Tonspuren, und die Adresse traegt das
+        // Release. Ohne diesen Schritt holt die zweite Karte eine 10-MB-Datei
+        // erneut, die schon im Speicher liegt.
+        //
+        // Der Fehlschlag ist billig: ein Nachschlag im Speicher des Klienten
+        // und hoechstens ein `store.match` je bekannter Geschwisteradresse.
+        const gleich = await ausGleichemInhalt(store, url)
+        if (gleich) {
+          count("inhalt-hit")
+          return await ohneInterneKopfzeilen(gleich)
+        }
       }
 
       // Nach dem Speicher, vor allem anderen: was lokal liegt, wird auch ohne
@@ -884,6 +1043,10 @@ export async function alleImSpeicher(urls) {
           if (store) {
             const hit = await fromStore(store, url)
             if (hit) { count("store-hit"); return hit.clone() }
+            // Derselbe Nachschlag wie oben. Waehrend gewartet wurde, kann eine
+            // Geschwisteradresse fertig geworden sein.
+            const gleich = await ausGleichemInhalt(store, url)
+            if (gleich) { count("inhalt-hit"); return await ohneInterneKopfzeilen(gleich) }
           }
           // Kein Speicher, oder der Erste hat nichts hinterlassen. Dann von
           // hier aus normal weiter, als haette es kein Warten gegeben.

@@ -37,6 +37,9 @@
  */
 
 import { assetUrl, downloadMode, pinStillsEnabled, streamBase, streamEnabled, streamKey } from "./stream-settings.mjs"
+// Die Gegenrichtung gibt es nicht: stream-fetch kennt weder diese Datei noch
+// `assetUrl`, deshalb kann kein Ladekreis entstehen.
+import { merkePruefsummen } from "./stream-fetch.mjs"
 
 const PACK_SOURCE_PREFIX = "beneos_assets/beneos_battlemaps/"
 const CLOUD_INSTALL_PREFIX = "beneos_assets/cloud/battlemaps/"
@@ -102,6 +105,36 @@ export async function loadStreamManifest(release, variant) {
   if (!Array.isArray(manifest?.entries)) {
     throw new Error(`stream manifest malformed for ${release}/${variant}`)
   }
+
+  // Adressen und Pruefsummen an den Abrufweg melden.
+  //
+  // HIER, WEIL DIESE FUNKTION DIE EINZIGE STELLE IST, ueber die ein Manifest in
+  // dieses Modul gelangt. Der Installierer laedt es, der Rechtsklick auf eine
+  // Szene laedt es, und beide kommen durch diese Zeilen. Eine zweite Meldestelle
+  // waere eine zweite Wahrheit.
+  //
+  // Damit kann `ausGleichemInhalt` eine Datei aus dem Speicher liefern, die
+  // unter der Adresse eines ANDEREN Release schon liegt. Ohne Wirkung, solange
+  // nur ein Release im Spiel ist; die Meldung kostet dann ein paar Kilobyte
+  // Verzeichnis und sonst nichts.
+  //
+  // Ohne `await` und ohne Fehlerausgang: ein Verzeichnis, das nicht zustande
+  // kommt, macht den Abruf langsamer, aber nicht falsch. Eine Ausnahme hier
+  // wuerde dagegen jede Installation abbrechen.
+  try {
+    const paare = []
+    for (const e of manifest.entries) {
+      const key = e?.key
+      const sha = e?.sha256
+      if (typeof key !== "string" || typeof sha !== "string") continue
+      // Dokumente tragen den Praefix `_docs/` und werden nie ueber den
+      // Speicherweg geholt. Sie ins Verzeichnis zu nehmen braechte nichts.
+      if (key.startsWith("_docs/")) continue
+      paare.push([assetUrl(release, variant, key), sha])
+    }
+    merkePruefsummen(paare)
+  } catch (_) { /* das Verzeichnis ist Kuer, das Manifest ist Pflicht */ }
+
   return manifest
 }
 
