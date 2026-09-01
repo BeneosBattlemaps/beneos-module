@@ -120,6 +120,27 @@ export function classifyTransferError(err, status = null) {
   if (status === 401 || status === 403) return INSTALL_ERROR.SIGNATURE
   if (status === 429) return INSTALL_ERROR.SERVER
   if (typeof status === "number" && status >= 500) return INSTALL_ERROR.SERVER
+  // Ein fehlendes Paket erreicht uns nicht als 404. `sp_fail()` in
+  // api-scenepacker.php antwortet mit HTTP 200 und schreibt den Fehler in den
+  // Rumpf, und `getPackInfo()` in beneos-scenepacker.js liest den Statuscode
+  // ueberhaupt nicht: es parst die Antwort, wirft `new Error(data.message)`,
+  // und dieser Error traegt kein `status`. Die Statuszeile oben kann den Fall
+  // also nie sehen, egal was der Server sendet.
+  //
+  // Am 30.08.2026 kostete das die einzige Kategorie mit hartem Alarm. Ein Kunde
+  // bekam bei 77 verschiedenen Battlemaps in acht Sekunden "Package not found";
+  // alle 77 wurden als `unknown` gemeldet, und die Grenze fuer `notfound` (drei,
+  // bei Grundlinie null) blieb bei null stehen. Der Melder schlug erst ueber den
+  // Mengenfaktor an, zwei Tage spaeter und ohne die Ursache zu nennen.
+  //
+  // Am 01.09.2026 in `analytics_events` nachgezaehlt: 78 solcher Meldungen in
+  // sieben Tagen, 77 davon in einer einzigen Welt in acht Sekunden, alle unter
+  // `unknown`.
+  //
+  // Der Unterstrich fehlt im Muster mit Absicht. Chromiums Netzfehler heissen
+  // `ERR_FILE_NOT_FOUND` und `ERR_NAME_NOT_RESOLVED`, also `not_found` mit
+  // Unterstrich; sie sollen weiter unten `network` bleiben und tun das auch.
+  if (/not found|notfound|no such file|enoent/.test(msg))                          return INSTALL_ERROR.NOTFOUND
   if (/permission|forbidden|not allowed|eacces|read-?only|erofs|denied/.test(msg)) return INSTALL_ERROR.PERMISSION
   if (/quota|enospc|no space|disk full|insufficient storage|\b507\b/.test(msg))    return INSTALL_ERROR.QUOTA
   if (/abort|timed out|timeout/.test(msg))                                         return INSTALL_ERROR.TIMEOUT
