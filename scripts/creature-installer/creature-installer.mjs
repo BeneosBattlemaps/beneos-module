@@ -410,14 +410,31 @@ export class BeneosCreatureInstaller {
     const blockNotes = [...new Set(beneos.filter(c => c.blocked).map(c => c.blockTooltip).filter(Boolean))];
     // Gold-button state machine: not connected -> support; patron with any
     // accessible-but-not-installed Beneos -> install (cloud); all installed and
-    // something to auto-place -> place; all installed but only alternatives (no
-    // auto-placeable) -> place disabled (drag-only).
+    // something to auto-place -> place; nothing to place at all -> no button.
+    //
+    // EIN KNOPF, DER NICHTS TUN KANN, WIRD NICHT GEZEIGT.
+    //
+    // Die beiden Platzieren-Knoepfe arbeiten im Tandem: der freie setzt die
+    // SRD-Kreaturen auf die Karte, der goldene ersetzt sie durch die eigenen.
+    // Liegt keine freie Kreatur auf der Karte, hat der erste nichts zu tun.
+    // Bis zum 2026-09-01 stand er trotzdem da, und der goldene daneben als
+    // graue, nicht anklickbare Attrappe. Kundenmeldung ueber den Betreiber:
+    // sichtbare Knoepfe, die nicht reagieren, verwirren mehr als fehlende.
+    //
+    // AUSGEBLENDET WIRD NUR, WAS WIRKLICH NICHTS KANN, und deshalb sind es
+    // zwei getrennte Bedingungen statt einer. `beneosOwnPlaceable` deckt den
+    // Fall ab, dass Beneos-Kreaturen EIGENE Positionen tragen: dann arbeitet
+    // der goldene Knopf, auch wenn keine freie Kreatur liegt. Ein striktes
+    // Tandem naehme dort eine Funktion weg, die laeuft.
+    //
+    // Der Installieren-Knopf bleibt in jedem Fall stehen. Installieren haengt
+    // nicht an Positionen; wer nachlaedt, zieht die Kreaturen danach von Hand.
     const beneosMissing = beneos.filter(c => c.needsInstall).length;
     const srdPlaceable = srd.some(c => positionsOf(c).length);
     const beneosOwnPlaceable = beneos.some(c => !c.alternative && positionsOf(c).length);
     const beneosPlaceable = srdPlaceable || beneosOwnPlaceable;
     let beneosBtn = "support";
-    if (isPatron) beneosBtn = beneosMissing > 0 ? "install" : (beneosPlaceable ? "place" : "place-empty");
+    if (isPatron) beneosBtn = beneosMissing > 0 ? "install" : (beneosPlaceable ? "place" : "none");
     return {
       logo: false,
       hidden,
@@ -442,7 +459,9 @@ export class BeneosCreatureInstaller {
       beneosBtn,
       btnInstall: beneosBtn === "install",
       btnPlace: beneosBtn === "place",
-      btnPlaceEmpty: beneosBtn === "place-empty",
+      // Der freie Platzieren-Knopf erscheint nur, wenn wirklich eine freie
+      // Kreatur auf der Karte liegt. Siehe die Begruendung oben.
+      btnPlaceSrd: srdPlaceable,
       hasGuide: !!this.data.guideRef
     };
   }

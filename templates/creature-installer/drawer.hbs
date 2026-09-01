@@ -152,10 +152,15 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 012-2h13v18H6a2 2 0 01-2-2zM9 3v18"/></svg>
         <span>{{localize 'BENEOS.CreatureInstaller.Guide'}}</span>
       </button>
+      {{!-- Nur wenn wirklich eine freie Kreatur auf der Karte liegt. Sonst hat
+            der Knopf nichts zu tun, und ein sichtbarer Knopf ohne Wirkung
+            verwirrt mehr als ein fehlender. Siehe creature-installer.mjs. --}}
+      {{#if btnPlaceSrd}}
       <button type="button" class="bci-btn bci-btn-dark {{#unless isPatron}}bci-btn-green{{/unless}}" data-action="placeSrd">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6-7-11a7 7 0 0114 0c0 5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
         <span>{{localize 'BENEOS.CreatureInstaller.PlaceSrd'}}</span>
       </button>
+      {{/if}}
       {{!-- No Beneos creatures in this scene -> only "Place Free"; no gold
             install/place button and no "Support to add Beneos creatures" CTA. --}}
       {{#if hasBeneos}}
@@ -170,12 +175,14 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6-7-11a7 7 0 0114 0c0 5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
             <span>{{localize 'BENEOS.CreatureInstaller.PlaceBeneos'}}</span>
           </button>
-        {{else}}
-          <button type="button" class="bci-btn bci-btn-gold bci-btn-grow bci-btn-disabled" title="{{localize 'BENEOS.CreatureInstaller.PlaceBeneosEmptyTooltip'}}">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6-7-11a7 7 0 0114 0c0 5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
-            <span>{{localize 'BENEOS.CreatureInstaller.PlaceBeneos'}}</span>
-          </button>
         {{/if}}
+        {{!-- Hier stand bis zum 2026-09-01 ein grauer, nicht anklickbarer
+              Knopf fuer den Fall, dass nichts zu platzieren ist. Genau den hat
+              ein Kunde als verwirrend gemeldet: er sieht aus wie ein Angebot
+              und ist keines. Jetzt erscheint gar keiner.
+              `BENEOS.CreatureInstaller.PlaceBeneosEmptyTooltip` ist damit in
+              allen dreizehn Sprachdateien verwaist und bleibt dort stehen,
+              falls der Zustand je wieder sichtbar gemacht wird. --}}
       {{else}}
         <button type="button" class="bci-btn bci-btn-gold bci-btn-grow" data-action="support">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l4 5 5-7 5 7 4-5-2 12H5z"/></svg>
