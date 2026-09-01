@@ -128,6 +128,26 @@ export function classifyTransferError(err, status = null) {
 }
 
 /**
+ * English fallbacks for the pre-flight abort message, keyed by failure
+ * category. The i18n keys BENEOS.Cloud.Install.PreflightFailed.<category> take
+ * precedence, but none of them exists in any of the 13 language files, so until
+ * they do this table IS the message the customer reads. Before it, every one of
+ * the eight causes produced the same "check write permissions" line, which
+ * points in the wrong direction for seven of them.
+ */
+const PREFLIGHT_MESSAGE_FALLBACK = {
+  permission: "Your server refused to let Foundry write files. Check folder permissions and read-only mounts (on The Forge: your Assets settings).",
+  toolarge:   "A proxy in front of your Foundry server rejects uploads over a size limit (HTTP 413), so no battlemap could be written. This is a setting of your own reverse proxy. In nginx or Nginx Proxy Manager set 'client_max_body_size 0;' for the Foundry site and reload nginx.",
+  quota:      "Your server has no free storage left. Free up disk space or raise your hosting quota, then try again.",
+  timeout:    "Your server did not answer the write test in time. Try again in a moment.",
+  network:    "The connection to your Foundry server dropped during the write test. Check your connection and try again.",
+  signature:  "Your server rejected the write as unauthorised. Log out and back in, then try again.",
+  notfound:   "The target folder for Beneos assets could not be created on your server.",
+  server:     "Your Foundry server returned an error during the write test. Check its console log.",
+  unknown:    "Beneos Cloud could not write files to this server. Check write permissions or hosting policy.",
+}
+
+/**
  * Shorten an error response body to something a log line and the copied report
  * can carry. Proxies answer with a full HTML page, so tags are dropped and the
  * result is capped: we only ever want the sentence that names the cause
@@ -1620,7 +1640,7 @@ export class BeneosNativeBattlemapInstaller {
       const s = game.i18n.localize(key)
       if (s && s !== key) return s
     } catch (_) {}
-    return "Beneos Cloud could not write files to this server. Check write permissions or hosting policy."
+    return PREFLIGHT_MESSAGE_FALLBACK[category] || PREFLIGHT_MESSAGE_FALLBACK.unknown
   }
 
   // ---- Phases --------------------------------------------------------------
