@@ -103,15 +103,40 @@ der Aenderung und den danach:
   `nginx/1.30.4`. Genau deshalb geht er nur in die Konsole und nicht in die
   Fehlermeldung, die als `sample_message` in die Telemetrie wandert.
 
+## Die Oberflaeche, gemessen am 2026-09-01
+
+Angemeldet als GM in `universe-test` ueber `http://127.0.0.1:8443`, also durch
+den Proxy, bei `client_max_body_size 1m`. Installiert wurde Release 110 in der
+Fassung HD, 47 Szenen, 514 MB.
+
+| Behauptung | Ergebnis |
+|---|---|
+| Abbruch vor dem ersten Download | belegt, `0/0 assets installed, 0 asset(s) and 0 document(s) failed` |
+| Bericht nennt Ursache und Einstellung | belegt, Ueberschrift nennt HTTP 413, Text nennt `client_max_body_size 0;` |
+| Knopf Erneut versuchen fehlt | belegt, nur `Copy report`, `Ask on Discord`, `Close` |
+| keine Nebenwirkung in der Welt | belegt, 53 Szenen und 132 Aktoren vor und nach dem Lauf |
+
+Der Weg dorthin, falls jemand ihn wiederholen will: als GM anmelden, dann in
+der Konsole
+
+```js
+const api = await import('/modules/beneos-module/scripts/cloud-v2/beneos-release-install-api.mjs')
+await api.installReleaseByNumber(110)
+```
+
+Der Bestaetigungsdialog fragt nach der Qualitaet; HD waehlen, damit ein
+unerwarteter Durchlauf nicht 1,2 GB kostet.
+
 ## Was dieser Pruefstand NICHT misst
 
-Die HTTP-Ebene ist damit belegt, die Oberflaeche nicht. Ungemessen bleiben:
+- **Den Weg je Asset.** Er greift nur, wenn die Grenze zwischen der 2-MB-Sonde
+  und der Assetgroesse liegt. Dann laedt der Installer die Dateien erst
+  vollstaendig aus der Cloud, bevor der Proxy sie ablehnt, der Nachweis kostet
+  also die volle Uebertragung und installiert das Release in eine Pruefwelt.
+  Bewusst nicht gefahren: `#serverRefusesSize` ist in beiden Wegen dieselbe
+  Funktion und oben gegen echtes nginx belegt. Ungemessen bleiben damit der
+  Sondierungsdeckel `MAX_SIZE_PROBES` und der Ausschluss aus der Reparatur.
+- **Die Oberflaeche auf V14.** Die HTTP-Ebene ist dort deckungsgleich gemessen,
+  der Bericht selbst nicht.
 
-- ob der Lauf wirklich in der Vorabpruefung abbricht, bevor die erste Datei
-  geladen wird,
-- welcher Text im Fortschrittsfenster und im Bericht erscheint,
-- ob der Knopf Erneut versuchen verschwindet,
-- ob die Reparatur die abgelehnten Assets tatsaechlich uebergeht.
-
-Dafuer braucht es eine angemeldete Welt und eine echte Installation durch den
-Proxy. Prueffall: TC-CLD-MOD-061 im Wiki.
+Prueffall: TC-CLD-MOD-061 im Wiki.
