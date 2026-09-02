@@ -5029,12 +5029,44 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     requestAnimationFrame(() => { restore(); this._restoringScroll = false })
   }
 
+  /**
+   * Verschwundene Registerzeilen wegraeumen, entprellt und NACH dem Zeichnen.
+   *
+   * Der Betreiber will beim Hinsehen geprueft haben, und Hinsehen heisst hier
+   * Zeichnen. Geschrieben wird aber nicht waehrend des Zeichnens: ein
+   * Schreibvorgang auf eine Welteinstellung loest ein Neuzeichnen aus, und das
+   * naechste Zeichnen loest den naechsten Schreibvorgang aus.
+   *
+   * Die vier Sicherungen sitzen in `raeumeVerschwundene` selbst, damit jeder
+   * Aufrufer sie erbt und nicht jeder sie erneut formulieren muss.
+   *
+   * Ein Neuzeichnen nach dem Raeumen ist noetig, sonst zeigt die Kachel bis zum
+   * naechsten Klick den alten Stand.
+   */
+  #raeumenAnstossen() {
+    if (this._raeumenLaeuft) return
+    this._raeumenLaeuft = true
+    setTimeout(async () => {
+      try {
+        const e = await BeneosInstallState.raeumeVerschwundene()
+        if (e.geraeumt.length) {
+          try { await this.render({ parts: ["results"] }) } catch (_e) { /* Fenster zu */ }
+        }
+      } catch (err) {
+        console.warn("BeneosCloudWindowV2 | Raeumen fehlgeschlagen", err)
+      } finally {
+        this._raeumenLaeuft = false
+      }
+    }, 500)
+  }
+
   async #renderResults(parts) {
     // Punkt 5: tab / filter / view switches reset the scroll memory so the
     // next drawer-preserve render doesn't jump to a stale position. The
     // drawer-open/close/scene-load path uses #renderResultsPreserveScroll and
     // bypasses this reset.
     this._resultListScrollTop = 0
+    this.#raeumenAnstossen()
     if (this.searchMode === "bmap") {
       this.#showLoading()
       return new Promise((resolve) => {
