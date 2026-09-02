@@ -5828,6 +5828,39 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
    * @param {string} dir  Packverzeichnis oder Releasekennung
    * @returns {object|null}
    */
+  /**
+   * Die Groesse, die dem Kunden etwas sagt.
+   *
+   * Beim Streaming ist das NICHT die Paketgroesse. Von 556.653.247 Bytes eines
+   * Release landen 662.589 auf der Platte, also 0,12 Prozent; alles andere
+   * bleibt am Rand und wird beim Zeichnen geholt. Wer hier die Paketgroesse
+   * anzeigt, verschweigt genau den Gewinn, fuer den das Streaming gebaut ist.
+   *
+   * Ohne Streaming bleibt es bei der Paketgroesse, und das ist dann auch
+   * richtig: dort wird das ganze Paket wirklich heruntergeladen. Die
+   * Fallunterscheidung haengt deshalb am Vorhandensein des Feldes und nicht an
+   * einem Schalter. Ein Katalog ohne `local_bytes_per_variant` ist der
+   * gewoehnliche Katalog, und der beschreibt eine gewoehnliche Installation.
+   *
+   * Die Variantenkette ist dieselbe wie bei der Paketgroesse, damit beide
+   * Zahlen nie aus verschiedenen Varianten stammen.
+   *
+   * @param {object} rel      Releasezeile aus dem Index
+   * @param {string} variante "4K" | "HD" | ""
+   * @returns {number} Bytes, 0 wenn nichts bekannt ist
+   */
+  #anzeigeBytes(rel, variante) {
+    if (!rel) return 0
+    const v = String(variante || "")
+    const waehle = (topf) => {
+      if (!topf || typeof topf !== "object") return 0
+      return Number(topf[v] || topf["4K"] || topf["HD"] || topf.SINGLE || 0) || 0
+    }
+    const netto = waehle(rel.local_bytes_per_variant)
+    if (netto > 0) return netto
+    return waehle(rel.bytes_per_variant)
+  }
+
   #releaseFor(dir) {
     const d = String(dir || "")
     if (!d) return null
@@ -6164,7 +6197,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const useV     = single ? (r.variants_available?.[0] || "4K") : variant
       const coverUrl = useV === "HD" ? (r?.cover_url_hd || r?.cover_url_4k || null)
                                      : (r?.cover_url_4k || r?.cover_url_hd || null)
-      const bytes    = r?.bytes_per_variant?.[useV] || 0
+      const bytes    = this.#anzeigeBytes(r, useV)
 
       // Plan §33.6 — install-state for the green / gold badge. The world
       // setting "battlemap-installs" carries every installed release; we
@@ -6669,8 +6702,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         const relDir = String(m.release_dir || "")
         const vdirs  = m.variant_dirs || {}
         const rel    = relDir ? this.#releaseFor(relDir) : null
-        const bpv    = rel?.bytes_per_variant || {}
-        const sizeBytes = Number(bpv[variant] || bpv["4K"] || bpv["HD"] || 0) || 0
+        const sizeBytes = this.#anzeigeBytes(rel, variant)
         const coverUrl  = rel ? (variant === "HD" ? (rel.cover_url_hd || rel.cover_url_4k)
                                                   : (rel.cover_url_4k || rel.cover_url_hd)) : null
         return {
