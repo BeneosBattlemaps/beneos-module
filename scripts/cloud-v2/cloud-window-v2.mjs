@@ -296,6 +296,24 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // renders. Map<release_dir, releaseObject> for O(1) lookup; the array
     // form lives next to it for ordered rendering. Cleared on cache refresh.
     this._releaseIndex     = null  // Map<release_dir, release>
+    // ZWEITER INDEX, WEIL ES ZWEI SCHREIBWEISEN GIBT.
+    //
+    // Bei eingeschaltetem Streaming kommt die Releaseliste aus dem
+    // Stream-Katalog (#fetchReleasesWithBackoff, Zweig `stream.listReleases`).
+    // Der nennt PACKVERZEICHNISSE: `beneos_bm_0089_hellturel`. Die Bundles
+    // kommen weiter aus der Cloud und nennen RELEASES: `bm_0089`. Ohne
+    // Streaming sind beide kurz und der Unterschied faellt nicht auf.
+    //
+    // Gemessen am 02.09.2026 im Pruefstand: 144 Schluessel hier, 144 dort,
+    // Schnittmenge NULL. 0 von 36 Bundle-Mitgliedern fanden ihren Eintrag,
+    // und daraus wurde je Mitglied `sizeLabel: "—"` und `coverUrl: null`.
+    // Das leere Cover reichte die Bundle-Installation an ihr
+    // Fortschrittsfenster weiter, das deshalb ohne Bild lief.
+    //
+    // `releaseKern` bildet beide Formen auf denselben Kern ab. Gemessen:
+    // 144 Schluessel geben 144 eindeutige Kerne, keine Kollision, und 36 von
+    // 36 Mitgliedern treffen.
+    this._releaseKernIndex = null  // Map<releaseKern, release>
     this._releaseList      = null  // Array<release>, sorted by release_num desc
     this._releaseLoading   = false
     this._releaseLoadError = null
@@ -1615,7 +1633,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // (reported 2026-07-30). hasCampaign stays as the fallback for cards whose
     // release is not in the index yet.
     const bmapRelease = (assetType === "bmap" && props.release_dir)
-      ? (this._releaseIndex?.get?.(props.release_dir) || null)
+      ? (this.#releaseFor(props.release_dir) || null)
       : null
     const bmapReleaseCanInstall = bmapRelease ? (bmapRelease.can_install !== false) : false
     // An individual map inherits its parent release's shop product, so a locked
@@ -2177,7 +2195,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // ("This Scene Belongs to …" + the release's other scenes).
       releaseDir: assetType === "bmap" ? (props.release_dir || null) : null,
       releaseDisplayName: assetType === "bmap"
-        ? (this._releaseIndex?.get?.(props.release_dir)?.display_name || null)
+        ? (this.#releaseFor(props.release_dir)?.display_name || null)
         : null,
       // Wave B-9-fix-32 → fix-46: any card in the multi-select set
       // gets the gold highlight. The drawer-open card is always in the
@@ -3418,13 +3436,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // Drawer paths can open for a release-card too — the drawer.asset is
       // synthesized without the data-bmap-release-card attr. Fall back to
       // the release-index so the click still routes through the cloud path.
-      const inReleaseIndex = !!this._releaseIndex?.get?.(key)
+      const inReleaseIndex = !!this.#releaseFor(key)
       const isReleaseCard = isReleaseCardAttr || (inReleaseIndex && !props.cloud_release_id)
       // Plan §20 W4.2 - locked release short-circuit. When the cloud responded
       // can_install=false on this release we open the unlock-CTA URL (Patreon
       // join / shop purchase) instead of firing the install pipeline.
       if (isReleaseCard) {
-        const rel = this._releaseIndex?.get?.(key)
+        const rel = this.#releaseFor(key)
         if (rel && rel.can_install === false) {
           const url = rel.unlock_hint?.url || "https://www.patreon.com/BeneosBattlemaps"
           try { console.log("[beneos-bm] release locked, opening unlock", key, url) } catch (_) {}
@@ -3449,7 +3467,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // with a clean "please sign in" toast. Defense-in-depth: logged-out map
         // cards already render "Sign In" rather than Install, but the drawer /
         // other entry points could still reach here.
-        const relForPublic = this._releaseIndex?.get?.(key)
+        const relForPublic = this.#releaseFor(key)
         const isPublicRelease = !!(relForPublic?.public_download || props.public_download)
         if (!isPublicRelease && !game.beneos?.cloud?.isLoggedIn?.()) { this.#notifyInstallBlocked("login", key); return }
         const scope = btn?.dataset?.bmapScope || (isReleaseCard ? "release" : "scene")
@@ -5255,7 +5273,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
 
     // Release-card path: bmapKey === release_dir, no catalog row.
     if (!releaseDir && this._releaseIndex?.get) {
-      const r = this._releaseIndex.get(bmapKey)
+      const r = this.#releaseFor(bmapKey)
       if (r) {
         releaseDir = r.release_dir
         nbVariants = Number(r.nb_variants || 0) || 0
@@ -5295,7 +5313,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     if (!this._releaseIndex && typeof this.#ensureReleasesLoaded === "function") {
       try { await this.#ensureReleasesLoaded() } catch (_) {}
     }
-    const releaseEntry = this._releaseIndex?.get?.(releaseDir) || null
+    const releaseEntry = this.#releaseFor(releaseDir) || null
     let coverUrl = releaseEntry
       ? (variant === "HD" ? (releaseEntry.cover_url_hd || releaseEntry.cover_url_4k)
                           : (releaseEntry.cover_url_4k || releaseEntry.cover_url_hd))
@@ -5778,6 +5796,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     this._releaseNeedsLogin = false
     this._releaseList       = null
     this._releaseIndex      = null
+    this._releaseKernIndex  = null
     try {
       const mgr = window.BeneosScenePacker
       if (mgr) mgr._releasesCache = null   // drop the manager-side cache too
@@ -5795,6 +5814,29 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // Beneos-Module had no retry pattern; this is the first one. Pulled
   // off into its own helper so #ensureReleasesLoaded keeps the same
   // shape (state-set + finally + re-render).
+  /**
+   * Der Eintrag zu einem Release, egal in welcher Schreibweise gefragt wird.
+   *
+   * DIE EINE STELLE, an der der Unterschied zwischen Packverzeichnis und
+   * Releasekennung aufgeloest wird. Vorher stand `this._releaseIndex.get(dir)`
+   * an elf Stellen, und jede davon war blind dagegen, dass der Stream-Katalog
+   * anders benennt als die Cloud.
+   *
+   * Erst genau, dann ueber den Kern. Die genaue Abfrage zuerst, weil sie im
+   * Normalbetrieb ohne Streaming immer trifft und nichts kostet.
+   *
+   * @param {string} dir  Packverzeichnis oder Releasekennung
+   * @returns {object|null}
+   */
+  #releaseFor(dir) {
+    const d = String(dir || "")
+    if (!d) return null
+    const genau = this._releaseIndex?.get?.(d)
+    if (genau) return genau
+    const k = releaseKern(d)
+    return (k && this._releaseKernIndex?.get?.(k)) || null
+  }
+
   async #fetchReleasesWithBackoff() {
     // Closed beta only. With the streaming switch on, the release list comes
     // from the beta gate instead of the cloud, so a tester browses and installs
@@ -5868,6 +5910,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       })
       this._releaseList  = list
       this._releaseIndex = new Map(list.map(r => [r.release_dir, r]))
+      // Der Kernindex daneben, damit ein Aufrufer mit der anderen Schreibweise
+      // trotzdem trifft. Der erste Eintrag je Kern gewinnt; die Liste ist zu
+      // diesem Zeitpunkt nach Datum sortiert, also gewinnt der neuere.
+      this._releaseKernIndex = new Map()
+      for (const r of list) {
+        const k = releaseKern(r?.release_dir)
+        if (k && !this._releaseKernIndex.has(k)) this._releaseKernIndex.set(k, r)
+      }
     } catch (e) {
       if (e?.message === "BENEOS_NEEDS_LOGIN") {
         // Expected logged-out state, not an error: flag it so the template
@@ -6618,7 +6668,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const members = rawMembers.map((m, i) => {
         const relDir = String(m.release_dir || "")
         const vdirs  = m.variant_dirs || {}
-        const rel    = relDir ? this._releaseIndex?.get?.(relDir) : null
+        const rel    = relDir ? this.#releaseFor(relDir) : null
         const bpv    = rel?.bytes_per_variant || {}
         const sizeBytes = Number(bpv[variant] || bpv["4K"] || bpv["HD"] || 0) || 0
         const coverUrl  = rel ? (variant === "HD" ? (rel.cover_url_hd || rel.cover_url_4k)
@@ -6711,7 +6761,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     if (!m) { ui.notifications.warn("This bundle release could not be resolved."); return }
     const relDir = String(m.release_dir || "")
     if (!relDir) { ui.notifications.warn(`"${m.name || "release"}" is missing release_dir.`); return }
-    const rel     = this._releaseIndex?.get?.(relDir)
+    const rel     = this.#releaseFor(relDir)
     const variant = this._bmapActiveResolution?.() === "HD" ? "HD" : "4K"
     const coverUrl = rel ? (variant === "HD" ? (rel.cover_url_hd || rel.cover_url_4k)
                                              : (rel.cover_url_4k || rel.cover_url_hd)) : null
@@ -6763,7 +6813,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         overwrite = true
       }
       ui.notifications.info(game.i18n.format("BENEOS.Cloud.Bmap.BundleInstalling", { current: idx + 1, total }))
-      const rel = this._releaseIndex?.get?.(relDir)
+      const rel = this.#releaseFor(relDir)
       const coverUrl = rel ? (variant === "HD" ? (rel.cover_url_hd || rel.cover_url_4k)
                                                : (rel.cover_url_4k || rel.cover_url_hd)) : null
       try {
@@ -6804,7 +6854,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const installs = BeneosInstallState.findByReleaseDir(releaseDir)
     if (!installs.length) return none
     const chosen = installs[0]
-    const rel    = this._releaseIndex?.get?.(releaseDir) || null
+    const rel    = this.#releaseFor(releaseDir) || null
     const curSig      = String(rel?.content_signature || "")
     const updatedDate = this.#releaseDateInfo(releaseDir)?.updatedDate || ""
     const sigStale    = !!(curSig && chosen.sourceSignature && chosen.sourceSignature !== curSig)
