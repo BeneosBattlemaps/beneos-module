@@ -427,6 +427,26 @@ export class BeneosNativeBattlemapInstaller {
       this._allPresent  = targetSceneIds.length > 0 && presentIds.length === targetSceneIds.length
       const prior = this.#priorRecord()
       this._stale = this.#isStale(prior)
+
+      // NICHT FRAGEN, WENN SICH NICHTS GEAENDERT HAT.
+      //
+      // Der Dialog warnt davor, gesetzte Tokens und Handarbeit in einer Szene
+      // zu verlieren. Diese Warnung ist richtig, wenn die Szenen neu
+      // geschrieben werden. Sie ist sinnlos, wenn das Release unveraendert und
+      // vollstaendig da ist, denn dann bewegt der Lauf ohnehin kein Byte:
+      // dieselbe Bedingung schaltet zwoelf Zeilen weiter unten `_skipSource`.
+      //
+      // Bis hierher fragte er trotzdem, weil er VOR der Signaturpruefung stand,
+      // also bevor bekannt war, dass es nichts zu ueberschreiben gibt. Bei
+      // einem Buendel mit neun Releases kamen so bis zu neun Rueckfragen fuer
+      // neun Laeufe, die nichts taten. Betreiber am 02.09.2026: das stoert den
+      // ganzen Installationsvorgang.
+      //
+      // Die Bedingung ist dieselbe wie unten und wird deshalb hier einmal
+      // gerechnet, nicht zweimal formuliert.
+      this._unveraendert = !!prior && !this._stale && this._allPresent
+      if (this._unveraendert) this.overwrite = true
+
       if (presentIds.length && !this.overwrite) {
         const ok = await BeneosPreInstallDialog.confirmWorldOverwrite({
           scope:        this._sceneScope ? "scene" : "release",
@@ -450,7 +470,7 @@ export class BeneosNativeBattlemapInstaller {
       // installed before the catalog's updated_date), a fresh install, or a
       // partially-present one re-downloads everything so map updates reach the
       // user. The verify pass re-fetches any locally-missing file regardless.
-      this._skipSource = !!prior && !this._stale && this._allPresent
+      this._skipSource = this._unveraendert
 
       // Phase: pre-flight write check — fail fast + clearly if the host blocks writes
       this.progress.handleStatusMessage("Checking write access")

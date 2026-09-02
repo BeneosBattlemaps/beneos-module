@@ -6831,6 +6831,24 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const relDir = String(m.release_dir || "")
       if (!relDir) { console.warn("BeneosCloudWindowV2 | bundle member has no release_dir", m); skipped++; continue }
       let overwrite = false
+      // Ein unveraendertes Mitglied wird uebersprungen, ohne zu fragen.
+      //
+      // `update` ist wahr, sobald die Signatur des Katalogs von der
+      // installierten abweicht oder das Release nach der Installation
+      // aktualisiert wurde. Ist es falsch, gibt es nichts zu holen: der
+      // Installierer wuerde denselben Schluss ziehen und nur noch die
+      // Dokumente neu schreiben. Neun Rueckfragen fuer neun Laeufe, die nichts
+      // aendern, sind der Grund, warum der Betreiber das am 02.09.2026
+      // beanstandet hat.
+      //
+      // Uebersprungen, nicht ueberschrieben, weil das schneller ist. Wer ein
+      // Release wirklich neu schreiben will, hat dafuer den Knopf an der
+      // einzelnen Karte.
+      const zustand = this.#bmapInstallInfo(relDir)
+      if (zustand?.installed && !zustand.update) {
+        skipped++
+        continue
+      }
       if (BeneosInstallState.findByReleaseDir(relDir).length > 0) {
         let choice = remembered
         if (!choice) {
