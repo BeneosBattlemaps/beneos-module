@@ -980,7 +980,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const isInstalled = (relDir) => {
         if (!relDir) return false
         if (installedByDir.has(relDir)) return installedByDir.get(relDir)
-        const v = (BeneosInstallState.findByReleaseDir(relDir)?.length || 0) > 0
+        // Nicht die Zeile zaehlen, sondern die Welt fragen. Eine Zeile ohne
+        // Szenen in der Welt ist eine Erinnerung, keine Installation.
+        const v = BeneosInstallState.istInstalliert(relDir)
         installedByDir.set(relDir, v); return v
       }
       for (const [, data] of entries) {
@@ -5711,7 +5713,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
 
       let installState = null
       const installs = BeneosInstallState.findByReleaseDir(r.release_dir)
-      if (installs.length) {
+      // `installs.length` sagt nur, dass einmal installiert wurde. Ob es noch
+      // in der Welt steht, sagt der Weltbefund.
+      if (installs.length && BeneosInstallState.istInstalliert(r.release_dir)) {
         const wantVariant = single ? "" : useV
         const matchActive = installs.find(e => (e.variant || "") === wantVariant)
         const chosen = matchActive || installs[0]
@@ -5981,6 +5985,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     for (const r of list) {
       const installs = BeneosInstallState.findByReleaseDir(r.release_dir)
       if (!installs.length) continue
+      // Ein Release, das nicht mehr in der Welt steht, ist nicht veraltet.
+      // Es ist weg, und das ist eine andere Aussage.
+      if (!BeneosInstallState.istInstalliert(r.release_dir)) continue
       const chosen = installs[0]
       const di = this.#releaseDateInfo(r.release_dir) || null
       const instAt = chosen.installedAt ? Date.parse(chosen.installedAt) : NaN
@@ -6292,7 +6299,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const relDir = String(m.release_dir || "")
       if (!relDir) { console.warn("BeneosCloudWindowV2 | bundle member has no release_dir", m); skipped++; continue }
       let overwrite = false
-      if (BeneosInstallState.findByReleaseDir(relDir).length > 0) {
+      if (BeneosInstallState.istInstalliert(relDir)) {
         let choice = remembered
         if (!choice) {
           const res = await BeneosPreInstallDialog.confirmBundleMemberOverwrite({
@@ -6361,8 +6368,26 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const installs = BeneosInstallState.findByReleaseDir(releaseDir)
     if (!installs.length) return none
     const chosen = installs[0]
-    const have = BeneosInstallState.installedSceneIds(releaseDir).size
+
+    // GEZAEHLT WIRD, WAS IN DER WELT STEHT.
+    //
+    // Bis zum 02.09.2026 stand hier `installedSceneIds()`, also die Zahl der
+    // VERMERKTEN Kennungen. Die aendert sich nie, auch nicht wenn die
+    // Spielleitung den Szenenordner loescht. `game.scenes` kam in dieser
+    // Entscheidung gar nicht vor, und deshalb behauptete das Fenster weiter
+    // eine Installation, die es nicht mehr gab.
+    const befund = BeneosInstallState.weltbefund(releaseDir)
+    // `unbekannt` faellt auf die vermerkte Zahl zurueck, also auf das bisherige
+    // Verhalten: dort wissen wir es nicht, und Nichtwissen darf nicht als
+    // Verlust erscheinen.
+    const have = befund.zustand === "unbekannt"
+      ? BeneosInstallState.installedSceneIds(releaseDir).size
+      : befund.vorhanden
     const want = Number(releaseInfo(peekPoiIndex(), releaseDir)?.scenes || 0)
+
+    // Keine einzige vermerkte Szene steht noch in der Welt. Das Release ist
+    // nicht installiert, egal was auf der Platte liegt.
+    if (befund.zustand === "verschwunden") return none
     const rel    = this._releaseIndex?.get?.(releaseDir) || null
     const curSig      = String(rel?.content_signature || "")
     const updatedDate = this.#releaseDateInfo(releaseDir)?.updatedDate || ""
@@ -6384,7 +6409,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // installed". Claiming 0 of 14 on a world that installed the release in
       // full before this feature shipped would be the loudest false statement
       // of the lot, so an empty set stays undecided.
-      partial:     want > 0 && have > 0 && have < want,
+      //
+      // Zwei Wege in denselben Halbkreis, und der zweite ist neu:
+      //   1. Weniger Szenen als das Release hat. Erkennt eine von vornherein
+      //      unvollstaendige Installation, braucht aber den POI-Index.
+      //   2. Weniger Szenen als vermerkt. Erkennt eine geloeschte Szene, und
+      //      zwar OHNE den POI-Index, also auch fuer Releases, die dort nicht
+      //      stehen. Das ist der Fall, den der Betreiber am 02.09.2026 gemeldet
+      //      hat.
+      partial:     (want > 0 && have > 0 && have < want) || befund.zustand === "teilweise",
       sceneCoverage: { have, want },
     }
   }
