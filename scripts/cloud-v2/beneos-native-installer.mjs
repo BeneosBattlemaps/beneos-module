@@ -231,7 +231,7 @@ function standbildAusKachel(scene) {
 
 export class BeneosNativeBattlemapInstaller {
 
-  constructor({ packageId, label = "", coverUrl = null, sceneSlugs = null, overwrite = false, record = null, source = null } = {}) {
+  constructor({ packageId, label = "", coverUrl = null, sceneSlugs = null, overwrite = false, record = null, source = null, progress = null } = {}) {
     if (!packageId) throw new Error("BeneosNativeBattlemapInstaller: packageId is required")
     this.packageId = packageId
     this.label     = label || packageId
@@ -262,6 +262,11 @@ export class BeneosNativeBattlemapInstaller {
     // scope falls back to the full release so the user never gets nothing.
     this.sceneSlugs = (Array.isArray(sceneSlugs) && sceneSlugs.length) ? sceneSlugs.filter(Boolean) : null
     this.progress  = null
+    // Ein von aussen gereichtes Fortschrittsfenster. Beim Buendellauf gehoert
+    // es dem Aufrufer: er hat es geoeffnet, er fuellt seine Releaseliste, er
+    // schliesst es. Ohne das oeffnete jedes Mitglied sein eigenes, und `open()`
+    // schloss dabei das vorige, also blitzten bei neun Releases neun Fenster auf.
+    this._fremdesFenster = progress || null
     // Rolling PER-CONNECTION download throughput, used to thin the transfer
     // pool on a slow line (see #maybeThrottleLanes). Counts only time a fetch
     // was actually streaming, so the upload half of the transfer never drags
@@ -284,8 +289,8 @@ export class BeneosNativeBattlemapInstaller {
    * the result (imported scenes, totals, whether the user cancelled) — used by
    * the cloud window to refresh the installed-marker after the run.
    */
-  static async install({ packageId, label, coverUrl, sceneSlugs, overwrite = false, record = null, source = null } = {}) {
-    const inst = new BeneosNativeBattlemapInstaller({ packageId, label, coverUrl, sceneSlugs, overwrite, record, source })
+  static async install({ packageId, label, coverUrl, sceneSlugs, overwrite = false, record = null, source = null, progress = null } = {}) {
+    const inst = new BeneosNativeBattlemapInstaller({ packageId, label, coverUrl, sceneSlugs, overwrite, record, source, progress })
     await inst.run()
     return inst
   }
@@ -352,7 +357,9 @@ export class BeneosNativeBattlemapInstaller {
     const ProgressWindow = globalThis.BeneosBattlemapInstallProgress
     if (!ProgressWindow) throw new Error("BeneosBattlemapInstallProgress not loaded")
 
-    this.progress = await ProgressWindow.open({
+    // Beim Buendellauf gehoert das Fenster dem Aufrufer. Ein eigenes zu oeffnen
+    // wuerde seines schliessen, denn `open()` raeumt ein vorhandenes weg.
+    this.progress = this._fremdesFenster || await ProgressWindow.open({
       label:     this.label,
       coverUrl:  this.coverUrl,
       packageId: this.packageId,
@@ -458,7 +465,10 @@ export class BeneosNativeBattlemapInstaller {
         })
         if (!ok) {
           this._cancelled = true
-          try { await this.progress.close?.() } catch (_) {}
+          // Ein fremdes Fenster gehoert dem Aufrufer und wird hier NICHT
+          // geschlossen. Beim Buendellauf raeumte ein abgebrochenes Mitglied
+          // sonst die Ansicht des ganzen Schubs weg.
+          if (!this._fremdesFenster) { try { await this.progress.close?.() } catch (_) {} }
           return this
         }
         this.overwrite = true

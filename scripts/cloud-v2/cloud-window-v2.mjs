@@ -5416,6 +5416,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // Bundle "install entire bundle" pre-decides overwrite per release, so
         // it forces it here to skip the installer's own per-release dialog.
         overwrite: opts.overwrite === true,
+        // Beim Buendellauf reicht der Aufrufer sein eigenes Fenster durch. Ohne
+        // das oeffnete jedes Mitglied eines und schloss dabei das vorige.
+        progress: opts.progress || null,
       })
     } catch (err) {
       console.warn("BeneosCloudWindowV2 | native install failed", { packId, sceneSlugs, err })
@@ -6825,6 +6828,31 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const members = [...bundle.members].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
     const total = members.length
     let installed = 0, skipped = 0, failed = 0
+
+    // EIN Fenster fuer den ganzen Schub, mit der vollstaendigen Liste von
+    // Anfang an. Vorher oeffnete jedes Mitglied sein eigenes, und `open()`
+    // schloss dabei das vorige: bei neun Releases blitzten neun Fenster auf,
+    // und an keiner Stelle stand, wie weit der Schub insgesamt ist.
+    let fenster = null
+    try {
+      const P = globalThis.BeneosBattlemapInstallProgress
+      if (P) {
+        fenster = await P.open({ label: bundle.name, coverUrl: bundle.cover_url || null })
+        fenster.setBundlePlan?.({
+          name: bundle.name,
+          coverUrl: bundle.cover_url || null,
+          teile: members.map(m => {
+            const d = String(m.release_dir || "")
+            const r = d ? this.#releaseFor(d) : null
+            return {
+              name: m.name || d,
+              coverUrl: r ? (variant === "HD" ? (r.cover_url_hd || r.cover_url_4k)
+                                              : (r.cover_url_4k || r.cover_url_hd)) : null,
+            }
+          }),
+        })
+      }
+    } catch (e) { console.warn("BeneosCloudWindowV2 | Buendelfenster nicht geoeffnet", e) }
     let remembered = null // "overwrite" | "skip" applied to all remaining installed releases
     for (let idx = 0; idx < members.length; idx++) {
       const m = members[idx]
@@ -6846,6 +6874,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // einzelnen Karte.
       const zustand = this.#bmapInstallInfo(relDir)
       if (zustand?.installed && !zustand.update) {
+        fenster?.setBundleItem?.(idx, "skipped")
         skipped++
         continue
       }
@@ -6869,12 +6898,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       try {
         const inst = await BeneosCloudWindowV2._onCloudBattlemapInstallNative.call(
           this, event, relDir, "release",
-          { variantDirs: m.variant_dirs || {}, displayName: m.name || relDir, coverUrl, overwrite }
+          { variantDirs: m.variant_dirs || {}, displayName: m.name || relDir, coverUrl, overwrite,
+            progress: fenster }
         )
-        if (inst && inst._cancelled) skipped++
-        else installed++
+        if (inst && inst._cancelled) { fenster?.setBundleItem?.(idx, "skipped"); skipped++ }
+        else { fenster?.setBundleItem?.(idx, "done"); installed++ }
       } catch (e) {
         console.warn("BeneosCloudWindowV2 | bundle member install failed", m.name, e)
+        fenster?.setBundleItem?.(idx, "error")
         ui.notifications.error(`Install failed for ${m.name || relDir}: ${e?.message || e}`)
         failed++
       }
@@ -6882,6 +6913,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     ui.notifications.info(game.i18n.format("BENEOS.Cloud.Bmap.BundleSummary", {
       name: bundle.name, installed, skipped, failed,
     }))
+    // Das Fenster gehoert diesem Lauf, also schliesst dieser Lauf es ab. Ohne
+    // das bliebe es auf "laeuft" stehen und der Schliessen-Knopf gesperrt.
+    if (fenster) {
+      try {
+        if (failed) fenster.markCompletedWithIssues?.({ failed })
+        else fenster.markCompleted?.({ noChanges: installed === 0 })
+      } catch (e) { console.warn("BeneosCloudWindowV2 | Buendelfenster nicht abgeschlossen", e) }
+    }
     try { await this.#refreshAfterBmapInstall?.(null) } catch (_) {}
   }
 

@@ -4,7 +4,39 @@
      phase list with status icons, current operation, close button. --}}
 <section class="bc-install-progress" data-bc-install-state="{{state}}">
 
-  {{#if coverUrl}}
+  {{#if buendel}}
+    {{!-- Buendellauf, seit 14.5.0-beta: EIN Bild aus den Titelbildern aller
+         enthaltenen Releases, nebeneinander, jedes in voller Hoehe. Genau die
+         Kachel faerbt sich, deren Release fertig ist; die laufende faellt
+         anteilig. Bei einem einzelnen Release ist das dieselbe Bauart mit
+         n = 1, deshalb steht darunter weiter der bisherige Zweig. --}}
+    <header class="bcip-hero bcip-hero-mosaik">
+      <div class="bcip-mosaik">
+        {{#each buendel.kacheln as |k|}}
+          <div class="bcip-kachel {{#if k.aktiv}}bcip-kachel-aktiv{{/if}}"
+               style="left: {{k.linksPct}}%; width: {{k.breitePct}}%;"
+               data-tooltip="{{k.name}}">
+            {{#if k.coverUrl}}
+              <div class="bcip-kachel-bild bcip-kachel-grau" style="background-image: url('{{k.coverUrl}}');"></div>
+              <div class="bcip-kachel-bild bcip-kachel-farbe"
+                   style="background-image: url('{{k.coverUrl}}'); clip-path: inset(0 {{k.restPct}}% 0 0);"></div>
+            {{else}}
+              {{!-- Ohne Titelbild eine Flaeche. Eine Luecke in der Reihe waere
+                   schlimmer als ein graues Feld: sie sieht aus wie ein Fehler. --}}
+              <div class="bcip-kachel-bild bcip-kachel-leer"></div>
+              <div class="bcip-kachel-bild bcip-kachel-leer-farbe"
+                   style="clip-path: inset(0 {{k.restPct}}% 0 0);"></div>
+            {{/if}}
+          </div>
+        {{/each}}
+      </div>
+      <div class="bcip-hero-gradient"></div>
+      <div class="bcip-hero-text">
+        <h2 class="bcip-title">{{buendel.name}}</h2>
+        <p class="bcip-subtitle">{{buendel.fertig}} / {{buendel.gesamt}}{{#if buendel.laufendName}} &middot; {{buendel.laufendName}}{{/if}}</p>
+      </div>
+    </header>
+  {{else if coverUrl}}
     {{!-- Punkt 8b: the cover renders greyscale and fills with colour left to
          right in lockstep with the progress bar, with a thin indicator line at
          the current position. Two stacked layers of the same image + a clip. --}}
@@ -54,6 +86,25 @@
         </div>
       {{/if}}
     </div>
+
+    {{#if buendel}}
+      {{!-- Eine Zeile je Release. Das laufende traegt seine Phasenliste
+           unmittelbar darunter, die fertigen ihr Haekchen. --}}
+      <ul class="bcip-releases">
+        {{#each buendel.teile as |t|}}
+          <li class="bcip-release bcip-release-{{t.status}}">
+            <span class="bcip-release-icon">
+              {{#if (eq t.status "done")}}<i class="fa-solid fa-circle-check"></i>{{/if}}
+              {{#if (eq t.status "active")}}<i class="fa-solid fa-circle-notch fa-spin"></i>{{/if}}
+              {{#if (eq t.status "pending")}}<i class="fa-regular fa-circle"></i>{{/if}}
+              {{#if (eq t.status "skipped")}}<i class="fa-solid fa-minus"></i>{{/if}}
+              {{#if (eq t.status "error")}}<i class="fa-solid fa-circle-xmark"></i>{{/if}}
+            </span>
+            <span class="bcip-release-name">{{t.name}}</span>
+          </li>
+        {{/each}}
+      </ul>
+    {{/if}}
 
     <ul class="bcip-phases">
       {{#each phases as |p|}}

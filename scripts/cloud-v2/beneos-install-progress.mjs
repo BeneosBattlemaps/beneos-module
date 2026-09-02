@@ -196,6 +196,59 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
     this._autoStartTour      = /getting[\s_-]*started/i.test(`${label} ${packageId}`)
     this._autoStartCountdown = null   // seconds remaining while the countdown runs
     this._autoStartTimer     = null
+
+    // Buendellauf: EIN Fenster fuer den ganzen Schub.
+    //
+    // Bis zum 02.09.2026 oeffnete jedes Mitglied sein eigenes Fenster, und
+    // `open()` schloss dabei das vorige. Bei neun Releases sah der Kunde neun
+    // Fenster nacheinander aufblitzen und wusste an keiner Stelle, wie weit der
+    // Schub insgesamt ist.
+    //
+    // `null` heisst Einzelinstallation, und dann verhaelt sich das Fenster
+    // genau wie bisher. Der Buendelfall ist die Erweiterung, nicht der
+    // Normalfall, damit die eine bewaehrte Ansicht nicht zwei Bedeutungen
+    // bekommt.
+    //
+    // {name, coverUrl, laufend, teile: [{name, coverUrl, status}]}
+    // status: "pending" | "active" | "done" | "skipped" | "error"
+    this._buendel = null
+  }
+
+  /**
+   * Den Buendellauf ankuendigen, bevor das erste Mitglied laeuft.
+   *
+   * Die Liste steht von Anfang an vollstaendig da, damit der Kunde den Umfang
+   * sieht, bevor irgendetwas passiert. Eine Liste, die mitwaechst, beantwortet
+   * die einzige Frage nicht, die er in diesem Moment hat: wie lange noch.
+   */
+  setBundlePlan({ name = "", coverUrl = null, teile = [] } = {}) {
+    this._buendel = {
+      name,
+      coverUrl,
+      laufend: -1,
+      teile: teile.map(t => ({
+        name: String(t?.name || ""),
+        coverUrl: t?.coverUrl || null,
+        status: "pending",
+      })),
+    }
+    this.render(false)
+  }
+
+  /** Ein Mitglied auf einen Stand setzen. Ausserhalb eines Buendels folgenlos. */
+  setBundleItem(index, status = "active") {
+    if (!this._buendel) return
+    const t = this._buendel.teile[index]
+    if (!t) return
+    t.status = status
+    if (status === "active") {
+      this._buendel.laufend = index
+      // Die Kopfzeile nennt das laufende Release, damit die Phasenliste
+      // darunter eine Ueberschrift hat. Ohne das steht dort der Buendelname
+      // ueber den Phasen eines einzelnen Mitglieds.
+      this._label = t.name || this._label
+    }
+    this.render(false)
   }
 
   /* ========== Engine event handlers (called from attach()) ========== */
@@ -487,6 +540,7 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
       coverUrl:         this._coverUrl,
       subtitle:         this._subtitle,
       totalPct,
+      buendel:          this.#buendelKontext(totalPct),
       etaLabel:         this.#etaLabel(totalPct),
       currentLabel:     this._currentLabel,
       currentSpinner:   this._currentSpinner && this._state === "running",
@@ -522,6 +576,61 @@ export class BeneosBattlemapInstallProgress extends HandlebarsApplicationMixin(A
    * show "current of total" (current = total once done) so the user watches the
    * fill from "0 of N" to "N of N". Falls back to a bare count when no total.
    */
+  /**
+   * Das Mosaik und die Releaseliste fuer den Buendellauf.
+   *
+   * Jedes Release bekommt eine Kachel gleicher Breite, nebeneinander auf die
+   * Breite des Fensterbildes verteilt. Die Kachel traegt das Titelbild ihres
+   * Release, grau, und faerbt sich, sobald dieses Release fertig ist. Die
+   * laufende Kachel faerbt sich anteilig mit dem Fortschritt dieses einen
+   * Release, damit sich ueberhaupt etwas bewegt, solange ein grosses Release
+   * laeuft.
+   *
+   * Ohne Buendel: `null`, und die Vorlage zeichnet das bisherige Einzelbild.
+   *
+   * @param {number} totalPct Fortschritt des LAUFENDEN Release, 0 bis 100
+   */
+  #buendelKontext(totalPct) {
+    const b = this._buendel
+    if (!b || !b.teile.length) return null
+    const n = b.teile.length
+    const breite = 100 / n
+    const kacheln = b.teile.map((t, i) => {
+      // Fertig heisst voll. Uebersprungen zaehlt als fertig: es ist nichts mehr
+      // zu tun, und eine graue Luecke mitten in der Reihe laese den Kunden
+      // suchen, was dort fehlgeschlagen sei.
+      let fuellung = 0
+      if (t.status === "done" || t.status === "skipped") fuellung = 100
+      else if (t.status === "active") fuellung = Math.max(0, Math.min(100, Number(totalPct) || 0))
+      return {
+        name:      t.name,
+        coverUrl:  t.coverUrl,
+        status:    t.status,
+        breitePct: breite.toFixed(4),
+        linksPct:  (i * breite).toFixed(4),
+        // `inset` schneidet von rechts weg, deshalb der Gegenwert.
+        restPct:   (100 - fuellung).toFixed(2),
+        aktiv:     t.status === "active",
+      }
+    })
+    const fertig = b.teile.filter(t => t.status === "done" || t.status === "skipped").length
+    // Der Name des laufenden Release, und nur dann. Laeuft keines, stuende dort
+    // sonst der Buendelname ein zweites Mal direkt unter sich selbst.
+    const laufendes = b.teile[b.laufend]
+    return {
+      name:      b.name,
+      laufendName: (laufendes && laufendes.status === "active") ? laufendes.name : "",
+      coverUrl:  b.coverUrl,
+      kacheln,
+      teile:     b.teile,
+      fertig,
+      gesamt:    n,
+      // Der Balken des Buendels: fertige Releases plus der Anteil des laufenden.
+      gesamtPct: Math.round(((fertig + (b.laufend >= 0 && b.teile[b.laufend]?.status === "active"
+        ? (Number(totalPct) || 0) / 100 : 0)) / n) * 100),
+    }
+  }
+
   #phaseCountLabel(cur) {
     if (cur.total == null) return (cur.count != null ? String(cur.count) : null)
     const current = (cur.status === "done") ? cur.total : (cur.current ?? 0)

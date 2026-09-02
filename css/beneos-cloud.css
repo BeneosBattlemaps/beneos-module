@@ -8223,6 +8223,91 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   transition: clip-path 0.35s ease-out;
   will-change: clip-path;
 }
+/* Buendellauf: das Fensterbild besteht aus den Titelbildern aller enthaltenen
+   Releases, nebeneinander, jedes in voller Hoehe. Genau die Kachel faerbt sich,
+   deren Release fertig ist. Dieselbe Bauart wie das Einzelbild darueber, nur
+   n-fach: zwei Ebenen desselben Bildes, die obere per `clip-path` beschnitten.
+   Die Kachelbreite kommt aus dem Kontext, nicht aus dem Stil, weil sie von der
+   Zahl der Releases abhaengt. */
+.beneos-cloud-app .bcip-hero-mosaik {
+  background: var(--bc-bg-panel, #14181f);
+}
+.beneos-cloud-app .bcip-mosaik {
+  position: absolute;
+  inset: 0;
+}
+.beneos-cloud-app .bcip-kachel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  overflow: hidden;
+  /* Eine Haarlinie zwischen den Kacheln, damit die Reihe als Reihe lesbar
+     bleibt und nicht als ein zerschnittenes Bild. */
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.55);
+}
+.beneos-cloud-app .bcip-kachel-bild {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.beneos-cloud-app .bcip-kachel-grau {
+  filter: grayscale(1) brightness(0.55) blur(2px);
+  transform: scale(1.08);
+}
+.beneos-cloud-app .bcip-kachel-farbe {
+  filter: saturate(1.05);
+  transition: clip-path 0.35s ease-out;
+  will-change: clip-path;
+}
+/* Ohne Titelbild eine Flaeche statt einer Luecke. */
+.beneos-cloud-app .bcip-kachel-leer {
+  background: rgba(255, 255, 255, 0.05);
+}
+.beneos-cloud-app .bcip-kachel-leer-farbe {
+  background: rgba(198, 160, 91, 0.35);
+  transition: clip-path 0.35s ease-out;
+}
+.beneos-cloud-app .bcip-kachel-aktiv {
+  box-shadow: inset 0 0 0 1px rgba(198, 160, 91, 0.75),
+              inset -1px 0 0 rgba(0, 0, 0, 0.55);
+}
+
+/* Eine Zeile je Release des Buendels. */
+.beneos-cloud-app .bcip-releases {
+  list-style: none;
+  margin: 0 0 var(--bc-space-2) 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.beneos-cloud-app .bcip-release {
+  display: flex;
+  align-items: center;
+  gap: var(--bc-space-2);
+  font-size: 0.85em;
+  color: var(--bc-text-dim, #9aa4b2);
+}
+.beneos-cloud-app .bcip-release-icon {
+  width: 1.1em;
+  text-align: center;
+  flex: 0 0 auto;
+}
+.beneos-cloud-app .bcip-release-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.beneos-cloud-app .bcip-release-active {
+  color: var(--bc-text, #e6ebf2);
+  font-weight: 600;
+}
+.beneos-cloud-app .bcip-release-done .bcip-release-icon { color: #7fbf7f; }
+.beneos-cloud-app .bcip-release-error .bcip-release-icon { color: #d98b7a; }
+
 .beneos-cloud-app .bcip-hero-progress-line {
   position: absolute;
   top: 0; bottom: 0;
