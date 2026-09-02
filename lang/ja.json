@@ -1101,6 +1101,7 @@
   "BENEOS.Cloud.Update.No": "いいえ",
   "BENEOS.Cloud.Update.Done": "{actors} アクター、{tokens} トークンを更新しました。{skipped} 個の名称変更されたアクターはスキップされました。",
   "BENEOS.Cloud.Update.NothingToDo": "更新するものはありません, 一致する全ワールドアクターは名称変更されています。",
+  "BENEOS.Cloud.Update.AlreadyCurrent": "更新するものはありません。このクリーチャーは最新版がすでにワールドに存在します。",
   "BENEOS.Cloud.Update.SearchingScenes": "Beneos Cloud：{count} シーンで一致するトークンを検索中…",
   "BENEOS.Cloud.Update.ApplyingUpdate": "Beneos Cloud：{actors} アクター、{tokens} トークンに更新を適用中…",
   "BENEOS.Cloud.Filter.Rarity": "レアリティ",

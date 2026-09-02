@@ -2546,11 +2546,35 @@ export class BeneosCloud {
     const compendiumName = imported.name
     const updatable = []
     const skippedRenamed = []
+    let unveraendert = 0
+
+    // NICHT FRAGEN, WENN DIE KREATUR DIESELBE IST.
+    //
+    // Der Dialog fragte bisher, sobald ueberhaupt eine Weltkopie existierte,
+    // und behauptete dabei "a newer version was just downloaded". Ob sie
+    // wirklich neuer ist, hat er nie geprueft. Bei einer Karteninstallation mit
+    // mehreren Kreaturen kam er je Kreatur einmal.
+    //
+    // Die Inhaltssignatur liegt an beiden Enden vor: der Katalog fuehrt sie je
+    // Kreatur, und beim Anlegen wird sie am Weltaktor vermerkt. Sind beide
+    // gleich, gibt es nichts zu ueberschreiben. Betreiber am 02.09.2026:
+    // ueberschreiben lohnt nur, wenn sich die Kreatur unterscheidet.
+    //
+    // Fehlt eine der beiden Signaturen, gilt "unveraendert" als NICHT belegt
+    // und es wird gefragt wie bisher. Ein Altbestand ohne Signatur darf nicht
+    // stillschweigend als aktuell durchgehen.
+    const neueSignatur = String(imported.getFlag?.("world", "beneos")?.contentSignature || "")
+
     for (const actor of existingWorldActors) {
       const flag = actor.getFlag("world", "beneos") || {}
       const baseline = flag.originalName ?? compendiumName
-      if (actor.name === baseline) updatable.push(actor)
-      else skippedRenamed.push(actor)
+      if (actor.name !== baseline) { skippedRenamed.push(actor); continue }
+      const alteSignatur = String(flag.contentSignature || "")
+      if (neueSignatur && alteSignatur && alteSignatur === neueSignatur) { unveraendert += 1; continue }
+      updatable.push(actor)
+    }
+    if (unveraendert) {
+      BeneosUtility.debugMessage(`[Beneos Cloud] ${unveraendert} world copy/copies of "${compendiumName}" already carry the current signature, not asking`)
     }
 
     // Collect scene-token updates. Unlinked Beneos tokens carry their own
@@ -2621,7 +2645,14 @@ export class BeneosCloud {
     const totalSceneTokens = sceneUpdates.reduce((n, s) => n + s.updates.length, 0)
 
     if (updatable.length === 0) {
-      ui.notifications.info(game.i18n.localize("BENEOS.Cloud.Update.NothingToDo"))
+      // Zwei sehr verschiedene Gruende fuer dieselbe Untaetigkeit, und der
+      // Kunde soll den richtigen lesen. "Umbenannt" ist eine Warnung: seine
+      // Aenderung verhindert die Aktualisierung. "Schon aktuell" ist eine
+      // Entwarnung: es gibt nichts zu tun. Bis zum 02.09.2026 stand hier nur
+      // der erste Satz, und der war fuer den neuen Fall schlicht falsch.
+      ui.notifications.info(game.i18n.localize(unveraendert && !skippedRenamed.length
+        ? "BENEOS.Cloud.Update.AlreadyCurrent"
+        : "BENEOS.Cloud.Update.NothingToDo"))
       return
     }
 

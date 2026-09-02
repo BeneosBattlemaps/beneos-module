@@ -1101,6 +1101,7 @@
   "BENEOS.Cloud.Update.No": "Cancel",
   "BENEOS.Cloud.Update.Done": "Updated {actors} actor(s) and {tokens} token(s); {skipped} renamed actor(s) skipped.",
   "BENEOS.Cloud.Update.NothingToDo": "Nothing to update - all matching world actors have been renamed.",
+  "BENEOS.Cloud.Update.AlreadyCurrent": "Nothing to update - this creature is already in your world in the current version.",
   "BENEOS.Cloud.Update.SearchingScenes": "Beneos Cloud: searching {count} scene(s) for matching tokens…",
   "BENEOS.Cloud.Update.ApplyingUpdate": "Beneos Cloud: applying update to {actors} actor(s) and {tokens} token(s)…",
   "BENEOS.Cloud.Filter.Rarity": "Rarity",

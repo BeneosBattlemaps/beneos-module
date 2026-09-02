@@ -1101,6 +1101,7 @@
   "BENEOS.Cloud.Update.No": "Nein",
   "BENEOS.Cloud.Update.Done": "{actors} Aktor(en) und {tokens} Token aktualisiert; {skipped} umbenannte Aktor(en) übersprungen.",
   "BENEOS.Cloud.Update.NothingToDo": "Nichts zu aktualisieren, alle passenden Welten-Aktoren wurden umbenannt.",
+  "BENEOS.Cloud.Update.AlreadyCurrent": "Nichts zu aktualisieren, diese Kreatur liegt bereits in der aktuellen Fassung in deiner Welt.",
   "BENEOS.Cloud.Update.SearchingScenes": "Beneos Cloud: durchsuche {count} Szene(n) nach passenden Token…",
   "BENEOS.Cloud.Update.ApplyingUpdate": "Beneos Cloud: Wende Update auf {actors} Aktor(en) und {tokens} Token an…",
   "BENEOS.Cloud.Filter.Rarity": "Seltenheit",

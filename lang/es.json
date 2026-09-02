@@ -1101,6 +1101,7 @@
   "BENEOS.Cloud.Update.No": "No",
   "BENEOS.Cloud.Update.Done": "{actors} actor(es) y {tokens} token(s) actualizados; {skipped} actor(es) renombrado(s) omitido(s).",
   "BENEOS.Cloud.Update.NothingToDo": "Nada que actualizar, todos los actores del mundo coincidentes han sido renombrados.",
+  "BENEOS.Cloud.Update.AlreadyCurrent": "Nada que actualizar: esta criatura ya está en tu mundo en la versión actual.",
   "BENEOS.Cloud.Update.SearchingScenes": "Beneos Cloud: buscando en {count} escena(s) tokens coincidentes…",
   "BENEOS.Cloud.Update.ApplyingUpdate": "Beneos Cloud: aplicando actualización a {actors} actor(es) y {tokens} token(s)…",
   "BENEOS.Cloud.Filter.Rarity": "Rareza",

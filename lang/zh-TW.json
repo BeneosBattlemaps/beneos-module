@@ -1101,6 +1101,7 @@
   "BENEOS.Cloud.Update.No": "否",
   "BENEOS.Cloud.Update.Done": "已更新 {actors} 個角色和 {tokens} 個 token；{skipped} 個已重新命名的角色已略過。",
   "BENEOS.Cloud.Update.NothingToDo": "沒有可更新的內容, 所有相符的世界角色已重新命名。",
+  "BENEOS.Cloud.Update.AlreadyCurrent": "沒有需要更新的內容，這個生物已經以目前版本存在於你的世界中。",
   "BENEOS.Cloud.Update.SearchingScenes": "Beneos Cloud：在 {count} 個場景中搜尋相符的 token…",
   "BENEOS.Cloud.Update.ApplyingUpdate": "Beneos Cloud：正在對 {actors} 個角色和 {tokens} 個 token 套用更新…",
   "BENEOS.Cloud.Filter.Rarity": "稀有度",

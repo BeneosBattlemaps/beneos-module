@@ -1031,7 +1031,11 @@ export class BeneosNativeBattlemapInstaller {
     // Ein Uebersprungenes ist KEIN Fehlschlag und gehoert nicht in den Bericht.
     const holbar = []
     let uebersprungen = 0
+    let schonAktuell = 0
     for (const key of keys) {
+      // Schon unveraendert in der Welt: nicht holen, nicht fragen. Das spart
+      // den Abruf UND den Dublettendialog, der sonst je Kreatur einmal kam.
+      if (this.#kreaturAktuell(key)) { schonAktuell += 1; continue }
       let zustand = "ok"
       try { zustand = cloud.getTokenAccessState?.(key) ?? "ok" } catch (_) {}
       if (zustand === "ok") holbar.push(key)
@@ -1040,12 +1044,15 @@ export class BeneosNativeBattlemapInstaller {
     if (uebersprungen) {
       console.log(`BeneosNativeInstaller | ${uebersprungen} Beneos creature(s) skipped: no grant for this user`)
     }
+    if (schonAktuell) {
+      console.log(`BeneosNativeInstaller | ${schonAktuell} Beneos creature(s) already current in this world, not fetched`)
+    }
 
     const total = holbar.length
     this.progress.setCreatureBlock?.({ present: true, isPatron: true, count: total, installed: 0, state: "active" })
     if (!total) {
       this.progress.revealPhase?.("creatures", { status: "skipped", current: 0, total: 0 })
-      this._result.creatures = { present: true, patron: true, installed: 0, total: 0, skipped: uebersprungen }
+      this._result.creatures = { present: true, patron: true, installed: 0, total: 0, skipped: uebersprungen, aktuell: schonAktuell }
       this.progress.setCreatureBlock?.({ present: true, isPatron: true, count: 0, installed: 0, state: "done" })
       return
     }
@@ -1071,7 +1078,7 @@ export class BeneosNativeBattlemapInstaller {
       this.progress.setCreatureBlock?.({ present: true, isPatron: true, count: total, installed: ok, state: "active" })
     }
     this.progress.revealPhase?.("creatures", { status: "done", current: total, total })
-    this._result.creatures = { present: true, patron: true, installed: ok, total, skipped: uebersprungen }
+    this._result.creatures = { present: true, patron: true, installed: ok, total, skipped: uebersprungen, aktuell: schonAktuell }
     this.progress.setCreatureBlock?.({ present: true, isPatron: true, count: total, installed: ok, state: "done" })
   }
 
@@ -1079,6 +1086,35 @@ export class BeneosNativeBattlemapInstaller {
   #kreaturInWelt(key) {
     try {
       return !!game.actors?.find(a => a.flags?.world?.beneos?.tokenKey === key)
+    } catch (_) { return false }
+  }
+
+  /**
+   * Liegt diese Kreatur schon unveraendert in der Welt?
+   *
+   * Verglichen wird die Inhaltssignatur, die der Katalog ohnehin fuehrt
+   * (`getTokenHash`, aus `availableContent`, ohne einen einzigen Abruf) gegen
+   * die, die beim Anlegen am Weltaktor vermerkt wurde. Sind beide gleich, gibt
+   * es nichts zu holen und nichts zu fragen: die Kreatur ist dieselbe, ihre
+   * Kennung ist dieselbe, und die Szene findet sie darueber.
+   *
+   * Betreiber am 02.09.2026: ein Ueberschreiben lohnt nur, wenn sich die
+   * Kreatur unterscheidet. Sonst soll gar nicht erst geladen werden.
+   *
+   * VORSICHTIG IN DIE FALSCHE RICHTUNG. Fehlt eine der beiden Signaturen, ist
+   * "unveraendert" nicht belegt, und dann wird geholt wie bisher. Ein
+   * Altbestand ohne Signatur darf nicht stillschweigend als aktuell gelten.
+   */
+  #kreaturAktuell(key) {
+    try {
+      const cloud = game.beneos?.cloud
+      const soll = String(cloud?.getTokenHash?.(key) || "")
+      if (!soll) return false
+      const actor = game.actors?.find(a => a.flags?.world?.beneos?.tokenKey === key)
+      if (!actor) return false
+      const ist = String(actor.flags?.world?.beneos?.contentSignature || "")
+      if (!ist) return false
+      return ist === soll
     } catch (_) { return false }
   }
 

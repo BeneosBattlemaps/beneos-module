@@ -1101,6 +1101,7 @@
   "BENEOS.Cloud.Update.No": "Nie",
   "BENEOS.Cloud.Update.Done": "{actors} aktor(ów) i {tokens} token(ów) zaktualizowano; {skipped} przemianowanego aktora(ów) pominięto.",
   "BENEOS.Cloud.Update.NothingToDo": "Nic do aktualizacji, wszyscy pasujący aktorzy świata zostali przemianowani.",
+  "BENEOS.Cloud.Update.AlreadyCurrent": "Nie ma czego aktualizować, to stworzenie jest już w twoim świecie w aktualnej wersji.",
   "BENEOS.Cloud.Update.SearchingScenes": "Beneos Cloud: przeszukiwanie {count} sceny(scen) pod kątem pasujących tokenów…",
   "BENEOS.Cloud.Update.ApplyingUpdate": "Beneos Cloud: stosowanie aktualizacji do {actors} aktora(ów) i {tokens} tokena(ów)…",
   "BENEOS.Cloud.Filter.Rarity": "Rzadkość",

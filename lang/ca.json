@@ -1101,6 +1101,7 @@
   "BENEOS.Cloud.Update.No": "No",
   "BENEOS.Cloud.Update.Done": "{actors} actor(s) i {tokens} token(s) actualitzats; {skipped} actor(s) reanomenat(s) omès.",
   "BENEOS.Cloud.Update.NothingToDo": "Res per actualitzar, tots els actors del món coincidents han estat reanomenats.",
+  "BENEOS.Cloud.Update.AlreadyCurrent": "Res a actualitzar: aquesta criatura ja és al teu món en la versió actual.",
   "BENEOS.Cloud.Update.SearchingScenes": "Beneos Cloud: cercant en {count} escena(es) per tokens coincidents…",
   "BENEOS.Cloud.Update.ApplyingUpdate": "Beneos Cloud: aplicant l'actualització a {actors} actor(s) i {tokens} token(s)…",
   "BENEOS.Cloud.Filter.Rarity": "Raresa",

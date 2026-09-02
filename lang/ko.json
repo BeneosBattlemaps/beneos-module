@@ -1101,6 +1101,7 @@
   "BENEOS.Cloud.Update.No": "아니요",
   "BENEOS.Cloud.Update.Done": "{actors}개 액터와 {tokens}개 토큰을 업데이트했습니다. {skipped}개의 이름 변경된 액터는 건너뛰었습니다.",
   "BENEOS.Cloud.Update.NothingToDo": "업데이트할 항목 없음, 일치하는 모든 월드 액터가 이름이 변경되었습니다.",
+  "BENEOS.Cloud.Update.AlreadyCurrent": "업데이트할 항목이 없습니다. 이 크리처는 이미 최신 버전으로 월드에 있습니다.",
   "BENEOS.Cloud.Update.SearchingScenes": "Beneos Cloud: {count}개 씬에서 일치하는 토큰 검색 중…",
   "BENEOS.Cloud.Update.ApplyingUpdate": "Beneos Cloud: {actors}개 액터와 {tokens}개 토큰에 업데이트 적용 중…",
   "BENEOS.Cloud.Filter.Rarity": "희귀도",

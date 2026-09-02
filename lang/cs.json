@@ -1101,6 +1101,7 @@
   "BENEOS.Cloud.Update.No": "Ne",
   "BENEOS.Cloud.Update.Done": "{actors} aktér(ů) a {tokens} token(ů) aktualizováno; {skipped} přejmenovaný(ch) aktér(ů) přeskočen(o).",
   "BENEOS.Cloud.Update.NothingToDo": "Není co aktualizovat, všichni odpovídající aktéři světa byli přejmenováni.",
+  "BENEOS.Cloud.Update.AlreadyCurrent": "Není co aktualizovat, tato bytost už je ve tvém světě v aktuální verzi.",
   "BENEOS.Cloud.Update.SearchingScenes": "Beneos Cloud: prohledávám {count} scén(u/y) na odpovídající tokeny…",
   "BENEOS.Cloud.Update.ApplyingUpdate": "Beneos Cloud: aplikuji aktualizaci na {actors} aktér(y) a {tokens} token(y)…",
   "BENEOS.Cloud.Filter.Rarity": "Vzácnost",
