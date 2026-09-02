@@ -4,6 +4,11 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.4.9 # 2026-09-02
+
+**Fixes**
+- Fixed: While the search catalog was unreachable, the Refresh and Settings buttons at the bottom of the Beneos window could not be clicked at all. The notice about the catalog took up so much room that both buttons ended up underneath the links next to them, so a click on Refresh opened Discord instead. The row now wraps when it runs out of space, and every button can be reached again.
+
 ### 14.4.8 # 2026-09-01
 
 **Fixes**
