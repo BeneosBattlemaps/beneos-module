@@ -323,7 +323,20 @@ function geteilteVonKarte(id, vorrat = liesGeteilt()) {
  * seit Aufgabe 164. Auch die geteilten Dateien liegen als Kennung; wer
  * Adressen braucht, baut sie am Ort des Gebrauchs mit `adresseVon`.
  */
+let indexCache = null
+
+/**
+ * Den Index vergessen. Zu rufen, wenn sich Szenen geaendert haben.
+ *
+ * Der Index entsteht aus allen Szenendokumenten. Ihn bei jedem Aufruf neu zu
+ * bauen war vertretbar, solange nur `pruefeVorrat` ihn brauchte, also einmal je
+ * Weltstart. Seit `karteZuSzene` ihn braucht, faellt er in den Warmlauf ueber
+ * alle Szenen, und der waere sonst ein Durchlauf im Quadrat.
+ */
+export function indexVergessen() { indexCache = null }
+
 function geteilterIndex() {
+  if (indexCache) return indexCache
   const index = new Map()
   for (const szene of game.scenes ?? []) {
     const adressen = streamAdressenVon(szene) || []
@@ -338,6 +351,7 @@ function geteilterIndex() {
       for (const g of geteilt) eintrag.geteilt.add(kennungVon(g) || g)
     }
   }
+  indexCache = index
   return index
 }
 
@@ -875,6 +889,34 @@ export async function karteZuSzene(scene) {
   for (const platz of m.places) {
     if (!(platz.files || []).some(f => pfade.has(f))) continue
     const dateien = platz.files || []
+    const kartenAdressen = dateien.map(f => assetUrl(erste.release, erste.variant, f))
+
+    // DIE GETEILTEN DATEIEN ALLER SZENEN DIESER KARTE, NICHT NUR DIESER EINEN.
+    //
+    // Eine Karte ist Battlemap und Szenerie zusammen, und das gilt fuer ihre
+    // Symbole genauso wie fuer ihre Videos. Die Battlemap-Szene zieht
+    // `foundry_bm_ui`, die Szenerie-Szene `foundry_sc_ui`; wer nur die
+    // angeklickte Szene einsammelt, haelt die halbe Karte.
+    //
+    // `szenenVorschau` loeste das fuer den Ordnerweg schon lange ("sonst
+    // fehlte der zweiten Szene offline ihr Kompass"). Der Rechtsklick auf EINE
+    // Szene ging daran vorbei.
+    //
+    // GEMESSEN am 03.09.2026, Pruefstand V14, Karte `2f_north` aus
+    // beneos_bm_0018: die Szene "BM: 2F North" fuehrt 11 geteilte Dateien, die
+    // Szene "SC: 2F North" acht, davon fuenf gemeinsam. Vereinigt sind es 14.
+    // Zugesagt wurden 11, und `pruefeVorrat` meldete die Karte danach zu Recht
+    // als unvollstaendig, drei Symbole fehlten.
+    const geteilteKennungen = new Set()
+    const idx = geteilterIndex()
+    for (const u of kartenAdressen) {
+      const treffer = idx.get(kennungVon(u) || u)
+      if (treffer) for (const g of treffer.geteilt) geteilteKennungen.add(g)
+    }
+    // Die eigene Szene noch dazu. Der Index kennt sie normalerweise, aber er
+    // kann veraltet sein, und die angeklickte Szene liegt hier vor.
+    for (const u of adressen.filter(istGeteilteDatei)) geteilteKennungen.add(kennungVon(u) || u)
+
     return {
       release: erste.release,
       variant: erste.variant,
@@ -884,15 +926,15 @@ export async function karteZuSzene(scene) {
       // Die vollen Adressen ALLER Dateien der Karte, nicht nur der dieser
       // Szene: eine Karte ist Battlemap und Szenerie zusammen, und wer nur die
       // eine haelt, hat beim Umschalten auf die andere doch wieder ein Loch.
-      urls: dateien.map(f => assetUrl(erste.release, erste.variant, f)),
+      urls: kartenAdressen,
       bytes: dateien.reduce((s, f) => s + (groesse.get(f) || 0), 0),
       // DIE GETEILTEN DATEIEN DIESER SZENE, GETRENNT GEFUEHRT.
       //
       // Sie gehoeren zu keinem Ort im Manifest, werden aber gebraucht, damit
       // die Szene ohne Leitung vollstaendig zeichnet. Getrennt, weil sie
       // mehreren Karten gehoeren und deshalb nur einmal zaehlen duerfen.
-      geteilt: adressen
-        .filter(istGeteilteDatei)
+      geteilt: [...geteilteKennungen]
+        .map(k => adresseVon(k) || k)
         .map(u => ({ url: u, bytes: groesse.get(zerlegeAdresse(u)?.pfad) || 0 })),
     }
   }

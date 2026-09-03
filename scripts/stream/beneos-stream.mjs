@@ -32,7 +32,7 @@ import { reportedSoFar } from "./stream-report.mjs"
 import { beimWeltstart, meldeFehlendenVorrat, meldeVerfall, karteZusagen, karteLoesen,
          istZugesagt, alleKarten, vorratsstand, verfallsstand, pruefeVorrat, VERFALL_TAGE,
          karteZuSzene, szenenzustand, zustandAusCache, warmeZustaende, ziehZustandNach,
-         schalteKarte, verwaisteLoesen, geteilteLuecken, geteilteWaisen, geteilterStand,
+         schalteKarte, verwaisteLoesen, geteilteLuecken, geteilteWaisen, geteilterStand, indexVergessen,
          vorratHeilen, warnungGezaehlt } from "./stream-offline.mjs"
 
 Hooks.once("init", () => {
@@ -69,6 +69,16 @@ Hooks.once("init", () => {
     // ausschliesslich aus dem vorgewaermten Zustand, kosten also nichts,
     // solange niemand eine Szenenliste zeichnet.
     installStreamSceneUi()
+
+    // Der Index der geteilten Dateien wird zwischengespeichert, weil er sonst
+    // im Warmlauf ueber alle Szenen einmal je Szene entstuende. Er haengt
+    // ausschliesslich an den Szenendokumenten, also wird er genau dann
+    // vergessen, wenn sich eines aendert. Ein veralteter Index wuerde eine
+    // Karte zu Unrecht als unvollstaendig melden, und das ist die Sorte
+    // Meldung, die hier gerade abgeschafft wird.
+    for (const haken of ["createScene", "updateScene", "deleteScene"]) {
+      Hooks.on(haken, () => indexVergessen())
+    }
   }
 
   // The installer reaches for this rather than importing the stream modules
