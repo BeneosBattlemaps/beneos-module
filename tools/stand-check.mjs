@@ -16,7 +16,7 @@
  *
  * WAS GEPRUEFT WIRD
  *
- * Sechs Fragen, jede mit einer Zahl oder einem Pfad als Antwort:
+ * Sieben Fragen, jede mit einer Zahl oder einem Pfad als Antwort:
  *
  *   1. Traegt das hoechste Tag dieselbe Fassung wie `main`?
  *   2. Passen `version` und die `download`-Adresse in `module.json` zusammen?
@@ -24,6 +24,9 @@
  *   4. Wartet ein Zweig darauf, zusammengefuehrt zu werden?
  *   5. Liegt jeder Pruefstand auf dem Stand seines Zweigs?
  *   6. Traegt ein Pruefstand Aenderungen, die nirgends committet sind?
+ *   7. Ist ein Pruefstand ueberhaupt derselbe Bestand, oder ein zweiter Klon
+ *      mit eigenem `main`? Am 2026-09-03 traf das auf `v13Data` zu, und zwei
+ *      `main` trugen zwei verschiedene Fassungen.
  *
  * AUFRUF
  *
@@ -207,11 +210,26 @@ if (!changelog) {
  * `stream-beta` ist ausgenommen: dass er voraus ist, ist sein Zweck.
  */
 const SAMMELZWEIGE = ["main", "stream-beta"]
+
+/**
+ * Rettungsmarken sind ausdruecklich gewollte Seitenzweige.
+ *
+ * Wer einen Zweig zurueckwirft oder ueberschreibt, setzt vorher eine Marke auf
+ * den alten Kopf, damit nichts unwiederbringlich verschwindet. Ohne diese
+ * Ausnahme meldet der Pruefer sie als vergessenen Rueckstand, und das ist der
+ * schnellste Weg dazu, dass jemand die Marke loescht statt sie zu behalten.
+ *
+ * Sie bleiben trotzdem sichtbar, als weicher Befund mit ihrem Datum im Namen:
+ * eine Rettungsmarke, die ein halbes Jahr alt ist, hat ihren Zweck erfuellt.
+ */
+const RETTUNG = /^rettung-/
+
 const zweige = (git("for-each-ref", "--format=%(refname:short)", "refs/heads") || "")
   .split("\n").map(s => s.trim()).filter(Boolean)
 
 for (const z of zweige) {
   if (SAMMELZWEIGE.includes(z)) continue
+  if (RETTUNG.test(z)) { weich.push(`Rettungsmarke ${z} liegt noch. Sie ist gewollt, aber nicht ewig noetig.`); continue }
   const offen = git("rev-list", "--count", `main..${z}`)
   const inBeta = git("rev-list", "--count", `stream-beta..${z}`)
   // Ein Zweig, dessen Commits schon in einem Sammelzweig stecken, ist eine
@@ -254,6 +272,28 @@ for (const s of STAENDE) {
     hart.push(`Pruefstand ${s.name} ist kein Arbeitsbaum, sondern eine Kopie. `
       + "Was dort gemessen wird, laesst sich keinem Stand zuordnen.")
     zeilen.push([`Stand ${s.name}`, `${eigen || "?"} (Kopie, ohne Git)`])
+    continue
+  }
+
+  // KENNT DIESES REPOSITORY DEN STAND UEBERHAUPT?
+  //
+  // Der Pruefer nahm bis zum 2026-09-03 an, alle Pruefstaende seien
+  // Arbeitsbaeume desselben Repositories. `v13Data` war es nicht, sondern ein
+  // eigener Klon. Sein Kopf-Commit gibt es hier gar nicht, `rev-list` scheitert
+  // still, und die Zeile las sich "? Commits hinter main": eine Zahl, die es
+  // nicht gibt, an der Stelle, an der eine Zahl stehen soll.
+  //
+  // Zwei Klone mit je einem `main` sind der eigentliche Befund. Er wird jetzt
+  // benannt, statt in einem Fragezeichen zu verschwinden. Die Fassungsnummer
+  // steht daneben, weil sie sich auch ohne gemeinsame Objekte vergleichen
+  // laesst: sie kommt aus der Datei, nicht aus der Historie.
+  const kennen = git("cat-file", "-e", `${kopf}^{commit}`) !== null
+  if (!kennen) {
+    hart.push(`Pruefstand ${s.name} ist ein eigener Klon, kein Arbeitsbaum. Sein Stand ${kopf.slice(0, 8)} `
+      + `ist hier unbekannt, der Abstand deshalb nicht messbar. `
+      + `Er traegt Fassung ${eigen || "?"}, ${s.zweig} hier traegt ${fassungVonZweig(s.zweig) || "?"}.`)
+    zeilen.push([`Stand ${s.name}`, `${eigen || "?"} auf ${kopf.slice(0, 8)} (eigener Klon, nicht vergleichbar)`
+      + (schmutz ? `, ${schmutz} ungespeicherte Dateien` : "")])
     continue
   }
 
