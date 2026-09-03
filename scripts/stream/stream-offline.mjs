@@ -1974,13 +1974,28 @@ export async function meldeFehlendenVorrat(bericht) {
     const name = String(e.name || e.karte || "")
     const teile = []
     try {
-      // Der Szenenordner, aus der ersten lebenden Szene des Release. Er ist
-      // das, was der Spielleiter in seiner Szenenliste sieht.
+      // DER ORDNER DIESER KARTE, NICHT IRGENDEINER DES RELEASE.
+      //
+      // Die erste Fassung nahm den Ordner der ersten lebenden Szene des
+      // Release. Gemessen am 03.09.2026 auf V14 stand dann da:
+      // "Overview Exterior - DH (1F, ...)". "1F" ist ein anderer Ort desselben
+      // Hauses und hat mit dieser Karte nichts zu tun. Ein falscher Ordner ist
+      // schlechter als gar keiner, denn er schickt die Suche in die Irre.
+      //
+      // Deshalb wird die Szene ueber die Adressen gesucht: nur eine Szene, die
+      // eine Datei DIESER Karte zeichnet, darf ihren Ordner beisteuern.
+      const meine = new Set(e.urls || [])
       const szenen = szenenZuRelease(e.release, e.variant) || []
-      const ordner = szenen.map(s => s?.folder?.name).find(Boolean)
+      let ordner = ""
+      for (const s of szenen) {
+        const adressen = streamAdressenVon(s) || []
+        if (!adressen.some(u => meine.has(u))) continue
+        ordner = String(s?.folder?.name || "")
+        if (ordner) break
+      }
       // Traegt der Ordner denselben Namen wie die Karte, sagt er nichts dazu.
       // "Blinsky's Toy Shop (Blinsky's Toy Shop, ...)" ist keine Auskunft.
-      if (ordner && String(ordner) !== name) teile.push(String(ordner))
+      if (ordner && ordner !== name) teile.push(ordner)
     } catch (_e) { /* ohne Ordner */ }
     const rel = String(e.displayName || anzeigename(e.release) || "")
     if (rel && !teile.includes(rel)) teile.push(rel)
