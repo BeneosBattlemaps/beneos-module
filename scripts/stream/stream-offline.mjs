@@ -31,10 +31,10 @@
 
 import { MODULE_ID, SETTING, streamEnabled, assetUrl, streamKey, streamBase } from "./stream-settings.mjs"
 import { offlineGehalten, offlineHalten, offlineFreigeben,
-         gehalteneAdressen, speicherAusfallStand } from "./stream-fetch.mjs"
-import { streamAdressenVon } from "./stream-online.mjs"
+         gehalteneAdressen, speicherAusfallStand, speicherLage } from "./stream-fetch.mjs"
+import { streamAdressenVon, streamState } from "./stream-online.mjs"
 import { loadStreamManifest } from "./stream-install.mjs"
-import { BeneosInstallState, releaseKern } from "../cloud-v2/beneos-install-state.mjs"
+import { BeneosInstallState, releaseKern, anzeigename } from "../cloud-v2/beneos-install-state.mjs"
 
 /**
  * Vierzehn Tage ohne gueltige Berechtigung, dann fallen die Zusagen.
@@ -1376,6 +1376,22 @@ export function verfallsstand() {
  */
 export async function pruefeVorrat() {
   const liste = alleKarten()
+
+  // EIN AUSGEFALLENER SPEICHER IST KEIN VERLORENER VORRAT.
+  //
+  // Faellt der Zwischenspeicher aus, antwortet `offlineGehalten` auf JEDE
+  // Adresse mit falsch. Ohne diese Zeile gilt dann der gesamte Vorrat als
+  // fehlend, der Kunde wird gefragt, ob er alles neu holen soll, und das
+  // Holen scheitert an derselben Ursache. Der Nachbar `geteilteLuecken` traegt
+  // dieses Netz seit dem 31.08.2026, `pruefeVorrat` hatte es nicht.
+  //
+  // Der Rueckgabewert sagt ausdruecklich "nicht feststellbar" und nicht
+  // "vollstaendig": eine Behauptung waere hier so falsch wie die andere.
+  if (speicherAusfallStand()) {
+    return { zugesagt: liste.length, vollstaendig: 0, fehlend: [], bytesFehlend: 0,
+             unbestimmt: true, grund: "speicher-aus" }
+  }
+
   const vorrat = liesGeteilt()
   const fehlend = []
   // Der Index laeuft ueber alle Szenen der Welt. Ohne Zusagen gibt es nichts zu
@@ -1390,7 +1406,61 @@ export async function pruefeVorrat() {
     vollstaendig: liste.length - fehlend.length,
     fehlend,
     bytesFehlend: fehlend.reduce((s, e) => s + (Number(e.bytes) || 0), 0),
+    unbestimmt: false,
+    grund: "",
   }
+}
+
+/**
+ * Was von dem, das fehlt, sich JETZT auch wirklich holen laesst.
+ *
+ * WARUM DIESE FUNKTION DER EIGENTLICHE FIX IST
+ *
+ * Die alte Reihenfolge war: fehlt etwas, frag den Kunden, versuch es, sag ihm
+ * hinterher, dass es nicht ging. Das ist die schlechteste Reihenfolge von
+ * allen. Ein Prompt ist ein Versprechen: wer klickt, erwartet, dass danach
+ * etwas passiert ist.
+ *
+ * Deshalb wird die Frage vorgezogen. Drei Bedingungen entscheiden, und jede
+ * traegt ihren eigenen Grund, damit die Meldung sagen kann, WARUM es nicht
+ * geht, statt nur, DASS es nicht ging.
+ *
+ * Betreiberentscheidung vom 03.09.2026: ist nichts holbar, gibt es eine kurze
+ * Meldung mit dem Grund, keinen Dialog und keine Frage.
+ *
+ * @param {object} stand Ergebnis von `pruefeVorrat`
+ * @returns {Promise<{holbar: object[], gesperrt: object[], grund: string, bytesHolbar: number}>}
+ */
+export async function heilbarkeit(stand) {
+  const fehlend = stand?.fehlend || []
+  const alles = (grund) => ({ holbar: [], gesperrt: fehlend, grund, bytesHolbar: 0 })
+
+  if (stand?.unbestimmt) return alles(stand.grund || "speicher-aus")
+  if (!fehlend.length) return { holbar: [], gesperrt: [], grund: "", bytesHolbar: 0 }
+  if (speicherAusfallStand()) return alles("speicher-aus")
+  if (streamState() !== "online" || !streamKey()) return alles("keine-verbindung")
+
+  // Der Deckel. `offlineHalten` meldet ihn als `deckelErreicht` und laesst die
+  // Bytes liegen, ohne einen Fehlschlag zu zaehlen; wer erst holt und dann
+  // rechnet, meldet dem Kunden deshalb einen Erfolg, den es nicht gab.
+  let frei = Infinity
+  try {
+    const lage = await speicherLage()
+    if (Number(lage?.kontingent) > 0) frei = Number(lage.kontingent) - Number(lage.gehalten || 0)
+  } catch (_e) { /* nicht messbar, dann nicht sperren */ }
+  if (frei <= 0) return alles("kontingent-voll")
+
+  // Teilweise geht auch. Was ins verbleibende Kontingent passt, wird angeboten;
+  // der Rest steht in `gesperrt` und bekommt seinen Grund.
+  const holbar = []
+  const gesperrt = []
+  let summe = 0
+  for (const e of fehlend) {
+    const b = Number(e.bytes) || 0
+    if (summe + b <= frei) { holbar.push(e); summe += b }
+    else gesperrt.push(e)
+  }
+  return { holbar, gesperrt, grund: gesperrt.length ? "kontingent-voll" : "", bytesHolbar: summe }
 }
 
 /**
@@ -1628,7 +1698,7 @@ export async function geteilteLuecken() {
  * aufgeloest, und die Vereinigung beider Listen geholt.
  */
 export async function vorratHeilen(fehlend, onProgress) {
-  const summe = { geholt: 0, fehlgeschlagen: 0, karten: 0, geteiltGeholt: 0 }
+  const summe = { geholt: 0, fehlgeschlagen: 0, karten: 0, geteiltGeholt: 0, deckelErreicht: false }
   const vorrat = liesGeteilt()
   const index = geteilterIndex()
   let geaendert = 0
@@ -1637,6 +1707,17 @@ export async function vorratHeilen(fehlend, onProgress) {
     const r = await offlineHalten(e.urls || [], onProgress)
     summe.geholt += r.geholt + r.gehalten
     summe.fehlgeschlagen += r.fehlgeschlagen
+    // DER DECKEL IST EIN FEHLSCHLAG, AUCH WENN ER SICH NICHT SO MELDET.
+    //
+    // `offlineHalten` kehrt bei vollem Kontingent zurueck, ohne `fehlgeschlagen`
+    // zu erhoehen. Eine Karte ohne geteilte Dateien wurde deshalb als
+    // wiederhergestellt gezaehlt, obwohl kein einziges Byte geholt wurde, und
+    // der Kunde bekam eine Erfolgsmeldung fuer nichts.
+    if (r.deckelErreicht) {
+      summe.deckelErreicht = true
+      summe.fehlgeschlagen += (e.urls || []).length
+      continue
+    }
 
     // Die frische Aufloesung ueber die Szene, wenn sie zu haben ist. Ohne Netz
     // gibt `karteZuSzene` keine Adressen her, dann bleibt es beim Verzeichnis;
@@ -1693,6 +1774,75 @@ export async function vorratHeilen(fehlend, onProgress) {
 }
 
 /**
+ * Zusagen loesen, deren Karte es in dieser Welt nicht mehr gibt.
+ *
+ * WARUM DAS NOETIG IST
+ *
+ * Die Zusagenliste ist eine zweite Buchfuehrung neben dem Installationsvermerk,
+ * und sie kannte dieselbe Schwaeche: sie erinnerte sich an eine Zusage, statt
+ * nachzusehen, ob die Karte noch da ist. Loescht die Spielleitung einen
+ * Szenenordner, fragt der naechste Weltstart, ob 22 MB fuer Karten nachgeladen
+ * werden sollen, die es nicht mehr gibt.
+ *
+ * GEMESSEN am 03.09.2026 in der V13-Streaming-Welt: 2 Zusagen, beide aus
+ * `beneos_bm_0005_cos_the_death_house`, dessen 21 Szenen alle geloescht waren.
+ * Der Weltstart fragte trotzdem.
+ *
+ * ZWEI ZEUGEN, UND BEIDE MUESSEN SCHWEIGEN.
+ *
+ * 1. Keine Szene der Welt traegt eine Adresse dieser Karte.
+ * 2. Der Installationsvermerk meldet `verschwunden` oder `keine`.
+ *
+ * Meldet der Vermerk `unbekannt`, `teilweise` oder `vollstaendig`, bleibt die
+ * Zusage stehen. Das ist dieselbe Bremse wie beim Raeumen des Vermerks: ein
+ * Altbestand ohne Szenenkennungen darf nicht schlagartig seinen Vorrat
+ * verlieren, nur weil wir es nicht besser wissen.
+ *
+ * Dieselben vier Schranken wie dort, aus denselben Gruenden.
+ *
+ * Betreiberentscheidung vom 03.09.2026: geloest wird, nicht nur geschwiegen.
+ * Das Kontingent wird beim Tor frei. Der Preis steht: wer die Szene spaeter
+ * zurueckholt, muss neu zusagen und neu laden.
+ *
+ * @returns {Promise<{geprueft: number, geloest: string[], bytes: number, grund: string}>}
+ */
+export async function zusagenOhneSzene() {
+  const nichts = (grund) => ({ geprueft: 0, geloest: [], bytes: 0, grund })
+  try {
+    if (!game?.ready) return nichts("Welt nicht bereit")
+    if (!game.scenes?.size) return nichts("keine Szenen geladen")
+    if (!game.user?.isGM) return nichts("nicht die Spielleitung")
+  } catch (_e) { return nichts("Spielzustand nicht lesbar") }
+
+  const liste = alleKarten()
+  if (!liste.length) return { geprueft: 0, geloest: [], bytes: 0, grund: "nichts zugesagt" }
+
+  const index = geteilterIndex()
+  const weg = []
+  for (const e of liste) {
+    if (szenenDerKarte(e, index).length) continue
+    const zustand = BeneosInstallState.weltbefund(e.release).zustand
+    if (zustand !== "verschwunden" && zustand !== "keine") continue
+    weg.push(e)
+  }
+  if (!weg.length) return { geprueft: liste.length, geloest: [], bytes: 0, grund: "nichts verwaist" }
+
+  const geloest = []
+  let bytes = 0
+  for (const e of weg) {
+    const r = await karteLoesen(e.release, e.variant, e.karte)
+    if (!r?.ok) continue
+    geloest.push(String(e.name || e.karte))
+    bytes += Number(e.bytes) || 0
+  }
+  if (geloest.length) {
+    console.log(`Beneos Stream | ${geloest.length} Zusage(n) geloest, deren Karte es nicht mehr gibt: `
+      + `${geloest.join(", ")} (${Math.round(bytes / 1048576)} MB frei)`)
+  }
+  return { geprueft: liste.length, geloest, bytes, grund: "" }
+}
+
+/**
  * Der ganze Ablauf beim Weltstart, in der Reihenfolge, die er haben muss.
  *
  * Erst die Uhr, dann der Verfall, dann die Pruefung. Die Reihenfolge ist
@@ -1721,11 +1871,16 @@ export async function beimWeltstart({ berechtigt }) {
   // ein Ausfall deshalb bekannt ist. Siehe `geteilteLuecken`.
   const luecken = await geteilteLuecken()
 
+  // Und zuletzt die Gegenrichtung zum Vermerk: eine Zusage, deren Karte die
+  // Welt nicht mehr kennt. Sie steht VOR der Pruefung, sonst meldete die
+  // Pruefung genau die Karten als fehlend, die gleich darauf geloest werden.
+  const verwaisteZusagen = await zusagenOhneSzene()
+
   if (!alleKarten().length) {
     // Nichts zugesagt, nichts zu pruefen. Die Uhr laeuft trotzdem mit, damit
     // sie nicht bei der ersten Zusage schon abgelaufen ist.
     if (berechtigt) await berechtigungGesehen()
-    return { uebersprungen: "nichts-zugesagt", waisen, verwaist, luecken }
+    return { uebersprungen: "nichts-zugesagt", waisen, verwaist, luecken, verwaisteZusagen }
   }
 
   if (berechtigt) await berechtigungGesehen()
@@ -1745,16 +1900,25 @@ export async function beimWeltstart({ berechtigt }) {
     // Nur abbrechen, wenn wirklich etwas gefallen ist. Wer ausschliesslich
     // Gekauftes haelt, verliert nichts und braucht trotzdem seine Pruefung;
     // ohne diese Bedingung bekaeme er sie nach Fristablauf nie wieder.
-    if (v.gefallen > 0) return { verfallen: v.gefallen, behalten: v.behalten, frist, waisen, verwaist, luecken }
+    if (v.gefallen > 0) return { verfallen: v.gefallen, behalten: v.behalten, frist, waisen, verwaist, luecken, verwaisteZusagen }
   }
 
   const stand = await pruefeVorrat()
   const vorrat = vorratsstand()
-  console.log(`Beneos Stream | Offline-Vorrat: ${stand.vollstaendig} von ${stand.zugesagt} Karten `
-    + `vollstaendig, ${Math.round(vorrat.bytes / 1048576)} MB zugesagt, `
-    + (frist.nie ? "Frist laeuft noch nicht" : `noch ${frist.tageOffen} Tage`))
+  if (stand.unbestimmt) {
+    console.log(`Beneos Stream | Offline-Vorrat nicht feststellbar (${stand.grund}), `
+      + `${stand.zugesagt} Karten zugesagt`)
+  } else {
+    console.log(`Beneos Stream | Offline-Vorrat: ${stand.vollstaendig} von ${stand.zugesagt} Karten `
+      + `vollstaendig, ${Math.round(vorrat.bytes / 1048576)} MB zugesagt, `
+      + (frist.nie ? "Frist laeuft noch nicht" : `noch ${frist.tageOffen} Tage`))
+  }
 
-  return { stand, frist, vorrat, waisen, verwaist, luecken }
+  // Die Frage nach der Holbarkeit wird HIER beantwortet und nicht erst nach
+  // dem Klick. Der Melder bekommt sie fertig geliefert.
+  const heilbar = await heilbarkeit(stand)
+
+  return { stand, heilbar, frist, vorrat, waisen, verwaist, luecken, verwaisteZusagen }
 }
 
 // ---- Was der Kunde davon sieht ----------------------------------------
@@ -1774,12 +1938,57 @@ function localize(key, fallback) {
  * betrifft oder etwas, das er ohnehin nicht mehr braucht.
  */
 export async function meldeFehlendenVorrat(bericht) {
-  const fehlend = bericht?.stand?.fehlend || []
-  if (!fehlend.length) return false
+  const alleFehlend = bericht?.stand?.fehlend || []
+
+  // GEFRAGT WIRD NUR, WAS AUCH GEHT.
+  //
+  // Betreiberdirektive vom 03.09.2026, woertlich: "wenn Prompts kommen, dann
+  // auch nur wirklich, wenn etwas zu tun ist, um dann nicht im Nachgang nach
+  // der Meldung zu sagen, geht doch nicht."
+  //
+  // Drei Ausgaenge statt einem:
+  //   nichts fehlt          stumm, wie bisher
+  //   nichts holbar         EINE Meldung mit dem Grund, kein Dialog
+  //   etwas holbar          Dialog, aber nur ueber das Holbare
+  const heilbar = bericht?.heilbar || { holbar: alleFehlend, gesperrt: [], grund: "", bytesHolbar: 0 }
+  if (!alleFehlend.length && !heilbar.gesperrt.length) return false
+
+  const fehlend = heilbar.holbar || []
+  if (!fehlend.length) {
+    const grundText = {
+      "speicher-aus":    localize("BENEOS.Stream.Offline.BlockedStorage",
+        "Beneos: your browser storage is unavailable right now, so your offline maps cannot be checked or fetched."),
+      "keine-verbindung": localize("BENEOS.Stream.Offline.BlockedOffline",
+        "Beneos: some offline maps are missing, but there is no connection to fetch them right now."),
+      "kontingent-voll": localize("BENEOS.Stream.Offline.BlockedQuota",
+        "Beneos: some offline maps are missing and your offline storage is full. Free some space to fetch them again."),
+    }[heilbar.grund]
+    if (grundText) ui.notifications?.warn(grundText)
+    return false
+  }
+
   const D = DialogV2()
-  const namen = fehlend.slice(0, 8).map(e => foundry.utils.escapeHTML(String(e.name))).join(", ")
+  // Aufgabe 159: der Szenenname allein sagt bei aelteren Releases nichts. Der
+  // Ordner und das Release sagen, worum es geht.
+  const beschrifte = (e) => {
+    const name = String(e.name || e.karte || "")
+    const teile = []
+    try {
+      // Der Szenenordner, aus der ersten lebenden Szene des Release. Er ist
+      // das, was der Spielleiter in seiner Szenenliste sieht.
+      const szenen = szenenZuRelease(e.release, e.variant) || []
+      const ordner = szenen.map(s => s?.folder?.name).find(Boolean)
+      // Traegt der Ordner denselben Namen wie die Karte, sagt er nichts dazu.
+      // "Blinsky's Toy Shop (Blinsky's Toy Shop, ...)" ist keine Auskunft.
+      if (ordner && String(ordner) !== name) teile.push(String(ordner))
+    } catch (_e) { /* ohne Ordner */ }
+    const rel = String(e.displayName || anzeigename(e.release) || "")
+    if (rel && !teile.includes(rel)) teile.push(rel)
+    return teile.length ? `${name} (${teile.join(", ")})` : name
+  }
+  const namen = fehlend.slice(0, 8).map(e => foundry.utils.escapeHTML(beschrifte(e))).join(", ")
   const rest = fehlend.length > 8 ? ` and ${fehlend.length - 8} more` : ""
-  const mb = Math.round((bericht.stand.bytesFehlend || 0) / 1048576)
+  const mb = Math.round((heilbar.bytesHolbar || 0) / 1048576)
 
   const text = `<p>${localize("BENEOS.Stream.Offline.MissingIntro",
       "Some of your offline maps are no longer in this browser's storage.")}</p>`
@@ -1805,11 +2014,21 @@ export async function meldeFehlendenVorrat(bericht) {
 
   ui.notifications?.info(localize("BENEOS.Stream.Offline.Fetching", "Fetching your offline maps..."))
   const summe = await vorratHeilen(fehlend)
-  if (summe.fehlgeschlagen) {
-    ui.notifications?.warn(`Beneos: ${summe.karten} of ${fehlend.length} map(s) restored, `
-      + `${summe.fehlgeschlagen} file(s) could not be fetched.`)
+  // Der Deckel bekommt seinen eigenen Satz. "konnte nicht geholt werden" waere
+  // hier eine Ausrede: das Kontingent ist voll, und das kann der Kunde aendern.
+  if (summe.deckelErreicht) {
+    ui.notifications?.warn(game.i18n.format("BENEOS.Stream.Offline.RestoredQuota",
+      { done: summe.karten, total: fehlend.length })
+      || `Beneos: ${summe.karten} of ${fehlend.length} map(s) restored, your offline storage is full.`)
+  } else if (summe.fehlgeschlagen) {
+    ui.notifications?.warn(game.i18n.format("BENEOS.Stream.Offline.RestoredPartly",
+      { done: summe.karten, total: fehlend.length, failed: summe.fehlgeschlagen })
+      || `Beneos: ${summe.karten} of ${fehlend.length} map(s) restored, `
+        + `${summe.fehlgeschlagen} file(s) could not be fetched.`)
   } else {
-    ui.notifications?.info(`Beneos: ${summe.karten} offline map(s) restored.`)
+    ui.notifications?.info(game.i18n.format("BENEOS.Stream.Offline.RestoredAll",
+      { done: summe.karten })
+      || `Beneos: ${summe.karten} offline map(s) restored.`)
   }
   return true
 }

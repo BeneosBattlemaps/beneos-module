@@ -237,7 +237,13 @@ Hooks.once("ready", async () => {
   // Berechtigung gesehen, und fuer den soll die Frist weiterlaufen.
   try {
     const bericht = await beimWeltstart({ berechtigt: streamState() === "online" && !!streamKey() })
-    if (bericht?.stand?.fehlend?.length) await meldeFehlendenVorrat(bericht)
+    // Die Bedingung fragt jetzt den Melder, nicht die Rohliste: er entscheidet
+    // zwischen Dialog, kurzer Meldung mit Grund und Schweigen. Gesperrtes muss
+    // durch, sonst faellt der Fall "es fehlt etwas, geht aber gerade nicht"
+    // still unter den Tisch.
+    if (bericht?.stand?.fehlend?.length || bericht?.heilbar?.gesperrt?.length) {
+      await meldeFehlendenVorrat(bericht)
+    }
     else if (bericht?.verfallen) await meldeVerfall(bericht.verfallen)
     else if (bericht?.frist?.warnen) {
       ui.notifications?.warn(game.i18n.format("BENEOS.Stream.Offline.FristKnapp",
