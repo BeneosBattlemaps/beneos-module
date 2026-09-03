@@ -20,7 +20,7 @@
  * to the gate cut, video running, 59 frames per second.
  */
 
-import { budgetFor, downloadMode, localCacheEnabled, maxConcurrent, streamEnabled, streamHost, streamMode } from "./stream-settings.mjs"
+import { assetUrl, budgetFor, downloadMode, localCacheEnabled, maxConcurrent, streamEnabled, streamHost, streamMode, zerlegeAdresse } from "./stream-settings.mjs"
 import { reportFailure, reportedSoFar } from "./stream-report.mjs"
 import { isOffline, noteResult } from "./stream-online.mjs"
 
@@ -316,6 +316,21 @@ function count(reason, url) {
  * daran vorbei `status: 0`. Die Leitung war also nachweislich tot, und die
  * Probe sagte trotzdem ja.
  *
+ * `/offline/` kam am 03.09.2026 dazu und ist der vierte Fall derselben Art.
+ * Das ist das Kontingent-Tor aus `stream-offline.mjs`, `torFragen`. Es
+ * entscheidet, ob eine Karte zugesagt werden darf, und zwar je KONTO ueber
+ * alle Welten hinweg; nur deshalb liegt die Entscheidung dort und nicht hier.
+ *
+ * Gefunden beim Umzug auf den Vorratsschluessel: von 60 Eintraegen im
+ * Pruefstand V13 blieben 7 liegen, weil sie die Form `/offline/...` tragen und
+ * nicht `/a/...`. Sie hatten dort nie liegen duerfen.
+ *
+ * Der Schaden ist nach Richtung verschieden, und die schlechtere Richtung ist
+ * die haltbare: `toStore` legt nur Antworten mit `ok` ab, und eine Ablehnung
+ * des Tors kommt mit 409. **Eine Zusage bleibt also 72 Stunden liegen, eine
+ * Ablehnung nicht.** Die naechste Anfrage zu derselben Karte bekam die alte
+ * Zusage aus dem Speicher, ohne dass das Tor sie je gesehen hat.
+ *
  * Die Altlast raeumt der Aufraeumlauf in `installStreamFetch` von selbst: er
  * entfernt beim Start jeden Eintrag, den `isControl` erfasst.
  */
@@ -324,6 +339,10 @@ function isControl(url) {
     || /\/_docs\//i.test(String(url))
     || /\/catalog\//i.test(String(url))
     || /\/health(\?|$)/i.test(String(url))
+    // Am Wortanfang des Pfades verankert. Ein Ordner namens `offline` irgendwo
+    // tief in `beneos_assets/` waere sonst faelschlich eine Steuerdatei und
+    // liefe an jedem Speicher vorbei, ohne dass es jemandem auffiele.
+    || /^https?:\/\/[^/]+\/offline\//i.test(String(url))
 }
 
 /** Is this a request for our own delivery gate? */
@@ -332,6 +351,76 @@ function ours(url) {
   if (!host) return false
   try { return new URL(url, location.href).host === host } catch (_) { return false }
 }
+
+/* ------------------------------------------------ Schluessel des Vorrats -- */
+
+/**
+ * WARUM DER VORRAT NICHT UNTER DER TORADRESSE LIEGT.
+ *
+ * Der Cache Storage schluesselt nach der vollen Adresse. Eine Toradresse traegt
+ * aber zwei Dinge, die sich aendern duerfen, ohne dass sich die Datei aendert:
+ * die Basisadresse und den Streamschluessel. Bis zum 03.09.2026 lag der Vorrat
+ * genau so, und die Folge war messbar: nach einer Schluesselrotation fand
+ * `pruefeVorrat` nichts mehr wieder und meldete den ganzen Vorrat als fehlend.
+ * Die Bytes lagen weiter da, nur unter einem Namen, den niemand mehr bildete.
+ *
+ * Die Zusagenliste hatte dasselbe Problem und wurde am selben Tag geloest
+ * (Aufgabe 164). Es hier stehenzulassen hiesse, die Haelfte einer Bindung zu
+ * loesen und den Rest fuer behoben zu halten.
+ *
+ * Der Schluessel des Vorrats traegt deshalb nur die Identitaet der Datei:
+ *
+ *   https://beneos-stream.invalid/a/<release>/<variante>/<pfad...>
+ *
+ * `.invalid` ist die dafuer reservierte Endung. Der Cache Storage loest seine
+ * Schluessel nie auf, er vergleicht sie als Zeichenketten; eine Adresse, die
+ * absichtlich nirgendwo hinzeigt, ist hier genau richtig und schliesst aus,
+ * dass jemand versehentlich darauf zugreift.
+ *
+ * WO UMGERECHNET WIRD. Innen liegt ausschliesslich der Vorratsschluessel,
+ * aussen ausschliesslich die Toradresse von heute. Umgerechnet wird an der
+ * Grenze, in `vMatch`, `vPut`, `vDelete` sowie in den zwei Stellen, die
+ * Schluessel nach aussen geben: `gehalteneAdressen` und `alleZusagenLoesen`.
+ */
+const VORRAT_URSPRUNG = "https://beneos-stream.invalid"
+
+/**
+ * Toradresse zu Vorratsschluessel. Idempotent: was schon ein Vorratsschluessel
+ * ist, bleibt einer, und was gar keine Toradresse ist, bleibt unveraendert.
+ */
+function vorratsSchluessel(url) {
+  const s = String(url || "")
+  if (s.startsWith(VORRAT_URSPRUNG)) return s
+  const t = zerlegeAdresse(s)
+  if (!t) return s
+  const pfad = t.pfad.split("/").map(encodeURIComponent).join("/")
+  return `${VORRAT_URSPRUNG}/a/${encodeURIComponent(t.release)}/${encodeURIComponent(t.variant)}/${pfad}`
+}
+
+/** Der Rueckweg: Vorratsschluessel zur Toradresse von HEUTE. */
+function adresseAusSchluessel(schluessel) {
+  const s = String(schluessel || "")
+  if (!s.startsWith(VORRAT_URSPRUNG)) return s
+  try {
+    const teile = new URL(s).pathname.replace(/^\/+/, "").split("/")
+    if (teile[0] !== "a" || teile.length < 4) return s
+    return assetUrl(
+      decodeURIComponent(teile[1]),
+      decodeURIComponent(teile[2]),
+      teile.slice(3).map(decodeURIComponent).join("/"),
+    )
+  } catch (_) { return s }
+}
+
+/**
+ * Die drei Zugriffe auf den Vorrat, jeder mit der Umrechnung davor.
+ *
+ * Bewusst als Huelle und nicht als Regel im Kopf: es gibt ein Dutzend
+ * Zugriffsstellen, und eine vergessene laege still unter dem falschen Namen.
+ */
+const vMatch = (store, url, opts) => store.match(vorratsSchluessel(url), opts)
+const vPut = (store, url, antwort) => store.put(vorratsSchluessel(url), antwort)
+const vDelete = (store, url, opts) => store.delete(vorratsSchluessel(url), opts)
 
 /**
  * Eine Abweisung des Tors, einmal je Release und Variante gemeldet.
@@ -550,7 +639,10 @@ export async function gehalteneAdressen() {
     for (const anfrage of await store.keys()) {
       const hit = await store.match(anfrage)
       if (!hit?.headers.get(KEEP_HEADER)) continue
-      raus.push({ url: anfrage.url, bytes: Number(hit.headers.get("content-length") || 0) })
+      // Nach aussen geht die Toradresse von heute, nicht der Vorratsschluessel.
+      // Der Aufrufer vergleicht sie gegen die Zusagenliste, und die ist in
+      // Toradressen gebaut.
+      raus.push({ url: adresseAusSchluessel(anfrage.url), bytes: Number(hit.headers.get("content-length") || 0) })
     }
   } catch (_) { /* melde, was gefunden wurde */ }
   return raus
@@ -589,10 +681,10 @@ function fresh(hit) {
  */
 async function fromStore(store, url) {
   try {
-    const hit = await store.match(url, { ignoreSearch: true })
+    const hit = await vMatch(store, url, { ignoreSearch: true })
     if (!hit) return null
     if (fresh(hit)) return hit
-    await store.delete(url, { ignoreSearch: true })
+    await vDelete(store, url, { ignoreSearch: true })
   } catch (_) { /* a broken store must never break the canvas */ }
   return null
 }
@@ -768,7 +860,7 @@ export async function alleImSpeicher(urls) {
   if (!store) return false
   for (const url of liste) {
     try {
-        const hit = await store.match(url, { ignoreSearch: true })
+        const hit = await vMatch(store, url, { ignoreSearch: true })
         if (!hit || !fresh(hit)) return false
       } catch (_) { return false }
     }
@@ -894,7 +986,7 @@ export async function alleImSpeicher(urls) {
     let frei = 0
     for (const e of wegwerf) {
       if (frei >= noetig) break
-      try { await store.delete(e.url, { ignoreSearch: true }); frei += e.bytes } catch (_) { /* weiter */ }
+      try { await vDelete(store, e.url, { ignoreSearch: true }); frei += e.bytes } catch (_) { /* weiter */ }
     }
     if (frei > 0) console.log(`Beneos Stream | Speicher: ${Math.round(frei / 1048576)} MB Wegwerfware geraeumt`)
     return frei >= noetig
@@ -923,11 +1015,57 @@ export async function alleImSpeicher(urls) {
       bytes = daten.size
       const kopf = new Headers(gestempelt.headers)
       const bauen = () => new Response(daten, { status: 200, headers: kopf })
-      try { await store.put(url, bauen()); return true } catch (_) { /* voll, gleich weiter */ }
+      try { await vPut(store, url, bauen()); return true } catch (_) { /* voll, gleich weiter */ }
       // Etwas Luft ueber den reinen Bedarf, damit nicht jede zweite Datei raeumt.
       if (!(await raumSchaffen(Math.max(bytes * 2, 32 * 1048576)))) return false
-      try { await store.put(url, bauen()); return true } catch (_) { return false }
+      try { await vPut(store, url, bauen()); return true } catch (_) { return false }
     } catch (_) { return false }
+  }
+
+  /**
+   * Den Altbestand einmalig auf den Vorratsschluessel umziehen.
+   *
+   * Vor dem 03.09.2026 abgelegte Eintraege liegen unter ihrer Toradresse. Sie
+   * einfach liegen zu lassen waere die schlechteste Wahl: der Lesepfad findet
+   * sie nicht mehr, `speicherLage` zaehlt sie aber weiter gegen das Kontingent,
+   * und der Kunde holt alles ein zweites Mal, waehrend die erste Fassung seinen
+   * Platz belegt.
+   *
+   * ES WIRD EINZELN UMGEZOGEN, NICHT IN EINEM SCHWUNG. Je Eintrag erst ablegen,
+   * dann loeschen. Der Mehrbedarf ist damit eine Datei und nicht der ganze
+   * Vorrat; bei einem vollen Speicher scheitert sonst der erste `put` und der
+   * Umzug bliebe auf halbem Weg stehen.
+   *
+   * Bricht der Umzug mittendrin ab, ist das kein Schaden: was umgezogen ist,
+   * ist umgezogen, der Rest kommt beim naechsten Weltstart dran. Deshalb wird
+   * die Ausnahme je Eintrag gefangen und nicht ueber der Schleife.
+   */
+  async function umzugAufVorratsSchluessel(store) {
+    let umgezogen = 0, gescheitert = 0, bytes = 0
+    try {
+      for (const anfrage of await store.keys()) {
+        const alt = anfrage.url
+        const neu = vorratsSchluessel(alt)
+        // Schon umgezogen, oder gar keine Toradresse: nichts zu tun.
+        if (neu === alt) continue
+        try {
+          const hit = await store.match(anfrage)
+          if (!hit) { await store.delete(anfrage); continue }
+          const rumpf = await hit.blob()
+          await store.put(neu, new Response(rumpf, {
+            status: hit.status, statusText: hit.statusText, headers: new Headers(hit.headers),
+          }))
+          await store.delete(anfrage)
+          umgezogen++
+          bytes += rumpf.size
+        } catch (_) { gescheitert++ }
+      }
+    } catch (_) { /* melde, was geschafft wurde */ }
+    if (umgezogen || gescheitert) {
+      console.log(`Beneos Stream | Vorrat: ${umgezogen} Eintrag/Eintraege auf den schluesselfreien Namen `
+        + `umgezogen (${Math.round(bytes / 1048576)} MB), ${gescheitert} gescheitert`)
+    }
+    return { umgezogen, gescheitert, bytes }
   }
 
   export function installStreamFetch() {
@@ -975,6 +1113,7 @@ export async function alleImSpeicher(urls) {
           try { await store.delete(anfrage, { ignoreSearch: true }); geraeumt++ } catch (_) { /* weiter */ }
         }
         if (geraeumt) console.log(`Beneos Stream | Speicher: ${geraeumt} Steuerdatei(en) geraeumt, die dort nicht hingehoeren`)
+        await umzugAufVorratsSchluessel(store)
       } catch (_) { /* ein kaputter Speicher darf den Einbau nicht aufhalten */ }
     })()
 
@@ -999,8 +1138,25 @@ export async function alleImSpeicher(urls) {
       // meant to keep a scene from parking on one slow video, while an install has
       // deadlines of its own that are sized to the file (installer 31-48) and must
       // be the same on both routes or the comparison measures this module.
+      // NUR GET GEHT IN DEN SPEICHER, UND NUR GET KOMMT DARAUS.
+      //
+      // Bis zum 03.09.2026 fragte hier niemand nach dem Verfahren. Der Cache
+      // Storage kennt nur GET: `store.put(<zeichenkette>, ...)` baut aus der
+      // Adresse immer eine GET-Anfrage, wirft also nicht, sondern legt die
+      // Antwort eines POST still unter einem GET-Schluessel ab. Danach konnte
+      // ein spaeterer GET auf dieselbe Adresse die Antwort eines Schreibbefehls
+      // bekommen.
+      //
+      // Ein POST ist ausserdem der falsche Kandidat fuer einen Speicher: er
+      // aendert etwas, und die Antwort gilt fuer genau diesen einen Vorgang.
+      // Gefunden zusammen mit dem Kontingent-Tor oben, das beide Verfahren
+      // ueber dieselbe Adresse fuehrt.
+      // `init` schlaegt die Anfrage, so wie `new Request(anfrage, init)` es tut.
+      const verfahren = String(init?.method || (typeof input === "string" ? "" : input?.method) || "GET")
+        .toUpperCase()
       const measuring = downloadMode()
-      const store = (!measuring && localCacheEnabled() && !isControl(url)) ? await openStore() : null
+      const store = (verfahren === "GET" && !measuring && localCacheEnabled() && !isControl(url))
+        ? await openStore() : null
       if (store) {
         const hit = await fromStore(store, url)
         if (hit) {
@@ -1334,10 +1490,10 @@ export async function offlineHalten(urls, onProgress) {
   let fertig = 0
   for (const url of liste) {
     try {
-      let hit = await store.match(url, { ignoreSearch: true })
+      let hit = await vMatch(store, url, { ignoreSearch: true })
       // Ein abgelaufener Eintrag ohne Stempel ist kein Treffer, sondern Ballast.
       if (hit && !hit.headers.get(KEEP_HEADER) && !fresh(hit)) {
-        await store.delete(url, { ignoreSearch: true })
+        await vDelete(store, url, { ignoreSearch: true })
         hit = null
       }
       if (hit) {
@@ -1382,13 +1538,13 @@ export async function offlineFreigeben(urls) {
   let geloest = 0
   for (const url of liste) {
     try {
-      const hit = await store.match(url, { ignoreSearch: true })
+      const hit = await vMatch(store, url, { ignoreSearch: true })
       if (!hit || !hit.headers.get(KEEP_HEADER)) continue
       const headers = new Headers(hit.headers)
       headers.delete(KEEP_HEADER)
       headers.set(STAMP_HEADER, String(Date.now()))
       const body = await hit.blob()
-      await store.put(url, new Response(body, { status: hit.status, statusText: hit.statusText, headers }))
+      await vPut(store, url, new Response(body, { status: hit.status, statusText: hit.statusText, headers }))
       geloest++
     } catch (_) { /* ein kaputter Eintrag darf den Rest nicht aufhalten */ }
   }
@@ -1403,7 +1559,7 @@ export async function offlineGehalten(urls) {
   if (!store) return false
   for (const url of liste) {
     try {
-      const hit = await store.match(url, { ignoreSearch: true })
+      const hit = await vMatch(store, url, { ignoreSearch: true })
       if (!hit || !hit.headers.get(KEEP_HEADER)) return false
     } catch (_) { return false }
   }
@@ -1446,7 +1602,9 @@ export async function alleZusagenLoesen() {
   try {
     for (const anfrage of await store.keys()) {
       const hit = await store.match(anfrage)
-      if (hit?.headers.get(KEEP_HEADER)) adressen.push(anfrage.url)
+      // Toradresse, nicht Vorratsschluessel: `offlineFreigeben` siebt seine
+      // Eingabe mit `ours()`, und ein Vorratsschluessel liegt nicht auf dem Tor.
+      if (hit?.headers.get(KEEP_HEADER)) adressen.push(adresseAusSchluessel(anfrage.url))
     }
   } catch (_) { return { geloest: 0 } }
   return offlineFreigeben(adressen)

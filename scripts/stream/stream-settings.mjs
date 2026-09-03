@@ -385,3 +385,30 @@ export function assetUrl(release, variant, path) {
   const clean = String(path).replace(/^\/+/, "").split("/").map(encodeURIComponent).join("/")
   return `${streamBase()}/a/${encodeURIComponent(streamKey())}/${encodeURIComponent(release)}/${encodeURIComponent(variant)}/${clean}`
 }
+
+/**
+ * Die Umkehrung von `assetUrl`: aus einer Toradresse die Identitaet lesen.
+ *
+ * Steht hier und nicht bei einem der Aufrufer, weil sie mit `assetUrl` ein Paar
+ * bildet. Aendert sich die Form der Adresse, muessen beide zugleich mitgehen,
+ * und zwei Kopien in zwei Dateien gehen erfahrungsgemaess nicht zugleich mit.
+ * Bis zum 03.09.2026 lag eine private Kopie in `stream-offline.mjs`.
+ *
+ * Der Schluessel im Pfad wird ABSICHTLICH nicht zurueckgegeben. Er ist kein
+ * Bestandteil der Identitaet einer Datei, sondern die Eintrittskarte des
+ * Augenblicks, und wer ihn mitnimmt, baut sich die naechste Bindung an ihn.
+ *
+ * @returns {{release: string, variant: string, pfad: string}|null}
+ */
+export function zerlegeAdresse(url) {
+  try {
+    const u = new URL(url)
+    const teile = u.pathname.replace(/^\/+/, "").split("/")
+    if (teile[0] !== "a" || teile.length < 5) return null
+    return {
+      release: decodeURIComponent(teile[2]),
+      variant: decodeURIComponent(teile[3]),
+      pfad: teile.slice(4).map(decodeURIComponent).join("/"),
+    }
+  } catch (_) { return null }
+}

@@ -29,7 +29,7 @@
  * er den Abend kostet.
  */
 
-import { MODULE_ID, SETTING, streamEnabled, assetUrl, streamKey, streamBase } from "./stream-settings.mjs"
+import { MODULE_ID, SETTING, streamEnabled, assetUrl, zerlegeAdresse, streamKey, streamBase } from "./stream-settings.mjs"
 import { offlineGehalten, offlineHalten, offlineFreigeben,
          gehalteneAdressen, speicherAusfallStand, speicherLage } from "./stream-fetch.mjs"
 import { streamAdressenVon, streamState } from "./stream-online.mjs"
@@ -780,25 +780,9 @@ async function manifestVon(release, variant) {
   }
 }
 
-/**
- * Release, Variante und Dateipfad aus einer Toradresse zurueckgewinnen.
- *
- * Form: `<tor>/a/<schluessel>/<release>/<variante>/<pfad...>`. Der Pfad ist
- * beim Bauen je Abschnitt kodiert worden, also wird er je Abschnitt wieder
- * entschluesselt.
- */
-function zerlegeAdresse(url) {
-  try {
-    const u = new URL(url)
-    const teile = u.pathname.replace(/^\/+/, "").split("/")
-    if (teile[0] !== "a" || teile.length < 5) return null
-    return {
-      release: decodeURIComponent(teile[2]),
-      variant: decodeURIComponent(teile[3]),
-      pfad: teile.slice(4).map(decodeURIComponent).join("/"),
-    }
-  } catch (_) { return null }
-}
+// `zerlegeAdresse` lag bis zum 03.09.2026 hier als eigene Fassung. Sie steht
+// jetzt in stream-settings.mjs neben `assetUrl`, dessen Umkehrung sie ist, und
+// wird von dort auch vom Vorratsspeicher gelesen.
 
 /**
  * Welche Karte gehoert zu dieser Szene?
