@@ -211,6 +211,20 @@ export async function getPoiIndex() {
   return out
 }
 
+/**
+ * The index if it is already in memory, otherwise null. Never loads, never
+ * awaits.
+ *
+ * The cloud window builds its release cards synchronously and may not block on
+ * a file read for a cosmetic badge, so it warms the index once with
+ * getPoiIndex() and reads it through this afterwards. A null here means "not
+ * loaded yet", which every caller must treat as "cannot tell" rather than as
+ * an answer.
+ */
+export function peekPoiIndex() {
+  return _index
+}
+
 /** Normalise a journal name for the name fallback: exact match after cleanup, never a substring. */
 export function normalizeJournalName(s) {
   return String(s || "").replace(/\s+/g, " ").trim().toLowerCase()

@@ -1963,6 +1963,19 @@
   font-size: 0.95em;
   flex: 0 0 auto;
 }
+/* Teilweise installiert. Das Release steht in dieser Welt, aber nicht alle
+   seiner Szenen, was bei jeder Einzelkarte aus einem Paket vorkommt und seit
+   dem 03.09.2026 auch dann, wenn eine Szene von Hand geloescht wurde. Nicht
+   gruen, denn dieser Marker sagt "nicht fertig", und nicht das Gold des
+   Update-Abzeichens, das schon etwas anderes bedeutet. Dieselbe Farbe wie
+   .bc-dl-partial am Titelbild, damit beide Marker einer Kachel eine Geschichte
+   erzaehlen. Ausgeschrieben statt aus einer Variablen, damit der Wert den
+   hellen Modus ueberlebt. */
+.beneos-cloud-app .bc-bmap-partial-check {
+  color: #7fb2d9;
+  font-size: 0.95em;
+  flex: 0 0 auto;
+}
 .beneos-cloud-app .bc-status-chip.bc-status-free {
   background: rgba(27, 146, 0, 0.22);
   color: var(--bc-success, #6fcf52);
@@ -2120,6 +2133,15 @@
   color: var(--bc-warn, #e0b53e);
   border-color: color-mix(in srgb, var(--bc-warn, #e0b53e) 60%, transparent);
   background: color-mix(in srgb, var(--bc-warn, #e0b53e) 18%, rgba(0,0,0,0.55));
+}
+/* Teilweise installiert. Bewusst NICHT das Gold von bc-dl-stale: Gold heisst
+   "es gibt eine neuere Fassung", dies heisst "es ist nicht alles da". Zwei
+   verschiedene Aufgaben duerfen sich keine Farbe teilen, sonst traegt das
+   Abzeichen keine Auskunft mehr. */
+.beneos-cloud-app .bc-card-thumb .bc-dl-status.bc-dl-partial {
+  color: #7fb2d9;
+  border-color: rgba(127, 178, 217, 0.6);
+  background: rgba(127, 178, 217, 0.18);
 }
 
 /* Der Offline-Stand eines Release, nur im Offline-Reiter.

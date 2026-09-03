@@ -122,6 +122,188 @@ export class BeneosInstallState {
   }
 
   /**
+   * Every scene id this world installed from a release, across all variants.
+   *
+   * WHY THE UNION AND NOT THE FIRST ROW
+   *
+   * findByReleaseDir may legitimately return two rows for one release (4K and
+   * HD side by side). Scene ids come out of the pack and are identical in both
+   * variants, so the union deduplicates by itself and is the only reading that
+   * survives a variant switch mid-campaign.
+   *
+   * WHY THIS EXISTS AT ALL
+   *
+   * A row in this registry says "this release was installed here". It does NOT
+   * say the whole release arrived: a scene-scoped install writes the release
+   * dir with a single scene id (beneos-native-installer #recordInstallIfAny).
+   * Every caller that wants to know whether ONE PARTICULAR scene is present
+   * has to look at the ids, not at the row count. Reading the row count alone
+   * is what made the POI teleporter tell users a release was broken when they
+   * had simply installed one map out of fourteen.
+   *
+   * Returns an empty Set for unknown releases and for worlds that installed
+   * before this registry existed. That is "not known", never "not installed".
+   */
+  static installedSceneIds(releaseDir) {
+    const out = new Set()
+    for (const entry of this.findByReleaseDir(releaseDir)) {
+      if (!Array.isArray(entry.sceneIds)) continue
+      for (const id of entry.sceneIds) {
+        const s = String(id || "")
+        if (s) out.add(s)
+      }
+    }
+    return out
+  }
+
+  /** Did any install of this release bring that particular scene? */
+  static hasScene(releaseDir, sceneId) {
+    if (!releaseDir || !sceneId) return false
+    return this.installedSceneIds(releaseDir).has(String(sceneId))
+  }
+
+  /**
+   * Die vermerkten Szenen, die es in dieser Welt WIRKLICH noch gibt.
+   *
+   * `installedSceneIds` beantwortet "was wurde damals angelegt". Das ist eine
+   * Erinnerung. Diese Funktion beantwortet "was steht jetzt da", und nur die
+   * zweite Antwort taugt fuer die Aussage "installiert".
+   *
+   * Der Unterschied entsteht in Sekunden: die Spielleitung loescht einen
+   * Szenenordner, und das Modul behauptet weiter, das Release sei installiert.
+   * Dass die Quelldateien noch im Cloud-Ordner auf der Platte liegen, aendert
+   * daran nichts; installiert ist, was in der Welt steht.
+   */
+  static vorhandeneSceneIds(releaseDir) {
+    const out = new Set()
+    for (const id of this.installedSceneIds(releaseDir)) {
+      try { if (game.scenes?.get?.(id)) out.add(id) } catch (_e) { /* Welt nicht bereit */ }
+    }
+    return out
+  }
+
+  /**
+   * Das eine Urteil ueber ein Release, das alle Aufrufer teilen.
+   *
+   * Vorher hatten fuenf Stellen ihre eigene Meinung, und die meisten lauteten
+   * `findByReleaseDir(dir).length > 0`, also "es gibt eine Zeile". Genau das
+   * ist die Erinnerung und nicht die Gegenwart.
+   *
+   * Vier Zustaende, und der erste ist der wichtigste:
+   *
+   *   unbekannt     Die Zeile traegt KEINE Szenenkennungen. Welten, die vor der
+   *                 Kennungsfuehrung installiert haben. Sie gelten weiter als
+   *                 installiert, werden nie herabgestuft und nie geraeumt.
+   *                 Diese Zeile ist die Bremse des ganzen Vorhabens: ohne sie
+   *                 wuerde ein Altbestand schlagartig als nicht installiert
+   *                 gelten. Siehe die Begruendung an `installedSceneIds`.
+   *   verschwunden  Kennungen sind da, aber KEINE einzige loest auf.
+   *   teilweise     Einige loesen auf, andere nicht.
+   *   vollstaendig  Alle loesen auf.
+   *
+   * `keine` heisst: es gibt ueberhaupt keine Zeile zu diesem Release.
+   *
+   * @returns {{zustand: string, vermerkt: number, vorhanden: number, zeilen: number}}
+   */
+  static weltbefund(releaseDir) {
+    const zeilen = this.findByReleaseDir(releaseDir)
+    if (!zeilen.length) return { zustand: "keine", vermerkt: 0, vorhanden: 0, zeilen: 0 }
+    const vermerkt = this.installedSceneIds(releaseDir)
+    if (!vermerkt.size) {
+      return { zustand: "unbekannt", vermerkt: 0, vorhanden: 0, zeilen: zeilen.length }
+    }
+    const vorhanden = this.vorhandeneSceneIds(releaseDir)
+    let zustand = "teilweise"
+    if (vorhanden.size === 0) zustand = "verschwunden"
+    else if (vorhanden.size >= vermerkt.size) zustand = "vollstaendig"
+    return { zustand, vermerkt: vermerkt.size, vorhanden: vorhanden.size, zeilen: zeilen.length }
+  }
+
+  /**
+   * Gilt dieses Release als installiert?
+   *
+   * Die eine Frage, die die Oberflaeche wirklich stellt. `unbekannt` zaehlt
+   * als installiert, `verschwunden` nicht.
+   */
+  static istInstalliert(releaseDir) {
+    const b = this.weltbefund(releaseDir)
+    return b.zustand === "vollstaendig" || b.zustand === "teilweise" || b.zustand === "unbekannt"
+  }
+
+  /**
+   * Zeilen entfernen, deren Szenen es alle nicht mehr gibt.
+   *
+   * VIER BEDINGUNGEN, UND JEDE EINZELNE VERHINDERT EINEN DATENVERLUST.
+   *
+   * 1. Die Welt muss geladen sein. Eine halb geladene Welt hat noch keine
+   *    Szenen und sieht deshalb aus wie eine leere. Ohne diese Bedingung
+   *    raeumte der erste Blick nach dem Weltstart das ganze Register weg.
+   * 2. Nur die Spielleitung. Das Register ist weltweit gespeichert; ein
+   *    Spieler darf nicht schreiben und soll es nicht versuchen.
+   * 3. Nur `verschwunden`. Eine Teilinstallation bleibt stehen, sie ist ja
+   *    noch da, nur unvollstaendig.
+   * 4. Nur Zeilen mit Kennungen. `unbekannt` ist kein Befund, sondern das
+   *    Eingestaendnis, dass wir es nicht wissen.
+   *
+   * Betreiberentscheidung vom 02.09.2026: geraeumt wird, nicht nur angezeigt.
+   * Der Preis steht dort ausdruecklich: eine zurueckgespielte Sicherung bringt
+   * die Szenen wieder, aber nicht den Vermerk, und damit sind
+   * Installationsdatum und Signatur verloren.
+   *
+   * @param {(releaseDir: string) => Promise<void>} [nachRaeumen]
+   *        Wird je geraeumtem Release aufgerufen, bevor geschrieben wird.
+   *        Der Streaming-Zweig loest darueber die Offline-Zusage.
+   * @returns {Promise<{geprueft: number, geraeumt: string[], grund: string}>}
+   */
+  static async raeumeVerschwundene(nachRaeumen = null) {
+    const nichts = (grund) => ({ geprueft: 0, geraeumt: [], grund })
+    try {
+      if (!game?.ready) return nichts("Welt nicht bereit")
+      if (!game.scenes?.size) return nichts("keine Szenen geladen")
+      if (!game.user?.isGM) return nichts("nicht die Spielleitung")
+    } catch (_e) { return nichts("Spielzustand nicht lesbar") }
+
+    const alle = this.getAll()
+    const schluessel = Object.keys(alle)
+    if (!schluessel.length) return nichts("Register leer")
+
+    // Je Release EINMAL urteilen, nicht je Zeile: zwei Varianten desselben
+    // Release teilen sich ihre Szenenkennungen, und ein Urteil je Zeile wuerde
+    // dieselbe Frage doppelt stellen.
+    const urteile = new Map()
+    const weg = []
+    for (const k of schluessel) {
+      const dir = String(alle[k]?.releaseDir || "")
+      if (!dir) continue
+      if (!urteile.has(dir)) urteile.set(dir, this.weltbefund(dir))
+      if (urteile.get(dir).zustand === "verschwunden") weg.push(k)
+    }
+    if (!weg.length) return { geprueft: urteile.size, geraeumt: [], grund: "nichts verschwunden" }
+
+    const geraeumt = []
+    for (const k of weg) {
+      const dir = String(alle[k]?.releaseDir || "")
+      if (typeof nachRaeumen === "function") {
+        // Ein Fehler beim Freigeben darf das Raeumen nicht aufhalten, aber er
+        // wird genannt. Stilles Verschlucken hiesse, ein Kontingent haengt und
+        // niemand erfaehrt warum.
+        try { await nachRaeumen(dir) }
+        catch (e) { console.warn(`BeneosInstallState | Nacharbeit fuer ${dir} fehlgeschlagen`, e) }
+      }
+      delete alle[k]
+      geraeumt.push(dir)
+    }
+    try {
+      await game.settings.set(BeneosUtility.moduleID(), SETTING_KEY, alle)
+    } catch (e) {
+      console.warn("BeneosInstallState | Register nicht geschrieben", e)
+      return { geprueft: urteile.size, geraeumt: [], grund: "Schreiben fehlgeschlagen" }
+    }
+    console.log(`BeneosInstallState | ${geraeumt.length} Zeile(n) geraeumt, deren Szenen es nicht mehr gibt: ${geraeumt.join(", ")}`)
+    return { geprueft: urteile.size, geraeumt, grund: "" }
+  }
+
+  /**
    * Resolve a Foundry scene id back to the asset it was installed from.
    *
    * WHY THIS EXISTS

@@ -41,9 +41,10 @@ import { streamEnabled } from "../stream/stream-settings.mjs"
 import { streamState } from "../stream/stream-online.mjs"
 import {
   releaseOfflineStand, vorratsanzeige, betriebsanzeige,
-  vorratsstand, kontingent, szenenZuRelease, alleKarten,
+  vorratsstand, kontingent, szenenZuRelease, alleKarten, releaseLoesen,
 } from "../stream/stream-offline.mjs"
 import { releaseOfflineSchalten } from "../stream/stream-scene-ui.mjs"
+import { getPoiIndex, peekPoiIndex, releaseInfo } from "./beneos-poi-index.mjs"
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
 
@@ -398,6 +399,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const cloud = game.beneos?.cloud
     const dbHolder = game.beneos?.databaseHolder
     const dbData = dbHolder?.getData?.() ?? {}
+    // Der Halbkreis fuer die Teilinstallation braucht den POI-Index, denn dort
+    // steht die Szenenzahl je Release. Einmal hier waermen und danach synchron
+    // lesen: der Kachelbau hat kein await uebrig, und ein Abzeichen, das erst
+    // beim zweiten Oeffnen erscheint, ist schlechter als keines. Ein Fehlschlag
+    // ist kein Fehler, dann liest sich jede Installation als vollstaendig.
+    if (this.searchMode === "bmap") {
+      try { await getPoiIndex() } catch (_e) { /* Abzeichen faellt auf vollstaendig zurueck */ }
+    }
     // Wave B-9-fix-36: surface the module version + tab-aware Patreon
     // URL to the footer template. Maps belongs to the BeneosBattlemaps
     // Patreon, everything else (creatures / loot / spells) to the
@@ -1047,7 +1056,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const isInstalled = (relDir) => {
         if (!relDir) return false
         if (installedByDir.has(relDir)) return installedByDir.get(relDir)
-        const v = (BeneosInstallState.findByReleaseDir(relDir)?.length || 0) > 0
+        const v = BeneosInstallState.istInstalliert(relDir)
         installedByDir.set(relDir, v); return v
       }
       for (const [, data] of entries) {
@@ -3538,6 +3547,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // Mark the window with the active mode so CSS can rearrange the
     // grid (Home swaps sidebar+results for the full-width feed).
     if (this.element) this.element.dataset.bcMode = this.searchMode
+    // Auch beim ERSTEN Zeichnen pruefen, nicht erst beim Reiterwechsel.
+    //
+    // GEMESSEN am 03.09.2026 in der V13-Streaming-Welt: Fenster geoeffnet,
+    // 17 von 33 Releases waren verschwunden, geraeumt wurde NICHTS, weil
+    // `#renderResults` beim ersten Zeichnen gar nicht laeuft. Der Aufruf steht
+    // deshalb hier, wo jedes Zeichnen vorbeikommt; die Entprellung in
+    // `#raeumenAnstossen` faengt die Doppelung mit `#renderResults` ab.
+    this.#raeumenAnstossen()
     this.#wireSidebarListeners()
     this.#wireResultListeners()
     this.#wireScrollLoader()
@@ -5215,12 +5232,53 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     requestAnimationFrame(() => { restore(); this._restoringScroll = false })
   }
 
+  /**
+   * Verschwundene Registerzeilen wegraeumen, entprellt und NACH dem Zeichnen.
+   *
+   * Der Betreiber will beim Hinsehen geprueft haben, und Hinsehen heisst hier
+   * Zeichnen. Geschrieben wird aber nicht waehrend des Zeichnens: ein
+   * Schreibvorgang auf eine Welteinstellung loest ein Neuzeichnen aus, und das
+   * naechste Zeichnen loest den naechsten Schreibvorgang aus.
+   *
+   * Die vier Sicherungen sitzen in `raeumeVerschwundene` selbst, damit jeder
+   * Aufrufer sie erbt und nicht jeder sie erneut formulieren muss.
+   *
+   * IM STREAMING-ZWEIG HAENGT HIER DER OFFLINE-VORRAT MIT DRAN. Wird eine
+   * Zeile geraeumt, gibt `releaseLoesen` die Zusagen des Release beim Tor
+   * frei. Ohne das bliebe das Kontingent des Kunden fuer ein Release gebucht,
+   * das seine Welt gar nicht mehr kennt, und keine Oberflaeche zeigte ihm
+   * noch, wofuer. Der Weg wird gerufen, nicht nachgebaut.
+   */
+  #raeumenAnstossen() {
+    if (this._raeumenLaeuft) return
+    this._raeumenLaeuft = true
+    setTimeout(async () => {
+      try {
+        const e = await BeneosInstallState.raeumeVerschwundene(async (dir) => {
+          // Die Zeile steht hier noch, sie wird erst nach diesem Rueckruf
+          // geloescht. Genau deshalb ist die Variante hier noch zu haben.
+          for (const zeile of BeneosInstallState.findByReleaseDir(dir)) {
+            await releaseLoesen(zeile.releaseDir || dir, zeile.variant || "")
+          }
+        })
+        if (e.geraeumt.length) {
+          try { await this.render({ parts: ["results"] }) } catch (_e) { /* Fenster zu */ }
+        }
+      } catch (err) {
+        console.warn("BeneosCloudWindowV2 | Raeumen fehlgeschlagen", err)
+      } finally {
+        this._raeumenLaeuft = false
+      }
+    }, 500)
+  }
+
   async #renderResults(parts) {
     // Punkt 5: tab / filter / view switches reset the scroll memory so the
     // next drawer-preserve render doesn't jump to a stale position. The
     // drawer-open/close/scene-load path uses #renderResultsPreserveScroll and
     // bypasses this reset.
     this._resultListScrollTop = 0
+    this.#raeumenAnstossen()
     if (this.searchMode === "bmap") {
       this.#showLoading()
       return new Promise((resolve) => {
@@ -6207,9 +6265,18 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // check the active-variant first, then fall back to "any variant".
       // is_stale compares stored sourceSignature against the freshly
       // fetched content_signature on list_releases.
+      // EINE Lesung je Kachel, danach herumgereicht. Drei getrennte Aufrufe
+      // lesen nicht nur dreimal dieselbe Welteinstellung, sie koennen auch
+      // ueber eine Katalogauffrischung hinweg laufen und Namenszeile und
+      // Tooltip DERSELBEN Kachel bei der Szenenzahl widersprechen lassen.
+      const bmapInfo = this.#bmapInstallInfo(r.release_dir)
+      const bmapCoverageLabel = this.#bmapCoverageLabel(bmapInfo)
+
       let installState = null
       const installs = BeneosInstallState.findByReleaseDir(r.release_dir)
-      if (installs.length) {
+      // Eine Zeile allein genuegt nicht mehr. Steht keine ihrer Szenen mehr in
+      // der Welt, traegt die Kachel kein Haekchen.
+      if (installs.length && BeneosInstallState.istInstalliert(r.release_dir)) {
         const wantVariant = single ? "" : useV
         const matchActive = installs.find(e => (e.variant || "") === wantVariant)
         const chosen = matchActive || installs[0]
@@ -6222,6 +6289,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
           variantMatch:     !!matchActive,
           installedAt:      chosen.installedAt || "",
           sceneCount:       chosen.sceneCount || (chosen.sceneIds?.length || 0),
+          // Durch denselben Trichter gelesen statt hier nachgezaehlt: dass die
+          // Kachel und der Anzeigefilter zu verschiedenen Schluessen kommen,
+          // ist genau der Fehler, den `#bmapInstallInfo` beenden soll.
+          partial:          bmapInfo.partial,
         }
       }
 
@@ -6370,6 +6441,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // install/Moulinette buttons (an installed map stays re-installable).
         bmapInstalled:        installed,
         installedOnLabel:     installState ? this.#formatInstallDate(installState.installedAt) : "",
+        bmapPartial:          !!installState?.partial,
+        bmapCoverageLabel,
         // Uninstall affordance: only for a GM, only on a release that really is
         // in this world, and always against the variant that was ACTUALLY
         // installed (which may differ from the resolution toggle the user is
@@ -6411,12 +6484,19 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // name-row marker + update chip (a date-based update with a matching
         // signature would otherwise still show the green "fresh" tick).
         installState,
-        dlBadgeFresh:         installed && !isUpdate,
+        // Ein teilweise installiertes Release darf den gruenen Haken auch am
+        // Titelbild nicht behalten, sonst behauptet das Abzeichen "fertig",
+        // waehrend die Namenszeile 3 von 14 sagt. Reihenfolge wie in der
+        // Namenszeile: Update schlaegt teilweise schlaegt vollstaendig.
+        dlBadgeFresh:         installed && !isUpdate && !installState?.partial,
         dlBadgeStale:         installed && isUpdate,
+        dlBadgePartial:       installed && !isUpdate && !!installState?.partial,
         dlBadgeTooltip:       installState
           ? (isUpdate
               ? `Installed ${installState.variantInstalled || "single-variant"} on ${this.#formatInstallDate(installState.installedAt)} (${installState.sceneCount} scenes). Release updated since install.`
-              : `Installed ${installState.variantInstalled || "single-variant"} on ${this.#formatInstallDate(installState.installedAt)} (${installState.sceneCount} scenes).`)
+              : installState.partial
+                ? bmapCoverageLabel
+                : `Installed ${installState.variantInstalled || "single-variant"} on ${this.#formatInstallDate(installState.installedAt)} (${installState.sceneCount} scenes).`)
           : "",
         // Plan §20 W4.2 - locked-card fields. Locked == genuinely gated content
         // (non-free, not installed, no access). FREE releases are NEVER locked
@@ -6531,6 +6611,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     for (const r of list) {
       const installs = BeneosInstallState.findByReleaseDir(r.release_dir)
       if (!installs.length) continue
+      if (!BeneosInstallState.istInstalliert(r.release_dir)) continue
       const chosen = installs[0]
       const di = this.#releaseDateInfo(r.release_dir) || null
       const instAt = chosen.installedAt ? Date.parse(chosen.installedAt) : NaN
@@ -6708,13 +6789,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         const sizeBytes = this.#anzeigeBytes(rel, variant)
         const coverUrl  = rel ? (variant === "HD" ? (rel.cover_url_hd || rel.cover_url_4k)
                                                   : (rel.cover_url_4k || rel.cover_url_hd)) : null
+        const memberInfo = this.#bmapInstallInfo(relDir)
         return {
           index:        i,
           name:         m.name || relDir,
           release_dir:  relDir,
           variant_dirs: vdirs,
-          sizeLabel:    sizeBytes ? this.#formatBytes(sizeBytes) : "—",
-          installed:    relDir ? (BeneosInstallState.findByReleaseDir(relDir).length > 0) : false,
+          sizeLabel:    sizeBytes ? this.#formatBytes(sizeBytes) : "-",
+          installed:    relDir ? memberInfo.installed : false,
+          partial:      relDir ? memberInfo.partial : false,
           coverUrl,
           _sizeBytes:   sizeBytes,
         }
@@ -6723,7 +6806,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // Bundle counts as installed once every member release is present in this
       // world. Surfaces a green check on the card + drawer so the GM can walk a
       // campaign's bundles top-to-bottom and see at a glance what's done.
-      const bundleInstalled = members.length > 0 && members.every(m => m.installed)
+      //
+      // VOLLSTAENDIG, nicht bloss vorhanden. Ein Mitglied, aus dem der Kunde
+      // eine einzige Karte genommen hat, hakte sonst die ganze Kampagne ab, und
+      // das ist die eine Lesart dieses Hakens, die niemand will: der
+      // Spielleiter geht die Bundle-Liste durch, um zu sehen, was noch fehlt.
+      const bundleInstalled = members.length > 0 && members.every(m => m.installed && !m.partial)
       // Compatible-with chip: the admin sets a campaign per bundle ("Curse of
       // Strahd"). Localize it via the shared i18n matrix (raw fallback) and show
       // the spelled-out full name (not the acronym the release cards use).
@@ -6878,7 +6966,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         skipped++
         continue
       }
-      if (BeneosInstallState.findByReleaseDir(relDir).length > 0) {
+      if (BeneosInstallState.istInstalliert(relDir)) {
         let choice = remembered
         if (!choice) {
           const res = await BeneosPreInstallDialog.confirmBundleMemberOverwrite({
@@ -6933,16 +7021,41 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
    * and by the Show filter, which used to reach a different conclusion than
    * the cards it was filtering.
    *
+   * INSTALLIERT HEISST: STEHT JETZT IN DER WELT.
+   *
+   * Bis zum 03.09.2026 zaehlte diese Stelle gar nichts nach; eine vorhandene
+   * Zeile im Vermerk genuegte. Loescht die Spielleitung einen Szenenordner,
+   * behauptete das Fenster weiter eine Installation, die es nicht mehr gab.
+   * Gemessen auf `main` in `universe-test`: 8 von 10 Releases galten als
+   * installiert, ohne dass eine einzige ihrer Szenen noch existierte.
+   *
    * @param {string} releaseDir
    * @returns {{installed: boolean, installedOn: string, update: boolean,
-   *            releaseName: string, variant: string, packageId: string}}
+   *            releaseName: string, variant: string, packageId: string,
+   *            partial: boolean, sceneCoverage: {have: number, want: number}}}
    */
   #bmapInstallInfo(releaseDir) {
-    const none = { installed: false, installedOn: "", update: false, releaseName: "", variant: "", packageId: "" }
+    const none = {
+      installed: false, installedOn: "", update: false, releaseName: "", variant: "", packageId: "",
+      partial: false, sceneCoverage: { have: 0, want: 0 },
+    }
     if (!releaseDir) return none
     const installs = BeneosInstallState.findByReleaseDir(releaseDir)
     if (!installs.length) return none
     const chosen = installs[0]
+
+    const befund = BeneosInstallState.weltbefund(releaseDir)
+    // `unbekannt` faellt auf die vermerkte Zahl zurueck, also auf das bisherige
+    // Verhalten: dort wissen wir es nicht, und Nichtwissen darf nicht als
+    // Verlust erscheinen.
+    const have = befund.zustand === "unbekannt"
+      ? BeneosInstallState.installedSceneIds(releaseDir).size
+      : befund.vorhanden
+    const want = Number(releaseInfo(peekPoiIndex(), releaseDir)?.scenes || 0)
+
+    // Keine einzige vermerkte Szene steht noch in der Welt. Das Release ist
+    // nicht installiert, egal was auf der Platte liegt.
+    if (befund.zustand === "verschwunden") return none
     const rel    = this.#releaseFor(releaseDir) || null
     const curSig      = String(rel?.content_signature || "")
     const updatedDate = this.#releaseDateInfo(releaseDir)?.updatedDate || ""
@@ -6960,7 +7073,37 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       variant:     String(chosen.variant || ""),
       packageId:   String((rel?.variant_dirs || {})[chosen.variant]
         || Object.values(rel?.variant_dirs || {})[0] || ""),
+      // have === 0 heisst "der Vermerk ist aelter als die Kennungsfuehrung",
+      // nicht "nichts installiert". Deshalb bleibt eine leere Menge unentschieden.
+      //
+      // Zwei Wege in denselben Halbkreis:
+      //   1. Weniger Szenen als das Release hat. Braucht den POI-Index.
+      //   2. Weniger Szenen als vermerkt. Erkennt eine geloeschte Szene OHNE
+      //      den Index, also auch fuer Releases, die dort nicht stehen.
+      partial:     (want > 0 && have > 0 && have < want) || befund.zustand === "teilweise",
+      sceneCoverage: { have, want },
     }
+  }
+
+  /**
+   * Tooltip fuer den Halbkreis. Leer fuer alles andere, damit die Vorlage ihn
+   * als einzigen Traeger der Erklaerung benutzen kann, statt Zahlen in
+   * Handlebars zusammenzusetzen.
+   *
+   * @param {object} info Ergebnis von #bmapInstallInfo
+   * @returns {string}
+   */
+  #bmapCoverageLabel(info) {
+    if (!info?.partial) return ""
+    const c = info.sceneCoverage || { have: 0, want: 0 }
+    // Kein englischer Rueckfalltext. Der Schluessel steht in allen dreizehn
+    // Sprachdateien, der Rueckfall waere also unerreichbar, und ein
+    // unerreichbarer englischer Satz geht trotzdem an jeden Kunden.
+    try {
+      const s = game.i18n.format("BENEOS.Cloud.Card.InstalledPartial", { have: c.have, want: c.want })
+      if (s && s !== "BENEOS.Cloud.Card.InstalledPartial") return s
+    } catch (_e) { /* weiter unten */ }
+    return ""
   }
 
   // Plan §33.6 - render an install timestamp for the badge tooltip. Same

@@ -279,10 +279,12 @@
                  when the release is installed in this world (sourceSignature
                  still matches the cloud), gold "!" when the cloud has a newer
                  version since the world install. --}}
-            {{#if card.dlBadgeFresh}}
-              <span class="bc-dl-status bc-dl-fresh" data-tooltip="{{card.dlBadgeTooltip}}">✓</span>
-            {{else if card.dlBadgeStale}}
+            {{#if card.dlBadgeStale}}
               <span class="bc-dl-status bc-dl-stale" data-tooltip="{{card.dlBadgeTooltip}}">!</span>
+            {{else if card.dlBadgePartial}}
+              <span class="bc-dl-status bc-dl-partial" data-tooltip="{{card.dlBadgeTooltip}}">◐</span>
+            {{else if card.dlBadgeFresh}}
+              <span class="bc-dl-status bc-dl-fresh" data-tooltip="{{card.dlBadgeTooltip}}">✓</span>
             {{/if}}
             {{!-- Der Offline-Stand, nur im Offline-Reiter. Grün heisst: jede
                  Karte dieses Release liegt hier. Gold heisst: einige, mit der
@@ -331,8 +333,17 @@
                    two states don't compete. --}}
               {{#if card.bmapInstalled}}
                 {{#unless card.isUpdate}}
-                  <i class="fa-solid fa-circle-check bc-bmap-installed-check"
-                     data-tooltip="{{localize 'BENEOS.Cloud.Card.InstalledOn'}} {{card.installedOnLabel}}"></i>
+                  {{!-- Vorhanden ist nicht vollstaendig: ein Release, aus dem
+                       eine einzige Karte installiert wurde, oder eines, dessen
+                       Szenen teilweise geloescht wurden, bekommt einen halben
+                       Marker mit Zahl statt des gruenen Hakens. --}}
+                  {{#if card.bmapPartial}}
+                    <i class="fa-solid fa-circle-half-stroke bc-bmap-partial-check"
+                       data-tooltip="{{card.bmapCoverageLabel}}"></i>
+                  {{else}}
+                    <i class="fa-solid fa-circle-check bc-bmap-installed-check"
+                       data-tooltip="{{localize 'BENEOS.Cloud.Card.InstalledOn'}} {{card.installedOnLabel}}"></i>
+                  {{/if}}
                 {{/unless}}
               {{/if}}
               {{!-- Bundle-level installed marker: every member release present in
