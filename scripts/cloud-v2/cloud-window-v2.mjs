@@ -3462,6 +3462,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // Mark the window with the active mode so CSS can rearrange the
     // grid (Home swaps sidebar+results for the full-width feed).
     if (this.element) this.element.dataset.bcMode = this.searchMode
+    // Auch beim ERSTEN Zeichnen pruefen, nicht erst beim Reiterwechsel.
+    //
+    // GEMESSEN am 03.09.2026: Fenster geoeffnet, 17 von 33 Releases waren
+    // verschwunden, geraeumt wurde NICHTS, weil `#renderResults` beim ersten
+    // Zeichnen gar nicht laeuft. Der Aufruf steht deshalb hier, wo jedes
+    // Zeichnen vorbeikommt; die Entprellung in `#raeumenAnstossen` faengt die
+    // Doppelung mit `#renderResults` ab.
+    this.#raeumenAnstossen()
     this.#wireSidebarListeners()
     this.#wireResultListeners()
     this.#wireScrollLoader()
