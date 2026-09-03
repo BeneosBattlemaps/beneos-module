@@ -1177,10 +1177,110 @@ function stripLeadSlashLocal(p) {
   return String(p ?? "").replace(/^\/+/, "");
 }
 
+/* ============================================================== */
+/*  Den Streamschluessel in einer Welt nachziehen                   */
+/* ============================================================== */
+
+/** Die Wurzel einer Toradresse: `<schema>://<host>/a/<schluessel>/`, sonst null. */
+function _gateWurzel(adresse) {
+  if (typeof adresse !== "string") return null;
+  const m = adresse.match(/^(https?:\/\/[^/]+\/a\/[^/]+\/)/);
+  return m ? m[1] : null;
+}
+
+/**
+ * Alle Toradressen dieser Welt auf den heutigen Schluessel umschreiben.
+ *
+ * WOZU, UND WARUM ERST JETZT.
+ *
+ * Der Schluessel steht im Pfad jeder Adresse, und der Installer schreibt die
+ * Adresse so in die Dokumente. Ein Schluesselwechsel machte damit jede
+ * installierte Szene stumm unbrauchbar: das Tor antwortet mit dem
+ * durchsichtigen Bildpunkt, die Kachel bleibt leer, und nichts sagt warum.
+ * Genau das war der Rest von OP-PRJ-047, dort seit dem 21.08.2026 als
+ * "Wiederherstellungshilfe" geparkt, weil sie erst gebraucht wird, wenn zum
+ * ersten Mal jemand gesperrt wird oder ein Schluessel getauscht werden muss.
+ *
+ * Am 03.09.2026 ist der Fall eingetreten (Aufgabe 157), und zugleich ist der
+ * Preis eines Wechsels gefallen: Zusagenliste, Zwischenspeicher und der Index
+ * der geteilten Dateien fuehren seither die Kennung statt der Adresse. Ein
+ * Wechsel kostet also **keinen Offline-Vorrat** mehr. Uebrig blieb allein das
+ * Umschreiben der Dokumente, und das ist diese Funktion.
+ *
+ * ES WIRD NICHTS NEU GESCHRIEBEN, WAS ES SCHON GIBT. Der Weltlauf ueber alle
+ * fuenf Dokumentfamilien steht seit jeher in `applyMappings`, und er arbeitet
+ * mit Praefix-Abbildungen. Der ganze Wechsel ist deshalb **eine Abbildung je
+ * altem Schluessel**, nicht eine je Adresse.
+ *
+ * GRENZE, ausdruecklich benannt: die alten Schluessel werden aus den Szenen
+ * ueber `streamAdressenVon` eingesammelt, und das filtert auf den Host der
+ * HEUTIGEN Basisadresse. Hat sich zusaetzlich die Basis geaendert, findet der
+ * Szenendurchlauf nichts; die Journale werden dagegen ueber einen Ausdruck
+ * gelesen und tragen den Fall. Fuer einen reinen Schluesselwechsel, den
+ * haeufigen Fall, ist das vollstaendig.
+ *
+ * @param {{trocken?: boolean, onProgress?: Function}} optionen
+ * @return {Promise<{alteWurzeln: string[], adressen: number, geaendert: number, grund: string}>}
+ */
+export async function schluesselNachziehen({ trocken = false, onProgress = null } = {}) {
+  const bericht = { alteWurzeln: [], adressen: 0, geaendert: 0, grund: "" };
+  if (!game.user?.isGM) { bericht.grund = "nicht die Spielleitung"; return bericht; }
+
+  const { streamBase, streamKey } = await import("./stream/stream-settings.mjs");
+  const { streamAdressenVon } = await import("./stream/stream-online.mjs");
+
+  const schluessel = streamKey();
+  if (!schluessel) { bericht.grund = "kein-schluessel"; return bericht; }
+  const zielWurzel = `${streamBase().replace(/\/+$/, "")}/a/${encodeURIComponent(schluessel)}/`;
+
+  const alte = new Set();
+  const merke = (adresse) => {
+    const wurzel = _gateWurzel(adresse);
+    if (!wurzel) return;
+    bericht.adressen++;
+    if (wurzel !== zielWurzel) alte.add(wurzel);
+  };
+
+  for (const szene of game.scenes ?? []) {
+    for (const u of (streamAdressenVon(szene) || [])) merke(u);
+  }
+  for (const journal of game.journal ?? []) {
+    for (const page of journal.pages) {
+      merke(page.src);
+      const html = page.text?.content;
+      if (typeof html !== "string" || !html.includes("src=")) continue;
+      for (const treffer of html.matchAll(HTML_SRC_RE)) merke(treffer[2]);
+    }
+  }
+
+  bericht.alteWurzeln = [...alte];
+  if (!alte.size) { bericht.grund = "nichts nachzuziehen"; return bericht; }
+
+  const mappings = bericht.alteWurzeln.map(wurzel => ({
+    brokenPrefix: wurzel,
+    actualPrefix: zielWurzel,
+  }));
+
+  // Der Trockenlauf sagt, WAS geschehen wuerde, und schreibt nichts. Er ist
+  // kein Luxus: die Zahl der alten Wurzeln ist die Probe darauf, ob wirklich
+  // nur der Schluessel wechselte und nicht versehentlich die halbe Welt auf
+  // ein fremdes Release zeigt.
+  if (trocken) { bericht.grund = "trockenlauf"; return bericht; }
+
+  const ergebnis = await applyMappings(mappings, "world", null, onProgress);
+  bericht.geaendert = ergebnis.updated;
+  if (ergebnis.errors?.length) bericht.fehler = ergebnis.errors;
+
+  console.log(`Beneos Stream | Schluessel nachgezogen: ${bericht.geaendert} Feld(er) in `
+    + `${bericht.alteWurzeln.length} alte(n) Adresswurzel(n), ${bericht.adressen} Toradressen gesehen`);
+  return bericht;
+}
+
 globalThis.beneosAssetPathRepair = {
   getPrefix: beneosGetAssetPrefix,
   resolve: beneosResolvePath,
   heileJournalGateAdressen,
+  schluesselNachziehen,
   repairScene: (scene) => _repairSceneTiles(scene ?? canvas.scene),
   repairPlaylist: _repairTutorialPlaylist,
   clearCache: () => { _cachedPrefix = null; },
