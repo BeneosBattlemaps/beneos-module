@@ -106,13 +106,93 @@ const WARNUNGEN_HOECHSTENS = 2
 
 // ---- Das Verzeichnis ---------------------------------------------------
 
+/**
+ * DIE KENNUNG EINER DATEI, OHNE TORADRESSE UND OHNE SCHLUESSEL.
+ *
+ * WARUM DER VORRAT KEINE ADRESSEN MEHR SPEICHERN DARF
+ *
+ * `assetUrl` baut die Adresse aus drei Teilen: Toradresse, Streamschluessel und
+ * Dateipfad. Die ersten beiden koennen sich aendern, der dritte nicht. Wer die
+ * fertige Adresse speichert, speichert damit den Schluessel des Tages mit.
+ *
+ * Dreht der Schluessel oder wechselt die Basisadresse, zeigt jede gespeicherte
+ * Adresse ins Leere: der Speicherabgleich findet nichts, JEDE zugesagte Karte
+ * gilt als fehlend, und der Kunde bekommt beim naechsten Weltstart die Frage,
+ * ob er seinen kompletten Vorrat neu laden will. Der Dialogtext hat den Fall
+ * die ganze Zeit selbst benannt ("when the world is opened from a different
+ * address than before"), nur behandelte er ihn als Fehler des Kunden.
+ *
+ * Gespeichert wird deshalb nur noch `release|variant|pfad`. Die Adresse
+ * entsteht beim Benutzen, mit dem Schluessel von jetzt.
+ */
+export function kennungVon(url) {
+  const t = zerlegeAdresse(url)
+  return t ? `${t.release}|${t.variant}|${t.pfad}` : ""
+}
+
+/** Aus einer Dateikennung wieder eine Adresse bauen, mit dem heutigen Schluessel. */
+export function adresseVon(kennung) {
+  const teile = String(kennung || "").split("|")
+  if (teile.length < 3) return ""
+  const [release, variant, ...rest] = teile
+  // `rest.join` und nicht `teile[2]`: ein Pfad darf einen senkrechten Strich
+  // tragen, und ein abgeschnittener Pfad waere eine tote Adresse, die niemand
+  // als solche erkennt.
+  return assetUrl(release, variant, rest.join("|"))
+}
+
+/**
+ * Die Dateipfade eines Eintrags, egal in welcher Form er gespeichert ist.
+ *
+ * Neu steht `dateien`, alt steht `urls`. Aus beiden kommt dieselbe Liste, und
+ * weil die Ableitung an genau einer Stelle steht, koennen die drei Leser des
+ * Verzeichnisses nicht auseinanderlaufen.
+ */
+function dateienVon(e) {
+  if (Array.isArray(e?.dateien) && e.dateien.length) return e.dateien.map(String)
+  return (e?.urls || []).map(u => zerlegeAdresse(u)?.pfad).filter(Boolean)
+}
+
+/** Ein Eintrag mit Pfaden UND den Adressen von heute. */
+function mitAdressen(e) {
+  const dateien = dateienVon(e)
+  return { ...e, dateien, urls: dateien.map(p => assetUrl(e.release, e.variant, p)) }
+}
+
+/**
+ * Das Kartenverzeichnis lesen, mit frischen Adressen.
+ *
+ * Der Umzug laeuft BEIM LESEN und schreibt nichts. Ein Alteintrag traegt
+ * `urls`, ein neuer `dateien`; aus beiden wird dieselbe Liste. Der Vorteil
+ * gegenueber einem Umzug mit Schreibvorgang: er braucht keine Rechte, keine
+ * Verbindung und keinen richtigen Zeitpunkt, und eine Welt, die nie schreibt,
+ * bleibt trotzdem richtig. Persistent wird die neue Form von selbst, sobald
+ * `schreib` das naechste Mal laeuft.
+ */
 function lies() {
-  try { return game.settings.get(MODULE_ID, SETTING.offlineHeld) || {} }
+  let roh
+  try { roh = game.settings.get(MODULE_ID, SETTING.offlineHeld) || {} }
   catch (_) { return {} }
+  const raus = {}
+  for (const [id, e] of Object.entries(roh)) {
+    if (!e || typeof e !== "object") continue
+    raus[id] = mitAdressen(e)
+  }
+  return raus
 }
 
 async function schreib(alle) {
-  try { await game.settings.set(MODULE_ID, SETTING.offlineHeld, alle) }
+  // Die Adressen fallen vor dem Schreiben weg, die Pfade bleiben. Wer hier
+  // `urls` mitschriebe, legte den heutigen Schluessel wieder in die
+  // Welteinstellung, und der ganze Umbau waere umsonst.
+  const sauber = {}
+  for (const [id, e] of Object.entries(alle || {})) {
+    if (!e || typeof e !== "object") continue
+    const dateien = dateienVon(e)
+    const { urls, ...rest } = e
+    sauber[id] = { ...rest, dateien }
+  }
+  try { await game.settings.set(MODULE_ID, SETTING.offlineHeld, sauber) }
   catch (e) { console.warn("Beneos Stream | Offline-Verzeichnis nicht schreibbar", e) }
 }
 
@@ -128,13 +208,39 @@ export function alleKarten() {
 
 // ---- Der Gemeinschaftsvorrat -------------------------------------------
 
+/**
+ * Der Gemeinschaftsvorrat, nach aussen weiter nach Adresse geschluesselt.
+ *
+ * Gespeichert wird nach Kennung, aus demselben Grund wie beim Kartenverzeichnis.
+ * Zurueckgegeben wird nach Adresse, damit kein einziger Aufrufer sich aendern
+ * muss: der Speicher spricht Adressen, und genau dort wird dieser Vorrat
+ * benutzt.
+ *
+ * Ein Eintrag, dessen Schluessel sich nicht zerlegen laesst, bleibt unveraendert
+ * stehen. Ihn wegzuwerfen hiesse, dem Kunden Kontingent zu nehmen, weil WIR
+ * seinen Eintrag nicht lesen koennen.
+ */
 function liesGeteilt() {
-  try { return game.settings.get(MODULE_ID, SETTING.offlineGeteilt) || {} }
+  let roh
+  try { roh = game.settings.get(MODULE_ID, SETTING.offlineGeteilt) || {} }
   catch (_) { return {} }
+  const raus = {}
+  for (const [k, e] of Object.entries(roh)) {
+    if (!e || typeof e !== "object") continue
+    // Alt: der Schluessel IST eine Adresse. Neu: er ist eine Kennung.
+    const url = /^https?:\/\//.test(k) ? k : (adresseVon(k) || k)
+    raus[url] = e
+  }
+  return raus
 }
 
 async function schreibGeteilt(alle) {
-  try { await game.settings.set(MODULE_ID, SETTING.offlineGeteilt, alle) }
+  const sauber = {}
+  for (const [url, e] of Object.entries(alle || {})) {
+    if (!e || typeof e !== "object") continue
+    sauber[kennungVon(url) || url] = e
+  }
+  try { await game.settings.set(MODULE_ID, SETTING.offlineGeteilt, sauber) }
   catch (e) { console.warn("Beneos Stream | Gemeinschaftsvorrat nicht schreibbar", e) }
 }
 
@@ -1487,7 +1593,19 @@ function adresseNormal(url) {
 function zusagenStreng() {
   const roh = game.settings.get(MODULE_ID, SETTING.offlineHeld)
   if (roh === undefined || roh === null) throw new Error("Zusagenliste nicht lesbar")
-  return roh
+  // DIE ADRESSEN MUESSEN AUCH HIER FRISCH GEBAUT WERDEN.
+  //
+  // Der Aufrufer baut aus `e.urls` die Menge der gedeckten Dateien und loest
+  // alles, was nicht darin steht. Seit die Zusage nur noch Pfade speichert,
+  // waere `e.urls` hier leer, die Menge damit leer, und der naechste Weltstart
+  // haette JEDE gehaltene Datei des Kunden freigegeben. Die roheste Lesung ist
+  // hier gerade nicht die sicherste.
+  const raus = {}
+  for (const [id, e] of Object.entries(roh)) {
+    if (!e || typeof e !== "object") continue
+    raus[id] = mitAdressen(e)
+  }
+  return raus
 }
 
 /**
