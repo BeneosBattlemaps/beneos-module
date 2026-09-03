@@ -25,7 +25,7 @@ import { installStreamOnline, onlineStatus, streamState, isOffline, hasStreamedC
 import { installStreamIndicator } from "./stream-indicator.mjs"
 import { installStreamSceneUi } from "./stream-scene-ui.mjs"
 import { registerOfflineWindow, BeneosOfflineWindow } from "./stream-offline-window.mjs"
-import { betaMayRun, ensureAcknowledged } from "./stream-guard.mjs"
+import { explainOnce } from "./stream-intro.mjs"
 import { loadStreamManifest, buildStreamPack, applyStreamAddresses, streamUrlsOf, releaseFromPackage, listReleases } from "./stream-install.mjs"
 import { rebuildScenesForStream, stillPathFor } from "./stream-scenes.mjs"
 import { reportedSoFar } from "./stream-report.mjs"
@@ -71,14 +71,17 @@ Hooks.once("init", () => {
     installStreamSceneUi()
   }
 
-  // The installer reaches for this rather than importing the beta directly, so
-  // the live code path keeps no hard dependency on a beta module.
+  // The installer reaches for this rather than importing the stream modules
+  // directly, so the rest of the module keeps no hard import into scripts/stream.
+  //
+  // `mayRun` ist am 2026-09-03 weggefallen. Es hiess "eingeschaltet UND die
+  // Beta-Zustimmung liegt vor". Die Zustimmung gibt es nicht mehr, damit waere
+  // es eine zweite Schreibweise fuer `enabled()` gewesen, und zwei Namen fuer
+  // dieselbe Frage laden dazu ein, sie unterschiedlich zu beantworten.
   const api = {
     enabled: () => streamEnabled(),
-    mayRun: () => betaMayRun(),
     host: () => streamHost(),
     base: () => streamBase(),
-    ensureAcknowledged,
     releaseFromPackage,
     loadStreamManifest,
     buildStreamPack,
@@ -191,8 +194,9 @@ Hooks.once("ready", async () => {
     ui.notifications?.warn(text)
   }
 
-  // First activation in this world asks once, then never again.
-  await ensureAcknowledged()
+  // Einmal je Welt erklaeren, was mit den schweren Dateien passiert. Danach nie
+  // wieder, und der Weltstart laeuft unabhaengig vom Ausgang weiter.
+  await explainOnce()
 
   // Direkt nach dem Dialog um die Speicherzusage bitten. Die Reihenfolge ist
   // kein Zufall: eine Nutzerhandlung unmittelbar davor erhoeht die Aussicht,
@@ -202,7 +206,7 @@ Hooks.once("ready", async () => {
 
   const store = await storeStatus()
   console.log(
-    `Beneos Stream | beta active | gate ${streamBase()} | key ${streamKey() ? "set" : "MISSING"} | ` +
+    `Beneos Stream | active | gate ${streamBase()} | key ${streamKey() ? "set" : "MISSING"} | ` +
     `${streamState()} | install ${installMode()} | pin-stills ${pinStillsEnabled() ? "on" : "off"} | ` +
     `store ${store.entries} entries, ${store.usageMB} MB of ${store.quotaGB} GB, persisted=${store.persisted}`
   )

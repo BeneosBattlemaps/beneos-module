@@ -1,13 +1,21 @@
 /**
- * Settings for the streaming beta.
+ * Settings for streaming.
  *
  * All world-scoped, all hidden from the settings sheet, all GM-only, following
- * the pattern of `beneos-cloud-base-url` in beneos_utility.js. Hidden because a
- * beta switch has no business in a customer's options list, and world-scoped
- * because the addresses live in that world's documents.
+ * the pattern of `beneos-cloud-base-url` in beneos_utility.js. Hidden because
+ * the delivery model is not a customer choice, and world-scoped because the
+ * addresses live in that world's documents.
  *
- * The main switch defaults to OFF. With it off, every code path in scripts/stream
- * returns immediately and the module behaves exactly as it does on main.
+ * DER HAUPTSCHALTER STEHT SEIT DEM 2026-09-03 AUF AN.
+ *
+ * Vorher stand er auf aus, und keine Stelle setzte ihn: Streaming lief nur in
+ * Welten, in denen jemand ihn von Hand umgelegt hatte. Das war die Betaform.
+ * Jetzt haengt die Auslieferung an der Modulfassung. Wer dieses Modul faehrt,
+ * streamt, und der Schalter bleibt nur deshalb bestehen, weil ein Betreiber
+ * eine einzelne Welt zurueckstellen koennen muss, ohne das Modul zu tauschen.
+ *
+ * Der Schalter allein liefert nichts aus. `streamEnabled()` verlangt zusaetzlich
+ * einen Schluessel, und den holt der Weltstart selbst.
  */
 
 export const MODULE_ID = "beneos-module"
@@ -17,7 +25,11 @@ export const SETTING = {
   key: "beneos-stream-key",
   base: "beneos-stream-base",
   localCache: "beneos-stream-local-cache",
-  acknowledged: "beneos-stream-backup-acknowledged",
+  // Ob diese Welt die einmalige Erklaerung der Auslieferung schon gesehen hat.
+  // Bewusst ein NEUER Schluessel: der alte hiess -backup-acknowledged und war
+  // die Zustimmung zu einer Beta. Wer die gegeben hat, hat damit nichts ueber
+  // das neue Modell erfahren und bekommt die Erklaerung einmal zu sehen.
+  introSeen: "beneos-stream-intro-seen",
   pinStills: "beneos-stream-pin-stills",
   installMode: "beneos-stream-install-mode",
   budgetImage: "beneos-stream-budget-image",
@@ -59,13 +71,13 @@ export function registerStreamSettings() {
 
   game.settings.register(MODULE_ID, SETTING.mode, {
     name: "Beneos Stream mode",
-    hint: "Beta. Installs scenes without their heavy media and fetches it at play time.",
-    ...world, type: Boolean, default: false,
+    hint: "Installs scenes without their heavy media and fetches it at play time.",
+    ...world, type: Boolean, default: true,
   })
 
   game.settings.register(MODULE_ID, SETTING.key, {
     name: "Beneos Stream key",
-    hint: "The beta key handed out by Beneos. Without it nothing is delivered.",
+    hint: "The delivery key of this world. Without it nothing is delivered.",
     ...world, type: String, default: "",
   })
 
@@ -81,10 +93,10 @@ export function registerStreamSettings() {
     ...world, type: Boolean, default: true,
   })
 
-  // Existing worlds are allowed in the beta, so the first activation has to be
-  // deliberate. This remembers that it was.
-  game.settings.register(MODULE_ID, SETTING.acknowledged, {
-    name: "Backup acknowledged",
+  // Merkt sich, dass die einmalige Erklaerung der Auslieferung gezeigt wurde.
+  // Sie entscheidet nichts, sie informiert, siehe stream-intro.mjs.
+  game.settings.register(MODULE_ID, SETTING.introSeen, {
+    name: "Delivery explained",
     ...world, type: Boolean, default: false,
   })
 

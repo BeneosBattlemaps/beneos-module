@@ -249,20 +249,20 @@ export function buildStreamPack(manifest, release, variant) {
 }
 
 /**
- * The beta release listing, in the shape the cloud window's own listing has.
+ * The streamed release listing, in the shape the cloud window's own listing has.
  *
- * The beta has no database behind it: the gate filters a static catalogue
- * against the key and returns the rows unchanged, so the window can render and
- * install from them without knowing where they came from.
+ * There is no database behind it: the gate filters a static catalogue against
+ * the key and returns the rows unchanged, so the window can render and install
+ * from them without knowing where they came from.
  */
 export async function listReleases() {
   const response = await fetch(`${streamBase().replace(/\/+$/, "")}/catalog/${streamKey()}`)
   if (!response.ok) {
-    throw new Error(`beta catalogue unavailable (${response.status})`)
+    throw new Error(`stream catalogue unavailable (${response.status})`)
   }
   const body = await response.json()
   if (!Array.isArray(body?.releases)) {
-    throw new Error("beta catalogue malformed")
+    throw new Error("stream catalogue malformed")
   }
   return body.releases
 }

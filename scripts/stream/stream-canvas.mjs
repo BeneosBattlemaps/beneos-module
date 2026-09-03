@@ -70,13 +70,13 @@ function onOverrun(sceneName) {
   })
   console.debug(`Beneos Stream | scene draw over budget after ${waited} s, `
     + `${stopped} requests cut off`)
-  // English in place of a localisation key, like the rest of the beta surface
-  // (see stream-guard.mjs). Adding a key here would mean thirteen language
-  // files carrying an untranslated string for a feature that may not ship.
+  // Seit dem 2026-09-03 ueber einen Sprachschluessel. Vorher stand die Zeile
+  // hart auf Englisch hier, mit der Begruendung, eine Beta koenne sich dreizehn
+  // Sprachdateien fuer etwas sparen, das vielleicht nie ausgeliefert wird.
+  // Streaming ist jetzt die normale Auslieferung, damit faellt die Begruendung.
   ui.notifications?.warn?.(
-    `Beneos Stream: "${sceneName}" could not be loaded completely within `
-    + `${waited} seconds. Your connection is too slow or the server is not `
-    + `answering. The scene is shown with whatever arrived.`)
+    game.i18n?.format?.("BENEOS.Stream.DrawTimeout", { name: sceneName, seconds: waited })
+    ?? `Beneos Stream: "${sceneName}" could not be loaded completely within ${waited} seconds.`)
 }
 
 function onCanvasInit(canvas) {

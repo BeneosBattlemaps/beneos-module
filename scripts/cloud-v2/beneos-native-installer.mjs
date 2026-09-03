@@ -1207,14 +1207,15 @@ export class BeneosNativeBattlemapInstaller {
    *           same, so unpack + storage stay byte-identical to a cloud install.
    */
   async #loadPackInfo() {
-    // Beta: Beneos Stream. The heavy files never enter packInfo, so nothing
-    // downloads them; their addresses are applied to the documents further down
-    // (#importDocuments). With the beta switch off this branch does not exist.
-    // See scripts/stream/stream-install.mjs.
+    // Beneos Stream. The heavy files never enter packInfo, so nothing downloads
+    // them; their addresses are applied to the documents further down
+    // (#importDocuments). Ohne Schluessel oder mit abgeschaltetem Modus gibt es
+    // diesen Zweig nicht. See scripts/stream/stream-install.mjs.
     const stream = globalThis.BeneosStream
-    // mayRun(), not enabled(): the one-time confirmation that a backup exists
-    // is the condition for writing into an existing world, and asking for it is
-    // pointless if the install starts anyway when it is refused.
+    // `enabled()`, seit dem 2026-09-03. Vorher stand hier `mayRun()`, weil die
+    // Beta zusaetzlich eine Zustimmung des Spielleiters verlangte. Die gibt es
+    // nicht mehr: Streaming ist die normale Auslieferung, und die einzige
+    // Bedingung ist, dass Modus und Schluessel stehen.
     //
     // EINE BESCHREIBUNG FRAGT DEN SCHALTER NICHT.
     //
@@ -1231,7 +1232,7 @@ export class BeneosNativeBattlemapInstaller {
     const beschreibt = typeof this._describeMode === "string"
     const perStream = beschreibt
       ? (this._describeMode === "stream" && Boolean(stream?.loadStreamManifest))
-      : Boolean(stream?.mayRun?.())
+      : Boolean(stream?.enabled?.())
     if (perStream && this.source?.kind !== "zip") {
       const { release, variant } = stream.releaseFromPackage(this.packageId)
       const manifest = await stream.loadStreamManifest(release, variant)
