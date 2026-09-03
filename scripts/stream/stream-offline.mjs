@@ -303,6 +303,26 @@ function geteilteVonKarte(id, vorrat = liesGeteilt()) {
  * Einmal je Pruefung gebaut, nicht je Karte: sonst liefe der Weltstart bei
  * dreissig Zusagen dreissigmal ueber alle Szenen der Welt.
  */
+/**
+ * DER INDEX WIRD NACH KENNUNG GEFUEHRT, NICHT NACH ADRESSE.
+ *
+ * Er entsteht aus den Szenendokumenten, und die tragen die Toradresse mit dem
+ * Schluessel von damals. Nachgeschlagen wird er mit Adressen, die aus der
+ * Zusagenliste frisch gebaut werden, also mit dem Schluessel von heute. Bis
+ * zum 03.09.2026 waren das nach einer Drehung zwei verschiedene Zeichenketten,
+ * und der Nachschlag fand still nichts.
+ *
+ * Still ist hier das Schlimme, denn ein leerer Treffer sieht aus wie eine
+ * richtige Antwort. GEMESSEN am 03.09.2026 im Pruefstand V14: mit gedrehtem
+ * Schluessel meldete `pruefeVorrat` MEHR vollstaendige Karten als mit dem
+ * echten, weil die geteilten Dateien aus dem Index gar nicht erst dazukamen.
+ * Und `szenenDerKarte` haette jede Karte fuer szenenlos gehalten, was der
+ * erste der zwei Zeugen ist, die eine Zusage loesen.
+ *
+ * Die Kennung ist `release|variante|pfad`, dieselbe wie in der Zusagenliste
+ * seit Aufgabe 164. Auch die geteilten Dateien liegen als Kennung; wer
+ * Adressen braucht, baut sie am Ort des Gebrauchs mit `adresseVon`.
+ */
 function geteilterIndex() {
   const index = new Map()
   for (const szene of game.scenes ?? []) {
@@ -311,10 +331,11 @@ function geteilterIndex() {
     if (!geteilt.length) continue
     for (const u of adressen) {
       if (istGeteilteDatei(u)) continue
-      let eintrag = index.get(u)
-      if (!eintrag) { eintrag = { szenen: [], geteilt: new Set() }; index.set(u, eintrag) }
+      const schluessel = kennungVon(u) || u
+      let eintrag = index.get(schluessel)
+      if (!eintrag) { eintrag = { szenen: [], geteilt: new Set() }; index.set(schluessel, eintrag) }
       eintrag.szenen.push(szene.id)
-      for (const g of geteilt) eintrag.geteilt.add(g)
+      for (const g of geteilt) eintrag.geteilt.add(kennungVon(g) || g)
     }
   }
   return index
@@ -333,9 +354,11 @@ function geteilteAdressenDerKarte(e, vorrat = liesGeteilt(), index = null) {
   const raus = new Set(geteilteVonKarte(karteId(e.release, e.variant, e.karte), vorrat))
   const idx = index || geteilterIndex()
   for (const u of (e.urls || [])) {
-    const treffer = idx.get(u)
+    const treffer = idx.get(kennungVon(u) || u)
     if (!treffer) continue
-    for (const g of treffer.geteilt) raus.add(g)
+    // Der Index fuehrt Kennungen. Der Aufrufer braucht Adressen, denn er fragt
+    // damit den Speicher, und der kennt nur Adressen.
+    for (const g of treffer.geteilt) raus.add(adresseVon(g) || g)
   }
   return [...raus]
 }
@@ -344,7 +367,7 @@ function geteilteAdressenDerKarte(e, vorrat = liesGeteilt(), index = null) {
 function szenenDerKarte(e, index) {
   const raus = new Set()
   for (const u of (e.urls || [])) {
-    for (const id of (index.get(u)?.szenen || [])) raus.add(id)
+    for (const id of (index.get(kennungVon(u) || u)?.szenen || [])) raus.add(id)
   }
   return [...raus]
 }
