@@ -1,0 +1,62 @@
+# Zeilenenden dieses Repositories.
+#
+# WARUM ES DIESE DATEI GIBT
+#
+# Auf dieser Maschine steht `core.autocrlf` auf `true`. Ohne Vorgabe im
+# Repository entscheidet also die Einstellung des jeweiligen Arbeitsplatzes,
+# was in einen Commit wandert, und das faellt erst beim Zusammenfuehren auf:
+# am 27.08.2026 kollidierte beim Abgleich von `main` nach `stream-beta` eine
+# ganze Datei Zeile fuer Zeile, weil ihre beiden Fassungen sich nur in den
+# Zeilenenden unterschieden.
+#
+# GEMESSEN am 03.09.2026, gezaehlt ueber `git cat-file` und nicht ueber
+# `git show`: von 3.328 verfolgten Dateien tragen **22** im Commit CRLF, 741
+# tragen LF, der Rest ist binaer. Der Bestand ist also fast vollstaendig LF,
+# und diese Datei schreibt fest, was ohnehin gilt, statt etwas umzustellen.
+#
+# Drei Dateien sind der eigentliche Grund: `scripts/beneos_analytics.js`,
+# `scripts/cloud-v2/cloud-window-v2.mjs` und
+# `templates/cloud-v2/parts/results-pane.hbs` tragen auf `main` CRLF und auf
+# `stream-beta` LF. Genau sie waeren beim naechsten Zusammenfuehren wieder
+# kollidiert.
+#
+# EINE MESSFALLE, DIE HIER FESTGEHALTEN GEHOERT
+#
+# `git show <zweig>:<datei>` gibt den Inhalt DURCH den Arbeitsbaumfilter aus.
+# Bei `core.autocrlf=true` kommt CRLF heraus, egal was im Commit steht. Wer
+# Zeilenenden messen will, nimmt `git cat-file blob`. Am 03.09.2026 meldete
+# `git show` fuer `beneos_utility.js` 3.287 Zeilen mit CR, `git cat-file`
+# meldete fuer dieselbe Datei null.
+
+# Alles, was Git als Text erkennt, liegt im Commit mit LF und wird auch mit
+# LF ausgecheckt. Das beendet zugleich das Hin und Her im Arbeitsbaum, an dem
+# sich zwei Klone gegenseitig als geaendert sahen.
+* text=auto eol=lf
+
+# PowerShell laeuft unter Windows und kommt mit LF zurecht; die beiden
+# Skripte hier bleiben trotzdem bei CRLF, weil sie ausschliesslich dort
+# gefahren werden und ein Editor mit gemischten Enden mehr Schaden anrichtet
+# als der Gewinn wert waere.
+*.ps1 text eol=crlf
+
+# Binaerdateien ausdruecklich benennen. `text=auto` erkennt sie an der Null
+# im Inhalt, und das ist zuverlaessig; hier steht es trotzdem, weil eine
+# falsch behandelte Kartendatei nicht als Textfehler auffaellt, sondern als
+# kaputtes Bild beim Kunden.
+*.webp binary
+*.webm binary
+*.mp4  binary
+*.ogg  binary
+*.ogv  binary
+*.mp3  binary
+*.wav  binary
+*.gif  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.ico  binary
+*.zip  binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
