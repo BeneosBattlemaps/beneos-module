@@ -10,7 +10,7 @@
  * has no business in the live figures.
  */
 
-import { streamBase, streamEnabled } from "./stream-settings.mjs"
+import { streamBase, streamEnabled, istPruefstand } from "./stream-settings.mjs"
 import { isOffline } from "./stream-online.mjs"
 
 // One report per address per session. A broken scene would otherwise send one
@@ -54,6 +54,17 @@ async function flush() {
         // am Tisch sitzt.
         world: game?.world?.id ?? null,
         foundry: game?.version ?? null,
+        // DAS EIGENE RAUSCHEN MUSS SICH BENENNEN.
+        //
+        // GEMESSEN am 02.09.2026 ueber 72 Stunden: alle 35 Meldungen unter
+        // /reports stammten aus den eigenen Pruefstaenden. Ohne dieses Feld
+        // ersaeuft das erste echte Kundensignal darin, und nachtraeglich ist
+        // es nicht zu trennen: Weltname und Foundry-Fassung sagen nichts
+        // darueber, wer da meldet, und eine Kundenwelt darf genauso heissen.
+        //
+        // Die Vorgabe ist `false`. Fuer eine Kundenwelt aendert sich also
+        // nichts, und wer einen Pruefstand betreibt, traegt es einmal ein.
+        bench: istPruefstand(),
         entries: batch,
       }),
       keepalive: true,

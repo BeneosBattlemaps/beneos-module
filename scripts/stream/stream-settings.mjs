@@ -30,6 +30,9 @@ export const SETTING = {
   // die Zustimmung zu einer Beta. Wer die gegeben hat, hat damit nichts ueber
   // das neue Modell erfahren und bekommt die Erklaerung einmal zu sehen.
   introSeen: "beneos-stream-intro-seen",
+  // Kennzeichnet eine Welt als Pruefstand des Hauses. Siehe die Anmeldung
+  // weiter unten und `stream-report.mjs`.
+  bench: "beneos-stream-bench",
   pinStills: "beneos-stream-pin-stills",
   installMode: "beneos-stream-install-mode",
   budgetImage: "beneos-stream-budget-image",
@@ -97,6 +100,25 @@ export function registerStreamSettings() {
   // Sie entscheidet nichts, sie informiert, siehe stream-intro.mjs.
   game.settings.register(MODULE_ID, SETTING.introSeen, {
     name: "Delivery explained",
+    ...world, type: Boolean, default: false,
+  })
+
+  // DER PRUEFSTAND MUSS SICH SELBST BENENNEN.
+  //
+  // GEMESSEN am 02.09.2026: alle 35 Meldungen unter /reports aus 72 Stunden
+  // stammten aus den eigenen Pruefstaenden. Ohne ein Merkmal ersaeuft das
+  // erste echte Kundensignal im eigenen Rauschen, und niemand kann es
+  // nachtraeglich trennen: Weltname und Foundry-Fassung reichen nicht, weil
+  // eine Kundenwelt genauso heissen darf.
+  //
+  // Bewusst eine ausdrueckliche Einstellung und keine Erkennung. Jede
+  // Erkennung, die aus Adresse, Weltnamen oder Hostname raet, faellt beim
+  // ersten Kunden falsch aus, der zufaellig dasselbe Muster trifft. Wer einen
+  // Pruefstand betreibt, weiss es und traegt es ein; die Vorgabe ist `false`,
+  // eine Kundenwelt aendert sich also nicht.
+  game.settings.register(MODULE_ID, SETTING.bench, {
+    name: "This world is a Beneos test bench",
+    hint: "Marks reports from this world so they can be kept out of the customer figures.",
     ...world, type: Boolean, default: false,
   })
 
@@ -217,6 +239,11 @@ export function streamEnabled() {
  * bereits einen Schluessel, und eine Welt ohne kaeme nie dazu, sich einen zu
  * besorgen.
  */
+/** Ist diese Welt als Pruefstand des Hauses gekennzeichnet? */
+export function istPruefstand() {
+  return Boolean(read(SETTING.bench, false))
+}
+
 export function streamMode() {
   return Boolean(read(SETTING.mode, false))
 }

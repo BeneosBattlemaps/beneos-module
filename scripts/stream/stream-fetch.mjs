@@ -1132,6 +1132,25 @@ export async function alleImSpeicher(urls) {
       // Zahl, fuer die er da ist.
       if (/\/report(\?|$)/.test(url)) return original(input, init)
 
+      // DIE VERBINDUNGSPROBE GEHT AUS DEMSELBEN GRUND AM ERSATZ VORBEI.
+      //
+      // `/health` ist keine Datei, sondern die Frage, ob das Tor antwortet.
+      // Sie lief bis zum 03.09.2026 durch diesen Ersatz und wurde damit wie ein
+      // Asset behandelt: mit Zeitgrenze, mit Zaehler und mit einer Meldung an
+      // den Kanal. GEMESSEN am 02.09.2026 ueber 72 Stunden: von 35 Meldungen
+      // unter /reports waren **30** Zeitueberschreitungen dieser Probe waehrend
+      // der absichtlichen Offline-Pruefungen.
+      //
+      // Eine gescheiterte Probe ist kein fehlendes Asset. Wer offline ist,
+      // weiss es bereits, und der Verbindungswaechter fuehrt seine eigene
+      // Buchfuehrung darueber. `probeOnce` bringt Zeitgrenze und Abbruch selbst
+      // mit, braucht von hier also nichts.
+      //
+      // Es ist derselbe Satz wie beim Melder eine Zeile hoeher: eine Probe, die
+      // ihren eigenen Fehlschlag meldet, verfaelscht genau die Zahl, fuer die
+      // sie da ist.
+      if (/\/health(\?|$)/.test(url)) return original(input, init)
+
       // In the measuring mode neither of the two applies, and both would falsify
       // the measurement. The store would answer the second run of a comparison
       // from the first one, and the per-file deadline is a streaming rule: it is
