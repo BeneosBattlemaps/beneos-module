@@ -1567,6 +1567,40 @@ export async function offlineGehalten(urls) {
 }
 
 /**
+ * Dieselbe Frage, aber mit einer Antwort statt einem Urteil: WELCHE Adressen
+ * fehlen.
+ *
+ * WARUM ES DAS BRAUCHT.
+ *
+ * `offlineGehalten` bricht beim ersten Fehltreffer ab und sagt "nein". Fuer
+ * die Anzeige reicht das, fuer die Ursachensuche nicht. Am 03.09.2026 stand im
+ * Pruefstand V14 eine frisch zugesagte Karte auf "unvollstaendig", waehrend
+ * jede Adresse, die von aussen aufzaehlbar war, einzeln als gehalten galt.
+ * Ohne diese Funktion war die naechste Frage nicht zu stellen, ohne den Code
+ * zu aendern, und eine Meldung, deren Grund nur mit einem Codeeingriff zu
+ * erfahren ist, ist fuer den Kunden gar keine Meldung.
+ *
+ * Gibt die Adressen unveraendert zurueck, in der Form, in der sie hereinkamen.
+ * Ist der Speicher nicht zu haben, gilt alles als fehlend; die Unterscheidung
+ * zwischen "fehlt" und "nicht feststellbar" trifft der Aufrufer, der den
+ * Speicherausfall ohnehin gesondert prueft.
+ */
+export async function nichtGehalten(urls) {
+  const liste = [...new Set((urls || []).filter(u => typeof u === "string" && ours(u)))]
+  if (!liste.length) return []
+  const store = await openStore()
+  if (!store) return liste
+  const fehlt = []
+  for (const url of liste) {
+    try {
+      const hit = await vMatch(store, url, { ignoreSearch: true })
+      if (!hit || !hit.headers.get(KEEP_HEADER)) fehlt.push(url)
+    } catch (_) { fehlt.push(url) }
+  }
+  return fehlt
+}
+
+/**
  * Was dauerhaft gehalten wird, fuer die Standanzeige.
  *
  * Zaehlt Adressen und Bytes ueber den ganzen Speicher. Das ist ein Lauf ueber

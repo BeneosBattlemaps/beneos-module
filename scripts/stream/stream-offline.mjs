@@ -30,7 +30,7 @@
  */
 
 import { MODULE_ID, SETTING, streamEnabled, assetUrl, zerlegeAdresse, streamKey, streamBase } from "./stream-settings.mjs"
-import { offlineGehalten, offlineHalten, offlineFreigeben,
+import { offlineGehalten, offlineHalten, offlineFreigeben, nichtGehalten,
          gehalteneAdressen, speicherAusfallStand, speicherLage } from "./stream-fetch.mjs"
 import { streamAdressenVon, streamState } from "./stream-online.mjs"
 import { loadStreamManifest } from "./stream-install.mjs"
@@ -1511,8 +1511,26 @@ export async function pruefeVorrat() {
   // pruefen, und dann soll er auch nicht gebaut werden.
   const index = liste.length ? geteilterIndex() : new Map()
   for (const e of liste) {
-    if (await offlineGehalten([...(e.urls || []), ...geteilteAdressenDerKarte(e, vorrat, index)])) continue
-    fehlend.push(e)
+    const alle = [...(e.urls || []), ...geteilteAdressenDerKarte(e, vorrat, index)]
+    // DIE FEHLENDEN DATEIEN WERDEN GENANNT, NICHT NUR GEZAEHLT.
+    //
+    // Vorher stand hier ein `offlineGehalten`, also ein Ja oder Nein. Am
+    // 03.09.2026 stand im Pruefstand V14 eine frisch zugesagte Karte auf
+    // "unvollstaendig", obwohl jede von aussen aufzaehlbare Adresse gehalten
+    // war, und die Frage nach dem WARUM war ohne Codeaenderung nicht zu
+    // stellen. Der Eintrag traegt die fehlenden Adressen jetzt bei sich.
+    //
+    // EINE ZUSAGE OHNE JEDE ADRESSE BLEIBT UNVOLLSTAENDIG.
+    //
+    // `offlineGehalten` gab bei leerer Liste falsch zurueck, und dabei bleibt
+    // es: eine Zusage, zu der keine einzige Adresse aufloest, ist kaputte
+    // Buchfuehrung und nicht etwa erfuellt. `nichtGehalten` antwortet auf eine
+    // leere Liste mit einer leeren Liste, was hier das Gegenteil hiesse, also
+    // wird der Fall vorher abgefangen und beim Namen genannt.
+    if (!alle.length) { fehlend.push({ ...e, fehlendeDateien: [], grund: "keine-dateien" }); continue }
+    const luecke = await nichtGehalten(alle)
+    if (!luecke.length) continue
+    fehlend.push({ ...e, fehlendeDateien: luecke, gepruefteDateien: alle.length })
   }
   return {
     zugesagt: liste.length,
