@@ -1189,6 +1189,129 @@ function _gateWurzel(adresse) {
 }
 
 /**
+ * Eine alte Adresswurzel ueberall in einem Wert ersetzen, beliebig tief.
+ *
+ * WARUM DAS HIER ERLAUBT IST, UND IN `applyMappings` NICHT
+ *
+ * `applyMappings` geht eine Feldliste ab, und das aus gutem Grund: seine
+ * Muster sind Pfadanfaenge wie `beneos_assets/...`, und die stehen auch in
+ * gewoehnlichem Text. Wer dort blind durch jedes Feld liefe, schriebe
+ * irgendwann in einer Beschreibung herum.
+ *
+ * Hier ist das Muster eine VOLLSTAENDIGE Toradresswurzel, also
+ * `https://<host>/a/<schluessel>/`. Ein solcher Text entsteht nicht aus
+ * Versehen. Der tiefe Lauf ist deshalb sicher und ausserdem noetig: gemessen
+ * am 2026-09-06 blieben nach einem Schluesselwechsel 802 Stellen stehen, weil
+ * die Feldliste `thumb` und saemtliche Flaggen nicht kennt.
+ *
+ * @returns {{wert: *, anzahl: number}} der neue Wert und wie oft ersetzt wurde
+ */
+function _wurzelTiefErsetzen(wert, alteWurzeln, zielWurzel) {
+  if (typeof wert === "string") {
+    let neu = wert;
+    let n = 0;
+    for (const alt of alteWurzeln) {
+      if (!neu.includes(alt)) continue;
+      n += neu.split(alt).length - 1;
+      neu = neu.split(alt).join(zielWurzel);
+    }
+    return { wert: neu, anzahl: n };
+  }
+  if (Array.isArray(wert)) {
+    let n = 0;
+    const neu = wert.map(v => { const r = _wurzelTiefErsetzen(v, alteWurzeln, zielWurzel); n += r.anzahl; return r.wert; });
+    return { wert: n ? neu : wert, anzahl: n };
+  }
+  if (wert && typeof wert === "object") {
+    let n = 0;
+    const neu = {};
+    for (const k of Object.keys(wert)) {
+      const r = _wurzelTiefErsetzen(wert[k], alteWurzeln, zielWurzel);
+      neu[k] = r.wert;
+      n += r.anzahl;
+    }
+    return { wert: n ? neu : wert, anzahl: n };
+  }
+  return { wert, anzahl: 0 };
+}
+
+/**
+ * Der zweite Durchlauf des Schluesselwechsels: alles, was die Feldliste von
+ * `applyMappings` nicht erreicht.
+ *
+ * Eingebettete Sammlungen werden bewusst NICHT als ganzes Feld
+ * zurueckgeschrieben. Ein `update({tiles: [...]})` ersetzt die Sammlung, und
+ * ein Punktpfad mit Index ersetzt sogar das ganze Array; beides ist eine
+ * bekannte Falle. Stattdessen geht je Sammlung ein
+ * `updateEmbeddedDocuments` mit den Feldern, die sich wirklich geaendert
+ * haben.
+ */
+async function _restlicheWurzelnNachziehen(alteWurzeln, zielWurzel) {
+  const bericht = { geaendert: 0, dokumente: 0, fehler: [] };
+  if (!alteWurzeln?.length) return bericht;
+
+  // Die eingebetteten Sammlungen je Familie, mit ihrem Dokumenttyp.
+  //
+  // Die Zuordnung steht ABSICHTLICH je Familie und nicht in einer gemeinsamen
+  // Tabelle: `sounds` heisst bei einer Szene `AmbientSound` und bei einer
+  // Playlist `PlaylistSound`. Eine gemeinsame Tabelle haette den einen Fall
+  // still auf den anderen abgebildet, und `updateEmbeddedDocuments` haette
+  // dann auf einen Typ gezeigt, den es dort nicht gibt.
+  const familien = [
+    { name: "Scene", coll: game.scenes, eingebettet: {
+        tiles: "Tile", tokens: "Token", notes: "Note", sounds: "AmbientSound",
+        drawings: "Drawing", walls: "Wall", lights: "AmbientLight",
+        templates: "MeasuredTemplate", regions: "Region" } },
+    { name: "Actor", coll: game.actors, eingebettet: {} },
+    { name: "Item", coll: game.items, eingebettet: {} },
+    { name: "JournalEntry", coll: game.journal, eingebettet: { pages: "JournalEntryPage" } },
+    { name: "Playlist", coll: game.playlists, eingebettet: { sounds: "PlaylistSound" } },
+    { name: "RollTable", coll: game.tables, eingebettet: { results: "TableResult" } },
+    { name: "Macro", coll: game.macros, eingebettet: {} },
+  ];
+
+  for (const fam of familien) {
+    for (const doc of (fam.coll ?? [])) {
+      try {
+        const roh = doc.toObject();
+
+        // 1. Das Dokument selbst, ohne seine eingebetteten Sammlungen.
+        const patch = {};
+        for (const k of Object.keys(roh)) {
+          if (k === "_id" || k in fam.eingebettet) continue;
+          const r = _wurzelTiefErsetzen(roh[k], alteWurzeln, zielWurzel);
+          if (r.anzahl) { patch[k] = r.wert; bericht.geaendert += r.anzahl; }
+        }
+        if (Object.keys(patch).length) { await doc.update(patch); bericht.dokumente++; }
+
+        // 2. Die eingebetteten Sammlungen, je Sammlung ein Aufruf.
+        for (const [feld, typ] of Object.entries(fam.eingebettet)) {
+          const liste = Array.isArray(roh[feld]) ? roh[feld] : null;
+          if (!liste?.length) continue;
+          const updates = [];
+          for (const eintrag of liste) {
+            const teil = {};
+            for (const k of Object.keys(eintrag)) {
+              if (k === "_id") continue;
+              const r = _wurzelTiefErsetzen(eintrag[k], alteWurzeln, zielWurzel);
+              if (r.anzahl) { teil[k] = r.wert; bericht.geaendert += r.anzahl; }
+            }
+            if (Object.keys(teil).length) updates.push({ _id: eintrag._id, ...teil });
+          }
+          if (updates.length) {
+            await doc.updateEmbeddedDocuments(typ, updates);
+            bericht.dokumente += updates.length;
+          }
+        }
+      } catch (e) {
+        bericht.fehler.push({ entity: `${fam.name}:${doc.name}`, error: String(e) });
+      }
+    }
+  }
+  return bericht;
+}
+
+/**
  * Alle Toradressen dieser Welt auf den heutigen Schluessel umschreiben.
  *
  * WOZU, UND WARUM ERST JETZT.
@@ -1212,12 +1335,23 @@ function _gateWurzel(adresse) {
  * mit Praefix-Abbildungen. Der ganze Wechsel ist deshalb **eine Abbildung je
  * altem Schluessel**, nicht eine je Adresse.
  *
- * GRENZE, ausdruecklich benannt: die alten Schluessel werden aus den Szenen
- * ueber `streamAdressenVon` eingesammelt, und das filtert auf den Host der
- * HEUTIGEN Basisadresse. Hat sich zusaetzlich die Basis geaendert, findet der
- * Szenendurchlauf nichts; die Journale werden dagegen ueber einen Ausdruck
- * gelesen und tragen den Fall. Fuer einen reinen Schluesselwechsel, den
- * haeufigen Fall, ist das vollstaendig.
+ * ERKANNT UND GESCHRIEBEN WIRD TIEF, seit dem 2026-09-06.
+ *
+ * Bis dahin nahmen beide Haelften dieselbe schmale Feldliste, die auch
+ * `applyMappings` nimmt. Nach einem echten Wechsel blieben dadurch 802
+ * Adressen stehen, 227 davon in `thumb`, der Rest in Flaggen. Schlimmer noch:
+ * ein zweiter Aufruf meldete "nichts nachzuziehen", weil das Erkennen an
+ * derselben Liste haengt wie das Schreiben. Wer aufraeumen wollte, bekam die
+ * Auskunft, es sei bereits alles gut.
+ *
+ * Beides laeuft jetzt rekursiv ueber das ganze Dokument. Das ist hier
+ * zulaessig, weil gesucht und ersetzt wird, was eine VOLLSTAENDIGE
+ * Toradresswurzel ist, `https://<host>/a/<schluessel>/`. Ein solcher Text
+ * entsteht nicht aus Versehen in einer Beschreibung.
+ *
+ * GRENZE, die bleibt: eine Adresse mit einem anderen Host wird als eigene
+ * Wurzel erkannt und mitgezogen. Wechselt also die Basisadresse zusammen mit
+ * dem Schluessel, landet auch sie auf der heutigen Basis. Das ist gewollt.
  *
  * @param {{trocken?: boolean, onProgress?: Function}} optionen
  * @return {Promise<{alteWurzeln: string[], adressen: number, geaendert: number, grund: string}>}
@@ -1227,7 +1361,6 @@ export async function schluesselNachziehen({ trocken = false, onProgress = null 
   if (!game.user?.isGM) { bericht.grund = "nicht die Spielleitung"; return bericht; }
 
   const { streamBase, streamKey } = await import("./stream/stream-settings.mjs");
-  const { streamAdressenVon } = await import("./stream/stream-online.mjs");
 
   const schluessel = streamKey();
   if (!schluessel) { bericht.grund = "kein-schluessel"; return bericht; }
@@ -1241,12 +1374,36 @@ export async function schluesselNachziehen({ trocken = false, onProgress = null 
     if (wurzel !== zielWurzel) alte.add(wurzel);
   };
 
-  for (const szene of game.scenes ?? []) {
-    for (const u of (streamAdressenVon(szene) || [])) merke(u);
+  // ERKANNT WIRD TIEF, NICHT UEBER EINE FELDLISTE.
+  //
+  // Hier stand bis zum 2026-09-06 derselbe schmale Durchlauf, den auch
+  // `applyMappings` fuer das Schreiben nimmt: `streamAdressenVon` je Szene
+  // plus die Journalseiten. Das hat zwei Folgen gehabt, und die zweite ist die
+  // schlimmere:
+  //
+  //   Es wurden Stellen nicht gefunden, die es gibt (`thumb`, alle Flaggen).
+  //   Und nach einem halben Lauf meldete die Funktion "nichts nachzuziehen",
+  //   waehrend 802 Adressen noch die alte Wurzel trugen. Wer sie ein zweites
+  //   Mal ruft, um aufzuraeumen, bekam also die Auskunft, es sei alles gut.
+  //
+  // Der tiefe Lauf ist hier so sicher wie beim Schreiben: gesucht wird eine
+  // vollstaendige Toradresswurzel, kein Pfadanfang.
+  const merkeTief = (wert) => {
+    if (typeof wert === "string") { merke(wert); return; }
+    if (Array.isArray(wert)) { for (const v of wert) merkeTief(v); return; }
+    if (wert && typeof wert === "object") { for (const k of Object.keys(wert)) merkeTief(wert[k]); }
+  };
+  for (const coll of [game.scenes, game.actors, game.items, game.journal,
+                      game.playlists, game.tables, game.macros]) {
+    for (const doc of (coll ?? [])) {
+      try { merkeTief(doc.toObject()); } catch (e) {}
+    }
   }
+  // Der Text einer Journalseite traegt die Adresse in einem `src=`-Attribut.
+  // Der Zaehler oben sieht ihn als eine Zeichenkette; das reicht, um die
+  // Wurzel zu erkennen, und das Umschreiben faengt ihn ohnehin.
   for (const journal of game.journal ?? []) {
     for (const page of journal.pages) {
-      merke(page.src);
       const html = page.text?.content;
       if (typeof html !== "string" || !html.includes("src=")) continue;
       for (const treffer of html.matchAll(HTML_SRC_RE)) merke(treffer[2]);
@@ -1271,8 +1428,36 @@ export async function schluesselNachziehen({ trocken = false, onProgress = null 
   bericht.geaendert = ergebnis.updated;
   if (ergebnis.errors?.length) bericht.fehler = ergebnis.errors;
 
+  // ZWEITER DURCHLAUF, und ohne ihn ist der Wechsel unvollstaendig.
+  //
+  // `applyMappings` geht eine Feldliste ab. Sie kennt `thumb` nicht und keine
+  // einzige Flagge, weder unsere eigenen noch die fremder Module. Gemessen am
+  // 2026-09-06 nach einem echten Wechsel blieben deshalb 802 Stellen stehen:
+  //
+  //   227  thumb
+  //   223  tiles[].flags.beneos-module.stream.partner
+  //   223  tiles[].flags.beneos-module.stream.video
+  //    66  flags.beneos-module.creatureInstaller.srdCreatures[].positions[].texture.src
+  //    26  notes[].flags.pin-cushion.showImageExplicitSource
+  //    16  flags.beneos-module.creatureInstaller.srdCreatures[].art
+  //    11  tiles[].flags.monks-active-tiles.actions[].data.audiofile
+  //    10  tiles[].flags.monks-active-tiles.files[].name
+  //
+  // Die 227 in `thumb` sind der sichtbare Teil: so viele Szenen stehen nach
+  // einem Wechsel ohne Vorschaubild in der Leiste.
+  //
+  // Die frueheren Laeufe haben das nicht gesehen, weil ihre Nachzaehlung
+  // dieselben Felder zaehlte, die der Eingriff anfasst. Eine Zaehlung, die den
+  // Ausschnitt des Eingriffs uebernimmt, misst die eigene Annahme.
+  const rest = await _restlicheWurzelnNachziehen(bericht.alteWurzeln, zielWurzel);
+  bericht.geaendert += rest.geaendert;
+  bericht.tiefNachgezogen = rest.geaendert;
+  bericht.tiefDokumente = rest.dokumente;
+  if (rest.fehler.length) bericht.fehler = [...(bericht.fehler ?? []), ...rest.fehler];
+
   console.log(`Beneos Stream | Schluessel nachgezogen: ${bericht.geaendert} Feld(er) in `
-    + `${bericht.alteWurzeln.length} alte(n) Adresswurzel(n), ${bericht.adressen} Toradressen gesehen`);
+    + `${bericht.alteWurzeln.length} alte(n) Adresswurzel(n), ${bericht.adressen} Toradressen gesehen, `
+    + `davon ${rest.geaendert} im tiefen Durchlauf ueber ${rest.dokumente} Dokument(e)`);
   return bericht;
 }
 
