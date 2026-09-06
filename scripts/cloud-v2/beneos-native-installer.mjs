@@ -811,6 +811,74 @@ export class BeneosNativeBattlemapInstaller {
   }
 
   /**
+   * Die Verdeckungsart einer Kachel auf die Nummerierung der laufenden Foundry
+   * bringen.
+   *
+   * FOUNDRY HAT ZWISCHEN 13 UND 14 UMNUMMERIERT, und die Aufzaehlung ist an
+   * beiden Buehnen abgefragt, nicht aus dem Quelltext geschlossen:
+   *
+   *   13.351   NONE=0, FADE=1, RADIAL=3, VISION=4
+   *   14.367   NONE=0, FADE=1, SURFACE=2, RADIAL=4, VISION=8
+   *
+   * `TileDocument.migrateData` auf V14 schiebt `occlusion.mode` unveraendert
+   * nach `occlusion.modes` als `[mode]`. Es UEBERSETZT DEN WERT NICHT. Daraus
+   * entstehen zwei verschiedene Schaeden, und nur einer davon ist laut:
+   *
+   *   3 (RADIAL alt) ist auf V14 kein gueltiges Listenglied. Die Kachel faellt
+   *     durch die Schemapruefung, und weil `createDocuments` nicht wirft,
+   *     sondern still verwirft, geht die GANZE Szene verloren.
+   *   4 (VISION alt) kommt auf V14 durch und heisst dort RADIAL. Kein Fehler,
+   *     keine Meldung, nur ein anderes Bild als gemeint.
+   *
+   * Gezaehlt am 2026-09-06 ueber alle 286 ausgelieferten Pakete: 54 Kacheln mit
+   * 3 in 52 Szenen und 26 Paketordnern, dazu 88 Kacheln mit 4.
+   *
+   * WARUM HIER UND NICHT IM PAKET
+   *
+   * Das Modul unterstuetzt Foundry ab 13. Ein auf die neue Nummerierung
+   * umgeschriebenes Paket wuerde V13-Kunden dieselben Szenen kosten: 8 ist auf
+   * 13.351 gemessen ungueltig. Nur der Installer kennt die Fassung, unter der
+   * gerade installiert wird, und kann deshalb beide richtig bedienen.
+   *
+   * WORAN ALT UND NEU ZU UNTERSCHEIDEN SIND
+   *
+   * An der Feldform. Ein Dokument aus der Zeit vor V14 fuehrt `occlusion.mode`,
+   * ein neueres `occlusion.modes`. Gezaehlt am 2026-09-06: 0 von 286 Paketen
+   * fuehren die neue Form. Wer `modes` mitbringt, wird nicht angefasst.
+   *
+   * Geschrieben wird weiterhin nach `mode`. Die Umwandlung in `modes` bleibt
+   * damit Foundrys eigener Wanderung ueberlassen, und der V13-Weg bleibt
+   * unveraendert.
+   */
+  #occlusionUebersetzen(scenes) {
+    const generation = Number(game.release?.generation ?? String(game.version || "").split(".")[0])
+    if (!Number.isFinite(generation) || generation < 14) return
+
+    // Alte Nummerierung links, Nummerierung ab V14 rechts. 0 und 1 stehen
+    // absichtlich nicht darin: sie sind in beiden Aufzaehlungen dasselbe.
+    const UEBERSETZUNG = { 3: 4, 4: 8 }
+
+    let geaendert = 0
+    for (const scene of (scenes || [])) {
+      for (const kachel of (Array.isArray(scene?.tiles) ? scene.tiles : [])) {
+        const o = kachel?.occlusion
+        if (!o || typeof o !== "object") continue
+        if (Array.isArray(o.modes)) continue          // schon neu, nicht anfassen
+        if (!Object.prototype.hasOwnProperty.call(o, "mode")) continue
+        const neu = UEBERSETZUNG[Number(o.mode)]
+        if (neu === undefined) continue
+        o.mode = neu
+        geaendert++
+      }
+    }
+
+    if (!geaendert) return
+    const t = this._result?.totals
+    if (t) t.occlusionRenumbered = (t.occlusionRenumbered || 0) + geaendert
+    console.log(`BeneosNativeInstaller | ${geaendert} tile occlusion value(s) renumbered for Foundry ${generation}`)
+  }
+
+  /**
    * Regenerate scene thumbnails. Native packs strip the author-world `thumb`
    * path (it would 404 in the customer world), so imported scenes arrive with no
    * thumb.
@@ -2475,7 +2543,10 @@ export class BeneosNativeBattlemapInstaller {
         if (apply) for (let i = 0; i < arr.length; i++) arr[i] = apply(arr[i], this._streamTargets)
       }
 
-      if (relPath === "data/Scene.json") this.#regionVerhaltenSaeubern(arr)
+      if (relPath === "data/Scene.json") {
+        this.#regionVerhaltenSaeubern(arr)
+        this.#occlusionUebersetzen(arr)
+      }
 
       // WAS DAS PAKET AN DOKUMENTEN MITBRINGT, WIRD HIER FESTGEHALTEN.
       //
