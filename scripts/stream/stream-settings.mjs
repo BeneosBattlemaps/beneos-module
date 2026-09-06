@@ -302,8 +302,24 @@ async function weltKennung() {
  * gesagt und der Weltstart laeuft weiter. Ein halb umgeschriebener Bestand ist
  * schlechter als ein ganz alter, aber ein abgebrochener Weltstart ist am
  * schlechtesten.
+ *
+ * ER LAEUFT NIE ZWEIMAL NEBENEINANDER, und der Riegel ist nicht theoretisch.
+ * Am 2026-09-06 auf 14.367 gemessen: der Lauf des Weltstarts arbeitete noch
+ * (6.735 Felder, mehrere Sekunden), als ein zweiter dazukam. Beide schrieben,
+ * beide meldeten eine eigene Zahl, und der Nutzer sah zwei Erfolgsmeldungen
+ * mit verschiedenen Werten fuer ein und dasselbe Ereignis. Im Betrieb reichen
+ * dafuer zwei gleichzeitig angemeldete Spielleitungen; die Bedingung
+ * `isGM` schliesst nur Spieler aus, nicht die zweite Leitung.
  */
+let _nachzugLaeuft = null
+
 async function adressenNachziehen() {
+  if (_nachzugLaeuft) return _nachzugLaeuft
+  _nachzugLaeuft = _adressenNachziehen().finally(() => { _nachzugLaeuft = null })
+  return _nachzugLaeuft
+}
+
+async function _adressenNachziehen() {
   try {
     const { schluesselNachziehen } = await import("../beneos-asset-path-repair.js")
     ui.notifications?.info(game.i18n.localize("BENEOS.Stream.KeyRotated.Running"))
