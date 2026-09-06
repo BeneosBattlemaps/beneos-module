@@ -1040,23 +1040,29 @@ export class BeneosNativeBattlemapInstaller {
   }
 
   /**
-   * Die Zielpfade dieses Laufs, entdoppelt, und NUR beim Streaming.
+   * Die Zielpfade dieses Laufs, entdoppelt, fuer jede Installationsart.
    *
-   * WARUM NICHT IMMER
+   * WARUM JETZT IMMER
    *
-   * Die Pfade sind lang, und der Vermerk liegt in einer Welt-Einstellung, die
-   * bei jedem Start mitgelesen wird. Ein heruntergeladenes Release bringt
-   * ueber zweihundert Dateien mit; fuenfzig solcher Releases waeren rund ein
-   * Megabyte allein an Pfaden.
+   * Bis zum 2026-09-06 schrieb diese Stelle die Liste nur beim Streaming, mit
+   * dem Argument, ein heruntergeladenes Release beschreibe sich ohnehin ueber
+   * den ScenePacker. Das stimmt nur mit Verbindung. `#packageIdFor` im
+   * Deinstallierer fragt den Katalog, und das ist ein Netzaufruf; ohne Netz
+   * loest KEIN fremder Vermerk auf, der Rueckfall auf `targets` findet bei
+   * heruntergeladenen Releases nichts, und ein einziger solcher Vermerk setzt
+   * das Dateiraeumen fuer den ganzen Lauf aus.
    *
-   * Gebraucht wird die Liste fuer den Fall, den die eigene Fehlermeldung des
-   * Deinstallierers benennt: ein GESTREAMTES Release braucht das Manifest vom
-   * Tor, und ohne Netz gibt es das nicht. Dort ist die Liste zugleich kurz,
-   * weil die schweren Dateien gar nicht auf der Platte liegen.
+   * Gemessen in der V14-Pruefwelt, Katalog stummgeschaltet und ein echter
+   * Deinstallationslauf gefahren: alle sieben heruntergeladenen Vermerke
+   * scheiterten, `filesCleared: 0`, `bytesFreed: 0`. Genau der Fall, fuer den
+   * der Rueckfall gebaut wurde, und genau dort war er leer.
    *
-   * Ein heruntergeladenes Release beschreibt sich ueber den ScenePacker und
-   * damit ueber Dateien, die ohnehin lokal sind. Sollte sich zeigen, dass es
-   * auch dort klemmt, ist das Weglassen dieser Bedingung eine Zeile.
+   * DER PREIS IST GEMESSEN, NICHT GESCHAETZT. Die alte Begruendung nannte
+   * "rund ein Megabyte bei fuenfzig Releases". Gemessen sind 86 Bytes je Pfad
+   * und rund 11 KB je heruntergeladenem Release, also gut ein halbes Megabyte
+   * bei fuenfzig. Ein gemeinsames Praefix je Release wuerde davon nur 25,5
+   * Prozent sparen und dafuer ein zweites Format und eine Wanderung kosten;
+   * das lohnt bei diesem Verhaeltnis nicht.
    *
    * Bei einer auf eine Karte verengten Installation beschreibt der Vermerk nur
    * diese Karte. Ein spaeterer Lauf ueber das ganze Release ueberschreibt den
@@ -1077,8 +1083,18 @@ export class BeneosNativeBattlemapInstaller {
     //
     // null  = unbekannt, der Deinstallierer muss das Manifest holen
     // []    = bekannt, dieses Release hat keine eigenen Dateien auf der Platte
-    if (!(this._streamTargets?.size > 0)) return null
-    return [...new Set(this._zielpfade || [])]
+    //
+    // `_zielpfade` wird im allgemeinen Teil des Laufs gesetzt, aus
+    // `installAssets` und damit aus dem, was dieser Lauf wirklich geschrieben
+    // hat. Es ist also fuer beide Installationsarten gefuellt; nur die
+    // Bedingung davor hat es beim Herunterladen weggeworfen.
+    //
+    // Bleibt `_zielpfade` ungesetzt, ist der Lauf nicht bis dorthin gekommen.
+    // Dann ist die Liste ehrlich UNBEKANNT und nicht leer: eine leere Liste
+    // hiesse "dieses Release haelt keine Datei", und der Deinstallierer duerfte
+    // danach fremde Dateien stutzen.
+    if (!Array.isArray(this._zielpfade)) return null
+    return [...new Set(this._zielpfade)]
   }
 
   /**
