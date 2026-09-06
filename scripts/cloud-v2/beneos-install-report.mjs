@@ -46,8 +46,16 @@ function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]))
 }
 
-// Built-in English fallbacks so the report is meaningful even before i18n keys
-// are localised (WIP: en-only for now). Keyed by failure category.
+// Built-in English fallbacks, keyed by failure category.
+//
+// Since 2026-09-06 every one of these has a matching key in lang/en.json, so
+// the fallback is a safety net rather than the normal path. It stays because a
+// language file can be edited by a user, and a report that goes blank in the
+// one moment a customer needs it would be worse than one that speaks English.
+//
+// The other twelve language files do NOT carry these keys yet. That is a
+// deliberate order of work, not an oversight: the English wording is settled
+// first, and translating it is the last step.
 const HEADLINE_FALLBACK = {
   permission: "Your server blocked writing files to beneos_assets/cloud/battlemaps/.",
   toolarge:   "A proxy in front of your Foundry server rejected the files because they are too big (HTTP 413).",

@@ -6,8 +6,14 @@
  * outage until a complaint arrives, which is why this exists from the start
  * rather than being added after the first bad evening.
  *
- * Reports go to the beta gate, never to the live telemetry endpoint. Beta noise
- * has no business in the live figures.
+ * Reports go to the gate, never to the live telemetry endpoint. The two answer
+ * different questions: telemetry counts what customers do, this counts what the
+ * delivery failed to hand them, and mixing them would make both harder to read.
+ *
+ * The sentence used to say "the beta gate", from a time when a separate gate
+ * existed for the trial. It does not: `streamBase()` is the production gate
+ * that every customer streams from, and has been since streaming became the
+ * normal delivery on 2026-09-03.
  */
 
 import { streamBase, streamEnabled, istPruefstand } from "./stream-settings.mjs"

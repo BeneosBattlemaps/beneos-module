@@ -226,9 +226,14 @@ const read = (key, fallback) => {
   try { return game.settings.get(MODULE_ID, key) } catch (_) { return fallback }
 }
 
-/** Is the beta switched on AND usable? A mode without a key delivers nothing. */
+/** Is streaming switched on AND usable? A mode without a key delivers nothing. */
 export function streamEnabled() {
   return Boolean(read(SETTING.mode, false)) && Boolean(read(SETTING.key, ""))
+}
+
+/** Ist diese Welt als Pruefstand des Hauses gekennzeichnet? */
+export function istPruefstand() {
+  return Boolean(read(SETTING.bench, false))
 }
 
 /**
@@ -239,11 +244,6 @@ export function streamEnabled() {
  * bereits einen Schluessel, und eine Welt ohne kaeme nie dazu, sich einen zu
  * besorgen.
  */
-/** Ist diese Welt als Pruefstand des Hauses gekennzeichnet? */
-export function istPruefstand() {
-  return Boolean(read(SETTING.bench, false))
-}
-
 export function streamMode() {
   return Boolean(read(SETTING.mode, false))
 }

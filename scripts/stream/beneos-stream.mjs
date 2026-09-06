@@ -1,5 +1,5 @@
 /**
- * Entry point of the Beneos Stream beta.
+ * Entry point of Beneos Stream.
  *
  * Everything hangs in the `init` hook, and it has to. Settings are readable
  * there, and it is the last hook that is reliably ahead of the first texture.
@@ -10,10 +10,10 @@
  * Millisekunden. Die erste Szene ist fertig, bevor `ready` feuert. Wer den
  * Einbau nach `ready` verschiebt, verliert sie.
  *
- * This is the ONLY file of the beta referenced from module.json. With the main
+ * This is the ONLY streaming file referenced from module.json. With the main
  * switch off, `installStreamFetch` returns immediately, nothing is patched, and
- * the module runs exactly as it does on main. That is the whole point of the
- * branch: a tester can go back by pointing the manifest at main again.
+ * the module behaves as if streaming did not exist. That is what lets a single
+ * world be put back on the local route without swapping the module.
  */
 
 import { registerStreamSettings, streamEnabled, streamKey, streamBase, streamHost, pinStillsEnabled, installMode, downloadMode, streamMode, ensureStreamKey } from "./stream-settings.mjs"
@@ -43,8 +43,8 @@ Hooks.once("init", () => {
   // wird; es kostet nichts, solange niemand es oeffnet.
   registerOfflineWindow()
 
-  // Only patch when the switch is on. An off beta must cost nothing, not even
-  // a wrapped fetch.
+  // Only patch when the switch is on. A world with streaming turned off must
+  // pay nothing for it, not even a wrapped fetch.
   //
   // Am Modus, nicht an streamEnabled(). Gemessen am 22.08.2026 auf The Forge:
   // eine Welt, die ihren Schluessel erst im ready-Hook bekommt, hatte in genau
