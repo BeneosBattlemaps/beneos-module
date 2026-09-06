@@ -278,15 +278,66 @@ async function weltKennung() {
 }
 
 /**
+ * Nach einem Schluesselwechsel jede Adresse dieser Welt mitziehen.
+ *
+ * WARUM DAS NICHT WARTEN DARF
+ *
+ * Der Schluessel steht im Pfad jeder gestreamten Adresse, und die Adressen
+ * stehen in den Szenendokumenten auf der Platte. Wird er getauscht und bleiben
+ * die Dokumente stehen, antwortet das Tor auf jede alte Adresse mit dem
+ * durchsichtigen Bildpunkt: die Karten bleiben schwarz, die Vorschaubilder
+ * fehlen, und NICHTS sagt warum. Genau dieser Zustand ist am 2026-09-06 beim
+ * Fahren von TC-PRJ-STR-051 entstanden.
+ *
+ * Der Wechsel selbst wird ab jetzt vom Server allein ausgeloest, wenn eine
+ * zurueckgenommene Zeile neu belegt wird (Aufgabe 193). Der Nutzer erfaehrt
+ * davon sonst nichts, also muss der Nachzug im selben Atemzug laufen.
+ *
+ * ER KOSTET NICHTS AUSSER ZEIT. Zusagenliste, Zwischenspeicher und der Index
+ * der geteilten Dateien fuehren seit Aufgabe 164 die Kennung statt der Adresse;
+ * ein Wechsel kostet also keinen Offline-Vorrat. Gemessen an einer echten Welt:
+ * 487 Dokumente in 12,6 Sekunden.
+ *
+ * Der Einbau ist bewusst nachsichtig: schlaegt der Nachzug fehl, wird das
+ * gesagt und der Weltstart laeuft weiter. Ein halb umgeschriebener Bestand ist
+ * schlechter als ein ganz alter, aber ein abgebrochener Weltstart ist am
+ * schlechtesten.
+ */
+async function adressenNachziehen() {
+  try {
+    const { schluesselNachziehen } = await import("../beneos-asset-path-repair.js")
+    ui.notifications?.info(game.i18n.localize("BENEOS.Stream.KeyRotated.Running"))
+    const bericht = await schluesselNachziehen({})
+    if (bericht?.grund === "nichts nachzuziehen") {
+      console.log("Beneos Stream | Schluessel gewechselt, es stand keine alte Adresse in der Welt")
+      return
+    }
+    ui.notifications?.info(game.i18n.format("BENEOS.Stream.KeyRotated.Done", {
+      count: Number(bericht?.geaendert || 0),
+    }))
+  } catch (e) {
+    console.error("Beneos Stream | Adressen nach dem Schluesselwechsel nicht nachgezogen:", e)
+    ui.notifications?.error(game.i18n.localize("BENEOS.Stream.KeyRotated.Failed"))
+  }
+}
+
+/**
  * Holt den Streaming-Schluessel dieser Welt bei der Cloud und legt ihn ab.
  *
- * ER WIRD NIE UEBERSCHRIEBEN
+ * DAS MODUL WECHSELT IHN NIE VON SICH AUS
  *
  * Steht schon einer da, wird er als `vorhanden` mitgeschickt und behalten. Der
  * Schluessel steckt im Pfad jeder gestreamten Adresse und damit in jedem
  * Szenendokument auf der Platte; ein neuer machte jede installierte Szene
  * unsichtbar. Das Mitschicken dient nur dazu, dass die Cloud den bis dahin
  * handgetippten Schluessel in ihre Verwaltung uebernehmen kann.
+ *
+ * DIE CLOUD DARF IHN WECHSELN, und seit Aufgabe 193 tut sie das auch: war der
+ * bisherige Wert zurueckgenommen, bekommt die Welt einen frischen, denn ein
+ * zurueckgenommener Wert wird nie wieder ausgegeben. Kommt also ein anderer
+ * Wert zurueck als der mitgeschickte, werden die Adressen dieser Welt im selben
+ * Lauf nachgezogen (`adressenNachziehen`). Ohne diesen Nachzug waere der
+ * Wechsel genau das, wogegen der Absatz darueber schuetzen soll.
  *
  * WARUM NICHT HINTER streamEnabled()
  *
@@ -341,16 +392,22 @@ export async function ensureStreamKey() {
       return vorhanden
     }
 
+    // DIE BASIS ZUERST, DANN DER SCHLUESSEL. Beide bilden zusammen die Wurzel
+    // jeder Toradresse. Der Nachzug unten baut sein Ziel aus dem, was in den
+    // Einstellungen steht; stuende die Basis noch auf dem alten Wert, schriebe
+    // er die halbe Welt auf eine Wurzel, die es nicht mehr gibt.
+    if (daten.base) {
+      const sauber = String(daten.base).replace(/\/+$/, "")
+      if (sauber && sauber !== streamBase()) await game.settings.set(MODULE_ID, SETTING.base, sauber)
+    }
+
     if (daten.stream_key !== vorhanden) {
       // Nur schreiben, wenn sich wirklich etwas aendert. Eine Einstellung zu
       // setzen ist in Foundry ein Weltschreibvorgang und wird an alle Spieler
       // verteilt; das bei jedem Weltstart zu tun waere Laerm ohne Anlass.
       await game.settings.set(MODULE_ID, SETTING.key, String(daten.stream_key))
       console.log(`Beneos Stream | Schluessel ${vorhanden ? "ersetzt" : "erhalten"}, Spiegel: ${daten.spiegel || "ueber den Takt"}`)
-    }
-    if (daten.base) {
-      const sauber = String(daten.base).replace(/\/+$/, "")
-      if (sauber && sauber !== streamBase()) await game.settings.set(MODULE_ID, SETTING.base, sauber)
+      if (vorhanden) await adressenNachziehen()
     }
     return String(daten.stream_key)
   } catch (e) {
