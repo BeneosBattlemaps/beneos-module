@@ -156,6 +156,27 @@ export function buildStreamPack(manifest, release, variant) {
   let skipped = 0
   let pinned = 0
 
+  // Nicht nur die Summe, auch das groesste einzelne Stueck.
+  //
+  // Die Vorabsonde des Installers fragt einen Kunden-Proxy, ob er Koerper
+  // dieser Groesse annimmt. Bisher probte sie feste 2 MB, weil das Manifest
+  // angeblich keine Groessen fuehrt. Es fuehrt sie: `entry.bytes` steht seit
+  // Schema 4 an jedem Eintrag. Gemessen am 2026-09-06 ueber alle 286
+  // ausgelieferten Manifeste: 1.626 Eintraege mit der Rolle `local`, Mittelwert
+  // 50,5 KB, P99 302 KB, groesstes Stueck 1,978 MB. Nur VIER liegen ueber
+  // 1 MB, und es sind zwei Bilder in zwei Varianten desselben Release.
+  //
+  // Mit dieser Zahl fragt die Sonde die richtige Frage: nimmt der Server das
+  // an, was dieser Lauf wirklich schreibt. Ein Kunde hinter dem
+  // nginx-Standard von 1 MB wird damit nicht mehr abgewiesen, obwohl sein
+  // Server jede Datei des Laufs angenommen haette.
+  let localMaxBytes = 0
+  const zaehleLokal = (n) => {
+    const b = Number(n) || 0
+    localBytes += b
+    if (b > localMaxBytes) localMaxBytes = b
+  }
+
   for (const entry of manifest.entries) {
     const key = stripLeadSlash(entry.key)
 
@@ -187,7 +208,7 @@ export function buildStreamPack(manifest, release, variant) {
     // compared by reloading rather than by preparing and publishing again.
     if (!download && entry.pin && pinStillsEnabled()) {
       packInfo[`data/assets/${key}`] = assetUrl(release, variant, key)
-      localBytes += entry.bytes || 0
+      zaehleLokal(entry.bytes)
       pinned += 1
       continue
     }
@@ -201,7 +222,7 @@ export function buildStreamPack(manifest, release, variant) {
       packInfo[`data/assets/${key}`] = entry.role === "shared"
         ? (entry.url || assetUrl(release, variant, key))
         : assetUrl(release, variant, key)
-      localBytes += entry.bytes || 0
+      zaehleLokal(entry.bytes)
       continue
     }
 
@@ -232,7 +253,7 @@ export function buildStreamPack(manifest, release, variant) {
     // fuer Kreaturen, die er nur sieht.
     if (entry.role === "local") {
       packInfo[`data/assets/${key}`] = assetUrl(release, variant, key)
-      localBytes += entry.bytes || 0
+      zaehleLokal(entry.bytes)
       continue
     }
 
@@ -242,10 +263,10 @@ export function buildStreamPack(manifest, release, variant) {
     // genauso wie eine kuenftige Rolle, und beides gehoert gesagt.
     console.warn(`Beneos Stream | unbekannte Rolle "${entry.role}" fuer ${key}, wird heruntergeladen`)
     packInfo[`data/assets/${key}`] = assetUrl(release, variant, key)
-    localBytes += entry.bytes || 0
+    zaehleLokal(entry.bytes)
   }
 
-  return { packInfo, streamTargets, edgeBytes, localBytes, sharedBytes, skipped, pinned, download }
+  return { packInfo, streamTargets, edgeBytes, localBytes, localMaxBytes, sharedBytes, skipped, pinned, download }
 }
 
 /**

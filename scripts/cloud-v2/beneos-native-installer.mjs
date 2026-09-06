@@ -1428,6 +1428,10 @@ export class BeneosNativeBattlemapInstaller {
       const manifest = await stream.loadStreamManifest(release, variant)
       const built = stream.buildStreamPack(manifest, release, variant)
       this._streamTargets = built.streamTargets
+      // Das groesste Stueck, das dieser Lauf wirklich auf die Platte schreibt.
+      // Die Vorabsonde probt damit die Groesse, um die es geht, statt einer
+      // festen Zahl. Siehe #preflightSizeCheck.
+      this._localMaxBytes = built.localMaxBytes || 0
       // Fuer den Installationsvermerk aufheben. Hier ist die einzige Stelle im
       // ganzen Lauf, an der das Manifest vorliegt, und ohne es waere die
       // Kartenzuordnung spaeter nur noch ueber einen zweiten Abruf zu haben.
@@ -2269,14 +2273,33 @@ export class BeneosNativeBattlemapInstaller {
    * Cloudflare proxy or tunnel stops at 100 MB on Free/Pro) is caught per file
    * by #diagnoseFailedUpload, so it does not need to be bought here.
    *
-   * Two simplifications are taken on purpose, because the manifest carries no
-   * file sizes and asking for them would cost a round trip per asset:
-   *  - the probe is a fixed 2 MB rather than the largest asset of THIS run, so
-   *    a release whose files all stay under the proxy limit can still be
-   *    stopped here. No Beneos release is that small in practice.
-   *  - it is skipped when nothing large is planned, even though the verify pass
-   *    can still write single files in that case; those are then classified
-   *    individually by #diagnoseFailedUpload instead.
+   * DIE FESTEN 2 MB WAREN IM STREAM-MODUS EIN FEHLALARM.
+   *
+   * Die Begruendung fuer die feste Zahl lautete, das Manifest fuehre keine
+   * Groessen. Fuer den Stream-Modus stimmt das seit Schema 4 nicht mehr: jeder
+   * Eintrag traegt `bytes`, und `buildStreamPack` rechnet daraus das groesste
+   * Stueck aus, das dieser Lauf wirklich schreibt.
+   *
+   * Ohne diese Zahl fragte die Sonde nach 2 MB, obwohl der Lauf vielleicht
+   * nichts ueber 70 KB schreibt. Ein Kunde hinter dem nginx-Standard von 1 MB
+   * wurde damit abgewiesen, obwohl sein Server jede einzelne Datei des Laufs
+   * angenommen haette. Getroffen hat es ausgerechnet den Modus, der von grossen
+   * Uebertragungen befreien soll.
+   *
+   * Gemessen am 2026-09-06 ueber alle 286 ausgelieferten Manifeste, Rolle
+   * `local`: 1.626 Eintraege, Mittel 50,5 KB, P90 68,4 KB, P99 301,9 KB,
+   * groesstes 1,978 MB. Nur VIER liegen ueber 1 MB, und das sind zwei Bilder
+   * in zwei Varianten desselben Release (0114, generic_plant.webp und
+   * generic_undead_ghost.webp). Fuer den ganzen uebrigen Bestand probt die
+   * Sonde jetzt eine Groesse weit unter jeder ueblichen Grenze.
+   *
+   * Die feste Zahl bleibt als OBERGRENZE stehen. Im Download-Modus ist jede
+   * Datei lokal, das groesste Stueck im Bestand waegt 661 MB, und danach zu
+   * fragen waere eine Uebertragung statt einer Probe.
+   *
+   * Bleibt eine bewusste Vereinfachung: die Sonde entfaellt, wenn dieser Lauf
+   * nichts schreibt, obwohl der Nachlauf einzelne Dateien schreiben kann. Die
+   * werden dann einzeln von #diagnoseFailedUpload eingeordnet.
    */
   async #preflightSizeCheck(dir) {
     // The Forge writes into the customer's paid Assets Library and has no
@@ -2284,11 +2307,24 @@ export class BeneosNativeBattlemapInstaller {
     // them quota for an answer that cannot apply.
     if (this._isForge) return { ok: true }
     if (this._skipSource) return { ok: true }   // no bulk write planned this run
-    if (!(await this.#serverRefusesSize(dir, PREFLIGHT_SIZE_PROBE_BYTES))) return { ok: true }
+
+    // Kennt der Lauf sein groesstes Stueck, wird danach gefragt und nicht nach
+    // einer runden Zahl. Kennt er es nicht (ZIP, Cloud-Weg), bleibt es beim
+    // bisherigen Verhalten.
+    const bekannt = typeof this._localMaxBytes === "number"
+    const gemessen = bekannt ? this._localMaxBytes : 0
+    // Bekannt und null heisst: dieser Lauf schreibt keine einzige Datei. Dann
+    // gibt es nichts zu proben.
+    if (bekannt && gemessen === 0) return { ok: true }
+    const groesse = bekannt
+      ? Math.min(gemessen, PREFLIGHT_SIZE_PROBE_BYTES)
+      : PREFLIGHT_SIZE_PROBE_BYTES
+
+    if (!(await this.#serverRefusesSize(dir, groesse))) return { ok: true }
     return {
       ok: false,
       category: INSTALL_ERROR.TOOLARGE,
-      error: new TransferError(`server refuses uploads at ${Math.round(PREFLIGHT_SIZE_PROBE_BYTES / 1024)} KB`, INSTALL_ERROR.TOOLARGE, 413),
+      error: new TransferError(`server refuses uploads at ${Math.round(groesse / 1024)} KB`, INSTALL_ERROR.TOOLARGE, 413),
     }
   }
 
