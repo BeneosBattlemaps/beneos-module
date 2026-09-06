@@ -745,6 +745,72 @@ export class BeneosNativeBattlemapInstaller {
   }
 
   /**
+   * Region-Verhalten, deren Typ diese Welt nicht kennt, aus den Szenen nehmen.
+   *
+   * WARUM EIN EINZELNES VERHALTEN EINE GANZE KARTE KOSTET
+   *
+   * `createDocuments` wirft bei einem ungueltigen Dokument nicht. Es meldet in
+   * die Konsole, laesst das Dokument still fallen und legt nur den gueltigen
+   * Rest an. Ein Verhalten mit einem Typ, den das System des Kunden nicht
+   * anmeldet, reisst deshalb die ganze Szene mit, nicht nur die Region.
+   *
+   * Gemessen am 2026-09-06 auf beiden Buehnen, Foundry 13.351 und 14.367, mit
+   * demselben Ergebnis. Drei Faelle, sauber getrennt, und die Gegenprobe war
+   * rot: eine Szene ohne Region und eine mit angemeldetem Verhalten kamen beide
+   * durch (2 von 2). Eine Szene mit nicht angemeldetem Verhalten wurde OHNE
+   * diese Regel abgewiesen (0 von 1) und MIT ihr angelegt (1 von 1), danach
+   * eine Region ohne Verhalten. Beim Kunden aus Aufgabe 182 trugen vier von
+   * neunzehn Karten in Release 0114 ein `dnd5e.difficultTerrain`, und seine
+   * Welt faehrt daggerheart: genau diese vier kamen nie an.
+   *
+   * WAS WEGGENOMMEN WIRD, UND WAS NICHT
+   *
+   * Nur das Verhalten, nie die Region. Eine Region ohne Verhalten ist eine
+   * gueltige Flaeche; ihre Form, Hoehe und Sichtbarkeit bleiben erhalten, und
+   * ein Kunde, der das System spaeter wechselt, sieht die Flaeche weiter.
+   *
+   * Geprueft wird gegen `CONFIG.RegionBehavior.dataModels`, also gegen die
+   * Anmeldung der LAUFENDEN Welt, nicht gegen eine Liste im Modul. Damit deckt
+   * die Regel denselben Fall auch fuer Verhalten aus Fremdmodulen ab, die der
+   * Kunde nicht installiert hat, und sie braucht keine Pflege, wenn ein System
+   * einen neuen Typ nachlegt.
+   *
+   * Ist die Anmeldung nicht lesbar, wird NICHTS angefasst. Eine unbekannte
+   * Fassung darf nicht dazu fuehren, dass wir alle Verhalten wegwerfen.
+   */
+  #regionVerhaltenSaeubern(scenes) {
+    const bekannt = CONFIG?.RegionBehavior?.dataModels
+    if (!bekannt || typeof bekannt !== "object") return
+
+    let entfernt = 0
+    const arten = new Set()
+    for (const scene of (scenes || [])) {
+      for (const region of (Array.isArray(scene?.regions) ? scene.regions : [])) {
+        const verhalten = Array.isArray(region?.behaviors) ? region.behaviors : null
+        if (!verhalten?.length) continue
+        const behalten = verhalten.filter(b => {
+          const typ = String(b?.type || "")
+          if (typ && Object.prototype.hasOwnProperty.call(bekannt, typ)) return true
+          arten.add(typ || "(ohne Typ)")
+          return false
+        })
+        if (behalten.length === verhalten.length) continue
+        entfernt += verhalten.length - behalten.length
+        region.behaviors = behalten
+      }
+    }
+
+    if (!entfernt) return
+    // Der Zaehler ist eine Beigabe. Er darf eine Installation nicht kosten,
+    // falls er einmal vor `#newResult()` gerufen wird.
+    const t = this._result?.totals
+    if (t) t.regionBehaviorsDropped = (t.regionBehaviorsDropped || 0) + entfernt
+    console.warn(
+      `BeneosNativeInstaller | ${entfernt} region behaviour(s) removed, type not registered in this world: ${[...arten].join(", ")}`
+    )
+  }
+
+  /**
    * Regenerate scene thumbnails. Native packs strip the author-world `thumb`
    * path (it would 404 in the customer world), so imported scenes arrive with no
    * thumb.
@@ -2408,6 +2474,8 @@ export class BeneosNativeBattlemapInstaller {
         const apply = globalThis.BeneosStream?.applyStreamAddresses
         if (apply) for (let i = 0; i < arr.length; i++) arr[i] = apply(arr[i], this._streamTargets)
       }
+
+      if (relPath === "data/Scene.json") this.#regionVerhaltenSaeubern(arr)
 
       // WAS DAS PAKET AN DOKUMENTEN MITBRINGT, WIRD HIER FESTGEHALTEN.
       //
