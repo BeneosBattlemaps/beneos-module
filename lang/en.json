@@ -2461,6 +2461,7 @@
   "BENEOS.Cloud.Uninstall.ManifestFailed": "Could not read the release manifest. Nothing was changed.",
   "BENEOS.Cloud.Uninstall.ManifestFailedStream": "This release is streamed, so removing it needs a connection to Beneos. Nothing was changed. Please try again when you are online.",
   "BENEOS.Cloud.Uninstall.SharedUnknown": "Could not check every other installed release, so the downloaded files were left alone. The world documents were removed.",
+  "BENEOS.Cloud.Uninstall.SharedUnknownNamed": "Could not check these installed releases, so no downloaded files were removed: {releases}. The world documents were removed.",
   "BENEOS.Cloud.Uninstall.GmOnly": "Only a Gamemaster can remove a release from the world.",
   "BENEOS.Cloud.Uninstall.NoTarget": "Could not work out which release to remove.",
   "BENEOS.Cloud.Uninstall.Failed": "Removing the release failed. See the browser console.",

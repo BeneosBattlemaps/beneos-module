@@ -29,7 +29,7 @@
  * the pack JSONs are the very ids sitting in the world.
  */
 
-import { BeneosInstallState } from "./beneos-install-state.mjs"
+import { BeneosInstallState, releaseKern } from "./beneos-install-state.mjs"
 import { BeneosNativeBattlemapInstaller } from "./beneos-native-installer.mjs"
 import { releaseLoesen } from "../stream/stream-offline.mjs"
 
@@ -49,6 +49,13 @@ const localize = (k, d) => {
   return d
 }
 
+// Wie `localize`, nur mit Platzhaltern. Der Rueckfall setzt sie selbst ein,
+// damit eine fehlende Uebersetzung nicht `{releases}` im Klartext zeigt.
+const format = (k, daten, d) => {
+  try { const s = game.i18n.format(k, daten); if (s && s !== k) return s } catch (_) {}
+  return String(d).replace(/\{(\w+)\}/g, (_m, n) => String(daten?.[n] ?? ""))
+}
+
 export class BeneosNativeUninstaller {
   /**
    * @param {object}  opts
@@ -66,6 +73,12 @@ export class BeneosNativeUninstaller {
     // Gesetzt nur, wenn das Manifest ausblieb und der Installationsvermerk
     // einsprang. Null heisst: es gilt der gewoehnliche Weg ueber das Tor.
     this._docsAusVermerk = null
+    // Ein einziger nicht aufloesbarer fremder Vermerk setzt das Raeumen fuer den
+    // GANZEN Lauf aus. Das Feld hatte bisher keine Deklaration und existierte
+    // bis zum ersten Setzen als `undefined`; die Namensliste daneben ist neu,
+    // weil die Warnung bisher nicht sagte, WER blockiert.
+    this._othersUnresolved = false
+    this._unresolvedNames  = []
     this.result = {
       docsDeleted: 0, foldersDeleted: 0, tracksRemoved: 0, playlistsDeleted: 0,
       filesCleared: 0, bytesFreed: 0, filesSkippedShared: 0, errors: [],
@@ -310,7 +323,7 @@ export class BeneosNativeUninstaller {
           for (const t of gemerkt) claimed.add(t)
         } else {
           this.#fail("resolveOtherRelease", new Error(`no pack dir for ${entry.releaseDir} (${entry.variant || "single"})`))
-          this._othersUnresolved = true
+          this.#blockiert(entry)
         }
         continue
       }
@@ -340,23 +353,67 @@ export class BeneosNativeUninstaller {
           for (const t of gemerkt) claimed.add(t)
         } else {
           this.#fail("describeOtherPack", err)
-          this._othersUnresolved = true
+          this.#blockiert(entry)
         }
       }
     }
     return claimed
   }
 
-  /** Resolve a release registry key + variant to the on-disk pack dir. */
+  /**
+   * Ein fremder Vermerk, der nicht aufloest, setzt das Raeumen aus. Sein Name
+   * gehoert dazu.
+   *
+   * Bisher stand in der Warnung nur, dass "nicht alle geprueft werden konnten".
+   * Der Nutzer erfuhr nicht, WER blockiert, dass es immer dieselben sind und
+   * dass ein einziger Eintrag genuegt. Damit war die Ursache aus der Meldung
+   * heraus nicht zu finden, und die Funktion tat schweigend nichts.
+   */
+  #blockiert(entry) {
+    this._othersUnresolved = true
+    const name = entry?.displayName || entry?.releaseDir || "?"
+    const mit  = entry?.variant ? `${name} (${entry.variant})` : String(name)
+    if (!this._unresolvedNames.includes(mit)) this._unresolvedNames.push(mit)
+  }
+
+  /**
+   * Resolve a release registry key + variant to the on-disk pack dir.
+   *
+   * ZWEI SCHREIBWEISEN, EINE ZEILE. Der Vermerk traegt `releaseDir` mal kurz
+   * (`bm_0090`) und mal lang (`beneos_bm_0090_mourn_oak`), je nachdem, wann er
+   * entstand. Der Katalog fuehrt in `release_dir` ausschliesslich die Kurzform;
+   * die Langform steht dort in `variant_dirs`.
+   *
+   * Gemessen am 2026-09-06 in der V14-Pruefwelt gegen den Livekatalog:
+   * fuenf von zehn Vermerken loesten nicht auf, und es waren genau die fuenf
+   * mit Langform. Alle fuenf Kurzformen kennt der Katalog. Der harte
+   * Zeichenvergleich war die ganze Ursache.
+   *
+   * `releaseKern` beantwortet das schon, und `findByReleaseDir` faehrt dieselbe
+   * Regel seit dem 2026-08-30. Sie steht hier nur nach, nicht neu.
+   *
+   * DIE VARIANTE WIRD OHNE RUECKSICHT AUF GROSS UND KLEIN VERGLICHEN. Ein
+   * Vermerk trug `hd`, der Katalog fuehrt `HD`; der bisherige Zugriff ging ins
+   * Leere und fiel auf `4K` zurueck, also auf das FALSCHE Paket. Ein Rueckfall
+   * auf eine andere Variante ist nur dort richtig, wo gar keine gefordert war.
+   */
   async #packageIdFor(releaseDir, variant) {
     try {
       const mgr = window.BeneosScenePacker
       if (!mgr?.listReleases) return null
       const releases = await mgr.listReleases()
-      const row = releases.find(r => String(r.release_dir || r.filename) === String(releaseDir))
+      const name = String(releaseDir)
+      let row = releases.find(r => String(r.release_dir || r.filename) === name)
+      if (!row) {
+        const kern = releaseKern(name)
+        if (kern) row = releases.find(r => releaseKern(r.release_dir || r.filename) === kern)
+      }
       if (!row) return null
       const dirs = row.variant_dirs || {}
-      if (variant && dirs[variant]) return dirs[variant]
+      if (variant) {
+        const treffer = Object.keys(dirs).find(k => k.toLowerCase() === String(variant).toLowerCase())
+        if (treffer) return dirs[treffer]
+      }
       return dirs["4K"] || dirs["HD"] || Object.values(dirs)[0] || null
     } catch (_) {
       return null
@@ -501,8 +558,12 @@ export class BeneosNativeUninstaller {
    */
   async #clearAssetFiles(assets, claimedByOthers) {
     if (this._othersUnresolved) {
-      ui.notifications?.warn?.(localize("BENEOS.Cloud.Uninstall.SharedUnknown",
-        "Could not check every other installed release, so the downloaded files were left alone. World documents were removed."))
+      const wer = this._unresolvedNames.join(", ")
+      console.warn("BeneosNativeUninstaller | file clearing skipped for the whole run, "
+        + `${this._unresolvedNames.length} other install(s) did not resolve: ${wer}`)
+      ui.notifications?.warn?.(format("BENEOS.Cloud.Uninstall.SharedUnknownNamed",
+        { releases: wer },
+        "Could not check these installed releases, so no downloaded files were removed: {releases}. World documents were removed."))
       return
     }
     const targets = [...new Set(assets.map(a => a.target).filter(Boolean))]

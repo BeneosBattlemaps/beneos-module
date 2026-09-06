@@ -22,7 +22,13 @@ const SETTING_KEY = "battlemap-installs"
  *
  * Der Vermerk traegt zwei Schreibweisen desselben Release. Aeltere Eintraege
  * stehen kurz als `bm_0006`, neuere lang als
- * `beneos_bm_0111_giant_turtle_island`. Der Katalog kennt nur die Langform.
+ * `beneos_bm_0111_giant_turtle_island`.
+ *
+ * Der Katalog fuehrt in `release_dir` die KURZFORM; die Langform steht dort in
+ * `variant_dirs`. Hier stand bis zum 2026-09-06 das Gegenteil. Gemessen in der
+ * V14-Pruefwelt gegen den Livekatalog: von zehn Vermerken loesten genau die
+ * fuenf mit Langform nicht auf, und alle fuenf Kurzformen kannte der Katalog.
+ *
  * Gemessen am 2026-08-30 in der V14-Pruefwelt: sechs von sechzehn Vermerken
  * fanden sich im Offline-Reiter nicht wieder, obwohl ihre Szenen in der Welt
  * lagen. Fuer den Kunden sieht das aus, als sei ein Release verschwunden.
