@@ -30,6 +30,9 @@ const MAX_BATCH = 50;
 // PAYLOAD_MAX each stay under that, but only just, and going over makes fetch
 // throw and take the batch with it. Leave a margin and shrink rather than lose.
 const KEEPALIVE_MAX_BYTES = 60 * 1024;
+// Der Weg beim Verstecken des Reiters haengt an keinem Takt: er feuert bei
+// jedem Alt-Tab. Ohne Mindestabstand ist das ein Fremdaufruf je Reiterwechsel.
+const KEEPALIVE_MIN_GAP_MS = 60 * 1000;
 const MAX_BACKUP = 200;
 const MAX_QUEUE = 300;          // hard cap on the in-memory queue
 const MAX_FLUSH_FAILURES = 3;   // consecutive failures before the session circuit-breaks
@@ -315,7 +318,12 @@ export class BeneosAnalytics {
   /********************************************************************************** */
   // Flush up to MAX_BATCH events. On success they are removed from the queue;
   // on failure they stay queued for the next interval (no retry storm).
-  static async flush(useBeacon = false) {
+  //
+  // `final` trennt die beiden Abschlusshaken. Beim Weltschluss erreicht uns
+  // keine Antwort mehr, dort wird zuversichtlich geleert. Beim Verstecken des
+  // Reiters lebt die Seite weiter, dort wird die Antwort ausgewertet, sonst
+  // kostet eine abgelehnte Anfrage einen ganzen Stapel je Alt-Tab.
+  static async flush(useBeacon = false, final = false) {
     if (this._disabledForSession) return
     if (!this.queue.length) return
     // Frueher stand hier `getFoundryId()` und ein Abbruch, wenn sie fehlt.
@@ -326,50 +334,19 @@ export class BeneosAnalytics {
     const foundryId = this.getSendeKennung()
     if (!foundryId) return // cannot attribute yet, keep queued
 
+    // One writer at a time, and the guard has to sit in front of BOTH paths.
+    // The queue is read with slice and written back by count, so two writers
+    // would drop events that were never sent: the tab-hide path would take 50
+    // and the running interval flush would then take 50 more on its own "ok".
+    if (this._flushing) return
+
     const url = `${ANALYTICS_ENDPOINT}?ingest=1&foundryId=${encodeURIComponent(foundryId)}`
     const batch = this.queue.slice(0, MAX_BATCH)
-    const body = JSON.stringify({ events: batch })
 
-    // The unload path. It used to run through navigator.sendBeacon, which
-    // could never work against this endpoint: the Beacon spec pins the
-    // credentials mode to "include" and offers no way to turn it off, while
-    // beneos.cloud answers with Access-Control-Allow-Origin: * and no
-    // Access-Control-Allow-Credentials. Wildcard plus credentials is the one
-    // combination every browser refuses, so the preflight failed and the POST
-    // was never sent at all. sendBeacon still returned true, because true only
-    // means the request was queued, so the events were dropped from the queue
-    // on that word and _sichern() below then found nothing left to back up.
-    // Every unload batch since 14.3.0 was lost that way, session_player_count
-    // among them, which exists only in _onUnload and so never arrived once.
-    //
-    // fetch with keepalive keeps the promise sendBeacon makes, the request
-    // outlives the page, and unlike sendBeacon it takes credentials: "omit",
-    // which is what makes the wildcard acceptable. The queue is still cleared
-    // optimistically: during unload no answer can reach us any more, so the
-    // batch goes on send, not on confirmation.
-    if (useBeacon) {
-      let sendCount = batch.length
-      let sendBody = body
-      while (sendCount > 1 && new Blob([sendBody]).size > KEEPALIVE_MAX_BYTES) {
-        sendCount = Math.floor(sendCount / 2)
-        sendBody = JSON.stringify({ events: batch.slice(0, sendCount) })
-      }
-      try {
-        // Deliberately not awaited: the caller is a synchronous unload hook.
-        void fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: sendBody,
-          keepalive: true,
-          credentials: "omit"
-        })
-        this.queue.splice(0, sendCount)
-      } catch (_) { /* keep queued, _sichern() picks it up */ }
-      return
-    }
+    if (useBeacon) return this._flushKeepalive(url, batch, final)
 
-    if (this._flushing) return
     this._flushing = true
+    const body = JSON.stringify({ events: batch })
     let ok = false
     try {
       const resp = await fetch(url, {
@@ -398,12 +375,96 @@ export class BeneosAnalytics {
       return
     }
 
-    // Circuit-breaker: after MAX_FLUSH_FAILURES consecutive failures (unreachable
-    // endpoint, CORS block, firewall) stop flushing for the rest of the session so
-    // a dead endpoint can never flood the console or grow the queue. A reload
-    // starts fresh and retries; if the endpoint is healthy again, it resumes.
+    this._zaehleFehlschlag()
+  }
+
+  // Circuit-breaker: after MAX_FLUSH_FAILURES consecutive failures (unreachable
+  // endpoint, CORS block, firewall) stop flushing for the rest of the session so
+  // a dead endpoint can never flood the console or grow the queue. A reload
+  // starts fresh and retries; if the endpoint is healthy again, it resumes.
+  //
+  // Its own method because the keepalive path has to count too. While that path
+  // ran through sendBeacon it never reported a failure at all, so the breaker
+  // could not trip on it no matter how dead the endpoint was.
+  static _zaehleFehlschlag() {
     this._consecutiveFailures++
     if (this._consecutiveFailures >= MAX_FLUSH_FAILURES) this._disableForSession()
+  }
+
+  /**
+   * Fit a batch into the keepalive body limit. Pure: no queue, no network,
+   * no clock. Halves the batch until it fits, so an oversized batch shrinks
+   * instead of being lost, and returns what should actually go out.
+   *
+   * fetch rejects a keepalive body over 64 KB. MAX_BATCH events at
+   * PAYLOAD_MAX each stay under that, but only just.
+   */
+  static _fitKeepalive(batch, maxBytes = KEEPALIVE_MAX_BYTES) {
+    let sendCount = batch.length
+    let sendBody = JSON.stringify({ events: batch })
+    while (sendCount > 1 && new Blob([sendBody]).size > maxBytes) {
+      sendCount = Math.floor(sendCount / 2)
+      sendBody = JSON.stringify({ events: batch.slice(0, sendCount) })
+    }
+    return { sendCount, sendBody }
+  }
+
+  /**
+   * The path for the two closing hooks. It used to run through
+   * navigator.sendBeacon, which could never work against this endpoint: the
+   * Beacon spec pins the credentials mode to "include" and offers no way to
+   * turn it off, while beneos.cloud answers with Access-Control-Allow-Origin:
+   * * and no Access-Control-Allow-Credentials. Wildcard plus credentials is
+   * the one combination every browser refuses, so the preflight failed and
+   * the POST was never sent at all. sendBeacon still returned true, because
+   * true only means the request was queued, so the events were dropped from
+   * the queue on that word and _sichern() then found nothing left to back up.
+   * Every closing batch since 14.3.0 was lost that way, session_player_count
+   * among them, which exists only in _onUnload and so never arrived once.
+   *
+   * fetch with keepalive keeps the promise sendBeacon makes, the request
+   * outlives the page, and unlike sendBeacon it takes credentials: "omit",
+   * which is what makes the wildcard acceptable.
+   */
+  static _flushKeepalive(url, batch, final) {
+    // Tab-hide fires on every alt-tab and is bound to no interval. Without a
+    // minimum gap this is one call to a foreign system per tab switch.
+    const now = Date.now()
+    if (!final && this._lastKeepaliveAt && (now - this._lastKeepaliveAt) < KEEPALIVE_MIN_GAP_MS) return
+    this._lastKeepaliveAt = now
+
+    const { sendCount, sendBody } = this._fitKeepalive(batch)
+    // The catch belongs on the request itself. Without it a rejected call
+    // becomes an unhandledrejection whose stack points at beneos-module,
+    // _installErrorCapture() turns that into a beneos_error event, and the
+    // event goes into this very queue: the transport would feed itself.
+    const request = fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: sendBody,
+      keepalive: true,
+      credentials: "omit"
+    }).catch(() => null)
+
+    if (final) {
+      // The world is closing. No answer can reach us any more, so the batch
+      // goes on send rather than on confirmation. Whatever did not fit stays
+      // queued and _sichern() puts it in the backup.
+      this.queue.splice(0, sendCount)
+      return
+    }
+
+    // The tab is only hidden, the page lives on and can read the answer.
+    this._flushing = true
+    request.then(resp => {
+      this._flushing = false
+      if (resp?.ok) {
+        this._consecutiveFailures = 0
+        this.queue.splice(0, sendCount)
+        return
+      }
+      this._zaehleFehlschlag()
+    })
   }
 
   static _disableForSession() {
@@ -1400,7 +1461,8 @@ export class BeneosAnalytics {
    */
   static _onHide() {
     if (this._unloadDone) return
-    try { this.flush(true) } catch (_) {}
+    // Nicht final: die Seite lebt weiter, die Antwort wird ausgewertet.
+    try { this.flush(true, false) } catch (_) {}
     this._sichern()
   }
 
@@ -1445,7 +1507,8 @@ export class BeneosAnalytics {
         module_version: this.moduleVersion()
       })
     } catch (_) { /* swallow */ }
-    try { this.flush(true) } catch (_) {}
+    // Final: die Welt schliesst, eine Antwort erreicht uns nicht mehr.
+    try { this.flush(true, true) } catch (_) {}
     this._sichern()
   }
 
