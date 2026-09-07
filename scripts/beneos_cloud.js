@@ -2545,27 +2545,39 @@ export class BeneosCloud {
       await doc.deleteEmbeddedDocuments(type, ids)
       return []
     } catch (_batchFailed) {
-      // The collection is live, so anything a cascade already removed is
-      // gone from it too and drops out of the list here.
-      const collection = doc.getEmbeddedCollection(type)
-      const stillThere = ids.filter(id => collection.has(id))
+      // The collection is fetched here rather than carried down from an
+      // earlier line. For a plain Actor the reference stays live, but for the
+      // synthetic actor of an unlinked token it is not established that the
+      // same instance survives a delta update, and holding a discarded object
+      // would silently skip ids instead of deleting them. Fetching again
+      // costs nothing and removes the assumption.
+      const stillThere = ids.filter(id => doc.getEmbeddedCollection(type).has(id))
       if (!stillThere.length) return []
       try {
         await doc.deleteEmbeddedDocuments(type, stillThere)
         return []
       } catch (_retryFailed) {
-        // The cascade may still be in flight, so the second batch can fail
-        // for the same reason. One request per id is the only way left to
-        // keep a single id from deciding the fate of all the others.
-        const stubborn = []
-        for (const id of stillThere) {
-          if (!collection.has(id)) continue
-          try { await doc.deleteEmbeddedDocuments(type, [id]) }
-          catch (_singleFailed) { stubborn.push(id) }
-        }
-        return stubborn
+        return this._deleteEmbeddedOneByOne(doc, type, stillThere)
       }
     }
+  }
+
+  /**
+   * Stage three: one request per id.
+   *
+   * The cascade that removed the document may still be in flight, so the
+   * second batch can fail for the same reason as the first. Deleting one at a
+   * time is the only way left to keep a single id from deciding the fate of
+   * all the others. Returns the ids that would not go.
+   */
+  async _deleteEmbeddedOneByOne(doc, type, ids) {
+    const stubborn = []
+    for (const id of ids) {
+      if (!doc.getEmbeddedCollection(type).has(id)) continue
+      try { await doc.deleteEmbeddedDocuments(type, [id]) }
+      catch (_singleFailed) { stubborn.push(id) }
+    }
+    return stubborn
   }
 
   /**
@@ -2584,12 +2596,13 @@ export class BeneosCloud {
    */
   async _replaceEmbedded(doc, type, dataList) {
     const problems = []
-    const collection = doc.getEmbeddedCollection(type)
-    const oldIds = collection.map(d => d.id)
+    const oldIds = doc.getEmbeddedCollection(type).map(d => d.id)
     const stubborn = await this._deleteEmbeddedTolerant(doc, type, oldIds)
     if (stubborn.length) problems.push(`${type}: ${stubborn.length} of ${oldIds.length} could not be deleted`)
     if (!dataList?.length) return problems
-    const fresh = dataList.filter(data => !(data?._id && collection.has(data._id)))
+    // Fetched again after the delete, for the reason given above.
+    const stillTaken = doc.getEmbeddedCollection(type)
+    const fresh = dataList.filter(data => !(data?._id && stillTaken.has(data._id)))
     const skipped = dataList.length - fresh.length
     if (skipped) problems.push(`${type}: ${skipped} not created, the id is still taken`)
     if (!fresh.length) return problems
@@ -2599,6 +2612,84 @@ export class BeneosCloud {
       problems.push(`${type}: creating ${fresh.length} failed (${err?.message || err})`)
     }
     return problems
+  }
+
+  /**
+   * Bring one world actor in line with the compendium copy.
+   *
+   * The order is deliberate and the first step is a gate, not a report. If
+   * `actor.update()` fails, this returns: the next step deletes ALL items,
+   * and doing that on an actor that still carries the old name, image and
+   * system values would produce a different half-updated creature instead of
+   * preventing one.
+   *
+   * Everything after that gate reports instead of throwing, and the flag
+   * write has its own guard. One shared try/catch used to let a single stale
+   * embedded id skip it, so the actor kept its old scale and anchor values
+   * while everything else had already been replaced. That is the state the GM
+   * notices weeks later, without ever having seen the console warning.
+   */
+  async _refreshWorldActor(actor, { newData, newItemsData, newEffectsData, compendiumName }) {
+    const beneosFlag = actor.getFlag("world", "beneos") || {}
+    try {
+      // 1) Top-level properties (system, name, img, prototypeToken, ...)
+      await actor.update(newData)
+    } catch (err) {
+      console.warn("[Beneos Cloud] World actor update stopped before anything was replaced for", actor.name, err)
+      return
+    }
+    const problems = []
+    // 2) Items: full replace. Wipe any DM edits, restore the canonical set.
+    problems.push(...await this._replaceEmbedded(actor, "Item", newItemsData))
+    // 3) Active effects: full replace, same reasoning.
+    problems.push(...await this._replaceEmbedded(actor, "ActiveEffect", newEffectsData))
+    // 4) Re-stamp the beneos flag (newData.flags from the compendium
+    //    may have overwritten it during step 1).
+    // Stage 13a: rendering-Merge mit User-Override-Priorität. Der
+    // user-gesetzte rendering-Block (z.B. lokal im Foundry via
+    // Console oder Stage-13d-Creator-UI) hat Priorität über Cloud-
+    // Defaults. Cloud füllt nur null/missing-Felder. Per-Field-
+    // Merge, damit auch teilweise gesetzte Overrides respektiert
+    // werden (z.B. nur topDownScale gesetzt, tokenizedScale aus
+    // Cloud).
+    //
+    // Der Merge laeuft ueber ALLE Felder, nicht mehr ueber eine feste
+    // Liste. Die alte Whitelist kannte nur topDownScale,
+    // tokenizedScale, fx und fxEnabled. Jedes Cloud-Update loeschte
+    // damit still die Anchor-Werte, die variants-Map mit den
+    // Scale- und Anchor-Werten je Variante und die modusabhaengigen
+    // FX-Listen fxTokenized und fxTopdown. Genau die Felder also, aus
+    // denen Top-Down seine individuellen Werte und die Kreaturen ihre
+    // Effekte beziehen.
+    const existingRendering = beneosFlag.rendering || {}
+    const cloudRendering = newData?.flags?.world?.beneos?.rendering || {}
+    const mergedRendering = { ...cloudRendering }
+    for (const [key, value] of Object.entries(existingRendering)) {
+      // User-Override gewinnt, aber nur wenn er wirklich etwas aussagt:
+      // null, undefined und leere Listen duerfen den Cloud-Wert nicht
+      // verdraengen.
+      if (value === null || value === undefined) continue
+      if (Array.isArray(value) && value.length === 0) continue
+      mergedRendering[key] = value
+    }
+    if (mergedRendering.fxEnabled === undefined) mergedRendering.fxEnabled = true
+    // Stage 13a-Polish: backfill isBeneosCreature on every cloud-
+    // update. Pre-Polish-Tokens (no explicit marker yet) get the
+    // flag set silently the next time the cloud ships a refresh.
+    try {
+      await actor.setFlag("world", "beneos", {
+        ...beneosFlag,
+        originalName: compendiumName,
+        updateDate: Date.now(),
+        isBeneosCreature: true,
+        rendering: mergedRendering
+      })
+    } catch (err) {
+      problems.push(`the beneos flag was not written, rendering values are stale (${err?.message || err})`)
+    }
+    if (problems.length) {
+      console.warn("[Beneos Cloud] World actor update finished with problems for", actor.name, problems)
+    }
   }
 
   /**
@@ -2831,71 +2922,7 @@ export class BeneosCloud {
     const newItemsData   = imported.items.map(i => i.toObject())
     const newEffectsData = imported.effects.map(e => e.toObject())
     for (const actor of updatable) {
-      const beneosFlag = actor.getFlag("world", "beneos") || {}
-      // Each step reports instead of throwing. The flag write at the end
-      // carries the rendering values, and one shared try/catch used to let a
-      // single stale embedded id skip it: the actor kept its old scale and
-      // anchor values while everything else had already been replaced. That
-      // half-updated state is what the GM notices weeks later, without ever
-      // having seen the console warning that caused it.
-      const problems = []
-      try {
-        // 1) Top-level properties (system, name, img, prototypeToken, ...)
-        await actor.update(newData)
-      } catch (err) {
-        problems.push(`the top-level update failed (${err?.message || err})`)
-      }
-      // 2) Items: full replace. Wipe any DM edits, restore the canonical set.
-      problems.push(...await this._replaceEmbedded(actor, "Item", newItemsData))
-      // 3) Active effects: full replace, same reasoning.
-      problems.push(...await this._replaceEmbedded(actor, "ActiveEffect", newEffectsData))
-      // 4) Re-stamp the beneos flag (newData.flags from the compendium
-      //    may have overwritten it during step 1).
-      // Stage 13a: rendering-Merge mit User-Override-Priorität. Der
-      // user-gesetzte rendering-Block (z.B. lokal im Foundry via
-      // Console oder Stage-13d-Creator-UI) hat Priorität über Cloud-
-      // Defaults. Cloud füllt nur null/missing-Felder. Per-Field-
-      // Merge, damit auch teilweise gesetzte Overrides respektiert
-      // werden (z.B. nur topDownScale gesetzt, tokenizedScale aus
-      // Cloud).
-      //
-      // Der Merge laeuft ueber ALLE Felder, nicht mehr ueber eine feste
-      // Liste. Die alte Whitelist kannte nur topDownScale,
-      // tokenizedScale, fx und fxEnabled. Jedes Cloud-Update loeschte
-      // damit still die Anchor-Werte, die variants-Map mit den
-      // Scale- und Anchor-Werten je Variante und die modusabhaengigen
-      // FX-Listen fxTokenized und fxTopdown. Genau die Felder also, aus
-      // denen Top-Down seine individuellen Werte und die Kreaturen ihre
-      // Effekte beziehen.
-      const existingRendering = beneosFlag.rendering || {}
-      const cloudRendering = newData?.flags?.world?.beneos?.rendering || {}
-      const mergedRendering = { ...cloudRendering }
-      for (const [key, value] of Object.entries(existingRendering)) {
-        // User-Override gewinnt, aber nur wenn er wirklich etwas aussagt:
-        // null, undefined und leere Listen duerfen den Cloud-Wert nicht
-        // verdraengen.
-        if (value === null || value === undefined) continue
-        if (Array.isArray(value) && value.length === 0) continue
-        mergedRendering[key] = value
-      }
-      if (mergedRendering.fxEnabled === undefined) mergedRendering.fxEnabled = true
-      // Stage 13a-Polish: backfill isBeneosCreature on every cloud-
-      // update. Pre-Polish-Tokens (no explicit marker yet) get the
-      // flag set silently the next time the cloud ships a refresh.
-      try {
-        await actor.setFlag("world", "beneos", {
-          ...beneosFlag,
-          originalName: compendiumName,
-          updateDate: Date.now(),
-          isBeneosCreature: true,
-          rendering: mergedRendering
-        })
-      } catch (err) {
-        problems.push(`the beneos flag was not written, rendering values are stale (${err?.message || err})`)
-      }
-      if (problems.length) {
-        console.warn("[Beneos Cloud] World actor update finished with problems for", actor.name, problems)
-      }
+      await this._refreshWorldActor(actor, { newData, newItemsData, newEffectsData, compendiumName })
     }
 
     // Apply per-scene token updates. Two passes per scene:

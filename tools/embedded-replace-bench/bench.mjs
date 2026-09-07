@@ -18,37 +18,20 @@
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
+import { extractMethod, buildProbe } from "../lib/extract-method.mjs"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const SOURCE = join(HERE, "..", "..", "scripts", "beneos_cloud.js")
+const METHODS = ["_deleteEmbeddedTolerant", "_deleteEmbeddedOneByOne", "_replaceEmbedded"]
 
-/**
- * Schneidet die beiden Methoden aus der Quelldatei. Nach Klammern gezaehlt,
- * nicht nach Zeilennummern, damit der Prueffstand nicht bei der naechsten
- * Verschiebung im Modul stillschweigend das Falsche misst.
- */
-function extractMethods(text, names) {
-  const out = []
-  for (const name of names) {
-    const start = text.indexOf(`  async ${name}(`)
-    if (start < 0) throw new Error(`Methode ${name} nicht in beneos_cloud.js gefunden`)
-    let depth = 0
-    let i = text.indexOf("{", start)
-    const bodyStart = i
-    for (; i < text.length; i++) {
-      if (text[i] === "{") depth++
-      else if (text[i] === "}") {
-        depth--
-        if (depth === 0) break
-      }
-    }
-    if (depth !== 0) throw new Error(`Methode ${name} ist nicht geschlossen`)
-    out.push(text.slice(start, i + 1))
-    void bodyStart
-  }
-  return out
-}
-
+// NACHBAU, kein Schnitt aus der Geschichte. Vor d6b1ccd gab es diese Methoden
+// nicht, der Code stand inline in _propagateTokenUpdateToWorld; es gibt also
+// nichts zu schneiden. Das hier bildet nach, was dort stand: ein einziger
+// Stapelaufruf ohne Auffangen.
+//
+// Der Nachbau kann driften. Wer daran zweifelt, vergleicht ihn mit
+//   git show d6b1ccd~1:scripts/beneos_cloud.js
+// und sucht dort nach deleteEmbeddedDocuments.
 const ALT_IMPLEMENTATION = `
   async _deleteEmbeddedTolerant(doc, type, ids) {
     if (!ids?.length) return []
@@ -65,11 +48,11 @@ const ALT_IMPLEMENTATION = `
 `
 
 const useAlt = process.argv.includes("--alt")
-const body = useAlt
-  ? ALT_IMPLEMENTATION
-  : extractMethods(readFileSync(SOURCE, "utf8"), ["_deleteEmbeddedTolerant", "_replaceEmbedded"]).join("\n")
+const bodies = useAlt
+  ? [ALT_IMPLEMENTATION]
+  : METHODS.map(name => extractMethod(readFileSync(SOURCE, "utf8"), name, { maxZeilen: 60 }))
 
-const Probe = new Function(`return class Probe {\n${body}\n}`)()
+const Probe = buildProbe(bodies)
 
 class FakeCollection extends Map {
   map(fn) { return Array.from(this.values()).map(fn) }

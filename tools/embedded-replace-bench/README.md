@@ -9,7 +9,7 @@ node bench.mjs
 node bench.mjs --alt
 ```
 
-Der zweite Aufruf ist der wichtigere. Er fährt dieselben Proben gegen die Fassung **vor** dem Fix und muss mit genau der Meldung abbrechen, die der Kunde gemeldet hat:
+Der zweite Aufruf ist der wichtigere. Er fährt dieselben Proben gegen einen **Nachbau** der Fassung vor dem Fix und muss mit genau der Meldung abbrechen, die der Kunde gemeldet hat:
 
 ```
 Error: ActiveEffect "dnd5edeafened000" does not exist!
@@ -17,7 +17,9 @@ Error: ActiveEffect "dnd5edeafened000" does not exist!
 
 Ein grüner Test, der nicht rot werden kann, belegt nichts. Deshalb gehört der `--alt`-Lauf zu jeder Messung dazu.
 
-Kein Foundry nötig, keine Welt, keine Installation. Die Methoden werden zur Laufzeit aus `beneos_cloud.js` geschnitten, nach Klammern gezählt und nicht nach Zeilennummern. Verschiebt sich der Code im Modul, misst der Prüfstand weiter die richtige Stelle; verschwindet eine Methode, bricht er mit einer klaren Meldung ab statt stillschweigend das Falsche zu messen.
+**`--alt` ist ausdrücklich ein Nachbau, kein Schnitt aus der Geschichte.** Vor `d6b1ccd` gab es diese Methoden nicht, der Code stand inline in `_propagateTokenUpdateToWorld`; es gibt dort also nichts zu schneiden. Der Nachbau kann driften. Wer daran zweifelt, vergleicht ihn mit `git show d6b1ccd~1:scripts/beneos_cloud.js` und sucht dort nach `deleteEmbeddedDocuments`.
+
+Kein Foundry nötig, keine Welt, keine Installation. Die Methoden werden zur Laufzeit aus `beneos_cloud.js` geschnitten, über `tools/lib/extract-method.mjs`. Gezählt wird nach Klammern statt nach Zeilennummern, damit eine Verschiebung im Modul den Prüfstand nicht auf die falsche Stelle setzt. Weil die Zählung über den Rohtext läuft und eine künftige Klammer in einer Zeichenkette das Ende verschieben könnte, prüft der Schnitt danach zweierlei: dass der Ausschnitt mit der erwarteten Signatur beginnt, und dass seine Länge im genannten Rahmen liegt. Trifft eines nicht zu, bricht er ab, statt stillschweigend etwas anderes zu messen.
 
 ## Was gemessen wird
 
