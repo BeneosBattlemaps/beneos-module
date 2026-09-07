@@ -2516,6 +2516,92 @@ export class BeneosCloud {
   }
 
   /**
+   * Delete an embedded collection without letting one stale id kill the batch.
+   *
+   * Foundry's batch delete is all-or-nothing: ServerDatabaseBackend maps over
+   * the id list and throws on the first document that is already gone, so the
+   * other fifty are not deleted either. That matters here because dnd5e
+   * removes ActiveEffects on its own and does not await it. updateBloodied,
+   * updateEncumbrance and _onUpdateExhaustion all answer an Actor#update with
+   * an unawaited effect.delete(), and Item5e._onDelete plus
+   * ActiveEffect5e._onDelete cascade the same way. Our own update() and item
+   * wipe are exactly what sets those off, so between reading the id list and
+   * sending the delete an effect can vanish on the server while the client
+   * still lists it. What the GM then sees in the console is
+   *   ActiveEffect "dnd5edeafened000" does not exist!
+   * and the whole creature update stops there.
+   *
+   * Three stages, each cheaper than losing the update:
+   *   1. the batch, which is what succeeds in the normal case
+   *   2. one retry with the ids re-read against the live collection
+   *   3. one request per id, so a single stale id cannot take the rest down
+   *
+   * Never throws. Returns the ids that survived all three stages, so the
+   * caller can carry on and report once instead of once per document.
+   */
+  async _deleteEmbeddedTolerant(doc, type, ids) {
+    if (!ids?.length) return []
+    try {
+      await doc.deleteEmbeddedDocuments(type, ids)
+      return []
+    } catch (_batchFailed) {
+      // The collection is live, so anything a cascade already removed is
+      // gone from it too and drops out of the list here.
+      const collection = doc.getEmbeddedCollection(type)
+      const stillThere = ids.filter(id => collection.has(id))
+      if (!stillThere.length) return []
+      try {
+        await doc.deleteEmbeddedDocuments(type, stillThere)
+        return []
+      } catch (_retryFailed) {
+        // The cascade may still be in flight, so the second batch can fail
+        // for the same reason. One request per id is the only way left to
+        // keep a single id from deciding the fate of all the others.
+        const stubborn = []
+        for (const id of stillThere) {
+          if (!collection.has(id)) continue
+          try { await doc.deleteEmbeddedDocuments(type, [id]) }
+          catch (_singleFailed) { stubborn.push(id) }
+        }
+        return stubborn
+      }
+    }
+  }
+
+  /**
+   * Wipe an embedded collection and put the compendium set in its place.
+   *
+   * Actor#update does not replace embedded collections, so this is the only
+   * way a re-install brings back a deleted item or refreshes a changed one.
+   *
+   * keepId is what makes the ids match the compendium, and it is also what
+   * turns a leftover from a failed delete into a duplicate-id error that
+   * would drop the entire creation. Ids the collection still holds are
+   * therefore left out rather than allowed to fail the batch.
+   *
+   * Never throws. Returns a list of short problem strings, empty when all
+   * went well, so the caller can finish the actor either way.
+   */
+  async _replaceEmbedded(doc, type, dataList) {
+    const problems = []
+    const collection = doc.getEmbeddedCollection(type)
+    const oldIds = collection.map(d => d.id)
+    const stubborn = await this._deleteEmbeddedTolerant(doc, type, oldIds)
+    if (stubborn.length) problems.push(`${type}: ${stubborn.length} of ${oldIds.length} could not be deleted`)
+    if (!dataList?.length) return problems
+    const fresh = dataList.filter(data => !(data?._id && collection.has(data._id)))
+    const skipped = dataList.length - fresh.length
+    if (skipped) problems.push(`${type}: ${skipped} not created, the id is still taken`)
+    if (!fresh.length) return problems
+    try {
+      await doc.createEmbeddedDocuments(type, fresh, { keepId: true })
+    } catch (err) {
+      problems.push(`${type}: creating ${fresh.length} failed (${err?.message || err})`)
+    }
+    return problems
+  }
+
+  /**
    * Propagate a compendium creature update to existing world actors and
    * the scene tokens that point at them. Called from importTokenToCompendium
    * when a re-install detects pre-existing world actors carrying the same
@@ -2746,58 +2832,57 @@ export class BeneosCloud {
     const newEffectsData = imported.effects.map(e => e.toObject())
     for (const actor of updatable) {
       const beneosFlag = actor.getFlag("world", "beneos") || {}
+      // Each step reports instead of throwing. The flag write at the end
+      // carries the rendering values, and one shared try/catch used to let a
+      // single stale embedded id skip it: the actor kept its old scale and
+      // anchor values while everything else had already been replaced. That
+      // half-updated state is what the GM notices weeks later, without ever
+      // having seen the console warning that caused it.
+      const problems = []
       try {
         // 1) Top-level properties (system, name, img, prototypeToken, ...)
         await actor.update(newData)
-        // 2) Items: full replace. Wipe any DM edits, restore the canonical set.
-        const oldItemIds = actor.items.map(i => i.id)
-        if (oldItemIds.length) {
-          await actor.deleteEmbeddedDocuments("Item", oldItemIds)
-        }
-        if (newItemsData.length) {
-          await actor.createEmbeddedDocuments("Item", newItemsData, { keepId: true })
-        }
-        // 3) Active effects: full replace, same reasoning.
-        const oldEffectIds = actor.effects.map(e => e.id)
-        if (oldEffectIds.length) {
-          await actor.deleteEmbeddedDocuments("ActiveEffect", oldEffectIds)
-        }
-        if (newEffectsData.length) {
-          await actor.createEmbeddedDocuments("ActiveEffect", newEffectsData, { keepId: true })
-        }
-        // 4) Re-stamp the beneos flag (newData.flags from the compendium
-        //    may have overwritten it during step 1).
-        // Stage 13a: rendering-Merge mit User-Override-Priorität. Der
-        // user-gesetzte rendering-Block (z.B. lokal im Foundry via
-        // Console oder Stage-13d-Creator-UI) hat Priorität über Cloud-
-        // Defaults. Cloud füllt nur null/missing-Felder. Per-Field-
-        // Merge, damit auch teilweise gesetzte Overrides respektiert
-        // werden (z.B. nur topDownScale gesetzt, tokenizedScale aus
-        // Cloud).
-        //
-        // Der Merge laeuft ueber ALLE Felder, nicht mehr ueber eine feste
-        // Liste. Die alte Whitelist kannte nur topDownScale,
-        // tokenizedScale, fx und fxEnabled. Jedes Cloud-Update loeschte
-        // damit still die Anchor-Werte, die variants-Map mit den
-        // Scale- und Anchor-Werten je Variante und die modusabhaengigen
-        // FX-Listen fxTokenized und fxTopdown. Genau die Felder also, aus
-        // denen Top-Down seine individuellen Werte und die Kreaturen ihre
-        // Effekte beziehen.
-        const existingRendering = beneosFlag.rendering || {}
-        const cloudRendering = newData?.flags?.world?.beneos?.rendering || {}
-        const mergedRendering = { ...cloudRendering }
-        for (const [key, value] of Object.entries(existingRendering)) {
-          // User-Override gewinnt, aber nur wenn er wirklich etwas aussagt:
-          // null, undefined und leere Listen duerfen den Cloud-Wert nicht
-          // verdraengen.
-          if (value === null || value === undefined) continue
-          if (Array.isArray(value) && value.length === 0) continue
-          mergedRendering[key] = value
-        }
-        if (mergedRendering.fxEnabled === undefined) mergedRendering.fxEnabled = true
-        // Stage 13a-Polish: backfill isBeneosCreature on every cloud-
-        // update — Pre-Polish-Tokens (no explicit marker yet) get the
-        // flag set silently the next time the cloud ships a refresh.
+      } catch (err) {
+        problems.push(`the top-level update failed (${err?.message || err})`)
+      }
+      // 2) Items: full replace. Wipe any DM edits, restore the canonical set.
+      problems.push(...await this._replaceEmbedded(actor, "Item", newItemsData))
+      // 3) Active effects: full replace, same reasoning.
+      problems.push(...await this._replaceEmbedded(actor, "ActiveEffect", newEffectsData))
+      // 4) Re-stamp the beneos flag (newData.flags from the compendium
+      //    may have overwritten it during step 1).
+      // Stage 13a: rendering-Merge mit User-Override-Priorität. Der
+      // user-gesetzte rendering-Block (z.B. lokal im Foundry via
+      // Console oder Stage-13d-Creator-UI) hat Priorität über Cloud-
+      // Defaults. Cloud füllt nur null/missing-Felder. Per-Field-
+      // Merge, damit auch teilweise gesetzte Overrides respektiert
+      // werden (z.B. nur topDownScale gesetzt, tokenizedScale aus
+      // Cloud).
+      //
+      // Der Merge laeuft ueber ALLE Felder, nicht mehr ueber eine feste
+      // Liste. Die alte Whitelist kannte nur topDownScale,
+      // tokenizedScale, fx und fxEnabled. Jedes Cloud-Update loeschte
+      // damit still die Anchor-Werte, die variants-Map mit den
+      // Scale- und Anchor-Werten je Variante und die modusabhaengigen
+      // FX-Listen fxTokenized und fxTopdown. Genau die Felder also, aus
+      // denen Top-Down seine individuellen Werte und die Kreaturen ihre
+      // Effekte beziehen.
+      const existingRendering = beneosFlag.rendering || {}
+      const cloudRendering = newData?.flags?.world?.beneos?.rendering || {}
+      const mergedRendering = { ...cloudRendering }
+      for (const [key, value] of Object.entries(existingRendering)) {
+        // User-Override gewinnt, aber nur wenn er wirklich etwas aussagt:
+        // null, undefined und leere Listen duerfen den Cloud-Wert nicht
+        // verdraengen.
+        if (value === null || value === undefined) continue
+        if (Array.isArray(value) && value.length === 0) continue
+        mergedRendering[key] = value
+      }
+      if (mergedRendering.fxEnabled === undefined) mergedRendering.fxEnabled = true
+      // Stage 13a-Polish: backfill isBeneosCreature on every cloud-
+      // update. Pre-Polish-Tokens (no explicit marker yet) get the
+      // flag set silently the next time the cloud ships a refresh.
+      try {
         await actor.setFlag("world", "beneos", {
           ...beneosFlag,
           originalName: compendiumName,
@@ -2806,7 +2891,10 @@ export class BeneosCloud {
           rendering: mergedRendering
         })
       } catch (err) {
-        console.warn("[Beneos Cloud] World actor update failed for", actor.name, err)
+        problems.push(`the beneos flag was not written, rendering values are stale (${err?.message || err})`)
+      }
+      if (problems.length) {
+        console.warn("[Beneos Cloud] World actor update finished with problems for", actor.name, problems)
       }
     }
 
@@ -2831,23 +2919,13 @@ export class BeneosCloud {
         const token = scene.tokens.get(u._id)
         const tokenActor = token?.actor
         if (!tokenActor) continue
-        try {
-          const oldItemIds = tokenActor.items.map(i => i.id)
-          if (oldItemIds.length) {
-            await tokenActor.deleteEmbeddedDocuments("Item", oldItemIds)
-          }
-          if (newItemsData.length) {
-            await tokenActor.createEmbeddedDocuments("Item", newItemsData, { keepId: true })
-          }
-          const oldEffectIds = tokenActor.effects.map(e => e.id)
-          if (oldEffectIds.length) {
-            await tokenActor.deleteEmbeddedDocuments("ActiveEffect", oldEffectIds)
-          }
-          if (newEffectsData.length) {
-            await tokenActor.createEmbeddedDocuments("ActiveEffect", newEffectsData, { keepId: true })
-          }
-        } catch (err) {
-          console.warn("[Beneos Cloud] Scene-token actor refresh failed for", token?.name, err)
+        // Same replacement as on the world actor, and the same reason for
+        // not letting it throw: one token that trips over a stale id must
+        // not stop the tokens after it in this scene.
+        const tokenProblems = await this._replaceEmbedded(tokenActor, "Item", newItemsData)
+        tokenProblems.push(...await this._replaceEmbedded(tokenActor, "ActiveEffect", newEffectsData))
+        if (tokenProblems.length) {
+          console.warn("[Beneos Cloud] Scene-token actor refresh finished with problems for", token?.name, tokenProblems)
         }
       }
     }
