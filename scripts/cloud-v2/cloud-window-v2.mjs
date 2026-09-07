@@ -5326,7 +5326,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const bmapData = dbHolder?.getAll?.("bmap")?.[bmapKey]
     let props = bmapData?.properties || {}
     let releaseDir = String(props.release_dir || "").trim()
-    let nbVariants = Number(props.cloud_nb_variants ?? props.nb_variants ?? 0) || 0
     let displayName = bmapData?.name || bmapKey
 
     // Release-card path: bmapKey === release_dir, no catalog row.
@@ -5334,7 +5333,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const r = this.#releaseFor(bmapKey)
       if (r) {
         releaseDir = r.release_dir
-        nbVariants = Number(r.nb_variants || 0) || 0
         displayName = r.display_name || bmapKey
         installScope = "release"
       }
@@ -5352,7 +5350,30 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       return
     }
 
-    const isSingle = nbVariants === 1
+    // Der Release-Index wird hier geholt und nicht erst weiter unten, weil die
+    // Variantenwahl direkt darunter ihn braucht. Er traegt ausserdem das
+    // Titelbild fuer die Kopfzeile des Installationsfensters.
+    if (!this._releaseIndex && typeof this.#ensureReleasesLoaded === "function") {
+      try { await this.#ensureReleasesLoaded() } catch (_) {}
+    }
+    const releaseEntry = this.#releaseFor(releaseDir) || null
+    const vdirs = (releaseEntry && releaseEntry.variant_dirs) || props.variant_dirs || opts.variantDirs || null
+
+    // Die Variante kommt aus den WIRKLICH vorhandenen Verzeichnissen, nicht aus
+    // nb_variants. Das Feld stand hier bis zum 2026-09-07 und war auf diesem Weg
+    // nie brauchbar: der Battlemap-Katalog traegt weder cloud_nb_variants noch
+    // nb_variants, gemessen an 2.145 Katalogzeilen. nbVariants war also immer 0,
+    // isSingle immer false und variant immer "4K". Fuer ein echtes
+    // Einvarianten-Release ergab das den falschen Vermerksschluessel
+    // `${releaseDir}_4K` statt `${releaseDir}_`, und an dem Schluessel haengen
+    // die Aktualisierungserkennung und das Entfernen.
+    // Dieselbe Ableitung fuehrt variantInfo() in beneos-release-install-api.mjs.
+    // Ohne Verzeichnisliste bleibt es beim bisherigen Verhalten: nicht einzeln,
+    // also "4K", und der Lauf endet gleich darunter ohnehin mit NoPackDir.
+    const vmap      = (vdirs && typeof vdirs === "object") ? vdirs : {}
+    const has4K     = Boolean(vmap["4K"])
+    const hasHD     = Boolean(vmap["HD"])
+    const isSingle  = Boolean(vmap.SINGLE) || (!has4K && !hasHD && Object.keys(vmap).length > 0)
     let variant = ""
     if (!isSingle) {
       variant = "4K"
@@ -5363,15 +5384,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     }
     const variantLabel = isSingle ? "" : ` (${variant})`
 
-    // Resolve coverUrl from release index when available so the install
-    // window's hero shows the manually-curated pack cover. Task 6: the release
-    // cover is shown for scene installs too. If the release index isn't loaded
-    // yet (e.g. user jumped straight to Individual Maps), pull it now, and fall
-    // back to the scene's own catalog thumbnail so the hero always has an image.
-    if (!this._releaseIndex && typeof this.#ensureReleasesLoaded === "function") {
-      try { await this.#ensureReleasesLoaded() } catch (_) {}
-    }
-    const releaseEntry = this.#releaseFor(releaseDir) || null
+    // Titelbild aus dem Release-Index, damit die Kopfzeile das gepflegte
+    // Paketbild zeigt. Aufgabe 6: das gilt auch fuer Szeneninstallationen. Ohne
+    // Index faellt es auf das Vorschaubild der Szene zurueck, damit die
+    // Kopfzeile immer ein Bild hat.
     let coverUrl = releaseEntry
       ? (variant === "HD" ? (releaseEntry.cover_url_hd || releaseEntry.cover_url_4k)
                           : (releaseEntry.cover_url_4k || releaseEntry.cover_url_hd))
@@ -5403,7 +5419,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     //
     // Betreiberentscheidung vom selben Tag: entweder es geht, oder es geht
     // nicht. Ohne Katalogeintrag wird nicht installiert und ehrlich gemeldet.
-    const vdirs = (releaseEntry && releaseEntry.variant_dirs) || props.variant_dirs || opts.variantDirs || null
+    // `vdirs` steht schon weiter oben, weil die Variantenwahl es braucht.
     let packId = null
     if (vdirs && typeof vdirs === "object") {
       packId = isSingle
