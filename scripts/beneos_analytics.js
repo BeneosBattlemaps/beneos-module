@@ -2,8 +2,9 @@
 // Beneos Analytics - client-side telemetry collector.
 //
 // Pseudonymous, GM-only, opt-out (default on). Events are queued in memory,
-// flushed to https://beneos.cloud/api-analytics.php in batches every 5 minutes
-// (or when the queue grows past 50 events, or on tab-unload via sendBeacon).
+// flushed to https://beneos.cloud/api-analytics.php in batches every 15 minutes
+// (or when the queue grows past 50 events, or on tab-unload via a keepalive
+// request; the interval said 5 minutes here long after it had become 15).
 // A localStorage backup guards against hard world-closes. Every call path is
 // wrapped so a telemetry failure can never break the world.
 //
@@ -25,6 +26,10 @@ const FLUSH_INTERVAL_MS = 15 * 60 * 1000;
 const SESSION_SAMPLE_MS = 60 * 1000;
 const QUEUE_FLUSH_THRESHOLD = 50;
 const MAX_BATCH = 50;
+// fetch with keepalive caps the request body at 64 KB. MAX_BATCH events at
+// PAYLOAD_MAX each stay under that, but only just, and going over makes fetch
+// throw and take the batch with it. Leave a margin and shrink rather than lose.
+const KEEPALIVE_MAX_BYTES = 60 * 1024;
 const MAX_BACKUP = 200;
 const MAX_QUEUE = 300;          // hard cap on the in-memory queue
 const MAX_FLUSH_FAILURES = 3;   // consecutive failures before the session circuit-breaks
@@ -320,11 +325,41 @@ export class BeneosAnalytics {
     const batch = this.queue.slice(0, MAX_BATCH)
     const body = JSON.stringify({ events: batch })
 
-    if (useBeacon && navigator.sendBeacon) {
+    // The unload path. It used to run through navigator.sendBeacon, which
+    // could never work against this endpoint: the Beacon spec pins the
+    // credentials mode to "include" and offers no way to turn it off, while
+    // beneos.cloud answers with Access-Control-Allow-Origin: * and no
+    // Access-Control-Allow-Credentials. Wildcard plus credentials is the one
+    // combination every browser refuses, so the preflight failed and the POST
+    // was never sent at all. sendBeacon still returned true, because true only
+    // means the request was queued, so the events were dropped from the queue
+    // on that word and _sichern() below then found nothing left to back up.
+    // Every unload batch since 14.3.0 was lost that way, session_player_count
+    // among them, which exists only in _onUnload and so never arrived once.
+    //
+    // fetch with keepalive keeps the promise sendBeacon makes, the request
+    // outlives the page, and unlike sendBeacon it takes credentials: "omit",
+    // which is what makes the wildcard acceptable. The queue is still cleared
+    // optimistically: during unload no answer can reach us any more, so the
+    // batch goes on send, not on confirmation.
+    if (useBeacon) {
+      let sendCount = batch.length
+      let sendBody = body
+      while (sendCount > 1 && new Blob([sendBody]).size > KEEPALIVE_MAX_BYTES) {
+        sendCount = Math.floor(sendCount / 2)
+        sendBody = JSON.stringify({ events: batch.slice(0, sendCount) })
+      }
       try {
-        const ok = navigator.sendBeacon(url, new Blob([body], { type: "application/json" }))
-        if (ok) this.queue.splice(0, batch.length)
-      } catch (_) { /* keep queued */ }
+        // Deliberately not awaited: the caller is a synchronous unload hook.
+        void fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: sendBody,
+          keepalive: true,
+          credentials: "omit"
+        })
+        this.queue.splice(0, sendCount)
+      } catch (_) { /* keep queued, _sichern() picks it up */ }
       return
     }
 
@@ -336,7 +371,13 @@ export class BeneosAnalytics {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body,
-        keepalive: true
+        keepalive: true,
+        // Spelled out on purpose. This path worked only because the default
+        // happens to be "same-origin", which sends nothing cross-origin. The
+        // endpoint answers with a wildcard origin and no allow-credentials,
+        // so any credentialed request is refused before it is sent. Same
+        // reason as in cloud-v2/beneos-install-state.mjs.
+        credentials: "omit"
       })
       ok = !!resp?.ok
     } catch (_) {
