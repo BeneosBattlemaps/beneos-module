@@ -8,6 +8,8 @@ All notable changes to this module will be documented in this file.
 
 **Fixes**
 - Fixed: While the search catalog was unreachable, the Refresh and Settings buttons at the bottom of the Beneos window could not be clicked at all. The notice about the catalog took up so much room that both buttons ended up underneath the links next to them, so a click on Refresh opened Discord instead. The row now wraps when it runs out of space, and every button can be reached again.
+- Fixed: Updating a creature you already had in your world could stop halfway through. The console showed a line such as `ActiveEffect "dnd5edeafened000" does not exist!`, and the creature was left half updated: new items, but its old effects and, more importantly, its old display values for scale and anchor. One outdated effect id was enough to abandon the rest of that creature. The update now copes with ids that vanish while it runs, and the display values are written even when something else goes wrong.
+- Fixed: Closing a world, or switching to another browser tab, produced a CORS error in the console and quietly dropped the usage data collected since the last send. Nothing in your world was affected by this, and nothing you did caused it. The final batch is now sent properly, and whatever does not fit is kept for the next start instead of being thrown away.
 
 ### 14.4.8 # 2026-09-01
 
@@ -17,7 +19,7 @@ All notable changes to this module will be documented in this file.
 - Fixed: A world could lock itself out of its own creatures.
 - Fixed: On a self-hosted server behind a reverse proxy, an install could stop with "Some files could not be installed" and name no cause at all. The server was rejecting the upload because the file was too large for it (HTTP 413) and the module never got to see that answer. The report now names the cause and the setting to change, the install stops before the download instead of after it, and it no longer offers a retry that cannot succeed. 
 - Fixed: A creature in a scene's creature drawer could show an empty dark disc instead of its artwork when the local token art failed to load.
-- Fixed: When the drawer did fall back to another image, it used the embedded preview at 64 
+- Fixed: When the drawer did fall back to another image, it used the embedded preview at 64 pixels even though a 400-pixel thumbnail was sitting right next to it, so the picture looked mushy. The sharper source is used first now.
 
 **Improved**
 - Improved: When an install stops before it starts, the message now describes the cause it actually found.
