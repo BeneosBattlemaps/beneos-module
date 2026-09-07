@@ -17,9 +17,13 @@
  * @returns {string}           Der Ausschnitt, beginnend mit der Signatur
  */
 export function extractMethod(text, name, { minZeilen = 3, maxZeilen = 200 } = {}) {
-  const start = text.indexOf(`  async ${name}(`)
-  const startSync = start < 0 ? text.indexOf(`  static ${name}(`) : -1
-  const from = start >= 0 ? start : startSync
+  // Alle vier Schreibweisen, die im Bestand vorkommen. Fehlt eine, meldet der
+  // Schnitt "nicht gefunden" fuer eine Methode, die sehr wohl da ist.
+  let from = -1
+  for (const prefix of ["  static async ", "  async ", "  static ", "  "]) {
+    from = text.indexOf(`${prefix}${name}(`)
+    if (from >= 0) break
+  }
   if (from < 0) throw new Error(`Methode ${name} nicht in der Quelle gefunden`)
 
   // Erst das Ende der Parameterliste suchen, dann den Rumpf. Ein einfaches
@@ -57,7 +61,7 @@ export function extractMethod(text, name, { minZeilen = 3, maxZeilen = 200 } = {
   // das auf, aber eine kuenftige Klammer in einem Text wuerde das Ende still
   // verschieben. Zwei billige Zusicherungen fangen das ab, damit der
   // Pruefstand abbricht statt eine andere Stelle zu messen.
-  if (!new RegExp(`^\\s*(async|static)\\s+${name}\\s*\\(`).test(cut)) {
+  if (!new RegExp(`^\\s*(static\\s+)?(async\\s+)?${name}\\s*\\(`).test(cut)) {
     throw new Error(`Der Schnitt von ${name} beginnt nicht mit seiner Signatur`)
   }
   const zeilen = cut.split("\n").length
