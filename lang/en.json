@@ -2555,5 +2555,12 @@
   "BENEOS.Cloud.Bmap.QuotaTooltip": "Your offline storage. Keep releases offline to play without an internet connection.",
   "BENEOS.Stream.Offline.KeepRelease": "Keep release offline",
   "BENEOS.Stream.Offline.ReleaseTitle": "Keep this release offline?",
-  "BENEOS.Stream.Offline.ReleaseEmpty": "This release has no streamed scenes in this world."
+  "BENEOS.Stream.Offline.ReleaseEmpty": "This release has no streamed scenes in this world.",
+  "BENEOS.CanvasGuard.Title": "Beneos: Foundry could not draw the canvas",
+  "BENEOS.CanvasGuard.Headline": "Foundry could not draw the canvas.",
+  "BENEOS.CanvasGuard.NotAssets": "Your Beneos maps are not the trigger: Foundry abandons the draw <i>before</i> it loads a single image, so no map, in any resolution, can cause this.",
+  "BENEOS.CanvasGuard.Packages": "Some code in the stack belongs to: {packages}. That is a pointer, not a verdict, and it is not always complete.",
+  "BENEOS.CanvasGuard.Session": "Foundry then repeats this failure for the rest of the session, including after a scene change. That is why every map looks broken and not just one. <b>Reloading the page (F5) gives you a working canvas again.</b>",
+  "BENEOS.CanvasGuard.Find": "To find the cause: disable every module except Beneos and its dependencies, reload, and open a map. If it draws, re-enable half of the rest and repeat.",
+  "BENEOS.CanvasGuard.Close": "Close"
 }
