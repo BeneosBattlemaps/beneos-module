@@ -58,6 +58,10 @@ const PREFLIGHT_SIZE_PROBE_BYTES = 2 * 1024 * 1024
 // The answer is a server setting, so it does not change between assets; a
 // second ask only repeats what the first already returned.
 const MAX_SIZE_PROBES = 2
+// Ceiling on waiting for The Forge's own API. It answers in well under a
+// second in practice; this only exists so a stalled answer cannot hold a
+// transfer lane open for the rest of the run.
+const FORGE_STATUS_TIMEOUT_MS = 10000
 // Content types a CDN compresses in transit. For these, Content-Length carries
 // the ENCODED size while the body reader yields DECODED bytes, so the two must
 // never be compared. Content-Encoding would state this outright, but it is not
@@ -114,7 +118,11 @@ export function classifyTransferError(err, status = null) {
   // a temporary server fault and retried forever against a limit that never
   // moves. The wordings are the ones nginx, Apache, Caddy and Cloudflare
   // actually emit, including nginx's "client intended to send too large body".
-  if (/entity too large|content too large|payload too large|too large body|request body too large|body exceeded/.test(msg)) return INSTALL_ERROR.TOOLARGE
+  // "above acceptable limits" is The Forge's own wording, measured against
+  // their assets/create endpoint on 2026-09-09. Their FilePicker swallows the
+  // text before we see it, so this only fires where an error text does reach
+  // us; it costs one alternative and removes a whole class of blind spot.
+  if (/entity too large|content too large|payload too large|too large body|request body too large|body exceeded|above acceptable limits/.test(msg)) return INSTALL_ERROR.TOOLARGE
   if (status === 413) return INSTALL_ERROR.TOOLARGE
   if (status === 404) return INSTALL_ERROR.NOTFOUND
   if (status === 401 || status === 403) return INSTALL_ERROR.SIGNATURE
@@ -176,6 +184,42 @@ const PREFLIGHT_MESSAGE_FALLBACK = {
  */
 function errorBodyExcerpt(text) {
   return String(text || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160)
+}
+
+/**
+ * A pathless answer from FilePicker.upload, told apart by its shape. Foundry
+ * has three distinct exits and they mean three different things, but all three
+ * used to arrive here as the single sentence "upload returned no path".
+ *
+ *   false      the host answered with {error}. Foundry showed that text as a
+ *              red notification and then discarded it, so the cause is on the
+ *              customer's screen and never in our hands. The Forge's own
+ *              FilePicker takes this exit for EVERY failure (measured
+ *              2026-09-09 against forgevtt-module.js), and it ignores
+ *              options.notify while doing so.
+ *   undefined  HTTP 200, valid JSON, no path and no error.
+ *   {}         response.json() threw, so a proxy answered with an HTML page.
+ *
+ * The wording for `undefined` is deliberately unchanged: it is the sentence
+ * customers have been quoting to us in reports.
+ */
+/**
+ * Why this says bytes and not MB: the two numbers can be one byte apart, and
+ * that is not a corner case here, it is THE case. Rounded to MB, a file of
+ * `limit + 1` produces "250 MB is over the 250 MB limit", which reads as a bug
+ * in our code rather than a limit in the plan. The MB figure stays as an aside
+ * for readability, taken from the limit alone, where rounding cannot lie.
+ *
+ * Pure on purpose: the bench measures the wording, not just the category.
+ */
+export function forgeSizeRefusalMessage(bytes, limit) {
+  return `upload refused: ${bytes} bytes is over this Forge plan's per-file limit of ${limit} bytes (about ${Math.round(limit / (1024 * 1024))} MB)`
+}
+
+export function uploadFailureMessage(result) {
+  if (result === false) return "upload refused by host (the reason is in Foundry's notifications and console)"
+  if (result === undefined || result === null) return "upload returned no path"
+  return "upload response could not be read"
 }
 
 // Beneos cloud-install namespace. Battlemap packs are authored against
@@ -314,6 +358,7 @@ export class BeneosNativeBattlemapInstaller {
     this._refreshInFlight = null  // shared in-flight signed-URL refresh (dedupe concurrent 403s)
     this._toolargeMinBytes = Infinity // smallest upload this server refused for its size; Infinity until measured
     this._sizeProbesLeft = MAX_SIZE_PROBES // budget for asking the server about its request-size ceiling
+    this._forgeLimitPromise = null // shared in-flight read of The Forge's per-file ceiling (one per run, lazily)
     this._sceneScope  = null      // { assetRelPaths:Set, sceneIds:Set } when scene-scoped
   }
 
@@ -783,6 +828,9 @@ export class BeneosNativeBattlemapInstaller {
       preflight:     null,
       fatalCategory: null,
       fatalError:    null,
+      // The Forge's per-file ceiling in bytes, so the report can quote the
+      // customer's OWN number instead of a plan table that may have moved.
+      forgeUploadLimit: null,
     }
   }
 
@@ -1412,7 +1460,55 @@ export class BeneosNativeBattlemapInstaller {
       return { ok: false, category: classifyTransferError(err, err?.status ?? null), error: err }
     }
     if (result?.path) return { ok: true, path: result.path }
-    return this.#diagnoseFailedUpload(dir, file)
+    return this.#diagnoseFailedUpload(dir, file, uploadFailureMessage(result))
+  }
+
+  /**
+   * The Forge's per-file upload ceiling, in bytes, straight from their own API.
+   *
+   * Measured on beneos.forge-vtt.com, Foundry 14.365, on 2026-09-09. Their
+   * FilePicker sends `assets/create` with {path, size, etag} BEFORE the bytes,
+   * so the refusal is a size check on metadata and costs no transfer. Declaring
+   * `quotas.upload + 1` answers "File size is above acceptable limits.";
+   * declaring exactly `quotas.upload` passes. The ceiling is therefore
+   * inclusive, and `>` is the correct comparison below.
+   *
+   * Only `quotas.upload` is read. `quotas.data` is the WORLD data quota, not the
+   * Assets Library, so a full asset library is not visible here and must keep
+   * ending up as UNKNOWN rather than being guessed at.
+   *
+   * Never throws and never guesses: no answer means no limit, and the caller
+   * falls back to the behaviour that existed before.
+   *
+   * Call rate against the foreign system: **at most one per install run, and
+   * only once an upload has actually failed.** The shared promise gives every
+   * lane of the transfer pool the same answer, and a run that installs cleanly
+   * asks nothing at all. Reading it eagerly at the start of the run would put
+   * a foreign call with no time limit between opening the progress window and
+   * the first status message, for an answer most runs never need.
+   */
+  async #forgeUploadLimit() {
+    if (this._forgeLimitPromise) return this._forgeLimitPromise
+    this._forgeLimitPromise = (async () => {
+      try {
+        // A hung answer must not hold a transfer lane forever. ForgeAPI.call
+        // takes no abort signal, so the race is the only lever available; the
+        // call itself keeps running and is simply no longer waited on.
+        const status = await Promise.race([
+          ForgeAPI.status(),
+          new Promise(resolve => setTimeout(() => resolve(null), FORGE_STATUS_TIMEOUT_MS)),
+        ])
+        const limit = Number(status?.quotas?.upload)
+        if (!Number.isFinite(limit) || limit <= 0) return null
+        console.info(`BeneosNativeInstaller | The Forge allows ${Math.round(limit / (1024 * 1024))} MB per file on this account`)
+        if (this._result) this._result.forgeUploadLimit = limit
+        return limit
+      } catch (err) {
+        console.debug("BeneosNativeInstaller | could not read the Forge upload limit", err)
+        return null
+      }
+    })()
+    return this._forgeLimitPromise
   }
 
   /**
@@ -1434,17 +1530,37 @@ export class BeneosNativeBattlemapInstaller {
    * wrong. The answer is never turned into a success either; it only names the
    * cause of a failure that already happened.
    *
-   * On The Forge there is nothing to ask: uploads go to the Assets Library,
-   * not to POST /upload.
+   * On The Forge there is no POST /upload to ask, so the probe stays off there.
+   * The size question is still answerable: their ceiling is readable up front
+   * (see #readForgeUploadLimit) and costs neither transfer nor quota. Before
+   * that was used, every Forge refusal was filed as UNKNOWN and the report told
+   * the customer to retry, which a size ceiling can never satisfy. Measured in
+   * the lake on 2026-09-09: 296 failed files across 54 runs in 24 Forge worlds,
+   * all UNKNOWN, not one TOOLARGE, and 35 of those runs failed on a single file
+   * while 11 to 204 others went through in the same run.
    */
-  async #diagnoseFailedUpload(dir, file) {
-    const unknown  = () => ({ ok: false, category: INSTALL_ERROR.UNKNOWN, error: new Error("upload returned no path") })
+  async #diagnoseFailedUpload(dir, file, failureMessage = "upload returned no path") {
+    const unknown  = () => ({ ok: false, category: INSTALL_ERROR.UNKNOWN, error: new Error(failureMessage) })
     const toolarge = (bytes) => ({
       ok: false,
       category: INSTALL_ERROR.TOOLARGE,
       error: new TransferError(`upload refused: ${Math.round(bytes / 1024)} KB is over this server's request size limit`, INSTALL_ERROR.TOOLARGE, 413),
     })
-    if (this._isForge) return unknown()
+    // The Forge names no HTTP status (their FilePicker returns a bare `false`),
+    // so this one carries none rather than borrowing the proxy's 413.
+    const forgeTooLarge = (bytes, limit) => ({
+      ok: false,
+      category: INSTALL_ERROR.TOOLARGE,
+      error: new TransferError(forgeSizeRefusalMessage(bytes, limit), INSTALL_ERROR.TOOLARGE, null),
+    })
+    if (this._isForge) {
+      const forgeSize = Number(file?.size)
+      const limit = await this.#forgeUploadLimit()
+      if (limit && Number.isFinite(forgeSize) && forgeSize > limit) return forgeTooLarge(forgeSize, limit)
+      // Under the ceiling, or no ceiling readable. A full Assets Library looks
+      // exactly like this and must not be renamed into a size problem.
+      return unknown()
+    }
     const size = Number(file?.size)
     if (!Number.isFinite(size)) return unknown()
     // A request-size ceiling belongs to the server, not to the file, so it is
@@ -1644,7 +1760,11 @@ export class BeneosNativeBattlemapInstaller {
   async #preflightSizeCheck(dir) {
     // The Forge writes into the customer's paid Assets Library and has no
     // reverse proxy of theirs in the path, so the probe could only ever cost
-    // them quota for an answer that cannot apply.
+    // them quota for an answer that cannot apply. Their ceiling is not
+    // unmeasurable, only unprobeable: it is read directly in
+    // #readForgeUploadLimit and applied per file. It cannot be applied here,
+    // because the manifest carries no file sizes and a pre-flight would have
+    // nothing to compare against.
     if (this._isForge) return { ok: true }
     if (this._skipSource) return { ok: true }   // no bulk write planned this run
     if (!(await this.#serverRefusesSize(dir, PREFLIGHT_SIZE_PROBE_BYTES))) return { ok: true }
