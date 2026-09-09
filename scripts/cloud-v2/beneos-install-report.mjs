@@ -67,6 +67,14 @@ const HEADLINE_FALLBACK = {
   notfound:   "Some files could not be found on Beneos Cloud.",
   verify:     "Some files were uploaded successfully, but your server does not hand them back.",
   unknown:    "Some files could not be installed.",
+  // The Forge has no reverse proxy of the customer's in the path, so the
+  // self-hosted wording below would send them to settings they do not have.
+  // The number is theirs, read from their own account at install time.
+  toolarge_forge: "The Forge refused these files: they are larger than the {limit} MB per-file limit of your Forge plan.",
+  // Same cause, but the limit could not be read this time. Falling back to the
+  // self-hosted wording would send a Forge customer to nginx settings they do
+  // not have, while the Retry button is already gone.
+  toolarge_forge_nolimit: "The Forge refused these files because they are larger than your Forge plan allows for a single file.",
 }
 const GUIDANCE_FALLBACK = {
   permission: "Check that Foundry is allowed to write files (on The Forge: Assets settings; self-host: folder permissions / read-only mounts). Then click Retry.",
@@ -79,6 +87,8 @@ const GUIDANCE_FALLBACK = {
   notfound:   "Please send us the copied report on Discord so we can fix the catalog entry.",
   verify:     "This is almost always another module rewriting uploads (an image optimizer such as Media Optimizer converts every .svg into a .webp), or a host that refuses to serve .svg as an image. Disable image optimizer modules, click Retry, then enable them again. If none are active, send us the copied report on Discord.",
   unknown:    "Click Retry. If it persists, send us the copied report on Discord.",
+  toolarge_forge: "This is a limit of your Forge subscription, not of Foundry and not of Beneos. Your current limit is {limit} MB per file, and you can see it in your Forge account under quotas. Retrying cannot help until it is raised. Two ways forward: raise your Forge plan, or install this release in its HD version instead. HD files are much smaller, and no HD file in the whole Beneos catalogue comes close to the Forge limit. Everything already installed is kept, so a second install only fetches what is missing.",
+  toolarge_forge_nolimit: "This is a limit of your Forge subscription, not of Foundry and not of Beneos. You can see your own per-file limit in your Forge account under quotas. Retrying cannot help until it is raised. Two ways forward: raise your Forge plan, or install this release in its HD version instead. HD files are much smaller, and no HD file in the whole Beneos catalogue comes close to the Forge limit. Everything already installed is kept, so a second install only fetches what is missing.",
 }
 
 export class BeneosInstallReport {
@@ -170,10 +180,32 @@ export class BeneosInstallReport {
     return cats[0]
   }
 
+  /**
+   * Which wording to show. Normally the category, but a size refusal on The
+   * Forge and a size refusal behind someone's own nginx have nothing in common
+   * except the category: one is a subscription limit, the other a config line.
+   * The named variant is only taken when the limit was actually read, so the
+   * text never has to say "unknown MB". Without it there is still a Forge
+   * wording, because falling back to the reverse-proxy advice would be worse
+   * than saying less: a Forge customer has no nginx to change, and the Retry
+   * button is already hidden by then. That path is reachable without the API
+   * ever answering, since classifyTransferError also recognises The Forge's
+   * own wording in an error text.
+   */
+  static #adviceKey(result, dominant) {
+    if (dominant !== "toolarge" || result?.env?.forge !== "yes") return dominant
+    const limit = Number(result?.forgeUploadLimit)
+    return (Number.isFinite(limit) && limit > 0) ? "toolarge_forge" : "toolarge_forge_nolimit"
+  }
+
   static #buildContent(result, assetFailures, docFailures, dominant) {
     const t = result.totals || {}
-    const headline = _l(`BENEOS.Cloud.Install.Report.Headline.${dominant}`, HEADLINE_FALLBACK[dominant] || HEADLINE_FALLBACK.unknown)
-    const guidance = _l(`BENEOS.Cloud.Install.Report.Guidance.${dominant}`, GUIDANCE_FALLBACK[dominant] || GUIDANCE_FALLBACK.unknown)
+    const advice = this.#adviceKey(result, dominant)
+    // Only toolarge_forge carries {limit}; every other fallback has no
+    // placeholder and comes back unchanged.
+    const limitMb = Math.round(Number(result.forgeUploadLimit || 0) / (1024 * 1024))
+    const headline = _f(`BENEOS.Cloud.Install.Report.Headline.${advice}`, { limit: limitMb }, HEADLINE_FALLBACK[advice] || HEADLINE_FALLBACK.unknown)
+    const guidance = _f(`BENEOS.Cloud.Install.Report.Guidance.${advice}`, { limit: limitMb }, GUIDANCE_FALLBACK[advice] || GUIDANCE_FALLBACK.unknown)
 
     const preflightBlock = (result.preflight && result.preflight.ok === false)
       ? `<p class="beneos-rd-forge-hint" style="background:rgba(245,201,146,0.12);border-left:3px solid #f5c992;padding:8px;border-radius:2px;">
@@ -259,6 +291,9 @@ export class BeneosInstallReport {
       `  Beneos module: ${env.module}`,
       `  The Forge: ${env.forge}`,
       `  World: ${env.world}`,
+      // Carried in the pasted report so a support answer never has to ask the
+      // customer which Forge plan they are on.
+      ...(result.forgeUploadLimit ? [`  Forge upload limit: ${Math.round(result.forgeUploadLimit / (1024 * 1024))} MB per file`] : []),
       `Dominant issue: ${dominant}`,
       `Totals: assets ${t.assets ?? 0} (ok ${t.ok ?? 0}, repaired ${t.repaired ?? 0}, failed ${assetFailures.length}), documents failed ${docFailures.length}`,
     ]
