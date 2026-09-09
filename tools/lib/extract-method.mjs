@@ -19,12 +19,17 @@
 export function extractMethod(text, name, { minZeilen = 3, maxZeilen = 200 } = {}) {
   // Alle vier Schreibweisen, die im Bestand vorkommen. Fehlt eine, meldet der
   // Schnitt "nicht gefunden" fuer eine Methode, die sehr wohl da ist.
+  // Die freien Formen tragen ein "\n" im Praefix, sonst gewinnt eine
+  // Erwaehnung im Kommentar gegen die echte Definition und die
+  // Signaturzusicherung laesst sie durch. `versatz` zieht das "\n" wieder ab.
   let from = -1
-  for (const prefix of ["  static async ", "  async ", "  static ", "  "]) {
+  let versatz = 0
+  for (const prefix of ["  static async ", "  async ", "  static ", "\nexport async function ", "\nexport function ", "\nasync function ", "\nfunction ", "  "]) {
     from = text.indexOf(`${prefix}${name}(`)
-    if (from >= 0) break
+    if (from >= 0) { versatz = prefix.startsWith("\n") ? 1 : 0; break }
   }
   if (from < 0) throw new Error(`Methode ${name} nicht in der Quelle gefunden`)
+  from += versatz
 
   // Erst das Ende der Parameterliste suchen, dann den Rumpf. Ein einfaches
   // indexOf("{") wuerde bei einem destrukturierenden Parameter wie
@@ -61,7 +66,7 @@ export function extractMethod(text, name, { minZeilen = 3, maxZeilen = 200 } = {
   // das auf, aber eine kuenftige Klammer in einem Text wuerde das Ende still
   // verschieben. Zwei billige Zusicherungen fangen das ab, damit der
   // Pruefstand abbricht statt eine andere Stelle zu messen.
-  if (!new RegExp(`^\\s*(static\\s+)?(async\\s+)?${name}\\s*\\(`).test(cut)) {
+  if (!new RegExp(`^\\s*(export\\s+)?(static\\s+)?(async\\s+)?(function\\s+)?${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\(`).test(cut)) {
     throw new Error(`Der Schnitt von ${name} beginnt nicht mit seiner Signatur`)
   }
   const zeilen = cut.split("\n").length
@@ -79,6 +84,42 @@ export function extractConst(text, name) {
   const m = new RegExp(`^const\\s+${name}\\s*=\\s*([^;\\n]+);?\\s*$`, "m").exec(text)
   if (!m) throw new Error(`Konstante ${name} nicht in der Quelle gefunden`)
   return `const ${name} = ${m[1].trim()};`
+}
+
+/**
+ * Schneidet einen mehrzeiligen Block auf oberster Ebene heraus, etwa ein
+ * Objekt mit Konstanten oder eine Klasse. `extractConst` kann das nicht, es
+ * liest nur eine Zeile.
+ *
+ * `marker` ist der Anfang der Zeile bis zur oeffnenden Klammer, zum Beispiel
+ * "const INSTALL_ERROR = {". Gezaehlt wird nach Klammern, damit eine
+ * Verschiebung im Modul den Pruefstand nicht auf die falsche Stelle setzt.
+ *
+ * @param {string} text    Quelltext der Moduldatei
+ * @param {string} marker  Zeilenanfang samt oeffnender Klammer
+ * @returns {string}       Der Ausschnitt, einschliesslich der schliessenden Klammer
+ */
+export function extractBlock(text, marker) {
+  const from = text.indexOf(marker)
+  if (from < 0) throw new Error(`Block "${marker}" nicht in der Quelle gefunden`)
+  const open = marker.trim().slice(-1)
+  const close = open === "{" ? "}" : open === "[" ? "]" : null
+  if (!close) throw new Error(`Der Marker "${marker}" endet nicht mit einer oeffnenden Klammer`)
+
+  let depth = 0
+  let i = from + marker.length - 1
+  for (; i < text.length; i++) {
+    if (text[i] === open) depth++
+    else if (text[i] === close) {
+      depth--
+      if (depth === 0) break
+    }
+  }
+  if (depth !== 0) throw new Error(`Block "${marker}" ist nicht geschlossen`)
+  // Ein etwaiges Semikolon nach der schliessenden Klammer gehoert mit dazu,
+  // sonst ist der Ausschnitt fuer sich allein kein gueltiger Quelltext.
+  const end = text[i + 1] === ";" ? i + 2 : i + 1
+  return text.slice(from, end)
 }
 
 /**
