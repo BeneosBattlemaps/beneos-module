@@ -37,6 +37,20 @@ const MAX_BACKUP = 200;
 const MAX_QUEUE = 300;          // hard cap on the in-memory queue
 const MAX_FLUSH_FAILURES = 3;   // consecutive failures before the session circuit-breaks
 const ERROR_THROTTLE_MS = 60 * 1000;
+// How far down an error's `cause` chain we look. Three is enough for Foundry's
+// single wrapping layer plus room to spare, and it is a hard stop: `cause` is
+// caller-supplied and can be cyclic or arbitrarily deep.
+const ERROR_CAUSE_MAX_LINKS = 3;
+// The location Foundry passes for BOTH canvas failure branches
+// (`client/canvas/board.mjs`, texture loading at :1193 and group draw at :1219
+// in V14). Measured, not assumed: they share the location and differ only in
+// the message.
+const CANVAS_DRAW_LOCATION = "Canvas#draw";
+// A failed canvas draw repeats for the rest of the session, so the 60-second
+// throttle alone would keep sending it for hours. Three is enough to see that
+// it happened and that it kept happening; the fourth would tell us nothing new
+// and it is a foreign world's failure travelling on our budget.
+const CANVAS_ERRORS_PER_SESSION = 3;
 const ACTOR_MODIFY_THROTTLE_MS = 30 * 1000;
 const BACKUP_KEY = "beneos-analytics-queue-backup";
 const BREADCRUMB_MAX = 5;                         // last N event types kept for error context
@@ -80,6 +94,7 @@ export class BeneosAnalytics {
   static _maxPlayerCount = 0
   static _distinctScenes = new Set()
   static _errorThrottle = new Map()       // fingerprint -> last emit ts
+  static _canvasErrorsSent = 0            // canvas-draw failures sent this session, see CANVAS_ERRORS_PER_SESSION
   static _actorModifyThrottle = new Map() // actorId -> last emit ts
   static _flushing = false
   static _consecutiveFailures = 0
@@ -1467,7 +1482,7 @@ export class BeneosAnalytics {
   static trackBattlemapError(scene, err) {
     try {
       if (!scene || !this._isBeneosScene(scene)) return
-      const stackTop = this._stackTopLine(err?.stack || "")
+      const stackTop = this._stackTopLine(err)
       const fp = `battlemap|${scene.id}|${stackTop}`
       const now = Date.now()
       if (now - (this._errorThrottle.get(fp) || 0) < ERROR_THROTTLE_MS) return
@@ -1586,39 +1601,18 @@ export class BeneosAnalytics {
   static _installErrorCapture() {
     try {
       window.addEventListener("error", (event) => {
-        try {
-          const err = event?.error
-          const stack = err?.stack || ""
-          if (this._isBeneosStack(stack, event?.filename)) {
-            this._captureError(err || { message: event?.message }, "window")
-            return
-          }
-          // Render failures from Foundry core won't carry a beneos-module
-          // stack frame, so a broken Beneos map is caught by heuristic: a
-          // canvas/texture-flavoured error while a Beneos scene is active.
-          if (this._looksLikeBattlemapError(err?.message || event?.message)) {
-            this.trackBattlemapError(canvas?.scene, err || { message: event?.message })
-          }
-        } catch (_) {}
+        try { this._vonFenster(event?.error, "window", event?.filename, event?.message) } catch (_) {}
       })
       window.addEventListener("unhandledrejection", (event) => {
-        try {
-          const reason = event?.reason
-          if (this._isBeneosStack(reason?.stack || "")) {
-            this._captureError(reason, "promise")
-            return
-          }
-          if (this._looksLikeBattlemapError(reason?.message)) {
-            this.trackBattlemapError(canvas?.scene, reason)
-          }
-        } catch (_) {}
+        try { this._vonFenster(event?.reason, "promise") } catch (_) {}
       })
       // Foundry routes Hooks.onError(...) through the "error" hook.
       Hooks.on("error", (location, err, data) => {
         try {
-          const loc = String(location || "")
-          if (!this._isBeneosStack(err?.stack || "") && !/beneos/i.test(loc)) return
-          this._captureError(err, data?.context || loc || "hook", data?.asset_id)
+          const grund = this._hookErrorReason(err, location)
+          if (!grund) return
+          if (grund === "canvas" && !this._canvasBudgetLeft()) return
+          this._captureError(err, data?.context || String(location || "") || "hook", data?.asset_id)
         } catch (_) {}
       })
     } catch (_) { /* swallow */ }
@@ -1630,12 +1624,107 @@ export class BeneosAnalytics {
     } catch (_) { return false }
   }
 
+  /**
+   * Every stack in an error's `cause` chain, outermost first.
+   *
+   * Foundry does not throw this class of failure, it WRAPS it. `Hooks.onError`
+   * builds `new Error(\`${msg}. ${error.message}\`, { cause: error })`
+   * (`hooks.mjs:184` in V14, identical in V13) and only then fires the hook.
+   * The wrapper's stack points at Foundry itself; the stack that names the
+   * culprit sits in `cause`.
+   *
+   * Testing `err.stack` alone therefore discarded EVERY wrapped error,
+   * including our own. Measured in the lake on 2026-09-09: zero canvas-draw
+   * failures across 3.150 error events, although Foundry reports them
+   * faithfully every single time.
+   *
+   * Bounded and cycle-safe on purpose: `cause` is whatever the thrower put
+   * there, and an error capture must never be the thing that hangs the client.
+   */
+  static _stackChain(err, maxLinks = ERROR_CAUSE_MAX_LINKS) {
+    const stapel = []
+    try {
+      const gesehen = new Set()
+      let aktuell = err
+      for (let i = 0; i < maxLinks && aktuell && typeof aktuell === "object"; i++) {
+        if (gesehen.has(aktuell)) break
+        gesehen.add(aktuell)
+        if (aktuell.stack) stapel.push(String(aktuell.stack))
+        aktuell = aktuell.cause
+      }
+    } catch (_) {}
+    return stapel
+  }
+
+  /** `_isBeneosStack` over the whole cause chain instead of the outermost stack. */
+  static _isBeneosError(err, filename) {
+    return this._isBeneosStack(this._stackChain(err).join("\n"), filename)
+  }
+
+  /**
+   * Does a hooked error belong in the cloud, and on what grounds? Returns
+   * `"beneos"`, `"canvas"` or null.
+   *
+   * Pure and named on purpose: this one comparison decides how much foreign
+   * traffic we take on, so the bench measures IT rather than a copy of it.
+   *
+   * `"canvas"` covers both branches Foundry files under this location, the
+   * texture load and the group draw (`board.mjs:1193` and `:1219`). Both are
+   * kept regardless of who caused them, for two reasons: the group draw leaves
+   * the board black for the rest of the session, because `Canvas#draw` chains
+   * on `#drawing.finally` and replays one rejection on every later draw; and
+   * the texture branch is the one that CAN be ours, since it fires on a file
+   * that will not load.
+   *
+   * Deliberately this one location and no pattern list. Widen it and this
+   * becomes a collection point for other people's noise.
+   */
+  static _hookErrorReason(err, location) {
+    const loc = String(location || "")
+    if (this._isBeneosError(err) || /beneos/i.test(loc)) return "beneos"
+    if (loc === CANVAS_DRAW_LOCATION) return "canvas"
+    return null
+  }
+
+  /**
+   * The decision both window-level listeners take, in one place: ours goes to
+   * the error cloud, and a canvas or texture flavoured failure while a Beneos
+   * scene is open goes to the battlemap channel instead.
+   *
+   * The second branch exists because render failures from Foundry core carry
+   * no beneos-module frame at all, so a broken Beneos map is only recognisable
+   * by what it looks like and where it happened.
+   */
+  static _vonFenster(err, kontext, filename, meldung) {
+    if (this._isBeneosError(err, filename)) {
+      this._captureError(err || { message: meldung }, kontext)
+      return
+    }
+    if (this._looksLikeBattlemapError(err?.message || meldung)) {
+      this.trackBattlemapError(canvas?.scene, err || { message: meldung })
+    }
+  }
+
+  /**
+   * Budget for the foreign traffic we newly take on. True at most
+   * CANVAS_ERRORS_PER_SESSION times per session.
+   *
+   * Its own method rather than three lines in the listener, because a cap that
+   * cannot be measured is a cap nobody notices breaking: the failure it guards
+   * against repeats for hours, and the 60-second throttle does not stop it.
+   */
+  static _canvasBudgetLeft() {
+    if (this._canvasErrorsSent >= CANVAS_ERRORS_PER_SESSION) return false
+    this._canvasErrorsSent += 1
+    return true
+  }
+
   static _captureError(err, context, assetId) {
     try {
       const errorClass = (err?.name || err?.constructor?.name || "Error").slice(0, 128)
       const geteilt = this._splitStackPackages(err?.message || String(err || ""))
       const message = this.sanitize(geteilt.message, 200)
-      const stackTop = this._stackTopLine(err?.stack || "")
+      const stackTop = this._stackTopLine(err)
       const fp = `${errorClass}|${stackTop}`
       const now = Date.now()
       if (now - (this._errorThrottle.get(fp) || 0) < ERROR_THROTTLE_MS) return
@@ -1679,14 +1768,55 @@ export class BeneosAnalytics {
     } catch (_) { return {} }
   }
 
-  static _stackTopLine(stack) {
+  /**
+   * The one stack line worth carrying, taken across the whole cause chain.
+   *
+   * Order matters. A Beneos frame anywhere in the chain wins, because that is
+   * the line one of us can act on. Only if there is none do we fall back to
+   * the INNERMOST cause: the wrapper Foundry builds has frames that say
+   * `hooks.mjs` and name nobody, so reading it would replace an answer with a
+   * shrug.
+   */
+  static _stackTopLine(err) {
     try {
-      const lines = String(stack || "").split("\n").map(l => l.trim()).filter(Boolean)
-      let line = lines.find(l => l.includes("beneos-module")) || lines[1] || lines[0] || ""
-      const idx = line.indexOf("modules/beneos-module")
-      if (idx >= 0) line = line.slice(idx)
-      return line.replace(/[)(]/g, "").slice(0, 255)
+      const stapel = this._stackChain(err)
+      if (!stapel.length) return ""
+      // Only real frames. The line before them is the message, and a message
+      // is free text from wherever the error came from: it can carry a token
+      // or a person's name, and it would land in this field unfiltered and
+      // in the throttling fingerprint on top of that.
+      const istRahmen = (l) => /(^at |@).*:\d+:\d+/.test(l)
+      const rahmen = (s) => String(s || "").split("\n").map(l => l.trim()).filter(istRahmen)
+      for (const s of stapel) {
+        const eigen = rahmen(s).find(l => l.includes("beneos-module"))
+        if (eigen) return this._kuerzeStackZeile(eigen)
+      }
+      return this._kuerzeStackZeile(rahmen(stapel[stapel.length - 1])[0] || "")
     } catch (_) { return "" }
+  }
+
+  /**
+   * Cut a stack line down to the part that identifies code, and drop the
+   * origin. Two reasons, and the second one is why it has to hold for EVERY
+   * line and not only for the tidy ones: frames of the same package group
+   * together regardless of where the world runs, and no customer's host name
+   * travels with us.
+   *
+   * The `modules/` and `systems/` case is the easy one. The case that matters
+   * is a frame in Foundry core or in a bundled library, where neither appears
+   * and the whole origin used to stay: `https://<customer>.forge-vtt.com/...`
+   * is the customer's own name, and a self-hosted `https://vtt.example.de:30000/`
+   * is their address. Before this change the event was not sent at all, so the
+   * leak would have been introduced here.
+   *
+   * `sanitize` on top, because a frame is a value from outside like any other.
+   */
+  static _kuerzeStackZeile(line) {
+    let l = String(line || "")
+    const paket = l.search(/\b(modules|systems)\//)
+    if (paket >= 0) l = l.slice(paket)
+    else l = l.replace(/\b[a-z][a-z0-9+.-]*:\/\/[^/\s)]*/gi, "")
+    return this.sanitize(l.replace(/[)(]/g, ""), 255)
   }
 
   /********************************************************************************** */
@@ -1694,9 +1824,17 @@ export class BeneosAnalytics {
   // token/secret/id pasted into a search box or surfaced in an error message.
   // Split Foundry's own package attribution off the message.
   //
-  // Foundry core appends "[Detected 2 packages: lib-wrapper(1.13.5.1),
-  // beneos-module(14.4.6)]" to error messages: the packages whose code appears
-  // in the stack. That is genuinely useful, and it was being destroyed twice.
+  // "[Detected 2 packages: lib-wrapper(1.13.5.1), beneos-module(14.4.6)]" gets
+  // appended to error messages: the packages whose code appears in the stack.
+  // That is genuinely useful, and it was being destroyed twice.
+  //
+  // Corrected on 2026-09-09: this comment used to credit Foundry core. It is
+  // libWrapper (`lib-wrapper.js`, `Detected ${n} packages:`); grep finds it
+  // nowhere in Foundry's `client/` or `common/` in V13 or V14. That matters
+  // for how far the attribution can be trusted: it appears only on errors that
+  // travelled through a wrapper libWrapper manages, so its ABSENCE says
+  // nothing at all. libWrapper is a required relationship of this module, so
+  // it is present, but present is not the same as involved.
   //
   // Measured in the data lake on 2026-08-17, over 2.158 error events carrying
   // such a list:
