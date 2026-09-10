@@ -29,7 +29,7 @@
  * er den Abend kostet.
  */
 
-import { MODULE_ID, SETTING, streamEnabled, assetUrl, zerlegeAdresse, streamKey, streamBase } from "./stream-settings.mjs"
+import { MODULE_ID, SETTING, streamEnabled, assetUrl, zerlegeAdresse, streamKey, streamBase, VIDEO_EXT } from "./stream-settings.mjs"
 import { offlineGehalten, offlineHalten, offlineFreigeben, nichtGehalten,
          gehalteneAdressen, speicherAusfallStand, speicherLage } from "./stream-fetch.mjs"
 import { streamAdressenVon, streamState } from "./stream-online.mjs"
@@ -880,6 +880,25 @@ export async function karteZuSzene(scene) {
   const pfade = new Set(adressen.filter(a => !istGeteilteDatei(a))
     .map(a => zerlegeAdresse(a)?.pfad).filter(Boolean))
 
+  // DIE KARTE OHNE VIDEO KENNT NUR EINEN PFAD, UND DER LIEGT IN map_assets.
+  //
+  // Seit dem 2026-09-10 baut `sm_plaetze` auch fuer eine Gruppe ohne Video
+  // einen Platz, aus ihrem Hintergrundbild. Bei 51 der 53 solchen Karten im
+  // Bestand liegt genau dieses Bild unter `map_assets/`: Weltkarten,
+  // Spielleiter-Uebersichten, und einzelne Karten, die aus fachlichen Gruenden
+  // ein Standbild statt eines Videos tragen.
+  //
+  // Fuer sie waere `pfade` leer, kein Platz wuerde greifen, und der Rechtsklick
+  // boete nichts an. Sie vergleichen deshalb ueber ALLE Pfade.
+  //
+  // Die Gefahr, gegen die der Filter oben schuetzt, tritt hier nicht ein. Sie
+  // besteht darin, dass ein Symbol, das viele Szenen ziehen, jede davon auf
+  // denselben Platz zeigen laesst. `sm_plaetze` nimmt in einen Bildplatz aber
+  // nur auf, was GENAU EINE Gruppe des Releases nennt; ein geteiltes Symbol
+  // faellt dort schon heraus. Gemessen am 2026-09-10: kein Kartenbild der 53
+  // Gruppen wird von zwei Karten benutzt.
+  const alleP = new Set(adressen.map(a => zerlegeAdresse(a)?.pfad).filter(Boolean))
+
   // Die Groessen stehen je Datei in `entries`. Sie hier mitzugeben ist die
   // Bedingung dafuer, dass das Kontingent VOR dem Holen geprueft werden kann:
   // wer erst holt und dann rechnet, hat die Bytes bereits auf der Platte.
@@ -887,8 +906,9 @@ export async function karteZuSzene(scene) {
   for (const e of m.entries || []) groesse.set(e.key, Number(e.bytes) || 0)
 
   for (const platz of m.places) {
-    if (!(platz.files || []).some(f => pfade.has(f))) continue
     const dateien = platz.files || []
+    const nurBild = !dateien.some(f => VIDEO_EXT.test(f))
+    if (!dateien.some(f => (nurBild ? alleP : pfade).has(f))) continue
     const kartenAdressen = dateien.map(f => assetUrl(erste.release, erste.variant, f))
 
     // DIE GETEILTEN DATEIEN ALLER SZENEN DIESER KARTE, NICHT NUR DIESER EINEN.

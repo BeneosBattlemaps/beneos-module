@@ -66,7 +66,10 @@ const DEFAULT_BUDGET = { image: 30, video: 120, audio: 60, draw: 45 }
 // bursts the budget on a line that would have sufficed.
 const DEFAULT_MAX_CONCURRENT = 6
 
-const VIDEO_EXT = /\.(webm|mp4|ogv|m4v)(\?|$)/i
+// Exportiert, seit `stream-offline` einen Platz ohne Video erkennen muss.
+// Eine dritte Fassung derselben Endungsliste haette frueher oder spaeter eine
+// andere Antwort auf dieselbe Datei gegeben.
+export const VIDEO_EXT = /\.(webm|mp4|ogv|m4v)(\?|$)/i
 const AUDIO_EXT = /\.(ogg|mp3|wav|flac|opus|m4a)(\?|$)/i
 
 export function registerStreamSettings() {
