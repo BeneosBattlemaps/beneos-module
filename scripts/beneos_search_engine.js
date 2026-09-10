@@ -329,7 +329,11 @@ export class BeneosDatabaseHolder {
     if (!installed) {
       const relMs = this.beneosParseDateMs(props.release_date)
       const newestMs = this.beneosNewestReleaseMs(type)
-      isNew = relMs != null && newestMs != null && relMs === newestMs
+      // Excluded on both sides: a provisional entry neither sets the newest
+      // wave (see beneosNewestReleaseMs) nor joins it. Filtering only the
+      // maximum would still let one carrying that same date wear the chip.
+      isNew = !this.beneosIsProvisional(data)
+           && relMs != null && newestMs != null && relMs === newestMs
     } else {
       const updMs  = this.beneosParseDateMs(props.updated_date)
       // installTS is stored in seconds for tokens but in milliseconds for items
@@ -347,8 +351,30 @@ export class BeneosDatabaseHolder {
   }
 
   /**
+   * An entry the catalog generated for files it found but could not match to a
+   * tagged release. A placeholder, not a product: usually no thumbnail, and
+   * sometimes no release behind it at all.
+   *
+   * It must never define what counts as new, and the reason is not theoretical.
+   * The generator stamps such an entry with TODAY's date (`catalog-lib.php`,
+   * `'release_date' => date('Y-m-d')`), so the next one to slip into the
+   * published catalog is automatically the newest wave everywhere. That is how
+   * two probe entries took the NEW badge away from the 28 real maps of release
+   * 115 for two weeks, measured live on 2026-09-10.
+   *
+   * The single definition for the whole module; `home-controller.mjs` imports
+   * this one rather than keeping its own.
+   */
+  static beneosIsProvisional(data) {
+    const p = data?.properties || {}
+    if (p.needs_tagging === true) return true
+    return String(p.match_source?.strategy || "") === "provisional"
+  }
+
+  /**
    * Newest release_date in a catalog, in milliseconds, or null when the catalog
-   * carries no usable date at all.
+   * carries no usable date at all. Provisional entries are skipped, see
+   * beneosIsProvisional.
    *
    * Read straight from the stored catalog rather than through getAll(), which
    * hands out a structuredClone of the whole category: cloning 700 entries to
@@ -366,6 +392,7 @@ export class BeneosDatabaseHolder {
                  : null
     let max = null
     for (const key in (source || {})) {
+      if (this.beneosIsProvisional(source[key])) continue
       const ms = this.beneosParseDateMs(source[key]?.properties?.release_date)
       if (ms != null && (max === null || ms > max)) max = ms
     }

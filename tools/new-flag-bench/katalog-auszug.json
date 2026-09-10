@@ -1,0 +1,150 @@
+{
+  "_hinweis": "Auszug aus der LIVE-Suchdatenbank, gezogen am 2026-09-10. Echte Werte, keine erfundenen. Vollstaendige Quelle: https://www.beneos-database.com/data/battlemaps/beneos_battlemaps_database.json",
+  "_gezogen_am": "2026-09-10",
+  "content": {
+    "999-00_Green_Temple-4K_Still_Battlemap_GRIDLESS": {
+      "properties": {
+        "release_date": "2026-08-27",
+        "needs_tagging": true,
+        "match_source": {
+          "strategy": "provisional",
+          "matched_key": null
+        },
+        "cloud_release_id": "6a906e3f3573f",
+        "release_dir": "bm_0999"
+      }
+    },
+    "999-00_Green_Temple-4K_Scenery": {
+      "properties": {
+        "release_date": "2026-08-27",
+        "needs_tagging": true,
+        "match_source": {
+          "strategy": "provisional",
+          "matched_key": null
+        },
+        "cloud_release_id": "6a906e3f3573f",
+        "release_dir": "bm_0999"
+      }
+    },
+    "115-10_Bloody_Snow_Field-4K_Still_Battlemap_GRIDLESS": {
+      "properties": {
+        "release_date": "2026-09-01",
+        "needs_tagging": false,
+        "match_source": {
+          "strategy": "stem_core_cls",
+          "matched_key": "115-10_Bloody_Snow_Field-4K_Still_Battlemap_GRIDLESS"
+        },
+        "cloud_release_id": "6a97094bca50b",
+        "release_dir": "bm_0115"
+      }
+    },
+    "115-10_Bloody_Snow_Field-4K_Scenery": {
+      "properties": {
+        "release_date": "2026-09-01",
+        "needs_tagging": false,
+        "match_source": {
+          "strategy": "stem_core_cls",
+          "matched_key": "115-10_Bloody_Snow_Field-4K_Scenery"
+        },
+        "cloud_release_id": "6a97094bca50b",
+        "release_dir": "bm_0115"
+      }
+    },
+    "115-11_Glacier_Crevasse-4K_Still_Battlemap_GRIDLESS": {
+      "properties": {
+        "release_date": "2026-09-01",
+        "needs_tagging": false,
+        "match_source": {
+          "strategy": "stem_core_cls",
+          "matched_key": "115-11_Glacier_Crevasse-4K_Still_Battlemap_GRIDLESS"
+        },
+        "cloud_release_id": "6a97094bca50b",
+        "release_dir": "bm_0115"
+      }
+    },
+    "115-11_Glacier_Crevasse-4K_Scenery": {
+      "properties": {
+        "release_date": "2026-09-01",
+        "needs_tagging": false,
+        "match_source": {
+          "strategy": "stem_core_cls",
+          "matched_key": "115-11_Glacier_Crevasse-4K_Scenery"
+        },
+        "cloud_release_id": "6a97094bca50b",
+        "release_dir": "bm_0115"
+      }
+    },
+    "115-12_Ice_Cave_Entrance-4K_Still_Battlemap_GRIDLESS": {
+      "properties": {
+        "release_date": "2026-09-01",
+        "needs_tagging": false,
+        "match_source": {
+          "strategy": "stem_core_cls",
+          "matched_key": "115-12_Ice_Cave_Entrance-4K_Still_Battlemap_GRIDLESS"
+        },
+        "cloud_release_id": "6a97094bca50b",
+        "release_dir": "bm_0115"
+      }
+    },
+    "115-12_Ice_Cave_Entrance-4K_Scenery": {
+      "properties": {
+        "release_date": "2026-09-01",
+        "needs_tagging": false,
+        "match_source": {
+          "strategy": "stem_core_cls",
+          "matched_key": "115-12_Ice_Cave_Entrance-4K_Scenery"
+        },
+        "cloud_release_id": "6a97094bca50b",
+        "release_dir": "bm_0115"
+      }
+    },
+    "114-01_Bone_Brambles_Centipede-4K_Still_Battlemap_GRIDLESS": {
+      "properties": {
+        "release_date": "2026-08-18",
+        "needs_tagging": false,
+        "match_source": {
+          "strategy": "stem_core_cls",
+          "matched_key": "114-01_Bone_Brambles_Centipede-4K_Still_Battlemap_GRIDLESS"
+        },
+        "cloud_release_id": "6a84bc26a140a",
+        "release_dir": "bm_0114"
+      }
+    },
+    "114-01_Bone_Brambles_Centipede-4K_Scenery": {
+      "properties": {
+        "release_date": "2026-08-18",
+        "needs_tagging": false,
+        "match_source": {
+          "strategy": "stem_core_cls",
+          "matched_key": "114-01_Bone_Brambles_Centipede-4K_Scenery"
+        },
+        "cloud_release_id": "6a84bc26a140a",
+        "release_dir": "bm_0114"
+      }
+    },
+    "114-05_Bone_Brambles_Lava_Crack-4K_Still_Battlemap_GRIDLESS": {
+      "properties": {
+        "release_date": "2026-08-18",
+        "needs_tagging": false,
+        "match_source": {
+          "strategy": "stem_core_cls",
+          "matched_key": "114-05_Bone_Brambles_Lava_Crack-4K_Still_Battlemap_GRIDLESS"
+        },
+        "cloud_release_id": "6a84bc26a140a",
+        "release_dir": "bm_0114"
+      }
+    },
+    "57-01_Path_1-4K_Scenery": {
+      "properties": {
+        "release_date": "2024-03-28",
+        "needs_tagging": true,
+        "match_source": {
+          "strategy": "download_terms",
+          "matched_key": "57-01_Path_1-4K_Scenery"
+        },
+        "cloud_release_id": "6a3a7cfe1421a",
+        "release_dir": "bm_0057b"
+      }
+    }
+  }
+}
