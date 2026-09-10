@@ -5465,6 +5465,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       console.warn("BeneosCloudWindowV2 | kein Verzeichnis fuer das Release", {
         releaseDir, variant, grund, hatKatalogeintrag: Boolean(releaseEntry)
       })
+      // Until now this path sent nothing at all. It was therefore invisible for
+      // the two weeks the broken entries were live, and the first we heard of
+      // it was a Discord message.
+      try {
+        game.beneos?.analytics?.trackInstallBlocked?.({ release_dir: releaseDir, variant, reason: grund })
+      } catch (_) { /* a report must never break the thing it reports on */ }
       return
     }
 
