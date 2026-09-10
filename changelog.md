@@ -7,6 +7,7 @@ All notable changes to this module will be documented in this file.
 ### 14.4.10 # 2026-09-10
 
 **Fixes**
+- Fixed: When an install could not start, the message said Beneos Cloud was unreachable, even while the cloud was answering normally. It now names the actual reason: not signed in, the release list did not load, or this map has no installable release behind it.
 - Fixed: The NEW section on the home page could show the wrong thing entirely. It picked whatever carried the highest release number, and a single stray catalogue entry with an out-of-range number was enough to take the badge away from an entire wave of genuinely new maps. It now goes by publication date and skips entries the catalogue itself marks as unfinished, so NEW means what it says.
 
 ### 14.4.9 # 2026-09-10

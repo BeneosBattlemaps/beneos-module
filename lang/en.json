@@ -2452,5 +2452,9 @@
   "BENEOS.CanvasGuard.Packages": "Some code in the stack belongs to: {packages}. That is a pointer, not a verdict, and it is not always complete.",
   "BENEOS.CanvasGuard.Session": "Foundry then repeats this failure for the rest of the session, including after a scene change. That is why every map looks broken and not just one. <b>Reloading the page (F5) gives you a working canvas again.</b>",
   "BENEOS.CanvasGuard.Find": "To find the cause: disable every module except Beneos and its dependencies, reload, and open a map. If it draws, re-enable half of the rest and repeat.",
-  "BENEOS.CanvasGuard.Close": "Close"
+  "BENEOS.CanvasGuard.Close": "Close",
+  "BENEOS.Cloud.Install.ReleaseNotInCatalog": "This map is listed in the search catalogue but has no installable release behind it. That is a fault on our side, not on yours. Please report it on Discord, we can fix it without an update.",
+  "BENEOS.Cloud.Install.CatalogNotLoadedYet": "The release list has not finished loading yet. Give it a moment and click Install again.",
+  "BENEOS.Cloud.Install.CatalogNeedsLogin": "Sign in to Beneos Cloud first. The list of installable releases is only available to a signed-in account.",
+  "BENEOS.Cloud.Install.CatalogLoadFailed": "The list of installable releases could not be loaded. Use Retry in the map list, then try installing again."
 }
