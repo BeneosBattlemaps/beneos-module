@@ -5432,11 +5432,39 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         : (vdirs[variant] || vdirs["4K"] || vdirs["HD"] || vdirs.SINGLE || Object.values(vdirs)[0])
     }
     if (!packId) {
-      ui.notifications?.warn(game.i18n.localize("BENEOS.Cloud.Install.NoPackDir")
-        || "Beneos Cloud is unreachable, so this release cannot be installed right now. "
-         + "Try again once the connection is back.")
-      console.warn("BeneosCloudWindowV2 | kein Verzeichnis fuer das Release, "
-        + "Katalog nicht geladen", { releaseDir, variant, hatKatalogeintrag: Boolean(releaseEntry) })
+      // Until 2026-09-10 every way of getting here was reported as "Beneos
+      // Cloud is unreachable". That was wrong in the case that actually
+      // happens: a customer hit it while the cloud had just answered with 145
+      // releases, and while he was successfully installing another map in the
+      // same session. It cost him an evening and us two rounds of questions,
+      // because the message pointed at his connection.
+      //
+      // There are FOUR states, not one. Telling a logged-out customer to give
+      // it a moment sends him to wait for something that never arrives without
+      // a login, which is the same mistake in a different coat.
+      //
+      // The old key BENEOS.Cloud.Install.NoPackDir is deliberately left behind
+      // rather than reworded: it carries that wrong sentence in all thirteen
+      // languages, and rewording only English would keep twelve wrong ones in
+      // service. The new keys are English-only for now (OP-CLD-130).
+      const grund = this._releaseNeedsLogin ? "needs_login"
+                  : this._releaseLoadError  ? "catalog_load_failed"
+                  : this._releaseIndex      ? "release_not_in_catalog"
+                  : "catalog_not_loaded"
+      const schluessel = {
+        needs_login:            "BENEOS.Cloud.Install.CatalogNeedsLogin",
+        catalog_load_failed:    "BENEOS.Cloud.Install.CatalogLoadFailed",
+        release_not_in_catalog: "BENEOS.Cloud.Install.ReleaseNotInCatalog",
+        catalog_not_loaded:     "BENEOS.Cloud.Install.CatalogNotLoadedYet"
+      }[grund]
+      // No English literal beside the key: `game.i18n.has()` consults the
+      // fallback language too, so for an en-only key it answers true in all
+      // thirteen languages, and a local copy could only ever drift from
+      // lang/en.json.
+      ui.notifications?.warn(game.i18n.localize(schluessel))
+      console.warn("BeneosCloudWindowV2 | kein Verzeichnis fuer das Release", {
+        releaseDir, variant, grund, hatKatalogeintrag: Boolean(releaseEntry)
+      })
       return
     }
 
