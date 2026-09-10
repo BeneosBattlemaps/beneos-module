@@ -997,6 +997,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       }
     }
 
+    // Drop entries whose release the loaded catalog does not know, before any
+    // count is taken, so "Showing 100 of 145" stays honest. See
+    // #releaseIsOrphan for what this hides and why it hides so little.
+    if (type === "bmap") entries = entries.filter(([, data]) => !this.#releaseIsOrphan(data?.properties))
+
     // Apply text filter + dropdown filters from the sidebar DOM.
     if (this._textFilter) entries = this.#applyTextFilter(entries, this._textFilter)
     const afterText = entries.length
@@ -5641,6 +5646,45 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     throw lastErr
   }
 
+  /**
+   * Does this catalog entry point at a release the LOADED index does not know?
+   *
+   * The two sources are independent: the search catalog comes from the CDN, the
+   * installable releases from `list_releases`. Nothing reconciles them, so an
+   * entry can outlive its release, or never have had one. Such an entry is not
+   * a product: there is no pack directory, so the install aborts, and its
+   * thumbnail 404s.
+   *
+   * Measured on 2026-09-10 against live data: 2 of 2145 catalog entries, both
+   * `bm_0999`, a pair of probes that reached the published catalog on
+   * 2026-08-27. Every other entry maps to one of the 145 known releases. The
+   * check is therefore precise rather than broad.
+   *
+   * The guard on the index is the important half, and it has to cover MORE
+   * than null. `_releaseIndex` is fetched without `await`
+   * (#ensureReleasesLoaded), so the first render legitimately sees `null`.
+   * An EMPTY Map is the trap: it is truthy, so a plain `!this._releaseIndex`
+   * check waves it through, and then every entry looks orphaned and the whole
+   * list disappears. That state is reachable without any bug on our side,
+   * because `listReleases()` answers `data.releases || []` for a response that
+   * says ok and carries no list. Measured: index null 3 of 3 cards visible,
+   * index complete 2 of 3, index empty **0 of 3**.
+   *
+   * So: no index and an empty index both mean no opinion. The fix is meant to
+   * remove two broken tiles, and anything that can remove 2145 instead is
+   * worse than what it fixes.
+   *
+   * `release_dir` is trimmed the same way `_onCloudBattlemapInstallNative`
+   * trims it. Comparing an untrimmed key here against a trimmed one there
+   * would declare a perfectly installable map an orphan.
+   */
+  #releaseIsOrphan(props) {
+    if (!this._releaseIndex || this._releaseIndex.size === 0) return false
+    const dir = String(props?.release_dir || "").trim()
+    if (!dir) return false
+    return !this._releaseIndex.get(dir)
+  }
+
   async #ensureReleasesLoaded() {
     // Bail on ANY settled outcome (loaded, in-flight, errored, or needs-login).
     // Without the error/needs-login guards a failed fetch left _releaseIndex
@@ -5668,8 +5712,15 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         if (ra !== rb) return rb - ra
         return String(a?.display_name || "").localeCompare(String(b?.display_name || ""))
       })
+      // An empty list is not an answer. `listReleases()` returns
+      // `data.releases || []`, so a response that says ok without carrying the
+      // field arrives here as zero releases, and storing that as a loaded
+      // index would tell every later reader that no release exists. Treated
+      // as a failed load instead, which is the state the retry button and the
+      // "could not load" template already handle.
+      if (!list.length) throw new Error("BENEOS_EMPTY_RELEASE_LIST")
       this._releaseList  = list
-      this._releaseIndex = new Map(list.map(r => [r.release_dir, r]))
+      this._releaseIndex = new Map(list.map(r => [String(r.release_dir || "").trim(), r]))
     } catch (e) {
       if (e?.message === "BENEOS_NEEDS_LOGIN") {
         // Expected logged-out state, not an error: flag it so the template
