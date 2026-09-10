@@ -21,8 +21,10 @@ import { extractMethod, extractConst, buildProbe } from "../lib/extract-method.m
 const HERE = dirname(fileURLToPath(import.meta.url))
 const FENSTER = join(HERE, "..", "..", "scripts", "cloud-v2", "cloud-window-v2.mjs")
 const ANALYTICS = join(HERE, "..", "..", "scripts", "beneos_analytics.js")
+const ZUSTAND = join(HERE, "..", "..", "scripts", "cloud-v2", "beneos-install-state.mjs")
 const fensterText = readFileSync(FENSTER, "utf8")
 const analyticsText = readFileSync(ANALYTICS, "utf8")
+const zustandText = readFileSync(ZUSTAND, "utf8")
 
 // NACHBAU der Fassung vor dem Fix: es gab keine Waisenpruefung, jede Karte
 // galt als zeigbar. Ausdruecklich Nachbau, kein Zitat.
@@ -35,10 +37,15 @@ const ALT_ORPHAN = `
 
 const useAlt = process.argv.includes("--alt")
 
+// ABWEICHUNG ZU main: dieser Zweig schlaegt ueber #releaseFor nach, das nach
+// dem exakten Treffer auf einen Kernindex zurueckfaellt. Beide werden
+// geschnitten statt nachgebaut, sonst misst der Pruefstand eine andere
+// Aufloesung als der Produktivcode.
 const Fenster = buildProbe([
-  useAlt ? ALT_ORPHAN : extractMethod(fensterText, "#releaseIsOrphan", { maxZeilen: 10 }),
+  useAlt ? ALT_ORPHAN : extractMethod(fensterText, "#releaseIsOrphan", { maxZeilen: 18 }),
+  extractMethod(fensterText, "#releaseFor", { maxZeilen: 10 }),
   "  probe(props) { return this.#releaseIsOrphan(props) }",
-])
+], extractMethod(zustandText, "releaseKern", { maxZeilen: 10 }).replace(/^export\s+/, ""))
 
 const Analytics = buildProbe(
   [
@@ -64,6 +71,10 @@ const check = (name, got, want) => {
 // Der echte Katalogstand vom 10.09.2026: 145 bekannte Releases, und bm_0999
 // ist keines davon.
 const index = new Map([["bm_0115_arctic_landscape", {}], ["bm_single_map_0003", {}]])
+// Der Kernindex dieses Zweigs. "bm_0115" ist der Kern von
+// "bm_0115_arctic_landscape"; eine Karte, die nur so geschrieben ist, muss
+// weiterhin sichtbar bleiben.
+const kernIndex = new Map([["bm_0115", {}], ["bm_single_map_0003", {}]])
 const mit = (dir) => ({ release_dir: dir })
 
 // 1) DIE GEFAEHRLICHE PROBE. Ist der Index noch nicht geladen, darf NICHTS
@@ -91,15 +102,19 @@ const mit = (dir) => ({ release_dir: dir })
 {
   const p = new Fenster()
   p._releaseIndex = index
+  p._releaseKernIndex = kernIndex
   check("2 bekanntes Release ist nicht verwaist", p.probe(mit("bm_0115_arctic_landscape")), false)
   check("2 Einzelkarte ebenfalls nicht", p.probe(mit("bm_single_map_0003")), false)
   check("2 bm_0999 ist verwaist", p.probe(mit("bm_0999")), true)
+  // Der Grund fuer die Abweichung zu main: nur ueber den Kern auffindbar.
+  check("2 nur ueber den Kern gefunden bleibt sichtbar", p.probe(mit("bm_0115")), false)
 }
 
 // 3) Ohne release_dir gibt es nichts nachzuschlagen, also auch kein Urteil.
 {
   const p = new Fenster()
   p._releaseIndex = index
+  p._releaseKernIndex = kernIndex
   check("3 ohne release_dir kein Urteil", p.probe({}), false)
   check("3 leere Eigenschaften", p.probe(undefined), false)
   check("3 leerer release_dir", p.probe(mit("")), false)
