@@ -1109,6 +1109,52 @@ export class BeneosAnalytics {
   }
 
   /********************************************************************************** */
+  /**
+   * A map click that never reached the installer, because the release behind
+   * it could not be resolved.
+   *
+   * Its OWN event name, and that is the whole point. Reusing `install_error`
+   * was the first draft and it repeats a mistake this house already made and
+   * already fixed: `_trigger-install-health.php` counts every row of that name
+   * against a fourteen-day mean and mails on the excess, so on 2026-08-26
+   * `trackAssetRefused` produced fifty runs of false alarm under it. The
+   * decision on 2026-08-30 was a separate name (`asset_refused`), explicitly
+   * not a higher threshold. A blocked click is no more an install failure than
+   * a refusal was.
+   *
+   * ORDER OF DELIVERY MATTERS. `api-analytics.php` keeps a fixed allowlist and
+   * drops anything else silently, with HTTP 200 (`:240`). Until
+   * `install_blocked` is in that list, this call is harmless and produces no
+   * data: nothing reaches the database, and nothing triggers the watch. Server
+   * first, module second; the reverse order costs only the waiting time.
+   *
+   * Why it exists at all: this path sent nothing. Two probe entries reached
+   * the published catalog on 2026-08-27 and every click on them failed until a
+   * customer wrote on Discord two weeks later.
+   */
+  static trackInstallBlocked({ release_dir, variant, reason } = {}) {
+    try {
+      const grund = this.sanitize(String(reason || "unknown"), 32)
+      const dir = this.sanitize(String(release_dir || ""), 64)
+      const fp = `install_blocked|${grund}|${dir}`
+      const now = Date.now()
+      if (now - (this._errorThrottle.get(fp) || 0) < ERROR_THROTTLE_MS) return
+      this._errorThrottle.set(fp, now)
+      this.track("install_blocked", {
+        asset_id: dir || null,
+        asset_type: "battlemap",
+        // The release directory is the whole point of the event: it names the
+        // entry that has no release, which is what makes the fault findable.
+        release_dir: dir,
+        reason: grund,
+        variant: this.sanitize(String(variant || ""), 16),
+        system: this.sanitize(String(game.system?.id || ""), 32),
+        foundry: this.sanitize(String(game.version || ""), 16),
+        forge: typeof ForgeVTT !== "undefined" && ForgeVTT?.usingTheForge === true
+      })
+    } catch (_) { /* swallow */ }
+  }
+
   // The server refused an asset the user asked for. Not a fault: the entitlement
   // gate did its job. It is reported because a refusal is invisible to us
   // otherwise, and a run of them means the module is offering something it

@@ -1,5 +1,5 @@
-// Prueft, wann eine Karte als verwaist gilt.
-// Aus scripts/cloud-v2/cloud-window-v2.mjs.
+// Prueft, wann eine Karte als verwaist gilt und was der blockierte Install
+// meldet. Aus scripts/cloud-v2/cloud-window-v2.mjs und scripts/beneos_analytics.js.
 //
 // Hintergrund: die Suchdatenbank und die installierbaren Releases sind zwei
 // unabhaengige Quellen, die nichts gegeneinander prueft. Am 27.08.2026 kamen
@@ -16,11 +16,13 @@
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
-import { extractMethod, buildProbe } from "../lib/extract-method.mjs"
+import { extractMethod, extractConst, buildProbe } from "../lib/extract-method.mjs"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const FENSTER = join(HERE, "..", "..", "scripts", "cloud-v2", "cloud-window-v2.mjs")
+const ANALYTICS = join(HERE, "..", "..", "scripts", "beneos_analytics.js")
 const fensterText = readFileSync(FENSTER, "utf8")
+const analyticsText = readFileSync(ANALYTICS, "utf8")
 
 // NACHBAU der Fassung vor dem Fix: es gab keine Waisenpruefung, jede Karte
 // galt als zeigbar. Ausdruecklich Nachbau, kein Zitat.
@@ -38,6 +40,19 @@ const Fenster = buildProbe([
   "  probe(props) { return this.#releaseIsOrphan(props) }",
 ])
 
+const Analytics = buildProbe(
+  [
+    extractMethod(analyticsText, "trackInstallBlocked", { maxZeilen: 45 }),
+    extractMethod(analyticsText, "sanitize", { maxZeilen: 12 }),
+    // Statt zu senden wird eingesammelt. Der Sendeweg selbst hat einen eigenen
+    // Pruefstand, hier geht es um die Nutzlast.
+    "  static gesendet = []",
+    "  static track(name, payload) { this.gesendet.push({ name, payload }) }",
+    "  static _errorThrottle = new Map()",
+  ],
+  extractConst(analyticsText, "ERROR_THROTTLE_MS")
+)
+globalThis.game = { system: { id: "dnd5e" }, version: "14.365" }
 
 let fails = 0
 const check = (name, got, want) => {
@@ -92,6 +107,63 @@ const mit = (dir) => ({ release_dir: dir })
   // hier gaelte eine installierbare Karte mit einem Leerzeichen am Rand als
   // verwaist und verschwaende.
   check("3 Leerzeichen am Rand aendern nichts", p.probe(mit(" bm_0115_arctic_landscape ")), false)
+}
+
+// 4) Der Ereignisname. Er ist eigen, und das kostet eine Vorbedingung:
+//    api-analytics.php nimmt nur bekannte Namen an und verwirft den Rest
+//    still, mit HTTP 200. Bis install_blocked in der Zulassungsliste steht,
+//    kommt hier nichts an. Das ist harmlos und in dieser Reihenfolge gewollt,
+//    Server zuerst.
+{
+  Analytics.gesendet = []
+  Analytics._errorThrottle = new Map()
+  Analytics.trackInstallBlocked({ release_dir: "bm_0999", variant: "4K", reason: "release_not_in_catalog" })
+  check("4 genau ein Ereignis", Analytics.gesendet.length, 1)
+  check("4 und es heisst install_blocked, nicht install_error", Analytics.gesendet[0]?.name, "install_blocked")
+}
+
+// 5) Der Name darf NICHT install_error sein. _trigger-install-health.php
+//    zaehlt jede Zeile dieses Namens gegen einen 14-Tage-Mittelwert und mailt;
+//    genau so hat trackAssetRefused am 26.08.2026 fuenfzig Laeufe Fehlalarm
+//    erzeugt. Der Beschluss vom 30.08.2026 war ein eigener Name.
+{
+  const p = Analytics.gesendet[0] || {}
+  check("5 kein Alarmname", p.name !== "install_error", true)
+  check("5 und keine Fehlerkategorie im Rumpf", p.payload?.fatal_category, undefined)
+}
+
+// 6) Das Release steht drin. Ohne diesen Wert waere das Ereignis zaehlbar,
+//    aber nicht auffindbar, und genau das Auffinden ist der Zweck.
+{
+  const p = Analytics.gesendet[0]?.payload || {}
+  check("6 das Verzeichnis reist mit", p.release_dir, "bm_0999")
+  check("6 der Grund auch", p.reason, "release_not_in_catalog")
+  check("6 und die Fassung", p.variant, "4K")
+}
+
+// 7) Drosselung: derselbe Fall zaehlt nicht zweimal in derselben Minute, ein
+//    anderes Release aber schon.
+{
+  Analytics.gesendet = []
+  Analytics._errorThrottle = new Map()
+  const arg = { release_dir: "bm_0999", variant: "4K", reason: "release_not_in_catalog" }
+  Analytics.trackInstallBlocked(arg)
+  Analytics.trackInstallBlocked(arg)
+  check("7 zweimal derselbe Fall ergibt ein Ereignis", Analytics.gesendet.length, 1)
+  Analytics.trackInstallBlocked({ ...arg, release_dir: "bm_0998" })
+  check("7 ein anderes Release wird gezaehlt", Analytics.gesendet.length, 2)
+}
+
+// 8) Alle vier Gruende sind unterscheidbar. Einem abgemeldeten Kunden zu
+//    sagen "gleich geht es weiter" waere derselbe Fehlertyp wie ihm die
+//    Verbindung vorzuwerfen.
+{
+  for (const g of ["catalog_not_loaded", "needs_login", "catalog_load_failed"]) {
+    Analytics.gesendet = []
+    Analytics._errorThrottle = new Map()
+    Analytics.trackInstallBlocked({ release_dir: "bm_0115", variant: "HD", reason: g })
+    check("8 Grund " + g + " kommt unveraendert an", Analytics.gesendet[0]?.payload?.reason, g)
+  }
 }
 
 console.log(fails ? `\n${fails} FEHLSCHLAEGE` : `\nalle Proben bestanden${useAlt ? " (das waere ein Befund, siehe README)" : ""}`)
