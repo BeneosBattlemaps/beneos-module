@@ -9,6 +9,7 @@
 import { fetchNewsFeed, getReadNewsIds } from "../services/news-api.mjs"
 import { loadAndParseChangelog } from "./changelog-parser.mjs"
 import { BeneosUtility } from "../../beneos_utility.js"
+import { BeneosDatabaseHolder } from "../../beneos_search_engine.js"
 
 const RAIL_CATEGORIES = ["token", "bmap", "item", "spell"]
 const RAIL_LIMIT_PER_GROUP = 12
@@ -23,6 +24,69 @@ function categoryLabelKey(type) {
   }
 }
 
+/**
+ * Provisional entries are recognised in exactly one place, on the class that
+ * owns the catalog. See `BeneosDatabaseHolder.beneosIsProvisional`.
+ */
+export function isProvisionalEntry(data) {
+  return BeneosDatabaseHolder.beneosIsProvisional(data)
+}
+
+/**
+ * The publication day of an entry, or "" when it carries none we can trust.
+ *
+ * A day in the FUTURE counts as untrustworthy. The value comes from the CDN and
+ * the pattern only checks the shape, not the range: a typo like `2126-09-01`
+ * would make one entry the newest wave forever and take the badge from every
+ * other, which is precisely the failure this whole change removes, just with a
+ * date instead of a number. `heute` is a parameter so the bench can pin it.
+ */
+export function releaseDayOf(data, heute = new Date().toISOString().slice(0, 10)) {
+  const raw = String(data?.properties?.release_date || "").slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return ""
+  return raw > heute ? "" : raw
+}
+
+/**
+ * The newest day among entries eligible for the badge, or "" when there is
+ * none. Pure and separate from the loop that writes `isNew`, because this is
+ * the derivation that decides and it should be measurable without a world.
+ */
+export function newestDayOf(entries, heute) {
+  let newest = ""
+  for (const [, data] of entries) {
+    if (!data || isProvisionalEntry(data)) continue
+    const day = releaseDayOf(data, heute)
+    if (day > newest) newest = day
+  }
+  return newest
+}
+
+/**
+ * Which battlemap entries carry the NEW badge.
+ *
+ * The newest wave is decided by publication DATE, not by the number in the
+ * key. The number was the old rule and it failed in the worst possible way:
+ * on 2026-08-27 two provisional entries with the key prefix `999` entered the
+ * published catalog. `max(prefix)` was 999 from then on, so the badge sat on
+ * those two, and the 28 real entries of release 115 lost it. Measured on
+ * 2026-09-10, live: 2 entries flagged instead of 28, for every customer, for
+ * two weeks. Nobody reported it as a bug, because a missing badge shows
+ * nothing; the one customer who did mention it was read as asking for a
+ * feature that already existed.
+ *
+ * Dates are compared as `YYYY-MM-DD` strings rather than parsed instants:
+ * ISO days sort chronologically as text, and a whole wave shares one exact
+ * string, so grouping cannot be split by a timezone or a stray time part.
+ *
+ * Two guards, and both are needed. The date defends against a number that is
+ * out of range; the provisional check defends against an unfinished entry
+ * that happens to carry today's date, which is exactly what the catalog
+ * stamps on the ones it generates itself.
+ *
+ * No fallback to the old rule when no date is found. Marking nothing is
+ * honest and invisible; marking the wrong thing is what got us here.
+ */
 function ensureBattlemapNewFlags() {
   const dbHolder = game.beneos?.databaseHolder
   const all = dbHolder?.getAll?.("bmap") || {}
@@ -31,18 +95,12 @@ function ensureBattlemapNewFlags() {
   // Reset first so a fresher DB scan doesn't keep stale NEW flags from
   // an earlier render.
   for (const [, data] of entries) { if (data) data.isNew = false }
-  let maxRelease = 0
-  for (const [k] of entries) {
-    const m = String(k || "").match(/^(\d+)/)
-    const r = m ? (parseInt(m[1], 10) || 0) : 0
-    if (r > maxRelease) maxRelease = r
-  }
-  if (maxRelease <= 0) return
-  for (const [k, data] of entries) {
-    if (!data) continue
-    const m = String(k || "").match(/^(\d+)/)
-    const r = m ? (parseInt(m[1], 10) || 0) : 0
-    if (r === maxRelease) data.isNew = true
+
+  const newestDay = newestDayOf(entries)
+  if (!newestDay) return
+  for (const [, data] of entries) {
+    if (!data || isProvisionalEntry(data)) continue
+    if (releaseDayOf(data) === newestDay) data.isNew = true
   }
 }
 
