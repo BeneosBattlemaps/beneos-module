@@ -12,6 +12,7 @@
  */
 
 import { BeneosUtility } from "../beneos_utility.js"
+import { beneosReleaseAlias } from "./beneos-release-aliases.mjs"
 
 const SETTING_KEY = "battlemap-installs"
 
@@ -39,9 +40,37 @@ export class BeneosInstallState {
     if (!releaseDir) return []
     const all = this.getAll()
     const out = []
-    for (const [key, entry] of Object.entries(all)) {
+    for (const [, entry] of Object.entries(all)) {
       if (!entry || typeof entry !== "object") continue
       if (entry.releaseDir === releaseDir) out.push(entry)
+    }
+    if (out.length) return out
+
+    // ERST WENN DIE GENAUE SCHREIBWEISE NICHTS FINDET, WIRD UEBER DEN ALIAS
+    // GESUCHT.
+    //
+    // Dreizehn Legacy-Releases mit Buchstabensuffix wandern auf das Band ab
+    // 9100. Waehrend dieser Wanderung stehen der Vermerk in der Welt und der
+    // Name im Katalog voruebergehend auf verschiedenen Seiten: die Welt kennt
+    // `bm_0093b`, der Katalog schon `bm_9113`, oder umgekehrt, je nachdem
+    // welche Seite zuerst nachgezogen wurde.
+    //
+    // DER VERGLEICH LAEUFT DESHALB AUF BEIDEN SEITEN DURCH DEN ALIAS, NICHT NUR
+    // AUF EINER. Nur so traegt er in BEIDE Richtungen:
+    //
+    //   Frage bm_9113  -> bm_9113 , Vermerk bm_0093b -> bm_9113   gefunden
+    //   Frage bm_0093b -> bm_9113 , Vermerk bm_9113  -> bm_9113   gefunden
+    //
+    // Eine einseitige Aufloesung haette genau den ersten Fall verloren, und das
+    // ist der haeufigere: der Katalog wird vor den Kundenwelten umgestellt.
+    //
+    // Der Durchlauf kostet nur dort, wo die genaue Schreibweise nichts fand.
+    // Fuer jedes nicht umbenannte Release gibt der Alias seine Eingabe
+    // unveraendert zurueck, der Vergleich ist dann der alte.
+    const ziel = beneosReleaseAlias(releaseDir)
+    for (const [, entry] of Object.entries(all)) {
+      if (!entry || typeof entry !== "object" || !entry.releaseDir) continue
+      if (beneosReleaseAlias(entry.releaseDir) === ziel) out.push(entry)
     }
     return out
   }
@@ -317,6 +346,58 @@ export class BeneosInstallState {
   }
 
   /**
+   * Der Schluessel, unter dem dieses Release in DIESER Welt wirklich vermerkt
+   * ist, nicht der, den der Katalog erwarten liesse.
+   *
+   * WARUM DAS AUSEINANDERFAELLT
+   *
+   * Der Vermerk ist auf `<releaseDir>_<variant>` geschluesselt. Waehrend der
+   * Wanderung der dreizehn Buchstabenreleases auf das Band ab 9100 heisst
+   * dasselbe Release auf beiden Seiten verschieden: die Welt kennt noch
+   * `bm_0093b_4K`, der Katalog schon `bm_9113`.
+   *
+   * `findByReleaseDir` loest das ueber den Alias auf und ist damit blind
+   * gegenueber der Schreibweise. Drei Stellen arbeiten aber nicht mit der
+   * Zeile, sondern mit ihrem SCHLUESSEL, und die brauchen diese Aufloesung:
+   *
+   *   forget                  loescht nach Schluessel
+   *   recordInstall           schreibt nach Schluessel
+   *   Deinstallierer          nimmt sich ueber den Schluessel selbst von den
+   *                           "anderen Installationen" aus
+   *
+   * Der dritte ist der gefaehrlichste. Trifft er seinen eigenen Schluessel
+   * nicht, haelt er sich fuer eine fremde Installation, beansprucht seine
+   * eigenen Dateien und raeumt sie deshalb nicht weg.
+   *
+   * ES WIRD NICHTS UMGESCHRIEBEN, NUR NACHGESCHLAGEN. Eine einmalige Wanderung
+   * der Weltvermerke waere der naheliegende Weg gewesen und ist verworfen: sie
+   * liefe beim Weltstart, also lange bevor der Katalog den neuen Namen fuehrt,
+   * und genau dann fiele der Deinstallierer in den eben beschriebenen Fall.
+   *
+   * Findet sich nichts, kommt die genaue Schreibweise zurueck. Ein Neueintrag
+   * entsteht damit wie bisher.
+   *
+   * @returns {string} vorhandener Schluessel, sonst die genaue Schreibweise
+   */
+  static vermerkSchluessel(releaseDir, variant) {
+    const v = String(variant || "")
+    const genau = v ? `${releaseDir}_${v}` : String(releaseDir || "")
+    if (!releaseDir) return genau
+    const all = this.getAll()
+    if (all[genau]) return genau
+    const ziel = beneosReleaseAlias(releaseDir)
+    for (const [key, entry] of Object.entries(all)) {
+      if (!entry || typeof entry !== "object" || !entry.releaseDir) continue
+      // Die Variante muss stimmen. 4K und HD desselben Release sind zwei
+      // Zeilen, und die falsche zu treffen hiesse, dem Kunden die andere
+      // Aufloesung wegzuraeumen.
+      if (String(entry.variant || "") !== v) continue
+      if (beneosReleaseAlias(entry.releaseDir) === ziel) return key
+    }
+    return genau
+  }
+
+  /**
    * Persist one install. Key format: `<releaseDir>_<variant>` (variant = ""
    * for single-variant releases). Timestamp and signature always describe the
    * latest run; the scene ids ACCUMULATE.
@@ -339,11 +420,23 @@ export class BeneosInstallState {
     if (!releaseDir) return
     const all = this.getAll()
     const key = variant ? `${releaseDir}_${variant}` : releaseDir
+    // Der Vermerk kann unter dem alten Namen des Release liegen. Dann wandert
+    // er JETZT auf den neuen, und nur jetzt: in diesem Augenblick hat der
+    // Katalog den neuen Namen gerade selbst geliefert, er ist also belegt.
+    // Eine Wanderung auf Verdacht beim Weltstart waere das Gegenteil davon.
+    const alterKey = this.vermerkSchluessel(releaseDir, variant)
     const vereinigt = new Set(Array.isArray(all[key]?.sceneIds) ? all[key].sceneIds.map(String) : [])
+    if (alterKey !== key) {
+      for (const id of (Array.isArray(all[alterKey]?.sceneIds) ? all[alterKey].sceneIds : [])) {
+        const s = String(id || "")
+        if (s) vereinigt.add(s)
+      }
+    }
     for (const id of (Array.isArray(sceneIds) ? sceneIds : [])) {
       const s = String(id || "")
       if (s) vereinigt.add(s)
     }
+    if (alterKey !== key) delete all[alterKey]
     all[key] = {
       releaseDir,
       variant:         variant || "",
@@ -370,7 +463,7 @@ export class BeneosInstallState {
   static async forget({ releaseDir, variant }) {
     if (!releaseDir) return
     const all = this.getAll()
-    const key = variant ? `${releaseDir}_${variant}` : releaseDir
+    const key = this.vermerkSchluessel(releaseDir, variant)
     if (!(key in all)) return
     delete all[key]
     try {
