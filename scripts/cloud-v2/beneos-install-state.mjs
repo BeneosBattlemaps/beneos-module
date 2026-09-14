@@ -12,6 +12,7 @@
  */
 
 import { BeneosUtility } from "../beneos_utility.js"
+import { beneosReleaseAlias } from "./beneos-release-aliases.mjs"
 
 const SETTING_KEY = "battlemap-installs"
 
@@ -119,10 +120,36 @@ export class BeneosInstallState {
     // Kern ist der Rueckfall, nicht die Regel, damit eine genaue Uebereinstimmung
     // nie von einer ungenauen verdraengt wird.
     const kern = releaseKern(releaseDir)
-    if (!kern) return out
+    if (kern) {
+      for (const [, entry] of Object.entries(all)) {
+        if (!entry || typeof entry !== "object" || !entry.releaseDir) continue
+        if (releaseKern(entry.releaseDir) === kern) out.push(entry)
+      }
+      if (out.length) return out
+    }
+
+    // DRITTER UND LETZTER RUECKFALL: DER ALIAS.
+    //
+    // Dreizehn Legacy-Releases mit Buchstabensuffix wandern auf das Band ab
+    // 9100. Waehrend dieser Wanderung stehen der Vermerk in der Welt und der
+    // Name im Katalog voruebergehend auf verschiedenen Seiten: die Welt kennt
+    // `bm_0093b`, der Katalog schon `bm_9113`, oder umgekehrt.
+    //
+    // Der Kern oben hilft hier nicht: er raeumt nur die Schreibweise auf,
+    // `bm_9113` und `bm_0093b` haben verschiedene Kerne.
+    //
+    // DER VERGLEICH LAEUFT AUF BEIDEN SEITEN DURCH DEN ALIAS, NICHT NUR AUF
+    // EINER. Nur so traegt er in BEIDE Richtungen:
+    //
+    //   Frage bm_9113  -> bm_9113 , Vermerk bm_0093b -> bm_9113   gefunden
+    //   Frage bm_0093b -> bm_9113 , Vermerk bm_9113  -> bm_9113   gefunden
+    //
+    // Eine einseitige Aufloesung haette den ersten Fall verloren, und das ist
+    // der haeufigere: der Katalog wird vor den Kundenwelten umgestellt.
+    const ziel = beneosReleaseAlias(releaseDir)
     for (const [, entry] of Object.entries(all)) {
       if (!entry || typeof entry !== "object" || !entry.releaseDir) continue
-      if (releaseKern(entry.releaseDir) === kern) out.push(entry)
+      if (beneosReleaseAlias(entry.releaseDir) === ziel) out.push(entry)
     }
     return out
   }
@@ -451,9 +478,63 @@ export class BeneosInstallState {
    * legitim wenige oder gar keine schweren lokalen Dateien, und diese Null
    * bedeutet nicht "nichts zu tun", sondern "ich weiss es nicht".
    */
+  /**
+   * Der Schluessel, unter dem dieses Release in DIESER Welt wirklich vermerkt
+   * ist, nicht der, den der Katalog erwarten liesse.
+   *
+   * WARUM DAS AUSEINANDERFAELLT
+   *
+   * Der Vermerk ist auf `<releaseDir>_<variant>` geschluesselt. Waehrend der
+   * Wanderung der dreizehn Buchstabenreleases auf das Band ab 9100 heisst
+   * dasselbe Release auf beiden Seiten verschieden: die Welt kennt noch
+   * `bm_0093b_4K`, der Katalog schon `bm_9113`.
+   *
+   * `findByReleaseDir` loest das ueber den Alias auf und ist damit blind
+   * gegenueber der Schreibweise. Fuenf Stellen arbeiten aber nicht mit der
+   * Zeile, sondern mit ihrem SCHLUESSEL, und die brauchen diese Aufloesung:
+   *
+   *   findTargets, findDocs   lesen Dateien und Dokumente des Vermerks
+   *   forget                  loescht nach Schluessel
+   *   recordInstall           schreibt nach Schluessel
+   *   Deinstallierer          nimmt sich ueber den Schluessel selbst von den
+   *                           "anderen Installationen" aus
+   *
+   * Die ersten beiden wiegen im Streaming-Zweig besonders schwer. Gibt
+   * `findTargets` null, liest der Deinstallierer das als "ich weiss nicht, was
+   * hier liegt" und bricht ohne Netz ab. Ein nicht aufgeloester Schluessel
+   * machte ein umbenanntes Release also offline unentfernbar.
+   *
+   * ES WIRD NICHTS UMGESCHRIEBEN, NUR NACHGESCHLAGEN. Eine einmalige Wanderung
+   * der Weltvermerke waere der naheliegende Weg gewesen und ist verworfen: sie
+   * liefe beim Weltstart, also lange bevor der Katalog den neuen Namen fuehrt,
+   * und genau dann traefe der Deinstallierer seine eigene Zeile nicht mehr.
+   *
+   * Findet sich nichts, kommt die genaue Schreibweise zurueck. Ein Neueintrag
+   * entsteht damit wie bisher.
+   *
+   * @returns {string} vorhandener Schluessel, sonst die genaue Schreibweise
+   */
+  static vermerkSchluessel(releaseDir, variant) {
+    const v = String(variant || "")
+    const genau = v ? `${releaseDir}_${v}` : String(releaseDir || "")
+    if (!releaseDir) return genau
+    const all = this.getAll()
+    if (all[genau]) return genau
+    const ziel = beneosReleaseAlias(releaseDir)
+    for (const [key, entry] of Object.entries(all)) {
+      if (!entry || typeof entry !== "object" || !entry.releaseDir) continue
+      // Die Variante muss stimmen. 4K und HD desselben Release sind zwei
+      // Zeilen, und die falsche zu treffen hiesse, dem Kunden die andere
+      // Aufloesung wegzuraeumen.
+      if (String(entry.variant || "") !== v) continue
+      if (beneosReleaseAlias(entry.releaseDir) === ziel) return key
+    }
+    return genau
+  }
+
   static findTargets(releaseDir, variant) {
     if (!releaseDir) return null
-    const key = variant ? `${releaseDir}_${variant}` : releaseDir
+    const key = this.vermerkSchluessel(releaseDir, variant)
     const entry = this.getAll()?.[key]
     if (!entry || !Array.isArray(entry.targets)) return null
     return entry.targets.slice(0)
@@ -471,7 +552,7 @@ export class BeneosInstallState {
    */
   static findDocs(releaseDir, variant) {
     if (!releaseDir) return null
-    const key = variant ? `${releaseDir}_${variant}` : releaseDir
+    const key = this.vermerkSchluessel(releaseDir, variant)
     const d = this.getAll()?.[key]?.docs
     if (!d || typeof d !== "object") return null
     return {
@@ -508,6 +589,12 @@ export class BeneosInstallState {
     if (!releaseDir) return
     const all = this.getAll()
     const key = variant ? `${releaseDir}_${variant}` : releaseDir
+    // Der Vermerk kann unter dem alten Namen des Release liegen. Dann wandert
+    // er JETZT auf den neuen, und nur jetzt: in diesem Augenblick hat der
+    // Katalog den neuen Namen gerade selbst geliefert, er ist also belegt.
+    // Eine Wanderung auf Verdacht beim Weltstart waere das Gegenteil davon.
+    const alterKey = this.vermerkSchluessel(releaseDir, variant)
+    if (alterKey !== key) delete all[alterKey]
     all[key] = {
       releaseDir,
       variant:         variant || "",
@@ -563,7 +650,7 @@ export class BeneosInstallState {
   static async forget({ releaseDir, variant }) {
     if (!releaseDir) return
     const all = this.getAll()
-    const key = variant ? `${releaseDir}_${variant}` : releaseDir
+    const key = this.vermerkSchluessel(releaseDir, variant)
     if (!(key in all)) return
     delete all[key]
     try {

@@ -286,7 +286,7 @@ export class BeneosNativeUninstaller {
    */
   static #recordedMode(releaseDir, variant) {
     try {
-      const key = variant ? `${releaseDir}_${variant}` : releaseDir
+      const key = BeneosInstallState.vermerkSchluessel(releaseDir, variant)
       const entry = BeneosInstallState.getAll()?.[key]
       const m = String(entry?.mode || "")
       return m === "stream" || m === "download" ? m : ""
@@ -295,7 +295,13 @@ export class BeneosNativeUninstaller {
 
   async #assetsClaimedByOtherInstalls() {
     const claimed = new Set()
-    const myKey = this.variant ? `${this.releaseDir}_${this.variant}` : this.releaseDir
+    // Der eigene Schluessel wird AUFGELOEST, nicht gebaut. Waehrend der
+    // Umbenennung der dreizehn Buchstabenreleases auf das Band ab 9100 liegt
+    // der Vermerk noch unter dem alten Namen, waehrend der Katalog schon den
+    // neuen liefert. Ein gebauter Schluessel traefe die eigene Zeile dann nicht
+    // mehr, dieser Lauf hielte sich fuer eine fremde Installation, beanspruchte
+    // seine eigenen Dateien und liesse sie stehen.
+    const myKey = BeneosInstallState.vermerkSchluessel(this.releaseDir, this.variant)
     let entries = {}
     try { entries = BeneosInstallState.getAll() } catch (err) { this.#fail("readInstallState", err) }
 
