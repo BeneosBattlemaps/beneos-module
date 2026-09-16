@@ -11,7 +11,7 @@
  * button. This is the same dot in three colours.
  */
 
-import { streamEnabled, streamMode } from "./stream-settings.mjs"
+import { downloadMode, streamEnabled, streamMode } from "./stream-settings.mjs"
 import { onStreamState, onlineStatus, streamState } from "./stream-online.mjs"
 import { vorratsstand, verfallsstand, kontingent } from "./stream-offline.mjs"
 
@@ -53,8 +53,27 @@ function ensureStyle() {
   document.head.appendChild(style)
 }
 
+/**
+ * Einen bereits gezeichneten Punkt wieder wegnehmen.
+ *
+ * Gebraucht, wenn der Server den Weg mitten in der Sitzung auf `download`
+ * stellt: `paint()` kehrt danach sofort um, und ohne diesen Schritt bliebe der
+ * letzte gezeichnete Punkt in seiner letzten Farbe stehen.
+ */
+function entferneDot() {
+  document.querySelectorAll(`.${DOT_CLASS}`).forEach(el => el.remove())
+}
+
 function paint() {
   if (!streamEnabled() || !game.user?.isGM) return
+  // Im Download-Betrieb sagt der Punkt nichts, was den Kunden angeht, und was er
+  // sagt, ist irrefuehrend: seine Karten liegen auf der Platte und spielen auch
+  // bei gekappter Leitung, der Punkt wuerde trotzdem rot. Ein Alarm ohne Anlass
+  // ist schlimmer als keine Anzeige, deshalb bleibt er hier ganz weg.
+  //
+  // Weg statt grau: ein grauer Punkt wirft die Frage auf, was er bedeutet, und
+  // genau diese Frage soll gar nicht erst entstehen.
+  if (downloadMode()) { entferneDot(); return }
   const button = document.querySelector('button[data-control="beneos"], li[data-control="beneos"]')
   if (!button) return
   ensureStyle()

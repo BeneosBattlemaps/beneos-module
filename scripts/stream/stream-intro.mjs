@@ -27,9 +27,20 @@
  *
  * Bereits installierte Releases werden dabei nicht angefasst. Sie liegen auf
  * der Platte, wie sie liegen, und belegen keinen Platz im Offline-Kontingent.
+ *
+ * ZWEI TEXTE SEIT DEM 2026-09-16.
+ *
+ * Seit der Server je Konto den Auslieferungsweg vorgeben kann, gibt es Kunden,
+ * fuer die jeder Satz des Streaming-Textes falsch ist: bei ihnen liegt nichts
+ * beim Tor, ein Verbindungsverlust kostet nichts, und "Keep offline" ist
+ * gegenstandslos. Sie bekommen deshalb einen eigenen Text.
+ *
+ * Unterdrueckt wird der Dialog ausdruecklich NICHT. Wer auf einem Sonderweg
+ * laeuft, soll das einmal lesen; sonst meldet er sich im Support mit "warum ist
+ * das bei mir anders", und niemand weiss es auf Anhieb.
  */
 
-import { MODULE_ID, SETTING } from "./stream-settings.mjs"
+import { downloadMode, MODULE_ID, SETTING } from "./stream-settings.mjs"
 
 const DialogV2 = () => foundry.applications?.api?.DialogV2
 
@@ -55,7 +66,17 @@ export async function explainOnce() {
   const D = DialogV2()
   if (!D) return
 
-  const content = `
+  // Der Download-Weg bekommt seinen eigenen Text. Der Streaming-Text traegt fuer
+  // ihn keinen einzigen richtigen Satz: es bleibt nichts beim Tor, ein
+  // Verbindungsverlust kostet nichts, und der Offline-Vorrat ist unbenutzt.
+  const dl = downloadMode()
+  const content = dl
+    ? `
+    <p><strong>${t("BENEOS.Stream.Intro.Download.Lead")}</strong></p>
+    <p>${t("BENEOS.Stream.Intro.Download.What")}</p>
+    <p>${t("BENEOS.Stream.Intro.Download.Cost")}</p>
+    <p>${t("BENEOS.Stream.Intro.Existing")}</p>`
+    : `
     <p><strong>${t("BENEOS.Stream.Intro.Lead")}</strong></p>
     <p>${t("BENEOS.Stream.Intro.What")}</p>
     <p>${t("BENEOS.Stream.Intro.Cost")}</p>

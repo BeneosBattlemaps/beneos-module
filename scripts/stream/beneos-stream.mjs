@@ -212,7 +212,18 @@ Hooks.once("ready", async () => {
   // kein Zufall: eine Nutzerhandlung unmittelbar davor erhoeht die Aussicht,
   // dass Chrome zusagt. Ohne Zusage darf der Browser den Cache bei
   // Plattenknappheit raeumen, und genau daran haengt das Offline-Versprechen.
-  const zusage = await sichereSpeicher()
+  //
+  // Im Download-Betrieb entfaellt die Bitte. Der Zwischenspeicher ist dort
+  // ausgehaengt (`stream-fetch.mjs`, `measuring`), es liegt also nichts darin,
+  // was der Browser raeumen koennte. Eine Zusage zu erbitten, die nichts
+  // schuetzt, kostet den Kunden einen Browserdialog fuer nichts.
+  let zusage = { zugesagt: null }
+  if (downloadMode()) {
+    console.log("Beneos Stream | Keine Speicherzusage erbeten: Download-Betrieb, "
+      + "der Zwischenspeicher ist ausgehaengt")
+  } else {
+    zusage = await sichereSpeicher()
+  }
 
   const store = await storeStatus()
   console.log(
@@ -280,14 +291,20 @@ Hooks.once("ready", async () => {
     if (r?.gefunden) console.log(`Beneos Stream | Offline-Zustand fuer ${r.gefunden} von ${r.szenen} Szenen bereit`)
   }).catch(() => { })
 
-  if (zusage.zugesagt === true) {
-    console.log("Beneos Stream | Speicher ist dauerhaft, der Browser raeumt ihn nicht von selbst")
-  } else if (zusage.zugesagt === false) {
-    console.log(
-      "Beneos Stream | Keine Speicherzusage des Browsers. Der Offline-Bestand darf bei " +
-      "Plattenknappheit verworfen werden; Offline gilt, solange der Browser ihn haelt."
-    )
-  } else {
-    console.log("Beneos Stream | Speicherzusage nicht erfragbar, dieser Browser kennt die Schnittstelle nicht")
+  // Nur im Streaming-Betrieb. Im Download-Betrieb wurde oben gar nicht gefragt,
+  // und der Grund steht dort schon in einer eigenen Zeile. Ohne diese Klammer
+  // fiele der Fall in den letzten Zweig und meldete "dieser Browser kennt die
+  // Schnittstelle nicht", also eine Ursache, die es hier nicht gibt.
+  if (!downloadMode()) {
+    if (zusage.zugesagt === true) {
+      console.log("Beneos Stream | Speicher ist dauerhaft, der Browser raeumt ihn nicht von selbst")
+    } else if (zusage.zugesagt === false) {
+      console.log(
+        "Beneos Stream | Keine Speicherzusage des Browsers. Der Offline-Bestand darf bei " +
+        "Plattenknappheit verworfen werden; Offline gilt, solange der Browser ihn haelt."
+      )
+    } else {
+      console.log("Beneos Stream | Speicherzusage nicht erfragbar, dieser Browser kennt die Schnittstelle nicht")
+    }
   }
 })

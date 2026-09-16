@@ -13,7 +13,7 @@
  * nach so etwas sucht.
  */
 
-import { MODULE_ID, streamEnabled } from "./stream-settings.mjs"
+import { downloadMode, MODULE_ID, streamEnabled } from "./stream-settings.mjs"
 import { alleKarten, vorratsstand, verfallsstand, kontingent, VERFALL_TAGE,
          karteLoesen, pruefeVorrat, vorratHeilen, ziehKarteNach } from "./stream-offline.mjs"
 import { speicherLage } from "./stream-fetch.mjs"
@@ -190,6 +190,21 @@ export class BeneosOfflineWindow extends HandlebarsApplicationMixin(ApplicationV
  */
 export function registerOfflineWindow() {
   if (!ApplicationV2) return
+  // Im Download-Betrieb gibt es keinen Offline-Vorrat: der Zwischenspeicher ist
+  // ausgehaengt, das Kontingent greift nicht, und die Karten liegen ohnehin auf
+  // der Platte. Ein Menuepunkt, der dauerhaft null Karten und null Bytes zeigt,
+  // wirkt wie ein Defekt.
+  //
+  // EIN NEULADEN VERSPAETUNG, und das ist hier hinnehmbar. Dieser Aufruf
+  // passiert in `init`, die Vorgabe des Servers kommt erst in `ready` aus
+  // `ensureStreamKey`. In der Sitzung, in der ein Konto umgestellt wird, steht
+  // der Punkt also noch da. Der Wechsel steht in derselben Sitzung als
+  // Protokollzeile, und ab dem naechsten Weltstart stimmt die Anzeige.
+  if (downloadMode()) {
+    console.log("Beneos Stream | Offline-Fenster nicht eingetragen: Download-Betrieb, "
+      + "es gibt keinen Vorrat zu verwalten")
+    return
+  }
   try {
     game.settings.registerMenu(MODULE_ID, "beneos-offline-vorrat", {
       name: "Beneos: Offline Maps",

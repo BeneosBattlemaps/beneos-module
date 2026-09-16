@@ -420,6 +420,45 @@ export async function ensureStreamKey() {
       if (sauber && sauber !== streamBase()) await game.settings.set(MODULE_ID, SETTING.base, sauber)
     }
 
+    // DER AUSLIEFERUNGSWEG KOMMT VOM SERVER, NICHT AUS DER WELT.
+    //
+    // Streaming ist der Normalfall. Es gibt aber Aufbauten, die es bauartbedingt
+    // nicht bedienen kann: gemeldet am 2026-09-16 zwei Rechner an einem Switch,
+    // ganz ohne Internet. Dort ist die Leitung nicht langsam, dort gibt es
+    // keine. Ein solches Konto wird beim Betreiber auf `download` gestellt und
+    // installiert seine Karten danach wieder vollstaendig auf die Platte.
+    //
+    // DIE VORGABE DES SERVERS GEWINNT, auch gegen eine von Hand gesetzte
+    // Einstellung. Sonst wuesste hinterher niemand mehr, welche Welt auf
+    // welchem Weg laeuft, und der Betreiber koennte eine Freischaltung nicht
+    // zurueckholen. Wer die Einstellung ueber die Konsole umlegt, hat sie bis
+    // zum naechsten Weltstart.
+    //
+    // FEHLT DAS FELD, WIRD NICHTS ANGEFASST. Ein aelterer Server schickt es
+    // nicht mit, und eine Welt darf durch eine Aussage, die niemand getroffen
+    // hat, nicht den Weg wechseln. Das ist auch die Reihenfolge fuer die
+    // Auslieferung: erst der Server, dann das Modul.
+    const gewuenscht = String(daten.install_mode || "").trim().toLowerCase()
+    if (gewuenscht === INSTALL_MODE.stream || gewuenscht === INSTALL_MODE.download) {
+      if (gewuenscht !== installMode()) {
+        await game.settings.set(MODULE_ID, SETTING.installMode, gewuenscht)
+        // Die Erklaerung wird wieder faellig, und zwar in BEIDE Richtungen.
+        // Der Dialog hat je Weg einen eigenen Text, und `introSeen` ist ein
+        // einzelnes Haekchen. Ohne diese Zeile bekaeme ein frisch
+        // freigeschalteter Kunde weiterhin nur den Streaming-Text zu sehen,
+        // also genau den, der fuer ihn in jedem Satz falsch ist.
+        await game.settings.set(MODULE_ID, SETTING.introSeen, false)
+        console.log(`Beneos Stream | Auslieferungsweg vom Server: ${gewuenscht}, `
+          + `die Erklaerung wird einmal erneut gezeigt`)
+      }
+    } else if (gewuenscht !== "") {
+      // Ein Wert, den dieses Modul nicht kennt, wird NICHT uebernommen und auch
+      // nicht verschwiegen. Uebernaehme es ihn, stuende in der Welt ein Modus,
+      // den kein Zweig des Installers behandelt.
+      console.warn(`Beneos Stream | Unbekannter Auslieferungsweg "${gewuenscht}" vom Server, `
+        + `es bleibt bei ${installMode()}`)
+    }
+
     if (daten.stream_key !== vorhanden) {
       // Nur schreiben, wenn sich wirklich etwas aendert. Eine Einstellung zu
       // setzen ist in Foundry ein Weltschreibvorgang und wird an alle Spieler
