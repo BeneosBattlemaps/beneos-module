@@ -29,6 +29,10 @@
  */
 
 import { BeneosUtility } from "../beneos_utility.js";
+// Die Regel, was eine Alternative ist, liegt bewusst ausserhalb: der
+// Karteninstallierer entscheidet auf derselben Grundlage, welche Kreaturen er
+// ueberhaupt holt. Steht sie zweimal da, laufen die beiden auseinander.
+import { entryKey, positionsOf, istPlatziert, zugewieseneSchluessel } from "./alternativen.mjs";
 
 const MODULE_ID = "beneos-module";
 const FLAG_SCOPE = "beneos-module";
@@ -61,21 +65,6 @@ const TOKEN_THUMB_BASE = "https://www.beneos-database.com/data/tokens/thumbnails
 function renderTemplateCompat(path, data) {
   const rt = foundry.applications?.handlebars?.renderTemplate ?? globalThis.renderTemplate;
   return rt(path, data);
-}
-
-// Stable identity for a creature entry (and for an assignment reference).
-function entryKey(e) {
-  return e?.fullId || e?.tokenKey || e?.name || null;
-}
-
-// All canvas placements of a creature entry. Supports the positions[] model and
-// upgrades legacy single-x/y entries. Each position carries its own hidden flag.
-function positionsOf(entry) {
-  if (Array.isArray(entry?.positions) && entry.positions.length) return entry.positions;
-  if (entry?.x != null && entry?.y != null) {
-    return [{ x: entry.x, y: entry.y, elevation: entry.elevation, rotation: entry.rotation, width: entry.width, height: entry.height, hidden: !!entry.hidden, disposition: entry.disposition }];
-  }
-  return [];
 }
 
 const positionKey = (p) => `${Math.round(p.x ?? 0)},${Math.round(p.y ?? 0)},${p.hidden ? 1 : 0}`;
@@ -312,9 +301,7 @@ export class BeneosCreatureInstaller {
     // positions) nor assigned 1:1 to an SRD (not a replacedBy target). Anything
     // placed or assigned is a regular creature and must never show the ALT tag.
     const positions = positionsOf(entry);
-    const hasPositions = positions.length > 0;
-    const isAssigned = !!(premium && assignedKeys && assignedKeys.has(entryKey(entry)));
-    const alternative = premium && !hasPositions && !isAssigned;
+    const alternative = premium && !istPlatziert(entry, assignedKeys);
     // Disposition to the players: captured per placement, else the actor's
     // prototype. Drives the disc ring colour (hostile/neutral/friendly/secret) so
     // the GM sees what is actually hostile at a glance. Alternatives keep their
@@ -389,7 +376,12 @@ export class BeneosCreatureInstaller {
       // creature has no key, so nothing could install it and the "+" would lie.
       // `!block` for the same reason: a reward this user has no grant for cannot
       // be installed either, so offering the affordance would be a false promise.
-      showInstallBadge: premium && isPatron && !installed && !alternative && !!entry.tokenKey && !block,
+      //
+      // Alternativen tragen das Plus jetzt AUCH. Frueher waren sie davon
+      // ausgenommen, weil die Karteninstallation sie ohnehin mitbrachte und ein
+      // Plus damit nie erschienen waere. Seit sie nicht mehr mitkommt, ist das
+      // Plus ihr einziger Einzelweg (Betreiberentscheid 15.09.2026).
+      showInstallBadge: premium && isPatron && !installed && !!entry.tokenKey && !block,
       // Any accessible premium not yet in the world (incl. alternatives) can be
       // cloud-installed from the drawer -> grayscale + part of "Install Beneos".
       needsInstall: premium && isPatron && !installed && !!entry.tokenKey && !block,
@@ -424,8 +416,7 @@ export class BeneosCreatureInstaller {
     const isPatron = state === "patron";
     // Keys of Beneos creatures that are assigned 1:1 to an SRD (replacedBy targets);
     // these are regular creatures, never alternatives.
-    const assignedKeys = new Set();
-    for (const s of (this.data.srdCreatures || [])) if (s.replacedBy) assignedKeys.add(entryKey(s.replacedBy));
+    const assignedKeys = zugewieseneSchluessel(this.data);
     const srd = dedupeByCreature(this.data.srdCreatures).map(e => this.decorate(e, { premium: false, isPatron, assignedKeys }));
     const beneos = dedupeByCreature(this.data.beneosCreatures).map(e => this.decorate(e, { premium: true, isPatron, assignedKeys }));
     // "Missing" means missing AND obtainable. A reward this user has no grant for
