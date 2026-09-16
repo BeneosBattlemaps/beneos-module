@@ -8416,6 +8416,21 @@ function _isTutorialScene(scene) {
   return Boolean(TUTORIAL_SCENE_TOURS[scene.id] || TUTORIAL_SCENE_TOURS_BY_NAME[scene.name]);
 }
 
+// Auch ausserhalb dieser Datei lesbar. Die automatische Pin-Anzeige in
+// `beneos_nav_visibility.js` muss Tutorial-Szenen in Ruhe lassen: die
+// Overview-Tour schaltet die Pins absichtlich ab und enthuellt sie erst in
+// einem spaeteren Schritt, und ihr canvasReady-Haken laeuft laut Ladeliste in
+// `module.json` VOR dem der Navigationsdatei. Ohne diese Sperre schaltete die
+// andere Datei im selben Ereignis wieder an, was hier gerade ausging.
+//
+// Bewusst ueber `globalThis` und nicht ueber einen Import: ein Import haette
+// diese Datei unter einer zweiten Adresse laden und damit alle ihre Haken ein
+// zweites Mal anmelden koennen. Dasselbe Muster fuehren bereits
+// `globalThis.BeneosInstallTracker` und `globalThis.beneosAssetPathRepair`.
+globalThis.BeneosTours = Object.assign(globalThis.BeneosTours ?? {}, {
+  isTutorialScene: _isTutorialScene
+});
+
 Hooks.once("ready", async () => {
   if (!game.user.isGM) {
     BeneosUtility.debugMessage("Beneos Popup Orchestrator | skipped: user is not GM");
