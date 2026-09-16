@@ -99,6 +99,97 @@ function updateHooks() {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/*  Journal-Pins schalten sich auf einer Beneos-Szene selbst ein       */
+/* ------------------------------------------------------------------ */
+
+const SETTING_AUTO_PINS = "autoShowJournalPins";
+
+// Foundry-Kern, `NotesLayer.TOGGLE_SETTING`. Geltungsbereich `client`, Vorgabe
+// `true`, `config: false`; bedient wird er ueber die Werkzeugleiste der
+// Notizebene. Sein eigener `onChange` zeichnet die Ebene neu, deshalb genuegt
+// hier das Setzen und es braucht keinen Aufruf auf `canvas.notes`.
+const CORE_NOTES_TOGGLE = "notesDisplayToggle";
+
+/**
+ * Traegt diese Szene Beneos-Navigation?
+ *
+ * Erkannt wird an einer Notiz mit Beneos-Nav-Symbol, nicht am Modul-Flag.
+ * Gemessen am 2026-09-15 ueber alle 143 Pakete: 2163 von 2168 Szenen tragen
+ * eine solche Notiz, `flags["beneos-module"]` dagegen nur 1701. Das Symbol ist
+ * ausserdem genau das, was der Nutzer vermisst, wenn die Pins aus sind.
+ */
+function sceneHasBeneosNavNotes(scene) {
+  for (const n of (scene?.notes ?? [])) {
+    const src = n?.texture?.src ?? n?.icon ?? "";
+    if (isBeneosNavAsset(src)) return true;
+  }
+  return false;
+}
+
+/**
+ * Sind die Journal-Pins aus, schaltet eine Beneos-Szene sie wieder an.
+ *
+ * WARUM DAS NOETIG IST
+ *
+ * Die Vorgabe des Kerns ist `true`, neue Welten kommen trotzdem oft mit
+ * abgeschalteten Pins an. Die Overview-Tour schaltet sie zu Beginn ABSICHTLICH
+ * ab (`beneos_tours.js`, Tour `tutorial-page-1-overview`) und erst in einem
+ * spaeteren Schritt wieder an. Wer die Tour vorher abbricht, behaelt den
+ * ausgeschalteten Regler und sieht danach auf keiner Karte mehr eine
+ * Navigation. Die Tour kennt diesen Fall bereits und heilt ihn fuer sich
+ * selbst; ausserhalb der Tour hat ihn bisher niemand geheilt.
+ *
+ * WIE DIE TOUR GESCHUETZT WIRD, UND WIE NICHT
+ *
+ * Die Overview-Tour schaltet die Pins in ihrem EIGENEN canvasReady-Haken ab,
+ * und der laeuft laut Ladeliste in `module.json` VOR diesem hier. Ohne Sperre
+ * schaltete diese Datei im selben Ereignis wieder an, was dort gerade ausging.
+ *
+ * Gesperrt wird ueber die SZENE: auf einer Tutorial-Szene ruehrt diese Datei
+ * den Regler nie an. Das deckt jeden Fall ab, denn beide Stellen, die die Pins
+ * ueberhaupt abschalten, gehoeren zur Tour `tutorial-page-1-overview`, und die
+ * laeuft nur auf einer Tutorial-Szene.
+ *
+ * **Nicht ueber den Tourstatus, das war ein Fehlschlag.** Hier stand zuerst
+ * `game.tours.contents.some(t => t.status === "in-progress")`. Gemessen am
+ * 2026-09-15: `Tour#status` wird aus `#stepIndex` abgeleitet, der Zaehler kommt
+ * aus der dauerhaft gespeicherten Einstellung `core.tourProgress`, und `exit()`
+ * setzt ihn NICHT zurueck. Eine abgebrochene Tour steht damit fuer immer auf
+ * `in-progress`, ueber jeden Neustart hinweg. Die Sperre blockierte also genau
+ * bei dem Nutzer dauerhaft, fuer den diese Funktion ueberhaupt gebaut wurde.
+ * Wer sie wieder einbauen will, muss `Tour#reset()` mitdenken.
+ */
+async function autoShowJournalPins() {
+  let grund = null;
+  try {
+    if (!game.settings.get(MODULE_ID, SETTING_AUTO_PINS)) grund = "setting-off";
+    else if (globalThis.BeneosTours?.isTutorialScene?.(canvas?.scene)) grund = "tutorial-scene";
+    else if (game.settings.get("core", CORE_NOTES_TOGGLE)) grund = "already-on";
+    else if (!sceneHasBeneosNavNotes(canvas?.scene)) grund = "no-beneos-notes";
+    if (grund) {
+      console.debug(`[Beneos] Journal pins left untouched: ${grund}`);
+      return grund;
+    }
+    await game.settings.set("core", CORE_NOTES_TOGGLE, true);
+    console.log("[Beneos] Journal pins were off on a Beneos scene and have been switched back on.");
+    return "switched-on";
+  } catch (e) {
+    console.warn("[Beneos] Could not auto-enable the journal pin display:", e);
+    return "error";
+  }
+}
+
+// Von Hand aufrufbar, damit "bei mir passiert nichts" eine Antwort bekommt
+// statt einer Vermutung: der Rueckgabewert benennt die Bedingung, die den Lauf
+// gestoppt hat. Dasselbe Muster wie `globalThis.BeneosTours` eine Datei weiter.
+globalThis.BeneosNavVisibility = Object.assign(globalThis.BeneosNavVisibility ?? {}, {
+  pruefeJournalPins: autoShowJournalPins,
+  sceneHasBeneosNavNotes
+});
+
+Hooks.on("canvasReady", autoShowJournalPins);
+
 Hooks.once("init", () => {
   game.settings.register(MODULE_ID, SETTING_SHOW_NAV, {
     name: "BENEOS.Settings.ShowNav.Name",
@@ -108,6 +199,18 @@ Hooks.once("init", () => {
     type: Boolean,
     default: false,
     onChange: () => updateHooks()
+  });
+
+  // Geltungsbereich `client`, weil der Regler dahinter einer ist: jeder Nutzer
+  // entscheidet ueber seine eigene Anzeige, und ein Spielleiter, der die Pins
+  // von Hand steuern will, schaltet das hier nur fuer sich ab.
+  game.settings.register(MODULE_ID, SETTING_AUTO_PINS, {
+    name: "BENEOS.Settings.AutoJournalPins.Name",
+    hint: "BENEOS.Settings.AutoJournalPins.Hint",
+    scope: "client",
+    config: true,
+    type: Boolean,
+    default: true
   });
 });
 

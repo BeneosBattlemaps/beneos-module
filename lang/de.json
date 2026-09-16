@@ -267,6 +267,8 @@
   "BENEOS.Settings.SetupTour.Label": "Setup-Tour starten",
   "BENEOS.Settings.ShowNav.Name": "SL-Navigation für Spieler sichtbar",
   "BENEOS.Settings.ShowNav.Hint": "Macht Beneos-Navigations-Tiles und Kartennotiz-Icons für Spieler sichtbar. Sollte in der Regel deaktiviert bleiben - diese Elemente sind für den SL gedacht.",
+  "BENEOS.Settings.AutoJournalPins.Name": "Journal-Pins automatisch einblenden",
+  "BENEOS.Settings.AutoJournalPins.Hint": "Wird eine Beneos-Szene geoeffnet und die Anzeige der Journal-Pins ist ausgeschaltet, wird sie wieder eingeschaltet. Beneos-Karten nutzen die Pins zur Navigation, ausgeschaltet gibt es also nichts zum Anklicken. Haken entfernen, wenn Sie die Anzeige lieber selbst steuern.",
   "BENEOS.Scene.StaticMap.Unavailable": "Für diese Map ist keine statische Version verfügbar.",
   "BENEOS.Tour.PostInstall.Title": "Beneos-Tutorial starten?",
   "BENEOS.Tour.PostInstall.Content": "<p>Die Beneos Getting-Started-Inhalte wurden installiert.</p><p>Möchtest du jetzt das <strong>Beneos-Tutorial</strong> starten? Es führt dich durch alle Features des Moduls - Schritt für Schritt auf einer Reihe von Demo-Szenen.</p><p>Wenn du <strong>Nein</strong> sagst, kannst du es jederzeit über <strong>Einstellungen → Moduleinstellungen → Beneos</strong> starten.</p>",
