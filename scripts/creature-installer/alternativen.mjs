@@ -1,21 +1,35 @@
 /**
  * alternativen.mjs
  *
- * Die eine Regel, nach der sich entscheidet, ob eine Beneos-Kreatur zu einer
+ * Die Regeln, nach denen sich entscheidet, ob eine Beneos-Kreatur zu einer
  * Szene GEHOERT oder ihr nur VORGESCHLAGEN wird.
  *
- *   Eine Beneos-Kreatur ist eine Alternative genau dann, wenn sie weder auf der
- *   Karte platziert ist (keine `positions`) noch einer freien Kreatur eins zu
- *   eins zugewiesen wurde (kein `replacedBy`-Ziel).
+ * Es sind ZWEI Regeln, weil zwei verschiedene Fragen gestellt werden. Beide
+ * werden immer ABGELEITET, nie gespeichert: ein Flag im Szenendokument wuerde
+ * veralten und die Markierung an der falschen Kreatur zeigen.
  *
- * Die Regel wird immer ABGELEITET, nie gespeichert. Ein Flag im Szenendokument
- * wuerde veralten und die Markierung an platzierten Kreaturen zeigen.
+ * **Regel 1, die Lade: was traegt die ALT-Marke?** `istPlatziert()`. Eine
+ * Beneos-Kreatur ist eine Alternative genau dann, wenn sie weder auf der Karte
+ * platziert ist (keine `positions`) noch einer freien Kreatur eins zu eins
+ * zugewiesen wurde (kein `replacedBy`-Ziel). Die Lade beantwortet damit
+ * "gehoert das zum Entwurf dieser Karte".
  *
- * Zwei sehr verschiedene Stellen brauchen sie, und sie muessen sich einig sein:
- * der Drawer, der die Markierung zeichnet, und der Karteninstallierer, der
- * entscheidet, welche Kreaturen er ueberhaupt aus der Cloud holt. Laufen die
- * beiden auseinander, installiert die Karte etwas anderes, als die Lade zeigt.
- * Deshalb steht die Regel hier und nicht in einem der beiden.
+ * **Regel 2, die Karteninstallation: was wird im voraus geholt?**
+ * `zuInstallierendeSchluessel()`. Hier zaehlt allein die Zuweisung. Eine
+ * Kreatur mit eigener Position gehoert zwar zum Entwurf, kostet aber Leitung
+ * und Platte fuer etwas, das erst auf Knopfdruck auf die Karte kommt.
+ *
+ * **Warum die beiden auseinanderlaufen duerfen, und zwar gefahrlos.** Gemessen
+ * am 2026-09-15 ueber alle 143 Pakete: 59 Eintraege tragen `positions`, und
+ * KEINER von ihnen steht als Token in `scene.tokens[]`. Kein Paket liefert
+ * Beneos-Kreaturen als fertige Tokens aus. Gesetzt werden sie erst durch
+ * "Place Beneos Creatures on Map", und dieser Weg holt fehlende Kreaturen
+ * selbst nach. Eine nicht vorab installierte Kreatur hinterlaesst also kein
+ * Loch auf der Karte, sie kommt einen Klick spaeter.
+ *
+ * Betreiberentscheid vom 2026-09-15. Davor galt Regel 1 auch fuer die
+ * Installation; gemessen holte das ueber alle Pakete 55 statt 31 Kreaturen,
+ * im Ausreisser bm_0114 allein 24 statt 0.
  *
  * Diese Datei kennt weder Foundry noch Oberflaeche. Sie rechnet nur auf dem
  * Szenen-Flag `flags["beneos-module"].creatureInstaller`.
@@ -59,17 +73,22 @@ export function istPlatziert(entry, zugewiesen) {
 }
 
 /**
- * Die `tokenKey`-Werte aller Beneos-Kreaturen, die auf dieser Szene wirklich
- * stehen. Alternativen bleiben draussen.
+ * Die `tokenKey`-Werte der Beneos-Kreaturen, die eine Karteninstallation im
+ * voraus aus der Cloud holt: ausschliesslich die, die einer freien Kreatur
+ * eins zu eins zugewiesen sind.
+ *
+ * Alles andere kommt auf Knopfdruck, entweder ueber das Plus in der Lade oder
+ * ueber "Place Beneos Creatures on Map". Die Begruendung samt Messung steht
+ * oben im Kopf dieser Datei.
  *
  * Eintraege ohne `tokenKey` fallen weg: ohne Schluessel liesse sich aus der
  * Cloud ohnehin nichts holen.
  */
-export function platzierteBeneosSchluessel(ci) {
+export function zuInstallierendeSchluessel(ci) {
   const zugewiesen = zugewieseneSchluessel(ci);
   const out = new Set();
   for (const e of (Array.isArray(ci?.beneosCreatures) ? ci.beneosCreatures : [])) {
-    if (!istPlatziert(e, zugewiesen)) continue;
+    if (!zugewiesen.has(entryKey(e))) continue;
     const k = (e?.tokenKey != null) ? String(e.tokenKey).trim() : "";
     if (k) out.add(k);
   }

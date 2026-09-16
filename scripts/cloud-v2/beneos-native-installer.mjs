@@ -26,7 +26,7 @@
 
 import { BeneosInstallState, BeneosPreInstallDialog, beneosLogModuleInstall } from "./beneos-install-state.mjs"
 import { packNeedsV14Migration, migrateSceneForV14 } from "./beneos-v14-scene-migration.mjs"
-import { platzierteBeneosSchluessel } from "../creature-installer/alternativen.mjs"
+import { zuInstallierendeSchluessel } from "../creature-installer/alternativen.mjs"
 
 // ---- Transfer config -------------------------------------------------------
 const FETCH_MAX_ATTEMPTS  = 3            // transient retries per asset
@@ -1229,16 +1229,21 @@ export class BeneosNativeBattlemapInstaller {
    * Zielszenen. Freie Kreaturen tragen keinen `tokenKey`, liegen als Actor im
    * Paket und kommen hier nicht vor.
    *
-   * **Nur was auf der Karte steht.** Alternativen sind Vorschlaege fuer den
-   * Spielleiter, keine Bestandteile der Karte. Sie im voraus mitzuinstallieren
-   * kostete Leitung und Platte fuer Kreaturen, die er vielleicht nie benutzt.
-   * Wer eine haben will, holt sie sich in der Lade einzeln (Betreiberentscheid
-   * vom 27.08.2026). Massstab ist `platzierteBeneosSchluessel()`, dieselbe
-   * Regel, nach der die Lade ihre ALT-Markierung zeichnet.
+   * **Nur was einer freien Kreatur eins zu eins zugewiesen ist.** Alles andere
+   * in der Lade ist ein Vorschlag fuer den Spielleiter und kostete Leitung und
+   * Platte fuer Kreaturen, die er vielleicht nie benutzt. Wer eine haben will,
+   * holt sie sich in der Lade einzeln oder ueber "Place Beneos Creatures on
+   * Map", und dieser Weg installiert nach, was fehlt.
+   *
+   * Massstab ist `zuInstallierendeSchluessel()`. Sie ist BEWUSST enger als die
+   * ALT-Markierung der Lade: die Lade beantwortet "gehoert das zum Entwurf",
+   * hier zaehlt "muss das vorab auf die Platte". Warum das gefahrlos ist,
+   * steht mit der Messung im Kopf von `alternativen.mjs` (Betreiberentscheid
+   * vom 15.09.2026, davor galt hier dieselbe Regel wie in der Lade).
    *
    * Die Vereinigung ueber die Szenen ist gewollt: eine Kreatur, die in
-   * irgendeiner Zielszene steht, gehoert zur Installation, auch wenn sie in
-   * einer anderen nur vorgeschlagen wird.
+   * irgendeiner Zielszene zugewiesen ist, gehoert zur Installation, auch wenn
+   * sie in einer anderen nur vorgeschlagen wird.
    */
   async #collectBeneosCreatureKeys(jsons) {
     const arr = await this.#szenenDokumente(jsons)
@@ -1248,7 +1253,7 @@ export class BeneosNativeBattlemapInstaller {
     for (const sc of arr) {
       if (want && !want.has(String(sc?._id))) continue
       const ci = sc?.flags?.["beneos-module"]?.creatureInstaller
-      for (const k of platzierteBeneosSchluessel(ci)) keys.add(k)
+      for (const k of zuInstallierendeSchluessel(ci)) keys.add(k)
     }
     return [...keys]
   }
