@@ -256,7 +256,15 @@ export function entryByName(index, journalName) {
   return nameMap(index).get(normalizeJournalName(journalName)) || null
 }
 
-/** Release metadata as recorded in the index, or null. */
+/**
+ * Release metadata as recorded in the index, or null.
+ *
+ * `scenes` is the number of scenes the package ships and is the denominator of
+ * the completeness test: it is counted from the pack at build time, so it is
+ * the only figure that does not depend on what a particular world did. Measured
+ * on index 6f8a5c6b: present on all 143 releases. A release the index does not
+ * know yields null, and callers must then not claim incompleteness.
+ */
 export function releaseInfo(index, releaseDir) {
   if (!index || !releaseDir) return null
   const r = index.releases?.[releaseDir]

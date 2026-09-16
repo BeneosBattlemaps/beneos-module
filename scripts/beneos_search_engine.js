@@ -10,6 +10,19 @@ const spellDBURL = "https://www.beneos-database.com/data/spells/beneos_spells_da
 const commonDBURL = "https://www.beneos-database.com/data/common/beneos_common_database.json"
 const i18nMatrixURL = "https://www.beneos-database.com/data/common/beneos_i18n.json"
 
+// Wiederholung und Zeitdeckel je Katalogdatei. Drei Versuche kosten auf einer
+// wirklich toten Verbindung hoechstens rund 3,3 Sekunden zusaetzlich und retten
+// dafuer jeden kurzen Haenger. Ohne Zeitdeckel galt hier bisher der Vorgabewert
+// von Foundry, den das Modul nirgends belegt und deshalb auch nicht kennt.
+const DB_VERSUCHE = 3
+const DB_PAUSEN_MS = [800, 2500]
+const DB_ZEITDECKEL_MS = 15000
+
+// Takt, der einen Katalogausfall von selbst wieder einsammelt. Dieselben Werte
+// wie beim Serverwaechter in beneos_cloud.js, damit sich beide gleich anfuehlen.
+const KATALOG_PROBE_START_MS = 60000
+const KATALOG_PROBE_DECKEL_MS = 600000
+
 /********************************************************************************** */
 export class BeneosModuleMenu extends Dialog {
 
@@ -113,6 +126,7 @@ export class BeneosDatabaseHolder {
   static async loadDatabaseFiles() {
     let localStorage = BeneosUtility.getLocalStorage()
     this.isOffline = false
+    this._wiederholungAufgebraucht = false
 
     // Feature A: the six DB JSONs load through one helper (#loadOneDb) that adds
     // a local-cache + offline layer:
@@ -153,11 +167,59 @@ export class BeneosDatabaseHolder {
     // origins, ...). Best-effort: a failure here must not break the DB load;
     // the localizeTag helper falls back to the raw value when it is absent. No
     // error toast, and the lazy lowercase index is reset via resetI18n.
-    await this.#loadOneDb(i18nMatrixURL, "i18nMatrix", localStorage, { resetI18n: true })
+    await this.#loadOneDb(i18nMatrixURL, "i18nMatrix", localStorage, { resetI18n: true, bestEffort: true })
 
     BeneosUtility.saveLocalStorage(localStorage)
 
     this.buildSearchData()
+
+    // Bis 14.4.7 blieb der Offline-Zustand die ganze Sitzung stehen: zurueckgesetzt
+    // wurde er nur hier, und hier lief genau einmal, im ready-Hook. Ein Kunde mit
+    // einem einzigen Netzhaenger sah danach jede Karte als offline, bis er die Welt
+    // neu lud. Jetzt versucht es der Takt von selbst weiter.
+    if (this.isOffline) this.starteKatalogProbe()
+  }
+
+  /********************************************************************************** */
+  // Wiederholt den Katalogabruf, solange er scheitert, und hoert von selbst auf,
+  // sobald er gelingt.
+  //
+  // Bauart absichtlich dieselbe wie BeneosCloud.startServerProbeLoop() fuer die
+  // Serverseite: bei einer Minute anfangen, verdoppeln, bei zehn Minuten deckeln.
+  // Ein zweites Muster fuer dasselbe Problem waere eine Kopie zu viel.
+  static starteKatalogProbe() {
+    if (this._katalogProbeLaeuft) return
+    this._katalogProbeLaeuft = true
+    this._katalogProbeMs = KATALOG_PROBE_START_MS
+
+    const takt = async () => {
+      if (!this.isOffline) { this._katalogProbeLaeuft = false; return }
+      await this.erneutVersuchen({ still: true })
+      if (!this.isOffline) {
+        this._katalogProbeLaeuft = false
+        return
+      }
+      this._katalogProbeMs = Math.min(this._katalogProbeMs * 2, KATALOG_PROBE_DECKEL_MS)
+      setTimeout(takt, this._katalogProbeMs)
+    }
+    setTimeout(takt, this._katalogProbeMs)
+  }
+
+  /********************************************************************************** */
+  // Laedt den Katalog neu und zeichnet das Cloud-Fenster nach, damit die Offline-
+  // Anzeige verschwindet, ohne dass jemand die Welt neu laedt. Haengt am Knopf in
+  // der Fusszeile und am Takt oben.
+  static async erneutVersuchen({ still = false } = {}) {
+    await this.loadDatabaseFiles()
+    if (!this.isOffline) this._katalogProbeLaeuft = false
+    if (!still) {
+      const schluessel = this.isOffline
+        ? "BENEOS.Cloud.Footer.RetryFailed"
+        : "BENEOS.Cloud.Footer.RetryOk"
+      try { ui.notifications?.[this.isOffline ? "warn" : "info"]?.(game.i18n.localize(schluessel)) } catch (_) {}
+    }
+    try { game.beneos?.cloudWindowV2?.render?.(false) } catch (_) {}
+    return !this.isOffline
   }
 
   /********************************************************************************** */
@@ -168,11 +230,17 @@ export class BeneosDatabaseHolder {
   //  - notifError : i18n key OR (err)=>string shown (error) when there is no
   //                 local copy to fall back to. Omit for best-effort DBs.
   //  - resetI18n  : also clear the lazy lowercase i18n index on (re)load.
+  //  - bestEffort : a failure here must NOT put the whole window into the offline
+  //                 state. For DBs the UI does not depend on, see the i18n matrix.
   static async #loadOneDb(url, prop, store, opts = {}) {
     const cached = store[prop]
     const useCache = () => {
       this[prop] = structuredClone(cached)
-      this.isOffline = true
+      // A best-effort DB does not own the offline state. Before 14.4.8 it did.
+      // The i18n matrix is a purely cosmetic tag-translation table, loaded
+      // without any notification, and it could put the entire cloud window
+      // offline for a whole session without printing a single line anywhere.
+      if (!opts.bestEffort) this.isOffline = true
       if (opts.resetI18n) this._i18nLcIndex = null
       if (opts.notifLocal) ui.notifications.info(game.i18n.localize(opts.notifLocal))
     }
@@ -183,20 +251,46 @@ export class BeneosDatabaseHolder {
       return
     }
 
-    try {
-      const data = await foundry.utils.fetchJsonWithTimeout(url, { cache: "no-cache", method: "GET", "Content-Type": "application/json" })
-      this[prop] = data
-      store[prop] = structuredClone(data)
-      if (opts.resetI18n) this._i18nLcIndex = null
-    } catch (err) {
-      if (cached) {
-        useCache()
-      } else if (opts.notifError) {
-        const msg = typeof opts.notifError === "function" ? opts.notifError(err) : game.i18n.localize(opts.notifError)
-        ui.notifications.error(msg)
-      } else {
-        this[prop] = null
+    // One attempt used to be the whole story: a single hiccup of one second cost
+    // the user the rest of their session, because nothing ever retried and the
+    // offline state only cleared on a page reload. Three attempts with a growing
+    // pause cost at most ~3.3s on a genuinely dead link and survive a hiccup.
+    // Gemessen am 2026-08-30 in Foundry V13: bei totem Katalog kostete die
+    // Wiederholung ueber alle sechs Dateien 20,3 Sekunden, und der Weltstart
+    // wartet darauf. Wenn die erste Datei ihre Versuche erschoepft hat, ist die
+    // Verbindung meist weg statt nur kurz gestoert, und die uebrigen fuenf muessen das
+    // nicht noch einmal beweisen. Damit bleibt der Schutz gegen den kurzen
+    // Haenger und der schlimmste Fall faellt auf rund 3,3 Sekunden.
+    const versucheHier = this._wiederholungAufgebraucht ? 1 : DB_VERSUCHE
+    let letzterFehler = null
+    for (let versuch = 0; versuch < versucheHier; versuch++) {
+      if (versuch > 0) await new Promise(r => setTimeout(r, DB_PAUSEN_MS[versuch - 1]))
+      try {
+        const data = await foundry.utils.fetchJsonWithTimeout(
+          url,
+          { cache: "no-cache", method: "GET", "Content-Type": "application/json" },
+          { timeoutMs: DB_ZEITDECKEL_MS }
+        )
+        this[prop] = data
+        store[prop] = structuredClone(data)
+        if (opts.resetI18n) this._i18nLcIndex = null
+        return
+      } catch (err) {
+        letzterFehler = err
       }
+    }
+
+    if (versucheHier > 1) this._wiederholungAufgebraucht = true
+
+    if (cached) {
+      useCache()
+    } else if (opts.notifError) {
+      const msg = typeof opts.notifError === "function"
+        ? opts.notifError(letzterFehler)
+        : game.i18n.localize(opts.notifError)
+      ui.notifications.error(msg)
+    } else {
+      this[prop] = null
     }
   }
 

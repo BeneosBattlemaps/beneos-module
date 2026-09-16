@@ -4,6 +4,54 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.5.0-beta.6 # 2026-09-16
+
+Everything from the customer line up to 14.4.10 is now in the beta. Until this
+build the beta was missing 42 commits, among them a failed update that could
+delete every item of a document, the resolution of the thirteen renamed
+releases, and the Forge upload limit being read instead of guessed. A tester
+would have been running something worse than their normal module.
+
+**New**
+- New: Map installs now only bring the Beneos creatures that were actually
+  assigned to a free token in the Creature Drawer. Every other suggestion is
+  left alone.
+- New: Journal pins switch themselves back on when you open a Beneos map in a
+  world that had them off. A checkbox in the module settings turns this off.
+
+### 14.4.10 # 2026-09-10
+
+**Fixes**
+- Fixed: When an install could not start, the message said Beneos Cloud was unreachable, even while the cloud was answering normally. It now names the actual reason: not signed in, the release list did not load, or this map has no installable release behind it.
+- Fixed: The NEW section on the home page could show the wrong thing entirely. It picked whatever carried the highest release number, and a single stray catalogue entry with an out-of-range number was enough to take the badge away from an entire wave of genuinely new maps. It now goes by publication date and skips entries the catalogue itself marks as unfinished, so NEW means what it says.
+
+### 14.4.9 # 2026-09-10
+
+**Fixes**
+- Fixed: While the search catalog was unreachable, the Refresh and Settings buttons at the bottom of the Beneos window could not be clicked at all.
+- Fixed: Updating a creature you already had in your world could stop halfway through. 
+- Fixed: Closing a world, or switching to another browser tab, could produce a error message
+- Added: When Foundry cannot draw the canvas at all and every map stays black, Beneos now formulate a more readable message.
+- Fixed: On The Forge, a single large file could fail to install while everything else went through, and the report called it "unknown" and offered a retry that could never succeed, Beneos now formulate a more readable message.
+
+### 14.4.8 # 2026-09-01
+
+**Fixes**
+- Fixed: An install could stop with "Package not found" for a release that is on the server, entitled, and perfectly fine. 
+- Fixed: The cloud window could go completely empty when the search catalog could not be refreshed. 
+- Fixed: A world could lock itself out of its own creatures.
+- Fixed: On a self-hosted server behind a reverse proxy, an install could stop with "Some files could not be installed" and name no cause at all. The server was rejecting the upload because the file was too large for it (HTTP 413) and the module never got to see that answer. The report now names the cause and the setting to change, the install stops before the download instead of after it, and it no longer offers a retry that cannot succeed. 
+- Fixed: A creature in a scene's creature drawer could show an empty dark disc instead of its artwork when the local token art failed to load.
+- Fixed: When the drawer did fall back to another image, it used the embedded preview at 64 pixels even though a 400-pixel thumbnail was sitting right next to it, so the picture looked mushy. The sharper source is used first now.
+
+**Improved**
+- Improved: When an install stops before it starts, the message now describes the cause it actually found.
+- Improved: The two place buttons in a scene's creature drawer are hidden when there is nothing for them to place, instead of sitting there greyed out and unresponsive.
+- Improved: A missing package is now reported as what it is instead of as "unknown". The failure report tells you the cause, and our own alerting reacts to three of them instead of waiting for a pile.
+
+**Privacy**
+- Changed: When an install fails and you send a report, a scene name from your own world can no longer travel with the report since it is not needed.
+
 ### 14.5.0-beta.5 # 2026-09-01
 
 Twenty commits since beta.4. The version had not moved in any of them, so no
@@ -47,7 +95,10 @@ tester would have been offered an update; that is what this bump is for.
 
 **Improved**
 - Improved: A Beneos creature that replaces a free one on a map now keeps that creature's name, nameplate setting and disposition.
-- Improved: When an install cannot finish, the report now names the one cause it
+- Improved: When an install cannot finish, the report now names the one cause it can be certain of: a file that uploaded successfully but that your own server will not hand back. That case used to be filed as "unknown", so the report said nothing about the one failure whose cause is known.
+
+**Changed**
+- Changed: The module now tells Beneos which part of the interface a download came from: a map install, a scene's creature drawer, or a search you ran yourself. Everything from a single click is grouped as one action, so installing a whole backlog on day one is no longer counted the same way as picking creatures one at a time over weeks. No new information about you is collected, and where the surface is not known the module says so rather than guessing.
 
 **Fixes**
 - Fixed: A creature placed that way dropped out of later updates. Re-installing it refreshed every other token but skipped the renamed one, leaving it with the old token and the old statblock. The module now tells its own renaming apart from yours: it refreshes the token and leaves the name alone, while a creature you renamed yourself stays untouched as before.

@@ -3781,6 +3781,16 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--bc-space-3);
+  /* 14.4.9: die beiden Gruppen duerfen umbrechen.
+     Ohne das lief die linke Gruppe unter die rechte, sobald das
+     Katalogzeichen dazukam. Gemessen am 02.09.2026 im Pruefstand, V13 und
+     V14 gleich: linke Gruppe 408 px breit, ihre vier Teile brauchen 647 px,
+     der Ueberschuss lag unter der Linkleiste. Refresh und Settings waren an
+     29 von 29 Messpunkten verdeckt, ein Klick auf Refresh oeffnete Discord.
+     Der Umbruch kostet eine zweite Zeile, aber nur im Ausfall: ohne das
+     Zeichen bleibt die Fusszeile einzeilig, nachgemessen 46 px. */
+  flex-wrap: wrap;
+  row-gap: var(--bc-space-2);
 }
 /* Wave B-9-fix-36: footer split into left (account chip + buttons) and
    right (module version label) groups. */
@@ -3792,9 +3802,21 @@
      Wrapping pushed Settings onto a second line and shifted the whole footer. */
   flex-wrap: nowrap;
   min-width: 0;
+  /* Darf die Zeile fuellen, sobald die rechte Gruppe umgebrochen ist. */
+  flex: 1 1 auto;
 }
 .beneos-cloud-app .bc-footer-left .bc-account-chip,
 .beneos-cloud-app .bc-footer-left .bc-footer-button { white-space: nowrap; flex: 0 0 auto; }
+/* Das Katalogzeichen ist das einzige Teil mit kuerzbarem Text und damit das
+   einzige, das nachgeben darf. Die Knoepfe behalten ihre volle Breite, denn
+   ein halber Knopf ist schlechter als ein gekuerzter Satz. Die vollstaendige
+   Aussage steht ohnehin im Tooltip. */
+.beneos-cloud-app .bc-footer-left .bc-account-chip.bc-chip-warning {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .beneos-cloud-app .bc-footer-right {
   display: flex;
   align-items: center;

@@ -1,11 +1,11 @@
 {
   "title": "Beneos Module",
   "description": "Features for Beneos Battlemaps, Creatures, Spells and Loot",
-  "version": "14.5.0-beta.5",
+  "version": "14.5.0-beta.6",
   "socket": true,
   "compatibility": {
     "minimum": "13",
-    "verified": "14.365"
+    "verified": "14"
   },
   "url": "https://github.com/BeneosBattlemaps/beneos-module",
   "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-module/stream-beta/module.json",

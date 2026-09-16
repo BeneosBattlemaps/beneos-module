@@ -102,7 +102,7 @@ export class BeneosInstallState {
     if (!releaseDir) return []
     const all = this.getAll()
     const out = []
-    for (const [key, entry] of Object.entries(all)) {
+    for (const [, entry] of Object.entries(all)) {
       if (!entry || typeof entry !== "object") continue
       if (entry.releaseDir === releaseDir) out.push(entry)
     }
@@ -144,8 +144,12 @@ export class BeneosInstallState {
     //   Frage bm_9113  -> bm_9113 , Vermerk bm_0093b -> bm_9113   gefunden
     //   Frage bm_0093b -> bm_9113 , Vermerk bm_9113  -> bm_9113   gefunden
     //
-    // Eine einseitige Aufloesung haette den ersten Fall verloren, und das ist
-    // der haeufigere: der Katalog wird vor den Kundenwelten umgestellt.
+    // Eine einseitige Aufloesung haette genau den ersten Fall verloren, und das
+    // ist der haeufigere: der Katalog wird vor den Kundenwelten umgestellt.
+    //
+    // Der Durchlauf kostet nur dort, wo die genaue Schreibweise nichts fand.
+    // Fuer jedes nicht umbenannte Release gibt der Alias seine Eingabe
+    // unveraendert zurueck, der Vergleich ist dann der alte.
     const ziel = beneosReleaseAlias(releaseDir)
     for (const [, entry] of Object.entries(all)) {
       if (!entry || typeof entry !== "object" || !entry.releaseDir) continue
@@ -504,10 +508,14 @@ export class BeneosInstallState {
    * hier liegt" und bricht ohne Netz ab. Ein nicht aufgeloester Schluessel
    * machte ein umbenanntes Release also offline unentfernbar.
    *
+   * Der dritte ist der gefaehrlichste. Trifft er seinen eigenen Schluessel
+   * nicht, haelt er sich fuer eine fremde Installation, beansprucht seine
+   * eigenen Dateien und raeumt sie deshalb nicht weg.
+   *
    * ES WIRD NICHTS UMGESCHRIEBEN, NUR NACHGESCHLAGEN. Eine einmalige Wanderung
    * der Weltvermerke waere der naheliegende Weg gewesen und ist verworfen: sie
    * liefe beim Weltstart, also lange bevor der Katalog den neuen Namen fuehrt,
-   * und genau dann traefe der Deinstallierer seine eigene Zeile nicht mehr.
+   * und genau dann fiele der Deinstallierer in den eben beschriebenen Fall.
    *
    * Findet sich nichts, kommt die genaue Schreibweise zurueck. Ein Neueintrag
    * entsteht damit wie bisher.
@@ -563,8 +571,22 @@ export class BeneosInstallState {
 
   /**
    * Persist one install. Key format: `<releaseDir>_<variant>` (variant = ""
-   * for single-variant releases). Idempotent: replacing the same key
-   * overwrites scene-ids + timestamp + signature for the new install.
+   * for single-variant releases). Timestamp and signature always describe the
+   * latest run; the scene ids ACCUMULATE.
+   *
+   * WHY THE IDS ARE UNIONED AND NOT REPLACED
+   *
+   * A run reports only the scenes it imported itself. Replacing therefore
+   * turned "installed map 3 of this pack, then map 7" into a record that knows
+   * about map 7 alone, and the world would keep reporting one scene out of
+   * fourteen no matter how many maps the user collected one by one. Since the
+   * completeness of this record now drives what the customer is told, that
+   * undercount is the same class of false statement the record exists to end.
+   *
+   * The cost is a stale id when a repack DROPS a scene: the union keeps it and
+   * the release then looks more complete than it is. That is the direction we
+   * want to err in. Over-reporting completeness costs a missing hint; under-
+   * reporting it accuses the customer's install of being broken.
    *
    * `mode` RECORDS HOW THIS RELEASE WAS INSTALLED, AND IT MATTERS AT REMOVAL.
    *
@@ -594,13 +616,27 @@ export class BeneosInstallState {
     // Katalog den neuen Namen gerade selbst geliefert, er ist also belegt.
     // Eine Wanderung auf Verdacht beim Weltstart waere das Gegenteil davon.
     const alterKey = this.vermerkSchluessel(releaseDir, variant)
+    const vereinigt = new Set(Array.isArray(all[key]?.sceneIds) ? all[key].sceneIds.map(String) : [])
+    if (alterKey !== key) {
+      for (const id of (Array.isArray(all[alterKey]?.sceneIds) ? all[alterKey].sceneIds : [])) {
+        const s = String(id || "")
+        if (s) vereinigt.add(s)
+      }
+    }
+    for (const id of (Array.isArray(sceneIds) ? sceneIds : [])) {
+      const s = String(id || "")
+      if (s) vereinigt.add(s)
+    }
     if (alterKey !== key) delete all[alterKey]
     all[key] = {
       releaseDir,
       variant:         variant || "",
       assetId:         String(assetId || ""),
-      sceneIds:        Array.isArray(sceneIds) ? sceneIds.slice(0) : [],
-      sceneCount:      Number(sceneCount || (Array.isArray(sceneIds) ? sceneIds.length : 0)),
+      sceneIds:        [...vereinigt],
+      // Was THIS run's size, not the record's. The two drifted apart the moment
+      // the ids started accumulating, and the badge reads the ids. The passed
+      // count only stands in for a run that reported no ids at all.
+      sceneCount:      vereinigt.size || Number(sceneCount || 0),
       installedAt:     new Date().toISOString(),
       sourceSignature: String(sourceSignature || ""),
       mode:            mode === "stream" || mode === "download" ? mode : "",

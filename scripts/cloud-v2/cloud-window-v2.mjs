@@ -163,6 +163,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       openLogin:               BeneosCloudWindowV2._onOpenLogin,
       openCloudSettings:       BeneosCloudWindowV2._onOpenCloudSettings,
       openSettings:            BeneosCloudWindowV2._onOpenSettings,
+      retryCatalog:            BeneosCloudWindowV2._onRetryCatalog,
       openCodex:               BeneosCloudWindowV2._onOpenCodex,
       openLgc:                 BeneosCloudWindowV2._onOpenLgc,
       resetFilters:            BeneosCloudWindowV2._onResetFilters,
@@ -1056,6 +1057,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const isInstalled = (relDir) => {
         if (!relDir) return false
         if (installedByDir.has(relDir)) return installedByDir.get(relDir)
+        // Nicht die Zeile zaehlen, sondern die Welt fragen. Eine Zeile ohne
+        // Szenen in der Welt ist eine Erinnerung, keine Installation.
         const v = BeneosInstallState.istInstalliert(relDir)
         installedByDir.set(relDir, v); return v
       }
@@ -1620,6 +1623,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const bmapReleaseName        = bmapInfo.releaseName
     const bmapUninstallVariant   = bmapInfo.variant
     const bmapUninstallPackageId = bmapInfo.packageId
+    // NO partial marker on a single-map card, deliberately. The completeness we
+    // can measure is the RELEASE's, and this card is one scene out of it: a map
+    // the user installed exactly as a single map is complete as far as they are
+    // concerned, and "Partly installed: 1 of 14 scenes" on it would be a second
+    // false statement rather than the end of one. The reason it cannot be
+    // measured per map is two lines above: Foundry scene ids are not in the
+    // catalog. The release card carries the marker.
 
     // Patron-aware per-card flags. isFree surfaces the green "FREE" badge
     // and groups the card into the Free section for non-patrons. isLocked
@@ -1699,8 +1709,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // Feature 5: battlemaps now respect offline too (the bmap exemption is
     // gone). Offline -> the card shows the "Offline" state and drops its remote
     // thumbnail so the result list isn't flooded with broken images.
-    const cardIsOffline = !!(game.beneos?.databaseHolder?.getIsOffline?.()
-                            ?? game.beneos?.databaseHolder?.isOffline)
+    // 14.4.8: an den echten Serverausfall gebunden statt an den Katalogzustand.
+    // Die Pille sagt "offline" und das Weglassen des Vorschaubildes setzt voraus,
+    // dass nichts geht. Bei einem bloss veralteten Suchindex geht aber alles:
+    // Vorschaubilder und Downloads laufen ueber beneos.cloud, nicht ueber den
+    // Katalog-Host. Vorher log die Karte den Nutzer an.
+    const cardIsOffline = game.beneos?.cloud?.serverOffline === true
     const dragType = assetType === "spell" ? "Item" : (assetType === "item" ? "Item" : "Actor")
     const documentId = isInstalled
       ? (BeneosUtility.getActorId?.(key) || BeneosUtility.getItemId?.(key) || BeneosUtility.getSpellId?.(key) || "")
@@ -4137,8 +4151,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // available assets are never locked, so this never false-blocks them.
   #installBlockReason(type, el) {
     const cloud = game.beneos?.cloud
+    // 14.4.8: nur der Server blockt. Der Katalogzustand stand hier bis dahin
+    // gleichberechtigt daneben und hat Installationen verhindert, die
+    // funktioniert haetten: der Installer arbeitet aus packInfo von
+    // api-scenepacker.php auf beneos.cloud und ruft den Katalog-Host
+    // www.beneos-database.com an keiner Stelle auf. Ein veralteter Suchindex
+    // ist damit kein Grund, einen Download zu verweigern.
     const offline = cloud?.serverOffline === true
-      || !!(game.beneos?.databaseHolder?.getIsOffline?.() ?? game.beneos?.databaseHolder?.isOffline)
     if (offline) return "offline"
     if (!cloud?.isLoggedIn?.()) return "login"
     // Installed asset whose pending update the user is no longer entitled to.
@@ -5680,6 +5699,20 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
 
   // Settings modal companion. Single instance per click — if one is
   // already open, just bring it to focus instead of stacking copies.
+  // Holt den Katalog sofort neu, statt den Nutzer auf einen Neustart der Welt zu
+  // verweisen. Bis 14.4.7 war das Neuladen der einzige Weg aus dem Zustand, weil
+  // loadDatabaseFiles() nur im ready-Hook lief.
+  static async _onRetryCatalog(_event, target) {
+    const holder = game.beneos?.databaseHolder
+    if (!holder?.erneutVersuchen) return
+    if (target) target.disabled = true
+    try {
+      await holder.erneutVersuchen()
+    } finally {
+      if (target) target.disabled = false
+    }
+  }
+
   static _onOpenSettings(_event, _target) {
     const existing = Object.values(foundry.applications.instances ?? {})
       .find(a => a instanceof BeneosCloudSettingsV2)
@@ -6329,7 +6362,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // (cheap, no remote calls), then group-sort + slice so the Free section is
     // never paged out before the locked one.
     const hasCampaign = !!game.beneos?.cloud?.hasCampaignAccess?.("battlemaps")
-    const isOffline   = !!(game.beneos?.databaseHolder?.getIsOffline?.() ?? game.beneos?.databaseHolder?.isOffline)
+    // 14.4.8: wie bei den uebrigen Karten an den echten Serverausfall gebunden.
+    // Releaselisten kommen aus api-scenepacker.php auf beneos.cloud und haben mit
+    // dem Katalog-Host nichts zu tun; ein veralteter Suchindex darf sie nicht
+    // als offline ausweisen.
+    const isOffline   = game.beneos?.cloud?.serverOffline === true
 
     // DER OFFLINE-REITER ZEIGT, WAS OFFLINE LIEGT. NICHT, WAS INSTALLIERT IST.
     //
@@ -6590,6 +6627,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // keyed off the unified isUpdate so the thumb badge agrees with the
         // name-row marker + update chip (a date-based update with a matching
         // signature would otherwise still show the green "fresh" tick).
+        // A partly installed release must not keep the green tick either, or the
+        // thumb would go on claiming "done" while the name row says 3 of 14.
+        // Same precedence as the name row: update beats partial beats complete.
         installState,
         // Ein teilweise installiertes Release darf den gruenen Haken auch am
         // Titelbild nicht behalten, sonst behauptet das Abzeichen "fertig",
@@ -6718,6 +6758,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     for (const r of list) {
       const installs = BeneosInstallState.findByReleaseDir(r.release_dir)
       if (!installs.length) continue
+      // Ein Release, das nicht mehr in der Welt steht, ist nicht veraltet.
+      // Es ist weg, und das ist eine andere Aussage.
       if (!BeneosInstallState.istInstalliert(r.release_dir)) continue
       const chosen = installs[0]
       const di = this.#releaseDateInfo(r.release_dir) || null
@@ -7136,6 +7178,16 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
    * Gemessen auf `main` in `universe-test`: 8 von 10 Releases galten als
    * installiert, ohne dass eine einzige ihrer Szenen noch existierte.
    *
+   * PRESENT IS NOT THE SAME AS COMPLETE. A scene-scoped install writes the
+   * whole release dir with a single scene id, so a release the user took one
+   * map out of used to carry the same green check as one they installed in
+   * full. `partial` separates the two by counting: the ids this world actually
+   * recorded against the scene count the POI index read out of the pack.
+   *
+   * A release the index does not know (too new, or a namespace the index does
+   * not cover) yields want = 0 and is reported as complete. Claiming
+   * incompleteness on a release we cannot count would be the worse error.
+   *
    * @param {string} releaseDir
    * @returns {{installed: boolean, installedOn: string, update: boolean,
    *            releaseName: string, variant: string, packageId: string,
@@ -7151,6 +7203,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     if (!installs.length) return none
     const chosen = installs[0]
 
+    // GEZAEHLT WIRD, WAS IN DER WELT STEHT.
+    //
+    // Bis zum 02.09.2026 stand hier `installedSceneIds()`, also die Zahl der
+    // VERMERKTEN Kennungen. Die aendert sich nie, auch nicht wenn die
+    // Spielleitung den Szenenordner loescht. `game.scenes` kam in dieser
+    // Entscheidung gar nicht vor, und deshalb behauptete das Fenster weiter
+    // eine Installation, die es nicht mehr gab.
     const befund = BeneosInstallState.weltbefund(releaseDir)
     // `unbekannt` faellt auf die vermerkte Zahl zurueck, also auf das bisherige
     // Verhalten: dort wissen wir es nicht, und Nichtwissen darf nicht als
@@ -7180,13 +7239,18 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       variant:     String(chosen.variant || ""),
       packageId:   String((rel?.variant_dirs || {})[chosen.variant]
         || Object.values(rel?.variant_dirs || {})[0] || ""),
-      // have === 0 heisst "der Vermerk ist aelter als die Kennungsfuehrung",
-      // nicht "nichts installiert". Deshalb bleibt eine leere Menge unentschieden.
+      // have === 0 is "the record predates the id tracking", not "nothing is
+      // installed". Claiming 0 of 14 on a world that installed the release in
+      // full before this feature shipped would be the loudest false statement
+      // of the lot, so an empty set stays undecided.
       //
-      // Zwei Wege in denselben Halbkreis:
-      //   1. Weniger Szenen als das Release hat. Braucht den POI-Index.
-      //   2. Weniger Szenen als vermerkt. Erkennt eine geloeschte Szene OHNE
-      //      den Index, also auch fuer Releases, die dort nicht stehen.
+      // Zwei Wege in denselben Halbkreis, und der zweite ist neu:
+      //   1. Weniger Szenen als das Release hat. Erkennt eine von vornherein
+      //      unvollstaendige Installation, braucht aber den POI-Index.
+      //   2. Weniger Szenen als vermerkt. Erkennt eine geloeschte Szene, und
+      //      zwar OHNE den POI-Index, also auch fuer Releases, die dort nicht
+      //      stehen. Das ist der Fall, den der Betreiber am 02.09.2026 gemeldet
+      //      hat.
       partial:     (want > 0 && have > 0 && have < want) || befund.zustand === "teilweise",
       sceneCoverage: { have, want },
     }

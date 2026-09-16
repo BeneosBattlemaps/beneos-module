@@ -28,16 +28,17 @@
          button is hidden because a click would just produce a
          confusing HTTP error. Auto-recovers via the 60s probe loop
          in BeneosCloud.startServerProbeLoop. --}}
+    {{!-- 14.4.8: der Katalogzustand hat diese Kette verlassen. Er stand hier
+         zwischen dem Server und dem Konto und ersetzte damit den kompletten
+         Kontoblock: ein Neukunde sah "Offline" statt "Connected (Free Account)",
+         waehrend die Einstellungen gleichzeitig "verbunden" meldeten. Ein
+         veralteter Suchindex ist aber kein Anmeldezustand. Er steht jetzt als
+         eigenes Zeichen daneben, siehe weiter unten. --}}
     {{#if isServerOffline}}
       <div class="bc-account-chip bc-chip-error"
            data-tooltip="{{localize 'BENEOS.Cloud.Footer.ServerOfflineTooltip'}}">
         <i class="fa-solid fa-server"></i>
         <span>{{localize "BENEOS.Cloud.Footer.ServerOffline"}}</span>
-      </div>
-    {{else if isOffline}}
-      <div class="bc-account-chip bc-chip-warning">
-        <i class="fa-solid fa-cloud-slash"></i>
-        <span>{{localize "BENEOS.Cloud.Footer.Offline"}}</span>
       </div>
     {{else if isCloudLoggedIn}}
       {{!-- Four valid connection states. The Beneos Cloud auto-syncs
@@ -80,6 +81,26 @@
               data-action="openLogin">
         <i class="fa-solid fa-right-to-bracket"></i>
         <span>{{localize "BENEOS.Cloud.Footer.SignIn"}}</span>
+      </button>
+    {{/if}}
+    {{!-- Der Katalogzustand, jetzt neben dem Konto statt an seiner Stelle.
+         Er sagt genau das, was er weiss: die Suchliste ist die zwischen-
+         gespeicherte, nicht die frische. Er sagt NICHT, dass die Cloud
+         unerreichbar ist, denn das weiss er gar nicht, und meistens stimmt
+         es auch nicht. Der Knopf daneben holt den Katalog sofort neu; ohne
+         ihn half bis 14.4.7 nur ein Neuladen der ganzen Welt. --}}
+    {{#if isOffline}}
+      <div class="bc-account-chip bc-chip-warning"
+           data-tooltip="{{localize 'BENEOS.Cloud.Footer.CatalogStaleTooltip'}}">
+        <i class="fa-solid fa-cloud-slash"></i>
+        <span>{{localize "BENEOS.Cloud.Footer.CatalogStale"}}</span>
+      </div>
+      <button type="button"
+              class="bc-footer-button beneos-catalog-retry-button"
+              data-action="retryCatalog"
+              data-tooltip="{{localize 'BENEOS.Cloud.Footer.RetryTooltip'}}">
+        <i class="fa-solid fa-rotate"></i>
+        <span>{{localize "BENEOS.Cloud.Footer.Retry"}}</span>
       </button>
     {{/if}}
     {{!-- Settings now lives on the left, in the slot the old "Account"

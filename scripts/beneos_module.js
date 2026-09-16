@@ -41,6 +41,9 @@ Hooks.once('init', () => {
     fx: BeneosFXEngine,
     // Anonymous, GM-only usage telemetry (opt-out, default on).
     analytics: BeneosAnalytics,
+    // Support one-liner for a world whose cards all claim "installed" while the
+    // compendium is empty. Network-free, so no outage can mislead it.
+    repairRegistry: () => BeneosUtility.pruneOrphanRegistry(),
   }
 
   BeneosUtility.registerSettings()
