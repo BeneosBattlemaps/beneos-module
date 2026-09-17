@@ -488,8 +488,9 @@ export async function buildCreatureDetailCtx({ tokenKey, activeTab, activeTactic
  *  player. Anything passive (always-on traits, lair actions without a
  *  consume mechanic) goes into the "passive" bucket.
  *
- *  Beneos content schema (v1.4.1) provides the authoritative ability
- *  metadata when present on flags.beneos.content.abilities[]:
+ *  The Beneos content schema provides the authoritative ability metadata
+ *  when present. `_beneosAbilityFor()` reads both generations (1.4.1 on the
+ *  actor, 1.5.0 on the item) and normalizes them:
  *    - `summary`  → card summary text
  *    - `categories[]` → primary source for the filter bucket
  *
@@ -499,7 +500,6 @@ export async function buildCreatureDetailCtx({ tokenKey, activeTab, activeTactic
  *  pre-1.4 migrated docs. */
 function _collectAbilities(actor, data, resolveItem = null) {
   const out = [];
-  const beneosAbilities = actor.flags?.beneos?.content?.abilities ?? [];
   for (const item of actor.items ?? []) {
     const sys = item.system ?? {};
     // dnd5e 5.x stores activation either on system.activation or on the
@@ -510,7 +510,7 @@ function _collectAbilities(actor, data, resolveItem = null) {
           : Object.values(sys.activities)[0])
       : null;
     const act = sys.activation?.type ?? activitiesFirst?.activation?.type;
-    const beneosMatch = _matchBeneosAbility(item.name, beneosAbilities);
+    const beneosMatch = _beneosAbilityFor(actor, item);
     const filterKey = _categoriesToFilter(beneosMatch?.categories)
                     || _legacyTypeToFilter(beneosMatch?.type)
                     || _mapActivationToFilter(item, act);
@@ -569,6 +569,50 @@ function _legacyTypeToFilter(type) {
   return null;
 }
 
+/** Resolve the Beneos author note for one actor item, across BOTH content
+ *  schema generations, and return one normalized shape so no caller has to
+ *  know which generation it is looking at.
+ *
+ *  Schema 1.4.1 (693 creatures) keeps an `abilities[]` array on the actor,
+ *  linked by `sourceItemId` or by name, with `categories[]`.
+ *  Schema 1.5.0 (30 creatures) dropped that array: the note moved onto the
+ *  item as `flags.beneos.ability`, and the category field is called
+ *  `categoriesOverride` because it is only written when the curation differs
+ *  from the Foundry activation default.
+ *
+ *  Reading only the 1.4.1 location made every 1.5.0 creature fall through to
+ *  the raw rules description, which is exactly the text the author note is
+ *  meant to replace. Measured over 730 actors: 4216 of 4602 items found their
+ *  note before, 4525 after, and all 309 gained cards are 1.5.0. Those are the
+ *  newest creatures, so the flagships showed the worst cards. */
+function _beneosAbilityFor(actor, item) {
+  if (!item) return null;
+  // 1.5.0 first: it is the authored-per-item location and unambiguous.
+  const onItem = item.flags?.beneos?.ability;
+  if (onItem && (onItem.summary || onItem.duringCombatPrompt)) {
+    return {
+      summary:        onItem.summary,
+      categories:     onItem.categoriesOverride,
+      mechanicalText: null,
+      flavorText:     null,
+      type:           null,
+    };
+  }
+  // 1.4.1: array on the actor, by id first because that link is unique.
+  const list = actor?.flags?.beneos?.content?.abilities;
+  if (!Array.isArray(list) || !list.length) return null;
+  const byId = item.id ? list.find((a) => a.sourceItemId === item.id) : null;
+  const ab = byId ?? _matchBeneosAbility(item.name, list);
+  if (!ab) return null;
+  return {
+    summary:        ab.summary,
+    categories:     ab.categories,
+    mechanicalText: ab.mechanicalText,
+    flavorText:     ab.flavorText,
+    type:           ab.type,
+  };
+}
+
 /** Three-tier name-normalized match between a dnd5e item name and a
  *  Beneos content-schema ability. Same pattern as _matchItemForPrompt. */
 function _matchBeneosAbility(itemName, beneosAbilities) {
@@ -583,15 +627,12 @@ function _matchBeneosAbility(itemName, beneosAbilities) {
 }
 
 /** Public lookup: the Beneos "Comment" summary string for a given actor
- *  item, or "" if the creature has no Beneos content for it. Reuses the
- *  same name-normalized match the codex cards use, so the NPC-sheet hover
- *  panel and the codex stay in sync. Prefers an explicit sourceItemId
- *  link, then falls back to the three-tier name match. */
+ *  item, or "" if the creature has no Beneos content for it. Goes through
+ *  the same `_beneosAbilityFor()` resolver the codex cards use, so the
+ *  NPC-sheet hover panel and the codex stay in sync across both content
+ *  schema generations. */
 export function getAbilitySummary(actor, item) {
-  const beneosAbilities = actor?.flags?.beneos?.content?.abilities;
-  if (!Array.isArray(beneosAbilities) || !beneosAbilities.length || !item) return "";
-  const byId = item.id ? beneosAbilities.find(a => a.sourceItemId === item.id) : null;
-  const ab = byId ?? _matchBeneosAbility(item.name, beneosAbilities);
+  const ab = _beneosAbilityFor(actor, item);
   const summary = (ab?.summary && ab.summary.trim())
                || (ab?.mechanicalText && ab.mechanicalText.trim())
                || (ab?.flavorText && ab.flavorText.trim())
