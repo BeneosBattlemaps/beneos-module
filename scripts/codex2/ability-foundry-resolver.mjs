@@ -111,7 +111,16 @@ export function rechargeLabel(recoveryEntry) {
   const formula = recoveryEntry.formula;
   if (!period) return null;
   if (RECHARGE_PERIODS.has(period)) {
-    return (typeof formula === "string" && formula.trim().length) ? `Recharge ${formula.trim()}` : "Recharge";
+    const f = (typeof formula === "string") ? formula.trim() : "";
+    if (!f.length) return "Recharge";
+    // dnd5e stores the THRESHOLD of the d6 roll, so "5" means "recharges on a
+    // 5 or a 6". Printing the bare threshold gave "Recharge 5" next to an item
+    // literally named "Slowing Breath (Recharge 5-6)". Only plain thresholds
+    // are expanded; anything else (a dice formula, a custom term) is shown
+    // verbatim because its meaning is not the d6 convention.
+    const n = /^[1-6]$/.test(f) ? Number(f) : null;
+    if (n === null) return `Recharge ${f}`;
+    return n >= 6 ? "Recharge 6" : `Recharge ${n}-6`;
   }
   if (period === "day" || period === "dawn" || period === "dusk") return "Daily";
   if (period === "shortRest") return "Short Rest";
