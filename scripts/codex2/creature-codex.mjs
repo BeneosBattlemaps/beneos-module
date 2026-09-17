@@ -265,10 +265,20 @@ export async function buildCreatureDetailCtx({ tokenKey, activeTab, activeTactic
   const _strip = (k) => String(k ?? "").replace(/_\d+$/, "");
   const _dbInfo = _info(_worldFlag.tokenKey) ?? _info(tokenKey)
                ?? _info(_strip(_worldFlag.fullId)) ?? _info(_strip(tokenKey));
-  // Free status from the cloud "Free" tier (data.free), the dynamic source of
-  // truth — not the stale catalog free_content flag. Missing key -> not free.
-  const _freeKey = _worldFlag.tokenKey ?? tokenKey ?? _strip(_worldFlag.fullId) ?? _strip(tokenKey);
-  const isFree = game.beneos?.cloud?.isFreeAsset?.("token", _freeKey) === true;
+  // Eine Quelle, und die Datenbank gewinnt.
+  //
+  // `isFreeAsset()` fragt die Freiliste, die das Modul beim Weltstart vom
+  // Server holt. Der Katalog ist nur noch der Rueckfall, wenn diese Liste
+  // fehlt; genau dafuer gibt `isFreeAsset()` null zurueck statt false, und
+  // genau so macht es die Suchmaschine des Moduls schon.
+  //
+  // Gemessen am 22.08.2026 lag der Katalog bei 25 freien Creatures, die
+  // Datenbank bei 26. Der Unterschied hiess `179-rime_wyvern`, und der Codex
+  // zeigte ein Schloss auf etwas, das der Server bereitwillig ausliefert.
+  const _freiCloud = game?.beneos?.cloud?.isFreeAsset?.("token", _worldFlag.tokenKey || tokenKey);
+  const isFree = _freiCloud === null || _freiCloud === undefined
+    ? _dbInfo?.properties?.free_content === true
+    : _freiCloud === true;
 
   // Image paths: normalize so the template's <img src> and inline
   // background-image rules resolve from the page root. Foundry usually
