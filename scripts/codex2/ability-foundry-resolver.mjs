@@ -4,7 +4,7 @@
 // and a damage-formula line ("7 (2d6) Lightning + … · half on save") from a
 // dnd5e 5.x item. Pure functions, no side effects.
 
-const ABILITY_LABEL = Object.freeze({
+export const ABILITY_LABEL = Object.freeze({
   str: "Strength", dex: "Dexterity", con: "Constitution",
   int: "Intelligence", wis: "Wisdom", cha: "Charisma",
 });

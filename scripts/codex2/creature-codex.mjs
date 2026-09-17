@@ -6,7 +6,7 @@
 // v2 ApplicationV2 context, tab/sub-tab state and the action wiring.
 
 import { getCodexDataForActor, tokenizeV13ToTacText, enrichDescription, buildAbilityRefTooltip } from "../codex/codex-data-adapter.mjs";
-import { buildHeaderPills, buildDamageLine } from "./ability-foundry-resolver.mjs";
+import { buildHeaderPills, buildDamageLine, ABILITY_LABEL } from "./ability-foundry-resolver.mjs";
 
 // Per-actor combat-theater state survives tab/sub-tab switches. Lost on
 // world reload, which is fine: a new combat starts at round 1 anyway.
@@ -518,7 +518,7 @@ function _collectAbilities(actor, data, resolveItem = null) {
     const summary = (beneosMatch?.summary && beneosMatch.summary.trim())
                  || (beneosMatch?.mechanicalText && beneosMatch.mechanicalText.trim())
                  || (beneosMatch?.flavorText && beneosMatch.flavorText.trim())
-                 || _firstLine(_stripHtml(sys.description?.value ?? ""));
+                 || _firstLine(_entschaerfeMarken(_stripHtml(sys.description?.value ?? "")));
     out.push({
       id: item.id,
       name: item.name,
@@ -697,17 +697,81 @@ function _matchItemForPrompt(actor, promptName) {
   return null;
 }
 
+/** HTML to plain text, with block boundaries preserved as newlines.
+ *
+ *  `textContent` alone concatenates text nodes with nothing between them, so
+ *  `...saving throw.</p><p>On a failed save,...` collapsed into
+ *  `...saving throw.On a failed save,...`. Every Foundry description is a
+ *  chain of `<p>`, so the defect hit every card that fell back to the
+ *  description, and it also defeated `_firstLine()`: with no newline left in
+ *  the string there was no first line to cut, and the whole multi-paragraph
+ *  blob went onto a one-line card summary.
+ *
+ *  Walking the DOM rather than replacing tags by regex, because the input is
+ *  author HTML with attributes, nesting and self-closing forms. */
 function _stripHtml(html) {
   if (!html) return "";
   const d = document.createElement("div");
   d.innerHTML = html;
-  return d.textContent ?? d.innerText ?? "";
+  d.querySelectorAll("br").forEach((br) => br.replaceWith("\n"));
+  d.querySelectorAll("p, div, li, tr, h1, h2, h3, h4, h5, h6, blockquote")
+   .forEach((el) => el.append("\n"));
+  d.querySelectorAll("td, th").forEach((el) => el.append(" "));
+  return (d.textContent ?? d.innerText ?? "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
 }
 function _firstLine(s) {
   if (!s) return "";
   const t = s.trim();
   const i = t.indexOf("\n");
   return i < 0 ? t : t.slice(0, i);
+}
+
+/** Reduce Foundry enricher markup to readable text for the card summary.
+ *
+ *  Scope is deliberately narrow. This runs ONLY on the description fallback,
+ *  which after the schema fix covers 68 of 4602 items, 13 of which carry a
+ *  marker at all (measured over 730 actors). All 13 carry LITERAL arguments,
+ *  so no activity lookup is needed and none is done: nothing here invents a
+ *  number. Where a marker would need the activity context to resolve, the
+ *  payload is shown as written rather than guessed.
+ *
+ *  This is not a fifth cleaning implementation and must not grow into one.
+ *  The shared resolver (tools/codex-build/web/enrich-resolve.js) replaces it
+ *  when the four cleaning paths are unified. */
+const _MARKEN = /\[\[|@\w+\[|&(?:amp;)?Reference\[/;
+const _MARKEN_SCHALTER = /\s*\b(?:extended|average|apply=\w+|activity=\w+|format=\w+)\b/g;
+
+function _entschaerfeMarken(text) {
+  if (!text || !_MARKEN.test(text)) return text;
+  let t = text;
+  // A visible {label} always wins, whatever marker carries it.
+  t = t.replace(/(?:\[\[[^\]]*\]\]|@\w+\[[^\]]*\]|&(?:amp;)?Reference\[[^\]]*\])\{([^}]*)\}/g, "$1");
+  // Reference to a rules term: keep the term, drop the switches.
+  t = t.replace(/&(?:amp;)?Reference\[([^\]\s]+)[^\]]*\]/g, "$1");
+  // Embeds and bare links have no visible text of their own.
+  t = t.replace(/@Embed\[[^\]]*\]/g, "");
+  t = t.replace(/@\w+\[[^\]]*\]/g, "");
+  // Saves and checks: "[[/save 15 con]]" -> "DC 15 Constitution".
+  t = t.replace(/\[\[\/(save|check)\s+([^\]]*)\]\]/g, (ganz, art, rumpf) => {
+    const dc = rumpf.match(/\b(\d+)\b/);
+    const ab = rumpf.match(/\b(str|dex|con|int|wis|cha)\b/i);
+    const teile = [];
+    if (dc) teile.push(`DC ${dc[1]}`);
+    if (ab) teile.push(ABILITY_LABEL[ab[1].toLowerCase()]);
+    return teile.length ? teile.join(" ") : rumpf.replace(_MARKEN_SCHALTER, "").trim();
+  });
+  // Ability cross-reference: the name is the whole point.
+  t = t.replace(/\[\[\/item\s+([^\]]*)\]\]/g, "$1");
+  // Dice-bearing markers: the formula is already readable, the switches are not.
+  t = t.replace(/\[\[\/(?:damage|heal|healing|roll|r|gmr)\s*([^\]]*)\]\]/g,
+                (ganz, rumpf) => rumpf.replace(_MARKEN_SCHALTER, "").trim());
+  // Anything left: drop the wrapper and the leading command word.
+  t = t.replace(/\[\[\s*\/?\w*\s*([^\]]*)\]\]/g,
+                (ganz, rumpf) => rumpf.replace(_MARKEN_SCHALTER, "").trim());
+  return t.replace(/\(\s*\)/g, "").replace(/[ \t]{2,}/g, " ").replace(/\s+([.,;:])/g, "$1").trim();
 }
 
 /** When the user has the "All" filter on, we still want to group the
