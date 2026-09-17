@@ -192,7 +192,19 @@ export function buildHeaderPills(item, actor) {
   const rl = rechargeLabel(recovery);
   if (rl) pills.push({ label: rl, kind: "recharge" });
 
-  return pills;
+  // One pill per distinct statement, not one per activity. The loop above runs
+  // over every activity and pushes unconditionally, so an ability whose four
+  // activities share a range produced the same pill four times: "Background
+  // Song" on 251-ancient_copper_dragon has four activities, all at 120 ft.
+  // Deduped here rather than inside the branches so attack, save, range and
+  // template are all covered by the same rule.
+  const gesehen = new Set();
+  return pills.filter((p) => {
+    const schluessel = `${p.kind} ${p.label}`;
+    if (gesehen.has(schluessel)) return false;
+    gesehen.add(schluessel);
+    return true;
+  });
 }
 
 /** Build the damage-formula line for an ability item:
