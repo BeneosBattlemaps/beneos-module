@@ -4,6 +4,7 @@ import { BeneosInfoBox } from "./beneos_info_box.js"
 // cloud-v2/beneos-install-state, and neither reaches back here.
 import { BeneosAnalytics } from "./beneos_analytics.js"
 import { normalizeEmbeddedItems } from "./cloud-v2/beneos-ability-icons.mjs"
+import { packNeedsV14Migration, migrateActorForV14 } from "./cloud-v2/beneos-v14-scene-migration.mjs"
 
 // FilePicker.upload(..., { notify: false }) used to swallow failures
 // (disk full, permissions, server reject) — the await would resolve,
@@ -3527,6 +3528,13 @@ export class BeneosCloud {
           } catch (err) {
             console.warn("Beneos | embedded item normalisation failed, importing as authored", err)
           }
+          // Cloud creatures do not go through the pack installer, so they never
+          // saw the V13 -> V14 bridge. Without it V14 answers the V13 list
+          // `detectionModes` with an empty object and the creature arrives
+          // without its senses. The gate falls back to V13 when `_stats` is
+          // missing, which means "migrate", and a failure here is loud on
+          // purpose: a silent one would rebuild the exact defect this prevents.
+          if (packNeedsV14Migration(actorData)) migrateActorForV14(actorData)
           let actor = new CONFIG.Actor.documentClass(actorData);
           if (actor) {
             // Search if we have already an actor with the same name in the compendium
