@@ -42,6 +42,8 @@
  *   7. Token detectionModes (list -> keyed object) and the new `depth`, on scene
  *      tokens AND on an Actor's prototypeToken, plus ActiveEffect showIcon.
  *      Left raw, 33 of 766 creatures arrive without their blindsight.
+ *   8. Scene templates -> regions. V14 removed MeasuredTemplate; the conversion
+ *      is delegated to Foundry's own BaseRegion._migrateMeasuredTemplateData.
  *
  * Scope check, not a claim: Foundry's V13->V14 work sits in two places. The one
  * in the common core (`common/documents/*.mjs`, `migrateData`) runs on every
@@ -49,7 +51,7 @@
  * ActiveEffect `changes` to `system.changes` and rebuilds `duration`. The other
  * sits in the server registry (`dist/database/documents/*.mjs`,
  * `_migrationRegistry`) and runs only when a world changes version, so
- * createDocuments never sees it. Points 4 to 7 are all from that second list.
+ * createDocuments never sees it. Points 4 to 8 are all from that second list.
  * Measured with tools/v14-import-bench against the full delivered catalogue.
  */
 
@@ -292,6 +294,95 @@ function migrateTokenData(token) {
 }
 
 /**
+ * V13 `ActiveEffect` with a status also needs `showIcon`, which V14 sets in
+ * `migrateTemporary` (server registry). Measured: 98 effects in the catalogue
+ * carry statuses. Mutates the effect list in place.
+ */
+function migrateEffects(effects) {
+  const ALWAYS = globalThis.CONST?.ACTIVE_EFFECT_SHOW_ICON?.ALWAYS ?? 1
+  for (const e of (Array.isArray(effects) ? effects : [])) {
+    if (!e || typeof e !== "object") continue
+    const hasStatus = Array.isArray(e.statuses) ? e.statuses.length > 0
+      : (e.statuses instanceof Set ? e.statuses.size > 0 : false)
+    if (hasStatus && e.showIcon === undefined) e.showIcon = ALWAYS
+  }
+}
+
+/** The grid instance a template is measured against, or null. */
+function sceneGrid(scene) {
+  const G = globalThis.foundry?.grid
+  const T = globalThis.CONST?.GRID_TYPES
+  if (!G || !T) return null
+  const type = Number(scene?.grid?.type ?? T.SQUARE)
+  const opt = { size: Number(scene?.grid?.size) || 100, distance: Number(scene?.grid?.distance) || 5 }
+  if (type === T.GRIDLESS) return G.GridlessGrid ? new G.GridlessGrid(opt) : null
+  if (type === T.SQUARE) return G.SquareGrid ? new G.SquareGrid(opt) : null
+  if (!G.HexagonalGrid) return null
+  opt.columns = (type === T.HEXODDQ) || (type === T.HEXEVENQ)
+  opt.even = (type === T.HEXEVENR) || (type === T.HEXEVENQ)
+  if (scene?.flags?.core?.legacyHex) opt.size *= Math.SQRT3 / 2
+  return new G.HexagonalGrid(opt)
+}
+
+/**
+ * V14 replaced MeasuredTemplate documents with Regions; `scene.templates` is not
+ * in the V14 schema at all and is dropped without a word. Foundry converts them
+ * in `migrateMeasuredTemplates` (server registry, so never on our import path),
+ * and the geometry it uses is reachable from the client, so the conversion is
+ * delegated rather than rebuilt. 6 of 2180 catalogue scenes carry a template.
+ *
+ * Nothing is deleted unless EVERY template converted. Foundry's switch has no
+ * default branch and throws on a shape it does not know, and dropping a template
+ * we could not convert would be the same silent loss with our name on it.
+ * Mutates.
+ */
+function migrateSceneTemplates(scene) {
+  const raw = (Array.isArray(scene?.templates) ? scene.templates : []).filter(t => t && t._id)
+  if (!raw.length) return
+  const BaseRegion = globalThis.foundry?.documents?.BaseRegion
+  const grid = sceneGrid(scene)
+  if (typeof BaseRegion?._migrateMeasuredTemplateData !== "function" || !grid) return
+  // The world decides whether templates snap to the grid; Foundry reads the same
+  // two settings in its own migrateMeasuredTemplates.
+  const setting = (key, fallback) => {
+    try { return globalThis.game?.settings?.get?.("core", key) ?? fallback } catch (_) { return fallback }
+  }
+  const context = {
+    grid, users: [],
+    gridTemplates: setting("gridTemplates", false) === true,
+    coneTemplateType: setting("coneTemplateType", "round"),
+  }
+
+  const regions = Array.isArray(scene.regions) ? scene.regions : []
+  const taken = new Set(regions.map(r => String(r?._id)))
+  const fresh = []
+  let failed = 0
+  for (const template of raw) {
+    let region
+    try { region = BaseRegion._migrateMeasuredTemplateData(template, context) }
+    catch (err) {
+      console.warn("Beneos V14 | measured template not converted", template._id, err?.message || err)
+      failed += 1
+      continue
+    }
+    // A colliding id needs a real 16-character id; a hand-built one fails
+    // DocumentIdField. Without randomID the template stays a template.
+    while (region?._id && taken.has(String(region._id))) {
+      const fresh16 = globalThis.foundry?.utils?.randomID?.()
+      if (!fresh16) { region = null; break }
+      region._id = fresh16
+    }
+    if (!region?._id) { failed += 1; continue }
+    taken.add(String(region._id))
+    region.flags = Object.assign({}, region.flags, { core: Object.assign({}, region.flags?.core, { MeasuredTemplate: true }) })
+    fresh.push(region)
+  }
+  if (!fresh.length) return
+  scene.regions = regions.concat(fresh)
+  if (!failed) delete scene.templates
+}
+
+/**
  * Apply the full V13 -> V14 conversion to one raw pack Scene document. Mutates
  * and returns it. The caller is responsible for the version gate
  * (packNeedsV14Migration) so a V13 install stays byte-identical.
@@ -300,6 +391,7 @@ export function migrateSceneForV14(scene) {
   if (!scene || typeof scene !== "object") return scene
   migrateSceneBackground(scene)
   migrateSceneFog(scene)
+  migrateSceneTemplates(scene)
   for (const tile of (Array.isArray(scene.tiles) ? scene.tiles : [])) migrateTile(tile)
   for (const token of (Array.isArray(scene.tokens) ? scene.tokens : [])) migrateTokenData(token)
   return scene
