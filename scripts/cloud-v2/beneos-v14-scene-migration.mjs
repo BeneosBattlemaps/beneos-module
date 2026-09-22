@@ -37,6 +37,8 @@
  *   5. Scene fog.exploration (boolean) -> fog.mode (enum). Same kind of rename,
  *      and the wide case: 1191 of 2180 scenes ship exploration off while V14
  *      defaults to on, so half the catalogue gained fog of war on V14.
+ *   6. foregroundElevation -> levels[].elevation.top and fog.overlay ->
+ *      levels[].fog.src, the last two relocations migrateLevels performs.
  *
  * Everything else in the catalogue validated clean on V14 (walls, notes,
  * drawings, tokens, lights, sounds, journal pages, templates, effects), so this
@@ -118,6 +120,27 @@ export function rectShiftFrom(bg) {
 }
 
 /**
+ * The two Level fields Foundry's `migrateLevels` fills that this bridge used to
+ * drop: the overhead elevation and the fog overlay image. Pure.
+ *
+ * The truthiness test on the elevation is Foundry's own (`a && (c.elevation =
+ * {top: a})`) and it is not cosmetic: V13 declares `foregroundElevation` nullable,
+ * and 239 of 2180 catalogue scenes ship null. Coercing that to 0 would produce a
+ * level spanning [0, 0], which `Level#clampElevation` then uses to pin every token
+ * to elevation 0.
+ *
+ * @returns {{elevation?: {top: number}, fog?: {src: string}}}
+ */
+export function levelExtrasFrom(scene) {
+  const extras = {}
+  const elev = scene?.foregroundElevation
+  if (typeof elev === "number" && Number.isFinite(elev) && elev > 0) extras.elevation = { top: elev }
+  const overlay = scene?.fog?.overlay
+  if (typeof overlay === "string" && overlay) extras.fog = { src: overlay }
+  return extras
+}
+
+/**
  * V13 `fog.exploration` (boolean) -> V14 `fog.mode` (enum). Foundry's own world
  * migration `migrateFogExploration` makes exactly this mapping, but that registry
  * never runs on documents handed to createDocuments, and the V14 default is
@@ -138,12 +161,13 @@ function stripLegacySceneFields(scene) {
   delete scene.foreground
   delete scene.backgroundColor
   delete scene.foregroundElevation
+  if (scene.fog && typeof scene.fog === "object") delete scene.fog.overlay
 }
 
 /**
  * Move the V13 scene background/foreground/backgroundColor onto a V14 Level
  * (scene.levels[0]). Split matches the V14 schema: src/color/tint/alphaThreshold
- * -> level.background; the placement transform (anchor/offset/scale/fit/rotation)
+ * -> level.background; the placement transform (anchor/scale/fit/rotation)
  * -> level.textures; foreground -> level.foreground; the scene-rect shift
  * -> scene.shiftX/shiftY. A pure tile scene (no background) is left for Foundry
  * to give its own default level; an already-V14 scene (levels present) is left
@@ -200,6 +224,8 @@ function migrateSceneBackground(scene) {
     if (fgRaw.alphaThreshold != null) foreground.alphaThreshold = fgRaw.alphaThreshold
     level.foreground = foreground
   }
+
+  Object.assign(level, levelExtrasFrom(scene))
 
   scene.levels = [level]
   scene.initialLevel = BENEOS_LEVEL_ID
