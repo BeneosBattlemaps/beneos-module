@@ -34,6 +34,9 @@
  *      on 2026-09-22) the rect stays put and the map is pushed the other way, so
  *      the map sits 2 * offset off its own walls. 40 of 2180 catalogue scenes
  *      carry a non-zero offset, hence "random releases are misaligned".
+ *   5. Scene fog.exploration (boolean) -> fog.mode (enum). Same kind of rename,
+ *      and the wide case: 1191 of 2180 scenes ship exploration off while V14
+ *      defaults to on, so half the catalogue gained fog of war on V14.
  *
  * Everything else in the catalogue validated clean on V14 (walls, notes,
  * drawings, tokens, lights, sounds, journal pages, templates, effects), so this
@@ -54,6 +57,10 @@ const BENEOS_DEFAULT_BG_COLOR = "#050505"
 
 const V13_TO_V14_OCCLUSION = { 1: 1, 3: 4, 4: 8 } // FADE, RADIAL->4, VISION->8 (NONE dropped)
 const V14_VALID_OCCLUSION  = new Set([1, 2, 4, 8])
+// CONST.FOG_EXPLORATION_MODES, spelled out because this module also runs in the
+// bench harness, outside a Foundry client.
+const V14_FOG_DISABLED   = 0
+const V14_FOG_INDIVIDUAL = 1
 
 /** True when the running client is V14 and the pack was authored pre-V14. */
 export function packNeedsV14Migration(sceneData) {
@@ -108,6 +115,21 @@ export function rectShiftFrom(bg) {
   if (!Number.isFinite(x) && !Number.isFinite(y)) return null
   // V14 declares both as `integer: true`, so a fractional pack value must round.
   return { shiftX: Number.isFinite(x) ? Math.round(x) : 0, shiftY: Number.isFinite(y) ? Math.round(y) : 0 }
+}
+
+/**
+ * V13 `fog.exploration` (boolean) -> V14 `fog.mode` (enum). Foundry's own world
+ * migration `migrateFogExploration` makes exactly this mapping, but that registry
+ * never runs on documents handed to createDocuments, and the V14 default is
+ * INDIVIDUAL. Left alone, every scene that shipped with exploration switched OFF
+ * silently gains fog of war: 1191 of 2180 catalogue scenes, nearly all of them the
+ * SC and overview scenes where a fogged image is exactly wrong. Mutates.
+ */
+function migrateSceneFog(scene) {
+  const fog = scene?.fog
+  if (!fog || typeof fog !== "object" || !("exploration" in fog)) return
+  if (fog.mode === undefined) fog.mode = fog.exploration ? V14_FOG_INDIVIDUAL : V14_FOG_DISABLED
+  delete fog.exploration
 }
 
 /** Strip the V13 top-level scene fields that V14 removed from the schema. */
@@ -192,6 +214,7 @@ function migrateSceneBackground(scene) {
 export function migrateSceneForV14(scene) {
   if (!scene || typeof scene !== "object") return scene
   migrateSceneBackground(scene)
+  migrateSceneFog(scene)
   for (const tile of (Array.isArray(scene.tiles) ? scene.tiles : [])) migrateTile(tile)
   return scene
 }
