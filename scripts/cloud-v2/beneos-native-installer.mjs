@@ -25,7 +25,7 @@
  */
 
 import { BeneosInstallState, BeneosPreInstallDialog, beneosLogModuleInstall } from "./beneos-install-state.mjs"
-import { packNeedsV14Migration, migrateSceneForV14 } from "./beneos-v14-scene-migration.mjs"
+import { packNeedsV14Migration, migrateSceneForV14, migrateActorForV14 } from "./beneos-v14-scene-migration.mjs"
 import { zuInstallierendeSchluessel } from "../creature-installer/alternativen.mjs"
 
 // ---- Transfer config -------------------------------------------------------
@@ -1971,6 +1971,17 @@ export class BeneosNativeBattlemapInstaller {
           if (packNeedsV14Migration(d)) migrateSceneForV14(d)
         }
         this._importedScenes = arr.map(d => ({ id: String(d?._id), name: String(d?.name || "") }))
+      }
+      // The same bridge for Actors. It was wired to Scene.json only, so every
+      // creature went into a V14 world unconverted: V13 keeps `detectionModes` as
+      // a list, V14 as a keyed object, and V14 answers a list with an empty object.
+      // Measured over the catalogue, 33 of 766 creatures lose their blindsight
+      // that way. Foundry handles the rest of an Actor itself at document
+      // construction, so only the prototypeToken needs us.
+      if (relPath === "data/Actor.json") {
+        for (const d of arr) {
+          if (d && typeof d === "object" && packNeedsV14Migration(d)) migrateActorForV14(d)
+        }
       }
       // A journal page whose name is an empty string costs the WHOLE journal.
       // JournalEntryPage#name is a StringField({required: true, blank: false}),

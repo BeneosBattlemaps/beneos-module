@@ -39,6 +39,18 @@
  *      defaults to on, so half the catalogue gained fog of war on V14.
  *   6. foregroundElevation -> levels[].elevation.top and fog.overlay ->
  *      levels[].fog.src, the last two relocations migrateLevels performs.
+ *   7. Token detectionModes (list -> keyed object) and the new `depth`, on scene
+ *      tokens AND on an Actor's prototypeToken, plus ActiveEffect showIcon.
+ *      Left raw, 33 of 766 creatures arrive without their blindsight.
+ *
+ * Scope check, not a claim: Foundry's V13->V14 work sits in two places. The one
+ * in the common core (`common/documents/*.mjs`, `migrateData`) runs on every
+ * document, including ours, and must NOT be rebuilt here: it already moves
+ * ActiveEffect `changes` to `system.changes` and rebuilds `duration`. The other
+ * sits in the server registry (`dist/database/documents/*.mjs`,
+ * `_migrationRegistry`) and runs only when a world changes version, so
+ * createDocuments never sees it. Points 4 to 7 are all from that second list.
+ * Measured with tools/v14-import-bench against the full delivered catalogue.
  */
 
 // Stable per-scene embedded id for the level we synthesize. MUST be Foundry's
@@ -233,6 +245,53 @@ function migrateSceneBackground(scene) {
 }
 
 /**
+ * V13 `detectionModes` is a LIST of `{id, range, enabled}`; V14 is an OBJECT
+ * keyed by the mode id. Pure.
+ *
+ * V14 converts this in `migrateDetectionModes`, which lives in the SERVER
+ * migration registry and therefore never sees a document handed to
+ * createDocuments. Left raw, V14 turns the list into `{}` and the creature loses
+ * its senses: measured over the catalogue, 33 of 766 creatures ship blindsight
+ * this way (Needle Blight, Twig Blight, Strahd's Animated Armor and others).
+ *
+ * @returns {object|null} null when there is nothing to convert.
+ */
+export function detectionModesToV14(list) {
+  if (!Array.isArray(list)) return null
+  const out = {}
+  for (const m of list) {
+    if (!m || typeof m !== "object") continue
+    const { id, ...rest } = m
+    if (id && typeof id === "string") out[id] = rest
+  }
+  return out
+}
+
+/**
+ * Token conversion shared by scene tokens and an Actor's prototypeToken
+ * (mutates).
+ *
+ * `depth` is new in V14 and carried by both schemas; Foundry's own
+ * `migrateDepthAndLevel` sets it to min(width, height), so a 2x2 token is two
+ * units deep and not one. `level` is deliberately NOT set: the V14 schema field
+ * already initialises to `BaseScene.metadata.defaultLevelId`
+ * (common/documents/token.mjs:180), and writing the id as a literal would point
+ * a token at a level a mixed-data scene does not carry.
+ *
+ * `_movementHistory` would need the same treatment, plus `subpathId` from
+ * `migratePathId`. Measured over every delivered archive: 0 of 129 scene tokens
+ * and 0 of 1655 prototype tokens carry a movement history, so it is left alone
+ * rather than written blind.
+ */
+function migrateTokenData(token) {
+  if (!token || typeof token !== "object") return
+  const modes = detectionModesToV14(token.detectionModes)
+  if (modes) token.detectionModes = modes
+  const w = Number(token.width), h = Number(token.height)
+  if (token.depth === undefined && Number.isFinite(w) && Number.isFinite(h)) token.depth = Math.min(w, h)
+}
+
+/**
  * Apply the full V13 -> V14 conversion to one raw pack Scene document. Mutates
  * and returns it. The caller is responsible for the version gate
  * (packNeedsV14Migration) so a V13 install stays byte-identical.
@@ -242,5 +301,22 @@ export function migrateSceneForV14(scene) {
   migrateSceneBackground(scene)
   migrateSceneFog(scene)
   for (const tile of (Array.isArray(scene.tiles) ? scene.tiles : [])) migrateTile(tile)
+  for (const token of (Array.isArray(scene.tokens) ? scene.tokens : [])) migrateTokenData(token)
   return scene
+}
+
+/**
+ * Apply the V13 -> V14 conversion to one raw Actor document. Mutates and returns
+ * it. Same version gate as the scene path.
+ *
+ * Only the prototypeToken needs work: Foundry's own `migrateData` already moves
+ * ActiveEffect `changes` to `system.changes` and rebuilds `duration` at document
+ * construction, measured at the document rather than assumed.
+ */
+export function migrateActorForV14(actor) {
+  if (!actor || typeof actor !== "object") return actor
+  migrateTokenData(actor.prototypeToken)
+  migrateEffects(actor.effects)
+  for (const item of (Array.isArray(actor.items) ? actor.items : [])) migrateEffects(item?.effects)
+  return actor
 }
