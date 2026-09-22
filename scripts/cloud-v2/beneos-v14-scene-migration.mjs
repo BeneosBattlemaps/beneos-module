@@ -29,6 +29,11 @@
  *   3. Tile x/y (V13 = top-left of the rect) -> V14 texture-anchor-point
  *      semantics (default anchor 0.5 = centre). Left raw, tiles render shifted by
  *      half their size (tile-only scenes look destroyed).
+ *   4. Scene background.offsetX/offsetY -> scene.shiftX/shiftY. Same field,
+ *      renamed in V14. Written to level.textures.offsetX instead (the bug fixed
+ *      on 2026-09-22) the rect stays put and the map is pushed the other way, so
+ *      the map sits 2 * offset off its own walls. 40 of 2180 catalogue scenes
+ *      carry a non-zero offset, hence "random releases are misaligned".
  *
  * Everything else in the catalogue validated clean on V14 (walls, notes,
  * drawings, tokens, lights, sounds, journal pages, templates, effects), so this
@@ -82,6 +87,29 @@ function migrateTile(tile) {
   if (typeof tile.y === "number") tile.y = Math.round(tile.y + (Number(tile.height) || 0) * ay)
 }
 
+/**
+ * The V13 scene-rect shift, in the V14 field names. Pure.
+ *
+ * V13 `background.offsetX/offsetY` shifts the SCENE RECT, not the texture:
+ * `sceneX = dimensions.x - background.offsetX` (v13 client/documents/scene.mjs:273).
+ * V14 renamed the field to the top-level `scene.shiftX/shiftY` and kept the formula
+ * verbatim (V14 client/documents/scene.mjs:497); Foundry's own world migration
+ * `migrateLevels` performs exactly this assignment. `level.textures.offsetX` is a
+ * DIFFERENT concept in V14: it moves only the texture, against an already computed
+ * rect (primary.mjs:295). Writing the V13 offset there leaves the rect unshifted and
+ * pushes the map the other way, so the map lands 2 * offset off its own walls.
+ *
+ * @returns {{shiftX: number, shiftY: number}|null} null when there is nothing to move.
+ */
+export function rectShiftFrom(bg) {
+  if (!bg || typeof bg !== "object") return null
+  const x = Number(bg.offsetX)
+  const y = Number(bg.offsetY)
+  if (!Number.isFinite(x) && !Number.isFinite(y)) return null
+  // V14 declares both as `integer: true`, so a fractional pack value must round.
+  return { shiftX: Number.isFinite(x) ? Math.round(x) : 0, shiftY: Number.isFinite(y) ? Math.round(y) : 0 }
+}
+
 /** Strip the V13 top-level scene fields that V14 removed from the schema. */
 function stripLegacySceneFields(scene) {
   delete scene.background
@@ -94,9 +122,10 @@ function stripLegacySceneFields(scene) {
  * Move the V13 scene background/foreground/backgroundColor onto a V14 Level
  * (scene.levels[0]). Split matches the V14 schema: src/color/tint/alphaThreshold
  * -> level.background; the placement transform (anchor/offset/scale/fit/rotation)
- * -> level.textures; foreground -> level.foreground. A pure tile scene (no
- * background) is left for Foundry to give its own default level; an already-V14
- * scene (levels present) is left untouched. Mutates.
+ * -> level.textures; foreground -> level.foreground; the scene-rect shift
+ * -> scene.shiftX/shiftY. A pure tile scene (no background) is left for Foundry
+ * to give its own default level; an already-V14 scene (levels present) is left
+ * untouched. Mutates.
  */
 function migrateSceneBackground(scene) {
   const bg = (scene.background && typeof scene.background === "object") ? scene.background : null
@@ -104,6 +133,14 @@ function migrateSceneBackground(scene) {
   const fgRaw = typeof scene.foreground === "string" ? { src: scene.foreground } : scene.foreground
   const hasFgSrc = !!(fgRaw && fgRaw.src)
   const hasColor = typeof scene.backgroundColor === "string" && scene.backgroundColor
+
+  // Assigned before the early return so a tile-only scene keeps its rect shift
+  // too. An explicit shiftX in the source wins, which is Foundry's own rule
+  // (client/documents/scene.mjs:1023: `!("shiftX" in data)`) and keeps mixed
+  // data, carrying both levels and a legacy background, from being overwritten.
+  const shift = rectShiftFrom(bg)
+  if (shift && !("shiftX" in scene)) scene.shiftX = shift.shiftX
+  if (shift && !("shiftY" in scene)) scene.shiftY = shift.shiftY
 
   // Already-V14 data, or nothing to relocate: just drop the removed fields.
   if ((Array.isArray(scene.levels) && scene.levels.length) || (!hasBgSrc && !hasFgSrc && !hasColor)) {
@@ -126,10 +163,11 @@ function migrateSceneBackground(scene) {
   // V13 `scene.background.anchorX/anchorY` (Beneos packs ship 0/0) is a different
   // concept; copied verbatim it anchors the texture's TOP-LEFT at the centre, so
   // the map is shoved down-right by half the scene (the Headisport bug). Force
-  // 0.5 and carry only the transform fields that map 1:1 (offset/scale/fit/rotation;
+  // 0.5 and carry only the transform fields that map 1:1 (scale/fit/rotation;
   // Beneos ships defaults, so this stays a faithful fill).
+  // offsetX/offsetY are deliberately NOT in this list, see rectShiftFrom.
   const textures = { anchorX: 0.5, anchorY: 0.5 }
-  for (const key of ["offsetX", "offsetY", "fit", "scaleX", "scaleY", "rotation"]) {
+  for (const key of ["fit", "scaleX", "scaleY", "rotation"]) {
     if (bg && bg[key] != null) textures[key] = bg[key]
   }
   level.textures = textures
