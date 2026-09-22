@@ -39,10 +39,6 @@
  *      defaults to on, so half the catalogue gained fog of war on V14.
  *   6. foregroundElevation -> levels[].elevation.top and fog.overlay ->
  *      levels[].fog.src, the last two relocations migrateLevels performs.
- *
- * Everything else in the catalogue validated clean on V14 (walls, notes,
- * drawings, tokens, lights, sounds, journal pages, templates, effects), so this
- * bridge deliberately touches only Scene documents and their tiles.
  */
 
 // Stable per-scene embedded id for the level we synthesize. MUST be Foundry's
@@ -57,8 +53,11 @@ const BENEOS_LEVEL_ID = "defaultLevel0000"
 // near-black instead of the light V14 default).
 const BENEOS_DEFAULT_BG_COLOR = "#050505"
 
-const V13_TO_V14_OCCLUSION = { 1: 1, 3: 4, 4: 8 } // FADE, RADIAL->4, VISION->8 (NONE dropped)
-const V14_VALID_OCCLUSION  = new Set([1, 2, 4, 8])
+// V13 held one enum value, V14 holds a bit set: `1 << (mode - 1)`, which is what
+// Foundry's own migrateOcclusionMode computes. A hand-written table used to map
+// 1/3/4 and silently dropped anything else.
+const v13ToV14Occlusion = (mode) => (mode > 0 ? 1 << (mode - 1) : 0)
+const V14_VALID_OCCLUSION = new Set([1, 2, 4, 8])
 // CONST.FOG_EXPLORATION_MODES, spelled out because this module also runs in the
 // bench harness, outside a Foundry client.
 const V14_FOG_DISABLED   = 0
@@ -82,8 +81,9 @@ function migrateTile(tile) {
     for (const m of (Array.isArray(occ.modes) ? occ.modes : [])) {
       if (V14_VALID_OCCLUSION.has(Number(m))) modes.add(Number(m))
     }
-    if (typeof occ.mode === "number" && occ.mode !== 0 && V13_TO_V14_OCCLUSION[occ.mode] != null) {
-      modes.add(V13_TO_V14_OCCLUSION[occ.mode])
+    if (typeof occ.mode === "number" && occ.mode > 0) {
+      const converted = v13ToV14Occlusion(occ.mode)
+      if (V14_VALID_OCCLUSION.has(converted)) modes.add(converted)
     }
     occ.modes = [...modes]
     delete occ.mode
