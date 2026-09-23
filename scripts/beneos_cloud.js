@@ -186,6 +186,143 @@ async function _beneosRepairMissingAspects(kind, key, health) {
   return repaired
 }
 
+// Pre-install check for creatures: does this token still need to be fetched?
+//
+// WHY THIS EXISTS. Releases share creatures. Installing the seven packs of the
+// "Castle Ravenloft" bundle on 2026-09-18 produced 328 token file writes for
+// 152 distinct files, because the creature list is deduplicated per release and
+// the write path had no existence check at all. Every repeat also dragged the
+// expensive world-sync behind it (full scene scan, confirm dialog, compendium
+// lock cycle), which is what made the run feel slow.
+//
+// WHY IT RUNS BEFORE THE FETCH. The images travel as base64 INSIDE the
+// get_token response. A check after the response would save disk writes and no
+// bandwidth at all, which is the wrong half of the problem.
+//
+// WHAT COUNTS AS EVIDENCE. Only `content_signature`. NOT `updated_at`:
+// incrementAssetDownloads writes to the assets row on every install by any
+// customer, and the column carries ON UPDATE CURRENT_TIMESTAMP, so its
+// timestamp moves without the content changing. A missing signature on either
+// side is not evidence of sameness, so it installs.
+//
+// WHAT THE FILE PROBE EXPECTS. Exactly the paths the registry recorded for this
+// creature, not the naming convention. A creature whose catalog entry never
+// shipped a top-down has `topDown: null`, and demanding the file anyway would
+// re-download it on every single run forever. The signature already guarantees
+// the cloud side has not changed since; when the catalog gets its top-down, the
+// signature changes with it and this returns true again.
+//
+// The journal image is found by suffix: the registry keeps the journal document
+// id but not its image path, so the directory listing supplies the name and the
+// HEAD probe then judges the file like any other.
+//
+// THE KEY IS RESOLVED AGAINST THE CATALOG FIRST. Map packs reference their
+// creatures as "NNN_name" while the catalog knows them as "NNN-name" (found
+// 2026-08-03), and the registry is written under the catalog spelling. Matching
+// the requested spelling against the registry would find nothing and install
+// every scene-referenced creature again on every run, which is the exact case
+// this check exists for.
+//
+// EVERY UNCERTAIN ANSWER INSTALLS. Skipping wrongly means a customer silently
+// does not get a file, and there is no surface that offers them a forced
+// reinstall; installing wrongly costs one transfer. The two errors are not
+// worth the same, so every branch below that cannot prove sameness returns
+// true. That covers: no catalog entry, no signature on either side, a variant
+// count the catalog did not state, an unreadable folder, and The Forge, where
+// assets live behind a foreign asset-library prefix and a probe of
+// "beneos_assets/..." proves nothing either way.
+//
+// `weltActorNoetig` is set by the canvas-drop path: that one needs a WORLD
+// actor, which the compendium check does not cover.
+async function _beneosKreaturBrauchtInstallation(tokenKey, { weltActorNoetig = false } = {}) {
+  if (!tokenKey) return { install: true, grund: "no key" }
+  const cloud = game.beneos?.cloud
+  if (!cloud) return { install: true, grund: "cloud not ready" }
+  if (_beneosUsingTheForge()) return { install: true, grund: "on The Forge, cannot prove the files are there" }
+
+  const katalogKey = cloud._beneosFindCloudAsset?.(cloud.availableContent?.tokens, tokenKey)?.key || tokenKey
+  // The key goes into a file path below. It comes from a server response, so it
+  // is checked against the character set the catalog actually uses instead of
+  // being trusted.
+  if (!/^[A-Za-z0-9_-]+$/.test(String(katalogKey))) {
+    return { install: true, grund: "key is not a plain catalog key" }
+  }
+  const wanted = String(katalogKey).toLowerCase()
+  const varianten = Object.values(BeneosUtility.beneosTokens || {})
+    .filter(t => String(t?.tokenKey || "").toLowerCase() === wanted)
+  if (varianten.length === 0) return { install: true, grund: "not installed" }
+
+  const sollHash = cloud.getTokenHash?.(katalogKey) || ""
+  const istHash = BeneosUtility.getTokenInstallHash(katalogKey) || ""
+  if (!sollHash || !istHash) return { install: true, grund: "no signature to compare" }
+  if (sollHash !== istHash) return { install: true, grund: "content signature differs" }
+
+  // The variant count is the only guard against a run that died halfway through
+  // a multi-variant creature: the registry entries written before the abort
+  // carry a valid signature and would otherwise read as complete. A catalog
+  // that does not state a count therefore does not license a skip.
+  const sollVarianten = Number(cloud.getTokenVariantCount?.(katalogKey)) || 0
+  if (sollVarianten <= 0) return { install: true, grund: "catalog states no variant count" }
+  if (varianten.length !== sollVarianten) {
+    return { install: true, grund: `${varianten.length} variant(s) local, ${sollVarianten} in catalog` }
+  }
+
+  if (!BeneosUtility.isTokenLoaded(katalogKey)) return { install: true, grund: "compendium entry gone" }
+
+  if (weltActorNoetig) {
+    const weltActor = game.actors?.find(a => {
+      const flag = a.getFlag("world", "beneos")
+      return String(flag?.tokenKey || "").toLowerCase() === wanted
+    })
+    if (!weltActor) return { install: true, grund: "no world actor for the pending drop" }
+  }
+
+  const folder = varianten[0]?.folder || `beneos_assets/cloud/tokens/${katalogKey}`
+  let namen
+  try {
+    const listing = await foundry.applications.apps.FilePicker.implementation.browse("data", folder)
+    namen = (listing?.files || []).map(p => {
+      const bare = String(p).split("?")[0]
+      let leaf = bare.substring(bare.lastIndexOf("/") + 1)
+      try { leaf = decodeURIComponent(leaf) } catch (e) { /* already decoded */ }
+      return leaf
+    })
+  } catch (err) {
+    return { install: true, grund: "asset folder unreadable" }
+  }
+
+  // The listing only says a NAME is there. It is not proof of a file: the
+  // uninstaller does not delete, it overwrites with a one-byte placeholder that
+  // a name comparison waves through. _beneosProbeInstalledFile is the probe the
+  // rest of this file already uses against exactly that, and against an HTML
+  // error page served in place of the asset.
+  const leafOf = (p) => {
+    const bare = String(p || "").split("?")[0]
+    return bare.substring(bare.lastIndexOf("/") + 1)
+  }
+  const zuPruefen = []
+  for (const v of varianten) {
+    for (const pfad of [v?.token, v?.avatar, v?.topDown]) {
+      if (!pfad) continue
+      const leaf = leafOf(pfad)
+      if (!namen.includes(leaf)) return { install: true, grund: `file missing: ${leaf}` }
+      zuPruefen.push(leaf)
+    }
+    const journalSuffix = `-${v?.number}-journal.webp`.toLowerCase()
+    const journalLeaf = namen.find(n => n.toLowerCase().endsWith(journalSuffix))
+    if (!journalLeaf) return { install: true, grund: `journal image missing for variant ${v?.number}` }
+    zuPruefen.push(journalLeaf)
+  }
+
+  const proben = await Promise.all(zuPruefen.map(async leaf => ({
+    leaf, ok: await _beneosProbeInstalledFile(`${folder}/${leaf}`)
+  })))
+  const kaputt = proben.find(p => !p.ok)
+  if (kaputt) return { install: true, grund: `file unusable: ${kaputt.leaf}` }
+
+  return { install: false, grund: "identical" }
+}
+
 // Telemetry is never allowed to break an install, so the call is wrapped.
 function _beneosTrackAssetInstallError(kind, key, health) {
   try { BeneosAnalytics.trackAssetInstallError(kind, key, health) } catch (_) { /* swallow */ }
@@ -1732,6 +1869,12 @@ export class BeneosCloud {
   getTokenHash(key) { return this._beneosFindCloudAsset(this.availableContent?.tokens, key)?.contentSignature || "" }
   getItemHash(key)  { return this._beneosFindCloudAsset(this.availableContent?.items,  key)?.contentSignature || "" }
   getSpellHash(key) { return this._beneosFindCloudAsset(this.availableContent?.spells, key)?.contentSignature || "" }
+  // Variant count the catalog claims for a creature. Used by the pre-install
+  // check: a local registry that holds three variants where the catalog now
+  // ships four is out of date even when the signature happens to match.
+  // 0 means "catalog did not say", and the caller must not read that as zero
+  // variants.
+  getTokenVariantCount(key) { return Number(this._beneosFindCloudAsset(this.availableContent?.tokens, key)?.nb_variants) || 0 }
   getTokenIsNewForUser(key) { return !!this._beneosFindCloudAsset(this.availableContent?.tokens, key)?.isNewForUser }
   getItemIsNewForUser(key)  { return !!this._beneosFindCloudAsset(this.availableContent?.items,  key)?.isNewForUser }
   getSpellIsNewForUser(key) { return !!this._beneosFindCloudAsset(this.availableContent?.spells, key)?.isNewForUser }
@@ -3915,8 +4058,54 @@ export class BeneosCloud {
   // button or handlePendingCanvasDrop gate up-front (so the install
   // animation only starts after Yes) but still want the import* function
   // to manage its own pack lock.
+  /**
+   * Returns `{ skipped, grund }` when this creature does not need installing,
+   * and null when it does. Split out of importTokenFromCloud so that function
+   * stays readable and the housekeeping below is in one place.
+   *
+   * A skipped creature has to leave every surface in the same state a finished
+   * install would, or the skip trades a transfer for a defect:
+   *   - a canvas drop waiting for this creature gets placed from the world
+   *     actor that already exists (which is why the check demands one),
+   *   - the cloud window is told the install ended, or its card spins forever,
+   *   - in a batch, updateInstalledAssets still has to see this asset. It is
+   *     the function that re-locks every compendium and clears noWorldImport at
+   *     the end of a run, and it fires on a counter. A skip that bypassed it
+   *     would leave the packs unlocked for the rest of the session.
+   */
+  async _beneosSkipKreatur(tokenKey, isBatch) {
+    const urteil = await _beneosKreaturBrauchtInstallation(tokenKey, {
+      weltActorNoetig: this.pendingCanvasDrops.has(tokenKey)
+    })
+    if (urteil.install) {
+      BeneosUtility.debugMessage(`[Beneos Cloud] token '${tokenKey}' installs: ${urteil.grund}`)
+      return null
+    }
+    BeneosUtility.debugMessage(`[Beneos Cloud] token '${tokenKey}' skipped: ${urteil.grund}`)
+    try { await this.drainPendingCanvasDrops(tokenKey) } catch (e) {
+      console.warn("[Beneos Cloud] canvas drop after skip failed", tokenKey, e)
+    }
+    if (isBatch) this.updateInstalledAssets()
+    else game.beneos?.cloudWindowV2?.notifyInstallEnded?.(tokenKey, true)
+    // The only path that returns a value. Callers that want to report how much
+    // a run actually fetched read this; everything else keeps treating the call
+    // as void, exactly as before.
+    return { skipped: true, grund: urteil.grund }
+  }
+
   async importTokenFromCloud(tokenKey, event = undefined, isBatch = false, opts = {}) {
     if (!isBatch && !opts.gated && !await BeneosUtility.confirmSystemCompat("token")) return;
+
+    // Skip what is already here in exactly this version. The criteria and the
+    // reason the check sits BEFORE the fetch are in
+    // _beneosKreaturBrauchtInstallation. `opts.force` is the way back in for the
+    // repair paths: the Top-Down reinstall button fixes a prototype-token
+    // reference while the file itself is sitting right there.
+    if (opts.force !== true) {
+      const skip = await this._beneosSkipKreatur(tokenKey, isBatch)
+      if (skip) return skip
+    }
+
     // Fix #E3: ignore repeat clicks while this token's pipeline is still in flight.
     const lockKey = `token:${tokenKey}`
     if (this.inflightImports.has(lockKey)) {

@@ -542,12 +542,19 @@ export class BeneosPreInstallDialog {
   /**
    * Teil 2 — world-presence overwrite confirmation. Driven by the ACTUAL
    * scenes in the world (not just the install registry), so it also fires for
-   * worlds that imported a release before the registry existed. Returns
-   * Promise<boolean>: true => proceed in overwrite mode, false => abort.
+   * worlds that imported a release before the registry existed.
+   *
+   * Three-way since 18.09.2026, because a re-install used to be all or nothing:
+   *   "schonen" => merge, the user's own tokens/tiles/notes stay (the default),
+   *   "neubau"  => the old behaviour, scenes are rebuilt from the pack,
+   *   "abbruch" => install nothing.
+   * Returns Promise<"schonen"|"neubau"|"abbruch">.
    */
   static async confirmWorldOverwrite({ scope, name, presentCount = 0, totalCount = 0, installedAt = "", stale = false }) {
     const DialogV2 = foundry?.applications?.api?.DialogV2
-    if (!DialogV2?.confirm) return true   // too old to ask -> never block an install
+    // Too old to ask: never block an install, and take the option that cannot
+    // destroy anything the user placed.
+    if (!DialogV2?.wait) return "schonen"
 
     const L = (key, fallback) => {
       try { const s = game.i18n.localize(key); if (s && s !== key) return s } catch (_) {}
@@ -568,30 +575,41 @@ export class BeneosPreInstallDialog {
           "%subject% of '%name%' is already in your world (installed %date%), and a newer version is online.")
       : L("BENEOS.Cloud.Bmap.Overwrite.Intro",
           "%subject% of '%name%' is already in your world (installed %date%).")
-    const warn = L("BENEOS.Cloud.Bmap.Overwrite.Warn",
-      "Reinstalling rebuilds the scenes from the pack — any placed tokens or manual edits on them are lost. Continue?")
+    const keep = L("BENEOS.Cloud.Bmap.Overwrite.WarnKeep",
+      "Your own tokens, tiles, notes and drawings on these scenes stay where they are. Only the Beneos content is updated.")
+    const rebuild = L("BENEOS.Cloud.Bmap.Overwrite.WarnRebuild",
+      "Rebuilding from scratch discards everything you placed on these scenes.")
 
-    const body = (intro + " " + warn)
+    const body = (intro + " " + keep)
       .replace("%subject%", foundry.utils.escapeHTML(subject))
       .replace("%name%",    safeName)
       .replace("%date%",    foundry.utils.escapeHTML(dateStr))
 
-    const yesLabel = stale
-      ? L("BENEOS.Cloud.Bmap.Overwrite.YesUpdate", "Update")
-      : L("BENEOS.Cloud.Bmap.Overwrite.Yes", "Overwrite")
+    const keepLabel = stale
+      ? L("BENEOS.Cloud.Bmap.Overwrite.YesUpdateKeep", "Update and keep my changes")
+      : L("BENEOS.Cloud.Bmap.Overwrite.YesKeep", "Reinstall and keep my changes")
+    const rebuildLabel = L("BENEOS.Cloud.Bmap.Overwrite.YesRebuild", "Rebuild from scratch")
     const noLabel = L("BENEOS.Cloud.Bmap.Overwrite.Cancel", "Cancel")
 
+    const content =
+      `<p style="line-height:1.5">${body}</p>` +
+      `<p style="line-height:1.5;opacity:.75">${foundry.utils.escapeHTML(rebuild)}</p>`
+
     try {
-      const proceed = await DialogV2.confirm({
+      const wahl = await DialogV2.wait({
         window:  { title },
-        content: `<p style="line-height:1.5">${body}</p>`,
-        yes:     { label: yesLabel, default: false },
-        no:      { label: noLabel, default: true },
+        content,
+        buttons: [
+          { action: "schonen", label: keepLabel,     default: true, callback: () => "schonen" },
+          { action: "neubau",  label: rebuildLabel,                 callback: () => "neubau"  },
+          { action: "abbruch", label: noLabel,                      callback: () => "abbruch" },
+        ],
         rejectClose: false,
       })
-      return proceed === true
+      // Closing the window without choosing must not install anything.
+      return (wahl === "schonen" || wahl === "neubau") ? wahl : "abbruch"
     } catch (_e) {
-      return false
+      return "abbruch"
     }
   }
 

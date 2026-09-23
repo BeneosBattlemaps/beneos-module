@@ -3889,7 +3889,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
             || "Beneos: reinstalling Top-Down variant from cloud…"
           )
         } catch (e) { /* notifications not ready */ }
-        game.beneos.cloud.importTokenFromCloud(assetKey).catch(err =>
+        // force: this is a repair, not an install. The pre-install skip check
+        // compares signature plus the files the registry recorded, and a
+        // registry entry with topDown:null passes both while the tile the user
+        // just clicked is still missing. Without force the button would do
+        // nothing at all.
+        game.beneos.cloud.importTokenFromCloud(assetKey, undefined, false, { force: true }).catch(err =>
           console.warn("[Beneos] Top-Down reinstall failed", err))
         return
       }
@@ -5301,6 +5306,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // Bundle "install entire bundle" pre-decides overwrite per release, so
         // it forces it here to skip the installer's own per-release dialog.
         overwrite: opts.overwrite === true,
+        // Shared across the releases of one bundle run so a creature that
+        // several releases reference is looked at once, not once per release.
+        kreaturenLauf: (opts.kreaturenLauf instanceof Set) ? opts.kreaturenLauf : null,
       })
     } catch (err) {
       console.warn("BeneosCloudWindowV2 | native install failed", { packId, sceneSlugs, err })
@@ -6419,6 +6427,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const total = members.length
     let installed = 0, skipped = 0, failed = 0
     let remembered = null // "overwrite" | "skip" applied to all remaining installed releases
+    // Creatures seen during THIS bundle run. Releases share creatures, so
+    // without it every release asks again for what the previous one just
+    // installed. Lives here and not in the installer because the installer is
+    // rebuilt per release.
+    const kreaturenLauf = new Set()
     for (let idx = 0; idx < members.length; idx++) {
       const m = members[idx]
       const relDir = String(m.release_dir || "")
@@ -6444,7 +6457,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       try {
         const inst = await BeneosCloudWindowV2._onCloudBattlemapInstallNative.call(
           this, event, relDir, "release",
-          { variantDirs: m.variant_dirs || {}, displayName: m.name || relDir, coverUrl, overwrite }
+          { variantDirs: m.variant_dirs || {}, displayName: m.name || relDir, coverUrl, overwrite, kreaturenLauf }
         )
         if (inst && inst._cancelled) skipped++
         else installed++
