@@ -38,7 +38,7 @@ import { entryKey, positionsOf, istPlatziert, zugewieseneSchluessel } from "./al
 // ohne DOM, mit einer Gegenprobe in anker.test.mjs.
 import {
   restoreAnchor, hintIsLive,
-  RESTORE_SIZE_FALLBACK, HINT_MS
+  RESTORE_SIZE_FALLBACK, RESTORE_OFFSET, HINT_MS
 } from "./anker.mjs";
 
 const MODULE_ID = "beneos-module";
@@ -267,6 +267,78 @@ export class BeneosCreatureInstaller {
    * attachToActiveScene), so the tour has nothing to reset.
    */
   showDespiteHidden(on = true) { this._ignoreHidden = !!on; }
+
+  /**
+   * Selbstbericht der Lade, fuer eine Kundenmeldung.
+   *
+   * WARUM DAS HIER STEHT: am 2026-10-06 schickte ein Kunde einen
+   * Konsolenauszug zu genau dieser Lade. 373 Zeilen, acht Szenenwechsel, davon
+   * drei Battlemaps, und **keine einzige Zeile aus dieser Datei**. Alle elf
+   * Konsolenausgaben des Moduls standen in Fangbloecken, auf dem normalen Weg
+   * sagte es nichts. Ein Auszug konnte den Fehler darum nicht zeigen, und ohne
+   * diese Methode kann der naechste es auch nicht.
+   *
+   * Sie GIBT ihr Ergebnis ZURUECK und schreibt es zusaetzlich ins Protokoll.
+   * Der Rueckgabewert ueberlebt einen Konsolenfilter, der nur Fehler zeigt; die
+   * Protokollzeile hilft, wenn jemand den ganzen Auszug schickt.
+   *
+   * Enthaelt bewusst keine Namen von Personen und keine Zugangsdaten, damit der
+   * Kunde sie bedenkenlos weitergeben kann.
+   *
+   * @returns {object}
+   */
+  diagnose() {
+    const q = (s) => this.host?.querySelector(s) ?? null;
+    const kasten = (e) => {
+      if (!e) return null;
+      const r = e.getBoundingClientRect();
+      return { l: Math.round(r.left), t: Math.round(r.top), b: Math.round(r.bottom), w: Math.round(r.width), h: Math.round(r.height) };
+    };
+    const hotbar = document.getElementById("hotbar");
+    const flag = this.scene?.getFlag?.(FLAG_SCOPE, FLAG_KEY) ?? null;
+    let karte = null, roh = null;
+    try { karte = game.settings.get(MODULE_ID, HIDDEN_SETTING) || {}; } catch (e) { karte = `LESEFEHLER: ${e?.message}`; }
+    try { roh = window.localStorage.getItem(`${MODULE_ID}.${HIDDEN_SETTING}`); } catch (e) { roh = `LESEFEHLER: ${e?.message}`; }
+    const bericht = {
+      modul: game.modules.get(MODULE_ID)?.version ?? null,
+      foundry: game.version ?? null,
+      system: `${game.system?.id}@${game.system?.version}`,
+      istGM: !!game.user?.isGM,
+      welt: worldKey(),
+      szene: this.scene?.name ?? canvas?.scene?.name ?? null,
+      szeneIstBattlemap: /^BM\s*:/i.test(String(canvas?.scene?.name || "")),
+      flagVorhanden: !!flag,
+      flagSrd: flag?.srdCreatures?.length ?? 0,
+      flagBeneos: flag?.beneosCreatures?.length ?? 0,
+      flagAlwaysShow: flag?.alwaysShow ?? null,
+      // Der Kern der Hide-Frage: welcher Schluessel wird gelesen, was steht drin
+      hiddenSchluessel: hiddenKey(),
+      hiddenWert: typeof karte === "string" ? karte : karte[hiddenKey()] ?? null,
+      hiddenKarteSchluessel: typeof karte === "string" ? karte : Object.keys(karte),
+      hiddenRohInLocalStorage: roh,
+      istAusgeblendet: this.isHidden(),
+      // Was der Bediener sehen MUESSTE, und was wirklich im Dokument steht
+      aufgeklappt: this.expanded,
+      tourAusnahme: this._ignoreHidden,
+      hostImDokument: !!document.getElementById("beneos-creature-installer"),
+      lascheDa: !!q(".bci-tab"),
+      panelDa: !!q(".bci-panel"),
+      logoDa: !!q(".bci-restore"),
+      haekchenGesetzt: q("input[type=checkbox][data-action=hide]")?.checked ?? null,
+      // Die haeufigste Ursache fuer "das Symbol erscheint gar nicht"
+      hotbarGefunden: !!hotbar,
+      hotbar: kasten(hotbar),
+      logo: kasten(q(".bci-restore")),
+      // null heisst "es gibt kein Logo", nicht "es sitzt falsch". Ohne diese
+      // Unterscheidung liest ein false im aufgeklappten Zustand wie ein Fehler.
+      logoVerankert: !q(".bci-restore") ? null
+        : !!(hotbar && Math.abs(q(".bci-restore").getBoundingClientRect().left
+          - (hotbar.getBoundingClientRect().left - RESTORE_OFFSET)) <= 1),
+      fenster: [window.innerWidth, window.innerHeight]
+    };
+    console.log("BENEOS Kreaturenlade, Selbstbericht", bericht);
+    return bericht;
+  }
 
   /** Has the GM opened the drawer on this scene before? (drives the attract pulse) */
   isSeen() {
@@ -770,7 +842,17 @@ export class BeneosCreatureInstaller {
       setTimeout(() => {
         const ok = this.#positionRestore();
         this._anchorRetry = false;
-        if (ok) this.#afterLogoAnchored();
+        if (ok) { this.#afterLogoAnchored(); return; }
+        // AB HIER SAGT ER ES, STATT ES ZU VERSCHWEIGEN. Gibt die Nachkorrektur
+        // auf, steht das Logo an der CSS-Rueckfallposition unten links. Dort
+        // liegen in einer Beneos-Welt die Spielerliste und der Rahmen der
+        // Navigationsleiste, der Bediener findet es also nicht und meldet "das
+        // Symbol erscheint gar nicht". Genau dieser Zustand war bis zum
+        // 2026-10-07 unsichtbar: ein Konsolenauszug einer betroffenen Sitzung
+        // trug ueber acht Szenenwechsel keine einzige Zeile dieser Datei.
+        const hb = document.getElementById("hotbar") || document.getElementById("ui-bottom");
+        console.warn("beneos | creature-installer: Wiederherstellungslogo nicht an der Makroleiste verankert, es steht am CSS-Rueckfall unten links",
+          { hotbarGefunden: !!document.getElementById("hotbar"), ersatzGefunden: !!hb, breite: hb?.getBoundingClientRect?.().width ?? null });
       }, 250);
     });
   }
