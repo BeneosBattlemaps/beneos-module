@@ -154,18 +154,22 @@
 
 /* ----------------------------------------------------------------- columns */
 
-/* Hinweis im Zustand "ausgeblendet und trotzdem offen". Er steht unter der
-   Kopfzeile und ueber den Spalten, traegt die Akzentkante der Lade und bleibt
-   bewusst ruhig: er erklaert einen Zustand, er warnt nicht. Die Farben kommen
-   aus den Variablen der Lade, die Schrift ist die des Panels. */
+/* Hinweis im Zustand "ausgeblendet und trotzdem offen". Steht unter der
+   Kopfzeile und ueber den Spalten.
+   OHNE KASTEN UND OHNE SEITENKANTE, und das ist der zweite Entwurf. Der erste
+   trug eine 3px-Akzentkante links, uebernommen aus beneos-cloud.css. In DIESER
+   Datei gibt es so etwas nirgends: die Lade setzt Dinge ueber duenne
+   Haarlinien und kleine Pillen ab, siehe .bci-hairline, .bci-header und
+   .bci-srd-tag. Die Kante war also nicht die Sprache der Lade, sondern eine
+   fremde, und eine dicke farbige Seitenkante ist obendrein ein verbreitetes
+   Merkmal maschinell erzeugter Oberflaechen. Bei einem Paket, das an Endkunden
+   geht, waere das der falsche Eindruck.
+   Auffaellig ist die Zeile jetzt durch ihren Ort und ihre Farbe, nicht durch
+   Schmuck: Gold-Soft wie die Laschenbeschriftung, Groesse wie .bci-count. */
 #beneos-creature-installer .bci-peek-note {
-  margin: 10px 0 0;
-  padding: 7px 12px;
-  border-left: 3px solid var(--bci-gold);
-  background: rgba(216, 178, 94, .07);
-  border-radius: 0 6px 6px 0;
+  margin: 9px 0 0;
   font-family: "Spectral", serif;
-  font-size: 12.5px; line-height: 1.4; color: var(--bci-light);
+  font-size: 12.5px; line-height: 1.4; color: var(--bci-gold-soft);
 }
 #beneos-creature-installer .bci-columns { display: flex; gap: 20px; align-items: stretch; margin-top: 14px; }
 #beneos-creature-installer .bci-col-srd { flex: 1; }
