@@ -528,3 +528,60 @@
 /* Place button when everything is installed but only drag-only alternatives remain. */
 #beneos-creature-installer .bci-btn-gold.bci-btn-disabled { opacity: .5; filter: saturate(.6); cursor: default; }
 
+/* ------------------------------------------- iteration 3: restore hint bubble */
+/* Sprechblase ueber dem Wiederherstellungslogo, mit Pfeilspitze nach unten und
+   einem X zum Wegdruecken. Sie sagt dem Bediener, wohin die Lade verschwunden
+   ist, und erinnert ihn einmal je Sitzung daran, dass sie dort liegt.
+
+   Im Modul gab es kein wiederverwendbares Popover mit Spitze und X (geprueft am
+   2026-10-07: kein clip-path: polygon und kein Rahmendreieck in css/). Das hier
+   ist das erste; es bleibt im bci-Namensraum und benutzt die Variablen der Lade. */
+#beneos-creature-installer .bci-hint {
+  /* Der Host ist pointer-events: none und bleibt es. Nur das X schaltet sich
+     wieder ein, dasselbe Verfahren wie bei .bci-restore. So kann die Blase
+     keinen Klick schlucken, der dem Canvas oder einem Makroplatz gehoert. */
+  pointer-events: none;
+  position: absolute;
+  bottom: 52px; left: 12px; right: auto;   /* JS verankert neben .bci-restore */
+  max-width: min(240px, calc(100vw - 24px));
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 8px 10px;
+  background: linear-gradient(180deg, #241f18f7, #13100bfa);
+  border: 1px solid var(--bci-panel-border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .55);
+  font-family: "Spectral", serif;
+  font-size: 12px; line-height: 1.35; color: var(--bci-light);
+}
+/* Nur beim ersten Render einer Blase (hint.fresh), damit ein Re-Render mitten im
+   Countdown die Einblendung nicht erneut abspielt. */
+#beneos-creature-installer .bci-hint.bci-hint-in { animation: bci-hint-in .18s ease-out 1; }
+@keyframes bci-hint-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+#beneos-creature-installer .bci-hint-text { flex: 1 1 auto; min-width: 0; }
+#beneos-creature-installer .bci-hint-x {
+  pointer-events: auto;
+  flex: 0 0 auto; width: 16px; height: 16px; padding: 0;
+  background: none; border: none; cursor: pointer; line-height: 0;
+}
+#beneos-creature-installer .bci-hint-x svg {
+  width: 12px; height: 12px;
+  fill: none; stroke: var(--bci-muted); stroke-width: 2.4; stroke-linecap: round;
+}
+#beneos-creature-installer .bci-hint-x:hover svg { stroke: var(--bci-gold); }
+/* Pfeilspitze: ein um 45 Grad gedrehtes Quadrat, das auf seinen zwei
+   Aussenseiten die Rahmenlinie der Blase borgt, damit die Spitze denselben
+   1px-Umriss bekommt wie der Koerper. 14px von der rechten Kante setzen ihre
+   Mitte 18,5px hinein, also ueber die Mitte des 36px breiten Logos, an dessen
+   rechter Kante die Blase haengt. */
+#beneos-creature-installer .bci-hint-arrow {
+  position: absolute; bottom: -5px; right: 14px;
+  width: 9px; height: 9px;
+  background: #13100bfa;
+  border-right: 1px solid var(--bci-panel-border);
+  border-bottom: 1px solid var(--bci-panel-border);
+  transform: rotate(45deg);
+}
+
