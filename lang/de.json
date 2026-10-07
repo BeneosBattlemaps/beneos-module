@@ -2262,6 +2262,7 @@
   "BENEOS.CreatureInstaller.HintHidden": "Die Kreaturenlade ist jetzt hier.",
   "BENEOS.CreatureInstaller.HintSession": "Die Kreaturenlade liegt weiter hier, wenn du sie brauchst.",
   "BENEOS.CreatureInstaller.HintClose": "Hinweis schließen",
+  "BENEOS.CreatureInstaller.PeekNote": "Ausgeblendet. Diese Ansicht ist vorübergehend, Einklappen bringt das Symbol an der Leiste zurück.",
   "BENEOS.Tour.Setup.Title": "Beneos Setup Guide",
   "BENEOS.Tour.Setup.Desc": "Geh Schritt für Schritt durch dein Konto, Patreon und deine erste Installation.",
   "BENEOS.Tour.Setup.WelcomeIntro.Title": "Willkommen bei Beneos",

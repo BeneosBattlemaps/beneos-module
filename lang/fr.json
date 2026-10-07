@@ -2254,6 +2254,7 @@
   "BENEOS.CreatureInstaller.HintHidden": "Le tiroir des créatures est maintenant ici.",
   "BENEOS.CreatureInstaller.HintSession": "Le tiroir des créatures reste ici, dès que vous en avez besoin.",
   "BENEOS.CreatureInstaller.HintClose": "Fermer cette note",
+  "BENEOS.CreatureInstaller.PeekNote": "Masqué. Cette vue est temporaire ; en le repliant, l'icône près de la barre revient.",
   "BENEOS.Tour.Setup.Title": "Beneos Setup Guide",
   "BENEOS.Tour.Setup.Desc": "Parcours ton compte, Patreon et ta première installation, étape par étape.",
   "BENEOS.Tour.Setup.WelcomeIntro.Title": "Bienvenue chez Beneos",

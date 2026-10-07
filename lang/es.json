@@ -2254,6 +2254,7 @@
   "BENEOS.CreatureInstaller.HintHidden": "El panel de criaturas está ahora aquí.",
   "BENEOS.CreatureInstaller.HintSession": "El panel de criaturas sigue aquí cuando lo necesites.",
   "BENEOS.CreatureInstaller.HintClose": "Cerrar este aviso",
+  "BENEOS.CreatureInstaller.PeekNote": "Oculto. Esta vista es temporal; al plegarlo vuelve el icono junto a la barra.",
   "BENEOS.Tour.Setup.Title": "Beneos Setup Guide",
   "BENEOS.Tour.Setup.Desc": "Recorre tu cuenta, Patreon y tu primera instalación, paso a paso.",
   "BENEOS.Tour.Setup.WelcomeIntro.Title": "Bienvenido a Beneos",

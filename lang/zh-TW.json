@@ -2254,6 +2254,7 @@
   "BENEOS.CreatureInstaller.HintHidden": "生物抽屜現在在這裡。",
   "BENEOS.CreatureInstaller.HintSession": "需要時，生物抽屜一直在這裡。",
   "BENEOS.CreatureInstaller.HintClose": "關閉此提示",
+  "BENEOS.CreatureInstaller.PeekNote": "目前為隱藏狀態。此檢視是暫時的，收合後會回到快捷列旁的圖示。",
   "BENEOS.Tour.Setup.Title": "Beneos Setup Guide",
   "BENEOS.Tour.Setup.Desc": "一步步帶你完成帳號、Patreon 與第一次安裝。",
   "BENEOS.Tour.Setup.WelcomeIntro.Title": "歡迎使用 Beneos",

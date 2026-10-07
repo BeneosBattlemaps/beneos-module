@@ -154,6 +154,19 @@
 
 /* ----------------------------------------------------------------- columns */
 
+/* Hinweis im Zustand "ausgeblendet und trotzdem offen". Er steht unter der
+   Kopfzeile und ueber den Spalten, traegt die Akzentkante der Lade und bleibt
+   bewusst ruhig: er erklaert einen Zustand, er warnt nicht. Die Farben kommen
+   aus den Variablen der Lade, die Schrift ist die des Panels. */
+#beneos-creature-installer .bci-peek-note {
+  margin: 10px 0 0;
+  padding: 7px 12px;
+  border-left: 3px solid var(--bci-gold);
+  background: rgba(216, 178, 94, .07);
+  border-radius: 0 6px 6px 0;
+  font-family: "Spectral", serif;
+  font-size: 12.5px; line-height: 1.4; color: var(--bci-light);
+}
 #beneos-creature-installer .bci-columns { display: flex; gap: 20px; align-items: stretch; margin-top: 14px; }
 #beneos-creature-installer .bci-col-srd { flex: 1; }
 #beneos-creature-installer .bci-col-beneos { flex: 1.15; }

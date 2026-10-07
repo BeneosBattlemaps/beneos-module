@@ -2262,6 +2262,7 @@
   "BENEOS.CreatureInstaller.HintHidden": "The creature drawer is now here.",
   "BENEOS.CreatureInstaller.HintSession": "The creature drawer is still here whenever you need it.",
   "BENEOS.CreatureInstaller.HintClose": "Close this note",
+  "BENEOS.CreatureInstaller.PeekNote": "Hidden. This view is temporary; collapsing brings the icon by the hotbar back.",
   "BENEOS.Tour.Setup.Title": "Beneos Setup Guide",
   "BENEOS.Tour.Setup.Desc": "Walk through your account, Patreon and your first install, step by step.",
   "BENEOS.Tour.Setup.WelcomeIntro.Title": "Welcome to Beneos",

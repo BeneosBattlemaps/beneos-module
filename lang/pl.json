@@ -2254,6 +2254,7 @@
   "BENEOS.CreatureInstaller.HintHidden": "Szuflada istot jest teraz tutaj.",
   "BENEOS.CreatureInstaller.HintSession": "Szuflada istot nadal jest tutaj, gdy jej potrzebujesz.",
   "BENEOS.CreatureInstaller.HintClose": "Zamknij tę informację",
+  "BENEOS.CreatureInstaller.PeekNote": "Ukryte. Ten widok jest tymczasowy; po zwinięciu wraca ikona przy pasku.",
   "BENEOS.Tour.Setup.Title": "Beneos Setup Guide",
   "BENEOS.Tour.Setup.Desc": "Przejdź krok po kroku przez konto, Patreon i swoją pierwszą instalację.",
   "BENEOS.Tour.Setup.WelcomeIntro.Title": "Witaj w Beneos",

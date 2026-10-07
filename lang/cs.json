@@ -2254,6 +2254,7 @@
   "BENEOS.CreatureInstaller.HintHidden": "Panel tvorů je teď tady.",
   "BENEOS.CreatureInstaller.HintSession": "Panel tvorů je stále tady, kdykoli ho budete potřebovat.",
   "BENEOS.CreatureInstaller.HintClose": "Zavřít tuto zprávu",
+  "BENEOS.CreatureInstaller.PeekNote": "Skryto. Toto zobrazení je dočasné; po sbalení se vrátí ikona u hotbaru.",
   "BENEOS.Tour.Setup.Title": "Beneos Setup Guide",
   "BENEOS.Tour.Setup.Desc": "Projdi si účet, Patreon a svou první instalaci, krok za krokem.",
   "BENEOS.Tour.Setup.WelcomeIntro.Title": "Vítej v Beneos",

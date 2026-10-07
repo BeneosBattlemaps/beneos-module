@@ -730,6 +730,12 @@ export class BeneosCreatureInstaller {
     return {
       logo: false,
       hidden,
+      // Ausgeblendet UND offen: der Bediener hat ueber das Logo hineingeschaut.
+      // Nur dann traegt die Kopfzeile ihren Hinweis, denn nur dann widersprechen
+      // sich Haekchen und Sichtbarkeit. Die Tour-Ausnahme ist ausgenommen: dort
+      // hat niemand hineingeschaut, und ein Hinweis auf das Einklappen waere
+      // mitten in einer Tour irreleitend.
+      peek: hidden && this.expanded && !this._ignoreHidden,
       state,
       pulse: !this.isSeen(),   // one-time attract glow on the collapsed tab
       isPatron,

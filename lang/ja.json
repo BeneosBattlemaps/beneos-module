@@ -2254,6 +2254,7 @@
   "BENEOS.CreatureInstaller.HintHidden": "クリーチャードロワーはこちらに移りました。",
   "BENEOS.CreatureInstaller.HintSession": "クリーチャードロワーは、必要なときにいつでもこちらにあります。",
   "BENEOS.CreatureInstaller.HintClose": "この案内を閉じる",
+  "BENEOS.CreatureInstaller.PeekNote": "非表示の状態です。この表示は一時的なもので、閉じるとホットバー横のアイコンに戻ります。",
   "BENEOS.Tour.Setup.Title": "Beneos Setup Guide",
   "BENEOS.Tour.Setup.Desc": "アカウント、Patreon、最初のインストールを、ステップごとに一緒に進めます。",
   "BENEOS.Tour.Setup.WelcomeIntro.Title": "Beneosへようこそ",

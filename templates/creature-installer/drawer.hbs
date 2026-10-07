@@ -78,6 +78,16 @@
       </div>
     </header>
 
+    {{#if peek}}
+      {{!-- DAS HAEKCHEN ALLEIN LUEGT HIER. Es zeigt die gespeicherte Vorliebe,
+            der Bediener liest es als aktuelle Sichtbarkeit, und beides geht in
+            diesem Zustand auseinander: ausgeblendet und trotzdem offen, weil er
+            ueber das Logo hineingeschaut hat. Ein Kunde hat das am 2026-10-06
+            als "Hide ist gesetzt und die Lade ist offen" gemeldet, und er hatte
+            recht. Ohne diese Zeile ist der Zustand nicht lesbar. --}}
+      <p class="bci-peek-note" role="note">{{localize 'BENEOS.CreatureInstaller.PeekNote'}}</p>
+    {{/if}}
+
     <div class="bci-columns">
 
       {{!-- free / SRD --}}

@@ -2254,6 +2254,7 @@
   "BENEOS.CreatureInstaller.HintHidden": "El calaix de criatures ara és aquí.",
   "BENEOS.CreatureInstaller.HintSession": "El calaix de criatures continua aquí quan el necessitis.",
   "BENEOS.CreatureInstaller.HintClose": "Tanca aquest avís",
+  "BENEOS.CreatureInstaller.PeekNote": "Amagat. Aquesta vista és temporal; en plegar-lo torna la icona al costat de la barra.",
   "BENEOS.Tour.Setup.Title": "Beneos Setup Guide",
   "BENEOS.Tour.Setup.Desc": "Repassa el teu compte, Patreon i la teva primera instal·lació, pas a pas.",
   "BENEOS.Tour.Setup.WelcomeIntro.Title": "Et donem la benvinguda a Beneos",

@@ -2254,6 +2254,7 @@
   "BENEOS.CreatureInstaller.HintHidden": "A gaveta de criaturas está agora aqui.",
   "BENEOS.CreatureInstaller.HintSession": "A gaveta de criaturas continua aqui sempre que precisar.",
   "BENEOS.CreatureInstaller.HintClose": "Fechar este aviso",
+  "BENEOS.CreatureInstaller.PeekNote": "Oculto. Esta vista é temporária; ao recolher, o ícone junto à barra volta.",
   "BENEOS.Tour.Setup.Title": "Beneos Setup Guide",
   "BENEOS.Tour.Setup.Desc": "Percorre a tua conta, o Patreon e a tua primeira instalação, passo a passo.",
   "BENEOS.Tour.Setup.WelcomeIntro.Title": "Bem-vindo ao Beneos",

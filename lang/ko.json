@@ -2254,6 +2254,7 @@
   "BENEOS.CreatureInstaller.HintHidden": "크리처 서랍은 이제 여기에 있습니다.",
   "BENEOS.CreatureInstaller.HintSession": "크리처 서랍은 필요할 때 언제든 여기에 있습니다.",
   "BENEOS.CreatureInstaller.HintClose": "이 알림 닫기",
+  "BENEOS.CreatureInstaller.PeekNote": "숨긴 상태입니다. 이 표시는 일시적이며, 접으면 핫바 옆 아이콘으로 돌아갑니다.",
   "BENEOS.Tour.Setup.Title": "Beneos Setup Guide",
   "BENEOS.Tour.Setup.Desc": "계정, Patreon, 첫 설치까지 단계별로 안내해요.",
   "BENEOS.Tour.Setup.WelcomeIntro.Title": "Beneos에 오신 것을 환영해요",
