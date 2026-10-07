@@ -543,43 +543,77 @@
   pointer-events: none;
   position: absolute;
   bottom: 52px; left: 12px; right: auto;   /* JS verankert neben .bci-restore */
-  max-width: min(240px, calc(100vw - 24px));
-  display: flex; align-items: flex-start; gap: 8px;
-  padding: 8px 10px;
-  background: linear-gradient(180deg, #241f18f7, #13100bfa);
+  max-width: min(300px, calc(100vw - 24px));
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px;
+  /* DIESELBEN WERTE WIE .bci-panel, nicht nur aehnliche: Verlauf, Rand,
+     Innenglanz und Weichzeichner sind von dort uebernommen, damit die Blase als
+     Teil derselben Lade gelesen wird und nicht als Fremdkoerper. */
+  background: linear-gradient(180deg, #241f18f2, #13100bf7);
   border: 1px solid var(--bci-panel-border);
-  border-radius: 8px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, .55);
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgba(216, 189, 134, .12), 0 8px 26px rgba(0, 0, 0, .6);
+  backdrop-filter: blur(3px);
   font-family: "Spectral", serif;
-  font-size: 12px; line-height: 1.35; color: var(--bci-light);
+  font-size: 13.5px; line-height: 1.4; color: var(--bci-light);
+  /* Das sanfte Auf und Ab laeuft, solange die Blase steht. Es haengt an
+     .bci-hint und nicht an .bci-hint-in, weil `fresh` nach dem ersten Render
+     verbraucht ist: an der Einblendeklasse wuerde die Bewegung nach einem
+     zwischenzeitlichen Re-Render aufhoeren. */
+  animation: bci-hint-float 2.8s ease-in-out infinite;
 }
-/* Nur beim ersten Render einer Blase (hint.fresh), damit ein Re-Render mitten im
-   Countdown die Einblendung nicht erneut abspielt. */
-#beneos-creature-installer .bci-hint.bci-hint-in { animation: bci-hint-in .18s ease-out 1; }
-@keyframes bci-hint-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: none; }
+/* Die Haarlinie der Lade, eine Spur nach innen gesetzt. Absolut positioniert,
+   damit sie im Flexfluss der Blase kein Element wird. */
+#beneos-creature-installer .bci-hint::before {
+  content: ""; position: absolute; inset: 4px;
+  border: 1px solid rgba(184, 154, 99, .24);
+  border-radius: 6px; pointer-events: none;
+}
+/* Das Aufploppen laeuft NUR beim ersten Render einer Blase (hint.fresh), damit
+   ein Re-Render mitten im Countdown es nicht erneut abspielt. Danach uebernimmt
+   das Auf und Ab, verzoegert um die Dauer des Ploppens, sonst kaempfen beide um
+   dieselbe transform-Eigenschaft. */
+#beneos-creature-installer .bci-hint.bci-hint-in {
+  animation:
+    bci-hint-pop .34s cubic-bezier(.34, 1.56, .64, 1) 1,
+    bci-hint-float 2.8s ease-in-out .34s infinite;
+}
+@keyframes bci-hint-pop {
+  0%   { opacity: 0; transform: translateY(10px) scale(.84); }
+  60%  { opacity: 1; transform: translateY(-2px) scale(1.04); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes bci-hint-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+/* Wer Bewegung abgeschaltet hat, bekommt sie nicht. Die Blase bleibt dann
+   stehen und lesbar; nur das Auf und Ab und das Ploppen fallen weg. */
+@media (prefers-reduced-motion: reduce) {
+  #beneos-creature-installer .bci-hint,
+  #beneos-creature-installer .bci-hint.bci-hint-in { animation: none; }
 }
 #beneos-creature-installer .bci-hint-text { flex: 1 1 auto; min-width: 0; }
 #beneos-creature-installer .bci-hint-x {
   pointer-events: auto;
-  flex: 0 0 auto; width: 16px; height: 16px; padding: 0;
+  flex: 0 0 auto; width: 18px; height: 18px; padding: 0;
   background: none; border: none; cursor: pointer; line-height: 0;
 }
 #beneos-creature-installer .bci-hint-x svg {
-  width: 12px; height: 12px;
+  width: 14px; height: 14px;
   fill: none; stroke: var(--bci-muted); stroke-width: 2.4; stroke-linecap: round;
 }
 #beneos-creature-installer .bci-hint-x:hover svg { stroke: var(--bci-gold); }
 /* Pfeilspitze: ein um 45 Grad gedrehtes Quadrat, das auf seinen zwei
    Aussenseiten die Rahmenlinie der Blase borgt, damit die Spitze denselben
-   1px-Umriss bekommt wie der Koerper. 14px von der rechten Kante setzen ihre
+   1px-Umriss bekommt wie der Koerper. 13px von der rechten Kante setzen ihre
    Mitte 18,5px hinein, also ueber die Mitte des 36px breiten Logos, an dessen
-   rechter Kante die Blase haengt. */
+   rechter Kante die Blase haengt: 13 plus die halbe Diagonale von 5,5 ergibt
+   18,5. Die Fuellung ist der untere Haltepunkt des Blasenverlaufs. */
 #beneos-creature-installer .bci-hint-arrow {
-  position: absolute; bottom: -5px; right: 14px;
-  width: 9px; height: 9px;
-  background: #13100bfa;
+  position: absolute; bottom: -6px; right: 13px;
+  width: 11px; height: 11px;
+  background: #13100bf7;
   border-right: 1px solid var(--bci-panel-border);
   border-bottom: 1px solid var(--bci-panel-border);
   transform: rotate(45deg);
