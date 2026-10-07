@@ -39,14 +39,54 @@ const FLAG_SCOPE = "beneos-module";
 const FLAG_KEY = "creatureInstaller";
 const TEMPLATE = "modules/beneos-module/templates/creature-installer/drawer.hbs";
 
-// Client-scoped, per-scene "hide this drawer" map { [sceneId]: true }. Local to
-// each GM, never written to the scene -> never shipped/packed.
+// Client-scoped "hide this drawer" map, keyed by WORLD, not by scene:
+//   { "world:<worldId>": true }
+// Local to each GM, never written to the scene -> never shipped/packed.
+//
+// HIDING IS ONE DECISION PER OPERATOR, NOT ONE PER SCENE. Until 2026-10-07 the
+// map was keyed by `scene.id`, so hiding the drawer on one battlemap said
+// nothing about the next one. A customer reported it as "the drawer shows up on
+// every scene even though hide is on", which is exactly what a per-scene key
+// produces.
+//
+// WARUM NACH WELT GESCHLUESSELT UND NICHT EINFACH EIN SCHALTER: a client setting
+// lands in `window.localStorage` under the bare key
+// "beneos-module.creatureInstallerHidden", with no world prefix. One map is
+// therefore shared by every world this browser ever opens. A plain boolean would
+// hide the drawer in the customer world because it was hidden in a test world.
+// The world key keeps the leak closed (OP-CLD-140).
 const HIDDEN_SETTING = "creatureInstallerHidden";
 
 // Client-scoped, per-scene "the GM has opened this drawer at least once" map.
 // Drives the one-time attract pulse on the collapsed tab; once opened it never
 // pulses again (survives F5 / scene revisits).
+//
+// BEWUSST WEITER NACH SZENE GESCHLUESSELT, anders als HIDDEN_SETTING: der
+// Aufmerksamkeitspuls gehoert zur einzelnen Karte, er soll auf der naechsten
+// wieder laufen. Sein Weltleck kostet hoechstens einen fehlenden Puls, nicht
+// eine verschwundene Lade. Die Asymmetrie ist Absicht, kein vergessener Fall.
 const SEEN_SETTING = "creatureInstallerSeen";
+
+// Mirrors BeneosUtility._probeCacheKey(): one convention for "this world, in
+// this browser" keys instead of two.
+const worldKey = () => game.world?.id ?? "unknown";
+
+// Key of this world inside HIDDEN_SETTING.
+//
+// DAS PRAEFIX IST DIE GANZE WANDERUNG VON DER ALTEN FASSUNG, und es ersetzt
+// sowohl eine Loeschung als auch eine Schemamarke. Die Karte trug bis zum
+// 2026-10-07 Szenenkennungen als Schluessel. Ein Weltname ist ein Ordnername und
+// darf alles sein, auch sechzehn Zeichen, die wie eine Dokumentkennung aussehen.
+// Ohne Praefix haette ein solcher Weltname einen Alteintrag getroffen, und der
+// Bediener haette eine Ausblendung geerbt, die er nie gesetzt hat.
+//
+// Ein Schluessel mit "world:" kann dagegen nie eine Dokumentkennung sein, denn
+// die hat sechzehn Zeichen aus dem Alphabet ohne Doppelpunkt. Damit gilt die
+// Betreiberentscheidung "verwerfen, kein Uebertrag" ohne eine einzige Loeschung:
+// die Alteintraege liegen weiter da, werden nie wieder gelesen und nie wieder
+// geschrieben. Es gibt also keinen nicht umkehrbaren Schritt, fuer den ein
+// Rueckweg benannt werden muesste, und niemandes Einstellung wird vernichtet.
+const hiddenKey = () => `world:${worldKey()}`;
 
 // How long the drawer stays open after the cursor leaves it, so the gap between
 // the bookmark tab and the panel can be crossed without it snapping shut.
@@ -97,6 +137,8 @@ export class BeneosCreatureInstaller {
     this.host = null;
     /** @type {number|null} hover-intent close timer */
     this._closeTimer = null;
+    /** @type {boolean} tour visibility override, see showDespiteHidden() */
+    this._ignoreHidden = false;
   }
 
   /* --------------------------------------------------------------- lifecycle */
@@ -144,25 +186,54 @@ export class BeneosCreatureInstaller {
 
   refresh() { this.attachToActiveScene(); }
 
-  /* -------------------------------------------------------- hide (per scene) */
+  /* --------------------------------------------- hide (per world, per operator) */
 
-  /** @returns {boolean} whether this GM hid the drawer on the current scene. */
+  /**
+   * @returns {boolean} whether this operator hid the drawer in this world.
+   *
+   * KEIN `this.scene`-VORBEHALT: die Antwort haengt nicht mehr an einer Szene,
+   * und ein `false` vor der ersten Szene liesse die Lade beim Laden kurz
+   * aufblitzen, obwohl der Bediener sie ausgeblendet hat.
+   */
   isHidden() {
-    if (!this.scene) return false;
     try {
       const map = game.settings.get(MODULE_ID, HIDDEN_SETTING) || {};
-      return map[this.scene.id] === true;
+      return map[hiddenKey()] === true;
     } catch (e) { return false; }
   }
 
+  /**
+   * @returns {Promise<boolean>} whether the choice actually reached the store.
+   *
+   * DER RUECKGABEWERT IST NICHT BEIWERK. Scheitert das Schreiben und bleibt das
+   * unbemerkt, behauptet die Oberflaeche einen Zustand, den der Speicher nicht
+   * traegt, und auf der naechsten Szene steht die Lade wieder da.
+   */
   async setHidden(bool) {
-    if (!this.scene) return;
     try {
       const map = foundry.utils.duplicate(game.settings.get(MODULE_ID, HIDDEN_SETTING) || {});
-      if (bool) map[this.scene.id] = true; else delete map[this.scene.id];
+      const k = hiddenKey();
+      if (bool) map[k] = true; else delete map[k];
       await game.settings.set(MODULE_ID, HIDDEN_SETTING, map);
-    } catch (e) { console.error("beneos | creature-installer setHidden failed", e); }
+      return true;
+    } catch (e) {
+      console.error("beneos | creature-installer setHidden failed", e);
+      return false;
+    }
   }
+
+  /**
+   * Show the drawer for this attach cycle WITHOUT touching the hide setting.
+   *
+   * Only the tutorial tour uses this. It has to display the drawer on its demo
+   * page even for an operator who hid it, and the `setHidden(false)` it used to
+   * call would un-hide the drawer on every scene, i.e. throw away a decision the
+   * tour was never asked about.
+   *
+   * Self-cleaning: the override dies on the next NON-forced attach (see
+   * attachToActiveScene), so the tour has nothing to reset.
+   */
+  showDespiteHidden(on = true) { this._ignoreHidden = !!on; }
 
   /** Has the GM opened the drawer on this scene before? (drives the attract pulse) */
   isSeen() {
@@ -194,6 +265,11 @@ export class BeneosCreatureInstaller {
     // `alwaysShow: true` on its creatureInstaller flag (e.g. a non-"BM:" demo
     // scene that should carry the drawer outside the tour too).
     const isBattlemap = force || data?.alwaysShow === true || /^BM\s*:/i.test(String(scene?.name || ""));
+    // The tour's visibility override lives exactly as long as the tour keeps
+    // forcing the drawer. A normal scene attach ends it, so showDespiteHidden()
+    // needs no counterpart call and a tour that dies mid-step leaves nothing
+    // behind.
+    if (!force) this._ignoreHidden = false;
     if (!game.user?.isGM || !scene || !hasContent || !isBattlemap) {
       this.destroy();
       return;
@@ -409,8 +485,9 @@ export class BeneosCreatureInstaller {
     if (!this.data) return { logo: true };
     // Hidden + collapsed -> show only the restore logo. Hidden + expanded means
     // the GM peeked it open via the logo; render the full drawer (hide checkbox
-    // stays checked) without clearing the per-scene hide choice.
-    if (hidden && !this.expanded) return { logo: true };
+    // stays checked) without clearing the hide choice. `_ignoreHidden` is the
+    // tour's view-only override, see showDespiteHidden().
+    if (hidden && !this.expanded && !this._ignoreHidden) return { logo: true };
 
     const state = this.accountState();
     const isPatron = state === "patron";
@@ -543,7 +620,7 @@ export class BeneosCreatureInstaller {
       });
     });
 
-    // Checkbox actions (the per-scene hide toggle).
+    // Checkbox actions (the hide toggle).
     root.querySelectorAll("input[type=checkbox][data-action]").forEach(el => {
       el.addEventListener("change", (ev) => {
         const handler = this[`_on_${el.dataset.action}`];
@@ -704,16 +781,19 @@ export class BeneosCreatureInstaller {
 
   async _on_hide(ev, el) {
     const checked = el ? !!el.checked : true;
-    await this.setHidden(checked);
-    // Checking hides -> collapse to the logo. Unchecking keeps the drawer open.
-    if (checked) this.expanded = false;
+    const gespeichert = await this.setHidden(checked);
+    // Nur bei Erfolg einklappen. Ist das Schreiben gescheitert, baut der Render
+    // das Haekchen aus dem tatsaechlichen Stand neu auf: es springt zurueck, und
+    // der Bediener sieht, dass der Schalter nicht gegriffen hat. Die Ursache
+    // steht als Fehler in der Konsole, aus setHidden().
+    if (gespeichert && checked) this.expanded = false;
     this.render();
   }
 
-  // Clicking the restore logo only PEEKS the drawer open; the per-scene hide
-  // choice stays active, so collapsing returns to the logo (not the tab). #open
-  // resets the close-arm so the panel (centred) does not snap shut just because
-  // the logo (bottom-left) sits outside the panel's band.
+  // Clicking the restore logo only PEEKS the drawer open; the hide choice stays
+  // active, so collapsing returns to the logo (not the tab). #open resets the
+  // close-arm so the panel (centred) does not snap shut just because the logo
+  // (bottom-left) sits outside the panel's band.
   _on_restore() {
     this.#open();
   }
