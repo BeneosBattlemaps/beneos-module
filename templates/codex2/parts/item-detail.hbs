@@ -120,7 +120,7 @@
       <div class="codex-eyebrow"><span>{{localize "BENEOS.Codex.Detail.ItemsAttuned"}}</span></div>
       <div class="attune-tiles-frame">
         <div class="attune-tiles">
-          {{#each (range 1 4)}}
+          {{#each (beneosRange 1 4)}}
             <button type="button"
                     class="attune-tile{{#if (lte this ../detail.attuned)}} is-active{{/if}}"
                     data-action="set-attuned"
