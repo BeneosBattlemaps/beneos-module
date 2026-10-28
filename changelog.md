@@ -10,6 +10,7 @@ All notable changes to this module will be documented in this file.
 - The footer of the Beneos Cloud window now stays on one line down to much narrower window sizes. Discord, Webshop and Patreon first show only their icon, and on very narrow windows every footer button does. Hover a button to see its name.
 - The connection badge in the footer no longer shows a crown, and its corners now match the buttons next to it.
 - Removed the outdated hint on the Maps tab that said battlemaps are delivered through Moulinette.
+- Items can now be filtered by class in the Beneos Cloud window. The filter appears once the catalog lists classes for items, so far only for a few recent ones.
 
 ### 14.4.10 # 2026-09-10
 

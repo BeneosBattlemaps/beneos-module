@@ -711,6 +711,7 @@ export class BeneosDatabaseHolder {
     this.itemOrigin = {}
     this.itemType = {}
     this.itemTier = {}
+    this.itemClasses = {}
     this.itemPrice = [{ key: "any", value: game.i18n.localize("BENEOS.Cloud.Filter.Any") }, { key: "<100", value: "< 100g" }, { key: "<1000", value: "< 1000g" }, { key: "<5000", value: "< 5000g" },
     { key: "<15000", value: "< 15.000g" }, { key: ">15000", value: "> 15.000g" }]
     this.spellLevel = {}
@@ -805,6 +806,8 @@ export class BeneosDatabaseHolder {
         foundry.utils.mergeObject(this.itemOrigin, this.buildList(itemData.properties.origin))
         foundry.utils.mergeObject(this.itemType, this.buildList(itemData.properties.item_type))
         foundry.utils.mergeObject(this.itemTier, this.buildList(itemData.properties.tier))
+        // Optional since the 2026-10-22 catalog: most items carry no classes yet.
+        foundry.utils.mergeObject(this.itemClasses, this.buildList(itemData.properties.classes))
         this.processInstalledItem(itemData)
         if (itemData.isInstalled) {
           itemData.itemId = BeneosUtility.getItemId(key)
@@ -1124,6 +1127,7 @@ export class BeneosDatabaseHolder {
       origin: this.toTable(this.itemOrigin),
       itemType: this.toTable(this.itemType),
       tier: this.toTable(this.itemTier),
+      itemClass: this.toTable(this.itemClasses),
       price: BeneosDatabaseHolder.sortProperties(structuredClone(this.itemPrice)),
 
       level: this.toTable(this.spellLevel),

@@ -113,6 +113,8 @@ const V2_FILTER_DEFS = [
   // Wave B-8i-3: tier dropdown for items (was already in dbHolder.getData()
   // as `tier` but had no V2 surface).
   { types: ["item"],  selector: "tier-selector",          prop: "tier"          },
+  // Own id beside the spell tab's class-selector, one id per tab like the rest.
+  { types: ["item"],  selector: "item-class-selector",    prop: "classes"       },
   // Spells
   { types: ["spell"], selector: "level-selector",         prop: "level"         },
   { types: ["spell"], selector: "school-selector",        prop: "school"        },
@@ -555,6 +557,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         itemType:       orderList(this.#dedupeItemTypes(context.itemType), "item.item_type"),
         origin:         orderList(context.origin, "item.origin"),
         tier:           orderList(context.tier),
+        // The item catalog has no field_map entry for classes, the class
+        // names are the spell vocabulary. Hidden while only "Any" exists.
+        itemClass:      context.itemClass?.length > 1 ? orderList(context.itemClass, "spell.classes") : null,
         // Spell-side
         level:          orderList(context.level),
         school:         orderList(context.school, "spell.school"),
