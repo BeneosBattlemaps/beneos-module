@@ -4,6 +4,13 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.4.11 # 2026-10-26
+
+**Changes**
+- The footer of the Beneos Cloud window now stays on one line down to much narrower window sizes. Discord, Webshop and Patreon first show only their icon, and on very narrow windows every footer button does. Hover a button to see its name.
+- The connection badge in the footer no longer shows a crown, and its corners now match the buttons next to it.
+- Removed the outdated hint on the Maps tab that said battlemaps are delivered through Moulinette.
+
 ### 14.4.10 # 2026-09-10
 
 **Fixes**
