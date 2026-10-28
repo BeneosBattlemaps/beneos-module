@@ -51,7 +51,7 @@
       {{#if isTokenPatron}}
         {{#if isBattlemapPatron}}
           <div class="bc-account-chip bc-chip-success" data-tooltip="{{localize 'BENEOS.Cloud.Footer.Chip.FullTooltip'}}">
-            <i class="fa-solid fa-crown"></i>
+            <i class="fa-solid fa-circle-check"></i>
             <span>{{localize "BENEOS.Cloud.Footer.Chip.Full"}}</span>
           </div>
         {{else}}
@@ -78,9 +78,11 @@
       </div>
       <button type="button"
               class="bc-footer-button bc-footer-button-primary beneos-cloud-login-button"
-              data-action="openLogin">
+              data-action="openLogin"
+              aria-label="{{localize 'BENEOS.Cloud.Footer.SignIn'}}"
+              data-tooltip="{{localize 'BENEOS.Cloud.Footer.SignIn'}}">
         <i class="fa-solid fa-right-to-bracket"></i>
-        <span>{{localize "BENEOS.Cloud.Footer.SignIn"}}</span>
+        <span class="bc-footer-label">{{localize "BENEOS.Cloud.Footer.SignIn"}}</span>
       </button>
     {{/if}}
     {{!-- Der Katalogzustand, jetzt neben dem Konto statt an seiner Stelle.
@@ -98,9 +100,10 @@
       <button type="button"
               class="bc-footer-button beneos-catalog-retry-button"
               data-action="retryCatalog"
+              aria-label="{{localize 'BENEOS.Cloud.Footer.Retry'}}"
               data-tooltip="{{localize 'BENEOS.Cloud.Footer.RetryTooltip'}}">
         <i class="fa-solid fa-rotate"></i>
-        <span>{{localize "BENEOS.Cloud.Footer.Retry"}}</span>
+        <span class="bc-footer-label">{{localize "BENEOS.Cloud.Footer.Retry"}}</span>
       </button>
     {{/if}}
     {{!-- Settings now lives on the left, in the slot the old "Account"
@@ -110,9 +113,10 @@
     <button type="button"
             class="bc-footer-button bc-footer-button-settings"
             data-action="openSettings"
+            aria-label="{{localize 'BENEOS.Cloud.Footer.Settings'}}"
             data-tooltip="{{localize 'BENEOS.Cloud.Footer.SettingsTooltip'}}">
       <i class="fa-solid fa-sliders"></i>
-      <span>{{localize "BENEOS.Cloud.Footer.Settings"}}</span>
+      <span class="bc-footer-label">{{localize "BENEOS.Cloud.Footer.Settings"}}</span>
     </button>
   </div>
   {{!-- Wave B-9-fix-45: external links pushed to the right and toned
@@ -122,23 +126,26 @@
     <button type="button"
             class="bc-footer-button bc-footer-link bc-footer-button-discord"
             data-action="openExternal" data-href="{{discordUrl}}"
+            aria-label="{{localize 'BENEOS.Cloud.Footer.Discord'}}"
             data-tooltip="{{localize 'BENEOS.Cloud.Footer.DiscordTooltip'}}">
       <i class="fa-brands fa-discord"></i>
-      <span>{{localize "BENEOS.Cloud.Footer.Discord"}}</span>
+      <span class="bc-footer-label">{{localize "BENEOS.Cloud.Footer.Discord"}}</span>
     </button>
     <button type="button"
             class="bc-footer-button bc-footer-link bc-footer-button-webshop"
             data-action="openExternal" data-href="{{webshopUrl}}"
+            aria-label="{{localize 'BENEOS.Cloud.Footer.Webshop'}}"
             data-tooltip="{{localize 'BENEOS.Cloud.Footer.WebshopTooltip'}}">
       <i class="fa-solid fa-cart-shopping"></i>
-      <span>{{localize "BENEOS.Cloud.Footer.Webshop"}}</span>
+      <span class="bc-footer-label">{{localize "BENEOS.Cloud.Footer.Webshop"}}</span>
     </button>
     <button type="button"
             class="bc-footer-button bc-footer-link bc-footer-button-patreon"
             data-action="openExternal" data-href="{{patreonUrl}}"
+            aria-label="{{localize 'BENEOS.Cloud.Footer.Patreon'}}"
             data-tooltip="{{localize 'BENEOS.Cloud.Footer.PatreonTooltip'}}">
       <i class="fa-brands fa-patreon"></i>
-      <span>{{localize "BENEOS.Cloud.Footer.Patreon"}}</span>
+      <span class="bc-footer-label">{{localize "BENEOS.Cloud.Footer.Patreon"}}</span>
     </button>
     {{!-- Visual divider — splits the "leaves the app" external link
          cluster (Discord / Webshop / Patreon) from the in-app actions
@@ -149,9 +156,10 @@
     <button type="button"
             class="bc-footer-button bc-footer-button-codex"
             data-action="openCodex"
+            aria-label="{{localize 'BENEOS.Cloud.Footer.Codex'}}"
             data-tooltip="{{localize 'BENEOS.Cloud.Footer.CodexTooltip'}}">
       <i class="fa-solid fa-book-skull"></i>
-      <span>{{localize "BENEOS.Cloud.Footer.Codex"}}</span>
+      <span class="bc-footer-label">{{localize "BENEOS.Cloud.Footer.Codex"}}</span>
     </button>
     {{!-- Live Game Control launcher (GM only). Pulsing dot when active pings exist. --}}
     {{#if isGm}}
@@ -159,9 +167,10 @@
       <button type="button"
               class="bc-footer-button bc-footer-button-lgc {{#if lgcHasPings}}has-pings{{/if}}"
               data-action="openLgc"
+              aria-label="{{localize 'BENEOS.LGC.LauncherLabel'}}"
               data-tooltip="{{localize 'BENEOS.LGC.LauncherTooltip'}}">
         <i class="fa-solid fa-tower-broadcast"></i>
-        <span>{{localize "BENEOS.LGC.LauncherLabel"}}</span>
+        <span class="bc-footer-label">{{localize "BENEOS.LGC.LauncherLabel"}}</span>
         <span class="bc-lgc-livedot"></span>
       </button>
     {{/if}}

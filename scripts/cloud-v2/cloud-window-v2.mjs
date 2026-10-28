@@ -3483,12 +3483,69 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     this.#wireVariantListeners()
     this.#refreshFilterInfoIcons()
     this.#injectSelectDividers()
+    this.#wireFooterFit()
     this.#updateTitleBadge(context)
     this.#injectTitleQuote()
     // Stage 11: tear down the open-splash injected in
     // beneos_module.js's toolbar handler. _onRender runs after the
     // V2 window is in DOM — clean handover with no flicker.
     document.getElementById("beneos-cloud-loading-splash")?.remove()
+  }
+
+  // 14.4.11: the footer drops button text when it no longer fits on one row.
+  // First the three external links, then every button.
+  //
+  // MEASURED on 2026-10-28 in a bench, all 14 languages, V13 CSS: the full row
+  // needs between 778 px (Korean, patron) and 1123 px (Italian, signed out).
+  // A fixed CSS breakpoint would either let the Italian row overflow or take
+  // the text from an English patron 200 px too early. So we measure instead
+  // of guessing: each stage is tried and the first one that fits stays.
+  #wireFooterFit() {
+    const root = this.element
+    if (!root) return
+    // The stage changes the footer's height. Doing that inside the observer
+    // callback raises "ResizeObserver loop completed with undelivered
+    // notifications" on window, measured in the bench even when observing the
+    // window, as soon as its height is auto. So the callback only schedules,
+    // and the fit runs in the next frame, outside the observer's delivery.
+    // Foundry replaces the footer part on every render, so the fit looks it
+    // up fresh and the observer is re-armed here each time.
+    this._footerObserver?.disconnect()
+    let lastWidth = -1
+    const refit = () => {
+      const footer = root.querySelector(".bc-footer")
+      if (footer) BeneosCloudWindowV2.#fitFooter(footer)
+    }
+    this._footerObserver = new ResizeObserver(([entry]) => {
+      const width = Math.round(entry.contentRect.width)
+      if (width === lastWidth) return
+      lastWidth = width
+      requestAnimationFrame(refit)
+    })
+    this._footerObserver.observe(root)
+    // Game Control uses the Cinzel web font. A first measurement taken with
+    // the fallback font would pick too generous a stage, so measure again
+    // once the fonts are in.
+    document.fonts?.ready.then(refit)
+  }
+
+  static #fitFooter(footer) {
+    const left = footer.querySelector(".bc-footer-left")
+    const right = footer.querySelector(".bc-footer-right")
+    if (!left || !right) return
+    // Fits means: the right group sits on the left group's row and the left
+    // group is not squeezed. If it is still too tight without any text, the
+    // row wraps as it has since 14.4.9.
+    // CQ-R-05: no pure helper. The check is two comparisons on layout values
+    // that only exist after data-compact is written; the bench covers them.
+    const fits = () => right.getBoundingClientRect().top < left.getBoundingClientRect().bottom
+      && left.scrollWidth <= left.clientWidth
+    delete footer.dataset.compact
+    if (fits()) return
+    for (const stage of ["links", "all"]) {
+      footer.dataset.compact = stage
+      if (fits()) return
+    }
   }
 
   // Wave B-8k-4: insert a disabled "──────────" option after the Any
@@ -6615,6 +6672,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     this.#stopQuoteCycle()
     this.#teardownVirtualization()
     if (this._lazyObserver) { this._lazyObserver.disconnect(); this._lazyObserver = null }
+    if (this._footerObserver) { this._footerObserver.disconnect(); this._footerObserver = null }
     if (game.beneos?.cloudWindowV2 === this) game.beneos.cloudWindowV2 = undefined
     if (game.beneos?.searchEngine === this) game.beneos.searchEngine = undefined
     if (game.beneosTokens?.searchEngine === this) game.beneosTokens.searchEngine = undefined
