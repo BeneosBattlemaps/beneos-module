@@ -9,6 +9,7 @@ import { BeneosUtility } from "./beneos_utility.js";
 import { BeneosCloudWindowV2 } from "./cloud-v2/cloud-window-v2.mjs";
 import { maybeShowUpdateNotice } from "./cloud-v2/home/update-check.mjs";
 import { BeneosWhatsNewWindow } from "./cloud-v2/home/whats-new-window.mjs";
+import { presentCountryPrompt } from "./cloud-v2/country-prompt.mjs";
 
 const MODULE_ID = "beneos-module";
 
@@ -8546,8 +8547,16 @@ Hooks.once("ready", async () => {
   // Update notice runs last: both popup paths above return early, so reaching
   // here means no other Beneos window opened this load and the notice never
   // stacks. Fully self-guarding (GM-only, offline-safe, skip-version aware).
-  try { await maybeShowUpdateNotice(); }
-  catch (err) { console.warn("[Beneos] Update notice failed:", err); }
+  try {
+    if (await maybeShowUpdateNotice()) return;
+  } catch (err) { console.warn("[Beneos] Update notice failed:", err); }
+
+  // Country question, the very last and least urgent window: only on a load
+  // where nothing else opened. Self-guarding like What's New (GM, online,
+  // signed in); the server additionally waits a week after this world was
+  // connected to the account.
+  try { await presentCountryPrompt(); }
+  catch (err) { console.debug("[Beneos] Country prompt skipped:", err?.message ?? err); }
 });
 
 /**

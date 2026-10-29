@@ -4071,6 +4071,15 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
   width: 460px !important;
 }
 
+/* Country question (country-prompt.mjs): one sentence, one select. */
+.application.beneos-cloud-app.beneos-country-prompt .beneos-country-prompt-text {
+  margin: 0 0 10px;
+  line-height: 1.45;
+}
+.application.beneos-cloud-app.beneos-country-prompt select[name="beneos-country"] {
+  width: 100%;
+}
+
 /* Window header — title + close button */
 .application.beneos-cloud-app.beneos-confirm .window-header {
   background: var(--bc-bg-panel) !important;

@@ -11,6 +11,7 @@ All notable changes to this module will be documented in this file.
 - The connection badge in the footer no longer shows a crown, and its corners now match the buttons next to it.
 - Removed the outdated hint on the Maps tab that said battlemaps are delivered through Moulinette.
 - Items can now be filtered by class in the Beneos Cloud window. The filter appears once the catalog lists classes for items, so far only for a few recent ones.
+- About a week after you connect a world to your Beneos account, the module asks which country you are playing from. It helps us measure how fast downloads reach you and where we need more download servers. Closing the window pauses the question for a week; it stops once you answer or choose "Don't ask again".
 
 ### 14.4.10 # 2026-09-10
 
