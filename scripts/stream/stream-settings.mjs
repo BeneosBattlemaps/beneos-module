@@ -178,15 +178,42 @@ export function registerStreamSettings() {
     ...world, type: Object, default: {},
   })
 
-  // Off is the pure form: nothing but the documents lands on the customer's
-  // disk. On installs the pictures a scene needs in order to draw at all, which
-  // the manifest marks per file with `pin`. Off first, on purpose: the pure
-  // form gets measured before any compromise is made, and the switch exists so
-  // that comparing the two costs a reload rather than a re-publish.
+  // Installs the pictures a scene needs in order to draw at all, which the
+  // manifest marks per file with `pin`: the scene background, the tile images
+  // and the still of every video in those places.
+  //
+  // AN SEIT DEM 29.10.2026, Betreiberentscheid. Bis dahin aus, und der Grund
+  // dafuer war das Messen: die reine Form sollte gemessen werden, bevor ein
+  // Kompromiss gemacht wird, und der Schalter machte den Vergleich zu einem
+  // Neuladen statt zu einer neuen Veroeffentlichung. Das Messen ist vorbei.
+  //
+  // UMGESTELLT WURDE ER WEGEN EINES WIDERSPRUCHS, nicht wegen eines Wunsches.
+  // Die Erklaerung beim ersten Weltstart sagt woertlich "Every scene carries a
+  // still picture, so a lost connection costs motion and nothing else"
+  // (BENEOS.Stream.Intro.Cost). Mit dem Schalter auf aus war das Standbild
+  // selbst eine Toradresse, der Satz also nur wahr, solange der
+  // Zwischenspeicher sie noch hielt. Eine Szene, die noch nie offen war,
+  // zeichnete ohne Verbindung GAR NICHTS, und der Manifestbauer sagt das auch
+  // so: "Die Szene zeichnet nichts, bis das Video ankommt"
+  // (tools/generate-stream-manifest.php, sm_pins).
+  //
+  // WAS ES KOSTET, am Ursprung gemessen am 29.10.2026 und nicht geschaetzt:
+  //
+  //   bm_0119, 4K, 29 Szenen     21,6 MB Standbilder gegen 811,8 MB Video
+  //   dieselbe Variante in HD    21,5 MB, praktisch gleich
+  //   Stichprobe 12 Releases    110,1 MB gegen 6.192,7 MB, also 1,78 Prozent
+  //   Spanne je Release          0,8 MB bei 3 Szenen bis 21,6 MB bei 29
+  //
+  // WIRKT ERST BEI DER NAECHSTEN INSTALLATION. buildStreamPack() liest den
+  // Schalter, waehrend es die Dateiliste baut; ein bereits installiertes
+  // Release wird davon nicht beruehrt. Wer seine alten Releases auch lokal
+  // haben will, installiert sie neu oder haelt sie offline.
   game.settings.register(MODULE_ID, SETTING.pinStills, {
     name: "Install the pictures a scene needs to draw",
-    hint: "Off streams everything. On keeps still images and scene backgrounds local.",
-    ...world, type: Boolean, default: false,
+    hint: "On keeps scene backgrounds and video stills on your disk, so a scene still "
+        + "draws without a connection. Costs about two percent of a release. "
+        + "Off streams those too. Applies to the next install, not to what is already there.",
+    ...world, type: Boolean, default: true,
   })
 
   // Not a streaming setting at all, and that is the point.
