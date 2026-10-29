@@ -6,7 +6,7 @@
 // v2 ApplicationV2 context, tab/sub-tab state and the action wiring.
 
 import { getCodexDataForActor, tokenizeV13ToTacText, enrichDescription, buildAbilityRefTooltip } from "../codex/codex-data-adapter.mjs";
-import { buildHeaderPills, buildDamageLine } from "./ability-foundry-resolver.mjs";
+import { buildHeaderPills, buildDamageLine, ABILITY_LABEL } from "./ability-foundry-resolver.mjs";
 
 // Per-actor combat-theater state survives tab/sub-tab switches. Lost on
 // world reload, which is fine: a new combat starts at round 1 anyway.
@@ -265,10 +265,20 @@ export async function buildCreatureDetailCtx({ tokenKey, activeTab, activeTactic
   const _strip = (k) => String(k ?? "").replace(/_\d+$/, "");
   const _dbInfo = _info(_worldFlag.tokenKey) ?? _info(tokenKey)
                ?? _info(_strip(_worldFlag.fullId)) ?? _info(_strip(tokenKey));
-  // Free status from the cloud "Free" tier (data.free), the dynamic source of
-  // truth — not the stale catalog free_content flag. Missing key -> not free.
-  const _freeKey = _worldFlag.tokenKey ?? tokenKey ?? _strip(_worldFlag.fullId) ?? _strip(tokenKey);
-  const isFree = game.beneos?.cloud?.isFreeAsset?.("token", _freeKey) === true;
+  // Eine Quelle, und die Datenbank gewinnt.
+  //
+  // `isFreeAsset()` fragt die Freiliste, die das Modul beim Weltstart vom
+  // Server holt. Der Katalog ist nur noch der Rueckfall, wenn diese Liste
+  // fehlt; genau dafuer gibt `isFreeAsset()` null zurueck statt false, und
+  // genau so macht es die Suchmaschine des Moduls schon.
+  //
+  // Gemessen am 22.08.2026 lag der Katalog bei 25 freien Creatures, die
+  // Datenbank bei 26. Der Unterschied hiess `179-rime_wyvern`, und der Codex
+  // zeigte ein Schloss auf etwas, das der Server bereitwillig ausliefert.
+  const _freiCloud = game?.beneos?.cloud?.isFreeAsset?.("token", _worldFlag.tokenKey || tokenKey);
+  const isFree = _freiCloud === null || _freiCloud === undefined
+    ? _dbInfo?.properties?.free_content === true
+    : _freiCloud === true;
 
   // Image paths: normalize so the template's <img src> and inline
   // background-image rules resolve from the page root. Foundry usually
@@ -478,8 +488,9 @@ export async function buildCreatureDetailCtx({ tokenKey, activeTab, activeTactic
  *  player. Anything passive (always-on traits, lair actions without a
  *  consume mechanic) goes into the "passive" bucket.
  *
- *  Beneos content schema (v1.4.1) provides the authoritative ability
- *  metadata when present on flags.beneos.content.abilities[]:
+ *  The Beneos content schema provides the authoritative ability metadata
+ *  when present. `_beneosAbilityFor()` reads both generations (1.4.1 on the
+ *  actor, 1.5.0 on the item) and normalizes them:
  *    - `summary`  → card summary text
  *    - `categories[]` → primary source for the filter bucket
  *
@@ -489,7 +500,6 @@ export async function buildCreatureDetailCtx({ tokenKey, activeTab, activeTactic
  *  pre-1.4 migrated docs. */
 function _collectAbilities(actor, data, resolveItem = null) {
   const out = [];
-  const beneosAbilities = actor.flags?.beneos?.content?.abilities ?? [];
   for (const item of actor.items ?? []) {
     const sys = item.system ?? {};
     // dnd5e 5.x stores activation either on system.activation or on the
@@ -500,7 +510,7 @@ function _collectAbilities(actor, data, resolveItem = null) {
           : Object.values(sys.activities)[0])
       : null;
     const act = sys.activation?.type ?? activitiesFirst?.activation?.type;
-    const beneosMatch = _matchBeneosAbility(item.name, beneosAbilities);
+    const beneosMatch = _beneosAbilityFor(actor, item);
     const filterKey = _categoriesToFilter(beneosMatch?.categories)
                     || _legacyTypeToFilter(beneosMatch?.type)
                     || _mapActivationToFilter(item, act);
@@ -508,7 +518,7 @@ function _collectAbilities(actor, data, resolveItem = null) {
     const summary = (beneosMatch?.summary && beneosMatch.summary.trim())
                  || (beneosMatch?.mechanicalText && beneosMatch.mechanicalText.trim())
                  || (beneosMatch?.flavorText && beneosMatch.flavorText.trim())
-                 || _firstLine(_stripHtml(sys.description?.value ?? ""));
+                 || _firstLine(_entschaerfeMarken(_stripHtml(sys.description?.value ?? "")));
     out.push({
       id: item.id,
       name: item.name,
@@ -559,6 +569,50 @@ function _legacyTypeToFilter(type) {
   return null;
 }
 
+/** Resolve the Beneos author note for one actor item, across BOTH content
+ *  schema generations, and return one normalized shape so no caller has to
+ *  know which generation it is looking at.
+ *
+ *  Schema 1.4.1 (693 creatures) keeps an `abilities[]` array on the actor,
+ *  linked by `sourceItemId` or by name, with `categories[]`.
+ *  Schema 1.5.0 (30 creatures) dropped that array: the note moved onto the
+ *  item as `flags.beneos.ability`, and the category field is called
+ *  `categoriesOverride` because it is only written when the curation differs
+ *  from the Foundry activation default.
+ *
+ *  Reading only the 1.4.1 location made every 1.5.0 creature fall through to
+ *  the raw rules description, which is exactly the text the author note is
+ *  meant to replace. Measured over 730 actors: 4216 of 4602 items found their
+ *  note before, 4525 after, and all 309 gained cards are 1.5.0. Those are the
+ *  newest creatures, so the flagships showed the worst cards. */
+function _beneosAbilityFor(actor, item) {
+  if (!item) return null;
+  // 1.5.0 first: it is the authored-per-item location and unambiguous.
+  const onItem = item.flags?.beneos?.ability;
+  if (onItem && (onItem.summary || onItem.duringCombatPrompt)) {
+    return {
+      summary:        onItem.summary,
+      categories:     onItem.categoriesOverride,
+      mechanicalText: null,
+      flavorText:     null,
+      type:           null,
+    };
+  }
+  // 1.4.1: array on the actor, by id first because that link is unique.
+  const list = actor?.flags?.beneos?.content?.abilities;
+  if (!Array.isArray(list) || !list.length) return null;
+  const byId = item.id ? list.find((a) => a.sourceItemId === item.id) : null;
+  const ab = byId ?? _matchBeneosAbility(item.name, list);
+  if (!ab) return null;
+  return {
+    summary:        ab.summary,
+    categories:     ab.categories,
+    mechanicalText: ab.mechanicalText,
+    flavorText:     ab.flavorText,
+    type:           ab.type,
+  };
+}
+
 /** Three-tier name-normalized match between a dnd5e item name and a
  *  Beneos content-schema ability. Same pattern as _matchItemForPrompt. */
 function _matchBeneosAbility(itemName, beneosAbilities) {
@@ -573,15 +627,12 @@ function _matchBeneosAbility(itemName, beneosAbilities) {
 }
 
 /** Public lookup: the Beneos "Comment" summary string for a given actor
- *  item, or "" if the creature has no Beneos content for it. Reuses the
- *  same name-normalized match the codex cards use, so the NPC-sheet hover
- *  panel and the codex stay in sync. Prefers an explicit sourceItemId
- *  link, then falls back to the three-tier name match. */
+ *  item, or "" if the creature has no Beneos content for it. Goes through
+ *  the same `_beneosAbilityFor()` resolver the codex cards use, so the
+ *  NPC-sheet hover panel and the codex stay in sync across both content
+ *  schema generations. */
 export function getAbilitySummary(actor, item) {
-  const beneosAbilities = actor?.flags?.beneos?.content?.abilities;
-  if (!Array.isArray(beneosAbilities) || !beneosAbilities.length || !item) return "";
-  const byId = item.id ? beneosAbilities.find(a => a.sourceItemId === item.id) : null;
-  const ab = byId ?? _matchBeneosAbility(item.name, beneosAbilities);
+  const ab = _beneosAbilityFor(actor, item);
   const summary = (ab?.summary && ab.summary.trim())
                || (ab?.mechanicalText && ab.mechanicalText.trim())
                || (ab?.flavorText && ab.flavorText.trim())
@@ -646,17 +697,81 @@ function _matchItemForPrompt(actor, promptName) {
   return null;
 }
 
+/** HTML to plain text, with block boundaries preserved as newlines.
+ *
+ *  `textContent` alone concatenates text nodes with nothing between them, so
+ *  `...saving throw.</p><p>On a failed save,...` collapsed into
+ *  `...saving throw.On a failed save,...`. Every Foundry description is a
+ *  chain of `<p>`, so the defect hit every card that fell back to the
+ *  description, and it also defeated `_firstLine()`: with no newline left in
+ *  the string there was no first line to cut, and the whole multi-paragraph
+ *  blob went onto a one-line card summary.
+ *
+ *  Walking the DOM rather than replacing tags by regex, because the input is
+ *  author HTML with attributes, nesting and self-closing forms. */
 function _stripHtml(html) {
   if (!html) return "";
   const d = document.createElement("div");
   d.innerHTML = html;
-  return d.textContent ?? d.innerText ?? "";
+  d.querySelectorAll("br").forEach((br) => br.replaceWith("\n"));
+  d.querySelectorAll("p, div, li, tr, h1, h2, h3, h4, h5, h6, blockquote")
+   .forEach((el) => el.append("\n"));
+  d.querySelectorAll("td, th").forEach((el) => el.append(" "));
+  return (d.textContent ?? d.innerText ?? "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
 }
 function _firstLine(s) {
   if (!s) return "";
   const t = s.trim();
   const i = t.indexOf("\n");
   return i < 0 ? t : t.slice(0, i);
+}
+
+/** Reduce Foundry enricher markup to readable text for the card summary.
+ *
+ *  Scope is deliberately narrow. This runs ONLY on the description fallback,
+ *  which after the schema fix covers 68 of 4602 items, 13 of which carry a
+ *  marker at all (measured over 730 actors). All 13 carry LITERAL arguments,
+ *  so no activity lookup is needed and none is done: nothing here invents a
+ *  number. Where a marker would need the activity context to resolve, the
+ *  payload is shown as written rather than guessed.
+ *
+ *  This is not a fifth cleaning implementation and must not grow into one.
+ *  The shared resolver (tools/codex-build/web/enrich-resolve.js) replaces it
+ *  when the four cleaning paths are unified. */
+const _MARKEN = /\[\[|@\w+\[|&(?:amp;)?Reference\[/;
+const _MARKEN_SCHALTER = /\s*\b(?:extended|average|apply=\w+|activity=\w+|format=\w+)\b/g;
+
+function _entschaerfeMarken(text) {
+  if (!text || !_MARKEN.test(text)) return text;
+  let t = text;
+  // A visible {label} always wins, whatever marker carries it.
+  t = t.replace(/(?:\[\[[^\]]*\]\]|@\w+\[[^\]]*\]|&(?:amp;)?Reference\[[^\]]*\])\{([^}]*)\}/g, "$1");
+  // Reference to a rules term: keep the term, drop the switches.
+  t = t.replace(/&(?:amp;)?Reference\[([^\]\s]+)[^\]]*\]/g, "$1");
+  // Embeds and bare links have no visible text of their own.
+  t = t.replace(/@Embed\[[^\]]*\]/g, "");
+  t = t.replace(/@\w+\[[^\]]*\]/g, "");
+  // Saves and checks: "[[/save 15 con]]" -> "DC 15 Constitution".
+  t = t.replace(/\[\[\/(save|check)\s+([^\]]*)\]\]/g, (ganz, art, rumpf) => {
+    const dc = rumpf.match(/\b(\d+)\b/);
+    const ab = rumpf.match(/\b(str|dex|con|int|wis|cha)\b/i);
+    const teile = [];
+    if (dc) teile.push(`DC ${dc[1]}`);
+    if (ab) teile.push(ABILITY_LABEL[ab[1].toLowerCase()]);
+    return teile.length ? teile.join(" ") : rumpf.replace(_MARKEN_SCHALTER, "").trim();
+  });
+  // Ability cross-reference: the name is the whole point.
+  t = t.replace(/\[\[\/item\s+([^\]]*)\]\]/g, "$1");
+  // Dice-bearing markers: the formula is already readable, the switches are not.
+  t = t.replace(/\[\[\/(?:damage|heal|healing|roll|r|gmr)\s*([^\]]*)\]\]/g,
+                (ganz, rumpf) => rumpf.replace(_MARKEN_SCHALTER, "").trim());
+  // Anything left: drop the wrapper and the leading command word.
+  t = t.replace(/\[\[\s*\/?\w*\s*([^\]]*)\]\]/g,
+                (ganz, rumpf) => rumpf.replace(_MARKEN_SCHALTER, "").trim());
+  return t.replace(/\(\s*\)/g, "").replace(/[ \t]{2,}/g, " ").replace(/\s+([.,;:])/g, "$1").trim();
 }
 
 /** When the user has the "All" filter on, we still want to group the

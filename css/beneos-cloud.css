@@ -3866,6 +3866,15 @@
   border-color: #FF424D !important;
   color: #FF424D;
 }
+/* 14.4.11: two stages in which the footer gets narrower instead of
+   wrapping. cloud-window-v2.mjs (#fitFooter) measures which one applies and
+   sets data-compact. The three external links drop their text first: they
+   lead out of the window and are recognisable by their logo. If that is not
+   enough, every button drops its text. The connection chip keeps its text,
+   it is information, not a button. Tooltip and aria-label carry the name. */
+.beneos-cloud-app .bc-footer[data-compact] .bc-footer-link { padding: 4px 8px; }
+.beneos-cloud-app .bc-footer[data-compact="links"] .bc-footer-link .bc-footer-label,
+.beneos-cloud-app .bc-footer[data-compact="all"] .bc-footer-button .bc-footer-label { display: none; }
 
 /* ---- Wave B-9-fix-44 → fix-56: Beneos logo as icon ----
    V13 renders the icon class in two different DOM positions depending
@@ -3975,7 +3984,9 @@ button.beneos-icon-logo {
   align-items: center;
   gap: var(--bc-space-2);
   padding: 6px 12px;
-  border-radius: 999px;
+  /* 14.4.11: same corners as the buttons next to it. The pill was the only
+     one in the footer and read as a foreign object. */
+  border-radius: var(--bc-radius);
   font-size: 12px;
   font-weight: 500;
 }
@@ -4142,6 +4153,15 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
   box-shadow: var(--bc-shadow-pop) !important;
   max-width: 460px !important;
   width: 460px !important;
+}
+
+/* Country question (country-prompt.mjs): one sentence, one select. */
+.application.beneos-cloud-app.beneos-country-prompt .beneos-country-prompt-text {
+  margin: 0 0 10px;
+  line-height: 1.45;
+}
+.application.beneos-cloud-app.beneos-country-prompt select[name="beneos-country"] {
+  width: 100%;
 }
 
 /* Window header — title + close button */

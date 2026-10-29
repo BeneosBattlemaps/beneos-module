@@ -60,3 +60,17 @@
 *.woff2 binary
 *.ttf   binary
 *.otf   binary
+
+# WAS NICHT ZUM KUNDEN FAEHRT
+#
+# Ausgeliefert wird GitHubs automatisch erzeugtes Quellarchiv des Tags,
+# `archive/refs/tags/<version>.zip`, kein hochgeladenes Asset. Dieses Archiv
+# entsteht aus `git archive` und achtet auf `export-ignore`. Eine Pruefdatei
+# wird von Foundry nie geladen, sie faehrt aber ohne diese Zeile in jedes
+# Kundenpaket mit.
+#
+# NOCH NICHT AM ARCHIV NACHGEMESSEN. Die Probe ist ein Befehl und steht hier,
+# damit sie beim naechsten Tag gefahren wird:
+#   curl -sL https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/<version>.zip -o /tmp/m.zip
+#   unzip -l /tmp/m.zip | grep -c '\.test\.mjs'     # soll 0 sein
+*.test.mjs export-ignore

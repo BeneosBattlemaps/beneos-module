@@ -30,24 +30,78 @@
 
 import { BeneosUtility } from "../beneos_utility.js";
 // Die Regel, was eine Alternative ist, liegt bewusst ausserhalb: der
-// Karteninstallierer entscheidet nach derselben Regel, welche Kreaturen er
-// ueberhaupt holt. Laufen die beiden auseinander, installiert die Karte etwas
-// anderes, als die Lade zeigt.
+// Karteninstallierer entscheidet auf derselben Grundlage, welche Kreaturen er
+// ueberhaupt holt. Steht sie zweimal da, laufen die beiden auseinander.
 import { entryKey, positionsOf, istPlatziert, zugewieseneSchluessel } from "./alternativen.mjs";
+// Dieselbe Trennung, derselbe Grund: die Verankerung des Logos und die Frist der
+// Sprechblase sind Rechnungen und liegen deshalb ausserhalb, ohne Foundry und
+// ohne DOM, mit einer Gegenprobe in anker.test.mjs.
+import {
+  restoreAnchor, hintIsLive,
+  RESTORE_SIZE_FALLBACK, RESTORE_OFFSET, HINT_MS
+} from "./anker.mjs";
 
 const MODULE_ID = "beneos-module";
 const FLAG_SCOPE = "beneos-module";
 const FLAG_KEY = "creatureInstaller";
 const TEMPLATE = "modules/beneos-module/templates/creature-installer/drawer.hbs";
 
-// Client-scoped, per-scene "hide this drawer" map { [sceneId]: true }. Local to
-// each GM, never written to the scene -> never shipped/packed.
+// Client-scoped "hide this drawer" map, keyed by WORLD, not by scene:
+//   { "world:<worldId>": true }
+// Local to each GM, never written to the scene -> never shipped/packed.
+//
+// HIDING IS ONE DECISION PER OPERATOR, NOT ONE PER SCENE. Until 2026-10-07 the
+// map was keyed by `scene.id`, so hiding the drawer on one battlemap said
+// nothing about the next one. A customer reported it as "the drawer shows up on
+// every scene even though hide is on", which is exactly what a per-scene key
+// produces.
+//
+// WARUM NACH WELT GESCHLUESSELT UND NICHT EINFACH EIN SCHALTER: a client setting
+// lands in `window.localStorage` under the bare key
+// "beneos-module.creatureInstallerHidden", with no world prefix. One map is
+// therefore shared by every world this browser ever opens. A plain boolean would
+// hide the drawer in the customer world because it was hidden in a test world.
+// The world key keeps the leak closed (OP-CLD-140).
 const HIDDEN_SETTING = "creatureInstallerHidden";
 
 // Client-scoped, per-scene "the GM has opened this drawer at least once" map.
 // Drives the one-time attract pulse on the collapsed tab; once opened it never
 // pulses again (survives F5 / scene revisits).
+//
+// BEWUSST WEITER NACH SZENE GESCHLUESSELT, anders als HIDDEN_SETTING: der
+// Aufmerksamkeitspuls gehoert zur einzelnen Karte, er soll auf der naechsten
+// wieder laufen. Sein Weltleck kostet hoechstens einen fehlenden Puls, nicht
+// eine verschwundene Lade. Die Asymmetrie ist Absicht, kein vergessener Fall.
 const SEEN_SETTING = "creatureInstallerSeen";
+
+// Mirrors BeneosUtility._probeCacheKey(): one convention for "this world, in
+// this browser" keys instead of two.
+const worldKey = () => game.world?.id ?? "unknown";
+
+// Key of this world inside HIDDEN_SETTING.
+//
+// DAS PRAEFIX IST DIE GANZE WANDERUNG VON DER ALTEN FASSUNG, und es ersetzt
+// sowohl eine Loeschung als auch eine Schemamarke. Die Karte trug bis zum
+// 2026-10-07 Szenenkennungen als Schluessel. Ein Weltname ist ein Ordnername und
+// darf alles sein, auch sechzehn Zeichen, die wie eine Dokumentkennung aussehen.
+// Ohne Praefix haette ein solcher Weltname einen Alteintrag getroffen, und der
+// Bediener haette eine Ausblendung geerbt, die er nie gesetzt hat.
+//
+// Ein Schluessel mit "world:" kann dagegen nie eine Dokumentkennung sein, denn
+// die hat sechzehn Zeichen aus dem Alphabet ohne Doppelpunkt. Damit gilt die
+// Betreiberentscheidung "verwerfen, kein Uebertrag" ohne eine einzige Loeschung:
+// die Alteintraege liegen weiter da, werden nie wieder gelesen und nie wieder
+// geschrieben. Es gibt also keinen nicht umkehrbaren Schritt, fuer den ein
+// Rueckweg benannt werden muesste, und niemandes Einstellung wird vernichtet.
+const hiddenKey = () => `world:${worldKey()}`;
+
+// sessionStorage, not localStorage: the once-per-session reminder has to survive
+// F5 in this tab (Foundry gets reloaded a lot) and die when the tab closes.
+//
+// Keyed by world for the same reason the hide map is: sessionStorage is per
+// origin, and switching worlds reloads the same tab, so an unkeyed marker would
+// swallow the reminder in a world the operator has not seen yet.
+const sessionHintKey = () => `${MODULE_ID}.creatureInstallerHintSession:${worldKey()}`;
 
 // How long the drawer stays open after the cursor leaves it, so the gap between
 // the bookmark tab and the panel can be crossed without it snapping shut.
@@ -69,6 +123,7 @@ function renderTemplateCompat(path, data) {
 }
 
 const positionKey = (p) => `${Math.round(p.x ?? 0)},${Math.round(p.y ?? 0)},${p.hidden ? 1 : 0}`;
+
 
 // Collapse a list to one entry per unique creature, merging their positions, so
 // the drawer never shows the same creature twice (it may still sit at many spots).
@@ -98,6 +153,23 @@ export class BeneosCreatureInstaller {
     this.host = null;
     /** @type {number|null} hover-intent close timer */
     this._closeTimer = null;
+    /**
+     * @type {{kind: string, deadline: number, fresh: boolean}|null}
+     * The live hint bubble.
+     *
+     * LIEGT AUF DER INSTANZ, NICHT IM DOM: render() setzt host.innerHTML bei
+     * jedem Hover und jedem Szenen-Attach komplett neu. Eine Blase, die nur als
+     * Markup existierte, waere mitten im Countdown verschwunden.
+     */
+    this._hint = null;
+    /** @type {number|null} the ONE hide timer belonging to this._hint */
+    this._hintTimer = null;
+    /** @type {boolean} a bounded re-anchor pass for the logo is in flight */
+    this._anchorRetry = false;
+    /** @type {boolean} the once-per-session reminder is settled for this tab */
+    this._sessionHintDone = false;
+    /** @type {boolean} tour visibility override, see showDespiteHidden() */
+    this._ignoreHidden = false;
   }
 
   /* --------------------------------------------------------------- lifecycle */
@@ -119,6 +191,7 @@ export class BeneosCreatureInstaller {
       if (scene?.id === canvas?.scene?.id) refresh();
     });
   }
+
 
   static boot() {
     const refresh = () => BeneosCreatureInstaller.get().attachToActiveScene();
@@ -145,24 +218,126 @@ export class BeneosCreatureInstaller {
 
   refresh() { this.attachToActiveScene(); }
 
-  /* -------------------------------------------------------- hide (per scene) */
+  /* --------------------------------------------- hide (per world, per operator) */
 
-  /** @returns {boolean} whether this GM hid the drawer on the current scene. */
+  /**
+   * @returns {boolean} whether this operator hid the drawer in this world.
+   *
+   * KEIN `this.scene`-VORBEHALT: die Antwort haengt nicht mehr an einer Szene,
+   * und ein `false` vor der ersten Szene liesse die Lade beim Laden kurz
+   * aufblitzen, obwohl der Bediener sie ausgeblendet hat.
+   */
   isHidden() {
-    if (!this.scene) return false;
     try {
       const map = game.settings.get(MODULE_ID, HIDDEN_SETTING) || {};
-      return map[this.scene.id] === true;
+      return map[hiddenKey()] === true;
     } catch (e) { return false; }
   }
 
+  /**
+   * @returns {Promise<boolean>} whether the choice actually reached the store.
+   *
+   * DER RUECKGABEWERT IST NICHT BEIWERK. Der Aufrufer sagt dem Bediener
+   * anschliessend, wohin die Lade gewandert ist. Scheitert das Schreiben und
+   * bleibt das unbemerkt, behauptet die Oberflaeche einen Zustand, den der
+   * Speicher nicht traegt, und auf der naechsten Szene steht die Lade wieder da.
+   */
   async setHidden(bool) {
-    if (!this.scene) return;
     try {
       const map = foundry.utils.duplicate(game.settings.get(MODULE_ID, HIDDEN_SETTING) || {});
-      if (bool) map[this.scene.id] = true; else delete map[this.scene.id];
+      const k = hiddenKey();
+      if (bool) map[k] = true; else delete map[k];
       await game.settings.set(MODULE_ID, HIDDEN_SETTING, map);
-    } catch (e) { console.error("beneos | creature-installer setHidden failed", e); }
+      return true;
+    } catch (e) {
+      console.error("beneos | creature-installer setHidden failed", e);
+      return false;
+    }
+  }
+
+  /**
+   * Show the drawer for this attach cycle WITHOUT touching the hide setting.
+   *
+   * Only the tutorial tour uses this. It has to display the drawer on its demo
+   * page even for an operator who hid it, and the `setHidden(false)` it used to
+   * call would un-hide the drawer on every scene, i.e. throw away a decision the
+   * tour was never asked about.
+   *
+   * Self-cleaning: the override dies on the next NON-forced attach (see
+   * attachToActiveScene), so the tour has nothing to reset.
+   */
+  showDespiteHidden(on = true) { this._ignoreHidden = !!on; }
+
+  /**
+   * Selbstbericht der Lade, fuer eine Kundenmeldung.
+   *
+   * WARUM DAS HIER STEHT: am 2026-10-06 schickte ein Kunde einen
+   * Konsolenauszug zu genau dieser Lade. 373 Zeilen, acht Szenenwechsel, davon
+   * drei Battlemaps, und **keine einzige Zeile aus dieser Datei**. Alle elf
+   * Konsolenausgaben des Moduls standen in Fangbloecken, auf dem normalen Weg
+   * sagte es nichts. Ein Auszug konnte den Fehler darum nicht zeigen, und ohne
+   * diese Methode kann der naechste es auch nicht.
+   *
+   * Sie GIBT ihr Ergebnis ZURUECK und schreibt es zusaetzlich ins Protokoll.
+   * Der Rueckgabewert ueberlebt einen Konsolenfilter, der nur Fehler zeigt; die
+   * Protokollzeile hilft, wenn jemand den ganzen Auszug schickt.
+   *
+   * Enthaelt bewusst keine Namen von Personen und keine Zugangsdaten, damit der
+   * Kunde sie bedenkenlos weitergeben kann.
+   *
+   * @returns {object}
+   */
+  diagnose() {
+    const q = (s) => this.host?.querySelector(s) ?? null;
+    const kasten = (e) => {
+      if (!e) return null;
+      const r = e.getBoundingClientRect();
+      return { l: Math.round(r.left), t: Math.round(r.top), b: Math.round(r.bottom), w: Math.round(r.width), h: Math.round(r.height) };
+    };
+    const hotbar = document.getElementById("hotbar");
+    const flag = this.scene?.getFlag?.(FLAG_SCOPE, FLAG_KEY) ?? null;
+    let karte = null, roh = null;
+    try { karte = game.settings.get(MODULE_ID, HIDDEN_SETTING) || {}; } catch (e) { karte = `LESEFEHLER: ${e?.message}`; }
+    try { roh = window.localStorage.getItem(`${MODULE_ID}.${HIDDEN_SETTING}`); } catch (e) { roh = `LESEFEHLER: ${e?.message}`; }
+    const bericht = {
+      modul: game.modules.get(MODULE_ID)?.version ?? null,
+      foundry: game.version ?? null,
+      system: `${game.system?.id}@${game.system?.version}`,
+      istGM: !!game.user?.isGM,
+      welt: worldKey(),
+      szene: this.scene?.name ?? canvas?.scene?.name ?? null,
+      szeneIstBattlemap: /^BM\s*:/i.test(String(canvas?.scene?.name || "")),
+      flagVorhanden: !!flag,
+      flagSrd: flag?.srdCreatures?.length ?? 0,
+      flagBeneos: flag?.beneosCreatures?.length ?? 0,
+      flagAlwaysShow: flag?.alwaysShow ?? null,
+      // Der Kern der Hide-Frage: welcher Schluessel wird gelesen, was steht drin
+      hiddenSchluessel: hiddenKey(),
+      hiddenWert: typeof karte === "string" ? karte : karte[hiddenKey()] ?? null,
+      hiddenKarteSchluessel: typeof karte === "string" ? karte : Object.keys(karte),
+      hiddenRohInLocalStorage: roh,
+      istAusgeblendet: this.isHidden(),
+      // Was der Bediener sehen MUESSTE, und was wirklich im Dokument steht
+      aufgeklappt: this.expanded,
+      tourAusnahme: this._ignoreHidden,
+      hostImDokument: !!document.getElementById("beneos-creature-installer"),
+      lascheDa: !!q(".bci-tab"),
+      panelDa: !!q(".bci-panel"),
+      logoDa: !!q(".bci-restore"),
+      haekchenGesetzt: q("input[type=checkbox][data-action=hide]")?.checked ?? null,
+      // Die haeufigste Ursache fuer "das Symbol erscheint gar nicht"
+      hotbarGefunden: !!hotbar,
+      hotbar: kasten(hotbar),
+      logo: kasten(q(".bci-restore")),
+      // null heisst "es gibt kein Logo", nicht "es sitzt falsch". Ohne diese
+      // Unterscheidung liest ein false im aufgeklappten Zustand wie ein Fehler.
+      logoVerankert: !q(".bci-restore") ? null
+        : !!(hotbar && Math.abs(q(".bci-restore").getBoundingClientRect().left
+          - (hotbar.getBoundingClientRect().left - RESTORE_OFFSET)) <= 1),
+      fenster: [window.innerWidth, window.innerHeight]
+    };
+    console.log("BENEOS Kreaturenlade, Selbstbericht", bericht);
+    return bericht;
   }
 
   /** Has the GM opened the drawer on this scene before? (drives the attract pulse) */
@@ -181,6 +356,91 @@ export class BeneosCreatureInstaller {
     } catch (e) { console.error("beneos | creature-installer markSeen failed", e); }
   }
 
+  /* ------------------------------------------------------------- hint bubble */
+
+  /**
+   * Show the bubble over the restore logo for HINT_MS, then let it leave.
+   *
+   * GENAU EIN TIMER: er wird hier und nirgends sonst gestellt, und diese Methode
+   * raeumt einen laufenden vorher ab. render() liest `this._hint` nur, es stellt
+   * nie einen Timer. Die Dutzende Renders eines Hovers oder eines Attach koennen
+   * den Countdown deshalb weder neu starten noch einen zweiten stapeln.
+   *
+   * @param {string} kind suffix of the i18n key, "Hidden" or "Session"
+   */
+  #showHint(kind) {
+    this.#clearHintTimer();
+    this._hint = { kind, deadline: Date.now() + HINT_MS, fresh: true };
+    this._hintTimer = setTimeout(() => {
+      this._hintTimer = null;
+      this._hint = null;
+      this.render();
+    }, HINT_MS);
+    this.render();
+  }
+
+  #clearHintTimer() {
+    if (this._hintTimer) { clearTimeout(this._hintTimer); this._hintTimer = null; }
+  }
+
+  #clearHint() { this.#clearHintTimer(); this._hint = null; }
+
+  /**
+   * Render data for the bubble, or null when none is due.
+   *
+   * Die Fristpruefung ist der Guertel zum Hosentraeger des Timers: ein Tab im
+   * Hintergrund drosselt Timer, kommt mit abgelaufener Blase zurueck und soll
+   * sie beim naechsten Render fallen lassen statt sie alt anzuzeigen.
+   *
+   * NEBENWIRKUNG MIT ABSICHT: `fresh` wird hier verbraucht, damit die
+   * Einblendung beim ersten Render einer Blase laeuft und nicht bei jedem
+   * weiteren, der folgt, waehrend sie noch steht.
+   *
+   * @returns {{text: string, fresh: boolean}|null}
+   */
+  #hintContext() {
+    const h = this._hint;
+    if (!hintIsLive(h, Date.now())) { if (h) this.#clearHint(); return null; }
+    const fresh = h.fresh;
+    h.fresh = false;
+    return { text: game.i18n.localize(`BENEOS.CreatureInstaller.Hint${h.kind}`), fresh };
+  }
+
+  /**
+   * Remind the operator once per session where the hidden drawer lives, so the
+   * drawer does not get forgotten behind a logo nobody recognises.
+   *
+   * WIRD NUR AUS #afterLogoAnchored() GERUFEN, also erst nachdem
+   * #positionRestore() Erfolg gemeldet hat. Eine Blase, die vor dem Layout der
+   * Makroleiste erscheint, haengt an der CSS-Rueckfallposition unten links und
+   * zeigt auf nichts.
+   *
+   * NICHT bei jedem Szenenwechsel: der Instanz-Riegel beantwortet jeden
+   * spaeteren Aufruf in diesem Tab ohne Speicherzugriff, das
+   * sessionStorage-Kennzeichen beantwortet ihn ueber ein F5 hinweg.
+   */
+  #maybeSessionHint() {
+    // Riegel zuerst, handeln danach: #showHint() rendert, der Render verankert,
+    // die Verankerung landet wieder hier. Andersherum stuende eine zweite Blase.
+    if (this._sessionHintDone) return;
+    this._sessionHintDone = true;
+    // Es steht schon eine Blase: der Bediener hat gerade ausgeblendet und wurde
+    // auf dem anderen Weg informiert. Dasselbe zweimal in einer Sekunde ist
+    // schlechter als einmal. Der Sitzungsmarker wird trotzdem gesetzt.
+    if (this._hint) { this.#markSessionHinted(); return; }
+    let already = true;
+    try { already = window.sessionStorage?.getItem(sessionHintKey()) === "1"; }
+    catch (e) { already = true; }   // storage disabled -> stay quiet rather than nag
+    if (already) return;
+    this.#markSessionHinted();
+    this.#showHint("Session");
+  }
+
+  #markSessionHinted() {
+    try { window.sessionStorage?.setItem(sessionHintKey(), "1"); }
+    catch (e) { /* best effort; a missing marker only costs one extra reminder */ }
+  }
+
   attachToActiveScene({ force = false } = {}) {
     const scene = canvas?.scene;
     const data = scene?.getFlag?.(FLAG_SCOPE, FLAG_KEY);
@@ -195,6 +455,11 @@ export class BeneosCreatureInstaller {
     // `alwaysShow: true` on its creatureInstaller flag (e.g. a non-"BM:" demo
     // scene that should carry the drawer outside the tour too).
     const isBattlemap = force || data?.alwaysShow === true || /^BM\s*:/i.test(String(scene?.name || ""));
+    // The tour's visibility override lives exactly as long as the tour keeps
+    // forcing the drawer. A normal scene attach ends it, so showDespiteHidden()
+    // needs no counterpart call and a tour that dies mid-step leaves nothing
+    // behind.
+    if (!force) this._ignoreHidden = false;
     if (!game.user?.isGM || !scene || !hasContent || !isBattlemap) {
       this.destroy();
       return;
@@ -212,6 +477,11 @@ export class BeneosCreatureInstaller {
   destroy() {
     if (this._docHover) { document.removeEventListener("mousemove", this._docHover); this._docHover = null; }
     if (this._closeTimer) { clearTimeout(this._closeTimer); this._closeTimer = null; }
+    // Die Blase haengt am Logo, und das Logo geht hier weg.
+    this.#clearHint();
+    // `_sessionHintDone` wird ABSICHTLICH nicht zurueckgesetzt: es zaehlt die
+    // Sitzung, nicht die Szene. Ein Wechsel auf eine Szene ohne Lade und zurueck
+    // ist kein neuer Sitzungsanfang.
     this.host?.remove();
     this.host = null;
     this.scene = null;
@@ -380,8 +650,8 @@ export class BeneosCreatureInstaller {
       //
       // Alternativen tragen das Plus jetzt AUCH. Frueher waren sie davon
       // ausgenommen, weil die Karteninstallation sie ohnehin mitbrachte und ein
-      // Plus damit nie erschienen waere. Seit sie nicht mehr mitkommen
-      // (Betreiberentscheid 27.08.2026), ist das Plus ihr einziger Einzelweg.
+      // Plus damit nie erschienen waere. Seit sie nicht mehr mitkommt, ist das
+      // Plus ihr einziger Einzelweg (Betreiberentscheid 15.09.2026).
       showInstallBadge: premium && isPatron && !installed && !!entry.tokenKey && !block,
       // Any accessible premium not yet in the world (incl. alternatives) can be
       // cloud-installed from the drawer -> grayscale + part of "Install Beneos".
@@ -407,11 +677,12 @@ export class BeneosCreatureInstaller {
     // where render() runs after destroy()) -> fall back to the collapsed logo
     // instead of dereferencing a null `data`. Mirrors the null-safe reads in
     // attachToActiveScene(); never hard-crash the drawer.
-    if (!this.data) return { logo: true };
+    if (!this.data) return { logo: true, hint: this.#hintContext() };
     // Hidden + collapsed -> show only the restore logo. Hidden + expanded means
     // the GM peeked it open via the logo; render the full drawer (hide checkbox
-    // stays checked) without clearing the per-scene hide choice.
-    if (hidden && !this.expanded) return { logo: true };
+    // stays checked) without clearing the hide choice. `_ignoreHidden` is the
+    // tour's view-only override, see showDespiteHidden().
+    if (hidden && !this.expanded && !this._ignoreHidden) return { logo: true, hint: this.#hintContext() };
 
     const state = this.accountState();
     const isPatron = state === "patron";
@@ -459,6 +730,12 @@ export class BeneosCreatureInstaller {
     return {
       logo: false,
       hidden,
+      // Ausgeblendet UND offen: der Bediener hat ueber das Logo hineingeschaut.
+      // Nur dann traegt die Kopfzeile ihren Hinweis, denn nur dann widersprechen
+      // sich Haekchen und Sichtbarkeit. Die Tour-Ausnahme ist ausgenommen: dort
+      // hat niemand hineingeschaut, und ein Hinweis auf das Einklappen waere
+      // mitten in einer Tour irreleitend.
+      peek: hidden && this.expanded && !this._ignoreHidden,
       state,
       pulse: !this.isSeen(),   // one-time attract glow on the collapsed tab
       isPatron,
@@ -500,7 +777,10 @@ export class BeneosCreatureInstaller {
       this.host.classList.toggle("bci-expanded", this.expanded && !ctx.logo);
       this.host.classList.toggle("bci-hidden", !!ctx.logo);
       this.activateListeners();
-      if (ctx.logo) this.#positionRestore();
+      if (ctx.logo) {
+        if (this.#positionRestore()) { this._anchorRetry = false; this.#afterLogoAnchored(); }
+        else this.#scheduleAnchorRetry();
+      }
       this._renderRetry = false;   // a clean render clears the retry guard
     } catch (e) {
       // A transient render error (bad flag entry, template hiccup) must NEVER
@@ -515,16 +795,77 @@ export class BeneosCreatureInstaller {
     }
   }
 
-  /** Anchor the restore logo just left of the macro hotbar. */
+  /**
+   * Anchor the restore logo, and the hint bubble above it, just left of the
+   * macro hotbar.
+   *
+   * @returns {boolean} true when it anchored against a laid-out hotbar. Die
+   *   Aufrufer brauchen diese Antwort: der stille Abbruch liess das Logo bisher
+   *   ohne zweiten Versuch an der CSS-Rueckfallposition stehen, und eine Blase,
+   *   die an einem Logo haengt, das noch nicht steht, zeigt auf nichts.
+   */
   #positionRestore() {
     const btn = this.host?.querySelector(".bci-restore");
-    if (!btn) return;
+    if (!btn) return false;
     const hb = document.getElementById("hotbar") || document.getElementById("ui-bottom");
-    if (!hb) return; // CSS default keeps it bottom-centre-left
+    if (!hb) return false; // CSS default keeps it bottom-centre-left
     const r = hb.getBoundingClientRect();
-    if (!r.width) return;
-    btn.style.left = `${Math.max(8, Math.round(r.left - 52))}px`;
-    btn.style.bottom = `${Math.max(8, Math.round(window.innerHeight - r.bottom))}px`;
+    if (!r.width) return false;
+    // Gemessen, nicht angenommen. Der Umbruch ist durch das Rechteck der
+    // Makroleiste eine Zeile darueber schon erzwungen, das Messen kostet also
+    // nichts. Null heisst "noch kein Layout" und faellt auf den CSS-Wert zurueck.
+    const logoSize = Math.round(btn.getBoundingClientRect().width) || RESTORE_SIZE_FALLBACK;
+    const a = restoreAnchor(r, { width: window.innerWidth, height: window.innerHeight }, logoSize);
+    btn.style.left = `${a.logoLeft}px`;
+    btn.style.bottom = `${a.logoBottom}px`;
+    const hint = this.host.querySelector(".bci-hint");
+    if (hint) {
+      hint.style.left = "auto";
+      hint.style.right = `${a.hintRight}px`;
+      hint.style.bottom = `${a.hintBottom}px`;
+    }
+    return true;
+  }
+
+  /**
+   * One bounded correction pass for the case that the hotbar had no layout yet
+   * (on a hard reload canvasReady can land before #ui-bottom has a width).
+   *
+   * EIN Animationsbild, danach GENAU EIN Nachschlag nach 250 ms, dann gibt sie
+   * auf und laesst den CSS-Rueckfall stehen. Keine Rekursion, kein Intervall,
+   * kein dritter Versuch: der Riegel `_anchorRetry` macht einen zweiten
+   * gleichzeitigen Lauf unmoeglich, und nichts im Lauf plant einen weiteren ein.
+   */
+  #scheduleAnchorRetry() {
+    if (this._anchorRetry) return;
+    this._anchorRetry = true;
+    requestAnimationFrame(() => {
+      if (this.#positionRestore()) {
+        this._anchorRetry = false;
+        this.#afterLogoAnchored();
+        return;
+      }
+      setTimeout(() => {
+        const ok = this.#positionRestore();
+        this._anchorRetry = false;
+        if (ok) { this.#afterLogoAnchored(); return; }
+        // AB HIER SAGT ER ES, STATT ES ZU VERSCHWEIGEN. Gibt die Nachkorrektur
+        // auf, steht das Logo an der CSS-Rueckfallposition unten links. Dort
+        // liegen in einer Beneos-Welt die Spielerliste und der Rahmen der
+        // Navigationsleiste, der Bediener findet es also nicht und meldet "das
+        // Symbol erscheint gar nicht". Genau dieser Zustand war bis zum
+        // 2026-10-07 unsichtbar: ein Konsolenauszug einer betroffenen Sitzung
+        // trug ueber acht Szenenwechsel keine einzige Zeile dieser Datei.
+        const hb = document.getElementById("hotbar") || document.getElementById("ui-bottom");
+        console.warn("beneos | creature-installer: Wiederherstellungslogo nicht an der Makroleiste verankert, es steht am CSS-Rueckfall unten links",
+          { hotbarGefunden: !!document.getElementById("hotbar"), ersatzGefunden: !!hb, breite: hb?.getBoundingClientRect?.().width ?? null });
+      }, 250);
+    });
+  }
+
+  /** Runs only once the logo really stands. The session reminder hangs off this. */
+  #afterLogoAnchored() {
+    this.#maybeSessionHint();
   }
 
   /* --------------------------------------------------------------- listeners */
@@ -544,7 +885,7 @@ export class BeneosCreatureInstaller {
       });
     });
 
-    // Checkbox actions (the per-scene hide toggle).
+    // Checkbox actions (the hide toggle).
     root.querySelectorAll("input[type=checkbox][data-action]").forEach(el => {
       el.addEventListener("change", (ev) => {
         const handler = this[`_on_${el.dataset.action}`];
@@ -717,16 +1058,38 @@ export class BeneosCreatureInstaller {
 
   async _on_hide(ev, el) {
     const checked = el ? !!el.checked : true;
-    await this.setHidden(checked);
-    // Checking hides -> collapse to the logo. Unchecking keeps the drawer open.
-    if (checked) this.expanded = false;
+    const gespeichert = await this.setHidden(checked);
+    if (!gespeichert) {
+      // Das Schreiben ist gescheitert, also behaupten wir nichts. Der Render
+      // baut das Haekchen aus dem tatsaechlichen Stand neu auf: es springt
+      // zurueck, und der Bediener sieht, dass der Schalter nicht gegriffen hat.
+      // Die Ursache steht als Fehler in der Konsole, aus setHidden().
+      this.#clearHint();
+      this.render();
+      return;
+    }
+    if (checked) {
+      // Checking hides -> collapse to the logo and say where it went. #showHint()
+      // rendert selbst, darum hier kein zweiter render().
+      this.expanded = false;
+      this.#showHint("Hidden");
+      return;
+    }
+    // Unchecking brings the drawer back. Eine Blase, die auf ein Logo zeigt, das
+    // gleich verschwindet, waere eine Luege, und ihr Timer muss mit ihr sterben.
+    this.#clearHint();
     this.render();
   }
 
-  // Clicking the restore logo only PEEKS the drawer open; the per-scene hide
-  // choice stays active, so collapsing returns to the logo (not the tab). #open
-  // resets the close-arm so the panel (centred) does not snap shut just because
-  // the logo (bottom-left) sits outside the panel's band.
+  _on_hintClose() {
+    this.#clearHint();
+    this.render();
+  }
+
+  // Clicking the restore logo only PEEKS the drawer open; the hide choice stays
+  // active, so collapsing returns to the logo (not the tab). #open resets the
+  // close-arm so the panel (centred) does not snap shut just because the logo
+  // (bottom-left) sits outside the panel's band.
   _on_restore() {
     this.#open();
   }

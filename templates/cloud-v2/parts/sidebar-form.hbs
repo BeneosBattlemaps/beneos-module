@@ -397,6 +397,14 @@
           </div>
         </div>
       {{/if}}
+      {{#if itemClass}}
+        <div class="bc-sidebar-field">
+          <label class="bc-sidebar-label">{{localize "BENEOS.Cloud.Filter.Classes"}}</label>
+          <select class="bc-select beneos-selector" id="item-class-selector">
+            {{selectOptions itemClass nameAttr="key" valueAttr="key" labelAttr="value"}}
+          </select>
+        </div>
+      {{/if}}
     </section>
     {{!-- Wave B-9-fix-7: placeholders for upcoming loot mechanics live
          in their own section so the visual relationship is clear (and

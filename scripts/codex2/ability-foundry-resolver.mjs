@@ -4,7 +4,7 @@
 // and a damage-formula line ("7 (2d6) Lightning + … · half on save") from a
 // dnd5e 5.x item. Pure functions, no side effects.
 
-const ABILITY_LABEL = Object.freeze({
+export const ABILITY_LABEL = Object.freeze({
   str: "Strength", dex: "Dexterity", con: "Constitution",
   int: "Intelligence", wis: "Wisdom", cha: "Charisma",
 });
@@ -111,7 +111,16 @@ export function rechargeLabel(recoveryEntry) {
   const formula = recoveryEntry.formula;
   if (!period) return null;
   if (RECHARGE_PERIODS.has(period)) {
-    return (typeof formula === "string" && formula.trim().length) ? `Recharge ${formula.trim()}` : "Recharge";
+    const f = (typeof formula === "string") ? formula.trim() : "";
+    if (!f.length) return "Recharge";
+    // dnd5e stores the THRESHOLD of the d6 roll, so "5" means "recharges on a
+    // 5 or a 6". Printing the bare threshold gave "Recharge 5" next to an item
+    // literally named "Slowing Breath (Recharge 5-6)". Only plain thresholds
+    // are expanded; anything else (a dice formula, a custom term) is shown
+    // verbatim because its meaning is not the d6 convention.
+    const n = /^[1-6]$/.test(f) ? Number(f) : null;
+    if (n === null) return `Recharge ${f}`;
+    return n >= 6 ? "Recharge 6" : `Recharge ${n}-6`;
   }
   if (period === "day" || period === "dawn" || period === "dusk") return "Daily";
   if (period === "shortRest") return "Short Rest";
@@ -183,7 +192,19 @@ export function buildHeaderPills(item, actor) {
   const rl = rechargeLabel(recovery);
   if (rl) pills.push({ label: rl, kind: "recharge" });
 
-  return pills;
+  // One pill per distinct statement, not one per activity. The loop above runs
+  // over every activity and pushes unconditionally, so an ability whose four
+  // activities share a range produced the same pill four times: "Background
+  // Song" on 251-ancient_copper_dragon has four activities, all at 120 ft.
+  // Deduped here rather than inside the branches so attack, save, range and
+  // template are all covered by the same rule.
+  const gesehen = new Set();
+  return pills.filter((p) => {
+    const schluessel = `${p.kind} ${p.label}`;
+    if (gesehen.has(schluessel)) return false;
+    gesehen.add(schluessel);
+    return true;
+  });
 }
 
 /** Build the damage-formula line for an ability item:

@@ -4,6 +4,24 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.5.0-beta.7 # 2026-10-29
+
+Everything from the customer line up to 14.4.11 is now in the beta, 36 commits.
+Among them the V14 token update that failed with "system: may not be undefined",
+the footer that keeps to one line, the country question after a world start and
+Russian as a fourteenth language.
+
+**New**
+- New: The explanation you see once per world now leads with what streaming
+  gives you: your maps stay online, only the pictures land on your disk, and
+  your players load the video from our servers instead of through your
+  connection. It also says where to read more.
+- New: The storage bar in the map list is now a button. Click it to read what
+  streaming is, what the bar measures and why most groups never need offline
+  storage at all.
+- New: Scenes keep their still pictures on your disk, so a map still draws when
+  the connection drops. Costs about two percent of a release.
+
 ### 14.5.0-beta.6 # 2026-09-16
 
 Everything from the customer line up to 14.4.10 is now in the beta. Until this
@@ -19,11 +37,33 @@ would have been running something worse than their normal module.
 - New: Journal pins switch themselves back on when you open a Beneos map in a
   world that had them off. A checkbox in the module settings turns this off.
 
+### 14.4.11 # 2026-10-26
+
+**Fixes**
+- Fixed: On Foundry V14, updating a map with tokens linked to a character failed with "system: may not be undefined" and left the scene half updated (seen on the Curse of Strahd Landing Page and the Vallaki maps). Run the update again after installing this version.
+
+**Changes**
+- The footer of the Beneos Cloud window now stays on one line down to much narrower window sizes. Discord, Webshop and Patreon first show only their icon, and on very narrow windows every footer button does. Hover a button to see its name.
+- The connection badge in the footer no longer shows a crown, and its corners now match the buttons next to it.
+- Removed the outdated hint on the Maps tab that said battlemaps are delivered through Moulinette.
+- Items can now be filtered by class in the Beneos Cloud window. The filter appears once the catalog lists classes for items, so far only for a few recent ones.
+- About a week after you connect a world to your Beneos account, the module asks which country you are playing from. It helps us measure how fast downloads reach you and where we need more download servers. Closing the window pauses the question for a week; it stops once you answer or choose "Don't ask again".
+- Signing in with an email we don't know no longer creates a new account right away. The module first asks whether you really want a new account, and "Check email" takes you back with the address filled in. A typo used to land you in a second, empty account where none of your Patreon or shop content showed up.
+- Russian is now a supported language.
+- The automatic death icon setting now offers four choices: off, Beneos creatures only, all NPCs, or all NPCs and player characters. Your previous choice carries over. The icon needs the Token Magic FX module, which is now recommended on install, and the module tells you when it is missing. Filters you put on your own tokens stay in place when a token drops to 0 HP and comes back.
+
 ### 14.4.10 # 2026-09-10
 
 **Fixes**
+- Fixed: On Foundry V14, a few maps installed out of alignment: the map image sat next to its own walls, doors and overlays, always by the same distance and always on the same maps. It affects only maps whose background was nudged by hand during authoring, which is why it looked random, and only on V14. Reinstall an affected release once and it lines up again.
+- Fixed: On Foundry V14, maps that we ship with fog of war switched off arrived with it switched on. This hit most cutscene and overview scenes, where a fog layer over the artwork is simply wrong. Newly installed scenes now keep the setting they were authored with.
+- Fixed: On Foundry V14, creatures could arrive without their special senses. Blindsight, tremorsense and the like were dropped during install, so the creature behaved as if it had none. This affected creatures installed with a map pack as well as creatures installed on their own.
+- Fixed: On Foundry V14, a measured template saved on one of our maps was lost on install. It now comes across as the region Foundry V14 uses in its place.
+- Fixed: On Foundry V14, two more scene settings were lost on install: the height at which a roof or upper layer sits, and the fog overlay image. Both are carried over again.
 - Fixed: When an install could not start, the message said Beneos Cloud was unreachable, even while the cloud was answering normally. It now names the actual reason: not signed in, the release list did not load, or this map has no installable release behind it.
 - Fixed: The NEW section on the home page could show the wrong thing entirely. It picked whatever carried the highest release number, and a single stray catalogue entry with an out-of-range number was enough to take the badge away from an entire wave of genuinely new maps. It now goes by publication date and skips entries the catalogue itself marks as unfinished, so NEW means what it says.
+- Fixed: In the Creature Codex, the ability cards of our newest creatures now show the hand-written Beneos note again instead of the raw rules text, so you can tell at a glance what an ability is actually for at the table.
+- Fixed: A free creature could show a lock in the Creature Codex even though the server hands it out to everyone.
 
 ### 14.4.9 # 2026-09-10
 

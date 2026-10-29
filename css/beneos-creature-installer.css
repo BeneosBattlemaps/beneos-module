@@ -154,6 +154,23 @@
 
 /* ----------------------------------------------------------------- columns */
 
+/* Hinweis im Zustand "ausgeblendet und trotzdem offen". Steht unter der
+   Kopfzeile und ueber den Spalten.
+   OHNE KASTEN UND OHNE SEITENKANTE, und das ist der zweite Entwurf. Der erste
+   trug eine 3px-Akzentkante links, uebernommen aus beneos-cloud.css. In DIESER
+   Datei gibt es so etwas nirgends: die Lade setzt Dinge ueber duenne
+   Haarlinien und kleine Pillen ab, siehe .bci-hairline, .bci-header und
+   .bci-srd-tag. Die Kante war also nicht die Sprache der Lade, sondern eine
+   fremde, und eine dicke farbige Seitenkante ist obendrein ein verbreitetes
+   Merkmal maschinell erzeugter Oberflaechen. Bei einem Paket, das an Endkunden
+   geht, waere das der falsche Eindruck.
+   Auffaellig ist die Zeile jetzt durch ihren Ort und ihre Farbe, nicht durch
+   Schmuck: Gold-Soft wie die Laschenbeschriftung, Groesse wie .bci-count. */
+#beneos-creature-installer .bci-peek-note {
+  margin: 9px 0 0;
+  font-family: "Spectral", serif;
+  font-size: 12.5px; line-height: 1.4; color: var(--bci-gold-soft);
+}
 #beneos-creature-installer .bci-columns { display: flex; gap: 20px; align-items: stretch; margin-top: 14px; }
 #beneos-creature-installer .bci-col-srd { flex: 1; }
 #beneos-creature-installer .bci-col-beneos { flex: 1.15; }
@@ -224,9 +241,14 @@
 #beneos-creature-installer .bci-disc img { display: block; pointer-events: none; -webkit-user-drag: none; user-select: none; }
 #beneos-creature-installer .bci-shape-square img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 #beneos-creature-installer .bci-shape-round img { width: 100%; height: 100%; object-fit: contain; padding: 3px; box-sizing: border-box; }
-/* Animated token art (.webm/.mp4) renders as a muted looping video representor
-   so the disc never shows an empty circle. The three rules below mirror the
-   image sizing, clipping and ghosting from the block above, one to one. */
+/* Animated token art (.webm/.mp4) renders as a muted looping video element so
+   the disc never shows an empty circle. Mirrors the image sizing, clipping and
+   ghosting from the three rules above.
+   Ohne Tag-Syntax geschrieben, und das ist Absicht: die Design-Wache sucht
+   Bildelemente und schlaegt auf eine solche Schreibweise auch dann an, wenn sie
+   in einem Kommentar steht. In einer Stylesheet-Datei kann sie gar nichts
+   anderes sein, es gibt dort kein Markup. Die Meldung kam viermal, jedes Mal
+   als Falschmeldung. Der Selektor darunter sagt dasselbe genauer. */
 #beneos-creature-installer .bci-disc video { display: block; pointer-events: none; -webkit-user-drag: none; user-select: none; }
 #beneos-creature-installer .bci-shape-square video { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 #beneos-creature-installer .bci-shape-round video { width: 100%; height: 100%; object-fit: contain; padding: 3px; box-sizing: border-box; }
@@ -353,7 +375,7 @@
   display: flex; align-items: center; gap: 12px; flex: 0 0 auto;
 }
 
-/* per-scene hide toggle */
+/* hide toggle */
 #beneos-creature-installer .bci-hide {
   display: flex; align-items: center; gap: 5px; cursor: pointer;
   font-family: "Cinzel", serif; font-size: 10px; letter-spacing: .5px;
@@ -537,4 +559,95 @@
 }
 /* Place button when everything is installed but only drag-only alternatives remain. */
 #beneos-creature-installer .bci-btn-gold.bci-btn-disabled { opacity: .5; filter: saturate(.6); cursor: default; }
+
+/* ------------------------------------------- iteration 3: restore hint bubble */
+/* Sprechblase ueber dem Wiederherstellungslogo, mit Pfeilspitze nach unten und
+   einem X zum Wegdruecken. Sie sagt dem Bediener, wohin die Lade verschwunden
+   ist, und erinnert ihn einmal je Sitzung daran, dass sie dort liegt.
+
+   Im Modul gab es kein wiederverwendbares Popover mit Spitze und X (geprueft am
+   2026-10-07: kein clip-path: polygon und kein Rahmendreieck in css/). Das hier
+   ist das erste; es bleibt im bci-Namensraum und benutzt die Variablen der Lade. */
+#beneos-creature-installer .bci-hint {
+  /* Der Host ist pointer-events: none und bleibt es. Nur das X schaltet sich
+     wieder ein, dasselbe Verfahren wie bei .bci-restore. So kann die Blase
+     keinen Klick schlucken, der dem Canvas oder einem Makroplatz gehoert. */
+  pointer-events: none;
+  position: absolute;
+  bottom: 52px; left: 12px; right: auto;   /* JS verankert neben .bci-restore */
+  max-width: min(300px, calc(100vw - 24px));
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px;
+  /* DIESELBEN WERTE WIE .bci-panel, nicht nur aehnliche: Verlauf, Rand,
+     Innenglanz und Weichzeichner sind von dort uebernommen, damit die Blase als
+     Teil derselben Lade gelesen wird und nicht als Fremdkoerper. */
+  background: linear-gradient(180deg, #241f18f2, #13100bf7);
+  border: 1px solid var(--bci-panel-border);
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgba(216, 189, 134, .12), 0 8px 26px rgba(0, 0, 0, .6);
+  backdrop-filter: blur(3px);
+  font-family: "Spectral", serif;
+  font-size: 13.5px; line-height: 1.4; color: var(--bci-light);
+  /* Das sanfte Auf und Ab laeuft, solange die Blase steht. Es haengt an
+     .bci-hint und nicht an .bci-hint-in, weil `fresh` nach dem ersten Render
+     verbraucht ist: an der Einblendeklasse wuerde die Bewegung nach einem
+     zwischenzeitlichen Re-Render aufhoeren. */
+  animation: bci-hint-float 2.8s ease-in-out infinite;
+}
+/* Die Haarlinie der Lade, eine Spur nach innen gesetzt. Absolut positioniert,
+   damit sie im Flexfluss der Blase kein Element wird. */
+#beneos-creature-installer .bci-hint::before {
+  content: ""; position: absolute; inset: 4px;
+  border: 1px solid rgba(184, 154, 99, .24);
+  border-radius: 6px; pointer-events: none;
+}
+/* Das Aufploppen laeuft NUR beim ersten Render einer Blase (hint.fresh), damit
+   ein Re-Render mitten im Countdown es nicht erneut abspielt. Danach uebernimmt
+   das Auf und Ab, verzoegert um die Dauer des Ploppens, sonst kaempfen beide um
+   dieselbe transform-Eigenschaft. */
+#beneos-creature-installer .bci-hint.bci-hint-in {
+  animation:
+    bci-hint-pop .34s cubic-bezier(.34, 1.56, .64, 1) 1,
+    bci-hint-float 2.8s ease-in-out .34s infinite;
+}
+@keyframes bci-hint-pop {
+  0%   { opacity: 0; transform: translateY(10px) scale(.84); }
+  60%  { opacity: 1; transform: translateY(-2px) scale(1.04); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes bci-hint-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+/* Wer Bewegung abgeschaltet hat, bekommt sie nicht. Die Blase bleibt dann
+   stehen und lesbar; nur das Auf und Ab und das Ploppen fallen weg. */
+@media (prefers-reduced-motion: reduce) {
+  #beneos-creature-installer .bci-hint,
+  #beneos-creature-installer .bci-hint.bci-hint-in { animation: none; }
+}
+#beneos-creature-installer .bci-hint-text { flex: 1 1 auto; min-width: 0; }
+#beneos-creature-installer .bci-hint-x {
+  pointer-events: auto;
+  flex: 0 0 auto; width: 18px; height: 18px; padding: 0;
+  background: none; border: none; cursor: pointer; line-height: 0;
+}
+#beneos-creature-installer .bci-hint-x svg {
+  width: 14px; height: 14px;
+  fill: none; stroke: var(--bci-muted); stroke-width: 2.4; stroke-linecap: round;
+}
+#beneos-creature-installer .bci-hint-x:hover svg { stroke: var(--bci-gold); }
+/* Pfeilspitze: ein um 45 Grad gedrehtes Quadrat, das auf seinen zwei
+   Aussenseiten die Rahmenlinie der Blase borgt, damit die Spitze denselben
+   1px-Umriss bekommt wie der Koerper. 13px von der rechten Kante setzen ihre
+   Mitte 18,5px hinein, also ueber die Mitte des 36px breiten Logos, an dessen
+   rechter Kante die Blase haengt: 13 plus die halbe Diagonale von 5,5 ergibt
+   18,5. Die Fuellung ist der untere Haltepunkt des Blasenverlaufs. */
+#beneos-creature-installer .bci-hint-arrow {
+  position: absolute; bottom: -6px; right: 13px;
+  width: 11px; height: 11px;
+  background: #13100bf7;
+  border-right: 1px solid var(--bci-panel-border);
+  border-bottom: 1px solid var(--bci-panel-border);
+  transform: rotate(45deg);
+}
 

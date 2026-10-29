@@ -1,7 +1,7 @@
 {
   "title": "Beneos Module",
   "description": "Features for Beneos Battlemaps, Creatures, Spells and Loot",
-  "version": "14.5.0-beta.6",
+  "version": "14.5.0-beta.7",
   "socket": true,
   "compatibility": {
     "minimum": "13",
@@ -67,7 +67,8 @@
     { "lang": "zh-TW", "name": "繁體中文",                 "path": "lang/zh-TW.json" },
     { "lang": "pl",    "name": "Polski",                  "path": "lang/pl.json" },
     { "lang": "pt-PT", "name": "Português (Portugal)",    "path": "lang/pt-PT.json" },
-    { "lang": "it",    "name": "Italiano",                "path": "lang/it.json" }
+    { "lang": "it",    "name": "Italiano",                "path": "lang/it.json" },
+    { "lang": "ru",    "name": "Русский",                 "path": "lang/ru.json" }
   ],
   "packs": [],
   "id": "beneos-module",
@@ -79,35 +80,44 @@
   ],
   "relationships": {
     "requires": [
-	  {
+      {
         "id": "monks-active-tiles",
         "type": "module",
         "manifest": "https://github.com/ironmonk88/monks-active-tiles/releases/latest/download/module.json",
         "compatibility": {}
       },
-	  {
+      {
         "id": "poi-teleport",
         "type": "module",
         "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/Beneos-Point-Of-Interest-Teleporter/main/module.json",
         "compatibility": {}
       },
-	  {
+      {
         "id": "fxmaster",
         "type": "module",
         "manifest": "https://github.com/gambit07/fxmaster/releases/latest/download/module.json",
         "compatibility": {}
       },
-	  {
+      {
         "id": "multilevel-tokens",
         "type": "module",
         "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/Beneos-Multilevel-Tokens/main/module.json",
         "compatibility": {}
       },
-	  {
+      {
         "id": "lib-wrapper",
         "type": "module",
         "manifest": "https://github.com/ruipin/fvtt-lib-wrapper/releases/latest/download/module.json",
         "compatibility": {}
+      }
+    ],
+    "recommends": [
+      {
+        "id": "tokenmagic",
+        "type": "module",
+        "manifest": "https://github.com/Feu-Secret/Tokenmagic/releases/latest/download/module.json",
+        "compatibility": {},
+        "reason": "Token Magic FX draws the death icon on tokens that drop to 0 HP. Beneos runs without it, but that icon stays off."
       }
     ]
   },

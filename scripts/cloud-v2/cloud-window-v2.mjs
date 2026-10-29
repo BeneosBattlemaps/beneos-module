@@ -122,6 +122,8 @@ const V2_FILTER_DEFS = [
   // Wave B-8i-3: tier dropdown for items (was already in dbHolder.getData()
   // as `tier` but had no V2 surface).
   { types: ["item"],  selector: "tier-selector",          prop: "tier"          },
+  // Own id beside the spell tab's class-selector, one id per tab like the rest.
+  { types: ["item"],  selector: "item-class-selector",    prop: "classes"       },
   // Spells
   { types: ["spell"], selector: "level-selector",         prop: "level"         },
   { types: ["spell"], selector: "school-selector",        prop: "school"        },
@@ -633,6 +635,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         itemType:       orderList(this.#dedupeItemTypes(context.itemType), "item.item_type"),
         origin:         orderList(context.origin, "item.origin"),
         tier:           orderList(context.tier),
+        // The item catalog has no field_map entry for classes, the class
+        // names are the spell vocabulary. Hidden while only "Any" exists.
+        itemClass:      context.itemClass?.length > 1 ? orderList(context.itemClass, "spell.classes") : null,
         // Spell-side
         level:          orderList(context.level),
         school:         orderList(context.school, "spell.school"),
@@ -3587,6 +3592,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     this.#wireVariantListeners()
     this.#refreshFilterInfoIcons()
     this.#injectSelectDividers()
+    this.#wireFooterFit()
     this.#updateTitleBadge(context)
     this.#injectTitleQuote()
     this.#wireOfflineContextMenu()
@@ -3677,6 +3683,62 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     setTimeout(() => {
       window.addEventListener("pointerdown", () => menu.remove(), { once: true })
     }, 0)
+  }
+
+  // 14.4.11: the footer drops button text when it no longer fits on one row.
+  // First the three external links, then every button.
+  //
+  // MEASURED on 2026-10-28 in a bench, all 14 languages, V13 CSS: the full row
+  // needs between 778 px (Korean, patron) and 1123 px (Italian, signed out).
+  // A fixed CSS breakpoint would either let the Italian row overflow or take
+  // the text from an English patron 200 px too early. So we measure instead
+  // of guessing: each stage is tried and the first one that fits stays.
+  #wireFooterFit() {
+    const root = this.element
+    if (!root) return
+    // The stage changes the footer's height. Doing that inside the observer
+    // callback raises "ResizeObserver loop completed with undelivered
+    // notifications" on window, measured in the bench even when observing the
+    // window, as soon as its height is auto. So the callback only schedules,
+    // and the fit runs in the next frame, outside the observer's delivery.
+    // Foundry replaces the footer part on every render, so the fit looks it
+    // up fresh and the observer is re-armed here each time.
+    this._footerObserver?.disconnect()
+    let lastWidth = -1
+    const refit = () => {
+      const footer = root.querySelector(".bc-footer")
+      if (footer) BeneosCloudWindowV2.#fitFooter(footer)
+    }
+    this._footerObserver = new ResizeObserver(([entry]) => {
+      const width = Math.round(entry.contentRect.width)
+      if (width === lastWidth) return
+      lastWidth = width
+      requestAnimationFrame(refit)
+    })
+    this._footerObserver.observe(root)
+    // Game Control uses the Cinzel web font. A first measurement taken with
+    // the fallback font would pick too generous a stage, so measure again
+    // once the fonts are in.
+    document.fonts?.ready.then(refit)
+  }
+
+  static #fitFooter(footer) {
+    const left = footer.querySelector(".bc-footer-left")
+    const right = footer.querySelector(".bc-footer-right")
+    if (!left || !right) return
+    // Fits means: the right group sits on the left group's row and the left
+    // group is not squeezed. If it is still too tight without any text, the
+    // row wraps as it has since 14.4.9.
+    // CQ-R-05: no pure helper. The check is two comparisons on layout values
+    // that only exist after data-compact is written; the bench covers them.
+    const fits = () => right.getBoundingClientRect().top < left.getBoundingClientRect().bottom
+      && left.scrollWidth <= left.clientWidth
+    delete footer.dataset.compact
+    if (fits()) return
+    for (const stage of ["links", "all"]) {
+      footer.dataset.compact = stage
+      if (fits()) return
+    }
   }
 
   // Wave B-8k-4: insert a disabled "──────────" option after the Any
@@ -4108,7 +4170,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
             || "Beneos: reinstalling Top-Down variant from cloud…"
           )
         } catch (e) { /* notifications not ready */ }
-        game.beneos.cloud.importTokenFromCloud(assetKey).catch(err =>
+        // force: this is a repair, not an install. The pre-install skip check
+        // compares signature plus the files the registry recorded, and a
+        // registry entry with topDown:null passes both while the tile the user
+        // just clicked is still missing. Without force the button would do
+        // nothing at all.
+        game.beneos.cloud.importTokenFromCloud(assetKey, undefined, false, { force: true }).catch(err =>
           console.warn("[Beneos] Top-Down reinstall failed", err))
         return
       }
@@ -5570,6 +5637,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // Beim Buendellauf reicht der Aufrufer sein eigenes Fenster durch. Ohne
         // das oeffnete jedes Mitglied eines und schloss dabei das vorige.
         progress: opts.progress || null,
+        // Shared across the releases of one bundle run so a creature that
+        // several releases reference is looked at once, not once per release.
+        kreaturenLauf: (opts.kreaturenLauf instanceof Set) ? opts.kreaturenLauf : null,
       })
     } catch (err) {
       console.warn("BeneosCloudWindowV2 | native install failed", { packId, sceneSlugs, err })
@@ -7110,6 +7180,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       }
     } catch (e) { console.warn("BeneosCloudWindowV2 | Buendelfenster nicht geoeffnet", e) }
     let remembered = null // "overwrite" | "skip" applied to all remaining installed releases
+    // Creatures seen during THIS bundle run. Releases share creatures, so
+    // without it every release asks again for what the previous one just
+    // installed. Lives here and not in the installer because the installer is
+    // rebuilt per release.
+    const kreaturenLauf = new Set()
     for (let idx = 0; idx < members.length; idx++) {
       const m = members[idx]
       const relDir = String(m.release_dir || "")
@@ -7155,7 +7230,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         const inst = await BeneosCloudWindowV2._onCloudBattlemapInstallNative.call(
           this, event, relDir, "release",
           { variantDirs: m.variant_dirs || {}, displayName: m.name || relDir, coverUrl, overwrite,
-            progress: fenster }
+            progress: fenster, kreaturenLauf }
         )
         if (inst && inst._cancelled) { fenster?.setBundleItem?.(idx, "skipped"); skipped++ }
         else { fenster?.setBundleItem?.(idx, "done"); installed++ }
@@ -7333,6 +7408,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       for (const obs of this._lazyObservers.values()) obs.disconnect()
       this._lazyObservers = null
     }
+    if (this._footerObserver) { this._footerObserver.disconnect(); this._footerObserver = null }
     if (game.beneos?.cloudWindowV2 === this) game.beneos.cloudWindowV2 = undefined
     if (game.beneos?.searchEngine === this) game.beneos.searchEngine = undefined
     if (game.beneosTokens?.searchEngine === this) game.beneosTokens.searchEngine = undefined

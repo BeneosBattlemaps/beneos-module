@@ -4,6 +4,7 @@ import { BeneosInfoBox } from "./beneos_info_box.js"
 // cloud-v2/beneos-install-state, and neither reaches back here.
 import { BeneosAnalytics } from "./beneos_analytics.js"
 import { normalizeEmbeddedItems } from "./cloud-v2/beneos-ability-icons.mjs"
+import { packNeedsV14Migration, migrateActorForV14 } from "./cloud-v2/beneos-v14-scene-migration.mjs"
 
 // FilePicker.upload(..., { notify: false }) used to swallow failures
 // (disk full, permissions, server reject) — the await would resolve,
@@ -185,6 +186,143 @@ async function _beneosRepairMissingAspects(kind, key, health) {
   return repaired
 }
 
+// Pre-install check for creatures: does this token still need to be fetched?
+//
+// WHY THIS EXISTS. Releases share creatures. Installing the seven packs of the
+// "Castle Ravenloft" bundle on 2026-09-18 produced 328 token file writes for
+// 152 distinct files, because the creature list is deduplicated per release and
+// the write path had no existence check at all. Every repeat also dragged the
+// expensive world-sync behind it (full scene scan, confirm dialog, compendium
+// lock cycle), which is what made the run feel slow.
+//
+// WHY IT RUNS BEFORE THE FETCH. The images travel as base64 INSIDE the
+// get_token response. A check after the response would save disk writes and no
+// bandwidth at all, which is the wrong half of the problem.
+//
+// WHAT COUNTS AS EVIDENCE. Only `content_signature`. NOT `updated_at`:
+// incrementAssetDownloads writes to the assets row on every install by any
+// customer, and the column carries ON UPDATE CURRENT_TIMESTAMP, so its
+// timestamp moves without the content changing. A missing signature on either
+// side is not evidence of sameness, so it installs.
+//
+// WHAT THE FILE PROBE EXPECTS. Exactly the paths the registry recorded for this
+// creature, not the naming convention. A creature whose catalog entry never
+// shipped a top-down has `topDown: null`, and demanding the file anyway would
+// re-download it on every single run forever. The signature already guarantees
+// the cloud side has not changed since; when the catalog gets its top-down, the
+// signature changes with it and this returns true again.
+//
+// The journal image is found by suffix: the registry keeps the journal document
+// id but not its image path, so the directory listing supplies the name and the
+// HEAD probe then judges the file like any other.
+//
+// THE KEY IS RESOLVED AGAINST THE CATALOG FIRST. Map packs reference their
+// creatures as "NNN_name" while the catalog knows them as "NNN-name" (found
+// 2026-08-03), and the registry is written under the catalog spelling. Matching
+// the requested spelling against the registry would find nothing and install
+// every scene-referenced creature again on every run, which is the exact case
+// this check exists for.
+//
+// EVERY UNCERTAIN ANSWER INSTALLS. Skipping wrongly means a customer silently
+// does not get a file, and there is no surface that offers them a forced
+// reinstall; installing wrongly costs one transfer. The two errors are not
+// worth the same, so every branch below that cannot prove sameness returns
+// true. That covers: no catalog entry, no signature on either side, a variant
+// count the catalog did not state, an unreadable folder, and The Forge, where
+// assets live behind a foreign asset-library prefix and a probe of
+// "beneos_assets/..." proves nothing either way.
+//
+// `weltActorNoetig` is set by the canvas-drop path: that one needs a WORLD
+// actor, which the compendium check does not cover.
+async function _beneosKreaturBrauchtInstallation(tokenKey, { weltActorNoetig = false } = {}) {
+  if (!tokenKey) return { install: true, grund: "no key" }
+  const cloud = game.beneos?.cloud
+  if (!cloud) return { install: true, grund: "cloud not ready" }
+  if (_beneosUsingTheForge()) return { install: true, grund: "on The Forge, cannot prove the files are there" }
+
+  const katalogKey = cloud._beneosFindCloudAsset?.(cloud.availableContent?.tokens, tokenKey)?.key || tokenKey
+  // The key goes into a file path below. It comes from a server response, so it
+  // is checked against the character set the catalog actually uses instead of
+  // being trusted.
+  if (!/^[A-Za-z0-9_-]+$/.test(String(katalogKey))) {
+    return { install: true, grund: "key is not a plain catalog key" }
+  }
+  const wanted = String(katalogKey).toLowerCase()
+  const varianten = Object.values(BeneosUtility.beneosTokens || {})
+    .filter(t => String(t?.tokenKey || "").toLowerCase() === wanted)
+  if (varianten.length === 0) return { install: true, grund: "not installed" }
+
+  const sollHash = cloud.getTokenHash?.(katalogKey) || ""
+  const istHash = BeneosUtility.getTokenInstallHash(katalogKey) || ""
+  if (!sollHash || !istHash) return { install: true, grund: "no signature to compare" }
+  if (sollHash !== istHash) return { install: true, grund: "content signature differs" }
+
+  // The variant count is the only guard against a run that died halfway through
+  // a multi-variant creature: the registry entries written before the abort
+  // carry a valid signature and would otherwise read as complete. A catalog
+  // that does not state a count therefore does not license a skip.
+  const sollVarianten = Number(cloud.getTokenVariantCount?.(katalogKey)) || 0
+  if (sollVarianten <= 0) return { install: true, grund: "catalog states no variant count" }
+  if (varianten.length !== sollVarianten) {
+    return { install: true, grund: `${varianten.length} variant(s) local, ${sollVarianten} in catalog` }
+  }
+
+  if (!BeneosUtility.isTokenLoaded(katalogKey)) return { install: true, grund: "compendium entry gone" }
+
+  if (weltActorNoetig) {
+    const weltActor = game.actors?.find(a => {
+      const flag = a.getFlag("world", "beneos")
+      return String(flag?.tokenKey || "").toLowerCase() === wanted
+    })
+    if (!weltActor) return { install: true, grund: "no world actor for the pending drop" }
+  }
+
+  const folder = varianten[0]?.folder || `beneos_assets/cloud/tokens/${katalogKey}`
+  let namen
+  try {
+    const listing = await foundry.applications.apps.FilePicker.implementation.browse("data", folder)
+    namen = (listing?.files || []).map(p => {
+      const bare = String(p).split("?")[0]
+      let leaf = bare.substring(bare.lastIndexOf("/") + 1)
+      try { leaf = decodeURIComponent(leaf) } catch (e) { /* already decoded */ }
+      return leaf
+    })
+  } catch (err) {
+    return { install: true, grund: "asset folder unreadable" }
+  }
+
+  // The listing only says a NAME is there. It is not proof of a file: the
+  // uninstaller does not delete, it overwrites with a one-byte placeholder that
+  // a name comparison waves through. _beneosProbeInstalledFile is the probe the
+  // rest of this file already uses against exactly that, and against an HTML
+  // error page served in place of the asset.
+  const leafOf = (p) => {
+    const bare = String(p || "").split("?")[0]
+    return bare.substring(bare.lastIndexOf("/") + 1)
+  }
+  const zuPruefen = []
+  for (const v of varianten) {
+    for (const pfad of [v?.token, v?.avatar, v?.topDown]) {
+      if (!pfad) continue
+      const leaf = leafOf(pfad)
+      if (!namen.includes(leaf)) return { install: true, grund: `file missing: ${leaf}` }
+      zuPruefen.push(leaf)
+    }
+    const journalSuffix = `-${v?.number}-journal.webp`.toLowerCase()
+    const journalLeaf = namen.find(n => n.toLowerCase().endsWith(journalSuffix))
+    if (!journalLeaf) return { install: true, grund: `journal image missing for variant ${v?.number}` }
+    zuPruefen.push(journalLeaf)
+  }
+
+  const proben = await Promise.all(zuPruefen.map(async leaf => ({
+    leaf, ok: await _beneosProbeInstalledFile(`${folder}/${leaf}`)
+  })))
+  const kaputt = proben.find(p => !p.ok)
+  if (kaputt) return { install: true, grund: `file unusable: ${kaputt.leaf}` }
+
+  return { install: false, grund: "identical" }
+}
+
 // Telemetry is never allowed to break an install, so the call is wrapped.
 function _beneosTrackAssetInstallError(kind, key, health) {
   try { BeneosAnalytics.trackAssetInstallError(kind, key, health) } catch (_) { /* swallow */ }
@@ -363,13 +501,15 @@ export class BeneosCloudLogin extends FormApplication {
     }
   }
 
-  async loginDialog() {
+  async loginDialog(prefillEmail = null) {
 
     // Pre-fill the email field with the last address that logged in on this
     // machine (recovers gracefully from an accidental logout; the OTP code is
     // still required, so this is convenience, not an auth bypass). The field
     // stays editable, which doubles as the "use a different email" reset.
-    const savedEmail = this.recallLoginEmail()
+    // "Check email" in the unknown-address question passes the address the user
+    // just typed, so they correct it instead of typing it again.
+    const savedEmail = prefillEmail || this.recallLoginEmail()
     let content = await renderTemplate("modules/beneos-module/templates/beneos-cloud-login.html", { email: savedEmail })
 
     // Wave B-9-fix-57: rejectClose: false so closing via the X header
@@ -397,8 +537,10 @@ export class BeneosCloudLogin extends FormApplication {
             return { mode: "otp", action: "login", email: emailEl ? emailEl.value : "" }
           },
         }, {
-          // Same email + code flow; "create" just signals new-account intent so the
-          // flow sends straight away (and the form hint already explains the Patreon-email tip).
+          // Same email + code flow. Until 2026-10-29 "create" skipped the
+          // unknown-address question and sent straight away; now it asks like
+          // "Login" does, because a mistyped address made a second account just
+          // as easily from this button.
           action: "create",
           label: game.i18n.localize("BENEOS.Cloud.ConnectAccount.CreateAccountButton"),
           callback: (event, button, dialog) => {
@@ -425,7 +567,7 @@ export class BeneosCloudLogin extends FormApplication {
   }
 
   /********************************************************************************** */
-  async loginRequest(loginData = null) {
+  async loginRequest(loginData = null, prefillEmail = null) {
 
     if (!game.user.isGM) return;
 
@@ -439,7 +581,7 @@ export class BeneosCloudLogin extends FormApplication {
       // If we don't have login data, we need to ask the user
       BeneosUtility.debugMessage("No login data, asking user")
       // Show the login dialog
-      loginData = await this.loginDialog()
+      loginData = await this.loginDialog(prefillEmail)
       // Wave B-9-fix-57 → fix-62: silent on Cancel / X / Esc. V13's
       // DialogV2._onSubmit (api/dialog.mjs:242) does
       //   result = (await callback?.()) ?? button.action
@@ -455,7 +597,7 @@ export class BeneosCloudLogin extends FormApplication {
     // Passwordless path: the user clicked "Connect with email code" in the dialog.
     // Hand off to the one-time-code flow; the email+password branch below is skipped.
     if (loginData.mode === "otp") {
-      return this.connectWithCode((loginData.email || "").trim(), userId, { createIntent: loginData.action === "create" })
+      return this.connectWithCode((loginData.email || "").trim(), userId)
     }
 
     // Wave B-9-fix-57: validate that BOTH fields were filled. Empty
@@ -612,25 +754,24 @@ export class BeneosCloudLogin extends FormApplication {
   // Passwordless login (steps 1 + 2): ask the Cloud to email a one-time code, then
   // verify it. On success it reuses pollForAccess() exactly like the password path,
   // so login state, settings and the V2 re-render are handled by the same code.
-  async connectWithCode(email, userId, opts = {}) {
+  async connectWithCode(email, userId) {
     if (!game.user.isGM) return
     if (!email || !email.trim()) {
       ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Notification.LoginIncomplete"))
       return
     }
     email = email.trim()
-    // The "Create account" button signals new-account intent: the user already chose to
-    // create one, so we send straight away (confirmCreate) and skip the extra gate.
-    const createIntent = opts.createIntent === true
 
-    // Step 1: request a code (shared with the in-dialog "resend" button).
-    let first = await this.requestCode(email, userId, createIntent)
-    // Unknown email via the plain "Login" button: confirm before creating a fresh account
-    // so a typo (especially into an address the user also owns) does not silently fork
-    // their identity away from their Patreon/shop entitlements.
-    if (!createIntent && first.status === 'new_account') {
-      const confirmed = await this.confirmNewAccountDialog(email)
-      if (!confirmed) return
+    // Step 1: request a code (shared with the in-dialog "resend" button). Never with
+    // confirmCreate on the first try: the server answers new_account for an unknown
+    // address, and that is the moment to ask. This holds for the "Create account"
+    // button too; a typo there forked a customer's identity away from their
+    // Patreon/shop entitlements just as easily, and they then found nothing they paid for.
+    let first = await this.requestCode(email, userId, false)
+    if (first.status === 'new_account') {
+      const choice = await this.confirmNewAccountDialog(email)
+      if (choice === "check") return this.loginRequest(null, email)
+      if (choice !== "create") return
       first = await this.requestCode(email, userId, true)
     }
     if (first.status !== 'ok') return
@@ -736,14 +877,17 @@ export class BeneosCloudLogin extends FormApplication {
   }
 
   /********************************************************************************** */
-  // Confirm creating a brand-new Beneos account for an unknown email. The big onboarding
-  // pitfall is a typo / wrong address that forks identity away from the user's Patreon /
-  // shop email, so the copy nudges them to use the exact one. Returns true to proceed.
+  // The address is unknown to the cloud. The big onboarding pitfall is a typo or a second
+  // address that forks identity away from the user's Patreon / shop email: the customer
+  // then sits in an empty account and believes their content is gone. So the safe answer
+  // is the default ("check", back to the login form with the address filled in), and
+  // creating stays a deliberate second click. Returns "check", "create" or null (closed).
   async confirmNewAccountDialog(email) {
+    const safeEmail = String(email).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
     const content = `<section class="bc-login-form">
-      <p class="bc-login-form__hint">${game.i18n.format("BENEOS.Cloud.ConnectAccount.NewAccountConfirmBody", { email })}</p>
+      <p class="bc-login-form__hint">${game.i18n.format("BENEOS.Cloud.ConnectAccount.NewAccountConfirmBody", { email: `<strong>${safeEmail}</strong>` })}</p>
     </section>`
-    let result = false
+    let result = null
     try {
       result = await foundry.applications.api.DialogV2.wait({
         window: { title: game.i18n.localize("BENEOS.Cloud.ConnectAccount.NewAccountConfirmTitle") },
@@ -751,20 +895,20 @@ export class BeneosCloudLogin extends FormApplication {
         content,
         rejectClose: false,
         buttons: [{
+          action: "check",
+          label: game.i18n.localize("BENEOS.Cloud.ConnectAccount.NewAccountConfirmCheck"),
+          default: true,
+          callback: () => "check"
+        }, {
           action: "create",
           label: game.i18n.localize("BENEOS.Cloud.ConnectAccount.NewAccountConfirmCreate"),
-          default: true,
-          callback: () => true
-        }, {
-          action: "cancel",
-          label: game.i18n.localize("BENEOS.Cloud.Login.Cancel"),
-          callback: () => false
+          callback: () => "create"
         }]
       })
     } catch (e) {
-      result = false
+      result = null
     }
-    return result === true
+    return (result === "check" || result === "create") ? result : null
   }
 
   /********************************************************************************** */
@@ -1731,6 +1875,12 @@ export class BeneosCloud {
   getTokenHash(key) { return this._beneosFindCloudAsset(this.availableContent?.tokens, key)?.contentSignature || "" }
   getItemHash(key)  { return this._beneosFindCloudAsset(this.availableContent?.items,  key)?.contentSignature || "" }
   getSpellHash(key) { return this._beneosFindCloudAsset(this.availableContent?.spells, key)?.contentSignature || "" }
+  // Variant count the catalog claims for a creature. Used by the pre-install
+  // check: a local registry that holds three variants where the catalog now
+  // ships four is out of date even when the signature happens to match.
+  // 0 means "catalog did not say", and the caller must not read that as zero
+  // variants.
+  getTokenVariantCount(key) { return Number(this._beneosFindCloudAsset(this.availableContent?.tokens, key)?.nb_variants) || 0 }
   getTokenIsNewForUser(key) { return !!this._beneosFindCloudAsset(this.availableContent?.tokens, key)?.isNewForUser }
   getItemIsNewForUser(key)  { return !!this._beneosFindCloudAsset(this.availableContent?.items,  key)?.isNewForUser }
   getSpellIsNewForUser(key) { return !!this._beneosFindCloudAsset(this.availableContent?.spells, key)?.isNewForUser }
@@ -3558,6 +3708,13 @@ export class BeneosCloud {
           } catch (err) {
             console.warn("Beneos | embedded item normalisation failed, importing as authored", err)
           }
+          // Cloud creatures do not go through the pack installer, so they never
+          // saw the V13 -> V14 bridge. Without it V14 answers the V13 list
+          // `detectionModes` with an empty object and the creature arrives
+          // without its senses. The gate falls back to V13 when `_stats` is
+          // missing, which means "migrate", and a failure here is loud on
+          // purpose: a silent one would rebuild the exact defect this prevents.
+          if (packNeedsV14Migration(actorData)) migrateActorForV14(actorData)
           let actor = new CONFIG.Actor.documentClass(actorData);
           if (actor) {
             // Search if we have already an actor with the same name in the compendium
@@ -3938,8 +4095,54 @@ export class BeneosCloud {
   // button or handlePendingCanvasDrop gate up-front (so the install
   // animation only starts after Yes) but still want the import* function
   // to manage its own pack lock.
+  /**
+   * Returns `{ skipped, grund }` when this creature does not need installing,
+   * and null when it does. Split out of importTokenFromCloud so that function
+   * stays readable and the housekeeping below is in one place.
+   *
+   * A skipped creature has to leave every surface in the same state a finished
+   * install would, or the skip trades a transfer for a defect:
+   *   - a canvas drop waiting for this creature gets placed from the world
+   *     actor that already exists (which is why the check demands one),
+   *   - the cloud window is told the install ended, or its card spins forever,
+   *   - in a batch, updateInstalledAssets still has to see this asset. It is
+   *     the function that re-locks every compendium and clears noWorldImport at
+   *     the end of a run, and it fires on a counter. A skip that bypassed it
+   *     would leave the packs unlocked for the rest of the session.
+   */
+  async _beneosSkipKreatur(tokenKey, isBatch) {
+    const urteil = await _beneosKreaturBrauchtInstallation(tokenKey, {
+      weltActorNoetig: this.pendingCanvasDrops.has(tokenKey)
+    })
+    if (urteil.install) {
+      BeneosUtility.debugMessage(`[Beneos Cloud] token '${tokenKey}' installs: ${urteil.grund}`)
+      return null
+    }
+    BeneosUtility.debugMessage(`[Beneos Cloud] token '${tokenKey}' skipped: ${urteil.grund}`)
+    try { await this.drainPendingCanvasDrops(tokenKey) } catch (e) {
+      console.warn("[Beneos Cloud] canvas drop after skip failed", tokenKey, e)
+    }
+    if (isBatch) this.updateInstalledAssets()
+    else game.beneos?.cloudWindowV2?.notifyInstallEnded?.(tokenKey, true)
+    // The only path that returns a value. Callers that want to report how much
+    // a run actually fetched read this; everything else keeps treating the call
+    // as void, exactly as before.
+    return { skipped: true, grund: urteil.grund }
+  }
+
   async importTokenFromCloud(tokenKey, event = undefined, isBatch = false, opts = {}) {
     if (!isBatch && !opts.gated && !await BeneosUtility.confirmSystemCompat("token")) return;
+
+    // Skip what is already here in exactly this version. The criteria and the
+    // reason the check sits BEFORE the fetch are in
+    // _beneosKreaturBrauchtInstallation. `opts.force` is the way back in for the
+    // repair paths: the Top-Down reinstall button fixes a prototype-token
+    // reference while the file itself is sitting right there.
+    if (opts.force !== true) {
+      const skip = await this._beneosSkipKreatur(tokenKey, isBatch)
+      if (skip) return skip
+    }
+
     // Fix #E3: ignore repeat clicks while this token's pipeline is still in flight.
     const lockKey = `token:${tokenKey}`
     if (this.inflightImports.has(lockKey)) {

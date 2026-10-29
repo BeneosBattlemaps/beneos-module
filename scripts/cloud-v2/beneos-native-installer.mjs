@@ -25,8 +25,9 @@
  */
 
 import { BeneosInstallState, BeneosPreInstallDialog, beneosLogModuleInstall } from "./beneos-install-state.mjs"
-import { packNeedsV14Migration, migrateSceneForV14 } from "./beneos-v14-scene-migration.mjs"
+import { packNeedsV14Migration, migrateSceneForV14, migrateActorForV14 } from "./beneos-v14-scene-migration.mjs"
 import { zuInstallierendeSchluessel } from "../creature-installer/alternativen.mjs"
+import { tokenUpdatesAufteilen } from "./token-delta.mjs"
 
 // ---- Transfer config -------------------------------------------------------
 const FETCH_MAX_ATTEMPTS  = 3            // transient retries per asset
@@ -300,6 +301,105 @@ function rewriteDocAssetPaths(value, remap, uploadRemap) {
   return value
 }
 
+/**
+ * Die eingebetteten Sammlungen einer Szene, als Feldname im Pack-JSON auf den
+ * Foundry-Dokumentnamen.
+ *
+ * WIRD ZUR LAUFZEIT VON FOUNDRY ERFRAGT, nicht hier festgeschrieben. Eine fest
+ * verdrahtete Tabelle ist je Foundry-Generation anders falsch: V14 fuehrt
+ * `levels` zusaetzlich und kennt `templates` nicht mehr. Eine fehlende Zeile
+ * waere beim schonenden Update unsichtbar, es wuerde also weder Beneos-Inhalt
+ * aktualisiert noch Kundeninhalt geschuetzt, und eine ueberzaehlige Zeile wirft
+ * beim Schreiben. `Document.metadata.embedded` ist die Auskunft der laufenden
+ * Fassung ueber sich selbst und damit die einzige Quelle, die nicht veraltet.
+ *
+ * Die Liste unten ist nur der Rueckfall, falls die Auskunft fehlt.
+ */
+const SZENEN_EMBEDS_RUECKFALL = {
+  tokens:    "Token",
+  tiles:     "Tile",
+  walls:     "Wall",
+  lights:    "AmbientLight",
+  sounds:    "AmbientSound",
+  notes:     "Note",
+  drawings:  "Drawing",
+  regions:   "Region",
+  templates: "MeasuredTemplate",
+}
+
+let _szenenEmbedsCache = null
+export function szenenEmbeds() {
+  if (_szenenEmbedsCache) return _szenenEmbedsCache
+  const meta = globalThis.Scene?.metadata?.embedded
+  const raus = {}
+  if (meta && typeof meta === "object") {
+    // metadata.embedded ist Dokumentname -> Feldname, hier wird gedreht.
+    for (const [docName, feld] of Object.entries(meta)) {
+      if (typeof feld === "string" && feld && typeof docName === "string" && docName) raus[feld] = docName
+    }
+  }
+  _szenenEmbedsCache = Object.keys(raus).length ? raus : { ...SZENEN_EMBEDS_RUECKFALL }
+  return _szenenEmbedsCache
+}
+
+/**
+ * Szenenfelder, die dem Kunden gehoeren und beim schonenden Update NICHT aus
+ * dem Paket gesetzt werden.
+ *
+ * `navigation`, `navName`, `navOrder`, `folder` und `sort` sind seine Ordnung
+ * in der Szenenliste. `ownership` ist, wer die Szene sehen darf. `active` ist
+ * die gerade offene Szene, und ein Update darf den Tisch nicht umschalten.
+ *
+ * `name` steht hier, weil #istUnsereSzene eine umbenannte Szene ausdruecklich
+ * wiedererkennt. Beides zusammen zu haben und den Namen dann doch
+ * zurueckzusetzen, waere ein Versprechen, das der naechste Lauf bricht. Preis:
+ * ein Release, das eine Szene umbenennt, liefert den neuen Namen nicht nach.
+ *
+ * `thumb` steht NICHT hier. Das Paket setzt es auf null (#importDocuments), und
+ * genau daran erkennt #regenerateSceneThumbs, dass ein neues Vorschaubild
+ * faellig ist. Als Kundenfeld behielte eine zusammengefuehrte Szene dauerhaft
+ * das Vorschaubild der alten Karte.
+ *
+ * Alles andere kommt aus dem Paket: Hintergrund, Vordergrund, Abmessungen,
+ * Gitter, Beleuchtung, Nebel. Genau dafuer gibt es ein Karten-Update.
+ */
+const SZENE_KUNDENFELDER = new Set([
+  "navigation", "navName", "navOrder", "ownership", "folder", "sort", "active", "name",
+])
+
+/**
+ * Das Urteil des schonenden Szenen-Updates fuer EINE eingebettete Sammlung.
+ * Reine Rechnung ueber drei Mengen, ohne Foundry und ohne Seitenwirkung, damit
+ * sie ohne laufende Welt geprueft werden kann.
+ *
+ * @param {Array<object>} packListe  Eintraege dieser Sammlung im neuen Paket
+ * @param {Set<string>}   vorhanden  Kennungen, die jetzt in der Welt stehen
+ * @param {Set<string>}   frueher    Kennungen, die beim letzten Mal aus dem
+ *                                   Paket kamen. Leer heisst "nicht bekannt",
+ *                                   und dann wird NICHTS geloescht.
+ * @returns {{anlegen:Array, aktualisieren:Array, loeschen:string[], fremd:number}}
+ */
+export function szenenSammlungAbgleich(packListe, vorhanden, frueher) {
+  const liste = (Array.isArray(packListe) ? packListe : []).filter(e => e?._id)
+  const packIds = new Set(liste.map(e => String(e._id)))
+  const anlegen = [], aktualisieren = []
+  for (const e of liste) {
+    if (vorhanden.has(String(e._id))) aktualisieren.push(e)
+    else anlegen.push(e)
+  }
+  // Geloescht wird ausschliesslich, was NACHWEISLICH aus einem frueheren Paket
+  // stammt und im neuen nicht mehr vorkommt. Alles andere in der Welt hat der
+  // Kunde gelegt und bleibt unangetastet.
+  const loeschen = []
+  let fremd = 0
+  for (const vid of vorhanden) {
+    if (packIds.has(vid)) continue
+    if (frueher.has(vid)) loeschen.push(vid)
+    else fremd += 1
+  }
+  return { anlegen, aktualisieren, loeschen, fremd }
+}
+
 const JSON_FILE_TO_PHASE = {
   "data/folders.json":      { phaseKey: "data",       collection: "folders",   docClass: () => globalThis.Folder },
   "data/Scene.json":        { phaseKey: "scenes",     collection: "scenes",    docClass: () => globalThis.Scene },
@@ -350,10 +450,16 @@ function standbildAusKachel(scene) {
 
 export class BeneosNativeBattlemapInstaller {
 
-  constructor({ packageId, label = "", coverUrl = null, sceneSlugs = null, overwrite = false, record = null, source = null, progress = null } = {}) {
+  constructor({ packageId, label = "", coverUrl = null, sceneSlugs = null, overwrite = false, record = null, source = null, progress = null, kreaturenLauf = null, schonen = true } = {}) {
     if (!packageId) throw new Error("BeneosNativeBattlemapInstaller: packageId is required")
     this.packageId = packageId
     this.label     = label || packageId
+    // Kreaturen, die in DIESEM Lauf schon betrachtet wurden. Ein Bundle baut je
+    // Paket einen eigenen Installer, und Releases teilen sich Kreaturen: die
+    // sieben Pakete von "Castle Ravenloft" nannten dieselben Kreaturen mehrfach.
+    // Ohne gemeinsames Set fragt jedes Paket erneut nach, was das vorige gerade
+    // geholt hat. Null bei einem Einzelrelease, dort deckt das Set je Lauf ab.
+    this.kreaturenLauf = (kreaturenLauf instanceof Set) ? kreaturenLauf : null
     // Kennung dieses Installationslaufs. Ein Release bringt Karten UND die
     // Kreaturen mit, die auf ihnen stehen; das ist EINE Handlung des Nutzers.
     // Ohne gemeinsame Kennung stuende jede mitgelieferte Kreatur als eigener
@@ -372,6 +478,11 @@ export class BeneosNativeBattlemapInstaller {
     // dialog. `record` carries the release metadata the installer needs to
     // detect staleness, decide source re-download, and persist the install.
     this.overwrite = !!overwrite
+    // Schonmodus: eine vorhandene Szene wird zusammengefuehrt statt geloescht
+    // und neu gebaut, siehe #mergeScenes. Vorgabe ist an, Betreiberentscheid
+    // vom 18.09.2026. Aus geht er nur, wenn der Nutzer im Update-Dialog
+    // ausdruecklich den Neubau waehlt.
+    this.schonen   = schonen !== false
     this.record    = record || null
     // Punkt 7: optional scene scope. When set, only the named scenes (by
     // cloud_scene_slug) and their assets are installed from the release pack,
@@ -411,8 +522,8 @@ export class BeneosNativeBattlemapInstaller {
    * the result (imported scenes, totals, whether the user cancelled) — used by
    * the cloud window to refresh the installed-marker after the run.
    */
-  static async install({ packageId, label, coverUrl, sceneSlugs, overwrite = false, record = null, source = null, progress = null } = {}) {
-    const inst = new BeneosNativeBattlemapInstaller({ packageId, label, coverUrl, sceneSlugs, overwrite, record, source, progress })
+  static async install({ packageId, label, coverUrl, sceneSlugs, overwrite = false, record = null, source = null, progress = null, kreaturenLauf = null, schonen = true } = {}) {
+    const inst = new BeneosNativeBattlemapInstaller({ packageId, label, coverUrl, sceneSlugs, overwrite, record, source, progress, kreaturenLauf, schonen })
     await inst.run()
     return inst
   }
@@ -577,7 +688,7 @@ export class BeneosNativeBattlemapInstaller {
       if (this._unveraendert) this.overwrite = true
 
       if (presentIds.length && !this.overwrite) {
-        const ok = await BeneosPreInstallDialog.confirmWorldOverwrite({
+        const wahl = await BeneosPreInstallDialog.confirmWorldOverwrite({
           scope:        this._sceneScope ? "scene" : "release",
           name:         this.label,
           presentCount: presentIds.length,
@@ -585,7 +696,7 @@ export class BeneosNativeBattlemapInstaller {
           installedAt:  prior?.installedAt || "",
           stale:        this._stale,
         })
-        if (!ok) {
+        if (wahl === "abbruch") {
           this._cancelled = true
           // Ein fremdes Fenster gehoert dem Aufrufer und wird hier NICHT
           // geschlossen. Beim Buendellauf raeumte ein abgebrochenes Mitglied
@@ -593,7 +704,11 @@ export class BeneosNativeBattlemapInstaller {
           if (!this._fremdesFenster) { try { await this.progress.close?.() } catch (_) {} }
           return this
         }
+        // Beide Wege setzen overwrite: der Unterschied liegt darin, WIE die
+        // vorhandene Szene ersetzt wird, nicht ob. "neubau" ist der alte Weg
+        // mit Loeschen und Neuanlage, "schonen" fuehrt zusammen (#mergeScenes).
         this.overwrite = true
+        this.schonen = (wahl === "schonen")
       }
       // Source-overwrite gating (user decision: release-signature gating). The
       // source files are byte-identical when the release is unchanged, so a
@@ -1259,8 +1374,11 @@ export class BeneosNativeBattlemapInstaller {
    * Massstab ist `zuInstallierendeSchluessel()`. Sie ist BEWUSST enger als die
    * ALT-Markierung der Lade: die Lade beantwortet "gehoert das zum Entwurf",
    * hier zaehlt "muss das vorab auf die Platte". Warum das gefahrlos ist,
-   * steht mit der Messung im Kopf von `alternativen.mjs` (Betreiberentscheid
-   * vom 15.09.2026, davor galt hier dieselbe Regel wie in der Lade).
+   * steht mit der Messung im Kopf von `alternativen.mjs`.
+   *
+   * Betreiberentscheid vom 15.09.2026. Davor nahm dieser Zweig JEDEN Eintrag
+   * mit `tokenKey` mit; gemessen ueber alle 143 Pakete waren das 249
+   * verschiedene Kreaturen statt 31, im Mittel 7,6 je Release statt 0,4.
    *
    * Die Vereinigung ueber die Szenen ist gewollt: eine Kreatur, die in
    * irgendeiner Zielszene zugewiesen ist, gehoert zur Installation, auch wenn
@@ -1286,7 +1404,7 @@ export class BeneosNativeBattlemapInstaller {
    * Creature-Drawer handles placement when a scene is opened.
    */
   async #installBeneosCreatures() {
-    const keys = this._creatureKeys ?? []
+    let keys = this._creatureKeys ?? []
     if (!keys.length) return   // no creature block for releases without Beneos creatures
 
     const cloud = game.beneos?.cloud
@@ -1300,12 +1418,41 @@ export class BeneosNativeBattlemapInstaller {
       return
     }
 
+    // Buendelweite Entdopplung, NACH der Patron-Pruefung und VOR jeder
+    // weiteren Pruefung: der Hinweisblock fuer Nicht-Patrone nennt weiterhin
+    // alle Kreaturen des Releases, auch wenn ein frueheres Paket dieselben
+    // schon genannt hat, und was hier herausfaellt, kostet darunter keine
+    // Rechte- und keine Aktualitaetspruefung mehr.
+    //
+    // Ohne diese Entdopplung nennt jedes der sieben Pakete eines Bundles
+    // dieselbe Kreatur erneut, und jede Nennung kostet mindestens eine
+    // Verzeichnisabfrage. Das Set gehoert dem Buendellauf; bei einem
+    // Einzelrelease ist es null, dort deckt die Entdopplung innerhalb dieses
+    // einen Pakets bereits alles ab.
+    if (this.kreaturenLauf) {
+      const frisch = keys.filter(k => !this.kreaturenLauf.has(k))
+      if (!frisch.length) {
+        this.progress.revealPhase?.("creatures", { status: "skipped", current: 0, total: 0 })
+        this._result.creatures = { present: true, patron: true, installed: 0, skipped: 0,
+          total: keys.length, schonImLauf: keys.length }
+        this.progress.setCreatureBlock?.({ present: true, isPatron: true, count: keys.length,
+          installed: keys.length, state: "done" })
+        return
+      }
+      keys = frisch
+    }
+
     // Zugriff je Kreatur, nicht je Konto. Der kontoweite `hasCampaignAccess`
     // sagt nur, dass ueberhaupt ein Zugang zur Kreaturen-Kampagne besteht.
     // Monatsbelohnungen haengen dagegen an dauerhaften Anrechten: ein Patron
     // ohne Anrecht bekam hier bisher eine Anfrage, die der Server zu Recht
     // ablehnte. Dieselbe Pruefung benutzt die Lade seit dem 24.08.2026.
     // Ein Uebersprungenes ist KEIN Fehlschlag und gehoert nicht in den Bericht.
+    //
+    // ZWEI GRUENDE, ZWEI ZAHLEN. `uebersprungen` heisst kein Anrecht,
+    // `schonAktuell` heisst steht schon unveraendert in der Welt. Unter einer
+    // Zahl waere nicht mehr zu sehen, ob eine Ueberspringpruefung zu viel
+    // ueberspringt oder ob einem Kunden etwas fehlt.
     const holbar = []
     let uebersprungen = 0
     let schonAktuell = 0
@@ -1341,8 +1488,17 @@ export class BeneosNativeBattlemapInstaller {
       const key = holbar[i]
       try {
         // scene_install: diese Kreatur kam mit der Karte, sie wurde nicht gesucht.
-        await cloud.importTokenFromCloud(key, undefined, false,
+        const ergebnis = await cloud.importTokenFromCloud(key, undefined, false,
           { gated: true, surface: "scene_install", interaction: this.erwerbsvorgang })
+        // Der Server hat sie als schon aktuell abgelehnt. Kein Fehlschlag,
+        // und derselbe Grund wie bei `#kreaturAktuell` oben, nur eine Stufe
+        // spaeter bemerkt.
+        if (ergebnis?.skipped === true) schonAktuell += 1
+        // Erst NACH dem Versuch vermerken. Traegt man den Schluessel vorher
+        // ein, gilt eine Kreatur, die im ersten Paket scheitert, fuer die
+        // restlichen sechs Pakete des Bundles als erledigt und bekommt keinen
+        // zweiten Anlauf mehr.
+        this.kreaturenLauf?.add(key)
       } catch (e) {
         console.warn("BeneosNativeInstaller | Beneos creature install failed", key, e?.message || e)
         this._result.docFailures.push({ type: "creature", id: key, error: String(e?.message || e) })
@@ -1353,6 +1509,9 @@ export class BeneosNativeBattlemapInstaller {
       if (this.#kreaturInWelt(key)) ok += 1
       this.progress.revealPhase?.("creatures", { status: "active", current: i + 1, total })
       this.progress.setCreatureBlock?.({ present: true, isPatron: true, count: total, installed: ok, state: "active" })
+    }
+    if (schonAktuell > 0) {
+      console.log(`BeneosNativeInstaller | creatures: ${ok} fetched, ${schonAktuell} already current`)
     }
     this.progress.revealPhase?.("creatures", { status: "done", current: total, total })
     this._result.creatures = { present: true, patron: true, installed: ok, total, skipped: uebersprungen, aktuell: schonAktuell }
@@ -2673,6 +2832,17 @@ export class BeneosNativeBattlemapInstaller {
         }
         this._importedScenes = arr.map(d => ({ id: String(d?._id), name: String(d?.name || "") }))
       }
+      // The same bridge for Actors. It was wired to Scene.json only, so every
+      // creature went into a V14 world unconverted: V13 keeps `detectionModes` as
+      // a list, V14 as a keyed object, and V14 answers a list with an empty object.
+      // Measured over the catalogue, 33 of 766 creatures lose their blindsight
+      // that way. Foundry handles the rest of an Actor itself at document
+      // construction, so only the prototypeToken needs us.
+      if (relPath === "data/Actor.json") {
+        for (const d of arr) {
+          if (d && typeof d === "object" && packNeedsV14Migration(d)) migrateActorForV14(d)
+        }
+      }
       // A journal page whose name is an empty string costs the WHOLE journal.
       // JournalEntryPage#name is a StringField({required: true, blank: false}),
       // so Foundry's clean() turns "" into undefined and the create then fails
@@ -2773,6 +2943,14 @@ export class BeneosNativeBattlemapInstaller {
         continue
       }
 
+      // Szenen werden zusammengefuehrt statt ersetzt, solange der Lauf im
+      // Schonmodus laeuft. Siehe #mergeScenes. Der harte Neubau unten bleibt
+      // erreichbar, der Nutzer waehlt ihn im Update-Dialog.
+      if (relPath === "data/Scene.json" && this.schonen) {
+        await this.#mergeScenes(arr, docClass, meta)
+        continue
+      }
+
       // Idempotency: a re-install or a 4K<->HD variant switch reuses the SAME
       // document _ids (verified: 4K and HD packs share scene ids). The old code
       // skipped any doc whose _id already existed and still reported success ,
@@ -2787,6 +2965,14 @@ export class BeneosNativeBattlemapInstaller {
       // delete+recreate them (that would orphan unrelated scenes to the root),
       // even in full-overwrite mode. Everything else is replaced by _id.
       const NO_OVERWRITE_TYPES = new Set(["data/folders.json"])
+      // Im Schonmodus kommen die Actors dazu. Foundry entfernt beim Loeschen
+      // eines Actors die Tokens, die ihn referenzieren, und Scene.json wird VOR
+      // Actor.json importiert: ein Encounter, das der Kunde aus Paket-Kreaturen
+      // vorbereitet hat, verschwaende also unmittelbar nachdem der Szenen-Merge
+      // es gerettet hat. Genau das hat der Dialog zugesagt, nicht zu tun.
+      // Preis: ein Release, das einen Actor aendert, liefert ihn im Schonmodus
+      // nicht nach. Der Knopf "Rebuild from scratch" tut es weiterhin.
+      if (this.schonen) NO_OVERWRITE_TYPES.add("data/Actor.json")
       const exists = d => !!(d?._id && coll?.get?.(d._id))
       let toCreate = arr.filter(d => !exists(d))
       let overwritten = 0
@@ -2865,6 +3051,11 @@ export class BeneosNativeBattlemapInstaller {
         this._result.totals.docsCreated += created.length
         recordRejected(toCreate, created)
         if (overwritten) this._result.totals.docsUpdated += overwritten
+        // Auch der harte Neubau hinterlaesst den Merker. Sonst stuende die Szene
+        // danach ohne da, und das erste schonende Update nach einem Neubau
+        // koennte zurueckgezogenen Beneos-Inhalt nicht erkennen und liesse ihn
+        // als Leiche stehen.
+        if (relPath === "data/Scene.json") await this.#stampAlleSzenen(created, toCreate)
       } catch (err) {
         console.warn(`BeneosNativeInstaller | createDocuments failed for ${relPath}`, err)
         let ok = 0
@@ -2887,6 +3078,218 @@ export class BeneosNativeBattlemapInstaller {
       this.progress.handleAssetProgress(meta.phaseKey, arr.length, arr.length)
       this.progress.revealPhase?.(meta.phaseKey, { status: "done", current: arr.length, total: arr.length })
     }
+  }
+
+  /**
+   * Schonendes Szenen-Update: nur der Beneos-Inhalt wird ersetzt, alles andere
+   * auf der Szene bleibt stehen.
+   *
+   * WOFUER. Bisher hiess ein Karten-Update `deleteDocuments` plus Neuanlage.
+   * Damit verlor der Kunde jedes Mal, was er selbst auf die Szene gelegt hatte:
+   * Spieler-Tokens, ein vorbereitetes Encounter, eigene Kacheln als versteckte
+   * Schaetze, eigene Notizen. Der Dialog hat das sogar angekuendigt, was das
+   * Update fuer jede benutzte Szene praktisch unbrauchbar machte.
+   *
+   * WORAN BENEOS-INHALT ERKANNT WIRD. An der Kennung, ohne dass wir irgendetwas
+   * markieren muessten. Die Szene und jedes eingebettete Dokument kommen mit
+   * fester `_id` aus `data/Scene.json` und werden mit `keepId: true` angelegt.
+   * Gemessen am 2026-09-18 ueber 40 Pakete, 587 Szenen und 29812 eingebettete
+   * Dokumente: alle tragen eine `_id`, keine doppelt, und 4K gegen HD desselben
+   * Releases ergab 824 Kennungen auf beiden Seiten ohne eine einzige
+   * Abweichung. Was im Paket steht, ist unseres. Alles andere ist seines.
+   *
+   * Tokens werden wie jede andere Sammlung abgeglichen. Die meisten Pakete
+   * bringen keine mit, einige aber schon (`00-beneos_getting_started_tour_HD`,
+   * `DiA_-_00_Hellish_Landing_Page`), und deren Tokens sind Beneos-Inhalt wie
+   * eine Wand auch.
+   *
+   * WAS GELOESCHT WIRD. Nur was beim letzten Mal aus dem Paket kam und jetzt
+   * nicht mehr darin steht. Woher wir das wissen, steht im Flag
+   * `beneos-module.packEmbedIds` an der Szene. Fehlt das Flag, weil die Szene
+   * vor dieser Aenderung installiert wurde, wird NICHTS geloescht, nur angelegt
+   * und aktualisiert. Beim naechsten Update ist das Flag gesetzt.
+   *
+   * WAS ZURUECKGESETZT WIRD. Eine vom Kunden verschobene Beneos-Wand oder ein
+   * umgefaerbtes Beneos-Licht geht auf den Paketstand zurueck. Betreiberentscheid
+   * vom 18.09.2026: sonst koennte ein Update eine fehlerhafte Wand nie mehr
+   * reparieren, und genau dafuer gibt es Updates.
+   */
+  async #mergeScenes(arr, docClass, meta) {
+    let angelegt = 0, zusammengefuehrt = 0, geschont = 0, done = 0
+    for (const d of arr) {
+      const r = await this.#mergeEineSzeneSicher(d, docClass, meta)
+      angelegt += r.angelegt
+      zusammengefuehrt += r.zusammengefuehrt
+      geschont += r.geschont
+      done += 1
+      this.progress.handleAssetProgress(meta.phaseKey, arr.length, done)
+    }
+    this._result.sceneMerge = { created: angelegt, merged: zusammengefuehrt, kept: geschont }
+    if (geschont > 0) {
+      console.log(`BeneosNativeInstaller | scene merge kept ${geschont} of the user's own object(s) across ${zusammengefuehrt} scene(s)`)
+    }
+    this.progress.revealPhase?.(meta.phaseKey, { status: "done", current: arr.length, total: arr.length })
+  }
+
+  /** Eine Szene, drei Ausgaenge: neu anlegen, zusammenfuehren, oder melden. */
+  async #mergeEineSzeneSicher(d, docClass, meta) {
+    const leer = { angelegt: 0, zusammengefuehrt: 0, geschont: 0 }
+    const id = String(d?._id || "")
+    const cur = id ? game.scenes?.get?.(id) : null
+    try {
+      if (!cur) {
+        const cr = await docClass.createDocuments([d], { keepId: true })
+        if (!cr.length) {
+          this._result.docFailures.push({ type: meta.phaseKey, id, name: d?.name || "",
+            error: "Rejected during document validation (see browser console)" })
+          return leer
+        }
+        this._result.totals.docsCreated += 1
+        await this.#stampPackEmbedIds(cr[0], d)
+        return { ...leer, angelegt: 1 }
+      }
+      if (!this.#istUnsereSzene(cur, d)) {
+        // Gleiche Kennung, fremde Szene. Kommt bei neu verknuepften Paketen
+        // vor. Nicht anfassen, sondern melden: eine fremde Szene zu
+        // ueberschreiben waere schlimmer als ein nicht angekommenes Update.
+        this._result.docFailures.push({ type: meta.phaseKey, id,
+          error: `_id already used by a different scene "${cur?.name || "?"}", not merged (pack id collision)` })
+        return leer
+      }
+      const geschont = await this.#mergeEineSzene(cur, d)
+      this._result.totals.docsUpdated += 1
+      return { ...leer, zusammengefuehrt: 1, geschont }
+    } catch (err) {
+      console.warn(`BeneosNativeInstaller | scene merge failed (${id})`, err?.message || err)
+      this._result.docFailures.push({ type: meta.phaseKey, id, name: d?.name || "",
+        error: String(err?.message || err) })
+      return leer
+    }
+  }
+
+  /**
+   * Gehoert die vorhandene Szene zu DIESEM Release? Drei Belege, jeder reicht,
+   * und jeder bindet an dieses Release statt nur an Beneos.
+   *
+   * Der Namensvergleich ist der alte Test und bleibt der haeufigste Fall. Er
+   * allein genuegt nicht: ein Kunde, der die Szene umbenannt hat, bekaeme sonst
+   * nie wieder ein Update, und Umbenennen ist genau die Art Aenderung, die
+   * dieser Weg schuetzen soll.
+   *
+   * Der Merker zaehlt nur mit passendem `releaseDir`. Sein blosses Vorhandensein
+   * hiesse "irgendein Beneos-Paket war hier", und damit haette ein Release Y
+   * eine umbenannte Szene aus Release X uebernommen und nach dem Merker von X
+   * darin geloescht. Genau den Kollisionsfall faengt der Zweig ab, der diese
+   * Frage stellt.
+   */
+  #istUnsereSzene(cur, d) {
+    if (String(cur?.name || "") === String(d?.name || "")) return true
+    const meins = String(this.record?.releaseDir || "")
+    if (!meins) return false
+    if (String(cur?.getFlag?.("beneos-module", "packEmbedIds")?.releaseDir || "") === meins) return true
+    try {
+      if (String(BeneosInstallState.findReleaseDirByScene?.(String(cur?.id || "")) || "") === meins) return true
+    } catch (_) { /* Vermerk nicht lesbar, dann zaehlt er eben nicht */ }
+    return false
+  }
+
+  /**
+   * Schreibt an die Szene, welche eingebetteten Kennungen aus dem Paket kamen,
+   * und aus welchem Release. Ohne diesen Merker kann das naechste Update
+   * zurueckgezogenen Beneos-Inhalt nicht von Kundeninhalt unterscheiden, und die
+   * Szene sammelt bei jedem Update Leichen an.
+   */
+  async #stampPackEmbedIds(scene, d) {
+    await scene.setFlag("beneos-module", "packEmbedIds", this.#packEmbedIds(d))
+  }
+
+  /**
+   * Setzt den Merker an einer Menge frisch angelegter Szenen. `created` sind die
+   * Dokumente, `quelle` die Pack-Eintraege dazu; zugeordnet wird ueber die
+   * Kennung, weil createDocuments die Reihenfolge nicht zusichert und abgelehnte
+   * Dokumente in `created` fehlen.
+   */
+  async #stampAlleSzenen(created, quelle) {
+    const nachId = new Map((quelle || []).map(d => [String(d?._id || ""), d]))
+    for (const szene of (created || [])) {
+      const d = nachId.get(String(szene?.id || ""))
+      if (!d) continue
+      try { await this.#stampPackEmbedIds(szene, d) }
+      catch (err) { console.warn("BeneosNativeInstaller | packEmbedIds stamp failed", szene?.id, err?.message || err) }
+    }
+  }
+
+  /** Der Merkerinhalt fuer ein Pack-Szenendokument. */
+  #packEmbedIds(d) {
+    const ids = {}
+    for (const feld of Object.keys(szenenEmbeds())) {
+      ids[feld] = (Array.isArray(d?.[feld]) ? d[feld] : [])
+        .map(e => String(e?._id || "")).filter(Boolean)
+    }
+    return { releaseDir: String(this.record?.releaseDir || ""), ids }
+  }
+
+  /**
+   * Fuehrt EINE Szene zusammen. Gibt zurueck, wie viele fremde Objekte dabei
+   * unangetastet stehen geblieben sind.
+   */
+  async #mergeEineSzene(cur, d) {
+    const EMBEDS = szenenEmbeds()
+    // Der Merker wird VOR dem Szenen-Update gelesen. Danach traegt die Szene die
+    // `flags` des Pakets, und ein Paket, das selbst ein packEmbedIds-Flag
+    // mitbraechte, bestimmte sonst, was gleich als "frueher aus dem Paket" gilt
+    // und geloescht wird. Beim ZIP-Weg waehlt der Kunde die Datei selbst, der
+    // Wert ist also nicht aus unserer Hand.
+    const vorher = cur.getFlag("beneos-module", "packEmbedIds")?.ids || null
+
+    // 1. Szenenebene. Alles aus dem Paket ausser den Kundenfeldern und den
+    // eingebetteten Sammlungen, die Schritt 2 einzeln behandelt.
+    const update = {}
+    for (const [k, v] of Object.entries(d)) {
+      if (k === "_id" || EMBEDS[k] || SZENE_KUNDENFELDER.has(k)) continue
+      update[k] = v
+    }
+    // Aus demselben Grund darf der Merker des Pakets nicht mitgeschrieben werden.
+    if (update.flags?.["beneos-module"]?.packEmbedIds !== undefined) {
+      update.flags = foundry.utils.duplicate(update.flags)
+      delete update.flags["beneos-module"].packEmbedIds
+    }
+    if (Object.keys(update).length) await cur.update(update)
+
+    // 2. Eingebettete Dokumente je Sammlung.
+    let fremd = 0, ohneId = 0
+    for (const [feld, docName] of Object.entries(EMBEDS)) {
+      const roh = Array.isArray(d?.[feld]) ? d[feld] : []
+      const packListe = roh.filter(e => e?._id)
+      ohneId += roh.length - packListe.length
+
+      const vorhandenIds = new Set((cur[feld]?.map?.(x => String(x.id)) || []))
+      // Ohne Merker wird NICHT geloescht: dann ist nicht unterscheidbar, ob ein
+      // Objekt aus einem frueheren Paket stammt oder der Kunde es gelegt hat.
+      const frueherAusPack = new Set((vorher?.[feld] || []).map(String))
+
+      const plan = szenenSammlungAbgleich(packListe, vorhandenIds, frueherAusPack)
+      fremd += plan.fremd
+
+      if (plan.loeschen.length) await cur.deleteEmbeddedDocuments(docName, plan.loeschen)
+      const { zuerst, danach } = docName === "Token"
+        ? tokenUpdatesAufteilen(plan.aktualisieren, tid => !!cur[feld]?.get?.(tid)?.actorLink)
+        : { zuerst: plan.aktualisieren, danach: [] }
+      if (zuerst.length) await cur.updateEmbeddedDocuments(docName, zuerst)
+      if (danach.length) await cur.updateEmbeddedDocuments(docName, danach)
+      if (plan.anlegen.length) await cur.createEmbeddedDocuments(docName, plan.anlegen, { keepId: true })
+    }
+
+    // Ein Paketeintrag ohne Kennung kann nicht zugeordnet werden und faellt
+    // hier heraus. Gemessen ueber 40 Pakete und 29812 eingebettete Dokumente
+    // kam das nie vor, also wird es gemeldet und nicht stillschweigend gelebt.
+    if (ohneId > 0) {
+      this._result.docFailures.push({ type: "scenes", id: String(cur.id), name: String(cur.name || ""),
+        error: `${ohneId} embedded document(s) in the pack have no _id and were not merged` })
+    }
+
+    await cur.setFlag("beneos-module", "packEmbedIds", this.#packEmbedIds(d))
+    return fremd
   }
 
   /**

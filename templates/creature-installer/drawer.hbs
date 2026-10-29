@@ -2,9 +2,28 @@
   Beneos Creature Installer drawer. Rendered into a viewport-anchored host div by
   scripts/creature-installer/creature-installer.mjs. Collapsed by default (bookmark
   tab); hover-intent expands the panel. Visual spec: design_handoff_creature_installer.
-  When hidden on this scene, only the restore logo (left of the macro hotbar) shows.
+  When hidden, only the restore logo (left of the macro hotbar) shows.
 --}}
 {{#if logo}}
+  {{#if hint}}
+    {{!-- Hinweis ueber dem Logo. GESCHWISTER von .bci-restore, nicht Kind: der
+          Knopf ist Klick- und Drag-Ziel und behaelt seine eigene Box. Beide
+          verankert JS in #positionRestore().
+          role="status" ohne aria-live: das Element entsteht neu, es aendert sich
+          nicht, und bei jedem Re-Render waehrend der fuenf Sekunden wuerde ein
+          Screenreader die Meldung erneut vorlesen. --}}
+    <div class="bci-hint{{#if hint.fresh}} bci-hint-in{{/if}}" role="status">
+      <span class="bci-hint-text">{{hint.text}}</span>
+      {{!-- Icon ANSTELLE einer Beschriftung, nie daneben. Weil kein Text in der
+            Flaeche steht, traegt der Knopf title UND aria-label. --}}
+      <button type="button" class="bci-hint-x" data-action="hintClose"
+              title="{{localize 'BENEOS.CreatureInstaller.HintClose'}}"
+              aria-label="{{localize 'BENEOS.CreatureInstaller.HintClose'}}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <span class="bci-hint-arrow" aria-hidden="true"></span>
+    </div>
+  {{/if}}
   <button type="button" class="bci-restore" data-action="restore" title="{{localize 'BENEOS.CreatureInstaller.RestoreTooltip'}}">
     <i class="beneos-icon-logo"></i>
   </button>
@@ -58,6 +77,16 @@
         </button>
       </div>
     </header>
+
+    {{#if peek}}
+      {{!-- DAS HAEKCHEN ALLEIN LUEGT HIER. Es zeigt die gespeicherte Vorliebe,
+            der Bediener liest es als aktuelle Sichtbarkeit, und beides geht in
+            diesem Zustand auseinander: ausgeblendet und trotzdem offen, weil er
+            ueber das Logo hineingeschaut hat. Ein Kunde hat das am 2026-10-06
+            als "Hide ist gesetzt und die Lade ist offen" gemeldet, und er hatte
+            recht. Ohne diese Zeile ist der Zustand nicht lesbar. --}}
+      <p class="bci-peek-note" role="note">{{localize 'BENEOS.CreatureInstaller.PeekNote'}}</p>
+    {{/if}}
 
     <div class="bci-columns">
 

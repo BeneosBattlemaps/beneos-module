@@ -4,12 +4,16 @@
      Built on the existing .beneos-cloud-app token system + .bc-* utility
      classes so visual consistency is automatic.
 
-     Initial sections (further sections can be appended without changing
-     the layout grammar):
-       - Setup Tour            (button → BeneosStartSetupTour)
-       - Automatic Death Token (toggle → beneos-death-management)
-       - Show DM Navigation    (toggle → showNavToPlayers)
-       - Asset Check           (button → scanAllScenes) --}}
+     Zeilen in dieser Reihenfolge (weitere lassen sich anhaengen, ohne die
+     Satzordnung zu aendern):
+       - Account            Zustand plus Anmelden oder Abmelden
+       - Setup Tour         Knopf, BeneosStartSetupTour
+       - Documentation      Knopf, openDocumentation
+       - All module settings  Knopf, openModuleSettings
+
+     Hier liegen bewusst keine Schalter mehr. Jede einzelne Option, auch
+     das Totenkopf-Symbol und die Spielernavigation, steht in Foundrys
+     eigenem Modulfenster, damit es sie nur an einer Stelle gibt. --}}
 <section class="beneos-cloud-app bc-settings-app">
 
   <header class="bc-sidebar-group bc-settings-header">

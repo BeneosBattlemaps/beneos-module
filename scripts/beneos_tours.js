@@ -9,6 +9,7 @@ import { BeneosUtility } from "./beneos_utility.js";
 import { BeneosCloudWindowV2 } from "./cloud-v2/cloud-window-v2.mjs";
 import { maybeShowUpdateNotice } from "./cloud-v2/home/update-check.mjs";
 import { BeneosWhatsNewWindow } from "./cloud-v2/home/whats-new-window.mjs";
+import { presentCountryPrompt } from "./cloud-v2/country-prompt.mjs";
 
 const MODULE_ID = "beneos-module";
 
@@ -4416,7 +4417,13 @@ class BeneosTutorialSceneTour extends TourBase {
         const { BeneosCreatureInstaller } = await import("./creature-installer/creature-installer.mjs");
         const inst = BeneosCreatureInstaller.get?.();
         if (inst) {
-          try { await inst.setHidden(false); } catch (e) {}
+          // Nur ANZEIGEN, nicht entscheiden: setHidden(false) stand hier bis zum
+          // 2026-10-07 und war harmlos, solange die Ausblendung szenenlokal war.
+          // Seit sie je Welt gilt, haette derselbe Aufruf die Wahl des Bedieners
+          // auf allen Szenen weggeworfen, und zwar wegen einer Tour, die danach
+          // nie gefragt wurde. showDespiteHidden() nimmt sich beim naechsten
+          // nicht erzwungenen attachToActiveScene() selbst zurueck.
+          try { inst.showDespiteHidden(true); } catch (e) {}
           inst.expanded = expanded;
           // force:true bypasses the drawer's "BM:"-name guard so the tour can show
           // it on "Page 2: Battlemaps" (a non-"BM:" page that carries a real
@@ -8540,8 +8547,16 @@ Hooks.once("ready", async () => {
   // Update notice runs last: both popup paths above return early, so reaching
   // here means no other Beneos window opened this load and the notice never
   // stacks. Fully self-guarding (GM-only, offline-safe, skip-version aware).
-  try { await maybeShowUpdateNotice(); }
-  catch (err) { console.warn("[Beneos] Update notice failed:", err); }
+  try {
+    if (await maybeShowUpdateNotice()) return;
+  } catch (err) { console.warn("[Beneos] Update notice failed:", err); }
+
+  // Country question, the very last and least urgent window: only on a load
+  // where nothing else opened. Self-guarding like What's New (GM, online,
+  // signed in); the server additionally waits a week after this world was
+  // connected to the account.
+  try { await presentCountryPrompt(); }
+  catch (err) { console.debug("[Beneos] Country prompt skipped:", err?.message ?? err); }
 });
 
 /**

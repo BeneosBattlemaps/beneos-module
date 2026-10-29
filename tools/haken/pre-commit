@@ -1,0 +1,152 @@
+#!/bin/sh
+# Pruefstor fuer beneos-module. Angelegt am 2026-10-28 im Zuge von OP-SYS-109.
+#
+# WARUM ES DIESES TOR GIBT
+#
+# Dieser Bestand wird an Kunden ausgeliefert und hielt drei Pruefungen mit
+# zusammen 82 Pruefsaetzen, die alle gruen laufen, ohne Netz, ohne Foundry und
+# ohne Abhaengigkeiten, und die niemand fuhr. Es gab keinen Ort, an dem eine
+# haengen konnte: `.git/hooks` trug nur `prepare-commit-msg`.
+#
+# Zwei der drei kamen in der Wachinventur von OP-SYS-109 gar nicht vor, weil
+# ihr Name nicht auf `pruefe-`, `check-`, `audit-` oder `verify-` passt.
+# `anker.test.mjs` und `v14-import-bench/unit.mjs` heissen anders und tragen
+# 75 der 82 Saetze. Die Inventur nennt diese Luecke selbst unter "nicht
+# pruefbar"; hier ist sie eingetreten.
+#
+# BEWUSST KEIN core.hooksPath
+#
+# Der haette den vorhandenen `prepare-commit-msg` geraeuschlos getoetet, und
+# derselbe Fall hat im Haus schon vier Haken erwischt. `.git/hooks/pre-commit`
+# ist nur eine Bruecke auf diese Datei hier, die im Repositorium liegt und
+# damit reproduzierbar ist. Beide Haken leben nebeneinander.
+#
+# WARUM DIE KATALOGPRUEFUNG NUR MANCHMAL LAEUFT
+#
+# `tools/pruefe-katalog-offline.mjs` braucht gemessen 10,1 Sekunden, weil sie
+# die echten Wiederholpausen von 800 und 2500 ms abwartet; das ist ihr
+# Gegenstand und kein Mangel. Zehn Sekunden auf JEDEN Commit sind der Preis,
+# fuer den ein Tor regelmaessig mit `--no-verify` umgangen wird, und ein Tor,
+# das man umgeht, ist keines. Sie laeuft deshalb genau dann, wenn eine der
+# zwei Dateien vorgemerkt ist, die sie laedt. Die anderen beiden kosten
+# zusammen 0,34 Sekunden und laufen immer.
+#
+# WARUM DIE VORGEMERKTE FASSUNG GEPRUEFT WIRD UND NICHT DIE IM BAUM
+#
+# In diesem Bestand arbeiten mehrere Sitzungen gleichzeitig; am 2026-10-28
+# lagen 26 fremde Aenderungen im Arbeitsbaum. `node --check` laeuft deshalb
+# gegen `git show :<pfad>`, also gegen das, was wirklich committet wird.
+# Fremde halbfertige Arbeit blockiert den eigenen Commit so nicht.
+#
+# WARUM EINE FEHLENDE PRUEFUNG NICHT IMMER EIN BEFUND IST
+#
+# Worktrees teilen sich `.git/hooks`, dieses Tor gilt also auch in
+# `beneos-module-stream`, `beneos-module-telemetrie` und
+# `beneos-module-offline-fix`. Gemessen am 2026-10-28: drei dieser vier
+# Arbeitsbaeume tragen die Pruefungen gar nicht, ihre Zweige sind aelter.
+# Eine erste Fassung dieses Hakens haette dort JEDEN Commit mit drei
+# "fehlt"-Befunden blockiert, und in `stream-beta` arbeiten andere
+# Sitzungen.
+#
+# Der Unterschied, der zaehlt, ist nicht "liegt die Datei da", sondern
+# "kennt HEAD sie". Kennt HEAD die Pruefung und die Datei fehlt, hat sie
+# jemand entfernt, und das ist ein Befund. Kennt HEAD sie nicht, ist es ein
+# anderer Zweig, und dann ist Schweigen richtig.
+#
+# ZWEI BASH-FALLEN, DIE HIER BEWUSST VERMIEDEN SIND
+#
+# `$?` nach `if ! befehl` traegt den Wert des negierten Ausdrucks und ist
+# immer 0. Und eine `while`-Schleife hinter einer Pipeline laeuft in einer
+# Subshell; ein dort gesetzter Zaehler ist danach wieder leer. Die Liste der
+# vorgemerkten Dateien geht deshalb ueber eine Datei und nicht ueber ein Rohr.
+#
+# Umgehen im Notfall: git commit --no-verify
+
+set -u
+
+WURZEL=$(git rev-parse --show-toplevel) || exit 1
+cd "$WURZEL" || exit 1
+
+TMP=$(mktemp -d) || exit 1
+aufraeumen() { rm -rf "$TMP"; }
+trap aufraeumen EXIT
+
+ROT=0
+
+meld() { printf '%s\n' "$*" >&2; }
+
+if ! command -v node >/dev/null 2>&1; then
+  meld ""
+  meld "pre-commit: node nicht gefunden, das Tor kann nicht messen."
+  meld "Ein Tor, das ungeprueft durchlaesst, ist keines, deshalb bricht es ab."
+  meld "Bewusst umgehen: git commit --no-verify"
+  meld ""
+  exit 1
+fi
+
+# ---------------------------------------------------------------- Syntax -----
+git diff --cached --name-only --diff-filter=ACM -- '*.js' '*.mjs' '*.cjs' \
+  > "$TMP/vorgemerkt" 2>/dev/null
+
+ANZ_SYNTAX=0
+while IFS= read -r pfad; do
+  [ -n "$pfad" ] || continue
+  ziel="$TMP/$(printf '%s' "$pfad" | tr '/' '_')"
+  if ! git show ":$pfad" > "$ziel" 2>/dev/null; then
+    continue
+  fi
+  ANZ_SYNTAX=$((ANZ_SYNTAX + 1))
+  if ! node --check "$ziel" 2>"$TMP/fehler"; then
+    meld ""
+    meld "pre-commit: Syntaxfehler in der VORGEMERKTEN Fassung von $pfad"
+    sed -n '1,6p' "$TMP/fehler" >&2
+    ROT=$((ROT + 1))
+  fi
+done < "$TMP/vorgemerkt"
+
+[ "$ANZ_SYNTAX" -gt 0 ] && meld "pre-commit: node --check ueber $ANZ_SYNTAX vorgemerkte Datei(en)"
+
+# ------------------------------------------------------------- Pruefungen ----
+fahre() {
+  datei=$1
+  name=$2
+  if [ ! -f "$datei" ]; then
+    if git cat-file -e "HEAD:$datei" 2>/dev/null; then
+      meld "pre-commit: $name fehlt im Arbeitsbaum, HEAD kennt sie aber ($datei)"
+      ROT=$((ROT + 1))
+    fi
+    # Kennt HEAD sie nicht, ist dies ein Zweig ohne diese Pruefung. Kein Befund.
+    return
+  fi
+  if node "$datei" > "$TMP/lauf" 2>&1; then
+    meld "pre-commit: ok  $name"
+  else
+    meld ""
+    meld "pre-commit: ROT  $name"
+    tail -n 25 "$TMP/lauf" >&2
+    ROT=$((ROT + 1))
+  fi
+}
+
+fahre "scripts/creature-installer/anker.test.mjs" "anker.test.mjs, 22 Saetze"
+fahre "tools/v14-import-bench/unit.mjs"           "v14-import unit.mjs, 53 Saetze"
+
+# Die teure nur, wenn ihr Gegenstand angefasst wird.
+if git diff --cached --name-only --diff-filter=ACM \
+     -- scripts/beneos_search_engine.js scripts/beneos_utility.js \
+   | grep -q .
+then
+  meld "pre-commit: Katalogdateien vorgemerkt, die 10s-Pruefung laeuft mit"
+  fahre "tools/pruefe-katalog-offline.mjs" "pruefe-katalog-offline.mjs, 7 Saetze"
+fi
+
+# ----------------------------------------------------------------- Ausgang ---
+if [ "$ROT" -gt 0 ]; then
+  meld ""
+  meld "pre-commit: $ROT Befund(e), Commit abgebrochen."
+  meld "Bewusst umgehen: git commit --no-verify"
+  meld ""
+  exit 1
+fi
+
+exit 0
