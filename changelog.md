@@ -12,6 +12,8 @@ All notable changes to this module will be documented in this file.
 - Removed the outdated hint on the Maps tab that said battlemaps are delivered through Moulinette.
 - Items can now be filtered by class in the Beneos Cloud window. The filter appears once the catalog lists classes for items, so far only for a few recent ones.
 - About a week after you connect a world to your Beneos account, the module asks which country you are playing from. It helps us measure how fast downloads reach you and where we need more download servers. Closing the window pauses the question for a week; it stops once you answer or choose "Don't ask again".
+- Signing in with an email we don't know no longer creates a new account right away. The module first asks whether you really want a new account, and "Check email" takes you back with the address filled in. A typo used to land you in a second, empty account where none of your Patreon or shop content showed up.
+- Russian is now a supported language.
 
 ### 14.4.10 # 2026-09-10
 

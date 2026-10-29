@@ -501,13 +501,15 @@ export class BeneosCloudLogin extends FormApplication {
     }
   }
 
-  async loginDialog() {
+  async loginDialog(prefillEmail = null) {
 
     // Pre-fill the email field with the last address that logged in on this
     // machine (recovers gracefully from an accidental logout; the OTP code is
     // still required, so this is convenience, not an auth bypass). The field
     // stays editable, which doubles as the "use a different email" reset.
-    const savedEmail = this.recallLoginEmail()
+    // "Check email" in the unknown-address question passes the address the user
+    // just typed, so they correct it instead of typing it again.
+    const savedEmail = prefillEmail || this.recallLoginEmail()
     let content = await renderTemplate("modules/beneos-module/templates/beneos-cloud-login.html", { email: savedEmail })
 
     // Wave B-9-fix-57: rejectClose: false so closing via the X header
@@ -535,8 +537,10 @@ export class BeneosCloudLogin extends FormApplication {
             return { mode: "otp", action: "login", email: emailEl ? emailEl.value : "" }
           },
         }, {
-          // Same email + code flow; "create" just signals new-account intent so the
-          // flow sends straight away (and the form hint already explains the Patreon-email tip).
+          // Same email + code flow. Until 2026-10-29 "create" skipped the
+          // unknown-address question and sent straight away; now it asks like
+          // "Login" does, because a mistyped address made a second account just
+          // as easily from this button.
           action: "create",
           label: game.i18n.localize("BENEOS.Cloud.ConnectAccount.CreateAccountButton"),
           callback: (event, button, dialog) => {
@@ -563,7 +567,7 @@ export class BeneosCloudLogin extends FormApplication {
   }
 
   /********************************************************************************** */
-  async loginRequest(loginData = null) {
+  async loginRequest(loginData = null, prefillEmail = null) {
 
     if (!game.user.isGM) return;
 
@@ -577,7 +581,7 @@ export class BeneosCloudLogin extends FormApplication {
       // If we don't have login data, we need to ask the user
       BeneosUtility.debugMessage("No login data, asking user")
       // Show the login dialog
-      loginData = await this.loginDialog()
+      loginData = await this.loginDialog(prefillEmail)
       // Wave B-9-fix-57 → fix-62: silent on Cancel / X / Esc. V13's
       // DialogV2._onSubmit (api/dialog.mjs:242) does
       //   result = (await callback?.()) ?? button.action
@@ -593,7 +597,7 @@ export class BeneosCloudLogin extends FormApplication {
     // Passwordless path: the user clicked "Connect with email code" in the dialog.
     // Hand off to the one-time-code flow; the email+password branch below is skipped.
     if (loginData.mode === "otp") {
-      return this.connectWithCode((loginData.email || "").trim(), userId, { createIntent: loginData.action === "create" })
+      return this.connectWithCode((loginData.email || "").trim(), userId)
     }
 
     // Wave B-9-fix-57: validate that BOTH fields were filled. Empty
@@ -750,25 +754,24 @@ export class BeneosCloudLogin extends FormApplication {
   // Passwordless login (steps 1 + 2): ask the Cloud to email a one-time code, then
   // verify it. On success it reuses pollForAccess() exactly like the password path,
   // so login state, settings and the V2 re-render are handled by the same code.
-  async connectWithCode(email, userId, opts = {}) {
+  async connectWithCode(email, userId) {
     if (!game.user.isGM) return
     if (!email || !email.trim()) {
       ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Notification.LoginIncomplete"))
       return
     }
     email = email.trim()
-    // The "Create account" button signals new-account intent: the user already chose to
-    // create one, so we send straight away (confirmCreate) and skip the extra gate.
-    const createIntent = opts.createIntent === true
 
-    // Step 1: request a code (shared with the in-dialog "resend" button).
-    let first = await this.requestCode(email, userId, createIntent)
-    // Unknown email via the plain "Login" button: confirm before creating a fresh account
-    // so a typo (especially into an address the user also owns) does not silently fork
-    // their identity away from their Patreon/shop entitlements.
-    if (!createIntent && first.status === 'new_account') {
-      const confirmed = await this.confirmNewAccountDialog(email)
-      if (!confirmed) return
+    // Step 1: request a code (shared with the in-dialog "resend" button). Never with
+    // confirmCreate on the first try: the server answers new_account for an unknown
+    // address, and that is the moment to ask. This holds for the "Create account"
+    // button too; a typo there forked a customer's identity away from their
+    // Patreon/shop entitlements just as easily, and they then found nothing they paid for.
+    let first = await this.requestCode(email, userId, false)
+    if (first.status === 'new_account') {
+      const choice = await this.confirmNewAccountDialog(email)
+      if (choice === "check") return this.loginRequest(null, email)
+      if (choice !== "create") return
       first = await this.requestCode(email, userId, true)
     }
     if (first.status !== 'ok') return
@@ -874,14 +877,17 @@ export class BeneosCloudLogin extends FormApplication {
   }
 
   /********************************************************************************** */
-  // Confirm creating a brand-new Beneos account for an unknown email. The big onboarding
-  // pitfall is a typo / wrong address that forks identity away from the user's Patreon /
-  // shop email, so the copy nudges them to use the exact one. Returns true to proceed.
+  // The address is unknown to the cloud. The big onboarding pitfall is a typo or a second
+  // address that forks identity away from the user's Patreon / shop email: the customer
+  // then sits in an empty account and believes their content is gone. So the safe answer
+  // is the default ("check", back to the login form with the address filled in), and
+  // creating stays a deliberate second click. Returns "check", "create" or null (closed).
   async confirmNewAccountDialog(email) {
+    const safeEmail = String(email).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
     const content = `<section class="bc-login-form">
-      <p class="bc-login-form__hint">${game.i18n.format("BENEOS.Cloud.ConnectAccount.NewAccountConfirmBody", { email })}</p>
+      <p class="bc-login-form__hint">${game.i18n.format("BENEOS.Cloud.ConnectAccount.NewAccountConfirmBody", { email: `<strong>${safeEmail}</strong>` })}</p>
     </section>`
-    let result = false
+    let result = null
     try {
       result = await foundry.applications.api.DialogV2.wait({
         window: { title: game.i18n.localize("BENEOS.Cloud.ConnectAccount.NewAccountConfirmTitle") },
@@ -889,20 +895,20 @@ export class BeneosCloudLogin extends FormApplication {
         content,
         rejectClose: false,
         buttons: [{
+          action: "check",
+          label: game.i18n.localize("BENEOS.Cloud.ConnectAccount.NewAccountConfirmCheck"),
+          default: true,
+          callback: () => "check"
+        }, {
           action: "create",
           label: game.i18n.localize("BENEOS.Cloud.ConnectAccount.NewAccountConfirmCreate"),
-          default: true,
-          callback: () => true
-        }, {
-          action: "cancel",
-          label: game.i18n.localize("BENEOS.Cloud.Login.Cancel"),
-          callback: () => false
+          callback: () => "create"
         }]
       })
     } catch (e) {
-      result = false
+      result = null
     }
-    return result === true
+    return (result === "check" || result === "create") ? result : null
   }
 
   /********************************************************************************** */
