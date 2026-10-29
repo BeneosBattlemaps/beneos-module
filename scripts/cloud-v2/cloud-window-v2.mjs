@@ -41,7 +41,7 @@ import { streamEnabled } from "../stream/stream-settings.mjs"
 import { streamState } from "../stream/stream-online.mjs"
 import {
   releaseOfflineStand, vorratsanzeige, betriebsanzeige,
-  vorratsstand, kontingent, szenenZuRelease, alleKarten, releaseLoesen,
+  vorratsstand, vorratsHinweis, kontingent, szenenZuRelease, alleKarten, releaseLoesen,
 } from "../stream/stream-offline.mjs"
 import { releaseOfflineSchalten } from "../stream/stream-scene-ui.mjs"
 import { getPoiIndex, peekPoiIndex, releaseInfo } from "./beneos-poi-index.mjs"
@@ -495,8 +495,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       offlineVorhanden: streamEnabled() && vorratsstand().karten > 0,
       // Die Speicherleiste, nur auf dem Maps-Reiter: anderswo gibt es nichts
       // offline zu nehmen, und eine Leiste ohne Bezug ist Rauschen.
+      // `hinweis` traegt seit dem 29.10.2026 auch die Frist, nicht nur den
+      // Zweck. Die zweite Zahl, die ein Spielleiter kennen muss, stand bisher
+      // allein im Offline-Fenster hinter Foundrys Einstellungsseite. Gebaut
+      // wird der Satz in `stream-offline.mjs`, weil dort die Buchhaltung liegt.
       offlineVorrat: (this.searchMode === "bmap" && streamEnabled())
-        ? vorratsanzeige(vorratsstand().bytes, kontingent())
+        ? { ...vorratsanzeige(vorratsstand().bytes, kontingent()), hinweis: vorratsHinweis() }
         : null,
     }
 

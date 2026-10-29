@@ -2,54 +2,57 @@
   Der Offline-Vorrat. Zuerst der Stand, dann die Frist, dann die Liste:
   in dieser Reihenfolge, weil ein Spielleiter zuerst wissen will, ob noch
   Platz ist, und erst danach, was drin liegt.
+
+  SEIT DEM 29.10.2026 UEBERSETZT. Bis dahin standen hier deutsche Festtexte,
+  in einem Produkt mit dreizehn Sprachdateien. Wer eine Zeile aendert, aendert
+  den Schluessel in `lang/en.json` und zieht die zwoelf anderen nach.
+
+  Drei Texte werden bewusst WIEDERVERWENDET statt neu geschrieben, weil es
+  dieselbe Aussage ist und zwei Formulierungen fuer eine Sache auseinander
+  laufen: `FetchNow`, `MissingWhy` und `Keep`.
 }}
 <div class="beneos-ov">
 
   <section class="beneos-ov-stand">
     <div class="beneos-ov-zahlen">
       <span class="beneos-ov-gross">{{belegtGB}}</span>
-      <span class="beneos-ov-klein">von {{grenzeGB}} GB belegt</span>
-      <span class="beneos-ov-rechts">{{anzahl}} Karte(n)</span>
+      <span class="beneos-ov-klein">{{localize "BENEOS.Stream.Offline.Panel.UsedOf" limit=grenzeGB}}</span>
+      <span class="beneos-ov-rechts">{{localize "BENEOS.Stream.Offline.Panel.Maps" n=anzahl}}</span>
     </div>
     <div class="beneos-ov-balken" role="img"
-         aria-label="{{belegtGB}} von {{grenzeGB}} Gigabyte belegt">
+         aria-label="{{localize "BENEOS.Stream.Offline.Panel.BarLabel" used=belegtGB limit=grenzeGB}}">
       <span style="width: {{anteil}}%"></span>
     </div>
   </section>
 
   <section class="beneos-ov-frist {{#if fristAbgelaufen}}ist-abgelaufen{{else}}{{#if fristKnapp}}ist-knapp{{/if}}{{/if}}">
     {{#if fristNie}}
-      <p><strong>Diese Welt hat noch keine Berechtigung geprüft.</strong>
-         Die Frist beginnt zu laufen, sobald sie einmal online war.</p>
+      <p><strong>{{localize "BENEOS.Stream.Offline.Panel.NeverLead"}}</strong>
+         {{localize "BENEOS.Stream.Offline.Panel.NeverBody"}}</p>
     {{else if fristAbgelaufen}}
-      <p><strong>Die Frist ist abgelaufen.</strong>
-         Diese Welt hat seit mehr als {{verfallTage}} Tagen keine gültige Mitgliedschaft
-         bestätigt. Öffne sie einmal mit Verbindung, dann bleiben die Karten erhalten.</p>
+      <p><strong>{{localize "BENEOS.Stream.Offline.Panel.ExpiredLead"}}</strong>
+         {{localize "BENEOS.Stream.Offline.Panel.ExpiredBody" days=verfallTage}}</p>
     {{else}}
-      <p><strong>Noch {{fristTage}} Tag(e) ohne Verbindung.</strong>
-         Offline gehaltene Karten bleiben {{verfallTage}} Tage, gerechnet ab der letzten
-         bestätigten Mitgliedschaft. Jeder Start dieser Welt mit Verbindung stellt die
-         Frist zurück; einmal Vorbereiten genügt, es muss nicht gespielt werden.</p>
+      <p><strong>{{localize "BENEOS.Stream.Offline.Panel.LeftLead" days=fristTage}}</strong>
+         {{localize "BENEOS.Stream.Offline.Panel.LeftBody" days=verfallTage}}</p>
     {{/if}}
   </section>
 
   {{#if fehlend}}
   <section class="beneos-ov-fehlend">
-    <p><strong>{{fehlend}} Karte(n) fehlen im Speicher dieses Browsers</strong> ({{fehlendMB}} MB).
-       Das passiert, wenn Browserdaten gelöscht wurden oder die Welt über eine andere
-       Adresse geöffnet wird als zuvor. Deine Mitgliedschaft ist davon nicht berührt.</p>
+    <p><strong>{{localize "BENEOS.Stream.Offline.Panel.MissingLead" n=fehlend mb=fehlendMB}}</strong>
+       {{localize "BENEOS.Stream.Offline.MissingWhy"}}</p>
     <button type="button" data-action="repairMissing">
-      <i class="fa-solid fa-rotate"></i> Fehlende Karten neu holen
+      <i class="fa-solid fa-rotate"></i> {{localize "BENEOS.Stream.Offline.FetchNow"}}
     </button>
   </section>
   {{/if}}
 
   {{#if leer}}
     <section class="beneos-ov-leer">
-      <p>Noch keine Karte offline gestellt.</p>
-      <p class="beneos-ov-hinweis">Rechtsklick auf eine Szene in der Seitenleiste, dann
-         <em>Keep offline</em>. Battlemap und Szenerie einer Karte werden dabei zusammen
-         genommen, weil niemand die eine ohne die andere braucht.</p>
+      <p>{{localize "BENEOS.Stream.Offline.Panel.EmptyLead"}}</p>
+      <p class="beneos-ov-hinweis">{{localize "BENEOS.Stream.Offline.Panel.EmptyHint"
+         label=(localize "BENEOS.Stream.Offline.Keep")}}</p>
     </section>
   {{else}}
     <ol class="beneos-ov-liste">
@@ -57,13 +60,13 @@
       <li class="{{#if this.fehlt}}fehlt{{/if}}">
         <span class="beneos-ov-name">
           {{this.name}}
-          {{#if this.fehlt}}<span class="beneos-ov-marke">fehlt</span>{{/if}}
+          {{#if this.fehlt}}<span class="beneos-ov-marke">{{localize "BENEOS.Stream.Offline.Panel.MissingMark"}}</span>{{/if}}
         </span>
         <span class="beneos-ov-groesse">{{this.mb}} MB</span>
         <button type="button" class="beneos-ov-weg" data-action="releaseMap"
                 data-release="{{this.release}}" data-variant="{{this.variant}}"
                 data-karte="{{this.karte}}"
-                aria-label="{{this.name}} wieder streamen">
+                aria-label="{{localize "BENEOS.Stream.Offline.Panel.StreamAgain" name=this.name}}">
           <i class="fa-regular fa-cloud"></i>
         </button>
       </li>
@@ -72,10 +75,7 @@
   {{/if}}
 
   <footer class="beneos-ov-fuss">
-    <p>Offline gehaltene Karten liegen im Speicher dieses Browsers, nicht auf dem Server.
-       Sie sind damit an diesen Browser gebunden: wer seine Websitedaten löscht, verliert sie.
-       Der Browser stellt dieser Welt insgesamt {{browserGB}} GB zur Verfügung, davon sind
-       {{browserBelegtGB}} GB belegt.</p>
+    <p>{{localize "BENEOS.Stream.Offline.Panel.Footer" total=browserGB used=browserBelegtGB}}</p>
   </footer>
 
 </div>

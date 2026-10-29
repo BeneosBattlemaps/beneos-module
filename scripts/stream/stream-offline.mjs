@@ -1232,6 +1232,46 @@ export function vorratsanzeige(belegt, grenze) {
   }
 }
 
+/**
+ * Der Satz, der an der Speicherleiste des Cloud-Fensters haengt.
+ *
+ * WARUM DIE FRIST IN EINEN TOOLTIP GEHOERT, Betreiberentscheid 29.10.2026.
+ *
+ * Der Balken beantwortet genau eine Frage, naemlich "wieviel habe ich noch".
+ * Die zweite Zahl, die ein Spielleiter kennen muss, ist eine ganz andere: wie
+ * lange seine offline gehaltenen Karten ohne Verbindung bleiben. Sie stand
+ * bisher nur im Offline-Fenster hinter Foundrys Einstellungsseite, also an der
+ * Stelle, an der ein unwissender Nutzer nie nachsieht. Ein zweiter Balken
+ * daneben waere Rauschen; der Tooltip traegt sie, ohne die Leiste zu belasten.
+ *
+ * DIE FRIST FAELLT WEG, SOLANGE NICHTS OFFLINE LIEGT. Eine Frist auf null
+ * Karten ist keine Auskunft, sondern eine Drohung ohne Gegenstand.
+ *
+ * Gebaut wird der Satz hier und nicht im Fenster, weil hier die Buchhaltung
+ * liegt. Das Fenster soll zeichnen, nicht rechnen, und eine zweite Stelle, die
+ * sich ihre Zahlen selbst zusammensucht, laeuft irgendwann auseinander.
+ */
+export function vorratsHinweis() {
+  const stand = vorratsstand()
+  const teile = [
+    game.i18n.localize("BENEOS.Cloud.Bmap.QuotaTooltip"),
+    game.i18n.format("BENEOS.Cloud.Bmap.QuotaTooltipMaps", { n: stand.karten }),
+  ]
+
+  if (stand.karten > 0) {
+    const verfall = verfallsstand()
+    if (verfall.nie) {
+      teile.push(game.i18n.localize("BENEOS.Cloud.Bmap.QuotaTooltipNever"))
+    } else if (verfall.abgelaufen) {
+      teile.push(game.i18n.localize("BENEOS.Cloud.Bmap.QuotaTooltipExpired"))
+    } else {
+      teile.push(game.i18n.format("BENEOS.Cloud.Bmap.QuotaTooltipLeft", { days: verfall.tageOffen }))
+    }
+  }
+
+  return teile.filter(Boolean).join(" ")
+}
+
 /** Die Szenen eines Release, aus dem Installationsvermerk. */
 export function szenenZuRelease(releaseDir, variant) {
   const alle = BeneosInstallState.getAll() || {}
