@@ -3339,6 +3339,14 @@ export class BeneosUtility {
       .filter(Boolean)
     if (!cleanSegments.length) return null
 
+      } else if (value?.draft) {
+        // Entwurfseintrag aus beneos-dev (Werkzeug "Make Beneos Creature"). Er
+        // traegt bewusst KEINE actorId: verifySettingsAgainstCompendium loescht
+        // jeden Eintrag, dessen actorId nicht im Compendium steht, und eine
+        // Kreatur in Arbeit liegt dort noch nicht. Der Eintrag existiert allein,
+        // damit Varianten-HUD, Style-Umschalter und FX-Editor vor dem Release
+        // erreichbar sind. Er gehoert nicht in dieses Auswahlmenue, und er ist
+        // kein fehlender Actor - die Meldung waere ein Fehlalarm.
     if (layer.scope === "world") {
       let parent = null
       for (const name of cleanSegments) {
