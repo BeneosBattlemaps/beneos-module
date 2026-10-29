@@ -87,7 +87,26 @@ function Build-Pairs([string]$lang) {
       if ($lang -ne "en") { $stats.Bodies++ }
     }
     if (Test-Path $bodyFile) {
-      $body = (Get-Content $bodyFile -Raw).Trim()
+      # Zeilenenden auf LF vereinheitlichen, BEVOR der Text in die Sprachdatei
+      # geht.
+      #
+      # Die Quellen unter `content/` tragen heute gemischte Enden: 33 der 34
+      # Dateien je Sprache liegen mit CRLF im Commit, obwohl `.gitattributes`
+      # mit `* text=auto eol=lf` etwas anderes vorschreibt. Sie stammen aus
+      # der Zeit davor, und Git schreibt bestehende Blobs nicht nachtraeglich
+      # um.
+      #
+      # Ohne diese Zeile wandert jedes CR als `\r` IN den JSON-Wert. Das faellt
+      # nicht auf, denn gerendert sieht die Seite gleich aus, aber der Diff
+      # wuchs am 29.10.2026 dadurch auf 1.694 geaenderte Zeilen in vierzehn
+      # Sprachdateien, in denen sich inhaltlich nichts geaendert hatte. Und es
+      # kippt hin und her, je nachdem, wie der Arbeitsbaum gerade ausgecheckt
+      # ist: zwei Klone sehen dieselbe Datei dann wechselseitig als geaendert.
+      #
+      # Die Vereinheitlichung gehoert hierher und nicht in die 442 Quelldateien:
+      # eine Zeile statt eines Umschreibens, und sie gilt auch fuer jede
+      # Quelle, die kuenftig mit CRLF dazukommt.
+      $body = ((Get-Content $bodyFile -Raw) -replace "`r`n", "`n").Trim()
     } else {
       $body = "<p><em>Documentation for this topic is coming soon.</em></p>"
       $script:missingEnBodies += $key

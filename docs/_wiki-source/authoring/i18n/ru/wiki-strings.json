@@ -1,0 +1,162 @@
+{
+  "ui": {
+    "Title": "Документация",
+    "Ui.SearchPlaceholder": "Поиск по документации…",
+    "Ui.Results": "результатов",
+    "Ui.NoResult": "Статьи не найдены по запросу",
+    "Ui.Prev": "Назад",
+    "Ui.Next": "Далее",
+    "Ui.Footer": "beneos-battlemaps.com",
+    "Ui.TourMissing": "Тур по настройке недоступен. Вы можете запустить его в настройках модуля.",
+    "ToolbarOpenWiki": "Открыть документацию Beneos"
+  },
+  "cat": {
+    "start": "С чего начать",
+    "account": "Аккаунт и доступ",
+    "setup": "Установка и настройка",
+    "play": "Боевые карты и игра",
+    "worldmaps": "Карты миров и целевые страницы",
+    "creatures": "Существа",
+    "items": "Предметы и происхождение",
+    "deepdive": "Подробно о модулях",
+    "help": "О проекте и помощь"
+  },
+  "pages": {
+    "overview": {
+      "title": "Добро пожаловать в Beneos",
+      "search": "обзор добро пожаловать начало спасибо поддержка patreon начать работу overview welcome start thank you support patreon getting started"
+    },
+    "quickstart": {
+      "title": "Видео быстрого старта",
+      "search": "видео быстрый старт гайд youtube обучение введение video quick start guide youtube tutorial intro"
+    },
+    "requirements": {
+      "title": "Необходимые модули и настройка",
+      "search": "установка требования зависимости модули fxmaster libwrapper monks multilevel poi настройка активировать cloud install requirements dependencies modules fxmaster libwrapper monks multilevel poi setup activate cloud"
+    },
+    "dm-navigation": {
+      "title": "Навигация ГМа и управление",
+      "search": "гм ведущий геймастер навигация телепорт журнал заметки обзор карта scenery боевая карта компас инфо раздаточный материал звук атмосфера двери dm gamemaster navigation teleporter journal notes overview map scenery battlemap compass info handout sound ambient doors"
+    },
+    "player-navigation": {
+      "title": "Навигация игрока и управление",
+      "search": "навигация игрока навигатор телепорт уровни ходьба идти пауза mlt компас player navigation navigator teleporter levels move walk pause mlt compass"
+    },
+    "poi-teleporter": {
+      "title": "Point of Interest Teleporters",
+      "search": "poi point of interest teleporter журнал вид сцена активировать сцену навигация ссылки poi point of interest teleporter journal view scene activate scene navigation links"
+    },
+    "multilevel-tokens": {
+      "title": "Multilevel Tokens",
+      "search": "mlt multilevel tokens уровни регионы телепорт клонирование игроки навигатор этажи mlt multilevel tokens levels regions teleport clone players navigator floors"
+    },
+    "cloud-window": {
+      "title": "Окно Beneos Cloud",
+      "search": "окно cloud поисковик обзор токены предметы заклинания battlemaps фильтры сетка список разрешение установка cloud window search engine browse tokens items spells battlemaps filters grid list resolution install"
+    },
+    "login-accounts": {
+      "title": "Вход и ваш аккаунт Beneos",
+      "search": "вход аккаунт без пароля email patreon shopify членство войти подключить отключить login account passwordless email patreon shopify membership sign in connect disconnect"
+    },
+    "installing-content": {
+      "title": "Установка существ, заклинаний и Loot",
+      "search": "установить загрузка существа токены заклинания loot предметы акторы компендиум импорт обновление install download creatures tokens spells loot items actors compendium import update"
+    },
+    "creature-codex": {
+      "title": "Creature Codex",
+      "search": "creature codex бестиарий тактика лор способности pdf читать вслух загрузка существа creature codex bestiary tactics lore abilities pdf read aloud download creatures"
+    },
+    "combat-autopilot": {
+      "title": "Боевой автопилот",
+      "search": "автопилот боевой раунд способность трекер перезарядка напоминание существо встреча"
+    },
+    "foreshadowing": {
+      "title": "Предзнаменования и погружение",
+      "search": "предзнаменования погружение зацепки намеки подсказка смерти зачитывание вслух повествование настроение"
+    },
+    "items-origins": {
+      "title": "Предметы и Origins",
+      "search": "предметы origins магические архетипы древние арканные вампирические настройка редкость named generic"
+    },
+    "set-bonuses": {
+      "title": "Бонусы наборов Origin",
+      "search": "бонус набора эхо резонанс идеальная гармония слияние ритуал редкость модификатор настройка уровни"
+    },
+    "item-radar": {
+      "title": "Item Radar",
+      "search": "item radar lgc live game control пинг чутье компас направление расстояние origin гм"
+    },
+    "forge": {
+      "title": "The Forge",
+      "search": "forge кузница печать imprint наковальня origin предмет превратить эхо бонус набора крафт"
+    },
+    "battlemaps": {
+      "title": "Анимированные боевые карты и сцены",
+      "search": "боевая карта scenery анимация webm видео 4k hd варианты intro релизы установка сцена"
+    },
+    "ambience-sound": {
+      "title": "Атмосфера и звук",
+      "search": "атмосфера звук плейлист ambient интерфейс двери громкость музыка ползунки"
+    },
+    "performance": {
+      "title": "Производительность и качество",
+      "search": "производительность качество разрешение 4k hd статичная анимированная fps fx отключить лаги"
+    },
+    "worldmap-escalia": {
+      "title": "Карта мира Escalia",
+      "search": "карта мира escalia terra обзор poi панель навигации облака птицы огни fxmaster релизы hex создать свою редактировать"
+    },
+    "landing-strahd": {
+      "title": "Curse of Strahd Landing Page",
+      "search": "curse of strahd barovia landing page навигация персонажи квесты журнал чекбокс заметки игроков артефакты artifacts ravenkind sun sword tome icon ravenloft tarokka deck"
+    },
+    "landing-avernus": {
+      "title": "Descent into Avernus Landing Page",
+      "search": "descent into avernus ад landing page стол игроков адские контракты монеты душ журнал заданий персонажи нпс хексокроул карта мира региональные гараж транспортные средства боевые машины hell player table infernal contracts soul coins quest log"
+    },
+    "landing-build": {
+      "title": "Создайте собственную landing page",
+      "search": "создать собственную landing page навигация matt monks active tiles показать переключить видимость сцены меню хаб кампания build own reveal toggle visibility"
+    },
+    "library-overview": {
+      "title": "Ваша библиотека в веб-магазине",
+      "search": "библиотека веб-магазин shopify аккаунт загрузки купленные ресурсы battlemaps существа заклинания предметы library webshop account downloads"
+    },
+    "tiers-downloads": {
+      "title": "Уровни подписки Patreon и магазин",
+      "search": "patreon уровень tableplay foundryvtt all unit существа заклинания лут магазин купить покупка бесплатно загрузка членство patreon tier free download membership"
+    },
+    "account-linking": {
+      "title": "Связывание аккаунтов Patreon, Shopify и Foundry",
+      "search": "связать аккаунт patreon shopify foundry членство почта подключить заказы оплата link account membership email connect orders billing"
+    },
+    "dd-monks-active-tiles": {
+      "title": "Углублённый разбор: Monks Active Tiles",
+      "search": "matt monks active tiles триггер автоматизация если то карта мира телепорт matt monks active tiles trigger automation if then world map teleport"
+    },
+    "dd-fxmaster": {
+      "title": "Углублённый разбор: FXMaster",
+      "search": "fxmaster погода частицы эффекты дождь снег туман фильтры настройка карт освещение fxmaster weather particles effects rain snow fog"
+    },
+    "dd-foreground-tiles": {
+      "title": "Углублённый разбор: Foreground Tiles",
+      "search": "foreground переднего плана tiles наложение крыша перекрытие глубина токены overhead roof occlusion depth tokens"
+    },
+    "about": {
+      "title": "О Beneos",
+      "search": "о beneos команда студия миссия escalia история battlemaps существа about team story creatures"
+    },
+    "faq": {
+      "title": "Часто задаваемые вопросы",
+      "search": "faq вопросы ответы помощь устранение неполадок частые проблемы questions help troubleshooting common problems answers"
+    },
+    "bug-contact": {
+      "title": "Баг-репорты и контакты",
+      "search": "баг репорт ошибка контакт поддержка discord почта email помощь проблема bug report contact support help problem"
+    },
+    "license": {
+      "title": "Отказ от ответственности, здоровье и лицензия",
+      "search": "лицензия отказ от ответственности здоровье эпилепсия условия использование права юридическое license disclaimer health epilepsy terms usage rights legal"
+    }
+  }
+}
