@@ -264,6 +264,11 @@ Hooks.once('ready', () => {
     for (let token of tokens) {
       if (BeneosUtility.checkIsBeneosToken(token)) {
         BeneosUtility.updateToken(token.id, changeData)
+      } else {
+        // Fremdes Token: keine Konfiguration, kein Variantenwechsel, nur der
+        // Totenzustand. Der Eingang entscheidet selbst, ob die gewaehlte
+        // Reichweite ihn ueberhaupt einschliesst.
+        BeneosUtility.updateNonBeneosToken(token.id)
       }
     }
   })
@@ -278,7 +283,13 @@ Hooks.once('ready', () => {
     }
 
     if (changeData.delta?.system?.attributes != undefined && changeData.delta.system.attributes?.hp != undefined) {
-      BeneosUtility.updateToken(token.id, changeData)
+      if (BeneosUtility.checkIsBeneosToken(token)) {
+        BeneosUtility.updateToken(token.id, changeData)
+      } else {
+        // Gleiche Verzweigung wie im updateActor-Hook. Dieser Weg traegt die
+        // nicht verknuepften Tokens, deren HP im delta stehen.
+        BeneosUtility.updateNonBeneosToken(token.id)
+      }
       return
     }
   });

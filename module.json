@@ -109,6 +109,15 @@
         "manifest": "https://github.com/ruipin/fvtt-lib-wrapper/releases/latest/download/module.json",
         "compatibility": {}
       }
+    ],
+    "recommends": [
+      {
+        "id": "tokenmagic",
+        "type": "module",
+        "manifest": "https://github.com/Feu-Secret/Tokenmagic/releases/latest/download/module.json",
+        "compatibility": {},
+        "reason": "Token Magic FX draws the death icon on tokens that drop to 0 HP. Beneos runs without it, but that icon stays off."
+      }
     ]
   },
   "flags": {

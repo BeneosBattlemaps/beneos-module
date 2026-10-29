@@ -11,6 +11,19 @@ globalThis.BENEOS_MODULE_NAME = "Beneos Module"
 globalThis.BENEOS_MODULE_ID = "beneos-module"
 globalThis.BENEOS_DEFAULT_TOKEN_PATH = "beneos_assets"
 
+// Reichweite des Totenkopf-Symbols bei 0 HP. Die Stufen sind aufsteigend und
+// jede schliesst die vorige ein: off < beneos < npc < all. "off" und "beneos"
+// halten genau den Stand von vorher, als das Setting noch ein Boolean war.
+globalThis.BENEOS_DEATH_SCOPES = ["off", "beneos", "npc", "all"]
+globalThis.BENEOS_DEATH_SCOPE_DEFAULT = "beneos"
+// Filterkennungen unserer zwei Totenpresets aus beneosfx.js. "myAdjust" ist
+// dort so vergeben und bleibt es: eine Umbenennung liesse das Entsaettigen
+// unentfernbar auf jedem Token stehen, der das Preset schon traegt.
+globalThis.BENEOS_DEATH_FILTER_IDS = ["myAdjust", "BFXDeadIcon"]
+// Nur diese Kennung ist eindeutig unsere und taugt als Nachweis, dass das
+// Symbol schon liegt. "myAdjust" koennte aus einem fremden Preset stammen.
+globalThis.BENEOS_DEATH_MARKER_ID = "BFXDeadIcon"
+
 let beneosDebug = false
 let beneosFadingSteps = 10
 let beneosFadingWait = 30
@@ -432,14 +445,27 @@ export class BeneosUtility {
       restricted: true
     })
 
+    // War bis 2026-10-10 ein Boolean (true = nur Beneos-Kreaturen). Der
+    // Schluessel bleibt, damit die gespeicherte Wahl nicht verwaist. Ein
+    // gespeichertes Boolean liest sich unter type String als die Zeichenkette
+    // "true" bzw. "false" zurueck (Foundry client/documents/setting.mjs:83,
+    // JSON.stringify auf den Nichtzeichenwert). Darum darf keine Auswahlmarke
+    // so heissen, und getDeathScope() faengt beide Woerter ab.
     game.settings.register(BeneosUtility.moduleID(), "beneos-death-management", {
       name: "BENEOS.Settings.DeathManagement.Name",
       hint: "BENEOS.Settings.DeathManagement.Hint",
       scope: 'world',
       config: true,
-      default: true,
-      type: Boolean,
-      restricted: true
+      default: BENEOS_DEATH_SCOPE_DEFAULT,
+      type: String,
+      choices: {
+        "off": "BENEOS.Settings.DeathManagement.Choice.Off",
+        "beneos": "BENEOS.Settings.DeathManagement.Choice.Beneos",
+        "npc": "BENEOS.Settings.DeathManagement.Choice.AllNpc",
+        "all": "BENEOS.Settings.DeathManagement.Choice.All"
+      },
+      restricted: true,
+      onChange: value => BeneosUtility.warnIfNoTokenMagic(value)
     })
 
     game.settings.register(BeneosUtility.moduleID(), "beneos-god-mode", {
@@ -1077,6 +1103,12 @@ export class BeneosUtility {
     // Check if folder exists
     if (game.user.isGM) {
       this.createCompendiums()
+      // Bewusst nicht awaited: ready() ist synchron, und getDeathScope()
+      // liefert bis zum Abschluss ohnehin die richtige Stufe aus dem alten
+      // Wert. Der Umschrieb dient der Oberflaeche, die eine gueltige Marke
+      // zum Vorauswaehlen braucht.
+      this.migrateDeathScope()
+        .catch(err => console.warn("[Beneos] death scope migration rejected", err))
     }
 
     BeneosUtility.debugMessage("Loaded", this.beneosTokens)
@@ -2004,10 +2036,129 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
-  static async applyDeadFX(token) {
-    let bfx = ["BFXDead", "BFXDeadIcon"]
-    this.addFx(token, bfx, true, true)
+  // Gewaehlte Reichweite des Totenkopf-Symbols, immer eine Marke aus
+  // BENEOS_DEATH_SCOPES. Faengt den Altbestand mit ab: migrateDeathScope()
+  // schreibt ihn beim ersten GM-Start um, aber ein Spielerclient kann die
+  // alte Zeichenkette noch lesen, solange kein GM angemeldet war.
+  static getDeathScope() {
+    let raw
+    try {
+      raw = game.settings.get(BeneosUtility.moduleID(), 'beneos-death-management')
+    } catch (e) {
+      return BENEOS_DEATH_SCOPE_DEFAULT
+    }
+    if (BENEOS_DEATH_SCOPES.includes(raw)) return raw
+    if (raw === true || raw === "true") return "beneos"
+    if (raw === false || raw === "false") return "off"
+    return BENEOS_DEATH_SCOPE_DEFAULT
+  }
 
+  /********************************************************************************** */
+  // Ohne Token Magic FX tut die Totenanzeige nichts, und zwar lautlos: addFx()
+  // kehrt ohne das Modul sofort zurueck. Seit 2026-10-10 steht tokenmagic in
+  // relationships.recommends der module.json. Das Installationsfenster bietet
+  // es damit mit an (Foundry public/scripts/setup.js, Abgleich der Beziehungen),
+  // aber nichts erzwingt es: der Aktivierungsschutz liest ausschliesslich
+  // requires (module-management.mjs:488). Beneos faehrt also ohne das Modul
+  // weiter, nur ohne Filter, und diese Meldung ist die Erklaerung dafuer.
+  // Nur der Spielleiter. onChange eines Weltsettings feuert auf jedem Client,
+  // und ein Spieler kann die Stufe nicht aendern. Ihm die Meldung zu zeigen
+  // waere eine Aufforderung, die er nicht erfuellen kann.
+  static warnIfNoTokenMagic(scope) {
+    if (!game.user?.isGM) return
+    if (scope === "off") return
+    if (typeof TokenMagic !== 'undefined') return
+    ui.notifications?.warn(game.i18n.localize("BENEOS.Notifications.Utility.DeathIconNeedsTokenMagic"))
+  }
+
+  /********************************************************************************** */
+  // Einmaliger Umschrieb des alten Booleans auf eine Auswahlmarke. Nur GM,
+  // denn das Setting hat Weltreichweite. Idempotent: eine schon gueltige
+  // Marke wird nicht angefasst.
+  static async migrateDeathScope() {
+    if (!game.user?.isGM) return
+    let raw
+    try {
+      raw = game.settings.get(BeneosUtility.moduleID(), 'beneos-death-management')
+    } catch (e) {
+      return
+    }
+    if (BENEOS_DEATH_SCOPES.includes(raw)) return
+    const target = (raw === false || raw === "false") ? "off" : "beneos"
+    try {
+      await game.settings.set(BeneosUtility.moduleID(), 'beneos-death-management', target)
+      console.log(`beneos | death scope migrated from ${JSON.stringify(raw)} to "${target}"`)
+    } catch (e) {
+      console.warn("[Beneos] death scope migration failed", e)
+    }
+  }
+
+  /********************************************************************************** */
+  // Faellt dieser Token unter die gewaehlte Reichweite? Die Stufen sind
+  // bewusst aufsteigend geschrieben, damit eine weitere Stufe nie weniger
+  // Tokens trifft als die engere darunter.
+  static deathIconApplies(token) {
+    const scope = BeneosUtility.getDeathScope()
+    if (scope === "off") return false
+    const isBeneos = BeneosUtility.isBeneosCreature(token)
+    if (scope === "beneos") return isBeneos
+    if (scope === "all") return true
+    // "npc": alles ausser Spielerfiguren. 0 HP heisst bei einer Spielerfigur
+    // in dnd5e bewusstlos mit Rettungswuerfen, nicht tot.
+    return isBeneos || (token?.actor?.type !== "character")
+  }
+
+  /********************************************************************************** */
+  // Liegt unser Symbol schon auf dem Token? Geprueft wird nur die eindeutige
+  // Kennung, nicht "myAdjust". Ohne diese Abfrage wuerde jeder Szenenaufbau
+  // einen Schreibvorgang je totem Token ausloesen.
+  static hasDeadFX(token) {
+    const doc = token?.document ?? token
+    const filters = doc?.getFlag?.("tokenmagic", "filters") ?? []
+    return filters.some(f => f?.tmFilters?.tmFilterId === BENEOS_DEATH_MARKER_ID)
+  }
+
+  /********************************************************************************** */
+  static async applyDeadFX(token) {
+    if (typeof TokenMagic === 'undefined') return
+    if (BeneosUtility.hasDeadFX(token)) return
+
+    let bfx = ["BFXDead", "BFXDeadIcon"]
+    // Bei einer Beneos-Kreatur bleibt es beim bisherigen Austausch: der
+    // Totenzustand raeumt deren uebrige Filter ab, so lief das Produkt bisher.
+    // Auf einem fremden Token darf das nicht passieren, denn dort gehoeren die
+    // Filter dem Spielleiter. TokenMagic addFilters mit replace = true setzt
+    // die Filterliste auf null, bevor es schreibt (tokenmagic.js:409), loescht
+    // also alles. Darum auf fremden Tokens anhaengen statt austauschen, und
+    // vorher nur die eigenen zwei Kennungen abraeumen, weil addFilters per
+    // concat arbeitet und gleiche Kennungen nicht zusammenfasst.
+    if (BeneosUtility.isBeneosCreature(token)) {
+      this.addFx(token, bfx, true, true)
+      return
+    }
+    await BeneosUtility.removeDeadFX(token)
+    this.addFx(token, bfx, false, true)
+  }
+
+  /********************************************************************************** */
+  // Nimmt ausschliesslich unsere zwei Totenfilter ab. TokenMagic.deleteFilters
+  // ohne Kennung loescht jeden Filter des Tokens und wuerde beim Wiederbeleben
+  // die eigene Einrichtung des Spielleiters zerstoeren.
+  static async removeDeadFX(token) {
+    if (typeof TokenMagic === 'undefined') return
+    const doc = token?.document ?? token
+    const filters = doc?.getFlag?.("tokenmagic", "filters") ?? []
+    for (const filterId of BENEOS_DEATH_FILTER_IDS) {
+      // Nur abnehmen, was wirklich liegt. TokenMagic schreibt die Filterliste
+      // auch dann neu, wenn keine Kennung passt (tokenmagic.js:700), und jeder
+      // dieser Schreibvorgaenge ist ein Dokumentupdate fuer alle Clients.
+      if (!filters.some(f => f?.tmFilters?.tmFilterId === filterId)) continue
+      try {
+        await TokenMagic.deleteFilters(token, filterId)
+      } catch (e) {
+        console.warn(`[Beneos] removeDeadFX failed for ${filterId}`, e)
+      }
+    }
   }
   /********************************************************************************** */
   // Function to add FX from the Token Magic module or from the ones defined in the configuration files.
@@ -3013,35 +3164,62 @@ export class BeneosUtility {
       return
     }
     BeneosUtility.debugMessage("Token HP value", fullKey, myToken)
-    let hp = attributes.hp.value
-    let benRotation = 0
-    let benAlpha = 1
+    BeneosUtility.applyDeathStateByHp(token)
+  }
+
+  /********************************************************************************** */
+  // Totenzustand nach HP. Die Kantenerkennung steht hier genau einmal, damit
+  // der Weg fuer eine Beneos-Kreatur und der Weg fuer ein fremdes Token nicht
+  // auseinanderlaufen koennen.
+  //
+  // Der Schreibzugriff ist Sache des Aufrufers: beide Eingaenge pruefen vorher
+  // beneosIsTokenWriter, sonst schreiben alle Clients gleichzeitig.
+  static applyDeathStateByHp(token) {
+    const hp = token?.actor?.system?.attributes?.hp?.value
     if (!game.dnd5e || hp == undefined) {
       BeneosUtility.debugMessage("[BENEOS MODULE] No hp")
       return
     }
 
-    // Check if the beneos-death-management settings is set to true
-    let deathManagement = game.settings.get(BeneosUtility.moduleID(), 'beneos-death-management')
-    if (!deathManagement) {
-      BeneosUtility.beneosHealth[token.id] = hp // Store current HP value anyway
+    // Ausserhalb der gewaehlten Reichweite wird der HP-Wert trotzdem
+    // mitgeschrieben. Sonst zaehlt ein spaeteres Einschalten der Reichweite
+    // einen Token als frisch gestorben, der schon lange bei 0 liegt.
+    if (!BeneosUtility.deathIconApplies(token)) {
+      BeneosUtility.beneosHealth[token.id] = hp
       return
     }
 
-    if (hp == 0 && hp != BeneosUtility.beneosHealth[token.id]) {
+    const previous = BeneosUtility.beneosHealth[token.id]
+    if (hp == 0 && hp != previous) {
       BeneosUtility.debugMessage("[BENEOS MODULE] Dead")
       token.state = "dead"
-      // TODO : apply grey FX ?
       BeneosUtility.applyDeadFX(token)
     }
-    if (BeneosUtility.beneosHealth[token.id] == 0 && hp > 0) {
+    if (previous == 0 && hp > 0) {
       BeneosUtility.debugMessage("[BENEOS MODULE] Standing")
       token.state = "standing"
-      if (typeof TokenMagic !== 'undefined') {
-        TokenMagic.deleteFilters(token);
-      }
+      BeneosUtility.removeDeadFX(token)
     }
     BeneosUtility.beneosHealth[token.id] = hp // Store current HP value
+  }
+
+  /********************************************************************************** */
+  // Eingang fuer Tokens ohne Beneos-Flag. updateToken() bleibt der Weg fuer
+  // unsere Kreaturen, weil es dort noch um Konfiguration und Varianten geht.
+  // Hier gibt es nichts zu konfigurieren, nur den Totenzustand.
+  static updateNonBeneosToken(tokenid) {
+    const scope = BeneosUtility.getDeathScope()
+    if (scope === "off" || scope === "beneos") {
+      return
+    }
+    const token = BeneosUtility.getToken(tokenid)
+    if (!token || !token.actor) {
+      return
+    }
+    if (!BeneosUtility.beneosIsTokenWriter(token.document)) {
+      return
+    }
+    BeneosUtility.applyDeathStateByHp(token)
   }
 
   /********************************************************************************** */
@@ -3075,6 +3253,12 @@ export class BeneosUtility {
         if (typeof tokenConfig === 'object' && tokenConfig) {
           BeneosUtility.updateToken(token.id, {})
         }
+      } else {
+        // Fremdes Token, das beim Szenenaufbau schon bei 0 HP liegt. Ohne
+        // diesen Durchgang bekaeme es sein Symbol erst beim naechsten
+        // HP-Schreibvorgang, also womoeglich nie. hasDeadFX() verhindert,
+        // dass ein Szenenaufbau je totem Token einen Schreibvorgang ausloest.
+        BeneosUtility.updateNonBeneosToken(token.id)
       }
     }
     // Laengst platzierte Kreaturen auf Scale und Anchor aus ihren Flags
@@ -3155,6 +3339,14 @@ export class BeneosUtility {
           "actorId": value.actorId,
           "actorName": value.actorName
         })
+      } else if (value?.draft) {
+        // Entwurfseintrag aus beneos-dev (Werkzeug "Make Beneos Creature"). Er
+        // traegt bewusst KEINE actorId: verifySettingsAgainstCompendium loescht
+        // jeden Eintrag, dessen actorId nicht im Compendium steht, und eine
+        // Kreatur in Arbeit liegt dort noch nicht. Der Eintrag existiert allein,
+        // damit Varianten-HUD, Style-Umschalter und FX-Editor vor dem Release
+        // erreichbar sind. Er gehoert nicht in dieses Auswahlmenue, und er ist
+        // kein fehlender Actor - die Meldung waere ein Fehlalarm.
       } else {
         ui.notifications.warn(game.i18n.format("BENEOS.Notifications.Utility.ActorNotFound", { key }))
       }
@@ -3339,14 +3531,6 @@ export class BeneosUtility {
       .filter(Boolean)
     if (!cleanSegments.length) return null
 
-      } else if (value?.draft) {
-        // Entwurfseintrag aus beneos-dev (Werkzeug "Make Beneos Creature"). Er
-        // traegt bewusst KEINE actorId: verifySettingsAgainstCompendium loescht
-        // jeden Eintrag, dessen actorId nicht im Compendium steht, und eine
-        // Kreatur in Arbeit liegt dort noch nicht. Der Eintrag existiert allein,
-        // damit Varianten-HUD, Style-Umschalter und FX-Editor vor dem Release
-        // erreichbar sind. Er gehoert nicht in dieses Auswahlmenue, und er ist
-        // kein fehlender Actor - die Meldung waere ein Fehlalarm.
     if (layer.scope === "world") {
       let parent = null
       for (const name of cleanSegments) {
