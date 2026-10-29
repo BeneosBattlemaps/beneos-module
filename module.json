@@ -1,7 +1,7 @@
 {
   "title": "Beneos Module",
   "description": "Features for Beneos Battlemaps, Creatures, Spells and Loot",
-  "version": "14.4.10",
+  "version": "14.4.11",
   "socket": true,
   "compatibility": {
     "minimum": "13",
@@ -9,7 +9,7 @@
   },
   "url": "https://github.com/BeneosBattlemaps/beneos-module",
   "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/beneos-module/main/module.json",
-  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/14.4.10.zip",
+  "download": "https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/14.4.11.zip",
   "scripts": [
     "scripts/beneosfx.js"
   ],
@@ -79,31 +79,31 @@
   ],
   "relationships": {
     "requires": [
-	  {
+      {
         "id": "monks-active-tiles",
         "type": "module",
         "manifest": "https://github.com/ironmonk88/monks-active-tiles/releases/latest/download/module.json",
         "compatibility": {}
       },
-	  {
+      {
         "id": "poi-teleport",
         "type": "module",
         "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/Beneos-Point-Of-Interest-Teleporter/main/module.json",
         "compatibility": {}
       },
-	  {
+      {
         "id": "fxmaster",
         "type": "module",
         "manifest": "https://github.com/gambit07/fxmaster/releases/latest/download/module.json",
         "compatibility": {}
       },
-	  {
+      {
         "id": "multilevel-tokens",
         "type": "module",
         "manifest": "https://raw.githubusercontent.com/BeneosBattlemaps/Beneos-Multilevel-Tokens/main/module.json",
         "compatibility": {}
       },
-	  {
+      {
         "id": "lib-wrapper",
         "type": "module",
         "manifest": "https://github.com/ruipin/fvtt-lib-wrapper/releases/latest/download/module.json",
