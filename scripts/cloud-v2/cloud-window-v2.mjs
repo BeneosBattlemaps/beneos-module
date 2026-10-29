@@ -44,6 +44,7 @@ import {
   vorratsstand, vorratsHinweis, kontingent, szenenZuRelease, alleKarten, releaseLoesen,
 } from "../stream/stream-offline.mjs"
 import { releaseOfflineSchalten } from "../stream/stream-scene-ui.mjs"
+import { BeneosOfflineWindow } from "../stream/stream-offline-window.mjs"
 import { getPoiIndex, peekPoiIndex, releaseInfo } from "./beneos-poi-index.mjs"
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
@@ -4652,6 +4653,20 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     if (!root) return
     const resultsRegion = root.querySelector("[data-bc-region='results']")
     if (!resultsRegion) return
+
+    // Die Speicherleiste, seit dem 29.10.2026 ein Knopf. Er schlaegt den
+    // Offline-Vorrat mit aufgeklappter Erklaerung auf.
+    //
+    // Hier und nicht im Fenster selbst, weil die Leiste zum Maps-Reiter dieses
+    // Fensters gehoert. Sie wird bei jedem Ergebnis-Neuzeichnen neu gebaut, und
+    // deshalb haengt der Horcher an diesem Durchlauf und nicht einmalig am
+    // Wurzelelement.
+    resultsRegion.querySelectorAll("[data-bc-offline-doku]").forEach(btn => {
+      btn.addEventListener("click", (event) => {
+        event.preventDefault()
+        BeneosOfflineWindow.open({ doku: true })
+      })
+    })
 
     // Punkt 5: keep a single source of truth for the result-list scroll
     // position. The list is recreated on every results re-render, so we record

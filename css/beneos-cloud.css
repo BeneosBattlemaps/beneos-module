@@ -6265,17 +6265,47 @@ body.beneos-perf-mode .beneos-cloud-app .beneos-cloud-login-button { animation: 
 
 /* Die Speicherleiste unter der Filterzeile.
  *
- * Eine eigene Zeile, bewusst niedrig: sie ist Auskunft, kein Bedienelement,
- * und darf den Karten keinen Platz nehmen. Die Zahlen stehen tabellarisch,
- * damit sie beim Wachsen des Vorrats nicht springen. */
+ * Eine eigene Zeile, bewusst niedrig: sie darf den Karten keinen Platz nehmen.
+ * Die Zahlen stehen tabellarisch, damit sie beim Wachsen des Vorrats nicht
+ * springen.
+ *
+ * SEIT DEM 29.10.2026 IST SIE EIN KNOPF, vorher war sie reine Auskunft mit
+ * `cursor: help`. Betreibervorgabe: der Klick auf die Leiste schlaegt die
+ * Erklaerung auf, was Streaming ist und wofuer der Offline-Vorrat gut ist.
+ * Die Leiste ist die einzige Stelle, an der ein Spielleiter von selbst
+ * stehenbleibt und sich fragt, was das soll; deshalb haengt die Erklaerung
+ * dort und nicht in Foundrys Einstellungen.
+ *
+ * Darum der Knopf-Rueckbau unten: ein `<button>` bringt Rahmen, Hintergrund
+ * und eine eigene Schriftgroesse mit, und die Zeile soll aussehen wie vorher. */
 .beneos-cloud-app .bc-offline-bar {
   display: flex;
   align-items: center;
   gap: var(--bc-space-2);
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  text-align: left;
   padding: 3px var(--bc-space-3) 7px;
+  font-family: inherit;
   font-size: 11.5px;
   color: var(--bc-text-dim, rgba(255,255,255,0.6));
-  cursor: help;
+  cursor: pointer;
+}
+/* Der Knopf traegt keinen Rahmen, also muss der Schwebezustand die Farbe
+   machen. Ohne ihn sieht die Zeile aus wie vorher und niemand klickt sie. */
+.beneos-cloud-app .bc-offline-bar:hover,
+.beneos-cloud-app .bc-offline-bar:focus-visible {
+  background: none;
+  box-shadow: none;
+  color: var(--bc-text, rgba(255,255,255,0.92));
+}
+.beneos-cloud-app .bc-offline-bar:focus-visible {
+  outline: 1px solid var(--bc-accent, #6fcf52);
+  outline-offset: -1px;
 }
 .beneos-cloud-app .bc-offline-bar > i { font-size: 11px; flex: none; }
 .beneos-cloud-app .bc-offline-track {

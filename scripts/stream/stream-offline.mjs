@@ -1269,6 +1269,11 @@ export function vorratsHinweis() {
     }
   }
 
+  // Zuletzt, weil es die Handlung ist und nicht die Auskunft: die Leiste ist
+  // seit dem 29.10.2026 ein Knopf. Ohne diesen Satz nennt der Tooltip nur
+  // Zahlen, und niemand kommt darauf, dass dahinter eine Erklaerung liegt.
+  teile.push(game.i18n.localize("BENEOS.Cloud.Bmap.QuotaTooltipMore"))
+
   return teile.filter(Boolean).join(" ")
 }
 

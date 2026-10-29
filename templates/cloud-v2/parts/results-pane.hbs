@@ -161,8 +161,17 @@
         gehaltenen Karten und die Frist, also die zweite Zahl, die ein
         Spielleiter kennen muss. Sie kommt fertig aus `vorratsHinweis()`; sie
         hier zusammenzusetzen hiesse, die Buchhaltung ein zweites Mal zu
-        fuehren. Liegt nichts offline, faellt die Frist weg. --}}
-  <div class="bc-offline-bar" data-tooltip="{{offlineVorrat.hinweis}}">
+        fuehren. Liegt nichts offline, faellt die Frist weg.
+
+        Und seit demselben Tag ist die Zeile ein KNOPF. Er oeffnet den
+        Offline-Vorrat mit aufgeschlagener Erklaerung, siehe
+        `BENEOS.Stream.Doku.*`. Ein `<button>` und nicht ein `<div>` mit
+        Klickhorcher, damit die Tastatur hinkommt; das `aria-label` traegt
+        dieselbe Frage wie die Zusammenfassung im Fenster, denn der Tooltip
+        nennt Zahlen und sagt nicht, was ein Klick tut. --}}
+  <button type="button" class="bc-offline-bar" data-bc-offline-doku
+          data-tooltip="{{offlineVorrat.hinweis}}"
+          aria-label="{{localize "BENEOS.Stream.Doku.Summary"}}">
     <i class="fa-regular fa-hard-drive"></i>
     <div class="bc-offline-track" role="img"
          aria-label="{{offlineVorrat.belegtText}} / {{offlineVorrat.grenzeText}}">
@@ -170,7 +179,7 @@
             style="width: {{offlineVorrat.prozent}}%"></span>
     </div>
     <span class="bc-offline-zahlen">{{offlineVorrat.belegtText}} / {{offlineVorrat.grenzeText}}</span>
-  </div>
+  </button>
   {{/if}}
 
   {{#if cards.length}}

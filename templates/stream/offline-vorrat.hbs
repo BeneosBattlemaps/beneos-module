@@ -25,6 +25,35 @@
     </div>
   </section>
 
+  {{!-- Die Dokumentation, seit dem 29.10.2026. Sie steht direkt unter der
+        Leiste, weil sie die Leiste erklaert: wer hier landet, hat meist genau
+        auf sie geklickt.
+
+        `dokuOffen` kommt vom Aufrufer. Der Klick auf die Speicherleiste im
+        Maps-Reiter schlaegt sie auf, der Weg ueber Foundrys Einstellungen
+        laesst sie zu, denn dort sucht niemand eine Erklaerung.
+
+        Die Reihenfolge der Absaetze ist Absicht und folgt der Betreibervorgabe:
+        erst was die Leiste ist, dann was Streaming bringt, und der
+        Offline-Vorrat zuletzt, weil die meisten ihn nie brauchen. Stuende er
+        vorn, lernte jeder Leser zuerst eine Funktion, die er nicht benoetigt. --}}
+  <details class="beneos-ov-doku" {{#if dokuOffen}}open{{/if}}>
+    <summary>{{localize "BENEOS.Stream.Doku.Summary"}}</summary>
+    <p><strong>{{localize "BENEOS.Stream.Doku.BarLead"}}</strong>
+       {{localize "BENEOS.Stream.Doku.BarBody"}}</p>
+    <p><strong>{{localize "BENEOS.Stream.Doku.HowLead"}}</strong>
+       {{localize "BENEOS.Stream.Doku.HowBody"}}</p>
+    <p><strong>{{localize "BENEOS.Stream.Doku.SpeedLead"}}</strong>
+       {{localize "BENEOS.Stream.Doku.SpeedBody"}}</p>
+    <p><strong>{{localize "BENEOS.Stream.Doku.HostLead"}}</strong>
+       {{localize "BENEOS.Stream.Doku.HostBody"}}</p>
+    <p><strong>{{localize "BENEOS.Stream.Doku.OfflineLead"}}</strong>
+       {{localize "BENEOS.Stream.Doku.OfflineBody"
+          label=(localize "BENEOS.Stream.Offline.Keep")}}</p>
+    <p><strong>{{localize "BENEOS.Stream.Doku.DropLead"}}</strong>
+       {{localize "BENEOS.Stream.Doku.DropBody"}}</p>
+  </details>
+
   <section class="beneos-ov-frist {{#if fristAbgelaufen}}ist-abgelaufen{{else}}{{#if fristKnapp}}ist-knapp{{/if}}{{/if}}">
     {{#if fristNie}}
       <p><strong>{{localize "BENEOS.Stream.Offline.Panel.NeverLead"}}</strong>

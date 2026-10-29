@@ -84,6 +84,13 @@ function ensureStyle() {
     .beneos-ov-groesse { opacity: 0.7; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .beneos-ov-weg { flex: none; width: 26px; height: 26px; line-height: 1; padding: 0; }
 
+    .beneos-ov-doku { border-left: 3px solid rgba(128, 128, 128, 0.35); padding-left: 9px; }
+    .beneos-ov-doku > summary { cursor: pointer; opacity: 0.8; }
+    .beneos-ov-doku[open] > summary { margin-bottom: 6px; }
+    .beneos-ov-doku > p { margin: 0 0 7px; font-size: 0.92em; }
+    .beneos-ov-doku > p:last-child { margin-bottom: 0; }
+    .beneos-ov-doku strong { display: block; }
+
     .beneos-ov-leer { opacity: 0.85; }
     .beneos-ov-hinweis { font-size: 0.92em; opacity: 0.8; }
     .beneos-ov-fuss { border-top: 1px solid rgba(128, 128, 128, 0.3); padding-top: 9px;
@@ -109,11 +116,27 @@ export class BeneosOfflineWindow extends HandlebarsApplicationMixin(ApplicationV
 
   static #instanz = null
 
-  static async open() {
+  /*
+   * `doku` schlaegt die Erklaerung auf, statt sie zugeklappt zu lassen.
+   *
+   * Der Klick auf die Speicherleiste im Maps-Reiter setzt sie, denn wer dort
+   * klickt, fragt nach einer Erklaerung und nicht nach einer Liste. Der Weg
+   * ueber Foundrys Einstellungen setzt sie nicht: dort geht es ums Verwalten.
+   *
+   * Der Wert haengt an der Instanz und nicht am Aufruf, weil `_prepareContext`
+   * keine Argumente bekommt. Er bleibt bis zum naechsten `open()` stehen, und
+   * das ist richtig: wer die Erklaerung aufgeschlagen bekam und das Fenster
+   * neu zeichnet, soll sie nicht verlieren.
+   */
+  static async open({ doku = false } = {}) {
     if (!this.#instanz) this.#instanz = new BeneosOfflineWindow()
+    this.#instanz.dokuOffen = Boolean(doku)
     ensureStyle()
     return this.#instanz.render(true)
   }
+
+  /** Steht die Erklaerung offen? Vom Aufrufer gesetzt, siehe `open()`. */
+  dokuOffen = false
 
   async _onRender(...args) {
     ensureStyle()
@@ -138,6 +161,7 @@ export class BeneosOfflineWindow extends HandlebarsApplicationMixin(ApplicationV
       }))
 
     return {
+      dokuOffen: this.dokuOffen,
       leer: karten.length === 0,
       karten,
       belegtGB: gb(vorrat.bytes),

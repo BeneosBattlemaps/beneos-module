@@ -23,7 +23,27 @@
  *
  * Was bleibt, ist eine Mitteilung mit einem Knopf. Sie erklaert einmal je Welt,
  * was mit den schweren Dateien passiert, was ein Verbindungsverlust kostet und
- * wo der Weg zurueck in den Offline-Betrieb liegt. Danach nie wieder.
+ * wo der Weg zurueck in den Offline-Betrieb liegt.
+ *
+ * DER TEXT ERKLAERT SEIT DEM 29.10.2026 DEN VORTEIL, NICHT DIE TECHNIK.
+ *
+ * Betreiberurteil ueber die alte Fassung: zu kompliziert fuer Leute, die keine
+ * Ahnung haben. Sie begann bei der Auslieferung und kam zum Nutzen nie. Jetzt
+ * steht die Grundpraemisse vorn, in einem Satz: die Videos bleiben online, nur
+ * die Bilder landen auf der Platte. Danach, was das bringt, naemlich eine Welt
+ * von Megabytes statt Gigabytes und Spieler, die von unseren Servern laden und
+ * nicht durch die Leitung des Spielleiters.
+ *
+ * `Intro.Players` ist dafuer neu. Der Satz fehlte ganz, und er ist fuer
+ * grenzuebergreifende Gruppen und fuer Leute, die beruflich leiten, das
+ * eigentliche Argument.
+ *
+ * UND SEIT DEMSELBEN TAG IST DIESER DIALOG NICHT MEHR DIE EINZIGE STELLE.
+ *
+ * Die ausfuehrliche Fassung steht als `BENEOS.Stream.Doku.*` hinter der
+ * Speicherleiste im Maps-Reiter, einen Klick entfernt und jederzeit erreichbar.
+ * Dieser Dialog bleibt die kurze Fassung: wer sie weggeklickt hat, kommt dort
+ * wieder an sie heran.
  *
  * Bereits installierte Releases werden dabei nicht angefasst. Sie liegen auf
  * der Platte, wie sie liegen, und belegen keinen Platz im Offline-Kontingent.
@@ -79,6 +99,7 @@ export async function explainOnce() {
     : `
     <p><strong>${t("BENEOS.Stream.Intro.Lead")}</strong></p>
     <p>${t("BENEOS.Stream.Intro.What")}</p>
+    <p>${t("BENEOS.Stream.Intro.Players")}</p>
     <p>${t("BENEOS.Stream.Intro.Cost")}</p>
     <p>${t("BENEOS.Stream.Intro.Offline")}</p>
     <p>${t("BENEOS.Stream.Intro.Existing")}</p>`
