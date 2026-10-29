@@ -6,6 +6,9 @@ All notable changes to this module will be documented in this file.
 
 ### 14.4.11 # 2026-10-26
 
+**Fixes**
+- Fixed: On Foundry V14, updating a map with tokens linked to a character failed with "system: may not be undefined" and left the scene half updated (seen on the Curse of Strahd Landing Page and the Vallaki maps). Run the update again after installing this version.
+
 **Changes**
 - The footer of the Beneos Cloud window now stays on one line down to much narrower window sizes. Discord, Webshop and Patreon first show only their icon, and on very narrow windows every footer button does. Hover a button to see its name.
 - The connection badge in the footer no longer shows a crown, and its corners now match the buttons next to it.

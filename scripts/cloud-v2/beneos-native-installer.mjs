@@ -27,6 +27,7 @@
 import { BeneosInstallState, BeneosPreInstallDialog, beneosLogModuleInstall } from "./beneos-install-state.mjs"
 import { packNeedsV14Migration, migrateSceneForV14, migrateActorForV14 } from "./beneos-v14-scene-migration.mjs"
 import { zuInstallierendeSchluessel } from "../creature-installer/alternativen.mjs"
+import { tokenUpdatesAufteilen } from "./token-delta.mjs"
 
 // ---- Transfer config -------------------------------------------------------
 const FETCH_MAX_ATTEMPTS  = 3            // transient retries per asset
@@ -2500,7 +2501,11 @@ export class BeneosNativeBattlemapInstaller {
       fremd += plan.fremd
 
       if (plan.loeschen.length) await cur.deleteEmbeddedDocuments(docName, plan.loeschen)
-      if (plan.aktualisieren.length) await cur.updateEmbeddedDocuments(docName, plan.aktualisieren)
+      const { zuerst, danach } = docName === "Token"
+        ? tokenUpdatesAufteilen(plan.aktualisieren, tid => !!cur[feld]?.get?.(tid)?.actorLink)
+        : { zuerst: plan.aktualisieren, danach: [] }
+      if (zuerst.length) await cur.updateEmbeddedDocuments(docName, zuerst)
+      if (danach.length) await cur.updateEmbeddedDocuments(docName, danach)
       if (plan.anlegen.length) await cur.createEmbeddedDocuments(docName, plan.anlegen, { keepId: true })
     }
 
