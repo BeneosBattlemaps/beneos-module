@@ -61,12 +61,23 @@ keep maps for a table with no internet.
 
 Two things are on our side, not the tester's.
 
-**The entitlement mirror has no schedule.** `_trigger-stream-entitlements.php`
-writes who may stream into Cloudflare KV, and the gate reads only that. As
-measured on 2026-10-29 nothing calls it on a timer, so it runs when somebody
-runs it. A tester whose entitlement has not been mirrored holds a valid key
-and still gets nothing. Run it before the invitation goes out, and again after
-any change to a tester's membership.
+**A tester's own access needs nothing from us.** The first time their world
+asks for a stream key, the key is minted and their entitlement is written to
+Cloudflare KV inside that same request, before the answer goes back
+(`api-scenepacker.php`, `sp_stream_key_sofort_schreiben`). There is no window
+in which a valid key gets nothing, and no run to do beforehand.
+
+**Published releases are the part that waits.** A customer record names the
+tiers, not the maps; which releases a tier grants lives in a shared list at
+the gate, and only `_trigger-stream-entitlements.php?op=gruppen` rebuilds it.
+As measured on 2026-10-30 nothing calls it on a timer. Run it after publishing
+a release, or testers see a catalog that stops at the last manual run.
+
+**Membership changes wait for the queue.** An upgrade, a purchase or a gift
+marks the key for recalculation, and `op=drain` writes it. Nothing drains on a
+timer either, so run it after changing a tester's membership. A cancellation
+is the exception: the record carries `tier_until` and the gate lets it expire
+on its own.
 
 **Bump the version before the first invitation.** `module.json` on
 `stream-beta` points at the branch, so a push delivers immediately, but
