@@ -73,7 +73,7 @@
 
 /* Narrative readout beneath the compass: "A pull from the North East"
    line + an evocative distance tier ("Very close" / "Close" / "Within
-   3 miles" / "Within 5 miles"). Both are i18n keys so translations are
+   5 miles" / "Within 10 miles"). Both are i18n keys so translations are
    plug-and-play later. */
 .beneos-sense-compass .bnc-pull-readout {
   margin: 14px 0 4px;
@@ -739,7 +739,7 @@
    Distance-based intensity tiers. The further away the source, the
    slower the needle quivers and the gentler the aura pulses. Bound
    to the LGC ping's distanceFt via sense-compass-data._lgcPingToSense
-   (close ≤ 1 mi, mid ≤ 3 mi, far ≤ 5 mi, distant ≤ 10 mi).
+   (close ≤ 1 mi, mid ≤ 5 mi, far ≤ 10 mi, distant beyond).
    ============================================================ */
 /* Intensity tuning — close range is meant to feel like a violent
    homing pulse: needle thrashes ~3× harder, pulse cycles every ~1.6s,

@@ -4,6 +4,11 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.4.12 # 2026-10-30
+
+**Fixes**
+- Fixed: The Item Radar now uses the ranges from the Origin rules: 1, 5 and 10 miles for one, two and three or more attuned items. It used 1, 3 and 5 before, so players did not sense items between 5 and 10 miles. The distance texts in the chat whisper and on the compass now say the same numbers. Pings already placed in your world may now be sensed by more players.
+
 ### 14.4.11 # 2026-10-26
 
 **Fixes**

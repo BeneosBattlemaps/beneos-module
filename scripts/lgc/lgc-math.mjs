@@ -53,30 +53,30 @@ export const CARDINAL_FULL = {
   S: "South", SW: "South West", W: "West", NW: "North West",
 };
 
-// Coarse distance bucket for chat whispers. Three tiers per user
-// request: within 1 mile, within 3 miles, within 5 miles. Distances
-// beyond 5 miles still classify as "within 5 miles" because the slider
-// caps at 10 miles and the whisper is a vibe, not a measurement.
+// Coarse distance bucket for chat whispers. The three tiers follow the
+// Origin sensing rules (origins.json, Codex): within 1 mile, within 5
+// miles, within 10 miles. The slider caps at 10 miles, so "far" covers
+// the rest.
 export function coarseDistanceBucket(ft) {
   const f = Math.max(0, Number(ft) || 0);
   if (f <= 5280)  return "close";    // within 1 mile
-  if (f <= 15840) return "mid";      // within 3 miles
-  return "far";                       // within 5 miles
+  if (f <= 26400) return "mid";      // within 5 miles
+  return "far";                       // within 10 miles
 }
 
 // Attunement-gated maximum detection range. The more attuned items
 // of the same Origin the character carries, the further the Sense
-// Compass can pick up echoes (standard "progression = more reach"
-// pattern, per user direction):
+// Compass can pick up echoes. The numbers are the ones the Origin
+// sensing rules promise the player (Echo, Resonance, Harmony):
 //   1 attuned  -> within 1 mile
-//   2 attuned  -> within 3 miles
-//   3+ attuned -> within 5 miles (the full slider range)
+//   2 attuned  -> within 5 miles
+//   3+ attuned -> within 10 miles (the full slider range)
 export function attunementRangeFt(count) {
   const n = Math.max(0, Math.floor(Number(count) || 0));
   if (n <= 0) return 0;
   if (n === 1) return 5280;    // 1 mile
-  if (n === 2) return 15840;   // 3 miles
-  return 26400;                 // 5 miles
+  if (n === 2) return 26400;   // 5 miles
+  return DIST_MAX_FT;           // 10 miles
 }
 
 // Compass-Tab readout: narrative distance text shown to the player.
@@ -87,8 +87,8 @@ export function compassDistanceKey(ft) {
   const f = Math.max(0, Number(ft) || 0);
   if (f <= 528)   return "VeryClose";    // < 0.1 mi
   if (f <= 5280)  return "Close";        // within 1 mi
-  if (f <= 15840) return "WithinThree";  // within 3 mi
-  return "WithinFive";                    // within 5 mi
+  if (f <= 26400) return "WithinFive";   // within 5 mi
+  return "WithinTen";                     // within 10 mi
 }
 
 // Legacy bucket labels — kept for backward-compat with older pings.
@@ -106,16 +106,18 @@ export function migratePing(p) {
   return { ...p, distanceFt, directionDeg };
 }
 
-// Intensity tier from feet — drives Compass animation speed.
+// Intensity tier from feet, drives Compass animation speed. Same
+// boundaries as the sensing range tiers above.
 // close   <= 1 mi:   needle thrashes, fast pulse
-// mid     <= 3 mi:   erratic
-// far     <= 5 mi:   subtle quiver
-// distant <= 10 mi:  almost still
+// mid     <= 5 mi:   erratic
+// far     <= 10 mi:  subtle quiver
+// distant beyond:    almost still. The slider stops at 10 miles, so
+//                    only a hand-written ping can still land here.
 export function distanceIntensity(ft) {
   const f = Math.max(0, Number(ft) || 0);
   if (f <= 5280)  return "close";
-  if (f <= 15840) return "mid";
-  if (f <= 26400) return "far";
+  if (f <= 26400) return "mid";
+  if (f <= DIST_MAX_FT) return "far";
   return "distant";
 }
 

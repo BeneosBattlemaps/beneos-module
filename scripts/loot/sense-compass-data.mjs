@@ -145,7 +145,7 @@ function _lgcPingToSense(rawPing) {
     distanceMi: Math.max(0.1, p.distanceFt / 5280),
     distanceFt: p.distanceFt,
     intensity:  distanceIntensity(p.distanceFt),
-    distanceKey:  compassDistanceKey(p.distanceFt),    // VeryClose / Close / WithinThree / WithinFive
+    distanceKey:  compassDistanceKey(p.distanceFt),    // VeryClose / Close / WithinFive / WithinTen
     cardinalKey:  sector8,                              // N / NE / ... for i18n lookup
     rarity:     3,
     rarityName: "Rare",
@@ -154,7 +154,7 @@ function _lgcPingToSense(rawPing) {
 }
 
 // Count attuned items of a given Origin on the actor. Used both for
-// the attunement gate (1/2/3+ items grant 1/3/5-mile range) and for
+// the attunement gate (1/2/3+ items grant 1/5/10-mile range) and for
 // the existing detail-tier display (rarity/distance reveal levels).
 function _countAttunedForOriginSlug(actor, slug) {
   if (!actor?.items) return 0;
@@ -183,7 +183,7 @@ function _resolveSenses(actor) {
   //         (owned-not-attuned matches get a chat-whisper only).
   //      b) Ping's distance must be within the actor's detection range,
   //         which scales with the number of attuned items of that
-  //         Origin: 1 attuned = 1 mi, 2 = 3 mi, 3+ = 5 mi.
+  //         Origin: 1 attuned = 1 mi, 2 = 5 mi, 3+ = 10 mi.
   try {
     const lgc = game.settings.get("beneos-module", "beneos-lgc-active-pings");
     if (Array.isArray(lgc) && lgc.length) {
@@ -252,7 +252,7 @@ function _decorateActive(active, actor) {
 
   // Narrative readout shown below the compass:
   //   "A pull from the North East"   (direction always spelled out)
-  //   "Very close" | "Close" | "Within 3 miles" | "Within 5 miles"
+  //   "Very close" | "Close" | "Within 5 miles" | "Within 10 miles"
   const cardinalLabel = game.i18n.localize(`BENEOS.LGC.Cardinal.${active.cardinalKey || "N"}`);
   active.pullFromHtml = game.i18n.format("BENEOS.LGC.Compass.PullFrom", {
     dir: `<strong>${_escape(cardinalLabel)}</strong>`,

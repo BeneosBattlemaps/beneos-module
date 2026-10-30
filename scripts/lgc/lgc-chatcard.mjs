@@ -84,7 +84,7 @@ function _build(card) {
 // the cue should be a personal/private effect, not an audit trail.
 export async function createPingWhispers(ping, dispatch) {
   const origin = _originDisplay(ping.originSlug);
-  // Coarse, evocative wording — three distance tiers (within 1/3/5
+  // Coarse, evocative wording: three distance tiers (within 1/5/10
   // miles) and an 8-way spelled-out direction ("North East"). The
   // exact degree and feet are GM-side info; players get a vibe, not
   // a measurement.

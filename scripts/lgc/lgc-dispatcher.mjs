@@ -100,8 +100,8 @@ export function dispatchPing(ping) {
     if (attCount > 0) {
       // Gate by detection range: the user only sees this ping in their
       // compass if the ping is within the attunement-derived range
-      // (1/3/5 mi for 1/2/3+ attuned items). Out-of-range attuned
-      // matches get nothing — no compass, no whisper, no sound.
+      // (1/5/10 mi for 1/2/3+ attuned items). Out-of-range attuned
+      // matches get nothing: no compass, no whisper, no sound.
       const maxFt = attunementRangeFt(attCount);
       if (p.distanceFt > maxFt) continue;
       const attItem = _firstAttunedItemMatching(actor, slug);
