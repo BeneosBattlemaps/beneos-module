@@ -67,11 +67,14 @@ Cloudflare KV inside that same request, before the answer goes back
 (`api-scenepacker.php`, `sp_stream_key_sofort_schreiben`). There is no window
 in which a valid key gets nothing, and no run to do beforehand.
 
-**Published releases are the part that waits.** A customer record names the
-tiers, not the maps; which releases a tier grants lives in a shared list at
-the gate, and only `_trigger-stream-entitlements.php?op=gruppen` rebuilds it.
-As measured on 2026-10-30 nothing calls it on a timer. Run it after publishing
-a release, or testers see a catalog that stops at the last manual run.
+**A new release needs nothing either, as things stand.** A customer record
+names the tiers, not the maps, and a tier's releases live in a shared list at
+the gate. Measured at the live gate on 2026-10-05, both tier lists hold `["*"]`,
+and a star matches every release, so a publication reaches every patron at
+once. `_trigger-stream-entitlements.php?op=gruppen` rebuilds those lists and
+is the thing to run only in two cases: a release meant to be free to everyone,
+which lives in a separate list, and a newly created Patreon tier, which has no
+list yet. Nothing calls it on a timer, as measured on 2026-10-30.
 
 **Membership changes wait for the queue.** An upgrade, a purchase or a gift
 marks the key for recalculation, and `op=drain` writes it. Nothing drains on a
