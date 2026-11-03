@@ -8,6 +8,7 @@ All notable changes to this module will be documented in this file.
 
 **Fixes**
 - Fixed: The Item Radar now uses the ranges from the Origin rules: 1, 5 and 10 miles for one, two and three or more attuned items. It used 1, 3 and 5 before, so players did not sense items between 5 and 10 miles. The distance texts in the chat whisper and on the compass now say the same numbers. Pings already placed in your world may now be sensed by more players.
+- Fixed: With Monk's Enhanced Journal active on Foundry V14, creatures, items and spells from Beneos Cloud never arrived in the compendium, although the install counter finished. Installing now works with that module active.
 
 ### 14.4.11 # 2026-10-26
 

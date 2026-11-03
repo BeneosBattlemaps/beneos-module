@@ -5,6 +5,8 @@ import { BeneosInfoBox } from "./beneos_info_box.js"
 import { BeneosAnalytics } from "./beneos_analytics.js"
 import { normalizeEmbeddedItems } from "./cloud-v2/beneos-ability-icons.mjs"
 import { packNeedsV14Migration, migrateActorForV14 } from "./cloud-v2/beneos-v14-scene-migration.mjs"
+// Nicht pack.importDocument: Monk's Enhanced Journal 14.02 bricht es auf V14, siehe die Datei.
+import { insKompendiumImportieren } from "./cloud-v2/kompendium-import.mjs"
 
 // FilePicker.upload(..., { notify: false }) used to swallow failures
 // (disk full, permissions, server reject) — the await would resolve,
@@ -2386,7 +2388,7 @@ export class BeneosCloud {
           itemSegments
         )
         // And then create it again
-        let imported = await itemPack.importDocument(item, itemCompendiumLeaf?.id ? { folder: itemCompendiumLeaf.id } : undefined);
+        let imported = await insKompendiumImportieren(itemPack, item, itemCompendiumLeaf?.id ? { folder: itemCompendiumLeaf.id } : undefined);
         // Fix #C3: only mark as installed when import actually succeeded, otherwise
         // the UI showed an "installed" badge for items that never made it to the compendium.
         if (imported?.id) {
@@ -2568,7 +2570,7 @@ export class BeneosCloud {
           spellSegments
         )
         // And then create it again
-        let imported = await spellPack.importDocument(spell, spellCompendiumLeaf?.id ? { folder: spellCompendiumLeaf.id } : undefined);
+        let imported = await insKompendiumImportieren(spellPack, spell, spellCompendiumLeaf?.id ? { folder: spellCompendiumLeaf.id } : undefined);
         // Fix #C3: only mark as installed when import actually succeeded.
         if (imported?.id) {
           properName = imported.name
@@ -3608,7 +3610,7 @@ export class BeneosCloud {
                 console.warn("[Beneos Cloud] Error deleting existing journal", err)
               }
             }
-            newJournal = await journalPack.importDocument(journal);
+            newJournal = await insKompendiumImportieren(journalPack, journal);
             await newJournal.setFlag("world", "beneos", { tokenkey: tokenKey, fullId: fullId, idx: i, installDate: tNow, contentSignature: tokenData?.contentSignature ?? "" })
           }
         } else {
@@ -3713,7 +3715,7 @@ export class BeneosCloud {
               beneosSegments
             )
             // And then create it again
-            let imported = await actorPack.importDocument(actor, compendiumLeaf?.id ? { folder: compendiumLeaf.id } : undefined);
+            let imported = await insKompendiumImportieren(actorPack, actor, compendiumLeaf?.id ? { folder: compendiumLeaf.id } : undefined);
             // Fix #C3: only mark as installed when import actually succeeded; previous
             // code accessed `imported.name` unconditionally, which crashed silently for
             // failed imports and could leave half-written settings.
