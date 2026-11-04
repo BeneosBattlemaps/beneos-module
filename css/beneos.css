@@ -32,7 +32,14 @@
   max-height: 350px;
   text-align: start;
   overflow-y: auto;
-
+  background: var(--bc-bg-panel);
+  color: var(--bc-text);
+  font-family: var(--bc-font-ui);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-edge);
+  box-shadow: var(--bc-shadow-pop);
+  scrollbar-width: thin;
+  scrollbar-color: var(--bc-border-control) transparent;
 }
 
 #token-hud .beneos-variants-wrap {
@@ -46,7 +53,14 @@
   text-align: start;
   overflow-y: auto;
   padding: 2px;
-
+  background: var(--bc-bg-panel);
+  color: var(--bc-text);
+  font-family: var(--bc-font-ui);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-edge);
+  box-shadow: var(--bc-shadow-pop);
+  scrollbar-width: thin;
+  scrollbar-color: var(--bc-border-control) transparent;
 }
 
 #token-hud .beneos-button-select {
@@ -59,6 +73,24 @@
   min-height: 100px;
   display: flex;
   align-items: center;
+  background: var(--bc-card);
+  color: var(--bc-text);
+  font-family: var(--bc-font-ui);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-edge);
+  box-shadow: none;
+  transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
+}
+
+#token-hud .beneos-button-select:hover {
+  background-color: var(--bc-card-hover);
+  border-color: var(--bc-accent);
+  box-shadow: none;
+}
+
+#token-hud .beneos-button-select:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
 }
 
 #token-hud .beneos-variants-wrap .beneos-button-select {
@@ -66,12 +98,12 @@
   font-size: 1.1rem;
   max-width: 371px;
   gap: 10px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
+  border-radius: var(--bc-edge);
 }
 
 #token-hud .beneos-variants-wrap .beneos-button-select:hover {
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: var(--bc-card-hover);
+  border-color: var(--bc-accent);
 }
 
 #token-hud .beneos-token-button {
@@ -82,7 +114,8 @@
   margin: 0;
   object-fit: contain;
   flex-shrink: 0;
-  border-radius: 4px;
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-edge);
 }
 
 
@@ -129,7 +162,7 @@
 }
 
 .beneos-tooltip-dotted {
-  border-bottom: 1px dotted black;
+  border-bottom: 1px dotted var(--bc-text-muted);
   /* If you want dots under the hoverable text */
 }
 
@@ -144,7 +177,7 @@
   /* Fade in tooltip */
   visibility: hidden;
   opacity: 0;
-  transition: opacity 0.3s;
+  transition: opacity var(--bc-dur-fast) var(--bc-ease);
   overflow-wrap: anywhere;
 }
 
@@ -164,7 +197,7 @@
   /* Fade in tooltip */
   visibility: hidden;
   opacity: 0;
-  transition: opacity 0.3s;
+  transition: opacity var(--bc-dur-fast) var(--bc-ease);
 }
 
 .beneos-tooltip:hover .beneos-tooltiptext-button {
@@ -177,10 +210,12 @@
   width: 620px;
   margin: 8px;
   padding: 8px;
-  background: rgba(233, 226, 218, 0.9);
-  border-radius: 12px;
+  background: var(--bc-bg-panel);
+  color: var(--bc-text);
+  box-shadow: var(--bc-shadow-pop);
+  border-radius: var(--bc-edge);
   font-size: 0.9rem;
-  border: 1px solid black;
+  border: 1px solid var(--bc-border-strong);
   top: 0.8rem;
   left: -2rem;
 }
@@ -189,10 +224,13 @@
   width: 280px;
   margin: 8px;
   padding: 8px;
-  background: rgba(233, 226, 218, 0.9);
+  background: var(--bc-bg-panel);
+  color: var(--bc-text);
+  box-shadow: var(--bc-shadow-pop);
   border-width: 1px;
   border-style: solid;
-  border-radius: 12px;
+  border-color: var(--bc-border-strong);
+  border-radius: var(--bc-edge);
   font-size: 0.9rem;
   transform: translate(-300px, -40px);
 }
@@ -201,21 +239,26 @@
   width: 420px;
   margin: 8px;
   padding: 8px;
-  background: rgba(233, 226, 218, 0.9);
+  background: var(--bc-bg-panel);
+  color: var(--bc-text);
+  box-shadow: var(--bc-shadow-pop);
   border-style: solid;
   border-width: 1px;
-  border-radius: 12px;
+  border-color: var(--bc-border-strong);
+  border-radius: var(--bc-edge);
   font-size: 0.9rem;
   transform: translate(-100px, 0px);
 }
 
 .beneos-tooltip .beneos-tooltip-content {
   width: 520px;
-  border: 1px solid black;
+  border: 1px solid var(--bc-border-strong);
   margin: 8px;
   padding: 8px;
-  background: rgba(233, 226, 218, 0.9);
-  border-radius: 12px;
+  background: var(--bc-bg-panel);
+  color: var(--bc-text);
+  box-shadow: var(--bc-shadow-pop);
+  border-radius: var(--bc-edge);
   font-size: 0.9rem;
   top: 0.8rem;
   left: 2rem;
@@ -223,11 +266,13 @@
 
 .beneos-tooltip .beneos-tooltip-content-button {
   width: 220px;
-  border: 1px solid black;
+  border: 1px solid var(--bc-border-strong);
   margin: 8px;
   padding: 8px;
-  background: rgba(233, 226, 218, 0.9);
-  border-radius: 12px;
+  background: var(--bc-bg-panel);
+  color: var(--bc-text);
+  box-shadow: var(--bc-shadow-pop);
+  border-radius: var(--bc-edge);
   font-size: 0.9rem;
   top: 0.8rem;
   left: 2rem;
@@ -236,10 +281,12 @@
 
 .beneos-tooltip .beneos-tooltip-content-button-import {
   width: 220px;
-  border: 1px solid black;
+  border: 1px solid var(--bc-border-strong);
   padding: 8px;
-  background: rgba(233, 226, 218, 0.9);
-  border-radius: 12px;
+  background: var(--bc-bg-panel);
+  color: var(--bc-text);
+  box-shadow: var(--bc-shadow-pop);
+  border-radius: var(--bc-edge);
   font-size: 0.9rem;
   margin: -30px;
 }
@@ -249,9 +296,11 @@
   margin: 4px;
   padding: 4px;
   white-space: wrap;
-  border: 1px solid black;
-  background: rgba(233, 226, 218, 0.9);
-  border-radius: 12px;
+  border: 1px solid var(--bc-border-strong);
+  background: var(--bc-bg-panel);
+  color: var(--bc-text);
+  box-shadow: var(--bc-shadow-pop);
+  border-radius: var(--bc-edge);
   font-size: 0.8rem;
   top: 0.8rem;
   left: -2rem;
@@ -262,9 +311,11 @@
   margin: 4px;
   padding: 4px;
   white-space: wrap;
-  border: 1px solid black;
-  background: rgba(233, 226, 218, 0.9);
-  border-radius: 12px;
+  border: 1px solid var(--bc-border-strong);
+  background: var(--bc-bg-panel);
+  color: var(--bc-text);
+  box-shadow: var(--bc-shadow-pop);
+  border-radius: var(--bc-edge);
   font-size: 0.8rem;
   top: 0.8rem;
   left: -2rem;
@@ -285,7 +336,7 @@
 .beneos-cloud-login-button {}
 
 .beneos-black-text {
-  color: #000000;
+  color: var(--bc-text-on-accent);
 }
 
 .beneos-connection-section {
@@ -304,23 +355,24 @@
 }
 
 .beneos-cloud-connected {
-  color: #6dae11;
+  color: var(--bc-success);
   font-size: 1.2rem;
 }
 
 .beneos-cloud-not-connected {
-  color: #3e0706;
+  color: var(--bc-text-muted);
   font-size: 1.0rem;
   text-align: left;
 }
 
 .beneos-cloud-no-patreon {
   min-height: 1.8rem;
-  background-color: #c5bfb5;
-  color: #3e0706;
+  background-color: var(--bc-card);
+  color: var(--bc-text-muted);
+  border-radius: var(--bc-edge);
   display: flex;
   align-items: center;
-  justify-content: center;/
+  justify-content: center;
 }
 
 
@@ -438,8 +490,10 @@
   width: 620px;
   margin: 8px;
   padding: 8px;
-  background: rgba(233, 226, 218, 0.9);
-  border-radius: 12px;
+  background: var(--bc-bg-panel);
+  color: var(--bc-text);
+  box-shadow: var(--bc-shadow-pop);
+  border-radius: var(--bc-edge);
   font-size: 0.9rem;
   top: 0.8rem;
   left: 2rem;
@@ -478,7 +532,7 @@
 .beneos-search-title {
   font-size: 1.2rem;
   display: flex;
-  color: #ffffff;
+  color: var(--bc-text);
   padding-left: 4px;
   padding-right: 8px;
 }
@@ -486,8 +540,8 @@
 .beneos-search-title-result {
   font-size: 1.2rem;
   display: flex;
-  background-color: #3e0706;
-  color: #ffffff;
+  background-color: var(--bc-card-hover);
+  color: var(--bc-text);
   padding-left: 4px;
   padding-right: 8px;
   overflow: hidden;
@@ -496,7 +550,7 @@
 .triangle-topleft {
   width: 0;
   height: 0;
-  border-top: 1.4rem solid #3e0706;
+  border-top: 1.4rem solid var(--bc-card-hover);
   border-right: 1.4rem solid transparent;
 }
 
@@ -506,7 +560,7 @@
   height: 0;
   border-style: solid;
   border-width: 1px;
-  border-top: 1.2rem solid #ebe8e0;
+  border-top: 1.2rem solid var(--bc-card);
   border-left: 1.2rem solid transparent;
 }
 
@@ -523,36 +577,38 @@
 
 .beneos-fitting-button {
   text-align: center;
-  border-width: 1px;
+  border: 1px solid var(--bc-border-control);
+  border-radius: var(--bc-edge);
+  color: var(--bc-text);
   max-width: 7.2rem;
-  border-style: ridge;
-  border-color: black;
   padding-left: 4px;
   padding-right: 4px;
   margin-top: 6px;
   margin-right: 12px;
   margin-bottom: 4px;
-  background-color: #cecdc8;
+  background-color: var(--bc-card);
   max-height: 18px;
 }
 
 .beneos-search-button {
-  background-color: #e1ded9;
-  color: #3e0706;
-  border: 2px solid #000;
+  background-color: var(--bc-card);
+  color: var(--bc-text);
+  border: 1px solid var(--bc-border-control);
+  border-radius: var(--bc-edge);
 }
 
 .beneos-search-button.category-active {
-  background-color: #3e0706;
-  color: #e1ded9;
-  border: 2px solid #000;
+  background-color: var(--bc-bg-pressed);
+  color: var(--bc-text);
+  border: 1px solid var(--bc-accent);
 }
 
 .beneos-search-button-token {
-  background-color: #ebe8e0;
+  background-color: var(--bc-card);
   white-space: nowrap;
-  color: #191813;
-  border: 1px solid;
+  color: var(--bc-text);
+  border: 1px solid var(--bc-border-control);
+  border-radius: var(--bc-edge);
   text-align: center;
   border-width: 1px;
   border-style: solid;
@@ -567,21 +623,21 @@
 
 
 .token-name-new {
-  color: #c7f0a9;
+  color: var(--bc-success);
 }
 
 .token-name-update {
-  color: #f4ecbf;
+  color: var(--bc-update);
 }
 
 .beneos-search-journal-button {
   text-align: center;
-  border-width: 1px;
-  border-style: ridge;
-  border-color: black;
+  border: 1px solid var(--bc-border-control);
+  border-radius: var(--bc-edge);
+  color: var(--bc-text);
   padding-left: 4px;
   padding-right: 4px;
-  background-color: #d6d6d5;
+  background-color: var(--bc-card);
   flex-grow: 1;
   max-height: 18px;
 }
@@ -663,7 +719,7 @@
 }
 
 .beneos-search-logo-middle label {
-  color: #191813;
+  color: var(--bc-text);
 }
 
 .beneos-search-logo {
@@ -686,23 +742,24 @@
 }
 
 .beneos-search-main-choice {
-  background-color: #bebebe;
-  font-weight: bold;
+  background-color: var(--bc-card-hover);
+  font-weight: 600;
 }
 
 .beneos-search-small-text {
-  color: #3e0706;
+  color: var(--bc-text-muted);
   justify-self: center;
   justify-content: center;
   justify-items: center;
 }
 
 .beneos-search-small-text a {
-  color: #3e0706;
+  color: var(--bc-accent);
 }
 
 .beneos-not-installed {
-  background-color: #ff00000E;
+  /* Not installed carries no state colour (standard 2.5). */
+  background-color: transparent;
 }
 
 .beneos-description-background {
@@ -718,7 +775,7 @@
 
 .beneos-description-title {
   font-size: 1.2rem;
-  color: #3e0706;
+  color: var(--bc-text);
 }
 
 .beneos-actor-menu .beneos-token-menu-element {
@@ -737,6 +794,24 @@
   padding: 0;
   margin: 0;
   text-align: left;
+  background: var(--bc-card);
+  color: var(--bc-text);
+  font-family: var(--bc-font-ui);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-edge);
+  box-shadow: none;
+  transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
+}
+
+.beneos-actor-menu .beneos-button-select:hover {
+  background: var(--bc-card-hover);
+  border-color: var(--bc-accent);
+  box-shadow: none;
+}
+
+.beneos-actor-menu .beneos-button-select:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
 }
 
 .beneos-actor-menu .beneos-token-button {
@@ -867,17 +942,17 @@
 }
 
 .beneos-item-container {
-  background-color: #eaeaea;
+  background-color: var(--bc-card);
   max-height: 128px;
   margin-bottom: 0px;
 }
 
 .beneos-item-container-hover:hover {
-  background-color: #d5c8c3;
+  background-color: var(--bc-card-hover);
 }
 
 .beneos-batch-install {
-  background-color: #d2d5c3
+  background-color: var(--bc-card-hover);
 }
 
 .item-middle-line {
@@ -886,11 +961,10 @@
 }
 
 .item-properties-box {
-  background-color: #ebe8e0;
-  color: #191813;
-  border-width: 1px;
-  border-color: #191813;
-  border-style: ridge;
+  background-color: var(--bc-card);
+  color: var(--bc-text);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-edge);
   margin-left: 6px;
   margin-top: 12px;
   margin-bottom: 12px;
@@ -930,11 +1004,10 @@
 .item-attenument-box {
   align-content: center;
   text-align: center;
-  background-color: #ebe8e0;
-  color: #191813;
-  border-width: 1px;
-  border-color: #191813;
-  border-style: ridge;
+  background-color: var(--bc-card);
+  color: var(--bc-text);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-edge);
   margin-left: 6px;
   margin-top: 12px;
   margin-bottom: 12px;
@@ -945,12 +1018,7 @@
 }
 
 .item-description-box {
-  /*background-color: #ebe8e0;*/
-  color: #3e0706;
-  /*border-left: #191813 1px solid;
-  border-top: #191813 1px ridge;
-  border-right: #191813 1px ridge;
-  border-bottom: #191813 1px ridge;*/
+  color: var(--bc-text);
   margin-left: 6px;
   margin-top: 12px;
   margin-bottom: 12px;
@@ -997,7 +1065,7 @@
 
 .item-right-text-content {
   position: absolute;
-  font-size: 0.65rem;
+  font-size: 12px;
   border-width: 0px;
   top: 50%;
   left: 50%;
@@ -1056,12 +1124,12 @@
 
 .release-url {
   margin-left: 8px;
-  color: #3e0706;
+  color: var(--bc-accent);
 }
 
 .release-url-color a,
 .release-url a {
-  color: #3e0706;
+  color: var(--bc-accent);
 }
 
 .beneos-search-header {
@@ -1069,11 +1137,11 @@
   width: 100%;
 }
 
-/* Removed 2026-05-02: legacy V1 cloud-window header tint (#3e0706 dark Beneos
-   red) was dead code after the V1→V2 redesign — no V1 cloud window exists
-   anymore. Re-introducing `beneos_search_engine` as a V2-class alias for tour
-   selector back-compat (cloud-window-v2.mjs:97) made this stale rule paint the
-   V2 window's header dark red, out of place against the gold/black V2 palette. */
+/* Removed 2026-05-02: the legacy V1 cloud-window header tint (dark Beneos red)
+   was dead code after the redesign to V2, no V1 cloud window exists anymore.
+   Re-introducing `beneos_search_engine` as a V2 class alias for tour selector
+   back-compat (cloud-window-v2.mjs:97) made this stale rule paint the V2
+   window's header dark red. */
 
 .beneos-search-margin {
   margin-left: 32px;
@@ -1082,8 +1150,8 @@
 .search-100-results {
   text-align: left;
   font-size: 0.9rem;
-  font-weight: bold;
-  color: #3e0706;
+  font-weight: 600;
+  color: var(--bc-text);
 }
 
 
@@ -1121,7 +1189,7 @@
   align-self: center;
   align-content: center;
   margin-top: 2px;
-  color: #3e0706;
+  color: var(--bc-text-muted);
 }
 
 .beneos-active-scene-menu-icon {
@@ -1143,7 +1211,7 @@
 #context-menu li.context-item.beneos-static-unavailable,
 #context-menu li.context-item.beneos-static-unavailable:hover,
 #context-menu li.context-item.beneos-static-unavailable i {
-  color: #d9534f;
+  color: var(--bc-error);
 }
 
 
@@ -1162,15 +1230,16 @@ i.beneos-module {
   display: flex;
   position: relative;
   filter: grayscale(1);
-  transition: 0.3s;
+  transition: all var(--bc-dur-fast) var(--bc-ease);
 }
 
 .beneos-ready-bg-color {
-  background-color: #ddf2bf;
+  background-color: var(--bc-success-bg);
 }
 
+/* Warning has no colour of its own (standard 2.5): icon and word carry it. */
 .beneos-text-warning {
-  color: darkred;
+  color: var(--bc-text-muted);
 }
 
 .beneos-variant-name-text {
@@ -1187,8 +1256,8 @@ i.beneos-module {
 }
 
 .beneos-skin-number-over {
-  font-size: 0.6rem;
-  color: white;
+  font-size: 12px;
+  color: var(--bc-text);
   transform: translate(-12px, -56px);
 }
 
@@ -1197,12 +1266,12 @@ i.beneos-module {
 }
 
 .h2-no-result {
-  color: #3e0706;
+  color: var(--bc-text);
   font-size: 3rem;
 }
 
 .text-no-result {
-  color: #3e0706;
+  color: var(--bc-text-muted);
   font-size: 1.2rem;
   margin-top: 12px;
   margin-bottom: 12px;
@@ -1214,16 +1283,17 @@ i.beneos-module {
 }
 
 .beneos-info-box {
-  background: #ebe8e0;
-  color: #3e0706;
-  border: 2px solid #3e0706;
-  border-radius: 8px;
+  background: var(--bc-bg-panel);
+  color: var(--bc-text);
+  font-family: var(--bc-font-ui);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-edge);
   padding: 1.2rem 2rem;
   font-size: 1.2rem;
   margin: 2rem auto;
   text-align: center;
   max-width: 420px;
-  box-shadow: 0 2px 12px #0002;
+  box-shadow: var(--bc-shadow-pop);
   z-index: 9999;
   position: fixed;
   top: 50%;
@@ -1233,10 +1303,10 @@ i.beneos-module {
 
 body.theme-dark .beneos-info-box,
 .application.theme-dark .beneos-info-box {
-  background: #1f1d1a;
-  color: #e6e5e3;
-  border-color: #f5c992;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+  background: var(--bc-bg-panel);
+  color: var(--bc-text);
+  border-color: var(--bc-border-strong);
+  box-shadow: var(--bc-shadow-pop);
 }
 
 /* =======================================================================================
@@ -1244,8 +1314,9 @@ body.theme-dark .beneos-info-box,
    Renderer buildSpellDescriptionFromFlags@v2). Die HTML traegt keine
    Farb-Inline-Styles mehr; Highlights (bsd-heading), Stats-Box (bsd-statsbox)
    und Download-Link (bsd-download) werden hier je Theme gefaerbt.
-   Light = exakt der bisherige Look (Beneos-Rot, helle Box),
-   Dark  = Beneos-Gold (--bc-accent) mit dunkel abgesetzter Box.
+   Light = exakt der bisherige Look (Beneos-Rot, helle Box), bleibt bis die
+   helle Bone-Variante entschieden ist (Standard 2.7).
+   Dark  = Bone-Akzent fuer Highlights und Link, Box als dunkle Karte.
    ======================================================================================= */
 .beneos-spell-desc .bsd-heading {
   color: #71120f;
@@ -1260,68 +1331,67 @@ body.theme-dark .beneos-info-box,
 
 body.theme-dark .beneos-spell-desc .bsd-heading,
 .application.theme-dark .beneos-spell-desc .bsd-heading {
-  color: var(--bc-accent, #f5c992);
+  color: var(--bc-accent);
 }
 body.theme-dark .beneos-spell-desc .bsd-statsbox,
 .application.theme-dark .beneos-spell-desc .bsd-statsbox {
-  background: rgba(245, 201, 146, 0.08);
-  border-color: var(--bc-accent-line, rgba(245, 201, 146, 0.3));
-  color: var(--bc-text, #ebe9e5);
+  background: var(--bc-card);
+  border-color: var(--bc-border);
+  color: var(--bc-text);
 }
 body.theme-dark .beneos-spell-desc .bsd-download,
 .application.theme-dark .beneos-spell-desc .bsd-download {
-  color: var(--bc-danger, #d88270);
+  color: var(--bc-accent);
 }
 
 /* =======================================================================================
-   Beneos News Box — Setup-Tour CI (siehe beneos_tours.js:336-575, 2165-2205)
-   Dunkler Body, Gold-Akzente, pulsierender Gold-Glow-Border. Eigener Kontrast,
-   daher in beiden Foundry-Themes (Dark/Light) lesbar.
+   Beneos News Box: body of a cloud news message. Card surface with a hairline
+   frame, headings in the text colour, links in the Bone accent. It sets its own
+   surface, so it reads in both Foundry themes.
    ======================================================================================= */
-@keyframes beneos-news-glow-pulse {
-  0%, 100% {
-    box-shadow:
-      0 0 0 2px #151412,
-      0 0 14px 2px rgba(21, 20, 18, 0.45);
-  }
-  50% {
-    box-shadow:
-      0 0 0 2px #f5c992,
-      0 0 14px 2px rgba(245, 201, 146, 0.45);
-  }
-}
-
 .beneos-news-box {
-  background: #151412;
-  color: #e6e5e3;
-  border: 2px solid #f5c992;
-  border-radius: 6px;
+  background: var(--bc-card);
+  color: var(--bc-text);
+  font-family: var(--bc-font-ui);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-edge);
   padding: 1.2rem 1.6rem;
   max-height: 640px;
   max-width: 700px;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bc-border-control) transparent;
   font-size: 0.95rem;
   line-height: 1.55;
-  animation: beneos-news-glow-pulse 4s ease-in-out infinite;
 }
 .beneos-news-box h1,
 .beneos-news-box h2,
 .beneos-news-box h3,
-.beneos-news-box h4,
+.beneos-news-box h4 {
+  color: var(--bc-text);
+  font-family: var(--bc-font-ui);
+  font-weight: 600;
+}
 .beneos-news-box strong,
 .beneos-news-box b {
-  color: #f5c992;
+  color: var(--bc-text);
+  font-weight: 600;
 }
 .beneos-news-box a {
-  color: #f5c992;
+  color: var(--bc-accent);
   text-decoration: underline;
+  transition: color var(--bc-dur-fast) var(--bc-ease);
 }
 .beneos-news-box a:hover {
-  color: #c8b888;
+  color: var(--bc-accent-strong);
+}
+.beneos-news-box a:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
 }
 .beneos-news-box hr {
   border: none;
-  border-top: 1px solid #333;
+  border-top: 1px solid var(--bc-border);
   margin: 0.8rem 0;
 }
 .beneos-news-box table {
@@ -1329,51 +1399,45 @@ body.theme-dark .beneos-spell-desc .bsd-download,
   margin: 0.6rem 0;
 }
 .beneos-news-box table th {
-  color: #f5c992;
-  border-bottom: 1px solid #333;
+  color: var(--bc-text-muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--bc-border);
   padding: 0.3rem 0.6rem;
   text-align: left;
 }
 .beneos-news-box table td {
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--bc-border);
   padding: 0.3rem 0.6rem;
 }
 .beneos-news-box img {
   max-width: 100%;
   height: auto;
-  border-radius: 4px;
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-edge);
 }
 .beneos-news-box ul,
 .beneos-news-box ol {
   padding-left: 1.4rem;
 }
 
-/* Respect prefers-reduced-motion: stop the pulse, keep static gold border. */
-@media (prefers-reduced-motion: reduce) {
-  .beneos-news-box {
-    animation: none;
-    box-shadow:
-      0 0 0 2px #f5c992,
-      0 0 14px 2px rgba(245, 201, 146, 0.30);
-  }
-}
-
 /* =======================================================================================
    Beneos News Window (ApplicationV2 frame for cloud news messages).
-   The inner .beneos-news-box keeps its own gold-pulse border; the window
-   chrome contributes the dark Beneos title bar and the footer Close button.
+   Base header, panel content, and a default button for Close.
    ======================================================================================= */
 .beneos-news-window .window-header {
-  background: linear-gradient(180deg, #1f1d1a 0%, #151412 100%);
-  border-bottom: 2px solid #f5c992;
+  background: var(--bc-bg);
+  border-bottom: 1px solid var(--bc-border);
 }
 .beneos-news-window .window-header .window-title {
-  color: #f5c992;
+  color: var(--bc-text);
+  font-family: var(--bc-font-ui);
   font-weight: 600;
   letter-spacing: 0.02em;
 }
 .beneos-news-window .window-content {
-  background: #1a1816;
+  background: var(--bc-bg-panel);
+  color: var(--bc-text);
+  font-family: var(--bc-font-ui);
   padding: 0.8rem;
 }
 .beneos-news-window-content {
@@ -1389,25 +1453,33 @@ body.theme-dark .beneos-spell-desc .bsd-download,
 .beneos-news-window .beneos-news-date {
   margin: 0.4rem 0 0;
   font-size: 0.85rem;
-  color: #c8b888;
+  color: var(--bc-text-muted);
 }
 .beneos-news-footer {
   display: flex;
   justify-content: flex-end;
 }
 .beneos-news-window .beneos-news-close-btn {
-  background: linear-gradient(180deg, #2a2723 0%, #1c1a17 100%);
-  color: #f5c992;
-  border: 1px solid #f5c992;
-  border-radius: 4px;
+  background: var(--bc-card);
+  color: var(--bc-text);
+  border: 1px solid var(--bc-border-control);
+  border-radius: var(--bc-edge);
   padding: 0.45rem 1.1rem;
-  font-weight: 600;
+  font-family: var(--bc-font-ui);
+  font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
 }
 .beneos-news-window .beneos-news-close-btn:hover {
-  background: #f5c992;
-  color: #151412;
+  background: var(--bc-card-hover);
+  border-color: var(--bc-accent);
+}
+.beneos-news-window .beneos-news-close-btn:active {
+  background: var(--bc-bg-pressed);
+}
+.beneos-news-window .beneos-news-close-btn:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
 }
 .beneos-news-window .beneos-news-close-btn i {
   margin-right: 0.4rem;
@@ -1416,10 +1488,10 @@ body.theme-dark .beneos-spell-desc .bsd-download,
 .beneos-bmap-info-banner {
   margin-top: 0.6rem;
   padding: 0.5rem 0.6rem;
-  background: #ebe8e0;
-  border: 1px solid #c5bfb5;
-  border-radius: 4px;
-  color: #3e0706;
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-edge);
+  color: var(--bc-text);
   font-size: 0.85rem;
   line-height: 1.6;
   display: flex;
@@ -1434,26 +1506,11 @@ body.theme-dark .beneos-spell-desc .bsd-download,
 }
 
 /* =======================================================================================
-   Beneos Tactical Guide – Labels
-   Ziel: ruhige, gut lesbare Labels mit subtilen Farbakzenten.
-   → Zwei Style-Sets je nach Foundry-Theme: .theme-light und .theme-dark
-   → Bestehende Klassen-Namen bleiben unverändert.
-   ======================================================================================= */
-
-/* =======================================================================================
-   Beneos Tactical Guide – Labels (Light/Dark)
-   Änderungen:
-   - .bne--condition  (Foundry-Zustände): ROT (gut erkennbar)
-   - .bne--cond       (Bedingungen): zurück zu GRAU (ruhig, gut lesbar, warmes Grau)
-   - .bne--attr       (Attribute): erhält das bisherige „Sage“-GRÜN (Fläche)
-   - .bne--cond-plain (Saves/Ability): GOLD (Fläche)
-   - .bne--action     (Action Economy): helles, neutrales BLAU (Fläche, Uppercase)
-   - .bne--advantage  (Advantage/Disadvantage): Outline-only in Action-Blau, NICHT Uppercase
-   - .bne--distance/.bne--range (Entfernungen): Outline-only VIOLETT (kein Hintergrund)
-   - .bne--dc         (DC): Outline-only (kein Hintergrund)
-   - .bne--info       (Standard): neutrales kühles Grau (Fläche)
-   - .bne--attack     (Attack): gedämpftes ORANGE (Fläche)
-   Typografie: insgesamt filigraner (geringeres Gewicht, leicht erhöhte Laufweite)
+   Beneos Tactical Guide labels (.bne-chip with a kind class .bne--*).
+   Dark theme: one solid dark chip for every kind, kinds are not tinted
+   (standard COL-15, COL-17). Light theme: the kind tints below stay as they
+   are until the light Bone variant is decided (standard 2.7). Class names
+   stay unchanged.
    ======================================================================================= */
 
 /* ---- Basis: gemeinsame Chip-Gestaltung ------------------------------------------------ */
@@ -1461,8 +1518,9 @@ body.theme-dark .beneos-spell-desc .bsd-download,
   display: inline-flex;
   align-items: center;
   padding: .10em .45em;
-  border-radius: 3px;
+  border-radius: var(--bc-edge);
   border: 1px solid transparent;
+  font-family: var(--bc-font-ui);
   font-size: .78rem;
   line-height: 1.25;
   font-weight: 500;
@@ -1477,7 +1535,7 @@ body.theme-dark .beneos-spell-desc .bsd-download,
 /* Optional kompakt */
 .bne-chip.is-tight {
   padding: .06em .38em;
-  font-size: .72rem;
+  font-size: 12px;
 }
 
 /* ---- Farb-Token (Fallbacks). Diese HSL-Werte können zentral überschrieben werden ------ */
@@ -1488,7 +1546,7 @@ body.theme-dark .beneos-spell-desc .bsd-download,
   --_l: var(--bne-l-condition, 52%);
 }
 
-/* GRAU (warmes Grau) für Bedingungen – sehr häufig, soll ruhig wirken */
+/* GRAU (warmes Grau) für Bedingungen: sehr häufig, soll ruhig wirken */
 .bne--cond {
   --_h: var(--bne-h-cond, 30);
   --_s: var(--bne-s-cond, 10%);
@@ -1509,49 +1567,49 @@ body.theme-dark .beneos-spell-desc .bsd-download,
   --_l: var(--bne-l-action, 55%);
 }
 
-/* ADV/DIS – neutral: nutzt Action-Blau (Outline-only) */
+/* ADV/DIS: neutral: nutzt Action-Blau (Outline-only) */
 .bne--advantage {
   --_h: var(--bne-h-advantage, var(--bne-h-action, 205));
   --_s: var(--bne-s-advantage, var(--bne-s-action, 55%));
   --_l: var(--bne-l-advantage, var(--bne-l-action, 55%));
 }
 
-/* ATTRIBUTE – „Sage“-GRÜN (Fläche) */
+/* ATTRIBUTE: „Sage“-GRÜN (Fläche) */
 .bne--attr {
   --_h: var(--bne-h-attr, 150);
   --_s: var(--bne-s-attr, 24%);
   --_l: var(--bne-l-attr, 48%);
 }
 
-/* TARGET – kühles Blau-Grau (Fläche, geringer Attention-Draw) */
+/* TARGET: kühles Blau-Grau (Fläche, geringer Attention-Draw) */
 .bne--target {
   --_h: var(--bne-h-target, 210);
   --_s: var(--bne-s-target, 28%);
   --_l: var(--bne-l-target, 52%);
 }
 
-/* ATTACK – gedämpftes Orange (Fläche) */
+/* ATTACK: gedämpftes Orange (Fläche) */
 .bne--attack {
   --_h: var(--bne-h-attack, 28);
   --_s: var(--bne-s-attack, 70%);
   --_l: var(--bne-l-attack, 54%);
 }
 
-/* INFO – neutrales kühles Grau (Fläche) */
+/* INFO: neutrales kühles Grau (Fläche) */
 .bne--info {
   --_h: var(--bne-h-info, 220);
   --_s: var(--bne-s-info, 12%);
   --_l: var(--bne-l-info, 54%);
 }
 
-/* DC – kühles Stahlgrau (Outline-only) */
+/* DC: kühles Stahlgrau (Outline-only) */
 .bne--dc {
   --_h: var(--bne-h-dc, 250);
   --_s: var(--bne-s-dc, 16%);
   --_l: var(--bne-l-dc, 54%);
 }
 
-/* DISTANCES/RANGE – Violett (Outline-only). Beide Klassen abgedeckt, falls bereits vergeben. */
+/* DISTANCES/RANGE: Violett (Outline-only). Beide Klassen abgedeckt, falls bereits vergeben. */
 .bne--distance,
 .bne--range {
   --_h: var(--bne-h-distance, 268);
@@ -1561,16 +1619,13 @@ body.theme-dark .beneos-spell-desc .bsd-download,
 
 /* ---- Typografie-Spezialfälle --------------------------------------------------------- */
 .bne--action {
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  font-weight: 540;
+  font-weight: 500;
 }
 
-/* Uppercase darf etwas kräftiger sein */
 .bne--advantage {
   text-transform: none;
   letter-spacing: .045em;
-  font-weight: 520;
+  font-weight: 500;
 }
 
 /* Outline-only, nicht schreien */
@@ -1578,11 +1633,11 @@ body.theme-dark .beneos-spell-desc .bsd-download,
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1, "calt" 0;
   letter-spacing: .02em;
-  font-weight: 510;
+  font-weight: 500;
 }
 
 /* =======================================================================================
-   LIGHT MODE – helle, ruhige Flächen; klare, aber weiche Konturen
+   LIGHT MODE: helle, ruhige Flaechen; Bestand bis Standard 2.7 entschieden ist
    ======================================================================================= */
 .theme-light .bne--condition {
   /* ROT (Fläche) */
@@ -1592,7 +1647,7 @@ body.theme-dark .beneos-spell-desc .bsd-download,
 }
 
 .theme-light .bne--cond {
-  /* WARME GRAU-FLÄCHE – sehr häufig, maximal ruhig */
+  /* WARME GRAU-FLÄCHE: sehr häufig, maximal ruhig */
   color: hsl(var(--_h) var(--_s) calc(var(--_l) - 8%));
   background: hsla(var(--_h) var(--_s) calc(var(--_l) + 10%) / .12);
   border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 12%) / .26);
@@ -1666,94 +1721,80 @@ body.theme-dark .beneos-spell-desc .bsd-download,
 }
 
 /* =======================================================================================
-   DARK MODE – dunkle, ruhige Töne; helle Schrift; etwas kräftigere Konturen
+   DARK MODE: one solid dark chip, no kind tints (COL-15, COL-17)
    ======================================================================================= */
-.theme-dark .bne--condition {
-  /* ROT (Fläche) */
-  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 16%));
-  background: hsla(var(--_h) var(--_s) calc(var(--_l) - 6%) / .26);
-  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 22%) / .52);
-}
-
-.theme-dark .bne--cond {
-  /* WARME GRAU-FLÄCHE – sehr häufig, maximal ruhig */
-  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 12%));
-  background: hsla(var(--_h) var(--_s) calc(var(--_l) - 8%) / .20);
-  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 20%) / .46);
-}
-
-.theme-dark .bne--cond-plain {
-  /* GOLD (Fläche) */
-  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 14%));
-  background: hsla(var(--_h) var(--_s) calc(var(--_l) - 6%) / .24);
-  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 22%) / .52);
-}
-
-.theme-dark .bne--action {
-  /* BLAU (Fläche) */
-  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 18%));
-  background: hsla(var(--_h) var(--_s) calc(var(--_l) - 8%) / .24);
-  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 22%) / .54);
-}
-
-.theme-dark .bne--advantage {
-  /* Outline-only in Action-Blau */
-  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 14%));
-  background: transparent;
-  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 10%) / .60);
-  border-style: solid;
-}
-
-.theme-dark .bne--attr {
-  /* SAGE-GRÜN (Fläche) */
-  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 16%));
-  background: hsla(var(--_h) var(--_s) calc(var(--_l) - 6%) / .26);
-  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 22%) / .50);
-}
-
-.theme-dark .bne--distance,
-.theme-dark .bne--range {
-  /* VIOLETT Outline-only */
-  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 10%));
-  background: transparent;
-  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 12%) / .64);
-  border-style: solid;
-}
-
-.theme-dark .bne--target {
-  /* kühles Blau-Grau (Fläche, dezent) */
-  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 12%));
-  background: hsla(var(--_h) var(--_s) calc(var(--_l) - 8%) / .22);
-  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 20%) / .48);
-}
-
-.theme-dark .bne--attack {
-  /* gedämpftes Orange (Fläche) */
-  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 14%));
-  background: hsla(var(--_h) var(--_s) calc(var(--_l) - 8%) / .22);
-  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 22%) / .50);
-}
-
-.theme-dark .bne--info {
-  /* neutrales kühles Grau (Fläche) */
-  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 12%));
-  background: hsla(var(--_h) var(--_s) calc(var(--_l) - 6%) / .26);
-  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 18%) / .50);
-}
-
-.theme-dark .bne--dc {
-  /* DC: Outline-only */
-  color: hsl(var(--_h) var(--_s) calc(var(--_l) + 10%));
-  background: transparent;
-  border-color: hsla(var(--_h) var(--_s) calc(var(--_l) - 12%) / .64);
-  border-style: solid;
+.theme-dark .bne-chip {
+  color: var(--bc-text-muted);
+  background: var(--bc-card-hover);
+  border-color: transparent;
 }
 
 .beneos-window-title-green {
-  /* Fix #B-3: Patreon-OK status — was hardcoded #1b9200. */
-  color: var(--bc-success, #1b9200);
+  /* Patreon OK: success colour with the word in the title. */
+  color: var(--bc-success);
 }
 .beneos-window-title-orange {
-  /* Fix #B-3: Patreon-NOK status — was hardcoded #d56b52. */
-  color: var(--bc-danger, #d56b52);
+  /* Patreon not active is not a failure, so no red (COL-07). */
+  color: var(--bc-text-muted);
+}
+
+/* =======================================================================================
+   Beneos actor menu (token list opened from a Beneos creature sheet)
+   ======================================================================================= */
+.beneos-actor-menu .window-content {
+  background: var(--bc-bg-panel);
+  color: var(--bc-text);
+  font-family: var(--bc-font-ui);
+  scrollbar-width: thin;
+  scrollbar-color: var(--bc-border-control) transparent;
+}
+.beneos-actor-menu .beneos-search-token-text {
+  background: var(--bc-card);
+  color: var(--bc-text);
+  border: 1px solid var(--bc-border-control);
+  border-radius: var(--bc-edge);
+}
+.beneos-actor-menu .beneos-search-token-text:focus {
+  border-color: var(--bc-accent);
+  box-shadow: none;
+}
+
+/* =======================================================================================
+   Table Top Mode settings window
+   ======================================================================================= */
+.beneos-module.settings .window-content {
+  background: var(--bc-bg-panel);
+  color: var(--bc-text);
+  font-family: var(--bc-font-ui);
+}
+.beneos-module.settings input[type="text"] {
+  background: var(--bc-card);
+  color: var(--bc-text);
+  border: 1px solid var(--bc-border-control);
+  border-radius: var(--bc-edge);
+}
+.beneos-module.settings input[type="text"]:focus {
+  border-color: var(--bc-accent);
+  box-shadow: none;
+}
+.beneos-module.settings input[type="checkbox"] {
+  accent-color: var(--bc-accent);
+}
+.beneos-module.settings button[type="submit"] {
+  background: var(--bc-accent);
+  color: var(--bc-text-on-accent);
+  border: 1px solid var(--bc-accent);
+  border-radius: var(--bc-edge);
+  font-family: var(--bc-font-ui);
+  font-weight: 500;
+  box-shadow: none;
+  transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
+}
+.beneos-module.settings button[type="submit"]:hover {
+  background: var(--bc-accent-strong);
+  border-color: var(--bc-accent-strong);
+}
+.beneos-module.settings button[type="submit"]:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
 }

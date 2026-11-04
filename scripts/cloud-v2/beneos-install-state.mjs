@@ -593,7 +593,7 @@ export class BeneosPreInstallDialog {
 
     const content =
       `<p style="line-height:1.5">${body}</p>` +
-      `<p style="line-height:1.5;opacity:.75">${foundry.utils.escapeHTML(rebuild)}</p>`
+      `<p style="line-height:1.5;color:var(--bc-text-muted)">${foundry.utils.escapeHTML(rebuild)}</p>`
 
     try {
       const wahl = await DialogV2.wait({

@@ -545,26 +545,24 @@ TOUR_CSS.textContent = `
     pointer-events: none !important;
   }
 
-  /* Gold glow for chat messages highlighted by the tour. Uses a dedicated
+  /* Accent ring for chat messages highlighted by the tour. Uses a dedicated
      class (NOT .tour-highlight) so we don't collide with sidebar/clipping
-     quirks. Does NOT override the chat message's own background — that
+     quirks. Does NOT override the chat message's own background, that
      would turn the message transparent and let the canvas bleed through. */
   #chat-log .chat-message.beneos-chat-highlight,
   .chat-log .chat-message.beneos-chat-highlight {
-    outline: 3px solid #f5c992 !important;
+    outline: 2px solid var(--bc-accent) !important;
     outline-offset: 2px !important;
-    border-radius: 4px !important;
-    box-shadow: 0 0 14px 4px rgba(245, 201, 146, 0.55) !important;
+    border-radius: var(--bc-edge) !important;
     position: relative !important;
     z-index: 100 !important;
   }
 
   /* Generic tour highlight for filter dropdowns and result boxes */
   .beneos-filter-highlight {
-    outline: 3px solid #f5c992 !important;
+    outline: 2px solid var(--bc-accent) !important;
     outline-offset: 2px !important;
-    border-radius: 4px !important;
-    box-shadow: 0 0 14px 4px rgba(245, 201, 146, 0.55) !important;
+    border-radius: var(--bc-edge) !important;
     position: relative !important;
     z-index: 10 !important;
   }
@@ -584,8 +582,8 @@ TOUR_CSS.textContent = `
   }
   .beneos-countdown-box #beneos-countdown {
     font-size: 1.4em;
-    color: #f5c992;
-    font-weight: bold;
+    color: var(--bc-text);
+    font-weight: 600;
   }
 
   /* Fake context menu (visual demonstration of right-click options on a Note) */
@@ -702,9 +700,8 @@ TOUR_CSS.textContent = `
   #mou-browser .asset.inline.beneos-tour-row-focus,
   #mou-cloud .asset.inline.beneos-tour-row-focus,
   .browser .asset.inline.beneos-tour-row-focus {
-    outline: 3px solid #f5c992;
+    outline: 2px solid var(--bc-accent);
     outline-offset: 2px;
-    box-shadow: 0 0 12px 4px rgba(245, 201, 146, 0.6);
     z-index: 10001;
     position: relative;
   }
@@ -1011,7 +1008,7 @@ class BeneosSetupTour extends TourBase {
       height: `${bottom - top}px`,
       pointerEvents: "none",
       zIndex: "999998",
-      boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.75)"
+      boxShadow: "0 0 0 9999px var(--bc-scrim-75)"
     });
     document.body.appendChild(cutout);
     this._spotlight = [cutout];
@@ -2639,7 +2636,7 @@ class BeneosTutorialSceneTour extends TourBase {
 
   /**
    * Open the chat sidebar tab and highlight its last message with the
-   * custom .beneos-chat-highlight class (gold glow). Waits `delayMs` first
+   * custom .beneos-chat-highlight class (accent ring). Waits `delayMs` first
    * so any MLT teleport notification has time to arrive.
    *
    * @returns {HTMLElement|null}  The highlighted chat message element, or null.
@@ -3204,7 +3201,7 @@ class BeneosTutorialSceneTour extends TourBase {
       pointerEvents: "none",
       // Above Foundry app windows; tour tooltip is at 999999 via CSS
       zIndex: "999998",
-      boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.75)"
+      boxShadow: "0 0 0 9999px var(--bc-scrim-75)"
     });
     document.body.appendChild(cutout);
     this._spotlight = [cutout];
@@ -8709,47 +8706,50 @@ async function _maybeHandInstallComplete() {
 }
 
 // ---------- Beneos-styled confirmation-dialog CSS ----------
-// Same palette as the asset-watcher dialog so the Setup-Tour confirm box
-// visually matches the tour tooltips (dark bg, gold border + accents).
+// Same Bone palette as the asset-watcher dialog: panel surface, hairline
+// frame, default buttons, and the Yes action as the filled dialog primary.
 (() => {
   if (document.getElementById("beneos-tour-confirm-styles")) return;
   const css = document.createElement("style");
   css.id = "beneos-tour-confirm-styles";
   css.textContent = `
     .beneos-tour-confirm-dialog {
-      background: #151412 !important;
-      color: #e6e5e3 !important;
-      border: none !important;
-      border-radius: 6px !important;
+      background: var(--bc-bg-panel) !important;
+      color: var(--bc-text) !important;
+      font-family: var(--bc-font-ui) !important;
+      border: 1px solid var(--bc-border-strong) !important;
+      border-radius: var(--bc-edge) !important;
       overflow: hidden !important;
-      box-shadow:
-        inset 0 0 0 2px #f5c992,
-        0 0 24px rgba(245, 201, 146, 0.25) !important;
+      box-shadow: var(--bc-shadow-pop) !important;
     }
     .beneos-tour-confirm-dialog .window-header {
-      background: #151412 !important;
-      color: #f5c992 !important;
-      border-bottom: 1px solid #f5c992 !important;
+      background: var(--bc-bg) !important;
+      color: var(--bc-text) !important;
+      border-bottom: 1px solid var(--bc-border) !important;
     }
-    .beneos-tour-confirm-dialog .window-header .window-title { color: #f5c992 !important; }
+    .beneos-tour-confirm-dialog .window-header .window-title {
+      color: var(--bc-text) !important;
+      font-family: var(--bc-font-ui) !important;
+      font-weight: 600 !important;
+    }
     .beneos-tour-confirm-dialog .window-content {
-      background: #151412 !important;
-      color: #e6e5e3 !important;
+      background: var(--bc-bg-panel) !important;
+      color: var(--bc-text) !important;
       padding: 0.75em 1em !important;
     }
     .beneos-tour-confirm-dialog p,
-    .beneos-tour-confirm-dialog li { color: #e6e5e3 !important; }
+    .beneos-tour-confirm-dialog li { color: var(--bc-text) !important; }
     .beneos-tour-confirm-dialog label.beneos-dont-show {
       display: inline-flex !important;
       align-items: center !important;
       gap: 0.5em !important;
       margin-top: 0.8em !important;
-      color: #e6e5e3 !important;
+      color: var(--bc-text) !important;
       cursor: pointer !important;
       user-select: none !important;
     }
     .beneos-tour-confirm-dialog label.beneos-dont-show input[type="checkbox"] {
-      accent-color: #f5c992 !important;
+      accent-color: var(--bc-accent) !important;
       cursor: pointer !important;
     }
     /* First-run prompt: constrain width so text wraps and buttons stay
@@ -8796,41 +8796,54 @@ async function _maybeHandInstallComplete() {
     }
     .beneos-tour-firstrun .beneos-firstrun-body { min-width: 0 !important; }
     .beneos-tour-confirm-dialog strong,
-    .beneos-tour-confirm-dialog b { color: #f5c992 !important; }
+    .beneos-tour-confirm-dialog b { color: var(--bc-text) !important; font-weight: 600 !important; }
     .beneos-tour-confirm-dialog .dialog-buttons button,
     .beneos-tour-confirm-dialog .form-footer button {
-      background: #2a2623 !important;
-      color: #f5c992 !important;
-      border: 1px solid #f5c992 !important;
+      background: var(--bc-card) !important;
+      color: var(--bc-text) !important;
+      border: 1px solid var(--bc-border-control) !important;
+      border-radius: var(--bc-edge) !important;
+      font-family: var(--bc-font-ui) !important;
+      box-shadow: none !important;
+      transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease) !important;
     }
     .beneos-tour-confirm-dialog .dialog-buttons button:hover,
     .beneos-tour-confirm-dialog .form-footer button:hover {
-      background: #3a3228 !important;
+      background: var(--bc-card-hover) !important;
+      border-color: var(--bc-accent) !important;
     }
-    /* Pulsing Yes button — mirrors the tour-tooltip border pulse (white
-       <-> gold glow) so the dialog's primary action catches the eye. */
-    @keyframes beneos-tour-confirm-yes-pulse {
-      0%, 100% {
-        box-shadow: 0 0 4px rgba(245, 201, 146, 0.35), inset 0 0 0 1px #f5c992;
-        color: #f5c992 !important;
-      }
-      50% {
-        box-shadow: 0 0 14px rgba(245, 201, 146, 0.95), inset 0 0 0 2px #f5c992;
-        color: #fff2d6 !important;
-      }
+    .beneos-tour-confirm-dialog .dialog-buttons button:active,
+    .beneos-tour-confirm-dialog .form-footer button:active {
+      background: var(--bc-bg-pressed) !important;
     }
+    .beneos-tour-confirm-dialog .dialog-buttons button:focus-visible,
+    .beneos-tour-confirm-dialog .form-footer button:focus-visible {
+      outline: 2px solid var(--bc-accent) !important;
+      outline-offset: 2px !important;
+    }
+    /* Yes is the primary action of the dialog: filled Bone, no pulse. */
     .beneos-tour-confirm-dialog button[data-button="yes"],
     .beneos-tour-confirm-dialog .dialog-button.yes,
     .beneos-tour-confirm-dialog .dialog-buttons button.yes,
     .beneos-tour-confirm-dialog .form-footer button[data-button="yes"] {
-      animation: beneos-tour-confirm-yes-pulse 1.1s ease-in-out infinite;
+      background: var(--bc-accent) !important;
+      color: var(--bc-text-on-accent) !important;
+      border-color: var(--bc-accent) !important;
+      font-weight: 500 !important;
+    }
+    .beneos-tour-confirm-dialog button[data-button="yes"]:hover,
+    .beneos-tour-confirm-dialog .dialog-button.yes:hover,
+    .beneos-tour-confirm-dialog .dialog-buttons button.yes:hover,
+    .beneos-tour-confirm-dialog .form-footer button[data-button="yes"]:hover {
+      background: var(--bc-accent-strong) !important;
+      border-color: var(--bc-accent-strong) !important;
     }
     /* Full-screen install overlay: blocks clicks, shows spinner + message
        so the user can't accidentally interrupt the install. */
     #beneos-install-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.94);
+      background: var(--bc-scrim);
       z-index: 2147483000;
       display: flex;
       align-items: center;
@@ -8855,14 +8868,14 @@ async function _maybeHandInstallComplete() {
       pointer-events: none;
     }
     #beneos-install-overlay .beneos-install-text {
-      color: #f5c992;
+      color: var(--bc-text);
+      font-family: var(--bc-font-ui);
       font-size: 1.35rem;
       font-weight: 600;
       line-height: 1.4;
-      text-shadow: 0 0 10px rgba(245, 201, 146, 0.35);
       user-select: none;
     }
-    /* Moulinette login waiting overlay — pinned top-center, non-modal so
+    /* Moulinette login waiting overlay, pinned top-center, non-modal so
        the user can still interact with the Moulinette user window beneath. */
     #beneos-login-overlay {
       position: fixed;
@@ -8877,10 +8890,12 @@ async function _maybeHandInstallComplete() {
       align-items: center;
       gap: 1em;
       padding: 0.75em 1.25em;
-      background: #151412;
-      border: 2px solid #f5c992;
-      border-radius: 8px;
-      box-shadow: 0 0 24px rgba(245, 201, 146, 0.35);
+      background: var(--bc-bg-panel);
+      color: var(--bc-text);
+      font-family: var(--bc-font-ui);
+      border: 1px solid var(--bc-border-strong);
+      border-radius: var(--bc-edge);
+      box-shadow: var(--bc-shadow-pop);
       max-width: 520px;
     }
     #beneos-login-overlay .beneos-login-logo {
@@ -8899,36 +8914,43 @@ async function _maybeHandInstallComplete() {
       min-width: 0;
     }
     #beneos-login-overlay .beneos-login-text {
-      color: #f5c992;
+      color: var(--bc-text);
       font-size: 1rem;
       font-weight: 600;
       line-height: 1.3;
     }
     #beneos-login-overlay .beneos-login-hint {
-      color: #c9c5bd;
+      color: var(--bc-text-muted);
       font-size: 0.85rem;
       line-height: 1.3;
     }
+    /* Recheck is the one action of the overlay: filled Bone, no pulse. */
     #beneos-login-overlay .beneos-login-recheck {
-      background: #2a2623;
-      color: #f5c992;
-      border: 1px solid #f5c992;
-      border-radius: 4px;
+      background: var(--bc-accent);
+      color: var(--bc-text-on-accent);
+      border: 1px solid var(--bc-accent);
+      border-radius: var(--bc-edge);
       padding: 0.35em 1em;
       margin-top: 0.4em;
       align-self: flex-start;
       cursor: pointer;
+      font-family: var(--bc-font-ui);
       font-size: 0.9rem;
-      animation: beneos-tour-confirm-yes-pulse 1.1s ease-in-out infinite;
+      font-weight: 500;
+      transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
     }
     #beneos-login-overlay .beneos-login-recheck:hover {
-      background: #3a3228;
+      background: var(--bc-accent-strong);
+      border-color: var(--bc-accent-strong);
+    }
+    #beneos-login-overlay .beneos-login-recheck:focus-visible {
+      outline: 2px solid var(--bc-accent);
+      outline-offset: 2px;
     }
     #beneos-login-overlay .beneos-login-recheck.is-checking {
       opacity: 0.6;
       pointer-events: none;
       cursor: wait;
-      animation: none;
     }
   `;
   document.head.appendChild(css);

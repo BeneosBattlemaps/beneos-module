@@ -67,12 +67,12 @@ export function diffAndMaybeFarewell(actor) {
   if (lost.length && newSet.size === 0) {
     // Snapshot fallback for the connected-user case: if the player
     // never opened their sheet while a ping was active, we have no
-    // stored origin info — use a neutral gold cue so the overlay
-    // still renders and the player sees the "contact lost" beat.
+    // stored origin info. A neutral accent cue keeps the overlay
+    // rendering, so the player still sees the "contact lost" beat.
     const snap = _lastActiveSnapshot.get(actor.id) ?? {
       originSlug: null,
       originName: "",
-      originColor: "#d4a857",
+      originColor: "var(--bc-accent)",
       iconPath: null,
     };
     setFarewell(actor.id, snap, 4000);
@@ -220,9 +220,9 @@ function _hydrateSense(s) {
       slug,
       mono: meta.mono ?? slug.slice(0, 2).toUpperCase(),
       name,
-      color: meta.glow ?? "#d4a857",
+      color: meta.glow ?? "var(--bc-accent)",
     },
-    gemColor: RARITY_COLORS[s.rarity] ?? "#d4a857",
+    gemColor: RARITY_COLORS[s.rarity] ?? "var(--bc-accent)",
   };
 }
 

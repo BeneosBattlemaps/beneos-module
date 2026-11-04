@@ -2,12 +2,11 @@
      from the master mock. Phase is set on the wrapping <div> so CSS
      transitions can stagger enter → reading → leaving. --}}
 <div class="death-prompt" data-phase="{{phase}}">
-  <div class="dp-glow"
-       style="background: radial-gradient(ellipse at center, {{data.sizeTone.glow}}55, transparent 70%);"></div>
+  <div class="dp-glow"></div>
 
   <header class="dp-head">
     <div class="dp-portrait"
-         style="background: linear-gradient(135deg, {{data.sizeTone.primary}}, {{data.sizeTone.secondary}});">
+         style="background: var(--bc-card-hover);">
       <span>{{data.portraitInitial}}</span>
     </div>
     <div class="dp-meta">
@@ -25,7 +24,7 @@
 
   <footer class="dp-foot">
     <button type="button" class="dp-link" data-action="openCodex">
-      <i class="fa-solid fa-circle-info"></i> {{localize "BENEOS.CreatureCodex.DeathPrompt.OpenCodex"}}
+      {{localize "BENEOS.CreatureCodex.DeathPrompt.OpenCodex"}}
     </button>
     <span class="dp-hint">{{localize "BENEOS.CreatureCodex.DeathPrompt.SettingHint"}}</span>
     <button type="button" class="dp-btn" data-action="dismiss">

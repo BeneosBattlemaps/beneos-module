@@ -9,7 +9,7 @@
   <nav class="cdx-tabs">
     {{#each header.tabs}}
       <button class="cdx-tab {{#if active}}active{{/if}}" data-action="go-route" data-route="{{id}}">
-        {{localize label}}{{#if wip}}<span class="count" style="background:rgba(180,109,232,0.10);border-color:rgba(180,109,232,0.42);color:#d9a8ee;">{{localize "BENEOS.Codex.WIP"}}</span>{{/if}}
+        {{localize label}}{{#if wip}}<span class="count" style="background:var(--bc-card-hover);border-color:transparent;color:var(--bc-text-muted);">{{localize "BENEOS.Codex.WIP"}}</span>{{/if}}
       </button>
     {{/each}}
   </nav>

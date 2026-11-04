@@ -1,7 +1,10 @@
 /* ============================================================
    Beneos Item-Sheet-Companion (M7.2)
-   Re-uses design tokens from beneos-codex.css :root
-   (--gold, --ink-primary, --bg-card, etc.)
+   Bone tokens from beneos-cloud-tokens.css (Beneos design standard
+   2.4, 2.5). The dnd5e item sheet itself stays untouched; only the
+   companion panel beside it is styled here.
+   --origin-glow and --origin-ring are content data
+   (scripts/codex2/origin-meta.mjs) and only mark the origin dot.
    ============================================================ */
 
 /* ---- Outer shell (Side mode) ------------------------------------------ */
@@ -10,8 +13,10 @@
      the parent item-sheet's z-index, so the companion is part of its
      owner's window-stack level (not floating above unrelated windows). */
   pointer-events: auto;
-  color: var(--ink-primary, #f5e9cf);
-  font-family: "EB Garamond", "Geist", system-ui, serif;
+  color: var(--bc-text);
+  font-family: var(--bc-font-ui);
+  scrollbar-width: thin;
+  scrollbar-color: var(--bc-border-control) transparent;
 }
 .beneos-companion *,
 .beneos-companion *::before,
@@ -21,7 +26,7 @@
   /* position is set inline by item-companion.mjs._positionSide().
      The template wrapper carries both classes (.beneos-companion-shell
      .beneos-companion .beneos-companion--side) on the same element, so
-     the surface styles live directly on this selector — no descendant. */
+     the surface styles live directly on this selector, no descendant. */
   width: 320px;
   max-height: 100vh;
   overflow-y: auto;
@@ -29,12 +34,12 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  background: linear-gradient(180deg, #1a140e 0%, #0d0a08 100%);
-  border: 1px solid rgba(212, 168, 87, 0.22);
-  border-left: 3px solid var(--origin-glow, var(--gold, #d4a857));
-  border-radius: 10px;
+  background: var(--bc-bg-panel);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-edge);
   padding: 14px 14px 18px;
-  box-shadow: 0 16px 60px rgba(0, 0, 0, 0.55), 0 2px 0 rgba(255, 220, 160, 0.04) inset;
+  /* Floating panel beside the sheet: popover shadow (FRM-10). */
+  box-shadow: var(--bc-shadow-pop);
 }
 
 /* ---- Header ----------------------------------------------------------- */
@@ -43,61 +48,73 @@
   align-items: center;
   gap: 8px;
   padding-bottom: 10px;
-  border-bottom: 1px solid rgba(212, 168, 87, 0.14);
+  border-bottom: 1px solid var(--bc-border);
 }
 .beneos-companion .bc-brand {
-  display: flex; align-items: center; gap: 6px;
-  font-family: "Cinzel", serif;
-  color: var(--gold-soft, #b89146);
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--bc-font-ui);
+  color: var(--bc-text);
 }
 /* The Beneos SVG is pure-black geometry. Recolor by using it as a mask and
-   filling the element with the brand gold so the logo matches the title. */
+   filling the element with the primary text colour. */
 .beneos-companion .bc-brand-mark {
   width: 24px; height: 24px;
   display: inline-block;
-  background-color: #ffffff;
+  background-color: var(--bc-text);
   -webkit-mask: url("../icons/beneos_logo.svg") center / contain no-repeat;
           mask: url("../icons/beneos_logo.svg") center / contain no-repeat;
   border-radius: 0;
   padding: 0;
 }
 .beneos-companion .bc-brand-label {
-  font-size: 10.5px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 600;
 }
 .beneos-companion .bc-glow-pill {
   margin-left: auto;
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid var(--origin-ring, rgba(255, 255, 255, 0.18));
-  font-size: 10.5px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: var(--bc-edge);
+  background: var(--bc-card-hover);
+  border: none;
+  font-size: 12px;
+  font-weight: 500;
   text-transform: lowercase;
-  letter-spacing: 0.12em;
-  color: var(--ink-secondary, #c8b896);
+  color: var(--bc-text-muted);
 }
+/* Origin dot: the origin colour is content data, a solid status dot. */
 .beneos-companion .bc-glow-dot {
   width: 8px; height: 8px;
   border-radius: 50%;
-  background: var(--origin-glow, var(--gold, #d4a857));
-  box-shadow: 0 0 8px var(--origin-glow, rgba(212, 168, 87, 0.45));
+  background: var(--origin-glow, var(--bc-text-muted));
+  box-shadow: none;
 }
 .beneos-companion .bc-iconbtn {
   background: transparent;
-  border: 1px solid rgba(212, 168, 87, 0.20);
-  color: var(--ink-muted, #8a7c63);
-  width: 26px; height: 26px;
-  border-radius: 6px;
+  border: 1px solid transparent;
+  color: var(--bc-text-muted);
+  width: 32px; height: 32px;
+  border-radius: var(--bc-edge);
   cursor: pointer;
   font-size: 14px;
   line-height: 1;
   padding: 0;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  transition: color var(--bc-dur-fast) var(--bc-ease),
+              border-color var(--bc-dur-fast) var(--bc-ease),
+              background var(--bc-dur-fast) var(--bc-ease);
 }
-.beneos-companion .bc-iconbtn:hover { color: var(--gold-bright, #f0c772); border-color: var(--gold-soft, #b89146); }
-.beneos-companion .bc-iconbtn.is-on { color: var(--gold-bright, #f0c772); background: rgba(212, 168, 87, 0.10); }
+.beneos-companion .bc-iconbtn:hover { color: var(--bc-text); border-color: var(--bc-border-control); }
+.beneos-companion .bc-iconbtn:active { background: var(--bc-bg-pressed); }
+.beneos-companion .bc-iconbtn:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
+}
+.beneos-companion .bc-iconbtn.is-on {
+  color: var(--bc-text);
+  background: var(--bc-card-hover);
+  border-color: var(--bc-border-control);
+}
 
 /* ---- Hero ------------------------------------------------------------- */
 .beneos-companion .bc-hero {
@@ -110,62 +127,60 @@
   position: relative;
   width: 84px; height: 84px;
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 35%, rgba(255,255,255,0.05), rgba(0,0,0,0.4));
-  border: 1px solid var(--origin-ring, rgba(255,255,255,0.18));
+  background: var(--bc-bg);
+  border: 1px solid var(--bc-border-strong);
   overflow: hidden;
   display: grid; place-items: center;
-  box-shadow: 0 0 24px var(--origin-glow, rgba(212,168,87,0.25)) inset;
+  box-shadow: none;
   cursor: pointer;
-  transition: box-shadow 0.2s, transform 0.2s;
+  transition: border-color var(--bc-dur-fast) var(--bc-ease);
 }
 .beneos-companion .bc-emblem:hover {
-  box-shadow: 0 0 30px var(--origin-glow, rgba(212, 168, 87, 0.55)) inset;
-  transform: scale(1.04);
+  border-color: var(--bc-accent);
+  box-shadow: none;
 }
 .beneos-companion .bc-emblem:focus-visible {
-  outline: 2px solid var(--gold-bright, #f0c772);
+  outline: 2px solid var(--bc-accent);
   outline-offset: 2px;
 }
 .beneos-companion .bc-emblem-img {
   width: 100%; height: 100%;
   object-fit: contain;
-  filter: drop-shadow(0 0 6px var(--origin-glow, rgba(212,168,87,0.35)));
+  filter: none;
 }
 .beneos-companion .bc-emblem-mono {
-  font-family: "Cinzel", serif;
+  font-family: var(--bc-font-ui);
   font-size: 24px;
-  color: var(--origin-glow, var(--gold-bright, #f0c772));
-  letter-spacing: 0.06em;
+  font-weight: 600;
+  color: var(--bc-text);
 }
+/* Former glow ring around the emblem, removed (COL-14). */
 .beneos-companion .bc-emblem-glow {
-  position: absolute; inset: -4px;
-  border-radius: 50%;
-  box-shadow: 0 0 18px var(--origin-glow, rgba(212,168,87,0.40));
-  pointer-events: none;
-  opacity: 0.6;
+  display: none;
 }
 .beneos-companion .bc-hero-text { min-width: 0; }
 .beneos-companion .bc-eyebrow {
-  font-family: "Cinzel", serif;
-  font-size: 9.5px;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: var(--gold-soft, #b89146);
-  margin-bottom: 3px;
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--bc-text-muted);
+  margin-bottom: 4px;
 }
 .beneos-companion .bc-name {
-  font-family: "Cinzel", serif;
+  font-family: var(--bc-font-ui);
   font-size: 18px;
+  font-weight: 600;
+  border: none;
   margin: 0 0 6px;
-  color: var(--ink-primary, #f5e9cf);
+  color: var(--bc-text);
   line-height: 1.2;
 }
 .beneos-companion .bc-lore {
-  font-family: "EB Garamond", serif;
+  font-family: var(--bc-font-ui);
   font-style: normal;
   font-size: 13px;
   line-height: 1.45;
-  color: var(--ink-secondary, #c8b896);
+  color: var(--bc-text-muted);
   margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 4;
@@ -178,27 +193,30 @@
   display: flex; align-items: center; gap: 8px;
 }
 .beneos-companion .bc-tier-pill {
-  font-family: "Cinzel", serif;
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(212, 168, 87, 0.10);
-  border: 1px solid var(--gold-soft, #b89146);
-  color: var(--gold-bright, #f0c772);
+  font-family: var(--bc-font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  height: 22px;
+  display: inline-flex; align-items: center;
+  padding: 0 6px;
+  border-radius: var(--bc-edge);
+  background: var(--bc-card-hover);
+  border: none;
+  color: var(--bc-text);
 }
 .beneos-companion .bc-tier-kind {
-  font-family: "Cinzel", serif;
-  font-size: 10px;
-  letter-spacing: 0.20em;
-  text-transform: uppercase;
-  color: var(--ink-muted, #8a7c63);
-  padding: 3px 8px;
-  border-radius: 4px;
-  border: 1px dashed rgba(255,255,255,0.10);
+  font-family: var(--bc-font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--bc-text-muted);
+  height: 22px;
+  display: inline-flex; align-items: center;
+  padding: 0 6px;
+  border-radius: var(--bc-edge);
+  background: var(--bc-card);
+  border: none;
 }
-.beneos-companion .bc-tier-kind.is-named { color: var(--gold-bright, #f0c772); border-color: var(--gold-soft, #b89146); }
+.beneos-companion .bc-tier-kind.is-named { color: var(--bc-text); background: var(--bc-card-hover); }
 
 /* ---- Stats grid ------------------------------------------------------- */
 .beneos-companion .bc-stats {
@@ -207,54 +225,54 @@
   gap: 8px;
 }
 .beneos-companion .bc-stat {
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(212, 168, 87, 0.14);
-  border-radius: 6px;
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-edge);
   padding: 6px 10px;
 }
 .beneos-companion .bc-stat-label {
-  font-family: "Cinzel", serif;
-  font-size: 9.5px;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--ink-muted, #8a7c63);
-  margin-bottom: 3px;
+  font-family: var(--bc-font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--bc-text-muted);
+  margin-bottom: 2px;
 }
 .beneos-companion .bc-stat-value {
-  font-family: "EB Garamond", serif;
+  font-family: var(--bc-font-ui);
   font-size: 14px;
-  color: var(--ink-primary, #f5e9cf);
+  color: var(--bc-text);
 }
+/* Rarity chip: solid dark chip (COL-15). The text colour comes inline
+   from RARITY_COLOR (content data). */
 .beneos-companion .bc-rarity-chip {
-  display: inline-block;
-  padding: 1px 6px;
-  border-radius: 3px;
-  font-family: "Cinzel", serif;
-  font-size: 9px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: var(--bc-edge);
+  background: var(--bc-card-hover);
+  border: none;
+  font-family: var(--bc-font-ui);
+  font-size: 12px;
+  font-weight: 500;
   line-height: 1.5;
-  opacity: 0.88;
+  opacity: 1;
 }
 .beneos-companion .bc-modpips { display: inline-flex; gap: 5px; align-items: center; }
 .beneos-companion .bc-modpip {
   width: 9px; height: 9px;
   border-radius: 50%;
-  border: 1px solid rgba(212, 168, 87, 0.30);
-  background: rgba(0,0,0,0.3);
-  transition: background 0.2s, box-shadow 0.2s;
+  border: 1px solid var(--bc-border-control);
+  background: var(--bc-bg);
+  transition: background var(--bc-dur-fast) var(--bc-ease);
 }
 .beneos-companion .bc-modpip.on {
-  background: var(--gold, #d4a857);
-  border-color: var(--gold-bright, #f0c772);
-  box-shadow: 0 0 6px var(--gold-glow, rgba(240,199,114,0.55));
+  background: var(--bc-text);
+  border-color: var(--bc-text);
+  box-shadow: none;
 }
 .beneos-companion .bc-modpip.is-peak {
-  animation: bc-pip-pulse 2.2s ease-in-out infinite;
-}
-@keyframes bc-pip-pulse {
-  0%, 100% { transform: scale(1);    box-shadow: 0 0 6px var(--gold-bright, #f0c772); }
-  50%      { transform: scale(1.30); box-shadow: 0 0 14px var(--gold-bright, #f0c772); }
+  animation: none;
 }
 
 /* ---- Modifier row (stacked-bars under stats) ----------------------- */
@@ -262,30 +280,29 @@
   display: flex; flex-direction: column;
   gap: 6px;
   padding: 10px 12px;
-  background: rgba(0, 0, 0, 0.28);
-  border-radius: 6px;
-  border-left: 2px solid rgba(212, 168, 87, 0.18);
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-edge);
 }
 .beneos-companion .bc-modifier-header {
   display: flex; align-items: baseline; justify-content: space-between;
 }
 .beneos-companion .bc-modifier-label {
-  font-family: "Cinzel", serif;
-  font-size: 10.5px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--gold-soft, #b89146);
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--bc-text-muted);
 }
 .beneos-companion .bc-modifier-readout {
-  font-family: "Cinzel", serif;
-  font-size: 10.5px;
-  letter-spacing: 0.10em;
-  color: var(--ink-muted, #8a7c63);
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
+  color: var(--bc-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 .beneos-companion .bc-modifier-readout strong {
-  color: var(--gold-bright, #f0d486);
+  color: var(--bc-text);
   font-weight: 600;
-  font-size: 12.5px;
+  font-size: 13px;
 }
 .beneos-companion .bc-modbars {
   display: grid;
@@ -294,23 +311,20 @@
 }
 .beneos-companion .bc-modbar {
   height: 8px;
-  border-radius: 2px;
-  border: 1px solid rgba(212, 168, 87, 0.22);
-  background: rgba(0, 0, 0, 0.40);
-  transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
+  border-radius: var(--bc-edge);
+  border: 1px solid var(--bc-border-control);
+  background: var(--bc-bg);
+  transition: background var(--bc-dur-fast) var(--bc-ease),
+              border-color var(--bc-dur-fast) var(--bc-ease);
 }
 .beneos-companion .bc-modbar.on {
-  background: linear-gradient(90deg, var(--gold-soft, #b89146), var(--gold, #d4a857));
-  border-color: var(--gold-bright, #f0c772);
-  box-shadow: 0 0 5px rgba(240, 199, 114, 0.55);
+  background: var(--bc-text);
+  border-color: var(--bc-text);
+  box-shadow: none;
 }
 .beneos-companion .bc-modbar.is-peak {
-  background: linear-gradient(90deg, var(--gold, #d4a857), var(--gold-bright, #f0d486));
-  animation: bc-bar-pulse 2.4s ease-in-out infinite;
-}
-@keyframes bc-bar-pulse {
-  0%, 100% { box-shadow: 0 0 6px rgba(240, 199, 114, 0.55); }
-  50%      { box-shadow: 0 0 14px rgba(240, 215, 134, 0.90); }
+  background: var(--bc-text);
+  animation: none;
 }
 
 /* ---- Click-to-copy buttons (gold value, rarity chip) ----------------- */
@@ -320,11 +334,16 @@
   font: inherit; color: inherit;
   cursor: copy;
   text-align: inherit;
-  transition: color 0.15s;
+  text-underline-offset: 3px;
+  transition: color var(--bc-dur-fast) var(--bc-ease);
 }
-.beneos-companion .bc-copyable:hover { color: var(--gold-bright, #f0c772); }
+.beneos-companion .bc-copyable:hover { color: var(--bc-text); text-decoration: underline; }
+.beneos-companion .bc-copyable:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
+}
 .beneos-companion .bc-copyable.is-copied {
-  color: var(--gold-bright, #f0c772);
+  color: var(--bc-success);
   font-weight: 600;
 }
 /* Rarity chip stays a chip even when copyable */
@@ -336,48 +355,58 @@
 .beneos-companion .bc-contributes { display: flex; flex-direction: column; gap: 4px; }
 .beneos-companion .bc-contrib-list {
   display: flex; flex-direction: column;
-  gap: 4px;
+  gap: 0;
 }
+/* Rows after the interactive-row pattern: hairline separated, hover
+   surface, no tinted stripes (COL-17). */
 .beneos-companion .bc-contrib-row {
   display: grid;
   grid-template-columns: 14px 1fr auto;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.30);
-  border-left: 2px solid rgba(255, 255, 255, 0.10);
-  font-size: 12.5px;
+  padding: 8px 10px;
+  border-radius: 0;
+  background: transparent;
+  border-left: none;
+  border-bottom: 1px solid var(--bc-border);
+  font-size: 13px;
   cursor: pointer;
   user-select: none;
-  transition: background 0.15s;
+  transition: background var(--bc-dur-fast) var(--bc-ease);
 }
-.beneos-companion .bc-contrib-row:hover { background: rgba(212, 168, 87, 0.06); }
+.beneos-companion .bc-contrib-row:hover { background: var(--bc-card); }
+.beneos-companion .bc-contrib-row:focus-visible {
+  background: var(--bc-card);
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
+}
 .beneos-companion .bc-contrib-row[data-expanded="true"] {
-  background: rgba(212, 168, 87, 0.12);
+  background: var(--bc-card);
 }
 .beneos-companion .bc-contrib-body {
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
   margin-top: 0;
-  transition: grid-template-rows 0.28s ease, opacity 0.18s ease, margin-top 0.28s ease;
-  background: rgba(0, 0, 0, 0.36);
-  border-radius: 6px;
+  transition: grid-template-rows var(--bc-dur-base) var(--bc-ease),
+              opacity var(--bc-dur-fast) var(--bc-ease),
+              margin-top var(--bc-dur-base) var(--bc-ease);
+  background: var(--bc-bg);
+  border-radius: 0;
 }
 .beneos-companion .bc-contrib-body .bc-contrib-body-inner {
   overflow: hidden;
   padding: 0 12px;
-  font-family: "EB Garamond", serif;
-  font-size: 12.5px;
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
   line-height: 1.5;
-  color: var(--ink-secondary, #c8b896);
-  transition: padding 0.28s ease;
+  color: var(--bc-text-muted);
+  transition: padding var(--bc-dur-base) var(--bc-ease);
 }
 .beneos-companion .bc-contrib-body[data-expanded="true"] {
   grid-template-rows: 1fr;
   opacity: 1;
-  margin-top: 2px;
+  margin-top: 0;
 }
 .beneos-companion .bc-contrib-body[data-expanded="true"] .bc-contrib-body-inner {
   padding: 10px 12px 12px;
@@ -388,82 +417,88 @@
   display: inline-flex; align-items: baseline; gap: 6px;
 }
 .beneos-companion .bc-contrib-prefix {
-  font-family: "Cinzel", serif;
-  font-size: 10px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--gold-soft, #b89146);
+  font-family: var(--bc-font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--bc-text-muted);
   /* Keep "Set-Bonus 3" on a single line. With Perfect Harmony pushing
      the inline-flex row wider, the trailing digit was wrapping below
-     while "Set-Bonus 2 · Resonance" still fit. nowrap forces the whole
+     while "Set-Bonus 2 . Resonance" still fit. nowrap forces the whole
      label-pair to break together if the row runs out of width. */
   white-space: nowrap;
 }
 .beneos-companion .bc-contrib-sep {
-  color: var(--ink-muted, #8a7c63);
-  opacity: 0.6;
+  color: var(--bc-text-muted);
+  opacity: 1;
 }
 .beneos-companion .bc-contrib-name {
-  font-family: "Cinzel", serif;
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-primary, #f5e9cf);
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bc-text);
 }
 .beneos-companion .bc-contrib-body .bc-contrib-title {
-  font-family: "Cinzel", serif;
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--gold-bright, #f0c772);
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bc-text);
   margin-bottom: 6px;
 }
 .beneos-companion .bc-contrib-body .bc-contrib-rules p { margin: 0 0 6px; }
 .beneos-companion .bc-contrib-body .bc-contrib-rules p:last-child { margin-bottom: 0; }
 .beneos-companion .bc-contrib-body strong {
-  color: var(--gold-bright, #f0c772);
+  color: var(--bc-text);
   font-weight: 600;
 }
 .beneos-companion .bc-contrib-body em {
-  color: var(--ink-primary, #f5e9cf);
+  color: var(--bc-text);
   font-style: normal;
 }
+/* Quiet text button (row action). */
 .beneos-companion .bc-contrib-codexlink {
   display: inline-block;
   margin-top: 8px;
-  font-family: "Cinzel", serif;
-  font-size: 10.5px;
-  letter-spacing: 0.14em;
-  color: var(--gold-bright, #f0c772);
-  text-decoration: underline dotted;
-  background: none; border: none; padding: 0; cursor: pointer;
+  min-height: 24px;
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--bc-text-muted);
+  text-decoration: none;
+  text-underline-offset: 3px;
+  background: none; border: none; padding: 4px 0; cursor: pointer;
+  transition: color var(--bc-dur-fast) var(--bc-ease);
 }
-.beneos-companion .bc-contrib-codexlink:hover { color: var(--ink-primary, #f5e9cf); }
-.beneos-companion .bc-contrib-echo  { border-left-color: var(--tier-echo, #c4a673); }
-.beneos-companion .bc-contrib-reson { border-left-color: var(--tier-reson, #e8b556); }
-.beneos-companion .bc-contrib-harm  { border-left-color: var(--tier-harmony, #fff0b8); }
+.beneos-companion .bc-contrib-codexlink:hover { color: var(--bc-text); text-decoration: underline; }
+.beneos-companion .bc-contrib-codexlink:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
+}
+.beneos-companion .bc-contrib-echo,
+.beneos-companion .bc-contrib-reson,
+.beneos-companion .bc-contrib-harm  { border-left-color: transparent; }
 .beneos-companion .bc-contrib-row.is-active {
-  background: rgba(212, 168, 87, 0.08);
-  color: var(--ink-primary, #f5e9cf);
+  background: transparent;
+  color: var(--bc-text);
 }
+.beneos-companion .bc-contrib-row.is-active:hover { background: var(--bc-card); }
+/* State dot: active tier in the success colour, the row text names it. */
 .beneos-companion .bc-contrib-dot {
   width: 8px; height: 8px;
   border-radius: 50%;
-  background: var(--origin-glow, var(--gold, #d4a857));
-  opacity: 0.6;
+  background: var(--bc-border-control);
+  opacity: 1;
 }
-.beneos-companion .bc-contrib-row.is-active .bc-contrib-dot { opacity: 1; box-shadow: 0 0 6px var(--origin-glow); }
+.beneos-companion .bc-contrib-row.is-active .bc-contrib-dot { background: var(--bc-success); box-shadow: none; }
 .beneos-companion .bc-contrib-label {
-  font-family: "Cinzel", serif;
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
 }
 .beneos-companion .bc-contrib-thresh {
-  font-family: "EB Garamond", serif;
+  font-family: var(--bc-font-ui);
   font-style: normal;
-  font-size: 11px;
-  color: var(--ink-muted, #8a7c63);
+  font-size: 12px;
+  color: var(--bc-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---- Card flipper ---------------------------------------------------- */
@@ -478,21 +513,26 @@
 .beneos-card-flipper {
   position: relative;
   width: 100%;
-  aspect-ratio: 7 / 10; /* matches the rendered Beneos card WebP (≈0.7) */
+  aspect-ratio: 7 / 10; /* matches the rendered Beneos card WebP (about 0.7) */
   cursor: pointer;
   transform-style: preserve-3d;
-  border-radius: 10px;
+  border-radius: var(--bc-edge);
+}
+.beneos-card-flipper:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
 }
 .beneos-card-flipper .card-face {
   position: absolute; inset: 0;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  border-radius: 10px;
+  border-radius: var(--bc-edge);
   overflow: hidden;
-  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Card flip: offset motion, capped at the 300ms state-change limit. */
+  transition: transform calc(var(--bc-dur-base) * 1.5) var(--bc-ease);
   background: transparent;
-  border: 1px solid rgba(212, 168, 87, 0.20);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--bc-border-strong);
+  box-shadow: none;
 }
 .beneos-card-flipper .card-face img {
   width: 100%; height: 100%;
@@ -503,8 +543,8 @@
 .beneos-card-flipper .card-face .card-face--placeholder {
   width: 100%; height: 100%;
   display: grid; place-items: center;
-  color: var(--ink-muted, #8a7c63);
-  font-family: "EB Garamond", serif;
+  color: var(--bc-text-muted);
+  font-family: var(--bc-font-ui);
   font-style: normal;
   font-size: 13px;
 }
@@ -512,19 +552,19 @@
 .beneos-card-flipper .card-face--back  { transform: rotateY(180deg); }
 .beneos-card-flipper[data-flipped="true"] .card-face--front { transform: rotateY(-180deg); }
 .beneos-card-flipper[data-flipped="true"] .card-face--back  { transform: rotateY(0deg); }
+/* Hint text sits on the card image, so it gets a scrim (COL-11). */
 .beneos-companion .bc-cardwrap .card-flip-hint {
   position: absolute; bottom: 10px; right: 14px;
   z-index: 5;
-  font-family: "Cinzel", serif;
-  font-size: 9.5px;
-  letter-spacing: 0.20em;
-  text-transform: uppercase;
-  color: var(--gold-bright, #f0d486);
-  background: rgba(0, 0, 0, 0.82);
-  padding: 3px 8px;
-  border-radius: 4px;
+  font-family: var(--bc-font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--bc-text);
+  background: var(--bc-scrim);
+  padding: 2px 6px;
+  border-radius: var(--bc-edge);
   pointer-events: none;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  box-shadow: none;
 }
 
 /* ---- M3.1 Legacy-Section-Hider ---------------------------------------- */
@@ -533,9 +573,16 @@
 
 /* ---- M7.9 Performance-Mode kill switch -------------------------------- */
 /* When the user enables the Beneos Performance Mode setting, body gets
-   the .beneos-perf-mode class. Suppress all decorative pulse animations
-   in the companion (rarity-modifier peak pip + bar pulses, etc.). */
+   the .beneos-perf-mode class. Suppress all animations in the companion
+   (the former peak pip and bar pulses are already removed). */
 body.beneos-perf-mode .beneos-companion .bc-modpip.is-peak,
 body.beneos-perf-mode .beneos-companion .bc-modbar.is-peak {
   animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beneos-companion *,
+  .beneos-card-flipper .card-face {
+    transition-duration: 0ms !important;
+  }
 }

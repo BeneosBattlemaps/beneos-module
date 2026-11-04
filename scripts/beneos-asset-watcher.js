@@ -65,51 +65,60 @@ const TROUBLESHOOTING_URL = "https://beneos-battlemaps.com/pages/beneos-faq-blac
 // re-opening the same dialog on repeated canvasReady fires within a session.
 const lastResults = new Map();
 
-// ---------- Dialog styling: match Beneos tour palette ----------
-// Tour system (beneos_tours.js:246) defines: #151412 bg, #f5c992 gold, #e6e5e3 body.
+// ---------- Dialog styling: Beneos Bone palette ----------
+// Shared by every dialog with the class beneos-asset-watcher-dialog (asset
+// watcher, asset repair, canvas guard, scene packer). Colours come from
+// css/beneos-cloud-tokens.css.
 const WATCHER_CSS = document.createElement("style");
 WATCHER_CSS.id = "beneos-asset-watcher-styles";
 WATCHER_CSS.textContent = `
-  /* Outer frame: disable the default border (Foundry paints its own border
-     that doesn't track our border-radius, making the stroke vanish at the
-     rounded corners). We emulate the gold stroke with an inset box-shadow
-     ring which follows border-radius perfectly, combined with overflow:hidden
-     so children don't paint over it. */
+  /* Outer frame: hairline in the strong border token, 2px edge, the modal
+     shadow token. overflow:hidden keeps children inside the edge. */
   .beneos-asset-watcher-dialog {
-    background: #151412 !important;
-    color: #e6e5e3 !important;
-    border: none !important;
-    border-radius: 6px !important;
+    background: var(--bc-bg-panel) !important;
+    color: var(--bc-text) !important;
+    font-family: var(--bc-font-ui) !important;
+    border: 1px solid var(--bc-border-strong) !important;
+    border-radius: var(--bc-edge) !important;
     overflow: hidden !important;
-    box-shadow:
-      inset 0 0 0 2px #f5c992,
-      0 0 24px rgba(245, 201, 146, 0.25) !important;
+    box-shadow: var(--bc-shadow-pop) !important;
   }
   .beneos-asset-watcher-dialog .window-header {
-    background: #151412 !important;
-    color: #f5c992 !important;
-    border-bottom: 1px solid #f5c992 !important;
+    background: var(--bc-bg) !important;
+    color: var(--bc-text) !important;
+    border-bottom: 1px solid var(--bc-border) !important;
   }
-  .beneos-asset-watcher-dialog .window-header .window-title { color: #f5c992 !important; }
+  .beneos-asset-watcher-dialog .window-header .window-title {
+    color: var(--bc-text) !important;
+    font-family: var(--bc-font-ui) !important;
+    font-weight: 600 !important;
+  }
   .beneos-asset-watcher-dialog .window-content {
-    background: #151412 !important;
-    color: #e6e5e3 !important;
+    background: var(--bc-bg-panel) !important;
+    color: var(--bc-text) !important;
     padding: 0.75em 1em !important;
+    scrollbar-width: thin;
+    scrollbar-color: var(--bc-border-control) transparent;
   }
   .beneos-asset-watcher-dialog p,
-  .beneos-asset-watcher-dialog li { color: #e6e5e3 !important; }
+  .beneos-asset-watcher-dialog li { color: var(--bc-text) !important; }
   .beneos-asset-watcher-dialog strong,
-  .beneos-asset-watcher-dialog b { color: #f5c992 !important; }
+  .beneos-asset-watcher-dialog b { color: var(--bc-text) !important; font-weight: 600 !important; }
   .beneos-asset-watcher-dialog summary {
-    color: #f5c992 !important;
+    color: var(--bc-accent) !important;
     cursor: pointer;
     user-select: none;
   }
+  .beneos-asset-watcher-dialog summary:focus-visible {
+    outline: 2px solid var(--bc-accent);
+    outline-offset: 2px;
+  }
   .beneos-asset-watcher-dialog code {
-    background: #0a0a0a !important;
-    color: #f5c992 !important;
+    background: var(--bc-bg) !important;
+    color: var(--bc-text) !important;
+    font-family: var(--bc-font-mono);
     padding: 1px 4px;
-    border-radius: 3px;
+    border-radius: var(--bc-edge);
     font-size: 0.9em;
     user-select: text;
   }
@@ -118,6 +127,8 @@ WATCHER_CSS.textContent = `
     overflow: auto;
     margin: 0.5em 0;
     padding-left: 1.5em;
+    scrollbar-width: thin;
+    scrollbar-color: var(--bc-border-control) transparent;
   }
   .beneos-asset-watcher-dialog .beneos-aw-pathlist li {
     margin: 0.25em 0;
@@ -128,20 +139,19 @@ WATCHER_CSS.textContent = `
     list-style: none;
     margin: 0.4em 0;
     padding: 0.35em 0.5em;
-    border-left: 2px solid #f5c992;
-    background: rgba(245, 201, 146, 0.05);
-    border-radius: 2px;
+    background: var(--bc-card);
+    border-radius: var(--bc-edge);
   }
   .beneos-asset-watcher-dialog .beneos-aw-entry-context {
     font-size: 0.9em;
-    color: #b8b6b3;
+    color: var(--bc-text-muted);
     line-height: 1.3;
   }
   .beneos-asset-watcher-dialog .beneos-aw-entry-context strong {
-    color: #f5c992;
+    color: var(--bc-text);
   }
   .beneos-asset-watcher-dialog .beneos-aw-entry-child {
-    color: #8d8b88;
+    color: var(--bc-text-muted);
     font-size: 0.9em;
   }
   .beneos-asset-watcher-dialog .beneos-aw-entry-asset {
@@ -149,58 +159,77 @@ WATCHER_CSS.textContent = `
     margin-top: 0.1em;
   }
   .beneos-asset-watcher-dialog .beneos-aw-entry-asset code {
-    color: #e6e5e3;
+    color: var(--bc-text);
     background: transparent;
     padding: 0;
   }
+  /* One button component for the whole dialog family (FRM-09). */
+  .beneos-asset-watcher-dialog .beneos-aw-copy,
+  .beneos-asset-watcher-dialog .beneos-rd-action,
+  .beneos-asset-watcher-dialog .dialog-buttons button,
+  .beneos-asset-watcher-dialog .form-footer button {
+    background: var(--bc-card) !important;
+    color: var(--bc-text) !important;
+    border: 1px solid var(--bc-border-control) !important;
+    border-radius: var(--bc-edge) !important;
+    font-family: var(--bc-font-ui) !important;
+    box-shadow: none !important;
+    cursor: pointer;
+    transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
+  }
+  .beneos-asset-watcher-dialog .beneos-aw-copy:hover,
+  .beneos-asset-watcher-dialog .beneos-rd-action:hover,
+  .beneos-asset-watcher-dialog .dialog-buttons button:hover,
+  .beneos-asset-watcher-dialog .form-footer button:hover {
+    background: var(--bc-card-hover) !important;
+    border-color: var(--bc-accent) !important;
+  }
+  .beneos-asset-watcher-dialog .beneos-aw-copy:active,
+  .beneos-asset-watcher-dialog .beneos-rd-action:active,
+  .beneos-asset-watcher-dialog .dialog-buttons button:active,
+  .beneos-asset-watcher-dialog .form-footer button:active {
+    background: var(--bc-bg-pressed) !important;
+  }
+  .beneos-asset-watcher-dialog .beneos-aw-copy:focus-visible,
+  .beneos-asset-watcher-dialog .beneos-rd-action:focus-visible,
+  .beneos-asset-watcher-dialog .dialog-buttons button:focus-visible,
+  .beneos-asset-watcher-dialog .form-footer button:focus-visible {
+    outline: 2px solid var(--bc-accent) !important;
+    outline-offset: 2px !important;
+  }
   .beneos-asset-watcher-dialog .beneos-aw-copy {
-    background: #2a2623 !important;
-    color: #f5c992 !important;
-    border: 1px solid #f5c992 !important;
     padding: 4px 10px !important;
     margin-left: 6px;
-    cursor: pointer;
-    border-radius: 3px;
-  }
-  .beneos-asset-watcher-dialog .beneos-aw-copy:hover {
-    background: #3a3228 !important;
   }
   .beneos-asset-watcher-dialog .beneos-aw-report-row {
     margin-top: 0.75em;
     padding: 0.5em 0;
-    border-top: 1px solid #3a3228;
+    border-top: 1px solid var(--bc-border);
     display: flex;
     align-items: center;
     gap: 0.5em;
   }
   .beneos-asset-watcher-dialog .beneos-aw-report-row input[type=checkbox] {
-    accent-color: #f5c992;
+    accent-color: var(--bc-accent);
   }
-  .beneos-asset-watcher-dialog .dialog-buttons button {
-    background: #2a2623 !important;
-    color: #f5c992 !important;
-    border: 1px solid #f5c992 !important;
-  }
-  .beneos-asset-watcher-dialog .dialog-buttons button:hover {
-    background: #3a3228 !important;
-  }
-  /* Phase E (still-missing) — source list + per-row actions */
+  /* Phase E (still-missing): source list and per-row actions */
   .beneos-asset-watcher-dialog .beneos-rd-stillmissing h3 {
     margin: 0.6em 0 0.4em;
-    color: #f5c992;
-    border-bottom: 1px solid #3a3228;
+    color: var(--bc-text);
+    font-family: var(--bc-font-ui);
+    font-weight: 600;
+    border-bottom: 1px solid var(--bc-border);
     padding-bottom: 0.25em;
   }
   .beneos-asset-watcher-dialog .beneos-rd-missing {
     margin: 0.4em 0;
     padding: 0.4em 0.5em;
-    border-left: 2px solid #f5c992;
-    background: rgba(245, 201, 146, 0.04);
-    border-radius: 2px;
+    background: var(--bc-card);
+    border-radius: var(--bc-edge);
   }
   .beneos-asset-watcher-dialog .beneos-rd-missing summary {
     cursor: pointer;
-    color: #e6e5e3;
+    color: var(--bc-text);
     list-style: none;
   }
   .beneos-asset-watcher-dialog .beneos-rd-missing summary::-webkit-details-marker {
@@ -209,21 +238,22 @@ WATCHER_CSS.textContent = `
   .beneos-asset-watcher-dialog .beneos-rd-show-path {
     padding: 2px 6px !important;
     margin-left: 6px;
-    font-size: 0.85em;
+    font-size: 12px;
   }
   .beneos-asset-watcher-dialog .beneos-rd-source {
     padding: 0.35em 0.5em;
     margin: 0.25em 0;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 2px;
+    background: var(--bc-bg);
+    border-radius: var(--bc-edge);
   }
   .beneos-asset-watcher-dialog .beneos-rd-source-line {
     font-size: 0.9em;
-    color: #b8b6b3;
+    color: var(--bc-text-muted);
     margin-bottom: 0.3em;
   }
   .beneos-asset-watcher-dialog .beneos-rd-kind {
-    color: #f5c992;
+    color: var(--bc-text);
+    font-weight: 600;
   }
   .beneos-asset-watcher-dialog .beneos-rd-source-actions {
     display: flex;
@@ -231,30 +261,29 @@ WATCHER_CSS.textContent = `
     gap: 0.35em;
   }
   .beneos-asset-watcher-dialog .beneos-rd-action {
-    background: #2a2623 !important;
-    color: #f5c992 !important;
-    border: 1px solid #f5c992 !important;
     padding: 4px 8px !important;
-    font-size: 0.85em;
-    cursor: pointer;
-    border-radius: 3px;
+    font-size: 12px;
   }
-  .beneos-asset-watcher-dialog .beneos-rd-action:hover {
-    background: #3a3228 !important;
-  }
+  /* Kein Rand links.
+   *
+   * Ein 3px-Farbstreifen an einer Kante ist die abgegriffenste Art, einen
+   * Hinweiskasten zu markieren, und er schiebt den Text gegen den Rest des
+   * Dialogs aus der Flucht. Dieselbe Entscheidung ist am 2026-08-24 in
+   * js/beneos.js fuer die Nutzerliste getroffen worden.
+   *
+   * Die Flaechenstufe traegt es allein: die Karte hebt sich vom Panel ab. */
   .beneos-asset-watcher-dialog .beneos-rd-education {
     margin: 0.6em 0;
-    padding: 0.5em;
-    background: rgba(245, 201, 146, 0.06);
-    border-left: 3px solid #f5c992;
-    border-radius: 2px;
+    padding: 0.6em 0.7em;
+    background: var(--bc-card);
+    border-radius: var(--bc-edge);
   }
   .beneos-asset-watcher-dialog .beneos-rd-education p {
     margin: 0.4em 0;
-    color: #e6e5e3;
+    color: var(--bc-text);
   }
   .beneos-asset-watcher-dialog progress {
-    accent-color: #f5c992;
+    accent-color: var(--bc-accent);
   }
 `;
 document.head.appendChild(WATCHER_CSS);

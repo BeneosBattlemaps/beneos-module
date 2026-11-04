@@ -15,6 +15,7 @@
   ],
   "styles": [
 	  "css/beneos-cloud-tokens.css",
+	  "css/beneos-ui.css",
 	  "css/beneos.css",
 	  "css/beneos-cloud.css",
 	  "css/table-top.css",

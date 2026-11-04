@@ -69,7 +69,7 @@ export class BeneosForge extends HandlebarsApplicationMixin(ApplicationV2) {
           // Leading-slash absolute path for the CSS-mask tint (matches the codex
           // Origin gallery): the colour WebP's alpha gives the form shape.
           iconMask: meta.image ? "/" + meta.image : null,
-          glow: meta.glow || "#d4a857",
+          glow: meta.glow || "var(--bc-accent)",
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -83,7 +83,7 @@ export class BeneosForge extends HandlebarsApplicationMixin(ApplicationV2) {
     const originMeta = this._originSlug ? (ORIGIN_META[this._originSlug] || {}) : {};
     ctx.originIcon = originMeta.image || null;
     ctx.originIconMask = originMeta.image ? "/" + originMeta.image : null;
-    ctx.originGlow = originMeta.glow || "#d4a857";
+    ctx.originGlow = originMeta.glow || "var(--bc-accent)";
     // Echo-of-Origin preview for the small text box under the picker.
     const echo = originDoc?.tiers?.echo || null;
     ctx.echoTitle = echo ? (echo.title || `${display}: Echo of Origin`) : null;

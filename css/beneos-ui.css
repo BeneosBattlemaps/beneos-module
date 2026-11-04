@@ -1,0 +1,61 @@
+/* =============================================================
+   Shared Beneos UI components for module windows.
+   Loader ring: design standard MUS-05, CI component
+   J:\_ai\claude\design\ci\components\loader.css, mapped to the
+   module token names. Script: scripts/ui/bn-loader.mjs.
+   ============================================================= */
+.bn-loadhost { position: relative; }
+.bn-loader {
+  position: absolute; left: 50%; bottom: 16px; z-index: 6;
+  width: 16px; height: 16px; margin-left: -8px; box-sizing: border-box;
+  border: 2px solid var(--bc-border-control); border-top-color: var(--bc-text-muted);
+  border-radius: 50%; pointer-events: none;
+  animation: bn-spin 1s linear infinite;
+}
+@keyframes bn-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .bn-loader { animation: none; } }
+
+/* -------------------------------------------------------------
+   Core form controls inside Beneos windows only. Foundry V13 draws
+   checkboxes and radios from its own variables (warm orange); inside
+   module roots they take the Bone accent (QLT-02). Core windows keep
+   their look because the selector needs a Beneos root.
+   ------------------------------------------------------------- */
+:is(.beneos-cloud-app, .beneos-codex, .beneos-lgc, .beneos-wiki, .bci-root,
+    .beneos-offline-window, .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
+    .beneos-module.settings, .beneos-actor-menu, .beneos-system-check-dialog, .beneos-pdf-viewer) {
+  --checkbox-checked-color: var(--bc-accent);
+  --checkbox-background-color: var(--bc-card);
+  --checkbox-checkmark-color: var(--bc-text-on-accent);
+  --checkbox-border-color: var(--bc-border-control);
+  accent-color: var(--bc-accent);
+  scrollbar-color: var(--bc-border-control) transparent;
+  /* Core headings and text inside Beneos windows inherit Foundry's fonts
+     (Signika, Amiri, Modesto). Inter is the only family (TYP-01). */
+  --font-primary: var(--bc-font-ui);
+  --font-sans: var(--bc-font-ui);
+  --font-serif: var(--bc-font-ui);
+  --font-body: var(--bc-font-ui);
+  --font-h1: var(--bc-font-ui);
+  --font-h2: var(--bc-font-ui);
+  --font-h3: var(--bc-font-ui);
+  --font-h4: var(--bc-font-ui);
+  --font-h5: var(--bc-font-ui);
+  --font-h6: var(--bc-font-ui);
+  --font-mono: var(--bc-font-mono);
+}
+/* Foundry sets the checkbox variables on the input itself, so they are
+   repeated there; inheriting from the window root is not enough. */
+:is(.beneos-cloud-app, .beneos-codex, .beneos-lgc, .beneos-wiki, .bci-root,
+    .beneos-offline-window, .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
+    .beneos-module.settings, .beneos-actor-menu, .beneos-system-check-dialog, .beneos-pdf-viewer)
+  :is(input[type="checkbox"], input[type="radio"]) {
+  --checkbox-checked-color: var(--bc-accent);
+  --checkbox-background-color: var(--bc-card);
+  --checkbox-checkmark-color: var(--bc-text-on-accent);
+  --checkbox-border-color: var(--bc-border-control);
+}
+:is(.beneos-cloud-app, .beneos-codex, .beneos-lgc, .beneos-wiki, .bci-root, .beneos-offline-window) ::selection {
+  background: var(--bc-accent);
+  color: var(--bc-text-on-accent);
+}
