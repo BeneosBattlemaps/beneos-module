@@ -4084,27 +4084,31 @@ button.beneos-icon-logo {
 /* The endless sign-in pulse is gone (FRM-12: no decorative endless
    motion). The filled accent button carries the emphasis on its own. */
 
-/* ---- Title bar Patreon status colour (mirrors v1 behavior) ---- */
+/* ---- Title bar: the Patreon status no longer colours the window name
+   (user 2026-11-04, green read badly). The classes stay for scripts that
+   read them; both resolve to the primary text. ---- */
 
-.beneos-cloud-app .window-header .window-title.beneos-window-title-green {
-  color: var(--bc-success);
-}
+.beneos-cloud-app .window-header .window-title.beneos-window-title-green,
 .beneos-cloud-app .window-header .window-title.beneos-window-title-orange {
-  color: var(--bc-text-muted);
+  color: var(--bc-text);
 }
 
 /* ---- Easter-egg quote next to the cloud window title ----
    Outer span clips the slide and carries the divider border on the left;
    inner span carries the typography and the transform animation. Cycles
    every 20s via JS. */
+/* Baseline instead of middle: the quote sat about 3px below the window name
+   because the two faces centre differently (user 2026-11-04). overflow clip
+   keeps the slide clipped without moving the inline-block baseline to the
+   bottom edge, which overflow hidden would do. */
 .beneos-cloud-app .window-header .window-title .bc-window-quote {
   display: inline-block;
-  vertical-align: middle;
+  vertical-align: baseline;
   margin-left: 0.85em;
   padding-left: 0.85em;
   border-left: 1px solid var(--bc-border-strong);
   max-width: 70%;
-  overflow: hidden;
+  overflow: clip;
   white-space: nowrap;
   line-height: 1.2em;
   height: 1.2em;
