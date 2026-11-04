@@ -168,6 +168,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       switchBmapRes:           BeneosCloudWindowV2._onSwitchBmapRes,
       switchBmapView:          BeneosCloudWindowV2._onSwitchBmapView,
       uninstallRelease:        BeneosCloudWindowV2._onCloudReleaseUninstall,
+      removeAsset:             BeneosCloudWindowV2._onRemoveAsset,
       installBundle:           BeneosCloudWindowV2._onCloudBundleInstall,
       installBundleMember:     BeneosCloudWindowV2._onCloudBundleMemberInstall,
       retryLoadReleases:       BeneosCloudWindowV2._onRetryLoadReleases,
@@ -2006,6 +2007,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // Installed items/spells get an "Open" button that opens the local sheet
       // so the user can jump straight to the imported document.
       showOpenButton: isInstalled && (assetType === "item" || assetType === "spell"),
+      // Installed creatures can be removed from the world again (user
+      // 2026-11-04). Removing is a world write, so only a Gamemaster sees
+      // the button.
+      showRemoveButton: isInstalled && !!game.user?.isGM && assetType === "token",
       isCloudAvailable,
       // Hard-blocked kinds on non-dnd5e systems (Loot, Spells on Pathfinder
       // and friends). Used by the action-area renderer to swap the Install
@@ -3014,7 +3019,32 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       actions.querySelectorAll(".bc-action-open").forEach(btn => {
         btn.addEventListener("click", (event) => this.#onOpenClick(event, btn))
       })
+      actions.querySelectorAll(".bc-action-codex").forEach(btn => {
+        btn.addEventListener("click", (event) => this.#onCodexClick(event, btn))
+      })
+      // The remove button runs through data-action, which ApplicationV2
+      // delegates from the window root, so it needs no listener here.
     }
+
+    if (actions) BeneosCloudWindowV2.#syncChipRow(card, actions, enriched)
+  }
+
+  // The New or Update chip hangs off the card beside the action block, so
+  // the innerHTML swap above does not reach it. An install or a removal
+  // changes isUpdate; a removed creature must not keep its Update chip.
+  // Mirrors the chip row in results-pane.hbs, UPDATE wins over NEW.
+  static #syncChipRow(card, actions, enriched) {
+    card.querySelector(":scope > .bc-action-chiprow")?.remove()
+    const chip = enriched.isUpdate ? ["bc-status-update", "BENEOS.Cloud.Card.Update"]
+      : enriched.isNew ? ["bc-status-new", "BENEOS.Cloud.Card.New"] : null
+    if (!chip) return
+    const row = document.createElement("div")
+    row.className = "bc-action-chiprow"
+    const span = document.createElement("span")
+    span.className = `bc-status-chip ${chip[0]}`
+    span.textContent = game.i18n.localize(chip[1])
+    row.append(span)
+    actions.before(row)
   }
 
   #buildCardActionsHTML(card) {
@@ -3024,20 +3054,33 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         + `<i class="fa-solid fa-circle-notch fa-spin"></i> ${localize("BENEOS.Cloud.Card.Installing")}</span>`
     }
     if (card.isInstalled) {
-      let html = `<span class="bc-state-pill bc-state-installed" data-tooltip="${localize("BENEOS.Cloud.Card.InstalledTooltip")}">`
-        + `<i class="fa-solid fa-circle-check"></i> ${localize("BENEOS.Cloud.Card.Installed")}</span>`
-      if (card.isUpdate) {
-        html += `<button type="button" class="bc-card-button bc-card-button-primary bc-action-install"`
-          + ` data-asset-key="${card.key}" data-asset-type="${card.assetType}"`
-          + ` data-tooltip="${localize("BENEOS.Cloud.Card.UpdateTooltip")}">`
-          + `<i class="fa-solid fa-rotate"></i></button>`
+      // Mirror of the installed branch in results-pane.hbs: icons only.
+      const esc = (v) => foundry.utils.escapeHTML(String(v ?? ""))
+      const iconButton = (cls, extra, tip, icon) =>
+        `<button type="button" class="bc-card-button bc-card-icon ${cls}"`
+        + ` data-asset-key="${esc(card.key)}"${extra}`
+        + ` data-tooltip="${esc(tip)}" aria-label="${esc(tip)}">`
+        + `<i class="fa-solid ${icon}" aria-hidden="true"></i></button>`
+      const typeAttr = ` data-asset-type="${esc(card.assetType)}"`
+      let html = ""
+      if (card.showCodexButton) {
+        html += iconButton("bc-action-codex", "", localize("BENEOS.Cloud.Card.Codex"), "fa-book-open")
       }
       if (card.showOpenButton) {
-        html += `<button type="button" class="bc-card-button bc-action-open"`
-          + ` data-asset-key="${card.key}" data-asset-type="${card.assetType}"`
-          + ` data-tooltip="${localize("BENEOS.Cloud.Card.OpenTooltip")}">`
-          + `<i class="fa-solid fa-up-right-from-square"></i>`
-          + `<span>${localize("BENEOS.Cloud.Card.Open")}</span></button>`
+        html += iconButton("bc-action-open", typeAttr, localize("BENEOS.Cloud.Card.OpenTooltip"), "fa-up-right-from-square")
+      }
+      if (card.showRemoveButton) {
+        html += iconButton("bc-action-remove",
+          `${typeAttr} data-action="removeAsset" data-asset-name="${esc(card.name)}"`,
+          localize("BENEOS.Cloud.Card.RemoveTooltip"), "fa-trash")
+      }
+      if (card.isUpdate) {
+        const tip = card.updateLocked
+          ? localize("BENEOS.Cloud.Notification.BlockedUpdatePatreon")
+          : localize("BENEOS.Cloud.Card.UpdateTooltip")
+        html += iconButton(`bc-action-install bc-action-update${card.updateLocked ? " bc-update-locked" : ""}`,
+          `${typeAttr}${card.updateLocked ? ' data-update-locked="true"' : ""}`,
+          tip, card.updateLocked ? "fa-lock" : "fa-rotate")
       }
       return html
     }
@@ -3383,6 +3426,22 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // user can jump straight to the imported document instead of hunting for it in
   // the Items directory / compendium. Prefer the world copy (default install
   // target); fall back to the compendium document via the cached id.
+  async #onCodexClick(event, btn) {
+    event.preventDefault()
+    event.stopPropagation()
+    const key = btn.dataset.assetKey
+    // Resolve world OR installed-compendium actor (same source as the
+    // installed frame), not just game.actors: a compendium-installed
+    // creature has no world-directory actor but must still open its codex.
+    const actor = (await game.beneos?.codex?.resolveCodexActor?.(key))
+      ?? game.beneos?.codex?.findActorByTokenKey?.(key)
+    if (!actor) {
+      ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Card.CodexNotFound"))
+      return
+    }
+    game.beneos?.codex?.openForActor?.(actor)
+  }
+
   async #onOpenClick(event, btn) {
     event.preventDefault()
     event.stopPropagation()
@@ -4544,6 +4603,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // The trash sits over the card corner now; its click removes, it
         // does not also open the drawer.
         if (event.target.closest(".bc-action-uninstall")) return
+        if (event.target.closest(".bc-action-remove")) return
         // Wave B-8e: clickable tag inside the card — let the dedicated
         // tag listener handle it and stop the card from also opening
         // the drawer. The tag listener calls stopPropagation, but this
@@ -4606,21 +4666,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
 
     // Codex button on installed creature cards → open the Creature Codex.
     resultsRegion.querySelectorAll(".bc-action-codex").forEach(btn => {
-      btn.addEventListener("click", async (event) => {
-        event.preventDefault()
-        event.stopPropagation()
-        const key = btn.dataset.assetKey
-        // Resolve world OR installed-compendium actor (same source as the green
-        // "installed" frame), not just game.actors — a compendium-installed
-        // creature has no world-directory actor but must still open its codex.
-        const actor = (await game.beneos?.codex?.resolveCodexActor?.(key))
-          ?? game.beneos?.codex?.findActorByTokenKey?.(key)
-        if (!actor) {
-          ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Card.CodexNotFound"))
-          return
-        }
-        game.beneos?.codex?.openForActor?.(actor)
-      })
+      btn.addEventListener("click", (event) => this.#onCodexClick(event, btn))
     })
 
     // Open button on installed item/spell cards → open the local sheet.
@@ -5443,6 +5489,139 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     try { await this.#refreshAfterBmapInstall?.(releaseDir) } catch (_) {}
     try { Hooks.callAll("beneos.releaseUninstalled", { releaseDir, displayName, variant }) } catch (_) {}
     return inst
+  }
+
+  /**
+   * Removes an installed creature from this world (user 2026-11-04): the
+   * compendium actors and journals of every variant, and the actor the
+   * install put into the actor directory. A directory actor that has tokens
+   * on a scene stays, deleting it would leave those tokens without a base
+   * actor. The deleteActor hook in beneos_module.js drops each registry
+   * entry, so the card reads "not installed" afterwards.
+   */
+  static async _onRemoveAsset(event, target) {
+    event.preventDefault()
+    event.stopPropagation()   // the card itself is clickable; do not open the drawer
+    if (!game.user?.isGM) {
+      ui.notifications?.warn?.(game.i18n.localize("BENEOS.Cloud.Card.RemoveGmOnly"))
+      return
+    }
+    const key  = String(target?.dataset?.assetKey || "")
+    const name = String(target?.dataset?.assetName || key)
+    const plan = BeneosCloudWindowV2.removalPlan(key, BeneosUtility.beneosTokens)
+    const placed = new Set(game.scenes.contents.flatMap(s => s.tokens.contents.map(t => t.actorId)))
+    const worldIds = BeneosCloudWindowV2.worldCopiesToRemove(game.actors.contents, key, placed)
+    if (!plan.actors.length && !worldIds.length) {
+      ui.notifications?.warn?.(game.i18n.localize("BENEOS.Cloud.Card.CodexNotFound"))
+      return
+    }
+
+    const ok = await foundry.applications.api.DialogV2.confirm({
+      window: { title: game.i18n.localize("BENEOS.Cloud.Card.RemoveTitle") },
+      content: `<p>${foundry.utils.escapeHTML(game.i18n.format("BENEOS.Cloud.Card.RemoveIntro", { name }))}</p>`,
+      yes: { label: game.i18n.localize("BENEOS.Cloud.Uninstall.Yes") },
+      no: { label: game.i18n.localize("BENEOS.Cloud.Uninstall.Cancel") },
+    })
+    if (!ok) return
+
+    const results = [
+      await BeneosCloudWindowV2.#deleteFromPack("world.beneos_module_actors", plan.actors, Actor.implementation),
+      await BeneosCloudWindowV2.#deleteFromPack("world.beneos_module_journal", plan.journals, JournalEntry.implementation),
+    ]
+    if (worldIds.length) {
+      try {
+        await Actor.implementation.deleteDocuments(worldIds)
+        results.push({ deleted: worldIds.length, failed: 0 })
+      } catch (err) {
+        console.error(`BeneosCloudWindowV2 | removing the directory copy of ${key} failed`, err)
+        results.push({ deleted: 0, failed: 1 })
+      }
+    }
+    // The delete hook drops each registry entry in memory, but every hook
+    // fires its own settings write without awaiting it. With two or more
+    // variants those writes overtake each other and an older one can land
+    // last, so the saved registry keeps a variant that is gone (measured
+    // 2026-11-04). One awaited write of the final state closes that.
+    try {
+      await game.settings.set(BeneosUtility.moduleID(), "beneos-json-tokenconfig", JSON.stringify(BeneosUtility.beneosTokens))
+    } catch (err) {
+      console.error(`BeneosCloudWindowV2 | saving the registry after removing ${key} failed`, err)
+      results.push({ deleted: 0, failed: 1 })
+    }
+
+    const failed = results.reduce((n, r) => n + r.failed, 0)
+    const deleted = results.reduce((n, r) => n + r.deleted, 0)
+    if (failed || !deleted) {
+      ui.notifications?.error?.(game.i18n.localize("BENEOS.Cloud.Card.RemoveFailed"))
+    } else {
+      ui.notifications?.info?.(game.i18n.format("BENEOS.Cloud.Card.RemoveDone", { name }))
+    }
+    this.#patchCardState(key)
+    if (key === this.selectedAssetKey) {
+      try { await this.render({ parts: ["results"] }) } catch (err) { console.warn("[Beneos] drawer refresh after removal failed", err) }
+    }
+  }
+
+  /**
+   * Deletes the given ids from one world compendium. The Beneos packs are
+   * locked between installs, so the pack is opened only for this delete and
+   * returned to the state it had. Ids missing from the index are skipped; a
+   * missing pack, a failed delete or a failed relock each count as failed.
+   */
+  static async #deleteFromPack(packName, ids, cls) {
+    if (!ids.length) return { deleted: 0, failed: 0 }
+    const pack = game.packs.get(packName)
+    if (!pack) {
+      console.error(`BeneosCloudWindowV2 | pack ${packName} not found`)
+      return { deleted: 0, failed: 1 }
+    }
+    const present = ids.filter(id => pack.index.has(id))
+    if (!present.length) return { deleted: 0, failed: 0 }
+    const wasLocked = pack.locked
+    let deleted = 0
+    let failed = 0
+    try {
+      if (wasLocked) await pack.configure({ locked: false })
+      await cls.deleteDocuments(present, { pack: packName })
+      deleted = present.length
+    } catch (err) {
+      failed++
+      console.error(`BeneosCloudWindowV2 | deleting from ${packName} failed`, err)
+    }
+    if (wasLocked) {
+      try { await pack.configure({ locked: true }) } catch (err) {
+        failed++
+        console.error(`BeneosCloudWindowV2 | ${packName} could not be locked again`, err)
+      }
+    }
+    return { deleted, failed }
+  }
+
+  /**
+   * Compendium documents of one installed creature. Pure, so it can be
+   * checked without Foundry. The key is compared exactly, like
+   * BeneosUtility.isLoaded, so the button and the installed mark always
+   * agree on which creature is meant.
+   */
+  static removalPlan(key, tokens = {}) {
+    if (!key) return { actors: [], journals: [] }
+    const entries = Object.values(tokens ?? {}).filter(t => t?.tokenKey === key)
+    return {
+      actors: entries.map(t => t.actorId).filter(Boolean),
+      journals: entries.map(t => t.journalId).filter(Boolean),
+    }
+  }
+
+  /**
+   * Directory actors the install created for this creature (flag
+   * world.beneos.tokenKey), minus those with tokens on a scene. Pure: takes
+   * the actor list and the set of actor ids placed on scenes.
+   */
+  static worldCopiesToRemove(actors, key, placedActorIds = new Set()) {
+    if (!key) return []
+    return (actors ?? [])
+      .filter(a => a?.getFlag?.("world", "beneos")?.tokenKey === key && !placedActorIds.has(a.id))
+      .map(a => a.id)
   }
 
   static _onOpenLogin(_event, _target) {
