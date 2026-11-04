@@ -16,14 +16,6 @@
        never disappear in an empty or still-loading view. --}}
   {{#if showResultsMeta}}
     <div class="bc-results-meta">
-      {{#if cards.length}}
-      {{#if hasMore}}
-        <span class="bc-results-count">{{partialHint}}</span>
-      {{else}}
-        {{!-- Punkt 6: noun matches the active view (releases / maps / bundles). --}}
-        <span class="bc-results-count">{{cards.length}} {{countNoun}}</span>
-      {{/if}}
-      {{/if}}
       {{!-- Active "Show" filter chip: reminds the user why the list is
            narrowed after switching tabs (the filter is global). --}}
       {{#if showFilterActive}}
