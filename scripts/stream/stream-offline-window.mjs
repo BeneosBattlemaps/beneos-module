@@ -38,7 +38,7 @@ function ensureStyle() {
   const style = document.createElement("style")
   style.textContent = `
     .beneos-offline-window .window-content {
-      background: var(--bc-bg-panel); color: var(--bc-text); font-family: var(--bc-font-ui);
+      background: var(--bc-bg-panel); color: var(--bc-text); font-family: var(--bc-font-body); font-weight: var(--bc-w-body);
       scrollbar-width: thin; scrollbar-color: var(--bc-border-control) transparent;
     }
     .beneos-ov { display: flex; flex-direction: column; gap: 12px; padding: 4px 2px; }
@@ -46,7 +46,7 @@ function ensureStyle() {
     .beneos-ov p { margin: 0; line-height: 1.45; }
 
     .beneos-ov-zahlen { display: flex; align-items: baseline; gap: 6px; }
-    .beneos-ov-gross { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .beneos-ov-gross { font-size: 26px; font-family: var(--bc-font-data); font-weight: var(--bc-w-data); font-variant-numeric: tabular-nums; }
     .beneos-ov-klein { color: var(--bc-text-muted); }
     .beneos-ov-rechts { margin-left: auto; color: var(--bc-text-muted); font-variant-numeric: tabular-nums; }
 
@@ -89,7 +89,7 @@ function ensureStyle() {
     .beneos-ov button {
       background: var(--bc-card); color: var(--bc-text);
       border: 1px solid var(--bc-border-control); border-radius: var(--bc-edge);
-      font-family: var(--bc-font-ui); box-shadow: none;
+      font-family: var(--bc-font-control); font-weight: var(--bc-w-control); box-shadow: none;
       transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
     }
     .beneos-ov button:hover { background: var(--bc-card-hover); border-color: var(--bc-accent); }

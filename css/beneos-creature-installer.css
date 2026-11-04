@@ -4,7 +4,7 @@
    default; expands into the panel.
    Design: Beneos standard, Bone palette (css/beneos-cloud-tokens.css). One
    gold action per state of the drawer (the filled footer button); the
-   supporter gate uses the filled Bone primary.
+   supporter gate uses the filled accent primary.
    ========================================================================== */
 
 #beneos-creature-installer {
@@ -20,7 +20,8 @@
   bottom: 92px;
   transform: translateX(-50%);
   width: min(1040px, 95vw);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   color: var(--bc-text);
 }
 
@@ -70,11 +71,11 @@
 }
 #beneos-creature-installer .bci-tab-disc svg { width: 18px; height: 18px; fill: var(--bc-text); }
 #beneos-creature-installer .bci-tab-label {
-  font-family: var(--bc-font-ui); color: var(--bc-text);
-  font-size: 13px; font-weight: 600;
+  font-family: var(--bc-font-control); font-weight: var(--bc-w-control); color: var(--bc-text);
+  font-size: 13px;
 }
 #beneos-creature-installer .bci-tab-count {
-  font-weight: 600; font-size: 12px; color: var(--bc-text);
+  font-family: var(--bc-font-data); font-weight: var(--bc-w-data); font-size: 12px; color: var(--bc-text);
   background: var(--bc-card-hover); border-radius: var(--bc-edge); padding: 1px 6px;
 }
 #beneos-creature-installer .bci-tab-chev svg { width: 12px; height: 12px; fill: none; stroke: var(--bc-text-muted); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
@@ -125,16 +126,16 @@
 }
 #beneos-creature-installer .bci-title { display: flex; flex-direction: column; gap: 3px; flex: 1 1 auto; min-width: 0; }
 #beneos-creature-installer .bci-encounter {
-  font-family: var(--bc-font-ui); font-size: 13px; font-weight: 500; color: var(--bc-text-muted);
+  font-family: var(--bc-font-label); font-weight: var(--bc-w-label); font-size: 13px; color: var(--bc-text-muted);
 }
-#beneos-creature-installer .bci-scene { font-family: var(--bc-font-ui); font-size: 18px; font-weight: 600; color: var(--bc-text); line-height: 1.2; }
-#beneos-creature-installer .bci-count { font-size: 13px; color: var(--bc-text-muted); }
+#beneos-creature-installer .bci-scene { font-family: var(--bc-font-title); font-weight: var(--bc-w-title); font-size: 18px; color: var(--bc-text); line-height: 1.2; }
+#beneos-creature-installer .bci-count { font-size: 13px; color: var(--bc-text-muted); font-family: var(--bc-font-data); font-weight: var(--bc-w-data); }
 
 /* Account state: a solid dark chip with word and icon, so it reads as a
    STATUS and not as the gold call-to-action below it. */
 #beneos-creature-installer .bci-chip {
   display: flex; align-items: center; gap: 6px; flex: 0 0 auto;
-  font-family: var(--bc-font-ui); font-size: 13px; font-weight: 500;
+  font-family: var(--bc-font-control); font-weight: var(--bc-w-control); font-size: 13px;
   border-radius: var(--bc-edge); padding: 4px 8px; white-space: nowrap;
   background: var(--bc-card-hover);
   border: 0;
@@ -171,7 +172,8 @@
    auffaellig durch Ort und Primaertext, Groesse wie .bci-count. */
 #beneos-creature-installer .bci-peek-note {
   margin: 9px 0 0;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 13px; line-height: 1.4; color: var(--bc-text);
 }
 #beneos-creature-installer .bci-columns { display: flex; gap: 20px; align-items: stretch; margin-top: 14px; }
@@ -187,13 +189,13 @@
 #beneos-creature-installer .bci-root.bci-srd-only { width: min(560px, 95vw); }
 
 #beneos-creature-installer .bci-group-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-#beneos-creature-installer .bci-grp-title { font-family: var(--bc-font-ui); font-size: 14px; font-weight: 600; }
+#beneos-creature-installer .bci-grp-title { font-family: var(--bc-font-title); font-weight: var(--bc-w-title); font-size: 14px; }
 #beneos-creature-installer .bci-grp-srd,
 #beneos-creature-installer .bci-grp-beneos { color: var(--bc-text); }
 /* Crown next to the group title: decoration (icon beside a label). */
 #beneos-creature-installer .bci-ico-crown { display: none; }
 #beneos-creature-installer .bci-srd-tag {
-  font-size: 12px; font-weight: 600; color: var(--bc-text);
+  font-size: 12px; font-family: var(--bc-font-control); font-weight: var(--bc-w-control); color: var(--bc-text);
   background: var(--bc-card-hover); border-radius: var(--bc-edge); padding: 1px 6px;
   cursor: help;
 }
@@ -281,16 +283,17 @@
   position: absolute; top: -2px; right: -2px;
   width: 18px; height: 18px; border-radius: 50%;
   background: var(--bc-accent); color: var(--bc-text-on-accent); border: 1px solid var(--bc-bg);
-  font-family: var(--bc-font-ui); font-weight: 600; font-size: 12px;
+  font-family: var(--bc-font-control); font-weight: var(--bc-w-control); font-size: 12px;
   display: flex; align-items: center; justify-content: center;
   transition: transform var(--bc-dur-base) var(--bc-ease), background-color var(--bc-dur-fast) var(--bc-ease);
   cursor: pointer;
 }
 #beneos-creature-installer .bci-disc:hover .bci-badge { transform: scale(1.1); }
-#beneos-creature-installer .bci-badge:hover { transform: scale(1.25); background: var(--bc-accent-strong); }
+#beneos-creature-installer .bci-badge:hover { transform: scale(1.25); background: var(--bc-accent); border-color: var(--bc-text); }
 #beneos-creature-installer .bci-name {
-  font-family: var(--bc-font-ui);
-  font-size: 12px; line-height: 1.25; font-weight: 500;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
+  font-size: 12px; line-height: 1.25;
   text-align: center; color: var(--bc-text); width: 100%;
 }
 
@@ -319,7 +322,7 @@
   display: flex; align-items: center; justify-content: center;
 }
 #beneos-creature-installer .bci-gate-emblem svg { width: 22px; height: 22px; fill: var(--bc-text-muted); }
-#beneos-creature-installer .bci-gate-title { font-family: var(--bc-font-ui); font-size: 16px; font-weight: 600; color: var(--bc-text); }
+#beneos-creature-installer .bci-gate-title { font-family: var(--bc-font-title); font-weight: var(--bc-w-title); font-size: 16px; color: var(--bc-text); }
 #beneos-creature-installer .bci-gate-body { font-size: 14px; color: var(--bc-text-muted); max-width: 372px; margin: 0; line-height: 1.45; }
 #beneos-creature-installer .bci-gate-actions { display: flex; gap: 10px; margin-top: 2px; }
 
@@ -339,7 +342,7 @@
 #beneos-creature-installer .bci-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   min-height: 36px;
-  font-family: var(--bc-font-ui); font-size: 14px; font-weight: 500; cursor: pointer;
+  font-family: var(--bc-font-control); font-weight: var(--bc-w-control); font-size: 14px; cursor: pointer;
   border-radius: var(--bc-edge); padding: 0 16px; line-height: 1.2; white-space: nowrap;
   background: var(--bc-card); border: 1px solid var(--bc-border-control); color: var(--bc-text);
   transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
@@ -367,17 +370,17 @@
 #beneos-creature-installer .bci-btn-green { color: var(--bc-text); }
 /* The one gold action of the drawer: Install, Place or Support (COL-05, MUS-08). */
 #beneos-creature-installer .bci-btn-gold {
-  font-size: 14px; font-weight: 600; color: var(--bc-text-on-accent);
+  font-size: 14px; font-family: var(--bc-font-control); font-weight: var(--bc-w-fill); color: var(--bc-text-on-accent);
   background: var(--bc-highlight); border: 1px solid var(--bc-highlight);
 }
 #beneos-creature-installer .bci-btn-gold:hover { background: var(--bc-highlight-strong); border-color: var(--bc-highlight-strong); }
 #beneos-creature-installer .bci-btn-gold:active { border-color: var(--bc-text); }
 /* Inside the supporter gate the footer already carries the gold Support
-   action, so the gate's Support button is the filled Bone primary. */
+   action, so the gate's Support button is the filled accent primary. */
 #beneos-creature-installer .bci-gate .bci-btn-gold {
   background: var(--bc-accent); border-color: var(--bc-accent); color: var(--bc-text-on-accent);
 }
-#beneos-creature-installer .bci-gate .bci-btn-gold:hover { background: var(--bc-accent-strong); border-color: var(--bc-accent-strong); }
+#beneos-creature-installer .bci-gate .bci-btn-gold:hover { background: var(--bc-accent); border-color: var(--bc-text); }
 
 /* ------------------------------------------ iteration 2: header controls */
 
@@ -388,7 +391,7 @@
 /* hide toggle */
 #beneos-creature-installer .bci-hide {
   display: flex; align-items: center; gap: 6px; cursor: pointer;
-  font-family: var(--bc-font-ui); font-size: 13px;
+  font-family: var(--bc-font-control); font-weight: var(--bc-w-control); font-size: 13px;
   color: var(--bc-text-muted); white-space: nowrap;
   transition: color var(--bc-dur-fast) var(--bc-ease);
 }
@@ -490,7 +493,7 @@
 #beneos-creature-installer .bci-disc-beneos.bci-alt.bci-available { border: 2px solid var(--bc-accent); box-shadow: none; }
 #beneos-creature-installer .bci-alt-badge {
   position: absolute; top: -4px; left: -4px;
-  font-family: var(--bc-font-ui); font-size: 12px; font-weight: 600;
+  font-family: var(--bc-font-control); font-weight: var(--bc-w-control); font-size: 12px;
   color: var(--bc-text); background: var(--bc-card-hover); border: 1px solid var(--bc-border-strong);
   border-radius: var(--bc-edge); padding: 0 4px; line-height: 1.4;
 }
@@ -514,14 +517,15 @@
 #beneos-creature-installer .bci-disc-beneos.bci-blocked:hover { transform: none; }
 #beneos-creature-installer .bci-blocked-badge {
   position: absolute; bottom: -4px; right: -4px;
-  font-family: var(--bc-font-ui); font-size: 12px; font-weight: 500;
+  font-family: var(--bc-font-control); font-weight: var(--bc-w-control); font-size: 12px;
   color: var(--bc-text-muted); background: var(--bc-card-hover); border: 1px solid var(--bc-border-strong);
   border-radius: var(--bc-edge); padding: 0 4px; line-height: 1.4;
 }
 #beneos-creature-installer .bci-tokencol:has(.bci-blocked) .bci-name { color: var(--bc-text-muted); }
 #beneos-creature-installer .bci-blocked-notes { margin: 6px 2px 0; }
 #beneos-creature-installer .bci-blocked-note {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 12px; line-height: 1.4; color: var(--bc-text-muted); margin: 2px 0;
 }
 
@@ -593,7 +597,8 @@
   border: 1px solid var(--bc-border-strong);
   border-radius: var(--bc-edge);
   box-shadow: var(--bc-shadow-pop);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 14px; line-height: 1.45; color: var(--bc-text);
 }
 /* Innere Zierlinie der alten Lade: das Element bleibt, ohne Linie. */

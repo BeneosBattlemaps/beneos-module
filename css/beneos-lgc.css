@@ -12,7 +12,8 @@
 
 .beneos-lgc.lgc-window,
 .lgc-window {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   color: var(--bc-text);
   scrollbar-width: thin;
   scrollbar-color: var(--bc-border-control) transparent;
@@ -82,8 +83,8 @@
   flex-shrink: 0;
 }
 .lgc-titlebar .title-text {
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 14px;
   color: var(--bc-text);
 }
@@ -94,9 +95,9 @@
   background: transparent;
   border: none;
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--bc-w-control);
   color: var(--bc-success);
   justify-self: start;
 }
@@ -159,9 +160,9 @@
      Foundry's default border-radius: 4px would do. */
   border-radius: 0;
   color: var(--bc-text-muted);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: var(--bc-w-nav);
   cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: color var(--bc-dur-fast) var(--bc-ease),
@@ -194,7 +195,8 @@
   border: none;
   border-radius: var(--bc-edge);
   font-size: 12px;
-  font-weight: 500;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-variant-numeric: tabular-nums;
   color: var(--bc-text-muted);
 }
@@ -204,7 +206,8 @@
 }
 .lgc-tab .wip {
   font-size: 12px;
-  font-weight: 500;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   padding: 0 6px;
   border-radius: var(--bc-edge);
   background: var(--bc-card);
@@ -233,15 +236,16 @@
   gap: 16px;
 }
 .radar-header h2 {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
   font-size: 18px;
-  font-weight: 600;
+  font-weight: var(--bc-w-title);
   color: var(--bc-text);
   border: none;
   margin: 0 0 4px;
 }
 .radar-header .sub {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 14px;
   line-height: 1.45;
   color: var(--bc-text-muted);
@@ -254,15 +258,15 @@
   background: var(--bc-card-hover);
   border: none;
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--bc-w-control);
   color: var(--bc-text-muted);
   white-space: nowrap;
 }
 .radar-header .count-pill .n {
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   color: var(--bc-text);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
@@ -315,7 +319,8 @@
   text-align: left;
   cursor: pointer;
   color: inherit;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   line-height: 1.2;
   transition: background var(--bc-dur-fast) var(--bc-ease);
 }
@@ -330,9 +335,9 @@
 }
 .composer.is-expanded .composer-toggle:hover { background: var(--bc-card-hover); }
 .composer-toggle-title {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: var(--bc-w-title);
   color: var(--bc-text);
   display: inline-flex; align-items: center; gap: 10px;
   white-space: nowrap;
@@ -343,7 +348,8 @@
 }
 .composer.is-expanded .composer-toggle-title { color: var(--bc-text); }
 .composer-toggle-hint {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 13px;
   color: var(--bc-text-muted);
   text-align: right;
@@ -445,9 +451,9 @@
 
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .field-label {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--bc-w-label);
   color: var(--bc-text-muted);
 }
 
@@ -463,9 +469,9 @@
   color: var(--bc-text);
   cursor: pointer;
   text-align: left;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
   font-size: 14px;
-  font-weight: 400;
+  font-weight: var(--bc-w-control);
   transition: border-color var(--bc-dur-fast) var(--bc-ease),
               background var(--bc-dur-fast) var(--bc-ease);
   height: 38px;
@@ -506,7 +512,8 @@
   border-radius: var(--bc-edge);
   color: var(--bc-text-muted);
   cursor: pointer;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 13px;
   text-align: left;
   justify-content: flex-start;
@@ -590,8 +597,8 @@
   background: var(--bc-card-hover);
   border: 1px solid var(--bc-border-strong);
   display: grid; place-items: center;
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 12px;
   color: var(--bc-text);
   text-shadow: none;
@@ -617,9 +624,9 @@
   background: transparent;
   border: none;
   color: var(--bc-text-muted);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--bc-w-control);
   cursor: pointer;
   border-radius: var(--bc-edge);
   transition: background var(--bc-dur-fast) var(--bc-ease),
@@ -700,8 +707,8 @@
   background: var(--bc-card);
   border: 1px solid var(--bc-border-control);
   display: grid; place-items: center;
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   color: var(--bc-text-muted);
   cursor: pointer;
@@ -720,7 +727,7 @@
   outline: 2px solid var(--bc-accent);
   outline-offset: 2px;
 }
-/* Selected direction: filled Bone, never gold (COL-05). */
+/* Selected direction: filled accent. */
 .dir-cross .dir-btn.selected {
   background: var(--bc-accent);
   border-color: var(--bc-accent);
@@ -754,8 +761,8 @@
   border: 1px solid var(--bc-highlight);
   color: var(--bc-text-on-accent);
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-fill);
   font-size: 14px;
   cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -788,9 +795,9 @@
   margin: 6px 0 10px;
 }
 .section-head h3 {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: var(--bc-w-title);
   color: var(--bc-text);
   border: none;
   margin: 0;
@@ -801,7 +808,8 @@
   content: none;
 }
 .section-head .hint {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 13px;
   color: var(--bc-text-muted);
 }
@@ -813,7 +821,8 @@
   background: transparent;
   border: 1px solid var(--bc-border);
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 14px;
   color: var(--bc-text-muted);
   line-height: 1.5;
@@ -856,9 +865,9 @@
   border-top: 1px solid var(--bc-border);
 }
 .ping-sensing-label {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--bc-w-label);
   color: var(--bc-text-muted);
   flex-shrink: 0;
 }
@@ -873,9 +882,9 @@
   border: 1px solid transparent;
   border-radius: var(--bc-edge);
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--bc-w-control);
   cursor: pointer;
   transition: background var(--bc-dur-fast) var(--bc-ease),
               color var(--bc-dur-fast) var(--bc-ease),
@@ -916,8 +925,8 @@
   background: var(--bc-bg);
   border: 1px solid var(--bc-border-strong);
   display: grid; place-items: center;
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 14px;
   color: var(--bc-text);
   text-shadow: none;
@@ -933,14 +942,15 @@
 }
 .ping-card .meta-pill {
   display: inline-flex; align-items: center; gap: 8px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 13px;
   color: var(--bc-text-muted);
   white-space: nowrap;
 }
 .ping-card .meta-pill .v {
-  font-family: var(--bc-font-ui);
-  font-weight: 500;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   color: var(--bc-text);
 }
 .ping-card .meta-pill .ago { color: var(--bc-text-muted); font-size: 13px; }
@@ -952,9 +962,9 @@
   margin-bottom: 4px;
 }
 .ping-info .o-name {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: var(--bc-w-title);
   color: var(--bc-text);
 }
 .ping-info .live-tag {
@@ -964,9 +974,9 @@
   background: transparent;
   border: none;
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--bc-w-control);
   color: var(--bc-success);
 }
 .ping-info .live-tag .dot {
@@ -976,22 +986,23 @@
   box-shadow: none;
 }
 .ping-info .meta-line {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 13px;
   color: var(--bc-text-muted);
 }
 .ping-info .meta-line .v {
-  font-family: var(--bc-font-ui);
-  font-weight: 500;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   color: var(--bc-text);
 }
 .ping-info .meta-line .dot-sep { color: var(--bc-text-muted); }
 
 .ping-edit { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
 .ping-edit-label {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--bc-w-label);
   color: var(--bc-text-muted);
 }
 .ping-edit .seg-radio {
@@ -1015,9 +1026,9 @@
   background: transparent;
   border: none;
   color: var(--bc-text-muted);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--bc-w-control);
   cursor: pointer;
   border-radius: var(--bc-edge);
 }
@@ -1073,15 +1084,16 @@
   border-radius: var(--bc-edge);
 }
 .tab-placeholder-inner h3 {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
   font-size: 18px;
-  font-weight: 600;
+  font-weight: var(--bc-w-title);
   border: none;
   margin: 0 0 8px;
   color: var(--bc-text);
 }
 .tab-placeholder-inner p {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 14px;
   line-height: 1.5;
   color: var(--bc-text-muted);
@@ -1089,9 +1101,9 @@
 }
 .tab-placeholder .tag {
   display: inline-block;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--bc-w-control);
   padding: 2px 6px;
   border-radius: var(--bc-edge);
   background: var(--bc-card-hover);
@@ -1114,8 +1126,8 @@
   display: flex; align-items: baseline; justify-content: space-between;
 }
 .dist-readout {
-  font-family: var(--bc-font-ui);
-  font-weight: 500;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-size: 13px;
   color: var(--bc-text);
   font-variant-numeric: tabular-nums;
@@ -1125,7 +1137,8 @@
   display: flex; align-items: center; justify-content: space-between;
 }
 .dist-tick {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-size: 12px;
   color: var(--bc-text-muted);
 }
@@ -1229,7 +1242,8 @@
   transform: translate(-50%, -50%);
   display: flex; flex-direction: column; align-items: center;
   pointer-events: none;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   color: var(--bc-text);
   line-height: 1;
   text-shadow: none;
@@ -1237,14 +1251,15 @@
 }
 .dir-readout-deg {
   font-size: 13px;
-  font-weight: 600;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   color: var(--bc-text);
   font-variant-numeric: tabular-nums;
 }
 .dir-readout-sector {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-data);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--bc-w-data);
   color: var(--bc-text-muted);
   margin-top: 2px;
 }
@@ -1262,7 +1277,8 @@
   border: 1px solid var(--bc-border-strong);
   border-radius: var(--bc-edge);
   background: var(--bc-card);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   color: var(--bc-text);
   overflow: hidden;
   transition: border-color var(--bc-dur-fast) var(--bc-ease);
@@ -1275,9 +1291,9 @@
   --emblem-size: 32px;
 }
 .beneos-ping-whisper .bpw-title {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: var(--bc-w-title);
   color: var(--bc-text);
 }
 .beneos-ping-whisper .bpw-body {
@@ -1285,7 +1301,7 @@
   line-height: 1.45;
   color: var(--bc-text-muted);
 }
-.beneos-ping-whisper .bpw-body strong { color: var(--bc-text); font-weight: 600; }
+.beneos-ping-whisper .bpw-body strong { color: var(--bc-text); font-family: var(--bc-font-body); font-weight: var(--bc-w-strong); }
 .beneos-ping-whisper .bpw-link {
   /* Default module button (FRM-09). */
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -1297,9 +1313,9 @@
   border: 1px solid var(--bc-border-control);
   border-radius: var(--bc-edge);
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--bc-w-control);
   line-height: 1;
   cursor: pointer;
   transition: background var(--bc-dur-fast) var(--bc-ease),

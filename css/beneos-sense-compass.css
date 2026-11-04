@@ -17,7 +17,8 @@
   border: 1px solid var(--bc-border-strong);
   border-radius: var(--bc-edge);
   overflow: hidden;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   color: var(--bc-text);
   box-shadow: none;
   margin-top: 10px;
@@ -32,15 +33,15 @@
   text-align: center;
 }
 .beneos-sense-compass .bnc-eyebrow {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--bc-w-label);
   color: var(--bc-text-muted);
 }
 .beneos-sense-compass .bnc-title {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: var(--bc-w-title);
   color: var(--bc-text);
   border: none;
   margin: 4px 0 0;
@@ -48,7 +49,8 @@
 .beneos-sense-compass .bnc-empty {
   padding: 18px 18px 28px;
   text-align: center;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 13px;
   color: var(--bc-text-muted);
 }
@@ -65,21 +67,22 @@
   gap: 4px;
 }
 .beneos-sense-compass .bnc-pull-line {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 14px;
   line-height: 1.4;
   color: var(--bc-text-muted);
 }
 .beneos-sense-compass .bnc-pull-line strong {
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-strong);
   color: var(--bc-text);
   text-shadow: none;
 }
 .beneos-sense-compass .bnc-pull-dist {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-data);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: var(--bc-w-data);
   color: var(--bc-text);
 }
 
@@ -158,7 +161,8 @@
   color: var(--bc-text-muted);
 }
 .bnc-farewell-msg {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 14px;
   line-height: 1.4;
   color: var(--bc-text);
@@ -166,9 +170,9 @@
   max-width: 220px;
 }
 .bnc-farewell-origin {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: var(--bc-w-title);
   color: var(--bc-text-muted);
   text-shadow: none;
 }
@@ -185,7 +189,8 @@
 
 /* Explanation copy above the compass */
 .beneos-sense-compass .compass-intro {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 14px;
   line-height: 1.5;
   color: var(--bc-text-muted);
@@ -196,8 +201,8 @@
   margin: 0 0 2px;
 }
 .beneos-sense-compass .compass-intro strong {
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-strong);
   font-size: 14px;
   color: var(--bc-text);
 }
@@ -255,8 +260,8 @@
   position: absolute;
   display: grid;
   place-items: center;
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 14px;
   color: var(--bc-text-muted);
   text-shadow: none;
@@ -366,15 +371,15 @@
   gap: 4px;
 }
 .beneos-sense-compass .readout-eyebrow {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--bc-w-label);
   color: var(--bc-text-muted);
 }
 .beneos-sense-compass .readout-direction {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-data);
   font-size: 18px;
-  font-weight: 600;
+  font-weight: var(--bc-w-data);
   color: var(--bc-text);
   margin: 2px 0 4px;
 }
@@ -386,9 +391,9 @@
   background: var(--bc-card-hover);
   border: none;
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--bc-w-title);
   color: var(--bc-text);
   margin-top: 2px;
   transition: background var(--bc-dur-fast) var(--bc-ease);
@@ -399,8 +404,8 @@
   background: var(--bc-bg);
   border: 1px solid var(--origin-color, var(--bc-border-strong));
   display: grid; place-items: center;
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 12px;
   color: var(--bc-text);
 }
@@ -415,9 +420,9 @@
 }
 .beneos-sense-compass .rarity-strip.revealed { opacity: 1; transform: translateY(0); }
 .beneos-sense-compass .rarity-strip .label {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--bc-w-label);
   color: var(--bc-text-muted);
 }
 .beneos-sense-compass .rarity-strip .gems { display: flex; gap: 4px; }
@@ -436,13 +441,14 @@
   box-shadow: none;
 }
 .beneos-sense-compass .rarity-name {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: var(--bc-w-strong);
   color: var(--bc-text);
 }
 .beneos-sense-compass .distance-hint {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 13px;
   color: var(--bc-text-muted);
   margin-top: 8px;
@@ -453,8 +459,8 @@
 }
 .beneos-sense-compass .distance-hint.revealed { opacity: 1; transform: translateY(0); }
 .beneos-sense-compass .distance-hint .num {
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   color: var(--bc-text);
   margin: 0 3px;
 }
@@ -471,18 +477,21 @@
   text-align: center;
 }
 .beneos-sense-compass .rarity-line {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 13px;
   color: var(--bc-text-muted);
 }
 .beneos-sense-compass .rarity-line .rarity-name {
   color: var(--bc-text);
-  font-weight: 600;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-strong);
   text-shadow: none;
 }
 .beneos-sense-compass .rarity-line .rarity-origin {
   color: var(--bc-text);
-  font-weight: 600;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-strong);
   margin: 0 4px;
 }
 .beneos-sense-compass .rarity-line .rarity-suffix {
@@ -495,7 +504,8 @@
 
 .beneos-sense-compass .whisper {
   padding: 8px 26px 4px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-story);
+  font-weight: var(--bc-w-story);
   font-size: 13px;
   line-height: 1.5;
   color: var(--bc-text-muted);
@@ -505,7 +515,8 @@
 .beneos-sense-compass .whisper em {
   color: var(--bc-text);
   font-style: normal;
-  font-weight: 500;
+  font-family: var(--bc-font-story);
+  font-weight: var(--bc-w-story);
 }
 
 /* "Also stirring" */
@@ -517,9 +528,9 @@
   gap: 0;
 }
 .beneos-sense-compass .also-head {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--bc-w-label);
   color: var(--bc-text-muted);
   margin-bottom: 4px;
 }
@@ -538,7 +549,8 @@
   cursor: pointer;
   transition: background var(--bc-dur-fast) var(--bc-ease);
   font: inherit;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   text-align: left;
   color: inherit;
 }
@@ -557,25 +569,27 @@
   background: var(--bc-bg);
   border: 1px solid var(--origin-color, var(--bc-border-strong));
   display: grid; place-items: center;
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 12px;
   color: var(--bc-text);
 }
 .beneos-sense-compass .also-row .lede {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 13px;
   color: var(--bc-text);
   line-height: 1.3;
 }
 .beneos-sense-compass .also-row .lede em {
   font-style: normal;
-  font-weight: 600;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-strong);
 }
 .beneos-sense-compass .also-row .dir-chip {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--bc-w-control);
   padding: 0 6px;
   height: 22px;
   display: inline-flex; align-items: center;

@@ -575,7 +575,7 @@ export class BeneosRepairDialog {
               <i class="fas fa-link"></i>
             </button>
           </summary>
-          <div class="beneos-rd-path" style="font-size:12px;font-family:var(--bc-font-mono);color:var(--bc-text-muted);padding:0.25em 0 0.5em;word-break:break-all;">${escapeHtml(path)}</div>
+          <div class="beneos-rd-path" style="font-size:12px;font-family:var(--bc-font-data);font-weight:var(--bc-w-data);color:var(--bc-text-muted);padding:0.25em 0 0.5em;word-break:break-all;">${escapeHtml(path)}</div>
           ${sourceRows}
         </details>
       `);

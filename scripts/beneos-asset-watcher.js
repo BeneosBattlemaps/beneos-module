@@ -77,7 +77,8 @@ WATCHER_CSS.textContent = `
   .beneos-asset-watcher-dialog {
     background: var(--bc-bg-panel) !important;
     color: var(--bc-text) !important;
-    font-family: var(--bc-font-ui) !important;
+    font-family: var(--bc-font-body) !important;
+    font-weight: var(--bc-w-body) !important;
     border: 1px solid var(--bc-border-strong) !important;
     border-radius: var(--bc-edge) !important;
     overflow: hidden !important;
@@ -90,8 +91,8 @@ WATCHER_CSS.textContent = `
   }
   .beneos-asset-watcher-dialog .window-header .window-title {
     color: var(--bc-text) !important;
-    font-family: var(--bc-font-ui) !important;
-    font-weight: 600 !important;
+    font-family: var(--bc-font-title) !important;
+    font-weight: var(--bc-w-title) !important;
   }
   .beneos-asset-watcher-dialog .window-content {
     background: var(--bc-bg-panel) !important;
@@ -103,7 +104,7 @@ WATCHER_CSS.textContent = `
   .beneos-asset-watcher-dialog p,
   .beneos-asset-watcher-dialog li { color: var(--bc-text) !important; }
   .beneos-asset-watcher-dialog strong,
-  .beneos-asset-watcher-dialog b { color: var(--bc-text) !important; font-weight: 600 !important; }
+  .beneos-asset-watcher-dialog b { color: var(--bc-text) !important; font-family: var(--bc-font-body) !important; font-weight: var(--bc-w-strong) !important; }
   .beneos-asset-watcher-dialog summary {
     color: var(--bc-accent) !important;
     cursor: pointer;
@@ -116,7 +117,8 @@ WATCHER_CSS.textContent = `
   .beneos-asset-watcher-dialog code {
     background: var(--bc-bg) !important;
     color: var(--bc-text) !important;
-    font-family: var(--bc-font-mono);
+    font-family: var(--bc-font-data);
+    font-weight: var(--bc-w-data);
     padding: 1px 4px;
     border-radius: var(--bc-edge);
     font-size: 0.9em;
@@ -172,7 +174,8 @@ WATCHER_CSS.textContent = `
     color: var(--bc-text) !important;
     border: 1px solid var(--bc-border-control) !important;
     border-radius: var(--bc-edge) !important;
-    font-family: var(--bc-font-ui) !important;
+    font-family: var(--bc-font-control) !important;
+    font-weight: var(--bc-w-control) !important;
     box-shadow: none !important;
     cursor: pointer;
     transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
@@ -216,8 +219,8 @@ WATCHER_CSS.textContent = `
   .beneos-asset-watcher-dialog .beneos-rd-stillmissing h3 {
     margin: 0.6em 0 0.4em;
     color: var(--bc-text);
-    font-family: var(--bc-font-ui);
-    font-weight: 600;
+    font-family: var(--bc-font-title);
+    font-weight: var(--bc-w-title);
     border-bottom: 1px solid var(--bc-border);
     padding-bottom: 0.25em;
   }
@@ -253,7 +256,8 @@ WATCHER_CSS.textContent = `
   }
   .beneos-asset-watcher-dialog .beneos-rd-kind {
     color: var(--bc-text);
-    font-weight: 600;
+    font-family: var(--bc-font-label);
+    font-weight: var(--bc-w-label);
   }
   .beneos-asset-watcher-dialog .beneos-rd-source-actions {
     display: flex;

@@ -8716,7 +8716,8 @@ async function _maybeHandInstallComplete() {
     .beneos-tour-confirm-dialog {
       background: var(--bc-bg-panel) !important;
       color: var(--bc-text) !important;
-      font-family: var(--bc-font-ui) !important;
+      font-family: var(--bc-font-body) !important;
+      font-weight: var(--bc-w-body) !important;
       border: 1px solid var(--bc-border-strong) !important;
       border-radius: var(--bc-edge) !important;
       overflow: hidden !important;
@@ -8729,8 +8730,8 @@ async function _maybeHandInstallComplete() {
     }
     .beneos-tour-confirm-dialog .window-header .window-title {
       color: var(--bc-text) !important;
-      font-family: var(--bc-font-ui) !important;
-      font-weight: 600 !important;
+      font-family: var(--bc-font-title) !important;
+      font-weight: var(--bc-w-title) !important;
     }
     .beneos-tour-confirm-dialog .window-content {
       background: var(--bc-bg-panel) !important;
@@ -8796,14 +8797,15 @@ async function _maybeHandInstallComplete() {
     }
     .beneos-tour-firstrun .beneos-firstrun-body { min-width: 0 !important; }
     .beneos-tour-confirm-dialog strong,
-    .beneos-tour-confirm-dialog b { color: var(--bc-text) !important; font-weight: 600 !important; }
+    .beneos-tour-confirm-dialog b { color: var(--bc-text) !important; font-family: var(--bc-font-body) !important; font-weight: var(--bc-w-strong) !important; }
     .beneos-tour-confirm-dialog .dialog-buttons button,
     .beneos-tour-confirm-dialog .form-footer button {
       background: var(--bc-card) !important;
       color: var(--bc-text) !important;
       border: 1px solid var(--bc-border-control) !important;
       border-radius: var(--bc-edge) !important;
-      font-family: var(--bc-font-ui) !important;
+      font-family: var(--bc-font-control) !important;
+      font-weight: var(--bc-w-control) !important;
       box-shadow: none !important;
       transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease) !important;
     }
@@ -8821,7 +8823,7 @@ async function _maybeHandInstallComplete() {
       outline: 2px solid var(--bc-accent) !important;
       outline-offset: 2px !important;
     }
-    /* Yes is the primary action of the dialog: filled Bone, no pulse. */
+    /* Yes is the primary action of the dialog: filled accent, no pulse. */
     .beneos-tour-confirm-dialog button[data-button="yes"],
     .beneos-tour-confirm-dialog .dialog-button.yes,
     .beneos-tour-confirm-dialog .dialog-buttons button.yes,
@@ -8829,14 +8831,15 @@ async function _maybeHandInstallComplete() {
       background: var(--bc-accent) !important;
       color: var(--bc-text-on-accent) !important;
       border-color: var(--bc-accent) !important;
-      font-weight: 500 !important;
+      font-family: var(--bc-font-control) !important;
+      font-weight: var(--bc-w-fill) !important;
     }
     .beneos-tour-confirm-dialog button[data-button="yes"]:hover,
     .beneos-tour-confirm-dialog .dialog-button.yes:hover,
     .beneos-tour-confirm-dialog .dialog-buttons button.yes:hover,
     .beneos-tour-confirm-dialog .form-footer button[data-button="yes"]:hover {
-      background: var(--bc-accent-strong) !important;
-      border-color: var(--bc-accent-strong) !important;
+      background: var(--bc-accent) !important;
+      border-color: var(--bc-text) !important;
     }
     /* Full-screen install overlay: blocks clicks, shows spinner + message
        so the user can't accidentally interrupt the install. */
@@ -8869,9 +8872,9 @@ async function _maybeHandInstallComplete() {
     }
     #beneos-install-overlay .beneos-install-text {
       color: var(--bc-text);
-      font-family: var(--bc-font-ui);
+      font-family: var(--bc-font-title);
       font-size: 1.35rem;
-      font-weight: 600;
+      font-weight: var(--bc-w-title);
       line-height: 1.4;
       user-select: none;
     }
@@ -8892,7 +8895,8 @@ async function _maybeHandInstallComplete() {
       padding: 0.75em 1.25em;
       background: var(--bc-bg-panel);
       color: var(--bc-text);
-      font-family: var(--bc-font-ui);
+      font-family: var(--bc-font-body);
+      font-weight: var(--bc-w-body);
       border: 1px solid var(--bc-border-strong);
       border-radius: var(--bc-edge);
       box-shadow: var(--bc-shadow-pop);
@@ -8916,7 +8920,8 @@ async function _maybeHandInstallComplete() {
     #beneos-login-overlay .beneos-login-text {
       color: var(--bc-text);
       font-size: 1rem;
-      font-weight: 600;
+      font-family: var(--bc-font-title);
+      font-weight: var(--bc-w-title);
       line-height: 1.3;
     }
     #beneos-login-overlay .beneos-login-hint {
@@ -8924,7 +8929,7 @@ async function _maybeHandInstallComplete() {
       font-size: 0.85rem;
       line-height: 1.3;
     }
-    /* Recheck is the one action of the overlay: filled Bone, no pulse. */
+    /* Recheck is the one action of the overlay: filled accent, no pulse. */
     #beneos-login-overlay .beneos-login-recheck {
       background: var(--bc-accent);
       color: var(--bc-text-on-accent);
@@ -8934,14 +8939,14 @@ async function _maybeHandInstallComplete() {
       margin-top: 0.4em;
       align-self: flex-start;
       cursor: pointer;
-      font-family: var(--bc-font-ui);
+      font-family: var(--bc-font-control);
       font-size: 0.9rem;
-      font-weight: 500;
+      font-weight: var(--bc-w-fill);
       transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
     }
     #beneos-login-overlay .beneos-login-recheck:hover {
-      background: var(--bc-accent-strong);
-      border-color: var(--bc-accent-strong);
+      background: var(--bc-accent);
+      border-color: var(--bc-text);
     }
     #beneos-login-overlay .beneos-login-recheck:focus-visible {
       outline: 2px solid var(--bc-accent);

@@ -1,6 +1,5 @@
-/* Type comes from css/beneos-cloud-tokens.css (Inter, loaded locally).
-   The Google Fonts import for Cinzel, EB Garamond, Geist and Signika that
-   stood here is gone: the Bone standard allows Inter only. */
+/* Type comes from css/beneos-cloud-tokens.css (role tokens, fonts loaded locally).
+   Every text takes the family and weight of its role (standard 2.8). */
 
 /* ============================================================
    Beneos Codex, Design Tokens + Hub/Item/Creature/World/Companion
@@ -17,7 +16,7 @@
 .beneos-codex em, .beneos-codex i, .beneos-codex cite,
 .beneos-companion em, .beneos-companion i, .beneos-companion cite {
   font-style: normal;
-  font-weight: 600;
+  font-weight: var(--bc-w-strong);
 }
 
 /* ============================================================
@@ -41,7 +40,7 @@
   --line-strong:    var(--bc-border-strong);
   --line-bright:    var(--bc-accent-line);
 
-  /* Former gold accent, now Bone. Gold itself is --bc-highlight and is
+  /* Former gold accent, now the module accent (gold again since E-09). Gold itself is --bc-highlight and is
      used directly where the standard allows it (COL-05). */
   --gold:           var(--bc-accent);
   --gold-bright:    var(--bc-accent-strong);
@@ -87,8 +86,8 @@
   box-sizing: border-box;
 }
 .beneos-codex {
-  font-family: var(--bc-font-ui);
-  font-weight: 400;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 14px;
   line-height: 1.5;
   color: var(--ink-primary);
@@ -166,8 +165,8 @@
   border-radius: var(--bc-edge);
   display: grid; place-items: center;
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 22px;
 }
 /* Mask-image variant: drops the letter & gold-block, renders the Beneos SVG
@@ -182,13 +181,14 @@
           mask: url("../icons/beneos_logo.svg") center / contain no-repeat;
 }
 .cdx-brand .title {
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 18px;
   color: var(--ink-primary);
 }
 .cdx-brand .sub {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 12px;
   color: var(--ink-muted);
   margin-left: 12px;
@@ -210,9 +210,9 @@
   border: none;
   border-radius: 0;
   color: var(--ink-muted);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   font-size: 13px;
-  font-weight: 500;
   cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
@@ -269,7 +269,7 @@
 }
 /* Codex head, signature element SIG-06. The ember pools, the sweeping
    spotlight and the title pulse are gone (COL-13, COL-14, FRM-12). What
-   stays are the rising particles, drawn in the Bone accent without glow
+   stays are the rising particles, drawn in the accent without glow
    and stopped under reduced motion. */
 .codex-sub-hero > * { position: relative; z-index: 1; }
 
@@ -324,14 +324,15 @@ body.beneos-perf-mode .cdx-sparks {
   display: none !important;
 }
 .codex-sub-hero .csh-title {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 22px;
-  font-weight: 600;
   margin: 0 0 4px;
   color: var(--ink-primary);
 }
 .codex-sub-hero .csh-lead {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
   font-size: 14px;
   line-height: 1.5;
@@ -382,20 +383,20 @@ body.beneos-perf-mode .cdx-sparks {
 .concept-rail::-webkit-scrollbar-thumb { background: var(--bc-border-control); border-radius: var(--bc-edge); }
 
 .eyebrow {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 13px;
   color: var(--bc-text-muted);
   display: flex; align-items: center; gap: 10px;
-  font-weight: 500;
 }
 .eyebrow::before {
   content: none;
 }
 
 .concept-title {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 18px;
-  font-weight: 600;
   line-height: 1.3;
   color: var(--ink-primary);
   margin: 14px 0 12px;
@@ -404,7 +405,8 @@ body.beneos-perf-mode .cdx-sparks {
   gap: 12px;
 }
 .concept-lead {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 14px;
   font-style: normal;
   line-height: 1.6;
@@ -449,7 +451,8 @@ body.beneos-perf-mode .cdx-sparks {
 .tier-pip.harmony { color: var(--tier-harmony); }
 
 .tier-name {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 13px;
   color: var(--ink-primary);
 }
@@ -485,13 +488,14 @@ body.beneos-perf-mode .cdx-sparks {
 }
 .rule-block:last-of-type { border-bottom: 1px solid var(--bc-border); }
 .rule-title {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 16px;
   color: var(--ink-primary);
-  font-weight: 600;
 }
 .rule-summary {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 14px;
   line-height: 1.55;
   color: var(--ink-secondary);
@@ -526,9 +530,9 @@ body.beneos-perf-mode .cdx-sparks {
   gap: 16px;
 }
 .gallery-header h2 {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 18px;
-  font-weight: 600;
   margin: 6px 0 0;
   display: flex;
   align-items: center;
@@ -546,11 +550,12 @@ body.beneos-perf-mode .cdx-sparks {
   border-radius: 0;
 }
 .gallery-header .count-readout {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 13px;
   color: var(--ink-muted);
 }
-.gallery-header .count-readout strong { color: var(--bc-text); font-weight: 600; }
+.gallery-header .count-readout strong { color: var(--bc-text); font-family: var(--bc-font-data); font-weight: var(--bc-w-data); }
 
 .gallery-grid {
   display: grid;
@@ -605,8 +610,8 @@ body.beneos-perf-mode .cdx-sparks {
   background:
     color-mix(in oklab, var(--origin-color) 25%, var(--bc-bg));
   display: grid; place-items: center;
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 38px;
   color: color-mix(in oklab, var(--origin-color) 35%, var(--bc-text) 65%);
   border: 1px solid color-mix(in oklab, var(--origin-color) 50%, var(--bc-border-strong));
@@ -650,14 +655,15 @@ body.beneos-perf-mode .cdx-sparks {
   background: transparent;
 }
 .origin-card .name {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 14px;
-  font-weight: 600;
   color: var(--ink-primary);
   margin-bottom: 4px;
 }
 .origin-card .blurb {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
   font-size: 12px;
   line-height: 1.40;
@@ -749,12 +755,12 @@ body.beneos-perf-mode .cdx-sparks {
   color: var(--bc-text);
   padding: 7px 12px 7px 10px;
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   font-size: 13px;
   cursor: pointer;
   transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
   margin-bottom: 22px;
-  font-weight: 500;
 }
 .back-btn:hover { border-color: var(--bc-accent); color: var(--bc-text); background: var(--bc-card-hover); }
 
@@ -765,8 +771,8 @@ body.beneos-perf-mode .cdx-sparks {
   background:
     color-mix(in oklab, var(--origin-color) 25%, var(--bc-bg));
   display: grid; place-items: center;
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 96px;
   color: color-mix(in oklab, var(--origin-color) 30%, var(--bc-text) 70%);
   border: 1px solid color-mix(in oklab, var(--origin-color) 55%, var(--bc-border-strong));
@@ -814,15 +820,15 @@ body.beneos-perf-mode .cdx-sparks {
 
 .detail-name-row { text-align: center; margin-bottom: 8px; }
 .detail-eyebrow {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 13px;
   color: var(--bc-text-muted);
-  font-weight: 500;
 }
 .detail-name {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: clamp(20px, 4cqi, 24px);
-  font-weight: 600;
   color: var(--ink-primary);
   margin: 6px 0 14px;
   word-break: break-word;
@@ -831,7 +837,8 @@ body.beneos-perf-mode .cdx-sparks {
   line-height: 1.05;
 }
 .detail-lore {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-story);
+  font-weight: var(--bc-w-story);
   font-style: normal;
   font-size: 14px;
   line-height: 1.55;
@@ -848,7 +855,8 @@ body.beneos-perf-mode .cdx-sparks {
   padding-top: 18px;
 }
 .origin-nav-head {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 12px;
   color: var(--ink-muted);
   margin-bottom: 10px;
@@ -866,7 +874,8 @@ body.beneos-perf-mode .cdx-sparks {
   cursor: pointer;
   text-align: left;
   color: var(--ink-secondary);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   font-size: 12px;
   transition: all var(--bc-dur-fast) var(--bc-ease);
 }
@@ -875,7 +884,7 @@ body.beneos-perf-mode .cdx-sparks {
 .origin-pager-btn .direction {
   font-size: 12px; color: var(--ink-muted);
 }
-.origin-pager-btn .label { color: var(--ink-primary); font-family: var(--bc-font-ui); font-size: 13px; }
+.origin-pager-btn .label { color: var(--ink-primary); font-family: var(--bc-font-nav); font-weight: var(--bc-w-nav); font-size: 13px; }
 
 /* ============================================================
    Detail center column, tiers & rules
@@ -922,8 +931,8 @@ body.beneos-perf-mode .cdx-sparks {
   border-radius: 50%;
   background: var(--bc-card-hover);
   display: grid; place-items: center;
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 14px;
   color: var(--bc-text);
   border: 1px solid var(--bc-border-control);
@@ -931,20 +940,21 @@ body.beneos-perf-mode .cdx-sparks {
 }
 .tier-info { min-width: 0; }
 .tier-eyebrow {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 13px;
   color: var(--bc-text-muted);
-  font-weight: 500;
 }
 .tier-title {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 16px;
-  font-weight: 600;
   margin: 2px 0 0;
   color: var(--ink-primary);
 }
 .tier-req {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
   font-size: 13px;
   color: var(--ink-muted);
@@ -959,7 +969,8 @@ body.beneos-perf-mode .cdx-sparks {
   border: none;
   font-size: 12px;
   color: var(--ink-muted);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   flex-shrink: 0;
 }
 .tier-card.active .tier-lock {
@@ -972,8 +983,8 @@ body.beneos-perf-mode .cdx-sparks {
   padding: 3px 9px;
   border-radius: var(--bc-edge);
   font-size: 12px;
-  font-family: var(--bc-font-ui);
-  font-weight: 500;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   background: var(--bc-card-hover);
   border: none;
   color: var(--bc-text-muted);
@@ -983,7 +994,8 @@ body.beneos-perf-mode .cdx-sparks {
 }
 
 .tier-lore {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-story);
+  font-weight: var(--bc-w-story);
   font-style: normal;
   font-size: 16px;
   line-height: 1.55;
@@ -993,7 +1005,8 @@ body.beneos-perf-mode .cdx-sparks {
 }
 
 .tier-rules {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 14px;
   line-height: 1.62;
   color: var(--ink-primary);
@@ -1002,7 +1015,7 @@ body.beneos-perf-mode .cdx-sparks {
 .tier-rules p:last-child { margin-bottom: 0; }
 .tier-rules strong {
   color: var(--bc-text);
-  font-weight: 600;
+  font-weight: var(--bc-w-strong);
 }
 .tier-rules em {
   font-style: normal;
@@ -1011,7 +1024,7 @@ body.beneos-perf-mode .cdx-sparks {
 .tier-rules .kw {
   font-style: normal;
   color: var(--bc-text);
-  font-weight: 600;
+  font-weight: var(--bc-w-strong);
 }
 .tier-rules hr {
   border: none;
@@ -1027,11 +1040,11 @@ body.beneos-perf-mode .cdx-sparks {
   border-top: 1px solid var(--bc-border);
 }
 .reson-sub-head {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 14px;
   color: var(--bc-text);
   margin-bottom: 8px;
-  font-weight: 600;
 }
 
 /* Specials cards */
@@ -1044,7 +1057,8 @@ body.beneos-perf-mode .cdx-sparks {
   content: "RITUAL";
   position: absolute;
   top: 14px; right: 18px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   color: var(--bc-text-muted);
   opacity: 1;
@@ -1075,13 +1089,14 @@ body.beneos-perf-mode .cdx-sparks {
 .sim-rail::-webkit-scrollbar-thumb { background: var(--bc-border-control); border-radius: var(--bc-edge); }
 
 .sim-head h3 {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 18px;
-  font-weight: 600;
   margin: 8px 0 6px;
 }
 .sim-head p {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
   font-size: 13.5px;
   line-height: 1.5;
@@ -1123,7 +1138,8 @@ body.beneos-perf-mode .cdx-sparks {
   width: 36px; height: 36px;
   border-radius: 50%;
   display: grid; place-items: center;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-size: 14px;
   color: var(--ink-muted);
   background: var(--bc-bg);
@@ -1136,7 +1152,8 @@ body.beneos-perf-mode .cdx-sparks {
   border-color: color-mix(in oklab, var(--origin-color) 60%, transparent);
 }
 .altar-label {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 12px;
   color: var(--ink-muted);
   text-align: center;
@@ -1150,20 +1167,23 @@ body.beneos-perf-mode .cdx-sparks {
   background: var(--bc-bg);
 }
 .sim-readout .label {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 12px;
   color: var(--ink-muted);
   margin-bottom: 4px;
 }
 .sim-readout .value {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-size: 22px;
   letter-spacing: 0.04em;
   color: var(--tier-color, var(--gold-bright));
   margin-bottom: 4px;
 }
 .sim-readout .hint {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
   font-size: 13px;
   color: var(--ink-secondary);
@@ -1176,7 +1196,8 @@ body.beneos-perf-mode .cdx-sparks {
   border: 1px solid var(--line-soft);
   border-radius: var(--bc-edge);
   color: var(--ink-secondary);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   cursor: pointer;
   align-self: flex-start;
@@ -1216,7 +1237,8 @@ body.beneos-perf-mode .cdx-sparks {
 }
 .sense-labels {
   position: absolute; inset: 0;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 12px;
   color: var(--ink-muted);
 }
@@ -1268,10 +1290,10 @@ body.beneos-perf-mode .cdx-sparks {
   margin-bottom: 8px;
 }
 .model-block-name {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 14px;
   color: var(--ink-primary);
-  font-weight: 600;
 }
 .pip-emblem {
   width: 14px; height: 14px;
@@ -1287,7 +1309,8 @@ body.beneos-perf-mode .cdx-sparks {
 .pip-emblem.set  { color: var(--tier-reson); }
 
 .model-block-body {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 14px;
   line-height: 1.55;
   color: var(--ink-secondary);
@@ -1317,13 +1340,15 @@ body.beneos-perf-mode .cdx-sparks {
 .set-pip.reson   { color: var(--tier-reson); }
 .set-pip.harmony { color: var(--tier-harmony); }
 .set-rung-name {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 13px;
   color: var(--ink-primary);
 }
 .set-rung-cond {
   font-size: 12px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -1355,12 +1380,13 @@ body.beneos-perf-mode .cdx-sparks {
   display: grid; place-items: center;
 }
 .concept-forge-cta .cta-title {
-  font-family: var(--bc-font-ui); font-size: 13px;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control); font-size: 13px;
   color: var(--bc-text);
-  font-weight: 600;
 }
 .concept-forge-cta .cta-sub {
-  font-family: var(--bc-font-ui); font-style: normal;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body); font-style: normal;
   font-size: 13px; color: var(--ink-secondary); line-height: 1.35; margin-top: 1px;
 }
 
@@ -1369,12 +1395,12 @@ body.beneos-perf-mode .cdx-sparks {
    ============================================================ */
 .section-eyebrow {
   display: flex; align-items: center; gap: 10px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 13px;
   color: var(--bc-text-muted);
   margin-top: 4px;
   margin-bottom: 8px;
-  font-weight: 500;
 }
 .section-eyebrow::before {
   content: "";
@@ -1420,7 +1446,8 @@ body.beneos-perf-mode .cdx-sparks {
   padding: 12px 14px;
 }
 .sim-class-label {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 12px;
   color: var(--ink-muted);
   margin-bottom: 8px;
@@ -1440,7 +1467,8 @@ body.beneos-perf-mode .cdx-sparks {
   border: none;
   border-radius: var(--bc-edge);
   color: var(--ink-secondary);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   cursor: pointer;
   transition: background-color var(--bc-dur-fast) var(--bc-ease), color var(--bc-dur-fast) var(--bc-ease);
@@ -1452,7 +1480,8 @@ body.beneos-perf-mode .cdx-sparks {
 }
 .sim-class-hint {
   margin-top: 8px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
   font-size: 12.5px;
   color: var(--ink-muted);
@@ -1476,7 +1505,8 @@ body.beneos-perf-mode .cdx-sparks {
   grid-template-columns: 12px 1fr auto;
   align-items: center;
   gap: 10px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 12px;
   color: var(--ink-primary);
   margin-bottom: 4px;
@@ -1494,7 +1524,8 @@ body.beneos-perf-mode .cdx-sparks {
 }
 .sim-echo-readout.on .er-state { color: var(--bc-success); }
 .sim-echo-readout .er-body {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
   font-size: 12.5px;
   line-height: 1.45;
@@ -1538,20 +1569,22 @@ body.beneos-perf-mode .cdx-sparks {
   justify-content: center;
   font-size: 16px;
   color: var(--bc-text);
-  font-weight: 600;
   margin-bottom: 8px;
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
 }
 .codex-hub .hub-hero .eyebrow::before { display: none; }
 .codex-hub .hub-hero h1 {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 44px;
-  font-weight: 600;
   line-height: 1.1;
   margin: 16px 0 14px;
   text-wrap: balance;
 }
 .codex-hub .hub-hero p {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
   font-size: 16px;
   line-height: 1.55;
@@ -1627,12 +1660,12 @@ body.beneos-perf-mode .cdx-sparks {
   min-width: 0;
 }
 .codex-hub-card .card-eyebrow {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 13px;
   color: var(--bc-text-muted);
   margin-bottom: 10px;
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  font-weight: 500;
 }
 .codex-hub-card.wip .card-eyebrow {
   color: var(--bc-text-muted);
@@ -1646,15 +1679,16 @@ body.beneos-perf-mode .cdx-sparks {
   color: var(--bc-text-muted);
 }
 .codex-hub-card h3 {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 18px;
-  font-weight: 600;
   margin: 0 0 8px;
   color: var(--bc-text);
   text-wrap: balance;
 }
 .codex-hub-card p {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 14px;
   line-height: 1.45;
   color: var(--bc-text-muted);
@@ -1664,7 +1698,8 @@ body.beneos-perf-mode .cdx-sparks {
   text-wrap: pretty;
 }
 .codex-hub-card .card-cta {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   font-size: 12px;
   color: var(--bc-text);
   display: inline-flex; align-items: center; gap: 6px;
@@ -1705,17 +1740,18 @@ body.beneos-perf-mode .cdx-sparks {
   border: 1px solid var(--bc-border-control);
   color: var(--bc-text);
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   font-size: 13px;
   cursor: pointer;
   transition: all var(--bc-dur-fast) var(--bc-ease);
   margin-bottom: 18px;
   white-space: nowrap;
-  font-weight: 500;
 }
 .codex-page-back:hover { border-color: var(--bc-accent); color: var(--bc-text); background: var(--bc-card-hover); }
 .codex-page-eyebrow {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 12px;
   color: var(--bc-text-muted);
   display: inline-flex;
@@ -1727,16 +1763,17 @@ body.beneos-perf-mode .cdx-sparks {
   content: none;
 }
 .codex-page-title {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 28px;
-  font-weight: 600;
   line-height: 1.1;
   margin: 0 0 10px;
   color: var(--ink-primary);
   text-wrap: balance;
 }
 .codex-page-intro {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 16px;
   font-style: normal;
   line-height: 1.55;
@@ -1746,7 +1783,7 @@ body.beneos-perf-mode .cdx-sparks {
   text-wrap: pretty;
 }
 .codex-page-intro em { color: var(--bc-text); font-style: normal; }
-.codex-page-intro strong { color: var(--ink-primary); font-weight: 600; }
+.codex-page-intro strong { color: var(--ink-primary); font-weight: var(--bc-w-strong); }
 
 .codex-page-tabs {
   display: flex;
@@ -1766,7 +1803,8 @@ body.beneos-perf-mode .cdx-sparks {
 .codex-page-subtitle {
   padding: 12px 48px 14px;
   border-bottom: 1px solid var(--line-faint);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
   font-size: 14px;
   line-height: 1.5;
@@ -1782,14 +1820,14 @@ body.beneos-perf-mode .cdx-sparks {
   background: transparent;
   border: none;
   color: var(--ink-muted);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   font-size: 13px;
   cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease), background var(--bc-dur-fast) var(--bc-ease);
   white-space: nowrap;
   position: relative;
-  font-weight: 500;
 }
 .codex-subtab:hover {
   color: var(--bc-text);
@@ -1806,7 +1844,8 @@ body.beneos-perf-mode .cdx-sparks {
   height: 2px;
 }
 .codex-subtab .tab-mod-badge {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   padding: 2px 7px;
   border-radius: var(--bc-edge);
@@ -1815,7 +1854,8 @@ body.beneos-perf-mode .cdx-sparks {
   color: var(--bc-success);
 }
 .codex-subtab .tab-wip-badge {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   padding: 2px 7px;
   border-radius: var(--bc-edge);
@@ -1880,26 +1920,27 @@ body.beneos-perf-mode .cdx-sparks {
 }
 .generator-card .gen-icon svg { width: 36px; height: 36px; }
 .generator-card h3 {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 26px;
-  font-weight: 600;
   letter-spacing: 0.02em;
   margin: 0 0 4px;
   color: var(--ink-primary);
   display: flex; align-items: center; gap: 12px;
 }
 .generator-card h3 .badge {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   padding: 2px 9px;
   border-radius: var(--bc-edge);
   background: var(--bc-card-hover);
   border: none;
   color: var(--bc-text-muted);
-  font-weight: 500;
 }
 .generator-card .gen-lead {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
   font-size: 16px;
   line-height: 1.55;
@@ -1916,7 +1957,8 @@ body.beneos-perf-mode .cdx-sparks {
   gap: 8px;
 }
 .generator-card .gen-features li {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 13.5px;
   line-height: 1.55;
   color: var(--ink-primary);
@@ -1941,9 +1983,9 @@ body.beneos-perf-mode .cdx-sparks {
   border: 1px solid var(--bc-border-strong);
   border-radius: var(--bc-edge);
   color: var(--bc-success);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 13px;
-  font-weight: 600;
   cursor: pointer;
   transition: all var(--bc-dur-fast) var(--bc-ease);
 }
@@ -1973,7 +2015,8 @@ body.beneos-perf-mode .cdx-sparks {
   border-radius: var(--bc-edge);
 }
 .codex-page-wip-inner .tag {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   padding: 5px 14px;
   border-radius: var(--bc-edge);
@@ -1984,7 +2027,8 @@ body.beneos-perf-mode .cdx-sparks {
   margin-bottom: 18px;
 }
 .codex-page-wip-inner p {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 17px;
   line-height: 1.55;
   color: var(--ink-secondary);
@@ -2034,7 +2078,8 @@ body.beneos-perf-mode .cdx-sparks {
   border: 1px solid var(--line-soft);
   color: var(--ink-secondary);
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   font-size: 12px;
   text-decoration: none;
   cursor: pointer;
@@ -2046,15 +2091,16 @@ body.beneos-perf-mode .cdx-sparks {
   margin-bottom: 6px;
 }
 .subcodex-head h2 {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 32px;
-  font-weight: 600;
   letter-spacing: 0.02em;
   margin: 0;
   text-wrap: balance;
 }
 .subcodex-head .lead {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
   font-size: 15px;
   line-height: 1.5;
@@ -2101,16 +2147,17 @@ body.beneos-perf-mode .cdx-sparks {
 }
 .subcodex-card .ic svg { width: 38px; height: 38px; color: var(--card-ink); }
 .subcodex-card h3 {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 20px;
-  font-weight: 600;
   letter-spacing: 0.02em;
   margin: 0 0 4px;
   color: var(--ink-primary);
   display: flex; align-items: center; gap: 10px;
 }
 .subcodex-card h3 .badge {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   padding: 2px 8px;
   border-radius: var(--bc-edge);
@@ -2119,7 +2166,8 @@ body.beneos-perf-mode .cdx-sparks {
   color: var(--bc-text-muted);
 }
 .subcodex-card p {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 14px;
   line-height: 1.45;
   color: var(--ink-secondary);
@@ -2127,7 +2175,8 @@ body.beneos-perf-mode .cdx-sparks {
   text-wrap: pretty;
 }
 .subcodex-card .cta-text {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   font-size: 12px;
   color: var(--gold-bright);
 }
@@ -2190,20 +2239,22 @@ body.beneos-perf-mode .cdx-sparks {
   background: color-mix(in oklab, var(--faction-color) 25%, var(--bc-bg));
   border: 1px solid color-mix(in oklab, var(--faction-color) 50%, transparent);
   display: grid; place-items: center;
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 13px;
   color: color-mix(in oklab, var(--faction-color) 30%, var(--bc-text) 70%);
 }
 .faction-row .ftext { min-width: 0; }
 .faction-row .fname {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 13px;
   letter-spacing: 0.04em;
   color: var(--ink-primary);
 }
 .faction-row .fsub {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 12px;
   color: var(--ink-muted);
   margin-top: 2px;
@@ -2239,8 +2290,8 @@ body.beneos-perf-mode .cdx-sparks {
   background: color-mix(in oklab, var(--faction-color) 40%, var(--bc-bg));
   display: grid; place-items: center;
   color: color-mix(in oklab, var(--faction-color) 30%, var(--bc-text) 70%);
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 64px;
 }
 .faction-detail .hero-portrait .image-hint {
@@ -2248,7 +2299,8 @@ body.beneos-perf-mode .cdx-sparks {
   bottom: 12px;
   left: 12px;
   right: 12px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 12px;
   color: var(--ink-muted);
   background: var(--bc-bg);
@@ -2265,22 +2317,24 @@ body.beneos-perf-mode .cdx-sparks {
   content: none;
 }
 .faction-detail .hero-meta h2 {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 42px;
-  font-weight: 600;
   margin: 14px 0 6px;
   letter-spacing: 0.02em;
   line-height: 1.05;
 }
 .faction-detail .hero-meta .sub {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
   font-size: 17px;
   color: var(--ink-secondary);
   margin-bottom: 16px;
 }
 .faction-detail .ethos-line {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-story);
+  font-weight: var(--bc-w-story);
   font-style: normal;
   font-size: 16px;
   letter-spacing: 0.04em;
@@ -2298,7 +2352,8 @@ body.beneos-perf-mode .cdx-sparks {
   margin-top: 18px;
 }
 .faction-detail .body p {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 16px;
   line-height: 1.6;
   color: var(--ink-primary);
@@ -2320,13 +2375,15 @@ body.beneos-perf-mode .cdx-sparks {
   border-radius: var(--bc-edge);
 }
 .faction-detail .info-block .l {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 12px;
   color: var(--ink-muted);
   margin-bottom: 6px;
 }
 .faction-detail .info-block .v {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 16px;
   color: var(--ink-primary);
 }
@@ -2343,7 +2400,8 @@ body.beneos-perf-mode .cdx-sparks {
   border: 1px solid var(--line-faint);
   border-left: 2px solid color-mix(in oklab, var(--faction-color) 60%, transparent);
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
   font-size: 13px;
   color: var(--ink-secondary);
@@ -2374,7 +2432,8 @@ body.beneos-perf-mode .cdx-sparks {
   border: 1px solid var(--line-soft);
   color: var(--ink-secondary);
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   font-size: 12px;
   text-decoration: none;
   cursor: pointer;
@@ -2384,16 +2443,17 @@ body.beneos-perf-mode .cdx-sparks {
 .longform-inner .crumb:hover { border-color: var(--line-strong); color: var(--ink-primary); background: var(--bc-accent-dim); }
 
 .longform h1 {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 36px;
-  font-weight: 600;
   letter-spacing: 0.02em;
   line-height: 1.1;
   margin: 14px 0 12px;
   text-wrap: balance;
 }
 .longform p {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 17px;
   line-height: 1.6;
   color: var(--ink-primary);
@@ -2401,7 +2461,7 @@ body.beneos-perf-mode .cdx-sparks {
   text-wrap: pretty;
 }
 .longform p em { font-style: normal; color: var(--bc-text); }
-.longform p strong { color: var(--ink-primary); font-weight: 600; }
+.longform p strong { color: var(--ink-primary); font-weight: var(--bc-w-strong); }
 
 .howto-steps { display: flex; flex-direction: column; gap: 14px; margin-top: 18px; }
 .howto-step {
@@ -2412,9 +2472,9 @@ body.beneos-perf-mode .cdx-sparks {
   border-radius: var(--bc-edge);
 }
 .howto-step h3 {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 17px;
-  font-weight: 600;
   letter-spacing: 0.04em;
   margin: 0 0 6px;
   color: var(--ink-primary);
@@ -2435,15 +2495,16 @@ body.beneos-perf-mode .cdx-sparks {
   border-radius: var(--bc-edge);
 }
 .world-section h3 {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 16px;
-  font-weight: 600;
   margin: 0 0 8px;
   color: var(--ink-primary);
 }
 .world-section p {
   margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink-secondary);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
 }
 
 /* Spell WIP banner */
@@ -2455,7 +2516,8 @@ body.beneos-perf-mode .cdx-sparks {
   border: 1px dashed var(--bc-accent-line);
   border-radius: var(--bc-edge);
   color: var(--bc-accent);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 14px;
   text-align: center;
   display: flex;
@@ -2526,27 +2588,28 @@ body.beneos-perf-mode .cdx-sparks {
 }
 .feature-card .feat-icon svg { width: 30px; height: 30px; color: var(--card-ink); }
 .feature-card h3 {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 22px;
-  font-weight: 600;
   letter-spacing: 0.02em;
   margin: 0;
   color: var(--ink-primary);
   display: flex; align-items: center; gap: 10px;
 }
 .feature-card h3 .badge {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   padding: 2px 8px;
   border-radius: var(--bc-edge);
   background: var(--bc-card-hover);
   border: none;
   color: var(--bc-text-muted);
-  font-weight: 500;
 }
 .feature-card p {
   position: relative; z-index: 1;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 15px;
   line-height: 1.5;
   color: var(--ink-secondary);
@@ -2556,7 +2619,8 @@ body.beneos-perf-mode .cdx-sparks {
 .feature-card .feat-cta {
   position: relative; z-index: 1;
   margin-top: auto;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   font-size: 12px;
   color: var(--gold-bright);
   display: inline-flex; align-items: center; gap: 6px;
@@ -2601,7 +2665,8 @@ body.beneos-perf-mode .cdx-sparks {
   background:
     var(--bc-bg-panel);
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   color: var(--bc-text);
   display: flex;
   flex-direction: column;
@@ -2626,7 +2691,8 @@ body.beneos-perf-mode .cdx-sparks {
   padding: 10px 14px;
   background: var(--bc-bg);
   border-bottom: 1px solid var(--bc-border-strong);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 13px;
 }
 .fnd-windowbar .toggle {
@@ -2692,8 +2758,8 @@ body.beneos-perf-mode .cdx-sparks {
   border: 1px solid var(--bc-border-strong);
   border-radius: var(--bc-edge);
   padding: 10px 14px;
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 26px;
   color: var(--bc-text);
   text-align: center;
@@ -2740,7 +2806,8 @@ body.beneos-perf-mode .cdx-sparks {
   text-align: center;
   padding: 6px 0;
   color: var(--bc-accent);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 14px;
 }
 
@@ -2759,7 +2826,8 @@ body.beneos-perf-mode .cdx-sparks {
   font-size: 12px; color: var(--bc-text-muted);
 }
 .fnd-combat .stat .value {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-size: 22px;
   color: var(--bc-text);
 }
@@ -2782,11 +2850,12 @@ body.beneos-perf-mode .cdx-sparks {
 .fnd-section-head .title {
   flex: 1;
   text-align: center;
-  font-weight: 500;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
 }
 .fnd-body h3 {
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 20px;
   color: var(--bc-text);
   margin: 12px 0 6px;
@@ -2825,12 +2894,13 @@ body.beneos-perf-mode .cdx-sparks {
 
 .fnd-quote {
   font-style: normal;
-  font-weight: 600;
   text-align: center;
   color: var(--bc-text);
   font-size: 14px;
   margin: 14px 0 10px;
   line-height: 1.5;
+  font-family: var(--bc-font-story);
+  font-weight: var(--bc-w-story);
 }
 
 .fnd-cardrow-head {
@@ -2852,8 +2922,8 @@ body.beneos-perf-mode .cdx-sparks {
   margin-top: 6px;
 }
 .fnd-itemcard-wrap h4 {
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 16px;
   color: var(--bc-text);
   margin: 0 0 8px;
@@ -2873,7 +2943,8 @@ body.beneos-perf-mode .cdx-sparks {
   border-radius: var(--bc-edge);
   display: grid; place-items: center;
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 12px;
   padding: 4px;
 }
@@ -2889,8 +2960,8 @@ body.beneos-perf-mode .cdx-sparks {
   background:
     color-mix(in oklab, var(--origin-color) 25%, var(--bc-bg));
   display: grid; place-items: center;
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   color: color-mix(in oklab, var(--origin-color) 35%, var(--bc-text) 65%);
   border: 1px solid color-mix(in oklab, var(--origin-color) 50%, var(--bc-border-strong));
   position: relative;
@@ -2923,7 +2994,8 @@ body.beneos-perf-mode .cdx-sparks {
   margin-left: -1px; /* fuse to sheet */
   display: flex;
   flex-direction: column;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   color: var(--ink-primary);
   position: relative;
   overflow: hidden;
@@ -2949,10 +3021,12 @@ body.beneos-perf-mode .cdx-sparks {
   background: var(--bc-card-hover);
   color: var(--bc-text-on-accent);
   display: grid; place-items: center;
-  font-family: var(--bc-font-ui); font-weight: 600; font-size: 13px;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title); font-size: 13px;
 }
 .bnc-header .label {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 12px;
   color: var(--bc-text-muted);
 }
@@ -2978,20 +3052,22 @@ body.beneos-perf-mode .cdx-sparks {
 }
 .bnc-hero .boe { width: 84px; height: 84px; font-size: 26px; }
 .bnc-hero .meta-eb {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 12px;
   color: var(--bc-text-muted);
   margin-bottom: 4px;
 }
 .bnc-hero .name {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 24px;
-  font-weight: 600;
   letter-spacing: 0.04em;
   margin: 0 0 4px;
 }
 .bnc-hero .lore {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-story);
+  font-weight: var(--bc-w-story);
   font-style: normal;
   font-size: 12.5px;
   line-height: 1.4;
@@ -3012,7 +3088,8 @@ body.beneos-perf-mode .cdx-sparks {
   background: color-mix(in oklab, var(--origin-color) 16%, var(--bc-bg));
   border: 1px solid color-mix(in oklab, var(--origin-color) 50%, transparent);
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   color: color-mix(in oklab, var(--origin-color) 30%, var(--bc-text) 70%);
 }
@@ -3053,13 +3130,15 @@ body.beneos-perf-mode .cdx-sparks {
   border-radius: var(--bc-edge);
 }
 .bnc-stat .l {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 12px;
   color: var(--ink-muted);
   margin-bottom: 4px;
 }
 .bnc-stat .v {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-size: 18px;
   color: var(--ink-primary);
   display: flex; align-items: baseline; gap: 4px;
@@ -3077,7 +3156,8 @@ body.beneos-perf-mode .cdx-sparks {
   width: 3px; height: 14px; background: var(--gold); border-radius: var(--bc-edge);
 }
 .bnc-section-head .ttl {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 12px;
   color: var(--ink-secondary);
 }
@@ -3095,14 +3175,15 @@ body.beneos-perf-mode .cdx-sparks {
   margin-bottom: 4px;
 }
 .bnc-bonus .num {
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-size: 14px;
   width: 22px; text-align: center;
   color: var(--origin-color);
 }
 .bnc-bonus .tn {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 12px;
   color: var(--ink-primary);
 }
@@ -3112,7 +3193,8 @@ body.beneos-perf-mode .cdx-sparks {
   margin-left: auto;
 }
 .bnc-bonus .desc {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
   font-size: 12.5px;
   line-height: 1.4;
@@ -3153,14 +3235,14 @@ body.beneos-perf-mode .cdx-sparks {
   content: "B";
   position: absolute; top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 28px;
-  font-weight: 600;
   color: color-mix(in oklab, var(--origin-color) 40%, var(--bc-text) 60%);
 }
 .bnc-card.front .card-title {
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 13px;
   color: var(--bc-text);
   text-align: center;
@@ -3177,7 +3259,8 @@ body.beneos-perf-mode .cdx-sparks {
 .bnc-card.front .card-emblem svg { width: 50%; height: 50%; }
 .bnc-card.front .card-tier-strip {
   margin-top: auto;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 12px;
   color: color-mix(in oklab, var(--origin-color) 30%, var(--bc-text) 70%);
 }
@@ -3212,7 +3295,8 @@ body.beneos-perf-mode .cdx-sparks {
   position: relative;
   overflow: hidden;
   color: var(--ink-primary);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
 }
 .bnc-crown::before {
   content: ""; position: absolute; inset: 0;
@@ -3226,18 +3310,20 @@ body.beneos-perf-mode .cdx-sparks {
 }
 .bnc-crown .left .boe { width: 60px; height: 60px; font-size: 20px; }
 .bnc-crown .left .meta-eb {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 12px;
   color: var(--bc-text-muted);
 }
 .bnc-crown .left .name {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 20px;
-  font-weight: 600;
   letter-spacing: 0.04em;
 }
 .bnc-crown .left .lore {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-story);
+  font-weight: var(--bc-w-story);
   font-style: normal;
   font-size: 12px;
   color: var(--ink-secondary);
@@ -3252,7 +3338,8 @@ body.beneos-perf-mode .cdx-sparks {
   border-right: 1px solid var(--line-faint);
 }
 .bnc-crown .center .lab {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 12px;
   color: var(--ink-muted);
 }
@@ -3263,7 +3350,8 @@ body.beneos-perf-mode .cdx-sparks {
   background: var(--bc-bg);
   border: 1px solid var(--line-faint);
   display: grid; place-items: center;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-size: 12px;
   color: var(--ink-muted);
 }
@@ -3285,10 +3373,12 @@ body.beneos-perf-mode .cdx-sparks {
 .bnc-crown .right .l {
   font-size: 12px;
   color: var(--ink-muted);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
 }
 .bnc-crown .right .v {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-size: 16px;
   color: var(--ink-primary);
   text-align: right;
@@ -3302,14 +3392,16 @@ body.beneos-perf-mode .cdx-sparks {
   padding: 6px 18px;
   font-size: 12px;
   color: var(--ink-secondary);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
   display: flex; align-items: center; justify-content: space-between;
   width: 640px;
 }
 .bnc-crown-strip .reveal-btn {
   display: inline-flex; align-items: center; gap: 6px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   color: var(--bc-text-muted);
   background: transparent;
@@ -3330,7 +3422,8 @@ body.beneos-perf-mode .cdx-sparks {
   margin: 14px 0;
   position: relative;
   overflow: hidden;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   color: var(--ink-primary);
 }
 .bnc-inline::before {
@@ -3352,7 +3445,8 @@ body.beneos-perf-mode .cdx-sparks {
   background: color-mix(in oklab, var(--origin-color) 16%, var(--bc-bg));
   border: 1px solid color-mix(in oklab, var(--origin-color) 45%, transparent);
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   color: color-mix(in oklab, var(--origin-color) 30%, var(--bc-text) 70%);
 }
@@ -3376,7 +3470,8 @@ body.beneos-perf-mode .cdx-sparks {
 .bnc-inline-emblem-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .bnc-inline-emblem-col .boe { width: 110px; height: 110px; font-size: 36px; }
 .bnc-inline-emblem-col .name {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 14px;
   color: var(--ink-primary);
 }
@@ -3397,17 +3492,20 @@ body.beneos-perf-mode .cdx-sparks {
 }
 .bnc-inline-info .stat-line:last-child { border-bottom: none; }
 .bnc-inline-info .stat-line .l {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 12px; color: var(--ink-muted);
 }
 .bnc-inline-info .stat-line .v {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-size: 13px;
   color: var(--ink-primary);
 }
 
 .bnc-inline-info .lore-quote {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-story);
+  font-weight: var(--bc-w-story);
   font-style: normal;
   font-size: 13px;
   line-height: 1.45;
@@ -3426,13 +3524,15 @@ body.beneos-perf-mode .cdx-sparks {
   background: var(--bc-accent-dim);
   border: 1px dashed var(--bc-border-strong);
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   color: var(--bc-text);
   font-size: 12px;
   line-height: 1.5;
 }
 .tech-note .head {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 12px;
   color: var(--bc-accent);
   margin-bottom: 4px;
@@ -3441,7 +3541,8 @@ body.beneos-perf-mode .cdx-sparks {
   background: var(--bc-bg);
   padding: 1px 5px;
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-mono);
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-size: 12px;
   color: var(--bc-accent);
 }
@@ -3458,7 +3559,8 @@ body.beneos-perf-mode .cdx-sparks {
   padding: var(--bc-space-4);
   background: var(--bc-bg-panel);
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 14px;
 }
 /* The tinted glow layer behind the prompt is not part of Bone (COL-14) */
@@ -3477,22 +3579,25 @@ body.beneos-perf-mode .cdx-sparks {
   display: grid;
   place-items: center;
   font-size: 18px;
-  font-weight: 600;
   color: var(--bc-text);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
 }
 .beneos-codex-death-prompt .dp-eyebrow {
   font-size: 13px;
-  font-weight: 500;
   color: var(--bc-text-muted);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
 }
 .beneos-codex-death-prompt .dp-name {
   display: flex;
   align-items: center;
   gap: 12px;
   font-size: 18px;
-  font-weight: 600;
   line-height: 1.3;
   color: var(--bc-text);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
 }
 .beneos-codex-death-prompt .dp-name::before {
   content: "";
@@ -3508,6 +3613,8 @@ body.beneos-perf-mode .cdx-sparks {
   line-height: 1.55;
   max-width: 68ch;
   color: var(--bc-text);
+  font-family: var(--bc-font-story);
+  font-weight: var(--bc-w-story);
 }
 .beneos-codex-death-prompt .dp-foot {
   display: flex;
@@ -3543,9 +3650,9 @@ body.beneos-perf-mode .cdx-sparks {
   background: none;
   border: none;
   border-radius: 0;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 13px;
-  font-weight: 500;
   color: var(--bc-text-muted);
   cursor: pointer;
   transition: color var(--bc-dur-fast) var(--bc-ease);
@@ -3559,9 +3666,9 @@ body.beneos-perf-mode .cdx-sparks {
   background: var(--bc-highlight);
   border: 1px solid var(--bc-highlight);
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-fill);
   font-size: 13px;
-  font-weight: 600;
   color: var(--bc-text-on-accent);
   cursor: pointer;
   transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);

@@ -154,7 +154,8 @@ function tokenZahl(name) {
 function textTextur(P) {
   if (_textTextur) return _textTextur
   const dpr = 2
-  const schrift = `600 13px Inter, -apple-system, "Segoe UI", sans-serif`
+  // A status mark, so the control role of standard 2.8, read from the tokens.
+  const schrift = `${tokenWert("--bc-w-control") || 500} 13px ${tokenWert("--bc-font-control") || "sans-serif"}`
   const mess = document.createElement("canvas").getContext("2d")
   mess.font = schrift
   const breite = Math.ceil(mess.measureText(ABZEICHEN_TEXT).width)
@@ -168,7 +169,7 @@ function textTextur(P) {
   ctx.fillStyle = tokenWert("--bc-text")
   ctx.fillText(ABZEICHEN_TEXT, 2, 9)
   const textur = P.Texture.from(c)
-  // Inter comes from the module's own @font-face and loads on first use. A canvas
+  // The font comes from the module's own @font-face and loads on first use. A canvas
   // does not reliably trigger that, so the texture is only cached once the font is
   // there; before that the next draw builds it again.
   if (document.fonts?.check?.(schrift) ?? true) _textTextur = textur
