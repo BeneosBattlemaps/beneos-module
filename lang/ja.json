@@ -1000,8 +1000,6 @@
   "BENEOS.Cloud.Home.News.DetailTitle": "Beneosニュース",
   "BENEOS.Cloud.Home.Stats.SectionTitle": "あなたのライブラリ",
   "BENEOS.Cloud.Home.Stats.SectionSub": "カテゴリごとのインストール済み対利用可能なBeneosコンテンツ。カードをクリックしてカタログへ移動します。",
-  "BENEOS.Cloud.Home.Library.SectionTitle": "ライブラリの新着",
-  "BENEOS.Cloud.Home.Library.SectionSub": "あなたのアクセス概要と、すべてのカテゴリにわたる最新の追加分です。",
   "BENEOS.Cloud.Home.Status.CloudOn": "Beneos Cloudに接続済み",
   "BENEOS.Cloud.Home.Status.CloudOff": "Beneos Cloudに未接続",
   "BENEOS.Cloud.Home.Status.CloudConnected": "Beneos Cloudにサインイン済みです。",

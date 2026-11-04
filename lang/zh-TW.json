@@ -1000,8 +1000,6 @@
   "BENEOS.Cloud.Home.News.DetailTitle": "Beneos 消息",
   "BENEOS.Cloud.Home.Stats.SectionTitle": "你的資料庫",
   "BENEOS.Cloud.Home.Stats.SectionSub": "每個類別已安裝 vs. 可用的 Beneos 內容。點擊卡片以跳至目錄。",
-  "BENEOS.Cloud.Home.Library.SectionTitle": "你資料庫的新內容",
-  "BENEOS.Cloud.Home.Library.SectionSub": "你的存取概覽，以及各類別的最新新增。",
   "BENEOS.Cloud.Home.Status.CloudOn": "已連線至 Beneos Cloud",
   "BENEOS.Cloud.Home.Status.CloudOff": "未連線至 Beneos Cloud",
   "BENEOS.Cloud.Home.Status.CloudConnected": "已登入 Beneos Cloud。",

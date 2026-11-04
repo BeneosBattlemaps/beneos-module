@@ -1002,8 +1002,6 @@
   "BENEOS.Cloud.Home.News.DetailTitle": "Новости Beneos",
   "BENEOS.Cloud.Home.Stats.SectionTitle": "Твоя библиотека",
   "BENEOS.Cloud.Home.Stats.SectionSub": "Установленный контент Beneos в сравнении с доступным в каждой категории. Нажми на карту для переходаing в каталог.",
-  "BENEOS.Cloud.Home.Library.SectionTitle": "Что нового в твоей библиотеке",
-  "BENEOS.Cloud.Home.Library.SectionSub": "Обзор твоего доступа и последние дополнения во всех категориях.",
   "BENEOS.Cloud.Home.Status.CloudOn": "Подключено к облаку Beneos",
   "BENEOS.Cloud.Home.Status.CloudOff": "Не подключено к облаку Beneos",
   "BENEOS.Cloud.Home.Status.CloudConnected": "Вход в облако Beneos выполнен.",
