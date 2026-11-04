@@ -2006,13 +2006,6 @@
  * banner. The row-background gradient on .bc-card-beneos-original
  * provides the broader "this is non-SRD" cue; the chip just confirms
  * it without grabbing attention. ---- */
-.beneos-cloud-app .bc-status-chip.bc-status-beneos {
-  background: var(--bc-card-hover);
-  color: var(--bc-text-muted);
-  border: 1px solid transparent;
-  font-family: var(--bc-font-control);
-  font-weight: var(--bc-w-control);
-}
 /* FREE-Badge — same shape as the BENEOS chip, but in success-green so
    non-patrons can spot at a glance which assets they can grab for free
    without joining Patreon. Rendered in both list and grid mode. */
@@ -2291,12 +2284,6 @@
    thumb copy gets hidden universally; the in-name-row copy is re-
    shown via display: inline-flex to override the generic in-name
    chip-hide above. NEW/UPDATE chip stays bottom-left on the thumb. */
-.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-thumb .bc-thumb-chip.bc-status-beneos {
-  display: none;
-}
-.beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-name-row .bc-status-beneos:not(.bc-thumb-chip) {
-  display: inline-flex;
-}
 
 /* Wave B-8d-fix-1: status chips live next to the card name now, not
  * over the thumbnail. The thumb is already cropped 16:9 so its only
@@ -2374,10 +2361,6 @@
   background: var(--bc-card-hover);
   color: var(--bc-text);
   border-color: var(--bc-border);
-}
-.beneos-cloud-app .bc-tag-source {
-  background: transparent;
-  font-style: italic;
 }
 /* Overflow indicator for the chip row. Renders as a passive, dimmed,
    italic chip — no click affordance (it carries neither data-filter-type
@@ -6509,17 +6492,17 @@ button.beneos-icon-logo {
  * Darum der Knopf-Rueckbau unten: ein `<button>` bringt Rahmen, Hintergrund
  * und eine eigene Schriftgroesse mit, und die Zeile soll aussehen wie vorher. */
 .beneos-cloud-app .bc-offline-bar {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: var(--bc-space-2);
-  width: 100%;
+  gap: 6px;
+  width: auto;
   margin: 0;
   border: 0;
   border-radius: 0;
   background: none;
   box-shadow: none;
   text-align: left;
-  padding: 3px var(--bc-space-3) 7px;
+  padding: 4px 6px;
   font-family: var(--bc-font-control);
   font-weight: var(--bc-w-control);
   font-size: 12px;
@@ -6539,34 +6522,14 @@ button.beneos-icon-logo {
   outline-offset: -2px;
 }
 .beneos-cloud-app .bc-offline-bar > i { font-size: 12px; flex: none; }
-.beneos-cloud-app .bc-offline-track {
-  flex: 1 1 auto;
-  max-width: 260px;
-  height: 2px;
-  border-radius: 0;
-  overflow: hidden;
-  background: var(--bc-border-control);
-}
-/* Meter as in the approved preview (.bar): 2px, fill in primary text.
-   The stock is not a success state, so it carries no sage. */
-.beneos-cloud-app .bc-offline-fill {
-  display: block;
-  height: 100%;
-  background: var(--bc-text);
-  transition: width var(--bc-dur-base) var(--bc-ease);
-}
-/* Ab neun Zehnteln ist die Frage nicht mehr "wie viel habe ich noch",
-   sondern "was muss weg". Die Farbe sagt das, bevor der Balken voll ist. */
-.beneos-cloud-app .bc-offline-fill.bc-offline-knapp {
-  background: var(--bc-warning);
-}
 .beneos-cloud-app .bc-offline-zahlen {
   flex: none;
-  font-variant-numeric: tabular-nums;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
 }
-@media (prefers-reduced-motion: reduce) {
-  .beneos-cloud-app .bc-offline-fill { transition: none; }
-}
+/* Ab neun Zehnteln sagt die Zahl selbst "was muss weg", ohne eigene Farbe
+   (Warnung hat keine Farbe, Standard 2.5): sie wird nur Haupttext. */
+.beneos-cloud-app .bc-offline-zahlen.bc-offline-knapp { color: var(--bc-text); }
 
 /* Das kleine Kontextmenue am Rechtsklick einer Release-Kachel.
  *
@@ -8961,11 +8924,15 @@ margin: 0 0 8px;
 }
 .beneos-cloud-app .bc-result-list.bc-view-grid .bc-card-bg { display: none; }
 .beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-card-release .bc-card-thumb,
-.beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-card-release .bc-card-meta,
-.beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-card-release .bc-card-actions {
+.beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-card-release .bc-card-meta {
   position: relative;
   z-index: 1;
 }
+/* The action block stays unpositioned so the trash and the New or Update
+   chip can hang off the card corner. It still paints above the backdrop:
+   the card is its own stacking context and the backdrop sits at -1 in it. */
+.beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-card-release { isolation: isolate; }
+.beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-card-release .bc-card-bg { z-index: -1; }
 /* Punkt 4: hovering a scene thumb floats a larger preview. The thumb gets a
    subtle cue; the preview itself is appended to <body> (see JS) to escape the
    drawer's overflow/containment. */
@@ -9626,4 +9593,55 @@ body.beneos-perf-mode .bwn-pop::after { display: none; }
     will-change: auto;
   }
   .bwn-pop::before, .bwn-pop::after { display: none; }
+}
+
+
+/* ============================================================
+   Text minimum, user order 2026-11-04
+   ============================================================ */
+/* Footer: Codex and Game Control carry text only, centred. Game Control
+   reserved 22px on the right for its live dot and read left-heavy; the
+   same space on the left keeps the label in the middle. */
+.beneos-cloud-app .bc-footer-button-codex,
+.bc-footer-button-lgc {
+  justify-content: center;
+  text-align: center;
+}
+.bc-footer-button-lgc { padding-left: 22px !important; }
+
+/* New or Update above the action button, right-aligned (list mode). Both
+   the chip and the trash below hang off the card, not off the action
+   block: the action block is centred in the row and gets 24px on top, so
+   the chip sits just under the top of that block, right above the button. */
+.beneos-cloud-app .bc-action-chiprow {
+  position: absolute;
+  top: calc(50% - 23px);
+  right: var(--bc-space-3);
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+.beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-result-card:has(> .bc-action-chiprow) .bc-card-actions {
+  padding-top: 24px;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-action-chiprow { display: none; }
+
+/* Trash (uninstall) no longer pushes the install or update button aside:
+   list mode pins it to the top-right corner of the row, grid mode lays it
+   over the top-left corner of the image. */
+.beneos-cloud-app .bc-card-button.bc-action-uninstall {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+  padding: 3px 6px;
+  font-size: 12px;
+  line-height: 1;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card .bc-card-actions .bc-card-button.bc-action-uninstall {
+  width: auto;
+  right: auto;
+  left: 4px;
+  background: var(--bc-scrim-75);
+  border-color: var(--bc-border-on-media);
 }

@@ -1219,6 +1219,7 @@ export function betriebsanzeige(zustand) {
 export function vorratsanzeige(belegt, grenze) {
   const b = Math.max(0, Number(belegt) || 0)
   const g = Math.max(1, Number(grenze) || 1)
+  const gbZahl = n => String(Math.round((n / 1073741824) * 10) / 10)
   const gb = n => n >= 1073741824
     ? `${(n / 1073741824).toFixed(1)} GB`
     : `${Math.round(n / 1048576)} MB`
@@ -1231,6 +1232,10 @@ export function vorratsanzeige(belegt, grenze) {
     knapp: b / g >= 0.9,
     belegtText: gb(b),
     grenzeText: gb(g),
+    // Kurzform fuer die Ergebnisleiste, nur Gigabyte (Betreibervorgabe
+    // 2026-11-04): "0 / 3 GB", "1.4 / 3 GB". Eine Nachkommastelle, eine
+    // glatte Zahl ohne ".0".
+    kurzText: `${gbZahl(b)} / ${gbZahl(g)} GB`,
   }
 }
 

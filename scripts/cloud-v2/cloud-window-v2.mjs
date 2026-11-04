@@ -885,6 +885,20 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     { key: "Loyalty Token",  label: "Loyalty Tokens",   i18nLabel: "BENEOS.Cloud.Filter.SourceLoyalty", i18nTooltip: "BENEOS.Cloud.Filter.SourceLoyaltyTooltip" }
   ]
 
+  // A tag field (string or array) as one readable line, each value through
+  // the tag localisation of the database. Null when there is nothing.
+  static #tagListLabel(raw, field) {
+    const list = (Array.isArray(raw) ? raw : [raw])
+      .map(v => String(v ?? "").trim())
+      .filter(v => v && v !== "null" && v !== "undefined")
+    if (!list.length) return null
+    const db = game.beneos?.databaseHolder
+    return list.map(v => {
+      const t = db?.localizeTag?.(field, v)
+      return (t && t !== v) ? t : v
+    }).join(", ")
+  }
+
   // Wave B-9-fix-34: helper so the drawer can map a raw source string
   // to the human-readable label ("Patreon" → "Beneos Originals"). Used
   // by #enrichCard. Falls back to the raw value if no def matches.
@@ -1970,15 +1984,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         )
       })
     }
-    if (gridLabel) {
-      pushTag({
-        label: gridLabel,
-        className: null,
-        filterType: "grid",
-        filterValue: props.grid || null,
-        tooltip: null
-      })
-    }
+    // The grid size is not a card tag any more (user 2026-11-04: "die Groesse
+    // verschwinden, also die Anzahl der Grids"); the drawer still shows it.
     if (assetType === "spell" && props.level !== undefined && props.level !== null && props.level !== "") {
       pushTag({
         label: `${game.i18n.localize("BENEOS.Cloud.Card.LevelShort")} ${props.level}`,
@@ -1997,38 +2004,21 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         tooltip: null
       })
     }
-    // Faction can be a single string OR an array (multi-faction creatures).
-    // Render one tag per entry so each is independently click-filterable
-    // and gets its own commonData hover lookup — joining them into a
-    // single "A,B,C" chip would block per-faction filtering and would
-    // render as a comma-merged label instead of separate visual chips.
-    const factionList = Array.isArray(props.faction)
-      ? props.faction
-      : (props.faction ? [props.faction] : [])
-    for (const f of factionList) {
-      const fStr = String(f ?? "").trim()
-      if (!fStr) continue
-      pushTag({
-        label: fStr,
-        className: null,
-        filterType: "faction",
-        filterValue: fStr,
-        tooltip: this.#getCardTagTooltip("faction", fStr)
-      })
-    }
-    // Source tag: only for tokens (legacy creature UX kept). For items
-    // + spells we surface the bucket via the small "BENEOS" status chip
-    // next to the title (see card.beneosChip below) instead of a wide
-    // tag in the meta row — the wide tag overflowed the grid card and
-    // doubled visual weight against the row-background highlight.
-    if (assetType === "token") {
-      const sourceLabel = BeneosCloudWindowV2.#getSourceLabel(props.source)
-      if (sourceLabel) {
+    // Faction stays out of the card (user 2026-11-04: the card names only
+    // CR, type and the Beneos tag); the drawer lists it with every other tag.
+    // The Beneos tag replaces the old "BENEOS" chip beside the title and the
+    // "Beneos Originals" source tag: one tag for every non-SRD creature, item
+    // and spell, written like the other tags. Webshop and Loyalty keep their
+    // own source label. Clicking it filters by that source.
+    if (assetType === "token" || assetType === "item" || assetType === "spell") {
+      const srcKey = BeneosCloudWindowV2.#getNormalizedSource(data, assetType, key)
+      // No source key reads as Beneos too, the same rule as isBeneosOriginal.
+      if (srcKey !== "SRD") {
         pushTag({
-          label: sourceLabel,
+          label: (!srcKey || srcKey === "Patreon") ? "Beneos" : BeneosCloudWindowV2.#getSourceLabel(srcKey),
           className: "bc-tag-source",
-          filterType: "source",
-          filterValue: props.source || null,
+          filterType: srcKey ? "source" : null,
+          filterValue: srcKey || null,
           tooltip: null
         })
       }
@@ -2061,6 +2051,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       cr: props.cr ?? null,
       crLabel: BeneosCloudWindowV2.#formatCR(props.cr),
       faction: props.faction || null,
+      // Drawer only: every tag of the creature, including the two that never
+      // appear on the card (user 2026-11-04).
+      fightingStyle: assetType === "token" ? BeneosCloudWindowV2.#tagListLabel(props.fightingstyle, "token.fightingstyle") : null,
+      purpose:       assetType === "token" ? BeneosCloudWindowV2.#tagListLabel(props.purpose, "token.purpose") : null,
       // Wave B-9-fix-35: faction tooltip pulls from the same hover-DB
       // entry that the sidebar info icon uses (commonData.hover.faction).
       // Strip the leading "Capitalized: " prefix so the tooltip doesn't
@@ -2081,15 +2075,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // properties.origin (lowercase "srd"); spells fall back to the
       // 0000_srd_ key prefix established by the migration.
       isBeneosOriginal: BeneosCloudWindowV2.#getNormalizedSource(data, assetType, key) !== "SRD",
-      // Small status-chip beside the name (next to NEW / UPDATE chips).
-      // Renders only for non-SRD cards. The label intentionally short so
-      // it fits in the grid name-row without wrapping; "BENEOS" reads
-      // unambiguously as "Beneos Original / Webshop / Loyalty".
-      // Edit #4: never on battlemaps , every map is a Beneos original, so the
-      // chip carries no information and just wastes space on the card.
-      beneosChip: (assetType === "bmap" || BeneosCloudWindowV2.#getNormalizedSource(data, assetType, key) === "SRD")
-        ? null
-        : "BENEOS",
       rarity: props.rarity || null,
       level: props.level ?? null,
       school: props.school || null,
@@ -3570,6 +3555,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     this.#refreshFilterInfoIcons()
     this.#injectSelectDividers()
     this.#wireFooterFit()
+    requestAnimationFrame(() => BeneosCloudWindowV2.#fitCardTags(this.element))
     this.#updateTitleBadge(context)
     this.#injectTitleQuote()
     this.#wireOfflineContextMenu()
@@ -3685,6 +3671,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     const refit = () => {
       const footer = root.querySelector(".bc-footer")
       if (footer) BeneosCloudWindowV2.#fitFooter(footer)
+      BeneosCloudWindowV2.#fitCardTags(root)
     }
     this._footerObserver = new ResizeObserver(([entry]) => {
       const width = Math.round(entry.contentRect.width)
@@ -3697,6 +3684,34 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // the fallback font would pick too generous a stage, so measure again
     // once the fonts are in.
     document.fonts?.ready.then(refit)
+  }
+
+  // Grid cards: a tag that does not fit whole into the tag box of its card
+  // is hidden, whatever tag it is (user 2026-11-04: before, the second row
+  // was cut through the middle and slid under the install button). Runs
+  // after every render and when the window width changes. Writes, then one
+  // read pass over all cards, then writes, so a list of 100 cards costs one
+  // layout and not one per tag.
+  static #fitCardTags(root) {
+    const boxes = root?.querySelectorAll?.(".bc-result-list.bc-view-grid .bc-card-tags")
+    if (!boxes?.length) return
+    for (const box of boxes) for (const tag of box.children) tag.hidden = false
+    const cut = []
+    for (const box of boxes) {
+      const b = box.getBoundingClientRect()
+      for (const tag of box.children) {
+        const t = tag.getBoundingClientRect()
+        if (!BeneosCloudWindowV2.tagFits(t, b)) cut.push(tag)
+      }
+    }
+    for (const tag of cut) tag.hidden = true
+  }
+
+  // Pure: does a tag rectangle lie wholly inside its box? Half a pixel of
+  // slack for subpixel layout.
+  static tagFits(tag, box) {
+    return tag.right <= box.right + 0.5 && tag.bottom <= box.bottom + 0.5
+      && tag.left >= box.left - 0.5 && tag.top >= box.top - 0.5
   }
 
   static #fitFooter(footer) {
@@ -4759,6 +4774,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         if (event.target.closest(".bc-action-install")) return
         if (event.target.closest(".bc-action-codex")) return
         if (event.target.closest(".bc-action-open")) return
+        // The trash sits over the card corner now; its click removes, it
+        // does not also open the drawer.
+        if (event.target.closest(".bc-action-uninstall")) return
         // Wave B-8e: clickable tag inside the card — let the dedicated
         // tag listener handle it and stop the card from also opening
         // the drawer. The tag listener calls stopPropagation, but this
