@@ -6784,8 +6784,9 @@ button.beneos-icon-logo {
   min-height: 96px;
   overflow: hidden;
   background: var(--bc-card);
+  /* No coloured left edge any more (user 2026-11-04): it carried no
+     information the tile does not already state in words. */
   border: 1px solid var(--bc-border-strong);
-  border-left: 2px solid var(--bc-border-control);
   border-radius: var(--bc-edge);
   cursor: pointer;
   text-align: left;
@@ -6796,11 +6797,6 @@ button.beneos-icon-logo {
 }
 .beneos-cloud-app .bc-stat-card:active {
   background: var(--bc-bg-pressed);
-}
-/* Active access (full patron or free content): left edge in sage. */
-.beneos-cloud-app .bc-stat-card-is-full,
-.beneos-cloud-app .bc-stat-card-is-free {
-  border-left-color: var(--bc-success);
 }
 .beneos-cloud-app .bc-stat-head {
   display: flex;

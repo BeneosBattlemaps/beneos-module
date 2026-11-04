@@ -1000,8 +1000,6 @@
   "BENEOS.Cloud.Home.News.DetailTitle": "Beneos 뉴스",
   "BENEOS.Cloud.Home.Stats.SectionTitle": "내 라이브러리",
   "BENEOS.Cloud.Home.Stats.SectionSub": "카테고리별 설치된 Beneos 콘텐츠 대비 사용 가능한 콘텐츠예요. 카드를 클릭하면 카탈로그로 이동해요.",
-  "BENEOS.Cloud.Home.Library.SectionTitle": "내 라이브러리의 새 소식",
-  "BENEOS.Cloud.Home.Library.SectionSub": "접근 권한 개요와 모든 카테고리의 최신 추가 항목이에요.",
   "BENEOS.Cloud.Home.Status.CloudOn": "Beneos Cloud에 연결됨",
   "BENEOS.Cloud.Home.Status.CloudOff": "Beneos Cloud에 연결되지 않음",
   "BENEOS.Cloud.Home.Status.CloudConnected": "Beneos Cloud에 로그인되었어요.",

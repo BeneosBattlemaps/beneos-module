@@ -1,7 +1,7 @@
 {{!-- Beneos Cloud V2 Home tab feed.
      Spans the sidebar+results grid area when searchMode === "home". Built
-     around two blocks: a news grid (latest 6, newest first) and the
-     "What's new in library" rails per category. --}}
+     around two blocks: a news grid (latest 6, newest first) and "Your
+     library" with the account status, the access tiles and the rails. --}}
 <section class="bc-home" data-bc-region="home">
   {{#if isHome}}
 
@@ -77,53 +77,51 @@
     {{/if}}
   </section>
 
-  {{!-- ============ Status bar ============
-       Sits below the news (so news stays at the very top) and above the
-       library. Shows the cloud connection + the two patron states. --}}
-  {{#if home.status}}
-    <div class="bc-home-statusbar">
-      <span class="bc-home-status-pill {{#if home.status.cloudLoggedIn}}is-on{{else}}is-off{{/if}}"
-            data-tooltip="{{#if home.status.cloudLoggedIn}}{{localize 'BENEOS.Cloud.Home.Status.CloudConnected'}}{{else}}{{localize 'BENEOS.Cloud.Home.Status.CloudDisconnected'}}{{/if}}">
-        <i class="fas {{#if home.status.cloudLoggedIn}}fa-check{{else}}fa-xmark{{/if}} bc-home-status-icon"></i>
-        {{#if home.status.cloudLoggedIn}}{{localize "BENEOS.Cloud.Home.Status.CloudOn"}}{{else}}{{localize "BENEOS.Cloud.Home.Status.CloudOff"}}{{/if}}
-      </span>
-
-      <a class="bc-home-status-pill bc-home-status-link {{#if home.status.mapPatron}}is-on{{else}}is-off{{/if}}"
-         href="{{home.status.patreonMapsUrl}}" target="_blank" rel="noopener noreferrer"
-         data-tooltip="{{#if home.status.mapPatron}}{{localize 'BENEOS.Cloud.Home.Status.MapsTooltipOn'}}{{else}}{{localize 'BENEOS.Cloud.Home.Status.MapsTooltipOff'}}{{/if}}">
-        <i class="fas {{#if home.status.mapPatron}}fa-check{{else}}fa-xmark{{/if}} bc-home-status-icon"></i>
-        {{#if home.status.mapPatron}}
-          {{localize "BENEOS.Cloud.Home.Status.MapsLabelOn"}}
-        {{else if home.status.cloudLoggedIn}}
-          {{localize "BENEOS.Cloud.Home.Status.MapsLabelNoPatron"}}
-        {{else}}
-          {{localize "BENEOS.Cloud.Home.Status.MapsLabelDisconnected"}}
-        {{/if}}
-      </a>
-
-      <a class="bc-home-status-pill bc-home-status-link {{#if home.status.tokenPatron}}is-on{{else}}is-off{{/if}}"
-         href="{{home.status.patreonTokensUrl}}" target="_blank" rel="noopener noreferrer"
-         data-tooltip="{{#if home.status.tokenPatron}}{{localize 'BENEOS.Cloud.Home.Status.TokensTooltipOn'}}{{else}}{{localize 'BENEOS.Cloud.Home.Status.TokensTooltipOff'}}{{/if}}">
-        <i class="fas {{#if home.status.tokenPatron}}fa-check{{else}}fa-xmark{{/if}} bc-home-status-icon"></i>
-        {{#if home.status.tokenPatron}}
-          {{localize "BENEOS.Cloud.Home.Status.TokensLabelOn"}}
-        {{else if home.status.cloudLoggedIn}}
-          {{localize "BENEOS.Cloud.Home.Status.TokensLabelNoPatron"}}
-        {{else}}
-          {{localize "BENEOS.Cloud.Home.Status.TokensLabelDisconnected"}}
-        {{/if}}
-      </a>
-    </div>
-  {{/if}}
-
   {{!-- ============ Library overview (stats + rails) ============ --}}
   <section class="bc-home-section bc-home-library">
     <header class="bc-home-section-head">
       <div class="bc-home-section-head-text">
-        <h3 class="bc-home-section-title">{{localize "BENEOS.Cloud.Home.Library.SectionTitle"}}</h3>
-        <p class="bc-home-section-sub">{{localize "BENEOS.Cloud.Home.Library.SectionSub"}}</p>
+        <h3 class="bc-home-section-title">{{localize "BENEOS.Cloud.Home.Stats.SectionTitle"}}</h3>
       </div>
     </header>
+
+    {{!-- Status bar: the cloud connection and the two patron states, right
+         under the "Your library" heading (user 2026-11-04). --}}
+    {{#if home.status}}
+      <div class="bc-home-statusbar">
+        <span class="bc-home-status-pill {{#if home.status.cloudLoggedIn}}is-on{{else}}is-off{{/if}}"
+              data-tooltip="{{#if home.status.cloudLoggedIn}}{{localize 'BENEOS.Cloud.Home.Status.CloudConnected'}}{{else}}{{localize 'BENEOS.Cloud.Home.Status.CloudDisconnected'}}{{/if}}">
+          <i class="fas {{#if home.status.cloudLoggedIn}}fa-check{{else}}fa-xmark{{/if}} bc-home-status-icon"></i>
+          {{#if home.status.cloudLoggedIn}}{{localize "BENEOS.Cloud.Home.Status.CloudOn"}}{{else}}{{localize "BENEOS.Cloud.Home.Status.CloudOff"}}{{/if}}
+        </span>
+
+        <a class="bc-home-status-pill bc-home-status-link {{#if home.status.mapPatron}}is-on{{else}}is-off{{/if}}"
+           href="{{home.status.patreonMapsUrl}}" target="_blank" rel="noopener noreferrer"
+           data-tooltip="{{#if home.status.mapPatron}}{{localize 'BENEOS.Cloud.Home.Status.MapsTooltipOn'}}{{else}}{{localize 'BENEOS.Cloud.Home.Status.MapsTooltipOff'}}{{/if}}">
+          <i class="fas {{#if home.status.mapPatron}}fa-check{{else}}fa-xmark{{/if}} bc-home-status-icon"></i>
+          {{#if home.status.mapPatron}}
+            {{localize "BENEOS.Cloud.Home.Status.MapsLabelOn"}}
+          {{else if home.status.cloudLoggedIn}}
+            {{localize "BENEOS.Cloud.Home.Status.MapsLabelNoPatron"}}
+          {{else}}
+            {{localize "BENEOS.Cloud.Home.Status.MapsLabelDisconnected"}}
+          {{/if}}
+        </a>
+
+        <a class="bc-home-status-pill bc-home-status-link {{#if home.status.tokenPatron}}is-on{{else}}is-off{{/if}}"
+           href="{{home.status.patreonTokensUrl}}" target="_blank" rel="noopener noreferrer"
+           data-tooltip="{{#if home.status.tokenPatron}}{{localize 'BENEOS.Cloud.Home.Status.TokensTooltipOn'}}{{else}}{{localize 'BENEOS.Cloud.Home.Status.TokensTooltipOff'}}{{/if}}">
+          <i class="fas {{#if home.status.tokenPatron}}fa-check{{else}}fa-xmark{{/if}} bc-home-status-icon"></i>
+          {{#if home.status.tokenPatron}}
+            {{localize "BENEOS.Cloud.Home.Status.TokensLabelOn"}}
+          {{else if home.status.cloudLoggedIn}}
+            {{localize "BENEOS.Cloud.Home.Status.TokensLabelNoPatron"}}
+          {{else}}
+            {{localize "BENEOS.Cloud.Home.Status.TokensLabelDisconnected"}}
+          {{/if}}
+        </a>
+      </div>
+    {{/if}}
 
     {{#if home.stats.length}}
       <div class="bc-library-stats">

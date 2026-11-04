@@ -1000,8 +1000,6 @@
   "BENEOS.Cloud.Home.News.DetailTitle": "Noticias de Beneos",
   "BENEOS.Cloud.Home.Stats.SectionTitle": "Tu biblioteca",
   "BENEOS.Cloud.Home.Stats.SectionSub": "Contenido Beneos instalado frente a disponible por categoría. Haz clic en una tarjeta para saltar al catálogo.",
-  "BENEOS.Cloud.Home.Library.SectionTitle": "Novedades en tu biblioteca",
-  "BENEOS.Cloud.Home.Library.SectionSub": "Tu resumen de acceso y las últimas incorporaciones en cada categoría.",
   "BENEOS.Cloud.Home.Status.CloudOn": "Conectado a Beneos Cloud",
   "BENEOS.Cloud.Home.Status.CloudOff": "No conectado a Beneos Cloud",
   "BENEOS.Cloud.Home.Status.CloudConnected": "Sesión iniciada en Beneos Cloud.",
