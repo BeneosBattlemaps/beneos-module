@@ -219,9 +219,6 @@
             {{#if card.isFree}}
               <span class="bc-status-chip bc-status-free bc-thumb-chip" data-tooltip="{{localize 'BENEOS.Patreon.FreeSection.Description'}}">{{localize "BENEOS.Patreon.FreeBadge"}}</span>
             {{/if}}
-            {{#if card.beneosChip}}
-              <span class="bc-status-chip bc-status-beneos bc-thumb-chip" data-tooltip="Beneos Original (non-SRD)">{{card.beneosChip}}</span>
-            {{/if}}
             {{!-- Plan §33.6 install-state badge for release-cards. Green tick
                  when the release is installed in this world (sourceSignature
                  still matches the cloud), gold "!" when the cloud has a newer
@@ -251,12 +248,6 @@
           <div class="bc-card-meta">
             <div class="bc-card-name-row">
               <h3 class="bc-card-name">{{card.name}}</h3>
-              {{!-- NEW + UPDATE Mutex: UPDATE wins (User-Direktive). --}}
-              {{#if card.isUpdate}}
-                <span class="bc-status-chip bc-status-update">{{localize "BENEOS.Cloud.Card.Update"}}</span>
-              {{else if card.isNew}}
-                <span class="bc-status-chip bc-status-new">{{localize "BENEOS.Cloud.Card.New"}}</span>
-              {{/if}}
               {{!-- Teil 3: installed-marker for battlemaps (release + scene
                    cards). Green check next to the title, tooltip carries the
                    install date. Hidden while an UPDATE chip is showing so the
@@ -283,9 +274,6 @@
               {{/if}}
               {{#if card.isFree}}
                 <span class="bc-status-chip bc-status-free" data-tooltip="{{localize 'BENEOS.Patreon.FreeSection.Description'}}">{{localize "BENEOS.Patreon.FreeBadge"}}</span>
-              {{/if}}
-              {{#if card.beneosChip}}
-                <span class="bc-status-chip bc-status-beneos" data-tooltip="Beneos Original (non-SRD)">{{card.beneosChip}}</span>
               {{/if}}
             </div>
             {{!-- Bundle compatible-with chip: subtle campaign name only. No
@@ -330,40 +318,26 @@
               {{!-- Task 2: the HD/4K variant chip is gone from result cards ,
                    the user already picked the resolution in the toolbar, so it
                    only wasted space here. variantLabel still feeds the drawer. --}}
+              {{!-- Only the scene count stays (user 2026-11-04): the size, the
+                   loot tier and price and the spell casting time and type are
+                   gone from the result cards to keep text to a minimum. The
+                   drawer still shows them. --}}
               <div class="bc-card-stats">
-                {{#if card.bytesLabel}}<span class="bc-stat bc-stat-release-bytes">{{card.bytesLabel}}</span>{{/if}}
                 {{#if card.sceneCount}}<span class="bc-stat bc-stat-release-scenes">{{card.sceneCount}} {{localize "BENEOS.Cloud.Bmap.Scenes"}}</span>{{/if}}
-              </div>
-            {{else if card.itemTierLabel}}
-              <div class="bc-card-stats">
-                <span class="bc-stat bc-stat-tier"
-                      {{#if card.tierTooltip}}data-tooltip="{{card.tierTooltip}}"{{/if}}
-                      data-filter-type="tier" data-filter-value="{{card.tierFilter}}">{{card.itemTierLabel}}</span>
-                {{#if card.itemPriceLabel}}<span class="bc-stat bc-stat-price">{{card.itemPriceLabel}}</span>{{/if}}
-              </div>
-            {{else if card.itemPriceLabel}}
-              <div class="bc-card-stats">
-                <span class="bc-stat bc-stat-price">{{card.itemPriceLabel}}</span>
-              </div>
-            {{else if card.castingTimeLabel}}
-              <div class="bc-card-stats bc-stats-spell">
-                <span class="bc-stat-text"
-                      data-filter-type="casting_time" data-filter-value="{{card.castingTimeFilter}}">{{card.castingTimeLabel}}</span>
-                {{#if card.spellType}}
-                  <span class="bc-stat-text"
-                        {{#if card.spellTypeTooltip}}data-tooltip="{{card.spellTypeTooltip}}"{{/if}}
-                        data-filter-type="spell_type" data-filter-value="{{card.spellTypeFilter}}">{{card.spellType}}</span>
-                {{/if}}
-              </div>
-            {{else if card.spellType}}
-              <div class="bc-card-stats bc-stats-spell">
-                <span class="bc-stat-text"
-                      {{#if card.spellTypeTooltip}}data-tooltip="{{card.spellTypeTooltip}}"{{/if}}
-                      data-filter-type="spell_type" data-filter-value="{{card.spellTypeFilter}}">{{card.spellType}}</span>
               </div>
             {{/if}}
           </div>
 
+          {{!-- New or Update sits right-aligned above the action button in
+               list mode (user 2026-11-04). It hangs off the card and not
+               inside .bc-card-actions, because #patchCardState rewrites that
+               block on every install and would drop it. Grid mode keeps the
+               copy on the thumbnail and hides this one. UPDATE wins over NEW. --}}
+          {{#if card.isUpdate}}
+            <div class="bc-action-chiprow"><span class="bc-status-chip bc-status-update">{{localize "BENEOS.Cloud.Card.Update"}}</span></div>
+          {{else if card.isNew}}
+            <div class="bc-action-chiprow"><span class="bc-status-chip bc-status-new">{{localize "BENEOS.Cloud.Card.New"}}</span></div>
+          {{/if}}
           <div class="bc-card-actions">
             {{#if card.isInstalling}}
               <span class="bc-state-pill bc-state-installing" data-tooltip="{{localize 'BENEOS.Cloud.Card.InstallingTooltip'}}">
@@ -729,6 +703,12 @@
                  the lore description, same source as the sidebar info
                  icon. Foundry's data-tooltip handles the hover popup. --}}
             <div class="bc-field"><dt>{{localize "BENEOS.Cloud.Drawer.Faction"}}</dt><dd{{#if drawer.asset.factionDescription}} class="bc-field-tooltip" data-tooltip="{{drawer.asset.factionDescription}}"{{/if}}>{{drawer.asset.faction}}</dd></div>
+          {{/if}}
+          {{#if drawer.asset.purpose}}
+            <div class="bc-field"><dt>{{localize "BENEOS.Cloud.Filter.Purpose"}}</dt><dd>{{drawer.asset.purpose}}</dd></div>
+          {{/if}}
+          {{#if drawer.asset.fightingStyle}}
+            <div class="bc-field"><dt>{{localize "BENEOS.Cloud.Filter.FightingStyle"}}</dt><dd>{{drawer.asset.fightingStyle}}</dd></div>
           {{/if}}
           {{#if drawer.asset.level}}
             <div class="bc-field"><dt>{{localize "BENEOS.Cloud.Drawer.Level"}}</dt><dd>{{drawer.asset.level}}</dd></div>
