@@ -386,16 +386,15 @@
             {{/if}}
           </div>
 
-          {{!-- New or Update sits right-aligned above the action button in
-               list mode (user 2026-11-04). It hangs off the card and not
-               inside .bc-card-actions, because #patchCardState rewrites that
-               block on every install and would drop it. Grid mode keeps the
-               copy on the thumbnail and hides this one. UPDATE wins over NEW. --}}
-          {{#if card.isUpdate}}
-            <div class="bc-action-chiprow"><span class="bc-status-chip bc-status-update">{{localize "BENEOS.Cloud.Card.Update"}}</span></div>
-          {{else if card.isNew}}
+          {{!-- New sits right-aligned above the action button in list mode
+               (user 2026-11-04). It hangs off the card and not inside
+               .bc-card-actions, because #patchCardState rewrites that block on
+               every install and would drop it. Grid mode keeps the copy on the
+               thumbnail and hides this one. An update gets no chip here: the
+               highlighted update button says it already (user 2026-11-04). --}}
+          {{#if card.isNew}}{{#unless card.isUpdate}}
             <div class="bc-action-chiprow"><span class="bc-status-chip bc-status-new">{{localize "BENEOS.Cloud.Card.New"}}</span></div>
-          {{/if}}
+          {{/unless}}{{/if}}
           <div class="bc-card-actions">
             {{#if card.isInstalling}}
               <span class="bc-state-pill bc-state-installing" data-tooltip="{{localize 'BENEOS.Cloud.Card.InstallingTooltip'}}">

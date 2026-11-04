@@ -1143,6 +1143,8 @@
   "BENEOS.Cloud.Footer.AccountSettings": "Cuenta",
   "BENEOS.Cloud.Footer.AccountSettingsTooltip": "Abrir los ajustes de la cuenta Beneos Cloud en una pestaña nueva",
   "BENEOS.Cloud.Card.New": "Nuevo",
+  "BENEOS.Cloud.Card.UpdatedSinceInstall": "Actualizado desde la instalación",
+  "BENEOS.Cloud.Card.UpdatedSinceInstallOn": "Actualizado desde la instalación ({date})",
   "BENEOS.Cloud.Card.LoyaltyLockedBadge": "LEALTAD",
   "BENEOS.Cloud.Card.LoyaltyLockedTooltip": "Recompensa mensual para mecenas activos ese mes. Tu cuenta no tiene esos meses de lealtad.",
   "BENEOS.Cloud.Card.Update": "Actualizar",

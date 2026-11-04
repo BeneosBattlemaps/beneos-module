@@ -32,6 +32,7 @@ import { BeneosCloudLogin } from "../beneos_cloud.js"
 import { BeneosStartSetupTour } from "../beneos_tours.js"
 import { BeneosLootGenerator } from "./loot-generator.mjs"
 import { BeneosMagicShopGenerator } from "./magic-shop-generator.mjs"
+import { staleInstallTooltip } from "./install-badge.mjs"
 import { HomeController } from "./home/home-controller.mjs"
 import { BeneosPatchlogWindow } from "./home/patchlog-window.mjs"
 import { fetchNewsFeed, markNewsRead } from "./services/news-api.mjs"
@@ -384,10 +385,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     this.goldMin = 0
     this.goldMax = null
     // Wave B-9: list / grid view toggle. List is the dense horizontal
-    // layout we've shipped since B-5; grid is the Pokémon-card style
-    // for browsing-by-portrait. Persisted as a client setting (read
-    // here at construction, saved on toggle).
-    this.viewMode = game.settings?.get?.(BeneosUtility.moduleID(), "beneos-cloud-view-mode") || "list"
+    // layout we've shipped since B-5; grid is the portrait layout. Every
+    // window starts in list mode and grid is a choice for this window only
+    // (user 2026-11-04). The client setting beneos-cloud-view-mode is still
+    // registered in beneos_utility.js, but nothing reads or writes it any more.
+    this.viewMode = "list"
 
     // Globals shimmed so legacy helpers (softRefresh, drainPendingCanvasDrops)
     // resolve to this window when v2 is active.
@@ -3133,20 +3135,18 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     if (actions) BeneosCloudWindowV2.#syncChipRow(card, actions, enriched)
   }
 
-  // The New or Update chip hangs off the card beside the action block, so
-  // the innerHTML swap above does not reach it. An install or a removal
-  // changes isUpdate; a removed creature must not keep its Update chip.
-  // Mirrors the chip row in results-pane.hbs, UPDATE wins over NEW.
+  // The New chip hangs off the card beside the action block, so the
+  // innerHTML swap above does not reach it. An install or a removal changes
+  // isNew and isUpdate. Mirrors the chip row in results-pane.hbs: New only,
+  // and not on a card with an update, whose button carries that message.
   static #syncChipRow(card, actions, enriched) {
     card.querySelector(":scope > .bc-action-chiprow")?.remove()
-    const chip = enriched.isUpdate ? ["bc-status-update", "BENEOS.Cloud.Card.Update"]
-      : enriched.isNew ? ["bc-status-new", "BENEOS.Cloud.Card.New"] : null
-    if (!chip) return
+    if (!enriched.isNew || enriched.isUpdate) return
     const row = document.createElement("div")
     row.className = "bc-action-chiprow"
     const span = document.createElement("span")
-    span.className = `bc-status-chip ${chip[0]}`
-    span.textContent = game.i18n.localize(chip[1])
+    span.className = "bc-status-chip bc-status-new"
+    span.textContent = game.i18n.localize("BENEOS.Cloud.Card.New")
     row.append(span)
     actions.before(row)
   }
@@ -6084,9 +6084,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     if (!view || (view !== "list" && view !== "grid")) return
     if (this.viewMode === view) return
     this.viewMode = view
-    try {
-      game.settings?.set?.(BeneosUtility.moduleID(), "beneos-cloud-view-mode", view)
-    } catch (e) {}
     this.#renderResults(["results"])
   }
 
@@ -6903,7 +6900,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         dlBadgePartial:       installed && !isUpdate && !!installState?.partial,
         dlBadgeTooltip:       installState
           ? (isUpdate
-              ? `Installed ${installState.variantInstalled || "single-variant"} on ${this.#formatInstallDate(installState.installedAt)} (${installState.sceneCount} scenes). Release updated since install.`
+              ? staleInstallTooltip(installState.installedAt, (k, d) => game.i18n.format(k, d), game.i18n.lang)
               : installState.partial
                 ? bmapCoverageLabel
                 : `Installed ${installState.variantInstalled || "single-variant"} on ${this.#formatInstallDate(installState.installedAt)} (${installState.sceneCount} scenes).`)

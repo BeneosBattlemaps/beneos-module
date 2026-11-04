@@ -1150,6 +1150,8 @@
   "BENEOS.Cloud.Footer.AccountSettings": "Аккаунт",
   "BENEOS.Cloud.Footer.AccountSettingsTooltip": "Откройте параметры аккаунта Beneos Cloud в новой вкладке",
   "BENEOS.Cloud.Card.New": "Новое",
+  "BENEOS.Cloud.Card.UpdatedSinceInstall": "Обновлено после установки",
+  "BENEOS.Cloud.Card.UpdatedSinceInstallOn": "Обновлено после установки ({date})",
   "BENEOS.Cloud.Card.Update": "Обновить",
   "BENEOS.Cloud.Card.MoreTags": "+{count} ещё",
   "BENEOS.Cloud.Card.MoreTagsTooltip": "Дополнительные теги скрыты, откройте панель существ, чтобы увидеть полный набор.",
