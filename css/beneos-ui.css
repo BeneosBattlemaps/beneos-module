@@ -45,6 +45,32 @@
   --font-h6: var(--bc-font-title);
   --font-mono: var(--bc-font-data);
 }
+/* A click focuses the button, and Foundry's core rule button:focus then
+   draws a ring and a glow until the view changes; on the home tiles that
+   looked like an error flash (user 2026-11-04). A pointer focus gets no
+   ring; keyboard focus keeps one through :focus-visible (QLT-07). The core
+   glow goes in both cases (COL-14). Zero specificity, so every module rule
+   that styles its own focus still wins. */
+:where(.beneos-cloud-app, .beneos-codex, .beneos-lgc, .beneos-wiki, .bci-root,
+    .beneos-offline-window, .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
+    .beneos-module.settings, .beneos-actor-menu, .beneos-system-check-dialog, .beneos-pdf-viewer)
+  :where(button, a.button):where(:focus) {
+  box-shadow: none;
+}
+:where(.beneos-cloud-app, .beneos-codex, .beneos-lgc, .beneos-wiki, .bci-root,
+    .beneos-offline-window, .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
+    .beneos-module.settings, .beneos-actor-menu, .beneos-system-check-dialog, .beneos-pdf-viewer)
+  :where(button, a.button):where(:focus:not(:focus-visible)) {
+  outline: none;
+}
+/* Foundry sets its focus colour, a rust red that reads as an error inside a
+   Beneos window, on every button itself, so it is replaced there. */
+:where(.beneos-cloud-app, .beneos-codex, .beneos-lgc, .beneos-wiki, .bci-root,
+    .beneos-offline-window, .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
+    .beneos-module.settings, .beneos-actor-menu, .beneos-system-check-dialog, .beneos-pdf-viewer)
+  :where(button, a.button, kbd) {
+  --button-focus-outline-color: var(--bc-accent);
+}
 /* Role defaults inside module windows, at zero specificity so every rule of
    the module files that names a role wins. Elements that carry a Font Awesome
    class are icons (the close button of the window header is one) and keep
