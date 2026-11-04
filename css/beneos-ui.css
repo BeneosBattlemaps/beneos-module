@@ -46,7 +46,10 @@
   --font-mono: var(--bc-font-data);
 }
 /* Role defaults inside module windows, at zero specificity so every rule of
-   the module files that names a role wins. The window title is the name of
+   the module files that names a role wins. Elements that carry a Font Awesome
+   class are icons (the close button of the window header is one) and keep
+   their icon font: Foundry ships its styles in cascade layers, so an
+   unlayered rule here would win over them whatever its specificity. The window title is the name of
    the window (title), controls are what you do (control). */
 :where(.beneos-cloud-app, .beneos-codex, .beneos-lgc, .beneos-wiki, .bci-root,
     .beneos-offline-window, .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
@@ -63,7 +66,7 @@
 :where(.beneos-cloud-app, .beneos-codex, .beneos-lgc, .beneos-wiki, .bci-root,
     .beneos-offline-window, .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
     .beneos-module.settings, .beneos-actor-menu, .beneos-system-check-dialog, .beneos-pdf-viewer)
-  :where(button, input, select, textarea) {
+  :where(button, input, select, textarea):not(:where([class*="fa-"])) {
   font-family: var(--bc-font-control);
   font-weight: var(--bc-w-control);
 }
