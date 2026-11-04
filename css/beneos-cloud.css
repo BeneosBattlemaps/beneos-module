@@ -65,7 +65,10 @@
    user complaint. Keep this restricted to the cloud main window. */
 #beneos-cloud-window-v2 .window-content {
   display: grid !important;
-  grid-template-columns: 280px 1fr !important;
+  /* Sidebar content is as wide as the filter selects (12rem, 192px):
+     16px padding on both sides plus the stable scrollbar gutter, which
+     Chromium measures at 11px here. */
+  grid-template-columns: calc(192px + 2 * var(--bc-space-4) + 11px) 1fr !important;
   grid-template-rows: auto 1fr auto !important;
   grid-template-areas:
     "header  header"
@@ -150,6 +153,8 @@
   border-right: 1px solid var(--bc-border);
   padding: var(--bc-space-4);
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
   /* Wave B-8d-fix-6: slim modern scrollbar; the Firefox properties are
    * declared at the wrapper level and the WebKit pseudo-element rules
    * are scoped to the same selector below. */
@@ -271,7 +276,7 @@
 }
 .beneos-cloud-app .bc-sidebar-search-label a,
 .beneos-cloud-app .bc-sidebar-search-label .bc-link-button {
-  color: var(--bc-accent);
+  color: var(--bc-text-muted);
   text-decoration: none;
   font-family: var(--bc-font-control);
   font-weight: var(--bc-w-control);
@@ -330,6 +335,16 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+/* Every field of the sidebar spans the column. The global 12rem limit of
+   .beneos-selector would otherwise leave selects narrower than the search. */
+.beneos-cloud-app .bc-sidebar .beneos-selector,
+.beneos-cloud-app .bc-sidebar .bc-select,
+.beneos-cloud-app .bc-sidebar .bc-input {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  box-sizing: border-box;
 }
 .beneos-cloud-app .bc-sidebar-field-row > .bc-select {
   flex: 1 1 auto;
@@ -3900,7 +3915,7 @@
    it is information, not a button. Tooltip and aria-label carry the name. */
 .beneos-cloud-app .bc-footer[data-compact] .bc-footer-link { padding: 4px 8px; }
 .beneos-cloud-app .bc-footer[data-compact="links"] .bc-footer-link .bc-footer-label,
-.beneos-cloud-app .bc-footer[data-compact="all"] .bc-footer-button .bc-footer-label { display: none; }
+.beneos-cloud-app .bc-footer[data-compact="all"] .bc-footer-button:not(.bc-footer-button-codex, .bc-footer-button-lgc) .bc-footer-label { display: none; }
 
 /* ---- Wave B-9-fix-44 → fix-56: Beneos logo as icon ----
    V13 renders the icon class in two different DOM positions depending

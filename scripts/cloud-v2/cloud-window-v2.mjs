@@ -679,27 +679,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
           this.#ensureReleaseScenesLoaded(drawerReleaseDir, drawerAsset)
         }
       }
-      // Wave B-5e-fix-2/4: pre-formatted hint so the template can stay simple
-      // (Foundry's {{localize}} helper takes no inline params). When more
-      // results are pending, the hint says "scroll for more"; when the user
-      // has loaded everything, only the plain count shows.
-      // Punkt 6: the count noun depends on what the active view actually
-      // lists, so "Showing 100 of N" reads truthfully. Releases view counts
-      // releases, Individual Maps counts maps, Bundles counts bundles, every
-      // other tab keeps the generic "results".
-      const _activeBmapView = this.searchMode === "bmap" ? this._bmapActiveView() : null
-      const countNoun =
-          _activeBmapView === "releases"   ? game.i18n.localize("BENEOS.Cloud.Results.NounReleases")
-        : _activeBmapView === "individual" ? game.i18n.localize("BENEOS.Cloud.Results.NounMaps")
-        : _activeBmapView === "bundles"    ? game.i18n.localize("BENEOS.Cloud.Results.NounBundles")
-        : game.i18n.localize("BENEOS.Cloud.Results.Count")
-      const partialHint = hasMore
-        ? game.i18n.format("BENEOS.Cloud.Results.PartialNoun", {
-            loaded: cards.length,
-            total: totalMatches,
-            noun: countNoun
-          })
-        : null
       // Track whether more pages exist so the scroll loader knows when to
       // stop firing.
       this._hasMoreResults = hasMore
@@ -722,8 +701,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         cards,
         totalMatches,
         hasMore,
-        partialHint,
-        countNoun,
         // Punkt 2: the bmap view tabs must stay reachable even when a view is
         // empty or still loading, so render the meta bar whenever we're on the
         // bmap tab OR there are cards. Without this the toolbar lived inside
@@ -6140,7 +6117,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       cards: visible,
       totalMatches,
       hasMore,
-      partialHint:    hasMore ? `${visible.length} / ${totalMatches}` : "",
       groupBulkKeys:  { new: [], update: [], view: [], backlog: [] },
       loadingReleases: !!this._releaseLoading,
       releasesError:   this._releaseLoadError || null,
@@ -6432,7 +6408,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       cards,
       totalMatches,
       hasMore,
-      partialHint:    hasMore ? `${cards.length} / ${totalMatches}` : "",
       groupBulkKeys:  { new: [], update: [], view: [], backlog: [] },
       loadingReleases: !!this._bundlesLoading,
       releasesError:   this._bundlesLoadError || null,
