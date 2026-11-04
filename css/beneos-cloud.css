@@ -9430,3 +9430,13 @@ body.beneos-perf-mode .bwn-pop::after { display: none; }
   background: var(--bc-text-muted);
   border-color: var(--bc-text-muted);
 }
+
+/* Loot and shop generator: the item name in the hover tooltip in gold, so it
+   reads apart from price and text (user 2026-11-04). The tooltip is Foundry's
+   own element; only the module's class inside it is styled. */
+#tooltip .bn-tt-title,
+.locked-tooltip .bn-tt-title {
+  color: var(--bc-accent);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
+}
