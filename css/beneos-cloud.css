@@ -2959,11 +2959,6 @@
   outline-offset: 2px;
 }
 
-.beneos-cloud-app .bc-settings-row-account .bc-account-chip {
-  margin-right: 6px;
-  vertical-align: -2px;
-}
-
 /* Hard-block state ("Not compatible"): Loot/Spell cards on a non-dnd5e
    system. Not a failure, a state: secondary text with the stop-sign icon
    and the word (standard 2.5). The button stays clickable on purpose so a
@@ -9353,4 +9348,26 @@ body.beneos-perf-mode .bwn-pop::after { display: none; }
 }
 .beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-card-actions:has(> .bc-card-icon) {
   justify-content: flex-end;
+}
+
+/* Settings, Beneos account: heading on top, then state, sign in or out and
+   Account side by side with no hint text (user 2026-11-04). The hints moved
+   into the button tooltips. */
+.beneos-cloud-app .bc-settings-row.bc-settings-row-account {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--bc-space-2);
+}
+.beneos-cloud-app .bc-settings-account-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bc-space-2);
+}
+/* The buttons beside it are 24px high; the state chip takes the same
+   height so the three read as one row. */
+.beneos-cloud-app .bc-settings-account-controls .bc-account-chip {
+  box-sizing: border-box;
+  height: 24px;
+  padding-block: 0;
 }
