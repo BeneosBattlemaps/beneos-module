@@ -52,7 +52,8 @@
 	"scripts/lgc/beneos-lgc.mjs",
 	"scripts/codex2/item-companion.mjs",
 	"scripts/creature-installer/creature-installer.mjs",
-	"scripts/cloud-v2/wiki/beneos-wiki-window.mjs"
+	"scripts/cloud-v2/wiki/beneos-wiki-window.mjs",
+	"scripts/ui/bn-loader.mjs"
   ],
   "languages": [
     { "lang": "en",    "name": "English",                 "path": "lang/en.json" },
