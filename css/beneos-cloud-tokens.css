@@ -1,7 +1,7 @@
 /* =============================================================
-   Beneos module design tokens, Bone palette (CI master 1.1.0).
+   Beneos module design tokens, Bone palette 1.3 (CI master 1.4.0).
    Single source for colours, type, edges and motion in this module.
-   Rules: Beneos design standard, sections 2.4 and 2.5
+   Rules: Beneos design standard, sections 2.4, 2.5 and 2.8
    (J:\_ai\claude\design\standard.md). Master values:
    J:\_ai\claude\design\ci\tokens\tokens.json.
    Loaded first (module.json styles[]) so every file resolves these.
@@ -10,60 +10,66 @@
    its own --color-* variables; overriding those would restyle core UI.
    ============================================================= */
 
-/* Inter 4.1 and JetBrains Mono 2.304, SIL Open Font License 1.1, see fonts/OFL-*.txt */
-@font-face { font-family: 'Inter'; font-style: normal; font-weight: 400; font-display: swap; src: url('../fonts/Inter-Regular.woff2') format('woff2'); }
-@font-face { font-family: 'Inter'; font-style: normal; font-weight: 500; font-display: swap; src: url('../fonts/Inter-Medium.woff2') format('woff2'); }
-@font-face { font-family: 'Inter'; font-style: normal; font-weight: 600; font-display: swap; src: url('../fonts/Inter-SemiBold.woff2') format('woff2'); }
-@font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 400; font-display: swap; src: url('../fonts/JetBrainsMono-Regular.woff2') format('woff2'); }
+/* Murecho 600, Nunito 500/600, Mulish 400/500/600 (CI master 1.4.0), SIL Open Font License 1.1, see fonts/OFL-*.txt.
+   Murecho is subset to Latin, Greek, Cyrillic and punctuation. */
+@font-face { font-family: 'Murecho'; font-style: normal; font-weight: 600; font-display: swap; src: url('../fonts/Murecho-SemiBold.woff2') format('woff2'); }
+@font-face { font-family: 'Nunito'; font-style: normal; font-weight: 500; font-display: swap; src: url('../fonts/Nunito-Medium.woff2') format('woff2'); }
+@font-face { font-family: 'Nunito'; font-style: normal; font-weight: 600; font-display: swap; src: url('../fonts/Nunito-SemiBold.woff2') format('woff2'); }
+@font-face { font-family: 'Mulish'; font-style: normal; font-weight: 400; font-display: swap; src: url('../fonts/Mulish-Regular.woff2') format('woff2'); }
+@font-face { font-family: 'Mulish'; font-style: normal; font-weight: 500; font-display: swap; src: url('../fonts/Mulish-Medium.woff2') format('woff2'); }
+@font-face { font-family: 'Mulish'; font-style: normal; font-weight: 600; font-display: swap; src: url('../fonts/Mulish-SemiBold.woff2') format('woff2'); }
 
 :root {
   /* ---- Surfaces, darkest to lightest ---- */
-  --bc-bg:           #0d0d0b;   /* base: page, window header */
-  --bc-bg-panel:     #131210;   /* app: window surface, sidebar */
-  --bc-bg-elevated:  #131210;   /* result pane, same step as app */
-  --bc-card:         #191916;   /* card, field, hover surface of interactive rows */
-  --bc-card-hover:   #201f1c;   /* overlay: selected segment, placeholder */
-  --bc-bg-pressed:   #272621;   /* pressed button */
+  --bc-bg:           #0e0d0a;   /* base: page, window header */
+  --bc-bg-panel:     #15120e;   /* app: window surface, sidebar */
+  --bc-bg-elevated:  #15120e;   /* result pane, same step as app */
+  --bc-card:         #1c1813;   /* card, field, hover surface of interactive rows */
+  --bc-card-hover:   #231f18;   /* overlay: selected segment, placeholder */
+  --bc-bg-pressed:   #2b251c;   /* pressed button */
 
   /* ---- Borders ---- */
-  --bc-border:         #292722;  /* hairline */
-  --bc-border-strong:  #403d35;  /* window edge, notice */
-  --bc-border-control: #6e6c63;  /* field, button, slider track, at least 3:1 */
+  --bc-border:         #2d261d;  /* hairline */
+  --bc-border-strong:  #463b2c;  /* window edge, notice */
+  --bc-border-control: #807461;  /* field, button, slider track, at least 3:1 */
   --bc-border-inset:   transparent;
 
   /* ---- Text. Module names are swapped against the standard:
      --bc-text-muted is the SECONDARY text, --bc-text-dim the disabled one. ---- */
-  --bc-text:           #e6e8e5;  /* primary */
-  --bc-text-muted:     #a4a59e;  /* secondary */
-  --bc-text-dim:       #6e6c63;  /* disabled only, never for readable text */
-  --bc-text-on-accent: #0d0d0b;  /* label on filled bone or gold */
+  --bc-text:           #d5d6cf;  /* primary */
+  --bc-text-muted:     #a7a596;  /* secondary */
+  --bc-text-dim:       #766a59;  /* disabled only, never for readable text */
+  --bc-text-on-accent: #171510;  /* label on filled accent or gold */
 
-  /* ---- Accent Bone: filled primary action in dialogs, links, selection, focus ---- */
-  --bc-accent:        #d6e0d9;
-  --bc-accent-strong: #e7eee9;
-  --bc-accent-soft:   #e7eee9;
-  --bc-accent-dim:    rgba(214, 224, 217, 0.10);
-  --bc-accent-line:   rgba(214, 224, 217, 0.30);
+  /* ---- Accent: links, selection, focus, filled primary action in dialogs.
+     Since decision E-09 the accent equals the gold highlight, and the
+     strong step equals the primary text (CI master 1.4.0). ---- */
+  --bc-accent:        #f2b668;
+  --bc-accent-strong: #d5d6cf;
+  --bc-accent-soft:   #d5d6cf;
+  --bc-accent-dim:    rgba(242, 182, 104, 0.10);
+  --bc-accent-line:   rgba(242, 182, 104, 0.30);
 
-  /* ---- Highlight Gold, exactly two roles (standard COL-05):
-     the filled button of the one most important action of a view,
-     and the bar before main headings on text-heavy views (4.14). ---- */
-  --bc-highlight:        #f2c77e;
-  --bc-highlight-strong: #f2c77e;
+  /* ---- Highlight Gold: the filled button of the one most important action
+     of a view (MUS-08) and the bar before main headings on text-heavy views
+     (4.14). COL-05 is suspended by E-09, the value equals the accent. ---- */
+  --bc-highlight:        #f2b668;
+  --bc-highlight-strong: #f2b668;
 
   /* ---- Update available has no colour of its own (standard 2.5): icon and word.
-     Aliases kept so existing selectors resolve to the neutral accent. ---- */
-  --bc-update:        var(--bc-accent);
-  --bc-update-soft:   var(--bc-accent-strong);
-  --bc-update-strong: var(--bc-accent-strong);
-  --bc-update-dim:    var(--bc-accent-dim);
-  --bc-update-line:   var(--bc-accent-line);
+     Aliases kept so existing selectors resolve to secondary text, not to
+     the accent, which is gold since E-09. ---- */
+  --bc-update:        var(--bc-text-muted);
+  --bc-update-soft:   var(--bc-text);
+  --bc-update-strong: var(--bc-text);
+  --bc-update-dim:    var(--bc-card-hover);
+  --bc-update-line:   var(--bc-border-strong);
 
   /* ---- States, always with word and icon ---- */
   --bc-success:    #76b391;   /* free, unlocked, installed, done, live */
-  --bc-success-bg: #2a2d2c;
+  --bc-success-bg: #282e2a;
   --bc-error:      #b38872;   /* something failed */
-  --bc-error-bg:   #292820;
+  --bc-error-bg:   #2f2716;
   --bc-danger:     var(--bc-error);
   --bc-info:       var(--bc-text-muted);   /* info has no colour */
   --bc-warning:    var(--bc-text-muted);   /* warning has no colour, icon and word */
@@ -75,13 +81,13 @@
   --bc-cat-spells: var(--bc-text-muted);
 
   /* ---- Scrim over images, from the base surface (COL-11) ---- */
-  --bc-scrim:     rgba(13, 13, 11, 0.90);
-  --bc-scrim-86:  rgba(13, 13, 11, 0.86);
-  --bc-scrim-75:  rgba(13, 13, 11, 0.75);
-  --bc-scrim-55:  rgba(13, 13, 11, 0.55);
-  --bc-scrim-25:  rgba(13, 13, 11, 0.25);
-  --bc-scrim-0:   rgba(13, 13, 11, 0);
-  --bc-border-on-media: rgba(230, 232, 229, 0.18);  /* frame line over bright images (QLT-01) */
+  --bc-scrim:     rgba(14, 13, 10, 0.90);
+  --bc-scrim-86:  rgba(14, 13, 10, 0.86);
+  --bc-scrim-75:  rgba(14, 13, 10, 0.75);
+  --bc-scrim-55:  rgba(14, 13, 10, 0.55);
+  --bc-scrim-25:  rgba(14, 13, 10, 0.25);
+  --bc-scrim-0:   rgba(14, 13, 10, 0);
+  --bc-border-on-media: rgba(213, 214, 207, 0.18);  /* frame line over bright images (QLT-01) */
 
   /* ---- Edges: 0 or 2px, circles stay 50% (standard 2.4) ---- */
   --bc-edge:      2px;
@@ -105,10 +111,28 @@
   --bc-dur-base: 200ms;   /* offset */
   --bc-ease:     cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* ---- Type: Inter is the only family (E-01), mono only for code, paths, IDs ---- */
-  --bc-font-ui:      'Inter', -apple-system, 'Segoe UI', sans-serif;
-  --bc-font-display: var(--bc-font-ui);
-  --bc-font-mono:    'JetBrains Mono', ui-monospace, monospace;
+  /* ---- Type language, seven roles (standard 2.8, decision E-11).
+     A text takes the role of its task, never a family directly. ---- */
+  --bc-font-title:   'Murecho', -apple-system, 'Segoe UI', sans-serif;  /* names of windows, sections, creatures, items, abilities */
+  --bc-font-nav:     'Nunito', -apple-system, 'Segoe UI', sans-serif;   /* where you go: tabs, sidebars, top bar, contents */
+  --bc-font-control: 'Nunito', -apple-system, 'Segoe UI', sans-serif;   /* what you do: buttons, chips, checkboxes, fields, status marks */
+  --bc-font-label:   'Mulish', -apple-system, 'Segoe UI', sans-serif;   /* small labels above values and fields */
+  --bc-font-body:    'Mulish', -apple-system, 'Segoe UI', sans-serif;   /* rules, descriptions, help, meta lines */
+  --bc-font-story:   'Mulish', -apple-system, 'Segoe UI', sans-serif;   /* read-aloud text: combat and death prompts, lore */
+  --bc-font-data:    'Mulish', -apple-system, 'Segoe UI', sans-serif;   /* numbers, CR, prices, paths, codes */
+  --bc-w-title:   600;
+  --bc-w-nav:     500;
+  --bc-w-control: 500;
+  --bc-w-fill:    600;   /* filled accent and gold buttons */
+  --bc-w-label:   500;
+  --bc-w-body:    400;
+  --bc-w-story:   400;
+  --bc-w-data:    500;
+  --bc-w-strong:  600;   /* bold inside body and story text (TYP-08) */
+  /* Names from palette 1.0, kept as pointers until every rule names its role. */
+  --bc-font-ui:      var(--bc-font-body);
+  --bc-font-display: var(--bc-font-title);
+  --bc-font-mono:    var(--bc-font-data);
 }
 
 @media (prefers-reduced-motion: reduce) {

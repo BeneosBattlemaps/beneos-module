@@ -14,7 +14,8 @@
      owner's window-stack level (not floating above unrelated windows). */
   pointer-events: auto;
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   scrollbar-width: thin;
   scrollbar-color: var(--bc-border-control) transparent;
 }
@@ -52,7 +53,8 @@
 }
 .beneos-companion .bc-brand {
   display: flex; align-items: center; gap: 8px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   color: var(--bc-text);
 }
 /* The Beneos SVG is pure-black geometry. Recolor by using it as a mask and
@@ -68,7 +70,8 @@
 }
 .beneos-companion .bc-brand-label {
   font-size: 14px;
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
 }
 .beneos-companion .bc-glow-pill {
   margin-left: auto;
@@ -79,7 +82,8 @@
   background: var(--bc-card-hover);
   border: none;
   font-size: 12px;
-  font-weight: 500;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   text-transform: lowercase;
   color: var(--bc-text-muted);
 }
@@ -149,9 +153,9 @@
   filter: none;
 }
 .beneos-companion .bc-emblem-mono {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
   font-size: 24px;
-  font-weight: 600;
+  font-weight: var(--bc-w-title);
   color: var(--bc-text);
 }
 /* Former glow ring around the emblem, removed (COL-14). */
@@ -160,23 +164,24 @@
 }
 .beneos-companion .bc-hero-text { min-width: 0; }
 .beneos-companion .bc-eyebrow {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--bc-w-label);
   color: var(--bc-text-muted);
   margin-bottom: 4px;
 }
 .beneos-companion .bc-name {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
   font-size: 18px;
-  font-weight: 600;
+  font-weight: var(--bc-w-title);
   border: none;
   margin: 0 0 6px;
   color: var(--bc-text);
   line-height: 1.2;
 }
 .beneos-companion .bc-lore {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-story);
+  font-weight: var(--bc-w-story);
   font-style: normal;
   font-size: 13px;
   line-height: 1.45;
@@ -193,9 +198,9 @@
   display: flex; align-items: center; gap: 8px;
 }
 .beneos-companion .bc-tier-pill {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--bc-w-control);
   height: 22px;
   display: inline-flex; align-items: center;
   padding: 0 6px;
@@ -205,9 +210,9 @@
   color: var(--bc-text);
 }
 .beneos-companion .bc-tier-kind {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--bc-w-control);
   color: var(--bc-text-muted);
   height: 22px;
   display: inline-flex; align-items: center;
@@ -231,14 +236,15 @@
   padding: 6px 10px;
 }
 .beneos-companion .bc-stat-label {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--bc-w-label);
   color: var(--bc-text-muted);
   margin-bottom: 2px;
 }
 .beneos-companion .bc-stat-value {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-size: 14px;
   color: var(--bc-text);
 }
@@ -252,9 +258,9 @@
   border-radius: var(--bc-edge);
   background: var(--bc-card-hover);
   border: none;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--bc-w-control);
   line-height: 1.5;
   opacity: 1;
 }
@@ -288,20 +294,22 @@
   display: flex; align-items: baseline; justify-content: space-between;
 }
 .beneos-companion .bc-modifier-label {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--bc-w-label);
   color: var(--bc-text-muted);
 }
 .beneos-companion .bc-modifier-readout {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-size: 13px;
   color: var(--bc-text-muted);
   font-variant-numeric: tabular-nums;
 }
 .beneos-companion .bc-modifier-readout strong {
   color: var(--bc-text);
-  font-weight: 600;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-size: 13px;
 }
 .beneos-companion .bc-modbars {
@@ -344,7 +352,7 @@
 }
 .beneos-companion .bc-copyable.is-copied {
   color: var(--bc-success);
-  font-weight: 600;
+  font-weight: var(--bc-w-strong);
 }
 /* Rarity chip stays a chip even when copyable */
 .beneos-companion button.bc-rarity-chip {
@@ -397,7 +405,8 @@
 .beneos-companion .bc-contrib-body .bc-contrib-body-inner {
   overflow: hidden;
   padding: 0 12px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 13px;
   line-height: 1.5;
   color: var(--bc-text-muted);
@@ -417,9 +426,9 @@
   display: inline-flex; align-items: baseline; gap: 6px;
 }
 .beneos-companion .bc-contrib-prefix {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--bc-w-label);
   color: var(--bc-text-muted);
   /* Keep "Set-Bonus 3" on a single line. With Perfect Harmony pushing
      the inline-flex row wider, the trailing digit was wrapping below
@@ -432,15 +441,15 @@
   opacity: 1;
 }
 .beneos-companion .bc-contrib-name {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: var(--bc-w-title);
   color: var(--bc-text);
 }
 .beneos-companion .bc-contrib-body .bc-contrib-title {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: var(--bc-w-title);
   color: var(--bc-text);
   margin-bottom: 6px;
 }
@@ -448,7 +457,8 @@
 .beneos-companion .bc-contrib-body .bc-contrib-rules p:last-child { margin-bottom: 0; }
 .beneos-companion .bc-contrib-body strong {
   color: var(--bc-text);
-  font-weight: 600;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-strong);
 }
 .beneos-companion .bc-contrib-body em {
   color: var(--bc-text);
@@ -459,9 +469,9 @@
   display: inline-block;
   margin-top: 8px;
   min-height: 24px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--bc-w-nav);
   color: var(--bc-text-muted);
   text-decoration: none;
   text-underline-offset: 3px;
@@ -490,11 +500,13 @@
 }
 .beneos-companion .bc-contrib-row.is-active .bc-contrib-dot { background: var(--bc-success); box-shadow: none; }
 .beneos-companion .bc-contrib-label {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 13px;
 }
 .beneos-companion .bc-contrib-thresh {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-style: normal;
   font-size: 12px;
   color: var(--bc-text-muted);
@@ -544,7 +556,8 @@
   width: 100%; height: 100%;
   display: grid; place-items: center;
   color: var(--bc-text-muted);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
   font-size: 13px;
 }
@@ -556,9 +569,9 @@
 .beneos-companion .bc-cardwrap .card-flip-hint {
   position: absolute; bottom: 10px; right: 14px;
   z-index: 5;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--bc-w-body);
   color: var(--bc-text);
   background: var(--bc-scrim);
   padding: 2px 6px;

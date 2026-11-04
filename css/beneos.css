@@ -34,7 +34,8 @@
   overflow-y: auto;
   background: var(--bc-bg-panel);
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   border: 1px solid var(--bc-border-strong);
   border-radius: var(--bc-edge);
   box-shadow: var(--bc-shadow-pop);
@@ -55,7 +56,8 @@
   padding: 2px;
   background: var(--bc-bg-panel);
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   border: 1px solid var(--bc-border-strong);
   border-radius: var(--bc-edge);
   box-shadow: var(--bc-shadow-pop);
@@ -75,7 +77,8 @@
   align-items: center;
   background: var(--bc-card);
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   border: 1px solid var(--bc-border);
   border-radius: var(--bc-edge);
   box-shadow: none;
@@ -743,7 +746,8 @@
 
 .beneos-search-main-choice {
   background-color: var(--bc-card-hover);
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
 }
 
 .beneos-search-small-text {
@@ -796,7 +800,8 @@
   text-align: left;
   background: var(--bc-card);
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   border: 1px solid var(--bc-border);
   border-radius: var(--bc-edge);
   box-shadow: none;
@@ -1150,7 +1155,8 @@
 .search-100-results {
   text-align: left;
   font-size: 0.9rem;
-  font-weight: 600;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   color: var(--bc-text);
 }
 
@@ -1244,7 +1250,8 @@ i.beneos-module {
 
 .beneos-variant-name-text {
   font-size: 0.95rem;
-  font-weight: 500;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
 }
 
 #token-hud .beneos-variants-wrap .beneos-variant-name-text {
@@ -1285,7 +1292,8 @@ i.beneos-module {
 .beneos-info-box {
   background: var(--bc-bg-panel);
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   border: 1px solid var(--bc-border-strong);
   border-radius: var(--bc-edge);
   padding: 1.2rem 2rem;
@@ -1316,7 +1324,7 @@ body.theme-dark .beneos-info-box,
    und Download-Link (bsd-download) werden hier je Theme gefaerbt.
    Light = exakt der bisherige Look (Beneos-Rot, helle Box), bleibt bis die
    helle Bone-Variante entschieden ist (Standard 2.7).
-   Dark  = Bone-Akzent fuer Highlights und Link, Box als dunkle Karte.
+   Dark  = Akzent fuer Highlights und Link, Box als dunkle Karte.
    ======================================================================================= */
 .beneos-spell-desc .bsd-heading {
   color: #71120f;
@@ -1346,13 +1354,14 @@ body.theme-dark .beneos-spell-desc .bsd-download,
 
 /* =======================================================================================
    Beneos News Box: body of a cloud news message. Card surface with a hairline
-   frame, headings in the text colour, links in the Bone accent. It sets its own
+   frame, headings in the text colour, links in the accent. It sets its own
    surface, so it reads in both Foundry themes.
    ======================================================================================= */
 .beneos-news-box {
   background: var(--bc-card);
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   border: 1px solid var(--bc-border-strong);
   border-radius: var(--bc-edge);
   padding: 1.2rem 1.6rem;
@@ -1369,13 +1378,14 @@ body.theme-dark .beneos-spell-desc .bsd-download,
 .beneos-news-box h3,
 .beneos-news-box h4 {
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
 }
 .beneos-news-box strong,
 .beneos-news-box b {
   color: var(--bc-text);
-  font-weight: 600;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-strong);
 }
 .beneos-news-box a {
   color: var(--bc-accent);
@@ -1400,7 +1410,8 @@ body.theme-dark .beneos-spell-desc .bsd-download,
 }
 .beneos-news-box table th {
   color: var(--bc-text-muted);
-  font-weight: 600;
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   border-bottom: 1px solid var(--bc-border);
   padding: 0.3rem 0.6rem;
   text-align: left;
@@ -1430,14 +1441,15 @@ body.theme-dark .beneos-spell-desc .bsd-download,
 }
 .beneos-news-window .window-header .window-title {
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   letter-spacing: 0.02em;
 }
 .beneos-news-window .window-content {
   background: var(--bc-bg-panel);
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   padding: 0.8rem;
 }
 .beneos-news-window-content {
@@ -1465,8 +1477,8 @@ body.theme-dark .beneos-spell-desc .bsd-download,
   border: 1px solid var(--bc-border-control);
   border-radius: var(--bc-edge);
   padding: 0.45rem 1.1rem;
-  font-family: var(--bc-font-ui);
-  font-weight: 500;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   cursor: pointer;
   transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
 }
@@ -1520,10 +1532,10 @@ body.theme-dark .beneos-spell-desc .bsd-download,
   padding: .10em .45em;
   border-radius: var(--bc-edge);
   border: 1px solid transparent;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
   font-size: .78rem;
   line-height: 1.25;
-  font-weight: 500;
+  font-weight: var(--bc-w-label);
   /* filigraner als 600 */
   letter-spacing: .035em;
   /* leicht erhöhte Laufweite */
@@ -1619,13 +1631,15 @@ body.theme-dark .beneos-spell-desc .bsd-download,
 
 /* ---- Typografie-Spezialfälle --------------------------------------------------------- */
 .bne--action {
-  font-weight: 500;
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
 }
 
 .bne--advantage {
   text-transform: none;
   letter-spacing: .045em;
-  font-weight: 500;
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
 }
 
 /* Outline-only, nicht schreien */
@@ -1633,7 +1647,8 @@ body.theme-dark .beneos-spell-desc .bsd-download,
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1, "calt" 0;
   letter-spacing: .02em;
-  font-weight: 500;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
 }
 
 /* =======================================================================================
@@ -1744,7 +1759,8 @@ body.theme-dark .beneos-spell-desc .bsd-download,
 .beneos-actor-menu .window-content {
   background: var(--bc-bg-panel);
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   scrollbar-width: thin;
   scrollbar-color: var(--bc-border-control) transparent;
 }
@@ -1765,7 +1781,8 @@ body.theme-dark .beneos-spell-desc .bsd-download,
 .beneos-module.settings .window-content {
   background: var(--bc-bg-panel);
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
 }
 .beneos-module.settings input[type="text"] {
   background: var(--bc-card);
@@ -1785,14 +1802,14 @@ body.theme-dark .beneos-spell-desc .bsd-download,
   color: var(--bc-text-on-accent);
   border: 1px solid var(--bc-accent);
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
-  font-weight: 500;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-fill);
   box-shadow: none;
   transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
 }
 .beneos-module.settings button[type="submit"]:hover {
-  background: var(--bc-accent-strong);
-  border-color: var(--bc-accent-strong);
+  background: var(--bc-accent);
+  border-color: var(--bc-text);
 }
 .beneos-module.settings button[type="submit"]:focus-visible {
   outline: 2px solid var(--bc-accent);

@@ -1,7 +1,7 @@
 /* Beneos Wiki window styling.
  *
- * Beneos design standard, Bone palette (css/beneos-cloud-tokens.css), Inter
- * only. The module wiki is a text-heavy view (standard 4.14): gold bar before
+ * Beneos design standard, Bone palette (css/beneos-cloud-tokens.css), type
+ * roles of standard 2.8. The module wiki is a text-heavy view (standard 4.14): gold bar before
  * the page title and the main article headings, everything else quiet.
  * Everything is scoped under .beneos-wiki so it cannot leak into the rest of
  * Foundry. The window frame is Foundry's own ApplicationV2 frame, re-themed
@@ -28,9 +28,9 @@
 }
 
 .beneos-wiki .window-header .window-title {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 14px;
-  font-weight: 600;
   color: var(--bc-text);
 }
 
@@ -67,7 +67,8 @@
   display: flex;
   height: 100%;
   min-height: 0;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
 }
 
 /* ---- sidebar ---- */
@@ -97,7 +98,8 @@
   border: 1px solid var(--bc-border-control);
   border-radius: var(--bc-edge);
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 14px;
   outline: none;
   transition: border-color var(--bc-dur-fast) var(--bc-ease);
@@ -113,9 +115,9 @@
 
 .beneos-wiki .bw-group { margin: 8px 0 16px; display: grid; gap: 2px; }
 .beneos-wiki .bw-group-label {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 12px;
-  font-weight: 600;
   color: var(--bc-text-muted);
   padding: 0 12px 6px;
 }
@@ -132,6 +134,8 @@
   color: var(--bc-text-muted);
   background: transparent;
   transition: color var(--bc-dur-fast) var(--bc-ease), background-color var(--bc-dur-fast) var(--bc-ease);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
 }
 .beneos-wiki .bw-nav-item:hover { background: var(--bc-card); color: var(--bc-text); }
 .beneos-wiki .bw-nav-item:focus-visible { outline: 2px solid var(--bc-accent); outline-offset: 2px; }
@@ -145,9 +149,9 @@
 
 .beneos-wiki .bw-results-count {
   padding: 7px 12px 10px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 12px;
-  font-weight: 600;
   color: var(--bc-text-muted);
 }
 /* Search results as interactive rows (4.14). */
@@ -169,8 +173,8 @@
   .beneos-wiki .bw-result:hover > * { transform: none; }
 }
 .beneos-wiki .bw-result-head { display: flex; align-items: baseline; gap: 8px; justify-content: space-between; }
-.beneos-wiki .bw-result-title { color: var(--bc-text); font-size: 14px; font-weight: 600; }
-.beneos-wiki .bw-result-cat { color: var(--bc-text-muted); font-size: 12px; font-family: var(--bc-font-ui); white-space: nowrap; }
+.beneos-wiki .bw-result-title { color: var(--bc-text); font-size: 14px; font-family: var(--bc-font-title); font-weight: var(--bc-w-title); }
+.beneos-wiki .bw-result-cat { color: var(--bc-text-muted); font-size: 12px; font-family: var(--bc-font-body); font-weight: var(--bc-w-body); white-space: nowrap; }
 .beneos-wiki .bw-result-snip { color: var(--bc-text-muted); font-size: 13px; line-height: 1.45; margin-top: 4px; }
 .beneos-wiki .bw-noresult { padding: 20px 8px; color: var(--bc-text-muted); font-size: 14px; text-align: center; line-height: 1.5; }
 
@@ -197,9 +201,9 @@
 }
 .beneos-wiki .bw-article { max-width: 824px; margin: 0 auto; padding: 40px 56px 72px; position: relative; }
 .beneos-wiki .bw-eyebrow {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 14px;
-  font-weight: 500;
   color: var(--bc-text-muted);
   margin-bottom: 8px;
   padding-left: 15px;
@@ -209,10 +213,10 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 18px;
   line-height: 1.3;
-  font-weight: 600;
   color: var(--bc-text);
   margin: 0;
   border: none;
@@ -236,31 +240,32 @@
 .beneos-wiki .bw-pager-prev:focus-visible, .beneos-wiki .bw-pager-next:focus-visible { outline: 2px solid var(--bc-accent); outline-offset: 2px; }
 .beneos-wiki .bw-pager-next { text-align: right; }
 .beneos-wiki .bw-pager-spacer { flex: 1; }
-.beneos-wiki .bw-pager-k { font-family: var(--bc-font-ui); font-size: 13px; font-weight: 500; color: var(--bc-text-muted); }
-.beneos-wiki .bw-pager-t { color: var(--bc-text); font-size: 14px; font-weight: 500; margin-top: 4px; line-height: 1.35; transition: color var(--bc-dur-fast) var(--bc-ease); text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; }
+.beneos-wiki .bw-pager-k { font-family: var(--bc-font-label); font-weight: var(--bc-w-label); font-size: 13px; color: var(--bc-text-muted); }
+.beneos-wiki .bw-pager-t { color: var(--bc-text); font-size: 14px; font-family: var(--bc-font-nav); font-weight: var(--bc-w-nav); margin-top: 4px; line-height: 1.35; transition: color var(--bc-dur-fast) var(--bc-ease); text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; }
 .beneos-wiki .bw-pager-prev:hover .bw-pager-t, .beneos-wiki .bw-pager-next:hover .bw-pager-t { color: var(--bc-accent-strong); text-decoration-color: var(--bc-accent); }
 
 /* ----------------------------------------------------- article typography */
 
-.beneos-wiki .bn-body { color: var(--bc-text); font-family: var(--bc-font-ui); font-size: 16px; line-height: 1.65; }
+.beneos-wiki .bn-body { color: var(--bc-text); font-family: var(--bc-font-body); font-weight: var(--bc-w-body); font-size: 16px; line-height: 1.65; }
 .beneos-wiki .bn-body > *:first-child { margin-top: 0; }
 .beneos-wiki .bn-body p,
 .beneos-wiki .bn-body li { max-width: 68ch; }
 /* Main headings inside the article carry the gold bar too (4.14). */
 .beneos-wiki .bn-body h1,
-.beneos-wiki .bn-body h2 { display: flex; align-items: center; gap: 12px; font-family: var(--bc-font-ui); font-size: 18px; line-height: 1.3; color: var(--bc-text); font-weight: 600; margin: 2em 0 .6em; padding-bottom: 0; border: none; }
-.beneos-wiki .bn-body h3 { font-family: var(--bc-font-ui); font-size: 16px; font-weight: 600; color: var(--bc-text); margin: 1.5em 0 .35em; }
-.beneos-wiki .bn-body h4 { font-family: var(--bc-font-ui); font-size: 14px; font-weight: 600; color: var(--bc-text); margin: 1.3em 0 .3em; }
+.beneos-wiki .bn-body h2 { display: flex; align-items: center; gap: 12px; font-family: var(--bc-font-title); font-weight: var(--bc-w-title); font-size: 18px; line-height: 1.3; color: var(--bc-text); margin: 2em 0 .6em; padding-bottom: 0; border: none; }
+.beneos-wiki .bn-body h3 { font-family: var(--bc-font-title); font-weight: var(--bc-w-title); font-size: 16px; color: var(--bc-text); margin: 1.5em 0 .35em; }
+.beneos-wiki .bn-body h4 { font-family: var(--bc-font-title); font-weight: var(--bc-w-title); font-size: 14px; color: var(--bc-text); margin: 1.3em 0 .3em; }
 .beneos-wiki .bn-body p { margin: .75em 0; }
 .beneos-wiki .bn-body a { color: var(--bc-accent); text-decoration: none; border-bottom: 1px solid var(--bc-accent-line); cursor: pointer; transition: color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease); }
 .beneos-wiki .bn-body a:hover { color: var(--bc-accent-strong); border-bottom-color: var(--bc-accent); }
 .beneos-wiki .bn-body a:focus-visible { outline: 2px solid var(--bc-accent); outline-offset: 2px; }
-.beneos-wiki .bn-body a.wikilink { font-weight: 600; }
-.beneos-wiki .bn-body span.wikiref { color: var(--bc-text); font-weight: 600; }
+.beneos-wiki .bn-body a.wikilink { font-family: var(--bc-font-body);
+ font-weight: var(--bc-w-strong);}
+.beneos-wiki .bn-body span.wikiref { color: var(--bc-text); font-family: var(--bc-font-body); font-weight: var(--bc-w-strong); }
 .beneos-wiki .bn-body ul, .beneos-wiki .bn-body ol { margin: .65em 0 1em; padding-left: 1.4em; }
 .beneos-wiki .bn-body li { margin: .32em 0; }
 .beneos-wiki .bn-body li::marker { color: var(--bc-text-muted); }
-.beneos-wiki .bn-body strong { color: var(--bc-text); font-weight: 600; }
+.beneos-wiki .bn-body strong { color: var(--bc-text); font-family: var(--bc-font-body); font-weight: var(--bc-w-strong); }
 .beneos-wiki .bn-body em { color: var(--bc-text); }
 .beneos-wiki .bn-body hr { border: none; border-top: 1px solid var(--bc-border); margin: 1.7em 0; }
 .beneos-wiki .bn-body img { display: block; max-width: min(100%, 560px); height: auto; margin: 1.3em auto; border-radius: var(--bc-edge); border: 1px solid var(--bc-border-strong); }
@@ -270,10 +275,10 @@
 .beneos-wiki .bn-body blockquote p { margin: .3em 0; }
 .beneos-wiki .bn-body table { width: 100%; border-collapse: collapse; margin: 1.2em 0; font-size: 14px; }
 .beneos-wiki .bn-body th, .beneos-wiki .bn-body td { border: 1px solid var(--bc-border); padding: 9px 11px; vertical-align: top; text-align: left; }
-.beneos-wiki .bn-body th { background: var(--bc-card); color: var(--bc-text); font-family: var(--bc-font-ui); font-size: 13px; font-weight: 600; }
+.beneos-wiki .bn-body th { background: var(--bc-card); color: var(--bc-text); font-family: var(--bc-font-label); font-weight: var(--bc-w-label); font-size: 13px; }
 .beneos-wiki .bn-body td hr { display: none; }
 .beneos-wiki .bn-body td img { max-width: 48px; margin: 0 auto; border: none; border-radius: var(--bc-edge); }
-.beneos-wiki .bn-body code { font-family: var(--bc-font-mono); background: var(--bc-card); padding: 1px 6px; border-radius: var(--bc-edge); font-size: .88em; color: var(--bc-text); }
+.beneos-wiki .bn-body code { font-family: var(--bc-font-data); font-weight: var(--bc-w-data); background: var(--bc-card); padding: 1px 6px; border-radius: var(--bc-edge); font-size: .88em; color: var(--bc-text); }
 
 /* Welcome page call-to-action button (data-wiki-launch): the one gold action
    of the wiki (COL-05, MUS-08). */
@@ -288,9 +293,9 @@
   border-radius: var(--bc-edge);
   background: var(--bc-highlight);
   color: var(--bc-text-on-accent);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-fill);
   font-size: 14px;
-  font-weight: 600;
   text-decoration: none;
   cursor: pointer;
   transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
@@ -315,23 +320,23 @@
   left: 0; top: 3px;
   width: 22px;
   color: var(--bc-text-muted);
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-size: 14px;
 }
 .beneos-wiki .bn-body ol.bw-steps > li::marker { content: none; }
-.beneos-wiki .bn-body ol.bw-steps a { color: var(--bc-accent); font-weight: 600; border-bottom: none; }
+.beneos-wiki .bn-body ol.bw-steps a { color: var(--bc-accent); font-family: var(--bc-font-body); font-weight: var(--bc-w-strong); border-bottom: none; }
 .beneos-wiki .bn-body ol.bw-steps a:hover { color: var(--bc-accent-strong); }
-.beneos-wiki .bn-body ol.bw-steps strong { color: var(--bc-text); font-weight: 600; }
+.beneos-wiki .bn-body ol.bw-steps strong { color: var(--bc-text); font-family: var(--bc-font-body); font-weight: var(--bc-w-strong); }
 
 /* "Back to start" breadcrumb at the top of every non-home page. */
 .beneos-wiki .bw-article .bw-home {
   display: inline-block;
   margin: 0 0 16px;
   color: var(--bc-text-muted);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   font-size: 13px;
-  font-weight: 500;
   text-decoration: none;
   border: none;
   cursor: pointer;
@@ -354,9 +359,9 @@
   background: none;
 }
 .beneos-wiki .bn-body .bn-faq-toc-head {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 13px;
-  font-weight: 600;
   color: var(--bc-text-muted);
   margin-bottom: 12px;
 }
@@ -368,9 +373,9 @@
 .beneos-wiki .bn-body .bn-faq-toc-sec { break-inside: avoid; margin-bottom: 14px; }
 .beneos-wiki .bn-body .bn-faq-toc-h {
   display: block;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   font-size: 14px;
-  font-weight: 600;
   color: var(--bc-text);
   border-bottom: 1px solid var(--bc-border);
   padding-bottom: 4px;
@@ -386,6 +391,8 @@
   line-height: 1.4;
   color: var(--bc-text-muted);
   border-bottom: none;
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
 }
 .beneos-wiki .bn-body .bn-faq-toc-sec li a:hover { color: var(--bc-text); }
 
@@ -396,9 +403,9 @@
    label was decoration and is gone. */
 .beneos-wiki .bn-body .bn-faq-back { margin: .4em 0 1.9em; text-align: right; }
 .beneos-wiki .bn-body .bn-faq-back a {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   font-size: 13px;
-  font-weight: 500;
   color: var(--bc-text-muted);
   border-bottom: none;
 }

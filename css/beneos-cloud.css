@@ -17,7 +17,8 @@
 
 .beneos-cloud-app,
 #beneos-cloud-window-v2 {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   color: var(--bc-text);
   background: var(--bc-bg);
   /* Make sure the outer Foundry element fills its allotted height so the
@@ -114,8 +115,8 @@
   border: 0;
   border-bottom: 2px solid transparent;
   border-radius: 0;
-  font-family: var(--bc-font-ui);
-  font-weight: 500;
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   cursor: pointer;
   transition: background var(--bc-dur-fast) var(--bc-ease), color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
 }
@@ -123,7 +124,7 @@
   background: var(--bc-card-hover);
   color: var(--bc-text);
 }
-/* Active tab: primary text with a 2px Bone underline, never gold (COL-05). */
+/* Active tab: primary text with a 2px accent underline. */
 .beneos-cloud-app .bc-tab-active,
 .beneos-cloud-app .bc-tab.category-active {
   background: transparent;
@@ -131,7 +132,7 @@
   border-bottom-color: var(--bc-accent);
 }
 /* M8.3.41: the Foundry-core focus ring (reddish outline plus glow) stays
-   off after a mouse click. Keyboard focus gets the Bone ring (COL-10). */
+   off after a mouse click. Keyboard focus gets the accent ring (COL-10). */
 .beneos-cloud-app .bc-tab:focus {
   outline: none;
   box-shadow: none;
@@ -202,7 +203,8 @@
 .beneos-cloud-app .bc-sidebar-label a {
   color: var(--bc-accent);
   text-decoration: none;
-  font-weight: 500;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
 }
 .beneos-cloud-app .bc-input,
 .beneos-cloud-app .bc-select {
@@ -212,7 +214,8 @@
   color: var(--bc-text);
   border: 1px solid var(--bc-border-control);
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 13px;
   transition: border-color var(--bc-dur-fast) var(--bc-ease);
 }
@@ -270,7 +273,8 @@
 .beneos-cloud-app .bc-sidebar-search-label .bc-link-button {
   color: var(--bc-accent);
   text-decoration: none;
-  font-weight: 500;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
 }
 /* Wave B-8e-fix-7: .bc-link-button is a real <button> styled as a
    text link. Strip the default browser button chrome so it visually
@@ -305,7 +309,8 @@
 .beneos-cloud-app .bc-sidebar-heading {
   display: block;
   font-size: 13px;
-  font-weight: 600;
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   color: var(--bc-text);
   padding-left: 0;
   border-left: 0;
@@ -368,7 +373,8 @@
 }
 .beneos-cloud-app .bc-slider-display {
   font-size: 13px;
-  font-weight: 500;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   color: var(--bc-text);
   font-variant-numeric: tabular-nums;
 }
@@ -451,7 +457,7 @@
   pointer-events: auto;
   transition: background-color var(--bc-dur-fast) var(--bc-ease);
 }
-/* Hover, drag and keyboard focus turn the thumb Bone; focus adds the ring. */
+/* Hover, drag and keyboard focus turn the thumb to the accent; focus adds the ring. */
 .beneos-cloud-app .bc-slider-dual .bc-slider:hover::-webkit-slider-thumb,
 .beneos-cloud-app .bc-slider-dual .bc-slider:active::-webkit-slider-thumb,
 .beneos-cloud-app .bc-slider-dual .bc-slider:focus-visible::-webkit-slider-thumb {
@@ -532,7 +538,8 @@
   border-radius: var(--bc-edge);
   padding: 2px 4px 2px 10px;
   font-size: 12px;
-  font-weight: 500;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   cursor: pointer;
   transition: background var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
 }
@@ -593,7 +600,8 @@
   font-size: 12px;
   color: var(--bc-text-muted);
   font-variant-numeric: tabular-nums;
-  font-weight: 500;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
 }
 /* Warning and info carry no colour of their own (standard 2.5): neutral
    notice surface, the icon and the wording carry the meaning. */
@@ -621,7 +629,8 @@
 .beneos-cloud-login-dialog .window-content {
   background: var(--bc-bg-panel) !important;
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   padding: var(--bc-space-4) !important;
   display: flex !important;
   flex-direction: column !important;
@@ -650,9 +659,9 @@
   display: none !important;
 }
 .beneos-cloud-login-dialog .window-title {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   color: var(--bc-text);
-  font-weight: 500;
   font-size: 15px;
   /* Foundry V13 + dnd5e draw a coloured (red) underline on .window-title via
      text-decoration / border-bottom / box-shadow depending on version. Strip all
@@ -699,8 +708,8 @@
 .beneos-cloud-login-dialog .window-header .header-control[data-action="close"]::before,
 .beneos-cloud-login-dialog .window-header button.close::before {
   content: "\00d7" !important;
-  font-family: var(--bc-font-ui) !important;
-  font-weight: 600 !important;
+  font-family: var(--bc-font-control) !important;
+  font-weight: var(--bc-w-control) !important;
   font-size: 18px !important;
   line-height: 1 !important;
   color: inherit !important;
@@ -749,7 +758,8 @@
 .beneos-cloud-login-dialog .bc-login-form__label {
   font-size: 12px;
   color: var(--bc-text-muted);
-  font-weight: 500;
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
 }
 .beneos-cloud-login-dialog .bc-login-form__input {
   width: 100%;
@@ -758,7 +768,8 @@
   border: 1px solid var(--bc-border-control);
   border-radius: var(--bc-edge);
   padding: 7px 10px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 13px;
   box-sizing: border-box;
 }
@@ -784,7 +795,8 @@
   border: 1px solid var(--bc-border-control);
   border-radius: var(--bc-edge);
   padding: 5px 10px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   cursor: pointer;
   opacity: 1;
@@ -840,9 +852,9 @@
 .beneos-cloud-login-dialog .bc-login-form__email {
   margin: 4px 0 0;
   text-align: center;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-size: 15px;
-  font-weight: 600;
   color: var(--bc-text);
   word-break: break-all;
 }
@@ -867,7 +879,8 @@
   border: 1px solid var(--bc-border-control);
   border-radius: var(--bc-edge);
   padding: 7px 14px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   cursor: pointer;
   /* Override Foundry's `flex: 1` default that stretches buttons full-width */
@@ -882,24 +895,25 @@
 .beneos-cloud-login-dialog .window-content button[data-action]:active {
   background: var(--bc-bg-pressed);
 }
-/* Primary action of the dialog: filled Bone (FRM-09), not gold. */
+/* Primary action of the dialog: filled accent (FRM-09). */
 .beneos-cloud-login-dialog .window-content button[data-action="login"],
 .beneos-cloud-login-dialog .window-content button.default {
   background: var(--bc-accent);
   color: var(--bc-text-on-accent);
   border-color: var(--bc-accent);
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-fill);
 }
 .beneos-cloud-login-dialog .window-content button[data-action="login"]:hover,
 .beneos-cloud-login-dialog .window-content button.default:hover {
-  background: var(--bc-accent-strong);
-  border-color: var(--bc-accent-strong);
+  background: var(--bc-accent);
+  border-color: var(--bc-text);
   color: var(--bc-text-on-accent);
 }
 /* Wave B-9-fix-71: the default ("connect") button is autofocused when the
    dialog opens, and Foundry paints its classic focus glow with a red
    box-shadow from --color-shadow-primary. That red flash read as an
-   out-of-place eye-catcher. The focus state uses the Bone ring instead;
+   out-of-place eye-catcher. The focus state uses the accent ring instead;
    animation:none guards against any core pulse keyframe on the button. */
 .beneos-cloud-login-dialog .window-content button[data-action]:focus,
 .beneos-cloud-login-dialog .window-content button[data-action]:focus-visible,
@@ -945,7 +959,8 @@
   background: var(--bc-card-hover);
   border: 1px solid transparent;
   color: var(--bc-text);
-  font-weight: 500;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   white-space: nowrap;
 }
 .beneos-cloud-app .bc-results-show-chip i { color: var(--bc-text-muted); font-size: 12px; }
@@ -1021,7 +1036,8 @@
  * but not loud. */
 .beneos-cloud-app .bc-result-divider {
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   color: var(--bc-text-muted);
   padding: var(--bc-space-2) var(--bc-space-3);
   margin: var(--bc-space-2) 0 0;
@@ -1048,7 +1064,8 @@
 }
 .beneos-cloud-app .bc-result-divider .bc-divider-description {
   font-size: 12px;
-  font-weight: 400;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   letter-spacing: 0;
   text-transform: none;
   color: var(--bc-text-muted);
@@ -1099,7 +1116,8 @@
   border: none;
   border-radius: var(--bc-edge);
   font-size: 12px;
-  font-weight: 500;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   cursor: pointer;
   transition: background var(--bc-dur-fast) var(--bc-ease), color var(--bc-dur-fast) var(--bc-ease);
 }
@@ -1208,7 +1226,8 @@
   border: 1px solid transparent;
   border-radius: var(--bc-edge);
   padding: 1px 6px;
-  font-weight: 500;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
 }
 
 /* Prominent header bulk button — appears in .bc-results-meta next to
@@ -1227,9 +1246,9 @@
   align-items: center;
   gap: var(--bc-space-2);
   padding: 6px 12px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
-  font-weight: 600;
   border-radius: var(--bc-edge);
   border: 1px solid;
   cursor: pointer;
@@ -1693,7 +1712,7 @@
 /* Wave B-9-fix-32: the card whose drawer is currently open keeps a
    stronger treatment than hover so the user can scroll through the list
    and still see which item the drawer maps to: overlay surface plus a
-   solid Bone border (selection uses the accent, never gold). Works in
+   solid accent border. Works in
    both list and grid mode. */
 .beneos-cloud-app .bc-result-card.bc-card-selected,
 .beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card.bc-card-selected:hover {
@@ -1872,7 +1891,8 @@
   gap: 6px;
   color: var(--bc-text-muted);
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
 }
 .beneos-cloud-app .bc-card-thumb-offline i {
   font-size: 20px;
@@ -1922,13 +1942,13 @@
 }
 
 /* ---- Card-name typography: User-Direktive — weg vom Times-New-Roman-
- * artigen Default-Serif. Sans-serif system stack mit Inter / Segoe UI
+ * artigen Default-Serif. Sans-serif system stack mit den Rollen-Schriften
  * vorne, Apple-Stack als Fallback, dann generic. Greift auf alle drei
  * Asset-Typen in Grid + List, weil die Klasse global angesetzt ist. ---- */
 .beneos-cloud-app .bc-card-name,
 .beneos-cloud-app .bc-card-name-row {
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   letter-spacing: 0.01em;
 }
 
@@ -1953,7 +1973,8 @@
   background: var(--bc-card-hover);
   color: var(--bc-text-muted);
   border: 1px solid transparent;
-  font-weight: 500;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
 }
 /* FREE-Badge — same shape as the BENEOS chip, but in success-green so
    non-patrons can spot at a glance which assets they can grab for free
@@ -1983,7 +2004,8 @@
   background: var(--bc-card-hover);
   color: var(--bc-success);
   border: 1px solid transparent;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
 }
 /* Join-Patreon CTA on locked cards: the default button (FRM-09). Red is
    reserved for failures, gold for Install, so the label carries it. */
@@ -2105,7 +2127,8 @@
   height: 22px;
   border-radius: 50%;
   font-size: 13px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   line-height: 1;
   border: 1px solid var(--bc-border-on-media);
   background: var(--bc-scrim-55);
@@ -2151,7 +2174,8 @@
   padding: 3px 8px;
   border-radius: var(--bc-edge);
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   letter-spacing: 0.04em;
   color: var(--bc-text);
   background: var(--bc-scrim-75);
@@ -2203,7 +2227,8 @@
 }
 .beneos-cloud-app .bc-status-chip {
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   padding: 2px 6px;
   border-radius: var(--bc-edge);
   line-height: 1.2;
@@ -2227,13 +2252,12 @@
 .beneos-cloud-app .bc-card-name {
   margin: 0 0 4px 0;
   font-size: 14px;
-  font-weight: 600;
-  /* User-Direktive: weg vom serifen --bc-font-display (Fraunces / Cormorant
-   * Garamond) — schwer lesbar bei kleinen Card-Titles. Wir nutzen jetzt das
-   * UI-Sans-Stack (Inter / Segoe UI). Greift fuer alle Asset-Typen in beiden
-   * Modi, weil .bc-card-name die einzige globale Title-Klasse ist. */
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
+  /* Title role (standard 2.8): card names are names of things. Applies to all
+   * asset types in both modes, because .bc-card-name is the only global
+   * title class. */
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
   letter-spacing: 0.01em;
   white-space: nowrap;
   overflow: hidden;
@@ -2424,9 +2448,9 @@
 }
 .beneos-cloud-app .bc-drawer-origin-name {
   margin: 0;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 16px;
-  font-weight: 500;
   color: var(--bc-text);
   letter-spacing: 0.02em;
 }
@@ -2529,7 +2553,8 @@
 .beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-item .bc-drawer-body .bc-drawer-fields .bc-field dt,
 .beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-spell .bc-drawer-body .bc-drawer-fields .bc-field dt {
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   letter-spacing: 0.04em;
   color: var(--bc-text-muted);
 }
@@ -2638,7 +2663,8 @@
 }
 .beneos-cloud-app .bc-results:has(.bc-result-list.bc-view-grid) .bc-detail-drawer.bc-drawer-token .bc-drawer-body .bc-drawer-fields .bc-field dt {
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   letter-spacing: 0.04em;
   color: var(--bc-text-muted);
 }
@@ -2698,7 +2724,8 @@
   background: transparent;
   border: none;
   padding: 2px 0;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   color: var(--bc-accent);
   cursor: pointer;
@@ -2803,7 +2830,8 @@
   background: var(--bc-card);
   color: var(--bc-text);
   font-size: 12px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   cursor: pointer;
   transition: background var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease), color var(--bc-dur-fast) var(--bc-ease);
 }
@@ -2820,16 +2848,17 @@
   outline-offset: 2px;
 }
 /* Primary outside the result list (settings, install progress, bundle
-   drawer): filled Bone, the primary action of a dialog. */
+   drawer): filled accent, the primary action of a dialog. */
 .beneos-cloud-app .bc-card-button-primary {
   background: var(--bc-accent);
   color: var(--bc-text-on-accent);
   border-color: var(--bc-accent);
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-fill);
 }
 .beneos-cloud-app .bc-card-button-primary:hover {
-  background: var(--bc-accent-strong);
-  border-color: var(--bc-accent-strong);
+  background: var(--bc-accent);
+  border-color: var(--bc-text);
   color: var(--bc-text-on-accent);
 }
 .beneos-cloud-app .bc-card-button-primary:active {
@@ -2842,7 +2871,8 @@
   background: var(--bc-card);
   color: var(--bc-text);
   border-color: var(--bc-border-control);
-  font-weight: 500;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
 }
 .beneos-cloud-app .bc-result-card .bc-card-button-primary:hover {
   background: var(--bc-card-hover);
@@ -2859,7 +2889,8 @@
   background: var(--bc-highlight);
   color: var(--bc-text-on-accent);
   border-color: var(--bc-highlight);
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-fill);
 }
 .beneos-cloud-app .bc-detail-drawer .bc-card-button-primary.bc-action-install:hover {
   background: var(--bc-highlight-strong);
@@ -2997,7 +3028,8 @@
   font-size: 12px;
   border-radius: var(--bc-edge);
   letter-spacing: 0.04em;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
 }
 .beneos-cloud-app .bc-state-installed {
   background: var(--bc-success-bg);
@@ -3248,9 +3280,9 @@
 .beneos-cloud-app .bc-drawer-title {
   margin: 0;
   flex: 1 1 auto;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 16px;
-  font-weight: 500;
   color: var(--bc-text);
 }
 .beneos-cloud-app .bc-drawer-close {
@@ -3366,7 +3398,8 @@
   bottom: 6px;
   left: 6px;
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   padding: 2px 6px;
   border-radius: var(--bc-edge);
   background: var(--bc-scrim-75);
@@ -3495,7 +3528,8 @@
   top: 2px;
   right: 2px;
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   letter-spacing: 0.05em;
   background: var(--bc-scrim-75);
   color: var(--bc-text);
@@ -3660,7 +3694,8 @@
    (rendered into both the cloud blurb and the installed full description). */
 .beneos-cloud-app .bc-drawer-description .bc-md-em,
 .beneos-cloud-app .bc-drawer-local-description-body .bc-md-em {
-  font-weight: 600;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-strong);
   color: var(--bc-text);
 }
 /* M8.3.41: dice mechanics surfaced from the description ([[/roll 2d6]],
@@ -3669,8 +3704,8 @@
 .beneos-cloud-app .bc-drawer-description .bc-md-roll,
 .beneos-cloud-app .bc-drawer-local-description-body .bc-md-roll {
   display: inline-block;
-  font-family: var(--bc-font-mono);
-  font-weight: 600;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-size: max(12px, 0.92em);
   line-height: 1.2;
   color: var(--bc-text);
@@ -3979,7 +4014,8 @@ button.beneos-icon-logo {
      one in the footer and read as a foreign object. */
   border-radius: var(--bc-edge);
   font-size: 12px;
-  font-weight: 500;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
 }
 .beneos-cloud-app .bc-account-chip i { font-size: 12px; }
 /* Connection status (footer): connected in sage, the warning state
@@ -4017,7 +4053,8 @@ button.beneos-icon-logo {
   color: var(--bc-text);
   border: 1px solid var(--bc-border-control);
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   cursor: pointer;
   transition: background var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease), color var(--bc-dur-fast) var(--bc-ease);
@@ -4033,20 +4070,21 @@ button.beneos-icon-logo {
   outline: 2px solid var(--bc-accent);
   outline-offset: 2px;
 }
-/* Sign in: filled Bone, the primary action of the footer. */
+/* Sign in: filled accent, the primary action of the footer. */
 .beneos-cloud-app .bc-footer-button-primary {
   background: var(--bc-accent);
   color: var(--bc-text-on-accent);
   border-color: var(--bc-accent);
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-fill);
 }
 .beneos-cloud-app .bc-footer-button-primary:hover {
-  background: var(--bc-accent-strong);
-  border-color: var(--bc-accent-strong);
+  background: var(--bc-accent);
+  border-color: var(--bc-text);
   color: var(--bc-text-on-accent);
 }
 /* The endless sign-in pulse is gone (FRM-12: no decorative endless
-   motion). The filled Bone button carries the emphasis on its own. */
+   motion). The filled accent button carries the emphasis on its own. */
 
 /* ---- Title bar Patreon status colour (mirrors v1 behavior) ---- */
 
@@ -4076,7 +4114,8 @@ button.beneos-icon-logo {
 .beneos-cloud-app .window-header .window-title .bc-window-quote .bc-window-quote-text {
   display: inline-block;
   font-style: italic;
-  font-weight: normal;
+  font-family: var(--bc-font-story);
+  font-weight: var(--bc-w-story);
   font-size: max(12px, 0.82em);
   color: var(--bc-text-muted);
   letter-spacing: 0.01em;
@@ -4116,7 +4155,8 @@ button.beneos-icon-logo {
   border: 1px solid var(--bc-border);
   border-radius: var(--bc-edge);
   font-size: 13px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   cursor: pointer;
   transition: background var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
 }
@@ -4167,9 +4207,9 @@ button.beneos-icon-logo {
 }
 .application.beneos-cloud-app.beneos-confirm .window-header .window-title {
   color: var(--bc-text) !important;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title) !important;
   font-size: 14px !important;
-  font-weight: 500 !important;
   letter-spacing: 0.02em;
   text-align: center;
   flex: 1 1 auto;
@@ -4278,13 +4318,14 @@ button.beneos-icon-logo {
   border: 1px solid transparent;
   color: var(--bc-text);
   font-size: 12px;
-  font-weight: 500;
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   flex: 0 0 auto;
 }
 .beneos-cloud-app .bc-update-asset-name {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 16px;
-  font-weight: 500;
   color: var(--bc-text);
   flex: 1 1 auto;
   word-break: break-word;
@@ -4296,7 +4337,8 @@ button.beneos-icon-logo {
 .beneos-cloud-app .bc-update-scenes-heading {
   margin: 0 0 var(--bc-space-2);
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   color: var(--bc-text-muted);
 }
 .beneos-cloud-app .bc-update-scene-list {
@@ -4342,7 +4384,8 @@ button.beneos-icon-logo {
   padding-top: var(--bc-space-3);
   border-top: 1px solid var(--bc-border);
   color: var(--bc-text);
-  font-weight: 500;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
 }
 
 /* Our centred wrapper — emitted inline by #onBulkInstallClick */
@@ -4399,8 +4442,8 @@ button.beneos-icon-logo {
   min-width: 110px !important;
   padding: 8px 16px !important;
   border-radius: var(--bc-edge) !important;
-  font-family: var(--bc-font-ui) !important;
-  font-weight: 500 !important;
+  font-family: var(--bc-font-control) !important;
+  font-weight: var(--bc-w-control) !important;
   font-size: 13px !important;
   cursor: pointer !important;
   border: 1px solid var(--bc-border-control) !important;
@@ -4437,13 +4480,14 @@ button.beneos-icon-logo {
   background: var(--bc-accent) !important;
   border-color: var(--bc-accent) !important;
   color: var(--bc-text-on-accent) !important;
-  font-weight: 600 !important;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-fill) !important;
 }
 .application.beneos-cloud-app.beneos-confirm .form-footer > button[data-action="yes"]:hover,
 .application.beneos-cloud-app.beneos-confirm .dialog-buttons > button[data-button="yes"]:hover,
 .application.beneos-cloud-app.beneos-confirm menu > button[data-button="yes"]:hover {
-  background: var(--bc-accent-strong) !important;
-  border-color: var(--bc-accent-strong) !important;
+  background: var(--bc-accent) !important;
+  border-color: var(--bc-text) !important;
   color: var(--bc-text-on-accent) !important;
 }
 
@@ -4476,7 +4520,8 @@ button.beneos-icon-logo {
 .beneos-cloud-app .bc-settings-title {
   margin: 0;
   font-size: 13px;
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   color: var(--bc-text);
 }
 .beneos-cloud-app .bc-settings-rows {
@@ -4509,7 +4554,8 @@ button.beneos-icon-logo {
 }
 .beneos-cloud-app .bc-settings-row-label {
   font-size: 13px;
-  font-weight: 500;
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   color: var(--bc-text);
   margin-bottom: 2px;
 }
@@ -4545,7 +4591,8 @@ button.beneos-icon-logo {
   color: var(--bc-success);
   border: 1px solid var(--bc-success);
   font-size: 12px;
-  font-weight: 500;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   letter-spacing: 0.04em;
   opacity: 0;
   transform: translateY(2px);
@@ -4594,7 +4641,8 @@ button.beneos-icon-logo {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   /* Punkt 3 v5c: cap the wizard so the footer (Save / Reroll /
      Restart) stays accessible regardless of how many slots the user
      adds via the Plus-Button. The inner .blg-scroll-body absorbs the
@@ -4638,7 +4686,8 @@ button.beneos-icon-logo {
   max-width: 90%;
   border-radius: var(--bc-edge);
   font-size: 13px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   letter-spacing: 0.02em;
   color: var(--bc-text);
   background: var(--bc-card);
@@ -4649,7 +4698,8 @@ button.beneos-icon-logo {
 .beneos-loot-generator .blg-title {
   margin: 0 0 4px;
   font-size: 22px;
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   color: var(--bc-text);
   letter-spacing: 0.02em;
 }
@@ -4661,7 +4711,8 @@ button.beneos-icon-logo {
 
 .beneos-loot-generator .blg-question {
   font-size: 15px;
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   text-align: center;
   margin: 6px 0 14px;
 }
@@ -4711,7 +4762,8 @@ button.beneos-icon-logo {
 }
 .beneos-loot-generator .blg-bias-label {
   font-size: 13px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
 }
 
 /* ---- Step 2: tier grid ---- */
@@ -4760,7 +4812,8 @@ button.beneos-icon-logo {
 }
 .beneos-loot-generator .blg-tier-name {
   font-size: 14px;
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   color: var(--blg-text);
 }
 .beneos-loot-generator .blg-tier-levels {
@@ -4798,7 +4851,8 @@ button.beneos-icon-logo {
 .beneos-loot-generator .blg-rolling-text {
   margin: 0;
   font-size: 15px;
-  font-weight: 600;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   letter-spacing: 0.05em;
   color: var(--bc-text);
 }
@@ -4836,7 +4890,8 @@ button.beneos-icon-logo {
   text-align: center;
   padding: 10px 14px;
   border-radius: var(--bc-edge);
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   overflow: hidden;
 }
 /* Solid notice surface; the rarity word keeps its data colour. The pulse
@@ -4928,7 +4983,8 @@ button.beneos-icon-logo {
   z-index: 1;
   margin: 4px 0 0;
   font-size: 14px;
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   text-align: center;
   color: var(--blg-text);
   line-height: 1.25;
@@ -4950,7 +5006,8 @@ button.beneos-icon-logo {
 .beneos-loot-generator .blg-tier-pill,
 .beneos-loot-generator .blg-type-pill {
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   padding: 2px 8px;
   border-radius: var(--bc-edge);
   letter-spacing: 0.05em;
@@ -4983,12 +5040,14 @@ button.beneos-icon-logo {
   color: var(--blg-text-dim);
 }
 .beneos-loot-generator .blg-prob-label {
-  font-weight: 600;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
 }
 .beneos-loot-generator .blg-cross-tier {
   font-size: 12px;
   color: var(--bc-text);
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
 }
 .beneos-loot-generator .blg-cross-tier.blg-cross-fallback {
   color: var(--blg-text-dim);
@@ -5009,7 +5068,8 @@ button.beneos-icon-logo {
   padding: 5px 14px;
   border-radius: var(--bc-edge);
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   letter-spacing: 0.05em;
   cursor: pointer;
   display: flex;
@@ -5027,7 +5087,8 @@ button.beneos-icon-logo {
 .beneos-loot-generator .blg-drag-hint {
   font-size: 12px;
   color: var(--blg-success);
-  font-weight: 600;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -5050,22 +5111,25 @@ button.beneos-icon-logo {
   border-radius: var(--bc-edge);
   padding: 7px 16px;
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   transition: background var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease), color var(--bc-dur-fast) var(--bc-ease);
 }
-/* Primary of the generator dialogs: filled Bone (FRM-09). */
+/* Primary of the generator dialogs: filled accent (FRM-09). */
 .beneos-loot-generator .blg-primary-btn {
   background: var(--bc-accent);
   border: 1px solid var(--bc-accent);
   color: var(--bc-text-on-accent);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-fill);
 }
 .beneos-loot-generator .blg-primary-btn:hover {
-  background: var(--bc-accent-strong);
-  border-color: var(--bc-accent-strong);
+  background: var(--bc-accent);
+  border-color: var(--bc-text);
 }
 .beneos-loot-generator .blg-primary-btn:active {
   border-color: var(--bc-text);
@@ -5093,7 +5157,8 @@ button.beneos-icon-logo {
 }
 .beneos-loot-generator .blg-reroll-count {
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   margin-left: 4px;
 }
 
@@ -5127,7 +5192,8 @@ button.beneos-icon-logo {
 }
 .beneos-loot-generator .blg-hoard-gold {
   font-size: 16px;
-  font-weight: 600;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   color: var(--bc-text);
   display: inline-flex;
   align-items: center;
@@ -5144,13 +5210,15 @@ button.beneos-icon-logo {
   border-radius: var(--bc-edge);
   color: var(--bc-text-muted);
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   cursor: help;
 }
 .beneos-loot-generator .blg-hoard-treasure-name { color: var(--blg-text); }
 .beneos-loot-generator .blg-hoard-treasure-price {
   color: var(--blg-text-dim);
-  font-weight: 500;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
 }
 
 /* ============================================================
@@ -5212,7 +5280,8 @@ button.beneos-icon-logo {
 }
 .beneos-magic-shop .blg-shop-size-name {
   font-size: 16px;
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   color: var(--blg-text);
   letter-spacing: 0.02em;
 }
@@ -5243,7 +5312,8 @@ button.beneos-icon-logo {
 }
 .beneos-magic-shop .blg-shop-name-row label {
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   color: var(--blg-text-dim);
   letter-spacing: 0.05em;
 }
@@ -5254,7 +5324,8 @@ button.beneos-icon-logo {
   color: var(--blg-text);
   padding: 8px 10px;
   font-size: 14px;
-  font-family: inherit;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   transition: border-color var(--bc-dur-fast) var(--bc-ease);
 }
 .beneos-magic-shop .blg-shop-name-input:focus {
@@ -5347,7 +5418,8 @@ button.beneos-icon-logo {
 }
 .beneos-magic-shop .blg-shop-item-name {
   font-size: 13px;
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   color: var(--blg-text);
   white-space: nowrap;
   overflow: hidden;
@@ -5367,7 +5439,8 @@ button.beneos-icon-logo {
 }
 .beneos-magic-shop .blg-shop-item-price {
   color: var(--bc-text);
-  font-weight: 600;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -5429,7 +5502,8 @@ button.beneos-icon-logo {
   text-align: center;
   color: var(--blg-text);
   font-size: 13px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   letter-spacing: 0.04em;
   cursor: pointer;
   transition: background var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease), color var(--bc-dur-fast) var(--bc-ease);
@@ -5500,7 +5574,8 @@ button.beneos-icon-logo {
 }
 .beneos-magic-shop .blg-shop-item.is-roleplay .blg-shop-item-name {
   font-size: 12px;
-  font-weight: 500;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   color: inherit;
   white-space: nowrap;
   overflow: hidden;
@@ -5530,7 +5605,8 @@ button.beneos-icon-logo {
   color: var(--bc-text);
   padding: 3px 10px;
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   letter-spacing: 0.05em;
   cursor: pointer;
   display: inline-flex;
@@ -5553,7 +5629,8 @@ button.beneos-icon-logo {
 .beneos-magic-shop .blg-shop-section-header h3 {
   margin: 0 0 2px;
   font-size: 14px;
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   letter-spacing: 0.04em;
   color: var(--bc-text);
 }
@@ -5702,7 +5779,8 @@ button.beneos-icon-logo {
   border-radius: var(--bc-edge);
   color: var(--bc-text-muted);
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -5725,7 +5803,8 @@ button.beneos-icon-logo {
   padding: 6px 16px;
   border-radius: var(--bc-edge);
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   letter-spacing: 0.05em;
   display: inline-flex;
   align-items: center;
@@ -5753,7 +5832,8 @@ button.beneos-icon-logo {
   border-radius: var(--bc-edge);
   color: var(--bc-text-muted);
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -5785,12 +5865,14 @@ button.beneos-icon-logo {
   border-radius: var(--bc-edge);
   color: var(--bc-text-muted);
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   letter-spacing: 0.04em;
 }
 .beneos-magic-shop .blg-shop-cash strong {
   color: var(--blg-text);
-  font-weight: 600;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
 }
 
 /* ---- Punkt 3 v3-fix — Wondrous Twist (loot-generator bonus slot) ---- */
@@ -5807,7 +5889,8 @@ button.beneos-icon-logo {
 .beneos-loot-generator .blg-wondrous-header {
   position: relative;
   font-size: 13px;
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   color: var(--bc-text);
   margin-bottom: 10px;
   display: flex;
@@ -5821,7 +5904,8 @@ button.beneos-icon-logo {
 }
 .beneos-loot-generator .blg-wondrous-sub {
   font-size: 12px;
-  font-weight: 500;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   text-transform: none;
   letter-spacing: 0.02em;
   color: var(--blg-text-dim);
@@ -5882,7 +5966,8 @@ button.beneos-icon-logo {
   color: var(--bc-text);
   font-size: 13px;
   letter-spacing: 0.04em;
-  font-weight: 500;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
 }
 
 /* Stage 13c-mini: Beneos FX-Editor — kompaktes ApplicationV2-Window
@@ -5923,7 +6008,8 @@ button.beneos-icon-logo {
   padding: 2px 8px;
   border-radius: var(--bc-edge);
   font-size: 12px;
-  font-weight: 500;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   background: var(--bc-card-hover);
   color: var(--bc-text);
   border: 1px solid transparent;
@@ -5986,7 +6072,8 @@ button.beneos-icon-logo {
   user-select: none;
 }
 .beneos-fx-editor .bfx-entry-label {
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   text-transform: capitalize;
   letter-spacing: 0.04em;
 }
@@ -6017,7 +6104,8 @@ button.beneos-icon-logo {
   font-size: 12px;
 }
 .beneos-fx-editor .bfx-param-name {
-  font-weight: 600;
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   letter-spacing: 0.04em;
   color: var(--bc-text-muted);
   font-size: 12px;
@@ -6119,7 +6207,8 @@ button.beneos-icon-logo {
   border-radius: var(--bc-edge);
   color: var(--bc-text);
   cursor: pointer;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   letter-spacing: 0.04em;
   transition: background var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
 }
@@ -6161,7 +6250,8 @@ button.beneos-icon-logo {
 }
 .beneos-fx-editor .bfx-library-head {
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   color: var(--bc-text);
   margin-bottom: 6px;
   padding: 0 2px;
@@ -6182,7 +6272,8 @@ button.beneos-icon-logo {
   border-radius: var(--bc-edge);
   cursor: pointer;
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   letter-spacing: 0.03em;
   text-align: left;
   color: var(--bc-text);
@@ -6335,7 +6426,8 @@ button.beneos-icon-logo {
   background: transparent;
   border: 1px solid transparent;
   color: var(--bc-text-muted);
-  font-weight: 500;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   text-transform: none;
   letter-spacing: 0;
   text-decoration: none;
@@ -6455,7 +6547,8 @@ button.beneos-icon-logo {
 .beneos-cloud-app .bc-home-section-title {
   margin: 0;
   font-size: 18px;
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   /* !important schlaegt Foundrys Light-Theme-Regel (.theme-light .application h3),
      die durch den h3-Tag eine hoehere Spezifitaet als unsere Klasse hat und den
      Titel sonst dunkel-auf-dunkel faerbt. */
@@ -6569,7 +6662,8 @@ button.beneos-icon-logo {
   background: var(--bc-card-hover);
   color: var(--bc-text-muted);
   border-radius: var(--bc-edge);
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   letter-spacing: 0.05em;
 }
@@ -6577,9 +6671,9 @@ button.beneos-icon-logo {
    rolling cards stay readable (the previous mix inherited an unclear face). */
 .beneos-cloud-app .bc-news-title {
   margin: 0;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 14.5px;
-  font-weight: 600;
   line-height: 1.32;
   letter-spacing: 0;
   /* !important: Foundrys .theme-light .application h4 (Tag-Selektor) wuerde die
@@ -6622,7 +6716,8 @@ button.beneos-icon-logo {
   border: 1px solid var(--bc-border-control);
   border-radius: var(--bc-edge);
   font-size: 12px;
-  font-weight: 500;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   cursor: pointer;
   transition: background var(--bc-dur-fast) var(--bc-ease), color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
 }
@@ -6717,7 +6812,8 @@ button.beneos-icon-logo {
   min-width: 0;
   font-size: 13px;
   color: var(--bc-text-muted);
-  font-weight: 400;
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
 }
 .beneos-cloud-app .bc-stat-head i { color: var(--bc-text-muted); flex: 0 0 auto; }
 .beneos-cloud-app .bc-stat-label {
@@ -6737,12 +6833,13 @@ button.beneos-icon-logo {
 /* State value: 15px, weight 500, primary text (MUS-06). */
 .beneos-cloud-app .bc-stat-installed {
   font-size: 15px;
-  font-weight: 500;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   color: var(--bc-text);
   line-height: 1.2;
 }
-.beneos-cloud-app .bc-stat-sep   { font-size: 14px; color: var(--bc-text-muted); }
-.beneos-cloud-app .bc-stat-total { font-size: 14px; color: var(--bc-text-muted); }
+.beneos-cloud-app .bc-stat-sep   { font-size: 14px; color: var(--bc-text-muted); font-family: var(--bc-font-data); font-weight: var(--bc-w-data); }
+.beneos-cloud-app .bc-stat-total { font-size: 14px; color: var(--bc-text-muted); font-family: var(--bc-font-data); font-weight: var(--bc-w-data); }
 .beneos-cloud-app .bc-stat-progress {
   margin-top: auto;
   height: 2px;
@@ -6764,13 +6861,15 @@ button.beneos-icon-logo {
 .beneos-cloud-app .bc-stat-status {
   margin-left: 6px;
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   letter-spacing: 0.04em;
   color: var(--bc-text-muted);
 }
 .beneos-cloud-app .bc-stat-free-hint {
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   letter-spacing: 0.04em;
   color: var(--bc-success);
 }
@@ -6793,7 +6892,8 @@ button.beneos-icon-logo {
 .beneos-cloud-app .bc-rail-title {
   margin: 0;
   font-size: 13px;
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   color: var(--bc-text);
 }
 .beneos-cloud-app .bc-rail-seeall {
@@ -6805,6 +6905,8 @@ button.beneos-icon-logo {
   color: var(--bc-text-muted);
   border: 1px solid transparent;
   border-radius: var(--bc-edge);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   font-size: 12px;
   cursor: pointer;
   transition: background var(--bc-dur-fast) var(--bc-ease), color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
@@ -6910,7 +7012,8 @@ button.beneos-icon-logo {
   padding: 2px 6px;
   border-radius: var(--bc-edge);
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   letter-spacing: 0.05em;
   white-space: nowrap;
   z-index: 4;
@@ -6952,7 +7055,8 @@ button.beneos-icon-logo {
               var(--bc-scrim-86) 100%);
   color: var(--bc-text);
   font-size: 13px;
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   line-height: 1.2;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -7066,11 +7170,13 @@ button.beneos-icon-logo {
 }
 .beneos-update-notice__versions dd {
   margin: 0;
-  font-family: var(--bc-font-mono);
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
 }
 .beneos-update-notice__versions dd.is-new {
   color: var(--bc-text);
-  font-weight: 600;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
 }
 .beneos-update-notice__skip {
   display: flex;
@@ -7111,7 +7217,8 @@ button.beneos-icon-logo {
 .bc-patchlog-version-number {
   margin: 0;
   font-size: 18px;
-  font-weight: 600;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   color: var(--bc-text);
 }
 .bc-patchlog-version-date {
@@ -7131,7 +7238,8 @@ button.beneos-icon-logo {
   padding: 2px 8px;
   border-radius: var(--bc-edge);
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
 }
 .bc-patchlog-chip-new      { background: var(--bc-accent); color: var(--bc-text-on-accent); }
 .bc-patchlog-chip-improved { background: var(--bc-card-hover); color: var(--bc-text); }
@@ -7148,7 +7256,7 @@ button.beneos-icon-logo {
   line-height: 1.4;
   color: var(--bc-text);
 }
-.bc-patchlog-item-title { font-weight: 600; }
+.bc-patchlog-item-title { font-family: var(--bc-font-title); font-weight: var(--bc-w-title);}
 .bc-patchlog-item-body  { color: var(--bc-text-muted); }
 .bc-patchlog-empty {
   padding: 14px;
@@ -7247,13 +7355,15 @@ button.beneos-icon-logo {
   color: var(--bc-text-muted);
   border-radius: var(--bc-edge);
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   letter-spacing: 0.05em;
 }
 .bc-news-detail-title {
   margin: 0;
   font-size: 22px;
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   line-height: 1.2;
   /* !important: schlaegt Foundrys .theme-light .application h1 (Tag-Regel), die
      den Detail-Titel im Bright Mode sonst dunkel-auf-dunkel faerbt. */
@@ -7283,13 +7393,15 @@ button.beneos-icon-logo {
   background: var(--bc-accent);
   color: var(--bc-text-on-accent);
   border-radius: var(--bc-edge);
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-fill);
   font-size: 13px;
   text-decoration: none;
   transition: background var(--bc-dur-fast) var(--bc-ease);
 }
 .bc-news-detail-cta:hover {
-  background: var(--bc-accent-strong);
+  background: var(--bc-accent);
+  box-shadow: inset 0 0 0 1px var(--bc-text);
   color: var(--bc-text-on-accent);
   text-decoration: none;
 }
@@ -7331,7 +7443,8 @@ button.beneos-icon-logo {
   border: 1px solid var(--bc-border-control) !important;
   border-radius: var(--bc-edge);
   padding: 7px 14px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   cursor: pointer;
   flex: 0 0 auto !important;
@@ -7381,8 +7494,8 @@ button.beneos-icon-logo {
   background: var(--bc-card) !important;
   border: 1px solid var(--bc-border-control) !important;
   color: var(--bc-text) !important;
-  font-family: var(--bc-font-ui) !important;
-  font-weight: 500;
+  font-family: var(--bc-font-control) !important;
+  font-weight: var(--bc-w-control);
   position: relative;
   padding-right: 22px !important;
   transition: background var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
@@ -7481,7 +7594,8 @@ body.beneos-perf-mode .bc-footer-button-lgc .bc-lgc-livedot {
 }
 .beneos-paywall-lock { font-size: 18px; color: var(--bc-text-muted); }
 .beneos-paywall-text {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 13px;
   line-height: 1.4;
   color: var(--bc-text);
@@ -7495,17 +7609,17 @@ body.beneos-perf-mode .bc-footer-button-lgc .bc-lgc-livedot {
   background: var(--bc-accent);
   color: var(--bc-text-on-accent);
   border: 1px solid var(--bc-accent);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-fill);
   font-size: 13px;
-  font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
   transition: background var(--bc-dur-fast) var(--bc-ease), color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
 }
 .beneos-paywall-join:hover {
-  background: var(--bc-accent-strong);
+  background: var(--bc-accent);
   color: var(--bc-text-on-accent);
-  border-color: var(--bc-accent-strong);
+  border-color: var(--bc-text);
   text-decoration: none;
 }
 .beneos-paywall-join:focus-visible,
@@ -7532,7 +7646,8 @@ body.beneos-perf-mode .bc-footer-button-lgc .bc-lgc-livedot {
   gap: 10px;
   margin: 0 0 4px;
   padding: 7px 14px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 12px;
   letter-spacing: 0.04em;
   color: var(--bc-text-muted);
@@ -7589,7 +7704,8 @@ body.beneos-perf-mode .beneos-codex-hint.is-done::after { animation: none; }
   color: var(--bc-text);
   border: 1px solid var(--bc-border-control);
   font-size: 12px;
-  font-weight: 500;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   text-decoration: none;
   white-space: nowrap;
   transition: background var(--bc-dur-fast) var(--bc-ease), color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
@@ -7613,13 +7729,14 @@ body.beneos-perf-mode .beneos-codex-hint.is-done::after { animation: none; }
   display: flex;
   flex-direction: column;
   gap: 10px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
 }
 .beneos-forge .bf-header { text-align: center; }
 .beneos-forge .bf-title {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 20px;
-  font-weight: 600;
   margin: 0 0 3px;
   color: var(--bc-text);
 }
@@ -7714,11 +7831,13 @@ body.beneos-perf-mode .beneos-codex-hint.is-done::after { animation: none; }
   border-radius: var(--bc-edge); border: 1px solid var(--bc-border);
 }
 .beneos-forge .bf-slot-cap {
-  font-size: 12px; font-weight: 600; color: var(--bc-text); line-height: 1.25;
+  font-size: 12px;  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
+color: var(--bc-text); line-height: 1.25;
   max-width: 112px;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.beneos-forge .bf-slot-cap-ph { color: var(--bc-text-muted); font-weight: 500; }
+.beneos-forge .bf-slot-cap-ph { color: var(--bc-text-muted); font-family: var(--bc-font-label); font-weight: var(--bc-w-label);}
 .beneos-forge .bf-slot-ph-icon { font-size: 26px; color: var(--bc-text-muted); }
 .beneos-forge .bf-drop-icon { font-size: 26px; color: var(--bc-text-muted); }
 .beneos-forge .bf-plus {
@@ -7755,7 +7874,7 @@ body.beneos-perf-mode .beneos-codex-hint.is-done::after { animation: none; }
   border: 1px solid var(--bc-border-control);
   border-radius: var(--bc-edge);
 }
-/* The one action of the Forge view: filled Bone primary. */
+/* The one action of the Forge view: filled accent primary. */
 .beneos-forge .bf-forge-btn {
   display: inline-flex;
   align-items: center;
@@ -7765,16 +7884,16 @@ body.beneos-perf-mode .beneos-codex-hint.is-done::after { animation: none; }
   background: var(--bc-accent);
   border: 1px solid var(--bc-accent);
   color: var(--bc-text-on-accent);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-fill);
   font-size: 14px;
-  font-weight: 600;
   cursor: pointer;
   transition: background var(--bc-dur-fast) var(--bc-ease), color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
 }
 .beneos-forge .bf-forge-btn:hover:not([disabled]) {
-  background: var(--bc-accent-strong);
+  background: var(--bc-accent);
   color: var(--bc-text-on-accent);
-  border-color: var(--bc-accent-strong);
+  border-color: var(--bc-text);
 }
 .beneos-forge .bf-forge-btn:active:not([disabled]) { background: var(--bc-accent); }
 .beneos-forge .bf-forge-btn[disabled] { opacity: 0.45; cursor: not-allowed; }
@@ -7838,8 +7957,8 @@ body.beneos-perf-mode .beneos-forge .bf-stage.is-forging .bf-fusion { animation:
   color: var(--bc-text-muted);
 }
 .beneos-forge .bf-make strong {
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   color: var(--bc-text);
 }
 .beneos-forge .bf-stamp {
@@ -7854,8 +7973,8 @@ body.beneos-perf-mode .beneos-forge .bf-stage.is-forging .bf-fusion { animation:
 }
 .beneos-forge .bf-stamp-hint { font-size: 12px; color: var(--bc-text-muted); font-style: italic; }
 .beneos-forge .bf-stamp-name {
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 18px;
   color: var(--bc-text);
 }
@@ -7866,8 +7985,8 @@ body.beneos-perf-mode .beneos-forge .bf-stage.is-forging .bf-fusion { animation:
   font-size: 16px;
 }
 .beneos-forge .bf-stamp-tag {
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   color: var(--bc-text-on-accent);
   background: var(--bc-accent);
@@ -7925,11 +8044,11 @@ body.beneos-perf-mode .beneos-forge .bf-stage.is-forging .bf-fusion { animation:
   position: relative;
   z-index: 1;
   width: 100%;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   /* Dynamic: shrinks for long names (e.g. "Dwarven Forged" or longer locales)
      and wraps instead of overflowing the card. */
   font-size: clamp(12px, 1.05vw, 12px);
-  font-weight: 600;
   letter-spacing: 0.01em;
   color: var(--bc-text);
   text-align: center;
@@ -7983,9 +8102,9 @@ body.beneos-perf-mode .beneos-forge .bf-stage.is-forging .bf-fusion { animation:
 }
 .beneos-forge .bf-echo-title {
   display: flex; align-items: center; gap: 7px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 13px;
-  font-weight: 600;
   letter-spacing: 0.03em;
   color: var(--bc-text);
   margin-bottom: 6px;
@@ -8066,9 +8185,9 @@ body.beneos-perf-mode .beneos-forge .bf-stage.is-forging .bf-fusion { animation:
   display: none;
 }
 .beneos-forge .bf-reveal-name {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 19px;
-  font-weight: 600;
   color: var(--bc-text);
   text-align: center;
   animation: bf-reveal-in 0.5s ease 0.25s both;
@@ -8194,9 +8313,9 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 }
 .beneos-cloud-app .bcip-title {
   margin: 0;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 22px;
-  font-weight: 500;
   color: var(--bc-text);
   letter-spacing: 0.01em;
   line-height: 1.15;
@@ -8231,7 +8350,8 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 .beneos-cloud-app .bcip-total-pct {
   font-variant-numeric: tabular-nums;
   color: var(--bc-text);
-  font-weight: 600;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   /* Task E: reserve width so "9%" -> "100%" doesn't nudge the layout. */
   min-width: 3.5ch;
   text-align: right;
@@ -8309,7 +8429,7 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 .beneos-cloud-app .bcip-phase-skipped .bcip-phase-icon,
 .beneos-cloud-app .bcip-phase-skipped .bcip-phase-label { color: var(--bc-text-muted); }
 .beneos-cloud-app .bcip-phase-active .bcip-phase-icon { color: var(--bc-accent); }
-.beneos-cloud-app .bcip-phase-active .bcip-phase-label { color: var(--bc-text); font-weight: 500; }
+.beneos-cloud-app .bcip-phase-active .bcip-phase-label { color: var(--bc-text); font-family: var(--bc-font-body); font-weight: var(--bc-w-strong);}
 .beneos-cloud-app .bcip-phase-done .bcip-phase-icon { color: var(--bc-success); }
 .beneos-cloud-app .bcip-phase-done .bcip-phase-label { color: var(--bc-text); }
 .beneos-cloud-app .bcip-phase-error .bcip-phase-icon { color: var(--bc-error); }
@@ -8352,7 +8472,8 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   background: var(--bc-card);
   border: 1px solid var(--bc-border-strong);
   color: var(--bc-text);
-  font-weight: 600;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
 }
 
 /* Second install layer: "Adding Beneos Creatures" block. Gold when the user is
@@ -8382,7 +8503,7 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 }
 .beneos-cloud-app .bcip-creatures-locked i { color: var(--bc-text-muted); }
 .beneos-cloud-app .bcip-creatures-text { flex: 1 1 auto; }
-.beneos-cloud-app .bcip-creatures-suffix { color: var(--bc-text-muted); font-weight: 600; }
+.beneos-cloud-app .bcip-creatures-suffix { color: var(--bc-text-muted); font-family: var(--bc-font-body); font-weight: var(--bc-w-strong);}
 .beneos-cloud-app .bcip-creatures-count {
   flex: 0 0 auto;
   font-variant-numeric: tabular-nums;
@@ -8406,7 +8527,9 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 /* ===== #4 Release drawer: what's-included checkmarks + scene list ===== */
 .bc-drawer-section { margin-top: 14px; }
 .bc-drawer-section-h {
-  font-size: 13px; font-weight: 600; margin: 0 0 8px;
+  font-size: 13px;  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
+margin: 0 0 8px;
   border-bottom: 1px solid var(--bc-border); padding-bottom: 4px;
 }
 .bc-included-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
@@ -8437,14 +8560,15 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 
 /* Punkt 4: scene-detail drawer headings (individual map view). */
 /* Edit #4: the drawer section headings inherited the off-brand display serif
-   and read poorly at this size , force the legible Inter/system sans stack so
+   and read poorly at this size , force the legible role font so
    "This scene belongs to <Release>" is clearly readable. */
 .beneos-cloud-app .bc-drawer-section-h,
 .beneos-cloud-app .bc-scene-belongs,
 .beneos-cloud-app .bc-drawer-subsection-h {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
 }
-.beneos-cloud-app .bc-scene-belongs { font-weight: 600; font-size: 13px; letter-spacing: 0.01em; opacity: 1; }
+.beneos-cloud-app .bc-scene-belongs { font-family: var(--bc-font-title); font-weight: var(--bc-w-title);font-size: 13px; letter-spacing: 0.01em; opacity: 1; }
 .beneos-cloud-app .bc-scene-belongs strong { color: var(--bc-text); }
 .beneos-cloud-app .bc-drawer-subsection-h {
   margin: 8px 0 4px;
@@ -8532,7 +8656,8 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   padding: 3px 10px;
   border-radius: var(--bc-edge);
   font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   letter-spacing: 0.02em;
   color: var(--bc-text);
   background: var(--bc-card-hover);
@@ -8547,7 +8672,8 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 .beneos-cloud-app .bc-compat-chip-subtle {
   padding: 1px 8px;
   font-size: 12px;
-  font-weight: 500;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   letter-spacing: 0.01em;
   color: var(--bc-text-muted);
   background: var(--bc-card);
@@ -8708,7 +8834,8 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 .bwn-counter {
   display: inline-block;
   margin-bottom: var(--bc-space-2);
-  font-family: var(--bc-font-mono);
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-size: 12px;
   color: var(--bc-text-muted);
 }
@@ -8716,7 +8843,8 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
 .bwn-headline {
   position: relative;
   margin: 0;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 21px;
   line-height: 1.25;
   color: var(--bc-text);
@@ -8764,7 +8892,8 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   min-height: 22px;
   gap: var(--bc-space-3);
   margin: 0 0 var(--bc-space-3);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 15px;
   letter-spacing: 0.02em;
   color: var(--bc-text);
@@ -8804,7 +8933,8 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   border-radius: var(--bc-edge);
   background: var(--bc-card);
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   letter-spacing: 0.03em;
   white-space: nowrap;
@@ -9108,7 +9238,7 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   cursor: pointer;
 }
 
-/* Dialog primary: filled Bone. */
+/* Dialog primary: filled accent. */
 .bwn-confirm {
   min-width: 200px;
   padding: 8px 20px;
@@ -9117,12 +9247,13 @@ body.beneos-perf-mode .beneos-forge .bf-echo { animation: none; }
   background: var(--bc-accent);
   color: var(--bc-text-on-accent);
   font-size: 13px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-fill);
   cursor: pointer;
   transition: background var(--bc-dur-fast) var(--bc-ease);
 }
 
-.bwn-confirm:hover { background: var(--bc-accent-strong); }
+.bwn-confirm:hover { background: var(--bc-accent); border-color: var(--bc-text); }
 .bwn-confirm:active { background: var(--bc-accent); }
 
 /* Performance mode and the reduced-motion preference drop the motion and show

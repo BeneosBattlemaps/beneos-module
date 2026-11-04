@@ -80,7 +80,7 @@
       {{#if detail.specials.length}}
         <div class="specials-section" data-visible="{{#if detail.harmonyActive}}true{{else}}false{{/if}}">
           <div class="divider-fancy" style="margin-top:8px;">
-            <span style="font-family:var(--bc-font-ui);font-size:13px;font-weight:500;color:var(--bc-text-muted);">{{localize "BENEOS.Codex.Detail.BonusRites"}}</span>
+            <span style="font-family:var(--bc-font-label);font-weight:var(--bc-w-label);font-size:13px;color:var(--bc-text-muted);">{{localize "BENEOS.Codex.Detail.BonusRites"}}</span>
           </div>
           {{#each detail.specials}}
             {{> "beneos-codex/item-tier-card"

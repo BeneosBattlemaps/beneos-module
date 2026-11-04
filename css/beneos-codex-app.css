@@ -67,7 +67,7 @@
 }
 /* Fix.13 defense: dnd5e + browser focus styles produce red/blue outlines on
    nav buttons. Nuke outline + box-shadow globally inside the codex, then
-   reintroduce a Bone focus-visible ring for keyboard a11y (COL-10). */
+   reintroduce an accent focus-visible ring for keyboard a11y (COL-10). */
 .beneos-codex .cdx-tab:not(.cdx-tab-standalone),
 .beneos-codex .subpage-tab,
 .beneos-codex .subpage-back,
@@ -116,11 +116,11 @@
   border-right: 1px solid var(--line-soft);
   border-radius: 0;
   color: var(--ink-muted);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   font-size: 13px;
   cursor: pointer;
   transition: color var(--bc-dur-fast) var(--bc-ease), background-color var(--bc-dur-fast) var(--bc-ease);
-  font-weight: 500;
 }
 .subpage-back:hover { color: var(--ink-primary); background: var(--bc-card); }
 
@@ -133,7 +133,8 @@
   border-bottom: 2px solid transparent;
   color: var(--ink-muted);
   padding: 16px 8px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   font-size: 13px;
   text-align: center;
   cursor: pointer;
@@ -141,7 +142,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   transition: color var(--bc-dur-fast) var(--bc-ease), background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
-  font-weight: 500;
 }
 .subpage-tab:hover {
   color: var(--ink-primary);
@@ -156,7 +156,8 @@
 /* Subpage-Lead, Erklärtext unter der Subnav */
 .subpage-lead {
   padding: 14px 22px 12px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
   font-size: 14px;
   line-height: 1.55;
@@ -171,11 +172,11 @@
   flex: 1;
 }
 .generator-pane h2 {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 18px;
   margin: 0 0 16px;
   color: var(--ink-primary);
-  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -189,18 +190,19 @@
   border-radius: 0;
 }
 .generator-pane p {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 16px;
   line-height: 1.6;
   color: var(--ink-secondary);
   margin: 0 0 12px;
 }
 .generator-pane .eyebrow {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 13px;
   color: var(--bc-text-muted);
   margin-bottom: 6px;
-  font-weight: 500;
 }
 .generator-pane .hint {
   margin-top: 24px;
@@ -216,7 +218,8 @@
   padding: 2px 6px;
   border-radius: var(--bc-edge);
   font-size: 12px;
-  font-family: var(--bc-font-mono);
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
 }
 .cta-primary {
   background: var(--bc-accent);
@@ -224,14 +227,14 @@
   border: 1px solid var(--bc-accent);
   padding: 10px 22px;
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-fill);
   font-size: 13px;
-  font-weight: 600;
   cursor: pointer;
   margin-top: 16px;
   transition: background-color var(--bc-dur-fast) var(--bc-ease);
 }
-.cta-primary:hover { background: var(--bc-accent-strong); }
+.cta-primary:hover { background: var(--bc-accent); border-color: var(--bc-text); }
 
 .item-origins-layout {
   display: grid;
@@ -260,13 +263,13 @@
   color: var(--bc-text);
   padding: 6px 12px;
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   font-size: 13px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-weight: 500;
   transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
 }
 
@@ -279,21 +282,21 @@
   padding: 18px;
 }
 .attune-eyebrow {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 13px;
   color: var(--bc-text-muted);
   margin-bottom: 10px;
-  font-weight: 500;
 }
 
 /* Fix.17: shared eyebrow with gold left-bar (Attune-Sim + Set-Bonus-Active) */
 .codex-eyebrow {
   display: flex; align-items: center; gap: 10px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 13px;
   color: var(--bc-text-muted);
   margin-bottom: 10px;
-  font-weight: 500;
 }
 .codex-eyebrow::before {
   content: none;
@@ -305,14 +308,15 @@
 
 /* Attunement-Simulator headings + subclaim */
 .attune-h2 {
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 18px;
   color: var(--ink-primary);
   margin: 0 0 6px;
 }
 .attune-subclaim {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
   font-size: 14px;
   line-height: 1.5;
@@ -328,10 +332,10 @@
   border: 1px solid var(--bc-border);
 }
 .attune-count {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-size: 36px;
   color: var(--origin-color, var(--bc-text));
-  font-weight: 600;
 }
 .attune-count span {
   font-size: 12px;
@@ -359,7 +363,8 @@
   padding: 8px 10px;
   border-radius: var(--bc-edge);
   margin-bottom: 6px;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 14px;
 }
 .attune-row > span:first-child {
@@ -367,7 +372,8 @@
   display: grid; place-items: center;
   border-radius: 50%;
   background: var(--bg-panel);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-size: 12px;
 }
 .attune-row em {
@@ -382,7 +388,8 @@
 
 /* ---- Fix.9 Attunement-Simulator: 3 tiles + Set-Bonus-Active block ---- */
 .attune-count-text {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
   font-size: 13px;
   line-height: 1.4;
@@ -423,14 +430,15 @@
   transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
 }
 .attune-tile .at-num {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   font-size: 15px;
-  font-weight: 600;
   color: var(--ink-secondary);
   line-height: 1;
 }
 .attune-tile .at-label {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 12px;
   color: var(--ink-muted);
   white-space: normal;
@@ -458,8 +466,8 @@
   border: 1px solid var(--line-soft);
 }
 .sba-value {
-  font-family: var(--bc-font-ui);
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 18px;
   margin: 0 0 6px;
   line-height: 1.1;
@@ -468,7 +476,8 @@
 .sba-value.is-reson   { color: var(--bc-text); }
 .sba-value.is-harmony { color: var(--bc-success); }
 .sba-hint {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
   font-size: 14px;
   line-height: 1.5;
@@ -488,13 +497,13 @@
   border: 1px solid var(--bc-border-control);
   border-radius: var(--bc-edge);
   color: var(--bc-text);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 13px;
   line-height: 1.35;
   text-align: center;
   cursor: pointer;
   transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
-  font-weight: 500;
 }
 .sba-ritual-cta:hover {
   background: var(--bc-card-hover);
@@ -515,14 +524,15 @@
   border: 1px solid var(--bc-border);
 }
 .sol-eyebrow {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 13px;
   color: var(--bc-text-muted);
   margin-bottom: 8px;
-  font-weight: 500;
 }
 .sol-text {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
   font-size: 13px;
   line-height: 1.55;
@@ -559,7 +569,8 @@
   position: absolute;
   top: 0; left: 50%;
   transform: translate(-50%, -50%);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 12px;
   color: var(--ink-muted);
   background: var(--bc-card);
@@ -617,7 +628,8 @@
 .origin-pager .op-btn:active { background: var(--bc-bg-pressed); }
 .origin-pager .op-next { justify-content: flex-end; text-align: right; }
 .origin-pager .op-arrow {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   font-size: 22px;
   line-height: 1;
   color: var(--bc-text-muted);
@@ -631,22 +643,24 @@
   flex: 1 1 auto;
 }
 .origin-pager .op-direction {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   font-size: 12px;
   color: var(--ink-muted);
   line-height: 1.2;
 }
 .origin-pager .op-name {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   font-size: 13px;
   color: var(--ink-primary);
   line-height: 1.25;
   white-space: normal;
   overflow-wrap: break-word;
-  font-weight: 500;
 }
 .origin-pager-hint {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 12px;
   color: var(--bc-text-muted);
   text-align: center;
@@ -655,9 +669,9 @@
 
 /* ---- Origin-Detail section headings + leads (inline replacement) ---- */
 .detail-section-heading {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 18px;
-  font-weight: 600;
   margin: 8px 0 4px;
   display: flex;
   align-items: center;
@@ -675,9 +689,9 @@
    so the set-bonus copy reads as part of the wider Beneos loot system. */
 .detail-section-tag {
   display: inline-block;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
-  font-weight: 500;
   color: var(--bc-text-muted);
   background: var(--bc-card-hover);
   border: none;
@@ -686,7 +700,8 @@
   margin: 2px 0 10px;
 }
 .detail-section-lead {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 14px;
   line-height: 1.5;
   color: var(--bc-text-muted);
@@ -709,12 +724,12 @@
   overflow-y: auto;
 }
 .factions-list .eyebrow {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 13px;
   color: var(--bc-text-muted);
   margin-bottom: 8px;
   padding: 0 6px;
-  font-weight: 500;
 }
 .factions-layout .faction-row {
   display: flex;
@@ -726,7 +741,8 @@
   border-radius: var(--bc-edge);
   cursor: pointer;
   color: var(--ink-secondary);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-nav);
+  font-weight: var(--bc-w-nav);
   font-size: 14px;
 }
 .factions-layout .faction-row .dot {
@@ -742,21 +758,22 @@
   border-left: 2px solid var(--faction-glow, var(--bc-border-control));
 }
 .faction-card .eyebrow {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 13px;
   color: var(--bc-text-muted);
   margin-bottom: 6px;
-  font-weight: 500;
 }
 .faction-card h2 {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 18px;
   margin: 0 0 14px;
   color: var(--ink-primary);
-  font-weight: 600;
 }
 .faction-card .faction-lore {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-story);
+  font-weight: var(--bc-w-story);
   font-size: 16px;
   line-height: 1.55;
   color: var(--bc-text-muted);
@@ -766,7 +783,8 @@
 .trait-chip {
   padding: 4px 10px;
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
   background: var(--bc-card-hover);
   border: none;
@@ -779,7 +797,8 @@
   justify-content: center;
   height: 100%;
   color: var(--ink-muted);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-style: normal;
 }
 .faction-empty .hint { font-size: 12px; opacity: 1; margin-top: 8px; color: var(--bc-text-muted); }
@@ -802,20 +821,21 @@
 }
 .codex-wip-glyph { font-size: 48px; margin-bottom: 14px; }
 .codex-wip-eyebrow {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   font-size: 13px;
   color: var(--bc-text-muted);
-  font-weight: 500;
 }
 .codex-wip-card h2 {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 18px;
   margin: 10px 0 14px;
   color: var(--ink-primary);
-  font-weight: 600;
 }
 .codex-wip-card p {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   font-size: 14px;
   color: var(--bc-text-muted);
 }
@@ -824,7 +844,8 @@
   display: inline-block;
   padding: 2px 8px;
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 12px;
 }
 .rarity-chip.rc-Common    { color: var(--bc-text-muted); background: var(--bc-card-hover); border: none; }
@@ -839,11 +860,11 @@
   border-top: 1px solid var(--bc-border);
 }
 .reson-sub-head {
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 14px;
   color: var(--bc-text);
   margin-bottom: 8px;
-  font-weight: 600;
 }
 
 /* ---- M7.9 Performance-Mode kill switch (Codex App) -------------------- */

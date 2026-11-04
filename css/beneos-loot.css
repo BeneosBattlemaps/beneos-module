@@ -32,9 +32,9 @@
   border: none;
   border-radius: var(--bc-edge);
   padding: 4px 0;
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-control);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--bc-w-control);
   line-height: 1.2;
   color: var(--bc-text-muted);
   cursor: pointer;
@@ -63,7 +63,8 @@
   background: var(--bc-bg-panel);
   border: 1px solid var(--bc-border-strong);
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   color: var(--bc-text);
 }
 
@@ -105,7 +106,8 @@
 }
 
 .beneos-loot-extras .beneos-origin-name {
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 16px;
   color: var(--bc-text);
 }
@@ -122,7 +124,8 @@
   align-self: flex-start;
   padding: 0 6px;
   font-size: 12px;
-  font-weight: 500;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   line-height: 22px;
   border-radius: var(--bc-edge);
 }
@@ -162,14 +165,16 @@
 
 .beneos-loot-extras .beneos-tier-chip-label {
   font-size: 12px;
-  font-weight: 500;
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   color: var(--bc-text-muted);
   opacity: 1;
 }
 
 .beneos-loot-extras .beneos-tier-chip-value {
   font-size: 20px;
-  font-weight: 600;
+  font-family: var(--bc-font-data);
+  font-weight: var(--bc-w-data);
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
@@ -192,7 +197,8 @@
 .beneos-loot-extras .beneos-loot-cards > summary {
   cursor: pointer;
   padding: 6px 8px;
-  font-weight: 600;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   font-size: 14px;
   color: var(--bc-text);
   border-radius: var(--bc-edge);
@@ -235,7 +241,8 @@
 .beneos-loot-extras .beneos-loot-cards-grid figcaption {
   margin-top: 0.2em;
   font-size: 13px;
-  font-weight: 400;
+  font-family: var(--bc-font-label);
+  font-weight: var(--bc-w-label);
   color: var(--bc-text-muted);
 }
 
@@ -249,7 +256,8 @@
   background: var(--bc-bg-panel);
   border: 1px solid var(--bc-border-strong);
   border-radius: var(--bc-edge);
-  font-family: var(--bc-font-ui);
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-body);
   color: var(--bc-text);
 }
 
@@ -257,7 +265,8 @@
   margin: 0 0 0.2em 0;
   color: var(--bc-text);
   font-size: 16px;
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   border: none;
 }
 
@@ -314,7 +323,8 @@
 }
 
 .beneos-set-bonus-name {
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   font-size: 16px;
   color: var(--bc-text);
 }
@@ -382,14 +392,16 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-weight: 600;
+  font-family: var(--bc-font-title);
+  font-weight: var(--bc-w-title);
   color: var(--bc-text);
   margin-bottom: 0.2em;
 }
 
 .beneos-set-bonus-tier-rarity {
   font-size: 12px;
-  font-weight: 500;
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-control);
   padding: 0 6px;
   line-height: 22px;
   background: var(--bc-card-hover);
@@ -413,7 +425,8 @@
 
 .beneos-set-bonus-tier-body strong {
   color: var(--bc-text);
-  font-weight: 600;
+  font-family: var(--bc-font-body);
+  font-weight: var(--bc-w-strong);
 }
 
 @media (prefers-reduced-motion: reduce) {
