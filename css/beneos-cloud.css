@@ -9371,3 +9371,44 @@ body.beneos-perf-mode .bwn-pop::after { display: none; }
   height: 24px;
   padding-block: 0;
 }
+
+/* Maps grid: the scene count sits on the line right under the name, with no
+   gap (user 2026-11-04). The card is 250px high and the meta block shrinks to
+   what is left; a two-line name plus the empty tag row and three gaps pushed
+   the count onto the action divider. An empty tag row (most releases) now
+   goes; a tag row that has tags sits 2px under the name.
+   The card gap drops from 12 to 8px, so a two-line name with a tag row
+   (individual maps) still clears the divider; the card stays 250px. */
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="bmap"] {
+  gap: var(--bc-space-2);
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="bmap"] .bc-card-meta {
+  gap: 0;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="bmap"] .bc-card-name-row {
+  margin-bottom: 0;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="bmap"] .bc-card-tags:not(:has(*)) {
+  display: none;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="bmap"] .bc-card-tags:has(*) {
+  margin-top: 2px;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="bmap"] .bc-card-stats {
+  margin-top: 0;
+}
+/* Bundles: the compatibility chip under a two-line name wrapped to two
+   lines and ran into the button. One line, cut with an ellipsis; the full
+   text stays in its tooltip. */
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="bmap"] .bc-card-compat {
+  min-width: 0;
+  max-width: 100%;
+}
+.beneos-cloud-app .bc-result-list.bc-view-grid .bc-result-card[data-asset-type="bmap"] .bc-card-compat .bc-compat-chip {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  vertical-align: top;
+}
