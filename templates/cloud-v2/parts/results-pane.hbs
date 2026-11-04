@@ -403,53 +403,48 @@
                 {{localize "BENEOS.Cloud.Card.Installing"}}
               </span>
             {{else if card.isInstalled}}
-              {{!-- bc-state-update-pending swaps the pill from green to
-                   the same blue accent the update-button uses, so a quick
-                   scroll through the result list immediately surfaces
-                   "installed but update available" cards. After the
-                   update runs and the dataset re-enriches with
-                   isUpdate=false, the class is gone and the pill goes
-                   back to standard green. --}}
-              {{#if card.isUpdate}}
-                <span class="bc-state-pill bc-state-installed bc-state-update-pending" data-tooltip="{{localize 'BENEOS.Cloud.Card.UpdateAvailableTooltip'}}">
-                  <i class="fa-solid fa-circle-up"></i>
-                  {{!-- V12: two label spans. List-Mode shows the full label,
-                       Grid-Mode swaps to the short one (the update button
-                       next to it already carries the icon). See V12 block
-                       in beneos-cloud.css. --}}
-                  <span class="bc-pill-label-full">{{localize "BENEOS.Cloud.Card.UpdateAvailable"}}</span>
-                  <span class="bc-pill-label-short">{{localize "BENEOS.Cloud.Card.UpdateShort"}}</span>
-                </span>
-              {{else}}
-                <span class="bc-state-pill bc-state-installed" data-tooltip="{{localize 'BENEOS.Cloud.Card.InstalledTooltip'}}">
-                  <i class="fa-solid fa-circle-check"></i>
-                  {{localize "BENEOS.Cloud.Card.Installed"}}
-                </span>
-              {{/if}}
-              {{#if card.isUpdate}}
-                <button type="button" class="bc-card-button bc-card-button-primary bc-action-install bc-action-update{{#if card.updateLocked}} bc-update-locked{{/if}}"
-                        data-asset-key="{{card.key}}"
-                        data-asset-type="{{card.assetType}}"
-                        {{#if card.updateLocked}}data-update-locked="true"{{/if}}
-                        data-tooltip="{{#if card.updateLocked}}{{localize 'BENEOS.Cloud.Notification.BlockedUpdatePatreon'}}{{else}}{{localize 'BENEOS.Cloud.Card.UpdateTooltip'}}{{/if}}">
-                  <i class="fa-solid {{#if card.updateLocked}}fa-lock{{else}}fa-rotate{{/if}}"></i>
-                </button>
-              {{/if}}
+              {{!-- Installed: one row of icon buttons and no state word
+                   (user 2026-11-04). Codex or Open, then remove, then the
+                   update when there is one; the New or Update chip above
+                   the row is the only status text. Keep this branch equal
+                   to the installed branch of #buildCardActionsHTML, which
+                   rewrites the block after every install or removal. --}}
               {{#if card.showCodexButton}}
-                <button type="button" class="bc-card-button bc-action-codex"
+                <button type="button" class="bc-card-button bc-card-icon bc-action-codex"
                         data-asset-key="{{card.key}}"
-                        data-tooltip="{{localize 'BENEOS.Cloud.Card.Codex'}}">
-                  <i class="fa-solid fa-book-open"></i>
-                  <span>{{localize "BENEOS.Cloud.Card.Codex"}}</span>
+                        data-tooltip="{{localize 'BENEOS.Cloud.Card.Codex'}}"
+                        aria-label="{{localize 'BENEOS.Cloud.Card.Codex'}}">
+                  <i class="fa-solid fa-book-open" aria-hidden="true"></i>
                 </button>
               {{/if}}
               {{#if card.showOpenButton}}
-                <button type="button" class="bc-card-button bc-action-open"
+                <button type="button" class="bc-card-button bc-card-icon bc-action-open"
                         data-asset-key="{{card.key}}"
                         data-asset-type="{{card.assetType}}"
-                        data-tooltip="{{localize 'BENEOS.Cloud.Card.OpenTooltip'}}">
-                  <i class="fa-solid fa-up-right-from-square"></i>
-                  <span>{{localize "BENEOS.Cloud.Card.Open"}}</span>
+                        data-tooltip="{{localize 'BENEOS.Cloud.Card.OpenTooltip'}}"
+                        aria-label="{{localize 'BENEOS.Cloud.Card.OpenTooltip'}}">
+                  <i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i>
+                </button>
+              {{/if}}
+              {{#if card.showRemoveButton}}
+                <button type="button" class="bc-card-button bc-card-icon bc-action-remove"
+                        data-action="removeAsset"
+                        data-asset-key="{{card.key}}"
+                        data-asset-type="{{card.assetType}}"
+                        data-asset-name="{{card.name}}"
+                        data-tooltip="{{localize 'BENEOS.Cloud.Card.RemoveTooltip'}}"
+                        aria-label="{{localize 'BENEOS.Cloud.Card.RemoveTooltip'}}">
+                  <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                </button>
+              {{/if}}
+              {{#if card.isUpdate}}
+                <button type="button" class="bc-card-button bc-card-icon bc-action-install bc-action-update{{#if card.updateLocked}} bc-update-locked{{/if}}"
+                        data-asset-key="{{card.key}}"
+                        data-asset-type="{{card.assetType}}"
+                        {{#if card.updateLocked}}data-update-locked="true"{{/if}}
+                        data-tooltip="{{#if card.updateLocked}}{{localize 'BENEOS.Cloud.Notification.BlockedUpdatePatreon'}}{{else}}{{localize 'BENEOS.Cloud.Card.UpdateTooltip'}}{{/if}}"
+                        aria-label="{{#if card.updateLocked}}{{localize 'BENEOS.Cloud.Notification.BlockedUpdatePatreon'}}{{else}}{{localize 'BENEOS.Cloud.Card.UpdateTooltip'}}{{/if}}">
+                  <i class="fa-solid {{#if card.updateLocked}}fa-lock{{else}}fa-rotate{{/if}}" aria-hidden="true"></i>
                 </button>
               {{/if}}
             {{else if card.isOfflineCard}}

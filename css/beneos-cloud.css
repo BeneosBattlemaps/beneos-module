@@ -9645,3 +9645,16 @@ body.beneos-perf-mode .bwn-pop::after { display: none; }
   background: var(--bc-scrim-75);
   border-color: var(--bc-border-on-media);
 }
+
+/* Installed cards: one row of icon buttons (codex or open, remove, update),
+   no state word (user 2026-11-04). The icons carry aria-label and tooltip.
+   Both views keep compact squares, the size of the Install button beside
+   them; list mode sets them at the right edge, under the New or Update chip. */
+.beneos-cloud-app .bc-card-button.bc-card-icon {
+  justify-content: center;
+  min-width: 30px;
+  padding: 6px 8px;
+}
+.beneos-cloud-app .bc-result-list:not(.bc-view-grid) .bc-card-actions:has(> .bc-card-icon) {
+  justify-content: flex-end;
+}
