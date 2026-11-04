@@ -13,6 +13,7 @@
    ============================================================= */
 
 import { BeneosUtility } from "../beneos_utility.js"
+import { itemTooltipHtml } from "./item-tooltip.mjs"
 import {
   RARITY_WEIGHTS, RARITY_ORDER, RARITY_COLOR_CLASS, TIER_SHIFT,
   weightedPick, randomChoice, extractRarity, itemTier,
@@ -344,20 +345,10 @@ export class BeneosMagicShopGenerator extends HandlebarsApplicationMixin(Applica
     }
   }
 
-  // Punkt 3 v5: build a small HTML tooltip — bold name + price on the
-  // first line, description below. Foundry V13's TooltipManager renders
-  // basic HTML inside data-tooltip attributes.
+  // HTML tooltip: gold name, price, then the description with its type and
+  // rarity lead set apart. Shared with the other generator, see item-tooltip.mjs.
   #richTooltip(name, priceLabel, description) {
-    const safe = (s) => String(s || "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-    const head = priceLabel
-      ? `<strong>${safe(name)}</strong> &middot; ${safe(priceLabel)}`
-      : `<strong>${safe(name)}</strong>`
-    const body = description ? `<p>${safe(description)}</p>` : ""
-    return `${head}${body}`
+    return itemTooltipHtml(name, priceLabel, description)
   }
 
   #trimDescription(desc) {

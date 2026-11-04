@@ -16,6 +16,7 @@
    ============================================================= */
 
 import { BeneosUtility } from "../beneos_utility.js"
+import { itemTooltipHtml } from "./item-tooltip.mjs"
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
 
@@ -418,18 +419,10 @@ export class BeneosLootGenerator extends HandlebarsApplicationMixin(ApplicationV
     return trimmed.slice(0, 580).trimEnd() + "…"
   }
 
-  // Punkt 3 v5: HTML tooltip — bold name + price line, description below.
+  // HTML tooltip: gold name, price, then the description with its type and
+  // rarity lead set apart. Shared with the other generator, see item-tooltip.mjs.
   #richTooltip(name, priceLabel, description) {
-    const safe = (s) => String(s || "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-    const head = priceLabel
-      ? `<strong>${safe(name)}</strong> &middot; ${safe(priceLabel)}`
-      : `<strong>${safe(name)}</strong>`
-    const body = description ? `<p>${safe(description)}</p>` : ""
-    return `${head}${body}`
+    return itemTooltipHtml(name, priceLabel, description)
   }
 
   // Approximate probability of pulling THIS rarity at THIS tier (without
