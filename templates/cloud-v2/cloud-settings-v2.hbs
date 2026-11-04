@@ -6,10 +6,13 @@
 
      Zeilen in dieser Reihenfolge (weitere lassen sich anhaengen, ohne die
      Satzordnung zu aendern):
-       - Account            Zustand plus Anmelden oder Abmelden
-       - Setup Tour         Knopf, BeneosStartSetupTour
+       - Setup Tour         Knopf, BeneosStartSetupTour, oben als erstes,
+                            damit ein neuer Nutzer ihn sofort sieht
+       - Account            Ueberschrift, darunter nur Zustand, Anmelden
+                            oder Abmelden und Account nebeneinander
        - Documentation      Knopf, openDocumentation
        - All module settings  Knopf, openModuleSettings
+     (Nutzerauftrag 2026-11-04: weniger Text, Tour zuoberst.)
 
      Hier liegen bewusst keine Schalter mehr. Jede einzelne Option, auch
      das Totenkopf-Symbol und die Spielernavigation, steht in Foundrys
@@ -22,63 +25,10 @@
 
   <div class="bc-settings-rows">
 
-    {{!-- Account — state-aware Login / Disconnect row. Shows
-         disconnect when signed in (public-Foundry users need a fast
-         logout path), sign-in CTA when signed out. --}}
-    <div class="bc-settings-row bc-settings-row-account">
-      <div class="bc-settings-row-meta">
-        <div class="bc-settings-row-label">{{localize "BENEOS.Cloud.Settings.Account.Header"}}</div>
-        {{#if isCloudLoggedIn}}
-          <div class="bc-settings-row-hint">
-            <span class="bc-account-chip bc-chip-success">
-              <i class="fa-solid fa-circle-check"></i>
-              <span>{{localize "BENEOS.Cloud.Settings.Account.LoggedInAs"}}</span>
-            </span>
-            {{localize "BENEOS.Cloud.Settings.Account.DisconnectHint"}}
-          </div>
-        {{else}}
-          <div class="bc-settings-row-hint">
-            <span class="bc-account-chip bc-chip-neutral">
-              <i class="fa-solid fa-cloud-slash"></i>
-              <span>{{localize "BENEOS.Cloud.Settings.Account.NotConnected"}}</span>
-            </span>
-            {{localize "BENEOS.Cloud.Settings.Account.SignInHint"}}
-          </div>
-        {{/if}}
-        {{!-- Online-account hint: the "Account" button below opens the Beneos
-             Cloud website where the user manages their account and can sign
-             in online. (This action moved here from the cloud-window footer.) --}}
-        <div class="bc-settings-row-hint">{{localize "BENEOS.Cloud.Settings.Account.OnlineHint"}}</div>
-      </div>
-      <div class="bc-settings-row-control">
-        {{#if isCloudLoggedIn}}
-          <button type="button"
-                  class="bc-card-button bc-card-button-danger"
-                  data-action="disconnectAccount">
-            <i class="fa-solid fa-right-from-bracket"></i>
-            <span>{{localize "BENEOS.Cloud.Settings.Account.Disconnect"}}</span>
-          </button>
-        {{else}}
-          <button type="button"
-                  class="bc-card-button bc-card-button-primary"
-                  data-action="openLogin">
-            <i class="fa-solid fa-right-to-bracket"></i>
-            <span>{{localize "BENEOS.Cloud.Settings.Account.SignIn"}}</span>
-          </button>
-        {{/if}}
-        <button type="button"
-                class="bc-card-button"
-                data-action="openAccountOnline"
-                data-tooltip="{{localize 'BENEOS.Cloud.Settings.Account.OnlineHint'}}">
-          <i class="fa-solid fa-arrow-up-right-from-square"></i>
-          <span>{{localize "BENEOS.Cloud.Settings.Account.Online"}}</span>
-        </button>
-      </div>
-    </div>
-
-    {{!-- Setup Tour — action row. The handler instantiates the existing
-         BeneosStartSetupTour FormApplication. --}}
-    <div class="bc-settings-row">
+    {{!-- Setup Tour first: the one filled button of this window, so a new
+         user sees it before anything else. The handler instantiates the
+         existing BeneosStartSetupTour FormApplication. --}}
+    <div class="bc-settings-row bc-settings-row-tour">
       <div class="bc-settings-row-meta">
         <div class="bc-settings-row-label">{{localize "BENEOS.Cloud.Settings.SetupTour.Label"}}</div>
         <div class="bc-settings-row-hint">{{localize "BENEOS.Cloud.Settings.SetupTour.Hint"}}</div>
@@ -87,8 +37,45 @@
         <button type="button"
                 class="bc-card-button bc-card-button-primary"
                 data-action="startSetupTour">
-          <i class="fa-solid fa-play"></i>
           <span>{{localize "BENEOS.Cloud.Settings.SetupTour.Action"}}</span>
+        </button>
+      </div>
+    </div>
+
+    {{!-- Account: heading, then the three controls side by side and no
+         hint text. The state chip keeps its icon, a state is word and
+         icon (standard 2.5); the buttons carry their word only. --}}
+    <div class="bc-settings-row bc-settings-row-account">
+      <div class="bc-settings-row-label">{{localize "BENEOS.Cloud.Settings.Account.Header"}}</div>
+      <div class="bc-settings-account-controls">
+        {{#if isCloudLoggedIn}}
+          <span class="bc-account-chip bc-chip-success">
+            <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+            <span>{{localize "BENEOS.Cloud.Settings.Account.LoggedInAs"}}</span>
+          </span>
+          <button type="button"
+                  class="bc-card-button bc-card-button-danger"
+                  data-action="disconnectAccount"
+                  data-tooltip="{{localize 'BENEOS.Cloud.Settings.Account.DisconnectHint'}}">
+            <span>{{localize "BENEOS.Cloud.Settings.Account.Disconnect"}}</span>
+          </button>
+        {{else}}
+          <span class="bc-account-chip bc-chip-neutral">
+            <i class="fa-solid fa-cloud-slash" aria-hidden="true"></i>
+            <span>{{localize "BENEOS.Cloud.Settings.Account.NotConnected"}}</span>
+          </span>
+          <button type="button"
+                  class="bc-card-button"
+                  data-action="openLogin"
+                  data-tooltip="{{localize 'BENEOS.Cloud.Settings.Account.SignInHint'}}">
+            <span>{{localize "BENEOS.Cloud.Settings.Account.SignIn"}}</span>
+          </button>
+        {{/if}}
+        <button type="button"
+                class="bc-card-button"
+                data-action="openAccountOnline"
+                data-tooltip="{{localize 'BENEOS.Cloud.Settings.Account.OnlineHint'}}">
+          <span>{{localize "BENEOS.Cloud.Settings.Account.Online"}}</span>
         </button>
       </div>
     </div>
@@ -103,7 +90,6 @@
         <button type="button"
                 class="bc-card-button"
                 data-action="openDocumentation">
-          <i class="fa-solid fa-book-open"></i>
           <span>{{localize "BENEOS.Cloud.Settings.Documentation.Action"}}</span>
         </button>
       </div>
@@ -123,7 +109,6 @@
         <button type="button"
                 class="bc-card-button"
                 data-action="openModuleSettings">
-          <i class="fa-solid fa-sliders"></i>
           <span>{{localize "BENEOS.Cloud.Settings.AllSettings.Action"}}</span>
         </button>
       </div>
