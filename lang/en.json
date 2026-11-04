@@ -1150,6 +1150,8 @@
   "BENEOS.Cloud.Footer.AccountSettings": "Account",
   "BENEOS.Cloud.Footer.AccountSettingsTooltip": "Open Beneos Cloud account settings in a new tab",
   "BENEOS.Cloud.Card.New": "New",
+  "BENEOS.Cloud.Card.UpdatedSinceInstall": "Updated since installation",
+  "BENEOS.Cloud.Card.UpdatedSinceInstallOn": "Updated since installation ({date})",
   "BENEOS.Cloud.Card.Update": "Update",
   "BENEOS.Cloud.Card.MoreTags": "+{count} more",
   "BENEOS.Cloud.Card.MoreTagsTooltip": "More tags hidden - open the drawer to see the full set.",

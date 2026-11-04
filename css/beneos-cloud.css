@@ -9408,3 +9408,25 @@ body.beneos-perf-mode .bwn-pop::after { display: none; }
   text-overflow: ellipsis;
   vertical-align: top;
 }
+
+/* Update on a result card: filled in bone with the dark label colour, so it
+   stands apart from the Install button beside other cards and carries the
+   "update available" message alone; the Update chip above it is gone (user
+   2026-11-04). Bone, not gold: the one gold action of the view stays in the
+   drawer (MUS-08). A locked update (Patreon needed) keeps the plain button. */
+.beneos-cloud-app .bc-result-card .bc-card-button.bc-action-update:not(.bc-update-locked) {
+  background: var(--bc-text);
+  border-color: var(--bc-text);
+  color: var(--bc-text-on-accent);
+  font-family: var(--bc-font-control);
+  font-weight: var(--bc-w-fill);
+}
+.beneos-cloud-app .bc-result-card .bc-card-button.bc-action-update:not(.bc-update-locked):hover {
+  background: var(--bc-text);
+  border-color: var(--bc-accent);
+  color: var(--bc-text-on-accent);
+}
+.beneos-cloud-app .bc-result-card .bc-card-button.bc-action-update:not(.bc-update-locked):active {
+  background: var(--bc-text-muted);
+  border-color: var(--bc-text-muted);
+}

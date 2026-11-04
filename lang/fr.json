@@ -1142,6 +1142,8 @@
   "BENEOS.Cloud.Footer.AccountSettings": "Compte",
   "BENEOS.Cloud.Footer.AccountSettingsTooltip": "Ouvrir les paramètres du compte Beneos Cloud dans un nouvel onglet",
   "BENEOS.Cloud.Card.New": "Nouveau",
+  "BENEOS.Cloud.Card.UpdatedSinceInstall": "Mis à jour depuis l'installation",
+  "BENEOS.Cloud.Card.UpdatedSinceInstallOn": "Mis à jour depuis l'installation ({date})",
   "BENEOS.Cloud.Card.Update": "Mettre à jour",
   "BENEOS.Cloud.Card.MoreTags": "+{count} de plus",
   "BENEOS.Cloud.Card.MoreTagsTooltip": "D'autres tags sont masqués, ouvrez le tiroir pour voir l'ensemble.",
