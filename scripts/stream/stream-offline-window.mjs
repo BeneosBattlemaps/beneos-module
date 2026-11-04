@@ -37,64 +37,78 @@ function ensureStyle() {
   stilGesetzt = true
   const style = document.createElement("style")
   style.textContent = `
+    .beneos-offline-window .window-content {
+      background: var(--bc-bg-panel); color: var(--bc-text); font-family: var(--bc-font-ui);
+      scrollbar-width: thin; scrollbar-color: var(--bc-border-control) transparent;
+    }
     .beneos-ov { display: flex; flex-direction: column; gap: 12px; padding: 4px 2px; }
     .beneos-ov section { display: flex; flex-direction: column; gap: 6px; }
     .beneos-ov p { margin: 0; line-height: 1.45; }
 
     .beneos-ov-zahlen { display: flex; align-items: baseline; gap: 6px; }
     .beneos-ov-gross { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
-    .beneos-ov-klein { opacity: 0.75; }
-    .beneos-ov-rechts { margin-left: auto; opacity: 0.75; font-variant-numeric: tabular-nums; }
+    .beneos-ov-klein { color: var(--bc-text-muted); }
+    .beneos-ov-rechts { margin-left: auto; color: var(--bc-text-muted); font-variant-numeric: tabular-nums; }
 
     .beneos-ov-balken {
       height: 9px; border-radius: 2px; overflow: hidden;
-      background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(0, 0, 0, 0.35);
+      background: var(--bc-card); border: 1px solid var(--bc-border-control);
     }
     .beneos-ov-balken > span {
       display: block; height: 100%;
-      background: rgba(111, 207, 82, 0.85);
-      transition: width .25s ease;
+      background: var(--bc-accent);
+      transition: width var(--bc-dur-base) var(--bc-ease);
     }
 
-    .beneos-ov-frist { border-left: 3px solid rgba(128, 128, 128, 0.5); padding-left: 9px; }
-    .beneos-ov-frist.ist-knapp { border-left-color: #e0a33a; }
-    .beneos-ov-frist.ist-abgelaufen { border-left-color: #c9503f; }
+    .beneos-ov-frist { border-left: 3px solid var(--bc-border-strong); padding-left: 9px; }
+    .beneos-ov-frist.ist-knapp { border-left-color: var(--bc-text-muted); }
+    .beneos-ov-frist.ist-abgelaufen { border-left-color: var(--bc-error); }
 
-    .beneos-ov-fehlend { border-left: 3px solid #c9503f; padding-left: 9px; gap: 8px; }
+    .beneos-ov-fehlend { border-left: 3px solid var(--bc-error); padding-left: 9px; gap: 8px; }
     .beneos-ov-fehlend button { align-self: flex-start; }
 
     .beneos-ov-liste { list-style: none; margin: 0; padding: 0;
-      display: flex; flex-direction: column; gap: 2px; max-height: 320px; overflow-y: auto; }
+      display: flex; flex-direction: column; gap: 2px; max-height: 320px; overflow-y: auto;
+      scrollbar-width: thin; scrollbar-color: var(--bc-border-control) transparent; }
     .beneos-ov-liste > li {
       display: flex; align-items: center; gap: 8px;
-      padding: 4px 6px; border-radius: 3px;
-      background: rgba(111, 207, 82, 0.07);
-      box-shadow: inset 3px 0 0 0 rgba(111, 207, 82, 0.7);
+      padding: 4px 6px; border-radius: var(--bc-edge);
+      background: var(--bc-card);
     }
     .beneos-ov-liste > li.fehlt {
-      background: rgba(201, 80, 63, 0.09);
-      box-shadow: inset 3px 0 0 0 rgba(201, 80, 63, 0.8);
+      background: var(--bc-error-bg);
     }
     .beneos-ov-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .beneos-ov-marke {
-      font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
-      border: 1px solid #c9503f; color: #c9503f; border-radius: 3px;
+      font-size: 12px;
+      background: var(--bc-card-hover); color: var(--bc-error); border-radius: var(--bc-edge);
       padding: 0 4px; margin-left: 6px; vertical-align: 1px;
     }
-    .beneos-ov-groesse { opacity: 0.7; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .beneos-ov-groesse { color: var(--bc-text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .beneos-ov-weg { flex: none; width: 26px; height: 26px; line-height: 1; padding: 0; }
+    .beneos-ov button {
+      background: var(--bc-card); color: var(--bc-text);
+      border: 1px solid var(--bc-border-control); border-radius: var(--bc-edge);
+      font-family: var(--bc-font-ui); box-shadow: none;
+      transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
+    }
+    .beneos-ov button:hover { background: var(--bc-card-hover); border-color: var(--bc-accent); }
+    .beneos-ov button:active { background: var(--bc-bg-pressed); }
+    .beneos-ov button:focus-visible,
+    .beneos-ov-doku > summary:focus-visible { outline: 2px solid var(--bc-accent); outline-offset: 2px; }
 
-    .beneos-ov-doku { border-left: 3px solid rgba(128, 128, 128, 0.35); padding-left: 9px; }
-    .beneos-ov-doku > summary { cursor: pointer; opacity: 0.8; }
+    .beneos-ov-doku { border-left: 3px solid var(--bc-border-strong); padding-left: 9px; }
+    .beneos-ov-doku > summary { cursor: pointer; color: var(--bc-text-muted); }
+    .beneos-ov-doku > summary:hover { color: var(--bc-text); }
     .beneos-ov-doku[open] > summary { margin-bottom: 6px; }
     .beneos-ov-doku > p { margin: 0 0 7px; font-size: 0.92em; }
     .beneos-ov-doku > p:last-child { margin-bottom: 0; }
     .beneos-ov-doku strong { display: block; }
 
-    .beneos-ov-leer { opacity: 0.85; }
-    .beneos-ov-hinweis { font-size: 0.92em; opacity: 0.8; }
-    .beneos-ov-fuss { border-top: 1px solid rgba(128, 128, 128, 0.3); padding-top: 9px;
-      font-size: 0.88em; opacity: 0.75; }
+    .beneos-ov-leer { color: var(--bc-text-muted); }
+    .beneos-ov-hinweis { font-size: 0.92em; color: var(--bc-text-muted); }
+    .beneos-ov-fuss { border-top: 1px solid var(--bc-border); padding-top: 9px;
+      font-size: 0.88em; color: var(--bc-text-muted); }
   `
   document.head.appendChild(style)
 }

@@ -39,7 +39,7 @@ function _originDisplay(slug) {
     slug,
     mono: meta.mono ?? slug.slice(0, 2).toUpperCase(),
     name,
-    color: meta.glow ?? "#d4a857",
+    color: meta.glow ?? "var(--bc-accent)",
     iconPath,
   };
 }

@@ -1,23 +1,17 @@
 /* ============================================================================
    Beneos Creature Installer drawer.
    Viewport-anchored overlay (bottom-centre), collapsed to a bookmark tab by
-   default; expands into the panel. Design tokens taken verbatim from
-   design_handoff_creature_installer (README "Design Tokens").
+   default; expands into the panel.
+   Design: Beneos standard, Bone palette (css/beneos-cloud-tokens.css). One
+   gold action per state of the drawer (the filled footer button); the
+   supporter gate uses the filled Bone primary.
    ========================================================================== */
-
-@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Spectral:ital,wght@0,300;0,400;0,600;1,400&display=swap");
 
 #beneos-creature-installer {
   position: fixed;
   inset: auto 0 0 0;
   z-index: 70;
   pointer-events: none;
-  --bci-gold: #d8b25e;
-  --bci-gold-soft: #cbb486;
-  --bci-light: #e8dcc4;
-  --bci-muted: #8a7e68;
-  --bci-muted2: #7d715c;
-  --bci-panel-border: #463a2c;
 }
 
 #beneos-creature-installer .bci-root {
@@ -26,7 +20,17 @@
   bottom: 92px;
   transform: translateX(-50%);
   width: min(1040px, 95vw);
-  font-family: "Spectral", serif;
+  font-family: var(--bc-font-ui);
+  color: var(--bc-text);
+}
+
+/* Focus ring for every interactive element of the drawer (COL-10, QLT-07). */
+#beneos-creature-installer button:focus-visible,
+#beneos-creature-installer a:focus-visible,
+#beneos-creature-installer .bci-badge:focus-visible,
+#beneos-creature-installer .bci-disc:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
 }
 
 /* ------------------------------------------------------------- collapsed tab */
@@ -40,41 +44,40 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 16px 9px 11px;
-  background: linear-gradient(180deg, #241f18ee, #13100bf2);
-  border: 1px solid var(--bci-panel-border);
-  border-radius: 30px;
-  box-shadow: 0 5px 18px rgba(0, 0, 0, .5);
-  backdrop-filter: blur(2px);
+  padding: 8px 14px 8px 10px;
+  background: var(--bc-bg-panel);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-edge);
+  box-shadow: var(--bc-shadow-pop);
+  color: var(--bc-text);
   cursor: pointer;
-  transition: transform .18s ease-out, box-shadow .18s ease-out, opacity .18s ease-out;
+  transition: transform var(--bc-dur-base) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease), background-color var(--bc-dur-fast) var(--bc-ease);
 }
 #beneos-creature-installer .bci-tab:hover {
   transform: translateX(-50%) translateY(-3px);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, .6);
+  border-color: var(--bc-accent);
+  background: var(--bc-card);
 }
-/* one-time attract pulse on first scene open (removed once the drawer is opened) */
-@keyframes bci-tab-pulse {
-  0%, 100% { transform: translateX(-50%) scale(1); box-shadow: 0 5px 18px rgba(0, 0, 0, .5); }
-  50% { transform: translateX(-50%) scale(1.06); box-shadow: 0 6px 22px rgba(0, 0, 0, .55), 0 0 18px rgba(216, 178, 94, .6); border-color: rgba(216, 178, 94, .75); }
-}
-#beneos-creature-installer .bci-tab.bci-pulse { animation: bci-tab-pulse 2s ease-in-out infinite; }
+/* First scene open: the tab is marked by an accent edge until the drawer has
+   been opened once (the class is removed by the script). No endless pulse
+   (FRM-12). */
+#beneos-creature-installer .bci-tab.bci-pulse { border-color: var(--bc-accent); }
 #beneos-creature-installer .bci-tab-disc {
   width: 30px; height: 30px; border-radius: 50%;
-  background: radial-gradient(circle at 50% 38%, #42392c, #15110c);
-  border: 1px solid #6f5c3b;
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border-control);
   display: flex; align-items: center; justify-content: center;
 }
-#beneos-creature-installer .bci-tab-disc svg { width: 18px; height: 18px; fill: var(--bci-gold); }
+#beneos-creature-installer .bci-tab-disc svg { width: 18px; height: 18px; fill: var(--bc-text); }
 #beneos-creature-installer .bci-tab-label {
-  font-family: "Cinzel", serif; color: var(--bci-gold-soft);
-  font-size: 12px; letter-spacing: 1.5px;
+  font-family: var(--bc-font-ui); color: var(--bc-text);
+  font-size: 13px; font-weight: 600;
 }
 #beneos-creature-installer .bci-tab-count {
-  font-weight: 700; font-size: 11px; color: #1a140b;
-  background: #caa765; border-radius: 10px; padding: 1px 8px;
+  font-weight: 600; font-size: 12px; color: var(--bc-text);
+  background: var(--bc-card-hover); border-radius: var(--bc-edge); padding: 1px 6px;
 }
-#beneos-creature-installer .bci-tab-chev svg { width: 12px; height: 12px; fill: none; stroke: var(--bci-gold-soft); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+#beneos-creature-installer .bci-tab-chev svg { width: 12px; height: 12px; fill: none; stroke: var(--bc-text-muted); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 
 /* ------------------------------------------------------------------- panel */
 
@@ -84,17 +87,18 @@
   bottom: 48px;
   left: 0; right: 0;
   padding: 18px 20px;
-  background: linear-gradient(180deg, #241f18f2, #13100bf7);
-  border: 1px solid var(--bci-panel-border);
-  border-radius: 10px;
-  box-shadow: inset 0 1px 0 rgba(216, 189, 134, .12), 0 -8px 26px rgba(0, 0, 0, .6);
-  backdrop-filter: blur(3px);
-  transition: transform .22s ease-out, opacity .22s ease-out;
+  background: var(--bc-bg-panel);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-edge);
+  box-shadow: var(--bc-shadow-pop);
+  transition: transform var(--bc-dur-base) var(--bc-ease), opacity var(--bc-dur-fast) var(--bc-ease);
 }
+/* Inner decorative frame of the old design: kept as an element, drawn without
+   a line (one frame is enough, FRM-02). */
 #beneos-creature-installer .bci-hairline {
   position: absolute; inset: 5px;
-  border: 1px solid rgba(184, 154, 99, .24);
-  border-radius: 7px; pointer-events: none;
+  border: 0;
+  border-radius: 0; pointer-events: none;
 }
 
 /* collapsed: hide panel; expanded: hide tab. Open/close is driven by JS
@@ -103,10 +107,13 @@
 #beneos-creature-installer:not(.bci-expanded) .bci-panel {
   opacity: 0; transform: translateY(24px); pointer-events: none;
 }
-/* When the panel is open the tab STAYS visible (no flicker) but desaturates and
-   dims, so focus moves to the panel while the "CREATURES" handle remains. */
-#beneos-creature-installer.bci-expanded .bci-tab { filter: grayscale(1) brightness(.85); opacity: .55; }
-#beneos-creature-installer.bci-expanded .bci-tab:hover { filter: grayscale(1) brightness(1); opacity: .8; transform: translateX(-50%); }
+/* When the panel is open the tab STAYS visible (no flicker) but steps back:
+   quieter colours instead of reduced opacity (COL-12). */
+#beneos-creature-installer.bci-expanded .bci-tab { border-color: var(--bc-border); background: var(--bc-bg); box-shadow: none; }
+#beneos-creature-installer.bci-expanded .bci-tab .bci-tab-label,
+#beneos-creature-installer.bci-expanded .bci-tab .bci-tab-count { color: var(--bc-text-muted); }
+#beneos-creature-installer.bci-expanded .bci-tab .beneos-icon-logo { color: var(--bc-text-muted); }
+#beneos-creature-installer.bci-expanded .bci-tab:hover { transform: translateX(-50%); border-color: var(--bc-border-control); }
 
 /* ------------------------------------------------------------------ header */
 
@@ -114,69 +121,65 @@
   display: flex; justify-content: space-between; align-items: flex-start;
   gap: 16px; position: relative; flex-wrap: wrap;
   padding-bottom: 12px; margin-bottom: 4px;
-  border-bottom: 1px solid rgba(184, 154, 99, .14);
+  border-bottom: 1px solid var(--bc-border);
 }
 #beneos-creature-installer .bci-title { display: flex; flex-direction: column; gap: 3px; flex: 1 1 auto; min-width: 0; }
 #beneos-creature-installer .bci-encounter {
-  font-family: "Cinzel", serif; font-size: 11px; font-weight: 600; letter-spacing: 3px; color: var(--bci-gold); opacity: .85;
+  font-family: var(--bc-font-ui); font-size: 13px; font-weight: 500; color: var(--bc-text-muted);
 }
-#beneos-creature-installer .bci-scene { font-family: "Cinzel", serif; font-size: 19px; font-weight: 600; color: var(--bci-light); line-height: 1.15; }
-#beneos-creature-installer .bci-count { font-size: 12.5px; color: #a99c84; }
+#beneos-creature-installer .bci-scene { font-family: var(--bc-font-ui); font-size: 18px; font-weight: 600; color: var(--bc-text); line-height: 1.2; }
+#beneos-creature-installer .bci-count { font-size: 13px; color: var(--bc-text-muted); }
 
-/* status badge - deliberately a flat dark pill (gold text/outline) so it reads as
-   a STATUS, not as the gold call-to-action button below it */
+/* Account state: a solid dark chip with word and icon, so it reads as a
+   STATUS and not as the gold call-to-action below it. */
 #beneos-creature-installer .bci-chip {
-  display: flex; align-items: center; gap: 7px; flex: 0 0 auto;
-  font-family: "Cinzel", serif; font-size: 11px; font-weight: 600; letter-spacing: .6px;
-  border-radius: 6px; padding: 6px 12px; white-space: nowrap;
+  display: flex; align-items: center; gap: 6px; flex: 0 0 auto;
+  font-family: var(--bc-font-ui); font-size: 13px; font-weight: 500;
+  border-radius: var(--bc-edge); padding: 4px 8px; white-space: nowrap;
+  background: var(--bc-card-hover);
+  border: 0;
 }
 #beneos-creature-installer .bci-chip-patron {
-  color: var(--bci-gold);
-  background: linear-gradient(180deg, #2c2822, #161310);
-  border: 1px solid rgba(216, 178, 94, .5);
+  color: var(--bc-success);
 }
-#beneos-creature-installer .bci-chip-patron svg { width: 13px; height: 13px; fill: var(--bci-gold); }
-#beneos-creature-installer .bci-chip-patron .bci-ico-check { fill: none; stroke: var(--bci-gold); stroke-width: 2.4; }
+/* The star stands next to the word and is decoration; the check is the state icon. */
+#beneos-creature-installer .bci-chip-patron .bci-ico-star { display: none; }
+#beneos-creature-installer .bci-chip-patron svg { width: 13px; height: 13px; fill: var(--bc-success); }
+#beneos-creature-installer .bci-chip-patron .bci-ico-check { fill: none; stroke: var(--bc-success); stroke-width: 2.4; }
 #beneos-creature-installer .bci-chip-guest {
-  color: #c8bca0;
-  background: linear-gradient(180deg, #2c2822, #161310);
-  border: 1px solid #4d4234;
+  color: var(--bc-text-muted);
 }
-#beneos-creature-installer .bci-chip-guest .bci-dot { width: 7px; height: 7px; border-radius: 50%; background: #c8bca0; }
-#beneos-creature-installer .bci-link { color: var(--bci-gold); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+#beneos-creature-installer .bci-chip-guest .bci-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--bc-text-muted); }
+#beneos-creature-installer .bci-link {
+  color: var(--bc-accent); text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+  transition: color var(--bc-dur-fast) var(--bc-ease);
+}
+#beneos-creature-installer .bci-link:hover { color: var(--bc-accent-strong); }
 
 #beneos-creature-installer .bci-collapse {
   background: none; border: none; cursor: pointer; padding: 4px;
   width: auto; line-height: 0;
+  border-radius: var(--bc-edge);
 }
-#beneos-creature-installer .bci-collapse svg { width: 18px; height: 18px; fill: none; stroke: var(--bci-muted); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-#beneos-creature-installer .bci-collapse:hover svg { stroke: var(--bci-gold-soft); }
+#beneos-creature-installer .bci-collapse svg { width: 18px; height: 18px; fill: none; stroke: var(--bc-text-muted); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: stroke var(--bc-dur-fast) var(--bc-ease); }
+#beneos-creature-installer .bci-collapse:hover svg { stroke: var(--bc-text); }
 
 /* ----------------------------------------------------------------- columns */
 
 /* Hinweis im Zustand "ausgeblendet und trotzdem offen". Steht unter der
-   Kopfzeile und ueber den Spalten.
-   OHNE KASTEN UND OHNE SEITENKANTE, und das ist der zweite Entwurf. Der erste
-   trug eine 3px-Akzentkante links, uebernommen aus beneos-cloud.css. In DIESER
-   Datei gibt es so etwas nirgends: die Lade setzt Dinge ueber duenne
-   Haarlinien und kleine Pillen ab, siehe .bci-hairline, .bci-header und
-   .bci-srd-tag. Die Kante war also nicht die Sprache der Lade, sondern eine
-   fremde, und eine dicke farbige Seitenkante ist obendrein ein verbreitetes
-   Merkmal maschinell erzeugter Oberflaechen. Bei einem Paket, das an Endkunden
-   geht, waere das der falsche Eindruck.
-   Auffaellig ist die Zeile jetzt durch ihren Ort und ihre Farbe, nicht durch
-   Schmuck: Gold-Soft wie die Laschenbeschriftung, Groesse wie .bci-count. */
+   Kopfzeile und ueber den Spalten. Ohne Kasten und ohne Seitenkante:
+   auffaellig durch Ort und Primaertext, Groesse wie .bci-count. */
 #beneos-creature-installer .bci-peek-note {
   margin: 9px 0 0;
-  font-family: "Spectral", serif;
-  font-size: 12.5px; line-height: 1.4; color: var(--bci-gold-soft);
+  font-family: var(--bc-font-ui);
+  font-size: 13px; line-height: 1.4; color: var(--bc-text);
 }
 #beneos-creature-installer .bci-columns { display: flex; gap: 20px; align-items: stretch; margin-top: 14px; }
 #beneos-creature-installer .bci-col-srd { flex: 1; }
 #beneos-creature-installer .bci-col-beneos { flex: 1.15; }
 #beneos-creature-installer .bci-divider {
   width: 1px; align-self: stretch;
-  background: linear-gradient(180deg, transparent, rgba(184, 154, 99, .4), transparent);
+  background: var(--bc-border);
 }
 /* SRD-only scene (no Beneos creatures): the Beneos column + divider are not
    rendered, so the drawer collapses to a single compact column instead of a
@@ -184,16 +187,17 @@
 #beneos-creature-installer .bci-root.bci-srd-only { width: min(560px, 95vw); }
 
 #beneos-creature-installer .bci-group-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-#beneos-creature-installer .bci-grp-title { font-family: "Cinzel", serif; font-size: 12px; letter-spacing: 1.5px; }
-#beneos-creature-installer .bci-grp-srd { color: #9fb89f; }
-#beneos-creature-installer .bci-grp-beneos { color: var(--bci-gold); }
-#beneos-creature-installer .bci-ico-crown { width: 15px; height: 15px; fill: var(--bci-gold); }
+#beneos-creature-installer .bci-grp-title { font-family: var(--bc-font-ui); font-size: 14px; font-weight: 600; }
+#beneos-creature-installer .bci-grp-srd,
+#beneos-creature-installer .bci-grp-beneos { color: var(--bc-text); }
+/* Crown next to the group title: decoration (icon beside a label). */
+#beneos-creature-installer .bci-ico-crown { display: none; }
 #beneos-creature-installer .bci-srd-tag {
-  font-size: 10px; font-weight: 600; color: #1d2a1d;
-  background: #7ea27e; border-radius: 9px; padding: 1px 8px;
+  font-size: 12px; font-weight: 600; color: var(--bc-text);
+  background: var(--bc-card-hover); border-radius: var(--bc-edge); padding: 1px 6px;
   cursor: help;
 }
-#beneos-creature-installer .bci-grp-help { font-size: 11.5px; font-style: normal; color: #a99c84; }
+#beneos-creature-installer .bci-grp-help { font-size: 12px; font-style: normal; color: var(--bc-text-muted); }
 
 /* token bed + discs */
 /* Bed and gate share one grid cell so the wrapper grows to the taller of the
@@ -205,16 +209,16 @@
 #beneos-creature-installer .bci-bed {
   display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px 8px;  /* always 5 per row */
   max-height: 230px; overflow-y: auto;
-  padding: 12px 10px 9px 10px;   /* room for corner badges AND the pulsing link-highlight ring (overflow:auto clips otherwise) */
+  padding: 12px 10px 9px 10px;   /* room for corner badges AND the link-highlight ring (overflow:auto clips otherwise) */
   scrollbar-width: thin;
-  scrollbar-color: rgba(184, 154, 99, .25) transparent;
+  scrollbar-color: var(--bc-border-control) transparent;
 }
 #beneos-creature-installer .bci-bed::-webkit-scrollbar { width: 6px; }
 #beneos-creature-installer .bci-bed::-webkit-scrollbar-track { background: transparent; }
-#beneos-creature-installer .bci-bed::-webkit-scrollbar-thumb { background: rgba(184, 154, 99, .22); border-radius: 3px; }
-#beneos-creature-installer .bci-bed:hover::-webkit-scrollbar-thumb { background: rgba(184, 154, 99, .4); }
+#beneos-creature-installer .bci-bed::-webkit-scrollbar-thumb { background: var(--bc-border-control); border-radius: var(--bc-edge); }
+#beneos-creature-installer .bci-bed:hover::-webkit-scrollbar-thumb { background: var(--bc-text-muted); }
 #beneos-creature-installer .bci-bed-deemphasised { filter: saturate(.7); }
-#beneos-creature-installer .bci-empty { font-size: 11.5px; font-style: normal; color: #a99c84; margin: 4px 0; }
+#beneos-creature-installer .bci-empty { font-size: 12px; font-style: normal; color: var(--bc-text-muted); margin: 4px 0; }
 
 #beneos-creature-installer .bci-tokencol {
   display: flex; flex-direction: column; align-items: center; gap: 5px; width: auto; min-width: 0;
@@ -222,18 +226,22 @@
 #beneos-creature-installer .bci-disc {
   position: relative;
   width: 62px; height: 62px; border-radius: 50%;
-  background: radial-gradient(circle at 50% 38%, #42392c, #15110c);
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, .6);
+  background: var(--bc-card);
   display: flex; align-items: center; justify-content: center;
   /* no overflow:hidden here - it would clip the corner badges. The image clips
      itself to the circle via border-radius / object-fit below. */
 }
-#beneos-creature-installer .bci-disc { transition: transform .12s ease-out, filter .12s ease-out; }
+#beneos-creature-installer .bci-disc { transition: transform var(--bc-dur-base) var(--bc-ease), filter var(--bc-dur-fast) var(--bc-ease); }
 #beneos-creature-installer .bci-disc[draggable="true"] { cursor: grab; }
 #beneos-creature-installer .bci-disc[draggable="true"]:active { cursor: grabbing; }
 /* draggable (in-world) creatures react on hover: a small lift so they read as
    interactive (drag to canvas, double-click to open the sheet) */
 #beneos-creature-installer .bci-disc[draggable="true"]:hover { transform: scale(1.1); filter: brightness(1.12); z-index: 3; }
+@media (prefers-reduced-motion: reduce) {
+  #beneos-creature-installer .bci-disc[draggable="true"]:hover,
+  #beneos-creature-installer .bci-disc:hover .bci-badge,
+  #beneos-creature-installer .bci-badge:hover { transform: none; }
+}
 
 /* image shape handling: square thumbnails fill + circle-clip; round 2.5D tokens
    keep their alpha silhouette on the disc background with slight inset padding.
@@ -255,119 +263,121 @@
 #beneos-creature-installer .bci-disc-beneos:not(.bci-available) video { opacity: .5; }
 #beneos-creature-installer.bci-state-not_connected .bci-disc-beneos video,
 #beneos-creature-installer.bci-state-connected_nonpatron .bci-disc-beneos video { opacity: .32; }
-#beneos-creature-installer .bci-disc-beneos.bci-needsinstall video { filter: grayscale(1) brightness(.62); transition: filter .85s ease; }
+#beneos-creature-installer .bci-disc-beneos.bci-needsinstall video { filter: grayscale(1) brightness(.62); transition: filter var(--bc-dur-base) var(--bc-ease); }
 #beneos-creature-installer .bci-disc-beneos.bci-installed-fx video { filter: none; }
 
-#beneos-creature-installer .bci-disc-srd { border: 2px solid #6f5c3b; }
+#beneos-creature-installer .bci-disc-srd { border: 2px solid var(--bc-border-control); }
 
-/* A dashed gold ring + ghosted art marks a PLACEHOLDER (creature not installed
+/* A dashed ring + ghosted art marks a PLACEHOLDER (creature not installed
    yet). An available (installed) creature gets a solid ring and full-opacity art;
-   the green availability ring comes from .bci-available further down. */
-#beneos-creature-installer .bci-disc-beneos { border: 2px solid #6f5c3b; }
+   the disposition ring comes from .bci-available further down. */
+#beneos-creature-installer .bci-disc-beneos { border: 2px solid var(--bc-border-control); }
 #beneos-creature-installer .bci-disc-beneos:not(.bci-available) {
-  border: 2px dashed var(--bci-gold);
-  box-shadow: 0 0 10px rgba(216, 178, 94, .45), inset 0 2px 6px rgba(0, 0, 0, .6);
+  border: 2px dashed var(--bc-text-muted);
 }
 #beneos-creature-installer .bci-disc-beneos:not(.bci-available) img { opacity: .5; }
+/* The plus is a round icon button: one click installs exactly this creature. */
 #beneos-creature-installer .bci-badge {
   position: absolute; top: -2px; right: -2px;
-  width: 16px; height: 16px; border-radius: 50%;
-  background: #caa765; color: #1a140b; border: 1px solid #1a140b;
-  font-family: "Cinzel", serif; font-weight: 700; font-size: 11px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--bc-accent); color: var(--bc-text-on-accent); border: 1px solid var(--bc-bg);
+  font-family: var(--bc-font-ui); font-weight: 600; font-size: 12px;
   display: flex; align-items: center; justify-content: center;
-  transition: transform .15s ease-out;
-  /* Das Plus ist eine Schaltflaeche, kein Abzeichen: ein Klick holt genau diese
-     eine Kreatur. */
+  transition: transform var(--bc-dur-base) var(--bc-ease), background-color var(--bc-dur-fast) var(--bc-ease);
   cursor: pointer;
 }
 #beneos-creature-installer .bci-disc:hover .bci-badge { transform: scale(1.1); }
-#beneos-creature-installer .bci-badge:hover { transform: scale(1.35); background: #e6c98a; }
+#beneos-creature-installer .bci-badge:hover { transform: scale(1.25); background: var(--bc-accent-strong); }
 #beneos-creature-installer .bci-name {
-  /* Clean sans (not the decorative serif) so the small labels stay legible in the
-     compact drawer. */
-  font-family: "Signika", "Segoe UI", system-ui, sans-serif;
-  font-size: 11px; line-height: 1.2; font-weight: 600; letter-spacing: .1px;
-  text-align: center; color: #d8cdb6; width: 100%;
+  font-family: var(--bc-font-ui);
+  font-size: 12px; line-height: 1.25; font-weight: 500;
+  text-align: center; color: var(--bc-text); width: 100%;
 }
-#beneos-creature-installer .bci-col-beneos .bci-name { color: #e0c690; }
 
 /* de-emphasised guest discs */
 #beneos-creature-installer.bci-state-not_connected .bci-disc-beneos,
 #beneos-creature-installer.bci-state-connected_nonpatron .bci-disc-beneos {
-  border: 2px solid #5a4d36; box-shadow: inset 0 2px 6px rgba(0, 0, 0, .6);
-  background: radial-gradient(circle at 50% 38%, #3a342a, #14110c);
+  border: 2px solid var(--bc-border-strong);
+  background: var(--bc-card);
 }
 #beneos-creature-installer.bci-state-not_connected .bci-disc-beneos img,
 #beneos-creature-installer.bci-state-connected_nonpatron .bci-disc-beneos img { opacity: .32; }
 
-/* supporter gate overlay */
+/* supporter gate overlay: scrim over the ghosted discs (COL-11, COL-13) */
 #beneos-creature-installer .bci-gate {
   position: relative; z-index: 1;
   margin: 26px -6px -4px -6px;
   display: flex; flex-direction: column; align-items: center; gap: 8px;
   padding: 14px; text-align: center;
-  background: linear-gradient(180deg, rgba(14, 11, 8, .62), rgba(14, 11, 8, .86));
-  backdrop-filter: blur(2px);
-  border: 1px solid rgba(184, 154, 99, .3); border-radius: 8px;
+  background: linear-gradient(180deg, var(--bc-scrim-55), var(--bc-scrim-86));
+  border: 1px solid var(--bc-border-strong); border-radius: var(--bc-edge);
 }
 #beneos-creature-installer .bci-gate-emblem {
   width: 42px; height: 42px; border-radius: 50%;
-  background: radial-gradient(circle at 50% 40%, #2c2519, #14110c);
-  border: 1px solid #6b5a3b; box-shadow: 0 0 14px rgba(216, 178, 94, .35);
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border-strong);
   display: flex; align-items: center; justify-content: center;
 }
-#beneos-creature-installer .bci-gate-emblem svg { width: 22px; height: 22px; fill: var(--bci-gold); }
-#beneos-creature-installer .bci-gate-title { font-family: "Cinzel", serif; font-size: 15px; color: var(--bci-light); }
-#beneos-creature-installer .bci-gate-body { font-size: 13px; color: #b7a98e; max-width: 372px; margin: 0; line-height: 1.4; }
+#beneos-creature-installer .bci-gate-emblem svg { width: 22px; height: 22px; fill: var(--bc-text-muted); }
+#beneos-creature-installer .bci-gate-title { font-family: var(--bc-font-ui); font-size: 16px; font-weight: 600; color: var(--bc-text); }
+#beneos-creature-installer .bci-gate-body { font-size: 14px; color: var(--bc-text-muted); max-width: 372px; margin: 0; line-height: 1.45; }
 #beneos-creature-installer .bci-gate-actions { display: flex; gap: 10px; margin-top: 2px; }
 
 /* ---------------------------------------------------------- notice + footer */
 
 #beneos-creature-installer .bci-notice {
   display: flex; align-items: center; gap: 10px; margin-top: 14px;
-  padding: 7px 12px; border-radius: 6px;
-  background: rgba(216, 178, 94, .06); border: 1px solid rgba(184, 154, 99, .2);
+  padding: 8px 12px; border-radius: var(--bc-edge);
+  background: var(--bc-card); border: 1px solid var(--bc-border);
 }
-#beneos-creature-installer .bci-ico-info { width: 16px; height: 16px; flex: 0 0 auto; fill: none; stroke: #caa765; stroke-width: 2; stroke-linecap: round; }
-#beneos-creature-installer .bci-notice-text { flex: 1; font-size: 11.5px; color: #9a8e74; }
+#beneos-creature-installer .bci-ico-info { width: 16px; height: 16px; flex: 0 0 auto; fill: none; stroke: var(--bc-text-muted); stroke-width: 2; stroke-linecap: round; }
+#beneos-creature-installer .bci-notice-text { flex: 1; font-size: 13px; color: var(--bc-text-muted); }
 
 #beneos-creature-installer .bci-footer { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; margin-top: 16px; }
 
+/* One button component (FRM-09, QLT-04). */
 #beneos-creature-installer .bci-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-  font-family: "Cinzel", serif; text-transform: uppercase; cursor: pointer;
-  border-radius: 7px; padding: 11px 18px; line-height: 1; white-space: nowrap;
-  transition: filter .15s ease-out, transform .1s ease-out;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 36px;
+  font-family: var(--bc-font-ui); font-size: 14px; font-weight: 500; cursor: pointer;
+  border-radius: var(--bc-edge); padding: 0 16px; line-height: 1.2; white-space: nowrap;
+  background: var(--bc-card); border: 1px solid var(--bc-border-control); color: var(--bc-text);
+  transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
 }
-#beneos-creature-installer .bci-btn:hover { filter: brightness(1.08); }
-#beneos-creature-installer .bci-btn:active { transform: translateY(1px); }
-/* disabled (e.g. Guide - work in progress): greyed, no interaction */
+#beneos-creature-installer .bci-btn:hover { background: var(--bc-card-hover); border-color: var(--bc-accent); }
+#beneos-creature-installer .bci-btn:active { background: var(--bc-bg-pressed); }
+/* disabled (e.g. Guide - work in progress): dim text, no hover */
 #beneos-creature-installer .bci-btn-disabled,
-#beneos-creature-installer .bci-btn[disabled] { opacity: .4; cursor: not-allowed; filter: grayscale(.6); }
+#beneos-creature-installer .bci-btn[disabled] { color: var(--bc-text-dim); border-color: var(--bc-border); background: var(--bc-card); cursor: not-allowed; }
 #beneos-creature-installer .bci-btn-disabled:hover,
-#beneos-creature-installer .bci-btn[disabled]:hover { filter: grayscale(.6); }
+#beneos-creature-installer .bci-btn[disabled]:hover { background: var(--bc-card); border-color: var(--bc-border); }
 #beneos-creature-installer .bci-btn-disabled:active,
-#beneos-creature-installer .bci-btn[disabled]:active { transform: none; }
-#beneos-creature-installer .bci-btn svg { width: 15px; height: 15px; }
+#beneos-creature-installer .bci-btn[disabled]:active { transform: none; background: var(--bc-card); }
+/* Icons inside labelled buttons are decoration (icon next to a label). */
+#beneos-creature-installer .bci-btn > svg { display: none; }
 #beneos-creature-installer .bci-btn-grow { flex: 1; }
-#beneos-creature-installer .bci-btn-sm { padding: 6px 13px; font-size: 10px; }
+#beneos-creature-installer .bci-btn-sm { min-height: 28px; padding: 0 12px; font-size: 12px; }
 #beneos-creature-installer .bci-btn-icon { flex: 0 0 auto; }
 
 #beneos-creature-installer .bci-btn-dark {
-  font-size: 13px; letter-spacing: .4px; color: #e6d8b6;
-  background: linear-gradient(180deg, #2c2822, #161310); border: 1px solid #4d4234;
+  font-size: 14px; color: var(--bc-text);
 }
-#beneos-creature-installer .bci-btn-dark svg { fill: none; stroke: var(--bci-gold-soft); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-#beneos-creature-installer .bci-btn-green {
-  color: #cbeccb; background: linear-gradient(180deg, #33402f, #1c2618); border: 1px solid #5a7a52;
-}
-#beneos-creature-installer .bci-btn-green svg { stroke: #cbeccb; }
+/* The free placement for guests used to be green. Green means success only
+   (COL-07), so it is a default button. */
+#beneos-creature-installer .bci-btn-green { color: var(--bc-text); }
+/* The one gold action of the drawer: Install, Place or Support (COL-05, MUS-08). */
 #beneos-creature-installer .bci-btn-gold {
-  font-size: 14.5px; font-weight: 700; letter-spacing: .4px; color: #1c1408;
-  background: linear-gradient(180deg, #dcbb78, #a9853f); border: 1px solid #e7cf9a;
-  box-shadow: 0 0 13px rgba(216, 178, 94, .32), inset 0 1px 0 rgba(255, 255, 255, .4);
+  font-size: 14px; font-weight: 600; color: var(--bc-text-on-accent);
+  background: var(--bc-highlight); border: 1px solid var(--bc-highlight);
 }
-#beneos-creature-installer .bci-btn-gold svg { fill: none; stroke: #1c1408; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#beneos-creature-installer .bci-btn-gold:hover { background: var(--bc-highlight-strong); border-color: var(--bc-highlight-strong); }
+#beneos-creature-installer .bci-btn-gold:active { border-color: var(--bc-text); }
+/* Inside the supporter gate the footer already carries the gold Support
+   action, so the gate's Support button is the filled Bone primary. */
+#beneos-creature-installer .bci-gate .bci-btn-gold {
+  background: var(--bc-accent); border-color: var(--bc-accent); color: var(--bc-text-on-accent);
+}
+#beneos-creature-installer .bci-gate .bci-btn-gold:hover { background: var(--bc-accent-strong); border-color: var(--bc-accent-strong); }
 
 /* ------------------------------------------ iteration 2: header controls */
 
@@ -377,40 +387,42 @@
 
 /* hide toggle */
 #beneos-creature-installer .bci-hide {
-  display: flex; align-items: center; gap: 5px; cursor: pointer;
-  font-family: "Cinzel", serif; font-size: 10px; letter-spacing: .5px;
-  color: var(--bci-muted); white-space: nowrap;
+  display: flex; align-items: center; gap: 6px; cursor: pointer;
+  font-family: var(--bc-font-ui); font-size: 13px;
+  color: var(--bc-text-muted); white-space: nowrap;
+  transition: color var(--bc-dur-fast) var(--bc-ease);
 }
-#beneos-creature-installer .bci-hide input { accent-color: var(--bci-gold); cursor: pointer; margin: 0; }
-#beneos-creature-installer .bci-hide:hover { color: var(--bci-gold-soft); }
+#beneos-creature-installer .bci-hide input { accent-color: var(--bc-accent); cursor: pointer; margin: 0; }
+#beneos-creature-installer .bci-hide:hover { color: var(--bc-text); }
 
 /* ------------------------------------------ iteration 2: availability marks */
 
 /* An installed/resolvable creature is draggable (grab cursor) and carries the
-   green corner check as the INSTALL indicator. The disc RING now encodes the
+   green corner check as the INSTALL indicator. The disc RING encodes the
    creature's disposition to the players (see below), not the install status, so
    the GM sees at a glance what is hostile / neutral / friendly. */
-#beneos-creature-installer .bci-disc.bci-available { box-shadow: inset 0 2px 6px rgba(0, 0, 0, .6); }
-#beneos-creature-installer .bci-disc.bci-available.bci-disc-beneos { box-shadow: 0 0 8px rgba(216, 178, 94, .28), inset 0 2px 6px rgba(0, 0, 0, .6); }
-/* Disposition ring (hostile / neutral / friendly / secret). Overrides the plain
-   available ring; alternatives keep their blue ring (no disposition class). */
-#beneos-creature-installer .bci-disc.bci-available.bci-disp-hostile  { box-shadow: 0 0 0 2px rgba(200, 66, 58, .9), 0 0 7px rgba(200, 66, 58, .4), inset 0 2px 6px rgba(0, 0, 0, .6); }
-#beneos-creature-installer .bci-disc.bci-available.bci-disp-neutral  { box-shadow: 0 0 0 2px rgba(212, 178, 92, .85), inset 0 2px 6px rgba(0, 0, 0, .6); }
-#beneos-creature-installer .bci-disc.bci-available.bci-disp-friendly { box-shadow: 0 0 0 2px rgba(110, 172, 110, .85), inset 0 2px 6px rgba(0, 0, 0, .6); }
-#beneos-creature-installer .bci-disc.bci-available.bci-disp-secret   { box-shadow: 0 0 0 2px rgba(156, 112, 194, .85), inset 0 2px 6px rgba(0, 0, 0, .6); }
+#beneos-creature-installer .bci-disc.bci-available { box-shadow: none; }
+#beneos-creature-installer .bci-disc.bci-available.bci-disc-beneos { box-shadow: none; }
+/* Disposition ring (hostile / neutral / friendly / secret). These four colours
+   are game data (the token disposition) and are kept as they were, without
+   the glow. Open question in the rollout report. */
+#beneos-creature-installer .bci-disc.bci-available.bci-disp-hostile  { box-shadow: 0 0 0 2px rgba(200, 66, 58, .9); }
+#beneos-creature-installer .bci-disc.bci-available.bci-disp-neutral  { box-shadow: 0 0 0 2px rgba(212, 178, 92, .85); }
+#beneos-creature-installer .bci-disc.bci-available.bci-disp-friendly { box-shadow: 0 0 0 2px rgba(110, 172, 110, .85); }
+#beneos-creature-installer .bci-disc.bci-available.bci-disp-secret   { box-shadow: 0 0 0 2px rgba(156, 112, 194, .85); }
 #beneos-creature-installer .bci-check {
   position: absolute; bottom: -2px; right: -2px;
   width: 16px; height: 16px; border-radius: 50%;
-  background: #7ea27e; border: 1px solid #15110c;
+  background: var(--bc-success); border: 1px solid var(--bc-bg);
   display: flex; align-items: center; justify-content: center;
 }
-#beneos-creature-installer .bci-check svg { width: 10px; height: 10px; fill: none; stroke: #15211a; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+#beneos-creature-installer .bci-check svg { width: 10px; height: 10px; fill: none; stroke: var(--bc-text-on-accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 
 /* ------------------------------------------ iteration 2: hidden / restore logo */
 
 #beneos-creature-installer.bci-hidden { /* host stays pointer-events:none; button re-enables */ }
-/* Restore logo: deliberately understated - plain (non-gold) mark on a faint,
-   semi-transparent backing so it does not compete with the macro hotbar. */
+/* Restore logo: deliberately understated, a plain mark on the scrim so it
+   does not compete with the macro hotbar. */
 #beneos-creature-installer .bci-restore {
   pointer-events: auto;
   position: absolute;
@@ -418,80 +430,82 @@
   width: 36px; height: 36px;
   display: flex; align-items: center; justify-content: center;
   padding: 0;
-  background: rgba(18, 14, 9, .4);
-  border: 1px solid rgba(255, 255, 255, .12);
-  border-radius: 8px;
+  background: var(--bc-scrim-55);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-edge);
   cursor: pointer;
-  color: #e9e6df;                   /* plain logo, not gold */
-  opacity: .5;
-  transition: opacity .15s ease-out, transform .15s ease-out;
+  color: var(--bc-text-muted);
+  transition: color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease), background-color var(--bc-dur-fast) var(--bc-ease);
 }
-#beneos-creature-installer .bci-restore:hover { opacity: 1; transform: translateY(-2px); }
+#beneos-creature-installer .bci-restore:hover { color: var(--bc-text); border-color: var(--bc-accent); background: var(--bc-bg-panel); }
 #beneos-creature-installer .bci-restore .beneos-icon-logo { width: 22px; height: 22px; }
 
-/* Beneos brand mark inside the tab disc (gold) and on the gold place button
-   (inherits the button's dark text colour, so it reads on the gold fill). */
-#beneos-creature-installer .bci-tab-disc .beneos-icon-logo { width: 19px; height: 19px; color: var(--bci-gold); }
+/* Beneos brand mark inside the tab disc and on the buttons (inherits the
+   button's text colour). */
+#beneos-creature-installer .bci-tab-disc .beneos-icon-logo { width: 19px; height: 19px; color: var(--bc-text); }
 #beneos-creature-installer .bci-btn .beneos-icon-logo { width: 16px; height: 16px; flex: 0 0 auto; }
 
 /* ------------------------------------------ iteration 2: busy spinner on place */
-#beneos-creature-installer .bci-btn.bci-busy { position: relative; pointer-events: none; opacity: .9; }
+/* Loading ring after MUS-05: 16px, 2px control ring, secondary-text arc, one
+   turn per second, linear, no gold. Stands still under reduced motion. */
+#beneos-creature-installer .bci-btn.bci-busy { position: relative; pointer-events: none; }
 #beneos-creature-installer .bci-btn.bci-busy > * { visibility: hidden; }
 #beneos-creature-installer .bci-btn.bci-busy::after {
   content: ""; position: absolute; inset: 0; margin: auto;
-  width: 16px; height: 16px; border-radius: 50%;
-  border: 2px solid rgba(28, 20, 8, .35); border-top-color: #1c1408;
-  animation: bci-spin .7s linear infinite;
+  width: 16px; height: 16px; box-sizing: border-box; border-radius: 50%;
+  border: 2px solid var(--bc-border-control); border-top-color: var(--bc-text-muted);
+  animation: bci-spin 1s linear infinite;
 }
-#beneos-creature-installer .bci-btn-dark.bci-busy::after { border-color: rgba(203, 180, 134, .35); border-top-color: var(--bci-gold-soft); }
+#beneos-creature-installer .bci-btn-dark.bci-busy::after { border-color: var(--bc-border-control); border-top-color: var(--bc-text-muted); }
 @keyframes bci-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  #beneos-creature-installer .bci-btn.bci-busy::after { animation: none; }
+}
 
 /* ------------------------------------------ iteration 3: assignment link viz */
-/* highlighted counterpart: pulsing gold ring (symmetric for SRD and Beneos).
-   The shadow lives in the keyframes so it beats the .bci-available / .bci-disc-beneos
-   box-shadow rules without !important. z-index keeps it above neighbours. */
+/* Highlighted counterpart: a steady accent outline (symmetric for SRD and
+   Beneos). An outline does not compete with the box-shadow disposition rings,
+   so it needs no keyframes and no !important. z-index keeps it above
+   neighbours. */
 #beneos-creature-installer .bci-disc.bci-linked-hl {
-  border-color: var(--bci-gold);
   border-style: solid;
   z-index: 5;
-  animation: bci-link-pulse 1.1s ease-in-out infinite;
-}
-@keyframes bci-link-pulse {
-  0%, 100% { transform: scale(1.04); box-shadow: 0 0 0 2px var(--bci-gold), 0 0 5px rgba(216, 178, 94, .5); }
-  50%      { transform: scale(1.09); box-shadow: 0 0 0 3px var(--bci-gold), 0 0 10px rgba(216, 178, 94, .9); }
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
+  transform: scale(1.06);
 }
 /* fixed height so toggling the text never nudges the bottom-anchored panel */
 #beneos-creature-installer .bci-link-msg {
-  height: 16px; line-height: 16px; margin-top: 10px; text-align: center;
-  font-size: 12px; color: var(--bci-gold-soft);
+  height: 18px; line-height: 18px; margin-top: 10px; text-align: center;
+  font-size: 13px; color: var(--bc-text-muted);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  opacity: 0; transition: opacity .12s ease-out;
+  opacity: 0; transition: opacity var(--bc-dur-fast) var(--bc-ease);
 }
 #beneos-creature-installer .bci-link-msg.bci-link-msg-on { opacity: 1; }
 
 /* ------------------------------------------ alternatives (swap suggestions) */
-/* Blue ring marks an alternative; solid + glow when installed, dashed placeholder
-   when not. Overrides the gold/green beneos rings (defined later = wins). */
-#beneos-creature-installer .bci-disc-beneos.bci-alt { border: 2px dashed #6aa6d6; box-shadow: 0 0 8px rgba(106, 166, 214, .4), inset 0 2px 6px rgba(0, 0, 0, .6); }
-#beneos-creature-installer .bci-disc-beneos.bci-alt.bci-available { border: 2px solid #6aa6d6; box-shadow: 0 0 0 2px rgba(106, 166, 214, .55), inset 0 2px 6px rgba(0, 0, 0, .6); }
+/* An accent ring marks an alternative; solid when installed, dashed
+   placeholder when not. Overrides the beneos rings (defined later = wins). */
+#beneos-creature-installer .bci-disc-beneos.bci-alt { border: 2px dashed var(--bc-accent); box-shadow: none; }
+#beneos-creature-installer .bci-disc-beneos.bci-alt.bci-available { border: 2px solid var(--bc-accent); box-shadow: none; }
 #beneos-creature-installer .bci-alt-badge {
   position: absolute; top: -4px; left: -4px;
-  font-family: "Cinzel", serif; font-size: 8px; font-weight: 700; letter-spacing: .5px;
-  color: #08131c; background: #6aa6d6; border: 1px solid #08131c;
-  border-radius: 6px; padding: 0 4px; line-height: 1.4;
+  font-family: var(--bc-font-ui); font-size: 12px; font-weight: 600;
+  color: var(--bc-text); background: var(--bc-card-hover); border: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-edge); padding: 0 4px; line-height: 1.4;
 }
 #beneos-creature-installer .bci-col-beneos .bci-disc-beneos.bci-alt ~ .bci-name,
-#beneos-creature-installer .bci-tokencol:has(.bci-alt) .bci-name { color: #a9cae6; }
+#beneos-creature-installer .bci-tokencol:has(.bci-alt) .bci-name { color: var(--bc-text); }
 
 /* Out of this user's reach (a monthly reward they hold no grant for, a tier they
-   do not have). Shown and named, never offered. The dashed gold ring above means
+   do not have). Shown and named, never offered. The dashed ring above means
    "placeholder, install me" and would be a false promise here, so it is replaced
    by a quiet matte ring. No lock icon, no lootbox treatment: this is a statement
    of fact, not a sales pitch. */
 #beneos-creature-installer .bci-disc-beneos.bci-blocked,
 #beneos-creature-installer .bci-disc-beneos.bci-blocked:not(.bci-available) {
-  border: 2px solid #5a4d36;
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, .6);
+  border: 2px solid var(--bc-border-strong);
+  box-shadow: none;
 }
 #beneos-creature-installer .bci-disc-beneos.bci-blocked img,
 #beneos-creature-installer .bci-disc-beneos.bci-blocked video {
@@ -500,74 +514,71 @@
 #beneos-creature-installer .bci-disc-beneos.bci-blocked:hover { transform: none; }
 #beneos-creature-installer .bci-blocked-badge {
   position: absolute; bottom: -4px; right: -4px;
-  font-family: "Cinzel", serif; font-size: 8px; font-weight: 700; letter-spacing: .5px;
-  color: #d8cdb6; background: #2a241a; border: 1px solid #6f5c3b;
-  border-radius: 6px; padding: 0 4px; line-height: 1.4;
+  font-family: var(--bc-font-ui); font-size: 12px; font-weight: 500;
+  color: var(--bc-text-muted); background: var(--bc-card-hover); border: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-edge); padding: 0 4px; line-height: 1.4;
 }
-#beneos-creature-installer .bci-tokencol:has(.bci-blocked) .bci-name { color: #9c8f78; }
+#beneos-creature-installer .bci-tokencol:has(.bci-blocked) .bci-name { color: var(--bc-text-muted); }
 #beneos-creature-installer .bci-blocked-notes { margin: 6px 2px 0; }
 #beneos-creature-installer .bci-blocked-note {
-  font-family: "Signika", "Segoe UI", system-ui, sans-serif;
-  font-size: 11px; line-height: 1.35; color: #a99c84; margin: 2px 0;
+  font-family: var(--bc-font-ui);
+  font-size: 12px; line-height: 1.4; color: var(--bc-text-muted); margin: 2px 0;
 }
 
 /* focus mode: while a link is hovered, grey out every creature except the two
-   linked ones so the pairing is unmistakable (:has scopes to the token column). */
-#beneos-creature-installer.bci-focus-link .bci-tokencol { filter: grayscale(1); opacity: .35; transition: filter .12s ease-out, opacity .12s ease-out; }
-#beneos-creature-installer.bci-focus-link .bci-tokencol:has(.bci-linked-hl),
-#beneos-creature-installer.bci-focus-link .bci-tokencol:has(.bci-linked-src) { filter: none; opacity: 1; }
+   linked ones so the pairing is unmistakable (:has scopes to the token column).
+   The image fades; the name steps to the disabled tone instead of an opacity
+   on text (COL-12). */
+#beneos-creature-installer.bci-focus-link .bci-tokencol .bci-disc { filter: grayscale(1); opacity: .35; transition: filter var(--bc-dur-fast) var(--bc-ease), opacity var(--bc-dur-fast) var(--bc-ease); }
+#beneos-creature-installer.bci-focus-link .bci-tokencol .bci-name { color: var(--bc-text-dim); }
+#beneos-creature-installer.bci-focus-link .bci-tokencol:has(.bci-linked-hl) .bci-disc,
+#beneos-creature-installer.bci-focus-link .bci-tokencol:has(.bci-linked-src) .bci-disc { filter: none; opacity: 1; }
+#beneos-creature-installer.bci-focus-link .bci-tokencol:has(.bci-linked-hl) .bci-name,
+#beneos-creature-installer.bci-focus-link .bci-tokencol:has(.bci-linked-src) .bci-name { color: var(--bc-text); }
 
 /* ------------------------------------------ iteration 10: install-from-drawer */
 
 /* Accessible-but-not-installed Beneos preview: grayscale until installed. */
 #beneos-creature-installer .bci-disc-beneos.bci-needsinstall img {
   filter: grayscale(1) brightness(.62);
-  transition: filter .85s ease;
+  transition: filter var(--bc-dur-base) var(--bc-ease);
 }
-/* While its token is downloading from the cloud: pulsing gold rim. */
-#beneos-creature-installer .bci-disc-beneos.bci-installing { animation: bci-inst-pulse 1s ease-in-out infinite; }
-@keyframes bci-inst-pulse {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(216, 178, 94, .55), inset 0 2px 6px rgba(0, 0, 0, .6); }
-  50%      { box-shadow: 0 0 0 3px rgba(231, 207, 154, .95), 0 0 14px rgba(216, 178, 94, .7), inset 0 2px 6px rgba(0, 0, 0, .6); }
-}
-/* On completion: the grayscale filter releases to full colour (0% -> 100%) and a
-   brief gold flash settles into the standard installed (green) ring. */
+/* While its token is downloading from the cloud: a steady accent rim. The
+   loading ring itself is MUS-05 (built on the script side). */
+#beneos-creature-installer .bci-disc-beneos.bci-installing { box-shadow: 0 0 0 2px var(--bc-accent); }
+/* On completion: the grayscale filter releases to full colour and the rim
+   hands over to the standard installed ring. */
 #beneos-creature-installer .bci-disc-beneos.bci-installed-fx img { filter: none; }
-#beneos-creature-installer .bci-disc-beneos.bci-installed-fx { animation: bci-inst-done .9s ease-out 1; }
+#beneos-creature-installer .bci-disc-beneos.bci-installed-fx { animation: bci-inst-done var(--bc-dur-base) var(--bc-ease) 1; }
 @keyframes bci-inst-done {
-  0%   { box-shadow: 0 0 0 3px rgba(231, 207, 154, 1), 0 0 18px rgba(216, 178, 94, .9), inset 0 2px 6px rgba(0, 0, 0, .6); }
-  100% { box-shadow: 0 0 0 2px rgba(126, 162, 126, .55), 0 0 10px rgba(216, 178, 94, .35), inset 0 2px 6px rgba(0, 0, 0, .6); }
+  0%   { box-shadow: 0 0 0 2px var(--bc-accent); }
+  100% { box-shadow: 0 0 0 2px transparent; }
 }
 
-/* Gold install button: progress fill driven by --bci-progress, glow on finish. */
+/* Gold install button: progress fill driven by --bci-progress. */
 #beneos-creature-installer .bci-btn-gold.bci-installing-btn { position: relative; overflow: hidden; pointer-events: none; }
 /* The fill is clipped, not resized: animating width relayouts the button on
    every progress tick, clip-path only repaints. --bci-progress stays a
-   percentage, so nothing on the JS side changes. The gradient runs top to
-   bottom, so clipping from the right looks identical to a growing box. */
+   percentage, so nothing on the JS side changes. Solid fill (COL-13). */
 #beneos-creature-installer .bci-btn-gold.bci-installing-btn::before {
   content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 100%;
-  background: linear-gradient(180deg, rgba(255, 247, 224, .55), rgba(255, 236, 190, .22));
+  background: color-mix(in srgb, var(--bc-text-on-accent) 16%, transparent);
   clip-path: inset(0 calc(100% - var(--bci-progress, 0%)) 0 0);
-  transition: clip-path .25s ease; pointer-events: none;
+  transition: clip-path var(--bc-dur-base) var(--bc-ease); pointer-events: none;
 }
 #beneos-creature-installer .bci-btn-gold.bci-installing-btn > * { position: relative; z-index: 1; }
-#beneos-creature-installer .bci-btn-gold.bci-glow { animation: bci-btn-glow 1s ease-out 1; }
-@keyframes bci-btn-glow {
-  0%   { box-shadow: 0 0 26px 6px rgba(255, 232, 170, .95), inset 0 1px 0 rgba(255, 255, 255, .6); filter: brightness(1.35); }
-  100% { box-shadow: 0 0 13px rgba(216, 178, 94, .32), inset 0 1px 0 rgba(255, 255, 255, .4); filter: brightness(1); }
-}
+/* .bci-glow (finish) used to flash a glow (COL-14). The class stays, without effect. */
+#beneos-creature-installer .bci-btn-gold.bci-glow { animation: none; }
 /* Place button when everything is installed but only drag-only alternatives remain. */
-#beneos-creature-installer .bci-btn-gold.bci-btn-disabled { opacity: .5; filter: saturate(.6); cursor: default; }
+#beneos-creature-installer .bci-btn-gold.bci-btn-disabled {
+  background: var(--bc-card); border-color: var(--bc-border); color: var(--bc-text-dim); cursor: default;
+}
 
 /* ------------------------------------------- iteration 3: restore hint bubble */
 /* Sprechblase ueber dem Wiederherstellungslogo, mit Pfeilspitze nach unten und
    einem X zum Wegdruecken. Sie sagt dem Bediener, wohin die Lade verschwunden
    ist, und erinnert ihn einmal je Sitzung daran, dass sie dort liegt.
-
-   Im Modul gab es kein wiederverwendbares Popover mit Spitze und X (geprueft am
-   2026-10-07: kein clip-path: polygon und kein Rahmendreieck in css/). Das hier
-   ist das erste; es bleibt im bci-Namensraum und benutzt die Variablen der Lade. */
+   Popover-Flaeche mit Popover-Schatten (FRM-10). */
 #beneos-creature-installer .bci-hint {
   /* Der Host ist pointer-events: none und bleibt es. Nur das X schaltet sich
      wieder ein, dasselbe Verfahren wie bei .bci-restore. So kann die Blase
@@ -578,49 +589,28 @@
   max-width: min(300px, calc(100vw - 24px));
   display: flex; align-items: flex-start; gap: 10px;
   padding: 12px 14px;
-  /* DIESELBEN WERTE WIE .bci-panel, nicht nur aehnliche: Verlauf, Rand,
-     Innenglanz und Weichzeichner sind von dort uebernommen, damit die Blase als
-     Teil derselben Lade gelesen wird und nicht als Fremdkoerper. */
-  background: linear-gradient(180deg, #241f18f2, #13100bf7);
-  border: 1px solid var(--bci-panel-border);
-  border-radius: 10px;
-  box-shadow: inset 0 1px 0 rgba(216, 189, 134, .12), 0 8px 26px rgba(0, 0, 0, .6);
-  backdrop-filter: blur(3px);
-  font-family: "Spectral", serif;
-  font-size: 13.5px; line-height: 1.4; color: var(--bci-light);
-  /* Das sanfte Auf und Ab laeuft, solange die Blase steht. Es haengt an
-     .bci-hint und nicht an .bci-hint-in, weil `fresh` nach dem ersten Render
-     verbraucht ist: an der Einblendeklasse wuerde die Bewegung nach einem
-     zwischenzeitlichen Re-Render aufhoeren. */
-  animation: bci-hint-float 2.8s ease-in-out infinite;
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-edge);
+  box-shadow: var(--bc-shadow-pop);
+  font-family: var(--bc-font-ui);
+  font-size: 14px; line-height: 1.45; color: var(--bc-text);
 }
-/* Die Haarlinie der Lade, eine Spur nach innen gesetzt. Absolut positioniert,
-   damit sie im Flexfluss der Blase kein Element wird. */
+/* Innere Zierlinie der alten Lade: das Element bleibt, ohne Linie. */
 #beneos-creature-installer .bci-hint::before {
-  content: ""; position: absolute; inset: 4px;
-  border: 1px solid rgba(184, 154, 99, .24);
-  border-radius: 6px; pointer-events: none;
+  content: none;
 }
-/* Das Aufploppen laeuft NUR beim ersten Render einer Blase (hint.fresh), damit
-   ein Re-Render mitten im Countdown es nicht erneut abspielt. Danach uebernimmt
-   das Auf und Ab, verzoegert um die Dauer des Ploppens, sonst kaempfen beide um
-   dieselbe transform-Eigenschaft. */
+/* Das Einblenden laeuft NUR beim ersten Render einer Blase (hint.fresh), damit
+   ein Re-Render mitten im Countdown es nicht erneut abspielt. Kein dauerndes
+   Auf und Ab mehr (FRM-12). */
 #beneos-creature-installer .bci-hint.bci-hint-in {
-  animation:
-    bci-hint-pop .34s cubic-bezier(.34, 1.56, .64, 1) 1,
-    bci-hint-float 2.8s ease-in-out .34s infinite;
+  animation: bci-hint-pop var(--bc-dur-base) var(--bc-ease) 1;
 }
 @keyframes bci-hint-pop {
-  0%   { opacity: 0; transform: translateY(10px) scale(.84); }
-  60%  { opacity: 1; transform: translateY(-2px) scale(1.04); }
+  0%   { opacity: 0; transform: translateY(8px); }
   100% { opacity: 1; transform: none; }
 }
-@keyframes bci-hint-float {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-4px); }
-}
-/* Wer Bewegung abgeschaltet hat, bekommt sie nicht. Die Blase bleibt dann
-   stehen und lesbar; nur das Auf und Ab und das Ploppen fallen weg. */
+/* Wer Bewegung abgeschaltet hat, bekommt sie nicht. */
 @media (prefers-reduced-motion: reduce) {
   #beneos-creature-installer .bci-hint,
   #beneos-creature-installer .bci-hint.bci-hint-in { animation: none; }
@@ -628,26 +618,26 @@
 #beneos-creature-installer .bci-hint-text { flex: 1 1 auto; min-width: 0; }
 #beneos-creature-installer .bci-hint-x {
   pointer-events: auto;
-  flex: 0 0 auto; width: 18px; height: 18px; padding: 0;
-  background: none; border: none; cursor: pointer; line-height: 0;
+  flex: 0 0 auto; width: 24px; height: 24px; padding: 0;
+  display: grid; place-items: center;
+  background: none; border: none; border-radius: var(--bc-edge); cursor: pointer; line-height: 0;
 }
 #beneos-creature-installer .bci-hint-x svg {
   width: 14px; height: 14px;
-  fill: none; stroke: var(--bci-muted); stroke-width: 2.4; stroke-linecap: round;
+  fill: none; stroke: var(--bc-text-muted); stroke-width: 2.4; stroke-linecap: round;
+  transition: stroke var(--bc-dur-fast) var(--bc-ease);
 }
-#beneos-creature-installer .bci-hint-x:hover svg { stroke: var(--bci-gold); }
+#beneos-creature-installer .bci-hint-x:hover svg { stroke: var(--bc-text); }
 /* Pfeilspitze: ein um 45 Grad gedrehtes Quadrat, das auf seinen zwei
    Aussenseiten die Rahmenlinie der Blase borgt, damit die Spitze denselben
    1px-Umriss bekommt wie der Koerper. 13px von der rechten Kante setzen ihre
    Mitte 18,5px hinein, also ueber die Mitte des 36px breiten Logos, an dessen
-   rechter Kante die Blase haengt: 13 plus die halbe Diagonale von 5,5 ergibt
-   18,5. Die Fuellung ist der untere Haltepunkt des Blasenverlaufs. */
+   rechter Kante die Blase haengt. Die Fuellung ist die Flaeche der Blase. */
 #beneos-creature-installer .bci-hint-arrow {
   position: absolute; bottom: -6px; right: 13px;
   width: 11px; height: 11px;
-  background: #13100bf7;
-  border-right: 1px solid var(--bci-panel-border);
-  border-bottom: 1px solid var(--bci-panel-border);
+  background: var(--bc-card);
+  border-right: 1px solid var(--bc-border-strong);
+  border-bottom: 1px solid var(--bc-border-strong);
   transform: rotate(45deg);
 }
-

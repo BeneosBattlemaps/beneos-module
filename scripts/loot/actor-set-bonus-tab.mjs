@@ -311,7 +311,7 @@ export class ActorSetBonusTab {
       ...g,
       originName,
       originIconPath: def ? OriginsRegistry.iconPath(slug, "color") : null,
-      glow: meta.glow ?? "rgba(212,168,87,0.40)",
+      glow: meta.glow ?? "var(--bc-accent)",
       mono: meta.mono ?? slug.slice(0, 2).toUpperCase(),
       effects,
       tierStates,

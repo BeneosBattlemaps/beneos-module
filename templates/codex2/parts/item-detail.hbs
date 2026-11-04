@@ -2,7 +2,6 @@
 
   <div class="detail-left">
     <button class="back-btn" data-action="back">
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 2L3.5 6L7.5 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       {{localize "BENEOS.Codex.Detail.BackToOrigins"}}
     </button>
 
@@ -81,7 +80,7 @@
       {{#if detail.specials.length}}
         <div class="specials-section" data-visible="{{#if detail.harmonyActive}}true{{else}}false{{/if}}">
           <div class="divider-fancy" style="margin-top:8px;">
-            <span style="font-family:Cinzel,serif;font-size:11px;letter-spacing:0.32em;text-transform:uppercase;color:var(--tier-special);">{{localize "BENEOS.Codex.Detail.BonusRites"}}</span>
+            <span style="font-family:var(--bc-font-ui);font-size:13px;font-weight:500;color:var(--bc-text-muted);">{{localize "BENEOS.Codex.Detail.BonusRites"}}</span>
           </div>
           {{#each detail.specials}}
             {{> "beneos-codex/item-tier-card"

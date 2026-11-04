@@ -97,16 +97,14 @@ function ensureStyle() {
   const style = document.createElement("style")
   style.textContent = `
     .${KLASSE} {
-      box-shadow: inset 3px 0 0 0 rgba(111, 207, 82, 0.85);
-      background: rgba(111, 207, 82, 0.07);
+      box-shadow: inset 3px 0 0 0 var(--bc-success);
     }
     /* Der Eintrag, der nicht mehr ins Kontingent passt: sichtbar, aber
        erkennbar nicht zum Klicken. Der Klick fuehrt trotzdem irgendwohin,
        naemlich zu einer Erklaerung mit Zahlen. */
     #context-menu li.beneos-offline-voll,
     .beneos-offline-voll {
-      color: #c9503f;
-      opacity: 0.75;
+      color: var(--bc-text-muted);
     }
     /* Die Regel fuer das Symbol im Eintrag ist weg, weil die Eintraege seit
        dem 2026-08-31 keines mehr tragen. */
@@ -119,7 +117,7 @@ function ensureStyle() {
       margin-left: 6px;
       vertical-align: 1px;
       border-radius: 50%;
-      background: rgba(111, 207, 82, 0.9);
+      background: var(--bc-success);
     }
 
     /* Die Vorschau vor dem Ordnergriff. Bewusst schmucklos: sie hat genau eine
@@ -127,30 +125,31 @@ function ensureStyle() {
     .beneos-offline-vorschau .bo-liste {
       list-style: none; margin: 6px 0; padding: 0;
       max-height: 220px; overflow-y: auto;
-      border: 1px solid rgba(128, 128, 128, 0.25); border-radius: 3px;
+      scrollbar-width: thin; scrollbar-color: var(--bc-border-control) transparent;
+      border: 1px solid var(--bc-border); border-radius: var(--bc-edge);
     }
     .beneos-offline-vorschau .bo-liste li {
       display: flex; justify-content: space-between; gap: 12px;
       padding: 3px 8px; font-size: 0.92em;
     }
     .beneos-offline-vorschau .bo-liste li:nth-child(even) {
-      background: rgba(128, 128, 128, 0.08);
+      background: var(--bc-card);
     }
     /* Ziffern in einer Spalte muessen untereinander stehen, sonst laesst sich
        die Liste nicht ueberfliegen. */
     .beneos-offline-vorschau .bo-menge {
-      font-variant-numeric: tabular-nums; opacity: 0.75; white-space: nowrap;
+      font-variant-numeric: tabular-nums; color: var(--bc-text-muted); white-space: nowrap;
     }
     .beneos-offline-vorschau .bo-summe {
       display: flex; align-items: baseline; gap: 8px; margin: 8px 0 4px;
     }
     .beneos-offline-vorschau .bo-summe strong { font-size: 1.15em; }
-    .beneos-offline-vorschau .bo-summe span { opacity: 0.75; font-size: 0.92em; }
-    .beneos-offline-vorschau .bo-hinweis { margin: 2px 0; font-size: 0.88em; opacity: 0.75; }
+    .beneos-offline-vorschau .bo-summe span { color: var(--bc-text-muted); font-size: 0.92em; }
+    .beneos-offline-vorschau .bo-hinweis { margin: 2px 0; font-size: 0.88em; color: var(--bc-text-muted); }
     .beneos-offline-vorschau .bo-warnung {
       margin: 6px 0 0; padding: 5px 8px; font-size: 0.9em;
-      color: #c9503f; border-left: 2px solid #c9503f;
-      background: rgba(201, 80, 63, 0.08);
+      color: var(--bc-error);
+      background: var(--bc-error-bg);
     }
   `
   document.head.appendChild(style)

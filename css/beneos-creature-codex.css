@@ -1,18 +1,17 @@
 /* ============================================================
-   Beneos Creature Codex — Detail-Page
+   Beneos Creature Codex, detail page
    Single-creature view inside the BeneosCodex window. Scoped under
-   .beneos-codex .beneos-codex-creature,
-.beneos-creature-codex-window .beneos-codex-creature so it never leaks into the rest of Foundry
-   or the v1 codex. Visual language matches the existing
-   beneos-codex.css tokens (gold + dark, Cinzel + Signika).
+   .beneos-codex .beneos-codex-creature and
+   .beneos-creature-codex-window .beneos-codex-creature so it never leaks
+   into the rest of Foundry or the v1 codex.
+   Design: Beneos standard, Bone palette (css/beneos-cloud-tokens.css).
+   Text-heavy view (standard 4.14): gold bar before main headings,
+   subsections as interactive rows without a box. Header is SIG-06.
    ============================================================ */
 
 .beneos-codex-creature {
-  --tone-primary: #3a1a2a;
-  --tone-secondary: #1a0a14;
-  --tone-glow: #a8745a;
-  --tac-line-strong: rgba(212, 168, 87, 0.36);
-  --tac-line-soft:   rgba(212, 168, 87, 0.18);
+  --tac-line-strong: var(--bc-border-control);
+  --tac-line-soft:   var(--bc-border);
 
   display: flex;
   flex-direction: column;
@@ -20,8 +19,8 @@
   width: 100%;
   height: 100%;
   text-align: left;
-  font-family: "Signika", "Geist", system-ui, sans-serif;
-  color: var(--cdx-ink, #f5e9cf);
+  font-family: var(--bc-font-ui);
+  color: var(--bc-text);
 }
 /* Standalone window: make the window-content fill the chrome so the
    inner article can flex to full width/height. */
@@ -30,10 +29,10 @@
   flex-direction: column;
   padding: 0;
   overflow: hidden;
-  background: linear-gradient(180deg, #16110c 0%, #0d0a08 100%);
+  background: var(--bc-bg-panel);
 }
 /* Foundry V13 sets `data-application-part="main"` articles to
-   `position: absolute; inset: 0; padding: …` which detaches them
+   `position: absolute; inset: 0; padding: ...` which detaches them
    from the window-content flow and stops them moving when the user
    drags the window. We force a normal block-positioned flex column
    so the hero / tab-bar / body live inside the window flow and
@@ -75,7 +74,7 @@
   pointer-events: auto;
   /* Opaque so the journal splash that runs down behind the tab bar is
      hidden once the body begins (no image bleeding into the lore). */
-  background: linear-gradient(180deg, #16110c 0%, #0d0a08 100%);
+  background: var(--bc-bg-panel);
 }
 /* Defensive guard: any descendant of the standalone creature window
    gets explicit pointer-events: auto so clicks land on tab buttons,
@@ -86,7 +85,10 @@
 .beneos-creature-codex-window .beneos-codex-creature * {
   pointer-events: auto;
 }
-/* ---- Hero -------------------------------------------------- */
+
+/* ---- Hero, signature element SIG-06 ------------------------- */
+/* Journal render over the base surface, faded in from the left (scrim),
+   with the slow accent particles of .cdx-ember-field on top. */
 .beneos-codex .beneos-codex-creature .cdx-creature-hero,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-creature-hero {
   position: relative;
@@ -97,8 +99,8 @@
   align-items: center;
   gap: 18px;
   padding: 16px 24px;
-  background: linear-gradient(135deg, var(--tone-primary), var(--tone-secondary));
-  border-bottom: 1px solid var(--cdx-line-strong, rgba(212, 168, 87, 0.36));
+  background: var(--bc-bg);
+  border-bottom: 1px solid var(--bc-border);
   flex-shrink: 0;
 }
 /* Non-SRD creatures hide the avatar (the journal carries the visual): drop
@@ -114,9 +116,9 @@
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  /* M8.3.42: blurrier backdrop (was 6px). The same hero partial backs both the
-     Creature Codex and the Combat Autopilot, so this softens the journal image
-     behind the content in both windows. */
+  /* M8.3.42: blurred journal image behind the content, shared by the
+     Creature Codex and the Combat Autopilot. Faint image fade, no text on it
+     without the base surface underneath. */
   filter: blur(12px) saturate(0.85);
   opacity: 0.22;
   z-index: 0;
@@ -128,19 +130,21 @@
   z-index: 2;
   width: 88px;
   height: 88px;
+  aspect-ratio: 1 / 1;
   object-fit: cover;
-  border-radius: 6px;
-  border: 1px solid rgba(240, 199, 114, 0.55);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.65) inset, 0 4px 12px rgba(0, 0, 0, 0.45);
-  background: rgba(0, 0, 0, 0.35);
+  border-radius: var(--bc-edge);
+  border: 1px solid var(--bc-border-on-media);
+  background: var(--bc-card);
 }
 .beneos-codex .beneos-codex-creature .cdx-hero-avatar-empty,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-hero-avatar-empty {
   display: grid;
   place-items: center;
-  font-family: "Cinzel", serif;
+  font-family: var(--bc-font-ui);
   font-size: 38px;
-  color: var(--cdx-gold-bright, #f0c772);
+  font-weight: 600;
+  color: var(--bc-text-muted);
+  border-color: var(--bc-border-strong);
 }
 .beneos-codex .beneos-codex-creature .cdx-hero-body,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-hero-body {
@@ -167,49 +171,47 @@
   display: inline-flex; align-items: center; gap: 8px;
   flex-wrap: nowrap;
   white-space: nowrap;
-  font-family: "Geist", sans-serif;
-  font-size: 11px;
-  letter-spacing: 0.20em;
-  text-transform: uppercase;
-  color: var(--cdx-ink-secondary, #c8b896);
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
+  color: var(--bc-text-muted);
 }
 .beneos-codex .beneos-codex-creature .cdx-hero-meta .cdx-cr,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-hero-meta .cdx-cr {
   display: inline-block;
-  padding: 3px 9px;
-  border: 1px solid var(--tac-line-strong);
-  border-radius: 999px;
-  color: var(--cdx-gold-bright, #f0c772);
-  font-weight: 700;
+  padding: 2px 6px;
+  background: var(--bc-card-hover);
+  border-radius: var(--bc-edge);
+  color: var(--bc-text);
+  font-weight: 600;
 }
 .beneos-codex .beneos-codex-creature .cdx-hero-meta .cdx-divider,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-hero-meta .cdx-divider {
   width: 4px; height: 4px;
   border-radius: 50%;
-  background: var(--cdx-ink-muted, #8a7c63);
+  background: var(--bc-text-muted);
   display: inline-block;
 }
 .beneos-codex .beneos-codex-creature .cdx-hero-meta .cdx-origin,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-hero-meta .cdx-origin {
-  color: var(--cdx-gold-soft, #b89146);
-  font-weight: 600;
+  color: var(--bc-text);
+  font-weight: 500;
 }
 .beneos-codex .beneos-codex-creature .cdx-hero-meta .cdx-origin-srd,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-hero-meta .cdx-origin-srd {
-  color: var(--cdx-ink-muted, #8a7c63);
+  color: var(--bc-text-muted);
   cursor: help;
-  text-decoration: underline dotted rgba(212, 168, 87, 0.45);
+  text-decoration: underline dotted var(--bc-border-control);
   text-underline-offset: 3px;
 }
 .beneos-codex .beneos-codex-creature .cdx-name,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-name {
-  font-family: "Cinzel", serif;
+  font-family: var(--bc-font-ui);
   font-size: 28px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   margin: 2px 0 0;
   line-height: 1.15;
-  color: var(--cdx-ink, #f5e9cf);
+  color: var(--bc-text);
 }
 .beneos-codex .beneos-codex-creature .cdx-hero-actions,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-hero-actions {
@@ -217,7 +219,7 @@
   margin-top: 8px;
 }
 /* Journal splash: flush to the right edge, ~110% header height (slightly
-   zoomed), fading into the header over its left 20% via an alpha mask. */
+   zoomed), fading into the header over its left 155px via an alpha mask. */
 .beneos-codex .beneos-codex-creature .cdx-hero-journal,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-hero-journal {
   position: absolute;
@@ -229,20 +231,19 @@
   opacity: 0.7;
   cursor: pointer;
   /* Fixed 550x309 (16:9). Top 15px is clipped above the header by the
-     article's overflow; the lower part runs down behind the (semi-transparent)
-     tab bar and is hidden once the opaque body begins. Left 155px fades in. */
+     article's overflow; the lower part runs down behind the scrimmed
+     tab bar and is hidden once the opaque body begins. */
   background-repeat: no-repeat;
   background-position: right top;
   background-size: cover;
-  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 155px, #000 100%);
-  mask-image: linear-gradient(to right, transparent 0, #000 155px, #000 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, var(--bc-bg) 155px, var(--bc-bg) 100%);
+  mask-image: linear-gradient(to right, transparent 0, var(--bc-bg) 155px, var(--bc-bg) 100%);
 }
 .beneos-codex .beneos-codex-creature .cdx-hero-journal-zoom,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-hero-journal-zoom {
   position: absolute;
   inset: 0;
-  /* Above the drifting ember ::after (z-index:1) so the magnifier stays crisp
-     on hover. */
+  /* Above the ember field so the magnifier stays crisp on hover. */
   z-index: 2;
   display: grid;
   /* Anchor the magnifier near the top so it stays in the visible header
@@ -251,16 +252,20 @@
   place-items: start center;
   padding-top: 42px;
   opacity: 0;
-  background: rgba(0, 0, 0, 0.18);
-  color: var(--cdx-gold-bright, #f0c772);
+  background: var(--bc-scrim-25);
+  color: var(--bc-text);
   font-size: 22px;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
-  transition: opacity 0.15s ease;
+  transition: opacity var(--bc-dur-fast) var(--bc-ease);
   pointer-events: none;
 }
 .beneos-codex .beneos-codex-creature .cdx-hero-journal:hover .cdx-hero-journal-zoom,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-hero-journal:hover .cdx-hero-journal-zoom {
   opacity: 1;
+}
+.beneos-codex .beneos-codex-creature .cdx-hero-journal:focus-visible,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-hero-journal:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: -2px;
 }
 /* The magnifier icon carries the "Click to enlarge" tooltip (anchored to it,
    so the tooltip sits just under the icon instead of far below the tall
@@ -270,42 +275,13 @@
   pointer-events: auto;
 }
 
-/* Rising-smoke ambience over the journal art (M8.3.31). A soft warm haze
-   drifts upward to make the hero feel alive, like the item-codex header. It is
-   a ::before (so it paints above the art but below the magnifier overlay) and
-   is pointer-events:none, so the click-to-enlarge interaction is untouched.
-   Disabled entirely in Performance Mode. */
-.beneos-codex .beneos-codex-creature .cdx-hero-journal::before,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-hero-journal::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(40% 55% at 30% 100%, rgba(120, 110, 95, 0.22), transparent 70%),
-    radial-gradient(45% 60% at 70% 112%, rgba(150, 120, 90, 0.18), transparent 72%),
-    radial-gradient(34% 50% at 52% 122%, rgba(205, 172, 120, 0.14), transparent 68%);
-  background-repeat: no-repeat;
-  background-size: 160% 200%;
-  filter: blur(2px);
-  mix-blend-mode: screen;
-  animation: cdx-hero-smoke 18s ease-in-out infinite alternate;
-}
-@keyframes cdx-hero-smoke {
-  0%   { background-position: 25% 95%, 70% 100%, 50% 100%; opacity: 0.55; }
-  50%  { background-position: 32% 55%, 62% 62%,  45% 52%;  opacity: 0.85; }
-  100% { background-position: 28% 22%, 76% 32%,  56% 26%;  opacity: 0.45; }
-}
-body.beneos-perf-mode .cdx-hero-journal::before { display: none; }
-
-/* M8.3.45: ambient ember field for the codex/autopilot hero band. Earlier this
-   lived on the hero/journal ::after, but those sit inside the re-rendered
-   "main" part, so the drift restarted on every tab switch (visible reset). It
-   is now ONE persistent element that mountEmberField() injects once into the
-   persistent .window-content (a sibling of the re-rendered part), so the motion
-   runs continuously across tabs. Toned back to a soft ambient glow (the prior
-   pass was too strong). pointer-events:none keeps the hero buttons + journal
-   popout clickable. Off in Performance Mode. */
+/* M8.3.45: particle field of the codex/autopilot header (SIG-06). ONE
+   persistent element that mountEmberField() injects once into the
+   persistent .window-content (a sibling of the re-rendered part), so the
+   motion runs continuously across tabs. Small, slow particles in the accent
+   colour, no glow, no blend mode. pointer-events:none keeps the hero buttons
+   and journal popout clickable. Off in Performance Mode and under reduced
+   motion. */
 .beneos-creature-codex-window .window-content,
 .beneos-combat-autopilot-window .window-content { position: relative; }
 
@@ -318,19 +294,17 @@ body.beneos-perf-mode .cdx-hero-journal::before { display: none; }
   pointer-events: none;
   z-index: 6;
   overflow: hidden;
-  mix-blend-mode: screen;
-  filter: drop-shadow(0 0 3px rgba(255, 185, 120, 0.35));
   background-repeat: no-repeat;
   background-size: 100% 200%;
   background-position: 0 100%;
   background-image:
-    radial-gradient(6px 6px at 16% 80%, rgba(255, 222, 170, 0.80) 0%, rgba(255, 180, 112, 0.34) 36%, transparent 72%),
-    radial-gradient(4px 4px at 30% 58%, rgba(255, 232, 188, 0.85) 0%, rgba(255, 188, 120, 0.36) 32%, transparent 70%),
-    radial-gradient(7px 7px at 46% 86%, rgba(255, 196, 130, 0.60) 0%, rgba(255, 160, 98, 0.26) 40%, transparent 74%),
-    radial-gradient(4px 4px at 58% 62%, rgba(255, 226, 176, 0.80) 0%, rgba(255, 184, 116, 0.34) 32%, transparent 70%),
-    radial-gradient(6px 6px at 72% 82%, rgba(255, 204, 140, 0.64) 0%, rgba(255, 166, 102, 0.28) 38%, transparent 72%),
-    radial-gradient(3px 3px at 84% 60%, rgba(255, 234, 192, 0.85) 0%, rgba(255, 190, 122, 0.36) 30%, transparent 68%),
-    radial-gradient(5px 5px at 92% 84%, rgba(255, 210, 148, 0.68) 0%, rgba(255, 170, 106, 0.30) 36%, transparent 72%);
+    radial-gradient(3px 3px at 16% 80%, color-mix(in srgb, var(--bc-accent) 70%, transparent) 0%, transparent 70%),
+    radial-gradient(2px 2px at 30% 58%, color-mix(in srgb, var(--bc-accent) 80%, transparent) 0%, transparent 70%),
+    radial-gradient(3px 3px at 46% 86%, color-mix(in srgb, var(--bc-accent) 55%, transparent) 0%, transparent 70%),
+    radial-gradient(2px 2px at 58% 62%, color-mix(in srgb, var(--bc-accent) 75%, transparent) 0%, transparent 70%),
+    radial-gradient(3px 3px at 72% 82%, color-mix(in srgb, var(--bc-accent) 60%, transparent) 0%, transparent 70%),
+    radial-gradient(2px 2px at 84% 60%, color-mix(in srgb, var(--bc-accent) 80%, transparent) 0%, transparent 70%),
+    radial-gradient(3px 3px at 92% 84%, color-mix(in srgb, var(--bc-accent) 60%, transparent) 0%, transparent 70%);
   animation: cdx-ember-drift 18s linear infinite;
 }
 @keyframes cdx-ember-drift {
@@ -340,56 +314,77 @@ body.beneos-perf-mode .cdx-hero-journal::before { display: none; }
   100% { background-position: 0 -15%; opacity: 0; }
 }
 body.beneos-perf-mode .cdx-ember-field { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .cdx-ember-field { display: none; }
+}
 
 /* ---- Buttons ---------------------------------------------- */
 .beneos-codex .beneos-codex-creature .cdx-btn,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-btn {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 8px 14px;
-  background: rgba(20, 16, 10, 0.8);
-  border: 1px solid var(--cdx-line-soft, rgba(212, 168, 87, 0.22));
-  border-radius: 6px;
-  color: var(--cdx-ink, #f5e9cf);
-  font-family: "Cinzel", serif;
-  font-size: 12px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 32px;
+  padding: 0 12px;
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border-control);
+  border-radius: var(--bc-edge);
+  color: var(--bc-text);
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  transition: border-color var(--bc-dur-fast) var(--bc-ease), background-color var(--bc-dur-fast) var(--bc-ease);
 }
 .beneos-codex .beneos-codex-creature .cdx-btn:hover,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-btn:hover {
-  border-color: var(--cdx-line-bright, rgba(240, 199, 114, 0.55));
-  background: rgba(40, 26, 16, 0.9);
-  box-shadow: 0 0 12px rgba(240, 199, 114, 0.22);
+  border-color: var(--bc-accent);
+  background: var(--bc-card-hover);
 }
-.beneos-codex .beneos-codex-creature .cdx-btn-primary,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-btn-primary {
-  background: linear-gradient(180deg, #f0c772, #b89146);
-  border-color: #f0c772;
-  color: #2a1f10;
-  font-weight: 700;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18) inset,
-              0 0 14px rgba(240, 199, 114, 0.32);
+.beneos-codex .beneos-codex-creature .cdx-btn:active,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-btn:active {
+  background: var(--bc-bg-pressed);
 }
-.beneos-codex .beneos-codex-creature .cdx-btn-primary:hover,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-btn-primary:hover {
-  background: linear-gradient(180deg, #f5d28a, #c79a4f);
-  border-color: #f5d28a;
-  color: #2a1f10;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.28) inset,
-              0 0 22px rgba(240, 199, 114, 0.5);
+.beneos-codex .beneos-codex-creature .cdx-btn:focus-visible,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-btn:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
+}
+.beneos-codex .beneos-codex-creature .cdx-btn:disabled,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-btn:disabled {
+  color: var(--bc-text-dim);
+  border-color: var(--bc-border);
+  background: var(--bc-card);
+  cursor: not-allowed;
+}
+/* .cdx-btn-primary (View PDF / Download PDF) is a default button now: the one
+   gold action of the codex header is Open Actor (COL-05, MUS-08). */
+/* The one gold action of the codex header and of the autopilot header. */
+.beneos-codex .beneos-codex-creature .cdx-hero-actions .cdx-btn[data-action="cdx-open-actor"],
+.beneos-creature-codex-window .beneos-codex-creature .cdx-hero-actions .cdx-btn[data-action="cdx-open-actor"],
+.beneos-combat-autopilot-window .beneos-codex-creature .cdx-hero-actions .cdx-btn[data-action="cdx-open-actor"] {
+  background: var(--bc-highlight);
+  border-color: var(--bc-highlight);
+  color: var(--bc-text-on-accent);
+  font-weight: 600;
+}
+.beneos-codex .beneos-codex-creature .cdx-hero-actions .cdx-btn[data-action="cdx-open-actor"]:hover,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-hero-actions .cdx-btn[data-action="cdx-open-actor"]:hover,
+.beneos-combat-autopilot-window .beneos-codex-creature .cdx-hero-actions .cdx-btn[data-action="cdx-open-actor"]:hover {
+  background: var(--bc-highlight-strong);
+  border-color: var(--bc-highlight-strong);
+}
+.beneos-codex .beneos-codex-creature .cdx-hero-actions .cdx-btn[data-action="cdx-open-actor"]:active,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-hero-actions .cdx-btn[data-action="cdx-open-actor"]:active,
+.beneos-combat-autopilot-window .beneos-codex-creature .cdx-hero-actions .cdx-btn[data-action="cdx-open-actor"]:active {
+  border-color: var(--bc-text);
 }
 .beneos-codex .beneos-codex-creature .cdx-btn-danger,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-btn-danger {
-  border-color: rgba(176, 48, 48, 0.55);
-  color: #ffb3b3;
+  color: var(--bc-error);
 }
 .beneos-codex .beneos-codex-creature .cdx-btn-danger:hover,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-btn-danger:hover {
-  background: rgba(176, 48, 48, 0.18);
-  border-color: rgba(176, 48, 48, 0.85);
-  box-shadow: 0 0 14px rgba(176, 48, 48, 0.35);
+  background: var(--bc-error-bg);
+  border-color: var(--bc-error);
 }
 
 /* ---- Tabs ------------------------------------------------- */
@@ -398,106 +393,98 @@ body.beneos-perf-mode .cdx-ember-field { display: none; }
   display: flex;
   gap: 4px;
   padding: 0 18px;
-  background: rgba(0, 0, 0, 0.4);
-  /* Dark (non-gold) divider so the solid Tactical-Guide button at the right
-     edge does not get a stray gold stripe along its bottom. */
-  border-bottom: 1px solid rgba(0, 0, 0, 0.35);
+  /* Scrim over the journal splash that runs down behind the bar. */
+  background: var(--bc-scrim-75);
+  border-bottom: 1px solid var(--bc-border);
   flex-shrink: 0;
   overflow-x: auto;
-  /* Sit above the header journal splash (which runs down behind the bar)
-     so the tabs paint over it and stay clickable. The bar is semi-transparent
-     so the image still shows through, dimmed. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--bc-border-control) transparent;
+  /* Sit above the header journal splash so the tabs paint over it and stay
+     clickable. */
   position: relative;
   z-index: 5;
 }
 .beneos-codex .beneos-codex-creature .cdx-tab,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tab {
   display: inline-flex; align-items: center; gap: 8px;
-  padding: 14px 16px 13px;
+  padding: 14px 16px 12px;
   background: transparent;
   border: none;
   border-radius: 0;
-  border-bottom: 3px solid transparent;
-  color: var(--cdx-ink-muted, #8a7c63);
-  font-family: "Geist", sans-serif;
-  font-size: 12px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  border-bottom: 2px solid transparent;
+  color: var(--bc-text-muted);
+  font-family: var(--bc-font-ui);
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
 }
 .beneos-codex .beneos-codex-creature .cdx-tab:hover,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-tab:hover { color: var(--cdx-ink-secondary, #c8b896); }
-/* Standalone tab (Tactical Guide): a real, solid gold button set apart at
-   the right end of the bar, matching the primary call-to-action style. */
+.beneos-creature-codex-window .beneos-codex-creature .cdx-tab:hover { color: var(--bc-text); }
+/* Standalone tab (Tactical Guide): set apart at the right end of the bar by
+   a hairline, otherwise a normal tab (no gold, COL-05). */
 .beneos-codex .beneos-codex-creature .cdx-tab-standalone,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tab-standalone {
   margin-left: auto;
-  margin-right: -18px;     /* cancel the tab bar's right padding → flush to the box edge */
+  margin-right: -18px;     /* cancel the tab bar's right padding, flush to the box edge */
   align-self: stretch;     /* fill the full height of the tab bar */
-  padding: 14px 18px 13px; /* match the normal tabs so the button spans full height */
+  padding: 14px 18px 12px;
   border: none;
-  border-left: 1px solid #d4a857;
-  border-bottom: 3px solid transparent; /* gold runs behind it down to the bar's bottom edge */
-  border-radius: 0;        /* straight edges */
-  background: linear-gradient(180deg, #f0c772, #b89146);
-  color: #2a1f10;
-  font-weight: 700;
-  /* Top-only inset highlight, NO outer glow — an outer glow bleeds onto the
-     dark content below and reads as a stray bottom stripe. */
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  border-left: 1px solid var(--bc-border);
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
 }
 .beneos-codex .beneos-codex-creature .cdx-tab-standalone:hover,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tab-standalone:hover {
-  background: linear-gradient(180deg, #f5d28a, #c79a4f);
-  border-left-color: #f5d28a;
-  color: #2a1f10;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  background: var(--bc-card);
+  color: var(--bc-text);
 }
 .beneos-codex .beneos-codex-creature .cdx-tab.active:not(.cdx-tab-standalone),
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tab.active:not(.cdx-tab-standalone) {
-  color: var(--cdx-gold-bright, #f0c772);
-  border-bottom-color: var(--cdx-gold, #d4a857);
+  color: var(--bc-text);
+  border-bottom-color: var(--bc-accent);
 }
-/* Active Tactical-Guide button: stays gold (no green) and gains a soft yellow
-   stroke shine. Extra class (.cdx-tab.cdx-tab-standalone.active) lifts the
-   specificity above .cdx-tab.active (gold underline) and .cdx-tab:focus
-   (box-shadow:none), so neither leaves a stray light line. */
+/* Active Tactical-Guide tab: same accent underline as the other tabs. The
+   extra class lifts specificity above app.css's border reset, hence the
+   !important on the two properties it overrides. */
 .beneos-codex .beneos-codex-creature .cdx-tab.cdx-tab-standalone.active,
 .beneos-codex .beneos-codex-creature .cdx-tab.cdx-tab-standalone.active:hover,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tab.cdx-tab-standalone.active,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tab.cdx-tab-standalone.active:hover {
-  background: linear-gradient(180deg, #f5d489, #c99a4a);
-  color: #2a1f10;
-  /* Active = just a brighter gold gradient. No outer glow / ring → no yellow
-     stripe at the bottom. !important still beats app.css's gold-border reset. */
-  border-bottom-color: transparent !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32) !important;
+  background: transparent;
+  color: var(--bc-text);
+  border-bottom-color: var(--bc-accent) !important;
+  box-shadow: none !important;
 }
-.beneos-codex .beneos-codex-creature .cdx-tab:focus:not(.cdx-tab-standalone),
-.beneos-creature-codex-window .beneos-codex-creature .cdx-tab:focus:not(.cdx-tab-standalone),
-.beneos-codex .beneos-codex-creature .cdx-tab:focus-visible:not(.cdx-tab-standalone),
-.beneos-creature-codex-window .beneos-codex-creature .cdx-tab:focus-visible:not(.cdx-tab-standalone) {
+.beneos-codex .beneos-codex-creature .cdx-tab:focus:not(:focus-visible),
+.beneos-creature-codex-window .beneos-codex-creature .cdx-tab:focus:not(:focus-visible) {
   outline: none; box-shadow: none;
+}
+/* Inside the scrolling tab bar an outer offset would be clipped, so the
+   focus ring sits on the inner edge. */
+.beneos-codex .beneos-codex-creature .cdx-tab:focus-visible,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-tab:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: -2px;
+  box-shadow: none;
 }
 .beneos-codex .beneos-codex-creature .cdx-tab-count,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tab-count {
   display: inline-grid; place-items: center;
-  min-width: 18px; height: 16px;
+  min-width: 18px; height: 18px;
   padding: 0 5px;
-  background: rgba(212, 168, 87, 0.12);
-  border: 1px solid var(--cdx-line-soft, rgba(212, 168, 87, 0.22));
-  border-radius: 8px;
-  font-size: 10px;
+  background: var(--bc-card-hover);
+  border-radius: var(--bc-edge);
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
-  color: var(--cdx-ink-secondary, #c8b896);
+  color: var(--bc-text-muted);
 }
 .beneos-codex .beneos-codex-creature .cdx-tab.active .cdx-tab-count,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tab.active .cdx-tab-count {
-  background: rgba(240, 199, 114, 0.18);
-  border-color: rgba(240, 199, 114, 0.55);
-  color: var(--cdx-gold-bright, #f0c772);
+  color: var(--bc-text);
 }
 
 /* ---- Body ------------------------------------------------- */
@@ -505,6 +492,8 @@ body.beneos-perf-mode .cdx-ember-field { display: none; }
 .beneos-creature-codex-window .beneos-codex-creature .cdx-creature-body {
   flex: 1; min-height: 0; overflow-y: auto;
   padding: 0 0 36px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bc-border-control) transparent;
 }
 /* Paywall: locked creatures keep the tab bar visible but inert, and clip the
    body so the blurred teaser + centered Locked overlay stay in the visible
@@ -514,15 +503,24 @@ body.beneos-perf-mode .cdx-ember-field { display: none; }
    of switching tabs. So NO pointer-events:none here. */
 @keyframes beneosDeniedPulse {
   0%, 100% { transform: scale(1); }
-  30%      { transform: scale(1.06); }
+  30%      { transform: scale(1.04); }
   60%      { transform: scale(0.99); }
 }
-.beneos-paywall-card.is-denied { animation: beneosDeniedPulse 0.5s ease; }
+.beneos-paywall-card.is-denied { animation: beneosDeniedPulse 300ms var(--bc-ease); }
+/* Denied feedback on the Join button: a short outline flash in the error
+   colour instead of a coloured glow (COL-14). */
 @keyframes beneosDeniedGlow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(249, 104, 84, 0); }
-  50%      { box-shadow: 0 0 16px 3px rgba(249, 104, 84, 0.7); }
+  0%, 100% { outline-color: transparent; }
+  50%      { outline-color: var(--bc-error); }
 }
-.beneos-paywall-join.is-denied-glow { animation: beneosDeniedGlow 0.8s ease; }
+.beneos-paywall-join.is-denied-glow {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  animation: beneosDeniedGlow 0.6s var(--bc-ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .beneos-paywall-card.is-denied { animation: none; }
+}
 .beneos-codex .beneos-codex-creature .cdx-creature-body.is-locked,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-creature-body.is-locked { overflow: hidden; }
 .beneos-codex .beneos-codex-creature .cdx-section,
@@ -531,57 +529,126 @@ body.beneos-perf-mode .cdx-ember-field { display: none; }
 }
 .beneos-codex .beneos-codex-creature .cdx-h,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-h {
-  margin: 0 0 14px;
+  margin: 0 0 16px;
 }
-/* M8.3.43: a section heading that follows earlier content (e.g. the Combat
-   Theater "Death" header after the ability-prompt grid) sat flush against the
-   block above it. Give every non-first heading inside a section clear top
+/* M8.3.43: a section heading that follows earlier content gets clear top
    separation so the sub-sections read as distinct. */
 .beneos-codex .beneos-codex-creature .cdx-section > * + .cdx-h,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-section > * + .cdx-h {
-  margin-top: 26px;
+  margin-top: 32px;
 }
+/* Main heading (4.14, TXV-01): gold bar 3px x 1.05em, 12px gap, title 18px. */
 .beneos-codex .beneos-codex-creature .cdx-h h2,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-h h2,
 .beneos-codex .beneos-codex-creature .cdx-h h3,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-h h3 {
-  font-family: "Cinzel", serif;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--bc-font-ui);
   font-size: 18px;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  line-height: 1.3;
   margin: 0;
-  color: var(--cdx-ink, #f5e9cf);
+  color: var(--bc-text);
+  border: 0;
 }
+.beneos-codex .beneos-codex-creature .cdx-h:not(.small) h2::before,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-h:not(.small) h2::before,
+.beneos-codex .beneos-codex-creature .cdx-h:not(.small) h3::before,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-h:not(.small) h3::before {
+  content: "";
+  width: 3px;
+  height: 1.05em;
+  background: var(--bc-highlight);
+  border-radius: 0;
+  flex: none;
+}
+/* Small heading (Allies, Tags): a subsection, no bar. */
 .beneos-codex .beneos-codex-creature .cdx-h.small h3,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-h.small h3 { font-size: 14px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--cdx-gold-soft, #b89146); }
+.beneos-creature-codex-window .beneos-codex-creature .cdx-h.small h3 { font-size: 16px; color: var(--bc-text); }
 .beneos-codex .beneos-codex-creature .cdx-h p,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-h p {
-  font-size: 13px;
-  color: var(--cdx-ink-muted, #8a7c63);
+  font-size: 14px;
+  color: var(--bc-text-muted);
   margin: 4px 0 0;
+  padding-left: 15px;
 }
+.beneos-codex .beneos-codex-creature .cdx-h.small p,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-h.small p { padding-left: 0; }
+/* Read-aloud text: plain reading text, no box (TXV-03). */
 .beneos-codex .beneos-codex-creature .cdx-blockquote,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-blockquote {
-  background: rgba(0, 0, 0, 0.25);
-  border-left: 3px solid var(--cdx-gold, #d4a857);
-  padding: 14px 18px;
-  border-radius: 4px;
-  font-size: 14px;
+  background: none;
+  border: 0;
+  padding: 0;
+  border-radius: 0;
+  font-size: 16px;
   font-style: normal;
   line-height: 1.6;
-  color: var(--cdx-ink, #f5e9cf);
+  max-width: 68ch;
+  color: var(--bc-text);
   margin: 0 0 14px;
 }
-.beneos-codex .beneos-codex-creature .cdx-blockquote-dramatic,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-blockquote-dramatic { border-left-color: rgba(176, 48, 48, 0.6); }
-.beneos-codex .beneos-codex-creature .cdx-blockquote-death   ,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-blockquote-death    { border-left-color: rgba(176, 48, 48, 0.85); background: rgba(40, 10, 10, 0.4); }
 .beneos-codex .beneos-codex-creature .cdx-empty,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-empty {
-  font-size: 13px;
-  color: var(--cdx-ink-muted, #8a7c63);
+  font-size: 14px;
+  color: var(--bc-text-muted);
   padding: 16px 0;
   font-style: normal;
+}
+
+/* ---- Interactive rows (4.14, TXV-03/04) --------------------- */
+/* Shared row behaviour: no box, hairline between rows, hover and keyboard
+   focus change the surface and shift the content 4px right. */
+.beneos-codex-creature .cdx-ally-list,
+.beneos-codex-creature .cdx-hooks,
+.beneos-codex-creature .cdx-foreshadow,
+.beneos-codex-creature .cdx-prompts-grid,
+.beneos-codex-creature .cdx-ability-cards,
+.beneos-codex-creature .cdx-ap-strategy,
+.beneos-codex-creature .cdx-ap-rounds,
+.beneos-codex-creature .cdx-tac-section-body {
+  border-top: 1px solid var(--bc-border);
+}
+.beneos-codex-creature .cdx-ally-link > *,
+.beneos-codex-creature .cdx-hook > *,
+.beneos-codex-creature .cdx-foresee > *,
+.beneos-codex-creature .cdx-prompt > :not(.cdx-prompt-hover-card),
+.beneos-codex-creature .cdx-ability-card > *,
+.beneos-codex-creature .cdx-ap-strat-block > *,
+.beneos-codex-creature .cdx-ap-round > *,
+.beneos-codex-creature .cdx-tac-entry > * {
+  transition: transform var(--bc-dur-base) var(--bc-ease);
+}
+.beneos-codex-creature .cdx-ally-link:hover > *,
+.beneos-codex-creature .cdx-ally-link:focus-visible > *,
+.beneos-codex-creature .cdx-hook:hover > *,
+.beneos-codex-creature .cdx-hook:focus-within > *,
+.beneos-codex-creature .cdx-foresee:hover > *,
+.beneos-codex-creature .cdx-foresee:focus-within > *,
+.beneos-codex-creature .cdx-prompt:hover > :not(.cdx-prompt-hover-card),
+.beneos-codex-creature .cdx-prompt:focus-within > :not(.cdx-prompt-hover-card),
+.beneos-codex-creature .cdx-ability-card:hover > *,
+.beneos-codex-creature .cdx-ability-card:focus-within > *,
+.beneos-codex-creature .cdx-ap-strat-block:hover > *,
+.beneos-codex-creature .cdx-ap-round:hover > *,
+.beneos-codex-creature .cdx-ap-round:focus-within > *,
+.beneos-codex-creature .cdx-tac-entry:hover > *,
+.beneos-codex-creature .cdx-tac-entry:focus-within > * {
+  transform: translateX(4px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .beneos-codex-creature .cdx-ally-link > *,
+  .beneos-codex-creature .cdx-hook > *,
+  .beneos-codex-creature .cdx-foresee > *,
+  .beneos-codex-creature .cdx-prompt > *,
+  .beneos-codex-creature .cdx-ability-card > *,
+  .beneos-codex-creature .cdx-ap-strat-block > *,
+  .beneos-codex-creature .cdx-ap-round > *,
+  .beneos-codex-creature .cdx-tac-entry > * {
+    transform: none !important;
+  }
 }
 
 /* ---- Overview tab ----------------------------------------- */
@@ -589,13 +656,13 @@ body.beneos-perf-mode .cdx-ember-field { display: none; }
 .beneos-creature-codex-window .beneos-codex-creature .cdx-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 22px;
-  margin-top: 18px;
+  gap: 24px;
+  margin-top: 24px;
 }
 .beneos-codex .beneos-codex-creature .cdx-ally-list,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ally-list {
   list-style: none; padding: 0; margin: 0;
-  display: flex; flex-direction: column; gap: 8px;
+  display: flex; flex-direction: column; gap: 0;
 }
 .beneos-codex .beneos-codex-creature .cdx-ally-list li,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ally-list li {
@@ -605,40 +672,38 @@ body.beneos-perf-mode .cdx-ember-field { display: none; }
 }
 .beneos-codex-creature .cdx-ally-link {
   display: flex; align-items: center; gap: 10px;
-  padding: 6px 10px;
+  min-height: 40px;
+  padding: 8px 12px;
   width: 100%;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid var(--cdx-line-faint, rgba(212, 168, 87, 0.10));
-  border-radius: 4px;
-  color: inherit;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--bc-border);
+  border-radius: 0;
+  color: var(--bc-text);
   font: inherit;
+  font-size: 14px;
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  transition: background-color var(--bc-dur-fast) var(--bc-ease);
 }
-.beneos-codex-creature .cdx-ally-link:hover {
-  background: rgba(40, 26, 16, 0.5);
-  border-color: var(--cdx-line-strong, rgba(212, 168, 87, 0.36));
-  transform: translateX(2px);
+.beneos-codex-creature .cdx-ally-link:hover,
+.beneos-codex-creature .cdx-ally-link:focus-visible {
+  background: var(--bc-card);
+}
+.beneos-codex-creature .cdx-ally-link:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: -2px;
 }
 .beneos-codex-creature .cdx-ally-name { flex: 1 1 auto; }
-.beneos-codex-creature .cdx-ally-icon {
-  color: var(--cdx-gold-soft, #b89146);
-  opacity: 0.6;
-  transition: opacity 0.15s ease;
-  font-size: 10px;
-}
-.beneos-codex-creature .cdx-ally-link:hover .cdx-ally-icon { opacity: 1; color: var(--cdx-gold-bright, #f0c772); }
 .beneos-codex .beneos-codex-creature .cdx-ally-dot,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ally-dot {
-  width: 8px; height: 8px;
+  width: 6px; height: 6px;
   border-radius: 50%;
-  background: var(--cdx-gold, #d4a857);
-  box-shadow: 0 0 6px var(--cdx-gold-glow, rgba(240, 199, 114, 0.35));
+  background: var(--bc-border-control);
 }
 .beneos-codex .beneos-codex-creature .cdx-tags-grid,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tags-grid {
-  display: flex; flex-direction: column; gap: 10px;
+  display: flex; flex-direction: column; gap: 12px;
 }
 .beneos-codex .beneos-codex-creature .cdx-tag-row,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tag-row {
@@ -646,31 +711,31 @@ body.beneos-perf-mode .cdx-ember-field { display: none; }
 }
 .beneos-codex .beneos-codex-creature .cdx-tag-label,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tag-label {
-  font-family: "Geist", sans-serif;
-  font-size: 9.5px;
-  letter-spacing: 0.20em;
-  text-transform: uppercase;
-  color: var(--cdx-ink-muted, #8a7c63);
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--bc-text-muted);
 }
 .beneos-codex .beneos-codex-creature .cdx-tag-list,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tag-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .beneos-codex .beneos-codex-creature .cdx-tag,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tag {
   display: inline-block;
-  padding: 3px 9px;
-  background: rgba(212, 168, 87, 0.10);
-  border: 1px solid var(--cdx-line-soft, rgba(212, 168, 87, 0.22));
-  border-radius: 999px;
-  font-size: 11px;
-  color: var(--cdx-ink-secondary, #c8b896);
+  padding: 2px 6px;
+  background: var(--bc-card-hover);
+  border: 0;
+  border-radius: var(--bc-edge);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--bc-text);
 }
 
 /* ---- Hooks tab -------------------------------------------- */
 .beneos-codex .beneos-codex-creature .cdx-hooks,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-hooks {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 12px;
+  grid-template-columns: 1fr;
+  gap: 0;
 }
 .beneos-codex .beneos-codex-creature .cdx-hook,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-hook {
@@ -678,125 +743,132 @@ body.beneos-perf-mode .cdx-ember-field { display: none; }
   display: grid;
   grid-template-columns: 44px 1fr;
   gap: 12px;
-  padding: 12px 14px;
-  background: linear-gradient(180deg, rgba(34, 26, 18, 0.6), rgba(26, 20, 14, 0.6));
-  border: 1px solid var(--cdx-line-soft, rgba(212, 168, 87, 0.22));
-  border-left: 3px solid var(--cdx-gold, #d4a857);
-  border-radius: 6px;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  padding: 16px 12px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--bc-border);
+  border-radius: 0;
+  transition: background-color var(--bc-dur-fast) var(--bc-ease);
 }
-.beneos-codex-creature .cdx-hook:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
-  border-color: var(--cdx-line-bright, rgba(240, 199, 114, 0.55));
+.beneos-codex-creature .cdx-hook:hover,
+.beneos-codex-creature .cdx-hook:focus-within {
+  background: var(--bc-card);
 }
+/* Row actions are always visible (TXV-05), hover only strengthens them. */
 .beneos-codex-creature .cdx-hook-actions {
   position: absolute;
   top: 8px; right: 8px;
-  display: flex; gap: 4px;
-  opacity: 0;
-  transform: translateY(-4px);
-  transition: opacity 0.18s ease, transform 0.18s ease;
-}
-.beneos-codex-creature .cdx-hook:hover .cdx-hook-actions,
-.beneos-codex-creature .cdx-hook:focus-within .cdx-hook-actions {
-  opacity: 1;
-  transform: translateY(0);
+  display: flex; gap: 16px;
 }
 .beneos-codex-creature .cdx-hook-action {
-  width: 26px; height: 26px;
+  min-width: 24px; min-height: 24px;
   display: grid; place-items: center;
-  background: rgba(20, 16, 10, 0.85);
-  border: 1px solid var(--cdx-line-soft, rgba(212, 168, 87, 0.22));
-  border-radius: 4px;
-  color: var(--cdx-gold-bright, #f0c772);
-  font-size: 10px;
+  padding: 4px 0;
+  background: none;
+  border: 0;
+  border-radius: var(--bc-edge);
+  color: var(--bc-text-muted);
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: color var(--bc-dur-fast) var(--bc-ease);
 }
-.beneos-codex-creature .cdx-hook-action:hover {
-  background: rgba(40, 26, 16, 1);
-  border-color: var(--cdx-line-bright, rgba(240, 199, 114, 0.55));
-  box-shadow: 0 0 8px rgba(240, 199, 114, 0.35);
+.beneos-codex-creature .cdx-hook-action:hover { color: var(--bc-text); }
+.beneos-codex-creature .cdx-hook-action:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
 }
 .beneos-codex .beneos-codex-creature .cdx-hook-tier,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-hook-tier {
-  display: grid; place-items: center;
-  width: 44px; height: 44px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 55%, rgba(240, 199, 114, 0.25), rgba(0, 0, 0, 0.5) 75%);
-  border: 1px solid rgba(240, 199, 114, 0.45);
-  font-family: "Cinzel", serif;
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--cdx-gold-bright, #f0c772);
+  display: grid; place-items: start center;
+  width: 44px;
+  font-family: var(--bc-font-ui);
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--bc-text-muted);
 }
 .beneos-codex .beneos-codex-creature .cdx-hook-title,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-hook-title {
-  font-family: "Cinzel", serif;
-  font-size: 14px;
-  margin: 0 0 4px;
-  color: var(--cdx-ink, #f5e9cf);
+  font-family: var(--bc-font-ui);
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 6px;
+  color: var(--bc-text);
+  border: 0;
 }
 .beneos-codex .beneos-codex-creature .cdx-hook-text,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-hook-text {
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--cdx-ink-secondary, #c8b896);
+  font-size: 16px;
+  line-height: 1.6;
+  max-width: 68ch;
+  color: var(--bc-text);
   margin: 0;
 }
 
 /* ---- Foreshadow tab --------------------------------------- */
 .beneos-codex .beneos-codex-creature .cdx-foreshadow,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-foreshadow {
-  display: flex; flex-direction: column; gap: 10px;
+  display: flex; flex-direction: column; gap: 0;
 }
 .beneos-codex .beneos-codex-creature .cdx-foresee,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-foresee {
   display: grid;
   grid-template-columns: 48px 1fr;
-  gap: 14px;
-  padding: 12px 14px;
-  background: rgba(20, 16, 10, 0.5);
-  border: 1px solid var(--cdx-line-soft, rgba(212, 168, 87, 0.22));
-  border-radius: 6px;
+  gap: 12px;
+  padding: 16px 12px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--bc-border);
+  border-radius: 0;
   text-align: left;
+  transition: background-color var(--bc-dur-fast) var(--bc-ease);
 }
+.beneos-codex-creature .cdx-foresee:hover,
+.beneos-codex-creature .cdx-foresee:focus-within { background: var(--bc-card); }
 .beneos-codex-creature .cdx-foresee-body { text-align: left; }
 .beneos-codex .beneos-codex-creature .cdx-foresee-num,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-foresee-num {
-  font-family: "Cinzel", serif;
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--cdx-gold-bright, #f0c772);
-  text-shadow: 0 0 8px var(--cdx-gold-glow, rgba(240, 199, 114, 0.35));
-  line-height: 1;
+  font-family: var(--bc-font-ui);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--bc-text-muted);
+  line-height: 1.3;
 }
 .beneos-codex .beneos-codex-creature .cdx-foresee-title,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-foresee-title {
-  font-family: "Cinzel", serif;
-  font-size: 14px;
-  margin: 0 0 4px;
+  font-family: var(--bc-font-ui);
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 6px;
+  border: 0;
 }
 .beneos-codex .beneos-codex-creature .cdx-foresee-text,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-foresee-text {
-  font-size: 13px; line-height: 1.5;
-  color: var(--cdx-ink-secondary, #c8b896);
+  font-size: 16px; line-height: 1.6;
+  max-width: 68ch;
+  color: var(--bc-text);
   margin: 0;
 }
 .beneos-codex .beneos-codex-creature .cdx-check,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-check {
   margin-top: 10px;
-  padding: 8px 10px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px dashed var(--cdx-line-soft, rgba(212, 168, 87, 0.22));
-  border-radius: 4px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
 }
 .beneos-codex .beneos-codex-creature .cdx-check-header,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-check-header {
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  min-height: 24px;
   cursor: pointer;
   list-style: none;
+}
+.beneos-codex .beneos-codex-creature .cdx-check-header:focus-visible,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-check-header:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
 }
 .beneos-codex .beneos-codex-creature .cdx-check-header::-webkit-details-marker,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-check-header::-webkit-details-marker {
@@ -808,13 +880,13 @@ body.beneos-perf-mode .cdx-ember-field { display: none; }
   display: inline-grid;
   place-items: center;
   width: 16px; height: 16px;
-  border: 1px solid var(--cdx-line-soft, rgba(212, 168, 87, 0.36));
-  border-radius: 4px;
-  color: var(--cdx-gold-bright, #f0c772);
-  font-family: "Geist", sans-serif;
+  border: 1px solid var(--bc-border-control);
+  border-radius: var(--bc-edge);
+  color: var(--bc-text-muted);
+  font-family: var(--bc-font-ui);
   font-size: 13px;
   line-height: 1;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
 }
 .beneos-codex .beneos-codex-creature .cdx-check[open] > .cdx-check-header::before,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-check[open] > .cdx-check-header::before {
@@ -822,86 +894,84 @@ body.beneos-perf-mode .cdx-ember-field { display: none; }
 }
 .beneos-codex .beneos-codex-creature .cdx-check-header:hover::before,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-check-header:hover::before {
-  color: var(--cdx-gold-bright, #f0c772);
-  border-color: var(--cdx-line-bright, rgba(240, 199, 114, 0.55));
+  color: var(--bc-text);
+  border-color: var(--bc-accent);
 }
 .beneos-codex .beneos-codex-creature .cdx-dc,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-dc {
   display: inline-block;
-  padding: 2px 8px;
-  background: rgba(176, 48, 48, 0.20);
-  border: 1px solid rgba(176, 48, 48, 0.55);
-  border-radius: 999px;
-  font-family: "Cinzel", serif;
-  font-size: 11px;
-  color: #ffb3b3;
-  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  background: var(--bc-card-hover);
+  border: 0;
+  border-radius: var(--bc-edge);
+  font-family: var(--bc-font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bc-text);
 }
 .beneos-codex .beneos-codex-creature .cdx-skill,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-skill {
   display: inline-block;
-  padding: 2px 8px;
-  background: rgba(120, 180, 255, 0.12);
-  border: 1px solid rgba(120, 180, 255, 0.35);
-  border-radius: 999px;
-  font-size: 11px;
-  color: #b6d4ff;
+  padding: 2px 6px;
+  background: var(--bc-card-hover);
+  border: 0;
+  border-radius: var(--bc-edge);
+  font-size: 12px;
+  color: var(--bc-text);
 }
 .beneos-codex .beneos-codex-creature .cdx-mod,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-mod {
-  font-size: 11px;
-  color: var(--cdx-ink-muted, #8a7c63);
+  font-size: 12px;
+  color: var(--bc-text-muted);
 }
 .beneos-codex .beneos-codex-creature .cdx-check-result,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-check-result {
   margin: 8px 0 0;
-  font-size: 12.5px;
-  color: var(--cdx-ink-secondary, #c8b896);
-  line-height: 1.5;
+  font-size: 14px;
+  max-width: 68ch;
+  color: var(--bc-text);
+  line-height: 1.55;
 }
 /* M8.3.43: ease the Foreshadowing DC-check open instead of the native instant
-   pop. The result text fades + slides down when the <details> is toggled via
-   the "+" marker. Closing stays instant (much less jarring than the open-pop).
-   Disabled in Performance Mode. */
+   pop. Closing stays instant. Disabled in Performance Mode and under reduced
+   motion. */
 .beneos-codex .beneos-codex-creature .cdx-check[open] > .cdx-check-result,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-check[open] > .cdx-check-result {
-  animation: cdx-check-reveal 0.34s ease-out;
+  animation: cdx-check-reveal var(--bc-dur-base) var(--bc-ease);
 }
 @keyframes cdx-check-reveal {
-  0%   { opacity: 0; transform: translateY(-6px); }
+  0%   { opacity: 0; transform: translateY(-4px); }
   100% { opacity: 1; transform: translateY(0); }
 }
 body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .beneos-codex-creature .cdx-check[open] > .cdx-check-result { animation: none; }
+}
 
 /* ---- Combat Theater tab ----------------------------------- */
 .beneos-codex .beneos-codex-creature .cdx-prompts,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-prompts { display: flex; flex-direction: column; gap: 10px; }
+.beneos-creature-codex-window .beneos-codex-creature .cdx-prompts { display: flex; flex-direction: column; gap: 0; }
 .beneos-codex .beneos-codex-creature .cdx-prompts-grid,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-prompts-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-@media (max-width: 720px) {
-  .beneos-codex .beneos-codex-creature .cdx-prompts-grid,
-  .beneos-creature-codex-window .beneos-codex-creature .cdx-prompts-grid {
-    grid-template-columns: 1fr;
-  }
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
 }
 .beneos-codex .beneos-codex-creature .cdx-prompt,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-prompt {
   position: relative;
-  padding: 12px 14px;
-  background: rgba(20, 16, 10, 0.6);
-  border: 1px solid var(--cdx-line-soft, rgba(212, 168, 87, 0.22));
-  border-radius: 6px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  padding: 14px 12px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--bc-border);
+  border-radius: 0;
+  transition: background-color var(--bc-dur-fast) var(--bc-ease);
 }
 .beneos-codex .beneos-codex-creature .cdx-prompt:hover,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-prompt:hover {
-  border-color: var(--cdx-line-bright, rgba(240, 199, 114, 0.6));
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(240, 199, 114, 0.22);
-  transform: translateY(-1px);
+.beneos-creature-codex-window .beneos-codex-creature .cdx-prompt:hover,
+.beneos-codex .beneos-codex-creature .cdx-prompt:focus-within,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-prompt:focus-within {
+  background: var(--bc-card);
   z-index: 3;
 }
 /* Clickable prompt head: tap the icon/name to reveal the summary card. */
@@ -909,28 +979,28 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
 .beneos-creature-codex-window .beneos-codex-creature .cdx-prompt-has-card .cdx-prompt-head {
   cursor: pointer;
 }
-/* Non-interactive summary card: shows the tokenized ability summary with
-   styled (non-clickable) chips. Absolutely positioned so it overlays
-   neighbours instead of reflowing the grid. Hidden until the prompt is
-   toggled open by a click, then fades in slowly. */
+/* Non-interactive summary card (popover): shows the tokenized ability summary
+   with styled (non-clickable) chips. Absolutely positioned so it overlays
+   neighbours instead of reflowing the list. Hidden until the prompt is
+   toggled open by a click. */
 .beneos-codex .beneos-codex-creature .cdx-prompt-hover-card,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-prompt-hover-card {
   opacity: 0;
   visibility: hidden;
   transform: translateY(-4px);
-  transition: opacity 0.35s ease, transform 0.35s ease;
+  transition: opacity var(--bc-dur-fast) var(--bc-ease), transform var(--bc-dur-base) var(--bc-ease), visibility 0s linear var(--bc-dur-fast);
   position: absolute;
   left: 12px; right: 12px;
   top: calc(100% - 4px);
   z-index: 5;
   padding: 10px 12px;
-  background: rgba(12, 9, 6, 0.97);
-  border: 1px solid var(--cdx-line-strong, rgba(212, 168, 87, 0.4));
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-  font-size: 12px;
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-edge);
+  box-shadow: var(--bc-shadow-pop);
+  font-size: 14px;
   line-height: 1.55;
-  color: var(--cdx-ink-secondary, #c8b896);
+  color: var(--bc-text);
 }
 .beneos-codex .beneos-codex-creature .cdx-prompt.cdx-prompt-open,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-prompt.cdx-prompt-open {
@@ -941,13 +1011,14 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
+  transition: opacity var(--bc-dur-fast) var(--bc-ease), transform var(--bc-dur-base) var(--bc-ease), visibility 0s;
 }
 /* Static (non-clickable) item chip used inside hover-cards. */
 .beneos-codex .beneos-codex-creature .cdx-chip-item-static,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-chip-item-static {
-  color: var(--cdx-gold-bright, #f0c772);
-  border-color: rgba(240, 199, 114, 0.45);
-  background: rgba(240, 199, 114, 0.10);
+  color: var(--bc-text);
+  border-color: transparent;
+  background: var(--bc-card-hover);
   cursor: default;
 }
 .beneos-codex .beneos-codex-creature .cdx-prompt-head,
@@ -957,72 +1028,81 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
 }
 .beneos-codex .beneos-codex-creature .cdx-prompt-marker,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-prompt-marker {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--cdx-gold, #d4a857);
-  box-shadow: 0 0 6px var(--cdx-gold-glow, rgba(240, 199, 114, 0.35));
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--bc-border-control);
   flex: 0 0 auto;
 }
 .beneos-codex .beneos-codex-creature .cdx-prompt-icon,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-prompt-icon {
   width: 28px; height: 28px;
+  aspect-ratio: 1 / 1;
   flex: 0 0 auto;
   object-fit: cover;
-  border-radius: 5px;
-  border: 1px solid rgba(240, 199, 114, 0.45);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6) inset;
+  border-radius: var(--bc-edge);
+  border: 1px solid var(--bc-border-on-media);
 }
 .beneos-codex .beneos-codex-creature .cdx-prompt-head h3,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-prompt-head h3 {
   margin: 0; flex: 1;
-  font-family: "Cinzel", serif;
-  font-size: 13px;
-  color: var(--cdx-ink, #f5e9cf);
+  font-family: var(--bc-font-ui);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--bc-text);
+  border: 0;
 }
 .beneos-codex .beneos-codex-creature .cdx-prompt-text,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-prompt-text {
-  font-size: 13px; line-height: 1.5;
-  color: var(--cdx-ink-secondary, #c8b896);
+  font-size: 16px; line-height: 1.6;
+  max-width: 68ch;
+  color: var(--bc-text);
   margin: 0;
 }
 
 /* ---- Tactics tab ------------------------------------------ */
+/* Sub navigation (General, Abilities, Autopilot) as a segmented control. */
 .beneos-codex .beneos-codex-creature .cdx-tactics-subs,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tactics-subs {
-  display: inline-flex; gap: 6px;
-  padding: 4px;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid var(--cdx-line-soft, rgba(212, 168, 87, 0.22));
-  border-radius: 6px;
-  margin-bottom: 16px;
+  display: inline-flex; gap: 2px;
+  padding: 2px;
+  background: var(--bc-bg);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-edge);
+  margin-bottom: 20px;
 }
 .beneos-codex .beneos-codex-creature .cdx-tactics-sub,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tactics-sub {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 12px;
+  min-height: 28px;
+  padding: 0 12px;
   background: transparent;
   border: none;
-  border-radius: 4px;
-  color: var(--cdx-ink-secondary, #c8b896);
-  font-family: "Cinzel", serif;
-  font-size: 11px;
-  letter-spacing: 0.08em;
+  border-radius: var(--bc-edge);
+  color: var(--bc-text-muted);
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background-color var(--bc-dur-fast) var(--bc-ease), color var(--bc-dur-fast) var(--bc-ease);
 }
 .beneos-codex .beneos-codex-creature .cdx-tactics-sub:hover,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-tactics-sub:hover { color: var(--cdx-ink, #f5e9cf); }
+.beneos-creature-codex-window .beneos-codex-creature .cdx-tactics-sub:hover { color: var(--bc-text); background: var(--bc-card); }
+.beneos-codex .beneos-codex-creature .cdx-tactics-sub:focus-visible,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-tactics-sub:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
+}
 .beneos-codex .beneos-codex-creature .cdx-tactics-sub.active,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tactics-sub.active {
-  background: linear-gradient(180deg, rgba(212, 168, 87, 0.22), rgba(212, 168, 87, 0.08));
-  color: var(--cdx-gold-bright, #f0c772);
-  box-shadow: 0 0 0 1px rgba(240, 199, 114, 0.18) inset;
+  background: var(--bc-card-hover);
+  color: var(--bc-text);
 }
 
-/* Tactical Guide — ordered sections (M8.3.14), masonry two columns (M8.3.15) */
+/* Tactical Guide, ordered sections (M8.3.14), masonry two columns (M8.3.15).
+   Each section is a main heading with the gold bar, its entries are rows. */
 .beneos-codex .beneos-codex-creature .cdx-tac-masonry,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tac-masonry {
   column-count: 2;
-  column-gap: 16px;
+  column-gap: 32px;
 }
 @media (max-width: 720px) {
   .beneos-codex .beneos-codex-creature .cdx-tac-masonry,
@@ -1035,55 +1115,70 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
   break-inside: avoid;
   display: inline-block;
   width: 100%;
-  margin: 0 0 16px;
-  padding: 12px 14px;
-  background: rgba(20, 16, 10, 0.45);
-  border: 1px solid var(--cdx-line-faint, rgba(212, 168, 87, 0.12));
-  border-radius: 6px;
+  margin: 0 0 28px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
 }
 .beneos-codex .beneos-codex-creature .cdx-tac-section-head h3,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-tac-section-head h3 {
-  font-family: "Cinzel", serif;
-  font-size: 13px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--cdx-gold-soft, #b89146);
-  margin: 0 0 10px;
-  padding-left: 12px;
-  border-left: 3px solid var(--cdx-gold, #d4a857);
+.beneos-creature-codex-window .beneos-codex-creature .cdx-tac-section-head h3,
+.beneos-codex .beneos-codex-creature .cdx-tac-phase-head h3,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-tac-phase-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--bc-font-ui);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--bc-text);
+  margin: 0 0 12px;
+  padding-left: 0;
+  border: 0;
 }
-/* Core Mechanics gets a stronger accent — it anchors the whole statblock. */
-.beneos-codex .beneos-codex-creature .cdx-tac-section-core .cdx-tac-section-head h3,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-tac-section-core .cdx-tac-section-head h3 {
-  color: var(--cdx-gold-bright, #f0c772);
-  border-left-width: 4px;
+.beneos-codex .beneos-codex-creature .cdx-tac-section-head h3::before,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-tac-section-head h3::before,
+.beneos-codex .beneos-codex-creature .cdx-tac-phase-head h3::before,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-tac-phase-head h3::before {
+  content: "";
+  width: 3px;
+  height: 1.05em;
+  background: var(--bc-highlight);
+  border-radius: 0;
+  flex: none;
 }
-/* Each entry reads as its own segment: slight indent + a quote-bar accent,
-   with a faint divider between consecutive segments (no long run-on text). */
 .beneos-codex .beneos-codex-creature .cdx-tac-entry,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tac-entry {
-  padding-left: 12px;
-  border-left: 2px solid var(--cdx-line-faint, rgba(212, 168, 87, 0.18));
+  padding: 12px;
+  border: 0;
+  border-bottom: 1px solid var(--bc-border);
+  transition: background-color var(--bc-dur-fast) var(--bc-ease);
 }
+.beneos-codex-creature .cdx-tac-entry:hover,
+.beneos-codex-creature .cdx-tac-entry:focus-within { background: var(--bc-card); }
 .beneos-codex .beneos-codex-creature .cdx-tac-entry + .cdx-tac-entry,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tac-entry + .cdx-tac-entry {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--cdx-line-faint, rgba(212, 168, 87, 0.12));
+  margin-top: 0;
+  padding-top: 12px;
+  border-top: 0;
 }
 .beneos-codex .beneos-codex-creature .cdx-tac-entry-head,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tac-entry-head {
-  font-family: "Cinzel", serif;
-  font-size: 13px;
-  color: var(--cdx-ink, #f5e9cf);
-  margin: 0 0 4px;
+  font-family: var(--bc-font-ui);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--bc-text);
+  margin: 0 0 6px;
+  border: 0;
 }
 .beneos-codex .beneos-codex-creature .cdx-tac-entry-text,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tac-entry-text {
   margin: 0;
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.6;
-  color: var(--cdx-ink-secondary, #c8b896);
+  max-width: 68ch;
+  color: var(--bc-text);
   text-align: left;
   overflow-wrap: anywhere;
 }
@@ -1091,40 +1186,19 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
 .beneos-codex .beneos-codex-creature .cdx-chip-item,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-chip-item {
   cursor: pointer;
-  color: var(--cdx-gold-bright, #f0c772);
-  border-color: rgba(240, 199, 114, 0.45);
-  background: rgba(240, 199, 114, 0.10);
-  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
-}
-.beneos-codex .beneos-codex-creature .cdx-chip-item::before,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-chip-item::before {
-  content: "\f0e7";
-  font-family: "Font Awesome 6 Free";
-  font-weight: 900;
-  font-size: 9px;
-  margin-right: 5px;
-  opacity: 0.8;
+  color: var(--bc-text);
+  border-color: var(--bc-border-control);
+  background: var(--bc-card-hover);
+  transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
 }
 .beneos-codex .beneos-codex-creature .cdx-chip-item:hover,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-chip-item:hover {
-  background: rgba(240, 199, 114, 0.22);
-  border-color: var(--cdx-line-bright, rgba(240, 199, 114, 0.7));
-  box-shadow: 0 0 10px rgba(240, 199, 114, 0.35);
+  background: var(--bc-bg-pressed);
+  border-color: var(--bc-accent);
 }
 
 .beneos-codex .beneos-codex-creature .cdx-tac-phase,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-tac-phase { margin-bottom: 18px; }
-.beneos-codex .beneos-codex-creature .cdx-tac-phase-head h3,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-tac-phase-head h3 {
-  font-family: "Cinzel", serif;
-  font-size: 13px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--cdx-gold-soft, #b89146);
-  margin: 0 0 8px;
-  padding-left: 12px;
-  border-left: 3px solid var(--cdx-gold, #d4a857);
-}
+.beneos-creature-codex-window .beneos-codex-creature .cdx-tac-phase { margin-bottom: 24px; }
 .beneos-codex .beneos-codex-creature .cdx-tac-list,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tac-list {
   list-style: none; margin: 0; padding-left: 0;
@@ -1133,70 +1207,62 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tac-item {
   position: relative;
   padding: 4px 0 4px 14px;
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: 16px;
+  line-height: 1.6;
 }
 .beneos-codex .beneos-codex-creature .cdx-tac-item::before,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tac-item::before {
   content: "";
   position: absolute;
-  left: 2px; top: 12px;
+  left: 2px; top: 16px;
   width: 6px; height: 1px;
   background: var(--tac-line-strong);
 }
 .beneos-codex .beneos-codex-creature .cdx-tac-item .cdx-tac-list,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-tac-item .cdx-tac-list { padding-left: 14px; margin-top: 4px; }
 .beneos-codex .beneos-codex-creature .cdx-tac-text,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-tac-text { color: var(--cdx-ink-secondary, #c8b896); }
+.beneos-creature-codex-window .beneos-codex-creature .cdx-tac-text { color: inherit; }
 
 /* ---- Chips (tactical guide inline) ------------------------ */
+/* Solid dark chips without category tints (COL-15, COL-17). Interactive
+   chips (roll, ability) carry a control border. */
 .beneos-codex .beneos-codex-creature .cdx-chip,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-chip {
   display: inline-block;
-  padding: 1px 7px;
+  padding: 0 6px;
   margin: 0 2px;
-  border: 1px solid var(--cdx-line-soft, rgba(212, 168, 87, 0.22));
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.3);
-  font-family: "Cinzel", serif;
-  font-size: 11.5px;
-  color: var(--cdx-ink, #f5e9cf);
+  border: 1px solid transparent;
+  border-radius: var(--bc-edge);
+  background: var(--bc-card-hover);
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.6;
+  color: var(--bc-text);
   vertical-align: baseline;
 }
 .beneos-codex .beneos-codex-creature .cdx-chip-rollable,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-chip-rollable {
   cursor: pointer;
-  background: rgba(212, 168, 87, 0.12);
+  border-color: var(--bc-border-control);
+  transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
 }
 .beneos-codex .beneos-codex-creature .cdx-chip-rollable:hover,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-chip-rollable:hover {
-  background: rgba(212, 168, 87, 0.25);
-  border-color: var(--cdx-line-bright, rgba(240, 199, 114, 0.55));
+  background: var(--bc-bg-pressed);
+  border-color: var(--bc-accent);
 }
-.beneos-codex .beneos-codex-creature .cdx-chip-dice   ,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-chip-dice    { color: #f5d57a; border-color: rgba(245, 213, 122, 0.45); }
-.beneos-codex .beneos-codex-creature .cdx-chip-dc     ,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-chip-dc      { color: #ffb3b3; border-color: rgba(176, 48, 48, 0.55); }
-.beneos-codex .beneos-codex-creature .cdx-chip-tohit  ,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-chip-tohit   { color: #ffd28a; border-color: rgba(240, 199, 114, 0.55); }
-.beneos-codex .beneos-codex-creature .cdx-chip-feature,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-chip-feature { color: #b6d4ff; border-color: rgba(120, 180, 255, 0.45); }
-.beneos-codex .beneos-codex-creature .cdx-chip-condition,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-chip-condition { color: #ff9a82; border-color: rgba(255, 120, 90, 0.6); background: rgba(255, 120, 90, 0.14); }
+.beneos-codex .beneos-codex-creature button.cdx-chip:focus-visible,
+.beneos-creature-codex-window .beneos-codex-creature button.cdx-chip:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
+}
 .beneos-codex .beneos-codex-creature .cdx-chip-mechanic ,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-chip-mechanic  { color: #c8b896; }
+.beneos-creature-codex-window .beneos-codex-creature .cdx-chip-mechanic,
 .beneos-codex .beneos-codex-creature .cdx-chip-context  ,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-chip-context   { color: var(--cdx-ink-muted, #8a7c63); font-style: normal; }
-.beneos-codex .beneos-codex-creature .cdx-chip-action   ,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-chip-action    { background: rgba(180, 109, 232, 0.18); border-color: rgba(180, 109, 232, 0.55); color: #e8c7ff; }
-.beneos-codex .beneos-codex-creature .cdx-chip-target   ,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-chip-target    { color: #b6e3c1; border-color: rgba(110, 208, 120, 0.45); }
+.beneos-creature-codex-window .beneos-codex-creature .cdx-chip-context,
 .beneos-codex .beneos-codex-creature .cdx-chip-range    ,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-chip-range     { color: #c8b896; border-color: rgba(212, 168, 87, 0.45); }
-.beneos-codex .beneos-codex-creature .cdx-chip-save     ,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-chip-save      { color: #b6d4ff; border-color: rgba(120, 180, 255, 0.6); background: rgba(120, 180, 255, 0.14); }
-.beneos-codex .beneos-codex-creature .cdx-chip-attack   ,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-chip-attack    { color: #ffd28a; border-color: rgba(255, 210, 138, 0.55); }
+.beneos-creature-codex-window .beneos-codex-creature .cdx-chip-range { color: var(--bc-text-muted); font-style: normal; }
 
 /* ---- Abilities filter ------------------------------------ */
 /* 2-column abilities: filterable active list (left) + persistent
@@ -1206,116 +1272,144 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
 .beneos-creature-codex-window .beneos-codex-creature .cdx-abilities-layout {
   display: grid;
   grid-template-columns: 1fr 280px;
-  gap: 18px;
+  gap: 24px;
 }
 .beneos-codex-creature .cdx-abilities-main { min-width: 0; }
 .beneos-codex-creature .cdx-abilities-aside {
   display: flex; flex-direction: column;
-  padding: 14px 14px 16px;
-  background: rgba(20, 16, 10, 0.5);
-  border: 1px solid var(--cdx-line-faint, rgba(212, 168, 87, 0.10));
-  border-left: 3px solid var(--cdx-gold, #d4a857);
-  border-radius: 6px;
+  padding: 0 0 16px 20px;
+  background: none;
+  border: 0;
+  border-left: 1px solid var(--bc-border);
+  border-radius: 0;
   position: sticky; top: 0;
   align-self: start;
   max-height: calc(100vh - 200px);
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bc-border-control) transparent;
 }
 .beneos-codex-creature .cdx-aside-head {
-  display: flex; align-items: center; gap: 8px;
-  margin: 0 0 6px;
+  display: flex; align-items: center; gap: 12px;
+  margin: 0 0 4px;
 }
+/* The marker is the gold bar of this main heading (4.14). */
 .beneos-codex-creature .cdx-aside-marker {
-  width: 6px; height: 14px;
-  background: var(--cdx-gold, #d4a857);
-  border-radius: 2px;
+  width: 3px; height: 1.05em;
+  font-size: 18px;
+  background: var(--bc-highlight);
+  border-radius: 0;
+  flex: none;
 }
 .beneos-codex-creature .cdx-aside-head h3 {
-  font-family: "Cinzel", serif;
-  font-size: 13px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--cdx-gold-soft, #b89146);
+  font-family: var(--bc-font-ui);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--bc-text);
   margin: 0;
+  border: 0;
 }
 .beneos-codex-creature .cdx-aside-hint {
-  font-size: 12px;
-  color: var(--cdx-ink-muted, #8a7c63);
-  margin: 0 0 10px;
+  font-size: 14px;
+  color: var(--bc-text-muted);
+  margin: 0 0 12px;
+  padding-left: 15px;
   line-height: 1.45;
 }
 .beneos-codex-creature .cdx-abilities-aside .cdx-ability-cards {
   grid-template-columns: 1fr;
 }
+.beneos-codex-creature .cdx-abilities-aside .cdx-ability-summary { font-size: 14px; }
 
 .beneos-codex-creature .cdx-ability-filter {
   display: flex; flex-wrap: wrap; gap: 6px;
-  margin-bottom: 14px;
+  margin-bottom: 20px;
 }
 .beneos-codex .beneos-codex-creature .cdx-ability-filter-btn,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ability-filter-btn {
-  padding: 6px 12px;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid var(--cdx-line-soft, rgba(212, 168, 87, 0.22));
-  border-radius: 999px;
-  color: var(--cdx-ink-secondary, #c8b896);
-  font-family: "Cinzel", serif;
-  font-size: 11px;
-  letter-spacing: 0.06em;
+  min-height: 28px;
+  padding: 0 12px;
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border-control);
+  border-radius: var(--bc-edge);
+  color: var(--bc-text-muted);
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background-color var(--bc-dur-fast) var(--bc-ease), color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
 }
 .beneos-codex .beneos-codex-creature .cdx-ability-filter-btn:hover,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-filter-btn:hover { color: var(--cdx-ink, #f5e9cf); border-color: var(--cdx-line-strong, rgba(212, 168, 87, 0.36)); }
+.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-filter-btn:hover { color: var(--bc-text); background: var(--bc-card-hover); border-color: var(--bc-accent); }
+.beneos-codex .beneos-codex-creature .cdx-ability-filter-btn:focus-visible,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-filter-btn:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
+}
 .beneos-codex .beneos-codex-creature .cdx-ability-filter-btn.active,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ability-filter-btn.active {
-  background: linear-gradient(180deg, rgba(240, 199, 114, 0.25), rgba(212, 168, 87, 0.10));
-  border-color: rgba(240, 199, 114, 0.55);
-  color: var(--cdx-gold-bright, #f0c772);
+  background: var(--bc-card-hover);
+  border-color: var(--bc-accent);
+  color: var(--bc-text);
 }
 
 .beneos-codex .beneos-codex-creature .cdx-ability-group,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-group { margin-bottom: 18px; }
+.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-group { margin-bottom: 28px; }
 .beneos-codex .beneos-codex-creature .cdx-ability-group-head,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ability-group-head {
-  display: flex; align-items: center; gap: 10px;
-  margin-bottom: 8px;
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 12px;
 }
 .beneos-codex .beneos-codex-creature .cdx-ability-group-head h3,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ability-group-head h3 {
-  font-family: "Cinzel", serif;
-  font-size: 13px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--cdx-gold-soft, #b89146);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--bc-font-ui);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--bc-text);
   margin: 0;
+  border: 0;
+}
+.beneos-codex .beneos-codex-creature .cdx-ability-group-head h3::before,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-group-head h3::before {
+  content: "";
+  width: 3px;
+  height: 1.05em;
+  background: var(--bc-highlight);
+  border-radius: 0;
+  flex: none;
 }
 .beneos-codex .beneos-codex-creature .cdx-ability-group-count,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ability-group-count {
-  font-family: "Geist", sans-serif;
-  font-size: 11px;
-  color: var(--cdx-ink-muted, #8a7c63);
+  font-family: var(--bc-font-ui);
+  font-size: 14px;
+  color: var(--bc-text-muted);
 }
 .beneos-codex .beneos-codex-creature .cdx-ability-cards,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ability-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
 }
 .beneos-codex .beneos-codex-creature .cdx-ability-card,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ability-card {
   display: flex; flex-direction: column;
-  padding: 12px 14px;
-  background: rgba(20, 16, 10, 0.6);
-  border: 1px solid var(--cdx-line-soft, rgba(212, 168, 87, 0.22));
-  border-radius: 6px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  padding: 14px 12px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--bc-border);
+  border-radius: 0;
+  transition: background-color var(--bc-dur-fast) var(--bc-ease);
 }
 .beneos-codex .beneos-codex-creature .cdx-ability-card:hover,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-card:hover {
-  border-color: var(--cdx-line-bright, rgba(240, 199, 114, 0.6));
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(240, 199, 114, 0.22);
-  transform: translateY(-1px);
+.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-card:hover,
+.beneos-codex .beneos-codex-creature .cdx-ability-card:focus-within,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-card:focus-within {
+  background: var(--bc-card);
 }
 .beneos-codex .beneos-codex-creature .cdx-ability-trigger-zone,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ability-trigger-zone {
@@ -1325,57 +1419,53 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
 }
 .beneos-codex .beneos-codex-creature .cdx-ability-trigger-zone:hover .cdx-ability-head-text h4,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ability-trigger-zone:hover .cdx-ability-head-text h4 {
-  color: var(--cdx-gold-bright, #f0c772);
+  text-decoration: underline;
+  text-decoration-color: var(--bc-accent);
+  text-underline-offset: 3px;
 }
 .beneos-codex .beneos-codex-creature .cdx-ability-head,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ability-head {
   display: flex; align-items: center; gap: 10px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 .beneos-codex .beneos-codex-creature .cdx-ability-img,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ability-img {
   width: 32px; height: 32px;
-  border-radius: 4px;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--bc-edge);
   object-fit: cover;
-  border: 1px solid var(--cdx-line-soft, rgba(212, 168, 87, 0.22));
+  border: 1px solid var(--bc-border-on-media);
 }
 .beneos-codex .beneos-codex-creature .cdx-ability-head-text,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ability-head-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .beneos-codex .beneos-codex-creature .cdx-ability-head-text h4,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ability-head-text h4 {
-  font-family: "Cinzel", serif;
-  font-size: 13px;
+  font-family: var(--bc-font-ui);
+  font-size: 16px;
+  font-weight: 600;
   margin: 0;
-  color: var(--cdx-ink, #f5e9cf);
+  color: var(--bc-text);
+  border: 0;
 }
+/* Action-type tag and detail pills: solid dark chips, no per-type tint. */
 .beneos-codex .beneos-codex-creature .cdx-ability-tag,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ability-tag {
   display: inline-block;
-  padding: 1px 7px;
-  border-radius: 999px;
-  font-family: "Geist", sans-serif;
-  font-size: 9.5px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  background: rgba(212, 168, 87, 0.10);
-  border: 1px solid var(--cdx-line-soft, rgba(212, 168, 87, 0.22));
-  color: var(--cdx-ink-secondary, #c8b896);
+  padding: 2px 6px;
+  border-radius: var(--bc-edge);
+  font-family: var(--bc-font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--bc-card-hover);
+  border: 0;
+  color: var(--bc-text);
   width: fit-content;
 }
-.beneos-codex .beneos-codex-creature .cdx-ability-tag-action   ,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-tag-action    { background: rgba(180, 109, 232, 0.18); border-color: rgba(180, 109, 232, 0.55); color: #e8c7ff; }
-.beneos-codex .beneos-codex-creature .cdx-ability-tag-bonus    ,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-tag-bonus     { background: rgba(255, 184, 90, 0.18); border-color: rgba(255, 184, 90, 0.45); color: #ffd28a; }
-.beneos-codex .beneos-codex-creature .cdx-ability-tag-reaction ,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-tag-reaction  { background: rgba(120, 180, 255, 0.18); border-color: rgba(120, 180, 255, 0.45); color: #b6d4ff; }
-.beneos-codex .beneos-codex-creature .cdx-ability-tag-legendary,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-tag-legendary { background: rgba(240, 199, 114, 0.20); border-color: rgba(240, 199, 114, 0.55); color: #f0c772; }
-.beneos-codex .beneos-codex-creature .cdx-ability-tag-passive  ,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-tag-passive   { background: rgba(110, 208, 120, 0.18); border-color: rgba(110, 208, 120, 0.45); color: #b6e3c1; }
 .beneos-codex .beneos-codex-creature .cdx-ability-summary,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ability-summary {
-  font-size: 12.5px; line-height: 1.5;
-  color: var(--cdx-ink-secondary, #c8b896);
+  font-size: 16px; line-height: 1.6;
+  max-width: 68ch;
+  color: var(--bc-text);
   margin: 0 0 10px;
   text-align: left;
   overflow-wrap: anywhere;
@@ -1383,140 +1473,124 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
 /* Ability pills + damage line (M8.3.14, ported from card-creator). */
 .beneos-codex .beneos-codex-creature .cdx-ability-pills,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ability-pills {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 5px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
   margin: 0 0 8px;
 }
 .beneos-codex .beneos-codex-creature .cdx-ability-pill,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ability-pill {
   display: inline-block;
-  padding: 2px 9px;
-  border-radius: 999px;
-  font-family: "Geist", sans-serif;
-  font-size: 10.5px;
-  letter-spacing: 0.04em;
-  background: rgba(212, 168, 87, 0.10);
-  border: 1px solid var(--cdx-line-soft, rgba(212, 168, 87, 0.22));
-  color: var(--cdx-ink-secondary, #c8b896);
-}
-.beneos-codex .beneos-codex-creature .cdx-ability-pill-save,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-pill-save {
-  background: rgba(120, 180, 255, 0.14); border-color: rgba(120, 180, 255, 0.55); color: #b6d4ff;
-}
-.beneos-codex .beneos-codex-creature .cdx-ability-pill-attack,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-pill-attack {
-  background: rgba(255, 210, 138, 0.14); border-color: rgba(240, 199, 114, 0.55); color: #ffd28a;
-}
-.beneos-codex .beneos-codex-creature .cdx-ability-pill-recharge,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-pill-recharge {
-  background: rgba(110, 208, 120, 0.14); border-color: rgba(110, 208, 120, 0.5); color: #b6e3c1;
-}
-.beneos-codex .beneos-codex-creature .cdx-ability-pill-activation-action,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-pill-activation-action {
-  background: rgba(120, 180, 255, 0.12); border-color: rgba(120, 180, 255, 0.4); color: #bcd6ff;
-}
-.beneos-codex .beneos-codex-creature .cdx-ability-pill-activation-bonus,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-pill-activation-bonus {
-  background: rgba(180, 109, 232, 0.14); border-color: rgba(180, 109, 232, 0.5); color: #e8c7ff;
-}
-.beneos-codex .beneos-codex-creature .cdx-ability-pill-activation-reaction,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-pill-activation-reaction {
-  background: rgba(255, 154, 90, 0.14); border-color: rgba(255, 154, 90, 0.5); color: #ffc09a;
-}
-.beneos-codex .beneos-codex-creature .cdx-ability-pill-activation-legendary,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-pill-activation-legendary,
-.beneos-codex .beneos-codex-creature .cdx-ability-pill-activation-lair,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-pill-activation-lair {
-  background: rgba(240, 199, 114, 0.16); border-color: rgba(240, 199, 114, 0.55); color: #f0c772;
+  padding: 2px 6px;
+  border-radius: var(--bc-edge);
+  font-family: var(--bc-font-ui);
+  font-size: 12px;
+  background: var(--bc-card-hover);
+  border: 0;
+  color: var(--bc-text-muted);
 }
 .beneos-codex .beneos-codex-creature .cdx-ability-damage,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ability-damage {
-  font-family: "Geist", "Geist Mono", monospace;
-  font-size: 12px;
-  color: var(--cdx-gold-soft, #b89146);
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
+  color: var(--bc-text-muted);
   margin: 0 0 8px;
 }
 .beneos-codex .beneos-codex-creature .cdx-ability-foot,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-foot { display: flex; gap: 8px; }
+.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-foot { display: flex; gap: 16px; }
+/* Row action: quiet text button, always visible (TXV-05). */
 .beneos-codex .beneos-codex-creature .cdx-ability-trigger,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ability-trigger {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 11px;
-  background: linear-gradient(180deg, rgba(240, 199, 114, 0.25), rgba(212, 168, 87, 0.10));
-  border: 1px solid rgba(240, 199, 114, 0.55);
-  border-radius: 4px;
-  color: var(--cdx-gold-bright, #f0c772);
-  font-family: "Cinzel", serif;
-  font-size: 11px;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
+  min-height: 24px;
+  padding: 4px 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  color: var(--bc-text-muted);
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
   cursor: pointer;
+  transition: color var(--bc-dur-fast) var(--bc-ease), text-decoration-color var(--bc-dur-fast) var(--bc-ease);
 }
 .beneos-codex .beneos-codex-creature .cdx-ability-trigger:hover,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ability-trigger:hover {
-  box-shadow: 0 0 12px rgba(240, 199, 114, 0.30);
+  color: var(--bc-text);
+  text-decoration-color: currentColor;
+}
+.beneos-codex .beneos-codex-creature .cdx-ability-trigger:focus-visible,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-ability-trigger:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
 }
 
 /* ---- Autopilot (M8.3.16) ---------------------------------- */
-/* Standing strategy: Opening Move + Fallback blocks. */
+/* Standing strategy: Opening Move + Fallback as rows. */
 .beneos-codex .beneos-codex-creature .cdx-ap-strategy,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ap-strategy {
-  display: flex; flex-direction: column; gap: 10px;
-  margin: 4px 0 16px;
+  display: flex; flex-direction: column; gap: 0;
+  margin: 4px 0 24px;
 }
 .beneos-codex .beneos-codex-creature .cdx-ap-strat-block,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ap-strat-block {
-  padding: 10px 12px;
-  background: rgba(20, 16, 10, 0.55);
-  border: 1px solid var(--cdx-line-soft, rgba(212, 168, 87, 0.22));
-  border-left: 3px solid var(--cdx-gold, #d4a857);
-  border-radius: 6px;
+  padding: 12px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--bc-border);
+  border-radius: 0;
+  transition: background-color var(--bc-dur-fast) var(--bc-ease);
 }
-.beneos-codex .beneos-codex-creature .cdx-ap-strat-fallback,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-ap-strat-fallback {
-  border-left-color: var(--cdx-gold-soft, #b89146);
-  opacity: 0.92;
-}
+.beneos-codex-creature .cdx-ap-strat-block:hover { background: var(--bc-card); }
 .beneos-codex .beneos-codex-creature .cdx-ap-strat-label,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ap-strat-label {
-  font-family: "Cinzel", serif;
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--cdx-gold-soft, #b89146);
-  margin-bottom: 5px;
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--bc-text-muted);
+  margin-bottom: 4px;
 }
 .beneos-codex .beneos-codex-creature .cdx-ap-strat-text,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ap-strat-text {
   margin: 0;
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.6;
-  color: var(--cdx-ink-secondary, #c8b896);
+  max-width: 68ch;
+  color: var(--bc-text);
   text-align: left;
   overflow-wrap: anywhere;
 }
-/* Round-by-round collapsible cards. */
+/* Round-by-round collapsible rows. */
 .beneos-codex .beneos-codex-creature .cdx-ap-rounds,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ap-rounds {
-  display: flex; flex-direction: column; gap: 10px;
+  display: flex; flex-direction: column; gap: 0;
 }
 .beneos-codex .beneos-codex-creature .cdx-ap-round,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ap-round {
-  background: rgba(20, 16, 10, 0.55);
-  border: 1px solid var(--cdx-line-soft, rgba(212, 168, 87, 0.22));
-  border-radius: 6px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--bc-border);
+  border-radius: 0;
+  transition: background-color var(--bc-dur-fast) var(--bc-ease);
 }
 .beneos-codex .beneos-codex-creature .cdx-ap-round:hover,
-.beneos-creature-codex-window .beneos-codex-creature .cdx-ap-round:hover {
-  border-color: var(--cdx-line-bright, rgba(240, 199, 114, 0.5));
-  box-shadow: 0 0 12px rgba(240, 199, 114, 0.18);
+.beneos-creature-codex-window .beneos-codex-creature .cdx-ap-round:hover,
+.beneos-codex .beneos-codex-creature .cdx-ap-round:focus-within,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-ap-round:focus-within {
+  background: var(--bc-card);
 }
 .beneos-codex .beneos-codex-creature .cdx-ap-round-head,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ap-round-head {
   display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
-  padding: 10px 14px;
+  padding: 12px;
   cursor: pointer;
   list-style: none;
+}
+.beneos-codex .beneos-codex-creature .cdx-ap-round-head:focus-visible,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-ap-round-head:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: -2px;
 }
 .beneos-codex .beneos-codex-creature .cdx-ap-round-head::-webkit-details-marker,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ap-round-head::-webkit-details-marker { display: none; }
@@ -1525,76 +1599,79 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
   content: "+";
   display: inline-grid; place-items: center;
   width: 16px; height: 16px;
-  border: 1px solid var(--cdx-line-soft, rgba(212, 168, 87, 0.36));
-  border-radius: 4px;
-  color: var(--cdx-gold-bright, #f0c772);
-  font-family: "Geist", sans-serif; font-size: 13px; line-height: 1;
+  border: 1px solid var(--bc-border-control);
+  border-radius: var(--bc-edge);
+  color: var(--bc-text-muted);
+  font-family: var(--bc-font-ui); font-size: 13px; line-height: 1;
   flex: 0 0 auto;
 }
 .beneos-codex .beneos-codex-creature .cdx-ap-round[open] > .cdx-ap-round-head::before,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ap-round[open] > .cdx-ap-round-head::before { content: "\2212"; }
 .beneos-codex .beneos-codex-creature .cdx-ap-round-num,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ap-round-num {
-  font-family: "Cinzel", serif;
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--cdx-gold-bright, #f0c772);
+  font-family: var(--bc-font-ui);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--bc-text);
   flex: 0 0 auto;
 }
 .beneos-codex .beneos-codex-creature .cdx-ap-phase,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ap-phase {
-  font-family: "Geist", sans-serif;
-  font-size: 10px;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  color: var(--cdx-ink-muted, #8a7c63);
-  padding: 2px 8px;
-  border: 1px solid var(--cdx-line-faint, rgba(212, 168, 87, 0.18));
-  border-radius: 999px;
+  font-family: var(--bc-font-ui);
+  font-size: 12px;
+  color: var(--bc-text-muted);
+  padding: 2px 6px;
+  background: var(--bc-card-hover);
+  border: 0;
+  border-radius: var(--bc-edge);
   flex: 0 0 auto;
 }
 .beneos-codex .beneos-codex-creature .cdx-ap-actions,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ap-actions {
   display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px;
-  font-size: 11px;
-  color: var(--cdx-ink-muted, #8a7c63);
+  font-size: 13px;
+  color: var(--bc-text-muted);
   margin-left: auto;
 }
 .beneos-codex .beneos-codex-creature .cdx-ap-detail,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ap-detail {
-  padding: 0 14px 12px;
+  padding: 0 12px 14px;
   display: flex; flex-direction: column; gap: 8px;
 }
 .beneos-codex .beneos-codex-creature .cdx-ap-line,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ap-line {
   margin: 0;
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.6;
-  color: var(--cdx-ink-secondary, #c8b896);
+  max-width: 68ch;
+  color: var(--bc-text);
   text-align: left;
   overflow-wrap: anywhere;
 }
 .beneos-codex .beneos-codex-creature .cdx-ap-line-label,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ap-line-label {
   display: inline-block;
-  font-family: "Geist", sans-serif;
-  font-size: 9.5px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--cdx-gold-soft, #b89146);
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--bc-text-muted);
   margin-right: 8px;
 }
 .beneos-codex .beneos-codex-creature .cdx-ap-target-list,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ap-target-list {
   margin: 4px 0 0; padding-left: 20px;
-  font-size: 13px; line-height: 1.55;
-  color: var(--cdx-ink-secondary, #c8b896);
+  font-size: 16px; line-height: 1.6;
+  max-width: 68ch;
+  color: var(--bc-text);
 }
+.beneos-codex .beneos-codex-creature .cdx-ap-target-list strong,
+.beneos-creature-codex-window .beneos-codex-creature .cdx-ap-target-list strong { font-weight: 600; }
 .beneos-codex .beneos-codex-creature .cdx-ap-reaction,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-ap-reaction {
   margin: 4px 0 0;
-  font-size: 13px; line-height: 1.55;
-  color: var(--cdx-ink-secondary, #c8b896);
+  font-size: 16px; line-height: 1.6;
+  max-width: 68ch;
+  color: var(--bc-text);
   text-align: left;
   overflow-wrap: anywhere;
 }
@@ -1605,13 +1682,15 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
   align-items: center; justify-content: center;
   text-align: center; padding: 60px 30px;
 }
+/* Token key: an ID, so mono (TYP-03). */
 .beneos-codex .beneos-codex-creature .cdx-creature-error-tag,
 .beneos-creature-codex-window .beneos-codex-creature .cdx-creature-error-tag {
-  font-family: monospace;
-  color: var(--cdx-ink-muted, #8a7c63);
-  background: rgba(0, 0, 0, 0.4);
+  font-family: var(--bc-font-mono);
+  font-size: 13px;
+  color: var(--bc-text-muted);
+  background: var(--bc-card);
   padding: 4px 10px;
-  border-radius: 4px;
+  border-radius: var(--bc-edge);
   display: inline-block;
   margin: 8px 0 18px;
 }
@@ -1629,47 +1708,50 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
   height: 16px;
   object-fit: contain;
   opacity: 0.75;
-  transition: opacity 0.12s ease, filter 0.12s ease;
+  transition: opacity var(--bc-dur-fast) var(--bc-ease);
   vertical-align: middle;
 }
 .beneos-tracker-codex:hover img {
   opacity: 1;
-  filter: drop-shadow(0 0 4px rgba(240, 199, 114, 0.7));
+}
+.beneos-tracker-codex:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
 }
 
 /* ---- Combat Prompt Engine windows (M8.3.18) --------------- */
 @keyframes beneosFadeIn { from { opacity: 0; } to { opacity: 1; } }
 .beneos-combat-death-window,
 .beneos-combat-autopilot-window {
-  animation: beneosFadeIn 0.3s ease-in;
+  animation: beneosFadeIn var(--bc-dur-base) var(--bc-ease);
 }
 /* Death textbox */
 .beneos-combat-death-window .cdx-combat-box {
   display: flex; flex-direction: column;
   padding: 16px 18px;
-  background: linear-gradient(180deg, #16110c 0%, #0d0a08 100%);
-  color: var(--cdx-ink, #f5e9cf);
+  background: var(--bc-bg-panel);
+  color: var(--bc-text);
 }
 .beneos-codex .cdx-combat-head,
-.beneos-combat-death-window .cdx-combat-head { margin-bottom: 10px; }
+.beneos-combat-death-window .cdx-combat-head { margin-bottom: 12px; }
 .beneos-codex .cdx-combat-name,
 .beneos-combat-death-window .cdx-combat-name {
-  font-family: "Cinzel", serif;
+  font-family: var(--bc-font-ui);
   font-size: 22px;
+  font-weight: 600;
   margin: 0;
-  color: var(--cdx-ink, #f5e9cf);
+  color: var(--bc-text);
+  border: 0;
 }
 .beneos-codex .cdx-combat-subtitle,
 .beneos-combat-death-window .cdx-combat-subtitle {
-  font-family: "Geist", sans-serif;
-  font-size: 11px;
-  letter-spacing: 0.20em;
-  text-transform: uppercase;
-  color: #ffb3b3;
+  font-family: var(--bc-font-ui);
+  font-size: 14px;
+  color: var(--bc-text-muted);
   margin-top: 2px;
 }
 .beneos-combat-death-window .cdx-combat-readaloud {
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.6;
 }
 /* Shared footer (death + autopilot): mute checkbox + close button */
@@ -1680,17 +1762,17 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
   gap: 12px;
   margin-top: 14px;
   padding-top: 12px;
-  border-top: 1px solid var(--cdx-line-faint, rgba(212, 168, 87, 0.12));
+  border-top: 1px solid var(--bc-border);
 }
 .beneos-codex .cdx-combat-mute,
 .cdx-combat-mute {
   display: inline-flex; align-items: center; gap: 8px;
-  font-family: "Geist", sans-serif;
-  font-size: 12px;
-  color: var(--cdx-ink-muted, #8a7c63);
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
+  color: var(--bc-text-muted);
   cursor: pointer;
 }
-.cdx-combat-mute input { cursor: pointer; }
+.cdx-combat-mute input { cursor: pointer; accent-color: var(--bc-accent); }
 /* Autopilot combat window: the window auto-sizes to content, which let a long
    Mechanics tab grow past the bottom of the Foundry viewport. Cap the window
    content to the viewport and let the tab body scroll instead, so the hero,
@@ -1714,41 +1796,47 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
      not bleed over the round content. */
   position: relative;
   z-index: 5;
-  background: linear-gradient(180deg, #16110c 0%, #0d0a08 100%);
+  background: var(--bc-bg-panel);
   /* Scroll the tab content (Mechanics can be long) inside the capped window. */
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bc-border-control) transparent;
 }
+/* Current round: the one coloured edge mark of the autopilot, in the accent
+   (FRM-05 exception, not gold). */
 .beneos-combat-autopilot-window .cdx-ap-round-open {
-  border: 1px solid var(--cdx-line-soft, rgba(212, 168, 87, 0.22));
-  border-radius: 6px;
+  border: 0;
+  border-left: 2px solid var(--bc-accent);
+  border-radius: 0;
   margin-top: 8px;
 }
 .beneos-combat-autopilot-window .cdx-ap-round-head-static {
   cursor: default;
   list-style: none;
 }
+.beneos-combat-autopilot-window .cdx-ap-round-head-static::before { content: none; }
 
 /* ---- Tooltip token highlighting (M8.3.17) ----------------- */
 /* Foundry renders data-tooltip-html inside #tooltip, OUTSIDE the codex
-   window, so these rules are intentionally unscoped and use literal
-   colors (codex custom-properties are not in scope there). */
+   window, so these rules are intentionally unscoped. The module tokens are
+   on :root and therefore available there. */
 #tooltip .cdx-tt-item,
 .locked-tooltip .cdx-tt-item,
-.beneos-comment-pop .cdx-tt-item   { color: #f0c772; font-weight: 600; }
+.beneos-comment-pop .cdx-tt-item   { color: var(--bc-text); font-weight: 600; }
 #tooltip .cdx-tt-save,
 .locked-tooltip .cdx-tt-save,
-.beneos-comment-pop .cdx-tt-save   { color: #b6d4ff; }
+.beneos-comment-pop .cdx-tt-save   { color: var(--bc-text); font-weight: 500; }
 #tooltip .cdx-tt-status,
 .locked-tooltip .cdx-tt-status,
-.beneos-comment-pop .cdx-tt-status { color: #ff9a82; }
+.beneos-comment-pop .cdx-tt-status { color: var(--bc-text); font-weight: 500; }
 #tooltip .cdx-tt-dice,
 .locked-tooltip .cdx-tt-dice,
-.beneos-comment-pop .cdx-tt-dice   { color: #f5d57a; }
+.beneos-comment-pop .cdx-tt-dice   { color: var(--bc-text); font-weight: 500; }
 #tooltip .cdx-tt-kw,
 .locked-tooltip .cdx-tt-kw,
-.beneos-comment-pop .cdx-tt-kw     { color: #c8b896; }
+.beneos-comment-pop .cdx-tt-kw     { color: var(--bc-text-muted); }
 
 /* Ability-reference hover tooltip (M8.3.29/30): two separated panes, the real
    ability text left and the Beneos comment right. A long description is clamped
@@ -1761,6 +1849,7 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
   flex-direction: column;
   gap: 10px;
   text-align: left;
+  font-family: var(--bc-font-ui);
 }
 .cdx-ref-cols {
   display: grid;
@@ -1770,36 +1859,33 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
 .cdx-ref-pane {
   min-width: 0;
   padding: 8px 10px;
-  border-radius: 6px;
+  border-radius: var(--bc-edge);
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border);
 }
-/* Distinct backgrounds so the reader sees at a glance which column is the
-   real ability text (blue) and which is the Beneos author comment (gold). */
+/* Two surface steps instead of blue and gold tints: the ability text on the
+   card surface, the Beneos comment one step lighter; the headings name them. */
 .cdx-ref-ability {
-  background: rgba(96, 140, 200, 0.12);
-  border: 1px solid rgba(120, 160, 220, 0.28);
+  background: var(--bc-card);
 }
 .cdx-ref-comment {
-  background: rgba(150, 112, 52, 0.20);
-  border: 1px solid rgba(212, 168, 87, 0.38);
+  background: var(--bc-card-hover);
 }
 .cdx-ref-head {
-  font-family: "Geist", sans-serif;
-  font-size: 9.5px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: #b89146;
+  font-family: var(--bc-font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bc-text-muted);
   margin-bottom: 4px;
 }
-.cdx-ref-ability .cdx-ref-head { color: #9fc0ee; }
-.cdx-ref-comment .cdx-ref-head { color: #e6b964; }
 .cdx-ref-body {
-  font-size: 12px;
-  line-height: 1.45;
-  color: #e9dec4;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--bc-text);
   /* Show as much as fits, then cut off. A hover tooltip cannot be scrolled, so
      long descriptions are height-capped; the builder flags overflowing ones
-     with .cdx-ref-body-long, which fades the cut edge and shows a trailing "…"
-     (the reader right-clicks the chip to open the sheet for the full text). */
+     with .cdx-ref-body-long, which covers the cut edge and shows a trailing
+     ellipsis (the reader right-clicks the chip to open the sheet). */
   max-height: 264px;
   overflow: hidden;
   position: relative;
@@ -1810,22 +1896,21 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
   left: 0;
   right: 0;
   bottom: 0;
-  height: 2.6em;
+  height: 1.6em;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   padding-bottom: 1px;
-  background: linear-gradient(to bottom, transparent, rgba(12, 10, 8, 0.94) 78%);
-  color: #d9b56a;
-  font-size: 17px;
-  letter-spacing: 3px;
+  background: var(--bc-card);
+  color: var(--bc-text-muted);
+  font-size: 16px;
   line-height: 1;
   pointer-events: none;
 }
 .cdx-ref-body p { margin: 0 0 6px; }
 .cdx-ref-body > :first-child { margin-top: 0; }
 .cdx-ref-body > :last-child { margin-bottom: 0; }
-.cdx-ref-empty { font-style: italic; color: #8a7c63; }
+.cdx-ref-empty { font-style: normal; color: var(--bc-text-muted); }
 /* Footer legend (centered under both boxes): left-click fires, right-click
    opens the sheet for the full ability text. */
 .cdx-ref-actions {
@@ -1834,11 +1919,11 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
   justify-content: center;
   gap: 16px;
   padding-top: 8px;
-  border-top: 1px solid rgba(212, 168, 87, 0.2);
-  font-size: 11px;
-  color: #c8b896;
+  border-top: 1px solid var(--bc-border);
+  font-size: 12px;
+  color: var(--bc-text-muted);
 }
-.cdx-ref-action i { margin-right: 5px; color: #b89146; }
+.cdx-ref-action i { margin-right: 5px; color: var(--bc-text-muted); }
 
 /* NPC-sheet "Beneos Comment" hover panel (M8.3.29). Docks flush under the
    default dnd5e item tooltip, taking over its measured width, so the two read
@@ -1849,6 +1934,7 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
    the same 500ms transition, driven by the same `active` class. That is what
    makes the two boxes fade in together on a first hover and swap without a
    fade when the pointer moves to another row while a tooltip is already up.
+   The 500ms therefore stays (it follows core, not a module state change).
    Note: max-width only applies to the fallback (no native tooltip on the row);
    when docked, an explicit inline width is set from the measured box. */
 .beneos-comment-pop {
@@ -1857,10 +1943,11 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
   box-sizing: border-box;
   max-width: 340px;
   padding: 8px 12px 10px;
-  background: rgba(18, 14, 9, 0.97);
-  border: 1px solid rgba(212, 168, 87, 0.5);
-  border-radius: 6px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-edge);
+  box-shadow: var(--bc-shadow-pop);
+  font-family: var(--bc-font-ui);
   pointer-events: none;
   visibility: hidden;
   opacity: 0;
@@ -1872,18 +1959,17 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
   transition: opacity 500ms;
 }
 .beneos-comment-pop-head {
-  font-family: "Geist", sans-serif;
-  font-size: 9.5px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: #b89146;
-  margin-bottom: 5px;
+  font-family: var(--bc-font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bc-text-muted);
+  margin-bottom: 4px;
 }
 .beneos-comment-pop-body {
-  font-family: "Geist", sans-serif;
-  font-size: 12.5px;
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
   line-height: 1.5;
-  color: #c8b896;
+  color: var(--bc-text);
   overflow-wrap: anywhere;
 }
 
@@ -1895,6 +1981,7 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
 .beneos-image-popout .window-content {
   padding: 0;
   overflow: hidden;
+  background: var(--bc-bg);
 }
 .beneos-image-popout figure {
   margin: 0;
@@ -1909,6 +1996,7 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
   width: 100%;
   height: 100%;
   object-fit: contain;
+  border: 0;
 }
 .beneos-image-popout figcaption { display: none; }
 
@@ -1939,7 +2027,7 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
 
 /* ---- NPC-sheet Creature-Codex tab (M8.3.27) -------------- */
 /* Injected into the dnd5e actor-sheet tab nav for Beneos creatures; the
-   logo is masked white via currentColor and tints gold on hover. */
+   logo is masked via currentColor and takes the accent on hover. */
 .beneos-sheet-codex-tab .beneos-icon-logo {
   display: inline-block;
   width: 1em;
@@ -1949,7 +2037,7 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
   mask: url("../icons/beneos_logo.svg") center / contain no-repeat;
   vertical-align: middle;
 }
-.beneos-sheet-codex-tab:hover { color: var(--cdx-gold-bright, #f0c772); }
+.beneos-sheet-codex-tab:hover { color: var(--bc-accent); }
 
 /* ---- Autopilot stats strip + tabs + HP edit (M8.3.24) ----- */
 /* Stats strip and tab bar sit above the hero journal splash (which runs
@@ -1963,53 +2051,65 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
   align-items: center;
   gap: 6px 16px;
   padding: 10px 14px;
-  background: linear-gradient(180deg, #1b140d, #16110c);
-  border-bottom: 1px solid var(--cdx-line-soft, rgba(212, 168, 87, 0.22));
+  background: var(--bc-bg);
+  border-bottom: 1px solid var(--bc-border);
 }
 .beneos-combat-autopilot-window .cdx-ap-stat {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
-  color: var(--cdx-ink, #f5e9cf);
+  font-size: 13px;
+  color: var(--bc-text);
 }
 .beneos-combat-autopilot-window .cdx-ap-stat label {
-  font-family: "Geist", sans-serif;
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--cdx-gold-soft, #b89146);
+  font-family: var(--bc-font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--bc-text-muted);
 }
-/* All stat values share one font/metric so Speed, Resistances, Immunities …
-   read homogeneously and sit on the same baseline as their labels (the
-   <b> values and the .cdx-ap-stat-block <span> values previously differed
-   in family + vertical position by 1-2px). */
+/* All stat values share one font/metric so Speed, Resistances, Immunities
+   read homogeneously and sit on the same baseline as their labels. */
 .beneos-combat-autopilot-window .cdx-ap-stat b,
 .beneos-combat-autopilot-window .cdx-ap-stat-block span {
-  font-family: "Geist", sans-serif;
-  font-size: 12px;
+  font-family: var(--bc-font-ui);
+  font-size: 13px;
   font-weight: 600;
   line-height: 1.2;
 }
 .beneos-combat-autopilot-window .cdx-ap-stat label { line-height: 1.2; }
-.beneos-combat-autopilot-window .cdx-ap-stat-block span { color: var(--cdx-ink-secondary, #c8b896); }
+.beneos-combat-autopilot-window .cdx-ap-stat-block span { color: var(--bc-text-muted); font-weight: 500; }
 .beneos-combat-autopilot-window .cdx-ap-hp-input {
   width: 58px;
   padding: 2px 6px;
   text-align: center;
-  background: rgba(0, 0, 0, 0.35);
-  color: var(--cdx-ink, #f5e9cf);
-  border: 1px solid var(--cdx-line-soft, rgba(212, 168, 87, 0.3));
-  border-radius: 4px;
-  font-family: "Geist", sans-serif;
+  background: var(--bc-card);
+  color: var(--bc-text);
+  border: 1px solid var(--bc-border-control);
+  border-radius: var(--bc-edge);
+  font-family: var(--bc-font-ui);
   font-size: 13px;
+  transition: border-color var(--bc-dur-fast) var(--bc-ease);
 }
-.beneos-combat-autopilot-window .cdx-ap-hp-max { color: var(--cdx-ink-muted, #8a7c63); font-size: 12px; }
+.beneos-combat-autopilot-window .cdx-ap-hp-input:focus {
+  border-color: var(--bc-accent);
+  outline: none;
+  box-shadow: none;
+}
+.beneos-combat-autopilot-window .cdx-ap-hp-input:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
+}
+.beneos-combat-autopilot-window .cdx-ap-hp-input:disabled {
+  color: var(--bc-text-dim);
+  border-color: var(--bc-border);
+}
+.beneos-combat-autopilot-window .cdx-ap-hp-max { color: var(--bc-text-muted); font-size: 13px; }
 .beneos-combat-autopilot-window .cdx-ap-tabs {
   display: flex;
   position: relative;
   z-index: 5;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--bc-scrim-75);
+  border-bottom: 1px solid var(--bc-border);
 }
 
 /* ---- HUD codex button logo (M8.3.25/26) ------------------ */
@@ -2037,7 +2137,9 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
 /* True cross-fade: on a creature swap a frozen clone of the old content is
    overlaid on the window (cdx-autopilot-ghost) while render() rebuilds the new
    content underneath, then the clone fades out to reveal it. The window-content
-   must be the positioning context for the absolutely-placed ghost. */
+   must be the positioning context for the absolutely-placed ghost. The script
+   removes the ghost on transitionend with a 500ms fallback timer, so a 0ms
+   duration under reduced motion is safe. */
 .beneos-combat-autopilot-window .window-content { position: relative; }
 .beneos-combat-autopilot-window .cdx-autopilot-ghost {
   position: absolute;
@@ -2046,6 +2148,6 @@ body.beneos-perf-mode .cdx-check[open] > .cdx-check-result { animation: none; }
   overflow: hidden;
   pointer-events: none;
   opacity: 1;
-  transition: opacity 0.32s ease;
+  transition: opacity var(--bc-dur-base) var(--bc-ease);
 }
 .beneos-combat-autopilot-window .cdx-autopilot-ghost.is-fading { opacity: 0; }

@@ -1194,10 +1194,12 @@ export function betriebsanzeige(zustand) {
     schluessel: offline ? "BENEOS.Stream.Mode.Offline" : "BENEOS.Stream.Mode.Streaming",
     ersatz:     offline ? "Offline Mode" : "Streaming Mode",
     tipp:       offline ? "BENEOS.Stream.Mode.OfflineTooltip" : "BENEOS.Stream.Mode.StreamingTooltip",
-    farbe: zustand === "online"   ? "#5db075"
-         : zustand === "degraded" ? "#e0a33a"
-         : offline                ? "#c9503f"
-         :                          "#8a8a8a",
+    // Token statt Hexwert. Gelesen als Text, daher fuer Unbekannt der
+    // Nebentext und nicht die Sperrfarbe (COL-09).
+    farbe: zustand === "online"   ? "var(--bc-success)"
+         : zustand === "degraded" ? "var(--bc-text-muted)"
+         : offline                ? "var(--bc-error)"
+         :                          "var(--bc-text-muted)",
   }
 }
 

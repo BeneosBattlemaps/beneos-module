@@ -49,7 +49,6 @@
                   data-action="cdx-open-pdf"
                   data-pdf-path="{{creature.data.pdfLocalPath}}"
                   data-actor-id="{{creature.actorId}}">
-            <i class="fa-solid fa-up-right-from-square"></i>
             <span>{{localize "BENEOS.CreatureCodex.ViewPdf"}}</span>
           </button>
         {{else}}
@@ -57,7 +56,6 @@
                   class="cdx-btn cdx-btn-primary"
                   data-action="cdx-download-pdf"
                   data-actor-id="{{creature.actorId}}">
-            <i class="fa-solid fa-download"></i>
             <span>{{localize "BENEOS.CreatureCodex.DownloadPdf"}}</span>
           </button>
         {{/if}}
@@ -66,7 +64,6 @@
               class="cdx-btn"
               data-action="cdx-open-actor"
               data-actor-id="{{creature.actorId}}">
-        <i class="fa-solid fa-user"></i>
         <span>{{localize "BENEOS.CreatureCodex.OpenActor"}}</span>
       </button>
     </div>

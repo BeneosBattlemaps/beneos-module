@@ -22,10 +22,10 @@ const LOOK = {
   // der Zustand auf "online" und der Punkt war von der ersten Sekunde an gruen,
   // ohne dass etwas geprueft worden waere. Er dauert nur wenige Sekunden: die
   // erste Probe laeuft beim Einbau los.
-  unbekannt: { title: "Beneos Stream: connection not checked yet", colour: "#8a8a8a" },
-  online: { title: "Beneos Stream: connected", colour: "#5db075" },
-  degraded: { title: "Beneos Stream: answers are failing, the connection is unreliable", colour: "#e0a33a" },
-  offline: { title: "Beneos Stream: no connection, streamed scenes cannot be opened", colour: "#c9503f" },
+  unbekannt: { title: "Beneos Stream: connection not checked yet", colour: "var(--bc-text-dim)" },
+  online: { title: "Beneos Stream: connected", colour: "var(--bc-success)" },
+  degraded: { title: "Beneos Stream: answers are failing, the connection is unreliable", colour: "var(--bc-text-muted)" },
+  offline: { title: "Beneos Stream: no connection, streamed scenes cannot be opened", colour: "var(--bc-error)" },
 }
 
 let styled = false
@@ -43,12 +43,7 @@ function ensureStyle() {
       height: 8px;
       border-radius: 50%;
       pointer-events: none;
-      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55);
-    }
-    .${DOT_CLASS}[data-state="offline"] { animation: beneos-stream-dot-pulse 2s ease-in-out infinite; }
-    @keyframes beneos-stream-dot-pulse { 50% { opacity: 0.35; } }
-    @media (prefers-reduced-motion: reduce) {
-      .${DOT_CLASS}[data-state="offline"] { animation: none; }
+      outline: 1px solid var(--bc-bg);
     }`
   document.head.appendChild(style)
 }

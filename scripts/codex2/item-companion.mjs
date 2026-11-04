@@ -186,8 +186,8 @@ export class ItemCompanion {
     return {
       slug,
       mono: meta?.mono ?? "??",
-      glow: meta?.glow ?? "#d4a857",
-      ring: meta?.ring ?? "#f0d486",
+      glow: meta?.glow ?? "var(--bc-accent)",
+      ring: meta?.ring ?? "var(--bc-border-control)",
       iconUrl: meta?.image ?? null,
       hasOrigin,
       displayName: def?.display_name ?? card.frontTitle ?? this.item?.name ?? "Unknown",

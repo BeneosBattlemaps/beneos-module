@@ -141,10 +141,20 @@ const ABZEICHEN_TEXT = "Beneos Streaming - Loading"
 let _textTextur = null
 let _ringTextur = null
 
+// Farbwerte der Leinwand kommen aus css/beneos-cloud-tokens.css. Eine 2D-Flaeche
+// und ein PIXI-Tint verstehen kein var(), deshalb wird der Token einmal gelesen.
+function tokenWert(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+}
+function tokenZahl(name) {
+  const v = tokenWert(name)
+  return /^#[0-9a-f]{6}$/i.test(v) ? parseInt(v.slice(1), 16) : 0
+}
+
 function textTextur(P) {
   if (_textTextur) return _textTextur
   const dpr = 2
-  const schrift = `600 13px Signika, "Signika", sans-serif`
+  const schrift = `600 13px Inter, -apple-system, "Segoe UI", sans-serif`
   const mess = document.createElement("canvas").getContext("2d")
   mess.font = schrift
   const breite = Math.ceil(mess.measureText(ABZEICHEN_TEXT).width)
@@ -155,12 +165,17 @@ function textTextur(P) {
   ctx.scale(dpr, dpr)
   ctx.font = schrift
   ctx.textBaseline = "middle"
-  ctx.fillStyle = "#efe6d8"
+  ctx.fillStyle = tokenWert("--bc-text")
   ctx.fillText(ABZEICHEN_TEXT, 2, 9)
-  _textTextur = P.Texture.from(c)
-  _textTextur.__breite = breite + 4
-  _textTextur.__hoehe = 18
-  return _textTextur
+  const textur = P.Texture.from(c)
+  // Inter comes from the module's own @font-face and loads on first use. A canvas
+  // does not reliably trigger that, so the texture is only cached once the font is
+  // there; before that the next draw builds it again.
+  if (document.fonts?.check?.(schrift) ?? true) _textTextur = textur
+  else document.fonts.load(schrift).catch(() => {})
+  textur.__breite = breite + 4
+  textur.__hoehe = 18
+  return textur
 }
 
 function ringTextur(P) {
@@ -171,9 +186,9 @@ function ringTextur(P) {
   const ctx = c.getContext("2d")
   ctx.lineWidth = 7
   ctx.lineCap = "round"
-  ctx.strokeStyle = "rgba(245, 201, 146, 0.22)"
+  ctx.strokeStyle = tokenWert("--bc-accent-line")
   ctx.beginPath(); ctx.arc(g / 2, g / 2, g / 2 - 6, 0, Math.PI * 2); ctx.stroke()
-  ctx.strokeStyle = "#f5c992"
+  ctx.strokeStyle = tokenWert("--bc-accent")
   ctx.beginPath(); ctx.arc(g / 2, g / 2, g / 2 - 6, -Math.PI / 2, Math.PI * 0.75); ctx.stroke()
   _ringTextur = P.Texture.from(c)
   return _ringTextur
@@ -213,7 +228,7 @@ function ladeAbzeichen(doc) {
   behaelter.position.set((Number(doc.x) || 0) + b, Number(doc.y) || 0)
 
   const platte = new P.Sprite(P.Texture.WHITE)
-  platte.tint = 0x0b0b10
+  platte.tint = tokenZahl("--bc-bg")
   platte.alpha = 0.82
   platte.position.set(-(plattenB + ECKE), ECKE)
   platte.width = plattenB
@@ -288,9 +303,9 @@ function ladeAnzeige(doc) {
   behaelter.position.set((Number(doc.x) || 0) + b / 2, (Number(doc.y) || 0) + h / 2)
   behaelter.angle = Number(doc.rotation) || 0
 
-  behaelter.addChild(flaeche(0x0b0b10, 0.92, -b / 2, -h / 2, b, h))
-  behaelter.addChild(flaeche(0x2a2a33, 0.9, -bahnB / 2, -bahnH / 2, bahnB, bahnH))
-  const strich = flaeche(0xf5c992, 0.95, -bahnB / 2, -bahnH / 2, laeufer, bahnH)
+  behaelter.addChild(flaeche(tokenZahl("--bc-bg"), 0.92, -b / 2, -h / 2, b, h))
+  behaelter.addChild(flaeche(tokenZahl("--bc-border-control"), 0.9, -bahnB / 2, -bahnH / 2, bahnB, bahnH))
+  const strich = flaeche(tokenZahl("--bc-accent"), 0.95, -bahnB / 2, -bahnH / 2, laeufer, bahnH)
   behaelter.addChild(strich)
   ebene.addChild(behaelter)
 

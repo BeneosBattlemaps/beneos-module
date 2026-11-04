@@ -80,7 +80,7 @@
         </div>
       {{/if}}
       {{#if failedLabel}}
-        <div class="bcip-current" style="color:#f5c992;">
+        <div class="bcip-current" style="color: var(--bc-warning);">
           <i class="fa-solid fa-triangle-exclamation"></i>
           <span class="bcip-current-text">{{failedLabel}}</span>
         </div>
@@ -141,7 +141,7 @@
     {{/if}}
 
     {{#if hasIssues}}
-      <div class="bcip-error" style="border-left-color:#f5c992;background:rgba(245,201,146,0.10);color:#f5c992;">
+      <div class="bcip-error" style="border-color: var(--bc-border-strong); background: var(--bc-card); color: var(--bc-text-muted);">
         <i class="fa-solid fa-triangle-exclamation"></i>
         <span>{{completedMessage}}</span>
       </div>

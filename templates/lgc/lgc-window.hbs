@@ -24,7 +24,6 @@
               class="lgc-tab {{#if active}}active{{/if}} {{#if wip}}disabled{{/if}}"
               data-action="lgc-tab"
               data-tab="{{id}}">
-        <span class="tab-ic"><i class="{{icon}}"></i></span>
         <span>{{label}}</span>
         {{#if (eq id "radar")}}{{#if count}}<span class="count">{{count}}</span>{{/if}}{{/if}}
         {{#if wip}}<span class="wip">{{@root.i18n.wipBadge}}</span>{{/if}}

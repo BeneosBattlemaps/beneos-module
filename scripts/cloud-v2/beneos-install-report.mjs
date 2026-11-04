@@ -208,7 +208,7 @@ export class BeneosInstallReport {
     const guidance = _f(`BENEOS.Cloud.Install.Report.Guidance.${advice}`, { limit: limitMb }, GUIDANCE_FALLBACK[advice] || GUIDANCE_FALLBACK.unknown)
 
     const preflightBlock = (result.preflight && result.preflight.ok === false)
-      ? `<p class="beneos-rd-forge-hint" style="background:rgba(245,201,146,0.12);border-left:3px solid #f5c992;padding:8px;border-radius:2px;">
+      ? `<p class="beneos-rd-forge-hint" style="background:var(--bc-error-bg);border-left:2px solid var(--bc-error);padding:8px;border-radius:var(--bc-edge);">
            ${esc(_l("BENEOS.Cloud.Install.Report.PreflightAborted", "The install stopped before downloading because the server rejected a test write."))}
          </p>`
       : ""
@@ -220,7 +220,7 @@ export class BeneosInstallReport {
     // Info, not a failure: a third-party module (e.g. Media Optimizer)
     // converted uploads to another format; references were adjusted.
     const convertedBlock = (t.convertedUploads > 0)
-      ? `<p style="background:rgba(146,201,245,0.10);border-left:3px solid #92c9f5;padding:8px;border-radius:2px;font-size:0.9em;">
+      ? `<p style="background:var(--bc-card);border-left:2px solid var(--bc-border-control);padding:8px;border-radius:var(--bc-edge);font-size:max(12px, 0.9em);">
            ${esc(_f("BENEOS.Cloud.Install.Report.ConvertedUploads", { count: t.convertedUploads },
              "{count} uploaded file(s) were converted to another format by a third-party module (such as Media Optimizer). Beneos adjusted all references automatically, this is not an error."))}
          </p>`
@@ -268,12 +268,12 @@ export class BeneosInstallReport {
         <p><strong>${esc(headline)}</strong></p>
         <p>${esc(guidance)}</p>
         ${preflightBlock}
-        <p style="font-size:0.9em;color:#b8b6b3;">${esc(summary)}</p>
+        <p style="font-size:max(12px, 0.9em);color:var(--bc-text-muted);">${esc(summary)}</p>
         ${convertedBlock}
         ${assetBlock}
         ${docBlock}
         ${envBlock}
-        <p style="font-size:0.85em;color:#8d8b88;margin-top:6px;">
+        <p style="font-size:max(12px, 0.85em);color:var(--bc-text-muted);margin-top:6px;">
           ${esc(_l("BENEOS.Cloud.Install.Report.CopyHint", "Use Copy report before asking on Discord , it includes everything we need."))}
         </p>
       </div>`

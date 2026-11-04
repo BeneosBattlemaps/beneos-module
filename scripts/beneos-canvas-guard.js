@@ -97,7 +97,7 @@ export class BeneosCanvasGuard {
       this.#p(`<b>${this.#l("BENEOS.CanvasGuard.Headline", "Foundry could not draw the canvas.")}</b> ${this.#l("BENEOS.CanvasGuard.NotAssets", "Your Beneos maps are not the trigger: Foundry abandons the draw <i>before</i> it loads a single image, so no map, in any resolution, can cause this.")}`),
       packageLine,
       this.#p(this.#l("BENEOS.CanvasGuard.Session", "Foundry then repeats this failure for the rest of the session, including after a scene change. That is why every map looks broken and not just one. <b>Reloading the page (F5) gives you a working canvas again.</b>")),
-      this.#p(this.#l("BENEOS.CanvasGuard.Find", "To find the cause: disable every module except Beneos and its dependencies, reload, and open a map. If it draws, re-enable half of the rest and repeat."), "font-size:0.9em;opacity:0.85;"),
+      this.#p(this.#l("BENEOS.CanvasGuard.Find", "To find the cause: disable every module except Beneos and its dependencies, reload, and open a map. If it draws, re-enable half of the rest and repeat."), "font-size:0.9em;color:var(--bc-text-muted);"),
     ].filter(Boolean).join("")
 
     try {

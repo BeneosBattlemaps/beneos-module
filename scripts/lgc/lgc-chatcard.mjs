@@ -30,7 +30,7 @@ function _originDisplay(slug) {
   return {
     slug,
     name,
-    color: meta.glow ?? "#d4a857",
+    color: meta.glow ?? "var(--bc-accent)",
     iconPath: bwPath ?? meta.image ?? null,
   };
 }
@@ -53,7 +53,7 @@ function _emblemHtml(origin) {
       </span>
     </span>`;
   }
-  return `<span class="lgc-origin-emblem"><span class="emblem-disc" style="--origin-color: ${origin?.color || "#d4a857"};"></span></span>`;
+  return `<span class="lgc-origin-emblem"><span class="emblem-disc" style="--origin-color: ${origin?.color || "var(--bc-accent)"};"></span></span>`;
 }
 
 function _build(card) {
@@ -70,7 +70,6 @@ function _build(card) {
               class="bpw-link"
               data-action="beneos-open-sheet"
               data-actor-id="${card.actorId}">
-        <i class="fa-solid fa-arrow-up-right-from-square"></i>
         <span>${game.i18n.localize("BENEOS.LGC.ChatCard.OpenSheet")}</span>
       </button>` : ""}
   </div>`;

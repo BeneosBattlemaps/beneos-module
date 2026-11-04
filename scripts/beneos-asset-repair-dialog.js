@@ -65,8 +65,8 @@ const PROGRESS_HINT_ID = `${PROGRESS_BAR_ID}-hint`;
 const _renderProgressBar = (label) => `
   <p class="beneos-rd-progress-label">${escapeHtml(label)}</p>
   <progress id="${PROGRESS_BAR_ID}" max="100" value="0" style="width:100%;height:14px;"></progress>
-  <p id="${PROGRESS_BAR_ID}-text" class="beneos-rd-progress-text" style="margin:4px 0 0;font-size:0.9em;color:#b8b6b3;">…</p>
-  <p id="${PROGRESS_HINT_ID}" class="beneos-rd-progress-hint" style="display:none;margin:6px 0 0;font-size:0.85em;color:#f5c992;font-style:italic;"></p>
+  <p id="${PROGRESS_BAR_ID}-text" class="beneos-rd-progress-text" style="margin:4px 0 0;font-size:0.9em;color:var(--bc-text-muted);">…</p>
+  <p id="${PROGRESS_HINT_ID}" class="beneos-rd-progress-hint" style="display:none;margin:6px 0 0;font-size:12px;color:var(--bc-text-muted);font-style:italic;"></p>
 `;
 
 const _updateProgress = (current, total, statusText) => {
@@ -470,7 +470,7 @@ export class BeneosRepairDialog {
     ` : "";
 
     const forgeBlock = (typeof ForgeVTT !== "undefined" && ForgeVTT?.usingTheForge)
-      ? `<p class="beneos-rd-forge-hint" style="background:rgba(245,201,146,0.1);border-left:3px solid #f5c992;padding:8px;border-radius:2px;">⚠ ${escapeHtml(_l("BENEOS.AssetWatcher.Repair.ForgeHint"))}</p>`
+      ? `<p class="beneos-rd-forge-hint" style="background:var(--bc-card);padding:8px;border-radius:var(--bc-edge);">⚠ ${escapeHtml(_l("BENEOS.AssetWatcher.Repair.ForgeHint"))}</p>`
       : "";
 
     const stillMissingBlock = stillMissingCount > 0
@@ -575,7 +575,7 @@ export class BeneosRepairDialog {
               <i class="fas fa-link"></i>
             </button>
           </summary>
-          <div class="beneos-rd-path" style="font-size:0.85em;color:#8d8b88;padding:0.25em 0 0.5em;word-break:break-all;">${escapeHtml(path)}</div>
+          <div class="beneos-rd-path" style="font-size:12px;font-family:var(--bc-font-mono);color:var(--bc-text-muted);padding:0.25em 0 0.5em;word-break:break-all;">${escapeHtml(path)}</div>
           ${sourceRows}
         </details>
       `);
