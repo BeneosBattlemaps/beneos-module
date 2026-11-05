@@ -346,7 +346,17 @@ function isControl(url) {
 }
 
 /** Is this a request for our own delivery gate? */
-function ours(url) {
+/**
+ * Gehoert diese Adresse UNS? Der Host entscheidet, nicht die Pfadform.
+ *
+ * Exportiert seit dem 05.11.2026, weil `stream-bilder.mjs` dieselbe Frage
+ * stellt. Die erste Fassung dort pruefte nur die Pfadform ueber
+ * `zerlegeAdresse()`, und ein Pruefbefund hat gemessen, dass damit
+ * `https://fremd.example/a/egal/bm_0113/hd/karte-journal.webp` als unsere
+ * gilt. Zwei Namen und zwei Kriterien fuer dieselbe Sache sind die Bauart,
+ * die beim naechsten Umbau auseinanderlaeuft.
+ */
+export function ours(url) {
   const host = streamHost()
   if (!host) return false
   try { return new URL(url, location.href).host === host } catch (_) { return false }
@@ -399,7 +409,11 @@ const VORRAT_URSPRUNG = "https://beneos-stream.invalid"
  * Buchstabe bleibt bei beiden Raeumen `a`, weil er hier nur ein Namensraum
  * ist und keine Route; welcher Raum gemeint ist, sagt der Releasename.
  */
-function vorratsSchluessel(url) {
+/**
+ * Exportiert seit dem 05.11.2026. Wer eine Adresse melden oder ablegen will,
+ * nimmt DIESE Form: sie traegt den Streamschluessel nicht.
+ */
+export function vorratsSchluessel(url) {
   const s = String(url || "")
   if (s.startsWith(VORRAT_URSPRUNG)) return s
   const t = zerlegeAdresse(s)
@@ -462,7 +476,7 @@ const abgewiesen = new Map()
  * jeder unlesbaren Adresse. Beide fragen jetzt `zerlegeAdresse`, die als
  * Gegenstueck zu `assetUrl` ohnehin beide Formen kennen muss.
  */
-function sammelSchluessel(url) {
+export function sammelSchluessel(url) {
   const t = zerlegeAdresse(url)
   if (!t) return "unbekannt"
   return t.variant ? `${t.release}/${t.variant}` : t.release

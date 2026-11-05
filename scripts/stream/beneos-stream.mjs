@@ -23,6 +23,7 @@ import { installStreamFetch, storeStatus, clearStore, prewarm, diagnose, resetDi
 import { installStreamCanvas, drawStatus, videoTilesOf } from "./stream-canvas.mjs"
 import { installStreamOnline, onlineStatus, streamState, isOffline, hasStreamedContent } from "./stream-online.mjs"
 import { installStreamIndicator } from "./stream-indicator.mjs"
+import { installStreamBilder, bilderBlobStand } from "./stream-bilder.mjs"
 import { installStreamSceneUi } from "./stream-scene-ui.mjs"
 import { registerOfflineWindow, BeneosOfflineWindow } from "./stream-offline-window.mjs"
 import { explainOnce } from "./stream-intro.mjs"
@@ -65,6 +66,12 @@ Hooks.once("init", () => {
     installStreamOnline()
     installStreamCanvas()
     installStreamIndicator()
+    // Bilder in Oberflaechen. Ein `<img>` beruehrt `window.fetch` nie, also
+    // sieht der Ersatz es nicht: ohne diesen Helfer haben Journal-Handouts
+    // und Klappkarten keinen Vorrat und kein Ersatzbild. Gemessen am
+    // 05.11.2026: 789 Journalseiten der Pruefwelt tragen eine Toradresse im
+    // Feld `src`, 805 Textseiten eine im eingebetteten HTML.
+    installStreamBilder()
     // Rechtsklick und Markierung. Haengen sich nur an Hooks und lesen
     // ausschliesslich aus dem vorgewaermten Zustand, kosten also nichts,
     // solange niemand eine Szenenliste zeichnet.
@@ -161,6 +168,8 @@ Hooks.once("init", () => {
     diagnose,
     resetDiagnosis,
     reportedSoFar,
+    /** Wie viele Blob-Adressen die Oberflaechen gerade halten. Fuer Prueffaelle. */
+    bilderBlobStand,
     // Connection and watchdog, the parts the test programme reads
     state: () => streamState(),
     offline: () => isOffline(),
