@@ -78,36 +78,38 @@
     console.info('[Beneos] Global interactions ready');
   });
 
-  /* ---------- RESIZE PER SHEET RENDER ----------------------- */
-  function resizeSheet(app, html) {
-    const root = html?.jquery ? html[0] : html;
-    const map = root?.querySelector?.('.beneos-node-map');
-    if (!map) return;
-    const need = map.scrollWidth + 60;
-    const curW = app.element?.width?.() ?? 0;
-    if (curW < need) {
-      const pos = foundry.utils.deepClone(app.position);
-      pos.width = need;
-      pos.minWidth = need;
-      app.setPosition(pos);
-    }
-    $(root).find('.journal-entry-content, .journal-page-content')
-      .css({ maxWidth: need - 60, margin: 0 });
-  }
-
-  function observeSheet(app, html) {
-    // AppV2-/Fremd-Sheets (z.B. monks-enhanced-journal) liefern ein
-    // HTMLElement statt jQuery; ohne Node darf observe() nie laufen
-    const root = html?.jquery ? html[0] : html;
-    if (!(root instanceof HTMLElement)) return;
-    // sofort versuchen
-    resizeSheet(app, html);
-    // zur Sicherheit nach DOM-Änderung erneut
-    const ob = new MutationObserver(() => resizeSheet(app, html));
-    ob.observe(root, { childList: true, subtree: true });
-    setTimeout(() => ob.disconnect(), 1500); // kurz beobachten, dann aus
-  }
-
-  Hooks.on('renderJournalSheet', observeSheet);
-  Hooks.on('renderJournalPageSheet', observeSheet);
+  /* ---------- KEINE BREITENKORREKTUR MEHR ------------------- */
+  /*
+   * Hier stand bis zum 05.11.2026 eine Korrektur, die das Journalfenster
+   * verbreiterte, wenn eine `.beneos-node-map` nicht hineinpasste. Sie wird
+   * nicht repariert, sondern entfernt, und das ist ein Messergebnis.
+   *
+   * Sie hing an `renderJournalSheet` und `renderJournalPageSheet`, den Namen
+   * aus Foundry 12. Gemessen in Fassung 13.351: keiner der beiden feuert, die
+   * heutigen Namen heissen `renderJournalEntrySheet` und
+   * `renderJournalEntryPageSheet`. Die Korrektur lief also seit dem Sprung auf
+   * Fassung 13 nie, und `module.json` verlangt mindestens Fassung 13.
+   *
+   * ENTSCHEIDEND IST ABER, WAS SIE GETAN HAETTE. Am 05.11.2026 an einem Blatt
+   * mit echter Knotenkarte nachgerechnet, mit denselben zwei Anweisungen:
+   *
+   *   Fensterbreite davor         960 px
+   *   Breite der Knotenkarte      730 px, durch das CSS gedeckelt
+   *                               (`max-width: calc(3*220px + 2*2.2rem)`)
+   *   Bedarf nach der Formel      790 px
+   *   Fensterbreite danach        960 px, also UNVERAENDERT
+   *
+   * Die Vorgabebreite eines Journalfensters in Fassung 13 ist breiter als die
+   * Knotenkarte je werden kann. Der Zweig, der verbreitert, kann nicht mehr
+   * greifen. Uebrig blieb allein die zweite Anweisung, und die klemmte den
+   * Inhalt von `none` auf 730 px und nahm ihm den Rand, machte das Fenster
+   * also ENGER statt breiter. Das ist das Gegenteil des Zwecks.
+   *
+   * Dazu entfaellt eine Gefahr: der `MutationObserver` auf der Fensterwurzel
+   * lief bei jedem Render mit, und ein Blatt der Fassung 13 rendert seine
+   * Seiten in einer eigenen Schleife nach.
+   *
+   * Wird die Knotenkarte eines Tages breiter als 790 px, gehoert die Breite
+   * ins CSS der Karte und nicht in einen Haken. Paket `OP-CLD-198`.
+   */
 })();
