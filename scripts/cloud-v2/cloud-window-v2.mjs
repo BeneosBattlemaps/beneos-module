@@ -39,6 +39,7 @@ import { fetchNewsFeed, markNewsRead } from "./services/news-api.mjs"
 import { BeneosInstallState, BeneosPreInstallDialog, beneosLogModuleInstall,
          releaseKern, anzeigename } from "./beneos-install-state.mjs"
 import { streamEnabled } from "../stream/stream-settings.mjs"
+import { ansicht } from "../stream/stream-posen.mjs"
 import { streamState } from "../stream/stream-online.mjs"
 import {
   releaseOfflineStand, vorratsanzeige, betriebsanzeige,
@@ -4160,29 +4161,34 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     region.querySelectorAll(".bc-variant-thumb[draggable='true']").forEach(btn => {
       btn.addEventListener("dragstart", (event) => this.#onVariantDragStart(event, btn))
     })
-    // Async side-channel: probe whether each installed Top-Down variant has
-    // its -top.webp on disk. The result is written back to the tile as a
+    // Async side-channel: ask whether each installed Top-Down variant really
+    // has its Top-Down view. The result is written back to the tile as a
     // data-bc-topdown-missing flag so the synchronous click + dragstart
     // handlers can decide between regular swap vs. reinstall path without
-    // their own HEAD round-trip. Fire-and-forget; tiles whose probe is still
+    // their own round-trip. Fire-and-forget; tiles whose answer is still
     // pending behave as "present" (the post-drop drain in beneos_cloud.js
-    // does a final FS check anyway).
+    // does a final check anyway).
     this.#probeVariantTopAssets(region)
   }
 
-  // Per-tile HEAD-probe for the -top.webp counterpart of every installed
+  // Per-tile question for the Top-Down counterpart of every installed
   // Top-Down variant. Reads the canonical -token.webp path from the
   // BeneosUtility.beneosTokens cache (filled at startup); when the cache
   // has no entry for a variant (cloud-only / not installed) the tile is
   // skipped because the cloud-pending drop pipeline will fetch the asset
   // fresh anyway.
+  //
+  // Until 05.11.2026 this was a HEAD request per tile on a guessed name,
+  // against a naked /path. The pose list answers it now, once per creature
+  // instead of once per tile; scripts/stream/stream-posen.mjs carries the
+  // reasoning and the disk fallback for the download mode.
   async #probeVariantTopAssets(region) {
     const tiles = region.querySelectorAll(
       ".bc-variant-thumb[data-variant-style='topdown'][data-actor-id]:not([data-actor-id=''])"
     )
     if (!tiles.length) return
     const missingTooltip = game.i18n.localize("BENEOS.TokenMenu.TopDownAssetMissing")
-      || "Top-Down asset missing — drag/click triggers a reinstall."
+      || "Top-Down asset missing, drag or click triggers a reinstall."
     await Promise.allSettled(Array.from(tiles).map(async (btn) => {
       const assetKey = btn.dataset.assetKey
       const variantIdx = btn.dataset.variantIndex
@@ -4191,17 +4197,23 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const cacheEntry = BeneosUtility.beneosTokens?.[fullId]
       const tokenPath = cacheEntry?.token
       if (!tokenPath || !tokenPath.includes("-token.webp")) return
-      const topPath = tokenPath.replace("-token.webp", "-top.webp")
+      // Markiert wird nur bei einem ECHTEN "gibt es nicht". "Nicht geprüft"
+      // bleibt unmarkiert, und das ist der Unterschied zwischen einem
+      // Variantenwechsel und einer erzwungenen Neuinstallation: ein Klick auf
+      // eine markierte Kachel ruft `importTokenFromCloud(..., { force: true })`
+      // und überschreibt damit ein installiertes Release. Diese Entscheidung
+      // darf nicht aus einem Netzaussetzer oder aus The Forge entstehen.
+      let auskunft = { zustand: null, src: null }
       try {
-        const url = topPath.startsWith("/") ? topPath : `/${topPath}`
-        const res = await fetch(url, { method: "HEAD" })
-        if (!res.ok) {
-          btn.dataset.bcTopdownMissing = "true"
-          btn.dataset.tooltip = missingTooltip
-        }
-      } catch (e) {
+        auskunft = await ansicht(tokenPath, "topdown")
+      } catch (e) { auskunft = { zustand: null, src: null } }
+      if (auskunft.zustand === false) {
         btn.dataset.bcTopdownMissing = "true"
         btn.dataset.tooltip = missingTooltip
+      } else if (auskunft.src) {
+        // Die genannte Adresse reist zum Wurf mit. Der dragstart-Haken ist
+        // synchron und kann die Liste nicht selbst fragen.
+        btn.dataset.bcTopdownSrc = auskunft.src
       }
     }))
   }
@@ -4355,6 +4367,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         : { type: "Actor", pack: compendium, uuid: `Compendium.${compendium}.${actorId}` }
       if (style === "topdown") drag_data.beneosForceStyle = "topdown"
       BeneosUtility._pendingDropStyle = style
+      // Die von der Posenliste genannte Adresse reist mit, damit der
+      // synchrone preCreateToken-Haken keinen Dateinamen bilden muss.
+      // `#probeVariantTopAssets()` hat sie beim Binden der Kachel abgelegt.
+      BeneosUtility._pendingDropSrc = (style === "topdown")
+        ? (btn.dataset.bcTopdownSrc || null)
+        : null
     } else if (assetKey && topdownMissing) {
       // Variant is installed but its -top.webp is missing from disk.
       // Route through the cloud-pending pipeline so the import refetches

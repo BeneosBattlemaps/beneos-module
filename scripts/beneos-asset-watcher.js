@@ -548,7 +548,14 @@ const headCheck = async (path) => {
     if (ct.startsWith("text/html") && !/\.html?$/i.test(path)) {
       return { ok: false, status: 415, note: "html-fallback" };
     }
-    return { ok: true, status: 200 };
+    // `laenge` ist additiv und aendert den bestehenden Vertrag nicht. Sie
+    // wird gebraucht, weil die Deinstallation eine Datei nicht loescht,
+    // sondern mit wenigen Bytes ueberschreibt: ein Stummel antwortet mit 200,
+    // und ohne die Groesse sieht er aus wie ein vorhandenes Bild. Der Wert
+    // ist `NaN`, wenn der Server keine Laenge nennt; der Aufrufer darf daraus
+    // nicht "fehlt" machen.
+    const laenge = Number(resp.headers.get("content-length"));
+    return { ok: true, status: 200, laenge };
   } catch (e) {
     return { ok: false, status: -1, error: String(e) };
   }

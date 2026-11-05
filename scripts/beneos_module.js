@@ -557,7 +557,7 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
   // Stage 2 trusted the cache; Stage 3 probes the disk via
   // BeneosUtility.beneosTopVariantExists so manual-drop test setups
   // and legacy installs work transparently. If the counterpart file
-  // (-top.webp ↔ -token.webp) isn't on disk, the button isn't
+  // (-top.webp oder -token.webp) isn't on disk, the button isn't
   // rendered at all — no error path, no notification noise.
   try {
     // Stage 7: read the placed token's texture.src first. Stage-6
@@ -645,7 +645,8 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
 // Zusaetzlich die Drag-from-variant-strip-Bruecke: der Variant-Drag-
 // Handler und der Pending-Canvas-Drop-Drain setzen
 // BeneosUtility._pendingDropStyle erst dann auf "topdown", wenn sie das
-// Vorhandensein der -top.webp auf der Platte geprueft haben. Dieser Hook
+// Vorhandensein der Draufsicht geklaert haben, und sie legen die genannte
+// Adresse in BeneosUtility._pendingDropSrc. Dieser Hook
 // vertraut auf dieses vorgelagerte Gate und macht den Texturtausch
 // synchron, denn preCreateToken kann keine asynchrone Dateipruefung
 // abwarten und danach noch das Dokument aendern.
@@ -659,7 +660,20 @@ Hooks.on("preCreateToken", (tokenDoc, data, options, userId) => {
     let src = data?.texture?.src || tokenDoc?.texture?.src || ""
     if (!src) return
     const patch = {}
-    if (pending === "topdown" && src.includes("-token.webp")) {
+    // 05.11.2026: die Zieladresse reist jetzt mit, statt hier gebildet zu
+    // werden. Wer den Wurf vorbereitet, hat die Posenliste schon gefragt und
+    // legt die genannte Adresse in `_pendingDropSrc`. Dieser Hook ist
+    // synchron, er kann keine Dateipruefung abwarten, also darf er auch keine
+    // Annahme ueber den Dateinamen treffen.
+    //
+    // Der Textersatz bleibt als Rueckfall fuer alte Wurfwege, die nur den Stil
+    // setzen. Er greift nur, wenn keine Adresse mitgereist ist.
+    const pendingSrc = BeneosUtility._pendingDropSrc
+    BeneosUtility._pendingDropSrc = null
+    if (pending === "topdown" && pendingSrc) {
+      src = pendingSrc
+      patch["texture.src"] = src
+    } else if (pending === "topdown" && src.includes("-token.webp")) {
       src = src.replace("-token.webp", "-top.webp")
       patch["texture.src"] = src
     }

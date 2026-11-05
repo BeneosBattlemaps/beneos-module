@@ -32,6 +32,7 @@
 import { BeneosInstallState, releaseKern } from "./beneos-install-state.mjs"
 import { BeneosNativeBattlemapInstaller } from "./beneos-native-installer.mjs"
 import { releaseLoesen } from "../stream/stream-offline.mjs"
+import { posenVergessen } from "../stream/stream-posen.mjs"
 
 /** Document collections to remove, children before the folders that hold them. */
 const DOC_PATHS = [
@@ -589,6 +590,10 @@ export class BeneosNativeUninstaller {
         this.#fail(`clear ${target}`, err)
       }
     }
+    // Ueberschriebene Dateien antworten weiter mit 200, nur mit einem Byte.
+    // Eine gemerkte Antwort "liegt" waere danach falsch, und der Stilwechsel
+    // wuerde ein leeres Feld liefern.
+    posenVergessen()
   }
 
   /** Current size on disk, or null when the file is not there. */

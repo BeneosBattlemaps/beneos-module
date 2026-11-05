@@ -5,6 +5,7 @@ import { BeneosInfoBox } from "./beneos_info_box.js"
 import { BeneosAnalytics } from "./beneos_analytics.js"
 import { normalizeEmbeddedItems } from "./cloud-v2/beneos-ability-icons.mjs"
 import { packNeedsV14Migration, migrateActorForV14 } from "./cloud-v2/beneos-v14-scene-migration.mjs"
+import { ansicht, posenVergessen } from "./stream/stream-posen.mjs"
 
 // FilePicker.upload(..., { notify: false }) used to swallow failures
 // (disk full, permissions, server reject) — the await would resolve,
@@ -1529,35 +1530,41 @@ export class BeneosCloud {
         continue
       }
 
-      // Bridge flag for the preCreateToken hook — flips the texture src
+      // Bridge flag for the preCreateToken hook: it flips the texture src
       // to -top.webp before the placeable is committed when the drop
-      // intent is Top-Down. We verify the -top.webp counterpart is on
-      // disk first; if it isn't (server didn't ship it, or the asset
-      // simply wasn't rendered yet) we degrade to 2.5D rather than
-      // leaving the user with a broken-image token on the canvas.
+      // intent is Top-Down. We ask first whether that view exists at all;
+      // if it does not (server did not ship it, or the asset simply was
+      // not rendered yet) we degrade to 2.5D rather than leaving the user
+      // with a broken-image token on the canvas.
+      //
+      // Until 05.11.2026 this was a HEAD request on a guessed name against
+      // a naked /path, which answered "missing" on every subpath install,
+      // on The Forge and in streaming mode. The pose list answers it now,
+      // see scripts/stream/stream-posen.mjs.
       let effectiveStyle = drop.forceStyle || "tokenized"
+      let topSrc = null
       if (effectiveStyle === "topdown") {
         const protoSrc = actorForPlace?.prototypeToken?.texture?.src || ""
-        const topPath = protoSrc.includes("-top.webp")
-          ? protoSrc
-          : (protoSrc.includes("-token.webp")
-              ? protoSrc.replace("-token.webp", "-top.webp")
-              : null)
-        let topPresent = false
-        if (topPath) {
-          try {
-            const url = topPath.startsWith("/") ? topPath : `/${topPath}`
-            const res = await fetch(url, { method: "HEAD" })
-            topPresent = res.ok
-          } catch (e) { topPresent = false }
-        }
-        if (!topPresent) {
-          console.warn("[Beneos Cloud] Top-Down asset missing for token", tokenKey,
-            "variant", variantIdx, "— falling back to 2.5D for this drop")
+        let auskunft = { zustand: null, src: null }
+        try {
+          auskunft = await ansicht(protoSrc, "topdown")
+        } catch (e) { auskunft = { zustand: null, src: null } }
+        topSrc = auskunft.src
+        if (!topSrc) {
+          // "gibt es nicht" und "nicht geprueft" fuehren hier zum selben
+          // Ausgang, und das ist Absicht: der Wurf schreibt ein Dokument, und
+          // ein 2.5D-Token ist der einzige Zustand, der sicher traegt.
+          console.warn("[Beneos Cloud] Top-Down asset not usable for token", tokenKey,
+            "variant", variantIdx, "state", String(auskunft.zustand),
+            ", falling back to 2.5D for this drop")
           effectiveStyle = "tokenized"
         }
       }
       BeneosUtility._pendingDropStyle = effectiveStyle
+      // Die fertige Adresse reist mit, damit der synchrone preCreateToken-Hook
+      // keinen Dateinamen bilden muss. Er kann keine Dateipruefung abwarten,
+      // also muss die Auskunft hier entstehen, wo awaiten erlaubt ist.
+      BeneosUtility._pendingDropSrc = topSrc
       try {
         const tokenDoc = await actorForPlace.getTokenDocument({ x: drop.x, y: drop.y })
         await scene.createEmbeddedDocuments("Token", [tokenDoc.toObject()])
@@ -3658,10 +3665,12 @@ export class BeneosCloud {
           try {
             const installStyle = game.settings.get(BeneosUtility.moduleID(), "beneos-default-install-style")
             const topAssetAvailable = !!(topData?.image64 && topData?.filename && topData._beneosUploaded)
-            if (installStyle === "topdown" && topAssetAvailable
-              && actorData.prototypeToken.texture.src.includes("-token.webp")) {
-              actorData.prototypeToken.texture.src =
-                actorData.prototypeToken.texture.src.replace("-token.webp", "-top.webp")
+            if (installStyle === "topdown" && topAssetAvailable) {
+              // 05.11.2026: der Dateiname kommt aus der Antwort der Cloud und
+              // wird nicht mehr durch Textersatz gebildet. `topData.filename`
+              // ist genau die Datei, die die Schleife oben hochgeladen hat;
+              // der Textersatz war eine Annahme darueber, wie sie heisst.
+              actorData.prototypeToken.texture.src = `${finalFolder}/${topData.filename}`
             } else if (installStyle === "topdown" && !topAssetAvailable) {
               // User picked Top-Down as default but the cloud response did
               // not include a top variant. Keep the prototype on 2.5D and
@@ -3872,6 +3881,12 @@ export class BeneosCloud {
       let toSave = JSON.stringify(BeneosUtility.beneosTokens)
       // DEBUG : BeneosUtility.debugMessage("Saving data :", toSave)
       await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', toSave) // Save the token config !
+
+      // Eine Installation macht jede gemerkte Antwort ueber vorhandene
+      // Ansichten falsch. Ohne Argument, weil der Releasename hier nicht
+      // vorliegt und ein gebildeter Name genau der Fehler waere, den dieses
+      // Paket beseitigt. Der Preis ist ein Abruf je Kreatur danach.
+      posenVergessen()
 
       if (!isBatch) { // Lock/Unlock only in single install mode
         this.sendChatMessageResult(event, "Token", properName)

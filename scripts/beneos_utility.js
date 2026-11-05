@@ -5,6 +5,7 @@ import { BeneosCloud, BeneosCloudLogin, BeneosCloudSettings, BeneosCloudAccountM
 // Asset existence probe, shared with the missing-asset watcher: srcExists plus
 // a no-store HEAD that also rejects HTML fallback pages answering 200.
 import { headCheck as beneosHeadCheck } from "./beneos-asset-watcher.js";
+import { ansicht, ansichtGibtEs } from "./stream/stream-posen.mjs";
 
 /********************************************************************************* */
 globalThis.BENEOS_MODULE_NAME = "Beneos Module"
@@ -3048,28 +3049,25 @@ export class BeneosUtility {
   }
 
   /********************************************************************************** */
-  // Top-Down Stage 3: filesystem-truth check. The Stage-1 cache
-  // (BeneosUtility.beneosTokens[fullId].topDown) only reflects what
-  // the cloud delivered at install time — manual file drops, legacy
-  // installs, or backend-not-yet-patched scenarios all produce false
-  // negatives. The actual disk presence is the only reliable signal,
-  // so the HUD button and the toggle method both probe the file
-  // server with a HEAD request.
+  // Top-Down Stage 3: does the counterpart view exist at all? The Stage-1
+  // cache (BeneosUtility.beneosTokens[fullId].topDown) only reflects what
+  // the cloud delivered at install time: manual file drops, legacy installs
+  // or a backend that was not yet patched all produce false negatives.
+  //
+  // Until 05.11.2026 this probed the file server with a HEAD request on a
+  // guessed name. That answered "missing" on every subpath install, on The
+  // Forge and in streaming mode, and it ran once per HUD render. The pose
+  // list answers it instead; see scripts/stream/stream-posen.mjs for why.
+  // Only where no pose list exists does a disk probe remain, and that one
+  // carries route, cache bust and stub guard.
   static async beneosTopVariantExists(prototypeSrc) {
     if (!prototypeSrc) return false
-    let candidate = null
-    if (prototypeSrc.includes("-token.webp")) {
-      candidate = prototypeSrc.replace("-token.webp", "-top.webp")
-    } else if (prototypeSrc.includes("-top.webp")) {
-      candidate = prototypeSrc.replace("-top.webp", "-token.webp")
-    } else {
-      return false
-    }
-    try {
-      const url = candidate.startsWith("/") ? candidate : `/${candidate}`
-      const res = await fetch(url, { method: "HEAD" })
-      return res.ok
-    } catch (e) { return false }
+    const src = String(prototypeSrc)
+    const zielStil = src.includes("-token.webp")
+      ? "topdown"
+      : (src.includes("-top.webp") ? "tokenized" : null)
+    if (!zielStil) return false
+    return await ansichtGibtEs(src, zielStil)
   }
 
   /********************************************************************************** */
@@ -3097,26 +3095,41 @@ export class BeneosUtility {
     // after a partially-failed actor.update — leading to a no-op
     // toggle and the user-reported "second click does nothing".
     const currentSrc = token.document?.texture?.src || ""
-    let newSrc = null
     let newStyle = null
-    if (currentSrc.includes("-token.webp")) {
-      newSrc = currentSrc.replace("-token.webp", "-top.webp")
-      newStyle = "topdown"
-    } else if (currentSrc.includes("-top.webp")) {
-      newSrc = currentSrc.replace("-top.webp", "-token.webp")
-      newStyle = "tokenized"
-    }
-    if (!newSrc) {
+    if (currentSrc.includes("-token.webp")) newStyle = "topdown"
+    else if (currentSrc.includes("-top.webp")) newStyle = "tokenized"
+    if (!newStyle) {
       ui.notifications?.warn(game.i18n.localize("BENEOS.TokenMenu.StyleNotApplicable")
         || "Beneos: token has no recognizable variant suffix")
       return
     }
 
-    // Stage 8: HUD-button gating in beneos_module.js (renderTokenHUD)
-    // already checks file existence before rendering the toggle button.
-    // The Stage-3 last-mile FS-check here was a redundant guard that
-    // could fail on cached HEAD responses, silently aborting the swap.
-    // Removed.
+    // 05.11.2026: die ZIELADRESSE kommt aus der Posenliste und wird nicht
+    // mehr durch Textersatz gebildet. Vorher stand hier
+    // `currentSrc.replace("-token.webp", "-top.webp")`, und das war genau der
+    // Fall, den die harte Regel verbietet: eine Abweisung am Tor ist HTTP 200
+    // mit einem 42-Byte-GIF, ein daneben liegender Name also ein leeres Bild
+    // ohne jede Meldung. Und geschrieben wird hier nicht nur das Token,
+    // sondern auch der Prototype des Welt-Actors.
+    //
+    // Drei Antworten, drei Ausgaenge:
+    //   Adresse da       geschrieben wird genau sie
+    //   "gibt es nicht"  Hinweis und Abbruch, nichts wird geschrieben
+    //   "nicht geprueft" Rueckfall auf den Textersatz, also das Verhalten von
+    //                    vor diesem Umbau. Das trifft The Forge, wo keine
+    //                    Plattenprobe moeglich ist.
+    const auskunft = await ansicht(currentSrc, newStyle)
+    let newSrc = auskunft.src
+    if (!newSrc && auskunft.zustand === false) {
+      ui.notifications?.warn(game.i18n.localize("BENEOS.TokenMenu.TopDownAssetMissing")
+        || "Beneos: that view does not exist for this variant")
+      return
+    }
+    if (!newSrc) {
+      newSrc = newStyle === "topdown"
+        ? currentSrc.replace("-token.webp", "-top.webp")
+        : currentSrc.replace("-top.webp", "-token.webp")
+    }
 
     // Stage 4/6/7: visible swap on canvas — placed token first, then
     // propagate to the actor's prototype for re-placement consistency.
