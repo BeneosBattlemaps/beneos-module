@@ -2980,17 +2980,36 @@ export class BeneosUtility {
     }
     let tokenData = BeneosUtility.getTokenDataFromKey(fullKey)
     if (!tokenData) return
-    // Stage 5/6: mode-preserving variant switch. If the placed token
-    // is currently in top-down mode (texture.src ends in -top.webp),
-    // jump to the requested variant's top-down image. Stage 6 adds a
-    // derived-path fallback for legacy installs whose cache has no
-    // explicit topDown entry — same string-replace pattern used
-    // elsewhere in the codebase.
+    // Der Variantenwechsel ERHAELT den Stil: steht das Token auf Draufsicht,
+    // springt er auf die Draufsicht der gewuenschten Variante.
+    //
+    // DER NAME WIRD NICHT GERATEN, auch hier nicht. Bis zum 05.11.2026 bildete
+    // der Rueckfall fuer Altinstallationen ohne `topDown` im Zwischenspeicher
+    // die Adresse per Textersatz. Bei einer Toradresse ist das der Fehlgriff,
+    // den `OP-PRJ-130` beseitigt hat: eine Abweisung am Tor ist HTTP 200 mit
+    // einem 42-Byte-GIF, ein daneben liegender Name also ein leeres Bild ohne
+    // jede Meldung, und das Ergebnis landet im Tokendokument.
+    //
+    // Reihenfolge: zuerst der Zwischenspeicher, denn er kostet keinen Abruf
+    // und traegt bei 232 von 232 gemessenen Varianten. Erst wenn er nichts
+    // weiss, wird die Posenliste gefragt. Und weiss auch die nichts, bleibt
+    // das Token auf 2.5D und SAGT ES: still auf den anderen Stil zu fallen
+    // sieht aus wie ein Knopf, der nicht reagiert.
     const currentSrc = token.document?.texture?.src || ""
     const isTopDownMode = currentSrc.includes("-top.webp")
-    const newImage = isTopDownMode
-      ? (BeneosUtility.beneosDerivedTopPath(tokenData) || tokenData.token)
-      : tokenData.token
+    let newImage = tokenData.token
+    if (isTopDownMode) {
+      let ziel = BeneosUtility.beneosDerivedTopPath(tokenData)
+      if (!ziel) {
+        const auskunft = await ansicht(tokenData.token, "topdown")
+        ziel = auskunft.src
+        if (!ziel && auskunft.zustand === false) {
+          ui.notifications?.warn(game.i18n.localize("BENEOS.TokenMenu.TopDownAssetMissing")
+            || "Beneos: Top-Down asset missing for this variant")
+        }
+      }
+      newImage = ziel || tokenData.token
+    }
     // Scale und Anchor kommen aus dem Ziel-Bild: sein Suffix entscheidet
     // den Modus (-top.webp = topdown, sonst tokenized) und seine
     // Variantennummer entscheidet, welcher Flag-Eintrag gewinnt.
