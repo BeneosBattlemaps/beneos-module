@@ -36,6 +36,7 @@ export const SETTING = {
   pinStills: "beneos-stream-pin-stills",
   installMode: "beneos-stream-install-mode",
   budgetImage: "beneos-stream-budget-image",
+  budgetCreature: "beneos-stream-budget-creature",
   budgetVideo: "beneos-stream-budget-video",
   budgetAudio: "beneos-stream-budget-audio",
   budgetDraw: "beneos-stream-budget-draw",
@@ -59,7 +60,37 @@ export const INSTALL_MODE = { stream: "stream", download: "download" }
 
 // Seconds, not milliseconds: these are numbers an operator reads and changes at
 // a table, and a value in milliseconds invites a factor-of-a-thousand mistake.
-const DEFAULT_BUDGET = { image: 30, video: 120, audio: 60, draw: 45 }
+// GEMESSEN, NICHT GERATEN, und darum stehen hier zwei Bildwerte statt einem.
+//
+// Bis zum 05.11.2026 lief ein Kreaturenbild durch `image` und damit durch ein
+// Budget, das fuer das Standbild einer Karte gesetzt war. Das sind zwei
+// verschiedene Dinge: ein Standbild ist 4K und mehrere Megabyte, ein
+// Kreaturenbild liegt zwischen 60 und 450 Kilobyte.
+//
+// Gemessen am 05.11.2026 in der Testinstanz, 40 Abrufe ueber das Tor auf
+// 20 Dateien, kalter und warmer Rand getrennt: der Mittelwert liegt kalt bei
+// 361 ms und warm bei 65 ms, das neunte Zehntel kalt bei 693 ms, der
+// schlechteste Einzelabruf bei 4229 ms. Zwoelf Kreaturen gleichzeitig durch
+// PIXI waren nach 1141 ms vollstaendig, warm nach 412 ms.
+//
+// DIE AUSREISSER SIND LASTWERTE, und das ist der Teil, der die Zahl traegt.
+// Derselbe Messaufbau mit 150 ms Pause zwischen den Abrufen blieb bei 16 von
+// 16 unter 551 ms. Ohne Pause riss die Leitung einmal ganz,
+// `ERR_QUIC_PROTOCOL_ERROR` auf ein Standbild. Ein Budget darf also nicht am
+// Mittelwert haengen: Druck auf der Leitung ist der Normalfall eines Kunden
+// mit schmaler Anbindung, nicht ein Messfehler.
+//
+// `creature` steht deshalb auf 10 Sekunden: das 2,4-fache des schlechtesten
+// Abrufs unter Last und das 28-fache des Mittelwerts ohne Last. Gleichzeitig
+// ist es ein Drittel der Zeit, die ein Kunde heute auf ein leeres Feld starrt,
+// bevor ueberhaupt etwas geschieht.
+//
+// `image` bleibt bei 30, und das ist kein Versehen. Derselbe Wert traegt die
+// Standbilder der Karten, und die sind 0,5 bis 2,5 MB statt 0,06 bis 0,45.
+// Unter demselben Lastdruck brauchte eines davon 8027 ms. Ein gemeinsamer
+// engerer Wert haette es abgeschnitten, und ein Standbild ist das Bild, das
+// den Ausfall eines Videos auffangen soll.
+const DEFAULT_BUDGET = { image: 30, creature: 10, video: 120, audio: 60, draw: 45 }
 
 // Foundry never sets one, so every asset of a scene starts at once. On a wide
 // line that is right; on a narrow one it makes each single file slower and
@@ -563,6 +594,14 @@ export function budgetFor(url) {
   const path = String(url || "").split("#")[0]
   if (VIDEO_EXT.test(path)) return seconds(SETTING.budgetVideo, DEFAULT_BUDGET.video) * 1000
   if (AUDIO_EXT.test(path)) return seconds(SETTING.budgetAudio, DEFAULT_BUDGET.audio) * 1000
+  // Die ROUTE entscheidet, nicht die Dateiendung. Ein Kreaturenbild und das
+  // Standbild einer Karte heissen beide `.webp`, und ihre Groessen liegen um
+  // den Faktor zehn auseinander. Fuer alles, was keine Toradresse ist, bleibt
+  // es beim Bildbudget: eine Datei auf der eigenen Platte hat keinen Rand,
+  // der sie verzoegert, und ein fremdes Bild gehoert uns nicht.
+  if (zerlegeAdresse(path)?.raum === "kreatur") {
+    return seconds(SETTING.budgetCreature, DEFAULT_BUDGET.creature) * 1000
+  }
   return seconds(SETTING.budgetImage, DEFAULT_BUDGET.image) * 1000
 }
 
