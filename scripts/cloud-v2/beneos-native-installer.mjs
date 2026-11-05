@@ -1097,10 +1097,17 @@ export class BeneosNativeBattlemapInstaller {
     const updates = []
     const rendern = []
     let fertig = 0
+    let verkleinert = 0
     for (const scene of scenes) {
       const still = await this.#standbildFuer(scene)
-      if (still) updates.push({ _id: scene.id, thumb: still })
-      else rendern.push(scene)
+      if (still) {
+        // Liegt das Standbild oertlich, wird daraus ein echtes kleines
+        // Vorschaubild. Siehe #kleinesVorschaubild: das kostet keine Leitung und
+        // nimmt der Liste den Faktor 549.
+        const klein = await this.#kleinesVorschaubild(scene, still)
+        if (klein) verkleinert += 1
+        updates.push({ _id: scene.id, thumb: klein || still })
+      } else rendern.push(scene)
       this.progress.revealPhase?.("thumbs", { status: "active", current: ++fertig, total })
     }
     if (updates.length) {
@@ -1121,10 +1128,63 @@ export class BeneosNativeBattlemapInstaller {
         console.warn(`BeneosNativeInstaller | thumbnail regen failed for "${scene.name}"`, e?.message || e)
       }
     }
-    if (rendern.length) {
-      console.log(`BeneosNativeInstaller | ${updates.length} scene preview(s) from still images, ${rendern.length} rendered`)
+    if (rendern.length || verkleinert) {
+      console.log(`BeneosNativeInstaller | ${updates.length} scene preview(s) from still images, `
+        + `${verkleinert} of them shrunk to a real thumbnail, ${rendern.length} rendered`)
     }
     this.progress.revealPhase?.("thumbs", { status: "done", current: total, total })
+  }
+
+  /**
+   * Aus einem OERTLICHEN Standbild ein echtes kleines Vorschaubild machen.
+   *
+   * Warum das lohnt, gemessen am 05.11.2026 an einem Standbild von 3612x4200
+   * und 2.114.480 Byte: `ImageHelper.createThumbnail` mit 300x100 und WebP gibt
+   * **3852 Byte** in 23 ms bei warmem Zwischenspeicher, 505 ms beim ersten Mal.
+   * Das ist der **Faktor 549** je Zeile der Szenenliste. Foundry legt seine
+   * eigenen Vorschaubilder an derselben Stelle und in derselben Groessenordnung
+   * ab, gemessen 6090 und 8090 Byte.
+   *
+   * Vorher zeigte `thumb` auf das Standbild selbst, und die Begruendung dafuer
+   * steht in `#regenerateSceneThumbs`: ein Rendern der ganzen Szene zieht alle
+   * Kacheln in voller Aufloesung, `bm_0011` so 37,19 MB fuer 26 Vorschaubilder.
+   * **Das gilt weiter und wird hier nicht angetastet.** Dieser Weg rendert keine
+   * Szene, er laedt genau eine Datei, und auch die nur, wenn sie oertlich liegt.
+   *
+   * **Eine entfernte Adresse geht unveraendert zurueck**, aus zwei Gruenden: ein
+   * Abruf am Tor kostet Bytes gegen das Offline-Kontingent des Kunden, und die
+   * Liste holt dank `loading="lazy"` ohnehin nur sichtbare Zeilen. Mit dem
+   * Schalter `pin-stills` auf seiner Vorgabe liegt das Standbild oertlich, der
+   * haeufige Fall ist also der guenstige.
+   *
+   * Scheitert etwas, gibt die Funktion leer zurueck und der Aufrufer bleibt beim
+   * Standbild. Ein fehlendes Vorschaubild ist ein Schoenheitsfehler, ein
+   * abgebrochener Installationslauf waere keiner.
+   */
+  async #kleinesVorschaubild(scene, quelle) {
+    // Entfernte Adressen nicht anfassen. Ein oertlicher Pfad traegt kein Schema.
+    if (/^[a-z][a-z0-9+.-]*:/i.test(String(quelle))) return ""
+    const IH = foundry?.helpers?.media?.ImageHelper
+    if (typeof IH?.createThumbnail !== "function" || typeof IH?.uploadBase64 !== "function") return ""
+    try {
+      const klein = await IH.createThumbnail(quelle, {
+        width: 300, height: 100, format: "image/webp", quality: 0.8,
+      })
+      if (!klein?.thumb) return ""
+      // Derselbe Ordner, den Foundry selbst benutzt, und derselbe Speicherort,
+      // den der Installer fuer alles andere benutzt. **Nicht hart `"data"`:** ein
+      // verwalteter Hoster fuehrt seinen eigenen Speicher, und ein Schreibvorgang
+      // daneben landet dort, wo der Hoster nicht ausliefert, meldet aber Erfolg.
+      const ordner = `worlds/${game.world.id}/assets/scenes`
+      if (!(await this.#ensureDirOnce(ordner))?.ok) return ""
+      const ergebnis = await IH.uploadBase64(klein.thumb, `${scene.id}-thumb.webp`, ordner, {
+        storage: this._source, type: "image", notify: false,
+      })
+      return ergebnis?.path || ""
+    } catch (e) {
+      console.warn(`BeneosNativeInstaller | thumbnail shrink failed for "${scene.name}"`, e?.message || e)
+      return ""
+    }
   }
 
   /**
