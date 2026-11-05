@@ -1,7 +1,7 @@
 // Beneos Forge - dynamic item icon generator.
 //
 // Browser-side (Canvas 2D) port of the Beneos Card Creator icon renderer
-// (J:\Beneos_Adventures\Publishing\Item_Cards\beneos_card_creator_v1\foundry-icon-generator.js).
+// (beneos_card_creator_v1, foundry-icon-generator.js).
 // When a mundane / SRD item is forged, and its current image is a Foundry or
 // system default icon, we generate a 256x256 WebP "Sigil Plate" icon
 // (dark plate + rarity glow + rarity diamond top-left + centered type glyph)

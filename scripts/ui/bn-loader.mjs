@@ -1,6 +1,6 @@
 /* ============================================================
    Beneos loader ring for module windows (design standard MUS-05).
-   Logic follows the CI component J:\_ai\claude\design\ci\components\loader.js.
+   Logic follows the CI master component loader.js.
    That file watches one fixed root; Foundry opens and closes windows at any
    time, so this copy watches document.body and only acts on media inside the
    module roots listed in ROOTS. Core UI images are never touched.

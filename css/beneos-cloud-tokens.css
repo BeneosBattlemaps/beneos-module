@@ -1,9 +1,8 @@
 /* =============================================================
-   Beneos module design tokens, Bone palette 1.3 (CI master 1.4.0).
+   Beneos module design tokens, Bone palette 1.3 (CI master 1.5.0).
    Single source for colours, type, edges and motion in this module.
-   Rules: Beneos design standard, sections 2.4, 2.5 and 2.8
-   (J:\_ai\claude\design\standard.md). Master values:
-   J:\_ai\claude\design\ci\tokens\tokens.json.
+   Rules: Beneos design standard, sections 2.4, 2.5 and 2.8. Master
+   values: the token file of the Beneos CI master.
    Loaded first (module.json styles[]) so every file resolves these.
 
    All names carry the --bc- prefix on purpose. Foundry core defines
@@ -42,10 +41,10 @@
   --bc-text-on-accent: #171510;  /* label on filled accent or gold */
 
   /* ---- Accent: links, selection, focus, filled primary action in dialogs.
-     Since decision E-09 the accent equals the gold highlight, and the
-     strong step equals the primary text (CI master 1.4.0). ---- */
+     Since decision E-09 the accent equals the gold highlight. The strong
+     step is the lighter gold of a hover (E-13, CI master 1.5.0). ---- */
   --bc-accent:        #f2b668;
-  --bc-accent-strong: #d5d6cf;
+  --bc-accent-strong: #f6ca92;
   --bc-accent-soft:   #d5d6cf;
   --bc-accent-dim:    rgba(242, 182, 104, 0.10);
   --bc-accent-line:   rgba(242, 182, 104, 0.30);
@@ -54,7 +53,7 @@
      of a view (MUS-08) and the bar before main headings on text-heavy views
      (4.14). COL-05 is suspended by E-09, the value equals the accent. ---- */
   --bc-highlight:        #f2b668;
-  --bc-highlight-strong: #f2b668;
+  --bc-highlight-strong: #f6ca92;
 
   /* ---- Update available has no colour of its own (standard 2.5): icon and word.
      Aliases kept so existing selectors resolve to secondary text, not to
