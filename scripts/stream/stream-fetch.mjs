@@ -1526,11 +1526,54 @@ export async function alleImSpeicher(urls) {
           // `zaehleAbbruch` verstummen laesst, und hier ist der Abbruch echt.
           zaehleAbbruch()
           beenden(0)
-        } else {
+          throw err
+        }
+
+        // EIN ABBRUCH DES AUFRUFERS IST KEIN VERBINDUNGSFEHLER.
+        //
+        // Foundry bricht eigene Ladevorgaenge ab, etwa beim Szenenwechsel
+        // mitten im Zeichnen. Dieser Zweig zaehlte das bis zum 05.11.2026 als
+        // `network` und meldete es dem Zustandsautomaten als Fehlschlag. Zwei
+        // Szenenwechsel haetten damit eine Welt mit heiler Leitung auf
+        // `offline` gestellt. Gezaehlt wird er weiter, damit er sichtbar
+        // bleibt, aber nicht gewertet und nicht gemeldet.
+        const fremderAbbruch = Boolean(callerSignal?.aborted) || err?.name === "AbortError"
+        if (fremderAbbruch) {
           beenden(0)
-          count("network", url)
-          noteResult(false, "network")
-          reportFailure({ url, reason: "network", detail: String(err).slice(0, 200) })
+          // Ohne Adresse: der Fehlerspeicher hat einen Deckel, und ein
+          // Szenenwechsel bricht viele Abrufe auf einmal ab. Mit Adresse
+          // haetten die Abbrueche die echten Fehlschlaege aus dem Speicher
+          // gedraengt, fuer den er da ist.
+          count("abbruch-fremd")
+          throw err
+        }
+
+        beenden(0)
+        count("network", url)
+        noteResult(false, "network")
+        reportFailure({ url, reason: "network", detail: String(err).slice(0, 200) })
+
+        // DER ERSTE AUSFALL IST DER, DEN NIEMAND SIEHT.
+        //
+        // Gemessen am 05.11.2026: ein Netzfehler ist weder eine Abweisung noch
+        // ein bekannter Offline-Zustand, also flog er hier als Ausnahme
+        // weiter. Der Zustandsautomat braucht zwei Fehlschlaege, bis
+        // `isOffline()` traegt, und bis dahin bekam PIXI eine Ausnahme und die
+        // Leinwand eine Flaeche von 0 mal 0 Bildpunkten. Das Ersatzbild, das
+        // genau diesen Anblick verhindern soll, griff damit beim ERSTEN
+        // Ausfall nicht, und der erste ist der, der beim Kunden ankommt.
+        //
+        // Nur Bilder, und nur ausserhalb des Messmodus: dieselbe Trennung wie
+        // in `offlineAntwort` und aus denselben Gruenden. PIXI waehlt seinen
+        // Ladeweg nach der Endung der Adresse, ein WebP auf eine `.webm`-Bitte
+        // scheiterte also im Videoweg; eine Steuerdatei will JSON lesen; und
+        // im Messmodus faelschte eine Ersatzantwort den Vergleich der Routen.
+        //
+        // Der Vorrat nimmt sie nicht auf: `ersatzAntwort` setzt
+        // `x-beneos-offline`, und `toStore` weist das schon heute ab.
+        if (!measuring && istBild(url)) {
+          count("ersatz-netz")
+          return await ersatzAntwort(url, "offline")
         }
         throw err
       }
