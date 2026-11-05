@@ -16,8 +16,38 @@
  * normal delivery on 2026-09-03.
  */
 
-import { streamBase, streamEnabled, istPruefstand } from "./stream-settings.mjs"
+import { streamBase, streamEnabled, istPruefstand, zerlegeAdresse } from "./stream-settings.mjs"
 import { isOffline } from "./stream-online.mjs"
+
+/**
+ * Die Adresse ohne den Streamschluessel.
+ *
+ * **Weiter unten steht, der Kundenschluessel werde nicht mitgeschickt, und das
+ * war bis zum 05.11.2026 nur fuer das eigens entfernte Feld wahr.** Gemessen an
+ * diesem Tag mit abgefangener Meldung: eine echte Toradresse im Feld `url`
+ * ergab eine Meldung von 322 Byte, und die **enthielt den echten Schluessel**,
+ * denn eine Toradresse traegt ihn als zweites Pfadstueck. Vier Aufrufstellen in
+ * `stream-fetch.mjs` uebergeben diese Rohadresse.
+ *
+ * Ausgenutzt war der Weg nicht: das Tor wirft den Schluessel in `handleReport`
+ * von sich aus weg. Er lief also ueber eine Route, die ihn nicht will, und lag
+ * auf dem Weg dorthin in jedem Protokoll, das eine Verbindung mitschreibt.
+ *
+ * Darum wird hier, an der **einen** Stelle, durch die jede Meldung geht, das
+ * Schluesselstueck durch einen Bindestrich ersetzt. Die Form bleibt sonst
+ * gleich, damit eine Meldung weiterhin lesbar sagt, welche Datei welches
+ * Releases gefehlt hat. `vorratsSchluessel()` in `stream-fetch.mjs` leistet
+ * dasselbe fuer die Ablage und traegt dort noch einen eigenen Ursprung, weil ein
+ * Vorratsschluessel einen Schluesselwechsel ueberleben muss.
+ */
+function ohneSchluessel(url) {
+  const roh = String(url || "").split("?")[0]
+  const t = zerlegeAdresse(roh)
+  if (!t) return roh
+  const raum = t.raum === "kreatur" ? "c" : "a"
+  const mitte = t.variant ? `${t.release}/${t.variant}` : t.release
+  return `${streamBase()}/${raum}/-/${mitte}/${t.pfad}`
+}
 
 // One report per address per session. A broken scene would otherwise send one
 // report per retry per asset, which buries the signal it is meant to carry.
@@ -50,6 +80,11 @@ async function flush() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         // Der Kundenschluessel wird NICHT mitgeschickt.
+        //
+        // Dieser Satz galt bis zum 05.11.2026 nur fuer dieses Feld, nicht fuer
+        // das Feld `url`. Seit dem Umbau faellt der Schluessel in
+        // `reportFailure` ueber `ohneSchluessel`, also fuer jede Aufrufstelle
+        // und jede kuenftige.
         //
         // Er stand hier bis zum 22.08.2026. Das Tor wirft ihn seinerseits weg
         // und begruendet das in `handleReport`: der Schluessel benennt eine
@@ -84,10 +119,14 @@ async function flush() {
 
 export function reportFailure(entry) {
   if (!streamEnabled()) return
-  const id = key(entry)
+  // Der Schluessel faellt HIER, an der einen Stelle, durch die jede Meldung
+  // geht. Eine Aufrufstelle kann es damit nicht mehr falsch machen, und auch
+  // eine kuenftige nicht. Siehe `ohneSchluessel`.
+  const sicher = { ...entry, url: ohneSchluessel(entry?.url) }
+  const id = key(sicher)
   if (seen.has(id)) return
   seen.add(id)
-  queue.push({ ...entry, at: new Date().toISOString() })
+  queue.push({ ...sicher, at: new Date().toISOString() })
   // Collect for a moment so a scene full of failures travels as one report.
   setTimeout(flush, 3000)
 }

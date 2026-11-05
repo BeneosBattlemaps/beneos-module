@@ -63,7 +63,7 @@
  */
 
 import { streamEnabled, zerlegeAdresse } from "./stream-settings.mjs"
-import { ours, sammelSchluessel, vorratsSchluessel } from "./stream-fetch.mjs"
+import { ours, sammelSchluessel } from "./stream-fetch.mjs"
 import { reportFailure } from "./stream-report.mjs"
 
 /**
@@ -270,10 +270,10 @@ function melde(adresse, grund) {
   console.warn(`Beneos Stream | Bild einer Oberflaeche nicht ueber den Abrufweg zu holen, `
     + `die Adresse bleibt direkt stehen. ${schluessel}: ${grund}. `
     + "Weitere Dateien derselben Variante werden nicht mehr einzeln gemeldet.")
-  // GEMELDET WIRD DIE SCHLUESSELFREIE FORM: die Rohadresse traegt den
-  // Streamschluessel als zweites Pfadstueck, und `stream-report.mjs` schneidet
-  // nur den Abfrageteil ab.
-  reportFailure({ url: vorratsSchluessel(adresse), reason: "ui-image", detail: String(grund).slice(0, 200) })
+  // Die Rohadresse geht hinein, der Schluessel faellt in `reportFailure`.
+  // Vorher stand hier eine eigene Umformung; seit dem 05.11.2026 raeumt der
+  // Melder selbst, und zwar fuer alle Aufrufstellen zugleich.
+  reportFailure({ url: adresse, reason: "ui-image", detail: String(grund).slice(0, 200) })
 }
 
 /**
