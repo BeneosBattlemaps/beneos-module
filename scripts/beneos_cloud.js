@@ -3046,7 +3046,17 @@ export class BeneosCloud {
       const baseline = flag.originalName ?? compendiumName
       if (actor.name !== baseline) { skippedRenamed.push(actor); continue }
       const alteSignatur = String(flag.contentSignature || "")
-      if (neueSignatur && alteSignatur && alteSignatur === neueSignatur) { unveraendert += 1; continue }
+      // Gleiche Signatur genuegt NICHT. Verglichen wird zusaetzlich, was
+      // geschrieben werden soll, gegen das, was dasteht: ein Wechsel des
+      // Lieferwegs aendert die Adresse, ohne den Inhalt zu aendern. Ohne
+      // diesen Vergleich behauptet der Download-Modus, alles liege lokal,
+      // waehrend die Weltkopie weiter am Tor haengt.
+      const formGleich = _beneosAdressForm(actor.prototypeToken?.texture?.src)
+        === _beneosAdressForm(imported.prototypeToken?.texture?.src)
+      if (neueSignatur && alteSignatur && alteSignatur === neueSignatur && formGleich) {
+        unveraendert += 1
+        continue
+      }
       updatable.push(actor)
     }
     if (unveraendert) {
