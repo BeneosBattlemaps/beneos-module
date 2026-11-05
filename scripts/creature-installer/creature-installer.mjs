@@ -29,6 +29,9 @@
  */
 
 import { BeneosUtility } from "../beneos_utility.js";
+// Nur die Formprobe, kein Abrufweg: die Scheibe ist ein `<img>` und kann
+// keine Toradresse tragen. Begruendung an der Stelle, die sie benutzt.
+import { zerlegeAdresse } from "../stream/stream-settings.mjs";
 // Die Regel, was eine Alternative ist, liegt bewusst ausserhalb: der
 // Karteninstallierer entscheidet auf derselben Grundlage, welche Kreaturen er
 // ueberhaupt holt. Steht sie zweimal da, laufen die beiden auseinander.
@@ -591,7 +594,22 @@ export class BeneosCreatureInstaller {
     let imgFallback = null;
     let imgFallback2 = null;
     if (premium) {
-      const installedArt = installed ? (actor.prototypeToken?.texture?.src || actor.img) : null;
+      const installedArtRoh = installed ? (actor.prototypeToken?.texture?.src || actor.img) : null;
+      // EINE TORADRESSE DARF HIER NICHT GEWINNEN.
+      //
+      // Seit `OP-PRJ-131` steht im Prototyp einer gestreamten Kreatur eine
+      // Toradresse. Diese Scheibe ist ein `<img>` und geht damit NICHT durch
+      // den Abrufweg: kein Vorrat, kein Ersatzbild, und der Streamschluessel
+      // steht in der Anfragezeile. Die zwei Rueckfaelle unten haengen an
+      // `onerror` und greifen nicht, denn das 42-Byte-GIF des Tores ist ein
+      // gueltiges Bild mit Status 200: leere Scheibe, obwohl `cdn` und
+      // `embedded` danebenliegen.
+      //
+      // Bis der Blob-Helfer aus `OP-PRJ-136` steht, zieht die Scheibe in
+      // diesem Fall auf die Miniatur oder die eingebettete Vorschau. Die
+      // Flaeche ist dort als fuenfte nachgetragen.
+      const installedArt = (installedArtRoh && !zerlegeAdresse(installedArtRoh))
+        ? installedArtRoh : null;
       const embedded = entry.thumbnailData || null;   // offline-safe base64 preview
       const cdn = entry.thumbnail ? TOKEN_THUMB_BASE + entry.thumbnail : null;
       img = (isPatron && installedArt) || cdn || embedded || installedArt || null;

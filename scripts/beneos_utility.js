@@ -6,6 +6,7 @@ import { BeneosCloud, BeneosCloudLogin, BeneosCloudSettings, BeneosCloudAccountM
 // a no-store HEAD that also rejects HTML fallback pages answering 200.
 import { headCheck as beneosHeadCheck } from "./beneos-asset-watcher.js";
 import { ansicht, ansichtGibtEs } from "./stream/stream-posen.mjs";
+import { zerlegeAdresse } from "./stream/stream-settings.mjs";
 
 /********************************************************************************* */
 globalThis.BENEOS_MODULE_NAME = "Beneos Module"
@@ -3042,7 +3043,21 @@ export class BeneosUtility {
   static beneosDerivedTopPath(value) {
     if (!value) return null
     if (value.topDown) return value.topDown
-    if (value.token && value.token.includes("-token.webp")) {
+    // DER TEXTERSATZ GILT NUR FUER OERTLICHE PFADE, und das ist seit dem
+    // 05.11.2026 keine Vorsicht mehr, sondern noetig.
+    //
+    // Traegt der Zwischenspeicher `topDown: null`, bildete diese Funktion die
+    // Zieladresse per Textersatz, jetzt auch auf einer Toradresse. Das ist
+    // genau der Fehlgriff, den `OP-PRJ-130` an `toggleTokenStyle()` und am
+    // Wurf auf die Leinwand beseitigt hat: eine geratene Toradresse wird mit
+    // HTTP 200 und einem leeren Bild beantwortet, und das Ergebnis landete im
+    // Tokendokument. Vorher war derselbe Fehlgriff ein fehlendes LOKALES Bild
+    // und damit sichtbar.
+    //
+    // Null heisst hier: der Aufrufer bleibt beim 2.5D-Bild. Wer die
+    // Draufsicht am Tor braucht, fragt `ansicht()`, und das kann diese
+    // Funktion nicht, weil sie synchron ist und zwei synchrone Aufrufer hat.
+    if (value.token && value.token.includes("-token.webp") && !zerlegeAdresse(value.token)) {
       return value.token.replace("-token.webp", "-top.webp")
     }
     return null

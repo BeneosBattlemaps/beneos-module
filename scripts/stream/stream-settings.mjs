@@ -527,6 +527,32 @@ export function downloadMode() {
   return installMode() === INSTALL_MODE.download
 }
 
+/**
+ * Liefert dieser Lauf TORADRESSEN oder DATEIEN?
+ *
+ * Die Frage gehoert hierher, neben `installMode()`, weil jeder
+ * Installationsweg sie stellt: der Kartenweg in `stream-install.mjs`, der
+ * Kreaturen-Installer in `beneos_cloud.js`, und mit `OP-PRJ-140` kommen
+ * Gegenstaende und Zauber dazu. Bis zum 2026-11-05 hatte sie drei
+ * verschiedene Formen im Bestand, und eine vierte war eingeladen.
+ *
+ * DREI BEDINGUNGEN MUESSEN ZUSAMMEN STIMMEN, nicht eine. Ohne Schluessel
+ * waere die Toradresse unbrauchbar, und ein Dokument mit unbrauchbarer
+ * Adresse ist schlimmer als eine heruntergeladene Datei: es ueberlebt den
+ * Rueckbau der Modulfassung. Heute verlangt `streamEnabled()` den Schluessel
+ * schon selbst, aber darauf darf sich diese Antwort nicht stuetzen.
+ *
+ * Wirft nie. Sind die Einstellungen noch nicht registriert, faellt der
+ * Zweifel zugunsten der Datei auf der Platte aus.
+ */
+export function lieferungStreamt() {
+  try {
+    return !downloadMode() && streamEnabled() && !!streamKey()
+  } catch (e) {
+    return false
+  }
+}
+
 const seconds = (key, fallback) => {
   const value = Number(read(key, fallback))
   return Number.isFinite(value) && value >= 0 ? value : fallback

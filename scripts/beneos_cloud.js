@@ -5,7 +5,8 @@ import { BeneosInfoBox } from "./beneos_info_box.js"
 import { BeneosAnalytics } from "./beneos_analytics.js"
 import { normalizeEmbeddedItems } from "./cloud-v2/beneos-ability-icons.mjs"
 import { packNeedsV14Migration, migrateActorForV14 } from "./cloud-v2/beneos-v14-scene-migration.mjs"
-import { ansicht, posenVergessen } from "./stream/stream-posen.mjs"
+import { ansicht, posenliste, posenVergessen } from "./stream/stream-posen.mjs"
+import { assetUrl, KREATUR_PRAEFIX, lieferungStreamt, zerlegeAdresse } from "./stream/stream-settings.mjs"
 
 // FilePicker.upload(..., { notify: false }) used to swallow failures
 // (disk full, permissions, server reject) — the await would resolve,
@@ -67,6 +68,77 @@ async function _beneosProbeInstalledFile(path) {
   }
 }
 
+/*
+ * DER EINE SCHALTER, UND WELCHE ROLLEN ER VERSCHIEBT.
+ *
+ * Betreiberentscheid 02.11.2026: es gibt KEINEN Schalter je Bildart. Ein Wert
+ * entscheidet, ob ein Kunde Dateien bekommt oder streamt, und er gilt fuer
+ * Karten, Kreaturen, Gegenstaende und Zauber gleich. Der Wert existiert
+ * laengst, `installMode()` im Ordner `stream/`, und wurde an dieser Stelle
+ * bisher nicht gelesen: der Kreaturen-Installer lud immer alle vier Bilder
+ * herunter, auch bei einem Konto im Streambetrieb.
+ *
+ * Verschoben werden nur die ZWEI Leinwandbilder, und das ist eine gemessene
+ * Grenze und keine Vorsicht:
+ *
+ *   `-token.webp`, `-top.webp`   ans Tor. 69 Prozent der Kreaturenbytes, und
+ *                                der Spiegel traegt sie, 3424 Dateien am
+ *                                07.10.2026. PIXI laedt sie durch
+ *                                `globalThis.fetch`, also gelten Vorrat,
+ *                                Verbindungswaechter und Ersatzbild ohne eine
+ *                                neue Zeile.
+ *   `-avatar.webp`               bleibt oertlich, Betreiberentscheid. Der
+ *                                Actor-Browser zeigt ihn als `<img>`, auch
+ *                                ohne Netz, und es gibt kein Standbild als
+ *                                Rueckfall. 6 Prozent der Bytes.
+ *   `-journal.webp`              bleibt oertlich, SOLANGE der Spiegel ihn
+ *                                nicht aufnimmt. Die Positivliste des
+ *                                Spiegels fuehrt ihn ausdruecklich nicht
+ *                                (`OP-PRJ-135`); eine Toradresse darauf waere
+ *                                heute eine Adresse ins Leere.
+ *
+ * Drei Bedingungen muessen zusammen stimmen, nicht eine. Ohne Schluessel
+ * waere die Toradresse unbrauchbar, und ein Dokument mit unbrauchbarer
+ * Adresse ist schlimmer als eine heruntergeladene Datei: es ueberlebt den
+ * Rueckbau der Modulfassung.
+ */
+function _beneosKreaturStreamt() {
+  return lieferungStreamt()
+}
+
+/**
+ * Ist das ein gewoehnlicher Dateiname, oder ein Pfad?
+ *
+ * `filename` kommt aus der Antwort der Cloud und erreicht die Adressbildung.
+ * `assetUrl()` kodiert JE SEGMENT und laesst damit `/` und `..` als Segmente
+ * stehen: aus `../x` wird `.../c/<schluessel>/<release>/../x`, und die
+ * Normalisierung im Abruf verlaesst den Kreaturenraum. Im Downloadzweig lief
+ * derselbe Wert in einen Dateinamen, den der Server abfaengt; als Pfadstueck
+ * einer Adresse ist er neu, deshalb der Riegel hier.
+ */
+function _beneosKreaturDateiOk(filename) {
+  return /^[A-Za-z0-9._-]+\.webp$/.test(String(filename || ""))
+}
+
+/** Die Toradresse einer Kreaturendatei. Der Releasename ist der Ordnername. */
+function _beneosKreaturAdresse(tokenKey, filename) {
+  return assetUrl(`${KREATUR_PRAEFIX}${tokenKey}`, "", filename)
+}
+
+/**
+ * Die LIEFERFORM einer Adresse, also woher das Bild kommt.
+ *
+ * Gebraucht beim Weiterschreiben auf die Weltkopie. Die Abkuerzung dort
+ * vergleicht Inhaltssignaturen, und eine Signatur beschreibt den INHALT einer
+ * Kreatur, nicht ihren Lieferweg. Gemessen am 05.11.2026: nach einem Wechsel
+ * von `stream` auf `download` stand im Kompendium wieder der oertliche Pfad,
+ * waehrend die Weltkopie, mit der gespielt wird, die Toradresse behielt. Die
+ * Signatur war gleich, also galt die Kopie als unveraendert.
+ */
+function _beneosAdressForm(adresse) {
+  return zerlegeAdresse(adresse) ? "tor" : "oertlich"
+}
+
 // Post-install health-check: after a token/item/spell has been processed,
 // HEAD-probe each expected asset aspect on disk. Catches partial installs
 // where the cloud response was missing an aspect (forgotten field) or an
@@ -91,16 +163,35 @@ async function _beneosProbeInstalledFile(path) {
 // entry keeps a reference to its payload, which is what makes the repair pass
 // below possible without asking the server again. A bare number is still
 // accepted from older callers and falls back to the naming convention.
-async function _beneosValidateInstalledAsset(kind, key, source = 1) {
+// `streamt` kommt vom Aufrufer, mit Vorgabe. Der Kopf von
+// `importTokenToCompendium()` sichert zu, der Wert werde EINMAL je Kreatur
+// gelesen, damit Upload, Dokument, Zwischenspeicher und Pruefung denselben
+// sehen. Las diese Funktion ihn selbst noch einmal, war die Zusicherung
+// falsch: ein Schalter, der zwischen Schleife und Pruefung umspringt, liess
+// die Pruefung zwei fehlende Aspekte je Variante melden, und der
+// Reparaturlauf lud sie hoch, also genau der Ausgang, den der Streambetrieb
+// verhindern soll. Die Vorgabe bleibt der Lesesatz, damit die
+// Wartungsaufrufer weiter live lesen.
+async function _beneosValidateInstalledAsset(kind, key, source = 1, { streamt = _beneosKreaturStreamt() } = {}) {
   if (!key) return { aspectsExpected: 0, aspectsMissing: [] }
   if (_beneosUsingTheForge()) return { aspectsExpected: 0, aspectsMissing: [] }
   const expected = []
+  // Was am Tor liegt, wird am Tor geprueft, nicht auf der Platte. Siehe unten.
+  const torPosen = []
   if (kind === "token") {
     const folder = `beneos_assets/cloud/tokens/${key}`
     const images = Array.isArray(source)
       ? source
       : Array.from({ length: Number(source) || 1 }, () => null)
-    const ASPECTS = ["token", "avatar", "journal", "top"]
+    // Was am Tor liegt, darf hier nicht gesucht werden. Sonst meldet JEDE
+    // Installation im Streambetrieb zwei fehlende Aspekte je Variante, und
+    // der Reparaturlauf darunter versucht sie herunterzuladen. Dasselbe
+    // Muster traegt der Kartenweg: `buildStreamPack()` laesst die Rolle
+    // `edge` nicht in `packInfo`, und `verifyAndRepair()` laeuft genau ueber
+    // diese Liste.
+    const ASPECTS = streamt
+      ? ["avatar", "journal"]
+      : ["token", "avatar", "journal", "top"]
     images.forEach((img, idx) => {
       const i = idx + 1
       for (const aspect of ASPECTS) {
@@ -113,6 +204,39 @@ async function _beneosValidateInstalledAsset(kind, key, source = 1) {
         })
       }
     })
+    // ZU DEM GEPRUEFTEN ERFOLGSFALL GEHOERT DER FEHLERFALL.
+    //
+    // Die Plattenprobe faellt im Streambetrieb zu Recht weg, aber wenn nichts
+    // an ihre Stelle tritt, prueft nach der Installation niemand mehr, ob die
+    // zwei Leinwandbilder irgendwo existieren. Eine Kreatur, deren
+    // Spiegelordner sie nicht traegt, installiert dann sauber und ist am
+    // Tisch ein durchsichtiger Bildpunkt, weil eine Abweisung am Tor HTTP 200
+    // mit 42 Byte ist und niemand eine Fehlermeldung sieht.
+    //
+    // Gefragt wird die Posenliste und nicht das Bild selbst: sie NENNT die
+    // Dateien, kostet EINEN Abruf je Kreatur (sie liegt danach fuenf Minuten
+    // im Zwischenspeicher) und sagt bei fehlender Verbindung "nicht geprueft"
+    // statt "fehlt". Fehlende Posen gehen bewusst NICHT in `expected`, also
+    // auch nicht in den Reparaturlauf: eine Pose laedt man nicht hoch, sie
+    // fehlt im Spiegel und das ist ein Katalogdefekt.
+    if (streamt) {
+      const liste = await posenliste(`${KREATUR_PRAEFIX}${key}`)
+      if (!liste) {
+        console.warn(
+          `[Beneos Cloud] Post-install validation: pose list for ${key} not readable, `
+          + `the two canvas images are NOT verified for this install.`
+        )
+      } else {
+        images.forEach((img, idx) => {
+          const i = idx + 1
+          for (const [pose, name] of [["tokenized", "token"], ["topdown", "top"]]) {
+            if (!liste.tokenbilder?.[String(i)]?.[pose]?.pfad) {
+              torPosen.push(`variant ${i} ${name} (not named in the pose list)`)
+            }
+          }
+        })
+      }
+    }
   } else if (kind === "item" || kind === "spell") {
     const folder = `beneos_assets/cloud/${kind === "item" ? "items" : "spells"}/${key}`
     const bag = (source && typeof source === "object" && !Array.isArray(source)) ? source : null
@@ -128,19 +252,21 @@ async function _beneosValidateInstalledAsset(kind, key, source = 1) {
   await Promise.allSettled(expected.map(async (e) => {
     if (!(await _beneosProbeInstalledFile(`${e.folder}/${e.file}`))) missing.push(e.label)
   }))
+  missing.push(...torPosen)
+  const gesamt = expected.length + torPosen.length
 
   if (missing.length > 0) {
-    console.warn(`[Beneos Cloud] Post-install validation: ${kind} ${key} missing ${missing.length}/${expected.length} aspect(s):`, missing)
+    console.warn(`[Beneos Cloud] Post-install validation: ${kind} ${key} missing ${missing.length}/${gesamt} aspect(s):`, missing)
     try {
       ui.notifications?.warn?.(
         game.i18n.format("BENEOS.Cloud.Notification.PostInstallIncomplete", {
-          kind, key, count: missing.length, total: expected.length, aspects: missing.join(", ")
+          kind, key, count: missing.length, total: gesamt, aspects: missing.join(", ")
         })
-        || `Beneos: ${kind} '${key}' install incomplete, ${missing.length}/${expected.length} aspect(s) missing: ${missing.join(", ")}`
+        || `Beneos: ${kind} '${key}' install incomplete, ${missing.length}/${gesamt} aspect(s) missing: ${missing.join(", ")}`
       )
     } catch (e) { /* notifications not ready */ }
   }
-  return { aspectsExpected: expected.length, aspectsMissing: missing, expected }
+  return { aspectsExpected: gesamt, aspectsMissing: missing, expected }
 }
 
 // Repair pass for the token/item/spell path. The battlemap installer has had
@@ -301,10 +427,26 @@ async function _beneosKreaturBrauchtInstallation(tokenKey, { weltActorNoetig = f
     const bare = String(p || "").split("?")[0]
     return bare.substring(bare.lastIndexOf("/") + 1)
   }
+  // EINE TORADRESSE LIEGT NICHT AUF DER PLATTE, und ihr Blattname auch nicht.
+  //
+  // Ohne diesen Schnitt faellt im Streambetrieb JEDE Kreatur in
+  // `{ install: true, grund: "file missing: ...-1-token.webp" }`, weil der
+  // Zwischenspeicher dort eine Toradresse traegt und die Verzeichnisliste
+  // ihren Namen nie nennt. Damit waere die einzige Bremse gegen das
+  // Wiederinstallieren geteilter Kreaturen aus, also genau der Fall, den der
+  // Kopf dieser Funktion als ihren Existenzgrund nennt. Die Folge je
+  // Kartenpaket: `get_token` fuer jede Kreatur erneut, Avatar und Journalbild
+  // erneut geschrieben, Erwerbszaehler am Server erneut erhoeht.
+  //
+  // Derselbe Schnitt wie bei der ASPECTS-Liste in
+  // `_beneosValidateInstalledAsset()`: nicht die Einstellung entscheidet,
+  // sondern die FORM DER ADRESSE. Eine Welt kann gemischt sein, und dann steht
+  // bei einer Kreatur eine Toradresse und bei der daneben ein Pfad.
   const zuPruefen = []
   for (const v of varianten) {
     for (const pfad of [v?.token, v?.avatar, v?.topDown]) {
       if (!pfad) continue
+      if (_beneosAdressForm(pfad) === "tor") continue
       const leaf = leafOf(pfad)
       if (!namen.includes(leaf)) return { install: true, grund: `file missing: ${leaf}` }
       zuPruefen.push(leaf)
@@ -3352,15 +3494,31 @@ export class BeneosCloud {
         issues.push("no_folder")
       }
       // (2) local files: HEAD-probe the prototypeToken texture path
+      // ZWEI FEHLER IN EINER ZEILE, beide erst durch das Kreaturenstreaming
+      // scharf geworden, und dieses Fenster LOESCHT auf Knopfdruck
+      // Kompendiumdokumente mit vorausgewaehlten Haken.
+      //
+      //   Aus einer Toradresse wurde `/https://gate...`, das antwortet 404,
+      //   und jede gestreamte Kreatur bekam `missing_files`. Das Fenster hat
+      //   dann Dokumente zum Loeschen vorgelegt, die in Ordnung sind.
+      //
+      //   Dieselbe Zeile schickte den Streamschluessel in die Anfragezeile des
+      //   EIGENEN Foundry-Servers, also ins Zugriffsprotokoll des Kunden und
+      //   als rote 404-Zeile in die Browserkonsole. `headCheck()` im Watcher
+      //   weist absolute Adressen genau deshalb mit `status: -2` ab.
+      //
+      // Eine Toradresse gilt hier als vollstaendig. Ob das Tor sie liefert,
+      // kann diese Funktion nicht beantworten, und sie darf es auch nicht
+      // versuchen: eine Abweisung am Tor ist HTTP 200 mit 42 Byte, also
+      // lieferte eine Probe ein "vorhanden" fuer eine Kreatur ohne Recht und
+      // ein "fehlt" fuer jede Kreatur ohne Netz. Beides waere schlimmer als
+      // keine Probe. Die Posenliste beantwortet diese Frage, und sie gehoert
+      // in `OP-PRJ-170` zusammen mit dem Rest dieser Pruefung.
       const protoSrc = doc.prototypeToken?.texture?.src || ""
-      if (protoSrc) {
-        try {
-          const url = protoSrc.startsWith("/") ? protoSrc : `/${protoSrc}`
-          const res = await fetch(url, { method: "HEAD" })
-          if (!res.ok) issues.push("missing_files")
-        } catch (e) { issues.push("missing_files") }
-      } else {
+      if (!protoSrc) {
         issues.push("missing_files")
+      } else if (_beneosAdressForm(protoSrc) !== "tor") {
+        if (!(await _beneosProbeInstalledFile(protoSrc))) issues.push("missing_files")
       }
       // (3) no world copy
       const fid = doc.getFlag("world", "beneos")?.fullId
@@ -3565,6 +3723,11 @@ export class BeneosCloud {
       }
 
       let finalFolder = `beneos_assets/cloud/tokens/${tokenKey}`
+      // EINMAL je Kreatur gelesen, damit Upload, Dokument, Zwischenspeicher
+      // und Pruefung garantiert denselben Wert sehen. Ein Schalter, der
+      // mitten in einer Installation umgestellt wird, wuerde sonst eine
+      // halb gestreamte Kreatur hinterlassen.
+      const streamt = _beneosKreaturStreamt()
       try {
         await foundry.applications.apps.FilePicker.implementation.createDirectory("data", "beneos_assets");
       } catch (err) {
@@ -3588,11 +3751,37 @@ export class BeneosCloud {
       for (let i = 0; i < tokenData.tokenImages.length; i++) {
         let fullId = tokenKey + "_" + (i + 1)
 
-        // Decode the base64 tokenImg and upload it to the FilePicker
-        let base64Response = await fetch(`data:image/webp;base64,${tokenData.tokenImages[i].token.image64}`);
-        let blob = await base64Response.blob();
-        let file = new File([blob], tokenData.tokenImages[i].token.filename, { type: "image/webp" });
-        await _beneosSafeUpload(finalFolder, file, `token ${tokenKey} variant ${i + 1} token`);
+        // DER DATEINAME ENTSCHEIDET MIT, und zwar je Variante.
+        //
+        // Siehe `_beneosKreaturDateiOk()`: ein Name, der kein gewoehnlicher
+        // Dateiname ist, darf kein Pfadstueck einer Adresse werden. Faellt
+        // eine Variante durch, bekommt SIE Dateien, auch wenn der Rest der
+        // Kreatur streamt. Das ist der Ausgang, der nichts kaputt macht: eine
+        // Datei auf der Platte ist immer brauchbar, eine Adresse mit `..`
+        // darin nicht.
+        const tokenNameRoh = tokenData.tokenImages[i].token?.filename
+        const topNameRoh = tokenData.tokenImages[i].top?.filename
+        const variantStreamt = streamt
+          && _beneosKreaturDateiOk(tokenNameRoh)
+          && (!topNameRoh || _beneosKreaturDateiOk(topNameRoh))
+        if (streamt && !variantStreamt) {
+          console.warn(
+            `[Beneos Cloud] Token ${tokenKey} variant ${i + 1} ships a filename that cannot go `
+            + `into an address; this variant is installed locally instead of streamed.`
+          )
+        }
+
+        // Das 2.5D-Token liegt im Streambetrieb am Tor und wird nicht
+        // geschrieben. Die Antwort der Cloud traegt die Bytes weiterhin;
+        // sie zu verwerfen kostet nichts, und der Umbau des Endpunkts auf
+        // eine Dateiliste ist ein eigenes Paket (`OP-PRJ-146`).
+        let base64Response, blob, file
+        if (!variantStreamt) {
+          base64Response = await fetch(`data:image/webp;base64,${tokenData.tokenImages[i].token.image64}`);
+          blob = await base64Response.blob();
+          file = new File([blob], tokenData.tokenImages[i].token.filename, { type: "image/webp" });
+          await _beneosSafeUpload(finalFolder, file, `token ${tokenKey} variant ${i + 1} token`);
+        }
 
         base64Response = await fetch(`data:image/webp;base64,${tokenData.tokenImages[i].journal.image64}`);
         blob = await base64Response.blob();
@@ -3612,7 +3801,18 @@ export class BeneosCloud {
         // missing one is a real defect in the catalog and gets said out loud
         // instead of being swallowed.
         const topData = tokenData.tokenImages[i].top
-        if (topData?.image64 && topData?.filename) {
+        if (variantStreamt) {
+          // Nicht hochgeladen, also auch nicht "uploaded". Was zaehlt, ist
+          // ob die Cloud die Datei NENNT: dann liegt sie im Spiegel, und die
+          // Posenliste ist die Instanz, die das im Betrieb beantwortet.
+          if (topData) topData._beneosTopVerfuegbar = !!topData.filename
+          if (!topData?.filename) {
+            console.warn(
+              `[Beneos Cloud] Token ${tokenKey} variant ${i + 1} ships without a top-down image. `
+              + `Top-down is mandatory; this variant should not be in the catalog.`
+            )
+          }
+        } else if (topData?.image64 && topData?.filename) {
           const topResp = await fetch(`data:image/webp;base64,${topData.image64}`);
           const topBlob = await topResp.blob();
           const topFile = new File([topBlob], topData.filename, { type: "image/webp" });
@@ -3621,7 +3821,7 @@ export class BeneosCloud {
           // the upload succeeded; otherwise we leave a dangling reference that
           // 404s on the canvas (matches the user-report top.webp 404 spam).
           const topUpload = await _beneosSafeUpload(finalFolder, topFile, `token ${tokenKey} variant ${i + 1} top`);
-          topData._beneosUploaded = !!(topUpload && topUpload.path)
+          topData._beneosTopVerfuegbar = !!(topUpload && topUpload.path)
         } else {
           console.warn(
             `[Beneos Cloud] Token ${tokenKey} variant ${i + 1} ships without a top-down image. `
@@ -3654,8 +3854,15 @@ export class BeneosCloud {
         }
 
         if (actorData) {
+          // Der Avatar bleibt oertlich, in jedem Betrieb. Begruendung im
+          // Kopf von `_beneosKreaturStreamt()`: er steht in `Actor.img`,
+          // einem Feld, das jeder Spieler liest, und der Actor-Browser zeigt
+          // ihn auch ohne Netz.
           actorData.img = `${finalFolder}/${tokenData.tokenImages[i].avatar.filename}`
-          actorData.prototypeToken.texture.src = `${finalFolder}/${tokenData.tokenImages[i].token.filename}`
+          const tokenDatei = tokenData.tokenImages[i].token.filename
+          actorData.prototypeToken.texture.src = variantStreamt
+            ? _beneosKreaturAdresse(tokenKey, tokenDatei)
+            : `${finalFolder}/${tokenDatei}`
           // Top-Down swap is gated on the asset actually having been uploaded
           // by the loop above. Every token in scope of an account is supposed
           // to ship with a -top.webp; if it didn't arrive, that's a server-
@@ -3664,13 +3871,23 @@ export class BeneosCloud {
           // tokenizedScale) still apply.
           try {
             const installStyle = game.settings.get(BeneosUtility.moduleID(), "beneos-default-install-style")
-            const topAssetAvailable = !!(topData?.image64 && topData?.filename && topData._beneosUploaded)
+            // `image64` steht hier ABSICHTLICH nicht mehr mit in der Frage.
+            // Im Streambetrieb werden die Bytes verworfen, und mit
+            // `OP-PRJ-146` schickt der Endpunkt sie gar nicht mehr; eine
+            // Verfuegbarkeit, die an ihnen haengt, kippt dann stillschweigend
+            // auf 2.5D, obwohl die Draufsicht am Tor liegt. Was zaehlt, steht
+            // in `_beneosTopVerfuegbar`: im Downloadzweig, dass der Upload
+            // angekommen ist, im Streamzweig, dass die Cloud die Datei nennt.
+            const topAssetAvailable = !!(topData?.filename && topData._beneosTopVerfuegbar)
             if (installStyle === "topdown" && topAssetAvailable) {
               // 05.11.2026: der Dateiname kommt aus der Antwort der Cloud und
               // wird nicht mehr durch Textersatz gebildet. `topData.filename`
-              // ist genau die Datei, die die Schleife oben hochgeladen hat;
-              // der Textersatz war eine Annahme darueber, wie sie heisst.
-              actorData.prototypeToken.texture.src = `${finalFolder}/${topData.filename}`
+              // ist genau die Datei, die die Schleife oben hochgeladen oder
+              // am Tor belassen hat; der Textersatz war eine Annahme darueber,
+              // wie sie heisst.
+              actorData.prototypeToken.texture.src = variantStreamt
+                ? _beneosKreaturAdresse(tokenKey, topData.filename)
+                : `${finalFolder}/${topData.filename}`
             } else if (installStyle === "topdown" && !topAssetAvailable) {
               // User picked Top-Down as default but the cloud response did
               // not include a top variant. Keep the prototype on 2.5D and
@@ -3678,7 +3895,7 @@ export class BeneosCloud {
               try {
                 ui.notifications?.warn?.(
                   game.i18n.format("BENEOS.Cloud.Notification.TopDownMissing", { name: actorData.name })
-                  || `Beneos: Top-Down variant unavailable for ${actorData.name} — falling back to 2.5D.`
+                  || `Beneos: Top-Down variant unavailable for ${actorData.name}, falling back to 2.5D.`
                 )
               } catch (e) { /* notifications not ready yet */ }
             }
@@ -3790,7 +4007,11 @@ export class BeneosCloud {
                 // cloud included it; null otherwise so Stage 2 (mode
                 // switch) can detect old-cache entries that need a
                 // re-install.
-                topDown: (topData?.filename) ? `${finalFolder}/${topData.filename}` : null,
+                topDown: (topData?.filename)
+                  ? (variantStreamt
+                      ? _beneosKreaturAdresse(tokenKey, topData.filename)
+                      : `${finalFolder}/${topData.filename}`)
+                  : null,
                 actorId: imported.id,
                 installDate: tNow,
                 contentSignature: tokenData?.contentSignature ?? "",
@@ -3867,7 +4088,7 @@ export class BeneosCloud {
       }
       // Pass the images themselves, not their count: the expectation is then
       // built from what the server actually offered, filenames included.
-      const _bnHealthToken = await _beneosValidateInstalledAsset("token", tokenKey, tokenData?.tokenImages || 1)
+      const _bnHealthToken = await _beneosValidateInstalledAsset("token", tokenKey, tokenData?.tokenImages || 1, { streamt })
       // Anything still missing after the first pass gets one sequential retry
       // before it counts as a failure, mirroring the battlemap installer.
       await _beneosRepairMissingAspects("token", tokenKey, _bnHealthToken)

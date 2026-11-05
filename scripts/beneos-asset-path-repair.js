@@ -1181,11 +1181,29 @@ function stripLeadSlashLocal(p) {
 /*  Den Streamschluessel in einer Welt nachziehen                   */
 /* ============================================================== */
 
-/** Die Wurzel einer Toradresse: `<schema>://<host>/a/<schluessel>/`, sonst null. */
+/**
+ * Die Wurzel einer Toradresse samt ihrem Raum, sonst null.
+ *
+ * ZWEI RAEUME, NICHT EINER. `a` sind die Karten, `c` die Kreaturen. Bis zum
+ * 2026-11-05 stand hier nur `a`, und das war richtig, solange nur Szenen
+ * Toradressen trugen. Seit `OP-PRJ-131` schreibt der Kreaturen-Installer
+ * `c`-Adressen dauerhaft in Kompendium und Weltkopie. Eine Wurzel, die dieser
+ * Satz nicht erkennt, wird nach einem Schluesselwechsel weder gezaehlt noch
+ * umgeschrieben, und der Bericht meldet "nichts nachzuziehen", waehrend das
+ * Tor auf jede alte Adresse mit dem durchsichtigen Bildpunkt antwortet: die
+ * Tokens sind auf der Leinwand weg, und nichts sagt warum. Genau dieser
+ * Zustand ist am 2026-09-06 fuer Szenen entstanden (`TC-PRJ-STR-051`) und war
+ * der Anlass fuer diesen ganzen Nachzug.
+ *
+ * Der Raum kommt mit zurueck, weil die ZIELwurzel ihn braucht: aus einer
+ * `c`-Adresse darf keine `a`-Adresse werden.
+ *
+ * @returns {{wurzel: string, raum: string}|null}
+ */
 function _gateWurzel(adresse) {
   if (typeof adresse !== "string") return null;
-  const m = adresse.match(/^(https?:\/\/[^/]+\/a\/[^/]+\/)/);
-  return m ? m[1] : null;
+  const m = adresse.match(/^(https?:\/\/[^/]+\/([ac])\/[^/]+\/)/);
+  return m ? { wurzel: m[1], raum: m[2] } : null;
 }
 
 /**
@@ -1204,29 +1222,37 @@ function _gateWurzel(adresse) {
  * am 2026-09-06 blieben nach einem Schluesselwechsel 802 Stellen stehen, weil
  * die Feldliste `thumb` und saemtliche Flaggen nicht kennt.
  *
+ * Die Abbildung ist eine `Map` von alter auf neue Wurzel und keine Liste mit
+ * einem gemeinsamen Ziel. Der Grund ist der Raumbuchstabe: eine Karte wird zu
+ * `.../a/<neu>/` und eine Kreatur zu `.../c/<neu>/`. Ein gemeinsames Ziel
+ * haette alle Kreaturenadressen in den Kartenraum gebogen, und das Tor
+ * antwortet dort mit `404 wrong-space`.
+ *
+ * @param {*} wert
+ * @param {Map<string,string>} abbildung alte Wurzel auf neue Wurzel
  * @returns {{wert: *, anzahl: number}} der neue Wert und wie oft ersetzt wurde
  */
-function _wurzelTiefErsetzen(wert, alteWurzeln, zielWurzel) {
+function _wurzelTiefErsetzen(wert, abbildung) {
   if (typeof wert === "string") {
     let neu = wert;
     let n = 0;
-    for (const alt of alteWurzeln) {
-      if (!neu.includes(alt)) continue;
-      n += neu.split(alt).length - 1;
-      neu = neu.split(alt).join(zielWurzel);
+    for (const [alteWurzel, zielWurzel] of abbildung) {
+      if (!neu.includes(alteWurzel)) continue;
+      n += neu.split(alteWurzel).length - 1;
+      neu = neu.split(alteWurzel).join(zielWurzel);
     }
     return { wert: neu, anzahl: n };
   }
   if (Array.isArray(wert)) {
     let n = 0;
-    const neu = wert.map(v => { const r = _wurzelTiefErsetzen(v, alteWurzeln, zielWurzel); n += r.anzahl; return r.wert; });
+    const neu = wert.map(v => { const r = _wurzelTiefErsetzen(v, abbildung); n += r.anzahl; return r.wert; });
     return { wert: n ? neu : wert, anzahl: n };
   }
   if (wert && typeof wert === "object") {
     let n = 0;
     const neu = {};
     for (const k of Object.keys(wert)) {
-      const r = _wurzelTiefErsetzen(wert[k], alteWurzeln, zielWurzel);
+      const r = _wurzelTiefErsetzen(wert[k], abbildung);
       neu[k] = r.wert;
       n += r.anzahl;
     }
@@ -1246,9 +1272,9 @@ function _wurzelTiefErsetzen(wert, alteWurzeln, zielWurzel) {
  * `updateEmbeddedDocuments` mit den Feldern, die sich wirklich geaendert
  * haben.
  */
-async function _restlicheWurzelnNachziehen(alteWurzeln, zielWurzel) {
+async function _restlicheWurzelnNachziehen(abbildung) {
   const bericht = { geaendert: 0, dokumente: 0, fehler: [] };
-  if (!alteWurzeln?.length) return bericht;
+  if (!abbildung?.size) return bericht;
 
   // Die eingebetteten Sammlungen je Familie, mit ihrem Dokumenttyp.
   //
@@ -1279,7 +1305,7 @@ async function _restlicheWurzelnNachziehen(alteWurzeln, zielWurzel) {
         const patch = {};
         for (const k of Object.keys(roh)) {
           if (k === "_id" || k in fam.eingebettet) continue;
-          const r = _wurzelTiefErsetzen(roh[k], alteWurzeln, zielWurzel);
+          const r = _wurzelTiefErsetzen(roh[k], abbildung);
           if (r.anzahl) { patch[k] = r.wert; bericht.geaendert += r.anzahl; }
         }
         if (Object.keys(patch).length) { await doc.update(patch); bericht.dokumente++; }
@@ -1293,7 +1319,7 @@ async function _restlicheWurzelnNachziehen(alteWurzeln, zielWurzel) {
             const teil = {};
             for (const k of Object.keys(eintrag)) {
               if (k === "_id") continue;
-              const r = _wurzelTiefErsetzen(eintrag[k], alteWurzeln, zielWurzel);
+              const r = _wurzelTiefErsetzen(eintrag[k], abbildung);
               if (r.anzahl) { teil[k] = r.wert; bericht.geaendert += r.anzahl; }
             }
             if (Object.keys(teil).length) updates.push({ _id: eintrag._id, ...teil });
@@ -1364,14 +1390,17 @@ export async function schluesselNachziehen({ trocken = false, onProgress = null 
 
   const schluessel = streamKey();
   if (!schluessel) { bericht.grund = "kein-schluessel"; return bericht; }
-  const zielWurzel = `${streamBase().replace(/\/+$/, "")}/a/${encodeURIComponent(schluessel)}/`;
+  const basis = streamBase().replace(/\/+$/, "");
+  const zielWurzelFuer = (raum) => `${basis}/${raum}/${encodeURIComponent(schluessel)}/`;
 
-  const alte = new Set();
+  // Alte Wurzel auf ihre eigene Zielwurzel, je Raum. Siehe `_gateWurzel()`.
+  const abbildung = new Map();
   const merke = (adresse) => {
-    const wurzel = _gateWurzel(adresse);
-    if (!wurzel) return;
+    const teil = _gateWurzel(adresse);
+    if (!teil) return;
     bericht.adressen++;
-    if (wurzel !== zielWurzel) alte.add(wurzel);
+    const ziel = zielWurzelFuer(teil.raum);
+    if (teil.wurzel !== ziel) abbildung.set(teil.wurzel, ziel);
   };
 
   // ERKANNT WIRD TIEF, NICHT UEBER EINE FELDLISTE.
@@ -1410,11 +1439,11 @@ export async function schluesselNachziehen({ trocken = false, onProgress = null 
     }
   }
 
-  bericht.alteWurzeln = [...alte];
-  if (!alte.size) { bericht.grund = "nichts nachzuziehen"; return bericht; }
+  bericht.alteWurzeln = [...abbildung.keys()];
+  if (!abbildung.size) { bericht.grund = "nichts nachzuziehen"; return bericht; }
 
-  const mappings = bericht.alteWurzeln.map(wurzel => ({
-    brokenPrefix: wurzel,
+  const mappings = [...abbildung].map(([alteWurzel, zielWurzel]) => ({
+    brokenPrefix: alteWurzel,
     actualPrefix: zielWurzel,
   }));
 
@@ -1449,7 +1478,7 @@ export async function schluesselNachziehen({ trocken = false, onProgress = null 
   // Die frueheren Laeufe haben das nicht gesehen, weil ihre Nachzaehlung
   // dieselben Felder zaehlte, die der Eingriff anfasst. Eine Zaehlung, die den
   // Ausschnitt des Eingriffs uebernimmt, misst die eigene Annahme.
-  const rest = await _restlicheWurzelnNachziehen(bericht.alteWurzeln, zielWurzel);
+  const rest = await _restlicheWurzelnNachziehen(abbildung);
   bericht.geaendert += rest.geaendert;
   bericht.tiefNachgezogen = rest.geaendert;
   bericht.tiefDokumente = rest.dokumente;
