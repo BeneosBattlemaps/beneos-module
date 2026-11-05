@@ -387,6 +387,17 @@ const VORRAT_URSPRUNG = "https://beneos-stream.invalid"
 /**
  * Toradresse zu Vorratsschluessel. Idempotent: was schon ein Vorratsschluessel
  * ist, bleibt einer, und was gar keine Toradresse ist, bleibt unveraendert.
+ *
+ * EINE KREATUR TRAEGT HIER EIN LEERES VARIANTENSTUECK, und der Schluessel
+ * sieht dann so aus:
+ *
+ *   https://beneos-stream.invalid/a/beneos_ct_<kennung>//<pfad...>
+ *
+ * Der doppelte Schraegstrich ist Absicht und kein Versehen. Die Alternative
+ * waere ein viertes Feld im Schluesselformat gewesen, und das haette jeden
+ * bereits gespeicherten Vorrat eines Bestandskunden umgeschrieben. Der innere
+ * Buchstabe bleibt bei beiden Raeumen `a`, weil er hier nur ein Namensraum
+ * ist und keine Route; welcher Raum gemeint ist, sagt der Releasename.
  */
 function vorratsSchluessel(url) {
   const s = String(url || "")
@@ -441,13 +452,24 @@ const vDelete = (store, url, opts) => store.delete(vorratsSchluessel(url), opts)
  */
 const abgewiesen = new Map()
 
+/**
+ * Worunter eine Meldung gesammelt wird: Release und, wo es eine gibt, Variante.
+ *
+ * Bis zum 05.11.2026 stand hier und bei der Offline-Meldung je eine eigene
+ * Zerlegung der Adresse, beide auf `/a/` zugeschnitten. Eine Kreatur liegt
+ * unter `/c/` und waere in beiden unter "unbekannt" gelandet, also WAEREN ALLE
+ * KREATUREN ZUSAMMEN EINE EINZIGE MELDUNG GEWESEN, und zwar dieselbe wie die
+ * jeder unlesbaren Adresse. Beide fragen jetzt `zerlegeAdresse`, die als
+ * Gegenstueck zu `assetUrl` ohnehin beide Formen kennen muss.
+ */
+function sammelSchluessel(url) {
+  const t = zerlegeAdresse(url)
+  if (!t) return "unbekannt"
+  return t.variant ? `${t.release}/${t.variant}` : t.release
+}
+
 function meldeAbweisung(url) {
-  let schluessel = "unbekannt"
-  try {
-    const teile = new URL(url, location.href).pathname.split("/").filter(Boolean)
-    // /a/<schluessel>/<release>/<variante>/<pfad...>
-    if (teile[0] === "a" && teile.length >= 4) schluessel = `${teile[2]}/${teile[3]}`
-  } catch (_) { /* Adresse unlesbar, dann eben gesammelt unter "unbekannt" */ }
+  const schluessel = sammelSchluessel(url)
 
   const zahl = (abgewiesen.get(schluessel) || 0) + 1
   abgewiesen.set(schluessel, zahl)
@@ -689,11 +711,7 @@ async function offlineAntwort(url) {
 const offlineGemeldet = new Map()
 
 function meldeOffline(url) {
-  let schluessel = "unbekannt"
-  try {
-    const teile = new URL(url, location.href).pathname.split("/").filter(Boolean)
-    if (teile[0] === "a" && teile.length >= 4) schluessel = `${teile[2]}/${teile[3]}`
-  } catch (_) { /* Adresse unlesbar */ }
+  const schluessel = sammelSchluessel(url)
   const zahl = (offlineGemeldet.get(schluessel) || 0) + 1
   offlineGemeldet.set(schluessel, zahl)
   if (zahl > 1) return

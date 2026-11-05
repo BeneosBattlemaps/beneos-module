@@ -549,10 +549,44 @@ export function maxConcurrent() {
   return seconds(SETTING.maxConcurrent, DEFAULT_MAX_CONCURRENT)
 }
 
-/** The address of one asset of one release variant. */
+/**
+ * ZWEI ADRESSFORMEN, UND DER PRAEFIX ENTSCHEIDET.
+ *
+ * Eine Karte liegt unter `/a/<schluessel>/<release>/<variante>/<pfad>`, eine
+ * Kreatur unter `/c/<schluessel>/<release>/<pfad>`. Der Unterschied ist nicht
+ * Geschmack: eine Karte gibt es in 4K und HD, eine Kreatur nicht. Was es nicht
+ * gibt, bekommt auch kein leeres Pfadstueck.
+ *
+ * Die Zuordnung haengt am Namen des Releases und an nichts sonst. Genauso
+ * entscheidet es das Tor, dort heisst dieselbe Pruefung `istKreatur` und
+ * bewacht zwei Stellen: den Lesezugriff auf `/a/` und den SCHREIBENDEN
+ * Zugriff auf `/offline/`. Zwei Seiten, eine Regel; weicht eine ab, bekommt
+ * ein Kunde entweder nichts oder zu viel.
+ */
+export const KREATUR_PRAEFIX = "beneos_ct_"
+
+/** Gehoert dieses Release in den Kreaturenraum? Nur der Praefix zaehlt. */
+export function istKreatur(release) {
+  return String(release || "").startsWith(KREATUR_PRAEFIX)
+}
+
+/**
+ * The address of one asset of one release variant.
+ *
+ * Fuer eine Kreatur wird `variant` NICHT verwendet. Der Kreaturenraum kennt
+ * keine Varianten im Pfad, und ein Aufrufer, der hier eine mitgibt, bekommt
+ * sie stillschweigend nicht in die Adresse. Das ist gewollt: die Alternative
+ * waere, jede der Aufrufstellen wissen zu lassen, in welchem Raum sie gerade
+ * arbeitet, und genau diese Kenntnis soll an einer Stelle liegen.
+ */
 export function assetUrl(release, variant, path) {
   const clean = String(path).replace(/^\/+/, "").split("/").map(encodeURIComponent).join("/")
-  return `${streamBase()}/a/${encodeURIComponent(streamKey())}/${encodeURIComponent(release)}/${encodeURIComponent(variant)}/${clean}`
+  const kopf = `${streamBase()}`
+  const schluessel = encodeURIComponent(streamKey())
+  if (istKreatur(release)) {
+    return `${kopf}/c/${schluessel}/${encodeURIComponent(release)}/${clean}`
+  }
+  return `${kopf}/a/${schluessel}/${encodeURIComponent(release)}/${encodeURIComponent(variant)}/${clean}`
 }
 
 /**
@@ -567,17 +601,52 @@ export function assetUrl(release, variant, path) {
  * Bestandteil der Identitaet einer Datei, sondern die Eintrittskarte des
  * Augenblicks, und wer ihn mitnimmt, baut sich die naechste Bindung an ihn.
  *
- * @returns {{release: string, variant: string, pfad: string}|null}
+ * BEIDE ADRESSFORMEN, UND DER BUCHSTABE WIRD GEPRUEFT UND NICHT WEGGELASSEN.
+ *
+ * Die naheliegende Erweiterung waere, die Pruefung auf den Buchstaben zu
+ * lockern und einfach ab dem dritten Teil zu lesen. Sie ist falsch: dieselbe
+ * Exaktheit traegt nachweislich den Fremdschutz, denn sie ist der Grund, dass
+ * eine fremde Adresse `null` bekommt und unangetastet bleibt. Eine Form, die
+ * fast alles annimmt, nimmt auch das an, was nicht uns gehoert.
+ *
+ * SIE PRUEFT DIE FORM UND NICHT DEN HOST, und das ist eine Arbeitsteilung und
+ * kein Versehen. Den Host prueft `ours()` in der Abrufschicht; diese Funktion
+ * bekommt nur Adressen, die das schon hinter sich haben. Geprueft am
+ * 05.11.2026: eine fremde Adresse in unserer Form wird zerlegt. Ein Host-Test
+ * hier waere trotzdem falsch, denn er wuerde jeden Vorratseintrag
+ * unlesbar machen, der unter einer FRUEHEREN Basisadresse angelegt wurde, und
+ * genau diese Eintraege soll der Umzug beim Lesen retten.
+ *
+ * Eine Kreatur bekommt `variant: ""`, und das ist kein Platzhalter fuer einen
+ * fehlenden Wert, sondern die Aussage "dieser Raum hat keine Varianten". Der
+ * Vorratsschluessel `release|variant|pfad` traegt das ohne Formatwechsel, und
+ * ein Zusammenstoss mit einer Karte ist ausgeschlossen, weil der Releasename
+ * selbst den Raum nennt.
+ *
+ * @returns {{raum: string, release: string, variant: string, pfad: string}|null}
  */
 export function zerlegeAdresse(url) {
   try {
     const u = new URL(url)
     const teile = u.pathname.replace(/^\/+/, "").split("/")
-    if (teile[0] !== "a" || teile.length < 5) return null
-    return {
-      release: decodeURIComponent(teile[2]),
-      variant: decodeURIComponent(teile[3]),
-      pfad: teile.slice(4).map(decodeURIComponent).join("/"),
+    // /a/<schluessel>/<release>/<variante>/<pfad...>, also mindestens fuenf.
+    if (teile[0] === "a" && teile.length >= 5) {
+      return {
+        raum: "karte",
+        release: decodeURIComponent(teile[2]),
+        variant: decodeURIComponent(teile[3]),
+        pfad: teile.slice(4).map(decodeURIComponent).join("/"),
+      }
     }
+    // /c/<schluessel>/<release>/<pfad...>, also mindestens vier.
+    if (teile[0] === "c" && teile.length >= 4) {
+      return {
+        raum: "kreatur",
+        release: decodeURIComponent(teile[2]),
+        variant: "",
+        pfad: teile.slice(3).map(decodeURIComponent).join("/"),
+      }
+    }
+    return null
   } catch (_) { return null }
 }
