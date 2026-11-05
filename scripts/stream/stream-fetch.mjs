@@ -20,7 +20,7 @@
  * to the gate cut, video running, 59 frames per second.
  */
 
-import { assetUrl, budgetFor, downloadMode, localCacheEnabled, maxConcurrent, streamEnabled, streamHost, streamMode, zerlegeAdresse } from "./stream-settings.mjs"
+import { assetUrl, budgetFor, downloadMode, localCacheEnabled, maxConcurrent, MODULE_ID, streamEnabled, streamHost, streamMode, zerlegeAdresse } from "./stream-settings.mjs"
 import { reportFailure, reportedSoFar } from "./stream-report.mjs"
 import { isOffline, noteResult } from "./stream-online.mjs"
 
@@ -493,7 +493,148 @@ function istMedium(url) {
   return /\.(webp|png|jpe?g|gif|svg|webm|mp4|ogv)(\?|$)/i.test(String(url))
 }
 
-function offlineAntwort(url) {
+/* --------------------------------------------------------- Ersatzbilder -- */
+
+/**
+ * Das Ersatzbild, und warum es hier entsteht und nicht in der Oberflaeche.
+ *
+ * Eine Abweisung am Tor ist HTTP 200 mit einem durchsichtigen GIF von 42 Byte.
+ * Das ist ein GUELTIGES Bild: Foundry zeichnet es, PIXI meldet keinen Fehler,
+ * die Konsole bleibt still. Der Spielleiter sieht ein leeres Feld und haelt
+ * das Modul fuer defekt. Fuer den Bildpunkt, den diese Schicht bei bekanntem
+ * Offline selbst liefert, gilt dasselbe.
+ *
+ * Die Ersatzantwort entsteht deshalb HIER und nicht je Fenster. Diese Schicht
+ * kennt die Bildart nicht, also deckt sie jede Flaeche ab, auch jede
+ * kuenftige: Leinwand, Journalseite, Klappkarte, Karte ohne Standbild. Ein
+ * Ersatzbild je Oberflaeche waere genau die Bauart, die beim naechsten
+ * Fenster vergessen wird.
+ *
+ * ZWEI URSACHEN, ZWEI BILDER. Ein einziges Bild fuer beides macht jeden
+ * Supportfall unaufloesbar: "offline" heisst warten, "kein Zugang" heisst
+ * klaeren.
+ *
+ * NUR BILDER, NICHT VIDEO. Ein Video bekommt weiter den Bildpunkt. PIXI waehlt
+ * seinen Ladeweg nach der Endung der ADRESSE und nicht nach dem Inhalt der
+ * Antwort, ein WebP landete also im Videoweg. Das waere ein Fehler dort, wo
+ * heute nur nichts zu sehen ist.
+ *
+ * NICHT IN DEN VORRAT. Ein Platzhalter im Speicher sieht bei der Abnahme
+ * richtig aus und macht den Ausfall danach dauerhaft. Die Ersatzantwort traegt
+ * deshalb genau die Kopfzeile ihrer Ursache (`x-beneos-offline` oder
+ * `x-beneos-denied`), und `toStore` weist beide schon heute ab. Es ist kein
+ * neuer Riegel noetig, nur der vorhandene, und das ist Absicht: ein zweiter
+ * Riegel koennte einzeln vergessen werden.
+ */
+const ERSATZ_PFAD = `modules/${MODULE_ID}/ui/beneos_stream_`
+
+/**
+ * Das Seitenverhaeltnis folgt der Rolle im Dateinamen.
+ *
+ * Die wirkliche Groesse der ausgefallenen Datei steht im Manifest
+ * beziehungsweise in der Posenliste, und beide sind hier nicht zur Hand: diese
+ * Funktion laeuft auch dann, wenn gerade gar nichts zu holen ist. Die Rolle
+ * steht dagegen in jeder Beneos-Adresse, weil die Namensregel
+ * `<kennung>-<n>-<rolle>.webp` der Liefervertrag ist.
+ *
+ * Unbekanntes bekommt das Breitbild. Das deckt die Karten ab, und eine Karte
+ * ist der haeufigste Fall, der hier ankommt.
+ */
+function ersatzForm(url) {
+  const pfad = String(url).split("?")[0].toLowerCase()
+  if (/-journal\.(webp|png|jpe?g)$/.test(pfad)) return "journal"
+  if (/[-_](front|back|card)\.(webp|png|jpe?g)$/.test(pfad)) return "card"
+  if (/[-_](token|top|avatar|icon)\.(webp|png|jpe?g)$/.test(pfad)) return "token"
+  return "journal"
+}
+
+function istBild(url) {
+  return /\.(webp|png|jpe?g)(\?|$)/i.test(String(url))
+}
+
+/**
+ * Der unveraenderte Abruf, festgehalten beim Einbau des Ersatzes.
+ *
+ * Das Ersatzbild liegt im Modul und damit auf dem Foundry-Server, nicht am
+ * Tor; `ours()` wuerde es also ohnehin durchlassen. Die eigene Kopie steht
+ * hier trotzdem, damit diese Stelle nicht davon abhaengt, dass das morgen noch
+ * so ist.
+ */
+let urspruenglicherAbruf = null
+
+/**
+ * Die Adresse einer Moduldatei, mit dem Routenpraefix.
+ *
+ * `foundry.utils.getRoute()` ist noetig, weil eine Installation unter einem
+ * Unterpfad laufen kann und die Forge es immer tut. Drei HEAD-Proben im
+ * Bestand bilden ihre Adressen ohne diesen Schritt und sind dort genau deshalb
+ * defekt; der Fehler wird hier nicht wiederholt.
+ */
+function moduldatei(pfad) {
+  try { return foundry.utils.getRoute(`/${pfad}`) } catch (_) { return `/${pfad}` }
+}
+
+/**
+ * Die Bytes je Ursache und Form, einmal je Sitzung geholt.
+ *
+ * Gespeichert wird das VERSPRECHEN und nicht das Ergebnis. Fuenfzig Tokens
+ * ohne Recht kommen gleichzeitig an; mit dem Ergebnis als Schluessel stuenden
+ * fuenfzig Abrufe derselben Datei nebeneinander, bevor der erste fertig ist.
+ */
+const ersatzVorrat = new Map()
+
+function ersatzBytes(ursache, form) {
+  const schluessel = `${ursache}/${form}`
+  let liegt = ersatzVorrat.get(schluessel)
+  if (liegt) return liegt
+  liegt = (async () => {
+    const holen = urspruenglicherAbruf || globalThis.fetch
+    const antwort = await holen(moduldatei(`${ERSATZ_PFAD}${ursache}_${form}.webp`))
+    if (!antwort.ok) throw new Error(`HTTP ${antwort.status}`)
+    return await antwort.arrayBuffer()
+  })()
+  // Ein Fehlschlag darf sich nicht festsetzen: sonst bliebe das Ersatzbild bis
+  // zum Neuladen der Welt aus, weil ein einziger misslungener Abruf im Vorrat
+  // steht und jedem weiteren Versuch im Weg liegt.
+  liegt.catch(() => { ersatzVorrat.delete(schluessel) })
+  ersatzVorrat.set(schluessel, liegt)
+  return liegt
+}
+
+let ersatzFehlerGemeldet = false
+
+/**
+ * Die Antwort, die der Kunde statt des leeren Feldes bekommt.
+ *
+ * `ursache` ist `offline` oder `denied`, und sie bestimmt beides: das Bild und
+ * die Kopfzeile, an der der Vorrat die Antwort abweist.
+ */
+async function ersatzAntwort(url, ursache) {
+  const kopf = {
+    "Content-Type": "image/webp",
+    "x-beneos-ersatz": ursache,
+    [ursache === "offline" ? "x-beneos-offline" : "x-beneos-denied"]: "1",
+  }
+  try {
+    const bytes = await ersatzBytes(ursache, ersatzForm(url))
+    return new Response(bytes, { status: 200, headers: kopf })
+  } catch (err) {
+    // Faellt das Ersatzbild selbst aus, bleibt es beim Bildpunkt. Eine Ausnahme
+    // waere hier schlimmer als ein leeres Feld: PIXI malt dann sein
+    // Gefahrensymbol ueber die Szene und versucht es sofort wieder.
+    if (!ersatzFehlerGemeldet) {
+      ersatzFehlerGemeldet = true
+      console.warn("Beneos Stream | Ersatzbild nicht ladbar, es bleibt beim "
+        + `durchsichtigen Bildpunkt: ${String(err).slice(0, 120)}`)
+    }
+    return new Response(PIXEL, {
+      status: 200,
+      headers: { ...kopf, "Content-Type": "image/gif" },
+    })
+  }
+}
+
+async function offlineAntwort(url) {
   meldeOffline(url)
   count("offline", url)
 
@@ -526,6 +667,13 @@ function offlineAntwort(url) {
       headers: { "Content-Type": "application/json", "x-beneos-offline": "1" },
     })
   }
+
+  // Ein Bild bekommt das Ersatzbild, alles andere Medium den Bildpunkt.
+  //
+  // Die Trennung ist nicht Geschmack: PIXI waehlt seinen Ladeweg nach der
+  // Endung der Adresse. Ein WebP als Antwort auf `.webm` ginge in den
+  // Videoweg und scheiterte dort.
+  if (istBild(url)) return await ersatzAntwort(url, "offline")
 
   return new Response(PIXEL, {
     status: 200,
@@ -1118,6 +1266,8 @@ export async function alleImSpeicher(urls) {
     })()
 
     const original = globalThis.fetch.bind(globalThis)
+    // Fuer das Ersatzbild, das im Modul liegt und nie durch den Ersatz soll.
+    urspruenglicherAbruf = original
 
     globalThis.fetch = async function beneosStreamFetch(input, init) {
       const url = typeof input === "string" ? input : input?.url
@@ -1380,6 +1530,29 @@ export async function alleImSpeicher(urls) {
         // Fehler. Gesammelt wird nach Release und Variante, die beide in der
         // Adresse stehen.
         meldeAbweisung(url)
+
+        // Und hier endet die Abweisung, statt als leeres Feld weiterzureisen.
+        //
+        // Der Bildpunkt des Tors ist mit Absicht ein gueltiges Bild, damit kein
+        // Gefahrensymbol ueber der Szene erscheint und keine
+        // Wiederholungslawine startet. Genau deshalb sieht ihn niemand. Ab hier
+        // bekommt der Kunde stattdessen das Bild, das "kein Zugang" sagt.
+        //
+        // `beenden(0)` muss hier selbst gerufen werden: die Stelle weiter unten,
+        // die das sonst fuer jede Abweisung tut, wird durch die Rueckgabe
+        // uebersprungen. Ohne sie liefe der Zeitgeber bis zum Budget durch und
+        // meldete eine Zeitueberschreitung, die es nicht gab.
+        //
+        // Der Rumpf der Torantwort bleibt ungelesen, und das ist derselbe
+        // Zustand wie bisher: auch PIXI hat ihn verworfen.
+        if (istBild(url)) {
+          beenden(0)
+          // Den ungelesenen Rumpf ausdruecklich schliessen. Es sind 42 Byte,
+          // aber bei fuenfzig abgewiesenen Tokens sind es fuenfzig offene
+          // Stroeme, die auf den Aufraeumer warten.
+          try { void response.body?.cancel() } catch (_) { /* egal */ }
+          return await ersatzAntwort(url, "denied")
+        }
       } else {
         count("ok")
         noteResult(true)
