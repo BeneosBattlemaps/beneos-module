@@ -15,7 +15,7 @@
  * is skipped so it is never double-converted.
  *
  * Scope (verified against the full delivered ZIP catalogue + V14 core schemas on
- * 14.360, see J:\Beneos_programming\_testing\v13_v14_scene_differential_2026-07-07.md):
+ * 14.360, see the internal V13/V14 scene differential of 2026-07-07):
  *   1. Scene background/foreground/backgroundColor -> scene.levels[0].{background,
  *      foreground, textures}. V14 removed the top-level scene.background/foreground
  *      fields (the map now lives on a Level); without this the map image is LOST

@@ -1,8 +1,7 @@
 /* =============================================================
    Shared Beneos UI components for module windows.
-   Loader ring: design standard MUS-05, CI component
-   J:\_ai\claude\design\ci\components\loader.css, mapped to the
-   module token names. Script: scripts/ui/bn-loader.mjs.
+   Loader ring: design standard MUS-05, CI master component
+   loader.css, mapped to the module token names. Script: scripts/ui/bn-loader.mjs.
    ============================================================= */
 .bn-loadhost { position: relative; }
 .bn-loader {

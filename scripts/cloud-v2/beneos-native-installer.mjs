@@ -2111,7 +2111,7 @@ export class BeneosNativeBattlemapInstaller {
         // V13 installs and future V14-authored packs are byte-identical. Runs
         // BEFORE rewriteDocAssetPaths so the relocated background src (now under
         // levels[0].background.src) still gets remapped into the cloud namespace.
-        // Full analysis: J:\Beneos_programming\_testing\v13_v14_scene_differential_2026-07-07.md.
+        // Full analysis: the internal V13/V14 scene differential of 2026-07-07.
         for (const d of arr) {
           if (!d || typeof d !== "object") continue
           // F5: drop the author-world `thumb` path (a <id>-thumb.webp that 404s in
