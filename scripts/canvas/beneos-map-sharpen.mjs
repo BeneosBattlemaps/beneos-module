@@ -17,9 +17,10 @@
    video. A Beneos map is either a video background or, in newer releases
    and always in streaming, a still background with the map video as a
    tile on top; intro sequences are video tiles as well. Still images keep
-   Foundry's shader. The streaming code lays its video onto the tile late,
-   without a Foundry event, and calls the hook "beneos.streamVideoApplied"
-   for this file (scripts/stream/stream-canvas.mjs).
+   Foundry's shader. Where the streaming code exists (branch stream-beta),
+   it lays its video onto the tile late, without a Foundry event, and calls
+   the hook "beneos.streamVideoApplied"; without it the hook never fires and
+   drawTile and refreshTile cover every video tile.
 
    Setting "beneos-map-sharpen", client scope, on by default. Off whenever
    the module's performance mode is on.
