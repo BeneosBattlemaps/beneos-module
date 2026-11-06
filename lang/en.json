@@ -206,6 +206,8 @@
   "BENEOS.Settings.CloudAccount.Hint": "Sign in to Beneos Cloud or disconnect the active session. The button adapts to the current login state.",
   "BENEOS.Settings.PerfMode.Name": "Beneos · Performance Mode",
   "BENEOS.Settings.PerfMode.Hint": "Disables decorative animations (Codex header glow, drifting embers, wandering spotlight, rising sparks). Recommended on lower-end machines.",
+  "BENEOS.Settings.MapSharpen.Name": "Sharpen maps when zoomed in",
+  "BENEOS.Settings.MapSharpen.Hint": "Sharpens the battlemap video the closer you zoom in, against the softness of video compression. Applies to this client only. Off while performance mode is on.",
   "BENEOS.Settings.Analytics.Name": "Share anonymous usage data",
   "BENEOS.Settings.Analytics.Hint": "Sends anonymous, GM-only telemetry (no player data, no names) so Beneos can detect broken content and improve releases. You can turn this off at any time.",
   "BENEOS.Analytics.Banner.Title": "Beneos anonymous usage data",

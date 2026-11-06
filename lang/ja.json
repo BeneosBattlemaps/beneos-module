@@ -206,6 +206,8 @@
   "BENEOS.Settings.CloudAccount.Hint": "Beneos Cloud にサインインするか、アクティブセッションを切断します。ボタンは現在のログイン状態に応じて変化します。",
   "BENEOS.Settings.PerfMode.Name": "Beneos · パフォーマンスモード",
   "BENEOS.Settings.PerfMode.Hint": "装飾アニメーション（Codexヘッダーの輝き、漂う燃え殻、さまようスポットライト、立ち上る火花）を無効にします。低スペックのマシンで推奨されます。",
+  "BENEOS.Settings.MapSharpen.Name": "ズーム時にマップをシャープにする",
+  "BENEOS.Settings.MapSharpen.Hint": "ズームインするほどバトルマップの動画をシャープにし、動画圧縮によるぼやけを抑えます。このクライアントにのみ適用されます。パフォーマンスモードがオンの間はオフです。",
   "BENEOS.Settings.Analytics.Name": "匿名の利用データを共有する",
   "BENEOS.Settings.Analytics.Hint": "匿名でGMのみのテレメトリ（プレイヤーデータや名前は含みません）を送信します。これによりBENEOSは不具合のあるコンテンツを検出し、リリースを改善できます。いつでもオフにできます。",
   "BENEOS.Analytics.Banner.Title": "BENEOS 匿名利用データ",

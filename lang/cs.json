@@ -206,6 +206,8 @@
   "BENEOS.Settings.CloudAccount.Hint": "Přihlas se k Beneos Cloud nebo odpoj aktivní session. Tlačítko se přizpůsobí aktuálnímu stavu přihlášení.",
   "BENEOS.Settings.PerfMode.Name": "Beneos · Režim výkonu",
   "BENEOS.Settings.PerfMode.Hint": "Vypne dekorativní animace (záře záhlaví Codexu, plující uhlíky, bloudící reflektor, stoupající jiskry). Doporučeno na slabších strojích.",
+  "BENEOS.Settings.MapSharpen.Name": "Zaostřit mapy při přiblížení",
+  "BENEOS.Settings.MapSharpen.Hint": "Zaostřuje video battlemapy tím víc, čím víc přiblížíte, proti rozmazání způsobenému kompresí videa. Platí jen pro tohoto klienta. Vypnuto, dokud je zapnutý výkonnostní režim.",
   "BENEOS.Settings.Analytics.Name": "Sdílet anonymní data o používání",
   "BENEOS.Settings.Analytics.Hint": "Odesílá anonymní telemetrii pouze od GM (žádná data hráčů, žádná jména), aby Beneos mohl odhalit nefunkční obsah a vylepšovat verze. Můžete to kdykoli vypnout.",
   "BENEOS.Analytics.Banner.Title": "Anonymní data o používání Beneos",
