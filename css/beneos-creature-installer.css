@@ -45,22 +45,15 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  /* Rectangle and disc form ONE outlined shape (user 2026-11-06): the disc
-     sits on the rectangle and sticks out above and below it. The rectangle
-     (::before) gets a hole where the disc lies, the disc carries the same
-     fill, and the disc's ring (.bci-tab-disc::before) shows only where it
-     leaves the rectangle. So fill and edge are set once, as variables, and
-     every state below only changes them. Height and disc size are fixed
-     here because the masks depend on them: tab 28px, disc 30px, so the disc
-     stands out 1px on each side. */
+  /* Fill and edge live on ::before and are set once, as variables; every
+     state below only changes them. The logo lies on the rectangle without a
+     disc of its own (user 2026-11-06). */
   --bci-tab-h: 28px;
-  --bci-disc: 30px;
-  --bci-pad-l: 10px;
   --bci-fill: var(--bc-bg-panel);
   --bci-edge: var(--bc-border-strong);
   box-sizing: border-box;
   height: var(--bci-tab-h);
-  padding: 0 14px 0 var(--bci-pad-l);
+  padding: 0 14px 0 10px;
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--bc-edge);
@@ -78,9 +71,6 @@
   border: 1px solid var(--bci-edge);
   border-radius: var(--bc-edge);
   background: var(--bci-fill);
-  /* Hole for the disc: centre = border 1px + left padding + disc radius. */
-  -webkit-mask: radial-gradient(circle at calc(1px + var(--bci-pad-l) + var(--bci-disc) / 2) 50%, transparent calc(var(--bci-disc) / 2 - .5px), #000 calc(var(--bci-disc) / 2));
-          mask: radial-gradient(circle at calc(1px + var(--bci-pad-l) + var(--bci-disc) / 2) 50%, transparent calc(var(--bci-disc) / 2 - .5px), #000 calc(var(--bci-disc) / 2));
   transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
 }
 #beneos-creature-installer .bci-tab:hover {
@@ -91,31 +81,14 @@
 /* The script still sets .bci-pulse on the first open of a scene. It draws
    nothing any more: the gold edge showed on nearly every new map and pulled
    the eye off the map (user 2026-11-06). */
+/* No disc any more: the logo sits directly on the rectangle (user
+   2026-11-06, the outlined circle did not look right). */
 #beneos-creature-installer .bci-tab-disc {
-  position: relative;
   flex: 0 0 auto;
-  box-sizing: border-box;
-  width: var(--bci-disc); height: var(--bci-disc); border-radius: 50%;
-  background: var(--bci-fill);
+  width: 20px; height: 20px;
+  background: transparent;
   border: 0;
   display: flex; align-items: center; justify-content: center;
-  transition: background-color var(--bc-dur-fast) var(--bc-ease);
-}
-/* The disc's ring, visible only in the strips above and below the
-   rectangle: the part that sticks out plus the 1px of the rectangle's edge
-   it replaces. Inside the rectangle the ring is masked away. */
-#beneos-creature-installer .bci-tab-disc::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  box-sizing: border-box;
-  border: 1px solid var(--bci-edge);
-  border-radius: 50%;
-  pointer-events: none;
-  --bci-strip: calc((var(--bci-disc) - var(--bci-tab-h)) / 2 + 1px);
-  -webkit-mask: linear-gradient(to bottom, #000 0 var(--bci-strip), transparent var(--bci-strip) calc(100% - var(--bci-strip)), #000 calc(100% - var(--bci-strip)));
-          mask: linear-gradient(to bottom, #000 0 var(--bci-strip), transparent var(--bci-strip) calc(100% - var(--bci-strip)), #000 calc(100% - var(--bci-strip)));
-  transition: border-color var(--bc-dur-fast) var(--bc-ease);
 }
 #beneos-creature-installer .bci-tab-disc svg { width: 18px; height: 18px; fill: var(--bc-text); }
 #beneos-creature-installer .bci-tab-label {
@@ -134,15 +107,13 @@
    COL-12 (retreat through lower contrast), standard.md 2.6, user 2026-11-06:
    the tab sits on every map and must not draw attention. */
 #beneos-creature-installer:not(.bci-expanded) .bci-tab:not(:hover):not(:focus-visible) {
-  --bci-pad-l: 8px;
-  --bci-fill: color-mix(in srgb, var(--bc-bg-panel) 72%, transparent);
+  --bci-fill: color-mix(in srgb, var(--bc-bg-panel) 62%, transparent);
   --bci-edge: var(--bc-border);
-  padding-right: 12px;
+  padding: 0 12px 0 8px;
   gap: 8px;
   box-shadow: none;
 }
-#beneos-creature-installer:not(.bci-expanded) .bci-tab:not(:hover):not(:focus-visible)::before,
-#beneos-creature-installer:not(.bci-expanded) .bci-tab:not(:hover):not(:focus-visible) .bci-tab-disc {
+#beneos-creature-installer:not(.bci-expanded) .bci-tab:not(:hover):not(:focus-visible)::before {
   backdrop-filter: blur(3px);
 }
 #beneos-creature-installer:not(.bci-expanded) .bci-tab:not(:hover):not(:focus-visible) .bci-tab-label {
