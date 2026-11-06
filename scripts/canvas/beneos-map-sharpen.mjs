@@ -2,9 +2,9 @@
    Zoom-dependent sharpening of the battlemap video (user 2026-11-06,
    the same idea as PM-18 in the GM Screen).
 
-   Zoomed in, a compressed map video reads soft. The scene background is
-   drawn by Foundry's PrimarySpriteMesh with a PrimaryBaseSamplerShader;
-   this file swaps in a subclass whose texture read adds an unsharp mask
+   Zoomed in, a compressed map video reads soft. The scene background and
+   every tile are drawn by Foundry's PrimarySpriteMesh with a
+   PrimaryBaseSamplerShader; this file swaps in a subclass whose texture read adds an unsharp mask
    on luma, four neighbours one source texel away. It runs inside the
    draw of the map itself, so there is no extra render pass, and with a
    strength of 0 the shader skips the extra reads.
@@ -13,9 +13,16 @@
    grid squares fit across the screen. Panning, fog and vision do not
    change it. Every client computes its own, players included.
 
+   Which meshes: the scene background and every tile whose texture is a
+   video. A Beneos map is either a video background or, in newer releases
+   and always in streaming, a still background with the map video as a
+   tile on top; intro sequences are video tiles as well. Still images keep
+   Foundry's shader. The streaming code lays its video onto the tile late,
+   without a Foundry event, and calls the hook "beneos.streamVideoApplied"
+   for this file (scripts/stream/stream-canvas.mjs).
+
    Setting "beneos-map-sharpen", client scope, on by default. Off whenever
-   the module's performance mode is on. Only a video background is
-   touched; a still image map keeps Foundry's shader.
+   the module's performance mode is on.
 
    What sharpening cannot do: it adds no detail. It raises edge contrast,
    compression artefacts included. MAX_STRENGTH and the clamp on the
@@ -30,7 +37,7 @@ const PERF_SETTING = "beneos-performance-mode"
 const MAX_STRENGTH = 1.5
 
 let SharpenShader = null
-// The class each background mesh had before the swap, to give it back.
+// The class each mesh had before the swap, to give it back.
 const originalClass = new WeakMap()
 
 function shaderClass() {
@@ -74,31 +81,59 @@ function setting(key) {
   try { return game.settings.get(MODULE_ID, key) } catch (_) { return undefined }
 }
 
-function backgroundVideo(mesh) {
-  const source = mesh?.texture?.baseTexture?.resource?.source
-  return source instanceof HTMLVideoElement ? source : null
+function isVideo(mesh) {
+  return mesh?.texture?.baseTexture?.resource?.source instanceof HTMLVideoElement
 }
 
-// Strength from the zoom, texel size from the video. Cheap: runs on every pan.
+// Every mesh that can carry a map video: the background and the tiles.
+function candidates() {
+  if (!canvas?.ready) return []
+  const out = []
+  if (canvas.primary?.background) out.push(canvas.primary.background)
+  for (const tile of canvas.tiles?.placeables ?? []) if (tile.mesh) out.push(tile.mesh)
+  return out
+}
+
+function sharpened() {
+  return SharpenShader ? candidates().filter((m) => m.shader instanceof SharpenShader) : []
+}
+
+function offReason() {
+  if (setting(SETTING) !== true) return "setting"
+  if (setting(PERF_SETTING) === true) return "performance mode"
+  if (!candidates().some(isVideo)) return "no video on this scene"
+  return "off"
+}
+
+// Strength from the zoom, texel size from each video. Cheap: runs on every
+// pan. Announces what it did as "beneos.mapSharpenUpdated" for anyone who
+// wants to show it; the module itself shows nothing.
 function updateStrength() {
-  const mesh = canvas?.primary?.background
-  if (!mesh || !SharpenShader || !(mesh.shader instanceof SharpenShader)) return
+  if (!canvas?.ready) return
   const squares = squaresAcross(canvas.app.renderer.screen.width, canvas.dimensions?.size, canvas.stage.scale.x)
-  const base = mesh.texture.baseTexture
-  const u = mesh.shader.uniforms
-  const texel = texelSize(base.realWidth, base.realHeight)
-  // Size not known yet: no sharpening rather than neighbours a texture apart.
-  if (!texel) { u.sharpAmount = 0; return }
-  u.sharpTexel = texel
-  u.sharpAmount = sharpenAmount(squares) * MAX_STRENGTH
+  const meshes = sharpened()
+  const amount = meshes.length ? sharpenAmount(squares) : 0
+  let unknown = 0
+  for (const mesh of meshes) {
+    const base = mesh.texture.baseTexture
+    const u = mesh.shader.uniforms
+    const texel = texelSize(base.realWidth, base.realHeight)
+    // Size not known yet: no sharpening rather than neighbours a texture apart.
+    if (!texel) { u.sharpAmount = 0; unknown++; continue }
+    u.sharpTexel = texel
+    u.sharpAmount = amount * MAX_STRENGTH
+  }
+  Hooks.callAll("beneos.mapSharpenUpdated", {
+    amount, squares, videos: meshes.length, unknown,
+    off: meshes.length ? null : offReason()
+  })
 }
 
-// Swap the shader in or out to match the settings and the background.
-function apply() {
-  const mesh = canvas?.primary?.background
-  if (!mesh?.texture) return
+// Swap the shader in or out of one mesh to match the settings and its texture.
+function syncMesh(mesh) {
+  if (!mesh?.texture || mesh.destroyed) return
   const Cls = shaderClass()
-  const want = sharpenWanted(setting(SETTING), setting(PERF_SETTING), !!backgroundVideo(mesh))
+  const want = sharpenWanted(setting(SETTING), setting(PERF_SETTING), isVideo(mesh))
   const has = mesh.shader instanceof Cls
   if (want && !has) {
     originalClass.set(mesh, mesh.shader.constructor)
@@ -106,6 +141,19 @@ function apply() {
   } else if (!want && has) {
     mesh.setShaderClass(originalClass.get(mesh) ?? foundry.canvas.rendering.shaders.PrimaryBaseSamplerShader)
   }
+}
+
+function apply() {
+  for (const mesh of candidates()) syncMesh(mesh)
+  updateStrength()
+}
+
+// One tile was drawn, refreshed or got its video: only that mesh. On a full
+// redraw Foundry calls drawTile before the streaming code lays its video
+// back on; the refreshTile that follows corrects it.
+function applyTile(tile) {
+  if (!tile?.mesh) return
+  syncMesh(tile.mesh)
   updateStrength()
 }
 
@@ -124,6 +172,9 @@ Hooks.once("init", () => {
 // and every handler reads the current canvas, so nothing goes stale.
 Hooks.on("canvasReady", () => apply())
 Hooks.on("canvasPan", () => updateStrength())
+Hooks.on("drawTile", applyTile)
+Hooks.on("refreshTile", applyTile)
+Hooks.on("beneos.streamVideoApplied", applyTile)
 Hooks.on("clientSettingChanged", (key) => {
   if (key === `${MODULE_ID}.${SETTING}` || key === `${MODULE_ID}.${PERF_SETTING}`) apply()
 })
