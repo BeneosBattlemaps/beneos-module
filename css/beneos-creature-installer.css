@@ -12,6 +12,17 @@
   inset: auto 0 0 0;
   z-index: 70;
   pointer-events: none;
+  /* Closing: drop back under the windows only after the panel has slid away. */
+  transition: z-index 0s linear var(--bc-dur-base);
+}
+/* Open, the drawer lies above every window, the Beneos window included, so
+   the creatures of the current scene can be checked without moving a window
+   aside (user 2026-11-06). Collapsed it stays at 70, under the windows.
+   9000 sits above Foundry's application windows (100 and rising) and below
+   its tooltip (9999) and notifications (99999). */
+#beneos-creature-installer.bci-expanded {
+  z-index: 9000;
+  transition-delay: 0s;
 }
 
 #beneos-creature-installer .bci-root {
