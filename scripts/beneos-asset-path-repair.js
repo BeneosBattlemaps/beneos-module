@@ -1262,28 +1262,358 @@ function _wurzelTiefErsetzen(wert, abbildung) {
 }
 
 /**
- * Der zweite Durchlauf des Schluesselwechsels: alles, was die Feldliste von
- * `applyMappings` nicht erreicht.
+ * Die vier Beneos-Weltkompendien, als Dokumentfamilien mit Dokumenttyp.
+ *
+ * WARUM DIESE LISTE AUF MODULEBENE STEHT
+ *
+ * Sie wird an zwei Stellen gebraucht: vom Nachzug nach einem
+ * Schluesselwechsel und, sobald `OP-PRJ-192` Schritt 4 gebaut ist, von
+ * `findReferenceSources()`. Eine Liste im Rumpf einer Funktion kann die
+ * zweite Stelle nicht lesen und muesste dort ein zweites Mal entstehen. Genau
+ * das ist die Bauart, die beim naechsten Umbau eine der vier vergisst.
+ *
+ * `world.beneos_module_spells` fuehrt `Item` als Dokumenttyp, nicht `Spell`.
+ * Zauber sind in diesem System Items; belegt in `beneos_utility.js`,
+ * `createCompendiums()`, wo beide Beuteraeume mit `type: "Item"` entstehen.
+ */
+const BENEOS_KOMPENDIEN = [
+  { id: "world.beneos_module_actors",  name: "Actor",        eingebettet: {} },
+  { id: "world.beneos_module_journal", name: "JournalEntry", eingebettet: { pages: "JournalEntryPage" } },
+  { id: "world.beneos_module_items",   name: "Item",         eingebettet: {} },
+  { id: "world.beneos_module_spells",  name: "Item",         eingebettet: {} },
+];
+
+/**
+ * Die vier Kompendien laden, Dokumente inbegriffen.
+ *
+ * WARUM ES SIE UEBERHAUPT BRAUCHT
+ *
+ * Der Kreaturen-Installer schreibt NICHT in die Welt. Er schreibt in diese
+ * vier Kompendien (`beneos_cloud.js`, `importTokenToCompendium` und
+ * Geschwister). Dort stehen seit dem Kreaturenstreaming Toradressen, und die
+ * tragen den Schluessel im Pfad. Der Nachzug lief ueber `game.scenes`,
+ * `game.actors`, `game.items`, `game.journal`, `game.playlists`,
+ * `game.tables` und `game.macros`, also ausschliesslich ueber
+ * Weltsammlungen. Ein Kompendium ist keine davon. `OP-PRJ-131` hat am
+ * 05.11.2026 den Raumbuchstaben `c` nachgetragen, also die ERKENNUNG
+ * erweitert, und die REICHWEITE dabei nicht.
+ *
+ * DER TYP WIRD GEPRUEFT UND NICHT ANGENOMMEN. Ein Kompendium, das einen
+ * anderen Dokumenttyp fuehrt als diese Liste erwartet, wird uebergangen und
+ * gemeldet. Ohne diese Pruefung waere die Annahme nur ein Kommentar: `name`
+ * erreicht keine Foundry-Schnittstelle, die eingebetteten Typen kommen aus
+ * `eingebettet`, und fuer drei der vier ist `eingebettet` leer. Ein falscher
+ * Typ fiele also nirgends auf.
+ *
+ * DAS LADEN IST TEUER, und zwar gemessen am 06.11.2026 am Teststand 30003:
+ * `getDocuments()` kostet 31.913 ms fuer 239 Kreaturen und 11.131 ms fuer
+ * 233 Journale, waehrend das Durchsuchen der geladenen Dokumente 133 ms und
+ * 35 ms braucht. Das Laden ist also rund 250-mal so teuer wie das Suchen.
+ * Deshalb wird diese Funktion erst gerufen, wenn feststeht, dass es etwas zu
+ * schreiben gibt, und nie im Erkennungslauf.
+ *
+ * @param {Array|null} fehler Sammelliste; ohne sie geht die Meldung in die Konsole
+ * @returns {Promise<Array>} je lesbarem Kompendium eine Familie mit `pack` und `coll`
+ */
+async function _beneosKompendienFamilien(fehler = null) {
+  const melde = (id, text) => {
+    if (fehler) fehler.push({ entity: id, error: text });
+    else console.error(`Beneos Asset Repair | ${id}: ${text}`);
+  };
+  const familien = [];
+  for (const spec of BENEOS_KOMPENDIEN) {
+    const pack = game.packs?.get(spec.id);
+    // Ein FEHLENDES Kompendium ist kein Fehler: eine Welt, in die noch nie
+    // eine Kreatur installiert wurde, hat keines. Ein vorhandenes, das sich
+    // nicht lesen laesst oder den falschen Typ fuehrt, ist einer.
+    if (!pack) continue;
+    const typ = pack.metadata?.type;
+    if (typ && typ !== spec.name) {
+      melde(spec.id, `fuehrt Dokumenttyp ${typ}, erwartet ${spec.name}, uebergangen`);
+      continue;
+    }
+    try {
+      familien.push({ ...spec, pack, coll: await pack.getDocuments() });
+    } catch (e) {
+      melde(spec.id, `nicht lesbar: ${_ohneSchluessel(e)}`);
+    }
+  }
+  return familien;
+}
+
+/**
+ * Jede Toradresse in einem Text durch eine schluessellose Form ersetzen.
+ *
+ * WOZU: Fehlermeldungen von Foundry zitieren den Feldwert, der die
+ * Validierung nicht bestanden hat, und ein Feldwert ist hier eine Toradresse
+ * mit dem Streamschluessel im Pfad. Diese Meldungen landen in
+ * `bericht.fehler`. Heute liest das niemand aus, aber ein Bericht ist dazu
+ * da, angezeigt zu werden, und dann stuende der Schluessel in der
+ * Oberflaeche. Maskiert wird deshalb dort, wo der Text ENTSTEHT, und nicht
+ * dort, wo er ausgegeben wird.
+ *
+ * Es wird LOESCHEND maskiert: der Schluessel wird durch ein festes Wort
+ * ersetzt, nicht gekuerzt und nicht verfremdet.
+ */
+function _ohneSchluessel(wert) {
+  return String(wert).replace(/(https?:\/\/[^/\s]+\/[ac]\/)[^/\s]+/g, "$1<schluessel>");
+}
+
+/**
+ * Jede Toradresswurzel dieser WELT sammeln, die nicht die heutige ist.
+ *
+ * ERKANNT WIRD TIEF, NICHT UEBER EINE FELDLISTE.
+ *
+ * Bis zum 2026-09-06 nahm das Erkennen dieselbe schmale Feldliste, die auch
+ * `applyMappings` fuer das Schreiben nimmt. Das hatte zwei Folgen, und die
+ * zweite ist die schlimmere:
+ *
+ *   Es wurden Stellen nicht gefunden, die es gibt (`thumb`, alle Flaggen).
+ *   Und nach einem halben Lauf meldete der Nachzug "nichts nachzuziehen",
+ *   waehrend 802 Adressen noch die alte Wurzel trugen. Wer ihn ein zweites
+ *   Mal rief, um aufzuraeumen, bekam die Auskunft, es sei alles gut.
+ *
+ * Der tiefe Lauf ist so sicher wie beim Schreiben: gesucht wird eine
+ * VOLLSTAENDIGE Toradresswurzel, kein Pfadanfang. Ein solcher Text entsteht
+ * nicht aus Versehen in einer Beschreibung.
+ *
+ * DAS SAMMELN IST HIER EINGESCHLOSSEN, und das ist der Zweck dieser
+ * Funktion. Rechnen, das zwischen zwei Sammelschritten steht, haengt an
+ * deren Reihenfolge; eine eigene Funktion kann das nicht mehr passieren.
+ * Der letzte Sammelschritt ist der Durchlauf ueber die `src=`-Attribute der
+ * Journalseiten, und er steht unten.
+ *
+ * KOMPENDIEN SAMMELT SIE NICHT. Begruendung und Zahlen bei
+ * `_geschwisterWurzeln()`.
+ *
+ * @param {(raum: string) => string} zielWurzelFuer heutige Wurzel je Raum
+ * @returns {{abbildung: Map<string,string>, adressen: number}}
+ */
+function _alteWurzelnSammeln(zielWurzelFuer) {
+  const abbildung = new Map();
+  let adressen = 0;
+
+  const merke = (adresse) => {
+    const teil = _gateWurzel(adresse);
+    if (!teil) return;
+    adressen++;
+    const ziel = zielWurzelFuer(teil.raum);
+    if (teil.wurzel !== ziel) abbildung.set(teil.wurzel, ziel);
+  };
+  const merkeTief = (wert) => {
+    if (typeof wert === "string") { merke(wert); return; }
+    if (Array.isArray(wert)) { for (const v of wert) merkeTief(v); return; }
+    if (wert && typeof wert === "object") { for (const k of Object.keys(wert)) merkeTief(wert[k]); }
+  };
+
+  for (const coll of [game.scenes, game.actors, game.items, game.journal,
+                      game.playlists, game.tables, game.macros]) {
+    for (const doc of (coll ?? [])) {
+      try { merkeTief(doc.toObject()); } catch (e) {}
+    }
+  }
+
+  // Der Text einer Journalseite traegt die Adresse in einem `src=`-Attribut.
+  // Der tiefe Lauf oben sieht ihn als eine Zeichenkette; das reicht, um die
+  // Wurzel zu erkennen, und das Umschreiben faengt ihn ohnehin.
+  for (const journal of game.journal ?? []) {
+    for (const page of journal.pages) {
+      const html = page.text?.content;
+      if (typeof html !== "string" || !html.includes("src=")) continue;
+      for (const treffer of html.matchAll(HTML_SRC_RE)) merke(treffer[2]);
+    }
+  }
+
+  return { abbildung, adressen };
+}
+
+/**
+ * Zu jeder bekannten alten Wurzel die Wurzel des ANDEREN Raumes ergaenzen.
+ *
+ * WARUM DAS RECHNEN DAS SUCHEN ERSETZT
+ *
+ * Ein Konto hat EINEN Streamschluessel, und er steht in beiden Raeumen im
+ * selben Pfadstueck. Wer eine alte Kartenwurzel `.../a/<alt>/` in der Welt
+ * findet, weiss damit auch, dass `.../c/<alt>/` alt ist. Die Kreaturen
+ * stehen in Kompendien, und die zu LESEN kostet Dutzende Sekunden; sie zu
+ * ERRECHNEN kostet nichts.
+ *
+ * DIESE FUNKTION ERFINDET KEINE ARBEIT. Sie ergaenzt nur zu Wurzeln, die
+ * wirklich in einem Dokument gefunden wurden. Eine Fassung vom 06.11.2026
+ * setzte zwei Wurzeln aus einem mitgegebenen alten Schluessel unbedingt in
+ * die Abbildung; damit war `abbildung.size` nach jedem Wechsel mindestens 2,
+ * der Ausgang "nichts nachzuziehen" unerreichbar, und es lief der volle
+ * Schreibteil mit `getDocuments()` ueber alle vier Kompendien. Gemessen:
+ * 89.110 ms bei NULL geaenderten Feldern, und der Kunde liest dazu
+ * "0 addresses were updated ... Your maps work as before".
+ *
+ * SIE GEHOERT HINTER DEN LETZTEN SAMMELSCHRITT. Reines Rechnen, das mitten
+ * im Sammeln steht, haengt an der Reihenfolge der Sammelschritte: eine alte
+ * Wurzel, die nur im `src=`-Attribut einer Journalseite steht, bekaeme sonst
+ * kein Geschwister.
+ *
+ * DIE ZAHLEN, die das Rechnen gegen das Suchen entscheiden, gemessen am
+ * 06.11.2026 am Teststand 30003 mit 239 Kreaturen und 233 Journalen:
+ *
+ *   getDocuments() auf das Kreaturenkompendium   31.913 ms
+ *   getDocuments() auf das Journalkompendium     11.131 ms
+ *   das Durchsuchen der geladenen Dokumente         133 ms und 35 ms
+ *
+ * WAS DIESES VERFAHREN NICHT KANN, gemessen und nicht geschaetzt: eine Welt,
+ * in der keine einzige Kartenadresse steht und nur Kreaturen installiert
+ * sind. Dort findet der Weltlauf nichts, `schluesselNachziehen` kehrt mit
+ * "nichts nachzuziehen" um, und die Kreaturen behalten die alte Wurzel. Ein
+ * billiger Fuehler dafuer gibt es heute nicht: der Kompendiumsindex ist
+ * gratis geladen, traegt aber nur `_id`, `folder`, `img`, `name`, `sort`,
+ * `type` und `uuid`, und `img` ist das oertliche Portrait. Am 06.11.2026
+ * gemessen: NULL Toradressen im Index beider Kompendien. Der einzige Fuehler
+ * waere das teure Laden selbst.
+ *
+ * Der saubere Fuehler ist eine Welt-Einstellung, die der Installer setzt,
+ * sobald er eine Toradresse in ein Kompendium schreibt. Sie zu lesen kostet
+ * nichts. Das ist Schritt 5 in `OP-PRJ-192` und steht dort als Luecke.
+ *
+ * @param {Map<string,string>} abbildung wird ergaenzt
+ * @param {(raum: string) => string} zielWurzelFuer liefert die heutige Wurzel je Raum
+ * @returns {string[]} die ergaenzten Wurzeln
+ */
+function _geschwisterWurzeln(abbildung, zielWurzelFuer) {
+  const ergaenzt = [];
+  for (const alteWurzel of [...abbildung.keys()]) {
+    const teil = _gateWurzel(alteWurzel);
+    if (!teil) continue;
+    const anderer = teil.raum === "a" ? "c" : "a";
+    const geschwister = alteWurzel.replace(`/${teil.raum}/`, `/${anderer}/`);
+    if (abbildung.has(geschwister)) continue;
+    abbildung.set(geschwister, zielWurzelFuer(anderer));
+    ergaenzt.push(geschwister);
+  }
+  return ergaenzt;
+}
+
+/**
+ * Was an einem Dokument zu aendern waere, ohne etwas zu aendern.
+ *
+ * WARUM GETRENNT VOM SCHREIBEN: der Plan entscheidet, ob ein Kompendium
+ * ueberhaupt entsperrt werden muss. Ein Kompendium, in dem nichts zu tun
+ * ist, bleibt gesperrt, und das Fenster, in dem ein zweiter Browser
+ * hineinschreiben koennte, entsteht gar nicht. Planen ist billig: 472
+ * Dokumente in 168 ms, gemessen am 06.11.2026.
+ */
+function _dokumentPlan(doc, fam, abbildung) {
+  const roh = doc.toObject();
+  const plan = { patch: {}, einbettungen: [], anzahl: 0 };
+
+  for (const k of Object.keys(roh)) {
+    if (k === "_id" || k in fam.eingebettet) continue;
+    const r = _wurzelTiefErsetzen(roh[k], abbildung);
+    if (r.anzahl) { plan.patch[k] = r.wert; plan.anzahl += r.anzahl; }
+  }
+
+  for (const [feld, typ] of Object.entries(fam.eingebettet)) {
+    const liste = Array.isArray(roh[feld]) ? roh[feld] : null;
+    if (!liste?.length) continue;
+    const { updates, anzahl } = _einbettungsPlan(liste, abbildung);
+    plan.anzahl += anzahl;
+    if (updates.length) plan.einbettungen.push({ typ, updates });
+  }
+
+  return plan;
+}
+
+/**
+ * Was in einer eingebetteten Sammlung zu aendern waere.
+ *
+ * Je Eintrag nur die Felder, die sich wirklich aendern, und `_id` dazu. Ein
+ * Eintrag ohne Treffer kommt NICHT in die Liste: `updateEmbeddedDocuments`
+ * mit unveraenderten Eintraegen schreibt sonst Dokumente, die niemand
+ * angefasst hat, und verteilt sie an alle Spieler.
+ */
+function _einbettungsPlan(liste, abbildung) {
+  const updates = [];
+  let anzahl = 0;
+  for (const eintrag of liste) {
+    const teil = {};
+    for (const k of Object.keys(eintrag)) {
+      if (k === "_id") continue;
+      const r = _wurzelTiefErsetzen(eintrag[k], abbildung);
+      if (r.anzahl) { teil[k] = r.wert; anzahl += r.anzahl; }
+    }
+    if (Object.keys(teil).length) updates.push({ _id: eintrag._id, ...teil });
+  }
+  return { updates, anzahl };
+}
+
+/**
+ * Einen Plan schreiben.
  *
  * Eingebettete Sammlungen werden bewusst NICHT als ganzes Feld
  * zurueckgeschrieben. Ein `update({tiles: [...]})` ersetzt die Sammlung, und
  * ein Punktpfad mit Index ersetzt sogar das ganze Array; beides ist eine
- * bekannte Falle. Stattdessen geht je Sammlung ein
- * `updateEmbeddedDocuments` mit den Feldern, die sich wirklich geaendert
- * haben.
+ * bekannte Falle. Stattdessen geht je Sammlung ein `updateEmbeddedDocuments`
+ * mit den Feldern, die sich wirklich geaendert haben.
+ *
+ * @returns {Promise<number>} wie viele Dokumente angefasst wurden
  */
-async function _restlicheWurzelnNachziehen(abbildung) {
-  const bericht = { geaendert: 0, dokumente: 0, fehler: [] };
+async function _planSchreiben(doc, plan) {
+  let dokumente = 0;
+  if (Object.keys(plan.patch).length) {
+    await doc.update(plan.patch);
+    dokumente++;
+  }
+  for (const { typ, updates } of plan.einbettungen) {
+    await doc.updateEmbeddedDocuments(typ, updates);
+    dokumente += updates.length;
+  }
+  return dokumente;
+}
+
+/**
+ * Der zweite Durchlauf des Schluesselwechsels: alles, was die Feldliste von
+ * `applyMappings` nicht erreicht, und dazu die vier Kompendien.
+ *
+ * Ablauf je Familie: erst planen, dann entscheiden, ob ueberhaupt etwas zu
+ * tun ist, erst dann eine Sperre loesen, schreiben, und die Sperre im
+ * `finally` wieder setzen.
+ *
+ * @param {Map<string,string>} abbildung alte Wurzel auf neue Wurzel
+ * @param {Array|null} kompendien bereits geladene Kompendiumfamilien
+ */
+async function _restlicheWurzelnNachziehen(abbildung, kompendien = null) {
+  const bericht = {
+    geaendert: 0, dokumente: 0, fehler: [],
+    kompendien: 0, kompendiumDokumente: 0,
+    geaendertWelt: 0, geaendertKompendium: 0,
+  };
   if (!abbildung?.size) return bericht;
 
-  // Die eingebetteten Sammlungen je Familie, mit ihrem Dokumenttyp.
-  //
-  // Die Zuordnung steht ABSICHTLICH je Familie und nicht in einer gemeinsamen
-  // Tabelle: `sounds` heisst bei einer Szene `AmbientSound` und bei einer
-  // Playlist `PlaylistSound`. Eine gemeinsame Tabelle haette den einen Fall
-  // still auf den anderen abgebildet, und `updateEmbeddedDocuments` haette
-  // dann auf einen Typ gezeigt, den es dort nicht gibt.
-  const familien = [
+  // Die Kompendien kommen als FAMILIEN dazu und nicht als Sonderfall, damit
+  // der Schreibteil einer bleibt. Der Aufrufer gibt sie mit, wenn er sie
+  // schon geladen hat; zweimal `getDocuments()` ist reine Wartezeit.
+  const geladen = kompendien ?? await _beneosKompendienFamilien(bericht.fehler);
+  bericht.kompendien = geladen.length;
+  bericht.kompendiumDokumente = geladen.reduce((n, f) => n + f.coll.length, 0);
+
+  for (const fam of [..._weltFamilien(), ...geladen]) {
+    await _familieNachziehen(fam, abbildung, bericht);
+  }
+  return bericht;
+}
+
+/**
+ * Die Dokumentfamilien der WELT, je mit ihren eingebetteten Sammlungen.
+ *
+ * Die Zuordnung steht ABSICHTLICH je Familie und nicht in einer gemeinsamen
+ * Tabelle: `sounds` heisst bei einer Szene `AmbientSound` und bei einer
+ * Playlist `PlaylistSound`. Eine gemeinsame Tabelle haette den einen Fall
+ * still auf den anderen abgebildet, und `updateEmbeddedDocuments` haette dann
+ * auf einen Typ gezeigt, den es dort nicht gibt.
+ *
+ * Sie entsteht je Aufruf, weil `game.scenes` und Geschwister erst nach dem
+ * Weltstart stehen. Eine Konstante auf Modulebene waere beim Laden leer.
+ */
+function _weltFamilien() {
+  return [
     { name: "Scene", coll: game.scenes, eingebettet: {
         tiles: "Tile", tokens: "Token", notes: "Note", sounds: "AmbientSound",
         drawings: "Drawing", walls: "Wall", lights: "AmbientLight",
@@ -1295,46 +1625,80 @@ async function _restlicheWurzelnNachziehen(abbildung) {
     { name: "RollTable", coll: game.tables, eingebettet: { results: "TableResult" } },
     { name: "Macro", coll: game.macros, eingebettet: {} },
   ];
+}
 
-  for (const fam of familien) {
-    for (const doc of (fam.coll ?? [])) {
-      try {
-        const roh = doc.toObject();
+/**
+ * Eine Familie nachziehen: planen, dann schreiben, und eine Sperre nur so
+ * lange loesen, wie wirklich geschrieben wird.
+ *
+ * EIN GESPERRTES KOMPENDIUM NIMMT KEINE SCHREIBVORGAENGE AN, und es meldet
+ * das je Dokument einzeln. Gemessen am 06.11.2026: alle vier
+ * Beneos-Kompendien des Teststandes sind gesperrt. Ohne das Loesen waere der
+ * Lauf dort eine Liste von Fehlern und am Ende ein Bestand mit alter Wurzel,
+ * also genau der Zustand, den dieser Nachzug verhindern soll.
+ *
+ * ERST PLANEN, DANN ENTSPERREN. Eine Familie ohne Arbeit wird gar nicht
+ * angefasst, und das Fenster, in dem ein zweiter Browser in ein offenes
+ * Kompendium schreiben koennte, entsteht nur dort, wo es unvermeidlich ist.
+ */
+async function _familieNachziehen(fam, abbildung, bericht) {
+  const wer = fam.id ?? fam.name;
 
-        // 1. Das Dokument selbst, ohne seine eingebetteten Sammlungen.
-        const patch = {};
-        for (const k of Object.keys(roh)) {
-          if (k === "_id" || k in fam.eingebettet) continue;
-          const r = _wurzelTiefErsetzen(roh[k], abbildung);
-          if (r.anzahl) { patch[k] = r.wert; bericht.geaendert += r.anzahl; }
-        }
-        if (Object.keys(patch).length) { await doc.update(patch); bericht.dokumente++; }
-
-        // 2. Die eingebetteten Sammlungen, je Sammlung ein Aufruf.
-        for (const [feld, typ] of Object.entries(fam.eingebettet)) {
-          const liste = Array.isArray(roh[feld]) ? roh[feld] : null;
-          if (!liste?.length) continue;
-          const updates = [];
-          for (const eintrag of liste) {
-            const teil = {};
-            for (const k of Object.keys(eintrag)) {
-              if (k === "_id") continue;
-              const r = _wurzelTiefErsetzen(eintrag[k], abbildung);
-              if (r.anzahl) { teil[k] = r.wert; bericht.geaendert += r.anzahl; }
-            }
-            if (Object.keys(teil).length) updates.push({ _id: eintrag._id, ...teil });
-          }
-          if (updates.length) {
-            await doc.updateEmbeddedDocuments(typ, updates);
-            bericht.dokumente += updates.length;
-          }
-        }
-      } catch (e) {
-        bericht.fehler.push({ entity: `${fam.name}:${doc.name}`, error: String(e) });
-      }
+  const plaene = [];
+  for (const doc of (fam.coll ?? [])) {
+    try {
+      const plan = _dokumentPlan(doc, fam, abbildung);
+      if (plan.anzahl) plaene.push({ doc, plan });
+    } catch (e) {
+      bericht.fehler.push({ entity: `${wer}:${doc.name}`, error: _ohneSchluessel(e) });
     }
   }
-  return bericht;
+  if (!plaene.length) return;
+
+  const warGesperrt = fam.pack?.locked === true;
+  if (warGesperrt && !await _sperreSetzen(fam, wer, false, bericht)) return;
+
+  try {
+    for (const { doc, plan } of plaene) {
+      await _planZaehlen(doc, plan, fam, bericht, wer);
+    }
+  } finally {
+    if (warGesperrt) await _sperreSetzen(fam, wer, true, bericht);
+  }
+}
+
+/**
+ * Die Sperre eines Kompendiums setzen oder loesen.
+ *
+ * @returns {Promise<boolean>} true, wenn es geklappt hat
+ */
+async function _sperreSetzen(fam, wer, zu, bericht) {
+  try {
+    await fam.pack.configure({ locked: zu });
+    return true;
+  } catch (e) {
+    const was = zu ? "nicht wiederhergestellt" : "nicht loesbar";
+    bericht.fehler.push({ entity: wer, error: `Sperre ${was}: ${_ohneSchluessel(e)}` });
+    return false;
+  }
+}
+
+/**
+ * Einen Plan schreiben und das Ergebnis zaehlen, Welt und Kompendium getrennt.
+ *
+ * Die Trennung ist nicht Zierwerk: eine gemeinsame Summe kann nicht
+ * beantworten, ob die Kompendien wirklich mitgezogen wurden, und genau das
+ * ist die Frage von `OP-PRJ-192`.
+ */
+async function _planZaehlen(doc, plan, fam, bericht, wer) {
+  try {
+    bericht.dokumente += await _planSchreiben(doc, plan);
+    bericht.geaendert += plan.anzahl;
+    if (fam.pack) bericht.geaendertKompendium += plan.anzahl;
+    else bericht.geaendertWelt += plan.anzahl;
+  } catch (e) {
+    bericht.fehler.push({ entity: `${wer}:${doc.name}`, error: _ohneSchluessel(e) });
+  }
 }
 
 /**
@@ -1380,10 +1744,16 @@ async function _restlicheWurzelnNachziehen(abbildung) {
  * dem Schluessel, landet auch sie auf der heutigen Basis. Das ist gewollt.
  *
  * @param {{trocken?: boolean, onProgress?: Function}} optionen
- * @return {Promise<{alteWurzeln: string[], adressen: number, geaendert: number, grund: string}>}
+ * @return {Promise<{alteWurzeln: string[], gefunden: string[], abgeleitet: number,
+ *   adressen: number, geaendert: number, geaendertWelt: number,
+ *   geaendertKompendium: number, kompendien: number,
+ *   kompendiumDokumente: number, grund: string}>}
+ *   `gefunden` sind Wurzeln, die wirklich in einem Dokument standen,
+ *   `abgeleitet` die daraus errechneten des anderen Raumes. `alteWurzeln`
+ *   bleibt die gefundenen, damit die Probe die eigene Annahme nicht misst.
  */
 export async function schluesselNachziehen({ trocken = false, onProgress = null } = {}) {
-  const bericht = { alteWurzeln: [], adressen: 0, geaendert: 0, grund: "" };
+  const bericht = { alteWurzeln: [], gefunden: [], abgeleitet: 0, adressen: 0, geaendert: 0, grund: "" };
   if (!game.user?.isGM) { bericht.grund = "nicht die Spielleitung"; return bericht; }
 
   const { streamBase, streamKey } = await import("./stream/stream-settings.mjs");
@@ -1393,54 +1763,24 @@ export async function schluesselNachziehen({ trocken = false, onProgress = null 
   const basis = streamBase().replace(/\/+$/, "");
   const zielWurzelFuer = (raum) => `${basis}/${raum}/${encodeURIComponent(schluessel)}/`;
 
-  // Alte Wurzel auf ihre eigene Zielwurzel, je Raum. Siehe `_gateWurzel()`.
-  const abbildung = new Map();
-  const merke = (adresse) => {
-    const teil = _gateWurzel(adresse);
-    if (!teil) return;
-    bericht.adressen++;
-    const ziel = zielWurzelFuer(teil.raum);
-    if (teil.wurzel !== ziel) abbildung.set(teil.wurzel, ziel);
-  };
+  // Sammeln, rechnen, entscheiden: drei Schritte, und in dieser Reihenfolge.
+  const gesammelt = _alteWurzelnSammeln(zielWurzelFuer);
+  const abbildung = gesammelt.abbildung;
+  bericht.adressen = gesammelt.adressen;
 
-  // ERKANNT WIRD TIEF, NICHT UEBER EINE FELDLISTE.
-  //
-  // Hier stand bis zum 2026-09-06 derselbe schmale Durchlauf, den auch
-  // `applyMappings` fuer das Schreiben nimmt: `streamAdressenVon` je Szene
-  // plus die Journalseiten. Das hat zwei Folgen gehabt, und die zweite ist die
-  // schlimmere:
-  //
-  //   Es wurden Stellen nicht gefunden, die es gibt (`thumb`, alle Flaggen).
-  //   Und nach einem halben Lauf meldete die Funktion "nichts nachzuziehen",
-  //   waehrend 802 Adressen noch die alte Wurzel trugen. Wer sie ein zweites
-  //   Mal ruft, um aufzuraeumen, bekam also die Auskunft, es sei alles gut.
-  //
-  // Der tiefe Lauf ist hier so sicher wie beim Schreiben: gesucht wird eine
-  // vollstaendige Toradresswurzel, kein Pfadanfang.
-  const merkeTief = (wert) => {
-    if (typeof wert === "string") { merke(wert); return; }
-    if (Array.isArray(wert)) { for (const v of wert) merkeTief(v); return; }
-    if (wert && typeof wert === "object") { for (const k of Object.keys(wert)) merkeTief(wert[k]); }
-  };
-  for (const coll of [game.scenes, game.actors, game.items, game.journal,
-                      game.playlists, game.tables, game.macros]) {
-    for (const doc of (coll ?? [])) {
-      try { merkeTief(doc.toObject()); } catch (e) {}
-    }
-  }
-  // Der Text einer Journalseite traegt die Adresse in einem `src=`-Attribut.
-  // Der Zaehler oben sieht ihn als eine Zeichenkette; das reicht, um die
-  // Wurzel zu erkennen, und das Umschreiben faengt ihn ohnehin.
-  for (const journal of game.journal ?? []) {
-    for (const page of journal.pages) {
-      const html = page.text?.content;
-      if (typeof html !== "string" || !html.includes("src=")) continue;
-      for (const treffer of html.matchAll(HTML_SRC_RE)) merke(treffer[2]);
-    }
-  }
-
-  bericht.alteWurzeln = [...abbildung.keys()];
+  // DIE ENTSCHEIDUNG FAELLT AUS GEFUNDENEN WURZELN, nicht aus gerechneten.
+  // `alteWurzeln` ist nach dem JSDoc dieser Funktion die Probe darauf, ob
+  // wirklich nur der Schluessel wechselte. Eine Probe, die auch Wurzeln
+  // zaehlt, die nie in einem Dokument standen, misst die eigene Annahme.
+  bericht.gefunden = [...abbildung.keys()];
+  bericht.alteWurzeln = bericht.gefunden;
   if (!abbildung.size) { bericht.grund = "nichts nachzuziehen"; return bericht; }
+
+  // Die Kompendien werden hier NICHT gelesen, sondern errechnet. Das Laden
+  // kostet Dutzende Sekunden, das Rechnen nichts, und die gemessenen Zahlen
+  // samt der Grenze dieses Verfahrens stehen bei `_geschwisterWurzeln()`.
+  bericht.abgeleitet = _geschwisterWurzeln(abbildung, zielWurzelFuer).length;
+
 
   const mappings = [...abbildung].map(([alteWurzel, zielWurzel]) => ({
     brokenPrefix: alteWurzel,
@@ -1448,14 +1788,19 @@ export async function schluesselNachziehen({ trocken = false, onProgress = null 
   }));
 
   // Der Trockenlauf sagt, WAS geschehen wuerde, und schreibt nichts. Er ist
-  // kein Luxus: die Zahl der alten Wurzeln ist die Probe darauf, ob wirklich
-  // nur der Schluessel wechselte und nicht versehentlich die halbe Welt auf
-  // ein fremdes Release zeigt.
+  // kein Luxus: die Zahl der GEFUNDENEN Wurzeln ist die Probe darauf, ob
+  // wirklich nur der Schluessel wechselte und nicht versehentlich die halbe
+  // Welt auf ein fremdes Release zeigt. Die abgeleiteten Wurzeln stehen
+  // bewusst daneben und nicht darin: eine uebernommene Welt mit Adressen
+  // eines fremden Kontos faellt sonst nicht mehr auf, denn die Ableitung
+  // verdoppelt jede fremde Wurzel in den anderen Raum.
   if (trocken) { bericht.grund = "trockenlauf"; return bericht; }
 
   const ergebnis = await applyMappings(mappings, "world", null, onProgress);
   bericht.geaendert = ergebnis.updated;
-  if (ergebnis.errors?.length) bericht.fehler = ergebnis.errors;
+  // ANHAENGEN, NICHT SETZEN. Ein nicht lesbares Kompendium ist oben schon in
+  // `bericht.fehler` gelandet, und ein `=` haette es stillschweigend geloescht.
+  if (ergebnis.errors?.length) bericht.fehler = [...(bericht.fehler ?? []), ...ergebnis.errors];
 
   // ZWEITER DURCHLAUF, und ohne ihn ist der Wechsel unvollstaendig.
   //
@@ -1482,11 +1827,28 @@ export async function schluesselNachziehen({ trocken = false, onProgress = null 
   bericht.geaendert += rest.geaendert;
   bericht.tiefNachgezogen = rest.geaendert;
   bericht.tiefDokumente = rest.dokumente;
+  // DER BERICHT MUSS NENNEN, WAS ANGEFASST WURDE, und nicht nur, was sich
+  // geaendert hat. Am 06.11.2026 beim Messen aufgefallen: diese zwei Zahlen
+  // standen in der Konsolenzeile, aber nicht im zurueckgegebenen Bericht, und
+  // damit war von aussen nicht zu sehen, ob die Kompendien ueberhaupt gelesen
+  // wurden. Ein Lauf, der 0 geaenderte Felder meldet, ist sonst nicht von
+  // einem Lauf zu unterscheiden, der die Kompendien nie geoeffnet hat.
+  bericht.kompendien = rest.kompendien;
+  bericht.kompendiumDokumente = rest.kompendiumDokumente;
+  // WELT UND KOMPENDIUM GETRENNT. `applyMappings` und der Weltteil des
+  // tiefen Durchlaufs sind Welt, der Kompendiumteil ist es nicht. Eine
+  // gemeinsame Summe kann nicht beantworten, ob die Kompendien wirklich
+  // mitgezogen wurden, und genau das ist die Frage, die dieses Paket stellt.
+  bericht.geaendertWelt = ergebnis.updated + rest.geaendertWelt;
+  bericht.geaendertKompendium = rest.geaendertKompendium;
   if (rest.fehler.length) bericht.fehler = [...(bericht.fehler ?? []), ...rest.fehler];
 
-  console.log(`Beneos Stream | Schluessel nachgezogen: ${bericht.geaendert} Feld(er) in `
-    + `${bericht.alteWurzeln.length} alte(n) Adresswurzel(n), ${bericht.adressen} Toradressen gesehen, `
-    + `davon ${rest.geaendert} im tiefen Durchlauf ueber ${rest.dokumente} Dokument(e)`);
+  console.log(`Beneos Stream | Schluessel nachgezogen: ${bericht.geaendert} Feld(er), `
+    + `davon ${bericht.geaendertWelt} in der Welt und ${bericht.geaendertKompendium} im Kompendium. `
+    + `${bericht.gefunden.length} alte Adresswurzel(n) GEFUNDEN, ${bericht.abgeleitet} dazu ABGELEITET, `
+    + `${bericht.adressen} Toradressen gesehen, ${rest.geaendert} im tiefen Durchlauf `
+    + `ueber ${rest.dokumente} Dokument(e); ${rest.kompendien} Kompendium/Kompendien `
+    + `mit ${rest.kompendiumDokumente} Dokument(en) gelesen`);
   return bericht;
 }
 
