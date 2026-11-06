@@ -21,7 +21,7 @@
    their look because the selector needs a Beneos root.
    ------------------------------------------------------------- */
 :is(.beneos-cloud-app, .beneos-codex, .beneos-lgc, .beneos-wiki, .bci-root,
-    .beneos-offline-window, .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
+    .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
     .beneos-module.settings, .beneos-actor-menu, .beneos-system-check-dialog, .beneos-pdf-viewer) {
   --checkbox-checked-color: var(--bc-accent);
   --checkbox-background-color: var(--bc-card);
@@ -51,13 +51,13 @@
    glow goes in both cases (COL-14). Zero specificity, so every module rule
    that styles its own focus still wins. */
 :where(.beneos-cloud-app, .beneos-codex, .beneos-lgc, .beneos-wiki, .bci-root,
-    .beneos-offline-window, .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
+    .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
     .beneos-module.settings, .beneos-actor-menu, .beneos-system-check-dialog, .beneos-pdf-viewer)
   :where(button, a.button):where(:focus) {
   box-shadow: none;
 }
 :where(.beneos-cloud-app, .beneos-codex, .beneos-lgc, .beneos-wiki, .bci-root,
-    .beneos-offline-window, .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
+    .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
     .beneos-module.settings, .beneos-actor-menu, .beneos-system-check-dialog, .beneos-pdf-viewer)
   :where(button, a.button):where(:focus:not(:focus-visible)) {
   outline: none;
@@ -65,7 +65,7 @@
 /* Foundry sets its focus colour, a rust red that reads as an error inside a
    Beneos window, on every button itself, so it is replaced there. */
 :where(.beneos-cloud-app, .beneos-codex, .beneos-lgc, .beneos-wiki, .bci-root,
-    .beneos-offline-window, .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
+    .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
     .beneos-module.settings, .beneos-actor-menu, .beneos-system-check-dialog, .beneos-pdf-viewer)
   :where(button, a.button, kbd) {
   --button-focus-outline-color: var(--bc-accent);
@@ -77,26 +77,26 @@
    unlayered rule here would win over them whatever its specificity. The window title is the name of
    the window (title), controls are what you do (control). */
 :where(.beneos-cloud-app, .beneos-codex, .beneos-lgc, .beneos-wiki, .bci-root,
-    .beneos-offline-window, .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
+    .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
     .beneos-module.settings, .beneos-actor-menu, .beneos-system-check-dialog, .beneos-pdf-viewer) {
   font-family: var(--bc-font-body);
 }
 :where(.beneos-cloud-app, .beneos-codex, .beneos-lgc, .beneos-wiki, .bci-root,
-    .beneos-offline-window, .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
+    .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
     .beneos-module.settings, .beneos-actor-menu, .beneos-system-check-dialog, .beneos-pdf-viewer)
   :where(h1, h2, h3, h4, h5, h6, .window-title) {
   font-family: var(--bc-font-title);
   font-weight: var(--bc-w-title);
 }
 :where(.beneos-cloud-app, .beneos-codex, .beneos-lgc, .beneos-wiki, .bci-root,
-    .beneos-offline-window, .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
+    .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
     .beneos-module.settings, .beneos-actor-menu, .beneos-system-check-dialog, .beneos-pdf-viewer)
   :where(button, input, select, textarea):not(:where([class*="fa-"])) {
   font-family: var(--bc-font-control);
   font-weight: var(--bc-w-control);
 }
 :where(.beneos-cloud-app, .beneos-codex, .beneos-lgc, .beneos-wiki, .bci-root,
-    .beneos-offline-window, .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
+    .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
     .beneos-module.settings, .beneos-actor-menu, .beneos-system-check-dialog, .beneos-pdf-viewer)
   :where(code, kbd, samp, output) {
   font-family: var(--bc-font-data);
@@ -105,7 +105,7 @@
 /* Foundry sets the checkbox variables on the input itself, so they are
    repeated there; inheriting from the window root is not enough. */
 :is(.beneos-cloud-app, .beneos-codex, .beneos-lgc, .beneos-wiki, .bci-root,
-    .beneos-offline-window, .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
+    .beneos-asset-watcher-dialog, .beneos-tour-confirm-dialog,
     .beneos-module.settings, .beneos-actor-menu, .beneos-system-check-dialog, .beneos-pdf-viewer)
   :is(input[type="checkbox"], input[type="radio"]) {
   --checkbox-checked-color: var(--bc-accent);
@@ -113,7 +113,7 @@
   --checkbox-checkmark-color: var(--bc-text-on-accent);
   --checkbox-border-color: var(--bc-border-control);
 }
-:is(.beneos-cloud-app, .beneos-codex, .beneos-lgc, .beneos-wiki, .bci-root, .beneos-offline-window) ::selection {
+:is(.beneos-cloud-app, .beneos-codex, .beneos-lgc, .beneos-wiki, .bci-root) ::selection {
   background: var(--bc-accent);
   color: var(--bc-text-on-accent);
 }
