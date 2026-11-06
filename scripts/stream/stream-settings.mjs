@@ -447,7 +447,26 @@ export async function ensureStreamKey() {
     return vorhanden
   }
 
-  const basis = (globalThis.BeneosUtility?.cloudBase?.() || "https://beneos.cloud").replace(/\/+$/, "")
+  // DER GRIFF MUSS `game.beneos` MITNEHMEN, sonst zeigt diese Adresse immer
+  // auf die Produktionswolke. `globalThis.BeneosUtility` wird im ganzen Modul
+  // NIE gesetzt; das Einzige, was es gibt, ist `game.beneos.BeneosUtility`
+  // aus dem `init`-Haken in `beneos_module.js`. Der Oder-Zweig fing das still
+  // auf, und damit war die versteckte Welt-Einstellung
+  // `beneos-cloud-base-url` fuer den Schluesselabruf ohne Wirkung, also genau
+  // der Zweck, fuer den sie da ist.
+  //
+  // Am 06.11.2026 am Teststand 30003 gemessen, mit der Einstellung auf
+  // `https://dev.beneos.invalid`:
+  //
+  //   cloudBase() ueber game.beneos        https://dev.beneos.invalid
+  //   was dieser Code vorher nahm          https://beneos.cloud
+  //   was er jetzt nimmt                   https://dev.beneos.invalid
+  //
+  // Dieselbe Kette steht in `cloud-v2/services/whats-new-api.mjs`, dort war
+  // sie von Anfang an vollstaendig.
+  const basis = (globalThis.BeneosUtility?.cloudBase?.()
+    ?? game.beneos?.BeneosUtility?.cloudBase?.()
+    ?? "https://beneos.cloud").replace(/\/+$/, "")
   const body = new URLSearchParams({
     s: sid,
     a: "get_stream_key",
