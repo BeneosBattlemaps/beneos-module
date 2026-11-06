@@ -55,7 +55,8 @@
 	"scripts/cloud-v2/wiki/beneos-wiki-window.mjs",
 	"scripts/stream/beneos-stream.mjs",
 	"scripts/ui/bn-loader.mjs",
-	"scripts/canvas/beneos-map-sharpen.mjs"
+	"scripts/canvas/beneos-map-sharpen.mjs",
+	"scripts/canvas/map-sharpen-debug.mjs"
   ],
   "languages": [
     { "lang": "en",    "name": "English",                 "path": "lang/en.json" },

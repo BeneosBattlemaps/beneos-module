@@ -208,6 +208,8 @@
   "BENEOS.Settings.PerfMode.Hint": "Desactiva les animacions decoratives (resplendor de la capçalera del Codex, brases a la deriva, focus errant, espurnes ascendents). Recomanat en màquines de gamma baixa.",
   "BENEOS.Settings.MapSharpen.Name": "Enfocar els mapes en apropar el zoom",
   "BENEOS.Settings.MapSharpen.Hint": "Enfoca el vídeo del battlemap com més t'hi apropes, contra la suavitat de la compressió de vídeo. Només s'aplica a aquest client. Desactivat mentre el mode de rendiment estigui actiu.",
+  "BENEOS.Settings.MapSharpenDebug.Name": "Mostra el nivell d'enfocament del mapa",
+  "BENEOS.Settings.MapSharpenDebug.Hint": "Mostra una línia petita al costat del calaix de criatures amb la intensitat d'enfocament actual i les caselles a través de la pantalla. Una ajuda d'ajust per al DM, només aquest client.",
   "BENEOS.Settings.Analytics.Name": "Comparteix dades d'ús anònimes",
   "BENEOS.Settings.Analytics.Hint": "Envia telemetria anònima, només del GM (sense dades de jugadors ni noms), perquè Beneos pugui detectar contingut defectuós i millorar les versions. Ho pots desactivar en qualsevol moment.",
   "BENEOS.Analytics.Banner.Title": "Dades d'ús anònimes de Beneos",

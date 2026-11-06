@@ -208,6 +208,8 @@
   "BENEOS.Settings.PerfMode.Hint": "Deaktiviert dekorative Animationen (Codex-Header-Glühen, treibende Glut, wanderndes Spotlight, aufsteigende Funken). Empfohlen auf leistungsschwächeren Rechnern.",
   "BENEOS.Settings.MapSharpen.Name": "Maps beim Hineinzoomen schärfen",
   "BENEOS.Settings.MapSharpen.Hint": "Schärft das Battlemap-Video umso stärker, je näher du hineinzoomst, gegen die Unschärfe der Videokompression. Gilt nur für diesen Client. Aus, solange der Performance-Modus an ist.",
+  "BENEOS.Settings.MapSharpenDebug.Name": "Schärfungsstufe der Map anzeigen",
+  "BENEOS.Settings.MapSharpenDebug.Hint": "Zeigt neben dem Kreaturen-Drawer eine kleine Zeile mit der aktuellen Schärfungsstärke und den Feldern über den Bildschirm. Eine Einstellhilfe für den GM, nur dieser Client.",
   "BENEOS.Settings.Analytics.Name": "Anonyme Nutzungsdaten teilen",
   "BENEOS.Settings.Analytics.Hint": "Sendet anonyme Telemetrie nur vom SL (keine Spielerdaten, keine Namen), damit Beneos defekte Inhalte erkennen und Releases verbessern kann. Du kannst dies jederzeit deaktivieren.",
   "BENEOS.Analytics.Banner.Title": "Anonyme Nutzungsdaten von Beneos",
