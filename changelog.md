@@ -4,6 +4,33 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.5.0-beta.10 # 2026-11-06
+
+**New**
+- New: Battlemap videos get sharper the closer you zoom in. Zoomed out nothing
+  changes; from about 25 grid squares across the screen the sharpening starts
+  and reaches its full strength at about 7. It works on the scene background
+  and on video tiles, for the GM and for players, and is off in performance
+  mode. A client setting turns it off.
+
+**Changed**
+- Changed: When an installation fails, the module now says so and names the
+  content that failed. Before, an install started from a button could fail
+  without a single message.
+- Changed: After your stream key changes, the module now follows that change
+  into the creature compendiums as well, not only into the world. Creature
+  pictures used to keep pointing at the old key, which showed them as empty.
+- Changed: A world that holds creatures but no maps is now reached by that
+  same pass. It used to stop early and leave every creature on the old key.
+- Changed: The repair window now also lists a picture a creature in a
+  compendium points at. Such a place is shown without repair buttons,
+  because a compendium document is not repaired from there.
+- Changed: The Creature Drawer tab steps back behind the map while you do not
+  use it, and the open drawer now lies above the Beneos window.
+- Changed: The Item Radar in Game Control now simply says it is a feature of
+  Beneos Creatures, Spells & Loot, with the link to join on Patreon. The
+  tooltips of the Codex and Game Control buttons are shorter.
+
 ### 14.5.0-beta.9 # 2026-11-06
 
 **Changed**
