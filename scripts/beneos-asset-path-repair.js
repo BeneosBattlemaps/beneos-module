@@ -1553,6 +1553,103 @@ function _ohneSchluessel(wert) {
  * @param {(raum: string) => string} zielWurzelFuer heutige Wurzel je Raum
  * @returns {{abbildung: Map<string,string>, adressen: number}}
  */
+/**
+ * Der lebende Griff auf `BeneosUtility`.
+ *
+ * VIER WEGE, UND NUR EINER TRAEGT. Am 06.11.2026 am Teststand 30003 in der
+ * Welt `v13-streaming` gemessen: `globalThis.BeneosUtility`,
+ * `window.BeneosUtility` und `game.beneos.utility` sind alle drei
+ * `undefined`; der Griff liegt auf `game.beneos.BeneosUtility`. Eine erste
+ * Fassung dieser Datei las nur `globalThis` und hatte damit einen toten Zweig:
+ * der Nachzug haette die Einstellung geschrieben und den Speicher stehen
+ * lassen, und der naechste Installationslauf haette den alten Stand als Ganzes
+ * zurueckgeschrieben.
+ *
+ * Die Reihenfolge ist die von `beneos_tours.js`, um `game.beneos.BeneosUtility`
+ * ergaenzt. Alle vier bleiben stehen, weil keiner davon etwas kostet und die
+ * Ablage zwischen Modulfassungen schon einmal gewandert ist.
+ */
+function _bu() {
+  return globalThis.BeneosUtility
+      ?? globalThis.window?.BeneosUtility
+      ?? game.beneos?.BeneosUtility
+      ?? game.beneos?.utility
+      ?? null;
+}
+
+/** Die Welt-Einstellung, in der der Installer die Kreaturen fuehrt. */
+const REGISTER_EINSTELLUNG = "beneos-json-tokenconfig";
+
+/**
+ * Das Kreaturenregister, das der Installer je Kreatur schreibt.
+ *
+ * ES IST DER KOSTENLOSE FUEHLER, den Schritt 5 gesucht hat, und es gab ihn
+ * die ganze Zeit. Der Kopf von `_geschwisterWurzeln()` hat am 06.11.2026
+ * festgehalten, es gebe keinen billigen Fuehler auf eine Welt mit NUR
+ * Kreaturen, weil der Kompendiumsindex nur `img` traegt und `img` das
+ * oertliche Portrait ist. Das stimmt fuer den Index und uebersieht diese
+ * Einstellung: `beneos_cloud.js` legt je Variante `token`,
+ * `prototypeToken.texture.src`, und `topDown` ab, und im Streambetrieb sind
+ * das Toradressen. Eine Welt-Einstellung zu lesen kostet nichts.
+ *
+ * DER SPEICHER GEWINNT VOR DER EINSTELLUNG. `BeneosUtility.beneosTokens` ist
+ * die Fassung, mit der der Installer arbeitet und die er beim naechsten
+ * Schreiben als Ganzes zurueckschreibt. Wer nur die Einstellung aendert,
+ * verliert die Aenderung beim naechsten Installieren.
+ *
+ * @returns {object|null} das Register oder null, wenn es nicht lesbar ist
+ */
+function _registerLesen() {
+  const roh = _bu()?.beneosTokens;
+  if (roh && typeof roh === "object") return roh;
+  try {
+    const text = game.settings.get(MODULE_ID, REGISTER_EINSTELLUNG);
+    return (typeof text === "string" && text) ? JSON.parse(text) : null;
+  } catch (e) {
+    console.warn("Beneos Stream | Kreaturenregister nicht lesbar:", e);
+    return null;
+  }
+}
+
+/**
+ * Die alten Wurzeln auch im Kreaturenregister nachziehen.
+ *
+ * WARUM DAS NICHT OPTIONAL IST. Das Register ist kein Dokument, also fasst es
+ * weder `applyMappings` noch der tiefe Lauf an. Bliebe es stehen, haette der
+ * Wechsel zwei Folgen, und beide treffen den Kunden:
+ *
+ *   1. `BeneosUtility.getTokenImageInfo()` liefert `topDown` mit der ALTEN
+ *      Wurzel. Das Tor antwortet auf eine alte Wurzel mit 200 und einem
+ *      42-Byte-GIF, also mit einem leeren Bild und ohne Fehler.
+ *   2. Der naechste Wechsel findet die alte Wurzel hier wieder und laedt
+ *      dafuer alle vier Kompendien, gemessen rund 80 Sekunden, um dann null
+ *      Felder zu aendern.
+ *
+ * Geschrieben wird nur, wenn wirklich etwas zu ersetzen war.
+ *
+ * @param {Map<string,string>} abbildung alte Wurzel auf neue Wurzel
+ * @returns {Promise<{geaendert: number, fehler: string[]}>}
+ */
+async function _registerNachziehen(abbildung) {
+  const ergebnis = { geaendert: 0, fehler: [] };
+  const alt = _registerLesen();
+  if (!alt) return ergebnis;
+  const r = _wurzelTiefErsetzen(alt, abbildung);
+  if (!r.anzahl) return ergebnis;
+  try {
+    await game.settings.set(MODULE_ID, REGISTER_EINSTELLUNG, JSON.stringify(r.wert));
+    // ERST DIE EINSTELLUNG, DANN DER SPEICHER. Scheitert das Schreiben, bleibt
+    // der Speicher auf dem alten Stand und damit auf demselben wie die
+    // Einstellung. Umgekehrt stuenden zwei verschiedene Staende da.
+    const bu = _bu();
+    if (bu) bu.beneosTokens = r.wert;
+    ergebnis.geaendert = r.anzahl;
+  } catch (e) {
+    ergebnis.fehler.push(`Kreaturenregister: ${e?.message ?? e}`);
+  }
+  return ergebnis;
+}
+
 function _alteWurzelnSammeln(zielWurzelFuer) {
   const abbildung = new Map();
   let adressen = 0;
@@ -1576,6 +1673,15 @@ function _alteWurzelnSammeln(zielWurzelFuer) {
       try { merkeTief(doc.toObject()); } catch (e) {}
     }
   }
+
+  // DAS KREATURENREGISTER GEHOERT IN DEN SAMMELSCHRITT, nicht in das Rechnen
+  // darunter. Es ist eine gefundene Quelle und keine abgeleitete: der
+  // Installer hat diese Adressen wirklich geschrieben. Damit zaehlt sie der
+  // Bericht unter `gefunden`, und die Probe auf "wechselte wirklich nur der
+  // Schluessel" bleibt heil. Eine Welt mit NUR Kreaturen wird dadurch
+  // ueberhaupt erst erreicht, und das ist Schritt 5 in `OP-PRJ-192`.
+  const register = _registerLesen();
+  if (register) merkeTief(register);
 
   // Der Text einer Journalseite traegt die Adresse in einem `src=`-Attribut.
   // Der tiefe Lauf oben sieht ihn als eine Zeichenkette; das reicht, um die
@@ -1623,19 +1729,22 @@ function _alteWurzelnSammeln(zielWurzelFuer) {
  *   getDocuments() auf das Journalkompendium     11.131 ms
  *   das Durchsuchen der geladenen Dokumente         133 ms und 35 ms
  *
- * WAS DIESES VERFAHREN NICHT KANN, gemessen und nicht geschaetzt: eine Welt,
- * in der keine einzige Kartenadresse steht und nur Kreaturen installiert
- * sind. Dort findet der Weltlauf nichts, `schluesselNachziehen` kehrt mit
- * "nichts nachzuziehen" um, und die Kreaturen behalten die alte Wurzel. Ein
- * billiger Fuehler dafuer gibt es heute nicht: der Kompendiumsindex ist
- * gratis geladen, traegt aber nur `_id`, `folder`, `img`, `name`, `sort`,
- * `type` und `uuid`, und `img` ist das oertliche Portrait. Am 06.11.2026
- * gemessen: NULL Toradressen im Index beider Kompendien. Der einzige Fuehler
- * waere das teure Laden selbst.
+ * WORAUF DIESES VERFAHREN ALLEIN NICHT KAM, und wie die Luecke geschlossen
+ * wurde: eine Welt, in der keine einzige Kartenadresse steht und nur
+ * Kreaturen installiert sind. Dort fand der Weltlauf nichts,
+ * `schluesselNachziehen` kehrte mit "nichts nachzuziehen" um, und die
+ * Kreaturen behielten die alte Wurzel.
  *
- * Der saubere Fuehler ist eine Welt-Einstellung, die der Installer setzt,
- * sobald er eine Toradresse in ein Kompendium schreibt. Sie zu lesen kostet
- * nichts. Das ist Schritt 5 in `OP-PRJ-192` und steht dort als Luecke.
+ * Der Kompendiumsindex taugt dafuer nicht. Er ist gratis geladen, traegt aber
+ * nur `_id`, `folder`, `img`, `name`, `sort`, `type` und `uuid`, und `img` ist
+ * das oertliche Portrait; am 06.11.2026 gemessen: NULL Toradressen im Index
+ * beider Kompendien.
+ *
+ * Der Fuehler ist stattdessen das Kreaturenregister, also die Welt-Einstellung
+ * `beneos-json-tokenconfig`, die der Installer ohnehin je Kreatur schreibt.
+ * Sie zu lesen kostet nichts, und im Streambetrieb stehen dort Toradressen.
+ * Gelesen wird sie im Sammelschritt, siehe `_registerLesen()`; das ist
+ * Schritt 5 in `OP-PRJ-192` und seit dem 06.11.2026 gebaut.
  *
  * @param {Map<string,string>} abbildung wird ergaenzt
  * @param {(raum: string) => string} zielWurzelFuer liefert die heutige Wurzel je Raum
@@ -1866,6 +1975,99 @@ async function _planZaehlen(doc, plan, fam, bericht, wer) {
 }
 
 /**
+ * Die drei Schreiblaeufe fahren und den Bericht fuellen.
+ *
+ * WARUM DAS EINE EIGENE FUNKTION IST. Es sind drei Laeufe ueber drei
+ * verschiedene Arten von Ablage, und keiner davon ersetzt einen anderen:
+ * die Feldliste von `applyMappings` ueber die Welt, der tiefe Lauf ueber
+ * Felder und Flaggen in Welt UND Kompendien, und das Kreaturenregister als
+ * Welt-Einstellung. Die Begruendung je Lauf steht im Rumpf.
+ *
+ * `bericht` wird gefuellt und nicht ersetzt, denn der Sammelschritt hat dort
+ * schon `gefunden`, `adressen` und moegliche Fehler hinterlegt.
+ *
+ * @param {Map<string,string>} abbildung alte Wurzel auf neue Wurzel
+ * @param {object} bericht wird ergaenzt
+ * @param {Function|null} onProgress
+ * @returns {Promise<string>} die Zeile fuer das Protokoll
+ */
+async function _schreibenUndBerichten(abbildung, bericht, onProgress) {
+  // DIE FELDLISTE ENTSTEHT HIER, nicht beim Aufrufer. Sie wird nur im
+  // Schreibteil gebraucht, und der Trockenlauf kehrt vorher um. Eine erste
+  // Fassung liess sie beim Aufrufer stehen; der echte Lauf am Teststand 30003
+  // meldete dann "ReferenceError: mappings is not defined", und zwar erst im
+  // echten Lauf, weil der Trockenlauf diese Zeile nie erreicht.
+  const mappings = [...abbildung].map(([alteWurzel, zielWurzel]) => ({
+    brokenPrefix: alteWurzel,
+    actualPrefix: zielWurzel,
+  }));
+
+  const ergebnis = await applyMappings(mappings, "world", null, onProgress);
+  bericht.geaendert = ergebnis.updated;
+  // ANHAENGEN, NICHT SETZEN. Ein nicht lesbares Kompendium ist oben schon in
+  // `bericht.fehler` gelandet, und ein `=` haette es stillschweigend geloescht.
+  if (ergebnis.errors?.length) bericht.fehler = [...(bericht.fehler ?? []), ...ergebnis.errors];
+
+  // ZWEITER DURCHLAUF, und ohne ihn ist der Wechsel unvollstaendig.
+  //
+  // `applyMappings` geht eine Feldliste ab. Sie kennt `thumb` nicht und keine
+  // einzige Flagge, weder unsere eigenen noch die fremder Module. Gemessen am
+  // 2026-09-06 nach einem echten Wechsel blieben deshalb 802 Stellen stehen:
+  //
+  //   227  thumb
+  //   223  tiles[].flags.beneos-module.stream.partner
+  //   223  tiles[].flags.beneos-module.stream.video
+  //    66  flags.beneos-module.creatureInstaller.srdCreatures[].positions[].texture.src
+  //    26  notes[].flags.pin-cushion.showImageExplicitSource
+  //    16  flags.beneos-module.creatureInstaller.srdCreatures[].art
+  //    11  tiles[].flags.monks-active-tiles.actions[].data.audiofile
+  //    10  tiles[].flags.monks-active-tiles.files[].name
+  //
+  // Die 227 in `thumb` sind der sichtbare Teil: so viele Szenen stehen nach
+  // einem Wechsel ohne Vorschaubild in der Leiste.
+  //
+  // Die frueheren Laeufe haben das nicht gesehen, weil ihre Nachzaehlung
+  // dieselben Felder zaehlte, die der Eingriff anfasst. Eine Zaehlung, die den
+  // Ausschnitt des Eingriffs uebernimmt, misst die eigene Annahme.
+  const rest = await _restlicheWurzelnNachziehen(abbildung);
+  bericht.geaendert += rest.geaendert;
+
+  // DRITTER DURCHLAUF, und er ist weder Welt noch Kompendium. Das
+  // Kreaturenregister ist eine Welt-Einstellung, also fasst es keiner der
+  // beiden Laeufe an. Die Begruendung samt den zwei Folgen steht bei
+  // `_registerNachziehen()`.
+  const reg = await _registerNachziehen(abbildung);
+  bericht.geaendert += reg.geaendert;
+  bericht.registerFelder = reg.geaendert;
+  if (reg.fehler.length) bericht.fehler = [...(bericht.fehler ?? []), ...reg.fehler];
+  bericht.tiefNachgezogen = rest.geaendert;
+  bericht.tiefDokumente = rest.dokumente;
+  // DER BERICHT MUSS NENNEN, WAS ANGEFASST WURDE, und nicht nur, was sich
+  // geaendert hat. Am 06.11.2026 beim Messen aufgefallen: diese zwei Zahlen
+  // standen in der Konsolenzeile, aber nicht im zurueckgegebenen Bericht, und
+  // damit war von aussen nicht zu sehen, ob die Kompendien ueberhaupt gelesen
+  // wurden. Ein Lauf, der 0 geaenderte Felder meldet, ist sonst nicht von
+  // einem Lauf zu unterscheiden, der die Kompendien nie geoeffnet hat.
+  bericht.kompendien = rest.kompendien;
+  bericht.kompendiumDokumente = rest.kompendiumDokumente;
+  // WELT UND KOMPENDIUM GETRENNT. `applyMappings` und der Weltteil des
+  // tiefen Durchlaufs sind Welt, der Kompendiumteil ist es nicht. Eine
+  // gemeinsame Summe kann nicht beantworten, ob die Kompendien wirklich
+  // mitgezogen wurden, und genau das ist die Frage, die dieses Paket stellt.
+  bericht.geaendertWelt = ergebnis.updated + rest.geaendertWelt;
+  bericht.geaendertKompendium = rest.geaendertKompendium;
+  if (rest.fehler.length) bericht.fehler = [...(bericht.fehler ?? []), ...rest.fehler];
+
+  return (`Beneos Stream | Schluessel nachgezogen: ${bericht.geaendert} Feld(er), `
+    + `davon ${bericht.geaendertWelt} in der Welt und ${bericht.geaendertKompendium} im Kompendium. `
+    + `${bericht.gefunden.length} alte Adresswurzel(n) GEFUNDEN, ${bericht.abgeleitet} dazu ABGELEITET, `
+    + `${bericht.adressen} Toradressen gesehen, ${rest.geaendert} im tiefen Durchlauf `
+    + `ueber ${rest.dokumente} Dokument(e); ${rest.kompendien} Kompendium/Kompendien `
+    + `mit ${rest.kompendiumDokumente} Dokument(en) gelesen; `
+    + `${reg.geaendert} Feld(er) im Kreaturenregister`);
+}
+
+/**
  * Alle Toradressen dieser Welt auf den heutigen Schluessel umschreiben.
  *
  * WOZU, UND WARUM ERST JETZT.
@@ -1946,11 +2148,6 @@ export async function schluesselNachziehen({ trocken = false, onProgress = null 
   bericht.abgeleitet = _geschwisterWurzeln(abbildung, zielWurzelFuer).length;
 
 
-  const mappings = [...abbildung].map(([alteWurzel, zielWurzel]) => ({
-    brokenPrefix: alteWurzel,
-    actualPrefix: zielWurzel,
-  }));
-
   // Der Trockenlauf sagt, WAS geschehen wuerde, und schreibt nichts. Er ist
   // kein Luxus: die Zahl der GEFUNDENEN Wurzeln ist die Probe darauf, ob
   // wirklich nur der Schluessel wechselte und nicht versehentlich die halbe
@@ -1960,59 +2157,7 @@ export async function schluesselNachziehen({ trocken = false, onProgress = null 
   // verdoppelt jede fremde Wurzel in den anderen Raum.
   if (trocken) { bericht.grund = "trockenlauf"; return bericht; }
 
-  const ergebnis = await applyMappings(mappings, "world", null, onProgress);
-  bericht.geaendert = ergebnis.updated;
-  // ANHAENGEN, NICHT SETZEN. Ein nicht lesbares Kompendium ist oben schon in
-  // `bericht.fehler` gelandet, und ein `=` haette es stillschweigend geloescht.
-  if (ergebnis.errors?.length) bericht.fehler = [...(bericht.fehler ?? []), ...ergebnis.errors];
-
-  // ZWEITER DURCHLAUF, und ohne ihn ist der Wechsel unvollstaendig.
-  //
-  // `applyMappings` geht eine Feldliste ab. Sie kennt `thumb` nicht und keine
-  // einzige Flagge, weder unsere eigenen noch die fremder Module. Gemessen am
-  // 2026-09-06 nach einem echten Wechsel blieben deshalb 802 Stellen stehen:
-  //
-  //   227  thumb
-  //   223  tiles[].flags.beneos-module.stream.partner
-  //   223  tiles[].flags.beneos-module.stream.video
-  //    66  flags.beneos-module.creatureInstaller.srdCreatures[].positions[].texture.src
-  //    26  notes[].flags.pin-cushion.showImageExplicitSource
-  //    16  flags.beneos-module.creatureInstaller.srdCreatures[].art
-  //    11  tiles[].flags.monks-active-tiles.actions[].data.audiofile
-  //    10  tiles[].flags.monks-active-tiles.files[].name
-  //
-  // Die 227 in `thumb` sind der sichtbare Teil: so viele Szenen stehen nach
-  // einem Wechsel ohne Vorschaubild in der Leiste.
-  //
-  // Die frueheren Laeufe haben das nicht gesehen, weil ihre Nachzaehlung
-  // dieselben Felder zaehlte, die der Eingriff anfasst. Eine Zaehlung, die den
-  // Ausschnitt des Eingriffs uebernimmt, misst die eigene Annahme.
-  const rest = await _restlicheWurzelnNachziehen(abbildung);
-  bericht.geaendert += rest.geaendert;
-  bericht.tiefNachgezogen = rest.geaendert;
-  bericht.tiefDokumente = rest.dokumente;
-  // DER BERICHT MUSS NENNEN, WAS ANGEFASST WURDE, und nicht nur, was sich
-  // geaendert hat. Am 06.11.2026 beim Messen aufgefallen: diese zwei Zahlen
-  // standen in der Konsolenzeile, aber nicht im zurueckgegebenen Bericht, und
-  // damit war von aussen nicht zu sehen, ob die Kompendien ueberhaupt gelesen
-  // wurden. Ein Lauf, der 0 geaenderte Felder meldet, ist sonst nicht von
-  // einem Lauf zu unterscheiden, der die Kompendien nie geoeffnet hat.
-  bericht.kompendien = rest.kompendien;
-  bericht.kompendiumDokumente = rest.kompendiumDokumente;
-  // WELT UND KOMPENDIUM GETRENNT. `applyMappings` und der Weltteil des
-  // tiefen Durchlaufs sind Welt, der Kompendiumteil ist es nicht. Eine
-  // gemeinsame Summe kann nicht beantworten, ob die Kompendien wirklich
-  // mitgezogen wurden, und genau das ist die Frage, die dieses Paket stellt.
-  bericht.geaendertWelt = ergebnis.updated + rest.geaendertWelt;
-  bericht.geaendertKompendium = rest.geaendertKompendium;
-  if (rest.fehler.length) bericht.fehler = [...(bericht.fehler ?? []), ...rest.fehler];
-
-  console.log(`Beneos Stream | Schluessel nachgezogen: ${bericht.geaendert} Feld(er), `
-    + `davon ${bericht.geaendertWelt} in der Welt und ${bericht.geaendertKompendium} im Kompendium. `
-    + `${bericht.gefunden.length} alte Adresswurzel(n) GEFUNDEN, ${bericht.abgeleitet} dazu ABGELEITET, `
-    + `${bericht.adressen} Toradressen gesehen, ${rest.geaendert} im tiefen Durchlauf `
-    + `ueber ${rest.dokumente} Dokument(e); ${rest.kompendien} Kompendium/Kompendien `
-    + `mit ${rest.kompendiumDokumente} Dokument(en) gelesen`);
+  console.log(await _schreibenUndBerichten(abbildung, bericht, onProgress));
   return bericht;
 }
 
