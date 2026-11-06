@@ -2407,6 +2407,8 @@
   "BENEOS.Stream.Offline.Released": "\"{name}\" is streamed again.",
   "BENEOS.Stream.Offline.Fetching1": "Fetching \"{name}\" for offline use...",
   "BENEOS.Stream.Offline.KeepFailed": "\"{name}\" could not be fetched completely and was not kept.",
+  "BENEOS.Stream.Offline.KeepFailedNoSpace": "\"{name}\" was not kept: your browser has no storage space left. Free up disk space, then try again.",
+  "BENEOS.Stream.Offline.KeepFailedDenied": "\"{name}\" was not kept: your account is not entitled to all of its files.",
   "BENEOS.Stream.Offline.QuotaExceeded": "\"{name}\" needs {needs} MB, but only {free} MB of your offline quota is free. Remove another map first.",
   "BENEOS.Stream.Offline.QuotaFull": "Your offline storage is full. Remove a map before keeping another one.",
   "BENEOS.Stream.Offline.FolderTitle": "Keep this folder offline?",

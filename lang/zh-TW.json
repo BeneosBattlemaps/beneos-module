@@ -2357,6 +2357,8 @@
   "BENEOS.Stream.Offline.Released": "「{name}」恢復為串流。",
   "BENEOS.Stream.Offline.Fetching1": "正在下載「{name}」以供離線使用...",
   "BENEOS.Stream.Offline.KeepFailed": "「{name}」未能完整下載，因此未保留。",
+  "BENEOS.Stream.Offline.KeepFailedNoSpace": "「{name}」未保留：瀏覽器已沒有儲存空間。請先釋出硬碟空間，再試一次。",
+  "BENEOS.Stream.Offline.KeepFailedDenied": "「{name}」未保留：你的帳號沒有這張地圖所有檔案的權限。",
   "BENEOS.Stream.Offline.QuotaExceeded": "「{name}」需要 {needs} MB，但離線配額只剩 {free} MB。請先移除其他地圖。",
   "BENEOS.Stream.Offline.QuotaFull": "離線儲存空間已滿。請先移除一張地圖，再保留其他地圖。",
   "BENEOS.Stream.Offline.FolderTitle": "要將此資料夾保留為離線嗎？",

@@ -2357,6 +2357,8 @@
   "BENEOS.Stream.Offline.Released": "« {name} » est de nouveau diffusée.",
   "BENEOS.Stream.Offline.Fetching1": "Téléchargement de « {name} » pour une utilisation hors ligne...",
   "BENEOS.Stream.Offline.KeepFailed": "« {name} » n'a pas pu être téléchargée entièrement et n'a pas été conservée.",
+  "BENEOS.Stream.Offline.KeepFailedNoSpace": "« {name} » n'a pas été conservée : ton navigateur n'a plus d'espace de stockage. Libère de l'espace disque, puis réessaie.",
+  "BENEOS.Stream.Offline.KeepFailedDenied": "« {name} » n'a pas été conservée : ton compte n'a pas de droit sur tous ses fichiers.",
   "BENEOS.Stream.Offline.QuotaExceeded": "« {name} » nécessite {needs} Mo, mais seuls {free} Mo de votre quota hors ligne sont libres. Supprimez d'abord une autre carte.",
   "BENEOS.Stream.Offline.QuotaFull": "Votre stockage hors ligne est plein. Supprimez une carte avant d'en conserver une autre.",
   "BENEOS.Stream.Offline.FolderTitle": "Garder ce dossier hors ligne ?",

@@ -2357,6 +2357,8 @@
   "BENEOS.Stream.Offline.Released": "«{name}» vuelve a transmitirse.",
   "BENEOS.Stream.Offline.Fetching1": "Descargando «{name}» para uso sin conexión...",
   "BENEOS.Stream.Offline.KeepFailed": "«{name}» no se pudo descargar por completo y no se guardó.",
+  "BENEOS.Stream.Offline.KeepFailedNoSpace": "«{name}» no se guardó: tu navegador no tiene más espacio de almacenamiento. Libera espacio en el disco e inténtalo de nuevo.",
+  "BENEOS.Stream.Offline.KeepFailedDenied": "«{name}» no se guardó: tu cuenta no tiene derecho a todos sus archivos.",
   "BENEOS.Stream.Offline.QuotaExceeded": "«{name}» necesita {needs} MB, pero solo {free} MB de tu cuota sin conexión están libres. Elimina primero otro mapa.",
   "BENEOS.Stream.Offline.QuotaFull": "Tu almacenamiento sin conexión está lleno. Elimina un mapa antes de guardar otro.",
   "BENEOS.Stream.Offline.FolderTitle": "¿Guardar esta carpeta sin conexión?",

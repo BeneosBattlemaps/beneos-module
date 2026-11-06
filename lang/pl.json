@@ -2357,6 +2357,8 @@
   "BENEOS.Stream.Offline.Released": "„{name}” jest znów strumieniowana.",
   "BENEOS.Stream.Offline.Fetching1": "Pobieranie „{name}” do użytku offline...",
   "BENEOS.Stream.Offline.KeepFailed": "„{name}” nie została pobrana w całości i nie została zachowana.",
+  "BENEOS.Stream.Offline.KeepFailedNoSpace": "„{name}” nie została zachowana: przeglądarka nie ma więcej miejsca. Zwolnij miejsce na dysku i spróbuj ponownie.",
+  "BENEOS.Stream.Offline.KeepFailedDenied": "„{name}” nie została zachowana: twoje konto nie ma prawa do wszystkich jej plików.",
   "BENEOS.Stream.Offline.QuotaExceeded": "„{name}” wymaga {needs} MB, ale wolne jest tylko {free} MB limitu offline. Usuń najpierw inną mapę.",
   "BENEOS.Stream.Offline.QuotaFull": "Pamięć offline jest pełna. Usuń mapę, zanim zachowasz kolejną.",
   "BENEOS.Stream.Offline.FolderTitle": "Zachować ten folder offline?",

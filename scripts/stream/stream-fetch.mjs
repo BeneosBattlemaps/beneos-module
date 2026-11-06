@@ -1172,7 +1172,28 @@ export async function alleImSpeicher(urls) {
     return frei >= noetig
   }
 
-  async function toStore(store, url, response, keep = false) {
+  /**
+   * Eine Antwort ablegen. Gibt `true` oder `false` zurueck, wie immer.
+   *
+   * WARUM DER GRUND UEBER EIN ARGUMENT KOMMT UND NICHT UEBER DIE RUECKGABE,
+   * 2026-11-06 (OP-PRJ-185).
+   *
+   * Diese Funktion wird an fuenf Stellen als Bedingung gelesen, viermal in der
+   * Form `if (await toStore(...))`. Gaebe sie im Fehlerfall eine Zeichenkette
+   * statt `false` zurueck, waere jeder dieser fuenf Tests ab sofort WAHR, wenn
+   * die Ablage scheitert, und ein voller Speicher wuerde als Erfolg gezaehlt.
+   * Der Grund reist deshalb in einem Objekt mit, das der Aufrufer stellt und
+   * das ihn nach dem Aufruf liest. Wer ihn nicht braucht, uebergibt nichts und
+   * merkt von dieser Zeile nichts.
+   *
+   * Die Gruende sind absichtlich grob. Der Kunde kann genau einen davon selbst
+   * beheben, naemlich `voll`, und nur diese Unterscheidung muss die Oberflaeche
+   * tragen. `QuotaExceededError` gehoert dabei nicht in die Oberflaeche, die
+   * Folge schon.
+   */
+  async function toStore(store, url, response, keep = false, befund = null) {
+    const grund = (wert) => { if (befund) befund.grund = wert; return false }
+
     // A denied asset answers 200 with a placeholder pixel. Storing that would
     // freeze the denial in place for three days, long after the right returns.
     //
@@ -1181,9 +1202,10 @@ export async function alleImSpeicher(urls) {
     // 200-Antwort und waere ohne diese Zeile drei Tage lang der gespeicherte
     // Inhalt der Datei: die Verbindung kaeme zurueck, und der Kunde saehe
     // trotzdem eine leere Flaeche, bis der Eintrag verfaellt.
-    if (!response.ok || response.headers.get("x-beneos-denied")) return false
-    if (response.headers.get("x-beneos-offline")) return false
-    if (isControl(url)) return false
+    if (response.headers.get("x-beneos-denied")) return grund("abgewiesen")
+    if (!response.ok) return grund("abruf")
+    if (response.headers.get("x-beneos-offline")) return grund("kein-netz")
+    if (isControl(url)) return grund("steuerdatei")
 
     // Einmal in einen Rumpf lesen, statt zweimal zu klonen: ein zweiter Versuch
     // nach dem Raeumen braucht denselben Inhalt, und ein verbrauchter Rumpf
@@ -1197,9 +1219,9 @@ export async function alleImSpeicher(urls) {
       const bauen = () => new Response(daten, { status: 200, headers: kopf })
       try { await vPut(store, url, bauen()); return true } catch (_) { /* voll, gleich weiter */ }
       // Etwas Luft ueber den reinen Bedarf, damit nicht jede zweite Datei raeumt.
-      if (!(await raumSchaffen(Math.max(bytes * 2, 32 * 1048576)))) return false
-      try { await vPut(store, url, bauen()); return true } catch (_) { return false }
-    } catch (_) { return false }
+      if (!(await raumSchaffen(Math.max(bytes * 2, 32 * 1048576)))) return grund("voll")
+      try { await vPut(store, url, bauen()); return true } catch (_) { return grund("voll") }
+    } catch (_) { return grund("ablage") }
   }
 
   /**
@@ -1740,7 +1762,11 @@ export async function prewarm(urls, onProgress) {
  */
 export async function offlineHalten(urls, onProgress) {
   const liste = [...new Set((urls || []).filter(u => typeof u === "string" && ours(u)))]
-  const ergebnis = { gehalten: 0, geholt: 0, fehlgeschlagen: 0, bytes: 0, deckelErreicht: false }
+  // `gruende` zaehlt nach Ursache, `fehlgeschlagen` bleibt die Summe. Die Summe
+  // ist der Vertrag nach aussen und wird an drei Stellen gelesen; die Aufteilung
+  // ist die Zusatzangabe, aus der die Oberflaeche einen Satz baut (OP-PRJ-185).
+  const ergebnis = { gehalten: 0, geholt: 0, fehlgeschlagen: 0, bytes: 0, deckelErreicht: false, gruende: {} }
+  const zaehlGrund = (g) => { const k = g || "unbekannt"; ergebnis.gruende[k] = (ergebnis.gruende[k] || 0) + 1 }
   if (!liste.length || !localCacheEnabled()) return ergebnis
   const store = await openStore()
   if (!store) return ergebnis
@@ -1775,14 +1801,19 @@ export async function offlineHalten(urls, onProgress) {
         // schafft bei vollem Speicher Platz, indem es Wegwerfware raeumt.
         // Genau das fehlte bis zum 29.08.2026: ein voller Speicher liess das
         // Halten stillschweigend scheitern.
-        if (await toStore(store, url, antwort, true)) {
+        const befund = {}
+        if (await toStore(store, url, antwort, true, befund)) {
           ergebnis.geholt++
           ergebnis.bytes += Number(antwort.headers.get("content-length") || 0)
         } else {
           ergebnis.fehlgeschlagen++
+          zaehlGrund(befund.grund)
         }
       }
-    } catch (_) { ergebnis.fehlgeschlagen++ }
+      // Ein geworfener Abruf ist etwas anderes als eine abgelehnte Antwort:
+      // dort gab es gar keine Antwort, also heisst der Grund `abruf` und nicht
+      // `abgewiesen`.
+    } catch (_) { ergebnis.fehlgeschlagen++; zaehlGrund("abruf") }
     onProgress?.(++fertig, liste.length)
   }
   return ergebnis

@@ -2365,6 +2365,8 @@
   "BENEOS.Stream.Offline.Released": "„{name}“ wird wieder gestreamt.",
   "BENEOS.Stream.Offline.Fetching1": "„{name}“ wird für die Offline-Nutzung geladen...",
   "BENEOS.Stream.Offline.KeepFailed": "„{name}“ konnte nicht vollständig geladen werden und wurde nicht behalten.",
+  "BENEOS.Stream.Offline.KeepFailedNoSpace": "„{name}“ wurde nicht behalten: dein Browser hat keinen Speicherplatz mehr. Schaffe Platz auf der Festplatte und versuche es erneut.",
+  "BENEOS.Stream.Offline.KeepFailedDenied": "„{name}“ wurde nicht behalten: dein Konto hat nicht das Recht an allen Dateien dieser Karte.",
   "BENEOS.Stream.Offline.QuotaExceeded": "„{name}“ braucht {needs} MB, aber nur {free} MB deines Offline-Kontingents sind frei. Entferne zuerst eine andere Karte.",
   "BENEOS.Stream.Offline.QuotaFull": "Dein Offline-Speicher ist voll. Entferne eine Karte, bevor du eine weitere behältst.",
   "BENEOS.Stream.Offline.FolderTitle": "Diesen Ordner offline behalten?",

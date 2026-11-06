@@ -2356,6 +2356,8 @@
   "BENEOS.Stream.Offline.Released": "«{name}» снова транслируется.",
   "BENEOS.Stream.Offline.Fetching1": "Загружаем «{name}» для офлайн-игры...",
   "BENEOS.Stream.Offline.KeepFailed": "«{name}» не удалось загрузить полностью, карта не сохранена.",
+  "BENEOS.Stream.Offline.KeepFailedNoSpace": "«{name}» не сохранена: в браузере больше нет места. Освободи место на диске и попробуй снова.",
+  "BENEOS.Stream.Offline.KeepFailedDenied": "«{name}» не сохранена: у твоей учётной записи нет прав на все её файлы.",
   "BENEOS.Stream.Offline.QuotaExceeded": "Для «{name}» нужно {needs} МБ, а свободно только {free} МБ офлайн-хранилища. Сначала удалите другую карту.",
   "BENEOS.Stream.Offline.QuotaFull": "Офлайн-хранилище заполнено. Удалите карту, прежде чем сохранять следующую.",
   "BENEOS.Stream.Offline.FolderTitle": "Сохранить эту папку офлайн?",

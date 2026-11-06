@@ -2357,6 +2357,8 @@
   "BENEOS.Stream.Offline.Released": "„{name}“ se opět streamuje.",
   "BENEOS.Stream.Offline.Fetching1": "Stahuji „{name}“ pro offline použití...",
   "BENEOS.Stream.Offline.KeepFailed": "„{name}“ se nepodařilo stáhnout celou a nebyla ponechána.",
+  "BENEOS.Stream.Offline.KeepFailedNoSpace": "„{name}“ nebyla ponechána: prohlížeč již nemá žádné místo. Uvolni místo na disku a zkus to znovu.",
+  "BENEOS.Stream.Offline.KeepFailedDenied": "„{name}“ nebyla ponechána: tvůj účet nemá právo na všechny její soubory.",
   "BENEOS.Stream.Offline.QuotaExceeded": "„{name}“ potřebuje {needs} MB, ale volných je jen {free} MB tvého offline limitu. Odstraň nejdřív jinou mapu.",
   "BENEOS.Stream.Offline.QuotaFull": "Offline úložiště je plné. Odstraň mapu, než si ponecháš další.",
   "BENEOS.Stream.Offline.FolderTitle": "Ponechat tuto složku offline?",

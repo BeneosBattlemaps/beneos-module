@@ -2357,6 +2357,8 @@
   "BENEOS.Stream.Offline.Released": "\"{name}\" volta a ser transmitida.",
   "BENEOS.Stream.Offline.Fetching1": "A transferir \"{name}\" para utilização offline...",
   "BENEOS.Stream.Offline.KeepFailed": "\"{name}\" não pôde ser transferida por completo e não foi mantida.",
+  "BENEOS.Stream.Offline.KeepFailedNoSpace": "\"{name}\" não foi mantida: o teu navegador não tem mais espaço de armazenamento. Liberta espaço no disco e tenta novamente.",
+  "BENEOS.Stream.Offline.KeepFailedDenied": "\"{name}\" não foi mantida: a tua conta não tem direito a todos os ficheiros dela.",
   "BENEOS.Stream.Offline.QuotaExceeded": "\"{name}\" precisa de {needs} MB, mas apenas {free} MB da sua quota offline estão livres. Remova primeiro outro mapa.",
   "BENEOS.Stream.Offline.QuotaFull": "O seu armazenamento offline está cheio. Remova um mapa antes de manter outro.",
   "BENEOS.Stream.Offline.FolderTitle": "Manter esta pasta offline?",

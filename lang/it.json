@@ -2357,6 +2357,8 @@
   "BENEOS.Stream.Offline.Released": "«{name}» viene di nuovo trasmessa.",
   "BENEOS.Stream.Offline.Fetching1": "Scaricamento di «{name}» per l'uso offline...",
   "BENEOS.Stream.Offline.KeepFailed": "«{name}» non è stata scaricata completamente e non è stata mantenuta.",
+  "BENEOS.Stream.Offline.KeepFailedNoSpace": "«{name}» non è stata mantenuta: il browser non ha più spazio di archiviazione. Libera spazio sul disco e riprova.",
+  "BENEOS.Stream.Offline.KeepFailedDenied": "«{name}» non è stata mantenuta: il tuo account non ha diritto a tutti i suoi file.",
   "BENEOS.Stream.Offline.QuotaExceeded": "«{name}» richiede {needs} MB, ma solo {free} MB della tua quota offline sono liberi. Rimuovi prima un'altra mappa.",
   "BENEOS.Stream.Offline.QuotaFull": "Lo spazio offline è pieno. Rimuovi una mappa prima di mantenerne un'altra.",
   "BENEOS.Stream.Offline.FolderTitle": "Mantenere questa cartella offline?",

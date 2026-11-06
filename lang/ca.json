@@ -2357,6 +2357,8 @@
   "BENEOS.Stream.Offline.Released": "«{name}» torna a transmetre's.",
   "BENEOS.Stream.Offline.Fetching1": "S'està baixant «{name}» per a l'ús fora de línia...",
   "BENEOS.Stream.Offline.KeepFailed": "«{name}» no s'ha pogut baixar completament i no s'ha mantingut.",
+  "BENEOS.Stream.Offline.KeepFailedNoSpace": "«{name}» no s'ha mantingut: el navegador no té més espai d'emmagatzematge. Allibera espai al disc i torna-ho a provar.",
+  "BENEOS.Stream.Offline.KeepFailedDenied": "«{name}» no s'ha mantingut: el teu compte no té dret a tots els seus fitxers.",
   "BENEOS.Stream.Offline.QuotaExceeded": "«{name}» necessita {needs} MB, però només {free} MB de la teva quota fora de línia estan lliures. Elimina primer un altre mapa.",
   "BENEOS.Stream.Offline.QuotaFull": "El teu emmagatzematge fora de línia és ple. Elimina un mapa abans de mantenir-ne un altre.",
   "BENEOS.Stream.Offline.FolderTitle": "Vols mantenir aquesta carpeta fora de línia?",

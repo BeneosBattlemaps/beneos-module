@@ -37,6 +37,32 @@ import { loadStreamManifest } from "./stream-install.mjs"
 import { BeneosInstallState, releaseKern, anzeigename } from "../cloud-v2/beneos-install-state.mjs"
 
 /**
+ * Die haeufigste Einzelursache aus der Gruendeliste von `offlineHalten`.
+ *
+ * WARUM DIE HAEUFIGSTE UND NICHT DIE ERSTE, 2026-11-06 (OP-PRJ-185).
+ *
+ * Eine Karte hat zwischen zwei und einigen Dutzend Dateien. Geht der Speicher
+ * mitten im Lauf aus, scheitern alle folgenden an `voll`, aber die erste kann
+ * an einem einzelnen abgebrochenen Abruf gescheitert sein. Die erste Ursache zu
+ * melden hiesse, den Kunden wegen eines Ausreissers auf die falsche Spur zu
+ * schicken. Bei Gleichstand gewinnt `voll`, weil das die einzige Ursache ist,
+ * die er selbst beheben kann; eine Meldung, die ihn handeln laesst, ist mehr
+ * wert als eine, die ihn abwarten laesst.
+ *
+ * Gibt `null` zurueck, wenn nichts gezaehlt wurde. Die Oberflaeche faellt dann
+ * auf den allgemeinen Satz zurueck, den sie vorher immer benutzt hat.
+ */
+export function haeufigsterGrund(gruende) {
+  const paare = Object.entries(gruende || {})
+  if (!paare.length) return null
+  let beste = null, hoechste = -1
+  for (const [grund, zahl] of paare) {
+    if (zahl > hoechste || (zahl === hoechste && grund === "voll")) { beste = grund; hoechste = zahl }
+  }
+  return beste
+}
+
+/**
  * Vierzehn Tage ohne gueltige Berechtigung, dann fallen die Zusagen.
  *
  * Sieben waren erwogen und sind verworfen: eine Gruppe mit zweiwoechigem
@@ -576,7 +602,11 @@ export async function karteZusagen({ release, variant, karte, name, urls, bytes,
     // Zusage gleich mit.
     await offlineFreigeben(liste)
     await torFragen(kartenWeg(release, variant, karte) + "/release", "POST")
-    return { ok: false, grund: "unvollstaendig", ergebnis }
+    // `grund` bleibt "unvollstaendig" und damit der Vertrag, den drei Stellen
+    // lesen. `ursache` ist die haeufigste Einzelursache darunter und steht
+    // daneben, weil der Kunde genau eine davon selbst beheben kann, naemlich
+    // "voll" (OP-PRJ-185).
+    return { ok: false, grund: "unvollstaendig", ursache: haeufigsterGrund(ergebnis.gruende), ergebnis }
   }
 
   // DIE GETEILTEN DATEIEN NACH DER KARTE, NICHT VORHER.
@@ -1440,6 +1470,20 @@ export async function schalteKarte(sceneId) {
     } else if (ergebnis.grund === "deckel") {
       ui.notifications?.warn(game.i18n.localize("BENEOS.Stream.Offline.QuotaFull")
         || "Your offline storage is full. Release a map before keeping another one.")
+    } else if (ergebnis.ursache === "voll") {
+      // DER EINE FALL, DEN DER KUNDE SELBST BEHEBEN KANN (OP-PRJ-185).
+      //
+      // Nicht derselbe Satz wie `deckel`: dort hat unser eigener Anteil am
+      // Browserspeicher seine Grenze erreicht, hier hat der BROWSER keinen
+      // Platz mehr und nimmt nichts an, auch nachdem Wegwerfware geraeumt
+      // wurde. Zusammengelegt waere der Rat falsch, denn eine Karte
+      // freizugeben hilft hier nicht zuverlaessig.
+      ui.notifications?.warn(game.i18n.format("BENEOS.Stream.Offline.KeepFailedNoSpace", { name: k.name })
+        || `"${k.name}" was not kept: your browser has no storage space left. `
+         + `Free up disk space or clear site data for other sites, then try again.`)
+    } else if (ergebnis.ursache === "abgewiesen") {
+      ui.notifications?.warn(game.i18n.format("BENEOS.Stream.Offline.KeepFailedDenied", { name: k.name })
+        || `"${k.name}" was not kept: your account is not entitled to all of its files.`)
     } else {
       ui.notifications?.error(game.i18n.format("BENEOS.Stream.Offline.KeepFailed", { name: k.name })
         || `"${k.name}" could not be fetched completely and was not kept.`)

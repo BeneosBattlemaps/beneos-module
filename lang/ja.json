@@ -2357,6 +2357,8 @@
   "BENEOS.Stream.Offline.Released": "「{name}」は再びストリーミングされます。",
   "BENEOS.Stream.Offline.Fetching1": "「{name}」をオフライン用に取得しています...",
   "BENEOS.Stream.Offline.KeepFailed": "「{name}」を完全に取得できなかったため、保持されませんでした。",
+  "BENEOS.Stream.Offline.KeepFailedNoSpace": "「{name}」は保持されませんでした。ブラウザの保存領域が満杯です。ディスクの空き容量を確保してから再試行してください。",
+  "BENEOS.Stream.Offline.KeepFailedDenied": "「{name}」は保持されませんでした。このマップのすべてのファイルに対する権利がアカウントにありません。",
   "BENEOS.Stream.Offline.QuotaExceeded": "「{name}」には {needs} MB が必要ですが、オフライン容量の空きは {free} MB しかありません。先に別のマップを削除してください。",
   "BENEOS.Stream.Offline.QuotaFull": "オフライン保存領域がいっぱいです。別のマップを保持する前に、ひとつ削除してください。",
   "BENEOS.Stream.Offline.FolderTitle": "このフォルダーをオフラインで保持しますか？",

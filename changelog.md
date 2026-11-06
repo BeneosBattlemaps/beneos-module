@@ -4,6 +4,14 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.5.0-beta.9 # 2026-11-06
+
+**Changed**
+- Changed: When keeping a map offline fails, the message now says why. Running
+  out of browser storage is the one cause you can fix yourself, so it gets its
+  own wording and tells you to free up disk space. A missing entitlement gets
+  its own wording too. Everything else keeps the message you saw before.
+
 ### 14.5.0-beta.7 # 2026-10-29
 
 Everything from the customer line up to 14.4.11 is now in the beta, 36 commits.
