@@ -208,8 +208,6 @@
   "BENEOS.Settings.PerfMode.Hint": "Désactive les animations décoratives (lueur d'en-tête du Codex, braises flottantes, projecteur vagabond, étincelles montantes). Recommandé sur les machines moins puissantes.",
   "BENEOS.Settings.MapSharpen.Name": "Accentuer les cartes en zoom avant",
   "BENEOS.Settings.MapSharpen.Hint": "Accentue la vidéo de la battlemap à mesure que vous zoomez, contre le flou dû à la compression vidéo. S'applique uniquement à ce client. Désactivé tant que le mode performance est actif.",
-  "BENEOS.Settings.MapSharpenDebug.Name": "Calibrer la netteté de la carte",
-  "BENEOS.Settings.MapSharpenDebug.Hint": "Affiche une barre à côté du tiroir des créatures avec un curseur d'intensité et un bouton Enregistrer. Tant qu'elle est active, la netteté automatique est coupée : réglez l'intensité à l'œil et enregistrez-la pour le zoom actuel. Les points enregistrés remplacent la courbe pour tous les clients de ce monde, linéaire entre eux. MJ uniquement.",
   "BENEOS.Settings.Analytics.Name": "Partager des données d'utilisation anonymes",
   "BENEOS.Settings.Analytics.Hint": "Envoie des données de télémétrie anonymes, réservées au MJ (aucune donnée de joueur, aucun nom), afin que Beneos puisse détecter les contenus défectueux et améliorer ses releases. Vous pouvez désactiver cette option à tout moment.",
   "BENEOS.Analytics.Banner.Title": "Données d'utilisation anonymes Beneos",

@@ -208,8 +208,6 @@
   "BENEOS.Settings.PerfMode.Hint": "Wyłącza dekoracyjne animacje (poświata nagłówka Codex, dryfujące żary, wędrujący reflektor, wznoszące się iskry). Zalecane na słabszych maszynach.",
   "BENEOS.Settings.MapSharpen.Name": "Wyostrzaj mapy przy przybliżeniu",
   "BENEOS.Settings.MapSharpen.Hint": "Wyostrza wideo battlemapy tym mocniej, im bardziej przybliżasz, przeciw rozmyciu kompresji wideo. Dotyczy tylko tego klienta. Wyłączone, gdy tryb wydajności jest włączony.",
-  "BENEOS.Settings.MapSharpenDebug.Name": "Kalibruj wyostrzenie mapy",
-  "BENEOS.Settings.MapSharpenDebug.Hint": "Pokazuje obok szuflady stworów pasek z suwakiem siły i przyciskiem Zapisz. Gdy jest włączony, automatyczne wyostrzenie jest wyłączone: ustaw siłę na oko i zapisz ją dla bieżącego przybliżenia. Zapisane punkty zastępują krzywą dla wszystkich klientów tego świata, pomiędzy nimi liniowo. Tylko MG.",
   "BENEOS.Settings.Analytics.Name": "Udostępniaj anonimowe dane o użytkowaniu",
   "BENEOS.Settings.Analytics.Hint": "Wysyła anonimową telemetrię tylko od MG (bez danych graczy, bez imion), aby Beneos mógł wykrywać uszkodzone treści i ulepszać wydania. Możesz to wyłączyć w dowolnej chwili.",
   "BENEOS.Analytics.Banner.Title": "Anonimowe dane o użytkowaniu Beneos",

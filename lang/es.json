@@ -208,8 +208,6 @@
   "BENEOS.Settings.PerfMode.Hint": "Desactiva las animaciones decorativas (resplandor de la cabecera del Codex, brasas a la deriva, foco errante, chispas ascendentes). Recomendado en equipos de gama baja.",
   "BENEOS.Settings.MapSharpen.Name": "Enfocar los mapas al acercar el zoom",
   "BENEOS.Settings.MapSharpen.Hint": "Enfoca el vídeo del battlemap cuanto más te acercas, contra la suavidad de la compresión de vídeo. Solo se aplica a este cliente. Desactivado mientras el modo de rendimiento esté activo.",
-  "BENEOS.Settings.MapSharpenDebug.Name": "Calibrar el enfoque del mapa",
-  "BENEOS.Settings.MapSharpenDebug.Hint": "Muestra una barra junto al cajón de criaturas con un control de intensidad y un botón de guardar. Mientras está activa, el enfoque automático está desactivado: ajusta la intensidad a ojo y guárdala para el zoom actual. Los puntos guardados sustituyen la curva para todos los clientes de este mundo, lineal entre ellos. Solo DM.",
   "BENEOS.Settings.Analytics.Name": "Compartir datos de uso anónimos",
   "BENEOS.Settings.Analytics.Hint": "Envía telemetría anónima, solo del DJ (sin datos de jugadores ni nombres), para que Beneos pueda detectar contenido defectuoso y mejorar las releases. Puedes desactivarlo en cualquier momento.",
   "BENEOS.Analytics.Banner.Title": "Datos de uso anónimos de Beneos",

@@ -24,27 +24,19 @@
    Setting "beneos-map-sharpen", client scope, on by default. Off whenever
    the module's performance mode is on.
 
-   Calibration: "beneos-map-sharpen-points" (world scope) holds points { squares,
-   strength } that the operator saved by eye (map-sharpen-debug.mjs). With
-   at least one point they replace the default curve, linear between the
-   points. While calibrating, the hook "beneos.mapSharpenManual" sets one
-   fixed strength regardless of zoom; null hands back to the curve.
-
    What sharpening cannot do: it adds no detail. It raises edge contrast,
    compression artefacts included. MAX_STRENGTH and the clamp on the
-   correction keep that in bounds; both are first values to be tuned.
+   correction keep that in bounds.
    ============================================================ */
 
-import { squaresAcross, sharpenAmount, sharpenWanted, texelSize, strengthFromPoints, clampStrength } from "./map-sharpen-curve.mjs"
+import { squaresAcross, sharpenAmount, sharpenWanted, texelSize } from "./map-sharpen-curve.mjs"
 
 const MODULE_ID = "beneos-module"
 const SETTING = "beneos-map-sharpen"
 const PERF_SETTING = "beneos-performance-mode"
-const POINTS_SETTING = "beneos-map-sharpen-points"
-const MAX_STRENGTH = 1.5
-
-// Fixed strength while the operator calibrates, null otherwise.
-let manual = null
+// Shader strength at full sharpening, and the ceiling: the curve never
+// goes above it (user 2026-11-06, set by eye on stream-beta).
+const MAX_STRENGTH = 3
 
 let SharpenShader = null
 // The class each mesh had before the swap, to give it back.
@@ -115,13 +107,6 @@ function offReason() {
   return "off"
 }
 
-// Shader strength the curve gives at this zoom: the saved points if there
-// are any, the default line otherwise.
-function curveStrength(squares) {
-  const fromPoints = strengthFromPoints(setting(POINTS_SETTING), squares)
-  return fromPoints === null ? sharpenAmount(squares) * MAX_STRENGTH : clampStrength(fromPoints)
-}
-
 // Strength from the zoom, texel size from each video. Cheap: runs on every
 // pan. Announces what it did as "beneos.mapSharpenUpdated" for anyone who
 // wants to show it; the module itself shows nothing.
@@ -129,8 +114,7 @@ function updateStrength() {
   if (!canvas?.ready) return
   const squares = squaresAcross(canvas.app.renderer.screen.width, canvas.dimensions?.size, canvas.stage.scale.x)
   const meshes = sharpened()
-  const curve = curveStrength(squares)
-  const strength = meshes.length ? (manual ?? curve) : 0
+  const amount = meshes.length ? sharpenAmount(squares) : 0
   let unknown = 0
   for (const mesh of meshes) {
     const base = mesh.texture.baseTexture
@@ -139,13 +123,10 @@ function updateStrength() {
     // Size not known yet: no sharpening rather than neighbours a texture apart.
     if (!texel) { u.sharpAmount = 0; unknown++; continue }
     u.sharpTexel = texel
-    u.sharpAmount = strength
+    u.sharpAmount = amount * MAX_STRENGTH
   }
-  const points = setting(POINTS_SETTING)
   Hooks.callAll("beneos.mapSharpenUpdated", {
-    strength, curve, manual: manual !== null, squares,
-    points: Array.isArray(points) ? points.length : 0,
-    videos: meshes.length, unknown,
+    amount, strength: amount * MAX_STRENGTH, max: MAX_STRENGTH, squares, videos: meshes.length, unknown,
     off: meshes.length ? null : offReason()
   })
 }
@@ -187,17 +168,6 @@ Hooks.once("init", () => {
     type: Boolean,
     default: true
   })
-  // World scope: the GM calibrates once, every client draws the same
-  // curve, and the points can be read off the world afterwards.
-  game.settings.register(MODULE_ID, POINTS_SETTING, {
-    scope: "world",
-    config: false,
-    type: Array,
-    default: [],
-    // onChange runs on every client, for the first save (Foundry creates
-    // the setting then, so updateSetting would not fire) and every later one.
-    onChange: () => updateStrength()
-  })
 })
 
 // Registered once and never removed: the feature lives as long as the page,
@@ -207,10 +177,6 @@ Hooks.on("canvasPan", () => updateStrength())
 Hooks.on("drawTile", applyTile)
 Hooks.on("refreshTile", applyTile)
 Hooks.on("beneos.streamVideoApplied", applyTile)
-Hooks.on("beneos.mapSharpenManual", (value) => {
-  manual = Number.isFinite(value) ? clampStrength(value) : null
-  updateStrength()
-})
 Hooks.on("clientSettingChanged", (key) => {
   if (key === `${MODULE_ID}.${SETTING}` || key === `${MODULE_ID}.${PERF_SETTING}`) apply()
 })

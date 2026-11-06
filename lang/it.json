@@ -208,8 +208,6 @@
   "BENEOS.Settings.PerfMode.Hint": "Disattiva le animazioni decorative (bagliore dell'intestazione del Codex, braci alla deriva, riflettore errante, scintille ascendenti). Consigliata su macchine meno potenti.",
   "BENEOS.Settings.MapSharpen.Name": "Aumenta la nitidezza delle mappe con lo zoom",
   "BENEOS.Settings.MapSharpen.Hint": "Aumenta la nitidezza del video della battlemap man mano che ingrandisci, contro la sfocatura della compressione video. Vale solo per questo client. Disattivato finché la modalità prestazioni è attiva.",
-  "BENEOS.Settings.MapSharpenDebug.Name": "Calibra la nitidezza della mappa",
-  "BENEOS.Settings.MapSharpenDebug.Hint": "Mostra una barra accanto al cassetto delle creature con un cursore di intensità e un pulsante Salva. Finché è attiva, la nitidezza automatica è spenta: regola l'intensità a occhio e salvala per lo zoom attuale. I punti salvati sostituiscono la curva per tutti i client di questo mondo, lineare tra di loro. Solo DM.",
   "BENEOS.Settings.Analytics.Name": "Condividi dati di utilizzo anonimi",
   "BENEOS.Settings.Analytics.Hint": "Invia dati di telemetria anonimi, solo del GM (nessun dato dei giocatori, nessun nome), così Beneos può rilevare contenuti non funzionanti e migliorare le release. Puoi disattivarlo in qualsiasi momento.",
   "BENEOS.Analytics.Banner.Title": "Dati di utilizzo anonimi di Beneos",

@@ -208,8 +208,6 @@
   "BENEOS.Settings.PerfMode.Hint": "装飾アニメーション（Codexヘッダーの輝き、漂う燃え殻、さまようスポットライト、立ち上る火花）を無効にします。低スペックのマシンで推奨されます。",
   "BENEOS.Settings.MapSharpen.Name": "ズーム時にマップをシャープにする",
   "BENEOS.Settings.MapSharpen.Hint": "ズームインするほどバトルマップの動画をシャープにし、動画圧縮によるぼやけを抑えます。このクライアントにのみ適用されます。パフォーマンスモードがオンの間はオフです。",
-  "BENEOS.Settings.MapSharpenDebug.Name": "マップのシャープ化を調整",
-  "BENEOS.Settings.MapSharpenDebug.Hint": "クリーチャードロワーの横に、強さのスライダーと保存ボタンを表示します。オンの間は自動シャープ化がオフになります。目で見て強さを合わせ、現在のズームに保存してください。保存した点はこのワールドの全クライアントで曲線を置き換え、点の間は直線でつなぎます。GMのみ。",
   "BENEOS.Settings.Analytics.Name": "匿名の利用データを共有する",
   "BENEOS.Settings.Analytics.Hint": "匿名でGMのみのテレメトリ（プレイヤーデータや名前は含みません）を送信します。これによりBENEOSは不具合のあるコンテンツを検出し、リリースを改善できます。いつでもオフにできます。",
   "BENEOS.Analytics.Banner.Title": "BENEOS 匿名利用データ",
