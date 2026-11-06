@@ -10,6 +10,15 @@ All notable changes to this module will be documented in this file.
 - Fixed: The Item Radar now uses the ranges from the Origin rules: 1, 5 and 10 miles for one, two and three or more attuned items. It used 1, 3 and 5 before, so players did not sense items between 5 and 10 miles. The distance texts in the chat whisper and on the compass now say the same numbers. Pings already placed in your world may now be sensed by more players.
 - Fixed: With Monk's Enhanced Journal active on Foundry V14, creatures, items and spells from Beneos Cloud never arrived in the compendium, although the install counter finished. Installing now works with that module active.
 
+**Changes**
+- New look for every Beneos window: a warm bone palette with gold kept for the one main action of a view, new fonts for titles, controls and reading text, and square corners.
+- Battlemap videos get sharper the closer you zoom in. Zoomed out nothing changes; from about 25 grid squares across the screen the sharpening starts and reaches its full strength at about 7. It works on the scene background and on video tiles, for the GM and for players, and is off in performance mode. A client setting turns it off.
+- The Beneos Cloud window opens in list view in every tab. Result cards show less text, the filter column is narrower, and an Update button stands on its own without an extra chip.
+- Installed creatures show a row of icon buttons instead of a status label: Codex, Update when one is available, and a trash can. The trash can (GM only) removes the creature from your world after asking, with all its variants and journals. Copies with tokens on a scene stay.
+- The module settings start with the Setup Tour, and the Beneos Cloud account row is shorter, with its hints in the tooltips.
+- The Creature Drawer tab steps back behind the map while you do not use it, and the open drawer now lies above the Beneos window.
+- The Item Radar in Game Control now simply says it is a feature of Beneos Creatures, Spells & Loot, with the link to join on Patreon. The tooltips of the Codex and Game Control buttons are shorter.
+
 ### 14.4.11 # 2026-10-26
 
 **Fixes**
