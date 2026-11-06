@@ -206,6 +206,8 @@
   "BENEOS.Settings.CloudAccount.Hint": "Zaloguj się do Beneos Cloud lub odłącz aktywną sesję. Przycisk dostosowuje się do bieżącego stanu logowania.",
   "BENEOS.Settings.PerfMode.Name": "Beneos · Tryb wydajności",
   "BENEOS.Settings.PerfMode.Hint": "Wyłącza dekoracyjne animacje (poświata nagłówka Codex, dryfujące żary, wędrujący reflektor, wznoszące się iskry). Zalecane na słabszych maszynach.",
+  "BENEOS.Settings.MapSharpen.Name": "Wyostrzaj mapy przy przybliżeniu",
+  "BENEOS.Settings.MapSharpen.Hint": "Wyostrza wideo battlemapy tym mocniej, im bardziej przybliżasz, przeciw rozmyciu kompresji wideo. Dotyczy tylko tego klienta. Wyłączone, gdy tryb wydajności jest włączony.",
   "BENEOS.Settings.Analytics.Name": "Udostępniaj anonimowe dane o użytkowaniu",
   "BENEOS.Settings.Analytics.Hint": "Wysyła anonimową telemetrię tylko od MG (bez danych graczy, bez imion), aby Beneos mógł wykrywać uszkodzone treści i ulepszać wydania. Możesz to wyłączyć w dowolnej chwili.",
   "BENEOS.Analytics.Banner.Title": "Anonimowe dane o użytkowaniu Beneos",

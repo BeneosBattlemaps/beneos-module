@@ -206,6 +206,8 @@
   "BENEOS.Settings.CloudAccount.Hint": "Inicia sessió a Beneos Cloud o desconnecta la sessió activa. El botó s'adapta a l'estat d'inici actual.",
   "BENEOS.Settings.PerfMode.Name": "Beneos · Mode de rendiment",
   "BENEOS.Settings.PerfMode.Hint": "Desactiva les animacions decoratives (resplendor de la capçalera del Codex, brases a la deriva, focus errant, espurnes ascendents). Recomanat en màquines de gamma baixa.",
+  "BENEOS.Settings.MapSharpen.Name": "Enfocar els mapes en apropar el zoom",
+  "BENEOS.Settings.MapSharpen.Hint": "Enfoca el vídeo del battlemap com més t'hi apropes, contra la suavitat de la compressió de vídeo. Només s'aplica a aquest client. Desactivat mentre el mode de rendiment estigui actiu.",
   "BENEOS.Settings.Analytics.Name": "Comparteix dades d'ús anònimes",
   "BENEOS.Settings.Analytics.Hint": "Envia telemetria anònima, només del GM (sense dades de jugadors ni noms), perquè Beneos pugui detectar contingut defectuós i millorar les versions. Ho pots desactivar en qualsevol moment.",
   "BENEOS.Analytics.Banner.Title": "Dades d'ús anònimes de Beneos",

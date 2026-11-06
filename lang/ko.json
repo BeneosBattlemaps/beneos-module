@@ -206,6 +206,8 @@
   "BENEOS.Settings.CloudAccount.Hint": "Beneos Cloud에 로그인하거나 활성 세션을 분리합니다. 버튼은 현재 로그인 상태에 따라 변경됩니다.",
   "BENEOS.Settings.PerfMode.Name": "Beneos · 성능 모드",
   "BENEOS.Settings.PerfMode.Hint": "장식용 애니메이션(Codex 헤더 광채, 떠다니는 불씨, 떠도는 스포트라이트, 솟아오르는 불꽃)을 비활성화해요. 저사양 기기에서 권장해요.",
+  "BENEOS.Settings.MapSharpen.Name": "확대 시 맵 선명하게",
+  "BENEOS.Settings.MapSharpen.Hint": "확대할수록 배틀맵 영상을 더 선명하게 하여 영상 압축으로 인한 흐림을 줄입니다. 이 클라이언트에만 적용됩니다. 성능 모드가 켜져 있는 동안에는 꺼집니다.",
   "BENEOS.Settings.Analytics.Name": "익명 사용 데이터 공유",
   "BENEOS.Settings.Analytics.Hint": "BENEOS가 손상된 콘텐츠를 감지하고 릴리스를 개선할 수 있도록 익명의 GM 전용 통계만 전송합니다(플레이어 데이터 없음, 이름 없음). 언제든지 끌 수 있습니다.",
   "BENEOS.Analytics.Banner.Title": "BENEOS 익명 사용 데이터",

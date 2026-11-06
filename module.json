@@ -53,7 +53,8 @@
 	"scripts/codex2/item-companion.mjs",
 	"scripts/creature-installer/creature-installer.mjs",
 	"scripts/cloud-v2/wiki/beneos-wiki-window.mjs",
-	"scripts/ui/bn-loader.mjs"
+	"scripts/ui/bn-loader.mjs",
+	"scripts/canvas/beneos-map-sharpen.mjs"
   ],
   "languages": [
     { "lang": "en",    "name": "English",                 "path": "lang/en.json" },

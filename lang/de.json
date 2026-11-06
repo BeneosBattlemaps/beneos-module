@@ -206,6 +206,8 @@
   "BENEOS.Settings.CloudAccount.Hint": "Bei Beneos Cloud anmelden oder die aktive Session trennen. Der Button passt sich dem aktuellen Login-Status an.",
   "BENEOS.Settings.PerfMode.Name": "Beneos · Performance-Modus",
   "BENEOS.Settings.PerfMode.Hint": "Deaktiviert dekorative Animationen (Codex-Header-Glühen, treibende Glut, wanderndes Spotlight, aufsteigende Funken). Empfohlen auf leistungsschwächeren Rechnern.",
+  "BENEOS.Settings.MapSharpen.Name": "Maps beim Hineinzoomen schärfen",
+  "BENEOS.Settings.MapSharpen.Hint": "Schärft das Battlemap-Video umso stärker, je näher du hineinzoomst, gegen die Unschärfe der Videokompression. Gilt nur für diesen Client. Aus, solange der Performance-Modus an ist.",
   "BENEOS.Settings.Analytics.Name": "Anonyme Nutzungsdaten teilen",
   "BENEOS.Settings.Analytics.Hint": "Sendet anonyme Telemetrie nur vom SL (keine Spielerdaten, keine Namen), damit Beneos defekte Inhalte erkennen und Releases verbessern kann. Du kannst dies jederzeit deaktivieren.",
   "BENEOS.Analytics.Banner.Title": "Anonyme Nutzungsdaten von Beneos",

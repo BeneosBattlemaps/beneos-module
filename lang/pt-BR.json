@@ -206,6 +206,8 @@
   "BENEOS.Settings.CloudAccount.Hint": "Faça login no Beneos Cloud ou desconecte a sessão ativa. O botão se adapta ao estado de login atual.",
   "BENEOS.Settings.PerfMode.Name": "Beneos · Modo de Desempenho",
   "BENEOS.Settings.PerfMode.Hint": "Desativa animações decorativas (brilho do cabeçalho do Codex, brasas flutuantes, holofote errante, faíscas ascendentes). Recomendado em máquinas mais modestas.",
+  "BENEOS.Settings.MapSharpen.Name": "Aumentar a nitidez dos mapas ao aproximar",
+  "BENEOS.Settings.MapSharpen.Hint": "Aumenta a nitidez do vídeo do battlemap conforme você aproxima o zoom, contra a suavidade da compressão de vídeo. Vale apenas para este cliente. Desligado enquanto o modo de desempenho estiver ativo.",
   "BENEOS.Settings.Analytics.Name": "Compartilhar dados de uso anônimos",
   "BENEOS.Settings.Analytics.Hint": "Envia telemetria anônima, apenas do GM (sem dados de jogadores, sem nomes), para que a Beneos possa detectar conteúdo com problemas e melhorar os releases. Você pode desativar isso a qualquer momento.",
   "BENEOS.Analytics.Banner.Title": "Dados de uso anônimos da Beneos",
