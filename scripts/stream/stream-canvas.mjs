@@ -545,6 +545,9 @@ async function applyVideoTexture(placeable, texture) {
   videoTexturen.set(placeable.id, texture)
   placeable.texture = texture
   mesh.texture = texture
+  // The video arrives here without a Foundry event; the map sharpening
+  // (scripts/canvas/beneos-map-sharpen.mjs) listens for this one.
+  Hooks.callAll("beneos.streamVideoApplied", placeable)
   const source = texture.baseTexture?.resource?.source
   if (!(source instanceof HTMLVideoElement)) return true
 
