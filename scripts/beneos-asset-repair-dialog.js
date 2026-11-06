@@ -410,23 +410,7 @@ export class BeneosRepairDialog {
       return;
     }
 
-    // Post-apply verification. Use the same broad scan as Phase B so we
-    // catch leftover refs in Actors/Journals/etc., not just Scenes.
-    let stillMissingPaths = [];
-    let stillMissingRefs = [];
-    try {
-      if (scope === "scene" && scene) {
-        const r = await scanSceneSilent(scene);
-        stillMissingPaths = r.missing ?? [];
-        stillMissingRefs = r.missingRefs ?? [];
-      } else if (scope === "world") {
-        const summary = await scanAllEntities();
-        stillMissingPaths = summary?.missing ?? [];
-        stillMissingRefs = summary?.missingRefs ?? [];
-      }
-    } catch (e) {
-      console.warn("Beneos Asset Repair | post-apply scan failed:", e);
-    }
+    const { stillMissingPaths, stillMissingRefs } = await this._nachApplyScan(scope, scene);
 
     try { progress.close(); } catch (e) {}
 
@@ -551,6 +535,104 @@ export class BeneosRepairDialog {
     dlg.render(true);
   }
 
+  /**
+   * Nach dem Anwenden noch einmal suchen, was fehlt.
+   *
+   * Post-apply verification. Use the same broad scan as Phase B so we catch
+   * leftover refs in Actors/Journals/etc., not just Scenes.
+   *
+   * Der Kompendiumnachtrag gehoert hierher und nicht in `_runApply`: er
+   * beantwortet dieselbe Frage, naemlich was nach dem Lauf noch fehlt, nur
+   * fuer die Dokumente, die nicht in der Welt stehen.
+   */
+  static async _nachApplyScan(scope, scene) {
+    let stillMissingPaths = [];
+    let stillMissingRefs = [];
+    try {
+      if (scope === "scene" && scene) {
+        const r = await scanSceneSilent(scene);
+        stillMissingPaths = r.missing ?? [];
+        stillMissingRefs = r.missingRefs ?? [];
+      } else if (scope === "world") {
+        const summary = await scanAllEntities();
+        stillMissingPaths = summary?.missing ?? [];
+        stillMissingRefs = summary?.missingRefs ?? [];
+      }
+    } catch (e) {
+      console.warn("Beneos Asset Repair | post-apply scan failed:", e);
+    }
+    stillMissingRefs = await this._kompendiumStellenNachtragen(stillMissingRefs, stillMissingPaths);
+    return { stillMissingPaths, stillMissingRefs };
+  }
+
+  /**
+   * Die Stellen in den Beneos-Kompendien nachtragen.
+   *
+   * DIE KOMPENDIEN SIND KEINE WELTSAMMLUNG, und `scanAllEntities` liest nur
+   * Weltsammlungen. Eine installierte Beneos-Kreatur steht aber im Kompendium
+   * `world.beneos_module_actors` und nicht in der Welt. Ohne diesen
+   * Nachschlag meldet das Fenster fuer sie "nichts zu reparieren", obwohl die
+   * Datei fehlt. Gemeldet und gemessen als `OP-PRJ-192`.
+   *
+   * ER KOSTET NUR DORT, WO ER NOETIG IST. `findReferenceSources` oeffnet kein
+   * Kompendium, wenn unter den fehlenden Pfaden keiner im Installordner der
+   * Kreaturen, Gegenstaende oder Zauber liegt. Am 06.11.2026 am Teststand
+   * gemessen: 309 ms bei einer fehlenden Kartendatei, 79,6 s bei einer
+   * fehlenden Kreaturendatei, bei 239 Kreaturen und 233 Journalen. Achtzig
+   * Sekunden sind viel, deshalb steht die Fortschrittszeile davor und nicht
+   * danach.
+   *
+   * EIN FEHLSCHLAG DARF DEN LAUF NICHT NEHMEN. Die Liste kommt dann
+   * unveraendert zurueck; der Kunde sieht das Ergebnis des Reparaturlaufs und
+   * nur den Kompendiumhinweis nicht.
+   */
+  static async _kompendiumStellenNachtragen(refs, pfade) {
+    if (!pfade?.length) return refs;
+    try {
+      _updateProgress(0, 1, _l("BENEOS.AssetWatcher.Repair.SearchingCompendiums"));
+      return this._kompendiumStellenEinmischen(refs, pfade, await findReferenceSources(pfade));
+    } catch (e) {
+      console.warn("Beneos Asset Repair | Kompendiumstellen nicht gelesen:", e);
+      return refs;
+    }
+  }
+
+  /**
+   * Die Kompendiumstellen in die Liste der fehlenden Stellen einmischen.
+   *
+   * Eigene Methode, damit sie sich pruefen laesst, ohne einen Reparaturlauf
+   * zu fahren. Am 06.11.2026 an sechs Lagen in der Welt geprueft.
+   *
+   * WIRD NICHTS GEFUNDEN, AENDERT SICH NICHTS. Die Liste kommt unveraendert
+   * zurueck, auch die nackten Pfade bleiben weg. Das haelt die Aenderung auf
+   * den einen Fall begrenzt, um den es geht.
+   *
+   * JEDER FEHLENDE PFAD MUSS WEITER ANGEZEIGT WERDEN. `_renderResult` nimmt
+   * die Referenzliste, sobald sie nicht leer ist, und laesst die nackte
+   * Pfadliste dann fallen. Ein Pfad, zu dem keine Stelle gefunden wurde,
+   * verschwaende aus der Anzeige, sobald irgendeine Kompendiumstelle
+   * dazukommt. `_renderStillMissingBlock` nimmt nackte Pfade neben
+   * Referenzen an, also werden sie hier nachgetragen.
+   *
+   * @param {Array} refs die Stellen aus den Weltsammlungen
+   * @param {string[]} pfade alle noch fehlenden Pfade
+   * @param {Map<string,Array>} quellen Ergebnis von `findReferenceSources`
+   * @returns {Array} Stellen und, wo keine steht, der nackte Pfad
+   */
+  static _kompendiumStellenEinmischen(refs, pfade, quellen) {
+    const ausKompendium = [];
+    for (const stellen of (quellen?.values?.() ?? [])) {
+      for (const stelle of stellen) if (stelle?.ohneAktion) ausKompendium.push(stelle);
+    }
+    if (!ausKompendium.length) return refs;
+    const zusammen = [...refs, ...ausKompendium];
+    const mitStelle = new Set(zusammen.map((r) => r.path));
+    for (const pfad of (pfade ?? [])) {
+      if (!mitStelle.has(pfad)) zusammen.push(pfad);
+    }
+    return zusammen;
+  }
+
   static _renderStillMissingBlock(refsOrPaths) {
     // Build a path → refs[] map. If the caller passed plain strings (we
     // only have paths, no refs), wrap them in synthetic refs so the
@@ -587,6 +669,34 @@ export class BeneosRepairDialog {
       </div>`;
   }
 
+  /**
+   * Eine Stelle in einem Kompendium: Zeile ohne Knoepfe.
+   *
+   * EINE STELLE IN EINEM KOMPENDIUM BEKOMMT KEINE KNOEPFE. Die drei Aktionen
+   * loesen ihr Dokument ueber `game.actors?.get(...)` und Geschwister auf
+   * (`_entityFor()`, `_actionResetIcon()`). Fuer eine Kompendiumkennung
+   * liefert das still nichts: der Kunde druecke, nichts geschehe, und keine
+   * Meldung erklaere es. Eine Zeile ohne Knopf sagt wenigstens, WO die Stelle
+   * steht, und nennt den einen Weg, der traegt.
+   *
+   * Woher die Stelle kommt: `findReferenceSources()` in
+   * `beneos-asset-path-repair.js` liest seit `OP-PRJ-192` auch die
+   * Beneos-Kompendien, weil eine installierte Kreatur dort steht und nicht in
+   * der Welt.
+   */
+  static _renderKompendiumRow(ref, idx) {
+    const stelle = game.i18n.format("BENEOS.AssetWatcher.Repair.SourceInCompendium", {
+      type: _entityTypeLabel(ref.entityType),
+      name: ref.entityName || "-",
+      pack: ref.kompendium ?? ""
+    });
+    return `
+      <div class="beneos-rd-source beneos-rd-source-stub" data-source-idx="${idx}">
+        <div class="beneos-rd-source-line">${escapeHtml(stelle)} - <span class="beneos-rd-kind">${escapeHtml(_kindLabel(ref.kind))}</span></div>
+        <div class="beneos-rd-source-line"><em>${escapeHtml(_l("BENEOS.AssetWatcher.Repair.CompendiumHint"))}</em></div>
+      </div>`;
+  }
+
   static _renderSourceRow(ref, path, idx) {
     if (ref._stub || !ref.entityType) {
       return `
@@ -594,16 +704,17 @@ export class BeneosRepairDialog {
           <em>${escapeHtml(_l("BENEOS.AssetWatcher.Repair.NothingToRepair"))}</em>
         </div>`;
     }
+    if (ref.ohneAktion) return this._renderKompendiumRow(ref, idx);
     const ownerLine = ref.ownerName
       ? game.i18n.format("BENEOS.AssetWatcher.Repair.SourceLineWithChild", {
           type: _entityTypeLabel(ref.ownerType),
           name: ref.ownerName,
           childType: _entityTypeLabel(ref.entityType),
-          childName: ref.entityName || "—"
+          childName: ref.entityName || "-"
         })
       : game.i18n.format("BENEOS.AssetWatcher.Repair.SourceLine", {
           type: _entityTypeLabel(ref.entityType),
-          name: ref.entityName || "—"
+          name: ref.entityName || "-"
         });
     const kindLine = _kindLabel(ref.kind);
 
@@ -638,7 +749,7 @@ export class BeneosRepairDialog {
 
     return `
       <div class="beneos-rd-source" data-source-idx="${idx}">
-        <div class="beneos-rd-source-line">${escapeHtml(ownerLine)} — <span class="beneos-rd-kind">${escapeHtml(kindLine)}</span></div>
+        <div class="beneos-rd-source-line">${escapeHtml(ownerLine)} - <span class="beneos-rd-kind">${escapeHtml(kindLine)}</span></div>
         <div class="beneos-rd-source-actions">${buttons}</div>
       </div>`;
   }

@@ -1041,16 +1041,180 @@ export async function findReferenceSources(paths) {
   for (const spec of collections) {
     for (const doc of spec.coll) {
       try {
-        for (const ref of spec.fn(doc)) {
-          if (!wanted.has(ref.path)) continue;
-          result.get(ref.path).push(ref);
-        }
+        _weltStellenEintragen(spec.fn(doc), wanted, result);
       } catch (e) {
         console.warn(`Beneos Asset Repair | findReferenceSources(${doc?.name}) failed:`, e);
       }
     }
   }
+
+  // Die Kompendien dazu, und das ist der Punkt dieses Zusatzes.
+  //
+  // Die fuenf Sammlungen oben sind Weltsammlungen. Eine installierte Beneos
+  // Kreatur steht aber NICHT in der Welt, sie steht in
+  // `world.beneos_module_actors` und Geschwistern (`beneos_cloud.js`,
+  // `importTokenToCompendium`). Fehlt in einer Download-Welt eine oertliche
+  // Datei dieser Kreatur, fand dieses Fenster die Stelle nicht und zeigte
+  // "nichts zu reparieren". Gemeldet und gemessen als `OP-PRJ-192`.
+  //
+  // KEINE TORADRESSE KOMMT HIER AN, und das ist kein Mangel: `isBeneosPath()`
+  // weist jede absolute Adresse ab (`beneos-asset-watcher.js`), mit einer
+  // gemessenen Begruendung vom 12.08.2026. Dieses Fenster ist fuer oertliche
+  // Dateien, und genau fuer die gilt die Luecke.
+  await _kompendiumStellenSammeln(watcher, wanted, result);
   return result;
+}
+
+/**
+ * Die Stellen in den Beneos-Kompendien sammeln und in `result` eintragen.
+ *
+ * Eigene Funktion, weil `findReferenceSources` damit sonst ueber dem
+ * Richtwert `CQ-R-01` liegt: gemessen 70 Zeilen und Blocktiefe 4 gegen 60
+ * und 3.
+ *
+ * Gesammelt wird mit DENSELBEN Sammlern, die auch ueber die Welt laufen.
+ * Eine eigene Leseart haette dieselbe Feldliste zweimal, und die eine waere
+ * irgendwann die alte.
+ *
+ * @param {object} watcher das geladene Waechtermodul
+ * @param {Set<string>} wanted die gesuchten Pfade
+ * @param {Map<string,Array>} result wird ergaenzt, nicht ersetzt
+ */
+async function _kompendiumStellenSammeln(watcher, wanted, result) {
+  for (const fam of await _kompendienMitOertlichenPfaden(watcher, wanted)) {
+    const sammler = watcher[SAMMLER_JE_DOKUMENTTYP[fam.name] ?? ""];
+    // Fuer `Item` gibt es keinen Sammler, auch nicht fuer die Welt: der
+    // Waechter laeuft ueber Szenen, Akteure, Journale, Playlists und
+    // Tabellen, `game.items` ist nicht darunter. Die Gegenstands- und
+    // Zauberkompendien bleiben damit aussen vor, so wie die Weltgegenstaende
+    // es schon sind. Als eigener Punkt notiert, nicht hier mitgebaut.
+    if (typeof sammler !== "function") continue;
+    for (const doc of (fam.coll ?? [])) {
+      try {
+        _stellenEintragen(sammler(doc), fam, wanted, result);
+      } catch (e) {
+        console.warn(`Beneos Asset Repair | findReferenceSources(${fam.id}:${doc?.name}) failed:`, e);
+      }
+    }
+  }
+}
+
+/**
+ * Die gesuchten Stellen eines WELTdokuments eintragen.
+ *
+ * Herausgezogen, damit `findReferenceSources` den Richtwert `CQ-R-01` haelt:
+ * mit dem Lauf im Rumpf stand sie bei Blocktiefe 4 gegen erlaubte 3, und das
+ * schon im Bestand.
+ */
+function _weltStellenEintragen(stellen, wanted, result) {
+  for (const ref of stellen) {
+    if (!wanted.has(ref.path)) continue;
+    result.get(ref.path).push(ref);
+  }
+}
+
+/**
+ * Die gesuchten Stellen eines Dokuments eintragen, als Kompendiumstellen.
+ *
+ * `ohneAktion` traegt im Dialog die Zeile ohne Knoepfe. Begruendung dort, bei
+ * `_renderSourceRow()`: die Aktionen loesen ihr Dokument ueber
+ * `game.actors?.get(...)` auf, und fuer eine Kompendiumkennung liefert das
+ * still nichts.
+ */
+function _stellenEintragen(stellen, fam, wanted, result) {
+  for (const ref of stellen) {
+    if (!wanted.has(ref.path)) continue;
+    result.get(ref.path).push({
+      ...ref,
+      kompendium: fam.pack?.metadata?.label ?? fam.id,
+      ohneAktion: true
+    });
+  }
+}
+
+// Welcher Sammler des Waechters zu welchem Dokumenttyp gehoert. Die Namen sind
+// die Ausfuhrnamen aus `beneos-asset-watcher.js`.
+const SAMMLER_JE_DOKUMENTTYP = {
+  Actor: "collectActorRefs",
+  JournalEntry: "collectJournalRefs"
+};
+
+// Der Ordner, in den der Kreaturen-Installer schreibt, in beiden Formen.
+//
+// `beneos_cloud.js` schreibt nach `beneos_assets/cloud/tokens/<schluessel>/`
+// (`:182`, `:407`), `cloud/items/` (`:2461`) und `cloud/spells/` (`:2657`).
+// Die Autorenform `beneos_assets/beneos_tokens/` und ihre Geschwister stehen
+// in einer Welt, die vor dem Umbau auf `cloud/` installiert hat; der
+// Installer ersetzt sie heute beim Schreiben (`:2494`, `:2690`), eine alte
+// Welt kann sie aber noch tragen. Beide Formen gehoeren also hierher.
+const BENEOS_INSTALLORDNER_RE =
+  /beneos_assets\/(?:cloud\/(?:tokens|items|spells)|beneos_(?:tokens|items|spells))\//i;
+
+/**
+ * Die Beneos-Kompendien, in denen eine gesuchte Datei ueberhaupt stehen kann.
+ *
+ * WARUM NICHT EINFACH ALLE VIER LADEN: `getDocuments()` kostet am Teststand
+ * 30003 gemessen 79,6 Sekunden fuer alle vier, bei 239 Kreaturen und 233
+ * Journalen. Dieses Fenster laeuft zwar nur, wenn wirklich eine Datei fehlt,
+ * aber achtzig Sekunden Wartezeit, nur um festzustellen, dass die fehlende
+ * Datei eine Karte war, sind achtzig Sekunden zu viel.
+ *
+ * ZWEI FUEHLER, UND BEIDE KOSTEN NICHTS.
+ *
+ * Erstens die GESUCHTEN PFADE. Steht unter ihnen keiner im Installordner der
+ * Kreaturen, Gegenstaende oder Zauber, kann in diesen Kompendien nichts
+ * davon stehen, und kein einziges wird geoeffnet. Das ist der haeufige Fall:
+ * eine fehlende Kartendatei fuehrt `beneos_battlemaps/` im Pfad.
+ *
+ * Zweitens der INDEX, aber nur dort, wo er etwas weiss. Der Index liegt ohne
+ * Ladevorgang vor und traegt `img`. Am 06.11.2026 gemessen: im
+ * Kreaturenkompendium fuehren 239 von 239 Zeilen einen oertlichen
+ * Beneos-Pfad in `img`, naemlich das Avatarbild, das nach Betreibervorgabe
+ * vom 02.11.2026 nie gestreamt wird.
+ *
+ * DAS JOURNALKOMPENDIUM HAT DIESEN FUEHLER NICHT, und das ist gemessen und
+ * nicht vermutet: 233 Zeilen, NULL davon mit `img`, denn ein `JournalEntry`
+ * fuehrt kein solches Feld. Ein Fuehler, der nur auf `img` schaut, haette
+ * dieses Kompendium nie geoeffnet, und das Journalbild einer Kreatur waere
+ * genau die Datei, um die es geht. Deshalb gilt: traegt KEINE Indexzeile ein
+ * `img`, weiss der Index nichts, und es entscheidet allein der erste
+ * Fuehler. Ein leeres Kompendium faellt davor schon heraus.
+ *
+ * WARUM DER SCHLUESSELNACHZUG KEINEN VON BEIDEN HAT: der sucht TORADRESSEN,
+ * und davon traegt der Index null, am selben Tag gemessen. Derselbe Index,
+ * zwei Fragen, zwei Antworten.
+ *
+ * `BENEOS_KOMPENDIEN` steht weiter unten in dieser Datei. Gelesen wird die
+ * Liste erst beim Aufruf, also lange nach dem Auswerten des Moduls.
+ *
+ * @param {object} watcher das geladene Waechtermodul, fuer `isBeneosPath`
+ * @param {Set<string>} gesucht die Pfade, um die es geht
+ * @returns {Promise<Array>} je Kompendium `{ id, name, pack, coll }`
+ */
+async function _kompendienMitOertlichenPfaden(watcher, gesucht) {
+  let imInstallordner = false;
+  for (const pfad of (gesucht ?? [])) {
+    if (BENEOS_INSTALLORDNER_RE.test(pfad)) { imInstallordner = true; break; }
+  }
+  if (!imInstallordner) return [];
+
+  const familien = [];
+  for (const spec of BENEOS_KOMPENDIEN) {
+    const pack = game.packs?.get(spec.id);
+    if (!pack) continue;
+    const typ = pack.metadata?.type;
+    if (typ && typ !== spec.name) continue;
+    const index = [...(pack.index ?? [])];
+    if (!index.length) continue;
+    const kenntImg = index.some((e) => typeof e?.img === "string" && e.img);
+    if (kenntImg && !index.some((e) => watcher.isBeneosPath?.(e?.img))) continue;
+    try {
+      familien.push({ ...spec, pack, coll: await pack.getDocuments() });
+    } catch (e) {
+      console.warn(`Beneos Asset Repair | ${spec.id} nicht lesbar:`, e);
+    }
+  }
+  return familien;
 }
 
 /* ============================================================== */
