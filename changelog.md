@@ -11,13 +11,13 @@ All notable changes to this module will be documented in this file.
 - Fixed: With Monk's Enhanced Journal active on Foundry V14, creatures, items and spells from Beneos Cloud never arrived in the compendium, although the install counter finished. Installing now works with that module active.
 
 **Changes**
-- New look for every Beneos window: a warm bone palette with gold kept for the one main action of a view, new fonts for titles, controls and reading text, and square corners.
-- Battlemap videos get sharper the closer you zoom in. Zoomed out nothing changes; from about 25 grid squares across the screen the sharpening starts and reaches its full strength at about 7. It works on the scene background and on video tiles, for the GM and for players, and is off in performance mode. A client setting turns it off.
-- The Beneos Cloud window opens in list view in every tab. Result cards show less text, the filter column is narrower, and an Update button stands on its own without an extra chip.
-- Installed creatures show a row of icon buttons instead of a status label: Codex, Update when one is available, and a trash can. The trash can (GM only) removes the creature from your world after asking, with all its variants and journals. Copies with tokens on a scene stay.
-- The module settings start with the Setup Tour, and the Beneos Cloud account row is shorter, with its hints in the tooltips.
-- The Creature Drawer tab steps back behind the map while you do not use it, and the open drawer now lies above the Beneos window.
-- The Item Radar in Game Control now simply says it is a feature of Beneos Creatures, Spells & Loot, with the link to join on Patreon. The tooltips of the Codex and Game Control buttons are shorter.
+- Every Beneos window has a new look with a warm bone palette, new fonts and square corners.
+- Battlemap videos now get sharper the closer you zoom in, for GM and players alike.
+- The Beneos Cloud window opens in list view and shows less text on its result cards.
+- Installed creatures get icon buttons for Codex, Update and a trash can that removes the creature from your world.
+- The module settings now start with the Setup Tour and a shorter account row.
+- The Creature Drawer tab steps back behind the map while you do not use it.
+- The Item Radar in Game Control now simply says it is a feature of Beneos Creatures, Spells & Loot, with a link to join on Patreon.
 
 ### 14.4.11 # 2026-10-26
 
