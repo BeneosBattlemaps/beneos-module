@@ -848,6 +848,8 @@
   "BENEOS.Cloud.Notification.ImportingSpell": "Importuji kouzlo z Beneos Cloud.",
   "BENEOS.Cloud.Notification.ImportingBattlemap": "Importuji battlemapu z Beneos Cloud.",
   "BENEOS.Cloud.Notification.ImportErrorToken": "Chyba při importu tokenu z Beneos Cloud.",
+  "BENEOS.Cloud.Notification.InstallFailed": "Instalace {name} se nezdařila. Nic nebylo nainstalováno. Zkuste to znovu, a pokud selhání pokračuje, kontaktujte podporu a uveďte tento název.",
+  "BENEOS.Cloud.Notification.RefusedWhich": "Týká se: {name}.",
   "BENEOS.Cloud.Notification.TopDownMissing": "Beneos: varianta Top-Down není pro {name} dostupná, přepínám na 2.5D. Přeinstaluj tento token, aby se stáhla z cloudu.",
   "BENEOS.Cloud.Notification.UploadFailed": "Beneos: nahrávání {filename} selhalo, soubor neskončil na disku. Zkontroluj oprávnění a volné místo v datové složce Foundry a přeinstaluj.",
   "BENEOS.Cloud.Notification.PostInstallIncomplete": "Beneos: instalace {kind} '{key}' je neúplná, na disku chybí {count}/{total} aspektů ({aspects}). Přeinstaluj tento asset, aby se chybějící části stáhly.",

@@ -848,6 +848,8 @@
   "BENEOS.Cloud.Notification.ImportingSpell": "Important encanteri des de Beneos Cloud.",
   "BENEOS.Cloud.Notification.ImportingBattlemap": "Important battlemap des de Beneos Cloud.",
   "BENEOS.Cloud.Notification.ImportErrorToken": "Error en importar el token des de Beneos Cloud.",
+  "BENEOS.Cloud.Notification.InstallFailed": "La instal·lació de {name} ha fallat. No s'ha instal·lat res. Torna-ho a provar i, si continua fallant, contacta amb el suport indicant aquest nom.",
+  "BENEOS.Cloud.Notification.RefusedWhich": "Afectat: {name}.",
   "BENEOS.Cloud.Notification.TopDownMissing": "Beneos: la variant Top-Down no està disponible per a {name}, es recorre a la 2.5D. Reinstal·la aquest token per obtenir-la del núvol.",
   "BENEOS.Cloud.Notification.UploadFailed": "Beneos: la pujada de {filename} ha fallat, el fitxer no s'ha desat al disc. Comprova els permisos i l'espai lliure de la carpeta de dades de Foundry, i reinstal·la.",
   "BENEOS.Cloud.Notification.PostInstallIncomplete": "Beneos: instal·lació de {kind} '{key}' incompleta, falten {count}/{total} aspecte(s) al disc ({aspects}). Reinstal·la aquest asset per obtenir les parts que falten.",

@@ -848,6 +848,8 @@
   "BENEOS.Cloud.Notification.ImportingSpell": "Importando hechizo desde Beneos Cloud.",
   "BENEOS.Cloud.Notification.ImportingBattlemap": "Importando battlemap desde Beneos Cloud.",
   "BENEOS.Cloud.Notification.ImportErrorToken": "Error al importar el token desde Beneos Cloud.",
+  "BENEOS.Cloud.Notification.InstallFailed": "La instalación de {name} ha fallado. No se ha instalado nada. Vuelve a intentarlo y, si sigue fallando, contacta con el soporte indicando este nombre.",
+  "BENEOS.Cloud.Notification.RefusedWhich": "Afectado: {name}.",
   "BENEOS.Cloud.Notification.TopDownMissing": "Beneos: la variante Top-Down no está disponible para {name}, recurriendo a 2.5D. Reinstala este token para obtenerla de la nube.",
   "BENEOS.Cloud.Notification.UploadFailed": "Beneos: la subida de {filename} falló, el archivo no llegó al disco. Comprueba los permisos y el espacio libre de la carpeta de datos de Foundry y reinstala.",
   "BENEOS.Cloud.Notification.PostInstallIncomplete": "Beneos: la instalación de {kind} '{key}' está incompleta, falta(n) {count}/{total} aspecto(s) en el disco ({aspects}). Reinstala este asset para obtener las partes que faltan.",

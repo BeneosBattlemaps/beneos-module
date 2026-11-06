@@ -848,6 +848,8 @@
   "BENEOS.Cloud.Notification.ImportingSpell": "呪文を Beneos Cloud からインポート中。",
   "BENEOS.Cloud.Notification.ImportingBattlemap": "バトルマップを Beneos Cloud からインポート中。",
   "BENEOS.Cloud.Notification.ImportErrorToken": "Beneos Cloud からのトークンインポートでエラーが発生しました。",
+  "BENEOS.Cloud.Notification.InstallFailed": "{name} のインストールに失敗しました。何もインストールされていません。もう一度お試しください。繰り返し失敗する場合は、この名前を添えてサポートにご連絡ください。",
+  "BENEOS.Cloud.Notification.RefusedWhich": "対象: {name}",
   "BENEOS.Cloud.Notification.TopDownMissing": "Beneos：{name}のトップダウンバリアントが利用できないため、2.5Dにフォールバックします。このトークンを再インストールしてクラウドから取得してください。",
   "BENEOS.Cloud.Notification.UploadFailed": "Beneos：{filename}のアップロードに失敗し、ファイルがディスクに保存されませんでした。Foundryのデータフォルダの権限と空き容量を確認してから再インストールしてください。",
   "BENEOS.Cloud.Notification.PostInstallIncomplete": "Beneos：{kind}「{key}」のインストールが不完全です。ディスク上で{total}個中{count}個のアスペクトが欠落しています（{aspects}）。このアセットを再インストールして欠落部分を取得してください。",

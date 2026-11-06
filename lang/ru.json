@@ -850,6 +850,8 @@
   "BENEOS.Cloud.Notification.ImportingSpell": "Импорт заклинания из Beneos Cloud.",
   "BENEOS.Cloud.Notification.ImportingBattlemap": "Импорт боевой карты из Beneos Cloud.",
   "BENEOS.Cloud.Notification.ImportErrorToken": "Ошибка при импорте токена из Beneos Cloud.",
+  "BENEOS.Cloud.Notification.InstallFailed": "Не удалось установить {name}. Ничего не установлено. Попробуйте снова, а если ошибка повторяется, обратитесь в поддержку и укажите это название.",
+  "BENEOS.Cloud.Notification.RefusedWhich": "Затронуто: {name}.",
   "BENEOS.Cloud.Notification.TopDownMissing": "Beneos: вариант сверху вниз недоступен для {name}, переход на 2.5D. Переустановите этот токен, чтобы получить его из облака.",
   "BENEOS.Cloud.Notification.UploadFailed": "Beneos: загрузка {filename} не удалась, файл не попал на диск. Проверьте разрешения и свободное место в папке данных Foundry, затем переустановите.",
   "BENEOS.Cloud.Notification.PostInstallIncomplete": "Beneos: установка {kind} «{key}» неполная, {count}/{total} аспектов отсутствуют на диске ({aspects}). Переустановите этот ресурс, чтобы получить недостающие части.",

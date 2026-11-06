@@ -850,6 +850,8 @@
   "BENEOS.Cloud.Notification.ImportingSpell": "Importing spell from Beneos Cloud.",
   "BENEOS.Cloud.Notification.ImportingBattlemap": "Importing battlemap from Beneos Cloud.",
   "BENEOS.Cloud.Notification.ImportErrorToken": "Error importing token from Beneos Cloud.",
+  "BENEOS.Cloud.Notification.InstallFailed": "Installation of {name} failed. Nothing was installed. Please try again, and contact support with this name if it keeps failing.",
+  "BENEOS.Cloud.Notification.RefusedWhich": "Affected: {name}.",
   "BENEOS.Cloud.Notification.TopDownMissing": "Beneos: Top-Down variant unavailable for {name}, falling back to 2.5D. Re-install this token to fetch it from the cloud.",
   "BENEOS.Cloud.Notification.UploadFailed": "Beneos: upload of {filename} failed, file did not land on disk. Check Foundry's data folder permissions and free space, then re-install.",
   "BENEOS.Cloud.Notification.PostInstallIncomplete": "Beneos: {kind} '{key}' install incomplete, {count}/{total} aspect(s) missing on disk ({aspects}). Re-install this asset to fetch the missing parts.",

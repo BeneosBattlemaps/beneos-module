@@ -848,6 +848,8 @@
   "BENEOS.Cloud.Notification.ImportingSpell": "Importowanie zaklęcia z Beneos Cloud.",
   "BENEOS.Cloud.Notification.ImportingBattlemap": "Importowanie battlemapy z Beneos Cloud.",
   "BENEOS.Cloud.Notification.ImportErrorToken": "Błąd podczas importowania tokena z Beneos Cloud.",
+  "BENEOS.Cloud.Notification.InstallFailed": "Instalacja {name} nie powiodła się. Nic nie zostało zainstalowane. Spróbuj ponownie, a jeśli błąd się powtarza, skontaktuj się z pomocą techniczną i podaj tę nazwę.",
+  "BENEOS.Cloud.Notification.RefusedWhich": "Dotyczy: {name}.",
   "BENEOS.Cloud.Notification.TopDownMissing": "Beneos: wariant Top-Down niedostępny dla {name}, powrót do 2.5D. Zainstaluj ponownie ten token, aby pobrać go z chmury.",
   "BENEOS.Cloud.Notification.UploadFailed": "Beneos: przesłanie {filename} nie powiodło się, plik nie trafił na dysk. Sprawdź uprawnienia i wolne miejsce w folderze danych Foundry, a następnie zainstaluj ponownie.",
   "BENEOS.Cloud.Notification.PostInstallIncomplete": "Beneos: instalacja {kind} „{key}” niekompletna, brakuje {count}/{total} aspektu(ów) na dysku ({aspects}). Zainstaluj ponownie ten zasób, aby pobrać brakujące części.",

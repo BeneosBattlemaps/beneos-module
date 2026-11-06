@@ -848,6 +848,8 @@
   "BENEOS.Cloud.Notification.ImportingSpell": "Beneos Cloud에서 주문을 가져오는 중.",
   "BENEOS.Cloud.Notification.ImportingBattlemap": "Beneos Cloud에서 배틀맵을 가져오는 중.",
   "BENEOS.Cloud.Notification.ImportErrorToken": "Beneos Cloud에서 토큰을 가져오는 중 오류가 발생했습니다.",
+  "BENEOS.Cloud.Notification.InstallFailed": "{name} 설치에 실패했습니다. 아무것도 설치되지 않았습니다. 다시 시도해 주십시오. 계속 실패하는 경우 이 이름을 함기해 지원팀에 문의해 주십시오.",
+  "BENEOS.Cloud.Notification.RefusedWhich": "해당 항목: {name}",
   "BENEOS.Cloud.Notification.TopDownMissing": "Beneos: {name}의 Top-Down 변형을 사용할 수 없어 2.5D로 대체해요. 클라우드에서 가져오려면 이 토큰을 다시 설치하세요.",
   "BENEOS.Cloud.Notification.UploadFailed": "Beneos: {filename} 업로드에 실패했어요. 파일이 디스크에 저장되지 않았어요. Foundry 데이터 폴더 권한과 여유 공간을 확인한 다음 다시 설치하세요.",
   "BENEOS.Cloud.Notification.PostInstallIncomplete": "Beneos: {kind} '{key}' 설치가 완료되지 않았어요. {count}/{total}개 측면이 디스크에 없어요({aspects}). 누락된 부분을 가져오려면 이 에셋을 다시 설치하세요.",

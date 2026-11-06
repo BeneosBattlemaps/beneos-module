@@ -492,11 +492,19 @@ async function _beneosRefreshOpenPackWindows(pack) {
 // regardless of cause, so a supporter who ran into a reward from a month they
 // were not subscribed in had no way to tell that apart from a real fault. `kind`
 // is "Token" | "Item" | "Spell" and matches the ImportError* key suffix.
-function _beneosRefusalMessage(kind, data) {
+// OP-PRJ-190 Stufe 1, 2026-11-06: der Name des Inhalts gehoert in jede
+// Absage. Gemessen vorher: eine abgelehnte Kreatur meldete nur "Error importing
+// token from Beneos Cloud.", und wer zehn Kreaturen auf einmal installiert,
+// erfaehrt daraus nicht, welche fehlt. Der Zusatz haengt an EINEM Textbaustein
+// und gilt deshalb fuer alle drei Absagegruende zugleich.
+function _beneosRefusalMessage(kind, data, key = "") {
   const reason = String(data?.reason || "")
-  if (reason === "loyalty") return game.i18n.localize("BENEOS.Cloud.Notification.RefusedLoyalty")
-  if (reason === "tier") return game.i18n.localize("BENEOS.Cloud.Notification.RefusedTier")
-  return game.i18n.localize(`BENEOS.Cloud.Notification.ImportError${kind}`)
+  let text
+  if (reason === "loyalty") text = game.i18n.localize("BENEOS.Cloud.Notification.RefusedLoyalty")
+  else if (reason === "tier") text = game.i18n.localize("BENEOS.Cloud.Notification.RefusedTier")
+  else text = game.i18n.localize(`BENEOS.Cloud.Notification.ImportError${kind}`)
+  if (!key) return text
+  return `${text} ${game.i18n.format("BENEOS.Cloud.Notification.RefusedWhich", { name: key })}`
 }
 
 // Server-side asset-aspect manifest consumer. The cloud now ships a
@@ -1725,10 +1733,27 @@ export class BeneosCloud {
   discardPendingCanvasDrops(tokenKey) {
     if (!this.pendingCanvasDrops.has(tokenKey)) return
     this.pendingCanvasDrops.delete(tokenKey)
-    ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.ImportErrorToken"))
-    // Wave B-5e: drag-install failed — clear the in-progress visual so the
-    // card snaps back to "cloud available" and the user can retry.
-    game.beneos?.cloudWindowV2?.notifyInstallEnded?.(tokenKey, false)
+  }
+
+  // OP-PRJ-190 Stufe 1, 2026-11-06: eine gescheiterte Installation muss der
+  // Kunde sehen, und sie muss den Namen des Inhalts nennen.
+  //
+  // Bis zu diesem Tag lag die Meldung allein in discardPendingCanvasDrops, und
+  // die kehrt in ihrer ersten Zeile um, wenn kein Zieh-Vorgang offen ist. Eine
+  // Installation per Knopf aus dem Cloud-Fenster lief deshalb still ins Leere.
+  // Gemessen an `030-commoner_male`: der Server schliesst die Verbindung nach
+  // 29,8 Sekunden, sichtbar war ein TypeError in der Konsole und sonst nichts.
+  //
+  // Wave B-5e: notifyInstallEnded(key, false) raeumt zugleich die Karte auf,
+  // damit sie aus "wird installiert" auf "in der Cloud" zurueckspringt und der
+  // Kunde es erneut versuchen kann. Der Aufruf ist mehrfach gefahrlos, er
+  // loescht nur den Zustand und zeichnet die Karte neu.
+  meldeInstallationGescheitert(key) {
+    if (!key) return
+    ui.notifications.error(
+      game.i18n.format("BENEOS.Cloud.Notification.InstallFailed", { name: key })
+    )
+    game.beneos?.cloudWindowV2?.notifyInstallEnded?.(key, false)
   }
 
   // Wave B-9-fix-41: cloud item / spell dropped on a character sheet.
@@ -4428,7 +4453,7 @@ export class BeneosCloud {
           await game.beneos.cloud.importTokenToCompendium({ [`${cloudKey}`]: data.data.token }, event, isBatch)
         } else {
           console.warn("[Beneos Cloud] Error in importing Token from BeneosCloud", data, tokenKey)
-          ui.notifications.error(_beneosRefusalMessage("Token", data))
+          ui.notifications.error(_beneosRefusalMessage("Token", data, tokenKey))
           BeneosAnalytics.trackAssetRefused?.("token", tokenKey, data?.reason)
           // Fix #B-1d: drop any pending canvas drops on server reject; user
           // already saw the error notification, no second one needed.
@@ -4437,9 +4462,11 @@ export class BeneosCloud {
       })
       .catch(err => {
         console.error("BeneosModule: token import error for", tokenKey, err)
-        // Fix #B-1d: discard pending drops AND surface a notification so the
-        // user understands why nothing appeared on the canvas.
+        // Fix #B-1d: haengende Zieh-Vorgaenge verwerfen. Die Meldung an den
+        // Kunden kommt aus meldeInstallationGescheitert, damit sie auch bei
+        // einer Installation per Knopf erscheint, siehe OP-PRJ-190 Stufe 1.
         game.beneos.cloud.discardPendingCanvasDrops(tokenKey)
+        game.beneos.cloud.meldeInstallationGescheitert(tokenKey)
       }))
       .finally(() => {
         game.beneos.cloud.inflightImports.delete(lockKey)
@@ -4475,7 +4502,7 @@ export class BeneosCloud {
           await game.beneos.cloud.importItemToCompendium({ [`${itemKey}`]: data.data.item }, event, isBatch)
         } else {
           console.warn("[Beneos Cloud] Error in importing Item from BeneosCloud", data, itemKey)
-          ui.notifications.error(_beneosRefusalMessage("Item", data))
+          ui.notifications.error(_beneosRefusalMessage("Item", data, itemKey))
           BeneosAnalytics.trackAssetRefused?.("item", itemKey, data?.reason)
           // Wave B-9-fix-41: clear any pending actor-sheet drops for this key
           // so they don't dangle waiting for an install that never happened.
@@ -4485,6 +4512,9 @@ export class BeneosCloud {
       .catch(err => {
         console.error("BeneosModule: item import error for", itemKey, err)
         game.beneos.cloud.discardPendingItemDrops?.(itemKey)
+        // OP-PRJ-190 Stufe 1: ohne diese Zeile blieb der Abbruch unsichtbar,
+        // weil discardPendingItemDrops nie gemeldet hat.
+        game.beneos.cloud.meldeInstallationGescheitert(itemKey)
       }))
       .finally(() => {
         game.beneos.cloud.inflightImports.delete(lockKey)
@@ -4516,7 +4546,7 @@ export class BeneosCloud {
           await game.beneos.cloud.importSpellToCompendium({ [`${spellKey}`]: data.data.spell }, event, isBatch)
         } else {
           console.warn("[Beneos Cloud] Error in importing Spell from BeneosCloud", data, spellKey)
-          ui.notifications.error(_beneosRefusalMessage("Spell", data))
+          ui.notifications.error(_beneosRefusalMessage("Spell", data, spellKey))
           BeneosAnalytics.trackAssetRefused?.("spell", spellKey, data?.reason)
           // Wave B-9-fix-41: drop pending actor-sheet drops on failure.
           game.beneos.cloud.discardPendingItemDrops?.(spellKey)
@@ -4525,6 +4555,9 @@ export class BeneosCloud {
       .catch(err => {
         console.error("BeneosModule: spell import error for", spellKey, err)
         game.beneos.cloud.discardPendingItemDrops?.(spellKey)
+        // OP-PRJ-190 Stufe 1: ohne diese Zeile blieb der Abbruch unsichtbar,
+        // weil discardPendingItemDrops nie gemeldet hat.
+        game.beneos.cloud.meldeInstallationGescheitert(spellKey)
       }))
       .finally(() => {
         game.beneos.cloud.inflightImports.delete(lockKey)

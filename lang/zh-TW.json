@@ -848,6 +848,8 @@
   "BENEOS.Cloud.Notification.ImportingSpell": "正在從 Beneos Cloud 匯入法術。",
   "BENEOS.Cloud.Notification.ImportingBattlemap": "正在從 Beneos Cloud 匯入戰鬥地圖。",
   "BENEOS.Cloud.Notification.ImportErrorToken": "從 Beneos Cloud 匯入標記時發生錯誤。",
+  "BENEOS.Cloud.Notification.InstallFailed": "{name} 安裝失敗，未安裝任何內容。請重試；若持續失敗，請提供此名稱聯絡客服。",
+  "BENEOS.Cloud.Notification.RefusedWhich": "影響項目：{name}",
   "BENEOS.Cloud.Notification.TopDownMissing": "Beneos：{name} 的 Top-Down 變體無法使用，回退至 2.5D。重新安裝此 Token 以從雲端取得它。",
   "BENEOS.Cloud.Notification.UploadFailed": "Beneos：{filename} 上傳失敗，檔案未寫入磁碟。請檢查 Foundry 資料夾的權限與可用空間，然後重新安裝。",
   "BENEOS.Cloud.Notification.PostInstallIncomplete": "Beneos：{kind}「{key}」安裝未完成，磁碟上缺少 {count}/{total} 個面向（{aspects}）。重新安裝此素材以取得缺少的部分。",
