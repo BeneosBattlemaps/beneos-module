@@ -45,28 +45,77 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 14px 8px 10px;
-  background: var(--bc-bg-panel);
-  border: 1px solid var(--bc-border-strong);
+  /* Rectangle and disc form ONE outlined shape (user 2026-11-06): the disc
+     sits on the rectangle and sticks out above and below it. The rectangle
+     (::before) gets a hole where the disc lies, the disc carries the same
+     fill, and the disc's ring (.bci-tab-disc::before) shows only where it
+     leaves the rectangle. So fill and edge are set once, as variables, and
+     every state below only changes them. Height and disc size are fixed
+     here because the masks depend on them: tab 28px, disc 30px, so the disc
+     stands out 1px on each side. */
+  --bci-tab-h: 28px;
+  --bci-disc: 30px;
+  --bci-pad-l: 10px;
+  --bci-fill: var(--bc-bg-panel);
+  --bci-edge: var(--bc-border-strong);
+  box-sizing: border-box;
+  height: var(--bci-tab-h);
+  padding: 0 14px 0 var(--bci-pad-l);
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: var(--bc-edge);
   box-shadow: var(--bc-shadow-pop);
   color: var(--bc-text);
   cursor: pointer;
-  transition: transform var(--bc-dur-base) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease), background-color var(--bc-dur-fast) var(--bc-ease);
+  transition: transform var(--bc-dur-base) var(--bc-ease);
+}
+#beneos-creature-installer .bci-tab::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  box-sizing: border-box;
+  border: 1px solid var(--bci-edge);
+  border-radius: var(--bc-edge);
+  background: var(--bci-fill);
+  /* Hole for the disc: centre = border 1px + left padding + disc radius. */
+  -webkit-mask: radial-gradient(circle at calc(1px + var(--bci-pad-l) + var(--bci-disc) / 2) 50%, transparent calc(var(--bci-disc) / 2 - .5px), #000 calc(var(--bci-disc) / 2));
+          mask: radial-gradient(circle at calc(1px + var(--bci-pad-l) + var(--bci-disc) / 2) 50%, transparent calc(var(--bci-disc) / 2 - .5px), #000 calc(var(--bci-disc) / 2));
+  transition: background-color var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
 }
 #beneos-creature-installer .bci-tab:hover {
   transform: translateX(-50%) translateY(-3px);
-  border-color: var(--bc-accent);
-  background: var(--bc-card);
+  --bci-fill: var(--bc-card);
+  --bci-edge: var(--bc-accent);
 }
 /* The script still sets .bci-pulse on the first open of a scene. It draws
    nothing any more: the gold edge showed on nearly every new map and pulled
    the eye off the map (user 2026-11-06). */
 #beneos-creature-installer .bci-tab-disc {
-  width: 30px; height: 30px; border-radius: 50%;
-  background: var(--bc-card);
-  border: 1px solid var(--bc-border-control);
+  position: relative;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: var(--bci-disc); height: var(--bci-disc); border-radius: 50%;
+  background: var(--bci-fill);
+  border: 0;
   display: flex; align-items: center; justify-content: center;
+  transition: background-color var(--bc-dur-fast) var(--bc-ease);
+}
+/* The disc's ring, visible only in the strips above and below the
+   rectangle: the part that sticks out plus the 1px of the rectangle's edge
+   it replaces. Inside the rectangle the ring is masked away. */
+#beneos-creature-installer .bci-tab-disc::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--bci-edge);
+  border-radius: 50%;
+  pointer-events: none;
+  --bci-strip: calc((var(--bci-disc) - var(--bci-tab-h)) / 2 + 1px);
+  -webkit-mask: linear-gradient(to bottom, #000 0 var(--bci-strip), transparent var(--bci-strip) calc(100% - var(--bci-strip)), #000 calc(100% - var(--bci-strip)));
+          mask: linear-gradient(to bottom, #000 0 var(--bci-strip), transparent var(--bci-strip) calc(100% - var(--bci-strip)), #000 calc(100% - var(--bci-strip)));
+  transition: border-color var(--bc-dur-fast) var(--bc-ease);
 }
 #beneos-creature-installer .bci-tab-disc svg { width: 18px; height: 18px; fill: var(--bc-text); }
 #beneos-creature-installer .bci-tab-label {
@@ -85,12 +134,16 @@
    COL-12 (retreat through lower contrast), standard.md 2.6, user 2026-11-06:
    the tab sits on every map and must not draw attention. */
 #beneos-creature-installer:not(.bci-expanded) .bci-tab:not(:hover):not(:focus-visible) {
-  padding: 6px 12px 6px 8px;
+  --bci-pad-l: 8px;
+  --bci-fill: color-mix(in srgb, var(--bc-bg-panel) 72%, transparent);
+  --bci-edge: var(--bc-border);
+  padding-right: 12px;
   gap: 8px;
-  background: color-mix(in srgb, var(--bc-bg-panel) 72%, transparent);
-  backdrop-filter: blur(3px);
-  border-color: var(--bc-border);
   box-shadow: none;
+}
+#beneos-creature-installer:not(.bci-expanded) .bci-tab:not(:hover):not(:focus-visible)::before,
+#beneos-creature-installer:not(.bci-expanded) .bci-tab:not(:hover):not(:focus-visible) .bci-tab-disc {
+  backdrop-filter: blur(3px);
 }
 #beneos-creature-installer:not(.bci-expanded) .bci-tab:not(:hover):not(:focus-visible) .bci-tab-label {
   font-size: 12px;
@@ -99,10 +152,6 @@
 #beneos-creature-installer:not(.bci-expanded) .bci-tab:not(:hover):not(:focus-visible) .bci-tab-count {
   background: transparent;
   color: var(--bc-text-muted);
-}
-#beneos-creature-installer:not(.bci-expanded) .bci-tab:not(:hover):not(:focus-visible) .bci-tab-disc {
-  background: transparent;
-  border-color: var(--bc-border);
 }
 #beneos-creature-installer:not(.bci-expanded) .bci-tab:not(:hover):not(:focus-visible) .beneos-icon-logo {
   color: var(--bc-text-muted);
@@ -138,11 +187,11 @@
 }
 /* When the panel is open the tab STAYS visible (no flicker) but steps back:
    quieter colours instead of reduced opacity (COL-12). */
-#beneos-creature-installer.bci-expanded .bci-tab { border-color: var(--bc-border); background: var(--bc-bg); box-shadow: none; }
+#beneos-creature-installer.bci-expanded .bci-tab { --bci-edge: var(--bc-border); --bci-fill: var(--bc-bg); box-shadow: none; }
 #beneos-creature-installer.bci-expanded .bci-tab .bci-tab-label,
 #beneos-creature-installer.bci-expanded .bci-tab .bci-tab-count { color: var(--bc-text-muted); }
 #beneos-creature-installer.bci-expanded .bci-tab .beneos-icon-logo { color: var(--bc-text-muted); }
-#beneos-creature-installer.bci-expanded .bci-tab:hover { transform: translateX(-50%); border-color: var(--bc-border-control); }
+#beneos-creature-installer.bci-expanded .bci-tab:hover { transform: translateX(-50%); --bci-edge: var(--bc-border-control); }
 
 /* ------------------------------------------------------------------ header */
 
