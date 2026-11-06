@@ -26,7 +26,7 @@
 
    What sharpening cannot do: it adds no detail. It raises edge contrast,
    compression artefacts included. MAX_STRENGTH and the clamp on the
-   correction keep that in bounds; both are first values to be tuned.
+   correction keep that in bounds.
    ============================================================ */
 
 import { squaresAcross, sharpenAmount, sharpenWanted, texelSize } from "./map-sharpen-curve.mjs"
@@ -34,7 +34,9 @@ import { squaresAcross, sharpenAmount, sharpenWanted, texelSize } from "./map-sh
 const MODULE_ID = "beneos-module"
 const SETTING = "beneos-map-sharpen"
 const PERF_SETTING = "beneos-performance-mode"
-const MAX_STRENGTH = 1.5
+// Shader strength at full sharpening, and the ceiling: the curve never
+// goes above it (user 2026-11-06, set by eye on stream-beta).
+const MAX_STRENGTH = 3
 
 let SharpenShader = null
 // The class each mesh had before the swap, to give it back.
@@ -124,7 +126,7 @@ function updateStrength() {
     u.sharpAmount = amount * MAX_STRENGTH
   }
   Hooks.callAll("beneos.mapSharpenUpdated", {
-    amount, squares, videos: meshes.length, unknown,
+    amount, strength: amount * MAX_STRENGTH, max: MAX_STRENGTH, squares, videos: meshes.length, unknown,
     off: meshes.length ? null : offReason()
   })
 }
