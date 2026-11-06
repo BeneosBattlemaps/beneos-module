@@ -59,10 +59,9 @@
   border-color: var(--bc-accent);
   background: var(--bc-card);
 }
-/* First scene open: the tab is marked by an accent edge until the drawer has
-   been opened once (the class is removed by the script). No endless pulse
-   (FRM-12). */
-#beneos-creature-installer .bci-tab.bci-pulse { border-color: var(--bc-accent); }
+/* The script still sets .bci-pulse on the first open of a scene. It draws
+   nothing any more: the gold edge showed on nearly every new map and pulled
+   the eye off the map (user 2026-11-06). */
 #beneos-creature-installer .bci-tab-disc {
   width: 30px; height: 30px; border-radius: 50%;
   background: var(--bc-card);
@@ -79,6 +78,35 @@
   background: var(--bc-card-hover); border-radius: var(--bc-edge); padding: 1px 6px;
 }
 #beneos-creature-installer .bci-tab-chev svg { width: 12px; height: 12px; fill: none; stroke: var(--bc-text-muted); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+
+/* At rest the tab steps back behind the map: a see-through surface with a
+   light blur, a thin edge, no shadow, label, logo and count dimmed. Hover and
+   keyboard focus bring back the full tab above. Approved deviation from
+   COL-12 (retreat through lower contrast), standard.md 2.6, user 2026-11-06:
+   the tab sits on every map and must not draw attention. */
+#beneos-creature-installer:not(.bci-expanded) .bci-tab:not(:hover):not(:focus-visible) {
+  padding: 6px 12px 6px 8px;
+  gap: 8px;
+  background: color-mix(in srgb, var(--bc-bg-panel) 72%, transparent);
+  backdrop-filter: blur(3px);
+  border-color: var(--bc-border);
+  box-shadow: none;
+}
+#beneos-creature-installer:not(.bci-expanded) .bci-tab:not(:hover):not(:focus-visible) .bci-tab-label {
+  font-size: 12px;
+  color: var(--bc-text-muted);
+}
+#beneos-creature-installer:not(.bci-expanded) .bci-tab:not(:hover):not(:focus-visible) .bci-tab-count {
+  background: transparent;
+  color: var(--bc-text-muted);
+}
+#beneos-creature-installer:not(.bci-expanded) .bci-tab:not(:hover):not(:focus-visible) .bci-tab-disc {
+  background: transparent;
+  border-color: var(--bc-border);
+}
+#beneos-creature-installer:not(.bci-expanded) .bci-tab:not(:hover):not(:focus-visible) .beneos-icon-logo {
+  color: var(--bc-text-muted);
+}
 
 /* ------------------------------------------------------------------- panel */
 
