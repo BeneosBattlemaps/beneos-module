@@ -544,8 +544,27 @@ export function streamHost() {
   try { return new URL(streamBase()).host } catch (_) { return "" }
 }
 
+/**
+ * Liegen die Bilder einer Szene oertlich, oder kommen sie vom Tor?
+ *
+ * DER RUECKFALLWERT IST DERSELBE WIE DIE VORGABE BEI DER REGISTRIERUNG, und
+ * das war er bis zum 06.11.2026 nicht. Dort stand `true`, hier `false`. Der
+ * Rueckfall greift nur, wenn `game.settings.get` wirft, also solange der
+ * Schalter nicht registriert ist; heute ruft ihn niemand so frueh, der Schaden
+ * war also keiner. Zwei Vorgaben fuer einen Schalter sind trotzdem eine Falle,
+ * die beim naechsten frueheren Aufruf zuschnappt.
+ *
+ * `true` ist dabei die vorsichtige Seite: ein Standbild auf der Platte laesst
+ * eine Szene ohne Verbindung zeichnen. `false` haette sie gestreamt, und ohne
+ * Netz bliebe die Flaeche leer.
+ *
+ * WARUM `streamEnabled()` daneben anders aussieht: dort steht bei der
+ * Registrierung `true` und im Lesesatz `false`, und das bleibt so. Ein nicht
+ * lesbarer Schalter heisst dort "nicht streamen", und das ist die Seite, auf
+ * der nichts kaputtgeht. Hier ist die vorsichtige Seite die andere.
+ */
 export function pinStillsEnabled() {
-  return Boolean(read(SETTING.pinStills, false))
+  return Boolean(read(SETTING.pinStills, true))
 }
 
 /** `stream` or `download`. Anything unreadable counts as `stream`. */
