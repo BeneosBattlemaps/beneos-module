@@ -1815,3 +1815,18 @@ body.theme-dark .beneos-spell-desc .bsd-download,
   outline: 2px solid var(--bc-accent);
   outline-offset: 2px;
 }
+
+/* ------------------------------------------------------------------ */
+/* OP-PRJ-144: ein Umschalter, der ohne Verbindung nicht gehen kann,   */
+/* sieht gesperrt aus statt zu verschwinden oder ein leeres Feld zu    */
+/* liefern.                                                            */
+/*                                                                     */
+/* `pointer-events: none` steht hier ABSICHTLICH NICHT. Es wuerde den  */
+/* Hilfstext mit abschalten, und dann saehe der Spielleiter eine graue */
+/* Flaeche ohne jeden Grund. Der Klick wird im Skript verworfen.       */
+/* ------------------------------------------------------------------ */
+#token-hud .control-icon.beneos-offline-gesperrt {
+  opacity: 0.4;
+  filter: grayscale(1);
+  cursor: not-allowed;
+}

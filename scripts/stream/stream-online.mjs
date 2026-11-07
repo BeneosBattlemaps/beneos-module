@@ -67,6 +67,33 @@ export function isOffline() {
   return state === STATE.offline
 }
 
+/**
+ * Soll eine Flaeche, die diese Adresse zeigt, ohne Verbindung gesperrt sein?
+ *
+ * Drei Bedingungen, und jede einzelne verhindert eine falsche Sperre:
+ *
+ * `streamEnabled()` fragt, ob diese Welt ueberhaupt streamt. Eine Welt auf
+ * `download` hat ihre Dateien auf der Platte und schaltet ohne Verbindung
+ * tadellos um; sie zu sperren waere eine Verschlechterung ohne Gegenwert.
+ *
+ * `isOffline()` fragt nach dem Jetzt. Online ist nichts zu sperren.
+ *
+ * Die Adresse selbst entscheidet den Rest, und das ist der Grund, warum hier
+ * keine pauschale Sperre steht: eine Kreatur, die vor dem Umschalten oertlich
+ * installiert wurde, traegt oertliche Pfade in allen ihren Varianten, auch in
+ * einer Welt, die heute streamt. Ihre Umschalter gehoeren nicht gesperrt.
+ *
+ * `hostVomTor()` darf null liefern, und `includes(null)` sucht nach dem Text
+ * "null" statt nichts zu finden. Also erst pruefen, dann vergleichen. Dieselbe
+ * Falle steht in `installKlangWache` beschrieben.
+ */
+export function offlineGesperrt(src) {
+  if (!streamEnabled() || !isOffline()) return false
+  const tor = hostVomTor()
+  if (!tor) return false
+  return String(src || "").includes(tor)
+}
+
 export function onStreamState(fn) {
   listeners.add(fn)
   return () => listeners.delete(fn)

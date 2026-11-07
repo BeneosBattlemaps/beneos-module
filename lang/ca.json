@@ -1625,6 +1625,7 @@
   "BENEOS.Notifications.Utility.ActorNotFound": "Beneos Module: nom/id d'actor no trobat per al token {key}.",
   "BENEOS.TokenMenu.SwitchStyleTo25D": "Canviar a 2.5D",
   "BENEOS.TokenMenu.SwitchStyleToTopDown": "Canviar a Top-Down",
+  "BENEOS.TokenMenu.OfflineSwitchDisabled": "No disponible sense connexió. Torna a connectar-te per canviar la variant o l'estil.",
   "BENEOS.TokenMenu.StyleSwitchedTokenized": "Beneos: canviat a 2.5D",
   "BENEOS.TokenMenu.StyleSwitchedTopDown": "Beneos: canviat a Top-Down",
   "BENEOS.TokenMenu.StyleNotApplicable": "Beneos: la fitxa no té un sufix de variant reconeixible",

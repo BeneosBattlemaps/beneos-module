@@ -1625,6 +1625,7 @@
   "BENEOS.Notifications.Utility.ActorNotFound": "Beneos Module：找不到 token {key} 的角色名稱/id。",
   "BENEOS.TokenMenu.SwitchStyleTo25D": "切換為 2.5D",
   "BENEOS.TokenMenu.SwitchStyleToTopDown": "切換為 Top-Down",
+  "BENEOS.TokenMenu.OfflineSwitchDisabled": "離線時無法使用。重新連線後即可切換變體或樣式。",
   "BENEOS.TokenMenu.StyleSwitchedTokenized": "Beneos：已切換為 2.5D",
   "BENEOS.TokenMenu.StyleSwitchedTopDown": "Beneos：已切換為 Top-Down",
   "BENEOS.TokenMenu.StyleNotApplicable": "Beneos：標記沒有可辨識的變體後綴",

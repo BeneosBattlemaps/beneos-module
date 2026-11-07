@@ -6,6 +6,7 @@ import "./beneos-tree-performance.js";
 import "./beneos_tours.js";
 import { libWrapper } from "./shim.js";
 import { BeneosUtility } from "./beneos_utility.js";
+import { offlineGesperrt } from "./stream/stream-online.mjs";
 import { BeneosModuleMenu, BeneosDatabaseHolder } from "./beneos_search_engine.js";
 import { BeneosCloud } from "./beneos_cloud.js";
 import { BeneosAnalytics } from "./beneos_analytics.js";
@@ -530,11 +531,20 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
   let beneosVariantsHUD = BeneosUtility.getVariants(tokenConfig, hudMode)
   const beneosVariantsDisplay = await foundry.applications.handlebars.renderTemplate('modules/beneos-module/templates/beneosvariants.html',
     { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getBeneosTokenDataPath(), beneosVariantsHUD, current: tokenConfig.number })
+  // OP-PRJ-144: ohne Verbindung ist ein Umschalter, der sichtbar nicht geht,
+  // besser als einer, der ein leeres Feld liefert. Gesperrt wird die Flaeche,
+  // nicht die einzelne Datei: `offlineGesperrt` fragt nur die Adresse dieses
+  // Tokens, und weil eine Kreatur alle ihre Varianten aus derselben Quelle
+  // bezieht, traegt diese eine Frage fuer alle Ziele des Wechslers.
+  const umschalterGesperrt = offlineGesperrt(protoSrc)
   $(html).find('div.right').append(beneosVariantsDisplay).click((event) => {
     // div.right also hosts Foundry-Core HUD buttons (Add to Combat, etc.). Bail out
-    // if our variants box isn't in this render — let core handlers run untouched.
+    // if our variants box isn't in this render, let core handlers run untouched.
     let beneosTokenButton = $(html).find('.beneos-token-variants')[0];
     if (!beneosTokenButton) return;
+    // Der Klick wird nur fuer uns verworfen. Kein preventDefault und kein
+    // stopPropagation, damit die Kernknoepfe in derselben Leiste weiter gehen.
+    if (umschalterGesperrt) return;
     let beneosClickedButton = event.target.parentElement;
 
     if (beneosClickedButton === beneosTokenButton) {
@@ -552,6 +562,23 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
       }
     }
   });
+
+  // Das Aussehen der Sperre. Es wird nach dem Anhaengen gesetzt und nicht in
+  // der Vorlage, damit der gewoehnliche Fall unveraendert bleibt. `title` und
+  // `aria-label` gehoeren dazu: das Symbol traegt die Funktion allein, der
+  // Grund der Sperre steht also nirgends sonst.
+  if (umschalterGesperrt) {
+    const beneosOpener = $(html).find('.beneos-token-variants')[0]
+    if (beneosOpener) {
+      const beneosSatz = game.i18n.localize("BENEOS.TokenMenu.OfflineSwitchDisabled")
+      beneosOpener.classList.add('beneos-offline-gesperrt')
+      beneosOpener.setAttribute('aria-disabled', 'true')
+      beneosOpener.setAttribute('title', beneosSatz)
+      beneosOpener.setAttribute('aria-label', beneosSatz)
+      const beneosBild = beneosOpener.querySelector('img')
+      if (beneosBild) beneosBild.setAttribute('title', beneosSatz)
+    }
+  }
 
   // Top-Down Stage 3: STYLE-SWITCH HUD button — filesystem-gated.
   // Stage 2 trusted the cache; Stage 3 probes the disk via
@@ -571,21 +598,32 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
     const isTopDown = protoSrc.includes("-top.webp")
     const isTokenized = protoSrc.includes("-token.webp")
     if (isTopDown || isTokenized) {
-      const counterpartExists = await BeneosUtility.beneosTopVariantExists(protoSrc)
+      // OP-PRJ-144: ohne Verbindung wird die Dateiprobe NICHT gefahren. Sie
+      // fragt per HEAD gegen den eigenen Server, faellt ohne Leitung durch,
+      // und der Knopf verschwaende dann ganz, statt sichtbar gesperrt zu
+      // sein. Genau das verhindert dieses Paket.
+      const stilGesperrt = offlineGesperrt(protoSrc)
+      const counterpartExists = stilGesperrt
+        ? true
+        : await BeneosUtility.beneosTopVariantExists(protoSrc)
       if (counterpartExists) {
         const tooltipKey = isTopDown
           ? "BENEOS.TokenMenu.SwitchStyleTo25D"
           : "BENEOS.TokenMenu.SwitchStyleToTopDown"
-        const tooltipText = game.i18n.localize(tooltipKey)
+        const tooltipText = stilGesperrt
+          ? game.i18n.localize("BENEOS.TokenMenu.OfflineSwitchDisabled")
+          : game.i18n.localize(tooltipKey)
         // Stage 7: visually distinct icon pair tied to the TARGET
         // shape. 2.5D tokens are round, Top-Down tokens are square-ish
         // map tiles. So Top-Down active → fa-circle (target = round
         // 2.5D); 2.5D active → fa-down-long (target = top-down view).
         const iconClass = isTopDown ? "fa-solid fa-circle" : "fa-solid fa-down-long"
         const $btn = $(`
-          <div class="control-icon beneos-token-style-toggle"
+          <div class="control-icon beneos-token-style-toggle${stilGesperrt ? " beneos-offline-gesperrt" : ""}"
                data-action="beneosToken-style"
                title="${tooltipText}"
+               aria-label="${tooltipText}"
+               ${stilGesperrt ? 'aria-disabled="true"' : ""}
                style="display:flex;align-items:center;justify-content:center;cursor:pointer;">
             <i class="${iconClass}" style="font-size:20px;"></i>
           </div>
@@ -593,6 +631,7 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
         $btn.on("click", (e) => {
           e.preventDefault()
           e.stopPropagation()
+          if (stilGesperrt) return
           BeneosUtility.toggleTokenStyle(token.id)
         })
         $(html).find('div.right').append($btn)
