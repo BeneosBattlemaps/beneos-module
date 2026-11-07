@@ -13,7 +13,7 @@
  * nach so etwas sucht.
  */
 
-import { downloadMode, MODULE_ID, streamEnabled } from "./stream-settings.mjs"
+import { downloadMode, MODULE_ID } from "./stream-settings.mjs"
 import { alleKarten, vorratsstand, verfallsstand, kontingent, VERFALL_TAGE,
          karteLoesen, pruefeVorrat, vorratHeilen, ziehKarteNach } from "./stream-offline.mjs"
 import { speicherLage } from "./stream-fetch.mjs"

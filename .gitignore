@@ -10,3 +10,4 @@ todo.md
 /.github/copilot-instructions.md
 *.bak
 *.bak-*
+node_modules/
