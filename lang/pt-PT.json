@@ -2408,6 +2408,7 @@
   "BENEOS.Stream.Intro.Download.What": "Um lancamento instala tudo neste mundo, video e som incluidos. Nada fica nos nossos servidores, por isso nada e transferido enquanto joga.",
   "BENEOS.Stream.Intro.Download.Cost": "Os mapas precisam de ligacao durante a instalacao e de nenhuma depois. Os seus jogadores carregam-nos a partir do seu computador.",
   "BENEOS.Stream.Intro.Download.Existing": "Nada daquilo que já está instalado neste mundo muda, e esse é precisamente o ponto: um lançamento que instalou com a transmissão ativa continua a apontar para os nossos servidores, por isso os seus mapas e as suas imagens de criatura ficam vazios. Tudo o que instalar de agora em diante vai para o seu disco. Se também precisa de um lançamento antigo localmente, fale connosco no Discord e resolvemos isso com você.",
+  "BENEOS.Stream.Denied.Video": "Beneos: os mapas animados de {name} não estão disponíveis neste momento, por isso esta cena mostra a sua imagem fixa. Normalmente significa que a subscrição ou o aluguer expirou.",
   "BENEOS.Stream.Intro.Ok": "Percebido",
   "BENEOS.Stream.Doku.Summary": "O que e isto?",
   "BENEOS.Stream.Doku.BarLead": "Esta barra",

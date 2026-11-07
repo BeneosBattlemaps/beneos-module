@@ -493,6 +493,58 @@ function meldeAbweisung(url) {
     + "Weitere Dateien desselben Releases werden nicht mehr einzeln gemeldet.")
 }
 
+function istVideo(url) {
+  return /\.(webm|mp4|m4v|ogv)(\?|$)/i.test(String(url))
+}
+
+const ERSATZ_VIDEO = "Beneos: the animated maps of {name} are not available right now, "
+  + "so this scene shows its still picture. Usually the membership or the rental has expired."
+
+/**
+ * Worunter der Hinweis fuer ein abgewiesenes Video schon gefallen ist.
+ *
+ * Eine EIGENE Menge, und nicht der Zaehler aus `meldeAbweisung`. Der zaehlt
+ * jede abgewiesene Datei desselben Releases, Bilder eingeschlossen. Wird ein
+ * Bild zuerst abgewiesen, steht der Zaehler schon auf 1, und ein spaeter
+ * abgewiesenes Video derselben Karte kaeme nie bis zur Meldung. Die Bilder
+ * brauchen sie auch nicht, sie haben das Ersatzbild, das "kein Zugang" sagt.
+ * Das Video hat nichts: es faellt still auf das Standbild zurueck.
+ */
+const videoGemeldet = new Set()
+
+/**
+ * Einmal je Release und Sitzung sagen, dass die Bewegung fehlt.
+ *
+ * Betreiberentscheid 07.11.2026 zu OP-PRJ-186, Weg 2. Gemessen am 06.11.2026
+ * in TC-PRJ-STR-031: bei abgewiesenem Video steht die Szene vollstaendig, 4
+ * von 4 Kacheln, und die Videokachel traegt das Standbild in 3840x2160. Das
+ * ist ein gutes Verhalten und bleibt. Was fehlte, war die Erklaerung: der
+ * Kunde sah eine unbewegte Karte und hielt das Modul fuer defekt oder die
+ * Karte fuer das, was er gekauft hat.
+ *
+ * Nur die Spielleitung bekommt ihn. Der Schluessel steht als Pfadstueck in der
+ * Szene, alle Clients fragen also mit demselben, und abgelaufen ist die
+ * Mitgliedschaft des Kontos, an dem die Welt haengt. Ein Mitspieler koennte
+ * daran nichts aendern.
+ *
+ * Gesammelt wird nach Release und Variante, dieselbe Stelle wie die
+ * Konsolenzeile. Eine Szene mit zwanzig Overlays ergibt damit einen Hinweis
+ * und nicht zwanzig.
+ */
+function meldeVideoAbweisung(url) {
+  if (!istVideo(url)) return
+  if (!game?.user?.isGM) return
+  const schluessel = sammelSchluessel(url)
+  if (videoGemeldet.has(schluessel)) return
+  videoGemeldet.add(schluessel)
+  let satz = ERSATZ_VIDEO.replace("{name}", schluessel)
+  try {
+    const t = game.i18n?.format?.("BENEOS.Stream.Denied.Video", { name: schluessel })
+    if (t && t !== "BENEOS.Stream.Denied.Video") satz = t
+  } catch (_) { /* faellt auf den Ersatztext zurueck */ }
+  try { ui.notifications?.warn(satz) } catch (_) { /* ohne Oberflaeche bleibt die Konsolenzeile */ }
+}
+
 /**
  * Ohne Verbindung wird gar nicht erst gefragt.
  *
@@ -1627,6 +1679,10 @@ export async function alleImSpeicher(urls) {
         // Fehler. Gesammelt wird nach Release und Variante, die beide in der
         // Adresse stehen.
         meldeAbweisung(url)
+
+        // Und beim Video zusaetzlich einmal sichtbar, weil es sonst niemand
+        // erfaehrt. Siehe die Begruendung an `meldeVideoAbweisung`.
+        meldeVideoAbweisung(url)
 
         // Und hier endet die Abweisung, statt als leeres Feld weiterzureisen.
         //

@@ -2458,6 +2458,7 @@
   "BENEOS.Stream.Intro.Download.What": "A release installs everything into this world, video and sound included. Nothing stays on our servers, so nothing is fetched while you play.",
   "BENEOS.Stream.Intro.Download.Cost": "Maps need a connection while they install, and none at all afterwards. Your players load them from your computer.",
   "BENEOS.Stream.Intro.Download.Existing": "Nothing already installed in this world changes, and that is worth knowing: a release you installed while streaming still points at our servers, so its maps and creature pictures stay empty. Everything you install from now on lands on your disk. If you need an older release locally as well, ask us on Discord and we will sort it out with you.",
+  "BENEOS.Stream.Denied.Video": "Beneos: the animated maps of {name} are not available right now, so this scene shows its still picture. Usually the membership or the rental has expired.",
   "BENEOS.Stream.Intro.Ok": "Got it",
   "BENEOS.Stream.Doku.Summary": "What is this?",
   "BENEOS.Stream.Doku.BarLead": "This bar",
