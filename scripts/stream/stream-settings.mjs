@@ -983,6 +983,74 @@ export function istBeute(release) {
 }
 
 /**
+ * DER GETEILTE RAUM: EINE DATEI LIEGT EINMAL, UNTER IHREM INHALT, seit 2026-11-08.
+ *
+ * WARUM ER KEIN RELEASE HAT. Gemessen am 06.11.2026 ueber alle 151 Manifeste:
+ * 4.854,0 von 98.052,8 MB sind mehrfach gehalten, und 72 Prozent davon ist Ton.
+ * `36-02_wizard_of_wines_2f.ogg` liegt mit 9,19 MB in NEUNZEHN Releases. Ein
+ * Release in die Adresse zu schreiben waere also willkuerlich, und genau das
+ * ist der Punkt: der Vorratsschluessel soll an KEINEM Release haengen. Laeuft
+ * das Recht eines Release ab oder verschwindet es, bleibt der Eintrag lesbar.
+ *
+ * WARUM `release` HIER EIN RAUMNAME IST UND KEIN RELEASE. Der Vorratsschluessel
+ * ist dreiteilig, `release|variant|pfad`, und die drei Felder sind
+ * Namensraeume und keine Sachaussagen. Eine Kreatur traegt dort schon heute ein
+ * LEERES Variantenstueck, ausdruecklich so entschieden, weil ein viertes Feld
+ * jeden bestehenden Vorrat eines Bestandskunden umgeschrieben haette. Dieselbe
+ * Bauart traegt den geteilten Raum:
+ *
+ *   `release`  `shared`      der Raumname
+ *   `variant`  die `sha256`  64 Hexzeichen, genau die Form der Torroute
+ *   `pfad`     der Dateiname ein Segment, ohne Schraegstrich
+ *
+ * Der Schluessel lautet damit `shared|<sha256>|<name>`, ohne Formatwechsel.
+ *
+ * EIN ZUSAMMENSTOSS MIT EINEM ECHTEN RELEASE IST AUSGESCHLOSSEN, und zwar
+ * nicht, weil `shared` ein unwahrscheinlicher Name ist, sondern weil jedes
+ * echte Release ein Praefix traegt: `beneos_bm_`, `beneos_ct_` oder
+ * `beneos_lt_`. Keines davon ist `shared`.
+ */
+export const GETEILT_RAUM = "shared"
+
+/**
+ * Eine geteilte Datei erkennt man an ihrem Pfad.
+ *
+ * `map_assets/` ist der Ordner, in dem die Symbole und Hilfsbilder liegen, die
+ * jede Beneos-Szene zieht: Kompass, Bedienleiste, Stop-Symbol. Sie gehoeren
+ * keinem Ort im Manifest, deshalb kennt sie keine Karte.
+ *
+ * Die Regel steht bewusst an EINER Stelle. Wer sie an zwei Orten schreibt,
+ * bekommt frueher oder spaeter zwei verschiedene Antworten auf dieselbe Datei,
+ * und dann liegt etwas im Vorrat, das niemand mehr freigibt.
+ *
+ * UMGEZOGEN AM 2026-11-08 AUS `stream-offline.mjs`, und zwar nicht aus
+ * Ordnungsliebe: `vorratsSchluessel` in `stream-fetch.mjs` braucht sie, und
+ * `stream-offline.mjs` importiert aus `stream-fetch.mjs`. Ein Import in die
+ * andere Richtung waere ein Zyklus. Hier liegt sie bei `assetUrl` und
+ * `zerlegeAdresse`, also bei den uebrigen Adressregeln, und beide Dateien
+ * importieren von hier ohnehin schon.
+ */
+export function istGeteilteDatei(url) {
+  return /\/map_assets\//.test(String(url || ""))
+}
+
+/**
+ * Gehoert dieser Dreiklang in den geteilten Raum?
+ *
+ * BEIDES WIRD GEPRUEFT, der Raumname UND die Form der Pruefsumme. Der Grund ist
+ * derselbe, aus dem `zerlegeAdresse` den Buchstaben exakt prueft: eine Variante,
+ * die keine Pruefsumme ist, ergaebe eine Adresse, die das Tor mit 400 abweist,
+ * und eine Abweisung des Tors kommt als 200 mit 42 Byte, also als leeres Bild
+ * OHNE Fehlermeldung. Die Form ist hier der einzige Riegel, den dieser Raum
+ * hat, denn einen Releasenamen, an dem ein Riegel greifen koennte, gibt es
+ * nicht.
+ */
+export function istGeteilterRaum(release, variant) {
+  return String(release || "") === GETEILT_RAUM
+      && /^[a-f0-9]{64}$/.test(String(variant || ""))
+}
+
+/**
  * The address of one asset of one release variant.
  *
  * Fuer eine Kreatur wird `variant` NICHT verwendet. Der Kreaturenraum kennt
@@ -1002,6 +1070,21 @@ export function assetUrl(release, variant, path) {
   // Dateinamen (`<kennung>-front.webp`). Vier Segmente, genau wie `/c/`.
   if (istBeute(release)) {
     return `${kopf}/l/${schluessel}/${encodeURIComponent(release)}/${clean}`
+  }
+  /*
+   * DER GETEILTE RAUM, UND ER IST DER EINZIGE, DER DIE VARIANTE IN DIE ADRESSE
+   * NIMMT. Sie traegt dort die Pruefsumme und nicht einen Variantennamen. Die
+   * Route am Tor verlangt GENAU fuenf Segmente, also darf `clean` kein
+   * Schraegstrich mehr enthalten; wer hier einen Unterpfad mitgibt, bekommt
+   * eine Adresse, die das Tor mit 400 abweist.
+   *
+   * Der Zweig steht NACH Kreatur und Beute und VOR der Kartenadresse. Die
+   * Reihenfolge ist gleichgueltig, weil `istGeteilterRaum` auf einen Namen
+   * prueft, den kein Release tragen kann; sie steht hier trotzdem bewusst
+   * zuletzt, damit die Kartenadresse der Rueckfall bleibt.
+   */
+  if (istGeteilterRaum(release, variant)) {
+    return `${kopf}/s/${schluessel}/${GETEILT_RAUM}/${encodeURIComponent(variant)}/${clean}`
   }
   return `${kopf}/a/${schluessel}/${encodeURIComponent(release)}/${encodeURIComponent(variant)}/${clean}`
 }
@@ -1078,6 +1161,29 @@ export function zerlegeAdresse(url) {
         release: decodeURIComponent(teile[2]),
         variant: "",
         pfad: teile.slice(3).map(decodeURIComponent).join("/"),
+      }
+    }
+    /*
+     * /s/<schluessel>/shared/<sha256>/<name>, also GENAU fuenf.
+     *
+     * `=== 5` UND NICHT `>= 5`, und das ist der einzige Raum, in dem das so
+     * ist. Die Route am Tor laesst genau fuenf Segmente zu; eine Adresse mit
+     * sechs wird dort mit 400 abgewiesen. Sie hier trotzdem zu zerlegen hiesse,
+     * einen Vorratsschluessel zu bilden, aus dem nie wieder eine abrufbare
+     * Adresse wird, und der Fehler fiele erst beim Nachladen auf.
+     *
+     * DER RAUMNAME WIRD MITGEPRUEFT UND NICHT UEBERSPRUNGEN. Derselbe Grund wie
+     * beim Buchstaben: eine Form, die fast alles annimmt, nimmt auch das an, was
+     * nicht uns gehoert.
+     */
+    if (teile[0] === "s" && teile[2] === GETEILT_RAUM && teile.length === 5) {
+      const sha = decodeURIComponent(teile[3])
+      if (!/^[a-f0-9]{64}$/.test(sha)) return null
+      return {
+        raum: "geteilt",
+        release: GETEILT_RAUM,
+        variant: sha,
+        pfad: decodeURIComponent(teile[4]),
       }
     }
     return null

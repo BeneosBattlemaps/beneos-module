@@ -20,7 +20,7 @@
  * to the gate cut, video running, 59 frames per second.
  */
 
-import { assetUrl, budgetFor, downloadMode, localCacheEnabled, maxConcurrent, MODULE_ID, streamEnabled, streamHost, streamMode, zerlegeAdresse } from "./stream-settings.mjs"
+import { assetUrl, budgetFor, downloadMode, GETEILT_RAUM, istGeteilteDatei, localCacheEnabled, maxConcurrent, MODULE_ID, streamEnabled, streamHost, streamMode, zerlegeAdresse } from "./stream-settings.mjs"
 import { ohneSchluessel, ohneSchluesselImText, reportFailure, reportedSoFar } from "./stream-report.mjs"
 import { isOffline, noteResult } from "./stream-online.mjs"
 
@@ -418,6 +418,89 @@ const VORRAT_URSPRUNG = "https://beneos-stream.invalid"
  * ist und keine Route; welcher Raum gemeint ist, sagt der Releasename.
  */
 /**
+ * DER INHALTSADRESSIERTE VORRATSSCHLUESSEL, `OP-PRJ-184` Punkt 3.
+ *
+ * WAS ER LOEST. Der Vorrat speichert nach `release|variante|pfad`. Damit haelt
+ * er dieselben Bytes so oft, wie Releases sie fuehren: gemessen am 06.11.2026
+ * sind 4.854,0 von 98.052,8 MB mehrfach gehalten, und
+ * `36-02_wizard_of_wines_2f.ogg` liegt mit 9,19 MB in NEUNZEHN Releases. Das
+ * Tor zahlt das nicht, `belegteBytes()` zaehlt je Pruefsumme; der Kunde zahlt
+ * es, und das Vorratsfenster zeigt ihm die Torzahl. Wer die 23 Releases der
+ * Pruefwelt ganz offline nimmt, belegt rund 1,5 GB mehr als angezeigt.
+ *
+ * WAS ER NICHT IST. Er ist nicht `ausGleichemInhalt` weiter unten. Die Funktion
+ * spart den VERKEHR, indem sie denselben Inhalt unter einer anderen Adresse
+ * findet; sie legt die Datei danach trotzdem unter ihrer eigenen Adresse ab,
+ * und der Quelltext sagt das dort auch. Dieser Schluessel spart den PLATZ.
+ *
+ * WARUM EIN SCHALTER, UND WARUM ER AUS IST
+ *
+ * Der Schluessel laesst sich nur dann in eine abrufbare Adresse
+ * zurueckverwandeln, wenn der geteilte Raum im Spiegel GEFUELLT ist. Vorher
+ * antwortet das Tor mit 404, und eine Datei, die nachgeladen werden muss,
+ * kommt nicht. Die Fuellung ist ein eigener serverseitiger Durchgang
+ * (`_trigger-geteilt-mirror-fill.php`, `eafb867`), er ist handgefuehrt, und er
+ * ist am 08.11.2026 noch nicht gefahren.
+ *
+ * Ein Kundenschalter waere hier falsch: das ist eine
+ * AUSLIEFERUNGSREIHENFOLGE und keine Kundenwahl. Deshalb eine Konstante, die
+ * mit dem naechsten Modulstand auf `true` geht, NACHDEM der Durchgang gelaufen
+ * ist. Dieselbe Bauart wie `BENEOS_STREAM_BEUTE` auf dem Server, und aus
+ * demselben Grund.
+ *
+ * WAS BEI `false` PASSIERT: gar nichts. `geteilterDreiklang` gibt `null`, und
+ * `vorratsSchluessel` bildet denselben Schluessel wie vorher. Das ist die
+ * Richtung, in die ein Irrtum fallen soll.
+ *
+ * WAS BEIM UMSCHALTEN PASSIERT, und das gehoert benannt: jede geteilte Datei,
+ * die ein Kunde heute im Vorrat hat, liegt danach unter einem ANDEREN
+ * Schluessel und gilt als fehlend. Sie wird einmal neu geholt. Das ist der
+ * einmalige Preis, und er betrifft nur die geteilten Dateien, nicht den
+ * Hauptbestand: gemessen 5,0 Prozent der Bytes.
+ */
+const GETEILTER_VORRAT_AN = false
+
+/**
+ * Der geteilte Dreiklang einer Adresse, oder `null`.
+ *
+ * `null` heisst "nicht geteilt, nicht bekannt, oder abgeschaltet", und der
+ * Aufrufer tut dann genau das, was er ohne diese Funktion getan haette. Drei
+ * Antworten waeren hier zu viel: es gibt nichts zu melden, es gibt nur etwas
+ * zu benutzen oder nicht.
+ */
+function geteilterDreiklang(url, t) {
+  if (!GETEILTER_VORRAT_AN) return null
+  // Schon ein geteilter Dreiklang? Dann nicht zweimal umrechnen.
+  if (t.raum === "geteilt") return null
+  if (!istGeteilteDatei(url)) return null
+  const sha = shaZuAdresse.get(ohneAbfrage(url))
+  if (!sha) return null
+  /*
+   * NUR DER DATEINAME, UND ER MUSS DIE FORM DER ROUTE TRAGEN.
+   *
+   * Der Pfad einer geteilten Datei ist `map_assets/<name>`, also zweiteilig.
+   * Die Route am Tor laesst GENAU fuenf Segmente zu, und der serverseitige
+   * Durchgang legt unter `geteilt/<sha256>/<basename>` ab. Beide nehmen den
+   * Basisnamen, also nimmt diese Stelle ihn auch; eine dritte Lesart waere eine
+   * Adresse, die niemand findet.
+   *
+   * ZWEI DATEIEN MIT DEMSELBEN BASISNAMEN KOLLIDIEREN NICHT, und das ist kein
+   * Zufall: bei gleicher Pruefsumme sind sie byteweise identisch, und bei
+   * verschiedener Pruefsumme sind die Adressen verschieden.
+   *
+   * Die FORM wird geprueft und nicht vorausgesetzt. Ein Name mit einem
+   * Leerzeichen oder einem Nicht-ASCII-Zeichen kommt am Tor als 400 zurueck,
+   * und bei einem Zweifel bleibt es beim Kartenschluessel: lieber zweimal
+   * gehalten als einmal unerreichbar. Dieselbe Positivliste steht in
+   * `lib/geteilt-mirror-gate.php`, `geteilt_mirror_name_ok`.
+   */
+  const name = String(t.pfad).split("/").pop()
+  if (!name || name.length > 200 || !/^[A-Za-z0-9._-]+$/.test(name)) return null
+  if (name[0] === ".") return null
+  return { raum: "geteilt", release: GETEILT_RAUM, variant: sha, pfad: name }
+}
+
+/**
  * Exportiert seit dem 05.11.2026. Wer eine Adresse melden oder ablegen will,
  * nimmt DIESE Form: sie traegt den Streamschluessel nicht.
  */
@@ -426,8 +509,10 @@ export function vorratsSchluessel(url) {
   if (s.startsWith(VORRAT_URSPRUNG)) return s
   const t = zerlegeAdresse(s)
   if (!t) return s
-  const pfad = t.pfad.split("/").map(encodeURIComponent).join("/")
-  return `${VORRAT_URSPRUNG}/a/${encodeURIComponent(t.release)}/${encodeURIComponent(t.variant)}/${pfad}`
+  const g = geteilterDreiklang(s, t)
+  const quelle = g || t
+  const pfad = quelle.pfad.split("/").map(encodeURIComponent).join("/")
+  return `${VORRAT_URSPRUNG}/a/${encodeURIComponent(quelle.release)}/${encodeURIComponent(quelle.variant)}/${pfad}`
 }
 
 /** Der Rueckweg: Vorratsschluessel zur Toradresse von HEUTE. */
