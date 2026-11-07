@@ -86,6 +86,9 @@
 
 import { assetUrl, KREATUR_PRAEFIX, streamKey, zerlegeAdresse } from "./stream-settings.mjs"
 import { headCheck } from "../beneos-asset-watcher.js"
+// Seit 2026-11-08 geteilt mit `stream-karten.mjs`. Die Begruendung steht im
+// Kopf von `stream-merker.mjs`: zwei Kopien gehen nicht zugleich mit.
+import { einmal, frisch, merken, ohneAbfrage } from "./stream-merker.mjs"
 
 /**
  * Wie lange eine Antwort gilt.
@@ -111,16 +114,6 @@ const FRIST_PLATTE_MS = 60 * 1000
  */
 const STUMMEL_MAX_BYTES = 8
 
-/**
- * Obergrenze je Karte, mit Verdraengung der aeltesten Eintraege.
- *
- * Ohne sie waechst der Zwischenspeicher ueber die Sitzung, und zwar nicht
- * theoretisch: Tokenpfade tragen im Bestand mitunter einen Cache-Brecher, also
- * bekaeme dieselbe Datei je Abruf einen neuen Eintrag. Deshalb faellt der
- * Abfrageteil zusaetzlich aus dem Schluessel.
- */
-const KARTE_MAX = 400
-
 const STILE = { tokenized: "tokenized", topdown: "topdown" }
 const ENDUNG = { topdown: "-top.webp", tokenized: "-token.webp" }
 
@@ -128,52 +121,6 @@ const ENDUNG = { topdown: "-top.webp", tokenized: "-token.webp" }
 const listen = new Map()
 /** pfad -> { stand, wert } ; Ergebnis der Plattenprobe, `null` heisst offen. */
 const platte = new Map()
-/** Laufende Abrufe, damit zehn Kacheln einer Kreatur EINEN Abruf teilen. */
-const laufend = new Map()
-
-function frisch(eintrag, frist) {
-  return !!eintrag && (Date.now() - eintrag.stand) < frist
-}
-
-/** Setzen samt Abraeumen und Deckel. `frisch()` liest nur, es loescht nicht. */
-function merken(karte, schluessel, wert, frist) {
-  const jetzt = Date.now()
-  for (const [k, e] of karte) {
-    if ((jetzt - e.stand) >= frist) karte.delete(k)
-  }
-  while (karte.size >= KARTE_MAX) {
-    const aeltester = karte.keys().next().value
-    if (aeltester === undefined) break
-    karte.delete(aeltester)
-  }
-  karte.set(schluessel, { stand: jetzt, wert })
-  return wert
-}
-
-/**
- * Ein Abruf je Schluessel, auch wenn zehn Aufrufer gleichzeitig fragen.
- *
- * Der Zwischenspeicher legt das ERGEBNIS ab, nicht das Versprechen. Solange
- * noch keine Antwort liegt, wuerde jede Variantenkachel ihren eigenen Abruf
- * starten; `#probeVariantTopAssets()` faechert mit `Promise.allSettled` ueber
- * alle Kacheln einer Kreatur gleichzeitig auf, das waeren fuenf Abrufe
- * derselben Datei. Deshalb liegt das laufende Versprechen hier daneben.
- */
-function einmal(schluessel, arbeit) {
-  const schon = laufend.get(schluessel)
-  if (schon) return schon
-  const lauf = (async () => {
-    try { return await arbeit() } finally { laufend.delete(schluessel) }
-  })()
-  laufend.set(schluessel, lauf)
-  return lauf
-}
-
-/** Der Abfrageteil gehoert nicht zur Identitaet einer Datei. */
-function ohneAbfrage(pfad) {
-  return String(pfad || "").split("?")[0].split("#")[0]
-}
-
 /**
  * Aus einem Bildpfad die Kreatur lesen.
  *

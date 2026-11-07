@@ -939,12 +939,13 @@ export function maxConcurrent() {
 }
 
 /**
- * ZWEI ADRESSFORMEN, UND DER PRAEFIX ENTSCHEIDET.
+ * DREI ADRESSFORMEN, UND DER PRAEFIX ENTSCHEIDET.
  *
  * Eine Karte liegt unter `/a/<schluessel>/<release>/<variante>/<pfad>`, eine
- * Kreatur unter `/c/<schluessel>/<release>/<pfad>`. Der Unterschied ist nicht
- * Geschmack: eine Karte gibt es in 4K und HD, eine Kreatur nicht. Was es nicht
- * gibt, bekommt auch kein leeres Pfadstueck.
+ * Kreatur unter `/c/<schluessel>/<release>/<pfad>`, ein Gegenstand oder Zauber
+ * unter `/l/<schluessel>/<release>/<pfad>`. Der Unterschied ist nicht
+ * Geschmack: eine Karte gibt es in 4K und HD, eine Kreatur nicht, Beute auch
+ * nicht. Was es nicht gibt, bekommt auch kein leeres Pfadstueck.
  *
  * Die Zuordnung haengt am Namen des Releases und an nichts sonst. Genauso
  * entscheidet es das Tor, dort heisst dieselbe Pruefung `istKreatur` und
@@ -957,6 +958,28 @@ export const KREATUR_PRAEFIX = "beneos_ct_"
 /** Gehoert dieses Release in den Kreaturenraum? Nur der Praefix zaehlt. */
 export function istKreatur(release) {
   return String(release || "").startsWith(KREATUR_PRAEFIX)
+}
+
+/**
+ * DER BEUTERAUM: GEGENSTAENDE UND ZAUBER, seit 2026-11-08.
+ *
+ * EIN PRAEFIX FUER BEIDE ARTEN, Betreiberentscheid vom 07.11.2026. Die
+ * Inhaltsart steht im Ordner INNERHALB des Release und nicht im Releasenamen,
+ * also gibt es hier einen Praefix und nicht zwei. Dieselbe Zeichenkette steht
+ * an zwei weiteren Stellen, und alle drei muessen zugleich mitgehen:
+ *
+ *   Tor    `beneos-stream-worker/src/index.js`, `BEUTE_PRAEFIX`
+ *   Cloud  `database-manager.php`, `DatabaseManager::STREAM_BEUTE_PRAEFIX`
+ *
+ * Weicht eine ab, bekommt ein Kunde entweder nichts oder zu viel: das Tor
+ * weist den Namen seinem Raum nicht mehr zu, und auf der meldenden Stufe des
+ * Riegels waere er damit ueber die Kartenroute erreichbar.
+ */
+export const BEUTE_PRAEFIX = "beneos_lt_"
+
+/** Gehoert dieses Release in den Beuteraum? Nur der Praefix zaehlt. */
+export function istBeute(release) {
+  return String(release || "").startsWith(BEUTE_PRAEFIX)
 }
 
 /**
@@ -974,6 +997,11 @@ export function assetUrl(release, variant, path) {
   const schluessel = encodeURIComponent(streamKey())
   if (istKreatur(release)) {
     return `${kopf}/c/${schluessel}/${encodeURIComponent(release)}/${clean}`
+  }
+  // Beute hat so wenig eine Variante wie eine Kreatur: die Rolle steht im
+  // Dateinamen (`<kennung>-front.webp`). Vier Segmente, genau wie `/c/`.
+  if (istBeute(release)) {
+    return `${kopf}/l/${schluessel}/${encodeURIComponent(release)}/${clean}`
   }
   return `${kopf}/a/${schluessel}/${encodeURIComponent(release)}/${encodeURIComponent(variant)}/${clean}`
 }
@@ -1031,6 +1059,22 @@ export function zerlegeAdresse(url) {
     if (teile[0] === "c" && teile.length >= 4) {
       return {
         raum: "kreatur",
+        release: decodeURIComponent(teile[2]),
+        variant: "",
+        pfad: teile.slice(3).map(decodeURIComponent).join("/"),
+      }
+    }
+    // /l/<schluessel>/<release>/<pfad...>, also ebenfalls mindestens vier.
+    //
+    // DER RAUM WIRD AM BUCHSTABEN GELESEN UND NICHT AM RELEASENAMEN, und das
+    // ist hier wichtiger als bei den Kreaturen. Diese Funktion heilt
+    // Vorratseintraege, die unter einer FRUEHEREN Basisadresse angelegt
+    // wurden; wer den Raum stattdessen aus dem Praefix erraete, muesste das
+    // Praefix kennen, und dann waere eine Umbenennung des Praefix ein
+    // unlesbarer Vorrat statt einer Fehlermeldung.
+    if (teile[0] === "l" && teile.length >= 4) {
+      return {
+        raum: "beute",
         release: decodeURIComponent(teile[2]),
         variant: "",
         pfad: teile.slice(3).map(decodeURIComponent).join("/"),
