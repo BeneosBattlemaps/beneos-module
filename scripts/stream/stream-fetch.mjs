@@ -21,7 +21,7 @@
  */
 
 import { assetUrl, budgetFor, downloadMode, localCacheEnabled, maxConcurrent, MODULE_ID, streamEnabled, streamHost, streamMode, zerlegeAdresse } from "./stream-settings.mjs"
-import { reportFailure, reportedSoFar } from "./stream-report.mjs"
+import { ohneSchluessel, ohneSchluesselImText, reportFailure, reportedSoFar } from "./stream-report.mjs"
 import { isOffline, noteResult } from "./stream-online.mjs"
 
 const CACHE_NAME = "beneos-stream-v1"
@@ -269,7 +269,15 @@ const failures = []
 function count(reason, url) {
   counts[reason] = (counts[reason] || 0) + 1
   if (reason !== "ok" && url && failures.length < FAILURE_LOG_MAX) {
-    failures.push({ reason, url })
+    // Maskiert, nicht roh. `diagnose()` gibt diese Liste unveraendert heraus,
+    // und sie landet damit in jeder Mitschrift, die jemand aus der Konsole
+    // kopiert. Gemessen am 07.11.2026 als zweite Fundstelle zu OP-PRJ-169.
+    //
+    // Es geht dabei nichts verloren, was hier gebraucht wird: Release,
+    // Variante und Pfad bleiben lesbar, nur das Schluesselstueck wird ein
+    // Bindestrich. Niemand im Bestand liest diese Adresse, um sie erneut
+    // abzurufen; nachgesehen, `diagnose()` hat keinen Aufrufer im Modul.
+    failures.push({ reason, url: ohneSchluessel(url) })
   }
 }
 
@@ -1322,6 +1330,57 @@ export async function alleImSpeicher(urls) {
     return { umgezogen, gescheitert, bytes }
   }
 
+  /**
+   * Die Konsole bekommt eine Huelle, die das Schluesselstueck herausnimmt.
+   *
+   * Der Anlass liegt NICHT im Modul. Gemessen am 05.11.2026 schreibt der Kern
+   * jede geladene Textur als `Loaded <Adresse> (x%)`, fuenf Zeilen je
+   * Szenenladung, und bei einer gestreamten Karte steht dort die vollstaendige
+   * Toradresse samt Schluessel. Damit liegt er in jedem Screenshot der Konsole
+   * und in jedem Fehlerbericht, den ein Kunde dem Support schickt.
+   *
+   * Die Anweisung lautete "Protokollstufe senken", und diesen Schalter gibt es
+   * nicht: gemessen am 07.11.2026 ist die Zeile ein nackter `console.log` in
+   * der privaten Methode `TextureLoader.#onProgress` (`foundry.mjs:84288`),
+   * ohne Bedingung und ohne Feld in `CONFIG.debug.loader`, das sie erreicht.
+   * Der einzige wirksame Schalter waere `displayProgress: false`, und
+   * `loadSceneTextures` gibt ihn nicht durch. Bleibt die Huelle.
+   *
+   * Fuenf Kanaele und nicht zwei. Gemessen sind `console.log` und die
+   * Schwesterzeile bei Fehlschlaegen; das Ziel ist aber, dass der Schluessel in
+   * KEINER Konsolenausgabe steht, und der Preis dafuer ist eine
+   * Teilstring-Probe je Aufruf.
+   *
+   * Nur Zeichenketten werden angefasst. Ein Objekt bleibt, wie es ist: wer es
+   * in einen Text verwandelt, bekommt `[object Object]` und keine Adresse, und
+   * wer eine Adresse in einem Objektfeld mitgibt, wird hier NICHT maskiert.
+   * Das ist die bekannte Luecke dieser Huelle und steht so im Prueffall.
+   *
+   * Unbedingt, nicht an `streamEnabled()`. Erstens laeuft diese Funktion nur im
+   * Streambetrieb ueberhaupt an, zweitens traegt eine frisch eingeschaltete
+   * Welt ihren Schluessel erst nach dem `ready`-Haken, und drittens kostet die
+   * Maskierung ohne Toradresse im Text nichts.
+   */
+  let konsoleGehuellt = false
+
+  function huelleKonsole() {
+    if (konsoleGehuellt) return
+    konsoleGehuellt = true
+    for (const art of ["log", "warn", "info", "debug", "error"]) {
+      const urspruenglich = console[art]
+      if (typeof urspruenglich !== "function") continue
+      console[art] = function (...args) {
+        try {
+          return urspruenglich.apply(console, args.map(
+            (a) => (typeof a === "string" ? ohneSchluesselImText(a) : a)))
+        } catch (_) {
+          // Eine Huelle, die wirft, darf keine Ausgabe verschlucken.
+          return urspruenglich.apply(console, args)
+        }
+      }
+    }
+  }
+
   export function installStreamFetch() {
     // Am Modus, nicht an streamEnabled(). Letzteres verlangt bereits einen
     // Schluessel, und den holt sich eine frisch eingeschaltete Welt erst im
@@ -1337,6 +1396,10 @@ export async function alleImSpeicher(urls) {
     // in einem Dokument.
     if (installed || !streamMode()) return
     installed = true
+
+    // Vor allem anderen, damit auch die Zeilen dieses Einbaus schon maskiert
+    // durchlaufen.
+    huelleKonsole()
 
     // Images arrive through a worker thread unless this is off. See the file
     // comment: this is the condition, not a tuning knob.
@@ -1718,7 +1781,7 @@ export async function alleImSpeicher(urls) {
         const fault = response.headers.get("x-beneos-fault")
         if (fault) {
           count(`fault:${fault}`, url)
-          console.warn(`Beneos Stream | injected fault "${fault}": ${url}`)
+          console.warn(`Beneos Stream | injected fault "${fault}": ${ohneSchluessel(url)}`)
         }
       }
 

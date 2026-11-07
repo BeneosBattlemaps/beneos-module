@@ -40,13 +40,47 @@ import { isOffline } from "./stream-online.mjs"
  * dasselbe fuer die Ablage und traegt dort noch einen eigenen Ursprung, weil ein
  * Vorratsschluessel einen Schluesselwechsel ueberleben muss.
  */
-function ohneSchluessel(url) {
+export function ohneSchluessel(url) {
   const roh = String(url || "").split("?")[0]
   const t = zerlegeAdresse(roh)
   if (!t) return roh
   const raum = t.raum === "kreatur" ? "c" : "a"
   const mitte = t.variant ? `${t.release}/${t.variant}` : t.release
   return `${streamBase()}/${raum}/-/${mitte}/${t.pfad}`
+}
+
+/**
+ * Dasselbe fuer FLIESSTEXT, in dem eine Toradresse irgendwo drinsteht.
+ *
+ * Warum es zwei Formen braucht und das trotzdem EINE Regel ist: `ohneSchluessel`
+ * bekommt eine Adresse und baut sie ueber `zerlegeAdresse` kanonisch neu auf.
+ * Diese hier bekommt einen Satz wie `Loaded https://.../a/<schluessel>/... (50%)`
+ * und darf den Satz nicht antasten, nur das Schluesselstueck darin. Beide
+ * stuetzen sich auf dieselben zwei Tatsachen, und mehr sind es nicht: der Host
+ * steht in `streamBase()`, und der Raum ist `a` oder `c`. Eine dritte Regel
+ * entsteht dadurch nicht.
+ *
+ * Der Host ist Teil des Musters und nicht Zierwerk. Ohne ihn wuerde `/a/x/` in
+ * jedem fremden Text getroffen, etwa in einem Dateipfad des Kunden.
+ *
+ * Zuerst eine billige Teilstring-Probe, weil diese Funktion an `console.log`
+ * haengt und damit an einer der heissesten Stellen des Browsers. Erst wenn
+ * `/a/` oder `/c/` ueberhaupt vorkommt, wird die Einstellung gelesen.
+ */
+const maskeCache = { basis: null, muster: null }
+
+export function ohneSchluesselImText(text) {
+  const s = String(text)
+  if (!s.includes("/a/") && !s.includes("/c/")) return s
+  let basis = ""
+  try { basis = String(streamBase() || "") } catch (_) { return s }
+  if (!basis) return s
+  if (maskeCache.basis !== basis) {
+    maskeCache.basis = basis
+    const roh = basis.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    maskeCache.muster = new RegExp(`${roh}/(a|c)/[^/\\s"'<>]+`, "g")
+  }
+  return s.replace(maskeCache.muster, (_, raum) => `${basis}/${raum}/-`)
 }
 
 // One report per address per session. A broken scene would otherwise send one
