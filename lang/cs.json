@@ -699,6 +699,8 @@
   "BENEOS.AssetWatcher.Repair.ScopeChoose": "Vyber, co opravit:",
   "BENEOS.AssetWatcher.Repair.ScopeThisScene": "Pouze tato scéna ({count} poškozených odkazů)",
   "BENEOS.AssetWatcher.Repair.ScopeEntireWorld": "Celý svět (prohledat všechny scény, aktéry, deníky, playlisty, tabulky)",
+  "BENEOS.AssetWatcher.Repair.ScopePacks": "Prohledat také kompendia Beneos",
+  "BENEOS.AssetWatcher.Repair.ScopePacksHint": "Potřeba jen tehdy, když ve světě není nic rozbité a přesto chybí obrázek bytosti, předmětu nebo kouzla. Otevře všechna čtyři kompendia Beneos a může to trvat asi minutu.",
   "BENEOS.AssetWatcher.Repair.ButtonScan": "Skenovat",
   "BENEOS.AssetWatcher.Repair.ButtonCancel": "Zrušit",
   "BENEOS.AssetWatcher.Repair.Scanning": "Skenování souborového systému pro odpovídající umístění…",

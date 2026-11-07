@@ -699,6 +699,8 @@
   "BENEOS.AssetWatcher.Repair.ScopeChoose": "Escolha o que reparar:",
   "BENEOS.AssetWatcher.Repair.ScopeThisScene": "Apenas esta cena ({count} referência(s) quebrada(s))",
   "BENEOS.AssetWatcher.Repair.ScopeEntireWorld": "Mundo inteiro (escanear todas as cenas, atores, diários, playlists, tabelas)",
+  "BENEOS.AssetWatcher.Repair.ScopePacks": "Pesquisar também os compêndios Beneos",
+  "BENEOS.AssetWatcher.Repair.ScopePacksHint": "Só é necessário quando nada no seu mundo está quebrado e ainda assim falta a imagem de uma criatura, de um item ou de uma magia. Abre todos os quatro compêndios Beneos e pode levar cerca de um minuto.",
   "BENEOS.AssetWatcher.Repair.ButtonScan": "Escanear",
   "BENEOS.AssetWatcher.Repair.ButtonCancel": "Cancelar",
   "BENEOS.AssetWatcher.Repair.Scanning": "Escaneando o sistema de arquivos em busca de locais correspondentes…",

@@ -442,6 +442,49 @@ const _journalRefs = (journal) => {
   return out;
 };
 
+/**
+ * Die Beneos-Pfade eines Gegenstands oder Zaubers.
+ *
+ * WARUM ES DIESEN SAMMLER VORHER NICHT GAB: die Weltsuche liest Scene, Actor,
+ * Journal, Playlist und Table, aber keine Items. Ein Gegenstand in der Welt
+ * kommt immer ueber einen Actor mit (`_actorRefs` geht `actor.items` ab), und
+ * ein freistehender Weltgegenstand mit Beneos-Bild war kein gemessener Fall.
+ *
+ * Mit `OP-PRJ-194` kommen die Kompendien `world.beneos_module_items` und
+ * `world.beneos_module_spells` dazu, und deren Dokumente stehen in keinem
+ * Actor. Ohne diesen Sammler lieferten die beiden Kompendien null Treffer, und
+ * der neue Knopf wuerde achtzig Sekunden kosten, um die Haelfte zu finden. Das
+ * ist dieselbe Klasse wie ein Waechter, der nur eine Richtung fragt.
+ *
+ * Die drei Stellen sind die des Gegenstandsbestands: das Symbol, die Symbole
+ * seiner Effekte, und die eingebetteten Adressen in der Beschreibung, wo die
+ * Klappkarten stehen.
+ */
+const _itemRefs = (item) => {
+  const out = [];
+  if (isBeneosPath(item.img)) {
+    out.push(_ref(item.img, "item-img", "Item", item, "img"));
+  }
+  for (const eff of item.effects ?? []) {
+    const effPath = eff.img ?? eff.icon;
+    const effField = eff.img ? "img" : "icon";
+    if (isBeneosPath(effPath)) {
+      out.push(_ref(effPath, "item-effect-icon", "ActiveEffect", eff, effField, "Item", item));
+    }
+  }
+  const html = item.system?.description?.value;
+  if (typeof html === "string" && html.length > 0) {
+    const re = /<(?:img|video|source|audio)\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi;
+    let m;
+    while ((m = re.exec(html)) !== null) {
+      if (isBeneosPath(m[1])) {
+        out.push(_ref(m[1], "item-description", "Item", item, "system.description.value"));
+      }
+    }
+  }
+  return out;
+};
+
 const _playlistRefs = (playlist) => {
   const out = [];
   for (const s of playlist.sounds ?? []) {
@@ -885,7 +928,49 @@ const scanAllScenes = async () => {
 // world" scope — it gives us Beneos ref coverage for every entity type
 // (scene-only scanAllScenes() above misses actor-embedded paths like
 // item icons, which user reported as W2-7 gap).
-const scanAllEntities = async (onProgress) => {
+/**
+ * Die vier Beneos-Kompendien als Sammlungen, Dokumente inbegriffen.
+ *
+ * SIE KOSTEN VIEL UND DESHALB NUR AUF WUNSCH. Gemessen am 06.11.2026 am
+ * Teststand 30003 mit 239 Kreaturen und 233 Journalen: `getDocuments()` ueber
+ * alle vier kostet 79,6 Sekunden. Der Knopf im Reparaturfenster steht deshalb
+ * auf aus, Betreiberentscheid 07.11.2026, `OP-PRJ-194`.
+ *
+ * DIE ZAHL FUER DEN FORTSCHRITT KOMMT AUS DEM INDEX und nicht aus den
+ * Dokumenten. `pack.index` steht seit dem Weltstart und kostet nichts;
+ * `getDocuments()` abzuwarten, nur um die Gesamtzahl zu kennen, wuerde die
+ * Anzeige erst nach der Wartezeit ermoeglichen.
+ *
+ * EIN FEHLENDES KOMPENDIUM IST KEIN FEHLER. Eine Welt ohne installierte
+ * Kreaturen hat keines.
+ */
+const BENEOS_PACKS = [
+  { id: "world.beneos_module_actors",  type: "Actor",   refs: _actorRefs },
+  { id: "world.beneos_module_journal", type: "Journal", refs: _journalRefs },
+  { id: "world.beneos_module_items",   type: "Item",    refs: _itemRefs },
+  { id: "world.beneos_module_spells",  type: "Spell",   refs: _itemRefs }
+];
+
+const _beneosPackSammlungen = async (onProgress, schonGezaehlt, gesamt) => {
+  const raus = [];
+  let bei = schonGezaehlt;
+  for (const spec of BENEOS_PACKS) {
+    const pack = game.packs?.get(spec.id);
+    if (!pack) continue;
+    try {
+      // GEMELDET WIRD VOR DEM LADEN. Dort liegt die Wartezeit, und eine
+      // Meldung danach kaeme nach ihr.
+      try { onProgress?.({ current: bei, total: gesamt, label: `${spec.type}: ${spec.id}` }); } catch (_e) {}
+      raus.push({ type: spec.type, coll: await pack.getDocuments(), refs: spec.refs });
+      bei += pack.index?.size ?? 0;
+    } catch (e) {
+      WARN(`Kompendium ${spec.id} nicht lesbar:`, e);
+    }
+  }
+  return raus;
+};
+
+const scanAllEntities = async (onProgress, { kompendien = false } = {}) => {
   if (!game.user?.isGM) return null;
   const collections = [
     { type: "Scene",    coll: game.scenes ?? [],    refs: _sceneRefs },
@@ -894,7 +979,17 @@ const scanAllEntities = async (onProgress) => {
     { type: "Playlist", coll: game.playlists ?? [], refs: _playlistRefs },
     { type: "Table",    coll: game.tables ?? [],    refs: _tableRefs }
   ];
-  const total = collections.reduce((s, c) => s + (c.coll.size ?? c.coll.length ?? 0), 0);
+  // Die Gesamtzahl steht VOR dem Laden fest, aus dem Index. Sonst sprang die
+  // Fortschrittszeile nach achtzig Sekunden von 100 auf die Haelfte zurueck.
+  let zusatz = 0;
+  if (kompendien) {
+    for (const spec of BENEOS_PACKS) zusatz += game.packs?.get(spec.id)?.index?.size ?? 0;
+  }
+  const weltZahl = collections.reduce((s, c) => s + (c.coll.size ?? c.coll.length ?? 0), 0);
+  const total = weltZahl + zusatz;
+  if (kompendien) {
+    collections.push(...await _beneosPackSammlungen(onProgress, weltZahl, total));
+  }
   let current = 0;
   const allRefs = [];
   for (const spec of collections) {
@@ -909,19 +1004,24 @@ const scanAllEntities = async (onProgress) => {
     }
   }
   if (!allRefs.length) {
-    if (globalThis.BeneosUtility?.isDebug?.()) console.log(`Beneos AssetWatcher | world scan — 0 Beneos refs found across all entities`);
-    return { totalRefs: 0, totalMissing: 0, refs: [], missingRefs: [], missing: [] };
+    if (globalThis.BeneosUtility?.isDebug?.()) console.log(`Beneos AssetWatcher | world scan: 0 Beneos refs found across all entities, Kompendien ${kompendien ? "mit" : "ohne"}`);
+    return { totalRefs: 0, totalMissing: 0, refs: [], missingRefs: [], missing: [], kompendien: Boolean(kompendien) };
   }
   const probed = await _probeRefs(allRefs);
   const missingRefs = probed.filter(r => !r.ok);
   const missing = [...new Set(missingRefs.map(r => r.path))];
-  if (globalThis.BeneosUtility?.isDebug?.()) console.log(`Beneos AssetWatcher | world scan — ${allRefs.length} refs collected, ${missingRefs.length} missing`);
+  if (globalThis.BeneosUtility?.isDebug?.()) console.log(`Beneos AssetWatcher | world scan: ${allRefs.length} refs collected, ${missingRefs.length} missing, Kompendien ${kompendien ? "mit" : "ohne"}`);
   return {
     totalRefs: allRefs.length,
     totalMissing: missingRefs.length,
     refs: probed,
     missingRefs,
-    missing
+    missing,
+    // OB DIE KOMPENDIEN DABEI WAREN, gehoert in den Bericht. Ein Lauf mit 0
+    // Treffern ist sonst nicht von einem Lauf zu unterscheiden, der sie nie
+    // geoeffnet hat, und genau diese Unterscheidung ist der Inhalt von
+    // `OP-PRJ-194`.
+    kompendien: Boolean(kompendien)
   };
 };
 

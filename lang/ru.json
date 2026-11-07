@@ -701,6 +701,8 @@
   "BENEOS.AssetWatcher.Repair.ScopeChoose": "Выберите, что исправить:",
   "BENEOS.AssetWatcher.Repair.ScopeThisScene": "Только эту сцену ({count} нарушенная(е) ссылка(и))",
   "BENEOS.AssetWatcher.Repair.ScopeEntireWorld": "Весь мир (сканировать все сцены, актёров, журналы, плейлисты, таблицы)",
+  "BENEOS.AssetWatcher.Repair.ScopePacks": "Искать также в компендиумах Beneos",
+  "BENEOS.AssetWatcher.Repair.ScopePacksHint": "Нужно только тогда, когда в мире ничего не повреждено, но при этом отсутствует изображение существа, предмета или заклинания. Открываются все четыре компендиума Beneos, это может занять около минуты.",
   "BENEOS.AssetWatcher.Repair.ButtonScan": "Сканировать",
   "BENEOS.AssetWatcher.Repair.ButtonCancel": "Отменить",
   "BENEOS.AssetWatcher.Repair.Scanning": "Сканирование файловой системы в поиске совпадающих расположений…",

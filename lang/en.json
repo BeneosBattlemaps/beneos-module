@@ -701,6 +701,8 @@
   "BENEOS.AssetWatcher.Repair.ScopeChoose": "Choose what to repair:",
   "BENEOS.AssetWatcher.Repair.ScopeThisScene": "This scene only ({count} broken reference(s))",
   "BENEOS.AssetWatcher.Repair.ScopeEntireWorld": "Entire world (scan all scenes, actors, journals, playlists, tables)",
+  "BENEOS.AssetWatcher.Repair.ScopePacks": "Also search the Beneos compendiums",
+  "BENEOS.AssetWatcher.Repair.ScopePacksHint": "Only needed when nothing in your world is broken and a creature, item or spell picture is missing. It opens all four Beneos compendiums and can take about a minute.",
   "BENEOS.AssetWatcher.Repair.ButtonScan": "Scan",
   "BENEOS.AssetWatcher.Repair.ButtonCancel": "Cancel",
   "BENEOS.AssetWatcher.Repair.Scanning": "Scanning filesystem for matching locations…",

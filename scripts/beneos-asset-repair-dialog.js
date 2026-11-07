@@ -130,11 +130,30 @@ export class BeneosRepairDialog {
         <span>${escapeHtml(worldLabel)}</span>
       </label>`;
 
+    // DER KNOPF FUER DIE KOMPENDIEN, und er steht AUS.
+    //
+    // Gemessen am 06.11.2026 am Teststand 30003 mit 239 Kreaturen und 233
+    // Journalen: die vier Beneos-Kompendien zu laden kostet 79,6 Sekunden. Die
+    // Lage, in der es sich lohnt, ist selten: in der Welt darf GAR NICHTS
+    // kaputt sein und gleichzeitig eine Kompendiumdatei fehlen. Steht in der
+    // Welt auch nur eine kaputte Stelle, laeuft das Fenster durch, und der
+    // Nachtrag in Phase D findet die Kompendiumstelle ohnehin, weil er die
+    // gesuchten Pfade dann schon kennt.
+    //
+    // Betreiberentscheid 07.11.2026, `OP-PRJ-194`: eigener Knopf, Vorgabe aus.
+    // Damit zahlt nur, wer ihn drueckt.
+    const packRow = `<label class="beneos-aw-report-row">
+        <input type="checkbox" name="beneos-repair-packs">
+        <span>${escapeHtml(_l("BENEOS.AssetWatcher.Repair.ScopePacks"))}</span>
+      </label>
+      <p class="notes">${escapeHtml(_l("BENEOS.AssetWatcher.Repair.ScopePacksHint"))}</p>`;
+
     const content = `
       <p>${escapeHtml(intro)}</p>
       <p><strong>${escapeHtml(_l("BENEOS.AssetWatcher.Repair.ScopeChoose"))}</strong></p>
       ${sceneRow}
       ${worldRow}
+      ${packRow}
     `;
 
     const dlg = new Dialog({
@@ -148,7 +167,12 @@ export class BeneosRepairDialog {
             const root = html?.jquery ? html[0] : html;
             const picked = root?.querySelector?.('input[name="beneos-repair-scope"]:checked');
             const scope = picked?.value ?? (hasScene ? "scene" : "world");
-            this._runScan({ scene, missingPaths, missingRefs, scope });
+            // Der Haken wirkt nur im Weltumfang. Bei einer einzelnen Szene gibt
+            // es keine Kompendiumfrage, und ihn dort wirken zu lassen hiesse,
+            // achtzig Sekunden fuer eine Suche zu zahlen, die eine Szene meint.
+            const packs = scope === "world"
+              && Boolean(root?.querySelector?.('input[name="beneos-repair-packs"]')?.checked);
+            this._runScan({ scene, missingPaths, missingRefs, scope, packs });
           }
         },
         cancel: {
@@ -164,7 +188,7 @@ export class BeneosRepairDialog {
   /* ------------------------------------------------------------ */
   /*  Phase B — Scan with progress                                */
   /* ------------------------------------------------------------ */
-  static async _runScan({ scene, missingPaths, missingRefs, scope }) {
+  static async _runScan({ scene, missingPaths, missingRefs, scope, packs = false }) {
     if (scope === "scene" && !scene) {
       ui.notifications?.warn(_l("BENEOS.AssetWatcher.Repair.MenuNoScene"));
       return;
@@ -194,9 +218,10 @@ export class BeneosRepairDialog {
         allMissingRefs = r.missingRefs ?? [];
         _updateProgress(1, 1, scene.name);
       } else if (scope === "world") {
+        if (packs) _showProgressHint(_l("BENEOS.AssetWatcher.Repair.ScopePacksHint"));
         const summary = await scanAllEntities((p) => {
           _updateProgress(p.current, p.total, p.label);
-        });
+        }, { kompendien: packs });
         allMissing = summary?.missing ?? [];
         allMissingRefs = summary?.missingRefs ?? [];
       }

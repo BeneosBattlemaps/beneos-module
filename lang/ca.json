@@ -699,6 +699,8 @@
   "BENEOS.AssetWatcher.Repair.ScopeChoose": "Tria què reparar:",
   "BENEOS.AssetWatcher.Repair.ScopeThisScene": "Només aquesta escena ({count} referència(es) trencada(es))",
   "BENEOS.AssetWatcher.Repair.ScopeEntireWorld": "Tot el món (escaneja totes les escenes, actors, diaris, llistes de reproducció, taules)",
+  "BENEOS.AssetWatcher.Repair.ScopePacks": "Cerca també als compendis de Beneos",
+  "BENEOS.AssetWatcher.Repair.ScopePacksHint": "Només cal quan res del teu món està trencat i tot i així falta la imatge d'una criatura, d'un objecte o d'un encanteri. Obre els quatre compendis de Beneos i pot trigar aproximadament un minut.",
   "BENEOS.AssetWatcher.Repair.ButtonScan": "Escanejar",
   "BENEOS.AssetWatcher.Repair.ButtonCancel": "Cancel·la",
   "BENEOS.AssetWatcher.Repair.Scanning": "Escanejant el sistema de fitxers per trobar ubicacions coincidents…",
