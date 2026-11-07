@@ -162,6 +162,26 @@ then
   done
 fi
 
+# Die Sprachwache, wenn eine Sprachdatei oder eine Streamvorlage angefasst
+# wird.
+#
+# WARUM SIE DAZUKOMMEN MUSSTE. Sie existiert seit dem 29.10.2026 und hing in
+# keinem Tor. Am 07.11.2026 kam ihre vierte Aussage dazu, naemlich dass jeder
+# Streamtext in der SCHREIBWEISE seiner Sprache steht; der Anlass waren 111
+# Werte in neun Sprachen, die die ausgeschriebene Form statt des
+# Sonderzeichens trugen, "waehrend" und "Qualitaet" im Deutschen, "conexion"
+# im Spanischen, "nao" im Portugiesischen. Kein Lauf war deswegen rot, weil
+# niemand nachsah.
+#
+# Sie kostet gemessen unter einer Sekunde, kein Netz, kein Foundry.
+if git diff --cached --name-only --diff-filter=ACM \
+     -- lang templates/stream tools/stream-sprachen-bench \
+   | grep -q .
+then
+  meld "pre-commit: Sprachdateien vorgemerkt, die Sprachwache laeuft mit"
+  fahre "tools/stream-sprachen-bench/bench.mjs" "stream-sprachen-bench, 14 Saetze"
+fi
+
 # Die teure nur, wenn ihr Gegenstand angefasst wird.
 if git diff --cached --name-only --diff-filter=ACM \
      -- scripts/beneos_search_engine.js scripts/beneos_utility.js \
