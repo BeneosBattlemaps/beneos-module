@@ -5,7 +5,7 @@ import { BeneosInfoBox } from "./beneos_info_box.js"
 import { BeneosAnalytics } from "./beneos_analytics.js"
 import { normalizeEmbeddedItems } from "./cloud-v2/beneos-ability-icons.mjs"
 import { packNeedsV14Migration, migrateActorForV14 } from "./cloud-v2/beneos-v14-scene-migration.mjs"
-import { ansicht, posenliste, posenVergessen } from "./stream/stream-posen.mjs"
+import { ansichtGeprueft, posenliste, posenVergessen } from "./stream/stream-posen.mjs"
 import { assetUrl, KREATUR_PRAEFIX, lieferungStreamt, zerlegeAdresse } from "./stream/stream-settings.mjs"
 
 // FilePicker.upload(..., { notify: false }) used to swallow failures
@@ -1695,10 +1695,14 @@ export class BeneosCloud {
       let topSrc = null
       if (effectiveStyle === "topdown") {
         const protoSrc = actorForPlace?.prototypeToken?.texture?.src || ""
-        let auskunft = { zustand: null, src: null }
+        // Geprueft seit `OP-PRJ-172` am 07.11.2026, denn der Wurf schreibt ein
+        // Dokument. "Geprueft und falsch" braucht hier KEINEN eigenen Ausgang:
+        // der Rueckfall auf 2.5D ist bereits die richtige Antwort, und die
+        // Konsolenzeile nennt den Zustand mit.
+        let auskunft = { zustand: null, src: null, pruefung: null }
         try {
-          auskunft = await ansicht(protoSrc, "topdown")
-        } catch (e) { auskunft = { zustand: null, src: null } }
+          auskunft = await ansichtGeprueft(protoSrc, "topdown")
+        } catch (e) { auskunft = { zustand: null, src: null, pruefung: null } }
         topSrc = auskunft.src
         if (!topSrc) {
           // "gibt es nicht" und "nicht geprueft" fuehren hier zum selben
@@ -1706,6 +1710,7 @@ export class BeneosCloud {
           // ein 2.5D-Token ist der einzige Zustand, der sicher traegt.
           console.warn("[Beneos Cloud] Top-Down asset not usable for token", tokenKey,
             "variant", variantIdx, "state", String(auskunft.zustand),
+            "checksum", String(auskunft.pruefung),
             ", falling back to 2.5D for this drop")
           effectiveStyle = "tokenized"
         }

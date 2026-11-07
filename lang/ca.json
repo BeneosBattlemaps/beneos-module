@@ -1632,6 +1632,7 @@
   "BENEOS.TokenSwitchNoPermission": "Beneos: no tens permís per canviar aquest token.",
   "BENEOS.TokenMenu.TopDownNotInstalled": "Beneos: el recurs Top-Down no està instal·lat. Reinstal·la aquesta fitxa per recuperar-lo.",
   "BENEOS.TokenMenu.TopDownAssetMissing": "Falta l'asset Top-Down, fes clic o arrossega per tornar-lo a obtenir del núvol.",
+  "BENEOS.TokenMenu.ViewContentMismatch": "Aquesta vista no coincideix amb la seva suma de verificació i no s'ha aplicat. Informa d'aquesta criatura al suport de Beneos.",
   "BENEOS.TokenMenu.TopDownReinstallStarted": "Beneos: reinstal·lant la variant Top-Down del núvol…",
   "BENEOS.CreatureCodex.WindowTitle": "Codex de criatures",
   "BENEOS.CreatureCodex.Variants": "Variants",

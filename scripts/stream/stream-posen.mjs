@@ -251,15 +251,18 @@ async function liegtAufPlatte(pfad) {
  * @param {string} pfad   Ein bekannter Bildpfad derselben Kreatur und
  *                        Variante, oertlich oder als Toradresse.
  * @param {string} stil   `tokenized` oder `topdown`, die GESUCHTE Ansicht.
- * @returns {Promise<{zustand: boolean|null, src: string|null}>}
+ * @returns {Promise<{zustand: boolean|null, src: string|null, sha256: string|null}>}
  *          `zustand` ist `null`, wenn nicht geprueft werden konnte. `src` ist
  *          die Adresse, die geschrieben werden darf, und nur bei `true` gesetzt.
+ *          `sha256` ist die Soll-Pruefsumme aus der Liste, oder `null`: bei
+ *          einem oertlichen Pfad immer, und am Tor, solange der Durchgang die
+ *          Listen noch nicht neu geschrieben hat.
  */
 export async function ansicht(pfad, stil) {
   const ziel = stil === STILE.topdown ? STILE.topdown : STILE.tokenized
-  const offen = { zustand: null, src: null }
+  const offen = { zustand: null, src: null, sha256: null }
   const wer = kreaturAusPfad(pfad)
-  if (!wer) return { zustand: false, src: null }
+  if (!wer) return { zustand: false, src: null, sha256: null }
 
   // Die Adresse waehlt die Quelle, nicht die Einstellung. Begruendung im Kopf.
   if (wer.ueberTor) {
@@ -268,8 +271,16 @@ export async function ansicht(pfad, stil) {
     const eintrag = liste.tokenbilder?.[wer.variante]?.[ziel]
     // `null` steht ausdruecklich drin und heisst "gibt es nicht". Und der
     // Dateiname kommt aus der Liste, damit niemand ihn bildet.
-    if (!eintrag || !eintrag.pfad) return { zustand: false, src: null }
-    return { zustand: true, src: assetUrl(wer.release, "", eintrag.pfad) }
+    if (!eintrag || !eintrag.pfad) return { zustand: false, src: null, sha256: null }
+    return {
+      zustand: true,
+      src: assetUrl(wer.release, "", eintrag.pfad),
+      // Seit dem 07.11.2026 traegt die Liste je Ansicht eine `sha256`. Steht
+      // sie nicht drin, ist das Feld `null`, und das ist der Normalfall,
+      // solange der Volldurchgang die Listen nicht neu geschrieben hat.
+      sha256: typeof eintrag.sha256 === "string" && /^[a-f0-9]{64}$/.test(eintrag.sha256)
+        ? eintrag.sha256 : null,
+    }
   }
 
   // Oertlicher Pfad: die Platte entscheidet. Der Name entsteht hier weiter aus
@@ -280,10 +291,167 @@ export async function ansicht(pfad, stil) {
   const kandidat = rein.includes(ENDUNG[ziel])
     ? rein
     : (rein.includes(quelle) ? rein.replace(quelle, ENDUNG[ziel]) : null)
-  if (!kandidat) return { zustand: false, src: null }
+  if (!kandidat) return { zustand: false, src: null, sha256: null }
   const liegt = await liegtAufPlatte(kandidat)
   if (liegt === null) return offen
-  return { zustand: liegt, src: liegt ? kandidat : null }
+  // Oertlich gibt es keine Soll-Pruefsumme. Die Liste beschreibt den SPIEGEL,
+  // und was auf der Platte des Kunden liegt, hat sie nie gesehen.
+  return { zustand: liegt, src: liegt ? kandidat : null, sha256: null }
+}
+
+/**
+ * DIE GEGENPROBE AM INHALT, UND SIE HAT DREI ANTWORTEN.
+ *
+ * `OP-PRJ-172`, Betreiberentscheid vom 07.11.2026: es wird mit Pruefsummen
+ * gearbeitet, je Ansicht. Die billigere Variante mit der blossen Bytezahl ist
+ * ausdruecklich abgewaehlt.
+ *
+ * WAS SIE FAENGT. Die Posenliste ist eine Datendatei im Spiegel, ohne
+ * Signatur. Wer sie schreibt, waehlt damit die ausgelieferte Datei, ohne dass
+ * eine Zeile Code sich aendert. Haelt der Spiegel unter diesem Namen einen
+ * ANDEREN Inhalt als die Platte, bekommt der Kunde ein fremdes oder ein
+ * abgeschnittenes Bild, und zwar ohne Fehlermeldung: ein Bild mit falschem
+ * Inhalt ist ein gueltiges Bild. Dazu steuern die Masse in der Liste
+ * Skalierung und Ankerpunkt, ein getauschter Eintrag verzieht also auch die
+ * Figur.
+ *
+ * WAS SIE NICHT FAENGT, und das gehoert in denselben Absatz: Pfad und Summe
+ * entstehen auf dem Server in derselben Zeile aus derselben Datei. Gegen einen
+ * falschen EINTRAG ist sie kein Schutz. Eine Signatur ueber die Liste waere
+ * die dritte Fassung derselben Entscheidung und steht laut Bauplan
+ * ausdruecklich nicht zur Debatte.
+ *
+ * WARUM DREI ANTWORTEN UND NICHT ZWEI, gemessen am 07.11.2026:
+ * `crypto.subtle` liegt nur in einem SICHEREN KONTEXT. `http://localhost`
+ * gilt als sicher, `http://192.168.x.x` nicht, und ein Foundry im LAN ist
+ * genau das. Ein Kunde ohne HTTPS hat nichts falsch gemacht.
+ *
+ *   true    geprueft und gut
+ *   false   geprueft und falsch, es wird NICHTS geschrieben
+ *   null    nicht pruefbar, es laedt wie bisher und meldet sich EINMAL
+ *
+ * **Der Rueckfall prueft nicht mit der Bytezahl weiter.** Ein zweiter,
+ * schwaecherer Pruefweg waere eine zweite Wahrheit, und dann steht im
+ * Protokoll "geprueft", wo nur gezaehlt wurde.
+ *
+ * WARUM HIER UND NICHT IN DER ABRUFSCHICHT. `crypto.subtle.digest` hat keine
+ * Streaming-Schnittstelle: sie braucht die ganze Datei als EIN Stueck, also
+ * eine zweite Kopie im Speicher. Fuer eine Posenansicht ist das vertraeglich,
+ * gemessen 0,447 MB fuer die Draufsicht und 0,117 MB fuer 2.5D. Fuer ein
+ * Kartenvideo waere es es nicht, und `rumpfBeobachten()` in
+ * `stream-fetch.mjs` zaehlt die Bytes gerade deshalb im Durchfluss, ohne sie
+ * zu halten. Die Pruefung darf also nicht dorthin wandern, auch wenn sie
+ * technisch hineinpasst.
+ */
+const geprueft = new Map()
+let nichtPruefbarGemeldet = false
+
+/**
+ * Wie lange ein Prueferfolg gilt: fuer die Sitzung.
+ *
+ * Anders als bei `listen` und `platte` haengt hier keine Frist dran, und das
+ * ist eine Entscheidung. Die beiden Fristen oben sind kurz, weil sich die
+ * ANTWORT aendern kann: eine Draufsicht wird nachgeliefert, eine Datei wird
+ * zum Stummel. Ein Inhalt, dessen Pruefsumme einmal gestimmt hat, aendert
+ * sich dagegen nicht mehr unter demselben Namen, ohne dass auch die Liste neu
+ * geschrieben wird, und dann traegt sie eine andere Soll-Summe und damit
+ * einen anderen Schluessel.
+ */
+function pruefSchluessel(src, soll) {
+  return `${ohneAbfrage(src)}|${soll}`
+}
+
+async function summeVon(blob) {
+  const puffer = await blob.arrayBuffer()
+  const buf = await crypto.subtle.digest("SHA-256", puffer)
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("")
+}
+
+function meldeNichtPruefbar(grund) {
+  if (nichtPruefbarGemeldet) return
+  nichtPruefbarGemeldet = true
+  console.warn("Beneos Stream | Die Pruefsumme einer Kreaturenansicht laesst sich in "
+    + `diesem Browser nicht rechnen (${grund}). Die Bilder laden wie bisher, aber `
+    + "sie sind ungeprueft. Haeufigste Ursache ist ein Foundry ohne HTTPS im "
+    + "Heimnetz: `crypto.subtle` gibt es nur in einem sicheren Kontext. "
+    + "Weitere Ansichten werden nicht mehr einzeln gemeldet.")
+}
+
+/**
+ * Haelt die Datei hinter `src` ihre Soll-Pruefsumme?
+ *
+ * @param {string} src   Die Toradresse, die geschrieben werden soll.
+ * @param {string} soll  Die `sha256` aus der Posenliste.
+ * @returns {Promise<boolean|null>} `null` heisst "nicht pruefbar".
+ */
+export async function ansichtInhaltOk(src, soll) {
+  if (!src || !soll) return null
+  const schluessel = pruefSchluessel(src, soll)
+  if (geprueft.has(schluessel)) return geprueft.get(schluessel)
+
+  return await einmal(`inhalt:${schluessel}`, async () => {
+    if (geprueft.has(schluessel)) return geprueft.get(schluessel)
+    let wert = null
+    try {
+      // Ohne diese Abfrage waere der fehlende sichere Kontext ein Ausfall und
+      // keine dritte Antwort. `stableId()` in `stream-scenes.mjs` hat genau
+      // dieses `try` nicht, und dort ist es ein echter Mangel.
+      if (typeof crypto === "undefined" || !crypto?.subtle?.digest) {
+        meldeNichtPruefbar("crypto.subtle fehlt")
+      } else {
+        // Durch den gepatchten Abruf, mit Absicht: die Datei kommt dann aus
+        // dem Vorrat, wenn sie dort liegt, und der Abruf kostet nichts
+        // zweimal. Genau diese Datei wird gleich darauf gezeichnet.
+        const antwort = await fetch(src)
+        if (!antwort.ok || antwort.headers.get("x-beneos-denied")
+            || antwort.headers.get("x-beneos-offline")) {
+          // Kein Recht, kein Netz: das ist keine falsche Datei, sondern keine
+          // Datei. Die Abrufschicht meldet das schon, und der Ersatzbildweg
+          // gehoert ihr. Hier bleibt es "nicht pruefbar".
+          meldeNichtPruefbar("die Datei kam nicht")
+        } else {
+          const ist = await summeVon(await antwort.blob())
+          wert = ist === soll
+          if (wert === false) {
+            console.warn("Beneos Stream | Eine Kreaturenansicht traegt einen anderen "
+              + `Inhalt als die Posenliste nennt. Sie wird NICHT geschrieben. `
+              + `${ohneAbfrage(src).split("/").pop()}: Soll ${soll.slice(0, 12)}..., `
+              + `Ist ${ist.slice(0, 12)}...`)
+          }
+        }
+      }
+    } catch (grund) {
+      // Jede Ursache derselbe Ausgang. Die Pruefung darf nie der Grund sein,
+      // aus dem ein Bild nicht erscheint.
+      meldeNichtPruefbar(String(grund?.message || grund).slice(0, 120))
+      wert = null
+    }
+    geprueft.set(schluessel, wert)
+    return wert
+  })
+}
+
+/**
+ * Wie `ansicht()`, aber der Inhalt ist gegengeprueft.
+ *
+ * Diese Form ruft, wer die Adresse SCHREIBT. `ansicht()` bleibt fuer die
+ * Anzeigefrage, und das ist kein Versehen: eine Kachelleiste mit zwanzig
+ * Varianten wuerde sonst zwanzig Dateien holen, die sie nur zaehlen wollte.
+ *
+ * @returns {Promise<{zustand: boolean|null, src: string|null, pruefung: boolean|null}>}
+ */
+export async function ansichtGeprueft(pfad, stil) {
+  const a = await ansicht(pfad, stil)
+  if (!a.src || !a.sha256) return { zustand: a.zustand, src: a.src, pruefung: null }
+  const ok = await ansichtInhaltOk(a.src, a.sha256)
+  if (ok === false) return { zustand: false, src: null, pruefung: false }
+  return { zustand: a.zustand, src: a.src, pruefung: ok }
+}
+
+/** Nur fuer Prueffaelle und `posenVergessen`: den Pruefspeicher leeren. */
+export function pruefungenVergessen() {
+  geprueft.clear()
+  nichtPruefbarGemeldet = false
 }
 
 /**
@@ -324,7 +492,12 @@ export async function ansichtSrc(pfad, stil) {
  * und sein Preis ist ein Abruf je Kreatur.
  */
 export function posenVergessen(release) {
-  if (!release) { listen.clear(); platte.clear(); return }
+  // Ohne Argument ist ein vollstaendiger Neuanfang gemeint, und dann gehen die
+  // Pruefungen mit. MIT Releasename bleiben sie stehen: ihr Schluessel traegt
+  // die Soll-Summe, also kann eine neu geschriebene Liste keinen alten
+  // Erfolg erben, und eine Deinstallation aendert die Platte und nicht den
+  // Inhalt im Spiegel.
+  if (!release) { listen.clear(); platte.clear(); pruefungenVergessen(); return }
   const name = String(release)
   listen.delete(name)
   const kennung = name.startsWith(KREATUR_PRAEFIX) ? name.slice(KREATUR_PRAEFIX.length) : name

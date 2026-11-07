@@ -136,10 +136,11 @@ fahre "tools/v14-import-bench/unit.mjs"           "v14-import unit.mjs, 53 Saetz
 # WARUM ERST SEIT DEM 08.11.2026. Sie lagen in genau der Lage, die diese Datei
 # oben beschreibt: fuenf Saetze, die gruen laufen, ohne Netz, ohne Foundry, und
 # die niemand fuhr. `stream-sperre.test.mjs` kam am 07.11.2026 dazu und
-# `stream-geteilt.test.mjs` am 08.11.2026; beide hingen in keinem Tor.
+# `stream-geteilt.test.mjs` am 08.11.2026 und `stream-posen.test.mjs` am
+# 07.11.2026; alle drei hingen in keinem Tor.
 #
-# WARUM NICHT AUF JEDEN COMMIT. Gemessen am 08.11.2026 kosten die sechs
-# zusammen rund 8 Sekunden, und das ist fast alles Node-Start. Dieselbe Abwaegung
+# WARUM NICHT AUF JEDEN COMMIT. Gemessen am 07.11.2026 kosten die sieben
+# zusammen rund 9 Sekunden, und das ist fast alles Node-Start. Dieselbe Abwaegung
 # wie bei der Katalogpruefung darunter: ein Tor, das man regelmaessig mit
 # --no-verify umgeht, ist keines. Sie laufen deshalb, wenn eine Datei unter
 # `scripts/stream/` oder `scripts/loot/` vorgemerkt ist, und das ist genau die
@@ -154,7 +155,8 @@ then
                scripts/stream/stream-maske.test.mjs \
                scripts/stream/stream-riegel.test.mjs \
                scripts/stream/stream-sperre.test.mjs \
-               scripts/stream/stream-geteilt.test.mjs
+               scripts/stream/stream-geteilt.test.mjs \
+               scripts/stream/stream-posen.test.mjs
   do
     fahre "$datei" "$(basename "$datei")"
   done

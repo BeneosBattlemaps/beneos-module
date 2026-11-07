@@ -1632,6 +1632,7 @@
   "BENEOS.TokenSwitchNoPermission": "Beneos：你沒有變更此 Token 的權限。",
   "BENEOS.TokenMenu.TopDownNotInstalled": "Beneos：尚未安裝 Top-Down 資源。請重新安裝此標記以取得。",
   "BENEOS.TokenMenu.TopDownAssetMissing": "缺少 Top-Down 素材，點擊或拖曳以從雲端重新擷取。",
+  "BENEOS.TokenMenu.ViewContentMismatch": "此檢視與其總和檢查碼不符，未套用。請將此生物回報給 Beneos 支援。",
   "BENEOS.TokenMenu.TopDownReinstallStarted": "Beneos：正在從雲端重新安裝 Top-Down 變體…",
   "BENEOS.CreatureCodex.WindowTitle": "生物 Codex",
   "BENEOS.CreatureCodex.Variants": "變體",

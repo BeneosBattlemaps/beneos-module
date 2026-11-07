@@ -1632,6 +1632,7 @@
   "BENEOS.TokenSwitchNoPermission": "Beneos: você não tem permissão para alterar este token.",
   "BENEOS.TokenMenu.TopDownNotInstalled": "Beneos: recurso Top-Down não instalado. Reinstale este token para obtê-lo.",
   "BENEOS.TokenMenu.TopDownAssetMissing": "Asset Top-Down faltando, clique ou arraste para rebuscar na nuvem.",
+  "BENEOS.TokenMenu.ViewContentMismatch": "Esta vista não corresponde à sua soma de verificação e não foi aplicada. Informe esta criatura ao suporte da Beneos.",
   "BENEOS.TokenMenu.TopDownReinstallStarted": "Beneos: reinstalando variante Top-Down da nuvem…",
   "BENEOS.CreatureCodex.WindowTitle": "Creature Codex",
   "BENEOS.CreatureCodex.Variants": "Variantes",

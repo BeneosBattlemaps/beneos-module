@@ -1634,6 +1634,7 @@
   "BENEOS.TokenSwitchNoPermission": "Beneos: у вас нет прав на изменение этого токена.",
   "BENEOS.TokenMenu.TopDownNotInstalled": "Beneos: ресурс Top-Down не установлен. Переустановите этот токен, чтобы получить его.",
   "BENEOS.TokenMenu.TopDownAssetMissing": "Ресурс Top-Down отсутствует, нажмите или перетащите для повторной загрузки из облака.",
+  "BENEOS.TokenMenu.ViewContentMismatch": "Этот вид не совпал со своей контрольной суммой и не был применён. Сообщите об этом существе в поддержку Beneos.",
   "BENEOS.TokenMenu.TopDownReinstallStarted": "Beneos: переустановка варианта Top-Down из облака…",
   "BENEOS.CreatureCodex.WindowTitle": "Кодекс существ",
   "BENEOS.CreatureCodex.Variants": "Варианты",
