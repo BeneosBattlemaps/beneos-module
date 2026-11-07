@@ -31,6 +31,7 @@
  * needs a clear breadcrumb trail.
  */
 
+import { BeneosUtility } from "./beneos_utility.js";
 import { BeneosRepairMenuApp } from "./beneos-asset-repair-dialog.js";
 
 const MODULE_ID = "beneos-module";
@@ -620,7 +621,7 @@ const persistDismissal = async (scene, paths) => {
 const runCheck = async (scene, { forceDialog = false } = {}) => {
   const refs = _sceneRefs(scene);
   if (!refs.length) {
-    if (globalThis.BeneosUtility?.isDebug?.()) console.log(`Beneos AssetWatcher | scene "${scene.name}" — 0 Beneos refs found, skipping check`);
+    if (BeneosUtility.isDebug?.()) console.log(`Beneos AssetWatcher | scene "${scene.name}": 0 Beneos refs found, skipping check`);
     lastResults.set(scene.id, "");
     return;
   }
@@ -636,7 +637,7 @@ const runCheck = async (scene, { forceDialog = false } = {}) => {
   const prevKey = lastResults.get(scene.id);
   lastResults.set(scene.id, key);
 
-  if (globalThis.BeneosUtility?.isDebug?.()) console.log(`Beneos AssetWatcher | scene "${scene.name}" — ${refs.length} refs collected, ${missingRefs.length} missing, ${undismissedRefs.length} undismissed`);
+  if (BeneosUtility.isDebug?.()) console.log(`Beneos AssetWatcher | scene "${scene.name}": ${refs.length} refs collected, ${missingRefs.length} missing, ${undismissedRefs.length} undismissed`);
 
   if (!missingRefs.length) return;
   if (!undismissedRefs.length) return;
@@ -1004,13 +1005,13 @@ const scanAllEntities = async (onProgress, { kompendien = false } = {}) => {
     }
   }
   if (!allRefs.length) {
-    if (globalThis.BeneosUtility?.isDebug?.()) console.log(`Beneos AssetWatcher | world scan: 0 Beneos refs found across all entities, Kompendien ${kompendien ? "mit" : "ohne"}`);
+    if (BeneosUtility.isDebug?.()) console.log(`Beneos AssetWatcher | world scan: 0 Beneos refs found across all entities, Kompendien ${kompendien ? "mit" : "ohne"}`);
     return { totalRefs: 0, totalMissing: 0, refs: [], missingRefs: [], missing: [], kompendien: Boolean(kompendien) };
   }
   const probed = await _probeRefs(allRefs);
   const missingRefs = probed.filter(r => !r.ok);
   const missing = [...new Set(missingRefs.map(r => r.path))];
-  if (globalThis.BeneosUtility?.isDebug?.()) console.log(`Beneos AssetWatcher | world scan: ${allRefs.length} refs collected, ${missingRefs.length} missing, Kompendien ${kompendien ? "mit" : "ohne"}`);
+  if (BeneosUtility.isDebug?.()) console.log(`Beneos AssetWatcher | world scan: ${allRefs.length} refs collected, ${missingRefs.length} missing, Kompendien ${kompendien ? "mit" : "ohne"}`);
   return {
     totalRefs: allRefs.length,
     totalMissing: missingRefs.length,

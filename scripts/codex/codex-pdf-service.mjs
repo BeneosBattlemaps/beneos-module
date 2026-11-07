@@ -43,9 +43,10 @@ export async function isPdfInstalled(assetKey) {
  *  `beneos_cloud.js:242` during login). We probe a few legacy keys as
  *  a defensive fallback so older Beneos installs keep working. */
 function resolveFoundryId() {
-  const util = globalThis.BeneosUtility
-  if (typeof util?.getFoundryId === "function") {
-    const v = util.getFoundryId()
+  // BeneosUtility fuehrt getFoundryId heute nicht, gemessen am 07.11.2026.
+  // Die Pruefung bleibt, damit ein spaeterer Nachtrag ohne Aenderung greift.
+  if (typeof BeneosUtility.getFoundryId === "function") {
+    const v = BeneosUtility.getFoundryId()
     if (v) return v
   }
   // Authoritative key first, legacy fallbacks after.

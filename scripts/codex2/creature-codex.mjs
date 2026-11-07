@@ -5,6 +5,7 @@
 // actor flags into a CreatureCodex shape); this module owns the
 // v2 ApplicationV2 context, tab/sub-tab state and the action wiring.
 
+import { BeneosUtility } from "../beneos_utility.js";
 import { getCodexDataForActor, tokenizeV13ToTacText, enrichDescription, buildAbilityRefTooltip } from "../codex/codex-data-adapter.mjs";
 import { buildHeaderPills, buildDamageLine, ABILITY_LABEL } from "./ability-foundry-resolver.mjs";
 
@@ -105,13 +106,11 @@ export function openImagePopout(src, title = "") {
   } catch (e) { console.warn("Beneos Codex | image popout failed:", e); }
 }
 
-/** tokenKey pattern for SRD creatures (e.g. `000-srd_darkmantle`). Mirrors
- *  BeneosUtility.SRD_KEY_RE so SRD detection stays consistent without a hard
- *  import dependency. SRD creatures ship no dedicated journal art. */
-const SRD_KEY_RE = /(?:^|[-_])srd[-_]/i;
+/** tokenKey pattern for SRD creatures (e.g. `000-srd_darkmantle`). Reads
+ *  BeneosUtility.SRD_KEY_RE directly so SRD detection cannot drift from the
+ *  one definition. SRD creatures ship no dedicated journal art. */
 function isSrdKey(tokenKey) {
-  const re = globalThis.BeneosUtility?.SRD_KEY_RE ?? SRD_KEY_RE;
-  return re.test(String(tokenKey ?? ""));
+  return BeneosUtility.SRD_KEY_RE.test(String(tokenKey ?? ""));
 }
 
 /** Open the Beneos cloud search on Creatures (tokens) with the free-text

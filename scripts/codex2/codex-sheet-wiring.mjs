@@ -7,6 +7,7 @@
    lives here (codex2) so the legacy codex/ tree can be removed.
    ============================================================= */
 
+import { BeneosUtility } from "../beneos_utility.js"
 import { hasV13CodexContent } from "../codex/codex-data-adapter.mjs"
 
 /** Linear scan over `game.actors` for an Actor whose `world.beneos`
@@ -21,22 +22,14 @@ function findActorByTokenKey(tokenKey) {
   return null
 }
 
-/** Resolve the BeneosUtility namespace lazily so this module can load
- *  in any ESM evaluation order without crashing if beneos_utility.js
- *  hasn't initialised yet. */
-function beneosUtility() {
-  return globalThis.BeneosUtility ?? null
-}
-
 // =========================================================
 // Aufrufpunkt 1: Actor-Sheet-Header + tab-bar action button
 // =========================================================
 
 Hooks.on("renderActorSheet", (sheet, html) => {
   if (!sheet?.actor) return
-  const util = beneosUtility()
   // Same gate as Cloud-V2: only Beneos-imported creatures get the surface.
-  if (!util?.checkIsBeneosToken?.({ actor: sheet.actor })) return
+  if (!BeneosUtility.checkIsBeneosToken({ actor: sheet.actor })) return
   // Only show the codex surfaces for actors that carry structured
   // content under flags.beneos.content. SRD creatures and un-migrated
   // actors fall back to the standard Foundry sheet.

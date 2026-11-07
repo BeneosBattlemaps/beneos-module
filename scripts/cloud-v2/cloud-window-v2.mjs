@@ -1122,7 +1122,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // something actually narrowed (skipped on an idle no-filter open).
     if (afterDropdowns < initialCount || afterCR < afterDropdowns ||
         afterSource < afterCR || afterBiome < afterSource) {
-      if (globalThis.BeneosUtility?.isDebug?.()) console.log(`[Beneos V2] filter pipeline (${type}):`,
+      if (BeneosUtility.isDebug?.()) console.log(`[Beneos V2] filter pipeline (${type}):`,
         `raw=${initialCount} text=${afterText} dropdowns=${afterDropdowns}`,
         `cr=${afterCR} source=${afterSource} biome=${afterBiome}`,
         { crMin: this.crMin, crMax: this.crMax, sourceHidden: [...this.sourceHidden], biomeFilters: [...this.biomeFilters] })
@@ -2759,7 +2759,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const firstItem = results[firstKey]
       const topLevel = firstItem?.[def.prop]
       const inProps  = firstItem?.properties?.[def.prop]
-      if (globalThis.BeneosUtility?.isDebug?.()) console.log(`[Beneos V2] filter "${def.selector}" prop="${def.prop}" value="${value}"`,
+      if (BeneosUtility.isDebug?.()) console.log(`[Beneos V2] filter "${def.selector}" prop="${def.prop}" value="${value}"`,
         `before=${beforeCount}`,
         { firstItemTopLevel: topLevel, firstItemInProperties: inProps })
       // searchByProperty returns a filtered key→data map.
@@ -2772,7 +2772,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const filtered = dbHolder.searchByProperty?.(type, def.prop, value, results, def.strict === true)
       if (filtered) results = filtered
       const afterCount = Object.keys(results).length
-      if (globalThis.BeneosUtility?.isDebug?.()) console.log(`[Beneos V2] filter "${def.selector}" → after=${afterCount}`)
+      if (BeneosUtility.isDebug?.()) console.log(`[Beneos V2] filter "${def.selector}" → after=${afterCount}`)
     }
     return Object.entries(results)
   }
@@ -4577,7 +4577,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         if (newMin === this.crMin && newMax === this.crMax) return
         this.crMin = newMin
         this.crMax = newMax
-        if (globalThis.BeneosUtility?.isDebug?.()) console.log(`[Beneos V2] CR slider commit: min=${this.crMin} max=${this.crMax}`)
+        if (BeneosUtility.isDebug?.()) console.log(`[Beneos V2] CR slider commit: min=${this.crMin} max=${this.crMax}`)
         this.#resetPagination()
         this.#renderResults(["results"])
       }, 250)
