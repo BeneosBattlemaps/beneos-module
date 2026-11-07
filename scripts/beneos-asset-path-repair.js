@@ -1479,13 +1479,24 @@ const BENEOS_KOMPENDIEN = [
  * @param {Array|null} fehler Sammelliste; ohne sie geht die Meldung in die Konsole
  * @returns {Promise<Array>} je lesbarem Kompendium eine Familie mit `pack` und `coll`
  */
-async function _beneosKompendienFamilien(fehler = null) {
+async function _beneosKompendienFamilien(fehler = null, onProgress = null) {
   const melde = (id, text) => {
     if (fehler) fehler.push({ entity: id, error: text });
     else console.error(`Beneos Asset Repair | ${id}: ${text}`);
   };
+  // GEMELDET WIRD VOR DEM LADEN, nicht danach, und das ist der ganze Zweck des
+  // Rueckrufs an dieser Stelle. Gemessen am 06.11.2026: `getDocuments()` kostet
+  // 31.913 ms fuer das Kreaturenkompendium und 11.131 ms fuer das
+  // Journalkompendium. Eine Meldung NACH dem Laden kaeme nach der Wartezeit,
+  // ueber die sie den Kunden unterrichten soll.
+  const sageAn = (id, nr) => {
+    try { onProgress?.({ phase: "kompendium-laden", current: nr, total: BENEOS_KOMPENDIEN.length, docName: id }); }
+    catch (_e) { /* ein Fortschrittsrueckruf darf den Lauf nie anhalten */ }
+  };
   const familien = [];
+  let nr = 0;
   for (const spec of BENEOS_KOMPENDIEN) {
+    nr += 1;
     const pack = game.packs?.get(spec.id);
     // Ein FEHLENDES Kompendium ist kein Fehler: eine Welt, in die noch nie
     // eine Kreatur installiert wurde, hat keines. Ein vorhandenes, das sich
@@ -1497,6 +1508,7 @@ async function _beneosKompendienFamilien(fehler = null) {
       continue;
     }
     try {
+      sageAn(spec.id, nr);
       familien.push({ ...spec, pack, coll: await pack.getDocuments() });
     } catch (e) {
       melde(spec.id, `nicht lesbar: ${_ohneSchluessel(e)}`);
@@ -1852,7 +1864,7 @@ async function _planSchreiben(doc, plan) {
  * @param {Map<string,string>} abbildung alte Wurzel auf neue Wurzel
  * @param {Array|null} kompendien bereits geladene Kompendiumfamilien
  */
-async function _restlicheWurzelnNachziehen(abbildung, kompendien = null) {
+async function _restlicheWurzelnNachziehen(abbildung, kompendien = null, onProgress = null) {
   const bericht = {
     geaendert: 0, dokumente: 0, fehler: [],
     kompendien: 0, kompendiumDokumente: 0,
@@ -1863,11 +1875,20 @@ async function _restlicheWurzelnNachziehen(abbildung, kompendien = null) {
   // Die Kompendien kommen als FAMILIEN dazu und nicht als Sonderfall, damit
   // der Schreibteil einer bleibt. Der Aufrufer gibt sie mit, wenn er sie
   // schon geladen hat; zweimal `getDocuments()` ist reine Wartezeit.
-  const geladen = kompendien ?? await _beneosKompendienFamilien(bericht.fehler);
+  const geladen = kompendien ?? await _beneosKompendienFamilien(bericht.fehler, onProgress);
   bericht.kompendien = geladen.length;
   bericht.kompendiumDokumente = geladen.reduce((n, f) => n + f.coll.length, 0);
 
-  for (const fam of [..._weltFamilien(), ...geladen]) {
+  // JE FAMILIE EINE MELDUNG, nicht je Dokument. Der Schreibteil ist nach der
+  // Messung vom 06.11.2026 der kurze Teil des Laufs: 168 ms Durchsuchen gegen
+  // 43 Sekunden Laden. Eine Meldung je Dokument waere also viel Laerm fuer die
+  // Strecke, auf der ohnehin nicht gewartet wird.
+  const familien = [..._weltFamilien(), ...geladen];
+  let nr = 0;
+  for (const fam of familien) {
+    nr += 1;
+    try { onProgress?.({ phase: "familie", current: nr, total: familien.length, docName: fam.id ?? fam.name }); }
+    catch (_e) { /* ein Fortschrittsrueckruf darf den Lauf nie anhalten */ }
     await _familieNachziehen(fam, abbildung, bericht);
   }
   return bericht;
@@ -2029,7 +2050,7 @@ async function _schreibenUndBerichten(abbildung, bericht, onProgress) {
   // Die frueheren Laeufe haben das nicht gesehen, weil ihre Nachzaehlung
   // dieselben Felder zaehlte, die der Eingriff anfasst. Eine Zaehlung, die den
   // Ausschnitt des Eingriffs uebernimmt, misst die eigene Annahme.
-  const rest = await _restlicheWurzelnNachziehen(abbildung);
+  const rest = await _restlicheWurzelnNachziehen(abbildung, null, onProgress);
   bericht.geaendert += rest.geaendert;
 
   // DRITTER DURCHLAUF, und er ist weder Welt noch Kompendium. Das

@@ -51,6 +51,9 @@ export const SETTING = {
   // Der Gemeinschaftsvorrat: die geteilten Dateien, die mehrere Karten
   // brauchen. Sie liegen einmal und zaehlen einmal. Siehe stream-offline.mjs.
   offlineGeteilt: "beneos-stream-offline-shared",
+  // Der Riegel des Adressnachzugs, je WELT und nicht je Browser. Siehe
+  // `nachzugRiegelNehmen()` weiter unten.
+  nachzugRiegel: "beneos-stream-nachzug-riegel",
 }
 
 const DEFAULT_BASE = "https://gate.beneos.stream"
@@ -220,6 +223,23 @@ export function registerStreamSettings() {
   // Frist, und sie verdient ihre eigenen Warnungen.
   game.settings.register(MODULE_ID, SETTING.offlineWarnungen, {
     ...world, type: Number, default: 0,
+  })
+
+  // DER RIEGEL DES ADRESSNACHZUGS, und warum er in der WELT steht.
+  //
+  // `_nachzugLaeuft` ist eine Modulvariable und damit an die geladene Seite
+  // gebunden. Zwei gleichzeitig angemeldete Spielleitungen sind damit zwei
+  // Laeufe. Gemessen am 06.11.2026 dauert ein Lauf 89 Sekunden, das Fenster
+  // dafuer steht also weit offen, und am 06.09.2026 ist der Fall schon einmal
+  // eingetreten: zwei Laeufe, zwei Erfolgsmeldungen mit verschiedenen Zahlen
+  // fuer dasselbe Ereignis.
+  //
+  // Hier steht eine Marke mit Zeitstempel, nicht ein Wahrheitswert. Ein
+  // Wahrheitswert bliebe nach einem Neuladen mitten im Lauf fuer immer stehen,
+  // und dann liefe der Nachzug nie wieder: die Welt haette dauerhaft alte
+  // Adressen. Das ist der schlechtere Ausgang als ein Lauf zu viel.
+  game.settings.register(MODULE_ID, SETTING.nachzugRiegel, {
+    ...world, type: String, default: "",
   })
 
   // DER GEMEINSCHAFTSVORRAT, UND WARUM ER EIN EIGENES VERZEICHNIS BRAUCHT.
@@ -432,6 +452,181 @@ async function weltKennung() {
  */
 let _nachzugLaeuft = null
 
+/**
+ * Wie lange eine fremde Marke im Riegel als lebend gilt.
+ *
+ * Gemessen am 06.11.2026 dauert ein Lauf 89 Sekunden bei 239 Kreaturen, und
+ * die Zahl waechst mit dem Bestand. Zehn Minuten sind deshalb reichlich
+ * bemessen, und das ist Absicht: der Preis einer zu langen Frist ist ein Lauf,
+ * der einmal ausfaellt und beim naechsten Weltstart nachgeholt wird. Der Preis
+ * einer zu kurzen Frist sind zwei Laeufe nebeneinander, also genau das, was
+ * dieser Riegel verhindern soll.
+ */
+const RIEGEL_FRIST_MS = 10 * 60 * 1000
+
+/** Wie lange auf die Verteilung der eigenen Marke gewartet wird. */
+const RIEGEL_WARTE_MS = 1500
+
+function eigeneMarke() {
+  let zufall = ""
+  try { zufall = String(foundry.utils?.randomID?.(8) || "") } catch (_e) { zufall = "" }
+  if (!zufall) zufall = String(Math.random()).slice(2, 10)
+  return `${game.userId || "?"}|${Date.now()}|${zufall}`
+}
+
+/**
+ * Den Riegel dieser WELT nehmen, oder absagen.
+ *
+ * WIE ER WIRKT, UND WO SEINE GRENZE LIEGT. Das ist keine Sperre im strengen
+ * Sinn, denn Foundry bietet fuer eine Einstellung kein unteilbares Setzen: zwei
+ * Spielleitungen koennen beide schreiben, und es gewinnt die Schreibung, die
+ * zuletzt beim Server ankommt. Genau das ist hier die Grundlage. Nach dem
+ * Schreiben wird gewartet und ERNEUT GELESEN, und weitergemacht wird nur, wenn
+ * die eigene Marke stehen geblieben ist. Es gibt genau einen Endwert, also
+ * kommen nicht beide durch.
+ *
+ * ES BLEIBT EIN RENNEN, und zwar genau so gross wie die Verteilung einer
+ * Einstellung braucht. Deshalb ist der Lauf selbst nachsichtig gebaut und
+ * nicht auf diesen Riegel angewiesen: ein zweiter Lauf findet nach einem
+ * vollstaendigen ersten nichts mehr nachzuziehen und nach einem abgebrochenen
+ * genau den Rest. Der Riegel spart Arbeit, er verhuetet keinen Schaden.
+ *
+ * @returns {Promise<string>} die eigene Marke, oder "" wenn abgesagt
+ */
+/**
+ * Die ENTSCHEIDUNG des Riegels, getrennt von seinem Schreiben und Lesen.
+ *
+ * Sie steht fuer sich, weil sie die Haelfte ist, die man ohne Foundry pruefen
+ * kann, und weil ihre Randfaelle die sind, die wehtun: eine unlesbare Marke
+ * und eine Marke aus der Zukunft duerfen eine Welt nicht dauerhaft sperren.
+ * Der Pruefsatz dazu ist `stream-riegel.test.mjs`.
+ *
+ * @param {string} stehendeMarke was in der Welteinstellung steht
+ * @param {number} jetzt Zeitpunkt des Vergleichs, fuer den Pruefsatz setzbar
+ * @returns {"frei"|"besetzt"|"abgelaufen"}
+ */
+export function riegelEntscheid(stehendeMarke, jetzt = Date.now()) {
+  const steht = String(stehendeMarke || "")
+  if (!steht) return "frei"
+  // EINE UNLESBARE MARKE GILT ALS ABGELAUFEN und nicht als besetzt. Sonst
+  // sperrte ein einziger kaputter Wert den Nachzug dieser Welt fuer immer, und
+  // die Welt behielte ihre alten Adressen.
+  const zeit = Number(steht.split("|")[1] || 0)
+  if (!Number.isFinite(zeit) || zeit <= 0) return "abgelaufen"
+  // AUCH EINE MARKE AUS DER ZUKUNFT GILT ALS ABGELAUFEN. Sie entsteht, wenn
+  // eine Uhr falsch steht, und ohne diesen Zweig waere sie je nach Abstand
+  // beliebig lange besetzt.
+  const alter = jetzt - zeit
+  if (alter < 0) return "abgelaufen"
+  return alter < RIEGEL_FRIST_MS ? "besetzt" : "abgelaufen"
+}
+
+async function nachzugRiegelNehmen() {
+  let marke = ""
+  try {
+    const steht = String(read(SETTING.nachzugRiegel, "") || "")
+    const entscheid = riegelEntscheid(steht)
+    if (entscheid === "besetzt") {
+      console.log("Beneos Stream | Adressnachzug laeuft schon in einer anderen Sitzung dieser Welt")
+      return ""
+    }
+    if (entscheid === "abgelaufen") {
+      console.warn("Beneos Stream | Alte Riegelmarke im Adressnachzug, Frist abgelaufen, wird uebernommen")
+    }
+    marke = eigeneMarke()
+    await game.settings.set(MODULE_ID, SETTING.nachzugRiegel, marke)
+    await new Promise((fertig) => setTimeout(fertig, RIEGEL_WARTE_MS))
+    if (String(read(SETTING.nachzugRiegel, "") || "") !== marke) {
+      console.log("Beneos Stream | Adressnachzug einer anderen Sitzung hat den Riegel bekommen")
+      return ""
+    }
+    return marke
+  } catch (e) {
+    // OHNE RIEGEL WIRD GELAUFEN, nicht abgesagt. Eine Welt mit alten Adressen
+    // ist der Schaden, den dieser Lauf behebt; ein Lauf zu viel ist keiner.
+    console.warn("Beneos Stream | Riegel des Adressnachzugs nicht setzbar, es wird ohne gelaufen:",
+      e?.message || e)
+    // IMMER "ohne-riegel", auch wenn oben schon eine Marke gebildet wurde.
+    //
+    // Gefunden am 07.11.2026 durch den Pruefsatz: hier stand
+    // `marke || "ohne-riegel"`, und scheiterte das Schreiben, kam die Marke
+    // zurueck. Der Aufrufer haette dann geglaubt, er halte den Riegel, obwohl
+    // nachweislich nichts in der Welt steht. Ein Rueckgabewert, der eine
+    // Zusicherung behauptet, die das Schreiben nicht gegeben hat, ist der
+    // Anfang der naechsten Doppelausfuehrung.
+    return "ohne-riegel"
+  }
+}
+
+export async function nachzugRiegelNehmenFuerPruefsatz() { return nachzugRiegelNehmen() }
+export async function nachzugRiegelLoesenFuerPruefsatz(marke) { return nachzugRiegelLoesen(marke) }
+/** Die Frist, damit der Pruefsatz nicht ihre Zahl wiederholen muss. */
+export const RIEGEL_FRIST_FUER_PRUEFSATZ = RIEGEL_FRIST_MS
+export const RIEGEL_WARTE_FUER_PRUEFSATZ = RIEGEL_WARTE_MS
+
+async function nachzugRiegelLoesen(marke) {
+  if (!marke || marke === "ohne-riegel") return
+  try {
+    // NUR DIE EIGENE MARKE LOESEN. Haette eine andere Sitzung den Riegel in der
+    // Zwischenzeit uebernommen, wuerde ein blindes Leeren ihren Lauf freigeben.
+    if (String(read(SETTING.nachzugRiegel, "") || "") !== marke) return
+    await game.settings.set(MODULE_ID, SETTING.nachzugRiegel, "")
+  } catch (e) {
+    console.warn("Beneos Stream | Riegel des Adressnachzugs nicht geloest:", e?.message || e)
+  }
+}
+
+/**
+ * Die Fortschrittszeile des Nachzugs.
+ *
+ * WARUM MIT EINEM ANTEIL UND NICHT NUR MIT TEXT: der Kunde soll sehen, dass
+ * sich etwas bewegt, und 89 Sekunden ohne Bewegung sind fuer ihn ein Absturz.
+ *
+ * DIE GEWICHTE SIND GEMESSEN UND TROTZDEM UNGEFAEHR. Am 06.11.2026 lagen von
+ * 89.110 ms rund 43.000 ms allein im Laden der vier Kompendien, also knapp die
+ * Haelfte, und 168 ms im Durchsuchen. Danach sind die drei Abschnitte unten
+ * gewichtet. Es ist eine Anzeige der Bewegung, keine Uhr, und sie darf nicht
+ * als eine gelesen werden.
+ */
+function nachzugAnzeige() {
+  const text = game.i18n.localize("BENEOS.Stream.KeyRotated.Running")
+  let balken = null
+  try { balken = ui.notifications?.info(text, { progress: true }) }
+  catch (_e) { balken = null }
+  if (!balken || typeof balken.update !== "function") {
+    // Ohne Balken bleibt die gewoehnliche Meldung. Sie stand hier bis zum
+    // 07.11.2026 allein und ist damit der belegte Rueckfall, nicht ein stiller.
+    try { if (!balken) ui.notifications?.info(text) }
+    catch (_e) { /* ohne Oberflaeche bleibt die Konsolenzeile */ }
+    return { melde: () => {}, schliesse: () => {} }
+  }
+  const melde = (info) => {
+    try {
+      const von = Math.max(1, Number(info?.total || 1))
+      const bei = Math.min(von, Math.max(0, Number(info?.current || 0)))
+      let anteil = 0
+      if (info?.phase === "world") anteil = 0.35 * (bei / von)
+      else if (info?.phase === "kompendium-laden") anteil = 0.35 + 0.50 * (bei / von)
+      else if (info?.phase === "familie") anteil = 0.85 + 0.13 * (bei / von)
+      else return
+      const wo = String(info?.docName || "").slice(0, 60)
+      balken.update({ message: wo ? `${text} (${wo})` : text, pct: anteil })
+    } catch (_e) { /* eine Anzeige darf den Lauf nie anhalten */ }
+  }
+  const schliesse = () => {
+    try { balken.update({ message: text, pct: 1 }) } catch (_e) { /* siehe oben */ }
+    try { ui.notifications?.remove?.(balken) } catch (_e) { /* siehe oben */ }
+  }
+  return { melde, schliesse }
+}
+
+/**
+ * Der Nachzug, EINMAL je Browser und einmal je Welt.
+ *
+ * Die beiden Riegel liegen nebeneinander und ersetzen sich nicht: der eine
+ * verhindert zwei Laeufe in derselben Seite, der andere zwei Laeufe in
+ * derselben Welt aus zwei Seiten.
+ */
 async function adressenNachziehen() {
   if (_nachzugLaeuft) return _nachzugLaeuft
   _nachzugLaeuft = _adressenNachziehen().finally(() => { _nachzugLaeuft = null })
@@ -439,10 +634,12 @@ async function adressenNachziehen() {
 }
 
 async function _adressenNachziehen() {
+  const marke = await nachzugRiegelNehmen()
+  if (!marke) return
+  const anzeige = nachzugAnzeige()
   try {
     const { schluesselNachziehen } = await import("../beneos-asset-path-repair.js")
-    ui.notifications?.info(game.i18n.localize("BENEOS.Stream.KeyRotated.Running"))
-    const bericht = await schluesselNachziehen({})
+    const bericht = await schluesselNachziehen({ onProgress: anzeige.melde })
     if (bericht?.grund === "nichts nachzuziehen") {
       console.log("Beneos Stream | Schluessel gewechselt, es stand keine alte Adresse in der Welt")
       return
@@ -453,6 +650,9 @@ async function _adressenNachziehen() {
   } catch (e) {
     console.error("Beneos Stream | Adressen nach dem Schluesselwechsel nicht nachgezogen:", e)
     ui.notifications?.error(game.i18n.localize("BENEOS.Stream.KeyRotated.Failed"))
+  } finally {
+    anzeige.schliesse()
+    await nachzugRiegelLoesen(marke)
   }
 }
 
@@ -604,7 +804,31 @@ export async function ensureStreamKey() {
       // verteilt; das bei jedem Weltstart zu tun waere Laerm ohne Anlass.
       await game.settings.set(MODULE_ID, SETTING.key, String(daten.stream_key))
       console.log(`Beneos Stream | Schluessel ${vorhanden ? "ersetzt" : "erhalten"}, Spiegel: ${daten.spiegel || "ueber den Takt"}`)
-      if (vorhanden) await adressenNachziehen()
+      // NICHT ABGEWARTET, und das ist der Kern von OP-PRJ-193.
+      //
+      // Gemessen am 06.11.2026 dauert der Nachzug 89 Sekunden bei 239
+      // Kreaturen. Ein `await` hier haelt nicht Foundry auf, denn `Hooks.#call`
+      // gibt den Rueckgabewert einer Rueckrufstelle ungewartet zurueck
+      // (`foundry.mjs`, Fassung 13 und 14), und der Hook `ready` laeuft erst
+      // nach `await this.canvas.initializing`. Es hielt aber den EIGENEN
+      // Weltstart auf: alles, was in `beneos-stream.mjs` nach `ensureStreamKey`
+      // kommt, lag damit anderthalb Minuten still, also der
+      // Einfuehrungsdialog, die Speicherzusage und die Szenenwache.
+      //
+      // Der Schluessel steht zu diesem Zeitpunkt SCHON in der Einstellung, drei
+      // Zeilen darueber. Das Streaming arbeitet also mit dem neuen Schluessel,
+      // waehrend die Dokumente noch den alten tragen; die Karten zeigen fuer
+      // die Dauer des Laufs ihr Ersatzbild und werden unter dem Kunden richtig.
+      // Betreiberentscheid 07.11.2026, und es ist die Zusage, die zu diesem Weg
+      // gehoert.
+      //
+      // Das `catch` ist der Riegel gegen eine kuenftige Fassung von
+      // `_adressenNachziehen`, die nicht mehr selbst faengt. Heute faengt sie.
+      if (vorhanden) {
+        adressenNachziehen().catch((e) => {
+          console.error("Beneos Stream | Adressnachzug im Hintergrund gescheitert:", e)
+        })
+      }
     }
     return String(daten.stream_key)
   } catch (e) {
