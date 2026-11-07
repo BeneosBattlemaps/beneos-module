@@ -1632,6 +1632,7 @@
   "BENEOS.TokenSwitchNoPermission": "Beneos: nemáš oprávnění měnit tento token.",
   "BENEOS.TokenMenu.TopDownNotInstalled": "Beneos: Top-Down asset není nainstalován. Přeinstaluj tento token pro jeho stažení.",
   "BENEOS.TokenMenu.TopDownAssetMissing": "Top-Down asset chybí, klikni nebo přetáhni pro znovustažení z cloudu.",
+  "BENEOS.TokenMenu.ViewContentMismatch": "Toto zobrazení neodpovídá svému kontrolnímu součtu a nebylo použito. Nahlaste tuto bytost podpoře Beneos.",
   "BENEOS.TokenMenu.TopDownReinstallStarted": "Beneos: přeinstalovávám variantu Top-Down z cloudu…",
   "BENEOS.CreatureCodex.WindowTitle": "Codex tvora",
   "BENEOS.CreatureCodex.Variants": "Varianty",

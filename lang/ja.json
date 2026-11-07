@@ -1632,6 +1632,7 @@
   "BENEOS.TokenSwitchNoPermission": "Beneos：このトークンを変更する権限がありません。",
   "BENEOS.TokenMenu.TopDownNotInstalled": "Beneos：Top-Down アセットがインストールされていません。取得するにはこのトークンを再インストールしてください。",
   "BENEOS.TokenMenu.TopDownAssetMissing": "トップダウンアセットが欠落しています。クリックまたはドラッグしてクラウドから再取得してください。",
+  "BENEOS.TokenMenu.ViewContentMismatch": "このビューはチェックサムと一致しなかったため適用されませんでした。このクリーチャーを Beneos サポートに報告してください。",
   "BENEOS.TokenMenu.TopDownReinstallStarted": "Beneos：クラウドからトップダウンバリアントを再インストール中…",
   "BENEOS.CreatureCodex.WindowTitle": "クリーチャーCodex",
   "BENEOS.CreatureCodex.Variants": "バリアント",

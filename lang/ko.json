@@ -1632,6 +1632,7 @@
   "BENEOS.TokenSwitchNoPermission": "Beneos: 이 토큰을 변경할 권한이 없어요.",
   "BENEOS.TokenMenu.TopDownNotInstalled": "Beneos: Top-Down 에셋이 설치되어 있지 않습니다. 가져오려면 이 토큰을 다시 설치하세요.",
   "BENEOS.TokenMenu.TopDownAssetMissing": "Top-Down 에셋이 없어요. 클릭하거나 끌어다 놓아 클라우드에서 다시 가져오세요.",
+  "BENEOS.TokenMenu.ViewContentMismatch": "이 보기는 체크섬과 일치하지 않아 적용되지 않았습니다. 이 크리처를 Beneos 지원팀에 알려 주세요.",
   "BENEOS.TokenMenu.TopDownReinstallStarted": "Beneos: 클라우드에서 Top-Down 변형을 다시 설치하는 중…",
   "BENEOS.CreatureCodex.WindowTitle": "크리처 Codex",
   "BENEOS.CreatureCodex.Variants": "변형",

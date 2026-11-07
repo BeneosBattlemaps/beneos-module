@@ -5,7 +5,7 @@ import { BeneosCloud, BeneosCloudLogin, BeneosCloudSettings, BeneosCloudAccountM
 // Asset existence probe, shared with the missing-asset watcher: srcExists plus
 // a no-store HEAD that also rejects HTML fallback pages answering 200.
 import { headCheck as beneosHeadCheck } from "./beneos-asset-watcher.js";
-import { ansicht, ansichtGibtEs } from "./stream/stream-posen.mjs";
+import { ansichtGeprueft, ansichtGibtEs } from "./stream/stream-posen.mjs";
 import { zerlegeAdresse } from "./stream/stream-settings.mjs";
 
 /********************************************************************************* */
@@ -3001,9 +3001,13 @@ export class BeneosUtility {
     if (isTopDownMode) {
       let ziel = BeneosUtility.beneosDerivedTopPath(tokenData)
       if (!ziel) {
-        const auskunft = await ansicht(tokenData.token, "topdown")
+        // Geprueft, weil `newImage` unten in das Token geschrieben wird.
+        const auskunft = await ansichtGeprueft(tokenData.token, "topdown")
         ziel = auskunft.src
-        if (!ziel && auskunft.zustand === false) {
+        if (auskunft.pruefung === false) {
+          ui.notifications?.warn(game.i18n.localize("BENEOS.TokenMenu.ViewContentMismatch")
+            || "Beneos: that view did not match its checksum and was not applied")
+        } else if (!ziel && auskunft.zustand === false) {
           ui.notifications?.warn(game.i18n.localize("BENEOS.TokenMenu.TopDownAssetMissing")
             || "Beneos: Top-Down asset missing for this variant")
         }
@@ -3152,8 +3156,18 @@ export class BeneosUtility {
     //   "nicht geprueft" Rueckfall auf den Textersatz, also das Verhalten von
     //                    vor diesem Umbau. Das trifft The Forge, wo keine
     //                    Plattenprobe moeglich ist.
-    const auskunft = await ansicht(currentSrc, newStyle)
+    // Seit `OP-PRJ-172` am 07.11.2026 wird hier die GEPRUEFTE Form gerufen,
+    // denn das ist die Stelle, die die Adresse wirklich schreibt. Die vierte
+    // Antwort ist "geprueft und falsch", und sie braucht ihren eigenen Text:
+    // "gibt es nicht" waere unwahr und schickte den Kunden auf die Suche nach
+    // einer Datei, die sehr wohl da ist, nur mit falschem Inhalt.
+    const auskunft = await ansichtGeprueft(currentSrc, newStyle)
     let newSrc = auskunft.src
+    if (auskunft.pruefung === false) {
+      ui.notifications?.warn(game.i18n.localize("BENEOS.TokenMenu.ViewContentMismatch")
+        || "Beneos: that view did not match its checksum and was not applied")
+      return
+    }
     if (!newSrc && auskunft.zustand === false) {
       ui.notifications?.warn(game.i18n.localize("BENEOS.TokenMenu.TopDownAssetMissing")
         || "Beneos: that view does not exist for this variant")
