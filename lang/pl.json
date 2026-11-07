@@ -2407,6 +2407,7 @@
   "BENEOS.Stream.Intro.Download.Lead": "Twoje konto jest ustawione na pełne pobieranie.",
   "BENEOS.Stream.Intro.Download.What": "Wydanie instaluje w tym swiecie wszystko, razem z wideo i dzwiekiem. Na naszych serwerach nic nie zostaje, wiec w trakcie gry nic sie nie pobiera.",
   "BENEOS.Stream.Intro.Download.Cost": "Mapy potrzebuja polaczenia podczas instalacji, a potem juz zadnego. Twoi gracze pobieraja je z twojego komputera.",
+  "BENEOS.Stream.Intro.Download.Existing": "Nic z tego, co już jest zainstalowane w tym świecie, się nie zmienia, i właśnie o to chodzi: wydanie zainstalowane przy włączonym strumieniowaniu nadal wskazuje na nasze serwery, więc jego mapy i obrazy stworów pozostaną puste. Wszystko, co zainstalujesz od teraz, trafia na twój dysk. Jeśli potrzebujesz starszego wydania także lokalnie, napisz do nas na Discordzie i załatwimy to z tobą.",
   "BENEOS.Stream.Intro.Ok": "Rozumiem",
   "BENEOS.Stream.Doku.Summary": "Co to jest?",
   "BENEOS.Stream.Doku.BarLead": "Ten pasek",

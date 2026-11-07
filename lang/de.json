@@ -2415,6 +2415,7 @@
   "BENEOS.Stream.Intro.Download.Lead": "Dein Konto ist auf vollen Download gestellt.",
   "BENEOS.Stream.Intro.Download.What": "Ein Release installiert alles in diese Welt, Video und Ton eingeschlossen. Auf unseren Servern bleibt nichts, es wird also waehrend des Spiels nichts nachgeladen.",
   "BENEOS.Stream.Intro.Download.Cost": "Karten brauchen eine Verbindung waehrend der Installation und danach gar keine mehr. Deine Spieler laden sie von deinem Rechner.",
+  "BENEOS.Stream.Intro.Download.Existing": "An dem, was schon in dieser Welt installiert ist, ändert sich nichts, und das ist der Punkt: ein Release, das du im Streambetrieb installiert hast, zeigt weiter auf unsere Server, seine Karten und Kreaturenbilder bleiben also leer. Alles, was du ab jetzt installierst, landet auf deiner Platte. Brauchst du ein älteres Release auch örtlich, frag uns im Discord, wir regeln das mit dir.",
   "BENEOS.Stream.Intro.Ok": "Verstanden",
   "BENEOS.Stream.Doku.Summary": "Was ist das?",
   "BENEOS.Stream.Doku.BarLead": "Diese Leiste",

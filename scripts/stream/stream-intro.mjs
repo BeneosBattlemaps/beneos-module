@@ -89,13 +89,25 @@ export async function explainOnce() {
   // Der Download-Weg bekommt seinen eigenen Text. Der Streaming-Text traegt fuer
   // ihn keinen einzigen richtigen Satz: es bleibt nichts beim Tor, ein
   // Verbindungsverlust kostet nichts, und der Offline-Vorrat ist unbenutzt.
+  //
+  // Auch der Schlusssatz ist je Richtung ein anderer, und das ist der Kern von
+  // OP-PRJ-187. "Nichts aendert sich" ist auf dem Streamweg eine Beruhigung und
+  // stimmt. Auf dem Download-Weg sagt derselbe Satz das Gegenteil von dem, was
+  // der Kunde erlebt: genau WEIL die Dokumente nicht umgeschrieben werden,
+  // zeigen seine gestreamt installierten Karten leere Flaechen. Gemessen am
+  // 06.11.2026 ist auch, dass er das nicht selbst richten kann: der
+  // Installationsweg des Kunden meldet "identical" und holt keine Datei, weil
+  // die Vorpruefung Toradressen absichtlich auslaesst. Deshalb nennt der Satz
+  // keinen Handgriff im Modul, sondern den Weg ueber uns.
+  // Betreiberentscheid 07.11.2026: ein Satz genuegt, das Zurueckschalten ist
+  // ein Einzelfall und wird im Backend erledigt.
   const dl = downloadMode()
   const content = dl
     ? `
     <p><strong>${t("BENEOS.Stream.Intro.Download.Lead")}</strong></p>
     <p>${t("BENEOS.Stream.Intro.Download.What")}</p>
     <p>${t("BENEOS.Stream.Intro.Download.Cost")}</p>
-    <p>${t("BENEOS.Stream.Intro.Existing")}</p>`
+    <p>${t("BENEOS.Stream.Intro.Download.Existing")}</p>`
     : `
     <p><strong>${t("BENEOS.Stream.Intro.Lead")}</strong></p>
     <p>${t("BENEOS.Stream.Intro.What")}</p>

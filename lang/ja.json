@@ -2407,6 +2407,7 @@
   "BENEOS.Stream.Intro.Download.Lead": "あなたのアカウントは完全ダウンロードに設定されています。",
   "BENEOS.Stream.Intro.Download.What": "リリースは動画と音声を含むすべてをこのワールドにインストールします。当社のサーバーには何も残らないため、プレイ中に読み込まれるものもありません。",
   "BENEOS.Stream.Intro.Download.Cost": "マップはインストール中だけ接続を必要とし、その後はまったく必要ありません。プレイヤーはあなたのパソコンから読み込みます。",
+  "BENEOS.Stream.Intro.Download.Existing": "すでにこのワールドに入っているものは何も変わりません。そこが肝心です。ストリーミング中に入れたリリースは当社のサーバーを指したままなので、そのマップとクリーチャーの画像は空のままになります。これから入れるものはすべてあなたのディスクに置かれます。古いリリースも手元に必要なときは、Discord でお知らせください。一緒に解決します。",
   "BENEOS.Stream.Intro.Ok": "了解",
   "BENEOS.Stream.Doku.Summary": "これは何ですか",
   "BENEOS.Stream.Doku.BarLead": "このバー",
