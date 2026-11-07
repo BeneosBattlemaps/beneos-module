@@ -9,6 +9,7 @@
    reintroduced (later wave), this adapter regains its overlay merge.
    ============================================================= */
 
+import { BeneosUtility } from "../beneos_utility.js"
 import { BeneosCreatureCodexParser } from "./codex-html-parser.mjs"
 import { ensureCodexFlags, resolveJournalEntry } from "./codex-migrator.mjs"
 import { CODEX_SCHEMA_VERSION } from "./codex-types.mjs"
@@ -715,7 +716,7 @@ export async function getCodexDataForActor(actor) {
   if (v13Content && v13Content.schemaVersion) {
     const worldFlag = actor.getFlag("world", "beneos") ?? {}
     const tokenKey  = worldFlag.fullId ?? worldFlag.tokenKey ?? null
-    const tokenInfo = (globalThis.BeneosUtility?.beneosTokens ?? {})[tokenKey] ?? {}
+    const tokenInfo = (BeneosUtility.beneosTokens ?? {})[tokenKey] ?? {}
     const props     = tokenInfo.properties ?? {}
     const journal   = await resolveJournalEntry(actor)
     // Enrich each item's dnd5e description once so the ability-reference hover
@@ -732,7 +733,7 @@ export async function getCodexDataForActor(actor) {
   const flags     = await ensureCodexFlags(actor)
   const worldFlag = actor.getFlag("world", "beneos") ?? {}
   const tokenKey  = flags?.sourceMeta?.tokenKey ?? worldFlag.fullId ?? null
-  const tokenInfo = (globalThis.BeneosUtility?.beneosTokens ?? {})[tokenKey] ?? {}
+  const tokenInfo = (BeneosUtility.beneosTokens ?? {})[tokenKey] ?? {}
   const props     = tokenInfo.properties ?? {}
 
   // Journal lookup (Pack-Dokumentation)
@@ -858,7 +859,7 @@ export async function getCodexDataForActor(actor) {
 
 /** Cloud-preview path — same shape, but mostly empty. */
 export async function getCodexDataForCloudPreview(tokenKey) {
-  const tokenInfo = (globalThis.BeneosUtility?.beneosTokens ?? {})[tokenKey] ?? {}
+  const tokenInfo = (BeneosUtility.beneosTokens ?? {})[tokenKey] ?? {}
   const props = tokenInfo.properties ?? {}
   const name = tokenInfo.name ?? tokenKey ?? "Unknown"
   return {

@@ -6,6 +6,7 @@
    filled by the generation pipeline (Welle 0).
    ============================================================= */
 
+import { BeneosUtility } from "../beneos_utility.js"
 import { BeneosCreatureCodexParser } from "./codex-html-parser.mjs"
 
 const MODULE_ID = "beneos-module"
@@ -53,7 +54,7 @@ export async function ensureCodexFlags(actor) {
 
   const worldFlag = readWorldFlag(actor)
   const tokenKey  = worldFlag.fullId ?? worldFlag.tokenKey ?? null
-  const tokenInfo = (globalThis.BeneosUtility?.beneosTokens ?? {})[tokenKey] ?? {}
+  const tokenInfo = (BeneosUtility.beneosTokens ?? {})[tokenKey] ?? {}
   const journal   = await resolveJournalEntry(actor)
 
   const next = {

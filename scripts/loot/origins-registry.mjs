@@ -47,7 +47,7 @@ export class OriginsRegistry {
       this.origins = json?.origins ?? {};
       this.mechanicRules = json?.mechanic_rules ?? {};
       this.loaded = true;
-      if (globalThis.BeneosUtility?.isDebug?.()) console.log(`Beneos | OriginsRegistry loaded ${Object.keys(this.origins).length} origins from ${this.sourceUrl}`);
+      if (BeneosUtility.isDebug?.()) console.log(`Beneos | OriginsRegistry loaded ${Object.keys(this.origins).length} origins from ${this.sourceUrl}`);
     } else {
       this.origins = {};
       this.mechanicRules = {};

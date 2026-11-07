@@ -5,6 +5,8 @@
    with enter → reading → leaving phases.
    ============================================================= */
 
+import { BeneosUtility } from "../beneos_utility.js"
+
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
 
 export class BeneosCodexDeathPrompt extends HandlebarsApplicationMixin(ApplicationV2) {
@@ -93,8 +95,7 @@ export async function maybeOpenDeathPrompt(actor, changes) {
   if (typeof newHp !== "number" || newHp > 0) return
   const oldHp = actor.system?.attributes?.hp?.value
   if (oldHp === 0) return // already dead before this update
-  const util = globalThis.BeneosUtility
-  if (!util?.checkIsBeneosToken?.({ actor })) return
+  if (!BeneosUtility.checkIsBeneosToken({ actor })) return
 
   const fired = deathFiredSet()
   if (fired.has(actor.id)) return
