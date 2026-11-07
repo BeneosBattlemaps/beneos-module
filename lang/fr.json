@@ -2460,7 +2460,7 @@
   "BENEOS.Stream.Offline.Panel.EmptyHint": "Clic droit sur une scène dans la barre latérale, puis \"{label}\". La battlemap et le décor d'une carte sont pris ensemble, car personne n'a besoin de l'un sans l'autre.",
   "BENEOS.Stream.Offline.Panel.MissingMark": "manquante",
   "BENEOS.Stream.Offline.Panel.StreamAgain": "Diffuser à nouveau {name}",
-  "BENEOS.Stream.Offline.Panel.Footer": "Les cartes hors ligne se trouvent dans le stockage de ce navigateur, pas sur le serveur, et sont donc liées à ce navigateur : effacer vos données de site les supprime. Ce navigateur offre à ce monde {total} Go au total, dont {used} Go sont utilisés.",
+  "BENEOS.Stream.Offline.Panel.Footer": "Les cartes hors ligne se trouvent dans le stockage de ce navigateur, pas sur le serveur, et sont donc liées à ce navigateur : effacer vos données de site les supprime. Ce navigateur offre à ce monde {total} Go au total, dont {used} Go sont utilisés. Le quota est lié à la clé Beneos de ce monde et non à une personne : tous ceux qui ouvrent ce monde puisent dans le même, et un joueur peut aussi l'épuiser.",
   "BENEOS.Wiki.Title": "Documentation",
   "BENEOS.Wiki.Ui.SearchPlaceholder": "Rechercher dans la documentation…",
   "BENEOS.Wiki.Ui.Results": "résultats",

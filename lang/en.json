@@ -2510,7 +2510,7 @@
   "BENEOS.Stream.Offline.Panel.EmptyHint": "Right-click a scene in the sidebar, then choose \"{label}\". A map's battlemap and scenery are taken together, because nobody needs one without the other.",
   "BENEOS.Stream.Offline.Panel.MissingMark": "missing",
   "BENEOS.Stream.Offline.Panel.StreamAgain": "Stream {name} again",
-  "BENEOS.Stream.Offline.Panel.Footer": "Offline maps live in this browser's storage, not on the server, so they are tied to this browser: clearing your site data loses them. This browser offers this world {total} GB in total, of which {used} GB are in use.",
+  "BENEOS.Stream.Offline.Panel.Footer": "Offline maps live in this browser's storage, not on the server, so they are tied to this browser: clearing your site data loses them. This browser offers this world {total} GB in total, of which {used} GB are in use. The quota belongs to this world's Beneos key, not to a person, so everyone who opens this world draws from the same one and a player can use it up too.",
   "BENEOS.CanvasGuard.Title": "Beneos: Foundry could not draw the canvas",
   "BENEOS.CanvasGuard.Headline": "Foundry could not draw the canvas.",
   "BENEOS.CanvasGuard.NotAssets": "Your Beneos maps are not the trigger: Foundry abandons the draw <i>before</i> it loads a single image, so no map, in any resolution, can cause this.",

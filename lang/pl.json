@@ -2460,7 +2460,7 @@
   "BENEOS.Stream.Offline.Panel.EmptyHint": "Kliknij prawym przyciskiem scenę na pasku bocznym, potem \"{label}\". Battlemapa i sceneria jednej mapy brane są razem, bo nikt nie potrzebuje jednej bez drugiej.",
   "BENEOS.Stream.Offline.Panel.MissingMark": "brak",
   "BENEOS.Stream.Offline.Panel.StreamAgain": "Znów strumieniuj {name}",
-  "BENEOS.Stream.Offline.Panel.Footer": "Mapy offline leżą w pamięci tej przeglądarki, nie na serwerze, więc są z nią związane: kto wyczyści dane witryny, traci je. Ta przeglądarka daje temu światu łącznie {total} GB, z czego {used} GB jest zajęte.",
+  "BENEOS.Stream.Offline.Panel.Footer": "Mapy offline leżą w pamięci tej przeglądarki, nie na serwerze, więc są z nią związane: kto wyczyści dane witryny, traci je. Ta przeglądarka daje temu światu łącznie {total} GB, z czego {used} GB jest zajęte. Limit jest związany z kluczem Beneos tego świata, nie z osobą, więc wszyscy, którzy otwierają ten świat, czerpią z tego samego, i wyczerpać go może też gracz.",
   "BENEOS.Wiki.Title": "Dokumentacja",
   "BENEOS.Wiki.Ui.SearchPlaceholder": "Przeszukaj dokumentację…",
   "BENEOS.Wiki.Ui.Results": "wyników",

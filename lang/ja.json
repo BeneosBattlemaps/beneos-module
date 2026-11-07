@@ -2460,7 +2460,7 @@
   "BENEOS.Stream.Offline.Panel.EmptyHint": "サイドバーのシーンを右クリックして「{label}」を選びます。マップのバトルマップと情景はまとめて扱われます。片方だけでは使えないためです。",
   "BENEOS.Stream.Offline.Panel.MissingMark": "欠落",
   "BENEOS.Stream.Offline.Panel.StreamAgain": "{name} を再びストリーミングする",
-  "BENEOS.Stream.Offline.Panel.Footer": "オフラインのマップはサーバーではなくこのブラウザの保存領域にあり、このブラウザに結び付いています。サイトデータを消すと失われます。このブラウザはこのワールドに合計 {total} GB を割り当てており、そのうち {used} GB を使用しています。",
+  "BENEOS.Stream.Offline.Panel.Footer": "オフラインのマップはサーバーではなくこのブラウザの保存領域にあり、このブラウザに結び付いています。サイトデータを消すと失われます。このブラウザはこのワールドに合計 {total} GB を割り当てており、そのうち {used} GB を使用しています。 この割り当てはこのワールドの Beneos キーに結び付いており、人に結び付いてはいません。ですからこのワールドを開く全員が同じ割り当てから取り、プレイヤーが使い切ることもあります。",
   "BENEOS.Wiki.Title": "ドキュメント",
   "BENEOS.Wiki.Ui.SearchPlaceholder": "ドキュメントを検索…",
   "BENEOS.Wiki.Ui.Results": "件の結果",

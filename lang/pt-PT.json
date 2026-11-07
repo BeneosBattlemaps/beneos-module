@@ -2460,7 +2460,7 @@
   "BENEOS.Stream.Offline.Panel.EmptyHint": "Clique com o botão direito numa cena da barra lateral e escolha \"{label}\". A battlemap e o cenário de um mapa são levados em conjunto, porque ninguém precisa de um sem o outro.",
   "BENEOS.Stream.Offline.Panel.MissingMark": "em falta",
   "BENEOS.Stream.Offline.Panel.StreamAgain": "Transmitir {name} novamente",
-  "BENEOS.Stream.Offline.Panel.Footer": "Os mapas offline estão no armazenamento deste navegador, não no servidor, e por isso estão ligados a este navegador: quem apagar os dados do site perde-os. Este navegador oferece a este mundo {total} GB no total, dos quais {used} GB estão a ser utilizados.",
+  "BENEOS.Stream.Offline.Panel.Footer": "Os mapas offline estão no armazenamento deste navegador, não no servidor, e por isso estão ligados a este navegador: quem apagar os dados do site perde-os. Este navegador oferece a este mundo {total} GB no total, dos quais {used} GB estão a ser utilizados. A quota está ligada à chave Beneos deste mundo e não a uma pessoa, por isso todos os que abrem este mundo tiram da mesma, e um jogador também a pode esgotar.",
   "BENEOS.Wiki.Title": "Documentação",
   "BENEOS.Wiki.Ui.SearchPlaceholder": "Pesquisar na documentação…",
   "BENEOS.Wiki.Ui.Results": "resultados",
