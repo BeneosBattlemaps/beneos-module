@@ -1625,6 +1625,7 @@
   "BENEOS.Notifications.Utility.ActorNotFound": "Beneos Module : nom/id d'acteur introuvable pour le token {key}.",
   "BENEOS.TokenMenu.SwitchStyleTo25D": "Passer en 2.5D",
   "BENEOS.TokenMenu.SwitchStyleToTopDown": "Passer en Top-Down",
+  "BENEOS.TokenMenu.OfflineSwitchDisabled": "Indisponible hors ligne. Reconnectez-vous pour changer de variante ou de style.",
   "BENEOS.TokenMenu.StyleSwitchedTokenized": "Beneos : passé en 2.5D",
   "BENEOS.TokenMenu.StyleSwitchedTopDown": "Beneos : passé en Top-Down",
   "BENEOS.TokenMenu.StyleNotApplicable": "Beneos : le jeton n'a pas de suffixe de variante reconnaissable",

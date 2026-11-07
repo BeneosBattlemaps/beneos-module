@@ -1625,6 +1625,7 @@
   "BENEOS.Notifications.Utility.ActorNotFound": "Beneos Module: jméno/id aktéra nenalezeno pro token {key}.",
   "BENEOS.TokenMenu.SwitchStyleTo25D": "Přepnout na 2.5D",
   "BENEOS.TokenMenu.SwitchStyleToTopDown": "Přepnout na Top-Down",
+  "BENEOS.TokenMenu.OfflineSwitchDisabled": "Offline není dostupné. Připoj se znovu pro změnu varianty nebo stylu.",
   "BENEOS.TokenMenu.StyleSwitchedTokenized": "Beneos: přepnuto na 2.5D",
   "BENEOS.TokenMenu.StyleSwitchedTopDown": "Beneos: přepnuto na Top-Down",
   "BENEOS.TokenMenu.StyleNotApplicable": "Beneos: token nemá rozpoznatelnou variantní příponu",

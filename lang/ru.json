@@ -1627,6 +1627,7 @@
   "BENEOS.Notifications.Utility.ActorNotFound": "Модуль Beneos: имя/id актёра не найдено для токена {key}.",
   "BENEOS.TokenMenu.SwitchStyleTo25D": "Переключиться на 2.5D",
   "BENEOS.TokenMenu.SwitchStyleToTopDown": "Переключиться на Top-Down",
+  "BENEOS.TokenMenu.OfflineSwitchDisabled": "Недоступно без подключения. Подключитесь снова, чтобы сменить вариант или стиль.",
   "BENEOS.TokenMenu.StyleSwitchedTokenized": "Beneos: переключено на 2.5D",
   "BENEOS.TokenMenu.StyleSwitchedTopDown": "Beneos: переключено на Top-Down",
   "BENEOS.TokenMenu.StyleNotApplicable": "Beneos: токен не имеет узнаваемого суффикса варианта",

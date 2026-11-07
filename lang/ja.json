@@ -1625,6 +1625,7 @@
   "BENEOS.Notifications.Utility.ActorNotFound": "Beneos Module：トークン {key} のアクター名/ID が見つかりません。",
   "BENEOS.TokenMenu.SwitchStyleTo25D": "2.5D に切り替え",
   "BENEOS.TokenMenu.SwitchStyleToTopDown": "Top-Down に切り替え",
+  "BENEOS.TokenMenu.OfflineSwitchDisabled": "オフラインでは利用できません。再接続するとバリアントやスタイルを切り替えられます。",
   "BENEOS.TokenMenu.StyleSwitchedTokenized": "Beneos：2.5D に切り替えました",
   "BENEOS.TokenMenu.StyleSwitchedTopDown": "Beneos：Top-Down に切り替えました",
   "BENEOS.TokenMenu.StyleNotApplicable": "Beneos：トークンに認識可能なバリアントサフィックスがありません",

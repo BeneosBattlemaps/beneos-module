@@ -1625,6 +1625,7 @@
   "BENEOS.Notifications.Utility.ActorNotFound": "Beneos Module: 토큰 {key}의 액터 이름/id를 찾을 수 없습니다.",
   "BENEOS.TokenMenu.SwitchStyleTo25D": "2.5D로 전환",
   "BENEOS.TokenMenu.SwitchStyleToTopDown": "Top-Down으로 전환",
+  "BENEOS.TokenMenu.OfflineSwitchDisabled": "오프라인에서는 사용할 수 없습니다. 다시 연결하면 변형이나 스타일을 바꿀 수 있습니다.",
   "BENEOS.TokenMenu.StyleSwitchedTokenized": "Beneos: 2.5D로 전환됨",
   "BENEOS.TokenMenu.StyleSwitchedTopDown": "Beneos: Top-Down으로 전환됨",
   "BENEOS.TokenMenu.StyleNotApplicable": "Beneos: 토큰에 인식 가능한 변형 접미사가 없습니다",
