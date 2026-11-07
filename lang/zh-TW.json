@@ -2408,6 +2408,7 @@
   "BENEOS.Stream.Intro.Download.What": "一次發布會把所有東西都安裝到這個世界，包含影片與聲音。我們的伺服器上不會留下任何東西，所以遊玩時也不會再下載任何內容。",
   "BENEOS.Stream.Intro.Download.Cost": "地圖只在安裝時需要連線，之後完全不需要。你的玩家會從你的電腦載入它們。",
   "BENEOS.Stream.Intro.Download.Existing": "這個世界裡已經安裝好的東西都不會變，而重點正在這裡：串流期間安裝的發布仍然指向我們的伺服器，所以它的地圖與生物圖會是空的。從現在起安裝的東西都會放到你的硬碟上。如果你也需要某個舊發布放在本機，請在 Discord 上告訴我們，我們會跟你一起處理。",
+  "BENEOS.Stream.Denied.Video": "Beneos：{name} 的動態地圖目前無法取得，所以這個場景顯示的是靜態圖。通常表示訂閱或租用已經到期。",
   "BENEOS.Stream.Intro.Ok": "了解",
   "BENEOS.Stream.Doku.Summary": "這是什麼？",
   "BENEOS.Stream.Doku.BarLead": "這條列",

@@ -2408,6 +2408,7 @@
   "BENEOS.Stream.Intro.Download.What": "릴리스는 영상과 소리를 포함해 모든 것을 이 월드에 설치합니다. 저희 서버에는 아무것도 남지 않으므로 플레이 중에 받아오는 것도 없습니다.",
   "BENEOS.Stream.Intro.Download.Cost": "맵은 설치하는 동안에만 연결이 필요하고 그 뒤에는 전혀 필요하지 않습니다. 플레이어는 당신의 컴퓨터에서 받습니다.",
   "BENEOS.Stream.Intro.Download.Existing": "이미 이 월드에 설치된 것은 아무것도 바뀌지 않으며, 바로 그 점이 중요합니다. 스트리밍 중에 설치한 릴리스는 여전히 저희 서버를 가리키므로 그 맵과 크리처 이미지는 비어 있게 됩니다. 지금부터 설치하는 것은 모두 당신의 디스크에 저장됩니다. 예전 릴리스도 로컬로 필요하면 Discord로 물어보세요. 함께 해결하겠습니다.",
+  "BENEOS.Stream.Denied.Video": "Beneos: {name}의 움직이는 맵을 지금 사용할 수 없어 이 장면은 정지 이미지를 보여 줍니다. 보통 멤버십이나 대여 기간이 끝났다는 뜻입니다.",
   "BENEOS.Stream.Intro.Ok": "알겠습니다",
   "BENEOS.Stream.Doku.Summary": "이것은 무엇인가요",
   "BENEOS.Stream.Doku.BarLead": "이 막대",
