@@ -380,7 +380,10 @@ export function streamBase() {
  * Bewusst dieselbe Bildung wie in der Telemetrie (`beneos_analytics.js`), aber
  * hier noch einmal in vier Zeilen statt ueber deren Klasse. Grund: die
  * Telemetrie schaltet sich ab, sobald das Streaming laeuft
- * (`beneos_analytics.js:111`). Wer sich auf sie stuetzte, haette eine
+ * (`beneos_analytics.js:177`, die Zeile `if (globalThis.BeneosStream?.enabled())
+ * return false` in `isEnabled()`; bis zum 07.11.2026 stand hier `:111`, und das
+ * ist eine Fahne des Tour-Einbaus ohne Bezug zum Streaming).
+ * Wer sich auf sie stuetzte, haette eine
  * Abhaengigkeit auf etwas, das in genau diesem Fall nicht arbeitet.
  */
 async function weltKennung() {
