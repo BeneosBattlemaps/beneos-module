@@ -479,7 +479,7 @@ async function torFragen(weg, methode = "GET") {
       return { ok: false, grund: "tor-fehler", status: r.status, inhalt }
     }
     return { ok: Boolean(inhalt && inhalt.ok), status: r.status, inhalt }
-  } catch (e) {
+  } catch (_e) {
     // Kein Netz. Eine Karte offline zu nehmen heisst, sie zu holen, und das
     // braucht ohnehin das Tor. Also ist das hier kein Sonderfall, sondern
     // derselbe Fall, nur frueher erkannt.

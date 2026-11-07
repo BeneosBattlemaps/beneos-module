@@ -679,7 +679,7 @@ export function downloadMode() {
 export function lieferungStreamt() {
   try {
     return !downloadMode() && streamEnabled() && !!streamKey()
-  } catch (e) {
+  } catch (_e) {
     return false
   }
 }
