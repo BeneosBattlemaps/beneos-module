@@ -10,6 +10,7 @@ import { BeneosCloudWindowV2 } from "./cloud-v2/cloud-window-v2.mjs";
 import { maybeShowUpdateNotice } from "./cloud-v2/home/update-check.mjs";
 import { BeneosWhatsNewWindow } from "./cloud-v2/home/whats-new-window.mjs";
 import { presentCountryPrompt } from "./cloud-v2/country-prompt.mjs";
+import { headCheck } from "./beneos-asset-watcher.js";
 
 const MODULE_ID = "beneos-module";
 
@@ -1860,11 +1861,34 @@ const GETTING_STARTED_RUNTIME_ASSETS = Object.freeze({
 const gettingStartedRuntimeAssetFile = (key) => GETTING_STARTED_RUNTIME_ASSETS[key].split("/").pop();
 
 /** HEAD-probe a Data-relative path (same pattern as beneosTopVariantExists). */
+/* Existenzprobe fuer eine Tourdatei.
+ *
+ * AUSTAUSCH AM 07.11.2026, OP-PRJ-171. Vorher baute diese Stelle die Adresse
+ * selbst als `"/" + encodeURI(pfad)`, und das hatte zwei Fehler:
+ *
+ *   Ohne `foundry.utils.getRoute()` zeigt ein fuehrender Schraegstrich auf die
+ *   Wurzel des Servers. Auf einer Foundry unter einem Unterpfad und auf The
+ *   Forge gilt die geprobte Datei damit als fehlend, und die Tour
+ *   ueberspringt oder zeigt den falschen Schritt.
+ *
+ *   Eine absolute Adresse wurde nicht abgewiesen. Gemessen am 07.11.2026 im
+ *   Teststand: aus einer Toradresse wurde eine Anfrage an den EIGENEN Server
+ *   auf `/https://gate.beneos.stream/a/...`, also eine Zeile mit dem
+ *   Streamschluessel im Zugriffsprotokoll des Kunden und eine rote 404 in
+ *   seiner Konsole. Mit `headCheck()` sind es null Anfragen.
+ *
+ * `headCheck()` traegt beides: es weist absolute Adressen mit `status: -2` ab
+ * und baut den Pfad relativ, also gegen die Route der Seite. Dieselbe Stelle
+ * nutzt `stream-posen.mjs` seit dem 05.11.2026. Keine neue Logik, ein
+ * Austausch.
+ *
+ * Der Rueckgabewert bleibt ein Wahrheitswert, weil die beiden Aufrufer unten
+ * nur fragen, ob sie diesen Kandidaten nehmen koennen. Eine ungeprueft
+ * gebliebene Adresse zaehlt dabei als "nicht nehmen", und das ist richtig: ein
+ * Tourschritt soll keine entfernte Datei anfassen. */
 async function beneosTourFileExists(path) {
-  try {
-    const resp = await fetch("/" + encodeURI(String(path).replace(/^\/+/, "")), { method: "HEAD" });
-    return resp.ok;
-  } catch (_e) { return false; }
+  const antwort = await headCheck(String(path).replace(/^\/+/, ""));
+  return antwort?.ok === true;
 }
 
 /* Resolve a runtime-swapped tour asset so it loads in the dev world AND on a
