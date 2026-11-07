@@ -2460,7 +2460,7 @@
   "BENEOS.Stream.Offline.Panel.EmptyHint": "在側邊欄的場景上按右鍵，然後選擇「{label}」。一張地圖的戰鬥地圖與場景會一併處理，因為少了其中一個就無法使用。",
   "BENEOS.Stream.Offline.Panel.MissingMark": "缺少",
   "BENEOS.Stream.Offline.Panel.StreamAgain": "重新串流 {name}",
-  "BENEOS.Stream.Offline.Panel.Footer": "離線地圖存放在這個瀏覽器的儲存空間，而不是伺服器上，因此與這個瀏覽器綁定：清除網站資料就會遺失。這個瀏覽器總共提供這個世界 {total} GB，其中 {used} GB 已使用。",
+  "BENEOS.Stream.Offline.Panel.Footer": "離線地圖存放在這個瀏覽器的儲存空間，而不是伺服器上，因此與這個瀏覽器綁定：清除網站資料就會遺失。這個瀏覽器總共提供這個世界 {total} GB，其中 {used} GB 已使用。 這個額度綁在這個世界的 Beneos 金鑰上，不是綁在某個人身上，所以每個打開這個世界的人都從同一份額度裡取用，玩家也可能把它用完。",
   "BENEOS.Wiki.Title": "文件",
   "BENEOS.Wiki.Ui.SearchPlaceholder": "搜尋文件…",
   "BENEOS.Wiki.Ui.Results": "筆結果",

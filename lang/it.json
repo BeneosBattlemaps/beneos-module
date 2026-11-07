@@ -2460,7 +2460,7 @@
   "BENEOS.Stream.Offline.Panel.EmptyHint": "Clic destro su una scena nella barra laterale, poi \"{label}\". La battlemap e lo scenario di una mappa vengono presi insieme, perché nessuno ha bisogno dell'una senza l'altro.",
   "BENEOS.Stream.Offline.Panel.MissingMark": "mancante",
   "BENEOS.Stream.Offline.Panel.StreamAgain": "Trasmetti di nuovo {name}",
-  "BENEOS.Stream.Offline.Panel.Footer": "Le mappe offline si trovano nella memoria di questo browser, non sul server, quindi sono legate a questo browser: se cancelli i dati del sito le perdi. Questo browser offre a questo mondo {total} GB in totale, di cui {used} GB sono in uso.",
+  "BENEOS.Stream.Offline.Panel.Footer": "Le mappe offline si trovano nella memoria di questo browser, non sul server, quindi sono legate a questo browser: se cancelli i dati del sito le perdi. Questo browser offre a questo mondo {total} GB in totale, di cui {used} GB sono in uso. Il contingente è legato alla chiave Beneos di questo mondo e non a una persona, quindi tutti quelli che aprono questo mondo attingono dallo stesso, e anche un giocatore può esaurirlo.",
   "BENEOS.Wiki.Title": "Documentazione",
   "BENEOS.Wiki.Ui.SearchPlaceholder": "Cerca nella documentazione…",
   "BENEOS.Wiki.Ui.Results": "risultati",

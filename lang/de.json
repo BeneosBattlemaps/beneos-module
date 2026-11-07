@@ -2468,7 +2468,7 @@
   "BENEOS.Stream.Offline.Panel.EmptyHint": "Rechtsklick auf eine Szene in der Seitenleiste, dann \"{label}\". Battlemap und Szenerie einer Karte werden zusammen genommen, weil niemand die eine ohne die andere braucht.",
   "BENEOS.Stream.Offline.Panel.MissingMark": "fehlt",
   "BENEOS.Stream.Offline.Panel.StreamAgain": "{name} wieder streamen",
-  "BENEOS.Stream.Offline.Panel.Footer": "Offline gehaltene Karten liegen im Speicher dieses Browsers, nicht auf dem Server, und sind damit an diesen Browser gebunden: wer seine Websitedaten löscht, verliert sie. Der Browser stellt dieser Welt insgesamt {total} GB zur Verfügung, davon sind {used} GB belegt.",
+  "BENEOS.Stream.Offline.Panel.Footer": "Offline gehaltene Karten liegen im Speicher dieses Browsers, nicht auf dem Server, und sind damit an diesen Browser gebunden: wer seine Websitedaten löscht, verliert sie. Der Browser stellt dieser Welt insgesamt {total} GB zur Verfügung, davon sind {used} GB belegt. Das Kontingent hängt am Beneos-Schlüssel dieser Welt und nicht an einer Person, alle, die diese Welt öffnen, nehmen also aus demselben, und auch ein Mitspieler kann es aufbrauchen.",
   "BENEOS.Wiki.Title": "Dokumentation",
   "BENEOS.Wiki.Ui.SearchPlaceholder": "Dokumentation durchsuchen…",
   "BENEOS.Wiki.Ui.Results": "Ergebnisse",

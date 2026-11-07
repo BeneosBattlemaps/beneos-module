@@ -2460,7 +2460,7 @@
   "BENEOS.Stream.Offline.Panel.EmptyHint": "Clic dret sobre una escena de la barra lateral i tria \"{label}\". La battlemap i l'escenari d'un mapa es prenen junts, perquè ningú necessita l'un sense l'altre.",
   "BENEOS.Stream.Offline.Panel.MissingMark": "falta",
   "BENEOS.Stream.Offline.Panel.StreamAgain": "Torna a transmetre {name}",
-  "BENEOS.Stream.Offline.Panel.Footer": "Els mapes fora de línia són a l'emmagatzematge d'aquest navegador, no al servidor, i per tant estan lligats a aquest navegador: si esborres les dades del lloc, els perds. Aquest navegador ofereix a aquest món {total} GB en total, dels quals {used} GB estan ocupats.",
+  "BENEOS.Stream.Offline.Panel.Footer": "Els mapes fora de línia són a l'emmagatzematge d'aquest navegador, no al servidor, i per tant estan lligats a aquest navegador: si esborres les dades del lloc, els perds. Aquest navegador ofereix a aquest món {total} GB en total, dels quals {used} GB estan ocupats. El contingent va lligat a la clau Beneos d'aquest món i no a una persona, així que tots els qui obren aquest món treuen del mateix, i també un jugador el pot esgotar.",
   "BENEOS.Wiki.Title": "Documentació",
   "BENEOS.Wiki.Ui.SearchPlaceholder": "Cerca a la documentació…",
   "BENEOS.Wiki.Ui.Results": "resultats",

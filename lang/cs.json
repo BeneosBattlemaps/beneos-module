@@ -2460,7 +2460,7 @@
   "BENEOS.Stream.Offline.Panel.EmptyHint": "Klikni pravým tlačítkem na scénu v postranním panelu a zvol \"{label}\". Battlemapa a scenérie jedné mapy se berou dohromady, protože nikdo nepotřebuje jednu bez druhé.",
   "BENEOS.Stream.Offline.Panel.MissingMark": "chybí",
   "BENEOS.Stream.Offline.Panel.StreamAgain": "Znovu streamovat {name}",
-  "BENEOS.Stream.Offline.Panel.Footer": "Offline mapy leží v úložišti tohoto prohlížeče, ne na serveru, a jsou tedy vázané na tento prohlížeč: kdo smaže data webu, přijde o ně. Tento prohlížeč dává tomuto světu celkem {total} GB, z toho je {used} GB obsazeno.",
+  "BENEOS.Stream.Offline.Panel.Footer": "Offline mapy leží v úložišti tohoto prohlížeče, ne na serveru, a jsou tedy vázané na tento prohlížeč: kdo smaže data webu, přijde o ně. Tento prohlížeč dává tomuto světu celkem {total} GB, z toho je {used} GB obsazeno. Kvóta je vázaná na beneosový klíč tohoto světa, ne na osobu, takže všichni, kdo tento svět otevřou, berou ze stejné, a vyčerpat ji může i hráč.",
   "BENEOS.Wiki.Title": "Dokumentace",
   "BENEOS.Wiki.Ui.SearchPlaceholder": "Prohledat dokumentaci…",
   "BENEOS.Wiki.Ui.Results": "výsledků",
