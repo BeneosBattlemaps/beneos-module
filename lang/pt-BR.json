@@ -2407,6 +2407,7 @@
   "BENEOS.Stream.Intro.Download.Lead": "Sua conta está configurada para download completo.",
   "BENEOS.Stream.Intro.Download.What": "Um lancamento instala tudo neste mundo, video e som inclusos. Nada fica nos nossos servidores, entao nada e baixado enquanto voce joga.",
   "BENEOS.Stream.Intro.Download.Cost": "Os mapas precisam de conexao durante a instalacao e de nenhuma depois. Seus jogadores os carregam do seu computador.",
+  "BENEOS.Stream.Intro.Download.Existing": "Nada do que já está instalado neste mundo muda, e esse é justamente o ponto: um lançamento que você instalou com a transmissão ativa continua apontando para os nossos servidores, então os mapas e as imagens de criatura dele ficam vazios. Tudo que você instalar de agora em diante vai para o seu disco. Se você também precisa de um lançamento antigo localmente, fale com a gente no Discord e resolvemos isso com você.",
   "BENEOS.Stream.Intro.Ok": "Entendi",
   "BENEOS.Stream.Doku.Summary": "O que e isso?",
   "BENEOS.Stream.Doku.BarLead": "Esta barra",

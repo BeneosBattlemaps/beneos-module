@@ -2407,6 +2407,7 @@
   "BENEOS.Stream.Intro.Download.Lead": "Votre compte est réglé sur téléchargement complet.",
   "BENEOS.Stream.Intro.Download.What": "Une sortie installe tout dans ce monde, video et son compris. Rien ne reste sur nos serveurs, donc rien n'est telecharge pendant que vous jouez.",
   "BENEOS.Stream.Intro.Download.Cost": "Les cartes ont besoin d'une connexion pendant l'installation, et plus du tout ensuite. Vos joueurs les chargent depuis votre ordinateur.",
+  "BENEOS.Stream.Intro.Download.Existing": "Rien de ce qui est déjà installé dans ce monde ne change, et c'est justement le point : une sortie que vous avez installée en diffusion pointe toujours vers nos serveurs, donc ses cartes et ses images de créature restent vides. Tout ce que vous installez désormais va sur votre disque. S'il vous faut aussi une ancienne sortie en local, demandez-nous sur Discord et nous réglons cela avec vous.",
   "BENEOS.Stream.Intro.Ok": "Compris",
   "BENEOS.Stream.Doku.Summary": "Qu'est-ce que c'est ?",
   "BENEOS.Stream.Doku.BarLead": "Cette barre",

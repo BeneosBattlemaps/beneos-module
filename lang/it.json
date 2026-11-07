@@ -2407,6 +2407,7 @@
   "BENEOS.Stream.Intro.Download.Lead": "Il tuo account è impostato sul download completo.",
   "BENEOS.Stream.Intro.Download.What": "Un rilascio installa tutto in questo mondo, video e audio compresi. Sui nostri server non resta nulla, quindi mentre giochi non viene scaricato nulla.",
   "BENEOS.Stream.Intro.Download.Cost": "Le mappe hanno bisogno di una connessione durante l'installazione, e di nessuna dopo. I tuoi giocatori le caricano dal tuo computer.",
+  "BENEOS.Stream.Intro.Download.Existing": "Non cambia nulla di quello che è già installato in questo mondo, e questo è il punto: un rilascio che hai installato con lo streaming attivo punta ancora ai nostri server, quindi le sue mappe e le sue immagini di creatura restano vuote. Tutto quello che installi da ora in poi finisce sul tuo disco. Se ti serve anche un rilascio vecchio in locale, chiedicelo su Discord e lo sistemiamo con te.",
   "BENEOS.Stream.Intro.Ok": "Capito",
   "BENEOS.Stream.Doku.Summary": "Che cos'e?",
   "BENEOS.Stream.Doku.BarLead": "Questa barra",

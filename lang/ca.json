@@ -2407,6 +2407,7 @@
   "BENEOS.Stream.Intro.Download.Lead": "El teu compte està configurat per a descàrrega completa.",
   "BENEOS.Stream.Intro.Download.What": "Una publicacio instal.la tot en aquest mon, video i so inclosos. No queda res als nostres servidors, aixi que no es baixa res mentre jugues.",
   "BENEOS.Stream.Intro.Download.Cost": "Els mapes necessiten connexio mentre s'instal.len, i cap despres. Els teus jugadors els carreguen des del teu ordinador.",
+  "BENEOS.Stream.Intro.Download.Existing": "No canvia res del que ja hi ha instal·lat en aquest món, i això és el punt: una publicació que has instal·lat amb la transmissió activa continua apuntant als nostres servidors, així que els seus mapes i les imatges de criatura es queden buits. Tot el que instal·lis a partir d'ara va al teu disc. Si necessites una publicació antiga també en local, pregunta'ns al Discord i ho resolem amb tu.",
   "BENEOS.Stream.Intro.Ok": "Entesos",
   "BENEOS.Stream.Doku.Summary": "Que es aixo?",
   "BENEOS.Stream.Doku.BarLead": "Aquesta barra",
