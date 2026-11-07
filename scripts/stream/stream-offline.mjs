@@ -29,7 +29,7 @@
  * er den Abend kostet.
  */
 
-import { MODULE_ID, SETTING, streamEnabled, assetUrl, zerlegeAdresse, streamKey, streamBase, VIDEO_EXT } from "./stream-settings.mjs"
+import { MODULE_ID, SETTING, streamEnabled, assetUrl, zerlegeAdresse, streamKey, streamBase, VIDEO_EXT, istGeteilteDatei } from "./stream-settings.mjs"
 import { offlineGehalten, offlineHalten, offlineFreigeben, nichtGehalten,
          gehalteneAdressen, speicherAusfallStand, speicherLage } from "./stream-fetch.mjs"
 import { streamAdressenVon, streamState } from "./stream-online.mjs"
@@ -270,20 +270,13 @@ async function schreibGeteilt(alle) {
   catch (e) { console.warn("Beneos Stream | Gemeinschaftsvorrat nicht schreibbar", e) }
 }
 
-/**
- * Eine geteilte Datei erkennt man an ihrem Pfad.
- *
- * `map_assets/` ist der Ordner, in dem die Symbole und Hilfsbilder liegen, die
- * jede Beneos-Szene zieht: Kompass, Bedienleiste, Stop-Symbol. Sie gehoeren
- * keinem Ort im Manifest, deshalb kennt sie keine Karte.
- *
- * Die Regel steht bewusst an EINER Stelle. Wer sie an zwei Orten schreibt,
- * bekommt frueher oder spaeter zwei verschiedene Antworten auf dieselbe Datei,
- * und dann liegt etwas im Vorrat, das niemand mehr freigibt.
+/*
+ * `istGeteilteDatei` stand bis zum 2026-11-08 hier und liegt jetzt in
+ * `stream-settings.mjs`, bei den uebrigen Adressregeln. Der Grund ist ein
+ * Importzyklus: `vorratsSchluessel` in `stream-fetch.mjs` braucht sie, und
+ * diese Datei importiert aus `stream-fetch.mjs`. Die Regel selbst ist
+ * unveraendert, und sie steht weiter an genau EINER Stelle.
  */
-export function istGeteilteDatei(url) {
-  return /\/map_assets\//.test(String(url || ""))
-}
 
 /**
  * Die geteilten Adressen EINER Karte.
