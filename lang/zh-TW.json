@@ -699,6 +699,8 @@
   "BENEOS.AssetWatcher.Repair.ScopeChoose": "選擇要修復的範圍：",
   "BENEOS.AssetWatcher.Repair.ScopeThisScene": "僅此場景（{count} 個損壞參照）",
   "BENEOS.AssetWatcher.Repair.ScopeEntireWorld": "整個世界（掃描所有場景、角色、日誌、播放清單與表格）",
+  "BENEOS.AssetWatcher.Repair.ScopePacks": "也搜尋 Beneos 彙編",
+  "BENEOS.AssetWatcher.Repair.ScopePacksHint": "只有在世界中沒有任何損壞、卻仍缺少生物、物品或法術的圖片時才需要。它會開啟全部四個 Beneos 彙編，可能需要大約一分鐘。",
   "BENEOS.AssetWatcher.Repair.ButtonScan": "掃描",
   "BENEOS.AssetWatcher.Repair.ButtonCancel": "取消",
   "BENEOS.AssetWatcher.Repair.Scanning": "正在於檔案系統中掃描相符位置…",

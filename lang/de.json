@@ -701,6 +701,8 @@
   "BENEOS.AssetWatcher.Repair.ScopeChoose": "Wähle, was repariert werden soll:",
   "BENEOS.AssetWatcher.Repair.ScopeThisScene": "Nur diese Szene ({count} defekte Referenz(en))",
   "BENEOS.AssetWatcher.Repair.ScopeEntireWorld": "Gesamte Welt (alle Szenen, Akteure, Journale, Playlists, Tabellen scannen)",
+  "BENEOS.AssetWatcher.Repair.ScopePacks": "Auch die Beneos-Kompendien durchsuchen",
+  "BENEOS.AssetWatcher.Repair.ScopePacksHint": "Nur nötig, wenn in der Welt nichts kaputt ist und trotzdem ein Bild einer Kreatur, eines Gegenstands oder eines Zaubers fehlt. Es öffnet alle vier Beneos-Kompendien und kann etwa eine Minute dauern.",
   "BENEOS.AssetWatcher.Repair.ButtonScan": "Scannen",
   "BENEOS.AssetWatcher.Repair.ButtonCancel": "Abbrechen",
   "BENEOS.AssetWatcher.Repair.Scanning": "Dateisystem wird nach passenden Speicherorten durchsucht…",
