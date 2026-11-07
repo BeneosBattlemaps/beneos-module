@@ -55,6 +55,46 @@ export const SETTING = {
 
 const DEFAULT_BASE = "https://gate.beneos.stream"
 
+/** Dieselbe Vorgabe fuer den Pruefsatz. Siehe `stream-basis.test.mjs`. */
+export const GATE_DEFAULT_BASE = DEFAULT_BASE
+
+/**
+ * Die Zone, in der ein Tor liegen darf.
+ *
+ * DIE BASIS KOMMT VOM SERVER, UND DESHALB BRAUCHT SIE EINE ERLAUBNISLISTE.
+ * `ensureStreamKey` uebernimmt das Feld `base` aus der Antwort, und `assetUrl`
+ * baut jede Toradresse darauf. Ohne diese Pruefung biegt eine einzige
+ * geaenderte Zeichenkette in der Antwort alle Karten- und Kreaturenadressen
+ * auf einen fremden Ursprung um, ohne dass sich eine Codezeile aendert, und
+ * der Streamschluessel geht in der Adresse mit. Die Dokumente behalten den
+ * Wert dauerhaft, ein Rueckbau der Modulfassung heilt das also nicht.
+ *
+ * Geprueft wird die ZONE und nicht ein einzelner Name: ein zweites Tor des
+ * Hauses soll ohne Modulfassung erreichbar bleiben. Alles ausserhalb der Zone
+ * wird abgelehnt, ebenso alles ohne Verschluesselung.
+ *
+ * Siehe `OP-PRJ-176`.
+ */
+const GATE_ZONE = "beneos.stream"
+
+/**
+ * Gibt die Basis zurueck, wenn sie erlaubt ist, sonst eine leere Zeichenkette.
+ *
+ * Die leere Zeichenkette ist das Signal fuer "abgelehnt". Sie ist bewusst kein
+ * Wurf: der Aufrufer entscheidet, ob er die Vorgabe nimmt oder gar nichts tut.
+ */
+export function erlaubteBasis(wert) {
+  const sauber = String(wert == null ? "" : wert).trim().replace(/\/+$/, "")
+  if (!sauber) return ""
+  let adresse
+  try { adresse = new URL(sauber) } catch (_) { return "" }
+  if (adresse.protocol !== "https:") return ""
+  if (adresse.username || adresse.password) return ""
+  const host = adresse.hostname.toLowerCase()
+  if (host !== GATE_ZONE && !host.endsWith("." + GATE_ZONE)) return ""
+  return sauber
+}
+
 /** What an installation does with the files the manifest lists. */
 export const INSTALL_MODE = { stream: "stream", download: "download" }
 
@@ -313,8 +353,23 @@ export function streamKey() {
   return String(read(SETTING.key, "") || "").trim()
 }
 
+let basisGemeldet = false
+
+/**
+ * DIE PRUEFUNG LIEGT AM LESEN UND NICHT NUR AM SCHREIBEN. Eine Welt, deren
+ * Einstellung schon einen fremden Ursprung traegt, heilt damit beim naechsten
+ * Lesen und braucht keinen Nachzug. Gemeldet wird einmal je Sitzung, sonst
+ * schreibt die Leinwand die Konsole voll.
+ */
 export function streamBase() {
-  return String(read(SETTING.base, DEFAULT_BASE) || DEFAULT_BASE).replace(/\/+$/, "")
+  const roh = String(read(SETTING.base, DEFAULT_BASE) || DEFAULT_BASE).replace(/\/+$/, "")
+  const sauber = erlaubteBasis(roh)
+  if (sauber) return sauber
+  if (!basisGemeldet) {
+    basisGemeldet = true
+    console.warn(`Beneos Stream | Basis dieser Welt liegt nicht in der erlaubten Zone und wird nicht benutzt: ${roh.slice(0, 120)}`)
+  }
+  return DEFAULT_BASE
 }
 
 /* ------------------------------------------------- den Schluessel besorgen */
@@ -493,8 +548,12 @@ export async function ensureStreamKey() {
     // Einstellungen steht; stuende die Basis noch auf dem alten Wert, schriebe
     // er die halbe Welt auf eine Wurzel, die es nicht mehr gibt.
     if (daten.base) {
-      const sauber = String(daten.base).replace(/\/+$/, "")
-      if (sauber && sauber !== streamBase()) await game.settings.set(MODULE_ID, SETTING.base, sauber)
+      const sauber = erlaubteBasis(daten.base)
+      if (!sauber) {
+        console.warn(`Beneos Stream | Basis des Servers abgelehnt, sie liegt nicht in der erlaubten Zone: ${String(daten.base).slice(0, 120)}`)
+      } else if (sauber !== streamBase()) {
+        await game.settings.set(MODULE_ID, SETTING.base, sauber)
+      }
     }
 
     // DER AUSLIEFERUNGSWEG KOMMT VOM SERVER, NICHT AUS DER WELT.
