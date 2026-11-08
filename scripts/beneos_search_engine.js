@@ -120,6 +120,62 @@ export class BeneosModuleMenu extends Dialog {
 }
 
 /********************************************************************************** */
+/* Eine Schwellenliste ordnen, OP-PRJ-200.
+ *
+ * Zwei Filterlisten tragen Schluessel aus einem Vergleichszeichen und einer
+ * Zahl: die Gittergroesse (`<150` bis `>2000`) und der Preis (`<100` bis
+ * `>15000`). Nach der Beschriftung sortiert steht `< 1000g` vor `< 100g`,
+ * und die Preisleiter ist damit unbrauchbar. Hier wird nach dem Zahlenanteil
+ * geordnet, und bei gleicher Zahl steht `<` vor `>`, damit `<2000` (Big) vor
+ * `>2000` (Very Big) liegt.
+ *
+ * WARUM SIE null LIEFERT UND NICHT EINE LISTE. Ist die Liste keine
+ * Schwellenliste, gilt die Reihenfolge der Aufrufstelle unveraendert weiter.
+ * Reine Zahlenschluessel und reine Textschluessel laufen also genau wie
+ * bisher, und das ist die Gegenprobe zu dieser Aenderung.
+ *
+ * WARUM JEDER SCHLUESSEL DIE FORM TRAGEN MUSS. Eine halb erkannte Liste waere
+ * schlimmer als eine unsortierte, denn sie saehe geordnet aus. Ein einziger
+ * Schluessel ohne die Form laesst die ganze Liste durchfallen.
+ *
+ * `any` bleibt ausserhalb des Vergleichs und behaelt seinen Platz vorn. Es
+ * traegt keine Zahl, und der Bestand stellt es an beiden Stellen voran.
+ */
+const BENEOS_SCHWELLE = /^([<>])(\d+(?:[.,]\d+)?)$/
+
+export function schwellenReihenfolge(list) {
+  if (!Array.isArray(list) || list.length === 0) {
+    return null
+  }
+  const rest = list.filter((r) => r && String(r.key) !== "any")
+  if (rest.length === 0) {
+    return null
+  }
+  const teile = []
+  for (const r of rest) {
+    const treffer = BENEOS_SCHWELLE.exec(String(r.key))
+    if (!treffer) {
+      return null
+    }
+    teile.push({
+      eintrag: r,
+      zahl: Number(String(treffer[2]).replace(",", ".")),
+      kleiner: treffer[1] === "<"
+    })
+  }
+  teile.sort(function (a, b) {
+    if (a.zahl !== b.zahl) {
+      return a.zahl - b.zahl
+    }
+    if (a.kleiner === b.kleiner) {
+      return 0
+    }
+    return a.kleiner ? -1 : 1
+  })
+  const vorn = list.filter((r) => r && String(r.key) === "any")
+  return [...vorn, ...teile.map((t) => t.eintrag)]
+}
+
 export class BeneosDatabaseHolder {
 
   /********************************************************************************** */
@@ -1067,11 +1123,14 @@ export class BeneosDatabaseHolder {
           return -1;
         })
       }
-      if (tab[0].key[0] == "<" || tab[0].key[0] == ">") {
-        let a1 = Number(a.key.slice(1))
-        let b1 = Number(b.key.slice(1))
-        if (a1 > b1) return 1;
-        return -1;
+      // Eine Schwellenliste wird nach ihrem Zahlenanteil geordnet, nicht nach
+      // ihrer Beschriftung. Der Vorgaenger dieser Zeilen stand als Rumpfcode
+      // ausserhalb einer Vergleichsfunktion, benutzte also zwei undefinierte
+      // Namen, und war ohnehin unerreichbar, weil `tab[0].key` immer `any`
+      // ist. Die Pruefung liegt deshalb jetzt auf der ganzen Liste.
+      const geordnet = schwellenReihenfolge(tab)
+      if (geordnet) {
+        return geordnet
       }
     }
     return tab.sort(function (a, b) { return a.value.localeCompare(b.value) })

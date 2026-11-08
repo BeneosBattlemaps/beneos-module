@@ -48,6 +48,7 @@ import {
 import { releaseOfflineSchalten } from "../stream/stream-scene-ui.mjs"
 import { BeneosOfflineWindow } from "../stream/stream-offline-window.mjs"
 import { getPoiIndex, peekPoiIndex, releaseInfo } from "./beneos-poi-index.mjs"
+import { schwellenReihenfolge } from "../beneos_search_engine.js"
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
 
@@ -2528,10 +2529,17 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       return this.#capitalize(r.value)    // fallback: existing capitalize
     }
     const anyEntry = list.find(r => r.key === "any")
-    const rest = list
+    // OP-PRJ-200: eine Schwellenliste wie die Gittergroesse (`<150` bis
+    // `>2000`) darf nicht nach ihrer Beschriftung sortiert werden, sonst
+    // steht Big vor Medium vor Small vor Tiny. Liefert die Pruefung null,
+    // ist es keine, und es bleibt beim alphabetischen Vergleich.
+    const geordnet = schwellenReihenfolge(list)
+    const rest = (geordnet || list)
       .filter(r => r.key !== "any")
       .map(r => ({ key: r.key, value: label(r) }))
-      .sort((a, b) => a.value.localeCompare(b.value))
+    if (!geordnet) {
+      rest.sort((a, b) => a.value.localeCompare(b.value))
+    }
     const out = []
     if (anyEntry) out.push({ key: "any", value: anyEntry.value || "Any" })
     out.push(...rest)
