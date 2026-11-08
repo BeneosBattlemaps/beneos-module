@@ -248,6 +248,38 @@ then
   fahre "tools/pruefe-katalog-offline.mjs" "pruefe-katalog-offline.mjs, 7 Saetze"
 fi
 
+# Die Dateipruefung des Kreaturen-Installers, wenn sie angefasst wird.
+#
+# WARUM SIE DAZUKOMMEN MUSSTE, am 08.11.2026 mit `OP-PRJ-170`.
+# `scripts/beneos_cloud.js` loeste bis zu diesem Tag GAR KEINEN Pruefsatz aus,
+# obwohl der Kreaturen-Installer darin steht. Das ist dieselbe Deckungsluecke,
+# die `scripts/cloud-v2/cloud-window-v2.mjs` bis zum selben Tag hatte.
+#
+# WAS DARIN UNGESCHUETZT LAG. Die Waisenpruefung probte bis zum 05.11.2026 jede
+# Texturadresse auf der Platte und baute dazu `"/" + protoSrc`. Aus einer
+# Toradresse wurde `/https://gate...`, das antwortet 404, und JEDE gestreamte
+# Kreatur bekam `missing_files`; das Fenster legte dem Spielleiter dann die
+# Dokumente zum Loeschen vor, die in Ordnung sind. Dieselbe Zeile schickte den
+# Streamschluessel in das Zugriffsprotokoll des eigenen Servers. Behoben in
+# `7e96c69`, und bis zum 08.11.2026 hing daran kein Pruefsatz: eine entfernte
+# Zeile und der Fehler waere zurueck, ohne dass etwas rot wird.
+#
+# Der Stand zaehlt auch die ANZAHL der HEAD-Proben in der Datei, heute genau
+# eine. Eine zweite macht ihn rot, denn so ist der Fehler entstanden: die gute
+# Probe lag schon in derselben Datei, die Waisenpruefung hat sie nicht benutzt.
+#
+# Die Satzzahl in der Beschriftung veraltet still. Dieselbe Schwaeche tragen
+# die Zeilen darueber. Wer eine Zahl hier liest, prueft sie am Lauf.
+#
+# Sie kostet gemessen unter einer Sekunde, kein Netz, kein Foundry.
+if git diff --cached --name-only --diff-filter=ACM \
+     -- scripts/beneos_cloud.js tools/waisen-adressform-bench \
+   | grep -q .
+then
+  meld "pre-commit: Kreaturen-Installer vorgemerkt, die Adressform laeuft mit"
+  fahre "tools/waisen-adressform-bench/bench.mjs" "waisen-adressform-bench, 31 Saetze"
+fi
+
 # ----------------------------------------------------------------- Ausgang ---
 if [ "$ROT" -gt 0 ]; then
   meld ""
