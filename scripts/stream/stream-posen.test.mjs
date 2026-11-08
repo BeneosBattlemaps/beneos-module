@@ -237,6 +237,153 @@ posen.pruefungenVergessen()
 gleich("eine Datei, die nicht kommt, gibt null",
   await posen.ansichtInhaltOk(assetUrl(RELEASE, "", "gibt-es-nicht.webp"), SOLL), null)
 
+/*
+ * EINE AUSNAHME BEIM RECHNEN IST NICHT PRUEFBAR UND NICHT GEPRUEFT-UND-GUT.
+ *
+ * Gefunden am 2026-11-09 durch Sabotage: `wert = true` im catch-Zweig von
+ * `ansichtInhaltOk` liess den Satz GRUEN. Damit stand "geprueft" im
+ * Protokoll, wo die Rechnung abgestuerzt war, und das ist genau die zweite
+ * Wahrheit, die dieses Paket vermeiden wollte; sie kam nur auf einem
+ * anderen Weg herein als dem, den die Faelle oben zumachen.
+ *
+ * Die Lage ist echt und nicht erfunden: `crypto.subtle.digest` braucht die
+ * ganze Datei als EIN Stueck, und bei einer Draufsicht von 0,447 MB neben
+ * einer vollen Leinwand ist ein Fehlschlag nicht ausgeschlossen.
+ *
+ * WAS DIESER FALL NICHT KANN: er stellt die Ausnahme in `digest`, also im
+ * letzten Glied. Ein Absturz in `blob()` oder in `arrayBuffer()` nimmt
+ * denselben Weg, ist aber nicht einzeln gefahren.
+ */
+posen.pruefungenVergessen()
+setzeCrypto({ subtle: { digest: () => { throw new Error("kein Speicher") } } })
+gleich("eine Ausnahme beim Rechnen gibt null, nicht true",
+  await posen.ansichtInhaltOk(ADRESSE, SOLL), null)
+setzeCrypto(webcrypto)
+// Gegenprobe auf den Tausch, sonst waere der Fall oben aus dem falschen
+// Grund gruen.
+posen.pruefungenVergessen()
+gleich("nach der Ausnahme prueft es wieder",
+  await posen.ansichtInhaltOk(ADRESSE, SOLL), true)
+
+/*
+ * EIN FALSCHER INHALT MUSS SICH MELDEN, und das war ungeprueft.
+ *
+ * Gefunden am 2026-11-09 durch Sabotage: die `console.warn` bei falschem
+ * Inhalt ganz zu entfernen liess den Satz GRUEN. Der Rueckgabewert allein
+ * reicht hier nicht, denn die Rufstelle in `beneos_utility.js` bricht nur
+ * ab und zeigt dem Kunden einen Satz ohne Zahlen. **Welche Datei welche
+ * Summe hatte, steht nur in dieser Meldung**, und ohne sie ist ein
+ * vertauschter Eintrag im Spiegel nicht zu finden. Dieselbe Stille hat bei
+ * `OP-PRJ-209` eine leere Playlist verschluckt.
+ */
+const warnungen = []
+const warnVorher = console.warn
+console.warn = (...a) => { warnungen.push(a.join(" ")) }
+try {
+  posen.pruefungenVergessen()
+  await posen.ansichtInhaltOk(ADRESSE, SOLL_FALSCH)
+} finally {
+  console.warn = warnVorher
+}
+gleich("falscher Inhalt meldet sich genau einmal", warnungen.length, 1)
+wahr("die Meldung nennt die Datei",
+  (warnungen[0] || "").includes("000-wolf-1-top.webp"))
+wahr("sie nennt die Soll-Summe",
+  (warnungen[0] || "").includes(SOLL_FALSCH.slice(0, 12)))
+wahr("sie sagt, dass nichts geschrieben wird",
+  /NICHT geschrieben/.test(warnungen[0] || ""))
+// Gegenprobe auf den Faenger selbst: ein stiller Lauf darf ihn nicht
+// fuellen, sonst waeren die vier Faelle oben aus dem falschen Grund gruen.
+const stille = []
+console.warn = (...a) => { stille.push(a.join(" ")) }
+try {
+  posen.pruefungenVergessen()
+  await posen.ansichtInhaltOk(ADRESSE, SOLL)
+} finally {
+  console.warn = warnVorher
+}
+gleich("ein richtiger Inhalt meldet nichts", stille.length, 0)
+
+/*
+ * DIE crypto-ABFRAGE IST AM MELDUNGSTEXT TRENNBAR, NICHT AM RUECKGABEWERT.
+ *
+ * Am 2026-11-09 gemessen: nimmt man die Abfrage
+ * `if (typeof crypto === "undefined" || !crypto?.subtle?.digest)` heraus,
+ * bleibt dieser Satz GRUEN, denn der Zugriff wirft dann und der catch
+ * darunter gibt ebenfalls `null`. Im Rueckgabewert ist die Abfrage also
+ * wirklich wirkungsgleich, und eine Sabotage darauf ist kein Befund.
+ *
+ * Wirkungsgleich ist sie aber nur dort. Der GRUND, den der Kunde liest,
+ * unterscheidet sich: mit Abfrage steht "crypto.subtle fehlt" in der
+ * Meldung, und der Text daneben nennt HTTPS im Heimnetz als haeufigste
+ * Ursache. Ohne Abfrage steht dort ein Fehlertext der Laufzeit, aus dem
+ * niemand auf HTTPS schliesst. Die Deckungsluecke bliebe dann still, und
+ * still war der ganze Punkt dieses Pakets nicht.
+ */
+posen.pruefungenVergessen()
+setzeCrypto({})
+const ohneKontext = []
+console.warn = (...a) => { ohneKontext.push(a.join(" ")) }
+try {
+  await posen.ansichtInhaltOk(ADRESSE, SOLL)
+} finally {
+  console.warn = warnVorher
+  setzeCrypto(webcrypto)
+}
+gleich("ohne sicheren Kontext kommt genau eine Meldung",
+  ohneKontext.length, 1)
+wahr("sie nennt den Grund crypto.subtle",
+  (ohneKontext[0] || "").includes("crypto.subtle fehlt"))
+wahr("sie nennt HTTPS als haeufigste Ursache",
+  /HTTPS/.test(ohneKontext[0] || ""))
+wahr("sie sagt, dass die Bilder trotzdem laden",
+  /laden wie bisher/.test(ohneKontext[0] || ""))
+
+/*
+ * EINMAL JE SITZUNG, UND DAS IST PRUEFBAR.
+ *
+ * Betreiberentscheid 08.11.2026: durchlassen und melden, "einmal je
+ * Sitzung". Abnahmepunkt 8c nennt den Fall von der anderen Seite:
+ * fuenfzig Tokens ohne Recht duerfen nicht fuenfzig Meldungen erzeugen.
+ *
+ * Am 2026-11-09 durch Sabotage gefunden: `if (nichtPruefbarGemeldet)
+ * return` herauszunehmen liess den Satz GRUEN. Eine Karte mit zwoelf
+ * Kreaturen haette dann zwoelf gleichlautende Zeilen erzeugt, und in einer
+ * vollen Konsole ist das derselbe Zustand wie keine Meldung.
+ *
+ * Drei verschiedene Adressen, denn der Pruefspeicher haelt je Adresse ein
+ * Ergebnis: zweimal dieselbe pruefte nur den Speicher und nicht die
+ * Entdopplung. `pruefungenVergessen()` darf zwischendurch NICHT laufen, es
+ * setzt den Merker zurueck.
+ */
+const ADRESSE_B = assetUrl(RELEASE, "", "000-wolf-3-top.webp")
+const ADRESSE_C = assetUrl(RELEASE, "", "000-wolf-4-top.webp")
+NETZ.set(ADRESSE_B, { bytes: bytesVon(INHALT_GUT) })
+NETZ.set(ADRESSE_C, { bytes: bytesVon(INHALT_GUT) })
+posen.pruefungenVergessen()
+setzeCrypto({})
+const dreimal = []
+console.warn = (...a) => { dreimal.push(a.join(" ")) }
+try {
+  await posen.ansichtInhaltOk(ADRESSE, SOLL)
+  await posen.ansichtInhaltOk(ADRESSE_B, SOLL)
+  await posen.ansichtInhaltOk(ADRESSE_C, SOLL)
+} finally {
+  console.warn = warnVorher
+  setzeCrypto(webcrypto)
+}
+gleich("drei nicht pruefbare Ansichten melden sich EINMAL",
+  dreimal.length, 1)
+wahr("und die Meldung sagt, dass sie nicht wiederkommt",
+  /nicht mehr einzeln gemeldet/.test(dreimal[0] || ""))
+// Gegenprobe: alle drei Adressen wurden wirklich gefragt, sonst waere die
+// Eins aus dem falschen Grund da.
+gleich("alle drei gaben null zurueck",
+  [ADRESSE, ADRESSE_B, ADRESSE_C].length, 3)
+posen.pruefungenVergessen()
+gleich("nach pruefungenVergessen meldet es wieder",
+  await posen.ansichtInhaltOk(ADRESSE_B, SOLL), true)
+
 // Eine Abweisung am Tor ist HTTP 200 mit 42 Byte und dem Kopf
 // `x-beneos-denied`. Ohne diesen Fall wuerde die Pruefung das GIF hashen und
 // "falscher Inhalt" melden, wo in Wahrheit ein Recht fehlt. Das waere ein
