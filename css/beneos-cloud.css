@@ -7179,6 +7179,39 @@ button.beneos-icon-logo {
   font-size: max(12px, 0.92em);
   cursor: pointer;
 }
+/* The Close button is Foundry's generic dialog button. Without its own
+   colours it took the game system's button colours, which a customer saw as
+   dark text on our dark dialog, readable only on hover (2026-11-08). Same
+   defect and same fix as the news and login dialogs: Beneos colours,
+   independent of system and theme. Footer only, so the title bar close
+   control keeps Foundry's styling. */
+.beneos-update-notice-dialog .form-footer > button,
+.beneos-update-notice-dialog .dialog-buttons > button {
+  background: var(--bc-card) !important;
+  color: var(--bc-text) !important;
+  border: 1px solid var(--bc-border-control) !important;
+  border-radius: var(--bc-edge) !important;
+  font-family: var(--bc-font-control) !important;
+  font-weight: var(--bc-w-control) !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  transition: background var(--bc-dur-fast) var(--bc-ease), border-color var(--bc-dur-fast) var(--bc-ease);
+}
+.beneos-update-notice-dialog .form-footer > button:hover,
+.beneos-update-notice-dialog .dialog-buttons > button:hover {
+  background: var(--bc-card-hover) !important;
+  border-color: var(--bc-accent) !important;
+  color: var(--bc-text) !important;
+}
+.beneos-update-notice-dialog .form-footer > button:active,
+.beneos-update-notice-dialog .dialog-buttons > button:active {
+  background: var(--bc-bg-pressed) !important;
+}
+.beneos-update-notice-dialog .form-footer > button:focus-visible,
+.beneos-update-notice-dialog .dialog-buttons > button:focus-visible {
+  outline: 2px solid var(--bc-accent) !important;
+  outline-offset: 2px !important;
+}
 
 /* ============================================================
    Patch log (inline section on the Home tab — and shared block
