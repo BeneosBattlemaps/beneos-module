@@ -313,6 +313,72 @@ export function journalbildImSpiegel(liste, variante) {
   }
 }
 
+/**
+ * Nennt die Posenliste das Tokenbild dieses Pfades?
+ *
+ * REINE RECHNUNG, kein Netz. Die Liste kommt vom Aufrufer.
+ *
+ * WOFUER DIESE FRAGE DA IST, und sie ist eine ANDERE als die von `ansicht()`.
+ * `ansicht()` beantwortet "welche Datei soll ich laden", also eine Frage vor
+ * dem Schreiben. Diese hier beantwortet "ist die Datei, die im Dokument
+ * STEHT, im Spiegel", also eine Frage ueber einen bereits gespeicherten
+ * Pfad. Das ist der Rest von `OP-PRJ-170`: die Waisenpruefung in
+ * `beneos_cloud.js` laesst jede Toradresse ungeprueft durch, weil eine
+ * HEAD-Probe am Tor nichts taugt (eine Abweisung ist HTTP 200 mit 42 Byte).
+ * Die Liste beantwortet sie ohne Abruf des Bildes.
+ *
+ * WARUM DAS UEBERHAUPT EIN BEFUND SEIN KANN: das Tor hat fuer Kreaturen
+ * KEINEN Rueckfall auf den Ursprung (`fromOrigin` im Worker, "KEIN RUECKFALL
+ * FUER KREATUREN"). Der Spiegel ist die einzige Quelle. Nennt die Liste die
+ * Variante nicht, ist das Bild am Tor nicht zu haben, und zwar dauerhaft und
+ * nicht nur gerade jetzt.
+ *
+ * DREI ANTWORTEN UND NICHT ZWEI, dieselbe Form wie `journalbildImSpiegel`:
+ *
+ * - `{zustand: null}` heisst **nicht geprueft**: keine Liste, kein
+ *   `tokenbilder`-Feld, oder der Pfad traegt die Namensregel nicht. Der
+ *   Aufrufer darf daraus nichts folgern, schon gar nicht "fehlt". Das Fenster
+ *   dahinter LOESCHT auf Knopfdruck, und ein falsches "fehlt" waere dort
+ *   teurer als keine Aussage.
+ * - `{zustand: false}` heisst, die Liste ist da und nennt diese Variante in
+ *   diesem Stil NICHT.
+ * - `{zustand: true}` heisst, sie nennt sie, und `pfad` ist der Name AUS DER
+ *   LISTE.
+ *
+ * DER NAME WIRD NICHT VERGLICHEN, und das ist eine Entscheidung und kein
+ * Versehen. Traegt das Dokument einen anderen Dateinamen als die Liste, ist
+ * die Kreatur trotzdem im Spiegel; es ist eine Namensabweichung und kein
+ * fehlendes Bild. Ein Vergleich hier wuerde aus jeder Abweichung in der
+ * Gross- und Kleinschreibung ein Loeschangebot machen. Der Aufrufer bekommt
+ * den Namen aus der Liste und kann selbst vergleichen, wenn er eine andere
+ * Frage stellt.
+ *
+ * @param {object|null} liste  das Ergebnis von `posenliste()`
+ * @param {string} pfad  der gespeicherte Bildpfad, Toradresse oder oertlich
+ */
+export function tokenbildImSpiegel(liste, pfad) {
+  const offen = { zustand: null, pfad: null, sha256: null }
+  if (!liste || typeof liste !== "object") return offen
+  const satz = liste.tokenbilder
+  if (!satz || typeof satz !== "object") return offen
+  // Variante und Stil kommen aus dem Dateinamen, nach derselben Namensregel,
+  // die `kreaturAusPfad` fuehrt. Traegt der Pfad sie nicht, ist das keine
+  // Aussage ueber den Spiegel, sondern ein Pfad, den diese Frage nicht
+  // betrifft.
+  const wer = kreaturAusPfad(pfad)
+  if (!wer) return offen
+  const eintrag = satz[wer.variante]?.[wer.stil]
+  if (!eintrag || typeof eintrag !== "object" || !eintrag.pfad) {
+    return { zustand: false, pfad: null, sha256: null }
+  }
+  return {
+    zustand: true,
+    pfad: String(eintrag.pfad),
+    sha256: typeof eintrag.sha256 === "string" && /^[a-f0-9]{64}$/.test(eintrag.sha256)
+      ? eintrag.sha256 : null,
+  }
+}
+
 export async function ansicht(pfad, stil) {
   const ziel = stil === STILE.topdown ? STILE.topdown : STILE.tokenized
   const offen = { zustand: null, src: null, sha256: null }

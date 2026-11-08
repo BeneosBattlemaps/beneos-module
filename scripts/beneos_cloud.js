@@ -10,6 +10,7 @@ import {
   journalbildImSpiegel,
   posenliste,
   posenVergessen,
+  tokenbildImSpiegel,
 } from "./stream/stream-posen.mjs"
 import {
   assetUrl,
@@ -3752,18 +3753,39 @@ export class BeneosCloud {
       //   als rote 404-Zeile in die Browserkonsole. `headCheck()` im Watcher
       //   weist absolute Adressen genau deshalb mit `status: -2` ab.
       //
-      // Eine Toradresse gilt hier als vollstaendig. Ob das Tor sie liefert,
-      // kann diese Funktion nicht beantworten, und sie darf es auch nicht
-      // versuchen: eine Abweisung am Tor ist HTTP 200 mit 42 Byte, also
-      // lieferte eine Probe ein "vorhanden" fuer eine Kreatur ohne Recht und
-      // ein "fehlt" fuer jede Kreatur ohne Netz. Beides waere schlimmer als
-      // keine Probe. Die Posenliste beantwortet diese Frage, und sie gehoert
-      // in `OP-PRJ-170` zusammen mit dem Rest dieser Pruefung.
+      // Eine Toradresse wird NICHT geprobt. Eine Abweisung am Tor ist HTTP 200
+      // mit 42 Byte, also lieferte eine Probe ein "vorhanden" fuer eine
+      // Kreatur ohne Recht und ein "fehlt" fuer jede Kreatur ohne Netz.
+      // Beides waere schlimmer als keine Probe.
+      //
+      // SEIT DEM 08.11.2026 ANTWORTET STATTDESSEN DIE POSENLISTE, und damit
+      // ist der Rest von `OP-PRJ-170` geschlossen. Sie nennt je Variante und
+      // Stil die Datei, die im Spiegel liegt, und das Tor hat fuer Kreaturen
+      // KEINEN Rueckfall auf den Ursprung (`fromOrigin` im Worker). Nennt die
+      // Liste die Ansicht nicht, ist das Bild dauerhaft nicht zu haben, und
+      // das ist ein echtes `missing_files`.
+      //
+      // GEPRUEFT WIRD NUR `=== false` UND NICHT `!== true`. `null` heisst
+      // "nicht geprueft": kein Netz, kein Recht, kein Streamschluessel, ein
+      // alter Serverstand, oder ein Pfad, der die Namensregel nicht traegt.
+      // Dieses Fenster LOESCHT auf Knopfdruck mit vorausgewaehlten Haken, und
+      // ein Dokument, das nur deshalb vorgelegt wird, weil gerade das Netz
+      // fehlt, ist genau der Schaden, den die alte Zeile angerichtet hat.
+      //
+      // Eine Kartenadresse auf fremdem Host gilt `_beneosAdressForm` als
+      // Toradresse. `zerlegeAdresse` nennt dort den Raum `karte`, die Frage
+      // wird gar nicht gestellt, und es bleibt bei "nicht geprueft".
       const protoSrc = doc.prototypeToken?.texture?.src || ""
       if (!protoSrc) {
         issues.push("missing_files")
       } else if (_beneosAdressForm(protoSrc) !== "tor") {
         if (!(await _beneosProbeInstalledFile(protoSrc))) issues.push("missing_files")
+      } else {
+        const tor = zerlegeAdresse(protoSrc)
+        const liste = tor?.raum === "kreatur" ? await posenliste(tor.release) : null
+        if (tokenbildImSpiegel(liste, protoSrc).zustand === false) {
+          issues.push("missing_files")
+        }
       }
       // (3) no world copy
       const fid = doc.getFlag("world", "beneos")?.fullId
