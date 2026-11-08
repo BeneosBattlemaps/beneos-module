@@ -111,9 +111,30 @@ WLAN_VERSATZ = 0.026
 # Kreisrand und Boegen harte Treppen; WebP mit Alpha zeigt sie deutlich.
 UEBERABTASTUNG = 4
 
-# Qualitaet des WebP-Schreibers. 92 trifft die Groessenordnung der alten
-# Dateien (17.6 bis 21.3 KB) ohne sichtbare Artefakte an den Kanten.
-WEBP_QUALITAET = 92
+# VERLUSTFREI, und das ist hier nicht die teurere Wahl, sondern die
+# billigere: gemessen am 08.11.2026 wiegt dieselbe Tokenfassung verlustfrei
+# 8.794 Byte und mit Qualitaet 92 ganze 15.072 Byte. Der Grund ist die Art
+# des Bildes. Es traegt sechs Flaechen und ein paar Kantenstufen, also 643
+# verschiedene Farben; die verlustbehaftete Kodierung macht daraus 5.993 und
+# wird dabei groesser. Sie verschiebt ausserdem die Scheibenfarbe um eine
+# weitere Stufe, siehe unten.
+WEBP_VERLUSTFREI = True
+
+# WAS DIE VERKLEINERUNG KOSTET, gemessen statt angenommen, weil daraus schon
+# einmal ein falscher Befund geworden ist. Die Scheibe geht als (14, 13, 10)
+# hinein und kommt als (13, 12, 10) heraus, also eine Stufe dunkler. Das ist
+# KEINE Eigenheit von LANCZOS: BICUBIC, BOX, BILINEAR und HAMMING liefern
+# denselben Wert, es ist Pillows Rundung beim Verkleinern eines RGBA-Bildes
+# im dunklen Bereich. LANCZOS bleibt, weil es die weichste Kante gibt
+# (gemessen 7 Zwischenstufen gegen 1 bei BOX).
+#
+# DARAUS FOLGT EINE REGEL FUER DEN NAECHSTEN, DER HIER MISST: aus dem Wert in
+# der fertigen Datei laesst sich NICHT auf den Wert im Erzeuger schliessen.
+# Die alten Dateien zeigten `#0c0c0a`, also zwei Stufen unter dem Tokenwert,
+# und daraus wurde zuerst der Schluss, ihr Erzeuger habe die Palette
+# verfehlt. Das ist nicht belegt: mit demselben Tokenwert und einer anderen
+# Verkleinerung kommt genau dieser Wert heraus.
+VERKLEINERUNG = Image.LANCZOS
 
 
 # --- Zeichnen ----------------------------------------------------------------
@@ -278,7 +299,7 @@ def baue(ursache, form, breite, hoehe):
                                       Image.new("L", bild.size, 0), maske))
     bild.alpha_composite(deck)
 
-    return bild.resize((breite, hoehe), Image.LANCZOS)
+    return bild.resize((breite, hoehe), VERKLEINERUNG)
 
 
 def main(argv):
@@ -297,7 +318,7 @@ def main(argv):
             if nur_pruefen:
                 print("%-40s %4dx%-4d  wuerde geschrieben" % (name, b, h))
                 continue
-            bild.save(pfad, "WEBP", quality=WEBP_QUALITAET, lossless=False)
+            bild.save(pfad, "WEBP", lossless=WEBP_VERLUSTFREI)
             print("%-40s %4dx%-4d %7d Byte" % (name, b, h, os.path.getsize(pfad)))
     return 0
 
