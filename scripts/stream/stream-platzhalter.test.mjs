@@ -32,6 +32,15 @@
  * - Die Laengenregel des geteilten Raumes gilt in BEIDEN Formen. Sie ist nicht
  *   Zierwerk: die Route am Tor laesst genau fuenf Stuecke zu.
  *
+ * LAEUFT IM VORHAKEN MIT, und das war beim ersten Commit NICHT so. Der
+ * Haken zaehlte die Streamstaende namentlich auf, und diese Datei stand
+ * in der Aufzaehlung nicht; sie lag im selben Commit, traf den Ausloeser
+ * `scripts/stream/` und lief trotzdem nicht. Seit dem 08.11.2026 kommt
+ * die Liste dort aus dem Verzeichnis, mit einer Mindestzahl gegen die
+ * leere Suche. Was das fuer diese Datei heisst: sie muss OHNE Netz, OHNE
+ * Foundry und in etwa einer Sekunde laufen, sonst haelt sie jeden Commit
+ * dieses Ordners auf.
+ *
  * DIE ZAHL DER AUSSAGEN STEHT AM ENDE und wird von Hand nachgezogen. Grund:
  * ein Lauf, der mittendrin stirbt, meldet sonst weniger Faelle und null rote,
  * und das ist von einem bestandenen Lauf nicht zu unterscheiden.
