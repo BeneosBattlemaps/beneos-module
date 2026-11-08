@@ -5,8 +5,19 @@ import { BeneosInfoBox } from "./beneos_info_box.js"
 import { BeneosAnalytics } from "./beneos_analytics.js"
 import { normalizeEmbeddedItems } from "./cloud-v2/beneos-ability-icons.mjs"
 import { packNeedsV14Migration, migrateActorForV14 } from "./cloud-v2/beneos-v14-scene-migration.mjs"
-import { ansichtGeprueft, posenliste, posenVergessen } from "./stream/stream-posen.mjs"
-import { assetUrl, KREATUR_PRAEFIX, lieferungStreamt, zerlegeAdresse } from "./stream/stream-settings.mjs"
+import {
+  ansichtGeprueft,
+  journalbildImSpiegel,
+  posenliste,
+  posenVergessen,
+} from "./stream/stream-posen.mjs"
+import {
+  assetUrl,
+  platzhalterAdresse,
+  KREATUR_PRAEFIX,
+  lieferungStreamt,
+  zerlegeAdresse,
+} from "./stream/stream-settings.mjs"
 
 // FilePicker.upload(..., { notify: false }) used to swallow failures
 // (disk full, permissions, server reject) — the await would resolve,
@@ -272,6 +283,23 @@ function _beneosKreaturAdresse(tokenKey, filename) {
 }
 
 /**
+ * Dieselbe Datei als SCHLUESSELFREIE Adresse, fuer ein Feld, das im
+ * Kundendokument stehenbleibt.
+ *
+ * Gebraucht beim Journalbild, und der Unterschied ist der Zweck: ein
+ * Journaldokument wird gelesen, exportiert und weitergegeben. Stuende die
+ * Toradresse darin, ginge der Streamschluessel mit, und ein Dritter koennte
+ * damit am Tor abrufen. Siehe `OP-PRJ-149` und `OP-PRJ-179`.
+ *
+ * Zur Anzeige setzt `beneosBildAusVorrat` in `stream/stream-bilder.mjs` den
+ * Schluessel von heute ein. Ohne laufendes Modul erscheint kein Bild, und das
+ * ist der benannte und angenommene Preis dieser Form.
+ */
+function _beneosKreaturPlatzhalter(tokenKey, filename) {
+  return platzhalterAdresse(`${KREATUR_PRAEFIX}${tokenKey}`, "", filename)
+}
+
+/**
  * Die LIEFERFORM einer Adresse, also woher das Bild kommt.
  *
  * Gebraucht beim Weiterschreiben auf die Weltkopie. Die Abkuerzung dort
@@ -335,12 +363,37 @@ async function _beneosValidateInstalledAsset(kind, key, source = 1, { streamt = 
     // Muster traegt der Kartenweg: `buildStreamPack()` laesst die Rolle
     // `edge` nicht in `packInfo`, und `verifyAndRepair()` laeuft genau ueber
     // diese Liste.
-    const ASPECTS = streamt
-      ? ["avatar", "journal"]
-      : ["token", "avatar", "journal", "top"]
+    /*
+     * DIE LISTE WIRD VOR DER ERWARTUNG GEHOLT, und das ist seit dem
+     * 08.11.2026 noetig. Bis dahin stand das Journalbild pauschal auf der
+     * Platte; seit `OP-PRJ-137` streamt es, aber nur, wenn der Spiegel es
+     * traegt, und das sagt allein diese Liste. Wer sie erst danach holt, muss
+     * die Erwartung nachtraeglich korrigieren, und das ist die Bauart, die bei
+     * der naechsten Bildart vergessen wird.
+     *
+     * Ein Abruf je Kreatur, und danach fuenf Minuten aus dem
+     * Zwischenspeicher. Im Downloadzweig wird sie gar nicht geholt.
+     */
+    const posen = streamt ? await posenliste(`${KREATUR_PRAEFIX}${key}`) : null
+    const ASPECTS = streamt ? ["avatar"] : ["token", "avatar", "journal", "top"]
     images.forEach((img, idx) => {
       const i = idx + 1
-      for (const aspect of ASPECTS) {
+      const aspekte = ASPECTS.slice()
+      if (streamt) {
+        /*
+         * JE VARIANTE UND NICHT JE BESTAND. Eine Kreatur kann Varianten
+         * haben, deren Journalbild im Spiegel liegt, und andere, deren nicht;
+         * der Fuelltakt arbeitet in Schueben.
+         *
+         * `zustand !== true` deckt zwei Faelle zusammen, und das ist hier
+         * richtig: nennt die Liste die Datei nicht (`false`), liegt sie
+         * oertlich; GIBT es keine Liste (`null`), hat der Installer ebenfalls
+         * oertlich geschrieben, denn er stellt dieselbe Frage. Beide Male
+         * gehoert das Journalbild auf die Platte.
+         */
+        if (journalbildImSpiegel(posen, i).zustand !== true) aspekte.push("journal")
+      }
+      for (const aspect of aspekte) {
         const data = img?.[aspect]
         expected.push({
           folder,
@@ -366,7 +419,8 @@ async function _beneosValidateInstalledAsset(kind, key, source = 1, { streamt = 
     // auch nicht in den Reparaturlauf: eine Pose laedt man nicht hoch, sie
     // fehlt im Spiegel und das ist ein Katalogdefekt.
     if (streamt) {
-      const liste = await posenliste(`${KREATUR_PRAEFIX}${key}`)
+      // Dieselbe Liste wie oben, nicht ein zweiter Abruf.
+      const liste = posen
       if (!liste) {
         console.warn(
           `[Beneos Cloud] Post-install validation: pose list for ${key} not readable, `
@@ -380,6 +434,20 @@ async function _beneosValidateInstalledAsset(kind, key, source = 1, { streamt = 
               torPosen.push(`variant ${i} ${name} (not named in the pose list)`)
             }
           }
+          /*
+           * DAS JOURNALBILD WIRD HIER NICHT ALS FEHLEND GEMELDET, und das ist
+           * eine Entscheidung und kein Vergessen.
+           *
+           * Liegt es nicht im Spiegel, hat der Installer es oertlich
+           * geschrieben, und die Plattenprobe oben hat es dann schon geprueft.
+           * Es hier ein zweites Mal zu fordern hiesse, denselben Zustand als
+           * zwei Fehler zu melden, und einer davon waere falsch.
+           *
+           * Was dagegen gemeldet wird, ist der Fall, in dem die Liste es
+           * NENNT und die Datei am Tor trotzdem nicht ankommt. Den kann diese
+           * Pruefung nicht sehen: sie liest die Liste, nicht die Bytes. Steht
+           * als Deckungsluecke in `TC-PRJ-STR-301`.
+           */
         })
       }
     }
@@ -3905,6 +3973,21 @@ export class BeneosCloud {
       // mitten in einer Installation umgestellt wird, wuerde sonst eine
       // halb gestreamte Kreatur hinterlassen.
       const streamt = _beneosKreaturStreamt()
+      /*
+       * DIE POSENLISTE ENTSCHEIDET UEBER DAS JOURNALBILD, nicht ein Schalter.
+       *
+       * Das Tor hat fuer Kreaturen keinen Rueckfall auf den Ursprung, gemessen
+       * am 08.11.2026 im Worker. Was der Spiegel nicht traegt, ist am Tor nicht
+       * zu haben, und eine Abweisung ist ein HTTP 200 mit 42 Byte, also ein
+       * stiller Fehlschlag. Das Journalbild kommt mit `OP-PRJ-135` in den
+       * Spiegel, und dessen Schalter steht auf `aus`.
+       *
+       * Ein Abruf je Kreatur, und die Liste wird in der Nachpruefung ohnehin
+       * gebraucht; sie liegt danach fuenf Minuten im Zwischenspeicher.
+       */
+      const posenVorab = streamt
+        ? await posenliste(`${KREATUR_PRAEFIX}${tokenKey}`)
+        : null
       try {
         await foundry.applications.apps.FilePicker.implementation.createDirectory("data", "beneos_assets");
       } catch (err) {
@@ -3941,6 +4024,53 @@ export class BeneosCloud {
         const variantStreamt = streamt
           && _beneosKreaturDateiOk(tokenNameRoh)
           && (!topNameRoh || _beneosKreaturDateiOk(topNameRoh))
+
+        /*
+         * DAS JOURNALBILD BEKOMMT SEINE EIGENE FRAGE, und das ist nicht
+         * Vorsicht, sondern notwendig: sein Dateiname ist ein ANDERER als der
+         * des Tokens, und die Zeilen darueber pruefen ihn nicht. Ohne diese
+         * Frage koennte ein Journalname mit `..` darin in eine Adresse geraten,
+         * waehrend Token und Draufsicht sauber sind.
+         *
+         * Der Ausgang ist derselbe wie oben und macht nichts kaputt: faellt
+         * der Name durch, wird das Journalbild oertlich geschrieben, auch wenn
+         * der Rest der Variante streamt. Eine Datei auf der Platte ist immer
+         * brauchbar.
+         */
+        const journalNameRoh = tokenData.tokenImages[i].journal?.filename
+        const imSpiegel = journalbildImSpiegel(posenVorab, i + 1)
+        const journalStreamt = variantStreamt
+          && _beneosKreaturDateiOk(journalNameRoh)
+          && imSpiegel.zustand === true
+        if (variantStreamt && !journalStreamt) {
+          /*
+           * ZWEI URSACHEN, ZWEI SAETZE. Ein Name, der keine Adresse werden
+           * kann, ist ein Katalogdefekt und muss als solcher gelesen werden.
+           * Ein Journalbild, das noch nicht im Spiegel liegt, ist der NORMALE
+           * Zustand bis zum Volldurchgang von `OP-PRJ-135` und keine Stoerung.
+           * Ein gemeinsamer Satz haette den zweiten Fall als Fehler gemeldet
+           * und den ersten unter hunderten Zeilen begraben.
+           */
+          if (!_beneosKreaturDateiOk(journalNameRoh)) {
+            console.warn(
+              `[Beneos Cloud] Token ${tokenKey} variant ${i + 1} ships a journal filename that `
+              + `cannot go into an address; the journal image is installed locally instead.`
+            )
+          } else {
+            BeneosUtility.debugMessage(
+              `Journal image of ${tokenKey} variant ${i + 1} is not named in the pose list`
+              + ` (${imSpiegel.zustand === null ? "no list" : "not in mirror"}),`
+              + ` installing it locally.`
+            )
+          }
+        }
+        /*
+         * DER DATEINAME KOMMT AUS DER LISTE, wenn gestreamt wird, und nicht
+         * aus der Antwort der Cloud. Beide sollten gleich sein; weichen sie
+         * ab, gilt die Liste, denn sie beschreibt den Spiegel, und nur was
+         * dort liegt, ist am Tor zu haben.
+         */
+        const journalAdressName = journalStreamt ? imSpiegel.pfad : journalNameRoh
         if (streamt && !variantStreamt) {
           console.warn(
             `[Beneos Cloud] Token ${tokenKey} variant ${i + 1} ships a filename that cannot go `
@@ -3960,8 +4090,19 @@ export class BeneosCloud {
           if (file) await _beneosSafeUpload(finalFolder, file, `token ${tokenKey} variant ${i + 1} token`);
         }
 
-        file = await _beneosBildDatei(tokenData.tokenImages[i].journal, `token ${tokenKey} variant ${i + 1} journal`);
-        if (file) await _beneosSafeUpload(finalFolder, file, `token ${tokenKey} variant ${i + 1} journal`);
+        /*
+         * Das Journalbild liegt im Streambetrieb am Tor und wird nicht
+         * geschrieben. Es ist 3840x2160 und damit der zweitgroesste Posten
+         * einer Kreatur, 0,208 MB je Variante und rund 316 MB ueber den
+         * Bestand. Der Betreiber hat es ausdruecklich eingeschlossen, mit
+         * Begruendung: der Spielleiter zeigt es am Fernseher, wenn die Gruppe
+         * gegen die Kreatur kaempft, es ist also Spielmittel und nicht
+         * Schmuck. Siehe `OP-PRJ-137`.
+         */
+        if (!journalStreamt) {
+          file = await _beneosBildDatei(tokenData.tokenImages[i].journal, `token ${tokenKey} variant ${i + 1} journal`);
+          if (file) await _beneosSafeUpload(finalFolder, file, `token ${tokenKey} variant ${i + 1} journal`);
+        }
 
         file = await _beneosBildDatei(tokenData.tokenImages[i].avatar, `token ${tokenKey} variant ${i + 1} avatar`);
         if (file) await _beneosSafeUpload(finalFolder, file, `token ${tokenKey} variant ${i + 1} avatar`);
@@ -4010,7 +4151,23 @@ export class BeneosCloud {
         // Create the journal entry
         let newJournal
         if (journalData) {
-          journalData.pages[0].src = `${finalFolder}/${tokenData.tokenImages[i].journal.filename}`
+          /*
+           * DIE SCHLUESSELFREIE FORM STEHT IM DOKUMENT, nicht die Toradresse.
+           *
+           * Ein Journaldokument verlaesst die Welt: es wird exportiert,
+           * weitergegeben und in andere Module gezogen. Eine Toradresse darin
+           * traegt den Streamschluessel im Pfad, und damit koennte ein Dritter
+           * am Tor abrufen. Was hier steht, ist `beneos://c/<release>/<datei>`
+           * und ist absichtlich keine abrufbare Adresse.
+           *
+           * Gelesen wird sie von `beneosBildAusVorrat` beim Render der Seite,
+           * und dort entsteht die Adresse von heute. Gemessen am 08.11.2026:
+           * `JournalEntryPage.src` ist ein `StringField` ohne Endungspruefung
+           * und ohne Kategorienfilter, nimmt diese Form also unveraendert an.
+           */
+          journalData.pages[0].src = journalStreamt
+            ? _beneosKreaturPlatzhalter(tokenKey, journalAdressName)
+            : `${finalFolder}/${tokenData.tokenImages[i].journal.filename}`
           journalData.name = actorData.name + " " + (i + 1)
           let journal = new JournalEntry(journalData);
           if (journal) {

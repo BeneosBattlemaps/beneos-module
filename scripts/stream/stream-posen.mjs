@@ -258,6 +258,61 @@ async function liegtAufPlatte(pfad) {
  *          einem oertlichen Pfad immer, und am Tor, solange der Durchgang die
  *          Listen noch nicht neu geschrieben hat.
  */
+/**
+ * Nennt die Posenliste das Journalbild dieser Variante?
+ *
+ * REINE RECHNUNG, kein Netz. Die Liste kommt vom Aufrufer, der sie ohnehin
+ * schon geholt hat, und damit ist diese Entscheidung ohne Foundry pruefbar.
+ *
+ * WARUM DIESE FRAGE UEBERHAUPT GESTELLT WIRD. Das Tor hat fuer Kreaturen
+ * KEINEN Rueckfall auf den Ursprung, gemessen am 08.11.2026 im Worker
+ * (`fromOrigin`, "KEIN RUECKFALL FUER KREATUREN"). Der Spiegel ist die
+ * einzige Quelle. Das Journalbild kommt erst mit `OP-PRJ-135` in den Spiegel,
+ * und der Schalter dort hat drei Stufen und steht auf `aus`. Wer das
+ * Journalbild vor dem Volldurchgang streamte, lieferte ein leeres Feld, und
+ * eine Abweisung am Tor ist HTTP 200 mit 42 Byte, also faellt sie niemandem
+ * auf.
+ *
+ * Deshalb entscheidet nicht ein Schalter, sondern die Liste: nennt sie die
+ * Datei, liegt sie im Spiegel. Das schaltet sich von selbst um, sobald der
+ * Durchgang gelaufen ist, und es gilt auch je Kreatur, nicht nur je Bestand.
+ *
+ * DREI ANTWORTEN UND NICHT ZWEI, nach dem Muster von `ansicht()`:
+ *
+ * - `{zustand: null}` heisst **nicht geprueft**: es gibt keine Liste, also
+ *   kein Netz, kein Recht oder ein Serverstand ohne das Feld. Der Aufrufer
+ *   darf daraus nichts folgern, schon gar nicht "fehlt".
+ * - `{zustand: false}` heisst, die Liste ist da und nennt die Datei NICHT.
+ * - `{zustand: true}` heisst, sie nennt sie, und `pfad` ist der Name aus der
+ *   Liste und nicht einer, den jemand gebildet hat.
+ *
+ * `journalbilder` fehlt in jeder Liste, die vor dem 08.11.2026 geschrieben
+ * wurde. Das ist `{zustand: null}` und nicht `false`: ein alter Serverstand
+ * ist keine Aussage darueber, ob die Datei im Spiegel liegt.
+ *
+ * @param {object|null} liste  das Ergebnis von `posenliste()`
+ * @param {number|string} variante  die Variantennummer, 1-basiert
+ */
+export function journalbildImSpiegel(liste, variante) {
+  const offen = { zustand: null, pfad: null, sha256: null }
+  if (!liste || typeof liste !== "object") return offen
+  const satz = liste.journalbilder
+  // Das FELD fehlt: alter Serverstand, keine Aussage. Ein leeres Objekt
+  // dagegen IST eine Aussage, naemlich dass keine Variante ein Journalbild
+  // im Spiegel hat.
+  if (!satz || typeof satz !== "object") return offen
+  const eintrag = satz[String(variante)]
+  if (!eintrag || typeof eintrag !== "object" || !eintrag.pfad) {
+    return { zustand: false, pfad: null, sha256: null }
+  }
+  return {
+    zustand: true,
+    pfad: String(eintrag.pfad),
+    sha256: typeof eintrag.sha256 === "string" && /^[a-f0-9]{64}$/.test(eintrag.sha256)
+      ? eintrag.sha256 : null,
+  }
+}
+
 export async function ansicht(pfad, stil) {
   const ziel = stil === STILE.topdown ? STILE.topdown : STILE.tokenized
   const offen = { zustand: null, src: null, sha256: null }

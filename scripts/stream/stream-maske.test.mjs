@@ -45,7 +45,38 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { ohneSchluessel, ohneSchluesselImText } from "./stream-report.mjs";
-import { streamBase, STREAM_RAUM_BUCHSTABE } from "./stream-settings.mjs";
+import {
+  streamBase,
+  STREAM_RAUM_BUCHSTABE,
+  assetUrl,
+  platzhalterAdresse,
+} from "./stream-settings.mjs";
+
+/**
+ * Je Raum eine Probe, mit der beide Bauer gefuettert werden.
+ *
+ * Der geteilte Raum braucht eine echte Pruefsumme von 64 Zeichen,
+ * sonst faellt er in den Kartenzweig; das ist keine Zier, sondern
+ * die Bedingung seines Erkennungssatzes.
+ */
+const RAUMPROBE = {
+  karte: { release: "bm_0113", variant: "hd", pfad: "karte.webp" },
+  kreatur: {
+    release: "beneos_ct_000-goblin",
+    variant: "",
+    pfad: "000-goblin-1-journal.webp",
+  },
+  beute: {
+    release: "beneos_lt_000-schwert",
+    variant: "",
+    pfad: "000-schwert-front.webp",
+  },
+  geteilt: {
+    release: "shared",
+    variant: "a".repeat(64),
+    pfad: "foundry_bm_ui.webp",
+  },
+};
 
 const HIER = dirname(fileURLToPath(import.meta.url));
 
@@ -227,22 +258,78 @@ console.log("Die Gesamtmenge: die Tabelle gegen den Quelltext");
   // Form: den Buchstaben, die `assetUrl()` wirklich in eine Adresse schreibt.
   const setQuelle = readFileSync(join(HIER, "stream-settings.mjs"), "utf8");
 
-  const abUrl = setQuelle.slice(setQuelle.indexOf("export function assetUrl"));
+  /*
+   * AM 08.11.2026 ZOG DIESE ZAEHLUNG UM, mit `OP-PRJ-137`, und der Umzug ist
+   * selbst der Beleg, dass sie arbeitet. Die Raumentscheidung lag bis dahin im
+   * Rumpf von `assetUrl` als `${kopf}/c/`; seit dem Umbau liegt sie in
+   * `adressSegmente()` als `return ["c",`, weil eine ZWEITE Form derselben
+   * Adresse dazugekommen ist, naemlich die schluesselfreie Platzhalterform.
+   * Diese Zaehlung wurde dabei leer, und der Satz darunter, der genau das
+   * prueft, wurde rot. Ohne ihn waere der Mengenvergleich still auf null
+   * gegen null gelaufen.
+   */
+  const abUrl = setQuelle.slice(setQuelle.indexOf("export function adressSegmente"));
   const bisEnde = abUrl.slice(0, abUrl.indexOf("\nexport "));
-  const gebaut = [...bisEnde.matchAll(/\$\{kopf\}\/([a-z])\//g)].map((m) => m[1]);
+  const gebaut = [...bisEnde.matchAll(/return \["([a-z])",/g)].map((m) => m[1]);
 
   // GEGENPROBE AUF DIE GEGENPROBE. Eine Suche, die nichts findet, ist von
   // einer kaputten Suche nicht zu unterscheiden, und dann waere der
   // Mengenvergleich darunter immer gruen.
   gleich("die rohe Zaehlung findet ueberhaupt Buchstaben", gebaut.length > 0, true);
   gleich("der Schnitt endet vor dem naechsten Export",
-    bisEnde.includes("export function zerlegeAdresse"), false);
+    bisEnde.includes("export function assetUrl"), false);
 
   const ausTabelle = Object.values(STREAM_RAUM_BUCHSTABE);
-  gleich("assetUrl baut genau so viele Raeume, wie die Tabelle nennt",
+  gleich("adressSegmente baut genau so viele Raeume, wie die Tabelle nennt",
     gebaut.length, ausTabelle.length);
   gleich("und es sind dieselben",
     [...new Set(gebaut)].sort().join(","), [...ausTabelle].sort().join(","));
+
+  /*
+   * DIE ZWEITE FORM MUSS DIESELBEN RAEUME TRAGEN, und dieser Satz entsteht zur
+   * LAUFZEIT und nicht am Quelltext. Der Grund ist die Fehlerart, die sonst
+   * durchkommt: `platzhalterAdresse` koennte `adressSegmente` aufrufen und
+   * trotzdem eine andere Adresse bauen, etwa indem sie ein Stueck weglaesst.
+   * Eine Zaehlung am Quelltext saehe davon nichts, weil die Buchstaben ja in
+   * derselben Funktion stehen.
+   *
+   * Gemessen wird deshalb gegen die ECHTE Ausgabe beider Bauer, je Raum eine
+   * Adresse, und verglichen wird das Stueck hinter dem Schema.
+   */
+  for (const [name, buchstabe] of Object.entries(STREAM_RAUM_BUCHSTABE)) {
+    const probe = RAUMPROBE[name];
+    const mitKey = assetUrl(probe.release, probe.variant, probe.pfad);
+    const ohneKey = platzhalterAdresse(probe.release, probe.variant, probe.pfad);
+    gleich(`beide Bauer nennen fuer "${name}" den Buchstaben "${buchstabe}"`,
+      [mitKey.slice(streamBase().length + 1).split("/")[0],
+        ohneKey.slice("beneos://".length).split("/")[0]].join("|"),
+      `${buchstabe}|${buchstabe}`);
+    // Die eigentliche Aussage: dieselbe Datei, zwei Formen, und das Stueck
+    // hinter dem Schluessel ist zeichengleich. Bei `assetUrl` wird der
+    // Schluessel herausgeschnitten, bei der Platzhalterform ist er nie da.
+    const teileMit = mitKey.slice(streamBase().length + 1).split("/");
+    teileMit.splice(1, 1);
+    gleich(`und dieselbe Datei in beiden Formen, Raum "${name}"`,
+      teileMit.join("/"), ohneKey.slice("beneos://".length));
+  }
+
+  /*
+   * DIE PLATZHALTERFORM DARF DIE MASKE NICHT BESCHAEFTIGEN. Sie traegt keinen
+   * Schluessel, also ist an ihr nichts zu maskieren, und wer sie trotzdem
+   * zerschneidet, macht aus einer gueltigen Dokumentadresse eine kaputte.
+   *
+   * Das ist ein Gegenfall und keine Messung des Neubaus: er muss gruen sein,
+   * BEVOR irgendetwas die Form in ein Dokument schreibt.
+   */
+  for (const name of Object.keys(STREAM_RAUM_BUCHSTABE)) {
+    const probe = RAUMPROBE[name];
+    const ohneKey = platzhalterAdresse(probe.release, probe.variant, probe.pfad);
+    gleich(`die Maske laesst die Platzhalterform des Raumes "${name}" stehen`,
+      ohneSchluessel(ohneKey), ohneKey);
+    gleich(`und auch im Fliesstext, Raum "${name}"`,
+      ohneSchluesselImText(`Loaded ${ohneKey} (50%)`),
+      `Loaded ${ohneKey} (50%)`);
+  }
   gleich("kein Buchstabe steht doppelt in der Tabelle",
     new Set(ausTabelle).size, ausTabelle.length);
 
@@ -288,7 +375,7 @@ if (rot === 0) {
   console.log("Gegenprobe bestanden: 8 Faelle MUSSTEN unveraendert durchgehen, "
     + "sonst wuerde diese Maskierung fremde Texte zerschneiden.");
   console.log(`Gesamtmenge geprueft: ${Object.keys(STREAM_RAUM_BUCHSTABE).length} `
-    + "Raeume, roh am Quelltext von assetUrl nachgezaehlt. Ein fuenfter macht "
+    + "Raeume, roh am Quelltext von adressSegmente nachgezaehlt. Ein fuenfter macht "
     + "diesen Stand rot.");
 }
 process.exit(rot === 0 ? 0 : 1);

@@ -62,7 +62,7 @@
  * **Keine Bearbeitenflaeche**, siehe `imEditor()`.
  */
 
-import { streamEnabled, zerlegeAdresse } from "./stream-settings.mjs"
+import { istPlatzhalter, assetUrl, streamEnabled, zerlegeAdresse } from "./stream-settings.mjs"
 import { ours, sammelSchluessel } from "./stream-fetch.mjs"
 import { reportFailure } from "./stream-report.mjs"
 
@@ -111,6 +111,21 @@ const BILDARTEN = /^image\/(webp|png|jpe?g|gif|avif)$/i
 function istUnsere(adresse) {
   if (typeof adresse !== "string" || !adresse) return false
   if (adresse.startsWith("blob:") || adresse.startsWith("data:")) return false
+  /*
+   * BEI DER PLATZHALTERFORM ENTSCHEIDET DAS SCHEMA, und das ist kein
+   * Nachlassen gegenueber dem Absatz darueber.
+   *
+   * `beneos://` kann niemand auf einen fremden Host zeigen lassen, denn ein
+   * Host steht in dieser Form gar nicht. Er entsteht erst beim Abruf, in
+   * `blobFuer`, aus `streamBase()`, und das ist die Erlaubnisliste aus
+   * `OP-PRJ-176`. Ein Fremdmodul mit `beneos://c/x/y.webp` erzeugt damit einen
+   * Abruf auf UNSER Tor, das ihn nach Recht beantwortet oder abweist; es kann
+   * keinen Abruf auf einen Fremdhost erzeugen.
+   *
+   * Beim `https`-Zweig darunter ist das anders, denn dort steht der Host in
+   * der Adresse und wird uebernommen. Deshalb bleibt `ours()` dort stehen.
+   */
+  if (istPlatzhalter(adresse)) return !!zerlegeAdresse(adresse)
   return ours(adresse) && !!zerlegeAdresse(adresse)
 }
 
@@ -154,10 +169,31 @@ async function blobFuer(adresse) {
   if (vorhanden) return vorhanden.versprechen
 
   const versprechen = (async () => {
+    /*
+     * ABGERUFEN WIRD DIE TORADRESSE VON HEUTE, nicht die aus dem Dokument.
+     *
+     * Ein Dokument traegt seit `OP-PRJ-137` die schluesselfreie Form
+     * `beneos://<raum>/...`, und die ist mit Absicht nicht abrufbar. Hier wird
+     * sie zerlegt und mit dem Schluessel dieses Augenblicks neu gebaut.
+     *
+     * DER UMBAU GILT FUER BEIDE FORMEN, und das ist die stillere Haelfte des
+     * Gewinns: eine Adresse, die noch den ALTEN Schluessel traegt, weil sie
+     * vor einer Rotation ins Dokument geschrieben wurde, wird dadurch
+     * geheilt. Vorher waere sie am Tor abgewiesen worden, und die Abweisung
+     * ist ein HTTP 200 mit einem durchsichtigen GIF, also ein stiller
+     * Fehlschlag.
+     *
+     * Der SCHLUESSEL DER ABLAGE bleibt die Dokumentadresse. Deshalb ueberlebt
+     * ein Eintrag eine Rotation, und deshalb erkennt ein zweiter Render die
+     * eigene Arbeit wieder: `blobZuAdresse` traegt dieselbe Zeichenkette, die
+     * im `src` stand.
+     */
+    const t = zerlegeAdresse(adresse)
+    const abrufen = t ? assetUrl(t.release, t.variant, t.pfad) : adresse
     // Durch den ersetzten Abruf, und das ist der ganze Zweck: Vorrat,
     // Zwischenspeicher und Ersatzbild haengen dort. Eine Abweisung kommt als
     // gueltiges Ersatzbild zurueck und nicht als Fehler.
-    const antwort = await fetch(adresse)
+    const antwort = await fetch(abrufen)
     if (!antwort.ok) throw new Error(`HTTP ${antwort.status}`)
     const blob = await antwort.blob()
     if (!blob.size) throw new Error("leere Antwort")
