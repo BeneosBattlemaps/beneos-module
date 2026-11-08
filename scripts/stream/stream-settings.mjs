@@ -939,13 +939,20 @@ export function maxConcurrent() {
 }
 
 /**
- * DREI ADRESSFORMEN, UND DER PRAEFIX ENTSCHEIDET.
+ * VIER ADRESSFORMEN, UND BIS AUF EINE ENTSCHEIDET DER PRAEFIX.
  *
  * Eine Karte liegt unter `/a/<schluessel>/<release>/<variante>/<pfad>`, eine
  * Kreatur unter `/c/<schluessel>/<release>/<pfad>`, ein Gegenstand oder Zauber
- * unter `/l/<schluessel>/<release>/<pfad>`. Der Unterschied ist nicht
+ * unter `/l/<schluessel>/<release>/<pfad>`, eine geteilte Datei unter
+ * `/s/<schluessel>/shared/<sha256>/<name>`. Der Unterschied ist nicht
  * Geschmack: eine Karte gibt es in 4K und HD, eine Kreatur nicht, Beute auch
  * nicht. Was es nicht gibt, bekommt auch kein leeres Pfadstueck.
+ *
+ * DIESE AUFZAEHLUNG STAND BIS ZUM 08.11.2026 AUF DREI und nannte den geteilten
+ * Raum nicht, obwohl er zwanzig Zeilen weiter unten steht. Eine Kopfzeile, die
+ * eine Menge BEHAUPTET, veraltet still und wird zuerst gelesen. Die Menge, auf
+ * die sich Code stuetzen darf, ist deshalb `STREAM_RAUM_BUCHSTABE` weiter
+ * unten, und nicht dieser Satz.
  *
  * Die Zuordnung haengt am Namen des Releases und an nichts sonst. Genauso
  * entscheidet es das Tor, dort heisst dieselbe Pruefung `istKreatur` und
@@ -1049,6 +1056,43 @@ export function istGeteilterRaum(release, variant) {
   return String(release || "") === GETEILT_RAUM
       && /^[a-f0-9]{64}$/.test(String(variant || ""))
 }
+
+/**
+ * DIE RAUMBUCHSTABEN, AN EINER STELLE.
+ *
+ * Jeder Raum traegt den Schluessel als ZWEITES Pfadstueck, und jede Stelle, die
+ * eine Toradresse vorzeigbar machen will, muss den Buchstaben kennen, um das
+ * Stueck zu finden. Bis zum 08.11.2026 kannte jede dieser Stellen ihre eigene
+ * Teilmenge, und zwei davon kannten nur `a` und `c`.
+ *
+ * GEMESSEN AM 08.11.2026, UND ES WAR EIN LECK: `ohneSchluesselImText()` in
+ * `stream-report.mjs` liess den echten Streamschluessel in einer Beuteadresse
+ * und in einer geteilten Adresse STEHEN. Diese Funktion haengt an `console.*`,
+ * also an dem Weg, auf dem ein Schluessel am leichtesten das Haus verlaesst:
+ * eine Konsolenmitschrift ist genau das, was ein Kunde in einen Supportkanal
+ * einfuegt. Beide Raeume sind am 08.11.2026 entstanden, die Maske ist aelter,
+ * und sie ist nicht mitgewachsen.
+ *
+ * WARUM DIE BUCHSTABEN HIER STEHEN UND NICHT IN DER MASKE. Eine Maske, die
+ * ihre eigene Liste fuehrt, ist von einer arbeitenden nicht zu unterscheiden,
+ * solange die Liste reicht. Sie faellt erst auf, wenn ein Raum dazukommt, und
+ * dann faellt sie niemandem auf, weil nichts rot wird. Mit einer Quelle muss
+ * ein fuenfter Raum an EINER Stelle eingetragen werden, und
+ * `stream-maske.test.mjs` haelt die Gesamtmenge gegen die Buchstaben, die
+ * `assetUrl()` wirklich baut.
+ *
+ * DIE SCHLUESSEL SIND DIE RAUMNAMEN, DIE `zerlegeAdresse()` ZURUECKGIBT, und
+ * das ist kein Zufall, sondern die Verbindung: wer den Raum einer Adresse
+ * kennt, kennt damit ihren Buchstaben. Die Variante steht NICHT in dieser
+ * Tabelle. Ob ein Raum eine traegt, sagt `zerlegeAdresse()` am Feld `variant`
+ * schon, und eine zweite Aussage darueber waere die, die auseinanderlaeuft.
+ */
+export const STREAM_RAUM_BUCHSTABE = Object.freeze({
+  karte: "a",
+  kreatur: "c",
+  beute: "l",
+  geteilt: "s",
+})
 
 /**
  * The address of one asset of one release variant.

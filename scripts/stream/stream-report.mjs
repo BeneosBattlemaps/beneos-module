@@ -16,7 +16,8 @@
  * normal delivery on 2026-09-03.
  */
 
-import { streamBase, streamEnabled, istPruefstand, zerlegeAdresse } from "./stream-settings.mjs"
+import { streamBase, streamEnabled, istPruefstand, zerlegeAdresse,
+  STREAM_RAUM_BUCHSTABE } from "./stream-settings.mjs"
 import { isOffline } from "./stream-online.mjs"
 
 /**
@@ -39,14 +40,27 @@ import { isOffline } from "./stream-online.mjs"
  * Releases gefehlt hat. `vorratsSchluessel()` in `stream-fetch.mjs` leistet
  * dasselbe fuer die Ablage und traegt dort noch einen eigenen Ursprung, weil ein
  * Vorratsschluessel einen Schluesselwechsel ueberleben muss.
+ *
+ * DER BUCHSTABE KAM BIS ZUM 08.11.2026 AUS EINER ZWEITEILIGEN FRAGE,
+ * `t.raum === "kreatur" ? "c" : "a"`, und damit wurde jede Beuteadresse und
+ * jede geteilte Adresse als KARTENADRESSE gemeldet. Der Schluessel fiel dabei
+ * richtig weg, die Meldung log aber ueber den Raum: eine fehlende Beutedatei
+ * erschien unter `/a/-/`. Jetzt kommt er aus `STREAM_RAUM_BUCHSTABE`, also aus
+ * derselben Quelle wie die Textmaske darunter.
+ *
+ * KEIN WEG DURCH DIESE FUNKTION GIBT EINEN SCHLUESSEL HERAUS, und das ist der
+ * Grund fuer den Rueckfall auf `ohneSchluesselImText()` statt auf `roh`. Eine
+ * Adresse, die `zerlegeAdresse()` nicht zerlegt, oder ein Raum, den die Tabelle
+ * noch nicht kennt, kaeme sonst UNVERAENDERT heraus, also mit Schluessel. Die
+ * kanonische Form geht dabei verloren, der Schluessel nicht.
  */
 export function ohneSchluessel(url) {
   const roh = String(url || "").split("?")[0]
   const t = zerlegeAdresse(roh)
-  if (!t) return roh
-  const raum = t.raum === "kreatur" ? "c" : "a"
+  const buchstabe = t ? STREAM_RAUM_BUCHSTABE[t.raum] : ""
+  if (!buchstabe) return ohneSchluesselImText(roh)
   const mitte = t.variant ? `${t.release}/${t.variant}` : t.release
-  return `${streamBase()}/${raum}/-/${mitte}/${t.pfad}`
+  return `${streamBase()}/${buchstabe}/-/${mitte}/${t.pfad}`
 }
 
 /**
@@ -63,22 +77,33 @@ export function ohneSchluessel(url) {
  * Der Host ist Teil des Musters und nicht Zierwerk. Ohne ihn wuerde `/a/x/` in
  * jedem fremden Text getroffen, etwa in einem Dateipfad des Kunden.
  *
+ * DIE RAEUME STANDEN BIS ZUM 08.11.2026 ALS `a|c` IN DIESER FUNKTION, und das
+ * war ein Leck: eine Beuteadresse `/l/` und eine geteilte Adresse `/s/` gingen
+ * mit dem echten Streamschluessel durch, gemessen an diesem Tag. Beide Raeume
+ * sind am 08.11.2026 entstanden, diese Maske ist aelter, und sie ist nicht
+ * mitgewachsen. Die Buchstaben kommen jetzt aus `STREAM_RAUM_BUCHSTABE`, damit
+ * ein fuenfter Raum an einer Stelle eingetragen wird und nicht an vier.
+ *
  * Zuerst eine billige Teilstring-Probe, weil diese Funktion an `console.log`
  * haengt und damit an einer der heissesten Stellen des Browsers. Erst wenn
- * `/a/` oder `/c/` ueberhaupt vorkommt, wird die Einstellung gelesen.
+ * einer der Raumbuchstaben ueberhaupt vorkommt, wird die Einstellung gelesen.
  */
+const RAUM_BUCHSTABEN = Object.values(STREAM_RAUM_BUCHSTABE)
+const RAUM_TEILSTRINGE = RAUM_BUCHSTABEN.map((b) => `/${b}/`)
+
 const maskeCache = { basis: null, muster: null }
 
 export function ohneSchluesselImText(text) {
   const s = String(text)
-  if (!s.includes("/a/") && !s.includes("/c/")) return s
+  if (!RAUM_TEILSTRINGE.some((t) => s.includes(t))) return s
   let basis = ""
   try { basis = String(streamBase() || "") } catch (_) { return s }
   if (!basis) return s
   if (maskeCache.basis !== basis) {
     maskeCache.basis = basis
     const roh = basis.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-    maskeCache.muster = new RegExp(`${roh}/(a|c)/[^/\\s"'<>]+`, "g")
+    maskeCache.muster = new RegExp(
+      `${roh}/(${RAUM_BUCHSTABEN.join("|")})/[^/\\s"'<>]+`, "g")
   }
   return s.replace(maskeCache.muster, (_, raum) => `${basis}/${raum}/-`)
 }
