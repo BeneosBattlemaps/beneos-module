@@ -280,6 +280,39 @@ then
   fahre "tools/waisen-adressform-bench/bench.mjs" "waisen-adressform-bench, 31 Saetze"
 fi
 
+# Der Bildweg des Installers, wenn er angefasst wird.
+#
+# WARUM ER DAZUKOMMEN MUSSTE, am 08.11.2026 mit `OP-PRJ-146`. Der Installer
+# hat jede Bilddatei als base64 AUS DEM JSON gelesen, Maximum gemessen 20,4 MB
+# in EINER Antwort. Der Server liefert sie seit `9f0a9cf` auf Verlangen als
+# Adresse.
+#
+# WAS DARIN DER GEFAEHRLICHSTE TEIL IST, und es ist nicht der Abruf. Drei
+# Stellen fragten vor dem Hochladen `if (!X.image64) continue`. Mit Adressen
+# ist `image64` dort IMMER null, und die Bedingung waere immer wahr gewesen:
+# der Installer haette jede Datei uebersprungen, ohne eine Zeile zu meckern.
+# Eine Reparatur haette "nichts zu reparieren" gemeldet, und ein Kunde haette
+# eine Kreatur ohne Bilder bekommen. Der Stand zaehlt deshalb die Vorkommen
+# von `image64` nach; die ZAHL ist der Satz, nicht die Abwesenheit.
+#
+# Der Stand faehrt `_beneosBildDa()` und `_beneosBildDatei()` WIRKLICH, mit
+# geschnittenem Code und nachgebautem `fetch`. Zwei Lagen haengen am
+# Verhalten, vier am Quelltext.
+#
+# `A2` ist absichtlich scharf: er wird rot, sobald `BILDFORM_ADRESSE_AN` auf
+# `true` steht. Das Umstellen ist eine Betreiberentscheidung nach einem Deploy
+# und einem gesehenen Lauf, und wer sie trifft, aendert den Satz mit.
+#
+# Die Satzzahl in der Beschriftung veraltet still. Wer eine Zahl hier liest,
+# prueft sie am Lauf.
+#
+# Sie kostet gemessen unter einer Sekunde, kein Netz, kein Foundry.
+if git diff --cached --name-only --diff-filter=ACM      -- scripts/beneos_cloud.js tools/bildform-adresse-bench    | grep -q .
+then
+  meld "pre-commit: Bildweg des Installers vorgemerkt, der Stand laeuft mit"
+  fahre "tools/bildform-adresse-bench/bench.mjs" "bildform-adresse-bench, 32 Saetze"
+fi
+
 # ----------------------------------------------------------------- Ausgang ---
 if [ "$ROT" -gt 0 ]; then
   meld ""
