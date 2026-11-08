@@ -50,6 +50,152 @@ async function _beneosSafeUpload(folder, file, label) {
 //   - stub guard: the uninstaller cannot delete, it overwrites with a 1-byte
 //     placeholder that answers 200 and would pass as a healthy asset
 const BENEOS_STUB_MAX_BYTES = 8
+/**
+ * ─── BILDER ALS ADRESSE STATT ALS BASE64, `OP-PRJ-146` ──────────────────────
+ *
+ * WAS VORHER WAR, gemessen: `foundry-manager.php` legte jede Bilddatei als
+ * base64 IN das JSON. Median 1,19 MB je Kreatur, Maximum 20,4 MB in EINER
+ * Antwort. `OP-PRJ-190` hat gemessen, dass `030-commoner_male` mit zwanzig
+ * Varianten sich NICHT installieren laesst und die Ursache auf dem Weg
+ * zwischen Hoster und Anschluss liegt, wo von beiden Enden niemand messen
+ * kann. Eine Antwort von 19 MB ist auf einem schlechten Weg zerbrechlich.
+ *
+ * Der Server liefert auf `?bildform=adresse` je Datei eine Adresse statt der
+ * Bytes. Seit 2026-11-08 gebaut, Commit `9f0a9cf` in `beneos-cloud-server`.
+ *
+ * ─── WARUM ES EINEN SCHALTER GIBT, obwohl beide Richtungen tragen ───────────
+ *
+ * Verträglich ist die Form von sich aus: ein alter Server kennt den Parameter
+ * nicht und schickt base64, und `_beneosBildDatei()` faellt darauf zurueck.
+ * Kein Deploy und keine Auslieferung ist in der falschen Reihenfolge.
+ *
+ * Der Schalter traegt etwas anderes: die RUECKNAHME ohne Auslieferung. Zwölf
+ * Schreibstellen holen jetzt je eine eigene Antwort statt einer grossen, und
+ * das sind zwölf Gelegenheiten zu scheitern statt einer. Dass das in der
+ * Summe besser ist, ist gerechnet und am Kundenanschluss nicht gemessen.
+ * Stellt sich das Gegenteil heraus, ist eine Zeile hier die Antwort und nicht
+ * eine neue Modulfassung.
+ *
+ * DIE VORGABE IST AUS, bis der Betreiber den Server deployed und einen Lauf
+ * gesehen hat. Mit `false` verhaelt sich der Installer Zeichen fuer Zeichen
+ * wie vorher, denn ohne den Parameter schickt auch ein neuer Server base64.
+ */
+const BILDFORM_ADRESSE_AN = false
+
+/**
+ * Der Anhang an die drei Installationsanfragen.
+ *
+ * EINE STELLE, DREI RUFER. Stuende der Parameter dreimal im Quelltext, waere
+ * ein Umschalten an zwei Stellen moeglich, und genau so ist die harte
+ * Variantennummer Eins auf der Serverseite entstanden.
+ */
+function _beneosBildformAnhang() {
+  return BILDFORM_ADRESSE_AN ? "&bildform=adresse" : ""
+}
+
+/**
+ * Traegt dieser Eintrag ein Bild, in welcher Form auch immer?
+ *
+ * DIESE FUNKTION IST DER GEFAEHRLICHSTE TEIL DES UMBAUS, und darum steht sie
+ * hier und nicht als Ausdruck an drei Stellen.
+ *
+ * Drei Stellen pruefen vor dem Hochladen `if (!X.image64) continue`. Liefert
+ * der Server Adressen, ist `image64` dort IMMER `null`, und diese Bedingung
+ * waere immer wahr: der Installer haette jede Datei uebersprungen, ohne eine
+ * Zeile zu meckern. Eine Reparatur haette "nichts zu reparieren" gemeldet,
+ * eine Installation waere leer durchgelaufen.
+ *
+ * Der Dateiname gehoert mit in die Frage. Ein Eintrag ohne Namen ist nicht
+ * schreibbar, auch wenn Bytes oder eine Adresse dabei sind.
+ */
+function _beneosBildDa(eintrag) {
+  if (!eintrag || typeof eintrag !== "object") return false
+  if (typeof eintrag.filename !== "string" || !eintrag.filename) return false
+  const hatAdresse = typeof eintrag.url === "string" && eintrag.url !== ""
+  const hatBytes = typeof eintrag.image64 === "string" && eintrag.image64 !== ""
+  return hatAdresse || hatBytes
+}
+
+/**
+ * Ein Bildeintrag der Cloud-Antwort als `File`, aus Adresse oder base64.
+ *
+ * DIE ADRESSE HAT VORRANG. Liefert der Server beides, ist das ein Fehler auf
+ * seiner Seite; die Adresse ist dann die guenstigere Quelle, und der Server
+ * setzt `image64` in dieser Form ausdruecklich auf `null`.
+ *
+ * ZWEI VERSUCHE JE DATEI, und das ist der Grund, warum dieser Umbau den
+ * Installationsweg nicht nur kleiner, sondern robuster macht. Vorher war eine
+ * Antwort von 19 MB ein einziger Versuch: brach sie ab, war die ganze
+ * Installation hin. Jetzt ist jede Datei einzeln wiederholbar, und genau das
+ * ist die Antwort auf den nicht messbaren Weg aus `OP-PRJ-190`.
+ *
+ * DIE BYTEZAHL WIRD GEGENGEPRUEFT, wenn der Server sie nennt. Sie kostet ihn
+ * nichts, `filesize()` fragt den Verzeichniseintrag. Eine abgebrochene
+ * Uebertragung sieht sonst wie eine kurze Datei aus, und eine halbe WebP
+ * landet still auf der Platte. Eine Pruefsumme steht ABSICHTLICH nicht in der
+ * Antwort: sie entstuende nur durch vollstaendiges Lesen der Datei, und genau
+ * das soll auf dem Server wegfallen.
+ *
+ * Gibt diese Funktion `null`, ist die Datei nicht schreibbar. Jeder Rufer
+ * muss das behandeln; vorher war es ein `continue` auf `image64`.
+ */
+async function _beneosBildDatei(eintrag, wofuer) {
+  if (!_beneosBildDa(eintrag)) return null
+
+  const alsDatei = (blob) => {
+    if (!blob || blob.size === 0) return null
+    return new File([blob], eintrag.filename, { type: "image/webp" })
+  }
+
+  if (typeof eintrag.url === "string" && eintrag.url !== "") {
+    for (let versuch = 1; versuch <= 2; versuch++) {
+      try {
+        const antwort = await fetch(eintrag.url)
+        if (!antwort.ok) {
+          // KEIN Wiederholversuch bei 403. Das Zeichen ist abgelaufen oder
+          // der Anspruch ist weg, und ein zweiter Ruf gibt dieselbe Antwort.
+          if (antwort.status === 403 || antwort.status === 404) {
+            console.warn(`[Beneos Cloud] ${wofuer}: Adresse antwortet `
+              + `${antwort.status}, kein Wiederholversuch`)
+            return null
+          }
+          if (versuch === 2) {
+            console.warn(`[Beneos Cloud] ${wofuer}: Adresse antwortet `
+              + `${antwort.status} nach zwei Versuchen`)
+            return null
+          }
+          continue
+        }
+        const blob = await antwort.blob()
+        const erwartet = Number.isInteger(eintrag.bytes) ? eintrag.bytes : 0
+        if (erwartet > 0 && blob.size !== erwartet) {
+          console.warn(`[Beneos Cloud] ${wofuer}: ${blob.size} Byte `
+            + `angekommen, ${erwartet} erwartet`
+            + (versuch === 1 ? ", zweiter Versuch" : ", aufgegeben"))
+          if (versuch === 2) return null
+          continue
+        }
+        return alsDatei(blob)
+      } catch (err) {
+        if (versuch === 2) {
+          console.warn(`[Beneos Cloud] ${wofuer}: Abruf scheitert nach zwei `
+            + `Versuchen`, err)
+          return null
+        }
+      }
+    }
+    return null
+  }
+
+  try {
+    const antwort = await fetch(`data:image/webp;base64,${eintrag.image64}`)
+    return alsDatei(await antwort.blob())
+  } catch (err) {
+    console.warn(`[Beneos Cloud] ${wofuer}: base64 nicht lesbar`, err)
+    return null
+  }
+}
+
 function _beneosUsingTheForge() {
   return typeof ForgeVTT !== "undefined" && ForgeVTT?.usingTheForge === true
 }
@@ -291,11 +437,14 @@ async function _beneosRepairMissingAspects(kind, key, health) {
   let repaired = 0
 
   for (const e of candidates) {
-    if (!e.data?.image64 || !e.data?.filename) continue // server never sent it
+    // `OP-PRJ-146`: die Frage lautet "traegt der Eintrag ein Bild", nicht
+    // "traegt er Bytes". Mit Adressen ist `image64` immer null, und die alte
+    // Form haette hier JEDE Datei uebersprungen und dabei "nichts zu
+    // reparieren" gemeldet.
+    if (!_beneosBildDa(e.data)) continue // server never sent it
     try {
-      const resp = await fetch(`data:image/webp;base64,${e.data.image64}`)
-      const blob = await resp.blob()
-      const file = new File([blob], e.data.filename, { type: "image/webp" })
+      const file = await _beneosBildDatei(e.data, `${kind} ${key} ${e.label} (repair)`)
+      if (!file) continue
       const up = await _beneosSafeUpload(e.folder, file, `${kind} ${key} ${e.label} (repair)`)
       if (!up?.path) continue
       if (!(await _beneosProbeInstalledFile(`${e.folder}/${e.file}`))) continue
@@ -2387,9 +2536,9 @@ export class BeneosCloud {
         }
         for (const aspect of ["front", "back", "icon"]) {
           const part = images[aspect]
-          if (!part?.image64) continue
-          const resp = await fetch(`data:image/webp;base64,${part.image64}`)
-          const file = new File([await resp.blob()], part.filename, { type: "image/webp" })
+          if (!_beneosBildDa(part)) continue // `OP-PRJ-146`, nicht auf Bytes pruefen
+          const file = await _beneosBildDatei(part, `${kind} ${key} ${aspect} (pf2e)`)
+          if (!file) continue
           await _beneosSafeUpload(finalFolder, file, `${kind} ${key} ${aspect} (pf2e)`)
         }
         const description = String(json.system?.description?.value || "").replaceAll(legacyBase, `beneos_assets/cloud/${cloudBase}/`)
@@ -2486,22 +2635,16 @@ export class BeneosCloud {
       }
       BeneosUtility.debugMessage("Item", itemData, itemObjectData)
       // Decode the base64 tokenImg and upload it to the FilePicker
-      let base64Response = await fetch(`data:image/webp;base64,${itemData.itemImage.front.image64}`);
-      let blob = await base64Response.blob();
-      let file = new File([blob], itemData.itemImage.front.filename, { type: "image/webp" });
-      await _beneosSafeUpload(finalFolder, file, `item ${itemKey} front`);
+      let file = await _beneosBildDatei(itemData.itemImage.front, `item ${itemKey} front`);
+      if (file) await _beneosSafeUpload(finalFolder, file, `item ${itemKey} front`);
 
-      base64Response = await fetch(`data:image/webp;base64,${itemData.itemImage.back.image64}`);
-      blob = await base64Response.blob();
-      file = new File([blob], itemData.itemImage.back.filename, { type: "image/webp" });
-      await _beneosSafeUpload(finalFolder, file, `item ${itemKey} back`);
+      file = await _beneosBildDatei(itemData.itemImage.back, `item ${itemKey} back`);
+      if (file) await _beneosSafeUpload(finalFolder, file, `item ${itemKey} back`);
 
       itemObjectData.system.description.value = itemObjectData.system.description.value.replaceAll("beneos_assets/beneos_items/", "beneos_assets/cloud/items/")
 
-      base64Response = await fetch(`data:image/webp;base64,${itemData.itemImage.icon.image64}`);
-      blob = await base64Response.blob();
-      file = new File([blob], itemData.itemImage.icon.filename, { type: "image/webp" });
-      await _beneosSafeUpload(finalFolder, file, `item ${itemKey} icon`);
+      file = await _beneosBildDatei(itemData.itemImage.icon, `item ${itemKey} icon`);
+      if (file) await _beneosSafeUpload(finalFolder, file, `item ${itemKey} icon`);
       itemObjectData.img = `${finalFolder}/${itemData.itemImage.icon.filename}`
 
       // Loop thru itemObjectData.effects and update the img paths
@@ -2682,22 +2825,16 @@ export class BeneosCloud {
       }
       BeneosUtility.debugMessage("Spell", spellData, spellObjectData)
       // Decode the base64 tokenImg and upload it to the FilePicker
-      let base64Response = await fetch(`data:image/webp;base64,${spellData.spellImage.front.image64}`);
-      let blob = await base64Response.blob();
-      let file = new File([blob], spellData.spellImage.front.filename, { type: "image/webp" });
-      await _beneosSafeUpload(finalFolder, file, `spell ${spellKey} front`);
+      let file = await _beneosBildDatei(spellData.spellImage.front, `spell ${spellKey} front`);
+      if (file) await _beneosSafeUpload(finalFolder, file, `spell ${spellKey} front`);
 
-      base64Response = await fetch(`data:image/webp;base64,${spellData.spellImage.back.image64}`);
-      blob = await base64Response.blob();
-      file = new File([blob], spellData.spellImage.back.filename, { type: "image/webp" });
-      await _beneosSafeUpload(finalFolder, file, `spell ${spellKey} back`);
+      file = await _beneosBildDatei(spellData.spellImage.back, `spell ${spellKey} back`);
+      if (file) await _beneosSafeUpload(finalFolder, file, `spell ${spellKey} back`);
 
       spellObjectData.system.description.value = spellObjectData.system.description.value.replaceAll("beneos_assets/beneos_spells/", "beneos_assets/cloud/spells/")
 
-      base64Response = await fetch(`data:image/webp;base64,${spellData.spellImage.icon.image64}`);
-      blob = await base64Response.blob();
-      file = new File([blob], spellData.spellImage.icon.filename, { type: "image/webp" });
-      await _beneosSafeUpload(finalFolder, file, `spell ${spellKey} icon`);
+      file = await _beneosBildDatei(spellData.spellImage.icon, `spell ${spellKey} icon`);
+      if (file) await _beneosSafeUpload(finalFolder, file, `spell ${spellKey} icon`);
       spellObjectData.img = `${finalFolder}/${spellData.spellImage.icon.filename}`
 
       // Loop thru spellObjectData.effects and update the img paths
@@ -3815,23 +3952,19 @@ export class BeneosCloud {
         // geschrieben. Die Antwort der Cloud traegt die Bytes weiterhin;
         // sie zu verwerfen kostet nichts, und der Umbau des Endpunkts auf
         // eine Dateiliste ist ein eigenes Paket (`OP-PRJ-146`).
-        let base64Response, blob, file
+        // `OP-PRJ-146`: `base64Response` und `blob` sind weg, der
+        // Umschlag liegt jetzt in `_beneosBildDatei()`.
+        let file
         if (!variantStreamt) {
-          base64Response = await fetch(`data:image/webp;base64,${tokenData.tokenImages[i].token.image64}`);
-          blob = await base64Response.blob();
-          file = new File([blob], tokenData.tokenImages[i].token.filename, { type: "image/webp" });
-          await _beneosSafeUpload(finalFolder, file, `token ${tokenKey} variant ${i + 1} token`);
+          file = await _beneosBildDatei(tokenData.tokenImages[i].token, `token ${tokenKey} variant ${i + 1} token`);
+          if (file) await _beneosSafeUpload(finalFolder, file, `token ${tokenKey} variant ${i + 1} token`);
         }
 
-        base64Response = await fetch(`data:image/webp;base64,${tokenData.tokenImages[i].journal.image64}`);
-        blob = await base64Response.blob();
-        file = new File([blob], tokenData.tokenImages[i].journal.filename, { type: "image/webp" });
-        await _beneosSafeUpload(finalFolder, file, `token ${tokenKey} variant ${i + 1} journal`);
+        file = await _beneosBildDatei(tokenData.tokenImages[i].journal, `token ${tokenKey} variant ${i + 1} journal`);
+        if (file) await _beneosSafeUpload(finalFolder, file, `token ${tokenKey} variant ${i + 1} journal`);
 
-        base64Response = await fetch(`data:image/webp;base64,${tokenData.tokenImages[i].avatar.image64}`);
-        blob = await base64Response.blob();
-        file = new File([blob], tokenData.tokenImages[i].avatar.filename, { type: "image/webp" });
-        await _beneosSafeUpload(finalFolder, file, `token ${tokenKey} variant ${i + 1} avatar`);
+        file = await _beneosBildDatei(tokenData.tokenImages[i].avatar, `token ${tokenKey} variant ${i + 1} avatar`);
+        if (file) await _beneosSafeUpload(finalFolder, file, `token ${tokenKey} variant ${i + 1} avatar`);
 
         // `*-top.webp` companion. Top-down used to be optional here: a
         // variant that shipped without one was skipped with nothing but a
@@ -3852,15 +3985,20 @@ export class BeneosCloud {
               + `Top-down is mandatory; this variant should not be in the catalog.`
             )
           }
-        } else if (topData?.image64 && topData?.filename) {
-          const topResp = await fetch(`data:image/webp;base64,${topData.image64}`);
-          const topBlob = await topResp.blob();
-          const topFile = new File([topBlob], topData.filename, { type: "image/webp" });
+        } else if (_beneosBildDa(topData)) { // `OP-PRJ-146`, nicht auf Bytes pruefen
+          // `OP-PRJ-146`: diese Stelle darf bei einem Fehlschlag NICHT
+          // ueberspringen. Der Rueckgabewert des Uploads steuert unten den
+          // Prototyp, und ein `continue` liesse `_beneosTopVerfuegbar`
+          // undefined; der Prototyp zeigte dann auf eine Datei, die nicht da
+          // ist, und das ist genau der 404-Fall aus M8.3.39.
+          const topFile = await _beneosBildDatei(topData, `token ${tokenKey} variant ${i + 1} top`);
           // Fix M8.3.39: remember whether the top file actually landed on disk.
           // The prototype-token swap below must only point at -top.webp when
           // the upload succeeded; otherwise we leave a dangling reference that
           // 404s on the canvas (matches the user-report top.webp 404 spam).
-          const topUpload = await _beneosSafeUpload(finalFolder, topFile, `token ${tokenKey} variant ${i + 1} top`);
+          const topUpload = topFile
+            ? await _beneosSafeUpload(finalFolder, topFile, `token ${tokenKey} variant ${i + 1} top`)
+            : null
           topData._beneosTopVerfuegbar = !!(topUpload && topUpload.path)
         } else {
           console.warn(
@@ -4428,7 +4566,7 @@ export class BeneosCloud {
     this.inflightImports.add(lockKey)
 
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
-    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_token=1&foundryId=${encodeURIComponent(userId)}&tokenKey=${encodeURIComponent(tokenKey)}` + this._erwerbsAnhang(opts)
+    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_token=1&foundryId=${encodeURIComponent(userId)}&tokenKey=${encodeURIComponent(tokenKey)}` + _beneosBildformAnhang() + this._erwerbsAnhang(opts)
     // Ueber die globale FIFO (enqueueInstall), damit parallele Einzel-Klicks
     // auf verschiedene Assets sich nicht im Compendium-Lock ueberholen.
     return this.enqueueInstall(() => fetch(url, { credentials: 'same-origin' })
@@ -4496,7 +4634,7 @@ export class BeneosCloud {
     this.inflightImports.add(lockKey)
 
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
-    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_item=1&foundryId=${encodeURIComponent(userId)}&itemKey=${encodeURIComponent(itemKey)}` + this._erwerbsAnhang(opts)
+    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_item=1&foundryId=${encodeURIComponent(userId)}&itemKey=${encodeURIComponent(itemKey)}` + _beneosBildformAnhang() + this._erwerbsAnhang(opts)
     // Globale FIFO, siehe importTokenFromCloud.
     return this.enqueueInstall(() => fetch(url, { credentials: 'same-origin' })
       .then(response => response.json())
@@ -4540,7 +4678,7 @@ export class BeneosCloud {
     this.inflightImports.add(lockKey)
 
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
-    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_spell=1&foundryId=${encodeURIComponent(userId)}&spellKey=${encodeURIComponent(spellKey)}` + this._erwerbsAnhang(opts)
+    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_spell=1&foundryId=${encodeURIComponent(userId)}&spellKey=${encodeURIComponent(spellKey)}` + _beneosBildformAnhang() + this._erwerbsAnhang(opts)
     // Globale FIFO, siehe importTokenFromCloud.
     return this.enqueueInstall(() => fetch(url, { credentials: 'same-origin' })
       .then(response => response.json())
