@@ -219,6 +219,79 @@ export async function karte(pfad, rolle) {
 }
 
 /**
+ * Die Adresse einer Kartenseite fuer eine Oberflaeche, `OP-PRJ-141` Teil 2.
+ *
+ * ─── WARUM ES DIESE FUNKTION BRAUCHT, und zwar hier und nicht dort ──────────
+ *
+ * Zwei Stellen zeigen die Klappkarten: das Blatt des Gegenstands
+ * (`../loot/item-sheet-extender.mjs`) und das Begleitfenster
+ * (`../codex2/item-companion.mjs`). Beide bauen heute dieselben zwei Zeilen:
+ *
+ *   const cloudCards = beneosCloudCardPaths(item)
+ *   const frontCard  = cloudCards.front || loot.render?.frontCardWebp || null
+ *
+ * GEMESSEN AM 08.11.2026 IST DER VORRANG FALSCH, sobald das Streaming traegt.
+ * `beneosCloudCardPaths()` bildet einen OERTLICHEN Pfad aus der Kennung und
+ * liefert damit IMMER einen Wert. Steht in `loot.render.frontCardWebp` nach
+ * einer Streaming-Installation eine Toradresse, wird sie von diesem Vorrang
+ * verdraengt und NIE benutzt. Der Umbau ist deshalb nicht "eine Adresse
+ * bilden", sondern "den Vorrang umdrehen, wenn eine Toradresse da ist".
+ *
+ * ─── DREI AUSGAENGE, UND DER DRITTE IST DER NORMALFALL ──────────────────────
+ *
+ *   die Liste kennt die Seite       Adresse AUS DER LISTE, mit Massen
+ *   die Liste sagt: gibt es nicht   `null`, und die Kachel faellt weg
+ *   nicht geprueft                  der oertliche Pfad, wie vor dieser Datei
+ *
+ * Der dritte Fall ist jede oertlich installierte Welt, und dort verhaelt sich
+ * die Oberflaeche Zeichen fuer Zeichen wie vorher. Das ist die Bedingung
+ * dafuer, dass hier ueberhaupt gebaut werden darf: ein Kunde auf `download`
+ * merkt von dieser Funktion nichts.
+ *
+ * ─── DER ZWEITE FALL IST DER GEWINN, und er ist am Bestand gemessen ─────────
+ *
+ * `OP-PRJ-139` hat am 07.11.2026 gezaehlt: drei Zauber tragen GAR KEINE
+ * Rueckseite, und drei weitere tragen sie als PNG und damit unter einem Namen,
+ * den die Positivliste des Spiegels nicht mitnimmt. Wer `<kennung>-back.webp`
+ * bildet, bekommt bei sechs Eintraegen eine Kachel, die am Tor ein
+ * durchsichtiges GIF von 42 Byte zeigt: ein gueltiges Bild, kein Fehler,
+ * nirgends eine Meldung.
+ *
+ * Mit dieser Funktion faellt die Kachel weg, statt leer zu erscheinen.
+ *
+ * ─── DIE MASSE GEHEN MIT, und das ist nicht Zierwerk ────────────────────────
+ *
+ * Das Ersatzbild soll im Seitenverhaeltnis des Originals erscheinen
+ * (`OP-PRJ-128`), und eine Klappkarte ist hochkant, waehrend ein Symbol
+ * quadratisch ist. Geraten waere das Ersatzbild quadratisch und die Karte
+ * sichtbar verzerrt. Im dritten Fall stehen die Masse auf `null`, denn ueber
+ * eine oertliche Datei weiss diese Datei nichts.
+ */
+export async function karteFuerBlatt(gespeichert, oertlich, rolle) {
+  const befund = await karte(gespeichert, rolle)
+
+  if (befund.zustand === true) {
+    return { src: befund.src, breite: befund.breite, hoehe: befund.hoehe }
+  }
+  if (befund.zustand === false) {
+    // DIE LISTE SAGT NEIN, und das ist eine Antwort und keine fehlende. Hier
+    // `null`, damit die Kachel wegfaellt; eine gebildete Adresse waere am Tor
+    // ein durchsichtiges GIF ohne Fehlermeldung.
+    return { src: null, breite: null, hoehe: null }
+  }
+
+  // NICHT GEPRUEFT. Die alte Reihenfolge, Zeichen fuer Zeichen: zuerst der
+  // oertliche Pfad aus der Kennung, dann der gespeicherte Wert. Sie heilt
+  // SRD-Eintraege, deren gespeicherte Pfade ins Leere zeigen, und genau dafuer
+  // ist sie 2026 entstanden.
+  return {
+    src: oertlich || gespeichert || null,
+    breite: null,
+    hoehe: null,
+  }
+}
+
+/**
  * Darf die Oberflaeche diese Seite anbieten? Bewusst streng.
  *
  * `null` heisst "nicht geprueft" und zaehlt hier NICHT als ja. Wer eine

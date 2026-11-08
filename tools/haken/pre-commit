@@ -158,8 +158,16 @@ fahre "tools/v14-import-bench/unit.mjs"           "v14-import unit.mjs, 53 Saetz
 # ist die Lage, in der er gebraucht wird. Es kostet die rund 10 Sekunden auch
 # bei einer Installeraenderung, und das ist der Preis dafuer, dass die Probe
 # kein blinder Fleck ist.
+#
+# AM 08.11.2026 IST `scripts/codex2/item-companion.mjs` DAZUGEKOMMEN, und zwar
+# aus demselben Grund. `stream-beute.test.mjs` prueft seit `OP-PRJ-141` Teil 2
+# am Quelltext, dass das Begleitfenster `karteFuerBlatt()` ruft und wartet.
+# Dieser Satz lief in keinem Tor: `scripts/codex2` stand in keiner Liste, also
+# haette eine Aenderung genau dort den Satz nicht ausgeloest. Ein Pruefer, der
+# bei der Aenderung seines Gegenstands nicht laeuft, ist kein Pruefer.
 if git diff --cached --name-only --diff-filter=ACM \
      -- scripts/stream scripts/loot \
+        scripts/codex2/item-companion.mjs \
         scripts/cloud-v2/beneos-native-installer.mjs \
    | grep -q .
 then

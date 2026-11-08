@@ -1,4 +1,5 @@
 import { getLootFlags, beneosCloudCardPaths, isBeneosSrdItem } from "./loot-schema.mjs";
+import { karteFuerBlatt } from "../stream/stream-karten.mjs";
 import { OriginsRegistry } from "./origins-registry.mjs";
 
 const TEMPLATE_PATH = "modules/beneos-module/templates/loot/item-sheet-extras.hbs";
@@ -39,7 +40,7 @@ export class ItemSheetExtender {
     // Avoid double-injection (sheet can re-render multiple times).
     if (root.querySelector(":scope .beneos-loot-extras[data-beneos-loot]")) return;
 
-    const ctx = ItemSheetExtender._buildContext(loot, item);
+    const ctx = await ItemSheetExtender._buildContext(loot, item);
     const html = await renderTemplate(TEMPLATE_PATH, ctx);
 
     // dnd5e V2 ItemSheet renders the description text inside
@@ -114,7 +115,7 @@ export class ItemSheetExtender {
     });
   }
 
-  static _buildContext(loot, item) {
+  static async _buildContext(loot, item) {
     // SRD items have no Origin: force the badge off (belt-and-suspenders on top
     // of the template's {{#if originDef}} gate, in case a stray slug is set).
     const isSrd = isBeneosSrdItem(item, loot);
@@ -124,8 +125,27 @@ export class ItemSheetExtender {
     // Prefer the reconstructed local cloud path (fixes SRD items whose stored
     // render paths point nowhere); fall back to the stored render values.
     const cloudCards = beneosCloudCardPaths(item);
-    const frontCard = cloudCards.front || loot.render?.frontCardWebp || null;
-    const backCard  = cloudCards.back  || loot.render?.backCardWebp  || null;
+    // `OP-PRJ-141` Teil 2: DER VORRANG WAR FALSCH, sobald das Streaming
+    // traegt. `beneosCloudCardPaths()` bildet einen oertlichen Pfad aus der
+    // Kennung und liefert damit IMMER einen Wert; eine Toradresse in
+    // `render.*CardWebp` wurde davon verdraengt und nie benutzt.
+    //
+    // `karteFuerBlatt()` dreht den Vorrang nur dort um, wo eine Toradresse
+    // steht, und faellt sonst auf genau diese zwei Zeilen zurueck. Eine
+    // oertlich installierte Welt verhaelt sich Zeichen fuer Zeichen wie
+    // vorher, und das ist die Bedingung dafuer, dass hier gebaut werden darf.
+    //
+    // Der Gewinn ist nicht die Adresse, sondern die ABWESENHEIT: `OP-PRJ-139`
+    // hat sechs Eintraege gezaehlt, deren Rueckseite es nicht oder nicht als
+    // WebP gibt. Eine gebildete Adresse zeigt dort am Tor ein durchsichtiges
+    // GIF von 42 Byte, also ein gueltiges Bild ohne Fehlermeldung; jetzt
+    // faellt die Kachel weg.
+    const vorne = await karteFuerBlatt(
+      loot.render?.frontCardWebp || null, cloudCards.front, "front");
+    const hinten = await karteFuerBlatt(
+      loot.render?.backCardWebp || null, cloudCards.back, "back");
+    const frontCard = vorne.src;
+    const backCard  = hinten.src;
 
     return {
       loot,
