@@ -357,6 +357,38 @@ then
   fahre "tools/bildform-adresse-bench/bench.mjs" "bildform-adresse-bench, 32 Saetze"
 fi
 
+# Die Grenze des Kundenpakets, wenn die Bauvorgabe oder die Ladeliste
+# angefasst wird.
+#
+# WARUM SIE DAZUKOMMEN MUSSTE, am 08.11.2026 mit `OP-PRJ-217`. Die
+# `.gitattributes` entscheidet, was im Kundenpaket landet, und loeste bis zu
+# diesem Tag GAR KEINEN Pruefsatz aus. Sie trug seit dem 03.09.2026 eine
+# Sperre und darueber den Kommentar "NOCH NICHT AM ARCHIV NACHGEMESSEN"
+# samt dem Befehl fuer die Probe; die Probe hat niemand gefahren. Als sie
+# lief, trug die Sperre, aber sie war die einzige: `tools/` fuhr mit 66
+# Dateien ins Paket.
+#
+# WAS DER GEFAEHRLICHE FALL IST, und es ist nicht die vergessene Sperre.
+# Eine Sperre mit zu weitem Muster nimmt dem Kunden Teile des Produkts, und
+# das faellt beim Bauen NICHT auf: das Archiv entsteht ohne Fehler, es ist
+# nur kleiner. Der Stand prueft deshalb beide Richtungen, und sein zweiter
+# Abschnitt ist der wichtigere.
+#
+# WARUM `module.json` MIT IN DEN AUSLOESER MUSS. Der dritte Abschnitt haelt
+# jeden Ladepfad gegen das Archiv. Kommt ein esmodule aus einem gesperrten
+# Ordner dazu, installiert das Paket und schweigt dann; ohne diese Zeile
+# liefe der Satz genau bei der Aenderung nicht, die ihn braucht.
+#
+# Er faehrt `git write-tree` und messt damit den VORGEMERKTEN Stand, nicht
+# HEAD. Gemessen 0,6 Sekunden, kein Netz, kein Foundry.
+if git diff --cached --name-only --diff-filter=ACM \
+     -- .gitattributes module.json tools/paket-grenze-bench \
+   | grep -q .
+then
+  meld "pre-commit: Bauvorgabe vorgemerkt, die Paketgrenze laeuft mit"
+  fahre "tools/paket-grenze-bench/bench.mjs" "paket-grenze-bench, 39 Saetze"
+fi
+
 # ----------------------------------------------------------------- Ausgang ---
 if [ "$ROT" -gt 0 ]; then
   meld ""
