@@ -79,10 +79,20 @@ const ERZEUGER_PFAD = join(WURZEL, "tools", "ersatzbilder.py")
 /**
  * Der Kopf einer WebP-Datei, so weit er hier gebraucht wird.
  *
- * Gelesen wird die erweiterte Form VP8X, weil Pillow sie fuer Bilder mit
- * Alphakanal schreibt und nur sie Masse und Alpha-Schalter im Klartext
- * fuehrt. Eine Datei ohne VP8X ist damit entweder kein WebP oder eines ohne
- * Alphakanal, und beides ist hier ein Befund und kein Sonderfall.
+ * ZWEI FORMEN, und die erste Fassung dieser Funktion kannte nur eine. Sie
+ * verlangte VP8X und wurde dadurch bei der Umstellung auf verlustfreie
+ * Kodierung 24 mal rot, obwohl an den Bildern nichts fehlte: Pillow schreibt
+ * VP8X nur fuer die verlustbehaftete Form und VP8L fuer die verlustfreie.
+ * Ein Satz, der eine Eigenheit des Schreibers prueft statt der Sache, meldet
+ * einen Befund, wo keiner ist. Beide Formen koennen Alpha tragen, und beide
+ * nennen Masse und Alphaschalter im Kopf, nur verschieden verpackt.
+ *
+ *   VP8X  Flags in Byte 20 (Bit 4 ist Alpha), Masse als zwei mal 24 Bit
+ *   VP8L  Signaturbyte 0x2F, danach 32 Bit mit Breite, Hoehe, Alpha, Version
+ *
+ * Eine Datei, die weder das eine noch das andere ist, ist entweder kein WebP
+ * oder die aeltere Form VP8 ohne jeden Alphakanal, und beides ist hier ein
+ * Befund und kein Sonderfall.
  */
 function webpKopf(pfad) {
   const b = readFileSync(pfad)
@@ -90,14 +100,29 @@ function webpKopf(pfad) {
   if (b.toString("latin1", 0, 4) !== "RIFF") return { fehler: "kein RIFF" }
   if (b.toString("latin1", 8, 12) !== "WEBP") return { fehler: "kein WEBP" }
   const art = b.toString("latin1", 12, 16)
-  if (art !== "VP8X") return { fehler: `Chunk ${art} statt VP8X`, art }
-  return {
-    art,
-    alpha: (b[20] & 0x10) !== 0,
-    breite: (b[24] | (b[25] << 8) | (b[26] << 16)) + 1,
-    hoehe: (b[27] | (b[28] << 8) | (b[29] << 16)) + 1,
-    bytes: b.length,
+  if (art === "VP8X") {
+    return {
+      art,
+      alpha: (b[20] & 0x10) !== 0,
+      breite: (b[24] | (b[25] << 8) | (b[26] << 16)) + 1,
+      hoehe: (b[27] | (b[28] << 8) | (b[29] << 16)) + 1,
+      bytes: b.length,
+    }
   }
+  if (art === "VP8L" && b[20] === 0x2f) {
+    // Vier Bytes, LSB zuerst: 14 Bit Breite, 14 Bit Hoehe, 1 Bit Alpha,
+    // 3 Bit Version. `>>>` statt `>>`, weil Bit 31 sonst das Vorzeichen
+    // setzt und die Version negativ wird.
+    const v = (b[21] | (b[22] << 8) | (b[23] << 16) | (b[24] << 24)) >>> 0
+    return {
+      art,
+      alpha: ((v >>> 28) & 1) === 1,
+      breite: (v & 0x3fff) + 1,
+      hoehe: ((v >>> 14) & 0x3fff) + 1,
+      bytes: b.length,
+    }
+  }
+  return { fehler: `Chunk ${art} traegt keinen Alphakanal`, art }
 }
 
 // ---------------------------------------------------------------------------
@@ -219,7 +244,8 @@ for (const name of ERWARTET) {
   const k = webpKopf(pfad)
   const form = name.replace(/\.webp$/, "").split("_").pop()
   const soll = SOLL_MASSE[form]
-  wahr(`${name}: WebP in erweiterter Form`, k.art === "VP8X")
+  wahr(`${name}: WebP in einer Form mit Alphakanal, VP8X oder VP8L`,
+    k.art === "VP8X" || k.art === "VP8L")
   wahr(`${name}: traegt einen Alphakanal`, k.alpha === true)
   if (soll) {
     gleich(`${name}: Masse`, [k.breite, k.hoehe], soll)
