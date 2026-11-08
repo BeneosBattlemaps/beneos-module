@@ -188,8 +188,11 @@ then
   # DIE MINDESTZAHL IST KEIN SCHMUCK. Eine Suche, die nichts findet, ist von
   # einer kaputten Suche nicht zu unterscheiden, und dann liefe dieser Block
   # still durch und meldete nur seine Kopfzeile. Die Zahl ist der Stand vom
-  # 08.11.2026, also neun Staende; sie wird nach UNTEN gesichert und nicht
-  # nach oben, damit ein neuer Stand sie nicht bricht.
+  # 08.11.2026, also elf Staende; sie wird nach UNTEN gesichert und nicht
+  # nach oben, damit ein neuer Stand sie nicht bricht. Sie stand bis zum
+  # Nachmittag des 08.11.2026 auf neun und ist mit `stream-bilder.test.mjs`
+  # und `stream-ersatzbild.test.mjs` nachgezogen; wer sie stehen laesst,
+  # laesst den Verlust zweier Staende durchgehen.
   #
   # WAS EIN STAND HIER ERFUELLEN MUSS: ohne Netz, ohne Foundry, ohne
   # Datenbank, und in rund einer Sekunde. Wer einen Stand baut, der das nicht
@@ -197,9 +200,9 @@ then
   # jeden Commit dieses Ordners auf.
   STAENDE=$(ls scripts/stream/*.test.mjs 2>/dev/null | sort)
   ANZAHL=$(printf '%s\n' "$STAENDE" | grep -c 'test\.mjs$')
-  if [ "$ANZAHL" -lt 9 ]; then
+  if [ "$ANZAHL" -lt 11 ]; then
     meld "pre-commit: ABBRUCH, nur $ANZAHL Streampruefsaetze gefunden, erwartet"
-    meld "            mindestens 9. Entweder ist die Suche kaputt oder ein"
+    meld "            mindestens 11. Entweder ist die Suche kaputt oder ein"
     meld "            Stand ist verschwunden; beides ist ein Befund und keine"
     meld "            bestandene Pruefung."
     exit 1

@@ -11,3 +11,5 @@ todo.md
 *.bak
 *.bak-*
 node_modules/
+__pycache__/
+*.pyc
