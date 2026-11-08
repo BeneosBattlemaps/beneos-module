@@ -565,29 +565,235 @@ console.log("\nDas Journalbild streamt nur, wenn die Liste es nennt")
       .map((x) => String(x)).join("|"), "true|false|null")
 }
 
+wahr("und sie bringt den Waisenriegel mit",
+  typeof posen.tokenbildImSpiegel === "function")
+
+console.log("\nDie Waisenpruefung fragt die Liste und nicht das Tor")
+{
+  /*
+   * DER REST VON `OP-PRJ-170`, gebaut am 08.11.2026.
+   *
+   * Die Waisenaufraeumung in `beneos_cloud.js` liess jede Toradresse
+   * UNGEPRUEFT durch, seit `OP-PRJ-131` den schlimmeren Fehler behoben hat:
+   * vorher entstand aus einer Toradresse `/https://gate...`, das antwortete
+   * 404, und jede gestreamte Kreatur bekam `missing_files`. Das Fenster hat
+   * dann Dokumente zum LOESCHEN vorgelegt, die in Ordnung waren.
+   *
+   * Eine HEAD-Probe am Tor taugt nicht als Ersatz: eine Abweisung ist HTTP
+   * 200 mit 42 Byte, sie lieferte also "vorhanden" fuer eine Kreatur ohne
+   * Recht und "fehlt" fuer jede Kreatur ohne Netz. Die Liste beantwortet die
+   * Frage, ohne das Bild zu holen.
+   *
+   * WAS DIESE FUNKTION ANDERS FRAGT ALS `ansicht()`. `ansicht()` fragt
+   * "welche Datei soll ich laden", also vor dem Schreiben. Diese fragt "ist
+   * die Datei, die im Dokument STEHT, im Spiegel", also ueber einen bereits
+   * gespeicherten Pfad. Variante und Stil kommen deshalb aus dem Dateinamen
+   * und nicht vom Aufrufer.
+   */
+  const shaT = "e".repeat(64)
+  const voll = {
+    tokenbilder: {
+      1: {
+        tokenized: { pfad: "000-wolf-1-token.webp", sha256: shaT },
+        topdown: null,
+      },
+      2: { tokenized: { pfad: "000-wolf-2-token.webp" } },
+    },
+  }
+  const tis = posen.tokenbildImSpiegel
+  const TOR_T1 = assetUrl(RELEASE, "", "000-wolf-1-token.webp")
+  const TOR_TOP1 = assetUrl(RELEASE, "", "000-wolf-1-top.webp")
+  const TOR_T3 = assetUrl(RELEASE, "", "000-wolf-3-token.webp")
+
+  gleich("die Liste nennt Variante 1 in 2.5D", tis(voll, TOR_T1).zustand, true)
+  gleich("und gibt den Namen AUS DER LISTE",
+    tis(voll, TOR_T1).pfad, "000-wolf-1-token.webp")
+  gleich("und die Pruefsumme", tis(voll, TOR_T1).sha256, shaT)
+  gleich("Variante 2 ohne Pruefsumme ist trotzdem da",
+    tis(voll, assetUrl(RELEASE, "", "000-wolf-2-token.webp")).zustand, true)
+  gleich("und ihre Pruefsumme ist null, nicht undefined",
+    tis(voll, assetUrl(RELEASE, "", "000-wolf-2-token.webp")).sha256, null)
+
+  /*
+   * DIE DRAUFSICHT DERSELBEN VARIANTE STEHT ALS `null` IN DER LISTE, und das
+   * heisst "gibt es nicht". Der Stil kommt aus dem Dateinamen, also ist das
+   * eine andere Frage als dieselbe Variante in 2.5D. Ohne diesen Satz koennte
+   * die Funktion den Stil ignorieren und waere fuer die halben Varianten des
+   * Bestands blind: zwei Ordner fuehren Draufsichten nur fuer einen TEIL
+   * ihrer Varianten.
+   */
+  gleich("dieselbe Variante als Draufsicht steht als null drin, also false",
+    tis(voll, TOR_TOP1).zustand, false)
+  gleich("eine Variante, die es gar nicht gibt, ist false",
+    tis(voll, TOR_T3).zustand, false)
+
+  /*
+   * DER NAME WIRD NICHT VERGLICHEN, und das ist die Entscheidung dieses
+   * Baus. Traegt das Dokument einen anderen Dateinamen als die Liste, ist die
+   * Kreatur trotzdem im Spiegel. Ein Vergleich hier machte aus jeder
+   * Abweichung in der Gross- und Kleinschreibung ein Loeschangebot, und
+   * Windows verzeiht sie, der Spiegel nicht.
+   */
+  gleich("ein anderer Dateiname derselben Variante gilt trotzdem",
+    tis(voll, assetUrl(RELEASE, "", "000-WOLF-1-token.webp")).zustand, true)
+  gleich("und der Aufrufer bekommt den Namen der LISTE, nicht seinen eigenen",
+    tis(voll, assetUrl(RELEASE, "", "000-WOLF-1-token.webp")).pfad,
+    "000-wolf-1-token.webp")
+
+  /*
+   * NICHT GEPRUEFT HEISST `null` UND NICHT `false`, und hier haengt mehr
+   * daran als an jeder anderen Stelle dieses Standes: das Fenster hinter
+   * dieser Frage LOESCHT auf Knopfdruck mit vorausgewaehlten Haken. Ein
+   * falsches "fehlt" kostet Kundendokumente.
+   */
+  gleich("keine Liste: nicht geprueft", tis(null, TOR_T1).zustand, null)
+  gleich("eine Liste ohne das Feld: nicht geprueft",
+    tis({ journalbilder: {} }, TOR_T1).zustand, null)
+  gleich("ein Feld, das kein Objekt ist: nicht geprueft",
+    tis({ tokenbilder: "ja" }, TOR_T1).zustand, null)
+  gleich("keine Liste, sondern eine Zeichenkette: nicht geprueft",
+    tis("x", TOR_T1).zustand, null)
+
+  /*
+   * EIN PFAD OHNE DIE NAMENSREGEL IST KEINE AUSSAGE, und das ist der
+   * gefaehrlichste der vier Wege nach `null`. Wer ihn als `false` liest,
+   * legt jedes Dokument mit einem handgeschriebenen Pfad zum Loeschen vor.
+   */
+  gleich("ein Pfad ohne Variantennummer: nicht geprueft",
+    tis(voll, assetUrl(RELEASE, "", "irgendwas.webp")).zustand, null)
+  gleich("ein leerer Pfad: nicht geprueft", tis(voll, "").zustand, null)
+  gleich("eine KARTENadresse: nicht geprueft, denn sie ist keine Kreatur",
+    tis(voll, "https://x.beneos.stream/a/k/rel/var/000-wolf-1-token.webp")
+      .zustand, null)
+
+  /*
+   * EIN LEERES FELD IST DAGEGEN EINE AUSSAGE: der Server hat `tokenbilder`
+   * geschrieben und keine Variante gefunden.
+   */
+  gleich("ein leeres Feld ist eine Aussage, naemlich false",
+    tis({ tokenbilder: {} }, TOR_T1).zustand, false)
+  gleich("ein Eintrag ohne Pfad gilt nicht",
+    tis({ tokenbilder: { 1: { tokenized: { breite: 700 } } } }, TOR_T1)
+      .zustand, false)
+  gleich("ein leerer Pfad im Eintrag gilt auch nicht",
+    tis({ tokenbilder: { 1: { tokenized: { pfad: "" } } } }, TOR_T1)
+      .zustand, false)
+  {
+    const kaputt = tis(
+      { tokenbilder: { 1: { tokenized: { pfad: "a.webp", sha256: "kurz" } } } },
+      TOR_T1)
+    gleich("eine kaputte Pruefsumme laesst den Eintrag gueltig",
+      kaputt.zustand, true)
+    gleich("und der Pfad bleibt", kaputt.pfad, "a.webp")
+    gleich("und die Pruefsumme wird null", kaputt.sha256, null)
+  }
+  /*
+   * DIE LAENGE ZAEHLT UND NICHT NUR DAS ZEICHENVORRAT, und dieser Satz ist
+   * aus einer Sabotage entstanden, die ohne ihn durchkam. Der Koeder oben
+   * heisst "kurz" und traegt Buchstaben AUSSERHALB von [a-f0-9]; eine
+   * Pruefung, die die Laenge vergisst, weist ihn trotzdem ab und sieht
+   * richtig aus. Eine zu kurze Summe aus reinen Hexzeichen trennt die zwei
+   * Faelle.
+   */
+  gleich("eine zu kurze Summe aus reinen Hexzeichen gilt nicht",
+    tis({ tokenbilder: { 1: { tokenized: { pfad: "a.webp", sha256: "abc123" } } } },
+      TOR_T1).sha256, null)
+
+  /*
+   * EIN OERTLICHER PFAD GIBT DIESELBE ANTWORT, und das ist Absicht: diese
+   * Funktion fragt nach dem SPIEGEL und nicht nach der Platte. Sie wird in
+   * der Waisenpruefung nur fuer Toradressen gerufen, weil oertliche Pfade
+   * dort die vorhandene Plattenprobe bekommen. Waere es anders, meldete ein
+   * oertlich installiertes Dokument "fehlt", sobald der Spiegel die Variante
+   * nicht nennt.
+   */
+  gleich("ein oertlicher Pfad wird nach derselben Namensregel gelesen",
+    tis(voll, "beneos_assets/cloud/tokens/x/000-wolf-1-token.webp").zustand,
+    true)
+
+  /*
+   * GEGENPROBE AUF DIE GEGENPROBE. Sechs Saetze oben verlangen `null`. Eine
+   * Funktion, die IMMER `null` gibt, bestuende sie alle.
+   */
+  gleich("die drei Antworten sind drei verschiedene",
+    [tis(voll, TOR_T1).zustand, tis(voll, TOR_T3).zustand,
+      tis(null, TOR_T1).zustand].map((x) => String(x)).join("|"),
+    "true|false|null")
+
+  /*
+   * UND DIE RUFSTELLE PRUEFT `=== false` UND NICHT `!== true`. Das ist der
+   * einzige Satz dieses Blocks, der nicht die Funktion prueft, sondern ihren
+   * GEBRAUCH, und er ist der wichtigste: die Funktion kann richtig sein und
+   * die Stelle sie trotzdem falsch lesen. Genau so ist der Fehler entstanden,
+   * den `OP-PRJ-170` behebt, denn die gute Probe lag schon in derselben
+   * Datei. Der Quelltext wird gelesen und nicht gefahren, weil
+   * `beneos_cloud.js` Foundry braucht; was er nicht leisten kann, steht
+   * unten unter NICHT PRUEFBAR.
+   */
+  const cloudQuelle = readFileSync(join(hier, "..", "beneos_cloud.js"), "utf8")
+  wahr("die Waisenpruefung ist in der Datei zu finden",
+    cloudQuelle.includes("tokenbildImSpiegel(liste, protoSrc)"))
+  wahr("und sie liest `=== false` und nicht `!== true`",
+    cloudQuelle.includes("tokenbildImSpiegel(liste, protoSrc).zustand === false"))
+  gleich("und sie fragt die Liste nur fuer den Kreaturenraum",
+    (cloudQuelle.match(/tor\?\.raum === "kreatur" \? await posenliste/g) || [])
+      .length, 1)
+  // Gegenprobe: dieselbe Suche muss an einer gestellten Zeile ANSCHLAGEN.
+  // Ohne sie waere eine Suche nach einer Zeichenkette, die es nirgends gibt,
+  // von einer bestandenen Pruefung nicht zu unterscheiden.
+  wahr("die Suche nach `!== true` schlaegt an einer gestellten Zeile an",
+    "if (tokenbildImSpiegel(liste, protoSrc).zustand !== true) {"
+      .includes("tokenbildImSpiegel(liste, protoSrc).zustand !== true"))
+  gleich("und sie findet im Bestand NULL Stellen",
+    (cloudQuelle.match(/tokenbildImSpiegel\(liste, protoSrc\)\.zustand !== true/g)
+      || []).length, 0)
+}
+
 console.log("")
 console.log("Abschluss")
 console.log(`  bestanden: ${gruen}`)
 console.log(`  rot:       ${rot}`)
 console.log("")
-console.log("NICHT PRUEFBAR, und zwar genau viererlei:")
-console.log("- Die schluesselfreie Adressform. Sie steht in `stream-platzhalter.test.mjs`;")
-console.log("  hier wird nur geprueft, WANN sie geschrieben werden darf.")
-console.log("- Die Anzeigefrage. `ansicht()` ohne Pruefung bleibt in der")
-console.log("  Kachelleiste des Cloud-Fensters, und das ist Absicht: zwanzig")
-console.log("  Varianten wuerden sonst zwanzig Dateien holen, die nur gezaehlt")
-console.log("  werden sollten. Ein falscher Inhalt faellt dort also erst auf,")
-console.log("  wenn der Kunde die Ansicht wirklich waehlt.")
-console.log("- Ob `crypto.subtle` in einem echten Foundry ohne HTTPS wirklich")
-console.log("  fehlt. Hier wird es vorsaetzlich entfernt. Dass `http://192.168.x.x`")
-console.log("  kein sicherer Kontext ist, ist Browserregel und am 08.11.2026 aus")
-console.log("  den drei vorhandenen Rufstellen im Modul geschlossen, nicht im LAN")
-console.log("  gemessen.")
-console.log("- Ob der Volldurchgang die Listen wirklich mit `sha256` schreibt. Die")
-console.log("  Serverhaelfte ist gebaut (`b388146`), der Durchgang ist handgefuehrt")
-console.log("  und am 07.11.2026 nicht gefahren. Bis dahin ist der Normalfall")
-console.log("  'ohne Summe', und genau den prueft dieser Satz mit.")
-console.log("- Die Kosten im Betrieb. Gerechnet sind 0,447 MB je Draufsicht als")
-console.log("  zweite Kopie im Speicher, einmal je Ansicht und Sitzung. Gemessen")
-console.log("  ist das nicht.")
+/*
+ * DIE ZAHL KOMMT AUS DER LISTE UND NICHT AUS DEM TEXT.
+ *
+ * Sie stand hier von Hand und war am 08.11.2026 schon vor dem Anbau falsch:
+ * "viererlei" bei fuenf Punkten. Das ist dieselbe Klasse wie die Satzzahl im
+ * Vorhaken und die Ueberschrift der Sprachwache-README, beide am selben Tag
+ * berichtigt. Eine Zahl neben einer Liste veraltet, sobald die Liste waechst,
+ * und sie wird nie rot, weil niemand sie gegen die Liste haelt.
+ */
+const LUECKEN = [
+  ["Die schluesselfreie Adressform. Sie steht in `stream-platzhalter.test.mjs`;",
+    "hier wird nur geprueft, WANN sie geschrieben werden darf."],
+  ["Der LAUF der Waisenaufraeumung. Geprueft ist die Rechnung und,",
+    "am Quelltext gelesen, ihr Gebrauch. Dass das Fenster danach die",
+    "richtigen Dokumente vorlegt, braucht Foundry. Die Gegenprobe aus",
+    "`OP-PRJ-170` ist eine Welt mit einer gestreamten und einer wirklich",
+    "ZERSTOERTEN oertlichen Kreatur: keine Markierung an der ersten,",
+    "unveraenderte an der zweiten."],
+  ["Die Anzeigefrage. `ansicht()` ohne Pruefung bleibt in der",
+    "Kachelleiste des Cloud-Fensters, und das ist Absicht: zwanzig",
+    "Varianten wuerden sonst zwanzig Dateien holen, die nur gezaehlt",
+    "werden sollten. Ein falscher Inhalt faellt dort also erst auf,",
+    "wenn der Kunde die Ansicht wirklich waehlt."],
+  ["Ob `crypto.subtle` in einem echten Foundry ohne HTTPS wirklich",
+    "fehlt. Hier wird es vorsaetzlich entfernt. Dass `http://192.168.x.x`",
+    "kein sicherer Kontext ist, ist Browserregel und am 08.11.2026 aus",
+    "den drei vorhandenen Rufstellen im Modul geschlossen, nicht im LAN",
+    "gemessen."],
+  ["Ob der Volldurchgang die Listen wirklich mit `sha256` schreibt. Die",
+    "Serverhaelfte ist gebaut (`b388146`), der Durchgang ist handgefuehrt",
+    "und am 07.11.2026 nicht gefahren. Bis dahin ist der Normalfall",
+    "'ohne Summe', und genau den prueft dieser Satz mit."],
+  ["Die Kosten im Betrieb. Gerechnet sind 0,447 MB je Draufsicht als",
+    "zweite Kopie im Speicher, einmal je Ansicht und Sitzung. Gemessen",
+    "ist das nicht."],
+]
+console.log(`NICHT PRUEFBAR, und zwar ${LUECKEN.length} Dinge:`)
+for (const punkt of LUECKEN) {
+  console.log(`- ${punkt[0]}`)
+  for (const weiter of punkt.slice(1)) console.log(`  ${weiter}`)
+}
+
 process.exit(rot > 0 ? 1 : 0)
