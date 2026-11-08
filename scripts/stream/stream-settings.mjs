@@ -1087,6 +1087,17 @@ export function istGeteilterRaum(release, variant) {
  * Tabelle. Ob ein Raum eine traegt, sagt `zerlegeAdresse()` am Feld `variant`
  * schon, und eine zweite Aussage darueber waere die, die auseinanderlaeuft.
  */
+/**
+ * Das Schema der schluesselfreien Form, mit Doppelpunkt und ohne Schraegstriche.
+ *
+ * Steht als Konstante, weil ihn drei Stellen brauchen: der Bauer
+ * (`platzhalterAdresse`), der Leser (`zerlegeAdresse`) und die Frage, ob eine
+ * Zeichenkette ueberhaupt eine von uns ist (`istPlatzhalter`). Dreimal
+ * `"beneos:"` getippt heisst, dass eine Umbenennung zwei Stellen trifft und die
+ * dritte still stehenbleibt.
+ */
+export const PLATZHALTER_SCHEMA = "beneos:"
+
 export const STREAM_RAUM_BUCHSTABE = Object.freeze({
   karte: "a",
   kreatur: "c",
@@ -1103,17 +1114,29 @@ export const STREAM_RAUM_BUCHSTABE = Object.freeze({
  * waere, jede der Aufrufstellen wissen zu lassen, in welchem Raum sie gerade
  * arbeitet, und genau diese Kenntnis soll an einer Stelle liegen.
  */
-export function assetUrl(release, variant, path) {
+/**
+ * Die Wegstuecke einer Adresse OHNE Kopf und OHNE Schluessel, in der
+ * Reihenfolge, in der sie im Pfad stehen.
+ *
+ * **Die Raumentscheidung liegt hier und nur hier.** `assetUrl` und
+ * `platzhalterAdresse` bauen beide aus dieser Liste; stuende die Entscheidung
+ * zweimal, waere ein neuer Raum eine Form, die der Leser kennt, und eine, die
+ * er abweist, ohne dass ein Satz rot wird.
+ *
+ * Jedes Stueck ist schon kodiert. Der Pfad wird je Segment kodiert und nicht
+ * als Ganzes, damit ein Unterpfad seine Schraegstriche behaelt.
+ *
+ * @returns {string[]} erstes Stueck ist der Raumbuchstabe
+ */
+export function adressSegmente(release, variant, path) {
   const clean = String(path).replace(/^\/+/, "").split("/").map(encodeURIComponent).join("/")
-  const kopf = `${streamBase()}`
-  const schluessel = encodeURIComponent(streamKey())
   if (istKreatur(release)) {
-    return `${kopf}/c/${schluessel}/${encodeURIComponent(release)}/${clean}`
+    return ["c", encodeURIComponent(release), clean]
   }
   // Beute hat so wenig eine Variante wie eine Kreatur: die Rolle steht im
   // Dateinamen (`<kennung>-front.webp`). Vier Segmente, genau wie `/c/`.
   if (istBeute(release)) {
-    return `${kopf}/l/${schluessel}/${encodeURIComponent(release)}/${clean}`
+    return ["l", encodeURIComponent(release), clean]
   }
   /*
    * DER GETEILTE RAUM, UND ER IST DER EINZIGE, DER DIE VARIANTE IN DIE ADRESSE
@@ -1128,9 +1151,40 @@ export function assetUrl(release, variant, path) {
    * zuletzt, damit die Kartenadresse der Rueckfall bleibt.
    */
   if (istGeteilterRaum(release, variant)) {
-    return `${kopf}/s/${schluessel}/${GETEILT_RAUM}/${encodeURIComponent(variant)}/${clean}`
+    return ["s", GETEILT_RAUM, encodeURIComponent(variant), clean]
   }
-  return `${kopf}/a/${schluessel}/${encodeURIComponent(release)}/${encodeURIComponent(variant)}/${clean}`
+  return ["a", encodeURIComponent(release), encodeURIComponent(variant), clean]
+}
+
+export function assetUrl(release, variant, path) {
+  const teile = adressSegmente(release, variant, path)
+  const schluessel = encodeURIComponent(streamKey())
+  // Der Schluessel steht an ZWEITER Stelle, hinter dem Raumbuchstaben. Das ist
+  // die Form, die das Tor routet, und `zerlegeAdresse` ueberspringt genau
+  // dieses Stueck.
+  return `${streamBase()}/${teile[0]}/${schluessel}/${teile.slice(1).join("/")}`
+}
+
+/**
+ * Dieselbe Adresse OHNE Schluessel, als eigenes Schema. Das ist die Form, die
+ * in ein Kundendokument geschrieben wird.
+ *
+ * `beneos://<raum>/<release>/<pfad...>`, Betreiberentscheid vom 05.11.2026.
+ * Gemessen am 08.11.2026: `JournalEntryPage.src` ist ein `StringField` ohne
+ * Endungspruefung und ohne Kategorienfilter, nimmt diese Form also unveraendert
+ * an. Foundry schreibt nichts um, und PIXI laesst sie stehen, weil
+ * `hasProtocol` auf `beneos://` zutrifft.
+ *
+ * **Sie ist keine abrufbare Adresse, und das ist der Zweck.** Wer ein Journal
+ * exportiert und weitergibt, gibt nichts weiter, womit ein Dritter am Tor
+ * etwas abrufen koennte. Zur Anzeige setzt `blobFuer` in `stream-bilder.mjs`
+ * den Schluessel von heute ein.
+ *
+ * Der Preis ist benannt und vom Betreiber angenommen: ohne laufendes Modul
+ * erscheint kein Bild. Siehe `OP-PRJ-179`.
+ */
+export function platzhalterAdresse(release, variant, path) {
+  return `${PLATZHALTER_SCHEMA}//${adressSegmente(release, variant, path).join("/")}`
 }
 
 /**
@@ -1169,10 +1223,56 @@ export function assetUrl(release, variant, path) {
  *
  * @returns {{raum: string, release: string, variant: string, pfad: string}|null}
  */
+/**
+ * Traegt diese Zeichenkette das Platzhalterschema?
+ *
+ * Nur das Schema wird gleichgueltig gross geschrieben verglichen, der Rest
+ * nicht. Grund: bei einem UNBEKANNTEN Schema normalisiert `URL` den Host nicht
+ * klein, gemessen am 08.11.2026 gibt `new URL("beneos://C/x/y").host` ein
+ * grosses `C`. Deshalb wird diese Form gar nicht ueber `URL` zerlegt, sondern
+ * an der Zeichenkette, und `c` und `C` sind damit zwei verschiedene Raeume,
+ * von denen nur der kleine existiert.
+ */
+export function istPlatzhalter(url) {
+  return String(url || "").slice(0, PLATZHALTER_SCHEMA.length + 2).toLowerCase()
+    === PLATZHALTER_SCHEMA + "//"
+}
+
 export function zerlegeAdresse(url) {
   try {
+    /*
+     * EIN STRICH ANSTELLE DES SCHLUESSELS, und damit traegt ein einziger
+     * Zerlegecode beide Formen.
+     *
+     * Die Platzhalterform hat kein Schluesselstueck, ihre Segmente sind also
+     * um eins verschoben. Statt jeden der vier Zweige unten zu verdoppeln,
+     * wird der fehlende Platz mit einem Strich gefuellt. Danach stimmen alle
+     * Abstaende, auch die Laengenpruefung des geteilten Raumes, die GENAU
+     * fuenf verlangt.
+     *
+     * Der Strich selbst wird nie gelesen: jeder Zweig unten ueberspringt
+     * `teile[1]`.
+     */
+    if (istPlatzhalter(url)) {
+      const roh = String(url).slice(PLATZHALTER_SCHEMA.length + 2)
+      const teile = roh.replace(/^\/+/, "").split("/")
+      teile.splice(1, 0, "-")
+      return nachSegmenten(teile)
+    }
     const u = new URL(url)
     const teile = u.pathname.replace(/^\/+/, "").split("/")
+    return nachSegmenten(teile)
+  } catch (_) { return null }
+}
+
+/**
+ * Der gemeinsame Rumpf: aus den Wegstuecken die Identitaet.
+ *
+ * `teile[1]` ist der Schluessel beziehungsweise der Strich an seiner Stelle und
+ * wird in keinem Zweig gelesen.
+ */
+function nachSegmenten(teile) {
+  try {
     // /a/<schluessel>/<release>/<variante>/<pfad...>, also mindestens fuenf.
     if (teile[0] === "a" && teile.length >= 5) {
       return {

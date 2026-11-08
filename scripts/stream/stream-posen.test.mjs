@@ -471,12 +471,108 @@ for (const lang of ["de", "fr", "es", "it", "pt-BR", "pt-PT", "pl", "cs", "ca",
 // ---------------------------------------------------------------------------
 rmSync(tempOrdner, { recursive: true, force: true })
 
+wahr("und sie bringt den Journalriegel mit",
+  typeof posen.journalbildImSpiegel === "function")
+
+console.log("\nDas Journalbild streamt nur, wenn die Liste es nennt")
+{
+  /*
+   * DER RIEGEL GEGEN DAS LEERE FELD, gebaut am 08.11.2026 mit `OP-PRJ-137`.
+   *
+   * Gemessen im Worker: `fromOrigin` hat fuer Kreaturen KEINEN Rueckfall auf
+   * den Ursprung, der Spiegel ist die einzige Quelle. Das Journalbild kommt
+   * erst mit `OP-PRJ-135` in den Spiegel, und dessen Schalter hat drei Stufen
+   * und steht auf `aus`. Wer das Journalbild vorher streamte, lieferte ein
+   * leeres Feld, und eine Abweisung am Tor ist HTTP 200 mit 42 Byte, also
+   * faellt sie niemandem auf.
+   *
+   * Deshalb entscheidet nicht ein Schalter, sondern diese Liste. Das schaltet
+   * sich von selbst um, sobald der Durchgang gelaufen ist, und es gilt je
+   * Kreatur und je Variante, nicht nur je Bestand.
+   *
+   * DREI ANTWORTEN UND NICHT ZWEI, und die dritte ist die, die zaehlt: eine
+   * Liste, die das Feld `journalbilder` GAR NICHT traegt, ist ein alter
+   * Serverstand und damit keine Aussage. Sie darf nicht als "liegt nicht im
+   * Spiegel" gelesen werden und auch nicht als "liegt drin".
+   */
+  const shaJ = "d".repeat(64)
+  const voll = {
+    tokenbilder: { 1: { tokenized: { pfad: "x-1-token.webp" } } },
+    journalbilder: {
+      1: { pfad: "x-1-journal.webp", breite: 3840, hoehe: 2160, sha256: shaJ },
+      2: { pfad: "x-2-journal.webp" },
+    },
+  }
+  const jis = posen.journalbildImSpiegel
+  gleich("die Liste nennt Variante 1", jis(voll, 1).zustand, true)
+  gleich("und gibt den Namen AUS DER LISTE",
+    jis(voll, 1).pfad, "x-1-journal.webp")
+  gleich("und die Pruefsumme", jis(voll, 1).sha256, shaJ)
+  gleich("Variante 2 ohne Pruefsumme ist trotzdem da",
+    jis(voll, 2).zustand, true)
+  gleich("und ihre Pruefsumme ist null, nicht undefined",
+    jis(voll, 2).sha256, null)
+  gleich("Variante 3 steht nicht drin, also false",
+    jis(voll, 3).zustand, false)
+  gleich("die Nummer wird als Text gesucht, 1 und \"1\" sind dasselbe",
+    jis(voll, "1").zustand, true)
+
+  /*
+   * NICHT GEPRUEFT heisst `null` und nicht `false`. Vier Wege dorthin, und
+   * jeder einzelne wuerde sonst eine Kreatur aufs Tor schicken, an dem ihr
+   * Journalbild nicht liegt.
+   */
+  gleich("keine Liste: nicht geprueft", jis(null, 1).zustand, null)
+  gleich("eine Liste ohne das Feld: nicht geprueft, denn der Serverstand ist "
+    + "aelter als das Feld", jis({ tokenbilder: {} }, 1).zustand, null)
+  gleich("ein Feld, das kein Objekt ist: nicht geprueft",
+    jis({ journalbilder: "ja" }, 1).zustand, null)
+  gleich("keine Liste, sondern eine Zeichenkette: nicht geprueft",
+    jis("x", 1).zustand, null)
+
+  /*
+   * EIN LEERES OBJEKT IST DAGEGEN EINE AUSSAGE, und das ist der Unterschied,
+   * der leicht verloren geht: der Server hat das Feld geschrieben und keine
+   * Variante gefunden. Das ist `false` und nicht `null`.
+   */
+  gleich("ein leeres Feld ist eine Aussage, naemlich false",
+    jis({ journalbilder: {} }, 1).zustand, false)
+
+  // Ein Eintrag ohne `pfad` ist keiner. Der Dateiname ist das Einzige, was
+  // diese Funktion dem Aufrufer wirklich gibt.
+  gleich("ein Eintrag ohne Pfad gilt nicht",
+    jis({ journalbilder: { 1: { breite: 3840 } } }, 1).zustand, false)
+  gleich("ein leerer Pfad gilt auch nicht",
+    jis({ journalbilder: { 1: { pfad: "" } } }, 1).zustand, false)
+  // Je Feld ein Satz. `gleich()` vergleicht in diesem Stand mit `===`, ein
+  // Objekt gegen ein Objekt ist dort nie gleich; und ein roter Fall nennt so
+  // das FELD und nicht das ganze Objekt.
+  {
+    const kaputt = jis({ journalbilder: { 1: { pfad: "x.webp", sha256: "kurz" } } }, 1)
+    gleich("eine kaputte Pruefsumme laesst den Eintrag gueltig",
+      kaputt.zustand, true)
+    gleich("und der Pfad bleibt", kaputt.pfad, "x.webp")
+    gleich("und die Pruefsumme wird null", kaputt.sha256, null)
+  }
+
+  /*
+   * GEGENPROBE AUF DIE GEGENPROBE. Die Saetze oben verlangen viermal `null`.
+   * Eine Funktion, die IMMER `null` gibt, bestuende sie alle. Dagegen steht
+   * dieser Satz: die drei Antworten muessen WIRKLICH drei verschiedene sein.
+   */
+  gleich("die drei Antworten sind drei verschiedene",
+    [jis(voll, 1).zustand, jis(voll, 9).zustand, jis(null, 1).zustand]
+      .map((x) => String(x)).join("|"), "true|false|null")
+}
+
 console.log("")
 console.log("Abschluss")
 console.log(`  bestanden: ${gruen}`)
 console.log(`  rot:       ${rot}`)
 console.log("")
 console.log("NICHT PRUEFBAR, und zwar genau viererlei:")
+console.log("- Die schluesselfreie Adressform. Sie steht in `stream-platzhalter.test.mjs`;")
+console.log("  hier wird nur geprueft, WANN sie geschrieben werden darf.")
 console.log("- Die Anzeigefrage. `ansicht()` ohne Pruefung bleibt in der")
 console.log("  Kachelleiste des Cloud-Fensters, und das ist Absicht: zwanzig")
 console.log("  Varianten wuerden sonst zwanzig Dateien holen, die nur gezaehlt")

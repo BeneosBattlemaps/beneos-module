@@ -16,7 +16,7 @@
  * normal delivery on 2026-09-03.
  */
 
-import { streamBase, streamEnabled, istPruefstand, zerlegeAdresse,
+import { istPlatzhalter, streamBase, streamEnabled, istPruefstand, zerlegeAdresse,
   STREAM_RAUM_BUCHSTABE } from "./stream-settings.mjs"
 import { isOffline } from "./stream-online.mjs"
 
@@ -56,6 +56,22 @@ import { isOffline } from "./stream-online.mjs"
  */
 export function ohneSchluessel(url) {
   const roh = String(url || "").split("?")[0]
+  /*
+   * EINE SCHLUESSELFREIE FORM BLEIBT, WIE SIE IST, und dieser Zweig steht vor
+   * allem anderen.
+   *
+   * Seit dem 08.11.2026 liest `zerlegeAdresse` auch die Platzhalterform
+   * `beneos://<raum>/...`, und ohne diesen Zweig baute der Rumpf darunter sie
+   * kanonisch mit `streamBase()` neu auf. Gemessen an diesem Tag wurde aus
+   * `beneos://s/shared/<sha>/<name>` die Toradresse
+   * `https://<tor>/s/-/shared/<sha>/<name>`.
+   *
+   * Das ist nicht harmlos: diese Funktion maskiert, sie formt nicht um. Ein
+   * Fehlerbericht soll die Adresse nennen, die im Dokument STEHT. Wer dort
+   * eine Toradresse liest, sucht sie im Dokument und findet sie nicht. Und es
+   * gibt hier nichts zu maskieren, denn die Form traegt keinen Schluessel.
+   */
+  if (istPlatzhalter(roh)) return roh
   const t = zerlegeAdresse(roh)
   const buchstabe = t ? STREAM_RAUM_BUCHSTABE[t.raum] : ""
   if (!buchstabe) return ohneSchluesselImText(roh)
