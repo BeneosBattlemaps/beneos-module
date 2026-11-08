@@ -32,12 +32,27 @@
 // welche Liste wirklich durch welche Stelle laeuft. Eine Abschrift wuerde
 // gruen bleiben, wenn jemand die Rufstelle entfernt.
 //
-// WAS ER NICHT FAENGT, und das ist gemessen und nicht geschaetzt. 19
-// Sabotagen gefahren, 16 gefangen. Die drei, die durchkommen, sind alle
+// ER MISST SEIT DEM 08.11.2026 ZWEI WEITERE SACHEN, OP-PRJ-202, und beide
+// liegen in derselben Funktion, nur eine Zeile auseinander:
+//
+//   - `sortProperties` entschied die Zahlensortierung an `Number(tab[0].key)`,
+//     und `Number("0")` ist falsch. Eine Liste, die mit `"0"` beginnt, fiel
+//     deshalb in die Textsortierung: `0, 1, 2, 5, 10, 11, 12` stand als
+//     `0 | 1 | 10 | 11 | 12 | 2 | 5`. Einstellige Stufen fielen nicht auf.
+//   - `toTable()` bekam mit `this.itemRarity` ein ARRAY und las darin die
+//     Indizes. Aus sechs Eintraegen wurden zwoelf, und `#buildOrderedRarity`
+//     im neuen Fenster traf dadurch IMMER alle sechs Stufen, auch bei leerem
+//     Katalog, einschliesslich `Artifact`, das in der festen Liste gar nicht
+//     stand. Der Filter zeigte also die Laenge des Arrays und nicht den
+//     Bestand.
+//
+// WAS ER NICHT FAENGT, und das ist gemessen und nicht geschaetzt. 35
+// Sabotagen gefahren, 31 gefangen. Die vier, die durchkommen, sind alle
 // dieselbe Klasse: eine Aenderung AN DIESEM STAND, die seine eigene Pruefung
 // entwertet. Die Schranke im Rumpf auf null, die Bedingung des
-// Gegenzahlsatzes auf `true`, und die Gegenzahlfunktion so geaendert, dass
-// sie denselben Zaehler zurueckgibt statt roh nachzuzaehlen.
+// Gegenzahlsatzes auf `true`, die Gegenzahlfunktion so geaendert, dass sie
+// denselben Zaehler zurueckgibt statt roh nachzuzaehlen, und der Vergleich
+// der Leiter gegen sich selbst.
 //
 // Das ist nicht behoben, sondern benannt, und zwar mit Grund: eine Pruefung,
 // die ihre eigene Entwertung fangen soll, braucht eine Pruefung ihrer
@@ -84,10 +99,18 @@ function ok(name, bedingung, detail = "") {
 /* ------------------------------------------- die Funktion aus dem Quelltext */
 
 const schwelleQuelle = extractConst(sucheText, "BENEOS_SCHWELLE")
+const zahlQuelle = extractConst(sucheText, "BENEOS_ZAHL")
 const funktionQuelle = extractMethod(sucheText, "schwellenReihenfolge", { minZeilen: 20, maxZeilen: 60 })
-const regelQuelle = `${schwelleQuelle}\n${funktionQuelle.replace(/^export\s+/, "")}`
+const zahlFunktion = extractMethod(sucheText, "zahlenReihenfolge", { minZeilen: 15, maxZeilen: 50 })
+const regelQuelle = [
+  schwelleQuelle,
+  zahlQuelle,
+  funktionQuelle.replace(/^export\s+/, ""),
+  zahlFunktion.replace(/^export\s+/, "")
+].join("\n")
 
 const schwellenReihenfolge = new Function(`${regelQuelle}\nreturn schwellenReihenfolge`)()
+const zahlenReihenfolge = new Function(`${regelQuelle}\nreturn zahlenReihenfolge`)()
 
 /* -------------------------------------- die beiden Sortierstellen, echt */
 
@@ -108,11 +131,34 @@ const fensterProbe = buildProbe(
   [
     extractMethod(fensterText, "#orderDropdownList", { minZeilen: 15, maxZeilen: 50 }),
     extractMethod(fensterText, "#capitalize", { minZeilen: 1, maxZeilen: 3 }),
-    "ordne(l) { return this.#orderDropdownList(l) }"
+    extractMethod(fensterText, "#buildOrderedRarity", { minZeilen: 20, maxZeilen: 50 }),
+    "ordne(l) { return this.#orderDropdownList(l) }",
+    "leiter(l) { return this.#buildOrderedRarity(l) }"
   ],
   `${regelQuelle}\nconst game = {}`
 )
 const orderDropdownList = (l) => new fensterProbe().ordne(l)
+const buildOrderedRarity = (l) => new fensterProbe().leiter(l)
+
+/*
+ * `toTable` ruft die Uebersetzung fuer `Any`, also bekommt der Schnitt ein
+ * Stellvertreter-`game`. Gemessen wird der echte Rumpf samt der neuen
+ * Durchgabe fuer Listen, die schon Tabellenform haben.
+ */
+const tableProbe = buildProbe(
+  [
+    /*
+     * `BeneosDatabaseHolder` heisst in der Probe `Probe`, und der Name wird
+     * im Schnitt umgesetzt statt im Vorlauf gestellt: eine Stellvertretung im
+     * Vorlauf kann die Klasse nicht sehen, sie entsteht erst danach.
+     */
+    extractMethod(sucheText, "toTable", { minZeilen: 20, maxZeilen: 60 })
+      .split("BeneosDatabaseHolder.").join("Probe."),
+    extractMethod(sucheText, "sortProperties", { minZeilen: 20, maxZeilen: 70 })
+  ],
+  `${regelQuelle}\nconst game = { i18n: { localize: () => "Any" } }`
+)
+const toTable = (o) => tableProbe.toTable(o)
 
 /* ------------------------------------- die festen Listen aus dem Quelltext */
 
@@ -182,6 +228,30 @@ const itemRarity = listeAusQuelle("itemRarity")
 const gegenzahl = gegenzahlAusQuelle(LISTEN)
 
 const z = (l) => l.map((r) => r.value).join(" | ")
+
+/**
+ * Wirft die Kommentarzeilen aus einer Quelle, damit eine Quelltextprobe nicht
+ * ihren eigenen Erklaertext findet.
+ *
+ * WARUM DAS NOETIG IST, gemessen am 08.11.2026. Der Satz "die Seltenheit wird
+ * nicht mehr in das Array hineingemischt" fiel durch, obwohl die Zeile
+ * entfernt war: der Kommentar an ihrer Stelle NENNT sie, und der Anker traf
+ * den Kommentar. Eine Probe, die auf eine Abwesenheit zielt, muss den Text
+ * ausnehmen, der die Abwesenheit erklaert. Sonst ist jede gute Begruendung
+ * ein Fehlalarm, und das Mittel dagegen waere, keine zu schreiben.
+ */
+function nurCode(text) {
+  return text
+    .split("\n")
+    .filter((z1) => {
+      const t = z1.trim()
+      return t !== "" && !t.startsWith("//") && !t.startsWith("*")
+        && !t.startsWith("/*")
+    })
+    .join("\n")
+}
+
+const sucheCode = nurCode(sucheText)
 
 /* ------------------------------------------------------- Die Sache selbst */
 
@@ -311,6 +381,177 @@ console.log("\nGegenproben: was sich NICHT aendern darf")
   ok("und die Herausforderungsliste geht gar nicht durch sortProperties",
     /crList:\s*structuredClone\(this\.crList\)/.test(sucheText),
     "laeuft sie kuenftig doch durch, braucht dieser Stand einen Satz dazu")
+}
+
+/* ------------------------------ Zahlenlisten, OP-PRJ-202 ------------------ */
+
+console.log("\nZahlenlisten sortieren numerisch, auch mit einer Null darin")
+
+{
+  /*
+   * Der Vorgaenger entschied die Sortierart an `Number(tab[0].key)`, und
+   * `Number("0")` ist falsch. Eine Liste, die mit `"0"` beginnt, fiel deshalb
+   * in die Textsortierung. Einstellige Stufen fielen nicht auf, die erste
+   * zweistellige macht es sichtbar.
+   */
+  const alsObjekt = (schluessel) => {
+    const o = {}
+    for (const k of schluessel) o[k] = 1
+    geleseneEintraege += schluessel.length
+    return o
+  }
+
+  const mitNull = toTable(alsObjekt(["0", "1", "2", "5", "10", "11", "12"]))
+  ok(`eine Zahlenliste mit Null und zweistelligen Werten (${z(mitNull)})`,
+    z(mitNull) === "Any | 0 | 1 | 2 | 5 | 10 | 11 | 12",
+    "vorher stand sie als Any | 0 | 1 | 10 | 11 | 12 | 2 | 5")
+
+  const ohneNull = toTable(alsObjekt(["1", "2", "5", "10", "11"]))
+  ok(`eine Zahlenliste ohne Null bleibt unveraendert (${z(ohneNull)})`,
+    z(ohneNull) === "Any | 1 | 2 | 5 | 10 | 11",
+    "sie war schon richtig, denn Number(\"1\") ist wahr")
+
+  const stufen = toTable(alsObjekt(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]))
+  ok("einstellige Stufen bleiben unveraendert",
+    z(stufen) === "Any | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9")
+
+  /*
+   * Die Herausforderungsstufen stehen im Bestand als Dezimalzahlen. Eine
+   * Regel, die nur ganze Zahlen annimmt, waere hier eine Verschlechterung.
+   */
+  const dezimal = toTable(alsObjekt(["0.125", "0.25", "0.5", "1", "2", "10"]))
+  ok(`Dezimalzahlen sortieren numerisch (${z(dezimal)})`,
+    z(dezimal) === "Any | 0.125 | 0.25 | 0.5 | 1 | 2 | 10")
+
+  ok("eine Liste mit einem Textschluessel darin ist keine Zahlenliste",
+    zahlenReihenfolge([{ key: "any", value: "Any" }, { key: "1", value: "1" },
+    { key: "hoch", value: "Hoch" }]) === null,
+    "sonst stuende ein Teil geordnet und der Rest zufaellig")
+
+  /*
+   * Die Regel direkt, mit `any` darin. Ueber `toTable()` ist das nicht zu
+   * messen: dort kommt `any` erst NACH der Sortierung dazu, also bleibt eine
+   * Verletzung unsichtbar. Heute traegt keine Zahlenliste ein `any`, aber die
+   * beiden Nachbarregeln halten es vorn, und eine Regel, die sich darin
+   * unterscheidet, ist eine Falle fuer die naechste Liste.
+   */
+  const mitAny = zahlenReihenfolge([{ key: "5", value: "5" },
+  { key: "any", value: "Any" }, { key: "1", value: "1" }])
+  geleseneEintraege += 3
+  ok(`die Regel selbst haelt any vorn (${mitAny.map((r) => r.key).join(",")})`,
+    mitAny.map((r) => r.key).join(",") === "any,1,5",
+    "auch wenn any in der Eingabe in der Mitte steht")
+}
+
+/* --------------------- Die Seltenheitsleiter, OP-PRJ-202 ------------------ */
+
+console.log("\nDie Seltenheitsleiter kommt nicht mehr ueber ihre Indizes")
+
+{
+  /*
+   * `this.itemRarity` ist ein Array von `{ key, value }` und ging an
+   * `toTable()`, das ein Objekt erwartet. `for (let key in ...)` las darin die
+   * INDIZES, also entstanden die Schluessel `"0"` bis `"5"`. Aus sechs
+   * Eintraegen wurden zwoelf, und `#buildOrderedRarity` traf dadurch IMMER
+   * alle sechs Stufen, auch bei leerem Katalog.
+   *
+   * Gemessen wird gegen die echte feste Liste aus dem Quelltext, nicht gegen
+   * eine Abschrift.
+   */
+  const roh = toTable(structuredClone(itemRarity))
+  geleseneEintraege += roh.length
+
+  ok(`die Liste hat so viele Eintraege wie Stufen (${roh.length})`,
+    roh.length === itemRarity.length,
+    `aus ${itemRarity.length} wurden vorher bis zu 12, naemlich Indizes plus Namen`)
+
+  ok("und kein Schluessel ist eine nackte Zahl",
+    roh.every((r) => !/^\d+$/.test(String(r.key))),
+    `gefunden: ${roh.filter((r) => /^\d+$/.test(String(r.key))).map((r) => r.key).join(",")}`)
+
+  ok("Any steht vorn und nicht zwischen Legendary und Artifact",
+    roh[0].key === "any",
+    "die Namenssortierung muss any ausnehmen, sonst entscheidet das Praefix")
+
+  /*
+   * Der Nachweis, den `OP-PRJ-202` woertlich verlangt: die Anzeige im neuen
+   * Fenster bleibt unveraendert. Waere sie anders, waere der Umbau eine
+   * sichtbare Aenderung und keine Reparatur.
+   */
+  const leiter = buildOrderedRarity(roh)
+  ok(`das neue Fenster zeigt unveraendert die D&D-Leiter (${z(leiter)})`,
+    z(leiter) === "Any | Common | Uncommon | Rare | Very Rare | Legendary | Artifact")
+
+  ok("und `artifact` steht ausdruecklich in der festen Liste",
+    itemRarity.some((r) => r.key === "artifact"),
+    "es erschien vorher nur, weil der Index 5 den Eimer Artifact traf")
+
+  /*
+   * Die Leiter muss AUCH ohne das neue Fenster stimmen. Im Nicht-Item-Modus
+   * baut `#buildOrderedRarity` sie nicht, dort kommt genau diese Liste durch.
+   * Die Reihenfolge entsteht dann allein aus den Leerzeichen-Praefixen, und
+   * die sind ein Trick: wer sie um eins verschiebt, stellt Artifact vor
+   * Common, ohne dass der Satz darueber es merkt.
+   */
+  ok(`die Leiter stimmt auch ohne das neue Fenster (${roh.map((r) => r.key).join(",")})`,
+    roh.map((r) => r.key).join(",")
+    === "any,common,uncommon,rare,very rare,legendary,artifact",
+    "im Nicht-Item-Modus traegt allein das Leerzeichen-Praefix die Reihenfolge")
+
+  /*
+   * Das Sammeln der Katalogseltenheiten ist bewusst entfernt. Stand es noch
+   * da, haengte es die Werte wieder als Eigenschaften an das Array, und die
+   * Indizes waeren zurueck.
+   */
+  ok("die Seltenheit wird nicht mehr in das Array hineingemischt",
+    !/mergeObject\(this\.itemRarity,/.test(sucheCode),
+    "gemessen am Quelltext ohne Kommentare, sonst traefe der Anker die Begruendung")
+
+  /*
+   * Die Formerkennung muss ENG sein. Ein Array von Zeichenketten hat kein
+   * `value`, und `localeCompare` darauf wirft. Heute kommt keines hier an,
+   * alle zwanzig anderen Facetten sind Objekte; eine lockere Erkennung macht
+   * daraus aber einen Absturz statt der heutigen Indexliste, und das ist die
+   * schlechtere Richtung.
+   */
+  let gestuerzt = false
+  let ausZeichenketten = null
+  try {
+    ausZeichenketten = toTable(["Zebra", "Apfel"])
+  } catch (_) {
+    gestuerzt = true
+  }
+  geleseneEintraege += 2
+  ok("ein Array von Zeichenketten stuerzt nicht ab",
+    !gestuerzt && Array.isArray(ausZeichenketten),
+    "die Formerkennung darf nur Eintraege mit key und value durchgeben")
+
+  /*
+   * Die Durchgabe darf `any` nicht verlieren. Die heutige einzige
+   * Tabellenform traegt es schon, also ist dieser Satz Vorsorge und keine
+   * Messung des Bestands. Er steht hier, weil der andere Weg durch dieselbe
+   * Funktion es ausdruecklich davorsetzt, und zwei Wege mit zwei Regeln
+   * laufen auseinander.
+   */
+  const ohneAny = toTable([{ key: "zwei", value: "Zwei" }, { key: "eins", value: "Eins" }])
+  geleseneEintraege += 2
+  ok(`eine Tabellenform ohne any bekommt eines (${z(ohneAny)})`,
+    ohneAny.length === 3 && ohneAny[0].key === "any",
+    "sonst fehlt der Beliebig-Eintrag genau den Listen, die schon Tabellenform haben")
+
+  ok("die vier offenen Facetten werden weiter gesammelt",
+    ["itemOrigin", "itemType", "itemTier", "itemClasses"]
+      .every((n) => new RegExp(`mergeObject\\(this\\.${n},`).test(sucheCode)),
+    "sie sind offene Mengen und keine geschlossene Leiter")
+
+  /*
+   * Die Gegenprobe zur Gegenprobe. Faellt `nurCode` zusammen und gibt die
+   * ganze Datei zurueck, bleibt der Satz darueber gruen und die Probe ist
+   * blind. Der Vergleich zeigt, dass wirklich etwas weggefallen ist.
+   */
+  ok(`der Kommentarfilter nimmt wirklich etwas weg (${sucheText.length - sucheCode.length} Zeichen)`,
+    sucheCode.length < sucheText.length * 0.95 && sucheCode.length > 10000,
+    `voll ${sucheText.length}, ohne Kommentare ${sucheCode.length}`)
 }
 
 /* ----------------------------- Die Rufstellen, denn ohne sie wirkt nichts */

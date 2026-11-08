@@ -176,6 +176,50 @@ export function schwellenReihenfolge(list) {
   return [...vorn, ...teile.map((t) => t.eintrag)]
 }
 
+/********************************************************************************** */
+/* Eine Zahlenliste ordnen, OP-PRJ-202.
+ *
+ * Der Vorgaenger entschied die Sortierart am ERSTEN Eintrag, mit
+ * `Number(tab[0].key)`. Zwei Dinge gingen damit schief, und beide nur, wenn
+ * die Daten es ausloesen:
+ *
+ *   - `Number("0")` ist falsch. Eine Liste, die mit dem Schluessel `"0"`
+ *     beginnt, fiel deshalb in die Textsortierung. Gemessen am 08.11.2026
+ *     ergibt `0, 1, 2, 5, 10, 11, 12` dann `0 | 1 | 10 | 11 | 12 | 2 | 5`.
+ *     Einstellige Stufen fallen nicht auf, weil sie als Text gleich
+ *     sortieren; die erste zweistellige macht es sichtbar.
+ *   - `Number("any")` ist keine Zahl, und der Vergleich gab dafuer eine Null
+ *     zurueck. Die Lage von `any` war damit Zufall.
+ *
+ * Deshalb liegt die Pruefung jetzt auf der GANZEN Liste, und `any` bleibt
+ * ausserhalb des Vergleichs. Trifft sie nicht, gilt die Reihenfolge der
+ * Aufrufstelle unveraendert weiter; das ist die Gegenprobe.
+ *
+ * Dezimalzahlen sind ausdruecklich dabei, denn die Herausforderungsstufen
+ * stehen im Bestand als `0.125`, `0.25` und `0.5`.
+ */
+const BENEOS_ZAHL = /^\d+(?:\.\d+)?$/
+
+export function zahlenReihenfolge(list) {
+  if (!Array.isArray(list) || list.length === 0) {
+    return null
+  }
+  const rest = list.filter((r) => r && String(r.key) !== "any")
+  if (rest.length === 0) {
+    return null
+  }
+  for (const r of rest) {
+    if (!BENEOS_ZAHL.test(String(r.key))) {
+      return null
+    }
+  }
+  const sortiert = [...rest].sort(function (a, b) {
+    return Number(a.key) - Number(b.key)
+  })
+  const vorn = list.filter((r) => r && String(r.key) === "any")
+  return [...vorn, ...sortiert]
+}
+
 export class BeneosDatabaseHolder {
 
   /********************************************************************************** */
@@ -623,7 +667,7 @@ export class BeneosDatabaseHolder {
       itemData.isCloudAvailable = game.beneos.cloud.isItemAvailable(itemData.key)
       // Free items are always cloud-available for logged-in users. Free status
       // comes from the cloud "Free" tier (data.free), the single dynamic source
-      // of truth — not the stale catalog free_content flag.
+      // of truth, and not the stale catalog free_content flag.
       if (!itemData.isCloudAvailable
           && game.beneos.cloud.isFreeAsset?.("item", itemData.key) === true
           && game.beneos.cloud.isLoggedIn?.()) {
@@ -763,7 +807,24 @@ export class BeneosDatabaseHolder {
     this.gridList = [{ key: "any", value: game.i18n.localize("BENEOS.Cloud.Filter.Any") }, { key: "<150", value: "Tiny" }, { key: "<500", value: "Small" }, { key: "<1000", value: "Medium" },
     { key: "<2000", value: "Big" }, { key: ">2000", value: "Very Big" }]
     this.adventureList = {}
-    this.itemRarity = [{ key: "any", value: game.i18n.localize("BENEOS.Cloud.Filter.Any") }, { key: "common", value: "    Common" }, { key: "uncommon", value: "   Uncommon" }, { key: "rare", value: "  Rare" }, { key: "very rare", value: " Very Rare" }, { key: "legendary", value: "Legendary" }]
+    // Die Leerzeichen vor den Namen sind ein Trick und kein Versehen: die
+    // Textsortierung in `sortProperties` ergibt sonst `Artifact, Common,
+    // Legendary, Rare, ...`, und die Seltenheit ist eine LEITER und keine
+    // Namensliste. Ein Name mit mehr Leerzeichen sortiert weiter vorn, also
+    // traegt Common fuenf und Artifact keines.
+    //
+    // WARUM `artifact` SEIT DEM 08.11.2026 DABEI STEHT, OP-PRJ-202. Es fehlte
+    // in dieser Liste, erschien im neuen Fenster aber trotzdem, weil
+    // `toTable()` die INDIZES des Arrays las und der Index 5 den Eimer
+    // `Artifact` traf. Mit der Reparatur von `toTable()` waere die Stufe
+    // verschwunden, und das waere eine sichtbare Aenderung gewesen statt
+    // einer Reparatur. Sie steht deshalb jetzt ausdruecklich da, und die
+    // Praefixe sind um eins gewachsen, damit sie hinter Legendary liegt.
+    //
+    // NICHT GEPRUEFT, und es ist eine Produktfrage: ob der Katalog ueberhaupt
+    // Gegenstaende dieser Stufe fuehrt. Tut er es nicht, zeigt der Filter eine
+    // Stufe ohne Inhalt. Das war vorher genauso und ist hier nicht geaendert.
+    this.itemRarity = [{ key: "any", value: game.i18n.localize("BENEOS.Cloud.Filter.Any") }, { key: "common", value: "     Common" }, { key: "uncommon", value: "    Uncommon" }, { key: "rare", value: "   Rare" }, { key: "very rare", value: "  Very Rare" }, { key: "legendary", value: " Legendary" }, { key: "artifact", value: "Artifact" }]
     this.itemOrigin = {}
     this.itemType = {}
     this.itemTier = {}
@@ -858,7 +919,22 @@ export class BeneosDatabaseHolder {
         itemData.key = key
         itemData.path_name = itemData.name.replace(/ /g, "_").toLowerCase()
         itemData.picture = "https://www.beneos-database.com/data/items/thumbnails/" + itemData.properties.icon
-        foundry.utils.mergeObject(this.itemRarity, this.buildList(itemData.properties.rarity))
+        // Die Seltenheit wird NICHT gesammelt, und das ist eine Entscheidung
+        // vom 08.11.2026, OP-PRJ-202.
+        //
+        // Hier stand `mergeObject(this.itemRarity, buildList(...))`. Die vier
+        // Zeilen darunter arbeiten auf leeren Objekten, `this.itemRarity` ist
+        // aber ein ARRAY mit einer festen Leiter. `mergeObject` hat die
+        // Katalogwerte deshalb als zusaetzliche EIGENSCHAFTEN an das Array
+        // gehaengt, wo sie niemand las, und gleichzeitig blieb die Laenge des
+        // Arrays bei sechs. Genau diese Laenge hat `toTable()` dann als
+        // Schluessel `"0"` bis `"5"` ausgegeben.
+        //
+        // Die Seltenheit ist eine geschlossene Leiter aus sechs Stufen und
+        // keine offene Menge wie Herkunft, Art oder Klasse. Sie braucht
+        // deshalb kein Sammeln. **Was damit nicht geschieht:** eine Stufe
+        // ohne Gegenstaende verschwindet nicht aus dem Filter. Das war vorher
+        // genauso, siehe die Liste bei `this.itemRarity`.
         foundry.utils.mergeObject(this.itemOrigin, this.buildList(itemData.properties.origin))
         foundry.utils.mergeObject(this.itemType, this.buildList(itemData.properties.item_type))
         foundry.utils.mergeObject(this.itemTier, this.buildList(itemData.properties.tier))
@@ -1112,16 +1188,12 @@ export class BeneosDatabaseHolder {
       return tab
     }
     if (tab.length > 0) {
-      if (Number(tab[0].key)) {
-        return tab.sort(function (a, b) {
-          if (!Number(a.key) || !Number(b.key)) {
-            return 0;
-          }
-          if (Number(a.key) > Number(b.key)) {
-            return 1;
-          }
-          return -1;
-        })
+      // Eine Zahlenliste wird numerisch geordnet. Der Vorgaenger entschied das
+      // am ersten Eintrag und uebersah deshalb jede Liste, die mit `"0"`
+      // beginnt, denn `Number("0")` ist falsch. Siehe `zahlenReihenfolge`.
+      const nachZahl = zahlenReihenfolge(tab)
+      if (nachZahl) {
+        return nachZahl
       }
       // Eine Schwellenliste wird nach ihrem Zahlenanteil geordnet, nicht nach
       // ihrer Beschriftung. Der Vorgaenger dieser Zeilen stand als Rumpfcode
@@ -1133,11 +1205,56 @@ export class BeneosDatabaseHolder {
         return geordnet
       }
     }
-    return tab.sort(function (a, b) { return a.value.localeCompare(b.value) })
+    // Zuletzt die Namenssortierung, und `any` bleibt dabei vorn.
+    //
+    // WARUM `any` HIER AUSGENOMMEN IST, OP-PRJ-202. Bis zum 08.11.2026 kam
+    // keine Liste mit einem `any`-Eintrag bis hierher: `toTable()` setzte ihn
+    // erst NACH dem Sortieren davor, und die zwei festen Listen mit `any`
+    // gingen in die Zahlen- oder Schwellenzweige darueber. Seit `toTable()`
+    // eine fertige Tabelle durchgibt, laeuft die Seltenheitsleiter durch
+    // diesen Zweig, und ihr `Any` landete zwischen `Legendary` und
+    // `Artifact`, weil es kein Leerzeichen-Praefix traegt.
+    //
+    // Die beiden Zweige darueber halten `any` ebenso vorn, und das neue
+    // Fenster tut es in `#orderDropdownList` auch. Damit ist es jetzt an
+    // allen vier Stellen dieselbe Regel.
+    const ohneAny = tab.filter((r) => r && String(r.key) !== "any")
+    if (ohneAny.length === tab.length) {
+      return tab.sort(function (a, b) { return a.value.localeCompare(b.value) })
+    }
+    ohneAny.sort(function (a, b) { return a.value.localeCompare(b.value) })
+    return [...tab.filter((r) => r && String(r.key) === "any"), ...ohneAny]
   }
 
   /********************************************************************************** */
   static toTable(object) {
+    // OP-PRJ-202: eine Liste, die schon Tabellenform hat, wird durchgegeben.
+    //
+    // WARUM DAS NOETIG IST. `this.itemRarity` ist ein Array von
+    // `{ key, value }` und wurde hier hereingegeben. `for (let key in ...)`
+    // liest darin die INDIZES, also entstanden die Schluessel `"0"` bis
+    // `"5"`. Gemessen am 08.11.2026: aus sechs Eintraegen wurden zwoelf,
+    // naemlich sechs Indizes plus die Namen, und `#buildOrderedRarity` im
+    // neuen Fenster traf dadurch IMMER alle sechs Stufen, auch bei leerem
+    // Katalog, einschliesslich `Artifact`. Die Liste zeigte also nicht den
+    // Bestand, sondern die Laenge des Arrays.
+    //
+    // Erkannt wird die Form am ersten Eintrag und nicht an `Array.isArray`,
+    // denn eine Liste von Zeichenketten gehoert weiter in die Schleife
+    // darunter.
+    if (Array.isArray(object) && object.length > 0
+      && object[0] && typeof object[0] === "object"
+      && "key" in object[0] && "value" in object[0]) {
+      const fertig = BeneosDatabaseHolder.sortProperties(structuredClone(object))
+      // `any` auch hier ergaenzen, wenn es fehlt. Die heutige einzige
+      // Tabellenform traegt es, aber eine Durchgabe, die es verliert, waere
+      // eine Falle fuer die naechste Liste: der Rest dieser Funktion setzt es
+      // ausdruecklich davor, und zwei Wege mit zwei Regeln laufen auseinander.
+      if (fertig.find((it) => String(it.key).toLowerCase() === "any") === undefined) {
+        fertig.splice(0, 0, { key: "any", value: game.i18n.localize("BENEOS.Cloud.Filter.Any") })
+      }
+      return fertig
+    }
     let tab = []
     for (let key in object) {
       key = String(key)
