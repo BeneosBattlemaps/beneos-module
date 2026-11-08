@@ -54,10 +54,10 @@
  * `OP-PRJ-177` gefuehrt. Darum weist `installStreamBilder()` einen
  * Verzeichnisnamen von sich aus ab.
  *
- * **Keine Klappkarten, obwohl `OP-PRJ-136` sie nennt.** Sie erscheinen ueber
- * `openImagePopout()` und aus `system.description.value`; kein Haken unten deckt
- * sie. Heute kein Schaden, weil diese Karten oertlich liegen und `OP-PRJ-140`
- * offen ist. Sobald sie ans Tor gehen, gehoeren die Haken dazu.
+ * **Klappkarten gehen seit dem 08.11.2026 mit, und die Grenze davor ist
+ * gefallen, nicht vergessen.** Sie stand hier, solange diese Karten oertlich
+ * lagen; mit `OP-PRJ-140` liegen sie am Tor, also deckt `FLAECHEN` sie jetzt.
+ * Die beiden Haken dafuer sind unten gemessen und nicht erinnert.
  *
  * **Keine Bearbeitenflaeche**, siehe `imEditor()`.
  */
@@ -406,6 +406,33 @@ const FLAECHEN = [
   // `NPCActorSheet`. Die Flaeche ist nicht Vorsorge: sechs Felder `Actor.img` in
   // der Pruefwelt tragen heute eine Toradresse.
   ["renderActorSheetV2", "closeActorSheetV2"],
+  /*
+   * Das Blatt eines Gegenstands oder Zaubers, also die Klappkarte aus
+   * `system.description.value`. DER NAHELIEGENDE NAME FEUERT NICHT: gemessen
+   * am 08.11.2026 in der Welt `v13-streaming` (Foundry 13, dnd5e 5.3.3) ist
+   * die Klassenkette des Item-Blattes `ItemSheet5e`, `PrimarySheet5e`,
+   * `DragDropApplication`, `DocumentSheet5e`, `BaseApplication5e`,
+   * `HandlebarsApplication`, `DocumentSheetV2`, `ApplicationV2`. Darin steht
+   * `ItemSheetV2` NICHT, obwohl der Kern die Klasse fuehrt, und
+   * `sheet instanceof ItemSheetV2` ergibt `false`. Beim Actor ist es
+   * umgekehrt, dort ergibt `instanceof ActorSheetV2` `true`, und genau diese
+   * Asymmetrie laedt dazu ein, den Namen aus der Zeile darueber abzuleiten.
+   * Die naechste gemeinsame Basis waere `DocumentSheetV2`, und die traegt
+   * auch Actor und Journal: ein Haken darauf doppelte die beiden Zeilen
+   * darueber. Also der Systemname, und er ist gemessen.
+   */
+  ["renderItemSheet5e", "closeItemSheet5e"],
+  /*
+   * Die gross aufgezogene Karte aus `openImagePopout()` in
+   * `codex2/creature-codex.mjs`. Der Ruf baut eine Unterklasse
+   * `BeneosImagePopout extends ImagePopout`; der Haken steht trotzdem auf dem
+   * Grundnamen, weil Foundry die ganze Kette feuert, und damit deckt diese
+   * eine Zeile auch jedes kuenftige Popout eines anderen Fensters.
+   * Gemessen am 08.11.2026: `renderImagePopout` und `closeImagePopout`
+   * feuern, die Kette ist `ImagePopout`, `HandlebarsApplication`,
+   * `ApplicationV2`.
+   */
+  ["renderImagePopout", "closeImagePopout"],
 ]
 
 /**
