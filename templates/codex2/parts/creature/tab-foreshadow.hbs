@@ -8,7 +8,7 @@
     <div class="cdx-foreshadow">
       {{#each creature.data.foreshadowing}}
         <article class="cdx-foresee">
-          <div class="cdx-foresee-num">{{numString (sum @index 1)}}</div>
+          <div class="cdx-foresee-num">{{beneosNumString (beneosSum @index 1)}}</div>
           <div class="cdx-foresee-body">
             <h3 class="cdx-foresee-title">{{title}}</h3>
             <p class="cdx-foresee-text">{{{text}}}</p>

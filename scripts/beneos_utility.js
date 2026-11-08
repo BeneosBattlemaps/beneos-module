@@ -1117,7 +1117,7 @@ export class BeneosUtility {
     this.m_z = 987654321
     this.seed(Date.now())
 
-    Handlebars.registerHelper('isEmpty', function (text) {
+    Handlebars.registerHelper('beneosIsEmpty', function (text) {
       if (typeof text !== 'string' && typeof text !== 'object') return false
       return text.length === 0
     })
@@ -1133,7 +1133,7 @@ export class BeneosUtility {
       if (typeof text !== 'string') return text
       return text.charAt(0).toUpperCase() + text.slice(1)
     })
-    Handlebars.registerHelper('getTagDescription', function (text) {
+    Handlebars.registerHelper('beneosTagDescription', function (text) {
       return BeneosDatabaseHolder.getTagDescription(text)
     })
     Handlebars.registerHelper('beneosLowerCase', function (text) {

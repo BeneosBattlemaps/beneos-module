@@ -1,5 +1,5 @@
 {{~#each parts~}}
-  {{~#if (eq (typeof this) "string")~}}
+  {{~#if (eq (beneosTypeof this) "string")~}}
     <span class="cdx-tac-text">{{this}}</span>
   {{~else if ../static~}}
     {{~#if this.itemId~}}

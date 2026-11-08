@@ -8,7 +8,7 @@
     <div class="cdx-hooks">
       {{#each creature.data.storyPrompts}}
         <article class="cdx-hook tier-{{tier}}">
-          <div class="cdx-hook-tier">{{roman (sum @index 1)}}</div>
+          <div class="cdx-hook-tier">{{beneosRoman (beneosSum @index 1)}}</div>
           <div class="cdx-hook-body">
             <h3 class="cdx-hook-title">{{title}}</h3>
             <p class="cdx-hook-text">{{{text}}}</p>

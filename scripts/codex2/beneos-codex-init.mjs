@@ -59,8 +59,10 @@ Hooks.once("init", () => {
   if (!Handlebars.helpers.gte) {
     Handlebars.registerHelper("gte", (a, b) => Number(a) >= Number(b));
   }
-  // beneosRange — produces [start, start+1, ..., end-1] (used to iterate attune-dots).
-  // Namespace the helper so it does not shadow data fields such as PF2e spell range.
+  // Beneos' own helpers carry the prefix "beneos": a global helper named like a
+  // data field shadows that field in every template of every system (PF2e spell
+  // range, #338), and an unprefixed name could already belong to another module.
+  // beneosRange: produces [start, start+1, ..., end-1] (used to iterate attune-dots).
   if (!Handlebars.helpers.beneosRange) {
     Handlebars.registerHelper("beneosRange", function (start, end) {
       const out = [];
@@ -68,19 +70,19 @@ Hooks.once("init", () => {
       return out;
     });
   }
-  // sum — Number(a) + Number(b); used to compute @index+1 inline.
-  if (!Handlebars.helpers.sum) {
-    Handlebars.registerHelper("sum", (a, b) => Number(a) + Number(b));
+  // beneosSum: Number(a) + Number(b); used to compute @index+1 inline.
+  if (!Handlebars.helpers.beneosSum) {
+    Handlebars.registerHelper("beneosSum", (a, b) => Number(a) + Number(b));
   }
-  // numString — zero-padded 2-digit string (01, 02, ..., 99). Used for
+  // beneosNumString: zero-padded 2-digit string (01, 02, ..., 99). Used for
   // the foreshadowing card numbering.
-  if (!Handlebars.helpers.numString) {
-    Handlebars.registerHelper("numString", (n) => String(Number(n) || 0).padStart(2, "0"));
+  if (!Handlebars.helpers.beneosNumString) {
+    Handlebars.registerHelper("beneosNumString", (n) => String(Number(n) || 0).padStart(2, "0"));
   }
-  // roman — arabic to Roman numeral (1 -> I, 4 -> IV, ...). Used for the
+  // beneosRoman: arabic to Roman numeral (1 -> I, 4 -> IV, ...). Used for the
   // story-hook running index. Falls back to the arabic number above 3999.
-  if (!Handlebars.helpers.roman) {
-    Handlebars.registerHelper("roman", (n) => {
+  if (!Handlebars.helpers.beneosRoman) {
+    Handlebars.registerHelper("beneosRoman", (n) => {
       let v = Number(n) || 0;
       if (v <= 0 || v > 3999) return String(v);
       const map = [[1000,"M"],[900,"CM"],[500,"D"],[400,"CD"],[100,"C"],[90,"XC"],[50,"L"],[40,"XL"],[10,"X"],[9,"IX"],[5,"V"],[4,"IV"],[1,"I"]];
@@ -89,10 +91,10 @@ Hooks.once("init", () => {
       return out;
     });
   }
-  // typeof — string of the runtime type. Used by the chip renderer to
+  // beneosTypeof: string of the runtime type. Used by the chip renderer to
   // distinguish raw strings from chip objects in the tactical guide.
-  if (!Handlebars.helpers.typeof) {
-    Handlebars.registerHelper("typeof", (v) => typeof v);
+  if (!Handlebars.helpers.beneosTypeof) {
+    Handlebars.registerHelper("beneosTypeof", (v) => typeof v);
   }
   // or — boolean OR over all args (last arg is the Handlebars options).
   if (!Handlebars.helpers.or) {

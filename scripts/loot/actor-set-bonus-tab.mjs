@@ -432,8 +432,8 @@ export class ActorSetBonusTab {
 
 // Markdown helper for inline-template usage (kept for legacy templates).
 Hooks.once("init", () => {
-  if (Handlebars?.helpers?.markdownToHtml) return;
-  Handlebars.registerHelper("markdownToHtml", function(md) {
+  if (Handlebars?.helpers?.beneosMarkdownToHtml) return;
+  Handlebars.registerHelper("beneosMarkdownToHtml", function(md) {
     if (!md) return "";
     let html = String(md);
     html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");

@@ -5,7 +5,7 @@
   {{#if item.children.length}}
     <ul class="cdx-tac-list">
       {{#each item.children}}
-        {{> "beneos-codex/creature/tac-rule" item=this depth=(sum ../depth 1) actorId=../actorId}}
+        {{> "beneos-codex/creature/tac-rule" item=this depth=(beneosSum ../depth 1) actorId=../actorId}}
       {{/each}}
     </ul>
   {{/if}}
