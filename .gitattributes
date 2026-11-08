@@ -69,8 +69,44 @@
 # wird von Foundry nie geladen, sie faehrt aber ohne diese Zeile in jedes
 # Kundenpaket mit.
 #
-# NOCH NICHT AM ARCHIV NACHGEMESSEN. Die Probe ist ein Befehl und steht hier,
-# damit sie beim naechsten Tag gefahren wird:
-#   curl -sL https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/<version>.zip -o /tmp/m.zip
-#   unzip -l /tmp/m.zip | grep -c '\.test\.mjs'     # soll 0 sein
+# GEMESSEN am 08.11.2026, und zwar an einem wirklich erzeugten Archiv statt
+# an der Absicht: `git archive HEAD` auf `stream-beta` liefert 3.434 Dateien
+# mit 61.652.499 Byte unkomprimiert, und darin **null** `.test.mjs`. Die
+# Zeile darunter traegt also. Derselbe Lauf hat aber gezeigt, dass sie die
+# einzige war: `tools/` fuhr mit 66 Dateien und 546.299 Byte vollstaendig
+# mit, `dev/` mit zwei, dazu die Entwicklerdateien der Wurzel. Der Weg zur
+# Messung, lokal und ohne GitHub, denn er misst dasselbe Verfahren:
+#   git archive --format=zip -o /tmp/m.zip HEAD
+#   unzip -l /tmp/m.zip | grep -c '\.test\.mjs'        # soll 0 sein
+#   unzip -l /tmp/m.zip | grep -c 'tools/'              # soll 0 sein
+#
+# WAS HIER NICHT STEHEN DARF, und das ist der Grund fuer die Einzelaufzaehlung
+# unten statt eines Musters: `docs/` bleibt drin. Es ist das Modul-Wiki und
+# wird vom Kunden gelesen, 13,9 MB von 61,6 MB. Ebenso `icons/` mit 23,8 MB,
+# `assets/`, `lang/`, `ui/` und `fonts/`. Wer hier mit einem weiten Muster
+# arbeitet, nimmt dem Kunden die Anleitung weg, und das faellt erst auf,
+# wenn er sie sucht.
+#
+# Gepruefte Vorbedingung: `module.json` laedt 24 esmodules, 1 script und 16
+# styles, und **keines** davon liegt unter `tools/` oder `dev/`. Die Verweise
+# auf `tools/` im ausgelieferten Code sind durchweg Kommentare, die auf
+# Messwerkzeuge zeigen, keine Ladepfade.
 *.test.mjs export-ignore
+
+# Messwerkzeuge, Pruefstaende und Erzeuger. Sie laufen im Klon, nie beim
+# Kunden. `tools/ersatzbilder.py` erzeugt die sechs Streaming-Ersatzbilder
+# unter `ui/`; die Bilder selbst fahren mit, ihr Erzeuger nicht.
+tools/ export-ignore
+
+# Probiermaterial. `dev/news-mock.json` ist eine erfundene Meldungsliste,
+# `dev/probe-analytics.mjs` ein Messstand. Beides wuerde beim Kunden
+# hoechstens verwirren.
+dev/ export-ignore
+
+# Werkzeugkram der Wurzel. `eslint.config.mjs` braucht den Klon samt
+# `node_modules`, die beiden `.code-workspace` sind Editorzustand, und diese
+# Datei hier beschreibt den Bau und nicht das Gebaute.
+eslint.config.mjs export-ignore
+*.code-workspace export-ignore
+.gitattributes export-ignore
+.gitignore export-ignore
