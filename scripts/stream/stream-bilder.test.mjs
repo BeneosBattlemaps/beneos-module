@@ -29,7 +29,7 @@
  *
  * WAS DIESER SATZ NICHT LEISTET. Er liest Quelltext. Dass ein Haken im
  * laufenden Foundry wirklich feuert und das Bild danach eine `blob:`-Adresse
- * traegt, entscheidet `TC-PRJ-STR-297`. Die Namen hier sind gemessen, aber
+ * traegt, entscheidet `TC-PRJ-STR-302`. Die Namen hier sind gemessen, aber
  * dieser Satz misst sie nicht, er haelt sie fest.
  */
 import { readFileSync } from "node:fs"
@@ -183,7 +183,7 @@ console.log(`\n${gruen} bestanden, ${rot} gescheitert`)
 console.log("\nNicht geprueft, ausdruecklich benannt:")
 console.log("- Dass ein Haken im laufenden Foundry feuert. Die fuenf Namen sind am")
 console.log("  08.11.2026 in `v13-streaming` gemessen, dieser Satz haelt sie nur")
-console.log("  fest. Die Wirkung entscheidet TC-PRJ-STR-297.")
+console.log("  fest. Die Wirkung entscheidet TC-PRJ-STR-302.")
 console.log("- Ob das Bild nach dem Lauf eine `blob:`-Adresse traegt. Das braucht")
 console.log("  Foundry, Handlebars und ein gefuelltes Tor.")
 console.log("- Die Freigabe der Blob-Adressen. `allesLoslassen()` ist hier nicht")
