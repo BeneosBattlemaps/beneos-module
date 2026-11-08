@@ -219,6 +219,15 @@ fi
 # Deckungsluecke, und sie ist hier zur Haelfte geschlossen: gemessen wird die
 # Listenreihenfolge, nicht die Datei.
 #
+# AM 08.11.2026 WUCHS SIE von 29 auf 46 Saetze, mit `OP-PRJ-202`: die
+# Zahlensortierung entschied am ersten Listeneintrag, und die Seltenheitsleiter
+# kam ueber die INDIZES ihres Arrays statt ueber ihre Schluessel.
+#
+# Die Satzzahl in der Beschriftung veraltet still, sobald jemand einen Satz
+# dazulegt, und sie faellt niemandem auf, weil der Lauf gruen bleibt. Dieselbe
+# Schwaeche tragen die vier Zeilen darueber. Wer eine Zahl hier liest, prueft
+# sie am Lauf.
+#
 # Sie kostet gemessen unter einer Sekunde, kein Netz, kein Foundry.
 if git diff --cached --name-only --diff-filter=ACM \
      -- scripts/beneos_search_engine.js \
@@ -227,7 +236,7 @@ if git diff --cached --name-only --diff-filter=ACM \
    | grep -q .
 then
   meld "pre-commit: Suchfensterdateien vorgemerkt, die Filterreihenfolge laeuft mit"
-  fahre "tools/filter-reihenfolge-bench/bench.mjs" "filter-reihenfolge-bench, 29 Saetze"
+  fahre "tools/filter-reihenfolge-bench/bench.mjs" "filter-reihenfolge-bench, 46 Saetze"
 fi
 
 # Die teure nur, wenn ihr Gegenstand angefasst wird.
