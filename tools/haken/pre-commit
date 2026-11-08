@@ -139,14 +139,28 @@ fahre "tools/v14-import-bench/unit.mjs"           "v14-import unit.mjs, 53 Saetz
 # `stream-geteilt.test.mjs` am 08.11.2026 und `stream-posen.test.mjs` am
 # 07.11.2026; alle drei hingen in keinem Tor.
 #
+# `stream-weiche.test.mjs` kam am 08.11.2026 dazu, mit `OP-PRJ-052`. Sie
+# sichert `buildStreamPack`, also die Weiche, die je Datei entscheidet, ob sie
+# auf die Platte des Kunden geschrieben wird oder eine Adresse bleibt. Sie hing
+# in NULL von sieben Saetzen, obwohl 18,98 GB an ihr haengen.
+#
 # WARUM NICHT AUF JEDEN COMMIT. Gemessen am 07.11.2026 kosten die sieben
 # zusammen rund 9 Sekunden, und das ist fast alles Node-Start. Dieselbe Abwaegung
 # wie bei der Katalogpruefung darunter: ein Tor, das man regelmaessig mit
 # --no-verify umgeht, ist keines. Sie laufen deshalb, wenn eine Datei unter
 # `scripts/stream/` oder `scripts/loot/` vorgemerkt ist, und das ist genau die
 # Menge, die sie messen.
+#
+# WARUM DER INSTALLER MIT IN DEN AUSLOESER MUSS, seit dem 08.11.2026. Der neue
+# Satz prueft die Vorabsonde `#preflightSizeCheck` als Quelltextprobe, und die
+# steht in `scripts/cloud-v2/beneos-native-installer.mjs`. Ohne diese Zeile
+# laeuft der Satz nicht, wenn genau die geprobte Datei geaendert wird, und das
+# ist die Lage, in der er gebraucht wird. Es kostet die rund 10 Sekunden auch
+# bei einer Installeraenderung, und das ist der Preis dafuer, dass die Probe
+# kein blinder Fleck ist.
 if git diff --cached --name-only --diff-filter=ACM \
      -- scripts/stream scripts/loot \
+        scripts/cloud-v2/beneos-native-installer.mjs \
    | grep -q .
 then
   meld "pre-commit: Streamdateien vorgemerkt, die Streampruefsaetze laufen mit"
@@ -156,7 +170,8 @@ then
                scripts/stream/stream-riegel.test.mjs \
                scripts/stream/stream-sperre.test.mjs \
                scripts/stream/stream-geteilt.test.mjs \
-               scripts/stream/stream-posen.test.mjs
+               scripts/stream/stream-posen.test.mjs \
+               scripts/stream/stream-weiche.test.mjs
   do
     fahre "$datei" "$(basename "$datei")"
   done
