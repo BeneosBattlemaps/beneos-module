@@ -1554,6 +1554,7 @@
   "BENEOS.Cloud.Install.Report.Cat.verify": "not readable back",
   "BENEOS.Cloud.Install.Report.Cat.notfound": "not on cloud",
   "BENEOS.Cloud.Install.Report.Cat.toolarge": "too big for server",
+  "BENEOS.Cloud.Install.Report.Cat.localread": "local data lost",
   "BENEOS.Cloud.Install.Report.Cat.unknown": "unknown",
   "BENEOS.Cloud.Login.WindowTitle": "Beneos Cloud · Sign in",
   "BENEOS.Cloud.Login.Description": "Sign in to your Beneos Cloud account. Credentials are never stored locally.",

@@ -1540,6 +1540,7 @@
   "BENEOS.Cloud.Install.Report.Cat.permission": "escriptura bloquejada",
   "BENEOS.Cloud.Install.Report.Cat.quota": "sense espai",
   "BENEOS.Cloud.Install.Report.Cat.toolarge": "massa gran",
+  "BENEOS.Cloud.Install.Report.Cat.localread": "dades locals perdudes",
   "BENEOS.Cloud.Install.Report.Cat.signature": "enllaç caducat",
   "BENEOS.Cloud.Install.Report.Cat.server": "error del núvol",
   "BENEOS.Cloud.Install.Report.Cat.network": "connexió",

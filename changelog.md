@@ -4,6 +4,12 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.4.13 # unreleased
+
+**Fixes**
+- Fixed: When the Foundry app or your browser can no longer read a battlemap it has already downloaded, usually because your disk is nearly full, the install report now says so and tells you to free up space instead of showing "unknown" and only suggesting a retry.
+- Fixed: The install report on The Forge no longer claims that every HD file fits your plan's per-file limit, because a few HD bonus videos are larger than 50 MB.
+
 ### 14.4.12 # 2026-11-08
 
 **Fixes**

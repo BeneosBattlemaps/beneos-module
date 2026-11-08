@@ -1540,6 +1540,7 @@
   "BENEOS.Cloud.Install.Report.Cat.permission": "scrittura bloccata",
   "BENEOS.Cloud.Install.Report.Cat.quota": "spazio esaurito",
   "BENEOS.Cloud.Install.Report.Cat.toolarge": "troppo grande",
+  "BENEOS.Cloud.Install.Report.Cat.localread": "dati locali persi",
   "BENEOS.Cloud.Install.Report.Cat.signature": "link scaduto",
   "BENEOS.Cloud.Install.Report.Cat.server": "errore cloud",
   "BENEOS.Cloud.Install.Report.Cat.network": "connessione",

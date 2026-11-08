@@ -1554,6 +1554,7 @@
   "BENEOS.Cloud.Install.Report.Cat.verify": "не читается после записи",
   "BENEOS.Cloud.Install.Report.Cat.notfound": "нет в облаке",
   "BENEOS.Cloud.Install.Report.Cat.toolarge": "слишком большой для сервера",
+  "BENEOS.Cloud.Install.Report.Cat.localread": "локальные данные потеряны",
   "BENEOS.Cloud.Install.Report.Cat.unknown": "неизвестно",
   "BENEOS.Cloud.Login.WindowTitle": "Beneos Cloud · Вход",
   "BENEOS.Cloud.Login.Description": "Войдите в свою учётную запись Beneos Cloud. Учётные данные никогда не хранятся локально.",

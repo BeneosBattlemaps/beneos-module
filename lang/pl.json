@@ -1540,6 +1540,7 @@
   "BENEOS.Cloud.Install.Report.Cat.permission": "zapis zablokowany",
   "BENEOS.Cloud.Install.Report.Cat.quota": "brak miejsca",
   "BENEOS.Cloud.Install.Report.Cat.toolarge": "za duży plik",
+  "BENEOS.Cloud.Install.Report.Cat.localread": "utracone dane lokalne",
   "BENEOS.Cloud.Install.Report.Cat.signature": "link wygasł",
   "BENEOS.Cloud.Install.Report.Cat.server": "błąd chmury",
   "BENEOS.Cloud.Install.Report.Cat.network": "połączenie",

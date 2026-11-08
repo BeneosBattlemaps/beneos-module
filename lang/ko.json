@@ -1540,6 +1540,7 @@
   "BENEOS.Cloud.Install.Report.Cat.permission": "쓰기 차단",
   "BENEOS.Cloud.Install.Report.Cat.quota": "저장 공간 부족",
   "BENEOS.Cloud.Install.Report.Cat.toolarge": "용량 초과",
+  "BENEOS.Cloud.Install.Report.Cat.localread": "로컬 데이터 손실",
   "BENEOS.Cloud.Install.Report.Cat.signature": "링크 만료",
   "BENEOS.Cloud.Install.Report.Cat.server": "클라우드 오류",
   "BENEOS.Cloud.Install.Report.Cat.network": "연결",

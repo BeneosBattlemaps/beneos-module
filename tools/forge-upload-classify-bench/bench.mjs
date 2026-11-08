@@ -55,6 +55,7 @@ const prelude = [
   extractBlock(text, "class TransferError extends Error {"),
   extractMethod(text, "classifyTransferError", { maxZeilen: 60 }).replace(/^export\s+/, ""),
   extractMethod(text, "uploadFailureMessage", { maxZeilen: 12 }).replace(/^export\s+/, ""),
+  extractMethod(text, "docFailureCategory", { maxZeilen: 8 }).replace(/^export\s+/, ""),
   extractMethod(text, "forgeSizeRefusalMessage", { maxZeilen: 6 }).replace(/^export\s+/, ""),
   extractMethod(text, "errorBodyExcerpt", { maxZeilen: 6 }),
 ].join("\n")
@@ -76,8 +77,8 @@ const Probe = buildProbe(
   prelude
 )
 
-const modul = new Function(`${prelude}\nreturn { INSTALL_ERROR, classifyTransferError, uploadFailureMessage, forgeSizeRefusalMessage }`)()
-const { INSTALL_ERROR, classifyTransferError, uploadFailureMessage, forgeSizeRefusalMessage } = modul
+const modul = new Function(`${prelude}\nreturn { INSTALL_ERROR, classifyTransferError, uploadFailureMessage, forgeSizeRefusalMessage, docFailureCategory }`)()
+const { INSTALL_ERROR, classifyTransferError, uploadFailureMessage, forgeSizeRefusalMessage, docFailureCategory } = modul
 
 // Der Produktivcode meldet die gelesene Grenze mit console.info und eine
 // scheiternde Forge-API mit console.debug. Beides ist im Betrieb richtig und
@@ -243,6 +244,53 @@ const datei = (bytes) => ({ size: bytes, name: "probe.webm" })
     classifyTransferError(new Error("Failed to fetch"), null), INSTALL_ERROR.NETWORK)
   check("8 der Textbauer bleibt unter dem Kappungspunkt der Telemetrie",
     forgeSizeRefusalMessage(692_060_160, FORGE_LIMIT).length < 200, true)
+}
+
+// 9) Der Browser kann geladene Daten nicht mehr lesen (SR-2026-0012, 08.11.2026).
+//    Ein Laptop-Kunde: 57 Dateien gingen durch, danach 121 als "upload response
+//    could not be read" und alle vier Dokumentgruppen mit Chromes Text zu
+//    NotReadableError. Foundrys FilePicker macht den geworfenen Fehler im catch
+//    zu {} und verwirft den Namen, also muss der Installer selbst nachlesen.
+{
+  const CHROME_TEXT = "The requested file could not be read, typically due to permission problems that have occurred after a reference to a file was acquired."
+  const notReadable = () => Object.assign(new Error(CHROME_TEXT), { name: "NotReadableError" })
+  check("9 NotReadableError nach Name wird localread",
+    classifyTransferError(notReadable(), null), INSTALL_ERROR.LOCALREAD)
+  check("9 Chromes Text allein wird localread",
+    classifyTransferError(new Error(CHROME_TEXT), null), INSTALL_ERROR.LOCALREAD)
+  check("9 ein gewoehnlicher Netzfehler bleibt network",
+    classifyTransferError(new Error("Failed to fetch"), null), INSTALL_ERROR.NETWORK)
+
+  const unlesbar = (bytes) => ({ size: bytes, name: "probe.webm",
+    slice: () => ({ arrayBuffer: async () => { throw notReadable() } }) })
+  const lesbar = (bytes) => ({ size: bytes, name: "probe.webm",
+    slice: () => ({ arrayBuffer: async () => new ArrayBuffer(1) }) })
+  const selbst = () => {
+    const p = new Probe()
+    p._isForge = false
+    p._forgeLimitPromise = null
+    p._toolargeMinBytes = Infinity
+    p._sizeProbesLeft = 0
+    return p
+  }
+  const r1 = await selbst().probe("dir", unlesbar(20 * MB), uploadFailureMessage({}))
+  check("9 Kundenfall: unlesbare Quelle wird localread", r1.category, INSTALL_ERROR.LOCALREAD)
+  const r2 = await selbst().probe("dir", lesbar(20 * MB), uploadFailureMessage({}))
+  check("9 Gegenprobe: lesbare Quelle bleibt unknown", r2.category, INSTALL_ERROR.UNKNOWN)
+  const r3 = await installer().probe("dir", unlesbar(3 * MB), uploadFailureMessage(false))
+  check("9 auf The Forge geht die unlesbare Quelle vor der Groesse", r3.category, INSTALL_ERROR.LOCALREAD)
+  const r4 = await installer({ antwort: { quotas: { upload: 64 * MB } } }).probe("dir", lesbar(96 * MB), uploadFailureMessage(false))
+  check("9 Gegenprobe: lesbar und zu gross bleibt toolarge", r4.category, INSTALL_ERROR.TOOLARGE)
+
+  // Die Dokumentphase. Genau sie trug im Kundenfall Chromes Text, viermal.
+  check("9 Dokumentgruppe mit NotReadableError wird localread",
+    docFailureCategory(notReadable()), INSTALL_ERROR.LOCALREAD)
+  check("9 Gegenprobe: kaputtes JSON bleibt unknown",
+    docFailureCategory(new SyntaxError("Unexpected token < in JSON at position 0")), INSTALL_ERROR.UNKNOWN)
+  check("9 Gegenprobe: Text mit permission bleibt unknown und wird nicht zur Schreibsperre",
+    docFailureCategory(new Error("permission denied")), INSTALL_ERROR.UNKNOWN)
+  check("9 eine Kategorie der Transferschicht gewinnt",
+    docFailureCategory({ category: INSTALL_ERROR.NETWORK, message: "x" }), INSTALL_ERROR.NETWORK)
 }
 
 console.log(fails ? `\n${fails} FEHLSCHLAEGE` : `\nalle Proben bestanden${useAlt ? " (das waere ein Befund, siehe README)" : ""}`)

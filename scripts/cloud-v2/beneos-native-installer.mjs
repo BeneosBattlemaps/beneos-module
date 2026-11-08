@@ -98,6 +98,14 @@ export const INSTALL_ERROR = {
   // causes are third-party upload converters and hosts that refuse to serve
   // .svg as an image, so it must not be filed under UNKNOWN.
   VERIFY:     "verify",
+  // The customer's own Foundry client can no longer read data it already holds
+  // (Chrome's NotReadableError). Most customers run the Foundry desktop app,
+  // which is Electron and therefore Chromium: it behaves like a browser here.
+  // Large downloads are kept on disk by the client, and when that disk runs full or the temporary copy is lost, every
+  // later read fails. Nothing on the server or in the pack is wrong, so the
+  // advice is about the customer's computer. SR-2026-0012: 57 files went
+  // through, then 121 failed as "unknown" and the report said retry.
+  LOCALREAD:  "localread",
   UNKNOWN:    "unknown",
 }
 
@@ -114,6 +122,11 @@ class TransferError extends Error {
 /** Map an error + optional HTTP status to a failure category. */
 export function classifyTransferError(err, status = null) {
   const msg = String(err?.message || err || "").toLowerCase()
+  // First, because no status can explain it: the bytes never left the browser.
+  // The name survives where the DOMException itself reaches us; the text is
+  // Chrome's wording for the same error and catches it where only the message
+  // was kept.
+  if (err?.name === "NotReadableError" || /could not be read, typically due to permission problems/.test(msg)) return INSTALL_ERROR.LOCALREAD
   // Ahead of every status test on purpose. A proxy that refuses a body for its
   // size does not always say 413: some answer 400, some 500, and only the page
   // body names the cause. Behind the status tests, such a 500 would be read as
@@ -216,6 +229,19 @@ function errorBodyExcerpt(text) {
  */
 export function forgeSizeRefusalMessage(bytes, limit) {
   return `upload refused: ${bytes} bytes is over this Forge plan's per-file limit of ${limit} bytes (about ${Math.round(limit / (1024 * 1024))} MB)`
+}
+
+/**
+ * Category of a whole document group that could not be read. The transfer
+ * layer's own category wins. A NotReadableError from blob.text() carries none
+ * of ours, and it is the one uncategorised cause we can name (SR-2026-0012:
+ * all four groups failed with Chrome's text). Everything else stays UNKNOWN,
+ * on purpose not the full classifier: a broken JSON file or any other text
+ * must not be renamed into a transfer cause it never had.
+ */
+export function docFailureCategory(err) {
+  if (err?.category) return err.category
+  return classifyTransferError(err, null) === INSTALL_ERROR.LOCALREAD ? INSTALL_ERROR.LOCALREAD : INSTALL_ERROR.UNKNOWN
 }
 
 export function uploadFailureMessage(result) {
@@ -1716,6 +1742,24 @@ export class BeneosNativeBattlemapInstaller {
       category: INSTALL_ERROR.TOOLARGE,
       error: new TransferError(forgeSizeRefusalMessage(bytes, limit), INSTALL_ERROR.TOOLARGE, null),
     })
+    // Can the browser still read what it was asked to upload? Foundry turns a
+    // thrown fetch into an empty object and drops the error name, so this one
+    // byte is the only way to tell a lost local copy from a host problem. It
+    // goes first, also on The Forge: an unreadable file is not too large, it
+    // is gone, and the advice for it is the customer's own disk.
+    if (typeof file?.slice === "function") {
+      try {
+        await file.slice(0, 1).arrayBuffer()
+      } catch (err) {
+        if (classifyTransferError(err, null) === INSTALL_ERROR.LOCALREAD) {
+          return {
+            ok: false,
+            category: INSTALL_ERROR.LOCALREAD,
+            error: new TransferError("the downloaded data can no longer be read on this computer (NotReadableError)", INSTALL_ERROR.LOCALREAD, null),
+          }
+        }
+      }
+    }
     if (this._isForge) {
       const forgeSize = Number(file?.size)
       const limit = await this.#forgeUploadLimit()
@@ -2079,7 +2123,7 @@ export class BeneosNativeBattlemapInstaller {
         // nobody reading it.
         this._result.docFailures.push({
           type: meta.phaseKey, id: "(all)",
-          category: err?.category || INSTALL_ERROR.UNKNOWN,
+          category: docFailureCategory(err),
           error: String(err?.message || err),
         })
         continue

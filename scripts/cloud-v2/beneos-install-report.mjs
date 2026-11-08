@@ -30,7 +30,7 @@ function priorityOf(path) {
 // "toolarge" leads: it is the only host failure whose exact cause and exact
 // remedy we know, and it must never be hidden behind a vaguer category that
 // happened to hit more files.
-const CATEGORY_PRIORITY = ["toolarge", "permission", "quota", "signature", "server", "network", "timeout", "verify", "notfound", "unknown"]
+const CATEGORY_PRIORITY = ["toolarge", "localread", "permission", "quota", "signature", "server", "network", "timeout", "verify", "notfound", "unknown"]
 
 function _l(key, fallback) {
   try { if (game.i18n?.has?.(key)) return game.i18n.localize(key) } catch (_) {}
@@ -58,6 +58,7 @@ const HEADLINE_FALLBACK = {
   timeout:    "Some downloads stalled and timed out.",
   notfound:   "Some files could not be found on Beneos Cloud.",
   verify:     "Some files were uploaded successfully, but your server does not hand them back.",
+  localread:  "Foundry could no longer read the files it had already downloaded to this computer.",
   unknown:    "Some files could not be installed.",
   // The Forge has no reverse proxy of the customer's in the path, so the
   // self-hosted wording below would send them to settings they do not have.
@@ -78,9 +79,10 @@ const GUIDANCE_FALLBACK = {
   timeout:    "Click Retry. On a very slow connection, a large battlemap video can take a while.",
   notfound:   "Please send us the copied report on Discord so we can fix the catalog entry.",
   verify:     "This is almost always another module rewriting uploads (an image optimizer such as Media Optimizer converts every .svg into a .webp), or a host that refuses to serve .svg as an image. Disable image optimizer modules, click Retry, then enable them again. If none are active, send us the copied report on Discord.",
+  localread:  "This happens on your own computer, not on the server and not in the pack. The Foundry app, like a browser, keeps large downloads in a temporary area on your disk, and this usually means that disk is nearly full. Free up a few GB on your system drive, restart the Foundry app (or your browser, if you play in one), then click Retry. If space stays tight, the HD version of this release is much smaller. Everything already installed is kept, so a second install only fetches what is missing.",
   unknown:    "Click Retry. If it persists, send us the copied report on Discord.",
-  toolarge_forge: "This is a limit of your Forge subscription, not of Foundry and not of Beneos. Your current limit is {limit} MB per file, and you can see it in your Forge account under quotas. Retrying cannot help until it is raised. Two ways forward: raise your Forge plan, or install this release in its HD version instead. HD files are much smaller, and no HD file in the whole Beneos catalogue comes close to the Forge limit. Everything already installed is kept, so a second install only fetches what is missing.",
-  toolarge_forge_nolimit: "This is a limit of your Forge subscription, not of Foundry and not of Beneos. You can see your own per-file limit in your Forge account under quotas. Retrying cannot help until it is raised. Two ways forward: raise your Forge plan, or install this release in its HD version instead. HD files are much smaller, and no HD file in the whole Beneos catalogue comes close to the Forge limit. Everything already installed is kept, so a second install only fetches what is missing.",
+  toolarge_forge: "This is a limit of your Forge subscription, not of Foundry and not of Beneos. Your current limit is {limit} MB per file, and you can see it in your Forge account under quotas. Retrying cannot help until it is raised. Two ways forward: raise your Forge plan, or install this release in its HD version instead. HD files are much smaller: almost all stay below 50 MB, only a few HD bonus videos are larger. Everything already installed is kept, so a second install only fetches what is missing.",
+  toolarge_forge_nolimit: "This is a limit of your Forge subscription, not of Foundry and not of Beneos. You can see your own per-file limit in your Forge account under quotas. Retrying cannot help until it is raised. Two ways forward: raise your Forge plan, or install this release in its HD version instead. HD files are much smaller: almost all stay below 50 MB, only a few HD bonus videos are larger. Everything already installed is kept, so a second install only fetches what is missing.",
 }
 
 export class BeneosInstallReport {

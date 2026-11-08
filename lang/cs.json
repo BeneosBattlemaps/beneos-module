@@ -1540,6 +1540,7 @@
   "BENEOS.Cloud.Install.Report.Cat.permission": "zápis blokován",
   "BENEOS.Cloud.Install.Report.Cat.quota": "nedostatek místa",
   "BENEOS.Cloud.Install.Report.Cat.toolarge": "příliš velké",
+  "BENEOS.Cloud.Install.Report.Cat.localread": "místní data ztracena",
   "BENEOS.Cloud.Install.Report.Cat.signature": "odkaz vypršel",
   "BENEOS.Cloud.Install.Report.Cat.server": "chyba cloudu",
   "BENEOS.Cloud.Install.Report.Cat.network": "připojení",
