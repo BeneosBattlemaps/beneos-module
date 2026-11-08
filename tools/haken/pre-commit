@@ -172,14 +172,39 @@ if git diff --cached --name-only --diff-filter=ACM \
    | grep -q .
 then
   meld "pre-commit: Streamdateien vorgemerkt, die Streampruefsaetze laufen mit"
-  for datei in scripts/stream/stream-basis.test.mjs \
-               scripts/stream/stream-beute.test.mjs \
-               scripts/stream/stream-maske.test.mjs \
-               scripts/stream/stream-riegel.test.mjs \
-               scripts/stream/stream-sperre.test.mjs \
-               scripts/stream/stream-geteilt.test.mjs \
-               scripts/stream/stream-posen.test.mjs \
-               scripts/stream/stream-weiche.test.mjs
+  # DIE LISTE KOMMT AUS DEM VERZEICHNIS UND IST NICHT AUFGEZAEHLT, seit dem
+  # 08.11.2026.
+  #
+  # Bis dahin standen die Staende hier namentlich, und genau das ist am selben
+  # Tag aufgefallen: `stream-platzhalter.test.mjs` entstand mit `OP-PRJ-137`,
+  # lag im selben Commit, traf den Ausloeser `scripts/stream/` und lief
+  # TROTZDEM nicht, weil niemand die Aufzaehlung erweitert hatte. Der Commit
+  # meldete acht gruene Staende und nannte den neunten nicht; nichts war rot.
+  #
+  # Eine Aufzaehlung dessen, was laufen SOLL, kann nie bemerken, dass etwas
+  # Neues dazugekommen ist. Sie ist beim naechsten Stand wieder zu kurz. Die
+  # Gesamtmenge dagegen nimmt jeden neuen Stand von selbst mit.
+  #
+  # DIE MINDESTZAHL IST KEIN SCHMUCK. Eine Suche, die nichts findet, ist von
+  # einer kaputten Suche nicht zu unterscheiden, und dann liefe dieser Block
+  # still durch und meldete nur seine Kopfzeile. Die Zahl ist der Stand vom
+  # 08.11.2026, also neun Staende; sie wird nach UNTEN gesichert und nicht
+  # nach oben, damit ein neuer Stand sie nicht bricht.
+  #
+  # WAS EIN STAND HIER ERFUELLEN MUSS: ohne Netz, ohne Foundry, ohne
+  # Datenbank, und in rund einer Sekunde. Wer einen Stand baut, der das nicht
+  # kann, legt ihn nicht unter `scripts/stream/*.test.mjs` ab, sonst haelt er
+  # jeden Commit dieses Ordners auf.
+  STAENDE=$(ls scripts/stream/*.test.mjs 2>/dev/null | sort)
+  ANZAHL=$(printf '%s\n' "$STAENDE" | grep -c 'test\.mjs$')
+  if [ "$ANZAHL" -lt 9 ]; then
+    meld "pre-commit: ABBRUCH, nur $ANZAHL Streampruefsaetze gefunden, erwartet"
+    meld "            mindestens 9. Entweder ist die Suche kaputt oder ein"
+    meld "            Stand ist verschwunden; beides ist ein Befund und keine"
+    meld "            bestandene Pruefung."
+    exit 1
+  fi
+  for datei in $STAENDE
   do
     fahre "$datei" "$(basename "$datei")"
   done
