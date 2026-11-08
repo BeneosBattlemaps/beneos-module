@@ -17,6 +17,9 @@
  *           an Actor or Item document names. The second kind is not about size
  *           but about where it is shown: a portrait in a sidebar directory is a
  *           plain <img>, and a plain <img> never passes this module.
+ *           Since 2026-11-08 that second kind has a second lock, on this side:
+ *           `FELDER_NIE` refuses a gate address for an `img` field even when
+ *           the manifest asks for one, and says so. See `OP-PRJ-149`.
  *   doc     the document collections
  *   skip    not downloaded and not rewritten: the client already has the file
  *
@@ -297,6 +300,59 @@ export async function listReleases() {
  */
 const HTML_SRC_RE = /<(?:img|video|source|audio)\b[^>]*\bsrc\s*=\s*(["'])([^"']+)\1/gi
 
+/**
+ * Felder, in die NIE eine Toradresse geschrieben wird, `OP-PRJ-149`.
+ *
+ * ─── WARUM DIESE LISTE HIER STEHT UND NICHT AUF DEM SERVER ──────────────────
+ *
+ * Sie steht hier ZUSAETZLICH und nicht STATTDESSEN. Der Manifestbauer vergibt
+ * seit dem 2026-08-28 die Rolle `local` fuer alles, was ein Actor- oder
+ * Item-Dokument als Bild nennt, und damit kommen diese Dateien gar nicht in
+ * `streamTargets`. Diese Liste ist deshalb HEUTE WIRKUNGSLOS, und das ist
+ * Absicht: sie ist der zweite Riegel an einer anderen Stelle.
+ *
+ * Gemessen am 08.11.2026 haengt der ganze Schutz an EINER Entscheidung, und
+ * die faellt auf cluster031 in `tools/generate-stream-manifest.php`. Diese
+ * Datei gehorcht ihr nur; ihr eigener Kopf sagt es im Wortlaut: "The split is
+ * not decided here." Vergibt der Bauer eine `img`-Quelle je als `edge`, sei es
+ * durch einen Fehler, eine neue Rolle oder einen Dokumenttyp, an den niemand
+ * gedacht hat, dann schreibt `applyStreamAddresses()` den Streamschluessel in
+ * `Actor.img` und `Item.img`. Und genau diese zwei Felder REISEN BEIM EXPORT
+ * MIT, waehrend ein Szenendokument selten weitergegeben wird. Das ist die
+ * Begruendung der Felderregel, Wort fuer Wort aus `OP-PRJ-149`: "Ohne die
+ * Felderregel reist der Schluessel in jedem exportierten Actor mit."
+ *
+ * ─── WARUM DER FELDNAME UND NICHT DER PFAD ──────────────────────────────────
+ *
+ * `img` ist in Foundry durchgaengig das LISTENBILD: das Portrait eines Actors,
+ * das Symbol eines Gegenstands. Genau diese zwei bleiben nach dem Bauplan
+ * oertlich, und zwar nicht wegen ihrer Groesse, sondern wegen ihres Ortes: ein
+ * Portrait im Verzeichnis der Seitenleiste ist ein gewoehnliches `<img>`, und
+ * ein `<img>` laeuft an diesem Modul vorbei. Dieselbe Grenze zieht der
+ * Browser-Client unabhaengig durch, dort wirft `avatarPruefen()`.
+ *
+ * Der Feldname faengt damit auch die eingebetteten Gegenstaende eines Actors,
+ * `items[].img`, ohne dass hier ein Pfad geraten werden muss. Ein Pfad waere
+ * ausserdem falsch, denn diese Funktion wird je DOKUMENT gerufen und kennt
+ * seinen Typ nicht.
+ *
+ * NICHT gesperrt ist `texture.src` und nicht `src`. Das sind die Leinwand- und
+ * die Seitenbilder, und die gehen nach Teil 3 A des Bauplans ausdruecklich ans
+ * Tor. Eine Sperre dort hiesse, das Streaming auszubauen.
+ */
+const FELDER_NIE = new Set(["img"])
+
+/**
+ * Was die Sperre schon gefangen hat, je Sitzung einmal.
+ *
+ * DIE MELDUNG IST DER HALBE ZWECK. Ein stiller Riegel schuetzt und verschweigt
+ * dabei, dass der Manifestbauer etwas falsch vergeben hat; dann ist der
+ * Kundenexport sauber und der Fehler bleibt Jahre liegen. Gemeldet wird der
+ * SCHLUESSEL DER DATEI und nicht die gebildete Toradresse, denn die trug genau
+ * den Streamschluessel, um den es hier geht.
+ */
+const gesperrtGemeldet = new Set()
+
 /** Die Gate-Adresse zu einem installierten Pfad, oder null. */
 function gateAdresseFuer(wert, streamTargets) {
   let key = stripLeadSlash(wert)
@@ -328,11 +384,48 @@ function gateAdresseFuer(wert, streamTargets) {
  * Installer arbeitet mit `split/join`, tauscht den Praefix also auch mitten im
  * HTML. Beide Seiten sprechen dieselbe Form.
  */
-export function applyStreamAddresses(value, streamTargets) {
+export function applyStreamAddresses(value, streamTargets, feld = null) {
   if (!streamTargets || !streamTargets.size) return value
 
   if (typeof value === "string") {
     if (value === "") return value
+
+    /*
+     * DER ZWEITE RIEGEL, `OP-PRJ-149`. Begruendung bei `FELDER_NIE`.
+     *
+     * ER STEHT HIER UND NICHT IM ZWEIG `if (target)`, und das ist am
+     * 08.11.2026 von einem eigenen Pruefsatz erzwungen worden. Dort unten
+     * deckte er nur den DIREKTEN Tausch: ein `img`-Feld, das HTML enthaelt,
+     * faellt an `gateAdresseFuer` vorbei, weil der ganze String kein
+     * Listenschluessel ist, und landete im HTML-Umschreiben, das von dieser
+     * Sperre nichts wusste. Gemessen ging die Toradresse samt Streamschluessel
+     * dort durch. Ein Riegel, der einen von zwei Wegen kennt, ist von einem
+     * Loch nicht zu unterscheiden.
+     *
+     * Ein gesperrtes Feld wird jetzt GAR NICHT angefasst, auf keinem Weg.
+     */
+    if (feld !== null && FELDER_NIE.has(feld)) {
+      // GEMELDET WIRD NUR, WENN HIER WIRKLICH EINE TORADRESSE ENTSTANDEN
+      // WAERE. Jedes Portrait laeuft durch diese Zeile, und eine Meldung je
+      // Portrait waere Rauschen, in dem der eine echte Fall untergeht.
+      const waere = gateAdresseFuer(value, streamTargets)
+      if (waere) {
+        const schluessel = stripLeadSlash(value)
+        if (!gesperrtGemeldet.has(schluessel)) {
+          gesperrtGemeldet.add(schluessel)
+          // Gemeldet wird der Pfad der Datei, NICHT die Toradresse: die traegt
+          // den Streamschluessel. Und gemeldet wird es ueberhaupt, weil ein
+          // stiller Riegel den Fehler im Manifest fuer immer verdeckt.
+          console.warn(`Beneos Stream | ${schluessel} ist als Toradresse fuer `
+            + `das Feld "${feld}" angekommen und bleibt oertlich. Ein `
+            + "Listenbild ist ein gewoehnliches <img> und laeuft an diesem "
+            + "Modul vorbei; dazu reist dieses Feld beim Export mit. Die "
+            + "Rolle gehoert im Manifest auf `local`, siehe OP-PRJ-149.")
+        }
+      }
+      return value
+    }
+
     const target = gateAdresseFuer(value, streamTargets)
     if (target) return target
 
@@ -349,11 +442,18 @@ export function applyStreamAddresses(value, streamTargets) {
     })
   }
   if (Array.isArray(value)) {
-    for (let i = 0; i < value.length; i++) value[i] = applyStreamAddresses(value[i], streamTargets)
+    // Das Feld reist mit. `img: ["a", "b"]` kommt in Foundry nicht vor, aber
+    // ein Riegel, der an einer Klammer aufgibt, ist von einem Loch nicht zu
+    // unterscheiden.
+    for (let i = 0; i < value.length; i++) {
+      value[i] = applyStreamAddresses(value[i], streamTargets, feld)
+    }
     return value
   }
   if (value && typeof value === "object") {
-    for (const k of Object.keys(value)) value[k] = applyStreamAddresses(value[k], streamTargets)
+    for (const k of Object.keys(value)) {
+      value[k] = applyStreamAddresses(value[k], streamTargets, k)
+    }
     return value
   }
   return value

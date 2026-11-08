@@ -31,7 +31,7 @@
  * Die Haelfte der Faelle sind Gegenfaelle. Ohne sie waere der Satz eine
  * Behauptung.
  */
-import { buildStreamPack } from "./stream-install.mjs"
+import { buildStreamPack, applyStreamAddresses } from "./stream-install.mjs"
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
@@ -446,6 +446,192 @@ console.log("\nDie Sonde selbst, als Quelltextprobe")
     "die feste Zahl ist wieder die Probegroesse")
 }
 
+// ===========================================================================
+console.log("\napplyStreamAddresses(): ein Listenbild bleibt oertlich, OP-PRJ-149")
+{
+  /*
+   * WARUM DIESE LAGE GEBRAUCHT WIRD, und warum sie heute nichts BEHEBT.
+   *
+   * `applyStreamAddresses()` schreibt rekursiv JEDEN String eines
+   * Kundendokuments um und hing am 08.11.2026 in NULL Pruefsaetzen. Der ganze
+   * Schutz der Felderregel lag auf dem Server: der Manifestbauer vergibt seit
+   * dem 2026-08-28 die Rolle `local` fuer alles, was ein Actor- oder
+   * Item-Dokument als Bild nennt, und damit kommt so eine Datei gar nicht in
+   * `streamTargets`.
+   *
+   * EINE Stelle also, und sie liegt nicht dort, wo der Schaden entsteht. Diese
+   * Lage fuettert die Funktion deshalb mit genau dem, was der Manifestbauer
+   * heute nicht liefert: ein Listenbild als Toradresse. Was sie prueft, ist
+   * nicht die heutige Lage, sondern dass die morgige nicht durchgeht.
+   *
+   * Der Schaden waere kein Darstellungsfehler: `Actor.img` und `Item.img`
+   * REISEN BEIM EXPORT MIT. Gemessen in der Pruefwelt am 05.11.2026 trugen
+   * sechs Felder `Actor.img` eine Toradresse samt Streamschluessel, und das
+   * kam vom Kartenweg, nicht von den Kreaturen.
+   */
+  const PORTRAIT = "beneos_assets/cloud/tokens/pruef/pruef-1-avatar.webp"
+  const LEINWAND = "beneos_assets/cloud/tokens/pruef/pruef-1-top.webp"
+  const ziele = new Map([
+    [PORTRAIT, assetUrl(REL, VAR, PORTRAIT)],
+    [LEINWAND, assetUrl(REL, VAR, LEINWAND)],
+  ])
+
+  warnungen.length = 0
+  const akteur = {
+    name: "Pruefkreatur",
+    img: PORTRAIT,
+    prototypeToken: { texture: { src: LEINWAND } },
+    items: [{ name: "Beutestueck", img: PORTRAIT }],
+  }
+  applyStreamAddresses(akteur, ziele)
+
+  gleich("das Portrait in `img` bleibt der oertliche Pfad",
+    akteur.img, PORTRAIT)
+  gleich("das Symbol eines eingebetteten Gegenstands ebenso",
+    akteur.items[0].img, PORTRAIT)
+
+  /*
+   * DIE GEGENPROBE IST DER WICHTIGERE SATZ. Eine Sperre, die alles sperrt,
+   * sieht an den zwei Zeilen darueber genauso aus wie eine richtige, und sie
+   * waere der Ausbau des Streamings: `prototypeToken.texture.src` ist der
+   * Leinwandweg und geht nach Teil 3 A des Bauplans ausdruecklich ans Tor.
+   */
+  gleich("das Leinwandbild in `texture.src` geht ans Tor",
+    akteur.prototypeToken.texture.src, assetUrl(REL, VAR, LEINWAND))
+
+  // Die Meldung kommt, und das ist der halbe Zweck: ein stiller Riegel
+  // verdeckt den Fehler im Manifest fuer immer.
+  gleich("die Sperre meldet sich genau einmal", warnungen.length, 1)
+  wahr("und nennt das Feld", warnungen[0].includes('Feld "img"'),
+    warnungen[0] || "(keine Meldung)")
+  wahr("und nennt den Pfad der Datei", warnungen[0].includes(PORTRAIT))
+
+  /*
+   * UND SIE NENNT DEN SCHLUESSEL NICHT. Das ist der sicherheitsrelevante Teil
+   * dieser Lage und derselbe Fehler, der am 05.11.2026 im Meldekanal und am
+   * 08.11.2026 in der Konsolenmaske steckte: wer eine Toradresse in einen Text
+   * schreibt, schreibt den Streamschluessel mit, denn er ist das zweite
+   * Pfadstueck. Eine Konsolenmitschrift ist genau das, was ein Kunde in einen
+   * Supportkanal einfuegt.
+   */
+  wahr("die Meldung traegt den Streamschluessel NICHT",
+    !warnungen[0].includes(SCHLUESSEL), warnungen[0] || "(keine Meldung)")
+  wahr("und auch nicht die gebildete Toradresse",
+    !warnungen[0].includes(assetUrl(REL, VAR, PORTRAIT)))
+
+  // Zweimal dasselbe Feld: eine Meldung, nicht zwei.
+  const zweiter = { img: PORTRAIT }
+  applyStreamAddresses(zweiter, ziele)
+  gleich("dieselbe Datei meldet sich nicht zweimal", warnungen.length, 1)
+  gleich("gesperrt wird sie trotzdem", zweiter.img, PORTRAIT)
+}
+
+console.log("\napplyStreamAddresses(): die Sperre greift nur am Feldnamen")
+{
+  const PFAD = "beneos_assets/cloud/items/pruef/pruef-front.webp"
+  const ziele = new Map([[PFAD, assetUrl(REL, VAR, PFAD)]])
+  const TOR = assetUrl(REL, VAR, PFAD)
+
+  warnungen.length = 0
+  // Vier Felder, die ans Tor gehen MUESSEN. Ohne diese Zeilen waere nicht
+  // belegt, dass die Sperre eng ist.
+  const doku = {
+    src: PFAD,
+    thumb: PFAD,
+    background: { src: PFAD },
+    pages: [{ src: PFAD, text: { content: `<img src="${PFAD}">` } }],
+  }
+  applyStreamAddresses(doku, ziele)
+  gleich("`src` geht ans Tor", doku.src, TOR)
+  gleich("`thumb` geht ans Tor", doku.thumb, TOR)
+  gleich("`background.src` geht ans Tor", doku.background.src, TOR)
+  gleich("`src` einer Journalseite geht ans Tor", doku.pages[0].src, TOR)
+  gleich("und die Adresse im eingebetteten HTML auch",
+    doku.pages[0].text.content, `<img src="${TOR}">`)
+  gleich("dabei meldet sich die Sperre nicht", warnungen.length, 0)
+
+  /*
+   * EIN `img`-FELD MIT HTML DARIN ist der Fall, bei dem die Sperre zu viel
+   * koennte. Sie laesst den Wert ganz stehen, und das ist richtig: `img` ist
+   * in Foundry durchgaengig ein Pfad und nie HTML. Waere es je HTML, waere ein
+   * unveraenderter Wert immer noch die sichere Richtung, denn die Datei liegt
+   * oertlich.
+   */
+  const mitHtml = { img: `<img src="${PFAD}">` }
+  applyStreamAddresses(mitHtml, ziele)
+  gleich("ein `img`-Feld mit HTML darin bleibt ganz unberuehrt",
+    mitHtml.img, `<img src="${PFAD}">`)
+  /*
+   * DIESER SATZ WAR BEIM ERSTEN LAUF ROT, und er ist der Grund, warum die
+   * Sperre heute vor beiden Wegen steht statt nur vor einem.
+   *
+   * Gebaut war sie zuerst IM Zweig `if (target)`. Dort deckte sie nur den
+   * direkten Tausch. Ein `img`-Feld mit HTML darin faellt an
+   * `gateAdresseFuer` vorbei, weil der ganze String kein Listenschluessel ist,
+   * und landete im HTML-Umschreiben, das von der Sperre nichts wusste.
+   * Gemessen am 08.11.2026 ging die Toradresse samt Streamschluessel dort
+   * durch, waehrend die zehn Saetze darueber gruen blieben.
+   *
+   * `img` traegt in Foundry nie HTML, der Fall ist also keiner aus dem
+   * Betrieb. Er ist der Fall, an dem sich zeigt, ob der Riegel den Feldnamen
+   * schuetzt oder nur einen von zwei Wegen.
+   */
+  /*
+   * UND SIE MELDET SICH NICHT, obwohl sie gegriffen hat. Das ist Absicht:
+   * gemeldet wird nur, wenn an dieser Stelle wirklich eine Toradresse
+   * entstanden waere. Jedes Portrait jeder Kreatur laeuft durch diese Zeile,
+   * und eine Meldung je Portrait waere Rauschen, in dem der eine echte Fall
+   * untergeht.
+   */
+  gleich("dabei meldet sich die Sperre weiterhin nicht", warnungen.length, 0)
+}
+
+console.log("\napplyStreamAddresses(): Quelltextprobe zur Sperrliste")
+{
+  const q = readFileSync(join(HIER, "stream-install.mjs"), "utf8")
+    .replace(/\r\n/g, "\n")
+
+  wahr("die Sperrliste steht im Bestand", /const FELDER_NIE = new Set\(/.test(q))
+
+  // DIE LISTE SELBST, nicht ihr Umfeld. Ein Kommentarblock darueber nennt
+  // `texture.src` ausdruecklich, und ein Satz, der das Umfeld liest, waere
+  // dadurch rot, obwohl die Liste richtig ist.
+  const m = /const FELDER_NIE = new Set\(\[([^\]]*)\]\)/.exec(q)
+  wahr("und ist lesbar", !!m)
+  const eintraege = m
+    ? (m[1].match(/"([^"]+)"/g) || []).map((x) => x.slice(1, -1))
+    : []
+  gleich("sie nennt genau `img`", eintraege.join(","), "img")
+
+  /*
+   * DIE ZAHL IST DER SATZ. Ein fuenfter Feldname faellt sonst nicht auf, und
+   * ein falscher waere der Ausbau des Streamings: stuende `src` darin, blieben
+   * alle Journalbilder und alle Szenenhintergruende oertlich, und zwar
+   * lautlos, denn die Sperre meldet nur bei einer Toradresse, die sie faengt.
+   */
+  wahr("und nichts, was ans Tor gehoert",
+    !eintraege.includes("src") && !eintraege.includes("texture")
+    && !eintraege.includes("thumb") && !eintraege.includes("path"))
+
+  /*
+   * DER FELDNAME WIRD WEITERGEGEBEN, und ohne diesen Satz waere die Sperre auf
+   * jeder Ebene unter der ersten blind. Genau dort liegt `items[].img`.
+   */
+  wahr("die Rekursion gibt den Schluessel weiter",
+    /applyStreamAddresses\(value\[k\], streamTargets, k\)/.test(q))
+  wahr("und ein Array gibt sein Feld weiter",
+    /applyStreamAddresses\(value\[i\], streamTargets, feld\)/.test(q))
+
+  // Gegenprobe auf die Probe. Eine Suche, die nichts findet, ist von einer
+  // kaputten Suche nicht zu unterscheiden.
+  wahr("die Listensuche findet in einem Probetext",
+    /const FELDER_NIE = new Set\(\[([^\]]*)\]\)/
+      .test('const FELDER_NIE = new Set(["x"])'))
+  wahr("und ein leeres Ergebnis waere aufgefallen", eintraege.length === 1,
+    `gefunden: ${eintraege.length}`)
+}
+
+// ===========================================================================
 console.warn = echteWarnung
 console.log(`\n${gruen} gruen, ${rot} rot`)
 process.exit(rot === 0 ? 0 : 1)
