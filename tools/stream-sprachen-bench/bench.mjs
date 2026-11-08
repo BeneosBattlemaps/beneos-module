@@ -105,6 +105,29 @@ const streamKeys = Object.keys(en).filter((k) => k.startsWith("BENEOS.Stream."))
 const quotaKeys = Object.keys(en).filter((k) => k.startsWith("BENEOS.Cloud.Bmap.Quota"))
 const pflicht = [...streamKeys, ...quotaKeys]
 
+/*
+ * DIE MENGE DER SCHREIBWEISENPRUEFUNG, und sie ist eine ANDERE als `pflicht`.
+ *
+ * Die ersten drei Abschnitte fragen nach MENGE: ist jeder Streamtext
+ * vorhanden, ist keiner englisch geblieben, ist keiner leer. Dafuer sind die
+ * 101 Schluessel des Streamings und des Kontingents die richtige Menge, denn
+ * nur fuer sie ist dieses Vorhaben zustaendig.
+ *
+ * Die Schreibweise ist dagegen eine Frage an JEDEN ausgelieferten Satz. Das
+ * Modul liefert 2588 Schluessel je Sprache aus, und gemessen am 08.11.2026
+ * standen 20 Werte AUSSERHALB des Streamings in der falschen Schreibweise,
+ * darunter `BENEOS.Cloud.Install.NoPackDir` in allen acht Sprachen.
+ * `OP-PRJ-201`.
+ *
+ * AUSGENOMMEN SIND DIE SUCHBEGRIFFE, und das ist kein Nachlassen, sondern der
+ * Zweck des Feldes. `BENEOS.Wiki.Page.battlemaps.Search` steht im
+ * Franzoesischen absichtlich in BEIDEN Formen, "video" neben "video" mit
+ * Akut und "scene" neben "scene" mit Gravis, damit ein Kunde findet, was er
+ * tippt. Gemessen: 35 solche Schluessel. Eine Wache, die sie mitnimmt, ist
+ * eine Dauer-Rotmeldung, und eine Dauer-Rotmeldung ist keine Wache.
+ */
+const schreibweise = Object.keys(en).filter((k) => !/\.Search$/.test(k))
+
 let fehlendGesamt = 0
 const fehlendJeSprache = []
 for (const [code, d] of Object.entries(sprachen)) {
@@ -190,7 +213,7 @@ ok("kein sichtbarer Text steht roh zwischen zwei Tags",
 
 /* ------------------------------- 4. Schreibweise: Diakritika sind nicht weg */
 
-console.log("\nJeder Streamtext steht in der Schreibweise seiner Sprache")
+console.log("\nJeder ausgelieferte Textbaustein steht in der Schreibweise seiner Sprache")
 
 /*
  * Hintergrund, 07.11.2026, `OP-PRJ-199`. Die aelteren Streamtexte trugen die
@@ -233,7 +256,7 @@ const GEFALTET = {
     "unterstuetz\\w*", "hinzufueg\\w*", "uebrig\\w*", "groesse\\w*",
     "taeglich", "staendig", "naemlich", "ausfuehr\\w*", "schluessel\\w*"],
   ca: ["video", "connexio\\b", "publicacio\\b", "mon\\b", "aixi\\b", "despres",
-    "mante\\b", "rapid\\w*", "paisos", "propia", "aqui\\b", "gairebe",
+    "mante\\b", "rapid(?:a|s|es)?", "paisos", "propia", "aqui\\b", "gairebe",
     "unica", "rao\\b", "linia\\b", "debo\\b", "obte\\b", "instal\\.l\\w*",
     "installa\\w*"],
   cs: ["pripoj\\w*", "nacit\\w*", "vcetne", "vase\\b", "vasi\\b", "vaseho",
@@ -305,15 +328,84 @@ const MIT_ZEICHEN_MINDESTENS = {
 // daneben weiter Sonderzeichen traegt. Dafuer faellt sie auch, wenn ein Text
 // kuerzer formuliert wird, und dann gehoert sie neu gemessen. Das ist der
 // Preis der Scharfe und bewusst bezahlt.
+/*
+ * DIESELBEN ZWEI FRAGEN NOCH EINMAL, UEBER DIE GANZE MENGE, und sie sind kein
+ * Doppel. Die beiden Schwellen darueber messen die 101 Pflichtschluessel
+ * punktgenau; diese hier messen alle 2614. Beides zusammen, weil keine Menge
+ * die andere schuetzt: eine Faltung IN der Streamhaelfte koennte durch einen
+ * neuen Textbaustein AUSSERHALB ausgeglichen werden, dann steigt die
+ * Gesamtsumme trotz Verlust. Umgekehrt faengt nur die Gesamtsumme eine
+ * Faltung in einem Baustein, den die Wortliste nicht kennt.
+ *
+ * Gemessen am 2026-11-08, NACH der Korrektur von `OP-PRJ-201`.
+ */
+const ALLE_WERTE_MINDESTENS = {
+  ca: 1402, cs: 2041, de: 1012, es: 1241, fr: 1516,
+  it: 588, pl: 1673, "pt-BR": 1344, "pt-PT": 1436,
+}
+const ALLE_VORKOMMEN_MINDESTENS = {
+  ca: 6382, cs: 28879, de: 3878, es: 5482, fr: 9181,
+  it: 1756, pl: 15508, "pt-BR": 8308, "pt-PT": 8135,
+}
+
 const VORKOMMEN_MINDESTENS = {
   ca: 221, cs: 844, de: 78, es: 185, fr: 245,
   it: 56, pl: 409, "pt-BR": 217, "pt-PT": 238,
 }
 
+/*
+ * WER EINE FREMDSPRACHE ZITIERT, ZITIERT SIE. Die Oberflaeche von Foundry
+ * heisst in jeder Sprache gleich, weil Foundry selbst nicht uebersetzt ist:
+ * ein franzoesischer Text sagt "Clique sur le lien View Scene". Gemessen am
+ * 08.11.2026 ueber alle neun Dateien: 55 mal "View Scene", 31 "Activate
+ * Scene", 18 "Scene Directory", 18 "Change Scene", 18 "Scene Packer", 9
+ * "Preload Scene", 4 "Scene Playlist", 2 "Scene Configuration". Nach deren
+ * Abzug bleibt im Franzoesischen und Polnischen KEIN Treffer auf "scene"
+ * uebrig, also waren alle 24 ein Fehlalarm.
+ */
+const ENGLISCHE_NAMEN = [
+  "View Scene", "Activate Scene", "Scene Directory", "Change Scene",
+  "Scene Packer", "Preload Scene", "Scene Playlist", "Scene Configuration",
+  "In-Scene",
+]
+
+/*
+ * WAS KEIN SATZ IST, WIRD VORHER ABGEZOGEN. Gemessen am 08.11.2026: der
+ * franzoesische Tourtext steht richtig als "voyager entre les scenes" mit
+ * Gravis, und der Treffer kam aus dem PLATZHALTER fuer den Szenennamen. Der
+ * ist ein Variablenname, bleibt englisch und darf nie korrigiert werden.
+ * Dasselbe gilt fuer HTML-Namen und Attribute, in denen etwa
+ * data-page="dd-monks-active-tiles" steht. Ohne diesen Abzug meldete die Suche
+ * 13 franzoesische und 19 polnische Werte, die alle richtig geschrieben sind.
+ */
+function nurSatz(s) {
+  let t = String(s).replace(/\{[^}]*\}/g, " ").replace(/<[^>]*>/g, " ")
+  for (const n of ENGLISCHE_NAMEN) t = t.split(n).join(" ")
+  return t
+}
+
+/*
+ * EINE WORTGRENZE IST IN JAVASCRIPT ASCII-BASIERT, und das ist der schaerfste
+ * dieser Fehlalarme, weil er genau die RICHTIGE Schreibung trifft. Fuer die
+ * Grenze ist jedes Sonderzeichen ein Wortende, also passt die polnische Form
+ * "powod" mit Grenze auf das richtig geschriebene "powodow" mit o-Akut, und
+ * "traves" auf das spanische "travesia". Dazu die Zusammensetzungen: ein
+ * nacktes "video" ist in es, ca und pt falsch, aber "videojuego", "videojoc",
+ * "videogame" und "videotutorial" sind richtig, weil die Vorsilbe dort keinen
+ * Akzent traegt.
+ *
+ * Deshalb beidseitig scharfe Anker: weder ein Buchstabe noch ein Sonderzeichen
+ * darf anschliessen. Gemessen hat das die Restmenge von 47 auf 26 gebracht,
+ * ohne der Streamhaelfte einen einzigen Treffer zu nehmen.
+ */
+const WORT = "[\\w\\u00c0-\\u024f]"
+
 function gefalteteFormen(code, text) {
   const treffer = new Set()
+  const satz = nurSatz(text)
   for (const form of GEFALTET[code] || []) {
-    for (const t of text.matchAll(new RegExp("\\b" + form, "gi"))) {
+    const muster = `(?<!${WORT})(?:${form})(?!${WORT})`
+    for (const t of satz.matchAll(new RegExp(muster, "gi"))) {
       treffer.add(t[0])
     }
   }
@@ -341,13 +433,29 @@ function zeichenVorkommen(code, d, schluessel = pflicht) {
 
 let gefaltetGesamt = 0
 let gepruefteSprachen = 0
+/*
+ * WIE VIELE BAUSTEINE DIE SUCHE WIRKLICH GELESEN HAT, und dieser Zaehler ist
+ * keine Zierde. Eine Sabotage am 08.11.2026 setzte die Schleife von
+ * `schreibweise` auf `pflicht` zurueck, also von 2614 auf 101 Schluessel, und
+ * der Lauf BLIEB GRUEN: weil alle Werte in Ordnung sind, meldet eine kleinere
+ * Menge genauso null Treffer. Die Deckung war weg und nichts sagte es.
+ *
+ * Dieselbe Klasse wie die Sprachzahl darunter: eine Probe muss sagen, wie viel
+ * sie gemessen hat, sonst ist ein Deckungsverlust von einem bestandenen Lauf
+ * nicht zu unterscheiden.
+ */
+let geleseneBausteine = 0
 const gefaltetJeSprache = []
 for (const [code, d] of Object.entries(sprachen)) {
   if (!GEFALTET[code]) continue
   gepruefteSprachen++
   let n = 0
-  for (const k of pflicht) {
+  // UEBER ALLE AUSGELIEFERTEN BAUSTEINE, nicht nur die des Streamings. Siehe
+  // die Begruendung an `schreibweise` oben: die Schreibweise ist eine Frage an
+  // jeden Satz, den ein Kunde liest.
+  for (const k of schreibweise) {
     if (typeof d[k] !== "string") continue
+    geleseneBausteine++
     const formen = gefalteteFormen(code, d[k])
     if (!formen.length) continue
     n++
@@ -359,7 +467,7 @@ for (const [code, d] of Object.entries(sprachen)) {
   if (n) gefaltetJeSprache.push(`${code}: ${n}`)
 }
 
-ok(`kein Streamtext traegt eine gefaltete Wortform (${Object.keys(GEFALTET).length} Sprachen mit Sonderzeichen)`,
+ok(`kein ausgelieferter Textbaustein traegt eine gefaltete Wortform (${schreibweise.length} Schluessel, ${Object.keys(GEFALTET).length} Sprachen mit Sonderzeichen)`,
   gefaltetGesamt === 0, gefaltetJeSprache.join(", "))
 
 /*
@@ -371,6 +479,16 @@ ok(`kein Streamtext traegt eine gefaltete Wortform (${Object.keys(GEFALTET).leng
 ok(`und die Schleife hat alle ${Object.keys(GEFALTET).length} Sprachen erreicht`,
   gepruefteSprachen === Object.keys(GEFALTET).length,
   `erreicht: ${gepruefteSprachen}`)
+
+/*
+ * Und wie viele Bausteine sie dabei wirklich gelesen hat. Die Schranke 15.000
+ * liegt bewusst unter dem gemessenen Stand von 9 Sprachen mal rund 2.580
+ * vorhandenen Werten: sie faengt das Zurueckfallen auf eine kleine Menge, nicht
+ * das Wachsen oder Schrumpfen des Bestands um einzelne Bausteine.
+ */
+ok(`und sie hat dabei genug Bausteine gelesen (${geleseneBausteine})`,
+  geleseneBausteine >= 15000,
+  `gelesen: ${geleseneBausteine}. Faellt die Zahl stark, wurde die gepruefte Menge verkleinert; waechst sie, ist die Schranke nachzumessen`)
 
 /*
  * Gegenprobe auf die Liste selbst. Eine Suche, die nichts findet, ist von
@@ -416,6 +534,7 @@ ok("die Koeder und die Wortlisten sind nicht leer",
  * gemessenen Stand, wurde entweder gefaltet oder ein Text entfernt.
  */
 const gesunken = []
+const benutzteSchranken = []
 for (const [code, soll] of Object.entries(MIT_ZEICHEN_MINDESTENS)) {
   const d = sprachen[code]
   if (!d) {
@@ -433,13 +552,45 @@ for (const [code, soll] of Object.entries(MIT_ZEICHEN_MINDESTENS)) {
   if (istV < sollV) {
     gesunken.push(`${code}: ${istV} Vorkommen statt mindestens ${sollV}`)
   }
+
+  // Und dieselben zwei Fragen ueber ALLE ausgelieferten Bausteine.
+  const sollA = ALLE_WERTE_MINDESTENS[code]
+  const sollAV = ALLE_VORKOMMEN_MINDESTENS[code]
+  if (sollA === undefined || sollAV === undefined) {
+    gesunken.push(`${code}: keine Gesamtschwelle`)
+    continue
+  }
+  const istA = mitZeichen(code, d, schreibweise)
+  if (istA < sollA) {
+    gesunken.push(`${code}: ${istA} Werte gesamt statt mindestens ${sollA}`)
+  }
+  const istAV = zeichenVorkommen(code, d, schreibweise)
+  if (istAV < sollAV) {
+    gesunken.push(`${code}: ${istAV} Vorkommen gesamt statt mindestens ${sollAV}`)
+  }
+  // WAS WIRKLICH VERGLICHEN WURDE. Eine Sabotage setzte `sollA` und `sollAV`
+  // im Rumpf auf null; die Entwertungsprobe darunter prueft die KONSTANTEN und
+  // sah davon nichts, der Lauf blieb gruen. Deshalb werden hier die wirklich
+  // benutzten Schranken mitgeschrieben.
+  benutzteSchranken.push(sollA, sollAV)
 }
 
-ok("weder die Zahl der Werte mit Sonderzeichen noch die Summe der Vorkommen ist gefallen",
+ok("weder die Zahl der Werte mit Sonderzeichen noch die Summe der Vorkommen ist gefallen, in keiner der beiden Mengen",
   gesunken.length === 0,
   gesunken.length
     ? `${gesunken.join(", ")}. Wurde ein Text ENTFERNT, ist MIT_ZEICHEN_MINDESTENS neu zu messen; wurde einer GEFALTET, gehoert das Zeichen zurueck`
     : "")
+
+/*
+ * Und die Probe darauf, dass wirklich verglichen wurde. Eine Sabotage am
+ * 08.11.2026 setzte die beiden Gesamtschranken IM RUMPF auf null, nicht in den
+ * Konstanten; damit waren alle Vergleiche wirkungslos und der Lauf blieb
+ * gruen, weil die Entwertungsprobe darunter nur die Konstanten liest.
+ */
+const stilleSchranken = benutzteSchranken.filter((n) => !(n >= 400)).length
+ok(`und jeder Vergleich lief gegen eine echte Schranke (${benutzteSchranken.length} Vergleiche)`,
+  stilleSchranken === 0 && benutzteSchranken.length >= 18,
+  `${stilleSchranken} Vergleiche liefen gegen eine zu kleine Schranke, ${benutzteSchranken.length} Vergleiche insgesamt`)
 
 /*
  * Und die Probe auf diese Probe. Steht in MIT_ZEICHEN_MINDESTENS eine Null
@@ -452,10 +603,20 @@ const entwertet = [
     .filter(([, n]) => !(n >= 30)).map(([code]) => `${code} (Werte)`),
   ...Object.entries(VORKOMMEN_MINDESTENS)
     .filter(([, n]) => !(n >= 50)).map(([code]) => `${code} (Vorkommen)`),
+  // Dieselbe Probe fuer die beiden Gesamtschwellen. Ohne sie waere die neue
+  // Menge von 2614 Schluesseln mit einer Null entwertbar, waehrend die
+  // Streamhaelfte weiter gruen meldet. Die Schranken liegen wieder weit unter
+  // dem kleinsten gemessenen Stand (it: 588 Werte, 1.756 Vorkommen).
+  ...Object.entries(ALLE_WERTE_MINDESTENS)
+    .filter(([, n]) => !(n >= 400)).map(([code]) => `${code} (Werte gesamt)`),
+  ...Object.entries(ALLE_VORKOMMEN_MINDESTENS)
+    .filter(([, n]) => !(n >= 1000)).map(([code]) => `${code} (Vorkommen gesamt)`),
 ]
 const ohneSchwelle = Object.keys(GEFALTET)
   .filter((code) => !(code in MIT_ZEICHEN_MINDESTENS)
-    || !(code in VORKOMMEN_MINDESTENS))
+    || !(code in VORKOMMEN_MINDESTENS)
+    || !(code in ALLE_WERTE_MINDESTENS)
+    || !(code in ALLE_VORKOMMEN_MINDESTENS))
 
 ok(`jede der ${Object.keys(GEFALTET).length} Sprachen hat eine Schwelle, und keine ist entwertet`,
   entwertet.length === 0 && ohneSchwelle.length === 0,
