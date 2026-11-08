@@ -677,6 +677,298 @@ ok(`jede der ${formenGesamt} Wortformen findet sich im eigenen Text wieder`,
   formStumm.length === 0,
   formStumm.slice(0, 6).join(", "))
 
+/* ------------------------- 5. Platzhalter stehen zeichengleich in jeder Sprache */
+
+console.log("\nJeder Platzhalter steht in jeder Sprache zeichengleich")
+
+/*
+ * WARUM DIESER ABSCHNITT GEBRAUCHT WIRD, und warum er heute nichts BEHEBT.
+ *
+ * `OP-PRJ-151` verlangt zwei Dinge: "Je Sprache die Zahl der Schluessel gegen
+ * `lang/en.json` halten, Platzhalter zeichengleich." Die Zahl prueft
+ * Abschnitt 2 seit Langem. DIE PLATZHALTER PRUEFTE BIS ZUM 08.11.2026
+ * NIEMAND, und das ist eine Deckungsluecke und kein Fehlverhalten: gemessen
+ * an diesem Tag stehen ueber alle 13 Uebersetzungen NULL Abweichungen.
+ *
+ * Der Schaden waere stiller als ein fehlender Schluessel. Ein fehlender
+ * Schluessel faellt in Foundry als roher Punktpfad auf. Ein falsch
+ * geschriebener Platzhalter laesst den Satz richtig aussehen und zeigt an der
+ * Stelle des Werts woertlich `{name}`, oder gar nichts: `format()` ersetzt
+ * nur, was es kennt. Eine Meldung ueber eine fehlgeschlagene Installation
+ * ohne den Namen der Kreatur ist genau an der Stelle nutzlos, an der sie
+ * gebraucht wird.
+ *
+ * ES GIBT ZWEI FORMEN, UND DAS IST GEMESSEN UND NICHT GERATEN. Die geschweifte
+ * ist die von Foundry (`format()`), und sie traegt 198 Schluessel. Die
+ * Prozentform traegt 6 und liegt in `BENEOS.Cloud.Bmap.*`, wo das Modul selbst
+ * ersetzt. Eine Wache, die nur eine Form kennt, ist fuer die andere blind, und
+ * die Prozentform ist die aeltere; wer sie uebersieht, prueft die neuen Texte
+ * und laesst die alten liegen.
+ *
+ * DIE MENGE IST DIE GANZE DATEI UND NICHT NUR DAS STREAMING, aus demselben
+ * Grund wie bei der Schreibweise in Abschnitt 4: ein falscher Platzhalter in
+ * `BENEOS.Cloud.*` ist derselbe Fehler. Das darf hier stehen, weil die
+ * Gesamtmenge heute gemessen sauber ist; eine Wache, die am ersten Tag rot
+ * ist, wird abgeschaltet.
+ *
+ * VERGLICHEN WIRD DIE SORTIERTE LISTE MIT MEHRFACHVORKOMMEN und nicht die
+ * Menge der Namen. Steht `{count}` im Englischen zweimal, braucht der Satz
+ * zwei Stellen, und eine Uebersetzung mit einer ist eine andere Aussage. Das
+ * ist die strengere Lesart, und sie ist zulaessig, weil sie heute haelt. Faellt
+ * sie je ueber einen Satz, der wirklich umgebaut gehoert, ist der Ausgang eine
+ * Ausnahme mit Begruendung und nicht das Aufweichen des Vergleichs.
+ *
+ * EIN FEHLENDER SCHLUESSEL IST HIER KEIN BEFUND. Dafuer ist Abschnitt 2 da,
+ * und zwar fuer die 101 Pflichtschluessel dieses Vorhabens. Gemessen am
+ * 08.11.2026 fehlen 64 Platzhalterschluessel der GESAMTMENGE in mindestens
+ * einer Sprache; sie hier mitzuzaehlen hiesse, einen fremden Befund in diesen
+ * Satz zu holen, und er waere ab dem ersten Tag rot.
+ */
+const PLATZHALTER_FORMEN = [
+  ["geschweift", /\{[A-Za-z_][A-Za-z0-9_]*\}/g],
+  ["prozent", /%[A-Za-z_][A-Za-z0-9_]*%/g],
+]
+
+/*
+ * Die Mindestzahlen sind GEMESSEN am 08.11.2026 und stehen als Schranke nach
+ * unten. Ohne sie waere der Satz auch gruen, wenn das Muster nichts mehr
+ * findet, und das ist von einer sauberen Datei nicht zu unterscheiden.
+ */
+const PLATZHALTER_MIND = { geschweift: 198, prozent: 6 }
+
+/*
+ * UND DIE SCHRANKE BRAUCHT IHRE EIGENE PROBE, denn eine Zahl, die im Rumpf
+ * ihres Satzes steht, prueft niemand. Am 08.11.2026 ist das zweimal gemessen
+ * worden: eine Sabotage setzte `PLATZHALTER_MIND` auf null, und der Satz blieb
+ * gruen, weil `198 >= 0` wahr ist. Dieselbe Lehre traegt
+ * `tools/pruefe-bildform-adresse.php` in `OP-PRJ-190`.
+ *
+ * DIE RECHNUNG STEHT DESHALB ALS HELFER, und Satz und Gegenprobe benutzen
+ * DENSELBEN. Wer ihn aufweicht, macht damit die Gegenprobe rot, und die
+ * entsteht an einer anderen Stelle als der Satz.
+ *
+ * GEPRUEFT WIRD EIN ABSTAND UND KEINE GLEICHHEIT. Eine Schranke, die der
+ * gefundenen Zahl gleichen muesste, waere bei jedem neuen Textbaustein rot,
+ * also eine Dauer-Rotmeldung. Gefordert ist die Haelfte: eine Schranke unter
+ * der Haelfte des Bestands sagt nichts mehr, eine darueber faengt jeden
+ * Einbruch, der mehr als die Haelfte wegnimmt.
+ */
+function mindTraegt(mind, gefunden) {
+  return mind > 0 && gefunden > 0 && mind >= Math.floor(gefunden / 2)
+}
+
+function platzhalterVon(text, muster) {
+  return String(text).match(muster)?.slice().sort() || []
+}
+
+function platzhalterAbweichungen(muster, quelle, mengen) {
+  const soll = new Map()
+  for (const [k, v] of Object.entries(quelle)) {
+    if (typeof v !== "string") continue
+    const p = platzhalterVon(v, muster)
+    if (p.length) soll.set(k, p)
+  }
+  const schlecht = []
+  let paare = 0
+  for (const [code, d] of Object.entries(mengen)) {
+    if (code === "en") continue
+    for (const [k, sollListe] of soll) {
+      if (typeof d[k] !== "string") continue   // fehlt: Abschnitt 2
+      paare++
+      const ist = platzhalterVon(d[k], muster)
+      if (ist.join("\u0001") !== sollListe.join("\u0001")) {
+        schlecht.push(`${code}:${k} soll [${sollListe}] ist [${ist}]`)
+      }
+    }
+  }
+  return { soll, schlecht, paare }
+}
+
+/*
+ * DIE ZAHL DER FORMEN IST EIN EIGENER SATZ, und sie ist am 08.11.2026 von
+ * einer Sabotage erzwungen worden: wer die Prozentform aus der Liste nimmt,
+ * verliert die Pruefung fuer sechs Schluessel, und KEIN Satz wurde rot. Der
+ * Paarzaehler faengt das nicht, denn die geschweifte Form bringt allein 2510
+ * Paare und die Schranke darunter liegt bei 1300.
+ *
+ * Eine Schleife ueber eine zu kurze Liste laeuft fehlerfrei durch. Dieselbe
+ * Lehre steht in `OP-PRJ-170` und in `OP-SYS-289`: der wichtigste Satz prueft
+ * eine GESAMTMENGE, nicht die Glieder, die der Stand gerade nennt.
+ */
+ok(`die Formenliste nennt genau ${2} Platzhalterformen`,
+  PLATZHALTER_FORMEN.length === 2,
+  `gefunden: ${PLATZHALTER_FORMEN.length}`)
+ok("und zwar die geschweifte und die Prozentform",
+  PLATZHALTER_FORMEN.map(([n]) => n).sort().join(",") === "geschweift,prozent",
+  PLATZHALTER_FORMEN.map(([n]) => n).join(","))
+ok("jede Form hat ihre eigene Mindestzahl",
+  PLATZHALTER_FORMEN.every(([n]) => typeof PLATZHALTER_MIND[n] === "number"),
+  Object.keys(PLATZHALTER_MIND).join(","))
+
+let paareGesamt = 0
+for (const [formName, muster] of PLATZHALTER_FORMEN) {
+  const r = platzhalterAbweichungen(muster, en, sprachen)
+  paareGesamt += r.paare
+
+  ok(`kein Platzhalter der Form "${formName}" weicht ab `
+    + `(${r.soll.size} Schluessel, ${r.paare} Paare)`,
+    r.schlecht.length === 0,
+    r.schlecht.slice(0, 5).join(" | "))
+
+  // Die Schranke nach unten. Ein Muster, das nichts mehr findet, ist von
+  // einer sauberen Datei nicht zu unterscheiden.
+  ok(`die Form "${formName}" findet noch mindestens `
+    + `${PLATZHALTER_MIND[formName]} Schluessel`,
+    r.soll.size >= PLATZHALTER_MIND[formName],
+    `gefunden: ${r.soll.size}`)
+
+  // Und die Schranke selbst ist nicht entwertet. Begruendung bei `mindTraegt`.
+  ok(`die Schranke der Form "${formName}" ist streng genug `
+    + `(${PLATZHALTER_MIND[formName]} gegen ${r.soll.size} gefundene)`,
+    mindTraegt(PLATZHALTER_MIND[formName], r.soll.size),
+    `eine Schranke unter der Haelfte des Bestands sagt nichts`)
+
+  /*
+   * DER PAARZAEHLER BRAUCHT EINE OBERGRENZE UND NICHT NUR EINE UNTERGRENZE,
+   * und das ist am 08.11.2026 von einer Sabotage erzwungen worden: `paare +=
+   * 99999` statt `paare++` liess die Untergrenze weiter unten trivial halten,
+   * und kein Satz wurde rot. Ein Sammler, der nur nach unten geprueft wird,
+   * ist von einem gefaelschten nicht zu unterscheiden.
+   *
+   * DIE OBERGRENZE ENTSTEHT AUS DER STRUKTUR und nicht aus einer gemerkten
+   * Zahl: mehr Paare als Uebersetzungen mal Sollschluessel kann es nicht
+   * geben, denn je Paar steht genau ein Schluessel in genau einer Sprache.
+   * Mit beiden Grenzen ist die Zahl eingeklammert, und zwar von zwei Seiten,
+   * die verschieden entstehen.
+   */
+  const paareMax = (dateien.length - 1) * r.soll.size
+  ok(`die Paarzahl der Form "${formName}" liegt in der Klammer `
+    + `(${r.paare} von hoechstens ${paareMax})`,
+    r.paare > 0 && r.paare <= paareMax,
+    `${r.paare} Paare bei ${r.soll.size} Schluesseln und `
+    + `${dateien.length - 1} Uebersetzungen`)
+
+  /*
+   * UND DIE OBERGRENZE SELBST IST NICHT WEGGESETZT. Eine Klammer, die bei
+   * `Number.MAX_SAFE_INTEGER` liegt, ist keine, und am 08.11.2026 ist genau
+   * das durchgekommen. Dagegen hilft nur eine zweite, WEITERE Klammer: mehr
+   * als alle Schluessel der Leitsprache mal alle Uebersetzungen kann kein
+   * Vergleich je machen, und diese Zahl entsteht an einer anderen Stelle als
+   * `r.soll.size`.
+   *
+   * HIER ENDET DIE KETTE BEWUSST. Eine Klammer um die Klammer um die Klammer
+   * ist ein Regress ohne Ende; was eine Sabotage an einem RUMPF aendert, faengt
+   * irgendwann kein Satz mehr, und dagegen schuetzt die Durchsicht des Diffs.
+   * Festgehalten als die benannte Grenze dieser Methode, siehe `OP-PRJ-151`.
+   */
+  ok(`die Obergrenze der Form "${formName}" ist selbst begrenzt`,
+    paareMax > 0 && paareMax <= (dateien.length - 1) * Object.keys(en).length,
+    `${paareMax} gegen `
+    + `${(dateien.length - 1) * Object.keys(en).length}`)
+
+  if (zeigeListe && r.schlecht.length) {
+    for (const z of r.schlecht) console.log(`       platzhalter  ${z}`)
+  }
+}
+
+/*
+ * DIE GEGENPROBE, und sie ist der Satz, der diesen Abschnitt erst zu einem
+ * Satz macht. Null Abweichungen ueber eine saubere Datei sieht genauso aus wie
+ * null Abweichungen ueber ein kaputtes Muster. Gestellt werden deshalb VIER
+ * Fehlerarten, und jede muss gefunden werden: ein umbenannter Platzhalter, ein
+ * weggefallener, ein dazugekommener und ein zweites Vorkommen, das zu einem
+ * wurde.
+ */
+const KOEDER_EN = {
+  "Probe.Um": "Hello {name}, you have {count} left",
+  "Probe.Weg": "Hello {name}, you have {count} left",
+  "Probe.Mehr": "Hello {name}",
+  "Probe.Heil": "Hello {name}, you have {count} left",
+  "Probe.Zwei": "{name} and again {name}",
+}
+const KOEDER_DE = {
+  "Probe.Um": "Hallo {nom}, du hast {count} uebrig",      // umbenannt
+  "Probe.Weg": "Hallo du hast {count} uebrig",            // einer weg
+  "Probe.Mehr": "Hallo {name}, du hast {count} uebrig",   // einer dazu
+  "Probe.Heil": "Hallo {name}, du hast {count} uebrig",   // heil
+  "Probe.Zwei": "{name} und noch einmal dasselbe",        // zwei auf eines
+}
+const probe = platzhalterAbweichungen(/\{[A-Za-z_][A-Za-z0-9_]*\}/g,
+  KOEDER_EN, { en: KOEDER_EN, de: KOEDER_DE })
+const probeKeys = probe.schlecht.map((z) => z.split(" ")[0])
+
+/*
+ * DIE VIER KOEDER STEHEN IN EINEM SATZ UND NICHT IN VIER, und das ist am
+ * 08.11.2026 von einer Sabotage erzwungen worden. Als jeder Koeder seinen
+ * eigenen Satz hatte, liess sich einer auf `probe.schlecht.length > 0`
+ * aufweichen, und die drei anderen blieben gruen; der Satz prueft dann die
+ * ANWESENHEIT eines Befundes und nicht mehr, WELCHER es ist.
+ *
+ * Ein Vergleich der ganzen Liste hat nur eine Stelle. Wer sie aufweicht,
+ * verliert alle vier auf einmal, und das faellt in der Durchsicht auf. Dass
+ * der heile Koeder NICHT in der Liste steht, ist dabei mitgeprueft, und zwar
+ * ohne einen eigenen Satz: eine Liste, die ihn enthaelt, ist eine andere.
+ */
+const KOEDER_SOLL = ["de:Probe.Mehr", "de:Probe.Um", "de:Probe.Weg",
+  "de:Probe.Zwei"]
+ok(`die Probe findet genau die ${KOEDER_SOLL.length} verdorbenen Koeder `
+  + "und nicht den heilen",
+  probeKeys.slice().sort().join(",") === KOEDER_SOLL.join(","),
+  `gefunden: [${probeKeys.slice().sort()}], erwartet: [${KOEDER_SOLL}]`)
+
+// Und die Liste selbst ist nicht leer geraeumt. Ein Vergleich von "" mit ""
+// haelt, und das sieht wie ein bestandener Satz aus.
+ok(`die Koederliste nennt ${KOEDER_SOLL.length} Faelle und der Koeder `
+  + `${Object.keys(KOEDER_DE).length} Saetze`,
+  KOEDER_SOLL.length === 4 && Object.keys(KOEDER_DE).length === 5
+  && Object.keys(KOEDER_EN).length === 5,
+  `${KOEDER_SOLL.length} / ${Object.keys(KOEDER_DE).length}`)
+
+/*
+ * UND DIE PROZENTFORM BRAUCHT IHRE EIGENE GEGENPROBE. Ein Muster, das fuer
+ * sie nie anschlaegt, laesst den Satz oben gruen, weil `soll` dann leer ist;
+ * die Schranke faengt das, aber nur die Zahl und nicht die Trennschaerfe.
+ */
+const PROZ_EN = { "P.Um": "Install %name% now", "P.Heil": "Install %name% now" }
+const PROZ_DE = { "P.Um": "Installiere %nom% jetzt", "P.Heil": "Installiere %name% jetzt" }
+const proz = platzhalterAbweichungen(/%[A-Za-z_][A-Za-z0-9_]*%/g,
+  PROZ_EN, { en: PROZ_EN, de: PROZ_DE })
+ok("die Prozentprobe trennt den umbenannten vom heilen",
+  proz.schlecht.length === 1 && proz.schlecht[0].startsWith("de:P.Um"),
+  proz.schlecht.join(" | "))
+
+/*
+ * DIE DRITTE GEGENPROBE ZIELT AUF DIE SCHLEIFE SELBST. Sie laeuft ueber
+ * `Object.entries(sprachen)`, und wer dort `break` statt `continue` schreibt,
+ * prueft eine Sprache und hoert auf; der Satz bleibt gruen. Gezaehlt wird
+ * deshalb, wie viele Paare wirklich verglichen wurden.
+ */
+const SPRACHEN_OHNE_EN = dateien.length - 1
+const PAARE_MAX_GESAMT = SPRACHEN_OHNE_EN * Object.keys(en).length
+// Dieselbe zweite Klammer fuer die Summe. Begruendung oben in der Schleife.
+ok("die Gesamtobergrenze ist selbst begrenzt",
+  PAARE_MAX_GESAMT > 0 && PAARE_MAX_GESAMT <= 13 * 10000,
+  `${PAARE_MAX_GESAMT}`)
+ok(`die Schleife hat alle ${SPRACHEN_OHNE_EN} Uebersetzungen erreicht `
+  + `(${paareGesamt} Paare, hoechstens ${PAARE_MAX_GESAMT})`,
+  paareGesamt >= SPRACHEN_OHNE_EN * 100
+  && paareGesamt <= PAARE_MAX_GESAMT,
+  `${paareGesamt} Paare bei ${SPRACHEN_OHNE_EN} Sprachen und `
+  + `${Object.keys(en).length} Schluesseln`)
+
+/*
+ * DIE VIERTE GEGENPROBE PRUEFT DIE RECHNUNG DER SCHRANKE, nicht ihre Zahl.
+ * Sie steht hier und nicht in der Schleife, weil sie keine Sprachdatei
+ * braucht; und sie benutzt DENSELBEN Helfer, den die Schleife benutzt. Wer ihn
+ * aufweicht, macht genau diese drei Zeilen rot.
+ */
+ok("die Schrankenrechnung weist eine entwertete Schranke ab",
+  !mindTraegt(0, 198) && !mindTraegt(5, 198) && !mindTraegt(98, 198))
+ok("und laesst eine strenge durch",
+  mindTraegt(198, 198) && mindTraegt(99, 198) && mindTraegt(198, 250))
+ok("und sie weist eine leere Grundmenge ab",
+  !mindTraegt(198, 0) && !mindTraegt(0, 0))
+
 /* ------------------------------------------------------------------ Bilanz */
 
 console.log(`\n${bestanden} bestanden, ${gescheitert} gescheitert`)

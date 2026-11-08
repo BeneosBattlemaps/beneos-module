@@ -200,7 +200,15 @@ fi
 # `OP-PRJ-201`. Sie prueft jetzt jeden ausgelieferten Textbaustein und nicht
 # nur die des Streamings; der Anlass waren 19 weitere Werte, darunter die
 # Meldung "Beneos Cloud ist nicht erreichbar" in ALLEN acht Sprachen. Deshalb
-# 16 Saetze statt 14.
+# damals 16 Saetze statt 14.
+#
+# AM 08.11.2026 KAM DER PLATZHALTERSATZ DAZU, `OP-PRJ-151`. Er prueft, dass
+# jeder Platzhalter in jeder Sprache zeichengleich steht, und zwar in BEIDEN
+# Formen: die geschweifte von Foundry mit 198 Schluesseln und die aeltere
+# Prozentform mit 6. Das verlangte `OP-PRJ-151` von Anfang an; gemessen hat es
+# bis dahin niemand, und die Lage war dabei sauber. Ein falsch geschriebener
+# Platzhalter laesst den Satz richtig aussehen und zeigt an der Stelle des
+# Werts woertlich `{name}` oder gar nichts. Deshalb 37 Saetze statt 16.
 #
 # Sie kostet gemessen unter einer Sekunde, kein Netz, kein Foundry.
 if git diff --cached --name-only --diff-filter=ACM \
@@ -208,7 +216,7 @@ if git diff --cached --name-only --diff-filter=ACM \
    | grep -q .
 then
   meld "pre-commit: Sprachdateien vorgemerkt, die Sprachwache laeuft mit"
-  fahre "tools/stream-sprachen-bench/bench.mjs" "stream-sprachen-bench, 16 Saetze"
+  fahre "tools/stream-sprachen-bench/bench.mjs" "stream-sprachen-bench, 37 Saetze"
 fi
 
 # Die Reihenfolge der Filterlisten, wenn eine der zwei Sortierstellen oder

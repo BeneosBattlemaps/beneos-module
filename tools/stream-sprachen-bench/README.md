@@ -26,11 +26,15 @@ Beim Nachzählen kamen zwei weitere Lücken heraus, die niemand gemeldet hatte, 
 
 Das war ausgerechnet der wichtigste Kundentext des ganzen Rollouts.
 
-## Die drei Aussagen
+## Die fünf Aussagen
+
+**Die Kopfzeile dieses Abschnitts hiess bis zum 08.11.2026 "Die drei Aussagen", während der Stand schon fünf Abschnitte fuhr.** Eine Zahl in einer Überschrift veraltet zuerst und wird zuerst gelesen; sie steht hier als Zahl, damit die Abweichung beim nächsten Zuwachs wieder auffällt.
 
 1. **Jeder Schlüssel, den eine Streaming-Vorlage ruft, steht in `en.json`.** Ein Tippfehler im Schlüssel zeigt sonst den Schlüssel selbst auf dem Bildschirm.
 2. **Jeder `BENEOS.Stream.*`-Schlüssel steht in allen dreizehn Dateien.** Dazu `BENEOS.Cloud.Bmap.Quota*`, weil die Speicherleiste zum selben Merkmal gehört.
 3. **Keine Streaming-Vorlage trägt einen festen Text.** Zwei Leser, weil einer allein nicht reicht: Umlaute finden deutsche Festtexte, sichtbarer Rohtext zwischen zwei Tags findet auch englische.
+4. **Jeder ausgelieferte Textbaustein steht in der Schreibweise seiner Sprache.** Nicht nur die des Streamings: gemessen am 08.11.2026 standen 20 Werte ausserhalb in ASCII-Ersatzform, `OP-PRJ-201`. Ausgenommen sind die Suchbegriffe, denn die stehen absichtlich in beiden Formen.
+5. **Jeder Platzhalter steht in jeder Sprache zeichengleich.** Beide Formen: die geschweifte von Foundry mit 198 Schlüsseln und die ältere Prozentform mit 6. Das verlangte `OP-PRJ-151` von Anfang an, geprüft hat es bis zum 08.11.2026 niemand, und die Lage war dabei sauber. Ein falscher Platzhalter lässt den Satz richtig aussehen und zeigt an der Stelle des Werts wörtlich `{name}`, oder gar nichts: `format()` ersetzt nur, was es kennt.
 
 ## Warum "gleich wie Englisch" nur ein Hinweis ist
 
