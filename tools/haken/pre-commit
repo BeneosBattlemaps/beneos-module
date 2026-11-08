@@ -203,6 +203,33 @@ then
   fahre "tools/stream-sprachen-bench/bench.mjs" "stream-sprachen-bench, 16 Saetze"
 fi
 
+# Die Reihenfolge der Filterlisten, wenn eine der zwei Sortierstellen oder
+# eine der festen Listen angefasst wird.
+#
+# WARUM ZWEI DATEIEN IM AUSLOESER, seit dem 08.11.2026 und mit `OP-PRJ-200`.
+# Die Reihenfolge der Gittergroesse entsteht an ZWEI Stellen in ZWEI Dateien:
+# `sortProperties` in `scripts/beneos_search_engine.js` und
+# `#orderDropdownList` in `scripts/cloud-v2/cloud-window-v2.mjs`. Die zweite
+# ueberschreibt die erste. Eine Reparatur allein in der ersten war deshalb
+# wirkungslos, und ein Tor, das nur die erste beobachtet, haette das nicht
+# gesehen.
+#
+# `scripts/cloud-v2/cloud-window-v2.mjs` loeste vor diesem Tag GAR KEINEN
+# Pruefsatz aus, obwohl das Suchfenster des Kunden darin steht. Das war die
+# Deckungsluecke, und sie ist hier zur Haelfte geschlossen: gemessen wird die
+# Listenreihenfolge, nicht die Datei.
+#
+# Sie kostet gemessen unter einer Sekunde, kein Netz, kein Foundry.
+if git diff --cached --name-only --diff-filter=ACM \
+     -- scripts/beneos_search_engine.js \
+        scripts/cloud-v2/cloud-window-v2.mjs \
+        tools/filter-reihenfolge-bench \
+   | grep -q .
+then
+  meld "pre-commit: Suchfensterdateien vorgemerkt, die Filterreihenfolge laeuft mit"
+  fahre "tools/filter-reihenfolge-bench/bench.mjs" "filter-reihenfolge-bench, 29 Saetze"
+fi
+
 # Die teure nur, wenn ihr Gegenstand angefasst wird.
 if git diff --cached --name-only --diff-filter=ACM \
      -- scripts/beneos_search_engine.js scripts/beneos_utility.js \
