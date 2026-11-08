@@ -624,7 +624,7 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
                title="${tooltipText}"
                aria-label="${tooltipText}"
                ${stilGesperrt ? 'aria-disabled="true"' : ""}
-               style="display:flex;align-items:center;justify-content:center;cursor:pointer;">
+               style="display:flex;align-items:center;justify-content:center;cursor:${stilGesperrt ? "not-allowed" : "pointer"};">
             <i class="${iconClass}" style="font-size:20px;"></i>
           </div>
         `)
