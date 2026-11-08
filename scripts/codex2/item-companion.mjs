@@ -17,6 +17,7 @@
 
 
 import { getLootFlags, beneosCloudCardPaths, isBeneosSrdItem } from "../loot/loot-schema.mjs";
+import { karteFuerBlatt } from "../stream/stream-karten.mjs";
 import { OriginsRegistry } from "../loot/origins-registry.mjs";
 import { ORIGIN_META, RARITY_COLOR, RARITY_MODIFIER } from "./origin-meta.mjs";
 
@@ -124,7 +125,7 @@ export class ItemCompanion {
   // ---- internals: render -------------------------------------------------
 
   async _render(sheetEl, gen = this._gen) {
-    const ctx = this._context();
+    const ctx = await this._context();
     const renderFn = foundry.applications.handlebars?.renderTemplate ?? globalThis.renderTemplate;
     const html = await renderFn(SIDE_TPL, ctx);
     if (gen !== this._gen) return; // newer mount superseded us during renderTemplate
@@ -145,7 +146,7 @@ export class ItemCompanion {
     this.mode = "side";
   }
 
-  _context() {
+  async _context() {
     const flags = getLootFlags(this.item) ?? {};
     const slug  = flags.origin?.slug ?? null;
     const meta  = ORIGIN_META[slug] ?? null;
@@ -169,8 +170,27 @@ export class ItemCompanion {
     // Prefer the reconstructed local cloud path (heals SRD items whose stored
     // render paths point to the wrong location); fall back to the stored value.
     const cloudCards = beneosCloudCardPaths(this.item);
-    const frontCard = cloudCards.front || render.frontCardWebp || null;
-    const backCard  = cloudCards.back  || render.backCardWebp  || null;
+    // `OP-PRJ-141` Teil 2: DER VORRANG WAR FALSCH, sobald das Streaming
+    // traegt. `beneosCloudCardPaths()` bildet einen oertlichen Pfad aus der
+    // Kennung und liefert damit IMMER einen Wert; eine Toradresse in
+    // `render.*CardWebp` wurde davon verdraengt und nie benutzt.
+    //
+    // `karteFuerBlatt()` dreht den Vorrang nur dort um, wo eine Toradresse
+    // steht, und faellt sonst auf genau diese zwei Zeilen zurueck. Eine
+    // oertlich installierte Welt verhaelt sich Zeichen fuer Zeichen wie
+    // vorher, und das ist die Bedingung dafuer, dass hier gebaut werden darf.
+    //
+    // Der Gewinn ist nicht die Adresse, sondern die ABWESENHEIT: `OP-PRJ-139`
+    // hat sechs Eintraege gezaehlt, deren Rueckseite es nicht oder nicht als
+    // WebP gibt. Eine gebildete Adresse zeigt dort am Tor ein durchsichtiges
+    // GIF von 42 Byte, also ein gueltiges Bild ohne Fehlermeldung; jetzt
+    // faellt die Kachel weg.
+    const vorne = await karteFuerBlatt(
+      render.frontCardWebp || null, cloudCards.front, "front");
+    const hinten = await karteFuerBlatt(
+      render.backCardWebp || null, cloudCards.back, "back");
+    const frontCard = vorne.src;
+    const backCard  = hinten.src;
 
     // SRD items have no Origin: suppress the emblem + "Origin" label for them
     // (they would otherwise render a "??" placeholder glyph and a stray label).

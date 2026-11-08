@@ -40,8 +40,8 @@ import {
   BEUTE_PRAEFIX, KREATUR_PRAEFIX, SETTING, GATE_DEFAULT_BASE,
 } from "./stream-settings.mjs"
 import {
-  beuteAusPfad, kartenliste, karte, karteGibtEs, kartenVergessen, kartenStand,
-  ROLLEN,
+  beuteAusPfad, kartenliste, karte, karteFuerBlatt, karteGibtEs,
+  kartenVergessen, kartenStand, ROLLEN,
 } from "./stream-karten.mjs"
 import { KARTE_MAX } from "./stream-merker.mjs"
 
@@ -420,6 +420,198 @@ console.log("\nVergessen und Bericht")
 }
 
 // ===========================================================================
+// ===========================================================================
+console.log("\nkarteFuerBlatt(): der Vorrang dreht sich nur bei einer Toradresse")
+{
+  /*
+   * DER BEFUND, DER TEIL 2 AUSGELOEST HAT, gemessen am 08.11.2026.
+   *
+   * Zwei Oberflaechen bauten dieselben zwei Zeilen:
+   *
+   *   const cloudCards = beneosCloudCardPaths(item)
+   *   const frontCard  = cloudCards.front || loot.render?.frontCardWebp
+   *
+   * `beneosCloudCardPaths()` bildet einen OERTLICHEN Pfad aus der Kennung und
+   * liefert damit IMMER einen Wert. Eine Toradresse im gespeicherten Feld
+   * wurde von diesem Vorrang verdraengt und NIE benutzt. Der Umbau ist
+   * deshalb nicht "eine Adresse bilden", sondern "den Vorrang umdrehen, wo
+   * eine Toradresse steht".
+   */
+  stelleWelt()
+  kartenVergessen()
+  const gefragt = stelleAbruf(() => ({ koerper: liste(), kopf: {} }))
+
+  const tor = assetUrl(RELEASE, "", `${KENNUNG}-front.webp`)
+  const oertlich = `beneos_assets/cloud/items/${KENNUNG}/${KENNUNG}-front.webp`
+
+  const ueberTor = await karteFuerBlatt(tor, oertlich, "front")
+  gleich("eine Toradresse schlaegt den oertlichen Pfad", ueberTor.src, tor)
+  gleich("und die Masse kommen aus der Liste",
+    `${ueberTor.breite}x${ueberTor.hoehe}`, "1024x1434")
+  gleich("dafuer wurde die Liste geholt", gefragt.length, 1)
+
+  /*
+   * DER NORMALFALL IST DER DRITTE AUSGANG, und er ist die Bedingung dafuer,
+   * dass hier gebaut werden durfte: eine oertlich installierte Welt verhaelt
+   * sich Zeichen fuer Zeichen wie vor dieser Datei.
+   */
+  const nurOertlich = await karteFuerBlatt(
+    `beneos_assets/beneos_items/${KENNUNG}/${KENNUNG}-front.webp`,
+    oertlich, "front")
+  gleich("ein oertlicher gespeicherter Pfad laesst den Vorrang wie er war",
+    nurOertlich.src, oertlich)
+  gleich("und die Masse bleiben offen, denn ueber eine Platte weiss diese "
+    + "Datei nichts",
+    `${nurOertlich.breite},${nurOertlich.hoehe}`, "null,null")
+  gleich("und es wurde NICHTS geholt", gefragt.length, 1)
+
+  // Gar kein gespeicherter Wert: auch dann der oertliche Pfad.
+  const leer = await karteFuerBlatt(null, oertlich, "front")
+  gleich("ohne gespeicherten Wert bleibt der oertliche Pfad", leer.src, oertlich)
+
+  // Weder noch: null, und keine gebildete Adresse.
+  const nichts = await karteFuerBlatt(null, null, "front")
+  gleich("ohne beides kommt null und keine gebildete Adresse", nichts.src, null)
+}
+
+console.log("\nkarteFuerBlatt(): eine fehlende Seite faellt weg statt leer zu erscheinen")
+{
+  /*
+   * DAS IST DER EIGENTLICHE GEWINN DES PAKETS, und er ist am Bestand
+   * gemessen. `OP-PRJ-139` hat am 07.11.2026 gezaehlt: drei Zauber tragen GAR
+   * KEINE Rueckseite, drei weitere tragen sie als PNG und damit unter einem
+   * Namen, den die Positivliste des Spiegels nicht mitnimmt.
+   *
+   * Wer `<kennung>-back.webp` BILDET, bekommt bei diesen sechs Eintraegen am
+   * Tor ein durchsichtiges GIF von 42 Byte. Das ist ein GUELTIGES Bild: der
+   * Browser zeichnet es, nichts meldet einen Fehler, und der Kunde sieht eine
+   * leere Kachel.
+   */
+  stelleWelt()
+  kartenVergessen()
+  stelleAbruf(() => ({ koerper: liste({ back: false }), kopf: {} }))
+
+  const torBack = assetUrl(RELEASE, "", `${KENNUNG}-back.webp`)
+  const oertlichBack = `beneos_assets/cloud/items/${KENNUNG}/${KENNUNG}-back.webp`
+
+  const fehlt = await karteFuerBlatt(torBack, oertlichBack, "back")
+  gleich("die Liste sagt nein, also kommt null", fehlt.src, null)
+
+  /*
+   * UND DER OERTLICHE PFAD DARF HIER NICHT EINSPRINGEN. Das ist der Fall, der
+   * ohne eigenen Satz durchfiele: ein Rueckfall auf `oertlich` sieht wie
+   * Vorsicht aus und waere genau der Fehler, denn die Datei liegt dort nicht.
+   */
+  wahr("der oertliche Pfad springt NICHT ein", fehlt.src !== oertlichBack)
+
+  // Die Vorderseite derselben Liste kommt weiter.
+  const vorne = await karteFuerBlatt(
+    assetUrl(RELEASE, "", `${KENNUNG}-front.webp`), null, "front")
+  wahr("die Vorderseite derselben Liste kommt weiter", !!vorne.src)
+}
+
+console.log("\nkarteFuerBlatt(): eine unbekannte Rolle gibt nichts aus")
+{
+  stelleWelt()
+  kartenVergessen()
+  const gefragt = stelleAbruf(() => ({ koerper: liste(), kopf: {} }))
+  const tor = assetUrl(RELEASE, "", `${KENNUNG}-front.webp`)
+  const krims = await karteFuerBlatt(tor, "oertlich.webp", "krims")
+  /*
+   * Eine Rolle, die `ROLLEN` nicht kennt, ist ein Fehler im Aufrufer. `karte()`
+   * gibt dafuer `zustand: null`, also faellt sie in den dritten Ausgang und
+   * bekommt den oertlichen Pfad. Das ist richtig: diese Datei entscheidet
+   * nichts, was sie nicht weiss, und der Aufrufer verhaelt sich wie vorher.
+   */
+  gleich("eine unbekannte Rolle faellt in den dritten Ausgang",
+    krims.src, "oertlich.webp")
+  gleich("und loest keinen Abruf aus", gefragt.length, 0)
+}
+
+// ===========================================================================
+console.log("\nDie zwei Oberflaechen rufen den Helfer, und zwar mit await")
+{
+  /*
+   * AM QUELLTEXT GEMESSEN UND NICHT GEFAHREN. Beide Dateien ziehen Foundry
+   * und Handlebars herein; ein Lauf hier erreicht sie nicht.
+   *
+   * ZWEI DER DREI DATEIEN TRAGEN CRLF. Kein Muster unten traegt heute ein
+   * `\n`, also schuetzt die Normalisierung im Moment nichts; sie steht als
+   * Vorsorge fuer das erste Muster, das ueber eine Zeilengrenze geht. Dieselbe
+   * Falle hat am 08.11.2026 ein Umbauskript abbrechen lassen, und ein Muster
+   * mit `\n` haette hier still nichts gefunden und dabei wie ein bestandener
+   * Satz ausgesehen.
+   */
+  const HIER = dirname(fileURLToPath(import.meta.url))
+  const FLAECHEN = [
+    ["item-sheet-extender.mjs",
+      join(HIER, "..", "loot", "item-sheet-extender.mjs"), "_buildContext"],
+    ["item-companion.mjs",
+      join(HIER, "..", "codex2", "item-companion.mjs"), "_context"],
+  ]
+
+  for (const [name, pfad, bauer] of FLAECHEN) {
+    const text = readFileSync(pfad, "utf8").replace(/\r\n/g, "\n")
+
+    wahr(`${name} bindet karteFuerBlatt ein`,
+      /import \{ karteFuerBlatt \} from "\.\.\/stream\/stream-karten\.mjs"/
+        .test(text))
+
+    // ZWEI Rufe, einer je Seite. Die ZAHL ist der Satz: wer nur die
+    // Vorderseite umstellt, laesst die Rueckseite den Namen bilden, und
+    // genau die Rueckseite ist die, die bei sechs Eintraegen fehlt.
+    const rufe = (text.match(/await karteFuerBlatt\(/g) || []).length
+    gleich(`${name} ruft ihn zweimal, vorne und hinten`, rufe, 2)
+
+    // Und der alte Vorrang darf nicht daneben stehen bleiben.
+    wahr(`${name} traegt den alten Vorrang nicht mehr`,
+      !/cloudCards\.(front|back)\s*\|\|/.test(text))
+
+    // Die Namensbildung selbst bleibt und wird weitergegeben: sie ist der
+    // dritte Ausgang und heilt SRD-Eintraege.
+    wahr(`${name} gibt den oertlichen Pfad weiter statt ihn wegzuwerfen`,
+      /cloudCards\.front/.test(text) && /cloudCards\.back/.test(text))
+
+    /*
+     * DER RUFER MUSS WARTEN, und das ist der Fall, der am 08.11.2026 als
+     * einziger durch alle Sabotagen hindurchkam.
+     *
+     * Der Bauer des Anzeigekontexts ist jetzt `async`. Verliert sein Rufer das
+     * `await`, bekommt die Vorlage ein Promise statt eines Kontexts, und das
+     * Blatt bleibt leer. Der Code ist dabei gueltig, also faengt es auch
+     * `node --check` im Vorhaken nicht; es faellt erst im laufenden Foundry
+     * auf, und dort als "zeigt nichts" ohne Fehlermeldung.
+     *
+     * Gezaehlt wird darum jedes Vorkommen des Namens: eines ist die
+     * Festlegung, jedes weitere ist ein Ruf und MUSS `await` tragen. Die
+     * Festlegung selbst wird an ihrem `async` erkannt, nicht an ihrer Zeile.
+     */
+    const stellen = [...text.matchAll(
+      new RegExp(`(await\\s+)?[\\w.]*\\b${bauer}\\(`, "g"))]
+    const feste = stellen.filter((m) => /async\s+[\w.]*$/.test(
+      text.slice(Math.max(0, m.index - 20), m.index)))
+    const bauerRufe = stellen.filter((m) => !feste.includes(m))
+    gleich(`${name}: ${bauer} ist genau einmal festgelegt`, feste.length, 1)
+    wahr(`${name}: ${bauer} wird mindestens einmal gerufen`, bauerRufe.length >= 1)
+    gleich(`${name}: jeder Ruf von ${bauer} wartet`,
+      bauerRufe.filter((m) => !m[1]).length, 0)
+
+    // Und die Festlegung traegt `async`, sonst waere `await` davor sinnlos.
+    wahr(`${name}: ${bauer} ist async festgelegt`,
+      new RegExp(`async\\s+${bauer}\\(`).test(text))
+  }
+
+  // GEGENPROBE zu den Mustern. Ein Muster, das nichts findet, ist von einem
+  // sauberen Bestand nicht zu unterscheiden.
+  wahr("die Vorrangsuche findet den alten Vorrang, wenn er da ist",
+    /cloudCards\.(front|back)\s*\|\|/.test(
+      "const x = cloudCards.front || loot.render?.frontCardWebp"))
+  gleich("die Rufzaehlung zaehlt in einem Probetext",
+    ("a await karteFuerBlatt( b await karteFuerBlatt( c"
+      .match(/await karteFuerBlatt\(/g) || []).length, 2)
+}
+
+// ===========================================================================
 console.log("\nDer Deckel des Merkers haelt, auch ueber eine lange Sitzung")
 {
   stelleWelt()
@@ -485,9 +677,9 @@ console.log("- Das lebende Tor. Hier laeuft kein Netz, `fetch` ist gestellt. Das
 console.log("  `/l/` Bytes liefert, entscheidet TC-PRJ-STR-281.")
 console.log("- Ob im Spiegel unter `beute/` wirklich etwas liegt. Der Fuelltakt stand")
 console.log("  am 08.11.2026 in keinem Cron und ist nie gelaufen.")
-console.log("- Die beiden Rufstellen im Blatt des Gegenstands und im Begleitfenster.")
-console.log("  Sie bilden den Namen heute noch selbst; das ist der zweite Teil von")
-console.log("  OP-PRJ-141 und braucht ein Foundry.")
+console.log("- Die zwei Rufstellen im laufenden Foundry. Dass sie karteFuerBlatt()")
+console.log("  rufen, ist oben am Quelltext gemessen; dass das Blatt danach eine")
+console.log("  Karte ZEIGT, braucht ein Foundry und ist TC-PRJ-STR-296.")
 console.log("- Die Masse im Ersatzbild. Dass sie ankommen, steht hier; dass das")
 console.log("  Ersatzbild sie benutzt, ist OP-PRJ-128.")
 
