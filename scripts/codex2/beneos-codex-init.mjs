@@ -59,9 +59,10 @@ Hooks.once("init", () => {
   if (!Handlebars.helpers.gte) {
     Handlebars.registerHelper("gte", (a, b) => Number(a) >= Number(b));
   }
-  // range — produces [start, start+1, ..., end-1] (used to iterate attune-dots)
-  if (!Handlebars.helpers.range) {
-    Handlebars.registerHelper("range", function (start, end) {
+  // beneosRange — produces [start, start+1, ..., end-1] (used to iterate attune-dots).
+  // Namespace the helper so it does not shadow data fields such as PF2e spell range.
+  if (!Handlebars.helpers.beneosRange) {
+    Handlebars.registerHelper("beneosRange", function (start, end) {
       const out = [];
       for (let i = Number(start); i < Number(end); i++) out.push(i);
       return out;
