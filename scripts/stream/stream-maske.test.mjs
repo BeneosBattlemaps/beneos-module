@@ -1,8 +1,9 @@
 /**
  * stream-maske.test.mjs
  *
- * Gegenprobe zu `ohneSchluesselImText()` in `stream-report.mjs`. Laeuft ohne
- * Foundry und ohne Browser:
+ * Gegenprobe zu BEIDEN Schluesselmasken in `stream-report.mjs`,
+ * `ohneSchluesselImText()` fuer Fliesstext und `ohneSchluessel()` fuer eine
+ * Adresse. Laeuft ohne Foundry und ohne Browser:
  *
  *   node scripts/stream/stream-maske.test.mjs
  *
@@ -19,9 +20,34 @@
  * Die Gegenfaelle sind die Haelfte, die zaehlt: ein Text, der wie eine
  * Toradresse aussieht, aber auf einem fremden Host liegt, darf NICHT angefasst
  * werden, und ein Text ohne Adresse muss zeichengleich zurueckkommen.
+ *
+ * AM 08.11.2026 WUCHS DIESER STAND VON 18 AUF 54 SAETZE, mit `OP-PRJ-203`, und
+ * der Anlass war ein gemessenes Leck. Dieser Stand kannte die Raeume `/a/` und
+ * `/c/`, und die Maske kannte sie auch. Am selben Tag entstanden `/l/` fuer
+ * Beute und `/s/` fuer geteilte Dateien, beide tragen den Schluessel an
+ * derselben Stelle, und die Maske liess ihn STEHEN. Gemessen mit einem
+ * erfundenen Schluessel in der gemessenen Kernzeile `Loaded <adresse> (50%)`:
+ * bei `/a/` und `/c/` fiel er, bei `/l/` und `/s/` stand er noch darin.
+ *
+ * NICHTS WAR DABEI ROT, und das ist die eigentliche Lehre. Ein Stand, der eine
+ * Teilmenge prueft, ist von einem vollstaendigen nicht zu unterscheiden,
+ * solange die Teilmenge reicht. Darum prueft dieser Stand jetzt nicht nur die
+ * vier Raeume, sondern auch ihre ANZAHL: er zaehlt roh am Quelltext, wie viele
+ * Raumbuchstaben `assetUrl()` wirklich baut, und haelt das gegen
+ * `STREAM_RAUM_BUCHSTABE`. Ein fuenfter Raum macht diesen Stand rot, bevor er
+ * ein Leck werden kann.
+ *
+ * Die Gegenzahl entsteht an einer ANDEREN Stelle als die Tabelle, naemlich am
+ * Quelltext von `assetUrl()` und `zerlegeAdresse()`. Eine Zaehlung, die
+ * dieselbe Liste zweimal liest, bestaetigt nur sich selbst.
  */
-import { ohneSchluesselImText } from "./stream-report.mjs";
-import { streamBase } from "./stream-settings.mjs";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { ohneSchluessel, ohneSchluesselImText } from "./stream-report.mjs";
+import { streamBase, STREAM_RAUM_BUCHSTABE } from "./stream-settings.mjs";
+
+const HIER = dirname(fileURLToPath(import.meta.url));
 
 let rot = 0;
 let gruen = 0;
@@ -38,6 +64,7 @@ function ohneTreffer(name, text) {
 
 const B = streamBase();
 const K = "sk_live_7f3a9c21d4e5b6a7";
+const SHA = "a".repeat(64);
 
 console.log(`Basis dieses Laufs: ${B}`);
 console.log("");
@@ -97,10 +124,171 @@ console.log("Form und Randfaelle");
     ohneSchluesselImText(`${B}/a/-/x/y.webp`), `${B}/a/-/x/y.webp`);
 }
 
+
+console.log("");
+console.log("Die zwei Raeume, die am 08.11.2026 dazukamen");
+{
+  gleich("Beute, nackte Adresse",
+    ohneSchluesselImText(`${B}/l/${K}/beneos_lt_sword/sword-front.webp`),
+    `${B}/l/-/beneos_lt_sword/sword-front.webp`);
+  gleich("Beute, die gemessene Zeile des Kerns",
+    ohneSchluesselImText(`Loaded ${B}/l/${K}/beneos_lt_sword/sword-front.webp (50%)`),
+    `Loaded ${B}/l/-/beneos_lt_sword/sword-front.webp (50%)`);
+  gleich("geteilt, nackte Adresse",
+    ohneSchluesselImText(`${B}/s/${K}/shared/${SHA}/foundry_bm_ui.webp`),
+    `${B}/s/-/shared/${SHA}/foundry_bm_ui.webp`);
+  gleich("geteilt, die gemessene Zeile des Kerns",
+    ohneSchluesselImText(`Loaded ${B}/s/${K}/shared/${SHA}/foundry_bm_ui.webp (50%)`),
+    `Loaded ${B}/s/-/shared/${SHA}/foundry_bm_ui.webp (50%)`);
+  gleich("alle vier Raeume in einer Zeile",
+    ohneSchluesselImText(
+      `${B}/a/${K}/r/v/f.webm ${B}/c/${K}/r/f.webp `
+      + `${B}/l/${K}/r/f.webp ${B}/s/${K}/shared/${SHA}/f.webp`),
+    `${B}/a/-/r/v/f.webm ${B}/c/-/r/f.webp `
+      + `${B}/l/-/r/f.webp ${B}/s/-/shared/${SHA}/f.webp`);
+}
+
+console.log("");
+console.log("Kein Raumbuchstabe bleibt uebrig: der Schluessel faellt in JEDEM");
+{
+  // DIE PROBE LAEUFT UEBER DIE TABELLE und nicht ueber eine Liste in dieser
+  // Datei. Kommt ein fuenfter Raum dazu, wird er hier automatisch mitgeprueft,
+  // und es gibt keinen Zustand, in dem dieser Block eine Teilmenge prueft und
+  // dabei gruen bleibt.
+  for (const [name, b] of Object.entries(STREAM_RAUM_BUCHSTABE)) {
+    const adresse = `${B}/${b}/${K}/release/irgendwas/datei.webp`;
+    const aus = ohneSchluesselImText(`Loaded ${adresse} (50%)`);
+    gleich(`Raum ${name} (/${b}/): der Schluessel steht nicht mehr darin`,
+      aus.includes(K), false);
+    gleich(`Raum ${name} (/${b}/): der Buchstabe steht noch darin`,
+      aus.includes(`/${b}/-`), true);
+  }
+}
+
+console.log("");
+console.log("ohneSchluessel, die Maske am Meldekanal");
+{
+  // DIESE FUNKTION WAR BIS ZUM 08.11.2026 GAR NICHT GEMESSEN, obwohl sie die
+  // ist, die jede Meldung an das Tor durchlaeuft. Ihr Buchstabe kam aus einer
+  // zweiteiligen Frage, `t.raum === "kreatur" ? "c" : "a"`, und damit erschien
+  // jede Beutedatei und jede geteilte Datei im Meldekanal als KARTENdatei.
+  gleich("Karte behaelt ihre Variante",
+    ohneSchluessel(`${B}/a/${K}/beneos_bm_0042/night/map.webm`),
+    `${B}/a/-/beneos_bm_0042/night/map.webm`);
+  gleich("Kreatur hat keine Variante und bekommt kein leeres Stueck",
+    ohneSchluessel(`${B}/c/${K}/beneos_ct_goblin/goblin-1-top.webp`),
+    `${B}/c/-/beneos_ct_goblin/goblin-1-top.webp`);
+  gleich("Beute steht unter /l/ und nicht unter /a/",
+    ohneSchluessel(`${B}/l/${K}/beneos_lt_sword/sword-front.webp`),
+    `${B}/l/-/beneos_lt_sword/sword-front.webp`);
+  gleich("geteilt steht unter /s/ und behaelt seine Pruefsumme",
+    ohneSchluessel(`${B}/s/${K}/shared/${SHA}/foundry_bm_ui.webp`),
+    `${B}/s/-/shared/${SHA}/foundry_bm_ui.webp`);
+  gleich("die Abfragezeichenkette fliegt weg, weil der Vergleich am Pfad haengt",
+    ohneSchluessel(`${B}/a/${K}/r/v/f.webm?sig=abc`),
+    `${B}/a/-/r/v/f.webm`);
+  gleich("zweimal maskieren aendert nichts mehr",
+    ohneSchluessel(ohneSchluessel(`${B}/l/${K}/beneos_lt_sword/sword-front.webp`)),
+    `${B}/l/-/beneos_lt_sword/sword-front.webp`);
+  gleich("ein oertlicher Pfad bleibt, wie er ist",
+    ohneSchluessel("beneos_assets/cloud/tokens/x/y.webp"),
+    "beneos_assets/cloud/tokens/x/y.webp");
+  gleich("leere Eingabe wird eine leere Zeichenkette",
+    ohneSchluessel(null), "");
+}
+
+console.log("");
+console.log("Der Rueckfall gibt keinen Schluessel heraus");
+{
+  // DER GEFAEHRLICHE WEG, und er ist der Grund fuer den Rueckfall auf die
+  // Textmaske. Eine Toradresse, die `zerlegeAdresse()` NICHT zerlegt, etwa
+  // weil ihr ein Pfadstueck fehlt, kam vorher UNVERAENDERT heraus, also mit
+  // Schluessel. Ein Raum, den die Tabelle noch nicht kennt, ebenso.
+  const kurz = `${B}/a/${K}/nur_release`;
+  gleich("eine Kartenadresse mit zu wenig Segmenten verliert den Schluessel",
+    ohneSchluessel(kurz).includes(K), false);
+  const fremderRaum = `${B}/x/${K}/release/datei.webp`;
+  gleich("ein Raumbuchstabe, den die Tabelle nicht kennt, bleibt unberuehrt",
+    ohneSchluessel(fremderRaum), fremderRaum);
+  gleich("und genau das ist der Grund fuer den naechsten Satz: ein Buchstabe "
+    + "AUS der Tabelle verliert ihn",
+    ohneSchluessel(`${B}/s/${K}/shared/nicht_hex/datei.webp`).includes(K), false);
+}
+
+console.log("");
+console.log("Die Gesamtmenge: die Tabelle gegen den Quelltext");
+{
+  // WARUM DIESER BLOCK EXISTIERT. Alles darueber prueft die Raeume, die die
+  // Tabelle NENNT. Keiner dieser Saetze kann sehen, dass ein Raum FEHLT, denn
+  // eine Schleife ueber eine zu kurze Liste laeuft fehlerfrei durch. Genau so
+  // ist das Leck entstanden, das dieses Paket behoben hat.
+  //
+  // Die Gegenzahl kommt deshalb aus einer anderen Datei und aus einer anderen
+  // Form: den Buchstaben, die `assetUrl()` wirklich in eine Adresse schreibt.
+  const setQuelle = readFileSync(join(HIER, "stream-settings.mjs"), "utf8");
+
+  const abUrl = setQuelle.slice(setQuelle.indexOf("export function assetUrl"));
+  const bisEnde = abUrl.slice(0, abUrl.indexOf("\nexport "));
+  const gebaut = [...bisEnde.matchAll(/\$\{kopf\}\/([a-z])\//g)].map((m) => m[1]);
+
+  // GEGENPROBE AUF DIE GEGENPROBE. Eine Suche, die nichts findet, ist von
+  // einer kaputten Suche nicht zu unterscheiden, und dann waere der
+  // Mengenvergleich darunter immer gruen.
+  gleich("die rohe Zaehlung findet ueberhaupt Buchstaben", gebaut.length > 0, true);
+  gleich("der Schnitt endet vor dem naechsten Export",
+    bisEnde.includes("export function zerlegeAdresse"), false);
+
+  const ausTabelle = Object.values(STREAM_RAUM_BUCHSTABE);
+  gleich("assetUrl baut genau so viele Raeume, wie die Tabelle nennt",
+    gebaut.length, ausTabelle.length);
+  gleich("und es sind dieselben",
+    [...new Set(gebaut)].sort().join(","), [...ausTabelle].sort().join(","));
+  gleich("kein Buchstabe steht doppelt in der Tabelle",
+    new Set(ausTabelle).size, ausTabelle.length);
+
+  // Dieselbe Frage von der anderen Seite: die RaumNAMEN der Tabelle sind die,
+  // die `zerlegeAdresse()` zurueckgibt. Weicht ein Name ab, findet
+  // `ohneSchluessel` den Buchstaben nicht und faellt still auf die Textmaske
+  // zurueck, was den Schluessel zwar nimmt, aber die kanonische Form verliert.
+  const abZerlege = setQuelle.slice(setQuelle.indexOf("export function zerlegeAdresse"));
+  const namen = [...abZerlege.matchAll(/raum:\s*"([a-z]+)"/g)].map((m) => m[1]);
+  gleich("die rohe Zaehlung findet ueberhaupt Raumnamen", namen.length > 0, true);
+  gleich("die Tabellenschluessel sind die Raumnamen aus zerlegeAdresse",
+    Object.keys(STREAM_RAUM_BUCHSTABE).sort().join(","),
+    [...new Set(namen)].sort().join(","));
+}
+
+console.log("");
+console.log("Die Maske liest ihre Buchstaben aus der Tabelle, nicht aus sich selbst");
+{
+  // WAS DIESER SATZ FAENGT, das kein Verhaltenssatz faengt: jemand schreibt die
+  // Buchstaben wieder fest in die Maske. Das Verhalten waere heute identisch,
+  // und der naechste Raum wuerde wieder lecken.
+  const repQuelle = readFileSync(join(HIER, "stream-report.mjs"), "utf8");
+  const nurCode = repQuelle.split("\n").filter((z) => {
+    const x = z.trim();
+    return x !== "" && !x.startsWith("//") && !x.startsWith("*") && !x.startsWith("/*");
+  }).join("\n");
+
+  gleich("der Kommentarfilter nimmt wirklich etwas weg",
+    nurCode.length < repQuelle.length, true);
+  gleich("die Maske nennt STREAM_RAUM_BUCHSTABE",
+    nurCode.includes("STREAM_RAUM_BUCHSTABE"), true);
+  gleich("kein festgeschriebenes (a|c) mehr im Code",
+    nurCode.includes("(a|c)"), false);
+  gleich("ohneSchluessel entscheidet nicht mehr zweiteilig am Raumnamen",
+    /raum === "kreatur"/.test(nurCode), false);
+  gleich("der Rueckfall von ohneSchluessel geht durch die Textmaske",
+    /if \(!buchstabe\) return ohneSchluesselImText/.test(nurCode), true);
+}
+
 console.log("");
 console.log(`${gruen} gruen, ${rot} rot`);
 if (rot === 0) {
-  console.log("Gegenprobe bestanden: 7 Faelle MUSSTEN unveraendert durchgehen, "
+  console.log("Gegenprobe bestanden: 8 Faelle MUSSTEN unveraendert durchgehen, "
     + "sonst wuerde diese Maskierung fremde Texte zerschneiden.");
+  console.log(`Gesamtmenge geprueft: ${Object.keys(STREAM_RAUM_BUCHSTABE).length} `
+    + "Raeume, roh am Quelltext von assetUrl nachgezaehlt. Ein fuenfter macht "
+    + "diesen Stand rot.");
 }
 process.exit(rot === 0 ? 0 : 1);
