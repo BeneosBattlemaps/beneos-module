@@ -188,13 +188,19 @@ fi
 # im Spanischen, "nao" im Portugiesischen. Kein Lauf war deswegen rot, weil
 # niemand nachsah.
 #
+# AM 08.11.2026 WUCHS IHRE MENGE von 101 auf 2614 Schluessel, mit
+# `OP-PRJ-201`. Sie prueft jetzt jeden ausgelieferten Textbaustein und nicht
+# nur die des Streamings; der Anlass waren 19 weitere Werte, darunter die
+# Meldung "Beneos Cloud ist nicht erreichbar" in ALLEN acht Sprachen. Deshalb
+# 16 Saetze statt 14.
+#
 # Sie kostet gemessen unter einer Sekunde, kein Netz, kein Foundry.
 if git diff --cached --name-only --diff-filter=ACM \
      -- lang templates/stream tools/stream-sprachen-bench \
    | grep -q .
 then
   meld "pre-commit: Sprachdateien vorgemerkt, die Sprachwache laeuft mit"
-  fahre "tools/stream-sprachen-bench/bench.mjs" "stream-sprachen-bench, 14 Saetze"
+  fahre "tools/stream-sprachen-bench/bench.mjs" "stream-sprachen-bench, 16 Saetze"
 fi
 
 # Die teure nur, wenn ihr Gegenstand angefasst wird.
