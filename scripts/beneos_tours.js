@@ -3249,51 +3249,27 @@ class BeneosTutorialSceneTour extends TourBase {
     this._spotlight = null;
   }
 
-  /**
-   * Ensure a token is recognised as a Beneos creature so the Token HUD adds
-   * the journal + skin icons. Sets `flags.world.beneos` on the actor and
-   * populates `BeneosUtility.beneosTokens` with a minimal config.
-   * Tracks whether we injected the flag so cleanup can remove it.
+  /*
+   * ENTFERNT am 2026-11-09, `OP-PRJ-196`: `_ensureBeneosFlag` und
+   * `_restoreBeneosFlag`. Sie sollten den Tutorien-Token als Beneos-Kreatur
+   * kennzeichnen, damit das HUD Journal- und Hautsymbol zeigt. Gemessen hatte
+   * `_ensureBeneosFlag` im ganzen Bestand KEINE Rufstelle, und
+   * `this._injectedBeneosFlag` wurde nur dort gesetzt, also kehrte
+   * `_restoreBeneosFlag` an seiner ersten Zeile immer um.
+   *
+   * Der lebende Weg steht in dieser Klasse und tut es richtig:
+   * `ctApplyTokenShadow` und der Codex-Schritt setzen
+   * `flags.world.beneos.tokenKey` auf `184-rot_cerf`, merken es in
+   * `_tourInjectedCodexTokenKey` und raeumen es mit
+   * `flags.world.beneos.-=tokenKey` wieder ab.
+   *
+   * Die entfernte Fassung haette auch gerufen nicht getragen: ihre Fahne trug
+   * weder `isBeneosCreature` noch `tokenKey`, und `isBeneosCreature`
+   * (`beneos_utility.js`) verlangt eines von beiden. Dazu war ihr Griff
+   * `window.BeneosUtility ?? globalThis.BeneosUtility ?? game.beneos?.utility`
+   * in allen drei Zweigen leer, denn `beneos_module.js` legt den Schluessel
+   * `BeneosUtility` ab und nicht `utility`.
    */
-  async _ensureBeneosFlag(actor, { journalId = null } = {}) {
-    if (!actor) return;
-    const existing = actor.getFlag("world", "beneos");
-    if (existing) return;
-    this._injectedBeneosFlag = { actorId: actor.id };
-    await actor.setFlag("world", "beneos", {
-      fullId: "tutorial_rot_cerf",
-      journalId: journalId
-    });
-    try {
-      const BU = window.BeneosUtility ?? globalThis.BeneosUtility ?? game.beneos?.utility;
-      if (BU?.beneosTokens) {
-        BU.beneosTokens["tutorial_rot_cerf"] = {
-          actorName: actor.name,
-          actorId: actor.id,
-          journalId: journalId,
-          fullId: "tutorial_rot_cerf",
-          fullKey: "tutorial_rot_cerf",
-          number: 1,
-          tokenKey: "rot_cerf",
-          token: actor.prototypeToken?.texture?.src
-        };
-      }
-    } catch (e) {}
-  }
-
-  /** Restore the state we changed in _ensureBeneosFlag */
-  async _restoreBeneosFlag() {
-    if (!this._injectedBeneosFlag) return;
-    try {
-      const actor = game.actors.get(this._injectedBeneosFlag.actorId);
-      if (actor) await actor.unsetFlag("world", "beneos");
-    } catch (e) {}
-    try {
-      const BU = window.BeneosUtility ?? globalThis.BeneosUtility ?? game.beneos?.utility;
-      if (BU?.beneosTokens) delete BU.beneosTokens["tutorial_rot_cerf"];
-    } catch (e) {}
-    this._injectedBeneosFlag = null;
-  }
 
   /* ---- Selector helpers (identical to existing tours) ---- */
 
@@ -3581,7 +3557,6 @@ class BeneosTutorialSceneTour extends TourBase {
           this._tourInjectedCodexTokenKey = null;
         }
       } catch (e) {}
-      this._restoreBeneosFlag();
     }
     // Dismiss any context menu left by sc-static-maps step
     try { document.querySelector('#context-menu')?.remove(); } catch (e) {}
