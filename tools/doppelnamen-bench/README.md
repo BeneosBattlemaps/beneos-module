@@ -25,11 +25,24 @@ Die Folge war verkehrt herum:
 | Abbrechen ueber `exit()` | ja |
 | normales Beenden ueber `complete()` | **nein** |
 
-Damit blieb nach jeder zu Ende gespielten Tour der Ersatz von
-`game.tooltip.deactivate` stehen, den `_installTourTooltipGuard` gesetzt hat,
-und die Tour-Elemente blieben in der Flaeche. Die richtige Form stand zweimal
+Damit blieb nach jeder zu Ende gespielten Tour der Riegel stehen, den
+`_installTourTooltipGuard` gesetzt hat. Die richtige Form stand zweimal
 daneben: `BeneosDemoTour` und die Klasse weiter unten tragen je ein `exit` und
 ein `complete` mit demselben Dreisatz.
+
+ZWEI SAETZE HIER WAREN FALSCH, und der Feldtest vom 2026-11-09 hat sie
+berichtigt. Hier stand `game.tooltip.deactivate` und dazu, die Tour-Elemente
+blieben in der Flaeche. Beides trifft nicht zu. Der Riegel fasst `deactivate`
+nicht an: er ersetzt `game.tooltip.activate` und
+`game.tooltip.dismissLockedTooltips` und setzt die Klasse `tour-active` am
+`body`. Die Tour-Elemente gehen auf beiden Wegen von 2 auf 0, denn Foundrys
+eigenes `_postStep` raeumt sie auf; das war nie der Schaden. Der Schaden ist
+groesser: der ersetzte `activate` verschluckt jeden Hinweis, dessen Klasse
+nicht "tour" enthaelt. Nach dem Beenden bekam der Kunde in ganz Foundry keine
+Hinweistexte mehr, bis er neu laedt.
+
+Die Commitnachricht von `18d381f` traegt denselben Fehler. Sie ist nicht mehr
+aenderbar, deshalb steht die Berichtigung hier und in `OP-PRJ-222`.
 
 Dazu zwei doppelte `default`-Schluessel in `beneos_utility.js`, bei
 `beneos-reload-search-engine` und `beneos-ui-state`.
@@ -99,11 +112,20 @@ die am 09.11.2026 wirklich im Bestand standen, und nicht nur erfundene.
   faellt hier also durch.
 - **Ein Name, der zur Laufzeit zusammengesetzt wird**, faellt durch jede
   dieser Regeln. `obj[a + b] = 1` zweimal ist kein Doppelname im Quelltext.
-- **Die Behebung in `BeneosSetupTour` ist nicht im Feld gefahren.** Die
-  Zusammenfuehrung stellt drei Aufrufe wieder her, die vorher beim Beenden
-  nicht liefen. Dass die Tour danach bis zum Ende durchlaeuft und die
-  Startszene weiter oeffnet, ist am Quelltext geschlossen und nicht an einer
-  laufenden Tour gemessen. Steht als offene Zeile in `OP-PRJ-222`.
+- **Die Behebung in `BeneosSetupTour` IST im Feld gefahren, am 2026-11-09.** A
+  gegen B am selben Stand, Foundry 13.351 auf Port 30003, Playwright
+  isoliert: dieselbe Tour zweimal beendet, einmal ueber Foundrys eigenes
+  `Tour.prototype.complete` und einmal ueber unsere zusammengefuehrte Methode.
+  Auf dem alten Weg blieben `activate`, `dismissLockedTooltips` und `tour-active`
+  stehen, auf dem neuen keines der drei. Tabelle in `TC-PRJ-STR-314`.
+- **Die Startszene ist weiter nicht geprueft.** Die Szene `0A8yWjm42oAg0vnw`
+  liegt in der Pruefwelt nicht, und genau deshalb war der Feldtest schreibfrei.
+- **Eine laufende Foundry-Instanz ist kein Mass fuer das Repository.** Sie
+  meldete beim Feldtest Modulfassung 14.5.0-beta.9 gegen 14.5.0-beta.10 im
+  Baum und holte eine in `6757162` entfernte Datei mit 404. Foundry liest
+  `module.json` einmal beim Serverstart; die Dateien liest es frisch. Darum
+  war der Feldtest trotzdem gueltig, belegt daran, dass `complete` im
+  Browser genau einmal am Prototyp stand.
 - **`eslint@10.13.0` kommt ueber `npx`.** Ohne Netz und ohne
   npm-Zwischenspeicher endet der Stand mit 2, und der Vorhaken nimmt das als
   "nicht gemessen". Eine Pruefung, die nicht laufen konnte, sieht hier nicht
