@@ -15,11 +15,42 @@ const TEMPLATE_PATH = "modules/beneos-module/templates/loot/item-sheet-extras.hb
 // the old migrator used to strip, but applied as a non-destructive CSS hide
 // so installations without the module still see the full description.
 
+// DER HAKENNAME IST GEMESSEN UND NICHT GERATEN, OP-PRJ-216.
+//
+// Bis zum 2026-11-09 stand hier `renderItemSheet`, der Name aus Fassung 12.
+// Gemessen am 2026-11-08 in der Welt `v13-streaming` mit einem Zaehler auf
+// beiden Namen: beim Oeffnen eines Item-Blattes feuert `renderItemSheet`
+// NULL mal und `renderItemSheet5e` EIN mal. Die Klassenkette von dnd5e 5.3.3
+// fuehrt den alten Namen nicht, und `ItemSheet5e` erbt auch nicht von
+// `ItemSheetV2`, also feuert `renderItemSheetV2` ebenfalls nicht.
+//
+// WAS DAS GEKOSTET HAT: `_inject()` wurde nie gerufen. Gemessen am selben
+// Tag an einem Item MIT vollstaendigen Beute-Vermerken stand
+// `.beneos-loot-extras` null mal im Blatt, und kein einziges Element mit
+// `beneos` im Namen. Die Tabelle aus Typ, Set-Typ und Stufe sah der Kunde
+// also nicht. Das war ein Kundenausfall und nicht nur toter Code.
+//
+// EIN NAME UND NICHT MEHRERE. Foundry V13 laesst alle Eltern-Haken der
+// Klassenkette feuern, also auch `renderDocumentSheetV2` und
+// `renderApplicationV2`. Ein Haken darauf rief `_inject()` dreimal je Render.
+// Der Doppelschutz unten faengt das, aber dreimal zu rechnen, um zweimal
+// nichts zu tun, ist kein Entwurf. Dieselbe Wahl trifft
+// `scripts/codex2/item-companion.mjs` mit derselben Begruendung.
+//
+// Geprueft von `item-sheet-extender.test.mjs`, und zwar in beide Richtungen:
+// dass dieser Name hier steht, und dass keiner der stummen oder der zu
+// breiten Namen hier steht.
+const HAKEN = "renderItemSheet5e";
+
 export class ItemSheetExtender {
 
   static register() {
-    Hooks.on("renderItemSheet", (sheet, htmlOrJq, _data) => {
+    Hooks.on(HAKEN, (sheet, htmlOrJq, _data) => {
       try {
+        // Der Haken traegt nur Item-Blaetter, aber die Abfrage kostet nichts
+        // und haelt die Funktion unabhaengig vom Namen darueber.
+        const doc = sheet?.document ?? sheet?.object ?? sheet?.item;
+        if (doc?.documentName !== "Item") return;
         ItemSheetExtender._inject(sheet, htmlOrJq);
       } catch (e) {
         console.warn("Beneos | ItemSheetExtender inject failed:", e);
@@ -28,7 +59,11 @@ export class ItemSheetExtender {
   }
 
   static async _inject(sheet, htmlOrJq) {
-    const item = sheet?.item ?? sheet?.object;
+    // `document` steht VORNE, und das ist der Teil, ohne den der neue
+    // Hakenname allein nichts aendert: ein ApplicationV2-Blatt fuehrt
+    // sein Dokument unter `document`, und `item` kann fehlen. Dieselbe
+    // Reihenfolge nimmt `item-companion.mjs`.
+    const item = sheet?.document ?? sheet?.item ?? sheet?.object;
     if (!item) return;
 
     const loot = getLootFlags(item);
