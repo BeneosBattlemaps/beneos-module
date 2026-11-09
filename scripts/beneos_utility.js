@@ -249,7 +249,9 @@ export class BeneosUtility {
 
     game.settings.register(BeneosUtility.moduleID(), 'beneos-reload-search-engine', {
       name: 'Internal storage of the User ID with Beneos Cloud',
-      default: "",
+      // Der Vorgabewert stand hier zweimal, `""` und `false`. Es gewann
+      // immer der spaetere, und bei `type: Boolean` ist `false` auch der
+      // richtige. Der leere Text war Ballast und ist weg.
       type: Boolean,
       scope: 'world',
       config: false,
@@ -568,7 +570,13 @@ export class BeneosUtility {
 
     game.settings.register(BeneosUtility.moduleID(), 'beneos-ui-state', {
       name: 'Internal data store for user-defined parameters',
-      default: {},
+      // Der Vorgabewert stand hier zweimal, `{}` und `true`, und es gewann
+      // immer `true`. Der Name und das `{}` deuten auf einen Objektspeicher,
+      // `type: Boolean` nicht. GEMESSEN: der einzige Leser im ganzen
+      // Bestand ist eine auskommentierte Zeile in beneos-table-top.js, es
+      // haengt also nichts daran. Darum faellt hier nur der doppelte
+      // Eintrag und nicht der Typ: eine Typaenderung ohne Leser waere eine
+      // Verhaltensaenderung ohne Nutzniesser. Steht als OP-PRJ-222.
       type: Boolean,
       scope: 'world',
       config: false,

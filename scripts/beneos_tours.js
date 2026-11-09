@@ -1344,13 +1344,6 @@ class BeneosSetupTour extends TourBase {
     return super.exit();
   }
 
-  async complete() {
-    this._playSound("beneos_transition.ogg");
-    _restoreTourTooltipGuard(this);
-    tourCleanup(this);
-    return super.complete();
-  }
-
   async _postStep() {
     cleanupTourElements();
     // Restore tooltip deactivation if we blocked it
@@ -1577,7 +1570,26 @@ class BeneosSetupTour extends TourBase {
   /* After the Setup Tour wraps up, open the Getting Started Tour scene if it
    * got installed during the tour. Viewing it triggers the canvasReady hook
    * that auto-starts the scene-based tutorial. Non-blocking; never throws. */
+  /*
+   * DIESE METHODE STAND ZWEIMAL IN DIESER KLASSE, und der spaetere
+   * Eintrag hat den frueheren still ueberschrieben. Gefunden am
+   * 09.11.2026 von `no-dupe-class-members`, nachdem die Datei aus einem
+   * anderen Grund in einen Lint-Lauf geriet.
+   *
+   * Die Folge war verkehrt: beim ABBRECHEN ueber `exit()` lief die
+   * Aufraeumung, beim normalen BEENDEN nicht. Damit blieb nach einer zu
+   * Ende gespielten Tour der Ersatz von `game.tooltip.deactivate`
+   * stehen, den `_installTourTooltipGuard` gesetzt hat.
+   *
+   * Die richtige Form steht zweimal daneben, bei BeneosDemoTour und bei
+   * der Klasse weiter unten: je ein `exit` und ein `complete` mit
+   * demselben Dreisatz. Hier sind beide Koerper zusammengefuehrt, erst
+   * die Aufraeumung, dann das Oeffnen der Startszene.
+   */
   async complete() {
+    this._playSound("beneos_transition.ogg");
+    _restoreTourTooltipGuard(this);
+    tourCleanup(this);
     await super.complete();
     const START_HERE_ID = "0A8yWjm42oAg0vnw";
     (async () => {

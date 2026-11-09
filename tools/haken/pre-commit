@@ -487,8 +487,40 @@ if git diff --cached --name-only --diff-filter=ACM \
    | grep -q .
 then
   meld "pre-commit: Modulcode vorgemerkt, die Globalenwache laeuft mit"
+  # KEINE ZAHL IN DIESER BESCHRIFTUNG. Sie stand hier als "Obergrenze 24" und
+  # war nach dem ersten Senken der Grenze falsch, ohne dass etwas rot wurde.
+  # Eine Zahl an zwei Stellen laeuft auseinander, und die Beschriftung ist die
+  # Stelle, die niemand nachmisst. Die Grenze steht in `bench.mjs` und nur da.
   fahre_weich "tools/v15-globale-bench/bench.mjs" \
-              "v15-globale-bench, Obergrenze 24"
+              "v15-globale-bench"
+fi
+
+# DOPPELNAMEN IM GANZEN BESTAND, und dieser Stand geht die Gegenrichtung zu
+# `lint-diff.mjs`.
+#
+# Gefunden am 09.11.2026: `BeneosSetupTour` trug `async complete()` ZWEIMAL,
+# Zeile 1347 und 1580, und JavaScript nimmt still den spaeteren. Die Folge war
+# verkehrt herum: beim Abbrechen der Tour lief die Aufraeumung, beim normalen
+# Beenden nicht. Dazu zwei doppelte `default`-Schluessel in
+# `beneos_utility.js`.
+#
+# DAS WERKZEUG DAFUER WAR DA UND HAT NICHT GEGRIFFEN. `no-dupe-class-members`
+# steht seit `OP-PRJ-195` auf `error`, aber `lint-diff.mjs` liest bewusst nur
+# die Dateien des eigenen Diffs, und `beneos_tours.js` war monatelang in
+# keinem. Der Fehler fiel erst, als die Datei aus einem anderen Grund in einen
+# Diff geriet. Darum liest dieser Stand den ganzen Ordner `scripts` und dafuer
+# nur drei Regeln.
+#
+# `fahre_weich`, denn der Stand holt ESLint ueber `npx` und endet ohne Netz und
+# ohne Zwischenspeicher mit 2. Eine Pruefung, die nicht laufen konnte, darf
+# weder gruen aussehen noch einen Commit blockieren.
+if git diff --cached --name-only --diff-filter=ACM \
+     -- scripts tools/doppelnamen-bench \
+   | grep -q .
+then
+  meld "pre-commit: Modulcode vorgemerkt, die Doppelnamenwache laeuft mit"
+  fahre_weich "tools/doppelnamen-bench/bench.mjs" \
+              "doppelnamen-bench, erlaubt 0"
 fi
 
 # ----------------------------------------------------------------- Ausgang ---
