@@ -80,7 +80,7 @@ export class BeneosTableTop {
   /******************************************************************************** */
   static getSceneControlButtons(btns) {
     if (!canvas) return;
-    CONFIG.Canvas.layers.beneos = { layerClass: ControlsLayer, group: "primary" };
+    CONFIG.Canvas.layers.beneos = { layerClass: foundry.canvas.layers.ControlsLayer, group: "primary" };
     let menu = [];
 
     if (game.user.isGM) {
@@ -158,7 +158,7 @@ export class BeneosTableTop {
       }
       let precText = BeneosTableTop.titleCache[drawing.id]
       if (!precText) {
-        precText = new PreciseText("Scene Boundary", CONFIG.canvasTextStyle.clone())
+        precText = new foundry.canvas.containers.PreciseText("Scene Boundary", CONFIG.canvasTextStyle.clone())
         canvas.drawings.addChild(precText);
         BeneosTableTop.titleCache[drawing.id] = precText
       }
@@ -175,7 +175,7 @@ export class BeneosTableTop {
       let user = game.users.get(drawing.document.getFlag("beneos-module", "user-view"))
       let precText = BeneosTableTop.titleCache[drawing.id]
       if (!precText) {
-        precText = new PreciseText("View : " + user.name, CONFIG.canvasTextStyle.clone())
+        precText = new foundry.canvas.containers.PreciseText("View : " + user.name, CONFIG.canvasTextStyle.clone())
         canvas.drawings.addChild(precText);
         BeneosTableTop.titleCache[drawing.id] = precText
       }
@@ -257,7 +257,7 @@ export class BeneosTableTop {
           rect.setFlag("beneos-module", "beneos-area-mode", "scene-boundary")
         } else {
           let rect = { x: canvas.stage.x, y: canvas.stage.y, interface: true, drawingRole: 'information', hidden: true, strokeColor: game.user.color, shape: { width: canvas.stage.width, height: canvas.stage.height, type: 'r' }, visible: true, fillType: 0 }
-          const defaults = game.settings.get("core", DrawingsLayer.DEFAULT_CONFIG_SETTING);
+          const defaults = game.settings.get("core", foundry.canvas.layers.DrawingsLayer.DEFAULT_CONFIG_SETTING);
           const rectData = foundry.utils.mergeObject(defaults, rect);
           let d = await canvas.scene.createEmbeddedDocuments('Drawing', [rectData]);
           await d[0].setFlag('beneos-module', 'beneos-area-mode', "scene-boundary");
@@ -327,7 +327,7 @@ export class BeneosTableTop {
 
       // console.log('Creating view area for ' + data.userId);
       let rect = { x: x, y: y, interface: true, drawingRole: 'information', hidden: true, strokeColor: game.user.color, shape: { width: width, height: height, type: 'r' }, visible: true, fillType: 0 }
-      const defaults = game.settings.get("core", DrawingsLayer.DEFAULT_CONFIG_SETTING);
+      const defaults = game.settings.get("core", foundry.canvas.layers.DrawingsLayer.DEFAULT_CONFIG_SETTING);
       const rectData = foundry.utils.mergeObject(defaults, rect);
       let d = await canvas.scene.createEmbeddedDocuments('Drawing', [rectData]);
       await d[0].setFlag('beneos-module', 'user-view', data.userId);
@@ -641,7 +641,7 @@ export class BeneosTableTop {
   static async newAnimatePan({ x, y, scale, duration = 250, speed }) {
     // Determine the animation duration to reach the target
     if (speed) {
-      let ray = new Ray(this.stage.pivot, { x, y });
+      let ray = new foundry.canvas.geometry.Ray(this.stage.pivot, { x, y });
       duration = Math.round(ray.distance * 1000 / speed);
     }
     // Constrain the resulting dimensions and construct animation attributes
@@ -654,10 +654,10 @@ export class BeneosTableTop {
     ].filter(a => a.to !== undefined);
 
     // Trigger the animation function
-    await CanvasAnimation.animate(attributes, {
+    await foundry.canvas.animation.CanvasAnimation.animate(attributes, {
       name: "canvas.animatePan",
       duration: duration,
-      easing: CanvasAnimation.easeInOutCosine,
+      easing: foundry.canvas.animation.CanvasAnimation.easeInOutCosine,
       ontick: () => {
         this.hud.align();
         const stage = this.stage;
@@ -678,9 +678,9 @@ export class BeneosTableTop {
 
     // Enable only if bounding box is enabled
     if (!game.user.isGM && (BeneosTableTop.isControlPlayerView() || BeneosTableTop.isSceneBoundary())) {
-      Canvas.prototype.pan = BeneosTableTop.newPan;
-      Canvas.prototype._onDragCanvasPan = BeneosTableTop.newOnDragCanvasPan;
-      Canvas.prototype.animatePan = BeneosTableTop.newAnimatePan;
+      foundry.canvas.Canvas.prototype.pan = BeneosTableTop.newPan;
+      foundry.canvas.Canvas.prototype._onDragCanvasPan = BeneosTableTop.newOnDragCanvasPan;
+      foundry.canvas.Canvas.prototype.animatePan = BeneosTableTop.newAnimatePan;
     }
     return true;
   }
@@ -718,9 +718,9 @@ export class BeneosTableTop {
   /*************************************/
   static async applyPosition(msgData) {
     let bounds = msgData.bounds;
-    Canvas.prototype.pan = BeneosTableTop.newPan;
-    Canvas.prototype._onDragCanvasPan = BeneosTableTop.newOnDragCanvasPan;
-    Canvas.prototype.animatePan = BeneosTableTop.newAnimatePan;
+    foundry.canvas.Canvas.prototype.pan = BeneosTableTop.newPan;
+    foundry.canvas.Canvas.prototype._onDragCanvasPan = BeneosTableTop.newOnDragCanvasPan;
+    foundry.canvas.Canvas.prototype.animatePan = BeneosTableTop.newAnimatePan;
 
     await canvas.pan(bounds);
   }
