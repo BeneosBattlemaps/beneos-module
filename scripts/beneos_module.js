@@ -430,7 +430,7 @@ Hooks.once('ready', () => {
         const browseOptions = { wildcard: true }
         // V14: the bare global FilePicker is a deprecated alias; resolve the
         // namespaced implementation with a V13 fallback.
-        const FP = foundry.applications?.apps?.FilePicker?.implementation ?? FilePicker
+        const FP = foundry.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker
         if (/\.s3\./.test(pattern)) {
           source = "s3"
           const { bucket, keyPrefix } = FP.parseS3URL(pattern)

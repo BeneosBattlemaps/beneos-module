@@ -284,7 +284,7 @@ function _commonPrefixLength(a, b) {
 
 async function _safeBrowseDirs(root) {
   try {
-    const FP = foundry.applications?.apps?.FilePicker?.implementation ?? FilePicker;
+    const FP = foundry.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker;
     const result = await FP.browse("data", root);
     return Array.isArray(result?.dirs) ? result.dirs : [];
   } catch (e) {
@@ -413,7 +413,7 @@ async function _buildFileIndex(wantedBasenames, onProgress) {
 
     let result;
     try {
-      const FP = foundry.applications?.apps?.FilePicker?.implementation ?? FilePicker;
+      const FP = foundry.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker;
       result = await FP.browse("data", dir || "/");
     } catch (e) {
       // Permission denied / non-existent / forge quirk — skip and continue.

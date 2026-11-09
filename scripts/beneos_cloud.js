@@ -5093,7 +5093,7 @@ export class BeneosCloud {
           // Create the directory structure if it doesn't exist. V14: the bare
           // global FilePicker is a deprecated alias; use the namespaced
           // implementation like the rest of this file.
-          const FP = foundry.applications?.apps?.FilePicker?.implementation ?? FilePicker
+          const FP = foundry.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker
           try {
             await FP.createDirectory("data", "beneos_assets", {});
           } catch (err) {
