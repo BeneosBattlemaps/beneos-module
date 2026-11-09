@@ -3475,7 +3475,7 @@ export class BeneosUtility {
 
   /********************************************************************************** */
   static async buildAvailableTokensMenuHTML(template, beneosTokensHUD) {
-    const beneosTokensDisplay = await renderTemplate('modules/beneos-module/templates/' + template,
+    const beneosTokensDisplay = await foundry.applications.handlebars.renderTemplate('modules/beneos-module/templates/' + template,
       { beneosTokensHUD })
 
     return beneosTokensDisplay
@@ -3514,7 +3514,7 @@ export class BeneosUtility {
         top: structuredClone(tokenConfig.top)
       }
       let json = JSON.stringify(jsonData)
-      saveDataToFile(json, "text/json", tokenConfig.JSONFilePath)
+      foundry.utils.saveDataToFile(json, "text/json", tokenConfig.JSONFilePath)
     }
   }
 

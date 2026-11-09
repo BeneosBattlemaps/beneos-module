@@ -188,7 +188,7 @@ export class ActorSetBonusTab {
       senseCompass: buildSenseCompassContext(actor, activeSenseId),
     };
 
-    const html = await renderTemplate(TEMPLATE_PATH, ctx);
+    const html = await foundry.applications.handlebars.renderTemplate(TEMPLATE_PATH, ctx);
 
     // 1. Tab-Section: append next to existing primary <section> sections.
     const lastPrimarySection =

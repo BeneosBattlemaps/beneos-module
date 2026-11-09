@@ -76,7 +76,7 @@ export class ItemSheetExtender {
     if (root.querySelector(":scope .beneos-loot-extras[data-beneos-loot]")) return;
 
     const ctx = await ItemSheetExtender._buildContext(loot, item);
-    const html = await renderTemplate(TEMPLATE_PATH, ctx);
+    const html = await foundry.applications.handlebars.renderTemplate(TEMPLATE_PATH, ctx);
 
     // dnd5e V2 ItemSheet renders the description text inside
     //   .tab[data-tab="description"] .editor / .editor-content / .item-description
