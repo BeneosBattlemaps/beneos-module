@@ -15,10 +15,12 @@ import {
 import {
   assetUrl,
   platzhalterAdresse,
+  BEUTE_PRAEFIX,
   KREATUR_PRAEFIX,
   lieferungStreamt,
   zerlegeAdresse,
 } from "./stream/stream-settings.mjs"
+import { karteGibtEs, kartenVergessen } from "./stream/stream-karten.mjs"
 
 // FilePicker.upload(..., { notify: false }) used to swallow failures
 // (disk full, permissions, server reject) — the await would resolve,
@@ -298,6 +300,101 @@ function _beneosKreaturAdresse(tokenKey, filename) {
  */
 function _beneosKreaturPlatzhalter(tokenKey, filename) {
   return platzhalterAdresse(`${KREATUR_PRAEFIX}${tokenKey}`, "", filename)
+}
+
+/*
+ * DIE KLAPPKARTEN DER GEGENSTAENDE, `OP-PRJ-141` Teil 4.
+ *
+ * Warum es diese vier Funktionen braucht und nicht nur eine Zeile:
+ *
+ * GEMESSEN AM 09.11.2026. `karte()` in `stream/stream-karten.mjs` gibt
+ * ihren dritten Ausgang `null` zurueck, sobald `beuteAusPfad(pfad)
+ * .ueberTor` falsch ist, und das ist bei JEDEM oertlichen Pfad der Fall.
+ * Der Installer schrieb bisher nur oertliche Pfade, also konnte
+ * `karteFuerBlatt()` den Streamweg nie nehmen, und Teil 3 war wirkungslos.
+ * Der Satz stand als offener Rest im Ticket und ist hiermit eingeloest.
+ *
+ * WAS GESTREAMT WIRD, UND WAS NICHT:
+ *
+ *   `-front.webp`, `-back.webp`   ans Tor. Gemessen 0,213 und 0,043 MB je
+ *                                 Gegenstand, ueber den Bestand 0,47 GB.
+ *   `-icon.webp`                  bleibt oertlich, und das ist keine
+ *                                 Vorsicht. Es steht in `Item.img`, einem
+ *                                 Feld, das jeder Mitspieler liest, es ist
+ *                                 9352 Byte gross, es wird im Inventar
+ *                                 auch ohne Netz gebraucht, und es liegt
+ *                                 ohnehin oeffentlich auf
+ *                                 `beneos-database.com`. Ueber den ganzen
+ *                                 Bestand sind alle Symbole zusammen rund
+ *                                 10 MB. Betreiberentscheid offen, die
+ *                                 Empfehlung lautet nein.
+ *
+ * DREI BEDINGUNGEN MUESSEN ZUSAMMEN STIMMEN, nicht eine, und jede hat
+ * ihren eigenen Ausgang nach oertlich. Eine Datei auf der Platte ist immer
+ * brauchbar; eine Adresse ins Leere ist am Tor ein durchsichtiges GIF von
+ * 42 Byte, also ein gueltiges Bild ohne jede Fehlermeldung.
+ */
+function _beneosBeuteStreamt() {
+  return lieferungStreamt()
+}
+
+/**
+ * Derselbe Riegel wie bei den Kreaturen, und aus demselben Grund.
+ *
+ * `filename` kommt aus der Antwort der Cloud und erreicht die
+ * Adressbildung. `adressSegmente()` kodiert JE SEGMENT und laesst damit
+ * `/` und `..` als Segmente stehen. Siehe `_beneosKreaturDateiOk()`.
+ */
+function _beneosBeuteDateiOk(filename) {
+  return /^[A-Za-z0-9._-]+\.webp$/.test(String(filename || ""))
+}
+
+/**
+ * Die SCHLUESSELFREIE Adresse einer Kartenseite.
+ *
+ * Es gibt hier absichtlich keine Funktion fuer die Form MIT Schluessel.
+ * `flags.beneos-module.loot.render` steht in einem Kundendokument, das
+ * exportiert, kopiert und weitergegeben wird. Stuende der Streamschluessel
+ * darin, koennte ein Dritter damit am Tor abrufen. Dieselbe Entscheidung
+ * wie beim Journalbild, `OP-PRJ-149` und `OP-PRJ-179`.
+ *
+ * Zur Anzeige setzt `blobFuer()` in `stream/stream-bilder.mjs` den
+ * Schluessel von heute ein.
+ */
+function _beneosBeutePlatzhalter(kennung, filename) {
+  return platzhalterAdresse(`${BEUTE_PRAEFIX}${kennung}`, "", filename)
+}
+
+/**
+ * Nennt das Tor diese Kartenseite wirklich?
+ *
+ * DIE LISTE ENTSCHEIDET, NICHT EIN SCHALTER, und das ist die Lehre aus
+ * `OP-PRJ-139`: dort sind sechs Eintraege gezaehlt, deren Rueckseite es
+ * nicht oder nicht als WebP gibt. Wer die Adresse bildet, bekommt fuer die
+ * ein durchsichtiges GIF ohne Fehlermeldung.
+ *
+ * `karteGibtEs()` ist bewusst streng: `null` heisst "nicht geprueft" und
+ * zaehlt NICHT als ja. Antwortet das Tor nicht, weil die Route noch nicht
+ * ausgeliefert ist, wird oertlich installiert, und das ist der heutige
+ * Normalzustand. Der Bau wirkt damit von selbst, sobald der Deploy laeuft,
+ * und nicht einen Tag zu frueh.
+ *
+ * Gefragt wird mit der Adresse MIT Schluessel, denn der Abruf braucht ihn.
+ * Geschrieben wird die schluesselfreie Form. Ein Abruf je Gegenstand, die
+ * Liste liegt danach fuenf Minuten im Zwischenspeicher.
+ */
+async function _beneosBeuteKarteAmTor(kennung, filename, rolle) {
+  try {
+    return await karteGibtEs(
+      assetUrl(`${BEUTE_PRAEFIX}${kennung}`, "", filename), rolle)
+  } catch (err) {
+    // Ein Fehlschlag der Frage ist ein Nein. Oertlich installieren macht
+    // nichts kaputt, eine Adresse ins Leere schon.
+    console.warn(
+      `[Beneos Cloud] Loot card probe failed for ${kennung} ${rolle}, `
+      + `installing the file locally instead.`, err)
+    return false
+  }
 }
 
 /**
@@ -2703,12 +2800,75 @@ export class BeneosCloud {
         BeneosUtility.debugMessage("Directory already exists")
       }
       BeneosUtility.debugMessage("Item", itemData, itemObjectData)
-      // Decode the base64 tokenImg and upload it to the FilePicker
-      let file = await _beneosBildDatei(itemData.itemImage.front, `item ${itemKey} front`);
-      if (file) await _beneosSafeUpload(finalFolder, file, `item ${itemKey} front`);
 
-      file = await _beneosBildDatei(itemData.itemImage.back, `item ${itemKey} back`);
-      if (file) await _beneosSafeUpload(finalFolder, file, `item ${itemKey} back`);
+      /*
+       * DIE STREAMWEICHE DER KLAPPKARTEN, `OP-PRJ-141` Teil 4.
+       *
+       * EINMAL je Gegenstand gelesen, damit Upload, Dokument und
+       * Nachpruefung garantiert denselben Wert sehen. Ein Schalter, der
+       * mitten in einer Installation umgestellt wird, wuerde sonst einen
+       * halb gestreamten Gegenstand hinterlassen.
+       *
+       * JE SEITE EINE EIGENE FRAGE, und das ist nicht Vorsicht, sondern
+       * gemessen notwendig: `OP-PRJ-139` hat sechs Eintraege gezaehlt,
+       * deren RUECKSEITE es nicht oder nicht als WebP gibt, waehrend die
+       * Vorderseite liegt. Eine gemeinsame Frage haette fuer diese sechs
+       * entweder beide Seiten oertlich gelassen oder beide gestreamt, und
+       * die zweite Wahl waere am Tor ein durchsichtiges GIF.
+       */
+      /*
+       * DIE FELDFRAGE STEHT VOR DER STREAMENTSCHEIDUNG, und das ist die
+       * Lehre aus dem ersten Entwurf. Dort wurde erst gestreamt und danach
+       * gemerkt, dass das Dokument kein Feld fuer die Adresse traegt, also
+       * mussten die Dateien nachgeholt werden: ein zweiter Weg, zwei
+       * doppelte Aufrufe und ein Zustand mehr. `bildform-adresse-bench` C4
+       * hat genau das abgewiesen, denn es haelt die Zahl der Schreibstellen
+       * fest.
+       *
+       * Ohne `loot.render` liest die Flaeche allein den oertlichen Pfad aus
+       * `beneosCloudCardPaths()`. Es gibt dann kein Feld, in das eine
+       * Adresse passt, also kann nicht gestreamt werden, und die Frage am
+       * Tor eruebrigt sich.
+       */
+      const beuteStreamt = _beneosBeuteStreamt()
+      const kartenfelder = foundry.utils.getProperty(
+        itemObjectData, "flags.beneos-module.loot.render")
+      const hatKartenfelder = !!kartenfelder && typeof kartenfelder === "object"
+      if (beuteStreamt && !hatKartenfelder) {
+        console.warn(
+          `[Beneos Cloud] Item ${itemKey} carries no `
+          + `flags.beneos-module.loot.render to hold a gate address; `
+          + `its cards are installed locally.`)
+      }
+      const frontRoh = itemData.itemImage?.front?.filename
+      const backRoh = itemData.itemImage?.back?.filename
+      const frontStreamt = beuteStreamt && hatKartenfelder
+        && _beneosBeuteDateiOk(frontRoh)
+        && await _beneosBeuteKarteAmTor(itemKey, frontRoh, "front")
+      const backStreamt = beuteStreamt && hatKartenfelder
+        && _beneosBeuteDateiOk(backRoh)
+        && await _beneosBeuteKarteAmTor(itemKey, backRoh, "back")
+      if (beuteStreamt && (!_beneosBeuteDateiOk(frontRoh) || !_beneosBeuteDateiOk(backRoh))) {
+        // Ein Name, der keine Adresse werden kann, ist ein Katalogdefekt
+        // und muss als solcher lesbar sein. Eine Karte, die das Tor nur
+        // nicht nennt, ist dagegen der Normalzustand und bekommt hier
+        // bewusst keinen Satz.
+        console.warn(
+          `[Beneos Cloud] Item ${itemKey} ships a card filename that cannot go `
+          + `into an address; that card is installed locally instead.`)
+      }
+
+      // Decode the base64 tokenImg and upload it to the FilePicker
+      let file = null
+      if (!frontStreamt) {
+        file = await _beneosBildDatei(itemData.itemImage.front, `item ${itemKey} front`);
+        if (file) await _beneosSafeUpload(finalFolder, file, `item ${itemKey} front`);
+      }
+
+      if (!backStreamt) {
+        file = await _beneosBildDatei(itemData.itemImage.back, `item ${itemKey} back`);
+        if (file) await _beneosSafeUpload(finalFolder, file, `item ${itemKey} back`);
+      }
 
       itemObjectData.system.description.value = itemObjectData.system.description.value.replaceAll("beneos_assets/beneos_items/", "beneos_assets/cloud/items/")
 
@@ -2737,7 +2897,24 @@ export class BeneosCloud {
             lootRender[k] = lootRender[k].replaceAll("beneos_assets/beneos_items/", "beneos_assets/cloud/items/")
           }
         }
+        /*
+         * `OP-PRJ-141` Teil 4: die gestreamte Seite bekommt ihre Adresse,
+         * und zwar NACH der Pfadberichtigung darueber, damit sie sie nicht
+         * wieder ueberschreibt.
+         *
+         * `iconWebp` bleibt ausdruecklich unberuehrt. Begruendung im Kopf
+         * von `_beneosBeuteStreamt()`.
+         */
+        if (frontStreamt) {
+          lootRender.frontCardWebp = _beneosBeutePlatzhalter(itemKey, frontRoh)
+        }
+        if (backStreamt) {
+          lootRender.backCardWebp = _beneosBeutePlatzhalter(itemKey, backRoh)
+        }
       }
+      // Nach der Installation liegt die Welt anders als vor fuenf Minuten.
+      // Dieselbe Begruendung wie bei `posenVergessen()`.
+      if (frontStreamt || backStreamt) kartenVergessen(`${BEUTE_PRAEFIX}${itemKey}`)
 
       let item = new CONFIG.Item.documentClass(itemObjectData);
       if (item) {

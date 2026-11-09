@@ -670,6 +670,156 @@ wahr("stream-posen holt denselben Merker", posen.includes('from "./stream-merker
 const eigenerMerker = (karten + posen).match(/^function (merken|einmal|frisch)\(/gm) || []
 gleich("keine der beiden Dateien hat einen eigenen Merker", eigenerMerker.length, 0)
 
+// ===========================================================================
+console.log("\nDie Streamweiche des Item-Installers, OP-PRJ-141 Teil 4")
+
+/*
+ * WARUM DIESER ABSCHNITT, UND WARUM AM QUELLTEXT.
+ *
+ * `beneos_cloud.js` braucht Foundry: es ruft `FilePicker`, `CONFIG.Item` und
+ * `game.settings`. Hier laeuft kein Foundry, also wird gelesen und nicht
+ * gefahren. Was dadurch offen bleibt, steht unten in der Liste.
+ *
+ * DER WICHTIGSTE SATZ IST DER ERSTE, und er ist ein Sicherheitssatz.
+ * `flags.beneos-module.loot.render` steht in einem Kundendokument, das
+ * exportiert, kopiert und weitergegeben wird. Wer dort `assetUrl()` schreibt
+ * statt `_beneosBeutePlatzhalter()`, legt den Streamschluessel in ein Feld,
+ * das jeder Mitspieler liest, und ein Dritter koennte damit am Tor abrufen.
+ * Gemessen am 09.11.2026: ein Konto mit `role: 1` liest die Welteinstellungen
+ * vollstaendig, siehe `TC-PRJ-STR-310`. Der Fehler sieht dabei aus wie ein
+ * funktionierender Streamweg.
+ */
+const cloudRoh = readFileSync(join(hier, "..", "beneos_cloud.js"), "utf8")
+const cloudZeilen = cloudRoh.split("\n").filter((z) => {
+  const k = z.trimStart()
+  return k !== "" && k[0] !== "*" && !k.startsWith("//") && !k.startsWith("/*")
+})
+const cloudCode = cloudZeilen.join("\n")
+
+// 1. Der Sicherheitssatz: die geschriebene Adresse ist die schluesselfreie.
+const kartenfelder = cloudCode.match(
+  /lootRender\.(front|back)CardWebp\s*=\s*([A-Za-z_$][\w$]*)\(/g) || []
+gleich("beide Kartenfelder werden gesetzt", kartenfelder.length, 2)
+for (const treffer of kartenfelder) {
+  wahr(`${treffer.slice(11, 26).trim()} nimmt den Platzhalter`,
+    treffer.includes("_beneosBeutePlatzhalter("))
+}
+// Die Gegenrichtung, und sie ist die eigentliche Wache: NIRGENDS darf
+// `assetUrl` in ein Kartenfeld geschrieben werden.
+const mitSchluessel = cloudCode.match(
+  /lootRender\.\w+\s*=\s*(assetUrl|_beneosBeuteAdresse)\(/g) || []
+gleich("kein Kartenfeld bekommt eine Adresse MIT Schluessel", mitSchluessel.length, 0)
+
+/*
+ * 2. ES GIBT KEINE FUNKTION FUER DIE FORM MIT SCHLUESSEL, und das ist
+ * Absicht. Bei den Kreaturen gibt es beide, weil `prototypeToken.texture.src`
+ * ein Leinwandfeld ist und die Adresse mit Schluessel braucht. Fuer die Beute
+ * ist kein Feld dieser Art bekannt; waere eines noetig, muesste die Funktion
+ * mit einer Begruendung entstehen und nicht beilaeufig.
+ */
+gleich("keine Beute-Adressfunktion mit Schluessel",
+  (cloudCode.match(/function _beneosBeuteAdresse\b/g) || []).length, 0)
+
+/*
+ * 3. JE SEITE EINE EIGENE FRAGE. `OP-PRJ-139` hat sechs Eintraege gezaehlt,
+ * deren Rueckseite es nicht oder nicht als WebP gibt, waehrend die
+ * Vorderseite liegt. Eine gemeinsame Frage haette fuer diese sechs beide
+ * Seiten gleich behandelt, und eine der beiden Antworten waere falsch.
+ */
+gleich("zwei getrennte Fragen am Tor",
+  (cloudCode.match(/_beneosBeuteKarteAmTor\(/g) || []).length, 3)
+wahr("die Vorderseite hat ihre eigene Bedingung",
+  /_beneosBeuteDateiOk\(frontRoh\)[\s\S]{0,80}_beneosBeuteKarteAmTor\(itemKey, frontRoh, "front"\)/
+    .test(cloudCode))
+wahr("die Rueckseite hat ihre eigene Bedingung",
+  /_beneosBeuteDateiOk\(backRoh\)[\s\S]{0,80}_beneosBeuteKarteAmTor\(itemKey, backRoh, "back"\)/
+    .test(cloudCode))
+
+/*
+ * 4. DER STRENGE WEG AM TOR. `karteGibtEs()` zaehlt `null` NICHT als ja;
+ * `karte()` liefert `null` als dritten Ausgang und liesse sich mit `?.src`
+ * versehentlich als Treffer lesen. Antwortet das Tor nicht, muss oertlich
+ * installiert werden, und das ist heute der Normalzustand, weil die Route
+ * `/l/` noch nicht ausgeliefert ist.
+ */
+wahr("der Installer fragt ueber karteGibtEs",
+  cloudCode.includes("karteGibtEs(") && cloudRoh.includes('from "./stream/stream-karten.mjs"'))
+gleich("er benutzt nicht karte() unmittelbar",
+  (cloudCode.match(/[^\w$.]karte\(/g) || []).length, 0)
+
+/*
+ * 5. DER UPLOAD FAELLT WEG, SONST SPART DAS STREAMEN KEIN BYTE. Das ist der
+ * ganze Zweck: 0,213 MB vorn und 0,043 MB hinten je Gegenstand, ueber den
+ * Bestand 0,47 GB.
+ */
+wahr("die Vorderseite wird nur ohne Streamen hochgeladen",
+  /if \(!frontStreamt\) \{/.test(cloudCode))
+wahr("die Rueckseite wird nur ohne Streamen hochgeladen",
+  /if \(!backStreamt\) \{/.test(cloudCode))
+
+/*
+ * 6. DAS SYMBOL BLEIBT OERTLICH. Es steht in `Item.img`, einem Feld, das
+ * jeder Mitspieler liest, es wird im Inventar auch ohne Netz gebraucht, und
+ * alle Symbole des Bestandes sind zusammen rund 10 MB. Betreiberentscheid
+ * offen, die Empfehlung lautet nein.
+ */
+gleich("iconWebp bekommt keine Adresse",
+  (cloudCode.match(/lootRender\.iconWebp\s*=/g) || []).length, 0)
+wahr("itemObjectData.img bleibt der oertliche Pfad",
+  /itemObjectData\.img = `\$\{finalFolder\}/.test(cloudCode))
+
+/*
+ * 7. DIE GEMERKTE LISTE WIRD VERGESSEN. Nach einer Installation liegt die
+ * Welt anders als vor fuenf Minuten. Dieselbe Begruendung wie bei
+ * `posenVergessen()` fuer die Kreaturen.
+ */
+wahr("kartenVergessen wird gerufen", cloudCode.includes("kartenVergessen("))
+
+/*
+ * 8. DIE FELDFRAGE STEHT VOR DER STREAMENTSCHEIDUNG, und das ist der Teil,
+ * den das Pruefstor erzwungen hat.
+ *
+ * Ohne `loot.render` liest die Flaeche allein den oertlichen Pfad aus
+ * `beneosCloudCardPaths()`. Es gibt dann kein Feld, in das eine Adresse
+ * passt, also darf nicht gestreamt werden.
+ *
+ * Der erste Entwurf am 09.11.2026 hat erst gestreamt und die Dateien danach
+ * nachgeholt. `bildform-adresse-bench` C4 hat ihn abgewiesen, weil die Zahl
+ * der `_beneosBildDatei(`-Schreibstellen von 13 auf 15 stieg. Der Befund war
+ * nicht die Zahl, sondern die Bauart dahinter: ein zweiter Weg, doppelte
+ * Aufrufe und ein Zustand mehr. Die Frage gehoert nach vorn, dann gibt es
+ * keinen Nachholfall.
+ */
+wahr("die Feldfrage wird gestellt",
+  /const hatKartenfelder = !!kartenfelder && typeof kartenfelder === "object"/.test(cloudCode))
+gleich("beide Seiten haengen an der Feldfrage",
+  (cloudCode.match(/Streamt = beuteStreamt && hatKartenfelder/g) || []).length, 2)
+gleich("es gibt keinen Nachholzweig mehr",
+  (cloudCode.match(/downloading the cards after all/g) || []).length, 0)
+
+/*
+ * 9. DIE WEICHE WIRD EINMAL JE GEGENSTAND GELESEN. Ein Schalter, der mitten
+ * in einer Installation umgestellt wird, wuerde sonst einen halb gestreamten
+ * Gegenstand hinterlassen. Dieselbe Bauart wie bei den Kreaturen.
+ *
+ * Gezaehlt werden die VORKOMMEN der Funktion und nicht die Zuweisung: eine
+ * Sabotage am 09.11.2026 schrieb `_beneosBeuteStreamt() && _beneosBeuteStreamt()`
+ * und kam durch, weil die Zuweisungszeile als Praefix unveraendert blieb. Zwei
+ * ist die richtige Zahl, denn eines der beiden ist die Definition selbst.
+ */
+wahr("die Zuweisung steht einmal",
+  (cloudCode.match(/const beuteStreamt = _beneosBeuteStreamt\(\)/g) || []).length === 1)
+gleich("der Schalter kommt genau zweimal vor, Definition und eine Rufstelle",
+  (cloudCode.match(/_beneosBeuteStreamt\(/g) || []).length, 2)
+
+/*
+ * 10. DER DATEINAMENRIEGEL IST DERSELBE WIE BEI DEN KREATUREN. Ein Name mit
+ * `..` darin wird in `adressSegmente()` je Segment kodiert, also bleibt der
+ * Schraegstrich stehen und die Adresse verlaesst ihren Raum.
+ */
+const riegel = cloudCode.match(/\/\^\[A-Za-z0-9\._-\]\+\\\.webp\$\//g) || []
+wahr("Beute und Kreatur tragen denselben Riegel", riegel.length >= 2)
+
 // ---------------------------------------------------------------------------
 console.log(`\n${gruen} bestanden, ${rot} gescheitert`)
 console.log("\nNicht geprueft, ausdruecklich benannt:")
