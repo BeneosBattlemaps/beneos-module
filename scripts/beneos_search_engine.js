@@ -48,7 +48,7 @@ export class BeneosModuleMenu extends Dialog {
     }
 
     BeneosUtility.debugMessage("SEARCH results", beneosTokensHUD)
-    let html = await renderTemplate('modules/beneos-module/templates/' + this.listTemplate,
+    let html = await foundry.applications.handlebars.renderTemplate('modules/beneos-module/templates/' + this.listTemplate,
       { beneosBasePath: BeneosUtility.getBasePath(), beneosDataPath: BeneosUtility.getFullPathWithSlash(), beneosTokensHUD, searchValue })
     this.data.content = html
     this.render(true)

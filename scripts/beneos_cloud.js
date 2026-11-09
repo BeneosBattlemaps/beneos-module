@@ -879,7 +879,7 @@ export class BeneosCloudLogin extends FormApplication {
     // "Check email" in the unknown-address question passes the address the user
     // just typed, so they correct it instead of typing it again.
     const savedEmail = prefillEmail || this.recallLoginEmail()
-    let content = await renderTemplate("modules/beneos-module/templates/beneos-cloud-login.html", { email: savedEmail })
+    let content = await foundry.applications.handlebars.renderTemplate("modules/beneos-module/templates/beneos-cloud-login.html", { email: savedEmail })
 
     // Wave B-9-fix-57: rejectClose: false so closing via the X header
     // button resolves with null (matches Cancel) instead of throwing.

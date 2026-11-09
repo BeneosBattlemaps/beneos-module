@@ -128,6 +128,35 @@ fahre() {
   fi
 }
 
+# Wie `fahre`, aber fuer einen Satz, der DREI Austritte kennt. Austritt 2
+# heisst "nicht messbar", etwa weil auf diesem Rechner keine Foundry liegt.
+# Das ist kein Befund und darf keinen Commit blockieren; es wird gemeldet,
+# damit niemand die Deckung fuer gegeben haelt. Nur Austritt 1 ist rot.
+fahre_weich() {
+  datei=$1
+  name=$2
+  if [ ! -f "$datei" ]; then
+    if git cat-file -e "HEAD:$datei" 2>/dev/null; then
+      meld "pre-commit: $name fehlt im Arbeitsbaum, HEAD kennt sie aber"
+      ROT=$((ROT + 1))
+    fi
+    return
+  fi
+  node "$datei" > "$TMP/lauf" 2>&1
+  code=$?
+  if [ "$code" -eq 0 ]; then
+    meld "pre-commit: ok  $name"
+  elif [ "$code" -eq 2 ]; then
+    meld "pre-commit: NICHT GEMESSEN  $name"
+    tail -n 3 "$TMP/lauf" >&2
+  else
+    meld ""
+    meld "pre-commit: ROT  $name"
+    tail -n 25 "$TMP/lauf" >&2
+    ROT=$((ROT + 1))
+  fi
+}
+
 fahre "scripts/creature-installer/anker.test.mjs" "anker.test.mjs, 22 Saetze"
 fahre "tools/v14-import-bench/unit.mjs"           "v14-import unit.mjs, 53 Saetze"
 
@@ -422,6 +451,32 @@ if git diff --cached --name-only --diff-filter=ACM \
 then
   meld "pre-commit: Bauvorgabe vorgemerkt, die Paketgrenze laeuft mit"
   fahre "tools/paket-grenze-bench/bench.mjs" "paket-grenze-bench, 39 Saetze"
+fi
+
+# Der Satz gegen die Globalen, die Foundry 15 entfernt.
+#
+# Foundry 13 hat 378 Namen in Namensraeume verschoben und den alten globalen
+# Namen als Uebergangshilfe stehen gelassen, `until: 15`. Gemessen am
+# 09.11.2026: 31 davon sind in der installierten Foundry 14 schon ganz weg,
+# und das Modul nutzt keinen dieser 31 ohne Rueckfall. Offen sind 24 Stellen
+# an acht anderen Namen, und die Obergrenze haelt die Zahl.
+#
+# WARUM EIN STATISCHER SATZ: Foundry meldet den Zugriff nur EINMAL je Name
+# und Sitzung (`once: true`). Eine Messung im Browser zeigte am 09.11.2026
+# genau eine der damals sechs offenen renderTemplate-Stellen, ein zweiter
+# Durchgang im selben Browser zeigte null. Der Satz findet alle sechs.
+#
+# Der Ausloeser deckt `scripts` GANZ, denn genau das liest der Satz. Ein
+# Ausloeser, der schmaler ist als der Lesebereich seines Satzes, ist eine
+# Luecke und wird nie rot; dasselbe stand am 08.11. bei `OP-PRJ-216` und am
+# 09.11. bei `OP-PRJ-151`.
+if git diff --cached --name-only --diff-filter=ACM \
+     -- scripts module.json tools/v15-globale-bench \
+   | grep -q .
+then
+  meld "pre-commit: Modulcode vorgemerkt, die Globalenwache laeuft mit"
+  fahre_weich "tools/v15-globale-bench/bench.mjs" \
+              "v15-globale-bench, Obergrenze 24"
 fi
 
 # ----------------------------------------------------------------- Ausgang ---
