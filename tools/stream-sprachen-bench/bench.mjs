@@ -969,6 +969,301 @@ ok("und laesst eine strenge durch",
 ok("und sie weist eine leere Grundmenge ab",
   !mindTraegt(198, 0) && !mindTraegt(0, 0))
 
+/* ----------- 6. Jeder Platzhalter wird von seinem Aufrufer gefuellt */
+
+console.log("\nJeder Platzhalter wird von seinem Aufrufer gefuellt")
+
+/*
+ * WARUM DIESER ABSCHNITT GEBRAUCHT WIRD, und er schliesst die Luecke, die
+ * Abschnitt 5 seit dem 08.11.2026 selbst benennt.
+ *
+ * Abschnitt 5 vergleicht die dreizehn Uebersetzungen GEGENEINANDER. Steht in
+ * allen dreizehn dasselbe `{seconds}`, das kein Aufrufer liefert, ist er
+ * gruen und der Kunde sieht woertlich `{seconds}`. `OP-PRJ-151` fuehrt genau
+ * das als "nicht geprueft": "ein `{seconds}`, das kein Aufrufer liefert,
+ * bleibt in dreizehn Sprachen gleich falsch."
+ *
+ * Dieser Abschnitt fragt deshalb nach der ANDEREN Richtung: nennt der
+ * Aufrufer jeden Platzhalter, den sein Text verlangt. Gemessen am 09.11.2026
+ * sind es NULL Befunde, und das ist der Grund, warum er gebaut werden durfte.
+ * Eine Wache, die am ersten Tag rot ist, wird abgeschaltet.
+ *
+ * DREI MESSWEGE HABEN VORHER FALSCH GEMESSEN, und jeder sah nach einem Befund
+ * aus. Sie stehen hier, weil der naechste Leser sie sonst neu macht:
+ *   1. Ein Muster, das nur `.format(` kennt, meldet 69 Schluessel als ohne
+ *      Aufrufer. Das Modul ruft ueber eigene Helfer, `Lf()`, `this.#f()` und
+ *      `this._confirm()`, und jeder uebergibt sein Objektliteral genauso.
+ *      Darum steht hier ein BELIEBIGER Aufrufname vor der Klammer.
+ *   2. Ein Namensleser, der einen Doppelpunkt verlangt, meldete 22 Aufrufer
+ *      als unvollstaendig. Alle 22 benutzten die Kurzschreibweise `{ name }`.
+ *      Darum liest `objektNamen` beide Formen, und der Koeder `K6.Kurz`
+ *      haelt das fest.
+ *   3. Ein Leser, der nur Javascript kennt, meldete zwoelf Schluessel des
+ *      Offline-Fensters. Sie stehen in Handlebars, und dort fuellt
+ *      `{{localize "K" used=a limit=b}}` ueber Hash-Angaben.
+ */
+
+const QUELLORDNER = ["scripts", "templates", "tools"]
+const QUELLENDUNGEN = [".js", ".mjs", ".hbs", ".html"]
+
+function quellenSammeln(ordner) {
+  const raus = []
+  const lauf = (p) => {
+    let eintraege
+    try { eintraege = readdirSync(p, { withFileTypes: true }) } catch { return }
+    for (const e of eintraege) {
+      if (e.name === "node_modules" || e.name === ".git") continue
+      const voll = join(p, e.name)
+      if (e.isDirectory()) lauf(voll)
+      else if (QUELLENDUNGEN.some((x) => e.name.endsWith(x))) raus.push(voll)
+    }
+  }
+  for (const o of ordner) lauf(join(WURZEL, o))
+  return raus
+}
+
+/*
+ * Das Objektliteral wird ueber die KLAMMERTIEFE gelesen und nicht mit einem
+ * Muster. Ein Muster bis zur naechsten schliessenden Klammer bricht an jedem
+ * verschachtelten Objekt ab, und `{ name: x, teile: { a: 1 } }` ist der
+ * Normalfall und nicht die Ausnahme.
+ */
+function literalAb(text, start) {
+  let tiefe = 0
+  for (let j = start; j < Math.min(start + 4000, text.length); j++) {
+    const c = text[j]
+    if (c === "{") tiefe++
+    else if (c === "}") {
+      tiefe--
+      if (tiefe === 0) return text.slice(start + 1, j)
+    }
+  }
+  return null
+}
+
+function objektNamen(lit) {
+  const n = new Set()
+  // Form `name: wert`
+  for (const m of lit.matchAll(/(?:^|[,{\s])([A-Za-z_]\w*)\s*:/g)) n.add(m[1])
+  // Kurzschreibweise `{ name }` und `{ name, zahl }`. Siehe Messweg 2 oben.
+  for (const teil of lit.split(/,(?![^{[(]*[}\])])/)) {
+    const t = teil.trim()
+    if (/^[A-Za-z_]\w*$/.test(t)) n.add(t)
+  }
+  return n
+}
+
+/*
+ * DIE FORMENLISTE IST EINE GESAMTMENGE und bekommt darum ihren eigenen Satz,
+ * dieselbe Lehre wie bei `PLATZHALTER_FORMEN` in Abschnitt 5: wer eine Form
+ * aus der Liste nimmt, verliert ihre Pruefung, und keine Zahl wird rot, weil
+ * die andere Form allein die Schranke traegt.
+ */
+const AUFRUFFORMEN = ["javascript", "handlebars"]
+const RE_AUFRUF_JS = /[A-Za-z_$#][\w$#]*\(\s*(["'`])([A-Za-z0-9_.]+)\1\s*,\s*\{/g
+const RE_AUFRUF_HBS = /\{\{[#~]?\s*localize\s+(["'`])([A-Za-z0-9_.]+)\1([^}]*)\}\}/g
+
+function aufrufeSammeln(texte) {
+  const gefuellt = new Map()
+  const offen = new Set()
+  const jeForm = { javascript: 0, handlebars: 0 }
+  const nimm = (k, namen) => {
+    if (!gefuellt.has(k)) gefuellt.set(k, new Set())
+    for (const n of namen) gefuellt.get(k).add(n)
+  }
+  for (const text of texte) {
+    for (const m of text.matchAll(RE_AUFRUF_JS)) {
+      const lit = literalAb(text, m.index + m[0].length - 1)
+      if (lit === null) continue
+      jeForm.javascript++
+      // Ein `...daten` kann jeden Namen tragen. Was es traegt, steht hier
+      // nicht, also wird dieser Schluessel NICHT beanstandet und
+      // stattdessen gezaehlt. Eine Vermutung waere ein Fehlalarm.
+      if (lit.includes("...")) offen.add(m[2])
+      nimm(m[2], objektNamen(lit))
+    }
+    for (const m of text.matchAll(RE_AUFRUF_HBS)) {
+      jeForm.handlebars++
+      nimm(m[2], [...m[3].matchAll(/([A-Za-z_]\w*)\s*=/g)].map((x) => x[1]))
+    }
+  }
+  return { gefuellt, offen, jeForm }
+}
+
+function sollNamen(quelle) {
+  const soll = new Map()
+  for (const [k, v] of Object.entries(quelle)) {
+    if (typeof v !== "string") continue
+    const namen = [...new Set([...v.matchAll(/\{([A-Za-z_]\w*)\}/g)]
+      .map((m) => m[1]))].sort()
+    if (namen.length) soll.set(k, namen)
+  }
+  return soll
+}
+
+function ungefuellte(soll, gefuellt, offen) {
+  const schlecht = []
+  let geprueft = 0, ohneAufruf = 0, mitSpread = 0
+  for (const [k, sollListe] of soll) {
+    if (!gefuellt.has(k)) { ohneAufruf++; continue }
+    if (offen.has(k)) { mitSpread++; continue }
+    geprueft++
+    const da = gefuellt.get(k)
+    const fehlt = sollListe.filter((p) => !da.has(p))
+    if (fehlt.length) {
+      schlecht.push(`${k} fehlt [${fehlt}] gefuellt [${[...da].sort()}]`)
+    }
+  }
+  return { schlecht, geprueft, ohneAufruf, mitSpread }
+}
+
+const quellDateien = quellenSammeln(QUELLORDNER)
+const quellTexte = quellDateien.map((p) => readFileSync(p, "utf8"))
+const { gefuellt: aufrufe, offen: aufrufOffen, jeForm } =
+  aufrufeSammeln(quellTexte)
+const soll6 = sollNamen(en)
+const r6 = ungefuellte(soll6, aufrufe, aufrufOffen)
+
+/*
+ * Die Mindestzahlen sind GEMESSEN am 09.11.2026 und stehen als Schranke nach
+ * unten, mit derselben Begruendung und demselben Helfer wie in Abschnitt 5:
+ * ein Sammler, der nichts mehr findet, ist von einem sauberen Bestand nicht
+ * zu unterscheiden, und eine Schranke im Rumpf ihres eigenen Satzes prueft
+ * niemand.
+ */
+const AUFRUF_MIND = { dateien: 223, javascript: 233, handlebars: 720,
+  geprueft: 166 }
+
+ok(`die Formenliste nennt genau ${AUFRUFFORMEN.length} Aufrufformen`,
+  AUFRUFFORMEN.length === 2, `gefunden: ${AUFRUFFORMEN.length}`)
+ok("und zwar javascript und handlebars",
+  AUFRUFFORMEN.slice().sort().join(",") === "handlebars,javascript",
+  AUFRUFFORMEN.join(","))
+ok("jede Form hat Aufrufstellen gefunden",
+  AUFRUFFORMEN.every((f) => jeForm[f] > 0),
+  AUFRUFFORMEN.map((f) => `${f}=${jeForm[f]}`).join(", "))
+
+ok(`kein Platzhalter bleibt unbefuellt `
+  + `(${r6.geprueft} Schluessel geprueft, ${r6.ohneAufruf} ohne Aufrufer, `
+  + `${r6.mitSpread} mit Streuung)`,
+  r6.schlecht.length === 0,
+  r6.schlecht.slice(0, 5).join(" | "))
+
+ok(`der Sammler hat mindestens ${AUFRUF_MIND.dateien} Quelldateien gelesen`,
+  quellDateien.length >= AUFRUF_MIND.dateien, `${quellDateien.length}`)
+ok(`und die Schranke darauf ist streng genug`,
+  mindTraegt(AUFRUF_MIND.dateien, quellDateien.length),
+  `${AUFRUF_MIND.dateien} gegen ${quellDateien.length}`)
+
+for (const f of AUFRUFFORMEN) {
+  ok(`die Form "${f}" findet noch mindestens ${AUFRUF_MIND[f]} Aufrufstellen`,
+    jeForm[f] >= AUFRUF_MIND[f], `${jeForm[f]}`)
+  ok(`und die Schranke der Form "${f}" ist streng genug`,
+    mindTraegt(AUFRUF_MIND[f], jeForm[f]),
+    `${AUFRUF_MIND[f]} gegen ${jeForm[f]}`)
+}
+
+ok(`es werden noch mindestens ${AUFRUF_MIND.geprueft} Schluessel wirklich `
+  + "geprueft",
+  r6.geprueft >= AUFRUF_MIND.geprueft, `${r6.geprueft}`)
+ok("und die Schranke darauf ist streng genug",
+  mindTraegt(AUFRUF_MIND.geprueft, r6.geprueft),
+  `${AUFRUF_MIND.geprueft} gegen ${r6.geprueft}`)
+
+/*
+ * DIE DECKUNG WIRD GENANNT UND NICHT VERSCHWIEGEN. Von 198 Schluesseln mit
+ * Platzhalter haben 32 keinen erkannten Aufrufer. Sie sind KEIN Befund
+ * dieses Satzes, aus demselben Grund, aus dem Abschnitt 5 die 64 fehlenden
+ * Schluessel nicht mitzaehlt: das waere ein fremder Befund. Gemessen am
+ * 09.11.2026 sind 22 von ihnen im ganzen Bestand ueberhaupt nicht gerufen,
+ * also toter Text, und das gehoert in ein eigenes Paket.
+ *
+ * Die Zahl bekommt aber eine OBERGRENZE, denn sonst waechst die Luecke
+ * unbemerkt: wer morgen einen Aufrufweg einbaut, den der Sammler nicht
+ * kennt, verschiebt Schluessel aus "geprueft" nach "ohne Aufrufer", und
+ * jeder Satz darueber bleibt gruen.
+ */
+const OHNE_AUFRUFER_HOECHSTENS = 32
+ok(`hoechstens ${OHNE_AUFRUFER_HOECHSTENS} Schluessel haben keinen erkannten `
+  + "Aufrufer",
+  r6.ohneAufruf <= OHNE_AUFRUFER_HOECHSTENS, `${r6.ohneAufruf}`)
+ok("und die Summe der drei Gruppen ist die ganze Sollmenge",
+  r6.geprueft + r6.ohneAufruf + r6.mitSpread === soll6.size,
+  `${r6.geprueft} + ${r6.ohneAufruf} + ${r6.mitSpread} !== ${soll6.size}`)
+
+/*
+ * DIE GEGENPROBE STEHT IN EINEM SATZ UND NICHT IN VIEREN, aus demselben
+ * Grund wie bei den Koedern in Abschnitt 5: vier Einzelsaetze lassen sich
+ * einzeln auf "irgendein Befund" aufweichen, ein Listenvergleich nicht.
+ *
+ * Die vier Koeder decken die vier Fehlerarten, die wirklich vorkommen, und
+ * der dritte und vierte halten zwei Messfehler fest, die am 09.11.2026
+ * echt passiert sind.
+ */
+const KOEDER6_EN = {
+  "K6.Weg": "Hello {name}, {count} left",
+  "K6.Heil": "Hello {name}, {count} left",
+  "K6.Hbs": "Used {used} of {limit}",
+  "K6.Kurz": "Hello {name}",
+}
+const KOEDER6_QUELLE = [
+  // Javascript, ein Platzhalter nicht gefuellt
+  'ui.notifications.info(game.i18n.format("K6.Weg", { name: wert }))',
+  // Javascript, heil, ueber einen eigenen Helfer statt ueber .format
+  'Lf("K6.Heil", { name: wert, count: zahl }, "fallback")',
+  // Handlebars, ein Hash fehlt
+  '<p>{{localize "K6.Hbs" used=belegt}}</p>',
+  // Javascript, heil, in Kurzschreibweise. Messfehler 2 von oben.
+  'this.#f("K6.Kurz", { name })',
+]
+const k6 = aufrufeSammeln(KOEDER6_QUELLE)
+const k6r = ungefuellte(sollNamen(KOEDER6_EN), k6.gefuellt, k6.offen)
+const K6_SOLL = ["K6.Hbs", "K6.Weg"]
+ok(`die Probe findet genau die ${K6_SOLL.length} verdorbenen Koeder und `
+  + "nicht die zwei heilen",
+  k6r.schlecht.map((z) => z.split(" ")[0]).sort().join(",")
+  === K6_SOLL.join(","),
+  `gefunden: [${k6r.schlecht.map((z) => z.split(" ")[0]).sort()}], `
+  + `erwartet: [${K6_SOLL}]`)
+// Und die Koederliste ist nicht leer geraeumt. Ein Vergleich von "" mit ""
+// haelt, und das sieht wie ein bestandener Satz aus.
+ok(`die Koederliste nennt ${K6_SOLL.length} Faelle und der Koeder `
+  + `${Object.keys(KOEDER6_EN).length} Saetze bei `
+  + `${KOEDER6_QUELLE.length} Aufrufstellen`,
+  K6_SOLL.length === 2 && Object.keys(KOEDER6_EN).length === 4
+  && KOEDER6_QUELLE.length === 4 && k6r.geprueft === 4,
+  `${K6_SOLL.length} / ${Object.keys(KOEDER6_EN).length} / `
+  + `${KOEDER6_QUELLE.length} / geprueft ${k6r.geprueft}`)
+
+/*
+ * EINE FUENFTE GEGENPROBE ZIELT AUF DIE STREUUNG. Ein `...daten` darf nicht
+ * beanstandet werden, und es darf auch nicht als geprueft gelten. Ohne
+ * diesen Satz liesse sich `offen` leer raeumen, und dann wuerde jeder
+ * Streu-Aufruf zum Fehlalarm, oder umgekehrt jeder Aufruf als Streuung
+ * ausgenommen und der ganze Abschnitt waere wirkungslos.
+ */
+const STREU_EN = { "S6.Streu": "Hello {name}, {count} left" }
+const streu = aufrufeSammeln(['Lf("S6.Streu", { ...daten })'])
+const streuR = ungefuellte(sollNamen(STREU_EN), streu.gefuellt, streu.offen)
+ok("eine Streuung wird nicht beanstandet und auch nicht als geprueft gezaehlt",
+  streuR.schlecht.length === 0 && streuR.mitSpread === 1
+  && streuR.geprueft === 0,
+  `schlecht ${streuR.schlecht.length}, streu ${streuR.mitSpread}, `
+  + `geprueft ${streuR.geprueft}`)
+
+/*
+ * UND DIE SECHSTE ZIELT AUF DEN LITERALLESER SELBST. Ein verschachteltes
+ * Objekt muss ganz gelesen werden, sonst endet das Literal zu fruehe und der
+ * zweite Platzhalter fehlt scheinbar.
+ */
+const TIEF_EN = { "T6.Tief": "Hello {name}, {count} left" }
+const tief = aufrufeSammeln(
+  ['Lf("T6.Tief", { teile: { a: 1, b: 2 }, name: x, count: n })'])
+const tiefR = ungefuellte(sollNamen(TIEF_EN), tief.gefuellt, tief.offen)
+ok("ein verschachteltes Objektliteral wird ganz gelesen",
+  tiefR.schlecht.length === 0 && tiefR.geprueft === 1,
+  tiefR.schlecht.join(" | ") || `geprueft ${tiefR.geprueft}`)
+
 /* ------------------------------------------------------------------ Bilanz */
 
 console.log(`\n${bestanden} bestanden, ${gescheitert} gescheitert`)

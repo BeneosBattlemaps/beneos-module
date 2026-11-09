@@ -26,15 +26,16 @@ Beim Nachzählen kamen zwei weitere Lücken heraus, die niemand gemeldet hatte, 
 
 Das war ausgerechnet der wichtigste Kundentext des ganzen Rollouts.
 
-## Die fünf Aussagen
+## Die sechs Aussagen
 
-**Die Kopfzeile dieses Abschnitts hiess bis zum 08.11.2026 "Die drei Aussagen", während der Stand schon fünf Abschnitte fuhr.** Eine Zahl in einer Überschrift veraltet zuerst und wird zuerst gelesen; sie steht hier als Zahl, damit die Abweichung beim nächsten Zuwachs wieder auffällt.
+**Die Kopfzeile dieses Abschnitts hiess bis zum 08.11.2026 "Die drei Aussagen", während der Stand schon fünf Abschnitte fuhr.** Eine Zahl in einer Überschrift veraltet zuerst und wird zuerst gelesen; sie steht hier als Zahl, damit die Abweichung beim nächsten Zuwachs wieder auffällt. **Und sie ist am 09.11.2026 zum zweiten Mal aufgefallen**, als Aussage sechs dazukam. Das ist der Zweck der Zahl und kein Mangel: eine Überschrift ohne Zahl hätte beide Male nichts gesagt.
 
 1. **Jeder Schlüssel, den eine Streaming-Vorlage ruft, steht in `en.json`.** Ein Tippfehler im Schlüssel zeigt sonst den Schlüssel selbst auf dem Bildschirm.
 2. **Jeder `BENEOS.Stream.*`-Schlüssel steht in allen dreizehn Dateien.** Dazu `BENEOS.Cloud.Bmap.Quota*`, weil die Speicherleiste zum selben Merkmal gehört.
 3. **Keine Streaming-Vorlage trägt einen festen Text.** Zwei Leser, weil einer allein nicht reicht: Umlaute finden deutsche Festtexte, sichtbarer Rohtext zwischen zwei Tags findet auch englische.
 4. **Jeder ausgelieferte Textbaustein steht in der Schreibweise seiner Sprache.** Nicht nur die des Streamings: gemessen am 08.11.2026 standen 20 Werte ausserhalb in ASCII-Ersatzform, `OP-PRJ-201`. Ausgenommen sind die Suchbegriffe, denn die stehen absichtlich in beiden Formen.
 5. **Jeder Platzhalter steht in jeder Sprache zeichengleich.** Beide Formen: die geschweifte von Foundry mit 198 Schlüsseln und die ältere Prozentform mit 6. Das verlangte `OP-PRJ-151` von Anfang an, geprüft hat es bis zum 08.11.2026 niemand, und die Lage war dabei sauber. Ein falscher Platzhalter lässt den Satz richtig aussehen und zeigt an der Stelle des Werts wörtlich `{name}`, oder gar nichts: `format()` ersetzt nur, was es kennt.
+6. **Jeder Platzhalter wird von seinem Aufrufer gefüllt.** Das ist die andere Richtung von Aussage 5, und sie schliesst deren eigene Deckungslücke: Aussage 5 vergleicht die dreizehn Übersetzungen gegeneinander, steht also ein `{seconds}` in allen dreizehn und füllt es niemand, ist sie grün und der Kunde liest `{seconds}`. Gemessen am 09.11.2026: **166 Schlüssel geprüft, 0 Befunde**, dazu 32 ohne erkannten Aufrufer, die ausdrücklich nicht mitgezählt werden. **Drei Messwege haben vorher falsch gemessen**, und alle drei stehen im Quelltext: ein Muster nur für `.format(` meldete 69 Fehlalarme, weil das Modul über eigene Helfer ruft; ein Namensleser mit Doppelpunktzwang meldete 22, weil die Kurzschreibweise `{ name }` keinen trägt; und ein Leser ohne Handlebars meldete zwölf, weil `{{localize "K" used=a}}` über Hash-Angaben füllt.
 
 ## Warum "gleich wie Englisch" nur ein Hinweis ist
 
