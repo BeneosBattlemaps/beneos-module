@@ -254,13 +254,32 @@ fi
 # Platzhalter laesst den Satz richtig aussehen und zeigt an der Stelle des
 # Werts woertlich `{name}` oder gar nichts. Deshalb 37 Saetze statt 16.
 #
-# Sie kostet gemessen unter einer Sekunde, kein Netz, kein Foundry.
+# AM 09.11.2026 KAM DIE ANDERE RICHTUNG DAZU, Abschnitt 6, `OP-PRJ-151`.
+# Abschnitt 5 vergleicht die dreizehn Uebersetzungen GEGENEINANDER. Steht
+# in allen dreizehn dasselbe `{seconds}`, das kein Aufrufer liefert, ist er
+# gruen und der Kunde liest woertlich `{seconds}`. Abschnitt 6 fragt
+# deshalb, ob der Aufrufer jeden Platzhalter seines Textes nennt: gemessen
+# 166 Schluessel, 0 Befunde, 12 von 12 Sabotagen gefangen. Deshalb 55
+# Saetze statt 37.
+#
+# UND DER AUSLOESER MUSSTE MITWACHSEN, sonst waere der neue Satz tot.
+# Abschnitt 6 liest `scripts`, `templates` und `tools` GANZ, denn dort
+# stehen die Aufrufstellen. Der Ausloeser nannte nur `lang`,
+# `templates/stream` und den Standordner. Wer eine Aufrufstelle in
+# `scripts/beneos_cloud.js` aendert und dabei einen Platzhalter weglaesst,
+# haette das Tor nie geweckt. Dasselbe ist am 08.11.2026 bei `OP-PRJ-216`
+# gemessen worden: ein Ausloeser, der schmaler ist als der Lesebereich
+# seines Satzes, ist eine Luecke, und sie wird nie rot.
+#
+# Sie kostet gemessen 0,9 Sekunden ueber drei Laeufe, kein Netz, kein
+# Foundry. Der breitere Ausloeser weckt sie bei fast jedem Commit, und das
+# ist der Preis dafuer, dass sie den Bereich deckt, den sie liest.
 if git diff --cached --name-only --diff-filter=ACM \
-     -- lang templates/stream tools/stream-sprachen-bench \
+     -- lang templates scripts tools \
    | grep -q .
 then
-  meld "pre-commit: Sprachdateien vorgemerkt, die Sprachwache laeuft mit"
-  fahre "tools/stream-sprachen-bench/bench.mjs" "stream-sprachen-bench, 37 Saetze"
+  meld "pre-commit: Sprach- oder Aufrufdateien vorgemerkt, die Sprachwache laeuft mit"
+  fahre "tools/stream-sprachen-bench/bench.mjs" "stream-sprachen-bench, 55 Saetze"
 fi
 
 # Die Reihenfolge der Filterlisten, wenn eine der zwei Sortierstellen oder
