@@ -196,14 +196,30 @@ then
   #
   # WAS EIN STAND HIER ERFUELLEN MUSS: ohne Netz, ohne Foundry, ohne
   # Datenbank, und in rund einer Sekunde. Wer einen Stand baut, der das nicht
-  # kann, legt ihn nicht unter `scripts/stream/*.test.mjs` ab, sonst haelt er
-  # jeden Commit dieses Ordners auf.
-  STAENDE=$(ls scripts/stream/*.test.mjs 2>/dev/null | sort)
+  # kann, legt ihn nicht unter `scripts/stream/*.test.mjs` oder
+  # `scripts/loot/*.test.mjs` ab, sonst haelt er jeden Commit dieser Ordner
+  # auf.
+  #
+  # BEIDE ORDNER, UND DAS WAR AM 2026-11-09 EIN BEFUND. Der Ausloeser
+  # darueber nennt `scripts/stream` UND `scripts/loot` seit `OP-PRJ-141`,
+  # diese Sammlung las aber nur den Streamordner. `OP-PRJ-216` legte den
+  # ersten Stand unter `scripts/loot/` ab, und er waere nie gefahren worden:
+  # der Commit haette den Haken ausgeloest, der Haken haette elf Staende
+  # gefahren und den zwoelften nicht gesehen. Dieselbe Klasse wie der Befund
+  # vom 2026-11-08, wo die Sammlung die Streamstaende namentlich aufzaehlte
+  # und den neuen nicht kannte; dort war es eine Liste, hier ein Ordner.
+  STAENDE=$(ls scripts/stream/*.test.mjs scripts/loot/*.test.mjs \
+            2>/dev/null | sort)
   ANZAHL=$(printf '%s\n' "$STAENDE" | grep -c 'test\.mjs$')
-  if [ "$ANZAHL" -lt 11 ]; then
-    meld "pre-commit: ABBRUCH, nur $ANZAHL Streampruefsaetze gefunden, erwartet"
-    meld "            mindestens 11. Entweder ist die Suche kaputt oder ein"
-    meld "            Stand ist verschwunden; beides ist ein Befund und keine"
+  # Die Mindestzahl deckt beide Ordner: elf unter `stream/` und einer unter
+  # `loot/`. Sie sichert nach unten und waechst mit, wenn jemand sie
+  # nachzieht; eine Suche, die nichts findet, ist von einer kaputten Suche
+  # nicht zu unterscheiden.
+  if [ "$ANZAHL" -lt 12 ]; then
+    meld "pre-commit: ABBRUCH, nur $ANZAHL Pruefsaetze unter scripts/stream"
+    meld "            und scripts/loot gefunden, erwartet mindestens 12."
+    meld "            Entweder ist die Suche kaputt oder ein Stand ist"
+    meld "            verschwunden; beides ist ein Befund und keine"
     meld "            bestandene Pruefung."
     exit 1
   fi
