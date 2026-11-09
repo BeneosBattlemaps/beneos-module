@@ -194,8 +194,20 @@ fahre "tools/v14-import-bench/unit.mjs"           "v14-import unit.mjs, 53 Saetz
 # Dieser Satz lief in keinem Tor: `scripts/codex2` stand in keiner Liste, also
 # haette eine Aenderung genau dort den Satz nicht ausgeloest. Ein Pruefer, der
 # bei der Aenderung seines Gegenstands nicht laeuft, ist kein Pruefer.
+# DER AUSLOESER DECKT DEN LESEBEREICH, UND DAS WAR ER NICHT.
+#
+# Gemessen am 09.11.2026 ueber alle `readFileSync`-Stellen der Saetze
+# in `scripts/stream` und `scripts/loot`: sie lesen ausserdem
+# `scripts/beneos_cloud.js`, `scripts/beneos_utility.js` und
+# `lang/*.json`. Keine der drei stand hier. Wer die Streamweiche des
+# Item-Installers in `beneos_cloud.js` aendert, haette das Tor also
+# nicht geweckt, obwohl `stream-beute.test.mjs` genau diese Datei
+# liest. Derselbe Befund zum dritten Mal, nach `OP-PRJ-216` am 08.11.
+# und `OP-PRJ-151` am 09.11.: ein Ausloeser, der schmaler ist als der
+# Lesebereich seines Satzes, ist eine Luecke und wird nie rot.
 if git diff --cached --name-only --diff-filter=ACM \
-     -- scripts/stream scripts/loot \
+     -- scripts/stream scripts/loot lang \
+        scripts/beneos_cloud.js scripts/beneos_utility.js \
         scripts/codex2/item-companion.mjs \
         scripts/cloud-v2/beneos-native-installer.mjs \
    | grep -q .
