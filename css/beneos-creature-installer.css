@@ -117,6 +117,7 @@
    keyboard focus bring back the full tab above. Approved deviation from
    COL-12 (retreat through lower contrast), standard.md 2.6, user 2026-11-06:
    the tab sits on every map and must not draw attention. */
+/* INTENTIONAL-DESIGN: ABW-018, vom Betreiber genehmigt, Register J:/_ai/claude/design/standard.md 2.6. Nicht zurueckbauen. */
 #beneos-creature-installer:not(.bci-expanded) .bci-tab:not(:hover):not(:focus-visible) {
   --bci-fill: color-mix(in srgb, var(--bc-bg-panel) 62%, transparent);
   --bci-edge: var(--bc-border);
