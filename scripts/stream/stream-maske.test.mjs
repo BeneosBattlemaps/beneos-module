@@ -75,6 +75,9 @@ const RAUMPROBE = {
     release: "shared",
     variant: "a".repeat(64),
     pfad: "foundry_bm_ui.webp",
+    // Seit T-056 traegt die geteilte Adresse das Release, ueber das das Tor
+    // das Recht prueft.
+    traeger: { release: "beneos_bm_0113", variant: "hd" },
   },
 };
 
@@ -96,6 +99,7 @@ function ohneTreffer(name, text) {
 const B = streamBase();
 const K = "sk_live_7f3a9c21d4e5b6a7";
 const SHA = "a".repeat(64);
+const T = "beneos_bm_0113/hd";
 
 console.log(`Basis dieses Laufs: ${B}`);
 console.log("");
@@ -166,17 +170,17 @@ console.log("Die zwei Raeume, die am 08.11.2026 dazukamen");
     ohneSchluesselImText(`Loaded ${B}/l/${K}/beneos_lt_sword/sword-front.webp (50%)`),
     `Loaded ${B}/l/-/beneos_lt_sword/sword-front.webp (50%)`);
   gleich("geteilt, nackte Adresse",
-    ohneSchluesselImText(`${B}/s/${K}/shared/${SHA}/foundry_bm_ui.webp`),
-    `${B}/s/-/shared/${SHA}/foundry_bm_ui.webp`);
+    ohneSchluesselImText(`${B}/s/${K}/${T}/shared/${SHA}/foundry_bm_ui.webp`),
+    `${B}/s/-/${T}/shared/${SHA}/foundry_bm_ui.webp`);
   gleich("geteilt, die gemessene Zeile des Kerns",
-    ohneSchluesselImText(`Loaded ${B}/s/${K}/shared/${SHA}/foundry_bm_ui.webp (50%)`),
-    `Loaded ${B}/s/-/shared/${SHA}/foundry_bm_ui.webp (50%)`);
+    ohneSchluesselImText(`Loaded ${B}/s/${K}/${T}/shared/${SHA}/foundry_bm_ui.webp (50%)`),
+    `Loaded ${B}/s/-/${T}/shared/${SHA}/foundry_bm_ui.webp (50%)`);
   gleich("alle vier Raeume in einer Zeile",
     ohneSchluesselImText(
       `${B}/a/${K}/r/v/f.webm ${B}/c/${K}/r/f.webp `
-      + `${B}/l/${K}/r/f.webp ${B}/s/${K}/shared/${SHA}/f.webp`),
+      + `${B}/l/${K}/r/f.webp ${B}/s/${K}/${T}/shared/${SHA}/f.webp`),
     `${B}/a/-/r/v/f.webm ${B}/c/-/r/f.webp `
-      + `${B}/l/-/r/f.webp ${B}/s/-/shared/${SHA}/f.webp`);
+      + `${B}/l/-/r/f.webp ${B}/s/-/${T}/shared/${SHA}/f.webp`);
 }
 
 console.log("");
@@ -213,8 +217,20 @@ console.log("ohneSchluessel, die Maske am Meldekanal");
     ohneSchluessel(`${B}/l/${K}/beneos_lt_sword/sword-front.webp`),
     `${B}/l/-/beneos_lt_sword/sword-front.webp`);
   gleich("geteilt steht unter /s/ und behaelt seine Pruefsumme",
-    ohneSchluessel(`${B}/s/${K}/shared/${SHA}/foundry_bm_ui.webp`),
-    `${B}/s/-/shared/${SHA}/foundry_bm_ui.webp`);
+    ohneSchluessel(`${B}/s/${K}/${T}/shared/${SHA}/foundry_bm_ui.webp`),
+    `${B}/s/-/${T}/shared/${SHA}/foundry_bm_ui.webp`);
+  /*
+   * DIE ALTE FUENFTEILIGE FORM ist seit T-056 keine Adresse des Moduls mehr,
+   * wie am Tor. Sie darf trotzdem keinen Schluessel durchlassen: sie faellt auf
+   * die Textmaske zurueck.
+   */
+  gleich("die alte geteilte Form verliert den Schluessel trotzdem",
+    ohneSchluessel(`${B}/s/${K}/shared/${SHA}/foundry_bm_ui.webp`).includes(K), false);
+  // Auch unter einem fremden Host, etwa nach einem Wechsel der Basisadresse:
+  // die Textmaske kennt nur den heutigen Host (Kalt-Review 13.11.2026).
+  gleich("die alte geteilte Form unter fremdem Host verliert den Schluessel",
+    ohneSchluessel(`https://alt-tor.example/s/${K}/shared/${SHA}/foundry_bm_ui.webp`),
+    `https://alt-tor.example/s/-/shared/${SHA}/foundry_bm_ui.webp`);
   gleich("die Abfragezeichenkette fliegt weg, weil der Vergleich am Pfad haengt",
     ohneSchluessel(`${B}/a/${K}/r/v/f.webm?sig=abc`),
     `${B}/a/-/r/v/f.webm`);
@@ -298,8 +314,8 @@ console.log("Die Gesamtmenge: die Tabelle gegen den Quelltext");
    */
   for (const [name, buchstabe] of Object.entries(STREAM_RAUM_BUCHSTABE)) {
     const probe = RAUMPROBE[name];
-    const mitKey = assetUrl(probe.release, probe.variant, probe.pfad);
-    const ohneKey = platzhalterAdresse(probe.release, probe.variant, probe.pfad);
+    const mitKey = assetUrl(probe.release, probe.variant, probe.pfad, probe.traeger);
+    const ohneKey = platzhalterAdresse(probe.release, probe.variant, probe.pfad, probe.traeger);
     gleich(`beide Bauer nennen fuer "${name}" den Buchstaben "${buchstabe}"`,
       [mitKey.slice(streamBase().length + 1).split("/")[0],
         ohneKey.slice("beneos://".length).split("/")[0]].join("|"),
@@ -323,7 +339,7 @@ console.log("Die Gesamtmenge: die Tabelle gegen den Quelltext");
    */
   for (const name of Object.keys(STREAM_RAUM_BUCHSTABE)) {
     const probe = RAUMPROBE[name];
-    const ohneKey = platzhalterAdresse(probe.release, probe.variant, probe.pfad);
+    const ohneKey = platzhalterAdresse(probe.release, probe.variant, probe.pfad, probe.traeger);
     gleich(`die Maske laesst die Platzhalterform des Raumes "${name}" stehen`,
       ohneSchluessel(ohneKey), ohneKey);
     gleich(`und auch im Fliesstext, Raum "${name}"`,
@@ -365,8 +381,11 @@ console.log("Die Maske liest ihre Buchstaben aus der Tabelle, nicht aus sich sel
     nurCode.includes("(a|c)"), false);
   gleich("ohneSchluessel entscheidet nicht mehr zweiteilig am Raumnamen",
     /raum === "kreatur"/.test(nurCode), false);
+  // Seit dem Kalt-Review zu T-056 ueber einen Zwischenschritt, der danach
+  // noch hostunabhaengig maskiert; die Textmaske bleibt der erste Schritt.
   gleich("der Rueckfall von ohneSchluessel geht durch die Textmaske",
-    /if \(!buchstabe\) return ohneSchluesselImText/.test(nurCode), true);
+    /if \(!buchstabe\) return ohneSchluesselOhneZerlegung\(roh\)/.test(nurCode)
+      && /function ohneSchluesselOhneZerlegung\(roh\) \{\s*const text = ohneSchluesselImText\(roh\)/.test(nurCode), true);
 }
 
 console.log("");

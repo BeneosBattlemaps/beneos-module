@@ -20,7 +20,7 @@
  * to the gate cut, video running, 59 frames per second.
  */
 
-import { assetUrl, budgetFor, downloadMode, GETEILT_RAUM, istGeteilteDatei, localCacheEnabled, maxConcurrent, MODULE_ID, streamEnabled, streamHost, streamMode, zerlegeAdresse } from "./stream-settings.mjs"
+import { assetUrl, budgetFor, downloadMode, GETEILT_RAUM, geteilteAdresse, istGeteilteDatei, localCacheEnabled, maxConcurrent, MODULE_ID, streamEnabled, streamHost, streamMode, zerlegeAdresse } from "./stream-settings.mjs"
 import { ohneSchluessel, ohneSchluesselImText, reportFailure, reportedSoFar } from "./stream-report.mjs"
 import { isOffline, noteResult } from "./stream-online.mjs"
 
@@ -479,7 +479,8 @@ function geteilterDreiklang(url, t) {
    * NUR DER DATEINAME, UND ER MUSS DIE FORM DER ROUTE TRAGEN.
    *
    * Der Pfad einer geteilten Datei ist `map_assets/<name>`, also zweiteilig.
-   * Die Route am Tor laesst GENAU fuenf Segmente zu, und der serverseitige
+   * Die Route am Tor laesst GENAU sieben Segmente zu, der Name ist das letzte
+   * und einzige hinter der Pruefsumme (seit T-056), und der serverseitige
    * Durchgang legt unter `geteilt/<sha256>/<basename>` ab. Beide nehmen den
    * Basisnamen, also nimmt diese Stelle ihn auch; eine dritte Lesart waere eine
    * Adresse, die niemand findet.
@@ -515,13 +516,31 @@ export function vorratsSchluessel(url) {
   return `${VORRAT_URSPRUNG}/a/${encodeURIComponent(quelle.release)}/${encodeURIComponent(quelle.variant)}/${pfad}`
 }
 
-/** Der Rueckweg: Vorratsschluessel zur Toradresse von HEUTE. */
-function adresseAusSchluessel(schluessel) {
+/**
+ * Der Rueckweg: Vorratsschluessel zur Toradresse von HEUTE.
+ *
+ * Exportiert seit T-056 nur fuer `stream-geteilt.test.mjs`, das den Weg mit
+ * und ohne geladenes Manifest misst.
+ */
+export function adresseAusSchluessel(schluessel) {
   const s = String(schluessel || "")
   if (!s.startsWith(VORRAT_URSPRUNG)) return s
   try {
     const teile = new URL(s).pathname.replace(/^\/+/, "").split("/")
     if (teile[0] !== "a" || teile.length < 4) return s
+    /*
+     * EIN GETEILTER SCHLUESSEL TRAEGT KEIN RELEASE, die Toradresse seit
+     * stre-T-052 aber eines (T-056). Der Traeger kommt aus dem
+     * Sitzungsverzeichnis, Betreiberentscheid 13.11.2026: eine Kartenadresse,
+     * unter der diese Pruefsumme in einem geladenen Manifest steht. Ist keine
+     * bekannt, bleibt der Schluessel, wie er ist, so wie bei jeder anderen
+     * Zeichenkette, die sich nicht umwandeln laesst.
+     */
+    if (decodeURIComponent(teile[1]) === GETEILT_RAUM && teile.length === 4) {
+      const sha = decodeURIComponent(teile[2])
+      const name = decodeURIComponent(teile[3])
+      return geteilteAdresse(sha, name, adressenZuSha.get(sha)) || s
+    }
     return assetUrl(
       decodeURIComponent(teile[1]),
       decodeURIComponent(teile[2]),
@@ -572,6 +591,9 @@ const abgewiesen = new Map()
 export function sammelSchluessel(url) {
   const t = zerlegeAdresse(url)
   if (!t) return "unbekannt"
+  // Im geteilten Raum haengt das Recht seit T-056 am Traeger, nicht an der
+  // Pruefsumme: zwei Dateien einer abgelaufenen Karte sind EINE Meldung.
+  if (t.traeger) return `${t.traeger.release}/${t.traeger.variant}`
   return t.variant ? `${t.release}/${t.variant}` : t.release
 }
 

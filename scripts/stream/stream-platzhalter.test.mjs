@@ -151,6 +151,8 @@ const PROBEN = {
     release: "shared",
     variant: "b".repeat(64),
     pfad: "foundry_bm_ui.webp",
+    // Seit T-056: das Release, ueber das das Tor das Recht prueft.
+    traeger: { release: "beneos_bm_0113", variant: "4k" },
   },
 }
 
@@ -161,7 +163,7 @@ console.log("Jeder Raum hat eine schluesselfreie Form, und sie traegt den "
     const p = PROBEN[raum]
     gleich(`Raum "${raum}" hat eine Probe`, !!p, true)
     if (!p) continue
-    const a = platzhalterAdresse(p.release, p.variant, p.pfad)
+    const a = platzhalterAdresse(p.release, p.variant, p.pfad, p.traeger)
     gleich(`"${raum}" beginnt mit dem Schema und dem Buchstaben`,
       a.startsWith(`${PLATZHALTER_SCHEMA}//${buchstabe}/`), true)
   }
@@ -183,13 +185,13 @@ console.log("Jeder Raum hat eine schluesselfreie Form, und sie traegt den "
 console.log("Der Umlauf, und er ist die Aussage, die alles traegt")
 {
   for (const [raum, p] of Object.entries(PROBEN)) {
-    const direkt = assetUrl(p.release, p.variant, p.pfad)
-    const ohne = platzhalterAdresse(p.release, p.variant, p.pfad)
+    const direkt = assetUrl(p.release, p.variant, p.pfad, p.traeger)
+    const ohne = platzhalterAdresse(p.release, p.variant, p.pfad, p.traeger)
     const t = zerlegeAdresse(ohne)
     gleich(`"${raum}": die schluesselfreie Form ist zerlegbar`, !!t, true)
     if (!t) continue
     gleich(`"${raum}": und sie nennt denselben Raum`, t.raum, raum)
-    const zurueck = assetUrl(t.release, t.variant, t.pfad)
+    const zurueck = assetUrl(t.release, t.variant, t.pfad, t.traeger)
     gleich(`"${raum}": der Umlauf ergibt zeichengleich dieselbe Toradresse`,
       zurueck, direkt)
   }
@@ -198,7 +200,7 @@ console.log("Der Umlauf, und er ist die Aussage, die alles traegt")
 console.log("Der Schluessel kommt in keiner schluesselfreien Form vor")
 {
   for (const [raum, p] of Object.entries(PROBEN)) {
-    const ohne = platzhalterAdresse(p.release, p.variant, p.pfad)
+    const ohne = platzhalterAdresse(p.release, p.variant, p.pfad, p.traeger)
     gleich(`"${raum}": kein Streamschluessel darin`,
       ohne.includes(SCHLUESSEL), false)
     gleich(`"${raum}": und auch kein Tor-Host`,
@@ -211,7 +213,7 @@ console.log("Der Schluessel kommt in keiner schluesselfreien Form vor")
    * Zeichenkette, die nirgends vorkommt.
    */
   const p = PROBEN.kreatur
-  const direkt = assetUrl(p.release, p.variant, p.pfad)
+  const direkt = assetUrl(p.release, p.variant, p.pfad, p.traeger)
   gleich("die echte Toradresse traegt den Schluessel, sonst sucht der Satz "
     + "darueber ins Leere", direkt.includes(SCHLUESSEL), true)
   gleich("und den Host", direkt.includes(streamBase()), true)
@@ -263,21 +265,30 @@ console.log("Ein Grossbuchstabe im Raum ist kein Raum")
 
 console.log("Die Laengenregel des geteilten Raumes gilt in beiden Formen")
 {
+  /*
+   * SIEBEN STUECKE SEIT T-056, in beiden Formen: die Platzhalterform hat kein
+   * Schluesselstueck, `zerlegeAdresse` fuellt es mit einem Strich auf. Die
+   * alte fuenfteilige Form ohne Release gilt als fremd, wie am Tor.
+   */
   const sha = "c".repeat(64)
-  gleich("fuenf Stuecke mit echter Pruefsumme gehen durch",
-    zerlegeAdresse(`beneos://s/shared/${sha}/datei.webp`)?.variant, sha)
+  gleich("sieben Stuecke mit echter Pruefsumme gehen durch",
+    zerlegeAdresse(`beneos://s/beneos_bm_0113/4k/shared/${sha}/datei.webp`)?.variant, sha)
+  gleich("die alte Form ohne Release nicht",
+    zerlegeAdresse(`beneos://s/shared/${sha}/datei.webp`), null)
   gleich("eine zu kurze Pruefsumme nicht",
-    zerlegeAdresse("beneos://s/shared/abc/datei.webp"), null)
-  gleich("ein sechstes Stueck nicht",
-    zerlegeAdresse(`beneos://s/shared/${sha}/tief/datei.webp`), null)
+    zerlegeAdresse("beneos://s/beneos_bm_0113/4k/shared/abc/datei.webp"), null)
+  gleich("ein achtes Stueck nicht",
+    zerlegeAdresse(`beneos://s/beneos_bm_0113/4k/shared/${sha}/tief/datei.webp`), null)
   gleich("ein falscher Raumname nicht",
-    zerlegeAdresse(`beneos://s/fremd/${sha}/datei.webp`), null)
-  // Gegenprobe: dieselben vier Faelle in der Toradressform. Weicht einer ab,
+    zerlegeAdresse(`beneos://s/beneos_bm_0113/4k/fremd/${sha}/datei.webp`), null)
+  // Gegenprobe: dieselben Faelle in der Toradressform. Weicht einer ab,
   // tragen die zwei Formen zwei Regeln.
   gleich("und dasselbe in der Toradressform, kurz",
-    zerlegeAdresse(`${GATE}/s/${SCHLUESSEL}/shared/abc/datei.webp`), null)
+    zerlegeAdresse(`${GATE}/s/${SCHLUESSEL}/beneos_bm_0113/4k/shared/abc/datei.webp`), null)
+  gleich("und dasselbe in der Toradressform, alte Form",
+    zerlegeAdresse(`${GATE}/s/${SCHLUESSEL}/shared/${sha}/datei.webp`), null)
   gleich("und dasselbe in der Toradressform, lang",
-    zerlegeAdresse(`${GATE}/s/${SCHLUESSEL}/shared/${sha}/datei.webp`)?.variant,
+    zerlegeAdresse(`${GATE}/s/${SCHLUESSEL}/beneos_bm_0113/4k/shared/${sha}/datei.webp`)?.variant,
     sha)
 }
 
@@ -310,11 +321,11 @@ console.log("Beide Bauer nehmen dieselbe Raumentscheidung, gemessen an der "
    * wirklich faellt.
    */
   for (const [raum, p] of Object.entries(PROBEN)) {
-    const seg = adressSegmente(p.release, p.variant, p.pfad)
+    const seg = adressSegmente(p.release, p.variant, p.pfad, p.traeger)
     gleich(`"${raum}": die Segmentliste nennt den Buchstaben zuerst`,
       seg[0], STREAM_RAUM_BUCHSTABE[raum])
     gleich(`"${raum}": und die schluesselfreie Form ist genau diese Liste`,
-      platzhalterAdresse(p.release, p.variant, p.pfad),
+      platzhalterAdresse(p.release, p.variant, p.pfad, p.traeger),
       `${PLATZHALTER_SCHEMA}//${seg.join("/")}`)
     /*
      * Und die Toradresse ist dieselbe Liste mit dem Schluessel an zweiter
@@ -324,7 +335,7 @@ console.log("Beide Bauer nehmen dieselbe Raumentscheidung, gemessen an der "
     const mit = seg.slice()
     mit.splice(1, 0, encodeURIComponent(SCHLUESSEL))
     gleich(`"${raum}": und die Toradresse traegt den Schluessel an zweiter `
-      + "Stelle", assetUrl(p.release, p.variant, p.pfad),
+      + "Stelle", assetUrl(p.release, p.variant, p.pfad, p.traeger),
       `${streamBase()}/${mit.join("/")}`)
   }
 }

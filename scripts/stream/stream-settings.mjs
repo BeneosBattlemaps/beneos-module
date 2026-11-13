@@ -944,7 +944,9 @@ export function maxConcurrent() {
  * Eine Karte liegt unter `/a/<schluessel>/<release>/<variante>/<pfad>`, eine
  * Kreatur unter `/c/<schluessel>/<release>/<pfad>`, ein Gegenstand oder Zauber
  * unter `/l/<schluessel>/<release>/<pfad>`, eine geteilte Datei unter
- * `/s/<schluessel>/shared/<sha256>/<name>`. Der Unterschied ist nicht
+ * `/s/<schluessel>/<release>/<variante>/shared/<sha256>/<name>` (seit T-056;
+ * Release und Variante nennen das Traegerrelease, ueber das das Tor das Recht
+ * prueft). Der Unterschied ist nicht
  * Geschmack: eine Karte gibt es in 4K und HD, eine Kreatur nicht, Beute auch
  * nicht. Was es nicht gibt, bekommt auch kein leeres Pfadstueck.
  *
@@ -1058,6 +1060,37 @@ export function istGeteilterRaum(release, variant) {
 }
 
 /**
+ * DAS KARTENPRAEFIX, dieselbe Zeichenkette wie `KARTE_PRAEFIX` am Tor
+ * (`beneos-stream-worker/src/index.js`). Das Tor laesst `/s/` seit stre-T-052
+ * nur fuer Karten zu (`raumFuer(release) !== "karte"` gibt 404 wrong-space).
+ */
+export const KARTE_PRAEFIX = "beneos_bm_"
+
+/**
+ * Ist das ein Traegerrelease, das das Tor fuer `/s/` annimmt?
+ *
+ * SEIT T-056 (13.11.2026) TRAEGT DIE GETEILTE ADRESSE EIN RELEASE. Das Tor
+ * prueft das Recht des Kunden an genau diesem Release und ob die Pruefsumme in
+ * dessen Manifest steht. Der Vorratsschluessel bleibt release-frei
+ * (`shared|<sha256>|<name>`); das Release steht nur in der Adresse.
+ *
+ * Positiv gefragt, wie am Tor: eine Karte mit einem Segment, das die Route
+ * durchlaesst (`validSegment`, `/^[A-Za-z0-9_.-]{1,120}$/`). Alles andere
+ * ergibt keine Adresse, denn das Tor wiese sie ab.
+ *
+ * `.` und `..` passen auf die Segmentregel und sind trotzdem kein Traeger: die
+ * URL-Normalisierung von Browser und fetch loest sie auf, und aus der
+ * siebenteiligen Adresse wird die alte fuenfteilige, die das Tor mit 404
+ * no-route beantwortet. Fuer das Release schliesst das Kartenpraefix sie aus.
+ */
+function istTraeger(traeger) {
+  const r = String(traeger?.release ?? "")
+  const v = String(traeger?.variant ?? "")
+  const segment = /^[A-Za-z0-9_.-]{1,120}$/
+  return r.startsWith(KARTE_PRAEFIX) && segment.test(r) && segment.test(v) && !/^\.{1,2}$/.test(v)
+}
+
+/**
  * DIE RAUMBUCHSTABEN, AN EINER STELLE.
  *
  * Jeder Raum traegt den Schluessel als ZWEITES Pfadstueck, und jede Stelle, die
@@ -1126,9 +1159,13 @@ export const STREAM_RAUM_BUCHSTABE = Object.freeze({
  * Jedes Stueck ist schon kodiert. Der Pfad wird je Segment kodiert und nicht
  * als Ganzes, damit ein Unterpfad seine Schraegstriche behaelt.
  *
- * @returns {string[]} erstes Stueck ist der Raumbuchstabe
+ * `traeger` zaehlt nur im geteilten Raum, `{release, variant}` des Releases,
+ * ueber das das Tor das Recht prueft. Ohne gueltigen Traeger gibt es dort keine
+ * Adresse, und die Funktion gibt `null` zurueck.
+ *
+ * @returns {string[]|null} erstes Stueck ist der Raumbuchstabe
  */
-export function adressSegmente(release, variant, path) {
+export function adressSegmente(release, variant, path, traeger) {
   const clean = String(path).replace(/^\/+/, "").split("/").map(encodeURIComponent).join("/")
   if (istKreatur(release)) {
     return ["c", encodeURIComponent(release), clean]
@@ -1139,11 +1176,15 @@ export function adressSegmente(release, variant, path) {
     return ["l", encodeURIComponent(release), clean]
   }
   /*
-   * DER GETEILTE RAUM, UND ER IST DER EINZIGE, DER DIE VARIANTE IN DIE ADRESSE
-   * NIMMT. Sie traegt dort die Pruefsumme und nicht einen Variantennamen. Die
-   * Route am Tor verlangt GENAU fuenf Segmente, also darf `clean` kein
-   * Schraegstrich mehr enthalten; wer hier einen Unterpfad mitgibt, bekommt
-   * eine Adresse, die das Tor mit 400 abweist.
+   * DER GETEILTE RAUM. `variant` traegt hier die Pruefsumme und nicht einen
+   * Variantennamen. Die Route am Tor verlangt seit stre-T-052 GENAU sieben
+   * Segmente, `/s/<schluessel>/<release>/<variante>/shared/<sha256>/<name>`,
+   * also darf `clean` kein Schraegstrich mehr enthalten; wer hier einen
+   * Unterpfad mitgibt, bekommt eine Adresse, die das Tor mit 400 abweist.
+   *
+   * OHNE TRAEGER KEINE ADRESSE (T-056). Die alte Form ohne Release
+   * beantwortet das Tor mit 404 no-route. `null` heisst: diese Datei hat
+   * gerade keine Toradresse, und der Aufrufer bekommt eine leere Zeichenkette.
    *
    * Der Zweig steht NACH Kreatur und Beute und VOR der Kartenadresse. Die
    * Reihenfolge ist gleichgueltig, weil `istGeteilterRaum` auf einen Namen
@@ -1151,13 +1192,18 @@ export function adressSegmente(release, variant, path) {
    * zuletzt, damit die Kartenadresse der Rueckfall bleibt.
    */
   if (istGeteilterRaum(release, variant)) {
-    return ["s", GETEILT_RAUM, encodeURIComponent(variant), clean]
+    if (!istTraeger(traeger)) return null
+    return ["s", traeger.release, traeger.variant, GETEILT_RAUM, encodeURIComponent(variant), clean]
   }
   return ["a", encodeURIComponent(release), encodeURIComponent(variant), clean]
 }
 
-export function assetUrl(release, variant, path) {
-  const teile = adressSegmente(release, variant, path)
+export function assetUrl(release, variant, path, traeger) {
+  const teile = adressSegmente(release, variant, path, traeger)
+  // Nur der geteilte Raum ohne Traeger kommt hierher. Leer statt `null`, wie
+  // `adresseVon` in `stream-offline.mjs`: die Aufrufer behandeln das Ergebnis
+  // als Zeichenkette.
+  if (!teile) return ""
   const schluessel = encodeURIComponent(streamKey())
   // Der Schluessel steht an ZWEITER Stelle, hinter dem Raumbuchstaben. Das ist
   // die Form, die das Tor routet, und `zerlegeAdresse` ueberspringt genau
@@ -1183,8 +1229,33 @@ export function assetUrl(release, variant, path) {
  * Der Preis ist benannt und vom Betreiber angenommen: ohne laufendes Modul
  * erscheint kein Bild. Siehe `OP-PRJ-179`.
  */
-export function platzhalterAdresse(release, variant, path) {
-  return `${PLATZHALTER_SCHEMA}//${adressSegmente(release, variant, path).join("/")}`
+export function platzhalterAdresse(release, variant, path, traeger) {
+  const teile = adressSegmente(release, variant, path, traeger)
+  if (!teile) return ""
+  return `${PLATZHALTER_SCHEMA}//${teile.join("/")}`
+}
+
+/**
+ * Die Toradresse einer geteilten Datei, mit dem Traeger aus bekannten
+ * Kartenadressen (T-056, Betreiberentscheid 13.11.2026).
+ *
+ * `kartenAdressen` sind die Adressen, unter denen diese Pruefsumme in einem
+ * geladenen Manifest steht (`adressenZuSha` in `stream-fetch.mjs`). Die erste,
+ * die eine Kartenadresse ist, liefert Release und Variante. Ist keine bekannt,
+ * gibt es keine Adresse, und die Antwort ist die leere Zeichenkette.
+ *
+ * Hier und nicht in `stream-fetch.mjs`, damit der Pruefsatz sie ohne die
+ * Abrufschicht laden kann.
+ */
+export function geteilteAdresse(sha, name, kartenAdressen) {
+  for (const a of kartenAdressen || []) {
+    const t = zerlegeAdresse(a)
+    if (t?.raum !== "karte") continue
+    const traeger = { release: t.release, variant: t.variant }
+    if (!istTraeger(traeger)) continue
+    return assetUrl(GETEILT_RAUM, sha, name, traeger)
+  }
+  return ""
 }
 
 /**
@@ -1221,7 +1292,11 @@ export function platzhalterAdresse(release, variant, path) {
  * ein Zusammenstoss mit einer Karte ist ausgeschlossen, weil der Releasename
  * selbst den Raum nennt.
  *
- * @returns {{raum: string, release: string, variant: string, pfad: string}|null}
+ * Im geteilten Raum kommt seit T-056 `traeger` dazu: Release und Variante der
+ * Karte, ueber die das Tor das Recht prueft.
+ *
+ * @returns {{raum: string, release: string, variant: string, pfad: string,
+ *   traeger?: {release: string, variant: string}}|null}
  */
 /**
  * Traegt diese Zeichenkette das Platzhalterschema?
@@ -1248,7 +1323,7 @@ export function zerlegeAdresse(url) {
      * um eins verschoben. Statt jeden der vier Zweige unten zu verdoppeln,
      * wird der fehlende Platz mit einem Strich gefuellt. Danach stimmen alle
      * Abstaende, auch die Laengenpruefung des geteilten Raumes, die GENAU
-     * fuenf verlangt.
+     * sieben verlangt.
      *
      * Der Strich selbst wird nie gelesen: jeder Zweig unten ueberspringt
      * `teile[1]`.
@@ -1308,26 +1383,40 @@ function nachSegmenten(teile) {
       }
     }
     /*
-     * /s/<schluessel>/shared/<sha256>/<name>, also GENAU fuenf.
+     * /s/<schluessel>/<release>/<variante>/shared/<sha256>/<name>, also GENAU
+     * sieben (seit T-056, wie die Route am Tor seit stre-T-052).
      *
-     * `=== 5` UND NICHT `>= 5`, und das ist der einzige Raum, in dem das so
-     * ist. Die Route am Tor laesst genau fuenf Segmente zu; eine Adresse mit
-     * sechs wird dort mit 400 abgewiesen. Sie hier trotzdem zu zerlegen hiesse,
-     * einen Vorratsschluessel zu bilden, aus dem nie wieder eine abrufbare
-     * Adresse wird, und der Fehler fiele erst beim Nachladen auf.
+     * `=== 7` UND NICHT `>= 7`, und das ist der einzige Raum, in dem das so
+     * ist. Die Route am Tor laesst genau sieben Segmente zu. Eine laengere
+     * Adresse hier zu zerlegen hiesse, einen Vorratsschluessel zu bilden, aus
+     * dem nie wieder eine abrufbare Adresse wird.
      *
-     * DER RAUMNAME WIRD MITGEPRUEFT UND NICHT UEBERSPRUNGEN. Derselbe Grund wie
-     * beim Buchstaben: eine Form, die fast alles annimmt, nimmt auch das an, was
+     * DIE ALTE FUENFTEILIGE FORM OHNE RELEASE GILT ALS FREMD, wie am Tor
+     * (Betreiberentscheid 13.11.2026). Kein Vorrat traegt sie, denn
+     * Vorratsschluessel stehen in der Form `beneos-stream.invalid/a/...`.
+     *
+     * DER RAUMNAME UND DER TRAEGER WERDEN MITGEPRUEFT. Derselbe Grund wie beim
+     * Buchstaben: eine Form, die fast alles annimmt, nimmt auch das an, was
      * nicht uns gehoert.
+     *
+     * Die Kennung bleibt `shared|<sha256>|<name>`, ohne Release; der Traeger
+     * kommt als eigenes Feld zurueck, damit ein Aufrufer die Adresse
+     * zeichengleich wieder bauen kann.
      */
-    if (teile[0] === "s" && teile[2] === GETEILT_RAUM && teile.length === 5) {
-      const sha = decodeURIComponent(teile[3])
+    if (teile[0] === "s" && teile[4] === GETEILT_RAUM && teile.length === 7) {
+      const sha = decodeURIComponent(teile[5])
       if (!/^[a-f0-9]{64}$/.test(sha)) return null
+      const traeger = {
+        release: decodeURIComponent(teile[2]),
+        variant: decodeURIComponent(teile[3]),
+      }
+      if (!istTraeger(traeger)) return null
       return {
         raum: "geteilt",
         release: GETEILT_RAUM,
         variant: sha,
-        pfad: decodeURIComponent(teile[4]),
+        pfad: decodeURIComponent(teile[6]),
+        traeger,
       }
     }
     return null

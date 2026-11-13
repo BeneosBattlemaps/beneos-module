@@ -64,7 +64,8 @@ export function ohneSchluessel(url) {
    * `beneos://<raum>/...`, und ohne diesen Zweig baute der Rumpf darunter sie
    * kanonisch mit `streamBase()` neu auf. Gemessen an diesem Tag wurde aus
    * `beneos://s/shared/<sha>/<name>` die Toradresse
-   * `https://<tor>/s/-/shared/<sha>/<name>`.
+   * `https://<tor>/s/-/shared/<sha>/<name>`. (Seit T-056 traegt die geteilte
+   * Form zusaetzlich Release und Variante: `beneos://s/<rel>/<var>/shared/...`.)
    *
    * Das ist nicht harmlos: diese Funktion maskiert, sie formt nicht um. Ein
    * Fehlerbericht soll die Adresse nennen, die im Dokument STEHT. Wer dort
@@ -74,9 +75,35 @@ export function ohneSchluessel(url) {
   if (istPlatzhalter(roh)) return roh
   const t = zerlegeAdresse(roh)
   const buchstabe = t ? STREAM_RAUM_BUCHSTABE[t.raum] : ""
-  if (!buchstabe) return ohneSchluesselImText(roh)
-  const mitte = t.variant ? `${t.release}/${t.variant}` : t.release
+  if (!buchstabe) return ohneSchluesselOhneZerlegung(roh)
+  // Der geteilte Raum traegt seit T-056 sein Traegerrelease VOR dem Raumnamen,
+  // in derselben Reihenfolge wie die Route am Tor.
+  const mitte = t.traeger
+    ? `${t.traeger.release}/${t.traeger.variant}/${t.release}/${t.variant}`
+    : (t.variant ? `${t.release}/${t.variant}` : t.release)
   return `${streamBase()}/${buchstabe}/-/${mitte}/${t.pfad}`
+}
+
+/**
+ * Der Rueckfall fuer eine Adresse, die `zerlegeAdresse` nicht zerlegt: erst die
+ * Textmaske, und weil die nur den heutigen Host kennt, danach dieselbe Regel
+ * hostunabhaengig am Pfad. Steht vorne ein Raumbuchstabe, ist das zweite
+ * Segment die Stelle des Schluessels und wird `-`.
+ *
+ * Gemessen am 13.11.2026 (Kalt-Review zu T-056): die alte fuenfteilige
+ * `/s/`-Form unter einem frueheren Torhost wurde seit T-056 nicht mehr zerlegt
+ * und kam samt Schluessel heraus.
+ */
+function ohneSchluesselOhneZerlegung(roh) {
+  const text = ohneSchluesselImText(roh)
+  let u
+  try { u = new URL(text) } catch { return text }
+  const teile = u.pathname.split("/")
+  if (teile.length > 3 && RAUM_BUCHSTABEN.includes(teile[1]) && teile[2] !== "-") {
+    teile[2] = "-"
+    return `${u.origin}${teile.join("/")}`
+  }
+  return text
 }
 
 /**

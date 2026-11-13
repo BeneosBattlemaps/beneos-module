@@ -47,7 +47,13 @@ import { dirname, join } from "node:path"
 import {
   assetUrl, zerlegeAdresse, istGeteilterRaum, istGeteilteDatei,
   GETEILT_RAUM, istBeute, istKreatur, SETTING, GATE_DEFAULT_BASE,
+  platzhalterAdresse,
 } from "./stream-settings.mjs"
+import * as einstellungen from "./stream-settings.mjs"
+
+// Ueber den Namensraum: fehlt die Funktion, wird der Satz ROT statt beim Laden abzubrechen.
+const geteilteAdresse = (...a) =>
+  typeof einstellungen.geteilteAdresse === "function" ? einstellungen.geteilteAdresse(...a) : "FEHLT"
 
 /**
  * Code ohne Kommentare, und diese Zeilen sind die Lehre aus drei roten Proben.
@@ -178,14 +184,78 @@ wahr("und wirft Kommentare weg",
     && !nurCode(settings).includes("UMGEZOGEN AM 2026-11-08"))
 
 // ---------------------------------------------------------------------------
-console.log("\nassetUrl: fuenf Segmente, und die Variante traegt die Pruefsumme")
+console.log("\nassetUrl: sieben Segmente, mit Traegerrelease, und die Variante traegt die Pruefsumme")
 
-const adr = assetUrl(GETEILT_RAUM, SHA, "foundry_bm_ui.webp")
+/*
+ * DAS TOR KENNT SEIT stre-T-052 NUR NOCH DIE SIEBENTEILIGE FORM
+ * `/s/<key>/<release>/<variante>/shared/<sha256>/<name>` und prueft das Recht
+ * am Release im Pfad. Der Vorratsschluessel bleibt release-frei; das Release
+ * in der Adresse ist der TRAEGER, ueber den das Tor das Recht prueft (T-056).
+ */
+const TRAEGER = { release: "beneos_bm_0113", variant: "4k" }
+const TRAEGER_B = { release: "beneos_bm_0042", variant: "hd" }
+const adr = assetUrl(GETEILT_RAUM, SHA, "foundry_bm_ui.webp", TRAEGER)
 gleich("die Adresse hat die Form der Route",
-  adr, `${GATE_DEFAULT_BASE}/s/pk_pruefsatz/shared/${SHA}/foundry_bm_ui.webp`)
-gleich("genau fuenf Segmente nach dem Host",
-  new URL(adr).pathname.replace(/^\/+/, "").split("/").length, 5)
+  adr, `${GATE_DEFAULT_BASE}/s/pk_pruefsatz/beneos_bm_0113/4k/shared/${SHA}/foundry_bm_ui.webp`)
+gleich("genau sieben Segmente nach dem Host",
+  new URL(adr).pathname.replace(/^\/+/, "").split("/").length, 7)
 wahr("der Schluessel steht drin", adr.includes("pk_pruefsatz"))
+
+/*
+ * OHNE TRAEGER KEINE ADRESSE. Die alte Form ohne Release beantwortet das Tor
+ * mit 404 no-route; eine Adresse zu bauen, die es nicht gibt, waere schlechter
+ * als keine.
+ */
+gleich("ohne Traeger: leere Zeichenkette", assetUrl(GETEILT_RAUM, SHA, "foundry_bm_ui.webp"), "")
+gleich("Traeger ohne Variante: leer",
+  assetUrl(GETEILT_RAUM, SHA, "a.webp", { release: "beneos_bm_0113", variant: "" }), "")
+gleich("Kreatur als Traeger: leer",
+  assetUrl(GETEILT_RAUM, SHA, "a.webp", { release: "beneos_ct_0001", variant: "4k" }), "")
+gleich("Beute als Traeger: leer",
+  assetUrl(GETEILT_RAUM, SHA, "a.webp", { release: "beneos_lt_0001", variant: "4k" }), "")
+gleich("der Raumname als Traeger: leer",
+  assetUrl(GETEILT_RAUM, SHA, "a.webp", { release: GETEILT_RAUM, variant: "4k" }), "")
+gleich("ein Traeger mit Schraegstrich: leer",
+  assetUrl(GETEILT_RAUM, SHA, "a.webp", { release: "beneos_bm_1/x", variant: "4k" }), "")
+gleich("ohne Traeger auch keine Platzhalterform",
+  platzhalterAdresse(GETEILT_RAUM, SHA, "a.webp"), "")
+
+/*
+ * DIE ZWEI-WERTE-PROBE. Ein anderer Traeger MUSS eine andere Adresse ergeben,
+ * derselbe Traeger dieselbe, und beide denselben Vorratsschluessel: das Release
+ * steht in der Adresse, nicht in der Ablage.
+ */
+const adrB = assetUrl(GETEILT_RAUM, SHA, "foundry_bm_ui.webp", TRAEGER_B)
+wahr("anderer Traeger, andere Adresse", adrB !== adr)
+gleich("derselbe Traeger, dieselbe Adresse",
+  assetUrl(GETEILT_RAUM, SHA, "foundry_bm_ui.webp", { ...TRAEGER }), adr)
+gleich("beide Traeger zerlegen sich zu derselben Kennung",
+  [adr, adrB].map((a) => { const t = zerlegeAdresse(a); return `${t?.release}|${t?.variant}|${t?.pfad}` }).join(" "),
+  `${GETEILT_RAUM}|${SHA}|foundry_bm_ui.webp ${GETEILT_RAUM}|${SHA}|foundry_bm_ui.webp`)
+
+/*
+ * DER TRAEGER AUS DEM SITZUNGSVERZEICHNIS (Betreiberentscheid 13.11.2026).
+ * `geteilteAdresse` bekommt die Kartenadressen, unter denen diese Pruefsumme
+ * bekannt ist, und nimmt die erste, die eine Karte ist.
+ */
+const KARTE_A = `${GATE_DEFAULT_BASE}/a/pk_pruefsatz/beneos_bm_0113/4k/map_assets/foundry_bm_ui.webp`
+const KARTE_B = `${GATE_DEFAULT_BASE}/a/pk_pruefsatz/beneos_bm_0042/hd/map_assets/foundry_bm_ui.webp`
+const KREATUR = `${GATE_DEFAULT_BASE}/c/pk_pruefsatz/beneos_ct_0001/a.webp`
+gleich("geteilteAdresse: erste Kartenadresse ist der Traeger",
+  geteilteAdresse(SHA, "foundry_bm_ui.webp", [KREATUR, KARTE_A, KARTE_B]), adr)
+gleich("geteilteAdresse: andere erste Karte, anderer Traeger",
+  geteilteAdresse(SHA, "foundry_bm_ui.webp", [KARTE_B, KARTE_A]), adrB)
+gleich("geteilteAdresse: ohne Kartenadresse leer",
+  geteilteAdresse(SHA, "foundry_bm_ui.webp", [KREATUR]), "")
+gleich("geteilteAdresse: ohne Verzeichnis leer",
+  geteilteAdresse(SHA, "foundry_bm_ui.webp", undefined), "")
+{
+  const a = nurCode(fetchQ)
+  const s = a.indexOf("function adresseAusSchluessel(")
+  const rumpf = s < 0 ? "" : a.slice(s, a.indexOf("\n}", s))
+  wahr("adresseAusSchluessel fragt das Sitzungsverzeichnis",
+    rumpf.includes("geteilteAdresse(") && rumpf.includes("adressenZuSha.get("))
+}
 
 /*
  * EINE VARIANTE, DIE KEINE PRUEFSUMME IST, FAELLT AUF DIE KARTENADRESSE
@@ -193,7 +263,7 @@ wahr("der Schluessel steht drin", adr.includes("pk_pruefsatz"))
  * Kartenadresse ist schlimmstenfalls zweimal gehalten, eine abgewiesene
  * Adresse ist ein leeres Bild beim Kunden.
  */
-const zurueck = assetUrl(GETEILT_RAUM, "normal", "ui.webp")
+const zurueck = assetUrl(GETEILT_RAUM, "normal", "ui.webp", TRAEGER)
 wahr("ohne Pruefsumme kommt die Kartenadresse", zurueck.includes("/a/"))
 wahr("und nicht die geteilte", !zurueck.includes("/s/"))
 
@@ -208,37 +278,64 @@ wahr("ein Gegenstand bleibt ein Gegenstand",
   assetUrl("beneos_lt_0001", "", "a-front.webp").includes("/l/"))
 
 // ---------------------------------------------------------------------------
-console.log("\nzerlegeAdresse: genau fuenf, und der Raumname wird mitgeprueft")
+console.log("\nzerlegeAdresse: genau sieben, Raumname und Traeger werden mitgeprueft")
 
 const t = zerlegeAdresse(adr)
 gleich("der Raum heisst geteilt", t?.raum, "geteilt")
 gleich("release ist der Raumname", t?.release, GETEILT_RAUM)
 gleich("variant ist die Pruefsumme", t?.variant, SHA)
 gleich("pfad ist der Dateiname", t?.pfad, "foundry_bm_ui.webp")
+gleich("der Traeger wird mitgegeben", JSON.stringify(t?.traeger), JSON.stringify(TRAEGER))
 
 /*
- * `=== 5` UND NICHT `>= 5`, und das ist der einzige Raum, in dem das so ist.
- * Die Route am Tor laesst genau fuenf Segmente zu; eine Adresse mit sechs wird
- * dort mit 400 abgewiesen. Sie hier trotzdem zu zerlegen hiesse, einen
- * Vorratsschluessel zu bilden, aus dem nie wieder eine abrufbare Adresse wird.
+ * `=== 7` UND NICHT `>= 7`, und das ist der einzige Raum, in dem das so ist.
+ * Die Route am Tor laesst genau sieben Segmente zu.
+ *
+ * DIE ALTE FUENFTEILIGE FORM GILT ALS FREMD, wie am Tor (Betreiberentscheid
+ * 13.11.2026). Kein Vorrat traegt sie: Vorratsschluessel stehen in der Form
+ * `beneos-stream.invalid/a/...`.
  */
+gleich("die alte Form ohne Release wird abgewiesen",
+  zerlegeAdresse(`${GATE_DEFAULT_BASE}/s/k/shared/${SHA}/a.webp`), null)
+gleich("acht Segmente werden abgewiesen",
+  zerlegeAdresse(`${GATE_DEFAULT_BASE}/s/k/beneos_bm_1/4k/shared/${SHA}/unter/a.webp`), null)
 gleich("sechs Segmente werden abgewiesen",
-  zerlegeAdresse(`${GATE_DEFAULT_BASE}/s/k/shared/${SHA}/unter/a.webp`), null)
-gleich("vier Segmente werden abgewiesen",
-  zerlegeAdresse(`${GATE_DEFAULT_BASE}/s/k/shared/${SHA}`), null)
+  zerlegeAdresse(`${GATE_DEFAULT_BASE}/s/k/beneos_bm_1/4k/shared/${SHA}`), null)
 gleich("ein falscher Raumname wird abgewiesen",
-  zerlegeAdresse(`${GATE_DEFAULT_BASE}/s/k/geteilt/${SHA}/a.webp`), null)
+  zerlegeAdresse(`${GATE_DEFAULT_BASE}/s/k/beneos_bm_1/4k/geteilt/${SHA}/a.webp`), null)
 gleich("eine Variante ohne Pruefsummenform wird abgewiesen",
-  zerlegeAdresse(`${GATE_DEFAULT_BASE}/s/k/shared/normal/a.webp`), null)
+  zerlegeAdresse(`${GATE_DEFAULT_BASE}/s/k/beneos_bm_1/4k/shared/normal/a.webp`), null)
 gleich("Grossbuchstaben in der Pruefsumme werden abgewiesen",
-  zerlegeAdresse(`${GATE_DEFAULT_BASE}/s/k/shared/${"A".repeat(64)}/a.webp`), null)
+  zerlegeAdresse(`${GATE_DEFAULT_BASE}/s/k/beneos_bm_1/4k/shared/${"A".repeat(64)}/a.webp`), null)
+gleich("eine Kreatur als Traeger wird abgewiesen",
+  zerlegeAdresse(`${GATE_DEFAULT_BASE}/s/k/beneos_ct_1/4k/shared/${SHA}/a.webp`), null)
+gleich("ein leerer Traeger wird abgewiesen",
+  zerlegeAdresse(`${GATE_DEFAULT_BASE}/s/k//4k/shared/${SHA}/a.webp`), null)
 
 // Das Paar muss in beide Richtungen schliessen, sonst ist einer der beiden
 // Zweige fuer sich richtig und zusammen falsch.
-const rund = zerlegeAdresse(assetUrl(GETEILT_RAUM, SHA2, "36-02_wizard_of_wines_2f.ogg"))
+const rund = zerlegeAdresse(assetUrl(GETEILT_RAUM, SHA2, "36-02_wizard_of_wines_2f.ogg", TRAEGER_B))
 gleich("hin und zurueck ergibt dasselbe",
-  `${rund?.release}|${rund?.variant}|${rund?.pfad}`,
-  `${GETEILT_RAUM}|${SHA2}|36-02_wizard_of_wines_2f.ogg`)
+  `${rund?.release}|${rund?.variant}|${rund?.pfad}|${rund?.traeger?.release}|${rund?.traeger?.variant}`,
+  `${GETEILT_RAUM}|${SHA2}|36-02_wizard_of_wines_2f.ogg|beneos_bm_0042|hd`)
+gleich("und wieder zur selben Adresse",
+  assetUrl(rund?.release, rund?.variant, rund?.pfad, rund?.traeger),
+  assetUrl(GETEILT_RAUM, SHA2, "36-02_wizard_of_wines_2f.ogg", TRAEGER_B))
+
+/*
+ * LEGACY-SCHUTZ (Betreiberauflage 13.11.2026): die Wege, die heute Dateien
+ * liefern, aendern sich nicht. Die Sollwerte sind die Adressen des Stands
+ * ff830f8, ausgeschrieben und nicht neu berechnet.
+ */
+gleich("Kartenadresse byte-gleich",
+  assetUrl("beneos_bm_0113", "4k", "map_assets/foundry_bm_ui.webp"),
+  `${GATE_DEFAULT_BASE}/a/pk_pruefsatz/beneos_bm_0113/4k/map_assets/foundry_bm_ui.webp`)
+gleich("Kreaturadresse byte-gleich",
+  assetUrl("beneos_ct_0001", "", "a.webp"), `${GATE_DEFAULT_BASE}/c/pk_pruefsatz/beneos_ct_0001/a.webp`)
+gleich("Beuteadresse byte-gleich",
+  assetUrl("beneos_lt_0001", "", "a-front.webp"), `${GATE_DEFAULT_BASE}/l/pk_pruefsatz/beneos_lt_0001/a-front.webp`)
+gleich("Kartenplatzhalter byte-gleich",
+  platzhalterAdresse("beneos_bm_0113", "4k", "scenes/a.webm"), "beneos://a/beneos_bm_0113/4k/scenes/a.webm")
 
 // Die anderen Raeume bleiben lesbar.
 gleich("eine Kartenadresse bleibt eine Karte",
@@ -251,6 +348,8 @@ gleich("eine Beuteadresse bleibt Beute",
 // anderen Raeumen, und er haengt an der Exaktheit der Form.
 gleich("eine fremde Adresse bekommt null",
   zerlegeAdresse("https://example.com/s/k/shared/x/y"), null)
+gleich("eine fremde Adresse in der neuen Form ohne Pruefsumme bekommt null",
+  zerlegeAdresse("https://example.com/s/k/r/v/shared/x/y"), null)
 
 // ---------------------------------------------------------------------------
 console.log("\nDer Schalter: bei AUS bleibt alles, wie es war")
@@ -352,6 +451,70 @@ gleich("der Raumname ist genau einmal gesetzt",
   (settings + fetchQ + offline).match(/GETEILT_RAUM = /g).length, 1)
 wahr("stream-fetch.mjs importiert ihn",
   /import \{[^}]*GETEILT_RAUM[^}]*\} from "\.\/stream-settings\.mjs"/.test(fetchQ))
+
+// ---------------------------------------------------------------------------
+console.log("\nDie Abrufschicht: Vorratsschluessel release-frei, Rueckweg mit Traeger (T-056)")
+/*
+ * Am echten `stream-fetch.mjs`, dynamisch geladen: fehlt etwas, wird es ROT
+ * statt beim Laden abzubrechen.
+ *
+ * DER VORRATSSCHLUESSEL HAENGT AN KEINEM RELEASE. Zwei geteilte Adressen mit
+ * verschiedenem Traeger muessen in denselben Eintrag fallen, sonst laege
+ * dieselbe Datei wieder je Release im Vorrat, und genau das soll OP-PRJ-184
+ * Punkt 3 beenden.
+ */
+{
+  let abruf = null
+  try {
+    abruf = await import("./stream-fetch.mjs")
+  } catch (f) {
+    rot++
+    console.log(`  ROT  stream-fetch.mjs laedt nicht: ${String(f?.message).slice(0, 120)}`)
+  }
+  if (abruf) {
+    const v = abruf.vorratsSchluessel
+    const ka = v(adr)
+    const kb = v(adrB)
+    gleich("zwei Traeger, ein Vorratsschluessel", ka, kb)
+    gleich("und er nennt kein Release",
+      ka, `https://beneos-stream.invalid/a/${GETEILT_RAUM}/${SHA}/foundry_bm_ui.webp`)
+    gleich("eine Kartenadresse behaelt ihren Schluessel (Legacy, byte-gleich)",
+      v(KARTE_A), "https://beneos-stream.invalid/a/beneos_bm_0113/4k/map_assets/foundry_bm_ui.webp")
+
+    const rueck = abruf.adresseAusSchluessel
+    if (typeof rueck !== "function") {
+      rot++
+      console.log("  ROT  adresseAusSchluessel ist nicht exportiert")
+    } else {
+      // Ohne bekanntes Manifest gibt es keinen Traeger: der Schluessel bleibt.
+      gleich("ohne Manifest bleibt der geteilte Schluessel, wie er ist", rueck(ka), ka)
+      // Ein Manifest wird geladen: die Kartenadresse traegt diese Pruefsumme.
+      abruf.merkePruefsummen([[KARTE_A, SHA]])
+      gleich("mit Manifest wird daraus die siebenteilige Adresse des Traegers", rueck(ka), adr)
+      gleich("eine Karte kommt zurueck wie vorher (Legacy, byte-gleich)",
+        rueck(v(KARTE_A)), KARTE_A)
+    }
+
+    // Abweisungen werden je Recht gesammelt, und das Recht haengt am Traeger.
+    const sammel = abruf.sammelSchluessel
+    gleich("eine geteilte Adresse sammelt unter ihrem Traeger", sammel(adr), "beneos_bm_0113/4k")
+    gleich("eine Karte sammelt wie vorher (Legacy, byte-gleich)", sammel(KARTE_A), "beneos_bm_0113/4k")
+  }
+}
+
+// ---------------------------------------------------------------------------
+console.log("\nPunktsegmente sind kein Traeger (Kalt-Review 13.11.2026)")
+/*
+ * `.` und `..` passen auf die Segmentregel, aber die URL-Normalisierung von
+ * Browser und fetch loest sie auf: aus `/s/<k>/beneos_bm_0113/../shared/...`
+ * wird die alte fuenfteilige Form, die das Tor mit 404 no-route beantwortet.
+ */
+for (const punkt of [".", ".."]) {
+  gleich(`Variante "${punkt}": keine Adresse`,
+    einstellungen.assetUrl(GETEILT_RAUM, SHA, "a.webp", { release: "beneos_bm_0113", variant: punkt }), "")
+  gleich(`Variante "${punkt}": der Platzhalter wird nicht zerlegt`,
+    einstellungen.zerlegeAdresse(`beneos://s/beneos_bm_0113/${punkt}/shared/${SHA}/a.webp`), null)
+}
 
 // ---------------------------------------------------------------------------
 console.log(`\n${gruen} bestanden, ${rot} gescheitert`)

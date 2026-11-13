@@ -189,7 +189,7 @@ async function blobFuer(adresse) {
      * im `src` stand.
      */
     const t = zerlegeAdresse(adresse)
-    const abrufen = t ? assetUrl(t.release, t.variant, t.pfad) : adresse
+    const abrufen = t ? assetUrl(t.release, t.variant, t.pfad, t.traeger) : adresse
     // Durch den ersetzten Abruf, und das ist der ganze Zweck: Vorrat,
     // Zwischenspeicher und Ersatzbild haengen dort. Eine Abweisung kommt als
     // gueltiges Ersatzbild zurueck und nicht als Fehler.
