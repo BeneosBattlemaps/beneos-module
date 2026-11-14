@@ -252,13 +252,14 @@ then
   STAENDE=$(ls scripts/stream/*.test.mjs scripts/loot/*.test.mjs \
             2>/dev/null | sort)
   ANZAHL=$(printf '%s\n' "$STAENDE" | grep -c 'test\.mjs$')
-  # Die Mindestzahl deckt beide Ordner: elf unter `stream/` und einer unter
-  # `loot/`. Sie sichert nach unten und waechst mit, wenn jemand sie
-  # nachzieht; eine Suche, die nichts findet, ist von einer kaputten Suche
-  # nicht zu unterscheiden.
-  if [ "$ANZAHL" -lt 12 ]; then
+  # Die Mindestzahl deckt beide Ordner: vierzehn unter `stream/` (drei davon
+  # seit stre-T-064: kreatur-ziele, stream-umstellung, stream-umstellung-plan)
+  # und einer unter `loot/`. Sie sichert nach unten und waechst mit, wenn
+  # jemand sie nachzieht; eine Suche, die nichts findet, ist von einer kaputten
+  # Suche nicht zu unterscheiden.
+  if [ "$ANZAHL" -lt 15 ]; then
     meld "pre-commit: ABBRUCH, nur $ANZAHL Pruefsaetze unter scripts/stream"
-    meld "            und scripts/loot gefunden, erwartet mindestens 12."
+    meld "            und scripts/loot gefunden, erwartet mindestens 15."
     meld "            Entweder ist die Suche kaputt oder ein Stand ist"
     meld "            verschwunden; beides ist ein Befund und keine"
     meld "            bestandene Pruefung."

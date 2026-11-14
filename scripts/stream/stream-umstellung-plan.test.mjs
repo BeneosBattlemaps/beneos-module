@@ -160,5 +160,33 @@ function kartenWelt(manifeste, { docs = { byPath: { "data/Scene.json": ["s1"] },
   gleich("Karte: keine Registerschluessel", e.fullIds, [])
 }
 
+// ======================================================= Paketkennung
+console.log("Paketkennung aus dem Katalog (geschnitten aus beneos-install-state.mjs)")
+{
+  const { readFileSync } = await import("node:fs")
+  const { dirname, join } = await import("node:path")
+  const { fileURLToPath } = await import("node:url")
+  const quelle = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "cloud-v2", "beneos-install-state.mjs"), "utf8")
+  // Das Modul laedt in Node nicht (Hooks, FormApplication, document); die
+  // beiden reinen Funktionen werden darum aus dem echten Text geschnitten.
+  const schnitt = (name) => {
+    const m = new RegExp(`export function ${name}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}\\n`).exec(quelle)
+    return m ? m[0].replace(/^export /, "") : ""
+  }
+  const rumpf = `${schnitt("releaseKern")}\n${schnitt("paketKennungAus")}\nreturn paketKennungAus`
+  const paketKennungAus = new Function(rumpf)()
+  const katalog = [
+    { release_dir: "beneos_bm_0042_tavern", variant_dirs: { "4K": "beneos_bm_0042_foundry_4k", HD: "beneos_bm_0042_foundry_hd" } },
+    { filename: "beneos_bm_0007", variant_dirs: { HD: "beneos_bm_0007_foundry_hd" } },
+  ]
+  gleich("voller Name, Variante klein geschrieben", paketKennungAus(katalog, "beneos_bm_0042_tavern", "hd"), "beneos_bm_0042_foundry_hd")
+  gleich("nur der Kern stimmt", paketKennungAus(katalog, "bm_0042", "4k"), "beneos_bm_0042_foundry_4k")
+  gleich("ohne Variante: 4K", paketKennungAus(katalog, "beneos_bm_0042_tavern", ""), "beneos_bm_0042_foundry_4k")
+  gleich("Rueckfall auf HD", paketKennungAus(katalog, "beneos_bm_0007", ""), "beneos_bm_0007_foundry_hd")
+  gleich("unbekannt: null", paketKennungAus(katalog, "beneos_bm_9999", "4k"), null)
+  const uninst = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "cloud-v2", "beneos-native-uninstaller.mjs"), "utf8")
+  gleich("Uninstaller ruft paketKennungAus", /return paketKennungAus\(await mgr\.listReleases\(\), releaseDir, variant\)/.test(uninst), true)
+}
+
 console.log(`\n${gruen} gruen, ${rot} rot`)
 process.exit(rot ? 1 : 0)

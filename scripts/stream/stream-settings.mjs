@@ -54,6 +54,11 @@ export const SETTING = {
   // Der Riegel des Adressnachzugs, je WELT und nicht je Browser. Siehe
   // `nachzugRiegelNehmen()` weiter unten.
   nachzugRiegel: "beneos-stream-nachzug-riegel",
+  // Die Umstellung einer Bestandswelt auf das Tor, stre-T-064: Fortschritt
+  // (erledigte Einheiten, lokale Registerwerte von vorher) und ihr Riegel.
+  // Siehe stream-umstellung.mjs.
+  umstellung: "beneos-stream-umstellung",
+  umstellungRiegel: "beneos-stream-umstellung-riegel",
 }
 
 const DEFAULT_BASE = "https://gate.beneos.stream"
@@ -239,6 +244,17 @@ export function registerStreamSettings() {
   // und dann liefe der Nachzug nie wieder: die Welt haette dauerhaft alte
   // Adressen. Das ist der schlechtere Ausgang als ein Lauf zu viel.
   game.settings.register(MODULE_ID, SETTING.nachzugRiegel, {
+    ...world, type: String, default: "",
+  })
+
+  // Die Umstellung einer Bestandswelt, stre-T-064. Der Fortschritt steht als
+  // JSON und traegt nur Einheitenkennungen und lokale Pfade, nie eine
+  // Toradresse. Der Riegel folgt der Bauart des Nachzugs: Marke mit
+  // Zeitstempel, `riegelEntscheid` entscheidet.
+  game.settings.register(MODULE_ID, SETTING.umstellung, {
+    ...world, type: String, default: "",
+  })
+  game.settings.register(MODULE_ID, SETTING.umstellungRiegel, {
     ...world, type: String, default: "",
   })
 

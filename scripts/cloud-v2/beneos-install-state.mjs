@@ -54,6 +54,34 @@ export function releaseKern(releaseDir) {
 }
 
 /**
+ * Die Paketkennung eines Vermerks, aus der Katalogliste `listReleases()`.
+ *
+ * Herausgeloest aus `#packageIdFor` im Uninstaller (stre-T-064), weil die
+ * Umstellung einer Bestandswelt dieselbe Frage stellt. Regeln unveraendert:
+ * erst der volle Verzeichnisname, dann der Kern aus `releaseKern`; die
+ * Variante ohne Ruecksicht auf Gross und Klein, ein Rueckfall auf 4K, HD oder
+ * die erste nur, wo keine Variante gefordert war oder sie fehlt.
+ *
+ * @param {Array<object>} releases  Zeilen aus `listReleases()`
+ * @returns {string|null}
+ */
+export function paketKennungAus(releases, releaseDir, variant) {
+  const name = String(releaseDir)
+  let row = (releases || []).find(r => String(r.release_dir || r.filename) === name)
+  if (!row) {
+    const kern = releaseKern(name)
+    if (kern) row = (releases || []).find(r => releaseKern(r.release_dir || r.filename) === kern)
+  }
+  if (!row) return null
+  const dirs = row.variant_dirs || {}
+  if (variant) {
+    const treffer = Object.keys(dirs).find(k => k.toLowerCase() === String(variant).toLowerCase())
+    if (treffer) return dirs[treffer]
+  }
+  return dirs["4K"] || dirs["HD"] || Object.values(dirs)[0] || null
+}
+
+/**
  * Ein lesbarer Name aus dem Verzeichnisnamen, fuer Vermerke ohne eigenen.
  *
  * Nur ein Rueckfall. Der echte Name steht seit dieser Fassung im Vermerk; hier

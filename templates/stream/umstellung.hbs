@@ -1,0 +1,34 @@
+{{!
+  Die Umstellung einer Bestandswelt aufs Tor, stre-T-064. Erst die Zahlen
+  des Trockenlaufs, dann was lokal bleibt und warum, dann die Knoepfe.
+  Jeder Text steht in lang/*.json unter BENEOS.Stream.Umstellung.*.
+}}
+<div class="beneos-um">
+  <p>{{localize "BENEOS.Stream.Umstellung.Intro"}}</p>
+
+  <dl class="beneos-um-zahlen">
+    <dt>{{localize "BENEOS.Stream.Umstellung.Creatures"}}</dt><dd>{{kreaturen}}</dd>
+    <dt>{{localize "BENEOS.Stream.Umstellung.Maps"}}</dt><dd>{{karten}}</dd>
+    <dt>{{localize "BENEOS.Stream.Umstellung.Fields"}}</dt><dd>{{stellen}}</dd>
+  </dl>
+
+  {{#if lokal.length}}
+  <section class="beneos-um-lokal">
+    <h3>{{localize "BENEOS.Stream.Umstellung.StaysLocal"}}</h3>
+    <ul>
+      {{#each lokal}}<li>{{text}}: {{n}}</li>{{/each}}
+    </ul>
+  </section>
+  {{/if}}
+
+  {{#if laeuft}}<p class="beneos-um-lauf" role="status">{{fortschritt}}</p>{{/if}}
+
+  <footer class="beneos-um-knoepfe">
+    {{#if laeuft}}
+      <button type="button" data-action="stop">{{localize "BENEOS.Stream.Umstellung.Stop"}}</button>
+    {{else}}
+      <button type="button" data-action="start" {{#unless kannStarten}}disabled{{/unless}}>{{localize "BENEOS.Stream.Umstellung.Start"}}</button>
+      <button type="button" data-action="revert">{{localize "BENEOS.Stream.Umstellung.Revert"}}</button>
+    {{/if}}
+  </footer>
+</div>

@@ -26,6 +26,7 @@ import { installStreamIndicator } from "./stream-indicator.mjs"
 import { installStreamBilder, bilderBlobStand } from "./stream-bilder.mjs"
 import { installStreamSceneUi } from "./stream-scene-ui.mjs"
 import { registerOfflineWindow, BeneosOfflineWindow } from "./stream-offline-window.mjs"
+import { registerUmstellungWindow, umstellungOeffnen } from "./stream-umstellung-window.mjs"
 import { explainOnce } from "./stream-intro.mjs"
 import { loadStreamManifest, buildStreamPack, applyStreamAddresses, streamUrlsOf, releaseFromPackage, listReleases } from "./stream-install.mjs"
 import { rebuildScenesForStream, stillPathFor } from "./stream-scenes.mjs"
@@ -43,6 +44,8 @@ Hooks.once("init", () => {
   // Moduleinstellungen. Muss im init stehen, weil registerMenu dort erwartet
   // wird; es kostet nichts, solange niemand es oeffnet.
   registerOfflineWindow()
+  // Die Umstellung einer Bestandswelt aufs Tor, stre-T-064. Ebenso im init.
+  registerUmstellungWindow()
 
   // Only patch when the switch is on. A world with streaming turned off must
   // pay nothing for it, not even a wrapped fetch.
@@ -191,6 +194,8 @@ Hooks.once("init", () => {
     schalteKarte,
     /** Das Fenster mit dem Offline-Vorrat oeffnen. */
     offlineFenster: () => BeneosOfflineWindow.open(),
+    /** Das Fenster zur Umstellung einer Bestandswelt aufs Tor, stre-T-064. */
+    umstellung: () => umstellungOeffnen(),
     diagnose,
     resetDiagnosis,
     reportedSoFar,

@@ -29,7 +29,7 @@
  * the pack JSONs are the very ids sitting in the world.
  */
 
-import { BeneosInstallState, releaseKern } from "./beneos-install-state.mjs"
+import { BeneosInstallState, paketKennungAus } from "./beneos-install-state.mjs"
 import { BeneosNativeBattlemapInstaller } from "./beneos-native-installer.mjs"
 import { releaseLoesen } from "../stream/stream-offline.mjs"
 import { posenVergessen } from "../stream/stream-posen.mjs"
@@ -408,20 +408,9 @@ export class BeneosNativeUninstaller {
     try {
       const mgr = window.BeneosScenePacker
       if (!mgr?.listReleases) return null
-      const releases = await mgr.listReleases()
-      const name = String(releaseDir)
-      let row = releases.find(r => String(r.release_dir || r.filename) === name)
-      if (!row) {
-        const kern = releaseKern(name)
-        if (kern) row = releases.find(r => releaseKern(r.release_dir || r.filename) === kern)
-      }
-      if (!row) return null
-      const dirs = row.variant_dirs || {}
-      if (variant) {
-        const treffer = Object.keys(dirs).find(k => k.toLowerCase() === String(variant).toLowerCase())
-        if (treffer) return dirs[treffer]
-      }
-      return dirs["4K"] || dirs["HD"] || Object.values(dirs)[0] || null
+      // Die Regel steht seit stre-T-064 in `paketKennungAus`, die Umstellung
+      // einer Bestandswelt ruft sie ebenso.
+      return paketKennungAus(await mgr.listReleases(), releaseDir, variant)
     } catch (_) {
       return null
     }
