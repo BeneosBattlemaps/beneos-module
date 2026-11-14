@@ -491,6 +491,23 @@ then
               "v15-globale-bench, Obergrenze 24"
 fi
 
+# Das Suchwerkzeug fuer den Streamschluessel, stre-T-065 (OP-PRJ-149).
+#
+# Es zaehlt Toradressen mit Schluessel in einem Weltexport und darf dabei nie
+# einen Wert ausgeben. Sein Pruefsatz faehrt die Leckprobe mit einem
+# zufaelligen Schluessel und vergleicht Raumbuchstaben und Vorgabehost mit
+# scripts/stream/stream-settings.mjs. Deshalb loest auch diese Datei aus: ein
+# fuenfter Raum dort liesse das Werkzeug still zu wenig zaehlen.
+#
+# Kein Netz, kein Foundry, unter einer Sekunde.
+if git diff --cached --name-only --diff-filter=ACM \
+     -- tools/schluessel-suche scripts/stream/stream-settings.mjs \
+   | grep -q .
+then
+  meld "pre-commit: Schluesselsuche oder Raumtabelle vorgemerkt, ihr Pruefsatz laeuft mit"
+  fahre "tools/schluessel-suche/test.mjs" "schluessel-suche test.mjs"
+fi
+
 # ----------------------------------------------------------------- Ausgang ---
 if [ "$ROT" -gt 0 ]; then
   meld ""

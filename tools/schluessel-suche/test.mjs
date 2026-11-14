@@ -10,7 +10,7 @@
  *   node tools/schluessel-suche/test.mjs --skript <pfad>   Sabotage-Fassung pruefen
  */
 
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs"
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from "node:fs"
 import { join, dirname } from "node:path"
 import { tmpdir } from "node:os"
 import { spawnSync } from "node:child_process"
@@ -22,7 +22,10 @@ let skript = join(hier, "suche.mjs")
 const i = process.argv.indexOf("--skript")
 if (i > 0 && process.argv[i + 1]) skript = process.argv[i + 1]
 
-const KEY = randomBytes(16).toString("hex")
+// Vorne ein Buchstabe: so sieht der Schluessel als Objektschluessel (W6) wie
+// ein Feldname aus, und erst die Zeilenmaske am Ausgang haelt ihn zurueck.
+// Mit einer Ziffer vorne fing schon feldName ihn ab, in 10 von 16 Laeufen.
+const KEY = "k" + randomBytes(16).toString("hex")
 const BASIS = "https://gate.beneos.stream"
 const wurzel = mkdtempSync(join(tmpdir(), "schluessel-suche-"))
 
@@ -129,6 +132,50 @@ try {
   const r6 = lauf(w6)
   ok("W6 Schluessel als Objektschluessel: gezaehlt, nicht ausgegeben",
      summe(r6.out)?.treffer === 1 && leckfrei(r6.alles), leckBeleg(r6))
+  // ─── W7: kein lesbares Dokument ist kein Nullbefund ────────────────────────
+  const w7 = join(wurzel, "w7")
+  schreib(join(w7, "actors", "a.yml"), `img: ${BASIS}/c/${KEY}/r/a.webp\n`)
+  const r7 = lauf(w7)
+  ok("W7 nur YAML: rc 2 und KEIN DOKUMENT", r7.rc === 2 && /KEIN DOKUMENT/.test(r7.out), "rc=" + r7.rc)
+  ok("W7 nennt die uebergangene YAML-Datei", /uebergangen_yaml=1\b/.test(r7.out))
+  ok("W7 kein Wert in der Ausgabe", leckfrei(r7.alles), leckBeleg(r7))
+  // ─── W8: Raeume und Vorgabehost wie im Modul ───────────────────────────────
+  // Das Werkzeug fuehrt die Raumbuchstaben als eigene Liste. Kommt im Modul ein
+  // fuenfter Raum dazu, zaehlte es dort zu wenig, ohne dass etwas rot wird.
+  const settings = readFileSync(join(hier, "..", "..", "scripts", "stream", "stream-settings.mjs"), "utf8")
+  const quelle = readFileSync(skript, "utf8")
+  const block = /STREAM_RAUM_BUCHSTABE = Object\.freeze\(\{([^}]*)\}\)/.exec(settings)
+  const modulRaeume = block ? [...block[1].matchAll(/:\s*"([a-z])"/g)].map((m) => m[1]).sort() : []
+  const werkzeugBlock = /const RAEUME = \[([^\]]*)\]/.exec(quelle)
+  const werkzeugRaeume = werkzeugBlock ? [...werkzeugBlock[1].matchAll(/"([a-z])"/g)].map((m) => m[1]).sort() : []
+  ok("W8 Raumbuchstaben wie STREAM_RAUM_BUCHSTABE",
+     modulRaeume.length > 0 && modulRaeume.join() === werkzeugRaeume.join(),
+     "Modul " + modulRaeume.join() + " / Werkzeug " + werkzeugRaeume.join())
+  const modulZone = /const GATE_ZONE = "([^"]+)"/.exec(settings)?.[1]
+  ok("W8 Zone wie GATE_ZONE", !!modulZone && quelle.includes(`const ZONE = "${modulZone}"`), String(modulZone))
+  const modulBasis = /const DEFAULT_BASE = "([^"]+)"/.exec(settings)?.[1]
+  const basisHost = modulBasis ? new URL(modulBasis).hostname : ""
+  ok("W8 DEFAULT_BASE liegt in der Zone",
+     !!modulZone && (basisHost === modulZone || basisHost.endsWith("." + modulZone)), String(modulBasis))
+
+  // ─── W9: Grenzen des Musters, je ein Gegenbeispiel ─────────────────────────
+  const w9 = join(wurzel, "w9")
+  schreib(join(w9, "actors", "a.json"), {
+    _key: "!actors!w9",
+    img: `https://pruefstand.beneos.stream/c/${KEY}/r/a.webp`,             // zaehlt: Unterhost der Zone
+    src: `https://GATE.Beneos.Stream/a/${KEY}/r/v/m.webp`,                // zaehlt: Grossschreibung im Host
+    a: `https://xbeneos.stream/c/${KEY}/r/a.webp`,                        // nicht: keine Zone
+    b: `https://beneos.stream.example.org/c/${KEY}/r/a.webp`,             // nicht: Zone nur als Vorsilbe
+    c: `http://gate.beneos.stream/c/${KEY}/r/a.webp`,                     // nicht: kein https
+  })
+  const r9 = lauf(w9)
+  ok("W9 ohne --basis: Unterhost und Grossschreibung zaehlen, drei Fremde nicht",
+     summe(r9.out)?.treffer === 2, String(summe(r9.out)?.treffer))
+  const r9b = lauf(w9, "--basis", BASIS)
+  ok("W9 mit --basis zaehlt nur diesen Host", summe(r9b.out)?.treffer === 1, String(summe(r9b.out)?.treffer))
+  ok("W9 kein Wert in der Ausgabe", leckfrei(r9.alles + r9b.alles), leckBeleg(r9))
+  const r9c = lauf(w9, "--basis", "")
+  ok("W9 leeres --basis ist Aufruffehler, rc 1", r9c.rc === 1, "rc=" + r9c.rc)
 } finally {
   rmSync(wurzel, { recursive: true, force: true })
 }

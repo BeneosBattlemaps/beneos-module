@@ -24,14 +24,23 @@
  * komprimiert, eine Textsuche darin zaehlte zu wenig und sagte trotzdem
  * "null". Er wird gemeldet, und der Lauf endet mit 2.
  *
+ * Export einer Welt als JSON, OHNE `--yaml` (die Option hat in
+ * @foundryvtt/foundryvtt-cli keinen Default, JSON ist also die Vorgabe):
+ *   fvtt package unpack -n <pack> --out <scratch-ordner>
+ * YAML-Dateien werden nicht gelesen, nur gezaehlt; ohne ein einziges lesbares
+ * Dokument endet der Lauf mit 2 und nicht mit "treffer=0".
+ *
  * Aufruf:
  *   node tools/schluessel-suche/suche.mjs <ordner-oder-datei> [--basis <url>]
  *
- * Vorgabe fuer --basis ist https://gate.beneos.stream (DEFAULT_BASE in
- * scripts/stream/stream-settings.mjs).
+ * Ohne --basis zaehlt jede https-Adresse unter der Torzone beneos.stream, mit
+ * jedem Unterhost. Dieselbe Grenze zieht erlaubteBasis in
+ * scripts/stream/stream-settings.mjs: eine Welt kann mit einem anderen Host
+ * als DEFAULT_BASE installiert sein, und nur gate.beneos.stream zu suchen
+ * ergaebe dort "treffer=0". Mit --basis zaehlt genau dieser eine Host.
  *
- * Rueckgabe: 0 gelesen, 2 mindestens eine Datei unlesbar oder LevelDB, 1
- * Aufruffehler.
+ * Rueckgabe: 0 gelesen, 2 mindestens eine Datei unlesbar oder LevelDB oder
+ * kein Dokument, 1 Aufruffehler.
  */
 
 import { readdirSync, readFileSync, statSync, existsSync } from "node:fs"
@@ -39,26 +48,30 @@ import { join, relative, basename, extname } from "node:path"
 
 // Dieselben Raumbuchstaben wie STREAM_RAUM_BUCHSTABE in stream-settings.mjs.
 const RAEUME = ["a", "c", "l", "s"]
+// Dieselbe Zone wie GATE_ZONE in stream-settings.mjs.
+const ZONE = "beneos.stream"
 
 function aufruf(argv) {
   const args = argv.slice(2)
   let pfad = null
-  let basis = "https://gate.beneos.stream"
+  let basis
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--basis") { basis = String(args[++i] || ""); continue }
     if (pfad === null) pfad = args[i]
   }
-  return { pfad, basis: basis.replace(/\/+$/, "") }
+  return { pfad, basis: basis === undefined ? undefined : basis.replace(/\/+$/, "") }
 }
 
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
 function musterFuer(basis) {
-  const roh = basis.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const host = basis === undefined ? `https://(?:[a-z0-9-]+\\.)*${esc(ZONE)}` : esc(basis)
   // Das zweite Stueck ist der Schluessel. "-" ist die maskierte Form und zaehlt nicht.
-  return new RegExp(`${roh}/(?:${RAEUME.join("|")})/([^/\\s"'<>\\\\]+)/`, "g")
+  return new RegExp(`${host}/(?:${RAEUME.join("|")})/([^/\\s"'<>\\\\]+)/`, "gi")
 }
 
 const { pfad, basis } = aufruf(process.argv)
-if (!pfad || !basis) {
+if (!pfad || basis === "") {
   process.stderr.write("Aufruf: node suche.mjs <ordner-oder-datei> [--basis <url>]\n")
   process.exit(1)
 }
@@ -74,6 +87,7 @@ const unlesbar = []
 const leveldb = []
 let dateien = 0
 let dokumente = 0
+const uebergangen = { yaml: 0, sonstige: 0 }
 
 function zaehle(typ, feld, art, n) {
   const k = typ + "\t" + feld
@@ -153,13 +167,19 @@ function istLevelDb(ordner) {
 
 function wandere(ordner, wurzel) {
   if (istLevelDb(ordner)) { leveldb.push(relative(wurzel, ordner) || "."); return }
-  for (const name of readdirSync(ordner).sort()) {
+  let namen
+  try { namen = readdirSync(ordner).sort() } catch (_) { unlesbar.push(relative(wurzel, ordner) || "."); return }
+  for (const name of namen) {
     const voll = join(ordner, name)
     let st
     try { st = statSync(voll) } catch (_) { unlesbar.push(relative(wurzel, voll)); continue }
     if (st.isDirectory()) { wandere(voll, wurzel); continue }
     const e = extname(name).toLowerCase()
-    if (e !== ".json" && e !== ".db") continue
+    if (e !== ".json" && e !== ".db") {
+      const art = e === ".yaml" || e === ".yml" ? "yaml" : "sonstige"
+      uebergangen[art]++
+      continue
+    }
     const rel = relative(wurzel, voll)
     const erstes = rel.split(/[\\/]/)[0]
     leseDatei(voll, rel, rel.includes("/") || rel.includes("\\") ? erstes : basename(name, e))
@@ -189,5 +209,8 @@ for (const k of [...zaehler.keys()].sort()) {
 }
 for (const u of unlesbar) aus("UNLESBAR\t" + u)
 for (const l of leveldb) aus("LEVELDB\t" + l + "\tnicht gelesen, erst exportieren (fvtt package unpack)")
-aus(`SUMME treffer=${summeT} platzhalter=${summeP} dateien=${dateien} dokumente=${dokumente} unlesbar=${unlesbar.length} leveldb=${leveldb.length}`)
-process.exit(unlesbar.length || leveldb.length ? 2 : 0)
+// KEIN DOKUMENT IST KEIN ERGEBNIS. Ein Ordner nur mit YAML oder ein falscher
+// Pfad ergaebe sonst "treffer=0", und das sieht aus wie ein Nachweis.
+if (!dokumente) aus("KEIN DOKUMENT\tnichts Lesbares gefunden (*.json, *.db); YAML wird nicht gelesen")
+aus(`SUMME treffer=${summeT} platzhalter=${summeP} dateien=${dateien} dokumente=${dokumente} unlesbar=${unlesbar.length} leveldb=${leveldb.length} uebergangen_yaml=${uebergangen.yaml} uebergangen_sonstige=${uebergangen.sonstige}`)
+process.exit(unlesbar.length || leveldb.length || !dokumente ? 2 : 0)
