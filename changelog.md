@@ -4,6 +4,34 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.5.0-beta.11 # 2026-11-14
+
+**New**
+- New: Creature journal pictures now stream like the token art. Until a
+  picture is available in the stream, the local copy keeps being used.
+- New: Item and spell cards can show their art from the stream as well.
+- New: The compendium search has its own switch and starts switched off.
+- New: A video that is not unlocked for you now says so once per release
+  instead of failing silently.
+
+**Changed**
+- Changed: Your stream key no longer appears in the browser console.
+- Changed: Stored addresses in your world no longer carry your stream key for
+  journal pictures, creature pictures and item pictures.
+- Changed: The pass that moves your world to a new stream key now runs next
+  to your game and only once per world at a time.
+- Changed: Without a connection, the stream switches of a creature are shown
+  as locked instead of looking active.
+- Changed: The installer reads content addresses directly, which makes large
+  installs lighter.
+- Changed: The filter lists in the search window are sorted in their natural
+  order again.
+
+**Fixed**
+- Fixed: The Beneos panel on the item sheet shows again.
+- Fixed: Several texts gave the wrong duration or price of an outage; they now
+  say it correctly in every language.
+
 ### 14.5.0-beta.10 # 2026-11-06
 
 **New**
