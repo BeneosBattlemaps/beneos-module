@@ -234,11 +234,22 @@ export async function umstellen(einheiten, u) {
       }
       for (const { d, p } of plaene) await dokumentSchreiben(d, p)
       if (regTreffer.length) {
+        // ERST DER RUECKWEG, DANN DAS REGISTER. Scheiterte das Sichern nach dem
+        // Schreiben, stuende das Register auf dem Tor und kein Fortschritt
+        // kennte den lokalen Wert. Dann frisch lesen und nur die eigenen Felder
+        // setzen, und nur dort, wo noch der lokale Wert steht: zwischen dem
+        // ersten Lesen und hier liefen Leseproben uebers Netz, und ein anderer
+        // Schreiber (Installer, Nachzug) kann das Register geaendert haben.
+        for (const t of regTreffer) stand.register[`${t.id}|${t.feld}`] = { lokal: t.alt, ziel: ohneSchluessel(t.ziel) }
+        await u.fortschritt.schreiben(stand)
+        const frisch = (await u.register.lesen()) || {}
+        let geaendert = false
         for (const t of regTreffer) {
-          stand.register[`${t.id}|${t.feld}`] = { lokal: t.alt, ziel: ohneSchluessel(t.ziel) }
-          reg[t.id][t.feld] = t.ziel
+          if (frisch[t.id]?.[t.feld] !== t.alt) { delete stand.register[`${t.id}|${t.feld}`]; continue }
+          frisch[t.id][t.feld] = t.ziel
+          geaendert = true
         }
-        await u.register.schreiben(reg)
+        if (geaendert) await u.register.schreiben(frisch)
       }
       stand.erledigt.push(e.id)
       await u.fortschritt.schreiben(stand)

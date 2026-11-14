@@ -340,6 +340,37 @@ console.log("Register hin und zurueck")
   gleich("Register nach Rueckweg wie vorher", u.reg, reg)
 }
 {
+  // Scheitert das Sichern des Fortschritts, darf das Register nicht schon
+  // aufs Tor zeigen: sonst gaebe es keinen Rueckweg mehr.
+  const x = kreatur("sicher")
+  const u = umgebung({ register: { "full-sicher": { token: lokal("sicher", "sicher-1-token.webp"), topDown: null } } })
+  u.fortschritt.schreiben = async () => { throw new Error("Attrappe: Fortschritt kaputt") }
+  let fehler = null
+  try { await umstellen([x.einheit], u) } catch (e) { fehler = e }
+  gleich("Fehler beim Sichern wird durchgereicht", Boolean(fehler), true)
+  gleich("Register bleibt lokal, wenn der Rueckweg nicht gesichert ist", u.reg["full-sicher"].token, lokal("sicher", "sicher-1-token.webp"))
+}
+{
+  // Waehrend der Leseprobe schreibt ein anderer ins Register: ein neuer
+  // Eintrag und eine Neuinstallation desselben Felds. Beides bleibt.
+  const x = kreatur("parallel")
+  const u = umgebung({ register: {
+    "full-parallel": { token: lokal("parallel", "parallel-1-token.webp"), topDown: lokal("parallel", "parallel-1-top.webp") },
+  } })
+  const basisAbruf = u.abruf
+  u.abruf = async (url, opt) => {
+    u.reg["neu99"] = { token: "neu" }
+    u.reg["full-parallel"].topDown = "von/anderswo.webp"
+    return basisAbruf(url, opt)
+  }
+  u.abruf.aufrufe = basisAbruf.aufrufe
+  await umstellen([x.einheit], u)
+  gleich("fremder neuer Registereintrag bleibt", u.reg["neu99"], { token: "neu" })
+  gleich("parallel geaendertes Feld bleibt", u.reg["full-parallel"].topDown, "von/anderswo.webp")
+  gleich("eigenes unveraendertes Feld aufs Tor", u.reg["full-parallel"].token, tor("parallel", "parallel-1-token.webp"))
+  gleich("Fortschritt merkt nur das geschriebene Feld", Object.keys(u.stand.register), ["full-parallel|token"])
+}
+{
   // Der Spielleiter installiert die Kreatur danach neu: das Register traegt
   // ein anderes Ziel. Der Rueckweg laesst diesen Wert stehen.
   const x = kreatur("neu")
