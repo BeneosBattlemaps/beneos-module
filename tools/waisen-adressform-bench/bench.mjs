@@ -117,8 +117,13 @@ console.log("Die Formunterscheidung, am geschnittenen echten Code gefahren")
     adressForm(`${B}/c/${K}/beneos_ct_goblin/goblin-1-top.webp`), "tor")
   gleich("eine Beuteadresse ist eine Toradresse",
     adressForm(`${B}/l/${K}/beneos_lt_sword/sword-front.webp`), "tor")
+  // Form seit stre-T-056 (dbb9ffa): /s/<schluessel>/<release>/<variante>/shared/<sha256>/<name>.
   gleich("eine geteilte Adresse ist eine Toradresse",
-    adressForm(`${B}/s/${K}/shared/${"a".repeat(64)}/ui.webp`), "tor")
+    adressForm(`${B}/s/${K}/beneos_bm_0042/night/shared/${"a".repeat(64)}/ui.webp`), "tor")
+  // Die Form davor ohne Release und Variante beantwortet das Tor mit 404
+  // no-route; der Erkenner haelt sie deshalb nicht fuer eine Toradresse.
+  gleich("die geteilte Form vor T-056 ist keine Toradresse",
+    adressForm(`${B}/s/${K}/shared/${"a".repeat(64)}/ui.webp`), "oertlich")
   gleich("ein oertlich installierter Pfad ist oertlich",
     adressForm("beneos_assets/cloud/tokens/000-goblin/000-goblin-1-top.webp"),
     "oertlich")

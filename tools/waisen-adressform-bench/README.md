@@ -8,7 +8,7 @@ Misst `scripts/beneos_cloud.js`.
 node bench.mjs
 ```
 
-Kein Foundry und kein Netz nötig. 31 Sätze, Laufzeit unter einer Sekunde.
+Kein Foundry und kein Netz nötig. 32 Sätze, Laufzeit unter einer Sekunde.
 
 ## Worum es geht
 

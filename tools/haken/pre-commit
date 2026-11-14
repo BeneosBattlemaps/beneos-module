@@ -397,7 +397,7 @@ if git diff --cached --name-only --diff-filter=ACM \
    | grep -q .
 then
   meld "pre-commit: Kreaturen-Installer vorgemerkt, die Adressform laeuft mit"
-  fahre "tools/waisen-adressform-bench/bench.mjs" "waisen-adressform-bench, 31 Saetze"
+  fahre "tools/waisen-adressform-bench/bench.mjs" "waisen-adressform-bench, 32 Saetze"
 fi
 
 # Der Bildweg des Installers, wenn er angefasst wird.
