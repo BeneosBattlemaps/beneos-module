@@ -444,9 +444,22 @@ const FLAECHEN = [
  */
 const VERBOTEN = /Directory|Sidebar|FilePicker/i
 
+/** Faellt ein Hakenpaar unter den Riegel? Der eine Ort, an dem er greift. */
+function flaechenRiegel(renderHaken, schliessHaken) {
+  return VERBOTEN.test(renderHaken) || VERBOTEN.test(schliessHaken)
+}
+
+/*
+ * NAHT FUER `stream-bilder.test.mjs` (stre-T-017, Betreiberentscheid vom
+ * 14.11.2026). `FLAECHEN` traegt heute kein Verzeichnis, also greift der
+ * Riegel beim Einbau nie, und ohne diese Naht waere er nur als Quelltext
+ * pruefbar. Der Satz ruft denselben Riegel, den `installStreamBilder` ruft.
+ */
+export const flaechenRiegelFuerPruefsatz = flaechenRiegel
+
 export function installStreamBilder() {
   for (const [renderHaken, schliessHaken] of FLAECHEN) {
-    if (VERBOTEN.test(renderHaken) || VERBOTEN.test(schliessHaken)) {
+    if (flaechenRiegel(renderHaken, schliessHaken)) {
       console.warn(`Beneos Stream | Haken ${renderHaken} abgewiesen: eine Liste holt je Zeile `
         + "ein volles Bild und hebt damit das Lazy-Loading von Foundry auf. Siehe OP-PRJ-177.")
       continue

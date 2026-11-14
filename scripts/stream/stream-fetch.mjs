@@ -468,8 +468,8 @@ const GETEILTER_VORRAT_AN = false
  * Antworten waeren hier zu viel: es gibt nichts zu melden, es gibt nur etwas
  * zu benutzen oder nicht.
  */
-function geteilterDreiklang(url, t) {
-  if (!GETEILTER_VORRAT_AN) return null
+function geteilterDreiklang(url, t, an = GETEILTER_VORRAT_AN) {
+  if (!an) return null
   // Schon ein geteilter Dreiklang? Dann nicht zweimal umrechnen.
   if (t.raum === "geteilt") return null
   if (!istGeteilteDatei(url)) return null
@@ -506,11 +506,26 @@ function geteilterDreiklang(url, t) {
  * nimmt DIESE Form: sie traegt den Streamschluessel nicht.
  */
 export function vorratsSchluessel(url) {
+  return vorratsSchluesselBei(url, GETEILTER_VORRAT_AN)
+}
+
+/*
+ * NAEHTE FUER `stream-geteilt.test.mjs` (stre-T-017, Betreiberentscheid vom
+ * 14.11.2026). Der Schalter oben ist eine Konstante und bleibt eine: kein
+ * Kunde und kein Aufruf im Modul kann ihn setzen. Diese beiden Exporte fahren
+ * denselben Code mit dem Schalter AN, damit der Satz das Verhalten der
+ * anderen Lage misst statt ihren Quelltext zu lesen. Das Modul selbst ruft
+ * sie nie.
+ */
+export const geteilterDreiklangFuerPruefsatz = (url, t) => geteilterDreiklang(url, t, true)
+export const vorratsSchluesselMitVorratFuerPruefsatz = (url) => vorratsSchluesselBei(url, true)
+
+function vorratsSchluesselBei(url, an) {
   const s = String(url || "")
   if (s.startsWith(VORRAT_URSPRUNG)) return s
   const t = zerlegeAdresse(s)
   if (!t) return s
-  const g = geteilterDreiklang(s, t)
+  const g = geteilterDreiklang(s, t, an)
   const quelle = g || t
   const pfad = quelle.pfad.split("/").map(encodeURIComponent).join("/")
   return `${VORRAT_URSPRUNG}/a/${encodeURIComponent(quelle.release)}/${encodeURIComponent(quelle.variant)}/${pfad}`

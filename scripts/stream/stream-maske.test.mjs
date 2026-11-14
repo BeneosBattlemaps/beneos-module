@@ -40,12 +40,23 @@
  * Die Gegenzahl entsteht an einer ANDEREN Stelle als die Tabelle, naemlich am
  * Quelltext von `assetUrl()` und `zerlegeAdresse()`. Eine Zaehlung, die
  * dieselbe Liste zweimal liest, bestaetigt nur sich selbst.
+ *
+ * VERHALTEN UND STRUKTUR, seit 14.11.2026 (stre-T-017). Proben, die den
+ * Quelltext lesen, tragen das Praefix `[Struktur] `. Sie bleiben Text, weil
+ * ihre Aussage selbst strukturell ist: einen Raum, den die Tabelle NICHT
+ * nennt, kann kein Aufruf aufzaehlen. Alles, was sich durch einen Aufruf
+ * zeigen laesst, wird durch einen Aufruf gezeigt; der Rueckfall von
+ * `ohneSchluessel` etwa wird nicht mehr am Quelltext gesucht, sondern an
+ * einer Adresse gemessen, die nur die Textmaske retten kann. Dass jede Probe
+ * eine kaputte Stelle bemerkt, belegt `node tools/stream-sabotagen.mjs`.
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { ohneSchluessel, ohneSchluesselImText } from "./stream-report.mjs";
 import {
+  zerlegeAdresse,
+  istPlatzhalter,
   streamBase,
   STREAM_RAUM_BUCHSTABE,
   assetUrl,
@@ -92,6 +103,10 @@ function gleich(name, ist, soll) {
   else { rot++; console.log(`  ROT  ${name}\n       soll ${JSON.stringify(soll)}\n       ist  ${JSON.stringify(ist)}`); }
 }
 
+function struktur(name, ist, soll) {
+  gleich(`[Struktur] ${name}`, ist, soll);
+}
+
 function ohneTreffer(name, text) {
   gleich(name, ohneSchluesselImText(text), text);
 }
@@ -127,9 +142,17 @@ console.log("Der Schluessel verschwindet, der Rest bleibt stehen");
   gleich("in spitzen Klammern",
     ohneSchluesselImText(`<img src=${B}/a/${K}/x/y.webp>`),
     `<img src=${B}/a/-/x/y.webp>`);
-  gleich("zweimal maskieren aendert nichts mehr",
+  gleich("im Text: zweimal maskieren aendert nichts mehr",
     ohneSchluesselImText(ohneSchluesselImText(`${B}/a/${K}/x/y.webp`)),
     `${B}/a/-/x/y.webp`);
+  // Der Schluessel als LETZTES Segment: hier entscheidet allein die Zeichen-
+  // klasse, wo er endet. Steht danach ein Schraegstrich, endet er dort ohnehin.
+  gleich("Schluessel direkt vor dem Anfuehrungszeichen, das Zeichen bleibt",
+    ohneSchluesselImText(`fetch("${B}/a/${K}") failed`),
+    `fetch("${B}/a/-") failed`);
+  gleich("Schluessel direkt vor der spitzen Klammer, die Klammer bleibt",
+    ohneSchluesselImText(`<${B}/c/${K}>`),
+    `<${B}/c/->`);
 }
 
 console.log("");
@@ -234,7 +257,7 @@ console.log("ohneSchluessel, die Maske am Meldekanal");
   gleich("die Abfragezeichenkette fliegt weg, weil der Vergleich am Pfad haengt",
     ohneSchluessel(`${B}/a/${K}/r/v/f.webm?sig=abc`),
     `${B}/a/-/r/v/f.webm`);
-  gleich("zweimal maskieren aendert nichts mehr",
+  gleich("an der Adresse: zweimal maskieren aendert nichts mehr",
     ohneSchluessel(ohneSchluessel(`${B}/l/${K}/beneos_lt_sword/sword-front.webp`)),
     `${B}/l/-/beneos_lt_sword/sword-front.webp`);
   gleich("ein oertlicher Pfad bleibt, wie er ist",
@@ -291,14 +314,14 @@ console.log("Die Gesamtmenge: die Tabelle gegen den Quelltext");
   // GEGENPROBE AUF DIE GEGENPROBE. Eine Suche, die nichts findet, ist von
   // einer kaputten Suche nicht zu unterscheiden, und dann waere der
   // Mengenvergleich darunter immer gruen.
-  gleich("die rohe Zaehlung findet ueberhaupt Buchstaben", gebaut.length > 0, true);
-  gleich("der Schnitt endet vor dem naechsten Export",
+  struktur("die rohe Zaehlung findet ueberhaupt Buchstaben", gebaut.length > 0, true);
+  struktur("der Schnitt endet vor dem naechsten Export",
     bisEnde.includes("export function assetUrl"), false);
 
   const ausTabelle = Object.values(STREAM_RAUM_BUCHSTABE);
-  gleich("adressSegmente baut genau so viele Raeume, wie die Tabelle nennt",
+  struktur("adressSegmente baut genau so viele Raeume, wie die Tabelle nennt",
     gebaut.length, ausTabelle.length);
-  gleich("und es sind dieselben",
+  struktur("und es sind dieselben",
     [...new Set(gebaut)].sort().join(","), [...ausTabelle].sort().join(","));
 
   /*
@@ -316,7 +339,7 @@ console.log("Die Gesamtmenge: die Tabelle gegen den Quelltext");
     const probe = RAUMPROBE[name];
     const mitKey = assetUrl(probe.release, probe.variant, probe.pfad, probe.traeger);
     const ohneKey = platzhalterAdresse(probe.release, probe.variant, probe.pfad, probe.traeger);
-    gleich(`beide Bauer nennen fuer "${name}" den Buchstaben "${buchstabe}"`,
+    gleich(`beide Bauer nennen fuer "${name}" den Buchstaben der Tabelle`,
       [mitKey.slice(streamBase().length + 1).split("/")[0],
         ohneKey.slice("beneos://".length).split("/")[0]].join("|"),
       `${buchstabe}|${buchstabe}`);
@@ -327,6 +350,10 @@ console.log("Die Gesamtmenge: die Tabelle gegen den Quelltext");
     teileMit.splice(1, 1);
     gleich(`und dieselbe Datei in beiden Formen, Raum "${name}"`,
       teileMit.join("/"), ohneKey.slice("beneos://".length));
+    // Zwei Werte: die Platzhalterform ist eine, die Toradresse derselben
+    // Datei ist keine.
+    gleich(`istPlatzhalter erkennt die Platzhalterform, Raum "${name}"`,
+      [istPlatzhalter(ohneKey), istPlatzhalter(mitKey)].join("|"), "true|false");
   }
 
   /*
@@ -342,6 +369,10 @@ console.log("Die Gesamtmenge: die Tabelle gegen den Quelltext");
     const ohneKey = platzhalterAdresse(probe.release, probe.variant, probe.pfad, probe.traeger);
     gleich(`die Maske laesst die Platzhalterform des Raumes "${name}" stehen`,
       ohneSchluessel(ohneKey), ohneKey);
+    // Der Vergleich haengt am Pfad: eine Abfrage hinter der Platzhalterform
+    // faellt, wie hinter jeder anderen Adresse.
+    gleich(`die Platzhalterform verliert ihre Abfrage, Raum "${name}"`,
+      ohneSchluessel(`${ohneKey}?v=2`), ohneKey);
     gleich(`und auch im Fliesstext, Raum "${name}"`,
       ohneSchluesselImText(`Loaded ${ohneKey} (50%)`),
       `Loaded ${ohneKey} (50%)`);
@@ -355,10 +386,21 @@ console.log("Die Gesamtmenge: die Tabelle gegen den Quelltext");
   // zurueck, was den Schluessel zwar nimmt, aber die kanonische Form verliert.
   const abZerlege = setQuelle.slice(setQuelle.indexOf("export function zerlegeAdresse"));
   const namen = [...abZerlege.matchAll(/raum:\s*"([a-z]+)"/g)].map((m) => m[1]);
-  gleich("die rohe Zaehlung findet ueberhaupt Raumnamen", namen.length > 0, true);
-  gleich("die Tabellenschluessel sind die Raumnamen aus zerlegeAdresse",
+  struktur("die rohe Zaehlung findet ueberhaupt Raumnamen", namen.length > 0, true);
+  struktur("die Tabellenschluessel sind die Raumnamen aus zerlegeAdresse",
     Object.keys(STREAM_RAUM_BUCHSTABE).sort().join(","),
     [...new Set(namen)].sort().join(","));
+
+  // Dieselbe Aussage als Verhalten, je Raum: was `assetUrl` baut, liest
+  // `zerlegeAdresse` unter dem Namen zurueck, unter dem die Tabelle den Raum
+  // fuehrt. Die Strukturprobe darueber faengt einen Raum, den die Tabelle
+  // nicht kennt; diese hier faengt einen falsch zurueckgelesenen Namen.
+  for (const name of Object.keys(STREAM_RAUM_BUCHSTABE)) {
+    const probe = RAUMPROBE[name];
+    const t = zerlegeAdresse(assetUrl(probe.release, probe.variant, probe.pfad, probe.traeger));
+    gleich(`zerlegeAdresse liest den Raum "${name}" unter seinem Tabellennamen zurueck`,
+      t && t.raum, name);
+  }
 }
 
 console.log("");
@@ -373,19 +415,43 @@ console.log("Die Maske liest ihre Buchstaben aus der Tabelle, nicht aus sich sel
     return x !== "" && !x.startsWith("//") && !x.startsWith("*") && !x.startsWith("/*");
   }).join("\n");
 
-  gleich("der Kommentarfilter nimmt wirklich etwas weg",
+  struktur("der Kommentarfilter nimmt wirklich etwas weg",
     nurCode.length < repQuelle.length, true);
-  gleich("die Maske nennt STREAM_RAUM_BUCHSTABE",
+  struktur("die Maske nennt STREAM_RAUM_BUCHSTABE",
     nurCode.includes("STREAM_RAUM_BUCHSTABE"), true);
-  gleich("kein festgeschriebenes (a|c) mehr im Code",
+  struktur("kein festgeschriebenes (a|c) mehr im Code",
     nurCode.includes("(a|c)"), false);
-  gleich("ohneSchluessel entscheidet nicht mehr zweiteilig am Raumnamen",
+  struktur("ohneSchluessel entscheidet nicht mehr zweiteilig am Raumnamen",
     /raum === "kreatur"/.test(nurCode), false);
-  // Seit dem Kalt-Review zu T-056 ueber einen Zwischenschritt, der danach
-  // noch hostunabhaengig maskiert; die Textmaske bleibt der erste Schritt.
-  gleich("der Rueckfall von ohneSchluessel geht durch die Textmaske",
-    /if \(!buchstabe\) return ohneSchluesselOhneZerlegung\(roh\)/.test(nurCode)
-      && /function ohneSchluesselOhneZerlegung\(roh\) \{\s*const text = ohneSchluesselImText\(roh\)/.test(nurCode), true);
+}
+
+console.log("");
+console.log("Der Rueckfall von ohneSchluessel, gemessen statt gelesen");
+{
+  // Seit dem Kalt-Review zu T-056 geht eine Adresse, die `zerlegeAdresse`
+  // nicht liest, durch zwei Schritte: zuerst die Textmaske, danach eine Maske,
+  // die den Host nicht kennt. Beide werden hier an einer Eingabe gemessen, die
+  // nur der jeweilige Schritt retten kann.
+  //
+  // Nur die Textmaske rettet Fliesstext: er ist keine Adresse, also scheitert
+  // der zweite Schritt schon an `new URL`.
+  const fliess = `Fehler beim Laden von ${B}/a/${K}/bm_0042/night/map.webm`;
+  gleich("Fliesstext an ohneSchluessel: der Schluessel faellt (Textmaske)",
+    ohneSchluessel(fliess).includes(K), false);
+  gleich("Fliesstext an ohneSchluessel: der Rest bleibt stehen",
+    ohneSchluessel(fliess), `Fehler beim Laden von ${B}/a/-/bm_0042/night/map.webm`);
+  // Nur der zweite Schritt rettet eine Adresse unter fremdem Host, die
+  // `zerlegeAdresse` nicht liest (zu wenig Segmente), denn die Textmaske kennt
+  // nur die eigene Basis. Eine lesbare fremde Adresse dagegen schreibt
+  // `zerlegeAdresse` auf die eigene Basis um; die faengt dieser Schritt nie.
+  const fremd = `https://spiegel.example/a/${K}/kurz.webm`;
+  gleich("fremder Host, nicht zerlegbar, an ohneSchluessel: der Schluessel faellt (hostunabhaengig)",
+    ohneSchluessel(fremd), "https://spiegel.example/a/-/kurz.webm");
+  gleich("fremder Host, nicht zerlegbar, mit Abfrage: die Abfrage faellt mit",
+    ohneSchluessel(`${fremd}?sig=abc`), "https://spiegel.example/a/-/kurz.webm");
+  // Der Gegenwert: ohneSchluesselImText selbst laesst den fremden Host stehen.
+  gleich("fremder Host an ohneSchluesselImText: bleibt stehen",
+    ohneSchluesselImText(fremd), fremd);
 }
 
 console.log("");

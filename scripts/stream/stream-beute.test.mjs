@@ -36,7 +36,7 @@ import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
 
 import {
-  assetUrl, zerlegeAdresse, istBeute, istKreatur,
+  assetUrl, zerlegeAdresse, istBeute, istKreatur, platzhalterAdresse,
   BEUTE_PRAEFIX, KREATUR_PRAEFIX, SETTING, GATE_DEFAULT_BASE,
 } from "./stream-settings.mjs"
 import {
@@ -44,21 +44,15 @@ import {
   kartenVergessen, kartenStand, ROLLEN,
 } from "./stream-karten.mjs"
 import { KARTE_MAX } from "./stream-merker.mjs"
+import { pruefstand, installiereFoundry } from "../../tools/lib/foundry-attrappe.mjs"
 
-let rot = 0
-let gruen = 0
-
-function gleich(name, ist, soll) {
-  if (ist === soll) { gruen++; console.log(`  ok   ${name}`) }
-  else {
-    rot++
-    console.log(`  ROT  ${name}`)
-    console.log(`       soll ${JSON.stringify(soll)}`)
-    console.log(`       ist  ${JSON.stringify(ist)}`)
-  }
-}
+const { gleich, struktur, abschnitt, ende } = pruefstand("stream-beute, am echten Code und an seinen Rufstellen")
 
 function wahr(name, bedingung) { gleich(name, Boolean(bedingung), true) }
+
+// Der Abruf von Node, bevor ein Abschnitt ihn stellt. Der Installer liest seine
+// Bilder als `data:`-Adresse ueber `fetch`, und die beantwortet nur er.
+const echterAbruf = globalThis.fetch
 
 /** Eine gestellte Welt mit Schluessel und Basisadresse. */
 function stelleWelt({ schluessel = "pruefschluessel" } = {}) {
@@ -242,6 +236,9 @@ console.log("\nbeuteAusPfad: wer ist das, und ueber welchen Weg")
     beuteAusPfad(`x/${KENNUNG}-search.webp`), null)
   gleich("ein nackter Name ohne Rolle ist nichts",
     beuteAusPfad(`x/${KENNUNG}.webp`), null)
+  // Die Rolle wird klein gelesen: ein Dateiname in Grossbuchstaben ist dieselbe Seite.
+  gleich("eine grossgeschriebene Rolle wird klein gelesen",
+    beuteAusPfad(`x/${KENNUNG}-FRONT.webp`)?.rolle, "front")
   // Eine Kreaturenadresse gehoert nicht hierher, auch wenn der Dateiname
   // passte. Der Raum entscheidet, und er steht in der Adresse.
   gleich("eine Kreaturenadresse wird abgewiesen",
@@ -298,6 +295,10 @@ console.log("\nEine fremde Antwort ist keine Liste")
     stelleAbruf(() => antwort)
     gleich(name, await kartenliste(RELEASE), null)
   }
+  // Ein Netzfehler ist derselbe Ausgang wie keine Antwort: keine Liste.
+  kartenVergessen()
+  globalThis.fetch = async () => { throw new TypeError("Failed to fetch") }
+  gleich("ein Netzfehler ist keine Liste", await kartenliste(RELEASE), null)
 
   // Ohne Schluessel gibt es am Tor nichts zu holen, und es wird auch nicht
   // versucht: der Schluessel ist Teil der Adresse.
@@ -349,6 +350,8 @@ console.log("\nkarte(): der Name kommt aus der Liste und wird nicht gebildet")
 
   gleich("eine Rolle, die es nicht gibt, bleibt offen",
     (await karte(tor, "rueckseite")).zustand, null)
+  gleich("eine grossgeschriebene Rolle ist dieselbe Rolle",
+    (await karte(tor, "FRONT")).zustand, true)
 }
 
 console.log("\nEine fehlende Rolle steht als null drin, und das IST eine Antwort")
@@ -373,6 +376,28 @@ console.log("\nEine fehlende Rolle steht als null drin, und das IST eine Antwort
   // Die Gegenrichtung im selben Lauf: die Vorderseite bleibt unberuehrt.
   gleich("die Vorderseite gibt es weiter",
     await karteGibtEs(tor, ROLLEN.front), true)
+}
+
+console.log("\nOhne Liste oder mit kaputtem Eintrag bleibt die Seite offen")
+{
+  /*
+   * OFFEN HEISST HIER: DER AUFRUFER MACHT WEITER WIE VORHER. Eine Abweisung am
+   * Tor sagt nichts darueber, ob die Seite liegt, und ein Eintrag ohne Pfad ist
+   * ein kaputter Stand des Spiegels. Beides darf nicht als "gibt es" und nicht
+   * als "gibt es nicht" gelesen werden.
+   */
+  stelleWelt()
+  const tor = assetUrl(RELEASE, "", `${KENNUNG}-front.webp`)
+  kartenVergessen()
+  stelleAbruf(() => ({ koerper: liste(), kopf: { "x-beneos-denied": "1" } }))
+  gleich("ohne Liste: nicht geprueft statt gibt es nicht", (await karte(tor, ROLLEN.front)).zustand, null)
+  kartenVergessen()
+  stelleAbruf(() => ({ koerper: { karten: { front: { breite: 1024, hoehe: 1434 } } }, kopf: {} }))
+  gleich("ein Eintrag ohne Pfad: nicht geprueft", (await karte(tor, ROLLEN.front)).zustand, null)
+  kartenVergessen()
+  stelleAbruf(() => ({ koerper: { karten: { front: `${KENNUNG}-front.webp` } }, kopf: {} }))
+  gleich("ein Eintrag als blosse Zeichenkette: nicht geprueft", (await karte(tor, ROLLEN.front)).zustand, null)
+  kartenVergessen()
 }
 
 console.log("\nEin oertlicher Pfad bleibt ausdruecklich offen")
@@ -469,6 +494,11 @@ console.log("\nkarteFuerBlatt(): der Vorrang dreht sich nur bei einer Toradresse
   const leer = await karteFuerBlatt(null, oertlich, "front")
   gleich("ohne gespeicherten Wert bleibt der oertliche Pfad", leer.src, oertlich)
 
+  // Ohne oertlichen Pfad bleibt ein oertlich gespeicherter Wert stehen.
+  const gespeichertOertlich = `beneos_assets/beneos_items/${KENNUNG}/${KENNUNG}-front.webp`
+  gleich("ohne oertlichen Pfad bleibt der gespeicherte",
+    (await karteFuerBlatt(gespeichertOertlich, null, "front")).src, gespeichertOertlich)
+
   // Weder noch: null, und keine gebildete Adresse.
   const nichts = await karteFuerBlatt(null, null, "front")
   gleich("ohne beides kommt null und keine gebildete Adresse", nichts.src, null)
@@ -529,86 +559,92 @@ console.log("\nkarteFuerBlatt(): eine unbekannte Rolle gibt nichts aus")
 }
 
 // ===========================================================================
-console.log("\nDie zwei Oberflaechen rufen den Helfer, und zwar mit await")
+abschnitt("Die zwei Oberflaechen zeigen, was karteFuerBlatt liefert, vorne und hinten")
+/*
+ * WARUM AM KONTEXTBAUER. Das Blatt (`ItemSheetExtender._buildContext`) und
+ * der Begleiter (`ItemCompanion#_context`) holen ihre Kartenbilder ueber
+ * `karteFuerBlatt()`. Wer nur die Vorderseite umstellt, laesst die Rueckseite
+ * den Namen bilden, und genau die Rueckseite ist die, die bei sechs
+ * Eintraegen fehlt. Wer das `await` vergisst, reicht ein Versprechen statt
+ * einer Adresse weiter. Und der oertliche Pfad muss als dritter Ausgang
+ * weitergegeben werden, denn er heilt SRD-Eintraege.
+ *
+ * Bis zum 14.11.2026 stand das hier als Textsuche in den zwei Dateien
+ * (Befund B6 der Stream-Inventur). Seit stre-T-017 werden beide Bauer
+ * gerufen, mit einem gestellten Gegenstand und der gestellten Liste.
+ */
+installiereFoundry({
+  einstellungen: { [SETTING.key]: "pruefschluessel", [SETTING.base]: GATE_DEFAULT_BASE, [SETTING.mode]: true },
+})
+const { ItemSheetExtender } = await import("../loot/item-sheet-extender.mjs")
+const { ItemCompanion } = await import("../codex2/item-companion.mjs")
 {
-  /*
-   * AM QUELLTEXT GEMESSEN UND NICHT GEFAHREN. Beide Dateien ziehen Foundry
-   * und Handlebars herein; ein Lauf hier erreicht sie nicht.
-   *
-   * ZWEI DER DREI DATEIEN TRAGEN CRLF. Kein Muster unten traegt heute ein
-   * `\n`, also schuetzt die Normalisierung im Moment nichts; sie steht als
-   * Vorsorge fuer das erste Muster, das ueber eine Zeilengrenze geht. Dieselbe
-   * Falle hat am 08.11.2026 ein Umbauskript abbrechen lassen, und ein Muster
-   * mit `\n` haette hier still nichts gefunden und dabei wie ein bestandener
-   * Satz ausgesehen.
-   */
-  const HIER = dirname(fileURLToPath(import.meta.url))
-  const FLAECHEN = [
-    ["item-sheet-extender.mjs",
-      join(HIER, "..", "loot", "item-sheet-extender.mjs"), "_buildContext"],
-    ["item-companion.mjs",
-      join(HIER, "..", "codex2", "item-companion.mjs"), "_context"],
+  const OERTLICH_VORN = `beneos_assets/cloud/items/${KENNUNG}/${KENNUNG}-front.webp`
+  const OERTLICH_HINTEN = `beneos_assets/cloud/items/${KENNUNG}/${KENNUNG}-back.webp`
+  const amTor = (rolle) => assetUrl(RELEASE, "", `${KENNUNG}-${rolle}.webp`)
+  const platz = (rolle) => platzhalterAdresse(RELEASE, "", `${KENNUNG}-${rolle}.webp`)
+  function stelleGegenstand(render) {
+    const loot = { render, origin: {} }
+    const item = { name: "Longsword", getFlag: (scope) => (scope === "world" ? { itemKey: KENNUNG } : loot) }
+    return { loot, item }
+  }
+  const BAUER = [
+    ["item-sheet-extender", ({ loot, item }) => ItemSheetExtender._buildContext(loot, item)],
+    ["item-companion", ({ item }) => new ItemCompanion(null, item)._context()],
   ]
+  for (const [name, baue] of BAUER) {
+    kartenVergessen()
+    stelleAbruf(() => ({ koerper: liste(), kopf: {} }))
+    let k = await baue(stelleGegenstand({ frontCardWebp: platz("front"), backCardWebp: platz("back") }))
+    gleich(`${name}: vorne die Toradresse aus der Liste`, k.frontCard, amTor("front"))
+    gleich(`${name}: hinten die Toradresse aus der Liste`, k.backCard, amTor("back"))
 
-  for (const [name, pfad, bauer] of FLAECHEN) {
-    const text = readFileSync(pfad, "utf8").replace(/\r\n/g, "\n")
+    kartenVergessen()
+    stelleAbruf(() => ({ koerper: liste({ back: false }), kopf: {} }))
+    k = await baue(stelleGegenstand({ frontCardWebp: platz("front"), backCardWebp: platz("back") }))
+    gleich(`${name}: die Liste kennt hinten nichts, also keine Rueckseite`, k.backCard, null)
+    gleich(`${name}: die Vorderseite kommt weiter`, k.frontCard, amTor("front"))
 
-    wahr(`${name} bindet karteFuerBlatt ein`,
-      /import \{ karteFuerBlatt \} from "\.\.\/stream\/stream-karten\.mjs"/
-        .test(text))
-
-    // ZWEI Rufe, einer je Seite. Die ZAHL ist der Satz: wer nur die
-    // Vorderseite umstellt, laesst die Rueckseite den Namen bilden, und
-    // genau die Rueckseite ist die, die bei sechs Eintraegen fehlt.
-    const rufe = (text.match(/await karteFuerBlatt\(/g) || []).length
-    gleich(`${name} ruft ihn zweimal, vorne und hinten`, rufe, 2)
-
-    // Und der alte Vorrang darf nicht daneben stehen bleiben.
-    wahr(`${name} traegt den alten Vorrang nicht mehr`,
-      !/cloudCards\.(front|back)\s*\|\|/.test(text))
-
-    // Die Namensbildung selbst bleibt und wird weitergegeben: sie ist der
-    // dritte Ausgang und heilt SRD-Eintraege.
-    wahr(`${name} gibt den oertlichen Pfad weiter statt ihn wegzuwerfen`,
-      /cloudCards\.front/.test(text) && /cloudCards\.back/.test(text))
-
-    /*
-     * DER RUFER MUSS WARTEN, und das ist der Fall, der am 08.11.2026 als
-     * einziger durch alle Sabotagen hindurchkam.
-     *
-     * Der Bauer des Anzeigekontexts ist jetzt `async`. Verliert sein Rufer das
-     * `await`, bekommt die Vorlage ein Promise statt eines Kontexts, und das
-     * Blatt bleibt leer. Der Code ist dabei gueltig, also faengt es auch
-     * `node --check` im Vorhaken nicht; es faellt erst im laufenden Foundry
-     * auf, und dort als "zeigt nichts" ohne Fehlermeldung.
-     *
-     * Gezaehlt wird darum jedes Vorkommen des Namens: eines ist die
-     * Festlegung, jedes weitere ist ein Ruf und MUSS `await` tragen. Die
-     * Festlegung selbst wird an ihrem `async` erkannt, nicht an ihrer Zeile.
-     */
-    const stellen = [...text.matchAll(
-      new RegExp(`(await\\s+)?[\\w.]*\\b${bauer}\\(`, "g"))]
-    const feste = stellen.filter((m) => /async\s+[\w.]*$/.test(
-      text.slice(Math.max(0, m.index - 20), m.index)))
-    const bauerRufe = stellen.filter((m) => !feste.includes(m))
-    gleich(`${name}: ${bauer} ist genau einmal festgelegt`, feste.length, 1)
-    wahr(`${name}: ${bauer} wird mindestens einmal gerufen`, bauerRufe.length >= 1)
-    gleich(`${name}: jeder Ruf von ${bauer} wartet`,
-      bauerRufe.filter((m) => !m[1]).length, 0)
-
-    // Und die Festlegung traegt `async`, sonst waere `await` davor sinnlos.
-    wahr(`${name}: ${bauer} ist async festgelegt`,
-      new RegExp(`async\\s+${bauer}\\(`).test(text))
+    kartenVergessen()
+    const gefragt = stelleAbruf(() => ({ koerper: liste(), kopf: {} }))
+    k = await baue(stelleGegenstand({}))
+    gleich(`${name}: ohne gespeicherte Adresse kommt vorne der oertliche Pfad`, k.frontCard, OERTLICH_VORN)
+    gleich(`${name}: und hinten ebenso`, k.backCard, OERTLICH_HINTEN)
+    gleich(`${name}: dafuer wird nichts geholt`, gefragt.length, 0)
   }
 
-  // GEGENPROBE zu den Mustern. Ein Muster, das nichts findet, ist von einem
-  // sauberen Bestand nicht zu unterscheiden.
-  wahr("die Vorrangsuche findet den alten Vorrang, wenn er da ist",
-    /cloudCards\.(front|back)\s*\|\|/.test(
-      "const x = cloudCards.front || loot.render?.frontCardWebp"))
-  gleich("die Rufzaehlung zaehlt in einem Probetext",
-    ("a await karteFuerBlatt( b await karteFuerBlatt( c"
-      .match(/await karteFuerBlatt\(/g) || []).length, 2)
+  /*
+   * DIE RUFER WARTEN. Ein Bauer, der richtig rechnet, hilft nichts, wenn sein
+   * Rufer das `await` vergisst: die Vorlage bekaeme ein Versprechen statt eines
+   * Kontexts, und die Beneos-Flaeche bliebe leer (Fehlerklasse OP-PRJ-216).
+   * Deshalb werden hier die Rufer gefahren, bis zur Vorlage, die mitschreibt
+   * und anhaelt.
+   */
+  const VORLAGE_HALT = "Pruefsatz haelt an der Vorlage an"
+  const gesehen = []
+  foundry.applications.handlebars = {
+    "renderTemplate": async (_pfad, ctx) => { gesehen.push(ctx); throw new Error(VORLAGE_HALT) },
+  }
+  globalThis.HTMLElement ??= class {}
+  const wurzel = Object.assign(new globalThis.HTMLElement(), { querySelector: () => null })
+  const RUFER = [
+    ["item-sheet-extender", (g) => ItemSheetExtender._inject({ document: g.item }, wurzel)],
+    ["item-companion", (g) => new ItemCompanion(null, g.item)._render(wurzel)],
+  ]
+  for (const [name, rufe] of RUFER) {
+    kartenVergessen()
+    stelleAbruf(() => ({ koerper: liste(), kopf: {} }))
+    gesehen.length = 0
+    let halt = null
+    try {
+      await rufe(stelleGegenstand({ frontCardWebp: platz("front"), backCardWebp: platz("back") }))
+    } catch (fehler) {
+      halt = String(fehler?.message || fehler)
+    }
+    gleich(`${name}: der Rufer erreicht die Vorlage`, halt, VORLAGE_HALT)
+    gleich(`${name}: die Vorlage bekommt den fertigen Kontext mit der Toradresse`, gesehen[0]?.frontCard, amTor("front"))
+  }
+  kartenVergessen()
 }
 
 // ===========================================================================
@@ -633,13 +669,12 @@ console.log("\nDer Deckel des Merkers haelt, auch ueber eine lange Sitzung")
     await kartenliste(`${BEUTE_PRAEFIX}fuellstand_${i}`)
   }
   const stand = kartenStand().listen
-  wahr(`${viele} Releases, gemerkt bleiben hoechstens ${KARTE_MAX}, es sind ${stand}`,
-    stand > 0 && stand <= KARTE_MAX)
+  wahr("viele Releases: gemerkt bleiben hoechstens KARTE_MAX", stand > 0 && stand <= KARTE_MAX)
   kartenVergessen()
 }
 
 // ===========================================================================
-console.log("\nQuelltextprobe: die Regel steht nicht nur im Kommentar")
+abschnitt("Strukturproben: die Regel steht nicht nur im Kommentar")
 const hier = dirname(fileURLToPath(import.meta.url))
 const karten = readFileSync(join(hier, "stream-karten.mjs"), "utf8")
 const posen = readFileSync(join(hier, "stream-posen.mjs"), "utf8")
@@ -648,189 +683,234 @@ const posen = readFileSync(join(hier, "stream-posen.mjs"), "utf8")
  * WARUM DIESE PROBEN. Die Faelle oben messen das Verhalten der heutigen
  * Fassung. Sie faengen aber nicht den Rueckfall, bei dem jemand den Namen
  * wieder BILDET und dabei zufaellig dasselbe Ergebnis erzeugt, weil die
- * gestellte Liste denselben Namen traegt. Diese zwei Zeilen faengen ihn.
+ * gestellte Liste denselben Namen traegt. Das ist eine Aussage ueber den Code
+ * selbst, darum steht sie als Strukturprobe.
  */
 const ausDerListe = (karten.match(/assetUrl\(wer\.release, "", eintrag\.pfad\)/g) || []).length
-gleich("die Adresse entsteht aus `eintrag.pfad`", ausDerListe, 1)
+struktur("die Adresse entsteht aus `eintrag.pfad`", ausDerListe, 1)
 // Nur Kommentarzeilen duerfen einen Rollennamen an eine Kennung haengen.
 const codeZeilen = karten.split("\n").filter((z) => {
   const k = z.trimStart()
   return k !== "" && k[0] !== "*" && !k.startsWith("//") && !k.startsWith("/*")
 })
 const gebildet = codeZeilen.filter((z) => /-\$\{?(rolle|ziel)/.test(z)).length
-gleich("kein Dateiname wird im Code zusammengesetzt", gebildet, 0)
+struktur("kein Dateiname wird im Code zusammengesetzt", gebildet, 0)
 
 /*
  * DER GETEILTE MERKER DARF NICHT WIEDER ZUR KOPIE WERDEN. Beide Dateien
  * fuehren Fristen und Deckel; abgeschrieben waere die Verdraengung zweimal
  * geschrieben und beim naechsten Fehler nur an einer Stelle behoben.
  */
-wahr("stream-karten holt den Merker", karten.includes('from "./stream-merker.mjs"'))
-wahr("stream-posen holt denselben Merker", posen.includes('from "./stream-merker.mjs"'))
+struktur("stream-karten holt den Merker", karten.includes('from "./stream-merker.mjs"'), true)
+struktur("stream-posen holt denselben Merker", posen.includes('from "./stream-merker.mjs"'), true)
 const eigenerMerker = (karten + posen).match(/^function (merken|einmal|frisch)\(/gm) || []
-gleich("keine der beiden Dateien hat einen eigenen Merker", eigenerMerker.length, 0)
+struktur("keine der beiden Dateien hat einen eigenen Merker", eigenerMerker.length, 0)
 
 // ===========================================================================
-console.log("\nDie Streamweiche des Item-Installers, OP-PRJ-141 Teil 4")
-
+abschnitt("Die Streamweiche des Item-Installers, OP-PRJ-141 Teil 4, gefahren")
 /*
- * WARUM DIESER ABSCHNITT, UND WARUM AM QUELLTEXT.
+ * DER WICHTIGSTE SATZ IST EIN SICHERHEITSSATZ. `flags.beneos-module.loot.render`
+ * steht in einem Kundendokument, das exportiert, kopiert und weitergegeben
+ * wird. Wer dort `assetUrl()` schreibt statt `_beneosBeutePlatzhalter()`,
+ * legt den Streamschluessel in ein Feld, das jeder Mitspieler liest, und ein
+ * Dritter koennte damit am Tor abrufen. Gemessen am 09.11.2026: ein Konto mit
+ * `role: 1` liest die Welteinstellungen vollstaendig, siehe `TC-PRJ-STR-310`.
  *
- * `beneos_cloud.js` braucht Foundry: es ruft `FilePicker`, `CONFIG.Item` und
- * `game.settings`. Hier laeuft kein Foundry, also wird gelesen und nicht
- * gefahren. Was dadurch offen bleibt, steht unten in der Liste.
- *
- * DER WICHTIGSTE SATZ IST DER ERSTE, und er ist ein Sicherheitssatz.
- * `flags.beneos-module.loot.render` steht in einem Kundendokument, das
- * exportiert, kopiert und weitergegeben wird. Wer dort `assetUrl()` schreibt
- * statt `_beneosBeutePlatzhalter()`, legt den Streamschluessel in ein Feld,
- * das jeder Mitspieler liest, und ein Dritter koennte damit am Tor abrufen.
- * Gemessen am 09.11.2026: ein Konto mit `role: 1` liest die Welteinstellungen
- * vollstaendig, siehe `TC-PRJ-STR-310`. Der Fehler sieht dabei aus wie ein
- * funktionierender Streamweg.
+ * Bis zum 14.11.2026 las dieser Abschnitt `beneos_cloud.js` als Text, weil der
+ * Installer Foundry braucht. Seit stre-T-017 laeuft `importItemToCompendium`
+ * gegen gestellte Teile: ein Pack, ein `FilePicker`, der Hochgeladenes
+ * mitschreibt, und eine Dokumentklasse, die festhaelt, was ins Kompendium
+ * gehen soll, und den Lauf dort anhaelt. Weiter als bis dahin faehrt der Satz
+ * nicht; was danach kommt, steht unten unter "Nicht geprueft".
  */
-const cloudRoh = readFileSync(join(hier, "..", "beneos_cloud.js"), "utf8")
-const cloudZeilen = cloudRoh.split("\n").filter((z) => {
-  const k = z.trimStart()
-  return k !== "" && k[0] !== "*" && !k.startsWith("//") && !k.startsWith("/*")
-})
-const cloudCode = cloudZeilen.join("\n")
-
-// 1. Der Sicherheitssatz: die geschriebene Adresse ist die schluesselfreie.
-const kartenfelder = cloudCode.match(
-  /lootRender\.(front|back)CardWebp\s*=\s*([A-Za-z_$][\w$]*)\(/g) || []
-gleich("beide Kartenfelder werden gesetzt", kartenfelder.length, 2)
-for (const treffer of kartenfelder) {
-  wahr(`${treffer.slice(11, 26).trim()} nimmt den Platzhalter`,
-    treffer.includes("_beneosBeutePlatzhalter("))
+const SCHLUESSEL_INSTALLER = "pruefschluessel"
+const installer = { erfasst: [], hochgeladen: [], gewarnt: [] }
+const HALT = "Pruefsatz haelt hier an"
+function stelleInstaller({ streamt = true } = {}) {
+  installiereFoundry({
+    einstellungen: { [SETTING.key]: SCHLUESSEL_INSTALLER, [SETTING.base]: GATE_DEFAULT_BASE, [SETTING.mode]: streamt },
+  })
+  game.system = { id: "dnd5e" }
+  game.beneos = { databaseHolder: {} }
+  game.packs = new Map([["world.beneos_module_items", { getIndex: async () => [], configure: async () => {} }]])
+  foundry.applications.apps = {
+    "FilePicker": {
+      implementation: {
+        createDirectory: async () => {},
+        upload: async (_quelle, ordner, datei) => { installer.hochgeladen.push(datei.name); return { path: `${ordner}/${datei.name}` } },
+      },
+    },
+  }
+  CONFIG.Item = {
+    documentClass: class {
+      constructor(daten) {
+        installer.erfasst.push(JSON.parse(JSON.stringify(daten)))
+        throw new Error(HALT)
+      }
+    },
+  }
+  installer.erfasst.length = 0
+  installer.hochgeladen.length = 0
+  installer.gewarnt.length = 0
 }
-// Die Gegenrichtung, und sie ist die eigentliche Wache: NIRGENDS darf
-// `assetUrl` in ein Kartenfeld geschrieben werden.
-const mitSchluessel = cloudCode.match(
-  /lootRender\.\w+\s*=\s*(assetUrl|_beneosBeuteAdresse)\(/g) || []
-gleich("kein Kartenfeld bekommt eine Adresse MIT Schluessel", mitSchluessel.length, 0)
+const ALTPFAD = `beneos_assets/beneos_items/${KENNUNG}`
+function eintrag({ mitRender = true, frontName = `${KENNUNG}-front.webp` } = {}) {
+  const bild = (filename) => ({ filename, image64: "QUJD" })
+  const itemJSON = {
+    name: "Longsword of Dawn",
+    type: "loot",
+    img: "",
+    system: { description: { value: "" } },
+    effects: [],
+    flags: mitRender
+      ? { "beneos-module": { loot: { render: {
+        frontCardWebp: `${ALTPFAD}/${KENNUNG}-front.webp`,
+        backCardWebp: `${ALTPFAD}/${KENNUNG}-back.webp`,
+        iconWebp: `${ALTPFAD}/${KENNUNG}-icon.webp`,
+      } } } }
+      : {},
+  }
+  return { [KENNUNG]: { itemJSON, itemImage: { front: bild(frontName), back: bild(`${KENNUNG}-back.webp`), icon: bild(`${KENNUNG}-icon.webp`) } } }
+}
+async function installiere(daten) {
+  const warnVorher = console.warn
+  console.warn = (...a) => { installer.gewarnt.push(a.map(String).join(" ")) }
+  let halt = null
+  try {
+    await new BeneosCloud().importItemToCompendium(daten, null)
+  } catch (fehler) {
+    halt = String(fehler?.message || fehler)
+  } finally {
+    console.warn = warnVorher
+  }
+  const doc = installer.erfasst[0]
+  return { halt, doc, render: doc?.flags?.["beneos-module"]?.loot?.render ?? null }
+}
+const NEU = `beneos_assets/cloud/items/${KENNUNG}`
+const platzVon = (datei) => platzhalterAdresse(RELEASE, "", datei)
+// Das Tor ist gestellt, `data:` geht an den echten Abruf.
+function stelleTorAbruf(antwortFuer) {
+  const gefragt = stelleAbruf(antwortFuer)
+  const torAbruf = globalThis.fetch
+  globalThis.fetch = async (adresse, o) => (String(adresse).startsWith("data:") ? echterAbruf(adresse, o) : torAbruf(adresse, o))
+  return gefragt
+}
 
-/*
- * 2. ES GIBT KEINE FUNKTION FUER DIE FORM MIT SCHLUESSEL, und das ist
- * Absicht. Bei den Kreaturen gibt es beide, weil `prototypeToken.texture.src`
- * ein Leinwandfeld ist und die Adresse mit Schluessel braucht. Fuer die Beute
- * ist kein Feld dieser Art bekannt; waere eines noetig, muesste die Funktion
- * mit einer Begruendung entstehen und nicht beilaeufig.
- */
-gleich("keine Beute-Adressfunktion mit Schluessel",
-  (cloudCode.match(/function _beneosBeuteAdresse\b/g) || []).length, 0)
+stelleInstaller()
+const { BeneosCloud } = await import("../beneos_cloud.js")
 
-/*
- * 3. JE SEITE EINE EIGENE FRAGE. `OP-PRJ-139` hat sechs Eintraege gezaehlt,
- * deren Rueckseite es nicht oder nicht als WebP gibt, waehrend die
- * Vorderseite liegt. Eine gemeinsame Frage haette fuer diese sechs beide
- * Seiten gleich behandelt, und eine der beiden Antworten waere falsch.
- */
-gleich("zwei getrennte Fragen am Tor",
-  (cloudCode.match(/_beneosBeuteKarteAmTor\(/g) || []).length, 3)
-wahr("die Vorderseite hat ihre eigene Bedingung",
-  /_beneosBeuteDateiOk\(frontRoh\)[\s\S]{0,80}_beneosBeuteKarteAmTor\(itemKey, frontRoh, "front"\)/
-    .test(cloudCode))
-wahr("die Rueckseite hat ihre eigene Bedingung",
-  /_beneosBeuteDateiOk\(backRoh\)[\s\S]{0,80}_beneosBeuteKarteAmTor\(itemKey, backRoh, "back"\)/
-    .test(cloudCode))
-
-/*
- * 4. DER STRENGE WEG AM TOR. `karteGibtEs()` zaehlt `null` NICHT als ja;
- * `karte()` liefert `null` als dritten Ausgang und liesse sich mit `?.src`
- * versehentlich als Treffer lesen. Antwortet das Tor nicht, muss oertlich
- * installiert werden, und das ist heute der Normalzustand, weil die Route
- * `/l/` noch nicht ausgeliefert ist.
- */
-wahr("der Installer fragt ueber karteGibtEs",
-  cloudCode.includes("karteGibtEs(") && cloudRoh.includes('from "./stream/stream-karten.mjs"'))
-gleich("er benutzt nicht karte() unmittelbar",
-  (cloudCode.match(/[^\w$.]karte\(/g) || []).length, 0)
-
-/*
- * 5. DER UPLOAD FAELLT WEG, SONST SPART DAS STREAMEN KEIN BYTE. Das ist der
- * ganze Zweck: 0,213 MB vorn und 0,043 MB hinten je Gegenstand, ueber den
- * Bestand 0,47 GB.
- */
-wahr("die Vorderseite wird nur ohne Streamen hochgeladen",
-  /if \(!frontStreamt\) \{/.test(cloudCode))
-wahr("die Rueckseite wird nur ohne Streamen hochgeladen",
-  /if \(!backStreamt\) \{/.test(cloudCode))
-
-/*
- * 6. DAS SYMBOL BLEIBT OERTLICH. Es steht in `Item.img`, einem Feld, das
- * jeder Mitspieler liest, es wird im Inventar auch ohne Netz gebraucht, und
- * alle Symbole des Bestandes sind zusammen rund 10 MB. Betreiberentscheid
- * offen, die Empfehlung lautet nein.
- */
-gleich("iconWebp bekommt keine Adresse",
-  (cloudCode.match(/lootRender\.iconWebp\s*=/g) || []).length, 0)
-wahr("itemObjectData.img bleibt der oertliche Pfad",
-  /itemObjectData\.img = `\$\{finalFolder\}/.test(cloudCode))
-
-/*
- * 7. DIE GEMERKTE LISTE WIRD VERGESSEN. Nach einer Installation liegt die
- * Welt anders als vor fuenf Minuten. Dieselbe Begruendung wie bei
- * `posenVergessen()` fuer die Kreaturen.
- */
-wahr("kartenVergessen wird gerufen", cloudCode.includes("kartenVergessen("))
-
-/*
- * 8. DIE FELDFRAGE STEHT VOR DER STREAMENTSCHEIDUNG, und das ist der Teil,
- * den das Pruefstor erzwungen hat.
- *
- * Ohne `loot.render` liest die Flaeche allein den oertlichen Pfad aus
- * `beneosCloudCardPaths()`. Es gibt dann kein Feld, in das eine Adresse
- * passt, also darf nicht gestreamt werden.
- *
- * Der erste Entwurf am 09.11.2026 hat erst gestreamt und die Dateien danach
- * nachgeholt. `bildform-adresse-bench` C4 hat ihn abgewiesen, weil die Zahl
- * der `_beneosBildDatei(`-Schreibstellen von 13 auf 15 stieg. Der Befund war
- * nicht die Zahl, sondern die Bauart dahinter: ein zweiter Weg, doppelte
- * Aufrufe und ein Zustand mehr. Die Frage gehoert nach vorn, dann gibt es
- * keinen Nachholfall.
- */
-wahr("die Feldfrage wird gestellt",
-  /const hatKartenfelder = !!kartenfelder && typeof kartenfelder === "object"/.test(cloudCode))
-gleich("beide Seiten haengen an der Feldfrage",
-  (cloudCode.match(/Streamt = beuteStreamt && hatKartenfelder/g) || []).length, 2)
-gleich("es gibt keinen Nachholzweig mehr",
-  (cloudCode.match(/downloading the cards after all/g) || []).length, 0)
-
-/*
- * 9. DIE WEICHE WIRD EINMAL JE GEGENSTAND GELESEN. Ein Schalter, der mitten
- * in einer Installation umgestellt wird, wuerde sonst einen halb gestreamten
- * Gegenstand hinterlassen. Dieselbe Bauart wie bei den Kreaturen.
- *
- * Gezaehlt werden die VORKOMMEN der Funktion und nicht die Zuweisung: eine
- * Sabotage am 09.11.2026 schrieb `_beneosBeuteStreamt() && _beneosBeuteStreamt()`
- * und kam durch, weil die Zuweisungszeile als Praefix unveraendert blieb. Zwei
- * ist die richtige Zahl, denn eines der beiden ist die Definition selbst.
- */
-wahr("die Zuweisung steht einmal",
-  (cloudCode.match(/const beuteStreamt = _beneosBeuteStreamt\(\)/g) || []).length === 1)
-gleich("der Schalter kommt genau zweimal vor, Definition und eine Rufstelle",
-  (cloudCode.match(/_beneosBeuteStreamt\(/g) || []).length, 2)
-
-/*
- * 10. DER DATEINAMENRIEGEL IST DERSELBE WIE BEI DEN KREATUREN. Ein Name mit
- * `..` darin wird in `adressSegmente()` je Segment kodiert, also bleibt der
- * Schraegstrich stehen und die Adresse verlaesst ihren Raum.
- */
-const riegel = cloudCode.match(/\/\^\[A-Za-z0-9\._-\]\+\\\.webp\$\//g) || []
-wahr("Beute und Kreatur tragen denselben Riegel", riegel.length >= 2)
+{
+  // 1. Streamen an, die Liste nennt beide Seiten.
+  stelleInstaller()
+  kartenVergessen()
+  const gefragt = stelleTorAbruf(() => ({ koerper: liste(), kopf: {} }))
+  const r = await installiere(eintrag())
+  gleich("der Lauf erreicht die Dokumentklasse", r.halt, HALT)
+  gleich("Streamen an: vorne steht der Platzhalter", r.render?.frontCardWebp, platzVon(`${KENNUNG}-front.webp`))
+  gleich("Streamen an: hinten steht der Platzhalter", r.render?.backCardWebp, platzVon(`${KENNUNG}-back.webp`))
+  gleich("kein Kartenfeld traegt den Schluessel",
+    JSON.stringify(r.render || {}).includes(SCHLUESSEL_INSTALLER), false)
+  gleich("das Symbolfeld bekommt keine Adresse, nur den neuen Ordner",
+    r.render?.iconWebp, `${NEU}/${KENNUNG}-icon.webp`)
+  gleich("das Bild des Gegenstands bleibt der oertliche Pfad", r.doc?.img, `${NEU}/${KENNUNG}-icon.webp`)
+  gleich("hochgeladen wird nur das Symbol", installer.hochgeladen.join(), `${KENNUNG}-icon.webp`)
+  gleich("die Liste wurde am Tor gefragt", gefragt.filter((a) => a.endsWith("/_karten.json")).length > 0, true)
+  gleich("danach ist der Kartenmerker geleert", kartenStand().listen, 0)
+}
+{
+  // 2. Die Liste kennt die Rueckseite nicht: jede Seite hat ihre eigene Frage.
+  stelleInstaller()
+  kartenVergessen()
+  stelleTorAbruf(() => ({ koerper: liste({ back: false }), kopf: {} }))
+  const r = await installiere(eintrag())
+  gleich("ohne Rueckseite am Tor: vorne der Platzhalter", r.render?.frontCardWebp, platzVon(`${KENNUNG}-front.webp`))
+  gleich("ohne Rueckseite am Tor: hinten der oertliche Pfad", r.render?.backCardWebp, `${NEU}/${KENNUNG}-back.webp`)
+  gleich("ohne Rueckseite am Tor: die Rueckseite wird hochgeladen",
+    installer.hochgeladen.join(), `${KENNUNG}-back.webp,${KENNUNG}-icon.webp`)
+}
+{
+  // 3. Ohne Vorderseite am Tor: dieselbe Frage fuer die andere Seite.
+  stelleInstaller()
+  kartenVergessen()
+  stelleTorAbruf(() => ({ koerper: liste({ front: false }), kopf: {} }))
+  const r = await installiere(eintrag())
+  gleich("ohne Vorderseite am Tor: vorne der oertliche Pfad", r.render?.frontCardWebp, `${NEU}/${KENNUNG}-front.webp`)
+  gleich("ohne Vorderseite am Tor: hinten der Platzhalter", r.render?.backCardWebp, platzVon(`${KENNUNG}-back.webp`))
+  gleich("ohne Vorderseite am Tor: die Vorderseite wird hochgeladen",
+    installer.hochgeladen.join(), `${KENNUNG}-front.webp,${KENNUNG}-icon.webp`)
+}
+{
+  // 4. Streamen aus: alles wird heruntergeladen, das Tor wird nicht gefragt.
+  stelleInstaller({ streamt: false })
+  kartenVergessen()
+  const gefragt = stelleTorAbruf(() => ({ koerper: liste(), kopf: {} }))
+  const r = await installiere(eintrag())
+  gleich("Streamen aus: vorne der oertliche Pfad", r.render?.frontCardWebp, `${NEU}/${KENNUNG}-front.webp`)
+  gleich("Streamen aus: hinten der oertliche Pfad", r.render?.backCardWebp, `${NEU}/${KENNUNG}-back.webp`)
+  gleich("Streamen aus: alle drei Bilder werden hochgeladen",
+    installer.hochgeladen.join(), `${KENNUNG}-front.webp,${KENNUNG}-back.webp,${KENNUNG}-icon.webp`)
+  gleich("Streamen aus: das Tor wird nicht gefragt", gefragt.length, 0)
+}
+{
+  // 5. Ein Eintrag ohne Kartenfelder: es gibt kein Feld fuer die Adresse,
+  //    also wird heruntergeladen. Einen Nachholzweig gibt es nicht.
+  stelleInstaller()
+  kartenVergessen()
+  stelleTorAbruf(() => ({ koerper: liste(), kopf: {} }))
+  await installiere(eintrag({ mitRender: false }))
+  gleich("ohne Kartenfelder: alle drei Bilder werden hochgeladen",
+    installer.hochgeladen.join(), `${KENNUNG}-front.webp,${KENNUNG}-back.webp,${KENNUNG}-icon.webp`)
+  gleich("ohne Kartenfelder: es wird gewarnt", installer.gewarnt.some((w) => w.includes("loot.render")), true)
+}
+{
+  // 6. Ein Dateiname, der in keine Adresse passt, geht auf die Platte. Das ist
+  //    derselbe Riegel, den die Kreaturen tragen.
+  stelleInstaller()
+  kartenVergessen()
+  stelleTorAbruf(() => ({ koerper: liste(), kopf: {} }))
+  const r = await installiere(eintrag({ frontName: "longsword front.webp" }))
+  gleich("ein Name mit Leerzeichen: vorne der oertliche Pfad", r.render?.frontCardWebp, `${NEU}/${KENNUNG}-front.webp`)
+  gleich("ein Name mit Leerzeichen: hinten weiter der Platzhalter", r.render?.backCardWebp, platzVon(`${KENNUNG}-back.webp`))
+  gleich("ein Name mit Leerzeichen: er wird hochgeladen",
+    installer.hochgeladen.join(), "longsword front.webp,0042_longsword_of_dawn-icon.webp")
+}
+{
+  /*
+   * DER RIEGEL AM DATEINAMEN. Ein Leerzeichen mit Rollenendung erreicht die
+   * Liste und wuerde dort gefunden; erst `_beneosBeuteDateiOk()` haelt es
+   * von der Adresse fern. Der Fall oben ohne Rollenendung trifft diesen
+   * Riegel nicht, denn ihn haelt schon `beuteAusPfad()` auf.
+   */
+  stelleInstaller()
+  kartenVergessen()
+  stelleTorAbruf(() => ({ koerper: liste(), kopf: {} }))
+  const r = await installiere(eintrag({ frontName: `${KENNUNG} copy-front.webp` }))
+  gleich("ein Zeichen ausserhalb der Liste: vorne der oertliche Pfad", r.render?.frontCardWebp, `${NEU}/${KENNUNG}-front.webp`)
+}
+{
+  // 7. Scheitert die Frage am Tor mit einer Ausnahme, geht die Karte auf die Platte.
+  stelleInstaller()
+  kartenVergessen()
+  globalThis.fetch = async (adresse, o) => {
+    if (String(adresse).startsWith("data:")) return echterAbruf(adresse, o)
+    throw new TypeError("Failed to fetch")
+  }
+  const r = await installiere(eintrag())
+  gleich("Tor wirft: vorne der oertliche Pfad", r.render?.frontCardWebp, `${NEU}/${KENNUNG}-front.webp`)
+  gleich("Tor wirft: hinten der oertliche Pfad", r.render?.backCardWebp, `${NEU}/${KENNUNG}-back.webp`)
+}
+kartenVergessen()
 
 // ---------------------------------------------------------------------------
-console.log(`\n${gruen} bestanden, ${rot} gescheitert`)
 console.log("\nNicht geprueft, ausdruecklich benannt:")
 console.log("- Das lebende Tor. Hier laeuft kein Netz, `fetch` ist gestellt. Dass")
 console.log("  `/l/` Bytes liefert, entscheidet TC-PRJ-STR-281.")
 console.log("- Ob im Spiegel unter `beute/` wirklich etwas liegt. Der Fuelltakt stand")
 console.log("  am 08.11.2026 in keinem Cron und ist nie gelaufen.")
-console.log("- Die zwei Rufstellen im laufenden Foundry. Dass sie karteFuerBlatt()")
-console.log("  rufen, ist oben am Quelltext gemessen; dass das Blatt danach eine")
-console.log("  Karte ZEIGT, braucht ein Foundry und ist TC-PRJ-STR-296.")
+console.log("- Dass das Blatt nach dem Kontextbau eine Karte ZEIGT. Das braucht ein")
+console.log("  Foundry und ist TC-PRJ-STR-296.")
+console.log("- Der Installer nach der Dokumentklasse: Ordner, Import ins Kompendium,")
+console.log("  Weltkopie. Der Satz haelt dort an.")
 console.log("- Die Masse im Ersatzbild. Dass sie ankommen, steht hier; dass das")
 console.log("  Ersatzbild sie benutzt, ist OP-PRJ-128.")
-
-process.exit(rot > 0 ? 1 : 0)
+ende()

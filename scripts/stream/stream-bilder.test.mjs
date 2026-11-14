@@ -1,196 +1,224 @@
 /**
  * stream-bilder.test.mjs
  *
- * Gegenprobe zur Flaechenliste von `stream-bilder.mjs`. Laeuft ohne Foundry,
- * ohne Browser, ohne Netz:
+ * Gegenprobe zu `stream-bilder.mjs`: welche Haken der Einbau anmeldet, welche
+ * Namen der Riegel abweist, und was ein gefeuerter Haken mit einem Bild tut.
+ * Laeuft ohne Foundry, ohne Browser, ohne Netz:
  *
  *   node scripts/stream/stream-bilder.test.mjs
  *
  * Rueckgabewert 0 heisst alle Faelle gruen, 1 heisst mindestens einer rot.
  *
- * WARUM DIESER PRUEFSATZ UEBERHAUPT. `stream-bilder.mjs` hatte bis zum
- * 08.11.2026 keinen, und das war kein Versehen ohne Folgen: die Datei zieht
- * Foundry herein, also ist ihr Verhalten hier nicht fahrbar, und daraus wurde
- * "dann prueft sie eben nichts". Was aber sehr wohl hier pruefbar ist, ist der
- * **Inhalt der Liste**, und genau dort liegt der Fehler, der nicht auffaellt.
- *
- * EIN FALSCHER HAKENNAME IST EIN STILLER FEHLER. Die Karte erscheint weiter,
- * nur ohne Zwischenspeicher, ohne Offline-Vorrat und ohne Ersatzbild, also
- * genau in dem Zustand, den diese Datei beheben soll. Nichts wird rot, nichts
- * meldet sich, und eine Abweisung des Tores kommt als HTTP 200 mit einem
- * durchsichtigen GIF von 42 Byte.
+ * WARUM DIESER PRUEFSATZ UEBERHAUPT. Ein falscher Hakenname ist ein stiller
+ * Fehler: die Karte erscheint weiter, nur ohne Zwischenspeicher, ohne
+ * Offline-Vorrat und ohne Ersatzbild. Nichts wird rot, und eine Abweisung des
+ * Tores kommt als HTTP 200 mit einem durchsichtigen GIF von 42 Byte.
  *
  * DER NAHELIEGENDE NAME IST DER FALSCHE, gemessen am 08.11.2026 in der Welt
  * `v13-streaming` (Foundry 13, dnd5e 5.3.3): die Klassenkette des Item-Blattes
- * enthaelt `ItemSheetV2` NICHT, obwohl der Kern die Klasse fuehrt, und
- * `sheet instanceof ItemSheetV2` ergibt `false`. Beim Actor ergibt dieselbe
- * Frage `true`. Wer den Item-Namen aus der Actor-Zeile ableitet, schreibt
- * `renderItemSheetV2` hin, und der Haken feuert null mal.
+ * enthaelt `ItemSheetV2` NICHT. Wer den Item-Namen aus der Actor-Zeile
+ * ableitet, schreibt `renderItemSheetV2` hin, und der Haken feuert null mal.
  *
- * WAS DIESER SATZ NICHT LEISTET. Er liest Quelltext. Dass ein Haken im
- * laufenden Foundry wirklich feuert und das Bild danach eine `blob:`-Adresse
- * traegt, entscheidet `TC-PRJ-STR-302`. Die Namen hier sind gemessen, aber
- * dieser Satz misst sie nicht, er haelt sie fest.
+ * SEIT stre-T-017 (14.11.2026) RUFT DIESER SATZ DEN ECHTEN CODE. Bis dahin las
+ * er die Liste `FLAECHEN` als Text aus der Quelle. Jetzt laeuft
+ * `installStreamBilder()` gegen eine Foundry-Attrappe (`tools/lib/`), die jede
+ * Hakenanmeldung aufzeichnet; ein Haken wird gefeuert und das Bild danach
+ * gelesen; der Riegel wird ueber die Naht `flaechenRiegelFuerPruefsatz`
+ * gerufen, denselben, den der Einbau ruft. Textproben bleiben nur, wo die
+ * Aussage selbst Text ist: der Kopfkommentar (`[Dokument] `, Betreiberentscheid
+ * vom 14.11.2026) und dass der Einbau den Riegel ueberhaupt fragt
+ * (`[Struktur] `), denn `FLAECHEN` traegt heute kein Verzeichnis, und ein
+ * Einbau ohne Riegel verhielte sich heute gleich.
+ *
+ * WAS DIESER SATZ NICHT LEISTET. Ob Foundry die Haken in dieser Reihenfolge und
+ * mit diesen Argumenten feuert, entscheidet `TC-PRJ-STR-302` im laufenden
+ * Foundry. Die Attrappe liefert ein Element mit `querySelectorAll("img")`,
+ * kein echtes DOM.
  */
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
+import { pruefstand, installiereFoundry, haken, netz, nimmAbrufe } from "../../tools/lib/foundry-attrappe.mjs"
 
-let rot = 0
-let gruen = 0
+const { gleich, struktur, dokument, abschnitt, ende } = pruefstand("stream-bilder.mjs, am echten Code")
 
-function gleich(name, ist, soll) {
-  if (ist === soll) { gruen++; console.log(`  ok   ${name}`) }
-  else {
-    rot++
-    console.log(`  ROT  ${name}`)
-    console.log(`       soll ${JSON.stringify(soll)}`)
-    console.log(`       ist  ${JSON.stringify(ist)}`)
+const SCHLUESSEL = "pk_pruefsatz_bilder"
+const { einstellungen } = installiereFoundry({
+  einstellungen: {
+    "beneos-stream-mode": true,
+    "beneos-stream-key": SCHLUESSEL,
+    "beneos-stream-base": "https://gate.beneos.stream",
+  },
+})
+
+const settings = await import("./stream-settings.mjs")
+const bilder = await import("./stream-bilder.mjs")
+
+// Jede Bildadresse des Tores antwortet mit vier Byte WebP-Kopf; alles andere
+// ist ein fremder Abruf und macht den Satz rot.
+netz((adresse) => {
+  if (adresse.startsWith("https://gate.beneos.stream/")) {
+    return new Response(new Blob([new Uint8Array([82, 73, 70, 70])], { type: "image/webp" }), { status: 200 })
   }
-}
-
-function wahr(name, bedingung) { gleich(name, Boolean(bedingung), true) }
-
-const HIER = dirname(fileURLToPath(import.meta.url))
-const QUELLE = readFileSync(join(HIER, "stream-bilder.mjs"), "utf8")
-  .replace(/\r\n/g, "\n")
+  return undefined
+})
 
 // ===========================================================================
-console.log("\nDie Flaechenliste steht da und hat die Form, die der Rufer liest")
+abschnitt("Der Einbau meldet genau die gemessenen Haken an")
 
-const treffer = QUELLE.match(/const FLAECHEN = \[([\s\S]*?)\n\]/)
-wahr("stream-bilder.mjs fuehrt eine FLAECHEN-Liste", Boolean(treffer))
+bilder.installStreamBilder()
+const namen = haken.namen()
+const auf = namen.filter((n) => n.startsWith("render"))
+const zu = namen.filter((n) => n.startsWith("close"))
 
-// Nur die Paare, nicht die Begruendungen um sie herum.
-const paare = [...(treffer?.[1] ?? "").matchAll(
-  /\[\s*"(render\w+)"\s*,\s*"(close\w+)"\s*\]/g)].map((m) => [m[1], m[2]])
-const aufNamen = paare.map(([a]) => a)
+gleich("genau zehn Haken", namen.length, 10)
+gleich("fuenf davon render, fuenf close", `${auf.length}/${zu.length}`, "5/5")
+// Die gemessenen Namen, fest. Die Proben laufen ueber diese Liste und nicht
+// ueber das Angemeldete: fehlt ein Haken, wird seine Probe rot statt still
+// zu entfallen.
+const GEMESSEN = ["renderActorSheetV2", "renderImagePopout", "renderItemSheet5e",
+  "renderJournalEntryPageSheet", "renderJournalEntrySheet"]
+gleich("die fuenf render-Haken sind die gemessenen", [...auf].sort().join(","), GEMESSEN.join(","))
+for (const r of GEMESSEN) {
+  gleich(`${r} hat seinen close-Haken derselben Klasse`, zu.includes(r.replace(/^render/, "close")), true)
+}
+gleich("kein Name steht zweimal", new Set(namen).size, namen.length)
 
 /*
- * DIE ZAHL IST SELBST EIN SATZ. Eine Suche, die nichts findet, ist von einer
- * kaputten Suche nicht zu unterscheiden; ohne diese Zeile liefen alle
- * folgenden Pruefungen ueber eine leere Liste gruen durch.
+ * DIE STUMMEN NAMEN. `renderActorSheet` und `renderItemSheet` sind die Namen
+ * aus Fassung 12, `renderItemSheetV2` ist der, den die Actor-Zeile nahelegt;
+ * keiner feuert unter Foundry 13 mit dnd5e 5.3.3.
  */
-gleich("FLAECHEN traegt fuenf Paare", paare.length, 5)
-
-for (const [auf, zu] of paare) {
-  gleich(`${auf} und ${zu} benennen dieselbe Klasse`,
-    zu, auf.replace(/^render/, "close"))
+for (const stumm of ["renderActorSheet", "renderItemSheet", "renderItemSheetV2", "renderJournalSheet"]) {
+  gleich(`der stumme Name ${stumm} ist nicht angemeldet`, namen.includes(stumm), false)
 }
-
-gleich("kein Name steht zweimal", new Set(aufNamen).size, aufNamen.length)
-
-// ===========================================================================
-console.log("\nDie fuenf Flaechen sind die gemessenen, nicht die erinnerten")
-
-for (const pflicht of [
-  "renderJournalEntrySheet",      // das Journalfenster
-  "renderJournalEntryPageSheet",  // ein einzeln geoeffnetes Seitenblatt
-  "renderActorSheetV2",           // das Blatt einer Kreatur
-  "renderItemSheet5e",            // das Blatt eines Gegenstands oder Zaubers
-  "renderImagePopout",            // die gross aufgezogene Karte
-]) {
-  wahr(`FLAECHEN deckt ${pflicht}`, aufNamen.includes(pflicht))
-}
-
-/*
- * DIE STUMMEN NAMEN, und sie sind der eigentliche Inhalt dieses Satzes.
- *
- * `renderActorSheet` und `renderItemSheet` sind die Namen aus Fassung 12 und
- * feuern unter Foundry 13 nicht. `renderItemSheetV2` ist der Name, den die
- * Zeile `renderActorSheetV2` darueber nahelegt, und er feuert bei dnd5e 5.3.3
- * ebenfalls nicht, weil `ItemSheet5e` nicht von `ItemSheetV2` erbt.
- */
-for (const stumm of ["renderActorSheet", "renderItemSheet",
-                     "renderItemSheetV2", "renderJournalSheet"]) {
-  gleich(`der stumme Name ${stumm} steht NICHT in FLAECHEN`,
-    aufNamen.filter((n) => n === stumm).length, 0)
-}
-
-/*
- * UND DIE ZU BREITEN NAMEN. `DocumentSheetV2` traegt Item, Actor UND Journal,
- * `ApplicationV2` und `HandlebarsApplication` tragen jedes Fenster. Ein Haken
- * darauf doppelte die anderen Zeilen, und jedes Fenster bekaeme den Helfer
- * zweimal je Render. Das waere nicht falsch, sondern teuer und unlesbar.
- */
+// Zu breit: ein Haken darauf doppelte die anderen Zeilen.
 for (const zuBreit of ["renderDocumentSheetV2", "renderApplicationV2",
-                       "renderHandlebarsApplication", "renderDocumentSheet5e"]) {
-  gleich(`${zuBreit} steht nicht in FLAECHEN, es doppelte die anderen Zeilen`,
-    aufNamen.filter((n) => n === zuBreit).length, 0)
+  "renderHandlebarsApplication", "renderDocumentSheet5e"]) {
+  gleich(`${zuBreit} ist nicht angemeldet, es doppelte die anderen Zeilen`, namen.includes(zuBreit), false)
 }
 
 // ===========================================================================
-console.log("\nDer Riegel gegen Verzeichnisse greift weiter")
+abschnitt("Der Riegel gegen Verzeichnisse, ueber die Naht")
 
 /*
  * ER IST DER GRUND, WARUM `OP-PRJ-177` NICHT WIEDERKOMMT. Foundry setzt an
- * jedem Listenbild `loading="lazy"` und holt deshalb nur das Sichtbare,
- * gemessen 686 von 686. Dieser Helfer holt die Bytes dagegen SOFORT, ein Haken
- * auf ein Verzeichnis verwandelt also null Abrufe in so viele, wie die Liste
- * Zeilen hat: fuer die Szenenliste rund 609 MB gegen das Offline-Kontingent
- * des Kunden.
- *
- * Geprueft wird der Riegel aus der Quelle und nicht ein abgeschriebener: eine
- * Kopie hier liesse den Satz gruen, waehrend der echte Riegel verschwunden
- * ist.
+ * jedem Listenbild `loading="lazy"`; dieser Helfer holt die Bytes SOFORT. Ein
+ * Haken auf ein Verzeichnis verwandelt null Abrufe in so viele, wie die Liste
+ * Zeilen hat, fuer die Szenenliste rund 609 MB.
  */
-const riegelZeile = QUELLE.match(/const VERBOTEN = \/([^/\n]+)\/([a-z]*)/)
-wahr("der Riegel VERBOTEN steht noch da", Boolean(riegelZeile))
-const riegel = riegelZeile
-  ? new RegExp(riegelZeile[1], riegelZeile[2])
-  : /$^/
-
-wahr("der Riegel wird im Rufer auf BEIDE Namen angewandt",
-  /VERBOTEN\.test\(renderHaken\)\s*\|\|\s*VERBOTEN\.test\(schliessHaken\)/
-    .test(QUELLE))
-
-for (const n of aufNamen) {
-  gleich(`${n} faellt nicht unter den Riegel`, riegel.test(n), false)
+const riegel = bilder.flaechenRiegelFuerPruefsatz
+gleich("die Naht ist da", typeof riegel, "function")
+if (typeof riegel === "function") {
+  for (const r of GEMESSEN) {
+    gleich(`${r} faellt nicht unter den Riegel`, riegel(r, r.replace(/^render/, "close")), false)
+  }
+  for (const boese of ["renderItemDirectory5e", "renderActorDirectory", "renderSidebarTab", "renderFilePicker"]) {
+    gleich(`der Riegel weist ${boese} ab`, riegel(boese, "closeHarmlos"), true)
+  }
+  // BEIDE Namen: ein harmloser render-Name mit einem Verzeichnis als close.
+  gleich("der Riegel prueft auch den close-Namen", riegel("renderHarmlos", "closeItemDirectory5e"), true)
+  gleich("Gross und klein sind fuer den Riegel gleich", riegel("renderitemdirectory", "closeHarmlos"), true)
 }
-
-/*
- * Und die Gegenrichtung, sonst waere ein Riegel, der nie zuschlaegt, von
- * einem kaputten nicht zu unterscheiden. `renderItemDirectory5e` ist der
- * naechste Verwandte der neuen Zeile und damit der Name, der hier am
- * wahrscheinlichsten eines Tages hineinwandert.
- */
-for (const boese of ["renderItemDirectory5e", "renderActorDirectory",
-                     "renderSidebarTab", "renderFilePicker"]) {
-  wahr(`der Riegel wuerde ${boese} abweisen`, riegel.test(boese))
-}
+const quelle = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "stream-bilder.mjs"), "utf8")
+const einbau = quelle.slice(quelle.indexOf("export function installStreamBilder("))
+struktur("der Einbau fragt den Riegel je Paar, bevor er anmeldet",
+  einbau.indexOf("flaechenRiegel(renderHaken, schliessHaken)") >= 0
+    && einbau.indexOf("flaechenRiegel(renderHaken, schliessHaken)") < einbau.indexOf("Hooks.on("), true)
 
 // ===========================================================================
-console.log("\nDer Kopf widerspricht der Liste unter sich nicht")
+abschnitt("Ein gefeuerter Haken tauscht das Bild gegen eine Blob-Adresse")
 
-/*
- * EIN KOPFKOMMENTAR, DER DIE LISTE WIDERLEGT, IST SCHLIMMER ALS KEINER: er
- * haelt den naechsten Leser davon ab, die Zeile zu suchen, die schon da ist.
- * Bis zum 08.11.2026 stand im Kopf "Keine Klappkarten", und das war richtig,
- * solange diese Karten oertlich lagen. Mit `OP-PRJ-140` liegen sie am Tor.
- */
-gleich("der Kopf behauptet nicht mehr, Klappkarten seien aussen vor",
-  (QUELLE.match(/\*\*Keine Klappkarten/g) || []).length, 0)
-wahr("der Kopf nennt stattdessen, seit wann sie mitgehen",
-  /Klappkarten gehen seit dem 08\.11\.2026 mit/.test(QUELLE))
-
-// Die drei Grenzen, die Absicht sind und bleiben, muessen weiter dastehen.
-for (const grenze of ["Kein `<video>`", "Keine Listen", "Keine Bearbeitenflaeche"]) {
-  wahr(`der Kopf nennt die Grenze "${grenze}" weiter`, QUELLE.includes(grenze))
+function bildElement(src) {
+  const attr = new Map([["src", src]])
+  return {
+    nodeType: 1,
+    isConnected: true,
+    getAttribute: (k) => attr.get(k) ?? null,
+    setAttribute: (k, v) => { attr.set(k, String(v)) },
+    closest: () => null,
+  }
+}
+function fenster(bilderListe) {
+  const wurzel = {
+    nodeType: 1,
+    querySelectorAll: (s) => (s === "img" ? bilderListe : []),
+    querySelector: () => null,
+  }
+  return { app: { rendered: true, element: wurzel }, wurzel }
 }
 
-// ---------------------------------------------------------------------------
-console.log(`\n${gruen} bestanden, ${rot} gescheitert`)
-console.log("\nNicht geprueft, ausdruecklich benannt:")
-console.log("- Dass ein Haken im laufenden Foundry feuert. Die fuenf Namen sind am")
-console.log("  08.11.2026 in `v13-streaming` gemessen, dieser Satz haelt sie nur")
-console.log("  fest. Die Wirkung entscheidet TC-PRJ-STR-302.")
-console.log("- Ob das Bild nach dem Lauf eine `blob:`-Adresse traegt. Das braucht")
-console.log("  Foundry, Handlebars und ein gefuelltes Tor.")
-console.log("- Die Freigabe der Blob-Adressen. `allesLoslassen()` ist hier nicht")
-console.log("  fahrbar, weil sie an einem Fenster haengt.")
-console.log("- Ob dnd5e in einer kuenftigen Fassung `ItemSheet5e` auf")
-console.log("  `ItemSheetV2` umstellt. Dann feuert der Name hier weiter, weil")
-console.log("  Foundry die ganze Kette feuert; die Zeile waere nur nicht mehr die")
-console.log("  knappste.")
+const tor = settings.assetUrl("beneos_bm_0042", "4k", "map_assets/kompass.webp")
+const platz = settings.platzhalterAdresse("beneos_bm_0042", "4k", "map_assets/leiste.webp")
+// Fuenf Segmente, also von `zerlegeAdresse` lesbar: nur der Host macht sie fremd.
+const fremd = "https://example.test/a/geheim/beneos_bm_0042/4k/y.webp"
+const b1 = bildElement(tor)
+const b2 = bildElement(platz)
+const b3 = bildElement(fremd)
+const f1 = fenster([b1, b2, b3])
+nimmAbrufe()
+await haken.rufe("renderJournalEntrySheet", f1.app, f1.wurzel)
+// Der Haken wartet nicht; das Bild wird im naechsten Takt gesetzt.
+for (let i = 0; i < 20 && !String(b1.getAttribute("src")).startsWith("blob:"); i++) {
+  await new Promise((r) => setTimeout(r, 5))
+}
+gleich("die Toradresse wird eine Blob-Adresse", String(b1.getAttribute("src")).startsWith("blob:"), true)
+gleich("die Platzhalterform wird eine Blob-Adresse", String(b2.getAttribute("src")).startsWith("blob:"), true)
+gleich("eine fremde Adresse bleibt, wie sie ist", b3.getAttribute("src"), fremd)
+const geholt = nimmAbrufe().map((a) => a.adresse).sort()
+gleich("abgerufen wird die Toradresse von heute, auch fuer die Platzhalterform",
+  geholt.join(" "), [tor, settings.assetUrl("beneos_bm_0042", "4k", "map_assets/leiste.webp")].sort().join(" "))
+gleich("zwei Bilder gehalten", bilder.bilderBlobStand().eintraege, 2)
 
-process.exit(rot > 0 ? 1 : 0)
+// Gegenwert zum Loslassen: ein zweites Fenster haelt dieselbe Adresse. Schliesst
+// das erste, darf das Blob des zweiten nicht widerrufen werden.
+const zweitBild = bildElement(tor)
+const zweitFenster = fenster([zweitBild])
+await haken.rufe("renderJournalEntrySheet", zweitFenster.app, zweitFenster.wurzel)
+for (let i = 0; i < 20 && !String(zweitBild.getAttribute("src")).startsWith("blob:"); i++) {
+  await new Promise((r) => setTimeout(r, 5))
+}
+gleich("ein zweites Fenster mit derselben Adresse bekommt ein Blob", String(zweitBild.getAttribute("src")).startsWith("blob:"), true)
+gleich("und holt die Adresse kein zweites Mal", nimmAbrufe().length, 0)
+
+await haken.rufe("closeJournalEntrySheet", f1.app)
+gleich("das erste Fenster zu: die Adresse des zweiten bleibt gehalten", bilder.bilderBlobStand().eintraege, 1)
+await haken.rufe("closeJournalEntrySheet", zweitFenster.app)
+gleich("der close-Haken gibt beide frei", bilder.bilderBlobStand().eintraege, 0)
+
+// Gegenwert: Stream aus, derselbe Haken fasst nichts an.
+einstellungen["beneos-stream-mode"] = false
+const b4 = bildElement(tor)
+// Die Platzhalterform haengt nicht an `ours()`, also misst nur sie den Riegel
+// "Stream aus" selbst.
+const b5 = bildElement(platz)
+const f2 = fenster([b4, b5])
+await haken.rufe("renderJournalEntrySheet", f2.app, f2.wurzel)
+await new Promise((r) => setTimeout(r, 20))
+gleich("bei ausgeschaltetem Stream bleibt die Toradresse", b4.getAttribute("src"), tor)
+gleich("bei ausgeschaltetem Stream bleibt auch die Platzhalterform", b5.getAttribute("src"), platz)
+gleich("und es wird nichts abgerufen", nimmAbrufe().length, 0)
+einstellungen["beneos-stream-mode"] = true
+
+// ===========================================================================
+abschnitt("Der Kopf widerspricht der Liste unter sich nicht")
+
+/*
+ * EIN KOPFKOMMENTAR, DER DIE LISTE WIDERLEGT, IST SCHLIMMER ALS KEINER. Bis zum
+ * 08.11.2026 stand im Kopf "Keine Klappkarten"; mit `OP-PRJ-140` liegen sie
+ * am Tor. Dokumentproben, Betreiberentscheid vom 14.11.2026.
+ */
+dokument("der Kopf behauptet nicht mehr, Klappkarten seien aussen vor",
+  (quelle.match(/\*\*Keine Klappkarten/g) || []).length, 0)
+dokument("der Kopf nennt stattdessen, seit wann sie mitgehen",
+  /Klappkarten gehen seit dem 08\.11\.2026 mit/.test(quelle), true)
+for (const grenze of ["Kein `<video>`", "Keine Listen", "Keine Bearbeitenflaeche"]) {
+  dokument(`der Kopf nennt die Grenze "${grenze}" weiter`, quelle.includes(grenze), true)
+}
+
+console.log("")
+console.log("Nicht geprueft, ausdruecklich benannt:")
+console.log("- Dass Foundry die Haken mit diesen Namen und Argumenten feuert. Gemessen")
+console.log("  am 08.11.2026 in v13-streaming; die Wirkung entscheidet TC-PRJ-STR-302.")
+console.log("- Echtes DOM, Bearbeitenmodus und Freigabe beim Rotieren des Schluessels.")
+ende()

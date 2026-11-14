@@ -1,266 +1,330 @@
 /**
  * stream-ersatzbild.test.mjs
  *
- * Gegenprobe zwischen drei Dingen, die auseinanderlaufen koennen, ohne dass
- * jemand es merkt: der Abrufschicht in `stream-fetch.mjs`, den sechs Dateien
- * unter `ui/`, und ihrem Erzeuger `tools/ersatzbilder.py`. Laeuft ohne
- * Foundry, ohne Browser, ohne Netz:
+ * Prueft das Ersatzbild am echten Abrufersatz: `installStreamFetch()` wird
+ * eingebaut, das Netz ist eine Attrappe, und jede Probe ruft `fetch` mit einer
+ * Toradresse. Laeuft ohne Foundry, ohne Browser, ohne Netz:
  *
  *   node scripts/stream/stream-ersatzbild.test.mjs
  *
- * Rueckgabewert 0 heisst alle Faelle gruen, 1 heisst mindestens einer rot.
+ * Rueckgabewert 0 heisst alle Proben gruen, 1 heisst mindestens eine rot.
  *
  * WARUM DIESER PRUEFSATZ UEBERHAUPT. Das Ersatzbild ist die einzige Stelle im
  * Streaming, an der ein Fehler GENAU SO AUSSIEHT wie der Zustand, den es
  * beheben soll. Eine Abweisung des Tores kommt als HTTP 200 mit einem
  * durchsichtigen GIF von 42 Byte: der Kunde sieht ein leeres Feld, die
  * Konsole bleibt still. Faellt das Ersatzbild aus, sieht der Kunde dasselbe
- * leere Feld. Es gibt also keinen Unterschied zwischen "der Ersatz greift
- * nicht" und "es gibt keinen Ersatz", und ohne diesen Satz faellt beides
- * niemandem auf.
+ * leere Feld. Ohne diesen Satz faellt beides niemandem auf.
  *
- * DIE DREI WEGE, AUF DENEN ES STILL BRICHT, und jeder ist hier ein Fall:
+ * DIE WEGE, AUF DENEN ES STILL BRICHT, und jeder ist hier eine Probe am
+ * laufenden Code:
  *
- *   1. `ersatzForm()` bekommt eine Form dazu und die Datei fehlt. Dann liefert
- *      `ersatzBytes()` HTTP 404, der Abruf wirft, und die Abrufschicht faellt
- *      auf die leere Antwort zurueck. Fall 3 unten haelt dagegen.
- *   2. Der Erzeuger wird geaendert und schreibt andere Masse. Ein
- *      quadratisches Ersatzbild in einem Breitbildfeld wird verzerrt, und das
- *      sieht nach einem kaputten Bild aus statt nach einem Hinweis. Fall 4.
- *   3. Der Alphakanal geht verloren. Dann ersetzt ein deckendes Rechteck die
- *      Tokentextur, also genau der Kasten um die Figur, den der Betreiber
- *      am 02.11.2026 verworfen hat. Fall 5.
+ *   1. Die Abweisung oder der Netzfehler fuehrt nicht mehr zum Ersatzbild.
+ *   2. Die Form wird falsch erkannt: ein Token bekaeme das Breitbild.
+ *   3. Die Datei zur Form fehlt. Dann faellt der Ersatz auf den Bildpunkt.
+ *   4. Ein einmal misslungener Abruf setzt sich im Vorrat fest.
+ *   5. Masse oder Alphakanal der gelieferten Datei passen nicht zur Rolle.
  *
- * WAS DIESER SATZ NICHT LEISTET. Er liest Dateikoepfe und Quelltext. Dass die
- * Abrufschicht im laufenden Foundry wirklich auf das Ersatzbild faellt und
- * dass es dort erscheint, entscheidet die Reihe 8 der Abnahme. Und er sagt
- * nichts darueber, ob die Bilder GUT aussehen; er sagt nur, dass sie die Form
- * haben, die der Vertrag verlangt.
+ * Bis zum 14.11.2026 las dieser Satz `stream-fetch.mjs` als Text (Befund B6
+ * der Stream-Inventur). Seit stre-T-017 ruft er den Code. Text liest er nur
+ * noch dort, wo die Aussage selbst ein Text ist: der Kopf des Erzeugers
+ * `tools/ersatzbilder.py` als Dokumentprobe (Betreiberentscheid E1 vom
+ * 14.11.2026), und die Dateiliste unter `ui/` als Strukturprobe.
  *
- * Arbeitspaket `OP-PRJ-207`, dazu `OP-PRJ-128` und `OP-PRJ-129`.
+ * WAS DIESER SATZ NICHT LEISTET. Ob das Ersatzbild im laufenden Foundry
+ * erscheint, entscheidet die Reihe 8 der Abnahme. Ob die Bilder GUT aussehen,
+ * sagt er nicht; ohne Decoder prueft er Kopf, Masse, Alpha und Groesse.
+ *
+ * Arbeitspaket `OP-PRJ-207`, dazu `OP-PRJ-128`, `OP-PRJ-129` und stre-T-017.
  */
 import { readFileSync, existsSync, readdirSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
+import { pruefstand, installiereFoundry, netz, nimmAbrufe } from "../../tools/lib/foundry-attrappe.mjs"
 
-let rot = 0
-let gruen = 0
-
-/**
- * Vergleicht ueber `JSON.stringify` und nicht ueber `===`.
- *
- * Der Grund steht hier, weil er diesen Satz beim ersten Lauf neun mal rot
- * gemacht hat: `===` vergleicht zwei Listen als Verweise, also ist
- * `[512, 512] === [512, 512]` falsch. Der Satz meldete "ist [512,512], soll
- * [512,512]" und sah dabei aus wie ein Befund an den Bildern. Mit
- * `JSON.stringify` bleibt der Typ unterschieden, denn `5` und `"5"` ergeben
- * verschiedene Zeichenketten.
- */
-function gleich(name, ist, soll) {
-  if (JSON.stringify(ist) === JSON.stringify(soll)) {
-    gruen++; console.log(`  ok   ${name}`)
-  } else {
-    rot++
-    console.log(`  ROT  ${name}`)
-    console.log(`       ist:  ${JSON.stringify(ist)}`)
-    console.log(`       soll: ${JSON.stringify(soll)}`)
-  }
-}
-
-function wahr(name, bedingung) {
-  gleich(name, !!bedingung, true)
-}
+const { gleich, struktur, dokument, abschnitt, ende } = pruefstand("stream-ersatzbild, am echten Abrufersatz")
 
 const HIER = dirname(fileURLToPath(import.meta.url))
 const WURZEL = join(HIER, "..", "..")
-const FETCH_QUELLE = readFileSync(join(HIER, "stream-fetch.mjs"), "utf8")
-const ERZEUGER_PFAD = join(WURZEL, "tools", "ersatzbilder.py")
+const UI = join(WURZEL, "ui")
+const TOR = "https://gate.beneos.stream"
+const MODULPFAD = "/modules/beneos-module/ui/"
+
+installiereFoundry({
+  einstellungen: {
+    "beneos-stream-mode": true,
+    "beneos-stream-key": "pk_pruefsatz_ersatz",
+    "beneos-stream-base": TOR,
+    // Ohne Vorrat: jede Probe geht durch den Abruf und nicht durch den Speicher.
+    "beneos-stream-local-cache": false,
+  },
+})
+
+// Was das Tor gerade tut. Ein einziger Antworter, denn `netz()` ersetzt
+// `globalThis.fetch`; ein zweiter Aufruf nach dem Einbau wuerde den Ersatz
+// wieder ausbauen.
+let tor = "gut"
+let modulFehlt = false
+// Antwortet die Gesundheitsabfrage des Tores? Nach drei Fehlschlaegen in Folge
+// fragt `stream-online.mjs` sie ab; antwortet sie nicht, ist die Sitzung offline.
+let torStumm = false
+const TORBYTES = new Uint8Array([82, 73, 70, 70, 1, 2, 3, 4])
+
+netz((adresse) => {
+  if (adresse.startsWith(MODULPFAD)) {
+    const datei = join(UI, adresse.slice(MODULPFAD.length))
+    if (modulFehlt || !existsSync(datei)) return new Response("fehlt", { status: 404 })
+    return new Response(readFileSync(datei), { status: 200, headers: { "Content-Type": "image/webp" } })
+  }
+  if (adresse === `${TOR}/health`) {
+    return torStumm ? { wirf: "Failed to fetch" } : new Response("ok", { status: 200 })
+  }
+  if (adresse.startsWith(`${TOR}/`)) {
+    if (tor === "netzfehler") return { wirf: "Failed to fetch" }
+    const kopf = { "Content-Type": "image/webp" }
+    if (tor === "abgewiesen") kopf["x-beneos-denied"] = "1"
+    return new Response(TORBYTES, { status: 200, headers: kopf })
+  }
+  return undefined
+})
+
+const settings = await import("./stream-settings.mjs")
+const abruf = await import("./stream-fetch.mjs")
+abruf.installStreamFetch()
+
+// Ein Anfrageteil (`?v=2`) haengt hinter der Adresse; `assetUrl` wuerde das
+// Fragezeichen sonst als Teil des Dateinamens kodieren.
+const adresse = (name) => {
+  const [pfad, anfrage] = name.split("?")
+  return settings.assetUrl("beneos_cr_0001", "default", pfad) + (anfrage ? `?${anfrage}` : "")
+}
+
+/** Ruft den eingebauten Ersatz und sammelt, was ankommt. */
+async function hole(name, zustand) {
+  tor = zustand
+  nimmAbrufe()
+  let antwort
+  let geworfen = null
+  try { antwort = await globalThis.fetch(adresse(name)) } catch (fehler) { geworfen = String(fehler) }
+  // Ein Tick, damit die Gesundheitsabfrage nach einem dritten Fehlschlag fertig ist.
+  await new Promise((r) => setTimeout(r, 0))
+  const alle = nimmAbrufe().map((a) => a.adresse)
+  const modul = alle.filter((a) => a.startsWith(MODULPFAD))
+  const amTor = alle.filter((a) => a.startsWith(`${TOR}/`) && a !== `${TOR}/health`)
+  if (!antwort) return { geworfen, modul, amTor }
+  const bytes = new Uint8Array(await antwort.arrayBuffer())
+  return {
+    geworfen,
+    modul,
+    amTor,
+    status: antwort.status,
+    typ: antwort.headers.get("Content-Type"),
+    ersatz: antwort.headers.get("x-beneos-ersatz"),
+    offline: antwort.headers.get("x-beneos-offline"),
+    denied: antwort.headers.get("x-beneos-denied"),
+    bytes,
+  }
+}
+
+const datei = (ursache, form) => readFileSync(join(UI, `beneos_stream_${ursache}_${form}.webp`))
+// Ohne Antwort (geworfen) gibt es keine Bytes; das ist ein rotes Ergebnis, kein Absturz.
+const gleicheBytes = (a, b) => Boolean(a && b) && a.length === b.length && a.every((x, i) => x === b[i])
 
 /**
- * Der Kopf einer WebP-Datei, so weit er hier gebraucht wird.
+ * Der Kopf einer WebP-Datei, gelesen aus den Bytes, die der Ersatz liefert.
  *
- * ZWEI FORMEN, und die erste Fassung dieser Funktion kannte nur eine. Sie
- * verlangte VP8X und wurde dadurch bei der Umstellung auf verlustfreie
- * Kodierung 24 mal rot, obwohl an den Bildern nichts fehlte: Pillow schreibt
- * VP8X nur fuer die verlustbehaftete Form und VP8L fuer die verlustfreie.
- * Ein Satz, der eine Eigenheit des Schreibers prueft statt der Sache, meldet
- * einen Befund, wo keiner ist. Beide Formen koennen Alpha tragen, und beide
- * nennen Masse und Alphaschalter im Kopf, nur verschieden verpackt.
+ * ZWEI FORMEN: Pillow schreibt VP8X fuer die verlustbehaftete und VP8L fuer
+ * die verlustfreie Kodierung. Beide tragen Alpha und Masse im Kopf, nur
+ * verschieden verpackt. Die erste Fassung kannte nur VP8X und wurde bei der
+ * Umstellung auf verlustfrei 24 mal rot, obwohl an den Bildern nichts fehlte.
  *
  *   VP8X  Flags in Byte 20 (Bit 4 ist Alpha), Masse als zwei mal 24 Bit
  *   VP8L  Signaturbyte 0x2F, danach 32 Bit mit Breite, Hoehe, Alpha, Version
- *
- * Eine Datei, die weder das eine noch das andere ist, ist entweder kein WebP
- * oder die aeltere Form VP8 ohne jeden Alphakanal, und beides ist hier ein
- * Befund und kein Sonderfall.
  */
-function webpKopf(pfad) {
-  const b = readFileSync(pfad)
-  if (b.length < 30) return { fehler: "zu kurz" }
-  if (b.toString("latin1", 0, 4) !== "RIFF") return { fehler: "kein RIFF" }
-  if (b.toString("latin1", 8, 12) !== "WEBP") return { fehler: "kein WEBP" }
-  const art = b.toString("latin1", 12, 16)
+function webpKopf(b) {
+  const text = (von, bis) => String.fromCharCode(...b.slice(von, bis))
+  if (!b || b.length < 30) return { fehler: "zu kurz" }
+  if (text(0, 4) !== "RIFF" || text(8, 12) !== "WEBP") return { fehler: "kein WebP" }
+  const art = text(12, 16)
   if (art === "VP8X") {
     return {
       art,
       alpha: (b[20] & 0x10) !== 0,
       breite: (b[24] | (b[25] << 8) | (b[26] << 16)) + 1,
       hoehe: (b[27] | (b[28] << 8) | (b[29] << 16)) + 1,
-      bytes: b.length,
     }
   }
   if (art === "VP8L" && b[20] === 0x2f) {
-    // Vier Bytes, LSB zuerst: 14 Bit Breite, 14 Bit Hoehe, 1 Bit Alpha,
-    // 3 Bit Version. `>>>` statt `>>`, weil Bit 31 sonst das Vorzeichen
-    // setzt und die Version negativ wird.
+    // `>>>` statt `>>`, weil Bit 31 sonst das Vorzeichen setzt.
     const v = (b[21] | (b[22] << 8) | (b[23] << 16) | (b[24] << 24)) >>> 0
     return {
       art,
       alpha: ((v >>> 28) & 1) === 1,
       breite: (v & 0x3fff) + 1,
       hoehe: ((v >>> 14) & 0x3fff) + 1,
-      bytes: b.length,
     }
   }
   return { fehler: `Chunk ${art} traegt keinen Alphakanal`, art }
 }
 
-// ---------------------------------------------------------------------------
-console.log("\n1. Der Pfad kommt aus der Quelle und ist nicht abgeschrieben")
-
-// ERSATZ_PFAD traegt den Ordner und den gemeinsamen Anfang der Dateinamen.
-// Er wird hier AUS DER QUELLE gelesen: ein Satz, der ihn abschreibt, bliebe
-// gruen, wenn jemand den Ordner im Modul verschiebt.
-const pfadTreffer = FETCH_QUELLE.match(
-  /const ERSATZ_PFAD = `modules\/\$\{MODULE_ID\}\/([^`]+)`/)
-wahr("`ERSATZ_PFAD` steht in stream-fetch.mjs und ist lesbar", !!pfadTreffer)
-const ORDNER_UND_ANFANG = pfadTreffer ? pfadTreffer[1] : "ui/beneos_stream_"
-gleich("er zeigt auf ui/ und den Anfang beneos_stream_",
-  ORDNER_UND_ANFANG, "ui/beneos_stream_")
-
-const schraeg = ORDNER_UND_ANFANG.lastIndexOf("/")
-const ORDNER = join(WURZEL, ORDNER_UND_ANFANG.slice(0, schraeg))
-const ANFANG = ORDNER_UND_ANFANG.slice(schraeg + 1)
-
-// ---------------------------------------------------------------------------
-console.log("\n2. Die zwei Ursachen stehen in der Abrufschicht")
-
-// Zwei Ursachen, zwei Bilder: "offline" heisst warten, "denied" heisst
-// klaeren. Ein einziges Bild fuer beides macht jeden Supportfall unaufloesbar.
-// Die Namen stehen in `ersatzAntwort()` als Kopfzeilen, und ueber dieselben
-// Kopfzeilen weist `toStore` die Antwort ab. Sie sind also kein Zierwerk.
-const URSACHEN = ["offline", "denied"]
-for (const u of URSACHEN) {
-  wahr(`die Abrufschicht kennt die Kopfzeile x-beneos-${u}`,
-    FETCH_QUELLE.includes(`x-beneos-${u}`))
-}
-wahr("sie unterscheidet die Ursachen am Namen offline",
-  /ursache === "offline"/.test(FETCH_QUELLE))
-
-// ---------------------------------------------------------------------------
-console.log("\n3. Jede Form, die ersatzForm() liefern kann, hat ihre Dateien")
-
-// DAS IST DER FALL, DER DEN STILLEN AUSFALL FAENGT. Die Formen werden aus dem
-// Rumpf von `ersatzForm()` gelesen, nicht hier aufgezaehlt: kommt eine Form
-// dazu und fehlt ihre Datei, liefert `ersatzBytes()` HTTP 404 und der Kunde
-// sieht wieder das leere Feld.
-const rumpf = FETCH_QUELLE.match(/function ersatzForm\(url\)\s*\{([\s\S]*?)\n\}/)
-wahr("der Rumpf von ersatzForm() ist lesbar", !!rumpf)
-const FORMEN = rumpf
-  ? [...new Set((rumpf[1].match(/return "([a-z]+)"/g) || [])
-      .map((s) => s.slice(8, -1)))].sort()
-  : []
-gleich("ersatzForm() liefert genau drei Formen",
-  FORMEN, ["card", "journal", "token"])
-
-const ERWARTET = []
-for (const u of URSACHEN) for (const f of FORMEN) ERWARTET.push(`${ANFANG}${u}_${f}.webp`)
-
-for (const name of ERWARTET) {
-  wahr(`${name} liegt im Modul`, existsSync(join(ORDNER, name)))
+// Je Form ein Dateiname, wie ihn das Modul fuer diese Rolle schreibt.
+const FORMEN = {
+  journal: "kreatur-journal.webp",
+  card: "kreatur_front.webp",
+  token: "kreatur-token.webp",
 }
 
-// Die Gegenrichtung: kein Ersatzbild ohne eine Form, die es anfordert. Eine
-// uebrige Datei ist kein Ausfall, aber sie ist ein Hinweis darauf, dass
-// jemand eine Form aus `ersatzForm()` entfernt und die Datei vergessen hat.
-const LIEGEND = readdirSync(ORDNER)
-  .filter((n) => n.startsWith(ANFANG) && n.endsWith(".webp")).sort()
-gleich("es liegen genau die erwarteten Dateien und keine weitere",
-  LIEGEND, ERWARTET.slice().sort())
+// ===========================================================================
+abschnitt("Ein misslungener Abruf der Ersatzdatei faellt auf den Bildpunkt und setzt sich nicht fest")
 
-// ---------------------------------------------------------------------------
-console.log("\n4. Die Masse folgen der Rolle, und der Erzeuger kennt dieselben")
+// Zuerst, denn ein gelungener Abruf liegt danach im Vorrat dieser Sitzung.
+modulFehlt = true
+const ohneDatei = await hole(FORMEN.token, "abgewiesen")
+gleich("fehlt die Ersatzdatei, kommt ein GIF statt WebP", ohneDatei.typ, "image/gif")
+gleich("auch dann HTTP 200, damit PIXI kein Gefahrensymbol malt", ohneDatei.status, 200)
+gleich("auch dann traegt die Antwort die Ursache", ohneDatei.ersatz, "denied")
+gleich("der Bildpunkt ist das GIF von 42 Byte", ohneDatei.bytes.length, 42)
+modulFehlt = false
+const danach = await hole(FORMEN.token, "abgewiesen")
+gleich("liegt die Datei wieder da, kommt sie beim naechsten Abruf an",
+  gleicheBytes(danach.bytes, datei("denied", "token")), true)
 
-// Das Ersatzbild sitzt im Feld der ausgefallenen Datei. Ein Journalbild ist
-// Breitbild, eine Klappkarte hochkant, ein Token quadratisch. Die Masse
-// werden AUS DEM ERZEUGER gelesen, damit Bild und Erzeuger nicht
-// auseinanderlaufen koennen, ohne dass dieser Satz rot wird.
-wahr("der Erzeuger tools/ersatzbilder.py liegt im Modul",
-  existsSync(ERZEUGER_PFAD))
+// ===========================================================================
+abschnitt("Eine Abweisung des Tores bringt je Form das Ersatzbild denied")
 
-const ERZEUGER = existsSync(ERZEUGER_PFAD)
-  ? readFileSync(ERZEUGER_PFAD, "utf8") : ""
-const formenBlock = ERZEUGER.match(/FORMEN = \{([\s\S]*?)\n\}/)
-wahr("seine Formentabelle ist lesbar", !!formenBlock)
-
-const SOLL_MASSE = {}
-if (formenBlock) {
-  for (const z of formenBlock[1].matchAll(/"([a-z]+)":\s*\((\d+),\s*(\d+)\)/g)) {
-    SOLL_MASSE[z[1]] = [Number(z[2]), Number(z[3])]
-  }
+const geliefert = {}
+for (const [form, name] of Object.entries(FORMEN)) {
+  const r = await hole(name, "abgewiesen")
+  geliefert[`denied/${form}`] = r.bytes
+  gleich(`denied ${form}: HTTP 200`, r.status, 200)
+  gleich(`denied ${form}: Inhaltstyp image/webp`, r.typ, "image/webp")
+  gleich(`denied ${form}: Kopfzeile x-beneos-ersatz`, r.ersatz, "denied")
+  gleich(`denied ${form}: Kopfzeile x-beneos-denied`, r.denied, "1")
+  gleich(`denied ${form}: keine Kopfzeile x-beneos-offline`, r.offline, null)
+  gleich(`denied ${form}: es kommen die Bytes von beneos_stream_denied_${form}.webp`,
+    gleicheBytes(r.bytes, datei("denied", form)), true)
 }
-gleich("er kennt genau die Formen aus ersatzForm()",
-  Object.keys(SOLL_MASSE).sort(), FORMEN)
 
-// Die Seitenverhaeltnisse muessen sich wirklich unterscheiden. Drei gleiche
-// Masse waeren derselbe Fehler wie eine einzige Datei fuer alle Formen, nur
-// schwerer zu sehen.
-const verhaeltnisse = FORMEN
-  .filter((f) => SOLL_MASSE[f])
-  .map((f) => (SOLL_MASSE[f][0] / SOLL_MASSE[f][1]).toFixed(3))
-gleich("die drei Seitenverhaeltnisse sind verschieden",
-  new Set(verhaeltnisse).size, FORMEN.length)
-wahr("token ist quadratisch",
-  SOLL_MASSE.token && SOLL_MASSE.token[0] === SOLL_MASSE.token[1])
-wahr("card ist hochkant",
-  SOLL_MASSE.card && SOLL_MASSE.card[1] > SOLL_MASSE.card[0])
-wahr("journal ist Breitbild",
-  SOLL_MASSE.journal && SOLL_MASSE.journal[0] > SOLL_MASSE.journal[1])
+// ===========================================================================
+abschnitt("Ein Netzfehler bringt je Form das Ersatzbild offline")
 
-// ---------------------------------------------------------------------------
-console.log("\n5. Jede Datei ist ein WebP mit Alphakanal in den Sollmassen")
+for (const [form, name] of Object.entries(FORMEN)) {
+  const r = await hole(name, "netzfehler")
+  geliefert[`offline/${form}`] = r.bytes
+  gleich(`offline ${form}: nichts geworfen`, r.geworfen, null)
+  gleich(`offline ${form}: Inhaltstyp image/webp`, r.typ, "image/webp")
+  gleich(`offline ${form}: Kopfzeile x-beneos-ersatz`, r.ersatz, "offline")
+  gleich(`offline ${form}: Kopfzeile x-beneos-offline`, r.offline, "1")
+  gleich(`offline ${form}: keine Kopfzeile x-beneos-denied`, r.denied, null)
+  gleich(`offline ${form}: es kommen die Bytes von beneos_stream_offline_${form}.webp`,
+    gleicheBytes(r.bytes, datei("offline", form)), true)
+}
 
-// WebP ist Pflicht und keine Geschmacksfrage: `ersatzAntwort()` setzt den
-// Inhaltstyp fest auf image/webp. Eine PNG-Datei unter diesem Namen kaeme mit
-// falschem Typ an.
-// Der Alphakanal ebenso: das Bild ersetzt eine Tokentextur, und ein deckendes
-// Rechteck waere der Kasten um die Figur, den der Betreiber verworfen hat.
-wahr("die Abrufschicht meldet den Inhaltstyp image/webp",
-  /"Content-Type": "image\/webp"/.test(FETCH_QUELLE))
+// Der Abruf aus dem Modul geht an den Ordner ui/ und den Anfang beneos_stream_.
+// Beobachtet wird er an der Attrappe; ein Abruf liegt nur vor, solange die
+// Datei noch nicht im Vorrat dieser Sitzung liegt.
+tor = "abgewiesen"
+nimmAbrufe()
+await globalThis.fetch(adresse("andere-journal.png"))
+gleich("der Ersatz liegt im Vorrat: ein zweites Journalbild holt die Datei nicht neu",
+  nimmAbrufe().filter((a) => a.adresse.startsWith(MODULPFAD)).length, 0)
 
-for (const name of ERWARTET) {
-  const pfad = join(ORDNER, name)
-  if (!existsSync(pfad)) continue
-  const k = webpKopf(pfad)
-  const form = name.replace(/\.webp$/, "").split("_").pop()
-  const soll = SOLL_MASSE[form]
-  wahr(`${name}: WebP in einer Form mit Alphakanal, VP8X oder VP8L`,
-    k.art === "VP8X" || k.art === "VP8L")
-  wahr(`${name}: traegt einen Alphakanal`, k.alpha === true)
-  if (soll) {
-    gleich(`${name}: Masse`, [k.breite, k.hoehe], soll)
-  }
+// ===========================================================================
+abschnitt("Die Form folgt dem Dateinamen der ausgefallenen Datei")
+
+for (const [name, form] of [
+  ["kreatur-back.webp", "card"],
+  ["kreatur_card.jpg", "card"],
+  ["kreatur-top.png", "token"],
+  ["kreatur_avatar.webp", "token"],
+  ["kreatur-icon.jpeg", "token"],
+  ["KREATUR-TOKEN.WEBP", "token"],
+  ["kreatur-token.webp?v=2", "token"],
+  ["karte.webp", "journal"],
+]) {
+  const r = await hole(name, "abgewiesen")
+  gleich(`${name} bekommt die Form ${form}`, gleicheBytes(r.bytes, datei("denied", form)), true)
+}
+
+// ===========================================================================
+abschnitt("Gegenproben: wo kein Ersatz hingehoert, kommt keiner")
+
+const normal = await hole(FORMEN.token, "gut")
+gleich("ohne Abweisung und ohne Fehler: keine Kopfzeile x-beneos-ersatz", normal.ersatz, null)
+gleich("ohne Abweisung und ohne Fehler: die Bytes des Tores", gleicheBytes(normal.bytes, TORBYTES), true)
+
+const video = await hole("karte.webm", "abgewiesen")
+gleich("ein abgewiesenes Video bekommt kein Ersatzbild", video.ersatz, null)
+gleich("ein abgewiesenes Video behaelt die Antwort des Tores", gleicheBytes(video.bytes, TORBYTES), true)
+
+const steuer = await hole("manifest.json", "netzfehler")
+gleich("ein Netzfehler bei einer Steuerdatei wird geworfen", steuer.geworfen !== null, true)
+
+// ===========================================================================
+abschnitt("Ohne Verbindung kommt das Ersatzbild offline, ohne dass das Tor gefragt wird")
+
+// Drei Fehlschlaege in Folge und ein stummes Tor: die Sitzung ist offline.
+torStumm = true
+for (const name of ["a-token.webp", "b-token.webp", "c-token.webp"]) await hole(name, "netzfehler")
+const offlineBild = await hole("d_front.webp", "gut")
+gleich("offline: ein Bild bekommt das Ersatzbild offline", offlineBild.ersatz, "offline")
+gleich("offline: es sind die Bytes von beneos_stream_offline_card.webp",
+  gleicheBytes(offlineBild.bytes, datei("offline", "card")), true)
+gleich("offline: das Tor wird fuer das Bild nicht gefragt", offlineBild.amTor.length, 0)
+const offlineVideo = await hole("karte.webm", "gut")
+gleich("offline: ein Video bekommt kein Ersatzbild", offlineVideo.ersatz, null)
+gleich("offline: ein Video bekommt den Bildpunkt", offlineVideo.typ, "image/gif")
+const offlineSteuer = await hole("manifest.json", "gut")
+gleich("offline: eine Steuerdatei bekommt HTTP 503 statt eines Bildes", offlineSteuer.status, 503)
+
+// ===========================================================================
+abschnitt("Die gelieferten Bilder: WebP mit Alphakanal, Masse nach Rolle")
+
+const masse = {}
+for (const [schluessel, bytes] of Object.entries(geliefert)) {
+  const k = webpKopf(bytes)
+  const form = schluessel.split("/")[1]
+  masse[schluessel] = [k.breite, k.hoehe]
+  gleich(`${schluessel}: WebP in der Form VP8X oder VP8L`, k.art === "VP8X" || k.art === "VP8L", true)
+  gleich(`${schluessel}: traegt einen Alphakanal`, k.alpha, true)
   // Eine Datei unter 1000 Byte waere das durchsichtige Pixel in neuem Kleid.
-  wahr(`${name}: traegt wirklich ein Bild und nicht nur einen Kopf`,
-    k.bytes > 1000)
+  gleich(`${schluessel}: traegt ein Bild und nicht nur einen Kopf`, (bytes?.length ?? 0) > 1000, true)
+  const lage = k.breite === k.hoehe ? "token" : (k.hoehe > k.breite ? "card" : "journal")
+  gleich(`${schluessel}: die Lage passt zur Rolle`, lage, form)
+}
+for (const form of Object.keys(FORMEN)) {
+  gleich(`denied und offline ${form} haben dieselben Masse`,
+    JSON.stringify(masse[`denied/${form}`]), JSON.stringify(masse[`offline/${form}`]))
 }
 
-// ---------------------------------------------------------------------------
-console.log("\n6. Der Erzeuger nennt seine Werte und ihre Herkunft")
+// ===========================================================================
+abschnitt("Strukturprobe: unter ui/ liegen genau die sechs Ersatzdateien")
 
-// OP-PRJ-207 entstand, weil die Bilder da waren und ihr Erzeuger nicht. Wer
-// sie aendern wollte, haette raten muessen. Diese Faelle halten fest, dass
-// der Erzeuger seine Eingabewerte benennt statt sie zu verstecken.
+// Eine uebrige Datei ist kein Ausfall, aber ein Hinweis darauf, dass jemand
+// eine Form entfernt und ihre Datei vergessen hat. Eine Aussage ueber den
+// Dateibestand, die kein Aufruf zeigen kann.
+const SECHS = ["denied", "offline"].flatMap((u) => Object.keys(FORMEN).map((f) => `beneos_stream_${u}_${f}.webp`)).sort()
+struktur("es liegen genau die erwarteten Dateien und keine weitere",
+  JSON.stringify(readdirSync(UI).filter((n) => n.startsWith("beneos_stream_") && n.endsWith(".webp")).sort()),
+  JSON.stringify(SECHS))
+
+// ===========================================================================
+abschnitt("Dokumentprobe: der Erzeuger tools/ersatzbilder.py nennt Werte und Herkunft")
+
+// Der Erzeuger ist kein Modulcode und laeuft hier nicht (er braucht Pillow).
+// Betreiberentscheid E1: sein Kopf bleibt als Dokument geprueft. OP-PRJ-207
+// entstand, weil die Bilder da waren und ihr Erzeuger nicht.
+const ERZEUGER = readFileSync(join(WURZEL, "tools", "ersatzbilder.py"), "utf8")
+const formenBlock = ERZEUGER.match(/FORMEN = \{([\s\S]*?)\n\}/)
+const sollMasse = {}
+for (const z of (formenBlock ? formenBlock[1] : "").matchAll(/"([a-z]+)":\s*\((\d+),\s*(\d+)\)/g)) {
+  sollMasse[z[1]] = [Number(z[2]), Number(z[3])]
+}
+for (const form of Object.keys(FORMEN)) {
+  dokument(`die Formentabelle des Erzeugers nennt fuer ${form} die gelieferten Masse`,
+    JSON.stringify(sollMasse[form]), JSON.stringify(masse[`denied/${form}`]))
+}
+dokument("die Formentabelle kennt genau drei Formen", Object.keys(sollMasse).length, 3)
 for (const [was, muster] of [
   ["die Farben mit ihrem Token aus der Bone-Palette", /--color-bg-base/],
   ["den Rand als --color-border-strong", /--color-border-strong/],
@@ -268,34 +332,21 @@ for (const [was, muster] of [
   ["den Vertrag der Dateinamen", /beneos_stream_<ursache>_<form>\.webp/],
   ["dass er eine Neuschrift und kein Fund ist", /NEUSCHRIFT/],
 ]) {
-  wahr(`der Kopf nennt ${was}`, muster.test(ERZEUGER))
+  dokument(`der Kopf nennt ${was}`, muster.test(ERZEUGER), true)
 }
-
-// Die drei Farben stehen als Zahlenwerte im Erzeuger und muessen die Werte
-// der Palette treffen. Eine Abweichung hier faellt am Bild nicht auf, weil
-// zwei Stufen Unterschied im Dunkeln niemand sieht, und genau darum steht sie
-// hier.
+// Zwei Stufen Unterschied im Dunkeln sieht niemand am Bild, darum hier.
 for (const [rolle, wert] of [
   ["SCHEIBE", "0x0E, 0x0D, 0x0A"],
   ["RAND", "0x46, 0x3B, 0x2C"],
   ["SYMBOL", "0xA7, 0xA5, 0x96"],
 ]) {
-  wahr(`${rolle} traegt den Wert aus der Palette`,
-    new RegExp(`^${rolle} = \\(${wert}`, "m").test(ERZEUGER))
+  dokument(`${rolle} traegt den Wert aus der Palette`,
+    new RegExp(`^${rolle} = \\(${wert}`, "m").test(ERZEUGER), true)
 }
 
-// ---------------------------------------------------------------------------
-console.log(`\n${gruen} bestanden, ${rot} gescheitert`)
 console.log("\nNicht geprueft, ausdruecklich benannt:")
-console.log("- Ob die Abrufschicht im laufenden Foundry wirklich auf das")
-console.log("  Ersatzbild faellt. Das braucht ein Tor, das abweist, und steht in")
-console.log("  der Reihe 8 der Abnahme.")
-console.log("- Ob die Bilder gut aussehen. Dieser Satz prueft Form und Masse,")
-console.log("  nicht Gestaltung. Dafuer gibt es den Design-Standard und das Auge.")
-console.log("- Ob der Erzeuger laeuft. Er braucht Pillow, und das ist keine")
-console.log("  Abhaengigkeit des Moduls; die Ergebnisse liegen committet.")
-console.log("- Ob die Feldgroesse eines Tokens beim Ersatzbild gleich bleibt. Sie")
-console.log("  kommt aus dem Dokument und nicht aus den Bildpunkten, aber das ist")
-console.log("  Abnahmepunkt 8a und hier nicht fahrbar.")
-
-process.exit(rot > 0 ? 1 : 0)
+console.log("- Ob das Ersatzbild im laufenden Foundry erscheint (Reihe 8 der Abnahme).")
+console.log("- Ob die Bilder gut aussehen. Geprueft sind Kopf, Masse, Alpha, Groesse.")
+console.log("- Ob der Erzeuger laeuft. Er braucht Pillow; die Ergebnisse liegen committet.")
+console.log("- Ein Ersatz aus dem Vorrat (Cache Storage). Der Satz faehrt ohne Vorrat.")
+ende()

@@ -89,6 +89,14 @@ function gleich(name, ist, soll) {
 
 function wahr(name, bedingung) { gleich(name, !!bedingung, true) }
 
+/*
+ * STRUKTURPROBEN (stre-T-017). Eine Aussage wie "genau eine Definition" oder
+ * "Datei X importiert Y" zeigt kein Aufruf; sie bleibt eine Textprobe, traegt
+ * aber das Praefix `[Struktur] ` und wird getrennt gezaehlt. Alles andere in
+ * diesem Satz ruft den echten Code.
+ */
+function struktur(name, bedingung) { gleich(`[Struktur] ${name}`, !!bedingung, true) }
+
 // ---------------------------------------------------------------------------
 // Das gestellte Foundry. Nur so viel, wie `streamBase` und `streamKey` lesen.
 
@@ -136,6 +144,7 @@ wahr("Raumname plus Pruefsumme", istGeteilterRaum(GETEILT_RAUM, SHA))
  */
 wahr("Raumname ohne Pruefsumme faellt", !istGeteilterRaum(GETEILT_RAUM, "normal"))
 wahr("Raumname mit 63 Zeichen faellt", !istGeteilterRaum(GETEILT_RAUM, "a".repeat(63)))
+wahr("der Raumname in Grossbuchstaben ist ein anderer Name", !istGeteilterRaum(GETEILT_RAUM.toUpperCase(), SHA))
 wahr("Raumname mit 65 Zeichen faellt", !istGeteilterRaum(GETEILT_RAUM, "a".repeat(65)))
 wahr("Grossbuchstaben fallen", !istGeteilterRaum(GETEILT_RAUM, "A".repeat(64)))
 wahr("Pruefsumme ohne Raumnamen faellt", !istGeteilterRaum("beneos_bm_0001", SHA))
@@ -147,6 +156,8 @@ console.log("\nistGeteilteDatei: die Regel steht an EINER Stelle")
 
 wahr("map_assets wird erkannt", istGeteilteDatei("https://x/a/k/r/v/map_assets/ui.webp"))
 wahr("eine Kartendatei nicht", !istGeteilteDatei("https://x/a/k/r/v/scenes/karte.webm"))
+wahr("map_assets nur als ganzer Ordner, nicht im Dateinamen",
+  !istGeteilteDatei("https://x/a/k/r/v/scenes/my_map_assets.webp"))
 wahr("leer nicht", !istGeteilteDatei(""))
 wahr("undefined nicht", !istGeteilteDatei(undefined))
 /*
@@ -162,24 +173,45 @@ const settings = lies("stream-settings.mjs")
 const offline = lies("stream-offline.mjs")
 const fetchQ = lies("stream-fetch.mjs")
 
-gleich("die Regel ist genau einmal definiert",
-  (settings + offline + fetchQ).match(/function istGeteilteDatei\(/g).length, 1)
-wahr("und sie steht in stream-settings.mjs",
+struktur("die Regel ist genau einmal definiert",
+  ((settings + offline + fetchQ).match(/function istGeteilteDatei\(/g) || []).length === 1)
+struktur("und sie steht in stream-settings.mjs",
   settings.includes("export function istGeteilteDatei("))
-wahr("stream-offline.mjs importiert sie",
+/*
+ * DIE NAEHTE BLEIBEN IM PRUEFSATZ. Die Exporte `...FuerPruefsatz` fahren Code
+ * mit einem Schalter, den kein Kunde hat (stre-T-017, E2). Ruft eine
+ * Moduldatei sie, aendert sich beim Kunden der Vorratsschluessel, und kein
+ * Verhaltenssatz wuerde rot. Deshalb: ausserhalb der Saetze steht ein solcher
+ * Name nur auf seiner eigenen exportierenden Definitionszeile.
+ */
+{
+  const { readdirSync } = await import("node:fs")
+  const SKRIPTE = join(HIER, "..")
+  const fremd = []
+  for (const eintrag of readdirSync(SKRIPTE, { recursive: true })) {
+    const datei = String(eintrag)
+    if (!/\.(m?js)$/.test(datei) || datei.endsWith(".test.mjs")) continue
+    const zeilen = readFileSync(join(SKRIPTE, datei), "utf8").split("\n")
+    zeilen.forEach((z, i) => {
+      if (/\w+FuerPruefsatz\b/.test(z) && !/^export (const|async function|function) \w+FuerPruefsatz\b/.test(z)) fremd.push(`${datei}:${i + 1}`)
+    })
+  }
+  struktur("keine Moduldatei ruft eine Pruefsatznaht", fremd.length === 0)
+}
+struktur("stream-offline.mjs importiert sie",
   /import \{[^}]*istGeteilteDatei[^}]*\} from "\.\/stream-settings\.mjs"/.test(offline))
 /*
  * NUR DER CODE, NICHT DER KOMMENTAR. Ein erster Entwurf zaehlte sieben
  * Vorkommen und wurde rot: sechs davon stehen in Kommentaren, die genau
  * erklaeren, warum die Regel an EINER Stelle liegt.
  */
-gleich("das Muster map_assets steht im Code nur an der einen Stelle",
-  (nurCode(settings) + nurCode(offline) + nurCode(fetchQ)).match(/map_assets/g).length, 1)
+struktur("das Muster map_assets steht im Code nur an der einen Stelle",
+  ((nurCode(settings) + nurCode(offline) + nurCode(fetchQ)).match(/map_assets/g) || []).length === 1)
 // Gegenprobe auf den Trenner selbst: eine Suche, die nichts findet, ist von
 // einer kaputten Suche nicht zu unterscheiden.
-wahr("der Trenner laesst Code stehen",
+struktur("der Trenner laesst Code stehen",
   nurCode(settings).includes("export function istGeteilteDatei("))
-wahr("und wirft Kommentare weg",
+struktur("und wirft Kommentare weg",
   settings.includes("UMGEZOGEN AM 2026-11-08")
     && !nurCode(settings).includes("UMGEZOGEN AM 2026-11-08"))
 
@@ -245,17 +277,19 @@ gleich("geteilteAdresse: erste Kartenadresse ist der Traeger",
   geteilteAdresse(SHA, "foundry_bm_ui.webp", [KREATUR, KARTE_A, KARTE_B]), adr)
 gleich("geteilteAdresse: andere erste Karte, anderer Traeger",
   geteilteAdresse(SHA, "foundry_bm_ui.webp", [KARTE_B, KARTE_A]), adrB)
+// Eine Kartenadresse, deren Variante kein Traeger sein kann, wird
+// uebersprungen und nicht als Ergebnis genommen.
+gleich("geteilteAdresse: eine Karte mit unbrauchbarer Variante wird uebersprungen",
+  geteilteAdresse(SHA, "foundry_bm_ui.webp",
+    [`${GATE_DEFAULT_BASE}/a/pk_pruefsatz/beneos_bm_0113/a%20b/map_assets/foundry_bm_ui.webp`, KARTE_A]), adr)
 gleich("geteilteAdresse: ohne Kartenadresse leer",
   geteilteAdresse(SHA, "foundry_bm_ui.webp", [KREATUR]), "")
 gleich("geteilteAdresse: ohne Verzeichnis leer",
   geteilteAdresse(SHA, "foundry_bm_ui.webp", undefined), "")
-{
-  const a = nurCode(fetchQ)
-  const s = a.indexOf("function adresseAusSchluessel(")
-  const rumpf = s < 0 ? "" : a.slice(s, a.indexOf("\n}", s))
-  wahr("adresseAusSchluessel fragt das Sitzungsverzeichnis",
-    rumpf.includes("geteilteAdresse(") && rumpf.includes("adressenZuSha.get("))
-}
+// Dass `adresseAusSchluessel` das Sitzungsverzeichnis fragt, misst der
+// Abschnitt "Die Abrufschicht" unten am Aufruf: ohne Manifest bleibt der
+// Schluessel, mit Manifest kommt die Adresse des Traegers (stre-T-017; bis
+// dahin eine Textprobe auf den Rumpf).
 
 /*
  * EINE VARIANTE, DIE KEINE PRUEFSUMME IST, FAELLT AUF DIE KARTENADRESSE
@@ -361,10 +395,13 @@ console.log("\nDer Schalter: bei AUS bleibt alles, wie es war")
  * eine nachzuladende Datei nicht kommen. Solange der Schalter aus ist, DARF
  * sich am Vorratsschluessel nichts aendern.
  */
-wahr("der Schalter steht im Quelltext auf false",
-  /const GETEILTER_VORRAT_AN = false/.test(fetchQ))
-wahr("er ist eine Konstante und keine Kundeneinstellung",
-  !/SETTING\.\w*[gG]eteilt/.test(fetchQ) && !/geteilterVorrat/.test(JSON.stringify(SETTING)))
+// Dass der Schalter AUS steht, misst der Abschnitt "Der Umrechner mit dem
+// Schalter AN" unten: dieselbe Adresse mit bekannter Pruefsumme ergibt bei
+// AUS den Kartenschluessel und ueber die Naht den geteilten.
+wahr("keine Kundeneinstellung nennt den Vorrat",
+  !/geteilterVorrat/.test(JSON.stringify(SETTING)))
+struktur("die Abrufschicht liest keine Einstellung zum Vorrat",
+  !/SETTING\.\w*[gG]eteilt/.test(fetchQ))
 
 const { vorratsSchluessel } = await import("./stream-fetch.mjs")
 const kartenAdresse = assetUrl("beneos_bm_0001", "4k", "map_assets/foundry_bm_ui.webp")
@@ -387,69 +424,95 @@ gleich("eine geteilte Adresse ergibt den geteilten Schluessel",
   `https://beneos-stream.invalid/a/shared/${SHA}/foundry_bm_ui.webp`)
 
 // ---------------------------------------------------------------------------
-console.log("\nQuelltextprobe: der Umrechner und seine Riegel")
-
-const gStart = fetchQ.indexOf("function geteilterDreiklang(")
-const gEnde = fetchQ.indexOf("\n}", gStart)
-if (gStart < 0 || gEnde < 0) {
-  rot += 1
-  console.log("  ROT  geteilterDreiklang ist im Quelltext nicht zu finden")
-  console.log("       NICHT PRUEFBAR: der Schnitt passt nicht mehr zum Bestand")
-} else {
-  const g = fetchQ.slice(gStart, gEnde + 2)
-  wahr("er fragt zuerst den Schalter", g.indexOf("GETEILTER_VORRAT_AN") < g.indexOf("istGeteilteDatei"))
-  wahr("er rechnet einen geteilten Dreiklang nicht zweimal um",
-    g.includes('t.raum === "geteilt"'))
-  wahr("er fragt, ob die Datei geteilt ist", g.includes("istGeteilteDatei(url)"))
-  wahr("er nimmt die Pruefsumme aus dem Verzeichnis", g.includes("shaZuAdresse.get("))
-  // Ohne diese Zeile waere der Name `map_assets/ui.webp`, also zwei Segmente,
-  // und die Adresse haette sechs statt fuenf.
-  wahr("er nimmt nur den Basisnamen", g.includes('.split("/").pop()'))
-  wahr("er prueft die Form des Namens", g.includes("/^[A-Za-z0-9._-]+$/"))
-  wahr("er weist einen fuehrenden Punkt ab", g.includes('name[0] === "."'))
-  wahr("er nimmt den Raumnamen aus der einen Quelle", g.includes("release: GETEILT_RAUM"))
-  // Auch hier nur der Code: der Kopf der Funktion nennt die Pruefsumme
-  // mehrfach, weil er erklaert, woher sie kommt.
-  wahr("er erfindet keine Pruefsumme", !/digest|createHash|subtle/i.test(nurCode(g)))
-}
+console.log("\nDer Umrechner mit dem Schalter AN, gemessen ueber die Naht")
 
 /*
- * DASS `vorratsSchluessel` DEN UMRECHNER UEBERHAUPT RUFT, und dieser Fall
- * verdankt sich einer Sabotage, die zuerst durchkam.
+ * BIS stre-T-017 STAND HIER EINE QUELLTEXTPROBE, und ihr Grund war richtig:
+ * der Schalter ist eine Konstante, die Lage AN ist in diesem Satz nicht
+ * fahrbar, und wer den Aufruf des Umrechners ganz entfernt, aenderte am
+ * Verhalten bei AUS nichts. Eine Sabotage kam damals durch.
  *
- * Der Satz oben fuehrt den Schalter auf AUS, und bei AUS gibt
- * `geteilterDreiklang` immer `null`. Wer den Aufruf dann ganz entfernt, aendert
- * am Verhalten dieses Laufs nichts: jeder Fall bleibt gruen, und das Paket
- * waere wirkungslos ausgeliefert. **Eine Luecke, die nur in der anderen Lage
- * sichtbar ist, braucht einen Riegel in dieser.**
+ * Seit dem 14.11.2026 gibt es dafuer zwei Naehte in `stream-fetch.mjs`
+ * (Betreiberentscheid): `geteilterDreiklangFuerPruefsatz` und
+ * `vorratsSchluesselMitVorratFuerPruefsatz` fahren DENSELBEN Code mit dem
+ * Schalter AN. Das Modul ruft sie nie. Damit misst dieser Abschnitt beide
+ * Lagen an derselben Adresse mit derselben bekannten Pruefsumme: AUS ergibt
+ * den Kartenschluessel, AN den geteilten. Faellt der Aufruf des Umrechners
+ * weg, wird der zweite Wert rot; steht der Schalter AN, der erste.
  *
- * Die andere Lage ist im Satz selbst nicht fahrbar, weil eine Konstante sich
- * von aussen nicht setzen laesst, und das ist Absicht. Also prueft dieser Fall
- * den Quelltext, und das ist hier nicht die zweitbeste Antwort, sondern die
- * einzige, die im Dauerlauf steht.
+ * Eigene Adresse und eigene Pruefsumme (SHA2), damit das Verzeichnis, das
+ * dieser Abschnitt fuellt, die Faelle "ohne Manifest" weiter unten nicht
+ * beruehrt.
  */
-const vStart = fetchQ.indexOf("export function vorratsSchluessel(")
-const vEnde = fetchQ.indexOf("\n}", vStart)
-if (vStart < 0 || vEnde < 0) {
-  rot += 1
-  console.log("  ROT  vorratsSchluessel ist im Quelltext nicht zu finden")
-  console.log("       NICHT PRUEFBAR: der Schnitt passt nicht mehr zum Bestand")
-} else {
-  const v = fetchQ.slice(vStart, vEnde + 2)
-  wahr("vorratsSchluessel ruft den Umrechner", v.includes("geteilterDreiklang(s, t)"))
-  wahr("und benutzt sein Ergebnis mit Rueckfall auf den Kartendreiklang",
-    /const quelle = g \|\| t/.test(v))
-  // Ohne diese Zeile ist die Funktion nicht mehr idempotent, und `vPut` ruft
-  // sie auf Adressen, die manchmal schon Schluessel sind.
-  wahr("sie bleibt idempotent", v.includes("if (s.startsWith(VORRAT_URSPRUNG)) return s"))
+{
+  let f = null
+  try {
+    f = await import("./stream-fetch.mjs")
+  } catch (fehler) {
+    rot++
+    console.log(`  ROT  stream-fetch.mjs laedt nicht: ${String(fehler?.message).slice(0, 120)}`)
+  }
+  const dreiklang = f?.geteilterDreiklangFuerPruefsatz
+  const mitVorrat = f?.vorratsSchluesselMitVorratFuerPruefsatz
+  if (f && (typeof dreiklang !== "function" || typeof mitVorrat !== "function")) {
+    rot++
+    console.log("  ROT  die Naehte fehlen in stream-fetch.mjs")
+  } else if (f) {
+    const KARTE_U = `${GATE_DEFAULT_BASE}/a/pk_pruefsatz/beneos_bm_0007/4k/map_assets/ui_rahmen.webp`
+    const KARTENSCHLUESSEL = "https://beneos-stream.invalid/a/beneos_bm_0007/4k/map_assets/ui_rahmen.webp"
+    const GETEILTER_SCHLUESSEL = `https://beneos-stream.invalid/a/${GETEILT_RAUM}/${SHA2}/ui_rahmen.webp`
+    const tU = () => zerlegeAdresse(KARTE_U)
+
+    // Vor dem Manifest: ohne Pruefsumme gibt es nichts umzurechnen.
+    gleich("ohne bekannte Pruefsumme: kein Dreiklang, auch bei AN", dreiklang(KARTE_U, tU()), null)
+    gleich("ohne bekannte Pruefsumme: der Kartenschluessel, auch bei AN",
+      mitVorrat(KARTE_U), KARTENSCHLUESSEL)
+
+    f.merkePruefsummen([[KARTE_U, SHA2]])
+
+    // DIE ZWEI-WERTE-PROBE DES SCHALTERS: dieselbe Adresse, derselbe Stand.
+    gleich("mit Pruefsumme, Schalter AUS (ausgeliefert): der Kartenschluessel bleibt",
+      f.vorratsSchluessel(KARTE_U), KARTENSCHLUESSEL)
+    gleich("mit Pruefsumme, Schalter AN: der geteilte Schluessel",
+      mitVorrat(KARTE_U), GETEILTER_SCHLUESSEL)
+    gleich("bei AN idempotent: ein Schluessel bleibt ein Schluessel",
+      mitVorrat(mitVorrat(KARTE_U)), GETEILTER_SCHLUESSEL)
+    gleich("bei AN haengt der Vergleich am Pfad, eine Abfrage stoert nicht",
+      mitVorrat(`${KARTE_U}?v=2`), GETEILTER_SCHLUESSEL)
+
+    gleich("der Dreiklang: Raum, Raumname, Pruefsumme und der Basisname",
+      JSON.stringify(dreiklang(KARTE_U, tU())),
+      JSON.stringify({ raum: "geteilt", release: GETEILT_RAUM, variant: SHA2, pfad: "ui_rahmen.webp" }))
+    gleich("ein geteilter Dreiklang wird nicht zweimal umgerechnet",
+      dreiklang(KARTE_U, { ...tU(), raum: "geteilt" }), null)
+
+    // Nicht geteilt: eine Szenendatei, deren Pruefsumme ebenfalls bekannt ist.
+    const SZENE = `${GATE_DEFAULT_BASE}/a/pk_pruefsatz/beneos_bm_0007/4k/scenes/karte.webm`
+    f.merkePruefsummen([[SZENE, SHA2]])
+    gleich("eine Szenendatei mit bekannter Pruefsumme ist nicht geteilt",
+      dreiklang(SZENE, zerlegeAdresse(SZENE)), null)
+    gleich("und behaelt bei AN ihren Kartenschluessel",
+      mitVorrat(SZENE), "https://beneos-stream.invalid/a/beneos_bm_0007/4k/scenes/karte.webm")
+
+    // Die Form des Namens. Bei einem Zweifel bleibt es beim Kartenschluessel.
+    const mitPfad = (pfad) => dreiklang(KARTE_U, { ...tU(), pfad })
+    gleich("ein Name mit Leerzeichen: kein Dreiklang", mitPfad("map_assets/ui rahmen.webp"), null)
+    gleich("ein Name mit Nicht-ASCII-Zeichen: kein Dreiklang", mitPfad("map_assets/ui_rähmen.webp"), null)
+    gleich("ein fuehrender Punkt: kein Dreiklang", mitPfad("map_assets/.ui.webp"), null)
+    gleich("201 Zeichen: kein Dreiklang", mitPfad(`map_assets/${"x".repeat(201)}`), null)
+    gleich("200 Zeichen gehen noch", mitPfad(`map_assets/${"x".repeat(200)}`)?.pfad, "x".repeat(200))
+    gleich("aus Unterordnern bleibt nur der Basisname", mitPfad("map_assets/a/b/ui.webp")?.pfad, "ui.webp")
+    gleich("ein Punkt mitten im Namen ist erlaubt", mitPfad("map_assets/ui.rahmen.webp")?.pfad, "ui.rahmen.webp")
+    gleich("Bindestrich und Unterstrich sind erlaubt", mitPfad("map_assets/a-b_c.webp")?.pfad, "a-b_c.webp")
+  }
 }
 
 // Der Raumname kommt aus EINER Quelle. Zwei Kopien in zwei Dateien gehen
 // erfahrungsgemaess nicht zugleich mit, und dieselbe Begruendung steht schon
 // bei `zerlegeAdresse`.
-gleich("der Raumname ist genau einmal gesetzt",
-  (settings + fetchQ + offline).match(/GETEILT_RAUM = /g).length, 1)
-wahr("stream-fetch.mjs importiert ihn",
+struktur("der Raumname ist genau einmal gesetzt",
+  ((settings + fetchQ + offline).match(/GETEILT_RAUM = /g) || []).length === 1)
+struktur("stream-fetch.mjs importiert ihn",
   /import \{[^}]*GETEILT_RAUM[^}]*\} from "\.\/stream-settings\.mjs"/.test(fetchQ))
 
 // ---------------------------------------------------------------------------
@@ -519,14 +582,12 @@ for (const punkt of [".", ".."]) {
 // ---------------------------------------------------------------------------
 console.log(`\n${gruen} bestanden, ${rot} gescheitert`)
 console.log("\nNicht geprueft, ausdruecklich benannt:")
-console.log("- Die Lage mit dem Schalter AN laeuft NICHT in diesem Satz, denn eine")
-console.log("  Konstante laesst sich von aussen nicht setzen, und das ist Absicht:")
-console.log("  ein setzbarer Schalter waere eine Kundenwahl, und das hier ist eine")
-console.log("  Auslieferungsreihenfolge. Sie ist am 08.11.2026 gegen eine Probekopie")
-console.log("  GEMESSEN, sechs Faelle gruen, darunter der, der das Ziel des Pakets")
-console.log("  ist: zwei Releases ergeben denselben Schluessel. Was hier im")
-console.log("  Dauerlauf steht, ist der Quelltextriegel darauf, dass der Umrechner")
-console.log("  ueberhaupt gerufen wird.")
+console.log("- Die Lage mit dem Schalter AN laeuft hier nur ueber die zwei Naehte in")
+console.log("  stream-fetch.mjs. Die Konstante selbst bleibt von aussen nicht")
+console.log("  setzbar, und das ist Absicht: ein setzbarer Schalter waere eine")
+console.log("  Kundenwahl, und das hier ist eine Auslieferungsreihenfolge. Nicht")
+console.log("  gemessen ist damit, was vPut, vMatch und vDelete im Browser-Cache")
+console.log("  bei AN tun.")
 console.log("- Dass der geteilte Raum im Spiegel wirklich Bytes liefert. Der")
 console.log("  Durchgang `_trigger-geteilt-mirror-fill.php` ist gebaut, handgefuehrt")
 console.log("  und am 08.11.2026 nie gefahren. Entscheidet TC-PRJ-STR-284.")

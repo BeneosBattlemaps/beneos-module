@@ -22,96 +22,56 @@
  * abgewaehlt. Betreiberentscheid 08.11.2026 fuer die nicht pruefbare Lage:
  * durchlassen und melden.
  *
- * WARUM EINE PROBEKOPIE, UND WARUM SIE KEINE NACHBILDUNG IST
+ * DER ECHTE CODE, OHNE KOPIE. Bis zum 14.11.2026 schrieb dieser Satz eine
+ * Kopie von `stream-posen.mjs` mit einem Stub statt `headCheck`, weil die
+ * Importkette in Node abriss, und er las die Rufstellen in
+ * `beneos_utility.js` und `beneos_cloud.js` als Text (Befund B6 der
+ * Stream-Inventur). Seit stre-T-017 stellt `tools/lib/foundry-attrappe.mjs`
+ * die Foundry-Globalen, die Kette laedt, und der Satz ruft:
  *
- * `stream-posen.mjs` importiert `headCheck` aus `beneos-asset-watcher.js`, und
- * das ist ein Browsermodul: es braucht `document`, `FormApplication` und
- * weiteres. Gemessen am 07.11.2026 reisst die Importkette in Node ab, und sie
- * vollstaendig zu stellen waere ein zweites Foundry.
+ *   - `stream-posen.mjs` direkt, mit dem echten `headCheck` gegen das
+ *     gestellte Netz,
+ *   - die vier Rufstellen ueber ihre echten Methoden:
+ *     `BeneosUtility.toggleTokenStyle`, `BeneosUtility.forceChangeToken`,
+ *     `BeneosCloud#drainPendingCanvasDrops`, `BeneosCloud#runOrphanCleanup`.
+ *     Beobachtet wird, was sie schreiben und melden.
  *
- * Dieser Satz schreibt deshalb eine Kopie der Datei in den Temp-Ordner und
- * ersetzt darin GENAU EINE ZEILE, naemlich den Import des Watchers, durch
- * einen Stub. Alles andere ist der Bestand, Zeichen fuer Zeichen. Das ist der
- * Unterschied zu einer handgeschriebenen Nachbildung: hier wird der echte Code
- * gemessen, und ein Fall unten prueft, dass wirklich nur diese eine Zeile
- * getroffen wurde. Driftet die Datei, faellt der Ersatz aus und der Satz wird
- * rot, statt eine alte Kopie weiter gruen zu melden.
+ * Text liest er nur noch fuer zwei Aussagen, die selbst strukturell sind:
+ * "die Pruefung haengt nicht in der Abrufschicht" und "die ungepruefte Form
+ * wird an den schreibenden Stellen nicht gerufen". Beide stehen als
+ * Strukturprobe und werden getrennt gezaehlt.
  *
  * WAS DIESER SATZ NICHT PRUEFT, und es steht auch im Abschlussblock: die
  * Anzeigefrage. `ansicht()` bleibt ungeprueft, und das ist Absicht, keine
  * Luecke. Eine Kachelleiste mit zwanzig Varianten wuerde sonst zwanzig
  * Dateien holen, die sie nur zaehlen wollte.
  */
-import { mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs"
-import { fileURLToPath, pathToFileURL } from "node:url"
+import { readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
-import { tmpdir } from "node:os"
 import { webcrypto } from "node:crypto"
+import { pruefstand, installiereFoundry, netz, nimmAbrufe, meldungen } from "../../tools/lib/foundry-attrappe.mjs"
 
+const { gleich, struktur, abschnitt, ende } = pruefstand("stream-posen, am echten Code und an seinen Rufstellen")
+const wahr = (name, bedingung) => gleich(name, !!bedingung, true)
+// Ein eigener Namensraum fuer einen Block, dessen Fragen anderswo gleich lauten.
+const gleichMit = (praefix) => (name, ist, soll) => gleich(`${praefix}: ${name}`, ist, soll)
 const hier = dirname(fileURLToPath(import.meta.url))
-const QUELLE = join(hier, "stream-posen.mjs")
-
-let rot = 0
-let gruen = 0
-
-function gleich(name, ist, soll) {
-  if (ist === soll) { gruen++; console.log(`  ok   ${name}`) }
-  else {
-    rot++
-    console.log(`  ROT  ${name}`)
-    console.log(`       soll ${JSON.stringify(soll)}`)
-    console.log(`       ist  ${JSON.stringify(ist)}`)
-  }
-}
-
-function wahr(name, bedingung) { gleich(name, !!bedingung, true) }
-
-/**
- * Code ohne Kommentare.
- *
- * Die Lehre aus drei roten Proben in diesem Vorhaben: eine Probe, die eine
- * Zeichenfolge in der GANZEN Datei sucht, wird rot, weil der Kommentar daneben
- * genau erklaert, warum die Sache dort nicht passiert. Eine Probe, die mehr
- * zaehlt als ihre Frage, wird bei richtiger Arbeit rot.
- */
-function nurCode(js) {
-  return String(js)
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .split("\n").map(z => z.replace(/\/\/.*$/, "")).join("\n")
-}
-
-// ---------------------------------------------------------------------------
-// Das gestellte Foundry. Nur so viel, wie `streamBase` und `streamKey` lesen.
 
 /*
  * DIE EINSTELLUNGSNAMEN WERDEN IMPORTIERT UND NICHT GERATEN.
  *
  * Das ist die Lehre aus `OP-PRJ-184`: dort hiess der erste Entwurf
- * `SETTING.gateBase` und `SETTING.streamKey`, die echten Namen sind `base` und
- * `key`, und `game.settings.get` gab daraufhin die leere Zeichenkette. Die
- * Adresse trug dann ein LEERES Schluesselsegment. Derselbe Fehler ist in
- * dieser Datei am 07.11.2026 noch einmal passiert, mit
- * `beneos-stream-gate-base`: der Stub lieferte nichts, `assetUrl` fiel auf
- * `GATE_DEFAULT_BASE`, und vierzehn Faelle waren rot.
- *
- * Deshalb kommt `SETTING` aus dem Modul, und die erwarteten Adressen werden
- * mit `assetUrl` GEBILDET statt getippt. Eine getippte Adresse prueft meine
- * Tippgenauigkeit, keine Funktion.
+ * `SETTING.gateBase`, der echte Name ist `base`, und die Adresse trug ein
+ * LEERES Schluesselsegment. Deshalb kommt `SETTING` aus dem Modul, und die
+ * erwarteten Adressen werden mit `assetUrl` GEBILDET statt getippt.
  */
-const { SETTING, assetUrl } = await import("./stream-settings.mjs")
-
-const GATE = "https://stream.beneos-battlemaps.com"
+const GATE = "https://gate.beneos.stream"
 const SCHLUESSEL = "pk_pruefsatz"
-globalThis.game = {
-  settings: {
-    get(_modul, name) {
-      if (name === SETTING.key) return SCHLUESSEL
-      if (name === SETTING.base) return GATE
-      return ""
-    },
-  },
-  i18n: { localize: s => s, format: s => s },
-}
+const { SETTING } = await import("./stream-settings.mjs")
+installiereFoundry({ einstellungen: { [SETTING.key]: SCHLUESSEL, [SETTING.base]: GATE } })
+const { assetUrl } = await import("./stream-settings.mjs")
+
 /**
  * `crypto.subtle` gibt es in Node unter `webcrypto`. Fuer die Lage OHNE
  * sicheren Kontext wird es unten vorsaetzlich entfernt, und das ist der
@@ -127,56 +87,32 @@ function setzeCrypto(wert) {
 setzeCrypto(webcrypto)
 
 // ---------------------------------------------------------------------------
-// Die Probekopie: eine Zeile ersetzt, alles andere Bestand.
-
-const quellText = readFileSync(QUELLE, "utf8")
-const IMPORT_ALT = 'import { headCheck } from "../beneos-asset-watcher.js"'
-const IMPORT_NEU = "const headCheck = async () => ({ ok: true, laenge: 999999 })"
-
-console.log("\nDie Probekopie, und sie ersetzt genau eine Zeile")
-const treffer = quellText.split(IMPORT_ALT).length - 1
-gleich("der Watcher-Import kommt genau einmal vor", treffer, 1)
-if (treffer !== 1) {
-  console.log("       NICHT PRUEFBAR: der Ersatz passt nicht mehr zum Bestand.")
-  console.log("       Die Zeile heisst heute anders, und eine Kopie ohne sie")
-  console.log("       waere eine Nachbildung statt des Bestands.")
-  console.log(`\n  bestanden: ${gruen}\n  rot:       ${rot}`)
-  process.exit(1)
-}
-
-const tempOrdner = mkdtempSync(join(tmpdir(), "posen-"))
-const kopie = join(tempOrdner, "stream-posen.mjs")
-// Die Nachbardateien liegen eine Ebene hoeher als der Temp-Ordner, also
-// zeigen die relativen Importe ins Leere. Sie werden deshalb auf absolute
-// Dateiadressen umgeschrieben; der Code dahinter bleibt der Bestand.
-let kopiertext = quellText.replace(IMPORT_ALT, IMPORT_NEU)
-kopiertext = kopiertext.replace(/from "\.\/([^"]+)"/g,
-  (_, datei) => `from ${JSON.stringify(pathToFileURL(join(hier, datei)).href)}`)
-writeFileSync(kopie, kopiertext, "utf8")
-
-const posen = await import(pathToFileURL(kopie).href)
-wahr("die Kopie laedt", typeof posen.ansichtInhaltOk === "function")
-wahr("und sie bringt die gepruefte Form mit", typeof posen.ansichtGeprueft === "function")
-
-// ---------------------------------------------------------------------------
-// Das gestellte Netz. Eine Karte von Adresse zu Bytes, und ein Zaehler, denn
-// "einmal je Sitzung geprueft" ist eine Zahl und keine Meinung.
-
-let abrufe = 0
+// Das gestellte Netz. Toradressen antworten aus NETZ, oertliche Pfade (der
+// echte `headCheck` fragt sie mit HEAD) aus PLATTE. Was in keiner Karte
+// steht, ist 404 am Tor oder auf der Platte; jede andere Adresse ist ein
+// fremder Abruf und macht den Satz rot. "Einmal je Sitzung geprueft" ist eine
+// Zahl, und `nimmAbrufe()` liefert sie.
 const NETZ = new Map()
-globalThis.fetch = async (url) => {
-  abrufe += 1
+const PLATTE = new Map()
+netz((url) => {
   const schluessel = String(url).split("?")[0]
   const eintrag = NETZ.get(schluessel)
-  if (!eintrag) return { ok: false, status: 404, headers: new Map() }
-  return {
-    ok: true,
-    status: 200,
-    headers: { get: (k) => eintrag.kopf?.[String(k).toLowerCase()] ?? null },
-    blob: async () => ({ arrayBuffer: async () => eintrag.bytes }),
-    json: async () => JSON.parse(new TextDecoder().decode(eintrag.bytes)),
+  if (eintrag) return new Response(eintrag.bytes, { status: 200, headers: eintrag.kopf || {} })
+  if (schluessel.startsWith(`${GATE}/`)) return new Response("fehlt", { status: 404 })
+  if (/^beneos_assets\//.test(decodeURIComponent(schluessel))) {
+    const laenge = PLATTE.get(decodeURIComponent(schluessel))
+    return laenge === undefined
+      ? new Response("", { status: 404 })
+      : new Response(null, { status: 200, headers: { "content-length": String(laenge), "content-type": "image/webp" } })
   }
-}
+  return undefined
+})
+
+const posen = await import("./stream-posen.mjs")
+const { BeneosUtility } = await import("../beneos_utility.js")
+const { BeneosCloud } = await import("../beneos_cloud.js")
+const abrufZahl = () => nimmAbrufe().length
+
 
 function bytesVon(text) {
   return new TextEncoder().encode(text).buffer
@@ -197,7 +133,7 @@ const ADRESSE = assetUrl(RELEASE, "", "000-wolf-1-top.webp")
 NETZ.set(ADRESSE, { bytes: bytesVon(INHALT_GUT) })
 
 // ---------------------------------------------------------------------------
-console.log("\nDrei Antworten, und jede einzeln")
+abschnitt("Drei Antworten, und jede einzeln")
 
 posen.pruefungenVergessen()
 gleich("gleicher Inhalt gibt true", await posen.ansichtInhaltOk(ADRESSE, SOLL), true)
@@ -363,11 +299,10 @@ NETZ.set(ADRESSE_C, { bytes: bytesVon(INHALT_GUT) })
 posen.pruefungenVergessen()
 setzeCrypto({})
 const dreimal = []
+const dreiErgebnisse = []
 console.warn = (...a) => { dreimal.push(a.join(" ")) }
 try {
-  await posen.ansichtInhaltOk(ADRESSE, SOLL)
-  await posen.ansichtInhaltOk(ADRESSE_B, SOLL)
-  await posen.ansichtInhaltOk(ADRESSE_C, SOLL)
+  for (const a of [ADRESSE, ADRESSE_B, ADRESSE_C]) dreiErgebnisse.push(await posen.ansichtInhaltOk(a, SOLL))
 } finally {
   console.warn = warnVorher
   setzeCrypto(webcrypto)
@@ -378,8 +313,7 @@ wahr("und die Meldung sagt, dass sie nicht wiederkommt",
   /nicht mehr einzeln gemeldet/.test(dreimal[0] || ""))
 // Gegenprobe: alle drei Adressen wurden wirklich gefragt, sonst waere die
 // Eins aus dem falschen Grund da.
-gleich("alle drei gaben null zurueck",
-  [ADRESSE, ADRESSE_B, ADRESSE_C].length, 3)
+gleich("alle drei gaben null zurueck", dreiErgebnisse.map(String).join("|"), "null|null|null")
 posen.pruefungenVergessen()
 gleich("nach pruefungenVergessen meldet es wieder",
   await posen.ansichtInhaltOk(ADRESSE_B, SOLL), true)
@@ -401,7 +335,7 @@ gleich("eine Offline-Antwort gibt null, nicht false",
   await posen.ansichtInhaltOk(OFFLINE, SOLL), null)
 
 // ---------------------------------------------------------------------------
-console.log("\nOhne Soll-Summe wird nicht geprueft, und das ist der Uebergangszustand")
+abschnitt("Ohne Soll-Summe wird nicht geprueft, und das ist der Uebergangszustand")
 /*
  * WARUM ES KEINEN SCHALTER BRAUCHT, und das ist die Entscheidung dieses
  * Pakets. Die Reihenfolge ist bindend: schreiben, Durchgang fahren, erst
@@ -414,46 +348,48 @@ console.log("\nOhne Soll-Summe wird nicht geprueft, und das ist der Uebergangszu
  * deshalb muss dieser Fall hier stehen.
  */
 posen.pruefungenVergessen()
-gleich("ohne Soll-Summe wird gar nicht abgerufen",
+nimmAbrufe()
+gleich("ohne Soll-Summe gibt es null",
   await posen.ansichtInhaltOk(ADRESSE, null), null)
 gleich("eine leere Summe ebenso", await posen.ansichtInhaltOk(ADRESSE, ""), null)
 gleich("ohne Adresse ebenso", await posen.ansichtInhaltOk("", SOLL), null)
+gleich("und keiner der drei Faelle hat etwas abgerufen", abrufZahl(), 0)
 
 // ---------------------------------------------------------------------------
-console.log("\nEinmal je Sitzung, und das ist eine Zahl")
+abschnitt("Einmal je Sitzung, und das ist eine Zahl")
 
 posen.pruefungenVergessen()
-abrufe = 0
+nimmAbrufe()
 await posen.ansichtInhaltOk(ADRESSE, SOLL)
 await posen.ansichtInhaltOk(ADRESSE, SOLL)
 await posen.ansichtInhaltOk(ADRESSE, SOLL)
-gleich("drei Fragen, EIN Abruf", abrufe, 1)
+gleich("drei Fragen, EIN Abruf", abrufZahl(), 1)
 
 // Dieselbe Adresse mit einer ANDEREN Soll-Summe ist eine andere Frage. Ohne
 // das wuerde eine neu geschriebene Liste einen alten Erfolg erben, und genau
 // das darf nicht sein: der Spiegel kann denselben Namen mit neuem Inhalt
 // tragen.
-abrufe = 0
+nimmAbrufe()
 await posen.ansichtInhaltOk(ADRESSE, SOLL_FALSCH)
-gleich("andere Soll-Summe ist eine neue Frage", abrufe, 1)
+gleich("andere Soll-Summe ist eine neue Frage", abrufZahl(), 1)
 
 // Eine Abfrage an der Adresse darf keinen zweiten Eintrag machen. Der
 // Schluessel laeuft deshalb durch `ohneAbfrage`.
-abrufe = 0
+nimmAbrufe()
 await posen.ansichtInhaltOk(ADRESSE + "?v=2", SOLL)
-gleich("dieselbe Adresse mit Abfrage trifft denselben Eintrag", abrufe, 0)
+gleich("dieselbe Adresse mit Abfrage trifft denselben Eintrag", abrufZahl(), 0)
 
 // Auch ein MISSERFOLG wird gemerkt. Sonst fragt jede Bewegung der Figur
 // erneut, und bei einem echten Fehler ist das eine Anfrage je Klick, also
 // genau die Last, gegen die `stream-posen.mjs` angetreten ist.
 posen.pruefungenVergessen()
-abrufe = 0
+nimmAbrufe()
 await posen.ansichtInhaltOk(ADRESSE, SOLL_FALSCH)
 await posen.ansichtInhaltOk(ADRESSE, SOLL_FALSCH)
-gleich("ein Misserfolg wird genauso gemerkt", abrufe, 1)
+gleich("ein Misserfolg wird genauso gemerkt", abrufZahl(), 1)
 
 // ---------------------------------------------------------------------------
-console.log("\nansichtGeprueft: wer schreibt, prueft")
+abschnitt("ansichtGeprueft: wer schreibt, prueft")
 
 const LISTE_MIT = {
   release: RELEASE,
@@ -506,10 +442,15 @@ for (const kaputt of ["ja", "A".repeat(64), "a".repeat(63), "a".repeat(65), 42])
   l.tokenbilder[1].topdown.sha256 = kaputt
   NETZ.set(LISTE_ADRESSE, { bytes: bytesVon(JSON.stringify(l)) })
   posen.posenVergessen()
-  const r = await posen.ansichtGeprueft(TOKEN_ADRESSE, "topdown")
-  gleich(`Soll-Summe ${JSON.stringify(kaputt).slice(0, 12)} faellt auf nicht pruefbar`,
+  const stummVorher = console.warn
+  const gemeldet = []
+  console.warn = (...x) => { gemeldet.push(x.join(" ")) }
+  let r
+  try { r = await posen.ansichtGeprueft(TOKEN_ADRESSE, "topdown") } finally { console.warn = stummVorher }
+  gleich(`Soll-Summe ${JSON.stringify(kaputt).slice(0, 12)} (Laenge ${String(kaputt).length}): es wird nichts geprueft und nichts gemeldet`, gemeldet.length, 0)
+  gleich(`Soll-Summe ${JSON.stringify(kaputt).slice(0, 12)} (Laenge ${String(kaputt).length}) faellt auf nicht pruefbar`,
     r.pruefung, null)
-  gleich("und die Adresse kommt trotzdem", r.src, ADRESSE)
+  gleich(`Soll-Summe ${JSON.stringify(kaputt).slice(0, 12)} (Laenge ${String(kaputt).length}): die Adresse kommt trotzdem`, r.src, ADRESSE)
 }
 
 // Eine Ansicht, die die Liste als `null` fuehrt, gibt es nicht. Das ist kein
@@ -523,8 +464,15 @@ gleich("null in der Liste: gibt es nicht", a.zustand, false)
 gleich("keine Adresse", a.src, null)
 gleich("und das ist KEIN Pruefsummenfall", a.pruefung, null)
 
+// Eine Liste ohne das Feld `tokenbilder` ist keine Liste, sondern ein alter
+// oder kaputter Stand: nicht geprueft, und nicht "gibt es nicht".
+NETZ.set(LISTE_ADRESSE, { bytes: bytesVon(JSON.stringify({ release: RELEASE, kennung: "000-wolf" })) })
+posen.posenVergessen()
+a = await posen.ansichtGeprueft(TOKEN_ADRESSE, "topdown")
+gleich("eine Liste ohne tokenbilder: nicht geprueft statt gibt es nicht", a.zustand, null)
+
 // ---------------------------------------------------------------------------
-console.log("\nansicht() gibt die Soll-Summe mit heraus")
+abschnitt("ansicht() gibt die Soll-Summe mit heraus")
 NETZ.set(LISTE_ADRESSE, { bytes: bytesVon(JSON.stringify(LISTE_MIT)) })
 posen.posenVergessen()
 const roh = await posen.ansicht(TOKEN_ADRESSE, "topdown")
@@ -538,64 +486,212 @@ const lokal = await posen.ansicht(OERTLICH, "topdown")
 gleich("oertlich gibt es keine Soll-Summe", lokal.sha256, null)
 
 // ---------------------------------------------------------------------------
-console.log("\nDer Quelltext des Bestands, nicht der Kopie")
 /*
- * WARUM NOCH QUELLTEXTPROBEN, obwohl oben echter Code lief.
+ * DIE RUFSTELLEN, GEFAHREN UND NICHT GELESEN.
  *
- * Die Faelle oben messen die KOPIE. Sie messen damit alles ausser der einen
- * ersetzten Zeile, und das ist viel. Was sie nicht messen koennen, ist, ob die
- * Pruefung auch GERUFEN wird: `ansichtGeprueft` koennte vollkommen richtig
- * sein und von niemandem benutzt werden. Genau diese Luecke hat eine Sabotage
- * am 08.11.2026 in `OP-PRJ-184` aufgedeckt, und die Lehre steht dort:
- * **eine Luecke, die nur in der anderen Lage sichtbar ist, braucht einen
- * Riegel in dieser.**
+ * Die Faelle oben messen die Pruefung. Was sie nicht messen koennen, ist, ob
+ * sie auch GERUFEN wird und ob ihre Antwort dort WIRKT: `ansichtGeprueft`
+ * koennte vollkommen richtig sein und von niemandem benutzt werden. Diese
+ * Luecke hat eine Sabotage am 08.11.2026 in `OP-PRJ-184` aufgedeckt. Bis zum
+ * 14.11.2026 stand sie hier als Textsuche an den Rufstellen; seit stre-T-017
+ * werden die vier Methoden gerufen, und beobachtet wird, was sie schreiben
+ * und melden.
  *
- * Gezaehlt wird im reinen Code ohne Kommentare, denn die Kommentare daneben
- * nennen die gesuchten Namen.
+ * Das gestellte Token traegt nur, was die Methoden lesen: Bildquelle,
+ * Schreibrecht, `update` und `setFlag`. Was sie schreiben, landet in
+ * `geschrieben`.
  */
-const posenCode = nurCode(quellText)
-wahr("Trenner laesst Code stehen", posenCode.includes("export async function ansichtGeprueft"))
-wahr("Trenner wirft Kommentare weg", !posenCode.includes("zweite Wahrheit"))
-
-wahr("die Pruefung haengt NICHT in der allgemeinen Abrufschicht",
-  !nurCode(readFileSync(join(hier, "stream-fetch.mjs"), "utf8")).includes("ansichtInhaltOk"))
-
-const utility = nurCode(readFileSync(join(hier, "..", "beneos_utility.js"), "utf8"))
-
-/**
- * Die Zeilen um eine Rufstelle, und nicht die ganze Datei.
- *
- * Eine Sabotage kam zuerst durch, weil `/auskunft\.pruefung === false/` ueber
- * die GANZE Datei suchte: die Zeichenfolge steht an ZWEI Rufstellen, also
- * blieb die Probe gruen, nachdem sie an der einen entfernt war. Dasselbe
- * Muster hat in diesem Vorhaben schon dreimal zugeschlagen. Eine Probe muss
- * genau ihre Frage zaehlen und nicht mehr.
- */
-function umRufstelle(code, marke, nachher = 12) {
-  const zeilen = code.split("\n")
-  const i = zeilen.findIndex(z => z.includes(marke))
-  return i < 0 ? "" : zeilen.slice(i, i + nachher).join("\n")
+const geschrieben = []
+function stelleToken(id, src) {
+  const actor = {
+    getFlag: () => undefined,
+    flags: {},
+    update: async (daten) => { geschrieben.push({ wer: "actor", daten }) },
+  }
+  const token = {
+    id,
+    actor,
+    document: {
+      actorId: null,
+      texture: { src },
+      canUserModify: () => true,
+      update: async (daten) => { geschrieben.push({ wer: "token", daten }) },
+      setFlag: async () => {},
+    },
+  }
+  globalThis.canvas = { tokens: { placeables: [token] }, hud: { token: { rendered: false } } }
+  return token
+}
+const tokenSchrieb = () => geschrieben.filter((g) => g.wer === "token").map((g) => g.daten["texture.src"])
+const warnTexte = () => meldungen.filter((m) => m.art === "warn").map((m) => m.text)
+function frisch(liste) {
+  NETZ.set(LISTE_ADRESSE, { bytes: bytesVon(JSON.stringify(liste)) })
+  posen.posenVergessen()
+  posen.pruefungenVergessen()
+  geschrieben.length = 0
+  meldungen.length = 0
 }
 
-const stilwechsel = umRufstelle(utility, "ansichtGeprueft(currentSrc, newStyle)")
-wahr("der Stilwechsel ruft die gepruefte Form", stilwechsel !== "")
-wahr("und er liest das Ergebnis DORT", /auskunft\.pruefung === false/.test(stilwechsel))
-wahr("und bricht dann ab, schreibt also nichts", /\breturn\b/.test(stilwechsel))
+abschnitt("Der Stilwechsel (BeneosUtility.toggleTokenStyle) schreibt nur, was die Pruefung freigibt")
 
-const tokenstelle = umRufstelle(utility, 'ansichtGeprueft(tokenData.token, "topdown")')
-wahr("die zweite Stelle im Token ruft sie auch", tokenstelle !== "")
-wahr("und liest das Ergebnis DORT", /auskunft\.pruefung === false/.test(tokenstelle))
-// Die ungepruefte Form darf in dieser Datei nicht mehr GERUFEN werden. Dass
-// `ansichtGibtEs` bleibt, ist richtig: es ist die Anzeigefrage.
-wahr("die ungepruefte Form wird dort nicht mehr gerufen",
-  !/[^A-Za-z]ansicht\s*\(/.test(utility))
+frisch(LISTE_MIT)
+stelleToken("t1", TOKEN_ADRESSE)
+await BeneosUtility.toggleTokenStyle("t1")
+gleich("gute Summe: das Token bekommt die Draufsicht", tokenSchrieb().join(), ADRESSE)
+gleich("gute Summe: keine Warnung", warnTexte().length, 0)
 
-const cloud = nurCode(readFileSync(join(hier, "..", "beneos_cloud.js"), "utf8"))
-wahr("der Wurf auf die Leinwand ruft die gepruefte Form",
-  cloud.includes('ansichtGeprueft(protoSrc, "topdown")'))
-wahr("und auch dort wird die ungepruefte Form nicht mehr gerufen",
-  !/[^A-Za-z]ansicht\s*\(/.test(cloud))
+frisch(LISTE_FALSCH)
+stelleToken("t1", TOKEN_ADRESSE)
+await BeneosUtility.toggleTokenStyle("t1")
+gleich("falsche Summe: nichts wird geschrieben", geschrieben.length, 0)
+gleich("falsche Summe: die Warnung ist der Inhaltstext und nicht der Fehlt-Text",
+  warnTexte().join(), "BENEOS.TokenMenu.ViewContentMismatch")
 
+frisch(LISTE_NULL)
+stelleToken("t1", TOKEN_ADRESSE)
+await BeneosUtility.toggleTokenStyle("t1")
+gleich("Ansicht gibt es nicht: nichts wird geschrieben", geschrieben.length, 0)
+gleich("Ansicht gibt es nicht: die Warnung ist der Fehlt-Text",
+  warnTexte().join(), "BENEOS.TokenMenu.TopDownAssetMissing")
+
+frisch(LISTE_OHNE)
+stelleToken("t1", TOKEN_ADRESSE)
+await BeneosUtility.toggleTokenStyle("t1")
+gleich("ohne Summe in der Liste: die Draufsicht wird geschrieben", tokenSchrieb().join(), ADRESSE)
+
+// Keine Liste am Tor heisst "nicht geprueft": der Stilwechsel faellt auf den
+// Textersatz von vor dem Umbau zurueck, statt "gibt es nicht" zu melden.
+frisch(LISTE_MIT)
+NETZ.delete(LISTE_ADRESSE)
+stelleToken("t1", TOKEN_ADRESSE)
+await BeneosUtility.toggleTokenStyle("t1")
+gleich("ohne Liste am Tor: der Textersatz wird geschrieben", tokenSchrieb().join(), ADRESSE)
+gleich("ohne Liste am Tor: keine Fehlt-Warnung", warnTexte().length, 0)
+
+abschnitt("Der Variantenwechsel (BeneosUtility.forceChangeToken) schreibt keine falsche Draufsicht")
+
+// Das Token steht auf Draufsicht, der Zwischenspeicher kennt keine. Dann fragt
+// der Wechsel die Liste, und zwar in der geprueften Form.
+BeneosUtility.beneosTokens = { "000-wolf-1": { token: TOKEN_ADRESSE, fullId: "000-wolf-1" } }
+frisch(LISTE_MIT)
+stelleToken("t2", ADRESSE)
+await BeneosUtility.forceChangeToken("t2", "000-wolf-1")
+gleich("gute Summe: die Draufsicht der Variante wird geschrieben", tokenSchrieb().join(), ADRESSE)
+
+frisch(LISTE_FALSCH)
+stelleToken("t2", ADRESSE)
+await BeneosUtility.forceChangeToken("t2", "000-wolf-1")
+gleich("falsche Summe: geschrieben wird 2.5D und nicht die falsche Draufsicht",
+  tokenSchrieb().join(), TOKEN_ADRESSE)
+gleich("falsche Summe: mit dem Inhaltstext", warnTexte().join(), "BENEOS.TokenMenu.ViewContentMismatch")
+
+abschnitt("Der Wurf auf die Leinwand (BeneosCloud#drainPendingCanvasDrops) faellt auf 2.5D")
+
+const cloud = new BeneosCloud()
+const gesetzt = []
+function stelleWurf() {
+  const welt = {
+    getFlag: () => ({ tokenKey: "000-wolf" }),
+    prototypeToken: { texture: { src: TOKEN_ADRESSE } },
+    getTokenDocument: async () => ({ toObject: () => ({}) }),
+  }
+  const szene = {
+    createEmbeddedDocuments: async () => {
+      gesetzt.push({ stil: BeneosUtility._pendingDropStyle, src: BeneosUtility._pendingDropSrc })
+    },
+  }
+  game.actors = Object.assign([welt], { get: () => welt })
+  game.scenes = new Map([["s1", szene]])
+  game.packs = new Map()
+  cloud.pendingCanvasDrops.set("000-wolf", [{ sceneId: "s1", variantIndex: 1, forceStyle: "topdown", x: 0, y: 0 }])
+  gesetzt.length = 0
+}
+
+frisch(LISTE_MIT)
+stelleWurf()
+await cloud.drainPendingCanvasDrops("000-wolf")
+gleich("gute Summe: die Figur kommt als Draufsicht", gesetzt.map((g) => `${g.stil}|${g.src}`).join(), `topdown|${ADRESSE}`)
+
+frisch(LISTE_FALSCH)
+stelleWurf()
+await cloud.drainPendingCanvasDrops("000-wolf")
+gleich("falsche Summe: die Figur kommt als 2.5D ohne Draufsichtadresse",
+  gesetzt.map((g) => `${g.stil}|${g.src}`).join(), "tokenized|null")
+
+abschnitt("Die Waisenpruefung (BeneosCloud#runOrphanCleanup) fragt die Liste und liest nur false als fehlt")
+
+// Das Fenster hinter dieser Pruefung LOESCHT auf Knopfdruck mit
+// vorausgewaehlten Haken. Ein falsches "fehlt" kostet Kundendokumente, darum
+// zaehlt nur `zustand === false`, und `null` (nicht geprueft) laesst durch.
+const vorgelegt = []
+foundry.applications.api.DialogV2 = { wait: async (o) => { vorgelegt.push(o.content); return null } }
+function stelleWaisen(src) {
+  const doc = {
+    name: "Wolf",
+    _source: { folder: null },
+    folder: { id: "f" },
+    prototypeToken: { texture: { src } },
+    getFlag: () => undefined,
+  }
+  game.packs = new Map([["world.beneos_module_actors", { getDocuments: async () => [doc], folders: new Map() }]])
+  game.actors = Object.assign([], { get: () => null })
+  vorgelegt.length = 0
+}
+const fehltGemeldet = () => vorgelegt.join("").includes("BENEOS.Cleanup.IssueMissingFiles")
+
+frisch(LISTE_MIT)
+stelleWaisen(TOKEN_ADRESSE)
+await cloud.runOrphanCleanup()
+gleich("die Liste nennt die Variante: nichts wird vorgelegt", vorgelegt.length, 0)
+
+const LISTE_OHNE_VARIANTE = { ...LISTE_MIT, tokenbilder: {} }
+frisch(LISTE_OHNE_VARIANTE)
+stelleWaisen(TOKEN_ADRESSE)
+await cloud.runOrphanCleanup()
+gleich("die Liste nennt die Variante nicht: als fehlend vorgelegt", fehltGemeldet(), true)
+
+// Keine Liste am Tor: nicht geprueft, also KEIN Loeschangebot.
+NETZ.delete(LISTE_ADRESSE)
+posen.posenVergessen()
+stelleWaisen(TOKEN_ADRESSE)
+await cloud.runOrphanCleanup()
+gleich("ohne Liste am Tor: nichts wird vorgelegt", vorgelegt.length, 0)
+
+// Eine Kartenadresse ist keine Kreatur: die Liste wird gar nicht gefragt.
+frisch(LISTE_OHNE_VARIANTE)
+const KARTE = assetUrl("beneos_bm_0113", "default", "000-wolf-1-token.webp")
+stelleWaisen(KARTE)
+nimmAbrufe()
+await cloud.runOrphanCleanup()
+gleich("eine Kartenadresse fragt keine Posenliste",
+  nimmAbrufe().filter((a) => a.adresse.includes("_posen.json")).length, 0)
+gleich("und wird nicht als fehlend vorgelegt", vorgelegt.length, 0)
+
+// ---------------------------------------------------------------------------
+abschnitt("Strukturproben: wo die Pruefung haengt und wo die ungepruefte Form fehlt")
+/*
+ * Zwei Aussagen, die kein Aufruf zeigen kann: dass eine Datei etwas NICHT
+ * enthaelt. Gezaehlt wird im reinen Code ohne Kommentare, denn die Kommentare
+ * daneben nennen die gesuchten Namen.
+ */
+function nurCode(js) {
+  return String(js)
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n").map(z => z.replace(/\/\/.*$/, "")).join("\n")
+}
+const posenQuelle = readFileSync(join(hier, "stream-posen.mjs"), "utf8")
+struktur("der Kommentarfilter laesst Code stehen", nurCode(posenQuelle).includes("export async function ansichtGeprueft"), true)
+struktur("der Kommentarfilter nimmt Kommentare weg", nurCode(posenQuelle).includes("zweite Wahrheit"), false)
+struktur("die Pruefung haengt NICHT in der allgemeinen Abrufschicht",
+  nurCode(readFileSync(join(hier, "stream-fetch.mjs"), "utf8")).includes("ansichtInhaltOk"), false)
+// Dass `ansichtGibtEs` bleibt, ist richtig: es ist die Anzeigefrage.
+struktur("beneos_utility.js ruft die ungepruefte Form nicht",
+  /[^A-Za-z]ansicht\s*\(/.test(nurCode(readFileSync(join(hier, "..", "beneos_utility.js"), "utf8"))), false)
+struktur("beneos_cloud.js ruft die ungepruefte Form nicht",
+  /[^A-Za-z]ansicht\s*\(/.test(nurCode(readFileSync(join(hier, "..", "beneos_cloud.js"), "utf8"))), false)
+
+// ---------------------------------------------------------------------------
+abschnitt("Der Textbaustein steht in allen Sprachen")
 // Der Textbaustein muss da sein, sonst sieht der Kunde den Schluesselnamen.
 // Und er muss sich von "gibt es nicht" UNTERSCHEIDEN: eine falsche Datei ist
 // vorhanden, nur mit falschem Inhalt, und "fehlt" schickte den Kunden auf die
@@ -616,13 +712,13 @@ for (const lang of ["de", "fr", "es", "it", "pt-BR", "pt-PT", "pl", "cs", "ca",
 }
 
 // ---------------------------------------------------------------------------
-rmSync(tempOrdner, { recursive: true, force: true })
+NETZ.set(LISTE_ADRESSE, { bytes: bytesVon(JSON.stringify(LISTE_MIT)) })
 
-wahr("und sie bringt den Journalriegel mit",
-  typeof posen.journalbildImSpiegel === "function")
 
-console.log("\nDas Journalbild streamt nur, wenn die Liste es nennt")
+abschnitt("Das Journalbild streamt nur, wenn die Liste es nennt")
 {
+  // Eigener Namensraum: die Waisenpruefung unten stellt dieselben Fragen.
+  const gleich = gleichMit("Journal")
   /*
    * DER RIEGEL GEGEN DAS LEERE FELD, gebaut am 08.11.2026 mit `OP-PRJ-137`.
    *
@@ -712,11 +808,10 @@ console.log("\nDas Journalbild streamt nur, wenn die Liste es nennt")
       .map((x) => String(x)).join("|"), "true|false|null")
 }
 
-wahr("und sie bringt den Waisenriegel mit",
-  typeof posen.tokenbildImSpiegel === "function")
 
-console.log("\nDie Waisenpruefung fragt die Liste und nicht das Tor")
+abschnitt("Die Waisenpruefung fragt die Liste und nicht das Tor")
 {
+  const gleich = gleichMit("Waise")
   /*
    * DER REST VON `OP-PRJ-170`, gebaut am 08.11.2026.
    *
@@ -867,58 +962,27 @@ console.log("\nDie Waisenpruefung fragt die Liste und nicht das Tor")
       tis(null, TOR_T1).zustand].map((x) => String(x)).join("|"),
     "true|false|null")
 
-  /*
-   * UND DIE RUFSTELLE PRUEFT `=== false` UND NICHT `!== true`. Das ist der
-   * einzige Satz dieses Blocks, der nicht die Funktion prueft, sondern ihren
-   * GEBRAUCH, und er ist der wichtigste: die Funktion kann richtig sein und
-   * die Stelle sie trotzdem falsch lesen. Genau so ist der Fehler entstanden,
-   * den `OP-PRJ-170` behebt, denn die gute Probe lag schon in derselben
-   * Datei. Der Quelltext wird gelesen und nicht gefahren, weil
-   * `beneos_cloud.js` Foundry braucht; was er nicht leisten kann, steht
-   * unten unter NICHT PRUEFBAR.
-   */
-  const cloudQuelle = readFileSync(join(hier, "..", "beneos_cloud.js"), "utf8")
-  wahr("die Waisenpruefung ist in der Datei zu finden",
-    cloudQuelle.includes("tokenbildImSpiegel(liste, protoSrc)"))
-  wahr("und sie liest `=== false` und nicht `!== true`",
-    cloudQuelle.includes("tokenbildImSpiegel(liste, protoSrc).zustand === false"))
-  gleich("und sie fragt die Liste nur fuer den Kreaturenraum",
-    (cloudQuelle.match(/tor\?\.raum === "kreatur" \? await posenliste/g) || [])
-      .length, 1)
-  // Gegenprobe: dieselbe Suche muss an einer gestellten Zeile ANSCHLAGEN.
-  // Ohne sie waere eine Suche nach einer Zeichenkette, die es nirgends gibt,
-  // von einer bestandenen Pruefung nicht zu unterscheiden.
-  wahr("die Suche nach `!== true` schlaegt an einer gestellten Zeile an",
-    "if (tokenbildImSpiegel(liste, protoSrc).zustand !== true) {"
-      .includes("tokenbildImSpiegel(liste, protoSrc).zustand !== true"))
-  gleich("und sie findet im Bestand NULL Stellen",
-    (cloudQuelle.match(/tokenbildImSpiegel\(liste, protoSrc\)\.zustand !== true/g)
-      || []).length, 0)
+  // Die Rufstelle, die diese Antwort liest (die Waisenpruefung in
+  // `beneos_cloud.js`), wird oben im Abschnitt "Die Waisenpruefung" GEFAHREN:
+  // `null` legt nichts vor, nur `false` legt vor. Bis zum 14.11.2026 stand
+  // hier eine Textsuche nach `=== false`.
 }
 
-console.log("")
-console.log("Abschluss")
-console.log(`  bestanden: ${gruen}`)
-console.log(`  rot:       ${rot}`)
-console.log("")
 /*
  * DIE ZAHL KOMMT AUS DER LISTE UND NICHT AUS DEM TEXT.
  *
  * Sie stand hier von Hand und war am 08.11.2026 schon vor dem Anbau falsch:
- * "viererlei" bei fuenf Punkten. Das ist dieselbe Klasse wie die Satzzahl im
- * Vorhaken und die Ueberschrift der Sprachwache-README, beide am selben Tag
- * berichtigt. Eine Zahl neben einer Liste veraltet, sobald die Liste waechst,
- * und sie wird nie rot, weil niemand sie gegen die Liste haelt.
+ * "viererlei" bei fuenf Punkten. Eine Zahl neben einer Liste veraltet, sobald
+ * die Liste waechst, und sie wird nie rot, weil niemand sie gegen die Liste
+ * haelt.
  */
 const LUECKEN = [
   ["Die schluesselfreie Adressform. Sie steht in `stream-platzhalter.test.mjs`;",
     "hier wird nur geprueft, WANN sie geschrieben werden darf."],
-  ["Der LAUF der Waisenaufraeumung. Geprueft ist die Rechnung und,",
-    "am Quelltext gelesen, ihr Gebrauch. Dass das Fenster danach die",
-    "richtigen Dokumente vorlegt, braucht Foundry. Die Gegenprobe aus",
-    "`OP-PRJ-170` ist eine Welt mit einer gestreamten und einer wirklich",
-    "ZERSTOERTEN oertlichen Kreatur: keine Markierung an der ersten,",
-    "unveraenderte an der zweiten."],
+  ["Was nach dem Vorlegen geschieht. Gefahren ist die Waisenpruefung bis",
+    "zum Inhalt des Fensters; Loeschen und Neuverknuepfen nach dem Klick",
+    "braucht Foundry. Die Gegenprobe aus `OP-PRJ-170` ist eine Welt mit",
+    "einer gestreamten und einer wirklich ZERSTOERTEN oertlichen Kreatur."],
   ["Die Anzeigefrage. `ansicht()` ohne Pruefung bleibt in der",
     "Kachelleiste des Cloud-Fensters, und das ist Absicht: zwanzig",
     "Varianten wuerden sonst zwanzig Dateien holen, die nur gezaehlt",
@@ -936,11 +1000,12 @@ const LUECKEN = [
   ["Die Kosten im Betrieb. Gerechnet sind 0,447 MB je Draufsicht als",
     "zweite Kopie im Speicher, einmal je Ansicht und Sitzung. Gemessen",
     "ist das nicht."],
+  ["Wie Foundry das Token, die Szene und das Fenster wirklich zeichnet.",
+    "Die Rufstellen laufen gegen gestellte Dokumente."],
 ]
-console.log(`NICHT PRUEFBAR, und zwar ${LUECKEN.length} Dinge:`)
+console.log(`\nNICHT PRUEFBAR, und zwar ${LUECKEN.length} Dinge:`)
 for (const punkt of LUECKEN) {
   console.log(`- ${punkt[0]}`)
   for (const weiter of punkt.slice(1)) console.log(`  ${weiter}`)
 }
-
-process.exit(rot > 0 ? 1 : 0)
+ende()
