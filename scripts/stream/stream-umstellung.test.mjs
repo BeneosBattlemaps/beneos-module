@@ -336,8 +336,19 @@ console.log("Register hin und zurueck")
   gleich("Register avatar bleibt", u.reg["full-reg"].avatar, lokal("reg", "reg-1-avatar.webp"))
   gleich("fremder Registereintrag bleibt", u.reg["full-anders"], { token: "x" })
   keinSchluessel("Fortschritt mit Registerwerten ohne Schluessel", u.stand)
-  await zurueckstellen([x.einheit], u)
+  await zurueckstellen(x.einheit.dokumente, u)
   gleich("Register nach Rueckweg wie vorher", u.reg, reg)
+}
+{
+  // Der Spielleiter installiert die Kreatur danach neu: das Register traegt
+  // ein anderes Ziel. Der Rueckweg laesst diesen Wert stehen.
+  const x = kreatur("neu")
+  const u = umgebung({ register: { "full-neu": { token: lokal("neu", "neu-1-token.webp"), topDown: null } } })
+  await umstellen([x.einheit], u)
+  u.reg["full-neu"].token = tor("neu", "neu-2-token.webp")
+  const erg = await zurueckstellen(x.einheit.dokumente, u)
+  gleich("geaenderter Registerwert bleibt", u.reg["full-neu"].token, tor("neu", "neu-2-token.webp"))
+  gleich("Registerwert als belassen gezaehlt", erg.belassen, 1)
 }
 
 // ======================================================= 10 Rueckweg
@@ -348,7 +359,8 @@ console.log("Rueckweg nur bei unveraendertem Ziel")
   await umstellen(ks.map((x) => x.einheit), u)
   // Der Spielleiter aendert danach ein Token von Hand.
   ks[3].szene.data.tokens[0].texture.src = "eigenes/bild.webp"
-  const erg = await zurueckstellen(ks.map((x) => x.einheit), u)
+  // Ohne Planung: nur die Dokumente, Szenen doppelt wie in der echten Welt.
+  const erg = await zurueckstellen(ks.flatMap((x) => [...x.einheit.dokumente, x.szene]), u)
   gleich("alle Weltactors wieder lokal", ks.every((x) => !x.welt.data.prototypeToken.texture.src.startsWith(TOR)), true)
   gleich("Kompendium wieder lokal", ks.every((x) => x.pack.data.prototypeToken.texture.src === lokal(x.pack.data._id.slice(1), `${x.pack.data._id.slice(1)}-1-token.webp`)), true)
   gleich("vom SL geaendertes Token bleibt", ks[3].szene.data.tokens[0].texture.src, "eigenes/bild.webp")

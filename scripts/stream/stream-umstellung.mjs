@@ -235,7 +235,7 @@ export async function umstellen(einheiten, u) {
       for (const { d, p } of plaene) await dokumentSchreiben(d, p)
       if (regTreffer.length) {
         for (const t of regTreffer) {
-          stand.register[`${t.id}|${t.feld}`] = t.alt
+          stand.register[`${t.id}|${t.feld}`] = { lokal: t.alt, ziel: ohneSchluessel(t.ziel) }
           reg[t.id][t.feld] = t.ziel
         }
         await u.register.schreiben(reg)
@@ -269,50 +269,51 @@ function rueckFelder(obj) {
 
 /**
  * Der Rueckweg (E3): ohne Netz, denn die Dateien liegen noch.
+ *
+ * ER BRAUCHT KEINE PLANUNG, nur Dokumente. Nach einer Umstellung zeigt das
+ * Register aufs Tor, und die Planung faende die Kreatur nicht mehr als lokal.
+ * Darum stehen Ruecksprung und Ziel an jedem Feld (Flagge) und im Fortschritt
+ * (Register), beide mit maskiertem Ziel.
+ *
+ * @param {Array<object>} dokumente  alle Dokumente, die Flaggen tragen koennen
  * @returns {Promise<{verweigert?, zurueck: number, belassen: number}>}
  */
-export async function zurueckstellen(einheiten, u) {
+export async function zurueckstellen(dokumente, u) {
   const erg = { zurueck: 0, belassen: 0 }
   if (!(await u.riegel.nehmen())) return { ...erg, verweigert: true }
   let paketOffen = false
   try {
     const stand = leererStand(await u.fortschritt.lesen())
-    for (const e of einheiten) {
-      for (const d of e.dokumente) {
-        const obj = d.toObject()
-        const oben = rueckFelder(obj)
-        const unten = []
-        for (const [typ, feld] of Object.entries(eingebettet(d))) {
-          const updates = []
-          for (const kind of Array.isArray(obj[feld]) ? obj[feld] : []) {
-            const r = rueckFelder(kind)
-            if (!r) continue
-            erg.belassen += r.belassen
-            updates.push({ _id: kind._id, ...r.aenderung })
-          }
-          if (updates.length) unten.push({ typ, updates })
+    for (const d of new Set(dokumente)) {
+      const obj = d.toObject()
+      const oben = rueckFelder(obj)
+      const unten = []
+      for (const [typ, feld] of Object.entries(eingebettet(d))) {
+        const updates = []
+        for (const kind of Array.isArray(obj[feld]) ? obj[feld] : []) {
+          const r = rueckFelder(kind)
+          if (!r) continue
+          erg.belassen += r.belassen
+          updates.push({ _id: kind._id, ...r.aenderung })
         }
-        if (!oben && !unten.length) continue
-        if (!paketOffen && istKompendium(d)) { await u.paket.oeffnen(); paketOffen = true }
-        if (oben) { erg.belassen += oben.belassen; await d.update(oben.aenderung) }
-        for (const x of unten) await d.updateEmbeddedDocuments(x.typ, x.updates)
-        erg.zurueck++
+        if (updates.length) unten.push({ typ, updates })
       }
-      const reg = (await u.register.lesen()) || {}
-      let regGeaendert = false
-      for (const id of e.fullIds || []) {
-        for (const feld of ["token", "topDown"]) {
-          const k = `${id}|${feld}`
-          if (!(k in stand.register)) continue
-          const alt = stand.register[k]
-          if (reg[id] && reg[id][feld] === gateAdresseFuer(alt, e.map)) { reg[id][feld] = alt; regGeaendert = true }
-          delete stand.register[k]
-        }
-      }
-      if (regGeaendert) await u.register.schreiben(reg)
-      stand.erledigt = stand.erledigt.filter((x) => x !== e.id)
-      await u.fortschritt.schreiben(stand)
+      if (!oben && !unten.length) continue
+      if (!paketOffen && istKompendium(d)) { await u.paket.oeffnen(); paketOffen = true }
+      if (oben) { erg.belassen += oben.belassen; await d.update(oben.aenderung) }
+      for (const x of unten) await d.updateEmbeddedDocuments(x.typ, x.updates)
+      erg.zurueck++
     }
+    const reg = (await u.register.lesen()) || {}
+    let regGeaendert = false
+    for (const [k, v] of Object.entries(stand.register)) {
+      const [id, feld] = k.split("|")
+      const heute = reg[id]?.[feld]
+      if (typeof heute === "string" && ohneSchluessel(heute) === v?.ziel) { reg[id][feld] = v.lokal; regGeaendert = true }
+      else erg.belassen++
+    }
+    if (regGeaendert) await u.register.schreiben(reg)
+    await u.fortschritt.schreiben({ erledigt: [], register: {} })
   } finally {
     if (paketOffen) await u.paket.schliessen()
     await u.riegel.geben()
