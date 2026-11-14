@@ -353,8 +353,14 @@ const FELDER_NIE = new Set(["img"])
  */
 const gesperrtGemeldet = new Set()
 
-/** Die Gate-Adresse zu einem installierten Pfad, oder null. */
-function gateAdresseFuer(wert, streamTargets) {
+/**
+ * Die Gate-Adresse zu einem installierten Pfad, oder null.
+ *
+ * Exportiert seit stre-T-064: die Umstellung einer Bestandswelt schlaegt mit
+ * genau dieser Normalisierung nach (fuehrender Schraegstrich weg, dekodiert),
+ * damit sie dieselben Werte trifft wie der Installer.
+ */
+export function gateAdresseFuer(wert, streamTargets) {
   let key = stripLeadSlash(wert)
   try { key = stripLeadSlash(decodeURIComponent(wert)) } catch (_) { /* keep raw key */ }
   return streamTargets.get(key) || null
