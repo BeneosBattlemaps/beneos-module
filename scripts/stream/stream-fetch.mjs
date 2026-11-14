@@ -766,6 +766,19 @@ function istBild(url) {
 let urspruenglicherAbruf = null
 
 /**
+ * Der Abruf am Vorrat vorbei, fuer eine Probe, die das Tor selbst fragen muss.
+ *
+ * Gebraucht von der Umstellung einer Bestandswelt (stre-T-064): ihre
+ * Leseprobe soll belegen, dass das Tor die Datei HEUTE ausliefert. Ueber den
+ * Ersatz antwortete der Vorrat, und `cache: "no-store"` wirkt nur auf den
+ * Browser (siehe oben bei `/health`). Ohne eingebauten Ersatz ist es der
+ * gewoehnliche fetch.
+ */
+export function abrufAmVorratVorbei() {
+  return urspruenglicherAbruf || globalThis.fetch.bind(globalThis)
+}
+
+/**
  * Die Adresse einer Moduldatei, mit dem Routenpraefix.
  *
  * `foundry.utils.getRoute()` ist noetig, weil eine Installation unter einem

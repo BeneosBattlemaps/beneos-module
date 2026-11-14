@@ -12,6 +12,7 @@
 
 import { umstellen, zurueckstellen } from "./stream-umstellung.mjs"
 import { buildStreamPack, loadStreamManifest } from "./stream-install.mjs"
+import { abrufAmVorratVorbei } from "./stream-fetch.mjs"
 import {
   assetUrl, KREATUR_PRAEFIX, lieferungStreamt, MODULE_ID, riegelEntscheid, SETTING,
 } from "./stream-settings.mjs"
@@ -59,7 +60,8 @@ function umgebungAusWelt({ signal = null, trocken = false, nachEinheit = null } 
   const istUnsere = (steht) => Boolean(marke) && String(steht || "").split("|")[2] === zufall
   let packWarZu = false
   return {
-    trocken, signal, abruf: (url, opt) => globalThis.fetch(url, opt),
+    // Am Vorrat des Moduls vorbei: die Leseprobe fragt das Tor selbst.
+    trocken, signal, abruf: (url, opt) => abrufAmVorratVorbei()(url, opt),
     fortschritt: {
       lesen: async () => { try { return JSON.parse(lies(SETTING.umstellung, "") || "null") } catch (_) { return null } },
       schreiben: async (s) => game.settings.set(MODULE_ID, SETTING.umstellung, JSON.stringify(s)),

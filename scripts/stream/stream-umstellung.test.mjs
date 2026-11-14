@@ -458,6 +458,10 @@ console.log("Keine Datei angefasst (E1)")
   gleich("kein upload", /upload/i.test(code), false)
   gleich("kein FilePicker", /FilePicker/.test(code), false)
   gleich("kein delete eines Dokuments", /\.delete\(|deleteEmbeddedDocuments/.test(code), false)
+  // Die Leseprobe muss das Tor fragen, nicht den Vorrat des Moduls; der
+  // gepatchte fetch antwortet aus dem Vorrat, no-store hilft dort nicht.
+  const fenster = readFileSync(join(hier, "stream-umstellung-window.mjs"), "utf8")
+  gleich("Fenster probt am Vorrat vorbei", /abruf: \(url, opt\) => abrufAmVorratVorbei\(\)\(url, opt\)/.test(fenster), true)
 }
 
 console.log(`\n${gruen} gruen, ${rot} rot`)
