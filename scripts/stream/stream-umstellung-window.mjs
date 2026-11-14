@@ -279,7 +279,7 @@ export class BeneosUmstellungWindow extends HandlebarsApplicationMixin(Applicati
       else ui.notifications.info(game.i18n.format("BENEOS.Stream.Umstellung.Done", { count: erg.umgestellt }))
     } catch (e) {
       console.error("Beneos Stream | Umstellung gescheitert:", e)
-      ui.notifications.error(T("Offline"))
+      ui.notifications.error(T("Failed"))
     } finally {
       this.laeuft = false
       this.stand = null
@@ -299,6 +299,9 @@ export class BeneosUmstellungWindow extends HandlebarsApplicationMixin(Applicati
       const erg = await zurueckstellen(await dokumenteAusWelt(), umgebungAusWelt())
       if (erg.verweigert) ui.notifications.warn(T("Busy"))
       else ui.notifications.info(game.i18n.format("BENEOS.Stream.Umstellung.Reverted", { count: erg.zurueck }))
+    } catch (e) {
+      console.error("Beneos Stream | Rueckweg der Umstellung gescheitert:", e)
+      ui.notifications.error(T("Failed"))
     } finally {
       this.laeuft = false
       this.stand = null

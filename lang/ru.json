@@ -2611,5 +2611,6 @@
   "BENEOS.Stream.Umstellung.Done": "Переведено на стриминг: {count}.",
   "BENEOS.Stream.Umstellung.Offline": "Нет связи со шлюзом Beneos. Больше ничего не изменено.",
   "BENEOS.Stream.Umstellung.Busy": "В этом мире уже идёт переход.",
-  "BENEOS.Stream.Umstellung.Reverted": "Возвращено к локальным файлам документов: {count}."
+  "BENEOS.Stream.Umstellung.Reverted": "Возвращено к локальным файлам документов: {count}.",
+  "BENEOS.Stream.Umstellung.Failed": "Переход остановлен из-за ошибки. Завершённые записи сохраняют новые пути, их можно вернуть. Подробности в консоли."
 }

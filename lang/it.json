@@ -2609,5 +2609,6 @@
   "BENEOS.Stream.Umstellung.Done": "{count} voci passate allo streaming.",
   "BENEOS.Stream.Umstellung.Offline": "Nessuna connessione al gateway Beneos. Non è stato modificato nient'altro.",
   "BENEOS.Stream.Umstellung.Busy": "In questo mondo è già in corso un passaggio.",
-  "BENEOS.Stream.Umstellung.Reverted": "{count} documenti riportati ai file locali."
+  "BENEOS.Stream.Umstellung.Reverted": "{count} documenti riportati ai file locali.",
+  "BENEOS.Stream.Umstellung.Failed": "Il passaggio si è fermato per un errore. Le voci completate mantengono i nuovi percorsi e si possono ripristinare. I dettagli sono nella console."
 }

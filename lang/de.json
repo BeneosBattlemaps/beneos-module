@@ -2617,5 +2617,6 @@
   "BENEOS.Stream.Umstellung.Done": "{count} Einträge auf Streaming umgestellt.",
   "BENEOS.Stream.Umstellung.Offline": "Keine Verbindung zum Beneos-Tor. Es wurde nichts weiter geändert.",
   "BENEOS.Stream.Umstellung.Busy": "In dieser Welt läuft bereits eine Umstellung.",
-  "BENEOS.Stream.Umstellung.Reverted": "{count} Dokumente auf lokale Dateien zurückgestellt."
+  "BENEOS.Stream.Umstellung.Reverted": "{count} Dokumente auf lokale Dateien zurückgestellt.",
+  "BENEOS.Stream.Umstellung.Failed": "Die Umstellung hat mit einem Fehler angehalten. Fertige Einträge behalten ihre neuen Pfade und lassen sich zurückstellen. Einzelheiten stehen in der Konsole."
 }

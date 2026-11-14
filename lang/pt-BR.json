@@ -2609,5 +2609,6 @@
   "BENEOS.Stream.Umstellung.Done": "{count} entradas mudadas para streaming.",
   "BENEOS.Stream.Umstellung.Offline": "Sem conexão com o gateway Beneos. Nada mais foi alterado.",
   "BENEOS.Stream.Umstellung.Busy": "Já há uma mudança em andamento neste mundo.",
-  "BENEOS.Stream.Umstellung.Reverted": "{count} documentos restaurados para arquivos locais."
+  "BENEOS.Stream.Umstellung.Reverted": "{count} documentos restaurados para arquivos locais.",
+  "BENEOS.Stream.Umstellung.Failed": "A mudança parou por um erro. As entradas concluídas mantêm os novos caminhos e podem ser revertidas. Os detalhes estão no console."
 }

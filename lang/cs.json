@@ -2609,5 +2609,6 @@
   "BENEOS.Stream.Umstellung.Done": "{count} položek přepnuto na streamování.",
   "BENEOS.Stream.Umstellung.Offline": "Žádné spojení s bránou Beneos. Nic dalšího se nezměnilo.",
   "BENEOS.Stream.Umstellung.Busy": "V tomto světě už probíhá přepínání.",
-  "BENEOS.Stream.Umstellung.Reverted": "{count} dokumentů vráceno na místní soubory."
+  "BENEOS.Stream.Umstellung.Reverted": "{count} dokumentů vráceno na místní soubory.",
+  "BENEOS.Stream.Umstellung.Failed": "Přepínání se zastavilo kvůli chybě. Hotové položky si ponechají nové cesty a lze je vrátit. Podrobnosti jsou v konzoli."
 }

@@ -2670,5 +2670,6 @@
   "BENEOS.Stream.Umstellung.Done": "Switched {count} entries to streaming.",
   "BENEOS.Stream.Umstellung.Offline": "No connection to the Beneos gate. Nothing more was changed.",
   "BENEOS.Stream.Umstellung.Busy": "A switch is already running in this world.",
-  "BENEOS.Stream.Umstellung.Reverted": "Restored {count} documents to local files."
+  "BENEOS.Stream.Umstellung.Reverted": "Restored {count} documents to local files.",
+  "BENEOS.Stream.Umstellung.Failed": "The switch stopped with an error. Finished entries keep their new paths and can be switched back. Details are in the console."
 }

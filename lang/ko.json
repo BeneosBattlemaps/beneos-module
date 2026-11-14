@@ -2609,5 +2609,6 @@
   "BENEOS.Stream.Umstellung.Done": "{count}개 항목을 스트리밍으로 전환했습니다.",
   "BENEOS.Stream.Umstellung.Offline": "Beneos 게이트에 연결할 수 없습니다. 더 이상 변경하지 않았습니다.",
   "BENEOS.Stream.Umstellung.Busy": "이 월드에서 이미 전환이 진행 중입니다.",
-  "BENEOS.Stream.Umstellung.Reverted": "{count}개 문서를 로컬 파일로 되돌렸습니다."
+  "BENEOS.Stream.Umstellung.Reverted": "{count}개 문서를 로컬 파일로 되돌렸습니다.",
+  "BENEOS.Stream.Umstellung.Failed": "전환이 오류로 중지되었습니다. 완료된 항목은 새 경로를 유지하며 되돌릴 수 있습니다. 자세한 내용은 콘솔에 있습니다."
 }

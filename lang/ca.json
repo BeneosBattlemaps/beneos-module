@@ -2609,5 +2609,6 @@
   "BENEOS.Stream.Umstellung.Done": "{count} entrades passades a streaming.",
   "BENEOS.Stream.Umstellung.Offline": "Sense connexió amb la passarel·la de Beneos. No s'ha canviat res més.",
   "BENEOS.Stream.Umstellung.Busy": "Ja hi ha un canvi en curs en aquest món.",
-  "BENEOS.Stream.Umstellung.Reverted": "{count} documents retornats als fitxers locals."
+  "BENEOS.Stream.Umstellung.Reverted": "{count} documents retornats als fitxers locals.",
+  "BENEOS.Stream.Umstellung.Failed": "El canvi s'ha aturat per un error. Les entrades acabades conserven els camins nous i es poden revertir. Els detalls són a la consola."
 }

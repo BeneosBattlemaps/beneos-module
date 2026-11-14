@@ -2609,5 +2609,6 @@
   "BENEOS.Stream.Umstellung.Done": "已將 {count} 個項目切換為串流。",
   "BENEOS.Stream.Umstellung.Offline": "無法連線到 Beneos 閘道。未再變更任何內容。",
   "BENEOS.Stream.Umstellung.Busy": "此世界已有切換正在進行。",
-  "BENEOS.Stream.Umstellung.Reverted": "已將 {count} 份文件改回本機檔案。"
+  "BENEOS.Stream.Umstellung.Reverted": "已將 {count} 份文件改回本機檔案。",
+  "BENEOS.Stream.Umstellung.Failed": "切換因錯誤而停止。已完成的項目保留新路徑，並可改回。詳細資訊請見主控台。"
 }

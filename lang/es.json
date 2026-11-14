@@ -2609,5 +2609,6 @@
   "BENEOS.Stream.Umstellung.Done": "{count} entradas pasadas a streaming.",
   "BENEOS.Stream.Umstellung.Offline": "Sin conexión con la pasarela de Beneos. No se ha cambiado nada más.",
   "BENEOS.Stream.Umstellung.Busy": "Ya hay un cambio en curso en este mundo.",
-  "BENEOS.Stream.Umstellung.Reverted": "{count} documentos devueltos a los archivos locales."
+  "BENEOS.Stream.Umstellung.Reverted": "{count} documentos devueltos a los archivos locales.",
+  "BENEOS.Stream.Umstellung.Failed": "El cambio se detuvo por un error. Las entradas terminadas conservan sus nuevas rutas y se pueden revertir. Los detalles están en la consola."
 }

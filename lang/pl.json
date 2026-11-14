@@ -2609,5 +2609,6 @@
   "BENEOS.Stream.Umstellung.Done": "Przełączono {count} pozycji na streaming.",
   "BENEOS.Stream.Umstellung.Offline": "Brak połączenia z bramą Beneos. Nic więcej nie zmieniono.",
   "BENEOS.Stream.Umstellung.Busy": "W tym świecie trwa już przełączanie.",
-  "BENEOS.Stream.Umstellung.Reverted": "Przywrócono {count} dokumentów do plików lokalnych."
+  "BENEOS.Stream.Umstellung.Reverted": "Przywrócono {count} dokumentów do plików lokalnych.",
+  "BENEOS.Stream.Umstellung.Failed": "Przełączanie zatrzymało się z powodu błędu. Ukończone pozycje zachowują nowe ścieżki i można je przywrócić. Szczegóły są w konsoli."
 }

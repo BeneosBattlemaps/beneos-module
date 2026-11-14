@@ -2609,5 +2609,6 @@
   "BENEOS.Stream.Umstellung.Done": "{count} 件をストリーミングに切り替えました。",
   "BENEOS.Stream.Umstellung.Offline": "Beneos ゲートに接続できません。これ以上は何も変更していません。",
   "BENEOS.Stream.Umstellung.Busy": "このワールドではすでに切り替えが実行中です。",
-  "BENEOS.Stream.Umstellung.Reverted": "{count} 件のドキュメントをローカルファイルに戻しました。"
+  "BENEOS.Stream.Umstellung.Reverted": "{count} 件のドキュメントをローカルファイルに戻しました。",
+  "BENEOS.Stream.Umstellung.Failed": "切り替えはエラーで停止しました。完了した項目は新しいパスのままで、元に戻せます。詳細はコンソールにあります。"
 }
