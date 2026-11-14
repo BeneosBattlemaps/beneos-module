@@ -817,8 +817,14 @@ gleich("der Schalter kommt genau zweimal vor, Definition und eine Rufstelle",
  * `..` darin wird in `adressSegmente()` je Segment kodiert, also bleibt der
  * Schraegstrich stehen und die Adresse verlaesst ihren Raum.
  */
-const riegel = cloudCode.match(/\/\^\[A-Za-z0-9\._-\]\+\\\.webp\$\//g) || []
-wahr("Beute und Kreatur tragen denselben Riegel", riegel.length >= 2)
+// Seit stre-T-064 steht der Kreaturenriegel in kreatur-ziele.mjs, und
+// `_beneosKreaturDateiOk` reicht dorthin weiter. Gezaehlt wird darum je Datei.
+const RIEGEL = /\/\^\[A-Za-z0-9\._-\]\+\\\.webp\$\//g
+const kreaturZiele = readFileSync(join(hier, "kreatur-ziele.mjs"), "utf8")
+wahr("Beute und Kreatur tragen denselben Riegel",
+  /function _beneosBeuteDateiOk\(filename\) \{\s*return \/\^\[A-Za-z0-9\._-\]\+\\\.webp\$\//.test(cloudCode)
+  && (kreaturZiele.match(RIEGEL) || []).length === 1
+  && /function _beneosKreaturDateiOk\(filename\) \{\s*return kreaturDateiOk\(filename\)/.test(cloudCode))
 
 // ---------------------------------------------------------------------------
 console.log(`\n${gruen} bestanden, ${rot} gescheitert`)

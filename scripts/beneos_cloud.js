@@ -21,6 +21,7 @@ import {
   zerlegeAdresse,
 } from "./stream/stream-settings.mjs"
 import { karteGibtEs, kartenVergessen } from "./stream/stream-karten.mjs"
+import { kreaturBildZiel, kreaturDateiOk, registerTopDown, varianteStreamt } from "./stream/kreatur-ziele.mjs"
 
 // FilePicker.upload(..., { notify: false }) used to swallow failures
 // (disk full, permissions, server reject) — the await would resolve,
@@ -277,7 +278,7 @@ function _beneosKreaturStreamt() {
  * einer Adresse ist er neu, deshalb der Riegel hier.
  */
 function _beneosKreaturDateiOk(filename) {
-  return /^[A-Za-z0-9._-]+\.webp$/.test(String(filename || ""))
+  return kreaturDateiOk(filename)
 }
 
 /** Die Toradresse einer Kreaturendatei. Der Releasename ist der Ordnername. */
@@ -4220,9 +4221,9 @@ export class BeneosCloud {
         // darin nicht.
         const tokenNameRoh = tokenData.tokenImages[i].token?.filename
         const topNameRoh = tokenData.tokenImages[i].top?.filename
-        const variantStreamt = streamt
-          && _beneosKreaturDateiOk(tokenNameRoh)
-          && (!topNameRoh || _beneosKreaturDateiOk(topNameRoh))
+        // Zielregel in stream/kreatur-ziele.mjs, dieselbe wie bei der
+        // Umstellung einer Bestandswelt (stre-T-064).
+        const variantStreamt = varianteStreamt({ streamt, tokenName: tokenNameRoh, topName: topNameRoh })
 
         /*
          * DAS JOURNALBILD BEKOMMT SEINE EIGENE FRAGE, und das ist nicht
@@ -4394,9 +4395,9 @@ export class BeneosCloud {
           // ihn auch ohne Netz.
           actorData.img = `${finalFolder}/${tokenData.tokenImages[i].avatar.filename}`
           const tokenDatei = tokenData.tokenImages[i].token.filename
-          actorData.prototypeToken.texture.src = variantStreamt
-            ? _beneosKreaturAdresse(tokenKey, tokenDatei)
-            : `${finalFolder}/${tokenDatei}`
+          actorData.prototypeToken.texture.src = kreaturBildZiel({
+            tokenKey, name: tokenDatei, streamt: variantStreamt, adresse: _beneosKreaturAdresse,
+          })
           // Top-Down swap is gated on the asset actually having been uploaded
           // by the loop above. Every token in scope of an account is supposed
           // to ship with a -top.webp; if it didn't arrive, that's a server-
@@ -4419,9 +4420,9 @@ export class BeneosCloud {
               // ist genau die Datei, die die Schleife oben hochgeladen oder
               // am Tor belassen hat; der Textersatz war eine Annahme darueber,
               // wie sie heisst.
-              actorData.prototypeToken.texture.src = variantStreamt
-                ? _beneosKreaturAdresse(tokenKey, topData.filename)
-                : `${finalFolder}/${topData.filename}`
+              actorData.prototypeToken.texture.src = kreaturBildZiel({
+                tokenKey, name: topData.filename, streamt: variantStreamt, adresse: _beneosKreaturAdresse,
+              })
             } else if (installStyle === "topdown" && !topAssetAvailable) {
               // User picked Top-Down as default but the cloud response did
               // not include a top variant. Keep the prototype on 2.5D and
@@ -4541,11 +4542,9 @@ export class BeneosCloud {
                 // cloud included it; null otherwise so Stage 2 (mode
                 // switch) can detect old-cache entries that need a
                 // re-install.
-                topDown: (topData?.filename)
-                  ? (variantStreamt
-                      ? _beneosKreaturAdresse(tokenKey, topData.filename)
-                      : `${finalFolder}/${topData.filename}`)
-                  : null,
+                topDown: registerTopDown({
+                  tokenKey, topName: topData?.filename, variantStreamt, adresse: _beneosKreaturAdresse,
+                }),
                 actorId: imported.id,
                 installDate: tNow,
                 contentSignature: tokenData?.contentSignature ?? "",
