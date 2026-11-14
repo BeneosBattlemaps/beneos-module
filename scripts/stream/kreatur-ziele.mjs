@@ -44,15 +44,6 @@ export function kreaturBildZiel({ tokenKey, name, streamt, adresse }) {
   return streamt ? adresse(tokenKey, name) : `${kreaturOrdner(tokenKey)}/${name}`
 }
 
-/**
- * Die Prototyp-Textur: im Stil "topdown" die Draufsicht, wenn sie verfuegbar
- * ist, sonst das 2.5D-Tokenbild.
- */
-export function prototypZiel({ tokenKey, tokenName, topName, installStyle, topVerfuegbar, variantStreamt, adresse }) {
-  const name = installStyle === "topdown" && topVerfuegbar && topName ? topName : tokenName
-  return kreaturBildZiel({ tokenKey, name, streamt: variantStreamt, adresse })
-}
-
 /** Der Registerwert `topDown`: die Draufsicht, oder null ohne Draufsicht. */
 export function registerTopDown({ tokenKey, topName, variantStreamt, adresse }) {
   return topName ? kreaturBildZiel({ tokenKey, name: topName, streamt: variantStreamt, adresse }) : null

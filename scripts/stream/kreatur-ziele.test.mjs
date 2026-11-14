@@ -22,7 +22,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const hier = dirname(fileURLToPath(import.meta.url))
-const { kreaturDateiOk, varianteStreamt, kreaturBildZiel, kreaturOrdner, prototypZiel, registerTopDown }
+const { kreaturDateiOk, varianteStreamt, kreaturBildZiel, kreaturOrdner, registerTopDown }
   = await import("./kreatur-ziele.mjs")
 
 let gruen = 0
@@ -55,17 +55,6 @@ gleich("Bildziel gestreamt", kreaturBildZiel({ tokenKey: "000-wolf", name: "000-
 gleich("Bildziel lokal", kreaturBildZiel({ tokenKey: "000-wolf", name: "000-wolf-1-token.webp", streamt: false, adresse }),
   "beneos_assets/cloud/tokens/000-wolf/000-wolf-1-token.webp")
 
-// --- Prototyp-Textur, Stil 2.5D und Draufsicht ---------------------------------
-const basis = { tokenKey: "000-wolf", tokenName: "000-wolf-1-token.webp", topName: "000-wolf-1-top.webp", adresse }
-gleich("Prototyp 2.5D gestreamt", prototypZiel({ ...basis, installStyle: "tokenized", topVerfuegbar: true, variantStreamt: true }),
-  "https://gate.test/c/KEY/beneos_ct_000-wolf/000-wolf-1-token.webp")
-gleich("Prototyp Draufsicht gestreamt", prototypZiel({ ...basis, installStyle: "topdown", topVerfuegbar: true, variantStreamt: true }),
-  "https://gate.test/c/KEY/beneos_ct_000-wolf/000-wolf-1-top.webp")
-gleich("Prototyp Draufsicht ohne Top bleibt 2.5D", prototypZiel({ ...basis, installStyle: "topdown", topVerfuegbar: false, variantStreamt: true }),
-  "https://gate.test/c/KEY/beneos_ct_000-wolf/000-wolf-1-token.webp")
-gleich("Prototyp Draufsicht lokal", prototypZiel({ ...basis, installStyle: "topdown", topVerfuegbar: true, variantStreamt: false }),
-  "beneos_assets/cloud/tokens/000-wolf/000-wolf-1-top.webp")
-
 // --- Register topDown ------------------------------------------------------------
 gleich("Register topDown gestreamt", registerTopDown({ tokenKey: "000-wolf", topName: "000-wolf-1-top.webp", variantStreamt: true, adresse }),
   "https://gate.test/c/KEY/beneos_ct_000-wolf/000-wolf-1-top.webp")
@@ -74,9 +63,8 @@ gleich("Register topDown lokal", registerTopDown({ tokenKey: "000-wolf", topName
 gleich("Register topDown ohne Top null", registerTopDown({ tokenKey: "000-wolf", topName: undefined, variantStreamt: true, adresse }), null)
 
 // --- zwanzig Varianten, jede mit eigenem Namen -------------------------------------
-const zwanzig = Array.from({ length: 20 }, (_, i) => prototypZiel({
-  tokenKey: "x", tokenName: `x-${i + 1}-token.webp`, topName: `x-${i + 1}-top.webp`,
-  installStyle: "topdown", topVerfuegbar: true, variantStreamt: true, adresse,
+const zwanzig = Array.from({ length: 20 }, (_, i) => kreaturBildZiel({
+  tokenKey: "x", name: `x-${i + 1}-top.webp`, streamt: true, adresse,
 }))
 gleich("zwanzig Varianten, zwanzig Adressen", new Set(zwanzig).size, 20)
 gleich("Variante 20 traegt ihre Nummer", zwanzig[19], "https://gate.test/c/KEY/beneos_ct_x/x-20-top.webp")
