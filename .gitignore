@@ -10,3 +10,5 @@ todo.md
 /.github/copilot-instructions.md
 *.bak
 *.bak-*
+# Claude Code local state, incl. worktrees. beneos-module is the live Foundry module folder via junction (v13Data, v14Data).
+.claude/
