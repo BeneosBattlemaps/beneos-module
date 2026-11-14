@@ -396,9 +396,47 @@ console.log("Rueckweg nur bei unveraendertem Ziel")
   gleich("Kompendium wieder lokal", ks.every((x) => x.pack.data.prototypeToken.texture.src === lokal(x.pack.data._id.slice(1), `${x.pack.data._id.slice(1)}-1-token.webp`)), true)
   gleich("vom SL geaendertes Token bleibt", ks[3].szene.data.tokens[0].texture.src, "eigenes/bild.webp")
   gleich("ein Feld als geaendert gezaehlt", erg.belassen, 1)
-  gleich("Flaggen weg", ks.every((x) => holen(x.welt.data, FLAGGE_PFAD) === undefined), true)
+  gleich("Flaggen weg", ks.every((x) => !Array.isArray(holen(x.welt.data, FLAGGE_PFAD))), true)
+  gleich("Flagge mit null geloescht, nicht mit der Altsyntax -=", ks[0].welt.data.flags["beneos-module"].umstellung.vorher, null)
   gleich("Fortschritt leer", u.stand.erledigt.length, 0)
   gleich("Paket nach Rueckweg zu", u.paketOffen, false)
+}
+{
+  // Die Welt zieht nach der Umstellung auf einen anderen Torhost um.
+  const x = kreatur("host")
+  const u = umgebung()
+  await umstellen([x.einheit], u)
+  const neu = (s) => s.replace(TOR, "https://tor2.beneos.stream")
+  x.welt.data.prototypeToken.texture.src = neu(x.welt.data.prototypeToken.texture.src)
+  await zurueckstellen(x.einheit.dokumente, u)
+  gleich("Rueckweg erkennt das Ziel auch unter neuem Host", x.welt.data.prototypeToken.texture.src, lokal("host", "host-1-top.webp"))
+}
+
+// ======================================================= 10b Trockenlauf und Lauf, dieselbe Regel
+console.log("Trockenlauf und Lauf zaehlen gleich")
+{
+  const x = kreatur("nach")
+  const u = umgebung()
+  await umstellen([x.einheit], u)
+  // Nach dem Lauf kommt eine Szene mit lokalem Pfad dazu (Sicherung, Import).
+  const spaet = new Dok({ _id: "spaet", tokens: [{ _id: "t", texture: { src: lokal("nach", "nach-1-token.webp") } }] }, { embedded: { Token: "tokens" } })
+  x.einheit.dokumente.push(spaet)
+  const z = await umstellen([x.einheit], umgebung({ trocken: true }))
+  const erg = await umstellen([x.einheit], u)
+  gleich("Trockenlauf zaehlt die neue Stelle", z.stellen, 1)
+  gleich("der Lauf schreibt sie auch", [erg.stellen, spaet.data.tokens[0].texture.src], [1, tor("nach", "nach-1-token.webp")])
+  gleich("erledigt ohne Doppel", u.stand.erledigt, ["kreatur:nach"])
+}
+
+// ======================================================= 10c Riegel je Durchlauf erneuert
+console.log("Riegel wird bei jedem Durchlauf erneuert")
+{
+  const ks = ["e1", "e2", "e3"].map((k) => kreatur(k))
+  const u = umgebung({ abruf: abrufAttrappe(Object.fromEntries(["e1", "e2"].map((k) => [tor(k, `${k}-1-token.webp`), { kopf: { "x-beneos-denied": "1" } }]))) })
+  let erneuert = 0
+  u.riegel.erneuern = async () => { erneuert++ }
+  await umstellen(ks.map((x) => x.einheit), u)
+  gleich("dreimal erneuert, auch nach zwei Absagen", erneuert, 3)
 }
 
 // ======================================================= 11 Riegel

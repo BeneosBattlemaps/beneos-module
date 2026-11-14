@@ -13,7 +13,7 @@
 import { umstellen, zurueckstellen } from "./stream-umstellung.mjs"
 import { buildStreamPack, loadStreamManifest } from "./stream-install.mjs"
 import {
-  assetUrl, downloadMode, KREATUR_PRAEFIX, lieferungStreamt, MODULE_ID, riegelEntscheid, SETTING,
+  assetUrl, KREATUR_PRAEFIX, lieferungStreamt, MODULE_ID, riegelEntscheid, SETTING,
 } from "./stream-settings.mjs"
 
 // Posen, Vermerk und Planung werden erst geladen, wenn das Fenster zaehlt.
@@ -48,14 +48,15 @@ function bu() {
  *
  * DER RIEGEL SAGT AB, WENN ER NICHT STEHT. Anders als beim Adressnachzug, der
  * ohne Riegel laeuft: dort ist ein Lauf zu viel harmlos, hier schrieben zwei
- * Laeufe dieselben Flaggen und Registerwerte durcheinander. Die Marke wird nach
- * jeder Einheit erneuert, damit ein langer Lauf nicht nach der Frist von
- * `riegelEntscheid` als abgelaufen gilt.
+ * Laeufe dieselben Flaggen und Registerwerte durcheinander. Die Marke wird bei
+ * jedem Durchlauf des Kerns erneuert, damit ein langer Lauf nicht nach der
+ * Frist von `riegelEntscheid` als abgelaufen gilt.
  */
 function umgebungAusWelt({ signal = null, trocken = false, nachEinheit = null } = {}) {
   let marke = ""
   const zufall = String(foundry.utils?.randomID?.(8) || Math.random().toString(36).slice(2, 10))
   const neueMarke = () => `${game.userId || "?"}|${Date.now()}|${zufall}`
+  const istUnsere = (steht) => Boolean(marke) && String(steht || "").split("|")[2] === zufall
   let packWarZu = false
   return {
     trocken, signal, abruf: (url, opt) => globalThis.fetch(url, opt),
@@ -76,9 +77,19 @@ function umgebungAusWelt({ signal = null, trocken = false, nachEinheit = null } 
           return false
         }
       },
+      // Besitz haengt an der Sitzungskennung (drittes Feld), nicht an der
+      // ganzen Marke: die Zeit darin aendert sich bei jeder Erneuerung.
+      // Erneuert wird mit await, vom Kern bei jedem Durchlauf.
+      erneuern: async () => {
+        try {
+          if (!marke || !istUnsere(lies(SETTING.umstellungRiegel, ""))) return
+          marke = neueMarke()
+          await game.settings.set(MODULE_ID, SETTING.umstellungRiegel, marke)
+        } catch (e) { console.warn("Beneos Stream | Umstellung: Riegel nicht erneuert:", e?.message || e) }
+      },
       geben: async () => {
         try {
-          if (lies(SETTING.umstellungRiegel, "") === marke) await game.settings.set(MODULE_ID, SETTING.umstellungRiegel, "")
+          if (istUnsere(lies(SETTING.umstellungRiegel, ""))) await game.settings.set(MODULE_ID, SETTING.umstellungRiegel, "")
         } catch (e) { console.warn("Beneos Stream | Umstellung: Riegel nicht geloest:", e?.message || e) }
       },
     },
@@ -105,14 +116,7 @@ function umgebungAusWelt({ signal = null, trocken = false, nachEinheit = null } 
         if (bu()) bu().beneosTokens = r
       },
     },
-    nachEinheit: (e, erg) => {
-      // Die Marke erneuern, solange sie unsere ist.
-      if (marke && lies(SETTING.umstellungRiegel, "") === marke) {
-        marke = neueMarke()
-        game.settings.set(MODULE_ID, SETTING.umstellungRiegel, marke).catch(() => {})
-      }
-      nachEinheit?.(e, erg)
-    },
+    nachEinheit,
   }
 }
 
@@ -311,14 +315,14 @@ export class BeneosUmstellungWindow extends HandlebarsApplicationMixin(Applicati
 }
 
 /**
- * Der Menueeintrag. Nur in einer Welt, die streamt, wie beim Offline-Fenster
- * mit einem Neuladen Verspaetung: in `init` steht der Schluessel aus
- * `ensureStreamKey` noch nicht fest, also fragt der Eintrag den Betrieb ab
- * (`downloadMode`). Ob die Lieferung wirklich streamt, prueft der Start.
+ * Der Menueeintrag, IN JEDEM BETRIEB. Anders als das Offline-Fenster: wechselt
+ * ein Konto nach der Umstellung auf Download, muss der Rueckweg weiter
+ * erreichbar sein, und er braucht kein Netz. Ob umgestellt werden darf,
+ * entscheidet das Fenster selbst (`lieferungStreamt`): ohne Streaming zaehlt
+ * es nichts und gibt Start nicht frei.
  */
 export function registerUmstellungWindow() {
   if (!ApplicationV2) return
-  if (downloadMode()) return
   try {
     game.settings.registerMenu(MODULE_ID, "beneos-stream-umstellung-menu", {
       name: "BENEOS.Stream.Umstellung.MenuName",
@@ -333,8 +337,8 @@ export function registerUmstellungWindow() {
   }
 }
 
-/** Fuer die API: oeffnet das Fenster nur, wenn die Lieferung streamt. */
+/** Fuer die API: nur fuer die Spielleitung; Start prueft die Lieferung selbst. */
 export function umstellungOeffnen() {
-  if (!game.user?.isGM || !lieferungStreamt()) return null
+  if (!game.user?.isGM) return null
   return BeneosUmstellungWindow.open()
 }

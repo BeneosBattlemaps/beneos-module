@@ -40,7 +40,20 @@ export const FELDNAMEN = new Set(["src", "path", "foreground", "thumb"])
 export const NIE = new Set(["_id", "_stats", "flags", "delta", "items", "effects", "system", "img"])
 
 export const FLAGGE_PFAD = "flags.beneos-module.umstellung.vorher"
-const FLAGGE_LOESCHEN = "flags.beneos-module.umstellung.-=vorher"
+
+/**
+ * Ist der heutige Wert noch das, was die Umstellung geschrieben hat?
+ *
+ * Verglichen wird der maskierte PFAD, nicht die ganze Adresse: zieht die Welt
+ * spaeter auf einen anderen Torhost um (streamBase), ist die Datei dieselbe,
+ * und der Rueckweg soll sie weiter erkennen. Ohne URL-Form gilt Gleichheit.
+ */
+function istZiel(heute, ziel) {
+  if (typeof heute !== "string" || typeof ziel !== "string") return false
+  const maskiert = ohneSchluessel(heute)
+  if (maskiert === ziel) return true
+  try { return new URL(maskiert).pathname === new URL(ziel).pathname } catch (_) { return false }
+}
 
 function holen(obj, pfad) {
   return pfad.split(".").reduce((o, k) => (o == null ? undefined : o[k]), obj)
@@ -207,7 +220,13 @@ export async function umstellen(einheiten, u) {
     const stand = leererStand(await u.fortschritt.lesen())
     for (const e of einheiten) {
       if (u.signal?.aborted) { erg.abgebrochen = true; break }
-      if (stand.erledigt.includes(e.id)) continue
+      // Bei JEDEM Durchlauf, auch einem mit abgewiesener Leseprobe: sonst gilt
+      // der Riegel nach seiner Frist fuer andere Sitzungen als abgelaufen.
+      await u.riegel.erneuern?.()
+      // Eine erledigte Einheit wird NICHT uebersprungen. Der Trockenlauf zaehlt
+      // sie mit, und kaeme nach einem Lauf ein Dokument mit lokalem Pfad dazu,
+      // zeigte das Fenster Stellen, die der Lauf liegen liesse. Billig bleibt
+      // das Fortsetzen trotzdem: ohne Stellen gibt es keine Leseprobe.
 
       const plaene = e.dokumente.map((d) => ({ d, p: dokumentPlan(d, e.map) }))
       const reg = (await u.register.lesen()) || {}
@@ -215,7 +234,7 @@ export async function umstellen(einheiten, u) {
       const stellen = plaene.reduce((n, x) => n + x.p.stellen, 0) + regTreffer.length
       erg.uebersprungen += plaene.reduce((n, x) => n + x.p.uebersprungen, 0)
       if (!stellen) {
-        stand.erledigt.push(e.id)
+        if (!stand.erledigt.includes(e.id)) stand.erledigt.push(e.id)
         await u.fortschritt.schreiben(stand)
         continue
       }
@@ -251,7 +270,7 @@ export async function umstellen(einheiten, u) {
         }
         if (geaendert) await u.register.schreiben(frisch)
       }
-      stand.erledigt.push(e.id)
+      if (!stand.erledigt.includes(e.id)) stand.erledigt.push(e.id)
       await u.fortschritt.schreiben(stand)
       erg.umgestellt++
       erg.stellen += stellen
@@ -268,11 +287,12 @@ export async function umstellen(einheiten, u) {
 function rueckFelder(obj) {
   const eintraege = holen(obj, FLAGGE_PFAD)
   if (!Array.isArray(eintraege) || !eintraege.length) return null
-  const aenderung = { [FLAGGE_LOESCHEN]: null }
+  // Loeschen durch null statt durch "-=": die Altsyntax ist unter v14 veraltet.
+  const aenderung = { [FLAGGE_PFAD]: null }
   let belassen = 0
   for (const e of eintraege) {
     const heute = holen(obj, String(e?.pfad || ""))
-    if (typeof heute === "string" && ohneSchluessel(heute) === e.ziel) aenderung[e.pfad] = e.lokal
+    if (istZiel(heute, e.ziel)) aenderung[e.pfad] = e.lokal
     else belassen++
   }
   return { aenderung, belassen }
@@ -320,7 +340,7 @@ export async function zurueckstellen(dokumente, u) {
     for (const [k, v] of Object.entries(stand.register)) {
       const [id, feld] = k.split("|")
       const heute = reg[id]?.[feld]
-      if (typeof heute === "string" && ohneSchluessel(heute) === v?.ziel) { reg[id][feld] = v.lokal; regGeaendert = true }
+      if (istZiel(heute, v?.ziel)) { reg[id][feld] = v.lokal; regGeaendert = true }
       else erg.belassen++
     }
     if (regGeaendert) await u.register.schreiben(reg)
