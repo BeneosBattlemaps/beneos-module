@@ -205,11 +205,14 @@ fahre "tools/v14-import-bench/unit.mjs"           "v14-import unit.mjs, 53 Saetz
 # liest. Derselbe Befund zum dritten Mal, nach `OP-PRJ-216` am 08.11.
 # und `OP-PRJ-151` am 09.11.: ein Ausloeser, der schmaler ist als der
 # Lesebereich seines Satzes, ist eine Luecke und wird nie rot.
+#
+# SEIT stre-T-017 (15.11.2026) LADEN posen UND beute DIE GANZE IMPORTKETTE von
+# `beneos_utility.js` und `beneos_cloud.js`, und vier Saetze laden die
+# Attrappe in `tools/lib/`. Gemessen lagen 13 Dateien dieser Kette ausserhalb
+# der alten Liste. Der Ausloeser ist deshalb `scripts` als Ganzes, dazu
+# `lang` und `tools/lib`; die zwoelf Saetze kosten zusammen rund 1,5 s.
 if git diff --cached --name-only --diff-filter=ACM \
-     -- scripts/stream scripts/loot lang \
-        scripts/beneos_cloud.js scripts/beneos_utility.js \
-        scripts/codex2/item-companion.mjs \
-        scripts/cloud-v2/beneos-native-installer.mjs \
+     -- scripts lang tools/lib \
    | grep -q .
 then
   meld "pre-commit: Streamdateien vorgemerkt, die Streampruefsaetze laufen mit"
