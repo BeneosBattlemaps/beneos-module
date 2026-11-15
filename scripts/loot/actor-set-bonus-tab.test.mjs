@@ -47,6 +47,7 @@ const echtesInject = ActorSetBonusTab._inject
 const echteWarnung = console.warn
 const warnungen = []
 let gerufen = 0
+let letzteArgs = []
 let unbehandelt = 0
 const zaehleUnbehandelt = () => { unbehandelt++ }
 process.on("unhandledRejection", zaehleUnbehandelt)
@@ -56,19 +57,24 @@ const zweiTakte = async () => {
 }
 async function asyncLauf(inject) {
   await zweiTakte()
-  ActorSetBonusTab._inject = async (...a) => { gerufen++; return inject(...a) }
+  ActorSetBonusTab._inject = async (...a) => { gerufen++; letzteArgs = a; return inject(...a) }
   gerufen = 0
+  letzteArgs = []
   unbehandelt = 0
   warnungen.length = 0
+  const gegebenesBlatt = blatt()
+  const gegebeneWurzel = wurzel()
   console.warn = (...a) => { warnungen.push(a.map(String).join(" ")) }
   try {
-    await haken.rufe(HAKEN, blatt(), wurzel())
+    await haken.rufe(HAKEN, gegebenesBlatt, gegebeneWurzel)
     await zweiTakte()
   } finally {
     console.warn = echteWarnung
   }
   return {
     gerufen,
+    // Ohne die Wurzel stiege das echte `_inject` still aus: kein Tab, keine Warnung.
+    weitergegeben: letzteArgs[0] === gegebenesBlatt && letzteArgs[1] === gegebeneWurzel,
     unbehandelt,
     alle: warnungen.length,
     gemeldet: warnungen.filter((w) => w.includes("ActorSetBonusTab inject failed")).length,
@@ -77,10 +83,13 @@ async function asyncLauf(inject) {
 
 const wirft = await asyncLauf(async () => { throw new Error("Pruefsatz wirft im async _inject") })
 p.gleich("der Haken ruft _inject", wirft.gerufen, 1)
+p.gleich("und gibt Blatt und Wurzel des Blattes weiter", wirft.weitergegeben, true)
 p.gleich("ein Wurf im async _inject wird keine unbehandelte Ablehnung", wirft.unbehandelt, 0)
 p.gleich("ein Wurf im async _inject wird genau einmal als Warnung gemeldet", wirft.alle === 1 && wirft.gemeldet === 1, true)
 
 const heil = await asyncLauf(async () => {})
+// Der Gegenwert zaehlt nur, wenn das intakte `_inject` wirklich lief.
+p.gleich("der Haken ruft auch das intakte _inject", heil.gerufen, 1)
 p.gleich("ein intaktes async _inject meldet keine Warnung", heil.alle, 0)
 p.gleich("und hinterlaesst keine unbehandelte Ablehnung", heil.unbehandelt, 0)
 process.off("unhandledRejection", zaehleUnbehandelt)
