@@ -181,8 +181,9 @@ fahre "tools/v14-import-bench/unit.mjs"           "v14-import unit.mjs, 53 Saetz
 # Menge, die sie messen.
 #
 # WARUM DER INSTALLER MIT IN DEN AUSLOESER MUSS, seit dem 08.11.2026. Der neue
-# Satz prueft die Vorabsonde `#preflightSizeCheck` als Quelltextprobe, und die
-# steht in `scripts/cloud-v2/beneos-native-installer.mjs`. Ohne diese Zeile
+# Satz prueft die Vorabsonde `#preflightSizeCheck` (bis 15.11.2026 als
+# Quelltextprobe, seit stre-T-108 als Lauf bis zur Sonde), und die steht in
+# `scripts/cloud-v2/beneos-native-installer.mjs`. Ohne diese Zeile
 # laeuft der Satz nicht, wenn genau die geprobte Datei geaendert wird, und das
 # ist die Lage, in der er gebraucht wird. Es kostet die rund 10 Sekunden auch
 # bei einer Installeraenderung, und das ist der Preis dafuer, dass die Probe

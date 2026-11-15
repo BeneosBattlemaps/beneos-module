@@ -2,7 +2,9 @@
  * stream-weiche.test.mjs
  *
  * Gegenprobe zu `buildStreamPack()` in `stream-install.mjs`. Laeuft ohne
- * Foundry, ohne Netz und ohne Browser:
+ * laufendes Foundry (mit der Attrappe aus `tools/lib/foundry-attrappe.mjs`),
+ * ohne Netz und ohne Browser. Jede Probe ist im Sabotagelaeufer
+ * (`tools/stream-sabotagen.mjs`, Satz `weiche`) bewacht, seit stre-T-108:
  *
  *   node scripts/stream/stream-weiche.test.mjs
  *
@@ -32,12 +34,7 @@
  * Behauptung.
  */
 import { buildStreamPack, applyStreamAddresses } from "./stream-install.mjs"
-import { readFileSync } from "node:fs"
-import { fileURLToPath } from "node:url"
-import { dirname, join } from "node:path"
-
-const HIER = dirname(fileURLToPath(import.meta.url))
-const INSTALLER = join(HIER, "..", "cloud-v2", "beneos-native-installer.mjs")
+import { installiereFoundry, netz } from "../../tools/lib/foundry-attrappe.mjs"
 
 /*
  * Die Einstellungen kommen aus dem Modul, nicht aus getippten Namen.
@@ -62,19 +59,23 @@ const SCHLUESSEL = "pk_pruefsatz"
 let modus = INSTALL_MODE.stream
 let pinAn = true
 
-globalThis.game = {
-  settings: {
-    get(_modul, name) {
-      if (name === SETTING.key) return SCHLUESSEL
-      if (name === SETTING.base) return GATE
-      if (name === SETTING.mode) return true
-      if (name === SETTING.installMode) return modus
-      if (name === SETTING.pinStills) return pinAn
-      return ""
-    },
+/*
+ * DIE FOUNDRY-ATTRAPPE STATT EINES EIGENEN STUBS (stre-T-108). Der Satz laedt
+ * weiter unten den echten Installer, und dessen Dateikopf braucht `Hooks` und
+ * die uebrigen Foundry-Globalen. Die zwei Schalter bleiben lebendig: die
+ * Tabelle liest sie ueber Getter bei jedem Zugriff. Ein Name, den die Tabelle
+ * nicht kennt, wirft wie in Foundry, statt still die leere Zeichenkette zu
+ * geben.
+ */
+installiereFoundry({
+  einstellungen: {
+    [SETTING.key]: SCHLUESSEL,
+    [SETTING.base]: GATE,
+    [SETTING.mode]: true,
+    get [SETTING.installMode]() { return modus },
+    get [SETTING.pinStills]() { return pinAn },
   },
-  i18n: { localize: (s) => s, format: (s) => s },
-}
+})
 
 /*
  * Ein Kartenname, der weder Kreatur noch Beute ist.
@@ -409,41 +410,151 @@ console.log("\nEin gemischter Lauf, wie er wirklich vorkommt")
 }
 
 // ===========================================================================
-console.log("\nDie Sonde selbst, als Quelltextprobe")
+console.log("\nDie Sonde selbst: der echte Installer fragt nach der Zahl der Weiche")
 /*
- * WARUM NUR EINE QUELLTEXTPROBE. `beneos-native-installer.mjs` laesst sich in
- * Node nicht laden: der Dateikopf ruft `Hooks`, und das ist eine Foundry-Sache.
- * Gemessen am 2026-11-08: `Hooks is not defined`. Die ganze Importkette zu
- * stellen waere ein zweites Foundry.
+ * DIE SONDE WIRD GEFAHREN, NICHT GELESEN (stre-T-108). Bis zum 15.11.2026
+ * stand hier eine Quelltextprobe auf `beneos-native-installer.mjs`, mit der
+ * Begruendung, die Datei lasse sich in Node nicht laden (`Hooks is not
+ * defined`). Mit der Foundry-Attrappe aus stre-T-017 laedt sie, und `run()`
+ * laeuft bis zur Vorabsonde.
  *
- * Eine Quelltextprobe ist schwaecher als ein Aufruf, und das steht hier
- * ausdruecklich. Sie faengt genau einen Fall, und das ist der wahrscheinliche:
- * dass jemand die feste Zahl wieder zur Probegroesse macht und damit den
- * Fehlalarm zurueckholt.
+ * Gestellt sind: der Fortschritt (er haelt den Lauf nach der Schreibpruefung
+ * an), `FilePicker` (jedes Hochladen gelingt), `BeneosStream` mit der ECHTEN
+ * Weiche dieser Datei und das Netz. Die Sonde ist ein POST an die
+ * Hochladeadresse; die Attrappe zeichnet die Groesse des Koerpers auf und
+ * antwortet 413, und genau daran endet der Lauf: ein Server, der abweist,
+ * beendet die Installation vor dem ersten Schreiben.
  */
+const UPLOAD = "http://localhost:30000/upload"
+const LAUF_HALT = "Pruefsatz haelt nach der Schreibpruefung an"
+// Ueber den Namensraum gestellt, den der Installer zuerst liest, und nicht
+// als nackter Globaler: den entfernt Foundry 15, und die Globalenwache im
+// Haken zaehlt jeden neuen Zugriff darauf; der Schluessel steht deshalb in
+// Anfuehrungszeichen wie `"renderTemplate"` in stream-beute.test.mjs.
+foundry.applications.apps = {
+  "FilePicker": {
+    implementation: {
+      uploadURL: UPLOAD,
+      async upload() { return { path: "geschrieben" } },
+      async createDirectory() {},
+    },
+  },
+}
+const { BeneosNativeBattlemapInstaller } = await import("../cloud-v2/beneos-native-installer.mjs")
+
+/**
+ * Einen Installerlauf bis zur Sonde fahren. Gibt die geprobten Groessen, die
+ * Vorabpruefung und die Abrufe zurueck, die keine Sonde waren.
+ */
+async function sonde({ eintraege = [], zip = false, weiche = null } = {}) {
+  const proben = []
+  const fremd = []
+  netz(async (adresse, optionen) => {
+    if (adresse === UPLOAD && optionen?.body instanceof FormData) {
+      proben.push(optionen.body.get("upload")?.size ?? -1)
+      return new Response("413 Request Entity Too Large", { status: 413 })
+    }
+    fremd.push(adresse)
+    return new Response("nicht gestellt", { status: 404 })
+  })
+  // `weiter`: der Installer kam nach der Schreibpruefung zum naechsten
+  // Schritt. Die Attrappe haelt ihn erst DORT an; ob er nach einer
+  // Abweisung selbst anhaelt, zeigt also diese Marke (Kaltdurchsicht
+  // 15.11.2026).
+  let geprueft = false
+  let weiter = false
+  const fortschritt = new Proxy({}, {
+    get(_t, k) {
+      if (k === "then") return undefined
+      return (...a) => {
+        if (k === "handleStatusMessage") {
+          if (geprueft) { weiter = true; throw new Error(LAUF_HALT) }
+          if (a[0] === "Checking write access") geprueft = true
+        }
+        return fortschritt
+      }
+    },
+  })
+  globalThis.BeneosBattlemapInstallProgress = { open: async () => fortschritt }
+  globalThis.BeneosStream = {
+    enabled: () => true,
+    releaseFromPackage: () => ({ release: REL, variant: VAR }),
+    loadStreamManifest: async () => ({ entries: eintraege }),
+    buildStreamPack: weiche ?? ((m, r, v) => buildStreamPack(m, r, v)),
+  }
+  const installer = new BeneosNativeBattlemapInstaller({
+    packageId: REL,
+    source: zip ? { kind: "zip", entries: { "data/assets/still.webp": "still.webp" } } : null,
+  })
+  const echtesLog = console.log
+  const echtesDebug = console.debug
+  const echterFehler = console.error
+  console.log = () => {}
+  console.debug = () => {}
+  console.error = () => {}
+  try {
+    await installer.run()
+  } catch (e) {
+    if (e?.message !== LAUF_HALT) throw e
+  } finally {
+    console.log = echtesLog
+    console.debug = echtesDebug
+    console.error = echterFehler
+  }
+  return { proben, preflight: installer._result?.preflight ?? null, fremd, weiter }
+}
+
 {
-  const q = readFileSync(INSTALLER, "utf8")
+  modus = INSTALL_MODE.stream
+  pinAn = true
 
-  wahr("die Sonde nimmt das Kleinere von gemessenem Stueck und fester Obergrenze",
-    /Math\.min\(gemessen,\s*PREFLIGHT_SIZE_PROBE_BYTES\)/.test(q),
-    "ohne Math.min probt die Sonde wieder die feste Zahl, und der Fehlalarm ist zurueck")
+  // Zwei lokale Stuecke: die Summe (380 KB) und das Maximum (310 KB) sind
+  // verschieden, also faellt auf, wenn der Installer die falsche Zahl nimmt.
+  const zwei = await sonde({ eintraege: [
+    e("v/karte.webm", "edge", 50000000),
+    e("portrait.webp", "local", 70000),
+    e("gross_portrait.webp", "local", 310000),
+  ] })
+  gleich("die Sonde fragt nach dem groessten lokalen Stueck, 310 KB", zwei.proben, [310000])
+  gleich("eine abgewiesene Sonde haelt die Installation vor dem Schreiben an",
+    zwei.preflight, { ok: false, category: "toolarge", error: "server refuses uploads at 303 KB" })
+  gleich("und der Installer geht danach keinen Schritt weiter", zwei.weiter, false)
+  gleich("die Sonde ist der einzige Abruf", zwei.fremd, [])
 
-  wahr("ein Lauf, der nichts schreibt, wird nicht sondiert",
-    /if\s*\(bekannt\s*&&\s*gemessen\s*===\s*0\)\s*return\s*\{\s*ok:\s*true\s*\}/.test(q))
+  const gross = await sonde({ eintraege: [e("riesig.webp", "local", 3000000)] })
+  gleich("ueber 2 MB fragt sie nach genau der Obergrenze von 2 MB", gross.proben, [2 * 1024 * 1024])
 
-  wahr("die Zahl kommt aus der Weiche und wird nicht im Installer gerechnet",
-    /this\._localMaxBytes\s*=\s*built\.localMaxBytes/.test(q))
+  /*
+   * EIN LAUF, DER NICHTS SCHREIBT, WIRD NICHT SONDIERT. Die Vorabpruefung ist
+   * dann bestanden, und der Lauf geht weiter; die Fortschrittsattrappe haelt
+   * ihn danach an.
+   */
+  const nichts = await sonde({ eintraege: [e("v/karte.webm", "edge", 50000000)] })
+  gleich("ein Lauf ohne lokales Stueck sondiert nicht", nichts.proben, [])
+  gleich("und seine Vorabpruefung ist bestanden", nichts.preflight, { ok: true })
+  gleich("also geht der Installer zum naechsten Schritt", nichts.weiter, true)
 
-  wahr("die feste Zahl steht noch als Obergrenze von 2 MB",
-    /PREFLIGHT_SIZE_PROBE_BYTES\s*=\s*2\s*\*\s*1024\s*\*\s*1024/.test(q))
+  /*
+   * OHNE MANIFEST KEINE ZAHL. Ein ZIP-Lauf kennt die Groessen nicht, und dann
+   * bleibt es bei der festen Obergrenze, also beim Verhalten von vor dem
+   * Stream-Modus.
+   */
+  const zip = await sonde({ zip: true })
+  gleich("ein ZIP-Lauf kennt sein groesstes Stueck nicht und fragt nach 2 MB", zip.proben, [2 * 1024 * 1024])
 
-  // Gegenprobe auf die Probe selbst. Eine Suche, die nichts mehr findet, ist
-  // von einer kaputten Suche nicht zu unterscheiden: alle vier Aussagen oben
-  // waeren gruen, wenn die Datei leer gelesen worden waere.
-  wahr("die Quelldatei wurde wirklich gelesen", q.length > 50000, `gelesen: ${q.length} Zeichen`)
-  wahr("und ein Muster, das NICHT darin stehen darf, findet sich nicht",
-    !/const groesse = PREFLIGHT_SIZE_PROBE_BYTES\s*$/m.test(q),
-    "die feste Zahl ist wieder die Probegroesse")
+  /*
+   * DIE ZAHL KOMMT AUS DER WEICHE und wird nicht im Installer gerechnet. Eine
+   * gestellte Weiche, die eine andere Zahl meldet, aendert die Sonde.
+   */
+  const gestellt = await sonde({
+    eintraege: [e("gross_portrait.webp", "local", 310000)],
+    weiche: (m, r, v) => ({ ...buildStreamPack(m, r, v), localMaxBytes: 123456 }),
+  })
+  gleich("eine Weiche, die 123456 meldet, ergibt eine Probe von 123456", gestellt.proben, [123456])
+
+  // Der Installer warnt bei der Abweisung; die Warnungen gehoeren nicht zu
+  // den Faellen darunter.
+  warnungen.length = 0
 }
 
 // ===========================================================================
@@ -502,9 +613,13 @@ console.log("\napplyStreamAddresses(): ein Listenbild bleibt oertlich, OP-PRJ-14
   // Die Meldung kommt, und das ist der halbe Zweck: ein stiller Riegel
   // verdeckt den Fehler im Manifest fuer immer.
   gleich("die Sperre meldet sich genau einmal", warnungen.length, 1)
-  wahr("und nennt das Feld", warnungen[0].includes('Feld "img"'),
-    warnungen[0] || "(keine Meldung)")
-  wahr("und nennt den Pfad der Datei", warnungen[0].includes(PORTRAIT))
+  // Ohne Meldung ist `erste` leer, und die Faelle darunter werden rot statt
+  // den Satz abzubrechen; ein Abbruch verschwiege jede Probe danach
+  // (gemessen im Sabotagelaeufer, stre-T-108).
+  const erste = warnungen[0] || ""
+  wahr("und nennt das Feld", erste.includes('Feld "img"'),
+    erste || "(keine Meldung)")
+  wahr("und nennt den Pfad der Datei", erste.includes(PORTRAIT))
 
   /*
    * UND SIE NENNT DEN SCHLUESSEL NICHT. Das ist der sicherheitsrelevante Teil
@@ -515,9 +630,9 @@ console.log("\napplyStreamAddresses(): ein Listenbild bleibt oertlich, OP-PRJ-14
    * Supportkanal einfuegt.
    */
   wahr("die Meldung traegt den Streamschluessel NICHT",
-    !warnungen[0].includes(SCHLUESSEL), warnungen[0] || "(keine Meldung)")
+    !erste.includes(SCHLUESSEL), erste || "(keine Meldung)")
   wahr("und auch nicht die gebildete Toradresse",
-    !warnungen[0].includes(assetUrl(REL, VAR, PORTRAIT)))
+    !erste.includes(assetUrl(REL, VAR, PORTRAIT)))
 
   // Zweimal dasselbe Feld: eine Meldung, nicht zwei.
   const zweiter = { img: PORTRAIT }
@@ -586,49 +701,50 @@ console.log("\napplyStreamAddresses(): die Sperre greift nur am Feldnamen")
   gleich("dabei meldet sich die Sperre weiterhin nicht", warnungen.length, 0)
 }
 
-console.log("\napplyStreamAddresses(): Quelltextprobe zur Sperrliste")
+console.log("\napplyStreamAddresses(): die Sperre gilt img und keinem der ueblichen Felder")
 {
-  const q = readFileSync(join(HIER, "stream-install.mjs"), "utf8")
-    .replace(/\r\n/g, "\n")
+  /*
+   * DIE SPERRLISTE WIRD GEFAHREN, NICHT GELESEN (stre-T-108). Bis zum
+   * 15.11.2026 schnitt hier eine Quelltextprobe `FELDER_NIE` aus
+   * `stream-install.mjs`. Jetzt laeuft dieselbe Datei durch die Feldnamen,
+   * die in Foundry-Dokumenten einen Asset-Pfad tragen: `img` muss oertlich
+   * bleiben, jeder andere ans Tor. Dazu kommt ein frei erfundener Name als
+   * Stellvertreter fuer jedes kuenftige Feld.
+   *
+   * WAS DIESE FORM ABGIBT, und das steht hier ausdruecklich: die alte
+   * Textprobe fing JEDEN zusaetzlichen Eintrag der Liste. Diese faengt einen
+   * zusaetzlichen Eintrag nur, wenn er eines der Felder unten traegt. Die
+   * Liste ist deshalb breit gehalten; ein Eintrag mit einem Namen, der nicht
+   * darin steht, fiele nicht auf (Kaltdurchsicht 15.11.2026: `foreground`
+   * fehlte in der ersten Fassung).
+   *
+   * Die Zahl ist trotzdem der Kern: stuende `src` in der Liste, blieben alle
+   * Journalbilder und alle Szenenhintergruende oertlich, und zwar lautlos,
+   * denn die Sperre meldet nur bei einer Toradresse, die sie faengt.
+   */
+  const PFAD = "beneos_assets/cloud/items/pruef/pruef-front.webp"
+  const ziele = new Map([[PFAD, assetUrl(REL, VAR, PFAD)]])
+  const TOR = assetUrl(REL, VAR, PFAD)
+  const ANS_TOR = ["src", "thumb", "path", "texture", "background", "foreground", "overlay",
+                   "sound", "video", "file", "icon", "avatar", "image", "pruefsatzFeld"]
 
-  wahr("die Sperrliste steht im Bestand", /const FELDER_NIE = new Set\(/.test(q))
-
-  // DIE LISTE SELBST, nicht ihr Umfeld. Ein Kommentarblock darueber nennt
-  // `texture.src` ausdruecklich, und ein Satz, der das Umfeld liest, waere
-  // dadurch rot, obwohl die Liste richtig ist.
-  const m = /const FELDER_NIE = new Set\(\[([^\]]*)\]\)/.exec(q)
-  wahr("und ist lesbar", !!m)
-  const eintraege = m
-    ? (m[1].match(/"([^"]+)"/g) || []).map((x) => x.slice(1, -1))
-    : []
-  gleich("sie nennt genau `img`", eintraege.join(","), "img")
+  const doku = { img: PFAD }
+  for (const feld of ANS_TOR) doku[feld] = PFAD
+  applyStreamAddresses(doku, ziele)
+  gleich("Feldliste: `img` bleibt oertlich", doku.img, PFAD)
+  for (const feld of ANS_TOR) gleich(`Feldliste: \`${feld}\` geht ans Tor`, doku[feld], TOR)
 
   /*
-   * DIE ZAHL IST DER SATZ. Ein fuenfter Feldname faellt sonst nicht auf, und
-   * ein falscher waere der Ausbau des Streamings: stuende `src` darin, blieben
-   * alle Journalbilder und alle Szenenhintergruende oertlich, und zwar
-   * lautlos, denn die Sperre meldet nur bei einer Toradresse, die sie faengt.
+   * DER FELDNAME WIRD WEITERGEGEBEN, und ohne das waere die Sperre auf jeder
+   * Ebene unter der ersten blind. Genau dort liegt `items[].img`. Gefahren in
+   * die Tiefe eines Objekts und in ein Array, das unter `img` haengt.
    */
-  wahr("und nichts, was ans Tor gehoert",
-    !eintraege.includes("src") && !eintraege.includes("texture")
-    && !eintraege.includes("thumb") && !eintraege.includes("path"))
-
-  /*
-   * DER FELDNAME WIRD WEITERGEGEBEN, und ohne diesen Satz waere die Sperre auf
-   * jeder Ebene unter der ersten blind. Genau dort liegt `items[].img`.
-   */
-  wahr("die Rekursion gibt den Schluessel weiter",
-    /applyStreamAddresses\(value\[k\], streamTargets, k\)/.test(q))
-  wahr("und ein Array gibt sein Feld weiter",
-    /applyStreamAddresses\(value\[i\], streamTargets, feld\)/.test(q))
-
-  // Gegenprobe auf die Probe. Eine Suche, die nichts findet, ist von einer
-  // kaputten Suche nicht zu unterscheiden.
-  wahr("die Listensuche findet in einem Probetext",
-    /const FELDER_NIE = new Set\(\[([^\]]*)\]\)/
-      .test('const FELDER_NIE = new Set(["x"])'))
-  wahr("und ein leeres Ergebnis waere aufgefallen", eintraege.length === 1,
-    `gefunden: ${eintraege.length}`)
+  const tief = { a: { b: { img: PFAD, src: PFAD } }, img: [PFAD, PFAD] }
+  applyStreamAddresses(tief, ziele)
+  gleich("`img` zwei Ebenen tief bleibt oertlich", tief.a.b.img, PFAD)
+  gleich("daneben geht `src` auf derselben Ebene ans Tor", tief.a.b.src, TOR)
+  gleich("ein Array unter `img` gibt sein Feld an jeden Eintrag weiter", tief.img, [PFAD, PFAD])
+  warnungen.length = 0
 }
 
 // ===========================================================================

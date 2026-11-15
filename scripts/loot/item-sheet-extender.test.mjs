@@ -10,204 +10,264 @@
  *
  * Was das gekostet hat: `_inject()` wurde nie gerufen. An einem Item MIT
  * vollstaendigen Beute-Vermerken stand `.beneos-loot-extras` null mal im
- * Blatt, und kein einziges Element mit `beneos` im Namen. Die Tabelle aus
- * Typ, Set-Typ und Stufe sah der Kunde nicht. Nichts davon war ein Fehler,
- * den irgendeine Pruefung melden konnte: der Haken registriert sich ohne
- * Klage, und ein Name, der nie feuert, sieht wie ein Blatt ohne
- * Beute-Vermerke aus.
+ * Blatt. Die Tabelle aus Typ, Set-Typ und Stufe sah der Kunde nicht. Der
+ * Haken registriert sich ohne Klage, und ein Name, der nie feuert, sieht wie
+ * ein Blatt ohne Beute-Vermerke aus.
  *
- * DIESER SATZ LIEST QUELLTEXT UND FAEHRT NICHTS, und das steht hier, damit
- * ihn niemand fuer mehr haelt. Er kann nicht pruefen, dass der Haken feuert;
- * das braucht ein laufendes Foundry mit dnd5e und ist `TC-PRJ-STR-308`. Was
- * er kann, ist die Klasse von Fehler zu fangen, die hier wirklich passiert
- * ist: ein Name aus der falschen Fassung, von Hand hineingeschrieben.
+ * DIESER SATZ FAEHRT DEN ECHTEN CODE. Bis zum 15.11.2026 las er Quelltext und
+ * blieb gruen, wenn das Verhalten kaputt war (stre-T-108, Nachfolger von
+ * stre-T-017). Jetzt laedt er `item-sheet-extender.mjs` und
+ * `codex2/item-companion.mjs` mit der Foundry-Attrappe
+ * (`tools/lib/foundry-attrappe.mjs`), meldet die Haken an und feuert sie mit
+ * gestellten Blaettern. Jede Probe ist im Sabotagelaeufer
+ * (`tools/stream-sabotagen.mjs`, Satz `blatt`) bewacht.
  *
- * Nach dem Vorbild von `scripts/stream/stream-bilder.test.mjs`, das dieselbe
- * Frage fuer die fuenf Bildflaechen stellt.
+ * WAS HIER BEWUSST FEHLT, weil `stream-beute.test.mjs` es schon bewacht: dass
+ * `_inject` an einem Blatt mit `document` bis zur Vorlage kommt und dass die
+ * Vorlage den fertigen Kontext mit den Kartenadressen bekommt. Die Stubs fuer
+ * `HTMLElement` und `renderTemplate` haben dieselbe Form wie dort.
  *
  * Lauf:  node scripts/loot/item-sheet-extender.test.mjs
  */
 
-import { readFileSync } from "node:fs"
-import { fileURLToPath } from "node:url"
-import { dirname, join } from "node:path"
+import { pruefstand, installiereFoundry, haken } from "../../tools/lib/foundry-attrappe.mjs"
 
-const HIER = dirname(fileURLToPath(import.meta.url))
-const QUELLE = readFileSync(join(HIER, "item-sheet-extender.mjs"), "utf8")
-const NACHBAR = readFileSync(
-  join(HIER, "..", "codex2", "item-companion.mjs"), "utf8")
+const p = pruefstand("item-sheet-extender: Hakenname, Riegel und Doppelschutz am echten Code")
+installiereFoundry({ einstellungen: {} })
+globalThis.HTMLElement ??= class {}
 
-let rot = 0
-let gruen = 0
+const { ItemSheetExtender } = await import("./item-sheet-extender.mjs")
 
-function gleich(name, ist, soll) {
-  if (ist === soll) {
-    gruen += 1
-    console.log(`  ok   ${name}`)
-  } else {
-    rot += 1
-    console.log(`  ROT  ${name}`)
-    console.log(`       ist ${JSON.stringify(ist)}, soll ${JSON.stringify(soll)}`)
-  }
+/** Ein gestelltes Blatt fuer den Haken: nur das Dokument zaehlt. */
+const blatt = (feld, documentName) => ({ [feld]: { documentName } })
+
+/** Eine Wurzel, in der die Beneos-Flaeche schon steht oder nicht. */
+function wurzel(flaecheSteht) {
+  return Object.assign(new globalThis.HTMLElement(), {
+    querySelector: (sel) => (flaecheSteht && sel.includes(".beneos-loot-extras[data-beneos-loot]") ? {} : null),
+    querySelectorAll: () => [],
+  })
 }
 
-function wahr(name, bedingung) { gleich(name, !!bedingung, true) }
-
 // ===========================================================================
-console.log("Der Hakenname steht als Konstante und ist der gemessene")
+p.abschnitt("register(): genau ein Haken, und es ist der gemessene")
 
 /*
- * DIE SUCHE SELBST IST EIN SATZ. Findet sie nichts, liefen alle folgenden
- * Pruefungen ueber eine leere Zeichenkette gruen durch, und genau so sieht
- * ein kaputtes Suchmuster aus.
+ * GEZAEHLT WIRD NUR, WAS register() DAZUBRINGT. Schon der Import meldet vier
+ * Haken an (ready, canvasReady, init, canvasReady; gemessen 15.11.2026), die
+ * mit dem Blatt nichts zu tun haben.
  */
-const treffer = QUELLE.match(/^const HAKEN = "(\w+)";$/m)
-wahr("item-sheet-extender.mjs fuehrt eine HAKEN-Konstante", Boolean(treffer))
-
-const HAKEN = treffer?.[1] ?? ""
-gleich("HAKEN ist der gemessene Name", HAKEN, "renderItemSheet5e")
-
-/*
- * UND DIE KONSTANTE WIRD AUCH BENUTZT. Eine richtige Konstante neben einem
- * hartgeschriebenen `Hooks.on("renderItemSheet", ...)` waere dieselbe Luecke
- * wie vorher, nur mit einem beruhigenden Namen daneben. Dieselbe Lehre wie
- * bei `OP-PRJ-120`: eine gepruefte Groesse, die niemand ruft, ist wertlos.
- */
-wahr("register() bindet die Konstante und keinen getippten Namen",
-  /Hooks\.on\(HAKEN,/.test(QUELLE))
-gleich("es gibt keinen zweiten Hooks.on mit einer Zeichenkette",
-  (QUELLE.match(/Hooks\.on\(\s*"/g) || []).length, 0)
-gleich("und genau einen Hooks.on ueberhaupt",
-  (QUELLE.match(/Hooks\.on\(/g) || []).length, 1)
-
-// ===========================================================================
-console.log("\nDie stummen Namen, und sie sind der Inhalt dieses Satzes")
+haken.liste.length = 0
+ItemSheetExtender.register()
+const angemeldet = haken.namen()
+p.gleich("register() meldet genau einen Haken an", angemeldet.length, 1)
+p.gleich("und er heisst renderItemSheet5e", angemeldet[0], "renderItemSheet5e")
+const HAKEN_IST = angemeldet[0]
 
 /*
- * `renderItemSheet` ist der Name aus Fassung 12 und stand bis zum 2026-11-09
- * genau hier. `renderItemSheetV2` ist der Name, den `renderActorSheetV2`
- * naheliegend macht, und er feuert bei dnd5e 5.3.3 ebenfalls nicht, weil
+ * DIE ZWEI-WERTE-PROBE AM NAMEN. Ein Item-Blatt auf dem gemessenen Namen ruft
+ * `_inject`, dasselbe Blatt auf einem der stummen oder zu breiten Namen nicht.
+ *
+ * Die stummen Namen: `renderItemSheet` ist Fassung 12 und stand bis zum
+ * 2026-11-09 hier. `renderItemSheetV2` feuert bei dnd5e 5.3.3 nicht, weil
  * `ItemSheet5e` nicht von `ItemSheetV2` erbt. `renderActorSheet` und
- * `renderActorSheetV2` sind das falsche Dokument.
+ * `renderJournalSheet` sind das falsche Dokument.
+ *
+ * Die zu breiten Namen: Foundry V13 laesst alle Eltern-Haken der
+ * Klassenkette feuern. Ein Haken auf `renderDocumentSheetV2` oder
+ * `renderApplicationV2` riefe `_inject()` mehrfach je Render.
  */
-for (const stumm of ["renderItemSheet", "renderItemSheetV2",
-                     "renderActorSheet", "renderJournalSheet"]) {
-  gleich(`der stumme Name ${stumm} steht NICHT in der Datei`,
-    (QUELLE.match(new RegExp(`"${stumm}"`, "g")) || []).length, 0)
+const echtesInject = ItemSheetExtender._inject
+const gerufen = []
+ItemSheetExtender._inject = (sheet, root) => { gerufen.push({ sheet, root }) }
+
+/*
+ * DER SPION ZEICHNET AUCH DIE ARGUMENTE AUF. Ein Haken, der `_inject` ruft,
+ * aber die Wurzel nicht weitergibt, liesse `_inject` sofort aussteigen: die
+ * Flaeche erschiene nie, mit derselben Kundenwirkung wie OP-PRJ-216
+ * (Kaltdurchsicht 15.11.2026).
+ */
+gerufen.length = 0
+const gegebeneWurzel = wurzel(false)
+await haken.rufe("renderItemSheet5e", blatt("document", "Item"), gegebeneWurzel)
+p.gleich("ein Item-Blatt auf renderItemSheet5e ruft _inject", gerufen.length, 1)
+p.gleich("und gibt die Wurzel des Blattes weiter", gerufen[0]?.root === gegebeneWurzel, true)
+
+for (const name of ["renderItemSheet", "renderItemSheetV2", "renderActorSheet", "renderJournalSheet",
+                    "renderDocumentSheetV2", "renderApplicationV2", "renderHandlebarsApplication",
+                    "renderDocumentSheet5e"]) {
+  gerufen.length = 0
+  await haken.rufe(name, blatt("document", "Item"), wurzel(false))
+  p.gleich(`dasselbe Blatt auf ${name} ruft _inject nicht`, gerufen.length, 0)
 }
 
+// ===========================================================================
+p.abschnitt("Der Riegel am Haken laesst nur Item-Dokumente durch")
+
 /*
- * UND DIE ZU BREITEN NAMEN. Foundry V13 laesst alle Eltern-Haken der
- * Klassenkette feuern. `renderDocumentSheetV2` traegt Item, Actor UND
- * Journal, `renderApplicationV2` traegt jedes Fenster. Ein Haken darauf
- * riefe `_inject()` mehrfach je Render; der Doppelschutz faengt das, aber
- * dreimal zu rechnen, um zweimal nichts zu tun, ist kein Entwurf.
+ * Der Haken traegt nur Item-Blaetter, aber die Abfrage haelt die Funktion
+ * unabhaengig vom Namen darueber. Das Dokument kommt aus `document`, `object`
+ * oder `item`, je nach Bauart des Blattes.
  */
-for (const zuBreit of ["renderDocumentSheetV2", "renderApplicationV2",
-                       "renderHandlebarsApplication", "renderDocumentSheet5e"]) {
-  gleich(`${zuBreit} steht nicht in der Datei, es doppelte den Lauf`,
-    (QUELLE.match(new RegExp(`"${zuBreit}"`, "g")) || []).length, 0)
+gerufen.length = 0
+await haken.rufe(HAKEN_IST, blatt("document", "Actor"), wurzel(false))
+p.gleich("ein Actor-Blatt ruft _inject nicht", gerufen.length, 0)
+
+gerufen.length = 0
+await haken.rufe(HAKEN_IST, blatt("object", "Item"), wurzel(false))
+p.gleich("ein Blatt, das sein Item unter object fuehrt, ruft _inject", gerufen.length, 1)
+
+gerufen.length = 0
+await haken.rufe(HAKEN_IST, blatt("item", "Item"), wurzel(false))
+p.gleich("ein Blatt, das sein Item unter item fuehrt, ruft _inject", gerufen.length, 1)
+
+/*
+ * EIN WURF WIRD GEFANGEN, ABER NUR EIN SYNCHRONER. `_inject` ist `async` und
+ * wird im Haken ohne `await` gerufen. Ein Fehler im echten `_inject` wird zu
+ * einer abgelehnten Zusage, und die faengt das `try/catch` im Haken NICHT.
+ * Diese Probe haelt nur fest, was der Riegel heute wirklich leistet; die
+ * Luecke selbst steht im Bericht zu stre-T-108 und nicht hier im Code.
+ */
+const echteWarnung = console.warn
+const warnungen = []
+console.warn = (...a) => { warnungen.push(a.map(String).join(" ")) }
+ItemSheetExtender._inject = () => { throw new Error("Pruefsatz wirft in _inject") }
+let durchgeschlagen = false
+try {
+  await haken.rufe(HAKEN_IST, blatt("document", "Item"), wurzel(false))
+} catch {
+  durchgeschlagen = true
+}
+console.warn = echteWarnung
+p.gleich("ein synchroner Wurf in _inject wird im Haken gefangen", durchgeschlagen, false)
+p.gleich("und als Warnung gemeldet", warnungen.filter((w) => w.includes("ItemSheetExtender inject failed")).length, 1)
+
+ItemSheetExtender._inject = echtesInject
+
+// ===========================================================================
+p.abschnitt("_inject(): Dokumentaufloesung und Doppelschutz")
+
+/*
+ * Der Kontext wird hier gestellt: wie er entsteht, prueft stream-beute. Die
+ * Vorlage schreibt mit und haelt an, wie dort.
+ */
+const echterKontext = ItemSheetExtender._buildContext
+ItemSheetExtender._buildContext = async () => ({ gestellt: true })
+const VORLAGE_HALT = "Pruefsatz haelt an der Vorlage an"
+const vorlagen = []
+foundry.applications.handlebars = {
+  "renderTemplate": async (_pfad, ctx) => { vorlagen.push(ctx); throw new Error(VORLAGE_HALT) },
 }
 
-// ===========================================================================
-console.log("\nDer Nachbar traegt denselben Namen, und das ist die Gegenprobe")
+const mitBeute = { documentName: "Item", getFlag: (scope, key) => (scope === "beneos-module" && key === "loot" ? { render: {} } : undefined) }
+const ohneBeute = { documentName: "Item", getFlag: () => undefined }
+
+/** `_inject` einmal fahren und zaehlen, wie viele Vorlagen entstanden. */
+async function vorlagenBei(sheet, root) {
+  vorlagen.length = 0
+  try {
+    await ItemSheetExtender._inject(sheet, root)
+  } catch (e) {
+    if (e?.message !== VORLAGE_HALT) throw e
+  }
+  return vorlagen.length
+}
+
+p.gleich("ein Item mit Beute-Vermerk und leerer Wurzel rendert genau eine Vorlage",
+  await vorlagenBei({ document: mitBeute }, wurzel(false)), 1)
 
 /*
- * WARUM DER NACHBAR MITGEPRUEFT WIRD. `item-companion.mjs` hing von Anfang
- * an am richtigen Namen und traegt die Begruendung im Kommentar. Er ist
- * damit die unabhaengige Quelle fuer die Zahl oben: stimmt der Name in
- * dieser Datei mit dem des Nachbarn ueberein, ist er nicht aus meinem
- * Gedaechtnis, sondern aus einem zweiten Bestand.
- *
- * WAS DAS NICHT BEWEIST: dass der Name richtig IST. Wenn dnd5e ihn eines
- * Tages umbenennt, sind beide Dateien gleich falsch, und dieser Satz bleibt
- * gruen. Dagegen hilft nur ein Lauf im echten Foundry.
+ * DER DOPPELSCHUTZ. Mit einem Namen statt dreien feuert der Haken einmal je
+ * Render. Der Schutz ist damit die Linie gegen den zweiten Render desselben
+ * Blattes, den Foundry von sich aus faehrt.
  */
-const nachbarListe = NACHBAR.match(/const ATTACH_HOOKS = \[([^\]]*)\]/)
-wahr("item-companion.mjs fuehrt eine ATTACH_HOOKS-Liste",
-  Boolean(nachbarListe))
-const nachbarNamen = [...(nachbarListe?.[1] ?? "")
-  .matchAll(/"(\w+)"/g)].map((m) => m[1])
-gleich("der Nachbar nennt genau einen Namen", nachbarNamen.length, 1)
-gleich("und es ist derselbe wie hier", nachbarNamen[0], HAKEN)
-
-// ===========================================================================
-console.log("\nDie Dokumentaufloesung kennt `document`, sonst aendert der Name nichts")
+p.gleich("steht die Flaeche schon in der Wurzel, entsteht keine zweite Vorlage",
+  await vorlagenBei({ document: mitBeute }, wurzel(true)), 0)
 
 /*
- * DER TEIL, DEN DER HAKENNAME ALLEIN NICHT LOEST.
- *
- * `_inject()` holte das Item mit `sheet?.item ?? sheet?.object`. Ein
- * ApplicationV2-Blatt fuehrt sein Dokument unter `document`, und `item` kann
- * fehlen. Waere nur der Haken gezogen worden, haette `_inject()` gefeuert und
- * waere in der zweiten Zeile ausgestiegen: dieselbe leere Flaeche, nur eine
- * Ebene tiefer. **Ein Hakenname, der feuert, ist nicht dasselbe wie eine
- * Flaeche, die erscheint.**
- *
- * Geprueft wird am Rumpf von `_inject` und nicht an der ganzen Datei, denn
- * die Zeichenfolge steht auch im Kommentar darueber.
+ * `document` STEHT VORNE. Ein ApplicationV2-Blatt fuehrt sein Dokument unter
+ * `document`, und `item` kann fehlen oder etwas anderes tragen. Hier traegt
+ * `document` den Beute-Vermerk und `item` keinen: nur wer `document` zuerst
+ * liest, rendert.
  */
-const rumpf = QUELLE.match(
-  /static async _inject\([^)]*\)\s*\{([\s\S]*?)\n    const loot/)
-wahr("_inject ist lesbar", Boolean(rumpf))
-wahr("es liest `document` zuerst",
-  /const item = sheet\?\.document \?\? /.test(rumpf?.[1] ?? ""))
-wahr("und steigt ohne Dokument aus",
-  /if \(!item\) return;/.test(rumpf?.[1] ?? ""))
+p.gleich("document wird vor item gelesen",
+  await vorlagenBei({ document: mitBeute, item: ohneBeute }, wurzel(false)), 1)
+
+p.gleich("ein Item ohne Beute-Vermerk rendert nichts",
+  await vorlagenBei({ document: ohneBeute }, wurzel(false)), 0)
 
 /*
- * Der Haken filtert zusaetzlich auf Items. Die Abfrage kostet nichts und
- * haelt die Funktion unabhaengig vom Namen darueber; derselbe Riegel steht
- * beim Nachbarn.
+ * ZWEI RIEGEL HALTEN DIESEN FALL. `if (!item) return;` wirkt genau wie die
+ * Abfrage `if (!loot) return;`, denn `getLootFlags` liefert fuer ein fehlendes
+ * Dokument `null`. Eine Sabotage an nur einem der zwei bleibt hier unsichtbar;
+ * der Sabotagelaeufer nimmt deshalb beide zugleich weg.
  */
-wahr("der Haken laesst nur Item-Dokumente durch",
-  /doc\?\.documentName !== "Item"/.test(QUELLE))
-/*
- * DER NACHBAR TRAEGT DEN RIEGEL ZWEIMAL, einmal am Anhaengen und einmal am
- * Abhaengen, und das wird GEZAEHLT und nicht getestet.
- *
- * Beim Sabotagelauf am 2026-11-09 ist genau hier eine Sabotage
- * durchgerutscht: nimmt man dem Nachbarn den Riegel am ANHAENGEN, bleibt
- * der am Abhaengen stehen, und ein `.test()` findet ihn und bleibt gruen.
- * **Ein Vorkommen beweist nichts, wenn es mehrere gibt.** Dieselbe Lehre
- * wie bei `OP-PRJ-172`, dort traf ein Sabotagemuster die falsche von vier
- * gleichlautenden Zeilen.
- *
- * WARUM FREMDER CODE HIER UEBERHAUPT GEPRUEFT WIRD, und es ist kein
- * Beifang: der Nachbar ist die unabhaengige Quelle fuer den Hakennamen
- * oben. Haelt seine Bauart nicht mehr, taugt er als Quelle nicht mehr, und
- * dann soll dieser Satz roeten, damit jemand hinsieht.
- */
-gleich("der Nachbar riegelt an beiden Haken auf Item",
-  (NACHBAR.match(/doc\?\.documentName !== "Item"/g) || []).length, 2)
+p.gleich("ein Blatt ohne Dokument rendert nichts", await vorlagenBei({}, wurzel(false)), 0)
+
+ItemSheetExtender._buildContext = echterKontext
 
 // ===========================================================================
-console.log("\nDer Doppelschutz bleibt, er ist jetzt die zweite Linie")
+p.abschnitt("Der Nachbar traegt denselben Namen, und das ist die Gegenprobe")
 
 /*
- * Mit einem Namen statt dreien feuert der Haken einmal je Render. Der
- * Doppelschutz ist damit nicht ueberfluessig, sondern die Linie gegen den
- * zweiten Render desselben Blattes, den Foundry von sich aus faehrt.
+ * WARUM DER NACHBAR MITGEPRUEFT WIRD. `item-companion.mjs` hing von Anfang an
+ * am richtigen Namen und ist damit die zweite, unabhaengige Quelle fuer den
+ * Namen oben. Er wird ERST JETZT geladen, damit seine Haken die Zaehlung oben
+ * nicht verfaelschen, und gemessen wird nur, was er dazubringt.
+ *
+ * WAS DAS NICHT BEWEIST: dass der Name richtig IST. Benennt dnd5e ihn eines
+ * Tages um, sind beide Dateien gleich falsch, und dieser Satz bleibt gruen.
  */
-wahr("_inject bricht ab, wenn die Flaeche schon steht",
-  /\.beneos-loot-extras\[data-beneos-loot\]/.test(QUELLE))
+haken.liste.length = 0
+const { ItemCompanion } = await import("../codex2/item-companion.mjs")
+const nachbar = haken.namen()
+p.gleich("der Nachbar haengt sich an denselben Namen wie dieses Blatt",
+  nachbar.filter((n) => n.startsWith("render")).join(","), HAKEN_IST)
+p.gleich("und haengt sich an closeItemSheet5e ab",
+  nachbar.filter((n) => n.startsWith("close")).join(","), "closeItemSheet5e")
 
-// ===========================================================================
-console.log(`\n  bestanden: ${gruen}`)
-console.log(`  rot:       ${rot}`)
+/*
+ * DER NACHBAR TRAEGT DEN RIEGEL ZWEIMAL, am Anhaengen und am Abhaengen, und
+ * jeder wird einzeln gefahren. Beim Sabotagelauf am 2026-11-09 rutschte genau
+ * hier eine Sabotage durch, weil eine Textprobe den zweiten Riegel fand,
+ * nachdem der erste fehlte. Die Spione sind `async`, weil der Haken `.catch`
+ * auf das Ergebnis von `attach` ruft. Vor jedem Aufruf werden die Listen
+ * geleert, damit die Item-Probe nicht vom Rest der Actor-Probe lebt, und der
+ * Spion zeichnet das HTML auf, ohne das der Begleiter ins Leere mountet.
+ */
+const angehaengt = []
+const abgehaengt = []
+ItemCompanion.attach = async (app, html) => { angehaengt.push({ app, html }) }
+ItemCompanion.detach = (app) => { abgehaengt.push(app) }
+
+const blattHtml = wurzel(false)
+angehaengt.length = 0
+await haken.rufe("renderItemSheet5e", blatt("document", "Actor"), blattHtml)
+p.gleich("ein Actor-Blatt haengt den Begleiter nicht an", angehaengt.length, 0)
+angehaengt.length = 0
+await haken.rufe("renderItemSheet5e", blatt("document", "Item"), blattHtml)
+p.gleich("ein Item-Blatt haengt ihn an", angehaengt.length, 1)
+p.gleich("und gibt ihm das HTML des Blattes", angehaengt[0]?.html === blattHtml, true)
+
+abgehaengt.length = 0
+await haken.rufe("closeItemSheet5e", blatt("document", "Actor"))
+p.gleich("ein Actor-Blatt haengt den Begleiter nicht ab", abgehaengt.length, 0)
+abgehaengt.length = 0
+await haken.rufe("closeItemSheet5e", blatt("document", "Item"))
+p.gleich("ein Item-Blatt haengt ihn ab", abgehaengt.length, 1)
 
 /*
  * NICHT PRUEFBAR, UND ZWAR AN DIESEM SATZ DAUERHAFT:
  *
- * - DASS DER HAKEN FEUERT. Dieser Satz liest Quelltext. Die Zahl 0 gegen 1
- *   stammt aus einer Messung im laufenden Foundry am 2026-11-08 und ist hier
- *   nicht nachgefahren. Der Feldtest ist `TC-PRJ-STR-308`.
- * - DASS DIE FLAECHE ERSCHEINT. `_inject()` baut DOM. Ob die Vorlage traegt,
- *   ob der Einfuegepunkt im Blatt von dnd5e 5.3.3 wirklich existiert und ob
- *   `.beneos-loot-extras` am Ende sichtbar ist, entscheidet ein Browser.
- * - OB DER NAME RICHTIG BLEIBT. Benennt dnd5e die Klasse um, sind diese
- *   Datei und ihr Nachbar gleich falsch, und dieser Satz bleibt gruen. Die
- *   Nachbarpruefung zeigt Uebereinstimmung, nicht Richtigkeit.
+ * - DASS DER HAKEN IM ECHTEN FOUNDRY FEUERT. Die Zahl 0 gegen 1 stammt aus
+ *   einer Messung im laufenden Foundry am 2026-11-08. Hier feuert die
+ *   Attrappe, was der Satz ihr sagt. Der Feldtest ist `TC-PRJ-STR-308`.
+ * - DASS DIE FLAECHE ERSCHEINT. Ob der Einfuegepunkt im Blatt von dnd5e 5.3.3
+ *   existiert und `.beneos-loot-extras` sichtbar ist, entscheidet ein Browser.
+ * - OB DER NAME RICHTIG BLEIBT. Die Nachbarprobe zeigt Uebereinstimmung, nicht
+ *   Richtigkeit.
+ * - EIN FEHLER IM ECHTEN, ASYNCHRONEN `_inject`. Er wird vom Haken nicht
+ *   gefangen (siehe oben) und ist deshalb hier nicht als Schutz festgehalten.
  */
 
-process.exit(rot ? 1 : 0)
+p.ende()
