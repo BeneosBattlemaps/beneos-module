@@ -55,7 +55,7 @@ const zweiTakte = async () => {
   await new Promise((r) => setTimeout(r, 0))
   await new Promise((r) => setTimeout(r, 0))
 }
-async function asyncLauf(inject) {
+async function asyncLauf(inject, hakenName = HAKEN) {
   await zweiTakte()
   ActorSetBonusTab._inject = async (...a) => { gerufen++; letzteArgs = a; return inject(...a) }
   gerufen = 0
@@ -66,7 +66,7 @@ async function asyncLauf(inject) {
   const gegebeneWurzel = wurzel()
   console.warn = (...a) => { warnungen.push(a.map(String).join(" ")) }
   try {
-    await haken.rufe(HAKEN, gegebenesBlatt, gegebeneWurzel)
+    await haken.rufe(hakenName, gegebenesBlatt, gegebeneWurzel)
     await zweiTakte()
   } finally {
     console.warn = echteWarnung
@@ -88,7 +88,6 @@ p.gleich("der Haken ruft _inject", wirft.gerufen, 1)
 p.gleich("und gibt Blatt und Wurzel des Blattes weiter", wirft.weitergegeben, true)
 p.gleich("ein Wurf im async _inject wird keine unbehandelte Ablehnung", wirft.unbehandelt, 0)
 p.gleich("ein Wurf im async _inject wird genau einmal als Warnung gemeldet", wirft.alle === 1 && wirft.gemeldet === 1, true)
-
 p.gleich("und die Warnung nennt den Fehler", wirft.erklaert, true)
 
 const heil = await asyncLauf(async () => {})
@@ -99,12 +98,16 @@ p.gleich("und hinterlaesst keine unbehandelte Ablehnung", heil.unbehandelt, 0)
 /*
  * DIE ZWEI ANDEREN HAKENNAMEN tragen denselben Ruf: renderNPCActorSheet fuer
  * Monster und NPC (dnd5e 5.3), renderActorSheet fuer das alte V1-Blatt.
+ * Geprueft wird die Form des Rufs, nicht nur, dass er stattfindet: ein
+ * eigener Handler ohne .catch oder ohne Argumente braechte dort denselben
+ * stillen Ausfall zurueck (Kaltdurchsicht 24fa8a31).
  */
 for (const name of ["renderNPCActorSheet", "renderActorSheet"]) {
-  gerufen = 0
-  ActorSetBonusTab._inject = async () => { gerufen++ }
-  await haken.rufe(name, blatt(), wurzel())
-  p.gleich(`auch ${name} ruft _inject`, gerufen, 1)
+  const w = await asyncLauf(async () => { throw new Error("Pruefsatz wirft im async _inject") }, name)
+  p.gleich(`auch ${name} ruft _inject`, w.gerufen, 1)
+  p.gleich(`${name} gibt Blatt und Wurzel weiter`, w.weitergegeben, true)
+  p.gleich(`${name}: der Wurf wird eine Warnung mit Ursache`,
+    w.unbehandelt === 0 && w.alle === 1 && w.gemeldet === 1 && w.erklaert, true)
 }
 process.off("unhandledRejection", zaehleUnbehandelt)
 
