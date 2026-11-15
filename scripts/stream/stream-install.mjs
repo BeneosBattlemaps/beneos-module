@@ -39,7 +39,7 @@
  * appears in no manifest, so it cannot be rewritten by accident.
  */
 
-import { assetUrl, downloadMode, pinStillsEnabled, streamBase, streamEnabled, streamKey } from "./stream-settings.mjs"
+import { assetUrl, downloadMode, pinStillsEnabled, schluesselfreiAdresse, streamBase, streamEnabled, streamKey } from "./stream-settings.mjs"
 // Die Gegenrichtung gibt es nicht: stream-fetch kennt weder diese Datei noch
 // `assetUrl`, deshalb kann kein Ladekreis entstehen.
 import { merkePruefsummen } from "./stream-fetch.mjs"
@@ -426,14 +426,21 @@ export function applyStreamAddresses(value, streamTargets, feld = null) {
       return value
     }
 
+    /*
+     * INS DOKUMENT GEHT DIE SCHLUESSELFREIE FORM (stre-T-102). `streamTargets`
+     * haelt die Toradresse, weil der Vorwaermlauf (`streamUrlsOf`) damit
+     * abruft; im Dokument stuende sie samt Schluessel in jedem Export. Den
+     * Schluessel setzt zur Anzeige `stream-leinwand.mjs` beim Vorbereiten ein,
+     * in Oberflaechen `blobFuer` in `stream-bilder.mjs`.
+     */
     const target = gateAdresseFuer(value, streamTargets)
-    if (target) return target
+    if (target) return schluesselfreiAdresse(target)
 
     // Der Vorfilter haelt die Regex von den zehntausenden gewoehnlichen
     // Feldwerten fern, die nie HTML sind.
     if (!value.includes("<") || !value.includes("src=")) return value
     return value.replace(HTML_SRC_RE, (treffer, anfuehrung, src) => {
-      const ziel = gateAdresseFuer(src, streamTargets)
+      const ziel = schluesselfreiAdresse(gateAdresseFuer(src, streamTargets))
       if (!ziel) return treffer
       // Nur das Anfuehrungspaar tauschen, damit Attribute davor und dahinter
       // unberuehrt bleiben. Technik uebernommen aus _rewriteHtml,

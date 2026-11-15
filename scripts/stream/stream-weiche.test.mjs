@@ -49,7 +49,7 @@ import { installiereFoundry, netz } from "../../tools/lib/foundry-attrappe.mjs"
  * `assetUrl` GEBILDET statt geschrieben. Eine geschriebene Adresse prueft
  * meine Tippgenauigkeit.
  */
-const { SETTING, assetUrl, INSTALL_MODE } = await import("./stream-settings.mjs")
+const { SETTING, assetUrl, platzhalterAdresse, INSTALL_MODE } = await import("./stream-settings.mjs")
 
 const GATE = "https://stream.beneos-battlemaps.com"
 const SCHLUESSEL = "pk_pruefsatz"
@@ -607,8 +607,10 @@ console.log("\napplyStreamAddresses(): ein Listenbild bleibt oertlich, OP-PRJ-14
    * waere der Ausbau des Streamings: `prototypeToken.texture.src` ist der
    * Leinwandweg und geht nach Teil 3 A des Bauplans ausdruecklich ans Tor.
    */
-  gleich("das Leinwandbild in `texture.src` geht ans Tor",
-    akteur.prototypeToken.texture.src, assetUrl(REL, VAR, LEINWAND))
+  // Seit stre-T-102 in der schluesselfreien Form; den Schluessel setzt erst
+  // `stream-leinwand.mjs` beim Vorbereiten ein.
+  gleich("das Leinwandbild in `texture.src` geht ans Tor, schluesselfrei",
+    akteur.prototypeToken.texture.src, platzhalterAdresse(REL, VAR, LEINWAND))
 
   // Die Meldung kommt, und das ist der halbe Zweck: ein stiller Riegel
   // verdeckt den Fehler im Manifest fuer immer.
@@ -645,7 +647,14 @@ console.log("\napplyStreamAddresses(): die Sperre greift nur am Feldnamen")
 {
   const PFAD = "beneos_assets/cloud/items/pruef/pruef-front.webp"
   const ziele = new Map([[PFAD, assetUrl(REL, VAR, PFAD)]])
-  const TOR = assetUrl(REL, VAR, PFAD)
+  /*
+   * SEIT stre-T-102 GEHT DIE SCHLUESSELFREIE FORM INS DOKUMENT. `streamTargets`
+   * haelt weiter die Toradresse, weil der Vorwaermlauf damit abruft; im
+   * Dokument stuende der Schluessel in jedem Export.
+   */
+  const TOR = platzhalterAdresse(REL, VAR, PFAD)
+  wahr("Gegenprobe: das Ziel in der Liste traegt den Schluessel",
+    ziele.get(PFAD).includes(SCHLUESSEL))
 
   warnungen.length = 0
   // Vier Felder, die ans Tor gehen MUESSEN. Ohne diese Zeilen waere nicht
@@ -664,6 +673,8 @@ console.log("\napplyStreamAddresses(): die Sperre greift nur am Feldnamen")
   gleich("und die Adresse im eingebetteten HTML auch",
     doku.pages[0].text.content, `<img src="${TOR}">`)
   gleich("dabei meldet sich die Sperre nicht", warnungen.length, 0)
+  wahr("und im ganzen Dokument steht kein Streamschluessel",
+    !JSON.stringify(doku).includes(SCHLUESSEL), JSON.stringify(doku))
 
   /*
    * EIN `img`-FELD MIT HTML DARIN ist der Fall, bei dem die Sperre zu viel
@@ -724,7 +735,8 @@ console.log("\napplyStreamAddresses(): die Sperre gilt img und keinem der ueblic
    */
   const PFAD = "beneos_assets/cloud/items/pruef/pruef-front.webp"
   const ziele = new Map([[PFAD, assetUrl(REL, VAR, PFAD)]])
-  const TOR = assetUrl(REL, VAR, PFAD)
+  // Was ins Dokument geht, ist seit stre-T-102 die schluesselfreie Form.
+  const TOR = platzhalterAdresse(REL, VAR, PFAD)
   const ANS_TOR = ["src", "thumb", "path", "texture", "background", "foreground", "overlay",
                    "sound", "video", "file", "icon", "avatar", "image", "pruefsatzFeld"]
 

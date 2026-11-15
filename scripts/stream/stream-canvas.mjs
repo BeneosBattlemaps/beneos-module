@@ -27,7 +27,7 @@
  * with a budget of its own. Losing it costs motion and nothing else.
  */
 
-import { drawBudget, maxConcurrent, streamEnabled } from "./stream-settings.mjs"
+import { drawBudget, maxConcurrent, streamEnabled, leinwandAdresse } from "./stream-settings.mjs"
 import { abortAll, inFlightCount, laufendeAbrufe } from "./stream-fetch.mjs"
 import { reportFailure } from "./stream-report.mjs"
 
@@ -42,7 +42,10 @@ export function videoTilesOf(scene) {
   const out = []
   for (const tile of scene?.tiles ?? []) {
     const flag = tile?.flags?.[FLAG_SCOPE]?.[FLAG_KEY]
-    if (flag?.role === "stream-video" && flag.video) out.push({ tile, url: flag.video })
+    // Die Flagge ist kein vorbereitetes Feld und traegt seit stre-T-102 die
+    // schluesselfreie Form. Geladen wird mit dem Schluessel von heute; die
+    // Flagge selbst bleibt unberuehrt, denn sie wird gespeichert.
+    if (flag?.role === "stream-video" && flag.video) out.push({ tile, url: leinwandAdresse(flag.video) })
   }
   return out
 }

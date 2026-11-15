@@ -25,6 +25,7 @@ import { installStreamOnline, onlineStatus, streamState, isOffline, hasStreamedC
 import { installStreamIndicator } from "./stream-indicator.mjs"
 import { installStreamBilder, bilderBlobStand } from "./stream-bilder.mjs"
 import { installStreamSceneUi } from "./stream-scene-ui.mjs"
+import { installStreamLeinwand } from "./stream-leinwand.mjs"
 import { registerOfflineWindow, BeneosOfflineWindow } from "./stream-offline-window.mjs"
 import { explainOnce } from "./stream-intro.mjs"
 import { loadStreamManifest, buildStreamPack, applyStreamAddresses, streamUrlsOf, releaseFromPackage, listReleases } from "./stream-install.mjs"
@@ -90,6 +91,10 @@ Hooks.once("init", () => {
     // im Stapel. Paket `OP-CLD-199`.
     installStreamFetch()
     installStreamOnline()
+    // Schluesselfrei auf der Platte, mit Schluessel im Arbeitsspeicher
+    // (stre-T-102). Hier im `init`, denn die Dokumente werden vor `ready`
+    // vorbereitet, und die erste Szene ist dann schon gezeichnet.
+    installStreamLeinwand()
     installStreamCanvas()
     installStreamIndicator()
     // Bilder in Oberflaechen. Ein `<img>` beruehrt `window.fetch` nie, also

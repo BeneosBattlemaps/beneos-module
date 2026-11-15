@@ -84,7 +84,7 @@
  * danebenzustellen.
  */
 
-import { assetUrl, KREATUR_PRAEFIX, streamKey, zerlegeAdresse } from "./stream-settings.mjs"
+import { assetUrl, KREATUR_PRAEFIX, leinwandAdresse, platzhalterAdresse, streamKey, zerlegeAdresse } from "./stream-settings.mjs"
 import { headCheck } from "../beneos-asset-watcher.js"
 // Seit 2026-11-08 geteilt mit `stream-karten.mjs`. Die Begruendung steht im
 // Kopf von `stream-merker.mjs`: zwei Kopien gehen nicht zugleich mit.
@@ -395,7 +395,10 @@ export async function ansicht(pfad, stil) {
     if (!eintrag || !eintrag.pfad) return { zustand: false, src: null, sha256: null }
     return {
       zustand: true,
-      src: assetUrl(wer.release, "", eintrag.pfad),
+      // Schluesselfrei seit stre-T-102: jeder Aufrufer schreibt diese Adresse
+      // in ein Token- oder Akteurdokument. Den Schluessel setzt zur Anzeige
+      // `stream-leinwand.mjs` ein, zum Pruefen `ansichtInhaltOk`.
+      src: platzhalterAdresse(wer.release, "", eintrag.pfad),
       // Seit dem 07.11.2026 traegt die Liste je Ansicht eine `sha256`. Steht
       // sie nicht drin, ist das Feld `null`, und das ist der Normalfall,
       // solange der Volldurchgang die Listen nicht neu geschrieben hat.
@@ -523,7 +526,9 @@ export async function ansichtInhaltOk(src, soll) {
         // Durch den gepatchten Abruf, mit Absicht: die Datei kommt dann aus
         // dem Vorrat, wenn sie dort liegt, und der Abruf kostet nichts
         // zweimal. Genau diese Datei wird gleich darauf gezeichnet.
-        const antwort = await fetch(src)
+        // Abgerufen wird mit dem Schluessel von heute; `src` ist seit
+        // stre-T-102 die schluesselfreie Form, die geschrieben wird.
+        const antwort = await fetch(leinwandAdresse(src))
         if (!antwort.ok || antwort.headers.get("x-beneos-denied")
             || antwort.headers.get("x-beneos-offline")) {
           // Kein Recht, kein Netz: das ist keine falsche Datei, sondern keine

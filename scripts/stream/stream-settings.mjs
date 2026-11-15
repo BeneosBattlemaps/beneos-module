@@ -1236,6 +1236,54 @@ export function platzhalterAdresse(release, variant, path, traeger) {
 }
 
 /**
+ * Die Gegenrichtung zu `leinwandAdresse`: aus einer Toradresse die
+ * schluesselfreie Form, die in ein Dokument geschrieben wird (stre-T-102).
+ *
+ * Fuer Schreiber, die eine Toradresse in der Hand halten, weil sie dieselbe
+ * Adresse auch zum Abrufen brauchen (`streamTargets` in `stream-install.mjs`).
+ * Was keine Toradresse in unserer Form ist, kommt unveraendert zurueck, eine
+ * schon schluesselfreie Form ebenso. Eine Anfrage (`?t=...`) gehoert nicht in
+ * ein Dokument und faellt weg, wie bei `zerlegeAdresse`.
+ *
+ * Wie `zerlegeAdresse` prueft sie die FORM und nicht den Host. Die Aufrufer
+ * reichen nur Adressen, die sie selbst mit `assetUrl` gebaut oder aus dem
+ * Manifest des eigenen Tors gelesen haben.
+ */
+export function schluesselfreiAdresse(url) {
+  if (typeof url !== "string" || istPlatzhalter(url)) return url
+  const t = zerlegeAdresse(url)
+  if (!t) return url
+  return platzhalterAdresse(t.release, t.variant, t.pfad, t.traeger) || url
+}
+
+/**
+ * Die Adresse, mit der Leinwand, Audioschicht und Verzeichnislisten arbeiten
+ * koennen (stre-T-102).
+ *
+ * Aus der schluesselfreien Form wird die Toradresse mit dem Schluessel von
+ * heute. Alles andere kommt unveraendert zurueck, und das ist die Haelfte, die
+ * zaehlt: eine alte Toradresse mit Schluessel bleibt zeichengleich, eine fremde
+ * Adresse auch. Eine alte Welt laedt damit genau wie vorher.
+ *
+ * Gebraucht beim VORBEREITEN eines Dokuments (`stream-leinwand.mjs`), nie beim
+ * Schreiben. Was in `_source` steht, bleibt schluesselfrei.
+ *
+ * `?` und `#` fallen weg: gemessen am 15.11.2026 haengt PIXI beim zweiten
+ * Versuch `?cors-retry=<zahl>` an, und in der schluesselfreien Form ist ein
+ * echtes `?` nie Teil des Pfades, weil `adressSegmente` jedes Stueck kodiert.
+ *
+ * Ohne Streaming oder ohne Schluessel bleibt die Form stehen. Eine Toradresse
+ * mit leerem Schluesselstueck waere keine bessere Antwort, nur eine, die am Tor
+ * scheitert statt hier.
+ */
+export function leinwandAdresse(src) {
+  if (!istPlatzhalter(src) || !streamEnabled()) return src
+  const t = zerlegeAdresse(String(src).replace(/[?#].*$/, ""))
+  if (!t) return src
+  return assetUrl(t.release, t.variant, t.pfad, t.traeger) || src
+}
+
+/**
  * Die Toradresse einer geteilten Datei, mit dem Traeger aus bekannten
  * Kartenadressen (T-056, Betreiberentscheid 13.11.2026).
  *

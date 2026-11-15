@@ -69,8 +69,10 @@ const hier = dirname(fileURLToPath(import.meta.url))
 const GATE = "https://gate.beneos.stream"
 const SCHLUESSEL = "pk_pruefsatz"
 const { SETTING } = await import("./stream-settings.mjs")
-installiereFoundry({ einstellungen: { [SETTING.key]: SCHLUESSEL, [SETTING.base]: GATE } })
-const { assetUrl } = await import("./stream-settings.mjs")
+// `SETTING.mode` seit stre-T-102: die Inhaltspruefung holt die schluesselfreie
+// Form ueber `leinwandAdresse`, und die setzt nur bei laufendem Streaming ein.
+installiereFoundry({ einstellungen: { [SETTING.key]: SCHLUESSEL, [SETTING.base]: GATE, [SETTING.mode]: true } })
+const { assetUrl, platzhalterAdresse } = await import("./stream-settings.mjs")
 
 /**
  * `crypto.subtle` gibt es in Node unter `webcrypto`. Fuer die Lage OHNE
@@ -408,7 +410,14 @@ const TOKEN_ADRESSE = assetUrl(RELEASE, "", "000-wolf-1-token.webp")
 
 posen.posenVergessen()
 let a = await posen.ansichtGeprueft(TOKEN_ADRESSE, "topdown")
-gleich("gutes Bild: Adresse kommt heraus", a.src, ADRESSE)
+/*
+ * SEIT stre-T-102 SCHLUESSELFREI: jede Rufstelle schreibt diese Adresse in
+ * ein Dokument. Geprueft wird trotzdem gegen die Datei am Tor, also mit
+ * Schluessel; der Satz "Pruefung sagt true" belegt genau das.
+ */
+const ADRESSE_OHNE = platzhalterAdresse(RELEASE, "", "000-wolf-1-top.webp")
+gleich("gutes Bild: die schluesselfreie Adresse kommt heraus", a.src, ADRESSE_OHNE)
+wahr("und sie traegt keinen Schluessel", !String(a.src).includes(SCHLUESSEL))
 gleich("und die Pruefung sagt true", a.pruefung, true)
 gleich("und der Zustand bleibt true", a.zustand, true)
 
@@ -431,7 +440,7 @@ delete LISTE_OHNE.tokenbilder[1].topdown.sha256
 NETZ.set(LISTE_ADRESSE, { bytes: bytesVon(JSON.stringify(LISTE_OHNE)) })
 posen.posenVergessen()
 a = await posen.ansichtGeprueft(TOKEN_ADRESSE, "topdown")
-gleich("ohne Summe in der Liste: Adresse kommt", a.src, ADRESSE)
+gleich("ohne Summe in der Liste: Adresse kommt", a.src, ADRESSE_OHNE)
 gleich("Pruefung null", a.pruefung, null)
 gleich("Zustand bleibt true", a.zustand, true)
 
@@ -450,7 +459,7 @@ for (const kaputt of ["ja", "A".repeat(64), "a".repeat(63), "a".repeat(65), 42])
   gleich(`Soll-Summe ${JSON.stringify(kaputt).slice(0, 12)} (Laenge ${String(kaputt).length}): es wird nichts geprueft und nichts gemeldet`, gemeldet.length, 0)
   gleich(`Soll-Summe ${JSON.stringify(kaputt).slice(0, 12)} (Laenge ${String(kaputt).length}) faellt auf nicht pruefbar`,
     r.pruefung, null)
-  gleich(`Soll-Summe ${JSON.stringify(kaputt).slice(0, 12)} (Laenge ${String(kaputt).length}): die Adresse kommt trotzdem`, r.src, ADRESSE)
+  gleich(`Soll-Summe ${JSON.stringify(kaputt).slice(0, 12)} (Laenge ${String(kaputt).length}): die Adresse kommt trotzdem`, r.src, ADRESSE_OHNE)
 }
 
 // Eine Ansicht, die die Liste als `null` fuehrt, gibt es nicht. Das ist kein
@@ -537,7 +546,8 @@ abschnitt("Der Stilwechsel (BeneosUtility.toggleTokenStyle) schreibt nur, was di
 frisch(LISTE_MIT)
 stelleToken("t1", TOKEN_ADRESSE)
 await BeneosUtility.toggleTokenStyle("t1")
-gleich("gute Summe: das Token bekommt die Draufsicht", tokenSchrieb().join(), ADRESSE)
+// Schluesselfrei seit stre-T-102: `ansicht()` nennt die Form, die geschrieben wird.
+gleich("gute Summe: das Token bekommt die Draufsicht, schluesselfrei", tokenSchrieb().join(), ADRESSE_OHNE)
 gleich("gute Summe: keine Warnung", warnTexte().length, 0)
 
 frisch(LISTE_FALSCH)
@@ -557,7 +567,7 @@ gleich("Ansicht gibt es nicht: die Warnung ist der Fehlt-Text",
 frisch(LISTE_OHNE)
 stelleToken("t1", TOKEN_ADRESSE)
 await BeneosUtility.toggleTokenStyle("t1")
-gleich("ohne Summe in der Liste: die Draufsicht wird geschrieben", tokenSchrieb().join(), ADRESSE)
+gleich("ohne Summe in der Liste: die Draufsicht wird geschrieben", tokenSchrieb().join(), ADRESSE_OHNE)
 
 // Keine Liste am Tor heisst "nicht geprueft": der Stilwechsel faellt auf den
 // Textersatz von vor dem Umbau zurueck, statt "gibt es nicht" zu melden.
@@ -576,7 +586,7 @@ BeneosUtility.beneosTokens = { "000-wolf-1": { token: TOKEN_ADRESSE, fullId: "00
 frisch(LISTE_MIT)
 stelleToken("t2", ADRESSE)
 await BeneosUtility.forceChangeToken("t2", "000-wolf-1")
-gleich("gute Summe: die Draufsicht der Variante wird geschrieben", tokenSchrieb().join(), ADRESSE)
+gleich("gute Summe: die Draufsicht der Variante wird geschrieben", tokenSchrieb().join(), ADRESSE_OHNE)
 
 frisch(LISTE_FALSCH)
 stelleToken("t2", ADRESSE)
@@ -610,7 +620,7 @@ function stelleWurf() {
 frisch(LISTE_MIT)
 stelleWurf()
 await cloud.drainPendingCanvasDrops("000-wolf")
-gleich("gute Summe: die Figur kommt als Draufsicht", gesetzt.map((g) => `${g.stil}|${g.src}`).join(), `topdown|${ADRESSE}`)
+gleich("gute Summe: die Figur kommt als Draufsicht", gesetzt.map((g) => `${g.stil}|${g.src}`).join(), `topdown|${ADRESSE_OHNE}`)
 
 frisch(LISTE_FALSCH)
 stelleWurf()

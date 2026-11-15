@@ -280,16 +280,17 @@ function _beneosKreaturDateiOk(filename) {
   return /^[A-Za-z0-9._-]+\.webp$/.test(String(filename || ""))
 }
 
-/** Die Toradresse einer Kreaturendatei. Der Releasename ist der Ordnername. */
-function _beneosKreaturAdresse(tokenKey, filename) {
-  return assetUrl(`${KREATUR_PRAEFIX}${tokenKey}`, "", filename)
-}
-
 /**
- * Dieselbe Datei als SCHLUESSELFREIE Adresse, fuer ein Feld, das im
- * Kundendokument stehenbleibt.
+ * Eine Kreaturendatei als SCHLUESSELFREIE Adresse, fuer ein Feld, das im
+ * Kundendokument stehenbleibt. Der Releasename ist der Ordnername.
  *
- * Gebraucht beim Journalbild, und der Unterschied ist der Zweck: ein
+ * Seit stre-T-102 die einzige Form, die der Kreaturen-Installer schreibt:
+ * Journalbild, `prototypeToken.texture.src` und der Eintrag im Tokenspeicher.
+ * Die Form mit Schluessel (`_beneosKreaturAdresse`) ist entfallen; den
+ * Schluessel setzt auf der Leinwand `stream/stream-leinwand.mjs` beim
+ * Vorbereiten des Tokens ein.
+ *
+ * Der Grund ist derselbe wie beim Journalbild: ein
  * Journaldokument wird gelesen, exportiert und weitergegeben. Stuende die
  * Toradresse darin, ginge der Streamschluessel mit, und ein Dritter koennte
  * damit am Tor abrufen. Siehe `OP-PRJ-149` und `OP-PRJ-179`.
@@ -4395,7 +4396,7 @@ export class BeneosCloud {
           actorData.img = `${finalFolder}/${tokenData.tokenImages[i].avatar.filename}`
           const tokenDatei = tokenData.tokenImages[i].token.filename
           actorData.prototypeToken.texture.src = variantStreamt
-            ? _beneosKreaturAdresse(tokenKey, tokenDatei)
+            ? _beneosKreaturPlatzhalter(tokenKey, tokenDatei)
             : `${finalFolder}/${tokenDatei}`
           // Top-Down swap is gated on the asset actually having been uploaded
           // by the loop above. Every token in scope of an account is supposed
@@ -4420,7 +4421,7 @@ export class BeneosCloud {
               // am Tor belassen hat; der Textersatz war eine Annahme darueber,
               // wie sie heisst.
               actorData.prototypeToken.texture.src = variantStreamt
-                ? _beneosKreaturAdresse(tokenKey, topData.filename)
+                ? _beneosKreaturPlatzhalter(tokenKey, topData.filename)
                 : `${finalFolder}/${topData.filename}`
             } else if (installStyle === "topdown" && !topAssetAvailable) {
               // User picked Top-Down as default but the cloud response did
@@ -4543,7 +4544,7 @@ export class BeneosCloud {
                 // re-install.
                 topDown: (topData?.filename)
                   ? (variantStreamt
-                      ? _beneosKreaturAdresse(tokenKey, topData.filename)
+                      ? _beneosKreaturPlatzhalter(tokenKey, topData.filename)
                       : `${finalFolder}/${topData.filename}`)
                   : null,
                 actorId: imported.id,

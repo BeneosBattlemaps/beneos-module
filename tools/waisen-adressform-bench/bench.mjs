@@ -118,7 +118,9 @@ console.log("Die Formunterscheidung, am geschnittenen echten Code gefahren")
   gleich("eine Beuteadresse ist eine Toradresse",
     adressForm(`${B}/l/${K}/beneos_lt_sword/sword-front.webp`), "tor")
   gleich("eine geteilte Adresse ist eine Toradresse",
-    adressForm(`${B}/s/${K}/shared/${"a".repeat(64)}/ui.webp`), "tor")
+    // Sieben Stuecke seit T-056 (Release und Variante des Traegers). Die alte
+    // fuenfteilige Form gilt seitdem als fremd; nachgezogen in stre-T-102.
+    adressForm(`${B}/s/${K}/beneos_bm_0113/4k/shared/${"a".repeat(64)}/ui.webp`), "tor")
   gleich("ein oertlich installierter Pfad ist oertlich",
     adressForm("beneos_assets/cloud/tokens/000-goblin/000-goblin-1-top.webp"),
     "oertlich")

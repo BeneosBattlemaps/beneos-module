@@ -19,7 +19,7 @@
  * tells the truth.
  */
 
-import { streamBase, streamEnabled, streamMode } from "./stream-settings.mjs"
+import { streamBase, streamEnabled, streamMode, leinwandAdresse } from "./stream-settings.mjs"
 
 // Probing while the answer is already known is pointless traffic. These follow
 // the cloud client's own probe loop: start soon, then back off.
@@ -91,7 +91,9 @@ export function offlineGesperrt(src) {
   if (!streamEnabled() || !isOffline()) return false
   const tor = hostVomTor()
   if (!tor) return false
-  return String(src || "").includes(tor)
+  // Die schluesselfreie Form traegt keinen Host (stre-T-102). Sie haengt am
+  // selben Tor und wird deshalb erst in die Toradresse von heute uebersetzt.
+  return String(leinwandAdresse(src) || "").includes(tor)
 }
 
 export function onStreamState(fn) {
@@ -434,23 +436,30 @@ function hostVomTor() {
 export function streamAdressenVon(scene) {
   const host = (() => { try { return new URL(streamBase()).host } catch (_) { return "" } })()
   if (!host) return []
-  const remote = (src) => typeof src === "string" && src.includes(host)
+  /*
+   * SCHLUESSELFREI GILT ALS UNSERE (stre-T-102). `_source` und die Flagge
+   * tragen seit T-102 `beneos://...`, ohne Host. Ohne die Uebersetzung waere
+   * diese Liste fuer jede neu installierte Szene leer, und die Szenenwache wie
+   * die Offline-Zusage saehen eine Szene, die am Tor haengt, als oertlich.
+   * Ausgegeben wird die Toradresse von heute: die Aufrufer holen damit ab.
+   */
+  const remote = (src) => typeof src === "string" && leinwandAdresse(src).includes(host)
   const raus = []
+  const nimm = (s) => { if (remote(s)) raus.push(leinwandAdresse(s)) }
   const stufe = scene?.firstLevel ?? (Array.isArray(scene?.levels) ? scene.levels[0] : null)
   for (const s of [stufe?.background?.src, scene?._source?.background?.src,
                    stufe?.foreground?.src, scene?._source?.foreground]) {
-    if (remote(s)) raus.push(s)
+    nimm(s)
   }
   for (const tile of scene?.tiles ?? []) {
-    if (remote(tile?.texture?.src)) raus.push(tile.texture.src)
-    const v = tile?.flags?.["beneos-module"]?.stream?.video
-    if (remote(v)) raus.push(v)
+    nimm(tile?.texture?.src)
+    nimm(tile?.flags?.["beneos-module"]?.stream?.video)
   }
   // ZULETZT, und das ist keine Geschmacksfrage: `karteZuSzene` zerlegt
   // `adressen[0]`, um Release und Fassung zu bestimmen. Stuenden die Symbole
   // vorn, laege dort ein Pfad aus `map_assets/`, der zu keiner Karte gehoert.
   for (const note of scene?.notes ?? []) {
-    if (remote(note?.texture?.src)) raus.push(note.texture.src)
+    nimm(note?.texture?.src)
   }
   return [...new Set(raus)]
 }
@@ -458,7 +467,8 @@ export function streamAdressenVon(scene) {
 export function hasStreamedContent(scene) {
   const host = (() => { try { return new URL(streamBase()).host } catch (_) { return "" } })()
   if (!host) return false
-  const remote = (src) => typeof src === "string" && src.includes(host)
+  // Schluesselfrei zaehlt mit, Begruendung bei `streamAdressenVon`.
+  const remote = (src) => typeof src === "string" && leinwandAdresse(src).includes(host)
   // Nicht ueber `scene.background`: ab Foundry 14 ist das ein veralteter
   // Zugriffspfad, der bei jedem Lesen warnt und in Version 16 verschwindet.
   // Gemessen auf The Forge 14.365 am 26.08.2026, diese Zeile erzeugte eine der
