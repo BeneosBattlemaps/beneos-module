@@ -32,7 +32,7 @@
  * `VERBOTEN` in `stream-bilder.mjs` (OP-PRJ-177) bleibt unberuehrt.
  */
 
-import { leinwandAdresse, streamEnabled, MODULE_ID, SETTING } from "./stream-settings.mjs"
+import { leinwandAdresse, MODULE_ID, SETTING } from "./stream-settings.mjs"
 
 /**
  * Je Dokumentart die Felder, die eine Adresse tragen, als Punktpfad.
@@ -61,25 +61,46 @@ export const LEINWAND_FELDER = Object.freeze({
  *
  * @returns {number} wie viele Felder umgeschrieben wurden
  */
-export function leinwandFelder(art, doc) {
-  const felder = LEINWAND_FELDER[art]
+export function leinwandFelder(art, doc, felder = LEINWAND_FELDER[art]) {
   if (!felder || !doc || typeof doc !== "object") return 0
   let zahl = 0
   for (const pfad of felder) {
-    const teile = pfad.split(".")
-    const letztes = teile.pop()
-    let ziel = doc
-    for (const t of teile) ziel = ziel?.[t]
-    if (!ziel || typeof ziel !== "object") continue
-    const vorher = ziel[letztes]
-    const nachher = leinwandAdresse(vorher)
-    if (nachher !== vorher) {
-      ziel[letztes] = nachher
-      zahl++
-    }
+    // Je Feld gefangen: ein Feld, das wirft, darf die folgenden nicht mitnehmen.
+    try {
+      const teile = pfad.split(".")
+      const letztes = teile.pop()
+      let ziel = doc
+      for (const t of teile) ziel = ziel?.[t]
+      if (!ziel || typeof ziel !== "object") continue
+      const vorher = ziel[letztes]
+      const nachher = leinwandAdresse(vorher)
+      if (nachher !== vorher) {
+        ziel[letztes] = nachher
+        zahl++
+      }
+    } catch (_) { /* naechstes Feld */ }
   }
   return zahl
 }
+
+/**
+ * Die Felder, die das Schema der Klasse wirklich fuehrt.
+ *
+ * Foundry 14 hat `background` und `foreground` aus dem Szenenschema genommen
+ * und laesst nur veraltete Getter ohne Setter stehen. Gemessen am 15.11.2026 in
+ * `v14Stream` (14.367): jeder Zugriff loggt eine Verfallswarnung, und das
+ * Zuweisen an den Getter wirft. Eine Klasse ohne Schema behaelt alle Felder.
+ */
+function felderImSchema(art, klasse) {
+  const felder = LEINWAND_FELDER[art]
+  const schema = klasse?.schema
+  if (typeof schema?.getField !== "function") return felder
+  return felder.filter((pfad) => !!schema.getField(pfad.split(".")[0]))
+}
+
+/** Die Einstellungen, aus denen `leinwandAdresse` die Toradresse baut. */
+const EINSTELLUNGEN = new Set([SETTING.key, SETTING.base, SETTING.mode].map((s) => `${MODULE_ID}.${s}`))
+let hakenGesetzt = false
 
 /** Markiert einen Prototyp, damit ein zweiter Einbau nicht doppelt wickelt. */
 const MARKE = Symbol.for("beneos.stream.leinwand")
@@ -100,23 +121,28 @@ export function installStreamLeinwand() {
     const proto = klasse?.prototype
     if (!proto || Object.hasOwn(proto, MARKE)) continue
     const vorher = proto.prepareBaseData
+    const felder = felderImSchema(art, klasse)
     Object.defineProperty(proto, MARKE, { value: true })
     proto.prepareBaseData = function beneosLeinwand(...args) {
       const r = vorher?.apply(this, args)
-      try { leinwandFelder(art, this) } catch (_) { /* ein Feld darf die Vorbereitung nicht aufhalten */ }
+      try { leinwandFelder(art, this, felder) } catch (_) { /* ein Feld darf die Vorbereitung nicht aufhalten */ }
       return r
     }
   }
 
   /*
-   * DER SCHLUESSEL KANN SPAETER KOMMEN ODER WECHSELN. Eine Welt, die ihn erst
-   * im `ready` bekommt, hat ihre Dokumente ohne ihn vorbereitet, und nach einer
-   * Rotation tragen die vorbereiteten Felder den alten. Beides heilt ein
-   * erneutes Vorbereiten, und `reset()` tut genau das.
+   * DER SCHLUESSEL KANN SPAETER KOMMEN ODER WECHSELN, und die Basis auch. Eine
+   * Welt, die ihn erst im `ready` bekommt, hat ihre Dokumente ohne ihn
+   * vorbereitet, und nach einer Rotation tragen die vorbereiteten Felder den
+   * alten. Beides heilt ein erneutes Vorbereiten, und `reset()` tut genau das.
+   * Die Basis gehoert dazu: `schluesselfreiAdresse` laesst einen fremden Host
+   * stehen, und ein vorbereitetes Feld mit der alten Basis kaeme an einer
+   * Schreibstelle samt Schluessel auf die Platte. Die Haken nur einmal.
    */
-  const name = `${MODULE_ID}.${SETTING.key}`
+  if (hakenGesetzt) return
+  hakenGesetzt = true
   const neuVorbereiten = (setting) => {
-    if (setting?.key !== name || !streamEnabled()) return
+    if (!EINSTELLUNGEN.has(setting?.key)) return
     for (const sammlung of [game.scenes, game.actors, game.playlists]) {
       for (const d of sammlung ?? []) {
         try { d.reset() } catch (_) { /* ein Dokument darf die anderen nicht aufhalten */ }

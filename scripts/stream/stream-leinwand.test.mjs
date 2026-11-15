@@ -35,7 +35,8 @@ import {
   schluesselfreiAdresse,
   SETTING,
 } from "./stream-settings.mjs"
-import { LEINWAND_FELDER, leinwandFelder } from "./stream-leinwand.mjs"
+import { LEINWAND_FELDER, leinwandFelder, installStreamLeinwand } from "./stream-leinwand.mjs"
+import { MODULE_ID } from "./stream-settings.mjs"
 
 const GATE = "https://gate2.beneos.stream"
 const SCHLUESSEL = "pk_pruefsatz_geheim"
@@ -331,12 +332,69 @@ console.log("Offline-Sperre: schluesselfrei wird gesperrt wie die Toradresse")
   gleich("offline: oertlicher Pfad frei", offlineGesperrt("worlds/x/a.webp"), false)
 }
 
+/*
+ * DIE HUELLE SELBST, gegen gestellte Dokumentklassen. Die Kachel steht fuer
+ * jede Art mit Schemafeld; die Szene ist wie in Foundry 14 gebaut
+ * (gemessen am 15.11.2026 in `v14Stream`, 14.367): `background` und
+ * `foreground` stehen nicht mehr im Schema und sind nur noch veraltete Getter
+ * ohne Setter, die bei jedem Zugriff eine Verfallswarnung loggen.
+ */
+console.log("Die Huelle um prepareBaseData")
+{
+  const haken = {}
+  const altHooks = globalThis.Hooks, altConfig = globalThis.CONFIG
+  globalThis.Hooks = { on(n, f) { (haken[n] ??= []).push(f) }, once() {} }
+  const schema = (namen) => ({ getField: (n) => (namen.includes(n) ? {} : undefined) })
+  let resets = 0
+  class Kachel {
+    static schema = schema(["texture"])
+    constructor(src) { this._source = { texture: { src } } }
+    prepareBaseData() { this.texture = { src: this._source.texture.src } }
+    reset() { resets++; this.prepareBaseData() }
+  }
+  class Szene14 {
+    static schema = schema(["thumb"])
+    constructor(thumb, vordergrund) { this._source = { thumb }; this._vg = vordergrund; this.zugriffe = 0 }
+    get foreground() { this.zugriffe++; return this._vg }
+    get background() { this.zugriffe++; return { src: this._vg } }
+    prepareBaseData() { this.thumb = this._source.thumb }
+  }
+  globalThis.CONFIG = { Tile: { documentClass: Kachel }, Scene: { documentClass: Szene14 } }
+  installStreamLeinwand()
+  installStreamLeinwand()
+
+  const k = new Kachel(OHNE)
+  k.prepareBaseData()
+  gleich("Huelle: vorbereitet steht die Toradresse von heute", k.texture.src, MIT)
+  gleich("Huelle: _source bleibt schluesselfrei", k._source.texture.src, OHNE)
+
+  const sz = new Szene14(OHNE, OHNE)
+  sz.prepareBaseData()
+  gleich("Szene wie Foundry 14: das Vorschaubild wird vorbereitet, auch bei schluesselfreiem Vordergrund",
+    sz.thumb, MIT)
+  gleich("Szene wie Foundry 14: die veralteten Getter werden nicht gelesen", sz.zugriffe, 0)
+
+  const altScenes = game.scenes
+  game.scenes = [k]
+  const feuere = (key) => { for (const f of haken.updateSetting ?? []) f({ key }) }
+  resets = 0; feuere(`${MODULE_ID}.${SETTING.key}`)
+  gleich("Schluesselwechsel: neu vorbereitet", resets, 1)
+  resets = 0; feuere(`${MODULE_ID}.${SETTING.base}`)
+  gleich("Basiswechsel: neu vorbereitet", resets, 1)
+  resets = 0; feuere(`${MODULE_ID}.irgendwas`)
+  gleich("fremde Einstellung: nicht neu vorbereitet", resets, 0)
+
+  game.scenes = altScenes
+  globalThis.Hooks = altHooks
+  globalThis.CONFIG = altConfig
+}
+
 console.log(`\n${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
 /*
  * Von Hand nachgezogen, siehe Kopf. Weicht die gezaehlte Zahl ab, ist der Lauf
  * mittendrin gestorben oder ein Block ist still weggefallen.
  */
-const ERWARTET = 108
+const ERWARTET = 115
 if (aussagen !== ERWARTET) {
   console.log(`ROT  erwartet ${ERWARTET} Aussagen, gezaehlt ${aussagen}`)
   process.exit(1)
