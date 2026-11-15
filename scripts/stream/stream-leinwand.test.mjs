@@ -210,10 +210,13 @@ console.log("Die Felder je Dokumentart")
   for (const [art, felder] of Object.entries(faelle)) {
     const d = dokument(felder)
     const zahl = leinwandFelder(art, d)
-    gleich(`${art}: alle Felder umgeschrieben`, zahl, LEINWAND_FELDER[art]?.length)
+    // Die Sollzahl kommt aus dem Fall und nicht aus der Tabelle: fehlte dort ein
+    // Feld, waere eine Sollzahl aus der Tabelle mit ihr kleiner geworden.
+    const soll = JSON.stringify(felder).split(OHNE).length - 1
+    gleich(`${art}: alle Felder umgeschrieben`, zahl, soll)
     gleich(`${art}: vorbereitet steht die Toradresse`,
       JSON.stringify(d).split(MIT).length - 1 - (JSON.stringify(d._source).split(MIT).length - 1),
-      LEINWAND_FELDER[art]?.length)
+      soll)
     gleich(`${art}: _source traegt keinen Schluessel`,
       JSON.stringify(d._source).includes(SCHLUESSEL), false)
     gleich(`${art}: _source traegt weiter die schluesselfreie Form`,
@@ -228,13 +231,16 @@ console.log("Alte Welten, leere Felder und fremde Arten")
     leinwandFelder("Scene", alt), 0)
   gleich("und die alte Toradresse steht unveraendert", alt.background.src, MIT_ALT)
   gleich("ein leeres Feld bleibt leer", alt.thumb, "")
+  // Ein Wurf wird hier gefangen und als Wert gemeldet. Ohne den Fang braeche der
+  // Satz ab, statt die Probe rot zu melden.
+  const ohneWurf = (f) => { try { return f() } catch (e) { return `wirft: ${e?.message}` } }
   gleich("ein fehlendes Feld wirft nicht",
-    leinwandFelder("Tile", dokument({})), 0)
+    ohneWurf(() => leinwandFelder("Tile", dokument({}))), 0)
   gleich("ein Teilobjekt null wirft nicht",
-    leinwandFelder("Tile", dokument({ texture: null })), 0)
+    ohneWurf(() => leinwandFelder("Tile", dokument({ texture: null }))), 0)
   gleich("eine fremde Art bleibt unberuehrt",
     leinwandFelder("Item", dokument({ img: OHNE })), 0)
-  gleich("kein Dokument wirft nicht", leinwandFelder("Tile", null), 0)
+  gleich("kein Dokument wirft nicht", ohneWurf(() => leinwandFelder("Tile", null)), 0)
   // Zweimal vorbereitet heisst nicht zweimal umgeschrieben.
   const zwei = dokument({ img: OHNE })
   leinwandFelder("Actor", zwei)
@@ -272,9 +278,11 @@ console.log("Die Gegenrichtung: was ins Dokument geschrieben wird")
     "https://assets.forge-vtt.com/0123abcd/beneos_assets/cloud/tokens/x/y.webp",
     "http://192.168.1.10:30000/beneos_assets/x.webp",
   ]) {
-    gleich(`unveraendert: ${JSON.stringify(fremd)}`, schluesselfreiAdresse(fremd), fremd)
+    // Eigene Namen fuer die Gegenrichtung: der Sabotagelaeufer verlangt
+    // eindeutige Probennamen.
+    gleich(`schreibend unveraendert: ${JSON.stringify(fremd)}`, schluesselfreiAdresse(fremd), fremd)
   }
-  gleich("null bleibt null", schluesselfreiAdresse(null), null)
+  gleich("schreibend: null bleibt null", schluesselfreiAdresse(null), null)
 }
 
 /*
