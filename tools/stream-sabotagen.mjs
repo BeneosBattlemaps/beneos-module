@@ -30,6 +30,10 @@
  * Altkopie faehrt den alten Satz `blatt` also gegen den neuen Stand dieser
  * Datei; die Sabotagen am `.catch` haben in der Basis keinen Anker.
  *
+ * SEIT stre-T-102 NEUN SAETZE. Dazu kam `heilung`, die Praefix-Heilung in
+ * `beneos-asset-path-repair.js`. Den Satz gibt es in der Basis nicht, also
+ * faehrt `--alt` ihn nicht.
+ *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
  * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig]
@@ -82,6 +86,7 @@ const SHEET = "scripts/loot/item-sheet-extender.mjs";
 const COMP = "scripts/codex2/item-companion.mjs";
 const INSTALL = "scripts/stream/stream-install.mjs";
 const NATIV = "scripts/cloud-v2/beneos-native-installer.mjs";
+const REPARATUR = "scripts/beneos-asset-path-repair.js";
 
 const SABOTAGEN = [
   // ---------------------------------------------------------------- maske
@@ -613,6 +618,11 @@ const SABOTAGEN = [
   { satz: "posen", ziel: ["ohne Liste am Tor: der Textersatz wird geschrieben, schluesselfrei"], ersetze: [[UTIL, "        \"texture.src\": schluesselfreiAdresse(newSrc),", "        \"texture.src\": newSrc,"]] },
   { satz: "posen", ziel: ["ohne Liste am Tor: der Prototyp bekommt dieselbe schluesselfreie Form"], ersetze: [[UTIL, "        \"prototypeToken.texture.src\": schluesselfreiAdresse(newSrc),", "        \"prototypeToken.texture.src\": newSrc,"]] },
   { satz: "posen", ziel: ["falsche Summe: geschrieben wird 2.5D und nicht die falsche Draufsicht, schluesselfrei"], ersetze: [[UTIL, "        \"texture.src\": schluesselfreiAdresse(newImage),", "        \"texture.src\": newImage,"]] },
+  // Die Praefix-Heilung, je Richtung eine Sabotage.
+  { satz: "heilung", ziel: ["und zwar schluesselfrei"], ersetze: [[REPARATUR, "    updates.push({ _id: tile.id, \"texture.src\": schluesselfreiAdresse(soll + src.slice(ist.length)) });", "    updates.push({ _id: tile.id, \"texture.src\": soll + src.slice(ist.length) });"]] },
+  { satz: "heilung", ziel: ["gleicher Schluessel: nichts wird geschrieben"], ersetze: [[REPARATUR, "    if (ist === null || ist === soll) continue;", "    if (ist === null) continue;"]] },
+  { satz: "heilung", ziel: ["aelterer Schluessel im Hintergrund: die Kachel wird geschrieben","und zwar schluesselfrei","fremder Host: die Heilung schreibt den Praefix des Hintergrunds unveraendert"], ersetze: [[REPARATUR, "  if (!updates.length) return;\n\n  await scene.updateEmbeddedDocuments(\"Tile\", updates);", "  if (!updates.length) return;\n\n  return;"]] },
+  { satz: "heilung", ziel: ["schluesselfreier Hintergrund: nichts wird geschrieben"], ersetze: [[REPARATUR, "  if (typeof hintergrund !== \"string\" || !ABSOLUTE_RE.test(hintergrund)) return;", "  if (typeof hintergrund !== \"string\") return;"]] },
 ];
 
 /*
@@ -732,8 +742,9 @@ if (process.argv.includes("--alle-saetze")) {
 
 // ------------------------------------------------------------- Lauf
 
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt"]
-  .filter((s) => !nurSatz || s === nurSatz);
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "heilung"]
+  .filter((s) => !nurSatz || s === nurSatz)
+  .filter((s) => !mitAlt || s !== "heilung");
 if (SAETZE.length === 0) {
   console.log(`unbekannter Satz: ${nurSatz}`);
   process.exit(2);

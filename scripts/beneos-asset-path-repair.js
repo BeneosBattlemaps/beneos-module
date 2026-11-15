@@ -10,6 +10,8 @@
  *
  * GM-only writes. Idempotent via scene flag + per-update prefix equality.
  */
+import { schluesselfreiAdresse } from "./stream/stream-settings.mjs";
+
 const MODULE_ID = "beneos-module";
 const ASSET_MARKER = "beneos_assets/";
 const ASSET_RE = /^(.*?)beneos_assets\//;
@@ -201,7 +203,9 @@ async function _heileStreamPraefixe(scene) {
     // Kein `beneos_assets/` im Pfad heisst: die Adresse folgt einer anderen
     // Regel, etwa dem inhaltsadressierten Raum. Finger weg.
     if (ist === null || ist === soll) continue;
-    updates.push({ _id: tile.id, "texture.src": soll + src.slice(ist.length) });
+    // stre-T-102: `tile.texture.src` ist vorbereitet und traegt den Schluessel
+    // von heute; auf die Platte geht nur die schluesselfreie Form.
+    updates.push({ _id: tile.id, "texture.src": schluesselfreiAdresse(soll + src.slice(ist.length)) });
   }
   if (!updates.length) return;
 
