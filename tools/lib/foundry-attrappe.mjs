@@ -110,10 +110,13 @@ export const haken = {
   namen() { return this.liste.map((h) => h.name); },
   async rufe(name, ...args) {
     const ergebnisse = [];
-    for (const h of this.liste.filter((x) => x.name === name)) ergebnisse.push(await h.fn(...args));
+    for (const h of this.liste.filter((x) => x.name === name)) {
+      // Wie in Foundry: ein `once`-Haken feuert genau einmal.
+      if (h.einmal) this.liste.splice(this.liste.indexOf(h), 1);
+      ergebnisse.push(await h.fn(...args));
+    }
     return ergebnisse;
   },
-  leeren() { this.liste.length = 0; },
 };
 
 /** Aufgezeichnete Meldungen an den Nutzer. */
@@ -124,7 +127,7 @@ export const meldungen = [];
  * Einstellungsnamen (ohne Modulpraefix) auf Werte; `get(modul, name)` liest
  * daraus, ein unbekannter Name wirft wie in Foundry.
  */
-export function installiereFoundry({ einstellungen = {}, sprache = (k) => k } = {}) {
+export function installiereFoundry({ einstellungen = {} } = {}) {
   class Basis { constructor(...a) { this.args = a; } static get defaultOptions() { return {}; } }
   const g = globalThis;
   g.Hooks = haken;
@@ -181,7 +184,7 @@ export function installiereFoundry({ einstellungen = {}, sprache = (k) => k } = 
       async set(modul, name, wert) { einstellungen[name] = wert; return wert; },
       register() {},
     },
-    i18n: { localize: sprache, format: (k) => sprache(k) },
+    i18n: { localize: (k) => k, format: (k) => k },
     modules: new Map(),
   };
   return { einstellungen };

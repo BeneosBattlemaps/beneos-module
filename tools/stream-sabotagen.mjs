@@ -15,7 +15,10 @@
  * Stand des Satzes vor dem Umbau (Basis 75555bb) gegen jede Sabotage, die als
  * `luecke` markiert ist. Bleibt der alte Satz dort gruen, ist die Luecke
  * belegt, die der Umbau schliesst. Wird er rot, war es keine Luecke, und das
- * ist ein Befund gegen diese Markierung.
+ * ist ein Befund gegen diese Markierung. `--alt` ist der Beleg fuer stre-T-017
+ * und an diese Basis gebunden: aendert sich stream-fetch.mjs oder
+ * stream-bilder.mjs spaeter weiter, ist die Altkopie ein Mischstand. Der Lauf
+ * ohne `--alt` bleibt das dauerhafte Werkzeug.
  *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
@@ -529,11 +532,16 @@ function ersetze(lies, liste) {
   return { neu };
 }
 
+// Die laufenden Satzprozesse. Der Signalweg beendet sie vor dem Abraeumen,
+// sonst haelt unter Windows ihr Arbeitsordner die Kopie fest (EBUSY).
+const kinder = new Set();
+
 function fahre(verzeichnis, datei) {
   return new Promise((ok) => {
-    execFile(process.execPath, ["--no-warnings", datei],
+    const kind = execFile(process.execPath, ["--no-warnings", datei],
       { cwd: verzeichnis, timeout: 120000, maxBuffer: 16 * 1024 * 1024 },
       (fehler, stdout) => {
+        kinder.delete(kind);
         const rot = new Set();
         const gruen = new Set();
         const doppelt = new Set();
@@ -547,6 +555,7 @@ function fahre(verzeichnis, datei) {
         }
         ok({ rc: fehler ? (fehler.code ?? 1) : 0, rot, gruen, doppelt });
       });
+    kinder.add(kind);
   });
 }
 
@@ -600,17 +609,30 @@ const t0 = Date.now();
 function raeumeAb() {
   for (const d of [...kopienNeu, ...kopienAlt]) {
     try {
-      rmSync(d, { recursive: true, force: true });
+      rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     } catch (e) {
-      console.log(`REST nicht abgeraeumt: ${d} (${e && e.code})`);
+      // Windows meldet EBUSY auch dann, wenn das Verzeichnis nur noch zum
+      // Loeschen vorgemerkt ist und gleich verschwindet; genannt wird nur,
+      // was danach wirklich noch liegt.
+      if (existsSync(d)) console.log(`REST nicht abgeraeumt: ${d} (${e && e.code})`);
     }
   }
 }
 // Ein Abbruch per Strg+C oder SIGTERM ueberspringt `finally`; ohne diese zwei
 // Zeilen blieben bis zu acht Kopien von je rund 13 MB im Temp-Verzeichnis
 // (Kaltdurchsicht 15.11.2026).
-process.once("SIGINT", () => { raeumeAb(); process.exit(130); });
-process.once("SIGTERM", () => { raeumeAb(); process.exit(143); });
+async function abbrechen(rc) {
+  const enden = [...kinder].map((k) => new Promise((fertig) => {
+    k.once("exit", fertig);
+    k.kill();
+  }));
+  // Ein Kind, das nicht endet, haelt den Abbruch nicht auf.
+  await Promise.race([Promise.all(enden), new Promise((r) => setTimeout(r, 3000))]);
+  raeumeAb();
+  process.exit(rc);
+}
+process.once("SIGINT", () => { abbrechen(130); });
+process.once("SIGTERM", () => { abbrechen(143); });
 
 // Ein rotes Ergebnis verlaesst den Lauf mit `break lauf`, nie mit
 // process.exit: das wuerde `finally` ueberspringen und Kopien liegen lassen.

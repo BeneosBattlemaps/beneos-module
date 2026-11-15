@@ -210,9 +210,18 @@ fahre "tools/v14-import-bench/unit.mjs"           "v14-import unit.mjs, 53 Saetz
 # `beneos_utility.js` und `beneos_cloud.js`, und vier Saetze laden die
 # Attrappe in `tools/lib/`. Gemessen lagen 13 Dateien dieser Kette ausserhalb
 # der alten Liste. Der Ausloeser ist deshalb `scripts` als Ganzes, dazu
-# `lang` und `tools/lib`; die zwoelf Saetze kosten zusammen rund 1,5 s.
-if git diff --cached --name-only --diff-filter=ACM \
-     -- scripts lang tools/lib \
+# `lang`, `tools/lib` und, was stream-ersatzbild liest, `ui` und der Erzeuger
+# `tools/ersatzbilder.py`. Geloeschte und umbenannte Dateien zaehlen mit
+# (Filter ACMRD): eine geloeschte Datei der Importkette bricht posen und beute
+# beim Laden.
+#
+# DER PREIS, gemessen am 15.11.2026: die zwoelf Saetze nacheinander rund 8 s
+# (7,9 s hier, 8,3 bis 8,7 s in der Kaltdurchsicht). Den zahlt jetzt jeder
+# Commit an einer Moduldatei. Das ist bewusst: eine schmalere Liste war
+# dreimal die Luecke (siehe oben), und 8 s liegen unter den 10 s der
+# Katalogpruefung, die hier als Schwelle fuer "wird umgangen" steht.
+if git diff --cached --name-only --diff-filter=ACMRD \
+     -- scripts lang tools/lib ui tools/ersatzbilder.py \
    | grep -q .
 then
   meld "pre-commit: Streamdateien vorgemerkt, die Streampruefsaetze laufen mit"
