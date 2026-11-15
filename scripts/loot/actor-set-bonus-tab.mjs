@@ -58,7 +58,8 @@ export class ActorSetBonusTab {
 
     const onRender = (sheet, htmlOrJq) => {
       try {
-        ActorSetBonusTab._inject(sheet, htmlOrJq);
+        // _inject ist async, sein Fehler kommt als Ablehnung und nicht als Wurf.
+        ActorSetBonusTab._inject(sheet, htmlOrJq).catch((e) => console.warn("Beneos | ActorSetBonusTab inject failed:", e));
       } catch (e) {
         console.warn("Beneos | ActorSetBonusTab inject failed:", e);
       }

@@ -30,9 +30,14 @@
  * Altkopie faehrt den alten Satz `blatt` also gegen den neuen Stand dieser
  * Datei; die Sabotagen am `.catch` haben in der Basis keinen Anker.
  *
- * SEIT stre-T-102 NEUN SAETZE. Dazu kam `heilung`, die Praefix-Heilung in
- * `beneos-asset-path-repair.js`. Den Satz gibt es in der Basis nicht, also
- * faehrt `--alt` ihn nicht.
+ * SEIT stre-T-113 NEUN SAETZE. `bonustab`
+ * (`scripts/loot/actor-set-bonus-tab.test.mjs`) bewacht das `.catch` am
+ * `_inject`-Ruf des Akteursblattes. Den Satz gab es an der Basis nicht; mit
+ * `--alt` laesst die Altkopie ihn aus (`mitBasis`).
+ *
+ * SEIT stre-T-102 ZEHN SAETZE. Dazu kam `heilung`, die Praefix-Heilung in
+ * `beneos-asset-path-repair.js`. Auch ihn gibt es an der Basis nicht, und
+ * `--alt` laesst ihn ebenso ueber `mitBasis` aus.
  *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
@@ -53,7 +58,10 @@ const LF = "\n";
 const CR = "\r";
 
 // Ein Satz liegt unter scripts/stream, ausser er steht in dieser Tabelle.
-const SATZ_AUSSERHALB = { blatt: "scripts/loot/item-sheet-extender.test.mjs" };
+const SATZ_AUSSERHALB = {
+  blatt: "scripts/loot/item-sheet-extender.test.mjs",
+  bonustab: "scripts/loot/actor-set-bonus-tab.test.mjs",
+};
 const SATZDATEI = (satz) => SATZ_AUSSERHALB[satz] ?? `scripts/stream/stream-${satz}.test.mjs`;
 
 /*
@@ -83,6 +91,7 @@ const CLOUD = "scripts/beneos_cloud.js";
 const KARTEN = "scripts/stream/stream-karten.mjs";
 const MERKER = "scripts/stream/stream-merker.mjs";
 const SHEET = "scripts/loot/item-sheet-extender.mjs";
+const BONUSTAB = "scripts/loot/actor-set-bonus-tab.mjs";
 const COMP = "scripts/codex2/item-companion.mjs";
 const INSTALL = "scripts/stream/stream-install.mjs";
 const NATIV = "scripts/cloud-v2/beneos-native-installer.mjs";
@@ -603,6 +612,28 @@ const SABOTAGEN = [
   { satz: "blatt", ziel: ["und hinterlaesst keine unbehandelte Ablehnung"], luecke: true, ersetze: [[SHEET, ".catch((e) => console.warn(\"Beneos | ItemSheetExtender inject failed:\", e));", ".then(() => { throw new Error(\"Sabotage\"); }, (e) => console.warn(\"Beneos | ItemSheetExtender inject failed:\", e));"]] },
   { satz: "blatt", ziel: ["und gibt ihm das HTML des Blattes"], luecke: true, ersetze: [[COMP, "    ItemCompanion.attach(app, html).catch(", "    ItemCompanion.attach(app).catch("]] },
   { satz: "blatt", ziel: ["ein Item ohne Beute-Vermerk rendert nichts", "ein Blatt ohne Dokument rendert nichts"], ersetze: [[SHEET, "    if (!item) return;", "    if (!item) {}"], [SHEET, "    if (!loot) return;", "    if (!loot) {}"]] },
+  // ------------------------------------------------------------- bonustab
+  // stre-T-113: der Fehler des asynchronen _inject am Akteursblatt kommt als
+  // Warnung an. Der Satz ist neu, also gibt es keinen alten Satz als Zeugen
+  // und keine Markierung `luecke`.
+  { satz: "bonustab", ziel: ["der Haken ruft _inject"], ersetze: [[BONUSTAB, "        ActorSetBonusTab._inject(sheet, htmlOrJq).catch(", "        Promise.resolve().catch("]] },
+  { satz: "bonustab", ziel: ["ein Wurf im async _inject wird keine unbehandelte Ablehnung", "ein Wurf im async _inject wird genau einmal als Warnung gemeldet"], ersetze: [[BONUSTAB, "        ActorSetBonusTab._inject(sheet, htmlOrJq).catch((e) => console.warn(\"Beneos | ActorSetBonusTab inject failed:\", e));", "        ActorSetBonusTab._inject(sheet, htmlOrJq);"]] },
+  { satz: "bonustab", ziel: ["ein Wurf im async _inject wird genau einmal als Warnung gemeldet"], ersetze: [[BONUSTAB, ".catch((e) => console.warn(\"Beneos | ActorSetBonusTab inject failed:\", e));", ".catch(() => {});"]] },
+  { satz: "bonustab", ziel: ["ein intaktes async _inject meldet keine Warnung"], ersetze: [[BONUSTAB, ".catch((e) => console.warn(\"Beneos | ActorSetBonusTab inject failed:\", e));", ".then(() => console.warn(\"Beneos | ActorSetBonusTab inject failed:\", null), (e) => console.warn(\"Beneos | ActorSetBonusTab inject failed:\", e));"]] },
+  // Nachtrag nach der Kaltdurchsicht a04dfbfd: zweiter Aufruf, Argumente, Doppelmeldung.
+  { satz: "bonustab", ziel: ["der Haken ruft auch das intakte _inject"], ersetze: [[BONUSTAB, "    Hooks.on(\"renderCharacterActorSheet\", onRender);", "    Hooks.once(\"renderCharacterActorSheet\", onRender);"]] },
+  { satz: "bonustab", ziel: ["und gibt Blatt und Wurzel des Blattes weiter"], ersetze: [[BONUSTAB, "        ActorSetBonusTab._inject(sheet, htmlOrJq).catch(", "        ActorSetBonusTab._inject(sheet).catch("]] },
+  { satz: "bonustab", ziel: ["ein Wurf im async _inject wird genau einmal als Warnung gemeldet"], ersetze: [[BONUSTAB, ".catch((e) => console.warn(\"Beneos | ActorSetBonusTab inject failed:\", e));", ".catch((e) => { console.warn(\"Beneos | ActorSetBonusTab inject failed:\", e); console.warn(\"Beneos | ActorSetBonusTab inject failed:\", e); });"]] },
+  // Nachtrag nach der Kaltdurchsicht 9a927964: Inhalt der Warnung, die zwei anderen Hakennamen.
+  { satz: "bonustab", ziel: ["und die Warnung nennt den Fehler"], ersetze: [[BONUSTAB, ".catch((e) => console.warn(\"Beneos | ActorSetBonusTab inject failed:\", e));", ".catch(() => console.warn(\"Beneos | ActorSetBonusTab inject failed:\"));"]] },
+  { satz: "bonustab", ziel: ["auch renderNPCActorSheet ruft _inject"], ersetze: [[BONUSTAB, "    Hooks.on(\"renderNPCActorSheet\", onRender);", "    void onRender;"]] },
+  { satz: "bonustab", ziel: ["auch renderActorSheet ruft _inject"], ersetze: [[BONUSTAB, "    Hooks.on(\"renderActorSheet\", onRender);", "    void onRender;"]] },
+  // Nachtrag nach der Kaltdurchsicht 24fa8a31: eigener Handler an den zwei anderen Namen.
+  { satz: "bonustab", ziel: ["renderNPCActorSheet: der Wurf wird eine Warnung mit Ursache"], ersetze: [[BONUSTAB, "    Hooks.on(\"renderNPCActorSheet\", onRender);", "    Hooks.on(\"renderNPCActorSheet\", (s, h) => { ActorSetBonusTab._inject(s, h); });"]] },
+  { satz: "bonustab", ziel: ["renderNPCActorSheet gibt Blatt und Wurzel weiter"], ersetze: [[BONUSTAB, "    Hooks.on(\"renderNPCActorSheet\", onRender);", "    Hooks.on(\"renderNPCActorSheet\", (s) => { ActorSetBonusTab._inject(s).catch((e) => console.warn(\"Beneos | ActorSetBonusTab inject failed:\", e)); });"]] },
+  { satz: "bonustab", ziel: ["renderActorSheet: der Wurf wird eine Warnung mit Ursache"], ersetze: [[BONUSTAB, "    Hooks.on(\"renderActorSheet\", onRender);", "    Hooks.on(\"renderActorSheet\", (s, h) => { ActorSetBonusTab._inject(s, h); });"]] },
+  { satz: "bonustab", ziel: ["renderActorSheet gibt Blatt und Wurzel weiter"], ersetze: [[BONUSTAB, "    Hooks.on(\"renderActorSheet\", onRender);", "    Hooks.on(\"renderActorSheet\", (s) => { ActorSetBonusTab._inject(s).catch((e) => console.warn(\"Beneos | ActorSetBonusTab inject failed:\", e)); });"]] },
+  { satz: "bonustab", ziel: ["und hinterlaesst keine unbehandelte Ablehnung"], ersetze: [[BONUSTAB, ".catch((e) => console.warn(\"Beneos | ActorSetBonusTab inject failed:\", e));", ".then(() => { throw new Error(\"Sabotage\"); }, (e) => console.warn(\"Beneos | ActorSetBonusTab inject failed:\", e));"]] },
   { satz: "weiche", ziel: ["und der Installer geht danach keinen Schritt weiter"], luecke: true, ersetze: [[NATIV, "        await this.#showReport(result)\n        return this.progress\n      }\n      result.preflight = { ok: true }", "        await this.#showReport(result)\n      }\n      result.preflight = { ok: true }"]] },
   { satz: "weiche", ziel: ["also geht der Installer zum naechsten Schritt"], luecke: true, ersetze: [[NATIV, "      result.preflight = { ok: true }", "      result.preflight = { ok: true }\n      return this.progress"]] },
   // ------------------------------------------- stre-T-102, schluesselfrei
@@ -742,12 +773,30 @@ if (process.argv.includes("--alle-saetze")) {
 
 // ------------------------------------------------------------- Lauf
 
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "heilung"]
-  .filter((s) => !nurSatz || s === nurSatz)
-  .filter((s) => !mitAlt || s !== "heilung");
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung"]
+  .filter((s) => !nurSatz || s === nurSatz);
 if (SAETZE.length === 0) {
   console.log(`unbekannter Satz: ${nurSatz}`);
   process.exit(2);
+}
+
+/*
+ * EIN SATZ, DEN ES AN DER BASIS NOCH NICHT GAB (seit stre-T-113 `bonustab`),
+ * hat keinen alten Stand. `git show` wuerfe dort und braeche den Lauf mit
+ * `--alt` ab. Die Altkopie laesst ihn aus; seine Sabotagen tragen kein `luecke`.
+ */
+const basisBekannt = new Map();
+function mitBasis(satz) {
+  if (!basisBekannt.has(satz)) {
+    let da = true;
+    try {
+      execFileSync("git", ["-C", WURZEL, "cat-file", "-e", `${BASIS}:${SATZDATEI(satz)}`], { stdio: "ignore" });
+    } catch {
+      da = false;
+    }
+    basisBekannt.set(satz, da);
+  }
+  return basisBekannt.get(satz);
 }
 
 const PARALLEL = 4;
@@ -813,6 +862,7 @@ lauf: try {
       kopienAlt.push(d);
       kopiere(d);
       for (const satz of SAETZE) {
+        if (!mitBasis(satz)) continue;
         const alt = execFileSync("git", ["-C", WURZEL, "show", `${BASIS}:${SATZDATEI(satz)}`]);
         writeFileSync(join(d, SATZDATEI(satz)), alt);
       }
@@ -835,7 +885,7 @@ lauf: try {
       console.log(`NICHT PRUEFBAR: ${satz} ist schon ohne Sabotage rot (${r.rot.size}).`);
       nichtPruefbar += 1;
     }
-    if (mitAlt) {
+    if (mitAlt && mitBasis(satz)) {
       const a = await fahre(kopienAlt[0], SATZDATEI(satz));
       if (a.rc !== 0) {
         console.log(`NICHT PRUEFBAR: der alte Satz ${satz} ist schon ohne Sabotage rot.`);
