@@ -79,7 +79,8 @@ const HAKEN_IST = angemeldet[0]
  */
 const echtesInject = ItemSheetExtender._inject
 const gerufen = []
-ItemSheetExtender._inject = (sheet, root) => { gerufen.push({ sheet, root }) }
+// Async wie das echte `_inject`: der Haken haengt `.catch` an das Ergebnis.
+ItemSheetExtender._inject = async (sheet, root) => { gerufen.push({ sheet, root }) }
 
 /*
  * DER SPION ZEICHNET AUCH DIE ARGUMENTE AUF. Ein Haken, der `_inject` ruft,
@@ -122,11 +123,8 @@ await haken.rufe(HAKEN_IST, blatt("item", "Item"), wurzel(false))
 p.gleich("ein Blatt, das sein Item unter item fuehrt, ruft _inject", gerufen.length, 1)
 
 /*
- * EIN WURF WIRD GEFANGEN, ABER NUR EIN SYNCHRONER. `_inject` ist `async` und
- * wird im Haken ohne `await` gerufen. Ein Fehler im echten `_inject` wird zu
- * einer abgelehnten Zusage, und die faengt das `try/catch` im Haken NICHT.
- * Diese Probe haelt nur fest, was der Riegel heute wirklich leistet; die
- * Luecke selbst steht im Bericht zu stre-T-108 und nicht hier im Code.
+ * EIN SYNCHRONER WURF WIRD VOM `try/catch` IM HAKEN GEFANGEN. Der Spion
+ * wirft hier, bevor er eine Zusage zurueckgibt.
  */
 const echteWarnung = console.warn
 const warnungen = []
@@ -141,6 +139,49 @@ try {
 console.warn = echteWarnung
 p.gleich("ein synchroner Wurf in _inject wird im Haken gefangen", durchgeschlagen, false)
 p.gleich("und als Warnung gemeldet", warnungen.filter((w) => w.includes("ItemSheetExtender inject failed")).length, 1)
+
+/*
+ * EIN FEHLER IM ASYNCHRONEN `_inject` WIRD EBENSO GEMELDET (stre-T-112).
+ * Das echte `_inject` ist `async` und wird ohne `await` gerufen. Sein Fehler
+ * ist eine abgelehnte Zusage, die das `try/catch` nicht sieht. Ohne `.catch`
+ * am Aufruf landet sie als unbehandelte Ablehnung an der Warnung vorbei.
+ * Gegenwert: ein intaktes `_inject` meldet nichts.
+ */
+let unbehandelt = 0
+const zaehleUnbehandelt = () => { unbehandelt++ }
+process.on("unhandledRejection", zaehleUnbehandelt)
+const zweiTakte = async () => {
+  await new Promise((r) => setTimeout(r, 0))
+  await new Promise((r) => setTimeout(r, 0))
+}
+async function asyncLauf(inject) {
+  // Erst die Ablehnungen frueherer Proben zustellen lassen, dann zaehlen.
+  await zweiTakte()
+  ItemSheetExtender._inject = inject
+  unbehandelt = 0
+  warnungen.length = 0
+  console.warn = (...a) => { warnungen.push(a.map(String).join(" ")) }
+  try {
+    await haken.rufe(HAKEN_IST, blatt("document", "Item"), wurzel(false))
+    await zweiTakte()
+  } finally {
+    console.warn = echteWarnung
+  }
+  return {
+    unbehandelt,
+    alle: warnungen.length,
+    gemeldet: warnungen.filter((w) => w.includes("ItemSheetExtender inject failed")).length,
+  }
+}
+
+const wirft = await asyncLauf(async () => { throw new Error("Pruefsatz wirft im async _inject") })
+p.gleich("ein Wurf im async _inject wird keine unbehandelte Ablehnung", wirft.unbehandelt, 0)
+p.gleich("ein Wurf im async _inject wird genau einmal als Warnung gemeldet", wirft.alle === 1 && wirft.gemeldet === 1, true)
+
+const heil = await asyncLauf(async () => {})
+p.gleich("ein intaktes async _inject meldet keine Warnung", heil.alle, 0)
+p.gleich("und hinterlaesst keine unbehandelte Ablehnung", heil.unbehandelt, 0)
+process.off("unhandledRejection", zaehleUnbehandelt)
 
 ItemSheetExtender._inject = echtesInject
 
@@ -266,8 +307,9 @@ p.gleich("ein Item-Blatt haengt ihn ab", abgehaengt.length, 1)
  *   existiert und `.beneos-loot-extras` sichtbar ist, entscheidet ein Browser.
  * - OB DER NAME RICHTIG BLEIBT. Die Nachbarprobe zeigt Uebereinstimmung, nicht
  *   Richtigkeit.
- * - EIN FEHLER IM ECHTEN, ASYNCHRONEN `_inject`. Er wird vom Haken nicht
- *   gefangen (siehe oben) und ist deshalb hier nicht als Schutz festgehalten.
+ * - WELCHE FEHLER DAS ECHTE `_inject` IM BLATT WIRFT. Dass ein Fehler darin
+ *   als Warnung ankommt, zeigt oben ein werfender Spion; ob einer entsteht,
+ *   entscheidet ein laufendes Foundry.
  */
 
 p.ende()

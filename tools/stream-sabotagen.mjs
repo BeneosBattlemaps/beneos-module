@@ -25,7 +25,10 @@
  * (`scripts/loot/item-sheet-extender.test.mjs`, Hakenname und Riegel am
  * Gegenstandsblatt). Beide lasen bis dahin Quelltext. Ihre Pruefdateien und
  * die Moduldateien, die sie fahren, sind seit 75555bb unveraendert, also gilt
- * `--alt` auch fuer sie an derselben Basis.
+ * `--alt` auch fuer sie an derselben Basis. Ausnahme seit stre-T-112:
+ * `item-sheet-extender.mjs` traegt am `_inject`-Ruf ein `.catch`. Die
+ * Altkopie faehrt den alten Satz `blatt` also gegen den neuen Stand dieser
+ * Datei; die Sabotagen am `.catch` haben in der Basis keinen Anker.
  *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
@@ -587,7 +590,12 @@ const SABOTAGEN = [
   { satz: "blatt", ziel: ["ein Item-Blatt haengt ihn an"], luecke: true, ersetze: [[COMP,"    ItemCompanion.attach(app, html).catch(","    Promise.resolve().catch("]] },
   { satz: "blatt", ziel: ["ein Item-Blatt haengt ihn ab"], luecke: true, ersetze: [[COMP,"    ItemCompanion.detach(app);","    void app;"]] },
   // Nachtrag nach der Kaltdurchsicht vom 15.11.2026: die Argumente der Rufe, beide Riegel zugleich.
-  { satz: "blatt", ziel: ["und gibt die Wurzel des Blattes weiter"], luecke: true, ersetze: [[SHEET, "        ItemSheetExtender._inject(sheet, htmlOrJq);", "        ItemSheetExtender._inject(sheet);"]] },
+  { satz: "blatt", ziel: ["und gibt die Wurzel des Blattes weiter"], luecke: true, ersetze: [[SHEET, "        ItemSheetExtender._inject(sheet, htmlOrJq).catch(", "        ItemSheetExtender._inject(sheet).catch("]] },
+  // stre-T-112: der Fehler des asynchronen _inject kommt als Warnung an, nicht als unbehandelte Ablehnung.
+  { satz: "blatt", ziel: ["ein Wurf im async _inject wird keine unbehandelte Ablehnung", "ein Wurf im async _inject wird genau einmal als Warnung gemeldet"], luecke: true, ersetze: [[SHEET, "        ItemSheetExtender._inject(sheet, htmlOrJq).catch((e) => console.warn(\"Beneos | ItemSheetExtender inject failed:\", e));", "        ItemSheetExtender._inject(sheet, htmlOrJq);"]] },
+  { satz: "blatt", ziel: ["ein Wurf im async _inject wird genau einmal als Warnung gemeldet"], luecke: true, ersetze: [[SHEET, ".catch((e) => console.warn(\"Beneos | ItemSheetExtender inject failed:\", e));", ".catch(() => {});"]] },
+  { satz: "blatt", ziel: ["ein intaktes async _inject meldet keine Warnung"], luecke: true, ersetze: [[SHEET, ".catch((e) => console.warn(\"Beneos | ItemSheetExtender inject failed:\", e));", ".then(() => console.warn(\"Beneos | ItemSheetExtender inject failed:\", null), (e) => console.warn(\"Beneos | ItemSheetExtender inject failed:\", e));"]] },
+  { satz: "blatt", ziel: ["und hinterlaesst keine unbehandelte Ablehnung"], luecke: true, ersetze: [[SHEET, ".catch((e) => console.warn(\"Beneos | ItemSheetExtender inject failed:\", e));", ".then(() => { throw new Error(\"Sabotage\"); }, (e) => console.warn(\"Beneos | ItemSheetExtender inject failed:\", e));"]] },
   { satz: "blatt", ziel: ["und gibt ihm das HTML des Blattes"], luecke: true, ersetze: [[COMP, "    ItemCompanion.attach(app, html).catch(", "    ItemCompanion.attach(app).catch("]] },
   { satz: "blatt", ziel: ["ein Item ohne Beute-Vermerk rendert nichts", "ein Blatt ohne Dokument rendert nichts"], ersetze: [[SHEET, "    if (!item) return;", "    if (!item) {}"], [SHEET, "    if (!loot) return;", "    if (!loot) {}"]] },
   { satz: "weiche", ziel: ["und der Installer geht danach keinen Schritt weiter"], luecke: true, ersetze: [[NATIV, "        await this.#showReport(result)\n        return this.progress\n      }\n      result.preflight = { ok: true }", "        await this.#showReport(result)\n      }\n      result.preflight = { ok: true }"]] },

@@ -51,7 +51,8 @@ export class ItemSheetExtender {
         // und haelt die Funktion unabhaengig vom Namen darueber.
         const doc = sheet?.document ?? sheet?.object ?? sheet?.item;
         if (doc?.documentName !== "Item") return;
-        ItemSheetExtender._inject(sheet, htmlOrJq);
+        // _inject ist async, sein Fehler kommt als Ablehnung und nicht als Wurf.
+        ItemSheetExtender._inject(sheet, htmlOrJq).catch((e) => console.warn("Beneos | ItemSheetExtender inject failed:", e));
       } catch (e) {
         console.warn("Beneos | ItemSheetExtender inject failed:", e);
       }
