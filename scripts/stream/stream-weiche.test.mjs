@@ -670,11 +670,21 @@ console.log("\napplyStreamAddresses(): die Sperre greift nur am Feldnamen")
   gleich("`thumb` geht ans Tor", doku.thumb, TOR)
   gleich("`background.src` geht ans Tor", doku.background.src, TOR)
   gleich("`src` einer Journalseite geht ans Tor", doku.pages[0].src, TOR)
-  gleich("und die Adresse im eingebetteten HTML auch",
-    doku.pages[0].text.content, `<img src="${TOR}">`)
+  /*
+   * IM HTML BLEIBT DIE TORADRESSE, und das ist kein Rest. Foundry bereinigt
+   * `text.content` beim Speichern und wirft ein `src` mit unbekanntem Schema
+   * weg: gemessen am 15.11.2026 in `v13-streaming` (Foundry 13.351) wurde
+   * `<img src="beneos://...">` als `<img />` gespeichert, die Adresse war
+   * verloren. Eine schluesselfreie Form fuer HTML braucht ein Schema, das die
+   * Bereinigung uebersteht; bis dahin traegt das HTML den Schluessel wie vor
+   * stre-T-102.
+   */
+  gleich("und die Adresse im eingebetteten HTML auch, als Toradresse",
+    doku.pages[0].text.content, `<img src="${ziele.get(PFAD)}">`)
   gleich("dabei meldet sich die Sperre nicht", warnungen.length, 0)
-  wahr("und im ganzen Dokument steht kein Streamschluessel",
-    !JSON.stringify(doku).includes(SCHLUESSEL), JSON.stringify(doku))
+  const ohneHtml = { ...doku, pages: doku.pages.map((p) => ({ ...p, text: null })) }
+  wahr("und ausserhalb des HTML steht kein Streamschluessel",
+    !JSON.stringify(ohneHtml).includes(SCHLUESSEL), JSON.stringify(ohneHtml))
 
   /*
    * EIN `img`-FELD MIT HTML DARIN ist der Fall, bei dem die Sperre zu viel

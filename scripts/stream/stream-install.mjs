@@ -439,8 +439,12 @@ export function applyStreamAddresses(value, streamTargets, feld = null) {
     // Der Vorfilter haelt die Regex von den zehntausenden gewoehnlichen
     // Feldwerten fern, die nie HTML sind.
     if (!value.includes("<") || !value.includes("src=")) return value
+    // IM HTML BLEIBT DIE TORADRESSE. Foundry bereinigt `text.content` beim
+    // Speichern und verwirft ein `src` mit dem Schema `beneos://`; gemessen am
+    // 15.11.2026 war die Adresse danach verloren. Begruendung und Probe im
+    // Pruefsatz `stream-weiche.test.mjs`.
     return value.replace(HTML_SRC_RE, (treffer, anfuehrung, src) => {
-      const ziel = schluesselfreiAdresse(gateAdresseFuer(src, streamTargets))
+      const ziel = gateAdresseFuer(src, streamTargets)
       if (!ziel) return treffer
       // Nur das Anfuehrungspaar tauschen, damit Attribute davor und dahinter
       // unberuehrt bleiben. Technik uebernommen aus _rewriteHtml,
