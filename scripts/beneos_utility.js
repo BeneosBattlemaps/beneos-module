@@ -6,7 +6,7 @@ import { BeneosCloud, BeneosCloudLogin, BeneosCloudSettings, BeneosCloudAccountM
 // a no-store HEAD that also rejects HTML fallback pages answering 200.
 import { headCheck as beneosHeadCheck } from "./beneos-asset-watcher.js";
 import { ansichtGeprueft, ansichtGibtEs } from "./stream/stream-posen.mjs";
-import { zerlegeAdresse } from "./stream/stream-settings.mjs";
+import { zerlegeAdresse, schluesselfreiAdresse } from "./stream/stream-settings.mjs";
 
 /********************************************************************************* */
 globalThis.BENEOS_MODULE_NAME = "Beneos Module"
@@ -3027,7 +3027,7 @@ export class BeneosUtility {
       // tatsaechlich um 1 Grad. Der kanonische texture.*-Update unten
       // traegt alles Noetige.
       await token.document.update({
-        "texture.src": newImage,
+        "texture.src": schluesselfreiAdresse(newImage),
         ...BeneosUtility.beneosRenderPatch(profile),
         [`flags.${BeneosUtility.moduleID()}.renderStamp`]: BeneosUtility.beneosRenderStamp(profile)
       }, { beneosRenderSync: true })
@@ -3198,7 +3198,7 @@ export class BeneosUtility {
 
     try {
       await token.document.update({
-        "texture.src": newSrc,
+        "texture.src": schluesselfreiAdresse(newSrc),
         ...BeneosUtility.beneosRenderPatch(profile),
         [stampKey]: stamp
       }, { beneosRenderSync: true })
@@ -3220,7 +3220,7 @@ export class BeneosUtility {
       : null
     try {
       await (worldActor ?? actor).update({
-        "prototypeToken.texture.src": newSrc,
+        "prototypeToken.texture.src": schluesselfreiAdresse(newSrc),
         ...BeneosUtility.beneosRenderPatch(profile, "prototypeToken.texture"),
         [stampKey]: stamp
       }, { beneosRenderSync: true })

@@ -575,8 +575,21 @@ frisch(LISTE_MIT)
 NETZ.delete(LISTE_ADRESSE)
 stelleToken("t1", TOKEN_ADRESSE)
 await BeneosUtility.toggleTokenStyle("t1")
-gleich("ohne Liste am Tor: der Textersatz wird geschrieben", tokenSchrieb().join(), ADRESSE)
+/*
+ * DER RUECKFALL SCHREIBT SCHLUESSELFREI (stre-T-102). Das Token traegt hier
+ * die Toradresse mit Schluessel, so wie ein vorbereitetes Dokument sie seit
+ * T-102 im Arbeitsspeicher haelt (`stream-leinwand.mjs`). Der Textersatz
+ * bildet daraus die Draufsicht; ohne den Fang an der Schreibstelle stuende der
+ * Schluessel danach im Token und im Prototyp des Akteurs, also im Export.
+ */
+const akteurSchrieb = () => geschrieben.filter((g) => g.wer === "actor").map((g) => g.daten["prototypeToken.texture.src"])
+gleich("ohne Liste am Tor: der Textersatz wird geschrieben, schluesselfrei", tokenSchrieb().join(), ADRESSE_OHNE)
+gleich("ohne Liste am Tor: der Prototyp bekommt dieselbe schluesselfreie Form", akteurSchrieb().join(), ADRESSE_OHNE)
 gleich("ohne Liste am Tor: keine Fehlt-Warnung", warnTexte().length, 0)
+// Die Gegenhaelfte, eine Adresse, die keine Streamadresse ist, geht
+// zeichengleich durch: `stream-leinwand.test.mjs`, Block "Die Gegenrichtung".
+// Hier nicht fahrbar, denn der oertliche Stilwechsel fragt die Platte, und die
+// Attrappe hat keine.
 
 abschnitt("Der Variantenwechsel (BeneosUtility.forceChangeToken) schreibt keine falsche Draufsicht")
 
@@ -591,8 +604,8 @@ gleich("gute Summe: die Draufsicht der Variante wird geschrieben", tokenSchrieb(
 frisch(LISTE_FALSCH)
 stelleToken("t2", ADRESSE)
 await BeneosUtility.forceChangeToken("t2", "000-wolf-1")
-gleich("falsche Summe: geschrieben wird 2.5D und nicht die falsche Draufsicht",
-  tokenSchrieb().join(), TOKEN_ADRESSE)
+gleich("falsche Summe: geschrieben wird 2.5D und nicht die falsche Draufsicht, schluesselfrei",
+  tokenSchrieb().join(), platzhalterAdresse(RELEASE, "", "000-wolf-1-token.webp"))
 gleich("falsche Summe: mit dem Inhaltstext", warnTexte().join(), "BENEOS.TokenMenu.ViewContentMismatch")
 
 abschnitt("Der Wurf auf die Leinwand (BeneosCloud#drainPendingCanvasDrops) faellt auf 2.5D")

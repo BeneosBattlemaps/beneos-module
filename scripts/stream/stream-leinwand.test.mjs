@@ -256,7 +256,21 @@ console.log("Die Gegenrichtung: was ins Dokument geschrieben wird")
   gleich("eine Anfrage faellt weg",
     schluesselfreiAdresse(`${MIT}?t=1763215200000`), OHNE)
   gleich("ein alter Schluessel faellt genauso weg", schluesselfreiAdresse(MIT_ALT), OHNE)
-  for (const fremd of ["modules/x/y.webp", "beneos_assets/cloud/tokens/x/y.webp", ""]) {
+  /*
+   * DIE SCHREIBSTELLEN LAUFEN AUCH OHNE STREAMING, mit jeder Adresse, die ein
+   * Token tragen kann. Eine fremde Adresse in unserer Pfadform ist der Fall,
+   * der ohne Hostpruefung umgedeutet wuerde; The Forge legt Dateien unter
+   * einem eigenen Host ab.
+   */
+  for (const fremd of [
+    "modules/x/y.webp",
+    "beneos_assets/cloud/tokens/x/y.webp",
+    "",
+    "https://fremd.example/c/pk_x/beneos_ct_000-wolf/000-wolf-1-top.webp",
+    `https://fremd.example/a/${SCHLUESSEL}/beneos_bm_0113/4k/karte.webp`,
+    "https://assets.forge-vtt.com/0123abcd/beneos_assets/cloud/tokens/x/y.webp",
+    "http://192.168.1.10:30000/beneos_assets/x.webp",
+  ]) {
     gleich(`unveraendert: ${JSON.stringify(fremd)}`, schluesselfreiAdresse(fremd), fremd)
   }
   gleich("null bleibt null", schluesselfreiAdresse(null), null)
@@ -322,7 +336,7 @@ console.log(`\n${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
  * Von Hand nachgezogen, siehe Kopf. Weicht die gezaehlte Zahl ab, ist der Lauf
  * mittendrin gestorben oder ein Block ist still weggefallen.
  */
-const ERWARTET = 104
+const ERWARTET = 108
 if (aussagen !== ERWARTET) {
   console.log(`ROT  erwartet ${ERWARTET} Aussagen, gezaehlt ${aussagen}`)
   process.exit(1)

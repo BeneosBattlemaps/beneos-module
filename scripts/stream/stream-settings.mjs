@@ -1245,12 +1245,20 @@ export function platzhalterAdresse(release, variant, path, traeger) {
  * schon schluesselfreie Form ebenso. Eine Anfrage (`?t=...`) gehoert nicht in
  * ein Dokument und faellt weg, wie bei `zerlegeAdresse`.
  *
- * Wie `zerlegeAdresse` prueft sie die FORM und nicht den Host. Die Aufrufer
- * reichen nur Adressen, die sie selbst mit `assetUrl` gebaut oder aus dem
- * Manifest des eigenen Tors gelesen haben.
+ * ANDERS ALS `zerlegeAdresse` PRUEFT SIE DEN HOST. Sie laeuft auch an
+ * allgemeinen Schreibstellen des Moduls (Token-Stilwechsel, Variantenwechsel,
+ * Ablegen eines Tokens), und dort kann jede Adresse stehen. Eine fremde
+ * Adresse, deren Pfad zufaellig wie unserer aussieht
+ * (`https://fremd.example/c/x/y.webp`), darf nicht in `beneos://` umgedeutet
+ * werden, sonst zeigt das Dokument danach auf unser Tor statt auf ihre Datei.
+ * Eine Toradresse unter einer frueheren Basis bleibt deshalb ebenfalls
+ * stehen: unveraendert ist hier die sichere Richtung.
  */
 export function schluesselfreiAdresse(url) {
   if (typeof url !== "string" || istPlatzhalter(url)) return url
+  let host = ""
+  try { host = new URL(url).host } catch (_) { return url }
+  if (!host || host !== streamHost()) return url
   const t = zerlegeAdresse(url)
   if (!t) return url
   return platzhalterAdresse(t.release, t.variant, t.pfad, t.traeger) || url

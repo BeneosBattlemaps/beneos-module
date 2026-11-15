@@ -7,6 +7,7 @@ import "./beneos_tours.js";
 import { libWrapper } from "./shim.js";
 import { BeneosUtility } from "./beneos_utility.js";
 import { offlineGesperrt } from "./stream/stream-online.mjs";
+import { schluesselfreiAdresse } from "./stream/stream-settings.mjs";
 import { BeneosModuleMenu, BeneosDatabaseHolder } from "./beneos_search_engine.js";
 import { BeneosCloud } from "./beneos_cloud.js";
 import { BeneosAnalytics } from "./beneos_analytics.js";
@@ -716,6 +717,9 @@ Hooks.on("preCreateToken", (tokenDoc, data, options, userId) => {
       src = src.replace("-token.webp", "-top.webp")
       patch["texture.src"] = src
     }
+    // stre-T-102: auf die Platte nur die schluesselfreie Form. Die vorbereitete
+    // Adresse traegt den Tagesschluessel, der Textersatz erbt ihn.
+    if (patch["texture.src"]) patch["texture.src"] = schluesselfreiAdresse(patch["texture.src"])
 
     // Scale und Anchor werden jetzt bei JEDEM Beneos-Drop gesetzt, nicht
     // mehr nur im Top-Down-Zweig. Der 2.5D-Drop lief vorher komplett
