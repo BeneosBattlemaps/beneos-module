@@ -78,6 +78,8 @@ async function asyncLauf(inject) {
     unbehandelt,
     alle: warnungen.length,
     gemeldet: warnungen.filter((w) => w.includes("ActorSetBonusTab inject failed")).length,
+    // Die Warnung soll den Fehler erklaeren, nicht nur melden, dass einer war.
+    erklaert: warnungen.some((w) => w.includes("Pruefsatz wirft im async _inject")),
   }
 }
 
@@ -87,11 +89,23 @@ p.gleich("und gibt Blatt und Wurzel des Blattes weiter", wirft.weitergegeben, tr
 p.gleich("ein Wurf im async _inject wird keine unbehandelte Ablehnung", wirft.unbehandelt, 0)
 p.gleich("ein Wurf im async _inject wird genau einmal als Warnung gemeldet", wirft.alle === 1 && wirft.gemeldet === 1, true)
 
+p.gleich("und die Warnung nennt den Fehler", wirft.erklaert, true)
+
 const heil = await asyncLauf(async () => {})
 // Der Gegenwert zaehlt nur, wenn das intakte `_inject` wirklich lief.
 p.gleich("der Haken ruft auch das intakte _inject", heil.gerufen, 1)
 p.gleich("ein intaktes async _inject meldet keine Warnung", heil.alle, 0)
 p.gleich("und hinterlaesst keine unbehandelte Ablehnung", heil.unbehandelt, 0)
+/*
+ * DIE ZWEI ANDEREN HAKENNAMEN tragen denselben Ruf: renderNPCActorSheet fuer
+ * Monster und NPC (dnd5e 5.3), renderActorSheet fuer das alte V1-Blatt.
+ */
+for (const name of ["renderNPCActorSheet", "renderActorSheet"]) {
+  gerufen = 0
+  ActorSetBonusTab._inject = async () => { gerufen++ }
+  await haken.rufe(name, blatt(), wurzel())
+  p.gleich(`auch ${name} ruft _inject`, gerufen, 1)
+}
 process.off("unhandledRejection", zaehleUnbehandelt)
 
 ActorSetBonusTab._inject = echtesInject
