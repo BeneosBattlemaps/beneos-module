@@ -13,6 +13,7 @@
 
 import { BeneosUtility } from "../beneos_utility.js"
 import { beneosReleaseAlias } from "./beneos-release-aliases.mjs"
+import { naechsteLuecken } from "./transfer-drossel.mjs"
 
 const SETTING_KEY = "battlemap-installs"
 
@@ -416,7 +417,7 @@ export class BeneosInstallState {
    * want to err in. Over-reporting completeness costs a missing hint; under-
    * reporting it accuses the customer's install of being broken.
    */
-  static async recordInstall({ releaseDir, variant, assetId, sceneIds, sourceSignature, sceneCount }) {
+  static async recordInstall({ releaseDir, variant, assetId, sceneIds, sourceSignature, sceneCount, luecken }) {
     if (!releaseDir) return
     const all = this.getAll()
     const key = variant ? `${releaseDir}_${variant}` : releaseDir
@@ -436,6 +437,18 @@ export class BeneosInstallState {
       const s = String(id || "")
       if (s) vereinigt.add(s)
     }
+    // Ziele, die am Ende eines Laufs fehlten, damit der naechste sie nachholt
+    // (TICK-17). Vereinigt wie die sceneIds und gegen den Vermerk beim Schreiben,
+    // nicht gegen den Stand vom Laufbeginn. Zwei Laeufe, deren Schreiben sich
+    // selbst ueberschneidet, schuetzt das so wenig wie bei den sceneIds. Gibt
+    // ein Aufrufer `luecken` nicht mit, bleibt der alte Stand stehen.
+    const vorher = [
+      ...(Array.isArray(all[key]?.missingTargets) ? all[key].missingTargets : []),
+      ...(alterKey !== key && Array.isArray(all[alterKey]?.missingTargets) ? all[alterKey].missingTargets : []),
+    ]
+    const missingTargets = luecken
+      ? naechsteLuecken(vorher, luecken.erledigt, luecken.fehlgeschlagen, luecken.releaseZiele ?? null)
+      : naechsteLuecken(vorher, null, [])
     if (alterKey !== key) delete all[alterKey]
     all[key] = {
       releaseDir,
@@ -448,6 +461,7 @@ export class BeneosInstallState {
       sceneCount:      vereinigt.size || Number(sceneCount || 0),
       installedAt:     new Date().toISOString(),
       sourceSignature: String(sourceSignature || ""),
+      missingTargets,
     }
     try {
       await game.settings.set(BeneosUtility.moduleID(), SETTING_KEY, all)

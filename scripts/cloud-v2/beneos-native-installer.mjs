@@ -28,6 +28,7 @@ import { BeneosInstallState, BeneosPreInstallDialog, beneosLogModuleInstall } fr
 import { packNeedsV14Migration, migrateSceneForV14, migrateActorForV14 } from "./beneos-v14-scene-migration.mjs"
 import { zuInstallierendeSchluessel } from "../creature-installer/alternativen.mjs"
 import { tokenUpdatesAufteilen } from "./token-delta.mjs"
+import { Bahnsteuerung, runPool, retryAfterMs, entscheide429, reparaturKandidaten } from "./transfer-drossel.mjs"
 
 // ---- Transfer config -------------------------------------------------------
 const FETCH_MAX_ATTEMPTS  = 3            // transient retries per asset
@@ -444,6 +445,15 @@ export class BeneosNativeBattlemapInstaller {
     if (!packageId) throw new Error("BeneosNativeBattlemapInstaller: packageId is required")
     this.packageId = packageId
     this.label     = label || packageId
+    // Die Argumente dieses Aufrufs, damit der Retry im Bericht DASSELBE Paket
+    // repariert. Vorher rief er install() nur mit packageId, label und coverUrl
+    // auf: ohne record galt der Lauf als neu, ohne sceneSlugs wurde aus einer
+    // Einzel-Szene das ganze Release, und der Lauf wurde nicht vermerkt.
+    // `overwrite` wird bewusst NICHT vererbt, weder aus dem Dialog noch als
+    // Aufrufargument (ein Bundle-Lauf bringt seine Dialogwahl so mit): ein
+    // Retry soll Dateien reparieren und vor dem Ueberschreiben vorhandener
+    // Szenen fragen, denn der Kunde kann sie seit dem Bericht geaendert haben.
+    this._aufruf   = { packageId, label, coverUrl, sceneSlugs, record, source }
     // Kreaturen, die in DIESEM Lauf schon betrachtet wurden. Ein Bundle baut je
     // Paket einen eigenen Installer, und Releases teilen sich Kreaturen: die
     // sieben Pakete von "Castle Ravenloft" nannten dieselben Kreaturen mehrfach.
@@ -498,6 +508,17 @@ export class BeneosNativeBattlemapInstaller {
     this._sizeProbesLeft = MAX_SIZE_PROBES // budget for asking the server about its request-size ceiling
     this._forgeLimitPromise = null // shared in-flight read of The Forge's per-file ceiling (one per run, lazily)
     this._sceneScope  = null      // { assetRelPaths:Set, sceneIds:Set } when scene-scoped
+    // HTTP 429: gemeinsame Pause und Bahnzahl aller Uebertragungen dieses Laufs
+    // (transfer-drossel.mjs, TICK-17). Die Duenn-Leitungs-Drossel senkt hier die Decke.
+    this._drossel     = new Bahnsteuerung({ decke: DOWNLOAD_CONCURRENCY })
+    // Was dieser Lauf uebertragen oder als vorhanden geprueft hat, und die
+    // Luecken, die der vorige Lauf derselben Variante hinterliess. Beides ergibt
+    // die missingTargets des neuen Vermerks.
+    this._erledigt    = new Set()
+    this._vorigeLuecken = []
+    this._laufZiele   = null
+    this._pauseGemeldet = false
+    this._phasenStatus  = ""
   }
 
   /**
@@ -554,7 +575,7 @@ export class BeneosNativeBattlemapInstaller {
 
     try {
       // Phase: manifest
-      this.progress.handleStatusMessage("Loading manifest and pack contents")
+      this.#setzePhasenStatus("Loading manifest and pack contents")
       const packInfo = await this.#loadPackInfo()
       const { assets, jsons } = this.#classifyPack(packInfo)
 
@@ -571,7 +592,7 @@ export class BeneosNativeBattlemapInstaller {
             journalIds: scope.journalIds, playlistIds: scope.playlistIds, actorIds: scope.actorIds,
             folderIds: scope.folderIds, primarySceneId: scope.primarySceneId,
           }
-          this.progress.handleStatusMessage(`Preparing ${this.sceneSlugs.length} scene(s)`)
+          this.#setzePhasenStatus(`Preparing ${this.sceneSlugs.length} scene(s)`)
         } else {
           // Manifest missing / empty -> install the full release rather than
           // risk an empty install. Transparent: logged, and the user still
@@ -595,6 +616,10 @@ export class BeneosNativeBattlemapInstaller {
       this._allPresent  = targetSceneIds.length > 0 && presentIds.length === targetSceneIds.length
       const prior = this.#priorRecord()
       this._stale = this.#isStale(prior)
+      // Nur die GLEICHE Variante: #priorRecord faellt auf installs[0] zurueck,
+      // und die Luecken einer anderen Variante gehoeren nicht zu diesem Lauf.
+      const gleicheVariante = (prior && (prior.variant || "") === (this.record?.variant || "")) ? prior : null
+      this._vorigeLuecken = Array.isArray(gleicheVariante?.missingTargets) ? gleicheVariante.missingTargets : []
       if (presentIds.length && !this.overwrite) {
         const wahl = await BeneosPreInstallDialog.confirmWorldOverwrite({
           scope:        this._sceneScope ? "scene" : "release",
@@ -625,7 +650,7 @@ export class BeneosNativeBattlemapInstaller {
       this._skipSource = !!prior && !this._stale && this._allPresent
 
       // Phase: pre-flight write check — fail fast + clearly if the host blocks writes
-      this.progress.handleStatusMessage("Checking write access")
+      this.#setzePhasenStatus("Checking write access")
       const pre = await this.#preflightWriteCheck()
       if (!pre.ok) {
         result.preflight = { ok: false, category: pre.category, error: String(pre.error?.message || pre.error || "") }
@@ -641,7 +666,7 @@ export class BeneosNativeBattlemapInstaller {
       // subset). The progress window then shows every relevant phase greyed
       // out with "0 of N" from the start and fills to "N of N" as it runs ,
       // the user sees the full scope immediately. Phases with 0 stay hidden.
-      this.progress.handleStatusMessage("Reading pack contents")
+      this.#setzePhasenStatus("Reading pack contents")
       const phasePlan = await this.#buildPhasePlan(packInfo, installAssets)
       if (typeof this.progress.setPhasePlan === "function") this.progress.setPhasePlan(phasePlan)
       else this.progress.beginNativeRun?.()
@@ -840,6 +865,15 @@ export class BeneosNativeBattlemapInstaller {
         sceneIds,
         sourceSignature: this.record.contentSignature || "",
         sceneCount:      sceneIds.length,
+        // Was am Laufende fehlt, damit der naechste Lauf es nachholt. Auf The
+        // Forge gibt es keinen HEAD-Durchgang, ohne diesen Vermerk blieb eine
+        // gescheiterte Datei dort fuer immer weg (TICK-17).
+        // recordInstall vereinigt mit dem Vermerk im Augenblick des Schreibens.
+        luecken: {
+          erledigt:       this._erledigt,
+          fehlgeschlagen: this._result.assetFailures.map(f => f.target),
+          releaseZiele:   this._sceneScope ? null : this._laufZiele,
+        },
       })
     } catch (e) {
       console.warn("BeneosNativeInstaller | recordInstall failed", e)
@@ -1309,8 +1343,9 @@ export class BeneosNativeBattlemapInstaller {
   }
 
   /**
-   * Re-mint signed URLs (signatures expire after ~2h; slow installs outrun them).
-   * Deduped: under parallel transfers many 403s arrive at once — they must share
+   * Re-mint signed URLs (signatures expire after 1h, SCENEPACKER_URL_TTL in
+   * api-scenepacker.php; slow installs outrun them).
+   * Deduped: under parallel transfers many 403s arrive at once, and they must share
    * ONE refresh (a single getPackInfo) instead of each burning the small
    * MANIFEST_MAX_REFRESH budget and stampeding the origin.
    */
@@ -1405,6 +1440,10 @@ export class BeneosNativeBattlemapInstaller {
       const resumeFrom = carry.bytes > 0 ? carry.bytes : 0
       const init = { signal: controller.signal }
       if (resumeFrom > 0) init.headers = { Range: `bytes=${resumeFrom}-` }
+      // Nach einer 429 am Browser-Cache vorbei: das Tor reicht die 429 mit
+      // "public, max-age=3600" weiter, sonst koennte der Neuversuch die
+      // gespeicherte 429 bekommen, ohne das Netz zu fragen.
+      if (carry.noCache) init.cache = "no-store"
       const resp = await fetch(url, init)
       // 416 on a resume means the requested range starts past the end. That is
       // only good news if we actually hold the whole file, so confirm against
@@ -1420,7 +1459,13 @@ export class BeneosNativeBattlemapInstaller {
         carry.bytes = 0
         throw new TransferError(`range rejected at ${resumeFrom}/${knownTotal}, restarting`, INSTALL_ERROR.NETWORK, 416)
       }
-      if (!resp.ok) throw new TransferError(`HTTP ${resp.status}`, classifyTransferError(null, resp.status), resp.status)
+      if (!resp.ok) {
+        const e = new TransferError(`HTTP ${resp.status}`, classifyTransferError(null, resp.status), resp.status)
+        // Nur lesbar, wenn der Server den Header per Access-Control-Expose-Headers
+        // freigibt; sonst null, und die Drossel nimmt ihre eigene Folge.
+        if (resp.status === 429) e.retryAfterMs = retryAfterMs(resp.headers.get("retry-after"))
+        throw e
+      }
 
       // Range safety. A server or proxy that ignores Range answers 200 with the
       // FULL body; appending that to the bytes we already hold would silently
@@ -1585,10 +1630,21 @@ export class BeneosNativeBattlemapInstaller {
     // capped by FETCH_MAX_ATTEMPTS, but a SIGNATURE refresh and a partial-body
     // resume both `continue` without bumping `transient`, so guard backstops a
     // pathological loop. Refreshes are separately capped by MANIFEST_MAX_REFRESH.
+    // 429-Antworten zaehlen in ein eigenes Budget (RATE_MAX_ATTEMPTS), damit
+    // eine Drossel keinen der Versuche fuer Netz- und Serverfehler verbraucht.
+    let rate = 0
     for (let guard = 0; guard < 32; guard++) {
       const bytesBefore = carry.bytes
       try {
-        const blob = await this.#fetchOnce(url, carry)
+        // Eine laufende gemeinsame Pause gilt fuer jede Bahn, nicht nur fuer
+        // die, die die 429 bekam, und nach der Pause duerfen nur so viele
+        // Abrufe gleichzeitig laufen, wie die Drossel Bahnen erlaubt. Sonst
+        // fragten alle angefangenen Dateien im selben Augenblick wieder.
+        await this._drossel.erwerbe()
+        this.#pauseVorbei()
+        let blob
+        try { blob = await this.#fetchOnce(url, carry) } finally { this._drossel.gib() }
+        this._drossel.beiErfolg()
         // Das Uebertragungsvolumen eines Laufs. Die Spalte `bytes_transferred`
         // wartet seit jeher darauf und stand bei jedem Ereignis auf NULL, weil
         // keine einzige Aufrufstelle im Modul sie je uebergeben hat. Gezaehlt
@@ -1603,6 +1659,21 @@ export class BeneosNativeBattlemapInstaller {
           const fresh = await this.#refreshManifestFor(targetOrRelPath)
           if (fresh) { url = fresh; continue }
           throw err
+        }
+        // HTTP 429 heisst "zu viel", nicht "kaputt". Vorher lief es durch den
+        // Zweig darunter: zwei Pausen von 0,5 und 1,5 s, dann aufgegeben, und
+        // sechs Bahnen fragten dabei unabhaengig weiter (TICK-17).
+        if (err.status === 429) {
+          carry.noCache = true
+          rate += 1
+          const e = entscheide429(this._drossel, rate, err.retryAfterMs)
+          if (e.aktion === "aufgeben") throw err
+          if (e.aktion === "warten") {
+            try { game.beneos?.analytics?.trackDownloadRetry?.(this.record?.assetId || "", rate, cat) } catch (_) {}
+            this.#meldePause()
+            continue
+          }
+          // "wie-5xx": Gesamtbudget der Pausen aufgebraucht, weiter wie jeder andere Serverfehler.
         }
         // An attempt that moved bytes forward is progress, not a failed try: on
         // a thin line a large asset may well need several resumes, and burning
@@ -1633,6 +1704,29 @@ export class BeneosNativeBattlemapInstaller {
       }
     }
     throw new TransferError("too many transfer attempts", INSTALL_ERROR.UNKNOWN, null)
+  }
+
+  /** Statuszeile waehrend einer gemeinsamen 429-Pause; der Balken bleibt stehen. */
+  #meldePause() {
+    const rest = this._drossel.restPauseMs()
+    if (rest <= 0) return
+    this._pauseGemeldet = true
+    try {
+      this.progress?.handleStatusMessage?.(game.i18n.format("BENEOS.Cloud.Install.RateLimited", { seconds: Math.ceil(rest / 1000) }))
+    } catch (_) { /* Statuszeile ist Beiwerk */ }
+  }
+
+  /** Nach der Pause wieder die Zeile der Phase, statt eines veralteten "Waiting 30 s". */
+  #pauseVorbei() {
+    if (!this._pauseGemeldet || this._drossel.pausiert()) return
+    this._pauseGemeldet = false
+    try { if (this._phasenStatus) this.progress?.handleStatusMessage?.(this._phasenStatus) } catch (_) {}
+  }
+
+  /** Statuszeile einer Phase setzen und fuer das Ende einer Pause merken. */
+  #setzePhasenStatus(text) {
+    this._phasenStatus = text
+    this.progress.handleStatusMessage(text)
   }
 
   /**
@@ -1889,7 +1983,10 @@ export class BeneosNativeBattlemapInstaller {
     }
     let blob
     try {
-      blob = await this.#fetchAsset(a.url, a.target)
+      // Die aktuelle URL, nicht die aus #classifyPack: nach einem Auffrischen
+      // (signierte URLs gelten 1 h) loeste sonst jede noch nicht begonnene Datei
+      // ein eigenes 401 aus und verbrauchte das Budget MANIFEST_MAX_REFRESH.
+      blob = await this.#fetchAsset(this._urlByTarget.get(a.target) || a.url, a.target)
     } catch (err) {
       return { ok: false, category: err.category || INSTALL_ERROR.UNKNOWN, error: err }
     }
@@ -1994,31 +2091,6 @@ export class BeneosNativeBattlemapInstaller {
   // ---- Phases --------------------------------------------------------------
 
   /**
-   * Run `worker(item, index)` over `items` with at most `concurrency` in flight.
-   * Workers pull from a shared cursor; resolves when every item is processed.
-   * Single-threaded JS -> shared-counter mutations inside the worker are safe.
-   * A worker must not throw (handle per-item errors itself).
-   *
-   * Optional `budget` ({ lanes }) lets a caller shrink the pool while it runs:
-   * a lane retires itself between items once the pool exceeds the budget. It
-   * retires rather than aborts, so in-flight transfers always finish.
-   */
-  async #runPool(items, concurrency, worker, budget = null) {
-    const n = items.length
-    if (n === 0) return
-    let next = 0
-    const lanes = Math.max(1, Math.min(concurrency, n))
-    let active = lanes
-    const runLane = async () => {
-      for (let i = next++; i < n; i = next++) {
-        await worker(items[i], i)
-        if (budget && active > Math.max(1, budget.lanes)) { active -= 1; return }
-      }
-    }
-    await Promise.all(Array.from({ length: lanes }, runLane))
-  }
-
-  /**
    * Thin the pool once when the measured PER-LANE rate shows the line cannot
    * carry six streams. Six lanes on a 250 KB/s link give each file ~42 KB/s,
    * which holds a single connection open for minutes and is what makes large
@@ -2028,22 +2100,27 @@ export class BeneosNativeBattlemapInstaller {
    * also count the upload half of each transfer, where no download bytes
    * arrive, and would therefore understate a healthy line by roughly half.
    *
-   * Deliberately one-way (never raises past DOWNLOAD_CONCURRENCY) and only
-   * judged once enough bandwidth-bound bytes have moved, so a fast connection
-   * is never mistaken for a slow one.
+   * Deliberately one-way: it lowers the CEILING (`decke`) of the shared
+   * Bahnsteuerung, which never rises again. The 429 recovery climbs back only
+   * up to that ceiling, so a thin line stays at two lanes. Judged once enough
+   * bandwidth-bound bytes have moved, so a fast connection is never mistaken
+   * for a slow one.
    */
   #maybeThrottleLanes(budget) {
     if (this._zipEntries) return                              // ZIP source: no network to measure
-    if (!budget || budget.lanes <= ADAPTIVE_MIN_LANES) return // already thinned
+    if (!budget || budget.decke <= ADAPTIVE_MIN_LANES) return // already thinned
     if (this._netBytes < ADAPTIVE_MIN_BYTES) return           // too little data to judge
     if (this._netMs < 1000) return
     const bps = (this._netBytes / this._netMs) * 1000
     if (bps >= ADAPTIVE_SLOW_BPS) return
-    budget.lanes = ADAPTIVE_MIN_LANES
-    console.warn(`BeneosNativeInstaller | thin line (~${Math.round(bps / 1024)} KB/s per stream), reducing to ${budget.lanes} parallel transfers`)
+    budget.setzeDecke(ADAPTIVE_MIN_LANES)
+    console.warn(`BeneosNativeInstaller | thin line (~${Math.round(bps / 1024)} KB/s per stream), reducing to ${budget.decke} parallel transfers`)
   }
 
   async #downloadAssets(assets) {
+    // Alle Ziele dieses Laufs; bei einem ungescopten Lauf ist das das ganze
+    // Release, und vorige Luecken ausserhalb davon fallen aus dem Vermerk.
+    this._laufZiele = new Set(assets.map(a => a.target))
     const total = assets.length
     this._result.totals.assets = total
     // Teil 2 source-gating: an up-to-date, fully-present release has byte-
@@ -2051,7 +2128,7 @@ export class BeneosNativeBattlemapInstaller {
     // still HEAD-checks and re-fetches anything actually missing, so a
     // partially-deleted install self-heals.
     if (this._skipSource) {
-      this.progress.handleStatusMessage("Scene assets already up to date")
+      this.#setzePhasenStatus("Scene assets already up to date")
       this.progress.revealPhase?.("assets", { status: "done", current: total, total })
       this._result.totals.ok += total
       return
@@ -2059,19 +2136,22 @@ export class BeneosNativeBattlemapInstaller {
     // Fast first pass: download up to DOWNLOAD_CONCURRENCY assets in parallel.
     // Anything that fails here is re-fetched ONE AT A TIME in #verifyAndRepair
     // (the hardened single-stream fallback for a bad/saturated connection).
-    this.progress.handleStatusMessage("Downloading scene assets")
+    this.#setzePhasenStatus("Downloading scene assets")
     this.progress.revealPhase?.("assets", { status: "active", current: 0, total })
     let done = 0
-    const budget = { lanes: DOWNLOAD_CONCURRENCY }
+    const budget = this._drossel
     this._netBytes = 0
     this._netMs    = 0
-    await this.#runPool(assets, DOWNLOAD_CONCURRENCY, async (a) => {
+    await runPool(assets, DOWNLOAD_CONCURRENCY, async (a) => {
       const res = await this.#transferOne(a)
-      if (res.ok) this._result.totals.ok += 1
+      if (res.ok) { this._result.totals.ok += 1; this._erledigt.add(a.target) }
       else this.#recordAssetFailure(a.target, res.category, res.error)
       done += 1
       this.progress.handleAssetProgress("Assets", total, done)
       this.progress.revealPhase?.("assets", { status: "active", current: done, total })
+      // handleAssetProgress ueberschreibt die Statuszeile; waehrend einer
+      // 429-Pause soll dort weiter stehen, worauf der Installer wartet.
+      this.#meldePause()
       this.#maybeThrottleLanes(budget)
     }, budget)
     this.progress.revealPhase?.("assets", { status: "done", current: total, total })
@@ -2109,7 +2189,7 @@ export class BeneosNativeBattlemapInstaller {
         console.warn("BeneosNativeInstaller | doc class missing for", relPath)
         continue
       }
-      this.progress.handleStatusMessage(`Importing ${meta.phaseKey}`)
+      this.#setzePhasenStatus(`Importing ${meta.phaseKey}`)
 
       let raw
       try {
@@ -2609,7 +2689,7 @@ export class BeneosNativeBattlemapInstaller {
    * On Forge the upload's returned path is the success signal (no HEAD).
    */
   async #verifyAndRepair(assets) {
-    this.progress.handleStatusMessage("Verifying installed assets")
+    this.#setzePhasenStatus("Verifying installed assets")
     // A file the server refused for its SIZE is refused again, byte for byte,
     // every time it is offered. Repairing it re-downloads the whole asset from
     // the cloud only to be turned away by the same proxy rule, so it is left
@@ -2617,17 +2697,20 @@ export class BeneosNativeBattlemapInstaller {
     // cause. It is missing on disk, so the HEAD pass below would otherwise
     // pick it straight back up.
     const hopeless = new Set(this._result.assetFailures.filter(f => f.category === INSTALL_ERROR.TOOLARGE).map(f => f.target))
-    const byTarget = new Map()
-    for (const f of this._result.assetFailures) {
-      if (hopeless.has(f.target)) continue
-      const a = assets.find(x => x.target === f.target)
-      if (a) byTarget.set(a.target, a)
-    }
+    // Kandidaten sind die Fehlschlaege dieses Laufs UND die Luecken, die der
+    // vorige Lauf im Vermerk hinterliess. Ohne die zweiten blieb eine Datei auf
+    // The Forge fuer immer weg: dort gibt es keinen HEAD-Durchgang, und ein
+    // vollstaendig vorhandenes Release ueberspringt den Download (TICK-17).
+    const byTarget = new Map(reparaturKandidaten({
+      assets, fehler: this._result.assetFailures, vorigeLuecken: this._vorigeLuecken,
+      hoffnungslosKategorie: INSTALL_ERROR.TOOLARGE, erledigt: this._erledigt,
+    }).map(a => [a.target, a]))
     if (!this._isForge) {
       // HEAD-checks are cheap + read-only -> run them in parallel.
-      await this.#runPool(assets, DOWNLOAD_CONCURRENCY, async (a) => {
+      await runPool(assets, DOWNLOAD_CONCURRENCY, async (a) => {
         if (byTarget.has(a.target) || hopeless.has(a.target)) return
-        if (!(await this.#headCheck(this.#installedPath(a)))) byTarget.set(a.target, a)
+        if (await this.#headCheck(this.#installedPath(a))) this._erledigt.add(a.target)
+        else byTarget.set(a.target, a)
       })
     }
     const candidates = [...byTarget.values()]
@@ -2637,7 +2720,7 @@ export class BeneosNativeBattlemapInstaller {
     // stream is gentler on a bad/saturated connection than the parallel first
     // pass, so flaky transfers are far more likely to complete on this retry
     // (slower, but robust).
-    this.progress.handleStatusMessage(`Retrying ${candidates.length} asset(s) one at a time`)
+    this.#setzePhasenStatus(`Retrying ${candidates.length} asset(s) one at a time`)
     for (let i = 0; i < candidates.length; i++) {
       const a = candidates[i]
       const res = await this.#transferOne(a)
@@ -2645,6 +2728,7 @@ export class BeneosNativeBattlemapInstaller {
       if (ok && !this._isForge) ok = await this.#headCheck(this.#installedPath(a)) // confirm on disk
       if (ok) {
         this.#clearAssetFailure(a.target)
+        this._erledigt.add(a.target)
         this._result.totals.repaired += 1
       } else {
         // No category means #transferOne returned ok and only the HEAD above
@@ -2692,9 +2776,10 @@ export class BeneosNativeBattlemapInstaller {
     try {
       const mod = await import("./beneos-install-report.mjs")
       const open = () => mod.BeneosInstallReport.show(result, {
-        onRetry: () => BeneosNativeBattlemapInstaller.install({
-          packageId: this.packageId, label: this.label, coverUrl: this.coverUrl,
-        }),
+        // Dieselben Argumente wie der Lauf selbst. Der Retry repariert, die
+        // missingTargets des Vermerks sagen ihm, was fehlt; vor dem Ueberschreiben
+        // vorhandener Szenen fragt er wie jeder andere Lauf.
+        onRetry: () => BeneosNativeBattlemapInstaller.install({ ...this._aufruf }),
       })
       // Let the progress window re-open this report via its "Show report" button.
       this.progress.setReportOpener?.(open)

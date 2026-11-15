@@ -1543,6 +1543,7 @@
   "BENEOS.Cloud.Filter.Battlemap": "Только боевые карты",
   "BENEOS.Cloud.Install.NoPackDir": "Beneos Cloud недоступен, поэтому этот релиз не может быть установлен прямо сейчас. Повторите попытку, когда соединение восстановится.",
   "BENEOS.Cloud.Install.AssetsMissing": "{count} ресурс(ов) не удалось установить и могут отображаться как отсутствующие. Проверьте консоль или переустановите пакет.",
+  "BENEOS.Cloud.Install.RateLimited": "Beneos Cloud занят. Продолжение через {seconds} с.",
   "BENEOS.Cloud.Install.ConvertedUploads": "{count} файл(ов) были преобразованы в другой формат модулем третьей стороны (например, Media Optimizer) во время установки. Beneos автоматически отрегулировал все ссылки.",
   "BENEOS.Cloud.Install.Report.ConvertedUploads": "{count} загруженный(е) файл(ы) были преобразованы в другой формат модулем третьей стороны (например, Media Optimizer). Beneos автоматически отрегулировал все ссылки, это не ошибка.",
   "BENEOS.Cloud.Install.Report.Cat.permission": "запись заблокирована",
