@@ -95,6 +95,16 @@ export function erlaubteBasis(wert) {
   if (adresse.username || adresse.password) return ""
   const host = adresse.hostname.toLowerCase()
   if (host !== GATE_ZONE && !host.endsWith("." + GATE_ZONE)) return ""
+  /*
+   * NUR EIN URSPRUNG, KEIN PFAD (zweiter Kaltleser, 16.11.2026). Das Tor routet
+   * ab der Wurzel, das erste Pfadstueck ist der Raum (`src/index.js` im
+   * Worker, `parts[0]`). Eine Basis `https://gate.beneos.stream/v2` ergaebe
+   * Adressen, die kein Tor bedient, und `zerlegeAdresse` laese `v2` als Raum:
+   * `schluesselfreiAdresse` liesse den Schluessel dann still im Dokument.
+   * Abgelehnt statt abgeschnitten, weil jede Stelle, die Adressen zerlegt,
+   * dieselbe Annahme traegt.
+   */
+  if (adresse.pathname !== "/" || adresse.search || adresse.hash) return ""
   return sauber
 }
 
@@ -1267,6 +1277,22 @@ export function schluesselfreiAdresse(url) {
   if (!host || host !== streamHost()) return url
   const t = zerlegeAdresse(url)
   if (!t) return url
+  /*
+   * DER RUNDLAUF MUSS DASSELBE ZIEL TREFFEN (zweiter Kaltleser, 16.11.2026).
+   * `adressSegmente` entscheidet den Raum am Releasenamen, `zerlegeAdresse`
+   * am Buchstaben. Eine Adresse `/a/<schluessel>/beneos_ct_.../<variante>/...`
+   * kaeme als `beneos://c/...` ohne Variante zurueck und zeigte danach auf ein
+   * anderes Ziel. Umgeschrieben wird deshalb nur, wenn die Stuecke der
+   * schluesselfreien Form genau die der Eingabe ohne Schluessel sind,
+   * dekodiert verglichen, weil `URL` und `encodeURIComponent` verschieden
+   * kodieren. Sonst bleibt die Adresse stehen, die sichere Richtung.
+   */
+  const teile = adressSegmente(t.release, t.variant, t.pfad, t.traeger)
+  if (!teile) return url
+  const klar = (s) => { try { return decodeURIComponent(s) } catch (_) { return s } }
+  const eingabe = new URL(url).pathname.replace(/^\/+/, "").split("/")
+  eingabe.splice(1, 1)
+  if (eingabe.map(klar).join("/") !== teile.map(klar).join("/")) return url
   return platzhalterAdresse(t.release, t.variant, t.pfad, t.traeger) || url
 }
 

@@ -110,6 +110,25 @@ const SCHREIB_FELDER = Object.freeze({
 })
 
 /**
+ * Die eingebetteten Dokumente, die ein Elterndokument in SEINER Aenderung
+ * mitschickt, je Feld die Art des Elements.
+ *
+ * Kalt-Review 16.11.2026, zweiter Leser, Befund 1: die Szenenkonfiguration von
+ * Foundry 14 legt die Stufe als `levels: [level]` in `scene.update`
+ * (`scene-config.mjs:378`, `:493`), und dabei feuert nur `preUpdateScene`.
+ * Ein Netz, das nur die Haken der eingebetteten Art kennt, sieht diese Form
+ * nie. Dasselbe gilt fuer eine Szene, die mit Kacheln oder Tokens angelegt
+ * wird, und fuer eine Playlist mit ihren Klaengen.
+ */
+const EINGEBETTET = Object.freeze({
+  "Scene": Object.freeze({
+    levels: "Level", tiles: "Tile", tokens: "Token", notes: "Note",
+    drawings: "Drawing", sounds: "AmbientSound",
+  }),
+  "Playlist": Object.freeze({ sounds: "PlaylistSound" }),
+})
+
+/**
  * Wo in einem Aenderungsobjekt der Pfad steht: verschachtelt, flach
  * (`"texture.src"`) oder halb flach (`"prototypeToken.texture": { src }`).
  * Foundry nimmt alle drei Formen an.
@@ -216,12 +235,26 @@ export function installStreamLeinwand() {
    * Quelle des Dokuments: dort verlangt Foundry `updateSource`, eine Aenderung
    * der Daten wirkte nicht. Ohne Streaming tut `schluesselfreiAdresse` nichts.
    */
+  const felderJe = {}
   for (const art of Object.keys(SCHREIB_FELDER)) {
-    const klasse = globalThis.CONFIG?.[art]?.documentClass
-    const vorbereitet = felderImSchema(art, klasse)
-    const felder = SCHREIB_FELDER[art].filter((p) => vorbereitet.includes(p) || !LEINWAND_FELDER[art].includes(p))
+    const vorbereitet = felderImSchema(art, globalThis.CONFIG?.[art]?.documentClass)
+    felderJe[art] = SCHREIB_FELDER[art].filter((p) => vorbereitet.includes(p) || !LEINWAND_FELDER[art].includes(p))
+  }
+  // Die Elemente eines eingebetteten Feldes, jedes mit den Feldern seiner Art.
+  const eingebettet = (art, daten) => {
+    let zahl = 0
+    for (const [feld, kind] of Object.entries(EINGEBETTET[art] ?? {})) {
+      const liste = daten?.[feld]
+      if (!Array.isArray(liste)) continue
+      for (const element of liste) zahl += schreibFelder(element, felderJe[kind])
+    }
+    return zahl
+  }
+  for (const art of new Set([...Object.keys(SCHREIB_FELDER), ...Object.keys(EINGEBETTET)])) {
+    const felder = felderJe[art] ?? []
     Hooks.on(`preUpdate${art}`, (_doc, aenderung) => {
       try { schreibFelder(aenderung, felder) } catch (_) { /* das Speichern geht vor */ }
+      try { eingebettet(art, aenderung) } catch (_) { /* das Speichern geht vor */ }
     })
     Hooks.on(`preCreate${art}`, (doc) => {
       try {
@@ -230,12 +263,20 @@ export function installStreamLeinwand() {
           const wert = pfad.split(".").reduce((o, t) => o?.[t], doc?._source)
           if (typeof wert === "string") kopie[pfad] = wert
         }
-        if (schreibFelder(kopie, felder) === 0) return
+        schreibFelder(kopie, felder)
         const neu = {}
         for (const [pfad, wert] of Object.entries(kopie)) {
           if (pfad.split(".").reduce((o, t) => o?.[t], doc._source) !== wert) neu[pfad] = wert
         }
-        doc.updateSource(neu)
+        // Die eingebetteten Listen als Kopie: `updateSource` ersetzt die Liste
+        // ganz, und nur eine geaenderte wird ersetzt.
+        for (const feld of Object.keys(EINGEBETTET[art] ?? {})) {
+          const liste = doc?._source?.[feld]
+          if (!Array.isArray(liste)) continue
+          const kopieListe = JSON.parse(JSON.stringify(liste))
+          if (eingebettet(art, { [feld]: kopieListe }) > 0) neu[feld] = kopieListe
+        }
+        if (Object.keys(neu).length > 0) doc.updateSource(neu)
       } catch (_) { /* das Anlegen geht vor */ }
     })
   }

@@ -296,6 +296,18 @@ console.log("Die Gegenrichtung: was ins Dokument geschrieben wird")
   gleich("schreibend, kein Schluessel: die Toradresse bleibt stehen", schluesselfreiAdresse(MIT), MIT)
   schluessel = SCHLUESSEL
   gleich("schreibend, Gegenprobe mit beidem: schluesselfrei", schluesselfreiAdresse(MIT), OHNE)
+  /*
+   * DER RUNDLAUF MUSS DASSELBE ZIEL TREFFEN (zweiter Kaltleser, 16.11.2026).
+   * Eine Kreatur unter `/a/` kaeme als `beneos://c/...` ohne Variante zurueck.
+   * Ein Sonderzeichen, das `URL` anders kodiert als `encodeURIComponent`, darf
+   * den Vergleich nicht kippen.
+   */
+  const kreaturUnterA = `${GATE}/a/${SCHLUESSEL}/beneos_ct_000-wolf/4k/wolf.webp`
+  gleich("schreibend, Kreatur unter /a/: bleibt stehen, sonst ein anderes Ziel",
+    schluesselfreiAdresse(kreaturUnterA), kreaturUnterA)
+  const klammer = { release: "beneos_bm_0113", variant: "4k", pfad: "karte[1].webp" }
+  gleich("schreibend, Klammer im Dateinamen: dekodiert verglichen",
+    schluesselfreiAdresse(`${GATE}/a/${SCHLUESSEL}/beneos_bm_0113/4k/karte[1].webp`), ohneVon(klammer))
 }
 
 /*
@@ -380,9 +392,23 @@ console.log("Die Huelle um prepareBaseData")
     get background() { this.zugriffe++; return { src: this._vg } }
     prepareBaseData() { this.thumb = this._source.thumb }
   }
-  globalThis.CONFIG = { Tile: { documentClass: Kachel }, Scene: { documentClass: Szene14 } }
+  // Zaehlt, wie oft die Huelle das Feld liest: einmal gewickelt heisst einmal.
+  class Zaehler {
+    static schema = schema(["texture"])
+    prepareBaseData() {
+      let src = OHNE
+      const selbst = this
+      this.lesen = 0
+      this.texture = { get src() { selbst.lesen++; return src }, set src(v) { src = v } }
+    }
+  }
+  globalThis.CONFIG = { Tile: { documentClass: Kachel }, Scene: { documentClass: Szene14 }, Token: { documentClass: Zaehler } }
   installStreamLeinwand()
   installStreamLeinwand()
+  const z = new Zaehler()
+  z.prepareBaseData()
+  gleich("zweimal eingebaut: prepareBaseData einmal gewickelt", z.lesen, 1)
+  gleich("zweimal eingebaut: ein Netzhaken je Art", (haken.preUpdateTile ?? []).length, 1)
 
   const k = new Kachel(OHNE)
   k.prepareBaseData()
@@ -428,6 +454,24 @@ console.log("Die Huelle um prepareBaseData")
   gleich("Netz, Kachel: auch als flacher Schluessel", upd("Tile", { "texture.src": MIT })["texture.src"], OHNE)
   gleich("Netz, Klang: path wird schluesselfrei", upd("PlaylistSound", { path: MIT }).path, OHNE)
   gleich("Netz, Szene wie Foundry 14: das Vorschaubild", upd("Scene", { thumb: MIT }).thumb, OHNE)
+  /*
+   * DIE FORM, DIE FOUNDRY 14 SCHICKT (zweiter Kaltleser, 16.11.2026): die
+   * Szenenkonfiguration legt die Stufe als `levels: [level]` in `scene.update`
+   * (`scene-config.mjs:378`), und es feuert nur `preUpdateScene`.
+   */
+  const stufe = upd("Scene", { grid: { size: 101 }, levels: [{ _id: "x", background: { src: MIT }, foreground: { src: MIT } }] }).levels[0]
+  gleich("Netz, Szene: levels[] Hintergrund wird schluesselfrei", stufe.background.src, OHNE)
+  gleich("Netz, Szene: levels[] Vordergrund wird schluesselfrei", stufe.foreground.src, OHNE)
+  gleich("Netz, Szene: tiles[] wird schluesselfrei",
+    upd("Scene", { tiles: [{ _id: "t", texture: { src: MIT } }] }).tiles[0].texture.src, OHNE)
+  gleich("Netz, Szene: tokens[] wird schluesselfrei",
+    upd("Scene", { tokens: [{ _id: "k", texture: { src: MIT } }] }).tokens[0].texture.src, OHNE)
+  gleich("Netz, Szene: sounds[] wird schluesselfrei",
+    upd("Scene", { sounds: [{ _id: "s", path: MIT }] }).sounds[0].path, OHNE)
+  gleich("Netz, Szene: ein Element ohne Adressfeld bleibt",
+    upd("Scene", { tiles: [{ _id: "t", name: MIT }] }).tiles[0].name, MIT)
+  gleich("Netz, Playlist: sounds[] wird schluesselfrei",
+    upd("Playlist", { sounds: [{ _id: "p", path: MIT }] }).sounds[0].path, OHNE)
   modus = false
   gleich("Netz, Modus aus: die Toradresse bleibt", upd("Actor", { img: MIT }).img, MIT)
   modus = true
@@ -441,6 +485,21 @@ console.log("Die Huelle um prepareBaseData")
   gesetzt = null
   ruf("preCreateTile", { _source: { texture: { src: OHNE } }, updateSource(d) { gesetzt = d } }, {}, {}, "nutzer")
   gleich("Netz, Anlegen: schon schluesselfrei, nichts gesetzt", gesetzt, null)
+  // Eine Szene, die mit Kacheln und Tokens angelegt wird (Import, Duplikat).
+  gesetzt = null
+  ruf("preCreateScene", {
+    _source: { name: "s", tiles: [{ texture: { src: MIT } }], tokens: [{ texture: { src: OHNE } }] },
+    updateSource(d) { gesetzt = d },
+  }, {}, {}, "nutzer")
+  gleich("Netz, Anlegen einer Szene: die Kachel wird schluesselfrei, nur die geaenderte Liste",
+    JSON.stringify(gesetzt), JSON.stringify({ tiles: [{ texture: { src: OHNE } }] }))
+  gesetzt = null
+  ruf("preCreateScene", { _source: { name: "s", tiles: [{ texture: { src: OHNE } }] }, updateSource(d) { gesetzt = d } }, {}, {}, "nutzer")
+  gleich("Netz, Anlegen einer Szene: schon schluesselfrei, nichts gesetzt", gesetzt, null)
+  gesetzt = null
+  ruf("preCreatePlaylist", { _source: { name: "p", sounds: [{ path: MIT }] }, updateSource(d) { gesetzt = d } }, {}, {}, "nutzer")
+  gleich("Netz, Anlegen einer Playlist: der Klang wird schluesselfrei",
+    JSON.stringify(gesetzt), JSON.stringify({ sounds: [{ path: OHNE }] }))
 
   game.scenes = altScenes
   globalThis.Hooks = altHooks
@@ -452,7 +511,7 @@ console.log(`\n${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
  * Von Hand nachgezogen, siehe Kopf. Weicht die gezaehlte Zahl ab, ist der Lauf
  * mittendrin gestorben oder ein Block ist still weggefallen.
  */
-const ERWARTET = 131
+const ERWARTET = 145
 if (aussagen !== ERWARTET) {
   console.log(`ROT  erwartet ${ERWARTET} Aussagen, gezaehlt ${aussagen}`)
   process.exit(1)

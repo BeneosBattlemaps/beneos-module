@@ -39,8 +39,14 @@
  * `beneos-asset-path-repair.js`, und `leinwand`, die Toradresse beim
  * Vorbereiten samt Gegenrichtung und den Lesern in `stream-online.mjs`. Beide
  * gibt es an der Basis nicht, und `--alt` laesst sie ueber `mitBasis` aus.
- * Jede der 131 Proben von `leinwand` ist Ziel einer Sabotage, auch die des
- * Schreibnetzes (Kalt-Review 16.11.2026); Eigenproben braucht der Satz keine.
+ * Jede der 145 Proben von `leinwand` ist Ziel einer Sabotage, auch die des
+ * Schreibnetzes samt eingebetteter Listen (Kalt-Review 16.11.2026, zwei
+ * Leser); Eigenproben braucht der Satz keine.
+ *
+ * ZWOELF SAETZE seit dem zweiten Kaltleser zu stre-T-102. `basis`
+ * (`erlaubteBasis`, OP-PRJ-176) lief bis dahin nur in `--alle-saetze` und
+ * damit ohne Beleg, dass eine Probe rot werden kann. Seit dem Pfadriegel
+ * traegt er eine Entscheidung, die der Schreibweg braucht.
  *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
@@ -699,7 +705,7 @@ const SABOTAGEN = [
   { satz: "leinwand", ziel: ["Schluesselwechsel: neu vorbereitet"], ersetze: [[LEINWAND, "[SETTING.key, SETTING.base, SETTING.mode]", "[SETTING.base, SETTING.mode]"]] },
   { satz: "leinwand", ziel: ["Basiswechsel: neu vorbereitet"], ersetze: [[LEINWAND, "[SETTING.key, SETTING.base, SETTING.mode]", "[SETTING.key, SETTING.mode]"]] },
   { satz: "leinwand", ziel: ["fremde Einstellung: nicht neu vorbereitet"], ersetze: [[LEINWAND, "    if (!EINSTELLUNGEN.has(setting?.key)) return", "    if (!String(setting?.key).startsWith(MODULE_ID)) return"]] },
-  { satz: "leinwand", ziel: ["Schluesselwechsel: neu vorbereitet","Basiswechsel: neu vorbereitet"], ersetze: [[LEINWAND, "  if (hakenGesetzt) return\n", "\n"]] },
+  { satz: "leinwand", ziel: ["Schluesselwechsel: neu vorbereitet","Basiswechsel: neu vorbereitet","zweimal eingebaut: ein Netzhaken je Art"], ersetze: [[LEINWAND, "  if (hakenGesetzt) return\n", "\n"]] },
   // schluesselfreiAdresse, die Gegenrichtung.
   { satz: "leinwand", ziel: ["\"karte\": aus der Toradresse wird die schluesselfreie Form","\"karte\": und der Umlauf trifft die Toradresse von heute","\"kreatur\": aus der Toradresse wird die schluesselfreie Form","\"kreatur\": und der Umlauf trifft die Toradresse von heute","\"beute\": aus der Toradresse wird die schluesselfreie Form","\"beute\": und der Umlauf trifft die Toradresse von heute","\"geteilt\": aus der Toradresse wird die schluesselfreie Form","\"geteilt\": und der Umlauf trifft die Toradresse von heute","\"unterpfad\": aus der Toradresse wird die schluesselfreie Form","\"unterpfad\": und der Umlauf trifft die Toradresse von heute","eine Anfrage faellt weg","ein alter Schluessel faellt genauso weg"], ersetze: [[SETTINGS, "  return platzhalterAdresse(t.release, t.variant, t.pfad, t.traeger) || url", "  return url.replace(streamBase(), PLATZHALTER_SCHEMA + \"/\")"]] },
   { satz: "leinwand", ziel: ["\"karte\": die schluesselfreie Form bleibt, wie sie ist","\"kreatur\": die schluesselfreie Form bleibt, wie sie ist","\"beute\": die schluesselfreie Form bleibt, wie sie ist","\"geteilt\": die schluesselfreie Form bleibt, wie sie ist","\"unterpfad\": die schluesselfreie Form bleibt, wie sie ist"], ersetze: [[SETTINGS, "  if (typeof url !== \"string\" || istPlatzhalter(url)) return url", "  if (typeof url !== \"string\") return url\n  if (istPlatzhalter(url)) return leinwandAdresse(url)"]] },
@@ -716,8 +722,39 @@ const SABOTAGEN = [
   { satz: "leinwand", ziel: ["Netz, Akteur: der Prototyp als flacher Schluessel","Netz, Akteur: der Prototyp halb flach","Netz, Kachel: auch als flacher Schluessel","Netz, Anlegen: die Quelle bekommt die schluesselfreie Form"], ersetze: [[LEINWAND, "  for (let i = teile.length; i >= 1; i--) {", "  for (let i = 1; i >= 1; i--) {"]] },
   { satz: "leinwand", ziel: ["Netz, Akteur: img mit Schluessel wird schluesselfrei","Netz, Akteur: der Prototyp verschachtelt","Netz, Akteur: der Prototyp als flacher Schluessel","Netz, Akteur: der Prototyp halb flach","Netz, Kachel: texture.src wird schluesselfrei","Netz, Kachel: auch als flacher Schluessel","Netz, Klang: path wird schluesselfrei","Netz, Szene wie Foundry 14: das Vorschaubild","Netz, Anlegen: die Quelle bekommt die schluesselfreie Form"], ersetze: [[LEINWAND, "      if (nachher !== vorher) {", "      if (false) {", 2, 2]] },
   { satz: "leinwand", ziel: ["Netz, Akteur: der Prototyp verschachtelt","Netz, Akteur: der Prototyp als flacher Schluessel","Netz, Akteur: der Prototyp halb flach"], ersetze: [[LEINWAND, ".filter((p) => vorbereitet.includes(p) || !LEINWAND_FELDER[art].includes(p))", ".filter((p) => vorbereitet.includes(p))"]] },
-  { satz: "leinwand", ziel: ["Netz, Anlegen: die Quelle bekommt die schluesselfreie Form"], ersetze: [[LEINWAND, "        doc.updateSource(neu)", "        void neu"]] },
-  { satz: "leinwand", ziel: ["Netz, Anlegen: schon schluesselfrei, nichts gesetzt"], ersetze: [[LEINWAND, "        if (schreibFelder(kopie, felder) === 0) return\n", "        schreibFelder(kopie, felder)\n"]] },
+  { satz: "leinwand", ziel: ["Netz, Anlegen: die Quelle bekommt die schluesselfreie Form","Netz, Anlegen einer Szene: die Kachel wird schluesselfrei, nur die geaenderte Liste","Netz, Anlegen einer Playlist: der Klang wird schluesselfrei"], ersetze: [[LEINWAND, "doc.updateSource(neu)", "void neu"]] },
+  { satz: "leinwand", ziel: ["Netz, Anlegen: schon schluesselfrei, nichts gesetzt","Netz, Anlegen einer Szene: schon schluesselfrei, nichts gesetzt"], ersetze: [[LEINWAND, "        if (Object.keys(neu).length > 0) doc.updateSource(neu)", "        doc.updateSource(neu)"]] },
+  { satz: "leinwand", ziel: ["Netz, Anlegen: die Quelle bekommt die schluesselfreie Form"], ersetze: [[LEINWAND, "        schreibFelder(kopie, felder)\n", "\n"]] },
+  // Zweiter Kaltleser 16.11.2026: die eingebetteten Listen im Elterndokument.
+  { satz: "leinwand", ziel: ["Netz, Szene: levels[] Hintergrund wird schluesselfrei","Netz, Szene: levels[] Vordergrund wird schluesselfrei"], ersetze: [[LEINWAND, "    levels: \"Level\", tiles", "    tiles"]] },
+  { satz: "leinwand", ziel: ["Netz, Szene: tiles[] wird schluesselfrei","Netz, Anlegen einer Szene: die Kachel wird schluesselfrei, nur die geaenderte Liste"], ersetze: [[LEINWAND, " tiles: \"Tile\",", ""]] },
+  { satz: "leinwand", ziel: ["Netz, Szene: tokens[] wird schluesselfrei"], ersetze: [[LEINWAND, " tokens: \"Token\",", ""]] },
+  { satz: "leinwand", ziel: ["Netz, Szene: sounds[] wird schluesselfrei"], ersetze: [[LEINWAND, " sounds: \"AmbientSound\",", ""]] },
+  { satz: "leinwand", ziel: ["Netz, Playlist: sounds[] wird schluesselfrei","Netz, Anlegen einer Playlist: der Klang wird schluesselfrei"], ersetze: [[LEINWAND, "  \"Playlist\": Object.freeze({ sounds: \"PlaylistSound\" }),\n", "\n"]] },
+  { satz: "leinwand", ziel: ["Netz, Playlist: sounds[] wird schluesselfrei","Netz, Anlegen einer Playlist: der Klang wird schluesselfrei"], ersetze: [[LEINWAND, "new Set([...Object.keys(SCHREIB_FELDER), ...Object.keys(EINGEBETTET)])", "new Set(Object.keys(SCHREIB_FELDER))"]] },
+  { satz: "leinwand", ziel: ["Netz, Szene: levels[] Hintergrund wird schluesselfrei","Netz, Szene: levels[] Vordergrund wird schluesselfrei","Netz, Szene: tiles[] wird schluesselfrei","Netz, Szene: tokens[] wird schluesselfrei","Netz, Szene: sounds[] wird schluesselfrei","Netz, Playlist: sounds[] wird schluesselfrei"], ersetze: [[LEINWAND, "      try { eingebettet(art, aenderung) } catch (_) { /* das Speichern geht vor */ }", "      void eingebettet"]] },
+  { satz: "leinwand", ziel: ["Netz, Szene: levels[] Hintergrund wird schluesselfrei","Netz, Szene: tiles[] wird schluesselfrei","Netz, Playlist: sounds[] wird schluesselfrei"], ersetze: [[LEINWAND, "zahl += schreibFelder(element, felderJe[kind])", "zahl += schreibFelder(element, felderJe[art] ?? [])"]] },
+  { satz: "leinwand", ziel: ["Netz, Szene: ein Element ohne Adressfeld bleibt"], ersetze: [[LEINWAND, "zahl += schreibFelder(element, felderJe[kind])", "zahl += schreibFelder(element, [...felderJe[kind], \"name\"])"]] },
+  { satz: "leinwand", ziel: ["Netz, Anlegen einer Szene: die Kachel wird schluesselfrei, nur die geaenderte Liste","Netz, Anlegen einer Szene: schon schluesselfrei, nichts gesetzt"], ersetze: [[LEINWAND, "if (eingebettet(art, { [feld]: kopieListe }) > 0)", "if (eingebettet(art, { [feld]: kopieListe }) >= 0)"]] },
+  { satz: "leinwand", ziel: ["zweimal eingebaut: prepareBaseData einmal gewickelt"], ersetze: [[LEINWAND, "    if (!proto || Object.hasOwn(proto, MARKE)) continue", "    if (!proto) continue"]] },
+  { satz: "leinwand", ziel: ["schreibend, Kreatur unter /a/: bleibt stehen, sonst ein anderes Ziel"], ersetze: [[SETTINGS, "  if (eingabe.map(klar).join(\"/\") !== teile.map(klar).join(\"/\")) return url\n", "\n"]] },
+  { satz: "leinwand", ziel: ["schreibend, Klammer im Dateinamen: dekodiert verglichen"], ersetze: [[SETTINGS, "  if (eingabe.map(klar).join(\"/\") !== teile.map(klar).join(\"/\")) return url", "  if (eingabe.join(\"/\") !== teile.join(\"/\")) return url"]] },
+  // Der Basissatz, erlaubteBasis (OP-PRJ-176, Pfadriegel zweiter Kaltleser 16.11.2026).
+  { satz: "basis", ziel: ["das Tor selbst","Schraegstrich am Ende fallen gelassen","mehrere Schraegstriche am Ende","Leerraum rundherum","ein zweites Tor derselben Zone","die Zone selbst","Grossschreibung im Host","die Vorgabe ist selbst erlaubt"], ersetze: [[SETTINGS, "  if (adresse.pathname !== \"/\" || adresse.search || adresse.hash) return \"\"\n  return sauber\n", "  return \"\"\n"]] },
+  { satz: "basis", ziel: ["Schraegstrich am Ende fallen gelassen","mehrere Schraegstriche am Ende"], ersetze: [[SETTINGS, "String(wert == null ? \"\" : wert).trim().replace(/\\/+$/, \"\")", "String(wert == null ? \"\" : wert).trim()"]] },
+  { satz: "basis", ziel: ["mehrere Schraegstriche am Ende"], ersetze: [[SETTINGS, "String(wert == null ? \"\" : wert).trim().replace(/\\/+$/, \"\")", "String(wert == null ? \"\" : wert).trim().replace(/\\/$/, \"\")"]] },
+  { satz: "basis", ziel: ["Leerraum rundherum"], ersetze: [[SETTINGS, "String(wert == null ? \"\" : wert).trim().replace(/\\/+$/, \"\")", "String(wert == null ? \"\" : wert).replace(/\\/+$/, \"\")"]] },
+  { satz: "basis", ziel: ["ohne Verschluesselung"], ersetze: [[SETTINGS, "  if (adresse.protocol !== \"https:\") return \"\"\n", "\n"]] },
+  { satz: "basis", ziel: ["mit Benutzernamen im Ursprung"], ersetze: [[SETTINGS, "  if (adresse.username || adresse.password) return \"\"\n", "\n"]] },
+  { satz: "basis", ziel: ["fremder Host","fremder Host mit unserem Namen davor","Host, der nur aehnlich endet"], ersetze: [[SETTINGS, "  if (host !== GATE_ZONE && !host.endsWith(\".\" + GATE_ZONE)) return \"\"", "  if (false) return \"\""]] },
+  { satz: "basis", ziel: ["Host, der nur aehnlich endet"], ersetze: [[SETTINGS, "!host.endsWith(\".\" + GATE_ZONE)", "!host.endsWith(GATE_ZONE)"]] },
+  { satz: "basis", ziel: ["fremder Host mit unserem Namen als Pfad","javascript-Weg","Datenweg"], ersetze: [[SETTINGS, "  if (host !== GATE_ZONE && !host.endsWith(\".\" + GATE_ZONE)) return \"\"", "  if (false) return \"\""], [SETTINGS, "  if (adresse.pathname !== \"/\" || adresse.search || adresse.hash) return \"\"\n", "\n"], [SETTINGS, "  if (adresse.protocol !== \"https:\") return \"\"\n", "\n"]] },
+  { satz: "basis", ziel: ["keine Adresse","Unfug"], ersetze: [[SETTINGS, "  try { adresse = new URL(sauber) } catch (_) { return \"\" }", "  try { adresse = new URL(sauber) } catch (_) { return sauber }"]] },
+  { satz: "basis", ziel: ["leer","fehlt ganz"], ersetze: [[SETTINGS, "  if (!sauber) return \"\"\n  let adresse", "  if (!sauber) return GATE_ZONE\n  let adresse"]] },
+  { satz: "basis", ziel: ["Basis mit Pfad","Basis mit Anfrage","Basis mit Anker"], ersetze: [[SETTINGS, "  if (adresse.pathname !== \"/\" || adresse.search || adresse.hash) return \"\"\n", "\n"]] },
+  { satz: "basis", ziel: ["Basis mit Pfad"], ersetze: [[SETTINGS, "adresse.pathname !== \"/\" || adresse.search", "adresse.search"]] },
+  { satz: "basis", ziel: ["Basis mit Anfrage"], ersetze: [[SETTINGS, " || adresse.search || adresse.hash)", " || adresse.hash)"]] },
+  { satz: "basis", ziel: ["Basis mit Anker"], ersetze: [[SETTINGS, " || adresse.search || adresse.hash)", " || adresse.search)"]] },
   { satz: "leinwand", ziel: ["Netz, Akteur: ein anderes Feld bleibt"], ersetze: [[LEINWAND, "      try { schreibFelder(aenderung, felder) } catch", "      try { schreibFelder(aenderung, [...felder, \"name\"]) } catch"]] },
   { satz: "bilder", ziel: ["ein Bild mit data-edit behaelt seine Adresse"], ersetze: [[BILDER, "    if (el.hasAttribute?.(\"data-edit\")) { uebersprungen++; continue }", ""]] },
   { satz: "bilder", ziel: ["die Toradresse wird eine Blob-Adresse","die Platzhalterform wird eine Blob-Adresse","abgerufen wird die Toradresse von heute, auch fuer die Platzhalterform","zwei Bilder gehalten","ein zweites Fenster mit derselben Adresse bekommt ein Blob","das erste Fenster zu: die Adresse des zweiten bleibt gehalten","das Bild daneben wird weiter getauscht"], ersetze: [[BILDER, "    if (el.hasAttribute?.(\"data-edit\")) { uebersprungen++; continue }", "    if (true) { uebersprungen++; continue }"]] },
@@ -854,7 +891,7 @@ if (process.argv.includes("--alle-saetze")) {
 
 // ------------------------------------------------------------- Lauf
 
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis"]
   .filter((s) => !nurSatz || s === nurSatz);
 if (SAETZE.length === 0) {
   console.log(`unbekannter Satz: ${nurSatz}`);

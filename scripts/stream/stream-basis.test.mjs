@@ -54,6 +54,11 @@ console.log("Abgelehnt wird alles andere, und Ablehnung heisst leere Zeichenkett
   gleich("Unfug", erlaubteBasis("://"), "");
   gleich("javascript-Weg", erlaubteBasis("javascript:alert(1)"), "");
   gleich("Datenweg", erlaubteBasis("data:text/html,x"), "");
+  // Das Tor routet ab der Wurzel; eine Basis mit Pfad liesse den Schluessel
+  // beim Schreiben im Dokument (zweiter Kaltleser, 16.11.2026).
+  gleich("Basis mit Pfad", erlaubteBasis("https://gate.beneos.stream/v2"), "");
+  gleich("Basis mit Anfrage", erlaubteBasis("https://gate.beneos.stream?x=1"), "");
+  gleich("Basis mit Anker", erlaubteBasis("https://gate.beneos.stream#x"), "");
 }
 
 console.log(`\n${gruen} gruen, ${rot} rot`);
