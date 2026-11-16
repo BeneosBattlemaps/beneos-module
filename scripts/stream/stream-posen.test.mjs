@@ -71,7 +71,8 @@ const SCHLUESSEL = "pk_pruefsatz"
 const { SETTING } = await import("./stream-settings.mjs")
 // `SETTING.mode` seit stre-T-102: die Inhaltspruefung holt die schluesselfreie
 // Form ueber `leinwandAdresse`, und die setzt nur bei laufendem Streaming ein.
-installiereFoundry({ einstellungen: { [SETTING.key]: SCHLUESSEL, [SETTING.base]: GATE, [SETTING.mode]: true } })
+const { einstellungen: EINSTELLUNGEN } =
+  installiereFoundry({ einstellungen: { [SETTING.key]: SCHLUESSEL, [SETTING.base]: GATE, [SETTING.mode]: true } })
 const { assetUrl, platzhalterAdresse } = await import("./stream-settings.mjs")
 
 /**
@@ -420,6 +421,19 @@ gleich("gutes Bild: die schluesselfreie Adresse kommt heraus", a.src, ADRESSE_OH
 wahr("und sie traegt keinen Schluessel", !String(a.src).includes(SCHLUESSEL))
 gleich("und die Pruefung sagt true", a.pruefung, true)
 gleich("und der Zustand bleibt true", a.zustand, true)
+
+/*
+ * MODUS AUS, SCHLUESSEL NOCH DA (Kalt-Review 16.11.2026, Befund 1): die Liste
+ * kommt weiter vom Tor, denn `posenliste` fragt nur den Schluessel. Die
+ * Leseseite setzt bei abgeschaltetem Modus aber nichts ein, also geht hier die
+ * Toradresse hinaus und nicht die schluesselfreie Form.
+ */
+EINSTELLUNGEN[SETTING.mode] = false
+posen.posenVergessen()
+const ausGeschaltet = await posen.ansicht(TOKEN_ADRESSE, "topdown")
+gleich("Modus aus: die Toradresse kommt heraus, sie laedt ohne Streaming",
+  ausGeschaltet.src, assetUrl(RELEASE, "", "000-wolf-1-top.webp"))
+EINSTELLUNGEN[SETTING.mode] = true
 
 // Die Liste nennt eine Summe, die Datei traegt eine andere. Das ist der Fall,
 // fuer den dieses Paket gebaut ist.

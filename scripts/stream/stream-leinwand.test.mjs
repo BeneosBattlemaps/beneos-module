@@ -283,6 +283,19 @@ console.log("Die Gegenrichtung: was ins Dokument geschrieben wird")
     gleich(`schreibend unveraendert: ${JSON.stringify(fremd)}`, schluesselfreiAdresse(fremd), fremd)
   }
   gleich("schreibend: null bleibt null", schluesselfreiAdresse(null), null)
+  /*
+   * OHNE STREAMING BLEIBT DIE TORADRESSE STEHEN (Kalt-Review 16.11.2026,
+   * Befund 1). Die Leseseite setzt ohne Modus oder Schluessel nichts ein; eine
+   * hier geschriebene schluesselfreie Form zeigte danach kein Bild mehr. Eine
+   * Bestandswelt mit abgeschaltetem Streaming behaelt ihre ladbare Adresse.
+   */
+  modus = false
+  gleich("schreibend, Modus aus: die Toradresse bleibt stehen", schluesselfreiAdresse(MIT), MIT)
+  modus = true
+  schluessel = ""
+  gleich("schreibend, kein Schluessel: die Toradresse bleibt stehen", schluesselfreiAdresse(MIT), MIT)
+  schluessel = SCHLUESSEL
+  gleich("schreibend, Gegenprobe mit beidem: schluesselfrei", schluesselfreiAdresse(MIT), OHNE)
 }
 
 /*
@@ -392,6 +405,43 @@ console.log("Die Huelle um prepareBaseData")
   resets = 0; feuere(`${MODULE_ID}.irgendwas`)
   gleich("fremde Einstellung: nicht neu vorbereitet", resets, 0)
 
+  /*
+   * DAS SCHREIBNETZ (Kalt-Review 16.11.2026, Befund 2). Fremde Schreiber
+   * schicken den vorbereiteten Wert zurueck. Gemessen am selben Tag in
+   * `v14Stream`: das dnd5e-Charakter- und das Fahrzeugblatt speichern im
+   * Bearbeitungsmodus `img` als Toradresse mit Schluessel. Das Netz nimmt
+   * den Schluessel vor dem Speichern wieder heraus.
+   */
+  const ruf = (name, ...a) => { for (const f of haken[name] ?? []) f(...a) }
+  const upd = (art, aenderung) => { ruf(`preUpdate${art}`, {}, aenderung, {}, "nutzer"); return aenderung }
+  gleich("Netz, Akteur: img mit Schluessel wird schluesselfrei", upd("Actor", { img: MIT }).img, OHNE)
+  gleich("Netz, Akteur: der Prototyp verschachtelt",
+    upd("Actor", { prototypeToken: { texture: { src: MIT } } }).prototypeToken.texture.src, OHNE)
+  gleich("Netz, Akteur: der Prototyp als flacher Schluessel",
+    upd("Actor", { "prototypeToken.texture.src": MIT })["prototypeToken.texture.src"], OHNE)
+  gleich("Netz, Akteur: der Prototyp halb flach",
+    upd("Actor", { "prototypeToken.texture": { src: MIT } })["prototypeToken.texture"].src, OHNE)
+  gleich("Netz, Akteur: ein anderes Feld bleibt", upd("Actor", { name: MIT }).name, MIT)
+  gleich("Netz, Akteur: eine fremde Adresse bleibt",
+    upd("Actor", { img: "https://fremd.example/a/x/y/z/w.webp" }).img, "https://fremd.example/a/x/y/z/w.webp")
+  gleich("Netz, Kachel: texture.src wird schluesselfrei", upd("Tile", { texture: { src: MIT } }).texture.src, OHNE)
+  gleich("Netz, Kachel: auch als flacher Schluessel", upd("Tile", { "texture.src": MIT })["texture.src"], OHNE)
+  gleich("Netz, Klang: path wird schluesselfrei", upd("PlaylistSound", { path: MIT }).path, OHNE)
+  gleich("Netz, Szene wie Foundry 14: das Vorschaubild", upd("Scene", { thumb: MIT }).thumb, OHNE)
+  modus = false
+  gleich("Netz, Modus aus: die Toradresse bleibt", upd("Actor", { img: MIT }).img, MIT)
+  modus = true
+  // Beim Anlegen zaehlt das Dokument, nicht die Daten: Foundry verlangt dort
+  // `updateSource`.
+  let gesetzt = null
+  const neu = { _source: { texture: { src: MIT } }, updateSource(d) { gesetzt = d } }
+  ruf("preCreateTile", neu, { texture: { src: MIT } }, {}, "nutzer")
+  gleich("Netz, Anlegen: die Quelle bekommt die schluesselfreie Form",
+    JSON.stringify(gesetzt), JSON.stringify({ "texture.src": OHNE }))
+  gesetzt = null
+  ruf("preCreateTile", { _source: { texture: { src: OHNE } }, updateSource(d) { gesetzt = d } }, {}, {}, "nutzer")
+  gleich("Netz, Anlegen: schon schluesselfrei, nichts gesetzt", gesetzt, null)
+
   game.scenes = altScenes
   globalThis.Hooks = altHooks
   globalThis.CONFIG = altConfig
@@ -402,7 +452,7 @@ console.log(`\n${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
  * Von Hand nachgezogen, siehe Kopf. Weicht die gezaehlte Zahl ab, ist der Lauf
  * mittendrin gestorben oder ein Block ist still weggefallen.
  */
-const ERWARTET = 115
+const ERWARTET = 131
 if (aussagen !== ERWARTET) {
   console.log(`ROT  erwartet ${ERWARTET} Aussagen, gezaehlt ${aussagen}`)
   process.exit(1)

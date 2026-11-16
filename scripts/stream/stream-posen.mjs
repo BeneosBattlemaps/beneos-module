@@ -84,7 +84,7 @@
  * danebenzustellen.
  */
 
-import { assetUrl, KREATUR_PRAEFIX, leinwandAdresse, platzhalterAdresse, streamKey, zerlegeAdresse } from "./stream-settings.mjs"
+import { assetUrl, KREATUR_PRAEFIX, leinwandAdresse, schluesselfreiAdresse, streamKey, zerlegeAdresse } from "./stream-settings.mjs"
 import { headCheck } from "../beneos-asset-watcher.js"
 // Seit 2026-11-08 geteilt mit `stream-karten.mjs`. Die Begruendung steht im
 // Kopf von `stream-merker.mjs`: zwei Kopien gehen nicht zugleich mit.
@@ -397,8 +397,11 @@ export async function ansicht(pfad, stil) {
       zustand: true,
       // Schluesselfrei seit stre-T-102: jeder Aufrufer schreibt diese Adresse
       // in ein Token- oder Akteurdokument. Den Schluessel setzt zur Anzeige
-      // `stream-leinwand.mjs` ein, zum Pruefen `ansichtInhaltOk`.
-      src: platzhalterAdresse(wer.release, "", eintrag.pfad),
+      // `stream-leinwand.mjs` ein, zum Pruefen `ansichtInhaltOk`. Ueber
+      // `schluesselfreiAdresse` und nicht direkt gebaut: ohne laufendes
+      // Streaming bleibt die Toradresse, denn dann setzt niemand den Schluessel
+      // wieder ein (Kalt-Review 16.11.2026).
+      src: schluesselfreiAdresse(assetUrl(wer.release, "", eintrag.pfad)),
       // Seit dem 07.11.2026 traegt die Liste je Ansicht eine `sha256`. Steht
       // sie nicht drin, ist das Feld `null`, und das ist der Normalfall,
       // solange der Volldurchgang die Listen nicht neu geschrieben hat.

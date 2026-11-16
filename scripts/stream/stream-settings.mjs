@@ -1253,8 +1253,14 @@ export function platzhalterAdresse(release, variant, path, traeger) {
  * werden, sonst zeigt das Dokument danach auf unser Tor statt auf ihre Datei.
  * Eine Toradresse unter einer frueheren Basis bleibt deshalb ebenfalls
  * stehen: unveraendert ist hier die sichere Richtung.
+ *
+ * OHNE STREAMING BLEIBT ALLES STEHEN (Kalt-Review 16.11.2026). Ohne Modus oder
+ * ohne Schluessel setzt `leinwandAdresse` nichts ein. Eine hier geschriebene
+ * schluesselfreie Form zeigte in einer Bestandswelt mit abgeschaltetem
+ * Streaming danach kein Bild mehr; die Toradresse von vorher laedt weiter.
  */
 export function schluesselfreiAdresse(url) {
+  if (!streamEnabled()) return url
   if (typeof url !== "string" || istPlatzhalter(url)) return url
   let host = ""
   try { host = new URL(url).host } catch (_) { return url }

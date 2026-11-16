@@ -288,6 +288,12 @@ function zuTauschende(wurzel) {
     }
     if (!istUnsere(quelle)) continue
     if (imEditor(el)) { uebersprungen++; continue }
+    // Ein Bild mit `data-edit` ist ein Formularfeld: Foundry liest beim Absenden
+    // sein `src`. Getauscht ginge `blob:` hinaus, und das Speichern scheiterte
+    // an der Dateiendung (gemessen 16.11.2026, v14Stream, Akteurblatt im
+    // Bearbeitungsmodus). Den Schluessel nimmt das Schreibnetz in
+    // `stream-leinwand.mjs` wieder heraus.
+    if (el.hasAttribute?.("data-edit")) { uebersprungen++; continue }
     elemente.push({ el, adresse: quelle })
   }
   return { elemente, schonGesetzt, uebersprungen }

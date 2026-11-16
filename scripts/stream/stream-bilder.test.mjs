@@ -200,6 +200,27 @@ gleich("bei ausgeschaltetem Stream bleibt auch die Platzhalterform", b5.getAttri
 gleich("und es wird nichts abgerufen", nimmAbrufe().length, 0)
 einstellungen["beneos-stream-mode"] = true
 
+/*
+ * EIN BILD MIT `data-edit` GEHOERT ZUM FORMULAR (Kalt-Review 16.11.2026). Foundry
+ * liest beim Absenden sein `src` als Feldwert. Gemessen am selben Tag in
+ * `v14Stream` (14.367, dnd5e 5.3.3), Akteurblatt im Bearbeitungsmodus: mit
+ * getauschtem Bild ging `blob:` hinaus, und das Speichern scheiterte an der
+ * Dateiendung. Es bleibt deshalb ungetauscht.
+ */
+const formBild = bildElement(tor)
+formBild.setAttribute("data-edit", "img")
+formBild.hasAttribute = (k) => formBild.getAttribute(k) !== null
+const freiBild = bildElement(tor)
+const f3 = fenster([formBild, freiBild])
+await haken.rufe("renderActorSheetV2", f3.app, f3.wurzel)
+for (let i = 0; i < 20 && !String(freiBild.getAttribute("src")).startsWith("blob:"); i++) {
+  await new Promise((r) => setTimeout(r, 5))
+}
+gleich("ein Bild mit data-edit behaelt seine Adresse", formBild.getAttribute("src"), tor)
+gleich("das Bild daneben wird weiter getauscht", String(freiBild.getAttribute("src")).startsWith("blob:"), true)
+await haken.rufe("closeActorSheetV2", f3.app)
+nimmAbrufe()
+
 // ===========================================================================
 abschnitt("Der Kopf widerspricht der Liste unter sich nicht")
 

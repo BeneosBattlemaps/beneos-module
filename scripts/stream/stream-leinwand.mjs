@@ -32,7 +32,7 @@
  * `VERBOTEN` in `stream-bilder.mjs` (OP-PRJ-177) bleibt unberuehrt.
  */
 
-import { leinwandAdresse, MODULE_ID, SETTING } from "./stream-settings.mjs"
+import { leinwandAdresse, schluesselfreiAdresse, MODULE_ID, SETTING } from "./stream-settings.mjs"
 
 /**
  * Je Dokumentart die Felder, die eine Adresse tragen, als Punktpfad.
@@ -98,6 +98,58 @@ function felderImSchema(art, klasse) {
   return felder.filter((pfad) => !!schema.getField(pfad.split(".")[0]))
 }
 
+/**
+ * Die Felder, die das Schreibnetz beim Speichern prueft: die vorbereiteten und
+ * dazu der Prototyp eines Akteurs. Der wird nicht vorbereitet, aber jeder
+ * Schreiber, der ihn aus einem Token oder Akteur abschreibt, kann eine
+ * Toradresse mitbringen.
+ */
+const SCHREIB_FELDER = Object.freeze({
+  ...LEINWAND_FELDER,
+  "Actor": [...LEINWAND_FELDER.Actor, "prototypeToken.texture.src"],
+})
+
+/**
+ * Wo in einem Aenderungsobjekt der Pfad steht: verschachtelt, flach
+ * (`"texture.src"`) oder halb flach (`"prototypeToken.texture": { src }`).
+ * Foundry nimmt alle drei Formen an.
+ *
+ * @returns {[object, string]|null} Behaelter und Schluessel
+ */
+function stelleIn(obj, teile) {
+  if (!obj || typeof obj !== "object") return null
+  for (let i = teile.length; i >= 1; i--) {
+    const k = teile.slice(0, i).join(".")
+    if (!Object.hasOwn(obj, k)) continue
+    return i === teile.length ? [obj, k] : stelleIn(obj[k], teile.slice(i))
+  }
+  return null
+}
+
+/**
+ * Schreibt in einem Aenderungsobjekt jede Toradresse der Feldliste in die
+ * schluesselfreie Form um. Rein, ohne Foundry.
+ *
+ * @returns {number} wie viele Felder umgeschrieben wurden
+ */
+export function schreibFelder(aenderung, felder) {
+  let zahl = 0
+  for (const pfad of felder ?? []) {
+    try {
+      const stelle = stelleIn(aenderung, pfad.split("."))
+      if (!stelle) continue
+      const [behaelter, k] = stelle
+      const vorher = behaelter[k]
+      const nachher = schluesselfreiAdresse(vorher)
+      if (nachher !== vorher) {
+        behaelter[k] = nachher
+        zahl++
+      }
+    } catch (_) { /* naechstes Feld */ }
+  }
+  return zahl
+}
+
 /** Die Einstellungen, aus denen `leinwandAdresse` die Toradresse baut. */
 const EINSTELLUNGEN = new Set([SETTING.key, SETTING.base, SETTING.mode].map((s) => `${MODULE_ID}.${s}`))
 let hakenGesetzt = false
@@ -151,4 +203,40 @@ export function installStreamLeinwand() {
   }
   Hooks.on("createSetting", neuVorbereiten)
   Hooks.on("updateSetting", neuVorbereiten)
+
+  /*
+   * DAS SCHREIBNETZ (Kalt-Review 16.11.2026, Befund 2). Die Vorbereitung legt
+   * die Toradresse mit Schluessel in die Felder, und jeder Schreiber, der einen
+   * vorbereiteten Wert zurueckschickt, braechte sie auf die Platte. Gemessen am
+   * selben Tag in `v14Stream` (14.367, dnd5e 5.3.3): Charakter- und
+   * Fahrzeugblatt im Bearbeitungsmodus speichern `img` genau so. Die vier
+   * Einzelfaenge an den Schreibstellen des Moduls bleiben als zweite Schicht.
+   *
+   * Beim Aendern wird das Aenderungsobjekt umgeschrieben, beim Anlegen die
+   * Quelle des Dokuments: dort verlangt Foundry `updateSource`, eine Aenderung
+   * der Daten wirkte nicht. Ohne Streaming tut `schluesselfreiAdresse` nichts.
+   */
+  for (const art of Object.keys(SCHREIB_FELDER)) {
+    const klasse = globalThis.CONFIG?.[art]?.documentClass
+    const vorbereitet = felderImSchema(art, klasse)
+    const felder = SCHREIB_FELDER[art].filter((p) => vorbereitet.includes(p) || !LEINWAND_FELDER[art].includes(p))
+    Hooks.on(`preUpdate${art}`, (_doc, aenderung) => {
+      try { schreibFelder(aenderung, felder) } catch (_) { /* das Speichern geht vor */ }
+    })
+    Hooks.on(`preCreate${art}`, (doc) => {
+      try {
+        const kopie = {}
+        for (const pfad of felder) {
+          const wert = pfad.split(".").reduce((o, t) => o?.[t], doc?._source)
+          if (typeof wert === "string") kopie[pfad] = wert
+        }
+        if (schreibFelder(kopie, felder) === 0) return
+        const neu = {}
+        for (const [pfad, wert] of Object.entries(kopie)) {
+          if (pfad.split(".").reduce((o, t) => o?.[t], doc._source) !== wert) neu[pfad] = wert
+        }
+        doc.updateSource(neu)
+      } catch (_) { /* das Anlegen geht vor */ }
+    })
+  }
 }
