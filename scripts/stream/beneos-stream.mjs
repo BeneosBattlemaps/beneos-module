@@ -11,13 +11,15 @@
  * Einbau nach `ready` verschiebt, verliert sie.
  *
  * This is the ONLY streaming file referenced from module.json. With the main
- * switch off, `installStreamFetch` returns immediately, nothing is patched, and
- * the module behaves as if streaming did not exist. That is what lets a single
- * world be put back on the local route without swapping the module.
+ * switch off, `installStreamFetch` returns immediately and fetch stays
+ * unpatched. Two parts are installed regardless of the switch (stre-T-102,
+ * operator decision 2026-11-16): the canvas translation with its write net,
+ * and the console mask. Both act only when a key is present, so a world that
+ * never had streaming still behaves as if streaming did not exist.
  */
 
 import { registerStreamSettings, streamEnabled, streamKey, streamBase, streamHost, pinStillsEnabled, installMode, downloadMode, streamMode, ensureStreamKey } from "./stream-settings.mjs"
-import { installStreamFetch, storeStatus, clearStore, prewarm, diagnose, resetDiagnosis, abortAll, sichereSpeicher, streamFetchInstalled,
+import { installStreamFetch, installKonsolenMaske, storeStatus, clearStore, prewarm, diagnose, resetDiagnosis, abortAll, sichereSpeicher, streamFetchInstalled,
          offlineHalten, offlineFreigeben, offlineGehalten, offlineBestand, alleZusagenLoesen,
          speicherLage, raumSchaffen, speicherAusfallStand, gehalteneAdressen } from "./stream-fetch.mjs"
 import { installStreamCanvas, drawStatus, videoTilesOf } from "./stream-canvas.mjs"
@@ -45,8 +47,9 @@ Hooks.once("init", () => {
   // wird; es kostet nichts, solange niemand es oeffnet.
   registerOfflineWindow()
 
-  // Only patch when the switch is on. A world with streaming turned off must
-  // pay nothing for it, not even a wrapped fetch.
+  // Only patch fetch and the rest when the switch is on. A world with
+  // streaming turned off pays nothing for those, not even a wrapped fetch.
+  // Canvas translation and console mask are the exception, see below.
   //
   // Am Modus, nicht an streamEnabled(). Gemessen am 22.08.2026 auf The Forge:
   // eine Welt, die ihren Schluessel erst im ready-Hook bekommt, hatte in genau
@@ -62,6 +65,25 @@ Hooks.once("init", () => {
   //
   // Ohne Schluessel bleiben alle vier untaetig: jede von ihnen prueft in ihren
   // Behandlern weiterhin auf streamEnabled().
+  //
+  // AM SCHLUESSEL, NICHT AM MODUS: Leinwand, Schreibnetz und Konsolenmaske
+  // (stre-T-102, Betreiberentscheid 16.11.2026, "Weiter laden"). Wer einen
+  // Schluessel hat, sieht gestreamte Karten auch bei Modus aus. Gemessen vorher
+  // in v13 und v14: bei Modus aus fehlte all das, eine Neuzeichnung meldete je
+  // Kachel, Token und Notiz "Fetch API cannot load beneos://", und der Kern
+  // schrieb jede Toradresse mit Schluessel in die Konsole.
+  //
+  // Unbedingt eingebaut, im Behandler auf den Schluessel geprueft. Ein Einbau
+  // erst beim Eintreffen des Schluessels muesste Prototypen nach der ersten
+  // Vorbereitung wickeln und Haken innerhalb eines laufenden `updateSetting`
+  // setzen; ob Foundry die im selben Aufruf noch ruft, ist nicht belegt. So
+  // stimmt es ohne Neuladen, auch wenn der Modus per API umgelegt wird. Ohne
+  // Schluessel kostet es je vorbereitetem Feld eine `startsWith`-Probe, je
+  // Schreibhaken einen Fruehausstieg und je Konsolenzeile eine Teilstring-Probe.
+  // Der fetch-Ersatz bleibt am Modus: vor T-102 lud der Kern bei Modus aus
+  // direkt, und so bleibt es.
+  installKonsolenMaske()
+  installStreamLeinwand()
   if (streamMode()) {
     // WARUM IM GANZEN ORDNER KEIN `Hooks.off` STEHT.
     //
@@ -91,10 +113,6 @@ Hooks.once("init", () => {
     // im Stapel. Paket `OP-CLD-199`.
     installStreamFetch()
     installStreamOnline()
-    // Schluesselfrei auf der Platte, mit Schluessel im Arbeitsspeicher
-    // (stre-T-102). Hier im `init`, denn die Dokumente werden vor `ready`
-    // vorbereitet, und die erste Szene ist dann schon gezeichnet.
-    installStreamLeinwand()
     installStreamCanvas()
     installStreamIndicator()
     // Bilder in Oberflaechen. Ein `<img>` beruehrt `window.fetch` nie, also

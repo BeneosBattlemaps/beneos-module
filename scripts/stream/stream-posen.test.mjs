@@ -423,16 +423,18 @@ gleich("und die Pruefung sagt true", a.pruefung, true)
 gleich("und der Zustand bleibt true", a.zustand, true)
 
 /*
- * MODUS AUS, SCHLUESSEL NOCH DA (Kalt-Review 16.11.2026, Befund 1): die Liste
- * kommt weiter vom Tor, denn `posenliste` fragt nur den Schluessel. Die
- * Leseseite setzt bei abgeschaltetem Modus aber nichts ein, also geht hier die
- * Toradresse hinaus und nicht die schluesselfreie Form.
+ * MODUS AUS, SCHLUESSEL NOCH DA: die Liste kommt weiter vom Tor, denn
+ * `posenliste` fragt nur den Schluessel. Seit dem Betreiberentscheid vom
+ * 16.11.2026 ("Weiter laden") haengt auch die Leseseite am Schluessel und
+ * setzt bei Modus aus die Toradresse ein. Also geht die schluesselfreie Form
+ * hinaus, und sie laedt trotzdem. Bis dahin (Kalt-Review 16.11.2026, Befund 1)
+ * kam hier die Toradresse heraus.
  */
 EINSTELLUNGEN[SETTING.mode] = false
 posen.posenVergessen()
 const ausGeschaltet = await posen.ansicht(TOKEN_ADRESSE, "topdown")
-gleich("Modus aus: die Toradresse kommt heraus, sie laedt ohne Streaming",
-  ausGeschaltet.src, assetUrl(RELEASE, "", "000-wolf-1-top.webp"))
+gleich("Modus aus mit Schluessel: die schluesselfreie Form kommt heraus",
+  ausGeschaltet.src, ADRESSE_OHNE)
 EINSTELLUNGEN[SETTING.mode] = true
 
 // Die Liste nennt eine Summe, die Datei traegt eine andere. Das ist der Fall,

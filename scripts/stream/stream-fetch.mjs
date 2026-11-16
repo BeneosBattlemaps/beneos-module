@@ -1478,14 +1478,18 @@ export async function alleImSpeicher(urls) {
    * wer eine Adresse in einem Objektfeld mitgibt, wird hier NICHT maskiert.
    * Das ist die bekannte Luecke dieser Huelle und steht so im Prueffall.
    *
-   * Unbedingt, nicht an `streamEnabled()`. Erstens laeuft diese Funktion nur im
-   * Streambetrieb ueberhaupt an, zweitens traegt eine frisch eingeschaltete
-   * Welt ihren Schluessel erst nach dem `ready`-Haken, und drittens kostet die
-   * Maskierung ohne Toradresse im Text nichts.
+   * Unbedingt, nicht an `streamEnabled()` und nicht am Modus. Eine Welt kann
+   * ihren Schluessel erst nach dem `ready`-Haken bekommen, und bei Modus aus
+   * laedt der Kern Toradressen direkt und schreibt sie mit Schluessel in die
+   * Konsole (gemessen am 16.11.2026 in v14Stream, Modus aus: Zeilen "Loaded
+   * <toradresse>" im Klartext). Die Maskierung kostet ohne Toradresse im Text
+   * nur eine Teilstring-Probe. Deshalb baut `beneos-stream.mjs` sie im `init`
+   * vor dem Modus-Riegel ein; `installStreamFetch` ruft sie zusaetzlich, der
+   * zweite Aufruf tut nichts.
    */
   let konsoleGehuellt = false
 
-  function huelleKonsole() {
+  export function installKonsolenMaske() {
     if (konsoleGehuellt) return
     konsoleGehuellt = true
     for (const art of ["log", "warn", "info", "debug", "error"]) {
@@ -1521,7 +1525,7 @@ export async function alleImSpeicher(urls) {
 
     // Vor allem anderen, damit auch die Zeilen dieses Einbaus schon maskiert
     // durchlaufen.
-    huelleKonsole()
+    installKonsolenMaske()
 
     // Images arrive through a worker thread unless this is off. See the file
     // comment: this is the condition, not a tuning knob.
