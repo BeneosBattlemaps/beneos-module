@@ -39,7 +39,7 @@ globalThis.window = {
 // eigenen Server, den es nicht geben darf.
 netz((url) => {
   const a = decodeURIComponent(String(url))
-  if (a.startsWith("beneos_assets/")) return new Response(null, { status: 200 })
+  if (a.startsWith("beneos_assets/")) return new Response(null, { status: a.includes("/fehlt/") ? 404 : 200 })
   if (a.startsWith("beneos:")) return new Response("", { status: 404 })
   return undefined
 })
@@ -103,5 +103,27 @@ ablage.set(BeneosUtility._probeCacheKey(), JSON.stringify({
 }))
 gleich("Laden: nur der oertliche Eintrag", BeneosUtility.loadMapAssetProbeCache(), 1)
 gleich("Laden: alter beneos://-Eintrag verworfen", BeneosUtility._mapAssetProbe.has(OHNE.replace(/\.webm$/, ".webp")), false)
+
+/*
+ * DER ASSET-WAECHTER (Auftrag AG-12:28:21). `scanSceneSilent` und der
+ * Scenepacker lesen vorbereitete Felder. Bei Modus aus steht dort die
+ * schluesselfreie Form, und jede echte `/a/`-Adresse traegt
+ * `beneos_assets/beneos_battlemaps/` im Pfad (gemessen am 16.11.2026: v13
+ * 2019 von 2021, v14 1186 von 1186). Ohne Riegel ging sie als HEAD
+ * `beneos%3A//...` an den eigenen Server und kam als "fehlt" zurueck.
+ */
+abschnitt("Asset-Waechter")
+const W = await import("../beneos-asset-watcher.js")
+const KARTE = "beneos://a/beneos_bm_0011_cos_barovia_village/4k/beneos_assets/beneos_battlemaps/4k/11_cos_barovia_village/01/4k_bm.webp"
+const FEHLT = "beneos_assets/beneos_battlemaps/fehlt/4k_bm.webp"
+gleich("isBeneosPath: schluesselfreie Karte ist nicht seine Sache", W.isBeneosPath(KARTE), false)
+gleich("isBeneosPath: oertlicher Beneos-Pfad bleibt seine Sache", W.isBeneosPath(FEHLT), true)
+gleich("headCheck: schluesselfreie Karte wird nicht abgefragt", (await W.headCheck(KARTE)).status, -2)
+nimmAbrufe()
+const leer = await W.scanSceneSilent({ id: "w1", name: "w1", background: { src: KARTE }, tiles: [{ id: "k", texture: { src: KARTE } }] })
+gleich("scanSceneSilent: schluesselfreie Szene meldet nichts als fehlend", leer.missing.length, 0)
+gleich("scanSceneSilent: schluesselfreie Szene fragt nichts ab", nimmAbrufe().length, 0)
+const zwei = await W.scanSceneSilent({ id: "w2", name: "w2", background: { src: KARTE }, tiles: [{ id: "k", texture: { src: FEHLT } }] })
+gleich("scanSceneSilent: ein fehlender oertlicher Pfad wird weiter gemeldet", zwei.missing.join(","), FEHLT)
 
 ende()

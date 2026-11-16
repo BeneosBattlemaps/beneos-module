@@ -32,7 +32,7 @@
  * `VERBOTEN` in `stream-bilder.mjs` (OP-PRJ-177) bleibt unberuehrt.
  */
 
-import { leinwandAdresse, schluesselfreiAdresse, MODULE_ID, SETTING } from "./stream-settings.mjs"
+import { leinwandAdresse, schluesselfreiAdresse, streamEnabled, MODULE_ID, SETTING } from "./stream-settings.mjs"
 
 /**
  * Je Dokumentart die Felder, die eine Adresse tragen, als Punktpfad.
@@ -240,41 +240,87 @@ export function installStreamLeinwand() {
     const vorbereitet = felderImSchema(art, globalThis.CONFIG?.[art]?.documentClass)
     felderJe[art] = SCHREIB_FELDER[art].filter((p) => vorbereitet.includes(p) || !LEINWAND_FELDER[art].includes(p))
   }
+  /*
+   * Eine Liste, wie sie im Haken ankommt. Foundry 14 schickt `levels` bei
+   * `update({"==levels": [...]})` oder einem ForcedReplacement als Operator
+   * (common/data/operators.mjs), gemessen am 16.11.2026 in 14.367 (dritter
+   * Kaltleser, F2). `DataFieldOperator.get` gibt das Array darin; die Elemente
+   * werden an Ort und Stelle umgeschrieben, der Operator bleibt also stehen.
+   */
+  const alsListe = (wert) => {
+    const operator = globalThis.foundry?.data?.operators?.DataFieldOperator
+    const innen = typeof operator?.get === "function" ? operator.get(wert) : wert
+    return Array.isArray(innen) ? innen : null
+  }
   // Die Elemente eines eingebetteten Feldes, jedes mit den Feldern seiner Art.
   const eingebettet = (art, daten) => {
     let zahl = 0
     for (const [feld, kind] of Object.entries(EINGEBETTET[art] ?? {})) {
-      const liste = daten?.[feld]
-      if (!Array.isArray(liste)) continue
+      const liste = alsListe(daten?.[feld])
+      if (!liste) continue
       for (const element of liste) zahl += schreibFelder(element, felderJe[kind])
     }
     return zahl
   }
+  // Die Adressfelder eines Quellobjekts, flach kopiert und umgeschrieben; nur
+  // was sich aendert, kommt zurueck.
+  const geaendert = (quelle, felder) => {
+    const kopie = {}
+    for (const pfad of felder) {
+      const wert = pfad.split(".").reduce((o, t) => o?.[t], quelle)
+      if (typeof wert === "string") kopie[pfad] = wert
+    }
+    schreibFelder(kopie, felder)
+    const neu = {}
+    for (const [pfad, wert] of Object.entries(kopie)) {
+      if (pfad.split(".").reduce((o, t) => o?.[t], quelle) !== wert) neu[pfad] = wert
+    }
+    return neu
+  }
+  const verschachtelt = (flach, start = {}) => {
+    for (const [pfad, wert] of Object.entries(flach)) {
+      const teile = pfad.split(".")
+      let ziel = start
+      for (const t of teile.slice(0, -1)) ziel = ziel[t] ??= {}
+      ziel[teile.at(-1)] = wert
+    }
+    return start
+  }
   for (const art of new Set([...Object.keys(SCHREIB_FELDER), ...Object.keys(EINGEBETTET)])) {
     const felder = felderJe[art] ?? []
+    /*
+     * Ohne Streaming gibt es keine schluesselfreie Form zu schreiben:
+     * `schluesselfreiAdresse` liesse jede Adresse stehen. Der fruehe Ausstieg
+     * spart das Lesen und Kopieren der Listen (dritter Kaltleser, W1).
+     */
     Hooks.on(`preUpdate${art}`, (_doc, aenderung) => {
+      if (!streamEnabled()) return
       try { schreibFelder(aenderung, felder) } catch (_) { /* das Speichern geht vor */ }
       try { eingebettet(art, aenderung) } catch (_) { /* das Speichern geht vor */ }
     })
     Hooks.on(`preCreate${art}`, (doc) => {
+      if (!streamEnabled()) return
       try {
-        const kopie = {}
-        for (const pfad of felder) {
-          const wert = pfad.split(".").reduce((o, t) => o?.[t], doc?._source)
-          if (typeof wert === "string") kopie[pfad] = wert
-        }
-        schreibFelder(kopie, felder)
-        const neu = {}
-        for (const [pfad, wert] of Object.entries(kopie)) {
-          if (pfad.split(".").reduce((o, t) => o?.[t], doc._source) !== wert) neu[pfad] = wert
-        }
-        // Die eingebetteten Listen als Kopie: `updateSource` ersetzt die Liste
-        // ganz, und nur eine geaenderte wird ersetzt.
-        for (const feld of Object.keys(EINGEBETTET[art] ?? {})) {
+        const neu = geaendert(doc?._source, felder)
+        /*
+         * Die eingebetteten Listen: `updateSource` gleicht Elemente ueber ihre
+         * `_id` ab und laesst die uebrigen stehen, gemessen am 16.11.2026 in
+         * 13.351 und 14.367 (zwei Kacheln, nur eine im Teilobjekt, beide
+         * bleiben). Deshalb geht nur das geaenderte Element mit, als
+         * `{_id, <feld>}`. Fehlt einem Element die `_id` oder steht eine doppelt
+         * in der Liste, waere der Abgleich nicht eindeutig: dann die ganze
+         * Liste als Kopie, wie bis zu diesem Stand.
+         */
+        for (const [feld, kind] of Object.entries(EINGEBETTET[art] ?? {})) {
           const liste = doc?._source?.[feld]
-          if (!Array.isArray(liste)) continue
-          const kopieListe = JSON.parse(JSON.stringify(liste))
-          if (eingebettet(art, { [feld]: kopieListe }) > 0) neu[feld] = kopieListe
+          if (!Array.isArray(liste) || liste.length === 0) continue
+          const teile = liste.map((element) => geaendert(element, felderJe[kind]))
+          if (teile.every((t) => Object.keys(t).length === 0)) continue
+          const ids = liste.map((element) => element?._id)
+          const eindeutig = ids.every((id) => typeof id === "string" && id) && new Set(ids).size === ids.length
+          neu[feld] = eindeutig
+            ? teile.flatMap((t, i) => (Object.keys(t).length ? [verschachtelt(t, { _id: ids[i] })] : []))
+            : liste.map((element, i) => verschachtelt(teile[i], JSON.parse(JSON.stringify(element))))
         }
         if (Object.keys(neu).length > 0) doc.updateSource(neu)
       } catch (_) { /* das Anlegen geht vor */ }

@@ -308,6 +308,14 @@ console.log("Die Gegenrichtung: was ins Dokument geschrieben wird")
   const klammer = { release: "beneos_bm_0113", variant: "4k", pfad: "karte[1].webp" }
   gleich("schreibend, Klammer im Dateinamen: dekodiert verglichen",
     schluesselfreiAdresse(`${GATE}/a/${SCHLUESSEL}/beneos_bm_0113/4k/karte[1].webp`), ohneVon(klammer))
+  // Das Tor filtert leere Pfadstuecke (Worker src/index.js, `.filter(Boolean)`):
+  // ein doppelter Schraegstrich ist dasselbe Ziel und wird schluesselfrei
+  // (dritter Kaltleser, F1).
+  gleich("schreibend, leeres Stueck nach der Variante: dasselbe Ziel, schluesselfrei",
+    schluesselfreiAdresse(`${GATE}/a/${SCHLUESSEL}/beneos_bm_0113/4k//karte.webp`),
+    ohneVon({ release: "beneos_bm_0113", variant: "4k", pfad: "karte.webp" }))
+  gleich("schreibend, leeres Stueck im Pfad: dasselbe Ziel, schluesselfrei",
+    schluesselfreiAdresse(`${GATE}/a/${SCHLUESSEL}/beneos_bm_0113/4k/maps//karte.webp`).startsWith("beneos://"), true)
 }
 
 /*
@@ -500,6 +508,57 @@ console.log("Die Huelle um prepareBaseData")
   ruf("preCreatePlaylist", { _source: { name: "p", sounds: [{ path: MIT }] }, updateSource(d) { gesetzt = d } }, {}, {}, "nutzer")
   gleich("Netz, Anlegen einer Playlist: der Klang wird schluesselfrei",
     JSON.stringify(gesetzt), JSON.stringify({ sounds: [{ path: OHNE }] }))
+  /*
+   * DRITTER KALTLESER, W1: mit `_id` geht nur das geaenderte Element mit.
+   * `updateSource` gleicht ueber die `_id` ab, gemessen in 13.351 und 14.367.
+   */
+  gesetzt = null
+  ruf("preCreateScene", {
+    _source: { name: "s", tiles: [{ _id: "a1", x: 5, texture: { src: OHNE } }, { _id: "b2", x: 7, texture: { src: MIT } }] },
+    updateSource(d) { gesetzt = d },
+  }, {}, {}, "nutzer")
+  gleich("Netz, Anlegen mit _id: nur das geaenderte Element, als Teilobjekt",
+    JSON.stringify(gesetzt), JSON.stringify({ tiles: [{ _id: "b2", texture: { src: OHNE } }] }))
+  // F3: eine doppelte `_id` waere kein eindeutiger Abgleich, die Liste geht ganz.
+  gesetzt = null
+  ruf("preCreateScene", {
+    _source: { name: "s", tiles: [{ _id: "d", x: 1, texture: { src: MIT } }, { _id: "d", x: 2, texture: { src: MIT } }] },
+    updateSource(d) { gesetzt = d },
+  }, {}, {}, "nutzer")
+  gleich("Netz, Anlegen mit doppelter _id: kein Element faellt weg",
+    JSON.stringify(gesetzt), JSON.stringify({ tiles: [{ _id: "d", x: 1, texture: { src: OHNE } }, { _id: "d", x: 2, texture: { src: OHNE } }] }))
+  // W1: ohne Streaming liest das Netz die Listen gar nicht erst.
+  let gelesen = 0
+  const spion = (ziel) => new Proxy(ziel, { get(t, k, e) { gelesen++; return Reflect.get(t, k, e) } })
+  modus = false
+  gesetzt = null
+  ruf("preCreateScene", { _source: spion({ name: "s", tiles: [{ _id: "x", texture: { src: MIT } }] }), updateSource(d) { gesetzt = d } }, {}, {}, "nutzer")
+  gleich("Netz, Modus aus beim Anlegen: die Quelle wird nicht gelesen", gelesen, 0)
+  gleich("Netz, Modus aus beim Anlegen: nichts gesetzt", gesetzt, null)
+  gelesen = 0
+  ruf("preUpdateScene", {}, spion({ tiles: [{ _id: "x", texture: { src: MIT } }] }), {}, "nutzer")
+  gleich("Netz, Modus aus beim Aendern: die Aenderung wird nicht gelesen", gelesen, 0)
+  modus = true
+  /*
+   * F2: Foundry 14 schickt `levels` bei `"==levels"` als ForcedReplacement.
+   * Nachbau der Form aus common/data/operators.mjs: ein Proxy um den Operator,
+   * `DataFieldOperator.get` gibt das Array darin.
+   */
+  const WERT = Symbol("DataFieldOperatorValue")
+  class DataFieldOperator {
+    constructor(v) { this[WERT] = v }
+    static get(v) { return v instanceof DataFieldOperator ? v[WERT] : v }
+  }
+  class ForcedReplacement extends DataFieldOperator {}
+  const ersetzt = (v) => new Proxy(new ForcedReplacement(v), {
+    get(t, k, e) { return Reflect.has(t, k) ? Reflect.get(t, k, e) : Reflect.get(t[WERT], k, e) },
+  })
+  const altFoundry = globalThis.foundry
+  globalThis.foundry = { ...(altFoundry ?? {}), data: { operators: { DataFieldOperator, ForcedReplacement } } }
+  const ersatz = upd("Scene", { levels: ersetzt([{ _id: "x", background: { src: MIT } }]) }).levels
+  gleich("Netz, Szene: levels als ForcedReplacement wird schluesselfrei", DataFieldOperator.get(ersatz)[0].background.src, OHNE)
+  gleich("Netz, Szene: der Operator bleibt stehen", ersatz instanceof ForcedReplacement, true)
+  globalThis.foundry = altFoundry
 
   game.scenes = altScenes
   globalThis.Hooks = altHooks
@@ -511,7 +570,7 @@ console.log(`\n${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
  * Von Hand nachgezogen, siehe Kopf. Weicht die gezaehlte Zahl ab, ist der Lauf
  * mittendrin gestorben oder ein Block ist still weggefallen.
  */
-const ERWARTET = 145
+const ERWARTET = 154
 if (aussagen !== ERWARTET) {
   console.log(`ROT  erwartet ${ERWARTET} Aussagen, gezaehlt ${aussagen}`)
   process.exit(1)

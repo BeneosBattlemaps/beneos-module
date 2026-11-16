@@ -59,6 +59,13 @@ console.log("Abgelehnt wird alles andere, und Ablehnung heisst leere Zeichenkett
   gleich("Basis mit Pfad", erlaubteBasis("https://gate.beneos.stream/v2"), "");
   gleich("Basis mit Anfrage", erlaubteBasis("https://gate.beneos.stream?x=1"), "");
   gleich("Basis mit Anker", erlaubteBasis("https://gate.beneos.stream#x"), "");
+  // Leere Anfrage oder leerer Anker: `URL.search` und `URL.hash` sind dann
+  // leer, der rohe Wert traegt das Zeichen trotzdem (dritter Kaltleser).
+  gleich("Basis mit leerer Anfrage", erlaubteBasis("https://gate.beneos.stream?"), "");
+  gleich("Basis mit Schraegstrich und leerer Anfrage", erlaubteBasis("https://gate.beneos.stream/?"), "");
+  gleich("Basis mit leerem Anker", erlaubteBasis("https://gate.beneos.stream#"), "");
+  // Gegenrichtung: eine gueltige Basis bleibt zeichengleich, auch mit Port.
+  gleich("Basis mit Port bleibt zeichengleich", erlaubteBasis("https://gate.beneos.stream:443"), "https://gate.beneos.stream:443");
 }
 
 console.log(`\n${gruen} gruen, ${rot} rot`);

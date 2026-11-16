@@ -103,8 +103,13 @@ export function erlaubteBasis(wert) {
    * `schluesselfreiAdresse` liesse den Schluessel dann still im Dokument.
    * Abgelehnt statt abgeschnitten, weil jede Stelle, die Adressen zerlegt,
    * dieselbe Annahme traegt.
+   *
+   * `?` und `#` werden am rohen Wert geprueft (dritter Kaltleser): bei leerer
+   * Anfrage oder leerem Anker sind `search` und `hash` leer, zurueckgegeben
+   * wird aber `sauber`. `adresse.origin` waere keine Abhilfe, es aendert eine
+   * gueltige Basis (Grossschreibung im Host, `:443`).
    */
-  if (adresse.pathname !== "/" || adresse.search || adresse.hash) return ""
+  if (adresse.pathname !== "/" || adresse.search || adresse.hash || /[?#]/.test(sauber)) return ""
   return sauber
 }
 
@@ -1286,13 +1291,18 @@ export function schluesselfreiAdresse(url) {
    * schluesselfreien Form genau die der Eingabe ohne Schluessel sind,
    * dekodiert verglichen, weil `URL` und `encodeURIComponent` verschieden
    * kodieren. Sonst bleibt die Adresse stehen, die sichere Richtung.
+   *
+   * Leere Stuecke zaehlen nicht: das Tor filtert sie (Worker `src/index.js`,
+   * `split("/").filter(Boolean)`), `/4k//karte.webp` ist dort dasselbe Ziel
+   * wie `/4k/karte.webp` (dritter Kaltleser, F1).
    */
   const teile = adressSegmente(t.release, t.variant, t.pfad, t.traeger)
   if (!teile) return url
   const klar = (s) => { try { return decodeURIComponent(s) } catch (_) { return s } }
+  const ohneLeere = (liste) => liste.join("/").split("/").filter(Boolean).map(klar).join("/")
   const eingabe = new URL(url).pathname.replace(/^\/+/, "").split("/")
   eingabe.splice(1, 1)
-  if (eingabe.map(klar).join("/") !== teile.map(klar).join("/")) return url
+  if (ohneLeere(eingabe) !== ohneLeere(teile)) return url
   return platzhalterAdresse(t.release, t.variant, t.pfad, t.traeger) || url
 }
 

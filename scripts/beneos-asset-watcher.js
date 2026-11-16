@@ -306,7 +306,8 @@ const isBeneosPath = (src) => {
   //
   // Streamed media has its own monitoring anyway: scripts/stream/stream-report.mjs
   // reports every failed fetch to the gate, which is the place that can act on it.
-  if (/^https?:\/\//i.test(src)) return false;
+  // The keyless stream form `beneos://` (stre-T-102) is just as absolute.
+  if (/^https?:\/\//i.test(src) || /^beneos:\/\//i.test(src)) return false;
   return BENEOS_PATH_RE.test(src);
 };
 
@@ -571,7 +572,7 @@ const headCheck = async (path) => {
     // gebliebene Adresse von einer nachweislich fehlenden unterscheiden
     // koennen. Wer das nicht auswertet, bekommt wie bisher ein falsches
     // "fehlt", aber wenigstens keine Netzanfrage.
-    if (/^(https?:)?\/\//i.test(path) || /^data:/i.test(path)) {
+    if (/^(https?:)?\/\//i.test(path) || /^data:/i.test(path) || /^beneos:\/\//i.test(path)) {
       return { ok: false, status: -2, note: "absolute-url-not-probed" };
     }
 

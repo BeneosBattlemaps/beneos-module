@@ -39,7 +39,7 @@
  * `beneos-asset-path-repair.js`, und `leinwand`, die Toradresse beim
  * Vorbereiten samt Gegenrichtung und den Lesern in `stream-online.mjs`. Beide
  * gibt es an der Basis nicht, und `--alt` laesst sie ueber `mitBasis` aus.
- * Jede der 145 Proben von `leinwand` ist Ziel einer Sabotage, auch die des
+ * Jede der 154 Proben von `leinwand` ist Ziel einer Sabotage, auch die des
  * Schreibnetzes samt eingebetteter Listen (Kalt-Review 16.11.2026, zwei
  * Leser); Eigenproben braucht der Satz keine.
  *
@@ -51,6 +51,8 @@
  * DREIZEHN SAETZE seit dem Nebenbefund zu stre-T-102. `umschalter` haelt
  * `isAbsoluteRef` fest: die schluesselfreie Form `beneos://` gilt als absolut,
  * der Umschalter probt sie nicht und verwirft sie beim Laden des Speichers.
+ * Dazu der Asset-Waechter (`isBeneosPath`, `headCheck`, `scanSceneSilent`):
+ * bei Modus aus meldete er jede schluesselfreie Karte als fehlend.
  *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
@@ -100,6 +102,7 @@ const NAEHTE = [FETCH, BILDER];
 const basisText = {};
 const POSEN = "scripts/stream/stream-posen.mjs";
 const UTIL = "scripts/beneos_utility.js";
+const WAECHTER = "scripts/beneos-asset-watcher.js";
 const CLOUD = "scripts/beneos_cloud.js";
 const KARTEN = "scripts/stream/stream-karten.mjs";
 const MERKER = "scripts/stream/stream-merker.mjs";
@@ -719,7 +722,10 @@ const SABOTAGEN = [
   { satz: "leinwand", ziel: ["schreibend: null bleibt null"], ersetze: [[SETTINGS, "  if (typeof url !== \"string\" || istPlatzhalter(url)) return url", "  if (typeof url !== \"string\" || istPlatzhalter(url)) return url ?? \"\""]] },
   // Kalt-Review 16.11.2026: ohne Streaming schreibt die Gegenrichtung nichts um,
   // und das Schreibnetz an preCreate/preUpdate.
-  { satz: "leinwand", ziel: ["schreibend, Modus aus: die Toradresse bleibt stehen","schreibend, kein Schluessel: die Toradresse bleibt stehen","Netz, Modus aus: die Toradresse bleibt"], ersetze: [[SETTINGS, "  if (!streamEnabled()) return url\n  if (typeof url", "  if (typeof url"]] },
+  { satz: "leinwand", ziel: ["schreibend, Modus aus: die Toradresse bleibt stehen","schreibend, kein Schluessel: die Toradresse bleibt stehen"], ersetze: [[SETTINGS, "  if (!streamEnabled()) return url\n  if (typeof url", "  if (typeof url"]] },
+  // Seit dem dritten Kaltleser steigt das Netz ohne Streaming selbst aus; die
+  // Netzproben fuer Modus aus werden erst rot, wenn beide Riegel fehlen.
+  { satz: "leinwand", ziel: ["Netz, Modus aus: die Toradresse bleibt","Netz, Modus aus beim Anlegen: die Quelle wird nicht gelesen","Netz, Modus aus beim Anlegen: nichts gesetzt","Netz, Modus aus beim Aendern: die Aenderung wird nicht gelesen"], ersetze: [[SETTINGS, "  if (!streamEnabled()) return url\n  if (typeof url", "  if (typeof url"], [LEINWAND, "    Hooks.on(`preCreate${art}`, (doc) => {\n      if (!streamEnabled()) return\n", "    Hooks.on(`preCreate${art}`, (doc) => {\n"], [LEINWAND, "    Hooks.on(`preUpdate${art}`, (_doc, aenderung) => {\n      if (!streamEnabled()) return\n", "    Hooks.on(`preUpdate${art}`, (_doc, aenderung) => {\n"]] },
   { satz: "leinwand", ziel: ["Netz, Akteur: img mit Schluessel wird schluesselfrei","Netz, Akteur: der Prototyp verschachtelt","Netz, Akteur: der Prototyp als flacher Schluessel","Netz, Akteur: der Prototyp halb flach","Netz, Kachel: texture.src wird schluesselfrei","Netz, Kachel: auch als flacher Schluessel","Netz, Klang: path wird schluesselfrei","Netz, Szene wie Foundry 14: das Vorschaubild"], ersetze: [[LEINWAND, "      try { schreibFelder(aenderung, felder) } catch (_) { /* das Speichern geht vor */ }", "      void aenderung"]] },
   { satz: "leinwand", ziel: ["Netz, Akteur: der Prototyp verschachtelt","Netz, Akteur: der Prototyp als flacher Schluessel","Netz, Akteur: der Prototyp halb flach"], ersetze: [[LEINWAND, "  \"Actor\": [...LEINWAND_FELDER.Actor, \"prototypeToken.texture.src\"],", "  \"Actor\": [...LEINWAND_FELDER.Actor],"]] },
   { satz: "leinwand", ziel: ["Netz, Akteur: der Prototyp verschachtelt","Netz, Akteur: der Prototyp halb flach","Netz, Kachel: texture.src wird schluesselfrei"], ersetze: [[LEINWAND, "  for (let i = teile.length; i >= 1; i--) {", "  for (let i = teile.length; i >= teile.length; i--) {"]] },
@@ -728,7 +734,7 @@ const SABOTAGEN = [
   { satz: "leinwand", ziel: ["Netz, Akteur: der Prototyp verschachtelt","Netz, Akteur: der Prototyp als flacher Schluessel","Netz, Akteur: der Prototyp halb flach"], ersetze: [[LEINWAND, ".filter((p) => vorbereitet.includes(p) || !LEINWAND_FELDER[art].includes(p))", ".filter((p) => vorbereitet.includes(p))"]] },
   { satz: "leinwand", ziel: ["Netz, Anlegen: die Quelle bekommt die schluesselfreie Form","Netz, Anlegen einer Szene: die Kachel wird schluesselfrei, nur die geaenderte Liste","Netz, Anlegen einer Playlist: der Klang wird schluesselfrei"], ersetze: [[LEINWAND, "doc.updateSource(neu)", "void neu"]] },
   { satz: "leinwand", ziel: ["Netz, Anlegen: schon schluesselfrei, nichts gesetzt","Netz, Anlegen einer Szene: schon schluesselfrei, nichts gesetzt"], ersetze: [[LEINWAND, "        if (Object.keys(neu).length > 0) doc.updateSource(neu)", "        doc.updateSource(neu)"]] },
-  { satz: "leinwand", ziel: ["Netz, Anlegen: die Quelle bekommt die schluesselfreie Form"], ersetze: [[LEINWAND, "        schreibFelder(kopie, felder)\n", "\n"]] },
+  { satz: "leinwand", ziel: ["Netz, Anlegen: die Quelle bekommt die schluesselfreie Form","Netz, Anlegen einer Szene: die Kachel wird schluesselfrei, nur die geaenderte Liste","Netz, Anlegen einer Playlist: der Klang wird schluesselfrei","Netz, Anlegen mit _id: nur das geaenderte Element, als Teilobjekt","Netz, Anlegen mit doppelter _id: kein Element faellt weg"], ersetze: [[LEINWAND, "    schreibFelder(kopie, felder)\n", "\n"]] },
   // Zweiter Kaltleser 16.11.2026: die eingebetteten Listen im Elterndokument.
   { satz: "leinwand", ziel: ["Netz, Szene: levels[] Hintergrund wird schluesselfrei","Netz, Szene: levels[] Vordergrund wird schluesselfrei"], ersetze: [[LEINWAND, "    levels: \"Level\", tiles", "    tiles"]] },
   { satz: "leinwand", ziel: ["Netz, Szene: tiles[] wird schluesselfrei","Netz, Anlegen einer Szene: die Kachel wird schluesselfrei, nur die geaenderte Liste"], ersetze: [[LEINWAND, " tiles: \"Tile\",", ""]] },
@@ -739,12 +745,28 @@ const SABOTAGEN = [
   { satz: "leinwand", ziel: ["Netz, Szene: levels[] Hintergrund wird schluesselfrei","Netz, Szene: levels[] Vordergrund wird schluesselfrei","Netz, Szene: tiles[] wird schluesselfrei","Netz, Szene: tokens[] wird schluesselfrei","Netz, Szene: sounds[] wird schluesselfrei","Netz, Playlist: sounds[] wird schluesselfrei"], ersetze: [[LEINWAND, "      try { eingebettet(art, aenderung) } catch (_) { /* das Speichern geht vor */ }", "      void eingebettet"]] },
   { satz: "leinwand", ziel: ["Netz, Szene: levels[] Hintergrund wird schluesselfrei","Netz, Szene: tiles[] wird schluesselfrei","Netz, Playlist: sounds[] wird schluesselfrei"], ersetze: [[LEINWAND, "zahl += schreibFelder(element, felderJe[kind])", "zahl += schreibFelder(element, felderJe[art] ?? [])"]] },
   { satz: "leinwand", ziel: ["Netz, Szene: ein Element ohne Adressfeld bleibt"], ersetze: [[LEINWAND, "zahl += schreibFelder(element, felderJe[kind])", "zahl += schreibFelder(element, [...felderJe[kind], \"name\"])"]] },
-  { satz: "leinwand", ziel: ["Netz, Anlegen einer Szene: die Kachel wird schluesselfrei, nur die geaenderte Liste","Netz, Anlegen einer Szene: schon schluesselfrei, nichts gesetzt"], ersetze: [[LEINWAND, "if (eingebettet(art, { [feld]: kopieListe }) > 0)", "if (eingebettet(art, { [feld]: kopieListe }) >= 0)"]] },
+  { satz: "leinwand", ziel: ["Netz, Anlegen einer Szene: die Kachel wird schluesselfrei, nur die geaenderte Liste","Netz, Anlegen einer Szene: schon schluesselfrei, nichts gesetzt"], ersetze: [[LEINWAND, "          if (teile.every((t) => Object.keys(t).length === 0)) continue\n", "\n"]] },
+  // Dritter Kaltleser: Teilobjekt mit _id (W1), Rueckfall bei doppelter _id (F3),
+  // frueher Ausstieg ohne Streaming (W1), ForcedReplacement (F2).
+  { satz: "leinwand", ziel: ["Netz, Anlegen mit _id: nur das geaenderte Element, als Teilobjekt"], ersetze: [[LEINWAND, "          neu[feld] = eindeutig\n", "          neu[feld] = false\n"]] },
+  { satz: "leinwand", ziel: ["Netz, Anlegen mit doppelter _id: kein Element faellt weg"], ersetze: [[LEINWAND, " && new Set(ids).size === ids.length", ""]] },
+  { satz: "leinwand", ziel: ["Netz, Anlegen mit _id: nur das geaenderte Element, als Teilobjekt"], ersetze: [[LEINWAND, "(Object.keys(t).length ? [verschachtelt(t, { _id: ids[i] })] : [])", "[verschachtelt(t, { _id: ids[i] })]"]] },
+  { satz: "leinwand", ziel: ["Netz, Modus aus beim Anlegen: die Quelle wird nicht gelesen"], ersetze: [[LEINWAND, "    Hooks.on(`preCreate${art}`, (doc) => {\n      if (!streamEnabled()) return\n", "    Hooks.on(`preCreate${art}`, (doc) => {\n"]] },
+  { satz: "leinwand", ziel: ["Netz, Modus aus beim Aendern: die Aenderung wird nicht gelesen"], ersetze: [[LEINWAND, "    Hooks.on(`preUpdate${art}`, (_doc, aenderung) => {\n      if (!streamEnabled()) return\n", "    Hooks.on(`preUpdate${art}`, (_doc, aenderung) => {\n"]] },
+  { satz: "leinwand", ziel: ["Netz, Szene: levels als ForcedReplacement wird schluesselfrei"], ersetze: [[LEINWAND, "    const innen = typeof operator?.get === \"function\" ? operator.get(wert) : wert\n", "    const innen = wert\n"]] },
+  { satz: "leinwand", ziel: ["Netz, Szene: der Operator bleibt stehen"], ersetze: [[LEINWAND, "      for (const element of liste) zahl += schreibFelder(element, felderJe[kind])\n", "      for (const element of liste) zahl += schreibFelder(element, felderJe[kind])\n      if (liste !== daten[feld]) daten[feld] = liste\n"]] },
   { satz: "leinwand", ziel: ["zweimal eingebaut: prepareBaseData einmal gewickelt"], ersetze: [[LEINWAND, "    if (!proto || Object.hasOwn(proto, MARKE)) continue", "    if (!proto) continue"]] },
-  { satz: "leinwand", ziel: ["schreibend, Kreatur unter /a/: bleibt stehen, sonst ein anderes Ziel"], ersetze: [[SETTINGS, "  if (eingabe.map(klar).join(\"/\") !== teile.map(klar).join(\"/\")) return url\n", "\n"]] },
-  { satz: "leinwand", ziel: ["schreibend, Klammer im Dateinamen: dekodiert verglichen"], ersetze: [[SETTINGS, "  if (eingabe.map(klar).join(\"/\") !== teile.map(klar).join(\"/\")) return url", "  if (eingabe.join(\"/\") !== teile.join(\"/\")) return url"]] },
+  { satz: "leinwand", ziel: ["schreibend, Kreatur unter /a/: bleibt stehen, sonst ein anderes Ziel"], ersetze: [[SETTINGS, "  if (ohneLeere(eingabe) !== ohneLeere(teile)) return url\n", "\n"]] },
+  { satz: "leinwand", ziel: ["schreibend, Klammer im Dateinamen: dekodiert verglichen"], ersetze: [[SETTINGS, ".split(\"/\").filter(Boolean).map(klar).join(\"/\")", ".split(\"/\").filter(Boolean).join(\"/\")"]] },
+  { satz: "leinwand", ziel: ["schreibend, leeres Stueck nach der Variante: dasselbe Ziel, schluesselfrei"], ersetze: [[SETTINGS, ".split(\"/\").filter(Boolean).map(klar).join(\"/\")", ".split(\"/\").map(klar).join(\"/\")"]] },
+  { satz: "leinwand", ziel: ["schreibend, leeres Stueck im Pfad: dasselbe Ziel, schluesselfrei"], ersetze: [[SETTINGS, "  if (ohneLeere(eingabe) !== ohneLeere(teile)) return url", "  if (ohneLeere(eingabe) !== teile.map(klar).join(\"/\")) return url"]] },
   // Der Basissatz, erlaubteBasis (OP-PRJ-176, Pfadriegel zweiter Kaltleser 16.11.2026).
-  { satz: "basis", ziel: ["das Tor selbst","Schraegstrich am Ende fallen gelassen","mehrere Schraegstriche am Ende","Leerraum rundherum","ein zweites Tor derselben Zone","die Zone selbst","Grossschreibung im Host","die Vorgabe ist selbst erlaubt"], ersetze: [[SETTINGS, "  if (adresse.pathname !== \"/\" || adresse.search || adresse.hash) return \"\"\n  return sauber\n", "  return \"\"\n"]] },
+  { satz: "basis", ziel: ["das Tor selbst","Schraegstrich am Ende fallen gelassen","mehrere Schraegstriche am Ende","Leerraum rundherum","ein zweites Tor derselben Zone","die Zone selbst","Grossschreibung im Host","die Vorgabe ist selbst erlaubt","Basis mit Port bleibt zeichengleich"], ersetze: [[SETTINGS, "  if (adresse.pathname !== \"/\" || adresse.search || adresse.hash || /[?#]/.test(sauber)) return \"\"\n  return sauber\n", "  return \"\"\n"]] },
+  // Dritter Kaltleser, W2: `origin` statt `sauber` aendert eine gueltige Basis.
+  { satz: "basis", ziel: ["Grossschreibung im Host","Basis mit Port bleibt zeichengleich"], ersetze: [[SETTINGS, "/.test(sauber)) return \"\"\n  return sauber\n", "/.test(sauber)) return \"\"\n  return adresse.origin\n"]] },
+  { satz: "basis", ziel: ["Basis mit leerer Anfrage","Basis mit Schraegstrich und leerer Anfrage","Basis mit leerem Anker"], ersetze: [[SETTINGS, " || /[?#]/.test(sauber)) return \"\"", ") return \"\""]] },
+  { satz: "basis", ziel: ["Basis mit leerer Anfrage","Basis mit Schraegstrich und leerer Anfrage"], ersetze: [[SETTINGS, " || /[?#]/.test(sauber)) return \"\"", " || /[#]/.test(sauber)) return \"\""]] },
+  { satz: "basis", ziel: ["Basis mit leerem Anker"], ersetze: [[SETTINGS, " || /[?#]/.test(sauber)) return \"\"", " || /[?]/.test(sauber)) return \"\""]] },
   { satz: "basis", ziel: ["Schraegstrich am Ende fallen gelassen","mehrere Schraegstriche am Ende"], ersetze: [[SETTINGS, "String(wert == null ? \"\" : wert).trim().replace(/\\/+$/, \"\")", "String(wert == null ? \"\" : wert).trim()"]] },
   { satz: "basis", ziel: ["mehrere Schraegstriche am Ende"], ersetze: [[SETTINGS, "String(wert == null ? \"\" : wert).trim().replace(/\\/+$/, \"\")", "String(wert == null ? \"\" : wert).trim().replace(/\\/$/, \"\")"]] },
   { satz: "basis", ziel: ["Leerraum rundherum"], ersetze: [[SETTINGS, "String(wert == null ? \"\" : wert).trim().replace(/\\/+$/, \"\")", "String(wert == null ? \"\" : wert).replace(/\\/+$/, \"\")"]] },
@@ -752,20 +774,27 @@ const SABOTAGEN = [
   { satz: "basis", ziel: ["mit Benutzernamen im Ursprung"], ersetze: [[SETTINGS, "  if (adresse.username || adresse.password) return \"\"\n", "\n"]] },
   { satz: "basis", ziel: ["fremder Host","fremder Host mit unserem Namen davor","Host, der nur aehnlich endet"], ersetze: [[SETTINGS, "  if (host !== GATE_ZONE && !host.endsWith(\".\" + GATE_ZONE)) return \"\"", "  if (false) return \"\""]] },
   { satz: "basis", ziel: ["Host, der nur aehnlich endet"], ersetze: [[SETTINGS, "!host.endsWith(\".\" + GATE_ZONE)", "!host.endsWith(GATE_ZONE)"]] },
-  { satz: "basis", ziel: ["fremder Host mit unserem Namen als Pfad","javascript-Weg","Datenweg"], ersetze: [[SETTINGS, "  if (host !== GATE_ZONE && !host.endsWith(\".\" + GATE_ZONE)) return \"\"", "  if (false) return \"\""], [SETTINGS, "  if (adresse.pathname !== \"/\" || adresse.search || adresse.hash) return \"\"\n", "\n"], [SETTINGS, "  if (adresse.protocol !== \"https:\") return \"\"\n", "\n"]] },
+  { satz: "basis", ziel: ["fremder Host mit unserem Namen als Pfad","javascript-Weg","Datenweg"], ersetze: [[SETTINGS, "  if (host !== GATE_ZONE && !host.endsWith(\".\" + GATE_ZONE)) return \"\"", "  if (false) return \"\""], [SETTINGS, "  if (adresse.pathname !== \"/\" || adresse.search || adresse.hash || /[?#]/.test(sauber)) return \"\"\n", "\n"], [SETTINGS, "  if (adresse.protocol !== \"https:\") return \"\"\n", "\n"]] },
   { satz: "basis", ziel: ["keine Adresse","Unfug"], ersetze: [[SETTINGS, "  try { adresse = new URL(sauber) } catch (_) { return \"\" }", "  try { adresse = new URL(sauber) } catch (_) { return sauber }"]] },
   { satz: "basis", ziel: ["leer","fehlt ganz"], ersetze: [[SETTINGS, "  if (!sauber) return \"\"\n  let adresse", "  if (!sauber) return GATE_ZONE\n  let adresse"]] },
-  { satz: "basis", ziel: ["Basis mit Pfad","Basis mit Anfrage","Basis mit Anker"], ersetze: [[SETTINGS, "  if (adresse.pathname !== \"/\" || adresse.search || adresse.hash) return \"\"\n", "\n"]] },
+  { satz: "basis", ziel: ["Basis mit Pfad","Basis mit Anfrage","Basis mit Anker","Basis mit leerer Anfrage","Basis mit Schraegstrich und leerer Anfrage","Basis mit leerem Anker"], ersetze: [[SETTINGS, "  if (adresse.pathname !== \"/\" || adresse.search || adresse.hash || /[?#]/.test(sauber)) return \"\"\n", "\n"]] },
   { satz: "basis", ziel: ["Basis mit Pfad"], ersetze: [[SETTINGS, "adresse.pathname !== \"/\" || adresse.search", "adresse.search"]] },
-  { satz: "basis", ziel: ["Basis mit Anfrage"], ersetze: [[SETTINGS, " || adresse.search || adresse.hash)", " || adresse.hash)"]] },
-  { satz: "basis", ziel: ["Basis mit Anker"], ersetze: [[SETTINGS, " || adresse.search || adresse.hash)", " || adresse.search)"]] },
+  { satz: "basis", ziel: ["Basis mit Anfrage"], ersetze: [[SETTINGS, " || adresse.search || adresse.hash || /[?#]/", " || adresse.hash || /[#]/"]] },
+  { satz: "basis", ziel: ["Basis mit Anker"], ersetze: [[SETTINGS, " || adresse.search || adresse.hash || /[?#]/", " || adresse.search || /[?]/"]] },
   // Der Umschalter probt nur Pfade der eigenen Welt (stre-T-102, isAbsoluteRef).
-  { satz: "umschalter", ziel: ["beneos:// gilt als absolut","BENEOS:// in Grossschreibung gilt als absolut","schluesselfreier Hintergrund und Kachel: kein Ziel","gemischt: nur die oertliche Kachel","schluesselfreie Szene: keine Abfrage","schluesselfreie Szene: kein Probeneintrag","Laden: nur der oertliche Eintrag","Laden: alter beneos://-Eintrag verworfen"], ersetze: [[UTIL, " || /^beneos:\\/\\//i.test(src))", ")"]] },
+  { satz: "umschalter", ziel: ["beneos:// gilt als absolut","BENEOS:// in Grossschreibung gilt als absolut","schluesselfreier Hintergrund und Kachel: kein Ziel","gemischt: nur die oertliche Kachel","schluesselfreie Szene: kein Probeneintrag","Laden: nur der oertliche Eintrag","Laden: alter beneos://-Eintrag verworfen"], ersetze: [[UTIL, " || /^beneos:\\/\\//i.test(src))", ")"]] },
+  // Die Abfrage selbst haelt seit AG-12:28:21 auch headCheck auf; rot erst ohne beide Riegel.
+  { satz: "umschalter", ziel: ["schluesselfreie Szene: keine Abfrage"], ersetze: [[UTIL, " || /^beneos:\\/\\//i.test(src))", ")"], [WAECHTER, " || /^data:/i.test(path) || /^beneos:\\/\\//i.test(path)) {", " || /^data:/i.test(path)) {"]] },
   { satz: "umschalter", ziel: ["BENEOS:// in Grossschreibung gilt als absolut"], ersetze: [[UTIL, " || /^beneos:\\/\\//i.test(src))", " || /^beneos:\\/\\//.test(src))"]] },
   { satz: "umschalter", ziel: ["Pfad mit beneos im Namen bleibt oertlich"], ersetze: [[UTIL, " || /^beneos:\\/\\//i.test(src))", " || /beneos:\\/\\//i.test(src))"]] },
   { satz: "umschalter", ziel: ["Toradresse gilt weiter als absolut"], ersetze: [[UTIL, "(/^(https?:)?\\/\\//i.test(src) || /^data:/i.test(src) || /^beneos", "(/^data:/i.test(src) || /^beneos"]] },
   { satz: "umschalter", ziel: ["oertlicher Pfad bleibt oertlich","Pfad mit beneos im Namen bleibt oertlich","oertlicher Hintergrund und Kachel: zwei Ziele","gemischt: nur die oertliche Kachel","oertliche Szene: eine Abfrage","oertliche Szene: auf das Standbild","Laden: nur der oertliche Eintrag"], ersetze: [[UTIL, "    return typeof src === \"string\" && (/^(https?:)?\\/\\//i.test(src) || /^data:/i.test(src) || /^beneos:\\/\\//i.test(src))", "    return true"]] },
   { satz: "umschalter", ziel: ["oertliche Szene: auf das Standbild"], ersetze: [[UTIL, "static toStaticPath(src) { return String(src).replace(/\\.webm$/i, \".webp\") }", "static toStaticPath(src) { return String(src) }"]] },
+  // Der Asset-Waechter (Auftrag AG-12:28:21): beneos:// ist nicht seine Sache.
+  { satz: "umschalter", ziel: ["isBeneosPath: schluesselfreie Karte ist nicht seine Sache","scanSceneSilent: schluesselfreie Szene meldet nichts als fehlend","scanSceneSilent: ein fehlender oertlicher Pfad wird weiter gemeldet"], ersetze: [[WAECHTER, "  if (/^https?:\\/\\//i.test(src) || /^beneos:\\/\\//i.test(src)) return false;", "  if (/^https?:\\/\\//i.test(src)) return false;"]] },
+  { satz: "umschalter", ziel: ["headCheck: schluesselfreie Karte wird nicht abgefragt"], ersetze: [[WAECHTER, " || /^data:/i.test(path) || /^beneos:\\/\\//i.test(path)) {", " || /^data:/i.test(path)) {"]] },
+  { satz: "umschalter", ziel: ["scanSceneSilent: schluesselfreie Szene fragt nichts ab"], ersetze: [[WAECHTER, "  if (/^https?:\\/\\//i.test(src) || /^beneos:\\/\\//i.test(src)) return false;", "  if (/^https?:\\/\\//i.test(src)) return false;"], [WAECHTER, " || /^data:/i.test(path) || /^beneos:\\/\\//i.test(path)) {", " || /^data:/i.test(path)) {"]] },
+  { satz: "umschalter", ziel: ["isBeneosPath: oertlicher Beneos-Pfad bleibt seine Sache","scanSceneSilent: ein fehlender oertlicher Pfad wird weiter gemeldet"], ersetze: [[WAECHTER, "  return BENEOS_PATH_RE.test(src);\n};", "  return false;\n};"]] },
   { satz: "leinwand", ziel: ["Netz, Akteur: ein anderes Feld bleibt"], ersetze: [[LEINWAND, "      try { schreibFelder(aenderung, felder) } catch", "      try { schreibFelder(aenderung, [...felder, \"name\"]) } catch"]] },
   { satz: "bilder", ziel: ["ein Bild mit data-edit behaelt seine Adresse"], ersetze: [[BILDER, "    if (el.hasAttribute?.(\"data-edit\")) { uebersprungen++; continue }", ""]] },
   { satz: "bilder", ziel: ["die Toradresse wird eine Blob-Adresse","die Platzhalterform wird eine Blob-Adresse","abgerufen wird die Toradresse von heute, auch fuer die Platzhalterform","zwei Bilder gehalten","ein zweites Fenster mit derselben Adresse bekommt ein Blob","das erste Fenster zu: die Adresse des zweiten bleibt gehalten","das Bild daneben wird weiter getauscht"], ersetze: [[BILDER, "    if (el.hasAttribute?.(\"data-edit\")) { uebersprungen++; continue }", "    if (true) { uebersprungen++; continue }"]] },
