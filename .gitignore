@@ -12,3 +12,9 @@ todo.md
 *.bak-*
 # Claude Code local state, incl. worktrees. beneos-module is the live Foundry module folder via junction (v13Data, v14Data).
 .claude/
+# Run files of the Code Guardian tooling, written at the repository root only.
+/.audit-log.md
+/.code-guardian-evidence/
+/.code-guardian-todo.md
+/.goals/
+/.task-journal.md
