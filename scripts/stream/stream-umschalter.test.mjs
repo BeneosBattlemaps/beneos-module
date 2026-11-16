@@ -126,4 +126,27 @@ gleich("scanSceneSilent: schluesselfreie Szene fragt nichts ab", nimmAbrufe().le
 const zwei = await W.scanSceneSilent({ id: "w2", name: "w2", background: { src: KARTE }, tiles: [{ id: "k", texture: { src: FEHLT } }] })
 gleich("scanSceneSilent: ein fehlender oertlicher Pfad wird weiter gemeldet", zwei.missing.join(","), FEHLT)
 
+/*
+ * MODUS AUS MIT SCHLUESSEL (Betreiberentscheid 16.11.2026, "Weiter laden").
+ * Seitdem steht im vorbereiteten Feld auch bei Modus aus die Toradresse statt
+ * `beneos://`. Waechter und Umschalter muessen sie genauso auslassen wie die
+ * schluesselfreie Form: keine Abfrage, kein Ziel, nichts als fehlend.
+ */
+abschnitt("Modus aus mit Schluessel: die Toradresse im vorbereiteten Feld")
+const TOR = KARTE.replace("beneos://a/", "https://gate.beneos.stream/a/pk_attrappe/")
+gleich("isBeneosPath: Toradresse ist nicht seine Sache", W.isBeneosPath(TOR), false)
+gleich("headCheck: Toradresse wird nicht abgefragt", (await W.headCheck(TOR)).status, -2)
+nimmAbrufe()
+const torSzene = await W.scanSceneSilent({ id: "w3", name: "w3", background: { src: TOR }, tiles: [{ id: "k", texture: { src: TOR } }] })
+gleich("scanSceneSilent: Toradresse meldet nichts als fehlend", torSzene.missing.length, 0)
+gleich("scanSceneSilent: Toradresse fragt nichts ab", nimmAbrufe().length, 0)
+const TOR_WEBM = TOR.replace(/\.webp$/, ".webm")
+gleich("Umschalter: Toradresse in Hintergrund und Kachel ist kein Ziel",
+  BeneosUtility.collectStaticSwitchTargets(szene("s4", TOR_WEBM, [TOR_WEBM])).length, 0)
+setzeSzenen([szene("s4", TOR_WEBM, [TOR_WEBM])])
+BeneosUtility._mapAssetProbe.clear()
+BeneosUtility.warmStaticSwitchCache()
+await warte(20)
+gleich("Umschalter: Toradresse wird beim Aufwaermen nicht geprobt", nimmAbrufe().length, 0)
+
 ende()

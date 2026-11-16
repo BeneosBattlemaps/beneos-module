@@ -32,7 +32,7 @@
  * `VERBOTEN` in `stream-bilder.mjs` (OP-PRJ-177) bleibt unberuehrt.
  */
 
-import { leinwandAdresse, schluesselfreiAdresse, streamEnabled, MODULE_ID, SETTING } from "./stream-settings.mjs"
+import { leinwandAdresse, schluesselfreiAdresse, streamKey, MODULE_ID, SETTING } from "./stream-settings.mjs"
 
 /**
  * Je Dokumentart die Felder, die eine Adresse tragen, als Punktpfad.
@@ -183,6 +183,10 @@ const MARKE = Symbol.for("beneos.stream.leinwand")
  * erste Szene ist gezeichnet, bevor `ready` feuert (gemessen am 22.08.2026,
  * siehe `beneos-stream.mjs`).
  *
+ * Eingebaut wird unbedingt, auch bei Modus aus und ohne Schluessel; die
+ * Behandler pruefen den Schluessel beim Aufruf. Begruendung in
+ * `beneos-stream.mjs` am Einbau.
+ *
  * Gewickelt wird die Klasse, die `CONFIG` nennt, also auch die eines Systems
  * (dnd5e `Actor5e`). Das System bereitet zuerst vor, dann wird umgeschrieben.
  */
@@ -233,7 +237,7 @@ export function installStreamLeinwand() {
    *
    * Beim Aendern wird das Aenderungsobjekt umgeschrieben, beim Anlegen die
    * Quelle des Dokuments: dort verlangt Foundry `updateSource`, eine Aenderung
-   * der Daten wirkte nicht. Ohne Streaming tut `schluesselfreiAdresse` nichts.
+   * der Daten wirkte nicht. Ohne Schluessel tut `schluesselfreiAdresse` nichts.
    */
   const felderJe = {}
   for (const art of Object.keys(SCHREIB_FELDER)) {
@@ -289,17 +293,19 @@ export function installStreamLeinwand() {
   for (const art of new Set([...Object.keys(SCHREIB_FELDER), ...Object.keys(EINGEBETTET)])) {
     const felder = felderJe[art] ?? []
     /*
-     * Ohne Streaming gibt es keine schluesselfreie Form zu schreiben:
+     * Ohne Schluessel gibt es keine schluesselfreie Form zu schreiben:
      * `schluesselfreiAdresse` liesse jede Adresse stehen. Der fruehe Ausstieg
-     * spart das Lesen und Kopieren der Listen (dritter Kaltleser, W1).
+     * spart das Lesen und Kopieren der Listen (dritter Kaltleser, W1). Am
+     * Schluessel und nicht am Modus, wie die Leseseite (Betreiberentscheid
+     * 16.11.2026, "Weiter laden").
      */
     Hooks.on(`preUpdate${art}`, (_doc, aenderung) => {
-      if (!streamEnabled()) return
+      if (!streamKey()) return
       try { schreibFelder(aenderung, felder) } catch (_) { /* das Speichern geht vor */ }
       try { eingebettet(art, aenderung) } catch (_) { /* das Speichern geht vor */ }
     })
     Hooks.on(`preCreate${art}`, (doc) => {
-      if (!streamEnabled()) return
+      if (!streamKey()) return
       try {
         const neu = geaendert(doc?._source, felder)
         /*

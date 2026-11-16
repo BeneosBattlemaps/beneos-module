@@ -1269,13 +1269,19 @@ export function platzhalterAdresse(release, variant, path, traeger) {
  * Eine Toradresse unter einer frueheren Basis bleibt deshalb ebenfalls
  * stehen: unveraendert ist hier die sichere Richtung.
  *
- * OHNE STREAMING BLEIBT ALLES STEHEN (Kalt-Review 16.11.2026). Ohne Modus oder
- * ohne Schluessel setzt `leinwandAdresse` nichts ein. Eine hier geschriebene
- * schluesselfreie Form zeigte in einer Bestandswelt mit abgeschaltetem
- * Streaming danach kein Bild mehr; die Toradresse von vorher laedt weiter.
+ * OHNE SCHLUESSEL BLEIBT ALLES STEHEN (Kalt-Review 16.11.2026). Ohne
+ * Schluessel setzt `leinwandAdresse` nichts ein. Eine hier geschriebene
+ * schluesselfreie Form zeigte danach kein Bild mehr; die Toradresse von vorher
+ * laedt weiter.
+ *
+ * AM SCHLUESSEL, NICHT AM MODUS (Betreiberentscheid 16.11.2026, "Weiter
+ * laden"). Mit Schluessel setzt die Leseseite die Toradresse auch bei Modus
+ * aus ein. Dann muss auch hier schluesselfrei geschrieben werden, sonst bringt
+ * ein Schreiber, der den vorbereiteten Wert zurueckschickt, den Schluessel auf
+ * die Platte.
  */
 export function schluesselfreiAdresse(url) {
-  if (!streamEnabled()) return url
+  if (!streamKey()) return url
   if (typeof url !== "string" || istPlatzhalter(url)) return url
   let host = ""
   try { host = new URL(url).host } catch (_) { return url }
@@ -1322,12 +1328,18 @@ export function schluesselfreiAdresse(url) {
  * Versuch `?cors-retry=<zahl>` an, und in der schluesselfreien Form ist ein
  * echtes `?` nie Teil des Pfades, weil `adressSegmente` jedes Stueck kodiert.
  *
- * Ohne Streaming oder ohne Schluessel bleibt die Form stehen. Eine Toradresse
- * mit leerem Schluesselstueck waere keine bessere Antwort, nur eine, die am Tor
- * scheitert statt hier.
+ * Ohne Schluessel bleibt die Form stehen. Eine Toradresse mit leerem
+ * Schluesselstueck waere keine bessere Antwort, nur eine, die am Tor scheitert
+ * statt hier.
+ *
+ * Der Modus entscheidet hier nicht (Betreiberentscheid 16.11.2026, "Weiter
+ * laden"): wer einen Schluessel hat, sieht gestreamte Karten auch bei Modus
+ * aus. Vor T-102 stand die Toradresse in `_source` und lud bei Modus aus
+ * direkt; mit dieser Uebersetzung bleibt das so. Der Kern laedt sie dann ohne
+ * fetch-Ersatz, der weiter am Modus haengt.
  */
 export function leinwandAdresse(src) {
-  if (!istPlatzhalter(src) || !streamEnabled()) return src
+  if (!istPlatzhalter(src) || !streamKey()) return src
   const t = zerlegeAdresse(String(src).replace(/[?#].*$/, ""))
   if (!t) return src
   return assetUrl(t.release, t.variant, t.pfad, t.traeger) || src

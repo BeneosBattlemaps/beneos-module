@@ -163,17 +163,32 @@ console.log("Was nicht unsere schluesselfreie Form ist, bleibt, wie es ist")
   gleich("eine Zahl bleibt eine Zahl", leinwandAdresse(42), 42)
 }
 
-console.log("Ohne Streaming und ohne Schluessel bleibt die schluesselfreie Form stehen")
+/*
+ * AM SCHLUESSEL, NICHT AM MODUS (Betreiberentscheid 16.11.2026, "Weiter
+ * laden"). Wer einen Schluessel hat, sieht gestreamte Karten auch bei Modus
+ * aus. Gemessen vorher in v13 und v14: Modus aus plus Neuzeichnung ergab je
+ * Kachel, Token und Notiz "Fetch API cannot load beneos://".
+ */
+console.log("Ohne Schluessel bleibt die schluesselfreie Form stehen, der Modus entscheidet nicht")
 {
   const ohne = ohneVon(PROBEN.karte)
   modus = false
-  gleich("Modus aus", leinwandAdresse(ohne), ohne)
-  modus = true
+  gleich("Modus aus, Schluessel da: die Toradresse von heute", leinwandAdresse(ohne), mitVon(PROBEN.karte))
   schluessel = ""
-  gleich("kein Schluessel", leinwandAdresse(ohne), ohne)
+  gleich("Modus aus, kein Schluessel: bleibt stehen", leinwandAdresse(ohne), ohne)
+  modus = true
+  gleich("Modus an, kein Schluessel: bleibt stehen", leinwandAdresse(ohne), ohne)
   schluessel = SCHLUESSEL
   gleich("Gegenprobe: mit beidem wird sie umgeschrieben",
     leinwandAdresse(ohne) !== ohne, true)
+  // Punkt 5: eine alte Toradresse bleibt in jedem Zustand zeichengleich.
+  const alt = mitVon(PROBEN.karte)
+  for (const [m, k] of [[true, SCHLUESSEL], [false, SCHLUESSEL], [false, ""], [true, ""]]) {
+    modus = m; schluessel = k
+    gleich(`alte Toradresse, Modus ${m ? "an" : "aus"}, ${k ? "mit" : "ohne"} Schluessel: zeichengleich`,
+      leinwandAdresse(alt), alt)
+  }
+  modus = true; schluessel = SCHLUESSEL
 }
 
 /*
@@ -284,15 +299,21 @@ console.log("Die Gegenrichtung: was ins Dokument geschrieben wird")
   }
   gleich("schreibend: null bleibt null", schluesselfreiAdresse(null), null)
   /*
-   * OHNE STREAMING BLEIBT DIE TORADRESSE STEHEN (Kalt-Review 16.11.2026,
-   * Befund 1). Die Leseseite setzt ohne Modus oder Schluessel nichts ein; eine
-   * hier geschriebene schluesselfreie Form zeigte danach kein Bild mehr. Eine
-   * Bestandswelt mit abgeschaltetem Streaming behaelt ihre ladbare Adresse.
+   * OHNE SCHLUESSEL BLEIBT DIE TORADRESSE STEHEN (Kalt-Review 16.11.2026,
+   * Befund 1). Die Leseseite setzt ohne Schluessel nichts ein; eine hier
+   * geschriebene schluesselfreie Form zeigte danach kein Bild mehr.
+   *
+   * MIT SCHLUESSEL BEI MODUS AUS WIRD SCHLUESSELFREI GESCHRIEBEN
+   * (Betreiberentscheid 16.11.2026, "Weiter laden"). Die Leseseite legt dann
+   * die Toradresse in den Arbeitsspeicher, und ein Schreiber, der den
+   * vorbereiteten Wert zurueckschickt, braechte sonst den Schluessel auf die
+   * Platte.
    */
   modus = false
-  gleich("schreibend, Modus aus: die Toradresse bleibt stehen", schluesselfreiAdresse(MIT), MIT)
-  modus = true
+  gleich("schreibend, Modus aus mit Schluessel: schluesselfrei", schluesselfreiAdresse(MIT), OHNE)
   schluessel = ""
+  gleich("schreibend, Modus aus ohne Schluessel: die Toradresse bleibt stehen", schluesselfreiAdresse(MIT), MIT)
+  modus = true
   gleich("schreibend, kein Schluessel: die Toradresse bleibt stehen", schluesselfreiAdresse(MIT), MIT)
   schluessel = SCHLUESSEL
   gleich("schreibend, Gegenprobe mit beidem: schluesselfrei", schluesselfreiAdresse(MIT), OHNE)
@@ -481,7 +502,10 @@ console.log("Die Huelle um prepareBaseData")
   gleich("Netz, Playlist: sounds[] wird schluesselfrei",
     upd("Playlist", { sounds: [{ _id: "p", path: MIT }] }).sounds[0].path, OHNE)
   modus = false
-  gleich("Netz, Modus aus: die Toradresse bleibt", upd("Actor", { img: MIT }).img, MIT)
+  gleich("Netz, Modus aus mit Schluessel: img wird schluesselfrei", upd("Actor", { img: MIT }).img, OHNE)
+  schluessel = ""
+  gleich("Netz, kein Schluessel: die Toradresse bleibt", upd("Actor", { img: MIT }).img, MIT)
+  schluessel = SCHLUESSEL
   modus = true
   // Beim Anlegen zaehlt das Dokument, nicht die Daten: Foundry verlangt dort
   // `updateSource`.
@@ -527,17 +551,31 @@ console.log("Die Huelle um prepareBaseData")
   }, {}, {}, "nutzer")
   gleich("Netz, Anlegen mit doppelter _id: kein Element faellt weg",
     JSON.stringify(gesetzt), JSON.stringify({ tiles: [{ _id: "d", x: 1, texture: { src: OHNE } }, { _id: "d", x: 2, texture: { src: OHNE } }] }))
-  // W1: ohne Streaming liest das Netz die Listen gar nicht erst.
+  // W1: ohne Schluessel liest das Netz die Listen gar nicht erst, in jedem Modus.
   let gelesen = 0
   const spion = (ziel) => new Proxy(ziel, { get(t, k, e) { gelesen++; return Reflect.get(t, k, e) } })
+  schluessel = ""
+  for (const m of [false, true]) {
+    modus = m
+    const wie = `Modus ${m ? "an" : "aus"}, kein Schluessel`
+    gelesen = 0
+    gesetzt = null
+    ruf("preCreateScene", { _source: spion({ name: "s", tiles: [{ _id: "x", texture: { src: MIT } }] }), updateSource(d) { gesetzt = d } }, {}, {}, "nutzer")
+    gleich(`Netz, ${wie}, beim Anlegen: die Quelle wird nicht gelesen`, gelesen, 0)
+    gleich(`Netz, ${wie}, beim Anlegen: nichts gesetzt`, gesetzt, null)
+    gelesen = 0
+    ruf("preUpdateScene", {}, spion({ tiles: [{ _id: "x", texture: { src: MIT } }] }), {}, "nutzer")
+    gleich(`Netz, ${wie}, beim Aendern: die Aenderung wird nicht gelesen`, gelesen, 0)
+  }
+  schluessel = SCHLUESSEL
+  // Modus aus MIT Schluessel: das Netz arbeitet, beim Anlegen wie beim Aendern.
   modus = false
   gesetzt = null
-  ruf("preCreateScene", { _source: spion({ name: "s", tiles: [{ _id: "x", texture: { src: MIT } }] }), updateSource(d) { gesetzt = d } }, {}, {}, "nutzer")
-  gleich("Netz, Modus aus beim Anlegen: die Quelle wird nicht gelesen", gelesen, 0)
-  gleich("Netz, Modus aus beim Anlegen: nichts gesetzt", gesetzt, null)
-  gelesen = 0
-  ruf("preUpdateScene", {}, spion({ tiles: [{ _id: "x", texture: { src: MIT } }] }), {}, "nutzer")
-  gleich("Netz, Modus aus beim Aendern: die Aenderung wird nicht gelesen", gelesen, 0)
+  ruf("preCreateScene", { _source: { name: "s", tiles: [{ _id: "x", texture: { src: MIT } }] }, updateSource(d) { gesetzt = d } }, {}, {}, "nutzer")
+  gleich("Netz, Modus aus mit Schluessel, beim Anlegen: schluesselfrei",
+    JSON.stringify(gesetzt), JSON.stringify({ tiles: [{ _id: "x", texture: { src: OHNE } }] }))
+  gleich("Netz, Modus aus mit Schluessel, beim Aendern: schluesselfrei",
+    upd("Scene", { tiles: [{ _id: "x", texture: { src: MIT } }] }).tiles[0].texture.src, OHNE)
   modus = true
   /*
    * F2: Foundry 14 schickt `levels` bei `"==levels"` als ForcedReplacement.
@@ -570,7 +608,7 @@ console.log(`\n${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
  * Von Hand nachgezogen, siehe Kopf. Weicht die gezaehlte Zahl ab, ist der Lauf
  * mittendrin gestorben oder ein Block ist still weggefallen.
  */
-const ERWARTET = 154
+const ERWARTET = 166
 if (aussagen !== ERWARTET) {
   console.log(`ROT  erwartet ${ERWARTET} Aussagen, gezaehlt ${aussagen}`)
   process.exit(1)
