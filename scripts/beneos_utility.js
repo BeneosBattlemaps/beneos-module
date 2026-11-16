@@ -1584,9 +1584,15 @@ export class BeneosUtility {
    * Kachel neben einer oertlichen tragen, und dann darf die eine geprueft
    * werden und die andere nicht. Der Umschalter arbeitet ausschliesslich auf
    * Pfaden der eigenen Welt.
+   *
+   * `beneos://` ist die schluesselfreie Streamadresse (stre-T-102). Bei Modus
+   * aus bleibt sie im vorbereiteten Feld stehen; als oertlich behandelt ging
+   * sie als `beneos%3A//...` gegen den eigenen Server (404), und das Ergebnis
+   * blieb im localStorage als "nicht verfuegbar" haengen. Beim Laden des
+   * Speichers verwirft dieselbe Pruefung solche Altlasten.
    */
   static isAbsoluteRef(src) {
-    return typeof src === "string" && (/^(https?:)?\/\//i.test(src) || /^data:/i.test(src))
+    return typeof src === "string" && (/^(https?:)?\/\//i.test(src) || /^data:/i.test(src) || /^beneos:\/\//i.test(src))
   }
 
   /** Swap a battlemap reference to its still / animated counterpart. Anchored

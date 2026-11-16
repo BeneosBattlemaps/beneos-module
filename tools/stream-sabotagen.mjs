@@ -48,6 +48,10 @@
  * damit ohne Beleg, dass eine Probe rot werden kann. Seit dem Pfadriegel
  * traegt er eine Entscheidung, die der Schreibweg braucht.
  *
+ * DREIZEHN SAETZE seit dem Nebenbefund zu stre-T-102. `umschalter` haelt
+ * `isAbsoluteRef` fest: die schluesselfreie Form `beneos://` gilt als absolut,
+ * der Umschalter probt sie nicht und verwirft sie beim Laden des Speichers.
+ *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
  * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig]
@@ -755,6 +759,13 @@ const SABOTAGEN = [
   { satz: "basis", ziel: ["Basis mit Pfad"], ersetze: [[SETTINGS, "adresse.pathname !== \"/\" || adresse.search", "adresse.search"]] },
   { satz: "basis", ziel: ["Basis mit Anfrage"], ersetze: [[SETTINGS, " || adresse.search || adresse.hash)", " || adresse.hash)"]] },
   { satz: "basis", ziel: ["Basis mit Anker"], ersetze: [[SETTINGS, " || adresse.search || adresse.hash)", " || adresse.search)"]] },
+  // Der Umschalter probt nur Pfade der eigenen Welt (stre-T-102, isAbsoluteRef).
+  { satz: "umschalter", ziel: ["beneos:// gilt als absolut","BENEOS:// in Grossschreibung gilt als absolut","schluesselfreier Hintergrund und Kachel: kein Ziel","gemischt: nur die oertliche Kachel","schluesselfreie Szene: keine Abfrage","schluesselfreie Szene: kein Probeneintrag","Laden: nur der oertliche Eintrag","Laden: alter beneos://-Eintrag verworfen"], ersetze: [[UTIL, " || /^beneos:\\/\\//i.test(src))", ")"]] },
+  { satz: "umschalter", ziel: ["BENEOS:// in Grossschreibung gilt als absolut"], ersetze: [[UTIL, " || /^beneos:\\/\\//i.test(src))", " || /^beneos:\\/\\//.test(src))"]] },
+  { satz: "umschalter", ziel: ["Pfad mit beneos im Namen bleibt oertlich"], ersetze: [[UTIL, " || /^beneos:\\/\\//i.test(src))", " || /beneos:\\/\\//i.test(src))"]] },
+  { satz: "umschalter", ziel: ["Toradresse gilt weiter als absolut"], ersetze: [[UTIL, "(/^(https?:)?\\/\\//i.test(src) || /^data:/i.test(src) || /^beneos", "(/^data:/i.test(src) || /^beneos"]] },
+  { satz: "umschalter", ziel: ["oertlicher Pfad bleibt oertlich","Pfad mit beneos im Namen bleibt oertlich","oertlicher Hintergrund und Kachel: zwei Ziele","gemischt: nur die oertliche Kachel","oertliche Szene: eine Abfrage","oertliche Szene: auf das Standbild","Laden: nur der oertliche Eintrag"], ersetze: [[UTIL, "    return typeof src === \"string\" && (/^(https?:)?\\/\\//i.test(src) || /^data:/i.test(src) || /^beneos:\\/\\//i.test(src))", "    return true"]] },
+  { satz: "umschalter", ziel: ["oertliche Szene: auf das Standbild"], ersetze: [[UTIL, "static toStaticPath(src) { return String(src).replace(/\\.webm$/i, \".webp\") }", "static toStaticPath(src) { return String(src) }"]] },
   { satz: "leinwand", ziel: ["Netz, Akteur: ein anderes Feld bleibt"], ersetze: [[LEINWAND, "      try { schreibFelder(aenderung, felder) } catch", "      try { schreibFelder(aenderung, [...felder, \"name\"]) } catch"]] },
   { satz: "bilder", ziel: ["ein Bild mit data-edit behaelt seine Adresse"], ersetze: [[BILDER, "    if (el.hasAttribute?.(\"data-edit\")) { uebersprungen++; continue }", ""]] },
   { satz: "bilder", ziel: ["die Toradresse wird eine Blob-Adresse","die Platzhalterform wird eine Blob-Adresse","abgerufen wird die Toradresse von heute, auch fuer die Platzhalterform","zwei Bilder gehalten","ein zweites Fenster mit derselben Adresse bekommt ein Blob","das erste Fenster zu: die Adresse des zweiten bleibt gehalten","das Bild daneben wird weiter getauscht"], ersetze: [[BILDER, "    if (el.hasAttribute?.(\"data-edit\")) { uebersprungen++; continue }", "    if (true) { uebersprungen++; continue }"]] },
@@ -891,7 +902,7 @@ if (process.argv.includes("--alle-saetze")) {
 
 // ------------------------------------------------------------- Lauf
 
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter"]
   .filter((s) => !nurSatz || s === nurSatz);
 if (SAETZE.length === 0) {
   console.log(`unbekannter Satz: ${nurSatz}`);
