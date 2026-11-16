@@ -26,6 +26,7 @@ import { installStreamIndicator } from "./stream-indicator.mjs"
 import { installStreamBilder, bilderBlobStand } from "./stream-bilder.mjs"
 import { installStreamSceneUi } from "./stream-scene-ui.mjs"
 import { installStreamLeinwand } from "./stream-leinwand.mjs"
+import { installStreamKlang } from "./stream-klang.mjs"
 import { registerOfflineWindow, BeneosOfflineWindow } from "./stream-offline-window.mjs"
 import { explainOnce } from "./stream-intro.mjs"
 import { loadStreamManifest, buildStreamPack, applyStreamAddresses, streamUrlsOf, releaseFromPackage, listReleases } from "./stream-install.mjs"
@@ -95,6 +96,9 @@ Hooks.once("init", () => {
     // (stre-T-102). Hier im `init`, denn die Dokumente werden vor `ready`
     // vorbereitet, und die erste Szene ist dann schon gezeichnet.
     installStreamLeinwand()
+    // Nach der Leinwand: ihr Haken bereitet die Felder neu vor, dieser baut
+    // danach gescheiterte Playlist-Klaenge neu auf (stre-T-119).
+    installStreamKlang()
     installStreamCanvas()
     installStreamIndicator()
     // Bilder in Oberflaechen. Ein `<img>` beruehrt `window.fetch` nie, also
