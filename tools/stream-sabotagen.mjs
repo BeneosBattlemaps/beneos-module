@@ -131,6 +131,7 @@ const LEINWAND = "scripts/stream/stream-leinwand.mjs";
 const ONLINE = "scripts/stream/stream-online.mjs";
 const EINSTIEG = "scripts/stream/beneos-stream.mjs";
 const KLANG = "scripts/stream/stream-klang.mjs";
+const HTML = "scripts/stream/stream-html.mjs";
 
 const SABOTAGEN = [
   // ---------------------------------------------------------------- maske
@@ -881,6 +882,46 @@ const SABOTAGEN = [
   { satz: "klang", ziel: ["Zweiwert 2: Stopp mit aktueller Adresse, dasselbe Objekt"], ersetze: [[KLANG, "    if (objekt.src === leinwandAdresse(quelle)) return\n", ""]] },
   { satz: "klang", ziel: ["LOADING: von Foundry neu gebautes Objekt bleibt"], ersetze: [[KLANG, "    if (ps.sound !== objekt) return klangNachziehen(ps)\n", ""]] },
   { satz: "einbau", ziel: ["Modus aus mit Schluessel: ein gescheiterter Klang wird neu aufgebaut"], ersetze: [[EINSTIEG, "  installStreamKlang()\n", ""], [EINSTIEG, "    installStreamFetch()\n", "    installStreamFetch()\n    installStreamKlang()\n"]] },
+  // ------------------------------------------------------------------ html
+  // stre-T-116: kein Streamschluessel im HTML der Kundendokumente.
+  { satz: "html", ziel: ["H0 Platzhalter ohne ;base64 und ohne Anfuehrungszeichen"], ersetze: [[HTML, "  \"data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%221%22%20height=%221%22/%3E\"", "  \"data:image/png;base64,iVBORw0KGgo=\""]] },
+  { satz: "html", ziel: ["H1 eine Adresse gezaehlt","H1 Schluessel weg","H1 src ist der Platzhalter","H1 data-beneos-src traegt die freie Form","H2 einfache Anfuehrung bleibt einfach","H6 zwei gewandelt","H6 Schluessel ueberall weg","H9 Update Seite: Form (a)","H9 Update Chat: Form (a)","H10 trocken: 2 Dokumente, 4 Adressen","H10 Lauf: 2 Dokumente, 4 Adressen, 0 Fehler","H10 Schluessel aus allen Quellen weg"], ersetze: [[HTML, "    const frei = schluesselfreiAdresse(adresse)\n", "    const frei = adresse\n"]] },
+  { satz: "html", ziel: ["H1 fremder Host bytegleich","H3 Form (a) bleibt bytegleich","H9 Gegenprobe: fremdes HTML bleibt"], ersetze: [[HTML, "    if (frei === adresse) return tag\n", ""]] },
+  { satz: "html", ziel: ["H1 fremde Basis bytegleich"], ersetze: [[SETTINGS, "  if (!host || host !== streamHost()) return url", "  if (!host) return url"]] },
+  { satz: "html", ziel: ["H1 width, height, alt, class bleiben"], ersetze: [[HTML, "    let ergebnis = tag.replace(attribut, neuesSrc)\n", "    let ergebnis = `<img ${neuesSrc}>`\n"]] },
+  { satz: "html", ziel: ["H1 Text davor bleibt"], ersetze: [[HTML, "  const neu = html.replace(IMG_RE, (tag) => {", "  const neu = html.replace(/[\\s\\S]*?(<img\\b[^>]*>)/g, (_g, tag) => {"]] },
+  { satz: "html", ziel: ["H3 dahinter: Schluessel weg"], ersetze: [[HTML, "const SRC_RE = /(?<![\\w-])src\\s*=", "const SRC_RE = /[^>]*\\bsrc\\s*="]] },
+  { satz: "html", ziel: ["H2 einfache Anfuehrung bleibt einfach"], ersetze: [[HTML, "    const neuesSrc = `src=${anfuehrung}${PLATZHALTER_BILD}${anfuehrung}`", "    const neuesSrc = `src=\"${PLATZHALTER_BILD}\"`"]] },
+  { satz: "html", ziel: ["H3 davor: Schluessel weg"], ersetze: [[HTML, "const SRC_RE = /(?<![\\w-])src\\s*=", "const SRC_RE = /\\bsrc\\s*="]] },
+  { satz: "html", ziel: ["H3 dahinter: genau ein data-beneos-src, nachgezogen","H3 davor: genau ein data-beneos-src"], ersetze: [[HTML, "    if (DATA_RE.test(ergebnis)) return ergebnis.replace(DATA_RE, daten)\n", ""]] },
+  { satz: "html", ziel: ["H4 video bytegleich"], ersetze: [[HTML, "const IMG_RE = /<img\\b[^>]*>/gi", "const IMG_RE = /<(?:img|video)\\b[^>]*>/gi"]] },
+  { satz: "html", ziel: ["H4 video gezaehlt"], ersetze: [[HTML, "    if (src && schluesselfreiAdresse(src[2]) !== src[2]) andere++\n", ""]] },
+  { satz: "html", ziel: ["H5 HTML bytegleich","H5 Seite bleibt","H5 Aenderung leer","H9 ohne Schluessel: Netz tut nichts","H10 ohne Schluessel: nichts"], ersetze: [[SETTINGS, "export function schluesselfreiAdresse(url) {\n  if (!streamKey()) return url\n", "export function schluesselfreiAdresse(url) {\n"], [HTML, "  if (!streamKey() || !kandidat(html)) return { html, zahl: 0, andere: 0 }", "  if (!kandidat(html)) return { html, zahl: 0, andere: 0 }"], [HTML, "  if (typ !== \"image\" || typeof src !== \"string\" || !streamKey()) return undefined", "  if (typ !== \"image\" || typeof src !== \"string\") return undefined"], [HTML, "  if (!streamKey() || !globalThis.game?.user?.isGM) return bericht", "  if (!globalThis.game?.user?.isGM) return bericht"], [HTML, "      if (!streamKey()) return\n      try { htmlTiefSchluesselfrei", "      try { htmlTiefSchluesselfrei"]] },
+  { satz: "html", ziel: ["H6 Schluessel ueberall weg","H9 Update Seite: Form (a)","H9 Update Chat: Form (a)"], ersetze: [[HTML, "      if (r.zahl) { wert[k] = r.html; zahl += r.zahl }", "      if (r.zahl) { zahl += r.zahl }"]] },
+  { satz: "html", ziel: ["H6 zwei gewandelt"], ersetze: [[HTML, "      zahl += htmlTiefSchluesselfrei(v, _tiefe + 1)\n", ""]] },
+  { satz: "html", ziel: ["H6 Zahl bleibt"], ersetze: [[HTML, "    const v = wert[k]\n    if (typeof v === \"string\") {", "    const v = wert[k]\n    if (typeof v === \"number\") wert[k] = String(v)\n    if (typeof v === \"string\") {"]] },
+  { satz: "html", ziel: ["H7 Videoseite bleibt","H7 PDF-Seite bleibt","H8 Videoseite nicht in der Aenderung","H9 Update Videoseite bleibt"], ersetze: [[HTML, "  if (typ !== \"image\" || typeof src !== \"string\" || !streamKey()) return undefined", "  if (typeof src !== \"string\" || !streamKey()) return undefined"]] },
+  { satz: "html", ziel: ["H7 Bildseite wird frei"], ersetze: [[HTML, "  const frei = schluesselfreiAdresse(src)\n  return frei === src ? undefined : frei", "  return undefined"]] },
+  { satz: "html", ziel: ["H8 Quelle unberuehrt"], ersetze: [[HTML, "  const d = differenz(quelle, zaehler, 0)\n", "  htmlTiefSchluesselfrei(quelle)\n  const d = differenz(quelle, zaehler, 0)\n"]] },
+  { satz: "html", ziel: ["H8 nur p1 und p3","H10 Journal: nur Seiten p1 und p2"], ersetze: [[HTML, "    if (eindeutig) return teile.flatMap(", "    if (false) return teile.flatMap("]] },
+  { satz: "html", ziel: ["H8 Liste ohne _id geht ganz"], ersetze: [[HTML, "    return wert.map((e, i) => (teile[i] === undefined ? kopie(e)", "    return wert.map((e, i) => (teile[i] === undefined ? {}"]] },
+  { satz: "html", ziel: ["H8 zwei Adressen","H8 nur p1 und p3","H10 trocken: 2 Dokumente, 4 Adressen","H10 Lauf: 2 Dokumente, 4 Adressen, 0 Fehler","H10 Journal: nur Seiten p1 und p2","H10 Schluessel aus allen Quellen weg"], ersetze: [[HTML, "    if (src !== undefined) { aus.src = src; zaehler.zahl++ }\n", ""]] },
+  { satz: "html", ziel: ["H8 kein name"], ersetze: [[HTML, "      if (t !== undefined) aus[k] = t\n", "      aus[k] = t === undefined ? v : t\n"]] },
+  { satz: "html", ziel: ["H8 Schluessel weg"], ersetze: [[HTML, "    if (eindeutig) return teile.flatMap((t, i) => (t === undefined ? [] : [{ ...t, _id: ids[i] }]))", "    if (eindeutig) return teile.flatMap((t, i) => (t === undefined ? [] : [{ ...wert[i], _id: ids[i] }]))"]] },
+  { satz: "html", ziel: ["H9 preUpdateJournalEntry und preCreateJournalEntry gesetzt","H9 preUpdateJournalEntryPage und preCreateJournalEntryPage gesetzt","H9 preUpdateActor und preCreateActor gesetzt","H9 preUpdateItem und preCreateItem gesetzt","H9 preUpdateChatMessage und preCreateChatMessage gesetzt","H9 preUpdateRollTable und preCreateRollTable gesetzt","H9 preUpdateCards und preCreateCards gesetzt"], ersetze: [[HTML, "    Hooks.on(`preCreate${art}`, (doc) => {", "    Hooks.on(`preCreateX${art}`, (doc) => {"]] },
+  { satz: "html", ziel: ["H9 zweiter Einbau setzt keinen Haken doppelt"], ersetze: [[HTML, "  if (netzGesetzt) return\n", ""]] },
+  { satz: "html", ziel: ["H9 Update Seite: Form (a)","H9 Update Chat: Form (a)"], ersetze: [[HTML, "      try { htmlTiefSchluesselfrei(aenderung) } catch", "      try { void aenderung } catch"]] },
+  { satz: "html", ziel: ["H9 Update Bildseite src frei","H9 Update Journal: eingebettete Bildseite frei"], ersetze: [[HTML, "      try { seitenImUpdate(art, doc, aenderung) } catch", "      try { void seitenImUpdate } catch"]] },
+  { satz: "html", ziel: ["H9 Update Bildseite src frei"], ersetze: [[HTML, "    const typ = aenderung.type ?? doc?.type\n", "    const typ = aenderung.type\n"]] },
+  { satz: "html", ziel: ["H9 Update Journal: eingebettete Bildseite frei"], ersetze: [[HTML, "      const typ = seite.type ?? doc?.pages?.get?.(seite._id)?.type\n", "      const typ = seite.type\n"]] },
+  { satz: "html", ziel: ["H9 Anlegen Journal: updateSource mit _id"], ersetze: [[HTML, "        if (aenderung) doc.updateSource(aenderung)\n", ""]] },
+  { satz: "html", ziel: ["H10 trocken: nichts geschrieben"], ersetze: [[HTML, "        if (trocken) continue\n", ""]] },
+  { satz: "html", ziel: ["H10 Lauf: 2 Dokumente, 4 Adressen, 0 Fehler","H10 trocken: 2 Dokumente, 4 Adressen"], ersetze: [[HTML, "        bericht.adressen += zahl + kinderZahl\n", "        bericht.adressen += zahl\n"]] },
+  { satz: "html", ziel: ["H10 Journal: kein update am Eintrag selbst","H10 Actor: nur die Biografie"], ersetze: [[HTML, "        for (const feld of Object.values(eingebettet)) delete eigen[feld]\n", ""]] },
+  { satz: "html", ziel: ["H10 Journal: nur Seiten p1 und p2","H10 Actor: Gegenstand eingebettet","H10 Schluessel aus allen Quellen weg"], ersetze: [[HTML, "        for (const [klasse, teile] of kinder) await doc.updateEmbeddedDocuments(klasse, teile)\n", ""]] },
+  { satz: "html", ziel: ["H10 zweiter Lauf schreibt nichts"], ersetze: [[HTML, "        if (!aenderung && !kinder.length) continue\n", ""]] },
+  { satz: "html", ziel: ["H10 als Spieler: nichts"], ersetze: [[HTML, "  if (!streamKey() || !globalThis.game?.user?.isGM) return bericht", "  if (!streamKey()) return bericht"]] },
+  { satz: "html", ziel: ["H10 ein kaputtes Dokument haelt die anderen nicht auf"], ersetze: [[HTML, "        bericht.fehler++\n", "        break\n"]] },
 ];
 
 /*
@@ -906,6 +947,12 @@ const EIGENPROBEN = {
       "Vorbedingung der Probe danach: der Klang laeuft mit dem alten Schluessel. Sie steht vor jedem Aufruf des Moduls.",
     "keine Ausgabezeile nennt eine Adresse oder einen Schluessel":
       "Selbstprobe des Satzes ueber seine eigenen Ausgabezeilen. Sie bewacht den Pruefsatz, nicht den Modulcode.",
+  },
+  html: {
+    "H0 die Toradresse traegt den Schluessel":
+      "Vorbedingung der Probe: assetUrl baut die Toradresse mit dem Wegwerfschluessel. Sie laeuft vor jedem Aufruf von stream-html.mjs.",
+    "H0 die freie Form beginnt mit beneos://":
+      "Vorbedingung der Probe: platzhalterAdresse liefert die freie Form, gegen die H1 bis H10 vergleichen. Sie beruehrt stream-html.mjs nicht.",
   },
   geteilt: {
     "derselbe Traeger, dieselbe Adresse":
@@ -1010,7 +1057,7 @@ if (process.argv.includes("--alle-saetze")) {
 
 // ------------------------------------------------------------- Lauf
 
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html"]
   .filter((s) => !nurSatz || s === nurSatz);
 if (SAETZE.length === 0) {
   console.log(`unbekannter Satz: ${nurSatz}`);
