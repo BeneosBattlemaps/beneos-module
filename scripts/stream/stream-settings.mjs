@@ -1211,6 +1211,26 @@ export const STREAM_RAUM_BUCHSTABE = Object.freeze({
   geteilt: "s",
 })
 
+/*
+ * Eine Toradresse mit Schluessel, in jedem Raum der Tabelle oben. Gebaut aus
+ * der Tabelle und nicht abgetippt: zwei abgetippte Kopien kannten `/l/` nicht
+ * (Kalt-Review T-122, Befund 1). Nicht exportiert, weil ein globaler Ausdruck
+ * seinen `lastIndex` zwischen Aufrufern teilt.
+ */
+const SCHLUESSELSTELLE_RE = new RegExp(
+  `https?:\\/\\/[^/"'\\s]+\\/(?:${Object.values(STREAM_RAUM_BUCHSTABE).join("|")})\\/[A-Za-z0-9_-]{16,64}\\/`, "gi")
+
+/**
+ * Wie oft steht im Text eine Toradresse mit Schluessel? Jeder Host zaehlt, auch
+ * ein fremder oder frueherer, und jede Schreibweise.
+ *
+ * @param {unknown} text
+ * @returns {number} 0 fuer alles, was keine Zeichenkette ist
+ */
+export function schluesselStellen(text) {
+  return typeof text === "string" ? [...text.matchAll(SCHLUESSELSTELLE_RE)].length : 0
+}
+
 /**
  * The address of one asset of one release variant.
  *
@@ -1476,21 +1496,6 @@ export function geteilteAdresse(sha, name, kartenAdressen) {
  * an der Zeichenkette, und `c` und `C` sind damit zwei verschiedene Raeume,
  * von denen nur der kleine existiert.
  */
-/**
- * Der erste Wert, der weder Toradresse noch `beneos://` ist, sonst null
- * (stre-T-122 D).
- *
- * Fuer Stellen, die eine Adresse in ein `<img>` legen, ohne den Abrufweg: eine
- * Toradresse truege den Schluessel in die Anfragezeile, und `beneos://` kann
- * kein Browser laden. Die Kreaturenlade waehlt damit ihre Scheibe.
- */
-export function ersteLokaleAdresse(...werte) {
-  for (const w of werte) {
-    if (typeof w === "string" && w && !zerlegeAdresse(w)) return w
-  }
-  return null
-}
-
 export function istPlatzhalter(url) {
   return String(url || "").slice(0, PLATZHALTER_SCHEMA.length + 2).toLowerCase()
     === PLATZHALTER_SCHEMA + "//"
@@ -1522,6 +1527,45 @@ export function zerlegeAdresse(url) {
     return nachSegmenten(teile)
   } catch (_) { return null }
 }
+
+/**
+ * Der erste Wert, der weder Toradresse noch `beneos://` ist, sonst null
+ * (stre-T-122 D).
+ *
+ * Fuer Stellen, die eine Adresse in ein `<img>` legen, ohne den Abrufweg: eine
+ * Toradresse truege den Schluessel in die Anfragezeile, und `beneos://` kann
+ * kein Browser laden. Die Kreaturenlade waehlt damit ihre Scheibe.
+ */
+export function ersteLokaleAdresse(...werte) {
+  for (const w of werte) {
+    if (typeof w === "string" && w && !zerlegeAdresse(w)) return w
+  }
+  return null
+}
+
+/** Der Platzhalter der Scheibe, wenn kein Bild zu haben ist. */
+const SCHEIBE_PLATZHALTER = "modules/beneos-module/ui/beneos_thumb_placeholder.svg"
+
+/**
+ * Das Bild einer Scheibe der Kreaturenlade ohne Premium (stre-T-122 D,
+ * Kalt-Review Befund 2).
+ *
+ * Ein lokaler Pfad gewinnt. Gibt es nur gestreamte Adressen, zieht die Scheibe
+ * wie die Premiumscheibe auf Miniatur und Vorschau, und erst danach auf den
+ * Platzhalter: eine Toradresse truege den Schluessel in die Anfragezeile.
+ * Steht hier, weil der Installer in Node nicht ladbar ist.
+ *
+ * @param {Array<unknown>} kandidaten Bildadressen der Kreatur, in Rangfolge
+ * @param {string|null} cdn Adresse der Miniatur, oder null
+ * @param {string|null} embedded eingebettete Vorschau, oder null
+ * @returns {{img: string|null, imgFallback: string|null}}
+ */
+export function scheibenBild(kandidaten, cdn, embedded) {
+  const lokal = ersteLokaleAdresse(...kandidaten)
+  if (lokal || !kandidaten.some(Boolean)) return { img: lokal, imgFallback: null }
+  return { img: cdn || embedded || SCHEIBE_PLATZHALTER, imgFallback: (cdn && embedded) || null }
+}
+
 
 /**
  * Der gemeinsame Rumpf: aus den Wegstuecken die Identitaet.

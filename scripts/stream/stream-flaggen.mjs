@@ -12,7 +12,8 @@
  * WAS ER TUT. Je Szene der Welt: die Flaggenwerte der Szene und jeder Kachel
  * werden in einer Kopie gefaltet (`falteWerte`), geschrieben wird nur, was sich
  * aendert, als ganzer Wert `flags.beneos-module.<k>`. Die angezeigte Szene kommt
- * zuletzt: ihr Schreiben zeichnet die Leinwand neu, und das soll einmal am Ende
+ * zuletzt: ein `updateScene` auf ihr frischt die Kreaturenlade neu auf
+ * (`creature-installer.mjs`, `registerHooks`), und das soll einmal am Ende
  * geschehen statt mitten im Lauf. Geschrieben wird ueber `update` und
  * `updateEmbeddedDocuments`, also durch das Netz.
  *
@@ -29,19 +30,16 @@
  * Die Zaehlzeile nennt nur Zahlen, keine Adresse und keinen Schluessel.
  * Pruefsatz: `stream-flaggen.test.mjs`.
  */
-import { MODULE_ID, SETTING, streamKey,
+import { MODULE_ID, SETTING, streamKey, schluesselStellen,
          nachzugRiegelNehmen, nachzugRiegelLoesen, RUECKLAUF_ZWECK } from "./stream-settings.mjs"
 import { falteWerte, FLAGGEN_FELDER } from "./stream-leinwand.mjs"
-
-/** Ein Torsegment mit Schluessel, wie es die Journalheilung zaehlt. */
-const SCHLUESSELSTELLE = /https?:\/\/[^/"'\s]+\/[acs]\/[A-Za-z0-9_-]{16,64}\//gi
 
 /** Was nach dem Falten noch einen Schluessel traegt: Rest, nicht geschrieben. */
 function rest(art, daten, neu) {
   let zahl = 0
   for (const k of FLAGGEN_FELDER[art] ?? []) {
     const wert = neu[`flags.${MODULE_ID}.${k}`] ?? daten?.flags?.[MODULE_ID]?.[k]
-    if (wert != null) zahl += JSON.stringify(wert).match(SCHLUESSELSTELLE)?.length ?? 0
+    if (wert != null) zahl += schluesselStellen(JSON.stringify(wert))
   }
   return zahl
 }

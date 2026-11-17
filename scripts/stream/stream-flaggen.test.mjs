@@ -229,9 +229,29 @@ t.gleich("ersteLokaleAdresse ist exportiert", typeof settings.ersteLokaleAdresse
     erste(MIT(KUNST), FREI(KUNST), "modules/lokal/a.webp"), "modules/lokal/a.webp")
   t.gleich("D: nur gestreamte Adressen ergeben null", erste(MIT(KUNST), FREI(KUNST), null, ""), null)
   t.gleich("D: der erste lokale Pfad gewinnt", erste("a.webp", "b.webp"), "a.webp")
+}
+t.gleich("scheibenBild ist exportiert", typeof settings.scheibenBild, "function")
+{
+  // Die Bildwahl der Scheibe ohne Premium, als Verhalten (Kalt-Review T-122,
+  // Befund 2). Die Kette: lokal, Miniatur, Vorschau, Platzhalter.
+  const wahl = settings.scheibenBild ?? (() => ({}))
+  const PLATZ = "modules/beneos-module/ui/beneos_thumb_placeholder.svg"
+  const CDN = "https://cdn.example/miniatur.webp"
+  const DATEN = "data:image/webp;base64,AAAA"
+  const ist = (...a) => json(wahl(...a))
+  t.gleich("D scheibenBild: ein lokaler Pfad gewinnt vor Miniatur und Vorschau",
+    ist([FREI(KUNST), "modules/lokal/a.webp"], CDN, DATEN), json({ img: "modules/lokal/a.webp", imgFallback: null }))
+  t.gleich("D scheibenBild: nur gestreamt, Miniatur mit Vorschau als Rueckfall",
+    ist([FREI(KUNST), MIT(KUNST)], CDN, DATEN), json({ img: CDN, imgFallback: DATEN }))
+  t.gleich("D scheibenBild: nur gestreamt, ohne Miniatur die Vorschau",
+    ist([FREI(KUNST)], null, DATEN), json({ img: DATEN, imgFallback: null }))
+  t.gleich("D scheibenBild: nur gestreamt, weder Miniatur noch Vorschau ergibt den Platzhalter",
+    ist([FREI(KUNST)], null, null), json({ img: PLATZ, imgFallback: null }))
+  t.gleich("D scheibenBild: ohne jeden Kandidaten kein Bild",
+    ist([null, "", undefined], CDN, DATEN), json({ img: null, imgFallback: null }))
   const quelle = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../creature-installer/creature-installer.mjs"), "utf8")
-  t.struktur("D: die Scheibe ohne Premium waehlt ueber ersteLokaleAdresse",
-    /ersteLokaleAdresse\(entry\.art, actor\?\.prototypeToken\?\.texture\?\.src, actor\?\.img\)/.test(quelle), true)
+  t.struktur("D: die Scheibe ohne Premium waehlt ueber scheibenBild",
+    /scheibenBild\(\s*\[entry\.art, actor\?\.prototypeToken\?\.texture\?\.src, actor\?\.img\]/.test(quelle), true)
 }
 
 t.abschnitt("E: flaggenUmstellen, einmal je Welt")
@@ -343,6 +363,58 @@ if (typeof flaggenUmstellen === "function") {
     globalThis.game.scenes = [{ id: "rest1", toObject: () => JSON.parse(JSON.stringify(quelle)) }]
     const { wert: b } = await mitschnitt(() => flaggenUmstellen({ trocken: true }))
     t.gleich("E Rest: fremder Host bleibt stehen und wird gezaehlt", `${b.dokumente}|${b.rest}`, "0|1")
+    globalThis.game.scenes = []
+  }
+  {
+    // Der Rest kennt jeden Raum aus der Tabelle, auch die Beute unter `/l/`
+    // (Kalt-Review T-122, Befund 1).
+    einstellungen[SETTING.flaggenGefaltet] = false
+    const raeume = Object.values(settings.STREAM_RAUM_BUCHSTABE)
+    const quelle = { _id: "rest2", flags: {}, tiles: raeume.map((r, i) => (
+      { _id: `rest2k${i}`, flags: { [MODULE_ID]: { stream: { video: FREMD_HOST.replace("/a/", `/${r}/`) } } } })) }
+    globalThis.game.scenes = [{ id: "rest2", toObject: () => JSON.parse(JSON.stringify(quelle)) }]
+    const { wert: b } = await mitschnitt(() => flaggenUmstellen({ trocken: true }))
+    t.gleich("E Rest zaehlt jeden Raum, auch /l/", `${raeume.length}|${b.rest}`, `${raeume.length}|${raeume.length}`)
+    globalThis.game.scenes = []
+  }
+  {
+    // Haelt eine andere Sitzung den Riegel, laeuft nichts (Befund 3).
+    einstellungen[SETTING.flaggenGefaltet] = false
+    const fremd = `fremd|${Date.now()}|x`
+    einstellungen[SETTING.nachzugRiegel] = fremd
+    const geschrieben = welt()
+    const { wert: b } = await mitschnitt(() => flaggenUmstellen())
+    t.gleich("E Riegel besetzt: nichts geschrieben, Grund riegel", `${geschrieben.length}|${b.grund}`, "0|riegel")
+    t.gleich("E Riegel besetzt: die Marke bleibt ungesetzt", einstellungen[SETTING.flaggenGefaltet], false)
+    t.gleich("E Riegel besetzt: die fremde Riegelmarke bleibt", einstellungen[SETTING.nachzugRiegel], fremd)
+    einstellungen[SETTING.nachzugRiegel] = ""
+  }
+  {
+    // Der Lauf haelt den Riegel unter dem Zweck des Ruecklaufs, damit ein
+    // Adressnachzug auf ihn wartet statt abzusagen (Befund 3).
+    einstellungen[SETTING.flaggenGefaltet] = false
+    welt()
+    const mitFlag = [...globalThis.game.scenes].find((s) => s.id === "szene1")
+    const update = mitFlag.update
+    let zweck = "nicht gelesen"
+    mitFlag.update = async (a) => { zweck = String(einstellungen[SETTING.nachzugRiegel]).split("|")[3] ?? ""; return update(a) }
+    await mitschnitt(() => flaggenUmstellen())
+    t.gleich("E: haelt den Riegel unter RUECKLAUF_ZWECK", zweck, settings.RUECKLAUF_ZWECK)
+  }
+  {
+    // Ein Fehler im Zaehllauf (Kachel mit Toradresse ohne Kennung): keine
+    // Marke, kein Riegel (Befund 4).
+    einstellungen[SETTING.flaggenGefaltet] = false
+    const quelle = { _id: "ohne1", flags: {}, tiles: [{ flags: { [MODULE_ID]: { stream: { video: MIT(VIDEO) } } } }] }
+    globalThis.game.scenes = [{ id: "ohne1", toObject: () => JSON.parse(JSON.stringify(quelle)),
+      async update() {}, async updateEmbeddedDocuments() {} }]
+    let genommen = 0
+    const alt = globalThis.game.settings.set
+    globalThis.game.settings.set = async (m, n, w) => { if (n === SETTING.nachzugRiegel && w) genommen++; return alt(m, n, w) }
+    const { wert: b } = await mitschnitt(() => flaggenUmstellen())
+    globalThis.game.settings.set = alt
+    t.gleich("E Vorabfehler: Marke ungesetzt, Riegel nicht genommen, Fehler gezaehlt",
+      `${einstellungen[SETTING.flaggenGefaltet]}|${genommen}|${b.fehler}`, "false|0|1")
     globalThis.game.scenes = []
   }
 }

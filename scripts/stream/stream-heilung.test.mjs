@@ -20,7 +20,7 @@
  * Der Satz faengt den `canvasReady`-Haken ueber eine Attrappe von `Hooks` ab
  * und faehrt ihn mit einer nachgebauten Szene.
  */
-import { assetUrl, platzhalterAdresse, SETTING } from "./stream-settings.mjs"
+import { assetUrl, platzhalterAdresse, SETTING, STREAM_RAUM_BUCHSTABE } from "./stream-settings.mjs"
 
 const GATE = "https://gate.beneos.stream"
 const HEUTE = "pk_heute_pruefsatz"
@@ -172,7 +172,10 @@ const ohneSchluessel = (s) => !String(s).includes(HEUTE) && !String(s).includes(
  * nach dem Schreiben ist nicht groesser als vorher.
  */
 console.log("Die Journalheilung fuegt keinen Schluessel hinzu")
-const SCHLUESSEL_RE = /https?:\/\/[^/"'\s]+\/[acs]\/[A-Za-z0-9_-]{16,64}\//gi
+// Die Raeume aus der Tabelle, nicht abgetippt: die Kopie haette sonst wie
+// die Endkontrolle selbst `/l/` vergessen (Kalt-Review T-122, Befund 1).
+const RAEUME = Object.values(STREAM_RAUM_BUCHSTABE)
+const SCHLUESSEL_RE = new RegExp(`https?:\\/\\/[^/"'\\s]+\\/(?:${RAEUME.join("|")})\\/[A-Za-z0-9_-]{16,64}\\/`, "gi")
 const schluesselStellen = (s) => [...String(s ?? "").matchAll(SCHLUESSEL_RE)].length
 const LOKAL2 = "beneos_assets/cloud/battlemaps/11_cos_barovia_village/karte.webp"
 const FREI_MASSSTAB = { id: "b1", src: platzhalterAdresse(REL, "4k", PFAD) }
@@ -277,6 +280,15 @@ for (const [name, massstab] of [["Toradresse", TOR_MASSSTAB()], ["beneos://", FR
   const r = await lauf([{ id: "b1", src: "https://gate.alt.example/a/" + ALT + "/" + REL + "/4k/x.webp" }, structuredClone(textSeite)])
   gleich("fremde Basis: nichts geschrieben, gezaehlt", `${r.geschrieben.length}|${r.b.fremdeBasis}`, "0|1")
 }
+for (const raum of RAEUME) {
+  // Die Endkontrolle kennt jeden Raum (Kalt-Review T-122, Befund 1). Eine
+  // Toradresse mit Schluessel unter fremdem Host in einem Attribut vor dem
+  // `src` haelt das Tag lokal, auch im Beuteraum `/l/`. Vor dem `src`, weil der
+  // Treffer der Endkontrolle dort endet; dahinter zaehlt die Seite.
+  const fremd = `https://gate.alt.example/${raum}/${ALT}/${REL}/x.webp`
+  const r = await lauf([TOR_MASSSTAB(), seite(`<img data-x="${fremd}" src="${LOKAL}">`)])
+  gleich(`Endkontrolle /${raum}/: das Tag bleibt lokal, gezaehlt`, `${r.geschrieben.length}|${r.b.fremdeBasis}`, "0|1")
+}
 {
   // kandidat(): ein grossgeschriebener Torhost wird Form (a), ein fremder
   // Host bleibt unveraendert.
@@ -319,11 +331,11 @@ for (const [name, massstab] of [["Toradresse", TOR_MASSSTAB()], ["beneos://", FR
 gleich("ueber den ganzen Satz: nicht mehr Schluesselstellen als vorher",
   `${stellenNachher <= stellenVorher}|${stellenVorher}`, `true|${stellenVorher}`)
 gleich("keine Warnung nennt einen Schluessel",
-  warnungen.filter((w) => /pk_|https?:\/\/[^/\s]+\/[acs]\//i.test(w) || w.includes(ALT) || w.includes(HEUTE)).length, 0)
+  warnungen.filter((w) => new RegExp(`pk_|https?:\\/\\/[^/\\s]+\\/(?:${RAEUME.join("|")})\\/`, "i").test(w) || w.includes(ALT) || w.includes(HEUTE)).length, 0)
 console.warn = warnAlt
 
 console.log(`\n${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
-const ERWARTET = 32
+const ERWARTET = 36
 if (aussagen !== ERWARTET) {
   console.log(`ROT erwartet ${ERWARTET} Aussagen, gezaehlt ${aussagen}`)
   process.exit(1)

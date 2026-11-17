@@ -10,7 +10,7 @@
  *
  * GM-only writes. Idempotent via scene flag + per-update prefix equality.
  */
-import { schluesselfreiAdresse, leinwandAdresse, streamKey } from "./stream/stream-settings.mjs";
+import { schluesselfreiAdresse, leinwandAdresse, streamKey, schluesselStellen } from "./stream/stream-settings.mjs";
 import { htmlSchluesselfrei, formAAdresse, nurBildadressenGetauscht } from "./stream/stream-html.mjs";
 
 const MODULE_ID = "beneos-module";
@@ -1251,12 +1251,9 @@ function _gatePraefix(adresse) {
 /*
  * Eine Toradresse mit Schluessel, in jedem Raum und jeder Schreibweise
  * (stre-T-122). Gezaehlt wird jede Stelle, auch in `srcset` und in einem
- * zweiten `src`.
+ * zweiten `src`. Die Zaehlung kommt aus `stream-settings.mjs`, gebaut aus der
+ * Raumtabelle; die Kopie hier kannte `/l/` nicht (Kalt-Review T-122, Befund 1).
  */
-const SCHLUESSEL_STELLE_RE = /https?:\/\/[^/"'\s]+\/[acs]\/[A-Za-z0-9_-]{16,64}\//gi;
-function _schluesselStellen(text) {
-  return typeof text === "string" ? [...text.matchAll(SCHLUESSEL_STELLE_RE)].length : 0;
-}
 
 // `data-beneos-src` im HTML, Form (a) aus stre-T-116.
 const DATA_SRC_RE = /(?<![\w-])data-beneos-src\s*=\s*(["'])([^"']+)\1/gi;
@@ -1357,7 +1354,7 @@ export async function heileJournalGateAdressen({ trocken = false } = {}) {
         // Anfuehrungszeichen des `src`; geschlossen wird er ein ganzes Tag.
         // Was dahinter im Tag steht, fasst die Heilung nicht an, das deckt die
         // Zaehlung je Seite unten.
-        if (_schluesselStellen(htmlSchluesselfrei(`${getauscht}>`).html)) { bericht.fremdeBasis++; return ganz; }
+        if (schluesselStellen(htmlSchluesselfrei(`${getauscht}>`).html)) { bericht.fremdeBasis++; return ganz; }
         getroffen++;
         return getauscht;
       });
@@ -1371,8 +1368,8 @@ export async function heileJournalGateAdressen({ trocken = false } = {}) {
       // fuegt keinen Schluessel hinzu: was schon vorher im HTML stand, darf
       // stehen bleiben, mehr nicht.
       const gueltig = nurBildadressenGetauscht(htmlSchluesselfrei(html).html, endHtml, { nurGeaenderte: true });
-      const vorher = _schluesselStellen(html);
-      const nachher = _schluesselStellen(endHtml);
+      const vorher = schluesselStellen(html);
+      const nachher = schluesselStellen(endHtml);
       if (!gueltig || nachher > vorher) {
         bericht.abgelehnt++;
         // Nur Zahlen: Adresse, Name und Schluessel bleiben aus der Konsole.
