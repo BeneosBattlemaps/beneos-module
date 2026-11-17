@@ -29,6 +29,7 @@ import { installStreamBilder, bilderBlobStand } from "./stream-bilder.mjs"
 import { installStreamSceneUi } from "./stream-scene-ui.mjs"
 import { installStreamLeinwand } from "./stream-leinwand.mjs"
 import { installHtmlNetz, altseitenUmstellen } from "./stream-html.mjs"
+import { fremdflaggenZurueck } from "./stream-fremdflaggen.mjs"
 import { installStreamKlang } from "./stream-klang.mjs"
 import { registerOfflineWindow, BeneosOfflineWindow } from "./stream-offline-window.mjs"
 import { explainOnce } from "./stream-intro.mjs"
@@ -245,6 +246,8 @@ Hooks.once("init", () => {
     abortAll,
     // stre-T-116: Altseiten auf Form (a). `{ trocken: true }` zaehlt nur.
     altseitenUmstellen: (optionen) => altseitenUmstellen(optionen),
+    // stre-T-128: fremde Flags zurueck auf die Toradresse. `{ trocken: true }` zaehlt nur.
+    fremdflaggenZurueck: (optionen) => fremdflaggenZurueck(optionen),
     pinStills: () => pinStillsEnabled(),
   }
   globalThis.BeneosStream = api
@@ -278,6 +281,13 @@ async function schluesselLaeufe() {
     await altseitenUmstellen()
   } catch (err) {
     console.log(`Beneos Stream | Altseiten uebersprungen: ${String(err).slice(0, 140)}`)
+  }
+  // stre-T-128, feste Reihenfolge nach den beiden Laeufen oben: die fremden
+  // Flags zurueck auf die Toradresse. Einmal je Welt, siehe stream-fremdflaggen.mjs.
+  try {
+    await fremdflaggenZurueck()
+  } catch (err) {
+    console.log(`Beneos Stream | Fremde Flags uebersprungen: ${String(err).slice(0, 140)}`)
   }
 }
 

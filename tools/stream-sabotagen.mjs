@@ -84,6 +84,10 @@
  * lokalisierten Text wirft. Dafuer kopiert die Wegwerfkopie jetzt auch
  * `templates`. Den Satz gibt es an der Basis nicht, `--alt` laesst ihn aus.
  *
+ * NEUNZEHN SAETZE seit stre-T-128. `fremdflaggen` haelt fest, dass Werte unter
+ * dem Flag eines fremden Moduls die Toradresse behalten, und bewacht den
+ * einmaligen Ruecklauf je Welt. Auch ihn gibt es an der Basis nicht.
+ *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
  * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig] [--zeitgrenze <ms>]
@@ -160,6 +164,7 @@ const HTML = "scripts/stream/stream-html.mjs";
 const CANVAS = "scripts/stream/stream-canvas.mjs";
 const FENSTER = "scripts/cloud-v2/cloud-window-v2.mjs";
 const VORLAGE = "templates/cloud-v2/parts/results-pane.hbs";
+const FREMD = "scripts/stream/stream-fremdflaggen.mjs";
 
 const SABOTAGEN = [
   // ---------------------------------------------------------------- maske
@@ -617,13 +622,13 @@ const SABOTAGEN = [
   { satz: "weiche", ziel: ["Feldliste: `icon` geht ans Tor"], ersetze: [[INSTALL,"const FELDER_NIE = new Set([\"img\"])","const FELDER_NIE = new Set([\"img\", \"icon\"])"]] },
   ...["foreground", "overlay", "avatar", "image", "pruefsatzFeld"].map((f) => (
     { satz: "weiche", ziel: [`Feldliste: \`${f}\` geht ans Tor`], ersetze: [[INSTALL, "const FELDER_NIE = new Set([\"img\"])", `const FELDER_NIE = new Set(["img", "${f}"])`]] })),
-  { satz: "weiche", ziel: ["das Portrait in `img` bleibt der oertliche Pfad","das Symbol eines eingebetteten Gegenstands ebenso","die Sperre meldet sich genau einmal","und nennt das Feld","und nennt den Pfad der Datei","dieselbe Datei meldet sich nicht zweimal","gesperrt wird sie trotzdem","ein `img`-Feld mit HTML darin bleibt ganz unberuehrt","Feldliste: `img` bleibt oertlich","`img` zwei Ebenen tief bleibt oertlich","ein Array unter `img` gibt sein Feld an jeden Eintrag weiter"], ersetze: [[INSTALL,"      value[k] = applyStreamAddresses(value[k], streamTargets, k)","      value[k] = applyStreamAddresses(value[k], streamTargets, null)"]] },
-  { satz: "weiche", ziel: ["ein Array unter `img` gibt sein Feld an jeden Eintrag weiter"], ersetze: [[INSTALL,"      value[i] = applyStreamAddresses(value[i], streamTargets, feld)","      value[i] = applyStreamAddresses(value[i], streamTargets, null)"]] },
+  { satz: "weiche", ziel: ["das Portrait in `img` bleibt der oertliche Pfad","das Symbol eines eingebetteten Gegenstands ebenso","die Sperre meldet sich genau einmal","und nennt das Feld","und nennt den Pfad der Datei","dieselbe Datei meldet sich nicht zweimal","gesperrt wird sie trotzdem","ein `img`-Feld mit HTML darin bleibt ganz unberuehrt","Feldliste: `img` bleibt oertlich","`img` zwei Ebenen tief bleibt oertlich","ein Array unter `img` gibt sein Feld an jeden Eintrag weiter"], ersetze: [[INSTALL,"      value[k] = applyStreamAddresses(value[k], streamTargets, k, fremd)","      value[k] = applyStreamAddresses(value[k], streamTargets, null, fremd)"]] },
+  { satz: "weiche", ziel: ["ein Array unter `img` gibt sein Feld an jeden Eintrag weiter"], ersetze: [[INSTALL,"      value[i] = applyStreamAddresses(value[i], streamTargets, feld, fremd)","      value[i] = applyStreamAddresses(value[i], streamTargets, null, fremd)"]] },
   { satz: "weiche", ziel: ["die Sperre meldet sich genau einmal","dieselbe Datei meldet sich nicht zweimal"], ersetze: [[INSTALL,"        if (!gesperrtGemeldet.has(schluessel)) {","        if (true) {"]] },
   { satz: "weiche", ziel: ["die Meldung traegt den Streamschluessel NICHT","und auch nicht die gebildete Toradresse"], ersetze: [[INSTALL,"          console.warn(`Beneos Stream | ${schluessel} ist als Toradresse fuer `","          console.warn(`Beneos Stream | ${waere} ist als Toradresse fuer `"]] },
   { satz: "weiche", ziel: ["und nennt das Feld"], ersetze: [[INSTALL,"            + `das Feld \"${feld}\" angekommen und bleibt oertlich. Ein `","            + `das Feld angekommen und bleibt oertlich. Ein `"]] },
   { satz: "weiche", ziel: ["ein `img`-Feld mit HTML darin bleibt ganz unberuehrt"], ersetze: [[INSTALL,"    if (feld !== null && FELDER_NIE.has(feld)) {","    if (feld !== null && FELDER_NIE.has(feld) && !value.includes(\"<\")) {"]] },
-  { satz: "weiche", ziel: ["das Leinwandbild in `texture.src` geht ans Tor, schluesselfrei","`src` geht ans Tor","`thumb` geht ans Tor","`background.src` geht ans Tor","`src` einer Journalseite geht ans Tor","Feldliste: `src` geht ans Tor","Feldliste: `thumb` geht ans Tor","Feldliste: `path` geht ans Tor","Feldliste: `texture` geht ans Tor","Feldliste: `background` geht ans Tor","Feldliste: `sound` geht ans Tor","Feldliste: `video` geht ans Tor","Feldliste: `file` geht ans Tor","Feldliste: `icon` geht ans Tor","daneben geht `src` auf derselben Ebene ans Tor"], ersetze: [[INSTALL,"    if (target) return schluesselfreiAdresse(target)","    if (target) return value"]] },
+  { satz: "weiche", ziel: ["das Leinwandbild in `texture.src` geht ans Tor, schluesselfrei","`src` geht ans Tor","`thumb` geht ans Tor","`background.src` geht ans Tor","`src` einer Journalseite geht ans Tor","Feldliste: `src` geht ans Tor","Feldliste: `thumb` geht ans Tor","Feldliste: `path` geht ans Tor","Feldliste: `texture` geht ans Tor","Feldliste: `background` geht ans Tor","Feldliste: `sound` geht ans Tor","Feldliste: `video` geht ans Tor","Feldliste: `file` geht ans Tor","Feldliste: `icon` geht ans Tor","daneben geht `src` auf derselben Ebene ans Tor"], ersetze: [[INSTALL,"    if (target) return fremd ? target : schluesselfreiAdresse(target)","    if (target) return value"]] },
   { satz: "weiche", ziel: ["und die Adresse im eingebetteten HTML auch, als Form (a) ohne Schluessel"], ersetze: [[INSTALL,"    if (!value.includes(\"<\") || !value.includes(\"src=\")) return value","    return value"]] },
   { satz: "weiche", ziel: ["Zweig 1, Pin: NICHT am Rand gezaehlt","der Rand traegt nur die Karte"], ersetze: [[INSTALL,"      pinned += 1","      pinned += 1\n      edgeBytes += entry.bytes || 0"]] },
   { satz: "weiche", ziel: ["drei lokale Dateien: das Maximum ist 500","das Maximum steht vorne und bleibt 500","eine einzige Datei: Summe und Maximum sind dieselbe Zahl","Zweig 1, Pin: gezaehlt","Zweig 2, Download-Modus: gezaehlt","Zweig 3, Rolle local: gezaehlt","Zweig 4, unbekannte Rolle: gezaehlt","Zweig 4, Rolle fehlt ganz: gezaehlt","ein reiner Streamlauf schreibt nichts: Maximum 0","leeres Manifest: Maximum 0","leeres Manifest: und es ist eine ZAHL, kein undefined","nur nicht ausgelieferte Dateien: Maximum 0","ein Dokument von 9 MB hebt das Maximum NICHT","Groesse fehlt: Maximum 0","Groesse ist Unfug: das Maximum bleibt die echte Datei","Groesse als Zeichenkette wird gelesen","eine negative Groesse hebt das Maximum nicht unter null","Pin-Schalter aus: und es wird nicht lokal gezaehlt","Download-Modus schlaegt den Pin-Zweig: trotzdem lokal gezaehlt","das Maximum ist das groesste EINZELNE Stueck","Nutzen in einem Satz: die Sonde fragt nach 310 KB statt nach 2 MB","die Sonde fragt nach dem groessten lokalen Stueck, 310 KB","eine abgewiesene Sonde haelt die Installation vor dem Schreiben an","ueber 2 MB fragt sie nach genau der Obergrenze von 2 MB"], ersetze: [[INSTALL,"  let localMaxBytes = 0","  let localMaxBytes"]] },
@@ -704,7 +709,7 @@ const SABOTAGEN = [
   // Schluessel. Je Richtung eine Sabotage.
   { satz: "posen", ziel: ["gutes Bild: die schluesselfreie Adresse kommt heraus","und sie traegt keinen Schluessel"], ersetze: [[POSEN, "      src: schluesselfreiAdresse(assetUrl(wer.release, \"\", eintrag.pfad)),", "      src: assetUrl(wer.release, \"\", eintrag.pfad),"]] },
   { satz: "posen", ziel: ["und die Pruefung sagt true"], ersetze: [[POSEN, "        const antwort = await fetch(leinwandAdresse(src))", "        const antwort = await fetch(src)"]] },
-  { satz: "weiche", ziel: ["das Leinwandbild in `texture.src` geht ans Tor, schluesselfrei","und im ganzen Dokument steht kein Streamschluessel","`src` geht ans Tor"], ersetze: [[INSTALL, "    if (target) return schluesselfreiAdresse(target)", "    if (target) return target"]] },
+  { satz: "weiche", ziel: ["das Leinwandbild in `texture.src` geht ans Tor, schluesselfrei","und im ganzen Dokument steht kein Streamschluessel","`src` geht ans Tor"], ersetze: [[INSTALL, "    if (target) return fremd ? target : schluesselfreiAdresse(target)", "    if (target) return target"]] },
   { satz: "weiche", ziel: ["und die Adresse im eingebetteten HTML auch, als Form (a) ohne Schluessel"], ersetze: [[INSTALL, "      const ziel = gateAdresseFuer(src, streamTargets)", "      const ziel = schluesselfreiAdresse(gateAdresseFuer(src, streamTargets))"]] },
   { satz: "weiche", ziel: ["Gegenprobe: das Ziel in der Liste traegt den Schluessel"], ersetze: [[SETTINGS, "  const schluessel = encodeURIComponent(streamKey())", "  const schluessel = \"-\""]] },
   // Der Fang an den Schreibstellen: ohne ihn schreibt der Rueckfall den
@@ -971,7 +976,7 @@ const SABOTAGEN = [
   { satz: "html", ziel: ["H10 zweiter Lauf schreibt nichts"], ersetze: [[HTML, "        if (!aenderung && !kinder.length) continue\n", ""]] },
   { satz: "html", ziel: ["H10 als Spieler: nichts"], ersetze: [[HTML, "  if (!streamKey() || !globalThis.game?.user?.isGM) return bericht", "  if (!streamKey()) return bericht"]] },
   { satz: "html", ziel: ["H10 ein kaputtes Dokument haelt die anderen nicht auf"], ersetze: [[HTML, "      } catch (_) {\n        bericht.fehler++\n", "      } catch (_) {\n        break\n"]] },
-  { satz: "weiche", ziel: ["und die Adresse im eingebetteten HTML auch, als Form (a) ohne Schluessel","und im ganzen Dokument steht kein Streamschluessel"], ersetze: [[INSTALL, "    return htmlSchluesselfrei(value.replace(HTML_SRC_RE,", "    return ((v) => ({ html: v }))(value.replace(HTML_SRC_RE,"]] },
+  { satz: "weiche", ziel: ["und die Adresse im eingebetteten HTML auch, als Form (a) ohne Schluessel","und im ganzen Dokument steht kein Streamschluessel"], ersetze: [[INSTALL, "    return fremd ? mitTor : htmlSchluesselfrei(mitTor).html", "    return mitTor"]] },
   { satz: "weiche", ziel: ["ohne Schluessel bleibt im HTML die Toradresse wie bisher"], ersetze: [[SETTINGS, "export function schluesselfreiAdresse(url) {\n  if (!streamKey()) return url\n", "export function schluesselfreiAdresse(url) {\n"], [HTML, "  if (!streamKey() || !kandidat(html)) return { html, zahl: 0, heil: 0, andere: 0 }", "  if (!kandidat(html)) return { html, zahl: 0, heil: 0, andere: 0 }"]] },
   { satz: "weiche", ziel: ["ein Video im HTML behaelt die Toradresse"], ersetze: [[HTML, "const IMG_RE = /<img\\b(?:", "const IMG_RE = /<(?:img|video)\\b(?:"]] },
   // stre-T-116: die Journalheilung schreibt Form (a), am Schluessel.
@@ -1239,12 +1244,55 @@ const SABOTAGEN = [
   { satz: "rueckfall", ziel: ["[Struktur] die Vorlage waehlt den 403-Text im Hinweisblock"], ersetze: [[VORLAGE, "{{#if bmapRueckfallAbgewiesen}}{{localize \"BENEOS.Cloud.Bmap.ReleasesFromCloudDenied\"}}{{else}}{{localize \"BENEOS.Cloud.Bmap.ReleasesFromCloud\"}}", "{{#if bmapRueckfallAbgewiesen}}{{localize \"BENEOS.Cloud.Bmap.ReleasesFromCloud\"}}{{else}}{{localize \"BENEOS.Cloud.Bmap.ReleasesFromCloudDenied\"}}"]] },
   { satz: "rueckfall", ziel: ["BENEOS.Cloud.Bmap.ReleasesFromCloudDenied: in jeder Sprache, nicht leer, ohne Gedankenstrich","en: der 403-Text im Wortlaut des Betreibers"], ersetze: [["lang/en.json", "\"BENEOS.Cloud.Bmap.ReleasesFromCloudDenied\": \"Your streaming", "\"BENEOS.Cloud.Bmap.ReleasesFromCloudDenied\": \"\", \"x\": \"Your streaming"]] },
   { satz: "rueckfall", ziel: ["403-Text und alter Text unterscheiden sich in jeder Sprache"], ersetze: [["lang/de.json", "\"BENEOS.Cloud.Bmap.ReleasesFromCloudDenied\": \"Dein Streaming-Zugang konnte nicht bestätigt werden,", "\"BENEOS.Cloud.Bmap.ReleasesFromCloudDenied\": \"Der Streaming-Katalog antwortet gerade nicht,"]] },
+  // stre-T-128: fremde Flags behalten die Toradresse, der Ruecklauf je Welt.
+  { satz: "fremdflaggen", ziel: ["das Ziel in der Liste traegt den Schluessel"], ersetze: [[SETTINGS, "  const schluessel = encodeURIComponent(streamKey())\n", "  const schluessel = \"-\"\n"]] },
+  { satz: "fremdflaggen", ziel: ["eigenes Flag stream.video wird schluesselfrei", "eigenes Flag einer eingebetteten Kachel wird schluesselfrei"], ersetze: [[INSTALL, "streamTargets, ns, fremd || ns !== MODULE_ID)", "streamTargets, ns, true)"]] },
+  { satz: "fremdflaggen", ziel: ["fremdes audiofile behaelt die Toradresse", "HTML unter einem fremden Flag bekommt die Toradresse, nicht Form (a)", "fremdes Flag der Szene behaelt die Toradresse", "fremdes Flag einer eingebetteten Kachel behaelt die Toradresse"], ersetze: [[INSTALL, "streamTargets, ns, fremd || ns !== MODULE_ID)", "streamTargets, ns, fremd)"]] },
+  { satz: "fremdflaggen", ziel: ["fremdes audiofile behaelt die Toradresse", "fremdes Flag der Szene behaelt die Toradresse", "fremdes Flag einer eingebetteten Kachel behaelt die Toradresse"], ersetze: [[INSTALL, "    if (target) return fremd ? target : schluesselfreiAdresse(target)", "    if (target) return schluesselfreiAdresse(target)"]] },
+  { satz: "fremdflaggen", ziel: ["eigenes Flag stream.video wird schluesselfrei", "gewoehnliches Feld texture.src wird schluesselfrei", "eigenes Flag einer eingebetteten Kachel wird schluesselfrei"], ersetze: [[INSTALL, "    if (target) return fremd ? target : schluesselfreiAdresse(target)", "    if (target) return target"]] },
+  { satz: "fremdflaggen", ziel: ["HTML unter einem fremden Flag bekommt die Toradresse, nicht Form (a)"], ersetze: [[INSTALL, "    return fremd ? mitTor : htmlSchluesselfrei(mitTor).html", "    return htmlSchluesselfrei(mitTor).html"]] },
+  { satz: "fremdflaggen", ziel: ["fremdes audiofile behaelt die Toradresse"], ersetze: [[INSTALL, "value[i] = applyStreamAddresses(value[i], streamTargets, feld, fremd)", "value[i] = applyStreamAddresses(value[i], streamTargets, feld)"]] },
+  { satz: "fremdflaggen", ziel: ["fremdes audiofile behaelt die Toradresse", "fremdes Flag einer eingebetteten Kachel behaelt die Toradresse"], ersetze: [[INSTALL, "value[k] = applyStreamAddresses(value[k], streamTargets, k, fremd)", "value[k] = applyStreamAddresses(value[k], streamTargets, k)"]] },
+  { satz: "fremdflaggen", ziel: ["das img-Feld bleibt auch unter einem fremden Flag oertlich"], ersetze: [[INSTALL, "    if (feld !== null && FELDER_NIE.has(feld)) {", "    if (!fremd && feld !== null && FELDER_NIE.has(feld)) {"]] },
+  { satz: "fremdflaggen", ziel: ["Flags null brechen den Einbau nicht ab"], ersetze: [[INSTALL, "if (k === \"flags\" && value[k] && typeof value[k]", "if (k === \"flags\" && typeof value[k]"]] },
+  { satz: "fremdflaggen", ziel: ["die Funktion ist exportiert"], ersetze: [[FREMD, "export async function fremdflaggenZurueck", "async function fremdflaggenZurueck"]] },
+  { satz: "fremdflaggen", ziel: ["trocken: nichts geschrieben"], ersetze: [[FREMD, "        if (trocken) continue\n", ""]] },
+  { satz: "fremdflaggen", ziel: ["trocken: nichts geschrieben", "trocken: die Marke bleibt ungesetzt"], ersetze: [[FREMD, "  if (trocken) {\n", "  if (false) {\n"]] },
+  { satz: "fremdflaggen", ziel: ["trocken: zwei Adressen gezaehlt", "der Bericht zaehlt zwei Adressen"], ersetze: [[FREMD, "if (tor !== wert) { zahl.adressen++; return tor }", "if (tor !== wert) { return tor }"]] },
+  { satz: "fremdflaggen", ziel: ["trocken: eine HTML-Stelle als Rest gezaehlt"], ersetze: [[FREMD, "    if (wert.toLowerCase().includes(\"beneos://\")) zahl.rest++\n", ""]] },
+  { satz: "fremdflaggen", ziel: ["Szene: der ganze oberste Wert des fremden Flags wird geschrieben", "Kachel: audiofile wird Toradresse, das eigene Feld daneben bleibt"], ersetze: [[FREMD, "    aenderung[`flags.${ns}`] = neu\n", "    aenderung[`flags.${ns}`] = wert\n"]] },
+  { satz: "fremdflaggen", ziel: ["Szene: das eigene Flag wird nicht geschrieben", "Kachel: das eigene Flag wird nicht geschrieben"], ersetze: [[FREMD, "    if (ns === MODULE_ID) continue\n", ""]] },
+  { satz: "fremdflaggen", ziel: ["Szene: das HTML-Flag wird nicht geschrieben"], ersetze: [[FREMD, "    if (!zahl.adressen) continue\n", ""]] },
+  { satz: "fremdflaggen", ziel: ["Kachel: die Kennung steht im Teil"], ersetze: [[FREMD, "teile.push({ ...a, _id: kind._id })", "teile.push({ ...a })"]] },
+  { satz: "fremdflaggen", ziel: ["Fehlschlag: die Marke bleibt ungesetzt"], ersetze: [[FREMD, "        if (bericht.fehler === 0) await markeSetzen(bericht)\n", "        if (true) await markeSetzen(bericht)\n"]] },
+  { satz: "fremdflaggen", ziel: ["ohne Fehlschlag wird die Marke gesetzt", "zweiter Start: als erledigt gemeldet"], ersetze: [[FREMD, "        if (bericht.fehler === 0) await markeSetzen(bericht)\n", "        if (false) await markeSetzen(bericht)\n"]] },
+  { satz: "fremdflaggen", ziel: ["Fehlschlag: als Fehler gezaehlt", "Fehlschlag: die Marke bleibt ungesetzt", "unlesbares Dokument: als Fehler gezaehlt", "unlesbares Dokument: die Marke bleibt ungesetzt"], ersetze: [[FREMD, "      } catch (_e) {\n        bericht.fehler++\n      }\n", "      } catch (_e) {\n      }\n"]] },
+  { satz: "fremdflaggen", ziel: ["die Zaehlzeile nennt keinen Schluessel und keine Adresse"], ersetze: [[FREMD, "${bericht.fehler} Fehler`)", "${bericht.fehler} Fehler ${streamKey()}`)"]] },
+  { satz: "fremdflaggen", ziel: ["die Zaehlzeile steht da"], ersetze: [[FREMD, "  console.log(`Beneos Stream | Fremde Flags", "  console.debug(`Beneos Stream | Fremde Flags"]] },
+  { satz: "fremdflaggen", ziel: ["der Riegel ist danach wieder frei"], ersetze: [[FREMD, "      await nachzugRiegelLoesen(marke)\n", ""]] },
+  { satz: "fremdflaggen", ziel: ["zweiter Start: nichts geschrieben", "zweiter Start: als erledigt gemeldet"], ersetze: [[FREMD, "  if (markeGesetzt()) { bericht.grund = \"erledigt\"; return bericht }\n", ""]] },
+  { satz: "fremdflaggen", ziel: ["Riegel besetzt: nichts geschrieben", "Riegel besetzt: die Marke bleibt ungesetzt", "Riegel besetzt: Grund genannt"], ersetze: [[FREMD, "      if (!marke) { bericht.grund = \"riegel\"; return bericht }\n", ""]] },
+  { satz: "fremdflaggen", ziel: ["ohne Schluessel: die Marke bleibt ungesetzt", "ohne Schluessel: Grund genannt"], ersetze: [[FREMD, "  if (!streamKey()) { bericht.grund = \"ohne schluessel\"; return bericht }\n", ""]] },
+  { satz: "fremdflaggen", ziel: ["ohne Schluessel: nichts geschrieben"], ersetze: [[FREMD, "  if (!streamKey()) { bericht.grund = \"ohne schluessel\"; return bericht }\n", ""], [SETTINGS, "  if (!istPlatzhalter(src) || !streamKey()) return src\n", "  if (!istPlatzhalter(src)) return src\n"]] },
+  { satz: "fremdflaggen", ziel: ["Spieler: nichts geschrieben", "Spieler: Grund genannt"], ersetze: [[FREMD, "  if (!globalThis.game?.user?.isGM) { bericht.grund = \"kein gm\"; return bericht }\n", ""]] },
+  { satz: "fremdflaggen", ziel: ["[Struktur] schluesselLaeufe ruft fremdflaggenZurueck nach altseitenUmstellen"], ersetze: [[EINSTIEG, "    await fremdflaggenZurueck()\n", ""]] },
+  // Kalt-Befund am eigenen Lauf (hakenfehler rot): der Riegel wartet 1500 ms, darum erst ohne ihn zaehlen.
+  { satz: "fremdflaggen", ziel: ["nichts umzustellen: die Marke wird ohne Riegel gesetzt", "nichts umzustellen: Grund genannt"], ersetze: [[FREMD, "    if (vorab.adressen === 0 && vorab.fehler === 0) {\n", "    if (false) {\n"]] },
+  { satz: "fremdflaggen", ziel: ["Szene: der ganze oberste Wert des fremden Flags wird geschrieben", "der Bericht zaehlt zwei Adressen"], ersetze: [[FREMD, "    if (vorab.adressen === 0 && vorab.fehler === 0) {\n", "    if (vorab.fehler === 0) {\n"]] },
+  { satz: "fremdflaggen", ziel: ["unlesbares Dokument: die Marke bleibt ungesetzt"], ersetze: [[FREMD, "    if (vorab.adressen === 0 && vorab.fehler === 0) {\n", "    if (vorab.adressen === 0) {\n"]] },
+  { satz: "fremdflaggen", ziel: ["nichts umzustellen: die HTML-Stelle als Rest gezaehlt"], ersetze: [[FREMD, "      bericht.rest = vorab.rest\n", ""]] },
 ];
 
 /*
  * PROBEN, DIE KEINE SABOTAGE AM CODE ROT MACHEN KANN, je eine Zeile Grund.
  */
 const EIGENPROBEN = {
+  fremdflaggen: {
+    "die schluesselfreie Form beginnt mit beneos://":
+      "Vorbedingung des Pruefsatzes: sie liest nur, was schluesselfreiAdresse aus dem Ziel macht. Diese Form bewacht der Satz weiche; hier stellt sie nur fest, dass die Proben danach etwas unterscheiden.",
+    "nichts umzustellen: nichts geschrieben":
+      "Dreifach gedeckt: ohne Adresse entsteht keine Aenderung, der Vorabzweig schreibt nie, und der Riegel ist in dieser Probe besetzt. Eine einzelne Sabotage kann keine Schreibung erzeugen; die Probe haelt die Erwartung fest.",
+  },
   maske: {
     "[Struktur] der Kommentarfilter nimmt wirklich etwas weg":
       "Selbstprobe des Filters: rot nur, wenn stream-report.mjs keine einzige Kommentar- oder Leerzeile mehr hat. Eine Sabotage muesste die Datei leerraeumen.",
@@ -1391,7 +1439,7 @@ if (process.argv.includes("--alle-saetze")) {
 
 // ------------------------------------------------------------- Lauf
 
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen"]
   .filter((s) => !nurSatz || s === nurSatz);
 if (SAETZE.length === 0) {
   console.log(`unbekannter Satz: ${nurSatz}`);

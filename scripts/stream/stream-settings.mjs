@@ -54,6 +54,9 @@ export const SETTING = {
   // Der Riegel des Adressnachzugs, je WELT und nicht je Browser. Siehe
   // `nachzugRiegelNehmen()` weiter unten.
   nachzugRiegel: "beneos-stream-nachzug-riegel",
+  // Ob der einmalige Ruecklauf der fremden Flags auf die Toradresse in dieser
+  // Welt schon fehlerfrei gelaufen ist. Siehe `stream-fremdflaggen.mjs`.
+  fremdflaggenZurueck: "beneos-stream-fremdflaggen-zurueck",
 }
 
 const DEFAULT_BASE = "https://gate.beneos.stream"
@@ -255,6 +258,13 @@ export function registerStreamSettings() {
   // Adressen. Das ist der schlechtere Ausgang als ein Lauf zu viel.
   game.settings.register(MODULE_ID, SETTING.nachzugRiegel, {
     ...world, type: String, default: "",
+  })
+
+  // Die Marke des Ruecklaufs der fremden Flags (stre-T-128). Je Welt, damit
+  // ein zweiter Browser ihn nicht wiederholt; gesetzt nur nach einem Lauf
+  // ohne Fehlschlag, sonst versucht der naechste Start den Rest.
+  game.settings.register(MODULE_ID, SETTING.fremdflaggenZurueck, {
+    ...world, type: Boolean, default: false,
   })
 
   // DER GEMEINSCHAFTSVORRAT, UND WARUM ER EIN EIGENES VERZEICHNIS BRAUCHT.
@@ -536,7 +546,7 @@ export function riegelEntscheid(stehendeMarke, jetzt = Date.now()) {
   return alter < RIEGEL_FRIST_MS ? "besetzt" : "abgelaufen"
 }
 
-async function nachzugRiegelNehmen() {
+export async function nachzugRiegelNehmen() {
   let marke = ""
   try {
     const steht = String(read(SETTING.nachzugRiegel, "") || "")
@@ -579,7 +589,7 @@ export async function nachzugRiegelLoesenFuerPruefsatz(marke) { return nachzugRi
 export const RIEGEL_FRIST_FUER_PRUEFSATZ = RIEGEL_FRIST_MS
 export const RIEGEL_WARTE_FUER_PRUEFSATZ = RIEGEL_WARTE_MS
 
-async function nachzugRiegelLoesen(marke) {
+export async function nachzugRiegelLoesen(marke) {
   if (!marke || marke === "ohne-riegel") return
   try {
     // NUR DIE EIGENE MARKE LOESEN. Haette eine andere Sitzung den Riegel in der

@@ -39,7 +39,7 @@
  * appears in no manifest, so it cannot be rewritten by accident.
  */
 
-import { assetUrl, downloadMode, pinStillsEnabled, schluesselfreiAdresse, streamBase, streamEnabled, streamKey } from "./stream-settings.mjs"
+import { MODULE_ID, assetUrl, downloadMode, pinStillsEnabled, schluesselfreiAdresse, streamBase, streamEnabled, streamKey } from "./stream-settings.mjs"
 // Die Gegenrichtung gibt es nicht: stream-fetch kennt weder diese Datei noch
 // `assetUrl`, deshalb kann kein Ladekreis entstehen.
 import { merkePruefsummen } from "./stream-fetch.mjs"
@@ -392,8 +392,18 @@ function gateAdresseFuer(wert, streamTargets) {
  * ist mit dem INSTALLIERTEN Pfad verschluesselt, und `toCloudAssetPath()` im
  * Installer arbeitet mit `split/join`, tauscht den Praefix also auch mitten im
  * HTML. Beide Seiten sprechen dieselbe Form.
+ *
+ * FREMDE FLAGS BEHALTEN DIE TORADRESSE (stre-T-128). Alles unter
+ * `flags.<x>` mit `x` ungleich dieser Modulkennung liest ein fremdes Modul,
+ * etwa monks-active-tiles sein `audiofile`. Es spielt die Zeichenkette, wie
+ * sie im Flag steht, und kann mit `beneos://` nichts anfangen; den Schluessel
+ * setzt nur dieses Modul zur Anzeige ein. Dort steht deshalb die Toradresse,
+ * im HTML ohne Form (a). Die Sperre `FELDER_NIE` gilt dort weiter. Probe im
+ * Pruefsatz `stream-fremdflaggen.test.mjs`.
+ *
+ * @param {boolean} fremd liegt der Wert unter dem Flag eines fremden Moduls
  */
-export function applyStreamAddresses(value, streamTargets, feld = null) {
+export function applyStreamAddresses(value, streamTargets, feld = null, fremd = false) {
   if (!streamTargets || !streamTargets.size) return value
 
   if (typeof value === "string") {
@@ -443,7 +453,7 @@ export function applyStreamAddresses(value, streamTargets, feld = null) {
      * in Oberflaechen `blobFuer` in `stream-bilder.mjs`.
      */
     const target = gateAdresseFuer(value, streamTargets)
-    if (target) return schluesselfreiAdresse(target)
+    if (target) return fremd ? target : schluesselfreiAdresse(target)
 
     // Der Vorfilter haelt die Regex von den zehntausenden gewoehnlichen
     // Feldwerten fern, die nie HTML sind.
@@ -457,27 +467,37 @@ export function applyStreamAddresses(value, streamTargets, feld = null) {
     // und es bleibt die Toradresse von vor stre-T-116; `<video>`, `<audio>`
     // und `<source>` behalten sie immer, ein Bild-Platzhalter spielte dort
     // nicht. Probe im Pruefsatz `stream-weiche.test.mjs`.
-    return htmlSchluesselfrei(value.replace(HTML_SRC_RE, (treffer, anfuehrung, src) => {
+    const mitTor = value.replace(HTML_SRC_RE, (treffer, anfuehrung, src) => {
       const ziel = gateAdresseFuer(src, streamTargets)
       if (!ziel) return treffer
       // Nur das Anfuehrungspaar tauschen, damit Attribute davor und dahinter
       // unberuehrt bleiben. Technik uebernommen aus _rewriteHtml,
       // beneos-asset-path-repair.js:628-638.
       return treffer.replace(`${anfuehrung}${src}${anfuehrung}`, `${anfuehrung}${ziel}${anfuehrung}`)
-    })).html
+    })
+    // Ein fremdes Modul zeigt sein HTML ohne unser Netz an; Form (a) waere
+    // dort ein leeres Bild. Begruendung im Kopf dieser Funktion.
+    return fremd ? mitTor : htmlSchluesselfrei(mitTor).html
   }
   if (Array.isArray(value)) {
     // Das Feld reist mit. `img: ["a", "b"]` kommt in Foundry nicht vor, aber
     // ein Riegel, der an einer Klammer aufgibt, ist von einem Loch nicht zu
     // unterscheiden.
     for (let i = 0; i < value.length; i++) {
-      value[i] = applyStreamAddresses(value[i], streamTargets, feld)
+      value[i] = applyStreamAddresses(value[i], streamTargets, feld, fremd)
     }
     return value
   }
   if (value && typeof value === "object") {
     for (const k of Object.keys(value)) {
-      value[k] = applyStreamAddresses(value[k], streamTargets, k)
+      if (k === "flags" && value[k] && typeof value[k] === "object" && !Array.isArray(value[k])) {
+        // Je Namensraum entscheiden: einmal fremd, immer fremd darunter.
+        for (const ns of Object.keys(value[k])) {
+          value[k][ns] = applyStreamAddresses(value[k][ns], streamTargets, ns, fremd || ns !== MODULE_ID)
+        }
+        continue
+      }
+      value[k] = applyStreamAddresses(value[k], streamTargets, k, fremd)
     }
     return value
   }
