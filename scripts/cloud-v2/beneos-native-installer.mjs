@@ -29,6 +29,7 @@ import { packNeedsV14Migration, migrateSceneForV14, migrateActorForV14 } from ".
 import { zuInstallierendeSchluessel } from "../creature-installer/alternativen.mjs"
 import { tokenUpdatesAufteilen } from "./token-delta.mjs"
 import { Bahnsteuerung, runPool, retryAfterMs, entscheide429, reparaturKandidaten } from "./transfer-drossel.mjs"
+import { PACK_SOURCE_PREFIX, CLOUD_INSTALL_PREFIX, stripLeadSlash, toCloudAssetPath, installZiel } from "./install-ziel.mjs"
 
 // ---- Transfer config -------------------------------------------------------
 const FETCH_MAX_ATTEMPTS  = 3            // transient retries per asset
@@ -251,29 +252,9 @@ export function uploadFailureMessage(result) {
   return "upload response could not be read"
 }
 
-// Beneos cloud-install namespace. Battlemap packs are authored against
-// `beneos_assets/beneos_battlemaps/...`; on cloud install we relocate them
-// into the isolated `beneos_assets/cloud/battlemaps/...` namespace, mirroring
-// the model items/spells already use (beneos_cloud.js rewrites
-// `beneos_assets/beneos_items/` -> `beneos_assets/cloud/items/`). The prefix is
-// deliberately narrow so tokens/spells/items refs are never touched.
-const PACK_SOURCE_PREFIX   = "beneos_assets/beneos_battlemaps/"
-const CLOUD_INSTALL_PREFIX = "beneos_assets/cloud/battlemaps/"
-// Self-contained packs bundle every local asset a document references, including
-// module-owned icons (modules/...), the scene thumbnail (worlds/<author-world>/...)
-// and other non-beneos content. Those are relocated under this packaged namespace
-// on install so they survive the customer disabling beneos-module or migrating
-// worlds. The per-asset original->packaged mapping is built in #classifyPack.
-const PACKAGED_INSTALL_PREFIX = "beneos_assets/cloud/packaged/"
-
-const stripLeadSlash = (p) => String(p).replace(/^\/+/, "")
-
-/** Swap the pack-source asset prefix for the cloud-install prefix in a string. */
-function toCloudAssetPath(p) {
-  return (typeof p === "string" && p.includes(PACK_SOURCE_PREFIX))
-    ? p.split(PACK_SOURCE_PREFIX).join(CLOUD_INSTALL_PREFIX)
-    : p
-}
+// Install namespaces (PACK_SOURCE_PREFIX, CLOUD_INSTALL_PREFIX,
+// PACKAGED_INSTALL_PREFIX) and the per-entry install target live in
+// install-ziel.mjs, shared by #classifyPack and #doRefreshManifest (MO-011).
 
 /**
  * Map a single asset-reference string to where the file was actually installed:
@@ -1127,18 +1108,17 @@ export class BeneosNativeBattlemapInstaller {
       // such entries (7-Zip style packing), so skip them outright.
       if (relPath.endsWith("/")) continue
       if (relPath.startsWith("data/assets/")) {
-        const rawRel = relPath.substring("data/assets/".length)
-        let target = toCloudAssetPath(rawRel)
+        const { target, rawRel, gepackt } = installZiel(relPath)
         // Self-contained relocation: anything that did NOT land in a beneos_assets
         // namespace (modules/<id>/…, worlds/<author-world>/… scene thumbs,
         // icons/…, systems/…) is bundled by the pack. We must NOT write it back
         // into modules/ or systems/ (Foundry warns that's unsafe and a package
-        // update would wipe it), so relocate it under the packaged namespace and
-        // remember the original->packaged mapping so #importDocuments rewrites the
-        // document references to match. Shared paths across releases map to the
-        // same target, so re-installs dedupe (existing files are skipped).
-        if (!/^beneos_assets\//i.test(target)) {
-          target = PACKAGED_INSTALL_PREFIX + stripLeadSlash(target)
+        // update would wipe it), so installZiel relocates it under the packaged
+        // namespace and we remember the original->packaged mapping so
+        // #importDocuments rewrites the document references to match. Shared
+        // paths across releases map to the same target, so re-installs dedupe
+        // (existing files are skipped).
+        if (gepackt) {
           this._packagedRemap.set(stripLeadSlash(rawRel), target)
           this._result.totals.packagedAssets = (this._result.totals.packagedAssets || 0) + 1
         }
@@ -1361,13 +1341,8 @@ export class BeneosNativeBattlemapInstaller {
     try {
       const mgr = window.BeneosScenePacker
       const fresh = await mgr.getPackInfo(this.packageId)
-      for (const [relPath, url] of Object.entries(fresh)) {
-        if (relPath.startsWith("data/assets/")) {
-          this._urlByTarget.set(toCloudAssetPath(relPath.substring("data/assets/".length)), url)
-        } else {
-          this._urlByTarget.set(relPath, url)
-        }
-      }
+      // Same key as #classifyPack, or packaged assets keep their expired URL (MO-011).
+      for (const [relPath, url] of Object.entries(fresh)) this._urlByTarget.set(installZiel(relPath).target, url)
       return true
     } catch (e) {
       console.warn("BeneosNativeInstaller | manifest refresh failed", e)
