@@ -79,19 +79,26 @@ function zustandLaden() {
  * Stopp laesst das alte Objekt als Waise weiterspielen, auch ueber einen
  * Szenenwechsel. Sie hoeren nur auf `stop`: `end` kommt bei `loop: true` nie.
  *
+ * Entschieden wird einen Takt NACH dem Ereignis (Kalt-Review 17.11.2026,
+ * Befund 3): beim Loeschen stoppt Foundry zuerst und zerstoert erst danach
+ * (v14 `placeables/sound.mjs:519-523`), beim Pfadwechsel stoppt es und baut
+ * dann selbst neu (:495-498). Verglichen wird mit der Adresse zum Zeitpunkt
+ * des Stopps, nicht des ersten Wechsels (Befund 2: A, B, zurueck auf A).
+ *
  * @param {object} objekt das laufende Klangobjekt
  * @param {object} weg
  * @param {string[]} weg.ereignisse worauf gewartet wird
  * @param {() => boolean} weg.zustaendig ob das Objekt noch das des Klangs ist
- * @param {string} weg.soll die Adresse von heute
+ * @param {string} weg.quelle die schluesselfreie Quelle des Klangs
  * @param {() => void} weg.ersetze baut das neue Objekt, ohne es zu starten
  */
-function nachDemStoppNeu(objekt, { ereignisse, zustaendig, soll, ersetze }) {
-  const nachholen = () => {
+function nachDemStoppNeu(objekt, { ereignisse, zustaendig, quelle, ersetze }) {
+  const entscheide = () => {
     if (!zustaendig() || objekt.playing) return
-    if (objekt.src === soll) return
+    if (objekt.src === leinwandAdresse(quelle)) return
     try { ersetze() } catch (_) { /* bleibt das alte, wie ohne diesen Haken */ }
   }
+  const nachholen = () => { setTimeout(entscheide, 0) }
   try {
     for (const typ of ereignisse) objekt.addEventListener(typ, nachholen, { once: true })
   } catch (_) { /* ein Klang ohne diese Ereignisse bleibt wie er ist */ }
@@ -130,7 +137,7 @@ export async function klangNachziehen(ps) {
     nachDemStoppNeu(objekt, {
       ereignisse: ["stop", "end"],
       zustaendig: () => ps.sound === objekt,
-      soll: leinwandAdresse(quelle),
+      quelle,
       ersetze: () => { ps.sound = ps._createSound() },
     })
     return "laeuft"
@@ -191,7 +198,9 @@ export async function szenenklangNachziehen(pl) {
   const objekt = pl.sound
   if (objekt._state === zustandLaden()) {
     try { await objekt.load() } catch (_) { /* gescheitert ist hier ein Ergebnis */ }
-    if (pl.sound !== objekt) return szenenklangNachziehen(pl)
+    // Abgebaut, waehrend gewartet wurde: Foundry laesst `sound` am zerstoerten
+    // Placeable haengen (Kalt-Review 17.11.2026, Befund 1).
+    if (pl.destroyed || pl.sound !== objekt) return szenenklangNachziehen(pl)
   }
 
   // Beim Abbau der Szene kommt `stop` erst, wenn das Placeable schon zerstoert
@@ -201,7 +210,7 @@ export async function szenenklangNachziehen(pl) {
     nachDemStoppNeu(objekt, {
       ereignisse: ["stop"],
       zustaendig: () => !pl.destroyed && pl.sound === objekt,
-      soll: leinwandAdresse(quelle),
+      quelle,
       // `_manager` hat Foundry vor dem Stopp schon geloest (v13 :174, v14 :201).
       ersetze: () => { pl.sound = pl._createSound() },
     })
@@ -220,15 +229,18 @@ export async function szenenklangNachziehen(pl) {
 }
 
 /**
- * Alle Szenenklaenge der angezeigten Szene, je Placeable einzeln gefangen.
- * Danach EIN `refresh`, damit die hoerbaren mit der neuen Adresse laden.
+ * Alle Szenenklaenge der angezeigten Szene, nebeneinander und je Placeable
+ * einzeln gefangen. Jeder Neubau loest sofort einen `refresh` aus, damit die
+ * hoerbaren mit der neuen Adresse laden. Ein ladender Szenenklang haelt so die
+ * anderen nicht auf (Kalt-Review 17.11.2026, offene Frage 1); `refresh`
+ * gleicht alle Hoerer ab und darf mehrfach laufen.
  *
  * @returns {Promise<Record<string, number>>} je Ausgang die Zahl
  */
 export async function szenenklaengeNachziehen() {
   const ebene = globalThis.canvas?.sounds
   const zahl = {}
-  for (const pl of ebene?.placeables ?? []) {
+  const einer = async (pl) => {
     let ausgang
     try { ausgang = await szenenklangNachziehen(pl) }
     catch (e) {
@@ -236,15 +248,15 @@ export async function szenenklaengeNachziehen() {
       console.warn("Beneos Stream | Szenenklang nach dem Schluesselwechsel nicht neu aufgebaut:", e?.message || e)
     }
     zahl[ausgang] = (zahl[ausgang] || 0) + 1
-  }
-  if (zahl.neu) {
+    if (ausgang !== "neu") return
     // Gemessen am 17.11.2026 in v13: `refresh` direkt nach einem Neuzeichnen
     // warf "reading 'refresh'". Der Neubau ist dann trotzdem geschehen, der
     // naechste Abgleich der Hoerer spielt ihn ab.
     try { ebene.refresh() }
     catch (e) { console.warn("Beneos Stream | Szenenklaenge nicht abgeglichen:", e?.message || e) }
-    console.log(`Beneos Stream | ${zahl.neu} Szenenklang/Szenenklaenge nach dem Schluesselwechsel neu aufgebaut`)
   }
+  await Promise.all([...(ebene?.placeables ?? [])].map(einer))
+  if (zahl.neu) console.log(`Beneos Stream | ${zahl.neu} Szenenklang/Szenenklaenge nach dem Schluesselwechsel neu aufgebaut`)
   return zahl
 }
 
