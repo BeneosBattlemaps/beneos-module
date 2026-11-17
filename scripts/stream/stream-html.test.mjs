@@ -28,7 +28,7 @@ globalThis.game = {
 }
 
 const { PLATZHALTER_BILD, htmlSchluesselfrei, htmlTiefSchluesselfrei, htmlAenderung, seitenSrc,
-  installHtmlNetz, altseitenUmstellen, HTML_ARTEN } = await import("./stream-html.mjs")
+  installHtmlNetz, altseitenUmstellen, HTML_ARTEN, formAAdresse, platzhalterMit } = await import("./stream-html.mjs")
 
 let aussagen = 0, gruen = 0, rot = 0
 function wahr(name, bedingung, detail = "") {
@@ -42,6 +42,8 @@ const REL = "beneos_bm_0011_cos_barovia_village"
 const PFAD = "beneos_assets/beneos_battlemaps/4k/11_cos_barovia_village/handout.webp"
 const TOR = assetUrl(REL, "4k", PFAD)
 const FREI = platzhalterAdresse(REL, "4k", PFAD)
+// Das src der Form (a): Platzhalter, die freie Adresse als Fragment dahinter.
+const SRC_A = `${PLATZHALTER_BILD}#${FREI}`
 
 console.log("H0 Vorbedingung der Probe")
 wahr("H0 die Toradresse traegt den Schluessel", TOR.includes(KEY), TOR)
@@ -55,7 +57,7 @@ console.log("H1 Zwei-Werte-Probe: Toradresse wird Form (a), Fremdes bleibt byteg
   const r = htmlSchluesselfrei(roh)
   wahr("H1 eine Adresse gezaehlt", r.zahl === 1, `zahl ${r.zahl}`)
   wahr("H1 Schluessel weg", ohneSchluessel(r.html))
-  wahr("H1 src ist der Platzhalter", r.html.includes(`src="${PLATZHALTER_BILD}"`))
+  wahr("H1 src ist der Platzhalter mit der freien Adresse als Fragment", r.html.includes(`src="${SRC_A}"`), r.html)
   wahr("H1 data-beneos-src traegt die freie Form", r.html.includes(`data-beneos-src="${FREI}"`))
   wahr("H1 width, height, alt, class bleiben",
     r.html.includes('width="600"') && r.html.includes('height="400"') && r.html.includes('alt="Karte"') && r.html.includes('class="x"'))
@@ -74,7 +76,7 @@ console.log("H1 Zwei-Werte-Probe: Toradresse wird Form (a), Fremdes bleibt byteg
 console.log("H2 einfach gefasste Attribute")
 {
   const r = htmlSchluesselfrei(`<img src='${TOR}'>`)
-  wahr("H2 einfache Anfuehrung bleibt einfach", r.html === `<img src='${PLATZHALTER_BILD}' data-beneos-src='${FREI}'>`, r.html)
+  wahr("H2 einfache Anfuehrung bleibt einfach", r.html === `<img src='${SRC_A}' data-beneos-src='${FREI}'>`, r.html)
 }
 
 console.log("H3 data-beneos-src im Tag: kein zweites, Reihenfolge egal")
@@ -88,9 +90,85 @@ console.log("H3 data-beneos-src im Tag: kein zweites, Reihenfolge egal")
   wahr("H3 dahinter: Schluessel weg", ohneSchluessel(r2.html), r2.html)
   wahr("H3 dahinter: genau ein data-beneos-src, nachgezogen",
     (r2.html.match(/data-beneos-src/g) || []).length === 1 && r2.html.includes(`data-beneos-src="${FREI}"`), r2.html)
-  const fertig = `<img src="${PLATZHALTER_BILD}" data-beneos-src="${FREI}">`
+  const fertig = `<img src="${SRC_A}" data-beneos-src="${FREI}">`
   const r3 = htmlSchluesselfrei(fertig + `<img src="${TOR}">`)
   wahr("H3 Form (a) bleibt bytegleich", r3.html.startsWith(fertig) && r3.zahl === 1, r3.html)
+}
+
+console.log("H11 Editorwege: ein verlorenes data-beneos-src kommt aus dem Fragment zurueck (Kalt-Review, kritisch)")
+{
+  wahr("H11 platzhalterMit baut das src der Form (a)", platzhalterMit(FREI) === SRC_A)
+  wahr("H11 formAAdresse liest das Fragment", formAAdresse(SRC_A, null) === FREI)
+  wahr("H11 formAAdresse: data-beneos-src geht vor", formAAdresse(SRC_A, "beneos://a/r/4k/b.webp") === "beneos://a/r/4k/b.webp")
+  wahr("H11 formAAdresse: blob und fehlendes src mit Attribut", formAAdresse("blob:x/1", FREI) === FREI && formAAdresse(null, FREI) === FREI)
+  wahr("H11 formAAdresse: fremdes src ist nicht Form (a)", formAAdresse("https://example.com/a.webp", FREI) === null)
+  wahr("H11 formAAdresse: fremdes Fragment ist nicht Form (a)", formAAdresse(`${PLATZHALTER_BILD}#https://x`, null) === null)
+  wahr("H11 formAAdresse: ein data-beneos-src ohne beneos:// zaehlt nicht", formAAdresse("blob:x/1", "https://example.com/a.webp") === null)
+
+  // Bilddialog (v13 und v14) und image_link (v13) bauen den Knoten neu, ohne
+  // die erhaltenen Attribute. Uebrig bleibt das src.
+  const dialog = `<p>x</p><img src="${SRC_A}" alt="Karte" width="600">`
+  const d = htmlSchluesselfrei(dialog)
+  wahr("H11 Bilddialog: data-beneos-src kommt zurueck", d.html === `<p>x</p><img src="${SRC_A}" data-beneos-src="${FREI}" alt="Karte" width="600">`, d.html)
+  wahr("H11 Bilddialog: als Heilung gezaehlt", d.zahl === 1 && d.heil === 1, JSON.stringify(d))
+  const link = `<a href="https://example.com"><img src="${SRC_A}"></a>`
+  wahr("H11 Bild im Link: data-beneos-src kommt zurueck", htmlSchluesselfrei(link).html.includes(`data-beneos-src="${FREI}"`))
+
+  const kopie = `<img src="blob:https://welt.example/0b7c" data-beneos-src="${FREI}">`
+  wahr("H11 kopiertes Bild mit blob-src: Platzhalter zurueck", htmlSchluesselfrei(kopie).html === `<img src="${SRC_A}" data-beneos-src="${FREI}">`,
+    htmlSchluesselfrei(kopie).html)
+  const ohneSrc = `<img data-beneos-src="${FREI}" alt="k">`
+  wahr("H11 src verworfen: Platzhalter kommt dazu", htmlSchluesselfrei(ohneSrc).html === `<img src="${SRC_A}" data-beneos-src="${FREI}" alt="k">`,
+    htmlSchluesselfrei(ohneSrc).html)
+  const alt = `<img src="${PLATZHALTER_BILD}" data-beneos-src="${FREI}">`
+  wahr("H11 Platzhalter ohne Fragment bekommt es", htmlSchluesselfrei(alt).html === `<img src="${SRC_A}" data-beneos-src="${FREI}">`)
+
+  const nachbar = `<img src="${TOR}">`
+  const fremd = `<img src="https://example.com/a.webp" data-beneos-src="${FREI}">`
+  wahr("H11 fremdes src neben data-beneos-src bleibt bytegleich", htmlSchluesselfrei(fremd + nachbar).html.startsWith(fremd))
+  const fremdFrag = `<img src="${PLATZHALTER_BILD}#https://example.com/x.webp">`
+  wahr("H11 Platzhalter mit fremdem Fragment bleibt bytegleich", htmlSchluesselfrei(fremdFrag + nachbar).html.startsWith(fremdFrag))
+
+  einstellungen[SETTING.key] = ""
+  wahr("H11 ohne Schluessel keine Heilung", htmlSchluesselfrei(dialog).html === dialog)
+  einstellungen[SETTING.key] = KEY
+}
+
+console.log("H12 Robustheit des Tags (Kalt-Review W2)")
+{
+  const gross = htmlSchluesselfrei(`<img alt="a > b" src="${TOR}">`)
+  wahr("H12 '>' in einem Attribut davor: gewandelt", ohneSchluessel(gross.html) && gross.html.includes(`src="${SRC_A}"`) && gross.html.includes('alt="a > b"'), gross.html)
+  const gross2 = htmlSchluesselfrei(`<IMG SRC="${TOR}">`)
+  wahr("H12 Grossschreibung: gewandelt", ohneSchluessel(gross2.html) && gross2.zahl === 1, gross2.html)
+  const nackt = htmlSchluesselfrei(`<img src=${TOR} alt=x>`)
+  wahr("H12 src ohne Anfuehrung: gewandelt", ohneSchluessel(nackt.html) && nackt.html.includes(`src="${SRC_A}"`) && nackt.html.includes("alt=x"), nackt.html)
+  const PFAD_APO = "beneos_assets/x/o'brien.webp"
+  const TOR_APO = assetUrl(REL, "4k", PFAD_APO)
+  const FREI_APO = platzhalterAdresse(REL, "4k", PFAD_APO)
+  const apo = htmlSchluesselfrei(`<img src="${TOR_APO}">`)
+  wahr("H12 Apostroph im Pfad: gewandelt", ohneSchluessel(apo.html) && apo.html.includes(`data-beneos-src="${FREI_APO}"`), apo.html)
+  const satz = htmlSchluesselfrei(`<img src="${TOR}" srcset="${TOR} 2x, ${TOR} 3x">`)
+  wahr("H12 srcset mit Toradresse faellt weg", ohneSchluessel(satz.html) && !satz.html.includes("srcset"), satz.html)
+  const fremdSatz = `<img src="${TOR}" srcset="https://example.com/a.webp 2x">`
+  wahr("H12 fremdes srcset bleibt", htmlSchluesselfrei(fremdSatz).html.includes('srcset="https://example.com/a.webp 2x"'))
+  const lazy = htmlSchluesselfrei(`<img data-src="${TOR}" src="${TOR}">`)
+  wahr("H12 data-src davor: src gewandelt, data-src unberuehrt",
+    lazy.html === `<img data-src="${TOR}" src="${SRC_A}" data-beneos-src="${FREI}">`, lazy.html)
+  wahr("H12 data-src mit Schluessel gezaehlt", lazy.andere === 1, `andere ${lazy.andere}`)
+}
+
+console.log("H13 Entitaeten im Attribut (Kalt-Review W3)")
+{
+  const PFAD_APO = "beneos_assets/x/o'brien.webp"
+  const TOR_APO = assetUrl(REL, "4k", PFAD_APO)
+  const FREI_APO = platzhalterAdresse(REL, "4k", PFAD_APO)
+  const hex = htmlSchluesselfrei(`<img src='${TOR_APO.replace("'", "&#x27;")}'>`)
+  wahr("H13 &#x27; im einfach gefassten src: gewandelt", ohneSchluessel(hex.html) && hex.zahl === 1, hex.html)
+  wahr("H13 und im Wert wieder als Entitaet", hex.html.includes(`data-beneos-src='${FREI_APO.replace("'", "&#39;")}'`), hex.html)
+  const dez = htmlSchluesselfrei(`<img src="${TOR_APO.replace("'", "&#39;")}">`)
+  wahr("H13 &#39; im doppelt gefassten src: gewandelt", ohneSchluessel(dez.html) && dez.html.includes(`data-beneos-src="${FREI_APO}"`), dez.html)
+  const amp = htmlSchluesselfrei(`<img src="${TOR}" alt="a &amp; b">`)
+  wahr("H13 Entitaet in einem anderen Attribut bleibt", amp.html.includes('alt="a &amp; b"'), amp.html)
 }
 
 console.log("H4 video, audio, source: gezaehlt, nicht gewandelt")
@@ -148,11 +226,25 @@ console.log("H8 Aenderung fuer updateSource: nur Geaendertes, eingebettet nach _
   wahr("H8 Videoseite nicht in der Aenderung", !JSON.stringify(aenderung).includes('"p4"'))
   const ohneIds = htmlAenderung({ liste: [{ t: `<img src="${TOR}">` }, { t: "x" }] }).aenderung
   wahr("H8 Liste ohne _id geht ganz", ohneIds?.liste?.length === 2 && ohneIds.liste[1].t === "x")
+  // Kalt-Review W5: eine Liste mit _id UNTER system ist keine eingebettete
+  // Sammlung. Ein Teil davon ersetzte die ganze Liste.
+  const vorschub = htmlAenderung({ system: { advancement: [{ _id: "a1", hint: `<img src="${TOR}">` }, { _id: "a2", hint: "x" }] } }).aenderung
+  wahr("H8 Liste mit _id unter system geht ganz", vorschub?.system?.advancement?.map((a) => a._id).join() === "a1,a2"
+    && vorschub.system.advancement[1].hint === "x", JSON.stringify(vorschub))
+  const tief = htmlAenderung({ items: [{ _id: "i1", system: { teile: [{ _id: "t1", v: `<img src="${TOR}">` }, { _id: "t2", v: "y" }] } }] }).aenderung
+  wahr("H8 eingebettet bleibt Teil, darunter geht ganz", tief?.items?.length === 1 && tief.items[0]._id === "i1"
+    && tief.items[0].system.teile.length === 2, JSON.stringify(tief))
+  const ohneIdOben = htmlAenderung({ rolls: [{ teile: [{ _id: "r1", v: `<img src="${TOR}">` }, { _id: "r2", v: "z" }] }] }).aenderung
+  wahr("H8 Liste ohne _id am Dokument: darunter geht ganz", ohneIdOben?.rolls?.[0]?.teile?.length === 2, JSON.stringify(ohneIdOben))
+  const unterSystem = htmlAenderung({ system: { type: "image", src: TOR } }).aenderung
+  wahr("H8 type und src unter system sind keine Seite", unterSystem === null, JSON.stringify(unterSystem))
 }
 
 console.log("H9 Schreibnetz: Haken je Art, Wirkung beim Update und Anlegen")
 {
   installHtmlNetz()
+  wahr("H9 TableResult, Card und ActiveEffect im Netz (Kalt-Review W4)",
+    ["TableResult", "Card", "ActiveEffect"].every((a) => HTML_ARTEN.includes(a)), HTML_ARTEN.join())
   for (const art of HTML_ARTEN) {
     wahr(`H9 preUpdate${art} und preCreate${art} gesetzt`,
       hakenListe[`preUpdate${art}`]?.length === 1 && hakenListe[`preCreate${art}`]?.length === 1)

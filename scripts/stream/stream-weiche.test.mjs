@@ -682,7 +682,7 @@ console.log("\napplyStreamAddresses(): die Sperre greift nur am Feldnamen")
    * Export, Import).
    */
   gleich("und die Adresse im eingebetteten HTML auch, als Form (a) ohne Schluessel",
-    doku.pages[0].text.content, `<img src="${PLATZHALTER_BILD}" data-beneos-src="${TOR}">`)
+    doku.pages[0].text.content, `<img src="${PLATZHALTER_BILD}#${TOR}" data-beneos-src="${TOR}">`)
   {
     // Ohne Schluessel der Weg von vor stre-T-116: die Toradresse, wie sie das
     // Manifest liefert. Nichts darf an einem Modulupdate verloren gehen.

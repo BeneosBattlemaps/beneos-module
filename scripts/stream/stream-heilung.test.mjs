@@ -108,7 +108,8 @@ gleich("schluesselfreier Hintergrund: nichts wird geschrieben",
 console.log("Die Journalheilung schreibt Form (a)")
 const LOKAL = "beneos_assets/cloud/battlemaps/11_cos_barovia_village/handout.webp"
 const MANIFEST = "beneos_assets/beneos_battlemaps/11_cos_barovia_village/handout.webp"
-const FORM_A = `<img src="${PLATZHALTER_BILD}" data-beneos-src="${platzhalterAdresse(REL, "4k", MANIFEST)}">`
+const FREI_MANIFEST = platzhalterAdresse(REL, "4k", MANIFEST)
+const FORM_A = `<img src="${PLATZHALTER_BILD}#${FREI_MANIFEST}" data-beneos-src="${FREI_MANIFEST}">`
 function journal(seiten) {
   const geschrieben = []
   return {
@@ -143,6 +144,26 @@ const ohneSchluessel = (s) => !String(s).includes(HEUTE) && !String(s).includes(
   gleich("Massstab aus data-beneos-src: Seite in Form (a)", geschrieben[0]?.["text.content"], FORM_A)
 }
 {
+  // Der Bilddialog hat data-beneos-src verworfen; der Massstab steht nur noch
+  // im Fragment des Platzhalters (Kalt-Review, kritisch).
+  const nurFragment = `<img src="${PLATZHALTER_BILD}#${platzhalterAdresse(REL, "4k", PFAD)}">`
+  const { j, geschrieben } = journal([{ id: "t0", text: { content: nurFragment } }, structuredClone(textSeite)])
+  game.journal = [j]
+  await heileJournalGateAdressen()
+  gleich("Massstab aus dem Fragment des Platzhalters: Seite in Form (a)", geschrieben.find((u) => u._id === "t1")?.["text.content"], FORM_A)
+}
+{
+  // Kalt-Review W6: bei schluesselfreiem Massstab schrieb die Heilung einem
+  // Video die Toradresse MIT Schluessel ins HTML. Ein Video geht nie ueber den
+  // Blob-Weg und hat keine Form (a); es bleibt lokal.
+  const video = `<video src="${LOKAL}"></video>`
+  const { j, geschrieben } = journal([{ id: "b1", src: platzhalterAdresse(REL, "4k", PFAD) },
+    { id: "t1", text: { content: video + `<img src="${LOKAL}">` } }])
+  game.journal = [j]
+  await heileJournalGateAdressen()
+  gleich("Massstab beneos://: ein Video bleibt lokal, das Bild wird Form (a)", geschrieben[0]?.["text.content"], video + FORM_A)
+}
+{
   const { j, geschrieben } = journal([{ id: "b1", src: "https://gate.alt.example/a/" + ALT + "/" + REL + "/4k/x.webp" }, structuredClone(textSeite)])
   game.journal = [j]
   const b = await heileJournalGateAdressen()
@@ -172,7 +193,7 @@ const ohneSchluessel = (s) => !String(s).includes(HEUTE) && !String(s).includes(
 }
 
 console.log(`\n${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
-const ERWARTET = 14
+const ERWARTET = 16
 if (aussagen !== ERWARTET) {
   console.log(`ROT erwartet ${ERWARTET} Aussagen, gezaehlt ${aussagen}`)
   process.exit(1)

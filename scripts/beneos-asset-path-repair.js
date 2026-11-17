@@ -11,7 +11,7 @@
  * GM-only writes. Idempotent via scene flag + per-update prefix equality.
  */
 import { schluesselfreiAdresse, leinwandAdresse, streamKey } from "./stream/stream-settings.mjs";
-import { htmlSchluesselfrei } from "./stream/stream-html.mjs";
+import { htmlSchluesselfrei, formAAdresse } from "./stream/stream-html.mjs";
 
 const MODULE_ID = "beneos-module";
 const ASSET_MARKER = "beneos_assets/";
@@ -1309,7 +1309,9 @@ export async function heileJournalGateAdressen({ trocken = false } = {}) {
       const html = page.text?.content;
       if (typeof html !== "string") continue;
       for (const treffer of [...html.matchAll(HTML_SRC_RE), ...html.matchAll(DATA_SRC_RE)]) {
-        praefix = _gatePraefix(treffer[2]);
+        // Ein `src` in Form (a) traegt die Adresse im Fragment, auch wenn der
+        // Bilddialog `data-beneos-src` verworfen hat.
+        praefix = _gatePraefix(treffer[2]) ?? _gatePraefix(formAAdresse(treffer[2], null));
         if (praefix) break;
       }
       if (praefix) break;
@@ -1325,6 +1327,10 @@ export async function heileJournalGateAdressen({ trocken = false } = {}) {
       const neu = html.replace(HTML_SRC_RE, (ganz, anfuehrung, src) => {
         const schluessel = _manifestSchluessel(stripLeadSlashLocal(src));
         if (!schluessel) return ganz;
+        // Bei schluesselfreiem Massstab nur Bilder: ein Video, ein Klang, eine
+        // Quelle hat keine Form (a) und behielte sonst die Toradresse MIT
+        // Schluessel im HTML (Kalt-Review W6). Sie bleiben lokal, wie bisher.
+        if (schluesselfrei && !/^<img\b/i.test(ganz)) return ganz;
         // Erst die Toradresse wie bisher; aus der schluesselfreien Form baut
         // `leinwandAdresse` sie mit dem Schluessel von heute. Gelingt das nicht,
         // bleibt das Bild stehen: ein `src="beneos://..."` verwirft die

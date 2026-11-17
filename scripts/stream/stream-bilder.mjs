@@ -67,6 +67,7 @@
 import { istPlatzhalter, assetUrl, streamKey, streamMode, zerlegeAdresse, leinwandAdresse } from "./stream-settings.mjs"
 import { ours, sammelSchluessel } from "./stream-fetch.mjs"
 import { reportFailure } from "./stream-report.mjs"
+import { formAAdresse } from "./stream-html.mjs"
 
 /**
  * Blob-Adressen je Toradresse. **Kein Vorrat**: das Wort ist im Bestand fuer das
@@ -279,23 +280,28 @@ function zuTauschende(wurzel, nurFormA = false) {
   let uebersprungen = 0
   for (const el of wurzel.querySelectorAll("img")) {
     const src = el.getAttribute("src")
-    if (typeof src !== "string" || !src) continue
-    if (src.startsWith("blob:")) {
+    const daten = el.hasAttribute?.("data-beneos-src") ? el.getAttribute("data-beneos-src") : null
+    if (typeof src === "string" && src.startsWith("blob:")) {
       // Arbeit eines frueheren Durchlaufs, die noch sichtbar ist. Sie zaehlt als
       // weiter gehalten, sonst gibt dieser Durchlauf sie frei und das Bild im
       // offenen Fenster stirbt.
       const adresse = blobZuAdresse.get(src)
-      if (adresse) schonGesetzt.add(adresse)
-      continue
+      if (adresse) { schonGesetzt.add(adresse); continue }
+      // Ein fremdes blob: mit Attribut ist ein kopiertes Bild aus einer
+      // anderen Anzeige; getauscht wird es unten nach dem Attribut.
+      if (!daten) continue
     }
-    // FORM (a), stre-T-116: im HTML steht ein neutraler Platzhalter in `src`
-    // und die schluesselfreie Adresse in `data-beneos-src`. Getauscht wird
-    // dann diese. Das Attribut bleibt am Element; einen zweiten Render
-    // erkennt `blobZuAdresse` oben.
-    const formA = el.hasAttribute?.("data-beneos-src") ? el.getAttribute("data-beneos-src") : null
-    // Bei Modus aus nur Form (a): eine alte Toradresse lud dort schon vor
-    // stre-T-116 direkt, und dabei bleibt es.
-    if (nurFormA && !formA) continue
+    // FORM (a), stre-T-116: im HTML steht der Platzhalter in `src` und die
+    // schluesselfreie Adresse in `data-beneos-src`, als Rueckweg auch im
+    // Fragment des Platzhalters (`formAAdresse`). Getauscht wird dann diese.
+    // Das Attribut bleibt am Element; einen zweiten Render erkennt
+    // `blobZuAdresse` oben.
+    const formA = formAAdresse(src, daten)
+    if (!formA && (typeof src !== "string" || !src)) continue
+    // Bei Modus aus nur Form (a) und `beneos://`, etwa das `src` einer
+    // Bildseite (Kalt-Review W1): beides laedt der Browser nicht. Eine alte
+    // Toradresse lud dort schon vor stre-T-116 direkt, und dabei bleibt es.
+    if (nurFormA && !formA && !istPlatzhalter(src)) continue
     const quelle = formA ?? src
     if (!istUnsere(quelle)) continue
     if (imEditor(el)) { uebersprungen++; continue }
@@ -305,7 +311,9 @@ function zuTauschende(wurzel, nurFormA = false) {
     // Bearbeitungsmodus). Den Schluessel nimmt das Schreibnetz in
     // `stream-leinwand.mjs` wieder heraus.
     if (el.hasAttribute?.("data-edit")) { uebersprungen++; continue }
-    elemente.push({ el, adresse: quelle, formA: !!formA })
+    // `formA` heisst hier: die Adresse ist schluesselfrei und laedt nicht
+    // direkt; der Fehlerzweig braucht dann die Toradresse.
+    elemente.push({ el, adresse: quelle, formA: !!formA || istPlatzhalter(quelle) })
   }
   return { elemente, schonGesetzt, uebersprungen }
 }
@@ -556,7 +564,9 @@ export function installStreamBilder() {
 function bildAnsicht(node) {
   const { dom } = globalThis.ProseMirror.DOMSerializer.renderSpec(globalThis.document, node.type.spec.toDOM(node))
   const halter = { weg: false }
-  const adresse = dom?.getAttribute?.("data-beneos-src")
+  // Nach dem Bilddialog fehlt das Attribut; die Adresse steht dann nur noch im
+  // Fragment des Platzhalters.
+  const adresse = formAAdresse(dom?.getAttribute?.("src"), dom?.getAttribute?.("data-beneos-src"))
   let gehalten = false
   if (adresse && streamKey() && istUnsere(adresse)) {
     blobFuer(adresse).then((blobAdresse) => {

@@ -45,64 +45,193 @@ import { schluesselfreiAdresse, streamKey, streamHost } from "./stream-settings.
 export const PLATZHALTER_BILD =
   "data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%221%22%20height=%221%22/%3E"
 
-// Ein ganzes Bild-Tag. `src` wird danach IM Tag gesucht, und zwar nur als
-// eigenes Attribut: ein `\bsrc` traefe auch das `src` in `data-beneos-src`,
-// und die gierige Form `[^>]*\bsrc` aus `stream-install.mjs` faengt das
-// LETZTE der beiden.
-const IMG_RE = /<img\b[^>]*>/gi
-const SRC_RE = /(?<![\w-])src\s*=\s*(["'])([^"']*)\1/i
-const DATA_RE = /(?<![\w-])data-beneos-src\s*=\s*(["'])([^"']*)\1/i
-const ANDERE_RE = /<(?:video|source|audio)\b[^>]*>/gi
-
 /**
- * Lohnt die Regex? Haelt sie von den gewoehnlichen Feldwerten fern, die nie
- * HTML mit einer Toradresse sind.
+ * Das `src` der Form (a): der Platzhalter, dahinter die schluesselfreie Adresse
+ * als Fragment.
+ *
+ * WARUM DAS FRAGMENT. Zwei Editorwege bauen den Bildknoten neu und werfen
+ * dabei die erhaltenen Attribute weg, `data-beneos-src` eingeschlossen: der
+ * Bilddialog (`_insertImagePrompt`, v13 und v14) und das verlinkte Bild
+ * (`image_link`, v13). Uebrig bleibt nur das `src`. Ein fuer alle Bilder
+ * gleicher Platzhalter koennte danach nicht mehr sagen, welches Bild gemeint
+ * war; mit dem Fragment setzt das Schreibnetz das Attribut beim Speichern
+ * zurueck (Kalt-Review 17.11.2026, kritisch). Das Aussehen aendert das
+ * Fragment nicht, ein Fragment einer `data:`-Adresse laedt nichts.
  */
-function kandidat(text) {
-  if (typeof text !== "string" || !text.includes("<") || !text.includes("src")) return false
-  const host = streamHost()
-  return !!host && text.includes(host)
+export function platzhalterMit(frei) {
+  return `${PLATZHALTER_BILD}#${frei}`
 }
 
 /**
- * Wandelt jede Bild-Toradresse mit Schluessel in Form (a). Rein bis auf das
- * Lesen der Einstellungen.
+ * Die schluesselfreie Adresse eines Bildes in Form (a), oder null.
  *
- * Alle anderen Attribute bleiben zeichengleich, auch `width` und `height`;
- * getauscht wird nur der Wert von `src`, und `data-beneos-src` kommt dazu oder
- * wird nachgezogen. Eine fremde Adresse oder eine Adresse unter fremder Basis
- * laesst `schluesselfreiAdresse` stehen, und damit bleibt das Tag bytegleich.
+ * `data-beneos-src` geht vor, das Fragment des Platzhalters ist der Rueckweg,
+ * wenn ein Editorweg das Attribut verloren hat. Ein kopiertes Bild aus einer
+ * Anzeige traegt ein `blob:` oder gar kein `src` mehr; dann zaehlt nur das
+ * Attribut. Jedes andere `src` ist nicht Form (a), auch wenn ein Attribut
+ * daneben steht: dann hat jemand das Bild bewusst getauscht.
+ */
+export function formAAdresse(src, daten) {
+  const s = typeof src === "string" ? src : ""
+  const d = typeof daten === "string" && daten.startsWith("beneos://") ? daten : null
+  if (s.startsWith(PLATZHALTER_BILD)) {
+    if (d) return d
+    const rest = s.slice(PLATZHALTER_BILD.length)
+    return rest.startsWith("#beneos://") ? rest.slice(1) : null
+  }
+  if (!s || s.startsWith("blob:")) return d
+  return null
+}
+
+// Ein ganzes Tag, Anfuehrungszeichen beachtet: ein `>` in einem Attributwert
+// beendet es nicht (Kalt-Review W2).
+const IMG_RE = /<img\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi
+const ANDERE_RE = /<(?:video|source|audio)\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi
+// Ein Attribut: Name, wahlweise mit Wert in doppelten, einfachen oder ohne
+// Anfuehrungszeichen. Gelesen wird nach Namen, nie nach Teilzeichenkette;
+// sonst traefe `src` auch `data-src` oder `data-beneos-src`.
+const ATTR_RE = /([^\s"'>\/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g
+
+/** Die Attribute eines Tags, mit Lage im Tag und entschluesseltem Wert. */
+function attribute(tag) {
+  const liste = []
+  const ende = tag.length - 1
+  // Hinter dem Tagnamen beginnen, sonst zaehlte er als Attribut.
+  ATTR_RE.lastIndex = /^<[a-z]+/i.exec(tag)?.[0].length ?? ende
+  let m
+  while ((m = ATTR_RE.exec(tag)) && m.index < ende) {
+    const roh = m[2] ?? m[3] ?? m[4] ?? ""
+    liste.push({
+      name: m[1].toLowerCase(),
+      anfang: m.index,
+      ende: m.index + m[0].length,
+      anfuehrung: m[2] !== undefined ? '"' : m[3] !== undefined ? "'" : "",
+      wert: entschluesseln(roh),
+    })
+  }
+  return liste
+}
+
+const BENANNT = { amp: "&", quot: '"', apos: "'", lt: "<", gt: ">" }
+/** HTML-Entitaeten eines Attributwertes (Kalt-Review W3). */
+function entschluesseln(s) {
+  if (!s.includes("&")) return s
+  return s.replace(/&(?:#(\d+)|#x([0-9a-f]+)|(amp|quot|apos|lt|gt));/gi, (ganz, dez, hex, name) => {
+    if (name) return BENANNT[name.toLowerCase()]
+    const code = dez ? Number(dez) : parseInt(hex, 16)
+    try { return String.fromCodePoint(code) } catch (_) { return ganz }
+  })
+}
+
+/** Ein Attribut zum Schreiben, mit der Anfuehrung des Bestandes. */
+function attributText(name, wert, anfuehrung) {
+  const a = anfuehrung || '"'
+  let w = wert.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+  w = a === '"' ? w.replace(/"/g, "&quot;") : w.replace(/'/g, "&#39;")
+  return `${name}=${a}${w}${a}`
+}
+
+/** Traegt ein `srcset` eine Toradresse, die sich wandeln liesse? */
+function srcsetMitTor(wert) {
+  return wert.split(",").some((teil) => {
+    const adresse = teil.trim().split(/\s+/)[0]
+    return !!adresse && schluesselfreiAdresse(adresse) !== adresse
+  })
+}
+
+/**
+ * Lohnt das Zerlegen? Haelt es von den gewoehnlichen Feldwerten fern, die nie
+ * HTML mit einer Toradresse oder mit Form (a) sind.
+ */
+function kandidat(text) {
+  // `src` ohne Ruecksicht auf Gross- und Kleinschreibung: `<IMG SRC=...>` ist
+  // gueltiges HTML.
+  if (typeof text !== "string" || !text.includes("<") || !/src/i.test(text)) return false
+  const host = streamHost()
+  return (!!host && text.includes(host)) || text.includes("data-beneos-src") || text.includes(PLATZHALTER_BILD)
+}
+
+/**
+ * Ein Bild-Tag in Form (a). Rueckgabe ohne Aenderung, wenn nichts zu tun ist.
+ *
+ * Zwei Faelle: eine Toradresse mit Schluessel wird gewandelt; ein Bild, das
+ * schon Form (a) ist, aber ein Editorweg beschaedigt hat, wird geheilt (Attribut
+ * aus dem Fragment, Platzhalter statt `blob:` oder fehlendem `src`).
+ */
+function bildTag(tag) {
+  const attr = attribute(tag)
+  const src = attr.find((a) => a.name === "src")
+  const daten = attr.find((a) => a.name === "data-beneos-src")
+  let frei = null
+  let geheilt = false
+  if (src) {
+    const f = schluesselfreiAdresse(src.wert)
+    if (f !== src.wert) frei = f
+  }
+  if (!frei) {
+    frei = formAAdresse(src?.wert ?? null, daten?.wert ?? null)
+    if (!frei) return { tag, zahl: 0, heil: 0 }
+    if (src?.wert === platzhalterMit(frei) && daten?.wert === frei) return { tag, zahl: 0, heil: 0 }
+    geheilt = true
+  }
+  const anfuehrung = src?.anfuehrung || daten?.anfuehrung || '"'
+  const srcText = attributText("src", platzhalterMit(frei), anfuehrung)
+  const datenText = attributText("data-beneos-src", frei, daten?.anfuehrung || anfuehrung)
+  // Ersetzungen nach Lage im Tag, von hinten, damit die Lagen davor gelten.
+  const tausch = []
+  if (daten) tausch.push([daten.anfang, daten.ende, datenText])
+  if (src) tausch.push([src.anfang, src.ende, daten ? srcText : `${srcText} ${datenText}`])
+  else tausch.push([4, 4, ` ${srcText}`])
+  // Ein `srcset` mit Toradresse zoege der Browser dem `src` vor, und der
+  // Schluessel bliebe im HTML. Es faellt weg (Kalt-Review W2).
+  const satz = attr.find((a) => a.name === "srcset")
+  if (satz && srcsetMitTor(satz.wert)) {
+    let anfang = satz.anfang
+    while (anfang > 0 && /\s/.test(tag[anfang - 1])) anfang--
+    tausch.push([anfang, satz.ende, ""])
+  }
+  tausch.sort((a, b) => b[0] - a[0])
+  let neu = tag
+  for (const [anfang, ende, text] of tausch) neu = neu.slice(0, anfang) + text + neu.slice(ende)
+  return { tag: neu, zahl: 1, heil: geheilt ? 1 : 0 }
+}
+
+/**
+ * Wandelt jede Bild-Toradresse mit Schluessel in Form (a) und heilt
+ * beschaedigte Form (a). Rein bis auf das Lesen der Einstellungen.
+ *
+ * Alle anderen Attribute bleiben zeichengleich, auch `width` und `height`.
+ * Eine fremde Adresse oder eine Adresse unter fremder Basis laesst
+ * `schluesselfreiAdresse` stehen, und damit bleibt das Tag bytegleich.
  *
  * `<video>`, `<audio>` und `<source>` werden nicht gewandelt: ein Bild als
  * Platzhalter spielte dort nicht, und keines davon geht ueber den Blob-Weg.
  * Gefundene werden in `andere` gezaehlt, damit sie sichtbar bleiben (Bestand
- * am 17.11.2026: 0).
+ * am 17.11.2026: 0), ebenso eine Toradresse in einem anderen Attribut eines
+ * Bildes, etwa `data-src`.
  *
- * @returns {{html: string, zahl: number, andere: number}}
+ * @returns {{html: string, zahl: number, heil: number, andere: number}}
+ *   zahl: geaenderte Bilder, heil: davon geheilte
  */
 export function htmlSchluesselfrei(html) {
-  if (!streamKey() || !kandidat(html)) return { html, zahl: 0, andere: 0 }
+  if (!streamKey() || !kandidat(html)) return { html, zahl: 0, heil: 0, andere: 0 }
   let zahl = 0
+  let heil = 0
   let andere = 0
   const neu = html.replace(IMG_RE, (tag) => {
-    const src = SRC_RE.exec(tag)
-    if (!src) return tag
-    const [attribut, anfuehrung, adresse] = src
-    const frei = schluesselfreiAdresse(adresse)
-    if (frei === adresse) return tag
-    zahl++
-    const neuesSrc = `src=${anfuehrung}${PLATZHALTER_BILD}${anfuehrung}`
-    const daten = `data-beneos-src=${anfuehrung}${frei}${anfuehrung}`
-    let ergebnis = tag.replace(attribut, neuesSrc)
-    if (DATA_RE.test(ergebnis)) return ergebnis.replace(DATA_RE, daten)
-    // Direkt hinter dem neuen `src`, damit beide zusammen lesbar bleiben.
-    return ergebnis.replace(neuesSrc, `${neuesSrc} ${daten}`)
+    const r = bildTag(tag)
+    zahl += r.zahl
+    heil += r.heil
+    for (const a of attribute(r.tag)) {
+      if (a.name !== "src" && a.name !== "srcset" && a.wert && schluesselfreiAdresse(a.wert) !== a.wert) andere++
+    }
+    return r.tag
   })
   for (const tag of html.match(ANDERE_RE) ?? []) {
-    const src = SRC_RE.exec(tag)
-    if (src && schluesselfreiAdresse(src[2]) !== src[2]) andere++
+    const src = attribute(tag).find((a) => a.name === "src")
+    if (src && schluesselfreiAdresse(src.wert) !== src.wert) andere++
   }
-  return { html: zahl ? neu : html, zahl, andere }
+  return { html: zahl ? neu : html, zahl, heil, andere }
 }
 
 /**
@@ -156,11 +285,22 @@ export function htmlTiefSchluesselfrei(wert, _tiefe = 0) {
  */
 export function htmlAenderung(quelle) {
   const zaehler = { zahl: 0 }
-  const d = differenz(quelle, zaehler, 0)
+  const d = differenz(quelle, zaehler, 0, true)
   return { aenderung: d === undefined ? null : d, zahl: zaehler.zahl }
 }
 
-function differenz(wert, zaehler, tiefe) {
+/*
+ * `dokument`: der Wert ist ein Dokument (die Wurzel, oder ein Element einer
+ * eingebetteten Sammlung) bzw. eine Liste direkt an einem Dokument.
+ *
+ * Teilaenderungen nach `_id` gibt es NUR fuer Listen direkt an einem Dokument,
+ * denn nur dort stehen Foundrys eingebettete Sammlungen (`pages`, `items`,
+ * `effects`, `results`, `cards`), die nach `_id` zusammenfuehren. Eine Liste
+ * mit `_id` tiefer, etwa `system.advancement`, ist ein gewoehnliches Feld; ein
+ * Teil davon ersetzte die ganze Liste (Kalt-Review W5). Aus demselben Grund
+ * gilt `type` mit `src` nur an einem Dokument als Seite.
+ */
+function differenz(wert, zaehler, tiefe, dokument) {
   if (tiefe > 40) return undefined
   if (typeof wert === "string") {
     if (!kandidat(wert)) return undefined
@@ -170,21 +310,25 @@ function differenz(wert, zaehler, tiefe) {
     return r.html
   }
   if (Array.isArray(wert)) {
-    const teile = wert.map((e) => differenz(e, zaehler, tiefe + 1))
-    if (teile.every((t) => t === undefined)) return undefined
     const ids = wert.map((e) => e?._id)
-    const eindeutig = ids.length > 0 && ids.every((id) => typeof id === "string" && id) && new Set(ids).size === ids.length
+    const eindeutig = dokument && ids.length > 0 && ids.every((id) => typeof id === "string" && id) && new Set(ids).size === ids.length
+    // Nur die Elemente einer eingebetteten Sammlung sind Dokumente. Eine Liste,
+    // die ganz hinausgeht, geht auch darunter ganz.
+    const teile = wert.map((e) => differenz(e, zaehler, tiefe + 1, eindeutig))
+    if (teile.every((t) => t === undefined)) return undefined
     if (eindeutig) return teile.flatMap((t, i) => (t === undefined ? [] : [{ ...t, _id: ids[i] }]))
     return wert.map((e, i) => (teile[i] === undefined ? kopie(e) : (isObj(e) ? zusammen(kopie(e), teile[i]) : teile[i])))
   }
   if (isObj(wert)) {
     const aus = {}
     for (const [k, v] of Object.entries(wert)) {
-      const t = differenz(v, zaehler, tiefe + 1)
+      const t = differenz(v, zaehler, tiefe + 1, dokument && Array.isArray(v))
       if (t !== undefined) aus[k] = t
     }
-    const src = seitenSrc(wert.type, wert.src)
-    if (src !== undefined) { aus.src = src; zaehler.zahl++ }
+    if (dokument) {
+      const src = seitenSrc(wert.type, wert.src)
+      if (src !== undefined) { aus.src = src; zaehler.zahl++ }
+    }
     return Object.keys(aus).length ? aus : undefined
   }
   return undefined
@@ -202,10 +346,13 @@ function zusammen(ziel, teil) {
 /**
  * Die Arten, deren HTML das Schreibnetz und der Altseiten-Lauf pruefen: jede
  * Art mit HTML-Feldern, die der Installer schreibt, dazu der Chat als
- * Vorsorge (Bestand 0). Eingebettete Seiten, Gegenstaende und Effekte laufen
- * ueber ihr Elterndokument mit.
+ * Vorsorge (Bestand 0). Eingebettete Dokumente feuern beim eigenen Anlegen und
+ * Aendern ihre eigenen Haken; deshalb stehen Tabellenergebnisse, Karten und
+ * Effekte mit HTML-Feldern hier selbst (Kalt-Review W4). Der Altseiten-Lauf
+ * nimmt sie ueber ihr Elterndokument mit.
  */
-export const HTML_ARTEN = Object.freeze(["JournalEntry", "JournalEntryPage", "Actor", "Item", "ChatMessage", "RollTable", "Cards"])
+export const HTML_ARTEN = Object.freeze(["JournalEntry", "JournalEntryPage", "Actor", "Item", "ChatMessage", "RollTable",
+  "TableResult", "Cards", "Card", "ActiveEffect"])
 
 /**
  * Das Schreibnetz fuer HTML (Messung M5 vom 17.11.2026 war rot: eine

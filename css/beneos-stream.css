@@ -16,12 +16,18 @@
  * Pixel und waere unsichtbar. Mit `width` und `height` aus dem Bestand
  * (587 von 858 Bildern der Pruefwelt, gemessen 17.11.2026) haelt er die Flaeche
  * des spaeteren Bildes frei, und nichts springt beim Tausch.
+ *
+ * Der zweite Selektor trifft den Platzhalter am `src`: nach dem Bilddialog des
+ * Editors fehlt `data-beneos-src`, bis das Schreibnetz es beim Speichern aus
+ * dem Fragment zuruecksetzt (stre-T-116, Kalt-Review).
  */
-img[data-beneos-src]:not([src^="blob:"]) {
+img[data-beneos-src]:not([src^="blob:"]),
+img[src^="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%221%22%20height=%221%22/%3E"] {
   background: var(--bc-card-hover, #231f18);
 }
 
-img[data-beneos-src]:not([src^="blob:"]):not([height]) {
+img[data-beneos-src]:not([src^="blob:"]):not([height]),
+img[src^="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%221%22%20height=%221%22/%3E"]:not([height]) {
   min-width: 4rem;
   min-height: 4rem;
 }

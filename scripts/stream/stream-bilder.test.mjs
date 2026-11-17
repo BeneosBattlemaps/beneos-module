@@ -194,18 +194,30 @@ gleich("das erste Fenster zu: die Adresse des zweiten bleibt gehalten", bilder.b
 await haken.rufe("closeJournalEntrySheet", zweitFenster.app)
 gleich("der close-Haken gibt beide frei", bilder.bilderBlobStand().eintraege, 0)
 
-// Gegenwert: Stream aus, derselbe Haken fasst nichts an.
+// Gegenwert: Stream aus. Der Riegel ist seit stre-T-116 der Schluessel, nicht
+// der Modus (Vorgabe 6, 512b12d): bei Modus aus MIT Schluessel bleibt die
+// Toradresse wie vorher, die Platzhalterform `beneos://` wird aber getauscht,
+// denn sie laedt der Browser nicht (Kalt-Review W1; vorher verlangte diese
+// Probe, dass auch sie stehen bleibt). Ohne Schluessel fasst der Haken nichts an.
 einstellungen["beneos-stream-mode"] = false
 const b4 = bildElement(tor)
 // Die Platzhalterform haengt nicht an `ours()`, also misst nur sie den Riegel
-// "Stream aus" selbst.
+// selbst.
 const b5 = bildElement(platz)
+einstellungen["beneos-stream-key"] = ""
 const f2 = fenster([b4, b5])
 await haken.rufe("renderJournalEntrySheet", f2.app, f2.wurzel)
 await new Promise((r) => setTimeout(r, 20))
-gleich("bei ausgeschaltetem Stream bleibt die Toradresse", b4.getAttribute("src"), tor)
-gleich("bei ausgeschaltetem Stream bleibt auch die Platzhalterform", b5.getAttribute("src"), platz)
+gleich("ohne Schluessel bleibt die Toradresse", b4.getAttribute("src"), tor)
+gleich("ohne Schluessel bleibt auch die Platzhalterform", b5.getAttribute("src"), platz)
 gleich("und es wird nichts abgerufen", nimmAbrufe().length, 0)
+einstellungen["beneos-stream-key"] = SCHLUESSEL
+await haken.rufe("renderJournalEntrySheet", f2.app, f2.wurzel)
+await warte(b5)
+gleich("Modus aus mit Schluessel: die Toradresse bleibt", b4.getAttribute("src"), tor)
+gleich("Modus aus mit Schluessel: die Platzhalterform wird getauscht", String(b5.getAttribute("src")).startsWith("blob:"), true)
+await haken.rufe("closeJournalEntrySheet", f2.app)
+nimmAbrufe()
 einstellungen["beneos-stream-mode"] = true
 
 /*
@@ -322,6 +334,67 @@ const handout = settings.platzhalterAdresse("beneos_bm_0042", "4k", "map_assets/
   await haken.rufe("closeJournalEntrySheet", f.app)
   nimmAbrufe()
 }
+{
+  // Kalt-Review, kritisch: der Bilddialog verwirft data-beneos-src, uebrig
+  // bleibt das src mit der Adresse im Fragment. Die Anzeige liest sie dort.
+  const a = bildElement(`${PLATZHALTER_BILD}#${handout}`)
+  const f = fenster([a])
+  nimmAbrufe()
+  await haken.rufe("renderJournalEntrySheet", f.app, f.wurzel)
+  await warte(a)
+  gleich("Fragment ohne data-beneos-src: das Bild wird getauscht", String(a.getAttribute("src")).startsWith("blob:"), true)
+  gleich("Fragment ohne data-beneos-src: abgerufen wird die Toradresse von heute",
+    nimmAbrufe().map((x) => x.adresse).join(" "), settings.assetUrl("beneos_bm_0042", "4k", "map_assets/handout.webp"))
+  await haken.rufe("closeJournalEntrySheet", f.app)
+}
+{
+  // Ein kopiertes Bild: das src ist verworfen oder ein fremdes blob:, das
+  // Attribut ist geblieben. Getauscht wird nach dem Attribut.
+  const ohneSrc = formA(handout)
+  ohneSrc.setAttribute("src", "")
+  const fremdBlob = formA(handout)
+  fremdBlob.setAttribute("src", "blob:https://anderswo.example/9f1")
+  const f = fenster([ohneSrc, fremdBlob])
+  await haken.rufe("renderJournalEntrySheet", f.app, f.wurzel)
+  await warte(ohneSrc)
+  await warte(fremdBlob)
+  gleich("kopiertes Bild ohne src: getauscht", String(ohneSrc.getAttribute("src")).startsWith("blob:"), true)
+  gleich("kopiertes Bild mit fremdem blob: getauscht", fremdBlob.getAttribute("src") !== "blob:https://anderswo.example/9f1"
+    && String(fremdBlob.getAttribute("src")).startsWith("blob:"), true)
+  gleich("fremdes src neben data-beneos-src bleibt", await (async () => {
+    const b = formA(handout)
+    b.setAttribute("src", "https://example.com/eigen.webp")
+    const g = fenster([b])
+    await haken.rufe("renderJournalEntrySheet", g.app, g.wurzel)
+    await new Promise((r) => setTimeout(r, 20))
+    await haken.rufe("closeJournalEntrySheet", g.app)
+    return b.getAttribute("src")
+  })(), "https://example.com/eigen.webp")
+  await haken.rufe("closeJournalEntrySheet", f.app)
+  nimmAbrufe()
+}
+{
+  // Kalt-Review W1: bei Modus aus zeigt eine Bildseite ihr src ueber das Blatt.
+  // Seit pages[].src schluesselfrei ist, steht dort beneos://, und das laedt
+  // der Browser nicht. Ein beneos:// wird also auch bei Modus aus getauscht.
+  einstellungen["beneos-stream-mode"] = false
+  const seite = bildElement(handout)
+  const f = fenster([seite])
+  await haken.rufe("renderJournalEntryPageSheet", f.app, f.wurzel)
+  await warte(seite)
+  gleich("Modus aus: eine Bildseite mit beneos:// wird getauscht", String(seite.getAttribute("src")).startsWith("blob:"), true)
+  await haken.rufe("closeJournalEntryPageSheet", f.app)
+  const kaputt = settings.platzhalterAdresse("beneos_bm_0042", "4k", "map_assets/kaputt.webp")
+  const seiteKaputt = bildElement(kaputt)
+  const g = fenster([seiteKaputt])
+  await haken.rufe("renderJournalEntryPageSheet", g.app, g.wurzel)
+  for (let i = 0; i < 20 && seiteKaputt.getAttribute("src") === kaputt; i++) await new Promise((r) => setTimeout(r, 5))
+  gleich("Modus aus: scheitert der Abruf einer Bildseite, laedt die Toradresse direkt",
+    seiteKaputt.getAttribute("src"), settings.assetUrl("beneos_bm_0042", "4k", "map_assets/kaputt.webp"))
+  await haken.rufe("closeJournalEntryPageSheet", g.app)
+  einstellungen["beneos-stream-mode"] = true
+  nimmAbrufe()
+}
 
 // ===========================================================================
 abschnitt("Editor, stre-T-116: das echte Bild nur in der Ansicht, nie im Dokument")
@@ -372,6 +445,13 @@ abschnitt("Editor, stre-T-116: das echte Bild nur in der Ansicht, nie im Dokumen
     const ohne = fabrik(knoten(null))
     await new Promise((r) => setTimeout(r, 20))
     gleich("Editor: ein Bild ohne data-beneos-src bleibt, wie es ist", ohne.dom.getAttribute("src"), PLATZHALTER_BILD)
+    // Nach dem Bilddialog traegt der Knoten nur noch das src mit Fragment.
+    const nachDialog = { attrs: { src: `${PLATZHALTER_BILD}#${handout}`, alt: "", _preserve: {} }, type: knoten(null).type }
+    const ansichtDialog = fabrik(nachDialog)
+    await warte(ansichtDialog.dom)
+    gleich("Editor: nach dem Bilddialog zeigt die Ansicht ein Blob aus dem Fragment",
+      String(ansichtDialog.dom.getAttribute("src")).startsWith("blob:"), true)
+    ansichtDialog.destroy?.()
     nimmAbrufe()
   }
   einstellungen["beneos-stream-key"] = ""
