@@ -142,7 +142,11 @@ Hooks.once('ready', () => {
     // user is logged OUT (free stays click-to-login). Re-render the browser if
     // it is already open when the lists arrive.
     game.beneos?.cloud?.loadPublicAllowlists?.().then(() => {
-      try { game.beneos?.cloudWindowV2?.render?.({ parts: ["results"] }); } catch (e) { /* window not open */ }
+      // The try covers a synchronous throw only; render is async (stre-T-125).
+      try {
+        Promise.resolve(game.beneos?.cloudWindowV2?.render?.({ parts: ["results"] }))
+          .catch((e) => console.warn("Beneos | results re-render failed:", e));
+      } catch (e) { /* window not open */ }
     }).catch((e) => console.warn("Beneos | public allowlists load failed:", e));
   }).catch(e => {
     console.warn("Beneos | databaseHolder eager load failed:", e);
@@ -222,8 +226,9 @@ Hooks.once('ready', () => {
   if (game.settings.get(BeneosUtility.moduleID(), "beneos-reload-search-engine")) {
     setTimeout(() => {
       game.settings.set(BeneosUtility.moduleID(), "beneos-reload-search-engine", false)
-        .catch((e) => console.warn("Beneos | search engine reopen failed:", e))
+        .catch((e) => console.warn("Beneos | search engine reload flag reset failed:", e))
       new BeneosCloudWindowV2().render({ force: true })
+        .catch((e) => console.warn("Beneos | search engine reopen failed:", e))
     }, 4000)
   }
 

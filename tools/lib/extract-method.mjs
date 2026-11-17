@@ -166,6 +166,11 @@ export function extractHaken(text, name, { kennung, minZeilen = 1, maxZeilen = 4
   if (!/^(async\s+)?(function\s*\w*\s*\(|\([^)]*\)\s*=>|\w+\s*=>)/.test(cut)) {
     throw new Error(`Der Schnitt des Hakens ${name} beginnt nicht mit einer Signatur`)
   }
+  // Die Klammerzaehlung kennt keine Zeichenketten. Eine Klammer darin kuerzt
+  // den Schnitt; das faengt die Syntaxpruefung, statt dass er still misst.
+  try { new Function(`return (${cut})`) } catch (e) {
+    throw new Error(`Der Schnitt des Hakens ${name} ist kein gueltiger Ausdruck: ${e.message}`)
+  }
   const zeilen = cut.split("\n").length
   if (zeilen < minZeilen || zeilen > maxZeilen) {
     throw new Error(`Der Schnitt des Hakens ${name} hat ${zeilen} Zeilen, erwartet waren ${minZeilen} bis ${maxZeilen}.`)

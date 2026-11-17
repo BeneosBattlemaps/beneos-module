@@ -3733,7 +3733,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       const b = document.createElement("button")
       b.type = "button"
       b.textContent = text
-      b.addEventListener("click", async () => { menu.remove(); await fn() })
+      // Der Browser wartet den Klick nicht ab: der Fehler wird hier gefangen (stre-T-125).
+      b.addEventListener("click", () => {
+        menu.remove()
+        Promise.resolve().then(fn).catch((e) => console.warn("Beneos | release offline menu failed:", e))
+      })
       menu.appendChild(b)
     }
 
@@ -5820,7 +5824,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         || "This release has no scenes in this world, so there is nothing to free.")
       return
     }
-    await releaseOfflineSchalten(szenen, "loesen")
+    // ApplicationV2 ruft die Aktion ohne await (stre-T-125).
+    try { await releaseOfflineSchalten(szenen, "loesen") } catch (e) {
+      console.warn("Beneos | release offline data removal failed:", e)
+    }
     try { await this.render(false) } catch (_) {}
   }
 

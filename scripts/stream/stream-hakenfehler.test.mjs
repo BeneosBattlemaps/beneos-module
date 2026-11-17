@@ -268,7 +268,7 @@ p.abschnitt("beneos_module.js: ready, Suchmaschine wieder oeffnen (M2)")
       }),
     }),
   })
-  dreiProben("ready Suchmaschine", await lauf(rufe(fn), "search engine reopen failed"), wurf)
+  dreiProben("ready Suchmaschine", await lauf(rufe(fn), "search engine reload flag reset failed"), wurf)
 }
 
 p.abschnitt("beneos_module.js: renderActorSheet, Tokenmenue am Portraet (M3)")
@@ -494,6 +494,101 @@ for (const [stelle, ruf, marke] of [["Ordner offline nehmen", "ordnerDialog", "O
   const r = await mit(globalThis.game, { folders: { get: () => ordner } },
     () => lauf(rufe(eintrag?.callback, { 0: { dataset: { folderId: "ordner" } } }), marke))
   dreiProben(stelle, r, wurf)
+}
+
+// ------------------------------------------------ Kalt-Review zu stre-T-125
+//
+// W1 und W2: ein async render() hinter einem synchronen try oder ganz ohne
+// Fang. W3: der Zwilling des Ordnerdialogs im Cloud-Fenster.
+p.abschnitt("beneos_module.js: ready, Ergebnisliste neu zeichnen (W2)")
+{
+  const wurf = new Error("Pruefsatz: Ergebnisliste")
+  const fn = modulHaken("ready", "loadPublicAllowlists", {
+    Hooks: STILL, setTimeout: sofort,
+    BeneosUtility: teil({ moduleID: () => "beneos-module" }),
+    BeneosDatabaseHolder: teil({ loadDatabaseFiles: () => Promise.resolve() }),
+    game: teil({
+      beneos: teil({
+        cloud: teil({ loadPublicAllowlists: () => Promise.resolve() }),
+        cloudWindowV2: teil({ render: lehneAb(wurf) }),
+      }),
+      settings: teil({ get: () => false, set: () => Promise.resolve() }),
+    }),
+  })
+  dreiProben("ready Ergebnisliste", await lauf(rufe(fn), "results re-render failed"), wurf)
+}
+
+p.abschnitt("beneos_module.js: ready, Suchfenster neu oeffnen (W1)")
+{
+  const wurf = new Error("Pruefsatz: Suchfenster")
+  const fn = modulHaken("ready", "loadPublicAllowlists", {
+    Hooks: STILL, setTimeout: sofort,
+    BeneosUtility: teil({ moduleID: () => "beneos-module" }),
+    BeneosDatabaseHolder: teil({ loadDatabaseFiles: () => Promise.resolve() }),
+    BeneosCloudWindowV2: class { render() { return Promise.reject(wurf) } },
+    game: teil({
+      beneos: teil({ cloud: teil({ loadPublicAllowlists: () => Promise.resolve() }) }),
+      settings: teil({ get: (_m, n) => n === "beneos-reload-search-engine", set: () => Promise.resolve() }),
+    }),
+  })
+  dreiProben("ready Suchfenster", await lauf(rufe(fn), "search engine reopen failed"), wurf)
+}
+
+// Das Cloud-Fenster laesst sich nicht importieren. Geschnitten wird die echte
+// Methode und in eine Klasse gesetzt; die Namen kommen aus dem Bereich.
+const FENSTERQUELLE = readFileSync(new URL("../cloud-v2/cloud-window-v2.mjs", import.meta.url), "utf8")
+function fensterMethode(name, eigen) {
+  try {
+    const schnitt = extractMethod(FENSTERQUELLE, name, { minZeilen: 3, maxZeilen: 200 })
+    const ruf = name.startsWith("#")
+      ? `static probe(...a) { return new this().${name}(...a) }`
+      : ""
+    return new Function("bereich", `with (bereich) { return class { ${schnitt}\n${ruf} } }`)(bereich(eigen))
+  } catch (e) {
+    console.log(`  Schnitt ${name} misslang: ${e.message}`)
+    return null
+  }
+}
+
+p.abschnitt("cloud-window-v2.mjs: Release-Kachel, Offline-Daten entfernen (W3)")
+{
+  const wurf = new Error("Pruefsatz: Release freigeben")
+  const K = fensterMethode("_onReleaseOfflineFreigeben", {
+    game: teil({ user: { isGM: true } }),
+    szenenZuRelease: () => ["szene"],
+    releaseOfflineSchalten: lehneAb(wurf),
+  })
+  const ereignis = { preventDefault() {}, stopPropagation() {} }
+  const ziel = { dataset: { releaseDir: "release", releaseVariant: "" } }
+  const app = { render: () => Promise.resolve() }
+  dreiProben("Release freigeben", await lauf(rufe((...a) => K?._onReleaseOfflineFreigeben.call(app, ...a), ereignis, ziel), "release offline data removal failed"), wurf)
+}
+
+p.abschnitt("cloud-window-v2.mjs: Offline-Menue am Release (W3)")
+{
+  const wurf = new Error("Pruefsatz: Offline-Menue")
+  const knoepfe = []
+  const element = () => ({
+    style: {}, remove() {}, appendChild() {},
+    addEventListener(art, f) { if (art === "click") knoepfe.push(f) },
+  })
+  const K = fensterMethode("#offlineMenue", {
+    document: { querySelector: () => null, createElement: element, body: { appendChild() {} } },
+    window: { addEventListener() {} },
+    setTimeout: () => 0,
+    game: teil({ i18n: { localize: (k) => k } }),
+    releaseOfflineSchalten: lehneAb(wurf),
+  })
+  await K?.probe({ clientX: 0, clientY: 0 }, ["szene"], false)
+  dreiProben("Offline-Menue", await lauf(rufe(knoepfe[0]), "release offline menu failed"), wurf)
+}
+
+p.abschnitt("extractHaken: eine Klammer in einer Zeichenkette kuerzt den Schnitt nicht still")
+{
+  const quelle = 'Hooks.on("probe", () => {\n  console.log(":)")\n  return 1\n})\n'
+  let meldung = ""
+  try { extractHaken(quelle, "probe", { kennung: "console" }) } catch (e) { meldung = e.message }
+  p.gleich("extractHaken: ein abgeschnittener Rueckruf bricht mit Meldung ab", meldung.includes("kein gueltiger Ausdruck"), true)
 }
 
 process.off("unhandledRejection", zaehleUnbehandelt)
