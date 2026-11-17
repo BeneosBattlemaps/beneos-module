@@ -164,9 +164,15 @@ function bildTag(tag) {
   const daten = attr.find((a) => a.name === "data-beneos-src")
   let frei = null
   let geheilt = false
-  if (src) {
-    const f = schluesselfreiAdresse(src.wert)
-    if (f !== src.wert) frei = f
+  // Wo eine Toradresse mit Schluessel stehen kann: im `src`, im Fragment eines
+  // Platzhalters, in `data-beneos-src`. Jede davon wird frei; im Fragment und
+  // im Attribut steht danach nie Schluessel oder Toradresse (Bedingung orch,
+  // P-12:54:43), auch wenn jemand eine solche Form einfuegt.
+  const fragment = src?.wert.startsWith(`${PLATZHALTER_BILD}#`) ? src.wert.slice(PLATZHALTER_BILD.length + 1) : null
+  for (const adresse of [src?.wert, fragment, daten?.wert]) {
+    if (frei || !adresse) continue
+    const f = schluesselfreiAdresse(adresse)
+    if (f !== adresse) frei = f
   }
   if (!frei) {
     frei = formAAdresse(src?.wert ?? null, daten?.wert ?? null)

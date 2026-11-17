@@ -129,6 +129,15 @@ console.log("H11 Editorwege: ein verlorenes data-beneos-src kommt aus dem Fragme
   const fremdFrag = `<img src="${PLATZHALTER_BILD}#https://example.com/x.webp">`
   wahr("H11 Platzhalter mit fremdem Fragment bleibt bytegleich", htmlSchluesselfrei(fremdFrag + nachbar).html.startsWith(fremdFrag))
 
+  // Bedingung orch (P-12:54:43): im Fragment steht nie Schluessel oder
+  // Toradresse, auch wenn jemand eine solche Form einfuegt.
+  const torImFragment = htmlSchluesselfrei(`<img src="${PLATZHALTER_BILD}#${TOR}">`)
+  wahr("H11 Toradresse im Fragment wird frei", torImFragment.html === `<img src="${SRC_A}" data-beneos-src="${FREI}">`, torImFragment.html)
+  const torImAttribut = htmlSchluesselfrei(`<img src="${SRC_A}" data-beneos-src="${TOR}">`)
+  wahr("H11 Toradresse in data-beneos-src wird frei", torImAttribut.html === `<img src="${SRC_A}" data-beneos-src="${FREI}">`, torImAttribut.html)
+  const torOhneSrc = htmlSchluesselfrei(`<img data-beneos-src="${TOR}">`)
+  wahr("H11 Toradresse in data-beneos-src ohne src wird frei", torOhneSrc.html === `<img src="${SRC_A}" data-beneos-src="${FREI}">`, torOhneSrc.html)
+
   einstellungen[SETTING.key] = ""
   wahr("H11 ohne Schluessel keine Heilung", htmlSchluesselfrei(dialog).html === dialog)
   einstellungen[SETTING.key] = KEY
