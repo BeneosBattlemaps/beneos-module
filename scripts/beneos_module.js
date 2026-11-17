@@ -143,7 +143,7 @@ Hooks.once('ready', () => {
     // it is already open when the lists arrive.
     game.beneos?.cloud?.loadPublicAllowlists?.().then(() => {
       try { game.beneos?.cloudWindowV2?.render?.({ parts: ["results"] }); } catch (e) { /* window not open */ }
-    });
+    }).catch((e) => console.warn("Beneos | public allowlists load failed:", e));
   }).catch(e => {
     console.warn("Beneos | databaseHolder eager load failed:", e);
   });
@@ -222,28 +222,26 @@ Hooks.once('ready', () => {
   if (game.settings.get(BeneosUtility.moduleID(), "beneos-reload-search-engine")) {
     setTimeout(() => {
       game.settings.set(BeneosUtility.moduleID(), "beneos-reload-search-engine", false)
+        .catch((e) => console.warn("Beneos | search engine reopen failed:", e))
       new BeneosCloudWindowV2().render({ force: true })
     }, 4000)
   }
 
-  // Try to catch right click on profile image
+  // Try to catch right click on profile image. jQuery does not await the
+  // handler, so the menu's promise is caught here (stre-T-125).
   Hooks.on('renderActorSheet', (sheet, html, data) => {
     if (!sheet.template && !sheet.constructor?.PARTS) return; // Skip unknown sheet formats (v14+ safety)
     if (!game.user.isGM) return; // GM-only: hide Beneos token menu from players
+    const openMenu = (e) => BeneosUtility.prepareMenu(e, sheet)
+      .catch((err) => console.warn("Beneos | token menu failed:", err))
     if (game.system.id == "pf2e") {
-      $("#" + sheet.id + " .image-container .actor-image").mouseup(async function (e) {
-        BeneosUtility.prepareMenu(e, sheet)
-      })
+      $("#" + sheet.id + " .image-container .actor-image").mouseup(openMenu)
     } else {
       //console.log("sheet", sheet)
       if (sheet.template.includes("npc-sheet-2.hbs")) {
-        $("#" + sheet.id + " .sheet-header .left .portrait").mouseup(async function (e) {
-          BeneosUtility.prepareMenu(e, sheet)
-        })
+        $("#" + sheet.id + " .sheet-header .left .portrait").mouseup(openMenu)
       } else {
-        $("#" + sheet.id + " .sheet-header .profile").mouseup(async function (e) {
-          BeneosUtility.prepareMenu(e, sheet)
-        })
+        $("#" + sheet.id + " .sheet-header .profile").mouseup(openMenu)
       }
     }
   });
@@ -481,7 +479,13 @@ Hooks.on('renderActorSheetV2', (sheet, html) => {
 })
 
 /********************************************************************************** */
-Hooks.on('renderTokenHUD', async (hud, html, token) => {
+// Foundry does not await hook handlers. The HUD build is async, so its
+// promise is caught here and a failure reaches the console (stre-T-125).
+Hooks.on('renderTokenHUD', (hud, html, token) => {
+  tokenHudAufbauen(hud, html, token).catch((e) => console.warn("Beneos | token HUD failed:", e))
+})
+
+async function tokenHudAufbauen(hud, html, token) {
 
   token = BeneosUtility.getToken(token._id)
   if (!game.user.isGM || !BeneosUtility.checkIsBeneosToken(token)) {
@@ -559,6 +563,7 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
       if (event.target.classList.contains("beneos-button-variant")) {
         setTimeout(function () {
           BeneosUtility.forceChangeToken(token.id, event.target.dataset.variant)
+            .catch((e) => console.warn("Beneos | variant switch failed:", e))
         }, 400)
       }
     }
@@ -634,6 +639,7 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
           e.stopPropagation()
           if (stilGesperrt) return
           BeneosUtility.toggleTokenStyle(token.id)
+            .catch((err) => console.warn("Beneos | style switch failed:", err))
         })
         $(html).find('div.right').append($btn)
       }
@@ -673,7 +679,7 @@ Hooks.on('renderTokenHUD', async (hud, html, token) => {
     console.warn("[Beneos] FX-Editor HUD button failed", err)
   }
 
-})
+}
 
 /********************************************************************************** */
 // Zentrale Stelle fuer jede Form von Drop: dieser Hook feuert bei jeder
@@ -1008,7 +1014,8 @@ Hooks.on("preCreateActor", (actor, data, context) => {
 // places one Token per recorded drop position once the import has finished.
 Hooks.on("dropCanvasData", (canvas, data) => {
   if (data?.beneosCloudPending !== true) return true
-  game.beneos?.cloud?.handlePendingCanvasDrop?.(canvas, data)
+  Promise.resolve(game.beneos?.cloud?.handlePendingCanvasDrop?.(canvas, data))
+    .catch((e) => console.warn("Beneos | cloud canvas drop failed:", e))
   try {
     const assetId = data?.beneosTokenKey || data?.beneosItemKey || null
     if (assetId) BeneosAnalytics.trackOnScene("canvas_drop_cloud", { asset_id: assetId })
@@ -1027,7 +1034,8 @@ Hooks.on("dropCanvasData", (canvas, data) => {
 Hooks.on("dropActorSheetData", (actor, sheet, data) => {
   if (data?.beneosCloudPending !== true) return true
   if (data?.type !== "Item") return true
-  game.beneos?.cloud?.handlePendingItemDrop?.(actor, data)
+  Promise.resolve(game.beneos?.cloud?.handlePendingItemDrop?.(actor, data))
+    .catch((e) => console.warn("Beneos | cloud item drop failed:", e))
   return false
 })
 /********************************************************************************** */
@@ -1063,9 +1071,12 @@ Hooks.once("ready", () => {
   // catalog. Prevents a stale cursor from a previous session leaving
   // the available-content map in a partial state and tripping the
   // Out-of-Sync pill on every card.
+  // The try only covers a synchronous throw; the save itself is async, so its
+  // rejection needs its own catch (stre-T-125).
   try {
     game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-last-content-fetch-server-time", 0)
-  } catch (e) { /* setting not registered yet — module init order */ }
+      .catch((e) => console.warn("Beneos | content fetch cursor reset failed:", e))
+  } catch (e) { /* setting not registered yet, module init order */ }
 })
 /********************************************************************************** */
 // Warlock Pact-Magic prompt for the manual compendium → actor drop. The cloud
@@ -1333,6 +1344,7 @@ Hooks.on("getSceneContextOptions", (app, options) => {
       return !!state && state.command === wanted
     },
     callback: li => BeneosUtility.switchPhase(beneosSceneIdFromMenuTarget(li), wanted)
+      .catch((e) => console.warn("Beneos | map switch failed:", e))
   })
 
   const toStatic = entry("Use Static Map", "fa-regular fa-image", "toStatic")
@@ -1403,6 +1415,7 @@ Hooks.on("beneos.releaseInstalled", (data) => {
   const sceneIds = Array.isArray(data?.sceneIds) ? data.sceneIds.filter(Boolean) : []
   if (sceneIds.length) {
     BeneosUtility.refreshStaticSwitchCacheForScenes(sceneIds)
+      .catch((e) => console.warn("Beneos | static switch refresh failed:", e))
     return
   }
   // Fallback for callers that do not carry scene ids: the old full clear.

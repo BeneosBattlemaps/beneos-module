@@ -123,6 +123,57 @@ export function extractBlock(text, marker) {
 }
 
 /**
+ * Schneidet den Rueckruf eines Hakens aus einer Modulquelle, also das zweite
+ * Argument von `Hooks.on("<name>", ...)` oder `Hooks.once("<name>", ...)`
+ * (stre-T-125). Ein Haken hat keinen Namen, ueber den `extractMethod` ihn
+ * faende; derselbe Hakenname kommt zudem mehrfach vor. `kennung` waehlt den
+ * einen Rueckruf, dessen Text sie enthaelt. Trifft sie keinen oder mehr als
+ * einen, bricht der Schnitt ab, statt eine andere Stelle zu messen.
+ *
+ * @param {string} text        Quelltext der Moduldatei
+ * @param {string} name        Hakenname ohne Anfuehrungszeichen
+ * @param {object} optionen    `kennung` (Pflicht) und die Zeilengrenzen
+ * @returns {string}           Der Rueckruf als Ausdruck, etwa `(a, b) => {...}`
+ */
+export function extractHaken(text, name, { kennung, minZeilen = 1, maxZeilen = 400 } = {}) {
+  if (!kennung) throw new Error(`Haken ${name}: ohne kennung ist der Schnitt nicht eindeutig`)
+  const treffer = []
+  const muster = /Hooks\.(on|once)\(\s*(["'])([^"']+)\2\s*,/g
+  let m
+  while ((m = muster.exec(text))) {
+    if (m[3] !== name) continue
+    // Die Klammer von Hooks.on( bis zu ihrem Gegenstueck zaehlen.
+    const auf = m.index + m[0].indexOf("(")
+    let tiefe = 0
+    let i = auf
+    for (; i < text.length; i++) {
+      if (text[i] === "(") tiefe++
+      else if (text[i] === ")") {
+        tiefe--
+        if (tiefe === 0) break
+      }
+    }
+    if (tiefe !== 0) throw new Error(`Haken ${name} an Stelle ${m.index} ist nicht geschlossen`)
+    const rueckruf = text.slice(m.index + m[0].length, i).trim()
+    if (rueckruf.includes(kennung)) treffer.push(rueckruf)
+  }
+  if (treffer.length !== 1) {
+    throw new Error(`Haken ${name} mit Kennung "${kennung}": ${treffer.length} Treffer statt genau einem`)
+  }
+  const cut = treffer[0]
+  // Dieselben zwei Zusicherungen wie bei extractMethod: der Schnitt beginnt mit
+  // einer Signatur und hat eine plausible Laenge.
+  if (!/^(async\s+)?(function\s*\w*\s*\(|\([^)]*\)\s*=>|\w+\s*=>)/.test(cut)) {
+    throw new Error(`Der Schnitt des Hakens ${name} beginnt nicht mit einer Signatur`)
+  }
+  const zeilen = cut.split("\n").length
+  if (zeilen < minZeilen || zeilen > maxZeilen) {
+    throw new Error(`Der Schnitt des Hakens ${name} hat ${zeilen} Zeilen, erwartet waren ${minZeilen} bis ${maxZeilen}.`)
+  }
+  return cut
+}
+
+/**
  * Baut eine ausfuehrbare Klasse aus geschnittenen Methoden. `prelude` nimmt
  * Konstanten auf, die die Methoden aus dem Modulscope erwarten.
  */

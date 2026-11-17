@@ -360,7 +360,8 @@ export function installStreamSceneUi() {
       },
       callback: li => {
         const id = szeneAusMenue(li)
-        if (id) schalteKarte(id)
+        // Foundry wartet den Menuerueckruf nicht ab (stre-T-125).
+        if (id) schalteKarte(id).catch((e) => console.warn("Beneos Stream | Offline schalten abgebrochen:", e))
       },
     })
 
@@ -436,7 +437,10 @@ export function installStreamSceneUi() {
         const z = zaehlung(f)
         return z.bekannt > 0 && z.zugesagt < z.bekannt
       },
-      callback: li => { const f = ordnerVon(li); if (f) ordnerDialog(szenenImOrdner(f)) },
+      callback: li => {
+        const f = ordnerVon(li)
+        if (f) ordnerDialog(szenenImOrdner(f)).catch((e) => console.warn("Beneos Stream | Ordner offline nehmen abgebrochen:", e))
+      },
     })
 
     options.push({
@@ -448,7 +452,10 @@ export function installStreamSceneUi() {
         const f = ordnerVon(li); if (!f) return false
         return zaehlung(f).zugesagt > 0
       },
-      callback: li => { const f = ordnerVon(li); if (f) ordnerFreigeben(szenenImOrdner(f)) },
+      callback: li => {
+        const f = ordnerVon(li)
+        if (f) ordnerFreigeben(szenenImOrdner(f)).catch((e) => console.warn("Beneos Stream | Ordner freigeben abgebrochen:", e))
+      },
     })
 
     return options

@@ -1925,8 +1925,12 @@ export class BeneosUtility {
   static newTokenSetup(token) {
     let object = (token.document) ? token.document : token
     let tokenData = BeneosUtility.getTokenImageInfo(object.texture.src)
+    // Reached from the createToken hook, which Foundry does not await: each
+    // write catches its own rejection (stre-T-125).
     object.setFlag(BeneosUtility.moduleID(), "fullKey", tokenData.fullKey)
+      .catch((e) => console.warn("Beneos | token fullKey flag write failed:", e))
     object.setFlag("core", "randomizeVideo", false)
+      .catch((e) => console.warn("Beneos | token randomizeVideo flag write failed:", e))
     // Frueher stand hier ein Update auf das Feld `scale`. Das ist ein
     // V9-Feld, das TokenDocument in V13 nicht mehr kennt. Der Aufruf
     // lief fehlerfrei durch und bewirkte nichts, weshalb ein per
@@ -2017,6 +2021,7 @@ export class BeneosUtility {
     if (isRemoved) {
       BeneosUtility.debugMessage("Token removed for actorId", actorId)
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', JSON.stringify(this.beneosTokens))
+        .catch((e) => console.warn("Beneos | token registry save failed:", e))
       // V1 close-and-reopen path removed — V2 handles the actor-delete
       // refresh via the notifyInstallEnded chain at the tail of
       // importTokenToCompendium and stays open in place.
@@ -2038,6 +2043,7 @@ export class BeneosUtility {
     if (isRemoved) {
       // Save the new data
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', JSON.stringify(this.beneosItems))
+        .catch((e) => console.warn("Beneos | item registry save failed:", e))
       // V1 close-and-reopen removed — V2 handles refresh in place.
     }
   }
@@ -2056,6 +2062,7 @@ export class BeneosUtility {
     if (isRemoved) {
       // Save the new data
       game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', JSON.stringify(this.beneosSpells))
+        .catch((e) => console.warn("Beneos | spell registry save failed:", e))
       // V1 close-and-reopen removed — V2 handles refresh in place.
     }
   }
@@ -3316,12 +3323,15 @@ export class BeneosUtility {
     if (hp == 0 && hp != previous) {
       BeneosUtility.debugMessage("[BENEOS MODULE] Dead")
       token.state = "dead"
+      // Reached from hooks that Foundry does not await (stre-T-125).
       BeneosUtility.applyDeadFX(token)
+        .catch((e) => console.warn("Beneos | dead FX apply failed:", e))
     }
     if (previous == 0 && hp > 0) {
       BeneosUtility.debugMessage("[BENEOS MODULE] Standing")
       token.state = "standing"
       BeneosUtility.removeDeadFX(token)
+        .catch((e) => console.warn("Beneos | dead FX removal failed:", e))
     }
     BeneosUtility.beneosHealth[token.id] = hp // Store current HP value
   }

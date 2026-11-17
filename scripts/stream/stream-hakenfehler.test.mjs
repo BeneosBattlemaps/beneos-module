@@ -26,7 +26,9 @@
  * Lauf:  node scripts/stream/stream-hakenfehler.test.mjs
  */
 
+import { readFileSync } from "node:fs"
 import { pruefstand, installiereFoundry, haken } from "../../tools/lib/foundry-attrappe.mjs"
+import { extractHaken, extractMethod } from "../../tools/lib/extract-method.mjs"
 
 const p = pruefstand("stream-hakenfehler: async-Laeufe aus Haken melden ihren Fehler")
 
@@ -165,6 +167,334 @@ p.gleich("Abspielen intakt: play wird mit dem Element gerufen", gespielt.length 
 p.gleich("Abspielen intakt: play wird an game.video gerufen", gespielt[0]?.selbst === globalThis.game.video, true)
 p.gleich("Abspielen intakt: die Optionen kommen an", JSON.stringify(gespielt[0]?.opt), JSON.stringify({ playing: true, loop: true, offset: 3, volume: 0 }))
 p.gleich("Abspielen intakt: keine Warnung", aHeil.gemeldet, 0)
+
+// ===================================================== stre-T-125: die Uebrigen
+//
+// Dieselben drei Proben wie oben, je Stelle: keine unbehandelte Ablehnung,
+// genau eine Meldung, und die Meldung traegt das Fehlerobjekt.
+function dreiProben(stelle, r, wurf) {
+  p.gleich(`${stelle}: keine unbehandelte Ablehnung`, r.unbehandelt, 0)
+  p.gleich(`${stelle}: genau einmal gemeldet`, r.gemeldet, 1)
+  p.gleich(`${stelle}: traegt das Fehlerobjekt`, r.traegt(wurf), true)
+}
+const lehneAb = (wurf) => () => Promise.reject(wurf)
+
+// ------------------------------------------------------- beneos_module.js
+//
+// Das Modul laesst sich nicht importieren: es zieht das Cloud-Fenster und
+// weitere Teile mit Foundry-Klassen herein. Gemessen wird deshalb der ECHTE
+// Rueckruf, geschnitten mit `extractHaken` und ausgewertet in einem Bereich,
+// in dem jeder unbekannte Name ein Allesschlucker ist. Was eine Probe braucht,
+// setzt sie selbst.
+const MODULQUELLE = readFileSync(new URL("../beneos_module.js", import.meta.url), "utf8")
+
+/** Jeder Zugriff, jeder Ruf und jedes `new` liefert ihn wieder. */
+const LEER = new Proxy(function () {}, {
+  get: (t, k) => (k === Symbol.toPrimitive ? () => "" : (typeof k === "symbol" || k === "then") ? undefined : LEER),
+  apply: () => LEER,
+  construct: () => LEER,
+})
+/** Ein Objekt mit eigenen Feldern; was fehlt, ist LEER. */
+const teil = (eigen) => new Proxy(eigen, {
+  get: (t, k) => (k in t ? t[k] : (typeof k === "symbol" || k === "then") ? undefined : LEER),
+})
+/** Der Namensbereich des Rueckrufs: eigene Namen, dann Node, sonst LEER. */
+const bereich = (eigen) => new Proxy(eigen, {
+  has: (t, k) => typeof k !== "symbol",
+  get: (t, k) => (k === Symbol.unscopables ? undefined : k in t ? t[k] : k in globalThis ? globalThis[k] : LEER),
+  set: (t, k, v) => { t[k] = v; return true },
+})
+const sofort = (fn) => { fn(); return 0 }
+
+/**
+ * Schneidet den Haken und optionale benannte Funktionen des Moduls und
+ * bindet sie an `eigen`. Misslingt der Schnitt, liefert er null: die Proben
+ * werden rot, statt dass der Satz abbricht.
+ */
+function modulHaken(name, kennung, eigen, hilfen = []) {
+  try {
+    const teile = []
+    for (const h of hilfen) {
+      try { teile.push(extractMethod(MODULQUELLE, h, { minZeilen: 1, maxZeilen: 400 })) } catch (_) { /* fehlt vor dem Bau */ }
+    }
+    const quelle = extractHaken(MODULQUELLE, name, { kennung })
+    return new Function("bereich", `with (bereich) {\n${teile.join("\n")}\nreturn (${quelle})\n}`)(bereich(eigen))
+  } catch (e) {
+    console.log(`  Schnitt ${name}/${kennung} misslang: ${e.message}`)
+    return null
+  }
+}
+/**
+ * Ruft den Rueckruf wie Foundry, ohne auf ihn zu warten. Fehlt er oder wirft
+ * er synchron, kam der Lauf nie an die Stelle: das zaehlt als hundert
+ * unbehandelte Ablehnungen, damit die erste Probe nicht zufaellig gruen ist.
+ */
+const rufe = (fn, ...args) => () => {
+  if (typeof fn !== "function") { unbehandelt += 100; return }
+  try { fn(...args) } catch (e) {
+    unbehandelt += 100
+    console.log(`  synchroner Wurf: ${e?.message ?? e}`)
+  }
+}
+const STILL = { on() {}, once() {}, off() {}, callAll() {}, call() { return true } }
+
+p.abschnitt("beneos_module.js: ready, Freigabelisten nach dem Katalog (M1)")
+{
+  const wurf = new Error("Pruefsatz: Freigabelisten")
+  const fn = modulHaken("ready", "loadPublicAllowlists", {
+    Hooks: STILL, setTimeout: sofort,
+    BeneosUtility: teil({ moduleID: () => "beneos-module" }),
+    BeneosDatabaseHolder: teil({ loadDatabaseFiles: () => Promise.resolve() }),
+    game: teil({
+      beneos: teil({ cloud: teil({ loadPublicAllowlists: lehneAb(wurf) }) }),
+      settings: teil({ get: () => false, set: () => Promise.resolve() }),
+    }),
+  })
+  dreiProben("ready Freigabelisten", await lauf(rufe(fn), "public allowlists load failed"), wurf)
+}
+
+p.abschnitt("beneos_module.js: ready, Suchmaschine wieder oeffnen (M2)")
+{
+  const wurf = new Error("Pruefsatz: Suchmaschine")
+  const fn = modulHaken("ready", "loadPublicAllowlists", {
+    Hooks: STILL, setTimeout: sofort,
+    BeneosUtility: teil({ moduleID: () => "beneos-module" }),
+    BeneosDatabaseHolder: teil({ loadDatabaseFiles: () => Promise.resolve() }),
+    game: teil({
+      beneos: teil({ cloud: teil({ loadPublicAllowlists: () => Promise.resolve() }) }),
+      settings: teil({
+        get: (_m, n) => n === "beneos-reload-search-engine",
+        set: (_m, n) => (n === "beneos-reload-search-engine" ? Promise.reject(wurf) : Promise.resolve()),
+      }),
+    }),
+  })
+  dreiProben("ready Suchmaschine", await lauf(rufe(fn), "search engine reopen failed"), wurf)
+}
+
+p.abschnitt("beneos_module.js: renderActorSheet, Tokenmenue am Portraet (M3)")
+for (const [weg, system, vorlage] of [["pf2e", "pf2e", "x.hbs"], ["npc-sheet-2", "dnd5e", "npc-sheet-2.hbs"], ["Profil", "dnd5e", "character.hbs"]]) {
+  const wurf = new Error(`Pruefsatz: Tokenmenue ${weg}`)
+  const klicks = []
+  const jq = (sel) => teil({ mouseup: (f) => { klicks.push(f) } })
+  const fn = modulHaken("renderActorSheet", "prepareMenu", {
+    $: jq,
+    BeneosUtility: teil({ prepareMenu: lehneAb(wurf) }),
+    game: teil({ user: { isGM: true }, system: { id: system } }),
+  })
+  rufe(fn, { template: vorlage, id: "blatt" }, {}, {})()
+  dreiProben(`Tokenmenue ${weg}`, await lauf(rufe(klicks[0], {}), "token menu failed"), wurf)
+}
+
+// Der Token-HUD und seine zwei Klickwege. Die Umgebung ist fuer alle drei
+// dieselbe; jede Probe stellt nur die eine Ablehnung.
+function hudUmgebung(utility) {
+  const klicks = []
+  const knopf = { classList: { add() {}, remove() {}, contains: () => true }, querySelector: () => null, setAttribute() {} }
+  const jq = (sel) => {
+    const o = teil({
+      0: knopf,
+      find: () => o,
+      append: () => o,
+      click: (f) => { if (f) klicks.push({ art: "click", sel, f }); return o },
+      on: (_ereignis, f) => { klicks.push({ art: "on", sel, f }); return o },
+    })
+    return o
+  }
+  const marke = { id: "marke", document: { texture: { src: "kreatur-token.webp" } } }
+  const fn = modulHaken("renderTokenHUD", "hud, html, token", {
+    $: jq, setTimeout: sofort,
+    offlineGesperrt: () => false,
+    foundry: { applications: { handlebars: { renderTemplate: async () => "" } } },
+    BeneosUtility: teil({
+      getToken: () => marke,
+      checkIsBeneosToken: () => true,
+      getTokenImageInfo: () => ({ number: 2 }),
+      getVariants: () => [],
+      beneosTopVariantExists: () => Promise.resolve(true),
+      isBeneosCreatorMode: () => false,
+      ...utility,
+    }),
+    game: teil({ user: { isGM: true } }),
+  }, ["tokenHudAufbauen"])
+  return { fn, klicks }
+}
+
+p.abschnitt("beneos_module.js: renderTokenHUD (M4)")
+{
+  const wurf = new Error("Pruefsatz: Token-HUD")
+  const { fn } = hudUmgebung({ getToken: () => { throw wurf } })
+  dreiProben("Token-HUD", await lauf(rufe(fn, {}, {}, { _id: "marke" }), "token HUD failed"), wurf)
+}
+
+p.abschnitt("beneos_module.js: Variantenwechsel im HUD (M5)")
+{
+  const wurf = new Error("Pruefsatz: Variantenwechsel")
+  const { fn, klicks } = hudUmgebung({ forceChangeToken: lehneAb(wurf) })
+  rufe(fn, {}, {}, { _id: "marke" })()
+  await warte(30)
+  const klick = klicks.find((k) => k.art === "click")?.f
+  const ereignis = { target: { parentElement: {}, dataset: { variant: "2" }, classList: { contains: (c) => c === "beneos-button-variant" } } }
+  dreiProben("Variantenwechsel", await lauf(rufe(klick, ereignis), "variant switch failed"), wurf)
+}
+
+p.abschnitt("beneos_module.js: Stilwechsel im HUD (M6)")
+{
+  const wurf = new Error("Pruefsatz: Stilwechsel")
+  const { fn, klicks } = hudUmgebung({ toggleTokenStyle: lehneAb(wurf) })
+  rufe(fn, {}, {}, { _id: "marke" })()
+  await warte(30)
+  const klick = klicks.find((k) => k.art === "on" && String(k.sel).includes("style-toggle"))?.f
+  dreiProben("Stilwechsel", await lauf(rufe(klick, { preventDefault() {}, stopPropagation() {} }), "style switch failed"), wurf)
+}
+
+p.abschnitt("beneos_module.js: Cloud-Ablage auf der Leinwand (M7)")
+{
+  const wurf = new Error("Pruefsatz: Leinwandablage")
+  const fn = modulHaken("dropCanvasData", "handlePendingCanvasDrop", {
+    game: teil({ beneos: teil({ cloud: teil({ handlePendingCanvasDrop: lehneAb(wurf) }) }) }),
+  })
+  let rueckgabe
+  const r = await lauf(rufe((...a) => { rueckgabe = fn(...a) }, {}, { beneosCloudPending: true }), "cloud canvas drop failed")
+  dreiProben("Leinwandablage", r, wurf)
+  p.gleich("Leinwandablage: Foundrys eigene Ablage bleibt unterdrueckt", rueckgabe, false)
+}
+
+p.abschnitt("beneos_module.js: Cloud-Ablage auf dem Blatt (M8)")
+{
+  const wurf = new Error("Pruefsatz: Blattablage")
+  const fn = modulHaken("dropActorSheetData", "handlePendingItemDrop", {
+    game: teil({ beneos: teil({ cloud: teil({ handlePendingItemDrop: lehneAb(wurf) }) }) }),
+  })
+  let rueckgabe
+  const r = await lauf(rufe((...a) => { rueckgabe = fn(...a) }, {}, {}, { beneosCloudPending: true, type: "Item" }), "cloud item drop failed")
+  dreiProben("Blattablage", r, wurf)
+  p.gleich("Blattablage: Foundrys eigene Ablage bleibt unterdrueckt", rueckgabe, false)
+}
+
+p.abschnitt("beneos_module.js: ready, Abrufmarke zuruecksetzen (M9)")
+{
+  const wurf = new Error("Pruefsatz: Abrufmarke")
+  const fn = modulHaken("ready", "last-content-fetch-server-time", {
+    BeneosUtility: teil({ moduleID: () => "beneos-module" }),
+    CONFIG: {},
+    game: teil({ settings: teil({ set: lehneAb(wurf) }) }),
+  })
+  dreiProben("Abrufmarke", await lauf(rufe(fn), "content fetch cursor reset failed"), wurf)
+}
+
+p.abschnitt("beneos_module.js: Szenenmenue, Kartenwechsel (M10)")
+{
+  const wurf = new Error("Pruefsatz: Kartenwechsel")
+  const fn = modulHaken("getSceneContextOptions", "switchPhase", {
+    BeneosUtility: teil({ switchPhase: lehneAb(wurf) }),
+  })
+  const optionen = []
+  rufe(fn, {}, optionen)()
+  const statisch = optionen.find((o) => o.name === "Use Static Map" && !o.classes)
+  dreiProben("Kartenwechsel", await lauf(rufe(statisch?.callback, {}), "map switch failed"), wurf)
+}
+
+p.abschnitt("beneos_module.js: beneos.releaseInstalled (M11)")
+{
+  const wurf = new Error("Pruefsatz: Standbildliste")
+  const fn = modulHaken("beneos.releaseInstalled", "refreshStaticSwitchCacheForScenes", {
+    BeneosUtility: teil({ refreshStaticSwitchCacheForScenes: lehneAb(wurf) }),
+  })
+  dreiProben("Standbildliste", await lauf(rufe(fn, { sceneIds: ["szene"] }), "static switch refresh failed"), wurf)
+}
+
+// ------------------------------------------------------ beneos_utility.js
+//
+// Acht Haken (updateActor, updateToken, createCombatant, deleteCombatant,
+// canvasReady, createToken, deleteActor, deleteItem) rufen synchrone
+// Funktionen der Utility, die den Promise wegwerfen. Ein Fang am Haken kaeme
+// dort nie an; gefangen wird deshalb dort, wo der Promise entsteht. Diese
+// Datei laesst sich echt importieren.
+const { BeneosUtility: BU } = await import("../beneos_utility.js")
+
+/** Ersetzt Felder von `ziel` fuer die Dauer eines Laufs. */
+async function mit(ziel, felder, koerper) {
+  const alt = {}
+  for (const k of Object.keys(felder)) { alt[k] = ziel[k]; ziel[k] = felder[k] }
+  try { return await koerper() } finally { Object.assign(ziel, alt) }
+}
+
+p.abschnitt("beneos_utility.js: Todesdarstellung nach Trefferpunkten (U1)")
+globalThis.game.dnd5e ??= {}
+BU.beneosHealth ??= {}
+{
+  const wurf = new Error("Pruefsatz: Todeseffekt setzen")
+  const marke = { id: "tot", actor: { system: { attributes: { hp: { value: 0 } } } } }
+  BU.beneosHealth[marke.id] = 5
+  const r = await mit(BU, { deathIconApplies: () => true, applyDeadFX: lehneAb(wurf) },
+    () => lauf(rufe(() => BU.applyDeathStateByHp(marke)), "dead FX apply failed"))
+  dreiProben("Todeseffekt setzen", r, wurf)
+}
+{
+  const wurf = new Error("Pruefsatz: Todeseffekt loesen")
+  const marke = { id: "steht", actor: { system: { attributes: { hp: { value: 3 } } } } }
+  BU.beneosHealth[marke.id] = 0
+  const r = await mit(BU, { deathIconApplies: () => true, removeDeadFX: lehneAb(wurf) },
+    () => lauf(rufe(() => BU.applyDeathStateByHp(marke)), "dead FX removal failed"))
+  dreiProben("Todeseffekt loesen", r, wurf)
+}
+
+p.abschnitt("beneos_utility.js: neuer Token (U2)")
+for (const [stelle, bereichName, marke] of [["Tokenschluessel", "beneos-module", "token fullKey flag write failed"], ["Videozufall", "core", "token randomizeVideo flag write failed"]]) {
+  const wurf = new Error(`Pruefsatz: ${stelle}`)
+  const dokument = {
+    id: "neu", parent: null, texture: { src: "kreatur-token.webp" },
+    setFlag: (s) => (s === bereichName ? Promise.reject(wurf) : Promise.resolve()),
+  }
+  const r = await mit(BU, {
+    moduleID: () => "beneos-module", getTokenImageInfo: () => ({ fullKey: "k" }),
+    beneosRenderUpdateFor: () => null, updateToken: () => {},
+  }, async () => {
+    const e = await lauf(rufe(() => BU.newTokenSetup({ id: "neu", document: dokument })), marke)
+    await warte(550) // der verzoegerte updateToken-Ruf laeuft noch gegen die Attrappe
+    return e
+  })
+  dreiProben(stelle, r, wurf)
+}
+
+p.abschnitt("beneos_utility.js: Registereintrag entfernen (U3)")
+for (const [stelle, methode, feld, eintrag, marke] of [
+  ["Tokenregister", "removeTokenFromActorId", "beneosTokens", { actorId: "weg" }, "token registry save failed"],
+  ["Gegenstandsregister", "removeItem", "beneosItems", { itemId: "weg" }, "item registry save failed"],
+  ["Zauberregister", "removeSpell", "beneosSpells", { spellId: "weg" }, "spell registry save failed"],
+]) {
+  const wurf = new Error(`Pruefsatz: ${stelle}`)
+  const r = await mit(BU, { [feld]: { schluessel: eintrag } }, () =>
+    mit(globalThis.game.settings, { set: lehneAb(wurf) }, () => lauf(rufe(() => BU[methode]("weg")), marke)))
+  dreiProben(stelle, r, wurf)
+}
+
+// ------------------------------------------------------ stream-scene-ui.mjs
+p.abschnitt("stream-scene-ui.mjs: Rechtsklick auf Szene und Ordner (S1 bis S3)")
+globalThis.HTMLElement ??= class HTMLElement {}
+const SU = await import("./stream-scene-ui.mjs")
+if (!behandler("getFolderContextOptions", "ordnerDialog")) SU.installStreamSceneUi()
+{
+  const wurf = new Error("Pruefsatz: Szene offline schalten")
+  const optionen = behandler("getSceneContextOptions", "schalteKarte")?.({}, []) ?? []
+  const eintrag = optionen.find((o) => String(o.callback).includes("schalteKarte"))
+  const r = await mit(globalThis.game, { scenes: { get() { throw wurf } } },
+    () => lauf(rufe(eintrag?.callback, { 0: { dataset: { sceneId: "szene" } } }), "Offline schalten abgebrochen"))
+  dreiProben("Szene offline schalten", r, wurf)
+}
+for (const [stelle, ruf, marke] of [["Ordner offline nehmen", "ordnerDialog", "Ordner offline nehmen abgebrochen"], ["Ordner freigeben", "ordnerFreigeben", "Ordner freigeben abgebrochen"]]) {
+  const wurf = new Error(`Pruefsatz: ${stelle}`)
+  // Die Szene wirft erst beim zweiten Lesen ihrer Kennung: das erste Lesen
+  // gehoert dem synchronen Sammeln, das zweite der asynchronen Vorschau.
+  let gelesen = 0
+  const szene = { get id() { gelesen++; if (gelesen > 1) throw wurf; return "szene" } }
+  const ordner = { type: "Scene", contents: [szene] }
+  const optionen = behandler("getFolderContextOptions", "ordnerDialog")?.({}, []) ?? []
+  const eintrag = optionen.find((o) => String(o.callback).includes(ruf))
+  const r = await mit(globalThis.game, { folders: { get: () => ordner } },
+    () => lauf(rufe(eintrag?.callback, { 0: { dataset: { folderId: "ordner" } } }), marke))
+  dreiProben(stelle, r, wurf)
+}
 
 process.off("unhandledRejection", zaehleUnbehandelt)
 
