@@ -29,6 +29,7 @@ globalThis.Hooks = { on() {}, once() {}, callAll: (name, data) => { signale.push
 
 const { BeneosNativeBattlemapInstaller: Installer } = await import("./beneos-native-installer.mjs")
 const { BeneosZipImporter } = await import("./beneos-zip-importer.mjs")
+const api = await import("./beneos-release-install-api.mjs")
 
 /** Das Cloud-Fenster, das der Kunde gerade offen hat. */
 function offenesFenster() {
@@ -51,4 +52,36 @@ test("MO-021: ZIP-Import frischt das offene Fenster auf und meldet die Installat
   assert.equal(hook[0].data.releaseDir, "bm_zip_test")
   assert.deepEqual(hook[0].data.sceneIds, ["sz1"])
   assert.deepEqual(fenster.renders, [{ parts: ["results"] }], "Releasekarte im offenen Fenster nicht neu gezeichnet")
+})
+
+test("MO-022: der delegierte Weg installiert ueber das offene Fenster und laesst das Register stehen", async () => {
+  const fenster = offenesFenster()
+  let lief = null
+  class Win {
+    constructor() { this.rendered = false; game.beneos.cloudWindowV2 = this }
+    static async _onCloudBattlemapInstallNative() { lief = this }
+  }
+  globalThis.BeneosCloudWindowV2 = Win
+  Object.setPrototypeOf(fenster, Win.prototype)
+  try {
+    await api.runNativeReleaseInstall("bm_0042", [{ release_dir: "bm_0042" }])
+  } finally { delete globalThis.BeneosCloudWindowV2 }
+  assert.equal(game.beneos.cloudWindowV2, fenster, "Register zeigt nicht mehr auf das offene Fenster")
+  assert.equal(lief, fenster, "Installation lief ueber ein unsichtbares Fenster")
+})
+
+test("MO-022: ohne offenes Fenster installiert ein Hilfsfenster und gibt das Register zurueck", async () => {
+  game.beneos = { cloudWindowV2: undefined }
+  let lief = null
+  class Win {
+    constructor() { this.rendered = false; game.beneos.cloudWindowV2 = this }
+    static async _onCloudBattlemapInstallNative() { lief = this }
+  }
+  globalThis.BeneosCloudWindowV2 = Win
+  try {
+    await api.runNativeReleaseInstall("bm_0042", [{ release_dir: "bm_0042" }])
+  } finally { delete globalThis.BeneosCloudWindowV2 }
+  assert.ok(lief instanceof Win)
+  assert.equal(lief._releaseIndex.get("bm_0042").release_dir, "bm_0042")
+  assert.equal(game.beneos.cloudWindowV2, undefined, "unsichtbares Hilfsfenster bleibt im Register")
 })
