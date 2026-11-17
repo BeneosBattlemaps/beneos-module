@@ -44,6 +44,7 @@ C.installStreamCanvas()
 // ------------------------------------------------------------- Werkzeug
 const echteWarnung = console.warn
 const warnungen = []
+const rohWarnungen = []
 let unbehandelt = 0
 const zaehleUnbehandelt = () => { unbehandelt++ }
 process.on("unhandledRejection", zaehleUnbehandelt)
@@ -57,7 +58,11 @@ async function lauf(ausloesen, marke) {
   await warte(20)
   unbehandelt = 0
   warnungen.length = 0
-  console.warn = (...a) => { warnungen.push(a.map((x) => String(x?.message ?? x)).join(" ")) }
+  rohWarnungen.length = 0
+  console.warn = (...a) => {
+    rohWarnungen.push(a)
+    warnungen.push(a.map((x) => String(x?.message ?? x)).join(" "))
+  }
   try {
     ausloesen()
     await warte(300)
@@ -68,6 +73,9 @@ async function lauf(ausloesen, marke) {
     unbehandelt,
     gemeldet: warnungen.filter((w) => w.includes(marke)).length,
     erklaert: (text) => warnungen.some((w) => w.includes(marke) && w.includes(text)),
+    // Das Fehlerobjekt selbst, nicht nur sein Text: nur so behaelt die
+    // Konsole den Stack.
+    traegt: (fehler) => rohWarnungen.some((a) => a.includes(fehler)),
   }
 }
 
@@ -79,12 +87,14 @@ const ready = behandler("ready", "weltstartStream") ?? behandler("ready", "ensur
 p.gleich("der ready-Behandler ist angemeldet", typeof ready, "function")
 
 const echteNotiz = globalThis.ui.notifications.warn
-globalThis.ui.notifications.warn = () => { throw new Error("Pruefsatz wirft im ready") }
+const wurfReady = new Error("Pruefsatz wirft im ready")
+globalThis.ui.notifications.warn = () => { throw wurfReady }
 const rWirft = await lauf(() => ready?.(), "Weltstart abgebrochen")
 globalThis.ui.notifications.warn = echteNotiz
 p.gleich("ready: ein Wurf wird keine unbehandelte Ablehnung", rWirft.unbehandelt, 0)
 p.gleich("ready: der Wurf wird genau einmal gemeldet", rWirft.gemeldet, 1)
 p.gleich("ready: die Warnung nennt den Fehler", rWirft.erklaert("Pruefsatz wirft im ready"), true)
+p.gleich("ready: die Warnung traegt das Fehlerobjekt", rWirft.traegt(wurfReady), true)
 
 // Gegenwert: ohne Schluessel steigt der Behandler regulaer aus.
 einstellungen[SETTING.key] = ""
@@ -99,11 +109,13 @@ const bereit = behandler("canvasReady", "fillInVideos")
 p.gleich("der canvasReady-Behandler ist angemeldet", typeof bereit, "function")
 
 const echteLeinwand = globalThis.canvas
-globalThis.canvas = { scene: { name: "t113", get tiles() { throw new Error("Pruefsatz wirft vor dem try") } } }
+const wurfLeinwand = new Error("Pruefsatz wirft vor dem try")
+globalThis.canvas = { scene: { name: "t113", get tiles() { throw wurfLeinwand } } }
 const cWirft = await lauf(() => bereit?.(), "Videos nachladen abgebrochen")
 p.gleich("canvasReady: ein Wurf wird keine unbehandelte Ablehnung", cWirft.unbehandelt, 0)
 p.gleich("canvasReady: der Wurf wird genau einmal gemeldet", cWirft.gemeldet, 1)
 p.gleich("canvasReady: die Warnung nennt den Fehler", cWirft.erklaert("Pruefsatz wirft vor dem try"), true)
+p.gleich("canvasReady: die Warnung traegt das Fehlerobjekt", cWirft.traegt(wurfLeinwand), true)
 
 globalThis.canvas = { scene: { name: "t113", tiles: [] } }
 const cHeil = await lauf(() => bereit?.(), "Videos nachladen abgebrochen")
@@ -119,17 +131,21 @@ p.gleich("die Naht fuehreAbspielwunschAus ist exportiert", typeof wunsch, "funct
 const element = new globalThis.HTMLVideoElement()
 const kachel = () => ({ object: { sourceElement: element, document: { flags: {} } }, video: { autoplay: true, volume: 0 } })
 let gespielt = []
+// Als Methode wie Foundrys VideoHelper, der `this.locked` und `this.pending`
+// liest: ein Ruf ohne Objekt wuerde dort werfen.
 const spiele = (antwort) => {
-  globalThis.game.video = { play: (el, opt) => { gespielt.push(el); return antwort() } }
+  globalThis.game.video = { play(el, opt) { gespielt.push({ el, opt, selbst: this }); return antwort() } }
 }
 const ablehnung = (name, text) => () => Promise.reject(Object.assign(new Error(text), { name }))
 
 gespielt = []
-spiele(ablehnung("AbortError", "Pruefsatz lehnt das Abspielen ab"))
+const wurfAbspielen = Object.assign(new Error("Pruefsatz lehnt das Abspielen ab"), { name: "AbortError" })
+spiele(() => Promise.reject(wurfAbspielen))
 const aWirft = await lauf(() => wunsch?.(kachel(), {}), "Abspielen abgebrochen")
 p.gleich("Abspielen: eine Ablehnung wird keine unbehandelte Ablehnung", aWirft.unbehandelt, 0)
 p.gleich("Abspielen: die Ablehnung wird genau einmal gemeldet", aWirft.gemeldet, 1)
 p.gleich("Abspielen: die Warnung nennt den Fehler", aWirft.erklaert("Pruefsatz lehnt das Abspielen ab"), true)
+p.gleich("Abspielen: die Warnung traegt das Fehlerobjekt", aWirft.traegt(wurfAbspielen), true)
 
 spiele(ablehnung("NotAllowedError", "Pruefsatz: keine Nutzergeste"))
 const aGeste = await lauf(() => wunsch?.(kachel(), {}), "Abspielen abgebrochen")
@@ -144,8 +160,10 @@ p.gleich("Abspielen: ein synchroner Wurf wird gemeldet", aSync.erklaert("Pruefsa
 
 gespielt = []
 spiele(() => Promise.resolve())
-const aHeil = await lauf(() => wunsch?.(kachel(), {}), "Abspielen abgebrochen")
-p.gleich("Abspielen intakt: play wird mit dem Element gerufen", gespielt.length === 1 && gespielt[0] === element, true)
+const aHeil = await lauf(() => wunsch?.(kachel(), { offset: 3 }), "Abspielen abgebrochen")
+p.gleich("Abspielen intakt: play wird mit dem Element gerufen", gespielt.length === 1 && gespielt[0].el === element, true)
+p.gleich("Abspielen intakt: play wird an game.video gerufen", gespielt[0]?.selbst === globalThis.game.video, true)
+p.gleich("Abspielen intakt: die Optionen kommen an", JSON.stringify(gespielt[0]?.opt), JSON.stringify({ playing: true, loop: true, offset: 3, volume: 0 }))
 p.gleich("Abspielen intakt: keine Warnung", aHeil.gemeldet, 0)
 
 process.off("unhandledRejection", zaehleUnbehandelt)

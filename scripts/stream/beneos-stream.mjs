@@ -90,7 +90,7 @@ Hooks.once("init", () => {
     //
     // Die Zusatzregel des Stacks verlangt, dass ein Haken sich wieder
     // abmeldet. Hier geschieht es bewusst nicht, und das ist die eine Stelle,
-    // an der die Begruendung steht, damit sie nicht in fuenf Dateien fehlt.
+    // an der die Begruendung steht, damit sie nicht in sieben Dateien fehlt.
     //
     // Gezaehlt am 17.11.2026 (stre-T-113): 21 `Hooks.on` und 3 `Hooks.once`
     // in sieben Dateien dieses Ordners, 0 `Hooks.off`. Am 05.11.2026 waren es
@@ -105,7 +105,7 @@ Hooks.once("init", () => {
     //
     // Der Preis einer Abmeldung waere nicht null: sie braucht je Haken die
     // Kennung aus `Hooks.on`, und eine falsch abgemeldete Kennung schaltet
-    // eine Funktion stillschweigend ab. Fuenfzehn solche Stellen gegen einen
+    // eine Funktion stillschweigend ab. Einundzwanzig solche Stellen gegen einen
     // Nutzen, der heute nicht messbar ist.
     //
     // DAS AENDERT SICH, WENN eines davon eintritt: das Modul laesst sich im

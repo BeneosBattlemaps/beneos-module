@@ -515,8 +515,9 @@ const videoTexturen = new Map()
  * DER RUF AN `game.video.play` WIRD GEFANGEN (stre-T-113). Er laeuft aus einem
  * `setTimeout` im Haken `updateTile`, und niemand wartet ihn ab: eine
  * Ablehnung war unbehandelt. Die Ablehnung mangels Nutzergeste
- * (`NotAllowedError`) bleibt still wie beim ersten Abspielen in
- * `stelleFlaecheSicher` ("gesture gate"); jede andere wird gemeldet. Ueber
+ * (`NotAllowedError`) bleibt still; jede andere wird gemeldet. Das erste
+ * Abspielen in `applyVideoTexture` ("gesture gate") verschluckt dagegen jeden
+ * Fehler; das bleibt hier unberuehrt. Ueber
  * `Promise.resolve().then` faengt dasselbe `.catch` auch einen synchronen Wurf.
  * Exportiert als Naht fuer `stream-hakenfehler.test.mjs`.
  */
