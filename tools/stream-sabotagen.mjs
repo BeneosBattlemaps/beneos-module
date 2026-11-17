@@ -1263,10 +1263,12 @@ const kinder = new Set();
  * nicht pruefbar, nie als bewacht.
  */
 //
-// `--zeitgrenze <ms>` gilt nur fuer die Sabotagelaeufe, der Grundlauf und
-// `--alle-saetze` behalten 120 s. Sie ist die Probe dafuer, dass eine Toetung
+// `--zeitgrenze <ms>` gilt fuer die Sabotagelaeufe und fuer `--alle-saetze`,
+// der Grundlauf behaelt 120 s. Sie ist die Probe dafuer, dass eine Toetung
 // als nicht pruefbar endet: mit `--zeitgrenze 1` waere sonst schon der
-// Grundlauf getoetet, und der Weg mit S-Nummer liefe nie.
+// Grundlauf getoetet, und der Weg mit S-Nummer liefe nie. `--alle-saetze`
+// hat keinen Grundlauf; ohne die Grenze war sein Weg bei einer Toetung
+// nicht erreichbar und rc 2 dort nur gelesen (stre-T-126 Nachtrag).
 const zeitgrenze = Number(arg("--zeitgrenze") ?? ZEITGRENZE_MS);
 // execFile setzt bei 0 keinen Zeitgeber und wirft bei NaN oder Bruch erst im
 // ersten Sabotagelauf. Beides wuerde die Probe still entwerten.
@@ -1299,10 +1301,10 @@ if (process.argv.includes("--alle-saetze")) {
   let schlecht = 0;
   let getoetet = 0;
   for (const s of saetze) {
-    const r = await fahre(WURZEL, s);
+    const r = await fahre(WURZEL, s, zeitgrenze);
     if (r.rc !== 0 || r.getoetet) schlecht += 1;
     if (r.getoetet) getoetet += 1;
-    const warum = ["absturz", "zeitgrenze"].includes(einordnen(r)) ? ` ${einordnen(r)}: ${erklaere(r)}` : "";
+    const warum = ["absturz", "zeitgrenze"].includes(einordnen(r)) ? ` ${einordnen(r)}: ${erklaere(r, zeitgrenze)}` : "";
     console.log(`${s} rc=${r.rc} ok=${r.gruen.size} rot=${r.rot.size}${warum}`);
   }
   console.log(`saetze=${saetze.length}, davon rc ungleich 0: ${schlecht}`);
@@ -1480,6 +1482,9 @@ lauf: try {
   const bewacht = Object.fromEntries(SAETZE.map((s) => [s, new Set()]));
   const altGruen = Object.fromEntries(SAETZE.map((s) => [s, 0]));
   const luecken = Object.fromEntries(SAETZE.map((s) => [s, 0]));
+  // Ziele einer getoeteten Sabotage: ungemessen, also weder bewacht noch
+  // unbewacht (stre-T-126 Nachtrag, orch 17.11.2026).
+  const getoetetZiele = Object.fromEntries(SAETZE.map((s) => [s, new Set()]));
   for (const { s, fehler, r, a } of ergebnisse) {
     const kopf = `S${String(s.nr).padStart(3, "0")} ${s.satz}`;
     if (fehler) {
@@ -1493,6 +1498,7 @@ lauf: try {
     // nicht als bewacht, und der Lauf endet mit rc 2, nie gruen.
     if (r.getoetet) {
       nichtPruefbar += 1;
+      for (const n of s.ziel) getoetetZiele[s.satz].add(n);
       console.log(`  NICHT PRUEFBAR ${kopf}: ${erklaere(r, zeitgrenze)}`);
       continue;
     }
@@ -1541,13 +1547,18 @@ lauf: try {
   for (const satz of SAETZE) {
     const eigen = EIGENPROBEN[satz] || {};
     const alle = [...proben[satz]];
-    const unbewacht = alle.filter((n) => !bewacht[satz].has(n) && !(n in eigen));
+    const offen = alle.filter((n) => !bewacht[satz].has(n) && !(n in eigen));
+    // Eine Toetung sagt nichts ueber die Bewachung: ihre Ziele sind nicht
+    // pruefbar und kein Befund. Die Toetung selbst steht schon in nichtPruefbar.
+    const ungemessen = offen.filter((n) => getoetetZiele[satz].has(n));
+    const unbewacht = offen.filter((n) => !getoetetZiele[satz].has(n));
     const art = (p) => alle.filter((n) => n.startsWith(p)).length;
     const zahlSab = auftraege.filter((s) => s.satz === satz).length;
     const alt = mitAlt ? `, alt gruen ${altGruen[satz]} von ${luecken[satz]} Luecken` : "";
     console.log(`${satz}: ${alle.length} Proben (Struktur ${art("[Struktur] ")}, Dokument ${art("[Dokument] ")}), `
       + `${bewacht[satz].size} per Sabotage rot belegt, ${Object.keys(eigen).length} Eigenprobe(n), `
       + `${unbewacht.length} unbewacht, ${zahlSab} Sabotagen${alt}`);
+    for (const n of ungemessen) console.log(`  NICHT PRUEFBAR ${n}: Ziel einer getoeteten Sabotage`);
     for (const n of unbewacht) {
       befund += 1;
       console.log(`  UNBEWACHT ${n}`);

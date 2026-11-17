@@ -133,11 +133,20 @@ try {
   p.gleich("Laeufer: Toetung endet mit rc 2", l1.rc, 2)
   p.gleich("Laeufer: Toetung meldet NICHT PRUEFBAR mit S-Nummer", /NICHT PRUEFBAR S\d+ heilung: Zeitgrenze 1 ms/.test(l1.out), true)
   p.gleich("Laeufer: Toetung wird nie BEFUND ohne rote Probe", l1.out.includes("ohne rote Probe"), false)
+  // Eine Toetung sagt nichts ueber die Bewachung: die Ziele der getoeteten
+  // Sabotage sind nicht pruefbar, nicht unbewacht, und kein Befund (orch, 17.11.2026).
+  p.gleich("Laeufer: Ziele einer Toetung sind nie UNBEWACHT", l1.out.includes("UNBEWACHT"), false)
+  p.gleich("Laeufer: Ziele einer Toetung heissen NICHT PRUEFBAR",
+    /NICHT PRUEFBAR .+: Ziel einer getoeteten Sabotage/.test(l1.out), true)
+  p.gleich("Laeufer: eine Toetung zaehlt keinen Befund", /Befunde 0,/.test(l1.out), true)
   const l2 = await laeufer("--satz", "leinwand", "--zeitgrenze", "1")
   p.gleich("Laeufer: kein Schluessel in der Ausgabe", /pk_[A-Za-z0-9_-]{4}/.test(l2.out), false)
   p.gleich("Laeufer: die Maske hat gegriffen", l2.out.includes("<KEY>"), true)
   const l3 = await laeufer("--zeitgrenze", "0")
   p.gleich("Laeufer: --zeitgrenze 0 ist nicht pruefbar", l3.rc, 2)
+  // --alle-saetze faehrt jeden Satz ohne Sabotage; getoetet endet das mit rc 2.
+  const l4 = await laeufer("--alle-saetze", "--zeitgrenze", "1")
+  p.gleich("Laeufer: --alle-saetze mit Toetung endet mit rc 2", l4.rc, 2)
 
   // Einordnung ohne Prozess: die vier Arten an Hand gebauter Ergebnisse.
   p.abschnitt("einordnen an gebauten Ergebnissen")

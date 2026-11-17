@@ -373,8 +373,8 @@ then
 fi
 
 # Der Satzprozess des Sabotagelaeufers (stre-T-126), wenn er oder der Laeufer
-# angefasst wird. Er faehrt den Laeufer selbst dreimal und kostet gemessen
-# 5,5 s; das ist zu viel fuer jeden Commit an tools/lib, deshalb nicht in der
+# angefasst wird. Er faehrt den Laeufer selbst viermal und kostet gemessen
+# 10,5 s; das ist zu viel fuer jeden Commit an tools/lib, deshalb nicht in der
 # Sammlung oben, sondern bedingt wie die Katalogpruefung darunter.
 if git diff --cached --name-only --diff-filter=ACM \
      -- tools/lib/kindlauf.mjs tools/lib/kindlauf.test.mjs \
@@ -382,7 +382,7 @@ if git diff --cached --name-only --diff-filter=ACM \
    | grep -q .
 then
   meld "pre-commit: Sabotagelaeufer vorgemerkt, der Satz kindlauf laeuft mit"
-  fahre "tools/lib/kindlauf.test.mjs" "kindlauf.test.mjs, 44 Saetze"
+  fahre "tools/lib/kindlauf.test.mjs" "kindlauf.test.mjs, 48 Saetze"
 fi
 
 # Die teure nur, wenn ihr Gegenstand angefasst wird.
