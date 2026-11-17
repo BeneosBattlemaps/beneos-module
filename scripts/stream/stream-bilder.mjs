@@ -62,7 +62,7 @@
  * **Keine Bearbeitenflaeche**, siehe `imEditor()`.
  */
 
-import { istPlatzhalter, assetUrl, streamEnabled, zerlegeAdresse } from "./stream-settings.mjs"
+import { istPlatzhalter, assetUrl, streamKey, streamMode, zerlegeAdresse, leinwandAdresse } from "./stream-settings.mjs"
 import { ours, sammelSchluessel } from "./stream-fetch.mjs"
 import { reportFailure } from "./stream-report.mjs"
 
@@ -271,21 +271,30 @@ export function naechsterStand(vorher, jetzt) {
  * spaeter gilt nach der Lesbaren Pruefung als ungeprueft, auch wenn hier beide
  * im selben synchronen Durchlauf lagen.
  */
-function zuTauschende(wurzel) {
+function zuTauschende(wurzel, nurFormA = false) {
   const elemente = []
   const schonGesetzt = new Set()
   let uebersprungen = 0
   for (const el of wurzel.querySelectorAll("img")) {
-    const quelle = el.getAttribute("src")
-    if (typeof quelle !== "string" || !quelle) continue
-    if (quelle.startsWith("blob:")) {
+    const src = el.getAttribute("src")
+    if (typeof src !== "string" || !src) continue
+    if (src.startsWith("blob:")) {
       // Arbeit eines frueheren Durchlaufs, die noch sichtbar ist. Sie zaehlt als
       // weiter gehalten, sonst gibt dieser Durchlauf sie frei und das Bild im
       // offenen Fenster stirbt.
-      const adresse = blobZuAdresse.get(quelle)
+      const adresse = blobZuAdresse.get(src)
       if (adresse) schonGesetzt.add(adresse)
       continue
     }
+    // FORM (a), stre-T-116: im HTML steht ein neutraler Platzhalter in `src`
+    // und die schluesselfreie Adresse in `data-beneos-src`. Getauscht wird
+    // dann diese. Das Attribut bleibt am Element; einen zweiten Render
+    // erkennt `blobZuAdresse` oben.
+    const formA = el.hasAttribute?.("data-beneos-src") ? el.getAttribute("data-beneos-src") : null
+    // Bei Modus aus nur Form (a): eine alte Toradresse lud dort schon vor
+    // stre-T-116 direkt, und dabei bleibt es.
+    if (nurFormA && !formA) continue
+    const quelle = formA ?? src
     if (!istUnsere(quelle)) continue
     if (imEditor(el)) { uebersprungen++; continue }
     // Ein Bild mit `data-edit` ist ein Formularfeld: Foundry liest beim Absenden
@@ -294,7 +303,7 @@ function zuTauschende(wurzel) {
     // Bearbeitungsmodus). Den Schluessel nimmt das Schreibnetz in
     // `stream-leinwand.mjs` wieder heraus.
     if (el.hasAttribute?.("data-edit")) { uebersprungen++; continue }
-    elemente.push({ el, adresse: quelle })
+    elemente.push({ el, adresse: quelle, formA: !!formA })
   }
   return { elemente, schonGesetzt, uebersprungen }
 }
@@ -327,13 +336,18 @@ function melde(adresse, grund) {
  */
 export async function beneosBildAusVorrat(wurzel, fenster) {
   const leer = { angefasst: 0, fehlgeschlagen: 0, uebersprungen: 0, imEditorFenster: false }
-  if (!wurzel || !streamEnabled()) return leer
+  // AM SCHLUESSEL, NICHT AM MODUS (stre-T-116). Seit das HTML Form (a) traegt,
+  // zeigt ohne diesen Tausch auch eine Welt mit Schluessel und Modus aus nur
+  // den Platzhalter. Bei Modus aus wird nur Form (a) getauscht, der Abruf geht
+  // dann ueber das gewoehnliche `fetch`, denn der fetch-Ersatz haengt am Modus.
+  if (!wurzel || !streamKey()) return leer
+  const nurFormA = !streamMode()
   // Ein Fenster im Bearbeitenmodus wird gar nicht angefasst. Riegel vor dem
   // Riegel: auch ein `<img>` ausserhalb der Editorflaeche kann beim Speichern in
   // den Dokumentzustand geraten, wenn ein Fremdmodul anders serialisiert.
   if (bearbeitet(fenster)) return { ...leer, imEditorFenster: true }
 
-  const { elemente, schonGesetzt, uebersprungen } = zuTauschende(wurzel)
+  const { elemente, schonGesetzt, uebersprungen } = zuTauschende(wurzel, nurFormA)
   if (!elemente.length && !schonGesetzt.size) {
     // Ein Render ohne ein einziges Beneos-Bild heisst, dass die Bilder des
     // vorigen Renders niemand mehr ansieht.
@@ -347,14 +361,19 @@ export async function beneosBildAusVorrat(wurzel, fenster) {
   let angefasst = 0
   let fehlgeschlagen = 0
 
-  await Promise.all(elemente.map(async ({ el, adresse }) => {
+  await Promise.all(elemente.map(async ({ el, adresse, formA }) => {
     try {
       const blobAdresse = await blobFuer(adresse)
       const eintrag = bildBlobs.get(adresse)
       // Zwischenzeitlich freigegeben, Fenster zu, oder Element nicht mehr im
       // Dokument: nichts eintragen und nichts setzen, sonst bliebe ein Halter
       // stehen, den kein Schliessen mehr findet.
-      if (!eintrag || fenster?.rendered === false || !el.isConnected) {
+      //
+      // Der Chat ist die Ausnahme: sein Haken feuert auf ein Element, das
+      // Foundry erst nach dem ganzen Stapel einfuegt (v13 chat-message.mjs
+      // :415-419, chat.mjs:267-282). Halter ist dort die Nachricht, und
+      // solange sie in `game.messages` steht, laesst `deleteChatMessage` los.
+      if (!eintrag || fenster?.rendered === false || (!el.isConnected && !lebendeNachricht(fenster))) {
         verworfen++
         if (eintrag && !eintrag.halter.size) loslassen(fenster, [adresse])
         return
@@ -374,6 +393,14 @@ export async function beneosBildAusVorrat(wurzel, fenster) {
       // Fehlerobjekt. Sonst waere die Zeitueberschreitung, also der haeufigste
       // Fall, der einzige ohne Ursache im Bericht.
       melde(adresse, e?.message ?? String(e))
+      // Form (a) traegt in `src` nur den Platzhalter. Damit der Zustand von
+      // vorher bleibt, bekommt die ANZEIGE die Toradresse, nie die Daten:
+      // gespeichert wird aus dem Dokument, und im Editor tauscht dieser Weg
+      // gar nicht (`imEditor`).
+      if (formA) {
+        const tor = leinwandAdresse(adresse)
+        if (tor !== adresse) el.setAttribute("src", tor)
+      }
     }
   }))
 
@@ -439,7 +466,21 @@ const FLAECHEN = [
    * `ApplicationV2`.
    */
   ["renderImagePopout", "closeImagePopout"],
+  /*
+   * Der Chat, stre-T-116 (Vorgabe 4 aus P-04:01:17). Bestand 0, also Vorsorge:
+   * mit Form (a) zeigte eine Chatkarte mit Beneos-Bild sonst nur den
+   * Platzhalter. `renderChatMessageHTML` feuert in v13 und v14, gemessen am
+   * 17.11.2026 (Spur `ChatMessage5e`). Es gibt kein Fenster, das sich
+   * schliesst; Halter ist die Nachricht, und losgelassen wird, wenn sie
+   * geloescht wird. Kein Listenhaken: jede Karte zeigt ihr Bild voll.
+   */
+  ["renderChatMessageHTML", "deleteChatMessage"],
 ]
+
+/** Eine Chatnachricht, die noch in der Welt steht. */
+function lebendeNachricht(halter) {
+  return halter?.documentName === "ChatMessage" && !!globalThis.game?.messages?.has?.(halter.id)
+}
 
 /**
  * Ein Verzeichnis darf hier nie stehen, Begruendung im Kopf.

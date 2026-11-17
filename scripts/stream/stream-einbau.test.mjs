@@ -128,6 +128,65 @@ gleich("Modus aus mit Schluessel: vorbereitet steht die Toradresse",
 gleich("Modus aus mit Schluessel: _source bleibt schluesselfrei",
   k._source.texture.src, "beneos://a/beneos_bm_0113/4k/karte.webp")
 
+/*
+ * stre-T-116: HTML-Netz, Bildertausch und Altseiten-Lauf haengen am
+ * Schluessel. Gemessen wird je die Wirkung, nicht der Hakenname.
+ */
+const { PLATZHALTER_BILD } = await import("./stream-html.mjs")
+const TOR_HTML = `<img src="${GATE}/a/${SCHLUESSEL}/beneos_bm_0113/4k/handout.webp">`
+const FREI_HTML = "beneos://a/beneos_bm_0113/4k/handout.webp"
+{
+  const aenderung = { "text.content": TOR_HTML }
+  for (const h of haken.liste.filter((x) => x.name === "preUpdateJournalEntryPage")) {
+    try { await h.fn({ type: "text" }, aenderung) } catch (_) { /* gezaehlt wird die Wirkung */ }
+  }
+  gleich("Modus aus mit Schluessel: das HTML-Netz macht Form (a)",
+    aenderung["text.content"].includes(`data-beneos-src="${FREI_HTML}"`) && !aenderung["text.content"].includes(SCHLUESSEL), true)
+}
+{
+  // Der Abruf scheitert in der Attrappe (leere Antwort); der Tausch setzt dann
+  // die Toradresse in die Anzeige. Beides heisst: er ist eingebaut und lief.
+  const attr = new Map([["src", PLATZHALTER_BILD], ["data-beneos-src", FREI_HTML]])
+  const bild = {
+    nodeType: 1, isConnected: true, closest: () => null,
+    getAttribute: (k) => attr.get(k) ?? null, setAttribute: (k, v) => { attr.set(k, String(v)) }, hasAttribute: (k) => attr.has(k),
+  }
+  const wurzel = { nodeType: 1, querySelectorAll: (s) => (s === "img" ? [bild] : []), querySelector: () => null }
+  for (const h of haken.liste.filter((x) => x.name === "renderJournalEntrySheet")) {
+    try { await h.fn({ rendered: true, element: wurzel }, wurzel) } catch (_) { /* gezaehlt wird die Wirkung */ }
+  }
+  for (let i = 0; i < 20 && attr.get("src") === PLATZHALTER_BILD; i++) await new Promise((r) => setTimeout(r, 5))
+  gleich("Modus aus mit Schluessel: ein Bild in Form (a) wird angefasst", attr.get("src") !== PLATZHALTER_BILD, true)
+}
+{
+  const geschrieben = []
+  const quelle = { name: "J", pages: [{ _id: "p1", type: "text", text: { content: TOR_HTML } }] }
+  const journal = {
+    constructor: { metadata: { embedded: { JournalEntryPage: "pages" } } },
+    pages: [],
+    toObject: () => JSON.parse(JSON.stringify(quelle)),
+    async update(d) { geschrieben.push(d) },
+    // Die Quelle bleibt bewusst stehen: so faende ein zweiter Lauf wieder etwas,
+    // und nur der Einmal-Riegel haelt ihn auf.
+    async updateEmbeddedDocuments(_k, teile) { geschrieben.push(...teile) },
+  }
+  const vorher = { journal: globalThis.game.journal, user: globalThis.game.user }
+  globalThis.game.journal = [journal]
+  globalThis.game.user = { isGM: true }
+  const leise = console.log
+  console.log = () => {}
+  for (let mal = 0; mal < 2; mal++) {
+    for (const h of haken.liste.filter((x) => x.name === "ready" && String(x.fn).includes("schluesselLaeufe"))) {
+      try { await h.fn() } catch (_) { /* gezaehlt wird die Wirkung */ }
+    }
+  }
+  console.log = leise
+  globalThis.game.journal = vorher.journal
+  globalThis.game.user = vorher.user
+  gleich("Modus aus mit Schluessel: ready stellt Altseiten auf Form (a) um, einmal",
+    `${geschrieben.length}|${!JSON.stringify(geschrieben).includes(SCHLUESSEL)}`, "1|true")
+}
+
 // Zweiwertprobe: der fetch-Ersatz haengt weiter am Modus.
 gleich("Modus aus: der fetch-Ersatz ist NICHT eingebaut", globalThis.fetch, urFetch)
 

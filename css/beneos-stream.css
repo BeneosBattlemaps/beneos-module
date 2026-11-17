@@ -1,0 +1,27 @@
+/*
+ * beneos-stream.css
+ *
+ * Das Aussehen eines gestreamten Bildes im HTML, BEVOR das echte Bild da ist
+ * (stre-T-116).
+ *
+ * Im gespeicherten HTML steht Form (a): `src` ist ein neutraler, durchsichtiger
+ * Platzhalter von einem Pixel, die Adresse steht schluesselfrei in
+ * `data-beneos-src`. Das echte Bild setzt erst die Anzeige ein
+ * (`stream-bilder.mjs`), als `blob:`-Adresse. Wie die Flaeche bis dahin
+ * aussieht, sagt allein diese Regel und nie die gespeicherten Daten
+ * (Auftrag P-04:01:17, Vorgabe 1). Eine spaetere Entscheidung zum Aussehen
+ * (R24) tauscht nur diese Datei.
+ *
+ * Ohne Hoehenattribut bekaeme der Platzhalter seine Eigengroesse von einem
+ * Pixel und waere unsichtbar. Mit `width` und `height` aus dem Bestand
+ * (587 von 858 Bildern der Pruefwelt, gemessen 17.11.2026) haelt er die Flaeche
+ * des spaeteren Bildes frei, und nichts springt beim Tausch.
+ */
+img[data-beneos-src]:not([src^="blob:"]) {
+  background: var(--bc-card-hover, #231f18);
+}
+
+img[data-beneos-src]:not([src^="blob:"]):not([height]) {
+  min-width: 4rem;
+  min-height: 4rem;
+}

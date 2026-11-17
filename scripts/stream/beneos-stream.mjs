@@ -28,6 +28,7 @@ import { installStreamIndicator } from "./stream-indicator.mjs"
 import { installStreamBilder, bilderBlobStand } from "./stream-bilder.mjs"
 import { installStreamSceneUi } from "./stream-scene-ui.mjs"
 import { installStreamLeinwand } from "./stream-leinwand.mjs"
+import { installHtmlNetz, altseitenUmstellen } from "./stream-html.mjs"
 import { installStreamKlang } from "./stream-klang.mjs"
 import { registerOfflineWindow, BeneosOfflineWindow } from "./stream-offline-window.mjs"
 import { explainOnce } from "./stream-intro.mjs"
@@ -85,6 +86,19 @@ Hooks.once("init", () => {
   // direkt, und so bleibt es.
   installKonsolenMaske()
   installStreamLeinwand()
+  // stre-T-116, am Schluessel wie die Leinwand. Das HTML traegt Form (a):
+  // einen neutralen Platzhalter in `src`, die Adresse schluesselfrei in
+  // `data-beneos-src`. Das Netz haelt den Schluessel beim Speichern aus dem
+  // HTML; der Bildertausch setzt das echte Bild nur in die Anzeige. Er stand
+  // bis dahin im Modusblock, und eine Welt mit Schluessel und Modus aus saehe
+  // im Journal sonst nur noch den Platzhalter. Bei Modus aus tauscht er nur
+  // Form (a); eine alte Toradresse laedt dort weiter direkt wie vorher.
+  // Bilder in Oberflaechen: ein `<img>` beruehrt `window.fetch` nie, also
+  // sieht der Ersatz es nicht. Gemessen am 05.11.2026: 789 Journalseiten der
+  // Pruefwelt trugen eine Toradresse im Feld `src`, 805 Textseiten eine im
+  // eingebetteten HTML.
+  installHtmlNetz()
+  installStreamBilder()
   if (streamMode()) {
     // WARUM IM GANZEN ORDNER KEIN `Hooks.off` STEHT.
     //
@@ -116,12 +130,6 @@ Hooks.once("init", () => {
     installStreamOnline()
     installStreamCanvas()
     installStreamIndicator()
-    // Bilder in Oberflaechen. Ein `<img>` beruehrt `window.fetch` nie, also
-    // sieht der Ersatz es nicht: ohne diesen Helfer haben Journal-Handouts
-    // und Klappkarten keinen Vorrat und kein Ersatzbild. Gemessen am
-    // 05.11.2026: 789 Journalseiten der Pruefwelt tragen eine Toradresse im
-    // Feld `src`, 805 Textseiten eine im eingebetteten HTML.
-    installStreamBilder()
     // Rechtsklick und Markierung. Haengen sich nur an Hooks und lesen
     // ausschliesslich aus dem vorgewaermten Zustand, kosten also nichts,
     // solange niemand eine Szenenliste zeichnet.
@@ -233,6 +241,8 @@ Hooks.once("init", () => {
     videoTilesOf,
     hasStreamedContent,
     abortAll,
+    // stre-T-116: Altseiten auf Form (a). `{ trocken: true }` zaehlt nur.
+    altseitenUmstellen: (optionen) => altseitenUmstellen(optionen),
     pinStills: () => pinStillsEnabled(),
   }
   globalThis.BeneosStream = api
@@ -240,7 +250,37 @@ Hooks.once("init", () => {
   game.beneos.stream = api
 })
 
+/**
+ * Die Laeufe, die am Schluessel haengen und nicht am Modus (stre-T-116):
+ * erst die Journalheilung, dann die Umstellung der Altseiten auf Form (a),
+ * damit das Ergebnis der Heilung gleich mit umgestellt wird.
+ *
+ * Zweimal gerufen und einmal gelaufen: vor dem Modusriegel, wenn der Schluessel
+ * schon da ist, und im Modusblock nach `ensureStreamKey()`, fuer eine Welt, die
+ * ihren Schluessel erst in diesem `ready` holt.
+ *
+ * Bilder im Journaltext, die vor dem 25.08.2026 installiert wurden, zeigen
+ * noch auf die Platte statt auf das Gate; die Heilung zieht sie gerade. Danach
+ * finden beide Laeufe nichts mehr und kosten einen Durchlauf.
+ */
+let schluesselGelaufen = false
+async function schluesselLaeufe() {
+  if (schluesselGelaufen || !game.user?.isGM || !streamKey()) return
+  schluesselGelaufen = true
+  try {
+    await globalThis.beneosAssetPathRepair?.heileJournalGateAdressen?.()
+  } catch (err) {
+    console.log(`Beneos Stream | Journalheilung uebersprungen: ${String(err).slice(0, 140)}`)
+  }
+  try {
+    await altseitenUmstellen()
+  } catch (err) {
+    console.log(`Beneos Stream | Altseiten uebersprungen: ${String(err).slice(0, 140)}`)
+  }
+}
+
 Hooks.once("ready", async () => {
+  await schluesselLaeufe()
   // Am Modus, nicht an streamEnabled(): letzteres verlangt bereits einen
   // Schluessel, und eine frisch eingeschaltete Welt hat noch keinen. Sie kaeme
   // sonst nie dazu, sich einen zu holen.
@@ -250,6 +290,7 @@ Hooks.once("ready", async () => {
   // Der Schluessel dieser Welt. Holt ihn beim ersten Mal, uebernimmt einen
   // handgetippten und laesst ihn danach in Ruhe.
   await ensureStreamKey()
+  await schluesselLaeufe()
 
   if (!streamEnabled()) {
     console.log("Beneos Stream | Modus an, aber kein Schluessel. Es wird nichts ausgeliefert.")
@@ -309,14 +350,7 @@ Hooks.once("ready", async () => {
   // Der Sachverhalt bleibt vollstaendig protokolliert, nur eben in der Farbe,
   // die ihm zusteht. Wer das Offline-Versprechen pruefen will, liest
   // `storeStatus().persisted`.
-  // Bilder im Journaltext, die vor dem 25.08.2026 installiert wurden, zeigen
-  // noch auf die Platte statt auf das Gate. Einmal geradeziehen; danach findet
-  // der Lauf nichts mehr und kostet einen Durchlauf ueber die Journale.
-  try {
-    await globalThis.beneosAssetPathRepair?.heileJournalGateAdressen?.()
-  } catch (err) {
-    console.log(`Beneos Stream | Journalheilung uebersprungen: ${String(err).slice(0, 140)}`)
-  }
+  // Die Journalheilung lief schon oben in `schluesselLaeufe` (stre-T-116).
 
   // Der Offline-Vorrat: Uhr stellen, Verfall pruefen, Fehlendes melden.
   //

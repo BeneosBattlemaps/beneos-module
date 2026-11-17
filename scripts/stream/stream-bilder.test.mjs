@@ -57,6 +57,9 @@ const bilder = await import("./stream-bilder.mjs")
 // Jede Bildadresse des Tores antwortet mit vier Byte WebP-Kopf; alles andere
 // ist ein fremder Abruf und macht den Satz rot.
 netz((adresse) => {
+  if (adresse.startsWith("https://gate.beneos.stream/") && adresse.includes("kaputt")) {
+    return new Response("weg", { status: 404 })
+  }
   if (adresse.startsWith("https://gate.beneos.stream/")) {
     return new Response(new Blob([new Uint8Array([82, 73, 70, 70])], { type: "image/webp" }), { status: 200 })
   }
@@ -69,18 +72,21 @@ abschnitt("Der Einbau meldet genau die gemessenen Haken an")
 bilder.installStreamBilder()
 const namen = haken.namen()
 const auf = namen.filter((n) => n.startsWith("render"))
-const zu = namen.filter((n) => n.startsWith("close"))
+const zu = namen.filter((n) => n.startsWith("close") || n.startsWith("delete"))
 
-gleich("genau zehn Haken", namen.length, 10)
-gleich("fuenf davon render, fuenf close", `${auf.length}/${zu.length}`, "5/5")
+// Sechs Paare seit stre-T-116: der Chat (`renderChatMessageHTML`) hat kein
+// Fenster, das sich schliesst; seine Bilder laesst `deleteChatMessage` los.
+gleich("genau zwoelf Haken", namen.length, 12)
+gleich("sechs davon render, sechs schliessen", `${auf.length}/${zu.length}`, "6/6")
 // Die gemessenen Namen, fest. Die Proben laufen ueber diese Liste und nicht
 // ueber das Angemeldete: fehlt ein Haken, wird seine Probe rot statt still
 // zu entfallen.
-const GEMESSEN = ["renderActorSheetV2", "renderImagePopout", "renderItemSheet5e",
+const GEMESSEN = ["renderActorSheetV2", "renderChatMessageHTML", "renderImagePopout", "renderItemSheet5e",
   "renderJournalEntryPageSheet", "renderJournalEntrySheet"]
-gleich("die fuenf render-Haken sind die gemessenen", [...auf].sort().join(","), GEMESSEN.join(","))
+const SCHLIESST = (r) => (r === "renderChatMessageHTML" ? "deleteChatMessage" : r.replace(/^render/, "close"))
+gleich("die sechs render-Haken sind die gemessenen", [...auf].sort().join(","), GEMESSEN.join(","))
 for (const r of GEMESSEN) {
-  gleich(`${r} hat seinen close-Haken derselben Klasse`, zu.includes(r.replace(/^render/, "close")), true)
+  gleich(`${r} hat seinen Schliesshaken`, zu.includes(SCHLIESST(r)), true)
 }
 gleich("kein Name steht zweimal", new Set(namen).size, namen.length)
 
@@ -111,7 +117,7 @@ const riegel = bilder.flaechenRiegelFuerPruefsatz
 gleich("die Naht ist da", typeof riegel, "function")
 if (typeof riegel === "function") {
   for (const r of GEMESSEN) {
-    gleich(`${r} faellt nicht unter den Riegel`, riegel(r, r.replace(/^render/, "close")), false)
+    gleich(`${r} faellt nicht unter den Riegel`, riegel(r, SCHLIESST(r)), false)
   }
   for (const boese of ["renderItemDirectory5e", "renderActorDirectory", "renderSidebarTab", "renderFilePicker"]) {
     gleich(`der Riegel weist ${boese} ab`, riegel(boese, "closeHarmlos"), true)
@@ -136,6 +142,7 @@ function bildElement(src) {
     isConnected: true,
     getAttribute: (k) => attr.get(k) ?? null,
     setAttribute: (k, v) => { attr.set(k, String(v)) },
+    hasAttribute: (k) => attr.has(k),
     closest: () => null,
   }
 }
@@ -220,6 +227,100 @@ gleich("ein Bild mit data-edit behaelt seine Adresse", formBild.getAttribute("sr
 gleich("das Bild daneben wird weiter getauscht", String(freiBild.getAttribute("src")).startsWith("blob:"), true)
 await haken.rufe("closeActorSheetV2", f3.app)
 nimmAbrufe()
+
+// ===========================================================================
+abschnitt("Form (a), stre-T-116: das Bild steht in data-beneos-src")
+
+const { PLATZHALTER_BILD } = await import("./stream-html.mjs")
+async function warte(el) {
+  for (let i = 0; i < 20 && !String(el.getAttribute("src")).startsWith("blob:"); i++) {
+    await new Promise((r) => setTimeout(r, 5))
+  }
+}
+function formA(adresse) {
+  const el = bildElement(PLATZHALTER_BILD)
+  el.setAttribute("data-beneos-src", adresse)
+  return el
+}
+const handout = settings.platzhalterAdresse("beneos_bm_0042", "4k", "map_assets/handout.webp")
+{
+  const a = formA(handout)
+  const f = fenster([a])
+  nimmAbrufe()
+  await haken.rufe("renderJournalEntryPageSheet", f.app, f.wurzel)
+  await warte(a)
+  gleich("Form (a) wird eine Blob-Adresse", String(a.getAttribute("src")).startsWith("blob:"), true)
+  gleich("Form (a): abgerufen wird die Toradresse von heute",
+    nimmAbrufe().map((x) => x.adresse).join(" "), settings.assetUrl("beneos_bm_0042", "4k", "map_assets/handout.webp"))
+  gleich("Form (a): data-beneos-src bleibt am Element", a.getAttribute("data-beneos-src"), handout)
+  await haken.rufe("renderJournalEntryPageSheet", f.app, f.wurzel)
+  await new Promise((r) => setTimeout(r, 20))
+  gleich("Form (a): ein zweiter Render haelt das Bild und holt nichts", `${bilder.bilderBlobStand().eintraege}|${nimmAbrufe().length}`, "1|0")
+  await haken.rufe("closeJournalEntryPageSheet", f.app)
+}
+{
+  // Am Schluessel, nicht am Modus: bei Modus aus mit Schluessel zeigte das HTML
+  // vor stre-T-116 die Toradresse direkt. Mit Form (a) stuende sonst nur der
+  // Platzhalter da. Eine alte Toradresse bleibt dabei unberuehrt wie vorher.
+  einstellungen["beneos-stream-mode"] = false
+  const a = formA(handout)
+  const alt = bildElement(tor)
+  const f = fenster([a, alt])
+  await haken.rufe("renderJournalEntrySheet", f.app, f.wurzel)
+  await warte(a)
+  gleich("Modus aus mit Schluessel: Form (a) wird getauscht", String(a.getAttribute("src")).startsWith("blob:"), true)
+  gleich("Modus aus mit Schluessel: die alte Toradresse bleibt wie vorher", alt.getAttribute("src"), tor)
+  await haken.rufe("closeJournalEntrySheet", f.app)
+  einstellungen["beneos-stream-key"] = ""
+  const b = formA(handout)
+  const g = fenster([b])
+  nimmAbrufe()
+  await haken.rufe("renderJournalEntrySheet", g.app, g.wurzel)
+  await new Promise((r) => setTimeout(r, 20))
+  gleich("ohne Schluessel: Form (a) bleibt der Platzhalter, nichts abgerufen",
+    `${b.getAttribute("src") === PLATZHALTER_BILD}|${nimmAbrufe().length}`, "true|0")
+  einstellungen["beneos-stream-key"] = SCHLUESSEL
+  einstellungen["beneos-stream-mode"] = true
+}
+{
+  // Der Chat: der Haken feuert auf ein noch nicht eingefuegtes Element
+  // (v13 chat-message.mjs:415-419, renderBatch fuegt erst nach dem Stapel ein).
+  const nachrichten = new Map()
+  globalThis.game.messages = { has: (id) => nachrichten.has(id) }
+  const nachricht = { id: "m1", documentName: "ChatMessage" }
+  nachrichten.set("m1", nachricht)
+  const a = formA(handout)
+  a.isConnected = false
+  const karte = { nodeType: 1, querySelectorAll: (s) => (s === "img" ? [a] : []), querySelector: () => null }
+  await haken.rufe("renderChatMessageHTML", nachricht, karte)
+  await warte(a)
+  gleich("Chat: nicht eingefuegt, Nachricht lebt: das Bild wird gesetzt", String(a.getAttribute("src")).startsWith("blob:"), true)
+  await haken.rufe("deleteChatMessage", nachricht)
+  gleich("Chat: deleteChatMessage laesst los", bilder.bilderBlobStand().eintraege, 0)
+  const weg = { id: "m2", documentName: "ChatMessage" }
+  const b = formA(handout)
+  b.isConnected = false
+  const karte2 = { nodeType: 1, querySelectorAll: (s) => (s === "img" ? [b] : []), querySelector: () => null }
+  await haken.rufe("renderChatMessageHTML", weg, karte2)
+  await new Promise((r) => setTimeout(r, 20))
+  gleich("Chat: Nachricht schon weg: nichts gesetzt, nichts gehalten",
+    `${b.getAttribute("src") === PLATZHALTER_BILD}|${bilder.bilderBlobStand().eintraege}`, "true|0")
+  delete globalThis.game.messages
+}
+{
+  // Abruf scheitert: wie vor stre-T-116 laedt die Toradresse direkt, nur in
+  // der Anzeige. Gespeichert bleibt Form (a).
+  const kaputt = settings.platzhalterAdresse("beneos_bm_0042", "4k", "map_assets/kaputt.webp")
+  const a = formA(kaputt)
+  const f = fenster([a])
+  await haken.rufe("renderJournalEntrySheet", f.app, f.wurzel)
+  for (let i = 0; i < 20 && a.getAttribute("src") === PLATZHALTER_BILD; i++) await new Promise((r) => setTimeout(r, 5))
+  gleich("Abruf scheitert: die Anzeige laedt die Toradresse direkt",
+    a.getAttribute("src"), settings.assetUrl("beneos_bm_0042", "4k", "map_assets/kaputt.webp"))
+  gleich("Abruf scheitert: data-beneos-src bleibt", a.getAttribute("data-beneos-src"), kaputt)
+  await haken.rufe("closeJournalEntrySheet", f.app)
+  nimmAbrufe()
+}
 
 // ===========================================================================
 abschnitt("Der Kopf widerspricht der Liste unter sich nicht")

@@ -29,7 +29,8 @@
 	  "css/beneos-lgc.css",
 	  "css/beneos-creature-codex.css",
 	  "css/beneos-creature-installer.css",
-	  "css/beneos-wiki.css"
+	  "css/beneos-wiki.css",
+	  "css/beneos-stream.css"
   ],
   "esmodules": [
     "scripts/beneos-tree-performance.js",
