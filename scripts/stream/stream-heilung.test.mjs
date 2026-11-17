@@ -213,11 +213,39 @@ const seite = (html) => ({ id: "t1", text: { content: html } })
     `${r.text("t1")}|${r.b.fremdeBasis}`, `${klang}${FORM_A}|0`)
 }
 {
-  // H: `data-src` hinter dem lokalen `src`. Die Suche trifft das letzte
-  // `src=`, also `data-src`; geaendert waere ein anderes Attribut als die
-  // Bildadresse. Die Schreibpruefung lehnt die Seite ab.
+  // H: `data-src` hinter dem lokalen `src`. Seit stre-T-131 sucht die Heilung
+  // das echte `src` und nicht das in `data-src`; jedes Attribut steht fuer
+  // sich. Das `src` wird Form (a), das lokale `data-src` bleibt zeichengleich.
   const r = await lauf([TOR_MASSSTAB(), seite(`<img src="${LOKAL}" data-src="${LOKAL2}">`)])
-  gleich("H: data-src hinter dem lokalen src: nicht geschrieben, abgelehnt", `${r.geschrieben.length}|${r.b.abgelehnt}`, "0|1")
+  const text = r.text("t1") ?? ""
+  gleich("H: data-src hinter dem lokalen src: src wird Form (a), data-src bleibt lokal",
+    `${r.geschrieben.length}|${r.b.abgelehnt}|${text.includes(`data-beneos-src="${FREI_MANIFEST}"`)}|${text.includes(`data-src="${LOKAL2}"`)}|${text.includes(`src="${LOKAL}"`)}`,
+    "1|0|true|true|false")
+}
+/*
+ * stre-T-131: zwei Formen, die die Heilung bis dahin uebersah. Ein
+ * grossgeschriebenes `IMG SRC` (der Vorfilter war case-sensitiv) und ein
+ * `data-src` hinter dem lokalen `src` (die Suche fing `data-src`).
+ */
+{
+  const r = await lauf([TOR_MASSSTAB(), seite(`<IMG SRC="${LOKAL}">`)])
+  const text = r.text("t1") ?? ""
+  gleich("T131-A: IMG SRC gross: das Bild wird Form (a), ohne Schluessel",
+    `${r.geschrieben.length}|${text.includes(LOKAL)}|${schluesselStellen(text)}|${text.includes(`data-beneos-src="${FREI_MANIFEST}"`)}`,
+    "1|false|0|true")
+}
+{
+  // Gegenwert: eine Adresse, die nicht aus der Installation stammt, bleibt.
+  const r = await lauf([TOR_MASSSTAB(), seite(`<IMG SRC="worlds/x/bild.webp">`)])
+  gleich("T131-A Gegenwert: IMG SRC gross mit fremder lokaler Adresse: nichts geschrieben", r.geschrieben.length, 0)
+}
+{
+  const tor = mitSchluessel(HEUTE, PFAD)
+  const r = await lauf([TOR_MASSSTAB(), seite(`<img src="${LOKAL}" data-src="${tor}">`)])
+  const text = r.text("t1") ?? ""
+  gleich("T131-B: data-src mit Toradresse hinter dem lokalen src: src wird Form (a), kein Schluessel",
+    `${r.geschrieben.length}|${text.includes(`src="${LOKAL}"`)}|${schluesselStellen(text)}|${text.includes(`data-beneos-src="${FREI_MANIFEST}"`)}`,
+    "1|false|0|true")
 }
 {
   // Y: derselbe Wert steht in einem Attribut vor dem `src`. Getauscht wuerde
@@ -334,8 +362,46 @@ gleich("keine Warnung nennt einen Schluessel",
   warnungen.filter((w) => new RegExp(`pk_|https?:\\/\\/[^/\\s]+\\/(?:${RAEUME.join("|")})\\/`, "i").test(w) || w.includes(ALT) || w.includes(HEUTE)).length, 0)
 console.warn = warnAlt
 
+/*
+ * stre-T-131, Kalt-Review: die engere `HTML_SRC_RE` darf weder die Suche nach
+ * dem Massstab noch die Wurzelsuche beim Schluesselwechsel blind machen, und
+ * die Rueckschau gilt auch fuer Attribute wie `xsrc`.
+ */
+console.log("stre-T-131: Massstab, Wurzelsuche, xsrc")
+{
+  // Ohne Bildseite steht der Massstab nur im `data-src` desselben Tags.
+  const tor = mitSchluessel(HEUTE, PFAD)
+  const r = await lauf([seite(`<img src="${LOKAL}" data-src="${tor}">`)])
+  const text = r.text("t1") ?? ""
+  gleich("M2: Massstab nur in data-src: das Bild wird Form (a), kein Schluessel",
+    `${r.geschrieben.length}|${r.b.ohneMassstab.length}|${schluesselStellen(text)}|${text.includes(`data-beneos-src="${FREI_MANIFEST}"`)}`,
+    "1|0|0|true")
+}
+{
+  const r = await lauf([TOR_MASSSTAB(), seite(`<img src="${LOKAL}" xsrc="${LOKAL2}">`)])
+  const text = r.text("t1") ?? ""
+  gleich("xsrc hinter dem lokalen src: src wird Form (a), xsrc bleibt",
+    `${r.geschrieben.length}|${r.b.abgelehnt}|${text.includes(`data-beneos-src="${FREI_MANIFEST}"`)}|${text.includes(`xsrc="${LOKAL2}"`)}`,
+    "1|0|true|true")
+}
+{
+  const { schluesselNachziehen } = await import("../beneos-asset-path-repair.js")
+  const torAlt = mitSchluessel(ALT, PFAD)
+  for (const [name, html] of [
+    ["W2: alter Schluessel nur in data-src: die Wurzel wird gefunden", `<img src="${LOKAL}" data-src="${torAlt}">`],
+    ["W5: alter Schluessel nur im srcset: die Wurzel wird gefunden", `<img src="${LOKAL}" srcset="${torAlt} 2x">`],
+  ]) {
+    game.journal = [{ name: "J", pages: [{ id: "t1", text: { content: html } }] }]
+    const logAlt = console.log
+    console.log = () => {}
+    let b
+    try { b = await schluesselNachziehen({ trocken: true }) } finally { console.log = logAlt }
+    gleich(name, b.gefunden.length, 1)
+  }
+}
+
 console.log(`\n${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
-const ERWARTET = 36
+const ERWARTET = 43
 if (aussagen !== ERWARTET) {
   console.log(`ROT erwartet ${ERWARTET} Aussagen, gezaehlt ${aussagen}`)
   process.exit(1)

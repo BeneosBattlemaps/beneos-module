@@ -648,7 +648,16 @@ function _rewriteWithMappings(value, mappings) {
   return null;
 }
 
-const HTML_SRC_RE = /<(?:img|video|source|audio)\b[^>]*\bsrc\s*=\s*(["'])([^"']+)\1/gi;
+// Das echte `src`, nicht das in `data-src` (stre-T-131): die gierige Suche fing
+// sonst das letzte `src=` im Tag und liess das Bild ungeheilt.
+const HTML_SRC_RE = /<(?:img|video|source|audio)\b[^>]*(?<![\w-])src\s*=\s*(["'])([^"']+)\1/gi;
+// Vorfilter ohne Ruecksicht auf Gross- und Kleinschreibung: `<IMG SRC=...>` ist
+// gueltiges HTML und fiel durch `includes("src=")` (stre-T-131).
+const HAT_SRC_RE = /src\s*=/i;
+// Fuer die Suche nach einem Massstab zaehlt auch `data-src`: bis stre-T-131
+// las die gierige `HTML_SRC_RE` es mit, und ein Journal ohne Bildseite fand
+// seinen Massstab oft nur dort (Kalt-Review T-131, Befund 1).
+const MASSSTAB_ATTR_RE = /(?<![\w-])(?:data-)?src\s*=\s*(["'])([^"']+)\1/gi;
 
 function _rewriteHtml(html, mappings) {
   if (typeof html !== "string" || !html) return { html, count: 0 };
@@ -1300,7 +1309,7 @@ export async function heileJournalGateAdressen({ trocken = false } = {}) {
     let offen = false;
     for (const page of journal.pages) {
       const html = page.text?.content;
-      if (typeof html !== "string" || !html.includes("src=")) continue;
+      if (typeof html !== "string" || !HAT_SRC_RE.test(html)) continue;
       for (const treffer of html.matchAll(HTML_SRC_RE)) {
         if (_manifestSchluessel(stripLeadSlashLocal(treffer[2]))) { offen = true; break; }
       }
@@ -1315,7 +1324,7 @@ export async function heileJournalGateAdressen({ trocken = false } = {}) {
       if (praefix) break;
       const html = page.text?.content;
       if (typeof html !== "string") continue;
-      for (const treffer of [...html.matchAll(HTML_SRC_RE), ...html.matchAll(DATA_SRC_RE)]) {
+      for (const treffer of [...html.matchAll(MASSSTAB_ATTR_RE), ...html.matchAll(DATA_SRC_RE)]) {
         // Ein `src` in Form (a) traegt die Adresse im Fragment, auch wenn der
         // Bilddialog `data-beneos-src` verworfen hat.
         praefix = _gatePraefix(treffer[2]) ?? _gatePraefix(formAAdresse(treffer[2], null));
@@ -1329,7 +1338,7 @@ export async function heileJournalGateAdressen({ trocken = false } = {}) {
     const updates = [];
     for (const page of journal.pages) {
       const html = page.text?.content;
-      if (typeof html !== "string" || !html.includes("src=")) continue;
+      if (typeof html !== "string" || !HAT_SRC_RE.test(html)) continue;
       let getroffen = 0;
       const neu = html.replace(HTML_SRC_RE, (ganz, anfuehrung, src) => {
         const schluessel = _manifestSchluessel(stripLeadSlashLocal(src));
@@ -1768,8 +1777,11 @@ function _alteWurzelnSammeln(zielWurzelFuer) {
   for (const journal of game.journal ?? []) {
     for (const page of journal.pages) {
       const html = page.text?.content;
-      if (typeof html !== "string" || !html.includes("src=")) continue;
-      for (const treffer of html.matchAll(HTML_SRC_RE)) merke(treffer[2]);
+      if (typeof html !== "string" || !HAT_SRC_RE.test(html)) continue;
+      // Jede Adresse im Text, nicht nur die in `src`: eine alte Wurzel kann
+      // auch in `data-src` oder `srcset` stehen (Kalt-Review T-131, Befund 2).
+      // `merke` laesst alles liegen, was keine Gate-Adresse ist.
+      for (const treffer of html.matchAll(/https?:\/\/[^\s"'<>]+/gi)) merke(treffer[0]);
     }
   }
 
