@@ -51,3 +51,23 @@ test("gescheiterte Vorabpruefung: Ausgang unterscheidbar, kein Nachlauf", async 
     assert.equal(inst.ausgang, "vorpruefung")
   } finally { console.warn = echtWarn; console.debug = echtDebug }
 })
+
+// Der Host erlaubt alles: der echte Lauf geht ohne Assets bis zum Ende.
+const erlaubt = { createDirectory: async () => ({}), upload: async (_s, dir, file) => ({ path: `${dir}/${file.name}` }), browse: async () => ({ files: [], dirs: [] }) }
+
+test("durchgelaufener echter Lauf: Ausgang fertig, Nachlauf genau einmal", async () => {
+  globalThis.FilePicker = erlaubt
+  const echtWarn = console.warn, echtDebug = console.debug, echtLog = console.log
+  console.warn = () => {}; console.debug = () => {}; console.log = () => {}
+  try {
+    let n = 0
+    const inst = await Installer.install({
+      packageId: "zip_fertig",
+      source: { kind: "zip", entries: new Map([["data/Scene.json", () => new TextEncoder().encode("[]")]]) },
+      record: { releaseDir: "bm_9998" },
+      nachLauf: () => { n++ },
+    })
+    assert.equal(inst.ausgang, "fertig")
+    assert.equal(n, 1)
+  } finally { console.warn = echtWarn; console.debug = echtDebug; console.log = echtLog }
+})

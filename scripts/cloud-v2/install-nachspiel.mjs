@@ -33,8 +33,9 @@ export function releaseNachLauf({ releaseDir, displayName = "", scope = "release
   return async (fertig) => {
     // A "results" re-render reruns buildReleaseCards, which reads the install
     // state fresh. Looked up at call time: a Retry can come long after the
-    // window that started the install was closed and reopened.
-    try { await offenesCloudFenster()?.render({ parts: ["results"] }) } catch (_) {}
+    // window that started the install was closed and reopened. Not awaited,
+    // as before: install() and each bundle round do not wait for the redraw.
+    try { Promise.resolve(offenesCloudFenster()?.render({ parts: ["results"] })).catch(() => {}) } catch (_) {}
     try {
       Hooks.callAll("beneos.releaseInstalled", {
         releaseDir,

@@ -63,6 +63,7 @@ test("MO-022: der delegierte Weg installiert ueber das offene Fenster und laesst
   }
   globalThis.BeneosCloudWindowV2 = Win
   Object.setPrototypeOf(fenster, Win.prototype)
+  fenster._releaseIndex = new Map([["bm_0042", { release_dir: "bm_0042" }]])
   try {
     await api.runNativeReleaseInstall("bm_0042", [{ release_dir: "bm_0042" }])
   } finally { delete globalThis.BeneosCloudWindowV2 }
@@ -73,9 +74,14 @@ test("MO-022: der delegierte Weg installiert ueber das offene Fenster und laesst
 test("MO-022: ohne offenes Fenster installiert ein Hilfsfenster und gibt das Register zurueck", async () => {
   game.beneos = { cloudWindowV2: undefined }
   let lief = null
+  let imRegister = null
   class Win {
     constructor() { this.rendered = false; game.beneos.cloudWindowV2 = this }
-    static async _onCloudBattlemapInstallNative() { lief = this }
+    static async _onCloudBattlemapInstallNative() {
+      lief = this
+      // Waehrend des Laufs gemerkt; ein assert hier wuerde delegate() verschlucken.
+      imRegister = game.beneos.cloudWindowV2 === this
+    }
   }
   globalThis.BeneosCloudWindowV2 = Win
   try {
@@ -84,4 +90,43 @@ test("MO-022: ohne offenes Fenster installiert ein Hilfsfenster und gibt das Reg
   assert.ok(lief instanceof Win)
   assert.equal(lief._releaseIndex.get("bm_0042").release_dir, "bm_0042")
   assert.equal(game.beneos.cloudWindowV2, undefined, "unsichtbares Hilfsfenster bleibt im Register")
+  assert.equal(imRegister, false, "Hilfsfenster sitzt waehrend des Laufs im Register, der Nachlauf findet das offene Fenster nicht")
+})
+
+test("MO-022: offenes Fenster ohne geladene Liste, Hilfsfenster installiert, Register bleibt beim offenen", async () => {
+  const fenster = offenesFenster()
+  let lief = null
+  class Win {
+    constructor() { this.rendered = false; game.beneos.cloudWindowV2 = this }
+    static async _onCloudBattlemapInstallNative() { lief = this }
+  }
+  globalThis.BeneosCloudWindowV2 = Win
+  Object.setPrototypeOf(fenster, Win.prototype)
+  fenster._releaseNeedsLogin = true
+  try {
+    await api.runNativeReleaseInstall("bm_0042", [{ release_dir: "bm_0042" }])
+  } finally { delete globalThis.BeneosCloudWindowV2 }
+  assert.notEqual(lief, fenster, "Fenster ohne Index haette das Release nicht gefunden")
+  assert.equal(lief._releaseIndex.get("bm_0042").release_dir, "bm_0042")
+  assert.equal(game.beneos.cloudWindowV2, fenster)
+})
+
+test("MO-022: zwei ueberlappende delegierte Laeufe hinterlassen kein Hilfsfenster im Register", async () => {
+  game.beneos = { cloudWindowV2: undefined }
+  const freigaben = []
+  class Win {
+    constructor() { this.rendered = false; game.beneos.cloudWindowV2 = this }
+    static _onCloudBattlemapInstallNative() { return new Promise(r => freigaben.push(r)) }
+  }
+  globalThis.BeneosCloudWindowV2 = Win
+  try {
+    const a = api.runNativeReleaseInstall("bm_0001", [{ release_dir: "bm_0001" }])
+    await new Promise(r => setImmediate(r))
+    const b = api.runNativeReleaseInstall("bm_0002", [{ release_dir: "bm_0002" }])
+    await new Promise(r => setImmediate(r))
+    assert.equal(freigaben.length, 2)
+    freigaben[0](); await a
+    freigaben[1](); await b
+  } finally { delete globalThis.BeneosCloudWindowV2 }
+  assert.equal(game.beneos.cloudWindowV2, undefined)
 })
