@@ -23,9 +23,10 @@ const GATE = "https://gate.beneos.stream"
 const SCHLUESSEL = "pk_pruefsatz_export_000001"
 const ALTER = "pk_pruefsatz_alter_0000001"
 let schluesselAn = true
+let sonderAn = ""
 
 const einstellungen = {
-  get [SETTING.key]() { return schluesselAn ? SCHLUESSEL : "" },
+  get [SETTING.key]() { return sonderAn || (schluesselAn ? SCHLUESSEL : "") },
   [SETTING.base]: GATE,
   [SETTING.mode]: true,
 }
@@ -236,11 +237,9 @@ t.abschnitt("Vertraeglichkeit mit fremden Huellen")
   t.gleich("die fremde Huelle davor: ihr Wert bleibt, ohne Schluessel", d.fremdVorher, FREI(KLANG))
   t.gleich("die fremde Huelle danach: ihr Wert bleibt", d.fremdNachher, true)
   t.gleich("Vertraeglichkeit: 0 Mal", zaehle(d), 0)
+  const vorZweitem = Kachel.prototype.toCompendium
   installStreamExport()
-  originalRufe = 0
-  Kachel.prototype.toCompendium.call(new Kachel("Tile", kachelQuelle()), null, {})
-  g.toCompendium(null, {})
-  t.gleich("ein zweiter Einbau wickelt nicht doppelt", originalRufe, 1)
+  t.gleich("ein zweiter Einbau wickelt nicht doppelt", Kachel.prototype.toCompendium === vorZweitem, true)
 }
 
 t.abschnitt("Fehler in der Wandlung")
@@ -257,6 +256,17 @@ t.abschnitt("Fehler in der Wandlung")
   t.gleich("die Fehlermeldung traegt den Schluessel 0 Mal", zaehle(String(fehler?.message ?? "")), 0)
 }
 
+t.abschnitt("Schluessel mit Sonderzeichen")
+{
+  // Ein Schluessel, dessen kodierte Form sich von der rohen unterscheidet.
+  const SONDER = "pk_pruefsatz/sonder+00001"
+  sonderAn = SONDER
+  const d = { flags: { "fremd-modul": { t: `kodiert ${encodeURIComponent(SONDER)} Ende` } } }
+  exportSchluesselfrei(d)
+  t.gleich("kodierter Schluessel mit Sonderzeichen im Text: 0 Mal", d.flags["fremd-modul"].t.split(encodeURIComponent(SONDER)).length - 1, 0)
+  sonderAn = ""
+}
+
 t.abschnitt("Ohne Schluessel")
 {
   schluesselAn = false
@@ -271,7 +281,7 @@ t.abschnitt("Ohne Schluessel")
 const ruf = async (name, ...args) => { geschrieben.length = 0; await haken.rufe(name, ...args); return geschrieben.slice() }
 const frei = () => ({
   _id: "kachel000000002",
-  flags: { [MONKS]: { actions: [{ command: "playsound", data: { audiofile: FREI(KLANG) } }] }, [MODULE_ID]: { x: FREI(BILD) } },
+  flags: { [MONKS]: { actions: [{ command: "playsound", data: { audiofile: FREI(KLANG) } }] }, [MODULE_ID]: { x: FREI(KLANG) } },
 })
 
 t.abschnitt("Heilen beim Hereinkommen")
