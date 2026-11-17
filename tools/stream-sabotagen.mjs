@@ -69,6 +69,12 @@
  * `einbau` auf die Wirkung umgestellt: der zweite `updateSetting`-Haken hatte
  * sie gegen die Sabotage blind gemacht.
  *
+ * SECHZEHN SAETZE seit stre-T-113, Stellen 2 und 3. `hakenfehler` faehrt den
+ * ready-Behandler in `beneos-stream.mjs`, den canvasReady-Behandler und den
+ * Abspielwunsch in `stream-canvas.mjs` mit gestellten Wuerfen und haelt fest,
+ * dass jeder Fehler genau einmal als Warnung ankommt und keiner unbehandelt
+ * bleibt. Den Satz gibt es an der Basis nicht, `--alt` laesst ihn aus.
+ *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
  * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig]
@@ -132,6 +138,7 @@ const ONLINE = "scripts/stream/stream-online.mjs";
 const EINSTIEG = "scripts/stream/beneos-stream.mjs";
 const KLANG = "scripts/stream/stream-klang.mjs";
 const HTML = "scripts/stream/stream-html.mjs";
+const CANVAS = "scripts/stream/stream-canvas.mjs";
 
 const SABOTAGEN = [
   // ---------------------------------------------------------------- maske
@@ -1007,6 +1014,40 @@ const SABOTAGEN = [
   { satz: "bilder", ziel: ["ohne Schluessel bleibt die Toradresse","ohne Schluessel bleibt auch die Platzhalterform","und es wird nichts abgerufen","Modus aus mit Schluessel: die Toradresse bleibt","Modus aus mit Schluessel: die alte Toradresse bleibt wie vorher","ohne Schluessel: Form (a) bleibt der Platzhalter, nichts abgerufen","Chat: deleteChatMessage laesst los","Chat: Nachricht schon weg: nichts gesetzt, nichts gehalten","Fragment ohne data-beneos-src: abgerufen wird die Toradresse von heute","Editor: gehalten, solange die Ansicht lebt","Editor: destroy laesst los"], ersetze: [[BILDER, "  if (!wurzel || !streamKey()) return leer", "  if (!wurzel) return leer"], [BILDER, "  const nurFormA = !streamMode()", "  const nurFormA = false"]] },
   { satz: "heilung", ziel: ["Massstab aus dem Fragment des Platzhalters: Seite in Form (a)"], ersetze: [[REPARATUR, "praefix = _gatePraefix(treffer[2]) ?? _gatePraefix(formAAdresse(treffer[2], null));", "praefix = _gatePraefix(treffer[2]);"]] },
   { satz: "heilung", ziel: ["Massstab beneos://: ein Video bleibt lokal, das Bild wird Form (a)"], ersetze: [[REPARATUR, "        if (schluesselfrei && !/^<img\\b/i.test(ganz)) return ganz;\n", ""]] },
+  // --------------------------------------------------------- hakenfehler
+  // stre-T-113 Stellen 2 und 3. Je Stelle: Fang entfernt, Warnung ohne den
+  // Fehler, doppelte Warnung, Warnung auch im heilen Lauf, Ablehnung im heilen
+  // Lauf, Behandler an einem anderen Haken. Beim Abspielen dazu der Filter
+  // fuer die Nutzergeste (fehlt / faengt alles) und der synchrone Wurf.
+  { satz: "hakenfehler", ziel: ["ready: ein Wurf wird keine unbehandelte Ablehnung","ready: der Wurf wird genau einmal gemeldet","ready: die Warnung nennt den Fehler"], ersetze: [[EINSTIEG, "  weltstartStream().catch((e) => console.warn(\"Beneos Stream | Weltstart abgebrochen:\", e))", "  weltstartStream()"]] },
+  { satz: "hakenfehler", ziel: ["ready: die Warnung nennt den Fehler"], ersetze: [[EINSTIEG, "console.warn(\"Beneos Stream | Weltstart abgebrochen:\", e)", "console.warn(\"Beneos Stream | Weltstart abgebrochen:\")"]] },
+  { satz: "hakenfehler", ziel: ["ready: der Wurf wird genau einmal gemeldet"], ersetze: [[EINSTIEG, "console.warn(\"Beneos Stream | Weltstart abgebrochen:\", e)", "(console.warn(\"Beneos Stream | Weltstart abgebrochen:\", e), console.warn(\"Beneos Stream | Weltstart abgebrochen:\", e))"]] },
+  { satz: "hakenfehler", ziel: ["ready, ohne Schluessel: keine Warnung"], ersetze: [[EINSTIEG, "  weltstartStream().catch(", "  weltstartStream().then(() => console.warn(\"Beneos Stream | Weltstart abgebrochen:\", null)).catch("]] },
+  { satz: "hakenfehler", ziel: ["ready, ohne Schluessel: keine unbehandelte Ablehnung"], ersetze: [[EINSTIEG, "  weltstartStream().catch((e) => console.warn(\"Beneos Stream | Weltstart abgebrochen:\", e))", "  weltstartStream().catch((e) => console.warn(\"Beneos Stream | Weltstart abgebrochen:\", e)).then(() => Promise.reject(new Error(\"Sabotage\")))"]] },
+  { satz: "hakenfehler", ziel: ["der ready-Behandler ist angemeldet"], ersetze: [[EINSTIEG, "Hooks.once(\"ready\", () => {", "Hooks.once(\"setup\", () => {"]] },
+  { satz: "hakenfehler", ziel: ["canvasReady: ein Wurf wird keine unbehandelte Ablehnung","canvasReady: der Wurf wird genau einmal gemeldet","canvasReady: die Warnung nennt den Fehler"], ersetze: [[CANVAS, "    fillInVideos().catch((e) => console.warn(\"Beneos Stream | Videos nachladen abgebrochen:\", e))", "    fillInVideos()"]] },
+  { satz: "hakenfehler", ziel: ["canvasReady: die Warnung nennt den Fehler"], ersetze: [[CANVAS, "console.warn(\"Beneos Stream | Videos nachladen abgebrochen:\", e)", "console.warn(\"Beneos Stream | Videos nachladen abgebrochen:\")"]] },
+  { satz: "hakenfehler", ziel: ["canvasReady: der Wurf wird genau einmal gemeldet"], ersetze: [[CANVAS, "console.warn(\"Beneos Stream | Videos nachladen abgebrochen:\", e)", "(console.warn(\"Beneos Stream | Videos nachladen abgebrochen:\", e), console.warn(\"Beneos Stream | Videos nachladen abgebrochen:\", e))"]] },
+  { satz: "hakenfehler", ziel: ["canvasReady, Szene ohne Videos: keine Warnung"], ersetze: [[CANVAS, "    fillInVideos().catch(", "    fillInVideos().then(() => console.warn(\"Beneos Stream | Videos nachladen abgebrochen:\", null)).catch("]] },
+  { satz: "hakenfehler", ziel: ["canvasReady, Szene ohne Videos: keine unbehandelte Ablehnung"], ersetze: [[CANVAS, "    fillInVideos().catch((e) => console.warn(\"Beneos Stream | Videos nachladen abgebrochen:\", e))", "    fillInVideos().catch((e) => console.warn(\"Beneos Stream | Videos nachladen abgebrochen:\", e)).then(() => Promise.reject(new Error(\"Sabotage\")))"]] },
+  { satz: "hakenfehler", ziel: ["der canvasReady-Behandler ist angemeldet"], ersetze: [[CANVAS, "  Hooks.on(\"canvasReady\", () => {", "  Hooks.on(\"canvasInit\", () => {"]] },
+  { satz: "hakenfehler", ziel: ["die Naht fuehreAbspielwunschAus ist exportiert"], ersetze: [[CANVAS, "export function fuehreAbspielwunschAus", "function fuehreAbspielwunschAus"]] },
+  { satz: "hakenfehler", ziel: ["Abspielen: eine Ablehnung wird keine unbehandelte Ablehnung","Abspielen: die Ablehnung wird genau einmal gemeldet","Abspielen: die Warnung nennt den Fehler","Abspielen ohne Nutzergeste: keine unbehandelte Ablehnung","Abspielen: ein synchroner Wurf entkommt nicht","Abspielen: ein synchroner Wurf wird gemeldet"], ersetze: [[CANVAS, "  })).catch((e) => {\n    if (e?.name === \"NotAllowedError\") return\n    console.warn(\"Beneos Stream | Abspielen abgebrochen:\", e)\n  })\n", "  }))\n"]] },
+  { satz: "hakenfehler", ziel: ["Abspielen: ein synchroner Wurf entkommt nicht","Abspielen: ein synchroner Wurf wird gemeldet"], ersetze: [[CANVAS, "Promise.resolve().then(() => game.video?.play?.(el, {", "Promise.resolve(game.video?.play?.(el, {"]] },
+  { satz: "hakenfehler", ziel: ["Abspielen ohne Nutzergeste: still, keine Warnung"], ersetze: [[CANVAS, "    if (e?.name === \"NotAllowedError\") return\n", ""]] },
+  { satz: "hakenfehler", ziel: ["Abspielen: die Ablehnung wird genau einmal gemeldet","Abspielen: die Warnung nennt den Fehler"], ersetze: [[CANVAS, "if (e?.name === \"NotAllowedError\") return", "if (e) return"]] },
+  { satz: "hakenfehler", ziel: ["Abspielen: die Warnung nennt den Fehler","Abspielen: ein synchroner Wurf wird gemeldet"], ersetze: [[CANVAS, "console.warn(\"Beneos Stream | Abspielen abgebrochen:\", e)", "console.warn(\"Beneos Stream | Abspielen abgebrochen:\")"]] },
+  { satz: "hakenfehler", ziel: ["Abspielen: die Ablehnung wird genau einmal gemeldet"], ersetze: [[CANVAS, "console.warn(\"Beneos Stream | Abspielen abgebrochen:\", e)", "(console.warn(\"Beneos Stream | Abspielen abgebrochen:\", e), console.warn(\"Beneos Stream | Abspielen abgebrochen:\", e))"]] },
+  { satz: "hakenfehler", ziel: ["Abspielen intakt: play wird mit dem Element gerufen"], ersetze: [[CANVAS, "game.video?.play?.(el, {", "game.video?.play?.(null, {"]] },
+  // Nach dem Kalt-Review: das Fehlerobjekt selbst statt nur seines Textes, und
+  // der Ruf an game.video als Methode mit den Optionen des Dokuments.
+  { satz: "hakenfehler", ziel: ["ready: die Warnung traegt das Fehlerobjekt"], ersetze: [[EINSTIEG, "console.warn(\"Beneos Stream | Weltstart abgebrochen:\", e)", "console.warn(\"Beneos Stream | Weltstart abgebrochen:\", String(e?.message || e))"]] },
+  { satz: "hakenfehler", ziel: ["canvasReady: die Warnung traegt das Fehlerobjekt"], ersetze: [[CANVAS, "console.warn(\"Beneos Stream | Videos nachladen abgebrochen:\", e)", "console.warn(\"Beneos Stream | Videos nachladen abgebrochen:\", String(e?.message || e))"]] },
+  { satz: "hakenfehler", ziel: ["Abspielen: die Warnung traegt das Fehlerobjekt"], ersetze: [[CANVAS, "console.warn(\"Beneos Stream | Abspielen abgebrochen:\", e)", "console.warn(\"Beneos Stream | Abspielen abgebrochen:\", String(e?.message || e))"]] },
+  { satz: "hakenfehler", ziel: ["Abspielen intakt: play wird an game.video gerufen"], ersetze: [[CANVAS, "game.video?.play?.(el, {", "(0, game.video?.play)?.(el, {"]] },
+  { satz: "hakenfehler", ziel: ["Abspielen intakt: die Optionen kommen an"], ersetze: [[CANVAS, "    offset: options?.offset,\n", "    offset: undefined,\n"]] },
+  { satz: "hakenfehler", ziel: ["Abspielen intakt: die Optionen kommen an"], ersetze: [[CANVAS, "    loop: cfg.loop !== false,\n", "    loop: false,\n"]] },
+  { satz: "hakenfehler", ziel: ["Abspielen intakt: keine Warnung"], ersetze: [[CANVAS, "  })).catch((e) => {\n", "  })).then(() => console.warn(\"Beneos Stream | Abspielen abgebrochen:\", null)).catch((e) => {\n"]] },
 ];
 
 /*
@@ -1142,7 +1183,7 @@ if (process.argv.includes("--alle-saetze")) {
 
 // ------------------------------------------------------------- Lauf
 
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler"]
   .filter((s) => !nurSatz || s === nurSatz);
 if (SAETZE.length === 0) {
   console.log(`unbekannter Satz: ${nurSatz}`);

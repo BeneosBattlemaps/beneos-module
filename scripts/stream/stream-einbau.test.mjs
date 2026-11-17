@@ -176,9 +176,12 @@ const FREI_HTML = "beneos://a/beneos_bm_0113/4k/handout.webp"
   const leise = console.log
   console.log = () => {}
   for (let mal = 0; mal < 2; mal++) {
-    for (const h of haken.liste.filter((x) => x.name === "ready" && String(x.fn).includes("schluesselLaeufe"))) {
+    // Seit stre-T-113 ruft der Haken `weltstartStream()` und wartet nicht
+    // darauf; die Probe wartet deshalb selbst, bevor sie die Wirkung zaehlt.
+    for (const h of haken.liste.filter((x) => x.name === "ready" && String(x.fn).includes("weltstartStream"))) {
       try { await h.fn() } catch (_) { /* gezaehlt wird die Wirkung */ }
     }
+    await new Promise((r) => setTimeout(r, 20))
   }
   console.log = leise
   globalThis.game.journal = vorher.journal
