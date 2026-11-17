@@ -513,8 +513,9 @@ export class BeneosNativeBattlemapInstaller {
   static async install({ packageId, label, coverUrl, sceneSlugs, overwrite = false, record = null, source = null, kreaturenLauf = null, schonen = true, nachLauf = null } = {}) {
     const inst = new BeneosNativeBattlemapInstaller({ packageId, label, coverUrl, sceneSlugs, overwrite, record, source, kreaturenLauf, schonen, nachLauf })
     await inst.run()
-    // Here and not at the caller: the report's Retry calls install() again, and
-    // the follow-up must run after every run that was not cancelled (MO-012).
+    // Here and not at the caller: the report's Retry calls install() again. The
+    // follow-up runs after every run that returned and was not cancelled; a run
+    // that throws gets none (MO-012).
     if (!inst._cancelled && typeof nachLauf === "function") {
       try { await nachLauf(inst) } catch (e) { console.warn("BeneosNativeInstaller | follow-up after install failed", e) }
     }

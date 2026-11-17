@@ -13,6 +13,7 @@
  */
 import { test } from "node:test"
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 
 const stub = class {}
 for (const n of ["FormApplication", "Application", "Dialog"]) globalThis[n] ??= stub
@@ -37,8 +38,15 @@ test("Nachlauf nach dem ersten Lauf und nach dem Retry mit denselben Argumenten"
   const erst = await Installer.install({ packageId: "p1", label: "L", sceneSlugs: ["a"], record: { releaseDir: "bm_1" }, nachLauf })
   assert.equal(gesehen.length, 1)
   assert.equal(gesehen[0], erst)
-  // Genau das tut der Retry-Knopf in #showReport.
-  const retry = await Installer.install({ ...erst._aufruf })
+  // Der Retry-Knopf aus #showReport, woertlich aus dem Installer geschnitten und
+  // an den ersten Lauf gebunden, damit der Test den echten Aufruf ausfuehrt.
+  const q = readFileSync(new URL("./beneos-native-installer.mjs", import.meta.url), "utf8")
+  const i = q.indexOf("onRetry: ")
+  const j = i < 0 ? -1 : q.indexOf(",\n", i)
+  assert.ok(i >= 0 && j > i, "Anker onRetry im Installer fehlt")
+  const pfeil = q.slice(i + "onRetry: ".length, j)
+  const onRetry = new Function("BeneosNativeBattlemapInstaller", `return function () { return (${pfeil})() }`)(Installer)
+  const retry = await onRetry.call(erst)
   assert.equal(gesehen.length, 2, "Retry ohne Nachlauf: Karte und Hook bleiben aus")
   assert.equal(gesehen[1], retry)
   assert.deepEqual(retry._aufruf.sceneSlugs, ["a"])

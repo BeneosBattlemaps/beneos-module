@@ -5400,10 +5400,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     }
     // Teil 3: refresh the installed-marker + update state for this release and
     // broadcast the release-installed signal. install() runs this after every
-    // run the user did not cancel, the report's Retry included, which calls
-    // install() again with the same arguments (MO-012).
+    // run that returned and was not cancelled, the report's Retry included
+    // (same package, scope and record; overwrite is asked again) (MO-012).
     const nachLauf = async (fertig) => {
-      try { await this.#refreshAfterBmapInstall?.(releaseDir) } catch (_) {}
+      // A Retry can come long after this window was closed and reopened; then
+      // the open window is a different instance and is the one to refresh.
+      const offen = game.beneos?.cloudWindowV2
+      const fenster = (offen instanceof BeneosCloudWindowV2 && offen.rendered) ? offen : this
+      try { await fenster.#refreshAfterBmapInstall?.(releaseDir) } catch (_) {}
       // Broadcast a generic release-installed signal so other systems (e.g. the
       // Getting Started tour's auto-start-after-install bridge) can react
       // without depending on Scene-Packer. Best-effort, never throws.
