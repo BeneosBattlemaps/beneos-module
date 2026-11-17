@@ -70,7 +70,8 @@ netz((adresse) => {
 abschnitt("Der Einbau meldet genau die gemessenen Haken an")
 
 bilder.installStreamBilder()
-const namen = haken.namen()
+// Der Editorhaken (stre-T-116, Bau 6) ist keine Flaeche; er wird unten geprueft.
+const namen = haken.namen().filter((n) => n !== "createProseMirrorEditor")
 const auf = namen.filter((n) => n.startsWith("render"))
 const zu = namen.filter((n) => n.startsWith("close") || n.startsWith("delete"))
 
@@ -320,6 +321,65 @@ const handout = settings.platzhalterAdresse("beneos_bm_0042", "4k", "map_assets/
   gleich("Abruf scheitert: data-beneos-src bleibt", a.getAttribute("data-beneos-src"), kaputt)
   await haken.rufe("closeJournalEntrySheet", f.app)
   nimmAbrufe()
+}
+
+// ===========================================================================
+abschnitt("Editor, stre-T-116: das echte Bild nur in der Ansicht, nie im Dokument")
+
+/*
+ * Foundry ruft `createProseMirrorEditor` vor dem Bau der Ansicht (v13
+ * prosemirror-editor.mjs:220, v14 :222) und sammelt `nodeViews` auch aus
+ * Plugins. Die Ansicht des Bildknotens setzt das `src` ihres DOM-Elements;
+ * gespeichert wird aus `state.doc`, und der Knoten bleibt unberuehrt.
+ */
+{
+  class PluginAttrappe { constructor(spec) { this.spec = spec } }
+  function domAus(spec) {
+    const attr = new Map(Object.entries(spec[1] ?? {}))
+    return {
+      nodeType: 1, isConnected: true, closest: () => null,
+      getAttribute: (k) => attr.get(k) ?? null, setAttribute: (k, v) => { attr.set(k, String(v)) }, hasAttribute: (k) => attr.has(k),
+    }
+  }
+  globalThis.ProseMirror = { Plugin: PluginAttrappe, DOMSerializer: { renderSpec: (_d, spec) => ({ dom: domAus(spec) }) } }
+  const knoten = (adresse) => {
+    const attrs = { src: PLATZHALTER_BILD, alt: "Karte", _preserve: adresse ? { "data-beneos-src": adresse } : {} }
+    return { attrs, type: { spec: { toDOM: (n) => ["img", { src: n.attrs.src, alt: n.attrs.alt, ...n.attrs._preserve }] } } }
+  }
+  const editorHaken = haken.liste.filter((x) => x.name === "createProseMirrorEditor")
+  gleich("Editor: der Haken createProseMirrorEditor ist angemeldet", editorHaken.length, 1)
+  const plugins = {}
+  for (const h of editorHaken) await h.fn("ProseMirror.x", plugins, {})
+  const fabrik = plugins.beneosBildAnsicht?.spec?.props?.nodeViews?.image
+  gleich("Editor: das Plugin traegt eine Ansicht fuer den Knoten image", typeof fabrik, "function")
+  if (typeof fabrik === "function") {
+    const k = knoten(handout)
+    const vorher = JSON.stringify(k.attrs)
+    nimmAbrufe()
+    const ansicht = fabrik(k)
+    await warte(ansicht.dom)
+    gleich("Editor: die Ansicht zeigt ein Blob", String(ansicht.dom.getAttribute("src")).startsWith("blob:"), true)
+    gleich("Editor: der Knoten im Dokument bleibt unberuehrt", JSON.stringify(k.attrs), vorher)
+    gleich("Editor: Alt-Text und data-beneos-src stehen in der Ansicht",
+      `${ansicht.dom.getAttribute("alt")}|${ansicht.dom.getAttribute("data-beneos-src")}`, `Karte|${handout}`)
+    gleich("Editor: eine Attributaenderung der Ansicht wird nicht ins Dokument gelesen",
+      ansicht.ignoreMutation?.({ type: "attributes" }), true)
+    gleich("Editor: eine Auswahl wird weiter gelesen", ansicht.ignoreMutation?.({ type: "selection" }), false)
+    const st = bilder.bilderBlobStand()
+    gleich("Editor: gehalten, solange die Ansicht lebt", `${st.eintraege}|${st.halter}`, "1|1")
+    ansicht.destroy?.()
+    gleich("Editor: destroy laesst los", bilder.bilderBlobStand().eintraege, 0)
+    const ohne = fabrik(knoten(null))
+    await new Promise((r) => setTimeout(r, 20))
+    gleich("Editor: ein Bild ohne data-beneos-src bleibt, wie es ist", ohne.dom.getAttribute("src"), PLATZHALTER_BILD)
+    nimmAbrufe()
+  }
+  einstellungen["beneos-stream-key"] = ""
+  const leer = {}
+  for (const h of editorHaken) await h.fn("ProseMirror.y", leer, {})
+  gleich("Editor: ohne Schluessel kein Plugin", "beneosBildAnsicht" in leer, false)
+  einstellungen["beneos-stream-key"] = SCHLUESSEL
+  delete globalThis.ProseMirror
 }
 
 // ===========================================================================

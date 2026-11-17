@@ -59,7 +59,9 @@
  * lagen; mit `OP-PRJ-140` liegen sie am Tor, also deckt `FLAECHEN` sie jetzt.
  * Die beiden Haken dafuer sind unten gemessen und nicht erinnert.
  *
- * **Keine Bearbeitenflaeche**, siehe `imEditor()`.
+ * **Keine Bearbeitenflaeche**, siehe `imEditor()`. Im Editor zeigt seit
+ * stre-T-116 statt dessen die Knotenansicht `bildAnsicht` das echte Bild, nur
+ * in ihrem eigenen DOM; das Dokument behaelt Form (a).
  */
 
 import { istPlatzhalter, assetUrl, streamKey, streamMode, zerlegeAdresse, leinwandAdresse } from "./stream-settings.mjs"
@@ -519,5 +521,62 @@ export function installStreamBilder() {
     Hooks.on(schliessHaken, (app) => { allesLoslassen(app) })
   }
 
+  // Der Editor, stre-T-116 (Entscheid E3, Vorgabe 2 aus P-04:01:17). Foundry
+  // ruft diesen Haken vor dem Bau der Ansicht (v13 prosemirror-editor.mjs:220,
+  // v14 :222), und die Ansicht sammelt `nodeViews` auch aus Plugins
+  // (`buildNodeViews` ueber `someProp`). Ohne Schluessel kein Plugin.
+  Hooks.on("createProseMirrorEditor", (_uuid, plugins) => {
+    if (!streamKey()) return
+    const Plugin = globalThis.ProseMirror?.Plugin
+    if (typeof Plugin !== "function" || !plugins || typeof plugins !== "object") return
+    plugins.beneosBildAnsicht = new Plugin({ props: { nodeViews: { image: (node) => bildAnsicht(node) } } })
+  })
+
   console.log("Beneos Stream | Bilder in Oberflaechen gehen ueber den Abrufweg")
+}
+
+/**
+ * Die Ansicht eines Bildknotens im Editor: das echte Bild in der ANZEIGE, das
+ * Dokument behaelt Form (a).
+ *
+ * Gebaut wird das Element aus dem wirksamen `toDOM` des Knotens, nicht aus
+ * `ImageNode.toDOM`: Foundry legt eine Huelle darum, die die erhaltenen
+ * Attribute (`class`, `style`, `data-*`) einsetzt, und die unterscheidet sich
+ * zwischen v13 und v14 (`attribute-capture.mjs:48-60`). Danach wird nur `src`
+ * des Elements gesetzt.
+ *
+ * WARUM DIE TORADRESSE SO NIE INS DOKUMENT GELANGT. Gespeichert wird aus
+ * `state.doc`, nicht aus dem DOM, und eine Attributaenderung an der Ansicht
+ * liest ProseMirror wegen `ignoreMutation` nicht zurueck. Der Knoten wird nie
+ * angefasst. Halter des Blobs ist die Ansicht; `destroy` laesst los.
+ *
+ * Scheitert der Abruf, bleibt im Editor der Platzhalter stehen; die CSS-Regel
+ * auf `img[data-beneos-src]` haelt die Flaeche sichtbar.
+ */
+function bildAnsicht(node) {
+  const { dom } = globalThis.ProseMirror.DOMSerializer.renderSpec(globalThis.document, node.type.spec.toDOM(node))
+  const halter = { weg: false }
+  const adresse = dom?.getAttribute?.("data-beneos-src")
+  let gehalten = false
+  if (adresse && streamKey() && istUnsere(adresse)) {
+    blobFuer(adresse).then((blobAdresse) => {
+      const eintrag = bildBlobs.get(adresse)
+      if (!eintrag || halter.weg) {
+        verworfen++
+        if (eintrag && !eintrag.halter.size) loslassen(halter, [adresse])
+        return
+      }
+      eintrag.halter.add(halter)
+      gehalten = true
+      dom.setAttribute("src", blobAdresse)
+    }).catch((e) => { melde(adresse, e?.message ?? String(e)) })
+  }
+  return {
+    dom,
+    ignoreMutation: (m) => m?.type === "attributes",
+    destroy() {
+      halter.weg = true
+      if (gehalten) loslassen(halter, [adresse])
+    },
+  }
 }

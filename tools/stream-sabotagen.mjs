@@ -953,6 +953,17 @@ const SABOTAGEN = [
   { satz: "bilder", ziel: ["Abruf scheitert: data-beneos-src bleibt"], ersetze: [[BILDER, "        if (tor !== adresse) el.setAttribute(\"src\", tor)", "        if (tor !== adresse) { el.setAttribute(\"src\", tor); el.setAttribute(\"data-beneos-src\", tor) }"]] },
   { satz: "bilder", ziel: ["Form (a): ein zweiter Render haelt das Bild und holt nichts"], ersetze: [[BILDER, "      if (adresse) schonGesetzt.add(adresse)", "      void adresse"]] },
   { satz: "bilder", ziel: ["renderChatMessageHTML faellt nicht unter den Riegel"], ersetze: [[BILDER, "const VERBOTEN = /Directory|Sidebar|FilePicker/i", "const VERBOTEN = /Directory|Sidebar|FilePicker|Chat/i"]] },
+  // stre-T-116, Bau 6: das echte Bild im Editor nur in der Ansicht.
+  { satz: "bilder", ziel: ["Editor: der Haken createProseMirrorEditor ist angemeldet","Editor: das Plugin traegt eine Ansicht fuer den Knoten image"], ersetze: [[BILDER, "  Hooks.on(\"createProseMirrorEditor\", (_uuid, plugins) => {", "  Hooks.on(\"createProseMirrorEditorX\", (_uuid, plugins) => {"]] },
+  { satz: "bilder", ziel: ["Editor: ohne Schluessel kein Plugin"], ersetze: [[BILDER, "    if (!streamKey()) return\n    const Plugin", "    const Plugin"]] },
+  { satz: "bilder", ziel: ["Editor: die Ansicht zeigt ein Blob"], ersetze: [[BILDER, "      dom.setAttribute(\"src\", blobAdresse)\n    }).catch", "    }).catch"]] },
+  { satz: "bilder", ziel: ["Editor: der Knoten im Dokument bleibt unberuehrt"], ersetze: [[BILDER, "      dom.setAttribute(\"src\", blobAdresse)\n    }).catch", "      dom.setAttribute(\"src\", blobAdresse); node.attrs.src = blobAdresse\n    }).catch"]] },
+  { satz: "bilder", ziel: ["Editor: Alt-Text und data-beneos-src stehen in der Ansicht","Editor: die Ansicht zeigt ein Blob"], ersetze: [[BILDER, "node.type.spec.toDOM(node))", "[\"img\", { src: node.attrs.src }])"]] },
+  { satz: "bilder", ziel: ["Editor: eine Attributaenderung der Ansicht wird nicht ins Dokument gelesen"], ersetze: [[BILDER, "    ignoreMutation: (m) => m?.type === \"attributes\",", "    ignoreMutation: () => false,"]] },
+  { satz: "bilder", ziel: ["Editor: eine Auswahl wird weiter gelesen"], ersetze: [[BILDER, "    ignoreMutation: (m) => m?.type === \"attributes\",", "    ignoreMutation: () => true,"]] },
+  { satz: "bilder", ziel: ["Editor: gehalten, solange die Ansicht lebt"], ersetze: [[BILDER, "      eintrag.halter.add(halter)\n      gehalten = true", "      gehalten = true"]] },
+  { satz: "bilder", ziel: ["Editor: destroy laesst los"], ersetze: [[BILDER, "      if (gehalten) loslassen(halter, [adresse])\n", ""]] },
+  { satz: "bilder", ziel: ["Editor: ein Bild ohne data-beneos-src bleibt, wie es ist"], ersetze: [[BILDER, "  const adresse = dom?.getAttribute?.(\"data-beneos-src\")\n", "  const adresse = dom?.getAttribute?.(\"data-beneos-src\") || \"beneos://a/beneos_bm_0042/4k/map_assets/handout.webp\"\n"]] },
 ];
 
 /*
