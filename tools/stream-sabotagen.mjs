@@ -61,6 +61,14 @@
  * seitdem am Schluessel statt an `streamEnabled()`; die Anker der Sabotagen
  * dazu folgen dem.
  *
+ * FUENFZEHN SAETZE seit stre-T-119. `klang` haelt fest, dass ein
+ * Playlist-Klang mit `beneos://`-Quelle nach einem Schluesselwechsel neu
+ * aufgebaut wird, ein Klang ohne Streamadresse und ein laufender Klang aber
+ * nicht. Den Satz gibt es an der Basis nicht, `--alt` laesst ihn ueber
+ * `mitBasis` aus. Dazu wurde die Probe "das Neuvorbereiten haengt" in
+ * `einbau` auf die Wirkung umgestellt: der zweite `updateSetting`-Haken hatte
+ * sie gegen die Sabotage blind gemacht.
+ *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
  * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig]
@@ -122,6 +130,7 @@ const REPARATUR = "scripts/beneos-asset-path-repair.js";
 const LEINWAND = "scripts/stream/stream-leinwand.mjs";
 const ONLINE = "scripts/stream/stream-online.mjs";
 const EINSTIEG = "scripts/stream/beneos-stream.mjs";
+const KLANG = "scripts/stream/stream-klang.mjs";
 
 const SABOTAGEN = [
   // ---------------------------------------------------------------- maske
@@ -848,6 +857,23 @@ const SABOTAGEN = [
   { satz: "einbau", ziel: ["init laeuft in der Attrappe durch"], ersetze: [[EINSTIEG, "  installKonsolenMaske()\n  installStreamLeinwand()\n", "  installKonsolenMaske()\n  installStreamLeinwand()\n  throw new Error(\"Sabotage im init\")\n"]] },
   { satz: "einbau", ziel: ["Modus aus mit Schluessel: _source bleibt schluesselfrei"], ersetze: [[LEINWAND, "      try { leinwandFelder(art, this, felder) } catch (_) {", "      try { leinwandFelder(art, this, felder); leinwandFelder(art, this._source, felder) } catch (_) {"]] },
   { satz: "einbau", ziel: ["Modus aus mit Schluessel: die Konsolenzeile bleibt erhalten"], ersetze: [[FETCH, "(a) => (typeof a === \"string\" ? ohneSchluesselImText(a) : a)", "(a) => (typeof a === \"string\" ? \"\" : a)"]] },
+  // stre-T-119: Klangneubau nach einem Schluesselwechsel.
+  { satz: "klang", ziel: ["stream-klang.mjs liefert installStreamKlang"], ersetze: [[KLANG, "export function installStreamKlang() {", "function installStreamKlang() {"]] },
+  { satz: "klang", ziel: ["stream-klang.mjs liefert klangNachziehen"], ersetze: [[KLANG, "export async function klangNachziehen(ps) {", "async function klangNachziehen(ps) {"]] },
+  { satz: "klang", ziel: ["ein zweiter Einbau setzt den Haken nicht doppelt"], ersetze: [[KLANG, "  if (hakenGesetzt) return\n", ""]] },
+  { satz: "klang", ziel: ["Kern: das Klangobjekt ist ersetzt","Kern: das neue Objekt traegt B","Kern: es spielt (autoplay)","LOADING: das neue Objekt traegt B","veraltet: reset gerufen und B im neuen Objekt","werfend: der zweite Klang traegt B"], ersetze: [[KLANG, "  ps.sound = ps._createSound()\n", ""]] },
+  { satz: "klang", ziel: ["Kern: es spielt (autoplay)"], ersetze: [[KLANG, "  ps.sync()\n  return \"neu\"", "  return \"neu\""]] },
+  { satz: "klang", ziel: ["Zweiwert 1: Ausgang ohne Streamadresse","Zweiwert 1: fremder Umschreiber, Ausgang","Zweiwert 1: fremder Umschreiber, dasselbe Objekt und kein reset"], ersetze: [[KLANG, "  if (!quelle.startsWith(PRAEFIX)) return \"unberuehrt\"", "  if (!quelle) return \"unberuehrt\""]] },
+  { satz: "klang", ziel: ["Zweiwert 1: dasselbe Objekt"], ersetze: [[KLANG, "  if (!quelle.startsWith(PRAEFIX)) return \"unberuehrt\"", "  if (!quelle) return \"unberuehrt\""], [KLANG, "  if (ps.sound.src === soll) return \"gleich\"", "  if (false) return \"gleich\""]] },
+  { satz: "klang", ziel: ["Zweiwert 2: dasselbe Objekt, nicht gestoppt"], ersetze: [[KLANG, "  if (ps.sound.playing) return \"laeuft\"", "  if (false) return \"laeuft\""]] },
+  { satz: "klang", ziel: ["LOADING: waehrend des Ladens kein zweites Objekt"], ersetze: [[KLANG, "    try { await ps.sound.load() } catch (_) { /* gescheitert ist hier ein Ergebnis */ }", "    /* Abwarten entfernt */"]] },
+  { satz: "klang", ziel: ["LOADING: nach dem Scheitern neu gebaut","veraltet: Ausgang"], ersetze: [[KLANG, "  if (!ps.sound) return \"ohne-klang\"", "  if (ps.sound) return \"ohne-klang\""]] },
+  { satz: "klang", ziel: ["derselbe Schluessel erneut: dasselbe Objekt"], ersetze: [[KLANG, "  if (ps.sound.src === soll) return \"gleich\"", "  if (false) return \"gleich\""]] },
+  { satz: "klang", ziel: ["fremde Einstellung: dasselbe Objekt"], ersetze: [[KLANG, "    if (!EINSTELLUNGEN.has(setting?.key)) return\n", ""]] },
+  { satz: "klang", ziel: ["veraltet: reset gerufen und B im neuen Objekt"], ersetze: [[KLANG, "  if (ps.path !== soll) ps.reset()\n", ""]] },
+  { satz: "klang", ziel: ["werfend: der zweite Klang traegt B"], ersetze: [[KLANG, "      try { ausgang = await klangNachziehen(ps) }\n      catch (e) {", "      { ausgang = await klangNachziehen(ps) }\n      if (false) { const e = null"]] },
+  { satz: "klang", ziel: ["werfend: der Haken wirft nicht"], ersetze: [[KLANG, "      try { ausgang = await klangNachziehen(ps) }\n      catch (e) {", "      { ausgang = await klangNachziehen(ps) }\n      if (false) { const e = null"], [KLANG, "    return klaengeNachziehen().catch((e) => {", "    return klaengeNachziehen().then((e) => {"]] },
+  { satz: "klang", ziel: ["beneos-stream.mjs ruft installStreamKlang() nach installStreamLeinwand()"], ersetze: [[EINSTIEG, "  installStreamKlang()\n", ""]] },
 ];
 
 /*
@@ -863,6 +889,16 @@ const EIGENPROBEN = {
       "Die Typabfrage auf die Liste ist wirkungsgleich mit der Feldabfrage darunter: eine Zeichenkette traegt kein Feld journalbilder. Eine Sabotage an ihr bleibt unsichtbar.",
     "Waise: keine Liste, sondern eine Zeichenkette: nicht geprueft":
       "Wie oben fuer tokenbilder: die Feldabfrage faengt die Zeichenkette auch ohne Typabfrage.",
+  },
+  klang: {
+    "Basis: mit A gescheitert":
+      "Vorbedingung der Attrappe: der Klang mit dem widerrufenen Schluessel scheitert. Sie beruehrt keinen Modulcode, denn sie laeuft vor dem Einbau des Hakens.",
+    "Basis: nach dem Wechsel auf B ohne Haken bleibt der Klang stumm":
+      "Der heutige Fehler, nachgestellt ohne stream-klang.mjs. Er beschreibt Foundry, nicht das Modul; keine Sabotage am Modul kann ihn aendern.",
+    "Zweiwert 2: laeuft vor dem Wechsel":
+      "Vorbedingung der Probe danach: der Klang laeuft mit dem alten Schluessel. Sie steht vor jedem Aufruf des Moduls.",
+    "keine Ausgabezeile nennt eine Adresse oder einen Schluessel":
+      "Selbstprobe des Satzes ueber seine eigenen Ausgabezeilen. Sie bewacht den Pruefsatz, nicht den Modulcode.",
   },
   geteilt: {
     "derselbe Traeger, dieselbe Adresse":
@@ -967,7 +1003,7 @@ if (process.argv.includes("--alle-saetze")) {
 
 // ------------------------------------------------------------- Lauf
 
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang"]
   .filter((s) => !nurSatz || s === nurSatz);
 if (SAETZE.length === 0) {
   console.log(`unbekannter Satz: ${nurSatz}`);

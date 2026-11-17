@@ -73,7 +73,26 @@ gleich("Modus aus mit Schluessel: die Konsolenzeile bleibt erhalten", zeile.star
 gleich("Modus aus mit Schluessel: prepareBaseData ist gewickelt",
   Object.hasOwn(Kachel.prototype, Symbol.for("beneos.stream.leinwand")), true)
 gleich("Modus aus mit Schluessel: das Schreibnetz haengt", haken.namen().includes("preUpdateTile"), true)
-gleich("Modus aus mit Schluessel: das Neuvorbereiten haengt", haken.namen().includes("updateSetting"), true)
+/*
+ * DIE WIRKUNG, NICHT DER HAKENNAME (stre-T-119). Bis dahin stand hier
+ * `haken.namen().includes("updateSetting")`. Seit `installStreamKlang` haengt
+ * ein zweiter Behandler an demselben Namen, und die Probe blieb gruen, auch
+ * wenn die Leinwand gar nicht eingebaut war (Sabotage S652). Gefragt wird
+ * jetzt, ob ein Szenendokument nach dem Wechsel des Schluessels per `reset()`
+ * neu vorbereitet wird; das tut nur der Behandler der Leinwand.
+ */
+{
+  const { MODULE_ID } = await import("./stream-settings.mjs")
+  let neuVorbereitet = 0
+  const szene = { reset() { neuVorbereitet++ } }
+  const vorher = globalThis.game.scenes
+  globalThis.game.scenes = [szene]
+  for (const h of haken.liste.filter((x) => x.name === "updateSetting")) {
+    try { await h.fn({ key: `${MODULE_ID}.${SETTING.key}` }) } catch (_) { /* gezaehlt wird die Wirkung */ }
+  }
+  globalThis.game.scenes = vorher
+  gleich("Modus aus mit Schluessel: das Neuvorbereiten haengt", neuVorbereitet > 0, true)
+}
 
 const k = new Kachel("beneos://a/beneos_bm_0113/4k/karte.webp")
 k.prepareBaseData()

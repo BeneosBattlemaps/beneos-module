@@ -270,6 +270,10 @@ console.log("Kein Anlass, kein Neubau")
   game.playlists = [{ sounds: [ps] }]
   await wechsle()
   const nachB = ps.sound
+  // Angehalten und geladen: dann haelt ihn allein der Abgleich der Adresse,
+  // nicht schon der Zweig fuer laufende Klaenge.
+  ps.playing = false
+  nachB._state = STATES.LOADED
   await wechsle(SCHLUESSEL_B)
   gleich("derselbe Schluessel erneut: dasselbe Objekt", ps.sound === nachB, true)
 

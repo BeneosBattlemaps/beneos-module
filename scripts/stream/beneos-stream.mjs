@@ -85,10 +85,6 @@ Hooks.once("init", () => {
   // direkt, und so bleibt es.
   installKonsolenMaske()
   installStreamLeinwand()
-  // Nach der Leinwand und wie sie am Schluessel, nicht am Modus: ihr Haken
-  // bereitet die Felder neu vor, dieser baut danach gescheiterte
-  // Playlist-Klaenge neu auf (stre-T-119).
-  installStreamKlang()
   if (streamMode()) {
     // WARUM IM GANZEN ORDNER KEIN `Hooks.off` STEHT.
     //
@@ -141,6 +137,11 @@ Hooks.once("init", () => {
       Hooks.on(haken, () => indexVergessen())
     }
   }
+  // Nach der Leinwand und wie sie am Schluessel, nicht am Modus: ihr Haken
+  // bereitet die Felder neu vor, dieser baut danach gescheiterte
+  // Playlist-Klaenge neu auf (stre-T-119). Hinter dem Modusblock, damit die
+  // Folge Maske, Leinwand, Modusabfrage zusammenbleibt.
+  installStreamKlang()
 
   // The installer reaches for this rather than importing the stream modules
   // directly, so the rest of the module keeps no hard import into scripts/stream.
