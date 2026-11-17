@@ -16,6 +16,7 @@
 
 import { unzipSync, strFromU8 } from "../lib/fflate.module.js"
 import { BeneosNativeBattlemapInstaller } from "./beneos-native-installer.mjs"
+import { releaseNachLauf } from "./install-nachspiel.mjs"
 
 export class BeneosZipImporter {
 
@@ -115,6 +116,9 @@ export class BeneosZipImporter {
         coverUrl,
         source: { kind: "zip", entries },
         record,
+        // Same follow-up as a cloud install: redraw the open cloud window's
+        // cards and send beneos.releaseInstalled (MO-021).
+        nachLauf: releaseNachLauf({ releaseDir: record.releaseDir, displayName: label, variant: record.variant }),
       })
     } catch (e) {
       console.warn("BeneosZipImporter | install failed", e)

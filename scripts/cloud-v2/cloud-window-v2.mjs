@@ -33,6 +33,7 @@ import { BeneosStartSetupTour } from "../beneos_tours.js"
 import { BeneosLootGenerator } from "./loot-generator.mjs"
 import { BeneosMagicShopGenerator } from "./magic-shop-generator.mjs"
 import { staleInstallTooltip } from "./install-badge.mjs"
+import { releaseNachLauf } from "./install-nachspiel.mjs"
 import { HomeController } from "./home/home-controller.mjs"
 import { BeneosPatchlogWindow } from "./home/patchlog-window.mjs"
 import { fetchNewsFeed, markNewsRead } from "./services/news-api.mjs"
@@ -5398,6 +5399,16 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       contentSignature: String(releaseEntry?.content_signature || ""),
       updatedDate:      this.#releaseDateInfo(releaseDir)?.updatedDate || "",
     }
+    // Teil 3: redraw the installed-marker and broadcast the release-installed
+    // signal. Shared with the ZIP import and the delegated install, see
+    // install-nachspiel.mjs; install() runs it after every run that reached
+    // its end, the report's Retry included (MO-012, MO-020, MO-021).
+    const nachLauf = releaseNachLauf({
+      releaseDir,
+      displayName,
+      scope: installScope,
+      variant: isSingle ? "" : variant,
+    })
     let inst = null
     try {
       inst = await NativeInstaller.install({
@@ -5412,32 +5423,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         // Shared across the releases of one bundle run so a creature that
         // several releases reference is looked at once, not once per release.
         kreaturenLauf: (opts.kreaturenLauf instanceof Set) ? opts.kreaturenLauf : null,
+        nachLauf,
       })
     } catch (err) {
       console.warn("BeneosCloudWindowV2 | native install failed", { packId, sceneSlugs, err })
       ui.notifications.error(`Native install failed for ${displayName}: ${err?.message || err}`)
       return null
-    }
-    // Teil 3: refresh the installed-marker + update state for this release.
-    // Skip when the user cancelled the overwrite dialog (nothing changed).
-    if (inst && !inst._cancelled) {
-      try { await this.#refreshAfterBmapInstall?.(releaseDir) } catch (_) {}
-      // Broadcast a generic release-installed signal so other systems (e.g. the
-      // Getting Started tour's auto-start-after-install bridge) can react
-      // without depending on Scene-Packer. Best-effort, never throws.
-      try {
-        Hooks.callAll("beneos.releaseInstalled", {
-          releaseDir,
-          displayName,
-          scope: installScope,
-          variant: isSingle ? "" : variant,
-          // The scenes this run imported. releaseDir is the catalog key
-          // ("bm_0113"), NOT the on-disk asset folder ("113_arasek_stockyard"),
-          // so it cannot be matched against asset paths. The scene ids can, and
-          // they let the static-switch probe cache refresh just this release.
-          sceneIds: (inst._importedScenes || []).map(s => String(s.id)).filter(Boolean),
-        })
-      } catch (_) {}
     }
     return inst
   }
@@ -6690,8 +6681,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
           this, event, relDir, "release",
           { variantDirs: m.variant_dirs || {}, displayName: m.name || relDir, coverUrl, overwrite, kreaturenLauf }
         )
-        if (inst && inst._cancelled) skipped++
-        else installed++
+        // Only a run that reached its end counts as installed (MO-020). A
+        // refused pre-flight, a caught install error (inst null) and an
+        // early stop for missing catalog data used to count as installed.
+        if (inst?.ausgang === "abgebrochen") skipped++
+        else if (inst?.ausgang === "fertig") installed++
+        else failed++
       } catch (e) {
         console.warn("BeneosCloudWindowV2 | bundle member install failed", m.name, e)
         ui.notifications.error(`Install failed for ${m.name || relDir}: ${e?.message || e}`)

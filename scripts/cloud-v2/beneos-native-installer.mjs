@@ -29,6 +29,7 @@ import { packNeedsV14Migration, migrateSceneForV14, migrateActorForV14 } from ".
 import { zuInstallierendeSchluessel } from "../creature-installer/alternativen.mjs"
 import { tokenUpdatesAufteilen } from "./token-delta.mjs"
 import { Bahnsteuerung, runPool, retryAfterMs, entscheide429, reparaturKandidaten } from "./transfer-drossel.mjs"
+import { PACK_SOURCE_PREFIX, CLOUD_INSTALL_PREFIX, stripLeadSlash, toCloudAssetPath, installZiel } from "./install-ziel.mjs"
 
 // ---- Transfer config -------------------------------------------------------
 const FETCH_MAX_ATTEMPTS  = 3            // transient retries per asset
@@ -251,29 +252,9 @@ export function uploadFailureMessage(result) {
   return "upload response could not be read"
 }
 
-// Beneos cloud-install namespace. Battlemap packs are authored against
-// `beneos_assets/beneos_battlemaps/...`; on cloud install we relocate them
-// into the isolated `beneos_assets/cloud/battlemaps/...` namespace, mirroring
-// the model items/spells already use (beneos_cloud.js rewrites
-// `beneos_assets/beneos_items/` -> `beneos_assets/cloud/items/`). The prefix is
-// deliberately narrow so tokens/spells/items refs are never touched.
-const PACK_SOURCE_PREFIX   = "beneos_assets/beneos_battlemaps/"
-const CLOUD_INSTALL_PREFIX = "beneos_assets/cloud/battlemaps/"
-// Self-contained packs bundle every local asset a document references, including
-// module-owned icons (modules/...), the scene thumbnail (worlds/<author-world>/...)
-// and other non-beneos content. Those are relocated under this packaged namespace
-// on install so they survive the customer disabling beneos-module or migrating
-// worlds. The per-asset original->packaged mapping is built in #classifyPack.
-const PACKAGED_INSTALL_PREFIX = "beneos_assets/cloud/packaged/"
-
-const stripLeadSlash = (p) => String(p).replace(/^\/+/, "")
-
-/** Swap the pack-source asset prefix for the cloud-install prefix in a string. */
-function toCloudAssetPath(p) {
-  return (typeof p === "string" && p.includes(PACK_SOURCE_PREFIX))
-    ? p.split(PACK_SOURCE_PREFIX).join(CLOUD_INSTALL_PREFIX)
-    : p
-}
+// Install namespaces (PACK_SOURCE_PREFIX, CLOUD_INSTALL_PREFIX,
+// PACKAGED_INSTALL_PREFIX) and the per-entry install target live in
+// install-ziel.mjs, shared by #classifyPack and #doRefreshManifest (MO-011).
 
 /**
  * Map a single asset-reference string to where the file was actually installed:
@@ -441,7 +422,7 @@ const JSON_FILE_TO_PHASE = {
 
 export class BeneosNativeBattlemapInstaller {
 
-  constructor({ packageId, label = "", coverUrl = null, sceneSlugs = null, overwrite = false, record = null, source = null, kreaturenLauf = null, schonen = true } = {}) {
+  constructor({ packageId, label = "", coverUrl = null, sceneSlugs = null, overwrite = false, record = null, source = null, kreaturenLauf = null, schonen = true, nachLauf = null } = {}) {
     if (!packageId) throw new Error("BeneosNativeBattlemapInstaller: packageId is required")
     this.packageId = packageId
     this.label     = label || packageId
@@ -453,7 +434,9 @@ export class BeneosNativeBattlemapInstaller {
     // Aufrufargument (ein Bundle-Lauf bringt seine Dialogwahl so mit): ein
     // Retry soll Dateien reparieren und vor dem Ueberschreiben vorhandener
     // Szenen fragen, denn der Kunde kann sie seit dem Bericht geaendert haben.
-    this._aufruf   = { packageId, label, coverUrl, sceneSlugs, record, source }
+    // `nachLauf` reist mit, damit ein Retry dasselbe Nachspiel bekommt wie der
+    // erste Lauf (MO-012): Releasekarte neu zeichnen, beneos.releaseInstalled.
+    this._aufruf   = { packageId, label, coverUrl, sceneSlugs, record, source, nachLauf }
     // Kreaturen, die in DIESEM Lauf schon betrachtet wurden. Ein Bundle baut je
     // Paket einen eigenen Installer, und Releases teilen sich Kreaturen: die
     // sieben Pakete von "Castle Ravenloft" nannten dieselben Kreaturen mehrfach.
@@ -519,16 +502,28 @@ export class BeneosNativeBattlemapInstaller {
     this._laufZiele   = null
     this._pauseGemeldet = false
     this._phasenStatus  = ""
+    // Wie der Lauf endete, fuer jeden Aufrufer unterscheidbar (MO-020):
+    // "fertig" (durchgelaufen, auch mit Teilfehlern), "abgebrochen" (Nutzer im
+    // Ueberschreib-Dialog), "vorpruefung" (Host verweigert Schreiben, nichts
+    // installiert), "fehler" (Lauf hat geworfen). null, solange er laeuft.
+    this.ausgang = null
   }
 
   /**
    * One-shot install + UI. Returns the installer instance so callers can read
-   * the result (imported scenes, totals, whether the user cancelled) — used by
-   * the cloud window to refresh the installed-marker after the run.
+   * the result (imported scenes, totals, whether the user cancelled). The
+   * caller's follow-up (the cloud window refreshes the installed-marker) goes in
+   * as `nachLauf`, so the report's Retry runs it too.
    */
-  static async install({ packageId, label, coverUrl, sceneSlugs, overwrite = false, record = null, source = null, kreaturenLauf = null, schonen = true } = {}) {
-    const inst = new BeneosNativeBattlemapInstaller({ packageId, label, coverUrl, sceneSlugs, overwrite, record, source, kreaturenLauf, schonen })
+  static async install({ packageId, label, coverUrl, sceneSlugs, overwrite = false, record = null, source = null, kreaturenLauf = null, schonen = true, nachLauf = null } = {}) {
+    const inst = new BeneosNativeBattlemapInstaller({ packageId, label, coverUrl, sceneSlugs, overwrite, record, source, kreaturenLauf, schonen, nachLauf })
     await inst.run()
+    // Here and not at the caller: the report's Retry calls install() again. The
+    // follow-up runs only after a run that reached its end ("fertig"); a cancel,
+    // a refused pre-flight and a throw get none (MO-012, MO-020).
+    if (inst.ausgang === "fertig" && typeof nachLauf === "function") {
+      try { await nachLauf(inst) } catch (e) { console.warn("BeneosNativeInstaller | follow-up after install failed", e) }
+    }
     return inst
   }
 
@@ -631,6 +626,7 @@ export class BeneosNativeBattlemapInstaller {
         })
         if (wahl === "abbruch") {
           this._cancelled = true
+          this.ausgang = "abgebrochen"
           try { await this.progress.close?.() } catch (_) {}
           return this
         }
@@ -656,6 +652,7 @@ export class BeneosNativeBattlemapInstaller {
         result.preflight = { ok: false, category: pre.category, error: String(pre.error?.message || pre.error || "") }
         result.fatalCategory = pre.category
         this.progress.markFailed(this.#preflightMessage(pre.category))
+        this.ausgang = "vorpruefung"
         await this.#showReport(result)
         return this.progress
       }
@@ -749,7 +746,9 @@ export class BeneosNativeBattlemapInstaller {
         const noChanges = (result.totals.docsCreated === 0 && result.totals.docsUpdated === 0)
         this.progress.markCompleted({ noChanges })
       }
+      this.ausgang = "fertig"
     } catch (err) {
+      this.ausgang = "fehler"
       console.error("BeneosNativeBattlemapInstaller | failure", err)
       this.progress.markFailed(err?.message || String(err))
       result.fatalError = String(err?.message || err)
@@ -1127,18 +1126,17 @@ export class BeneosNativeBattlemapInstaller {
       // such entries (7-Zip style packing), so skip them outright.
       if (relPath.endsWith("/")) continue
       if (relPath.startsWith("data/assets/")) {
-        const rawRel = relPath.substring("data/assets/".length)
-        let target = toCloudAssetPath(rawRel)
+        const { target, rawRel, gepackt } = installZiel(relPath)
         // Self-contained relocation: anything that did NOT land in a beneos_assets
         // namespace (modules/<id>/…, worlds/<author-world>/… scene thumbs,
         // icons/…, systems/…) is bundled by the pack. We must NOT write it back
         // into modules/ or systems/ (Foundry warns that's unsafe and a package
-        // update would wipe it), so relocate it under the packaged namespace and
-        // remember the original->packaged mapping so #importDocuments rewrites the
-        // document references to match. Shared paths across releases map to the
-        // same target, so re-installs dedupe (existing files are skipped).
-        if (!/^beneos_assets\//i.test(target)) {
-          target = PACKAGED_INSTALL_PREFIX + stripLeadSlash(target)
+        // update would wipe it), so installZiel relocates it under the packaged
+        // namespace and we remember the original->packaged mapping so
+        // #importDocuments rewrites the document references to match. Shared
+        // paths across releases map to the same target, so re-installs dedupe
+        // (existing files are skipped).
+        if (gepackt) {
           this._packagedRemap.set(stripLeadSlash(rawRel), target)
           this._result.totals.packagedAssets = (this._result.totals.packagedAssets || 0) + 1
         }
@@ -1361,13 +1359,8 @@ export class BeneosNativeBattlemapInstaller {
     try {
       const mgr = window.BeneosScenePacker
       const fresh = await mgr.getPackInfo(this.packageId)
-      for (const [relPath, url] of Object.entries(fresh)) {
-        if (relPath.startsWith("data/assets/")) {
-          this._urlByTarget.set(toCloudAssetPath(relPath.substring("data/assets/".length)), url)
-        } else {
-          this._urlByTarget.set(relPath, url)
-        }
-      }
+      // Same key as #classifyPack, or packaged assets keep their expired URL (MO-011).
+      for (const [relPath, url] of Object.entries(fresh)) this._urlByTarget.set(installZiel(relPath).target, url)
       return true
     } catch (e) {
       console.warn("BeneosNativeInstaller | manifest refresh failed", e)

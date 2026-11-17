@@ -39,6 +39,7 @@
 
 import { getPoiIndex, entryById, entryByName, releaseInfo, indexVersion } from "./beneos-poi-index.mjs"
 import { BeneosInstallState } from "./beneos-install-state.mjs"
+import { offenesCloudFenster } from "./install-nachspiel.mjs"
 
 const MODULE_ID = "beneos-module"
 const RES_SETTING = "battlemap-active-resolution"
@@ -283,13 +284,21 @@ function cleanDisplayName(s) {
  * Run the WHOLE-release install by delegating to the cloud window's proven
  * installer (`_onCloudBattlemapInstallNative`, scope "release"). That method
  * derives the on-disk packId from the release's `variant_dirs`, uses the
- * release cover thumbnail, and installs the entire release. We pre-seed the
- * window's release index from the already-fetched list so its internal lazy
- * load / re-render never runs (no stray window pops open).
+ * release cover thumbnail, and installs the entire release.
+ *
+ * Two ways, both ending in the same follow-up (install-nachspiel.mjs), which
+ * redraws whichever cloud window is on screen (MO-022):
+ *  - the cloud window is open and its own index knows the release: that
+ *    window runs the install.
+ *  - otherwise a hidden helper instance runs it, with its release index
+ *    pre-seeded from `list` so its lazy load / re-render never runs (no stray
+ *    window pops open). An open window whose list is not loaded (before login,
+ *    failed fetch) also takes this way, as it did before.
  * @param {string} releaseDir  the release_dir key (matches listReleases).
  * @param {Array}  list        the listReleases() payload (cloud-ready releases).
+ * Exported for install-nachspiel.test.mjs only.
  */
-async function runNativeReleaseInstall(releaseDir, list) {
+export async function runNativeReleaseInstall(releaseDir, list) {
   let Win = globalThis.BeneosCloudWindowV2
   if (!Win) {
     try { Win = (await import("./cloud-window-v2.mjs"))?.BeneosCloudWindowV2 } catch (_e) { /* ignore */ }
@@ -299,15 +308,33 @@ async function runNativeReleaseInstall(releaseDir, list) {
       "Beneos installer is not ready. Please try again in a moment."))
     return
   }
+  const offen = offenesCloudFenster()
+  if (offen instanceof Win && offen._releaseIndex?.get?.(releaseDir)) return delegate(Win, offen, releaseDir)
+
+  // The helper's constructor registers it as game.beneos.cloudWindowV2 and as
+  // the search engine. Handed back right away, before the install runs: an
+  // invisible window must never sit in those slots, neither during the run
+  // (the follow-up would miss the open window) nor after it, and two
+  // overlapping delegated runs then cannot restore each other's helper.
+  const vorher = {
+    cloud: game.beneos?.cloudWindowV2,
+    such:  game.beneos?.searchEngine,
+    token: game.beneosTokens?.searchEngine,
+  }
   const win = new Win()
-  // Pre-seed the release index so the static method skips #ensureReleasesLoaded
-  // (and its re-render, which would otherwise open this window).
+  if (game.beneos?.cloudWindowV2 === win) game.beneos.cloudWindowV2 = vorher.cloud
+  if (game.beneos?.searchEngine === win) game.beneos.searchEngine = vorher.such
+  if (game.beneosTokens?.searchEngine === win) game.beneosTokens.searchEngine = vorher.token
   try {
     if (Array.isArray(list) && list.length) {
       win._releaseList = list
       win._releaseIndex = new Map(list.map(r => [r.release_dir, r]))
     }
   } catch (_e) { /* ignore */ }
+  await delegate(Win, win, releaseDir)
+}
+
+async function delegate(Win, win, releaseDir) {
   try {
     await Win._onCloudBattlemapInstallNative.call(win, null, releaseDir, "release")
   } catch (err) {
