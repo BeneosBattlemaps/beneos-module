@@ -1166,6 +1166,8 @@
   "BENEOS.Cloud.Notification.BlockedUnavailable": "Este mapa no se puede instalar ahora mismo. Contacta con soporte.",
   "BENEOS.Cloud.Card.InstallSelected": "Instalar selección",
   "BENEOS.Cloud.Bmap.Releases": "Releases",
+  "BENEOS.Cloud.Bmap.ReleasesFromCloud": "El catálogo de streaming no responde en este momento, así que esta lista viene de Beneos Cloud. La instalación sigue funcionando por streaming.",
+  "BENEOS.Stream.ManifestDenied": "El streaming no está disponible para esta publicación con tu acceso actual.",
   "BENEOS.Cloud.Bmap.Individual": "Mapas individuales",
   "BENEOS.Cloud.Bmap.InstallScene": "Instalar esta escena",
   "BENEOS.Cloud.Bmap.InstallPair": "Instalar par",

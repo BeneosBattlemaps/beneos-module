@@ -104,6 +104,12 @@ export async function loadStreamManifest(release, variant) {
   if (!response.ok) {
     throw new Error(`stream manifest unavailable (${response.status}) for ${release}/${variant}`)
   }
+  // Weist das Tor ab, liefert es den Platzhalter mit 200 und dieser
+  // Kopfzeile. Ohne die Abfrage kaeme ein roher Parserfehler beim Kunden an
+  // (stre-T-115, im Rueckfall ist jede Zeile installierbar).
+  if (response.headers?.get?.("x-beneos-denied") === "1") {
+    throw new Error(game.i18n.localize("BENEOS.Stream.ManifestDenied"))
+  }
   const manifest = await response.json()
   if (!Array.isArray(manifest?.entries)) {
     throw new Error(`stream manifest malformed for ${release}/${variant}`)

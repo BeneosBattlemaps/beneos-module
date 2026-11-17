@@ -148,6 +148,42 @@ const THUMB_BASE = {
   spell: "https://www.beneos-database.com/data/spells/thumbnails/"
 }
 
+/**
+ * Die Langform des Tors aus `variant_dirs`, etwa
+ * `beneos_bm_0001_crystal_case_foundry_4k` -> `beneos_bm_0001_crystal_case`.
+ * Leer, wenn kein Wert die Endung `_foundry_<variante>` traegt.
+ */
+function langformAusVarianten(vdirs) {
+  if (!vdirs || typeof vdirs !== "object") return ""
+  for (const wert of Object.values(vdirs)) {
+    const treffer = /^(.+)_foundry_[a-z0-9]+$/.exec(String(wert || ""))
+    if (treffer) return treffer[1]
+  }
+  return ""
+}
+
+/**
+ * Die Cloud-Liste im Rueckfall (stre-T-115), als Kopie.
+ *
+ * - `release_dir` wird die Langform des Tors, damit ein Installationsvermerk
+ *   aus dem Rueckfall denselben Schluessel traegt wie einer aus der Tor-Liste
+ *   (`recordInstall`, `beneos-install-state.mjs`). Passt der Kern nicht, bleibt
+ *   die Kurzform; `#releaseFor` findet sie ueber den Kern.
+ * - Jede Zeile ist installierbar und traegt keinen Freischalt-Hinweis
+ *   (Betreiberentscheid 17.11.2026). Die Cloud kennt den Stream-Schluessel
+ *   nicht; das Recht prueft das Tor beim Manifest.
+ */
+function rueckfallZeilen(liste) {
+  if (!Array.isArray(liste)) return liste
+  return liste.map((zeile) => {
+    if (!zeile || typeof zeile !== "object") return zeile
+    const kopie = { ...zeile, can_install: true, unlock_hint: null }
+    const lang = langformAusVarianten(zeile.variant_dirs)
+    if (lang && releaseKern(lang) === releaseKern(zeile.release_dir)) kopie.release_dir = lang
+    return kopie
+  })
+}
+
 export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV2) {
 
   static DEFAULT_OPTIONS = {
@@ -810,6 +846,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         bmapReleasesLoading: !!this._releaseLoading && this._releaseList === null,
         bmapReleasesError:   (!this._releaseLoading && this._releaseLoadError) ? String(this._releaseLoadError) : null,
         bmapReleasesNeedsLogin: this.searchMode === "bmap" && !!this._releaseNeedsLogin,
+        bmapReleasesAusCloud: this.#releasesAusCloud(),
         drawer: {
           open: !!drawerAsset,
           asset: drawerAsset || null,
@@ -6229,6 +6266,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     event.preventDefault()
     this._releaseLoadError  = null
     this._releaseNeedsLogin = false
+    this._releaseQuelle     = null   // stre-T-115: zuerst wieder das Tor
     this._releaseList       = null
     this._releaseIndex      = null
     this._releaseKernIndex  = null
@@ -6305,6 +6343,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     return (k && this._releaseKernIndex?.get?.(k)) || null
   }
 
+  /** Steht die Release-Liste im Battlemap-Reiter aus dem Rueckfall auf die Cloud? */
+  #releasesAusCloud() {
+    return this.searchMode === "bmap" && this._releaseQuelle === "cloud" && !!this._releaseIndex
+  }
+
   async #fetchReleasesWithBackoff() {
     // Closed beta only. With the streaming switch on, the release list comes
     // from the beta gate instead of the cloud, so a tester browses and installs
@@ -6316,9 +6359,28 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // character-for-character the one that ran before.
     const stream = globalThis.BeneosStream
     if (stream?.enabled() && typeof stream.listReleases === "function") {
-      return await stream.listReleases()
+      /*
+       * RUECKFALL AUF DIE CLOUD-LISTE (stre-T-115). Gemessen am 17.11.2026:
+       * bei 403 und 502 vom Tor sah der Kunde nur die Fehlerkarte und keine
+       * Karte. Die Liste gibt kein Recht, also faellt jeder Fehlschlag des
+       * Katalogs auf die Cloud zurueck; das Recht prueft das Tor beim Manifest.
+       */
+      try {
+        const liste = await stream.listReleases()
+        this._releaseQuelle = "tor"
+        return liste
+      } catch (e) {
+        console.warn(`BeneosCloudWindowV2 | ${e?.message || e}, showing the Beneos Cloud list instead`)
+        this._releaseQuelle = "cloud"
+        return rueckfallZeilen(await this.#cloudReleasesWithBackoff())
+      }
     }
+    this._releaseQuelle = null
+    return await this.#cloudReleasesWithBackoff()
+  }
 
+  /** Die Release-Liste der Cloud, mit drei Versuchen. */
+  async #cloudReleasesWithBackoff() {
     // Manager-missing is a hard structural error, not a transient
     // network blip — no point retrying it.
     let mgr = window.BeneosScenePacker

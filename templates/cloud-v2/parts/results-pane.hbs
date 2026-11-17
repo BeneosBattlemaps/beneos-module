@@ -87,6 +87,11 @@
           {{/if}}
         </div>
       </div>
+      {{!-- stre-T-115: der Stream-Katalog antwortet nicht, die Liste kommt
+            aus Beneos Cloud. Reiner Text, kein Icon. --}}
+      {{#if bmapReleasesAusCloud}}
+      <p class="bc-bmap-source-hint">{{localize "BENEOS.Cloud.Bmap.ReleasesFromCloud"}}</p>
+      {{/if}}
       {{/if}}
       {{!-- Wave B-9: list / grid view toggle. Two segmented buttons,
            the active one is highlighted via .bc-view-active. The state

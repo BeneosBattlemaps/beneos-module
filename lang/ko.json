@@ -1166,6 +1166,8 @@
   "BENEOS.Cloud.Notification.BlockedUnavailable": "이 맵은 지금 설치할 수 없습니다. 지원팀에 문의해 주세요.",
   "BENEOS.Cloud.Card.InstallSelected": "선택 항목 설치",
   "BENEOS.Cloud.Bmap.Releases": "릴리스",
+  "BENEOS.Cloud.Bmap.ReleasesFromCloud": "스트리밍 카탈로그가 지금 응답하지 않아 이 목록은 Beneos Cloud에서 가져왔습니다. 설치는 계속 스트리밍으로 진행됩니다.",
+  "BENEOS.Stream.ManifestDenied": "현재 이용 권한으로는 이 릴리스의 스트리밍을 사용할 수 없습니다.",
   "BENEOS.Cloud.Bmap.Individual": "개별 맵",
   "BENEOS.Cloud.Bmap.InstallScene": "이 씬 설치",
   "BENEOS.Cloud.Bmap.InstallPair": "쌍 설치",

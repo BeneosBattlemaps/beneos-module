@@ -75,6 +75,13 @@
  * dass jeder Fehler genau einmal als Warnung ankommt und keiner unbehandelt
  * bleibt. Den Satz gibt es an der Basis nicht, `--alt` laesst ihn aus.
  *
+ * SIEBZEHN SAETZE seit stre-T-115. `rueckfall` haelt fest, dass die
+ * Release-Liste bei jedem Fehlschlag des Stream-Katalogs aus der Cloud kommt,
+ * mit Langform, installierbar und ohne Freischalt-Hinweis, dass ein Hinweis
+ * ohne Icon erscheint und dass eine Abweisung des Tors beim Manifest einen
+ * lokalisierten Text wirft. Dafuer kopiert die Wegwerfkopie jetzt auch
+ * `templates`. Den Satz gibt es an der Basis nicht, `--alt` laesst ihn aus.
+ *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
  * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig]
@@ -138,6 +145,8 @@ const ONLINE = "scripts/stream/stream-online.mjs";
 const EINSTIEG = "scripts/stream/beneos-stream.mjs";
 const KLANG = "scripts/stream/stream-klang.mjs";
 const CANVAS = "scripts/stream/stream-canvas.mjs";
+const FENSTER = "scripts/cloud-v2/cloud-window-v2.mjs";
+const VORLAGE = "templates/cloud-v2/parts/results-pane.hbs";
 
 const SABOTAGEN = [
   // ---------------------------------------------------------------- maske
@@ -949,6 +958,45 @@ const SABOTAGEN = [
   { satz: "hakenfehler", ziel: ["Abspielen intakt: die Optionen kommen an"], ersetze: [[CANVAS, "    offset: options?.offset,\n", "    offset: undefined,\n"]] },
   { satz: "hakenfehler", ziel: ["Abspielen intakt: die Optionen kommen an"], ersetze: [[CANVAS, "    loop: cfg.loop !== false,\n", "    loop: false,\n"]] },
   { satz: "hakenfehler", ziel: ["Abspielen intakt: keine Warnung"], ersetze: [[CANVAS, "  })).catch((e) => {\n", "  })).then(() => console.warn(\"Beneos Stream | Abspielen abgebrochen:\", null)).catch((e) => {\n"]] },
+  // --------------------------------------------------------- rueckfall
+  // stre-T-115: Cloud-Liste, wenn der Stream-Katalog scheitert.
+  { satz: "rueckfall", ziel: ["Tor 403: die Cloud-Liste","Tor 403: Quelle cloud","Tor 502: die Cloud-Liste","Tor 502: Quelle cloud","Netzfehler: die Cloud-Liste","unlesbare Antwort: die Cloud-Liste","genau eine Warnung zum Rueckfall"], ersetze: [[FENSTER, "      try {\n        const liste = await stream.listReleases()", "      {\n        const liste = await stream.listReleases()"], [FENSTER, "      } catch (e) {\n        console.warn(`BeneosCloudWindowV2 | ${e?.message || e}, showing", "      } if (false) { const e = null\n        console.warn(`BeneosCloudWindowV2 | ${e?.message || e}, showing"]] },
+  { satz: "rueckfall", ziel: ["Tor 200: Quelle tor"], ersetze: [[FENSTER, "        this._releaseQuelle = \"tor\"\n", ""]] },
+  { satz: "rueckfall", ziel: ["Tor 403: Quelle cloud","Tor 502: Quelle cloud","Retry setzt die Quelle zurueck"], ersetze: [[FENSTER, "        this._releaseQuelle = \"cloud\"\n", ""]] },
+  { satz: "rueckfall", ziel: ["Tor 403: die Zeilen gehen durch den Rueckfall","Tor 502: die Zeilen gehen durch den Rueckfall"], ersetze: [[FENSTER, "        return rueckfallZeilen(await this.#cloudReleasesWithBackoff())", "        return await this.#cloudReleasesWithBackoff()"]] },
+  { satz: "rueckfall", ziel: ["Tor 200: die Tor-Liste","Tor 200: die Cloud wird nicht gefragt"], ersetze: [[FENSTER, "        this._releaseQuelle = \"tor\"\n        return liste\n", "        this._releaseQuelle = \"tor\"\n        return await this.#cloudReleasesWithBackoff()\n"]] },
+  { satz: "rueckfall", ziel: ["Tor 403: genau ein Torabruf","Tor 502: genau ein Torabruf"], ersetze: [[FENSTER, "        this._releaseQuelle = \"cloud\"\n", "        try { await stream.listReleases() } catch (_) {}\n        this._releaseQuelle = \"cloud\"\n"]] },
+  { satz: "rueckfall", ziel: ["genau eine Warnung zum Rueckfall"], ersetze: [[FENSTER, "        console.warn(`BeneosCloudWindowV2 | ${e?.message || e}, showing the Beneos Cloud list instead`)\n", ""]] },
+  { satz: "rueckfall", ziel: ["Warnung ohne Adresse und ohne Schluessel"], ersetze: [[FENSTER, "console.warn(`BeneosCloudWindowV2 | ${e?.message || e}, showing", "console.warn(`BeneosCloudWindowV2 | https://gate.beneos.stream/catalog/x ${e?.message || e}, showing"]] },
+  { satz: "rueckfall", ziel: ["ohne Manager: BENEOS_NEEDS_LOGIN wie heute","Cloud scheitert dreimal: ihr Fehler wird geworfen"], ersetze: [[FENSTER, "        return rueckfallZeilen(await this.#cloudReleasesWithBackoff())", "        try { return rueckfallZeilen(await this.#cloudReleasesWithBackoff()) } catch (_) { throw e }"]] },
+  { satz: "rueckfall", ziel: ["Modus aus: das Tor wird nicht gefragt"], ersetze: [[FENSTER, "    if (stream?.enabled() && typeof stream.listReleases === \"function\") {", "    if (stream && typeof stream.listReleases === \"function\") {"]] },
+  { satz: "rueckfall", ziel: ["Modus aus: keine Rueckfall-Quelle"], ersetze: [[FENSTER, "    this._releaseQuelle = null\n    return await this.#cloudReleasesWithBackoff()", "    this._releaseQuelle = \"cloud\"\n    return await this.#cloudReleasesWithBackoff()"]] },
+  { satz: "rueckfall", ziel: ["Modus aus: die Cloud-Liste unveraendert"], ersetze: [[FENSTER, "    this._releaseQuelle = null\n    return await this.#cloudReleasesWithBackoff()", "    this._releaseQuelle = null\n    return rueckfallZeilen(await this.#cloudReleasesWithBackoff())"]] },
+  { satz: "rueckfall", ziel: ["Retry setzt die Quelle zurueck"], ersetze: [[FENSTER, "    this._releaseQuelle     = null   // stre-T-115: zuerst wieder das Tor\n", ""]] },
+  { satz: "rueckfall", ziel: ["Retry laedt neu"], ersetze: [[FENSTER, "    this.#renderResults([\"results\"])\n    this.#ensureReleasesLoaded()\n  }\n\n  // Plan §15.1", "    this.#renderResults([\"results\"])\n  }\n\n  // Plan §15.1"]] },
+  { satz: "rueckfall", ziel: ["installierbar","Tor 403: die Zeilen gehen durch den Rueckfall","Tor 502: die Zeilen gehen durch den Rueckfall"], ersetze: [[FENSTER, "{ ...zeile, can_install: true, unlock_hint: null }", "{ ...zeile, unlock_hint: null }"]] },
+  { satz: "rueckfall", ziel: ["kein Freischalt-Hinweis"], ersetze: [[FENSTER, "{ ...zeile, can_install: true, unlock_hint: null }", "{ ...zeile, can_install: true }"]] },
+  { satz: "rueckfall", ziel: ["die Eingabeliste bleibt unveraendert"], ersetze: [[FENSTER, "    const kopie = { ...zeile, can_install: true, unlock_hint: null }", "    const kopie = Object.assign(zeile, { can_install: true, unlock_hint: null })"]] },
+  { satz: "rueckfall", ziel: ["variant_dirs bleiben"], ersetze: [[FENSTER, "{ ...zeile, can_install: true, unlock_hint: null }", "{ release_dir: zeile.release_dir, can_install: true, unlock_hint: null }"]] },
+  { satz: "rueckfall", ziel: ["4K/HD: Langform aus variant_dirs","SINGLE: Langform aus variant_dirs","Tor 403: die Zeilen gehen durch den Rueckfall","Tor 502: die Zeilen gehen durch den Rueckfall"], ersetze: [[FENSTER, " kopie.release_dir = lang\n", " void lang\n"]] },
+  { satz: "rueckfall", ziel: ["anderer Kern: die Kurzform bleibt"], ersetze: [[FENSTER, "    if (lang && releaseKern(lang) === releaseKern(zeile.release_dir)) kopie.release_dir = lang", "    if (lang) kopie.release_dir = lang"]] },
+  { satz: "rueckfall", ziel: ["ohne _foundry_-Endung: die Kurzform bleibt"], ersetze: [[FENSTER, "/^(.+)_foundry_[a-z0-9]+$/", "/^(.+?)(?:_foundry_[a-z0-9]+)?$/"]] },
+  { satz: "rueckfall", ziel: ["SINGLE: Langform aus variant_dirs"], ersetze: [[FENSTER, "/^(.+)_foundry_[a-z0-9]+$/", "/^(.+)_foundry_(?:4k|hd)$/"]] },
+  { satz: "rueckfall", ziel: ["ohne Ableitung bleibt die Kurzform"], ersetze: [[FENSTER, "    if (treffer) return treffer[1]\n  }\n  return \"\"\n", "    if (treffer) return treffer[1]\n  }\n  return \"beneos_bm_0007_leer\"\n"]] },
+  { satz: "rueckfall", ziel: ["keine Liste: unveraendert zurueck"], ersetze: [[FENSTER, "  if (!Array.isArray(liste)) return liste\n", ""]] },
+  { satz: "rueckfall", ziel: ["leere Zeile: unveraendert zurueck"], ersetze: [[FENSTER, "    if (!zeile || typeof zeile !== \"object\") return zeile\n", ""]] },
+  { satz: "rueckfall", ziel: ["Hinweis: Quelle cloud mit Index"], ersetze: [[FENSTER, "    return this.searchMode === \"bmap\" && this._releaseQuelle === \"cloud\" && !!this._releaseIndex", "    return false"]] },
+  { satz: "rueckfall", ziel: ["kein Hinweis: Quelle tor"], ersetze: [[FENSTER, " && this._releaseQuelle === \"cloud\" && !!this._releaseIndex", " && !!this._releaseQuelle && !!this._releaseIndex"]] },
+  { satz: "rueckfall", ziel: ["kein Hinweis: ohne Index"], ersetze: [[FENSTER, " && this._releaseQuelle === \"cloud\" && !!this._releaseIndex", " && this._releaseQuelle === \"cloud\""]] },
+  { satz: "rueckfall", ziel: ["kein Hinweis: anderer Reiter"], ersetze: [[FENSTER, "    return this.searchMode === \"bmap\" && this._releaseQuelle", "    return this._releaseQuelle"]] },
+  { satz: "rueckfall", ziel: ["[Struktur] der Kontext reicht bmapReleasesAusCloud durch"], ersetze: [[FENSTER, "        bmapReleasesAusCloud: this.#releasesAusCloud(),", "        bmapReleasesAusCloud: false,"]] },
+  { satz: "rueckfall", ziel: ["[Struktur] cloud-window-v2.mjs: alle geschnittenen Stellen vorhanden"], ersetze: [[FENSTER, "  #releasesAusCloud() {", "  #releasesAusCloudAlt() {"], [FENSTER, "this.#releasesAusCloud(),", "this.#releasesAusCloudAlt(),"]] },
+  { satz: "rueckfall", ziel: ["[Struktur] die Vorlage zeigt den Hinweis im Battlemap-Block"], ersetze: [[VORLAGE, "      {{#if bmapReleasesAusCloud}}\n      <p class=\"bc-bmap-source-hint\">{{localize \"BENEOS.Cloud.Bmap.ReleasesFromCloud\"}}</p>\n      {{/if}}\n", ""]] },
+  { satz: "rueckfall", ziel: ["[Struktur] der Hinweis steht ohne Icon"], ersetze: [[VORLAGE, "<p class=\"bc-bmap-source-hint\">{{localize", "<p class=\"bc-bmap-source-hint\"><i class=\"fas fa-cloud\"></i> {{localize"]] },
+  { satz: "rueckfall", ziel: ["BENEOS.Stream.ManifestDenied: in jeder Sprache, nicht leer, ohne Gedankenstrich"], ersetze: [["lang/de.json", "\"BENEOS.Stream.ManifestDenied\": \"Streaming ist", "\"BENEOS.Stream.ManifestDenied\": \"\", \"x\": \"Streaming ist"]] },
+  { satz: "rueckfall", ziel: ["BENEOS.Cloud.Bmap.ReleasesFromCloud: in jeder Sprache, nicht leer, ohne Gedankenstrich"], ersetze: [["lang/en.json", "\"BENEOS.Cloud.Bmap.ReleasesFromCloud\": \"The streaming catalogue is not answering right now, so", "\"BENEOS.Cloud.Bmap.ReleasesFromCloud\": \"The streaming catalogue is not answering right now \u2014 so"]] },
+  { satz: "rueckfall", ziel: ["abgewiesen: der lokalisierte Text"], ersetze: [[INSTALL, "  if (response.headers?.get?.(\"x-beneos-denied\") === \"1\") {\n", "  if (false) {\n"]] },
+  { satz: "rueckfall", ziel: ["ohne Abweisung: das Manifest wird gelesen wie heute"], ersetze: [[INSTALL, "  if (response.headers?.get?.(\"x-beneos-denied\") === \"1\") {\n", "  if (response.headers?.get?.(\"x-beneos-denied\") !== \"0\") {\n"]] },
 ];
 
 /*
@@ -980,6 +1028,10 @@ const EIGENPROBEN = {
       "Vorbedingung der Probe danach: der Szenenklang laeuft mit dem alten Schluessel, vor jedem Aufruf des Moduls.",
     "keine Ausgabezeile nennt eine Adresse oder einen Schluessel":
       "Selbstprobe des Satzes ueber seine eigenen Ausgabezeilen. Sie bewacht den Pruefsatz, nicht den Modulcode.",
+  },
+  rueckfall: {
+    "jede Sprache aus module.json hat eine Datei":
+      "Vorbedingung des Sprachteils: module.json und lang/ passen zusammen. Sie gilt vor stre-T-115 und haengt an keiner Zeile dieses Baus; eine Sabotage muesste eine Sprachdatei loeschen.",
   },
   geteilt: {
     "derselbe Traeger, dieselbe Adresse":
@@ -1054,7 +1106,7 @@ function fahre(verzeichnis, datei) {
 }
 
 function kopiere(ziel) {
-  for (const teil of ["scripts", "lang", "ui", "tools"]) {
+  for (const teil of ["scripts", "lang", "ui", "tools", "templates"]) {
     cpSync(join(WURZEL, teil), join(ziel, teil), { recursive: true });
   }
   for (const datei of ["module.json", "package.json"]) {
@@ -1084,7 +1136,7 @@ if (process.argv.includes("--alle-saetze")) {
 
 // ------------------------------------------------------------- Lauf
 
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "hakenfehler"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "hakenfehler", "rueckfall"]
   .filter((s) => !nurSatz || s === nurSatz);
 if (SAETZE.length === 0) {
   console.log(`unbekannter Satz: ${nurSatz}`);

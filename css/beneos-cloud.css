@@ -9032,6 +9032,8 @@ margin: 0 0 8px;
 }
 .bc-bundle-risk i { margin-right: 4px; }
 .bc-bundle-members-hint { margin: 6px 0 0; font-size: 12px; color: var(--bc-text-muted); }
+/* stre-T-115: Hinweis, wenn die Release-Liste aus dem Rueckfall auf die Cloud kommt. */
+.bc-bmap-source-hint { margin: 0; padding: var(--bc-space-2) var(--bc-space-4); font-size: 12px; color: var(--bc-text-muted); }
 
 /* Logged-out / no-access per-member download: non-functional, tooltip. A
    missing entitlement is a state, not a failure, so it carries no red. */

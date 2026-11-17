@@ -1171,6 +1171,8 @@
   "BENEOS.Cloud.Notification.BlockedUnavailable": "Эта карта не может быть установлена прямо сейчас. Обратитесь в поддержку.",
   "BENEOS.Cloud.Card.InstallSelected": "Установить выбранные",
   "BENEOS.Cloud.Bmap.Releases": "Релизы",
+  "BENEOS.Cloud.Bmap.ReleasesFromCloud": "Каталог стриминга сейчас не отвечает, поэтому этот список получен из Beneos Cloud. Установка по-прежнему идёт через стриминг.",
+  "BENEOS.Stream.ManifestDenied": "Стриминг для этого релиза недоступен при вашем текущем доступе.",
   "BENEOS.Cloud.Bmap.Individual": "Отдельные карты",
   "BENEOS.Cloud.Bmap.InstallScene": "Установить эту сцену",
   "BENEOS.Cloud.Bmap.InstallPair": "Установить пару",
