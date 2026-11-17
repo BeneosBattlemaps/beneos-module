@@ -5398,29 +5398,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       contentSignature: String(releaseEntry?.content_signature || ""),
       updatedDate:      this.#releaseDateInfo(releaseDir)?.updatedDate || "",
     }
-    let inst = null
-    try {
-      inst = await NativeInstaller.install({
-        packageId: packId,
-        label:     displayName + variantLabel,
-        coverUrl,
-        sceneSlugs,
-        record,
-        // Bundle "install entire bundle" pre-decides overwrite per release, so
-        // it forces it here to skip the installer's own per-release dialog.
-        overwrite: opts.overwrite === true,
-        // Shared across the releases of one bundle run so a creature that
-        // several releases reference is looked at once, not once per release.
-        kreaturenLauf: (opts.kreaturenLauf instanceof Set) ? opts.kreaturenLauf : null,
-      })
-    } catch (err) {
-      console.warn("BeneosCloudWindowV2 | native install failed", { packId, sceneSlugs, err })
-      ui.notifications.error(`Native install failed for ${displayName}: ${err?.message || err}`)
-      return null
-    }
-    // Teil 3: refresh the installed-marker + update state for this release.
-    // Skip when the user cancelled the overwrite dialog (nothing changed).
-    if (inst && !inst._cancelled) {
+    // Teil 3: refresh the installed-marker + update state for this release and
+    // broadcast the release-installed signal. install() runs this after every
+    // run the user did not cancel, the report's Retry included, which calls
+    // install() again with the same arguments (MO-012).
+    const nachLauf = async (fertig) => {
       try { await this.#refreshAfterBmapInstall?.(releaseDir) } catch (_) {}
       // Broadcast a generic release-installed signal so other systems (e.g. the
       // Getting Started tour's auto-start-after-install bridge) can react
@@ -5435,9 +5417,30 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
           // ("bm_0113"), NOT the on-disk asset folder ("113_arasek_stockyard"),
           // so it cannot be matched against asset paths. The scene ids can, and
           // they let the static-switch probe cache refresh just this release.
-          sceneIds: (inst._importedScenes || []).map(s => String(s.id)).filter(Boolean),
+          sceneIds: (fertig._importedScenes || []).map(s => String(s.id)).filter(Boolean),
         })
       } catch (_) {}
+    }
+    let inst = null
+    try {
+      inst = await NativeInstaller.install({
+        packageId: packId,
+        label:     displayName + variantLabel,
+        coverUrl,
+        sceneSlugs,
+        record,
+        // Bundle "install entire bundle" pre-decides overwrite per release, so
+        // it forces it here to skip the installer's own per-release dialog.
+        overwrite: opts.overwrite === true,
+        // Shared across the releases of one bundle run so a creature that
+        // several releases reference is looked at once, not once per release.
+        kreaturenLauf: (opts.kreaturenLauf instanceof Set) ? opts.kreaturenLauf : null,
+        nachLauf,
+      })
+    } catch (err) {
+      console.warn("BeneosCloudWindowV2 | native install failed", { packId, sceneSlugs, err })
+      ui.notifications.error(`Native install failed for ${displayName}: ${err?.message || err}`)
+      return null
     }
     return inst
   }

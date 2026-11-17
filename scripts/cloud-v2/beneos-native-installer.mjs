@@ -422,7 +422,7 @@ const JSON_FILE_TO_PHASE = {
 
 export class BeneosNativeBattlemapInstaller {
 
-  constructor({ packageId, label = "", coverUrl = null, sceneSlugs = null, overwrite = false, record = null, source = null, kreaturenLauf = null, schonen = true } = {}) {
+  constructor({ packageId, label = "", coverUrl = null, sceneSlugs = null, overwrite = false, record = null, source = null, kreaturenLauf = null, schonen = true, nachLauf = null } = {}) {
     if (!packageId) throw new Error("BeneosNativeBattlemapInstaller: packageId is required")
     this.packageId = packageId
     this.label     = label || packageId
@@ -434,7 +434,9 @@ export class BeneosNativeBattlemapInstaller {
     // Aufrufargument (ein Bundle-Lauf bringt seine Dialogwahl so mit): ein
     // Retry soll Dateien reparieren und vor dem Ueberschreiben vorhandener
     // Szenen fragen, denn der Kunde kann sie seit dem Bericht geaendert haben.
-    this._aufruf   = { packageId, label, coverUrl, sceneSlugs, record, source }
+    // `nachLauf` reist mit, damit ein Retry dasselbe Nachspiel bekommt wie der
+    // erste Lauf (MO-012): Releasekarte neu zeichnen, beneos.releaseInstalled.
+    this._aufruf   = { packageId, label, coverUrl, sceneSlugs, record, source, nachLauf }
     // Kreaturen, die in DIESEM Lauf schon betrachtet wurden. Ein Bundle baut je
     // Paket einen eigenen Installer, und Releases teilen sich Kreaturen: die
     // sieben Pakete von "Castle Ravenloft" nannten dieselben Kreaturen mehrfach.
@@ -504,12 +506,18 @@ export class BeneosNativeBattlemapInstaller {
 
   /**
    * One-shot install + UI. Returns the installer instance so callers can read
-   * the result (imported scenes, totals, whether the user cancelled) — used by
-   * the cloud window to refresh the installed-marker after the run.
+   * the result (imported scenes, totals, whether the user cancelled). The
+   * caller's follow-up (the cloud window refreshes the installed-marker) goes in
+   * as `nachLauf`, so the report's Retry runs it too.
    */
-  static async install({ packageId, label, coverUrl, sceneSlugs, overwrite = false, record = null, source = null, kreaturenLauf = null, schonen = true } = {}) {
-    const inst = new BeneosNativeBattlemapInstaller({ packageId, label, coverUrl, sceneSlugs, overwrite, record, source, kreaturenLauf, schonen })
+  static async install({ packageId, label, coverUrl, sceneSlugs, overwrite = false, record = null, source = null, kreaturenLauf = null, schonen = true, nachLauf = null } = {}) {
+    const inst = new BeneosNativeBattlemapInstaller({ packageId, label, coverUrl, sceneSlugs, overwrite, record, source, kreaturenLauf, schonen, nachLauf })
     await inst.run()
+    // Here and not at the caller: the report's Retry calls install() again, and
+    // the follow-up must run after every run that was not cancelled (MO-012).
+    if (!inst._cancelled && typeof nachLauf === "function") {
+      try { await nachLauf(inst) } catch (e) { console.warn("BeneosNativeInstaller | follow-up after install failed", e) }
+    }
     return inst
   }
 
