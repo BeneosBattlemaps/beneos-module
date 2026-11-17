@@ -135,6 +135,12 @@ for (const status of [403, 502]) {
 
 abschnitt("Andere Fehlschlaege des Tors")
 {
+  // Kalt-Review 17.11.2026: Eine leere Tor-Liste endete in BENEOS_EMPTY_RELEASE_LIST,
+  // also in derselben Fehlerkarte, die der Rueckfall verhindern soll.
+  torAntwort = () => []
+  const leer = await lauf()
+  gleich("Tor 200 leer: die Cloud-Liste", Array.isArray(leer.liste) && leer.liste.length, 2)
+  gleich("Tor 200 leer: Quelle cloud", leer.f._releaseQuelle, "cloud")
   torAntwort = () => { throw new TypeError("Failed to fetch") }
   const r = await lauf()
   gleich("Netzfehler: die Cloud-Liste", Array.isArray(r.liste) && r.liste.length, 2)
@@ -227,10 +233,33 @@ abschnitt("Kontext und Vorlage")
   struktur("der Kontext reicht bmapReleasesAusCloud durch",
     /bmapReleasesAusCloud:\s*this\.#releasesAusCloud\(\)/.test(fensterText), true)
   const vorlage = readFileSync(join(WURZEL, "templates/cloud-v2/parts/results-pane.hbs"), "utf8")
-  const block = vorlage.slice(vorlage.indexOf("{{#if isBmap}}"), vorlage.indexOf("{{/if}}", vorlage.indexOf("{{#if bmapReleasesAusCloud}}")) + 7)
   const zeile = vorlage.split("\n").find((z) => z.includes("BENEOS.Cloud.Bmap.ReleasesFromCloud")) ?? ""
+  const hinweis = vorlage.indexOf("BENEOS.Cloud.Bmap.ReleasesFromCloud")
+  /** Ende des Blocks, der bei `start` oeffnet, ueber die Verschachtelung. */
+  const blockSchluss = (re, start) => {
+    re.lastIndex = start
+    let tiefe = 0, m
+    while ((m = re.exec(vorlage))) {
+      tiefe += m[1] ? -1 : 1
+      if (tiefe === 0) return m.index
+    }
+    return -1
+  }
+  const hbsEnde = (start) => blockSchluss(/\{\{(?:#|(\/))[a-z]+/g, start)
+  const divEnde = (start) => blockSchluss(/<(\/)?div\b/g, start)
+  const umschliesst = (oeffner, pos) => {
+    for (let i = vorlage.indexOf(oeffner); i >= 0; i = vorlage.indexOf(oeffner, i + 1)) {
+      if (i < pos && pos < hbsEnde(i)) return true
+    }
+    return false
+  }
   struktur("die Vorlage zeigt den Hinweis im Battlemap-Block",
-    block.includes("{{#if bmapReleasesAusCloud}}") && block.includes("BENEOS.Cloud.Bmap.ReleasesFromCloud"), true)
+    hinweis > 0 && umschliesst("{{#if isBmap}}", hinweis) && umschliesst("{{#if bmapReleasesAusCloud}}", hinweis), true)
+  // Kalt-Review 17.11.2026: In der Flex-Leiste ohne Umbruch lief der Satz bei 860 px
+  // ueber drei Zeilen und hob die Leiste von 47 auf 81 px. Er steht darunter.
+  const leiste = vorlage.indexOf("<div class=\"bc-results-meta\"")
+  struktur("der Hinweis steht unter der Ergebnisleiste, nicht in ihr",
+    hinweis > 0 && leiste >= 0 && !(leiste < hinweis && hinweis < divEnde(leiste)), true)
   struktur("der Hinweis steht ohne Icon", zeile.length > 0 && !zeile.includes("<i class="), true)
 }
 

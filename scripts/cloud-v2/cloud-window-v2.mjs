@@ -6367,6 +6367,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
        */
       try {
         const liste = await stream.listReleases()
+        // Eine leere Tor-Liste endete sonst in BENEOS_EMPTY_RELEASE_LIST, also
+        // in derselben Fehlerkarte (Kalt-Review 17.11.2026).
+        if (!Array.isArray(liste) || liste.length === 0) throw new Error("stream catalogue empty")
         this._releaseQuelle = "tor"
         return liste
       } catch (e) {
