@@ -71,7 +71,7 @@ const istObjekt = (w) => !!w && typeof w === "object" && !Array.isArray(w)
  * schreiben. Was dort an `beneos://` unter einem fremden Flag steht, zaehlt
  * als Rest und bleibt.
  */
-function flaggenAenderung(quelle, bericht, ohne = new Set()) {
+export function flaggenAenderung(quelle, bericht, ohne = new Set()) {
   let aenderung = null
   const besuche = (wert, pfad, inListe, tiefe) => {
     if (tiefe > 40) return
