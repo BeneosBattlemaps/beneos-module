@@ -93,6 +93,11 @@
  * im einmaligen Lauf je Welt schluesselfrei werden, fremde Flags nicht, und
  * dass die Kreaturenlade keine gestreamte Adresse als Bild waehlt.
  *
+ * EINUNDZWANZIG SAETZE seit stre-T-134. `export` haelt fest, dass kein
+ * Export (toCompendium, exportToJSON, Abenteuer) den Schluessel traegt und
+ * dass die Spielleitung beim Hereinkommen fremde Flags auf die Toradresse
+ * zurueckheilt. Den Satz gibt es an der Basis nicht.
+ *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
  * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig] [--zeitgrenze <ms>]
@@ -172,6 +177,7 @@ const VORLAGE = "templates/cloud-v2/parts/results-pane.hbs";
 const FREMD = "scripts/stream/stream-fremdflaggen.mjs";
 const FLAGG = "scripts/stream/stream-flaggen.mjs";
 const KREATUR = "scripts/creature-installer/creature-installer.mjs";
+const EXPORT = "scripts/stream/stream-export.mjs";
 
 const SABOTAGEN = [
   // ---------------------------------------------------------------- maske
@@ -1412,12 +1418,63 @@ const SABOTAGEN = [
   { satz: "html", ziel: ["H16 Update verschachtelt: fremdes Flag bleibt", "H16 Anlegen: nur das eigene Feld wird gewandelt"], ersetze: [[HTML, "  if (MODULE_ID in flags) aus[MODULE_ID] = flags[MODULE_ID]\n", "  Object.assign(aus, flags)\n"]] },
   { satz: "html", ziel: ["H16 Gegenprobe Update mit Punktpfad: das eigene Flag wird Form (a)"], ersetze: [[HTML, "  return !!m && m[1] !== MODULE_ID\n", "  return !!m\n"]] },
   { satz: "html", ziel: ["H16 Update mit Punktpfad bis flags: fremdes Flag bleibt"], ersetze: [[HTML, "return k === \"flags\" || k.endsWith(\".flags\")", "return k === \"flags\""]] },
+  // ---------------------------------------------------------------- export (stre-T-134)
+  { satz: "export", ziel: ["das Modul laesst sich laden"], ersetze: [[EXPORT, "const MARKE = Symbol.for(\"beneos.stream.export\")\n", "const MARKE = Symbol.for(\"beneos.stream.export\")\nthrow new Error(\"sabotiert\")\n"]] },
+  { satz: "export", ziel: ["mit Huelle: toCompendium traegt den Schluessel 0 Mal","mit Huelle: exportToJSON traegt den Schluessel 0 Mal","fremdes audiofile wird beneos://","eigenes HTML: das Bild wird Form (a)","fremder Text: der Satz bleibt zeichengleich","nicht rundlaufende Toradresse: 0 Mal","nackter Schluessel im Text: 0 Mal","Abenteuerexport mit clearFlags:false: 0 Mal","Unterklasse haengt nach super eine Toradresse an: 0 Mal","die fremde Huelle davor: ihr Wert bleibt, ohne Schluessel","Vertraeglichkeit: 0 Mal"], ersetze: [[EXPORT, "    wickleExport(klasse.prototype)\n", "\n"]] },
+  { satz: "export", ziel: ["das Original laeuft genau einmal"], ersetze: [[EXPORT, "    const daten = vorher.apply(this, args)\n", "    vorher.apply(this, args)\n    const daten = vorher.apply(this, args)\n"]] },
+  { satz: "export", ziel: ["Szene: was nach super kommt, bleibt","das Original laeuft genau einmal","die fremde Huelle davor: ihr Wert bleibt, ohne Schluessel"], ersetze: [[EXPORT, "  const vorher = proto.toCompendium\n", "  const vorher = Object.getPrototypeOf(proto).toCompendium ?? proto.toCompendium\n"]] },
+  { satz: "export", ziel: ["_source behaelt die Toradresse (die Welt spielt wie vorher)"], ersetze: [[EXPORT, "      exportSchluesselfrei(daten)\n", "      exportSchluesselfrei(daten)\n      exportSchluesselfrei(this._source)\n"]] },
+  { satz: "export", ziel: ["eigenes schluesselfreies Feld bleibt bytegleich","eigenes Flag bleibt bytegleich"], ersetze: [[EXPORT, "  let neu = text.replace(TOR_IM_TEXT, wandle)\n", "  let neu = text.replace(/^beneos:\\/\\//, \"-\").replace(TOR_IM_TEXT, wandle)\n"]] },
+  { satz: "export", ziel: ["das Kommando daneben bleibt","Abenteuerexport: die Kennung bleibt"], ersetze: [[EXPORT, "  let neu = text.replace(TOR_IM_TEXT, wandle)\n", "  let neu = /:\\/\\//.test(text) ? text.replace(TOR_IM_TEXT, wandle) : \"-\"\n"]] },
+  { satz: "export", ziel: ["eigenes HTML: das Bild wird Form (a)"], ersetze: [[EXPORT, "  if (streamKey()) htmlTiefSchluesselfrei(daten)\n", "\n"]] },
+  { satz: "export", ziel: ["fremder Text: der Satz bleibt zeichengleich","alter Schluessel unter dem heutigen Tor: wird beneos://","alter Schluessel unter frueherem Tor der Zone: 0 Mal"], ersetze: [[EXPORT, "  let neu = text.replace(TOR_IM_TEXT, wandle)\n", "  let neu = text\n"]] },
+  { satz: "export", ziel: ["eigenes HTML mit zwei Adressen: 0 Mal","fremder Text mit zwei Adressen: 0 Mal","nackter Schluessel im Text: 0 Mal","nicht rundlaufende Toradresse: 0 Mal"], ersetze: [[EXPORT, "  let neu = text.replace(TOR_IM_TEXT, wandle)\n", "  let neu = text\n"], [EXPORT, "  for (const form of formen) if (neu.includes(form)) neu = neu.split(form).join(\"-\")\n", "\n"]] },
+  { satz: "export", ziel: ["nackter Schluessel im Text: 0 Mal"], ersetze: [[EXPORT, "  for (const form of formen) if (neu.includes(form)) neu = neu.split(form).join(\"-\")\n", "\n"]] },
+  { satz: "export", ziel: ["kodierter Schluessel mit Sonderzeichen im Text: 0 Mal"], ersetze: [[EXPORT, "  return [...new Set([k, encodeURIComponent(k)])]\n", "  return [k]\n"]] },
+  { satz: "export", ziel: ["nicht rundlaufende Toradresse: maskiert statt umgedeutet"], ersetze: [[EXPORT, "  return frei !== adresse ? frei : maskiere(adresse)\n", "  return frei\n"], [EXPORT, "  for (const form of formen) if (neu.includes(form)) neu = neu.split(form).join(\"-\")\n", "\n"]] },
+  { satz: "export", ziel: ["alter Schluessel unter frueherem Tor der Zone: 0 Mal","ohne Schluessel: die Toradresse wird maskiert"], ersetze: [[EXPORT, "  return frei !== adresse ? frei : maskiere(adresse)\n", "  return frei\n"]] },
+  { satz: "export", ziel: ["fremdes audiofile wird beneos://","alter Schluessel unter dem heutigen Tor: wird beneos://","die fremde Huelle davor: ihr Wert bleibt, ohne Schluessel"], ersetze: [[EXPORT, "  return frei !== adresse ? frei : maskiere(adresse)\n", "  return maskiere(adresse)\n"]] },
+  { satz: "export", ziel: ["fremder Host ausserhalb der Zone bleibt bytegleich"], ersetze: [[EXPORT, "  if (!erlaubteBasis(`https://${t[2]}`)) return adresse\n", "\n"]] },
+  { satz: "export", ziel: ["fremde Nicht-Beneos-Adresse bleibt bytegleich","fremder Host ausserhalb der Zone bleibt bytegleich"], ersetze: [[EXPORT, "  if (!erlaubteBasis(`https://${t[2]}`)) return adresse\n", "\n"], [EXPORT, "const TOR_IM_TEXT = new RegExp(`https?://[^/\\\\s\"'<>]+/(?:${RAEUME})/[^\\\\s\"'<>]+`, \"gi\")", "const TOR_IM_TEXT = new RegExp(`https?://[^/\\\\s\"'<>]+/[^/\\\\s\"'<>]+/[^\\\\s\"'<>]+`, \"gi\")"], [EXPORT, "const SCHLUESSELSTUECK = new RegExp(`^(https?://([^/\\\\s\"'<>]+))/(${RAEUME})/", "const SCHLUESSELSTUECK = new RegExp(`^(https?://([^/\\\\s\"'<>]+))/([^/\\\\s\"'<>]+)/"]] },
+  { satz: "export", ziel: ["fremdes audiofile wird beneos://","fremder Text mit zwei Adressen: 0 Mal"], ersetze: [[EXPORT, "      tief(v, formen, tiefe + 1, zahl)\n", "\n"]] },
+  { satz: "export", ziel: ["zweimal gewandelt aendert nichts mehr"], ersetze: [[EXPORT, "      if (neu !== v) { wert[k] = neu; zahl.n++ }\n", "      wert[k] = neu; zahl.n++\n"]] },
+  { satz: "export", ziel: ["Unterklasse haengt nach super eine Toradresse an: 0 Mal"], ersetze: [[EXPORT, "  if (!proto || Object.hasOwn(proto, MARKE)) return\n", "  if (!proto || MARKE in proto) return\n"]] },
+  { satz: "export", ziel: ["ein zweiter Einbau wickelt nicht doppelt"], ersetze: [[EXPORT, "  if (!proto || Object.hasOwn(proto, MARKE)) return\n", "  if (!proto) return\n"]] },
+  { satz: "export", ziel: ["die Wandlung wirft: der Export wirft auch"], ersetze: [[EXPORT, "      throw new Error(\"Beneos Stream | Export angehalten, die Daten liessen sich nicht schluesselfrei machen\")\n", "      return daten\n"]] },
+  { satz: "export", ziel: ["die Fehlermeldung traegt den Schluessel 0 Mal"], ersetze: [[EXPORT, "      throw new Error(\"Beneos Stream | Export angehalten, die Daten liessen sich nicht schluesselfrei machen\")\n", "      throw _e\n"]] },
+  { satz: "export", ziel: ["create: genau ein update"], ersetze: [[EXPORT, "    if (BEHORCHT.has(art)) continue\n", "\n"]] },
+  { satz: "export", ziel: ["create: genau ein update","create: das fremde audiofile wird Toradresse","Abenteuerimport, neue Szene: die Kachel heilt","Haken createTile gesetzt"], ersetze: [[EXPORT, "    globalThis.Hooks.on(`create${art}`", "    globalThis.Hooks.on(`erzeugt${art}`"]] },
+  { satz: "export", ziel: ["JSON-Import (noHook): das fremde Flag der Szene wird Toradresse","JSON-Import (noHook): die eingebettete Kachel heilt mit","JSON-Import (noHook): die Kachel traegt ihre Kennung","Abenteuerimport, vorhandene Szene (noHook): die Kachel heilt","Haken updateScene gesetzt"], ersetze: [[EXPORT, "    globalThis.Hooks.on(`update${art}`", "    globalThis.Hooks.on(`geaendert${art}`"]] },
+  { satz: "export", ziel: ["JSON-Import (noHook): das fremde Flag der Szene wird Toradresse"], ersetze: [[EXPORT, "  if (eigen) { await doc.update(eigen); schreibe++ }\n", "\n"]] },
+  { satz: "export", ziel: ["JSON-Import (noHook): die eingebettete Kachel heilt mit","JSON-Import (noHook): die Kachel traegt ihre Kennung","Abenteuerimport, neue Szene: die Kachel heilt","Abenteuerimport, vorhandene Szene (noHook): die Kachel heilt"], ersetze: [[EXPORT, "    if (teile.length) { await doc.updateEmbeddedDocuments(klasse, teile); schreibe++ }\n", "\n"]] },
+  { satz: "export", ziel: ["JSON-Import (noHook): die Kachel traegt ihre Kennung"], ersetze: [[EXPORT, "      if (a) teile.push({ ...a, _id: kind._id })\n", "      if (a) teile.push({ ...a })\n"]] },
+  { satz: "export", ziel: ["ohne beneos://: kein update"], ersetze: [[FREMD, "          if (!zahl.adressen) continue\n", "\n"]] },
+  { satz: "export", ziel: ["beneos:// nur im eigenen Flag: kein update","create: das eigene Flag wird nicht geschrieben"], ersetze: [[FREMD, "          if (ns === MODULE_ID) continue\n", "\n"]] },
+  { satz: "export", ziel: ["Spieler: kein update"], ersetze: [[EXPORT, "  if (!globalThis.game?.user?.isGM) return false\n", "\n"]] },
+  { satz: "export", ziel: ["fremder Nutzer: kein update"], ersetze: [[EXPORT, "  if (userId !== globalThis.game.user.id) return false\n", "\n"]] },
+  { satz: "export", ziel: ["Kompendiumsdokument: kein update"], ersetze: [[EXPORT, "  if (!doc || doc.pack || doc.parent?.pack) return false\n", "  if (!doc || doc.parent?.pack) return false\n"]] },
+  { satz: "export", ziel: ["eingebettet im Kompendium: kein update"], ersetze: [[EXPORT, "  if (!doc || doc.pack || doc.parent?.pack) return false\n", "  if (!doc || doc.pack) return false\n"]] },
+  { satz: "export", ziel: ["update ohne beneos:// in der Aenderung: kein update"], ersetze: [[EXPORT, "      if (!darfHeilen(doc, userId) || !traegtPlatzhalter(aenderung)) return undefined\n", "      if (!darfHeilen(doc, userId)) return undefined\n"]] },
 ];
 
 /*
  * PROBEN, DIE KEINE SABOTAGE AM CODE ROT MACHEN KANN, je eine Zeile Grund.
  */
 const EIGENPROBEN = {
+  export: {
+    "ohne Schluessel: kein update":
+      "Die Schluesselpruefung in darfHeilen spart ohne Schluessel den Lauf ueber jedes neue Dokument. Ohne sie schriebe der Lauf trotzdem nichts, weil leinwandAdresse ohne Schluessel keine Toradresse baut; das bewacht der Satz leinwand.",
+    "die Toradresse traegt den Schluessel":
+      "Vorbedingung des Pruefsatzes: sie liest nur, was assetUrl baut. Diese Form bewacht der Satz maske.",
+    "ohne Huelle: toCompendium traegt den Schluessel einmal":
+      "Vorbedingung: sie laeuft vor installStreamExport an der Attrappe des Kerns und belegt, dass die Proben danach etwas unterscheiden.",
+    "ohne Huelle: exportToJSON traegt den Schluessel einmal":
+      "Vorbedingung: sie laeuft vor installStreamExport an der Attrappe des Kerns und belegt, dass die Proben danach etwas unterscheiden.",
+    "die fremde Huelle danach: ihr Wert bleibt":
+      "Die fremde Huelle liegt ausserhalb von stream-export.mjs und bekommt nur dessen Rueckgabe. Eine Rueckgabe ohne Objekt bricht den Pruefsatz als Ganzes ab statt diese Probe rot zu machen; den Rueckgabewert bewachen die 0-Mal-Proben.",
+    "das eigene Heil-Update loest kein zweites aus":
+      "Die Schleifensperre liegt in flaggenAenderung, die nur beneos:// faltet; ein Update mit Toradresse findet dort nichts. Bewacht im Satz fremdflaggen; der Vorfilter hier ist durch \"update ohne beneos:// in der Aenderung\" bewacht.",
+  },
   flaggen: {
     "die Toradresse traegt den Schluessel":
       "Vorbedingung des Pruefsatzes: sie liest nur, was assetUrl baut. Diese Form bewacht der Satz maske; hier stellt sie nur fest, dass die Proben danach etwas unterscheiden.",
@@ -1576,7 +1633,7 @@ if (process.argv.includes("--alle-saetze")) {
 
 // ------------------------------------------------------------- Lauf
 
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export"]
   .filter((s) => !nurSatz || s === nurSatz);
 if (SAETZE.length === 0) {
   console.log(`unbekannter Satz: ${nurSatz}`);
