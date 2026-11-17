@@ -92,8 +92,9 @@ Hooks.once("init", () => {
     // abmeldet. Hier geschieht es bewusst nicht, und das ist die eine Stelle,
     // an der die Begruendung steht, damit sie nicht in fuenf Dateien fehlt.
     //
-    // Gezaehlt am 05.11.2026: 15 `Hooks.on` und 3 `Hooks.once` in fuenf
-    // Dateien dieses Ordners, 0 `Hooks.off`. Alle werden genau hier, in diesem
+    // Gezaehlt am 17.11.2026 (stre-T-113): 21 `Hooks.on` und 3 `Hooks.once`
+    // in sieben Dateien dieses Ordners, 0 `Hooks.off`. Am 05.11.2026 waren es
+    // 15 und 3 in fuenf Dateien. Alle werden genau hier, in diesem
     // einen `init`, eingebaut und leben damit so lange wie die Seite.
     //
     // Gemessen, dass die Seite jeden Ausgang mitnimmt: `game.logOut` setzt
@@ -240,7 +241,19 @@ Hooks.once("init", () => {
   game.beneos.stream = api
 })
 
-Hooks.once("ready", async () => {
+/*
+ * DER WELTSTART LAEUFT ALS EIGENE FUNKTION, UND DER HAKEN FAENGT IHREN FEHLER
+ * (stre-T-113). Foundry wartet Haken nicht ab. War der Behandler selbst
+ * `async`, wurde jeder Wurf darin eine unbehandelte Ablehnung: der Weltstart
+ * brach still ab, ohne eine Zeile, die erklaert warum. Ungeschuetzt waren
+ * `await explainOnce()` (`stream-intro.mjs`, `game.settings.set` ohne try) und
+ * `ui.notifications.warn`. Geprueft in `stream-hakenfehler.test.mjs`.
+ */
+Hooks.once("ready", () => {
+  weltstartStream().catch((e) => console.warn("Beneos Stream | Weltstart abgebrochen:", e))
+})
+
+async function weltstartStream() {
   // Am Modus, nicht an streamEnabled(): letzteres verlangt bereits einen
   // Schluessel, und eine frisch eingeschaltete Welt hat noch keinen. Sie kaeme
   // sonst nie dazu, sich einen zu holen.
@@ -371,4 +384,4 @@ Hooks.once("ready", async () => {
       console.log("Beneos Stream | Speicherzusage nicht erfragbar, dieser Browser kennt die Schnittstelle nicht")
     }
   }
-})
+}

@@ -511,8 +511,16 @@ const videoTexturen = new Map()
  * Genau das passiert beim Startknopf einer Intro-Szene: Monks Active Tiles ruft
  * `entity.update({video}, {playVideo: true, offset})`, Foundry zeichnet die
  * Kachel neu und spielt nichts ab.
+ *
+ * DER RUF AN `game.video.play` WIRD GEFANGEN (stre-T-113). Er laeuft aus einem
+ * `setTimeout` im Haken `updateTile`, und niemand wartet ihn ab: eine
+ * Ablehnung war unbehandelt. Die Ablehnung mangels Nutzergeste
+ * (`NotAllowedError`) bleibt still wie beim ersten Abspielen in
+ * `stelleFlaecheSicher` ("gesture gate"); jede andere wird gemeldet. Ueber
+ * `Promise.resolve().then` faengt dasselbe `.catch` auch einen synchronen Wurf.
+ * Exportiert als Naht fuer `stream-hakenfehler.test.mjs`.
  */
-function fuehreAbspielwunschAus(doc, options) {
+export function fuehreAbspielwunschAus(doc, options) {
   const placeable = doc?.object
   if (!placeable) return
   legeVideoWiederAuf(placeable)
@@ -522,11 +530,14 @@ function fuehreAbspielwunschAus(doc, options) {
   const playing = options?.playVideo ?? (cfg.autoplay === true)
   const volume = Number(cfg.volume ?? 0)
   el.muted = volume <= 0
-  game.video?.play?.(el, {
+  Promise.resolve().then(() => game.video?.play?.(el, {
     playing,
     loop: cfg.loop !== false,
     offset: options?.offset,
     volume
+  })).catch((e) => {
+    if (e?.name === "NotAllowedError") return
+    console.warn("Beneos Stream | Abspielen abgebrochen:", e)
   })
 }
 
@@ -603,8 +614,10 @@ export function installStreamCanvas() {
   })
   Hooks.on("canvasReady", () => {
     clearWatchdog()
-    // Not awaited on purpose, see fillInVideos.
-    fillInVideos()
+    // Not awaited on purpose, see fillInVideos. Gefangen, weil vor dessen
+    // innerem try synchroner Code werfen kann (stre-T-113); ohne `.catch` war
+    // das eine unbehandelte Ablehnung ohne erklaerende Zeile.
+    fillInVideos().catch((e) => console.warn("Beneos Stream | Videos nachladen abgebrochen:", e))
   })
   // A draw that fails for any other reason must not leave the watchdog armed.
   Hooks.on("canvasTearDown", () => {
