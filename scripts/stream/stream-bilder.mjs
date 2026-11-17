@@ -59,12 +59,15 @@
  * lagen; mit `OP-PRJ-140` liegen sie am Tor, also deckt `FLAECHEN` sie jetzt.
  * Die beiden Haken dafuer sind unten gemessen und nicht erinnert.
  *
- * **Keine Bearbeitenflaeche**, siehe `imEditor()`.
+ * **Keine Bearbeitenflaeche**, siehe `imEditor()`. Im Editor zeigt seit
+ * stre-T-116 statt dessen die Knotenansicht `bildAnsicht` das echte Bild, nur
+ * in ihrem eigenen DOM; das Dokument behaelt Form (a).
  */
 
-import { istPlatzhalter, assetUrl, streamEnabled, zerlegeAdresse } from "./stream-settings.mjs"
+import { istPlatzhalter, assetUrl, streamKey, streamMode, zerlegeAdresse, leinwandAdresse } from "./stream-settings.mjs"
 import { ours, sammelSchluessel } from "./stream-fetch.mjs"
 import { reportFailure } from "./stream-report.mjs"
+import { formAAdresse } from "./stream-html.mjs"
 
 /**
  * Blob-Adressen je Toradresse. **Kein Vorrat**: das Wort ist im Bestand fuer das
@@ -271,21 +274,35 @@ export function naechsterStand(vorher, jetzt) {
  * spaeter gilt nach der Lesbaren Pruefung als ungeprueft, auch wenn hier beide
  * im selben synchronen Durchlauf lagen.
  */
-function zuTauschende(wurzel) {
+function zuTauschende(wurzel, nurFormA = false) {
   const elemente = []
   const schonGesetzt = new Set()
   let uebersprungen = 0
   for (const el of wurzel.querySelectorAll("img")) {
-    const quelle = el.getAttribute("src")
-    if (typeof quelle !== "string" || !quelle) continue
-    if (quelle.startsWith("blob:")) {
+    const src = el.getAttribute("src")
+    const daten = el.hasAttribute?.("data-beneos-src") ? el.getAttribute("data-beneos-src") : null
+    if (typeof src === "string" && src.startsWith("blob:")) {
       // Arbeit eines frueheren Durchlaufs, die noch sichtbar ist. Sie zaehlt als
       // weiter gehalten, sonst gibt dieser Durchlauf sie frei und das Bild im
       // offenen Fenster stirbt.
-      const adresse = blobZuAdresse.get(quelle)
-      if (adresse) schonGesetzt.add(adresse)
-      continue
+      const adresse = blobZuAdresse.get(src)
+      if (adresse) { schonGesetzt.add(adresse); continue }
+      // Ein fremdes blob: mit Attribut ist ein kopiertes Bild aus einer
+      // anderen Anzeige; getauscht wird es unten nach dem Attribut.
+      if (!daten) continue
     }
+    // FORM (a), stre-T-116: im HTML steht der Platzhalter in `src` und die
+    // schluesselfreie Adresse in `data-beneos-src`, als Rueckweg auch im
+    // Fragment des Platzhalters (`formAAdresse`). Getauscht wird dann diese.
+    // Das Attribut bleibt am Element; einen zweiten Render erkennt
+    // `blobZuAdresse` oben.
+    const formA = formAAdresse(src, daten)
+    if (!formA && (typeof src !== "string" || !src)) continue
+    // Bei Modus aus nur Form (a) und `beneos://`, etwa das `src` einer
+    // Bildseite (Kalt-Review W1): beides laedt der Browser nicht. Eine alte
+    // Toradresse lud dort schon vor stre-T-116 direkt, und dabei bleibt es.
+    if (nurFormA && !formA && !istPlatzhalter(src)) continue
+    const quelle = formA ?? src
     if (!istUnsere(quelle)) continue
     if (imEditor(el)) { uebersprungen++; continue }
     // Ein Bild mit `data-edit` ist ein Formularfeld: Foundry liest beim Absenden
@@ -294,7 +311,9 @@ function zuTauschende(wurzel) {
     // Bearbeitungsmodus). Den Schluessel nimmt das Schreibnetz in
     // `stream-leinwand.mjs` wieder heraus.
     if (el.hasAttribute?.("data-edit")) { uebersprungen++; continue }
-    elemente.push({ el, adresse: quelle })
+    // `formA` heisst hier: die Adresse ist schluesselfrei und laedt nicht
+    // direkt; der Fehlerzweig braucht dann die Toradresse.
+    elemente.push({ el, adresse: quelle, formA: !!formA || istPlatzhalter(quelle) })
   }
   return { elemente, schonGesetzt, uebersprungen }
 }
@@ -327,13 +346,18 @@ function melde(adresse, grund) {
  */
 export async function beneosBildAusVorrat(wurzel, fenster) {
   const leer = { angefasst: 0, fehlgeschlagen: 0, uebersprungen: 0, imEditorFenster: false }
-  if (!wurzel || !streamEnabled()) return leer
+  // AM SCHLUESSEL, NICHT AM MODUS (stre-T-116). Seit das HTML Form (a) traegt,
+  // zeigt ohne diesen Tausch auch eine Welt mit Schluessel und Modus aus nur
+  // den Platzhalter. Bei Modus aus wird nur Form (a) getauscht, der Abruf geht
+  // dann ueber das gewoehnliche `fetch`, denn der fetch-Ersatz haengt am Modus.
+  if (!wurzel || !streamKey()) return leer
+  const nurFormA = !streamMode()
   // Ein Fenster im Bearbeitenmodus wird gar nicht angefasst. Riegel vor dem
   // Riegel: auch ein `<img>` ausserhalb der Editorflaeche kann beim Speichern in
   // den Dokumentzustand geraten, wenn ein Fremdmodul anders serialisiert.
   if (bearbeitet(fenster)) return { ...leer, imEditorFenster: true }
 
-  const { elemente, schonGesetzt, uebersprungen } = zuTauschende(wurzel)
+  const { elemente, schonGesetzt, uebersprungen } = zuTauschende(wurzel, nurFormA)
   if (!elemente.length && !schonGesetzt.size) {
     // Ein Render ohne ein einziges Beneos-Bild heisst, dass die Bilder des
     // vorigen Renders niemand mehr ansieht.
@@ -347,14 +371,19 @@ export async function beneosBildAusVorrat(wurzel, fenster) {
   let angefasst = 0
   let fehlgeschlagen = 0
 
-  await Promise.all(elemente.map(async ({ el, adresse }) => {
+  await Promise.all(elemente.map(async ({ el, adresse, formA }) => {
     try {
       const blobAdresse = await blobFuer(adresse)
       const eintrag = bildBlobs.get(adresse)
       // Zwischenzeitlich freigegeben, Fenster zu, oder Element nicht mehr im
       // Dokument: nichts eintragen und nichts setzen, sonst bliebe ein Halter
       // stehen, den kein Schliessen mehr findet.
-      if (!eintrag || fenster?.rendered === false || !el.isConnected) {
+      //
+      // Der Chat ist die Ausnahme: sein Haken feuert auf ein Element, das
+      // Foundry erst nach dem ganzen Stapel einfuegt (v13 chat-message.mjs
+      // :415-419, chat.mjs:267-282). Halter ist dort die Nachricht, und
+      // solange sie in `game.messages` steht, laesst `deleteChatMessage` los.
+      if (!eintrag || fenster?.rendered === false || (!el.isConnected && !lebendeNachricht(fenster))) {
         verworfen++
         if (eintrag && !eintrag.halter.size) loslassen(fenster, [adresse])
         return
@@ -374,6 +403,14 @@ export async function beneosBildAusVorrat(wurzel, fenster) {
       // Fehlerobjekt. Sonst waere die Zeitueberschreitung, also der haeufigste
       // Fall, der einzige ohne Ursache im Bericht.
       melde(adresse, e?.message ?? String(e))
+      // Form (a) traegt in `src` nur den Platzhalter. Damit der Zustand von
+      // vorher bleibt, bekommt die ANZEIGE die Toradresse, nie die Daten:
+      // gespeichert wird aus dem Dokument, und im Editor tauscht dieser Weg
+      // gar nicht (`imEditor`).
+      if (formA) {
+        const tor = leinwandAdresse(adresse)
+        if (tor !== adresse) el.setAttribute("src", tor)
+      }
     }
   }))
 
@@ -439,7 +476,21 @@ const FLAECHEN = [
    * `ApplicationV2`.
    */
   ["renderImagePopout", "closeImagePopout"],
+  /*
+   * Der Chat, stre-T-116 (Vorgabe 4 aus P-04:01:17). Bestand 0, also Vorsorge:
+   * mit Form (a) zeigte eine Chatkarte mit Beneos-Bild sonst nur den
+   * Platzhalter. `renderChatMessageHTML` feuert in v13 und v14, gemessen am
+   * 17.11.2026 (Spur `ChatMessage5e`). Es gibt kein Fenster, das sich
+   * schliesst; Halter ist die Nachricht, und losgelassen wird, wenn sie
+   * geloescht wird. Kein Listenhaken: jede Karte zeigt ihr Bild voll.
+   */
+  ["renderChatMessageHTML", "deleteChatMessage"],
 ]
+
+/** Eine Chatnachricht, die noch in der Welt steht. */
+function lebendeNachricht(halter) {
+  return halter?.documentName === "ChatMessage" && !!globalThis.game?.messages?.has?.(halter.id)
+}
 
 /**
  * Ein Verzeichnis darf hier nie stehen, Begruendung im Kopf.
@@ -478,5 +529,64 @@ export function installStreamBilder() {
     Hooks.on(schliessHaken, (app) => { allesLoslassen(app) })
   }
 
+  // Der Editor, stre-T-116 (Entscheid E3, Vorgabe 2 aus P-04:01:17). Foundry
+  // ruft diesen Haken vor dem Bau der Ansicht (v13 prosemirror-editor.mjs:220,
+  // v14 :222), und die Ansicht sammelt `nodeViews` auch aus Plugins
+  // (`buildNodeViews` ueber `someProp`). Ohne Schluessel kein Plugin.
+  Hooks.on("createProseMirrorEditor", (_uuid, plugins) => {
+    if (!streamKey()) return
+    const Plugin = globalThis.ProseMirror?.Plugin
+    if (typeof Plugin !== "function" || !plugins || typeof plugins !== "object") return
+    plugins.beneosBildAnsicht = new Plugin({ props: { nodeViews: { image: (node) => bildAnsicht(node) } } })
+  })
+
   console.log("Beneos Stream | Bilder in Oberflaechen gehen ueber den Abrufweg")
+}
+
+/**
+ * Die Ansicht eines Bildknotens im Editor: das echte Bild in der ANZEIGE, das
+ * Dokument behaelt Form (a).
+ *
+ * Gebaut wird das Element aus dem wirksamen `toDOM` des Knotens, nicht aus
+ * `ImageNode.toDOM`: Foundry legt eine Huelle darum, die die erhaltenen
+ * Attribute (`class`, `style`, `data-*`) einsetzt, und die unterscheidet sich
+ * zwischen v13 und v14 (`attribute-capture.mjs:48-60`). Danach wird nur `src`
+ * des Elements gesetzt.
+ *
+ * WARUM DIE TORADRESSE SO NIE INS DOKUMENT GELANGT. Gespeichert wird aus
+ * `state.doc`, nicht aus dem DOM, und eine Attributaenderung an der Ansicht
+ * liest ProseMirror wegen `ignoreMutation` nicht zurueck. Der Knoten wird nie
+ * angefasst. Halter des Blobs ist die Ansicht; `destroy` laesst los.
+ *
+ * Scheitert der Abruf, bleibt im Editor der Platzhalter stehen; die CSS-Regel
+ * auf `img[data-beneos-src]` haelt die Flaeche sichtbar.
+ */
+function bildAnsicht(node) {
+  const { dom } = globalThis.ProseMirror.DOMSerializer.renderSpec(globalThis.document, node.type.spec.toDOM(node))
+  const halter = { weg: false }
+  // Nach dem Bilddialog fehlt das Attribut; die Adresse steht dann nur noch im
+  // Fragment des Platzhalters.
+  const adresse = formAAdresse(dom?.getAttribute?.("src"), dom?.getAttribute?.("data-beneos-src"))
+  let gehalten = false
+  if (adresse && streamKey() && istUnsere(adresse)) {
+    blobFuer(adresse).then((blobAdresse) => {
+      const eintrag = bildBlobs.get(adresse)
+      if (!eintrag || halter.weg) {
+        verworfen++
+        if (eintrag && !eintrag.halter.size) loslassen(halter, [adresse])
+        return
+      }
+      eintrag.halter.add(halter)
+      gehalten = true
+      dom.setAttribute("src", blobAdresse)
+    }).catch((e) => { melde(adresse, e?.message ?? String(e)) })
+  }
+  return {
+    dom,
+    ignoreMutation: (m) => m?.type === "attributes",
+    destroy() {
+      halter.weg = true
+      if (gehalten) loslassen(halter, [adresse])
+    },
+  }
 }

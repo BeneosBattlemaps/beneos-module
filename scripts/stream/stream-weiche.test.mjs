@@ -34,6 +34,7 @@
  * Behauptung.
  */
 import { buildStreamPack, applyStreamAddresses } from "./stream-install.mjs"
+import { PLATZHALTER_BILD } from "./stream-html.mjs"
 import { installiereFoundry, netz } from "../../tools/lib/foundry-attrappe.mjs"
 
 /*
@@ -58,6 +59,7 @@ const SCHLUESSEL = "pk_pruefsatz"
 // Welteinstellungen, und beide aendern die Weiche grundlegend.
 let modus = INSTALL_MODE.stream
 let pinAn = true
+let schluesselAn = true
 
 /*
  * DIE FOUNDRY-ATTRAPPE STATT EINES EIGENEN STUBS (stre-T-108). Der Satz laedt
@@ -69,7 +71,7 @@ let pinAn = true
  */
 installiereFoundry({
   einstellungen: {
-    [SETTING.key]: SCHLUESSEL,
+    get [SETTING.key]() { return schluesselAn ? SCHLUESSEL : "" },
     [SETTING.base]: GATE,
     [SETTING.mode]: true,
     get [SETTING.installMode]() { return modus },
@@ -671,20 +673,36 @@ console.log("\napplyStreamAddresses(): die Sperre greift nur am Feldnamen")
   gleich("`background.src` geht ans Tor", doku.background.src, TOR)
   gleich("`src` einer Journalseite geht ans Tor", doku.pages[0].src, TOR)
   /*
-   * IM HTML BLEIBT DIE TORADRESSE, und das ist kein Rest. Foundry bereinigt
-   * `text.content` beim Speichern und wirft ein `src` mit unbekanntem Schema
-   * weg: gemessen am 15.11.2026 in `v13-streaming` (Foundry 13.351) wurde
-   * `<img src="beneos://...">` als `<img />` gespeichert, die Adresse war
-   * verloren. Eine schluesselfreie Form fuer HTML braucht ein Schema, das die
-   * Bereinigung uebersteht; bis dahin traegt das HTML den Schluessel wie vor
-   * stre-T-102.
+   * IM HTML STEHT FORM (a), stre-T-116. Bis dahin blieb hier die Toradresse
+   * mit Schluessel stehen, weil Foundry ein `src` mit dem Schema `beneos://`
+   * beim Speichern verwirft (gemessen 15.11.2026, v13 13.351). Form (a)
+   * uebersteht die Bereinigung: `src` ist ein neutraler `data:`-Platzhalter,
+   * die Adresse steht schluesselfrei in `data-beneos-src` (gemessen
+   * 17.11.2026 in v13 13.351 und v14 14.367: Anlegen, Update, Editor,
+   * Export, Import).
    */
-  gleich("und die Adresse im eingebetteten HTML auch, als Toradresse",
-    doku.pages[0].text.content, `<img src="${ziele.get(PFAD)}">`)
+  gleich("und die Adresse im eingebetteten HTML auch, als Form (a) ohne Schluessel",
+    doku.pages[0].text.content, `<img src="${PLATZHALTER_BILD}#${TOR}" data-beneos-src="${TOR}">`)
+  {
+    // Ohne Schluessel der Weg von vor stre-T-116: die Toradresse, wie sie das
+    // Manifest liefert. Nichts darf an einem Modulupdate verloren gehen.
+    schluesselAn = false
+    const alt = { text: { content: `<img src="${PFAD}">` } }
+    applyStreamAddresses(alt, ziele)
+    schluesselAn = true
+    gleich("ohne Schluessel bleibt im HTML die Toradresse wie bisher",
+      alt.text.content, `<img src="${ziele.get(PFAD)}">`)
+  }
+  {
+    // Ein Video im HTML bekommt keinen Bild-Platzhalter, es spielte sonst nicht.
+    const film = { text: { content: `<video src="${PFAD}"></video>` } }
+    applyStreamAddresses(film, ziele)
+    gleich("ein Video im HTML behaelt die Toradresse",
+      film.text.content, `<video src="${ziele.get(PFAD)}"></video>`)
+  }
   gleich("dabei meldet sich die Sperre nicht", warnungen.length, 0)
-  const ohneHtml = { ...doku, pages: doku.pages.map((p) => ({ ...p, text: null })) }
-  wahr("und ausserhalb des HTML steht kein Streamschluessel",
-    !JSON.stringify(ohneHtml).includes(SCHLUESSEL), JSON.stringify(ohneHtml))
+  wahr("und im ganzen Dokument steht kein Streamschluessel",
+    !JSON.stringify(doku).includes(SCHLUESSEL), JSON.stringify(doku))
 
   /*
    * EIN `img`-FELD MIT HTML DARIN ist der Fall, bei dem die Sperre zu viel

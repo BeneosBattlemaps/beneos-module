@@ -75,7 +75,9 @@ globalThis.window = globalThis
 const TOR = [{ release_dir: "beneos_bm_0001_crystal_case", variant_dirs: { "4K": "beneos_bm_0001_crystal_case_foundry_4k" }, can_install: true }]
 const CLOUD = () => [
   { release_dir: "bm_0001", variant_dirs: { "4K": "beneos_bm_0001_crystal_case_foundry_4k", HD: "beneos_bm_0001_crystal_case_foundry_hd" }, can_install: false, unlock_hint: { url: "https://www.patreon.com/x" } },
-  { release_dir: "bm_0042", variant_dirs: { SINGLE: "beneos_bm_0042_tavern_foundry_single" }, can_install: false, unlock_hint: { url: "https://www.patreon.com/x" } },
+  // Gemessen am 17.11.2026 (v14 und v13): Die Cloud fuehrt fuer die Landing-Releases
+  // nur 4K und HD. SINGLE mit der Endung `_foundry` ohne Variante steht allein beim Tor.
+  { release_dir: "bm_landing_0001", variant_dirs: { "4K": "beneos_bm_landing_0001_cos_barovia_map_landing_page_foundry_4k", HD: "beneos_bm_landing_0001_cos_barovia_map_landing_page_foundry_hd" }, can_install: false, unlock_hint: { url: "https://www.patreon.com/x" } },
 ]
 
 let modus = true
@@ -183,7 +185,7 @@ abschnitt("rueckfallZeilen")
   const vorher = JSON.stringify(ein)
   const aus = rueckfallZeilen(ein)
   gleich("4K/HD: Langform aus variant_dirs", aus[0]?.release_dir, "beneos_bm_0001_crystal_case")
-  gleich("SINGLE: Langform aus variant_dirs", aus[1]?.release_dir, "beneos_bm_0042_tavern")
+  gleich("Landing 4K/HD: Langform aus variant_dirs", aus[1]?.release_dir, "beneos_bm_landing_0001_cos_barovia_map_landing_page")
   gleich("installierbar", aus.every((z) => z.can_install === true), true)
   gleich("kein Freischalt-Hinweis", aus.every((z) => z.unlock_hint === null), true)
   gleich("die Eingabeliste bleibt unveraendert", JSON.stringify(ein), vorher)
@@ -195,6 +197,9 @@ abschnitt("rueckfallZeilen")
   gleich("anderer Kern: die Kurzform bleibt", fremd[0]?.release_dir, "bm_0007")
   const ohneEndung = rueckfallZeilen([{ release_dir: "bm_0009", variant_dirs: { "4K": "beneos_bm_0009_ohne_endung" } }])
   gleich("ohne _foundry_-Endung: die Kurzform bleibt", ohneEndung[0]?.release_dir, "bm_0009")
+  // Die Torform von SINGLE: `_foundry` ohne Variante traegt keine ableitbare Langform.
+  const torSingle = rueckfallZeilen([{ release_dir: "bm_landing_0001", variant_dirs: { SINGLE: "beneos_bm_landing_0001_cos_barovia_map_landing_page_foundry" } }])
+  gleich("SINGLE in Torform: die Kurzform bleibt", torSingle[0]?.release_dir, "bm_landing_0001")
   // Der Verbraucher (#ensureReleasesLoaded) vertraegt beides; hier darf es nicht werfen.
   let keineListe
   try { keineListe = rueckfallZeilen(null) } catch (_) { keineListe = "wirft" }

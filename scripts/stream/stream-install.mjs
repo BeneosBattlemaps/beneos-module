@@ -43,6 +43,7 @@ import { assetUrl, downloadMode, pinStillsEnabled, schluesselfreiAdresse, stream
 // Die Gegenrichtung gibt es nicht: stream-fetch kennt weder diese Datei noch
 // `assetUrl`, deshalb kann kein Ladekreis entstehen.
 import { merkePruefsummen } from "./stream-fetch.mjs"
+import { htmlSchluesselfrei } from "./stream-html.mjs"
 
 const PACK_SOURCE_PREFIX = "beneos_assets/beneos_battlemaps/"
 const CLOUD_INSTALL_PREFIX = "beneos_assets/cloud/battlemaps/"
@@ -445,18 +446,23 @@ export function applyStreamAddresses(value, streamTargets, feld = null) {
     // Der Vorfilter haelt die Regex von den zehntausenden gewoehnlichen
     // Feldwerten fern, die nie HTML sind.
     if (!value.includes("<") || !value.includes("src=")) return value
-    // IM HTML BLEIBT DIE TORADRESSE. Foundry bereinigt `text.content` beim
-    // Speichern und verwirft ein `src` mit dem Schema `beneos://`; gemessen am
-    // 15.11.2026 war die Adresse danach verloren. Begruendung und Probe im
-    // Pruefsatz `stream-weiche.test.mjs`.
-    return value.replace(HTML_SRC_RE, (treffer, anfuehrung, src) => {
+    // IM HTML STEHT FORM (a), stre-T-116: `src` ist ein neutraler
+    // `data:`-Platzhalter, die Adresse steht schluesselfrei in
+    // `data-beneos-src`. Ein `src` mit dem Schema `beneos://` verwirft
+    // Foundrys Bereinigung (gemessen 15.11.2026), Form (a) uebersteht sie
+    // (gemessen 17.11.2026). Erst die Toradresse wie bisher, dann wandelt
+    // `htmlSchluesselfrei` die Bilder darunter. Ohne Schluessel tut es nichts,
+    // und es bleibt die Toradresse von vor stre-T-116; `<video>`, `<audio>`
+    // und `<source>` behalten sie immer, ein Bild-Platzhalter spielte dort
+    // nicht. Probe im Pruefsatz `stream-weiche.test.mjs`.
+    return htmlSchluesselfrei(value.replace(HTML_SRC_RE, (treffer, anfuehrung, src) => {
       const ziel = gateAdresseFuer(src, streamTargets)
       if (!ziel) return treffer
       // Nur das Anfuehrungspaar tauschen, damit Attribute davor und dahinter
       // unberuehrt bleiben. Technik uebernommen aus _rewriteHtml,
       // beneos-asset-path-repair.js:628-638.
       return treffer.replace(`${anfuehrung}${src}${anfuehrung}`, `${anfuehrung}${ziel}${anfuehrung}`)
-    })
+    })).html
   }
   if (Array.isArray(value)) {
     // Das Feld reist mit. `img: ["a", "b"]` kommt in Foundry nicht vor, aber
