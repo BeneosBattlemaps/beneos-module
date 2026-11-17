@@ -31,7 +31,7 @@
 import { BeneosUtility } from "../beneos_utility.js";
 // Nur die Formprobe, kein Abrufweg: die Scheibe ist ein `<img>` und kann
 // keine Toradresse tragen. Begruendung an der Stelle, die sie benutzt.
-import { zerlegeAdresse } from "../stream/stream-settings.mjs";
+import { zerlegeAdresse, ersteLokaleAdresse } from "../stream/stream-settings.mjs";
 // Die Regel, was eine Alternative ist, liegt bewusst ausserhalb: der
 // Karteninstallierer entscheidet auf derselben Grundlage, welche Kreaturen er
 // ueberhaupt holt. Steht sie zweimal da, laufen die beiden auseinander.
@@ -639,7 +639,19 @@ export class BeneosCreatureInstaller {
       imgFallback = rueckfaelle[0] || null;
       imgFallback2 = rueckfaelle[1] || null;
     } else {
-      img = entry.art || (actor?.prototypeToken?.texture?.src) || actor?.img || null;
+      // Auch hier gewinnt keine gestreamte Adresse (stre-T-122 D): seit die
+      // Kreaturenlade schluesselfrei auf der Platte steht, traegt `entry.art`
+      // einer gestreamten Kreatur `beneos://`, und das laedt kein `<img>`.
+      // Gibt es keinen lokalen Pfad, zieht die Scheibe wie die Premiumscheibe
+      // auf Miniatur und Vorschau, und erst danach auf den Platzhalter.
+      const kandidaten = [entry.art, actor?.prototypeToken?.texture?.src, actor?.img];
+      img = ersteLokaleAdresse(entry.art, actor?.prototypeToken?.texture?.src, actor?.img);
+      if (!img && kandidaten.some(Boolean)) {
+        const cdn = entry.thumbnail ? TOKEN_THUMB_BASE + entry.thumbnail : null;
+        const embedded = entry.thumbnailData || null;
+        img = cdn || embedded || "modules/beneos-module/ui/beneos_thumb_placeholder.svg";
+        imgFallback = (cdn && embedded) || null;
+      }
     }
     // Animated token art (.webm/.mp4/...) cannot display in an <img> (the disc
     // renders empty, e.g. the Creeping Hut or the Lake Zarovich rowboat). Flag it

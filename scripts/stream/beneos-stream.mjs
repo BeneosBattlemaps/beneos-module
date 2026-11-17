@@ -30,6 +30,7 @@ import { installStreamSceneUi } from "./stream-scene-ui.mjs"
 import { installStreamLeinwand } from "./stream-leinwand.mjs"
 import { installHtmlNetz, altseitenUmstellen } from "./stream-html.mjs"
 import { fremdflaggenZurueck } from "./stream-fremdflaggen.mjs"
+import { flaggenUmstellen } from "./stream-flaggen.mjs"
 import { installStreamKlang } from "./stream-klang.mjs"
 import { registerOfflineWindow, BeneosOfflineWindow } from "./stream-offline-window.mjs"
 import { explainOnce } from "./stream-intro.mjs"
@@ -248,6 +249,8 @@ Hooks.once("init", () => {
     altseitenUmstellen: (optionen) => altseitenUmstellen(optionen),
     // stre-T-128: fremde Flags zurueck auf die Toradresse. `{ trocken: true }` zaehlt nur.
     fremdflaggenZurueck: (optionen) => fremdflaggenZurueck(optionen),
+    // stre-T-122 E: eigene Flags schluesselfrei. `{ trocken: true }` zaehlt nur.
+    flaggenUmstellen: (optionen) => flaggenUmstellen(optionen),
     pinStills: () => pinStillsEnabled(),
   }
   globalThis.BeneosStream = api
@@ -288,6 +291,15 @@ async function schluesselLaeufe() {
     await fremdflaggenZurueck()
   } catch (err) {
     console.log(`Beneos Stream | Fremde Flags uebersprungen: ${String(err).slice(0, 140)}`)
+  }
+  // stre-T-122 E, vierter Schritt: die eigenen Flags schluesselfrei. Die Pfade
+  // sind disjunkt zum Schritt davor (eigene gegen fremde Flags); die Folge ist
+  // trotzdem fest, damit ein Lauf nachvollziehbar bleibt. Siehe stream-flaggen.mjs.
+  try {
+    await flaggenUmstellen()
+  } catch (_err) {
+    // Ohne Fehlertext: der kann eine Adresse mit Schluessel tragen.
+    console.log("Beneos Stream | Eigene Flags uebersprungen")
   }
 }
 

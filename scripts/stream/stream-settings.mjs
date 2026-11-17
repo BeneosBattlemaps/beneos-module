@@ -57,6 +57,9 @@ export const SETTING = {
   // Ob der einmalige Ruecklauf der fremden Flags auf die Toradresse in dieser
   // Welt schon fehlerfrei gelaufen ist. Siehe `stream-fremdflaggen.mjs`.
   fremdflaggenZurueck: "beneos-stream-fremdflaggen-zurueck",
+  // Ob die eigenen Flags dieser Welt schon schluesselfrei umgestellt sind
+  // (stre-T-122 E). Siehe `stream-flaggen.mjs`.
+  flaggenGefaltet: "beneos-stream-flaggen-gefaltet",
 }
 
 const DEFAULT_BASE = "https://gate.beneos.stream"
@@ -264,6 +267,12 @@ export function registerStreamSettings() {
   // ein zweiter Browser ihn nicht wiederholt; gesetzt nur nach einem Lauf
   // ohne Fehlschlag, sonst versucht der naechste Start den Rest.
   game.settings.register(MODULE_ID, SETTING.fremdflaggenZurueck, {
+    ...world, type: Boolean, default: false,
+  })
+
+  // Die Marke der Umstellung der eigenen Flags (stre-T-122 E), aus demselben
+  // Grund je Welt und erst nach einem Lauf ohne Fehlschlag gesetzt.
+  game.settings.register(MODULE_ID, SETTING.flaggenGefaltet, {
     ...world, type: Boolean, default: false,
   })
 
@@ -1467,6 +1476,21 @@ export function geteilteAdresse(sha, name, kartenAdressen) {
  * an der Zeichenkette, und `c` und `C` sind damit zwei verschiedene Raeume,
  * von denen nur der kleine existiert.
  */
+/**
+ * Der erste Wert, der weder Toradresse noch `beneos://` ist, sonst null
+ * (stre-T-122 D).
+ *
+ * Fuer Stellen, die eine Adresse in ein `<img>` legen, ohne den Abrufweg: eine
+ * Toradresse truege den Schluessel in die Anfragezeile, und `beneos://` kann
+ * kein Browser laden. Die Kreaturenlade waehlt damit ihre Scheibe.
+ */
+export function ersteLokaleAdresse(...werte) {
+  for (const w of werte) {
+    if (typeof w === "string" && w && !zerlegeAdresse(w)) return w
+  }
+  return null
+}
+
 export function istPlatzhalter(url) {
   return String(url || "").slice(0, PLATZHALTER_SCHEMA.length + 2).toLowerCase()
     === PLATZHALTER_SCHEMA + "//"

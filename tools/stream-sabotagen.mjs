@@ -88,6 +88,11 @@
  * dem Flag eines fremden Moduls die Toradresse behalten, und bewacht den
  * einmaligen Ruecklauf je Welt. Auch ihn gibt es an der Basis nicht.
  *
+ * ZWANZIG SAETZE seit stre-T-122. `flaggen` haelt fest, dass die eigenen
+ * Flags mit Adresse (Kachel `stream`, Szene `creatureInstaller`) im Netz und
+ * im einmaligen Lauf je Welt schluesselfrei werden, fremde Flags nicht, und
+ * dass die Kreaturenlade keine gestreamte Adresse als Bild waehlt.
+ *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
  * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig] [--zeitgrenze <ms>]
@@ -165,6 +170,8 @@ const CANVAS = "scripts/stream/stream-canvas.mjs";
 const FENSTER = "scripts/cloud-v2/cloud-window-v2.mjs";
 const VORLAGE = "templates/cloud-v2/parts/results-pane.hbs";
 const FREMD = "scripts/stream/stream-fremdflaggen.mjs";
+const FLAGG = "scripts/stream/stream-flaggen.mjs";
+const KREATUR = "scripts/creature-installer/creature-installer.mjs";
 
 const SABOTAGEN = [
   // ---------------------------------------------------------------- maske
@@ -814,7 +821,7 @@ const SABOTAGEN = [
   { satz: "leinwand", ziel: ["Netz, Modus aus, kein Schluessel, beim Anlegen: die Quelle wird nicht gelesen","Netz, Modus an, kein Schluessel, beim Anlegen: die Quelle wird nicht gelesen"], ersetze: [[LEINWAND, "    Hooks.on(`preCreate${art}`, (doc) => {\n      if (!streamKey()) return\n", "    Hooks.on(`preCreate${art}`, (doc) => {\n"]] },
   { satz: "leinwand", ziel: ["Netz, Modus aus, kein Schluessel, beim Aendern: die Aenderung wird nicht gelesen","Netz, Modus an, kein Schluessel, beim Aendern: die Aenderung wird nicht gelesen"], ersetze: [[LEINWAND, "    Hooks.on(`preUpdate${art}`, (_doc, aenderung) => {\n      if (!streamKey()) return\n", "    Hooks.on(`preUpdate${art}`, (_doc, aenderung) => {\n"]] },
   { satz: "leinwand", ziel: ["Netz, Szene: levels als ForcedReplacement wird schluesselfrei"], ersetze: [[LEINWAND, "    const innen = typeof operator?.get === \"function\" ? operator.get(wert) : wert\n", "    const innen = wert\n"]] },
-  { satz: "leinwand", ziel: ["Netz, Szene: der Operator bleibt stehen"], ersetze: [[LEINWAND, "      for (const element of liste) zahl += schreibFelder(element, felderJe[kind])\n", "      for (const element of liste) zahl += schreibFelder(element, felderJe[kind])\n      if (liste !== daten[feld]) daten[feld] = liste\n"]] },
+  { satz: "leinwand", ziel: ["Netz, Szene: der Operator bleibt stehen"], ersetze: [[LEINWAND, "      for (const element of liste) zahl += schreibFelder(element, felderJe[kind]) + schreibFlaggen(element, kind)\n", "      for (const element of liste) zahl += schreibFelder(element, felderJe[kind]) + schreibFlaggen(element, kind)\n      if (liste !== daten[feld]) daten[feld] = liste\n"]] },
   { satz: "leinwand", ziel: ["zweimal eingebaut: prepareBaseData einmal gewickelt"], ersetze: [[LEINWAND, "    if (!proto || Object.hasOwn(proto, MARKE)) continue", "    if (!proto) continue"]] },
   { satz: "leinwand", ziel: ["schreibend, Kreatur unter /a/: bleibt stehen, sonst ein anderes Ziel"], ersetze: [[SETTINGS, "  if (ohneLeere(eingabe) !== ohneLeere(teile)) return url\n", "\n"]] },
   { satz: "leinwand", ziel: ["schreibend, Klammer im Dateinamen: dekodiert verglichen"], ersetze: [[SETTINGS, ".split(\"/\").filter(Boolean).map(klar).join(\"/\")", ".split(\"/\").filter(Boolean).join(\"/\")"]] },
@@ -1315,6 +1322,55 @@ const SABOTAGEN = [
   { satz: "fremdflaggen", ziel: ["W5: endet der Ruecklauf nicht in der Frist, sagt der Nachzug ab"], ersetze: [[SETTINGS, "gab den Riegel nicht frei\")\n    return \"\"\n", "gab den Riegel nicht frei\")\n    return \"sabotiert\"\n"]] },
   { satz: "fremdflaggen", ziel: ["W5: das Ende der Frist wird gemeldet"], ersetze: [[SETTINGS, "    console.warn(\"Beneos Stream | Adressnachzug: der Ruecklauf der fremden Flags gab den Riegel nicht frei\")\n", ""]] },
   { satz: "fremdflaggen", ziel: ["[Struktur] _adressenNachziehen nimmt den Riegel ueber das Abwarten"], ersetze: [[SETTINGS, "  const marke = await nachzugRiegelNehmenNachRuecklauf()\n", "  const marke = await nachzugRiegelNehmen()\n"]] },
+  // stre-T-122 A bis E: eigene Flags schluesselfrei (Satz flaggen).
+  { satz: "flaggen", ziel: ["FLAGGEN_FELDER ist exportiert"], ersetze: [[LEINWAND, "export const FLAGGEN_FELDER = ", "export const FLAGGEN_FELDER_ALT = "], [FLAGG, "import { falteWerte, FLAGGEN_FELDER } from", "import { falteWerte, FLAGGEN_FELDER_ALT as FLAGGEN_FELDER } from"]] },
+  { satz: "flaggen", ziel: ["falteWerte ist exportiert"], ersetze: [[LEINWAND, "export function falteWerte(", "export function falteWerteAlt("], [LEINWAND, "...falteWerte(art, doc?._source)", "...falteWerteAlt(art, doc?._source)"], [LEINWAND, "...falteWerte(kind, element)", "...falteWerteAlt(kind, element)"], [FLAGG, "import { falteWerte, FLAGGEN_FELDER } from", "import { falteWerteAlt as falteWerte, FLAGGEN_FELDER } from"]] },
+  { satz: "flaggen", ziel: ["schreibFlaggen ist exportiert"], ersetze: [[LEINWAND, "export function schreibFlaggen(", "function schreibFlaggen("]] },
+  { satz: "flaggen", ziel: ["A Kachel: stream wird schluesselfrei, die Rolle bleibt", "B preUpdateTile: video und partner werden schluesselfrei", "B preCreateTile: updateSource bekommt das gefaltete Flag", "E: nur die Kachel mit Toradresse geht mit, mit Kennung"], ersetze: [[LEINWAND, "  \"Tile\": Object.freeze([\"stream\"]),", "  \"Tile\": Object.freeze([]),"]] },
+  { satz: "flaggen", ziel: ["A Szene: art der Kreaturenlade wird schluesselfrei", "A Szene: positions[].texture.src wird schluesselfrei", "B preUpdateScene: die Kreaturenlade wird schluesselfrei", "C Szene: die ganze Kreaturenlade ohne Schluessel", "E: die Kreaturenlade der Szene wird geschrieben"], ersetze: [[LEINWAND, "  \"Scene\": Object.freeze([\"creatureInstaller\"]),", "  \"Scene\": Object.freeze([]),"]] },
+  { satz: "flaggen", ziel: ["A Kachel: nur stream kommt zurueck, kein fremdes und kein anderes eigenes Flag"], ersetze: [[LEINWAND, "if (falteAlles(huelle, \"wert\", 0) > 0) neu[`flags.${MODULE_ID}.${k}`] = huelle.wert", "if (falteAlles(huelle, \"wert\", 0) > 0) { neu[`flags.${MODULE_ID}.${k}`] = huelle.wert; neu.flags = daten.flags }"]] },
+  { satz: "flaggen", ziel: ["A Kachel: das Quellobjekt bleibt unberuehrt"], ersetze: [[LEINWAND, "const huelle = { wert: JSON.parse(JSON.stringify(wert)) }", "const huelle = { wert }"]] },
+  { satz: "flaggen", ziel: ["A Szene: ein lokaler Pfad bleibt"], ersetze: [[LEINWAND, "    const neu = schluesselfreiAdresse(wert)\n", "    const neu = wert.startsWith(\"modules/\") ? `beneos://${wert}` : schluesselfreiAdresse(wert)\n"]] },
+  { satz: "flaggen", ziel: ["A: nichts zu falten gibt ein leeres Objekt", "A: ein fremder Host bleibt, nichts kommt zurueck", "B preCreateTile: nichts zu falten, kein updateSource"], ersetze: [[LEINWAND, "if (falteAlles(huelle, \"wert\", 0) > 0) neu", "if (falteAlles(huelle, \"wert\", 0) >= 0) neu"]] },
+  { satz: "flaggen", ziel: ["A: eine Art ohne Flaggenfelder gibt ein leeres Objekt"], ersetze: [[LEINWAND, "  for (const k of FLAGGEN_FELDER[art] ?? []) {\n", "  for (const k of FLAGGEN_FELDER[art] ?? [\"stream\"]) {\n"]] },
+  { satz: "flaggen", ziel: ["eine Art ohne Flaggenfelder bleibt"], ersetze: [[LEINWAND, "  const ziele = (FLAGGEN_FELDER[art] ?? [])", "  const ziele = (FLAGGEN_FELDER[art] ?? [\"stream\"])"]] },
+  { satz: "flaggen", ziel: ["A ohne Schluessel: nichts kommt zurueck"], ersetze: [[LEINWAND, "    const neu = schluesselfreiAdresse(wert)\n", "    const neu = streamKey() ? schluesselfreiAdresse(wert) : wert.replace(/\\/[acs]\\/[^/]+\\//, \"/a/-/\")\n"]] },
+  { satz: "flaggen", ziel: ["B ohne Schluessel: das Netz laesst alles stehen"], ersetze: [[LEINWAND, "    const neu = schluesselfreiAdresse(wert)\n", "    const neu = streamKey() ? schluesselfreiAdresse(wert) : wert.replace(/\\/[acs]\\/[^/]+\\//, \"/a/-/\")\n"], [LEINWAND, "    Hooks.on(`preUpdate${art}`, (_doc, aenderung) => {\n      if (!streamKey()) return\n", "    Hooks.on(`preUpdate${art}`, (_doc, aenderung) => {\n"]] },
+  { satz: "flaggen", ziel: ["verschachtelt: video wird schluesselfrei, Zahl 1", "halb flach"], ersetze: [[LEINWAND, "        besuche(operatorWert(obj[k]), neu, tiefe + 1)\n", "        void neu\n"]] },
+  { satz: "flaggen", ziel: ["ganz flach", "halb flach"], ersetze: [[LEINWAND, "      const teile = k.split(\".\")\n", "      const teile = [k]\n"]] },
+  { satz: "flaggen", ziel: ["ersetzend mit =="], ersetze: [[LEINWAND, "(s.startsWith(\"==\") ? s.slice(2) : s)", "s"]] },
+  { satz: "flaggen", ziel: ["ein anderes eigenes Flag bleibt, -= bleibt stehen"], ersetze: [[LEINWAND, "if (ziele.some((z) => z.every((s, i) => neu[i] === s)))", "if (ziele.some((z) => z.slice(0, 2).every((s, i) => neu[i] === s)))"]] },
+  { satz: "flaggen", ziel: ["fremdes Flag behaelt die Toradresse, das eigene wird schluesselfrei", "B preUpdateTile: fremdes Flag behaelt die Toradresse", "C Kachel: eigenes Flag schluesselfrei, fremdes behaelt die Toradresse"], ersetze: [[LEINWAND, ".map((k) => [\"flags\", MODULE_ID, k])", ".map((k) => [\"flags\"])"]] },
+  { satz: "flaggen", ziel: ["Operatorhuelle um das Flag: der Wert darin wird schluesselfrei, die Huelle bleibt", "Operatorhuelle um die Adresse: der Wert darin wird schluesselfrei, Zahl 2"], ersetze: [[LEINWAND, "  return typeof operator?.get === \"function\" ? operator.get(wert) : wert\n", "  return wert\n"]] },
+  { satz: "flaggen", ziel: ["Operatorhuelle um die Adresse: der Wert darin wird schluesselfrei, Zahl 2"], ersetze: [[LEINWAND, "    else globalThis.foundry.data.operators.DataFieldOperator.set(roh, neu)\n", "    else behaelter[k] = neu\n"]] },
+  { satz: "flaggen", ziel: ["B preUpdateTile: video und partner werden schluesselfrei", "B preUpdateScene: die Kreaturenlade wird schluesselfrei"], ersetze: [[LEINWAND, "      try { schreibFlaggen(aenderung, art) } catch (_) { /* das Speichern geht vor */ }\n", "\n"]] },
+  { satz: "flaggen", ziel: ["B preUpdateScene: die Kachel in der Szenenaenderung wird schluesselfrei"], ersetze: [[LEINWAND, "schreibFelder(element, felderJe[kind]) + schreibFlaggen(element, kind)", "schreibFelder(element, felderJe[kind])"]] },
+  { satz: "flaggen", ziel: ["B preCreateTile: updateSource bekommt das gefaltete Flag"], ersetze: [[LEINWAND, "...geaendert(doc?._source, felder), ...falteWerte(art, doc?._source) }", "...geaendert(doc?._source, felder) }"]] },
+  { satz: "flaggen", ziel: ["B preCreateScene: nur die Kachel mit Flag geht mit, mit Kennung"], ersetze: [[LEINWAND, "({ ...geaendert(element, felderJe[kind]), ...falteWerte(kind, element) })", "geaendert(element, felderJe[kind])"]] },
+  { satz: "flaggen", ziel: ["D: Toradresse und beneos:// werden uebersprungen, der lokale Pfad gewinnt", "D: nur gestreamte Adressen ergeben null"], ersetze: [[SETTINGS, "    if (typeof w === \"string\" && w && !zerlegeAdresse(w)) return w\n", "    if (typeof w === \"string\" && w) return w\n"]] },
+  { satz: "flaggen", ziel: ["D: der erste lokale Pfad gewinnt"], ersetze: [[SETTINGS, "  for (const w of werte) {\n    if (typeof w === \"string\"", "  for (const w of [...werte].reverse()) {\n    if (typeof w === \"string\""]] },
+  { satz: "flaggen", ziel: ["ersteLokaleAdresse ist exportiert"], ersetze: [[SETTINGS, "export function ersteLokaleAdresse(", "function ersteLokaleAdresse("]] },
+  { satz: "flaggen", ziel: ["[Struktur] D: die Scheibe ohne Premium waehlt ueber ersteLokaleAdresse"], ersetze: [[KREATUR, "      img = ersteLokaleAdresse(entry.art, actor?.prototypeToken?.texture?.src, actor?.img);\n", "      img = entry.art || (actor?.prototypeToken?.texture?.src) || actor?.img || null;\n"]] },
+  { satz: "flaggen", ziel: ["die Funktion ist exportiert"], ersetze: [[FLAGG, "export async function flaggenUmstellen(", "async function flaggenUmstellen("]] },
+  { satz: "flaggen", ziel: ["E trocken: nichts geschrieben"], ersetze: [[FLAGG, "      if (trocken || (!hatEigen && !kacheln.length)) continue\n", "      if (!hatEigen && !kacheln.length) continue\n"]] },
+  { satz: "flaggen", ziel: ["E trocken: die Marke bleibt ungesetzt"], ersetze: [[FLAGG, "  if (trocken) {\n    await durchlaufen(bericht, true)\n", "  if (trocken) {\n    await durchlaufen(bericht, true)\n    await markeSetzen(bericht)\n"]] },
+  { satz: "flaggen", ziel: ["E trocken: drei Dokumente gezaehlt (Szene 1, zwei Kacheln)", "E: der Bericht zaehlt drei Dokumente"], ersetze: [[FLAGG, "bericht.dokumente += (hatEigen ? 1 : 0) + kacheln.length", "bericht.dokumente += kacheln.length"]] },
+  { satz: "flaggen", ziel: ["E: nichts Geschriebenes traegt den Schluessel", "E: nur die Kachel mit Toradresse geht mit, mit Kennung"], ersetze: [[FLAGG, "kacheln.push({ _id: kachel._id, ...neu })", "kacheln.push({ _id: kachel._id, ...neu, flags: kachel.flags })"]] },
+  { satz: "flaggen", ziel: ["E: nur die Kachel mit Toradresse geht mit, mit Kennung"], ersetze: [[FLAGG, "        if (!Object.keys(neu).length) continue\n", "\n"]] },
+  { satz: "flaggen", ziel: ["E: das fremde Flag wird nicht geschrieben", "E: nichts Geschriebenes traegt den Schluessel"], ersetze: [[FLAGG, "      if (hatEigen) await szene.update(eigen)\n", "      if (hatEigen) await szene.update({ ...eigen, \"flags.monks-x\": quelle.flags[\"monks-x\"] })\n"]] },
+  { satz: "flaggen", ziel: ["E Rest: fremder Host bleibt stehen und wird gezaehlt"], ersetze: [[FLAGG, "        bericht.rest += rest(\"Tile\", kachel, neu)\n", "\n"]] },
+  { satz: "flaggen", ziel: ["E: die angezeigte Szene wird zuletzt geschrieben"], ersetze: [[FLAGG, "  if (i >= 0) alle.push(...alle.splice(i, 1))\n", "\n"]] },
+  { satz: "flaggen", ziel: ["E: ohne Fehlschlag wird die Marke gesetzt", "E zweiter Start: die Marke steht, nichts geschrieben"], ersetze: [[FLAGG, "        if (bericht.fehler === 0) await markeSetzen(bericht)\n", "\n"]] },
+  { satz: "flaggen", ziel: ["E Fehlschlag: die Marke bleibt offen"], ersetze: [[FLAGG, "        if (bericht.fehler === 0) await markeSetzen(bericht)\n", "        await markeSetzen(bericht)\n"]] },
+  { satz: "flaggen", ziel: ["E: die Zaehlzeile steht da"], ersetze: [[FLAGG, "  console.log(`Beneos Stream | Eigene Flags${", "  console.log(`Beneos Stream | Flags${"]] },
+  { satz: "flaggen", ziel: ["E: keine Zeile nennt Schluessel oder Adresse"], ersetze: [[FLAGG, "+ `schluesselfrei, ${bericht.rest} Stellen belassen, ${bericht.fehler} Fehler`)", "+ `schluesselfrei, ${bericht.rest} Stellen belassen, ${bericht.fehler} Fehler ${JSON.stringify(globalThis.game.scenes[1]?.toObject())}`)"]] },
+  { satz: "flaggen", ziel: ["E Fehlschlag: die Warnung nennt keinen Schluessel"], ersetze: [[FLAGG, "      console.warn(`Beneos Stream | Eigene Flags: ${wer} nicht geschrieben`)\n", "      console.warn(`Beneos Stream | Eigene Flags: ${wer} nicht geschrieben ${_e}`)\n"]] },
+  { satz: "flaggen", ziel: ["E: der Riegel ist danach wieder frei", "E Fehlschlag: der Riegel ist wieder frei"], ersetze: [[FLAGG, "        await nachzugRiegelLoesen(marke)\n", "\n"]] },
+  { satz: "flaggen", ziel: ["E ohne Schluessel: kein Lauf"], ersetze: [[FLAGG, "  if (!streamKey()) { bericht.grund = \"ohne schluessel\"; return bericht }\n", "\n"]] },
+  { satz: "flaggen", ziel: ["E ohne Spielleitung: kein Lauf"], ersetze: [[FLAGG, "  if (!globalThis.game?.user?.isGM) { bericht.grund = \"kein gm\"; return bericht }\n", "\n"]] },
+  { satz: "flaggen", ziel: ["E leere Welt: Marke gesetzt, Riegel nicht genommen"], ersetze: [[FLAGG, "    if (vorab.dokumente === 0) {\n", "    if (false) {\n"]] },
+  { satz: "flaggen", ziel: ["E leere Welt: Marke gesetzt, Riegel nicht genommen"], ersetze: [[FLAGG, "      if (vorab.fehler === 0) await markeSetzen(bericht)\n", "\n"]] },
+  { satz: "flaggen", ziel: ["[Struktur] schluesselLaeufe ruft flaggenUmstellen als vierten Schritt nach fremdflaggenZurueck"], ersetze: [[EINSTIEG, "    await flaggenUmstellen()\n", "    void 0\n"]] },
   // ---------------------------------------------------------------- html, fremde Flags (Kalt-Review W1)
   { satz: "html", ziel: ["H16 Update mit Punktpfad: fremdes Flag bleibt"], ersetze: [[HTML, "  for (const k of Object.keys(wert)) {\n    if (fremderFlagpfad(k)) continue\n", "  for (const k of Object.keys(wert)) {\n"]] },
   { satz: "html", ziel: ["H16 Aenderung mit Punktpfad: fremdes Flag bleibt"], ersetze: [[HTML, "    for (const [k, v] of Object.entries(wert)) {\n      if (fremderFlagpfad(k)) continue\n", "    for (const [k, v] of Object.entries(wert)) {\n"]] },
@@ -1331,6 +1387,12 @@ const SABOTAGEN = [
  * PROBEN, DIE KEINE SABOTAGE AM CODE ROT MACHEN KANN, je eine Zeile Grund.
  */
 const EIGENPROBEN = {
+  flaggen: {
+    "die Toradresse traegt den Schluessel":
+      "Vorbedingung des Pruefsatzes: sie liest nur, was assetUrl baut. Diese Form bewacht der Satz maske; hier stellt sie nur fest, dass die Proben danach etwas unterscheiden.",
+    "die schluesselfreie Form beginnt mit beneos://":
+      "Vorbedingung des Pruefsatzes: sie liest nur, was platzhalterAdresse baut. Diese Form bewacht der Satz weiche; hier stellt sie nur fest, dass die Proben danach etwas unterscheiden.",
+  },
   fremdflaggen: {
     "die schluesselfreie Form beginnt mit beneos://":
       "Vorbedingung des Pruefsatzes: sie liest nur, was schluesselfreiAdresse aus dem Ziel macht. Diese Form bewacht der Satz weiche; hier stellt sie nur fest, dass die Proben danach etwas unterscheiden.",
@@ -1483,7 +1545,7 @@ if (process.argv.includes("--alle-saetze")) {
 
 // ------------------------------------------------------------- Lauf
 
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen"]
   .filter((s) => !nurSatz || s === nurSatz);
 if (SAETZE.length === 0) {
   console.log(`unbekannter Satz: ${nurSatz}`);

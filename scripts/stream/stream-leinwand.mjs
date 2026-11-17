@@ -169,6 +169,103 @@ export function schreibFelder(aenderung, felder) {
   return zahl
 }
 
+/**
+ * DIE EIGENEN FLAGS, DIE EINE ADRESSE TRAGEN (stre-T-122 A), je Dokumentart
+ * der Schluessel unter `flags.beneos-module`.
+ *
+ * - `Tile.stream`: die Videokachel, `video` und `partner` (`stream-scenes.mjs`,
+ *   `marker()`). Die Leser setzen den Schluessel selbst ein
+ *   (`leinwandAdresse` in `stream-online.mjs` und `stream-canvas.mjs`).
+ * - `Scene.creatureInstaller`: die Kreaturenlade, `art` und
+ *   `positions[].texture.src`. Die Positionen gehen beim Platzieren durch das
+ *   Token-Netz, die Scheibe waehlt ueber `ersteLokaleAdresse`.
+ *
+ * Fremde Flags stehen bewusst nicht darin: ein fremdes Modul spielt die
+ * Zeichenkette, wie sie dort steht, und braucht die Toradresse (stre-T-128).
+ */
+export const FLAGGEN_FELDER = Object.freeze({
+  "Tile": Object.freeze(["stream"]),
+  "Scene": Object.freeze(["creatureInstaller"]),
+})
+
+const TIEFE = 40
+
+/** Der innere Wert eines Foundry-14-Operators, oder der Wert selbst. */
+function operatorWert(wert) {
+  const operator = globalThis.foundry?.data?.operators?.DataFieldOperator
+  return typeof operator?.get === "function" ? operator.get(wert) : wert
+}
+
+/**
+ * Faltet an Ort und Stelle jede Zeichenkette unter `behaelter[k]`, beliebig
+ * tief. Ein Operator wird ausgepackt und bleibt stehen.
+ */
+function falteAlles(behaelter, k, tiefe) {
+  if (tiefe > TIEFE) return 0
+  const roh = behaelter[k]
+  const wert = operatorWert(roh)
+  if (typeof wert === "string") {
+    const neu = schluesselfreiAdresse(wert)
+    if (neu === wert) return 0
+    if (wert === roh) behaelter[k] = neu
+    else globalThis.foundry.data.operators.DataFieldOperator.set(roh, neu)
+    return 1
+  }
+  if (!wert || typeof wert !== "object") return 0
+  let zahl = 0
+  for (const kind of Object.keys(wert)) zahl += falteAlles(wert, kind, tiefe + 1)
+  return zahl
+}
+
+/**
+ * Faltet in einem Aenderungsobjekt die eigenen Flaggenfelder der Art, in jeder
+ * Form, die Foundry annimmt: verschachtelt, flach
+ * (`"flags.beneos-module.stream.video"`) und halb flach. Ein `==` vor einem
+ * Segment (ersetzen) zaehlt wie das Segment; ein `-=` (loeschen) traegt keinen
+ * Wert und bleibt stehen. Rein, ohne Foundry.
+ *
+ * @returns {number} wie viele Zeichenketten umgeschrieben wurden
+ */
+export function schreibFlaggen(aenderung, art) {
+  const ziele = (FLAGGEN_FELDER[art] ?? []).map((k) => ["flags", MODULE_ID, k])
+  if (!ziele.length) return 0
+  let zahl = 0
+  const besuche = (obj, pfad, tiefe) => {
+    if (tiefe > TIEFE || !obj || typeof obj !== "object" || Array.isArray(obj)) return
+    for (const k of Object.keys(obj)) {
+      const teile = k.split(".")
+      if (teile.some((s) => s.startsWith("-="))) continue
+      const neu = [...pfad, ...teile.map((s) => (s.startsWith("==") ? s.slice(2) : s))]
+      // Drinnen: ein Ziel ist ganz erreicht, alles darunter wird gefaltet.
+      if (ziele.some((z) => z.every((s, i) => neu[i] === s))) { zahl += falteAlles(obj, k, tiefe); continue }
+      // Unterwegs: der Pfad ist noch Anfang eines Ziels.
+      if (ziele.some((z) => neu.length < z.length && neu.every((s, i) => z[i] === s))) {
+        besuche(operatorWert(obj[k]), neu, tiefe + 1)
+      }
+    }
+  }
+  try { besuche(aenderung, [], 0) } catch (_) { /* das Speichern geht vor */ }
+  return zahl
+}
+
+/**
+ * Die gefalteten Flaggenwerte eines Quellobjekts, als flache Aenderung
+ * `{"flags.beneos-module.<k>": kopie}`; nur was sich aendert. Gearbeitet wird
+ * in einer Kopie, die Quelle bleibt unberuehrt. Rein, ohne Foundry.
+ */
+export function falteWerte(art, daten) {
+  const neu = {}
+  for (const k of FLAGGEN_FELDER[art] ?? []) {
+    try {
+      const wert = daten?.flags?.[MODULE_ID]?.[k]
+      if (wert == null) continue
+      const huelle = { wert: JSON.parse(JSON.stringify(wert)) }
+      if (falteAlles(huelle, "wert", 0) > 0) neu[`flags.${MODULE_ID}.${k}`] = huelle.wert
+    } catch (_) { /* naechstes Flaggenfeld */ }
+  }
+  return neu
+}
+
 /** Die Einstellungen, aus denen `leinwandAdresse` die Toradresse baut. */
 const EINSTELLUNGEN = new Set([SETTING.key, SETTING.base, SETTING.mode].map((s) => `${MODULE_ID}.${s}`))
 let hakenGesetzt = false
@@ -262,7 +359,7 @@ export function installStreamLeinwand() {
     for (const [feld, kind] of Object.entries(EINGEBETTET[art] ?? {})) {
       const liste = alsListe(daten?.[feld])
       if (!liste) continue
-      for (const element of liste) zahl += schreibFelder(element, felderJe[kind])
+      for (const element of liste) zahl += schreibFelder(element, felderJe[kind]) + schreibFlaggen(element, kind)
     }
     return zahl
   }
@@ -303,11 +400,13 @@ export function installStreamLeinwand() {
       if (!streamKey()) return
       try { schreibFelder(aenderung, felder) } catch (_) { /* das Speichern geht vor */ }
       try { eingebettet(art, aenderung) } catch (_) { /* das Speichern geht vor */ }
+      // Die eigenen Flags (stre-T-122 B); fremde bleiben, siehe FLAGGEN_FELDER.
+      try { schreibFlaggen(aenderung, art) } catch (_) { /* das Speichern geht vor */ }
     })
     Hooks.on(`preCreate${art}`, (doc) => {
       if (!streamKey()) return
       try {
-        const neu = geaendert(doc?._source, felder)
+        const neu = { ...geaendert(doc?._source, felder), ...falteWerte(art, doc?._source) }
         /*
          * Die eingebetteten Listen: `updateSource` gleicht Elemente ueber ihre
          * `_id` ab und laesst die uebrigen stehen, gemessen am 16.11.2026 in
@@ -320,7 +419,7 @@ export function installStreamLeinwand() {
         for (const [feld, kind] of Object.entries(EINGEBETTET[art] ?? {})) {
           const liste = doc?._source?.[feld]
           if (!Array.isArray(liste) || liste.length === 0) continue
-          const teile = liste.map((element) => geaendert(element, felderJe[kind]))
+          const teile = liste.map((element) => ({ ...geaendert(element, felderJe[kind]), ...falteWerte(kind, element) }))
           if (teile.every((t) => Object.keys(t).length === 0)) continue
           const ids = liste.map((element) => element?._id)
           const eindeutig = ids.every((id) => typeof id === "string" && id) && new Set(ids).size === ids.length
