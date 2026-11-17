@@ -1175,6 +1175,7 @@
   "BENEOS.Cloud.Card.InstallSelected": "Install Selected",
   "BENEOS.Cloud.Bmap.Releases": "Releases",
   "BENEOS.Cloud.Bmap.ReleasesFromCloud": "The streaming catalogue is not answering right now, so this list comes from Beneos Cloud. Installing still goes through streaming.",
+  "BENEOS.Cloud.Bmap.ReleasesFromCloudDenied": "Your streaming access could not be confirmed, so this list comes from Beneos Cloud. Installing still goes through streaming.",
   "BENEOS.Stream.ManifestDenied": "Streaming is not available for this release with your current access.",
   "BENEOS.Cloud.Bmap.Individual": "Individual Maps",
   "BENEOS.Cloud.Bmap.InstallScene": "Install this scene",

@@ -1172,6 +1172,7 @@
   "BENEOS.Cloud.Card.InstallSelected": "Установить выбранные",
   "BENEOS.Cloud.Bmap.Releases": "Релизы",
   "BENEOS.Cloud.Bmap.ReleasesFromCloud": "Каталог стриминга сейчас не отвечает, поэтому этот список получен из Beneos Cloud. Установка по-прежнему идёт через стриминг.",
+  "BENEOS.Cloud.Bmap.ReleasesFromCloudDenied": "Не удалось подтвердить ваш доступ к стримингу, поэтому этот список получен из Beneos Cloud. Установка по-прежнему идёт через стриминг.",
   "BENEOS.Stream.ManifestDenied": "Стриминг для этого релиза недоступен при вашем текущем доступе.",
   "BENEOS.Cloud.Bmap.Individual": "Отдельные карты",
   "BENEOS.Cloud.Bmap.InstallScene": "Установить эту сцену",

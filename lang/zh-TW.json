@@ -1167,6 +1167,7 @@
   "BENEOS.Cloud.Card.InstallSelected": "安裝所選",
   "BENEOS.Cloud.Bmap.Releases": "發行版本",
   "BENEOS.Cloud.Bmap.ReleasesFromCloud": "串流目錄目前沒有回應，因此此清單來自 Beneos Cloud。安裝仍會透過串流進行。",
+  "BENEOS.Cloud.Bmap.ReleasesFromCloudDenied": "無法確認你的串流存取權限，因此此清單來自 Beneos Cloud。安裝仍會透過串流進行。",
   "BENEOS.Stream.ManifestDenied": "以您目前的存取權限，此發行版本無法使用串流。",
   "BENEOS.Cloud.Bmap.Individual": "單張地圖",
   "BENEOS.Cloud.Bmap.InstallScene": "安裝此場景",

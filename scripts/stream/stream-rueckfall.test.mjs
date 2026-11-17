@@ -42,6 +42,7 @@ const teile = {
   cloud: schnitt(fensterText, "#cloudReleasesWithBackoff", { maxZeilen: 40 }),
   retry: schnitt(fensterText, "_onRetryLoadReleases", { maxZeilen: 25 }),
   ausCloud: schnitt(fensterText, "#releasesAusCloud", { maxZeilen: 12 }),
+  abgewiesen: schnitt(fensterText, "#rueckfallAbgewiesen", { maxZeilen: 12 }),
   zeilen: schnitt(fensterText, "rueckfallZeilen", { maxZeilen: 40 }),
   langform: schnitt(fensterText, "langformAusVarianten", { maxZeilen: 20 }),
 }
@@ -57,6 +58,7 @@ const Fenster = buildProbe([
   teile.cloud ?? "",
   teile.retry ?? "  static _onRetryLoadReleases() {}",
   teile.ausCloud ?? "  #releasesAusCloud() { return false }",
+  teile.abgewiesen ?? "  #rueckfallAbgewiesen() { return null }",
   "  searchMode = 'bmap'",
   "  gezeichnet = 0",
   "  geladen = 0",
@@ -64,6 +66,7 @@ const Fenster = buildProbe([
   "  #ensureReleasesLoaded() { this.geladen++ }",
   "  holen() { return this.#fetchReleasesWithBackoff() }",
   "  ausCloud() { return this.#releasesAusCloud() }",
+  "  abgewiesen() { return this.#rueckfallAbgewiesen() }",
 ], vorspann)
 const rueckfallZeilen = new Function(`${vorspann}\nreturn rueckfallZeilen`)()
 
@@ -111,7 +114,8 @@ async function lauf() {
   globalThis.setTimeout = urTimeout
   return { f, liste, fehler }
 }
-const fehlerVomTor = (status) => () => { throw new Error(`stream catalogue unavailable (${status})`) }
+// Wie der echte Fehler aus listReleases: Meldung plus Status (stre-T-130).
+const fehlerVomTor = (status) => () => { throw Object.assign(new Error(`stream catalogue unavailable (${status})`), { status }) }
 
 // --------------------------------------------------------------- Proben
 
@@ -149,6 +153,41 @@ abschnitt("Andere Fehlschlaege des Tors")
   gleich("unlesbare Antwort: die Cloud-Liste", Array.isArray(r2.liste) && r2.liste.length, 2)
   gleich("Warnung ohne Adresse und ohne Schluessel", warnungen.some((w) => /https?:|catalog\//.test(w)), false)
   gleich("genau eine Warnung zum Rueckfall", warnungen.filter((w) => /stream catalogue/i.test(w)).length, 1)
+}
+
+abschnitt("Hinweistext: 403 gegen die anderen Rueckfallgruende")
+{
+  // Betreiberentscheid 17.11.2026 (stre-T-130): bei 403 antwortet das Tor und weist
+  // ab, "not answering" stimmt dann nicht. Alle anderen Gruende behalten den Text.
+  // Den Index setzt sonst #ensureReleasesLoaded aus der geholten Liste.
+  const mitIndex = (f) => { f._releaseIndex = new Map([["x", {}]]); return f }
+  torAntwort = fehlerVomTor(403)
+  const r = await lauf()
+  mitIndex(r.f)
+  gleich("403 zeigt den 403-Text", `${r.f.ausCloud()}|${r.f.abgewiesen()}`, "true|true")
+  const andere = [
+    ["404", fehlerVomTor(404)],
+    ["502", fehlerVomTor(502)],
+    ["Netzfehler", () => { throw new TypeError("Failed to fetch") }],
+    ["leer", () => []],
+    ["unlesbar", () => { throw new Error("stream catalogue malformed") }],
+  ]
+  const falsch = []
+  for (const [name, antwort] of andere) {
+    torAntwort = antwort
+    const a = await lauf()
+    mitIndex(a.f)
+    if (`${a.f.ausCloud()}|${a.f.abgewiesen()}` !== "true|false") falsch.push(name)
+  }
+  gleich("Ausfall/404 zeigt weiter den alten Text", falsch.join(","), "")
+
+  // Retry nach 403, diesmal 502: der neue Grund gilt, nicht der alte.
+  torAntwort = fehlerVomTor(502)
+  await r.f.holen()
+  gleich("403, dann 502 im selben Fenster: der alte Text", `${r.f.ausCloud()}|${r.f.abgewiesen()}`, "true|false")
+  r.f._releaseQuelle = "tor"
+  r.f._rueckfallStatus = 403
+  gleich("Quelle tor: kein 403-Text", r.f.abgewiesen(), false)
 }
 
 abschnitt("Tor scheitert und die Cloud auch")
@@ -232,9 +271,11 @@ abschnitt("Kontext und Vorlage")
 
   struktur("der Kontext reicht bmapReleasesAusCloud durch",
     /bmapReleasesAusCloud:\s*this\.#releasesAusCloud\(\)/.test(fensterText), true)
+  struktur("der Kontext reicht bmapRueckfallAbgewiesen durch",
+    /bmapRueckfallAbgewiesen:\s*this\.#rueckfallAbgewiesen\(\)/.test(fensterText), true)
   const vorlage = readFileSync(join(WURZEL, "templates/cloud-v2/parts/results-pane.hbs"), "utf8")
-  const zeile = vorlage.split("\n").find((z) => z.includes("BENEOS.Cloud.Bmap.ReleasesFromCloud")) ?? ""
-  const hinweis = vorlage.indexOf("BENEOS.Cloud.Bmap.ReleasesFromCloud")
+  const zeile = vorlage.split("\n").find((z) => z.includes("\"BENEOS.Cloud.Bmap.ReleasesFromCloud\"")) ?? ""
+  const hinweis = vorlage.indexOf("\"BENEOS.Cloud.Bmap.ReleasesFromCloud\"")
   /** Ende des Blocks, der bei `start` oeffnet, ueber die Verschachtelung. */
   const blockSchluss = (re, start) => {
     re.lastIndex = start
@@ -261,6 +302,10 @@ abschnitt("Kontext und Vorlage")
   struktur("der Hinweis steht unter der Ergebnisleiste, nicht in ihr",
     hinweis > 0 && leiste >= 0 && !(leiste < hinweis && hinweis < divEnde(leiste)), true)
   struktur("der Hinweis steht ohne Icon", zeile.length > 0 && !zeile.includes("<i class="), true)
+  // stre-T-130: bei 403 der eigene Text, sonst der alte, im selben Hinweisblock.
+  const weiche = vorlage.search(/\{\{#if bmapRueckfallAbgewiesen\}\}\s*\{\{localize "BENEOS\.Cloud\.Bmap\.ReleasesFromCloudDenied"\}\}\s*\{\{else\}\}\s*\{\{localize "BENEOS\.Cloud\.Bmap\.ReleasesFromCloud"\}\}\s*\{\{\/if\}\}/)
+  struktur("die Vorlage waehlt den 403-Text im Hinweisblock",
+    weiche > 0 && umschliesst("{{#if isBmap}}", weiche) && umschliesst("{{#if bmapReleasesAusCloud}}", weiche), true)
 }
 
 abschnitt("Sprachen")
@@ -272,13 +317,17 @@ abschnitt("Sprachen")
     (modul.languages ?? []).every((l) => dateien.includes(String(l.path).split("/").pop())), true)
   const lies = (n) => JSON.parse(readFileSync(join(ordner, n), "utf8"))
   const wert = (j, pfad) => pfad.split(".").reduce((x, k) => (x == null ? x : x[k]), j) ?? j[pfad]
-  for (const schluessel of ["BENEOS.Cloud.Bmap.ReleasesFromCloud", "BENEOS.Stream.ManifestDenied"]) {
+  for (const schluessel of ["BENEOS.Cloud.Bmap.ReleasesFromCloud", "BENEOS.Cloud.Bmap.ReleasesFromCloudDenied", "BENEOS.Stream.ManifestDenied"]) {
     const fehlt = dateien.filter((n) => {
       const w = wert(lies(n), schluessel)
       return typeof w !== "string" || !w.trim() || /[–—]/.test(w)
     })
     gleich(`${schluessel}: in jeder Sprache, nicht leer, ohne Gedankenstrich`, fehlt.join(","), "")
   }
+  gleich("en: der 403-Text im Wortlaut des Betreibers", wert(lies("en.json"), "BENEOS.Cloud.Bmap.ReleasesFromCloudDenied"),
+    "Your streaming access could not be confirmed, so this list comes from Beneos Cloud. Installing still goes through streaming.")
+  const verschieden = dateien.filter((n) => wert(lies(n), "BENEOS.Cloud.Bmap.ReleasesFromCloudDenied") === wert(lies(n), "BENEOS.Cloud.Bmap.ReleasesFromCloud"))
+  gleich("403-Text und alter Text unterscheiden sich in jeder Sprache", verschieden.join(","), "")
 }
 
 abschnitt("Manifest: Abweisung durch das Tor")
@@ -296,6 +345,17 @@ abschnitt("Manifest: Abweisung durch das Tor")
   let gelesen = null
   try { gelesen = await loadStreamManifest("beneos_bm_0001_crystal_case", "4K") } catch (e) { gelesen = e?.message || String(e) }
   gleich("ohne Abweisung: das Manifest wird gelesen wie heute", Array.isArray(gelesen?.entries), true)
+}
+
+abschnitt("Katalog: der Fehler traegt den Status")
+{
+  const { listReleases } = await import("./stream-install.mjs")
+  const abruf = async (status) => {
+    netz(() => new Response("{}", { status, headers: { "content-type": "application/json" } }))
+    try { await listReleases(); return "kein Fehler" } catch (e) { return `${e?.message}|${e?.status}` }
+  }
+  gleich("403: Meldung unveraendert, Status 403", await abruf(403), "stream catalogue unavailable (403)|403")
+  gleich("502: Meldung unveraendert, Status 502", await abruf(502), "stream catalogue unavailable (502)|502")
 }
 
 console.warn = urWarn

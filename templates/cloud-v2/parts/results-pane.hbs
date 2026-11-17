@@ -156,7 +156,7 @@
           ihr (Flex ohne Umbruch) lief der Satz ueber drei Zeilen. --}}
     {{#if isBmap}}
     {{#if bmapReleasesAusCloud}}
-    <p class="bc-bmap-source-hint">{{localize "BENEOS.Cloud.Bmap.ReleasesFromCloud"}}</p>
+    <p class="bc-bmap-source-hint">{{#if bmapRueckfallAbgewiesen}}{{localize "BENEOS.Cloud.Bmap.ReleasesFromCloudDenied"}}{{else}}{{localize "BENEOS.Cloud.Bmap.ReleasesFromCloud"}}{{/if}}</p>
     {{/if}}
     {{/if}}
   {{/if}}

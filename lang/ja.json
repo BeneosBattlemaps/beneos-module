@@ -1167,6 +1167,7 @@
   "BENEOS.Cloud.Card.InstallSelected": "選択をインストール",
   "BENEOS.Cloud.Bmap.Releases": "リリース",
   "BENEOS.Cloud.Bmap.ReleasesFromCloud": "ストリーミングカタログが現在応答していないため、このリストは Beneos Cloud から表示しています。インストールは引き続きストリーミング経由で行われます。",
+  "BENEOS.Cloud.Bmap.ReleasesFromCloudDenied": "ストリーミングへのアクセスを確認できなかったため、このリストは Beneos Cloud から表示しています。インストールは引き続きストリーミング経由で行われます。",
   "BENEOS.Stream.ManifestDenied": "現在のアクセス権では、このリリースのストリーミングは利用できません。",
   "BENEOS.Cloud.Bmap.Individual": "個別マップ",
   "BENEOS.Cloud.Bmap.InstallScene": "このシーンをインストール",

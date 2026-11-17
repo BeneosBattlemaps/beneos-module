@@ -289,7 +289,9 @@ export function buildStreamPack(manifest, release, variant) {
 export async function listReleases() {
   const response = await fetch(`${streamBase().replace(/\/+$/, "")}/catalog/${streamKey()}`)
   if (!response.ok) {
-    throw new Error(`stream catalogue unavailable (${response.status})`)
+    // Der Status geht mit, damit das Fenster 403 (abgewiesen) vom Ausfall
+    // unterscheiden kann (stre-T-130). Die Meldung bleibt, wie sie war.
+    throw Object.assign(new Error(`stream catalogue unavailable (${response.status})`), { status: response.status })
   }
   const body = await response.json()
   if (!Array.isArray(body?.releases)) {

@@ -847,6 +847,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         bmapReleasesError:   (!this._releaseLoading && this._releaseLoadError) ? String(this._releaseLoadError) : null,
         bmapReleasesNeedsLogin: this.searchMode === "bmap" && !!this._releaseNeedsLogin,
         bmapReleasesAusCloud: this.#releasesAusCloud(),
+        bmapRueckfallAbgewiesen: this.#rueckfallAbgewiesen(),
         drawer: {
           open: !!drawerAsset,
           asset: drawerAsset || null,
@@ -6348,6 +6349,16 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     return this.searchMode === "bmap" && this._releaseQuelle === "cloud" && !!this._releaseIndex
   }
 
+  /**
+   * Kam der Rueckfall von einer Abweisung (403) des Tors? Dann antwortet das Tor
+   * und der Hinweis nennt den Zugang statt eines Ausfalls (stre-T-130).
+   * INTENTIONAL-SPECIAL-CASE: nur 403, Betreiberentscheid 17.11.2026; jeder
+   * andere Status behaelt den alten Text.
+   */
+  #rueckfallAbgewiesen() {
+    return this.#releasesAusCloud() && this._rueckfallStatus === 403
+  }
+
   async #fetchReleasesWithBackoff() {
     // Closed beta only. With the streaming switch on, the release list comes
     // from the beta gate instead of the cloud, so a tester browses and installs
@@ -6375,6 +6386,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       } catch (e) {
         console.warn(`BeneosCloudWindowV2 | ${e?.message || e}, showing the Beneos Cloud list instead`)
         this._releaseQuelle = "cloud"
+        this._rueckfallStatus = e?.status ?? null
         return rueckfallZeilen(await this.#cloudReleasesWithBackoff())
       }
     }

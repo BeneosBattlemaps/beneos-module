@@ -1167,6 +1167,7 @@
   "BENEOS.Cloud.Card.InstallSelected": "Nainstalovat výběr",
   "BENEOS.Cloud.Bmap.Releases": "Verze",
   "BENEOS.Cloud.Bmap.ReleasesFromCloud": "Katalog streamování momentálně neodpovídá, proto tento seznam pochází z Beneos Cloud. Instalace dál probíhá přes streamování.",
+  "BENEOS.Cloud.Bmap.ReleasesFromCloudDenied": "Tvůj přístup ke streamování se nepodařilo ověřit, proto tento seznam pochází z Beneos Cloud. Instalace dál probíhá přes streamování.",
   "BENEOS.Stream.ManifestDenied": "Streamování není pro toto vydání s vaším současným přístupem k dispozici.",
   "BENEOS.Cloud.Bmap.Individual": "Jednotlivé mapy",
   "BENEOS.Cloud.Bmap.InstallScene": "Nainstalovat tuto scénu",
