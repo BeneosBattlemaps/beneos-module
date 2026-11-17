@@ -18,7 +18,7 @@
  * also nicht. Bestaetigt am 16.11.2026 in v13 und v14 durch work-stre-1: der
  * Klang blieb bis zum Neuladen stumm.
  *
- * WIE. Nach einem Wechsel von Schluessel, Basis oder Modus wird jeder
+ * WIE. Nach einem Wechsel von Schluessel oder Basis wird jeder
  * Playlist-Klang mit schluesselfreier Quelle geprueft. Ein Klangobjekt, dessen
  * Adresse nicht mehr die von heute ist, wird ersetzt und mit `sync()` wieder
  * an den Zustand des Dokuments gebunden.
@@ -38,15 +38,37 @@ import { leinwandAdresse, MODULE_ID, SETTING } from "./stream-settings.mjs"
 const PRAEFIX = "beneos://"
 
 /**
- * Dieselben drei Einstellungen wie beim Neuvorbereiten der Leinwand. Jede davon
- * kann die vorbereitete Adresse aendern.
+ * Die zwei Einstellungen, aus denen `leinwandAdresse` die Toradresse baut. Der
+ * Modus gehoert seit T-102 nicht mehr dazu: die Adresse haengt am Schluessel,
+ * nicht am Modus (`stream-settings.mjs`, `leinwandAdresse`).
  */
-const EINSTELLUNGEN = new Set([SETTING.key, SETTING.base, SETTING.mode].map((s) => `${MODULE_ID}.${s}`))
+const EINSTELLUNGEN = new Set([SETTING.key, SETTING.base].map((s) => `${MODULE_ID}.${s}`))
 let hakenGesetzt = false
 
 /** `Sound.STATES.LOADING`, mit dem Wert aus 13 und 14 als Rueckfall. */
 function zustandLaden() {
   return globalThis.foundry?.audio?.Sound?.STATES?.LOADING ?? 1
+}
+
+/**
+ * Ein laufender Klang wird nicht unterbrochen, behaelt aber sonst seine alte
+ * Adresse fuer immer: ein erneuter Start nimmt dasselbe, schon geladene Objekt.
+ * Titel ueber zehn Minuten laufen als Element (`sound.mjs` :67) und laden
+ * dabei mit dem widerrufenen Schluessel nach. Deshalb wird das Objekt ersetzt,
+ * sobald es stoppt oder endet, OHNE `sync`: ein natuerliches Ende darf den
+ * Titel nicht neu starten, erst der naechste Start baut mit der Adresse von
+ * heute.
+ */
+function nachDemStoppNeu(ps, objekt, quelle) {
+  const nachholen = () => {
+    if (ps.sound !== objekt || objekt.playing) return
+    if (objekt.src === leinwandAdresse(quelle)) return
+    try { ps.sound = ps._createSound() } catch (_) { /* bleibt das alte, wie ohne diesen Haken */ }
+  }
+  try {
+    objekt.addEventListener("stop", nachholen, { once: true })
+    objekt.addEventListener("end", nachholen, { once: true })
+  } catch (_) { /* ein Klang ohne diese Ereignisse bleibt wie er ist */ }
 }
 
 /**
@@ -68,10 +90,17 @@ export async function klangNachziehen(ps) {
    * schnitte mit seinem `end` den neuen Titel ab. Ein zweiter `load()` wartet
    * auf das laufende Laden (`sound.mjs` :344-347) und startet selbst nichts.
    */
-  if (ps.sound._state === zustandLaden()) {
-    try { await ps.sound.load() } catch (_) { /* gescheitert ist hier ein Ergebnis */ }
+  const objekt = ps.sound
+  if (objekt._state === zustandLaden()) {
+    try { await objekt.load() } catch (_) { /* gescheitert ist hier ein Ergebnis */ }
+    // Hat Foundry den Klang waehrenddessen selbst neu gebaut (Aenderung von
+    // `path` oder `channel`), gilt die Entscheidung fuer das neue Objekt.
+    if (ps.sound !== objekt) return klangNachziehen(ps)
   }
-  if (ps.sound.playing) return "laeuft"
+  if (objekt.playing) {
+    nachDemStoppNeu(ps, objekt, quelle)
+    return "laeuft"
+  }
 
   const soll = leinwandAdresse(quelle)
   if (ps.sound.src === soll) return "gleich"

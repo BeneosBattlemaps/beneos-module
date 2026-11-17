@@ -94,6 +94,33 @@ gleich("Modus aus mit Schluessel: das Schreibnetz haengt", haken.namen().include
   gleich("Modus aus mit Schluessel: das Neuvorbereiten haengt", neuVorbereitet > 0, true)
 }
 
+/*
+ * DER KLANGNEUBAU HAENGT WIE DIE LEINWAND AM SCHLUESSEL (stre-T-119,
+ * Kalt-Review 17.11.2026, Befund 1). Gemessen wird die Wirkung: ein
+ * gescheiterter Klang mit schluesselfreier Quelle bekommt nach dem Wechsel
+ * ein neues Objekt. Eine Textprobe ueber die Reihenfolge im Quelltext sieht
+ * nicht, ob der Aufruf in den Modusblock gerutscht ist.
+ */
+{
+  const { MODULE_ID } = await import("./stream-settings.mjs")
+  const alt = { failed: true, playing: false, _state: -1, src: "alt" }
+  const klang = {
+    _source: { path: "beneos://a/beneos_bm_0113/4k/musik.ogg" },
+    path: "alt",
+    sound: alt,
+    reset() { this.path = `${GATE}/a/${SCHLUESSEL}/beneos_bm_0113/4k/musik.ogg` },
+    _createSound() { return { src: this.path, playing: false, _state: 0 } },
+    sync() {},
+  }
+  const vorher = globalThis.game.playlists
+  globalThis.game.playlists = [{ sounds: [klang] }]
+  for (const h of haken.liste.filter((x) => x.name === "updateSetting")) {
+    try { await h.fn({ key: `${MODULE_ID}.${SETTING.key}` }) } catch (_) { /* gezaehlt wird die Wirkung */ }
+  }
+  globalThis.game.playlists = vorher
+  gleich("Modus aus mit Schluessel: ein gescheiterter Klang wird neu aufgebaut", klang.sound !== alt, true)
+}
+
 const k = new Kachel("beneos://a/beneos_bm_0113/4k/karte.webp")
 k.prepareBaseData()
 gleich("Modus aus mit Schluessel: vorbereitet steht die Toradresse",

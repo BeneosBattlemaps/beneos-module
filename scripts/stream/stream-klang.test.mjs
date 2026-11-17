@@ -41,6 +41,8 @@ import { platzhalterAdresse, leinwandAdresse, SETTING, MODULE_ID } from "./strea
 
 const HIER = dirname(fileURLToPath(import.meta.url))
 const GATE = "https://gate2.beneos.stream"
+const GATE_NEU = "https://gate3.beneos.stream"
+let basis = GATE
 const SCHLUESSEL_A = "pk_pruefsatz_alt_a"
 const SCHLUESSEL_B = "pk_pruefsatz_neu_b"
 
@@ -49,7 +51,7 @@ globalThis.game = {
   settings: {
     get(_modul, name) {
       if (name === SETTING.key) return schluessel
-      if (name === SETTING.base) return GATE
+      if (name === SETTING.base) return basis
       if (name === SETTING.mode) return true
       return ""
     },
@@ -105,7 +107,14 @@ class Klang {
   }
   get failed() { return this._state === STATES.FAILED }
   get playing() { return this._state === STATES.STARTING || this._state === STATES.PLAYING }
-  addEventListener() {}
+  /** Wie `EventEmitterMixin` aus Foundry: je Typ, mit `once`. */
+  addEventListener(typ, fn, { once = false } = {}) { ((this._zuhoerer ??= {})[typ] ??= []).push({ fn, once }) }
+  sende(typ) {
+    this._zuhoerer ??= {}
+    const liste = this._zuhoerer[typ] ?? []
+    this._zuhoerer[typ] = liste.filter((z) => !z.once)
+    for (const z of liste) z.fn()
+  }
   /** Laedt sofort, ausser `_warte` haelt das Laden an. */
   load({ autoplay = false } = {}) {
     this.ladeAufrufe++
@@ -114,7 +123,7 @@ class Klang {
     if (autoplay && !this.failed) { this._state = STATES.PLAYING; this.autoplay = true }
     return Promise.resolve(this)
   }
-  stop() { this.stopAufrufe++; if (this.playing) this._state = STATES.STOPPED }
+  stop() { this.stopAufrufe++; if (this.playing) { this._state = STATES.STOPPED; this.sende?.("stop") } }
 }
 
 let audioGesperrt = false
@@ -237,10 +246,66 @@ console.log("Zwei Werte")
   gueltig = SCHLUESSEL_B
   const altLauf = laeuft.sound
   game.playlists = [{ sounds: [laeuft] }]
-  await wechsle()
   gleich("Zweiwert 2: laeuft vor dem Wechsel", altLauf.playing, true)
+  await wechsle()
   gleich("Zweiwert 2: dasselbe Objekt, nicht gestoppt",
     laeuft.sound === altLauf && altLauf.stopAufrufe === 0 && altLauf.playing, true)
+
+  // Nach dem Stopp traegt das Objekt fuer den naechsten Start B, ohne dass der
+  // Stopp den Titel neu startet (Kalt-Review 17.11.2026, Befund 5).
+  laeuft.playing = false
+  altLauf.stop()
+  gleich("Zweiwert 2: nach dem Stopp ein neues Objekt mit B",
+    laeuft.sound !== altLauf && hatSchluessel(laeuft, SCHLUESSEL_B), true)
+  gleich("Zweiwert 2: nach dem Stopp kein Neustart", laeuft.sound?.playing, false)
+
+  // Natuerliches Ende, waehrend das Dokument noch `playing` traegt: das neue
+  // Objekt darf nicht von selbst losspielen.
+  schluessel = SCHLUESSEL_A
+  gueltig = SCHLUESSEL_A
+  const ende = new Spur("l2", PFAD)
+  ende.sync()
+  gueltig = SCHLUESSEL_B
+  const altEnde = ende.sound
+  game.playlists = [{ sounds: [ende] }]
+  await wechsle()
+  altEnde._state = STATES.STOPPED
+  altEnde.sende("end")
+  gleich("Zweiwert 2: nach dem Ende ersetzt, aber kein Neustart",
+    ende.sound !== altEnde && ende.sound?.playing === false, true)
+
+  // Stoppt ein Klang, dessen Adresse schon die von heute ist, bleibt er.
+  schluessel = SCHLUESSEL_B
+  const aktuell = new Spur("l3", PFAD)
+  aktuell.sync()
+  const altAktuell = aktuell.sound
+  game.playlists = [{ sounds: [aktuell] }]
+  await wechsle()
+  aktuell.playing = false
+  altAktuell.stop()
+  gleich("Zweiwert 2: Stopp mit aktueller Adresse, dasselbe Objekt", aktuell.sound === altAktuell, true)
+}
+
+console.log("Ohne Klangobjekt")
+{
+  schluessel = SCHLUESSEL_B
+  const ps = new Spur("o1", PFAD)
+  let ausgang
+  try { ausgang = await modul.klangNachziehen?.(ps) } catch (_) { ausgang = "wirft" }
+  gleich("ohne Klangobjekt: Ausgang ohne-klang, es bleibt keines", [ausgang, ps.sound], ["ohne-klang", null])
+}
+
+console.log("Basiswechsel")
+{
+  const ps = gescheitert("b1")
+  game.playlists = [{ sounds: [ps] }]
+  schluessel = SCHLUESSEL_B
+  basis = GATE_NEU
+  for (const pl of game.playlists) for (const s of pl.sounds) s.reset()
+  for (const f of haken.updateSetting ?? []) await f({ key: `${MODULE_ID}.${SETTING.base}` })
+  gleich("Basiswechsel: das neue Objekt traegt die neue Basis",
+    String(ps.sound?.src || "").startsWith(`${GATE_NEU}/`), true)
+  basis = GATE
 }
 
 console.log("Laedt gerade: erst nach dem Laden entscheiden")
@@ -262,6 +327,31 @@ console.log("Laedt gerade: erst nach dem Laden entscheiden")
   freigeben(alt)
   gleich("LOADING: nach dem Scheitern neu gebaut", await lauf, "neu")
   gleich("LOADING: das neue Objekt traegt B", hatSchluessel(ps, SCHLUESSEL_B), true)
+
+  // Baut Foundry waehrend des Wartens selbst neu, gilt die Entscheidung fuer
+  // das neue Objekt: es traegt B und laedt, es wird nicht ersetzt.
+  schluessel = SCHLUESSEL_A
+  const ps2 = new Spur("w2", PFAD)
+  ps2.sound = new Klang(ps2.path)
+  ps2.sound._state = STATES.LOADING
+  let frei2
+  ps2.sound._warte = new Promise((r) => { frei2 = r })
+  const alt2 = ps2.sound
+  schluessel = SCHLUESSEL_B
+  ps2.reset()
+  const lauf2 = modul.klangNachziehen?.(ps2)
+  await Promise.resolve()
+  // Foundry hat waehrenddessen den Pfad geaendert und in `_onUpdate` neu gebaut.
+  ps2._source.path = platzhalterAdresse("beneos_bm_0113", "4k", "musik/morgen.ogg")
+  ps2.reset()
+  const vonFoundry = new Klang(ps2.path)
+  vonFoundry._state = STATES.LOADED
+  ps2.sound = vonFoundry
+  alt2._state = STATES.FAILED
+  alt2._warte = null
+  frei2(alt2)
+  await lauf2
+  gleich("LOADING: von Foundry neu gebautes Objekt bleibt", ps2.sound === vonFoundry, true)
 }
 
 console.log("Kein Anlass, kein Neubau")
@@ -331,7 +421,7 @@ console.log(`\n${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
  * Von Hand nachgezogen, siehe Kopf. Weicht die gezaehlte Zahl ab, ist der Lauf
  * mittendrin gestorben oder ein Block ist still weggefallen.
  */
-const ERWARTET = 25
+const ERWARTET = 32
 if (aussagen !== ERWARTET) {
   console.log(`ROT  erwartet ${ERWARTET} Aussagen, gezaehlt ${aussagen}`)
   process.exit(1)

@@ -865,8 +865,8 @@ const SABOTAGEN = [
   { satz: "klang", ziel: ["Kern: es spielt (autoplay)"], ersetze: [[KLANG, "  ps.sync()\n  return \"neu\"", "  return \"neu\""]] },
   { satz: "klang", ziel: ["Zweiwert 1: Ausgang ohne Streamadresse","Zweiwert 1: fremder Umschreiber, Ausgang","Zweiwert 1: fremder Umschreiber, dasselbe Objekt und kein reset"], ersetze: [[KLANG, "  if (!quelle.startsWith(PRAEFIX)) return \"unberuehrt\"", "  if (!quelle) return \"unberuehrt\""]] },
   { satz: "klang", ziel: ["Zweiwert 1: dasselbe Objekt"], ersetze: [[KLANG, "  if (!quelle.startsWith(PRAEFIX)) return \"unberuehrt\"", "  if (!quelle) return \"unberuehrt\""], [KLANG, "  if (ps.sound.src === soll) return \"gleich\"", "  if (false) return \"gleich\""]] },
-  { satz: "klang", ziel: ["Zweiwert 2: dasselbe Objekt, nicht gestoppt"], ersetze: [[KLANG, "  if (ps.sound.playing) return \"laeuft\"", "  if (false) return \"laeuft\""]] },
-  { satz: "klang", ziel: ["LOADING: waehrend des Ladens kein zweites Objekt"], ersetze: [[KLANG, "    try { await ps.sound.load() } catch (_) { /* gescheitert ist hier ein Ergebnis */ }", "    /* Abwarten entfernt */"]] },
+  { satz: "klang", ziel: ["Zweiwert 2: dasselbe Objekt, nicht gestoppt"], ersetze: [[KLANG, "  if (objekt.playing) {", "  if (false) {"]] },
+  { satz: "klang", ziel: ["LOADING: waehrend des Ladens kein zweites Objekt"], ersetze: [[KLANG, "    try { await objekt.load() } catch (_) { /* gescheitert ist hier ein Ergebnis */ }", "    /* Abwarten entfernt */"]] },
   { satz: "klang", ziel: ["LOADING: nach dem Scheitern neu gebaut","veraltet: Ausgang"], ersetze: [[KLANG, "  if (!ps.sound) return \"ohne-klang\"", "  if (ps.sound) return \"ohne-klang\""]] },
   { satz: "klang", ziel: ["derselbe Schluessel erneut: dasselbe Objekt"], ersetze: [[KLANG, "  if (ps.sound.src === soll) return \"gleich\"", "  if (false) return \"gleich\""]] },
   { satz: "klang", ziel: ["fremde Einstellung: dasselbe Objekt"], ersetze: [[KLANG, "    if (!EINSTELLUNGEN.has(setting?.key)) return\n", ""]] },
@@ -874,6 +874,13 @@ const SABOTAGEN = [
   { satz: "klang", ziel: ["werfend: der zweite Klang traegt B"], ersetze: [[KLANG, "      try { ausgang = await klangNachziehen(ps) }\n      catch (e) {", "      { ausgang = await klangNachziehen(ps) }\n      if (false) { const e = null"]] },
   { satz: "klang", ziel: ["werfend: der Haken wirft nicht"], ersetze: [[KLANG, "      try { ausgang = await klangNachziehen(ps) }\n      catch (e) {", "      { ausgang = await klangNachziehen(ps) }\n      if (false) { const e = null"], [KLANG, "    return klaengeNachziehen().catch((e) => {", "    return klaengeNachziehen().then((e) => {"]] },
   { satz: "klang", ziel: ["beneos-stream.mjs ruft installStreamKlang() nach installStreamLeinwand()"], ersetze: [[EINSTIEG, "  installStreamKlang()\n", ""]] },
+  { satz: "klang", ziel: ["ohne Klangobjekt: Ausgang ohne-klang, es bleibt keines"], ersetze: [[KLANG, "  if (!ps.sound) return \"ohne-klang\"\n", ""]] },
+  { satz: "klang", ziel: ["Basiswechsel: das neue Objekt traegt die neue Basis"], ersetze: [[KLANG, "new Set([SETTING.key, SETTING.base].map(", "new Set([SETTING.key].map("]] },
+  { satz: "klang", ziel: ["Zweiwert 2: nach dem Stopp ein neues Objekt mit B","Zweiwert 2: nach dem Ende ersetzt, aber kein Neustart"], ersetze: [[KLANG, "    nachDemStoppNeu(ps, objekt, quelle)\n", ""]] },
+  { satz: "klang", ziel: ["Zweiwert 2: nach dem Stopp kein Neustart","Zweiwert 2: nach dem Ende ersetzt, aber kein Neustart"], ersetze: [[KLANG, "    try { ps.sound = ps._createSound() } catch", "    try { ps.sound = ps._createSound(); ps.sound.load({ autoplay: true }) } catch"]] },
+  { satz: "klang", ziel: ["Zweiwert 2: Stopp mit aktueller Adresse, dasselbe Objekt"], ersetze: [[KLANG, "    if (objekt.src === leinwandAdresse(quelle)) return\n", ""]] },
+  { satz: "klang", ziel: ["LOADING: von Foundry neu gebautes Objekt bleibt"], ersetze: [[KLANG, "    if (ps.sound !== objekt) return klangNachziehen(ps)\n", ""]] },
+  { satz: "einbau", ziel: ["Modus aus mit Schluessel: ein gescheiterter Klang wird neu aufgebaut"], ersetze: [[EINSTIEG, "  installStreamKlang()\n", ""], [EINSTIEG, "    installStreamFetch()\n", "    installStreamFetch()\n    installStreamKlang()\n"]] },
 ];
 
 /*
