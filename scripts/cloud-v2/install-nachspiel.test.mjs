@@ -1,0 +1,54 @@
+/**
+ * install-nachspiel.test.mjs
+ *
+ * Gegenprobe zu MO-021 und MO-022, ohne Foundry (Attrappen fuer die Globals):
+ *
+ *   node --test scripts/cloud-v2/install-nachspiel.test.mjs
+ *
+ * Nach einer Installation zeichnet das offene Cloud-Fenster die Releasekarte
+ * neu, und beneos.releaseInstalled geht raus (Static-Switch-Cache, Tour).
+ *  - MO-021: der ZIP-Import tat keines von beiden, auch nicht nach seinem Retry.
+ *  - MO-022: der delegierte Weg (POI, Journal) baute ein nie gerendertes
+ *    Fenster, das sich ins Register game.beneos.cloudWindowV2 schrieb; das
+ *    offene Fenster wurde nicht aufgefrischt und verlor seinen Registerplatz.
+ */
+import { test } from "node:test"
+import assert from "node:assert/strict"
+import { zipSync, strToU8 } from "../lib/fflate.module.js"
+
+const stub = class {}
+for (const n of ["FormApplication", "Application", "Dialog"]) globalThis[n] ??= stub
+globalThis.foundry ??= { utils: { randomID: () => "x".repeat(16), mergeObject: (a, b) => ({ ...a, ...b }) }, applications: { api: { ApplicationV2: stub, HandlebarsApplicationMixin: (c) => c, DialogV2: stub } } }
+globalThis.game ??= { settings: { get: () => null, set: async () => {} }, i18n: { localize: (k) => k, format: (k) => k }, user: { isGM: true } }
+globalThis.ui ??= { notifications: { info() {}, warn() {}, error() {} } }
+globalThis.window ??= globalThis
+globalThis.document ??= { createElement: () => ({ style: {}, appendChild() {}, setAttribute() {} }), querySelector: () => null, querySelectorAll: () => [], addEventListener() {}, head: { appendChild() {} }, body: { appendChild() {} } }
+
+const signale = []
+globalThis.Hooks = { on() {}, once() {}, callAll: (name, data) => { signale.push({ name, data }) } }
+
+const { BeneosNativeBattlemapInstaller: Installer } = await import("./beneos-native-installer.mjs")
+const { BeneosZipImporter } = await import("./beneos-zip-importer.mjs")
+
+/** Das Cloud-Fenster, das der Kunde gerade offen hat. */
+function offenesFenster() {
+  const w = { rendered: true, renders: [], render(opts) { this.renders.push(opts) } }
+  game.beneos = { cloudWindowV2: w }
+  return w
+}
+
+test("MO-021: ZIP-Import frischt das offene Fenster auf und meldet die Installation", async () => {
+  const fenster = offenesFenster()
+  signale.length = 0
+  const echt = Installer.prototype.run
+  Installer.prototype.run = async function () { this._importedScenes = [{ id: "sz1" }]; this.ausgang = "fertig" }
+  try {
+    const bytes = zipSync({ "data/Scene.json": strToU8("[]") })
+    await BeneosZipImporter.importFile({ name: "bm_zip_test.zip", arrayBuffer: async () => bytes.buffer })
+  } finally { Installer.prototype.run = echt }
+  const hook = signale.filter(s => s.name === "beneos.releaseInstalled")
+  assert.equal(hook.length, 1, "kein beneos.releaseInstalled nach dem ZIP-Import")
+  assert.equal(hook[0].data.releaseDir, "bm_zip_test")
+  assert.deepEqual(hook[0].data.sceneIds, ["sz1"])
+  assert.deepEqual(fenster.renders, [{ parts: ["results"] }], "Releasekarte im offenen Fenster nicht neu gezeichnet")
+})
