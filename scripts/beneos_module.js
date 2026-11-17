@@ -223,7 +223,8 @@ Hooks.once('ready', () => {
       .catch(e => console.warn("Beneos | analytics start failed:", e))
   }
 
-  if (game.settings.get(BeneosUtility.moduleID(), "beneos-reload-search-engine")) {
+  // GM only: writing a world setting needs SETTINGS_MODIFY, so a player client neither resets the flag nor opens the window.
+  if (game.user.isGM && game.settings.get(BeneosUtility.moduleID(), "beneos-reload-search-engine")) {
     setTimeout(() => {
       game.settings.set(BeneosUtility.moduleID(), "beneos-reload-search-engine", false)
         .catch((e) => console.warn("Beneos | search engine reload flag reset failed:", e))

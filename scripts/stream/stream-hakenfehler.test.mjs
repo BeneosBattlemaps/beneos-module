@@ -261,6 +261,8 @@ p.abschnitt("beneos_module.js: ready, Suchmaschine wieder oeffnen (M2)")
     BeneosUtility: teil({ moduleID: () => "beneos-module" }),
     BeneosDatabaseHolder: teil({ loadDatabaseFiles: () => Promise.resolve() }),
     game: teil({
+      // Ausdruecklich GM, seit stre-T-132 steht das Tor davor.
+      user: { isGM: true },
       beneos: teil({ cloud: teil({ loadPublicAllowlists: () => Promise.resolve() }) }),
       settings: teil({
         get: (_m, n) => n === "beneos-reload-search-engine",
@@ -269,6 +271,66 @@ p.abschnitt("beneos_module.js: ready, Suchmaschine wieder oeffnen (M2)")
     }),
   })
   dreiProben("ready Suchmaschine", await lauf(rufe(fn), "search engine reload flag reset failed"), wurf)
+}
+
+// stre-T-132: Das Flag ist ein Welt-Setting. Schreiben darf es in Foundry v13
+// nur, wer SETTINGS_MODIFY hat (ab Assistenz-GM), also kein Spieler. Ohne Tor
+// oeffnet jeder Spielerclient das Cloud-Fenster und scheitert am
+// Zuruecksetzen. Die Attrappe lehnt `set` darum fuer Spieler ab, wie Foundry.
+p.abschnitt("beneos_module.js: ready, Suchmaschine nur beim GM (T-132)")
+async function gmTorLauf(isGM, flag) {
+  // drin: Schreiben und Oeffnen, die im Rueckruf des 4000-ms-Zeitgebers geschahen.
+  const z = { timer: 0, set: [], render: 0, renderOpt: null, drin: 0 }
+  const fn = modulHaken("ready", "loadPublicAllowlists", {
+    Hooks: STILL,
+    setTimeout: (f, ms) => {
+      const vor = z.set.length + z.render
+      f()
+      if (ms === 4000) { z.timer++; z.drin += z.set.length + z.render - vor }
+      return 0
+    },
+    BeneosUtility: teil({ moduleID: () => "beneos-module" }),
+    BeneosDatabaseHolder: teil({ loadDatabaseFiles: () => Promise.resolve() }),
+    BeneosCloudWindowV2: class { render(o) { z.render++; z.renderOpt = o; return Promise.resolve() } },
+    game: teil({
+      user: { isGM },
+      beneos: teil({ cloud: teil({ loadPublicAllowlists: () => Promise.resolve() }) }),
+      settings: teil({
+        get: (_m, n) => (n === "beneos-reload-search-engine" ? flag : false),
+        set: (_m, n, v) => {
+          if (n !== "beneos-reload-search-engine") return Promise.resolve()
+          z.set.push(v)
+          return isGM ? Promise.resolve() : Promise.reject(new Error("Pruefsatz: Spieler darf nicht schreiben"))
+        },
+      }),
+    }),
+  })
+  // Nur die Warnungen dieses Zweigs; der Analytics-Zweig des GM laeuft hier gegen Attrappen.
+  const r = await lauf(rufe(fn), "search engine")
+  return { ...z, r }
+}
+{
+  const s = await gmTorLauf(false, true)
+  p.gleich("T-132 Spieler: kein Zeitgeber fuer das Suchfenster", s.timer, 0)
+  p.gleich("T-132 Spieler: das Flag wird nicht geschrieben", s.set.length, 0)
+  p.gleich("T-132 Spieler: das Cloud-Fenster oeffnet nicht", s.render, 0)
+  p.gleich("T-132 Spieler: keine Warnung", s.r.gemeldet, 0)
+  p.gleich("T-132 Spieler: keine unbehandelte Ablehnung", s.r.unbehandelt, 0)
+
+  const g = await gmTorLauf(true, true)
+  p.gleich("T-132 GM: ein Zeitgeber mit 4000 ms", g.timer, 1)
+  p.gleich("T-132 GM: das Flag wird einmal auf false gesetzt", JSON.stringify(g.set), "[false]")
+  p.gleich("T-132 GM: das Cloud-Fenster oeffnet einmal", g.render, 1)
+  p.gleich("T-132 GM: keine Warnung", g.r.gemeldet, 0)
+  p.gleich("T-132 GM: Flag und Fenster erst im Zeitgeber", g.drin, 2)
+  // Ohne force oeffnet ApplicationV2 ein neues Fenster nie (Foundry v13).
+  p.gleich("T-132 GM: das Cloud-Fenster mit force", JSON.stringify(g.renderOpt), "{\"force\":true}")
+  p.gleich("T-132 GM: keine unbehandelte Ablehnung", g.r.unbehandelt, 0)
+
+  const o = await gmTorLauf(true, false)
+  p.gleich("T-132 GM ohne Flag: kein Zeitgeber", o.timer, 0)
+  p.gleich("T-132 GM ohne Flag: das Cloud-Fenster bleibt zu", o.render, 0)
+  p.gleich("T-132 GM ohne Flag: keine unbehandelte Ablehnung", o.r.unbehandelt, 0)
 }
 
 p.abschnitt("beneos_module.js: renderActorSheet, Tokenmenue am Portraet (M3)")
@@ -527,6 +589,8 @@ p.abschnitt("beneos_module.js: ready, Suchfenster neu oeffnen (W1)")
     BeneosDatabaseHolder: teil({ loadDatabaseFiles: () => Promise.resolve() }),
     BeneosCloudWindowV2: class { render() { return Promise.reject(wurf) } },
     game: teil({
+      // Ausdruecklich GM, seit stre-T-132 steht das Tor davor.
+      user: { isGM: true },
       beneos: teil({ cloud: teil({ loadPublicAllowlists: () => Promise.resolve() }) }),
       settings: teil({ get: (_m, n) => n === "beneos-reload-search-engine", set: () => Promise.resolve() }),
     }),
