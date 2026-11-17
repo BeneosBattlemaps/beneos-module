@@ -31,7 +31,8 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { installiereFoundry, pruefstand } from "../../tools/lib/foundry-attrappe.mjs"
 
-const { SETTING, assetUrl, platzhalterAdresse, MODULE_ID } = await import("./stream-settings.mjs")
+const { SETTING, assetUrl, platzhalterAdresse, MODULE_ID, nachzugRiegelNehmenNachRuecklauf, nachzugRiegelLoesen } =
+  await import("./stream-settings.mjs")
 
 const GATE = "https://stream.beneos-battlemaps.com"
 const SCHLUESSEL = "pk_pruefsatz_fremdflaggen"
@@ -109,6 +110,16 @@ t.abschnitt("applyStreamAddresses(): die Regel beim Einbau")
   let ok = true
   try { applyStreamAddresses(ohne, ziele) } catch (_e) { ok = false }
   t.gleich("Flags null brechen den Einbau nicht ab", ok && ohne.flags === null && ohne.src === FREI(VIDEO), true)
+}
+{
+  // Kalt-Review 17.11.2026, W6: zwei Regeln ohne Wache. Unter einem fremden
+  // Flag bleibt alles fremd, auch ein tiefer liegendes `flags.beneos-module`;
+  // und eine Liste behaelt den Feldnamen, damit `img` gesperrt bleibt.
+  const tief = { flags: { "monks-active-tiles": { teil: { flags: { [MODULE_ID]: { klang: KLANG } } } } }, img: [BILD] }
+  applyStreamAddresses(tief, ziele)
+  t.gleich("W6: unter einem fremden Flag bleibt auch ein tieferes eigenes Flag fremd",
+    tief.flags["monks-active-tiles"].teil.flags[MODULE_ID].klang, ziele.get(KLANG))
+  t.gleich("W6: eine Liste im img-Feld bleibt oertlich", JSON.stringify(tief.img), JSON.stringify([BILD]))
 }
 
 t.abschnitt("fremdflaggenZurueck(): der einmalige Ruecklauf")
@@ -252,6 +263,121 @@ if (typeof fremdflaggenZurueck === "function") {
     t.gleich("ohne Schluessel: die Marke bleibt ungesetzt", einstellungen[SETTING.fremdflaggenZurueck], false)
     t.gleich("ohne Schluessel: Grund genannt", b.grund, "ohne schluessel")
   }
+
+  t.abschnitt("Kalt-Review 17.11.2026: Nachbesserungen W2 bis W6")
+
+  /** Eine Welt aus einem Dokument beliebiger Art. */
+  function weltAus(quelle, { art = "Actor", eingebettet = {}, sammlung = "actors" } = {}) {
+    const geschrieben = []
+    const doc = {
+      id: quelle._id,
+      documentName: art,
+      constructor: { metadata: { embedded: eingebettet } },
+      toObject: () => JSON.parse(JSON.stringify(quelle)),
+      async update(a) { geschrieben.push(["update", a]) },
+      async updateEmbeddedDocuments(k, teile) { geschrieben.push([k, teile]) },
+    }
+    for (const n of ["journal", "actors", "items", "tables", "cards", "messages", "scenes", "playlists", "macros"]) globalThis.game[n] = []
+    globalThis.game[sammlung] = [doc]
+    return geschrieben
+  }
+  {
+    // W2: Flags liegen nicht nur oben am Dokument. Das Prototyp-Token eines
+    // Akteurs traegt eigene, und dort setzt monks-active-tiles seine Werte.
+    einstellungen[SETTING.fremdflaggenZurueck] = false
+    const geschrieben = weltAus({
+      _id: "akteur000000001",
+      prototypeToken: { flags: { "monks-active-tiles": { klang: FREI(KLANG) }, [MODULE_ID]: { stream: { video: FREI(VIDEO) } } } },
+      system: { liste: [{ flags: { "fremd-liste": { klang: FREI(KLANG) } } }] },
+    })
+    const { wert: b } = await mitschnitt(() => fremdflaggenZurueck())
+    const a = geschrieben.find(([k]) => k === "update")?.[1] ?? {}
+    t.gleich("W2: fremdes Flag im Prototyp-Token wird Toradresse",
+      JSON.stringify(a["prototypeToken.flags.monks-active-tiles"]), JSON.stringify({ klang: ziele.get(KLANG) }))
+    t.gleich("W2: eigenes Flag im Prototyp-Token wird nicht geschrieben", `prototypeToken.flags.${MODULE_ID}` in a, false)
+    t.gleich("W2: ein fremdes Flag in einer Liste wird nicht geschrieben",
+      Object.keys(a).some((k) => k.includes("fremd-liste") || k.startsWith("system")), false)
+    t.gleich("W2: das fremde Flag in der Liste zaehlt als Rest", b.rest, 1)
+    t.gleich("W2: eine Adresse gezaehlt", b.adressen, 1)
+  }
+  {
+    // W3: ein Fehlschlag nennt Art und Kennung, aber nicht den Fehlertext.
+    einstellungen[SETTING.fremdflaggenZurueck] = false
+    welt({ wirft: true })
+    const { zeilen } = await mitschnitt(() => fremdflaggenZurueck())
+    t.gleich("W3: der Fehlschlag nennt Art und Kennung", zeilen.some((z) => z.includes("Scene szene0000000001")), true)
+    t.gleich("W3: die Meldung traegt nicht den Fehlertext", zeilen.some((z) => z.includes("abgelehnt")), false)
+  }
+  {
+    // W6 und W3: eine eingebettete Kachel ohne Kennung laesst sich nicht
+    // gezielt schreiben. Sie zaehlt als Fehler und wird mit dem Dokument
+    // gemeldet; die Marke bleibt offen.
+    einstellungen[SETTING.fremdflaggenZurueck] = false
+    const geschrieben = weltAus({ _id: "szene0000000002", tiles: [{ flags: { "monks-active-tiles": { klang: FREI(KLANG) } } }] },
+      { art: "Scene", eingebettet: { Tile: "tiles" }, sammlung: "scenes" })
+    const { wert: b, zeilen } = await mitschnitt(() => fremdflaggenZurueck())
+    t.gleich("W6: Kachel ohne Kennung wird nicht geschrieben", geschrieben.length, 0)
+    t.gleich("W6: Kachel ohne Kennung zaehlt als Fehler", b.fehler > 0, true)
+    t.gleich("W6: Kachel ohne Kennung laesst die Marke offen", einstellungen[SETTING.fremdflaggenZurueck], false)
+    t.gleich("W3: die Kachel ohne Kennung wird mit dem Dokument gemeldet",
+      zeilen.some((z) => z.includes("szene0000000002") && z.includes("Tile")), true)
+  }
+  {
+    // W4: nur Fehler, keine Adresse. Dann gibt es nichts zu schreiben, und
+    // der Riegel, der bis zu 1500 ms wartet, wird nicht genommen. Der besetzte
+    // Riegel zeigt es.
+    einstellungen[SETTING.fremdflaggenZurueck] = false
+    einstellungen[SETTING.nachzugRiegel] = `andere|${Date.now()}|zufall`
+    welt()
+    globalThis.game.scenes[0].toObject = () => { throw new Error("unlesbar") }
+    const { wert: b } = await mitschnitt(() => fremdflaggenZurueck())
+    einstellungen[SETTING.nachzugRiegel] = ""
+    t.gleich("W4: nur Fehler: der Riegel wird nicht genommen", b.grund, "gelaufen")
+    t.gleich("W4: nur Fehler: der Fehler steht im Bericht", b.fehler > 0, true)
+    t.gleich("W4: nur Fehler: die Marke bleibt offen", einstellungen[SETTING.fremdflaggenZurueck], false)
+  }
+  {
+    // W5: der Ruecklauf haelt den Weltriegel unter seinem Zweck, damit ein
+    // Adressnachzug, der ihn besetzt findet, weiss, dass er warten soll.
+    einstellungen[SETTING.fremdflaggenZurueck] = false
+    let gesehen = ""
+    welt()
+    const doc = globalThis.game.scenes[0]
+    const urUpdate = doc.update
+    doc.update = async (a) => { gesehen = String(einstellungen[SETTING.nachzugRiegel]); return urUpdate.call(doc, a) }
+    await mitschnitt(() => fremdflaggenZurueck())
+    t.gleich("W5: der Ruecklauf haelt den Riegel unter seinem Zweck", gesehen.endsWith("|fremdflaggen"), true)
+  }
+}
+
+t.abschnitt("W5: der Adressnachzug wartet auf den Ruecklauf")
+t.gleich("W5: das Abwarten ist exportiert", typeof nachzugRiegelNehmenNachRuecklauf, "function")
+if (typeof nachzugRiegelNehmenNachRuecklauf === "function") {
+  einstellungen[SETTING.nachzugRiegel] = `andere|${Date.now()}|zufall|fremdflaggen`
+  setTimeout(() => { einstellungen[SETTING.nachzugRiegel] = "" }, 30)
+  const { wert: marke } = await mitschnitt(() => nachzugRiegelNehmenNachRuecklauf({ schritt: 10, frist: 5000 }))
+  t.gleich("W5: haelt der Ruecklauf den Riegel, bekommt der Nachzug ihn danach", !!marke && marke !== "ohne-riegel", true)
+  await nachzugRiegelLoesen(marke)
+
+  einstellungen[SETTING.nachzugRiegel] = `andere|${Date.now()}|zufall`
+  const { wert: zweite, zeilen: zweiteZeilen } = await mitschnitt(() => nachzugRiegelNehmenNachRuecklauf({ schritt: 10, frist: 5000 }))
+  t.gleich("W5: haelt ein anderer Nachzug den Riegel, bleibt es beim Absagen", zweite, "")
+  t.gleich("W5: haelt ein anderer Nachzug den Riegel, wird nur einmal gefragt",
+    zweiteZeilen.filter((z) => z.includes("laeuft schon")).length, 1)
+
+  einstellungen[SETTING.nachzugRiegel] = `andere|${Date.now()}|zufall|fremdflaggen`
+  const anfang = Date.now()
+  const { wert: dritte, zeilen: dritteZeilen } = await mitschnitt(() => nachzugRiegelNehmenNachRuecklauf({ schritt: 10, frist: 40 }))
+  t.gleich("W5: endet der Ruecklauf nicht in der Frist, sagt der Nachzug ab", dritte, "")
+  t.gleich("W5: die Frist begrenzt das Warten", Date.now() - anfang < 1000, true)
+  t.gleich("W5: das Ende der Frist wird gemeldet", dritteZeilen.some((z) => z.includes("gab den Riegel nicht frei")), true)
+  einstellungen[SETTING.nachzugRiegel] = ""
+}
+{
+  const quelle = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "stream-settings.mjs"), "utf8")
+  const rumpf = quelle.slice(quelle.indexOf("async function _adressenNachziehen()"))
+  t.struktur("_adressenNachziehen nimmt den Riegel ueber das Abwarten",
+    rumpf.slice(0, 200).includes("await nachzugRiegelNehmenNachRuecklauf()"), true)
 }
 
 t.abschnitt("Einstieg: die feste Reihenfolge der Schluessellaeufe")

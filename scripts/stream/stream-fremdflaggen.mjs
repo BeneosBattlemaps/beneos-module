@@ -33,7 +33,7 @@
  * Pruefsatz: `stream-fremdflaggen.test.mjs`.
  */
 import { MODULE_ID, SETTING, streamKey, istPlatzhalter, leinwandAdresse,
-         nachzugRiegelNehmen, nachzugRiegelLoesen } from "./stream-settings.mjs"
+         nachzugRiegelNehmen, nachzugRiegelLoesen, RUECKLAUF_ZWECK } from "./stream-settings.mjs"
 
 /** Faltet einen Wert: jeder ganze `beneos://`-Wert wird Toradresse. */
 function falteZurueck(wert, zahl) {
@@ -56,21 +56,47 @@ function falteZurueck(wert, zahl) {
   return wert
 }
 
-/** Die Aenderung fuer die fremden Flags eines Quellobjekts, oder null. */
-function flaggenAenderung(quelle, bericht) {
-  const flags = quelle?.flags
-  if (!flags || typeof flags !== "object") return null
+const istObjekt = (w) => !!w && typeof w === "object" && !Array.isArray(w)
+
+/**
+ * Die Aenderung fuer die fremden Flags eines Quellobjekts, oder null.
+ *
+ * Flags liegen nicht nur oben am Dokument: das Prototyp-Token eines Akteurs
+ * traegt eigene (Kalt-Review W2). Darum wird das ganze Quellobjekt nach
+ * `flags` abgesucht, und geschrieben wird je Fund ein Punktpfad wie
+ * `prototypeToken.flags.<ns>`. `ohne` nimmt die eingebetteten Sammlungen aus,
+ * die als eigene Dokumente geschrieben werden.
+ *
+ * Ein `flags` innerhalb einer Liste laesst sich nicht ueber einen Punktpfad
+ * schreiben. Was dort an `beneos://` unter einem fremden Flag steht, zaehlt
+ * als Rest und bleibt.
+ */
+function flaggenAenderung(quelle, bericht, ohne = new Set()) {
   let aenderung = null
-  for (const [ns, wert] of Object.entries(flags)) {
-    if (ns === MODULE_ID) continue
-    const zahl = { adressen: 0, rest: 0 }
-    const neu = falteZurueck(wert, zahl)
-    bericht.rest += zahl.rest
-    if (!zahl.adressen) continue
-    bericht.adressen += zahl.adressen
-    aenderung ??= {}
-    aenderung[`flags.${ns}`] = neu
+  const besuche = (wert, pfad, inListe, tiefe) => {
+    if (tiefe > 40) return
+    if (Array.isArray(wert)) { for (const w of wert) besuche(w, pfad, true, tiefe + 1); return }
+    if (!istObjekt(wert)) return
+    for (const [k, v] of Object.entries(wert)) {
+      if (tiefe === 0 && ohne.has(k)) continue
+      if (k === "flags" && istObjekt(v)) {
+        for (const [ns, inhalt] of Object.entries(v)) {
+          if (ns === MODULE_ID) continue
+          const zahl = { adressen: 0, rest: 0 }
+          const neu = falteZurueck(inhalt, zahl)
+          bericht.rest += zahl.rest
+          if (!zahl.adressen) continue
+          if (inListe) { bericht.rest += zahl.adressen; continue }
+          bericht.adressen += zahl.adressen
+          aenderung ??= {}
+          aenderung[`${pfad}flags.${ns}`] = neu
+        }
+        continue
+      }
+      besuche(v, `${pfad}${k}.`, inListe, tiefe + 1)
+    }
   }
+  besuche(quelle, "", false, 0)
   return aenderung
 }
 
@@ -91,17 +117,24 @@ async function durchlaufen(bericht, trocken) {
     g.scenes, g.playlists, g.macros]
   for (const sammlung of sammlungen) {
     for (const doc of sammlung ?? []) {
+      // Gemeldet werden Art und Kennung, nie der Fehlertext: der kann eine
+      // Adresse tragen (Kalt-Review W3).
+      const wer = `${doc?.documentName ?? "Dokument"} ${doc?.id ?? "?"}`
       try {
         const quelle = doc.toObject()
         const eingebettet = doc.constructor?.metadata?.embedded ?? {}
-        const eigen = flaggenAenderung(quelle, bericht)
+        const eigen = flaggenAenderung(quelle, bericht, new Set(Object.values(eingebettet)))
         const kinder = []
         for (const [klasse, feld] of Object.entries(eingebettet)) {
           const teile = []
           for (const kind of Array.isArray(quelle[feld]) ? quelle[feld] : []) {
             const a = flaggenAenderung(kind, bericht)
             if (!a) continue
-            if (!kind?._id) { bericht.fehler++; continue }
+            if (!kind?._id) {
+              bericht.fehler++
+              console.warn(`Beneos Stream | Fremde Flags: ${wer}, ${klasse} ohne Kennung nicht geschrieben`)
+              continue
+            }
             teile.push({ ...a, _id: kind._id })
           }
           if (teile.length) kinder.push([klasse, teile])
@@ -113,6 +146,7 @@ async function durchlaufen(bericht, trocken) {
         for (const [klasse, teile] of kinder) await doc.updateEmbeddedDocuments(klasse, teile)
       } catch (_e) {
         bericht.fehler++
+        console.warn(`Beneos Stream | Fremde Flags: ${wer} nicht geschrieben`)
       }
     }
   }
@@ -137,13 +171,18 @@ export async function fremdflaggenZurueck({ trocken = false } = {}) {
     // Erst ohne Riegel zaehlen. Der Riegel wartet bis zu 1500 ms, und der
     // Weltstart wartet auf diesen Lauf. In einer Welt ohne fremde Adresse
     // setzt er darum nur die Marke und nimmt den Riegel gar nicht erst.
+    // Fand er nur Fehler, gibt es ebenso nichts zu schreiben; die Marke bleibt
+    // dann offen, und der naechste Start versucht es wieder (Kalt-Review W4).
     const vorab = { dokumente: 0, adressen: 0, rest: 0, fehler: 0 }
     await durchlaufen(vorab, true)
-    if (vorab.adressen === 0 && vorab.fehler === 0) {
+    if (vorab.adressen === 0) {
       bericht.rest = vorab.rest
-      await markeSetzen(bericht)
+      bericht.fehler = vorab.fehler
+      if (vorab.fehler === 0) await markeSetzen(bericht)
     } else {
-      const marke = await nachzugRiegelNehmen()
+      // Unter seinem Zweck, damit ein Adressnachzug, der den Riegel besetzt
+      // findet, auf diesen Lauf wartet statt abzusagen (Kalt-Review W5).
+      const marke = await nachzugRiegelNehmen(RUECKLAUF_ZWECK)
       if (!marke) { bericht.grund = "riegel"; return bericht }
       try {
         await durchlaufen(bericht, false)

@@ -447,5 +447,67 @@ console.log("H15 Auflage 1: der Schreiblauf aendert nur Bildadressen")
   wahr("H15 trocken: dieselben Fehler, nichts geschrieben", trocken.fehler === 2 && geschrieben.length === 1, JSON.stringify(trocken))
 }
 
+console.log("H16 Fremde Flags bleiben ausserhalb des Netzes (stre-T-128, Kalt-Review W1)")
+{
+  // Unter `flags.<fremd>` steht die Toradresse mit Schluessel, weil ein
+  // fremdes Modul sein HTML ohne unser Netz anzeigt. Weder Schreibnetz noch
+  // Altseiten-Lauf duerfen sie dort in Form (a) wandeln.
+  const roh = `<img src="${TOR}">`
+  const MID = "beneos-module"
+  const flach = { "flags.monks-active-tiles.notiz": roh, "prototypeToken.flags.monks-active-tiles.notiz": roh }
+  hakenListe.preUpdateActor[0]({}, flach)
+  wahr("H16 Update mit Punktpfad: fremdes Flag bleibt", flach["flags.monks-active-tiles.notiz"] === roh
+    && flach["prototypeToken.flags.monks-active-tiles.notiz"] === roh, JSON.stringify(flach))
+  const halb = { "prototypeToken.flags": { "monks-active-tiles": { notiz: roh } } }
+  hakenListe.preUpdateActor[0]({}, halb)
+  wahr("H16 Update mit Punktpfad bis flags: fremdes Flag bleibt", halb["prototypeToken.flags"]["monks-active-tiles"].notiz === roh,
+    JSON.stringify(halb))
+  wahr("H16 Aenderung mit Punktpfad: fremdes Flag bleibt",
+    htmlAenderung({ "flags.monks-active-tiles.notiz": roh }).aenderung === null)
+  const verschachtelt = { flags: { "monks-active-tiles": { notiz: roh }, [MID]: { notiz: roh } },
+    prototypeToken: { flags: { "monks-active-tiles": { notiz: roh } } } }
+  hakenListe.preUpdateActor[0]({}, verschachtelt)
+  wahr("H16 Update verschachtelt: fremdes Flag bleibt", verschachtelt.flags["monks-active-tiles"].notiz === roh
+    && verschachtelt.prototypeToken.flags["monks-active-tiles"].notiz === roh, JSON.stringify(verschachtelt))
+  wahr("H16 Gegenprobe Update: das eigene Flag wird Form (a)", ohneSchluessel(verschachtelt.flags[MID].notiz))
+  // Steht der eigene Namensraum selbst als Text da, ersetzt die Wandlung den
+  // Wert in der Huelle; erst das Zurueckschreiben bringt ihn ins Update.
+  const eigenText = { flags: { [MID]: roh } }
+  hakenListe.preUpdateActor[0]({}, eigenText)
+  wahr("H16 Gegenprobe Update: ein eigenes Flag als Text wird Form (a)", ohneSchluessel(eigenText.flags[MID]),
+    JSON.stringify(eigenText))
+  const eigenFlach = { [`flags.${MID}.notiz`]: roh }
+  hakenListe.preUpdateActor[0]({}, eigenFlach)
+  wahr("H16 Gegenprobe Update mit Punktpfad: das eigene Flag wird Form (a)", ohneSchluessel(eigenFlach[`flags.${MID}.notiz`]))
+
+  const tief = htmlAenderung({ flags: { "monks-active-tiles": { teil: { flags: { [MID]: { notiz: roh } } } } } }).aenderung
+  wahr("H16 unter einem fremden Flag bleibt auch ein tieferes eigenes Flag unberuehrt", tief === null, JSON.stringify(tief))
+
+  let quelle = null
+  const neu = {
+    _source: { name: "A", flags: { "monks-active-tiles": { notiz: roh } }, system: { bio: roh } },
+    updateSource(d) { quelle = d },
+  }
+  hakenListe.preCreateActor[0](neu)
+  wahr("H16 Anlegen: nur das eigene Feld wird gewandelt", JSON.stringify(Object.keys(quelle ?? {})) === '["system"]',
+    JSON.stringify(quelle))
+
+  const geschrieben = []
+  game.journal = []
+  game.items = []
+  game.actors = [{
+    documentName: "Actor", id: "aFremd",
+    constructor: { metadata: { embedded: { Item: "items" } } },
+    toObject: () => ({ name: "A", flags: { "monks-active-tiles": { notiz: roh } },
+      items: [{ _id: "i1", flags: { "monks-active-tiles": { notiz: roh } } }] }),
+    async update(d) { geschrieben.push(["update", d]) },
+    async updateEmbeddedDocuments(k, t) { geschrieben.push([k, t]) },
+  }]
+  const lauf = await altseitenUmstellen()
+  wahr("H16 Altseiten: fremde Flags werden nicht geschrieben", geschrieben.length === 0 && lauf.dokumente === 0,
+    JSON.stringify({ geschrieben, lauf }))
+  game.actors = []
+}
+
 console.log(`${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
 process.exit(rot ? 1 : 0)

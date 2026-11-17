@@ -29,7 +29,31 @@
  * nichts.
  */
 
-import { schluesselfreiAdresse, streamKey, streamHost } from "./stream-settings.mjs"
+import { MODULE_ID, schluesselfreiAdresse, streamKey, streamHost } from "./stream-settings.mjs"
+
+/*
+ * FREMDE FLAGS BLEIBEN AUSSERHALB DES NETZES (stre-T-128). Unter
+ * `flags.<fremdes Modul>` steht die Toradresse mit Schluessel, weil das fremde
+ * Modul sein HTML ohne unser Netz anzeigt; Form (a) waere dort ein leeres Bild.
+ * Dieselbe Regel wie in `applyStreamAddresses` (`stream-install.mjs`): einmal
+ * fremd, immer fremd darunter, darum wird der ganze Zweig uebergangen.
+ *
+ * Zwei Schreibweisen kommen an: verschachtelt (`{flags: {ns: ...}}`, auch
+ * unter `prototypeToken`) und als Punktpfad aus einem Update
+ * (`"flags.ns.feld"`, `"prototypeToken.flags.ns"`).
+ */
+const FREMDER_FLAGPFAD = /(?:^|\.)flags\.([^.]+)/
+function fremderFlagpfad(k) {
+  const m = FREMDER_FLAGPFAD.exec(k)
+  return !!m && m[1] !== MODULE_ID
+}
+function istFlagsSchluessel(k) { return k === "flags" || k.endsWith(".flags") }
+/** Nur das eigene Flag eines `flags`-Objekts; fremde Namensraeume fallen weg. */
+function nurEigeneFlags(flags) {
+  const aus = {}
+  if (MODULE_ID in flags) aus[MODULE_ID] = flags[MODULE_ID]
+  return aus
+}
 
 /**
  * Der Platzhalter: ein durchsichtiges SVG von einem Pixel, als `data:`-Adresse
@@ -316,7 +340,16 @@ export function htmlTiefSchluesselfrei(wert, _tiefe = 0) {
   if (_tiefe > 40 || !wert || typeof wert !== "object") return 0
   let zahl = 0
   for (const k of Object.keys(wert)) {
+    if (fremderFlagpfad(k)) continue
     const v = wert[k]
+    if (istFlagsSchluessel(k) && isObj(v)) {
+      // Eine Huelle mit nur dem eigenen Namensraum, an Ort und Stelle
+      // gewandelt und zurueckgeschrieben; ein String darin wird ersetzt.
+      const huelle = nurEigeneFlags(v)
+      zahl += htmlTiefSchluesselfrei(huelle, _tiefe + 1)
+      Object.assign(v, huelle)
+      continue
+    }
     if (typeof v === "string") {
       if (!kandidat(v)) continue
       const r = htmlSchluesselfrei(v)
@@ -386,6 +419,12 @@ function differenz(wert, zaehler, tiefe, dokument, seite = dokument) {
   if (isObj(wert)) {
     const aus = {}
     for (const [k, v] of Object.entries(wert)) {
+      if (fremderFlagpfad(k)) continue
+      if (istFlagsSchluessel(k) && isObj(v)) {
+        const t = differenz(nurEigeneFlags(v), zaehler, tiefe + 1, false)
+        if (t !== undefined) aus[k] = t
+        continue
+      }
       const t = differenz(v, zaehler, tiefe + 1, dokument && Array.isArray(v))
       if (t !== undefined) aus[k] = t
     }

@@ -492,12 +492,23 @@ const RIEGEL_FRIST_MS = 10 * 60 * 1000
 /** Wie lange auf die Verteilung der eigenen Marke gewartet wird. */
 const RIEGEL_WARTE_MS = 1500
 
-function eigeneMarke() {
+function eigeneMarke(zweck = "") {
   let zufall = ""
   try { zufall = String(foundry.utils?.randomID?.(8) || "") } catch (_e) { zufall = "" }
   if (!zufall) zufall = String(Math.random()).slice(2, 10)
-  return `${game.userId || "?"}|${Date.now()}|${zufall}`
+  // Der Zweck steht an vierter Stelle; `riegelEntscheid` liest nur die Zeit
+  // an zweiter, eine Marke ohne Zweck bleibt gueltig.
+  return `${game.userId || "?"}|${Date.now()}|${zufall}${zweck ? `|${zweck}` : ""}`
 }
+
+/**
+ * Der Zweck, unter dem der Ruecklauf der fremden Flags den Weltriegel haelt
+ * (`stream-fremdflaggen.mjs`, Kalt-Review W5 vom 17.11.2026).
+ */
+export const RUECKLAUF_ZWECK = "fremdflaggen"
+
+/** Der Zweck einer Riegelmarke, oder "" ohne. */
+function riegelZweck(marke) { return String(marke || "").split("|")[3] || "" }
 
 /**
  * Den Riegel dieser WELT nehmen, oder absagen.
@@ -546,7 +557,8 @@ export function riegelEntscheid(stehendeMarke, jetzt = Date.now()) {
   return alter < RIEGEL_FRIST_MS ? "besetzt" : "abgelaufen"
 }
 
-export async function nachzugRiegelNehmen() {
+/** @param {string} [zweck] steht in der Marke, siehe `RUECKLAUF_ZWECK` */
+export async function nachzugRiegelNehmen(zweck = "") {
   let marke = ""
   try {
     const steht = String(read(SETTING.nachzugRiegel, "") || "")
@@ -558,7 +570,7 @@ export async function nachzugRiegelNehmen() {
     if (entscheid === "abgelaufen") {
       console.warn("Beneos Stream | Alte Riegelmarke im Adressnachzug, Frist abgelaufen, wird uebernommen")
     }
-    marke = eigeneMarke()
+    marke = eigeneMarke(zweck)
     await game.settings.set(MODULE_ID, SETTING.nachzugRiegel, marke)
     await new Promise((fertig) => setTimeout(fertig, RIEGEL_WARTE_MS))
     if (String(read(SETTING.nachzugRiegel, "") || "") !== marke) {
@@ -581,6 +593,33 @@ export async function nachzugRiegelNehmen() {
     // Anfang der naechsten Doppelausfuehrung.
     return "ohne-riegel"
   }
+}
+
+/**
+ * Der Riegel fuer den Adressnachzug, mit Warten auf den Ruecklauf.
+ *
+ * Haelt der Ruecklauf der fremden Flags den Riegel beim Weltstart, saehe ein
+ * Schluesselwechsel in einer anderen Sitzung ihn besetzt und sagte ab; die
+ * Welt behielte dann die Adressen mit dem alten Schluessel bis zum naechsten
+ * Wechsel (Kalt-Review W5 vom 17.11.2026). Darum wartet der Nachzug, bis der
+ * Ruecklauf ihn freigibt, hoechstens die Riegelfrist, und versucht es dann
+ * einmal. Haelt ein anderer Adressnachzug den Riegel, bleibt es beim Absagen:
+ * der zieht dieselben Adressen nach.
+ */
+export async function nachzugRiegelNehmenNachRuecklauf({ schritt = 2000, frist = RIEGEL_FRIST_MS } = {}) {
+  const marke = await nachzugRiegelNehmen()
+  if (marke) return marke
+  const lies = () => { try { return String(read(SETTING.nachzugRiegel, "") || "") } catch (_e) { return "" } }
+  if (riegelZweck(lies()) !== RUECKLAUF_ZWECK) return ""
+  const beginn = Date.now()
+  while (riegelZweck(lies()) === RUECKLAUF_ZWECK && Date.now() - beginn < frist) {
+    await new Promise((weiter) => setTimeout(weiter, schritt))
+  }
+  if (riegelZweck(lies()) === RUECKLAUF_ZWECK) {
+    console.warn("Beneos Stream | Adressnachzug: der Ruecklauf der fremden Flags gab den Riegel nicht frei")
+    return ""
+  }
+  return nachzugRiegelNehmen()
 }
 
 export async function nachzugRiegelNehmenFuerPruefsatz() { return nachzugRiegelNehmen() }
@@ -659,7 +698,7 @@ async function adressenNachziehen() {
 }
 
 async function _adressenNachziehen() {
-  const marke = await nachzugRiegelNehmen()
+  const marke = await nachzugRiegelNehmenNachRuecklauf()
   if (!marke) return
   const anzeige = nachzugAnzeige()
   try {
