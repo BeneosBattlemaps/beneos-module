@@ -86,7 +86,7 @@
  *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
- * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig]
+ * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig] [--zeitgrenze <ms>]
  *           node tools/stream-sabotagen.mjs --alle-saetze
  * Rueckgabe 0 alles belegt, 1 ein Befund, 2 nicht pruefbar.
  */
@@ -95,7 +95,8 @@ import { readFileSync, writeFileSync, mkdtempSync, cpSync, rmSync, readdirSync, 
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { execFile, execFileSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
+import { fahreKind, einordnen, erklaere, ZEITGRENZE_MS } from "./lib/kindlauf.mjs";
 
 const WURZEL = join(dirname(fileURLToPath(import.meta.url)), "..");
 const BASIS = "75555bb";
@@ -1247,27 +1248,21 @@ function ersetze(lies, liste) {
 // sonst haelt unter Windows ihr Arbeitsordner die Kopie fest (EBUSY).
 const kinder = new Set();
 
-function fahre(verzeichnis, datei) {
-  return new Promise((ok) => {
-    const kind = execFile(process.execPath, ["--no-warnings", datei],
-      { cwd: verzeichnis, timeout: 120000, maxBuffer: 16 * 1024 * 1024 },
-      (fehler, stdout) => {
-        kinder.delete(kind);
-        const rot = new Set();
-        const gruen = new Set();
-        const doppelt = new Set();
-        for (const z of String(stdout).split("\n")) {
-          if (z.startsWith("  ROT  ")) rot.add(z.slice(7).trim());
-          if (z.startsWith("  ok   ")) {
-            const n = z.slice(7).trim();
-            if (gruen.has(n)) doppelt.add(n);
-            gruen.add(n);
-          }
-        }
-        ok({ rc: fehler ? (fehler.code ?? 1) : 0, rot, gruen, doppelt });
-      });
-    kinder.add(kind);
-  });
+/*
+ * DER LAUF STEHT SEIT stre-T-126 IN `tools/lib/kindlauf.mjs`. Vorher stand er
+ * hier, setzte `rc: fehler.code ?? 1` und verwarf stderr: ein Absturz und eine
+ * Toetung an der Zeitgrenze hiessen beide "rc 1 ohne rote Probe". Jetzt kommt
+ * jeder Ausgang mit Art und Erklaerung zurueck, und eine Toetung zaehlt als
+ * nicht pruefbar, nie als bewacht.
+ */
+//
+// `--zeitgrenze <ms>` gilt nur fuer die Sabotagelaeufe, der Grundlauf und
+// `--alle-saetze` behalten 120 s. Sie ist die Probe dafuer, dass eine Toetung
+// als nicht pruefbar endet: mit `--zeitgrenze 1` waere sonst schon der
+// Grundlauf getoetet, und der Weg mit S-Nummer liefe nie.
+const zeitgrenze = Number(arg("--zeitgrenze") ?? ZEITGRENZE_MS);
+function fahre(verzeichnis, datei, grenze = ZEITGRENZE_MS) {
+  return fahreKind(verzeichnis, datei, { zeitgrenze: grenze, kinder });
 }
 
 function kopiere(ziel) {
@@ -1291,8 +1286,9 @@ if (process.argv.includes("--alle-saetze")) {
   let schlecht = 0;
   for (const s of saetze) {
     const r = await fahre(WURZEL, s);
-    if (r.rc !== 0) schlecht += 1;
-    console.log(`${s} rc=${r.rc} ok=${r.gruen.size} rot=${r.rot.size}`);
+    if (r.rc !== 0 || r.getoetet) schlecht += 1;
+    const warum = ["absturz", "zeitgrenze"].includes(einordnen(r)) ? ` ${einordnen(r)}: ${erklaere(r)}` : "";
+    console.log(`${s} rc=${r.rc} ok=${r.gruen.size} rot=${r.rot.size}${warum}`);
   }
   console.log(`saetze=${saetze.length}, davon rc ungleich 0: ${schlecht}`);
   // Eine Untergrenze wie im Haken: ein neuer Satz bricht die Zahl nicht.
@@ -1409,14 +1405,16 @@ lauf: try {
       console.log(`NICHT PRUEFBAR: ${satz} traegt doppelte Probennamen: ${[...r.doppelt].join(" | ")}`);
       nichtPruefbar += 1;
     }
-    if (r.rc !== 0 || r.rot.size > 0) {
-      console.log(`NICHT PRUEFBAR: ${satz} ist schon ohne Sabotage rot (${r.rot.size}).`);
+    if (r.rc !== 0 || r.rot.size > 0 || r.getoetet) {
+      const art = einordnen(r);
+      const warum = art === "rot" ? `${r.rot.size} rot` : `${art}: ${erklaere(r)}`;
+      console.log(`NICHT PRUEFBAR: ${satz} ist schon ohne Sabotage nicht gruen (${warum}).`);
       nichtPruefbar += 1;
     }
     if (mitAlt && mitBasis(satz)) {
       const a = await fahre(kopienAlt[0], SATZDATEI(satz));
-      if (a.rc !== 0) {
-        console.log(`NICHT PRUEFBAR: der alte Satz ${satz} ist schon ohne Sabotage rot.`);
+      if (a.rc !== 0 || a.getoetet) {
+        console.log(`NICHT PRUEFBAR: der alte Satz ${satz} ist schon ohne Sabotage nicht gruen (${einordnen(a)}: ${erklaere(a)}).`);
         nichtPruefbar += 1;
       }
     }
@@ -1436,7 +1434,7 @@ lauf: try {
       const e = ersetze(lies, s.ersetze);
       if (e.fehler) { ergebnisse.push({ s, fehler: e.fehler }); continue; }
       for (const [datei, text] of e.neu) writeFileSync(join(kopienNeu[i], datei), text);
-      const r = await fahre(kopienNeu[i], SATZDATEI(s.satz));
+      const r = await fahre(kopienNeu[i], SATZDATEI(s.satz), zeitgrenze);
       for (const datei of e.neu.keys()) {
         if (existsSync(join(WURZEL, datei))) writeFileSync(join(kopienNeu[i], datei), lies(datei));
         else rmSync(join(kopienNeu[i], datei), { force: true });
@@ -1449,7 +1447,7 @@ lauf: try {
         if (ea.fehler) a = { fehlerAlt: ea.fehler };
         else {
           for (const [datei, text] of ea.neu) writeFileSync(join(kopienAlt[i], datei), text);
-          a = await fahre(kopienAlt[i], SATZDATEI(s.satz));
+          a = await fahre(kopienAlt[i], SATZDATEI(s.satz), zeitgrenze);
           for (const datei of ea.neu.keys()) {
             if (existsSync(join(WURZEL, datei))) writeFileSync(join(kopienAlt[i], datei), liesAlt(datei));
             else rmSync(join(kopienAlt[i], datei), { force: true });
@@ -1473,6 +1471,14 @@ lauf: try {
       continue;
     }
     if (zeig) console.log(`  ${kopf} rc ${r.rc} rot: ${[...r.rot].join(" | ")}`);
+    // AN DER ZEITGRENZE GETOETET IST NICHT GEMESSEN (stre-T-126). Was der
+    // Prozess bis dahin gedruckt hat, ist kein Ergebnis: seine Ziele zaehlen
+    // nicht als bewacht, und der Lauf endet mit rc 2, nie gruen.
+    if (r.getoetet) {
+      nichtPruefbar += 1;
+      console.log(`  NICHT PRUEFBAR ${kopf}: ${erklaere(r, zeitgrenze)}`);
+      continue;
+    }
     // Ein Ziel muss eine Probe des ungestoerten Satzes sein. Traegt ein
     // Probenname einen Wert, den die Sabotage aendert, heisst die rote Probe
     // anders als die gruene, und das Ziel bewachte nichts.
@@ -1484,9 +1490,10 @@ lauf: try {
     // Ein Satz, der abbricht, ohne eine Probe rot zu melden, zeigt keine
     // Wirkung, sondern einen Absturz (gemessen an stream-geteilt, 14.11.2026:
     // `.match(...).length` auf null).
-    if (r.rc !== 0 && r.rot.size === 0) {
+    // Seit stre-T-126 mit dem, was der Prozess auf stderr gesagt hat.
+    if (einordnen(r) === "absturz") {
       befund += 1;
-      console.log(`  BEFUND ${kopf}: rc ${r.rc} ohne rote Probe, der Satz bricht ab`);
+      console.log(`  BEFUND ${kopf}: ohne rote Probe abgebrochen, ${erklaere(r, zeitgrenze)}`);
     }
     for (const n of s.ziel) if (r.rot.has(n) && proben[s.satz].has(n)) bewacht[s.satz].add(n);
     const verfehlt = s.ziel.filter((z) => !r.rot.has(z));
@@ -1498,6 +1505,10 @@ lauf: try {
       luecken[s.satz] += 1;
       nichtPruefbar += 1;
       console.log(`  NICHT PRUEFBAR ${kopf}: im alten Stand ${a.fehlerAlt}`);
+    } else if (a && a.getoetet) {
+      luecken[s.satz] += 1;
+      nichtPruefbar += 1;
+      console.log(`  NICHT PRUEFBAR ${kopf}: im alten Stand ${erklaere(a, zeitgrenze)}`);
     } else if (a) {
       luecken[s.satz] += 1;
       if (a.rc === 0) altGruen[s.satz] += 1;
