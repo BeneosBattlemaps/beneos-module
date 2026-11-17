@@ -28,6 +28,7 @@ import { installStreamIndicator } from "./stream-indicator.mjs"
 import { installStreamBilder, bilderBlobStand } from "./stream-bilder.mjs"
 import { installStreamSceneUi } from "./stream-scene-ui.mjs"
 import { installStreamLeinwand } from "./stream-leinwand.mjs"
+import { installStreamExport } from "./stream-export.mjs"
 import { installHtmlNetz, altseitenUmstellen } from "./stream-html.mjs"
 import { fremdflaggenZurueck } from "./stream-fremdflaggen.mjs"
 import { flaggenUmstellen } from "./stream-flaggen.mjs"
@@ -88,6 +89,9 @@ Hooks.once("init", () => {
   // direkt, und so bleibt es.
   installKonsolenMaske()
   installStreamLeinwand()
+  // stre-T-134, am Schluessel wie die Leinwand: kein Schluessel in einem
+  // Export, und beim Hereinkommen heilt die Spielleitung fremde Flags.
+  installStreamExport()
   // stre-T-116, am Schluessel wie die Leinwand. Das HTML traegt Form (a):
   // einen neutralen Platzhalter in `src`, die Adresse schluesselfrei in
   // `data-beneos-src`. Das Netz haelt den Schluessel beim Speichern aus dem
