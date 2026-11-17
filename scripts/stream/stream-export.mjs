@@ -85,11 +85,7 @@ function schluesselFormen() {
 }
 
 function textFrei(text, formen) {
-  let neu = text
-  // Ein ganzer Wert ohne Leerraum geht als eine Adresse durch. Mit Leerraum
-  // nicht: `URL` kodierte den Text dahinter in den Pfad.
-  if (/^https?:\/\/\S+$/i.test(neu)) neu = wandle(neu)
-  neu = neu.replace(TOR_IM_TEXT, wandle)
+  let neu = text.replace(TOR_IM_TEXT, wandle)
   for (const form of formen) if (neu.includes(form)) neu = neu.split(form).join("-")
   return neu
 }
@@ -140,8 +136,6 @@ function wickleExport(proto) {
 
 /* ------------------------------------------------------------- Heilen */
 
-const UNTERWEGS = new Set()
-
 function darfHeilen(doc, userId) {
   if (!globalThis.game?.user?.isGM) return false
   if (userId !== globalThis.game.user.id) return false
@@ -159,7 +153,9 @@ export async function heile(doc) {
   const quelle = doc.toObject()
   const eingebettet = doc.constructor?.metadata?.embedded ?? {}
   const bericht = { adressen: 0, rest: 0 }
-  const eigen = flaggenAenderung(quelle, bericht, new Set(Object.values(eingebettet)))
+  // Die eingebetteten Sammlungen sind Listen; was dort steht, faltet
+  // `flaggenAenderung` nicht, es wird unten je Kind geschrieben.
+  const eigen = flaggenAenderung(quelle, bericht)
   let schreibe = 0
   if (eigen) { await doc.update(eigen); schreibe++ }
   for (const [klasse, feld] of Object.entries(eingebettet)) {
@@ -174,19 +170,13 @@ export async function heile(doc) {
 }
 
 async function heileSicher(doc) {
-  const wer = `${doc?.documentName ?? "Dokument"} ${doc?.id ?? "?"}`
-  // Das eigene Update feuert denselben Haken wieder; es traegt kein
-  // `beneos://` mehr und faellt am Vorfilter. Die Menge haelt nur einen
-  // gleichzeitigen zweiten Lauf am selben Dokument fern.
-  if (UNTERWEGS.has(doc)) return 0
-  UNTERWEGS.add(doc)
+  // Das eigene Update feuert `update<Art>` wieder; es traegt kein `beneos://`
+  // mehr und faellt dort am Vorfilter.
   try {
     return await heile(doc)
   } catch (_e) {
-    console.warn(`Beneos Stream | Import: fremde Flags von ${wer} nicht geheilt`)
+    console.warn(`Beneos Stream | Import: fremde Flags von ${doc?.documentName ?? "Dokument"} ${doc?.id ?? "?"} nicht geheilt`)
     return 0
-  } finally {
-    UNTERWEGS.delete(doc)
   }
 }
 
@@ -212,7 +202,7 @@ export function installStreamExport() {
     if (BEHORCHT.has(art)) continue
     BEHORCHT.add(art)
     globalThis.Hooks.on(`create${art}`, (doc, _optionen, userId) => {
-      if (!darfHeilen(doc, userId) || !traegtPlatzhalter(doc.toObject?.())) return undefined
+      if (!darfHeilen(doc, userId)) return undefined
       return heileSicher(doc)
     })
     globalThis.Hooks.on(`update${art}`, (doc, aenderung, _optionen, userId) => {
