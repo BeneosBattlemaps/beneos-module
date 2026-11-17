@@ -39,11 +39,24 @@ const exportSchluesselfrei = modul?.exportSchluesselfrei ?? ((d) => d)
 
 const t = pruefstand("stre-T-134: kein Schluessel im Export, Heilen beim Hereinkommen")
 
+/*
+ * Wirft ein Export, steht an seiner Stelle WURF: jeder Zugriff darauf liefert
+ * wieder WURF, und jeder Vergleich damit ist rot. Der Riegel in Schritt 5 haelt
+ * einen Export mit Schluessel an; ohne diese Stelle braeche der Pruefsatz dort
+ * ab, statt die Probe rot zu melden.
+ */
+const WURF = new Proxy(function wurf() {}, {
+  get: (_z, p) => (p === "toJSON" ? () => "Export geworfen" : WURF),
+})
+const exp = (doc, optionen = {}) => { try { return doc.toCompendium(null, optionen) } catch (_e) { return WURF } }
+const expJ = (doc) => { try { return doc.exportToJSON() } catch (_e) { return WURF } }
+
 const zaehle = (wert) => {
+  if (wert === WURF) return "Export geworfen"
   const s = typeof wert === "string" ? wert : JSON.stringify(wert)
   return s.split(SCHLUESSEL).length - 1
 }
-const zaehleAlt = (wert) => JSON.stringify(wert).split(ALTER).length - 1
+const zaehleAlt = (wert) => (wert === WURF ? "Export geworfen" : JSON.stringify(wert).split(ALTER).length - 1)
 const kopie = (x) => JSON.parse(JSON.stringify(x))
 
 const REL = "beneos_bm_pruefsatz"
@@ -77,6 +90,15 @@ class KernDokument {
   }
   async update(a) { geschrieben.push([this.documentName, "update", a]) }
   async updateEmbeddedDocuments(k, teile) { geschrieben.push([this.documentName, k, teile]) }
+  // Wie der Kern: die Kinder einer Sammlung als eigene Dokumente.
+  getEmbeddedCollection(k) {
+    const feld = this.constructor.metadata.embedded[k]
+    const Klasse = globalThis.CONFIG[k].documentClass
+    const wert = this._source[feld]
+    // Ein Einzelkind (ActorDelta) ist ein Dokument, keine Sammlung.
+    if (wert && !Array.isArray(wert)) return new Klasse(k, wert, { parent: this })
+    return (wert ?? []).map((q) => new Klasse(k, q, { parent: this }))
+  }
 }
 class Kachel extends KernDokument { static metadata = { embedded: {} } }
 class Szene extends KernDokument {
@@ -101,10 +123,20 @@ class NotizUnter extends Notiz {
 // Fuer die Vertraeglichkeit: zaehlt die Rufe des Originals.
 let originalRufe = 0
 class Gegenstand extends KernDokument {
-  static metadata = { embedded: {} }
+  static metadata = { embedded: { ActiveEffect: "effects" } }
   toCompendium(pack, optionen) { originalRufe++; return super.toCompendium(pack, optionen) }
 }
+class Effekt extends KernDokument { static metadata = { embedded: {} } }
+class Delta extends KernDokument { static metadata = { embedded: {} } }
+class Marke extends KernDokument { static metadata = { embedded: { ActorDelta: "delta" } } }
+// Wie dnd5e: die Klasse in CONFIG erbt toCompendium von ihrer Elternklasse.
+class AkteurBasis extends KernDokument {}
+class Akteur extends AkteurBasis { static metadata = { embedded: { Item: "items" } } }
 
+globalThis.CONFIG.ActiveEffect = { documentClass: Effekt }
+globalThis.CONFIG.ActorDelta = { documentClass: Delta }
+globalThis.CONFIG.Token = { documentClass: Marke }
+globalThis.CONFIG.Actor = { documentClass: Akteur }
 globalThis.CONFIG.Tile = { documentClass: Kachel }
 globalThis.CONFIG.Scene = { documentClass: Szene }
 globalThis.CONFIG.JournalEntry = { documentClass: Journal }
@@ -152,14 +184,25 @@ Gegenstand.prototype.toCompendium = function fremdNachher(...a) {
   return d
 }
 
+// Eine fremde Huelle NACH unserer an der ELTERNKLASSE, wie scene-packer per
+// libWrapper an Actor.prototype.
+let spaetRufe = 0
+const urBasis = AkteurBasis.prototype.toCompendium
+AkteurBasis.prototype.toCompendium = function spaetAnEltern(...a) {
+  spaetRufe++
+  const d = urBasis.apply(this, a)
+  d.flags = { ...(d.flags ?? {}), "scene-packer": { sourceId: "Actor.quelle" } }
+  return d
+}
+
 /* ------------------------------------------------------------- Huelle */
 
 t.abschnitt("Mit Huelle: 0 Mal der Schluessel")
 {
   const k = new Kachel("Tile", kachelQuelle())
-  const daten = k.toCompendium(null, {})
+  const daten = exp(k)
   t.gleich("mit Huelle: toCompendium traegt den Schluessel 0 Mal", zaehle(daten), 0)
-  t.gleich("mit Huelle: exportToJSON traegt den Schluessel 0 Mal", zaehle(k.exportToJSON()), 0)
+  t.gleich("mit Huelle: exportToJSON traegt den Schluessel 0 Mal", zaehle(expJ(k)), 0)
   t.gleich("fremdes audiofile wird beneos://",
     daten.flags[MONKS].actions[0].data.audiofile, FREI(KLANG))
   t.gleich("_source behaelt die Toradresse (die Welt spielt wie vorher)", zaehle(k._source), 1)
@@ -176,7 +219,7 @@ t.abschnitt("Text und HTML")
     text: html,
     flags: { "fremd-modul": { notiz: `Siehe ${TOR(KLANG)} und ${TOR(BILD)}.`, ziel: "https://fremd.example/bilder/x.webp" } },
   })
-  const d = j.toCompendium(null, {})
+  const d = exp(j)
   t.gleich("eigenes HTML mit zwei Adressen: 0 Mal", zaehle(d.text), 0)
   t.gleich("eigenes HTML: das Bild wird Form (a)", d.text.includes(`data-beneos-src="${FREI(BILD)}"`), true)
   t.gleich("fremder Text mit zwei Adressen: 0 Mal", zaehle(d.flags["fremd-modul"].notiz), 0)
@@ -201,7 +244,7 @@ t.abschnitt("Riegel")
       },
     },
   })
-  const d = j.toCompendium(null, {})
+  const d = exp(j)
   const f = d.flags["fremd-modul"]
   t.gleich("nicht rundlaufende Toradresse: 0 Mal", zaehle(f.schief), 0)
   t.gleich("nicht rundlaufende Toradresse: maskiert statt umgedeutet", f.schief, `${GATE}/a/-/beneos_ct_pruef/4k/kreatur.webp`)
@@ -220,23 +263,28 @@ t.abschnitt("Abenteuer und Szene")
     tiles: [kachelQuelle()],
   })
   // adventure-exporter.mjs:315 ruft je Dokument so.
-  const d = s.toCompendium(null, { clearFlags: false, clearSort: false, clearFolder: false, keepId: true })
+  const d = exp(s, { clearFlags: false, clearSort: false, clearFolder: false, keepId: true })
   t.gleich("Abenteuerexport mit clearFlags:false: 0 Mal", zaehle(d), 0)
   t.gleich("Abenteuerexport: die Kennung bleibt", d._id, "szene0000000001")
   t.gleich("Szene: was nach super kommt, bleibt", d.nachSuper, true)
   const n = new NotizUnter("Region", { _id: "notiz0000000001" })
-  t.gleich("Unterklasse haengt nach super eine Toradresse an: 0 Mal", zaehle(n.toCompendium(null, {})), 0)
+  t.gleich("Unterklasse haengt nach super eine Toradresse an: 0 Mal", zaehle(exp(n)), 0)
 }
 
 t.abschnitt("Vertraeglichkeit mit fremden Huellen")
 {
   originalRufe = 0
   const g = new Gegenstand("Item", { _id: "gegenstand00001", flags: { [MONKS]: { a: TOR(KLANG) } } })
-  const d = g.toCompendium(null, {})
+  const d = exp(g)
   t.gleich("das Original laeuft genau einmal", originalRufe, 1)
   t.gleich("die fremde Huelle davor: ihr Wert bleibt, ohne Schluessel", d.fremdVorher, FREI(KLANG))
   t.gleich("die fremde Huelle danach: ihr Wert bleibt", d.fremdNachher, true)
   t.gleich("Vertraeglichkeit: 0 Mal", zaehle(d), 0)
+  const a = new Akteur("Actor", { _id: "akteur000000001", flags: { [MONKS]: { a: TOR(KLANG) } } })
+  const da = exp(a)
+  t.gleich("fremde Huelle spaeter an der Elternklasse: genau ein Ruf", spaetRufe, 1)
+  t.gleich("fremde Huelle spaeter an der Elternklasse: ihr Flag bleibt", da.flags?.["scene-packer"]?.sourceId, "Actor.quelle")
+  t.gleich("geerbte Methode: 0 Mal", zaehle(da), 0)
   const vorZweitem = Kachel.prototype.toCompendium
   installStreamExport()
   t.gleich("ein zweiter Einbau wickelt nicht doppelt", Kachel.prototype.toCompendium === vorZweitem, true)
@@ -255,6 +303,15 @@ t.abschnitt("Fehler in der Wandlung")
   t.gleich("die Wandlung wirft: der Export wirft auch", fehler !== null, true)
   t.gleich("die Fehlermeldung traegt den Schluessel 0 Mal", zaehle(String(fehler?.message ?? "")), 0)
 }
+{
+  // Was der Lauf ueber die Werte nicht erreicht, haelt den Export an.
+  const wirft = (daten) => { try { exportSchluesselfrei(daten); return false } catch (_e) { return true } }
+  t.gleich("Schluessel im Eigenschaftsnamen: der Export wirft", wirft({ flags: { "fremd-modul": { [TOR(KLANG)]: 1 } } }), true)
+  let tief = TOR(KLANG)
+  for (let i = 0; i < 44; i++) tief = { x: tief }
+  t.gleich("Schluessel tiefer als 40: der Export wirft", wirft({ flags: { "fremd-modul": tief } }), true)
+  t.gleich("ohne Schluessel im Ergebnis: der Export wirft nicht", wirft({ flags: { "fremd-modul": { a: TOR(KLANG) } } }), false)
+}
 
 t.abschnitt("Schluessel mit Sonderzeichen")
 {
@@ -270,8 +327,7 @@ t.abschnitt("Schluessel mit Sonderzeichen")
 t.abschnitt("Ohne Schluessel")
 {
   schluesselAn = false
-  const d = new Journal("JournalEntry", { _id: "journal00000004", flags: { [MONKS]: { a: `${GATE}/a/${ALTER}/${REL}/${VAR}/k.ogg` } } })
-    .toCompendium(null, {})
+  const d = exp(new Journal("JournalEntry", { _id: "journal00000004", flags: { [MONKS]: { a: `${GATE}/a/${ALTER}/${REL}/${VAR}/k.ogg` } } }))
   t.gleich("ohne Schluessel: die Toradresse wird maskiert", zaehleAlt(d), 0)
   schluesselAn = true
 }
@@ -312,6 +368,43 @@ t.abschnitt("Heilen beim Hereinkommen")
   const alt = new Szene("Scene", { _id: "szene0000000004", tiles: [frei()] })
   const w2 = await ruf("updateScene", alt, { tiles: kopie(alt._source.tiles) }, { noHook: true, diff: false }, "nutzer")
   t.gleich("Abenteuerimport, vorhandene Szene (noHook): die Kachel heilt", (w2.find(([, art]) => art === "Tile")?.[2] ?? [])[0]?.[`flags.${MONKS}`]?.actions?.[0]?.data?.audiofile, TOR(KLANG))
+}
+
+{
+  // Rundlauf: fremdes HTML mit zwei Adressen mitten im Text.
+  const html = `<p><img src="${TOR(BILD)}"> und ${TOR(KLANG)} Ende.</p>`
+  const welt = { _id: "kachel000000006", flags: { "fremd-modul": { html } } }
+  const export_ = exp(new Kachel("Tile", welt), { keepId: true })
+  t.gleich("fremdes HTML im Export: 0 Mal", zaehle(export_), 0)
+  const w = await ruf("createTile", new Kachel("Tile", export_), {}, "nutzer")
+  const a = w.find(([, art]) => art === "update")?.[2] ?? {}
+  t.gleich("fremdes HTML nach dem Rundlauf: wie vorher", a["flags.fremd-modul"]?.html, html)
+}
+{
+  // Enkel: Effekt unter Gegenstand unter Akteur.
+  const akteur = new Akteur("Actor", {
+    _id: "akteur000000002",
+    items: [{ _id: "gegenstand00002", flags: { [MONKS]: { a: FREI(KLANG) } },
+      effects: [{ _id: "effekt000000001", flags: { [MONKS]: { a: FREI(KLANG) } } }] }],
+  })
+  const w = await ruf("createActor", akteur, {}, "nutzer")
+  const kind = (w.find(([wer, art]) => wer === "Actor" && art === "Item")?.[2] ?? [])[0]
+  const enkel = (w.find(([wer, art]) => wer === "Item" && art === "ActiveEffect")?.[2] ?? [])[0]
+  t.gleich("Kind: der Gegenstand heilt", kind?.[`flags.${MONKS}`]?.a, TOR(KLANG))
+  t.gleich("Enkel: der Effekt heilt", enkel?.[`flags.${MONKS}`]?.a, TOR(KLANG))
+  t.gleich("Enkel: er traegt seine Kennung", enkel?._id, "effekt000000001")
+}
+{
+  // Einzelkind: das ActorDelta eines Tokens bleibt aussen vor, ohne Fehler.
+  const marke = new Marke("Token", { _id: "marke0000000001", flags: { [MONKS]: { a: FREI(KLANG) } },
+    delta: { _id: "delta0000000001", flags: { [MONKS]: { a: FREI(KLANG) } } } })
+  geschrieben.length = 0
+  let fehler = null
+  try { await modul?.heile?.(marke) } catch (e) { fehler = e }
+  const a = geschrieben.find(([, art]) => art === "update")?.[2] ?? {}
+  t.gleich("Einzelkind: das Heilen wirft nicht", fehler, null)
+  t.gleich("Einzelkind: die Marke heilt", a[`flags.${MONKS}`]?.a, TOR(KLANG))
+  t.gleich("Einzelkind: das Delta steht nicht im Update der Marke", `delta.flags.${MONKS}` in a, false)
 }
 
 t.abschnitt("Heilen: Gegenproben")
