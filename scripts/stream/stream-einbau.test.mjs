@@ -121,6 +121,34 @@ gleich("Modus aus mit Schluessel: das Schreibnetz haengt", haken.namen().include
   gleich("Modus aus mit Schluessel: ein gescheiterter Klang wird neu aufgebaut", klang.sound !== alt, true)
 }
 
+/*
+ * DERSELBE HAKEN BAUT DEN SZENENKLANG NEU (stre-T-123). Gemessen wird wieder
+ * die Wirkung am Placeable der angezeigten Szene, nicht ein Hakenname.
+ */
+{
+  const { MODULE_ID } = await import("./stream-settings.mjs")
+  const alt = { failed: true, playing: false, loaded: false, _state: -1, src: "alt", _manager: null }
+  const pfad = "beneos://a/beneos_bm_0006/4k/amb/regen.ogg"
+  const szenenklang = {
+    id: "e1",
+    destroyed: false,
+    sound: alt,
+    document: {
+      _source: { path: pfad },
+      path: "alt",
+      reset() { this.path = `${GATE}/a/${SCHLUESSEL}/beneos_bm_0006/4k/amb/regen.ogg` },
+    },
+    _createSound() { return { src: this.document.path, playing: false, _state: 0 } },
+  }
+  const vorher = globalThis.canvas
+  globalThis.canvas = { sounds: { placeables: [szenenklang], refresh() {} } }
+  for (const h of haken.liste.filter((x) => x.name === "updateSetting")) {
+    try { await h.fn({ key: `${MODULE_ID}.${SETTING.key}` }) } catch (_) { /* gezaehlt wird die Wirkung */ }
+  }
+  globalThis.canvas = vorher
+  gleich("Modus aus mit Schluessel: ein gescheiterter Szenenklang wird neu aufgebaut", szenenklang.sound !== alt, true)
+}
+
 const k = new Kachel("beneos://a/beneos_bm_0113/4k/karte.webp")
 k.prepareBaseData()
 gleich("Modus aus mit Schluessel: vorbereitet steht die Toradresse",

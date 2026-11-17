@@ -107,6 +107,8 @@ class Klang {
   }
   get failed() { return this._state === STATES.FAILED }
   get playing() { return this._state === STATES.STARTING || this._state === STATES.PLAYING }
+  /** `sound.mjs` v14 :174: erst ab LOADED, ein gescheitertes Objekt nie. */
+  get loaded() { return this._state >= STATES.LOADED }
   /** Wie `EventEmitterMixin` aus Foundry: je Typ, mit `once`. */
   addEventListener(typ, fn, { once = false } = {}) { ((this._zuhoerer ??= {})[typ] ??= []).push({ fn, once }) }
   sende(typ) {
@@ -167,6 +169,85 @@ class Spur {
 
 const PFAD = platzhalterAdresse("beneos_bm_0113", "4k", "musik/nacht.ogg")
 
+/*
+ * ATTRAPPE AmbientSound (stre-T-123), Foundry 13.351 und 14.367,
+ * `client/canvas/placeables/sound.mjs`:
+ *
+ * - `_createSound` v13 :76-79, v14 :94-97, mit `singleton: true`. Der Cache in
+ *   `AudioHelper.create` (`client/audio/helper.mjs:189-199`) ist nach `src`
+ *   geschluesselt; ein zweites Placeable mit derselben Adresse bekommt dasselbe
+ *   Objekt.
+ * - `sync` v13 :169-200, v14 :196-235: unhoerbar stoppt, hoerbar baut einmal
+ *   (`this.sound ||=`), laedt nur ohne `_manager`, steigt bei `!sound.loaded`
+ *   aus (v13 :191-192, v14 :218-219) und spielt sonst.
+ */
+const audioCache = new Map()
+function audioErzeuge(src) {
+  let s = audioCache.get(src)
+  if (!s) { s = new Klang(src); audioCache.set(src, s) }
+  return s
+}
+class Szenenklang {
+  constructor(id, quelle) {
+    this.id = id
+    this.destroyed = false
+    this.sound = undefined
+    this.document = {
+      _source: { path: quelle },
+      resetAufrufe: 0,
+      path: leinwandAdresse(quelle),
+      reset() { this.resetAufrufe++; this.path = leinwandAdresse(this._source.path) },
+    }
+  }
+  _createSound() {
+    this.erzeugt = (this.erzeugt || 0) + 1
+    const path = this.document.path
+    if (!this.id || !path) return null
+    return audioErzeuge(path)
+  }
+  async sync(isAudible) {
+    if (!isAudible) {
+      if (!this.sound) return
+      this.sound._manager = null
+      this.sound.stop()
+      return
+    }
+    this.sound ||= this._createSound()
+    if (this.sound === null) return
+    const sound = this.sound
+    const requireLoad = !sound.loaded && !sound._manager
+    sound._manager = this
+    if (requireLoad) await sound.load()
+    if (!sound.loaded) return
+    if (!sound.playing) sound._state = STATES.PLAYING
+  }
+}
+
+/** `canvas.sounds`: `refresh` synct jedes hoerbare Placeable (layers/sounds.mjs). */
+let refreshAufrufe = 0
+let refreshWirft = false
+globalThis.canvas = {
+  sounds: {
+    placeables: [],
+    refresh() {
+      refreshAufrufe++
+      if (refreshWirft) throw new TypeError("Cannot read properties of undefined (reading 'refresh')")
+      for (const pl of this.placeables) if (!pl.destroyed) pl.sync(true)
+    },
+  },
+}
+const ruhe = () => new Promise((r) => setTimeout(r, 0))
+const ambPfad = (id) => platzhalterAdresse("beneos_bm_0006", "4k", `amb/${id}.ogg`)
+
+/** Ein Szenenklang, der mit Schluessel A hoerbar wurde und gescheitert ist. */
+async function szeneGescheitert(id) {
+  schluessel = SCHLUESSEL_A
+  gueltig = SCHLUESSEL_B
+  const pl = new Szenenklang(id, ambPfad(id))
+  await pl.sync(true)
+  return pl
+}
+
 /** Ein Klang, der mit Schluessel A gestartet und gescheitert ist. */
 function gescheitert(id = "s1") {
   schluessel = SCHLUESSEL_A
@@ -180,6 +261,7 @@ async function wechsle(neu = SCHLUESSEL_B, einstellung = SETTING.key) {
   schluessel = neu
   // Die Leinwand bereitet vorher neu vor (stream-leinwand.mjs:215-224).
   for (const pl of game.playlists) for (const ps of pl.sounds) ps.reset()
+  for (const s of canvas.sounds.placeables) s.document.reset()
   for (const f of haken.updateSetting ?? []) await f({ key: `${MODULE_ID}.${einstellung}` })
   await Promise.resolve()
 }
@@ -399,6 +481,282 @@ console.log("Ein werfender Klang haelt die anderen nicht auf")
   gleich("werfend: der zweite Klang traegt B", hatSchluessel(gut, SCHLUESSEL_B), true)
 }
 
+console.log("Szenenklang (stre-T-123)")
+{
+  game.playlists = []
+  const amb = canvas.sounds
+
+  // Der heutige Fehler am Szenenklang, ohne Modul: gemessen am 17.11.2026 in
+  // v14 und v13, dasselbe Objekt bleibt mit A gescheitert.
+  {
+    const pl = await szeneGescheitert("a0")
+    gleich("Szenenklang Basis: mit A gescheitert", pl.sound.failed, true)
+    schluessel = SCHLUESSEL_B
+    pl.document.reset()
+    await pl.sync(true)
+    gleich("Szenenklang Basis: nach dem Wechsel ohne Haken stumm", pl.sound.failed, true)
+  }
+
+  gleich("stream-klang.mjs liefert szenenklangNachziehen", typeof modul.szenenklangNachziehen, "function")
+
+  // Kern
+  {
+    const pl = await szeneGescheitert("a1")
+    const alt = pl.sound
+    amb.placeables = [pl]
+    const vorher = refreshAufrufe
+    await wechsle()
+    await ruhe()
+    gleich("Szenenklang Kern: das Objekt ist ersetzt", pl.sound !== alt, true)
+    gleich("Szenenklang Kern: das neue Objekt traegt B", hatSchluessel(pl, SCHLUESSEL_B), true)
+    gleich("Szenenklang Kern: genau ein refresh", refreshAufrufe - vorher, 1)
+    gleich("Szenenklang Kern: es spielt danach", pl.sound?.playing, true)
+    gleich("Szenenklang Kern: das alte Objekt hat keinen Verwalter mehr", alt._manager === null, true)
+  }
+
+  // Zweiwert 1: ohne Streamadresse
+  {
+    schluessel = SCHLUESSEL_A
+    const pl = new Szenenklang("a2", "sounds/regen.ogg")
+    pl.sound = new Klang("sounds/regen.ogg")
+    pl.sound._state = STATES.FAILED
+    const alt = pl.sound
+    gleich("Szenenklang Zweiwert 1: Ausgang ohne Streamadresse", await modul.szenenklangNachziehen?.(pl), "unberuehrt")
+    gleich("Szenenklang Zweiwert 1: dasselbe Objekt", pl.sound === alt, true)
+  }
+
+  // Zweiwert 2: ein laufender Szenenklang
+  {
+    schluessel = SCHLUESSEL_A
+    gueltig = SCHLUESSEL_A
+    const pl = new Szenenklang("a3", ambPfad("a3"))
+    await pl.sync(true)
+    gueltig = SCHLUESSEL_B
+    const alt = pl.sound
+    amb.placeables = [pl]
+    gleich("Szenenklang Zweiwert 2: laeuft vor dem Wechsel", alt.playing, true)
+    await wechsle()
+    gleich("Szenenklang Zweiwert 2: dasselbe Objekt, nicht gestoppt",
+      pl.sound === alt && alt.stopAufrufe === 0 && alt.playing, true)
+    // Unhoerbar: Foundry stoppt (sync(false)), danach traegt das Objekt B.
+    await pl.sync(false)
+    gleich("Szenenklang Zweiwert 2: nach dem Stopp ein neues Objekt mit B",
+      pl.sound !== alt && hatSchluessel(pl, SCHLUESSEL_B), true)
+    gleich("Szenenklang Zweiwert 2: nach dem Stopp kein Neustart", pl.sound?.playing, false)
+    // Wieder hoerbar: der naechste sync baut mit B und spielt.
+    await pl.sync(true)
+    gleich("Szenenklang Zweiwert 2: wieder hoerbar spielt er mit B",
+      pl.sound?.playing === true && hatSchluessel(pl, SCHLUESSEL_B), true)
+  }
+
+  // Stopp mit schon aktueller Adresse
+  {
+    schluessel = SCHLUESSEL_B
+    const pl = new Szenenklang("a4", ambPfad("a4"))
+    await pl.sync(true)
+    const alt = pl.sound
+    amb.placeables = [pl]
+    await wechsle()
+    const erzeugt = pl.erzeugt
+    await pl.sync(false)
+    // Der Singleton-Cache gaebe dasselbe Objekt auch bei einem Neubau zurueck;
+    // gezaehlt wird deshalb, ob ueberhaupt neu erzeugt wurde.
+    gleich("Szenenklang: Stopp mit aktueller Adresse, dasselbe Objekt, nichts erzeugt",
+      pl.sound === alt && pl.erzeugt === erzeugt, true)
+  }
+
+  // Abbau (Planleser B5): das Placeable ist zerstoert, bevor "stop" kommt.
+  {
+    schluessel = SCHLUESSEL_A
+    gueltig = SCHLUESSEL_A
+    const pl = new Szenenklang("a5", ambPfad("a5"))
+    await pl.sync(true)
+    gueltig = SCHLUESSEL_B
+    const alt = pl.sound
+    amb.placeables = [pl]
+    await wechsle()
+    pl.destroyed = true
+    alt.stop()
+    gleich("Szenenklang Abbau: zerstoertes Placeable bekommt kein neues Objekt", pl.sound === alt, true)
+  }
+
+  // Foundry hat das Objekt inzwischen selbst ersetzt (Pfadaenderung): der
+  // spaete Stopp des alten Objekts baut nichts mehr.
+  {
+    schluessel = SCHLUESSEL_A
+    gueltig = SCHLUESSEL_A
+    const pl = new Szenenklang("a5b", ambPfad("a5b"))
+    await pl.sync(true)
+    gueltig = SCHLUESSEL_B
+    const alt = pl.sound
+    amb.placeables = [pl]
+    await wechsle()
+    const vonFoundry = new Klang(pl.document.path)
+    pl.sound = vonFoundry
+    alt.stop()
+    gleich("Szenenklang Zweiwert 2: von Foundry ersetzt, der Stopp des alten baut nichts", pl.sound === vonFoundry, true)
+  }
+
+  // Ohne Klangobjekt
+  {
+    schluessel = SCHLUESSEL_B
+    const pl = new Szenenklang("a6", ambPfad("a6"))
+    let ausgang
+    try { ausgang = await modul.szenenklangNachziehen?.(pl) } catch (_) { ausgang = "wirft" }
+    gleich("Szenenklang ohne Klangobjekt: Ausgang ohne-klang, es bleibt keines", [ausgang, pl.sound ?? null], ["ohne-klang", null])
+  }
+
+  // Zerstoertes Placeable
+  {
+    const pl = await szeneGescheitert("a7")
+    const alt = pl.sound
+    pl.destroyed = true
+    schluessel = SCHLUESSEL_B
+    pl.document.reset()
+    gleich("Szenenklang zerstoert: Ausgang unberuehrt, dasselbe Objekt",
+      [await modul.szenenklangNachziehen?.(pl), pl.sound === alt], ["unberuehrt", true])
+  }
+
+  // LOADING
+  {
+    schluessel = SCHLUESSEL_A
+    const pl = new Szenenklang("a8", ambPfad("a8"))
+    pl.sound = new Klang(pl.document.path)
+    pl.sound._state = STATES.LOADING
+    let frei
+    pl.sound._warte = new Promise((r) => { frei = r })
+    const alt = pl.sound
+    schluessel = SCHLUESSEL_B
+    pl.document.reset()
+    const lauf = modul.szenenklangNachziehen?.(pl)
+    await Promise.resolve()
+    gleich("Szenenklang LOADING: waehrend des Ladens kein zweites Objekt", pl.sound === alt, true)
+    alt._state = STATES.FAILED
+    alt._warte = null
+    frei(alt)
+    gleich("Szenenklang LOADING: nach dem Scheitern neu gebaut", await lauf, "neu")
+
+    // Foundry baut waehrend des Wartens selbst neu (Pfadaenderung): bleibt.
+    schluessel = SCHLUESSEL_A
+    const pl2 = new Szenenklang("a9", ambPfad("a9"))
+    pl2.sound = new Klang(pl2.document.path)
+    pl2.sound._state = STATES.LOADING
+    let frei2
+    pl2.sound._warte = new Promise((r) => { frei2 = r })
+    const alt2 = pl2.sound
+    schluessel = SCHLUESSEL_B
+    pl2.document.reset()
+    const lauf2 = modul.szenenklangNachziehen?.(pl2)
+    await Promise.resolve()
+    pl2.document._source.path = ambPfad("a9-neu")
+    pl2.document.reset()
+    const vonFoundry = new Klang(pl2.document.path)
+    vonFoundry._state = STATES.LOADED
+    pl2.sound = vonFoundry
+    alt2._state = STATES.FAILED
+    alt2._warte = null
+    frei2(alt2)
+    await lauf2
+    gleich("Szenenklang LOADING: von Foundry neu gebautes Objekt bleibt", pl2.sound === vonFoundry, true)
+  }
+
+  // Kein Anlass
+  {
+    const pl = await szeneGescheitert("b1")
+    amb.placeables = [pl]
+    await wechsle()
+    await ruhe()
+    const nachB = pl.sound
+    nachB._state = STATES.LOADED
+    const vorRefresh = refreshAufrufe
+    const erzeugt = pl.erzeugt
+    await wechsle(SCHLUESSEL_B)
+    gleich("Szenenklang derselbe Schluessel erneut: dasselbe Objekt, nichts erzeugt",
+      pl.sound === nachB && pl.erzeugt === erzeugt, true)
+    gleich("Szenenklang derselbe Schluessel erneut: kein refresh", refreshAufrufe - vorRefresh, 0)
+
+    const pl2 = await szeneGescheitert("b2")
+    amb.placeables = [pl2]
+    const alt2 = pl2.sound
+    schluessel = SCHLUESSEL_B
+    pl2.document.reset()
+    for (const f of haken.updateSetting ?? []) await f({ key: "core.fremd" })
+    gleich("Szenenklang fremde Einstellung: dasselbe Objekt", pl2.sound === alt2, true)
+  }
+
+  // Veraltetes vorbereitetes Feld
+  {
+    const pl = await szeneGescheitert("b3")
+    schluessel = SCHLUESSEL_B
+    gleich("Szenenklang veraltet: Ausgang", await modul.szenenklangNachziehen?.(pl), "neu")
+    gleich("Szenenklang veraltet: reset gerufen und B im neuen Objekt",
+      pl.document.resetAufrufe === 1 && hatSchluessel(pl, SCHLUESSEL_B), true)
+  }
+
+  // Werfend
+  {
+    const kaputt = await szeneGescheitert("b4")
+    kaputt._createSound = () => { throw new Error("kaputt") }
+    const gut = await szeneGescheitert("b5")
+    amb.placeables = [kaputt, gut]
+    let geworfen = false
+    try { await wechsle() } catch (_) { geworfen = true }
+    gleich("Szenenklang werfend: der Haken wirft nicht", geworfen, false)
+    gleich("Szenenklang werfend: der zweite traegt B", hatSchluessel(gut, SCHLUESSEL_B), true)
+
+    const pl = await szeneGescheitert("b6")
+    amb.placeables = [pl]
+    refreshWirft = true
+    let geworfen2 = false
+    try { await wechsle() } catch (_) { geworfen2 = true }
+    refreshWirft = false
+    gleich("Szenenklang refresh wirft: der Haken wirft nicht, das Objekt traegt B",
+      [geworfen2, hatSchluessel(pl, SCHLUESSEL_B)], [false, true])
+
+    // Direkt gerufen, ohne den Fang des Hakens: der Neubau wird trotzdem
+    // gezaehlt und gemeldet.
+    const pl2 = await szeneGescheitert("b6b")
+    amb.placeables = [pl2]
+    schluessel = SCHLUESSEL_B
+    pl2.document.reset()
+    refreshWirft = true
+    let zahl
+    try { zahl = await modul.szenenklaengeNachziehen?.() } catch (_) { zahl = "wirft" }
+    refreshWirft = false
+    gleich("Szenenklang refresh wirft: der Neubau wird gemeldet", zahl?.neu, 1)
+  }
+
+  // Nebeneinander (Planleser B6): ein ladender Playlist-Titel haelt den
+  // Szenenklang nicht auf.
+  {
+    schluessel = SCHLUESSEL_A
+    const ps = new Spur("n1", PFAD)
+    ps.sound = new Klang(ps.path)
+    ps.sound._state = STATES.LOADING
+    let frei
+    ps.sound._warte = new Promise((r) => { frei = r })
+    const psAlt = ps.sound
+    const pl = await szeneGescheitert("b7")
+    const plAlt = pl.sound
+    game.playlists = [{ sounds: [ps] }]
+    amb.placeables = [pl]
+    schluessel = SCHLUESSEL_B
+    ps.reset()
+    pl.document.reset()
+    const lauf = Promise.all((haken.updateSetting ?? []).map((f) => f({ key: `${MODULE_ID}.${SETTING.key}` })))
+    await ruhe()
+    gleich("Szenenklang nebeneinander: ersetzt, waehrend der Playlist-Titel noch laedt",
+      pl.sound !== plAlt && ps.sound === psAlt, true)
+    psAlt._state = STATES.FAILED
+    psAlt._warte = null
+    frei(psAlt)
+    await lauf
+    game.playlists = []
+  }
+
+  amb.placeables = []
+}
+
 console.log("Verdrahtung")
 {
   const text = readFileSync(join(HIER, "beneos-stream.mjs"), "utf8")
@@ -421,7 +779,7 @@ console.log(`\n${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
  * Von Hand nachgezogen, siehe Kopf. Weicht die gezaehlte Zahl ab, ist der Lauf
  * mittendrin gestorben oder ein Block ist still weggefallen.
  */
-const ERWARTET = 32
+const ERWARTET = 65
 if (aussagen !== ERWARTET) {
   console.log(`ROT  erwartet ${ERWARTET} Aussagen, gezaehlt ${aussagen}`)
   process.exit(1)

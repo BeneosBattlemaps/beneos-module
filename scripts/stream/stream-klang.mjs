@@ -31,6 +31,21 @@
  *   wuerde ihn mitten im Titel abbrechen.
  * - `stream-leinwand.mjs`. Diese Datei steht daneben, damit der Leinwandweg
  *   unabhaengig weiterentwickelt werden kann.
+ *
+ * SZENENKLAENGE (stre-T-123). Ein AmbientSound hat dasselbe Muster, gemessen am
+ * 17.11.2026 in v14 und v13: nach dem Wechsel dasselbe Objekt, gescheitert,
+ * stumm bis zum Neuzeichnen der Szene. In 13.351 und 14.367 gleich,
+ * `client/canvas/placeables/sound.mjs`:
+ *
+ * - `sync` v13 :169/:181, v14 :196/:208 baut einmal (`this.sound ||=`) und
+ *   steigt bei `!sound.loaded` aus (v13 :191-192, v14 :218-219).
+ * - Neu gebaut wird nur in `_onUpdate` bei `path` (v13 :414-420, v14 :491-497).
+ * - `_createSound` (v13 :76-79, v14 :94-97) teilt das Objekt ueber den Cache
+ *   in `AudioHelper.create` (`client/audio/helper.mjs:189-199`), nach `src`.
+ *
+ * Nur die Placeables der angezeigten Szene: andere Szenen haben keine und
+ * bauen beim Zeichnen aus dem frisch vorbereiteten `document.path`. Kein
+ * `canvas.draw()`, das zeichnete die ganze Szene neu.
  */
 
 import { leinwandAdresse, MODULE_ID, SETTING } from "./stream-settings.mjs"
@@ -58,16 +73,27 @@ function zustandLaden() {
  * sobald es stoppt oder endet, OHNE `sync`: ein natuerliches Ende darf den
  * Titel nicht neu starten, erst der naechste Start baut mit der Adresse von
  * heute.
+ *
+ * Fuer Szenenklaenge gilt dasselbe, gemessen am 17.11.2026 in v14: ein Ersatz
+ * mit Stopp setzt rund 150 ms aus (plus Ladezeit beim Kunden), ein Ersatz ohne
+ * Stopp laesst das alte Objekt als Waise weiterspielen, auch ueber einen
+ * Szenenwechsel. Sie hoeren nur auf `stop`: `end` kommt bei `loop: true` nie.
+ *
+ * @param {object} objekt das laufende Klangobjekt
+ * @param {object} weg
+ * @param {string[]} weg.ereignisse worauf gewartet wird
+ * @param {() => boolean} weg.zustaendig ob das Objekt noch das des Klangs ist
+ * @param {string} weg.soll die Adresse von heute
+ * @param {() => void} weg.ersetze baut das neue Objekt, ohne es zu starten
  */
-function nachDemStoppNeu(ps, objekt, quelle) {
+function nachDemStoppNeu(objekt, { ereignisse, zustaendig, soll, ersetze }) {
   const nachholen = () => {
-    if (ps.sound !== objekt || objekt.playing) return
-    if (objekt.src === leinwandAdresse(quelle)) return
-    try { ps.sound = ps._createSound() } catch (_) { /* bleibt das alte, wie ohne diesen Haken */ }
+    if (!zustaendig() || objekt.playing) return
+    if (objekt.src === soll) return
+    try { ersetze() } catch (_) { /* bleibt das alte, wie ohne diesen Haken */ }
   }
   try {
-    objekt.addEventListener("stop", nachholen, { once: true })
-    objekt.addEventListener("end", nachholen, { once: true })
+    for (const typ of ereignisse) objekt.addEventListener(typ, nachholen, { once: true })
   } catch (_) { /* ein Klang ohne diese Ereignisse bleibt wie er ist */ }
 }
 
@@ -88,7 +114,10 @@ export async function klangNachziehen(ps) {
    * STARTING oder PLAYING, und ein Objekt, das danach mit der alten Adresse
    * doch noch losspielt, waere vom Bedienknopf aus nicht mehr erreichbar und
    * schnitte mit seinem `end` den neuen Titel ab. Ein zweiter `load()` wartet
-   * auf das laufende Laden (`sound.mjs` :344-347) und startet selbst nichts.
+   * auf das laufende Laden (`sound.mjs` :344-347) und spielt nichts ab. Ist
+   * das erste Laden gescheitert, laedt er allerdings noch einmal mit der alten
+   * Adresse (v14 :344-361): eine weitere abgewiesene Anfrage, danach steht er
+   * wieder auf FAILED und wird unten ersetzt.
    */
   const objekt = ps.sound
   if (objekt._state === zustandLaden()) {
@@ -98,7 +127,12 @@ export async function klangNachziehen(ps) {
     if (ps.sound !== objekt) return klangNachziehen(ps)
   }
   if (objekt.playing) {
-    nachDemStoppNeu(ps, objekt, quelle)
+    nachDemStoppNeu(objekt, {
+      ereignisse: ["stop", "end"],
+      zustaendig: () => ps.sound === objekt,
+      soll: leinwandAdresse(quelle),
+      ersetze: () => { ps.sound = ps._createSound() },
+    })
     return "laeuft"
   }
 
@@ -141,6 +175,80 @@ export async function klaengeNachziehen() {
 }
 
 /**
+ * Bringt EINEN Szenenklang (AmbientSound-Placeable) auf die Adresse von heute.
+ * Dieselben Ausgaenge wie `klangNachziehen`; gestartet wird hier nichts, das
+ * tut der eine `refresh` in `szenenklaengeNachziehen`.
+ *
+ * @returns {Promise<string>} `unberuehrt`, `ohne-klang`, `laeuft`, `gleich` oder `neu`
+ */
+export async function szenenklangNachziehen(pl) {
+  const quelle = String(pl?.document?._source?.path ?? "")
+  if (!quelle.startsWith(PRAEFIX) || pl.destroyed) return "unberuehrt"
+  if (!pl.sound) return "ohne-klang"
+
+  // Wie oben: erst das laufende Laden abwarten, dann fuer das Objekt
+  // entscheiden, das danach am Placeable haengt.
+  const objekt = pl.sound
+  if (objekt._state === zustandLaden()) {
+    try { await objekt.load() } catch (_) { /* gescheitert ist hier ein Ergebnis */ }
+    if (pl.sound !== objekt) return szenenklangNachziehen(pl)
+  }
+
+  // Beim Abbau der Szene kommt `stop` erst, wenn das Placeable schon zerstoert
+  // ist (`layers/sounds.mjs` `_tearDown` ruft `stopAll()` ohne `await`). Dann
+  // wird nichts mehr gebaut.
+  if (objekt.playing) {
+    nachDemStoppNeu(objekt, {
+      ereignisse: ["stop"],
+      zustaendig: () => !pl.destroyed && pl.sound === objekt,
+      soll: leinwandAdresse(quelle),
+      // `_manager` hat Foundry vor dem Stopp schon geloest (v13 :174, v14 :201).
+      ersetze: () => { pl.sound = pl._createSound() },
+    })
+    return "laeuft"
+  }
+
+  const soll = leinwandAdresse(quelle)
+  if (objekt.src === soll) return "gleich"
+
+  if (pl.document.path !== soll) pl.document.reset()
+  // Ohne das hielte das alte Objekt die Zustaendigkeit, und `sync` luede ein
+  // geteiltes Objekt nie wieder (`requireLoad = !loaded && !_manager`).
+  objekt._manager = null
+  pl.sound = pl._createSound()
+  return "neu"
+}
+
+/**
+ * Alle Szenenklaenge der angezeigten Szene, je Placeable einzeln gefangen.
+ * Danach EIN `refresh`, damit die hoerbaren mit der neuen Adresse laden.
+ *
+ * @returns {Promise<Record<string, number>>} je Ausgang die Zahl
+ */
+export async function szenenklaengeNachziehen() {
+  const ebene = globalThis.canvas?.sounds
+  const zahl = {}
+  for (const pl of ebene?.placeables ?? []) {
+    let ausgang
+    try { ausgang = await szenenklangNachziehen(pl) }
+    catch (e) {
+      ausgang = "fehler"
+      console.warn("Beneos Stream | Szenenklang nach dem Schluesselwechsel nicht neu aufgebaut:", e?.message || e)
+    }
+    zahl[ausgang] = (zahl[ausgang] || 0) + 1
+  }
+  if (zahl.neu) {
+    // Gemessen am 17.11.2026 in v13: `refresh` direkt nach einem Neuzeichnen
+    // warf "reading 'refresh'". Der Neubau ist dann trotzdem geschehen, der
+    // naechste Abgleich der Hoerer spielt ihn ab.
+    try { ebene.refresh() }
+    catch (e) { console.warn("Beneos Stream | Szenenklaenge nicht abgeglichen:", e?.message || e) }
+    console.log(`Beneos Stream | ${zahl.neu} Szenenklang/Szenenklaenge nach dem Schluesselwechsel neu aufgebaut`)
+  }
+  return zahl
+}
+
+/**
  * Setzt den Haken einmal. Aufzurufen NACH `installStreamLeinwand()`, damit die
  * vorbereiteten Felder schon die Adresse von heute tragen; `klangNachziehen`
  * zieht sie zur Sicherheit selbst nach.
@@ -148,11 +256,15 @@ export async function klaengeNachziehen() {
 export function installStreamKlang() {
   if (hakenGesetzt) return
   hakenGesetzt = true
+  const gescheitert = (e) => { console.warn("Beneos Stream | Klangneubau gescheitert:", e?.message || e) }
   const nachWechsel = (setting) => {
     if (!EINSTELLUNGEN.has(setting?.key)) return
-    return klaengeNachziehen().catch((e) => {
-      console.warn("Beneos Stream | Klangneubau gescheitert:", e?.message || e)
-    })
+    // Nebeneinander: ein ladender Playlist-Titel haelt die Szenenklaenge nicht
+    // auf (kalter Planleser 17.11.2026, Befund 6). Jeder Weg faengt selbst.
+    return Promise.all([
+      klaengeNachziehen().catch(gescheitert),
+      szenenklaengeNachziehen().catch(gescheitert),
+    ])
   }
   Hooks.on("createSetting", nachWechsel)
   Hooks.on("updateSetting", nachWechsel)
