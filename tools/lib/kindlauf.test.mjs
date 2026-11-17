@@ -16,7 +16,9 @@
 
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { join, dirname } from "node:path"
+import { fileURLToPath } from "node:url"
+import { execFile } from "node:child_process"
 import { pruefstand } from "./foundry-attrappe.mjs"
 
 const p = pruefstand("kindlauf: jeder Ausgang eines Satzprozesses hat genau eine Art")
@@ -31,8 +33,12 @@ const skript = (name, text) => { writeFileSync(join(ordner, name), text); return
 
 const SAUBER = skript("sauber.mjs", 'console.log("  ok   eins")\nconsole.log("  ok   zwei")\n')
 const ROT = skript("rot.mjs", 'console.log("  ok   eins")\nconsole.log("  ROT  zwei")\nprocess.exit(1)\n')
+// Zwanzig Warnzeilen VOR dem Absturz, wie ein Satz mit Modulwarnungen: der
+// Fehler steht unten und muss die Kappung auf zwoelf Zeilen ueberleben.
 const ABSTURZ = skript("absturz.mjs",
-  'console.log("  ok   eins")\nthrow new Error("Pruefsatz stuerzt ab mit pk_kindlauf_attrappe_0123456789")\n')
+  'console.log("  ok   eins")\nfor (let i = 1; i <= 20; i++) console.error("Warnung " + i)\n' +
+  'throw new Error("Pruefsatz stuerzt ab mit pk_kindlauf_attrappe_0123456789")\n')
+const FLUT = skript("flut.mjs", 'console.log("  ROT  frueh")\nconsole.log("x".repeat(100000))\n')
 const HAENGT = skript("haengt.mjs", 'console.log("  ok   eins")\nsetInterval(() => {}, 1000)\n')
 const CODE3 = skript("code3.mjs", 'console.log("  ok   eins")\nprocess.exit(3)\n')
 
@@ -67,7 +73,32 @@ try {
   p.gleich("Absturz: der Schluessel in stderr ist maskiert",
     (a?.stderr ?? []).some((z) => z.includes("pk_kindlauf_attrappe")), false)
   p.gleich("Absturz: die Maske laesst eine Spur stehen", (a?.stderr ?? []).some((z) => z.includes("<KEY>")), true)
-  p.gleich("Absturz: hoechstens zwoelf stderr-Zeilen", (a?.stderr ?? [1]).length <= 12, true)
+  p.gleich("Absturz: genau zwoelf stderr-Zeilen", a?.stderr?.length, 12)
+  p.gleich("Absturz: der Kopf bleibt (Warnung 1)", a?.stderr?.[0], "Warnung 1")
+  p.gleich("Absturz: der Fehler am Ende ueberlebt die Kappung",
+    (a?.stderr ?? []).some((z) => z.includes("Error: Pruefsatz stuerzt ab")), true)
+
+  // Node toetet auch bei Ausgabe ueber maxBuffer, dann ohne fehler.killed.
+  p.abschnitt("eine Toetung wegen Ausgabeflut")
+  const f = baustein ? await baustein.fahreKind(ordner, FLUT, { puffer: 1000 }) : null
+  p.gleich("Flut: getoetet", f?.getoetet, true)
+  p.gleich("Flut: Art zeitgrenze, nicht rot", art(f), "zeitgrenze")
+  p.gleich("Flut: die Erklaerung nennt den Grund",
+    String(baustein?.erklaere?.(f ?? {}) ?? "").includes("ERR_CHILD_PROCESS_STDIO_MAXBUFFER"), true)
+
+  // Ein Kind, das gar nicht startet, erklaert sich ueber den Code.
+  p.abschnitt("ein Startfehler")
+  const n = baustein ? await baustein.fahreKind(join(ordner, "gibtsnicht"), SAUBER) : null
+  p.gleich("Startfehler: Art absturz", art(n), "absturz")
+  p.gleich("Startfehler: die Erklaerung nennt einen Textcode",
+    /^rc 1 \([A-Z_]+\)/.test(String(baustein?.erklaere?.(n ?? { stderr: [] }) ?? "")), true)
+
+  p.abschnitt("die Maske")
+  const m = baustein?.maskiere ?? (() => "")
+  p.gleich("Maske: Schluessel ohne pk_ nach Raumbuchstaben",
+    m("https://tor.example/a/AbCdEfGh12345678_-x/k/bild.webp"), "https://tor.example/a/<KEY>/k/bild.webp")
+  p.gleich("Maske: ein kurzes Pfadstueck bleibt", m("modules/x/a/kurz/b.webp"), "modules/x/a/kurz/b.webp")
+  p.gleich("Maske: pk_ in Text", m("Probe pk_abcd1234 rot"), "Probe <KEY> rot")
 
   // Der Code des Prozesses kommt unveraendert durch, nicht pauschal als 1.
   const c3 = await fahre(CODE3)
@@ -90,6 +121,23 @@ try {
   // Gegenwert: dieselbe Zeitgrenze toetet einen sauberen Lauf nicht.
   const s2 = await fahre(SAUBER, 30000)
   p.gleich("Zeitgrenze nicht erreicht: Art sauber", art(s2), "sauber")
+
+  // Der Laeufer selbst, nicht nur der Baustein: eine Toetung endet mit rc 2,
+  // und kein Schluessel steht in seiner Ausgabe. Je 2 bis 4 s.
+  p.abschnitt("der Sabotagelaeufer")
+  const WURZEL = join(dirname(fileURLToPath(import.meta.url)), "..", "..")
+  const laeufer = (...args) => new Promise((fertig) => execFile(process.execPath,
+    ["--no-warnings", "tools/stream-sabotagen.mjs", ...args], { cwd: WURZEL, maxBuffer: 16 * 1024 * 1024 },
+    (e, out) => fertig({ rc: e ? e.code : 0, out: String(out) })))
+  const l1 = await laeufer("--satz", "heilung", "--zeitgrenze", "1")
+  p.gleich("Laeufer: Toetung endet mit rc 2", l1.rc, 2)
+  p.gleich("Laeufer: Toetung meldet NICHT PRUEFBAR mit S-Nummer", /NICHT PRUEFBAR S\d+ heilung: Zeitgrenze 1 ms/.test(l1.out), true)
+  p.gleich("Laeufer: Toetung wird nie BEFUND ohne rote Probe", l1.out.includes("ohne rote Probe"), false)
+  const l2 = await laeufer("--satz", "leinwand", "--zeitgrenze", "1")
+  p.gleich("Laeufer: kein Schluessel in der Ausgabe", /pk_[A-Za-z0-9_-]{4}/.test(l2.out), false)
+  p.gleich("Laeufer: die Maske hat gegriffen", l2.out.includes("<KEY>"), true)
+  const l3 = await laeufer("--zeitgrenze", "0")
+  p.gleich("Laeufer: --zeitgrenze 0 ist nicht pruefbar", l3.rc, 2)
 
   // Einordnung ohne Prozess: die vier Arten an Hand gebauter Ergebnisse.
   p.abschnitt("einordnen an gebauten Ergebnissen")

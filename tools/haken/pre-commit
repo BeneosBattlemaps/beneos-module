@@ -372,6 +372,19 @@ then
   fahre "tools/filter-reihenfolge-bench/bench.mjs" "filter-reihenfolge-bench, 46 Saetze"
 fi
 
+# Der Satzprozess des Sabotagelaeufers (stre-T-126), wenn er oder der Laeufer
+# angefasst wird. Er faehrt den Laeufer selbst dreimal und kostet gemessen
+# 5,5 s; das ist zu viel fuer jeden Commit an tools/lib, deshalb nicht in der
+# Sammlung oben, sondern bedingt wie die Katalogpruefung darunter.
+if git diff --cached --name-only --diff-filter=ACM \
+     -- tools/lib/kindlauf.mjs tools/lib/kindlauf.test.mjs \
+        tools/stream-sabotagen.mjs \
+   | grep -q .
+then
+  meld "pre-commit: Sabotagelaeufer vorgemerkt, der Satz kindlauf laeuft mit"
+  fahre "tools/lib/kindlauf.test.mjs" "kindlauf.test.mjs, 44 Saetze"
+fi
+
 # Die teure nur, wenn ihr Gegenstand angefasst wird.
 if git diff --cached --name-only --diff-filter=ACM \
      -- scripts/beneos_search_engine.js scripts/beneos_utility.js \

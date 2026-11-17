@@ -96,7 +96,14 @@ import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
-import { fahreKind, einordnen, erklaere, ZEITGRENZE_MS } from "./lib/kindlauf.mjs";
+import { fahreKind, einordnen, erklaere, maskiere, ZEITGRENZE_MS } from "./lib/kindlauf.mjs";
+
+// Jede Ausgabe dieses Laeufers geht durch die Maske (stre-T-126). Proben- und
+// Zielnamen kommen aus stdout der Saetze und aus SABOTAGEN, und einige tragen
+// einen Attrappenschluessel woertlich. An der Ausgabe maskiert, nicht beim
+// Einlesen: sonst passten die Ziele nicht mehr auf die Probennamen.
+const rohLog = console.log;
+console.log = (...teile) => rohLog(...teile.map((t) => (typeof t === "string" ? maskiere(t) : t)));
 
 const WURZEL = join(dirname(fileURLToPath(import.meta.url)), "..");
 const BASIS = "75555bb";
@@ -1261,6 +1268,12 @@ const kinder = new Set();
 // als nicht pruefbar endet: mit `--zeitgrenze 1` waere sonst schon der
 // Grundlauf getoetet, und der Weg mit S-Nummer liefe nie.
 const zeitgrenze = Number(arg("--zeitgrenze") ?? ZEITGRENZE_MS);
+// execFile setzt bei 0 keinen Zeitgeber und wirft bei NaN oder Bruch erst im
+// ersten Sabotagelauf. Beides wuerde die Probe still entwerten.
+if (!Number.isInteger(zeitgrenze) || zeitgrenze < 1) {
+  console.log("NICHT PRUEFBAR: --zeitgrenze braucht ganze Millisekunden ab 1.");
+  process.exit(2);
+}
 function fahre(verzeichnis, datei, grenze = ZEITGRENZE_MS) {
   return fahreKind(verzeichnis, datei, { zeitgrenze: grenze, kinder });
 }
@@ -1284,14 +1297,18 @@ if (process.argv.includes("--alle-saetze")) {
     }
   }
   let schlecht = 0;
+  let getoetet = 0;
   for (const s of saetze) {
     const r = await fahre(WURZEL, s);
     if (r.rc !== 0 || r.getoetet) schlecht += 1;
+    if (r.getoetet) getoetet += 1;
     const warum = ["absturz", "zeitgrenze"].includes(einordnen(r)) ? ` ${einordnen(r)}: ${erklaere(r)}` : "";
     console.log(`${s} rc=${r.rc} ok=${r.gruen.size} rot=${r.rot.size}${warum}`);
   }
   console.log(`saetze=${saetze.length}, davon rc ungleich 0: ${schlecht}`);
   // Eine Untergrenze wie im Haken: ein neuer Satz bricht die Zahl nicht.
+  // Eine Toetung ist nicht pruefbar (2), wie im Sabotageweg, nie ein Befund.
+  if (getoetet > 0) process.exit(2);
   process.exit(saetze.length >= 12 && schlecht === 0 ? 0 : 1);
 }
 
