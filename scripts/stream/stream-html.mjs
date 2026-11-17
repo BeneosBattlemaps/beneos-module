@@ -174,32 +174,88 @@ function bildTag(tag) {
     const f = schluesselfreiAdresse(adresse)
     if (f !== adresse) frei = f
   }
+  // Die uebrigen Attribute, unabhaengig vom src. Ein `srcset` mit Toradresse
+  // zoege der Browser dem `src` vor, und der Schluessel bliebe im HTML; es
+  // faellt weg (Kalt-Review W2). Jedes andere Attribut mit Toradresse, etwa
+  // `data-src`, bekommt die freie Form (Nachpruefung 17.11.2026, Befund 4).
+  const weitere = []
+  for (const a of attr) {
+    if (a.name === "src" || a.name === "data-beneos-src" || !a.wert) continue
+    if (a.name === "srcset") {
+      if (!srcsetMitTor(a.wert)) continue
+      let anfang = a.anfang
+      while (anfang > 0 && /\s/.test(tag[anfang - 1])) anfang--
+      weitere.push([anfang, a.ende, ""])
+      continue
+    }
+    const f = schluesselfreiAdresse(a.wert)
+    if (f !== a.wert) weitere.push([a.anfang, a.ende, attributText(a.name, f, a.anfuehrung || '"')])
+  }
   if (!frei) {
     frei = formAAdresse(src?.wert ?? null, daten?.wert ?? null)
-    if (!frei) return { tag, zahl: 0, heil: 0 }
-    if (src?.wert === platzhalterMit(frei) && daten?.wert === frei) return { tag, zahl: 0, heil: 0 }
+    const schonFormA = !!frei && src?.wert === platzhalterMit(frei) && daten?.wert === frei
+    if (!frei || schonFormA) {
+      return weitere.length ? { tag: ersetze(tag, weitere), zahl: 1, heil: 0 } : { tag, zahl: 0, heil: 0 }
+    }
     geheilt = true
   }
   const anfuehrung = src?.anfuehrung || daten?.anfuehrung || '"'
   const srcText = attributText("src", platzhalterMit(frei), anfuehrung)
   const datenText = attributText("data-beneos-src", frei, daten?.anfuehrung || anfuehrung)
-  // Ersetzungen nach Lage im Tag, von hinten, damit die Lagen davor gelten.
-  const tausch = []
+  const tausch = [...weitere]
   if (daten) tausch.push([daten.anfang, daten.ende, datenText])
   if (src) tausch.push([src.anfang, src.ende, daten ? srcText : `${srcText} ${datenText}`])
   else tausch.push([4, 4, ` ${srcText}`])
-  // Ein `srcset` mit Toradresse zoege der Browser dem `src` vor, und der
-  // Schluessel bliebe im HTML. Es faellt weg (Kalt-Review W2).
-  const satz = attr.find((a) => a.name === "srcset")
-  if (satz && srcsetMitTor(satz.wert)) {
-    let anfang = satz.anfang
-    while (anfang > 0 && /\s/.test(tag[anfang - 1])) anfang--
-    tausch.push([anfang, satz.ende, ""])
-  }
-  tausch.sort((a, b) => b[0] - a[0])
+  return { tag: ersetze(tag, tausch), zahl: 1, heil: geheilt ? 1 : 0 }
+}
+
+/*
+ * Ersetzungen nach Lage im Tag, von hinten, damit die Lagen davor gelten. Bei
+ * gleichem Anfang zuerst das laengere Stueck: ein Einfuegen an Stelle 4 und
+ * ein Entfernen ab Stelle 4 zerschnitten sonst das Tag (Nachpruefung
+ * 17.11.2026, Befund 2).
+ */
+function ersetze(tag, tausch) {
   let neu = tag
-  for (const [anfang, ende, text] of tausch) neu = neu.slice(0, anfang) + text + neu.slice(ende)
-  return { tag: neu, zahl: 1, heil: geheilt ? 1 : 0 }
+  for (const [anfang, ende, text] of [...tausch].sort((a, b) => b[0] - a[0] || b[1] - a[1])) {
+    neu = neu.slice(0, anfang) + text + neu.slice(ende)
+  }
+  return neu
+}
+
+/**
+ * Auflage 1 (orch P-13:25): der Schreiblauf ueber Altseiten darf nachweislich
+ * nur Bildadressen aendern. Wahr nur, wenn der Text nach der Wandlung bis auf
+ * `src` und `data-beneos-src` der Bilder zeichengleich ist, jedes gewandelte
+ * Bild die freie Form traegt und `src` deren Platzhalter ist.
+ *
+ * Bewusst unabhaengig vom Wandler geprueft: ein Fehler dort, der ein Zeichen
+ * ausserhalb dieser beiden Werte aendert, wird hier abgelehnt, auch ein
+ * entferntes `srcset` oder ein geaendertes `data-src`.
+ */
+export function nurBildadressenGetauscht(alt, neu) {
+  if (typeof alt !== "string" || typeof neu !== "string") return false
+  const ohneAdressen = (html) => html.replace(IMG_RE, (tag) => {
+    let t = tag
+    const weg = attribute(tag).filter((a) => a.name === "src" || a.name === "data-beneos-src")
+    // Genau ein Trennzeichen davor geht mit, so wie der Wandler es setzt.
+    // Mehr zu nehmen verdeckte ein zusaetzliches Leerzeichen im Tag.
+    for (const a of weg.sort((x, y) => y.anfang - x.anfang)) {
+      const anfang = a.anfang > 0 && /\s/.test(t[a.anfang - 1]) ? a.anfang - 1 : a.anfang
+      t = t.slice(0, anfang) + t.slice(a.ende)
+    }
+    return t
+  })
+  if (ohneAdressen(alt) !== ohneAdressen(neu)) return false
+  const host = streamHost()
+  for (const tag of neu.match(IMG_RE) ?? []) {
+    const attr = attribute(tag)
+    const daten = attr.find((a) => a.name === "data-beneos-src")?.wert
+    if (daten === undefined) continue
+    if (!daten.startsWith("beneos://") || (host && daten.includes(host)) || schluesselfreiAdresse(daten) !== daten) return false
+    if (attr.find((a) => a.name === "src")?.wert !== platzhalterMit(daten)) return false
+  }
+  return true
 }
 
 /**
@@ -212,9 +268,8 @@ function bildTag(tag) {
  *
  * `<video>`, `<audio>` und `<source>` werden nicht gewandelt: ein Bild als
  * Platzhalter spielte dort nicht, und keines davon geht ueber den Blob-Weg.
- * Gefundene werden in `andere` gezaehlt, damit sie sichtbar bleiben (Bestand
- * am 17.11.2026: 0), ebenso eine Toradresse in einem anderen Attribut eines
- * Bildes, etwa `data-src`.
+ * Gefundene werden in `andere` gezaehlt (Bestand am 17.11.2026: 0). Ein
+ * anderes Attribut eines Bildes mit Toradresse, etwa `data-src`, wird frei.
  *
  * @returns {{html: string, zahl: number, heil: number, andere: number}}
  *   zahl: geaenderte Bilder, heil: davon geheilte
@@ -228,9 +283,6 @@ export function htmlSchluesselfrei(html) {
     const r = bildTag(tag)
     zahl += r.zahl
     heil += r.heil
-    for (const a of attribute(r.tag)) {
-      if (a.name !== "src" && a.name !== "srcset" && a.wert && schluesselfreiAdresse(a.wert) !== a.wert) andere++
-    }
     return r.tag
   })
   for (const tag of html.match(ANDERE_RE) ?? []) {
@@ -289,10 +341,10 @@ export function htmlTiefSchluesselfrei(wert, _tiefe = 0) {
  *
  * @returns {{aenderung: object|null, zahl: number}}
  */
-export function htmlAenderung(quelle) {
-  const zaehler = { zahl: 0 }
+export function htmlAenderung(quelle, { streng = false } = {}) {
+  const zaehler = { zahl: 0, streng, abweichung: false }
   const d = differenz(quelle, zaehler, 0, true)
-  return { aenderung: d === undefined ? null : d, zahl: zaehler.zahl }
+  return { aenderung: d === undefined ? null : d, zahl: zaehler.zahl, abweichung: zaehler.abweichung }
 }
 
 /*
@@ -303,15 +355,21 @@ export function htmlAenderung(quelle) {
  * denn nur dort stehen Foundrys eingebettete Sammlungen (`pages`, `items`,
  * `effects`, `results`, `cards`), die nach `_id` zusammenfuehren. Eine Liste
  * mit `_id` tiefer, etwa `system.advancement`, ist ein gewoehnliches Feld; ein
- * Teil davon ersetzte die ganze Liste (Kalt-Review W5). Aus demselben Grund
- * gilt `type` mit `src` nur an einem Dokument als Seite.
+ * Teil davon ersetzte die ganze Liste (Kalt-Review W5).
+ *
+ * `seite`: der Wert ist ein Dokument oder ein Element einer Liste direkt an
+ * einem Dokument; nur dort gilt `type` mit `src` als Seite. Das ist eine
+ * eigene Rolle neben `dokument`: eine Bildseite in einem neuen Journal hat noch
+ * keine `_id`, ihre Liste geht ganz hinaus, und sie ist trotzdem eine Seite
+ * (Nachpruefung 17.11.2026, Befund 1).
  */
-function differenz(wert, zaehler, tiefe, dokument) {
+function differenz(wert, zaehler, tiefe, dokument, seite = dokument) {
   if (tiefe > 40) return undefined
   if (typeof wert === "string") {
     if (!kandidat(wert)) return undefined
     const r = htmlSchluesselfrei(wert)
     if (!r.zahl) return undefined
+    if (zaehler.streng && !nurBildadressenGetauscht(wert, r.html)) zaehler.abweichung = true
     zaehler.zahl += r.zahl
     return r.html
   }
@@ -320,7 +378,7 @@ function differenz(wert, zaehler, tiefe, dokument) {
     const eindeutig = dokument && ids.length > 0 && ids.every((id) => typeof id === "string" && id) && new Set(ids).size === ids.length
     // Nur die Elemente einer eingebetteten Sammlung sind Dokumente. Eine Liste,
     // die ganz hinausgeht, geht auch darunter ganz.
-    const teile = wert.map((e) => differenz(e, zaehler, tiefe + 1, eindeutig))
+    const teile = wert.map((e) => differenz(e, zaehler, tiefe + 1, eindeutig, dokument))
     if (teile.every((t) => t === undefined)) return undefined
     if (eindeutig) return teile.flatMap((t, i) => (t === undefined ? [] : [{ ...t, _id: ids[i] }]))
     return wert.map((e, i) => (teile[i] === undefined ? kopie(e) : (isObj(e) ? zusammen(kopie(e), teile[i]) : teile[i])))
@@ -331,7 +389,7 @@ function differenz(wert, zaehler, tiefe, dokument) {
       const t = differenz(v, zaehler, tiefe + 1, dokument && Array.isArray(v))
       if (t !== undefined) aus[k] = t
     }
-    if (dokument) {
+    if (seite) {
       const src = seitenSrc(wert.type, wert.src)
       if (src !== undefined) { aus.src = src; zaehler.zahl++ }
     }
@@ -441,15 +499,28 @@ export async function altseitenUmstellen({ trocken = false } = {}) {
         const eingebettet = doc.constructor?.metadata?.embedded ?? {}
         const eigen = { ...quelle }
         for (const feld of Object.values(eingebettet)) delete eigen[feld]
-        const { aenderung, zahl } = htmlAenderung(eigen)
+        // Auflage 1 (orch P-13:25): je Dokument und je eingebetteter Seite
+        // geprueft, ob nur Bildadressen getauscht wurden. Sonst wird dieser
+        // Teil nicht geschrieben, als Fehler gezaehlt und mit Kennung gemeldet.
+        const abgewiesen = (wo) => {
+          bericht.fehler++
+          console.warn(`Beneos Stream | Altseiten: ${doc.documentName ?? "Dokument"} ${doc.id ?? "?"}${wo}`
+            + " nicht geschrieben, der Text wich ausser den Bildadressen ab")
+        }
+        let { aenderung, zahl, abweichung } = htmlAenderung(eigen, { streng: true })
+        if (aenderung && abweichung) { abgewiesen(""); aenderung = null; zahl = 0 }
         const kinder = []
         let kinderZahl = 0
         for (const [klasse, feld] of Object.entries(eingebettet)) {
-          const liste = Array.isArray(quelle[feld]) ? quelle[feld] : []
-          const r = htmlAenderung(liste)
-          if (!r.aenderung) continue
-          kinderZahl += r.zahl
-          kinder.push([klasse, r.aenderung])
+          const teile = []
+          for (const kind of Array.isArray(quelle[feld]) ? quelle[feld] : []) {
+            const r = htmlAenderung(kind, { streng: true })
+            if (!r.aenderung) continue
+            if (r.abweichung || !kind?._id) { abgewiesen(` ${klasse} ${kind?._id ?? "?"}`); continue }
+            kinderZahl += r.zahl
+            teile.push({ ...r.aenderung, _id: kind._id })
+          }
+          if (teile.length) kinder.push([klasse, teile])
         }
         if (!aenderung && !kinder.length) continue
         bericht.dokumente++

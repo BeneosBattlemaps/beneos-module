@@ -183,7 +183,15 @@ const FREI_HTML = "beneos://a/beneos_bm_0113/4k/handout.webp"
     }
     await new Promise((r) => setTimeout(r, 20))
   }
+  // Auflage 2 (orch P-13:25): der Trockenlauf ist ueber `game.beneos.stream`
+  // erreichbar, zaehlt und schreibt nichts. Die Quelle traegt hier noch die
+  // Toradresse, also findet er genau ein Dokument.
+  const vorTrocken = geschrieben.length
+  let trocken = null
+  try { trocken = await globalThis.game.beneos?.stream?.altseitenUmstellen?.({ trocken: true }) } catch (_) { /* gezaehlt wird die Wirkung */ }
   console.log = leise
+  gleich("Modus aus mit Schluessel: Trockenlauf ueber game.beneos.stream zaehlt und schreibt nichts",
+    `${trocken?.dokumente}|${trocken?.trocken}|${geschrieben.length - vorTrocken}`, "1|true|0")
   globalThis.game.journal = vorher.journal
   globalThis.game.user = vorher.user
   gleich("Modus aus mit Schluessel: ready stellt Altseiten auf Form (a) um, einmal",

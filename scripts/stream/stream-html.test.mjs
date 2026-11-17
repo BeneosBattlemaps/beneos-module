@@ -148,7 +148,8 @@ console.log("H12 Robustheit des Tags (Kalt-Review W2)")
   const gross = htmlSchluesselfrei(`<img alt="a > b" src="${TOR}">`)
   wahr("H12 '>' in einem Attribut davor: gewandelt", ohneSchluessel(gross.html) && gross.html.includes(`src="${SRC_A}"`) && gross.html.includes('alt="a > b"'), gross.html)
   const gross2 = htmlSchluesselfrei(`<IMG SRC="${TOR}">`)
-  wahr("H12 Grossschreibung: gewandelt", ohneSchluessel(gross2.html) && gross2.zahl === 1, gross2.html)
+  wahr("H12 Grossschreibung: gewandelt", ohneSchluessel(gross2.html) && gross2.zahl === 1
+    && gross2.html.includes(`data-beneos-src="${FREI}"`), gross2.html)
   const nackt = htmlSchluesselfrei(`<img src=${TOR} alt=x>`)
   wahr("H12 src ohne Anfuehrung: gewandelt", ohneSchluessel(nackt.html) && nackt.html.includes(`src="${SRC_A}"`) && nackt.html.includes("alt=x"), nackt.html)
   const PFAD_APO = "beneos_assets/x/o'brien.webp"
@@ -160,10 +161,14 @@ console.log("H12 Robustheit des Tags (Kalt-Review W2)")
   wahr("H12 srcset mit Toradresse faellt weg", ohneSchluessel(satz.html) && !satz.html.includes("srcset"), satz.html)
   const fremdSatz = `<img src="${TOR}" srcset="https://example.com/a.webp 2x">`
   wahr("H12 fremdes srcset bleibt", htmlSchluesselfrei(fremdSatz).html.includes('srcset="https://example.com/a.webp 2x"'))
+  // Nachpruefung 17.11.2026, Befund 4: ein anderes Bildattribut mit Schluessel
+  // blieb stehen und wurde nur gezaehlt; die Zahl las niemand. Es wird frei.
   const lazy = htmlSchluesselfrei(`<img data-src="${TOR}" src="${TOR}">`)
-  wahr("H12 data-src davor: src gewandelt, data-src unberuehrt",
-    lazy.html === `<img data-src="${TOR}" src="${SRC_A}" data-beneos-src="${FREI}">`, lazy.html)
-  wahr("H12 data-src mit Schluessel gezaehlt", lazy.andere === 1, `andere ${lazy.andere}`)
+  wahr("H12 data-src davor: src gewandelt, data-src frei",
+    lazy.html === `<img data-src="${FREI}" src="${SRC_A}" data-beneos-src="${FREI}">`, lazy.html)
+  const lazyFremd = htmlSchluesselfrei(`<img src="https://example.com/x.webp" data-src="${TOR}">`)
+  wahr("H12 data-src mit Schluessel neben fremdem src: nur data-src frei",
+    lazyFremd.html === `<img src="https://example.com/x.webp" data-src="${FREI}">` && lazyFremd.zahl === 1, lazyFremd.html)
 }
 
 console.log("H13 Entitaeten im Attribut (Kalt-Review W3)")
@@ -363,6 +368,83 @@ console.log("H10 Altseiten-Lauf")
   game.journal = [fehlerhaft, dokument("JournalEntry", journalQuelle, { JournalEntryPage: "pages" })]
   const tapfer = await altseitenUmstellen()
   wahr("H10 ein kaputtes Dokument haelt die anderen nicht auf", tapfer.fehler === 1 && tapfer.dokumente === 1, JSON.stringify(tapfer))
+}
+
+console.log("H14 Nachpruefung 17.11.2026")
+{
+  // Befund 1: eine Bildseite in einem neuen Journal hat noch keine _id. Sie ist
+  // trotzdem ein Element der eingebetteten Sammlung und wird frei.
+  const neuJ = htmlAenderung({ name: "J", pages: [{ type: "image", src: TOR }, { type: "text", text: { content: "x" } }] }).aenderung
+  wahr("H14 Anlegen Journal ohne Seiten-_id: Bildseite frei", neuJ?.pages?.[0]?.src === FREI && ohneSchluessel(JSON.stringify(neuJ)),
+    JSON.stringify(neuJ))
+  let quelle = null
+  hakenListe.preCreateJournalEntry[0]({ _source: { name: "J", pages: [{ type: "image", src: TOR }] }, updateSource(d) { quelle = d } })
+  wahr("H14 preCreateJournalEntry ohne Seiten-_id: updateSource ohne Schluessel", quelle?.pages?.[0]?.src === FREI, JSON.stringify(quelle))
+  // Befund 2: Einfuegen des src und Entfernen des srcset beginnen an derselben Stelle.
+  const gleich = htmlSchluesselfrei(`<img srcset="${TOR} 2x" data-beneos-src="${FREI}">`).html
+  wahr("H14 srcset direkt hinter <img ohne src: Tag heil, Schluessel weg",
+    gleich === `<img src="${SRC_A}" data-beneos-src="${FREI}">`, gleich)
+}
+
+console.log("H15 Auflage 1: der Schreiblauf aendert nur Bildadressen")
+{
+  const { nurBildadressenGetauscht } = await import("./stream-html.mjs")
+  const alt = `<p>a</p><img width="600" src="${TOR}" class="x"><p>b</p>`
+  const neu = htmlSchluesselfrei(alt).html
+  wahr("H15 echte Wandlung gilt", nurBildadressenGetauscht(alt, neu) === true, neu)
+  wahr("H15 ein Textzeichen anders: abgelehnt", nurBildadressenGetauscht(alt, neu.replace("<p>a</p>", "<p>c</p>")) === false)
+  wahr("H15 ein anderes Attribut anders: abgelehnt", nurBildadressenGetauscht(alt, neu.replace('class="x"', 'class="y"')) === false)
+  // Beide Werte gleich vergiftet, damit nur die Pruefung des Wertes greift.
+  wahr("H15 data-beneos-src mit Toradresse: abgelehnt", nurBildadressenGetauscht(alt, neu.split(FREI).join(TOR)) === false)
+  // src direkt hinter <img: das zusaetzliche Leerzeichen steht genau dort, wo
+  // die Pruefung die Adresse herausnimmt.
+  const kurz = `<img src="${TOR}">`
+  wahr("H15 Leerzeichen im Tag dazu: abgelehnt",
+    nurBildadressenGetauscht(kurz, htmlSchluesselfrei(kurz).html.replace("<img", "<img ")) === false)
+  const zeile = `<img\nsrc="${TOR}"\nwidth="3">`
+  wahr("H15 Zeilenumbruch vor src bleibt gueltig", nurBildadressenGetauscht(zeile, htmlSchluesselfrei(zeile).html) === true,
+    htmlSchluesselfrei(zeile).html)
+  wahr("H15 src ohne Fragment der freien Adresse: abgelehnt", nurBildadressenGetauscht(alt, neu.replace(SRC_A, PLATZHALTER_BILD)) === false)
+  const heil = `<img data-beneos-src="${FREI}" width="5">`
+  wahr("H15 Heilung ohne src gilt", nurBildadressenGetauscht(heil, htmlSchluesselfrei(heil).html) === true)
+  const satz = `<img src="${TOR}" srcset="${TOR} 2x">`
+  wahr("H15 entferntes srcset: abgelehnt", nurBildadressenGetauscht(satz, htmlSchluesselfrei(satz).html) === false)
+
+  // Im Lauf: die Seite mit srcset wird nicht geschrieben, als Fehler gezaehlt
+  // und mit ihrer Kennung gemeldet; die anderen Seiten gehen.
+  const geschrieben = []
+  const q = { name: "J", pages: [
+    { _id: "s1", type: "text", text: { content: `<img src="${TOR}">` } },
+    { _id: "s2", type: "text", text: { content: satz } },
+    { _id: "s3", type: "image", src: TOR }] }
+  game.journal = [{
+    id: "jAuflage", documentName: "JournalEntry",
+    constructor: { metadata: { embedded: { JournalEntryPage: "pages" } } },
+    toObject: () => JSON.parse(JSON.stringify(q)),
+    async update(d) { geschrieben.push(["update", d]) },
+    async updateEmbeddedDocuments(k, teile) { geschrieben.push([k, teile]) },
+  }]
+  // Ein eigenes Feld eines Dokuments, das abweicht, geht ebenso nicht hinaus.
+  game.actors = [{
+    id: "aAuflage", documentName: "Actor", constructor: { metadata: { embedded: {} } },
+    toObject: () => ({ name: "A", system: { bio: satz } }),
+    async update(d) { geschrieben.push(["actor", d]) },
+  }]
+  game.items = []
+  const warnungen = []
+  const urWarn = console.warn
+  console.warn = (...a) => { warnungen.push(a.map(String).join(" ")) }
+  let lauf
+  try { lauf = await altseitenUmstellen() } finally { console.warn = urWarn }
+  const teile = geschrieben.find((g) => g[0] === "JournalEntryPage")?.[1] ?? []
+  wahr("H15 Lauf: Seite mit srcset nicht geschrieben", teile.map((t) => t._id).join() === "s1,s3", JSON.stringify(teile.map((t) => t._id)))
+  wahr("H15 Lauf: eigenes Feld mit srcset nicht geschrieben", !geschrieben.some((g) => g[0] === "actor"))
+  wahr("H15 Lauf: zwei Fehler gezaehlt", lauf?.fehler === 2 && lauf?.dokumente === 1, JSON.stringify(lauf))
+  wahr("H15 Lauf: Meldung nennt die Kennungen, ohne Schluessel",
+    warnungen.some((w) => w.includes("jAuflage") && w.includes("s2")) && warnungen.some((w) => w.includes("aAuflage"))
+    && ohneSchluessel(warnungen.join()), warnungen.join(" | "))
+  const trocken = await altseitenUmstellen({ trocken: true })
+  wahr("H15 trocken: dieselben Fehler, nichts geschrieben", trocken.fehler === 2 && geschrieben.length === 1, JSON.stringify(trocken))
 }
 
 console.log(`${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
