@@ -26,13 +26,14 @@ globalThis.document ??= { createElement: () => ({ style: {}, appendChild() {}, s
 const { BeneosNativeBattlemapInstaller: Installer } = await import("./beneos-native-installer.mjs")
 
 // run() braucht Foundry; ersetzt wird nur der Lauf selbst, nicht install().
+// Der Ersatz setzt `ausgang` wie der echte Lauf (MO-020).
 function mitLauf(lauf, fn) {
   const echt = Installer.prototype.run
   Installer.prototype.run = lauf
   return fn().finally(() => { Installer.prototype.run = echt })
 }
 
-test("Nachlauf nach dem ersten Lauf und nach dem Retry mit denselben Argumenten", () => mitLauf(async function () {}, async () => {
+test("Nachlauf nach dem ersten Lauf und nach dem Retry mit denselben Argumenten", () => mitLauf(async function () { this.ausgang = "fertig" }, async () => {
   const gesehen = []
   const nachLauf = (inst) => { gesehen.push(inst) }
   const erst = await Installer.install({ packageId: "p1", label: "L", sceneSlugs: ["a"], record: { releaseDir: "bm_1" }, nachLauf })
@@ -52,7 +53,7 @@ test("Nachlauf nach dem ersten Lauf und nach dem Retry mit denselben Argumenten"
   assert.deepEqual(retry._aufruf.sceneSlugs, ["a"])
 }))
 
-test("kein Nachlauf nach Abbruch im Ueberschreib-Dialog", () => mitLauf(async function () { this._cancelled = true }, async () => {
+test("kein Nachlauf nach Abbruch im Ueberschreib-Dialog", () => mitLauf(async function () { this._cancelled = true; this.ausgang = "abgebrochen" }, async () => {
   let n = 0
   await Installer.install({ packageId: "p2", nachLauf: () => { n++ } })
   assert.equal(n, 0)
@@ -64,7 +65,7 @@ test("kein Nachlauf, wenn der Lauf wirft; der Fehler kommt beim Aufrufer an", ()
   assert.equal(n, 0)
 }))
 
-test("ein werfender Nachlauf bricht die Installation nicht", () => mitLauf(async function () {}, async () => {
+test("ein werfender Nachlauf bricht die Installation nicht", () => mitLauf(async function () { this.ausgang = "fertig" }, async () => {
   const echt = console.warn
   console.warn = () => {}
   try {

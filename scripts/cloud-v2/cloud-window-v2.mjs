@@ -5400,8 +5400,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     }
     // Teil 3: refresh the installed-marker + update state for this release and
     // broadcast the release-installed signal. install() runs this after every
-    // run that returned and was not cancelled, the report's Retry included
-    // (same package, scope and record; overwrite is asked again) (MO-012).
+    // run that reached its end, the report's Retry included (same package,
+    // scope and record; overwrite is asked again) (MO-012, MO-020).
     const nachLauf = async (fertig) => {
       // A Retry can come long after this window was closed and reopened; then
       // the open window is a different instance and is the one to refresh.
@@ -6697,8 +6697,12 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
           this, event, relDir, "release",
           { variantDirs: m.variant_dirs || {}, displayName: m.name || relDir, coverUrl, overwrite, kreaturenLauf }
         )
-        if (inst && inst._cancelled) skipped++
-        else installed++
+        // Only a run that reached its end counts as installed (MO-020). A
+        // refused pre-flight, a caught install error (inst null) and an
+        // early stop for missing catalog data used to count as installed.
+        if (inst?.ausgang === "abgebrochen") skipped++
+        else if (inst?.ausgang === "fertig") installed++
+        else failed++
       } catch (e) {
         console.warn("BeneosCloudWindowV2 | bundle member install failed", m.name, e)
         ui.notifications.error(`Install failed for ${m.name || relDir}: ${e?.message || e}`)

@@ -502,6 +502,11 @@ export class BeneosNativeBattlemapInstaller {
     this._laufZiele   = null
     this._pauseGemeldet = false
     this._phasenStatus  = ""
+    // Wie der Lauf endete, fuer jeden Aufrufer unterscheidbar (MO-020):
+    // "fertig" (durchgelaufen, auch mit Teilfehlern), "abgebrochen" (Nutzer im
+    // Ueberschreib-Dialog), "vorpruefung" (Host verweigert Schreiben, nichts
+    // installiert), "fehler" (Lauf hat geworfen). null, solange er laeuft.
+    this.ausgang = null
   }
 
   /**
@@ -514,9 +519,9 @@ export class BeneosNativeBattlemapInstaller {
     const inst = new BeneosNativeBattlemapInstaller({ packageId, label, coverUrl, sceneSlugs, overwrite, record, source, kreaturenLauf, schonen, nachLauf })
     await inst.run()
     // Here and not at the caller: the report's Retry calls install() again. The
-    // follow-up runs after every run that returned and was not cancelled; a run
-    // that throws gets none (MO-012).
-    if (!inst._cancelled && typeof nachLauf === "function") {
+    // follow-up runs only after a run that reached its end ("fertig"); a cancel,
+    // a refused pre-flight and a throw get none (MO-012, MO-020).
+    if (inst.ausgang === "fertig" && typeof nachLauf === "function") {
       try { await nachLauf(inst) } catch (e) { console.warn("BeneosNativeInstaller | follow-up after install failed", e) }
     }
     return inst
@@ -621,6 +626,7 @@ export class BeneosNativeBattlemapInstaller {
         })
         if (wahl === "abbruch") {
           this._cancelled = true
+          this.ausgang = "abgebrochen"
           try { await this.progress.close?.() } catch (_) {}
           return this
         }
@@ -646,6 +652,7 @@ export class BeneosNativeBattlemapInstaller {
         result.preflight = { ok: false, category: pre.category, error: String(pre.error?.message || pre.error || "") }
         result.fatalCategory = pre.category
         this.progress.markFailed(this.#preflightMessage(pre.category))
+        this.ausgang = "vorpruefung"
         await this.#showReport(result)
         return this.progress
       }
@@ -739,7 +746,9 @@ export class BeneosNativeBattlemapInstaller {
         const noChanges = (result.totals.docsCreated === 0 && result.totals.docsUpdated === 0)
         this.progress.markCompleted({ noChanges })
       }
+      this.ausgang = "fertig"
     } catch (err) {
+      this.ausgang = "fehler"
       console.error("BeneosNativeBattlemapInstaller | failure", err)
       this.progress.markFailed(err?.message || String(err))
       result.fatalError = String(err?.message || err)
