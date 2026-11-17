@@ -356,6 +356,11 @@ abschnitt("Katalog: der Fehler traegt den Status")
   }
   gleich("403: Meldung unveraendert, Status 403", await abruf(403), "stream catalogue unavailable (403)|403")
   gleich("502: Meldung unveraendert, Status 502", await abruf(502), "stream catalogue unavailable (502)|502")
+  // Kalt-Review 17.11.2026: Das Fenster ruft globalThis.BeneosStream.listReleases.
+  // Eine Huelle im api-Objekt, die neu wirft, verloere den Status still.
+  const einstieg = readFileSync(join(HIER, "beneos-stream.mjs"), "utf8")
+  struktur("api: listReleases geht unverhuellt aus stream-install durch",
+    /import \{[^}]*\blistReleases\b[^}]*\} from "\.\/stream-install\.mjs"/.test(einstieg) && /^\s+listReleases,\s*$/m.test(einstieg), true)
 }
 
 console.warn = urWarn

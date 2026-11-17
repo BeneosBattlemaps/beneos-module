@@ -1167,6 +1167,8 @@ const SABOTAGEN = [
   // stre-T-130: bei 403 ein eigener Hinweistext, alle anderen Rueckfallgruende behalten den alten.
   { satz: "rueckfall", ziel: ["403: Meldung unveraendert, Status 403","502: Meldung unveraendert, Status 502"], ersetze: [[INSTALL, "    throw Object.assign(new Error(`stream catalogue unavailable (${response.status})`), { status: response.status })", "    throw new Error(`stream catalogue unavailable (${response.status})`)"]] },
   { satz: "rueckfall", ziel: ["403 zeigt den 403-Text"], ersetze: [[FENSTER, "        this._rueckfallStatus = e?.status ?? null\n", ""]] },
+  // Kalt-Review 17.11.2026: eine Huelle im api-Objekt, die neu wirft, verliert den Status.
+  { satz: "rueckfall", ziel: ["[Struktur] api: listReleases geht unverhuellt aus stream-install durch"], ersetze: [[EINSTIEG, "\n    listReleases,\n", "\n    listReleases: async () => { try { return await listReleases() } catch (e) { throw new Error(e?.message) } },\n"]] },
   { satz: "rueckfall", ziel: ["403, dann 502 im selben Fenster: der alte Text"], ersetze: [[FENSTER, "        this._rueckfallStatus = e?.status ?? null\n", "        this._rueckfallStatus ??= e?.status ?? null\n"]] },
   { satz: "rueckfall", ziel: ["Ausfall/404 zeigt weiter den alten Text","403, dann 502 im selben Fenster: der alte Text"], ersetze: [[FENSTER, "this._rueckfallStatus === 403", "this._rueckfallStatus >= 400"]] },
   { satz: "rueckfall", ziel: ["Ausfall/404 zeigt weiter den alten Text"], ersetze: [[FENSTER, "this._rueckfallStatus === 403", "this._rueckfallStatus !== 502"]] },

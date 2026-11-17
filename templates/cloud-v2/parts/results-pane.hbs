@@ -152,7 +152,9 @@
       {{/if}}
     </div>
     {{!-- stre-T-115: der Stream-Katalog antwortet nicht, die Liste kommt
-          aus Beneos Cloud. Reiner Text, kein Icon. Unter der Leiste, denn in
+          aus Beneos Cloud. stre-T-130: weist das Tor mit 403 ab
+          (bmapRueckfallAbgewiesen), nennt der Hinweis den fehlenden Zugang
+          (ReleasesFromCloudDenied), sonst ReleasesFromCloud. Reiner Text, kein Icon. Unter der Leiste, denn in
           ihr (Flex ohne Umbruch) lief der Satz ueber drei Zeilen. --}}
     {{#if isBmap}}
     {{#if bmapReleasesAusCloud}}
