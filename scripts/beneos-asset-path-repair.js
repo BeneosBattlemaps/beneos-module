@@ -11,7 +11,7 @@
  * GM-only writes. Idempotent via scene flag + per-update prefix equality.
  */
 import { schluesselfreiAdresse, leinwandAdresse, streamKey } from "./stream/stream-settings.mjs";
-import { htmlSchluesselfrei, formAAdresse } from "./stream/stream-html.mjs";
+import { htmlSchluesselfrei, formAAdresse, nurBildadressenGetauscht } from "./stream/stream-html.mjs";
 
 const MODULE_ID = "beneos-module";
 const ASSET_MARKER = "beneos_assets/";
@@ -1248,6 +1248,16 @@ function _gatePraefix(adresse) {
   return m ? m[1] : null;
 }
 
+/*
+ * Eine Toradresse mit Schluessel, in jedem Raum und jeder Schreibweise
+ * (stre-T-122). Gezaehlt wird jede Stelle, auch in `srcset` und in einem
+ * zweiten `src`.
+ */
+const SCHLUESSEL_STELLE_RE = /https?:\/\/[^/"'\s]+\/[acs]\/[A-Za-z0-9_-]{16,64}\//gi;
+function _schluesselStellen(text) {
+  return typeof text === "string" ? [...text.matchAll(SCHLUESSEL_STELLE_RE)].length : 0;
+}
+
 // `data-beneos-src` im HTML, Form (a) aus stre-T-116.
 const DATA_SRC_RE = /(?<![\w-])data-beneos-src\s*=\s*(["'])([^"']+)\1/gi;
 
@@ -1282,7 +1292,7 @@ function _manifestSchluessel(installiert) {
  * @return {Promise<{journale:number, seiten:number, adressen:number, ohneMassstab:string[]}>}
  */
 export async function heileJournalGateAdressen({ trocken = false } = {}) {
-  const bericht = { journale: 0, seiten: 0, adressen: 0, fremdeBasis: 0, ohneMassstab: [] };
+  const bericht = { journale: 0, seiten: 0, adressen: 0, fremdeBasis: 0, abgelehnt: 0, ohneMassstab: [] };
   // Am Schluessel, nicht am Modus (stre-T-116): der Lauf schreibt Form (a),
   // und die braucht zum Anzeigen einen Schluessel. Ohne ihn bleibt alles, wie
   // es ist.
@@ -1327,26 +1337,50 @@ export async function heileJournalGateAdressen({ trocken = false } = {}) {
       const neu = html.replace(HTML_SRC_RE, (ganz, anfuehrung, src) => {
         const schluessel = _manifestSchluessel(stripLeadSlashLocal(src));
         if (!schluessel) return ganz;
-        // Bei schluesselfreiem Massstab nur Bilder: ein Video, ein Klang, eine
-        // Quelle hat keine Form (a) und behielte sonst die Toradresse MIT
-        // Schluessel im HTML (Kalt-Review W6). Sie bleiben lokal, wie bisher.
-        if (schluesselfrei && !/^<img\b/i.test(ganz)) return ganz;
+        // Nur Bilder, bei jedem Massstab: ein Video, ein Klang, eine Quelle hat
+        // keine Form (a) und behielte sonst die Toradresse MIT Schluessel im
+        // HTML (Kalt-Review W6, stre-T-122). Sie bleiben lokal, wie bisher.
+        if (!/^<img\b/i.test(ganz)) return ganz;
         // Erst die Toradresse wie bisher; aus der schluesselfreien Form baut
         // `leinwandAdresse` sie mit dem Schluessel von heute. Gelingt das nicht,
         // bleibt das Bild stehen: ein `src="beneos://..."` verwirft die
         // Bereinigung beim Speichern.
         const tor = schluesselfrei ? leinwandAdresse(praefix + schluessel) : praefix + schluessel;
         if (tor.startsWith("beneos://")) return ganz;
+        const getauscht = ganz.replace(`${anfuehrung}${src}${anfuehrung}`, `${anfuehrung}${tor}${anfuehrung}`);
+        // Endkontrolle je Tag (stre-T-122, 2b): das Tag wird so gewandelt, wie
+        // es spaeter geschrieben wird, und darf danach in keiner Adresse mehr
+        // einen Schluessel tragen. Sonst bleibt es lokal und wird gezaehlt.
+        // Das deckt die fremde oder fruehere Basis (dort gibt es keine
+        // schluesselfreie Form), ein doppeltes `src` und jede Schreibweise des
+        // Hosts, ohne die Faelle einzeln aufzuzaehlen. Der Treffer endet am
+        // Anfuehrungszeichen des `src`; geschlossen wird er ein ganzes Tag.
+        // Was dahinter im Tag steht, fasst die Heilung nicht an, das deckt die
+        // Zaehlung je Seite unten.
+        if (_schluesselStellen(htmlSchluesselfrei(`${getauscht}>`).html)) { bericht.fremdeBasis++; return ganz; }
         getroffen++;
-        // Unter einer fremden oder frueheren Basis gibt es keine schluesselfreie
-        // Form; die Adresse bleibt dann wie vor stre-T-116 und wird gezaehlt.
-        if (schluesselfreiAdresse(tor) === tor) bericht.fremdeBasis++;
-        return ganz.replace(`${anfuehrung}${src}${anfuehrung}`, `${anfuehrung}${tor}${anfuehrung}`);
+        return getauscht;
       });
       if (!getroffen) continue;
       // Form (a), stre-T-116: die Bilder bekommen den neutralen Platzhalter,
       // die Adresse steht schluesselfrei in `data-beneos-src`.
-      updates.push({ _id: page.id, "text.content": htmlSchluesselfrei(neu).html });
+      const endHtml = htmlSchluesselfrei(neu).html;
+      // Schreibpruefung je Seite (stre-T-122, 2a). Verglichen wird gegen die
+      // gewandelte Fassung des Bestandes, damit ein dort entferntes `srcset`
+      // und ein absichtlich getauschtes Bild nicht ablehnen. Und die Heilung
+      // fuegt keinen Schluessel hinzu: was schon vorher im HTML stand, darf
+      // stehen bleiben, mehr nicht.
+      const gueltig = nurBildadressenGetauscht(htmlSchluesselfrei(html).html, endHtml, { nurGeaenderte: true });
+      const vorher = _schluesselStellen(html);
+      const nachher = _schluesselStellen(endHtml);
+      if (!gueltig || nachher > vorher) {
+        bericht.abgelehnt++;
+        // Nur Zahlen: Adresse, Name und Schluessel bleiben aus der Konsole.
+        console.warn(`Beneos Stream | Journalheilung: eine Seite nicht geschrieben `
+          + `(nur Bildadressen getauscht: ${gueltig ? "ja" : "nein"}, Schluesselstellen ${vorher} vorher, ${nachher} nachher)`);
+        continue;
+      }
+      updates.push({ _id: page.id, "text.content": endHtml });
       bericht.seiten++;
       bericht.adressen += getroffen;
     }

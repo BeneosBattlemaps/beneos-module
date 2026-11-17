@@ -26,12 +26,13 @@ const GATE = "https://gate.beneos.stream"
 const HEUTE = "pk_heute_pruefsatz"
 const ALT = "pk_alt_pruefsatz"
 let schluesselAn = true
+let basis = GATE
 
 globalThis.game = {
   settings: {
     get(_modul, name) {
       if (name === SETTING.key) return schluesselAn ? HEUTE : ""
-      if (name === SETTING.base) return GATE
+      if (name === SETTING.base) return basis
       if (name === SETTING.mode) return true
       return ""
     },
@@ -48,7 +49,7 @@ globalThis.Hooks = {
 }
 
 const { heileJournalGateAdressen } = await import("../beneos-asset-path-repair.js")
-const { PLATZHALTER_BILD } = await import("./stream-html.mjs")
+const { PLATZHALTER_BILD, htmlSchluesselfrei, nurBildadressenGetauscht, platzhalterMit } = await import("./stream-html.mjs")
 
 let aussagen = 0, gruen = 0, rot = 0
 function gleich(name, ist, soll) {
@@ -160,24 +161,148 @@ const ohneSchluessel = (s) => !String(s).includes(HEUTE) && !String(s).includes(
   const { j, geschrieben } = journal([{ id: "b1", src: platzhalterAdresse(REL, "4k", PFAD) },
     { id: "t1", text: { content: video + `<img src="${LOKAL}">` } }])
   game.journal = [j]
-  await heileJournalGateAdressen()
-  gleich("Massstab beneos://: ein Video bleibt lokal, das Bild wird Form (a)", geschrieben[0]?.["text.content"], video + FORM_A)
+  const b = await heileJournalGateAdressen()
+  gleich("Massstab beneos://: ein Video bleibt lokal, ungezaehlt, das Bild wird Form (a)",
+    `${geschrieben[0]?.["text.content"]}|${b.fremdeBasis}`, `${video}${FORM_A}|0`)
 }
-{
-  const { j, geschrieben } = journal([{ id: "b1", src: "https://gate.alt.example/a/" + ALT + "/" + REL + "/4k/x.webp" }, structuredClone(textSeite)])
+/*
+ * DIE HEILUNG FUEGT KEINEN SCHLUESSEL HINZU, stre-T-122 (2a und 2b). Eine
+ * Toradresse, die schon vorher im HTML stand und die die Heilung nicht
+ * anfasst, bleibt stehen. Gemessen wird deshalb: die Zahl der Schluesselstellen
+ * nach dem Schreiben ist nicht groesser als vorher.
+ */
+console.log("Die Journalheilung fuegt keinen Schluessel hinzu")
+const SCHLUESSEL_RE = /https?:\/\/[^/"'\s]+\/[acs]\/[A-Za-z0-9_-]{16,64}\//gi
+const schluesselStellen = (s) => [...String(s ?? "").matchAll(SCHLUESSEL_RE)].length
+const LOKAL2 = "beneos_assets/cloud/battlemaps/11_cos_barovia_village/karte.webp"
+const FREI_MASSSTAB = { id: "b1", src: platzhalterAdresse(REL, "4k", PFAD) }
+const TOR_MASSSTAB = () => ({ id: "b1", src: mitSchluessel(HEUTE, PFAD) })
+let stellenVorher = 0, stellenNachher = 0
+const warnungen = []
+const warnAlt = console.warn
+console.warn = (...a) => { warnungen.push(a.map(String).join(" ")); warnAlt(...a) }
+
+/** Faehrt die Journalheilung ueber ein Journal und zaehlt die Schluesselstellen. */
+async function lauf(seiten) {
+  const { j, geschrieben } = journal(seiten)
   game.journal = [j]
   const b = await heileJournalGateAdressen()
-  gleich("fremde Basis: gezaehlt", b.fremdeBasis, 1)
-  gleich("fremde Basis: geschrieben wie bisher, mit dem Praefix des Massstabs",
-    geschrieben[0]?.["text.content"], `<img src="https://gate.alt.example/a/${ALT}/${REL}/4k/${MANIFEST}">`)
+  for (const u of geschrieben) {
+    stellenVorher += schluesselStellen(seiten.find((s) => s.id === u._id)?.text?.content)
+    stellenNachher += schluesselStellen(u["text.content"])
+  }
+  return { b, geschrieben, text: (id) => geschrieben.find((u) => u._id === id)?.["text.content"] }
+}
+const seite = (html) => ({ id: "t1", text: { content: html } })
+
+{
+  // Bis T-122 schrieb die Heilung bei einer Toradresse als Massstab einem
+  // Video den Praefix MIT Schluessel ins HTML. Nicht-Bilder bleiben lokal.
+  const video = `<video src="${LOKAL}"></video>`
+  const r = await lauf([TOR_MASSSTAB(), seite(video + `<img src="${LOKAL}">`)])
+  gleich("Massstab Toradresse: ein Video bleibt lokal, ungezaehlt, das Bild wird Form (a)",
+    `${r.text("t1")}|${r.b.fremdeBasis}`, `${video}${FORM_A}|0`)
+}
+{
+  const klang = `<audio src="${LOKAL}"></audio><video><source src="${LOKAL}"></video>`
+  const r = await lauf([TOR_MASSSTAB(), seite(klang + `<img src="${LOKAL}">`)])
+  gleich("Massstab Toradresse: audio und source bleiben lokal, ungezaehlt, das Bild wird Form (a)",
+    `${r.text("t1")}|${r.b.fremdeBasis}`, `${klang}${FORM_A}|0`)
+}
+{
+  // H: `data-src` hinter dem lokalen `src`. Die Suche trifft das letzte
+  // `src=`, also `data-src`; geaendert waere ein anderes Attribut als die
+  // Bildadresse. Die Schreibpruefung lehnt die Seite ab.
+  const r = await lauf([TOR_MASSSTAB(), seite(`<img src="${LOKAL}" data-src="${LOKAL2}">`)])
+  gleich("H: data-src hinter dem lokalen src: nicht geschrieben, abgelehnt", `${r.geschrieben.length}|${r.b.abgelehnt}`, "0|1")
+}
+{
+  // Y: derselbe Wert steht in einem Attribut vor dem `src`. Getauscht wuerde
+  // das erste Vorkommen, nicht das `src`. Auch das lehnt die Schreibpruefung ab.
+  const r = await lauf([TOR_MASSSTAB(), seite(`<img alt="${LOKAL}" src="${LOKAL}">`)])
+  gleich("Y: gleicher Wert vor dem src: nicht geschrieben, abgelehnt", `${r.geschrieben.length}|${r.b.abgelehnt}`, "0|1")
+}
+for (const [name, b] of [["K", "HTTPS://Gate.Beneos.Stream"], ["V", "https://Gate.Beneos.Stream"]]) {
+  // Die erlaubte Basis kommt roh zurueck, der Host im Vergleich klein.
+  basis = b
+  const r = await lauf([FREI_MASSSTAB, seite(`<img src="${LOKAL}">`)])
+  basis = GATE
+  gleich(`${name}: Basis ${b}: das Bild wird Form (a), ohne Schluessel`, r.text("t1"), FORM_A)
+}
+{
+  const gross = mitSchluessel(HEUTE, PFAD).replace("https://gate.beneos.stream", "https://GATE.BENEOS.STREAM")
+  const r = await lauf([{ id: "b1", src: gross }, seite(`<img src="${LOKAL}">`)])
+  gleich("X: Massstab mit grossgeschriebenem Host: das Bild wird Form (a)", r.text("t1"), FORM_A)
+}
+for (const [name, massstab] of [["Toradresse", TOR_MASSSTAB()], ["beneos://", FREI_MASSSTAB]]) {
+  // Doppeltes src: die Heilung trifft das zweite, die Wandlung liest das erste.
+  // Der Schluessel bliebe im zweiten stehen; das Tag bleibt lokal.
+  const r = await lauf([massstab, seite(`<img src="${LOKAL}" src="${LOKAL2}">`)])
+  gleich(`W2 (${name}): doppeltes src bleibt lokal, gezaehlt, nicht abgelehnt`,
+    `${r.geschrieben.length}|${r.b.abgelehnt}|${r.b.fremdeBasis}`, "0|0|1")
+}
+{
+  // srcset mit Toradresse: die Wandlung nimmt es heraus. Verglichen wird gegen
+  // die gewandelte Fassung des Bestandes, darum geht die Seite durch.
+  const r = await lauf([TOR_MASSSTAB(), seite(`<img src="${LOKAL}" srcset="${mitSchluessel(HEUTE, PFAD)} 2x">`)])
+  gleich("G: srcset faellt weg, das Bild wird Form (a), nicht abgelehnt", `${r.text("t1")}|${r.b.abgelehnt}`, `${FORM_A}|0`)
+}
+{
+  // Ein absichtlich getauschtes Bild: eigenes src, data-beneos-src steht noch.
+  // Es bleibt zeichengleich und haelt die Seite nicht auf.
+  const getauscht = `<img src="beneos_assets/eigen/bild.webp" data-beneos-src="${FREI_MANIFEST}">`
+  const r = await lauf([TOR_MASSSTAB(), seite(getauscht + `<img src="${LOKAL}">`)])
+  gleich("J: ein getauschtes Bild bleibt, das andere wird Form (a), nicht abgelehnt",
+    `${r.text("t1")}|${r.b.abgelehnt}`, `${getauscht}${FORM_A}|0`)
+}
+{
+  // M: ein Video, das schon vorher die Toradresse trug, bleibt stehen.
+  const vorher = `<video src="${mitSchluessel(HEUTE, PFAD)}"></video><img src="${LOKAL}">`
+  const r = await lauf([FREI_MASSSTAB, seite(vorher)])
+  gleich("M: Video mit Toradresse bleibt, nicht mehr Schluesselstellen als vorher",
+    `${r.text("t1")}|${schluesselStellen(r.text("t1")) <= schluesselStellen(vorher)}`,
+    `<video src="${mitSchluessel(HEUTE, PFAD)}"></video>${FORM_A}|true`)
+}
+{
+  // P: ein Bild unter einem frueheren Host bleibt stehen.
+  const alt = `<img src="https://gate.alt.example/a/${ALT}/${REL}/4k/alt.webp">`
+  const r = await lauf([FREI_MASSSTAB, seite(alt + `<img src="${LOKAL}">`)])
+  gleich("P: frueherer Host bleibt, nicht mehr Schluesselstellen als vorher",
+    `${r.text("t1")}|${schluesselStellen(r.text("t1")) <= schluesselStellen(alt)}`, `${alt}${FORM_A}|true`)
+}
+{
+  // Unter einer fremden oder frueheren Basis gibt es keine schluesselfreie
+  // Form. Bis T-122 schrieb die Heilung dann die Toradresse mit dem alten
+  // Schluessel ins HTML; jetzt bleibt das Bild lokal und wird gezaehlt.
+  const r = await lauf([{ id: "b1", src: "https://gate.alt.example/a/" + ALT + "/" + REL + "/4k/x.webp" }, structuredClone(textSeite)])
+  gleich("fremde Basis: nichts geschrieben, gezaehlt", `${r.geschrieben.length}|${r.b.fremdeBasis}`, "0|1")
+}
+{
+  // kandidat(): ein grossgeschriebener Torhost wird Form (a), ein fremder
+  // Host bleibt unveraendert.
+  basis = "HTTPS://Gate.Beneos.Stream"
+  const tor = `<img src="${assetUrl(REL, "4k", MANIFEST)}">`
+  const fremd = `<img src="https://fremd.example/a/${HEUTE}/${REL}/4k/${MANIFEST}">`
+  const ist = `${htmlSchluesselfrei(tor).html}|${htmlSchluesselfrei(fremd).html}`
+  basis = GATE
+  gleich("kandidat: grossgeschriebener Torhost wird Form (a), fremder Host bleibt", ist, `${FORM_A}|${fremd}`)
+}
+{
+  // nurBildadressenGetauscht: der Host in data-beneos-src wird ohne Ruecksicht
+  // auf Gross- und Kleinschreibung erkannt.
+  const mit = (h) => { const d = `beneos://a/${REL}/4k/${h}/x.webp`; return `<img src="${platzhalterMit(d)}" data-beneos-src="${d}">` }
+  gleich("nurBildadressenGetauscht: Host klein und gross gleich abgelehnt",
+    `${nurBildadressenGetauscht("<img>", mit("gate.beneos.stream"))}|${nurBildadressenGetauscht("<img>", mit("Gate.Beneos.Stream"))}`, "false|false")
 }
 {
   const { j, geschrieben } = journal([{ id: "b1", src: mitSchluessel(HEUTE, PFAD) }, structuredClone(textSeite)])
   game.journal = [j]
   schluesselAn = false
-  await heileJournalGateAdressen()
+  const b = await heileJournalGateAdressen()
   schluesselAn = true
-  gleich("ohne Schluessel: kein Lauf", geschrieben.length, 0)
+  // Ohne den fruehen Ausstieg haelt die Endkontrolle das Bild lokal und
+  // zaehlt es; gezaehlt wird deshalb mit, damit der Ausstieg bewacht bleibt.
+  gleich("ohne Schluessel: kein Lauf", `${geschrieben.length}|${b.fremdeBasis}`, "0|0")
 }
 {
   const { j, geschrieben } = journal([structuredClone(textSeite)])
@@ -191,9 +316,14 @@ const ohneSchluessel = (s) => !String(s).includes(HEUTE) && !String(s).includes(
   await heileJournalGateAdressen()
   gleich("kein Schluessel im Geschriebenen", ohneSchluessel(JSON.stringify(geschrieben)), true)
 }
+gleich("ueber den ganzen Satz: nicht mehr Schluesselstellen als vorher",
+  `${stellenNachher <= stellenVorher}|${stellenVorher}`, `true|${stellenVorher}`)
+gleich("keine Warnung nennt einen Schluessel",
+  warnungen.filter((w) => /pk_|https?:\/\/[^/\s]+\/[acs]\//i.test(w) || w.includes(ALT) || w.includes(HEUTE)).length, 0)
+console.warn = warnAlt
 
 console.log(`\n${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
-const ERWARTET = 16
+const ERWARTET = 32
 if (aussagen !== ERWARTET) {
   console.log(`ROT erwartet ${ERWARTET} Aussagen, gezaehlt ${aussagen}`)
   process.exit(1)

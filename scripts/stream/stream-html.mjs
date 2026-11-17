@@ -171,8 +171,12 @@ function kandidat(text) {
   // `src` ohne Ruecksicht auf Gross- und Kleinschreibung: `<IMG SRC=...>` ist
   // gueltiges HTML.
   if (typeof text !== "string" || !text.includes("<") || !/src/i.test(text)) return false
+  // Der Host ohne Ruecksicht auf Gross- und Kleinschreibung (stre-T-122): die
+  // erlaubte Basis kommt roh zurueck, etwa `https://Gate.Beneos.Stream`, und
+  // `streamHost` klein (`new URL(...).host`). Sonst bliebe eine solche
+  // Toradresse mit Schluessel stehen.
   const host = streamHost()
-  return (!!host && text.includes(host)) || text.includes("data-beneos-src") || text.includes(PLATZHALTER_BILD)
+  return (!!host && text.toLowerCase().includes(host)) || text.includes("data-beneos-src") || text.includes(PLATZHALTER_BILD)
 }
 
 /**
@@ -256,8 +260,14 @@ function ersetze(tag, tausch) {
  * Bewusst unabhaengig vom Wandler geprueft: ein Fehler dort, der ein Zeichen
  * ausserhalb dieser beiden Werte aendert, wird hier abgelehnt, auch ein
  * entferntes `srcset` oder ein geaendertes `data-src`.
+ *
+ * `nurGeaenderte` (stre-T-122): die Pruefung der freien Form gilt nur fuer
+ * Bilder, die sich gegenueber `alt` an derselben Stelle geaendert haben. Ein
+ * Bild, das die Spielleitung absichtlich getauscht hat (eigenes `src`,
+ * `data-beneos-src` steht noch), bleibt zeichengleich und haelt die Seite
+ * dann nicht auf. Die Gleichheit ausserhalb der Adressen gilt weiter fuer alles.
  */
-export function nurBildadressenGetauscht(alt, neu) {
+export function nurBildadressenGetauscht(alt, neu, { nurGeaenderte = false } = {}) {
   if (typeof alt !== "string" || typeof neu !== "string") return false
   const ohneAdressen = (html) => html.replace(IMG_RE, (tag) => {
     let t = tag
@@ -272,11 +282,13 @@ export function nurBildadressenGetauscht(alt, neu) {
   })
   if (ohneAdressen(alt) !== ohneAdressen(neu)) return false
   const host = streamHost()
-  for (const tag of neu.match(IMG_RE) ?? []) {
+  const altTags = alt.match(IMG_RE) ?? []
+  for (const [i, tag] of (neu.match(IMG_RE) ?? []).entries()) {
+    if (nurGeaenderte && altTags[i] === tag) continue
     const attr = attribute(tag)
     const daten = attr.find((a) => a.name === "data-beneos-src")?.wert
     if (daten === undefined) continue
-    if (!daten.startsWith("beneos://") || (host && daten.includes(host)) || schluesselfreiAdresse(daten) !== daten) return false
+    if (!daten.startsWith("beneos://") || (host && daten.toLowerCase().includes(host)) || schluesselfreiAdresse(daten) !== daten) return false
     if (attr.find((a) => a.name === "src")?.wert !== platzhalterMit(daten)) return false
   }
   return true
