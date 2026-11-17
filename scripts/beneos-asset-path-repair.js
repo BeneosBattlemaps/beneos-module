@@ -10,7 +10,8 @@
  *
  * GM-only writes. Idempotent via scene flag + per-update prefix equality.
  */
-import { schluesselfreiAdresse } from "./stream/stream-settings.mjs";
+import { schluesselfreiAdresse, leinwandAdresse, streamKey } from "./stream/stream-settings.mjs";
+import { htmlSchluesselfrei } from "./stream/stream-html.mjs";
 
 const MODULE_ID = "beneos-module";
 const ASSET_MARKER = "beneos_assets/";
@@ -1233,12 +1234,22 @@ const PACK_BM_PREFIX = "beneos_assets/beneos_battlemaps/";
 // Manifestschluessel unverändert hinter diesem Praefix.
 const CLOUD_PACKAGED_PREFIX = "beneos_assets/cloud/packaged/";
 
-/** Der Teil einer Gate-Adresse bis einschliesslich der Variante, oder null. */
+/**
+ * Der Teil einer Gate-Adresse bis einschliesslich der Variante, oder null.
+ *
+ * Seit stre-T-116 auch aus der schluesselfreien Form `beneos://a/<release>/
+ * <variante>/`: `pages[].src` und `data-beneos-src` tragen keinen Schluessel
+ * mehr, und ohne diese Form verloere die Journalheilung ihren Massstab.
+ */
 function _gatePraefix(adresse) {
   if (typeof adresse !== "string") return null;
-  const m = adresse.match(/^(https?:\/\/[^/]+\/a\/[^/]+\/[^/]+\/[^/]+\/)/);
+  const m = adresse.match(/^(https?:\/\/[^/]+\/a\/[^/]+\/[^/]+\/[^/]+\/)/)
+    ?? adresse.match(/^(beneos:\/\/a\/[^/]+\/[^/]+\/)/);
   return m ? m[1] : null;
 }
+
+// `data-beneos-src` im HTML, Form (a) aus stre-T-116.
+const DATA_SRC_RE = /(?<![\w-])data-beneos-src\s*=\s*(["'])([^"']+)\1/gi;
 
 /** Vom installierten Pfad zurueck auf den Manifestschluessel. */
 function _manifestSchluessel(installiert) {
@@ -1271,8 +1282,11 @@ function _manifestSchluessel(installiert) {
  * @return {Promise<{journale:number, seiten:number, adressen:number, ohneMassstab:string[]}>}
  */
 export async function heileJournalGateAdressen({ trocken = false } = {}) {
-  const bericht = { journale: 0, seiten: 0, adressen: 0, ohneMassstab: [] };
-  if (!game.user?.isGM) return bericht;
+  const bericht = { journale: 0, seiten: 0, adressen: 0, fremdeBasis: 0, ohneMassstab: [] };
+  // Am Schluessel, nicht am Modus (stre-T-116): der Lauf schreibt Form (a),
+  // und die braucht zum Anzeigen einen Schluessel. Ohne ihn bleibt alles, wie
+  // es ist.
+  if (!game.user?.isGM || !streamKey()) return bericht;
 
   for (const journal of game.journal ?? []) {
     // Erst sehen, ob ueberhaupt etwas zu tun ist.
@@ -1294,13 +1308,14 @@ export async function heileJournalGateAdressen({ trocken = false } = {}) {
       if (praefix) break;
       const html = page.text?.content;
       if (typeof html !== "string") continue;
-      for (const treffer of html.matchAll(HTML_SRC_RE)) {
+      for (const treffer of [...html.matchAll(HTML_SRC_RE), ...html.matchAll(DATA_SRC_RE)]) {
         praefix = _gatePraefix(treffer[2]);
         if (praefix) break;
       }
       if (praefix) break;
     }
     if (!praefix) { bericht.ohneMassstab.push(journal.name); continue; }
+    const schluesselfrei = praefix.startsWith("beneos://");
 
     const updates = [];
     for (const page of journal.pages) {
@@ -1310,11 +1325,22 @@ export async function heileJournalGateAdressen({ trocken = false } = {}) {
       const neu = html.replace(HTML_SRC_RE, (ganz, anfuehrung, src) => {
         const schluessel = _manifestSchluessel(stripLeadSlashLocal(src));
         if (!schluessel) return ganz;
+        // Erst die Toradresse wie bisher; aus der schluesselfreien Form baut
+        // `leinwandAdresse` sie mit dem Schluessel von heute. Gelingt das nicht,
+        // bleibt das Bild stehen: ein `src="beneos://..."` verwirft die
+        // Bereinigung beim Speichern.
+        const tor = schluesselfrei ? leinwandAdresse(praefix + schluessel) : praefix + schluessel;
+        if (tor.startsWith("beneos://")) return ganz;
         getroffen++;
-        return ganz.replace(`${anfuehrung}${src}${anfuehrung}`, `${anfuehrung}${praefix}${schluessel}${anfuehrung}`);
+        // Unter einer fremden oder frueheren Basis gibt es keine schluesselfreie
+        // Form; die Adresse bleibt dann wie vor stre-T-116 und wird gezaehlt.
+        if (schluesselfreiAdresse(tor) === tor) bericht.fremdeBasis++;
+        return ganz.replace(`${anfuehrung}${src}${anfuehrung}`, `${anfuehrung}${tor}${anfuehrung}`);
       });
       if (!getroffen) continue;
-      updates.push({ _id: page.id, "text.content": neu });
+      // Form (a), stre-T-116: die Bilder bekommen den neutralen Platzhalter,
+      // die Adresse steht schluesselfrei in `data-beneos-src`.
+      updates.push({ _id: page.id, "text.content": htmlSchluesselfrei(neu).html });
       bericht.seiten++;
       bericht.adressen += getroffen;
     }
