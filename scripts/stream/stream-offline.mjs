@@ -458,8 +458,16 @@ export function istZugesagt(release, variant, karte) {
  * Die Pruefung im Modul bleibt trotzdem stehen. Sie erspart im Normalfall
  * einen Abruf und eine Wartezeit, und sie kann dem Kunden sofort sagen, warum
  * es nicht geht. Sie ist Komfort, nicht die Grenze.
+ *
+ * PER POST, SEIT STRE-T-137. Die Zusage belegt Kontingent, und ein GET darf
+ * vorab geholt werden: ein Browser, der eine Adresse vorlaedt, ein
+ * Vorschau-Bot, ein Zwischenspeicher. Einen POST holt niemand vorab. Aeltere
+ * Modulstaende sagen weiter per GET zu; das Tor nimmt beides an und weist ein
+ * GET in Modulform in keiner Stufe ab (stre-T-136), also verliert dadurch
+ * niemand Zugriff. Ohne Rumpf und ohne eigene Kopfzeilen bleibt der POST eine
+ * einfache Anfrage ohne Vorabpruefung des Browsers, wie die Freigabe.
  */
-async function torFragen(weg, methode = "GET") {
+async function torFragen(weg, methode = "POST") {
   const schluessel = streamKey()
   if (!schluessel) return { ok: false, grund: "kein-schluessel" }
   const basis = streamBase().replace(/\/+$/, "")
@@ -560,7 +568,7 @@ export async function karteZusagen({ release, variant, karte, name, urls, bytes,
   const zuEng = braucht > 0 && schon + braucht > grenze
 
   // Das Tor fragen, BEVOR ein Byte fliesst. Sagt es nein, wird nicht geholt.
-  const zusage = await torFragen(kartenWeg(release, variant, karte))
+  const zusage = await torFragen(kartenWeg(release, variant, karte), "POST")
   if (!zusage.ok && zuEng && zusage.grund === "kein-netz") {
     // Keine Leitung UND die eigene Rechnung sagt voll. Das ist der einzige
     // Fall, in dem die Schaetzung das letzte Wort hat. Ausdruecklich NICHT bei
