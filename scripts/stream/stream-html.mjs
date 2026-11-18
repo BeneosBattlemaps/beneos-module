@@ -30,6 +30,7 @@
  */
 
 import { MODULE_ID, schluesselfreiAdresse, streamKey, streamHost } from "./stream-settings.mjs"
+import { TOR_IM_TEXT, maskiere, wandle, istMaskiert } from "./stream-tormaske.mjs"
 
 /*
  * FREMDE FLAGS BLEIBEN AUSSERHALB DES NETZES (stre-T-128). Unter
@@ -111,6 +112,11 @@ export function formAAdresse(src, daten) {
 // beendet es nicht (Kalt-Review W2).
 const IMG_RE = /<img\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi
 const ANDERE_RE = /<(?:video|source|audio)\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi
+// Ein Tag, ein Textstueck dazwischen, oder eine einzelne spitze Klammer.
+const TAG_ODER_TEXT_RE = /<(?:[^>"']|"[^"]*"|'[^']*')*>|[^<]+|</g
+const MEDIEN = new Set(["video", "audio", "source"])
+const FREIE_FORM_IM_TEXT = /beneos:\/\/[^\s"'<>]+/gi
+function tagName(tag) { return /^<\s*([a-z][a-z0-9-]*)/i.exec(tag)?.[1]?.toLowerCase() ?? "" }
 // Ein Attribut: Name, wahlweise mit Wert in doppelten, einfachen oder ohne
 // Anfuehrungszeichen. Gelesen wird nach Namen, nie nach Teilzeichenkette;
 // sonst traefe `src` auch `data-src` oder `data-beneos-src`.
@@ -269,9 +275,9 @@ function ersetze(tag, tausch) {
  */
 export function nurBildadressenGetauscht(alt, neu, { nurGeaenderte = false } = {}) {
   if (typeof alt !== "string" || typeof neu !== "string") return false
-  const ohneAdressen = (html) => html.replace(IMG_RE, (tag) => {
+  const ohneAttribute = (tag, namen) => {
     let t = tag
-    const weg = attribute(tag).filter((a) => a.name === "src" || a.name === "data-beneos-src")
+    const weg = attribute(tag).filter((a) => namen.includes(a.name))
     // Genau ein Trennzeichen davor geht mit, so wie der Wandler es setzt.
     // Mehr zu nehmen verdeckte ein zusaetzliches Leerzeichen im Tag.
     for (const a of weg.sort((x, y) => y.anfang - x.anfang)) {
@@ -279,8 +285,21 @@ export function nurBildadressenGetauscht(alt, neu, { nurGeaenderte = false } = {
       t = t.slice(0, anfang) + t.slice(a.ende)
     }
     return t
+  }
+  // stre-T-142 B2: dazu `href` und `data-beneos-href` der Links, und ausserhalb
+  // der Bild- und Medientags steht jede Adresse fuer sich, ob Toradresse,
+  // Maske oder freie Form. In Bild und Medium zaehlt weiter jedes Zeichen.
+  const marke = (s) => s.replace(TOR_IM_TEXT, "\u0000").replace(FREIE_FORM_IM_TEXT, "\u0000")
+  const ohneAdressen = (html) => html.replace(TAG_ODER_TEXT_RE, (stueck) => {
+    if (!stueck.startsWith("<")) return marke(stueck)
+    const name = tagName(stueck)
+    if (name === "img") return ohneAttribute(stueck, ["src", "data-beneos-src"])
+    if (MEDIEN.has(name)) return stueck
+    if (name === "a") return marke(ohneAttribute(stueck, ["href", "data-beneos-href"]))
+    return marke(stueck)
   })
   if (ohneAdressen(alt) !== ohneAdressen(neu)) return false
+  if (!nurLinkUndTextGetauscht(neu)) return false
   const host = streamHost()
   const altTags = alt.match(IMG_RE) ?? []
   for (const [i, tag] of (neu.match(IMG_RE) ?? []).entries()) {
@@ -328,6 +347,126 @@ export function htmlSchluesselfrei(html) {
   return { html: zahl ? neu : html, zahl, heil, andere }
 }
 
+/*
+ * DAS TEXTNETZ (stre-T-142 B2). Die Bildstufe oben wandelt nur `<img>`; eine
+ * Toradresse in einem Link oder im Text stand mit Schluessel auf der Platte.
+ *
+ * `href` bekommt NIE `beneos://`: Foundrys Bereinigung verwirft jedes `href`
+ * ausserhalb von `ALLOWED_URL_SCHEMES` (v13 common/constants.mjs:1809, v14
+ * :1923), der Link waere tot (gemessen am 18.11.2026 in v13 13.351). Ein Link
+ * bekommt darum die Maske (Schluesselstueck `-`) und die freie Form daneben in
+ * `data-beneos-href`; den Klick loest `stream-bilder.mjs` auf, nur im DOM.
+ *
+ * Was bleibt:
+ * - `<img>` gehoert der Bildstufe (Form (a)).
+ * - `<video>`, `<audio>`, `<source>`: die Wiedergabe braucht die Adresse, und
+ *   der Installer schreibt sie so. Sie zaehlen in `andere` (Bestand 0).
+ * - Ein ganzer Wert, der nur eine Toradresse ist, gehoert den Feldlisten der
+ *   Leinwand und `seitenSrc`. Er hat dort einen Anzeigeweg oder bleibt bewusst
+ *   stehen (Videoseite, Karte); hier zu wandeln braeche seine Anzeige.
+ * - Fremde Flags, wie oben.
+ */
+const GANZE_TORADRESSE = new RegExp(`^${TOR_IM_TEXT.source}$`, "i")
+
+/** Hat der Text eine Toradresse unter dem heutigen Host? */
+function textKandidat(text) {
+  if (typeof text !== "string") return false
+  const host = streamHost()
+  return !!host && text.toLowerCase().includes(host)
+}
+
+/** Eine Toradresse mit Schluessel im Text: frei, sonst die Maske. */
+function imText(text, zaehler) {
+  return text.replace(TOR_IM_TEXT, (adresse) => {
+    const neu = wandle(adresse)
+    if (neu !== adresse) zaehler.n++
+    return neu
+  })
+}
+
+/** Ein `<a>`-Tag: `href` maskiert, die freie Form in `data-beneos-href`. */
+function linkTag(tag, zaehler) {
+  const attr = attribute(tag)
+  const href = attr.find((a) => a.name === "href")
+  const daten = attr.find((a) => a.name === "data-beneos-href")
+  const tausch = []
+  let frei = null
+  if (href?.wert) {
+    const f = schluesselfreiAdresse(href.wert)
+    const maske = maskiere(href.wert)
+    if (f !== href.wert) frei = f
+    if (maske !== href.wert) tausch.push([href.anfang, href.ende, attributText("href", maske, href.anfuehrung)])
+  }
+  // Ein eingefuegtes Attribut mit Toradresse wird frei wie der Text.
+  if (daten?.wert && !frei) {
+    const f = wandle(daten.wert)
+    if (f !== daten.wert) frei = f
+  }
+  if (frei) {
+    const text = attributText("data-beneos-href", frei, daten?.anfuehrung || href?.anfuehrung || '"')
+    if (daten) tausch.push([daten.anfang, daten.ende, text])
+    else if (href) tausch.push([href.ende, href.ende, ` ${text}`])
+  }
+  for (const a of attr) {
+    if (a.name === "href" || a.name === "data-beneos-href" || !a.wert) continue
+    const z = { n: 0 }
+    const neu = imText(a.wert, z)
+    if (z.n) tausch.push([a.anfang, a.ende, attributText(a.name, neu, a.anfuehrung)])
+  }
+  const neu = tausch.length ? ersetze(tag, tausch) : tag
+  if (neu !== tag) zaehler.n++
+  return neu
+}
+
+/**
+ * Macht die Toradressen eines Textes ausserhalb von `<img>` schluesselfrei.
+ * Fuer jeden eigenen String, HTML oder nicht. Laeuft nach der Bildstufe.
+ *
+ * @returns {{text: string, zahl: number}} zahl: geaenderte Adressen und Links
+ */
+export function textSchluesselfrei(text) {
+  if (!streamKey() || !textKandidat(text) || GANZE_TORADRESSE.test(text.trim())) return { text, zahl: 0 }
+  const zaehler = { n: 0 }
+  const neu = text.replace(TAG_ODER_TEXT_RE, (stueck) => {
+    if (!stueck.startsWith("<")) return imText(stueck, zaehler)
+    const name = tagName(stueck)
+    if (name === "img" || MEDIEN.has(name)) return stueck
+    if (name === "a") return linkTag(stueck, zaehler)
+    return imText(stueck, zaehler)
+  })
+  return zaehler.n ? { text: neu, zahl: zaehler.n } : { text, zahl: 0 }
+}
+
+/**
+ * Die Gegenprobe fuer den Altseiten-Lauf, unabhaengig vom Wandler: ausserhalb
+ * von Bild und Medium steht keine Toradresse mehr, die sich frei machen liesse,
+ * und kein Link zeigt auf `beneos://`, denn den verwirft die Bereinigung.
+ */
+function nurLinkUndTextGetauscht(neu) {
+  for (const stueck of neu.match(TAG_ODER_TEXT_RE) ?? []) {
+    const name = stueck.startsWith("<") ? tagName(stueck) : ""
+    if (name === "img" || MEDIEN.has(name)) continue
+    if (name === "a" && /^beneos:/i.test(attribute(stueck).find((a) => a.name === "href")?.wert ?? "")) return false
+    for (const adresse of stueck.match(TOR_IM_TEXT) ?? []) {
+      if (!istMaskiert(adresse) && schluesselfreiAdresse(adresse) !== adresse) return false
+    }
+  }
+  return true
+}
+
+/** Beide Stufen auf einen String: Bilder, dann der uebrige Text. */
+function stringSchluesselfrei(wert) {
+  let neu = wert
+  let zahl = 0
+  if (kandidat(neu)) {
+    const r = htmlSchluesselfrei(neu)
+    if (r.zahl) { neu = r.html; zahl += r.zahl }
+  }
+  const t = textSchluesselfrei(neu)
+  if (t.zahl) { neu = t.text; zahl += t.zahl }
+  return { neu, zahl }
+}
+
 /**
  * Die Bildadresse einer Journalseite (`pages[].src`), nur bei Seiten vom Typ
  * `image`. Video- und PDF-Seiten gehen nie ueber den Blob-Weg und laden ihre
@@ -363,9 +502,8 @@ export function htmlTiefSchluesselfrei(wert, _tiefe = 0) {
       continue
     }
     if (typeof v === "string") {
-      if (!kandidat(v)) continue
-      const r = htmlSchluesselfrei(v)
-      if (r.zahl) { wert[k] = r.html; zahl += r.zahl }
+      const r = stringSchluesselfrei(v)
+      if (r.zahl) { wert[k] = r.neu; zahl += r.zahl }
     } else if (v && typeof v === "object") {
       zahl += htmlTiefSchluesselfrei(v, _tiefe + 1)
     }
@@ -411,12 +549,11 @@ export function htmlAenderung(quelle, { streng = false } = {}) {
 function differenz(wert, zaehler, tiefe, dokument, seite = dokument) {
   if (tiefe > 40) return undefined
   if (typeof wert === "string") {
-    if (!kandidat(wert)) return undefined
-    const r = htmlSchluesselfrei(wert)
+    const r = stringSchluesselfrei(wert)
     if (!r.zahl) return undefined
-    if (zaehler.streng && !nurBildadressenGetauscht(wert, r.html)) zaehler.abweichung = true
+    if (zaehler.streng && !nurBildadressenGetauscht(wert, r.neu)) zaehler.abweichung = true
     zaehler.zahl += r.zahl
-    return r.html
+    return r.neu
   }
   if (Array.isArray(wert)) {
     const ids = wert.map((e) => e?._id)

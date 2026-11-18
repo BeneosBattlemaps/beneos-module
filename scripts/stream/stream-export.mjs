@@ -68,34 +68,11 @@
  * Gemeldet wird nie eine Adresse und nie ein Schluessel.
  * Pruefsatz: `stream-export.test.mjs`, Sabotagen im Satz `export`.
  */
-import { MODULE_ID, streamKey, schluesselfreiAdresse, leinwandAdresse, erlaubteBasis,
-         STREAM_RAUM_BUCHSTABE } from "./stream-settings.mjs"
+import { MODULE_ID, streamKey, schluesselfreiAdresse, leinwandAdresse } from "./stream-settings.mjs"
 import { htmlTiefSchluesselfrei } from "./stream-html.mjs"
+import { TOR_IM_TEXT, SCHLUESSELSTUECK, wandle } from "./stream-tormaske.mjs"
 
 const MARKE = Symbol.for("beneos.stream.export")
-const RAEUME = Object.values(STREAM_RAUM_BUCHSTABE).join("|")
-
-/*
- * Eine Adresse mit Raumbuchstabe an erster Stelle, unter jedem Host. Ob sie
- * unsere ist, entscheiden danach `schluesselfreiAdresse` (heutiger Host) und
- * `erlaubteBasis` (Zone). Endet an Leerraum, Anfuehrungszeichen und spitzer
- * Klammer, wie die Textmaske in `stream-report.mjs`.
- */
-const TOR_IM_TEXT = new RegExp(`https?://[^/\\s"'<>]+/(?:${RAEUME})/[^\\s"'<>]+`, "gi")
-const SCHLUESSELSTUECK = new RegExp(`^(https?://([^/\\s"'<>]+))/(${RAEUME})/([^/\\s"'<>?#]+)`, "i")
-
-/** Das Schluesselstueck einer Toradresse unter einem Host der Zone wird `-`. */
-function maskiere(adresse) {
-  const t = SCHLUESSELSTUECK.exec(adresse)
-  if (!t || t[4] === "-") return adresse
-  if (!erlaubteBasis(`https://${t[2]}`)) return adresse
-  return `${t[1]}/${t[3]}/-${adresse.slice(t[0].length)}`
-}
-
-function wandle(adresse) {
-  const frei = schluesselfreiAdresse(adresse)
-  return frei !== adresse ? frei : maskiere(adresse)
-}
 
 /** Die Formen des heutigen Schluessels, nach denen zuletzt gesucht wird. */
 function schluesselFormen() {

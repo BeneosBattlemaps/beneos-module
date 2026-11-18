@@ -509,5 +509,79 @@ console.log("H16 Fremde Flags bleiben ausserhalb des Netzes (stre-T-128, Kalt-Re
   game.actors = []
 }
 
+console.log("H17 Textnetz (stre-T-142 B2): Toradressen ausserhalb von <img>")
+{
+  const { textSchluesselfrei, nurBildadressenGetauscht } = await import("./stream-html.mjs")
+  const MASKE = TOR.replace(`/a/${KEY}/`, "/a/-/")
+  const tief = (wert) => { const w = JSON.parse(JSON.stringify(wert)); htmlTiefSchluesselfrei(w); return w }
+  wahr("H17 Vorbedingung: die Maske traegt kein Schluesselstueck", MASKE !== TOR && ohneSchluessel(MASKE), MASKE)
+  wahr("H17 die Stufe gibt es", typeof textSchluesselfrei === "function")
+
+  // href: die Maske, die freie Form daneben, der Linktext bleibt.
+  const link = tief({ content: `<p>Siehe <a href="${TOR}" class="k">Karte</a></p>` }).content
+  wahr("H17 href: Schluessel weg", ohneSchluessel(link), link)
+  wahr("H17 href ist die Maske", link.includes(`href="${MASKE}"`), link)
+  wahr("H17 data-beneos-href traegt die freie Form", link.includes(`data-beneos-href="${FREI}"`), link)
+  wahr("H17 class und Linktext bleiben", link.includes('class="k"') && link.includes(">Karte</a></p>"), link)
+  wahr("H17 href: zweiter Lauf bytegleich", tief({ content: link }).content === link)
+
+  // Textknoten und reiner Text: rundlaufend wird es beneos://, sonst die Maske.
+  const text = tief({ content: `<p>Link: ${TOR} Ende</p>` }).content
+  wahr("H17 Textknoten: die freie Form", text === `<p>Link: ${FREI} Ende</p>`, text)
+  const notiz = tief({ notiz: `siehe ${TOR} dort` }).notiz
+  wahr("H17 reiner Text ohne HTML: die freie Form", notiz === `siehe ${FREI} dort`, notiz)
+  const KAPUTT = `${GATE}/a/${KEY}/kaputt`
+  const kaputt = tief({ content: `<p>x ${KAPUTT} y</p>` }).content
+  wahr("H17 nicht rundlaufend: die Maske", kaputt === `<p>x ${GATE}/a/-/kaputt y</p>`, kaputt)
+
+  // Was bleibt.
+  const fremdLink = `<a href="https://example.com/a/${KEY}/x/4k/y.webp">f</a>`
+  const mitNachbar = tief({ content: `${fremdLink} ${TOR}` }).content
+  wahr("H17 fremder Host in href: bytegleich", mitNachbar.startsWith(fremdLink), mitNachbar)
+  const video = `<p>v</p><video src="${TOR}"></video>`
+  wahr("H17 video src bleibt (Wiedergabe braucht die Adresse)", tief({ content: video }).content === video)
+  wahr("H17 ganzer Wert bleibt bei der Feldliste", tief({ src: TOR }).src === TOR)
+  const fremdFlag = { flags: { "monks-active-tiles": { notiz: `<p>${TOR}</p>` } } }
+  wahr("H17 fremdes Flag bleibt", JSON.stringify(tief(fremdFlag)) === JSON.stringify(fremdFlag))
+  const ohneTor = { content: "<p>Siehe <a href=\"https://example.com\">x</a> und gate.beneos.stream</p>" }
+  wahr("H17 Zwei-Werte-Probe: Text ohne Toradresse bytegleich", JSON.stringify(tief(ohneTor)) === JSON.stringify(ohneTor))
+  einstellungen[SETTING.key] = ""
+  const ohneK = { content: `<p><a href="${TOR}">x</a> ${TOR}</p>` }
+  wahr("H17 ohne Schluessel: nichts geaendert", JSON.stringify(tief(ohneK)) === JSON.stringify(ohneK))
+  einstellungen[SETTING.key] = KEY
+
+  // Anlegen und Aendern ueber das Schreibnetz.
+  let quelle = null
+  hakenListe.preCreateJournalEntryPage[0]({ _source: { name: "S", type: "text", text: { content: `<p><a href="${TOR}">x</a></p>` } },
+    updateSource(d) { quelle = d } })
+  wahr("H17 Anlegen: href gewandelt", ohneSchluessel(JSON.stringify(quelle)) && JSON.stringify(quelle).includes("data-beneos-href"),
+    JSON.stringify(quelle))
+  const aend = { "text.content": `<p>${TOR}</p>` }
+  hakenListe.preUpdateJournalEntryPage[0]({}, aend)
+  wahr("H17 Aendern: Textknoten gewandelt", aend["text.content"] === `<p>${FREI}</p>`, aend["text.content"])
+
+  // Altseiten: nur Adressen getauscht, sonst abgewiesen.
+  const alt = `<p>a <a href="${TOR}">x</a> ${TOR} b</p><img src="${TOR}">`
+  const neu = tief({ c: alt }).c
+  wahr("H17 Altseiten-Pruefung: Text und href getauscht gilt", nurBildadressenGetauscht(alt, neu) === true, neu)
+  wahr("H17 Altseiten-Pruefung: ein Textzeichen anders: abgelehnt", nurBildadressenGetauscht(alt, neu.replace(" b</p>", " c</p>")) === false)
+  wahr("H17 Altseiten-Pruefung: Schluessel im href: abgelehnt", nurBildadressenGetauscht(alt, neu.replace(`href="${MASKE}"`, `href="${TOR}"`)) === false)
+  wahr("H17 Altseiten-Pruefung: data-beneos-href mit Toradresse: abgelehnt",
+    nurBildadressenGetauscht(alt, neu.replace(`data-beneos-href="${FREI}"`, `data-beneos-href="${TOR}"`)) === false)
+  const geschrieben = []
+  const seiteQ = { _id: "t1", type: "text", text: { content: alt } }
+  game.journal = [{ documentName: "JournalEntry", id: "jText",
+    constructor: { metadata: { embedded: { JournalEntryPage: "pages" } } },
+    toObject: () => ({ name: "J", pages: [JSON.parse(JSON.stringify(seiteQ))] }),
+    async update(d) { geschrieben.push(["update", d]) },
+    async updateEmbeddedDocuments(k, t) { geschrieben.push([k, t]) } }]
+  game.actors = []
+  game.items = []
+  const lauf = await altseitenUmstellen()
+  wahr("H17 Altseiten-Lauf: die Seite wird geschrieben, ohne Schluessel",
+    lauf.dokumente === 1 && lauf.fehler === 0 && geschrieben.length === 1 && ohneSchluessel(JSON.stringify(geschrieben)),
+    JSON.stringify({ lauf, geschrieben }))
+  game.journal = []
+}
 console.log(`${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
 process.exit(rot ? 1 : 0)
