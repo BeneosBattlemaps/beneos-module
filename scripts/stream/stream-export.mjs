@@ -161,6 +161,31 @@ function wickleExport(proto) {
   }
 }
 
+const MARKE_TEXT = Symbol.for("beneos.stream.export.text")
+
+/**
+ * Wickelt `export` einer Chatnachricht (stre-T-142 C). Der Chatlog-Export ruft
+ * je Nachricht `m.export()` (v13 chat-message.mjs:547, v14 :593) und schreibt
+ * den Text in eine Datei; die Huelle um `toCompendium` greift dort nicht.
+ *
+ * Die Methode wird erst beim Aufruf aufgeloest, damit eine spaeter gesetzte
+ * Elternmethode gilt. Anders als beim Kompendium wirft die Huelle nicht: ein
+ * Wurf braeche den ganzen Log ab, und `textFrei` ersetzt zuletzt jede
+ * Schluesselform, also bleibt kein Rest. Ohne Schluessel kommt der Text
+ * unveraendert zurueck.
+ */
+function wickleTextExport(proto) {
+  if (!proto || Object.hasOwn(proto, MARKE_TEXT)) return
+  const eigen = Object.hasOwn(proto, "export") ? proto.export : null
+  const eltern = Object.getPrototypeOf(proto)
+  Object.defineProperty(proto, MARKE_TEXT, { value: true })
+  proto.export = function beneosTextExport(...args) {
+    const text = (eigen ?? eltern.export).apply(this, args)
+    if (typeof text !== "string" || !streamKey()) return text
+    return textFrei(text, schluesselFormen())
+  }
+}
+
 /* ------------------------------------------------------------- Heilen */
 
 function darfHeilen(doc, userId) {
@@ -344,6 +369,7 @@ export function installStreamExport() {
     const klasse = config[art]?.documentClass
     if (typeof klasse !== "function") continue
     wickleExport(klasse.prototype)
+    if (art === "ChatMessage") wickleTextExport(klasse.prototype)
     // Ein zweiter Einbau setzt keinen Haken doppelt; sonst heilte jedes
     // Dokument zweimal.
     if (BEHORCHT.has(art)) continue

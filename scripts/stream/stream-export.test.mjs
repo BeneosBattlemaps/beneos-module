@@ -144,6 +144,17 @@ globalThis.CONFIG.Note = { documentClass: Notiz }
 globalThis.CONFIG.Region = { documentClass: NotizUnter }
 globalThis.CONFIG.Item = { documentClass: Gegenstand }
 
+/*
+ * stre-T-142 C: der Chatlog-Export. Wie der Kern 13.351 (chat-message.mjs:547)
+ * gibt `export()` die Textknoten des Inhalts als Text aus. Die Klasse in
+ * CONFIG erbt `export` von ihrer Elternklasse, und die Elternmethode wird
+ * erst NACH dem Einbau gesetzt, wie eine spaete fremde Huelle.
+ */
+let chatText = ""
+class NachrichtBasis extends KernDokument {}
+class Nachricht extends NachrichtBasis { static metadata = { embedded: {} } }
+globalThis.CONFIG.ChatMessage = { documentClass: Nachricht }
+
 const kachelQuelle = () => ({
   _id: "kachel000000001",
   texture: { src: FREI(BILD) },
@@ -502,6 +513,30 @@ t.abschnitt("stre-T-135 E2: fremder Schluessel wird der eigene")
     await geheilt(`${FREMD(KLANG)}\tweiter`, "updateTile"), `${TOR(KLANG)}\tweiter`)
   schluesselAn = false
   t.gleich("ohne eigenen Schluessel: kein update", await geheilt(FREMD(KLANG)), "kein update")
+  schluesselAn = true
+}
+
+t.abschnitt("stre-T-142 C: Chatlog-Export")
+{
+  // Die Elternmethode kommt erst jetzt, nach dem Einbau.
+  NachrichtBasis.prototype.export = function kernExport() { return chatText }
+  const n = new Nachricht("ChatMessage", { _id: "nachricht000001" })
+  const ausgabe = () => { try { return n.export() } catch (_e) { return "Export geworfen" } }
+  chatText = `[18:00] GM\nSiehe ${TOR(BILD)} hier`
+  t.gleich("Chat: Toradresse im Text, 0 Mal der Schluessel", zaehle(ausgabe()), 0)
+  t.gleich("Chat: die Adresse wird schluesselfrei", ausgabe(), `[18:00] GM\nSiehe ${FREI(BILD)} hier`)
+  const SONDER = "pk_pruefsatz/chat+000001"
+  sonderAn = SONDER
+  chatText = `kodiert ${encodeURIComponent(SONDER)} und roh ${SONDER} Ende`
+  t.gleich("Chat: Schluessel roh und kodiert, 0 Mal", [SONDER, encodeURIComponent(SONDER)].map((f) => ausgabe().split(f).length - 1).join(","), "0,0")
+  sonderAn = ""
+  chatText = "[18:00] GM\nnichts Besonderes"
+  t.gleich("Zwei-Werte-Probe: Chat ohne Toradresse bytegleich", ausgabe(), "[18:00] GM\nnichts Besonderes")
+  // Die Toradresse vor dem Abschalten bauen: `assetUrl` liest den Schluessel.
+  const mitTor = `Siehe ${TOR(BILD)}`
+  chatText = mitTor
+  schluesselAn = false
+  t.gleich("Chat ohne eigenen Schluessel: bytegleich", ausgabe(), mitTor)
   schluesselAn = true
 }
 
