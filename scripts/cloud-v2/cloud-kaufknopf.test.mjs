@@ -28,7 +28,7 @@ const { gleich, struktur, abschnitt, ende } = pruefstand("cloud-kaufknopf, Buy b
 const MODULPFAD = join(HIER, "cloud-kaufknopf.mjs")
 const kaufKnopf = existsSync(MODULPFAD)
   ? (await import(pathToFileURL(MODULPFAD).href)).kaufKnopf
-  : () => ({ url: null, labelKey: "fehlt", tooltipKey: "fehlt" })
+  : () => ({ url: null, isBundle: "fehlt" })
 
 const PACK = "BENEOS.Cloud.Card.BuyPack"
 const PACK_TIPP = "BENEOS.Cloud.Card.BuyPackTooltip"
@@ -36,30 +36,22 @@ const BUNDLE = "BENEOS.Cloud.Card.BuyBundle"
 const BUNDLE_TIPP = "BENEOS.Cloud.Card.BuyBundleTooltip"
 const URL = "https://beneos-battlemaps.com/products/beispiel"
 
-abschnitt("Zwei Werte: Bundle aendert die Beschriftung, alles andere nicht")
+abschnitt("Zwei Werte: Bundle schaltet um, alles andere nicht")
 {
   const b = kaufKnopf({ shop_url: URL, shop_url_kind: "bundle" })
-  gleich("bundle: Beschriftung Buy bundle", b.labelKey, BUNDLE)
-  gleich("bundle: Tooltip Bundle", b.tooltipKey, BUNDLE_TIPP)
+  gleich("bundle: isBundle", b.isBundle, true)
   gleich("bundle: Adresse unveraendert", b.url, URL)
 
   const p = kaufKnopf({ shop_url: URL, shop_url_kind: "pack" })
-  gleich("pack: Beschriftung Buy pack", p.labelKey, PACK)
-  gleich("pack: Tooltip Pack", p.tooltipKey, PACK_TIPP)
+  gleich("pack: kein Bundle", p.isBundle, false)
   gleich("pack: Adresse unveraendert", p.url, URL)
 
-  const n = kaufKnopf({ shop_url: URL, shop_url_kind: null })
-  gleich("Art null: Buy pack", n.labelKey, PACK)
-  gleich("Art null: Tooltip Pack", n.tooltipKey, PACK_TIPP)
-
-  const alt = kaufKnopf({ shop_url: URL })
-  gleich("alter Server ohne Feld: Buy pack", alt.labelKey, PACK)
-  gleich("alter Server ohne Feld: Tooltip Pack", alt.tooltipKey, PACK_TIPP)
-
-  gleich("unbekannte Art: Buy pack", kaufKnopf({ shop_url: URL, shop_url_kind: "Bundle " }).labelKey, PACK)
+  gleich("Art null: kein Bundle", kaufKnopf({ shop_url: URL, shop_url_kind: null }).isBundle, false)
+  gleich("alter Server ohne Feld: kein Bundle", kaufKnopf({ shop_url: URL }).isBundle, false)
+  gleich("unbekannte Art: kein Bundle", kaufKnopf({ shop_url: URL, shop_url_kind: "Bundle " }).isBundle, false)
   gleich("ohne shop_url: keine Adresse", kaufKnopf({ shop_url_kind: "bundle" }).url, null)
   gleich("ohne Release: keine Adresse", kaufKnopf(undefined).url, null)
-  gleich("ohne Release: Buy pack", kaufKnopf(undefined).labelKey, PACK)
+  gleich("ohne Release: kein Bundle", kaufKnopf(undefined).isBundle, false)
 }
 
 abschnitt("Fenster: beide Kauflinks laufen ueber kaufKnopf")
@@ -70,20 +62,25 @@ abschnitt("Fenster: beide Kauflinks laufen ueber kaufKnopf")
   struktur("Fenster liest shop_url nirgends selbst", (fenster.match(/shop_url/g) || []).length, 0)
   struktur("Szenenkarte: kaufKnopf am Eltern-Release", /kaufKnopf\(bmapRelease\)/.test(fenster), true)
   struktur("Release-Karte: kaufKnopf am Release", /kaufKnopf\(r\)/.test(fenster), true)
-  struktur("beide Karten tragen den Beschriftungsschluessel", (fenster.match(/shopLabelKey:/g) || []).length, 2)
-  struktur("beide Karten tragen den Tooltipschluessel", (fenster.match(/shopTooltipKey:/g) || []).length, 2)
+  struktur("beide Karten tragen die Bundle-Weiche", (fenster.match(/shopIsBundle:\s+(bmapKauf|kauf)\.isBundle,/g) || []).length, 2)
 }
 
 abschnitt("Vorlage: kein Kaufknopf fest verdrahtet")
 {
   const vorlage = readFileSync(join(WURZEL, "templates/cloud-v2/parts/results-pane.hbs"), "utf8")
-  const knoepfe = vorlage.split('class="bc-card-button bc-card-button-buy-pack"').slice(1).map((s) => s.slice(0, 400))
+  const knoepfe = vorlage.split('class="bc-card-button bc-card-button-buy-pack"').slice(1).map((s) => s.slice(0, s.indexOf("</a>")))
   struktur("vier Kaufknoepfe", knoepfe.length, 4)
-  struktur("kein Knopf mit festem BuyPack-Text", knoepfe.filter((k) => k.includes("Card.BuyPack")).length, 0)
-  struktur("jeder Knopf: Beschriftung aus der Karte",
-    knoepfe.filter((k) => /\{\{localize (card|drawer\.asset)\.shopLabelKey\}\}/.test(k)).length, 4)
-  struktur("jeder Knopf: Tooltip aus der Karte",
-    knoepfe.filter((k) => /data-tooltip="\{\{localize (card|drawer\.asset)\.shopTooltipKey\}\}"/.test(k)).length, 4)
+  // Die Schluessel stehen woertlich in der Vorlage, damit die Sprachwache
+  // ihre Aufrufer sieht; gewaehlt wird mit der Weiche der Karte.
+  const beschriftung = (p) => `<span>{{#if ${p}.shopIsBundle}}{{localize "${BUNDLE}"}}{{else}}{{localize "${PACK}"}}{{/if}}</span>`
+  const tooltip = (p) => `data-tooltip="{{#if ${p}.shopIsBundle}}{{localize '${BUNDLE_TIPP}'}}{{else}}{{localize '${PACK_TIPP}'}}{{/if}}">`
+  const praefix = ["card", "card", "drawer.asset", "drawer.asset"]
+  struktur("jeder Knopf: Beschriftung mit Bundle-Weiche",
+    knoepfe.filter((k, i) => k.includes(beschriftung(praefix[i]))).length, 4)
+  struktur("jeder Knopf: Tooltip mit Bundle-Weiche",
+    knoepfe.filter((k, i) => k.includes(tooltip(praefix[i]))).length, 4)
+  struktur("kein Knopf mit fester Pack-Beschriftung ohne Weiche",
+    knoepfe.filter((k) => k.includes(`<span>{{localize "${PACK}"}}</span>`)).length, 0)
 }
 
 abschnitt("Sprachen: alle Dateien tragen beide neuen Schluessel")
