@@ -514,7 +514,48 @@ function flaechenRiegel(renderHaken, schliessHaken) {
  */
 export const flaechenRiegelFuerPruefsatz = flaechenRiegel
 
+/**
+ * DER LINKKLICK (stre-T-142 B3). Foundry verwirft `href="beneos://..."` beim
+ * Speichern (`ALLOWED_URL_SCHEMES`, v13 constants.mjs:1809, v14 :1923,
+ * gemessen am 18.11.2026 in v13Stream). Das Textnetz in `stream-html.mjs`
+ * schreibt deshalb die Maske mit `-` in `href` und die schluesselfreie
+ * Adresse in `data-beneos-href`. Hier bekommt der Link den Schluessel von
+ * heute, und zwar erst im Moment des Klicks: "Link-Adresse kopieren" liefert
+ * weiter die Maske, und die oeffnet am Tor nichts.
+ *
+ * Gefangen werden der Linksklick und der Mittelklick. Der Rechtsklick bleibt
+ * beim Kontextmenue, ein Link im Editor beim Editor. Ohne Schluessel, bei einer
+ * Adresse, die nicht `beneos://` ist, oder einem Ziel ausserhalb des eigenen
+ * Tores geschieht nichts, und der Browser folgt `href` wie bisher.
+ *
+ * @returns {boolean} ob der Klick uebernommen wurde
+ */
+function linkKlick(ereignis) {
+  try {
+    if (!ereignis || ereignis.defaultPrevented) return false
+    const knopf = ereignis.button ?? 0
+    if (ereignis.type === "click" ? knopf !== 0 : knopf !== 1) return false
+    const a = ereignis.target?.closest?.("a[data-beneos-href]")
+    if (!a || imEditor(a) || !streamKey()) return false
+    const roh = a.getAttribute("data-beneos-href")
+    if (!istPlatzhalter(roh)) return false
+    const ziel = leinwandAdresse(roh)
+    if (typeof ziel !== "string" || ziel === roh || !/^https:\/\//i.test(ziel) || !ours(ziel)) return false
+    ereignis.preventDefault()
+    ereignis.stopPropagation?.()
+    globalThis.open?.(ziel, "_blank", "noopener")
+    return true
+  } catch (_) { return false }
+}
+let linkKlickAn = false
+
 export function installStreamBilder() {
+  // Vor den Flaechen: ein Haken, den der Riegel abweist, darf den Klick nicht
+  // mitnehmen. Nur einmal, auch bei zweitem Einbau.
+  if (!linkKlickAn && typeof globalThis.document?.addEventListener === "function") {
+    linkKlickAn = true
+    for (const typ of ["click", "auxclick"]) globalThis.document.addEventListener(typ, linkKlick, true)
+  }
   for (const [renderHaken, schliessHaken] of FLAECHEN) {
     if (flaechenRiegel(renderHaken, schliessHaken)) {
       console.warn(`Beneos Stream | Haken ${renderHaken} abgewiesen: eine Liste holt je Zeile `

@@ -69,6 +69,9 @@ netz((adresse) => {
 // ===========================================================================
 abschnitt("Der Einbau meldet genau die gemessenen Haken an")
 
+// Der Linkklick (stre-T-142 B3) hoert an `document`; die Attrappe kennt das nicht.
+const hoerer = []
+globalThis.document.addEventListener = (typ, fn, optionen) => { hoerer.push({ typ, fn, optionen }) }
 bilder.installStreamBilder()
 // Der Editorhaken (stre-T-116, Bau 6) ist keine Flaeche; er wird unten geprueft.
 const namen = haken.namen().filter((n) => n !== "createProseMirrorEditor")
@@ -460,6 +463,63 @@ abschnitt("Editor, stre-T-116: das echte Bild nur in der Ansicht, nie im Dokumen
   gleich("Editor: ohne Schluessel kein Plugin", "beneosBildAnsicht" in leer, false)
   einstellungen["beneos-stream-key"] = SCHLUESSEL
   delete globalThis.ProseMirror
+}
+
+// ===========================================================================
+abschnitt("Der Linkklick, stre-T-142 B3")
+
+/*
+ * Foundry verwirft `href="beneos://..."` beim Speichern (ALLOWED_URL_SCHEMES,
+ * gemessen 18.11.2026 in v13Stream). Das Textnetz schreibt deshalb die Maske
+ * mit `-` in `href` und die schluesselfreie Adresse in `data-beneos-href`.
+ * Den Schluessel bekommt der Link erst im Moment des Klicks.
+ */
+{
+  const ROH = "beneos://a/beneos_bm_0113/4k/karte.webp"
+  const ZIEL = settings.leinwandAdresse(ROH)
+  gleich("B3 Vorbedingung: die Toradresse von heute traegt den Schluessel", ZIEL.includes(SCHLUESSEL), true)
+  for (const typ of ["click", "auxclick"]) {
+    const h = hoerer.filter((x) => x.typ === typ)
+    gleich(`B3 ${typ} ist einmal an document angemeldet, in der Capture-Phase`,
+      `${h.length}|${h[0]?.optionen === true || h[0]?.optionen?.capture === true}`, "1|true")
+  }
+  const offen = []
+  const altOpen = globalThis.open
+  globalThis.open = (...a) => { offen.push(a) }
+  const link = (wert, imEditor = false) => {
+    const a = {
+      getAttribute: (n) => (n === "data-beneos-href" ? wert : null),
+      closest: (sel) => (sel.includes("data-beneos-href") ? (wert == null ? null : a) : (imEditor ? {} : null)),
+    }
+    return a
+  }
+  const klick = (ziel, typ = "click", button = typ === "click" ? 0 : 1, vorher = false) => {
+    const e = { type: typ, button, target: ziel, defaultPrevented: vorher,
+      preventDefault() { this.defaultPrevented = true }, stopPropagation() {} }
+    offen.length = 0
+    for (const x of hoerer.filter((y) => y.typ === typ)) x.fn(e)
+    return { e, offen: offen.map((a) => a.join(" ")) }
+  }
+  let r = klick(link(ROH))
+  gleich("B3 Klick: die Toradresse von heute in neuem Tab, ohne Opener", r.offen.join(), `${ZIEL} _blank noopener`)
+  gleich("B3 Klick: der Standardklick ist unterbunden", r.e.defaultPrevented, true)
+  r = klick(link(ROH), "auxclick", 1)
+  gleich("B3 Mittelklick: oeffnet ebenso", r.offen.join(), `${ZIEL} _blank noopener`)
+  r = klick(link(ROH), "auxclick", 2)
+  gleich("B3 Rechtsklick: oeffnet nichts, das Kontextmenue bleibt", `${r.offen.length}|${r.e.defaultPrevented}`, "0|false")
+  r = klick(link(ROH, true))
+  gleich("B3 im Editor: oeffnet nichts", `${r.offen.length}|${r.e.defaultPrevented}`, "0|false")
+  r = klick(link(null))
+  gleich("B3 Link ohne Attribut: unberuehrt", `${r.offen.length}|${r.e.defaultPrevented}`, "0|false")
+  r = klick(link("https://fremd.example/a/x/y.webp"))
+  gleich("B3 fremde Adresse im Attribut: unberuehrt", `${r.offen.length}|${r.e.defaultPrevented}`, "0|false")
+  r = klick(link(ROH), "click", 0, true)
+  gleich("B3 schon unterbundener Klick: unberuehrt", r.offen.length, 0)
+  einstellungen["beneos-stream-key"] = ""
+  r = klick(link(ROH))
+  gleich("B3 ohne Schluessel: oeffnet nichts", `${r.offen.length}|${r.e.defaultPrevented}`, "0|false")
+  einstellungen["beneos-stream-key"] = SCHLUESSEL
+  globalThis.open = altOpen
 }
 
 // ===========================================================================
