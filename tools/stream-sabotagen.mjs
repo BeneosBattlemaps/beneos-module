@@ -98,6 +98,12 @@
  * dass die Spielleitung beim Hereinkommen fremde Flags auf die Toradresse
  * zurueckheilt. Den Satz gibt es an der Basis nicht.
  *
+ * ZWEIUNDZWANZIG SAETZE seit stre-T-120. `kaufknopf` haelt fest, dass der
+ * Kaufknopf nur bei shop_url_kind "bundle" "Buy bundle" heisst, dass beide
+ * Karten den Kauflink ueber kaufKnopf bilden, dass die Vorlage die Schluessel
+ * woertlich hinter einer Weiche nennt und dass alle Sprachen sie tragen. Den
+ * Satz gibt es an der Basis nicht.
+ *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
  * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig] [--zeitgrenze <ms>]
@@ -128,6 +134,7 @@ const CR = "\r";
 const SATZ_AUSSERHALB = {
   blatt: "scripts/loot/item-sheet-extender.test.mjs",
   bonustab: "scripts/loot/actor-set-bonus-tab.test.mjs",
+  kaufknopf: "scripts/cloud-v2/cloud-kaufknopf.test.mjs",
 };
 const SATZDATEI = (satz) => SATZ_AUSSERHALB[satz] ?? `scripts/stream/stream-${satz}.test.mjs`;
 
@@ -173,6 +180,7 @@ const KLANG = "scripts/stream/stream-klang.mjs";
 const HTML = "scripts/stream/stream-html.mjs";
 const CANVAS = "scripts/stream/stream-canvas.mjs";
 const FENSTER = "scripts/cloud-v2/cloud-window-v2.mjs";
+const KAUF = "scripts/cloud-v2/cloud-kaufknopf.mjs";
 const VORLAGE = "templates/cloud-v2/parts/results-pane.hbs";
 const FREMD = "scripts/stream/stream-fremdflaggen.mjs";
 const FLAGG = "scripts/stream/stream-flaggen.mjs";
@@ -1463,6 +1471,28 @@ const SABOTAGEN = [
   { satz: "export", ziel: ["Enkel: der Effekt heilt"], ersetze: [[EXPORT, "  if (tiefe > 4) return 0\n", "  if (tiefe > 0) return 0\n"]] },
   { satz: "export", ziel: ["Einzelkind: das Heilen wirft nicht"], ersetze: [[EXPORT, "    if (typeof sammlung?.[Symbol.iterator] !== \"function\") continue\n", "\n"]] },
   { satz: "export", ziel: ["Einzelkind: das Delta steht nicht im Update der Marke"], ersetze: [[EXPORT, "      if (tiefe === 0 && ohne.has(k)) continue\n", "\n"]] },
+  // ---------------------------------------------------------------- kaufknopf (stre-T-120)
+  { satz: "kaufknopf", ziel: ["bundle: isBundle"], ersetze: [[KAUF, "    isBundle: release?.shop_url_kind === \"bundle\",\n", "    isBundle: false,\n"]] },
+  { satz: "kaufknopf", ziel: ["pack: kein Bundle","Art null: kein Bundle","alter Server ohne Feld: kein Bundle","unbekannte Art: kein Bundle","ohne Release: kein Bundle"], ersetze: [[KAUF, "    isBundle: release?.shop_url_kind === \"bundle\",\n", "    isBundle: true,\n"]] },
+  { satz: "kaufknopf", ziel: ["pack: kein Bundle","unbekannte Art: kein Bundle"], ersetze: [[KAUF, "    isBundle: release?.shop_url_kind === \"bundle\",\n", "    isBundle: !!release?.shop_url_kind,\n"]] },
+  { satz: "kaufknopf", ziel: ["Art null: kein Bundle","alter Server ohne Feld: kein Bundle","unbekannte Art: kein Bundle","ohne Release: kein Bundle"], ersetze: [[KAUF, "    isBundle: release?.shop_url_kind === \"bundle\",\n", "    isBundle: release?.shop_url_kind !== \"pack\",\n"]] },
+  { satz: "kaufknopf", ziel: ["bundle: Adresse unveraendert","pack: Adresse unveraendert"], ersetze: [[KAUF, "    url: release?.shop_url || null,\n", "    url: null,\n"]] },
+  { satz: "kaufknopf", ziel: ["ohne shop_url: keine Adresse","ohne Release: keine Adresse"], ersetze: [[KAUF, "    url: release?.shop_url || null,\n", "    url: release?.shop_url ?? \"\",\n"]] },
+  { satz: "kaufknopf", ziel: ["[Struktur] Fenster importiert kaufKnopf"], ersetze: [[FENSTER, "import { kaufKnopf } from \"./cloud-kaufknopf.mjs\"\n", "import { kaufKnopf as kaufKnopf } from \"./cloud-kaufknopf.mjs\"\n"]] },
+  { satz: "kaufknopf", ziel: ["[Struktur] Fenster liest shop_url nirgends selbst"], ersetze: [[FENSTER, "        shopUrl:              kauf.url,\n", "        shopUrl:              r?.shop_url || null,\n"]] },
+  { satz: "kaufknopf", ziel: ["[Struktur] Szenenkarte: kaufKnopf am Eltern-Release"], ersetze: [[FENSTER, "    const bmapKauf = kaufKnopf(bmapRelease)\n", "    const bmapKauf = kaufKnopf(bmapRelease ?? null)\n"]] },
+  { satz: "kaufknopf", ziel: ["[Struktur] Release-Karte: kaufKnopf am Release"], ersetze: [[FENSTER, "      const kauf = kaufKnopf(r)\n", "      const kauf = kaufKnopf(r ?? null)\n"]] },
+  { satz: "kaufknopf", ziel: ["[Struktur] beide Karten tragen die Bundle-Weiche"], ersetze: [[FENSTER, "      shopIsBundle: bmapKauf.isBundle,\n", "\n"]] },
+  { satz: "kaufknopf", ziel: ["[Struktur] vier Kaufknoepfe"], ersetze: [[VORLAGE, "<a class=\"bc-card-button bc-card-button-buy-pack\"", "<a class=\"bc-card-button bc-card-button-buy\"", 4, 4]] },
+  { satz: "kaufknopf", ziel: ["[Struktur] jeder Knopf: Beschriftung mit Bundle-Weiche","[Struktur] kein Knopf mit fester Pack-Beschriftung ohne Weiche"], ersetze: [[VORLAGE, "<span>{{#if drawer.asset.shopIsBundle}}{{localize \"BENEOS.Cloud.Card.BuyBundle\"}}{{else}}{{localize \"BENEOS.Cloud.Card.BuyPack\"}}{{/if}}</span>", "<span>{{localize \"BENEOS.Cloud.Card.BuyPack\"}}</span>", 2, 2]] },
+  { satz: "kaufknopf", ziel: ["[Struktur] jeder Knopf: Tooltip mit Bundle-Weiche"], ersetze: [[VORLAGE, "data-tooltip=\"{{#if card.shopIsBundle}}{{localize 'BENEOS.Cloud.Card.BuyBundleTooltip'}}{{else}}{{localize 'BENEOS.Cloud.Card.BuyPackTooltip'}}{{/if}}\">", "data-tooltip=\"{{localize 'BENEOS.Cloud.Card.BuyPackTooltip'}}\">", 2, 1]] },
+  { satz: "kaufknopf", ziel: ["[Struktur] vierzehn Sprachdateien"], ersetze: [["lang/xx.json", null, "{}\n"]] },
+  { satz: "kaufknopf", ziel: ["[Struktur] kein Schluessel fehlt oder ist leer"], ersetze: [["lang/fr.json", "  \"BENEOS.Cloud.Card.BuyBundle\": \"Acheter le lot\",\n", "\n"]] },
+  { satz: "kaufknopf", ziel: ["[Struktur] kein Gedankenstrich"], ersetze: [["lang/fr.json", "  \"BENEOS.Cloud.Card.BuyBundle\": \"Acheter le lot\",\n", "  \"BENEOS.Cloud.Card.BuyBundle\": \"Acheter \u2013 le lot\",\n"]] },
+  { satz: "kaufknopf", ziel: ["en: Buy bundle"], ersetze: [["lang/en.json", "  \"BENEOS.Cloud.Card.BuyBundle\": \"Buy bundle\",\n", "  \"BENEOS.Cloud.Card.BuyBundle\": \"Buy pack\",\n"]] },
+  { satz: "kaufknopf", ziel: ["en: Buy pack unveraendert"], ersetze: [["lang/en.json", "  \"BENEOS.Cloud.Card.BuyPack\": \"Buy pack\",\n", "  \"BENEOS.Cloud.Card.BuyPack\": \"Buy bundle\",\n"]] },
+  { satz: "kaufknopf", ziel: ["en: Pack-Tooltip nach Betreiberwahl"], ersetze: [["lang/en.json", "  \"BENEOS.Cloud.Card.BuyPackTooltip\": \"Buy this map pack\",\n", "  \"BENEOS.Cloud.Card.BuyPackTooltip\": \"Buy once, keep it forever. No subscription needed.\",\n"]] },
+  { satz: "kaufknopf", ziel: ["en: Bundle-Tooltip"], ersetze: [["lang/en.json", "  \"BENEOS.Cloud.Card.BuyBundleTooltip\": \"Buy the bundle with this map pack\",\n", "  \"BENEOS.Cloud.Card.BuyBundleTooltip\": \"Buy this map pack\",\n"]] },
 ];
 
 /*
@@ -1641,7 +1671,7 @@ if (process.argv.includes("--alle-saetze")) {
 
 // ------------------------------------------------------------- Lauf
 
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf"]
   .filter((s) => !nurSatz || s === nurSatz);
 if (SAETZE.length === 0) {
   console.log(`unbekannter Satz: ${nurSatz}`);
