@@ -2029,9 +2029,15 @@ export async function offlineHalten(urls, onProgress) {
   // ist die Zusatzangabe, aus der die Oberflaeche einen Satz baut (OP-PRJ-185).
   const ergebnis = { gehalten: 0, geholt: 0, fehlgeschlagen: 0, bytes: 0, deckelErreicht: false, gruende: {} }
   const zaehlGrund = (g) => { const k = g || "unbekannt"; ergebnis.gruende[k] = (ergebnis.gruende[k] || 0) + 1 }
-  if (!liste.length || !localCacheEnabled()) return ergebnis
+  if (!liste.length) return ergebnis
+  // `speicherAus` sagt, dass DIESER Aufruf nichts halten konnte. Ohne das Feld
+  // sieht das Ergebnis voller Nullen aus wie Erfolg. Der modulweite Vermerk aus
+  // `speicherAusfallStand()` taugt dafuer nicht: ihn setzt jeder gescheiterte
+  // Zugriff, auch ein fremder, waehrend dieser Aufruf alles gehalten hat
+  // (stre-T-145, Kalt-Review).
+  if (!localCacheEnabled()) { ergebnis.speicherAus = true; return ergebnis }
   const store = await openStore()
-  if (!store) return ergebnis
+  if (!store) { ergebnis.speicherAus = true; return ergebnis }
 
   // Der Deckel wird EINMAL vorab geprueft, nicht je Datei. Eine Karte halb zu
   // halten waere das schlechteste Ergebnis: sie belegt Platz und zeichnet

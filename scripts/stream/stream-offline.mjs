@@ -29,7 +29,7 @@
  * er den Abend kostet.
  */
 
-import { MODULE_ID, SETTING, streamEnabled, assetUrl, zerlegeAdresse, streamKey, streamBase, VIDEO_EXT, istGeteilteDatei } from "./stream-settings.mjs"
+import { MODULE_ID, SETTING, streamEnabled, localCacheEnabled, assetUrl, zerlegeAdresse, streamKey, streamBase, VIDEO_EXT, istGeteilteDatei } from "./stream-settings.mjs"
 import { offlineGehalten, offlineHalten, offlineFreigeben, nichtGehalten,
          gehalteneAdressen, speicherAusfallStand, speicherBereit, speicherLage } from "./stream-fetch.mjs"
 import { streamAdressenVon, streamState } from "./stream-online.mjs"
@@ -594,10 +594,11 @@ export async function karteZusagen({ release, variant, karte, name, urls, bytes,
   }
 
   const ergebnis = await offlineHalten(liste, onProgress)
-  if (speicherAusfallStand()) {
-    // Der Speicher ist zwischen Vorpruefung und Holen ausgefallen. Das
-    // Ergebnis zeigt dann nur Nullen und keinen Fehlschlag, also wird die
-    // Zusage hier zurueckgegeben, wie beim Deckel (stre-T-145).
+  if (ergebnis.speicherAus) {
+    // Der Speicher ist zwischen Vorpruefung und Holen ausgefallen, oder der
+    // lokale Speicher wurde abgeschaltet. Das Ergebnis zeigt dann nur Nullen
+    // und keinen Fehlschlag, also wird die Zusage hier zurueckgegeben, wie
+    // beim Deckel (stre-T-145).
     await torFragen(kartenWeg(release, variant, karte) + "/release", "POST")
     return { ok: false, grund: "speicher-aus", ergebnis }
   }
@@ -1492,6 +1493,13 @@ export async function schalteKarte(sceneId) {
       ui.notifications?.warn(game.i18n.format("BENEOS.Stream.Offline.KeepFailedNoSpace", { name: k.name })
         || `"${k.name}" was not kept: your browser has no storage space left. `
          + `Free up disk space or clear site data for other sites, then try again.`)
+    } else if (ergebnis.grund === "speicher-aus" && localCacheEnabled()) {
+      // Der Browser gibt seinen Speicher nicht her. "Nicht vollstaendig geholt"
+      // zeigte auf Netz oder Download, die Ursache liegt aber im Browser
+      // (stre-T-145). Ist der lokale Speicher abgeschaltet, bleibt es beim
+      // allgemeinen Satz, denn dieser Text spraeche dann vom falschen Grund.
+      ui.notifications?.warn(game.i18n.localize("BENEOS.Stream.Offline.BlockedStorage")
+        || "Beneos: your browser storage is unavailable right now, so your offline maps cannot be checked or fetched.")
     } else if (ergebnis.ursache === "abgewiesen") {
       ui.notifications?.warn(game.i18n.format("BENEOS.Stream.Offline.KeepFailedDenied", { name: k.name })
         || `"${k.name}" was not kept: your account is not entitled to all of its files.`)

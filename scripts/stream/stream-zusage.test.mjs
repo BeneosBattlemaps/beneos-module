@@ -41,8 +41,10 @@ installiereFoundry({
  * Aufruf von `caches.open`, ab dem der Speicher wirft; 0 heisst nie. So
  * wirft ein beschaedigtes Chromium-Profil, gemessen am 31.08.2026.
  */
-const schalter = { wirfAb: 0, geoeffnet: 0 }
-const speicherFaellt = (ab) => { schalter.wirfAb = ab; schalter.geoeffnet = 0 }
+const schalter = { wirfAb: 0, nur: 0, geoeffnet: 0 }
+const speicherFaellt = (ab) => { schalter.wirfAb = ab; schalter.nur = 0; schalter.geoeffnet = 0 }
+/** Nur der n-te Aufruf wirft, wie ein fremder Abruf, der einmal scheitert. */
+const speicherStolpert = (n) => { schalter.wirfAb = 0; schalter.nur = n; schalter.geoeffnet = 0 }
 
 function speicherAttrappe() {
   const schluessel = (anfrage, ohneSuche) => {
@@ -69,7 +71,7 @@ function speicherAttrappe() {
   globalThis.caches = {
     async open() {
       schalter.geoeffnet++
-      if (schalter.wirfAb && schalter.geoeffnet >= schalter.wirfAb) {
+      if ((schalter.wirfAb && schalter.geoeffnet >= schalter.wirfAb) || schalter.nur === schalter.geoeffnet) {
         throw Object.assign(new Error("Unexpected internal error."), { name: "UnknownError" })
       }
       return store
@@ -163,6 +165,23 @@ abschnitt("Lokaler Speicher abgeschaltet: das Tor wird nicht gefragt")
   gleich("Cache-Schalter aus: kein Abruf beim Tor", JSON.stringify([torAbrufe().length, r?.ok, eintraege()]), "[0,false,0]")
 }
 
+abschnitt("Lokaler Speicher faellt waehrend der Zusage weg: die Zusage wird zurueckgegeben")
+{
+  // Die Welteinstellung kann ein zweiter Spielleiter umschalten, waehrend
+  // dieser Client beim Tor fragt (Kalt-Review stre-T-145, Befund 2).
+  netz((adresse) => {
+    if (adresse === ZUSAGE) { game.settings.set("beneos-module", "beneos-stream-local-cache", false); return json(200, { ok: true }) }
+    if (adresse === `${ZUSAGE}/release`) return json(200, { ok: true })
+    if (adresse.startsWith(`${BASIS}/a/`)) return new Response("bild", { status: 200 })
+    return undefined
+  })
+  nimmAbrufe()
+  const r = await versuche(() => karteZusagen(auftrag()))
+  await game.settings.set("beneos-module", "beneos-stream-local-cache", true)
+  const tor = torAbrufe().map((a) => `${String(a.optionen?.method || "GET").toUpperCase()} ${a.adresse.slice(ZUSAGE.length) || "/"}`)
+  gleich("Schalter faellt waehrend der Zusage: Freigabe, kein Eintrag", JSON.stringify([tor, r?.grund, eintraege()]), JSON.stringify([["POST /", "POST /release"], "speicher-aus", 0]))
+}
+
 abschnitt("Die Freigabe bleibt POST auf /release")
 {
   netz((adresse) => {
@@ -198,6 +217,25 @@ abschnitt("Loesen gelingt auch, wenn das Tor schweigt")
   gleich("Zusage vor dem stummen Loesen gelingt", zu?.ok, true)
   const los = await versuche(() => karteLoesen(KARTE.release, KARTE.variant, KARTE.karte))
   gleich("Loesen gelingt auch ohne Tor", JSON.stringify([los?.ok, los?.beimTor]), "[true,false]")
+}
+
+abschnitt("Ein fremder Speicherfehler kostet die gehaltene Karte nicht")
+{
+  // Scheitert irgendein anderer Zugriff einmal, waehrend diese Karte
+  // vollstaendig gehalten wird, bleibt die Zusage stehen (Kalt-Review
+  // stre-T-145, Befund 1). Der dritte Aufruf ist der erste nach dem Oeffnen
+  // in `offlineHalten`.
+  await versuche(() => karteLoesen(KARTE.release, KARTE.variant, KARTE.karte))
+  ablage.clear()
+  torSagtZu()
+  speicherStolpert(3)
+  nimmAbrufe()
+  const r = await versuche(() => karteZusagen(auftrag()))
+  const geoeffnet = schalter.geoeffnet
+  speicherFaellt(0)
+  const tor = torAbrufe().map((a) => `${String(a.optionen?.method || "GET").toUpperCase()} ${a.adresse.slice(ZUSAGE.length) || "/"}`)
+  gleich("der Stolperer trifft wirklich einen Zugriff", geoeffnet >= 3, true)
+  gleich("Fremder Ausfall im Holen: Zusage bleibt", JSON.stringify([r?.ok, tor, eintraege(), r?.ergebnis?.geholt]), JSON.stringify([true, ["POST /"], 1, 1]))
 }
 
 ende()
