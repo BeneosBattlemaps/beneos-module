@@ -98,6 +98,11 @@
  * dass die Spielleitung beim Hereinkommen fremde Flags auf die Toradresse
  * zurueckheilt. Den Satz gibt es an der Basis nicht.
  *
+ * ZWEIUNDZWANZIG SAETZE seit stre-T-135. `kennung` haelt fest, dass die
+ * Anmeldung bei einer gesperrten Weltkennung genau einmal neu wuerfelt und
+ * eine saubere `foundry_id` aus der Antwort uebernimmt. Auch ihn gibt es an
+ * der Basis nicht.
+ *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
  * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig] [--zeitgrenze <ms>]
@@ -128,6 +133,7 @@ const CR = "\r";
 const SATZ_AUSSERHALB = {
   blatt: "scripts/loot/item-sheet-extender.test.mjs",
   bonustab: "scripts/loot/actor-set-bonus-tab.test.mjs",
+  kennung: "scripts/cloud-login-kennung.test.mjs",
 };
 const SATZDATEI = (satz) => SATZ_AUSSERHALB[satz] ?? `scripts/stream/stream-${satz}.test.mjs`;
 
@@ -178,6 +184,7 @@ const FREMD = "scripts/stream/stream-fremdflaggen.mjs";
 const FLAGG = "scripts/stream/stream-flaggen.mjs";
 const KREATUR = "scripts/creature-installer/creature-installer.mjs";
 const EXPORT = "scripts/stream/stream-export.mjs";
+const KENNUNG = "scripts/cloud-login-kennung.mjs";
 
 const SABOTAGEN = [
   // ---------------------------------------------------------------- maske
@@ -1463,6 +1470,46 @@ const SABOTAGEN = [
   { satz: "export", ziel: ["Enkel: der Effekt heilt"], ersetze: [[EXPORT, "  if (tiefe > 4) return 0\n", "  if (tiefe > 0) return 0\n"]] },
   { satz: "export", ziel: ["Einzelkind: das Heilen wirft nicht"], ersetze: [[EXPORT, "    if (typeof sammlung?.[Symbol.iterator] !== \"function\") continue\n", "\n"]] },
   { satz: "export", ziel: ["Einzelkind: das Delta steht nicht im Update der Marke"], ersetze: [[EXPORT, "      if (tiefe === 0 && ohne.has(k)) continue\n", "\n"]] },
+  // stre-T-135 E2: fremder Schluessel wird der eigene.
+  { satz: "export", ziel: ["create: fremder Schluessel wird der eigene","update: fremder Schluessel in der Aenderung heilt","mitten im Text: fremder Schluessel wird der eigene"], ersetze: [[EXPORT, "    if (!neu.includes(\"://\")) return neu\n", "    return neu\n"]] },
+  { satz: "export", ziel: ["maskierter Schluessel (-) bleibt (kein update)"], ersetze: [[EXPORT, "  if (k === \"-\" || k.startsWith(\"z.\")) return adresse\n", "  if (k.startsWith(\"z.\")) return adresse\n"]] },
+  { satz: "export", ziel: ["Form z. bleibt (kein update)"], ersetze: [[EXPORT, "  if (k === \"-\" || k.startsWith(\"z.\")) return adresse\n", "  if (k === \"-\") return adresse\n"]] },
+  { satz: "export", ziel: ["update: fremder Schluessel in der Aenderung heilt"], ersetze: [[EXPORT, "  return zahl.n > 0\n", "  return false\n"]] },
+  { satz: "export", ziel: ["create: fremder Host bleibt (kein update)"], ersetze: [[EXPORT, "  const frei = schluesselfreiAdresse(adresse)\n  if (frei === adresse) return adresse\n", "  const frei = schluesselfreiAdresse(adresse.replace(/^https?:\\/\\/[^/]+/, \"https://gate.beneos.stream\"))\n  if (frei === adresse) return adresse\n"]] },
+  { satz: "export", ziel: ["mitten im Text: fremder Schluessel wird der eigene"], ersetze: [[EXPORT, "    return ersetzeFrei(neu, TOR_IM_TEXT, eigenerSchluessel, zahl)\n", "    return ersetzeFrei(neu, new RegExp(`^${TOR_IM_TEXT.source}$`, \"gi\"), eigenerSchluessel, zahl)\n"]] },
+  { satz: "export", ziel: ["create: eigener Schluessel bleibt zeichengleich (kein update)"], ersetze: [[EXPORT, "    if (e !== a) zahl.n++\n", "    zahl.n++\n"]] },
+  // Nachpruefung T-135: freie Treffer, https, Zerleger, Vorfilter auf den Werten.
+  { satz: "export", ziel: ["in der Anfrage einer fremden Adresse: kein update","im Pfad einer fremden Adresse: kein update","im Attribut einer fremden Adresse mit Leerraum: kein update","beneos:// in der Anfrage einer fremden Adresse: kein update"], ersetze: [[EXPORT, "    if (!frei) return a\n", "\n"]] },
+  { satz: "export", ziel: ["hinter einem Host ohne Schema: kein update"], ersetze: [[EXPORT, "  return !/[/\\\\]|:\\S/.test(text.slice(i, off))\n", "  return !/[\\\\]|:\\S/.test(text.slice(i, off))\n"]] },
+  { satz: "export", ziel: ["hinter einem Schema ohne Schraegstrich: kein update"], ersetze: [[EXPORT, "  return !/[/\\\\]|:\\S/.test(text.slice(i, off))\n", "  return !/[/\\\\]/.test(text.slice(i, off))\n"]] },
+  { satz: "export", ziel: ["hinter einem Windows-Pfad: kein update"], ersetze: [[EXPORT, "  return !/[/\\\\]|:\\S/.test(text.slice(i, off))\n", "  return !/[/]|:\\S/.test(text.slice(i, off))\n"]] },
+  { satz: "export", ziel: ["Gegenprobe: je Absatz eine fremde Adresse, beide heilen"], ersetze: [[EXPORT, "const GRENZE_LINKS = /[<>\"'\\n\\r]/\n", "const GRENZE_LINKS = /[\\n\\r]/\n"]] },
+  { satz: "export", ziel: ["Gegenprobe: ganzer Attributwert heilt"], ersetze: [[EXPORT, "const GRENZE_LINKS = /[<>\"'\\n\\r]/\n", "const GRENZE_LINKS = /[<>'\\n\\r]/\n"]] },
+  { satz: "export", ziel: ["mitten im Text: fremder Schluessel wird der eigene"], ersetze: [[EXPORT, "    ab = off + a.length\n", "\n"]] },
+  { satz: "export", ziel: ["http mit fremdem Schluessel: kein update"], ersetze: [[EXPORT, "  if (!/^https:\\/\\//i.test(adresse)) return adresse\n", "\n"]] },
+  { satz: "export", ziel: ["eigener Schluessel mit Rueckstrich: kein update"], ersetze: [[EXPORT, "  if (seg[1] !== t[3] || seg[2] !== k) return adresse\n", "\n"]] },
+  { satz: "export", ziel: ["update: fremde Adresse im HTML-Attribut heilt","update: fremde Adresse vor Zeilenumbruch heilt","update: fremde Adresse vor Tabulator heilt"], ersetze: [[EXPORT, "  return zahl.n > 0\n", "  return false\n"]] },
+  { satz: "export", ziel: ["eigenes Flag mit fremdem Schluessel: kein update"], ersetze: [[EXPORT, "        if (ns === MODULE_ID) continue\n", "\n"]] },
+  { satz: "export", ziel: ["eigener Schluessel mit Komma danach: kein update","eigener Schluessel mit Entitaet danach: kein update","eigener Schluessel mit Anfrage: kein update","fremder Schluessel mit Komma danach: nur der Schluessel wechselt"], ersetze: [[EXPORT, "  if (!tor || tor[4] === k) return adresse\n  return `${t[1]}/${t[3]}/${tor[4]}${adresse.slice(t[0].length)}`\n", "  if (!tor) return adresse\n  return leinwandAdresse(frei)\n"]] },
+  { satz: "export", ziel: ["eigener Schluessel mit Komma danach: kein update","create: eigener Schluessel bleibt zeichengleich (kein update)"], ersetze: [[EXPORT, "  if (!tor || tor[4] === k) return adresse\n", "  if (!tor) return adresse\n  if (tor[4] === k) return adresse + \" \"\n"]] },
+  { satz: "export", ziel: ["fremder Schluessel mit Anfrage: nur der Schluessel wechselt"], ersetze: [[EXPORT, "${adresse.slice(t[0].length)}`\n", "${adresse.slice(t[0].length).replace(/[?#].*$/, \"\")}`\n", 2, 2]] },
+  // stre-T-135 R26: Anmeldung mit der Weltkennung (weiche Sperre).
+  { satz: "kennung", ziel: ["das Modul laesst sich laden"], ersetze: [[KENNUNG, "export const SPERRCODE = \"foundry-id-revoked\"\n", "throw new Error(\"Sabotage\")\nexport const SPERRCODE = \"foundry-id-revoked\"\n"]] },
+  { satz: "kennung", ziel: ["gesperrt: genau ein Neuwuerfeln","gesperrt: genau zwei Rufe","gesperrt: der zweite Ruf traegt die neue Kennung","gesperrt: danach gilt die neue Kennung","gesperrt: die Antwort des zweiten Rufs kommt zurueck","zweimal gesperrt: keine Schleife, zwei Rufe","zweimal gesperrt: ein Neuwuerfeln"], ersetze: [[KENNUNG, "  if (daten?.result === \"error\" && daten?.code === SPERRCODE) {\n", "  if (false) {\n"]] },
+  { satz: "kennung", ziel: ["zweimal gesperrt: keine Schleife, zwei Rufe","zweimal gesperrt: ein Neuwuerfeln","zweimal gesperrt: der Fehler kommt zurueck"], ersetze: [[KENNUNG, "  if (daten?.result === \"error\" && daten?.code === SPERRCODE) {\n", "  while (daten?.result === \"error\" && daten?.code === SPERRCODE) {\n"]] },
+  { satz: "kennung", ziel: ["gesperrt: der zweite Ruf traegt die neue Kennung","gesperrt: danach gilt die neue Kennung"], ersetze: [[KENNUNG, "    kennung = wuerfle()\n", "    wuerfle()\n"]] },
+  { satz: "kennung", ziel: ["gesperrt: die Antwort des zweiten Rufs kommt zurueck"], ersetze: [[KENNUNG, "    daten = await sende(kennung)\n", "    await sende(kennung)\n"]] },
+  { satz: "kennung", ziel: ["OK ohne foundry_id: ein Ruf","OK ohne foundry_id: die Kennung bleibt","OK ohne foundry_id: kein Neuwuerfeln"], ersetze: [[KENNUNG, "  if (daten?.result === \"error\" && daten?.code === SPERRCODE) {\n", "  if (daten?.result !== \"error\" || daten?.code === SPERRCODE) {\n"]] },
+  { satz: "kennung", ziel: ["anderer Fehler: ein Ruf, kein Neuwuerfeln","anderer Fehler: die Kennung bleibt","fremder Fehlercode: kein zweiter Ruf"], ersetze: [[KENNUNG, "  if (daten?.result === \"error\" && daten?.code === SPERRCODE) {\n", "  if (daten?.result === \"error\") {\n"]] },
+  { satz: "kennung", ziel: ["OK mit abweichender foundry_id: sie wird uebernommen"], ersetze: [[KENNUNG, "  if (typeof gebunden === \"string\" && SAUBER.test(gebunden)) kennung = gebunden\n", "\n"]] },
+  { satz: "kennung", ziel: ["Fehler mit foundry_id: sie wird nicht uebernommen"], ersetze: [[KENNUNG, "  const gebunden = daten?.result === \"OK\" ? daten.foundry_id : null\n", "  const gebunden = daten?.foundry_id\n"]] },
+  { satz: "kennung", ziel: ["OK mit unsauberer foundry_id: sie wird nicht uebernommen"], ersetze: [[KENNUNG, "const SAUBER = /^[A-Za-z0-9]{1,64}$/\n", "const SAUBER = /^[A-Za-z0-9&=]{1,64}$/\n"]] },
+  { satz: "kennung", ziel: ["OK mit zu langer foundry_id: sie wird nicht uebernommen"], ersetze: [[KENNUNG, "const SAUBER = /^[A-Za-z0-9]{1,64}$/\n", "const SAUBER = /^[A-Za-z0-9]{1,65}$/\n"]] },
+  { satz: "kennung", ziel: ["[Struktur] beide Wege melden sich ueber anmeldenMitKennung an"], ersetze: [[CLOUD, "    anmeldenMitKennung(sende, userId, () => foundry.utils.randomID(32))\n", "    anmeldenMitKennung(sende, this.foundryId ?? userId, () => foundry.utils.randomID(32))\n"]] },
+  { satz: "kennung", ziel: ["[Struktur] beide Wege pollen mit der Kennung aus der Anmeldung","[Struktur] kein Weg pollt mit der alten Kennung"], ersetze: [[CLOUD, "        this.pollForAccess(kennung)\n", "        this.pollForAccess(userId)\n", 2, 2]] },
+  { satz: "kennung", ziel: ["[Struktur] die Passwortanmeldung traegt faehig=1"], ersetze: [[CLOUD, "const cloudLoginURL = mitFaehig(`${BeneosUtility.cloudBase()}/foundry-login.php", "const cloudLoginURL = (`${BeneosUtility.cloudBase()}/foundry-login.php"]] },
+  { satz: "kennung", ziel: ["[Struktur] die Codeanmeldung traegt faehig=1"], ersetze: [[CLOUD, "const verURL = mitFaehig(`${BeneosUtility.cloudBase()}/foundry-otp-verify.php", "const verURL = (`${BeneosUtility.cloudBase()}/foundry-otp-verify.php"]] },
+  { satz: "kennung", ziel: ["die Adresse bekommt faehig=1 angehaengt"], ersetze: [[KENNUNG, "  return `${url}&faehig=1`\n", "  return url\n"]] },
 ];
 
 /*
@@ -1470,6 +1517,10 @@ const SABOTAGEN = [
  */
 const EIGENPROBEN = {
   export: {
+    "Vorbedingung: die fremde Adresse traegt den fremden Schluessel":
+      "Vorbedingung des Pruefsatzes (stre-T-135): sie liest nur, was der Pruefsatz aus assetUrl baut, und stellt fest, dass die E2-Proben einen fremden Schluessel sehen.",
+    "ohne eigenen Schluessel: kein update":
+      "Wie \"ohne Schluessel: kein update\": ohne die Pruefung in darfHeilen schriebe der Lauf trotzdem nichts, weil leinwandAdresse ohne Schluessel keine Toradresse baut und eigenerSchluessel die Adresse dann unveraendert laesst.",
     "ohne Schluessel: kein update":
       "Die Schluesselpruefung in darfHeilen spart ohne Schluessel den Lauf ueber jedes neue Dokument. Ohne sie schriebe der Lauf trotzdem nichts, weil leinwandAdresse ohne Schluessel keine Toradresse baut; das bewacht der Satz leinwand.",
     "die Toradresse traegt den Schluessel":
@@ -1641,7 +1692,7 @@ if (process.argv.includes("--alle-saetze")) {
 
 // ------------------------------------------------------------- Lauf
 
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kennung"]
   .filter((s) => !nurSatz || s === nurSatz);
 if (SAETZE.length === 0) {
   console.log(`unbekannter Satz: ${nurSatz}`);

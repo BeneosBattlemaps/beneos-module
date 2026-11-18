@@ -59,6 +59,12 @@
  * `ActorDelta` eines Tokens ist keine Sammlung und bleibt aussen vor. Damit heilen auch die stummen
  * Importe aus der Zeit stre-T-102 bis stre-T-128, sobald sie jemand schreibt.
  *
+ * Seit stre-T-135 E2 (Betreiberentscheid R27) heilt derselbe Lauf auch eine
+ * Toradresse des eigenen Tors mit dem Schluessel eines anderen Kontos auf den
+ * eigenen. Beide Ersetzungen greifen nur an freien Treffern: eine Adresse, die
+ * in einer anderen Adresse steckt (Anfrage, Pfad), ginge an deren Host, und
+ * dort landet nie der eigene Schluessel (`stehtFrei`).
+ *
  * Gemeldet wird nie eine Adresse und nie ein Schluessel.
  * Pruefsatz: `stream-export.test.mjs`, Sabotagen im Satz `export`.
  */
@@ -167,15 +173,76 @@ function darfHeilen(doc, userId) {
 
 const PLATZHALTER_IM_TEXT = /beneos:\/\/[^\s"'<>]+/gi
 
-/** Jedes `beneos://` im Wert, ganz oder mitten im Text, wird Toradresse. */
+/*
+ * stre-T-135 E2 (Betreiberentscheid R27): eine Toradresse des heutigen Tors
+ * mit dem Schluessel eines ANDEREN Kontos wird die Toradresse mit dem eigenen.
+ * Das Stueck `-` (maskiert) und die Form `z.` bleiben, ebenso jeder fremde
+ * Host und jede Adresse, die nicht rundlaeuft (`schluesselfreiAdresse` laesst
+ * sie dann unveraendert).
+ *
+ * Getauscht wird NUR das Schluesselstueck. TOR_IM_TEXT nimmt Folgezeichen mit
+ * (Komma, Entitaet, Anfrage); der Rundlauf wuerde sie neu kodieren und den
+ * Text dahinter verfaelschen. Der Rundlauf belegt nur, dass die Adresse zum
+ * eigenen Tor gehoert, und liefert die Schreibweise des eigenen Schluessels.
+ */
+function eigenerSchluessel(adresse) {
+  // Nur https: der Schluessel geht nie ueber eine unverschluesselte Adresse.
+  if (!/^https:\/\//i.test(adresse)) return adresse
+  const t = SCHLUESSELSTUECK.exec(adresse)
+  if (!t) return adresse
+  const k = t[4]
+  if (k === "-" || k.startsWith("z.")) return adresse
+  // Regex und URL-Zerleger muessen dieselben Stuecke sehen (Rueckstrich,
+  // Punktsegmente); sonst bleibt die Adresse, wie sie ist.
+  let seg
+  try { seg = new URL(adresse).pathname.split("/") } catch (_e) { return adresse }
+  if (seg[1] !== t[3] || seg[2] !== k) return adresse
+  const frei = schluesselfreiAdresse(adresse)
+  if (frei === adresse) return adresse
+  const tor = SCHLUESSELSTUECK.exec(leinwandAdresse(frei))
+  if (!tor || tor[4] === k) return adresse
+  return `${t[1]}/${t[3]}/${tor[4]}${adresse.slice(t[0].length)}`
+}
+
+/**
+ * Steht der Treffer an `off` frei, also nicht IN einer anderen Adresse? Gelesen
+ * wird der Text links bis zur naechsten Grenze (voriger Treffer, `<`, `>`,
+ * Anfuehrungszeichen, Zeilenumbruch). Traegt er `/`, `\` oder ein `:` vor
+ * einem Nicht-Leerzeichen, steckt der Treffer in einer Adresse, deren Host ihn
+ * bekaeme (Anfrage, Pfad, Attribut mit Leerraum). Dort wird nie der eigene
+ * Schluessel eingesetzt. Ein ganzer Attributwert (`="..."`) ist frei.
+ */
+const GRENZE_LINKS = /[<>"'\n\r]/
+function stehtFrei(text, off, ab) {
+  let i = off
+  while (i > ab && !GRENZE_LINKS.test(text[i - 1])) i--
+  return !/[/\\]|:\S/.test(text.slice(i, off))
+}
+
+/** Ersetzt jeden freien Treffer von `muster` mit `tausch`, zaehlt die Wechsel. */
+function ersetzeFrei(text, muster, tausch, zahl) {
+  let ab = 0
+  return text.replace(muster, (a, ...rest) => {
+    const off = rest[rest.length - 2]
+    const frei = stehtFrei(text, off, ab)
+    ab = off + a.length
+    if (!frei) return a
+    const e = tausch(a)
+    if (e !== a) zahl.n++
+    return e
+  })
+}
+
+/**
+ * Jedes freie `beneos://` im Wert, ganz oder mitten im Text, wird Toradresse;
+ * jede freie Toradresse mit fremdem Schluessel wird die mit dem eigenen.
+ */
 function heileWert(wert, zahl, tiefe) {
   if (typeof wert === "string") {
-    if (!wert.toLowerCase().includes("beneos://")) return wert
-    return wert.replace(PLATZHALTER_IM_TEXT, (p) => {
-      const tor = leinwandAdresse(p)
-      if (tor !== p) zahl.n++
-      return tor
-    })
+    let neu = wert
+    if (neu.toLowerCase().includes("beneos://")) neu = ersetzeFrei(neu, PLATZHALTER_IM_TEXT, leinwandAdresse, zahl)
+    if (!neu.includes("://")) return neu
+    return ersetzeFrei(neu, TOR_IM_TEXT, eigenerSchluessel, zahl)
   }
   if (tiefe > 40 || !wert || typeof wert !== "object") return wert
   if (Array.isArray(wert)) return wert.map((w) => heileWert(w, zahl, tiefe + 1))
@@ -233,8 +300,9 @@ async function heileKinder(doc, tiefe) {
 
 /**
  * Schreibt unter den fremden Flags eines Dokuments und aller eingebetteten
- * Dokumente darunter jedes `beneos://` als Toradresse zurueck. Gibt die Zahl
- * der Schreibvorgaenge zurueck.
+ * Dokumente darunter jedes freie `beneos://` als Toradresse zurueck und jede
+ * freie Toradresse mit fremdem Schluessel mit dem eigenen. Gibt die Zahl der
+ * Schreibvorgaenge zurueck.
  */
 export async function heile(doc) {
   const eigen = fremdAenderung(doc.toObject(), new Set(Object.values(sammlungen(doc))))
@@ -244,8 +312,8 @@ export async function heile(doc) {
 }
 
 async function heileSicher(doc) {
-  // Das eigene Update feuert `update<Art>` wieder; es traegt kein `beneos://`
-  // mehr und faellt dort am Vorfilter.
+  // Das eigene Update feuert `update<Art>` wieder; es traegt nichts mehr, das
+  // heilen wuerde, und faellt dort am Vorfilter.
   try {
     return await heile(doc)
   } catch (_e) {
@@ -254,8 +322,13 @@ async function heileSicher(doc) {
   }
 }
 
+/** Vorfilter fuer `update<Art>`: traegt die Aenderung etwas, das heilen wuerde? */
+// Dieselbe Regel wie beim Heilen, auf den Werten selbst und nicht auf ihrer
+// JSON-Form: dort verschoeben Escapes die Grenzen (Nachpruefung T-135).
 const traegtPlatzhalter = (wert) => {
-  try { return JSON.stringify(wert ?? null).toLowerCase().includes("beneos://") } catch (_e) { return false }
+  const zahl = { n: 0 }
+  try { heileWert(wert, zahl, 0) } catch (_e) { return false }
+  return zahl.n > 0
 }
 
 /**

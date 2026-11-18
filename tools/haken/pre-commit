@@ -160,6 +160,11 @@ fahre_weich() {
 fahre "scripts/creature-installer/anker.test.mjs" "anker.test.mjs, 22 Saetze"
 fahre "tools/v14-import-bench/unit.mjs"           "v14-import unit.mjs, 53 Saetze"
 
+# Die Anmeldung mit der Weltkennung (stre-T-135). Der Satz liegt direkt unter
+# `scripts/` und damit ausserhalb der Sammlung der Streamsaetze weiter unten;
+# ohne diese Zeile liefe er in keinem Tor. Unter einer Sekunde, kein Netz.
+fahre "scripts/cloud-login-kennung.test.mjs"      "cloud-login-kennung.test.mjs"
+
 # Die Pruefsaetze des Streamings, und nur wenn ihr Gegenstand angefasst wird.
 #
 # WARUM ERST SEIT DEM 08.11.2026. Sie lagen in genau der Lage, die diese Datei

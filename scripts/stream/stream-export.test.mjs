@@ -432,6 +432,79 @@ t.abschnitt("Heilen: Gegenproben")
     (await ruf("updateTile", geheilt, { flags: { [MONKS]: { a: TOR(KLANG) } } }, {}, "nutzer")).length, 0)
 }
 
+t.abschnitt("stre-T-135 E2: fremder Schluessel wird der eigene")
+{
+  // Eine Toradresse des eigenen Tors mit dem Schluessel eines anderen Kontos,
+  // wie sie in einer kopierten oder importierten Welt steht.
+  const FREMD = (p) => TOR(p).replace(SCHLUESSEL, ALTER)
+  const auf = (wert) => new Kachel("Tile", { _id: "kachel000000135", flags: { [MONKS]: { a: wert } } })
+  const geheilt = async (wert, haken_ = "createTile", aenderung = null) => {
+    const k = auf(wert)
+    const w = haken_ === "createTile"
+      ? await ruf("createTile", k, {}, "nutzer")
+      : await ruf("updateTile", k, aenderung ?? { flags: { [MONKS]: { a: wert } } }, {}, "nutzer")
+    return w.find(([, art]) => art === "update")?.[2]?.[`flags.${MONKS}`]?.a ?? "kein update"
+  }
+  t.gleich("Vorbedingung: die fremde Adresse traegt den fremden Schluessel", zaehleAlt(FREMD(KLANG)), 1)
+  t.gleich("create: fremder Schluessel wird der eigene", await geheilt(FREMD(KLANG)), TOR(KLANG))
+  t.gleich("create: eigener Schluessel bleibt zeichengleich (kein update)", await geheilt(TOR(KLANG)), "kein update")
+  const fremdHost = `https://fremd.example/a/${ALTER}/${REL}/${VAR}/${KLANG}`
+  t.gleich("create: fremder Host bleibt (kein update)", await geheilt(fremdHost), "kein update")
+  t.gleich("update: fremder Schluessel in der Aenderung heilt", await geheilt(FREMD(KLANG), "updateTile"), TOR(KLANG))
+  t.gleich("mitten im Text: fremder Schluessel wird der eigene",
+    await geheilt(`Klang ${FREMD(KLANG)} und Bild ${FREMD(BILD)} Ende`), `Klang ${TOR(KLANG)} und Bild ${TOR(BILD)} Ende`)
+  // Kalt-Review: das Textmuster nimmt Folgezeichen mit. Sie bleiben byte-gleich.
+  t.gleich("eigener Schluessel mit Komma danach: kein update", await geheilt(`Klang ${TOR(KLANG)}, weiter`), "kein update")
+  t.gleich("eigener Schluessel mit Entitaet danach: kein update",
+    await geheilt(`<p>${TOR(KLANG)}&amp;nbsp;und</p>`), "kein update")
+  t.gleich("eigener Schluessel mit Anfrage: kein update", await geheilt(`${TOR(KLANG)}?t=1`), "kein update")
+  t.gleich("fremder Schluessel mit Komma danach: nur der Schluessel wechselt",
+    await geheilt(`Klang ${FREMD(KLANG)}, weiter`), `Klang ${TOR(KLANG)}, weiter`)
+  t.gleich("fremder Schluessel mit Anfrage: nur der Schluessel wechselt",
+    await geheilt(`${FREMD(KLANG)}?t=1#x`), `${TOR(KLANG)}?t=1#x`)
+  const maske = `${GATE}/a/-/${REL}/${VAR}/${KLANG}`
+  t.gleich("maskierter Schluessel (-) bleibt (kein update)", await geheilt(maske), "kein update")
+  const zform = `${GATE}/a/z.pruef/${REL}/${VAR}/${KLANG}`
+  t.gleich("Form z. bleibt (kein update)", await geheilt(zform), "kein update")
+  const eigenFlag = new Kachel("Tile", { _id: "kachel000000136", flags: { [MODULE_ID]: { a: FREMD(KLANG) } } })
+  t.gleich("eigenes Flag mit fremdem Schluessel: kein update",
+    (await ruf("createTile", eigenFlag, {}, "nutzer")).length, 0)
+  // Nachpruefung: eine Toradresse, die IN einer fremden Adresse steckt, geht
+  // an deren Host. Dort darf nie der eigene Schluessel landen.
+  const fremdWeg = "https://fremd.example/go"
+  t.gleich("in der Anfrage einer fremden Adresse: kein update",
+    await geheilt(`${fremdWeg}?u=${FREMD(KLANG)}`), "kein update")
+  t.gleich("im Pfad einer fremden Adresse: kein update",
+    await geheilt(`https://fremd.example/proxy/${FREMD(KLANG)}`), "kein update")
+  t.gleich("im Attribut einer fremden Adresse mit Leerraum: kein update",
+    await geheilt(`<a href="${fremdWeg}?u= ${FREMD(KLANG)}">x</a>`), "kein update")
+  t.gleich("beneos:// in der Anfrage einer fremden Adresse: kein update",
+    await geheilt(`${fremdWeg}?u=${FREI(KLANG)}`), "kein update")
+  t.gleich("hinter einem Host ohne Schema: kein update",
+    await geheilt(`fremd.example/go?u=${FREMD(KLANG)}`), "kein update")
+  t.gleich("hinter einem Schema ohne Schraegstrich: kein update",
+    await geheilt(`mailto:a@fremd.example?body=${FREMD(KLANG)}`), "kein update")
+  t.gleich("hinter einem Windows-Pfad: kein update",
+    await geheilt(`\\\\fremd\\freigabe\\${FREMD(KLANG)}`), "kein update")
+  t.gleich("Gegenprobe: je Absatz eine fremde Adresse, beide heilen",
+    await geheilt(`<p>${FREMD(KLANG)}</p><p>${FREMD(BILD)}</p>`), `<p>${TOR(KLANG)}</p><p>${TOR(BILD)}</p>`)
+  t.gleich("Gegenprobe: ganzer Attributwert heilt",
+    await geheilt(`<img alt="a/b" src="${FREMD(BILD)}">`), `<img alt="a/b" src="${TOR(BILD)}">`)
+  t.gleich("http mit fremdem Schluessel: kein update",
+    await geheilt(FREMD(KLANG).replace(/^https:/, "http:")), "kein update")
+  const rueck = FREMD(KLANG).replace(`/${ALTER}/`, `/${SCHLUESSEL}\\x/`)
+  t.gleich("eigener Schluessel mit Rueckstrich: kein update", await geheilt(rueck), "kein update")
+  t.gleich("update: fremde Adresse im HTML-Attribut heilt",
+    await geheilt(`<img src="${FREMD(BILD)}">`, "updateTile"), `<img src="${TOR(BILD)}">`)
+  t.gleich("update: fremde Adresse vor Zeilenumbruch heilt",
+    await geheilt(`${FREMD(KLANG)}\nweiter`, "updateTile"), `${TOR(KLANG)}\nweiter`)
+  t.gleich("update: fremde Adresse vor Tabulator heilt",
+    await geheilt(`${FREMD(KLANG)}\tweiter`, "updateTile"), `${TOR(KLANG)}\tweiter`)
+  schluesselAn = false
+  t.gleich("ohne eigenen Schluessel: kein update", await geheilt(FREMD(KLANG)), "kein update")
+  schluesselAn = true
+}
+
 t.abschnitt("Einbau")
 {
   const namen = haken.namen()
