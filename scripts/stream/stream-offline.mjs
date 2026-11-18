@@ -31,7 +31,7 @@
 
 import { MODULE_ID, SETTING, streamEnabled, assetUrl, zerlegeAdresse, streamKey, streamBase, VIDEO_EXT, istGeteilteDatei } from "./stream-settings.mjs"
 import { offlineGehalten, offlineHalten, offlineFreigeben, nichtGehalten,
-         gehalteneAdressen, speicherAusfallStand, speicherLage } from "./stream-fetch.mjs"
+         gehalteneAdressen, speicherAusfallStand, speicherBereit, speicherLage } from "./stream-fetch.mjs"
 import { streamAdressenVon, streamState } from "./stream-online.mjs"
 import { loadStreamManifest } from "./stream-install.mjs"
 import { BeneosInstallState, releaseKern, anzeigename } from "../cloud-v2/beneos-install-state.mjs"
@@ -502,6 +502,9 @@ export async function karteZusagen({ release, variant, karte, name, urls, bytes,
   if (!streamEnabled()) return { ok: false, grund: "kein-streaming" }
   const liste = [...new Set((urls || []).filter(Boolean))]
   if (!liste.length) return { ok: false, grund: "keine-dateien" }
+  // Ohne Speicher wird nichts gehalten, also auch nichts zugesagt. Gefragt
+  // wird vor dem Tor, denn die Zusage bucht dort Kontingent (stre-T-145).
+  if (!(await speicherBereit())) return { ok: false, grund: "speicher-aus" }
 
   // ZWEI FRAGEN, ZWEI LISTEN.
   //
@@ -591,6 +594,13 @@ export async function karteZusagen({ release, variant, karte, name, urls, bytes,
   }
 
   const ergebnis = await offlineHalten(liste, onProgress)
+  if (speicherAusfallStand()) {
+    // Der Speicher ist zwischen Vorpruefung und Holen ausgefallen. Das
+    // Ergebnis zeigt dann nur Nullen und keinen Fehlschlag, also wird die
+    // Zusage hier zurueckgegeben, wie beim Deckel (stre-T-145).
+    await torFragen(kartenWeg(release, variant, karte) + "/release", "POST")
+    return { ok: false, grund: "speicher-aus", ergebnis }
+  }
   if (ergebnis.deckelErreicht) {
     // Nicht geholt heisst nicht gehalten: die Zusage sofort zurueckgeben,
     // sonst zaehlt das Tor Bytes, die nirgends liegen.

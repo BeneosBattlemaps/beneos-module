@@ -987,6 +987,23 @@ export function speicherAusfallStand() {
 }
 
 /**
+ * Kann der Browser gerade etwas dauerhaft halten? Fuer die Offline-Zusage.
+ *
+ * Die Zusage bucht beim Tor Kontingent. Haelt der Speicher nichts, gibt
+ * `offlineHalten` ein Ergebnis voller Nullen zurueck, und das sah bis
+ * stre-T-145 aus wie Erfolg: die Karte wurde eingetragen und das Kontingent
+ * belegt, ohne dass eine Datei lag.
+ *
+ * Gefragt wird frisch und nicht ueber `speicherAusfallStand()`. Der Vermerk
+ * entsteht erst beim ersten gescheiterten Zugriff und faellt erst beim
+ * naechsten gelungenen weg; vorher waere er leer, nachher veraltet.
+ */
+export async function speicherBereit() {
+  if (!localCacheEnabled()) return false
+  return Boolean(await openStore())
+}
+
+/**
  * Die Adressen aller Dateien, die den Dauerstempel tragen.
  *
  * `offlineBestand()` zaehlt sie nur. Fuer den Abgleich gegen die Zusagenliste

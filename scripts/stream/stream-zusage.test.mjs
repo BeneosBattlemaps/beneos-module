@@ -36,6 +36,14 @@ installiereFoundry({
  * Zusage gelingt trotzdem. Die Proben waeren dann ueber den Ausfallpfad gruen
  * statt ueber den Normalpfad (Kalt-Review stre-T-137).
  */
+/**
+ * Schalter fuer den Speicherausfall (stre-T-145). `wirfAb` ist der wievielte
+ * Aufruf von `caches.open`, ab dem der Speicher wirft; 0 heisst nie. So
+ * wirft ein beschaedigtes Chromium-Profil, gemessen am 31.08.2026.
+ */
+const schalter = { wirfAb: 0, geoeffnet: 0 }
+const speicherFaellt = (ab) => { schalter.wirfAb = ab; schalter.geoeffnet = 0 }
+
 function speicherAttrappe() {
   const schluessel = (anfrage, ohneSuche) => {
     const u = new URL(typeof anfrage === "string" ? anfrage : anfrage.url)
@@ -58,7 +66,16 @@ function speicherAttrappe() {
     },
     async keys() { return [...ablage.keys()].map((s) => new Request(s)) },
   }
-  globalThis.caches = { async open() { return store }, async delete() { ablage.clear(); return true } }
+  globalThis.caches = {
+    async open() {
+      schalter.geoeffnet++
+      if (schalter.wirfAb && schalter.geoeffnet >= schalter.wirfAb) {
+        throw Object.assign(new Error("Unexpected internal error."), { name: "UnknownError" })
+      }
+      return store
+    },
+    async delete() { ablage.clear(); return true },
+  }
   return ablage
 }
 const ablage = speicherAttrappe()
@@ -98,6 +115,52 @@ abschnitt("Ohne Netz: kein-netz, kein Absturz")
   nimmAbrufe()
   const r = await versuche(() => karteZusagen(auftrag()))
   gleich("Netzfehler ergibt grund kein-netz", r?.grund, "kein-netz")
+}
+
+/** Das Tor sagt zu und gibt frei, die Kartendatei kommt. */
+const torSagtZu = () => netz((adresse) => {
+  if (adresse === ZUSAGE) return json(200, { ok: true })
+  if (adresse === `${ZUSAGE}/release`) return json(200, { ok: true })
+  if (adresse.startsWith(`${BASIS}/a/`)) return new Response("bild", { status: 200 })
+  return undefined
+})
+const eintraege = () => Object.keys(game.settings.get("beneos-module", "beneos-stream-offline-held") || {}).length
+
+abschnitt("Speicherausfall vor der Zusage: das Tor wird nicht gefragt")
+{
+  // Ein Speicher, der nichts haelt, darf kein Kontingent kosten (stre-T-145).
+  torSagtZu()
+  speicherFaellt(1)
+  nimmAbrufe()
+  const r = await versuche(() => karteZusagen(auftrag()))
+  speicherFaellt(0)
+  gleich("Speicherausfall: kein Abruf beim Tor", torAbrufe().length, 0)
+  gleich("Speicherausfall ergibt grund speicher-aus", r?.grund, "speicher-aus")
+  gleich("Speicherausfall: kein Eintrag", eintraege(), 0)
+}
+
+abschnitt("Speicherausfall im Holen: die Zusage wird zurueckgegeben")
+{
+  // Die Vorpruefung findet den Speicher, das Holen nicht mehr.
+  torSagtZu()
+  speicherFaellt(2)
+  nimmAbrufe()
+  const r = await versuche(() => karteZusagen(auftrag()))
+  speicherFaellt(0)
+  const tor = torAbrufe().map((a) => `${String(a.optionen?.method || "GET").toUpperCase()} ${a.adresse.slice(ZUSAGE.length) || "/"}`)
+  gleich("Ausfall im Holen: Zusage und Freigabe", JSON.stringify(tor), JSON.stringify(["POST /", "POST /release"]))
+  gleich("Ausfall im Holen ergibt grund speicher-aus", r?.grund, "speicher-aus")
+  gleich("Ausfall im Holen: kein Eintrag", eintraege(), 0)
+}
+
+abschnitt("Lokaler Speicher abgeschaltet: das Tor wird nicht gefragt")
+{
+  torSagtZu()
+  await game.settings.set("beneos-module", "beneos-stream-local-cache", false)
+  nimmAbrufe()
+  const r = await versuche(() => karteZusagen(auftrag()))
+  await game.settings.set("beneos-module", "beneos-stream-local-cache", true)
+  gleich("Cache-Schalter aus: kein Abruf beim Tor", JSON.stringify([torAbrufe().length, r?.ok, eintraege()]), "[0,false,0]")
 }
 
 abschnitt("Die Freigabe bleibt POST auf /release")
