@@ -648,6 +648,11 @@ console.log("H19 Nachpruefung stre-T-142: jedes andere Tag, Textfelder, Listen, 
   wahr("H19 Liste notes Aendern: frei", tief({ notes: [TOR] }).notes[0] === FREI)
   wahr("H19 Liste notes Anlegen: frei", htmlAenderung({ notes: [TOR] }).aenderung?.notes?.[0] === FREI)
   wahr("H19 Zwei-Werte-Probe: Liste unter Bildnamen bleibt", tief({ img: [TOR] }).img[0] === TOR)
+  // Ein Systemfeld `value` kann ein Bild- oder Klangpfad sein und hat keinen Anzeigeweg.
+  wahr("H19 system value nur die Toradresse bleibt (kein Anzeigeweg)",
+    tief({ system: { klang: { value: TOR } } }).system.klang.value === TOR, tief({ system: { klang: { value: TOR } } }).system.klang.value)
+  wahr("H19 Zwei-Werte-Probe: description.value mit Text um die Toradresse wird frei",
+    tief({ system: { description: { value: `<p>${TOR}</p>` } } }).system.description.value === `<p>${FREI}</p>`)
   const FREMD = `https://example.com/a/${KEY}/x/4k/y.webp`
   wahr("H19 Altseiten-Pruefung: fremder Link bekommt data-beneos-href: abgelehnt",
     nurBildadressenGetauscht(`<p><a href="${FREMD}">x</a></p>`, `<p><a href="${FREMD}" data-beneos-href="${FREI}">x</a></p>`) === false)

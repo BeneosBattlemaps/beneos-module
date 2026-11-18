@@ -388,10 +388,14 @@ const GANZE_TORADRESSE = new RegExp(`^${TOR_IM_TEXT.source}$`, "i")
 /*
  * Die Textfelder, deren ganzer Wert auch eine einzelne Toradresse sein darf:
  * der letzte Teil des Schluessels, auch in flachen Pfaden wie `text.content`.
- * ChatMessage content und flavor, JournalEntryPage text.content, die
- * Beschreibungen der Systeme (system.description.value, biography.value).
+ * ChatMessage content und flavor, JournalEntryPage text.content.
+ * `value` fehlt bewusst: der Schluessel kennt hier nur den letzten Teil, und
+ * ein Systemfeld `system.<x>.value` kann ein Bild- oder Klangpfad ohne
+ * Anzeigeweg sein. Beschreibungen (system.description.value) werden trotzdem
+ * frei, sobald Text oder HTML um die Adresse steht; nur ein Wert, der allein
+ * aus einer Toradresse besteht, bleibt dort stehen (der Export maskiert ihn).
  */
-const TEXT_FELDER = new Set(["content", "flavor", "text", "markdown", "caption", "description", "value", "public", "notes", "biography", "chat"])
+const TEXT_FELDER = new Set(["content", "flavor", "text", "markdown", "caption", "description", "public", "notes", "biography", "chat"])
 function istTextfeld(schluessel) {
   return typeof schluessel === "string" && TEXT_FELDER.has(schluessel.slice(schluessel.lastIndexOf(".") + 1))
 }

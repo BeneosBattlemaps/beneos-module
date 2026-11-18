@@ -1681,7 +1681,7 @@ const SABOTAGEN = [
   { satz: "html", ziel: ["H18 style url() bleibt (kein Anzeigeweg)"], ersetze: [[HTML,"    if (a.name === \"style\" || !a.wert) continue\n","    if (!a.wert) continue\n"]] },
   { satz: "html", ziel: ["H19 blockquote cite: nicht beneos:"], ersetze: [[HTML,"    const neu = ADRESS_ATTRIBUTE.has(a.name)\n","    const neu = false\n"]] },
   { satz: "html", ziel: ["H19 a style url() bleibt"], ersetze: [[HTML,"a.name === \"data-beneos-href\" || a.name === \"style\" || !a.wert) continue","a.name === \"data-beneos-href\" || !a.wert) continue"]] },
-  { satz: "html", ziel: ["H19 text.markdown nur die Toradresse: frei","H19 image.caption nur die Toradresse: frei","H19 biography.public nur die Toradresse: frei"], ersetze: [[HTML,"\"text\", \"markdown\", \"caption\", \"description\", \"value\", \"public\", \"notes\"","\"text\", \"description\", \"value\", \"notes\""]] },
+  { satz: "html", ziel: ["H19 text.markdown nur die Toradresse: frei","H19 image.caption nur die Toradresse: frei","H19 biography.public nur die Toradresse: frei"], ersetze: [[HTML,"\"text\", \"markdown\", \"caption\", \"description\", \"public\", \"notes\"","\"text\", \"description\", \"notes\""]] },
   { satz: "html", ziel: ["H19 Liste notes Aendern: frei"], ersetze: [[HTML,"  const name = (k) => (Array.isArray(wert) ? _eltern : k)\n","  const name = (k) => k\n"]] },
   { satz: "html", ziel: ["H19 Altseiten-Pruefung: fremder Link bekommt data-beneos-href: abgelehnt","H19 Altseiten-Pruefung: data-beneos-href umgeschrieben: abgelehnt"], ersetze: [[HTML,"    if (daten && !eigenerLink(","    if (false && !eigenerLink("]] },
   { satz: "html", ziel: ["H19 Altseiten-Pruefung: title und Text: gilt"], ersetze: [[HTML,"    if (TEXTNETZ_LAESST.has(name)) return stueck\n    return marke(stueck)\n","    if (TEXTNETZ_LAESST.has(name)) return stueck\n    return stueck\n"]] },
@@ -1690,6 +1690,8 @@ const SABOTAGEN = [
   { satz: "html", ziel: ["H19 Zwei-Werte-Probe: a mit style, href maskiert"], ersetze: [[HTML,"    if (maske !== href.wert) tausch.push(","    if (false) tausch.push("]] },
   { satz: "html", ziel: ["H19 Liste notes Anlegen: frei"], ersetze: [[HTML,"differenz(e, zaehler, tiefe + 1, eindeutig, dokument, schluessel)","differenz(e, zaehler, tiefe + 1, eindeutig, dokument)"]] },
   { satz: "html", ziel: ["H19 Zwei-Werte-Probe: Liste unter Bildnamen bleibt"], ersetze: [[HTML,"  const name = (k) => (Array.isArray(wert) ? _eltern : k)\n","  const name = (k) => (Array.isArray(wert) ? \"content\" : k)\n"]] },
+  { satz: "html", ziel: ["H19 system value nur die Toradresse bleibt (kein Anzeigeweg)"], ersetze: [[HTML,"\"description\", \"public\"","\"description\", \"value\", \"public\""]] },
+  { satz: "html", ziel: ["H19 Zwei-Werte-Probe: description.value mit Text um die Toradresse wird frei"], ersetze: [[HTML,"    if (!stueck.startsWith(\"<\")) return imText(stueck, zaehler)\n","    if (!stueck.startsWith(\"<\")) return stueck\n"]] },
 ];
 
 /*
