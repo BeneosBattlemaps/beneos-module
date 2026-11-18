@@ -37,13 +37,24 @@ import { leinwandAdresse, schluesselfreiAdresse, streamKey, MODULE_ID, SETTING }
 /**
  * Je Dokumentart die Felder, die eine Adresse tragen, als Punktpfad.
  *
- * `Item` steht bewusst NICHT darin: die Pruefwelt traegt 0 Gegenstaende mit
- * Toradresse, und ein Gegenstandsbild geht in Chatkarten, deren Inhalt
- * gespeichert wird.
+ * Jedes Feld, das das Schreibnetz schluesselfrei schreibt, MUSS hier stehen:
+ * sonst laedt die Anzeige `beneos://` und das Bild bricht.
+ *
+ * Die einfachen Bildfelder kamen mit stre-T-142 B1 dazu. Gemessen am
+ * 18.11.2026 in `v13Stream` (13.351): alle sind `FilePathField` und nehmen
+ * `beneos://` an. Der fruehere Grund, `Item` auszulassen (ein
+ * Gegenstandsbild geht in gespeicherte Chatkarten), traegt nicht mehr: das
+ * HTML-Netz schreibt `<img>` in Chatnachrichten als Form (a). Effekte und
+ * Makros stehen darin, weil sie oft mit `item.img` entstehen; der
+ * vorbereitete Wert wanderte sonst mit Schluessel in neue Daten.
+ *
+ * Bewusst NICHT darin: `Card` (Listen von Seiten, die Punktpfade tragen sie
+ * nicht) und `Macro.command` (Code; ein `beneos://` darin braeche den
+ * Aufruf). Beide deckt nur der Export (stre-T-142 C).
  */
 export const LEINWAND_FELDER = Object.freeze({
   "Tile": ["texture.src"],
-  "Token": ["texture.src"],
+  "Token": ["texture.src", "ring.subject.texture"],
   "Note": ["texture.src"],
   "Drawing": ["texture"],
   "AmbientSound": ["path"],
@@ -54,6 +65,12 @@ export const LEINWAND_FELDER = Object.freeze({
   // es `CONFIG.Level` nicht, und die Zeile bleibt ohne Wirkung.
   "Level": ["background.src", "foreground.src"],
   "Actor": ["img"],
+  "Item": ["img"],
+  "ActiveEffect": ["img"],
+  "Macro": ["img"],
+  "RollTable": ["img"],
+  "TableResult": ["img"],
+  "User": ["avatar"],
 })
 
 /**
@@ -106,7 +123,7 @@ function felderImSchema(art, klasse) {
  */
 const SCHREIB_FELDER = Object.freeze({
   ...LEINWAND_FELDER,
-  "Actor": [...LEINWAND_FELDER.Actor, "prototypeToken.texture.src"],
+  "Actor": [...LEINWAND_FELDER.Actor, "prototypeToken.texture.src", "prototypeToken.ring.subject.texture"],
 })
 
 /**
@@ -126,7 +143,16 @@ const EINGEBETTET = Object.freeze({
     drawings: "Drawing", sounds: "AmbientSound",
   }),
   "Playlist": Object.freeze({ sounds: "PlaylistSound" }),
+  // stre-T-142 B1: ein Akteur aus Import oder Kompendium bringt Gegenstaende und
+  // Effekte mit, ein Gegenstand seine Effekte. Es feuert nur der Haken des
+  // Elterndokuments; das Netz steigt deshalb auch in die zweite Ebene.
+  "Actor": Object.freeze({ items: "Item", effects: "ActiveEffect" }),
+  "Item": Object.freeze({ effects: "ActiveEffect" }),
+  "RollTable": Object.freeze({ results: "TableResult" }),
 })
+
+/** Wie tief das Netz in eingebettete Listen steigt; Foundry nutzt zwei Ebenen. */
+const EBENEN = 4
 
 /**
  * Wo in einem Aenderungsobjekt der Pfad steht: verschachtelt, flach
@@ -315,7 +341,7 @@ export function installStreamLeinwand() {
   hakenGesetzt = true
   const neuVorbereiten = (setting) => {
     if (!EINSTELLUNGEN.has(setting?.key)) return
-    for (const sammlung of [game.scenes, game.actors, game.playlists]) {
+    for (const sammlung of [game.scenes, game.actors, game.playlists, game.items, game.tables, game.macros, game.users]) {
       for (const d of sammlung ?? []) {
         try { d.reset() } catch (_) { /* ein Dokument darf die anderen nicht aufhalten */ }
       }
@@ -353,13 +379,27 @@ export function installStreamLeinwand() {
     const innen = typeof operator?.get === "function" ? operator.get(wert) : wert
     return Array.isArray(innen) ? innen : null
   }
+  /*
+   * Ein Aenderungs- oder Quellobjekt an Ort und Stelle: die Felder der Art,
+   * die eingebetteten Listen (jedes Element mit seiner Art, bis EBENEN tief)
+   * und die eigenen Flags. Je Schritt gefangen: das Speichern geht vor.
+   */
+  const netz = (art, daten, tiefe = 0) => {
+    let zahl = 0
+    try { zahl += schreibFelder(daten, felderJe[art] ?? []) } catch (_) { /* das Speichern geht vor */ }
+    try { zahl += eingebettet(art, daten, tiefe) } catch (_) { /* das Speichern geht vor */ }
+    // Die eigenen Flags (stre-T-122 B); fremde bleiben, siehe FLAGGEN_FELDER.
+    try { zahl += schreibFlaggen(daten, art) } catch (_) { /* das Speichern geht vor */ }
+    return zahl
+  }
   // Die Elemente eines eingebetteten Feldes, jedes mit den Feldern seiner Art.
-  const eingebettet = (art, daten) => {
+  const eingebettet = (art, daten, tiefe) => {
+    if (tiefe >= EBENEN) return 0
     let zahl = 0
     for (const [feld, kind] of Object.entries(EINGEBETTET[art] ?? {})) {
       const liste = alsListe(daten?.[feld])
       if (!liste) continue
-      for (const element of liste) zahl += schreibFelder(element, felderJe[kind]) + schreibFlaggen(element, kind)
+      for (const element of liste) zahl += netz(kind, element, tiefe + 1)
     }
     return zahl
   }
@@ -387,8 +427,37 @@ export function installStreamLeinwand() {
     }
     return start
   }
+  /*
+   * Die Teilaenderung, die beim Anlegen in `updateSource` geht: die Felder
+   * und Flags der Art, dazu je eingebettete Liste nur die geaenderten
+   * Elemente, rekursiv bis EBENEN tief.
+   */
+  const teilFuer = (art, quelle, tiefe) => {
+    const neu = { ...geaendert(quelle, felderJe[art] ?? []), ...falteWerte(art, quelle) }
+    /*
+     * Die eingebetteten Listen: `updateSource` gleicht Elemente ueber ihre
+     * `_id` ab und laesst die uebrigen stehen, gemessen am 16.11.2026 in
+     * 13.351 und 14.367 (zwei Kacheln, nur eine im Teilobjekt, beide
+     * bleiben). Deshalb geht nur das geaenderte Element mit, als
+     * `{_id, <feld>}`. Fehlt einem Element die `_id` oder steht eine doppelt
+     * in der Liste, waere der Abgleich nicht eindeutig: dann die ganze
+     * Liste als Kopie, wie bis zu diesem Stand.
+     */
+    if (tiefe >= EBENEN) return neu
+    for (const [feld, kind] of Object.entries(EINGEBETTET[art] ?? {})) {
+      const liste = quelle?.[feld]
+      if (!Array.isArray(liste) || liste.length === 0) continue
+      const teile = liste.map((element) => teilFuer(kind, element, tiefe + 1))
+      if (teile.every((t) => Object.keys(t).length === 0)) continue
+      const ids = liste.map((element) => element?._id)
+      const eindeutig = ids.every((id) => typeof id === "string" && id) && new Set(ids).size === ids.length
+      neu[feld] = eindeutig
+        ? teile.flatMap((t, i) => (Object.keys(t).length ? [verschachtelt(t, { _id: ids[i] })] : []))
+        : liste.map((element) => { const kopie = JSON.parse(JSON.stringify(element)); netz(kind, kopie, tiefe + 1); return kopie })
+    }
+    return neu
+  }
   for (const art of new Set([...Object.keys(SCHREIB_FELDER), ...Object.keys(EINGEBETTET)])) {
-    const felder = felderJe[art] ?? []
     /*
      * Ohne Schluessel gibt es keine schluesselfreie Form zu schreiben:
      * `schluesselfreiAdresse` liesse jede Adresse stehen. Der fruehe Ausstieg
@@ -398,35 +467,12 @@ export function installStreamLeinwand() {
      */
     Hooks.on(`preUpdate${art}`, (_doc, aenderung) => {
       if (!streamKey()) return
-      try { schreibFelder(aenderung, felder) } catch (_) { /* das Speichern geht vor */ }
-      try { eingebettet(art, aenderung) } catch (_) { /* das Speichern geht vor */ }
-      // Die eigenen Flags (stre-T-122 B); fremde bleiben, siehe FLAGGEN_FELDER.
-      try { schreibFlaggen(aenderung, art) } catch (_) { /* das Speichern geht vor */ }
+      netz(art, aenderung)
     })
     Hooks.on(`preCreate${art}`, (doc) => {
       if (!streamKey()) return
       try {
-        const neu = { ...geaendert(doc?._source, felder), ...falteWerte(art, doc?._source) }
-        /*
-         * Die eingebetteten Listen: `updateSource` gleicht Elemente ueber ihre
-         * `_id` ab und laesst die uebrigen stehen, gemessen am 16.11.2026 in
-         * 13.351 und 14.367 (zwei Kacheln, nur eine im Teilobjekt, beide
-         * bleiben). Deshalb geht nur das geaenderte Element mit, als
-         * `{_id, <feld>}`. Fehlt einem Element die `_id` oder steht eine doppelt
-         * in der Liste, waere der Abgleich nicht eindeutig: dann die ganze
-         * Liste als Kopie, wie bis zu diesem Stand.
-         */
-        for (const [feld, kind] of Object.entries(EINGEBETTET[art] ?? {})) {
-          const liste = doc?._source?.[feld]
-          if (!Array.isArray(liste) || liste.length === 0) continue
-          const teile = liste.map((element) => ({ ...geaendert(element, felderJe[kind]), ...falteWerte(kind, element) }))
-          if (teile.every((t) => Object.keys(t).length === 0)) continue
-          const ids = liste.map((element) => element?._id)
-          const eindeutig = ids.every((id) => typeof id === "string" && id) && new Set(ids).size === ids.length
-          neu[feld] = eindeutig
-            ? teile.flatMap((t, i) => (Object.keys(t).length ? [verschachtelt(t, { _id: ids[i] })] : []))
-            : liste.map((element, i) => verschachtelt(teile[i], JSON.parse(JSON.stringify(element))))
-        }
+        const neu = teilFuer(art, doc?._source, 0)
         if (Object.keys(neu).length > 0) doc.updateSource(neu)
       } catch (_) { /* das Anlegen geht vor */ }
     })

@@ -211,7 +211,7 @@ console.log("Die Felder je Dokumentart")
 {
   const faelle = {
     "Tile": { texture: { src: OHNE } },
-    "Token": { texture: { src: OHNE } },
+    "Token": { texture: { src: OHNE }, ring: { subject: { texture: OHNE } } },
     "Note": { texture: { src: OHNE } },
     "Drawing": { texture: OHNE },
     "AmbientSound": { path: OHNE },
@@ -219,6 +219,14 @@ console.log("Die Felder je Dokumentart")
     "Scene": { background: { src: OHNE }, foreground: OHNE, thumb: OHNE },
     "Level": { background: { src: OHNE }, foreground: { src: OHNE } },
     "Actor": { img: OHNE },
+    // stre-T-142 B1: einfache Bildfelder, die ein Anzeigeweg ueber die
+    // Vorbereitung braucht, sobald das Netz sie schluesselfrei schreibt.
+    "Item": { img: OHNE },
+    "ActiveEffect": { img: OHNE },
+    "Macro": { img: OHNE },
+    "RollTable": { img: OHNE },
+    "TableResult": { img: OHNE },
+    "User": { avatar: OHNE },
   }
   gleich("die Tabelle nennt genau diese Arten",
     Object.keys(LEINWAND_FELDER).sort(), Object.keys(faelle).sort())
@@ -254,7 +262,7 @@ console.log("Alte Welten, leere Felder und fremde Arten")
   gleich("ein Teilobjekt null wirft nicht",
     ohneWurf(() => leinwandFelder("Tile", dokument({ texture: null }))), 0)
   gleich("eine fremde Art bleibt unberuehrt",
-    leinwandFelder("Item", dokument({ img: OHNE })), 0)
+    leinwandFelder("Card", dokument({ img: OHNE })), 0)
   gleich("kein Dokument wirft nicht", ohneWurf(() => leinwandFelder("Tile", null)), 0)
   // Zweimal vorbereitet heisst nicht zweimal umgeschrieben.
   const zwei = dokument({ img: OHNE })
@@ -423,7 +431,8 @@ console.log("Die Huelle um prepareBaseData")
   }
   // Zaehlt, wie oft die Huelle das Feld liest: einmal gewickelt heisst einmal.
   class Zaehler {
-    static schema = schema(["texture"])
+    // `ring` wie im Tokenschema von Foundry 13 und 14 (stre-T-142 B1).
+    static schema = schema(["texture", "ring"])
     prepareBaseData() {
       let src = OHNE
       const selbst = this
@@ -598,6 +607,94 @@ console.log("Die Huelle um prepareBaseData")
   gleich("Netz, Szene: der Operator bleibt stehen", ersatz instanceof ForcedReplacement, true)
   globalThis.foundry = altFoundry
 
+  /*
+   * stre-T-142 B1: die einfachen Bildfelder im Schreibnetz, auch als
+   * eingebettete Elemente, die ein Elterndokument mitschickt. Ein Akteur mit
+   * Gegenstaenden und Effekten (Import, Kompendium) feuert beim Anlegen nur
+   * preCreateActor; ein Gegenstand traegt seine Effekte darin noch einmal.
+   */
+  const FREMD = "https://fremd.example/a/x/y/z/w.webp"
+  gleich("B1 Netz, Gegenstand: img wird schluesselfrei", upd("Item", { img: MIT }).img, OHNE)
+  gleich("B1 Netz, Gegenstand: eine fremde Adresse bleibt", upd("Item", { img: FREMD }).img, FREMD)
+  gleich("B1 Netz, Effekt: img", upd("ActiveEffect", { img: MIT }).img, OHNE)
+  gleich("B1 Netz, Makro: img", upd("Macro", { img: MIT }).img, OHNE)
+  gleich("B1 Netz, Makro: der Befehl bleibt", upd("Macro", { command: MIT }).command, MIT)
+  gleich("B1 Netz, Tabelle: img", upd("RollTable", { img: MIT }).img, OHNE)
+  gleich("B1 Netz, Tabellenergebnis: img", upd("TableResult", { img: MIT }).img, OHNE)
+  gleich("B1 Netz, Nutzer: avatar", upd("User", { avatar: MIT }).avatar, OHNE)
+  gleich("B1 Netz, Token: der Ring", upd("Token", { ring: { subject: { texture: MIT } } }).ring.subject.texture, OHNE)
+  gleich("B1 Netz, Akteur: der Ring des Prototyps flach",
+    upd("Actor", { "prototypeToken.ring.subject.texture": MIT })["prototypeToken.ring.subject.texture"], OHNE)
+  gleich("B1 Netz, Akteur: items[] wird schluesselfrei",
+    upd("Actor", { items: [{ _id: "i", img: MIT }] }).items[0].img, OHNE)
+  gleich("B1 Netz, Akteur: effects[] wird schluesselfrei",
+    upd("Actor", { effects: [{ _id: "e", img: MIT }] }).effects[0].img, OHNE)
+  gleich("B1 Netz, Gegenstand: effects[] wird schluesselfrei",
+    upd("Item", { effects: [{ _id: "e", img: MIT }] }).effects[0].img, OHNE)
+  gleich("B1 Netz, Akteur: items[].effects[] zwei Ebenen tief",
+    upd("Actor", { items: [{ _id: "i", effects: [{ _id: "e", img: MIT }] }] }).items[0].effects[0].img, OHNE)
+  gleich("B1 Netz, Tabelle: results[] wird schluesselfrei",
+    upd("RollTable", { results: [{ _id: "r", img: MIT }] }).results[0].img, OHNE)
+  schluessel = ""
+  gleich("B1 Netz, kein Schluessel: Gegenstand bleibt", upd("Item", { img: MIT }).img, MIT)
+  gleich("B1 Netz, kein Schluessel: items[] bleibt",
+    upd("Actor", { items: [{ _id: "i", img: MIT }] }).items[0].img, MIT)
+  schluessel = SCHLUESSEL
+  gesetzt = null
+  ruf("preCreateActor", {
+    _source: { name: "a", img: OHNE, items: [
+      { _id: "i1", img: OHNE },
+      { _id: "i2", img: MIT, effects: [{ _id: "e1", img: MIT }, { _id: "e2", img: OHNE }] },
+    ], effects: [{ _id: "e3", img: MIT }] },
+    updateSource(d) { gesetzt = d },
+  }, {}, {}, "nutzer")
+  gleich("B1 Anlegen eines Akteurs: nur die geaenderten Elemente, zwei Ebenen tief",
+    JSON.stringify(gesetzt), JSON.stringify({
+      items: [{ _id: "i2", img: OHNE, effects: [{ _id: "e1", img: OHNE }] }],
+      effects: [{ _id: "e3", img: OHNE }],
+    }))
+  gesetzt = null
+  ruf("preCreateActor", {
+    _source: { name: "a", items: [{ _id: "d", img: OHNE, effects: [{ img: MIT }] }, { _id: "d", img: OHNE }] },
+    updateSource(d) { gesetzt = d },
+  }, {}, {}, "nutzer")
+  gleich("B1 Anlegen, doppelte _id: die ganze Liste, auch die innere schluesselfrei",
+    JSON.stringify(gesetzt), JSON.stringify({ items: [{ _id: "d", img: OHNE, effects: [{ img: OHNE }] }, { _id: "d", img: OHNE }] }))
+  gesetzt = null
+  ruf("preCreateRollTable", { _source: { name: "t", results: [{ _id: "r", img: MIT }] }, updateSource(d) { gesetzt = d } }, {}, {}, "nutzer")
+  gleich("B1 Anlegen einer Tabelle: das Ergebnis wird schluesselfrei",
+    JSON.stringify(gesetzt), JSON.stringify({ results: [{ _id: "r", img: OHNE }] }))
+  gesetzt = null
+  ruf("preCreateItem", { _source: { name: "g", img: FREMD }, updateSource(d) { gesetzt = d } }, {}, {}, "nutzer")
+  gleich("B1 Anlegen: fremde Adresse, nichts gesetzt", gesetzt, null)
+
+  /*
+   * Die Anzeige: ein Gegenstand mit schluesselfreiem Bild bekommt vorbereitet
+   * die Toradresse von heute. Ohne diesen Weg braeche das Bild, sobald das
+   * Netz schreibt (Bestandspflicht).
+   */
+  class Gegenstand {
+    static schema = schema(["img"])
+    constructor(img) { this._source = { img } }
+    prepareBaseData() { this.img = this._source.img }
+    reset() { resets++; this.prepareBaseData() }
+  }
+  globalThis.CONFIG = { ...globalThis.CONFIG, Item: { documentClass: Gegenstand }, User: { documentClass: Gegenstand } }
+  installStreamLeinwand()
+  const g = new Gegenstand(OHNE)
+  g.prepareBaseData()
+  gleich("B1 Anzeige, Gegenstand: vorbereitet die Toradresse", g.img, MIT)
+  gleich("B1 Anzeige, Gegenstand: _source bleibt schluesselfrei", g._source.img, OHNE)
+  const altWelt = { items: game.items, tables: game.tables, macros: game.macros, users: game.users }
+  game.scenes = []
+  game.items = [new Gegenstand(OHNE)]
+  game.tables = [new Gegenstand(OHNE)]
+  game.macros = [new Gegenstand(OHNE)]
+  game.users = [new Gegenstand(OHNE)]
+  resets = 0; feuere(`${MODULE_ID}.${SETTING.key}`)
+  gleich("B1 Schluesselwechsel: Gegenstaende, Tabellen, Makros, Nutzer neu vorbereitet", resets, 4)
+  Object.assign(game, altWelt)
+
   game.scenes = altScenes
   globalThis.Hooks = altHooks
   globalThis.CONFIG = altConfig
@@ -608,7 +705,7 @@ console.log(`\n${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
  * Von Hand nachgezogen, siehe Kopf. Weicht die gezaehlte Zahl ab, ist der Lauf
  * mittendrin gestorben oder ein Block ist still weggefallen.
  */
-const ERWARTET = 166
+const ERWARTET = 214
 if (aussagen !== ERWARTET) {
   console.log(`ROT  erwartet ${ERWARTET} Aussagen, gezaehlt ${aussagen}`)
   process.exit(1)
