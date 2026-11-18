@@ -104,6 +104,11 @@
  * woertlich hinter einer Weiche nennt und dass alle Sprachen sie tragen. Den
  * Satz gibt es an der Basis nicht.
  *
+ * DREIUNDZWANZIG SAETZE seit stre-T-137. `zusage` haelt fest, dass das Modul
+ * eine Offline-Karte per POST zusagt, nicht per GET, an die Kartenadresse ohne
+ * /release, und dass Kontingent, kein Netz und Freigabe sich nicht aendern.
+ * Den Satz gibt es an der Basis nicht.
+ *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
  * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig] [--zeitgrenze <ms>]
@@ -1498,6 +1503,18 @@ const SABOTAGEN = [
   { satz: "kaufknopf", ziel: ["en: Buy pack unveraendert"], ersetze: [["lang/en.json", "  \"BENEOS.Cloud.Card.BuyPack\": \"Buy pack\",\n", "  \"BENEOS.Cloud.Card.BuyPack\": \"Buy bundle\",\n"]] },
   { satz: "kaufknopf", ziel: ["en: Pack-Tooltip nach Betreiberwahl"], ersetze: [["lang/en.json", "  \"BENEOS.Cloud.Card.BuyPackTooltip\": \"Buy this map pack\",\n", "  \"BENEOS.Cloud.Card.BuyPackTooltip\": \"Buy once, keep it forever. No subscription needed.\",\n"]] },
   { satz: "kaufknopf", ziel: ["en: Bundle-Tooltip"], ersetze: [["lang/en.json", "  \"BENEOS.Cloud.Card.BuyBundleTooltip\": \"Buy the bundle with this map pack\",\n", "  \"BENEOS.Cloud.Card.BuyBundleTooltip\": \"Buy this map pack\",\n"]] },
+  { satz: "zusage", ziel: ["die Zusage geht als POST"], ersetze: [[OFFLINE,"  const zusage = await torFragen(kartenWeg(release, variant, karte), \"POST\")\n","  const zusage = await torFragen(kartenWeg(release, variant, karte), \"GET\")\n"]] },
+  { satz: "zusage", ziel: ["die Zusage geht als POST"], ersetze: [[OFFLINE,"async function torFragen(weg, methode = \"POST\") {\n","async function torFragen(weg, methode = \"GET\") {\n"],[OFFLINE,"  const zusage = await torFragen(kartenWeg(release, variant, karte), \"POST\")\n","  const zusage = await torFragen(kartenWeg(release, variant, karte))\n"]] },
+  { satz: "zusage", ziel: ["genau ein Abruf beim Tor"], ersetze: [[OFFLINE,"  const zusage = await torFragen(kartenWeg(release, variant, karte), \"POST\")\n","  const zusage = await torFragen(kartenWeg(release, variant, karte), \"POST\")\n  void await torFragen(kartenWeg(release, variant, karte), \"POST\")\n"]] },
+  { satz: "zusage", ziel: ["die Zusage geht an die Kartenadresse ohne /release"], ersetze: [[OFFLINE,"  const zusage = await torFragen(kartenWeg(release, variant, karte), \"POST\")\n","  const zusage = await torFragen(kartenWeg(release, variant, karte) + \"/release\", \"POST\")\n"]] },
+  { satz: "zusage", ziel: ["409 quota ergibt grund kontingent"], ersetze: [[OFFLINE,"    if (zusage.status === 409 && zusage.inhalt?.reason === \"quota\") {\n","    if (false) {\n"]] },
+  { satz: "zusage", ziel: ["409 quota traegt die Zahlen des Tors"], ersetze: [[OFFLINE,"        belegt: zusage.inhalt.used, grenze: zusage.inhalt.quota,\n","        belegt: zusage.inhalt.quota, grenze: zusage.inhalt.used,\n"]] },
+  { satz: "zusage", ziel: ["Netzfehler ergibt grund kein-netz"], ersetze: [[OFFLINE,"    return { ok: false, grund: \"kein-netz\" }\n","    throw new Error(\"kein-netz\")\n"]] },
+  { satz: "zusage", ziel: ["Zusage mit ok des Tors gelingt"], ersetze: [[OFFLINE,"    return { ok: Boolean(inhalt && inhalt.ok), status: r.status, inhalt }\n","    return { ok: false, status: r.status, inhalt }\n"]] },
+  { satz: "zusage", ziel: ["Loesen gelingt"], ersetze: [[OFFLINE,"  return { ok: true, beimTor: beimTor.ok, geteilt }\n","  return { ok: false, beimTor: beimTor.ok, geteilt }\n"]] },
+  { satz: "zusage", ziel: ["genau ein Abruf beim Tor beim Loesen"], ersetze: [[OFFLINE,"  const beimTor = await torFragen(kartenWeg(release, variant, karte) + \"/release\", \"POST\")\n","  const beimTor = await torFragen(kartenWeg(release, variant, karte) + \"/release\", \"POST\")\n  void await torFragen(kartenWeg(release, variant, karte) + \"/release\", \"POST\")\n"]] },
+  { satz: "zusage", ziel: ["die Freigabe geht an /release"], ersetze: [[OFFLINE,"  const beimTor = await torFragen(kartenWeg(release, variant, karte) + \"/release\", \"POST\")\n","  const beimTor = await torFragen(kartenWeg(release, variant, karte), \"POST\")\n"]] },
+  { satz: "zusage", ziel: ["die Freigabe geht als POST"], ersetze: [[OFFLINE,"  const beimTor = await torFragen(kartenWeg(release, variant, karte) + \"/release\", \"POST\")\n","  const beimTor = await torFragen(kartenWeg(release, variant, karte) + \"/release\", \"GET\")\n"]] },
 ];
 
 /*
@@ -1676,7 +1693,7 @@ if (process.argv.includes("--alle-saetze")) {
 
 // ------------------------------------------------------------- Lauf
 
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage"]
   .filter((s) => !nurSatz || s === nurSatz);
 if (SAETZE.length === 0) {
   console.log(`unbekannter Satz: ${nurSatz}`);
