@@ -1510,11 +1510,13 @@ const SABOTAGEN = [
   { satz: "zusage", ziel: ["409 quota ergibt grund kontingent"], ersetze: [[OFFLINE,"    if (zusage.status === 409 && zusage.inhalt?.reason === \"quota\") {\n","    if (false) {\n"]] },
   { satz: "zusage", ziel: ["409 quota traegt die Zahlen des Tors"], ersetze: [[OFFLINE,"        belegt: zusage.inhalt.used, grenze: zusage.inhalt.quota,\n","        belegt: zusage.inhalt.quota, grenze: zusage.inhalt.used,\n"]] },
   { satz: "zusage", ziel: ["Netzfehler ergibt grund kein-netz"], ersetze: [[OFFLINE,"    return { ok: false, grund: \"kein-netz\" }\n","    throw new Error(\"kein-netz\")\n"]] },
-  { satz: "zusage", ziel: ["Zusage mit ok des Tors gelingt"], ersetze: [[OFFLINE,"    return { ok: Boolean(inhalt && inhalt.ok), status: r.status, inhalt }\n","    return { ok: false, status: r.status, inhalt }\n"]] },
-  { satz: "zusage", ziel: ["Loesen gelingt"], ersetze: [[OFFLINE,"  return { ok: true, beimTor: beimTor.ok, geteilt }\n","  return { ok: false, beimTor: beimTor.ok, geteilt }\n"]] },
+  { satz: "zusage", ziel: ["Zusage mit ok des Tors gelingt", "Zusage vor dem stummen Loesen gelingt"], ersetze: [[OFFLINE,"    return { ok: Boolean(inhalt && inhalt.ok), status: r.status, inhalt }\n","    return { ok: false, status: r.status, inhalt }\n"]] },
+  { satz: "zusage", ziel: ["Loesen gelingt"], ersetze: [[OFFLINE,"export async function karteLoesen(release, variant, karte) {\n  const alle = lies()\n  const id = karteId(release, variant, karte)\n","export async function karteLoesen(release, variant, karte) {\n  const alle = lies()\n  const id = karteId(release, karte, variant)\n"]] },
+  { satz: "zusage", ziel: ["Loesen gelingt auch ohne Tor"], ersetze: [[OFFLINE,"  return { ok: true, beimTor: beimTor.ok, geteilt }\n","  return { ok: beimTor.ok, beimTor: beimTor.ok, geteilt }\n"]] },
   { satz: "zusage", ziel: ["genau ein Abruf beim Tor beim Loesen"], ersetze: [[OFFLINE,"  const beimTor = await torFragen(kartenWeg(release, variant, karte) + \"/release\", \"POST\")\n","  const beimTor = await torFragen(kartenWeg(release, variant, karte) + \"/release\", \"POST\")\n  void await torFragen(kartenWeg(release, variant, karte) + \"/release\", \"POST\")\n"]] },
   { satz: "zusage", ziel: ["die Freigabe geht an /release"], ersetze: [[OFFLINE,"  const beimTor = await torFragen(kartenWeg(release, variant, karte) + \"/release\", \"POST\")\n","  const beimTor = await torFragen(kartenWeg(release, variant, karte), \"POST\")\n"]] },
   { satz: "zusage", ziel: ["die Freigabe geht als POST"], ersetze: [[OFFLINE,"  const beimTor = await torFragen(kartenWeg(release, variant, karte) + \"/release\", \"POST\")\n","  const beimTor = await torFragen(kartenWeg(release, variant, karte) + \"/release\", \"GET\")\n"]] },
+  { satz: "zusage", ziel: ["die Zusage holt die Kartendatei"], ersetze: [[OFFLINE,"  const ergebnis = await offlineHalten(liste, onProgress)\n","  const ergebnis = await offlineHalten([], onProgress)\n"]] },
 ];
 
 /*

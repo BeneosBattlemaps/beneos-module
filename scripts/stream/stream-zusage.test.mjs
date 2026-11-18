@@ -29,6 +29,40 @@ installiereFoundry({
   },
 })
 
+/**
+ * Ein Cache Storage im Speicher, nur fuer diesen Satz.
+ *
+ * Ohne ihn scheitert `openStore()`, `offlineHalten` holt nichts, und die
+ * Zusage gelingt trotzdem. Die Proben waeren dann ueber den Ausfallpfad gruen
+ * statt ueber den Normalpfad (Kalt-Review stre-T-137).
+ */
+function speicherAttrappe() {
+  const schluessel = (anfrage, ohneSuche) => {
+    const u = new URL(typeof anfrage === "string" ? anfrage : anfrage.url)
+    if (ohneSuche) u.search = ""
+    return u.href
+  }
+  const ablage = new Map()
+  const store = {
+    async match(anfrage, opt) {
+      const k = schluessel(anfrage, opt?.ignoreSearch)
+      for (const [s, r] of ablage) if (schluessel(s, opt?.ignoreSearch) === k) return r.clone()
+      return undefined
+    },
+    async put(anfrage, antwort) { ablage.set(schluessel(anfrage, false), antwort.clone()) },
+    async delete(anfrage, opt) {
+      const k = schluessel(anfrage, opt?.ignoreSearch)
+      let weg = false
+      for (const s of [...ablage.keys()]) if (schluessel(s, opt?.ignoreSearch) === k) { ablage.delete(s); weg = true }
+      return weg
+    },
+    async keys() { return [...ablage.keys()].map((s) => new Request(s)) },
+  }
+  globalThis.caches = { async open() { return store }, async delete() { ablage.clear(); return true } }
+  return ablage
+}
+const ablage = speicherAttrappe()
+
 const { karteZusagen, karteLoesen } = await import("./stream-offline.mjs")
 
 const KARTE = { release: "beneos_bm_0001", variant: "4k", karte: "k1" }
@@ -77,6 +111,7 @@ abschnitt("Die Freigabe bleibt POST auf /release")
   nimmAbrufe()
   const zu = await versuche(() => karteZusagen(auftrag()))
   gleich("Zusage mit ok des Tors gelingt", zu?.ok, true)
+  gleich("die Zusage holt die Kartendatei", JSON.stringify([zu?.ergebnis?.geholt, zu?.ergebnis?.fehlgeschlagen, ablage.size]), "[1,0,1]")
   nimmAbrufe()
   const los = await versuche(() => karteLoesen(KARTE.release, KARTE.variant, KARTE.karte))
   const tor = torAbrufe()
@@ -84,6 +119,22 @@ abschnitt("Die Freigabe bleibt POST auf /release")
   gleich("genau ein Abruf beim Tor beim Loesen", tor.length, 1)
   gleich("die Freigabe geht an /release", tor[0]?.adresse, `${ZUSAGE}/release`)
   gleich("die Freigabe geht als POST", String(tor[0]?.optionen?.method || "GET").toUpperCase(), "POST")
+}
+
+abschnitt("Loesen gelingt auch, wenn das Tor schweigt")
+{
+  // karteLoesen wartet das Tor bewusst nicht ab: der Kunde hat freigegeben,
+  // ein stummes Tor darf ihm das nicht verweigern.
+  netz((adresse) => {
+    if (adresse === ZUSAGE) return json(200, { ok: true })
+    if (adresse === `${ZUSAGE}/release`) return { wirf: "Failed to fetch" }
+    if (adresse.startsWith(`${BASIS}/a/`)) return new Response("bild", { status: 200 })
+    return undefined
+  })
+  const zu = await versuche(() => karteZusagen(auftrag()))
+  gleich("Zusage vor dem stummen Loesen gelingt", zu?.ok, true)
+  const los = await versuche(() => karteLoesen(KARTE.release, KARTE.variant, KARTE.karte))
+  gleich("Loesen gelingt auch ohne Tor", JSON.stringify([los?.ok, los?.beimTor]), "[true,false]")
 }
 
 ende()
