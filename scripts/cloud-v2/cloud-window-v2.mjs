@@ -31,6 +31,7 @@ import { BeneosAnalytics } from "../beneos_analytics.js"
 import { BeneosCloudLogin } from "../beneos_cloud.js"
 import { BeneosStartSetupTour } from "../beneos_tours.js"
 import { BeneosLootGenerator } from "./loot-generator.mjs"
+import { kaufKnopf } from "./cloud-kaufknopf.mjs"
 import { BeneosMagicShopGenerator } from "./magic-shop-generator.mjs"
 import { staleInstallTooltip } from "./install-badge.mjs"
 import { HomeController } from "./home/home-controller.mjs"
@@ -1705,8 +1706,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       : null
     const bmapReleaseCanInstall = bmapRelease ? (bmapRelease.can_install !== false) : false
     // An individual map inherits its parent release's shop product, so a locked
-    // scene card can offer the same "Buy pack" route as the release card.
-    const bmapShopUrl = bmapRelease?.shop_url || null
+    // scene card can offer the same buy route as the release card, labelled
+    // "Buy bundle" when the server points to a bundle (stre-T-120).
+    const bmapKauf = kaufKnopf(bmapRelease)
     const isCloudAvailable = assetType === "bmap"
       ? (bmapReleaseCanInstall || hasCampaign || isFree || bmapInstalled)
       : !!data.isCloudAvailable
@@ -2267,7 +2269,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
               :  (isLocked) ? "locked"
               :  (data?.isNew    ? "new"
               :  (data?.isUpdate ? "update" : "regular")),
-      shopUrl: bmapShopUrl,
+      shopUrl: bmapKauf.url,
+      shopIsBundle: bmapKauf.isBundle,
       // Wave B-8e: clickable tags. For every tag the template renders,
       // expose two parallel fields:
       //   - <tag>Tooltip  → string from commonData.hover or null
@@ -6817,6 +6820,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // of firing the install pipeline.
       const canInstall = r?.can_install !== false   // default true if backend doesn't set
       const unlockHint = r?.unlock_hint || null
+      const kauf = kaufKnopf(r)
       // Logged out (anonymous showcase): every card shows a "Sign In" action
       // (download after sign-in) instead of an install button, exactly like the
       // Individual Maps tab. Install stays gated on isLoggedIn() at click time.
@@ -6895,8 +6899,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         isCloudAvailable:     (groupKind === "locked") ? false : canInstall,
         // Shop product for this release, resolved server-side in list_releases.
         // null when no ACTIVE product exists (extras, tour packs), which keeps
-        // the "Buy pack" CTA from rendering a dead link.
-        shopUrl:              r?.shop_url || null,
+        // the buy CTA from rendering a dead link. "Buy bundle" when the
+        // server points to a bundle, else "Buy pack" (stre-T-120).
+        shopUrl:              kauf.url,
+        shopIsBundle:         kauf.isBundle,
         // HIER STAND `isFree || isPublic`, UND DAMIT WURDE AUS EINER
         // ANMELDEFREIHEIT EIN PREISVERSPRECHEN.
         //

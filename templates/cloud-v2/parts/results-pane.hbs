@@ -493,9 +493,9 @@
               {{#if card.shopUrl}}
               <a class="bc-card-button bc-card-button-buy-pack"
                  href="{{card.shopUrl}}" target="_blank" rel="noopener noreferrer"
-                 data-tooltip="{{localize 'BENEOS.Cloud.Card.BuyPackTooltip'}}">
+                 data-tooltip="{{#if card.shopIsBundle}}{{localize 'BENEOS.Cloud.Card.BuyBundleTooltip'}}{{else}}{{localize 'BENEOS.Cloud.Card.BuyPackTooltip'}}{{/if}}">
                 <i class="fa-solid fa-cart-shopping"></i>
-                <span>{{localize "BENEOS.Cloud.Card.BuyPack"}}</span>
+                <span>{{#if card.shopIsBundle}}{{localize "BENEOS.Cloud.Card.BuyBundle"}}{{else}}{{localize "BENEOS.Cloud.Card.BuyPack"}}{{/if}}</span>
               </a>
               {{/if}}
             {{else if card.isLocked}}
@@ -517,9 +517,9 @@
               {{#if card.shopUrl}}
               <a class="bc-card-button bc-card-button-buy-pack"
                  href="{{card.shopUrl}}" target="_blank" rel="noopener noreferrer"
-                 data-tooltip="{{localize 'BENEOS.Cloud.Card.BuyPackTooltip'}}">
+                 data-tooltip="{{#if card.shopIsBundle}}{{localize 'BENEOS.Cloud.Card.BuyBundleTooltip'}}{{else}}{{localize 'BENEOS.Cloud.Card.BuyPackTooltip'}}{{/if}}">
                 <i class="fa-solid fa-cart-shopping"></i>
-                <span>{{localize "BENEOS.Cloud.Card.BuyPack"}}</span>
+                <span>{{#if card.shopIsBundle}}{{localize "BENEOS.Cloud.Card.BuyBundle"}}{{else}}{{localize "BENEOS.Cloud.Card.BuyPack"}}{{/if}}</span>
               </a>
               {{/if}}
             {{else if card.isIncompatible}}
@@ -1035,9 +1035,9 @@
             {{#if drawer.asset.shopUrl}}
             <a class="bc-card-button bc-card-button-buy-pack"
                href="{{drawer.asset.shopUrl}}" target="_blank" rel="noopener noreferrer"
-               data-tooltip="{{localize 'BENEOS.Cloud.Card.BuyPackTooltip'}}">
+               data-tooltip="{{#if drawer.asset.shopIsBundle}}{{localize 'BENEOS.Cloud.Card.BuyBundleTooltip'}}{{else}}{{localize 'BENEOS.Cloud.Card.BuyPackTooltip'}}{{/if}}">
               <i class="fa-solid fa-cart-shopping"></i>
-              <span>{{localize "BENEOS.Cloud.Card.BuyPack"}}</span>
+              <span>{{#if drawer.asset.shopIsBundle}}{{localize "BENEOS.Cloud.Card.BuyBundle"}}{{else}}{{localize "BENEOS.Cloud.Card.BuyPack"}}{{/if}}</span>
             </a>
             {{/if}}
           {{else if drawer.asset.isLocked}}
@@ -1054,9 +1054,9 @@
             {{#if drawer.asset.shopUrl}}
             <a class="bc-card-button bc-card-button-buy-pack"
                href="{{drawer.asset.shopUrl}}" target="_blank" rel="noopener noreferrer"
-               data-tooltip="{{localize 'BENEOS.Cloud.Card.BuyPackTooltip'}}">
+               data-tooltip="{{#if drawer.asset.shopIsBundle}}{{localize 'BENEOS.Cloud.Card.BuyBundleTooltip'}}{{else}}{{localize 'BENEOS.Cloud.Card.BuyPackTooltip'}}{{/if}}">
               <i class="fa-solid fa-cart-shopping"></i>
-              <span>{{localize "BENEOS.Cloud.Card.BuyPack"}}</span>
+              <span>{{#if drawer.asset.shopIsBundle}}{{localize "BENEOS.Cloud.Card.BuyBundle"}}{{else}}{{localize "BENEOS.Cloud.Card.BuyPack"}}{{/if}}</span>
             </a>
             {{/if}}
           {{else if drawer.asset.isIncompatible}}
