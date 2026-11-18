@@ -2027,8 +2027,11 @@ export async function vorratHeilen(fehlend, onProgress) {
     const id = karteId(e.release, e.variant, e.karte)
     const r = await offlineHalten(e.urls || [], onProgress)
     // Ein ausgefallener Speicher meldet sich als Ergebnis voller Nullen, ohne
-    // Fehlschlag. Die Meldung soll ihn beim Namen nennen (stre-T-146).
-    if (r.speicherAus) summe.speicherAus = true
+    // Fehlschlag. Die Meldung soll ihn beim Namen nennen (stre-T-146). Ist der
+    // lokale Speicher in der Welt abgeschaltet, meldet `offlineHalten` dasselbe
+    // Feld; der Satz ueber den Browser waere dann der falsche Grund, wie beim
+    // Zusagen in stre-T-145.
+    if (r.speicherAus && localCacheEnabled()) summe.speicherAus = true
     summe.geholt += r.geholt + r.gehalten
     summe.fehlgeschlagen += r.fehlgeschlagen
     // DER DECKEL IST EIN FEHLSCHLAG, AUCH WENN ER SICH NICHT SO MELDET.
@@ -2065,7 +2068,8 @@ export async function vorratHeilen(fehlend, onProgress) {
     for (const url of geteilt) {
       let liegt = await offlineGehalten([url])
       if (!liegt) {
-        await offlineHalten([url], onProgress)
+        const rg = await offlineHalten([url], onProgress)
+        if (rg.speicherAus && localCacheEnabled()) summe.speicherAus = true
         // Nach dem Holen noch einmal fragen statt dem Rueckgabewert zu
         // glauben: der Deckel kann zugeschlagen haben, und ein Eintrag ohne
         // Datei ist genau die Luege, die dieser Umbau beseitigt.
@@ -2289,15 +2293,7 @@ export async function meldeFehlendenVorrat(bericht) {
 
   const fehlend = heilbar.holbar || []
   if (!fehlend.length) {
-    const grundText = {
-      "speicher-aus":    localize("BENEOS.Stream.Offline.BlockedStorage",
-        "Beneos: your browser storage is unavailable right now, so your offline maps cannot be checked or fetched."),
-      "keine-verbindung": localize("BENEOS.Stream.Offline.BlockedOffline",
-        "Beneos: some offline maps are missing, but there is no connection to fetch them right now."),
-      "kontingent-voll": localize("BENEOS.Stream.Offline.BlockedQuota",
-        "Beneos: some offline maps are missing and your offline storage is full. Free some space to fetch them again."),
-    }[heilbar.grund]
-    if (grundText) ui.notifications?.warn(grundText)
+    meldeSperre(heilbar.grund)
     return false
   }
 
@@ -2363,8 +2359,29 @@ export async function meldeFehlendenVorrat(bericht) {
 
   ui.notifications?.info(localize("BENEOS.Stream.Offline.Fetching", "Fetching your offline maps..."))
   const summe = await vorratHeilen(fehlend)
-  meldeHeilung(summe, fehlend.length)
+  meldeHeilung(summe, alleFehlend.length, heilbar)
   return true
+}
+
+/**
+ * Sagen, warum gar nichts geholt wird. Fuer beide Wege, den Weltstart und den
+ * Knopf "Fetch now" (Kalt-Review stre-T-146: der Knopf meldete bei fehlender
+ * Verbindung nur eine Zahl).
+ *
+ * @param {string} grund aus `heilbarkeit`
+ * @returns {boolean} ob es fuer diesen Grund einen Satz gab
+ */
+export function meldeSperre(grund) {
+  const text = {
+    "speicher-aus":    localize("BENEOS.Stream.Offline.BlockedStorage",
+      "Beneos: your browser storage is unavailable right now, so your offline maps cannot be checked or fetched."),
+    "keine-verbindung": localize("BENEOS.Stream.Offline.BlockedOffline",
+      "Beneos: some offline maps are missing, but there is no connection to fetch them right now."),
+    "kontingent-voll": localize("BENEOS.Stream.Offline.BlockedQuota",
+      "Beneos: some offline maps are missing and your offline storage is full. Free some space to fetch them again."),
+  }[grund]
+  if (text) ui.notifications?.warn(text)
+  return Boolean(text)
 }
 
 /**
@@ -2380,16 +2397,25 @@ export async function meldeFehlendenVorrat(bericht) {
  * dort eine Ausrede: das Kontingent ist voll, und das kann der Kunde aendern.
  * Dasselbe gilt fuer den Speicher, dessen Ursache im Browser liegt.
  *
+ * Gesamt ist die Zahl ALLER fehlenden Karten, auch der, die `heilbarkeit`
+ * gar nicht angeboten hat. Deren Grund kommt mit `heilbar` herein, sonst hiesse
+ * es "restored" bei vollem Kontingent und einer weiter fehlenden Karte.
+ *
  * @param {object} summe Ergebnis von `vorratHeilen`
- * @param {number} gesamt wie viele Karten geheilt werden sollten
+ * @param {number} gesamt wie viele Karten fehlten
+ * @param {object} [heilbar] Ergebnis von `heilbarkeit`
  */
-export function meldeHeilung(summe, gesamt) {
+export function meldeHeilung(summe, gesamt, heilbar) {
   const done = Number(summe?.karten) || 0
   const total = Number(gesamt) || 0
-  if (summe?.deckelErreicht) {
+  const deckel = summe?.deckelErreicht || heilbar?.grund === "kontingent-voll"
+  const speicherAus = summe?.speicherAus || heilbar?.grund === "speicher-aus"
+  if (deckel) {
     ui.notifications?.warn(game.i18n.format("BENEOS.Stream.Offline.RestoredQuota", { done, total })
       || `Beneos: ${done} of ${total} map(s) restored, your offline storage is full.`)
-  } else if (summe?.speicherAus) {
+  } else if (speicherAus && !done) {
+    // Lag schon eine Karte, als der Speicher ausfiel, nennt der Satz unten
+    // die Zahl. "cannot be fetched" stimmte fuer sie nicht (Kalt-Review).
     ui.notifications?.warn(game.i18n.localize("BENEOS.Stream.Offline.BlockedStorage")
       || "Beneos: your browser storage is unavailable right now, so your offline maps cannot be checked or fetched.")
   } else if (summe?.fehlgeschlagen) {

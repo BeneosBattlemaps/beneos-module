@@ -278,6 +278,74 @@ abschnitt("Die Heilmeldung nennt keinen Erfolg ohne Datei")
   gleich("Meldung mit allen Karten: RestoredAll", await melde({ karten: 1 }, 1), "info RestoredAll")
   gleich("Meldung mit Dateifehlschlag: RestoredPartly", await melde({ karten: 0, fehlgeschlagen: 2 }, 1), "warn RestoredPartly")
   gleich("Meldung am Deckel: RestoredQuota", await melde({ karten: 0, deckelErreicht: true }, 1), "warn RestoredQuota")
+  // Faellt der Speicher erst nach einer gehaltenen Karte aus, ist die Karte
+  // trotzdem da. Der Speichersatz sagte "cannot be fetched" und verschwieg sie.
+  gleich("Meldung bei Teilerfolg vor dem Ausfall: RestoredSome", await melde({ karten: 1, speicherAus: true }, 2), "warn RestoredSome")
+}
+
+abschnitt("Heilen nennt die Ursache, wo es sie kennt")
+{
+  // Kalt-Review stre-T-146, Befunde 3 und 5.
+  torSagtZu()
+  const geteilt = `${BASIS}/s/${SCHLUESSEL}/shared/icon.webp`
+  await game.settings.set("beneos-module", "beneos-stream-offline-shared", { [geteilt]: { bytes: 5, karten: ["beneos_bm_0001|4k|k9"] } })
+  ablage.clear()
+  speicherFaellt(1)
+  const nurGeteilt = await versuche(() => vorratHeilen([{ ...KARTE, karte: "k9", urls: [] }]))
+  speicherFaellt(0)
+  await game.settings.set("beneos-module", "beneos-stream-offline-shared", {})
+  gleich("Nur geteilte Adressen, Speicher aus: speicherAus gemeldet", JSON.stringify([nurGeteilt?.karten, nurGeteilt?.speicherAus]), JSON.stringify([0, true]))
+
+  // Der abgeschaltete Zwischenspeicher der Welt ist kein Browserfehler.
+  ablage.clear()
+  await game.settings.set("beneos-module", "beneos-stream-local-cache", false)
+  const schalterAus = await versuche(() => vorratHeilen([{ ...KARTE, urls: [`${BASIS}/a/${SCHLUESSEL}/beneos_bm_0001/4k/k1.webp`], bytes: 10 }]))
+  await game.settings.set("beneos-module", "beneos-stream-local-cache", true)
+  gleich("Zwischenspeicher abgeschaltet: kein speicherAus, keine Karte", JSON.stringify([schalterAus?.karten, schalterAus?.speicherAus]), JSON.stringify([0, false]))
+}
+
+abschnitt("Fenster und Weltstart melden dieselbe Lage gleich")
+{
+  // Kalt-Review stre-T-146, Befunde 1, 2 und 6: der Baustein war geprueft,
+  // seine Verdrahtung in beiden Wegen nicht.
+  const { BeneosOfflineWindow } = await import("./stream-offline-window.mjs")
+  const { pruefeVorrat, heilbarkeit, meldeFehlendenVorrat } = await import("./stream-offline.mjs")
+  const { noteResult } = await import("./stream-online.mjs")
+  foundry.applications.api.DialogV2 = { confirm: async () => true }
+  foundry.utils.escapeHTML ??= (s) => String(s)
+  torSagtZu()
+  const adresse = (k) => `${BASIS}/a/${SCHLUESSEL}/beneos_bm_0001/4k/${k}.webp`
+  const halte = (...ks) => game.settings.set("beneos-module", "beneos-stream-offline-held",
+    Object.fromEntries(ks.map((k) => [`beneos_bm_0001|4k|${k}`, { ...KARTE, karte: k, name: k, urls: [adresse(k)], bytes: 10 }])))
+  const marke = (t) => String(t).replace(/^BENEOS\.Stream\.Offline\./, "")
+    .replace(/^Beneos: some offline maps are missing, but there is no connection.*/, "BlockedOffline")
+    .replace(/^Beneos: some offline maps are missing and your offline storage is full.*/, "BlockedQuota")
+    .replace(/^(Beneos: fetching \d+ map\(s\)|Fetching your offline maps)\.\.\.$/, "Fetching")
+  const lauf = async (weg) => {
+    ablage.clear(); meldungen.length = 0; nimmAbrufe()
+    if (weg === "fenster") await versuche(() => BeneosOfflineWindow._onRepair.call({ render: () => null }))
+    else await versuche(async () => { const stand = await pruefeVorrat(); return meldeFehlendenVorrat({ stand, heilbar: await heilbarkeit(stand) }) })
+    const dateien = nimmAbrufe().filter((a) => a.adresse.startsWith(`${BASIS}/a/`)).length
+    return `${meldungen.map((m) => `${m.art} ${marke(m.text)}`).join(" | ")} / ${dateien} geholt`
+  }
+  const beide = async (titel, erwartet) => {
+    gleich(`Fenster, ${titel}`, await lauf("fenster"), erwartet)
+    gleich(`Weltstart, ${titel}`, await lauf("weltstart"), erwartet)
+  }
+
+  await halte("k1", "k2")
+  noteResult(false, "probe")
+  await beide("keine Verbindung: Grund statt Zahl", "warn BlockedOffline / 0 geholt")
+
+  noteResult(true, "probe")
+  await beide("alles holbar: RestoredAll", "info Fetching | info RestoredAll / 2 geholt")
+
+  const vorher = Object.getOwnPropertyDescriptor(globalThis, "navigator")
+  Object.defineProperty(globalThis, "navigator", { configurable: true, value: { storage: { estimate: async () => ({ quota: 15, usage: 0 }) } } })
+  await beide("Kontingent reicht fuer 1 von 2: RestoredQuota", "info Fetching | warn RestoredQuota / 1 geholt")
+  if (vorher) Object.defineProperty(globalThis, "navigator", vorher)
+  else delete globalThis.navigator
+  await game.settings.set("beneos-module", "beneos-stream-offline-held", {})
 }
 
 ende()

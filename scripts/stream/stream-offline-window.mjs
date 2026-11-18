@@ -16,7 +16,7 @@
 import { downloadMode, MODULE_ID } from "./stream-settings.mjs"
 import { alleKarten, vorratsstand, verfallsstand, kontingent, VERFALL_TAGE,
          karteLoesen, pruefeVorrat, vorratHeilen, ziehKarteNach,
-         heilbarkeit, meldeHeilung } from "./stream-offline.mjs"
+         heilbarkeit, meldeHeilung, meldeSperre } from "./stream-offline.mjs"
 import { speicherLage } from "./stream-fetch.mjs"
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications?.api ?? {}
@@ -219,14 +219,12 @@ export class BeneosOfflineWindow extends HandlebarsApplicationMixin(ApplicationV
     // und die Meldung danach sagte nur eine Zahl (stre-T-146).
     const heilbar = await heilbarkeit(stand)
     const holbar = heilbar.holbar || []
-    let summe = { karten: 0, fehlgeschlagen: 0, deckelErreicht: false, speicherAus: false }
-    if (holbar.length) {
-      ui.notifications?.info(`Beneos: fetching ${holbar.length} map(s)...`)
-      summe = await vorratHeilen(holbar)
+    if (!holbar.length) {
+      if (!meldeSperre(heilbar.grund)) meldeHeilung({ karten: 0 }, stand.fehlend.length)
+      return this.render()
     }
-    meldeHeilung({ ...summe,
-      deckelErreicht: summe.deckelErreicht || heilbar.grund === "kontingent-voll",
-      speicherAus: summe.speicherAus || heilbar.grund === "speicher-aus" }, stand.fehlend.length)
+    ui.notifications?.info(`Beneos: fetching ${holbar.length} map(s)...`)
+    meldeHeilung(await vorratHeilen(holbar), stand.fehlend.length, heilbar)
     return this.render()
   }
 }
