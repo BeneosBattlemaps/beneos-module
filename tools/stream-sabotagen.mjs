@@ -109,7 +109,9 @@
  * /release, und dass Kontingent, kein Netz und Freigabe sich nicht aendern.
  * Seit stre-T-145 haelt er ausserdem fest, dass ohne Speicher nichts zugesagt
  * wird und eine Zusage, deren Holen am Speicher scheitert, beim Tor
- * zurueckgegeben wird. Den Satz gibt es an der Basis nicht.
+ * zurueckgegeben wird. Seit stre-T-146 haelt er fest, dass das Heilen nur
+ * Karten zaehlt, deren Dateien wirklich liegen, und dass die Heilmeldung ohne
+ * Datei keinen Erfolg nennt. Den Satz gibt es an der Basis nicht.
  *
  * VIERUNDZWANZIG SAETZE seit stre-T-135. `kennung` haelt fest, dass die
  * Anmeldung bei einer gesperrten Weltkennung genau einmal neu wuerfelt und
@@ -1577,6 +1579,16 @@ const SABOTAGEN = [
   { satz: "zusage", ziel: ["Schalter faellt waehrend der Zusage: Freigabe, kein Eintrag"], ersetze: [[FETCH,"  if (!localCacheEnabled()) { ergebnis.speicherAus = true; return ergebnis }\n","  if (!localCacheEnabled()) return ergebnis\n"]] },
   { satz: "zusage", ziel: ["Ausfall im Holen: Zusage und Freigabe","Ausfall im Holen ergibt grund speicher-aus","Ausfall im Holen: kein Eintrag"], ersetze: [[FETCH,"  if (!store) { ergebnis.speicherAus = true; return ergebnis }\n","  if (!store) return ergebnis\n"]] },
   { satz: "zusage", ziel: ["der Stolperer trifft wirklich einen Zugriff","Speicherausfall: kein Abruf beim Tor"], ersetze: [[FETCH,"  if (!localCacheEnabled()) return false\n  return Boolean(await openStore())\n","  if (!localCacheEnabled()) return false\n  return true\n"]] },
+  { satz: "zusage", ziel: ["Heilen bei Speicherausfall: keine Karte gezaehlt","Heilen ohne Adressen: keine Karte gezaehlt"], ersetze: [[OFFLINE,"    if (liegt && !r.fehlgeschlagen && !geteiltFehlt) summe.karten++\n","    if (!r.fehlgeschlagen && !geteiltFehlt) summe.karten++\n"]] },
+  { satz: "zusage", ziel: ["Heilen ohne Adressen: keine Karte gezaehlt"], ersetze: [[OFFLINE,"    const liegt = (eigene.length + geteilt.length) > 0\n      && (!eigene.length || await offlineGehalten(eigene))\n","    const liegt = (!eigene.length || await offlineGehalten(eigene))\n"]] },
+  { satz: "zusage", ziel: ["Heilen bei Speicherausfall: keine Karte gezaehlt"], ersetze: [[OFFLINE,"    const liegt = (eigene.length + geteilt.length) > 0\n      && (!eigene.length || await offlineGehalten(eigene))\n","    const liegt = (eigene.length + geteilt.length) > 0\n      && (!eigene.length || true)\n"]] },
+  { satz: "zusage", ziel: ["Heilen bei Speicherausfall: speicherAus gemeldet"], ersetze: [[OFFLINE,"    if (r.speicherAus) summe.speicherAus = true\n",""]] },
+  { satz: "zusage", ziel: ["Meldung bei Speicherausfall: BlockedStorage"], ersetze: [[OFFLINE,"  } else if (summe?.speicherAus) {\n","  } else if (false) {\n"]] },
+  { satz: "zusage", ziel: ["Meldung mit Dateifehlschlag: RestoredPartly"], ersetze: [[OFFLINE,"  } else if (summe?.fehlgeschlagen) {\n","  } else if (false) {\n"]] },
+  { satz: "zusage", ziel: ["Meldung ohne geheilte Karte: RestoredSome, kein RestoredAll"], ersetze: [[OFFLINE,"  } else if (done < total) {\n","  } else if (false) {\n"]] },
+  { satz: "zusage", ziel: ["Heilen mit gesundem Speicher: Karte gezaehlt, Datei liegt"], ersetze: [[OFFLINE,"    const liegt = (eigene.length + geteilt.length) > 0\n      && (!eigene.length || await offlineGehalten(eigene))\n","    const liegt = (eigene.length + geteilt.length) > 0\n      && (!eigene.length || false)\n"]] },
+  { satz: "zusage", ziel: ["Meldung mit allen Karten: RestoredAll"], ersetze: [[OFFLINE,"    ui.notifications?.info(game.i18n.format(\"BENEOS.Stream.Offline.RestoredAll\", { done })\n","    ui.notifications?.warn(game.i18n.format(\"BENEOS.Stream.Offline.RestoredAll\", { done })\n"]] },
+  { satz: "zusage", ziel: ["Meldung am Deckel: RestoredQuota"], ersetze: [[OFFLINE,"  if (summe?.deckelErreicht) {\n","  if (false) {\n"]] },
 ];
 
 /*
