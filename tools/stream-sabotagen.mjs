@@ -107,7 +107,9 @@
  * DREIUNDZWANZIG SAETZE seit stre-T-137. `zusage` haelt fest, dass das Modul
  * eine Offline-Karte per POST zusagt, nicht per GET, an die Kartenadresse ohne
  * /release, und dass Kontingent, kein Netz und Freigabe sich nicht aendern.
- * Den Satz gibt es an der Basis nicht.
+ * Seit stre-T-145 haelt er ausserdem fest, dass ohne Speicher nichts zugesagt
+ * wird und eine Zusage, deren Holen am Speicher scheitert, beim Tor
+ * zurueckgegeben wird. Den Satz gibt es an der Basis nicht.
  *
  * VIERUNDZWANZIG SAETZE seit stre-T-135. `kennung` haelt fest, dass die
  * Anmeldung bei einer gesperrten Weltkennung genau einmal neu wuerfelt und
@@ -1564,6 +1566,13 @@ const SABOTAGEN = [
   { satz: "zusage", ziel: ["die Freigabe geht an /release"], ersetze: [[OFFLINE,"  const beimTor = await torFragen(kartenWeg(release, variant, karte) + \"/release\", \"POST\")\n","  const beimTor = await torFragen(kartenWeg(release, variant, karte), \"POST\")\n"]] },
   { satz: "zusage", ziel: ["die Freigabe geht als POST"], ersetze: [[OFFLINE,"  const beimTor = await torFragen(kartenWeg(release, variant, karte) + \"/release\", \"POST\")\n","  const beimTor = await torFragen(kartenWeg(release, variant, karte) + \"/release\", \"GET\")\n"]] },
   { satz: "zusage", ziel: ["die Zusage holt die Kartendatei"], ersetze: [[OFFLINE,"  const ergebnis = await offlineHalten(liste, onProgress)\n","  const ergebnis = await offlineHalten([], onProgress)\n"]] },
+  { satz: "zusage", ziel: ["Speicherausfall: kein Abruf beim Tor","Cache-Schalter aus: kein Abruf beim Tor"], ersetze: [[OFFLINE,"  if (!(await speicherBereit())) return { ok: false, grund: \"speicher-aus\" }\n",""]] },
+  { satz: "zusage", ziel: ["Speicherausfall: kein Abruf beim Tor"], ersetze: [[OFFLINE,"  if (!(await speicherBereit())) return { ok: false, grund: \"speicher-aus\" }\n","  if (speicherAusfallStand()) return { ok: false, grund: \"speicher-aus\" }\n"]] },
+  { satz: "zusage", ziel: ["Speicherausfall ergibt grund speicher-aus"], ersetze: [[OFFLINE,"  if (!(await speicherBereit())) return { ok: false, grund: \"speicher-aus\" }\n","  if (!(await speicherBereit())) return { ok: false, grund: \"tor-abgelehnt\" }\n"]] },
+  { satz: "zusage", ziel: ["Speicherausfall: kein Abruf beim Tor","Speicherausfall ergibt grund speicher-aus","Speicherausfall: kein Eintrag"], ersetze: [[OFFLINE,"  if (!(await speicherBereit())) return { ok: false, grund: \"speicher-aus\" }\n",""],[OFFLINE,"  const ergebnis = await offlineHalten(liste, onProgress)\n  if (speicherAusfallStand()) {\n","  const ergebnis = await offlineHalten(liste, onProgress)\n  if (false) {\n"]] },
+  { satz: "zusage", ziel: ["Ausfall im Holen: Zusage und Freigabe","Ausfall im Holen ergibt grund speicher-aus","Ausfall im Holen: kein Eintrag"], ersetze: [[OFFLINE,"  const ergebnis = await offlineHalten(liste, onProgress)\n  if (speicherAusfallStand()) {\n","  const ergebnis = await offlineHalten(liste, onProgress)\n  if (false) {\n"]] },
+  { satz: "zusage", ziel: ["Ausfall im Holen: Zusage und Freigabe"], ersetze: [[OFFLINE,"    // Zusage hier zurueckgegeben, wie beim Deckel (stre-T-145).\n    await torFragen(kartenWeg(release, variant, karte) + \"/release\", \"POST\")\n","    // Zusage hier zurueckgegeben, wie beim Deckel (stre-T-145).\n"]] },
+  { satz: "zusage", ziel: ["Cache-Schalter aus: kein Abruf beim Tor"], ersetze: [[FETCH,"  if (!localCacheEnabled()) return false\n  return Boolean(await openStore())\n","  return Boolean(await openStore())\n"]] },
 ];
 
 /*
