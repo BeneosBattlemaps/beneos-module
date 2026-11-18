@@ -5,9 +5,10 @@
  * Seit stre-T-118 liefert der Server je Release `shop_url_kind` neben
  * `shop_url`: 'pack', 'bundle' oder null. 'bundle' heisst, das Release ist nur
  * ueber ein Bundle kaeuflich, und der Link fuehrt auf die Bundle-Seite.
- * Betreiberentscheid 15.11.2026: dann heisst der Knopf "Buy bundle". Ein alter
- * Server oder Katalog ohne das Feld darf nichts merken, also bleibt dort
- * "Buy pack".
+ * Betreiberentscheid 15.11.2026: dann heisst der Knopf "Buy bundle". Bei einem
+ * alten Server oder Katalog ohne das Feld bleibt die Beschriftung "Buy pack".
+ * Der Pack-Tooltip heisst seit stre-T-120 in jedem Fall "Buy this map pack"
+ * (Betreiberwahl).
  *
  * Geprueft wird die Funktion `kaufKnopf` mit zwei Werten, dazu am Text, dass
  * das Fenster beide Kauflinks ueber sie bildet, dass die Vorlage keinen Knopf
@@ -62,7 +63,12 @@ abschnitt("Fenster: beide Kauflinks laufen ueber kaufKnopf")
   struktur("Fenster liest shop_url nirgends selbst", (fenster.match(/shop_url/g) || []).length, 0)
   struktur("Szenenkarte: kaufKnopf am Eltern-Release", /kaufKnopf\(bmapRelease\)/.test(fenster), true)
   struktur("Release-Karte: kaufKnopf am Release", /kaufKnopf\(r\)/.test(fenster), true)
-  struktur("beide Karten tragen die Bundle-Weiche", (fenster.match(/shopIsBundle:\s+(bmapKauf|kauf)\.isBundle,/g) || []).length, 2)
+  // Je Karte ihre eigene Variable: bmapKauf in #enrichCard, kauf in
+  // #buildReleaseCards. Vertauscht waere die eine undefiniert.
+  struktur("Szenenkarte: Kauflink aus bmapKauf", (fenster.match(/shopUrl:\s+bmapKauf\.url,/g) || []).length, 1)
+  struktur("Release-Karte: Kauflink aus kauf", (fenster.match(/shopUrl:\s+kauf\.url,/g) || []).length, 1)
+  struktur("Szenenkarte: Bundle-Weiche aus bmapKauf", (fenster.match(/shopIsBundle:\s+bmapKauf\.isBundle,/g) || []).length, 1)
+  struktur("Release-Karte: Bundle-Weiche aus kauf", (fenster.match(/shopIsBundle:\s+kauf\.isBundle,/g) || []).length, 1)
 }
 
 abschnitt("Vorlage: kein Kaufknopf fest verdrahtet")
@@ -95,7 +101,7 @@ abschnitt("Sprachen: alle Dateien tragen beide neuen Schluessel")
     for (const k of [PACK, PACK_TIPP, BUNDLE, BUNDLE_TIPP]) {
       const w = j[k]
       if (typeof w !== "string" || w.trim() === "") fehlt.push(`${n}:${k.split(".").pop()}`)
-      else if (/[–—]/.test(w)) strich.push(`${n}:${k.split(".").pop()}`)
+      else if (/[\u2013\u2014]/.test(w)) strich.push(`${n}:${k.split(".").pop()}`)
     }
   }
   struktur("kein Schluessel fehlt oder ist leer", fehlt.join(","), "")

@@ -6,8 +6,9 @@
  * ('pack', 'bundle' oder null). 'bundle' heisst, das Release ist nur ueber ein
  * Bundle kaeuflich und der Link fuehrt auf die Bundle-Seite; dann heisst der
  * Knopf "Buy bundle" (Betreiberentscheid 15.11.2026). Jeder andere Wert, auch
- * ein fehlendes Feld von einem alten Server oder Katalog, laesst "Buy pack"
- * stehen, damit dort nichts anders aussieht als vorher.
+ * ein fehlendes Feld von einem alten Server oder Katalog, laesst die
+ * Beschriftung "Buy pack" stehen. Der Pack-Tooltip heisst seit stre-T-120 in
+ * jedem Fall "Buy this map pack" (Betreiberwahl).
  *
  * Die Vorlage nennt beide Sprachschluessel woertlich und waehlt mit
  * `isBundle`. Ein Schluessel aus einer Variablen waere fuer die Sprachwache
