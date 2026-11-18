@@ -2405,6 +2405,7 @@
   "BENEOS.Stream.Offline.BlockedQuota": "Beneos: faltan algunos mapas sin conexión y tu almacenamiento sin conexión está lleno. Libera espacio para volver a descargarlos.",
   "BENEOS.Stream.Offline.RestoredAll": "Beneos: {done} mapa(s) sin conexión restaurado(s).",
   "BENEOS.Stream.Offline.RestoredPartly": "Beneos: {done} de {total} mapa(s) restaurado(s), {failed} archivo(s) no se pudieron descargar.",
+  "BENEOS.Stream.Offline.RestoredSome": "Beneos: {done} de {total} mapa(s) restaurado(s), los demás no se pudieron descargar.",
   "BENEOS.Stream.Offline.RestoredQuota": "Beneos: {done} de {total} mapa(s) restaurado(s), tu almacenamiento sin conexión está lleno.",
   "BENEOS.Stream.Intro.Title": "Cómo funciona ahora la transmisión de Beneos",
   "BENEOS.Stream.Intro.Lead": "Tus mapas y criaturas siguen en línea. Solo las imágenes pequeñas llegan a tu disco.",

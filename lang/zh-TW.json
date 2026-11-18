@@ -2405,6 +2405,7 @@
   "BENEOS.Stream.Offline.BlockedQuota": "Beneos：有部分離線地圖遺失，而你的離線儲存空間已滿。請釋出空間後再重新下載。",
   "BENEOS.Stream.Offline.RestoredAll": "Beneos：已還原 {done} 張離線地圖。",
   "BENEOS.Stream.Offline.RestoredPartly": "Beneos：已還原 {total} 張中的 {done} 張地圖，有 {failed} 個檔案無法下載。",
+  "BENEOS.Stream.Offline.RestoredSome": "Beneos：已還原 {total} 張中的 {done} 張地圖，其餘無法下載。",
   "BENEOS.Stream.Offline.RestoredQuota": "Beneos：已還原 {total} 張中的 {done} 張地圖，你的離線儲存空間已滿。",
   "BENEOS.Stream.Intro.Title": "Beneos 串流現在的運作方式",
   "BENEOS.Stream.Intro.Lead": "你的地圖與生物留在線上，只有小圖片會存到你的硬碟。",

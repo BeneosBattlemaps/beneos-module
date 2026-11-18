@@ -2405,6 +2405,7 @@
   "BENEOS.Stream.Offline.BlockedQuota": "Beneos: některé offline mapy chybí a tvé offline úložiště je plné. Uvolni místo a stáhni je znovu.",
   "BENEOS.Stream.Offline.RestoredAll": "Beneos: obnoveno {done} offline map.",
   "BENEOS.Stream.Offline.RestoredPartly": "Beneos: obnoveno {done} z {total} map, {failed} souborů se nepodařilo stáhnout.",
+  "BENEOS.Stream.Offline.RestoredSome": "Beneos: obnoveno {done} z {total} map, ostatní se nepodařilo stáhnout.",
   "BENEOS.Stream.Offline.RestoredQuota": "Beneos: obnoveno {done} z {total} map, tvé offline úložiště je plné.",
   "BENEOS.Stream.Intro.Title": "Jak nyní funguje streamování Beneos",
   "BENEOS.Stream.Intro.Lead": "Tvoje mapy a bytosti zůstávají online. Na disk se ukládají jen malé obrázky.",

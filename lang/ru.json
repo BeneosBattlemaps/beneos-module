@@ -2404,6 +2404,7 @@
   "BENEOS.Stream.Offline.BlockedQuota": "Beneos: часть офлайн-карт отсутствует, а офлайн-хранилище заполнено. Освободите место, чтобы загрузить их снова.",
   "BENEOS.Stream.Offline.RestoredAll": "Beneos: восстановлено офлайн-карт: {done}.",
   "BENEOS.Stream.Offline.RestoredPartly": "Beneos: восстановлено {done} из {total} карт, файлов не загружено: {failed}.",
+  "BENEOS.Stream.Offline.RestoredSome": "Beneos: восстановлено {done} из {total} карт, остальные загрузить не удалось.",
   "BENEOS.Stream.Offline.RestoredQuota": "Beneos: восстановлено {done} из {total} карт, офлайн-хранилище заполнено.",
   "BENEOS.Stream.Intro.Title": "Как теперь работает трансляция Beneos",
   "BENEOS.Stream.Intro.Lead": "Ваши карты и существа остаются онлайн. На диск попадают только маленькие изображения.",

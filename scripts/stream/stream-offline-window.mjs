@@ -15,7 +15,8 @@
 
 import { downloadMode, MODULE_ID } from "./stream-settings.mjs"
 import { alleKarten, vorratsstand, verfallsstand, kontingent, VERFALL_TAGE,
-         karteLoesen, pruefeVorrat, vorratHeilen, ziehKarteNach } from "./stream-offline.mjs"
+         karteLoesen, pruefeVorrat, vorratHeilen, ziehKarteNach,
+         heilbarkeit, meldeHeilung } from "./stream-offline.mjs"
 import { speicherLage } from "./stream-fetch.mjs"
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications?.api ?? {}
@@ -213,9 +214,19 @@ export class BeneosOfflineWindow extends HandlebarsApplicationMixin(ApplicationV
   static async _onRepair() {
     const stand = await pruefeVorrat()
     if (!stand.fehlend.length) return this.render()
-    ui.notifications?.info(`Beneos: fetching ${stand.fehlend.length} map(s)...`)
-    const summe = await vorratHeilen(stand.fehlend)
-    ui.notifications?.info(`Beneos: ${summe.karten} of ${stand.fehlend.length} map(s) restored.`)
+    // Erst fragen, was sich holen laesst, wie beim Weltstart. Ohne Speicher,
+    // ohne Verbindung oder mit vollem Kontingent waere der Versuch zwecklos,
+    // und die Meldung danach sagte nur eine Zahl (stre-T-146).
+    const heilbar = await heilbarkeit(stand)
+    const holbar = heilbar.holbar || []
+    let summe = { karten: 0, fehlgeschlagen: 0, deckelErreicht: false, speicherAus: false }
+    if (holbar.length) {
+      ui.notifications?.info(`Beneos: fetching ${holbar.length} map(s)...`)
+      summe = await vorratHeilen(holbar)
+    }
+    meldeHeilung({ ...summe,
+      deckelErreicht: summe.deckelErreicht || heilbar.grund === "kontingent-voll",
+      speicherAus: summe.speicherAus || heilbar.grund === "speicher-aus" }, stand.fehlend.length)
     return this.render()
   }
 }

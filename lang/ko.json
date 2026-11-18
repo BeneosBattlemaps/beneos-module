@@ -2405,6 +2405,7 @@
   "BENEOS.Stream.Offline.BlockedQuota": "Beneos: 일부 오프라인 맵이 없고 오프라인 저장 공간이 가득 찼습니다. 공간을 확보한 뒤 다시 내려받으세요.",
   "BENEOS.Stream.Offline.RestoredAll": "Beneos: 오프라인 맵 {done}개를 복구했습니다.",
   "BENEOS.Stream.Offline.RestoredPartly": "Beneos: 맵 {total}개 중 {done}개를 복구했고, 파일 {failed}개는 내려받지 못했습니다.",
+  "BENEOS.Stream.Offline.RestoredSome": "Beneos: 맵 {total}개 중 {done}개를 복구했고, 나머지는 내려받지 못했습니다.",
   "BENEOS.Stream.Offline.RestoredQuota": "Beneos: 맵 {total}개 중 {done}개를 복구했으며, 오프라인 저장 공간이 가득 찼습니다.",
   "BENEOS.Stream.Intro.Title": "이제 Beneos 스트리밍이 작동하는 방식",
   "BENEOS.Stream.Intro.Lead": "맵과 크리처는 온라인에 남습니다. 디스크에는 작은 이미지만 저장됩니다.",

@@ -2405,6 +2405,7 @@
   "BENEOS.Stream.Offline.BlockedQuota": "Beneos : des cartes hors ligne manquent et ton stockage hors ligne est plein. Libère de l'espace pour les télécharger à nouveau.",
   "BENEOS.Stream.Offline.RestoredAll": "Beneos : {done} carte(s) hors ligne restaurée(s).",
   "BENEOS.Stream.Offline.RestoredPartly": "Beneos : {done} carte(s) sur {total} restaurée(s), {failed} fichier(s) n'ont pas pu être téléchargés.",
+  "BENEOS.Stream.Offline.RestoredSome": "Beneos : {done} carte(s) sur {total} restaurée(s), les autres n'ont pas pu être téléchargées.",
   "BENEOS.Stream.Offline.RestoredQuota": "Beneos : {done} carte(s) sur {total} restaurée(s), ton stockage hors ligne est plein.",
   "BENEOS.Stream.Intro.Title": "Comment fonctionne la diffusion Beneos",
   "BENEOS.Stream.Intro.Lead": "Vos cartes et vos créatures restent en ligne. Seules les petites images arrivent sur votre disque.",

@@ -2413,6 +2413,7 @@
   "BENEOS.Stream.Offline.BlockedQuota": "Beneos: Es fehlen Offline-Karten und dein Offline-Speicher ist voll. Gib Platz frei, um sie erneut zu laden.",
   "BENEOS.Stream.Offline.RestoredAll": "Beneos: {done} Offline-Karte(n) wiederhergestellt.",
   "BENEOS.Stream.Offline.RestoredPartly": "Beneos: {done} von {total} Karte(n) wiederhergestellt, {failed} Datei(en) konnten nicht geladen werden.",
+  "BENEOS.Stream.Offline.RestoredSome": "Beneos: {done} von {total} Karte(n) wiederhergestellt, die übrigen konnten nicht geladen werden.",
   "BENEOS.Stream.Offline.RestoredQuota": "Beneos: {done} von {total} Karte(n) wiederhergestellt, dein Offline-Speicher ist voll.",
   "BENEOS.Stream.Intro.Title": "Wie Beneos-Streaming jetzt funktioniert",
   "BENEOS.Stream.Intro.Lead": "Deine Karten und Kreaturen bleiben online. Nur die kleinen Bilder landen auf deiner Platte.",

@@ -11,9 +11,13 @@
  * Geprueft wird am echten `karteZusagen` und `karteLoesen`, das Tor ist eine
  * Attrappe. Ein Abruf, den dieser Satz nicht kennt, macht ihn rot.
  *
+ * Seit stre-T-146 prueft er auch die Gegenrichtung, das Heilen eines fehlenden
+ * Vorrats: eine Karte gilt nur als wiederhergestellt, wenn ihre Dateien liegen,
+ * und keine Meldung nennt einen Erfolg, den es nicht gab.
+ *
  * Aufruf: node scripts/stream/stream-zusage.test.mjs
  */
-import { pruefstand, installiereFoundry, netz, nimmAbrufe } from "../../tools/lib/foundry-attrappe.mjs"
+import { pruefstand, installiereFoundry, netz, nimmAbrufe, meldungen } from "../../tools/lib/foundry-attrappe.mjs"
 
 const { gleich, abschnitt, ende } = pruefstand("stream-zusage, Offline-Zusage per POST")
 
@@ -82,7 +86,7 @@ function speicherAttrappe() {
 }
 const ablage = speicherAttrappe()
 
-const { karteZusagen, karteLoesen } = await import("./stream-offline.mjs")
+const { karteZusagen, karteLoesen, vorratHeilen, meldeHeilung } = await import("./stream-offline.mjs")
 
 const KARTE = { release: "beneos_bm_0001", variant: "4k", karte: "k1" }
 const ZUSAGE = `${BASIS}/offline/${SCHLUESSEL}/beneos_bm_0001/4k/k1`
@@ -236,6 +240,44 @@ abschnitt("Ein fremder Speicherfehler kostet die gehaltene Karte nicht")
   const tor = torAbrufe().map((a) => `${String(a.optionen?.method || "GET").toUpperCase()} ${a.adresse.slice(ZUSAGE.length) || "/"}`)
   gleich("der Stolperer trifft wirklich einen Zugriff", geoeffnet >= 3, true)
   gleich("Fremder Ausfall im Holen: Zusage bleibt", JSON.stringify([r?.ok, tor, eintraege(), r?.ergebnis?.geholt]), JSON.stringify([true, ["POST /"], 1, 1]))
+}
+
+abschnitt("Heilen zaehlt nur, was wirklich liegt")
+{
+  // Ein Ergebnis voller Nullen ist kein Erfolg (stre-T-146). Vorher zaehlte
+  // `vorratHeilen` eine Karte, sobald kein Fehlschlag gemeldet war, und das
+  // galt auch bei ausgefallenem Speicher und bei einem Eintrag ohne Adressen.
+  torSagtZu()
+  const fehlt = { ...KARTE, urls: [`${BASIS}/a/${SCHLUESSEL}/beneos_bm_0001/4k/k1.webp`], bytes: 10 }
+
+  ablage.clear()
+  speicherFaellt(1)
+  const aus = await versuche(() => vorratHeilen([fehlt]))
+  speicherFaellt(0)
+  gleich("Heilen bei Speicherausfall: keine Karte gezaehlt", aus?.karten, 0)
+  gleich("Heilen bei Speicherausfall: speicherAus gemeldet", aus?.speicherAus, true)
+
+  ablage.clear()
+  const leer = await versuche(() => vorratHeilen([{ ...fehlt, urls: [] }]))
+  gleich("Heilen ohne Adressen: keine Karte gezaehlt", leer?.karten, 0)
+
+  ablage.clear()
+  const gesund = await versuche(() => vorratHeilen([fehlt]))
+  gleich("Heilen mit gesundem Speicher: Karte gezaehlt, Datei liegt", JSON.stringify([gesund?.karten, gesund?.speicherAus ?? false, ablage.size]), JSON.stringify([1, false, 1]))
+}
+
+abschnitt("Die Heilmeldung nennt keinen Erfolg ohne Datei")
+{
+  const melde = (summe, gesamt) => {
+    meldungen.length = 0
+    const r = versuche(() => meldeHeilung({ geholt: 0, fehlgeschlagen: 0, karten: 0, geteiltGeholt: 0, deckelErreicht: false, ...summe }, gesamt))
+    return r.then(() => meldungen.map((m) => `${m.art} ${m.text.replace(/^BENEOS.Stream.Offline./, "")}`).join(" | "))
+  }
+  gleich("Meldung bei Speicherausfall: BlockedStorage", await melde({ speicherAus: true }, 1), "warn BlockedStorage")
+  gleich("Meldung ohne geheilte Karte: RestoredSome, kein RestoredAll", await melde({ karten: 0 }, 1), "warn RestoredSome")
+  gleich("Meldung mit allen Karten: RestoredAll", await melde({ karten: 1 }, 1), "info RestoredAll")
+  gleich("Meldung mit Dateifehlschlag: RestoredPartly", await melde({ karten: 0, fehlgeschlagen: 2 }, 1), "warn RestoredPartly")
+  gleich("Meldung am Deckel: RestoredQuota", await melde({ karten: 0, deckelErreicht: true }, 1), "warn RestoredQuota")
 }
 
 ende()

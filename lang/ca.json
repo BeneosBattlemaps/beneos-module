@@ -2405,6 +2405,7 @@
   "BENEOS.Stream.Offline.BlockedQuota": "Beneos: falten alguns mapes fora de línia i el teu emmagatzematge fora de línia és ple. Allibera espai per baixar-los de nou.",
   "BENEOS.Stream.Offline.RestoredAll": "Beneos: {done} mapa(es) fora de línia restaurat(s).",
   "BENEOS.Stream.Offline.RestoredPartly": "Beneos: {done} de {total} mapa(es) restaurat(s), {failed} fitxer(s) no s'han pogut baixar.",
+  "BENEOS.Stream.Offline.RestoredSome": "Beneos: {done} de {total} mapa(es) restaurat(s), els altres no s'han pogut baixar.",
   "BENEOS.Stream.Offline.RestoredQuota": "Beneos: {done} de {total} mapa(es) restaurat(s), el teu emmagatzematge fora de línia és ple.",
   "BENEOS.Stream.Intro.Title": "Com funciona ara la transmissió de Beneos",
   "BENEOS.Stream.Intro.Lead": "Els teus mapes i criatures es queden en línia. Només les imatges petites arriben al teu disc.",

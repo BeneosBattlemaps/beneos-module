@@ -2018,13 +2018,17 @@ export async function geteilteLuecken() {
  * aufgeloest, und die Vereinigung beider Listen geholt.
  */
 export async function vorratHeilen(fehlend, onProgress) {
-  const summe = { geholt: 0, fehlgeschlagen: 0, karten: 0, geteiltGeholt: 0, deckelErreicht: false }
+  const summe = { geholt: 0, fehlgeschlagen: 0, karten: 0, geteiltGeholt: 0, deckelErreicht: false,
+                  speicherAus: false }
   const vorrat = liesGeteilt()
   const index = geteilterIndex()
   let geaendert = 0
   for (const e of fehlend || []) {
     const id = karteId(e.release, e.variant, e.karte)
     const r = await offlineHalten(e.urls || [], onProgress)
+    // Ein ausgefallener Speicher meldet sich als Ergebnis voller Nullen, ohne
+    // Fehlschlag. Die Meldung soll ihn beim Namen nennen (stre-T-146).
+    if (r.speicherAus) summe.speicherAus = true
     summe.geholt += r.geholt + r.gehalten
     summe.fehlgeschlagen += r.fehlgeschlagen
     // DER DECKEL IST EIN FEHLSCHLAG, AUCH WENN ER SICH NICHT SO MELDET.
@@ -2057,7 +2061,8 @@ export async function vorratHeilen(fehlend, onProgress) {
     }
 
     let geteiltFehlt = 0
-    for (const url of geteilteAdressenDerKarte(e, vorrat, index)) {
+    const geteilt = geteilteAdressenDerKarte(e, vorrat, index)
+    for (const url of geteilt) {
       let liegt = await offlineGehalten([url])
       if (!liegt) {
         await offlineHalten([url], onProgress)
@@ -2087,7 +2092,16 @@ export async function vorratHeilen(fehlend, onProgress) {
     // Karte, die nur ihre eigenen bekommen hat, wird von der naechsten Pruefung
     // wieder als fehlend gemeldet, und sie hier zu zaehlen waere eine Zusage,
     // die der naechste Weltstart widerruft.
-    if (!r.fehlgeschlagen && !geteiltFehlt) summe.karten++
+    //
+    // UND ES WIRD NACHGESEHEN, NICHT GEGLAUBT (stre-T-146). "Kein Fehlschlag"
+    // erfuellte auch ein Ergebnis voller Nullen: bei ausgefallenem Speicher und
+    // bei einem Eintrag ohne jede Adresse. Beide zaehlten als wiederhergestellt,
+    // und der Kunde las eine Erfolgsmeldung fuer eine Karte ohne Datei. Eine
+    // Karte ohne Adressen bleibt unvollstaendig, wie in `pruefeVorrat`.
+    const eigene = e.urls || []
+    const liegt = (eigene.length + geteilt.length) > 0
+      && (!eigene.length || await offlineGehalten(eigene))
+    if (liegt && !r.fehlgeschlagen && !geteiltFehlt) summe.karten++
   }
   if (geaendert) await schreibGeteilt(vorrat)
   return summe
@@ -2349,23 +2363,48 @@ export async function meldeFehlendenVorrat(bericht) {
 
   ui.notifications?.info(localize("BENEOS.Stream.Offline.Fetching", "Fetching your offline maps..."))
   const summe = await vorratHeilen(fehlend)
-  // Der Deckel bekommt seinen eigenen Satz. "konnte nicht geholt werden" waere
-  // hier eine Ausrede: das Kontingent ist voll, und das kann der Kunde aendern.
-  if (summe.deckelErreicht) {
-    ui.notifications?.warn(game.i18n.format("BENEOS.Stream.Offline.RestoredQuota",
-      { done: summe.karten, total: fehlend.length })
-      || `Beneos: ${summe.karten} of ${fehlend.length} map(s) restored, your offline storage is full.`)
-  } else if (summe.fehlgeschlagen) {
-    ui.notifications?.warn(game.i18n.format("BENEOS.Stream.Offline.RestoredPartly",
-      { done: summe.karten, total: fehlend.length, failed: summe.fehlgeschlagen })
-      || `Beneos: ${summe.karten} of ${fehlend.length} map(s) restored, `
-        + `${summe.fehlgeschlagen} file(s) could not be fetched.`)
-  } else {
-    ui.notifications?.info(game.i18n.format("BENEOS.Stream.Offline.RestoredAll",
-      { done: summe.karten })
-      || `Beneos: ${summe.karten} offline map(s) restored.`)
-  }
+  meldeHeilung(summe, fehlend.length)
   return true
+}
+
+/**
+ * Dem Kunden sagen, was das Heilen gebracht hat. Ein Satz fuer beide Wege, den
+ * Dialog beim Weltstart und den Knopf "Fetch now" im Offline-Fenster.
+ *
+ * EIN ERFOLG WIRD NUR GEMELDET, WENN ER EINER WAR (stre-T-146). Vorher stand
+ * "restored" auch dann da, wenn keine einzige Datei lag: bei ausgefallenem
+ * Speicher, und bei Karten ohne Adressen. Der Knopf im Fenster meldete
+ * ausserdem nie einen Fehlschlag, nur die Zahl.
+ *
+ * Der Deckel bekommt seinen eigenen Satz. "konnte nicht geholt werden" waere
+ * dort eine Ausrede: das Kontingent ist voll, und das kann der Kunde aendern.
+ * Dasselbe gilt fuer den Speicher, dessen Ursache im Browser liegt.
+ *
+ * @param {object} summe Ergebnis von `vorratHeilen`
+ * @param {number} gesamt wie viele Karten geheilt werden sollten
+ */
+export function meldeHeilung(summe, gesamt) {
+  const done = Number(summe?.karten) || 0
+  const total = Number(gesamt) || 0
+  if (summe?.deckelErreicht) {
+    ui.notifications?.warn(game.i18n.format("BENEOS.Stream.Offline.RestoredQuota", { done, total })
+      || `Beneos: ${done} of ${total} map(s) restored, your offline storage is full.`)
+  } else if (summe?.speicherAus) {
+    ui.notifications?.warn(game.i18n.localize("BENEOS.Stream.Offline.BlockedStorage")
+      || "Beneos: your browser storage is unavailable right now, so your offline maps cannot be checked or fetched.")
+  } else if (summe?.fehlgeschlagen) {
+    ui.notifications?.warn(game.i18n.format("BENEOS.Stream.Offline.RestoredPartly",
+      { done, total, failed: summe.fehlgeschlagen })
+      || `Beneos: ${done} of ${total} map(s) restored, ${summe.fehlgeschlagen} file(s) could not be fetched.`)
+  } else if (done < total) {
+    // Kein Dateifehlschlag und trotzdem nicht alles: Karten, zu denen keine
+    // Adresse aufloest. "0 file(s) could not be fetched" waere hier falsch.
+    ui.notifications?.warn(game.i18n.format("BENEOS.Stream.Offline.RestoredSome", { done, total })
+      || `Beneos: ${done} of ${total} map(s) restored, the others could not be fetched.`)
+  } else {
+    ui.notifications?.info(game.i18n.format("BENEOS.Stream.Offline.RestoredAll", { done })
+      || `Beneos: ${done} offline map(s) restored.`)
+  }
 }
 
 /** Der Verfall wird gemeldet, nicht stillschweigend vollzogen. */

@@ -2455,6 +2455,7 @@
   "BENEOS.Stream.Offline.BlockedQuota": "Beneos: some offline maps are missing and your offline storage is full. Free some space to fetch them again.",
   "BENEOS.Stream.Offline.RestoredAll": "Beneos: {done} offline map(s) restored.",
   "BENEOS.Stream.Offline.RestoredPartly": "Beneos: {done} of {total} map(s) restored, {failed} file(s) could not be fetched.",
+  "BENEOS.Stream.Offline.RestoredSome": "Beneos: {done} of {total} map(s) restored, the others could not be fetched.",
   "BENEOS.Stream.Offline.RestoredQuota": "Beneos: {done} of {total} map(s) restored, your offline storage is full.",
   "BENEOS.Stream.Intro.Title": "How Beneos streaming works now",
   "BENEOS.Stream.Intro.Lead": "Your maps and creatures stay online. Only the small pictures land on your disk.",

@@ -2405,6 +2405,7 @@
   "BENEOS.Stream.Offline.BlockedQuota": "Beneos: 一部のオフラインマップがなく、オフラインストレージがいっぱいです。空き容量を作ってから再取得してください。",
   "BENEOS.Stream.Offline.RestoredAll": "Beneos: オフラインマップを {done} 件復元しました。",
   "BENEOS.Stream.Offline.RestoredPartly": "Beneos: {total} 件中 {done} 件のマップを復元しました。{failed} 件のファイルを取得できませんでした。",
+  "BENEOS.Stream.Offline.RestoredSome": "Beneos: {total} 件中 {done} 件のマップを復元しました。残りは取得できませんでした。",
   "BENEOS.Stream.Offline.RestoredQuota": "Beneos: {total} 件中 {done} 件のマップを復元しました。オフラインストレージがいっぱいです。",
   "BENEOS.Stream.Intro.Title": "Beneos のストリーミングの新しい仕組み",
   "BENEOS.Stream.Intro.Lead": "マップとクリーチャーはオンラインに残ります。ディスクに入るのは小さな画像だけです。",

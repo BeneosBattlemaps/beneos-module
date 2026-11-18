@@ -2405,6 +2405,7 @@
   "BENEOS.Stream.Offline.BlockedQuota": "Beneos: brakuje niektórych map offline, a twoja pamięć offline jest pełna. Zwolnij miejsce, aby pobrać je ponownie.",
   "BENEOS.Stream.Offline.RestoredAll": "Beneos: przywrócono {done} map(y) offline.",
   "BENEOS.Stream.Offline.RestoredPartly": "Beneos: przywrócono {done} z {total} map, {failed} plik(ów) nie udało się pobrać.",
+  "BENEOS.Stream.Offline.RestoredSome": "Beneos: przywrócono {done} z {total} map, pozostałych nie udało się pobrać.",
   "BENEOS.Stream.Offline.RestoredQuota": "Beneos: przywrócono {done} z {total} map, twoja pamięć offline jest pełna.",
   "BENEOS.Stream.Intro.Title": "Jak teraz działa streaming Beneos",
   "BENEOS.Stream.Intro.Lead": "Twoje mapy i stwory zostają online. Na dysk trafiają tylko małe obrazy.",
