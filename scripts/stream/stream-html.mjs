@@ -30,7 +30,7 @@
  */
 
 import { MODULE_ID, schluesselfreiAdresse, streamKey, streamHost } from "./stream-settings.mjs"
-import { TOR_IM_TEXT, maskiere, wandle, istMaskiert } from "./stream-tormaske.mjs"
+import { TOR_IM_TEXT, maskiere, wandle, istMaskiert, unterZone } from "./stream-tormaske.mjs"
 
 /*
  * FREMDE FLAGS BLEIBEN AUSSERHALB DES NETZES (stre-T-128). Unter
@@ -114,7 +114,6 @@ const IMG_RE = /<img\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi
 const ANDERE_RE = /<(?:video|source|audio)\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi
 // Ein Tag, ein Textstueck dazwischen, oder eine einzelne spitze Klammer.
 const TAG_ODER_TEXT_RE = /<(?:[^>"']|"[^"]*"|'[^']*')*>|[^<]+|</g
-const MEDIEN = new Set(["video", "audio", "source"])
 const FREIE_FORM_IM_TEXT = /beneos:\/\/[^\s"'<>]+/gi
 function tagName(tag) { return /^<\s*([a-z][a-z0-9-]*)/i.exec(tag)?.[1]?.toLowerCase() ?? "" }
 // Ein Attribut: Name, wahlweise mit Wert in doppelten, einfachen oder ohne
@@ -289,14 +288,19 @@ export function nurBildadressenGetauscht(alt, neu, { nurGeaenderte = false } = {
   // stre-T-142 B2: dazu `href` und `data-beneos-href` der Links, und ausserhalb
   // der Bild- und Medientags steht jede Adresse fuer sich, ob Toradresse,
   // Maske oder freie Form. In Bild und Medium zaehlt weiter jedes Zeichen.
-  const marke = (s) => s.replace(TOR_IM_TEXT, "\u0000").replace(FREIE_FORM_IM_TEXT, "\u0000")
+  //
+  // Kalt-Review W5: nur Adressen unter einem Host der Zone stehen fuer sich; eine
+  // fremde Adresse zaehlt Zeichen fuer Zeichen. Das `href` bleibt im Vergleich
+  // stehen, damit ein entfernter oder umgeschriebener Link auffaellt; nur das
+  // neue `data-beneos-href` faellt weg. Andere Tags wandelt das Textnetz
+  // nicht (W3), sie zaehlen Zeichen fuer Zeichen.
+  const marke = (s) => s.replace(TOR_IM_TEXT, (a) => (unterZone(a) ? "\u0000" : a)).replace(FREIE_FORM_IM_TEXT, "\u0000")
   const ohneAdressen = (html) => html.replace(TAG_ODER_TEXT_RE, (stueck) => {
     if (!stueck.startsWith("<")) return marke(stueck)
     const name = tagName(stueck)
     if (name === "img") return ohneAttribute(stueck, ["src", "data-beneos-src"])
-    if (MEDIEN.has(name)) return stueck
-    if (name === "a") return marke(ohneAttribute(stueck, ["href", "data-beneos-href"]))
-    return marke(stueck)
+    if (name === "a") return marke(ohneAttribute(stueck, ["data-beneos-href"]))
+    return stueck
   })
   if (ohneAdressen(alt) !== ohneAdressen(neu)) return false
   if (!nurLinkUndTextGetauscht(neu)) return false
@@ -364,9 +368,24 @@ export function htmlSchluesselfrei(html) {
  * - Ein ganzer Wert, der nur eine Toradresse ist, gehoert den Feldlisten der
  *   Leinwand und `seitenSrc`. Er hat dort einen Anzeigeweg oder bleibt bewusst
  *   stehen (Videoseite, Karte); hier zu wandeln braeche seine Anzeige.
+ *   Ausgenommen sind Textfelder (`TEXT_FELDER`, Kalt-Review K1): ein Chat, der nur
+ *   einen Link traegt, ist Text und wird frei wie jeder andere.
+ * - Andere Tags als `<a>`, etwa `style` mit `url()` oder `<iframe>`: dort
+ *   gibt es keinen Anzeigeweg fuer beneos://, sie bleiben (Kalt-Review W3).
  * - Fremde Flags, wie oben.
  */
 const GANZE_TORADRESSE = new RegExp(`^${TOR_IM_TEXT.source}$`, "i")
+
+/*
+ * Die Textfelder, deren ganzer Wert auch eine einzelne Toradresse sein darf:
+ * der letzte Teil des Schluessels, auch in flachen Pfaden wie `text.content`.
+ * ChatMessage content und flavor, JournalEntryPage text.content, die
+ * Beschreibungen der Systeme (system.description.value, biography.value).
+ */
+const TEXT_FELDER = new Set(["content", "flavor", "text", "description", "value", "notes", "biography", "chat"])
+function istTextfeld(schluessel) {
+  return typeof schluessel === "string" && TEXT_FELDER.has(schluessel.slice(schluessel.lastIndexOf(".") + 1))
+}
 
 /** Hat der Text eine Toradresse unter dem heutigen Host? */
 function textKandidat(text) {
@@ -424,15 +443,15 @@ function linkTag(tag, zaehler) {
  *
  * @returns {{text: string, zahl: number}} zahl: geaenderte Adressen und Links
  */
-export function textSchluesselfrei(text) {
-  if (!streamKey() || !textKandidat(text) || GANZE_TORADRESSE.test(text.trim())) return { text, zahl: 0 }
+export function textSchluesselfrei(text, schluessel = "") {
+  if (!streamKey() || !textKandidat(text)) return { text, zahl: 0 }
+  if (!istTextfeld(schluessel) && GANZE_TORADRESSE.test(text.trim())) return { text, zahl: 0 }
   const zaehler = { n: 0 }
   const neu = text.replace(TAG_ODER_TEXT_RE, (stueck) => {
     if (!stueck.startsWith("<")) return imText(stueck, zaehler)
     const name = tagName(stueck)
-    if (name === "img" || MEDIEN.has(name)) return stueck
     if (name === "a") return linkTag(stueck, zaehler)
-    return imText(stueck, zaehler)
+    return stueck
   })
   return zaehler.n ? { text: neu, zahl: zaehler.n } : { text, zahl: 0 }
 }
@@ -445,7 +464,7 @@ export function textSchluesselfrei(text) {
 function nurLinkUndTextGetauscht(neu) {
   for (const stueck of neu.match(TAG_ODER_TEXT_RE) ?? []) {
     const name = stueck.startsWith("<") ? tagName(stueck) : ""
-    if (name === "img" || MEDIEN.has(name)) continue
+    if (name && name !== "a") continue
     if (name === "a" && /^beneos:/i.test(attribute(stueck).find((a) => a.name === "href")?.wert ?? "")) return false
     for (const adresse of stueck.match(TOR_IM_TEXT) ?? []) {
       if (!istMaskiert(adresse) && schluesselfreiAdresse(adresse) !== adresse) return false
@@ -455,14 +474,14 @@ function nurLinkUndTextGetauscht(neu) {
 }
 
 /** Beide Stufen auf einen String: Bilder, dann der uebrige Text. */
-function stringSchluesselfrei(wert) {
+function stringSchluesselfrei(wert, schluessel = "") {
   let neu = wert
   let zahl = 0
   if (kandidat(neu)) {
     const r = htmlSchluesselfrei(neu)
     if (r.zahl) { neu = r.html; zahl += r.zahl }
   }
-  const t = textSchluesselfrei(neu)
+  const t = textSchluesselfrei(neu, schluessel)
   if (t.zahl) { neu = t.text; zahl += t.zahl }
   return { neu, zahl }
 }
@@ -502,7 +521,7 @@ export function htmlTiefSchluesselfrei(wert, _tiefe = 0) {
       continue
     }
     if (typeof v === "string") {
-      const r = stringSchluesselfrei(v)
+      const r = stringSchluesselfrei(v, k)
       if (r.zahl) { wert[k] = r.neu; zahl += r.zahl }
     } else if (v && typeof v === "object") {
       zahl += htmlTiefSchluesselfrei(v, _tiefe + 1)
@@ -546,10 +565,10 @@ export function htmlAenderung(quelle, { streng = false } = {}) {
  * keine `_id`, ihre Liste geht ganz hinaus, und sie ist trotzdem eine Seite
  * (Nachpruefung 17.11.2026, Befund 1).
  */
-function differenz(wert, zaehler, tiefe, dokument, seite = dokument) {
+function differenz(wert, zaehler, tiefe, dokument, seite = dokument, schluessel = "") {
   if (tiefe > 40) return undefined
   if (typeof wert === "string") {
-    const r = stringSchluesselfrei(wert)
+    const r = stringSchluesselfrei(wert, schluessel)
     if (!r.zahl) return undefined
     if (zaehler.streng && !nurBildadressenGetauscht(wert, r.neu)) zaehler.abweichung = true
     zaehler.zahl += r.zahl
@@ -560,7 +579,7 @@ function differenz(wert, zaehler, tiefe, dokument, seite = dokument) {
     const eindeutig = dokument && ids.length > 0 && ids.every((id) => typeof id === "string" && id) && new Set(ids).size === ids.length
     // Nur die Elemente einer eingebetteten Sammlung sind Dokumente. Eine Liste,
     // die ganz hinausgeht, geht auch darunter ganz.
-    const teile = wert.map((e) => differenz(e, zaehler, tiefe + 1, eindeutig, dokument))
+    const teile = wert.map((e) => differenz(e, zaehler, tiefe + 1, eindeutig, dokument, schluessel))
     if (teile.every((t) => t === undefined)) return undefined
     if (eindeutig) return teile.flatMap((t, i) => (t === undefined ? [] : [{ ...t, _id: ids[i] }]))
     return wert.map((e, i) => (teile[i] === undefined ? kopie(e) : (isObj(e) ? zusammen(kopie(e), teile[i]) : teile[i])))
@@ -574,7 +593,8 @@ function differenz(wert, zaehler, tiefe, dokument, seite = dokument) {
         if (t !== undefined) aus[k] = t
         continue
       }
-      const t = differenz(v, zaehler, tiefe + 1, dokument && Array.isArray(v))
+      const unten = dokument && Array.isArray(v)
+      const t = differenz(v, zaehler, tiefe + 1, unten, unten, k)
       if (t !== undefined) aus[k] = t
     }
     if (seite) {

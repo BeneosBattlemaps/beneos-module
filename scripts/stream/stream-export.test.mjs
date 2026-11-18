@@ -335,6 +335,19 @@ t.abschnitt("Schluessel mit Sonderzeichen")
   sonderAn = ""
 }
 
+t.abschnitt("Links im Export (Kalt-Review stre-T-142 W2)")
+{
+  // Ein Link geht maskiert hinaus; beneos:// im href verwirft die Bereinigung beim Einlesen.
+  const d = { content: `<p><a href="${TOR(BILD)}">x</a></p>` }
+  exportSchluesselfrei(d)
+  const href = /href="([^"]*)"/.exec(d.content)?.[1] ?? ""
+  t.gleich("Link: href beginnt nicht mit beneos:", /^beneos:/i.test(href), false)
+  t.gleich("Link: href traegt den Schluessel 0 Mal", zaehle(href), 0)
+  const n = { notiz: `siehe ${TOR(BILD)}` }
+  exportSchluesselfrei(n)
+  t.gleich("Zwei-Werte-Probe: Toradresse im Text wird frei", n.notiz, `siehe ${FREI(BILD)}`)
+}
+
 t.abschnitt("Ohne Schluessel")
 {
   schluesselAn = false

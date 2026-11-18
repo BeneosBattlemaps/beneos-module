@@ -70,7 +70,7 @@
  */
 import { MODULE_ID, streamKey, schluesselfreiAdresse, leinwandAdresse } from "./stream-settings.mjs"
 import { htmlTiefSchluesselfrei } from "./stream-html.mjs"
-import { TOR_IM_TEXT, SCHLUESSELSTUECK, wandle } from "./stream-tormaske.mjs"
+import { TOR_IM_TEXT, SCHLUESSELSTUECK, wandle, istMaskiert } from "./stream-tormaske.mjs"
 
 const MARKE = Symbol.for("beneos.stream.export")
 
@@ -84,7 +84,9 @@ function schluesselFormen() {
 }
 
 function textFrei(text, formen) {
-  let neu = text.replace(TOR_IM_TEXT, wandle)
+  // Eine maskierte Adresse bleibt: im `href` eines Links verwuerfe die
+  // Bereinigung beim Einlesen jedes beneos:// (Kalt-Review stre-T-142 W2).
+  let neu = text.replace(TOR_IM_TEXT, (a) => (istMaskiert(a) ? a : wandle(a)))
   for (const form of formen) if (neu.includes(form)) neu = neu.split(form).join("-")
   return neu
 }

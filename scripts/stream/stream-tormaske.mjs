@@ -23,6 +23,12 @@ const RAEUME = Object.values(STREAM_RAUM_BUCHSTABE).join("|")
 export const TOR_IM_TEXT = new RegExp(`https?://[^/\\s"'<>]+/(?:${RAEUME})/[^\\s"'<>]+`, "gi")
 export const SCHLUESSELSTUECK = new RegExp(`^(https?://([^/\\s"'<>]+))/(${RAEUME})/([^/\\s"'<>?#]+)`, "i")
 
+/** Steht die Toradresse unter einem Host der Zone? */
+export function unterZone(adresse) {
+  const t = SCHLUESSELSTUECK.exec(adresse)
+  return !!t && !!erlaubteBasis(`https://${t[2]}`)
+}
+
 /** Das Schluesselstueck einer Toradresse unter einem Host der Zone wird `-`. */
 export function maskiere(adresse) {
   const t = SCHLUESSELSTUECK.exec(adresse)

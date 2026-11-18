@@ -585,5 +585,42 @@ console.log("H17 Textnetz (stre-T-142 B2): Toradressen ausserhalb von <img>")
     JSON.stringify({ lauf, geschrieben }))
   game.journal = []
 }
+
+console.log("H18 Kalt-Review stre-T-142: ganzer Textwert, Tags ohne Anzeigeweg, Altseiten-Gegenprobe")
+{
+  const { nurBildadressenGetauscht } = await import("./stream-html.mjs")
+  const MASKE = TOR.replace(`/a/${KEY}/`, "/a/-/")
+  const tief = (wert) => { const w = JSON.parse(JSON.stringify(wert)); htmlTiefSchluesselfrei(w); return w }
+
+  // K1: ein Textfeld, das nur die Toradresse traegt, etwa ein Chat mit einem Link.
+  wahr("H18 Chat content nur die Toradresse: die freie Form", tief({ content: TOR }).content === FREI, tief({ content: TOR }).content)
+  wahr("H18 Seitentext nur die Toradresse: die freie Form", tief({ text: { content: TOR } }).text.content === FREI)
+  wahr("H18 flacher Pfad text.content nur die Toradresse: die freie Form", tief({ "text.content": TOR })["text.content"] === FREI)
+  wahr("H18 flavor nur die Toradresse: die freie Form", tief({ flavor: ` ${TOR} ` }).flavor === ` ${FREI} `)
+  const aend = htmlAenderung({ content: TOR })
+  wahr("H18 Aenderung: content nur die Toradresse wird frei", aend.aenderung?.content === FREI, JSON.stringify(aend))
+  wahr("H18 Zwei-Werte-Probe: img nur die Toradresse bleibt", tief({ img: TOR }).img === TOR)
+  wahr("H18 Zwei-Werte-Probe: Aenderung an img nur die Toradresse: keine", htmlAenderung({ img: TOR }).aenderung === null)
+
+  // W3: Tags ohne Anzeigeweg fuer beneos:// bleiben, der Text daneben nicht.
+  const stil = `<div style="background:url(${TOR})">x</div>`
+  wahr("H18 style url() bleibt (kein Anzeigeweg)", tief({ content: stil }).content === stil, tief({ content: stil }).content)
+  const rahmen = `<iframe src="${TOR}"></iframe>`
+  wahr("H18 iframe src bleibt (kein Anzeigeweg)", tief({ content: rahmen }).content === rahmen)
+  const gemischt = tief({ content: `${stil}<p>${TOR}</p>` }).content
+  wahr("H18 Zwei-Werte-Probe: Textknoten neben dem div wird frei", gemischt === `${stil}<p>${FREI}</p>`, gemischt)
+  wahr("H18 Altseiten-Pruefung: style bleibt, Text frei: gilt", nurBildadressenGetauscht(`${stil}<p>${TOR}</p>`, gemischt) === true)
+
+  // W5: die Gegenprobe nimmt nur die eigenen Adressen aus.
+  const FREMD = `https://example.com/a/${KEY}/x/4k/y.webp`
+  wahr("H18 Altseiten-Pruefung: fremder Link geaendert: abgelehnt",
+    nurBildadressenGetauscht(`<p><a href="${FREMD}">x</a></p>`, `<p><a href="${FREMD}z">x</a></p>`) === false)
+  wahr("H18 Altseiten-Pruefung: href entfernt: abgelehnt",
+    nurBildadressenGetauscht(`<p><a href="${TOR}">x</a></p>`, `<p><a data-beneos-href="${FREI}">x</a></p>`) === false)
+  wahr("H18 Altseiten-Pruefung: fremde Raumadresse im Text geaendert: abgelehnt",
+    nurBildadressenGetauscht(`<p>${FREMD}</p>`, `<p>${FREMD}z</p>`) === false)
+  wahr("H18 Zwei-Werte-Probe: eigener Link gewandelt: gilt",
+    nurBildadressenGetauscht(`<p><a href="${TOR}">x</a></p>`, `<p><a href="${MASKE}" data-beneos-href="${FREI}">x</a></p>`) === true)
+}
 console.log(`${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
 process.exit(rot ? 1 : 0)
