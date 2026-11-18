@@ -29,7 +29,7 @@
  * nichts.
  */
 
-import { MODULE_ID, schluesselfreiAdresse, streamKey, streamHost } from "./stream-settings.mjs"
+import { MODULE_ID, schluesselfreiAdresse, streamKey, streamHost, leinwandAdresse } from "./stream-settings.mjs"
 import { TOR_IM_TEXT, maskiere, wandle, istMaskiert, unterZone } from "./stream-tormaske.mjs"
 
 /*
@@ -115,6 +115,15 @@ const ANDERE_RE = /<(?:video|source|audio)\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi
 // Ein Tag, ein Textstueck dazwischen, oder eine einzelne spitze Klammer.
 const TAG_ODER_TEXT_RE = /<(?:[^>"']|"[^"]*"|'[^']*')*>|[^<]+|</g
 const FREIE_FORM_IM_TEXT = /beneos:\/\/[^\s"'<>]+/gi
+// Das Textnetz (Nachpruefung stre-T-142): Links bekommen Maske und
+// `data-beneos-href`; diese Tags behalten ihre Adressen, `<img>` hat die
+// Bildstufe, die uebrigen keinen Anzeigeweg fuer beneos://; in jedem anderen
+// Tag werden die Attribute frei, Adressattribute maskiert, `style` bleibt.
+const LINK_TAGS = new Set(["a", "area"])
+const TEXTNETZ_LAESST = new Set(["img", "iframe", "video", "audio", "source"])
+const ADRESS_ATTRIBUTE = new Set(["href", "src", "cite"])
+// Beginnt wie ein Tag und ist keines: Kommentar oder Markdown-Autolink.
+const KEIN_TAG = /^<(?:!--|[a-z][a-z0-9+.-]*:)/i
 function tagName(tag) { return /^<\s*([a-z][a-z0-9-]*)/i.exec(tag)?.[1]?.toLowerCase() ?? "" }
 // Ein Attribut: Name, wahlweise mit Wert in doppelten, einfachen oder ohne
 // Anfuehrungszeichen. Gelesen wird nach Namen, nie nach Teilzeichenkette;
@@ -285,22 +294,21 @@ export function nurBildadressenGetauscht(alt, neu, { nurGeaenderte = false } = {
     }
     return t
   }
-  // stre-T-142 B2: dazu `href` und `data-beneos-href` der Links, und ausserhalb
-  // der Bild- und Medientags steht jede Adresse fuer sich, ob Toradresse,
-  // Maske oder freie Form. In Bild und Medium zaehlt weiter jedes Zeichen.
-  //
-  // Kalt-Review W5: nur Adressen unter einem Host der Zone stehen fuer sich; eine
-  // fremde Adresse zaehlt Zeichen fuer Zeichen. Das `href` bleibt im Vergleich
-  // stehen, damit ein entfernter oder umgeschriebener Link auffaellt; nur das
-  // neue `data-beneos-href` faellt weg. Andere Tags wandelt das Textnetz
-  // nicht (W3), sie zaehlen Zeichen fuer Zeichen.
+  // stre-T-142 B2 und Kalt-Review W5: ausserhalb von `TEXTNETZ_LAESST` steht jede
+  // Adresse unter einem Host der Zone fuer sich, ob Toradresse, Maske oder
+  // freie Form; eine fremde Adresse zaehlt Zeichen fuer Zeichen. In
+  // `TEXTNETZ_LAESST` zaehlt jedes Zeichen. Das `href` eines Links bleibt im
+  // Vergleich, damit ein entfernter oder umgeschriebener Link auffaellt; nur
+  // das neue `data-beneos-href` faellt weg, sein Ziel prueft
+  // `nurLinkUndTextGetauscht`.
   const marke = (s) => s.replace(TOR_IM_TEXT, (a) => (unterZone(a) ? "\u0000" : a)).replace(FREIE_FORM_IM_TEXT, "\u0000")
   const ohneAdressen = (html) => html.replace(TAG_ODER_TEXT_RE, (stueck) => {
     if (!stueck.startsWith("<")) return marke(stueck)
     const name = tagName(stueck)
     if (name === "img") return ohneAttribute(stueck, ["src", "data-beneos-src"])
-    if (name === "a") return marke(ohneAttribute(stueck, ["data-beneos-href"]))
-    return stueck
+    if (LINK_TAGS.has(name)) return marke(ohneAttribute(stueck, ["data-beneos-href"]))
+    if (TEXTNETZ_LAESST.has(name)) return stueck
+    return marke(stueck)
   })
   if (ohneAdressen(alt) !== ohneAdressen(neu)) return false
   if (!nurLinkUndTextGetauscht(neu)) return false
@@ -370,8 +378,9 @@ export function htmlSchluesselfrei(html) {
  *   stehen (Videoseite, Karte); hier zu wandeln braeche seine Anzeige.
  *   Ausgenommen sind Textfelder (`TEXT_FELDER`, Kalt-Review K1): ein Chat, der nur
  *   einen Link traegt, ist Text und wird frei wie jeder andere.
- * - Andere Tags als `<a>`, etwa `style` mit `url()` oder `<iframe>`: dort
- *   gibt es keinen Anzeigeweg fuer beneos://, sie bleiben (Kalt-Review W3).
+ * - `style` mit `url()`, `<iframe>` und die Medientags: dort gibt es keinen
+ *   Anzeigeweg fuer beneos://, sie bleiben (Kalt-Review W3). Jedes andere Tag
+ *   wird frei wie Text, etwa `title` oder `data-tooltip` (Nachpruefung).
  * - Fremde Flags, wie oben.
  */
 const GANZE_TORADRESSE = new RegExp(`^${TOR_IM_TEXT.source}$`, "i")
@@ -382,7 +391,7 @@ const GANZE_TORADRESSE = new RegExp(`^${TOR_IM_TEXT.source}$`, "i")
  * ChatMessage content und flavor, JournalEntryPage text.content, die
  * Beschreibungen der Systeme (system.description.value, biography.value).
  */
-const TEXT_FELDER = new Set(["content", "flavor", "text", "description", "value", "notes", "biography", "chat"])
+const TEXT_FELDER = new Set(["content", "flavor", "text", "markdown", "caption", "description", "value", "public", "notes", "biography", "chat"])
 function istTextfeld(schluessel) {
   return typeof schluessel === "string" && TEXT_FELDER.has(schluessel.slice(schluessel.lastIndexOf(".") + 1))
 }
@@ -427,7 +436,7 @@ function linkTag(tag, zaehler) {
     else if (href) tausch.push([href.ende, href.ende, ` ${text}`])
   }
   for (const a of attr) {
-    if (a.name === "href" || a.name === "data-beneos-href" || !a.wert) continue
+    if (a.name === "href" || a.name === "data-beneos-href" || a.name === "style" || !a.wert) continue
     const z = { n: 0 }
     const neu = imText(a.wert, z)
     if (z.n) tausch.push([a.anfang, a.ende, attributText(a.name, neu, a.anfuehrung)])
@@ -437,8 +446,25 @@ function linkTag(tag, zaehler) {
   return neu
 }
 
+/** Ein anderes Tag: Adressattribute maskiert, die uebrigen frei, `style` bleibt. */
+function tagFrei(tag, zaehler) {
+  const tausch = []
+  for (const a of attribute(tag)) {
+    if (a.name === "style" || !a.wert) continue
+    const z = { n: 0 }
+    const neu = ADRESS_ATTRIBUTE.has(a.name)
+      ? a.wert.replace(TOR_IM_TEXT, (x) => { const m = maskiere(x); if (m !== x) z.n++; return m })
+      : imText(a.wert, z)
+    if (z.n) tausch.push([a.anfang, a.ende, attributText(a.name, neu, a.anfuehrung)])
+  }
+  if (!tausch.length) return tag
+  zaehler.n++
+  return ersetze(tag, tausch)
+}
+
 /**
- * Macht die Toradressen eines Textes ausserhalb von `<img>` schluesselfrei.
+ * Macht die Toradressen eines Textes schluesselfrei, ausser in den Tags von
+ * `TEXTNETZ_LAESST` und in `style`.
  * Fuer jeden eigenen String, HTML oder nicht. Laeuft nach der Bildstufe.
  *
  * @returns {{text: string, zahl: number}} zahl: geaenderte Adressen und Links
@@ -449,28 +475,44 @@ export function textSchluesselfrei(text, schluessel = "") {
   const zaehler = { n: 0 }
   const neu = text.replace(TAG_ODER_TEXT_RE, (stueck) => {
     if (!stueck.startsWith("<")) return imText(stueck, zaehler)
+    if (KEIN_TAG.test(stueck)) return imText(stueck, zaehler)
     const name = tagName(stueck)
-    if (name === "a") return linkTag(stueck, zaehler)
-    return stueck
+    if (LINK_TAGS.has(name)) return linkTag(stueck, zaehler)
+    if (TEXTNETZ_LAESST.has(name)) return stueck
+    return tagFrei(stueck, zaehler)
   })
   return zaehler.n ? { text: neu, zahl: zaehler.n } : { text, zahl: 0 }
 }
 
 /**
  * Die Gegenprobe fuer den Altseiten-Lauf, unabhaengig vom Wandler: ausserhalb
- * von Bild und Medium steht keine Toradresse mehr, die sich frei machen liesse,
- * und kein Link zeigt auf `beneos://`, denn den verwirft die Bereinigung.
+ * von `TEXTNETZ_LAESST` und `style` steht keine Toradresse mehr, die sich frei
+ * machen liesse, kein Adressattribut zeigt auf `beneos://`, denn das verwirft
+ * die Bereinigung, und ein `data-beneos-href` zeigt auf dasselbe Ziel wie die
+ * Maske im `href` daneben (Nachpruefung).
  */
 function nurLinkUndTextGetauscht(neu) {
   for (const stueck of neu.match(TAG_ODER_TEXT_RE) ?? []) {
-    const name = stueck.startsWith("<") ? tagName(stueck) : ""
-    if (name && name !== "a") continue
-    if (name === "a" && /^beneos:/i.test(attribute(stueck).find((a) => a.name === "href")?.wert ?? "")) return false
-    for (const adresse of stueck.match(TOR_IM_TEXT) ?? []) {
-      if (!istMaskiert(adresse) && schluesselfreiAdresse(adresse) !== adresse) return false
+    const istTag = stueck.startsWith("<") && !KEIN_TAG.test(stueck)
+    const name = istTag ? tagName(stueck) : ""
+    if (TEXTNETZ_LAESST.has(name)) continue
+    const attr = istTag ? attribute(stueck) : []
+    const werte = istTag ? attr.filter((a) => a.name !== "style") : [{ name: "", wert: stueck }]
+    for (const a of werte) {
+      if (ADRESS_ATTRIBUTE.has(a.name) && /^beneos:/i.test(a.wert)) return false
+      for (const adresse of a.wert.match(TOR_IM_TEXT) ?? []) {
+        if (!istMaskiert(adresse) && schluesselfreiAdresse(adresse) !== adresse) return false
+      }
     }
+    const daten = attr.find((a) => a.name === "data-beneos-href")?.wert
+    if (daten && !eigenerLink(attr.find((a) => a.name === "href")?.wert ?? "", daten)) return false
   }
   return true
+}
+
+/** Zeigt die freie Form auf dasselbe Ziel wie die Maske, unter einem Host der Zone? */
+function eigenerLink(href, daten) {
+  return istMaskiert(href) && unterZone(href) && maskiere(leinwandAdresse(daten)) === href
 }
 
 /** Beide Stufen auf einen String: Bilder, dann der uebrige Text. */
@@ -506,9 +548,11 @@ export function seitenSrc(typ, src) {
  *
  * @returns {number} wie viele Adressen gewandelt wurden
  */
-export function htmlTiefSchluesselfrei(wert, _tiefe = 0) {
+export function htmlTiefSchluesselfrei(wert, _tiefe = 0, _eltern = "") {
   if (_tiefe > 40 || !wert || typeof wert !== "object") return 0
   let zahl = 0
+  // Ein Listenelement zaehlt unter dem Namen seiner Liste (Nachpruefung).
+  const name = (k) => (Array.isArray(wert) ? _eltern : k)
   for (const k of Object.keys(wert)) {
     if (fremderFlagpfad(k)) continue
     const v = wert[k]
@@ -521,10 +565,10 @@ export function htmlTiefSchluesselfrei(wert, _tiefe = 0) {
       continue
     }
     if (typeof v === "string") {
-      const r = stringSchluesselfrei(v, k)
+      const r = stringSchluesselfrei(v, name(k))
       if (r.zahl) { wert[k] = r.neu; zahl += r.zahl }
     } else if (v && typeof v === "object") {
-      zahl += htmlTiefSchluesselfrei(v, _tiefe + 1)
+      zahl += htmlTiefSchluesselfrei(v, _tiefe + 1, name(k))
     }
   }
   return zahl

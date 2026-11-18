@@ -20,7 +20,10 @@ const RAEUME = Object.values(STREAM_RAUM_BUCHSTABE).join("|")
  * `erlaubteBasis` (Zone). Endet an Leerraum, Anfuehrungszeichen und spitzer
  * Klammer, wie die Textmaske in `stream-report.mjs`.
  */
-export const TOR_IM_TEXT = new RegExp(`https?://[^/\\s"'<>]+/(?:${RAEUME})/[^\\s"'<>]+`, "gi")
+// Eine Adresse endet vor dem naechsten Schema: `<Maske>,<Toradresse>` ohne
+// Leerraum sind zwei Treffer, sonst entschiede die erste ueber beide
+// (Nachpruefung stre-T-142).
+export const TOR_IM_TEXT = new RegExp(`https?://[^/\\s"'<>]+/(?:${RAEUME})/(?:(?!https?://)[^\\s"'<>])+`, "gi")
 export const SCHLUESSELSTUECK = new RegExp(`^(https?://([^/\\s"'<>]+))/(${RAEUME})/([^/\\s"'<>?#]+)`, "i")
 
 /** Steht die Toradresse unter einem Host der Zone? */

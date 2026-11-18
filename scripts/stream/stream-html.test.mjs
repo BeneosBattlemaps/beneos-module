@@ -622,5 +622,45 @@ console.log("H18 Kalt-Review stre-T-142: ganzer Textwert, Tags ohne Anzeigeweg, 
   wahr("H18 Zwei-Werte-Probe: eigener Link gewandelt: gilt",
     nurBildadressenGetauscht(`<p><a href="${TOR}">x</a></p>`, `<p><a href="${MASKE}" data-beneos-href="${FREI}">x</a></p>`) === true)
 }
+
+console.log("H19 Nachpruefung stre-T-142: jedes andere Tag, Textfelder, Listen, Linkziel")
+{
+  const { nurBildadressenGetauscht } = await import("./stream-html.mjs")
+  const MASKE = TOR.replace(`/a/${KEY}/`, "/a/-/")
+  const tief = (wert) => { const w = JSON.parse(JSON.stringify(wert)); htmlTiefSchluesselfrei(w); return w }
+  const inhalt = (html) => tief({ content: html }).content
+  const ohneKey = (s) => !String(s).includes(KEY)
+  wahr("H19 p title: frei", inhalt(`<p title="${TOR}">x</p>`) === `<p title="${FREI}">x</p>`)
+  wahr("H19 span data-tooltip: frei", inhalt(`<span data-tooltip="${TOR}">x</span>`) === `<span data-tooltip="${FREI}">x</span>`)
+  const zitat = inhalt(`<blockquote cite="${TOR}">x</blockquote>`)
+  wahr("H19 blockquote cite: Schluessel weg", ohneKey(zitat), zitat)
+  wahr("H19 blockquote cite: nicht beneos:", zitat === `<blockquote cite="${MASKE}">x</blockquote>`, zitat)
+  const flaeche = inhalt(`<map><area href="${TOR}"></map>`)
+  wahr("H19 area: Maske und data-beneos-href", flaeche === `<map><area href="${MASKE}" data-beneos-href="${FREI}"></map>`, flaeche)
+  wahr("H19 Kommentar: frei", inhalt(`<!-- ${TOR} --><p>x</p>`) === `<!-- ${FREI} --><p>x</p>`)
+  wahr("H19 Markdown-Autolink: frei", tief({ text: { markdown: `siehe <${TOR}>` } }).text.markdown === `siehe <${FREI}>`)
+  const linkStil = `<a href="${TOR}" style="background:url(${TOR})">x</a>`
+  wahr("H19 a style url() bleibt", inhalt(linkStil).includes(`style="background:url(${TOR})"`), inhalt(linkStil))
+  wahr("H19 Zwei-Werte-Probe: a mit style, href maskiert", inhalt(linkStil).includes(`href="${MASKE}"`))
+  wahr("H19 text.markdown nur die Toradresse: frei", tief({ text: { markdown: TOR } }).text.markdown === FREI)
+  wahr("H19 image.caption nur die Toradresse: frei", tief({ image: { caption: TOR } }).image.caption === FREI)
+  wahr("H19 biography.public nur die Toradresse: frei", tief({ system: { details: { biography: { public: TOR } } } }).system.details.biography.public === FREI)
+  wahr("H19 Liste notes Aendern: frei", tief({ notes: [TOR] }).notes[0] === FREI)
+  wahr("H19 Liste notes Anlegen: frei", htmlAenderung({ notes: [TOR] }).aenderung?.notes?.[0] === FREI)
+  wahr("H19 Zwei-Werte-Probe: Liste unter Bildnamen bleibt", tief({ img: [TOR] }).img[0] === TOR)
+  const FREMD = `https://example.com/a/${KEY}/x/4k/y.webp`
+  wahr("H19 Altseiten-Pruefung: fremder Link bekommt data-beneos-href: abgelehnt",
+    nurBildadressenGetauscht(`<p><a href="${FREMD}">x</a></p>`, `<p><a href="${FREMD}" data-beneos-href="${FREI}">x</a></p>`) === false)
+  wahr("H19 Altseiten-Pruefung: data-beneos-href umgeschrieben: abgelehnt",
+    nurBildadressenGetauscht(`<p><a href="${TOR}">x</a></p>`, `<p><a href="${MASKE}" data-beneos-href="${FREI.replace(/\.webp$/, "-z.webp")}">x</a></p>`) === false)
+  const titelAlt = `<p title="${TOR}">${TOR}</p>`
+  wahr("H19 Altseiten-Pruefung: title und Text: gilt", nurBildadressenGetauscht(titelAlt, inhalt(titelAlt)) === true, inhalt(titelAlt))
+  wahr("H19 Altseiten-Pruefung: title fremd geaendert: abgelehnt",
+    nurBildadressenGetauscht(`<p title="${FREMD}">x</p>`, `<p title="${FREMD}z">x</p>`) === false)
+  const kommentarAlt = `<!-- ${TOR} --><p>${TOR}</p>`
+  wahr("H19 Altseiten-Pruefung: Kommentar und Text: gilt", nurBildadressenGetauscht(kommentarAlt, inhalt(kommentarAlt)) === true, inhalt(kommentarAlt))
+  wahr("H19 Altseiten-Pruefung: Schluessel im Kommentar stehen: abgelehnt",
+    nurBildadressenGetauscht(kommentarAlt, `<!-- ${TOR} --><p>${FREI}</p>`) === false)
+}
 console.log(`${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
 process.exit(rot ? 1 : 0)

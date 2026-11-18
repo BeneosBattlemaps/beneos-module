@@ -348,6 +348,19 @@ t.abschnitt("Links im Export (Kalt-Review stre-T-142 W2)")
   t.gleich("Zwei-Werte-Probe: Toradresse im Text wird frei", n.notiz, `siehe ${FREI(BILD)}`)
 }
 
+t.abschnitt("Zwei Adressen ohne Leerraum (Nachpruefung stre-T-142)")
+{
+  const ANDERER = "pk_anderes_konto_pruef"
+  const maske = TOR(BILD).split(SCHLUESSEL).join("-")
+  const fremd = TOR(BILD).split(SCHLUESSEL).join(ANDERER)
+  const d = { notiz: `${maske},${fremd}` }
+  exportSchluesselfrei(d)
+  t.gleich("Maske,Toradresse anderes Konto: 0 Mal", d.notiz.split(ANDERER).length - 1, 0)
+  const e = { notiz: fremd }
+  exportSchluesselfrei(e)
+  t.gleich("Zwei-Werte-Probe: Toradresse anderes Konto allein: 0 Mal", e.notiz.split(ANDERER).length - 1, 0)
+}
+
 t.abschnitt("Ohne Schluessel")
 {
   schluesselAn = false
