@@ -226,8 +226,12 @@ fahre "scripts/cloud-login-kennung.test.mjs"      "cloud-login-kennung.test.mjs"
 # Commit an einer Moduldatei. Das ist bewusst: eine schmalere Liste war
 # dreimal die Luecke (siehe oben), und 8 s liegen unter den 10 s der
 # Katalogpruefung, die hier als Schwelle fuer "wird umgangen" steht.
+#
+# SEIT stre-T-144 (19.11.2026) GEHOERT `templates` DAZU. cloud-kaufknopf.test.mjs
+# liest `templates/cloud-v2/parts/results-pane.hbs`; eine Aenderung nur an
+# dieser Vorlage weckte das Tor nicht. Derselbe Befund wie oben, zum vierten Mal.
 if git diff --cached --name-only --diff-filter=ACMRD \
-     -- scripts lang tools/lib ui tools/ersatzbilder.py \
+     -- scripts lang templates tools/lib ui tools/ersatzbilder.py \
    | grep -q .
 then
   meld "pre-commit: Streamdateien vorgemerkt, die Streampruefsaetze laufen mit"
@@ -255,9 +259,8 @@ then
   #
   # WAS EIN STAND HIER ERFUELLEN MUSS: ohne Netz, ohne Foundry, ohne
   # Datenbank, und in rund einer Sekunde. Wer einen Stand baut, der das nicht
-  # kann, legt ihn nicht unter `scripts/stream/*.test.mjs` oder
-  # `scripts/loot/*.test.mjs` ab, sonst haelt er jeden Commit dieser Ordner
-  # auf.
+  # kann, legt ihn nirgends unter `scripts/` als `*.test.mjs` ab, sonst haelt
+  # er jeden Commit an einer Moduldatei auf.
   #
   # BEIDE ORDNER, UND DAS WAR AM 2026-11-09 EIN BEFUND. Der Ausloeser
   # darueber nennt `scripts/stream` UND `scripts/loot` seit `OP-PRJ-141`,
@@ -267,16 +270,34 @@ then
   # gefahren und den zwoelften nicht gesehen. Dieselbe Klasse wie der Befund
   # vom 2026-11-08, wo die Sammlung die Streamstaende namentlich aufzaehlte
   # und den neuen nicht kannte; dort war es eine Liste, hier ein Ordner.
-  STAENDE=$(ls scripts/stream/*.test.mjs scripts/loot/*.test.mjs \
-            2>/dev/null | sort)
+  #
+  # ALLE ORDNER, seit stre-T-144 (19.11.2026). Zum dritten Mal dieselbe Klasse:
+  # vier Saetze unter `scripts/cloud-v2/` (cloud-kaufknopf, install-badge,
+  # item-tooltip) und `scripts/canvas/` (map-sharpen-curve) liefen in keinem
+  # Tor, weil die Sammlung zwei feste Ordner las. Ein dritter fester Ordner
+  # waere beim naechsten wieder zu kurz. Die Sammlung nimmt deshalb jeden
+  # `*.test.mjs` unter `scripts/` in jeder Tiefe; ohne `:(glob)` greift `*`
+  # in der Pfadangabe ueber Schraegstriche hinweg.
+  #
+  # AUS DEM INDEX, NICHT AUS DEM BAUM: ein vorgemerkter neuer Satz laeuft mit,
+  # ein fremder unverfolgter Satz im Arbeitsbaum haelt den Commit nicht auf
+  # (dieselbe Begruendung wie bei `git show :<pfad>` oben).
+  #
+  # Ausgenommen sind nur die zwei Saetze, die oben auf jeden Commit laufen;
+  # sonst liefen sie doppelt. Das ist eine Ausnahmeliste, keine Aufzaehlung
+  # dessen, was laufen soll. Der Preis der vier: rund 1,8 s, gemessen hier.
+  STAENDE=$(git ls-files -- 'scripts/*.test.mjs' \
+            | grep -vxF -e scripts/creature-installer/anker.test.mjs \
+                        -e scripts/cloud-login-kennung.test.mjs \
+            | sort)
   ANZAHL=$(printf '%s\n' "$STAENDE" | grep -c 'test\.mjs$')
-  # Die Mindestzahl deckt beide Ordner: elf unter `stream/` und einer unter
-  # `loot/`. Sie sichert nach unten und waechst mit, wenn jemand sie
-  # nachzieht; eine Suche, die nichts findet, ist von einer kaputten Suche
-  # nicht zu unterscheiden.
-  if [ "$ANZAHL" -lt 12 ]; then
-    meld "pre-commit: ABBRUCH, nur $ANZAHL Pruefsaetze unter scripts/stream"
-    meld "            und scripts/loot gefunden, erwartet mindestens 12."
+  # Die Mindestzahl ist der Stand vom 19.11.2026: 23 unter `stream/`, zwei
+  # unter `loot/`, drei unter `cloud-v2/`, einer unter `canvas/`. Sie sichert
+  # nach unten und waechst mit, wenn jemand sie nachzieht; eine Suche, die
+  # nichts findet, ist von einer kaputten Suche nicht zu unterscheiden.
+  if [ "$ANZAHL" -lt 29 ]; then
+    meld "pre-commit: ABBRUCH, nur $ANZAHL Pruefsaetze unter scripts"
+    meld "            gefunden, erwartet mindestens 29."
     meld "            Entweder ist die Suche kaputt oder ein Stand ist"
     meld "            verschwunden; beides ist ein Befund und keine"
     meld "            bestandene Pruefung."
