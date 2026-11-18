@@ -566,6 +566,8 @@ console.log("H17 Textnetz (stre-T-142 B2): Toradressen ausserhalb von <img>")
   wahr("H17 Altseiten-Pruefung: Text und href getauscht gilt", nurBildadressenGetauscht(alt, neu) === true, neu)
   wahr("H17 Altseiten-Pruefung: ein Textzeichen anders: abgelehnt", nurBildadressenGetauscht(alt, neu.replace(" b</p>", " c</p>")) === false)
   wahr("H17 Altseiten-Pruefung: Schluessel im href: abgelehnt", nurBildadressenGetauscht(alt, neu.replace(`href="${MASKE}"`, `href="${TOR}"`)) === false)
+  wahr("H17 Altseiten-Pruefung: href mit beneos://: abgelehnt, die Bereinigung verwuerfe den Link",
+    nurBildadressenGetauscht(alt, neu.replace(`href="${MASKE}"`, `href="${FREI}"`)) === false)
   wahr("H17 Altseiten-Pruefung: data-beneos-href mit Toradresse: abgelehnt",
     nurBildadressenGetauscht(alt, neu.replace(`data-beneos-href="${FREI}"`, `data-beneos-href="${TOR}"`)) === false)
   const geschrieben = []
