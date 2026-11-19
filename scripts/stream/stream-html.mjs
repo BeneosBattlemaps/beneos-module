@@ -128,10 +128,11 @@ const FREIE_FORM_IM_TEXT = /beneos:\/\/[^\s"'<>]+/gi
 // setzt. Ohne Blob: ein Video laedt sonst ganz, bevor es spielt.
 const LINK_TAGS = new Set(["a", "area"])
 const MEDIEN_TAGS = new Set(["video", "audio", "source"])
-// stre-T-147: je Medientag die Adresse und ihre freie Form. `srcset` (nur an
-// `<source>` in `<picture>`) bleibt wie vor stre-T-147 unberuehrt.
+// stre-T-147: je Medientag die Adresse und ihre freie Form. `srcset` (an
+// `<source>` in `<picture>`) ist eine Liste und geht je Eintrag denselben Weg,
+// mit der freien Form in `data-beneos-srcset` (stre-T-148, `medienSrcset`).
 export const MEDIEN_PAARE = [["src", "data-beneos-src"], ["poster", "data-beneos-poster"]]
-const MEDIEN_LASSEN = ["srcset", ...MEDIEN_PAARE.flat()]
+const MEDIEN_LASSEN = ["srcset", "data-beneos-srcset", ...MEDIEN_PAARE.flat()]
 const TEXTNETZ_LAESST = new Set(["img", "iframe"])
 const ADRESS_ATTRIBUTE = new Set(["href", "src", "cite"])
 // Beginnt wie ein Tag und ist keines: Kommentar oder Markdown-Autolink.
@@ -181,12 +182,82 @@ function attributText(name, wert, anfuehrung) {
   return `${name}=${a}${w}${a}`
 }
 
-/** Traegt ein `srcset` eine Toradresse, die sich wandeln liesse? */
+/**
+ * Ein `srcset` als Liste seiner Kandidaten (stre-T-148), nach der Regel
+ * des HTML-Standards: die Adresse reicht bis zum naechsten Leerraum, ein Komma
+ * an ihrem Ende trennt, der Deskriptor reicht bis zum naechsten Komma. Ein
+ * Komma in der Adresse (`data:`) bleibt deshalb in ihr (Kalt-Review W3).
+ * Leerraum ist nur ASCII-Leerraum, ein Komma in Klammern trennt den Deskriptor
+ * nicht (Nachpruefung 19.11.2026, Befund 7).
+ * `anfang` und `ende` sind der Versatz der Adresse im Wert.
+ */
+const SRCSET_LEER = /[\t\n\f\r ]/
+export function srcsetTeile(wert) {
+  const s = String(wert ?? "")
+  const teile = []
+  let i = 0
+  while (i < s.length) {
+    while (i < s.length && (SRCSET_LEER.test(s[i]) || s[i] === ",")) i++
+    if (i >= s.length) break
+    let j = i
+    while (j < s.length && !SRCSET_LEER.test(s[j])) j++
+    let ende = j
+    while (ende > i && s[ende - 1] === ",") ende--
+    let k = ende
+    let klammer = false
+    if (ende === j) {
+      while (k < s.length && (klammer || s[k] !== ",")) {
+        if (s[k] === "(") klammer = true
+        else if (s[k] === ")") klammer = false
+        k++
+      }
+    }
+    teile.push({ adresse: s.slice(i, ende), rest: s.slice(ende, k).trim(), anfang: i, ende })
+    i = ende === j ? k + 1 : j
+  }
+  return teile
+}
+
+/**
+ * Der Wert mit jeder Adresse durch `neu(adresse)` ersetzt. Trenner,
+ * Leerraum und Deskriptoren bleiben zeichengleich (Kalt-Review W4).
+ */
+export function srcsetTausch(wert, neu) {
+  let aus = String(wert ?? "")
+  for (const t of srcsetTeile(aus).reverse()) aus = aus.slice(0, t.anfang) + neu(t.adresse) + aus.slice(t.ende)
+  return aus
+}
+
+/**
+ * Traegt ein `srcset` eine Toradresse mit Schluessel? Jede, die sich
+ * wandeln oder maskieren laesst, auch eine unter frueherer Basis oder mit
+ * gescheitertem Rundlauf (Kalt-Review K1, K2), und an jeder Stelle des Werts,
+ * auch in der Deskriptorlage (Nachpruefung 19.11.2026, Befund 1). Das Tag
+ * erreicht diese Pruefung nur, wenn der Vorfilter (`kandidat`,
+ * `textKandidat`) den heutigen Host im Text findet.
+ */
 function srcsetMitTor(wert) {
-  return wert.split(",").some((teil) => {
-    const adresse = teil.trim().split(/\s+/)[0]
-    return !!adresse && schluesselfreiAdresse(adresse) !== adresse
-  })
+  return (String(wert ?? "").match(TOR_IM_TEXT) ?? []).some((a) => wandle(a) !== a)
+}
+
+
+/**
+ * Ein Attribut ohne Anfuehrung, dessen Wert `ATTR_RE` an einem `=` beendet:
+ * der Wert reicht bis zum Leerraum oder Tagende (Nachpruefung 19.11.2026,
+ * Befund 3). Sonst kaeme eine Einfuegung mitten in den Wert.
+ */
+function ganzerWert(tag, a) {
+  if (!a || a.anfuehrung) return a
+  const rest = /^[^\t\n\f\r >]*/.exec(tag.slice(a.ende))[0]
+  return rest ? { ...a, wert: a.wert + entschluesseln(rest), ende: a.ende + rest.length } : a
+}
+
+/** Ein Attribut mit neuem Wert; Name, Schreibung und Anfuehrung wie im Tag. */
+function attributWert(tag, a, wert) {
+  const roh = tag.slice(a.anfang, a.ende)
+  const kopf = /^[^\s"'>\/=]+\s*=\s*/.exec(roh)?.[0] ?? a.name + "="
+  if (!a.anfuehrung && /^[^\s"'=<>`]+$/.test(wert)) return kopf + wert.replace(/&/g, "&amp;")
+  return kopf + attributText("", wert, a.anfuehrung).slice(1)
 }
 
 /**
@@ -236,10 +307,11 @@ function bildTag(tag) {
   for (const a of attr) {
     if (a.name === "src" || a.name === "data-beneos-src" || !a.wert) continue
     if (a.name === "srcset") {
-      if (!srcsetMitTor(a.wert)) continue
+      const g = ganzerWert(tag, a)
+      if (!srcsetMitTor(g.wert)) continue
       let anfang = a.anfang
       while (anfang > 0 && /\s/.test(tag[anfang - 1])) anfang--
-      weitere.push([anfang, a.ende, ""])
+      weitere.push([anfang, g.ende, ""])
       continue
     }
     const f = schluesselfreiAdresse(a.wert)
@@ -320,7 +392,7 @@ export function nurBildadressenGetauscht(alt, neu, { nurGeaenderte = false } = {
     if (name === "img") return ohneAttribute(stueck, ["src", "data-beneos-src"])
     // Ein Medium wie ein Link: die Adressen bleiben als Marke im Vergleich, damit
     // eine Umleitung auf eine fremde Adresse auffaellt (Kalt-Review F3).
-    if (MEDIEN_TAGS.has(name)) return marke(ohneAttribute(stueck, MEDIEN_PAARE.map(([, d]) => d)))
+    if (MEDIEN_TAGS.has(name)) return marke(ohneAttribute(stueck, [...MEDIEN_PAARE.map(([, d]) => d), "data-beneos-srcset"]))
     if (LINK_TAGS.has(name)) return marke(ohneAttribute(stueck, ["data-beneos-href"]))
     if (TEXTNETZ_LAESST.has(name)) return stueck
     return marke(stueck)
@@ -390,7 +462,8 @@ export function htmlSchluesselfrei(html) {
  * - `<video>`, `<audio>`, `<source>` (stre-T-147): Form (m). `src` und `poster`
  *   tragen die Maske, `data-beneos-src` und `data-beneos-poster` die freie Form;
  *   die Toradresse mit Schluessel setzt `medienAnzeigen` in `stream-bilder.mjs`
- *   nur im DOM. `srcset` bleibt.
+ *   nur im DOM. `srcset` geht je Eintrag denselben Weg, die freie Form steht in
+ *   `data-beneos-srcset` (stre-T-148).
  * - Ein ganzer Wert, der nur eine Toradresse ist, gehoert den Feldlisten der
  *   Leinwand und `seitenSrc`. Er hat dort einen Anzeigeweg oder bleibt bewusst
  *   stehen (Videoseite, Karte); hier zu wandeln braeche seine Anzeige.
@@ -476,10 +549,55 @@ function linkTag(tag, zaehler, haupt = "href", datenName = "data-beneos-href", l
 function medienTag(tag, zaehler) {
   const z = { n: 0 }
   let neu = tag
-  // Die uebrigen Attribute macht schon der erste Aufruf frei, `srcset` bleibt.
+  // Die uebrigen Attribute macht schon der erste Aufruf frei, `srcset` folgt danach.
   for (const [haupt, datenName] of MEDIEN_PAARE) neu = linkTag(neu, z, haupt, datenName, MEDIEN_LASSEN)
+  neu = medienSrcset(neu)
   if (neu !== tag) zaehler.n++
   return neu
+}
+
+/**
+ * `srcset` eines Medientags in Form (m), stre-T-148: jeder Eintrag mit
+ * Toradresse bekommt die Maske, `data-beneos-srcset` traegt je Eintrag die
+ * freie Form, und wo der Rundlauf scheitert, dieselbe Maske. Ein Eintrag ohne
+ * Toradresse steht in beiden gleich; ersetzt werden nur die Adressen. Den
+ * Schluessel setzt `medienAnzeigen` nur im DOM. Ohne Toradresse im Wert bleibt
+ * das Tag zeichengleich. Ein zweites `srcset`, das der Browser nicht liest, wird
+ * nur maskiert.
+ */
+function medienSrcset(tag) {
+  const attr = attribute(tag)
+  const [satz, ...weitere] = attr.filter((a) => a.name === "srcset").map((a) => ganzerWert(tag, a))
+  const [daten, ...weitereDaten] = attr.filter((a) => a.name === "data-beneos-srcset")
+  const tausch = []
+  for (const a of weitere) {
+    const maske = a.wert.replace(TOR_IM_TEXT, maskiere)
+    if (maske !== a.wert) tausch.push([a.anfang, a.ende, attributWert(tag, a, maske)])
+  }
+  // Ein zweites data-beneos-srcset liest niemand; eine Toradresse darin wird frei (Befund 4).
+  for (const a of weitereDaten) {
+    const z = { n: 0 }
+    const neu = imText(a.wert, z)
+    if (z.n) tausch.push([a.anfang, a.ende, attributText("data-beneos-srcset", neu, a.anfuehrung)])
+  }
+  if (satz?.wert && srcsetMitTor(satz.wert)) {
+    const maske = satz.wert.replace(TOR_IM_TEXT, maskiere)
+    if (maske !== satz.wert) tausch.push([satz.anfang, satz.ende, attributWert(tag, satz, maske)])
+    // Gewandelt wird je Toradresse, nicht je Adressstueck: stehen zwei in einem
+    // Stueck (`a,b` ohne Leerraum), kaeme sonst der Schluessel der zweiten kodiert
+    // in die freie Form der ersten (Nachpruefung 19.11.2026, Befund 1). Erst je
+    // Adresse, damit ein Komma am Adressende Trenner bleibt, dann der Rest des Werts.
+    const frei = srcsetTausch(satz.wert, (a) => a.replace(TOR_IM_TEXT, wandle)).replace(TOR_IM_TEXT, wandle)
+    const freiText = attributText("data-beneos-srcset", frei, daten?.anfuehrung || satz.anfuehrung || '"')
+    if (daten) tausch.push([daten.anfang, daten.ende, freiText])
+    else tausch.push([satz.ende, satz.ende, ` ${freiText}`])
+  } else if (daten?.wert) {
+    // Eine eingefuegte freie Form mit Toradresse wird frei wie der Text.
+    const z = { n: 0 }
+    const neu = imText(daten.wert, z)
+    if (z.n) tausch.push([daten.anfang, daten.ende, attributText("data-beneos-srcset", neu, daten.anfuehrung)])
+  }
+  return tausch.length ? ersetze(tag, tausch) : tag
 }
 
 /** Ein anderes Tag: Adressattribute maskiert, die uebrigen frei, `style` bleibt. */
@@ -547,6 +665,7 @@ function nurLinkUndTextGetauscht(neu, unveraendert = null) {
         const frei = attr.find((a) => a.name === datenName)?.wert
         if (frei ? !eigenerLink(wert, frei) : istMaskiert(wert) || /^beneos:/i.test(wert)) return false
       }
+      if (!srcsetPasst(attr)) return false
       continue
     }
     const werte = istTag ? attr.filter((a) => a.name !== "style") : [{ name: "", wert: stueck }]
@@ -560,6 +679,26 @@ function nurLinkUndTextGetauscht(neu, unveraendert = null) {
     if (daten && !eigenerLink(attr.find((a) => a.name === "href")?.wert ?? "", daten)) return false
   }
   return true
+}
+
+/**
+ * `srcset` und `data-beneos-srcset` passen Eintrag fuer Eintrag zusammen
+ * (stre-T-148): gleiche Zahl, gleicher Deskriptor, eine freie Form gehoert zu
+ * ihrer Maske, jeder andere Eintrag steht in beiden gleich und laesst sich
+ * weder wandeln noch maskieren (Fremdadresse oder Maske ohne Rundlauf). Ohne freie Form darf kein Eintrag Maske oder `beneos:` sein,
+ * wie bei `src` (Kalt-Review F3).
+ */
+function srcsetPasst(attr) {
+  const leck = (w) => (String(w ?? "").match(TOR_IM_TEXT) ?? []).some((x) => maskiere(x) !== x)
+  if (attr.some((a) => (a.name === "srcset" || a.name === "data-beneos-srcset") && leck(a.wert))) return false
+  const satz = srcsetTeile(attr.find((a) => a.name === "srcset")?.wert)
+  const daten = attr.find((a) => a.name === "data-beneos-srcset")?.wert
+  if (daten === undefined) return satz.every((t) => !istMaskiert(t.adresse) && !/^beneos:/i.test(t.adresse))
+  const frei = srcsetTeile(daten)
+  if (frei.length !== satz.length) return false
+  return frei.every((f, i) => f.rest === satz[i].rest && (/^beneos:/i.test(f.adresse)
+    ? eigenerLink(satz[i].adresse, f.adresse)
+    : f.adresse === satz[i].adresse && wandle(f.adresse) === f.adresse))
 }
 
 /**

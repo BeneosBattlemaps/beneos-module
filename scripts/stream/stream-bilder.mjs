@@ -67,7 +67,7 @@
 import { istPlatzhalter, assetUrl, streamKey, streamMode, zerlegeAdresse, leinwandAdresse } from "./stream-settings.mjs"
 import { ours, sammelSchluessel } from "./stream-fetch.mjs"
 import { reportFailure } from "./stream-report.mjs"
-import { formAAdresse, MEDIEN_PAARE } from "./stream-html.mjs"
+import { formAAdresse, MEDIEN_PAARE, srcsetTeile, srcsetTausch } from "./stream-html.mjs"
 import { maskiere } from "./stream-tormaske.mjs"
 
 /**
@@ -568,7 +568,7 @@ let linkKlickAn = false
 export function medienAnzeigen(wurzel, fenster) {
   if (!wurzel?.querySelectorAll || !streamKey() || bearbeitet(fenster)) return 0
   let zahl = 0
-  const auswahl = "video[data-beneos-src], audio[data-beneos-src], source[data-beneos-src], video[data-beneos-poster]"
+  const auswahl = "video[data-beneos-src], audio[data-beneos-src], source[data-beneos-src], video[data-beneos-poster], source[data-beneos-srcset]"
   for (const el of wurzel.querySelectorAll(auswahl)) {
     if (imEditor(el)) continue
     let neuGeladen = false
@@ -586,12 +586,60 @@ export function medienAnzeigen(wurzel, fenster) {
       zahl++
       if (haupt === "src") neuGeladen = true
     }
+    if (srcsetAnzeigen(el)) zahl++
     if (!neuGeladen) continue
     // Ein geaendertes `<source>` liest das Medium erst beim naechsten `load`.
     const medium = String(el.tagName).toLowerCase() === "source" ? el.parentElement : el
     try { medium?.load?.() } catch (_) { /* das Bild der Seite geht vor */ }
   }
   return zahl
+}
+
+/**
+ * `srcset` eines Medientags, stre-T-148: aus `data-beneos-srcset` je Eintrag
+ * die Toradresse mit Schluessel, nur im DOM. Dieselben Waechter wie fuer
+ * `src`: jede freie Form muss ans eigene Tor unter `https` fuehren, sonst
+ * bleibt die Maske ganz. Gesetzt wird nur, wenn `srcset` leer ist oder genau
+ * die passende Maskenliste traegt; ein getauschtes `srcset` bleibt. Ein
+ * `<picture>` waehlt danach von selbst neu, ein `load` braucht es nicht.
+ */
+function srcsetAnzeigen(el) {
+  const roh = el.getAttribute("data-beneos-srcset") ?? ""
+  const ziele = new Map()
+  for (const f of srcsetTeile(roh)) {
+    if (!/^beneos:/i.test(f.adresse)) continue
+    if (!istPlatzhalter(f.adresse)) return false
+    const ziel = leinwandAdresse(f.adresse)
+    if (typeof ziel !== "string" || ziel === f.adresse || !/^https:\/\//i.test(ziel) || !ours(ziel)) return false
+    ziele.set(f.adresse, ziel)
+  }
+  if (!ziele.size) return false
+  // Leer gilt als die Maskenliste. Je Eintrag: dieselbe Adresse, oder die Maske
+  // ihres Ziels mit hoechstens einem Anhang ? oder # (Nachpruefung 19.11.2026,
+  // Befund 6); der Anhang geht an die Adresse mit Schluessel wie bei `src`.
+  const jetzt = el.getAttribute("srcset") || srcsetTausch(roh, (a) => (ziele.has(a) ? maskiere(ziele.get(a)) : a))
+  const frei = srcsetTeile(roh)
+  const teile = srcsetTeile(jetzt)
+  if (teile.length !== frei.length) return false
+  const neu = []
+  for (let i = 0; i < teile.length; i++) {
+    if (teile[i].rest !== frei[i].rest) return false
+    const ziel = ziele.get(frei[i].adresse)
+    if (!ziel) {
+      if (teile[i].adresse !== frei[i].adresse) return false
+      neu.push(teile[i].adresse)
+      continue
+    }
+    const maske = maskiere(ziel)
+    const anhang = teile[i].adresse.startsWith(maske) ? teile[i].adresse.slice(maske.length) : null
+    if (anhang === null || (anhang !== "" && !/^[?#]/.test(anhang))) return false
+    neu.push(ziel + (anhang.startsWith("?") && ziel.includes("?") ? `&${anhang.slice(1)}` : anhang))
+  }
+  let mitSchluessel = jetzt
+  for (let i = teile.length - 1; i >= 0; i--) mitSchluessel = mitSchluessel.slice(0, teile[i].anfang) + neu[i] + mitSchluessel.slice(teile[i].ende)
+  if (mitSchluessel === jetzt) return false
+  el.setAttribute("srcset", mitSchluessel)
+  return true
 }
 
 export function installStreamBilder() {

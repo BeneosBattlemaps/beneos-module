@@ -747,5 +747,116 @@ console.log("H21 stre-T-147 Kalt-Review: poster, Fragment, Waechter ohne freie F
   wahr("H21 nurGeaenderte Zwei-Werte-Probe: streng bleibt das getauschte Video abgelehnt",
     nurBildadressenGetauscht(getauscht, geheilt) === false)
 }
+console.log("H22 stre-T-148: srcset an Medientags in Form (m), je Eintrag")
+{
+  const { nurBildadressenGetauscht, textSchluesselfrei } = await import("./stream-html.mjs")
+  const { maskiere } = await import("./stream-tormaske.mjs")
+  const PFAD2 = PFAD.replace(/\.webp$/, "-2x.webp")
+  const TOR2 = assetUrl(REL, "4k", PFAD2)
+  const FREI2 = platzhalterAdresse(REL, "4k", PFAD2)
+  const M1 = maskiere(TOR)
+  const M2 = maskiere(TOR2)
+  const tief = (wert) => { const w = JSON.parse(JSON.stringify(wert)); htmlTiefSchluesselfrei(w); return w }
+  const bild = '<img src="https://example.com/a.png">'
+  const pic = "<picture><source srcset=\"" + TOR + " 1x, " + TOR2 + " 2x\" type=\"image/webp\">" + bild + "</picture>"
+  const neu = tief({ content: pic }).content
+  wahr("H22 picture source srcset: kein Schluessel nach preUpdate", ohneSchluessel(neu), neu)
+  wahr("H22 srcset: Maske je Eintrag, Deskriptor bleibt", neu.includes("srcset=\"" + M1 + " 1x, " + M2 + " 2x\""), neu)
+  wahr("H22 data-beneos-srcset: freie Form je Eintrag", neu.includes("data-beneos-srcset=\"" + FREI + " 1x, " + FREI2 + " 2x\""), neu)
+  wahr("H22 Textnetz: kein Schluessel", ohneSchluessel(JSON.stringify(textSchluesselfrei(pic))))
+  wahr("H22 zweiter Lauf aendert nichts", tief({ content: neu }).content === neu, neu)
+  wahr("H22 Altseiten-Pruefung auf eigene Wandlerausgabe: gilt", nurBildadressenGetauscht(pic, neu) === true, neu)
+  wahr("H22 fremde data-beneos-srcset: abgelehnt",
+    nurBildadressenGetauscht(pic, neu.replace(FREI2 + " 2x", "beneos://anders/x.webp 2x")) === false)
+  wahr("H22 Deskriptor in der freien Form verschoben: abgelehnt",
+    nurBildadressenGetauscht(pic, neu.replace(FREI2 + " 2x", FREI2 + " 3x")) === false)
+  wahr("H22 Eintrag fehlt in der freien Form: abgelehnt",
+    nurBildadressenGetauscht(pic, neu.replace(", " + FREI2 + " 2x", "")) === false)
+  const allein = "<picture><source srcset=\"" + TOR + " 1x\"></picture>"
+  wahr("H22 Waechter: Maske ohne data-beneos-srcset: abgelehnt",
+    nurBildadressenGetauscht(allein, "<picture><source srcset=\"" + M1 + " 1x\"></picture>") === false)
+  wahr("H22 Waechter: srcset beneos:// ohne data-beneos-srcset: abgelehnt",
+    nurBildadressenGetauscht(allein, "<picture><source srcset=\"" + FREI + " 1x\"></picture>") === false)
+  const gemischt = "<picture><source srcset=\"https://example.com/a.png 1x, " + TOR + " 2x\"></picture>"
+  const gemischtNeu = tief({ content: gemischt }).content
+  wahr("H22 gemischt: fremder Eintrag bleibt in beiden Attributen",
+    gemischtNeu.includes("srcset=\"https://example.com/a.png 1x, " + M1 + " 2x\"")
+      && gemischtNeu.includes("data-beneos-srcset=\"https://example.com/a.png 1x, " + FREI + " 2x\"") && ohneSchluessel(gemischtNeu), gemischtNeu)
+  wahr("H22 gemischt: Altseiten-Pruefung gilt", nurBildadressenGetauscht(gemischt, gemischtNeu) === true, gemischtNeu)
+  wahr("H22 gemischt: fremder Eintrag umgeleitet: abgelehnt",
+    nurBildadressenGetauscht(gemischt, gemischtNeu.replace("srcset=\"https://example.com/a.png", "srcset=\"https://example.com/b.png")) === false)
+  wahr("H22 gemischt: fremder Eintrag nur in der freien Form umgeleitet: abgelehnt",
+    nurBildadressenGetauscht(gemischt, gemischtNeu.replace("data-beneos-srcset=\"https://example.com/a.png", "data-beneos-srcset=\"https://example.com/b.png")) === false)
+  // Zwei-Werte-Probe: mit Toradresse aendert sich srcset, ohne bleibt es bytegleich.
+  const fremd = "<picture><source srcset=\"https://example.com/a.png 1x\"></picture>"
+  wahr("H22 Zwei-Werte-Probe: srcset mit Toradresse aendert sich", neu !== pic)
+  wahr("H22 Zwei-Werte-Probe: fremdes srcset bleibt bytegleich", tief({ content: fremd }).content === fremd)
+}
+console.log("H22b stre-T-148 Kalt-Review: nicht wandelbare Eintraege, Kandidatenregel, Schreibweise")
+{
+  const { nurBildadressenGetauscht, srcsetTeile } = await import("./stream-html.mjs")
+  const { maskiere } = await import("./stream-tormaske.mjs")
+  const tief = (wert) => { const w = JSON.parse(JSON.stringify(wert)); htmlTiefSchluesselfrei(w); return w.content }
+  const q = JSON.stringify
+  const PFAD2 = PFAD.replace(/\.webp$/, "-2x.webp")
+  const TOR2 = assetUrl(REL, "4k", PFAD2)
+  const ALT = TOR2.replace(/^https:\/\/[^/]+/, "https://old.beneos.stream")
+  const KRE = TOR.replace(/^(https:\/\/[^/]+\/)[^/]+\/[^/]+\/.*$/, "$1a/" + KEY + "/beneos_ct_0001_x/4k/a.webp")
+  wahr("H22b Vorbedingung: ALT und KRE tragen den Schluessel und lassen sich maskieren",
+    !ohneSchluessel(ALT) && !ohneSchluessel(KRE) && maskiere(ALT) !== ALT && maskiere(KRE) !== KRE)
+  const fall = (name, html) => {
+    const neu = tief({ content: html })
+    wahr("H22b " + name + ": kein Schluessel", ohneSchluessel(neu), neu)
+    wahr("H22b " + name + ": Altseiten-Pruefung gilt", nurBildadressenGetauscht(html, neu) === true, neu)
+    wahr("H22b " + name + ": zweiter Lauf aendert nichts", tief({ content: neu }) === neu, neu)
+    return neu
+  }
+  const p1 = fall("fruehere Basis neben wandelbarem Eintrag", "<picture><source srcset=\"" + TOR + " 1x, " + ALT + " 2x\"></picture>")
+  wahr("H22b fruehere Basis: data-beneos-srcset traegt fuer sie die Maske", p1.includes("data-beneos-srcset=\"" + FREI + " 1x, " + maskiere(ALT) + " 2x\""), p1)
+  fall("Kreatur im a-Raum neben wandelbarem Eintrag", "<picture><source srcset=\"" + TOR + " 1x, " + KRE + " 2x\"></picture>")
+  const p3 = fall("nur nicht wandelbare Eintraege", "<picture><source srcset=\"" + KRE + " 1x\"></picture>")
+  wahr("H22b nur nicht wandelbare: srcset maskiert", p3.includes("srcset=\"" + maskiere(KRE) + " 1x\""), p3)
+  const bildKre = tief({ content: "<img src=\"https://example.com/a.png\" srcset=\"" + KRE + " 1x\">" })
+  wahr("H22b img srcset mit nicht wandelbarer Toradresse: Schluessel weg", ohneSchluessel(bildKre), bildKre)
+  const DATA = "data:image/png;base64,iVBORw0KGgo="
+  wahr("H22b srcsetTeile: data:-Adresse mit Komma bleibt ein Eintrag",
+    q(srcsetTeile(DATA + " 1x, " + TOR + " 2x").map((t) => t.adresse)) === q([DATA, TOR]))
+  wahr("H22b srcsetTeile: Komma am Adressende ohne Deskriptor trennt",
+    q(srcsetTeile(TOR + ", " + TOR2 + " 2x").map((t) => [t.adresse, t.rest])) === q([[TOR, ""], [TOR2, "2x"]]))
+  const p4 = fall("data:-Adresse mit Komma", "<picture><source srcset=\"" + DATA + " 1x, " + TOR + " 2x\"></picture>")
+  wahr("H22b data:-Adresse bleibt ganz", p4.includes("srcset=\"" + DATA + " 1x, ") && p4.includes("data-beneos-srcset=\"" + DATA + " 1x, "), p4)
+  const p5 = fall("Komma ohne Leerraum", "<picture><source srcset=\"" + TOR + " 1x," + TOR2 + " 2x\"></picture>")
+  wahr("H22b Komma ohne Leerraum: Trenner bleibt", p5.includes("srcset=\"" + maskiere(TOR) + " 1x," + maskiere(TOR2) + " 2x\""), p5)
+  fall("mehrzeilig", "<picture><source srcset=\"\n  " + TOR + " 1x,\n  " + TOR2 + " 2x\n\"></picture>")
+  const p6 = fall("SRCSET gross", "<PICTURE><SOURCE SRCSET=\"" + TOR + " 1x\"></PICTURE>")
+  wahr("H22b SRCSET gross: Schreibung bleibt", p6.includes("SRCSET=\"" + maskiere(TOR) + " 1x\""), p6)
+  const p7 = fall("ohne Anfuehrung", "<picture><source srcset=" + TOR + "></picture>")
+  wahr("H22b ohne Anfuehrung: srcset bleibt ohne Anfuehrung", p7.includes("srcset=" + maskiere(TOR) + " "), p7)
+  fall("einfache Anfuehrung", "<picture><source srcset='" + TOR + " 1x, " + TOR2 + " 2x'></picture>")
+  const doppelt = tief({ content: "<picture><source srcset=\"https://example.com/a.png 1x\" srcset=\"" + TOR + " 1x\"></picture>" })
+  wahr("H22b zweites srcset am Tag: kein Schluessel", ohneSchluessel(doppelt), doppelt)
+  const ohne = (name, html) => { const neu = tief({ content: html }); wahr("H22b " + name + ": kein Schluessel", ohneSchluessel(neu), neu); return neu }
+  ohne("Komma ohne Leerraum zwischen zwei Toradressen", "<picture><source srcset=\"" + TOR + "," + TOR2 + "\"></picture>")
+  const lage = "<picture><source srcset=\"" + TOR + " 1x " + TOR2 + "\"></picture>"
+  const lageNeu = ohne("Toradresse in der Deskriptorlage", lage)
+  ohne("fremder Eintrag mit Toradresse als Deskriptor", "<picture><source srcset=\"https://example.com/a.png " + TOR + "\"></picture>")
+  ohne("img: Toradresse als Deskriptor", "<img src=\"https://example.com/a.png\" srcset=\"https://example.com/b.png " + TOR + "\">")
+  ohne("NBSP in der Adresse", "<picture><source srcset=\"" + TOR + "\u00A0" + TOR2 + " 1x\"></picture>")
+  wahr("H22b Altseiten-Pruefung: verbliebener Schluessel in der Deskriptorlage: abgelehnt",
+    nurBildadressenGetauscht(lage, "<picture><source srcset=\"" + maskiere(TOR) + " 1x " + TOR2 + "\" data-beneos-srcset=\"" + FREI + " 1x " + TOR2 + "\"></picture>") === false)
+  const gleichZeichen = ohne("ohne Anfuehrung mit = im Wert", "<picture><source srcset=" + TOR + "?a=1&amp;b=2></picture>")
+  wahr("H22b ohne Anfuehrung mit = im Wert: srcset bleibt ganz", gleichZeichen.includes(maskiere(TOR) + "?a=1&amp;b=2\"") && !gleichZeichen.includes("\"=1"), gleichZeichen)
+  const und = ohne("ohne Anfuehrung mit &", "<picture><source srcset=" + TOR + "?x&amp;y></picture>")
+  wahr("H22b ohne Anfuehrung mit &: bleibt ohne Anfuehrung", und.includes("srcset=" + maskiere(TOR) + "?x&amp;y "), und)
+  ohne("zweites data-beneos-srcset mit Toradresse", "<picture><source srcset=\"" + TOR + " 1x\" data-beneos-srcset=\"x\" data-beneos-srcset=\"" + TOR2 + " 1x\"></picture>")
+  const direkt = ohne("Komma direkt hinter der Adresse", "<picture><source srcset=\"" + TOR + ", " + TOR2 + " 2x\"></picture>")
+  wahr("H22b Komma direkt hinter der Adresse: freie Form trennt", direkt.includes("data-beneos-srcset=\"" + FREI + ", "), direkt)
+  const bildGleich = tief({ content: "<img src=\"https://example.com/a.png\" srcset=" + TOR + "?a=1&amp;b=2>" })
+  wahr("H22b img ohne Anfuehrung mit = im srcset: Tag heil", ohneSchluessel(bildGleich) && !bildGleich.includes("b=2"), bildGleich)
+  wahr("H22b srcsetTeile: NBSP trennt nicht",
+    q(srcsetTeile("a.png\u00A0b.png 1x").map((t) => [t.adresse, t.rest])) === q([["a.png\u00A0b.png", "1x"]]))
+  wahr("H22b srcsetTeile: Komma in Klammern trennt nicht",
+    q(srcsetTeile("a.png 1x (q, r), b.png 2x").map((t) => [t.adresse, t.rest])) === q([["a.png", "1x (q, r)"], ["b.png", "2x"]]))
+}
 console.log(`${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
 process.exit(rot ? 1 : 0)

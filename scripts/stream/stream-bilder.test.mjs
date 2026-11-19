@@ -635,6 +635,48 @@ abschnitt("stre-T-147 Kalt-Review: medienAnzeigen prueft wie linkKlick, traegt F
   gleich("nur poster: die Auswahl findet das Video", `${nurPosterZahl}/${nurPoster.getAttribute("poster") === bildEcht}`, "1/true")
 }
 
+abschnitt("stre-T-148: medienAnzeigen setzt srcset je Eintrag, nur im DOM")
+{
+  const { maskiere } = await import("./stream-tormaske.mjs")
+  const frei1 = settings.platzhalterAdresse("beneos_bm_0042", "4k", "map_assets/bild.webp")
+  const frei2 = settings.platzhalterAdresse("beneos_bm_0042", "4k", "map_assets/bild-2x.webp")
+  const echt1 = settings.leinwandAdresse(frei1)
+  const echt2 = settings.leinwandAdresse(frei2)
+  const maskenSatz = maskiere(echt1) + " 1x, " + maskiere(echt2) + " 2x"
+  const freiSatz = frei1 + " 1x, " + frei2 + " 2x"
+  function quelle(werte) {
+    const attr = new Map(Object.entries(werte))
+    return {
+      nodeType: 1, tagName: "SOURCE", parentElement: null,
+      getAttribute: (k) => attr.get(k) ?? null,
+      setAttribute: (k, v) => { attr.set(k, String(v)) },
+      closest: () => null,
+    }
+  }
+  const lauf = (el) => bilder.medienAnzeigen({ nodeType: 1, querySelectorAll: (sel) => (sel === "img" ? [] : [el]), querySelector: () => null }, { rendered: true })
+  const q = quelle({ srcset: maskenSatz, "data-beneos-srcset": freiSatz })
+  gleich("srcset: bekommt die Adressen je Eintrag", lauf(q) + "/" + (q.getAttribute("srcset") === echt1 + " 1x, " + echt2 + " 2x"), "1/true")
+  gleich("srcset: data-beneos-srcset bleibt schluesselfrei", q.getAttribute("data-beneos-srcset"), freiSatz)
+  gleich("srcset: zweiter Lauf aendert nichts", lauf(q), 0)
+  const leer = quelle({ "data-beneos-srcset": freiSatz })
+  gleich("srcset ohne Wert: bekommt die Adressen", lauf(leer) + "/" + (leer.getAttribute("srcset") === echt1 + " 1x, " + echt2 + " 2x"), "1/true")
+  const getauscht = quelle({ srcset: "https://example.com/eigen.webp 1x", "data-beneos-srcset": freiSatz })
+  gleich("srcset getauscht: 0, bleibt", lauf(getauscht) + "/" + getauscht.getAttribute("srcset"), "0/https://example.com/eigen.webp 1x")
+  const datei = quelle({ srcset: maskenSatz, "data-beneos-srcset": "file:///C:/geheim.webp 1x, " + frei2 + " 2x" })
+  gleich("srcset mit file:-Eintrag: die Maske bleibt", lauf(datei) + "/" + (datei.getAttribute("srcset") === maskenSatz), "0/true")
+  const gemischt = quelle({ srcset: "https://example.com/a.png 1x, " + maskiere(echt2) + " 2x", "data-beneos-srcset": "https://example.com/a.png 1x, " + frei2 + " 2x" })
+  const passt = (sel) => sel.split(",").map((s) => s.trim()).includes("source[data-beneos-srcset]")
+  const nurSatz = quelle({ "data-beneos-srcset": freiSatz })
+  const nurSatzZahl = bilder.medienAnzeigen({ nodeType: 1, querySelectorAll: (sel) => (passt(sel) ? [nurSatz] : []), querySelector: () => null }, { rendered: true })
+  gleich("nur srcset: die Auswahl findet das source", nurSatzZahl + "/" + (nurSatz.getAttribute("srcset") === echt1 + " 1x, " + echt2 + " 2x"), "1/true")
+  gleich("srcset gemischt: fremder Eintrag bleibt", lauf(gemischt) + "/" + gemischt.getAttribute("srcset"), "1/https://example.com/a.png 1x, " + echt2 + " 2x")
+  // Nachpruefung 19.11.2026, Befund 6: ein Anhang hinter der Maske geht mit, wie bei src.
+  const anhang = quelle({ srcset: maskiere(echt1) + "?v=2 1x, " + maskiere(echt2) + "#f 2x", "data-beneos-srcset": freiSatz })
+  gleich("srcset mit Anhang ?/#: Anhang geht an die Adresse", lauf(anhang) + "/" + (anhang.getAttribute("srcset") === echt1 + (echt1.includes("?") ? "&" : "?") + "v=2 1x, " + echt2 + "#f 2x"), "1/true")
+  const fremdAnhang = quelle({ srcset: maskiere(echt1) + "x 1x, " + maskiere(echt2) + " 2x", "data-beneos-srcset": freiSatz })
+  gleich("srcset mit fremdem Anhang: bleibt", lauf(fremdAnhang) + "/" + (fremdAnhang.getAttribute("srcset") === maskiere(echt1) + "x 1x, " + maskiere(echt2) + " 2x"), "0/true")
+}
+
 console.log("Nicht geprueft, ausdruecklich benannt:")
 console.log("- Dass Foundry die Haken mit diesen Namen und Argumenten feuert. Gemessen")
 console.log("  am 08.11.2026 in v13-streaming; die Wirkung entscheidet TC-PRJ-STR-302.")
