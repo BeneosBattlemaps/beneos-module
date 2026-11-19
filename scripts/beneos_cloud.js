@@ -608,7 +608,7 @@ export class BeneosCloudLogin extends FormApplication {
   // (foundryId, tokenKey, itemKey, spellKey, filename) in encodeURIComponent.
   // For alphanumeric keys this is a no-op; for keys containing & + space # it
   // makes the request well-formed where it would previously have been rejected
-  // by the server. Login URL (line 79) was already encoded.
+  // by the server.
   pollForAccess(userId) {
     // Poll the index.php for the access_token
     let self = this
@@ -698,8 +698,8 @@ export class BeneosCloudLogin extends FormApplication {
 
   /********************************************************************************** */
   // Passwordless login (steps 1 + 2): ask the Cloud to email a one-time code, then
-  // verify it. On success it reuses pollForAccess() exactly like the password path,
-  // so login state, settings and the V2 re-render are handled by the same code.
+  // verify it. On success it hands off to pollForAccess(), which handles login state,
+  // settings and the V2 re-render.
   async connectWithCode(email, userId) {
     if (!game.user.isGM) return
     if (!email || !email.trim()) {
