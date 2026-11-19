@@ -84,7 +84,7 @@ export const GATE_DEFAULT_BASE = DEFAULT_BASE
  *
  * Siehe `OP-PRJ-176`.
  */
-const GATE_ZONE = "beneos.stream"
+export const GATE_ZONE = "beneos.stream"
 
 /**
  * Gibt die Basis zurueck, wenn sie erlaubt ist, sonst eine leere Zeichenkette.

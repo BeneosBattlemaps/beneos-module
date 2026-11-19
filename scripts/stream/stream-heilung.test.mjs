@@ -308,6 +308,14 @@ for (const [name, massstab] of [["Toradresse", TOR_MASSSTAB()], ["beneos://", FR
   const r = await lauf([{ id: "b1", src: "https://gate.alt.example/a/" + ALT + "/" + REL + "/4k/x.webp" }, structuredClone(textSeite)])
   gleich("fremde Basis: nichts geschrieben, gezaehlt", `${r.geschrieben.length}|${r.b.fremdeBasis}`, "0|1")
 }
+{
+  // stre-T-153 (Kalt-Review 19.11.2026, W3): eine fruehere Basis der ZONE als
+  // Massstab. Das Netz macht daraus seit T-153 die Maske, das Bild waere tot;
+  // es bleibt lokal und wird gezaehlt wie eine fremde Basis.
+  const massstab = { id: "b1", src: "https://old.beneos.stream/a/" + ALT + "/" + REL + "/4k/x.webp" }
+  const r = await lauf([massstab, structuredClone(textSeite)])
+  gleich("T153: fruehere Basis der Zone: nichts geschrieben, gezaehlt", `${r.geschrieben.length}|${r.b.fremdeBasis}`, "0|1")
+}
 for (const raum of RAEUME) {
   // Die Endkontrolle kennt jeden Raum (Kalt-Review T-122, Befund 1). Eine
   // Toradresse mit Schluessel unter fremdem Host in einem Attribut vor dem
@@ -401,7 +409,7 @@ console.log("stre-T-131: Massstab, Wurzelsuche, xsrc")
 }
 
 console.log(`\n${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
-const ERWARTET = 43
+const ERWARTET = 44
 if (aussagen !== ERWARTET) {
   console.log(`ROT erwartet ${ERWARTET} Aussagen, gezaehlt ${aussagen}`)
   process.exit(1)

@@ -858,5 +858,105 @@ console.log("H22b stre-T-148 Kalt-Review: nicht wandelbare Eintraege, Kandidaten
   wahr("H22b srcsetTeile: Komma in Klammern trennt nicht",
     q(srcsetTeile("a.png 1x (q, r), b.png 2x").map((t) => [t.adresse, t.rest])) === q([["a.png", "1x (q, r)"], ["b.png", "2x"]]))
 }
+console.log("H23 stre-T-153: Toradresse nur unter frueherer Basis")
+{
+  const { nurBildadressenGetauscht } = await import("./stream-html.mjs")
+  const { maskiere } = await import("./stream-tormaske.mjs")
+  const tief = (wert) => { const w = JSON.parse(JSON.stringify(wert)); htmlTiefSchluesselfrei(w); return w.content }
+  const ALT = TOR.replace(/^https:\/\/[^/]+/, "https://old.beneos.stream")
+  const MASKE = maskiere(ALT)
+  wahr("H23 Vorbedingung: ALT traegt den Schluessel, seine Maske nicht", !ohneSchluessel(ALT) && ohneSchluessel(MASKE) && MASKE !== ALT, MASKE)
+  // Je Weg steht im Text NUR die fruehere Basis, nie der heutige Host.
+  const WEGE = {
+    "img src": `<p>x</p><img src="${ALT}" width="10">`,
+    "img Fragment": `<img src="${PLATZHALTER_BILD}#${ALT}">`,
+    "img data-src": `<img src="https://example.com/a.png" data-src="${ALT}">`,
+    "img data-beneos-src": `<img src="https://example.com/a.png" data-beneos-src="${ALT}">`,
+    "a href": `<p><a href="${ALT}">Karte</a></p>`,
+    "Fliesstext": `<p>Siehe ${ALT} dort</p>`,
+    "source srcset": `<picture><source srcset="${ALT} 1x"></picture>`,
+    "img srcset": `<img src="https://example.com/a.png" srcset="${ALT} 2x">`,
+    // Die Abkuerzung des Vorfilters darf keine Schreibweise verlieren, die `new URL` auf die Zone abbildet.
+    "Fliesstext, Host gross": `<p>Siehe ${ALT.replace("https://old.beneos.stream", "https://OLD.BENEOS.STREAM")} dort</p>`,
+    "Fliesstext, Host prozentkodiert": `<p>Siehe ${ALT.replace("old.beneos.stream", "old.beneos%2Estream")} dort</p>`,
+    "Fliesstext, Host in Vollbreite": `<p>Siehe ${ALT.replace("old.beneos.stream", "old.beneos.ｓtream")} dort</p>`,
+  }
+  for (const [weg, html] of Object.entries(WEGE)) {
+    wahr(`H23 ${weg}: Vorbedingung ohne heutigen Host`, !html.includes("gate.beneos.stream") && !ohneSchluessel(html), html)
+    const neu = tief({ content: html })
+    wahr(`H23 ${weg}: kein Schluessel`, ohneSchluessel(neu), neu)
+    // Auflage 1 (orch P-13:25, H15): ein entferntes srcset und ein geaendertes data-src lehnt die
+    // Altseiten-Pruefung ab, wie unter dem heutigen Host; die Seite bleibt dann ungeschrieben.
+    const auflage = weg === "img data-src" || weg === "img srcset"
+    wahr(`H23 ${weg}: Altseiten-Pruefung ${auflage ? "lehnt ab (Auflage 1)" : "gilt"}`, nurBildadressenGetauscht(html, neu) === !auflage, neu)
+    wahr(`H23 ${weg}: zweiter Lauf aendert nichts`, tief({ content: neu }) === neu, neu)
+  }
+  const bild = tief({ content: WEGE["img src"] })
+  wahr("H23 img src: die Maske, kein data-beneos-src", bild === `<p>x</p><img src="${MASKE}" width="10">`, bild)
+  const fragment = tief({ content: WEGE["img Fragment"] })
+  wahr("H23 img Fragment: die Maske, kein data-beneos-src", fragment === `<img src="${MASKE}">`, fragment)
+  const daten = tief({ content: WEGE["img data-beneos-src"] })
+  wahr("H23 img data-beneos-src: faellt weg, src bleibt", daten === `<img src="https://example.com/a.png">`, daten)
+  const link = tief({ content: WEGE["a href"] })
+  wahr("H23 a href: die Maske", link.includes(`href="${MASKE}"`), link)
+  // Hook-Wege: preUpdate und preCreate (installHtmlNetz lief in H9).
+  const upd = { content: WEGE["a href"] + WEGE["img src"] }
+  hakenListe.preUpdateChatMessage[0]({}, upd)
+  wahr("H23 preUpdate: kein Schluessel", ohneSchluessel(upd.content), upd.content)
+  let quelle = null
+  hakenListe.preCreateChatMessage[0]({ _source: { content: WEGE["img src"] + WEGE["Fliesstext"] + WEGE["source srcset"] }, updateSource(d) { quelle = d } })
+  wahr("H23 preCreate: kein Schluessel", quelle !== null && ohneSchluessel(JSON.stringify(quelle)), JSON.stringify(quelle))
+  // Altseiten: ein img, das den Schluessel behaelt, besteht die Gegenprobe nicht.
+  wahr("H23 Altseiten-Pruefung: Schluessel im img src bleibt: abgelehnt", nurBildadressenGetauscht(WEGE["img src"], WEGE["img src"]) === false)
+  wahr("H23 Altseiten-Pruefung: Schluessel im Fragment bleibt: abgelehnt", nurBildadressenGetauscht(WEGE["img Fragment"], WEGE["img Fragment"]) === false)
+  // Kalt-Review 19.11.2026, W4: ohne data-beneos-src bleibt src oder wird seine Maske, kein anderes Ziel.
+  const ANDERS = maskiere(ALT.replace("handout", "andere"))
+  wahr("H23 Altseiten-Pruefung: anderes Ziel ohne freie Form: abgelehnt", nurBildadressenGetauscht(WEGE["img src"], `<p>x</p><img src="https://example.com/evil.png" width="10">`) === false)
+  wahr("H23 Altseiten-Pruefung: Maske eines anderen Ziels: abgelehnt", ANDERS !== MASKE && nurBildadressenGetauscht(WEGE["img src"], `<p>x</p><img src="${ANDERS}" width="10">`) === false, ANDERS)
+  wahr("H23 Altseiten-Pruefung: Fragment wird Maske: gilt", nurBildadressenGetauscht(WEGE["img Fragment"], `<img src="${MASKE}">`) === true)
+  // Kalt-Review 19.11.2026, W1: Schreibweisen, die der Wandler frei macht, muss der Vorfilter durchlassen.
+  const HEUTE = TOR.match(/^https:\/\/[^/]+/)[0]
+  const PFAD_T = TOR.slice(HEUTE.length)
+  for (const [name, html] of [
+    ["heute Userinfo img", `<img src="${HEUTE.replace("://", "://u@")}${PFAD_T}">`],
+    ["heute Userinfo Text", `<p>Siehe ${HEUTE.replace("://", "://u@")}${PFAD_T} dort</p>`],
+    ["heute &#47; img", `<img src="${HEUTE}&#47;${PFAD_T.slice(1)}">`],
+    ["heute Backslash img", `<img src="${HEUTE.replace("://", ":\\\\")}${PFAD_T}">`],
+    ["heute Tab im Host img", `<img src="${HEUTE.replace("beneos", "bene\tos")}${PFAD_T}">`],
+    ["frueher &#46; a href", `<p><a href="${ALT.replace("beneos.stream", "beneos&#46;stream")}">k</a></p>`],
+    // W2: fuehrender Leerraum, `maskiere` ist am Anfang verankert.
+    ["frueher Leerraum img src", `<img src=" ${ALT}">`],
+    ["frueher Leerraum Fragment", `<img src="${PLATZHALTER_BILD}# ${ALT}">`],
+    ["frueher Leerraum data-beneos-src", `<img src="https://example.com/a.png" data-beneos-src=" ${ALT}">`],
+    ["frueher Leerraum a href", `<p><a href=" ${ALT}">k</a></p>`],
+  ]) {
+    wahr(`H23 ${name}: Vorbedingung mit Schluessel`, !ohneSchluessel(html), html)
+    const neu = tief({ content: html })
+    wahr(`H23 ${name}: kein Schluessel`, ohneSchluessel(neu), neu)
+  }
+  // Das Gedaechtnis des Vorfilters gilt je Text UND Host: derselbe Text unter anderem Host wird neu gefragt.
+  {
+    const html = `<p>Siehe ${HEUTE.replace("://", "://u@")}${PFAD_T} dort</p>`
+    einstellungen[SETTING.base] = "https://other.beneos.stream"
+    const vorher = tief({ content: html })
+    einstellungen[SETTING.base] = GATE
+    const nachher = tief({ content: html })
+    wahr("H23 Vorfilter-Gedaechtnis: unter anderem Host unberuehrt", vorher === html, vorher)
+    wahr("H23 Vorfilter-Gedaechtnis: derselbe Text unter heutigem Host wird frei", ohneSchluessel(nachher), nachher)
+  }
+  // Zwei-Werte-Probe: die fruehere Basis aendert sich, alles ohne Toradresse der Zone bleibt bytegleich.
+  wahr("H23 Zwei-Werte-Probe: fruehere Basis aendert sich", tief({ content: WEGE["Fliesstext"] }) !== WEGE["Fliesstext"])
+  // Toradressform unter fremdem Host, die Zone steht woertlich im Pfad: der Vorfilter laesst sie bis TOR_IM_TEXT, unterZone weist sie ab.
+  const fremdHost = `https://example.com/a/${KEY}/beneos.stream/x.webp`
+  for (const [name, html] of [
+    ["ohne Toradresse", "<p>Nur Text mit <b>Fett</b> und <img src=\"https://example.com/a.png\"></p>"],
+    ["fremde https-Adressen", "<p><a href=\"https://example.com/x?y=1\">a</a> https://foo.bar/z <img src=\"https://cdn.example.org/b.png\" srcset=\"https://cdn.example.org/b2.png 2x\"></p>"],
+    ["fremder Host mit Zone im Pfad", `<p><a href="${fremdHost}">a</a> ${fremdHost}</p>`],
+    ["fremder Host, Zone als Endung ohne Punkt", `<p>https://notbeneos.stream/a/${KEY}/x.webp</p>`],
+    ["heutige Basis ohne Schluessel", `<img src="${SRC_A}" data-beneos-src="${FREI}">`],
+  ]) {
+    wahr(`H23 Zwei-Werte-Probe: ${name} bleibt bytegleich`, tief({ content: html }) === html, tief({ content: html }))
+  }
+}
 console.log(`${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
 process.exit(rot ? 1 : 0)

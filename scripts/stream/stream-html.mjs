@@ -29,7 +29,7 @@
  * nichts.
  */
 
-import { MODULE_ID, schluesselfreiAdresse, streamKey, streamHost, leinwandAdresse } from "./stream-settings.mjs"
+import { MODULE_ID, schluesselfreiAdresse, streamKey, streamHost, leinwandAdresse, GATE_ZONE } from "./stream-settings.mjs"
 import { TOR_IM_TEXT, maskiere, wandle, istMaskiert, unterZone } from "./stream-tormaske.mjs"
 
 /*
@@ -233,8 +233,8 @@ export function srcsetTausch(wert, neu) {
  * wandeln oder maskieren laesst, auch eine unter frueherer Basis oder mit
  * gescheitertem Rundlauf (Kalt-Review K1, K2), und an jeder Stelle des Werts,
  * auch in der Deskriptorlage (Nachpruefung 19.11.2026, Befund 1). Das Tag
- * erreicht diese Pruefung nur, wenn der Vorfilter (`kandidat`,
- * `textKandidat`) den heutigen Host im Text findet.
+ * erreicht diese Pruefung, sobald der Vorfilter (`zoneImText`) eine Toradresse
+ * unter einem Host der Zone findet, heutig oder frueher (stre-T-153).
  */
 function srcsetMitTor(wert) {
   return (String(wert ?? "").match(TOR_IM_TEXT) ?? []).some((a) => wandle(a) !== a)
@@ -261,6 +261,70 @@ function attributWert(tag, a, wert) {
 }
 
 /**
+ * Steht im Text eine Toradresse unter einem Host der Zone, heutig oder frueher
+ * (stre-T-153)? Ein Vergleich mit dem heutigen Host allein liess eine
+ * Toradresse unter frueherer Basis mit Schluessel stehen.
+ *
+ * Zwei Wege, und einer genuegt. Der heutige Host im Text, wie bisher: er faengt
+ * auch Schreibweisen, die `TOR_IM_TEXT` nicht als Adresse erkennt (Kalt-Review
+ * 19.11.2026, W1). Oder eine Toradresse, fuer die `unterZone` gilt, im Text
+ * oder in seiner entschluesselten Fassung (`&#47;` in einem Attribut).
+ * `unterZone` prueft den Host ueber `new URL`, also auch in Gross- und
+ * Kleinschreibung (stre-T-122) und prozentkodiert.
+ *
+ * Der Vorfilter ist weiter als der Wandler, nicht deckungsgleich: was er
+ * durchlaesst, kann der Wandler unveraendert zurueckgeben. Eine fruehere Basis
+ * in einer Schreibweise, die `TOR_IM_TEXT` nicht findet, erreicht weder ihn
+ * noch den Wandler.
+ *
+ * Vor dem Regex die Abkuerzung, damit eine grosse Seite mit fremden Links so
+ * wenig kostet wie bisher: ein Host der Zone steht woertlich im Text, oder ein
+ * Host einer Adresse ist kodiert (`%`), zerrissen (Tab, LF, CR) bzw. nicht
+ * ASCII, was `new URL` auf die Zone abbilden kann. Nur dann laeuft
+ * `TOR_IM_TEXT`, und `new URL` nur fuer einen Treffer, der selbst diese Probe
+ * besteht. `kandidat` und `textKandidat` fragen meist nach demselben Text,
+ * darum merkt sich `zoneImText` die letzte Antwort je Text und Host.
+ */
+const ZONE_WOERTLICH = new RegExp(GATE_ZONE.replace(/\./g, "\\."), "i")
+// Ein Host (wie in `TOR_IM_TEXT`, auch hinter `\`) mit `%`, Tab, LF, CR oder
+// einem Zeichen ausserhalb von ASCII.
+const HOST_KODIERT = /https?:[/\\]*[^/\\\s"'<>%\x80-￿]*(?:%|[\t\n\r]|(?!\s)[\x80-￿])/i
+const vielleichtZone = (s) => ZONE_WOERTLICH.test(s) || HOST_KODIERT.test(s)
+const torInZone = (text) => (text.match(TOR_IM_TEXT) ?? []).some((a) => vielleichtZone(a) && unterZone(a))
+// Tab, LF und CR in einer Adresse entfernt `new URL`, der Wandler gibt die
+// Adresse dann frei; der Vorfilter prueft sie deshalb auch ohne diese Zeichen.
+// Nur im Schema oder Host, damit eine Adresse am Zeilenende nicht zaehlt.
+const ADRESSE_ZERRISSEN = /https?:[/\\]*[^/\\\s"'<>]*[\t\n\r]/i
+function zoneInFassung(text, host) {
+  if (!vielleichtZone(text)) return false
+  if (torInZone(text)) return true
+  if (!ADRESSE_ZERRISSEN.test(text)) return false
+  const ohne = text.replace(/[\t\n\r]/g, "")
+  return hostImText(ohne, host) || torInZone(ohne)
+}
+// Der heutige Host ohne Ruecksicht auf Gross- und Kleinschreibung, als Muster
+// statt `toLowerCase()`: das kopierte bei jedem Aufruf die ganze Seite.
+let hostQuelle = null
+let hostMuster = null
+function hostImText(text, host) {
+  if (host !== hostQuelle) {
+    hostQuelle = host
+    hostMuster = host ? new RegExp(host.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i") : null
+  }
+  return !!hostMuster && hostMuster.test(text)
+}
+let letzteFrage = { text: null, host: null, ja: false }
+function zoneImText(text) {
+  const host = streamHost()
+  if (letzteFrage.text === text && letzteFrage.host === host) return letzteFrage.ja
+  // Der heutige Host liegt immer in der Zone (`streamBase` geht ueber
+  // `erlaubteBasis`); wo er steht, steht also auch die Zone, und die ist billiger.
+  const ja = (ZONE_WOERTLICH.test(text) && hostImText(text, host)) || zoneInFassung(text, host) || (text.includes("&") && zoneInFassung(entschluesseln(text), host))
+  letzteFrage = { text, host, ja }
+  return ja
+}
+
+/**
  * Lohnt das Zerlegen? Haelt es von den gewoehnlichen Feldwerten fern, die nie
  * HTML mit einer Toradresse oder mit Form (a) sind.
  */
@@ -268,12 +332,7 @@ function kandidat(text) {
   // `src` ohne Ruecksicht auf Gross- und Kleinschreibung: `<IMG SRC=...>` ist
   // gueltiges HTML.
   if (typeof text !== "string" || !text.includes("<") || !/src/i.test(text)) return false
-  // Der Host ohne Ruecksicht auf Gross- und Kleinschreibung (stre-T-122): die
-  // erlaubte Basis kommt roh zurueck, etwa `https://Gate.Beneos.Stream`, und
-  // `streamHost` klein (`new URL(...).host`). Sonst bliebe eine solche
-  // Toradresse mit Schluessel stehen.
-  const host = streamHost()
-  return (!!host && text.toLowerCase().includes(host)) || text.includes("data-beneos-src") || text.includes(PLATZHALTER_BILD)
+  return text.includes("data-beneos-src") || text.includes(PLATZHALTER_BILD) || zoneImText(text)
 }
 
 /**
@@ -301,8 +360,10 @@ function bildTag(tag) {
   }
   // Die uebrigen Attribute, unabhaengig vom src. Ein `srcset` mit Toradresse
   // zoege der Browser dem `src` vor, und der Schluessel bliebe im HTML; es
-  // faellt weg (Kalt-Review W2). Jedes andere Attribut mit Toradresse, etwa
-  // `data-src`, bekommt die freie Form (Nachpruefung 17.11.2026, Befund 4).
+  // faellt weg (Kalt-Review W2). Jedes andere Attribut, dessen ganzer Wert eine
+  // Toradresse ist, etwa `data-src`, bekommt die freie Form (Nachpruefung
+  // 17.11.2026, Befund 4), unter frueherer Basis die Maske (stre-T-153). Text
+  // um eine Adresse, etwa in `alt`, bleibt stehen, wie bisher.
   const weitere = []
   for (const a of attr) {
     if (a.name === "src" || a.name === "data-beneos-src" || !a.wert) continue
@@ -314,13 +375,14 @@ function bildTag(tag) {
       weitere.push([anfang, g.ende, ""])
       continue
     }
-    const f = schluesselfreiAdresse(a.wert)
+    const f = wandle(a.wert)
     if (f !== a.wert) weitere.push([a.anfang, a.ende, attributText(a.name, f, a.anfuehrung || '"')])
   }
   if (!frei) {
     frei = formAAdresse(src?.wert ?? null, daten?.wert ?? null)
     const schonFormA = !!frei && src?.wert === platzhalterMit(frei) && daten?.wert === frei
     if (!frei || schonFormA) {
+      if (!frei) weitere.push(...bildMaske(tag, src, fragment, daten))
       return weitere.length ? { tag: ersetze(tag, weitere), zahl: 1, heil: 0 } : { tag, zahl: 0, heil: 0 }
     }
     geheilt = true
@@ -333,6 +395,45 @@ function bildTag(tag) {
   if (src) tausch.push([src.anfang, src.ende, daten ? srcText : `${srcText} ${datenText}`])
   else tausch.push([4, 4, ` ${srcText}`])
   return { tag: ersetze(tag, tausch), zahl: 1, heil: geheilt ? 1 : 0 }
+}
+
+/*
+ * Die Maske eines alten `src` fuer die Gegenprobe, bewusst ohne `maskiere`:
+ * eine Pruefung, die den Wandler aufruft, haette denselben Fehler wie er.
+ * Das Fragment des Platzhalters zaehlt als Adresse.
+ */
+const MASKE_VON = /^(\s*https?:\/\/[^/\s"'<>]+\/[a-z]\/)[^/?#\s"'<>]+/i
+function maskeVon(wert) {
+  if (typeof wert !== "string") return wert
+  const w = wert.startsWith(`${PLATZHALTER_BILD}#`) ? wert.slice(PLATZHALTER_BILD.length + 1) : wert
+  return w.replace(MASKE_VON, "$1-")
+}
+
+/** Traegt der Wert eine Toradresse mit Schluessel, die sich maskieren laesst? */
+function mitSchluessel(wert) {
+  return (String(wert ?? "").match(TOR_IM_TEXT) ?? []).some((x) => maskiere(x) !== x)
+}
+
+/*
+ * Ein Bild, dessen Toradresse mit Schluessel sich nicht frei machen laesst
+ * (fruehere Basis, gescheiterter Rundlauf): `src` wird die Maske, ein
+ * `data-beneos-src` mit Schluessel faellt weg. Das Bild zeigt danach nichts,
+ * wie im Export: tot statt undicht (stre-T-153, Betreiberentscheid 19.11.2026).
+ */
+function bildMaske(tag, src, fragment, daten) {
+  const tausch = []
+  const adresse = fragment ?? src?.wert
+  // Ueber `TOR_IM_TEXT`, nicht `maskiere` am ganzen Wert: der ist am Anfang
+  // verankert und liesse einen Wert mit fuehrendem Leerraum stehen.
+  if (src && adresse && mitSchluessel(adresse)) {
+    tausch.push([src.anfang, src.ende, attributText("src", adresse.replace(TOR_IM_TEXT, maskiere), src.anfuehrung || '"')])
+  }
+  if (mitSchluessel(daten?.wert)) {
+    let anfang = daten.anfang
+    while (anfang > 0 && /\s/.test(tag[anfang - 1])) anfang--
+    tausch.push([anfang, daten.ende, ""])
+  }
+  return tausch
 }
 
 /*
@@ -404,8 +505,18 @@ export function nurBildadressenGetauscht(alt, neu, { nurGeaenderte = false } = {
   for (const [i, tag] of (neu.match(IMG_RE) ?? []).entries()) {
     if (nurGeaenderte && altTags[i] === tag) continue
     const attr = attribute(tag)
+    // Weder `src` (mit dem Fragment des Platzhalters) noch `data-beneos-src`
+    // behaelt eine Toradresse mit Schluessel (stre-T-153).
+    const neuSrc = attr.find((a) => a.name === "src")?.wert
     const daten = attr.find((a) => a.name === "data-beneos-src")?.wert
-    if (daten === undefined) continue
+    if (mitSchluessel(neuSrc) || mitSchluessel(daten)) return false
+    if (daten === undefined) {
+      // Ohne freie Form bleibt `src`, wie es war, oder wird seine Maske: ein
+      // anderes Ziel darf hier nicht entstehen (Kalt-Review 19.11.2026, W4).
+      const altSrc = altTags[i] === undefined ? undefined : attribute(altTags[i]).find((a) => a.name === "src")?.wert
+      if (neuSrc !== altSrc && neuSrc !== maskeVon(altSrc)) return false
+      continue
+    }
     if (!daten.startsWith("beneos://") || (host && daten.toLowerCase().includes(host)) || schluesselfreiAdresse(daten) !== daten) return false
     if (attr.find((a) => a.name === "src")?.wert !== platzhalterMit(daten)) return false
   }
@@ -491,11 +602,9 @@ function istTextfeld(schluessel) {
   return typeof schluessel === "string" && TEXT_FELDER.has(schluessel.slice(schluessel.lastIndexOf(".") + 1))
 }
 
-/** Hat der Text eine Toradresse unter dem heutigen Host? */
+/** Hat der Text eine Toradresse unter einem Host der Zone (stre-T-153)? */
 function textKandidat(text) {
-  if (typeof text !== "string") return false
-  const host = streamHost()
-  return !!host && text.toLowerCase().includes(host)
+  return typeof text === "string" && zoneImText(text)
 }
 
 /** Eine Toradresse mit Schluessel im Text: frei, sonst die Maske. */
@@ -520,7 +629,9 @@ function linkTag(tag, zaehler, haupt = "href", datenName = "data-beneos-href", l
   let frei = null
   if (href?.wert) {
     const f = schluesselfreiAdresse(href.wert)
-    const maske = maskiere(href.wert)
+    // Je Treffer, nicht am ganzen Wert: `maskiere` ist verankert und liesse
+    // einen Wert mit fuehrendem Leerraum stehen (Kalt-Review 19.11.2026, W2).
+    const maske = href.wert.replace(TOR_IM_TEXT, maskiere)
     if (f !== href.wert) frei = f
     if (maske !== href.wert) tausch.push([href.anfang, href.ende, attributText(haupt, maske, href.anfuehrung)])
   }

@@ -1363,7 +1363,10 @@ export async function heileJournalGateAdressen({ trocken = false } = {}) {
         // Anfuehrungszeichen des `src`; geschlossen wird er ein ganzes Tag.
         // Was dahinter im Tag steht, fasst die Heilung nicht an, das deckt die
         // Zaehlung je Seite unten.
-        if (schluesselStellen(htmlSchluesselfrei(`${getauscht}>`).html)) { bericht.fremdeBasis++; return ganz; }
+        // Eine fruehere Basis der Zone wandelt das Netz seit stre-T-153 in die
+        // Maske; das Bild waere danach tot. Laesst sich die Toradresse nicht
+        // frei machen, bleibt das Bild lokal, wie vorher.
+        if (schluesselfreiAdresse(tor) === tor || schluesselStellen(htmlSchluesselfrei(`${getauscht}>`).html)) { bericht.fremdeBasis++; return ganz; }
         getroffen++;
         return getauscht;
       });
