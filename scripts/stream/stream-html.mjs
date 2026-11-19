@@ -344,8 +344,10 @@ function kandidat(text) {
  */
 function bildTag(tag) {
   const attr = attribute(tag)
-  const src = attr.find((a) => a.name === "src")
-  const daten = attr.find((a) => a.name === "data-beneos-src")
+  // Ganze Werte auch ohne Anfuehrung mit `=` (stre-T-154), sonst kaeme die
+  // Einfuegung mitten in den Wert.
+  const src = ganzerWert(tag, attr.find((a) => a.name === "src"))
+  const daten = ganzerWert(tag, attr.find((a) => a.name === "data-beneos-src"))
   let frei = null
   let geheilt = false
   // Wo eine Toradresse mit Schluessel stehen kann: im `src`, im Fragment eines
@@ -623,8 +625,9 @@ function imText(text, zaehler) {
  */
 function linkTag(tag, zaehler, haupt = "href", datenName = "data-beneos-href", lassen = []) {
   const attr = attribute(tag)
-  const href = attr.find((a) => a.name === haupt)
-  const daten = attr.find((a) => a.name === datenName)
+  // Ganze Werte auch ohne Anfuehrung mit `=` (stre-T-154), wie srcset in T-148.
+  const href = ganzerWert(tag, attr.find((a) => a.name === haupt))
+  const daten = ganzerWert(tag, attr.find((a) => a.name === datenName))
   const tausch = []
   let frei = null
   if (href?.wert) {

@@ -958,5 +958,24 @@ console.log("H23 stre-T-153: Toradresse nur unter frueherer Basis")
     wahr(`H23 Zwei-Werte-Probe: ${name} bleibt bytegleich`, tief({ content: html }) === html, tief({ content: html }))
   }
 }
+console.log("H24 stre-T-154: Adressattribut ohne Anfuehrung mit =")
+{
+  const { maskiere } = await import("./stream-tormaske.mjs")
+  const tief = (wert) => { const w = JSON.parse(JSON.stringify(wert)); htmlTiefSchluesselfrei(w); return w.content }
+  // `ATTR_RE` beendet einen Wert ohne Anfuehrung am `=`; `data-beneos-href` kam dann mitten in den Wert.
+  const a = tief({ content: `<p><a href=${TOR}?a=1&amp;b=2>x</a></p>` })
+  wahr("H24 a href ohne Anfuehrung mit =: kein Schluessel", ohneSchluessel(a), a)
+  wahr("H24 a href ohne Anfuehrung mit =: href bleibt ganz", a.includes(`href="${maskiere(TOR)}?a=1&amp;b=2"`) && !/"=1|\s=1/.test(a), a)
+  // Die freie Form traegt keinen Anhang, auch mit Anfuehrung nicht (schluesselfreiAdresse baut sie aus den Pfadstuecken).
+  wahr("H24 a href ohne Anfuehrung mit =: wie mit Anfuehrung", a === tief({ content: `<p><a href="${TOR}?a=1&amp;b=2">x</a></p>` }), a)
+  const v = tief({ content: `<video src=${TOR}?a=1 controls></video>` })
+  wahr("H24 video src ohne Anfuehrung mit =: kein Schluessel", ohneSchluessel(v), v)
+  wahr("H24 video src ohne Anfuehrung mit =: src bleibt ganz", v.includes(`src="${maskiere(TOR)}?a=1"`) && !/"=1|\s=1/.test(v), v)
+  // Dieselbe Form an einem Bild: src wird Form (a), der Anhang bleibt in der freien Form.
+  const b = tief({ content: `<img src=${TOR}?a=1 width=10>` })
+  wahr("H24 img src ohne Anfuehrung mit =: kein Schluessel", ohneSchluessel(b), b)
+  wahr("H24 img src ohne Anfuehrung mit =: wie mit Anfuehrung", b === tief({ content: `<img src="${TOR}?a=1" width=10>` }) && !/"=1|\s=1/.test(b), b)
+  wahr("H24 video src ohne Anfuehrung mit =: wie mit Anfuehrung", v === tief({ content: `<video src="${TOR}?a=1" controls></video>` }), v)
+}
 console.log(`${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
 process.exit(rot ? 1 : 0)
