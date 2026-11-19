@@ -5205,17 +5205,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   }
 
   /**
-   * Wave B-8: Beneos Cloud battlemap install. Reads cloud_release_id +
-   * release_dir + cloud_scene_slug from the catalog entry, constructs the
-   * mini-pack id (release_dir + variant + scene_slug) and hands it to
-   * BeneosScenePackerManager.importPackage which spins up Scene-Packer's
-   * MoulinetteImporter against signed beneos.cloud URLs. Variant is chosen
-   * from the beneos-module setting "battlemap-default-resolution", default
-   * 4K when unset. The handler is dispatched from #onInstallClick when the
-   * catalog entry has the cloud_* fields; legacy catalog entries still go
-   * through Moulinette.
-   */
-  /**
    * Plan §13: install one battlemap with a chosen scope.
    *   installScope = "scene"   (default — just this mini-pack)
    *                | "pair"    (battlemap + its sibling scenery — two install calls)

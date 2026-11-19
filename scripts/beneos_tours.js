@@ -1293,8 +1293,7 @@ class BeneosSetupTour extends TourBase {
     await new Promise(r => setTimeout(r, 1500));
 
     // Reinstantiate with the same pack details. ScenePacker's MoulinetteImporter
-    // is a default-export ESM class; we dynamically import it the same way
-    // BeneosScenePackerManager.importPackage already does (beneos-scenepacker.js:169).
+    // is a default-export ESM class, so it is imported dynamically here.
     try {
       const { default: MoulinetteImporter } = await import("/modules/scene-packer/scripts/export-import/moulinette-importer.js");
       const newImporter = new MoulinetteImporter({
