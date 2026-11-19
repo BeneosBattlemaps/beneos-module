@@ -597,6 +597,44 @@ abschnitt("stre-T-147: video, audio, source in Form (m) bekommen die Adresse nur
   gleich("ohne Schluessel: 0, die Maske bleibt", `${ohne}/${v4.getAttribute("src") === maskiere(echt)}`, "0/true")
 }
 
+abschnitt("stre-T-147 Kalt-Review: medienAnzeigen prueft wie linkKlick, traegt Fragment und poster")
+{
+  const { maskiere } = await import("./stream-tormaske.mjs")
+  const frei = settings.platzhalterAdresse("beneos_bm_0042", "4k", "map_assets/film.webm")
+  const echt = settings.leinwandAdresse(frei)
+  const bildFrei = settings.platzhalterAdresse("beneos_bm_0042", "4k", "map_assets/vorschau.webp")
+  const bildEcht = settings.leinwandAdresse(bildFrei)
+  function medium(werte) {
+    const attr = new Map(Object.entries(werte))
+    return {
+      nodeType: 1, tagName: "VIDEO", parentElement: null, geladen: 0,
+      getAttribute: (k) => attr.get(k) ?? null,
+      setAttribute: (k, v) => { attr.set(k, String(v)) },
+      closest: () => null,
+      load() { this.geladen++ },
+    }
+  }
+  const lauf = (el) => bilder.medienAnzeigen({ nodeType: 1, querySelectorAll: (sel) => (sel === "img" ? [] : [el]), querySelector: () => null }, { rendered: true })
+  const getauscht = medium({ src: "https://example.com/eigen.webm", "data-beneos-src": frei })
+  gleich("getauschtes Video: 0, src bleibt", `${lauf(getauscht)}/${getauscht.getAttribute("src")}`, "0/https://example.com/eigen.webm")
+  const fremd = medium({ src: maskiere(echt), "data-beneos-src": "https://example.com/fremd.webm" })
+  gleich("fremde data-beneos-src: 0, die Maske bleibt", `${lauf(fremd)}/${fremd.getAttribute("src") === maskiere(echt)}`, "0/true")
+  const datei = medium({ src: maskiere(echt), "data-beneos-src": "file:///C:/geheim.mp3" })
+  gleich("file:-Schema: 0, die Maske bleibt", `${lauf(datei)}/${datei.getAttribute("src") === maskiere(echt)}`, "0/true")
+  const leer = medium({ "data-beneos-src": frei })
+  gleich("ohne src: bekommt die Adresse", `${lauf(leer)}/${leer.getAttribute("src") === echt}`, "1/true")
+  const fragment = medium({ src: `${maskiere(echt)}#t=10`, "data-beneos-src": frei })
+  gleich("Fragment: src behaelt #t=10", `${lauf(fragment)}/${fragment.getAttribute("src") === `${echt}#t=10`}`, "1/true")
+  gleich("Fragment: zweiter Lauf aendert nichts", lauf(fragment), 0)
+  const poster = medium({ src: maskiere(echt), "data-beneos-src": frei, poster: maskiere(bildEcht), "data-beneos-poster": bildFrei })
+  gleich("poster: bekommt die Adresse mit Schluessel", `${lauf(poster)}/${poster.getAttribute("poster") === bildEcht}/${poster.getAttribute("src") === echt}`, "2/true/true")
+  gleich("poster: data-beneos-poster bleibt schluesselfrei", poster.getAttribute("data-beneos-poster"), bildFrei)
+  const nurPoster = medium({ poster: maskiere(bildEcht), "data-beneos-poster": bildFrei })
+  const passt = (sel) => sel.split(",").map((s) => s.trim()).includes("video[data-beneos-poster]")
+  const nurPosterZahl = bilder.medienAnzeigen({ nodeType: 1, querySelectorAll: (sel) => (passt(sel) ? [nurPoster] : []), querySelector: () => null }, { rendered: true })
+  gleich("nur poster: die Auswahl findet das Video", `${nurPosterZahl}/${nurPoster.getAttribute("poster") === bildEcht}`, "1/true")
+}
+
 console.log("Nicht geprueft, ausdruecklich benannt:")
 console.log("- Dass Foundry die Haken mit diesen Namen und Argumenten feuert. Gemessen")
 console.log("  am 08.11.2026 in v13-streaming; die Wirkung entscheidet TC-PRJ-STR-302.")

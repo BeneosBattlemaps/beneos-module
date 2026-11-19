@@ -708,5 +708,44 @@ console.log("H20 stre-T-147: video, audio, source im HTML bekommen Form (m)")
   wahr("H20 Altseiten-Pruefung: altes Video ohne Form (m) bleibt zulaessig",
     nurBildadressenGetauscht(`<video src="${TOR}"></video>`, `<video src="${TOR}"></video>`) === true)
 }
+console.log("H21 stre-T-147 Kalt-Review: poster, Fragment, Waechter ohne freie Form, nurGeaenderte")
+{
+  const { nurBildadressenGetauscht } = await import("./stream-html.mjs")
+  const { maskiere } = await import("./stream-tormaske.mjs")
+  const MASKE = maskiere(TOR)
+  const VPFAD = PFAD.replace(/\.webp$/, ".webm")
+  const VTOR = assetUrl(REL, "4k", VPFAD)
+  const VFREI = platzhalterAdresse(REL, "4k", VPFAD)
+  const VMASKE = maskiere(VTOR)
+  const tief = (wert) => { const w = JSON.parse(JSON.stringify(wert)); htmlTiefSchluesselfrei(w); return w }
+  // F1: poster geht denselben Weg wie src, Maske plus data-beneos-poster.
+  const mitPoster = `<video src="${VTOR}" poster="${TOR}" controls></video>`
+  const posterNeu = tief({ content: mitPoster }).content
+  wahr("H21 poster: kein Schluessel", ohneSchluessel(posterNeu), posterNeu)
+  wahr("H21 poster: Maske und data-beneos-poster", posterNeu.includes(`poster="${MASKE}"`) && posterNeu.includes(`data-beneos-poster="${FREI}"`), posterNeu)
+  wahr("H21 poster: Altseiten-Pruefung auf eigene Wandlerausgabe: gilt", nurBildadressenGetauscht(mitPoster, posterNeu) === true, posterNeu)
+  wahr("H21 poster: fremdes data-beneos-poster: abgelehnt",
+    nurBildadressenGetauscht(mitPoster, posterNeu.replace(`data-beneos-poster="${FREI}"`, 'data-beneos-poster="beneos://anders/x.webp"')) === false)
+  // F2: ein Medienfragment bleibt an der Maske und besteht die Pruefung.
+  const fragment = `<video src="${VTOR}#t=10"></video>`
+  const fragmentNeu = tief({ content: fragment }).content
+  wahr("H21 Fragment: Maske behaelt #t=10, kein Schluessel",
+    fragmentNeu.includes(`src="${VMASKE}#t=10"`) && ohneSchluessel(fragmentNeu), fragmentNeu)
+  wahr("H21 Fragment: Altseiten-Pruefung auf eigene Wandlerausgabe: gilt", nurBildadressenGetauscht(fragment, fragmentNeu) === true, fragmentNeu)
+  wahr("H21 Fragment: andere Maske vor dem Fragment: abgelehnt",
+    nurBildadressenGetauscht(fragment, fragmentNeu.replace(".webm#t=10", "-z.webm#t=10")) === false)
+  // F3: ein Medium ohne freie Form darf weder Maske noch beneos:// noch fremd werden.
+  const altVideo = `<video src="${VTOR}"></video>`
+  wahr("H21 Waechter: Maske ohne data-beneos-src: abgelehnt", nurBildadressenGetauscht(altVideo, `<video src="${VMASKE}"></video>`) === false)
+  wahr("H21 Waechter: src beneos:// ohne data-beneos-src: abgelehnt", nurBildadressenGetauscht(altVideo, `<video src="${VFREI}"></video>`) === false)
+  wahr("H21 Waechter: src fremd umgeleitet: abgelehnt", nurBildadressenGetauscht(altVideo, '<video src="https://example.com/x.webm"></video>') === false)
+  // F5: ein getauschtes Video haelt die Heilung der Bilder nicht auf.
+  const getauscht = `<p><img src="${TOR}"></p><video src="https://example.com/eigen.webm" data-beneos-src="${VFREI}"></video>`
+  const geheilt = htmlSchluesselfrei(getauscht).html
+  wahr("H21 nurGeaenderte: unveraendertes getauschtes Video haelt die Seite nicht auf",
+    geheilt !== getauscht && nurBildadressenGetauscht(getauscht, geheilt, { nurGeaenderte: true }) === true, geheilt)
+  wahr("H21 nurGeaenderte Zwei-Werte-Probe: streng bleibt das getauschte Video abgelehnt",
+    nurBildadressenGetauscht(getauscht, geheilt) === false)
+}
 console.log(`${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
 process.exit(rot ? 1 : 0)

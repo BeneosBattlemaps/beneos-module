@@ -67,7 +67,8 @@
 import { istPlatzhalter, assetUrl, streamKey, streamMode, zerlegeAdresse, leinwandAdresse } from "./stream-settings.mjs"
 import { ours, sammelSchluessel } from "./stream-fetch.mjs"
 import { reportFailure } from "./stream-report.mjs"
-import { formAAdresse } from "./stream-html.mjs"
+import { formAAdresse, MEDIEN_PAARE } from "./stream-html.mjs"
+import { maskiere } from "./stream-tormaske.mjs"
 
 /**
  * Blob-Adressen je Toradresse. **Kein Vorrat**: das Wort ist im Bestand fuer das
@@ -554,19 +555,38 @@ let linkKlickAn = false
  * Dokument die Maske in `src` und die freie Form in `data-beneos-src`.
  * Hier bekommt das ELEMENT die Toradresse mit dem heutigen Schluessel, direkt
  * und ohne Blob (siehe die Grenze fuer Videos im Kopf). Das Dokument bleibt
- * unberuehrt, denn gelesen wird nur aus dem DOM der Anzeige.
+ * unberuehrt, denn gelesen wird nur aus dem DOM der Anzeige. `poster` geht
+ * denselben Weg mit `data-beneos-poster`.
  *
- * @returns {number} wie viele Elemente eine neue Adresse bekamen
+ * Die Waechter von `linkKlick` gelten auch hier (Kalt-Review F4): nur eine
+ * `beneos://`-Form, nur ein Ziel unter `https` am eigenen Tor, und nur, wenn
+ * die Adresse noch leer oder die passende Maske ist. Eine bewusst getauschte
+ * Adresse bleibt. Ein Anhang ab `?` oder `#` an der Maske geht mit (F2).
+ *
+ * @returns {number} wie viele Adressen neu gesetzt wurden
  */
 export function medienAnzeigen(wurzel, fenster) {
   if (!wurzel?.querySelectorAll || !streamKey() || bearbeitet(fenster)) return 0
   let zahl = 0
-  for (const el of wurzel.querySelectorAll("video[data-beneos-src], audio[data-beneos-src], source[data-beneos-src]")) {
+  const auswahl = "video[data-beneos-src], audio[data-beneos-src], source[data-beneos-src], video[data-beneos-poster]"
+  for (const el of wurzel.querySelectorAll(auswahl)) {
     if (imEditor(el)) continue
-    const ziel = leinwandAdresse(el.getAttribute("data-beneos-src"))
-    if (typeof ziel !== "string" || /^beneos:/i.test(ziel) || el.getAttribute("src") === ziel) continue
-    el.setAttribute("src", ziel)
-    zahl++
+    let neuGeladen = false
+    for (const [haupt, datenName] of MEDIEN_PAARE) {
+      const roh = el.getAttribute(datenName)
+      if (!istPlatzhalter(roh)) continue
+      const ziel = leinwandAdresse(roh)
+      if (typeof ziel !== "string" || ziel === roh || !/^https:\/\//i.test(ziel) || !ours(ziel)) continue
+      const maske = maskiere(ziel)
+      const jetzt = el.getAttribute(haupt) ?? ""
+      const anhang = jetzt.startsWith(maske) ? jetzt.slice(maske.length) : null
+      if (jetzt !== "" && (anhang === null || (anhang !== "" && !/^[?#]/.test(anhang)))) continue
+      const rest = anhang ?? ""
+      el.setAttribute(haupt, ziel + (rest.startsWith("?") && ziel.includes("?") ? `&${rest.slice(1)}` : rest))
+      zahl++
+      if (haupt === "src") neuGeladen = true
+    }
+    if (!neuGeladen) continue
     // Ein geaendertes `<source>` liest das Medium erst beim naechsten `load`.
     const medium = String(el.tagName).toLowerCase() === "source" ? el.parentElement : el
     try { medium?.load?.() } catch (_) { /* das Bild der Seite geht vor */ }

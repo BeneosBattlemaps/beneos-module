@@ -37,11 +37,10 @@
  *      oder tiefer als 40 Ebenen, wirft der Export (Kalt-Review W4).
  * Wirft die Wandlung, wirft der Export. Ein Rohergebnis truege den Schluessel.
  *
- * Eigene <video>-, <audio>- und <source>-Adressen im HTML laesst der Installer
- * bewusst auf der Toradresse, weil dort kein Platzhalter spielt. Der Export
- * macht sie schluesselfrei, der Import heilt sie nicht: das Medium ist nach
- * dem Rundlauf tot. Bestand am 17.11.2026: 0 solche Tags. Folgepunkt bei
- * orch-stre-1.
+ * Eigene <video>-, <audio>- und <source>-Adressen im HTML stehen seit
+ * stre-T-147 in Form (m): Maske in `src`, freie Form in `data-beneos-src`.
+ * Dort steht kein Schluessel, der Export laesst sie, und nach dem Import setzt
+ * die Anzeige die Toradresse wieder im DOM.
  *
  * DAS HEILEN. Ein Import legt die Daten mit `beneos://` unter fremden Flags an.
  * Die Spielleitung, die ihn ausgeloest hat, schreibt dort die Toradresse mit
