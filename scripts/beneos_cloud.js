@@ -596,67 +596,11 @@ export class BeneosCloudLogin extends FormApplication {
       if (!loginData || typeof loginData !== "object") return
     }
 
-    // Passwordless path: the user clicked "Connect with email code" in the dialog.
-    // Hand off to the one-time-code flow; the email+password branch below is skipped.
+    // Passwordless only: the dialog returns { mode: "otp" } for both buttons, so
+    // this hands off to the one-time-code flow. Any other object ends here silently.
     if (loginData.mode === "otp") {
       return this.connectWithCode((loginData.email || "").trim(), userId)
     }
-
-    // Wave B-9-fix-57: validate that BOTH fields were filled. Empty
-    // fields used to fall through to the LoginFailed red error which
-    // confused the user — the issue isn't bad credentials, it's an
-    // incomplete form. Surface a yellow warn with a clear message.
-    if (!loginData.email?.trim() || !loginData.password?.trim()) {
-      ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Notification.LoginIncomplete"))
-      return
-    }
-
-    let cloudLoginURL = `${BeneosUtility.cloudBase()}/foundry-login.php?email=${encodeURIComponent(loginData.email)}&password=${encodeURIComponent(loginData.password)}&foundryId=${encodeURIComponent(userId)}`
-    // Wave B-5d-Hotfix: sanitize URL for console (strip password) so we can
-    // share screenshots without leaking credentials.
-    BeneosUtility.debugMessage("BENEOS Cloud login attempt:", cloudLoginURL.replace(/password=[^&]+/, "password=***"))
-    // Fix #A2 / Wave B-5d-Hotfix: surface fetch failures as user-visible
-    // notifications instead of unhandled promise rejections. "Failed to fetch"
-    // is a network-level error (DNS / TCP / TLS / CSP / CORS preflight). The
-    // error message exposes which class the failure belongs to so we can act.
-    fetch(cloudLoginURL, { credentials: 'same-origin' })
-      .then(response => {
-        // Stage 9: classify the response so the global serverOffline
-        // flag and the user-facing notification both reflect the
-        // distinction between server-down (5xx, network) and
-        // wrong-credentials (4xx).
-        game.beneos?.cloud?.markServerStatus?.(response, null)
-        if (!response.ok) {
-          console.error(`BENEOS Cloud login HTTP ${response.status} ${response.statusText}`)
-          if (response.status >= 500) {
-            ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginServerOffline"))
-          } else {
-            ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.LoginHttpError", { status: response.status }))
-          }
-          throw new Error(`HTTP ${response.status}`)
-        }
-        return response.json()
-      })
-      .then(data => {
-        BeneosUtility.debugMessage("BENEOS Cloud login data", data)
-        if (data.result == 'OK') {
-          BeneosUtility.debugMessage("BENEOS Cloud login success")
-          this.pollForAccess(userId)
-        } else {
-          BeneosUtility.debugMessage("BENEOS Cloud login error", data)
-          ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginFailed"))
-        }
-      })
-      .catch(err => {
-        // HTTP-error path already notified above; this branch catches network
-        // failures (Failed to fetch / NetworkError) and JSON parse errors.
-        if (err && String(err.message).startsWith("HTTP ")) return
-        // Stage 9: tag the global flag — true network failure means
-        // server is unreachable.
-        game.beneos?.cloud?.markServerStatus?.(null, err)
-        console.error("BENEOS Cloud login network error:", err)
-        ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginServerOffline"))
-      })
   }
 
   /********************************************************************************** */
@@ -664,7 +608,7 @@ export class BeneosCloudLogin extends FormApplication {
   // (foundryId, tokenKey, itemKey, spellKey, filename) in encodeURIComponent.
   // For alphanumeric keys this is a no-op; for keys containing & + space # it
   // makes the request well-formed where it would previously have been rejected
-  // by the server. Login URL (line 79) was already encoded.
+  // by the server.
   pollForAccess(userId) {
     // Poll the index.php for the access_token
     let self = this
@@ -754,8 +698,8 @@ export class BeneosCloudLogin extends FormApplication {
 
   /********************************************************************************** */
   // Passwordless login (steps 1 + 2): ask the Cloud to email a one-time code, then
-  // verify it. On success it reuses pollForAccess() exactly like the password path,
-  // so login state, settings and the V2 re-render are handled by the same code.
+  // verify it. On success it hands off to pollForAccess(), which handles login state,
+  // settings and the V2 re-render.
   async connectWithCode(email, userId) {
     if (!game.user.isGM) return
     if (!email || !email.trim()) {
