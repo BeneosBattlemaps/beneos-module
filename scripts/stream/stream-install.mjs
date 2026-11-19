@@ -43,7 +43,7 @@ import { MODULE_ID, assetUrl, downloadMode, pinStillsEnabled, schluesselfreiAdre
 // Die Gegenrichtung gibt es nicht: stream-fetch kennt weder diese Datei noch
 // `assetUrl`, deshalb kann kein Ladekreis entstehen.
 import { merkePruefsummen } from "./stream-fetch.mjs"
-import { htmlSchluesselfrei } from "./stream-html.mjs"
+import { htmlSchluesselfrei, textSchluesselfrei } from "./stream-html.mjs"
 
 const PACK_SOURCE_PREFIX = "beneos_assets/beneos_battlemaps/"
 const CLOUD_INSTALL_PREFIX = "beneos_assets/cloud/battlemaps/"
@@ -464,9 +464,11 @@ export function applyStreamAddresses(value, streamTargets, feld = null, fremd = 
     // Foundrys Bereinigung (gemessen 15.11.2026), Form (a) uebersteht sie
     // (gemessen 17.11.2026). Erst die Toradresse wie bisher, dann wandelt
     // `htmlSchluesselfrei` die Bilder darunter. Ohne Schluessel tut es nichts,
-    // und es bleibt die Toradresse von vor stre-T-116; `<video>`, `<audio>`
-    // und `<source>` behalten sie immer, ein Bild-Platzhalter spielte dort
-    // nicht. Probe im Pruefsatz `stream-weiche.test.mjs`.
+    // und es bleibt die Toradresse von vor stre-T-116. `<video>`, `<audio>`
+    // und `<source>` bekommen seit stre-T-147 vom Textnetz die Maske in
+    // `src` und die freie Form in `data-beneos-src`; ohne Schluessel
+    // bleibt auch dort die Toradresse wie bisher. Probe im Pruefsatz
+    // `stream-weiche.test.mjs`.
     const mitTor = value.replace(HTML_SRC_RE, (treffer, anfuehrung, src) => {
       const ziel = gateAdresseFuer(src, streamTargets)
       if (!ziel) return treffer
@@ -477,7 +479,7 @@ export function applyStreamAddresses(value, streamTargets, feld = null, fremd = 
     })
     // Ein fremdes Modul zeigt sein HTML ohne unser Netz an; Form (a) waere
     // dort ein leeres Bild. Begruendung im Kopf dieser Funktion.
-    return fremd ? mitTor : htmlSchluesselfrei(mitTor).html
+    return fremd ? mitTor : textSchluesselfrei(htmlSchluesselfrei(mitTor).html).text
   }
   if (Array.isArray(value)) {
     // Das Feld reist mit. `img: ["a", "b"]` kommt in Foundry nicht vor, aber

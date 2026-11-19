@@ -549,6 +549,31 @@ function linkKlick(ereignis) {
 }
 let linkKlickAn = false
 
+/**
+ * Medien im HTML, stre-T-147: `<video>`, `<audio>` und `<source>` tragen im
+ * Dokument die Maske in `src` und die freie Form in `data-beneos-src`.
+ * Hier bekommt das ELEMENT die Toradresse mit dem heutigen Schluessel, direkt
+ * und ohne Blob (siehe die Grenze fuer Videos im Kopf). Das Dokument bleibt
+ * unberuehrt, denn gelesen wird nur aus dem DOM der Anzeige.
+ *
+ * @returns {number} wie viele Elemente eine neue Adresse bekamen
+ */
+export function medienAnzeigen(wurzel, fenster) {
+  if (!wurzel?.querySelectorAll || !streamKey() || bearbeitet(fenster)) return 0
+  let zahl = 0
+  for (const el of wurzel.querySelectorAll("video[data-beneos-src], audio[data-beneos-src], source[data-beneos-src]")) {
+    if (imEditor(el)) continue
+    const ziel = leinwandAdresse(el.getAttribute("data-beneos-src"))
+    if (typeof ziel !== "string" || /^beneos:/i.test(ziel) || el.getAttribute("src") === ziel) continue
+    el.setAttribute("src", ziel)
+    zahl++
+    // Ein geaendertes `<source>` liest das Medium erst beim naechsten `load`.
+    const medium = String(el.tagName).toLowerCase() === "source" ? el.parentElement : el
+    try { medium?.load?.() } catch (_) { /* das Bild der Seite geht vor */ }
+  }
+  return zahl
+}
+
 export function installStreamBilder() {
   // Vor den Flaechen: ein Haken, den der Riegel abweist, darf den Klick nicht
   // mitnehmen. Nur einmal, auch bei zweitem Einbau.
@@ -566,6 +591,7 @@ export function installStreamBilder() {
       const wurzel = wurzelVon(app, element)
       if (!wurzel) return
       beneosBildAusVorrat(wurzel, app).catch(() => { /* oben gemeldet */ })
+      try { medienAnzeigen(wurzel, app) } catch (_) { /* die Bilder gehen vor */ }
     })
     Hooks.on(schliessHaken, (app) => { allesLoslassen(app) })
   }

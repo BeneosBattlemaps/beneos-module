@@ -539,6 +539,64 @@ for (const grenze of ["Kein `<video>`", "Keine Listen", "Keine Bearbeitenflaeche
 }
 
 console.log("")
+// ===========================================================================
+abschnitt("stre-T-147: video, audio, source in Form (m) bekommen die Adresse nur im DOM")
+{
+  const { maskiere } = await import("./stream-tormaske.mjs")
+  const frei = settings.platzhalterAdresse("beneos_bm_0042", "4k", "map_assets/film.webm")
+  const echt = settings.leinwandAdresse(frei)
+  function medium(tag, eltern = null) {
+    const attr = new Map([["src", maskiere(echt)], ["data-beneos-src", frei]])
+    const el = {
+      nodeType: 1, tagName: tag.toUpperCase(), parentElement: eltern, geladen: 0,
+      getAttribute: (k) => attr.get(k) ?? null,
+      setAttribute: (k, v) => { attr.set(k, String(v)) },
+      closest: () => null,
+      load() { this.geladen++ },
+    }
+    return el
+  }
+  function medienFenster(liste) {
+    const wurzel = {
+      nodeType: 1,
+      querySelectorAll: (sel) => (sel === "img" ? [] : sel.includes("data-beneos-src") ? liste : []),
+      querySelector: () => null,
+    }
+    return { app: { rendered: true, element: wurzel }, wurzel }
+  }
+  gleich("die echte Adresse traegt den Schluessel, die Maske nicht",
+    `${echt.includes(SCHLUESSEL)}/${maskiere(echt).includes(SCHLUESSEL)}`, "true/false")
+  const video = medium("video")
+  const quelleEltern = medium("video")
+  const quelle = medium("source", quelleEltern)
+  const f = medienFenster([video, quelle])
+  gleich("direkt: zwei Medien bekommen die Adresse", bilder.medienAnzeigen(f.wurzel, f.app), 2)
+  gleich("video src ist danach die Adresse mit Schluessel", video.getAttribute("src"), echt)
+  gleich("data-beneos-src bleibt schluesselfrei", video.getAttribute("data-beneos-src"), frei)
+  gleich("source: das umgebende video laedt neu", quelleEltern.geladen, 1)
+  gleich("zweiter Lauf aendert nichts mehr", bilder.medienAnzeigen(f.wurzel, f.app), 0)
+
+  // Ueber den Haken, nicht nur direkt: faellt der Aufruf im Render weg, wird das rot.
+  const v2 = medium("audio")
+  const f2 = medienFenster([v2])
+  await haken.rufe("renderJournalEntryPageSheet", f2.app, f2.wurzel)
+  gleich("ueber renderJournalEntryPageSheet: audio src ist die Adresse", v2.getAttribute("src"), echt)
+  await haken.rufe("closeJournalEntryPageSheet", f2.app)
+
+  // Zwei-Werte-Probe: im Bearbeitenmodus und ohne Schluessel bleibt src die Maske.
+  const v3 = medium("video")
+  const f3 = medienFenster([v3])
+  f3.wurzel.querySelector = (sel) => (sel.includes("prose-mirror") ? {} : null)
+  gleich("im Bearbeitenmodus: 0, die Maske bleibt",
+    `${bilder.medienAnzeigen(f3.wurzel, f3.app)}/${v3.getAttribute("src") === maskiere(echt)}`, "0/true")
+  const v4 = medium("video")
+  const f4 = medienFenster([v4])
+  einstellungen["beneos-stream-key"] = ""
+  const ohne = bilder.medienAnzeigen(f4.wurzel, f4.app)
+  einstellungen["beneos-stream-key"] = SCHLUESSEL
+  gleich("ohne Schluessel: 0, die Maske bleibt", `${ohne}/${v4.getAttribute("src") === maskiere(echt)}`, "0/true")
+}
+
 console.log("Nicht geprueft, ausdruecklich benannt:")
 console.log("- Dass Foundry die Haken mit diesen Namen und Argumenten feuert. Gemessen")
 console.log("  am 08.11.2026 in v13-streaming; die Wirkung entscheidet TC-PRJ-STR-302.")

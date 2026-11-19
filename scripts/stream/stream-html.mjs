@@ -117,10 +117,18 @@ const TAG_ODER_TEXT_RE = /<(?:[^>"']|"[^"]*"|'[^']*')*>|[^<]+|</g
 const FREIE_FORM_IM_TEXT = /beneos:\/\/[^\s"'<>]+/gi
 // Das Textnetz (Nachpruefung stre-T-142): Links bekommen Maske und
 // `data-beneos-href`; diese Tags behalten ihre Adressen, `<img>` hat die
-// Bildstufe, die uebrigen keinen Anzeigeweg fuer beneos://; in jedem anderen
+// Bildstufe, `<iframe>` keinen Anzeigeweg fuer beneos://; in jedem anderen
 // Tag werden die Attribute frei, Adressattribute maskiert, `style` bleibt.
+//
+// MEDIEN, stre-T-147: `<video>`, `<audio>` und `<source>` behielten bis
+// dahin die Toradresse mit Schluessel, und der Installer schrieb sie so in
+// jedes Journal (gemessen 19.11.2026). Sie gehen jetzt den Weg der Links:
+// `src` maskiert, die freie Form in `data-beneos-src`. Abspielbar macht
+// sie `medienAnzeigen` in `stream-bilder.mjs`, das `src` nur im DOM
+// setzt. Ohne Blob: ein Video laedt sonst ganz, bevor es spielt.
 const LINK_TAGS = new Set(["a", "area"])
-const TEXTNETZ_LAESST = new Set(["img", "iframe", "video", "audio", "source"])
+const MEDIEN_TAGS = new Set(["video", "audio", "source"])
+const TEXTNETZ_LAESST = new Set(["img", "iframe"])
 const ADRESS_ATTRIBUTE = new Set(["href", "src", "cite"])
 // Beginnt wie ein Tag und ist keines: Kommentar oder Markdown-Autolink.
 const KEIN_TAG = /^<(?:!--|[a-z][a-z0-9+.-]*:)/i
@@ -305,7 +313,7 @@ export function nurBildadressenGetauscht(alt, neu, { nurGeaenderte = false } = {
   const ohneAdressen = (html) => html.replace(TAG_ODER_TEXT_RE, (stueck) => {
     if (!stueck.startsWith("<")) return marke(stueck)
     const name = tagName(stueck)
-    if (name === "img") return ohneAttribute(stueck, ["src", "data-beneos-src"])
+    if (name === "img" || MEDIEN_TAGS.has(name)) return ohneAttribute(stueck, ["src", "data-beneos-src"])
     if (LINK_TAGS.has(name)) return marke(ohneAttribute(stueck, ["data-beneos-href"]))
     if (TEXTNETZ_LAESST.has(name)) return stueck
     return marke(stueck)
@@ -416,18 +424,21 @@ function imText(text, zaehler) {
   })
 }
 
-/** Ein `<a>`-Tag: `href` maskiert, die freie Form in `data-beneos-href`. */
-function linkTag(tag, zaehler) {
+/**
+ * Ein `<a>`-Tag: `href` maskiert, die freie Form in `data-beneos-href`.
+ * Ein Medientag geht denselben Weg mit `src` und `data-beneos-src`.
+ */
+function linkTag(tag, zaehler, haupt = "href", datenName = "data-beneos-href") {
   const attr = attribute(tag)
-  const href = attr.find((a) => a.name === "href")
-  const daten = attr.find((a) => a.name === "data-beneos-href")
+  const href = attr.find((a) => a.name === haupt)
+  const daten = attr.find((a) => a.name === datenName)
   const tausch = []
   let frei = null
   if (href?.wert) {
     const f = schluesselfreiAdresse(href.wert)
     const maske = maskiere(href.wert)
     if (f !== href.wert) frei = f
-    if (maske !== href.wert) tausch.push([href.anfang, href.ende, attributText("href", maske, href.anfuehrung)])
+    if (maske !== href.wert) tausch.push([href.anfang, href.ende, attributText(haupt, maske, href.anfuehrung)])
   }
   // Ein eingefuegtes Attribut mit Toradresse wird frei wie der Text.
   if (daten?.wert && !frei) {
@@ -435,12 +446,12 @@ function linkTag(tag, zaehler) {
     if (f !== daten.wert) frei = f
   }
   if (frei) {
-    const text = attributText("data-beneos-href", frei, daten?.anfuehrung || href?.anfuehrung || '"')
+    const text = attributText(datenName, frei, daten?.anfuehrung || href?.anfuehrung || '"')
     if (daten) tausch.push([daten.anfang, daten.ende, text])
     else if (href) tausch.push([href.ende, href.ende, ` ${text}`])
   }
   for (const a of attr) {
-    if (a.name === "href" || a.name === "data-beneos-href" || a.name === "style" || !a.wert) continue
+    if (a.name === haupt || a.name === datenName || a.name === "style" || !a.wert) continue
     const z = { n: 0 }
     const neu = imText(a.wert, z)
     if (z.n) tausch.push([a.anfang, a.ende, attributText(a.name, neu, a.anfuehrung)])
@@ -482,6 +493,7 @@ export function textSchluesselfrei(text, schluessel = "") {
     if (KEIN_TAG.test(stueck)) return imText(stueck, zaehler)
     const name = tagName(stueck)
     if (LINK_TAGS.has(name)) return linkTag(stueck, zaehler)
+    if (MEDIEN_TAGS.has(name)) return linkTag(stueck, zaehler, "src", "data-beneos-src")
     if (TEXTNETZ_LAESST.has(name)) return stueck
     return tagFrei(stueck, zaehler)
   })
@@ -501,6 +513,14 @@ function nurLinkUndTextGetauscht(neu) {
     const name = istTag ? tagName(stueck) : ""
     if (TEXTNETZ_LAESST.has(name)) continue
     const attr = istTag ? attribute(stueck) : []
+    // Ein Medium mit alter Toradresse bleibt zulaessig, wie vor stre-T-147: die
+    // Heilung nimmt nur Bilder, und eine Seite darf an einem alten Video nicht
+    // scheitern. Steht Form (m), muessen Maske und freie Form zusammenpassen.
+    if (MEDIEN_TAGS.has(name)) {
+      const medium = attr.find((a) => a.name === "data-beneos-src")?.wert
+      if (medium && !eigenerLink(attr.find((a) => a.name === "src")?.wert ?? "", medium)) return false
+      continue
+    }
     const werte = istTag ? attr.filter((a) => a.name !== "style") : [{ name: "", wert: stueck }]
     for (const a of werte) {
       if (ADRESS_ATTRIBUTE.has(a.name) && /^beneos:/i.test(a.wert)) return false

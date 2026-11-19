@@ -35,6 +35,7 @@
  */
 import { buildStreamPack, applyStreamAddresses } from "./stream-install.mjs"
 import { PLATZHALTER_BILD } from "./stream-html.mjs"
+import { maskiere } from "./stream-tormaske.mjs"
 import { installiereFoundry, netz } from "../../tools/lib/foundry-attrappe.mjs"
 
 /*
@@ -694,11 +695,19 @@ console.log("\napplyStreamAddresses(): die Sperre greift nur am Feldnamen")
       alt.text.content, `<img src="${ziele.get(PFAD)}">`)
   }
   {
-    // Ein Video im HTML bekommt keinen Bild-Platzhalter, es spielte sonst nicht.
+    // Ein Video im HTML bekommt keinen Bild-Platzhalter, es spielte sonst
+    // nicht. Seit stre-T-147 Form (m): in src die Maske ohne Schluessel, die
+    // Anzeige setzt die echte Adresse nur im DOM.
     const film = { text: { content: `<video src="${PFAD}"></video>` } }
     applyStreamAddresses(film, ziele)
-    gleich("ein Video im HTML behaelt die Toradresse",
-      film.text.content, `<video src="${ziele.get(PFAD)}"></video>`)
+    gleich("ein Video im HTML: Form (m), kein Schluessel",
+      film.text.content, `<video src="${maskiere(ziele.get(PFAD))}" data-beneos-src="${TOR}"></video>`)
+    schluesselAn = false
+    const altFilm = { text: { content: `<video src="${PFAD}"></video>` } }
+    applyStreamAddresses(altFilm, ziele)
+    schluesselAn = true
+    gleich("ohne Schluessel behaelt ein Video im HTML die Toradresse wie bisher",
+      altFilm.text.content, `<video src="${ziele.get(PFAD)}"></video>`)
   }
   gleich("dabei meldet sich die Sperre nicht", warnungen.length, 0)
   wahr("und im ganzen Dokument steht kein Streamschluessel",

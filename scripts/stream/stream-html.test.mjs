@@ -538,8 +538,11 @@ console.log("H17 Textnetz (stre-T-142 B2): Toradressen ausserhalb von <img>")
   const fremdLink = `<a href="https://example.com/a/${KEY}/x/4k/y.webp">f</a>`
   const mitNachbar = tief({ content: `${fremdLink} ${TOR}` }).content
   wahr("H17 fremder Host in href: bytegleich", mitNachbar.startsWith(fremdLink), mitNachbar)
+  // Bis stre-T-147 blieb hier die Toradresse mit Schluessel stehen.
   const video = `<p>v</p><video src="${TOR}"></video>`
-  wahr("H17 video src bleibt (Wiedergabe braucht die Adresse)", tief({ content: video }).content === video)
+  const videoNeu = tief({ content: video }).content
+  wahr("H17 video src: Form (m), kein Schluessel", ohneSchluessel(videoNeu)
+    && videoNeu.includes(`data-beneos-src="${FREI}"`), videoNeu)
   wahr("H17 ganzer Wert bleibt bei der Feldliste", tief({ src: TOR }).src === TOR)
   const fremdFlag = { flags: { "monks-active-tiles": { notiz: `<p>${TOR}</p>` } } }
   wahr("H17 fremdes Flag bleibt", JSON.stringify(tief(fremdFlag)) === JSON.stringify(fremdFlag))
@@ -666,6 +669,44 @@ console.log("H19 Nachpruefung stre-T-142: jedes andere Tag, Textfelder, Listen, 
   wahr("H19 Altseiten-Pruefung: Kommentar und Text: gilt", nurBildadressenGetauscht(kommentarAlt, inhalt(kommentarAlt)) === true, inhalt(kommentarAlt))
   wahr("H19 Altseiten-Pruefung: Schluessel im Kommentar stehen: abgelehnt",
     nurBildadressenGetauscht(kommentarAlt, `<!-- ${TOR} --><p>${FREI}</p>`) === false)
+}
+console.log("H20 stre-T-147: video, audio, source im HTML bekommen Form (m)")
+{
+  const { nurBildadressenGetauscht } = await import("./stream-html.mjs")
+  const { maskiere } = await import("./stream-tormaske.mjs")
+  const MASKE = maskiere(TOR)
+  const tief = (wert) => { const w = JSON.parse(JSON.stringify(wert)); htmlTiefSchluesselfrei(w); return w }
+  const formM = (tag, rest = "") => `<${tag} src="${MASKE}" data-beneos-src="${FREI}"${rest}>`
+  wahr("H20 Maske traegt keinen Schluessel", ohneSchluessel(MASKE) && MASKE !== TOR, MASKE)
+  for (const tag of ["video", "audio"]) {
+    const roh = `<${tag} src="${TOR}" controls></${tag}>`
+    const soll = `${formM(tag, " controls")}</${tag}>`
+    const anlegen = JSON.stringify(htmlAenderung({ text: { content: roh } }).aenderung ?? {})
+    wahr(`H20 ${tag} Anlegen: Form (m)`, anlegen.includes(JSON.stringify(soll).slice(1, -1)), anlegen)
+    wahr(`H20 ${tag} Update: Form (m)`, tief({ content: roh }).content === soll, tief({ content: roh }).content)
+    wahr(`H20 ${tag} Altseiten-Pruefung: gilt`, nurBildadressenGetauscht(roh, soll) === true)
+  }
+  const quelle = `<video controls><source src="${TOR}" type="video/webm"></video>`
+  wahr("H20 source: Form (m)", tief({ content: quelle }).content
+    === `<video controls>${formM("source", ' type="video/webm"')}</video>`, tief({ content: quelle }).content)
+  // Zwei-Werte-Probe: diese drei duerfen sich nicht aendern.
+  const fremdVideo = `<video src="https://example.com/a/${KEY}/x/4k/y.webm"></video>`
+  // Neben einer eigenen Adresse, sonst nimmt der Vorfilter den Text gar nicht erst.
+  const nebenEigen = tief({ content: `<p>${TOR}</p>${fremdVideo}` }).content
+  wahr("H20 Zwei-Werte-Probe: fremdes Video bleibt bytegleich",
+    nebenEigen.endsWith(`</p>${fremdVideo}`) && ohneSchluessel(nebenEigen.replace(fremdVideo, "")), nebenEigen)
+  const rahmen = `<iframe src="${TOR}"></iframe>`
+  wahr("H20 Zwei-Werte-Probe: iframe bleibt bytegleich", tief({ content: rahmen }).content === rahmen)
+  einstellungen[SETTING.key] = ""
+  const ohne = `<video src="${TOR}"></video>`
+  wahr("H20 Zwei-Werte-Probe: ohne Schluessel bleibt das Video wie bisher", tief({ content: ohne }).content === ohne)
+  einstellungen[SETTING.key] = KEY
+  // Die Gegenprobe: freie Form, die nicht zur Maske passt, ist abgelehnt.
+  const falsch = `<video src="${MASKE}" data-beneos-src="beneos://anders/x.webm"></video>`
+  wahr("H20 Altseiten-Pruefung: fremdes data-beneos-src: abgelehnt",
+    nurBildadressenGetauscht(`<video src="${TOR}"></video>`, falsch) === false)
+  wahr("H20 Altseiten-Pruefung: altes Video ohne Form (m) bleibt zulaessig",
+    nurBildadressenGetauscht(`<video src="${TOR}"></video>`, `<video src="${TOR}"></video>`) === true)
 }
 console.log(`${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
 process.exit(rot ? 1 : 0)
