@@ -15,7 +15,7 @@ import { headCheck } from "./beneos-asset-watcher.js";
 const MODULE_ID = "beneos-module";
 
 // V13/V14 compat: use namespaced Tour if available
-const TourBase = foundry.nue?.Tour ?? Tour;
+const TourBase = foundry.nue?.Tour ?? globalThis.Tour;
 
 /* Open the Beneos Cloud window (or reuse the open one) and wait until its
  * tab strip is in the DOM. Used by the Setup Tour's cloud-* steps so each

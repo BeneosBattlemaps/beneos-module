@@ -38,7 +38,13 @@ const MODUL = join(HIER, "..", "..")
 // OBERGRENZE: so viele Stellen stehen heute offen. Sie ist bewusst keine
 // Null, denn die 24 verbliebenen liegen im Tabletop-Modus und im Codex und
 // sind ein eigenes Arbeitspaket. Sie darf nur fallen, nie steigen.
-const HOECHSTENS = 24
+// Stand 09.11.2026: 14, alle in scripts/beneos-table-top.js. Die zehn
+// Rueckfaelle auf den nackten Namen (`?? FilePicker`, `?? Tour`) sind am
+// selben Tag auf `globalThis` umgestellt, siehe OP-PRJ-220. Die
+// verbliebenen 14 sind echte Zugriffe ohne jeden Rueckfall und kein
+// Namenstausch: `Canvas.prototype.pan` zu ueberschreiben ist ein Eingriff
+// in Foundrys Zeichenweg und gehoert angesehen statt ersetzt.
+const HOECHSTENS = 14
 const MIND_NAMEN = 300      // weniger heisst: die Liste wurde nicht gelesen
 const MIND_DATEIEN = 100    // weniger heisst: der Bestand wurde nicht gelesen
 const ORDNER = ["scripts"]
