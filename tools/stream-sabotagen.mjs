@@ -127,6 +127,13 @@
  * Kein Eintrag traegt `luecke`: T-015 belegt keine Luecke eines Umbaus,
  * sondern die fehlende Wiederholbarkeit.
  *
+ * Seit stre-T-157 dazu `doppelwache` (`tools/haken/vorhaken.test.mjs`): der
+ * Vorhaken laesst die Doppelnamen- und die Globalenwache gegen den Index
+ * laufen, und ein Parserfehler zaehlt nicht als Doppelname (stre-T-158). Der
+ * Satz faehrt den Haken gegen einen eigenen Index ueber dem Repositorium
+ * dieses Arbeitsbaums (`VORHAKEN_GIT_DIR`) und hat eine eigene Zeitgrenze.
+ * An der Basis gibt es ihn nicht.
+ *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
  * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig] [--zeitgrenze <ms>]
@@ -152,6 +159,20 @@ console.log = (...teile) => rohLog(...teile.map((t) => (typeof t === "string" ? 
 const WURZEL = join(dirname(fileURLToPath(import.meta.url)), "..");
 const BASIS = "75555bb";
 
+// Der Satz `doppelwache` faehrt den Vorhaken gegen einen eigenen Index und
+// braucht dafuer das Repositorium; die Wegwerfkopie traegt kein `.git`. Die
+// Kinder erben die Umgebung (execFile in `tools/lib/kindlauf.mjs`).
+try {
+  process.env.VORHAKEN_GIT_DIR = execFileSync("git", ["-C", WURZEL, "rev-parse", "--absolute-git-dir"], { encoding: "utf8" }).trim();
+} catch {
+  // Ohne Repositorium meldet der Satz selbst NICHT MESSBAR.
+}
+// Er faehrt den Haken fuenfmal mit allen Streampruefsaetzen und braucht
+// gemessen rund 90 s allein, unter vier parallelen Kopien mehr. Eine
+// ausdrueckliche --zeitgrenze geht vor.
+const GRENZE_SATZ = { doppelwache: 600000 };
+const grenzeFuer = (satz, sonst) => (arg("--zeitgrenze") == null && GRENZE_SATZ[satz]) || sonst;
+
 // Ein Satz liegt unter scripts/stream, ausser er steht in dieser Tabelle.
 const SATZ_AUSSERHALB = {
   blatt: "scripts/loot/item-sheet-extender.test.mjs",
@@ -159,6 +180,7 @@ const SATZ_AUSSERHALB = {
   kaufknopf: "scripts/cloud-v2/cloud-kaufknopf.test.mjs",
   kennung: "scripts/cloud-login-kennung.test.mjs",
   kodexreiter: "scripts/codex2/codex-sheet-wiring.test.mjs",
+  doppelwache: "tools/haken/vorhaken.test.mjs",
 };
 const SATZDATEI = (satz) => SATZ_AUSSERHALB[satz] ?? `scripts/stream/stream-${satz}.test.mjs`;
 
@@ -215,6 +237,9 @@ const TORMASKE = "scripts/stream/stream-tormaske.mjs";
 const KENNUNG = "scripts/cloud-login-kennung.mjs";
 const KODEX = "scripts/codex2/codex-sheet-wiring.mjs";
 const TOUR = "scripts/beneos_tours.js";
+const HAKEN = "tools/haken/pre-commit";
+const DOPPELBENCH = "tools/doppelnamen-bench/bench.mjs";
+const DOPPELCONFIG = "tools/doppelnamen-bench/eslint.doppelnamen.mjs";
 const DEINST = "scripts/cloud-v2/beneos-native-uninstaller.mjs";
 const KREATURKODEX = "scripts/codex2/creature-codex.mjs";
 const KODEXFENSTER = "scripts/codex2/beneos-codex.mjs";
@@ -1974,6 +1999,21 @@ const SABOTAGEN = [
   { satz: "platzhalter", ziel: ["ein Leerzeichen wird kodiert"], ersetze: [[SETTINGS, "  const clean = String(path).replace(/^\\/+/, \"\").split(\"/\").map(encodeURIComponent).join(\"/\")", "  const clean = String(path).replace(/^\\/+/, \"\")"]] }, // G3
   { satz: "platzhalter", ziel: ["und kommt dekodiert zurueck"], ersetze: [[SETTINGS, "        pfad: teile.slice(3).map(decodeURIComponent).join(\"/\"),", "        pfad: teile.slice(3).join(\"/\"),", 2, 1]] }, // G4
   { satz: "platzhalter", ziel: ["ein fuehrender Schraegstrich im Pfad faellt"], ersetze: [[SETTINGS, "  const clean = String(path).replace(/^\\/+/, \"\")", "  const clean = String(path)"]] }, // G5
+  // ---------------------------------------------------------------- doppelwache (stre-T-157, stre-T-158)
+  { satz: "doppelwache", ziel: ["Doppelname nur im Index sperrt", "fremde Datei auf der Platte sperrt einen sauberen Index nicht", "Globale nur im Index sperrt", "fremde Globale auf der Platte sperrt nicht"], ersetze: [[HAKEN, "  node \"$TMP/index/$datei\" > \"$TMP/lauf\" 2>&1", "  node \"$datei\" > \"$TMP/lauf\" 2>&1"]] },
+  { satz: "doppelwache", ziel: ["Globale nur im Index sperrt", "fremde Globale auf der Platte sperrt nicht"], ersetze: [[HAKEN, "  fahre_weich \"tools/v15-globale-bench/bench.mjs\" \\", "  fahre \"tools/v15-globale-bench/bench.mjs\" \\"]] },
+  { satz: "doppelwache", ziel: ["Doppelname nur im Index sperrt", "fremde Datei auf der Platte sperrt einen sauberen Index nicht", "Parserfehler im Index: Doppelnamenwache nicht gemessen"], ersetze: [[HAKEN, "  fahre_weich \"tools/doppelnamen-bench/bench.mjs\" \\", "  fahre \"tools/doppelnamen-bench/bench.mjs\" \\"]] },
+  { satz: "doppelwache", ziel: ["Parserfehler im Index: Doppelnamenwache nicht gemessen"], ersetze: [[HAKEN, "  elif [ \"$code\" -eq 2 ]; then", "  elif [ \"$code\" -eq 99 ]; then"]] },
+  { satz: "doppelwache", ziel: ["Parserfehler im Index: Syntaxpruefung sperrt", "Parserfehler im Index: Haken endet rot"], ersetze: [[HAKEN, "  if ! node --check \"$ziel\" 2>\"$TMP/fehler\"; then", "  if false; then"]] },
+  { satz: "doppelwache", ziel: ["sauberer Index mit sauberer Platte geht durch", "sauberer Index geht durch, Globalenwache", "fremde Datei auf der Platte sperrt einen sauberen Index nicht", "fremde Globale auf der Platte sperrt nicht"], ersetze: [[HAKEN, "  if [ \"$code\" -eq 0 ]; then\n    meld \"pre-commit: ok  $name\"", "  if [ \"$code\" -eq 0 ]; then\n    meld \"pre-commit: ROT  $name\""]] },
+  { satz: "doppelwache", ziel: ["sauberer Index: Haken endet gruen"], ersetze: [[HAKEN, "    meld \"pre-commit: ok  $name\"\n  elif", "    meld \"pre-commit: ok  $name\"; ROT=$((ROT + 1))\n  elif"]] },
+  { satz: "doppelwache", ziel: ["Doppelname nur im Index sperrt", "Doppelname im Index und auf der Platte sperrt", "Globale nur im Index sperrt", "Globale im Index und auf der Platte sperrt"], ersetze: [[HAKEN, "    meld \"pre-commit: ROT  $name\"\n    tail -n 25", "    meld \"pre-commit: ok  $name\"\n    tail -n 25", 2, 2]] },
+  { satz: "doppelwache", ziel: ["nur ein Parserfehler: nicht messbar", "nur ein Parserfehler: Meldung nennt NICHT MESSBAR und die Datei", "nur ein Parserfehler zaehlt keinen Doppelnamen", "Doppelname neben Parserfehler zaehlt genau einen", "Parserfehler im Index: Doppelnamenwache nicht gemessen"], ersetze: [[DOPPELBENCH, "  const echte = r.befunde.filter((b) => b.regel !== \"?\")", "  const echte = r.befunde"]] },
+  { satz: "doppelwache", ziel: ["nur ein Parserfehler: nicht messbar", "Parserfehler im Index: Doppelnamenwache nicht gemessen"], ersetze: [[DOPPELBENCH, "${b.text}`)\n    return 2", "${b.text}`)\n    return 1"]] },
+  { satz: "doppelwache", ziel: ["Regex mit v-Flag ist kein Befund"], ersetze: [[DOPPELCONFIG, "ecmaVersion: \"latest\"", "ecmaVersion: 2023"]] },
+  { satz: "doppelwache", ziel: ["Doppelname neben Parserfehler nennt die nicht gelesene Datei"], ersetze: [[DOPPELBENCH, "  for (const b of unlesbar) console.error(`nicht gelesen: ${b.datei}:${b.zeile}  ${b.text}`)\n", ""]] },
+  { satz: "doppelwache", ziel: ["Doppelname neben Parserfehler bleibt rot", "Doppelname neben Parserfehler zaehlt genau einen"], ersetze: [[DOPPELBENCH, "  if (befunde.length === 0 && unlesbar.length > 0) {", "  if (unlesbar.length > 0) {"]] },
+  { satz: "doppelwache", ziel: ["ein Doppelname bleibt rot", "Doppelname neben Parserfehler bleibt rot", "Doppelname nur im Index sperrt", "Doppelname im Index und auf der Platte sperrt"], ersetze: [[DOPPELBENCH, "  if (befunde.length > 0) {", "  if (false) {"]] },
 ];
 
 /*
@@ -2209,7 +2249,7 @@ if (process.argv.includes("--alle-saetze")) {
 
 // ------------------------------------------------------------- Lauf
 
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "doppelwache"]
   .filter((s) => !nurSatz || s === nurSatz);
 if (SAETZE.length === 0) {
   console.log(`unbekannter Satz: ${nurSatz}`);
@@ -2309,7 +2349,7 @@ lauf: try {
   // 1. Ohne Sabotage gruen, und die Probenliste je Satz.
   const proben = {};
   for (const satz of SAETZE) {
-    const r = await fahre(kopienNeu[0], SATZDATEI(satz));
+    const r = await fahre(kopienNeu[0], SATZDATEI(satz), grenzeFuer(satz, ZEITGRENZE_MS));
     proben[satz] = r.gruen;
     // Zwei Proben mit einem Namen sind fuer die Deckung eine: wird nur eine rot,
     // gaelten beide als bewacht (Kaltdurchsicht 15.11.2026, maske).
@@ -2346,7 +2386,7 @@ lauf: try {
       const e = ersetze(lies, s.ersetze, liegtImBaum);
       if (e.fehler) { ergebnisse.push({ s, fehler: e.fehler }); continue; }
       for (const [datei, text] of e.neu) writeFileSync(join(kopienNeu[i], datei), text);
-      const r = await fahre(kopienNeu[i], SATZDATEI(s.satz), zeitgrenze);
+      const r = await fahre(kopienNeu[i], SATZDATEI(s.satz), grenzeFuer(s.satz, zeitgrenze));
       for (const datei of e.neu.keys()) {
         if (existsSync(join(WURZEL, datei))) writeFileSync(join(kopienNeu[i], datei), lies(datei));
         else rmSync(join(kopienNeu[i], datei), { force: true });

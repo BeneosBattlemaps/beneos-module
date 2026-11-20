@@ -128,21 +128,33 @@ fahre() {
   fi
 }
 
-# Wie `fahre`, aber fuer einen Satz, der DREI Austritte kennt. Austritt 2
+# Wie `fahre`, aber fuer eine Bench, die DREI Austritte kennt. Austritt 2
 # heisst "nicht messbar", etwa weil auf diesem Rechner keine Foundry liegt.
 # Das ist kein Befund und darf keinen Commit blockieren; es wird gemeldet,
 # damit niemand die Deckung fuer gegeben haelt. Nur Austritt 1 ist rot.
+#
+# DIE BENCH LAEUFT GEGEN DEN INDEX, NICHT GEGEN DIE PLATTE (stre-T-157). Sie
+# liest den ganzen Ordner `scripts`; bis dahin sah sie die Platte. Ein
+# vorgemerkter Fehler bei sauberer Platte rutschte durch, und eine fremde
+# unverfolgte Datei sperrte einen sauberen Commit. Darum werden `scripts`
+# und der Ordner der Bench aus dem Index nach `$TMP/index` gelegt, und die
+# Bench laeuft von dort. Sie liest relativ zu ihrer eigenen Lage, die
+# Indexkopie ist also ihre Wurzel. Die Benches selbst lesen weiter die
+# Platte, denn `tools/bench-sabotagen.mjs` faehrt sie in Kopien ohne Git.
 fahre_weich() {
   datei=$1
   name=$2
-  if [ ! -f "$datei" ]; then
+  if ! git cat-file -e ":$datei" 2>/dev/null; then
     if git cat-file -e "HEAD:$datei" 2>/dev/null; then
-      meld "pre-commit: $name fehlt im Arbeitsbaum, HEAD kennt sie aber"
+      meld "pre-commit: $name fehlt im Index, HEAD kennt sie aber"
       ROT=$((ROT + 1))
     fi
     return
   fi
-  node "$datei" > "$TMP/lauf" 2>&1
+  rm -rf "$TMP/index"
+  git ls-files -z -- scripts "$(dirname "$datei")" \
+    | git checkout-index -z --stdin --prefix="$TMP/index/"
+  node "$TMP/index/$datei" > "$TMP/lauf" 2>&1
   code=$?
   if [ "$code" -eq 0 ]; then
     meld "pre-commit: ok  $name"
@@ -568,9 +580,10 @@ fi
 # Diff geriet. Darum liest dieser Stand den ganzen Ordner `scripts` und dafuer
 # nur drei Regeln.
 #
-# `fahre_weich`, denn der Stand holt ESLint ueber `npx` und endet ohne Netz und
-# ohne Zwischenspeicher mit 2. Eine Pruefung, die nicht laufen konnte, darf
-# weder gruen aussehen noch einen Commit blockieren.
+# `fahre_weich`, denn der Stand holt ESLint ueber `npx` und endet ohne
+# Netz und ohne Zwischenspeicher mit 2. Eine Pruefung, die nicht laufen
+# konnte, darf weder gruen aussehen noch einen Commit blockieren. Seit
+# stre-T-157 liest er die vorgemerkte Fassung, nicht die Platte.
 if git diff --cached --name-only --diff-filter=ACM \
      -- scripts tools/doppelnamen-bench \
    | grep -q .
@@ -578,6 +591,18 @@ then
   meld "pre-commit: Modulcode vorgemerkt, die Doppelnamenwache laeuft mit"
   fahre_weich "tools/doppelnamen-bench/bench.mjs" \
               "doppelnamen-bench, erlaubt 0"
+fi
+
+# DER HAKEN SELBST (stre-T-157). Wird er angefasst, faehrt sein eigener Satz
+# mit: er baut einen eigenen Index und haelt fest, dass die zwei Waechter
+# darueber den Index lesen und nicht die Platte. Er faehrt den Haken fuenfmal
+# samt Streampruefsaetzen und kostet gemessen rund 90 s, darum nur hier.
+# Seine Sabotagen stehen in `tools/stream-sabotagen.mjs`, Satz `doppelwache`.
+if git diff --cached --name-only --diff-filter=ACM -- tools/haken \
+   | grep -q .
+then
+  meld "pre-commit: Vorhaken vorgemerkt, sein Satz laeuft mit"
+  fahre "tools/haken/vorhaken.test.mjs" "vorhaken.test.mjs"
 fi
 
 # ----------------------------------------------------------------- Ausgang ---
