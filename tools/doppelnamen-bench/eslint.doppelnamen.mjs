@@ -19,7 +19,7 @@
 export default [
   {
     files: ["**/*.js", "**/*.mjs"],
-    languageOptions: { ecmaVersion: 2023, sourceType: "module" },
+    languageOptions: { ecmaVersion: "latest", sourceType: "module" },
     rules: {
       "no-dupe-class-members": "error",
       "no-dupe-keys": "error",

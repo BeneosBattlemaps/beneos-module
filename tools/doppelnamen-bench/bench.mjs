@@ -234,11 +234,26 @@ function main() {
   // werden, sonst traegt die Null nichts. Das prueft nur die Schranke; die
   // echten Mutationen im Modulcode stehen seit stre-T-015 in
   // `tools/bench-sabotagen.mjs`.
+  //
+  // EIN PARSERFEHLER IST KEIN DOPPELNAME (stre-T-158). ESLint meldet ihn ohne
+  // Regel ("?"), und bis dahin zaehlte er hier mit: eine Regex mit v-Flag
+  // machte die Wache rot, "Doppelnamen: 1". Eine Datei, die ESLint nicht
+  // lesen kann, ist fuer diese Wache nicht gelesen. Steht sonst nichts da,
+  // endet der Stand mit 2, nicht messbar; ein echter Syntaxfehler sperrt den
+  // Commit ohnehin ueber `node --check` im Vorhaken.
+  const unlesbar = r.befunde.filter((b) => b.regel === "?")
+  const echte = r.befunde.filter((b) => b.regel !== "?")
   const befunde = SABOTAGE
-    ? [...r.befunde, { datei: "scripts/erfunden.js", zeile: 1, regel: "no-dupe-keys", text: "Sabotageprobe" }]
-    : r.befunde
+    ? [...echte, { datei: "scripts/erfunden.js", zeile: 1, regel: "no-dupe-keys", text: "Sabotageprobe" }]
+    : echte
 
   console.log(`Dateien: ${r.dateien}`)
+  for (const b of unlesbar) console.error(`nicht gelesen: ${b.datei}:${b.zeile}  ${b.text}`)
+  if (befunde.length === 0 && unlesbar.length > 0) {
+    const b = unlesbar[0]
+    console.error(`NICHT MESSBAR: Parserfehler in ${b.datei}:${b.zeile}  ${b.text}`)
+    return 2
+  }
   console.log(`Doppelnamen: ${befunde.length}, erlaubt 0`)
   if (VERBOSE || befunde.length > 0) {
     for (const b of befunde) {
