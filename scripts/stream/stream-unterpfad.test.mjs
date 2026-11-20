@@ -139,6 +139,16 @@ globalThis.ROUTE_PREFIX = undefined
 const pdfOhne = await pdfSrc("beneos_assets/pdf/a b.pdf")
 p.gleich("B4 mit Praefix, kodiert", pdfMit, "scripts/pdfjs/web/viewer.html?file=%2Ffoundry%2Fbeneos_assets%2Fpdf%2Fa%20b.pdf")
 p.gleich("B4 ohne Praefix wie vorher, kodiert", pdfOhne, "scripts/pdfjs/web/viewer.html?file=%2Fbeneos_assets%2Fpdf%2Fa%20b.pdf")
+// Der echte Erzeuger (codex-pdf-service.mjs pdfServedPath) liefert den Pfad
+// mit fuehrendem "/"; auch dann muss das Praefix ankommen (Kalt-Review e1142c2).
+const ERZEUGT = "/beneos_assets/cloud/tokens/x/x.pdf"
+globalThis.ROUTE_PREFIX = "foundry"
+const pdfErzMit = await pdfSrc(ERZEUGT)
+globalThis.ROUTE_PREFIX = undefined
+const pdfErzOhne = await pdfSrc(ERZEUGT)
+p.gleich("B4 Erzeugerpfad mit Praefix", pdfErzMit, "scripts/pdfjs/web/viewer.html?file=%2Ffoundry%2Fbeneos_assets%2Fcloud%2Ftokens%2Fx%2Fx.pdf")
+p.gleich("B4 Erzeugerpfad ohne Praefix wie vorher", pdfErzOhne, "scripts/pdfjs/web/viewer.html?file=%2Fbeneos_assets%2Fcloud%2Ftokens%2Fx%2Fx.pdf")
+p.gleich("B4 eine Adresse mit Schema bleibt stehen", await pdfSrc("https://h/a.pdf"), "scripts/pdfjs/web/viewer.html?file=https%3A%2F%2Fh%2Fa.pdf")
 
 // ===========================================================================
 p.abschnitt("T-160 beneos_tours.js: gespeicherte Kacheladresse bei intro-complete")

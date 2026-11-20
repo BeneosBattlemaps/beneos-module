@@ -40,8 +40,9 @@ export class BeneosPdfViewer extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   async _prepareContext(_options) {
-    // With the route prefix (stre-T-159); an absolute path stays as it was.
-    const file = this._filePath.startsWith("/") ? this._filePath : routeAdresse(this._filePath);
+    // With the route prefix (stre-T-159). The path from pdfServedPath starts
+    // with "/" and still needs the prefix; only a URL with a scheme stays.
+    const file = /^[a-z][a-z0-9+.-]*:/i.test(this._filePath) ? this._filePath : routeAdresse(this._filePath);
     return { viewerSrc: `scripts/pdfjs/web/viewer.html?file=${encodeURIComponent(file)}` };
   }
 }
