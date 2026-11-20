@@ -40,7 +40,8 @@
 // Rueckgabe: 0 kein Doppelname, 1 mindestens einer, 2 nicht messbar.
 
 import { spawnSync } from "node:child_process"
-import { writeFileSync, rmSync, existsSync } from "node:fs"
+import { writeFileSync, rmSync, existsSync, readdirSync, readFileSync } from "node:fs"
+import { homedir } from "node:os"
 import { join, dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -73,19 +74,54 @@ function schalenfest(a) {
     : a
 }
 
+// DIE FASSUNG AUS DEM npx-ZWISCHENSPEICHER, WENN SIE DORT LIEGT (Nachtrag
+// stre-T-157). Jeder Aufruf ueber `npx --yes` loest das Paket neu auf; unter
+// vielen gleichzeitigen Haken war das der teure Teil. Liegt genau diese
+// Fassung schon im Zwischenspeicher, startet die Bench sie direkt mit node,
+// ohne Schale. Sonst bleibt der Weg ueber npx, der den Zwischenspeicher fuellt.
+// Die Fassung gilt nach package.json des Fundorts, nie nach einem Ordnernamen.
+// Tragen zwei Ordner dieselbe Fassung, gewinnt der erste nach Namen, damit
+// jeder Lauf denselben nimmt. Probe: --eslint-weg nennt den Weg und endet.
+function eslintAusSpeicher() {
+  const speicher = process.env.npm_config_cache
+    || (WIN && process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, "npm-cache") : join(homedir(), ".npm"))
+  const npxOrdner = join(speicher, "_npx")
+  if (!existsSync(npxOrdner)) return null
+  const fassung = ESLINT.slice(ESLINT.lastIndexOf("@") + 1)
+  for (const ordner of readdirSync(npxOrdner).sort()) {
+    const paket = join(npxOrdner, ordner, "node_modules", "eslint")
+    try {
+      if (JSON.parse(readFileSync(join(paket, "package.json"), "utf8")).version !== fassung) continue
+    } catch {
+      continue
+    }
+    const bin = join(paket, "bin", "eslint.js")
+    if (existsSync(bin)) return bin
+  }
+  return null
+}
+const ESLINT_BIN = eslintAusSpeicher()
+if (argv.includes("--eslint-weg")) {
+  console.log(ESLINT_BIN ? `direkt ${ESLINT_BIN}` : "npx")
+  process.exit(0)
+}
+
 function lauf(ziele) {
-  const args = [
-    "--yes", ESLINT,
+  const eslintArgs = [
     "--no-config-lookup",
     "--config", CONFIG,
     "--no-warn-ignored",
     "--format", "json",
     ...ziele,
-  ].map(schalenfest)
-  const r = spawnSync(npx, args, {
-    cwd: WURZEL, encoding: "utf8", shell: WIN,
-    maxBuffer: 64 * 1024 * 1024,
-  })
+  ]
+  const r = ESLINT_BIN
+    ? spawnSync(process.execPath, [ESLINT_BIN, ...eslintArgs], {
+      cwd: WURZEL, encoding: "utf8", maxBuffer: 64 * 1024 * 1024,
+    })
+    : spawnSync(npx, ["--yes", ESLINT, ...eslintArgs].map(schalenfest), {
+      cwd: WURZEL, encoding: "utf8", shell: WIN,
+      maxBuffer: 64 * 1024 * 1024,
+    })
 
   if (r.error) return { nichtMessbar: `npx liess sich nicht starten: ${r.error.message}` }
 
@@ -249,6 +285,7 @@ function main() {
     : echte
 
   console.log(`Dateien: ${r.dateien}`)
+  console.log(`ESLint ${ESLINT}: ${ESLINT_BIN ? "aus dem npx-Zwischenspeicher" : "ueber npx --yes"}`)
   for (const b of unlesbar) console.error(`nicht gelesen: ${b.datei}:${b.zeile}  ${b.text}`)
   if (befunde.length === 0 && unlesbar.length > 0) {
     const b = unlesbar[0]

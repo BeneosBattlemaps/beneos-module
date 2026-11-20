@@ -132,7 +132,8 @@
  * laufen, und ein Parserfehler zaehlt nicht als Doppelname (stre-T-158). Der
  * Satz faehrt den Haken gegen einen eigenen Index ueber dem Repositorium
  * dieses Arbeitsbaums (`VORHAKEN_GIT_DIR`) und hat eine eigene Zeitgrenze.
- * An der Basis gibt es ihn nicht.
+ * An der Basis gibt es ihn nicht. Er laeuft nur auf Zuruf
+ * (`--satz doppelwache`), nicht im vollen Lauf; Grund bei `NUR_AUF_ZURUF`.
  *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
@@ -167,11 +168,13 @@ try {
 } catch {
   // Ohne Repositorium meldet der Satz selbst NICHT MESSBAR.
 }
-// Er faehrt den Haken fuenfmal mit allen Streampruefsaetzen und braucht
-// gemessen rund 90 s allein, unter vier parallelen Kopien mehr. Im
+// Er faehrt den Haken zehnmal, hoechstens zwei zugleich, mit Stubs statt der
+// Streampruefsaetze. Gemessen allein 204 s, neben einem zweiten Lauf 459 s,
+// unter vier parallelen Kopien mehr (mit 600 s liefen drei Sabotagen in die
+// Grenze). Im
 // Grundlauf gilt die Satzgrenze immer (er liest --zeitgrenze nicht), in den
 // Sabotagelaeufen geht eine ausdrueckliche --zeitgrenze vor.
-const GRENZE_SATZ = { doppelwache: 600000 };
+const GRENZE_SATZ = { doppelwache: 1500000 };
 const grenzeFuer = (satz, sonst) => (arg("--zeitgrenze") == null && GRENZE_SATZ[satz]) || sonst;
 
 // Ein Satz liegt unter scripts/stream, ausser er steht in dieser Tabelle.
@@ -241,6 +244,8 @@ const TOUR = "scripts/beneos_tours.js";
 const HAKEN = "tools/haken/pre-commit";
 const DOPPELBENCH = "tools/doppelnamen-bench/bench.mjs";
 const DOPPELCONFIG = "tools/doppelnamen-bench/eslint.doppelnamen.mjs";
+const LADEFORM = "tools/haken/ladeform.mjs";
+const VORHAKEN = "tools/haken/vorhaken.test.mjs";
 const DEINST = "scripts/cloud-v2/beneos-native-uninstaller.mjs";
 const KREATURKODEX = "scripts/codex2/creature-codex.mjs";
 const KODEXFENSTER = "scripts/codex2/beneos-codex.mjs";
@@ -2002,8 +2007,8 @@ const SABOTAGEN = [
   { satz: "platzhalter", ziel: ["ein fuehrender Schraegstrich im Pfad faellt"], ersetze: [[SETTINGS, "  const clean = String(path).replace(/^\\/+/, \"\")", "  const clean = String(path)"]] }, // G5
   // ---------------------------------------------------------------- doppelwache (stre-T-157, stre-T-158)
   { satz: "doppelwache", ziel: ["Doppelname nur im Index sperrt", "fremde Datei auf der Platte sperrt einen sauberen Index nicht", "Globale nur im Index sperrt", "fremde Globale auf der Platte sperrt nicht"], ersetze: [[HAKEN, "  node \"$TMP/index/$datei\" > \"$TMP/lauf\" 2>&1", "  node \"$datei\" > \"$TMP/lauf\" 2>&1"]] },
-  { satz: "doppelwache", ziel: ["Globale nur im Index sperrt", "fremde Globale auf der Platte sperrt nicht"], ersetze: [[HAKEN, "  fahre_weich \"tools/v15-globale-bench/bench.mjs\" \\", "  fahre \"tools/v15-globale-bench/bench.mjs\" \\"]] },
-  { satz: "doppelwache", ziel: ["Doppelname nur im Index sperrt", "fremde Datei auf der Platte sperrt einen sauberen Index nicht", "Parserfehler im Index: Doppelnamenwache nicht gemessen"], ersetze: [[HAKEN, "  fahre_weich \"tools/doppelnamen-bench/bench.mjs\" \\", "  fahre \"tools/doppelnamen-bench/bench.mjs\" \\"]] },
+  { satz: "doppelwache", ziel: ["Globale nur im Index sperrt", "fremde Globale auf der Platte sperrt nicht", "der echte Haken faehrt die zwei Wachen echt aus dem Index"], ersetze: [[HAKEN, "  fahre_weich \"tools/v15-globale-bench/bench.mjs\" \\", "  fahre \"tools/v15-globale-bench/bench.mjs\" \\"]] },
+  { satz: "doppelwache", ziel: ["Doppelname nur im Index sperrt", "fremde Datei auf der Platte sperrt einen sauberen Index nicht", "Parserfehler im Index: Doppelnamenwache nicht gemessen", "der echte Haken faehrt die zwei Wachen echt aus dem Index"], ersetze: [[HAKEN, "  fahre_weich \"tools/doppelnamen-bench/bench.mjs\" \\", "  fahre \"tools/doppelnamen-bench/bench.mjs\" \\"]] },
   { satz: "doppelwache", ziel: ["Parserfehler im Index: Doppelnamenwache nicht gemessen"], ersetze: [[HAKEN, "  elif [ \"$code\" -eq 2 ]; then", "  elif [ \"$code\" -eq 99 ]; then"]] },
   { satz: "doppelwache", ziel: ["mit skip-worktree liest die Bench den Indexinhalt"], ersetze: [[HAKEN, " --stdin --ignore-skip-worktree-bits \\", " --stdin \\"]] },
   { satz: "doppelwache", ziel: ["Doppelname mit skip-worktree im Index sperrt", "mit skip-worktree liest die Bench den Indexinhalt"], ersetze: [[HAKEN, " --stdin --ignore-skip-worktree-bits \\", " --stdin \\"], [HAKEN, "          --prefix=\"$TMP/index/\" < \"$TMP/indexliste\" 2>\"$TMP/fehler\"\n  then", "          --prefix=\"$TMP/index/\" < \"$TMP/indexliste\" 2>\"$TMP/fehler\"\n     && false\n  then"]] },
@@ -2013,10 +2018,31 @@ const SABOTAGEN = [
   { satz: "doppelwache", ziel: ["Doppelname nur im Index sperrt", "Doppelname im Index und auf der Platte sperrt", "Globale nur im Index sperrt", "Globale im Index und auf der Platte sperrt"], ersetze: [[HAKEN, "    meld \"pre-commit: ROT  $name\"\n    tail -n 25", "    meld \"pre-commit: ok  $name\"\n    tail -n 25", 2, 2]] },
   { satz: "doppelwache", ziel: ["nur ein Parserfehler: nicht messbar", "nur ein Parserfehler: Meldung nennt NICHT MESSBAR und die Datei", "nur ein Parserfehler zaehlt keinen Doppelnamen", "Doppelname neben Parserfehler zaehlt genau einen", "Parserfehler im Index: Doppelnamenwache nicht gemessen"], ersetze: [[DOPPELBENCH, "  const echte = r.befunde.filter((b) => !b.fatal)", "  const echte = r.befunde"]] },
   { satz: "doppelwache", ziel: ["nur ein Parserfehler: nicht messbar", "Parserfehler im Index: Doppelnamenwache nicht gemessen"], ersetze: [[DOPPELBENCH, "${b.text}`)\n    return 2", "${b.text}`)\n    return 1"]] },
-  { satz: "doppelwache", ziel: ["Regex mit v-Flag ist kein Befund"], ersetze: [[DOPPELCONFIG, "ecmaVersion: \"latest\"", "ecmaVersion: 2023"]] },
+  { satz: "doppelwache", ziel: ["Regex mit v-Flag ist kein Befund", "Regex mit v-Flag im esmodule: Doppelnamenwache misst"], ersetze: [[DOPPELCONFIG, "ecmaVersion: \"latest\"", "ecmaVersion: 2023"]] },
   { satz: "doppelwache", ziel: ["Doppelname neben Parserfehler nennt die nicht gelesene Datei"], ersetze: [[DOPPELBENCH, "  for (const b of unlesbar) console.error(`nicht gelesen: ${b.datei}:${b.zeile}  ${b.text}`)\n", ""]] },
   { satz: "doppelwache", ziel: ["Doppelname neben Parserfehler bleibt rot", "Doppelname neben Parserfehler zaehlt genau einen"], ersetze: [[DOPPELBENCH, "  if (befunde.length === 0 && unlesbar.length > 0) {", "  if (unlesbar.length > 0) {"]] },
   { satz: "doppelwache", ziel: ["ein Doppelname bleibt rot", "Doppelname neben Parserfehler bleibt rot", "Doppelname nur im Index sperrt", "Doppelname im Index und auf der Platte sperrt"], ersetze: [[DOPPELBENCH, "  if (befunde.length > 0) {", "  if (false) {"]] },
+  // Nachtrag stre-T-157: Syntax in der Form, in der Foundry laedt, und Stubs nur in der Kopie.
+  { satz: "doppelwache", ziel: ["Doppelparameter im esmodule sperrt","Doppelparameter im esmodule: Haken endet rot"], ersetze: [[HAKEN, "    *.js) grep -qxF \"$pfad\" \"$TMP/modulmenge\" && ziel=\"$ziel.mjs\" ;;", "    *.js) : ;;"]] },
+  { satz: "doppelwache", ziel: ["Doppelparameter in der klassischen Datei: kein Syntaxbefund"], ersetze: [[HAKEN, "    *.js) grep -qxF \"$pfad\" \"$TMP/modulmenge\" && ziel=\"$ziel.mjs\" ;;", "    *.js) ziel=\"$ziel.mjs\" ;;"]] },
+  { satz: "doppelwache", ziel: ["module.json kaputt: Ladeform unbekannt sperrt","module.json kaputt: Haken endet rot"], ersetze: [[HAKEN, "    meld \"pre-commit: ROT  Ladeform unbekannt, die Syntax der .js unter scripts/ ist nicht pruefbar\"\n    sed -n '1,6p' \"$TMP/fehler\" >&2\n    ROT=$((ROT + 1))\n", "    sed -n '1,6p' \"$TMP/fehler\" >&2\n"]] },
+  { satz: "doppelwache", ziel: ["nur importiert, nicht gelistet: ist Modul"], ersetze: [[LADEFORM, "    offen.push(posix.normalize(posix.join(posix.dirname(pfad), m[1])))", "    void m"]] },
+  { satz: "doppelwache", ziel: ["klassisch und zugleich unter esmodules: bleibt klassisch"], ersetze: [[LADEFORM, "menge.has(pfad) || klassisch.has(pfad) || !inhalt.has(pfad)", "menge.has(pfad) || !inhalt.has(pfad)"]] },
+  { satz: "doppelwache", ziel: ["der echte Haken faehrt jeden Pflichtsatz per Namen"], ersetze: [[HAKEN, "\nfahre \"scripts/creature-installer/anker.test.mjs\"", "\n: fahre \"scripts/creature-installer/anker.test.mjs\""]] },
+  { satz: "doppelwache", ziel: ["die Stubs liegen nur in der Kopie, nicht im eigenen Baum"], ersetze: [[VORHAKEN, "  for (const p of stubs) writeFileSync(join(wt, p), STUB)", "  for (const p of stubs) { writeFileSync(join(wt, p), STUB); writeFileSync(join(WURZEL, p), STUB) }"]] },
+  { satz: "doppelwache", ziel: ["der Ladeform-Helfer ist in der Kopie echt","Doppelparameter im esmodule sperrt"], ersetze: [[VORHAKEN, "    .filter((p) => p !== \"tools/haken/ladeform.mjs\" && existsSync(join(wt, p)))", "    .filter((p) => existsSync(join(wt, p))).concat([\"tools/haken/ladeform.mjs\"])"]] },
+  { satz: "doppelwache", ziel: ["zwei Fundorte: immer der erste nach Namen"], ersetze: [[DOPPELBENCH, "readdirSync(npxOrdner).sort()", "readdirSync(npxOrdner)"]] },
+  { satz: "doppelwache", ziel: ["falsche Fassung im Zwischenspeicher: Rueckfall npx"], ersetze: [[DOPPELBENCH, "      if (JSON.parse(readFileSync(join(paket, \"package.json\"), \"utf8\")).version !== fassung) continue\n", "      JSON.parse(readFileSync(join(paket, \"package.json\"), \"utf8\"))\n"]] },
+  { satz: "doppelwache", ziel: ["richtige Fassung im Zwischenspeicher: Direktstart","zwei Fundorte: immer der erste nach Namen"], ersetze: [[DOPPELBENCH, "const ESLINT_BIN = eslintAusSpeicher()", "const ESLINT_BIN = null"]] },
+  { satz: "doppelwache", ziel: ["der Haken in der Kopie ist bytegleich mit dem eigenen"], ersetze: [[VORHAKEN, "  const stubs = stubListe(wt)\n", "  const stubs = stubListe(wt)\n  writeFileSync(join(wt, \"tools/haken/pre-commit\"), HAKENTEXT + \"\\n\")\n"]] },
+  { satz: "doppelwache", ziel: ["der echte Haken faehrt die Streamsaetze aus dem Index"], ersetze: [[HAKEN, "STAENDE=$(git ls-files -- 'scripts/*.test.mjs'", "STAENDE=$(git ls-files -- 'scripts/*.test.mjx'"]] },
+  { satz: "doppelwache", ziel: ["es gibt Streamsaetze, und jeder ist in der Kopie ein Stub"], ersetze: [[VORHAKEN, "  return { wt, env, git, stubs }", "  return { wt, env, git, stubs: stubs.filter((s) => !s.startsWith(\"scripts/\")) }"]] },
+  { satz: "doppelwache", ziel: ["jeder per Namen gefahrene Satz ist in der Kopie ein Stub"], ersetze: [[VORHAKEN, "  return { wt, env, git, stubs }", "  return { wt, env, git, stubs: stubs.filter((s) => !GERUFEN.includes(s)) }"]] },
+  { satz: "doppelwache", ziel: ["Regex mit v-Flag im esmodule: kein Syntaxbefund","Regex mit v-Flag im esmodule: Haken endet gruen"], ersetze: [[HAKEN, "  if ! node --check \"$ziel\" 2>\"$TMP/fehler\"; then", "  if ! node --check \"$ziel\" 2>\"$TMP/fehler\" || grep -q '/v\\.' \"$ziel\"; then"]] },
+  { satz: "doppelwache", ziel: ["module.json kaputt: die Meldung nennt module.json"], ersetze: [[HAKEN, "ist nicht pruefbar\"\n    sed -n '1,6p' \"$TMP/fehler\" >&2\n", "ist nicht pruefbar\"\n"]] },
+  { satz: "doppelwache", ziel: ["Helfer endet mit 0"], ersetze: [[LADEFORM, "console.log([...menge].sort().join(\"\\n\"))", "console.log([...menge].sort().join(\"\\n\")); process.exit(3)"]] },
+  { satz: "doppelwache", ziel: ["esmodule: ist Modul","nur importiert, nicht gelistet: ist Modul","Doppelparameter im esmodule sperrt"], ersetze: [[LADEFORM, "const offen = modul.esmodules.filter((p) => typeof p === \"string\")", "const offen = []"]] },
+  { satz: "doppelwache", ziel: ["klassisch: ist kein Modul","Doppelparameter in der klassischen Datei: kein Syntaxbefund"], ersetze: [[LADEFORM, "console.log([...menge].sort().join(\"\\n\"))", "console.log([...menge, ...[...inhalt.keys()].filter((p) => p.startsWith(\"scripts/\"))].sort().join(\"\\n\"))"]] },
 ];
 
 /*
@@ -2252,8 +2278,15 @@ if (process.argv.includes("--alle-saetze")) {
 
 // ------------------------------------------------------------- Lauf
 
+// NUR AUF ZURUF (Nachtrag stre-T-157): `doppelwache` faehrt den Vorhaken in
+// eigenen Kopien, hoechstens zwei zugleich, und braucht allein gemessen 204 s,
+// neben anderer Last 459 s. Im vollen Lauf kaeme das je Sabotage dazu, mit
+// vier Kopien zugleich ueber eine Stunde. Er laeuft mit `--satz doppelwache`
+// und im Vorhaken, sobald tools/haken oder einer der Bench-Ordner vorgemerkt ist.
+const NUR_AUF_ZURUF = ["doppelwache"];
 const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "doppelwache"]
-  .filter((s) => !nurSatz || s === nurSatz);
+  .filter((s) => (nurSatz ? s === nurSatz : !NUR_AUF_ZURUF.includes(s)));
+if (!nurSatz) console.log(`nur auf Zuruf, nicht in diesem Lauf: ${NUR_AUF_ZURUF.join(", ")}`);
 if (SAETZE.length === 0) {
   console.log(`unbekannter Satz: ${nurSatz}`);
   process.exit(2);

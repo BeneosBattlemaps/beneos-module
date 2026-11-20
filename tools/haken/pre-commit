@@ -88,10 +88,31 @@ fi
 git diff --cached --name-only --diff-filter=ACM -- '*.js' '*.mjs' '*.cjs' \
   > "$TMP/vorgemerkt" 2>/dev/null
 
+# IN DER FORM, IN DER FOUNDRY SIE LAEDT (Nachtrag stre-T-157, Kalt-Review
+# W1). Node liest eine `.js` ohne import und export als CommonJS; Foundry
+# laedt sie als Modul, wenn sie unter `esmodules` steht oder von dort
+# importiert wird. Ein Fehler, den nur das Modulziel kennt, etwa ein doppelter
+# Parametername, kam so durch. `ladeform.mjs` nennt die Modulmenge aus der
+# vorgemerkten module.json; eine `.js` daraus wird als `.mjs` geprueft, alles
+# andere wie bisher. Ist module.json nicht lesbar, ist die Form unbekannt,
+# und das sperrt.
+: > "$TMP/modulmenge"
+if grep -q '^scripts/.*\.js$' "$TMP/vorgemerkt"; then
+  if ! node tools/haken/ladeform.mjs > "$TMP/modulmenge" 2>"$TMP/fehler"; then
+    meld ""
+    meld "pre-commit: ROT  Ladeform unbekannt, die Syntax der .js unter scripts/ ist nicht pruefbar"
+    sed -n '1,6p' "$TMP/fehler" >&2
+    ROT=$((ROT + 1))
+  fi
+fi
+
 ANZ_SYNTAX=0
 while IFS= read -r pfad; do
   [ -n "$pfad" ] || continue
   ziel="$TMP/$(printf '%s' "$pfad" | tr '/' '_')"
+  case "$pfad" in
+    *.js) grep -qxF "$pfad" "$TMP/modulmenge" && ziel="$ziel.mjs" ;;
+  esac
   if ! git show ":$pfad" > "$ziel" 2>/dev/null; then
     continue
   fi
@@ -613,20 +634,19 @@ fi
 
 # DER HAKEN SELBST (stre-T-157). Wird er angefasst, faehrt sein eigener Satz
 # mit: er baut einen eigenen Index und haelt fest, dass die zwei Waechter
-# darueber den Index lesen und nicht die Platte. Er faehrt den Haken fuenfmal
-# samt Streampruefsaetzen und kostet gemessen rund 90 s, darum nur hier.
-# Seine Sabotagen stehen in `tools/stream-sabotagen.mjs`, Satz `doppelwache`.
+# darueber den Index lesen und nicht die Platte und dass die Syntax in der
+# Ladeform geprueft wird. Seine Sabotagen stehen in
+# `tools/stream-sabotagen.mjs`, Satz `doppelwache`.
 #
 # Der Ausloeser deckt alles, was der Satz liest: auch die zwei Benches und
 # den Pruefstand, sonst liefe eine Aenderung an der Bench ohne die Proben von
 # stre-T-158. Austritt 2 sperrt nicht, wie bei `fahre_weich`. Der Satz faehrt
-# den Haken selbst und setzt dabei VORHAKEN_INNEN; dort laeuft er nicht
-# noch einmal.
-if [ -z "${VORHAKEN_INNEN:-}" ] \
-   && git diff --cached --name-only --diff-filter=ACM \
-        -- tools/haken tools/doppelnamen-bench tools/v15-globale-bench \
-           tools/lib/foundry-attrappe.mjs \
-      | grep -q .
+# diesen Haken in einer Wegwerfkopie, in der jeder hier gefahrene Satz, auch
+# dieser, ein Stub ist; er ruft sich darum nicht selbst wieder auf.
+if git diff --cached --name-only --diff-filter=ACM \
+     -- tools/haken tools/doppelnamen-bench tools/v15-globale-bench \
+        tools/lib/foundry-attrappe.mjs \
+   | grep -q .
 then
   meld "pre-commit: Vorhaken oder seine Benches vorgemerkt, sein Satz laeuft mit"
   if [ -f "tools/haken/vorhaken.test.mjs" ]; then
