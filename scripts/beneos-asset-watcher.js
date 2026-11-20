@@ -547,6 +547,19 @@ const collectBeneosRefs = (scene) => _sceneRefs(scene);
 // callers; return shape matches the old { ok, status? } contract.
 const HEAD_TIMEOUT_MS = 30000;
 
+/* Die Adresse einer Datei unter Data, mit dem Routenpraefix (stre-T-159).
+ *
+ * Eine Foundry kann unter einem Unterpfad laufen (ROUTE_PREFIX). Ein
+ * fuehrendes "/" + pfad zeigt dann auf die Wurzel des Servers und gibt 404.
+ * `foundry.utils.getRoute` setzt das Praefix davor; ohne Praefix liefert es
+ * "/pfad", also genau den String, den die Aufrufer vorher selbst bauten.
+ * Keine Kodierung: wer bisher roh einsetzte, bekommt weiter einen rohen Pfad.
+ * Ohne Importe, damit der Pruefsatz stream-unterpfad ihn schneiden kann. */
+export function routeAdresse(pfad) {
+  const p = "/" + String(pfad).replace(/^\/+/, "")
+  try { return foundry.utils.getRoute(p) } catch (_) { return p }
+}
+
 const headCheck = async (path) => {
   try {
     // Eine absolute Adresse wird hier NICHT geprueft, und die Antwort ist

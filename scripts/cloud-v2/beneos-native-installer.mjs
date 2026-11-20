@@ -28,6 +28,7 @@ import { BeneosInstallState, BeneosPreInstallDialog, beneosLogModuleInstall } fr
 import { packNeedsV14Migration, migrateSceneForV14, migrateActorForV14 } from "./beneos-v14-scene-migration.mjs"
 import { zuInstallierendeSchluessel } from "../creature-installer/alternativen.mjs"
 import { tokenUpdatesAufteilen } from "./token-delta.mjs"
+import { routeAdresse } from "../beneos-asset-watcher.js"
 
 // ---- Transfer config -------------------------------------------------------
 const FETCH_MAX_ATTEMPTS  = 3            // transient retries per asset
@@ -3481,7 +3482,7 @@ export class BeneosNativeBattlemapInstaller {
    */
   async #headCheck(target) {
     try {
-      const url = "/" + String(target).replace(/^\/+/, "") + "?_b=" + Date.now()
+      const url = routeAdresse(target) + "?_b=" + Date.now()
       const r = await fetch(url, { method: "HEAD" })
       if (!r.ok) return false
       if (/text\/html/i.test(r.headers.get("content-type") || "")) return false

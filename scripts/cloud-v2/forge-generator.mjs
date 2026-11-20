@@ -9,6 +9,7 @@
 // Loot (tokens) patrons can forge; others see the controls blurred + a Join CTA.
 
 import { OriginsRegistry } from "../loot/origins-registry.mjs";
+import { routeAdresse } from "../beneos-asset-watcher.js";
 import { imprintBeneosOrigin, changeBeneosOrigin, isForged, echoRulesToHtml } from "../loot/forge-imprint.mjs";
 import { getLootFlags, isBeneosLootItem } from "../loot/loot-schema.mjs";
 import { ORIGIN_META } from "../codex2/origin-meta.mjs";
@@ -68,7 +69,7 @@ export class BeneosForge extends HandlebarsApplicationMixin(ApplicationV2) {
           icon: meta.image || null,
           // Leading-slash absolute path for the CSS-mask tint (matches the codex
           // Origin gallery): the colour WebP's alpha gives the form shape.
-          iconMask: meta.image ? "/" + meta.image : null,
+          iconMask: meta.image ? routeAdresse(meta.image) : null,
           glow: meta.glow || "var(--bc-accent)",
         };
       })
@@ -82,7 +83,7 @@ export class BeneosForge extends HandlebarsApplicationMixin(ApplicationV2) {
     ctx.originName = display;
     const originMeta = this._originSlug ? (ORIGIN_META[this._originSlug] || {}) : {};
     ctx.originIcon = originMeta.image || null;
-    ctx.originIconMask = originMeta.image ? "/" + originMeta.image : null;
+    ctx.originIconMask = originMeta.image ? routeAdresse(originMeta.image) : null;
     ctx.originGlow = originMeta.glow || "var(--bc-accent)";
     // Echo-of-Origin preview for the small text box under the picker.
     const echo = originDoc?.tiers?.echo || null;

@@ -10,7 +10,7 @@ import { BeneosCloudWindowV2 } from "./cloud-v2/cloud-window-v2.mjs";
 import { maybeShowUpdateNotice } from "./cloud-v2/home/update-check.mjs";
 import { BeneosWhatsNewWindow } from "./cloud-v2/home/whats-new-window.mjs";
 import { presentCountryPrompt } from "./cloud-v2/country-prompt.mjs";
-import { headCheck } from "./beneos-asset-watcher.js";
+import { headCheck, routeAdresse } from "./beneos-asset-watcher.js";
 
 const MODULE_ID = "beneos-module";
 
@@ -1904,6 +1904,27 @@ const gettingStartedRuntimeAssetFile = (key) => GETTING_STARTED_RUNTIME_ASSETS[k
 async function beneosTourFileExists(path) {
   const antwort = await headCheck(String(path).replace(/^\/+/, ""));
   return antwort?.ok === true;
+}
+
+/* Darf eine Adresse, die aus der Szene selbst stammt, stehen bleiben?
+ * (stre-T-160). Anders als beneosTourFileExists zaehlt hier auch "ungeprueft"
+ * (headCheck status -2): Eine Szene aus dem Stream-Einbau traegt in
+ * texture.src die Form `beneos://` (stream-install.mjs, schluesselfreiAdresse),
+ * die headCheck nicht probt. Verworfen ersetzte die Tour sie durch einen
+ * geratenen oertlichen Pfad und schrieb ihn dauerhaft in die Kachel; beim
+ * Streamkunden liegt dort keine Datei. Nur fuer gespeicherte Szenenwerte. */
+async function beneosTourAdresseBehalten(path) {
+  const antwort = await headCheck(String(path).replace(/^\/+/, ""));
+  return antwort?.ok === true || antwort?.status === -2;
+}
+
+/* Holt eine Tourdatei als Antwort, mit dem Routenpraefix (stre-T-159). Eine
+ * absolute Adresse (Schema oder beneos://) wird nicht abgerufen: sie gehoert
+ * nicht auf den eigenen Server, und eine Toradresse truege den
+ * Streamschluessel in dessen Zugriffsprotokoll. Dann null. */
+async function beneosTourJsonAbrufen(path) {
+  if (/^[a-z][a-z0-9+.-]*:|^\/\//i.test(String(path))) return null;
+  return fetch(routeAdresse(path));
 }
 
 /* Resolve a runtime-swapped tour asset so it loads in the dev world AND on a
@@ -5223,7 +5244,7 @@ class BeneosTutorialSceneTour extends TourBase {
       // hardcoded dev path 404'd on customer installs (battlemaps is relocated
       // to cloud/battlemaps) and persisted a broken tile texture.
       const savedIconSrc = this._modifiedTileTextures.find(t => t.id === "cIJhkHCxygIioaB7")?.src;
-      const ORIG_ICON = (savedIconSrc && await beneosTourFileExists(savedIconSrc))
+      const ORIG_ICON = (savedIconSrc && await beneosTourAdresseBehalten(savedIconSrc))
         ? savedIconSrc
         : await beneosResolveTourAssetPath("beneos_assets/beneos_battlemaps/map_assets/icons/icon_stop_play.webp");
       try {
@@ -6167,9 +6188,8 @@ class BeneosTutorialSceneTour extends TourBase {
       try {
         const update = {};
         if (!rot.flags?.beneos?.content) {
-          const url = "/" + await beneosResolveTourAssetPath(GETTING_STARTED_RUNTIME_ASSETS.codexContent);
-          const resp = await fetch(url);
-          if (resp.ok) {
+          const resp = await beneosTourJsonAbrufen(await beneosResolveTourAssetPath(GETTING_STARTED_RUNTIME_ASSETS.codexContent));
+          if (resp?.ok) {
             const json = await resp.json();
             if (json?.flags?.beneos) {
               update["flags.beneos"] = json.flags.beneos;

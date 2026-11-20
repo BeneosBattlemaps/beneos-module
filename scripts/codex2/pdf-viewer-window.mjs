@@ -2,6 +2,8 @@
 // installed creature PDF via the bundled pdfjs viewer in an iframe, so the
 // stat block stays inside Foundry instead of opening a separate browser tab.
 
+import { routeAdresse } from "../beneos-asset-watcher.js";
+
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 const TEMPLATE_ROOT = "modules/beneos-module/templates/codex2";
 
@@ -38,7 +40,8 @@ export class BeneosPdfViewer extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   async _prepareContext(_options) {
-    const file = this._filePath.startsWith("/") ? this._filePath : `/${this._filePath}`;
+    // With the route prefix (stre-T-159); an absolute path stays as it was.
+    const file = this._filePath.startsWith("/") ? this._filePath : routeAdresse(this._filePath);
     return { viewerSrc: `scripts/pdfjs/web/viewer.html?file=${encodeURIComponent(file)}` };
   }
 }

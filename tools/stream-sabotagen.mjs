@@ -214,6 +214,12 @@ const EXPORT = "scripts/stream/stream-export.mjs";
 const TORMASKE = "scripts/stream/stream-tormaske.mjs";
 const KENNUNG = "scripts/cloud-login-kennung.mjs";
 const KODEX = "scripts/codex2/codex-sheet-wiring.mjs";
+const TOUR = "scripts/beneos_tours.js";
+const DEINST = "scripts/cloud-v2/beneos-native-uninstaller.mjs";
+const KREATURKODEX = "scripts/codex2/creature-codex.mjs";
+const KODEXFENSTER = "scripts/codex2/beneos-codex.mjs";
+const SCHMIEDE = "scripts/cloud-v2/forge-generator.mjs";
+const PDFFENSTER = "scripts/codex2/pdf-viewer-window.mjs";
 
 const SABOTAGEN = [
   // ---------------------------------------------------------------- maske
@@ -1545,6 +1551,35 @@ const SABOTAGEN = [
   { satz: "kodexreiter", ziel: ["[Struktur] ein zweiter Render haengt keinen zweiten Reiter an"], ersetze: [[KODEX, "  if (!nav || nav.querySelector('.beneos-sheet-codex-tab')) return\n", "  if (!nav) return\n"]] },
   { satz: "kodexreiter", ziel: ["[Struktur] eine fremde Kreatur bekommt keinen Reiter"], ersetze: [[KODEX, "  if (!actor || !BeneosUtility.checkIsBeneosToken(actor)) return\n", "  if (!actor) return\n"]] },
   { satz: "kodexreiter", ziel: ["[Struktur] ein V2-Bogen einer Beneos-Kreatur bekommt am V2-Haken genau einen Reiter"], ersetze: [[MODUL, "Hooks.on('renderActorSheetV2', (sheet, html) => {\n  haengeKodexReiter(sheet, html)\n})", "Hooks.on('renderActorSheetV2', (sheet, html) => {\n  void haengeKodexReiter\n})"]] },
+  // ---------------------------------------------------------------- unterpfad (stre-T-159, stre-T-160)
+  // Adressen unter einem Unterpfad (ROUTE_PREFIX) und die gespeicherte
+  // Kacheladresse der Tour. Den Satz gibt es an der Basis nicht.
+  { satz: "unterpfad", ziel: ["mit Praefix traegt die Adresse den Unterpfad"], ersetze: [[WAECHTER, "  try { return foundry.utils.getRoute(p) } catch (_) { return p }", "  return p"]] },
+  { satz: "unterpfad", ziel: ["ohne Praefix bleibt die Adresse wie vorher"], ersetze: [[WAECHTER, "  try { return foundry.utils.getRoute(p) } catch (_) { return p }", "  try { return foundry.utils.getRoute(p, { prefix: \"x\" }) } catch (_) { return p }"]] },
+  { satz: "unterpfad", ziel: ["ohne Foundry bleibt es bei genau einem Schraegstrich"], ersetze: [[WAECHTER, "  const p = \"/\" + String(pfad).replace(/^\\/+/, \"\")", "  const p = \"/\" + String(pfad)"]] },
+  { satz: "unterpfad", ziel: ["fuehrende Schraegstriche werden zu genau einem"], ersetze: [[WAECHTER, "  try { return foundry.utils.getRoute(p) } catch (_) { return p }", "  return \"/\" + p"]] },
+  { satz: "unterpfad", ziel: ["eine absolute Adresse loest keinen Abruf aus", "und liefert keinen Inhalt"], ersetze: [[TOUR, "  if (/^[a-z][a-z0-9+.-]*:|^\\/\\//i.test(String(path))) return null;\n", ""]] },
+  { satz: "unterpfad", ziel: ["ein oertlicher Pfad wird unter dem Praefix abgerufen"], ersetze: [[TOUR, "  return fetch(routeAdresse(path));", "  return fetch(\"/\" + path);"]] },
+  { satz: "unterpfad", ziel: ["[Struktur] der Rot Cerf holt seinen Inhalt ueber beneosTourJsonAbrufen"], ersetze: [[TOUR, "const resp = await beneosTourJsonAbrufen(await beneosResolveTourAssetPath(", "const resp = await fetch(\"/\" + await beneosResolveTourAssetPath("]] },
+  { satz: "unterpfad", ziel: ["Installer #headCheck: mit Praefix unter dem Unterpfad"], ersetze: [[NATIV, "      const url = routeAdresse(target) + \"?_b=\" + Date.now()", "      const url = \"/\" + String(target).replace(/^\\/+/, \"\") + \"?_b=\" + Date.now()"]] },
+  { satz: "unterpfad", ziel: ["Installer #headCheck: ohne Praefix wie vorher"], ersetze: [[NATIV, "      const url = routeAdresse(target) + \"?_b=\" + Date.now()", "      const url = routeAdresse(\"x/\" + target) + \"?_b=\" + Date.now()"]] },
+  { satz: "unterpfad", ziel: ["Deinstaller #sizeOf: mit Praefix unter dem Unterpfad"], ersetze: [[DEINST, "fetch(routeAdresse(target) + \"?_b=\"", "fetch(\"/\" + String(target).replace(/^\\/+/, \"\") + \"?_b=\""]] },
+  { satz: "unterpfad", ziel: ["Deinstaller #sizeOf: ohne Praefix wie vorher"], ersetze: [[DEINST, "fetch(routeAdresse(target) + \"?_b=\"", "fetch(routeAdresse(\"x/\" + target) + \"?_b=\""]] },
+  { satz: "unterpfad", ziel: ["B1 relativer Pfad mit Praefix"], ersetze: [[KREATURKODEX, "? routeAdresse(u) : u;", "? \"/\" + u.replace(/^\\/+/, \"\") : u;"]] },
+  { satz: "unterpfad", ziel: ["B1 relativer Pfad ohne Praefix wie vorher"], ersetze: [[KREATURKODEX, "? routeAdresse(u) : u;", "? routeAdresse(\"x/\" + u) : u;"]] },
+  { satz: "unterpfad", ziel: ["B1 eine absolute Adresse bleibt stehen"], ersetze: [[KREATURKODEX, "(u && !/^([a-z]+:|\\/)/i.test(u))", "(u)"]] },
+  { satz: "unterpfad", ziel: ["[Struktur] beneos-codex iconBw: 2 Stellen gefunden"], ersetze: [[KODEXFENSTER, "iconBw: meta.image ? routeAdresse(meta.image) : null,", "iconBw: null,", 2, 2]] },
+  { satz: "unterpfad", ziel: ["beneos-codex iconBw: mit Praefix unter dem Unterpfad"], ersetze: [[KODEXFENSTER, "iconBw: meta.image ? routeAdresse(meta.image) : null,", "iconBw: meta.image ? \"/\" + meta.image : null,", 2, 1]] },
+  { satz: "unterpfad", ziel: ["beneos-codex iconBw: ohne Praefix gleich dem alten \"/\" + image"], ersetze: [[KODEXFENSTER, "iconBw: meta.image ? routeAdresse(meta.image) : null,", "iconBw: meta.image ? routeAdresse(\"x/\" + meta.image) : null,", 2, 2]] },
+  { satz: "unterpfad", ziel: ["[Struktur] forge-generator iconMask: 2 Stellen gefunden"], ersetze: [[SCHMIEDE, "ctx.originIconMask = originMeta.image ? routeAdresse(originMeta.image) : null;", "ctx.originIconMask = null;"]] },
+  { satz: "unterpfad", ziel: ["forge-generator iconMask: mit Praefix unter dem Unterpfad"], ersetze: [[SCHMIEDE, "iconMask: meta.image ? routeAdresse(meta.image) : null,", "iconMask: meta.image ? \"/\" + meta.image : null,"]] },
+  { satz: "unterpfad", ziel: ["forge-generator iconMask: ohne Praefix gleich dem alten \"/\" + image"], ersetze: [[SCHMIEDE, "ctx.originIconMask = originMeta.image ? routeAdresse(originMeta.image) : null;", "ctx.originIconMask = originMeta.image ? routeAdresse(\"x/\" + originMeta.image) : null;"]] },
+  { satz: "unterpfad", ziel: ["B4 mit Praefix, kodiert"], ersetze: [[PDFFENSTER, ": routeAdresse(this._filePath);", ": \"/\" + this._filePath;"]] },
+  { satz: "unterpfad", ziel: ["B4 ohne Praefix wie vorher, kodiert"], ersetze: [[PDFFENSTER, "file=${encodeURIComponent(file)}", "file=${file}"]] },
+  { satz: "unterpfad", ziel: ["status -2 (ungeprueft, etwa beneos://) wird behalten"], ersetze: [[TOUR, "  return antwort?.ok === true || antwort?.status === -2;", "  return antwort?.ok === true;"]] },
+  { satz: "unterpfad", ziel: ["404 wird ersetzt"], ersetze: [[TOUR, "  return antwort?.ok === true || antwort?.status === -2;", "  return true;"]] },
+  { satz: "unterpfad", ziel: ["200 wird behalten"], ersetze: [[TOUR, "  return antwort?.ok === true || antwort?.status === -2;", "  return antwort?.status === -2;"]] },
+  { satz: "unterpfad", ziel: ["[Struktur] intro-complete prueft die gespeicherte Adresse mit beneosTourAdresseBehalten"], ersetze: [[TOUR, "(savedIconSrc && await beneosTourAdresseBehalten(savedIconSrc))", "(savedIconSrc && await beneosTourFileExists(savedIconSrc))"]] },
   // ---------------------------------------------------------------- kaufknopf (stre-T-120)
   { satz: "kaufknopf", ziel: ["bundle: isBundle"], ersetze: [[KAUF, "    isBundle: release?.shop_url_kind === \"bundle\",\n", "    isBundle: false,\n"]] },
   { satz: "kaufknopf", ziel: ["pack: kein Bundle","Art null: kein Bundle","alter Server ohne Feld: kein Bundle","unbekannte Art: kein Bundle","ohne Release: kein Bundle"], ersetze: [[KAUF, "    isBundle: release?.shop_url_kind === \"bundle\",\n", "    isBundle: true,\n"]] },
@@ -2141,7 +2176,7 @@ if (process.argv.includes("--alle-saetze")) {
 
 // ------------------------------------------------------------- Lauf
 
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad"]
   .filter((s) => !nurSatz || s === nurSatz);
 if (SAETZE.length === 0) {
   console.log(`unbekannter Satz: ${nurSatz}`);

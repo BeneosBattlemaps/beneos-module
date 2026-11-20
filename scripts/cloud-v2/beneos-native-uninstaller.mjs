@@ -33,6 +33,7 @@ import { BeneosInstallState, releaseKern } from "./beneos-install-state.mjs"
 import { BeneosNativeBattlemapInstaller } from "./beneos-native-installer.mjs"
 import { releaseLoesen } from "../stream/stream-offline.mjs"
 import { posenVergessen } from "../stream/stream-posen.mjs"
+import { routeAdresse } from "../beneos-asset-watcher.js"
 
 /** Document collections to remove, children before the folders that hold them. */
 const DOC_PATHS = [
@@ -599,7 +600,7 @@ export class BeneosNativeUninstaller {
   /** Current size on disk, or null when the file is not there. */
   async #sizeOf(target) {
     try {
-      const r = await fetch("/" + String(target).replace(/^\/+/, "") + "?_b=" + Date.now(), { method: "HEAD" })
+      const r = await fetch(routeAdresse(target) + "?_b=" + Date.now(), { method: "HEAD" })
       if (!r.ok) return null
       if (/text\/html/i.test(r.headers.get("content-type") || "")) return null
       const n = Number(r.headers.get("content-length"))

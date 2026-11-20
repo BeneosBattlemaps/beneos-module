@@ -6,6 +6,7 @@
 // v2 ApplicationV2 context, tab/sub-tab state and the action wiring.
 
 import { BeneosUtility } from "../beneos_utility.js";
+import { routeAdresse } from "../beneos-asset-watcher.js";
 import { getCodexDataForActor, tokenizeV13ToTacText, enrichDescription, buildAbilityRefTooltip } from "../codex/codex-data-adapter.mjs";
 import { buildHeaderPills, buildDamageLine, ABILITY_LABEL } from "./ability-foundry-resolver.mjs";
 
@@ -284,7 +285,9 @@ export async function buildCreatureDetailCtx({ tokenKey, activeTab, activeTactic
   // stores these as world-relative paths ("beneos_assets/..."); CSS
   // would otherwise resolve them against the .css file location (404).
   // Force a leading slash so both interpretations land on /beneos_assets.
-  const _norm = (u) => (u && !/^([a-z]+:|\/)/i.test(u)) ? "/" + u.replace(/^\/+/, "") : u;
+  // With the route prefix (stre-T-159): under a sub-path a bare "/" points
+  // at the server root.
+  const _norm = (u) => (u && !/^([a-z]+:|\/)/i.test(u)) ? routeAdresse(u) : u;
   const srd = isSrdKey(tokenKey);
   if (data) {
     data.heroImageUrl = _norm(data.heroImageUrl);

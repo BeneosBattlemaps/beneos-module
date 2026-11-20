@@ -8,6 +8,7 @@
 // from beneos-codex.css.
 
 import { OriginsRegistry } from "../loot/origins-registry.mjs";
+import { routeAdresse } from "../beneos-asset-watcher.js";
 import { ORIGIN_META, ORIGIN_ORDER, MECHANIC_RULES } from "./origin-meta.mjs";
 import {
   buildCreatureDetailCtx,
@@ -268,7 +269,7 @@ export class BeneosCodex extends HandlebarsApplicationMixin(ApplicationV2) {
         // For CSS-mask tinting: the color WebP has the correct alpha shape
         // (transparent corners, opaque form). _blackwhite is a full disc and
         // would just mask to a solid circle.
-        iconBw: meta.image ? "/" + meta.image : null,
+        iconBw: meta.image ? routeAdresse(meta.image) : null,
         mono: meta.mono,
         hasSpecials: !!(origin.tiers?.specials?.length),
         hasRitual: !!(origin.tiers?.specials?.some(s => s.type === "ritual_of_ascension")),
@@ -320,7 +321,7 @@ export class BeneosCodex extends HandlebarsApplicationMixin(ApplicationV2) {
       lore: this._originLore(slug, origin),
       glow: meta.glow,
       iconPath: meta.image,
-      iconBw: meta.image ? "/" + meta.image : null,
+      iconBw: meta.image ? routeAdresse(meta.image) : null,
       mono: meta.mono,
       attuned: this._attuned,
       attuneWithLabel,
