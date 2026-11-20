@@ -706,6 +706,21 @@ struktur("stream-posen holt denselben Merker", posen.includes('from "./stream-me
 const eigenerMerker = (karten + posen).match(/^function (merken|einmal|frisch)\(/gm) || []
 struktur("keine der beiden Dateien hat einen eigenen Merker", eigenerMerker.length, 0)
 
+/*
+ * DER BEUTESCHALTER WIRD GENAU EINMAL GEFRAGT (stre-T-015, TC-313). Die
+ * Faelle weiter unten messen, was der Schalter bewirkt, aber nicht, wie oft er
+ * gelesen wird: ein gedoppelter Ruf gibt denselben Wert, und die Attrappe
+ * zaehlt keine Lesezugriffe. Gezaehlt wird darum im Code, Kommentarzeilen
+ * ausgenommen wie oben bei `codeZeilen`. Zwei heisst: die Definition und die
+ * eine Rufstelle im Item-Installer.
+ */
+const cloudCode = readFileSync(join(hier, "..", "beneos_cloud.js"), "utf8").split(/\r?\n/).filter((z) => {
+  const k = z.trimStart()
+  return k !== "" && k[0] !== "*" && !k.startsWith("//") && !k.startsWith("/*")
+}).join("\n")
+const schalterRufe = (cloudCode.match(/_beneosBeuteStreamt\(\)/g) || []).length
+struktur("der Beuteschalter steht genau zweimal im Code, Definition und eine Rufstelle", schalterRufe, 2)
+
 // ===========================================================================
 abschnitt("Die Streamweiche des Item-Installers, OP-PRJ-141 Teil 4, gefahren")
 /*
