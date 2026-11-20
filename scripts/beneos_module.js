@@ -12,6 +12,7 @@ import { BeneosModuleMenu, BeneosDatabaseHolder } from "./beneos_search_engine.j
 import { BeneosCloud } from "./beneos_cloud.js";
 import { BeneosAnalytics } from "./beneos_analytics.js";
 import { BeneosFXEngine } from "./cloud-v2/beneos-fx.mjs";
+import { haengeKodexReiter } from "./codex2/codex-sheet-wiring.mjs";
 import { BeneosFXEditor } from "./cloud-v2/beneos-fx-editor.mjs";
 import { BeneosCloudWindowV2 } from "./cloud-v2/cloud-window-v2.mjs";
 import { OriginsRegistry } from "./loot/origins-registry.mjs";
@@ -462,26 +463,10 @@ Hooks.once('ready', () => {
 // Add a Beneos Creature-Codex tab to the dnd5e actor sheet (ApplicationV2)
 // for Beneos creatures, mirroring the right-click HUD button as an extra
 // entry point. Appended to the sheet's tab nav (bottom-right for tabs-right).
+// The tab itself is built in codex-sheet-wiring.mjs, which also serves V1
+// sheets (pf2e) via renderActorSheet with the same tab.
 Hooks.on('renderActorSheetV2', (sheet, html) => {
-  const actor = sheet?.document ?? sheet?.actor
-  if (!actor || !BeneosUtility.checkIsBeneosToken(actor)) return
-  const root = html instanceof HTMLElement ? html : html?.[0]
-  const nav = root?.querySelector?.('nav.tabs[data-group="primary"]')
-        ?? root?.querySelector?.('nav.tabs')
-        ?? root?.querySelector?.('.sheet-tabs')
-  if (!nav || nav.querySelector('.beneos-sheet-codex-tab')) return
-  const label = game.i18n.localize('BENEOS.CreatureCodex.SheetTabTooltip')
-  const tab = document.createElement('a')
-  tab.className = 'item control beneos-sheet-codex-tab'
-  tab.dataset.tooltip = label
-  tab.setAttribute('aria-label', label)
-  tab.innerHTML = '<i class="beneos-icon-logo"></i>'
-  tab.addEventListener('click', (ev) => {
-    ev.preventDefault(); ev.stopPropagation()
-    try { game.beneos?.codex?.openForActor?.(actor) }
-    catch (err) { console.error('[beneos-codex] sheet-tab open failed', err) }
-  })
-  nav.appendChild(tab)
+  haengeKodexReiter(sheet, html)
 })
 
 /********************************************************************************** */
