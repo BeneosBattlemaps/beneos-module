@@ -1,13 +1,27 @@
 /* =============================================================
-   Beneos Codex — entry-point wiring (sheet header, sheet tab,
-   cloud-v2 drawer button, cloud-v2 card context menu).
+   Beneos Codex, entry-point wiring (cloud-v2 drawer button,
+   cloud-v2 card context menu).
 
    These surfaces all route through `game.beneos.codex.openForActor`,
    which beneos-codex-init.mjs points at the v2 windows. The wiring
    lives here (codex2) so the legacy codex/ tree can be removed.
+
+   DER EINSTIEG AM ACTOR-BOGEN LIEGT NICHT HIER. Er steht in
+   `beneos_module.js` am Haken `renderActorSheetV2` und haengt einen
+   Knopf mit dem Beneos-Logo in `nav.tabs`. Bis zum 08.11.2026 stand
+   hier ein zweiter, und der ist nie gelaufen: `renderActorSheet`
+   feuert in Foundry 13 mit dnd5e 5.3.3 null mal, und `.app` trifft am
+   v13-Fenster ebenfalls null mal, dort heisst es `.application`.
+   Gemessen in `TC-PRJ-STR-273`: der Knopf erschien 0 mal, und
+   `fa-book-skull` stand 0 mal im Dokument.
+
+   Betreiberentscheid 08.11.2026: entfernt statt richtiggestellt. Eine
+   richtiggestellte Fassung haette zwei Flaechen mit zwei verschiedenen
+   Symbolen fuer dieselbe Funktion ergeben, und sie haette
+   `beneos_module.js:238` mitgezogen, das `sheet.template.includes()`
+   liest, waehrend `sheet.template` am v13-Bogen null ist.
    ============================================================= */
 
-import { BeneosUtility } from "../beneos_utility.js"
 import { hasV13CodexContent } from "../codex/codex-data-adapter.mjs"
 
 /** Linear scan over `game.actors` for an Actor whose `world.beneos`
@@ -23,61 +37,7 @@ function findActorByTokenKey(tokenKey) {
 }
 
 // =========================================================
-// Aufrufpunkt 1: Actor-Sheet-Header + tab-bar action button
-// =========================================================
-
-Hooks.on("renderActorSheet", (sheet, html) => {
-  if (!sheet?.actor) return
-  // Same gate as Cloud-V2: only Beneos-imported creatures get the surface.
-  if (!BeneosUtility.checkIsBeneosToken({ actor: sheet.actor })) return
-  // Only show the codex surfaces for actors that carry structured
-  // content under flags.beneos.content. SRD creatures and un-migrated
-  // actors fall back to the standard Foundry sheet.
-  if (!hasV13CodexContent(sheet.actor)) return
-
-  const $html = html instanceof jQuery ? html : $(html)
-  const $window = $html.closest(".app")
-  const title = game.i18n.localize("BENEOS.CreatureCodex.WindowTitle")
-
-  // -------- Surface 1: window-header icon --------
-  if (!$window.find(".beneos-codex-btn").length) {
-    const btn = $(
-      `<a class="header-button beneos-codex-btn" data-tooltip="${title}" aria-label="${title}">
-         <i class="fa-solid fa-book-skull"></i>
-       </a>`
-    )
-    btn.on("click", (ev) => {
-      ev.preventDefault()
-      ev.stopPropagation()
-      game.beneos.codex.openForActor(sheet.actor).catch(err =>
-        console.error("[beneos-codex] openForActor failed", err))
-    })
-    $window.find(".window-header .window-title").after(btn)
-  }
-
-  // -------- Surface 2: tab-bar action button --------
-  // No `data-tab` attribute → does NOT participate in Foundry's
-  // tab-switch state machine.
-  const root = html instanceof jQuery ? html[0] : html
-  const tabNav = root?.querySelector?.("nav.tabs") || root?.querySelector?.(".sheet-tabs")
-  if (tabNav && !tabNav.querySelector(".beneos-sheet-codex-tab")) {
-    const tab = document.createElement("a")
-    tab.className = "item beneos-sheet-codex-tab"
-    tab.dataset.tooltip = title
-    tab.setAttribute("aria-label", title)
-    tab.innerHTML = '<i class="fa-solid fa-book-skull"></i>'
-    tab.addEventListener("click", (ev) => {
-      ev.preventDefault()
-      ev.stopPropagation()
-      game.beneos.codex.openForActor(sheet.actor).catch(err =>
-        console.error("[beneos-codex] sheet-tab open failed", err))
-    })
-    tabNav.appendChild(tab)
-  }
-})
-
-// =========================================================
-// Aufrufpunkt 2 & 3: Cloud-V2 Drawer button + Card context menu
+// Aufrufpunkt 1 & 2: Cloud-V2 Drawer button + Card context menu
 // Both call sites live on the same hook so a single render pass wires
 // them together. Installed-gating is enforced via findActorByTokenKey
 // (drawer) and the `.bc-card-installed` selector (context menu).
@@ -96,7 +56,7 @@ function injectDrawerCodexButton(app, root) {
   const actionRow = drawer.querySelector(".bc-drawer-action") ?? drawer.querySelector(".bc-drawer-actions")
   if (!actionRow) return
 
-  // Idempotent — Cloud-V2 re-renders this region on every drawer change.
+  // Idempotent, Cloud-V2 re-renders this region on every drawer change.
   // We rebuild the button instead of bailing so the bound tokenKey
   // always matches the currently-shown asset.
   actionRow.querySelector(".bc-action-open-codex")?.remove()
@@ -193,7 +153,7 @@ function showCodexFloatingMenu(x, y, actor) {
     if (!menu.contains(e.target)) { e.preventDefault(); close() }
   })
 
-  // Action handler also on pointerdown — beats any bubbling click that
+  // Action handler also on pointerdown, beats any bubbling click that
   // Foundry could intercept first.
   menu.querySelector(".bc-floating-item").addEventListener("pointerdown", (e) => {
     if (e.button !== 0) return // left button only
