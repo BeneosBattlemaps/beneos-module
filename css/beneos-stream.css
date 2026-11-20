@@ -31,3 +31,48 @@ img[src^="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20w
   min-width: 4rem;
   min-height: 4rem;
 }
+
+/*
+ * Das Kartenschild (stre-T-165): eine Zeile oben links ueber der Karte, wenn
+ * die angezeigte Szene Inhalte hat, die der Zugang nicht enthaelt. Es steht
+ * im Bedienfeld unter `#ui-top` (stream-hinweis.mjs) und nimmt dort Klicks an,
+ * damit der Link geht. Goldleiste links als Hinweiszeichen, Kante aus dem Token.
+ */
+.beneos-stream-kartenschild {
+  align-self: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  align-items: baseline;
+  max-width: 32rem;
+  margin: 0.5rem 0 0 0.5rem;
+  padding: 0.375rem 0.75rem;
+  pointer-events: auto;
+  background: var(--bc-bg-panel, #15120e);
+  color: var(--bc-text, #d5d6cf);
+  border: 1px solid var(--bc-border-strong, #463b2c);
+  border-left: 2px solid var(--bc-accent, #f2b668);
+  border-radius: var(--bc-radius, 0);
+  font-family: var(--bc-font-control, sans-serif);
+  font-weight: var(--bc-w-control, 500);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.beneos-stream-kartenschild a {
+  color: var(--bc-accent, #f2b668);
+  text-decoration: underline;
+}
+
+.beneos-stream-kartenschild a:hover,
+.beneos-stream-kartenschild a:focus-visible {
+  color: var(--bc-accent-strong, #f6ca92);
+}
+
+/* Rueckfall ohne `#ui-top`: das Schild haengt dann an `body`. */
+body > .beneos-stream-kartenschild {
+  position: fixed;
+  top: 0.5rem;
+  left: 4.5rem;
+  z-index: 60;
+}

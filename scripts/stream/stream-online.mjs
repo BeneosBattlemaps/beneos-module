@@ -340,10 +340,16 @@ function installSceneGuard() {
       lastRefusal = { id: this.id, at: now }
       // Warn, not error: this is a state of the world, not a fault of the
       // software, and the module's own convention reserves error for faults.
-      ui.notifications?.warn?.(
-        `Beneos Stream: "${this.name}" cannot be loaded, there is no connection `
-        + `to the server. The scene is delivered over the network and nothing `
-        + `of it is stored locally.`)
+      // Der Text kommt seit stre-T-165 aus der Sprachdatei, mit englischem
+      // Rueckfall. Import zur Laufzeit aus demselben Grund wie oben.
+      const vorlage = 'Beneos Stream: "{name}" cannot be opened while you are offline. '
+        + "The scene is streamed and is not fully stored on this computer."
+      let satz = vorlage.replace("{name}", () => String(this.name))
+      try {
+        const { hinweisText } = await import("./stream-hinweis.mjs")
+        satz = hinweisText("BENEOS.Stream.Scene.Offline", { name: this.name }, vorlage)
+      } catch (_) { /* der Rueckfall steht schon */ }
+      ui.notifications?.warn?.(satz)
       console.debug(`Beneos Stream | refused to draw "${this.name}", offline`)
       return this
     }
@@ -389,15 +395,32 @@ function installKlangWache() {
         console.debug("Beneos Stream | keine Verbindung, gestreamte Klaenge "
           + "werden nicht geladen")
       }
+      // In Worten, einmal je Sitzung (stre-T-166). Bis dahin fiel der Klang
+      // ganz stumm aus.
+      meldeKlang("offline", src)
       return this
     }
-    return original.apply(this, args)
+    try {
+      return await original.apply(this, args)
+    } finally {
+      // Ein Torklang, der MIT Verbindung scheitert, hat vom Tor den
+      // Platzhalter bekommen: der Zugang enthaelt ihn nicht (stream-klang.mjs,
+      // Kopf). Der Klang laeuft ueber ein `<audio>`-Element und nicht ueber den
+      // `fetch`-Ersatz, dessen denied-Zweig sieht ihn also nie.
+      if (tor && src.includes(tor) && this?.failed && !isOffline()) meldeKlang("denied", src)
+    }
   }
   wrapped.__beneosStream = true
   Sound.prototype.load = wrapped
 }
 
 let klangGemeldet = false
+
+// Import zur Laufzeit, Begruendung in der Szenenwache. Die Meldung darf den
+// Klang nie aufhalten, deshalb ohne `await`.
+function meldeKlang(grund, src) {
+  import("./stream-hinweis.mjs").then((m) => m.meldeAusfall(grund, src)).catch(() => {})
+}
 
 function hostVomTor() {
   // Kein Platzhalter, sondern nichts: ein leerer Text wuerde von

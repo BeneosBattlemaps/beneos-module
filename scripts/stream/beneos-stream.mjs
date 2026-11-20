@@ -25,6 +25,7 @@ import { installStreamFetch, installKonsolenMaske, storeStatus, clearStore, prew
 import { installStreamCanvas, drawStatus, videoTilesOf } from "./stream-canvas.mjs"
 import { installStreamOnline, onlineStatus, streamState, isOffline, hasStreamedContent } from "./stream-online.mjs"
 import { installStreamIndicator } from "./stream-indicator.mjs"
+import { installStreamHinweis } from "./stream-hinweis.mjs"
 import { installStreamBilder, bilderBlobStand } from "./stream-bilder.mjs"
 import { installStreamSceneUi } from "./stream-scene-ui.mjs"
 import { installStreamLeinwand } from "./stream-leinwand.mjs"
@@ -138,6 +139,8 @@ Hooks.once("init", () => {
     installStreamOnline()
     installStreamCanvas()
     installStreamIndicator()
+    // Meldungen und Kartenschild bei fehlendem Zugang oder offline (stre-T-165, T-166).
+    installStreamHinweis()
     // Rechtsklick und Markierung. Haengen sich nur an Hooks und lesen
     // ausschliesslich aus dem vorgewaermten Zustand, kosten also nichts,
     // solange niemand eine Szenenliste zeichnet.

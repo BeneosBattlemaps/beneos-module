@@ -23,6 +23,7 @@
 import { assetUrl, budgetFor, downloadMode, GETEILT_RAUM, geteilteAdresse, istGeteilteDatei, localCacheEnabled, maxConcurrent, MODULE_ID, streamEnabled, streamHost, streamMode, zerlegeAdresse } from "./stream-settings.mjs"
 import { ohneSchluessel, ohneSchluesselImText, reportFailure, reportedSoFar } from "./stream-report.mjs"
 import { isOffline, noteResult } from "./stream-online.mjs"
+import { meldeAusfall, merkeVideoToast } from "./stream-hinweis.mjs"
 
 const CACHE_NAME = "beneos-stream-v1"
 const TTL_MS = 72 * 60 * 60 * 1000
@@ -672,7 +673,11 @@ function meldeVideoAbweisung(url) {
     const t = game.i18n?.format?.("BENEOS.Stream.Denied.Video", { name: schluessel })
     if (t && t !== "BENEOS.Stream.Denied.Video") satz = t
   } catch (_) { /* faellt auf den Ersatztext zurueck */ }
-  try { ui.notifications?.warn(satz) } catch (_) { /* ohne Oberflaeche bleibt die Konsolenzeile */ }
+  try {
+    ui.notifications?.warn(satz)
+    // Die allgemeine Meldung "nicht im Zugang" entfaellt danach (E3, stre-T-166).
+    merkeVideoToast()
+  } catch (_) { /* ohne Oberflaeche bleibt die Konsolenzeile */ }
 }
 
 /**
@@ -854,6 +859,9 @@ async function ersatzAntwort(url, ursache) {
 
 async function offlineAntwort(url) {
   meldeOffline(url)
+  // Die Konsolenzeile darueber bleibt `debug`. In Worten sagt es seit
+  // stre-T-166 die Meldestelle, einmal je Sitzung und jedem Client.
+  meldeAusfall("offline", url)
   count("offline", url)
 
   // Steuerdateien bekommen KEINEN Bildpunkt, sondern einen ehrlichen Fehler.
@@ -1889,6 +1897,12 @@ export async function alleImSpeicher(urls) {
         // Und beim Video zusaetzlich einmal sichtbar, weil es sonst niemand
         // erfaehrt. Siehe die Begruendung an `meldeVideoAbweisung`.
         meldeVideoAbweisung(url)
+
+        // Und einmal je Sitzung in Worten, fuer Token, Journal, Karte und
+        // Klang gleich (stre-T-166). Nach dem Video-Hinweis, weil die
+        // allgemeine Meldung entfaellt, wenn er schon kam (E3). Dieselbe
+        // Adresse stellt das Kartenschild auf, wenn sie zur Szene gehoert.
+        meldeAusfall("denied", url)
 
         // Und hier endet die Abweisung, statt als leeres Feld weiterzureisen.
         //
