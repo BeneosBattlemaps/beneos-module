@@ -152,10 +152,28 @@ fahre_weich() {
     return
   fi
   rm -rf "$TMP/index"
-  git ls-files -z -- scripts "$(dirname "$datei")" \
-    | git checkout-index -z --stdin --prefix="$TMP/index/"
+  # Ueber eine Datei, nicht ueber ein Rohr: sh kennt kein pipefail, und eine
+  # unvollstaendige Indexkopie (etwa ein Eintrag mit skip-worktree) liesse die
+  # Bench sonst still eine Teilmenge lesen.
+  if ! git ls-files -z -- scripts "$(dirname "$datei")" > "$TMP/indexliste" \
+     || ! git checkout-index -z --stdin --ignore-skip-worktree-bits \
+          --prefix="$TMP/index/" < "$TMP/indexliste" 2>"$TMP/fehler"
+  then
+    meld ""
+    meld "pre-commit: ROT  $name (Indexkopie unvollstaendig)"
+    sed -n '1,6p' "$TMP/fehler" >&2
+    ROT=$((ROT + 1))
+    return
+  fi
   node "$TMP/index/$datei" > "$TMP/lauf" 2>&1
-  code=$?
+  werte_aus "$?" "$name"
+}
+
+# Liest den Austritt eines Satzes mit DREI Austritten: 0 ok, 2 nicht
+# gemessen (kein Befund, gemeldet), sonst ROT. Die Ausgabe liegt in $TMP/lauf.
+werte_aus() {
+  code=$1
+  name=$2
   if [ "$code" -eq 0 ]; then
     meld "pre-commit: ok  $name"
   elif [ "$code" -eq 2 ]; then
@@ -598,11 +616,26 @@ fi
 # darueber den Index lesen und nicht die Platte. Er faehrt den Haken fuenfmal
 # samt Streampruefsaetzen und kostet gemessen rund 90 s, darum nur hier.
 # Seine Sabotagen stehen in `tools/stream-sabotagen.mjs`, Satz `doppelwache`.
-if git diff --cached --name-only --diff-filter=ACM -- tools/haken \
-   | grep -q .
+#
+# Der Ausloeser deckt alles, was der Satz liest: auch die zwei Benches und
+# den Pruefstand, sonst liefe eine Aenderung an der Bench ohne die Proben von
+# stre-T-158. Austritt 2 sperrt nicht, wie bei `fahre_weich`. Der Satz faehrt
+# den Haken selbst und setzt dabei VORHAKEN_INNEN; dort laeuft er nicht
+# noch einmal.
+if [ -z "${VORHAKEN_INNEN:-}" ] \
+   && git diff --cached --name-only --diff-filter=ACM \
+        -- tools/haken tools/doppelnamen-bench tools/v15-globale-bench \
+           tools/lib/foundry-attrappe.mjs \
+      | grep -q .
 then
-  meld "pre-commit: Vorhaken vorgemerkt, sein Satz laeuft mit"
-  fahre "tools/haken/vorhaken.test.mjs" "vorhaken.test.mjs"
+  meld "pre-commit: Vorhaken oder seine Benches vorgemerkt, sein Satz laeuft mit"
+  if [ -f "tools/haken/vorhaken.test.mjs" ]; then
+    node "tools/haken/vorhaken.test.mjs" > "$TMP/lauf" 2>&1
+    werte_aus "$?" "vorhaken.test.mjs"
+  elif git cat-file -e "HEAD:tools/haken/vorhaken.test.mjs" 2>/dev/null; then
+    meld "pre-commit: vorhaken.test.mjs fehlt im Arbeitsbaum, HEAD kennt sie aber"
+    ROT=$((ROT + 1))
+  fi
 fi
 
 # ----------------------------------------------------------------- Ausgang ---

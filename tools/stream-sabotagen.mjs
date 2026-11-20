@@ -168,8 +168,9 @@ try {
   // Ohne Repositorium meldet der Satz selbst NICHT MESSBAR.
 }
 // Er faehrt den Haken fuenfmal mit allen Streampruefsaetzen und braucht
-// gemessen rund 90 s allein, unter vier parallelen Kopien mehr. Eine
-// ausdrueckliche --zeitgrenze geht vor.
+// gemessen rund 90 s allein, unter vier parallelen Kopien mehr. Im
+// Grundlauf gilt die Satzgrenze immer (er liest --zeitgrenze nicht), in den
+// Sabotagelaeufen geht eine ausdrueckliche --zeitgrenze vor.
 const GRENZE_SATZ = { doppelwache: 600000 };
 const grenzeFuer = (satz, sonst) => (arg("--zeitgrenze") == null && GRENZE_SATZ[satz]) || sonst;
 
@@ -2004,11 +2005,13 @@ const SABOTAGEN = [
   { satz: "doppelwache", ziel: ["Globale nur im Index sperrt", "fremde Globale auf der Platte sperrt nicht"], ersetze: [[HAKEN, "  fahre_weich \"tools/v15-globale-bench/bench.mjs\" \\", "  fahre \"tools/v15-globale-bench/bench.mjs\" \\"]] },
   { satz: "doppelwache", ziel: ["Doppelname nur im Index sperrt", "fremde Datei auf der Platte sperrt einen sauberen Index nicht", "Parserfehler im Index: Doppelnamenwache nicht gemessen"], ersetze: [[HAKEN, "  fahre_weich \"tools/doppelnamen-bench/bench.mjs\" \\", "  fahre \"tools/doppelnamen-bench/bench.mjs\" \\"]] },
   { satz: "doppelwache", ziel: ["Parserfehler im Index: Doppelnamenwache nicht gemessen"], ersetze: [[HAKEN, "  elif [ \"$code\" -eq 2 ]; then", "  elif [ \"$code\" -eq 99 ]; then"]] },
+  { satz: "doppelwache", ziel: ["mit skip-worktree liest die Bench den Indexinhalt"], ersetze: [[HAKEN, " --stdin --ignore-skip-worktree-bits \\", " --stdin \\"]] },
+  { satz: "doppelwache", ziel: ["Doppelname mit skip-worktree im Index sperrt", "mit skip-worktree liest die Bench den Indexinhalt"], ersetze: [[HAKEN, " --stdin --ignore-skip-worktree-bits \\", " --stdin \\"], [HAKEN, "          --prefix=\"$TMP/index/\" < \"$TMP/indexliste\" 2>\"$TMP/fehler\"\n  then", "          --prefix=\"$TMP/index/\" < \"$TMP/indexliste\" 2>\"$TMP/fehler\"\n     && false\n  then"]] },
   { satz: "doppelwache", ziel: ["Parserfehler im Index: Syntaxpruefung sperrt", "Parserfehler im Index: Haken endet rot"], ersetze: [[HAKEN, "  if ! node --check \"$ziel\" 2>\"$TMP/fehler\"; then", "  if false; then"]] },
   { satz: "doppelwache", ziel: ["sauberer Index mit sauberer Platte geht durch", "sauberer Index geht durch, Globalenwache", "fremde Datei auf der Platte sperrt einen sauberen Index nicht", "fremde Globale auf der Platte sperrt nicht"], ersetze: [[HAKEN, "  if [ \"$code\" -eq 0 ]; then\n    meld \"pre-commit: ok  $name\"", "  if [ \"$code\" -eq 0 ]; then\n    meld \"pre-commit: ROT  $name\""]] },
   { satz: "doppelwache", ziel: ["sauberer Index: Haken endet gruen"], ersetze: [[HAKEN, "    meld \"pre-commit: ok  $name\"\n  elif", "    meld \"pre-commit: ok  $name\"; ROT=$((ROT + 1))\n  elif"]] },
   { satz: "doppelwache", ziel: ["Doppelname nur im Index sperrt", "Doppelname im Index und auf der Platte sperrt", "Globale nur im Index sperrt", "Globale im Index und auf der Platte sperrt"], ersetze: [[HAKEN, "    meld \"pre-commit: ROT  $name\"\n    tail -n 25", "    meld \"pre-commit: ok  $name\"\n    tail -n 25", 2, 2]] },
-  { satz: "doppelwache", ziel: ["nur ein Parserfehler: nicht messbar", "nur ein Parserfehler: Meldung nennt NICHT MESSBAR und die Datei", "nur ein Parserfehler zaehlt keinen Doppelnamen", "Doppelname neben Parserfehler zaehlt genau einen", "Parserfehler im Index: Doppelnamenwache nicht gemessen"], ersetze: [[DOPPELBENCH, "  const echte = r.befunde.filter((b) => b.regel !== \"?\")", "  const echte = r.befunde"]] },
+  { satz: "doppelwache", ziel: ["nur ein Parserfehler: nicht messbar", "nur ein Parserfehler: Meldung nennt NICHT MESSBAR und die Datei", "nur ein Parserfehler zaehlt keinen Doppelnamen", "Doppelname neben Parserfehler zaehlt genau einen", "Parserfehler im Index: Doppelnamenwache nicht gemessen"], ersetze: [[DOPPELBENCH, "  const echte = r.befunde.filter((b) => !b.fatal)", "  const echte = r.befunde"]] },
   { satz: "doppelwache", ziel: ["nur ein Parserfehler: nicht messbar", "Parserfehler im Index: Doppelnamenwache nicht gemessen"], ersetze: [[DOPPELBENCH, "${b.text}`)\n    return 2", "${b.text}`)\n    return 1"]] },
   { satz: "doppelwache", ziel: ["Regex mit v-Flag ist kein Befund"], ersetze: [[DOPPELCONFIG, "ecmaVersion: \"latest\"", "ecmaVersion: 2023"]] },
   { satz: "doppelwache", ziel: ["Doppelname neben Parserfehler nennt die nicht gelesene Datei"], ersetze: [[DOPPELBENCH, "  for (const b of unlesbar) console.error(`nicht gelesen: ${b.datei}:${b.zeile}  ${b.text}`)\n", ""]] },
@@ -2349,7 +2352,7 @@ lauf: try {
   // 1. Ohne Sabotage gruen, und die Probenliste je Satz.
   const proben = {};
   for (const satz of SAETZE) {
-    const r = await fahre(kopienNeu[0], SATZDATEI(satz), grenzeFuer(satz, ZEITGRENZE_MS));
+    const r = await fahre(kopienNeu[0], SATZDATEI(satz), GRENZE_SATZ[satz] ?? ZEITGRENZE_MS);
     proben[satz] = r.gruen;
     // Zwei Proben mit einem Namen sind fuer die Deckung eine: wird nur eine rot,
     // gaelten beide als bewacht (Kaltdurchsicht 15.11.2026, maske).

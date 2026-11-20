@@ -110,6 +110,7 @@ function lauf(ziele) {
         zeile: m.line,
         regel: m.ruleId || "?",
         text: m.message,
+        fatal: m.fatal === true,
       })
     }
   }
@@ -235,14 +236,14 @@ function main() {
   // echten Mutationen im Modulcode stehen seit stre-T-015 in
   // `tools/bench-sabotagen.mjs`.
   //
-  // EIN PARSERFEHLER IST KEIN DOPPELNAME (stre-T-158). ESLint meldet ihn ohne
-  // Regel ("?"), und bis dahin zaehlte er hier mit: eine Regex mit v-Flag
+  // EIN PARSERFEHLER IST KEIN DOPPELNAME (stre-T-158). ESLint meldet ihn als
+  // `fatal`, und bis dahin zaehlte er hier mit: eine Regex mit v-Flag
   // machte die Wache rot, "Doppelnamen: 1". Eine Datei, die ESLint nicht
   // lesen kann, ist fuer diese Wache nicht gelesen. Steht sonst nichts da,
   // endet der Stand mit 2, nicht messbar; ein echter Syntaxfehler sperrt den
   // Commit ohnehin ueber `node --check` im Vorhaken.
-  const unlesbar = r.befunde.filter((b) => b.regel === "?")
-  const echte = r.befunde.filter((b) => b.regel !== "?")
+  const unlesbar = r.befunde.filter((b) => b.fatal)
+  const echte = r.befunde.filter((b) => !b.fatal)
   const befunde = SABOTAGE
     ? [...echte, { datei: "scripts/erfunden.js", zeile: 1, regel: "no-dupe-keys", text: "Sabotageprobe" }]
     : echte
