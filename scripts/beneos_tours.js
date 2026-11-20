@@ -1876,7 +1876,6 @@ const GETTING_STARTED_RUNTIME_ASSETS = Object.freeze({
 });
 const gettingStartedRuntimeAssetFile = (key) => GETTING_STARTED_RUNTIME_ASSETS[key].split("/").pop();
 
-/** HEAD-probe a Data-relative path (same pattern as beneosTopVariantExists). */
 /* Existenzprobe fuer eine Tourdatei.
  *
  * AUSTAUSCH AM 07.11.2026, OP-PRJ-171. Vorher baute diese Stelle die Adresse

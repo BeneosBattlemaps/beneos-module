@@ -26,8 +26,9 @@ aussehen. Dieselbe Begründung trägt `v14-import-bench`.
 **Keine Stelle im Modul greift auf einen globalen Namen zu, den Foundry 15
 entfernt, ohne dass die Obergrenze es weiss.**
 
-Gemessen am 09.11.2026: **24 Stellen**, verteilt auf acht Namen. Vor diesem Lauf
-waren es 30; sechs sind am selben Tag auf den Namensraum umgestellt.
+Gemessen am 09.11.2026 zuerst: 24 Stellen, verteilt auf acht Namen, vorher 30.
+Am selben Tag auf **0 Stellen** gebracht (OP-PRJ-220), die Obergrenze steht seither
+auf 0. Messung am 20.11.2026 auf dem Stand von stre-T-156: 0, erlaubt 0.
 
 ## Die Namensliste wird nicht geraten
 
@@ -72,7 +73,7 @@ alle sechs in 0,3 Sekunden.
 
 ## Ein Rückfall auf den nackten Namen trägt nicht
 
-Das ist der feine Teil, und das Modul trägt ihn zehnmal falsch:
+Das ist der feine Teil, und das Modul trug ihn bis OP-PRJ-220 zehnmal falsch:
 
 ```js
 const FP = foundry.applications?.apps?.FilePicker?.implementation ?? FilePicker
@@ -83,9 +84,9 @@ Globale in Foundry 15 weg, wirft `?? FilePicker` einen **ReferenceError**, denn
 ein nackter Bezeichner ohne Bindung ist kein `undefined`. Richtig wäre
 `?? globalThis.FilePicker`, das liefert `undefined`.
 
-Diese zehn Stellen brechen also **nur dann**, wenn Foundry den Namensraum
-zusätzlich umbaut. Sie sind eine Falle, kein heutiger Ausfall, und sie stehen
-darum in derselben Zahl, aber mit dieser Einordnung.
+Diese zehn Stellen brachen also **nur dann**, wenn Foundry den Namensraum
+zusätzlich umbaut. Sie waren eine Falle, kein Ausfall, und sind seit
+OP-PRJ-220 auf `?? globalThis.<Name>` umgestellt.
 
 ## Der rote Lauf
 
@@ -128,10 +129,11 @@ Alle drei führen auf dieselbe Zahl, sobald der Messweg stimmt.
 
 - **Ein Zugriff, der den Namen zur Laufzeit zusammensetzt**, etwa
   `globalThis["render" + "Template"]`, wird nicht erkannt. Kein Muster fängt ihn.
-- **Die 24 verbliebenen Stellen sind nicht bewertet**, nur gezählt. Vierzehn
-  liegen in `scripts/beneos-table-top.js`, und ob der Tabletop-Modus in Foundry 15
-  ohnehin anders gebaut werden muss, ist eine eigene Frage. Sie stehen als
-  eigenes Arbeitspaket.
+- **Der Tabletop-Modus ist nur umgestellt, nicht gefahren.** Die vierzehn
+  Stellen in `scripts/beneos-table-top.js` tragen jetzt `foundry.canvas.*`, der
+  Modus selbst ist aber nicht eingeschaltet (`BeneosTableTop.init()` steht
+  auskommentiert). Ob er in Foundry 15 ohnehin anders gebaut werden muss, ist
+  eine eigene Frage.
 - **Ordner ausser `scripts/`** fallen nicht in diesen Satz. Vorlagen und
   `tools/` sind nicht gelesen, weil dort kein Modulcode zur Laufzeit läuft.
 - **Ob Foundry 15 die Globalen wirklich entfernt**, steht nur in Foundrys eigener
