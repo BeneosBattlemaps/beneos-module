@@ -158,6 +158,7 @@ const SATZ_AUSSERHALB = {
   bonustab: "scripts/loot/actor-set-bonus-tab.test.mjs",
   kaufknopf: "scripts/cloud-v2/cloud-kaufknopf.test.mjs",
   kennung: "scripts/cloud-login-kennung.test.mjs",
+  kodexreiter: "scripts/codex2/codex-sheet-wiring.test.mjs",
 };
 const SATZDATEI = (satz) => SATZ_AUSSERHALB[satz] ?? `scripts/stream/stream-${satz}.test.mjs`;
 
@@ -212,6 +213,7 @@ const EXPORT = "scripts/stream/stream-export.mjs";
 // stre-T-142 B2: maskiere und wandle zogen aus stream-export hierher um.
 const TORMASKE = "scripts/stream/stream-tormaske.mjs";
 const KENNUNG = "scripts/cloud-login-kennung.mjs";
+const KODEX = "scripts/codex2/codex-sheet-wiring.mjs";
 
 const SABOTAGEN = [
   // ---------------------------------------------------------------- maske
@@ -1537,6 +1539,12 @@ const SABOTAGEN = [
   { satz: "kennung", ziel: ["[Struktur] die Passwortanmeldung traegt faehig=1"], ersetze: [[CLOUD, "const cloudLoginURL = mitFaehig(`${BeneosUtility.cloudBase()}/foundry-login.php", "const cloudLoginURL = (`${BeneosUtility.cloudBase()}/foundry-login.php"]] },
   { satz: "kennung", ziel: ["[Struktur] die Codeanmeldung traegt faehig=1"], ersetze: [[CLOUD, "const verURL = mitFaehig(`${BeneosUtility.cloudBase()}/foundry-otp-verify.php", "const verURL = (`${BeneosUtility.cloudBase()}/foundry-otp-verify.php"]] },
   { satz: "kennung", ziel: ["die Adresse bekommt faehig=1 angehaengt"], ersetze: [[KENNUNG, "  return `${url}&faehig=1`\n", "  return url\n"]] },
+  // ---------------------------------------------------------------- kodexreiter (stre-T-156)
+  { satz: "kodexreiter", ziel: ["[Struktur] ein V2-Bogen bekommt am renderActorSheet keinen Reiter"], ersetze: [[KODEX, "  if (sheet instanceof foundry.applications.api.ApplicationV2) return\n", ""]] },
+  { satz: "kodexreiter", ziel: ["[Struktur] ein V1-Bogen einer Beneos-Kreatur bekommt genau einen Reiter"], ersetze: [[KODEX, "  haengeKodexReiter(sheet, html)\n})", "  void haengeKodexReiter\n})"]] },
+  { satz: "kodexreiter", ziel: ["[Struktur] ein zweiter Render haengt keinen zweiten Reiter an"], ersetze: [[KODEX, "  if (!nav || nav.querySelector('.beneos-sheet-codex-tab')) return\n", "  if (!nav) return\n"]] },
+  { satz: "kodexreiter", ziel: ["[Struktur] eine fremde Kreatur bekommt keinen Reiter"], ersetze: [[KODEX, "  if (!actor || !BeneosUtility.checkIsBeneosToken(actor)) return\n", "  if (!actor) return\n"]] },
+  { satz: "kodexreiter", ziel: ["[Struktur] ein V2-Bogen einer Beneos-Kreatur bekommt am V2-Haken genau einen Reiter"], ersetze: [[MODUL, "Hooks.on('renderActorSheetV2', (sheet, html) => {\n  haengeKodexReiter(sheet, html)\n})", "Hooks.on('renderActorSheetV2', (sheet, html) => {\n  void haengeKodexReiter\n})"]] },
   // ---------------------------------------------------------------- kaufknopf (stre-T-120)
   { satz: "kaufknopf", ziel: ["bundle: isBundle"], ersetze: [[KAUF, "    isBundle: release?.shop_url_kind === \"bundle\",\n", "    isBundle: false,\n"]] },
   { satz: "kaufknopf", ziel: ["pack: kein Bundle","Art null: kein Bundle","alter Server ohne Feld: kein Bundle","unbekannte Art: kein Bundle","ohne Release: kein Bundle"], ersetze: [[KAUF, "    isBundle: release?.shop_url_kind === \"bundle\",\n", "    isBundle: true,\n"]] },
@@ -2133,7 +2141,7 @@ if (process.argv.includes("--alle-saetze")) {
 
 // ------------------------------------------------------------- Lauf
 
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter"]
   .filter((s) => !nurSatz || s === nurSatz);
 if (SAETZE.length === 0) {
   console.log(`unbekannter Satz: ${nurSatz}`);

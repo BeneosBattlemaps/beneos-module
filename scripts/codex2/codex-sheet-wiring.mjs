@@ -1,28 +1,65 @@
 /* =============================================================
-   Beneos Codex, entry-point wiring (cloud-v2 drawer button,
-   cloud-v2 card context menu).
+   Beneos Codex, entry-point wiring (actor sheet tab, cloud-v2
+   drawer button, cloud-v2 card context menu).
 
    These surfaces all route through `game.beneos.codex.openForActor`,
    which beneos-codex-init.mjs points at the v2 windows. The wiring
    lives here (codex2) so the legacy codex/ tree can be removed.
 
-   DER EINSTIEG AM ACTOR-BOGEN LIEGT NICHT HIER. Er steht in
-   `beneos_module.js` am Haken `renderActorSheetV2` und haengt einen
-   Knopf mit dem Beneos-Logo in `nav.tabs`. Bis zum 08.11.2026 stand
-   hier ein zweiter, und der ist nie gelaufen: `renderActorSheet`
-   feuert in Foundry 13 mit dnd5e 5.3.3 null mal, und `.app` trifft am
-   v13-Fenster ebenfalls null mal, dort heisst es `.application`.
-   Gemessen in `TC-PRJ-STR-273`: der Knopf erschien 0 mal, und
-   `fa-book-skull` stand 0 mal im Dokument.
+   DER REITER AM ACTOR-BOGEN: EIN REITER, ZWEI HAKEN. `haengeKodexReiter`
+   haengt einen Knopf mit dem Beneos-Logo in `nav.tabs`. Gerufen wird er
+   von zwei Haken, je nach Bogenformat:
+   - V2 (dnd5e 5.x): `renderActorSheetV2` in `beneos_module.js`.
+   - V1 (pf2e 7.12.2, `ActorSheetPF2e` erbt von
+     `foundry.appv1.sheets.ActorSheet`): `renderActorSheet` hier unten.
+     Der Installer behaelt bei pf2e die Beneos-Flags
+     (`beneos-native-installer.mjs`, `#swapActorsForForeignSystem`), die
+     Kreatur ist also erkennbar.
 
-   Betreiberentscheid 08.11.2026: entfernt statt richtiggestellt. Eine
-   richtiggestellte Fassung haette zwei Flaechen mit zwei verschiedenen
-   Symbolen fuer dieselbe Funktion ergeben, und sie haette
-   `beneos_module.js:238` mitgezogen, das `sheet.template.includes()`
-   liest, waehrend `sheet.template` am v13-Bogen null ist.
+   Bis zum 08.11.2026 stand hier ein eigener V1-Haken mit einem zweiten
+   Symbol (`fa-book-skull` im Fensterkopf). Er wurde entfernt, gemessen
+   unter dnd5e 5.3.3, wo `renderActorSheet` null mal feuert
+   (`TC-PRJ-STR-273`). An pf2e-Boegen nahm das den einzigen Einstieg weg
+   (Kalt-Review stre-T-156, W1). Betreiberentscheid 20.11.2026: der
+   V1-Einstieg bleibt, mit demselben Reiter wie an V2, nicht mit dem
+   alten Kopfsymbol.
    ============================================================= */
 
+import { BeneosUtility } from "../beneos_utility.js"
 import { hasV13CodexContent } from "../codex/codex-data-adapter.mjs"
+
+/** Haengt den Kodex-Reiter an die Navigationsleiste eines Actor-Bogens.
+ *  Nur fuer Beneos-Kreaturen, hoechstens einmal je Bogen. Nimmt die
+ *  Wurzel als HTMLElement (V2) oder als jQuery-Objekt (V1). */
+export function haengeKodexReiter(sheet, html) {
+  const actor = sheet?.document ?? sheet?.actor
+  if (!actor || !BeneosUtility.checkIsBeneosToken(actor)) return
+  const root = html instanceof HTMLElement ? html : html?.[0]
+  const nav = root?.querySelector?.('nav.tabs[data-group="primary"]')
+        ?? root?.querySelector?.('nav.tabs')
+        ?? root?.querySelector?.('.sheet-tabs')
+  if (!nav || nav.querySelector('.beneos-sheet-codex-tab')) return
+  const label = game.i18n.localize('BENEOS.CreatureCodex.SheetTabTooltip')
+  const tab = document.createElement('a')
+  tab.className = 'item control beneos-sheet-codex-tab'
+  tab.dataset.tooltip = label
+  tab.setAttribute('aria-label', label)
+  tab.innerHTML = '<i class="beneos-icon-logo"></i>'
+  tab.addEventListener('click', (ev) => {
+    ev.preventDefault(); ev.stopPropagation()
+    try { game.beneos?.codex?.openForActor?.(actor) }
+    catch (err) { console.error('[beneos-codex] sheet-tab open failed', err) }
+  })
+  nav.appendChild(tab)
+}
+
+// V1-Boegen (pf2e). Ein V2-Bogen kommt ueber renderActorSheetV2 in
+// beneos_module.js; ruft Foundry fuer ihn auch diesen Haken, bleibt es
+// bei einem Reiter.
+Hooks.on("renderActorSheet", (sheet, html) => {
+  if (sheet instanceof foundry.applications.api.ApplicationV2) return
+  haengeKodexReiter(sheet, html)
+})
 
 /** Linear scan over `game.actors` for an Actor whose `world.beneos`
  *  flag identifies it as the given token-key. Used by the cloud-v2
