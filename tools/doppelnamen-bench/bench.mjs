@@ -231,7 +231,9 @@ function main() {
   }
 
   // --sabotage haengt einen erfundenen Befund an. Der Stand MUSS dann rot
-  // werden, sonst traegt die Null nichts.
+  // werden, sonst traegt die Null nichts. Das prueft nur die Schranke; die
+  // echten Mutationen im Modulcode stehen seit stre-T-015 in
+  // `tools/bench-sabotagen.mjs`.
   const befunde = SABOTAGE
     ? [...r.befunde, { datei: "scripts/erfunden.js", zeile: 1, regel: "no-dupe-keys", text: "Sabotageprobe" }]
     : r.befunde

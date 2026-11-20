@@ -1166,7 +1166,7 @@ for (const f of AUFRUFFORMEN) {
 ok(`es werden noch mindestens ${AUFRUF_MIND.geprueft} Schluessel wirklich `
   + "geprueft",
   r6.geprueft >= AUFRUF_MIND.geprueft, `${r6.geprueft}`)
-ok("und die Schranke darauf ist streng genug",
+ok("und die Schranke auf die geprueften Schluessel ist streng genug",
   mindTraegt(AUFRUF_MIND.geprueft, r6.geprueft),
   `${AUFRUF_MIND.geprueft} gegen ${r6.geprueft}`)
 

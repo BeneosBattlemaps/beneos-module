@@ -325,7 +325,9 @@ function main() {
   }
 
   // --sabotage schaltet die Erkennung des Rueckfalls ab. Der Satz MUSS dann
-  // rot werden, sonst traegt die Obergrenze nichts.
+  // rot werden, sonst traegt die Obergrenze nichts. Das prueft nur die
+  // Schranke; die echten Mutationen im Modulcode stehen seit stre-T-015 in
+  // `tools/bench-sabotagen.mjs`.
   const zahl = SABOTAGE ? befunde.length + 99 : befunde.length
   console.log(`Dateien: ${alle.length}`)
   console.log(`Stellen, die bei entferntem Globalen brechen: ${zahl}, erlaubt ${HOECHSTENS}`)

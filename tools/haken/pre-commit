@@ -402,13 +402,18 @@ fi
 # angefasst wird. Er faehrt den Laeufer selbst viermal und kostet gemessen
 # 10,5 s; das ist zu viel fuer jeden Commit an tools/lib, deshalb nicht in der
 # Sammlung oben, sondern bedingt wie die Katalogpruefung darunter.
+# Seit stre-T-015 gehoeren der Bench-Laeufer und die gemeinsame Ersetzung
+# dazu, mit dem Satz des Bench-Laeufers (seine Selbstprobe, rund 5 s). Die
+# Laeufer selbst faehrt der Haken nicht, sie brauchen Minuten.
 if git diff --cached --name-only --diff-filter=ACM \
      -- tools/lib/kindlauf.mjs tools/lib/kindlauf.test.mjs \
-        tools/stream-sabotagen.mjs \
+        tools/lib/ersetze.mjs tools/stream-sabotagen.mjs \
+        tools/bench-sabotagen.mjs tools/bench-sabotagen.test.mjs \
    | grep -q .
 then
-  meld "pre-commit: Sabotagelaeufer vorgemerkt, der Satz kindlauf laeuft mit"
-  fahre "tools/lib/kindlauf.test.mjs" "kindlauf.test.mjs, 48 Saetze"
+  meld "pre-commit: Sabotagelaeufer vorgemerkt, die Saetze kindlauf und bench-sabotagen laufen mit"
+  fahre "tools/lib/kindlauf.test.mjs" "kindlauf.test.mjs, 57 Saetze"
+  fahre "tools/bench-sabotagen.test.mjs" "bench-sabotagen.test.mjs, 33 Saetze"
 fi
 
 # Die teure nur, wenn ihr Gegenstand angefasst wird.

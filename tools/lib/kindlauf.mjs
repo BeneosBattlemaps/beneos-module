@@ -22,11 +22,21 @@
  *               Prozess noch gedruckt hat, ist kein Ergebnis.
  *
  * Geprueft in `tools/lib/kindlauf.test.mjs`.
+ *
+ * ANDERE AUSGABEFORMEN (stre-T-015). Die Benches unter `tools/*-bench`
+ * melden nicht alle wie die Stream-Saetze: zwei schreiben `  FAIL `, zwei
+ * nur einen Ausgang mit `ROT:` auf stderr, und einer braucht ein Argument.
+ * Fuer `tools/bench-sabotagen.mjs` nimmt `fahreKind` deshalb die Praefixe
+ * fuer rote und gruene Zeilen und die Argumente des Skripts, und gibt stdout
+ * als `ausgabe` mit. Die Vorgaben sind der Stand davor; fuer den
+ * Stream-Laeufer aendert sich nichts.
  */
 
 import { execFile } from "node:child_process"
 
 export const ZEITGRENZE_MS = 120000
+export const ROT_PRAEFIXE = ["  ROT  "]
+export const OK_PRAEFIXE = ["  ok   "]
 const STDERR_ZEILEN = 12
 
 /**
@@ -58,24 +68,37 @@ function kappe(zeilen) {
  * Faehrt `datei` mit dem eigenen Node in `verzeichnis`.
  * @param {Set} [kinder] wird gefuehrt, damit ein Abbruch laufende Prozesse
  *   beenden kann.
+ * @param {string[]} [rotPraefixe] Zeilenanfaenge einer roten Probe.
+ * @param {string[]} [okPraefixe] Zeilenanfaenge einer gruenen Probe.
+ * @param {string[]} [args] Argumente hinter dem Skript.
  * @returns {Promise<{rc:number, rot:Set<string>, gruen:Set<string>,
  *   doppelt:Set<string>, ms:number, signal:string|null, getoetet:boolean,
- *   stderr:string[]}>}
+ *   stderr:string[], ausgabe:string[]}>}
  */
-export function fahreKind(verzeichnis, datei, { zeitgrenze = ZEITGRENZE_MS, kinder = null, puffer = 16 * 1024 * 1024 } = {}) {
+export function fahreKind(verzeichnis, datei, {
+  zeitgrenze = ZEITGRENZE_MS, kinder = null, puffer = 16 * 1024 * 1024,
+  rotPraefixe = ROT_PRAEFIXE, okPraefixe = OK_PRAEFIXE, args = [],
+} = {}) {
+  // Der Name ist der Rest der Zeile hinter dem ersten passenden Praefix.
+  const nach = (z, praefixe) => {
+    const p = praefixe.find((x) => z.startsWith(x))
+    return p === undefined ? null : z.slice(p.length).trim()
+  }
   return new Promise((ok) => {
     const t0 = Date.now()
-    const kind = execFile(process.execPath, ["--no-warnings", datei],
+    const kind = execFile(process.execPath, ["--no-warnings", datei, ...args],
       { cwd: verzeichnis, timeout: zeitgrenze, maxBuffer: puffer },
       (fehler, stdout, stderr) => {
         kinder?.delete(kind)
         const rot = new Set()
         const gruen = new Set()
         const doppelt = new Set()
-        for (const z of String(stdout).split("\n")) {
-          if (z.startsWith("  ROT  ")) rot.add(z.slice(7).trim())
-          if (z.startsWith("  ok   ")) {
-            const n = z.slice(7).trim()
+        const zeilen = String(stdout).split("\n")
+        for (const z of zeilen) {
+          const r = nach(z, rotPraefixe)
+          if (r !== null) rot.add(r)
+          const n = nach(z, okPraefixe)
+          if (n !== null) {
             if (gruen.has(n)) doppelt.add(n)
             gruen.add(n)
           }
@@ -97,6 +120,7 @@ export function fahreKind(verzeichnis, datei, { zeitgrenze = ZEITGRENZE_MS, kind
           getoetet,
           grund,
           stderr: kappe(maskiere(stderr).split(/\r?\n/).filter((z) => z.trim())),
+          ausgabe: maskiere(stdout).split(/\r?\n/).filter((z) => z.trim()),
         })
       })
     kinder?.add(kind)

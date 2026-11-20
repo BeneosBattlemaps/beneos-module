@@ -140,6 +140,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { fahreKind, einordnen, erklaere, maskiere, ZEITGRENZE_MS } from "./lib/kindlauf.mjs";
+import { ersetze } from "./lib/ersetze.mjs";
 
 // Jede Ausgabe dieses Laeufers geht durch die Maske (stre-T-126). Proben- und
 // Zielnamen kommen aus stdout der Saetze und aus SABOTAGEN, und einige tragen
@@ -150,8 +151,6 @@ console.log = (...teile) => rohLog(...teile.map((t) => (typeof t === "string" ? 
 
 const WURZEL = join(dirname(fileURLToPath(import.meta.url)), "..");
 const BASIS = "75555bb";
-const LF = "\n";
-const CR = "\r";
 
 // Ein Satz liegt unter scripts/stream, ausser er steht in dieser Tabelle.
 const SATZ_AUSSERHALB = {
@@ -2065,33 +2064,9 @@ const mitAlt = process.argv.includes("--alt");
 const zeig = process.argv.includes("--zeig");
 const nurSatz = arg("--satz");
 
-function zeilenende(text) {
-  return text.includes(CR + LF) ? CR + LF : LF;
-}
-
-function ersetze(lies, liste) {
-  const neu = new Map();
-  for (const [datei, rohAnker, rohErsatz, anzahl = 1, nr = 1] of liste) {
-    if (rohAnker === null) {
-      if (existsSync(join(WURZEL, datei))) return { fehler: `${datei}: soll neu entstehen, liegt aber schon` };
-      neu.set(datei, rohErsatz);
-      continue;
-    }
-    const text = neu.has(datei) ? neu.get(datei) : lies(datei);
-    const eol = zeilenende(text);
-    const anker = rohAnker.split(LF).join(eol);
-    const ersatz = rohErsatz.split(LF).join(eol);
-    const stellen = [];
-    let i = text.indexOf(anker);
-    while (i >= 0) { stellen.push(i); i = text.indexOf(anker, i + anker.length); }
-    if (stellen.length !== anzahl) {
-      return { fehler: `${datei}: Anker ${stellen.length}x statt ${anzahl}x: ${rohAnker.slice(0, 70).replace(/\n/g, "\\n")}` };
-    }
-    const at = stellen[nr - 1];
-    neu.set(datei, text.slice(0, at) + ersatz + text.slice(at + anker.length));
-  }
-  return { neu };
-}
+// Die Ersetzung steht seit stre-T-015 in `tools/lib/ersetze.mjs`, weil der
+// Bench-Laeufer dieselbe braucht.
+const liegtImBaum = (datei) => existsSync(join(WURZEL, datei));
 
 // Die laufenden Satzprozesse. Der Signalweg beendet sie vor dem Abraeumen,
 // sonst haelt unter Windows ihr Arbeitsordner die Kopie fest (EBUSY).
@@ -2292,7 +2267,7 @@ lauf: try {
     while (naechster < auftraege.length) {
       const s = auftraege[naechster];
       naechster += 1;
-      const e = ersetze(lies, s.ersetze);
+      const e = ersetze(lies, s.ersetze, liegtImBaum);
       if (e.fehler) { ergebnisse.push({ s, fehler: e.fehler }); continue; }
       for (const [datei, text] of e.neu) writeFileSync(join(kopienNeu[i], datei), text);
       const r = await fahre(kopienNeu[i], SATZDATEI(s.satz), zeitgrenze);
@@ -2304,7 +2279,7 @@ lauf: try {
       // Nahtdateien. Fehlt der Anker dort, ist die Luecke nicht belegbar.
       let a = null;
       if (mitAlt && s.luecke) {
-        const ea = ersetze(liesAlt, s.ersetze);
+        const ea = ersetze(liesAlt, s.ersetze, liegtImBaum);
         if (ea.fehler) a = { fehlerAlt: ea.fehler };
         else {
           for (const [datei, text] of ea.neu) writeFileSync(join(kopienAlt[i], datei), text);

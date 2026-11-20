@@ -47,7 +47,8 @@
 //     Bestand.
 //
 // WAS ER NICHT FAENGT, und das ist gemessen und nicht geschaetzt. 35
-// Sabotagen gefahren, 31 gefangen. Die vier, die durchkommen, sind alle
+// Sabotagen gefahren, 31 gefangen (von Hand; wiederholbar stehen sieben
+// davon seit stre-T-015 in `tools/bench-sabotagen.mjs`). Die vier, die durchkommen, sind alle
 // dieselbe Klasse: eine Aenderung AN DIESEM STAND, die seine eigene Pruefung
 // entwertet. Die Schranke im Rumpf auf null, die Bedingung des
 // Gegenzahlsatzes auf `true`, die Gegenzahlfunktion so geaendert, dass sie

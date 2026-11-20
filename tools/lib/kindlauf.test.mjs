@@ -148,6 +148,31 @@ try {
   const l4 = await laeufer("--alle-saetze", "--zeitgrenze", "1")
   p.gleich("Laeufer: --alle-saetze mit Toetung endet mit rc 2", l4.rc, 2)
 
+  // stre-T-015: die Benches melden mit anderen Praefixen und brauchen
+  // Argumente. Die Vorgabe bleibt der Stand davor.
+  p.abschnitt("eigene Praefixe, Argumente und Ausgabe")
+  const FAIL = skript("fail.mjs",
+    'console.log("  ok   eins")\nconsole.log("  FAIL zwei - Detail")\nconsole.log("  ROT  drei")\nprocess.exit(1)\n')
+  const ARGS = skript("args.mjs", 'console.log("  ok   " + process.argv.slice(2).join("|"))\n')
+  const vorgabe = baustein ? await baustein.fahreKind(ordner, FAIL) : null
+  p.gleich("Vorgabe: FAIL ist keine rote Zeile", vorgabe?.rot?.has("zwei - Detail"), false)
+  p.gleich("Vorgabe: ROT bleibt die rote Zeile", vorgabe?.rot?.has("drei"), true)
+  const eigen = baustein
+    ? await baustein.fahreKind(ordner, FAIL, { rotPraefixe: ["  FAIL "] })
+    : null
+  p.gleich("eigene Praefixe: FAIL ist rot, mit Anhang", eigen?.rot?.has("zwei - Detail"), true)
+  p.gleich("eigene Praefixe: ROT ist dann keine rote Zeile", eigen?.rot?.has("drei"), false)
+  p.gleich("eigene Praefixe: ok bleibt gruen", eigen?.gruen?.has("eins"), true)
+  p.gleich("eigene Praefixe: Art rot", art(eigen), "rot")
+  const mitArgs = baustein
+    ? await baustein.fahreKind(ordner, ARGS, { args: ["--foundry", "x y"] })
+    : null
+  p.gleich("Argumente kommen beim Skript an", mitArgs?.gruen?.has("--foundry|x y"), true)
+  const ohneArgs = baustein ? await baustein.fahreKind(ordner, ARGS) : null
+  p.gleich("ohne Argumente kommt keines an", ohneArgs?.gruen?.has(""), true)
+  p.gleich("ausgabe traegt stdout ohne Leerzeilen", JSON.stringify(eigen?.ausgabe),
+    JSON.stringify(["  ok   eins", "  FAIL zwei - Detail", "  ROT  drei"]))
+
   // Einordnung ohne Prozess: die vier Arten an Hand gebauter Ergebnisse.
   p.abschnitt("einordnen an gebauten Ergebnissen")
   const leer = new Set()
