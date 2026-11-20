@@ -2132,6 +2132,11 @@ const SABOTAGEN = [
   { satz: "hinweis", ziel: ["[Struktur] das Nachladen der Videos beendet das Warten, gebunden an den Aufbau vor dem Nachladen"], ersetze: [[CANVAS, ".finally(fertig)", ""]] },
   { satz: "hinweis", ziel: ["[Struktur] das Nachladen der Videos beendet das Warten, gebunden an den Aufbau vor dem Nachladen"], ersetze: [[CANVAS, "    const fertig = aufbauEnde()\n    fillInVideos().catch((e) => console.warn(\"Beneos Stream | Videos nachladen abgebrochen:\", e)).finally(fertig)", "    fillInVideos().catch((e) => console.warn(\"Beneos Stream | Videos nachladen abgebrochen:\", e)).finally(() => aufbauEnde()())"]] },
   { satz: "hinweis", ziel: ["[Struktur] stream-canvas holt aufbauEnde aus der Meldestelle"], ersetze: [[CANVAS, "import { aufbauEnde } from \"./stream-hinweis.mjs\"", "const aufbauEnde = () => () => {}"]] },
+  // stre-T-165, Foundry-Messung: der Kaufindex wartet auf ready, Formen der echten Releaseliste.
+  { satz: "hinweis", ziel: ["vor ready: der Manager wird noch nicht geholt", "vor ready: nur Subscribe"], ersetze: [[HINWEIS, "      if (globalThis.game?.ready === false) await new Promise((r) => globalThis.Hooks.once(\"ready\", r))\n", ""]] },
+  { satz: "hinweis", ziel: ["nach ready: der Manager wird geholt","nach ready: Buy kommt","und die Liste nur einmal"], ersetze: [[HINWEIS, "        mgr = await globalThis.ensureBeneosScenePacker()\n", ""]] },
+  { satz: "hinweis", ziel: ["Suffixfall: beneos_bm_0030_cos_castle_ravenloft_6f_9f findet bm_0030"], ersetze: [[HINWEIS, " ?? index.kerne.get(index.kern(release))", ""]] },
+  { satz: "hinweis", ziel: ["beneos_bm_0047b_modular_city_dark findet bm_0047 nicht"], ersetze: [[HINWEIS, "index.kerne.get(index.kern(release))", "index.kerne.get(index.kern(release).replace(/b$/, \"\"))"]] },
 ];
 
 /*

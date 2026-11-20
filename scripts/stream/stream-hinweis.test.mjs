@@ -59,7 +59,7 @@ globalThis.game = {
 }
 globalThis.ui = { notifications: { warn: (t) => warnungen.push(String(t)) } }
 const haken = []
-globalThis.Hooks = { on: (name, fn) => haken.push([name, fn]), callAll() {} }
+globalThis.Hooks = { on: (name, fn) => haken.push([name, fn]), once: (name, fn) => haken.push([name, fn]), callAll() {} }
 Object.defineProperty(globalThis, "navigator", { value: { onLine: true }, configurable: true, writable: true })
 
 /* Ein DOM, so klein wie moeglich: Elemente mit Kindern, `remove`, und
@@ -395,6 +395,49 @@ console.log("\nDer Kauflink")
   gleich("Abruf scheitert: kein Buy, Subscribe bleibt", linkeVon(schild()).length, 1)
   await h.ladeKaufIndex({ kern })
   gleich("und keine Wiederholung", mgr.aufrufe, 1)
+}
+{
+  // Gemessen im Foundry-Test auf 30003 (20.11.2026): das Schild erscheint beim
+  // Szenenaufbau VOR ready, der Cloud-Manager entsteht erst im ready-Haken
+  // (beneos-scenepacker.js). Der Index wartet deshalb auf ready und holt den
+  // Manager dann wie das Cloud-Fenster ueber ensureBeneosScenePacker.
+  const h = await frisch()
+  delete globalThis.BeneosScenePacker
+  globalThis.game.ready = false
+  let gesichert = 0
+  let mgr = null
+  globalThis.ensureBeneosScenePacker = async () => {
+    gesichert += 1
+    mgr = kaufQuelle([{ release_dir: "beneos_battlemaps_0042", shop_url: "https://shop.example/products/karte", shop_url_kind: "pack" }])
+    return mgr
+  }
+  const laden = h.ladeKaufIndex({ kern })
+  canvas.scene = szene
+  h.meldeAusfall("denied", KARTE)
+  await new Promise((r) => setTimeout(r, 0))
+  gleich("vor ready: der Manager wird noch nicht geholt", gesichert, 0)
+  gleich("vor ready: nur Subscribe", linkeVon(schild()).length, 1)
+  globalThis.game.ready = true
+  for (const [n, fn] of haken) if (n === "ready") fn()
+  await laden
+  await h.ladeKaufIndex()
+  gleich("nach ready: der Manager wird geholt", gesichert, 1)
+  gleich("nach ready: Buy kommt", linkeVon(schild())[0]?.href, "https://shop.example/products/karte")
+  gleich("und die Liste nur einmal", mgr?.aufrufe, 1)
+  delete globalThis.ensureBeneosScenePacker
+  delete globalThis.game.ready
+}
+{
+  // Die Formen aus dem Foundry-Test (20.11.2026): Streamordner gegen release_dir
+  // der echten Releaseliste, mit dem echten Kern.
+  const h = await frisch()
+  const index = h.kaufIndexAus([
+    { release_dir: "bm_0030", shop_url: "https://shop.example/products/castle-ravenloft-6f-9f-spires", shop_url_kind: "pack" },
+    { release_dir: "bm_0047", shop_url: "https://shop.example/products/modular-city", shop_url_kind: "pack" },
+  ], kern)
+  gleich("Suffixfall: beneos_bm_0030_cos_castle_ravenloft_6f_9f findet bm_0030",
+    h.kaufFuer(index, "beneos_bm_0030_cos_castle_ravenloft_6f_9f").url, "https://shop.example/products/castle-ravenloft-6f-9f-spires")
+  gleich("beneos_bm_0047b_modular_city_dark findet bm_0047 nicht", h.kaufFuer(index, "beneos_bm_0047b_modular_city_dark").url, null)
 }
 delete globalThis.BeneosScenePacker
 {

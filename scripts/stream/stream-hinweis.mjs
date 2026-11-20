@@ -259,7 +259,17 @@ export function ladeKaufIndex({ kern } = {}) {
   kaufLaden = (async () => {
     try {
       const k = kern ?? (await import("../cloud-v2/beneos-install-state.mjs")).releaseKern
-      const mgr = globalThis.BeneosScenePacker
+      // Das erste Schild kommt oft beim Szenenaufbau vor ready, der Manager
+      // entsteht erst im ready-Haken (beneos-scenepacker.js). Gemessen im
+      // Foundry-Test auf 30003 (20.11.2026): ohne dieses Warten blieb der Index
+      // die ganze Sitzung leer.
+      if (globalThis.game?.ready === false) await new Promise((r) => globalThis.Hooks.once("ready", r))
+      let mgr = globalThis.BeneosScenePacker
+      // Wie das Cloud-Fenster: wer sich nach dem Laden der Welt anmeldet, hat
+      // noch keinen Manager.
+      if (typeof mgr?.listReleases !== "function" && typeof globalThis.ensureBeneosScenePacker === "function") {
+        mgr = await globalThis.ensureBeneosScenePacker()
+      }
       if (typeof mgr?.listReleases !== "function") return null
       return kaufIndexAus(await mgr.listReleases(), k)
     } catch (_) {
