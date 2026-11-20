@@ -43,8 +43,8 @@
   flex: 0 0 auto;
   margin-right: 10px;
   background-color: var(--bc-text);
-  -webkit-mask: url("/modules/beneos-module/icons/beneos_logo.svg") center / contain no-repeat;
-          mask: url("/modules/beneos-module/icons/beneos_logo.svg") center / contain no-repeat;
+  -webkit-mask: url("../icons/beneos_logo.svg") center / contain no-repeat;
+          mask: url("../icons/beneos_logo.svg") center / contain no-repeat;
 }
 
 .beneos-wiki .window-content {

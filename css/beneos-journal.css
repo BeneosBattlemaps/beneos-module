@@ -258,7 +258,7 @@ body{font-size:15px;line-height:1.3;color:#222}
   top: 0.17em;
   width: 1.15em;
   height: 1.15em;
-  background-image: url("/modules/beneos-module/icons/icon_journal_triangle.webp");
+  background-image: url("../icons/icon_journal_triangle.webp");
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
@@ -499,10 +499,10 @@ body{font-size:15px;line-height:1.3;color:#222}
   background-size:contain;background-repeat:no-repeat;background-position:center;
   display:none;position:relative;            /* ← neu */
 }
-.icon-square.challenge.active   {display:block;background-image:url("/modules/beneos-module/icons/journal_challenge.webp");}
-.icon-square.combat.active      {display:block;background-image:url("/modules/beneos-module/icons/journal_combat.webp");}
-.icon-square.exploration.active {display:block;background-image:url("/modules/beneos-module/icons/journal_exploration.webp");}
-.icon-square.social.active      {display:block;background-image:url("/modules/beneos-module/icons/journal_social.webp");}
+.icon-square.challenge.active   {display:block;background-image:url("../icons/journal_challenge.webp");}
+.icon-square.combat.active      {display:block;background-image:url("../icons/journal_combat.webp");}
+.icon-square.exploration.active {display:block;background-image:url("../icons/journal_exploration.webp");}
+.icon-square.social.active      {display:block;background-image:url("../icons/journal_social.webp");}
 
 /* C3) Leads-Quadrate */
 .beneos-node-links{
@@ -823,7 +823,7 @@ form.journal-sheet.beneos-adventure .sheet-body {
   min-height: 18px;
   max-width: 22px;
   max-height: 22px;
-  background-image: url("/modules/beneos-module/icons/icon_journal_triangle.webp");
+  background-image: url("../icons/icon_journal_triangle.webp");
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
@@ -1163,7 +1163,7 @@ form.journal-sheet.beneos-adventure .sheet-body {
   top: 0.19em;
   width: 1.18em;
   height: 1.18em;
-  background-image: url("/modules/beneos-module/icons/icon_journal_triangle.webp");
+  background-image: url("../icons/icon_journal_triangle.webp");
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;

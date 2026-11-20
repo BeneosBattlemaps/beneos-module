@@ -220,6 +220,12 @@ const KREATURKODEX = "scripts/codex2/creature-codex.mjs";
 const KODEXFENSTER = "scripts/codex2/beneos-codex.mjs";
 const SCHMIEDE = "scripts/cloud-v2/forge-generator.mjs";
 const PDFFENSTER = "scripts/codex2/pdf-viewer-window.mjs";
+const PACKER = "scripts/beneos-scenepacker.js";
+const BFX = "scripts/beneosfx.js";
+const CSS_JOURNAL = "css/beneos-journal.css";
+const CSS_BOGEN = "css/beneos-character-sheet.css";
+const CSS_WIKI = "css/beneos-wiki.css";
+const CSS_BENEOS = "css/beneos.css";
 
 const SABOTAGEN = [
   // ---------------------------------------------------------------- maske
@@ -1556,7 +1562,30 @@ const SABOTAGEN = [
   // Kacheladresse der Tour. Den Satz gibt es an der Basis nicht.
   { satz: "unterpfad", ziel: ["mit Praefix traegt die Adresse den Unterpfad"], ersetze: [[WAECHTER, "  try { return foundry.utils.getRoute(p) } catch (_) { return p }", "  return p"]] },
   { satz: "unterpfad", ziel: ["ohne Praefix bleibt die Adresse wie vorher"], ersetze: [[WAECHTER, "  try { return foundry.utils.getRoute(p) } catch (_) { return p }", "  try { return foundry.utils.getRoute(p, { prefix: \"x\" }) } catch (_) { return p }"]] },
-  { satz: "unterpfad", ziel: ["ohne Foundry bleibt es bei genau einem Schraegstrich"], ersetze: [[WAECHTER, "  const p = \"/\" + String(pfad).replace(/^\\/+/, \"\")", "  const p = \"/\" + String(pfad)"]] },
+  { satz: "unterpfad", ziel: ["ohne Foundry bleibt es bei genau einem Schraegstrich"], ersetze: [[WAECHTER, "  const p = \"/\" + s.replace(/^\\/+/, \"\")", "  const p = \"/\" + s"]] },
+  // stre-T-164: erweiterter Vertrag von routeAdresse, Importe, Todesmarker, CSS.
+  { satz: "unterpfad", ziel: ["//host/x bleibt mit Praefix stehen", "//host/x bleibt ohne Praefix stehen"], ersetze: [[WAECHTER, "  if (/^[a-z][a-z0-9+.-]*:/i.test(s) || /^\\/\\/[^/]/.test(s)) return s", "  if (/^[a-z][a-z0-9+.-]*:/i.test(s)) return s"]] },
+  { satz: "unterpfad", ziel: ["https://h/x bleibt mit Praefix stehen", "https://h/x bleibt ohne Praefix stehen"], ersetze: [[WAECHTER, "  if (/^[a-z][a-z0-9+.-]*:/i.test(s) || /^\\/\\/[^/]/.test(s)) return s", "  if (/^\\/\\/[^/]/.test(s)) return s"]] },
+  { satz: "unterpfad", ziel: ["///x mit Praefix", "///x ohne Praefix"], ersetze: [[WAECHTER, "/^\\/\\/[^/]/.test(s)", "/^\\/\\//.test(s)"]] },
+  { satz: "unterpfad", ziel: ["/x mit Praefix", "///x mit Praefix", "scene-packer mit Praefix unter dem Unterpfad"], ersetze: [[WAECHTER, "  try { return foundry.utils.getRoute(p) } catch (_) { return p }", "  try { return foundry.utils.getRoute(p, { prefix: null }) } catch (_) { return p }"]] },
+  { satz: "unterpfad", ziel: ["/x ohne Praefix", "///x ohne Praefix", "scene-packer ohne Praefix wie heute"], ersetze: [[WAECHTER, "  try { return foundry.utils.getRoute(p) } catch (_) { return p }", "  try { return foundry.utils.getRoute(\"/x\" + p) } catch (_) { return p }"]] },
+  { satz: "unterpfad", ziel: ["[Struktur] beneos-scenepacker importiert scene-packer ueber routeAdresse"], ersetze: [[PACKER, "import(routeAdresse(\"modules/scene-packer/scripts/export-import/moulinette-importer.js\"))", "import(\"/modules/scene-packer/scripts/export-import/moulinette-importer.js\")"]] },
+  { satz: "unterpfad", ziel: ["[Struktur] beneos-scenepacker bindet routeAdresse ein"], ersetze: [[PACKER, ", mapWithConcurrency, routeAdresse }", ", mapWithConcurrency }"]] },
+  { satz: "unterpfad", ziel: ["[Struktur] beneos_tours importiert scene-packer ueber routeAdresse"], ersetze: [[TOUR, "import(routeAdresse(\"modules/scene-packer/scripts/export-import/moulinette-importer.js\"))", "import(\"/modules/scene-packer/scripts/export-import/moulinette-importer.js\")"]] },
+  { satz: "unterpfad", ziel: ["Todesmarker mit Praefix unter dem Unterpfad"], ersetze: [[BFX, "imagePath: \"modules/beneos-module/icons/", "imagePath: \"/modules/beneos-module/icons/"]] },
+  { satz: "unterpfad", ziel: ["Todesmarker ohne Praefix wie heute"], ersetze: [[BFX, "imagePath: \"modules/beneos-module/icons/", "imagePath: \"modules/beneos-module/x/icons/"]] },
+  { satz: "unterpfad", ziel: ["[Struktur] beneos-journal.css: kein url() an der Serverwurzel", "beneos-journal.css: mit Praefix unter dem Unterpfad"], ersetze: [[CSS_JOURNAL, "url(\"../icons/", "url(\"/modules/beneos-module/icons/", 7, 1]] },
+  { satz: "unterpfad", ziel: ["beneos-journal.css: ohne Praefix wie heute"], ersetze: [[CSS_JOURNAL, "url(\"../icons/", "url(\"../../icons/", 7, 7]] },
+  { satz: "unterpfad", ziel: ["beneos-journal.css: Bildadressen gefunden"], ersetze: [7, 6, 5, 4, 3, 2, 1].map((n) => [CSS_JOURNAL, "url(\"../icons/", "url(\"../bilder/", n, 1]) },
+  { satz: "unterpfad", ziel: ["[Struktur] beneos-character-sheet.css: kein url() an der Serverwurzel", "beneos-character-sheet.css: mit Praefix unter dem Unterpfad"], ersetze: [[CSS_BOGEN, "url(\"../icons/", "url(\"/modules/beneos-module/icons/", 2, 1]] },
+  { satz: "unterpfad", ziel: ["beneos-character-sheet.css: ohne Praefix wie heute"], ersetze: [[CSS_BOGEN, "url(\"../icons/", "url(\"../../icons/", 2, 2]] },
+  { satz: "unterpfad", ziel: ["beneos-character-sheet.css: Bildadressen gefunden"], ersetze: [2, 1].map((n) => [CSS_BOGEN, "url(\"../icons/", "url(\"../bilder/", n, 1]) },
+  { satz: "unterpfad", ziel: ["[Struktur] beneos-wiki.css: kein url() an der Serverwurzel", "beneos-wiki.css: mit Praefix unter dem Unterpfad"], ersetze: [[CSS_WIKI, "url(\"../icons/", "url(\"/modules/beneos-module/icons/", 2, 1]] },
+  { satz: "unterpfad", ziel: ["beneos-wiki.css: ohne Praefix wie heute"], ersetze: [[CSS_WIKI, "url(\"../icons/", "url(\"../../icons/", 2, 2]] },
+  { satz: "unterpfad", ziel: ["beneos-wiki.css: Bildadressen gefunden"], ersetze: [2, 1].map((n) => [CSS_WIKI, "url(\"../icons/", "url(\"../bilder/", n, 1]) },
+  { satz: "unterpfad", ziel: ["[Struktur] beneos.css: kein url() an der Serverwurzel", "beneos.css: mit Praefix unter dem Unterpfad"], ersetze: [[CSS_BENEOS, "url('../icons/", "url('/modules/beneos-module/icons/"]] },
+  { satz: "unterpfad", ziel: ["beneos.css: ohne Praefix wie heute"], ersetze: [[CSS_BENEOS, "url('../icons/", "url('../../icons/"]] },
+  { satz: "unterpfad", ziel: ["beneos.css: Bildadressen gefunden"], ersetze: [[CSS_BENEOS, "url('../icons/", "url('../bilder/"]] },
   { satz: "unterpfad", ziel: ["fuehrende Schraegstriche werden zu genau einem"], ersetze: [[WAECHTER, "  try { return foundry.utils.getRoute(p) } catch (_) { return p }", "  return \"/\" + p"]] },
   { satz: "unterpfad", ziel: ["eine absolute Adresse loest keinen Abruf aus", "und liefert keinen Inhalt"], ersetze: [[TOUR, "  if (/^[a-z][a-z0-9+.-]*:|^\\/\\//i.test(String(path))) return null;\n", ""]] },
   { satz: "unterpfad", ziel: ["ein oertlicher Pfad wird unter dem Praefix abgerufen"], ersetze: [[TOUR, "  return fetch(routeAdresse(path));", "  return fetch(\"/\" + path);"]] },
@@ -1567,7 +1596,7 @@ const SABOTAGEN = [
   { satz: "unterpfad", ziel: ["Deinstaller #sizeOf: ohne Praefix wie vorher"], ersetze: [[DEINST, "fetch(routeAdresse(target) + \"?_b=\"", "fetch(routeAdresse(\"x/\" + target) + \"?_b=\""]] },
   { satz: "unterpfad", ziel: ["B1 relativer Pfad mit Praefix"], ersetze: [[KREATURKODEX, "? routeAdresse(u) : u;", "? \"/\" + u.replace(/^\\/+/, \"\") : u;"]] },
   { satz: "unterpfad", ziel: ["B1 relativer Pfad ohne Praefix wie vorher"], ersetze: [[KREATURKODEX, "? routeAdresse(u) : u;", "? routeAdresse(\"x/\" + u) : u;"]] },
-  { satz: "unterpfad", ziel: ["B1 eine absolute Adresse bleibt stehen"], ersetze: [[KREATURKODEX, "(u && !/^([a-z]+:|\\/)/i.test(u))", "(u)"]] },
+  { satz: "unterpfad", ziel: ["B1 eine absolute Adresse bleibt stehen"], ersetze: [[KREATURKODEX, "(u && !/^([a-z]+:|\\/)/i.test(u))", "(u)"], [WAECHTER, "  if (/^[a-z][a-z0-9+.-]*:/i.test(s) || /^\\/\\/[^/]/.test(s)) return s", "  if (/^\\/\\/[^/]/.test(s)) return s"]] },
   { satz: "unterpfad", ziel: ["[Struktur] beneos-codex iconBw: 2 Stellen gefunden"], ersetze: [[KODEXFENSTER, "iconBw: meta.image ? routeAdresse(meta.image) : null,", "iconBw: null,", 2, 2]] },
   { satz: "unterpfad", ziel: ["beneos-codex iconBw: mit Praefix unter dem Unterpfad"], ersetze: [[KODEXFENSTER, "iconBw: meta.image ? routeAdresse(meta.image) : null,", "iconBw: meta.image ? \"/\" + meta.image : null,", 2, 1]] },
   { satz: "unterpfad", ziel: ["beneos-codex iconBw: ohne Praefix gleich dem alten \"/\" + image"], ersetze: [[KODEXFENSTER, "iconBw: meta.image ? routeAdresse(meta.image) : null,", "iconBw: meta.image ? routeAdresse(\"x/\" + meta.image) : null,", 2, 2]] },
@@ -1576,7 +1605,7 @@ const SABOTAGEN = [
   { satz: "unterpfad", ziel: ["forge-generator iconMask: ohne Praefix gleich dem alten \"/\" + image"], ersetze: [[SCHMIEDE, "ctx.originIconMask = originMeta.image ? routeAdresse(originMeta.image) : null;", "ctx.originIconMask = originMeta.image ? routeAdresse(\"x/\" + originMeta.image) : null;"]] },
   { satz: "unterpfad", ziel: ["B4 mit Praefix, kodiert", "B4 Erzeugerpfad mit Praefix"], ersetze: [[PDFFENSTER, ": routeAdresse(this._filePath);", ": \"/\" + this._filePath.replace(/^\\/+/, \"\");"]] },
   { satz: "unterpfad", ziel: ["B4 Erzeugerpfad mit Praefix"], ersetze: [[PDFFENSTER, "/^[a-z][a-z0-9+.-]*:/i.test(this._filePath) ? this._filePath", "this._filePath.startsWith(\"/\") ? this._filePath"]] },
-  { satz: "unterpfad", ziel: ["B4 eine Adresse mit Schema bleibt stehen"], ersetze: [[PDFFENSTER, "/^[a-z][a-z0-9+.-]*:/i.test(this._filePath) ? this._filePath", "false ? this._filePath"]] },
+  { satz: "unterpfad", ziel: ["B4 eine Adresse mit Schema bleibt stehen"], ersetze: [[PDFFENSTER, "/^[a-z][a-z0-9+.-]*:/i.test(this._filePath) ? this._filePath", "false ? this._filePath"], [WAECHTER, "  if (/^[a-z][a-z0-9+.-]*:/i.test(s) || /^\\/\\/[^/]/.test(s)) return s", "  if (/^\\/\\/[^/]/.test(s)) return s"]] },
   { satz: "unterpfad", ziel: ["B4 Erzeugerpfad ohne Praefix wie vorher"], ersetze: [[PDFFENSTER, ": routeAdresse(this._filePath);", ": routeAdresse(\"x/\" + this._filePath);"]] },
   { satz: "unterpfad", ziel: ["B4 ohne Praefix wie vorher, kodiert"], ersetze: [[PDFFENSTER, "file=${encodeURIComponent(file)}", "file=${file}"]] },
   { satz: "unterpfad", ziel: ["status -2 (ungeprueft, etwa beneos://) wird behalten"], ersetze: [[TOUR, "  return antwort?.ok === true || antwort?.status === -2;", "  return antwort?.ok === true;"]] },
@@ -2144,7 +2173,8 @@ function fahre(verzeichnis, datei, grenze = ZEITGRENZE_MS) {
 }
 
 function kopiere(ziel) {
-  for (const teil of ["scripts", "lang", "ui", "tools", "templates"]) {
+  // css seit stre-T-164: der Satz unterpfad liest die Stilblaetter.
+  for (const teil of ["scripts", "lang", "ui", "tools", "templates", "css"]) {
     cpSync(join(WURZEL, teil), join(ziel, teil), { recursive: true });
   }
   for (const datei of ["module.json", "package.json"]) {

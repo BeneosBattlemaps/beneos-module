@@ -1297,7 +1297,7 @@ class BeneosSetupTour extends TourBase {
     // is a default-export ESM class; we dynamically import it the same way
     // BeneosScenePackerManager.importPackage already does (beneos-scenepacker.js:169).
     try {
-      const { default: MoulinetteImporter } = await import("/modules/scene-packer/scripts/export-import/moulinette-importer.js");
+      const { default: MoulinetteImporter } = await import(routeAdresse("modules/scene-packer/scripts/export-import/moulinette-importer.js"));
       const newImporter = new MoulinetteImporter({
         packInfo: cached.packInfo,
         sceneID: cached.sceneID ?? "",

@@ -554,9 +554,18 @@ const HEAD_TIMEOUT_MS = 30000;
  * `foundry.utils.getRoute` setzt das Praefix davor; ohne Praefix liefert es
  * "/pfad", also genau den String, den die Aufrufer vorher selbst bauten.
  * Keine Kodierung: wer bisher roh einsetzte, bekommt weiter einen rohen Pfad.
- * Ohne Importe, damit der Pruefsatz stream-unterpfad ihn schneiden kann. */
+ * Ohne Importe, damit der Pruefsatz stream-unterpfad ihn schneiden kann.
+ *
+ * stre-T-164, Vertrag erweitert: eine Adresse mit Schema und eine
+ * protokollrelative (//host) bleiben unveraendert, sonst wuerde eine fremde
+ * Adresse still zu einem oertlichen Pfad. "///x" gilt weiter als Pfad "/x".
+ * Nur fuer datenrelative Pfade gedacht, kein Wert aus FilePicker.upload;
+ * eine Wache gegen ein schon vorhandenes Praefix gibt es bewusst nicht, sie
+ * braeche einen Datenordner, der so heisst wie das Praefix. */
 export function routeAdresse(pfad) {
-  const p = "/" + String(pfad).replace(/^\/+/, "")
+  const s = String(pfad)
+  if (/^[a-z][a-z0-9+.-]*:/i.test(s) || /^\/\/[^/]/.test(s)) return s
+  const p = "/" + s.replace(/^\/+/, "")
   try { return foundry.utils.getRoute(p) } catch (_) { return p }
 }
 

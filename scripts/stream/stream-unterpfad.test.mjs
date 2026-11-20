@@ -71,11 +71,21 @@ const routeQuelle = schnitt(WAECHTER, "routeAdresse")
 const routeAdresse = binde(routeQuelle, "routeAdresse", {}) ?? (() => "fehlt")
 p.gleich("mit Praefix traegt die Adresse den Unterpfad", mitPraefix(() => routeAdresse("beneos_assets/x/y.webp")), "/foundry/beneos_assets/x/y.webp")
 p.gleich("ohne Praefix bleibt die Adresse wie vorher", ohnePraefix(() => routeAdresse("beneos_assets/x/y.webp")), "/beneos_assets/x/y.webp")
-p.gleich("fuehrende Schraegstriche werden zu genau einem", ohnePraefix(() => routeAdresse("//beneos_assets/x.webp")), "/beneos_assets/x.webp")
+p.gleich("fuehrende Schraegstriche werden zu genau einem", ohnePraefix(() => routeAdresse("///beneos_assets/x.webp")), "/beneos_assets/x.webp")
 // Ohne foundry.utils (Rueckfallzweig) normalisiert getRoute nicht; dann
 // muss routeAdresse selbst die fuehrenden Schraegstriche kuerzen.
 const ohneFoundry = (fn) => { const f = globalThis.foundry; globalThis.foundry = undefined; try { return fn() } finally { globalThis.foundry = f } }
-p.gleich("ohne Foundry bleibt es bei genau einem Schraegstrich", ohneFoundry(() => routeAdresse("//beneos_assets/x.webp")), "/beneos_assets/x.webp")
+p.gleich("ohne Foundry bleibt es bei genau einem Schraegstrich", ohneFoundry(() => routeAdresse("///beneos_assets/x.webp")), "/beneos_assets/x.webp")
+// stre-T-164, Vertrag erweitert: eine Adresse mit Schema und eine
+// protokollrelative Adresse (//host) bleiben stehen; "///x" ist ein Pfad.
+p.gleich("//host/x bleibt mit Praefix stehen", mitPraefix(() => routeAdresse("//host/x")), "//host/x")
+p.gleich("//host/x bleibt ohne Praefix stehen", ohnePraefix(() => routeAdresse("//host/x")), "//host/x")
+p.gleich("https://h/x bleibt mit Praefix stehen", mitPraefix(() => routeAdresse("https://h/x")), "https://h/x")
+p.gleich("https://h/x bleibt ohne Praefix stehen", ohnePraefix(() => routeAdresse("https://h/x")), "https://h/x")
+p.gleich("/x mit Praefix", mitPraefix(() => routeAdresse("/x")), "/foundry/x")
+p.gleich("/x ohne Praefix", ohnePraefix(() => routeAdresse("/x")), "/x")
+p.gleich("///x mit Praefix", mitPraefix(() => routeAdresse("///x")), "/foundry/x")
+p.gleich("///x ohne Praefix", ohnePraefix(() => routeAdresse("///x")), "/x")
 
 // ===========================================================================
 p.abschnitt("A1 beneos_tours.js: Kodex-Inhalt des Rot Cerf")
@@ -160,5 +170,37 @@ p.gleich("404 wird ersetzt", await frage({ ok: false, status: 404 }), false)
 p.gleich("200 wird behalten", await frage({ ok: true, status: 200 }), true)
 p.struktur("intro-complete prueft die gespeicherte Adresse mit beneosTourAdresseBehalten",
   /savedIconSrc && await beneosTourAdresseBehalten\(savedIconSrc\)/.test(TOUREN), true)
+
+// ===========================================================================
+// stre-T-164: der Rest der wurzelabsoluten /modules/-Adressen.
+p.abschnitt("T-164 Importe von scene-packer")
+const PACKER = lies("../beneos-scenepacker.js")
+const IMPORT_SOLL = /import\(routeAdresse\("modules\/scene-packer\/scripts\/export-import\/moulinette-importer\.js"\)\)/
+p.struktur("beneos-scenepacker importiert scene-packer ueber routeAdresse", IMPORT_SOLL.test(PACKER), true)
+p.struktur("beneos-scenepacker bindet routeAdresse ein",
+  /^import \{[^}]*\brouteAdresse\b[^}]*\} from "\.\/beneos-asset-watcher\.js";?$/m.test(PACKER), true)
+p.struktur("beneos_tours importiert scene-packer ueber routeAdresse", IMPORT_SOLL.test(TOUREN), true)
+p.gleich("scene-packer ohne Praefix wie heute", ohnePraefix(() => routeAdresse("modules/scene-packer/x.js")), "/modules/scene-packer/x.js")
+p.gleich("scene-packer mit Praefix unter dem Unterpfad", mitPraefix(() => routeAdresse("modules/scene-packer/x.js")), "/foundry/modules/scene-packer/x.js")
+
+p.abschnitt("T-164 beneosfx.js: Bild des Todesmarkers")
+const FX = lies("../beneosfx.js")
+const fxBild = (FX.match(/filterId: "BFXDeadIcon",[^}]*?imagePath: "([^"]*)"/) ?? [])[1] ?? "fehlt"
+const aufgeloest = (rel, basis) => { try { return new URL(rel, basis).pathname } catch (e) { return `Wurf: ${e.message}` } }
+p.gleich("Todesmarker ohne Praefix wie heute", aufgeloest(fxBild, "https://h/game"), "/modules/beneos-module/icons/beneos_token_circular_death_overlay.webp")
+p.gleich("Todesmarker mit Praefix unter dem Unterpfad", aufgeloest(fxBild, "https://h/foundry/game"), "/foundry/modules/beneos-module/icons/beneos_token_circular_death_overlay.webp")
+
+p.abschnitt("T-164 CSS: url() relativ zur CSS-Datei")
+for (const datei of ["beneos-journal.css", "beneos-character-sheet.css", "beneos-wiki.css", "beneos.css"]) {
+  const css = lies(`../../css/${datei}`)
+  p.struktur(`${datei}: kein url() an der Serverwurzel`, /url\(\s*["']?\/modules\//.test(css), false)
+  const urls = [...css.matchAll(/url\(\s*["']?([^"')]*icons\/[^"')]*)["']?\s*\)/g)].map((m) => m[1])
+  const ohne = urls.map((u) => aufgeloest(u, `https://h/modules/beneos-module/css/${datei}`))
+  const mit = urls.map((u) => aufgeloest(u, `https://h/foundry/modules/beneos-module/css/${datei}`))
+  const name = (u) => u.split("/").pop()
+  p.gleich(`${datei}: ohne Praefix wie heute`, JSON.stringify(ohne), JSON.stringify(urls.map((u) => `/modules/beneos-module/icons/${name(u)}`)))
+  p.gleich(`${datei}: mit Praefix unter dem Unterpfad`, JSON.stringify(mit), JSON.stringify(urls.map((u) => `/foundry/modules/beneos-module/icons/${name(u)}`)))
+  p.gleich(`${datei}: Bildadressen gefunden`, urls.length > 0, true)
+}
 
 p.ende()

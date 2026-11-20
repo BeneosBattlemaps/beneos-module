@@ -15,7 +15,9 @@ let beneosFX = {
   "BFXDeadIcon": [{
     filterType: "sprite",
     filterId: "BFXDeadIcon",
-    imagePath: "/modules/beneos-module/icons/beneos_token_circular_death_overlay.webp",
+    // Relative to the game page so it keeps the route prefix (stre-T-164); it
+    // is stored in the token flags, so it must not carry the prefix itself.
+    imagePath: "modules/beneos-module/icons/beneos_token_circular_death_overlay.webp",
     gridPadding: 2,
     scaleX: "0.8",
     scaleY: "0.8",

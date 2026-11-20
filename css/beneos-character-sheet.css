@@ -51,8 +51,8 @@
   display: block;
   width: 24px;
   height: 24px;
-  -webkit-mask: url("/modules/beneos-module/icons/beneos_logo.svg") center / contain no-repeat;
-          mask: url("/modules/beneos-module/icons/beneos_logo.svg") center / contain no-repeat;
+  -webkit-mask: url("../icons/beneos_logo.svg") center / contain no-repeat;
+          mask: url("../icons/beneos_logo.svg") center / contain no-repeat;
   background-color: currentColor;
 }
 .dnd5e2 nav.tabs[data-group="primary"] .beneos-tab-button:hover .beneos-tab-icon {

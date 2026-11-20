@@ -1,5 +1,5 @@
 :root {
-  --logo-standard: url('/modules/beneos-module/icons/beneos_Logo.webp');
+  --logo-standard: url('../icons/beneos_Logo.webp');
 }
 
 * {

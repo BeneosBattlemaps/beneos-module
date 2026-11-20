@@ -14,7 +14,7 @@
  * the GM finds out at install-time instead of later when the scene 404s.
  */
 
-import { scanSceneSilent, headCheck, isBeneosPath, mapWithConcurrency } from "./beneos-asset-watcher.js";
+import { scanSceneSilent, headCheck, isBeneosPath, mapWithConcurrency, routeAdresse } from "./beneos-asset-watcher.js";
 import { BeneosUtility } from "./beneos_utility.js";
 
 export class BeneosScenePackerManager {
@@ -248,7 +248,7 @@ export class BeneosScenePackerManager {
             console.log('BeneosScenePackerManager | Launching MoulinetteImporter...');
 
             // Charger dynamiquement MoulinetteImporter depuis ScenePacker
-            const MoulinetteImporter = (await import('/modules/scene-packer/scripts/export-import/moulinette-importer.js')).default;
+            const MoulinetteImporter = (await import(routeAdresse("modules/scene-packer/scripts/export-import/moulinette-importer.js"))).default;
 
             const importer = new MoulinetteImporter({
                 packInfo: packInfo,
