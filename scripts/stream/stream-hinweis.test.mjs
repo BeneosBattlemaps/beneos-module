@@ -197,6 +197,60 @@ console.log("\nDer Video-Hinweis geht vor")
   h.meldeAusfall("denied", KACHEL)
   gleich("ohne Video-Hinweis: die allgemeine Meldung kommt", warnungen.length, 1)
 }
+{
+  // Gemessen im Foundry-Test auf 30003 (20.11.2026): beim Szenenaufbau meldete
+  // ein Bild der Szene vor dem Video, und der GM bekam beide Meldungen. Waehrend
+  // des Aufbaus wartet die allgemeine Meldung deshalb bis canvasReady.
+  const h = await frisch()
+  h.installStreamHinweis()
+  const fahre = (name) => { for (const [n, fn] of haken) if (n === name) fn() }
+  canvas.scene = szene
+  fahre("canvasInit")
+  h.meldeAusfall("denied", KARTE)
+  gleich("waehrend des Szenenaufbaus: die allgemeine Meldung wartet", warnungen.length, 0)
+  h.merkeVideoToast()
+  fahre("canvasReady")
+  gleich("Video kam im selben Aufbau nach dem Bild: keine allgemeine Meldung", warnungen.length, 0)
+  h.meldeAusfall("denied", TOKEN)
+  gleich("und auch spaeter keine", warnungen.length, 0)
+}
+{
+  const h = await frisch()
+  h.installStreamHinweis()
+  const fahre = (name) => { for (const [n, fn] of haken) if (n === name) fn() }
+  canvas.scene = szene
+  fahre("canvasInit")
+  h.meldeAusfall("denied", KARTE)
+  h.meldeAusfall("denied", KACHEL)
+  fahre("canvasReady")
+  gleich("Aufbau ohne Video-Hinweis: die Meldung kommt bei canvasReady", warnungen.length, 1)
+  gleich("und zwar die fuer den Zugang", warnungen[0], "T:BENEOS.Stream.Notice.Denied")
+  fahre("canvasInit")
+  h.meldeAusfall("denied", KARTE)
+  fahre("canvasReady")
+  gleich("der naechste Aufbau meldet nicht noch einmal", warnungen.length, 1)
+}
+{
+  // Offline wartet nicht: die Verbindung ist sofort zu melden.
+  const h = await frisch()
+  h.installStreamHinweis()
+  const fahre = (name) => { for (const [n, fn] of haken) if (n === name) fn() }
+  fahre("canvasInit")
+  h.meldeAusfall("offline", KARTE)
+  gleich("offline meldet auch waehrend des Aufbaus sofort", warnungen.length, 1)
+}
+{
+  // Kommt canvasReady nie (Aufbau scheitert), geht die Meldung nicht verloren.
+  const h = await frisch()
+  h.installStreamHinweis()
+  const fahre = (name) => { for (const [n, fn] of haken) if (n === name) fn() }
+  fahre("canvasInit")
+  h.meldeAusfall("denied", KARTE)
+  h.meldeWartendes()
+  gleich("der Rueckfall-Zeitgeber meldet die wartende Meldung", warnungen.length, 1)
+  h.meldeWartendes()
+  gleich("und nur einmal", warnungen.length, 1)
+}
 
 /* --------------------------------------------- Teil 4: das Kartenschild */
 

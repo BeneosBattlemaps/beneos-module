@@ -66,6 +66,15 @@ export function hinweisText(schluessel, daten, rueckfall) {
 
 const gemeldet = new Set()
 let videoHinweisKam = false
+// Waehrend eine Szene aufgebaut wird, wartet die allgemeine Meldung "nicht im
+// Zugang" bis canvasReady. Gemessen im Foundry-Test auf 30003 (20.11.2026): ein
+// Bild der Szene wurde vor dem Video abgewiesen, und der GM bekam beide
+// Meldungen, obwohl E3 genau das ausschliesst. Die Reihenfolge der Ladevorgaenge
+// ist nicht festgelegt, also wird bis zum Ende des Aufbaus gewartet.
+let szeneLaedt = false
+let denieWartet = false
+// Scheitert der Aufbau und canvasReady kommt nie, meldet der Zeitgeber.
+const WARTEN_HOECHSTENS_MS = 20000
 // Abgewiesene Adressen dieser Sitzung, ohne Abfrage. Das Schild fragt sie bei
 // jedem Szenenaufbau, denn der Vorrat nimmt das Ersatzbild nicht auf und die
 // Abweisung kommt beim naechsten Aufbau erneut, aber vielleicht erst nach
@@ -98,10 +107,38 @@ export function meldeAusfall(grund, url) {
       gemeldet.add(grund)
       return false
     }
+    if (szeneLaedt) {
+      if (!denieWartet) {
+        denieWartet = true
+        const t = setTimeout(meldeWartendes, WARTEN_HOECHSTENS_MS)
+        t?.unref?.()
+      }
+      return false
+    }
   }
+  return warne(grund)
+}
+
+function warne(grund) {
   gemeldet.add(grund)
   try { globalThis.ui?.notifications?.warn?.(hinweisText(MELDUNG[grund][0], null, MELDUNG[grund][1])) } catch (_) { /* ohne Oberflaeche bleibt die Konsolenzeile */ }
   return true
+}
+
+/**
+ * Gibt die wartende Meldung "nicht im Zugang" aus, wenn der Video-Hinweis sie
+ * inzwischen nicht ersetzt hat. Laeuft bei canvasReady und als Rueckfall nach
+ * WARTEN_HOECHSTENS_MS.
+ */
+export function meldeWartendes() {
+  if (!denieWartet) return false
+  denieWartet = false
+  if (gemeldet.has("denied")) return false
+  if (videoHinweisKam) {
+    gemeldet.add("denied")
+    return false
+  }
+  return warne("denied")
 }
 
 /** Hat diese Szene einen Inhalt, den das Tor in dieser Sitzung abgewiesen hat? */
@@ -159,6 +196,11 @@ let eingebaut = false
 export function installStreamHinweis() {
   if (eingebaut) return
   eingebaut = true
+  globalThis.Hooks?.on?.("canvasInit", () => { szeneLaedt = true })
   globalThis.Hooks?.on?.("canvasTearDown", entferneSchild)
-  globalThis.Hooks?.on?.("canvasReady", pruefeSchild)
+  globalThis.Hooks?.on?.("canvasReady", () => {
+    szeneLaedt = false
+    pruefeSchild()
+    meldeWartendes()
+  })
 }
