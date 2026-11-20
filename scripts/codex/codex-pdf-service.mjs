@@ -29,7 +29,7 @@ export function pdfServedPath(assetKey) {
 export async function isPdfInstalled(assetKey) {
   if (!assetKey) return false
   try {
-    const FP = foundry.applications?.apps?.FilePicker?.implementation ?? FilePicker
+    const FP = foundry.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker
     const res = await FP.browse("data", pdfDataFolder(assetKey))
     const name = `${assetKey}.pdf`
     return (res?.files ?? []).some(f => f.endsWith(name))
@@ -75,7 +75,7 @@ export async function requestPdfUrl({ foundryId, assetKey }) {
 
 /** Create each folder level (idempotent — already-exists errors ignored). */
 async function ensurePdfFolder(assetKey) {
-  const FP = foundry.applications?.apps?.FilePicker?.implementation ?? FilePicker
+  const FP = foundry.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker
   for (const dir of [
     "beneos_assets",
     "beneos_assets/cloud",
@@ -120,7 +120,7 @@ export async function downloadCreaturePdf(tokenKey) {
     const name = `${tokenKey}.pdf`
     const file = new File([blob], name, { type: "application/pdf" })
     await ensurePdfFolder(tokenKey)
-    const FP = foundry.applications?.apps?.FilePicker?.implementation ?? FilePicker
+    const FP = foundry.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker
     const upload = await FP.upload("data", pdfDataFolder(tokenKey), file, {}, { notify: false })
     if (!upload?.path) throw new Error("upload failed")
     ui.notifications.info(game.i18n.format(

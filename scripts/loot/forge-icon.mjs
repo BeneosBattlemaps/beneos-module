@@ -227,7 +227,7 @@ async function renderIconBlob(item) {
 }
 
 async function ensureCustomFolder() {
-  const FP = foundry.applications?.apps?.FilePicker?.implementation ?? FilePicker;
+  const FP = foundry.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker;
   for (const dir of [
     "beneos_assets",
     "beneos_assets/cloud",
@@ -249,7 +249,7 @@ export async function generateBeneosItemIcon(item) {
     if (!blob) return null;
     await ensureCustomFolder();
     const file = new File([blob], filename, { type: "image/webp" });
-    const FP = foundry.applications?.apps?.FilePicker?.implementation ?? FilePicker;
+    const FP = foundry.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker;
     const result = await FP.upload("data", CUSTOM_FOLDER, file, {}, { notify: false });
     if (!result?.path) {
       console.warn("[Beneos Forge] icon upload returned no path", { filename });
