@@ -1902,7 +1902,9 @@ export async function alleImSpeicher(urls) {
         // Klang gleich (stre-T-166). Nach dem Video-Hinweis, weil die
         // allgemeine Meldung entfaellt, wenn er schon kam (E3). Dieselbe
         // Adresse stellt das Kartenschild auf, wenn sie zur Szene gehoert.
-        meldeAusfall("denied", url)
+        // Steuerdateien nicht: ein abgewiesenes Manifest meldet der Installer
+        // selbst, und in der Welt fehlt dann nichts (Kalt-Review a9acf9e).
+        if (!isControl(url)) meldeAusfall("denied", url)
 
         // Und hier endet die Abweisung, statt als leeres Feld weiterzureisen.
         //

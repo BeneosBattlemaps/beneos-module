@@ -32,6 +32,7 @@
 import { readFileSync, readdirSync } from "node:fs"
 import { join, dirname } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { extractMethod } from "../../tools/lib/extract-method.mjs"
 
 const HIER = dirname(fileURLToPath(import.meta.url))
 const WURZEL = join(HIER, "..", "..")
@@ -127,7 +128,20 @@ function gleich(name, ist, soll) {
   else { rot++; console.log(`  ROT  ${name}\n       soll ${zeige(soll)}\n       ist  ${zeige(ist)}`) }
 }
 const schild = () => document.getElementById("beneos-stream-kartenschild")
-const linkVon = (el) => el?.children.find((k) => k.tagName === "A") ?? null
+const linkeVon = (el) => el?.children.filter((k) => k.tagName === "A") ?? []
+const linkMit = (el, text) => linkeVon(el).find((a) => a.textContent === text) ?? null
+// Der echte Kern aus dem Bestand, als Quelltext geschnitten: das Modul selbst
+// laesst sich in node nicht laden (es braucht FormApplication).
+const kern = new Function(`${extractMethod(readFileSync(join(WURZEL, "scripts/cloud-v2/beneos-install-state.mjs"), "utf8"), "releaseKern", { maxZeilen: 10 }).replace(/^export\s+/, "")}; return releaseKern`)()
+/** Die Releaseliste der Cloud, wie BeneosScenePacker sie liefert. `null` scheitert. */
+function kaufQuelle(liste) {
+  const mgr = {
+    aufrufe: 0,
+    async listReleases() { mgr.aufrufe += 1; if (liste === null) throw new Error("list_releases scheitert"); return liste },
+  }
+  globalThis.BeneosScenePacker = mgr
+  return mgr
+}
 
 /* ------------------------------------------- Teil 1: je Sitzung und Grund einmal */
 
@@ -257,6 +271,8 @@ console.log("\nDer Video-Hinweis geht vor")
 console.log("\nDas Kartenschild")
 {
   const h = await frisch()
+  delete globalThis.BeneosScenePacker
+  await h.ladeKaufIndex({ kern })
   canvas.scene = szene
   h.meldeAusfall("denied", FREMD)
   gleich("fremde Adresse: kein Schild", schild() === null, true)
@@ -265,13 +281,96 @@ console.log("\nDas Kartenschild")
   gleich("Adresse der Szene, mit Abfrage: Schild da", s !== null, true)
   gleich("das Schild sitzt oben im Bedienfeld", s?.parent === uiTop, true)
   gleich("das Schild nennt den Grund aus dem Schluessel", s?.children[0]?.textContent, "T:BENEOS.Stream.Notice.MapDenied")
-  gleich("online: das Schild traegt den Link", linkVon(s)?.href, "https://beneos-battlemaps.com/pages/my-library")
-  gleich("der Link oeffnet ein neues Fenster", linkVon(s)?.target, "_blank")
-  gleich("der Linktext kommt aus dem Schluessel", linkVon(s)?.textContent, "T:BENEOS.Stream.Notice.MapLink")
+  gleich("online: Subscribe fuehrt auf das Patreon der Karten", linkMit(s, "T:BENEOS.Stream.Notice.MapSubscribe")?.href, "https://www.patreon.com/c/BeneosBattlemaps")
+  gleich("der Link oeffnet ein neues Fenster", linkMit(s, "T:BENEOS.Stream.Notice.MapSubscribe")?.target, "_blank")
   h.meldeAusfall("denied", KACHEL)
   gleich("eine zweite Abweisung der Szene: weiter EIN Schild", uiTop.children.length, 1)
-  gleich("der Link ist die Konstante", h.ZUGANG_SEITE, "https://beneos-battlemaps.com/pages/my-library")
+  gleich("das Patreon der Karten ist eine Konstante", h.PATREON_KARTEN, "https://www.patreon.com/c/BeneosBattlemaps")
+  gleich("das Patreon der Kreaturen ist eine Konstante", h.PATREON_TOKEN, "https://www.patreon.com/c/BeneosTokens")
+  await h.ladeKaufIndex({ kern })
+  gleich("ohne Kaufquelle: kein Buy, nur Subscribe", linkeVon(schild()).length, 1)
 }
+{
+  // Zwei-Werte-Probe der Patreon-Wahl: /c/ (Kreaturen) gegen /a/ (Karten).
+  const h = await frisch()
+  canvas.scene = { name: "Tokenszene", _source: { background: { src: TOKEN } }, tiles: [], notes: [] }
+  h.meldeAusfall("denied", TOKEN)
+  gleich("Kreaturenadresse: Subscribe fuehrt auf das Patreon der Kreaturen", linkMit(schild(), "T:BENEOS.Stream.Notice.MapSubscribe")?.href, "https://www.patreon.com/c/BeneosTokens")
+}
+
+/* ------------------------------------- Teil 4b: Buy aus list_releases (Weg A) */
+
+console.log("\nDer Kauflink")
+{
+  const h = await frisch()
+  const mgr = kaufQuelle([{ release_dir: "beneos_battlemaps_0042", shop_url: "https://shop.example/products/k42", shop_url_kind: "pack" }])
+  await h.ladeKaufIndex({ kern })
+  canvas.scene = szene
+  h.meldeAusfall("denied", KARTE)
+  await h.ladeKaufIndex()
+  const buy = linkMit(schild(), "T:BENEOS.Cloud.Card.BuyPack")
+  gleich("Release mit Shopprodukt: Buy fuehrt auf shop_url", buy?.href, "https://shop.example/products/k42")
+  gleich("Buy oeffnet ein neues Fenster", buy?.target, "_blank")
+  gleich("Buy steht vor Subscribe", linkeVon(schild())[0]?.textContent, "T:BENEOS.Cloud.Card.BuyPack")
+  h.meldeAusfall("denied", KACHEL)
+  canvas.scene = szene
+  h.pruefeSchild()
+  await h.ladeKaufIndex({ kern })
+  gleich("die Liste wird je Sitzung nur einmal geholt", mgr.aufrufe, 1)
+  gleich("nach dem Neuaufbau steht Buy wieder da", linkMit(schild(), "T:BENEOS.Cloud.Card.BuyPack") !== null, true)
+}
+{
+  const h = await frisch()
+  kaufQuelle([{ release_dir: "beneos_battlemaps_0042", shop_url: "https://shop.example/products/bundle", shop_url_kind: "bundle" }])
+  await h.ladeKaufIndex({ kern })
+  canvas.scene = szene
+  h.meldeAusfall("denied", KARTE)
+  await h.ladeKaufIndex()
+  gleich("shop_url_kind bundle: dieselbe Beschriftung wie der Kaufknopf", linkMit(schild(), "T:BENEOS.Cloud.Card.BuyBundle")?.href, "https://shop.example/products/bundle")
+}
+{
+  const h = await frisch()
+  kaufQuelle([{ release_dir: "beneos_battlemaps_0042", shop_url: null }])
+  await h.ladeKaufIndex({ kern })
+  canvas.scene = szene
+  h.meldeAusfall("denied", KARTE)
+  await h.ladeKaufIndex()
+  gleich("ohne shop_url: kein Buy, nie ein toter Link", linkeVon(schild()).length, 1)
+}
+{
+  // Ueber den Kern: die Liste nennt die Kurzform, die Streamadresse die Langform.
+  const h = await frisch()
+  kaufQuelle([{ release_dir: "battlemaps_0042", shop_url: "https://shop.example/products/kurz", shop_url_kind: "pack" }])
+  await h.ladeKaufIndex({ kern })
+  canvas.scene = szene
+  h.meldeAusfall("denied", KARTE)
+  await h.ladeKaufIndex()
+  gleich("eindeutiger Kern: Buy kommt", linkMit(schild(), "T:BENEOS.Cloud.Card.BuyPack")?.href, "https://shop.example/products/kurz")
+}
+{
+  const h = await frisch()
+  kaufQuelle([
+    { release_dir: "battlemaps_0042_a", shop_url: "https://shop.example/products/a", shop_url_kind: "pack" },
+    { release_dir: "battlemaps_0042_b", shop_url: "https://shop.example/products/b", shop_url_kind: "pack" },
+  ])
+  await h.ladeKaufIndex({ kern })
+  canvas.scene = szene
+  h.meldeAusfall("denied", KARTE)
+  await h.ladeKaufIndex()
+  gleich("mehrdeutiger Kern: kein Buy", linkeVon(schild()).length, 1)
+}
+{
+  const h = await frisch()
+  const mgr = kaufQuelle(null)
+  await h.ladeKaufIndex({ kern })
+  canvas.scene = szene
+  h.meldeAusfall("denied", KARTE)
+  await h.ladeKaufIndex()
+  gleich("Abruf scheitert: kein Buy, Subscribe bleibt", linkeVon(schild()).length, 1)
+  await h.ladeKaufIndex({ kern })
+  gleich("und keine Wiederholung", mgr.aufrufe, 1)
+}
+delete globalThis.BeneosScenePacker
 {
   // Mitspieler: keine Meldung, aber das Schild (E2).
   const h = await frisch()
@@ -302,21 +401,42 @@ console.log("\nDas Kartenschild")
   gleich("ein zweiter Einbau setzt die Haken nicht doppelt", haken.filter(([n]) => n === "canvasReady").length, 1)
 }
 {
-  // Offline: Schild ohne Link. Der Browser meldet sich ohne Netz, das ist der
-  // kuerzeste Weg in den Zustand `offline` (wie in stream-sperre.test.mjs).
+  // Kalt-Review a9acf9e: kam die Abweisung, waehrend canvas.scene noch die
+  // alte Szene war, blieb das Schild auf der neuen, sauberen Szene stehen.
   const h = await frisch()
+  h.installStreamHinweis()
+  const fahre = (name) => { for (const [n, fn] of haken) if (n === name) fn() }
   canvas.scene = szene
+  h.meldeAusfall("denied", KARTE)
+  canvas.scene = { name: "sauber", _source: { background: { src: FREMD } }, tiles: [], notes: [] }
+  fahre("canvasReady")
+  gleich("canvasReady einer sauberen Szene baut ein stehendes Schild ab", schild() === null, true)
+}
+{
+  // Offline und denied streng getrennt (Betreiber-Nachtrag zu T-165). Der
+  // Browser meldet sich ohne Netz, das ist der kuerzeste Weg in den Zustand
+  // `offline` (wie in stream-sperre.test.mjs).
+  const h = await frisch()
+  h.installStreamHinweis()
+  canvas.scene = szene
+  h.meldeAusfall("denied", KARTE)
+  gleich("online: das Schild steht", schild() !== null, true)
   navigator.onLine = false
   online.noteResult(false, "pruefsatz")
   if (!online.isOffline()) {
     console.log("\nNICHT PRUEFBAR: der Zustand laesst sich nicht auf offline stellen")
     process.exit(2)
   }
-  h.meldeAusfall("denied", KARTE)
-  gleich("offline: das Schild ist da", schild() !== null, true)
-  gleich("offline: das Schild traegt keinen Link", linkVon(schild()) === null, true)
+  gleich("faellt die Verbindung, verschwindet das denied-Schild", schild() === null, true)
+  h.meldeAusfall("denied", KACHEL)
+  gleich("offline erscheint das denied-Schild nie", schild() === null, true)
+  h.pruefeSchild()
+  gleich("auch nicht beim Neuaufbau", schild() === null, true)
+  // Zurueck nach online fuehrt nur die Probe des Tors (ein Erfolg heilt
+  // `offline` mit Absicht nicht); die braucht installStreamOnline samt
+  // Szenenwache. Der Rueckweg ist deshalb eine Strukturprobe unten und wird im
+  // Foundry-Test gemessen. Der Zustand bleibt ab hier offline.
   navigator.onLine = true
-  online.noteResult(true)
 }
 
 /* ---------------------------------- Teil 5: die Anschlussstellen im Bestand */
@@ -344,7 +464,15 @@ const wache = ONLINE.slice(ONLINE.indexOf("function installSceneGuard() {"), ONL
 gleich("[Struktur] die Szenenablehnung nimmt ihren Text aus dem Schluessel", wache.includes('"BENEOS.Stream.Scene.Offline"'), true)
 gleich("[Struktur] kein hart geschriebener Ablehnungstext mehr", wache.includes("cannot be loaded, there is no connection"), false)
 gleich("[Struktur] der Einstieg baut die Meldestelle ein", EINSTIEG.includes("installStreamHinweis()"), true)
-gleich("[Struktur] der Link steht in keinem Sprachwert", lies("lang/en.json").includes("pages/my-library"), false)
+gleich("[Struktur] kein Patreon-Link in einem Sprachwert", lies("lang/en.json").includes("patreon.com/c/"), false)
+gleich("[Struktur] jeder Wechsel der Verbindung stellt das Schild neu",
+  lies("scripts/stream/stream-hinweis.mjs").includes("onStreamState(() => pruefeSchild())"), true)
+gleich("[Struktur] Steuerdateien wie das Manifest melden keinen Ausfall", zweig.includes('if (!isControl(url)) meldeAusfall("denied", url)'), true)
+const FENSTER = lies("scripts/cloud-v2/cloud-window-v2.mjs")
+gleich("[Struktur] der Kaufknopf im Fenster nimmt weiter kaufKnopf(bmapRelease)",
+  FENSTER.includes("const bmapKauf = kaufKnopf(bmapRelease)") && FENSTER.includes("shopUrl: bmapKauf.url,"), true)
+gleich("[Struktur] das Schild nimmt denselben kaufKnopf",
+  /import \{ kaufKnopf \} from "\.\.\/cloud-v2\/cloud-kaufknopf\.mjs"/.test(lies("scripts/stream/stream-hinweis.mjs")), true)
 
 /* ----------------------------------------------------- Teil 6: die Sprachen */
 
@@ -353,7 +481,7 @@ const modul = JSON.parse(lies("module.json"))
 const sprachen = modul.languages.map((l) => l.path)
 gleich("module.json nennt 14 Sprachdateien (13 Pflichtsprachen und Englisch)", sprachen.length, 14)
 const NEU = ["BENEOS.Stream.Notice.Offline", "BENEOS.Stream.Notice.Denied", "BENEOS.Stream.Notice.MapDenied",
-  "BENEOS.Stream.Notice.MapLink", "BENEOS.Stream.Scene.Offline"]
+  "BENEOS.Stream.Notice.MapSubscribe", "BENEOS.Stream.Scene.Offline", "BENEOS.Cloud.Card.BuyPack", "BENEOS.Cloud.Card.BuyBundle"]
 const GEAENDERT = ["BENEOS.Stream.Intro.Cost", "BENEOS.Stream.Doku.DropBody"]
 // Halbgeviert, Geviert und das doppelte Minus. Aus Zeichencodes gebaut, damit
 // der Pruefsatz selbst keinen Gedankenstrich traegt.
@@ -371,6 +499,15 @@ const en = JSON.parse(lies("lang/en.json"))
 for (const k of GEAENDERT) {
   gleich(`${k}: verspricht nicht mehr, dass offline gezeichnet wird`, /still draws/.test(en[k]), false)
 }
+// Betreiber-Nachtrag: "nicht berechtigt", eine Karte ist auch kaufbar.
+gleich("MapDenied sagt: nicht berechtigt", /not entitled to view this map/i.test(en["BENEOS.Stream.Notice.MapDenied"] ?? ""), true)
+const URSACHE = /membership|subscri|patreon|\btier\b/i
+gleich("MapDenied nennt keine Mitgliedschaft als Ursache", URSACHE.test(en["BENEOS.Stream.Notice.MapDenied"] ?? "x membership"), false)
+gleich("Notice.Denied nennt keine Mitgliedschaft als Ursache", URSACHE.test(en["BENEOS.Stream.Notice.Denied"] ?? "x membership"), false)
+const BERECHTIGUNG = /entitl|access|permission|membership|subscri/i
+gleich("die Offline-Meldung nennt nie fehlende Berechtigung", BERECHTIGUNG.test(en["BENEOS.Stream.Notice.Offline"] ?? "x access"), false)
+gleich("die Offline-Ablehnung der Szene nennt nie fehlende Berechtigung", BERECHTIGUNG.test(en["BENEOS.Stream.Scene.Offline"] ?? "x access"), false)
+gleich("Positivkontrolle: die Ursachensuche findet die Mitgliedschaft", URSACHE.test("your membership expired") && BERECHTIGUNG.test("not entitled"), true)
 // Positivkontrolle der Strichsuche: dieselbe Regel findet jeden der drei Striche.
 gleich("Positivkontrolle: die Strichsuche findet einen Gedankenstrich",
   STRICHE.every((s) => hatStrich(`a ${s} b`)), true)

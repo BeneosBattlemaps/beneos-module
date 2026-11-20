@@ -15,9 +15,15 @@
  * Dazu ein Schild oben im Bedienfeld, solange die angezeigte Szene einen
  * abgewiesenen Inhalt hat. Betreiberentscheid ueber orch-stre-1 (R1 zu T-165):
  *
- * - E1: der Link des Schildes fuehrt auf die Bibliotheksseite des Shops. Er
- *   steht hier als Konstante und nicht in einem Sprachwert, damit ihn eine
- *   Uebersetzung nicht verstellen kann.
+ * - E1 (Betreiber-Nachtrag, ersetzt den Link auf die Bibliothek): das Schild
+ *   sagt "nicht berechtigt", nie "Mitgliedschaft reicht nicht", denn eine
+ *   Karte ist auch kaufbar. Nur mit Verbindung traegt es zwei Links: Buy auf
+ *   das Shopprodukt aus `list_releases` (shop_url, dieselbe Quelle und
+ *   dieselbe Deutung wie der Kaufknopf im Cloud-Fenster) und Subscribe auf das
+ *   passende Patreon. Ohne bekanntes Produkt erscheint nur Subscribe. Die
+ *   Adressen stehen hier als Konstanten und nicht in einem Sprachwert, damit
+ *   eine Uebersetzung sie nicht verstellen kann. Offline erscheint das Schild
+ *   gar nicht: dort fehlt die Verbindung, nicht die Berechtigung.
  * - E2: das Schild sehen alle Clients, denn auch der Mitspieler sieht die
  *   unvollstaendige Karte. Die Meldung "nicht im Zugang" bekommt nur die
  *   Spielleitung: am Zugang kann nur sie etwas aendern. Die Meldung "offline"
@@ -31,9 +37,12 @@
  * stream-fetch.mjs schon tun. Ein Gegenimport waere ein Zirkelbezug.
  */
 
-import { streamAdressenVon, isOffline } from "./stream-online.mjs"
+import { streamAdressenVon, isOffline, onStreamState } from "./stream-online.mjs"
+import { kaufKnopf } from "../cloud-v2/cloud-kaufknopf.mjs"
 
-export const ZUGANG_SEITE = "https://beneos-battlemaps.com/pages/my-library"
+// Fundorte: cloud database-manager.php:21420 ff. und js/codex/codex-standalone.js:1276
+export const PATREON_KARTEN = "https://www.patreon.com/c/BeneosBattlemaps"
+export const PATREON_TOKEN = "https://www.patreon.com/c/BeneosTokens"
 export const SCHILD_ID = "beneos-stream-kartenschild"
 
 // Je Grund der Schluessel und der englische Rueckfall fuer den Fall, dass
@@ -45,8 +54,11 @@ const MELDUNG = {
   denied: ["BENEOS.Stream.Notice.Denied",
     "Beneos Stream: some content in this world is not part of your access. It shows a placeholder or stays silent."],
 }
-const SCHILD_TEXT = ["BENEOS.Stream.Notice.MapDenied", "This map cannot load fully. Your access does not include it."]
-const SCHILD_LINK = ["BENEOS.Stream.Notice.MapLink", "Check your access"]
+const SCHILD_TEXT = ["BENEOS.Stream.Notice.MapDenied", "You are not entitled to view this map."]
+const SCHILD_ABO = ["BENEOS.Stream.Notice.MapSubscribe", "Subscribe"]
+// Dieselben Schluessel wie der Kaufknopf im Cloud-Fenster (results-pane.hbs).
+const KAUF_PACK = ["BENEOS.Cloud.Card.BuyPack", "Buy pack"]
+const KAUF_BUNDLE = ["BENEOS.Cloud.Card.BuyBundle", "Buy bundle"]
 
 /**
  * Der uebersetzte Text, sonst der englische Rueckfall. `daten` fuellt `{name}`.
@@ -141,19 +153,123 @@ export function meldeWartendes() {
   return warne("denied")
 }
 
-/** Hat diese Szene einen Inhalt, den das Tor in dieser Sitzung abgewiesen hat? */
-export function schildNoetig(scene) {
-  if (!scene || abgewiesen.size === 0) return false
+/** Die erste Adresse dieser Szene, die das Tor in dieser Sitzung abgewiesen hat. */
+function schildAdresse(scene) {
+  if (!scene || abgewiesen.size === 0) return null
   try {
-    return streamAdressenVon(scene).some((a) => abgewiesen.has(ohneAbfrage(a)))
+    return streamAdressenVon(scene).find((a) => abgewiesen.has(ohneAbfrage(a))) ?? null
   } catch (_) {
-    return false
+    return null
   }
 }
 
+/** Hat diese Szene einen Inhalt, den das Tor in dieser Sitzung abgewiesen hat? */
+export function schildNoetig(scene) {
+  return schildAdresse(scene) !== null
+}
+
+/**
+ * Stellt das Schild nach dem Sollzustand: da, wenn die angezeigte Szene eine
+ * abgewiesene Adresse hat und eine Verbindung besteht, sonst weg. Der Abbau
+ * gehoert dazu (Kalt-Review a9acf9e): eine Abweisung, die waehrend des
+ * Szenenwechsels noch der alten Szene galt, liess das Schild sonst auf der
+ * neuen stehen.
+ */
 export function pruefeSchild() {
-  if (!schildNoetig(globalThis.canvas?.scene)) return null
-  return zeigeSchild()
+  const adresse = isOffline() ? null : schildAdresse(globalThis.canvas?.scene)
+  if (!adresse) {
+    entferneSchild()
+    return null
+  }
+  return zeigeSchild(adresse)
+}
+
+// Eine Streamadresse ist `<tor>/<art>/<schluessel>/<ordner>/...`; das Tor kann
+// unter einem Unterpfad liegen, deshalb wird die Art gesucht, nicht gezaehlt.
+// `a` sind Karten und ihre Dateien, `c` Kreaturen.
+const STREAM_PFAD = /\/(a|c)\/[^/?#]+\/([^/?#]+)/
+
+/** Kreaturen fuehren auf das Patreon der Token, alles andere auf das der Karten. */
+export function patreonFuer(adresse) {
+  return STREAM_PFAD.exec(String(adresse || ""))?.[1] === "c" ? PATREON_TOKEN : PATREON_KARTEN
+}
+
+/** Der Releaseordner einer Kartenadresse, sonst "". */
+export function releaseVon(adresse) {
+  const m = STREAM_PFAD.exec(String(adresse || ""))
+  return m?.[1] === "a" ? m[2] : ""
+}
+
+/**
+ * Der Kaufindex aus der Releaseliste der Cloud. Erst genau ueber
+ * `release_dir` (getrimmt wie im Cloud-Fenster), dann ueber den Kern. Anders
+ * als das Fenster gewinnt bei gleichem Kern NICHT der neuere Eintrag: ein
+ * mehrdeutiger Kern gibt keinen Kauflink, denn ein falscher Kauflink ist
+ * schlechter als keiner (Auflage orch-stre-1 zu Weg A).
+ */
+export function kaufIndexAus(liste, kern) {
+  const genau = new Map()
+  const kerne = new Map()
+  for (const r of Array.isArray(liste) ? liste : []) {
+    const dir = String(r?.release_dir || "").trim()
+    if (!dir) continue
+    if (!genau.has(dir)) genau.set(dir, r)
+    const k = kern(dir)
+    if (!k) continue
+    kerne.set(k, kerne.has(k) ? null : r)
+  }
+  return { genau, kerne, kern }
+}
+
+/** `{ url, isBundle }` wie `kaufKnopf`; `url` null, wenn nichts eindeutig passt. */
+export function kaufFuer(index, release) {
+  if (!index || !release) return { url: null, isBundle: false }
+  const r = index.genau.get(release) ?? index.kerne.get(index.kern(release)) ?? null
+  return kaufKnopf(r)
+}
+
+let kaufLaden = null
+/**
+ * Holt die Releaseliste hoechstens einmal je Sitzung, und erst, wenn ein Schild
+ * sie braucht. Scheitert der Abruf oder fehlt der Cloud-Manager, gibt es keinen
+ * Kauflink und keinen zweiten Versuch. `kern` reicht der Pruefsatz herein: das
+ * Modul mit `releaseKern` laesst sich nur in Foundry laden.
+ */
+export function ladeKaufIndex({ kern } = {}) {
+  if (kaufLaden) return kaufLaden
+  kaufLaden = (async () => {
+    try {
+      const k = kern ?? (await import("../cloud-v2/beneos-install-state.mjs")).releaseKern
+      const mgr = globalThis.BeneosScenePacker
+      if (typeof mgr?.listReleases !== "function") return null
+      return kaufIndexAus(await mgr.listReleases(), k)
+    } catch (_) {
+      return null
+    }
+  })()
+  return kaufLaden
+}
+
+function link(doc, href, [schluessel, rueckfall]) {
+  const a = doc.createElement("a")
+  a.href = href
+  a.target = "_blank"
+  a.rel = "noopener"
+  a.textContent = hinweisText(schluessel, null, rueckfall)
+  return a
+}
+
+/** Setzt Buy vor Subscribe, sobald der Kaufindex steht und das Schild noch dasselbe ist. */
+function ergaenzeKauf(el, abo, release) {
+  if (!release) return
+  ladeKaufIndex().then((index) => {
+    const doc = globalThis.document
+    if (doc?.getElementById?.(SCHILD_ID) !== el || isOffline()) return
+    const kauf = kaufFuer(index, release)
+    if (!kauf.url) return
+    abo.remove()
+    el.append(link(doc, kauf.url, kauf.isBundle ? KAUF_BUNDLE : KAUF_PACK), abo)
+  }).catch(() => { /* ohne Kauflink bleibt Subscribe */ })
 }
 
 /**
@@ -162,10 +278,12 @@ export function pruefeSchild() {
  * "none"`), ein Link darin waere nicht klickbar. Es steht unter `#ui-top`,
  * oben links ueber der Karte; fehlt das, unter `body`.
  */
-export function zeigeSchild() {
+export function zeigeSchild(adresse = "") {
   const doc = globalThis.document
   if (!doc?.createElement) return null
   entferneSchild()
+  // Offline fehlt die Verbindung, nicht die Berechtigung: kein denied-Schild.
+  if (isOffline()) return null
   const el = doc.createElement("div")
   el.id = SCHILD_ID
   el.className = "beneos-stream-kartenschild"
@@ -173,18 +291,12 @@ export function zeigeSchild() {
   const satz = doc.createElement("span")
   satz.textContent = hinweisText(SCHILD_TEXT[0], null, SCHILD_TEXT[1])
   el.append(satz)
-  // Nur mit Verbindung: ohne sie oeffnet der Link nichts.
-  if (!isOffline()) {
-    const a = doc.createElement("a")
-    a.href = ZUGANG_SEITE
-    a.target = "_blank"
-    a.rel = "noopener"
-    a.textContent = hinweisText(SCHILD_LINK[0], null, SCHILD_LINK[1])
-    el.append(a)
-  }
+  const abo = link(doc, patreonFuer(adresse), SCHILD_ABO)
+  el.append(abo)
   const ziel = doc.getElementById?.("ui-top") ?? doc.body
   if (!ziel?.append) return null
   ziel.append(el)
+  ergaenzeKauf(el, abo, releaseVon(adresse))
   return el
 }
 
@@ -203,4 +315,7 @@ export function installStreamHinweis() {
     pruefeSchild()
     meldeWartendes()
   })
+  // Faellt die Verbindung, verschwindet das Schild; kommt sie zurueck, steht
+  // es wieder mit seinen Links (Kalt-Review a9acf9e, Betreiber-Nachtrag).
+  onStreamState(() => pruefeSchild())
 }
