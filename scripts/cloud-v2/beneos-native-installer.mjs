@@ -1217,10 +1217,11 @@ export class BeneosNativeBattlemapInstaller {
   /**
    * Liegt unter dieser Adresse wirklich eine Datei?
    *
-   * `#headCheck` stellt der Adresse einen Schraegstrich voran und taugt damit
-   * nur fuer einen Pfad relativ zur Foundry-Wurzel. Auf einem Hosting kann der
-   * Uploadweg dagegen eine vollstaendige Adresse zurueckgeben; die wuerde
-   * dadurch zerstoert und jede Probe faelschlich fehlschlagen.
+   * Auf einem Hosting kann der Uploadweg eine vollstaendige Adresse
+   * zurueckgeben. Seit stre-T-164 laesst routeAdresse sie zwar stehen, aber
+   * `#headCheck` haengt "?_b=" an (das braeche eine fremde Adresse mit eigener
+   * Abfrage) und wertet die Stub-Groesse aus. Eine vollstaendige Adresse wird
+   * deshalb roh mit HEAD geprueft.
    */
   async #bildVorhanden(pfad) {
     if (!/^(https?:)?\/\//i.test(pfad)) return this.#headCheck(pfad)

@@ -10,6 +10,11 @@
  * ruft. Ohne Praefix kommt derselbe String heraus wie vorher; das ist der
  * zweite Wert jeder Probe.
  *
+ * stre-T-164 deckt den Rest ab: die zwei import() von scene-packer laufen
+ * ueber routeAdresse; der Todesmarker in beneosfx.js und 12 CSS-url() sind
+ * dagegen bewusst relativ (zur Spielseite bzw. zur CSS-Datei) und laufen NICHT
+ * ueber routeAdresse. Dazu der erweiterte Vertrag: Schema und //host bleiben.
+ *
  * Dazu T-160: Bei intro-complete verwarf die Tour die gespeicherte
  * Kacheladresse, wenn headCheck sie nicht pruefen konnte (status -2, etwa
  * `beneos://` aus dem Stream-Einbau), und schrieb einen geratenen Pfad
@@ -27,7 +32,7 @@ import { readFileSync } from "node:fs"
 import { pruefstand } from "../../tools/lib/foundry-attrappe.mjs"
 import { extractMethod } from "../../tools/lib/extract-method.mjs"
 
-const p = pruefstand("unterpfad: Routenpraefix an neun Stellen, Kachelsymbol der Tour")
+const p = pruefstand("unterpfad: Routenpraefix (T-159 neun Stellen, T-164 Importe, Todesmarker, CSS), Kachelsymbol der Tour")
 
 const lies = (pfad) => readFileSync(new URL(pfad, import.meta.url), "utf8")
 const WAECHTER = lies("../beneos-asset-watcher.js")
