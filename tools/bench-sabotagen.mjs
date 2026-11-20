@@ -225,9 +225,11 @@ export const SABOTAGEN = [
 
   // TC-312 v15-globale. V1 ist die Wiki-Sabotage (b): eine echte neue Stelle
   // als neue Datei. V2 eine bestehende Stelle zurueck auf die Globale.
-  { bench: "v15-globale", ziel: ["ROT: 25 Stellen", "2  Ray  (bis Foundry 15)"],
+  // Die Basis ist seit OP-PRJ-220 (in stre-T-156 nachgeholt) null Stellen,
+  // eine Sabotage ergibt also genau eine.
+  { bench: "v15-globale", ziel: ["ROT: 1 Stellen", "1  Ray  (bis Foundry 15)"],
     ersetze: [["scripts/sabotage-ray.mjs", null, "export const r = new Ray(a, b)\n"]] },
-  { bench: "v15-globale", ziel: ["ROT: 25 Stellen"],
+  { bench: "v15-globale", ziel: ["ROT: 1 Stellen", "1  renderTemplate  (bis Foundry 15)"],
     ersetze: [[SHEET, "await foundry.applications.handlebars.renderTemplate(TEMPLATE_PATH, ctx);", "await renderTemplate(TEMPLATE_PATH, ctx);"]] },
 
   // TC-314 doppelnamen, je Regel des Benches eine Stelle. D3 ist die Klasse
