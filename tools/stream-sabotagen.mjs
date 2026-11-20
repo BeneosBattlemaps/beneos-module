@@ -2077,7 +2077,7 @@ const SABOTAGEN = [
   { satz: "hinweis", ziel: ["Mitspieler: das Schild erscheint trotzdem"], ersetze: [[HINWEIS, "      abgewiesen.add(adresse)\n      pruefeSchild()", "      abgewiesen.add(adresse)\n      if (globalThis.game?.user?.isGM) pruefeSchild()"]] },
   { satz: "hinweis", ziel: ["Adresse der Szene, mit Abfrage: Schild da","zurueck zur abgewiesenen Szene: Schild wieder da"], ersetze: [[HINWEIS, "      abgewiesen.add(adresse)\n", "\n"]] },
   { satz: "hinweis", ziel: ["der Abbau haengt an canvasTearDown","canvasTearDown entfernt das Schild"], ersetze: [[HINWEIS, "  globalThis.Hooks?.on?.(\"canvasTearDown\", entferneSchild)\n", "\n"]] },
-  { satz: "hinweis", ziel: ["zurueck zur abgewiesenen Szene: Schild wieder da"], ersetze: [[HINWEIS, "    szeneLaedt = false\n    pruefeSchild()\n", "    szeneLaedt = false\n"]] },
+  { satz: "hinweis", ziel: ["zurueck zur abgewiesenen Szene: Schild wieder da"], ersetze: [[HINWEIS, "  globalThis.Hooks?.on?.(\"canvasReady\", () => pruefeSchild())", "  globalThis.Hooks?.on?.(\"canvasReady\", () => {})"]] },
   { satz: "hinweis", ziel: ["ein zweiter Einbau setzt die Haken nicht doppelt"], ersetze: [[HINWEIS, "  if (eingebaut) return\n", "\n"]] },
   { satz: "hinweis", ziel: ["canvasReady einer sauberen Szene baut ein stehendes Schild ab","faellt die Verbindung, verschwindet das denied-Schild"], ersetze: [[HINWEIS, "  if (!adresse) {\n    entferneSchild()\n    return null\n  }", "  if (!adresse) {\n    return null\n  }"]] },
   { satz: "hinweis", ziel: ["[Struktur] der denied-Zweig meldet den Grund","[Struktur] und zwar NACH dem Video-Hinweis","[Struktur] Steuerdateien wie das Manifest melden keinen Ausfall"], ersetze: [[FETCH, "        if (!isControl(url)) meldeAusfall(\"denied\", url)\n", "\n"]] },
@@ -2097,9 +2097,9 @@ const SABOTAGEN = [
   { satz: "hinweis", ziel: ["BENEOS.Stream.Intro.Cost: verspricht nicht mehr, dass offline gezeichnet wird","BENEOS.Stream.Doku.DropBody: verspricht nicht mehr, dass offline gezeichnet wird"], ersetze: [["lang/en.json", "\"BENEOS.Stream.Intro.Cost\": \"", "\"BENEOS.Stream.Intro.Cost\": \"a map still draws. "], ["lang/en.json", "\"BENEOS.Stream.Doku.DropBody\": \"", "\"BENEOS.Stream.Doku.DropBody\": \"the map still draws. "]] },
   { satz: "hinweis", ziel: ["Positivkontrolle: die Strichsuche findet einen Gedankenstrich"], ersetze: [[TEST, "const hatStrich = (t) => STRICHE.some((s) => t.includes(s))", "const hatStrich = (t) => STRICHE.slice(2).some((s) => t.includes(s))"]] },
   // Die allgemeine Meldung wartet waehrend des Szenenaufbaus (Foundry-Test 30003, E3).
-  { satz: "hinweis", ziel: ["waehrend des Szenenaufbaus: die allgemeine Meldung wartet", "Video kam im selben Aufbau nach dem Bild: keine allgemeine Meldung", "und auch spaeter keine"], ersetze: [[HINWEIS, "  globalThis.Hooks?.on?.(\"canvasInit\", () => { szeneLaedt = true })\n", ""]] },
-  { satz: "hinweis", ziel: ["Video kam im selben Aufbau nach dem Bild: keine allgemeine Meldung", "und auch spaeter keine"], ersetze: [[HINWEIS, "  if (videoHinweisKam) {\n    gemeldet.add(\"denied\")", "  if (false) {\n    gemeldet.add(\"denied\")"]] },
-  { satz: "hinweis", ziel: ["Aufbau ohne Video-Hinweis: die Meldung kommt bei canvasReady", "und zwar die fuer den Zugang", "der naechste Aufbau meldet nicht noch einmal"], ersetze: [[HINWEIS, "    pruefeSchild()\n    meldeWartendes()\n", "    pruefeSchild()\n"]] },
+  { satz: "hinweis", ziel: ["waehrend des Szenenaufbaus: die allgemeine Meldung wartet","Video kam nach canvasReady: keine allgemeine Meldung","und auch spaeter keine"], ersetze: [[HINWEIS, "    aufbau++\n    szeneLaedt = true\n", "    aufbau++\n"]] },
+  { satz: "hinweis", ziel: ["Video kam nach canvasReady: keine allgemeine Meldung","und auch spaeter keine"], ersetze: [[HINWEIS, "  if (videoHinweisKam) {\n    gemeldet.add(\"denied\")", "  if (false) {\n    gemeldet.add(\"denied\")"]] },
+  { satz: "hinweis", ziel: ["Aufbau ohne Video-Hinweis: die Meldung kommt, wenn die Videos durch sind","und zwar die fuer den Zugang","der naechste Aufbau meldet nicht noch einmal","das Ende des eigenen Aufbaus meldet"], ersetze: [[HINWEIS, "    szeneLaedt = false\n    meldeWartendes()\n  }\n}", "    szeneLaedt = false\n  }\n}"]] },
   { satz: "hinweis", ziel: ["der naechste Aufbau meldet nicht noch einmal"], ersetze: [[HINWEIS, "  gemeldet.add(grund)\n  try { globalThis.ui", "  try { globalThis.ui"]] },
   { satz: "hinweis", ziel: ["und nur einmal"], ersetze: [[HINWEIS, "  denieWartet = false\n  if (gemeldet.has(\"denied\")) return false", "  if (false) return false"]] },
   { satz: "hinweis", ziel: ["offline meldet auch waehrend des Aufbaus sofort"], ersetze: [[HINWEIS, "  return warne(grund)\n}", "  if (szeneLaedt) return false\n  return warne(grund)\n}"]] },
@@ -2125,6 +2125,13 @@ const SABOTAGEN = [
   { satz: "hinweis", ziel: ["die Offline-Meldung nennt nie fehlende Berechtigung"], ersetze: [["lang/en.json", "\"BENEOS.Stream.Notice.Offline\": \"Beneos Stream: ", "\"BENEOS.Stream.Notice.Offline\": \"Beneos Stream: no access. "]] },
   { satz: "hinweis", ziel: ["die Offline-Ablehnung der Szene nennt nie fehlende Berechtigung"], ersetze: [["lang/en.json", "\"BENEOS.Stream.Scene.Offline\": \"Beneos Stream: ", "\"BENEOS.Stream.Scene.Offline\": \"Beneos Stream: not entitled. "]] },
   { satz: "hinweis", ziel: ["Positivkontrolle: die Ursachensuche findet die Mitgliedschaft"], ersetze: [[TEST, "const URSACHE = /membership|subscri|patreon|\\btier\\b/i", "const URSACHE = /zzz/i"]] },
+  // stre-T-166, zweite Foundry-Messung: das Warten endet erst nach dem Nachladen der Videos.
+  { satz: "hinweis", ziel: ["canvasReady allein beendet das Warten nicht"], ersetze: [[HINWEIS, "  globalThis.Hooks?.on?.(\"canvasReady\", () => pruefeSchild())", "  globalThis.Hooks?.on?.(\"canvasReady\", () => { pruefeSchild(); szeneLaedt = false; meldeWartendes() })"]] },
+  { satz: "hinweis", ziel: ["das Ende eines alten Aufbaus beendet das neue Warten nicht"], ersetze: [[HINWEIS, "    if (n !== aufbau) return\n", ""]] },
+  { satz: "hinweis", ziel: ["das Ende eines alten Aufbaus beendet das neue Warten nicht"], ersetze: [[HINWEIS, "    aufbau++\n    szeneLaedt = true\n", "    szeneLaedt = true\n"]] },
+  { satz: "hinweis", ziel: ["[Struktur] das Nachladen der Videos beendet das Warten, gebunden an den Aufbau vor dem Nachladen"], ersetze: [[CANVAS, ".finally(fertig)", ""]] },
+  { satz: "hinweis", ziel: ["[Struktur] das Nachladen der Videos beendet das Warten, gebunden an den Aufbau vor dem Nachladen"], ersetze: [[CANVAS, "    const fertig = aufbauEnde()\n    fillInVideos().catch((e) => console.warn(\"Beneos Stream | Videos nachladen abgebrochen:\", e)).finally(fertig)", "    fillInVideos().catch((e) => console.warn(\"Beneos Stream | Videos nachladen abgebrochen:\", e)).finally(() => aufbauEnde()())"]] },
+  { satz: "hinweis", ziel: ["[Struktur] stream-canvas holt aufbauEnde aus der Meldestelle"], ersetze: [[CANVAS, "import { aufbauEnde } from \"./stream-hinweis.mjs\"", "const aufbauEnde = () => () => {}"]] },
 ];
 
 /*

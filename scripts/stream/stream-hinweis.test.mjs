@@ -214,7 +214,10 @@ console.log("\nDer Video-Hinweis geht vor")
 {
   // Gemessen im Foundry-Test auf 30003 (20.11.2026): beim Szenenaufbau meldete
   // ein Bild der Szene vor dem Video, und der GM bekam beide Meldungen. Waehrend
-  // des Aufbaus wartet die allgemeine Meldung deshalb bis canvasReady.
+  // des Aufbaus wartet die allgemeine Meldung deshalb. Zweite Messung am selben
+  // Tag, Kaltstart: die Videos laedt fillInVideos erst NACH canvasReady, der
+  // Video-Hinweis kam 745 ms danach. Das Warten endet also erst, wenn das
+  // Nachladen der Videos durch ist (aufbauEnde).
   const h = await frisch()
   h.installStreamHinweis()
   const fahre = (name) => { for (const [n, fn] of haken) if (n === name) fn() }
@@ -222,9 +225,12 @@ console.log("\nDer Video-Hinweis geht vor")
   fahre("canvasInit")
   h.meldeAusfall("denied", KARTE)
   gleich("waehrend des Szenenaufbaus: die allgemeine Meldung wartet", warnungen.length, 0)
-  h.merkeVideoToast()
   fahre("canvasReady")
-  gleich("Video kam im selben Aufbau nach dem Bild: keine allgemeine Meldung", warnungen.length, 0)
+  const fertig = h.aufbauEnde()
+  gleich("canvasReady allein beendet das Warten nicht", warnungen.length, 0)
+  h.merkeVideoToast()
+  fertig()
+  gleich("Video kam nach canvasReady: keine allgemeine Meldung", warnungen.length, 0)
   h.meldeAusfall("denied", TOKEN)
   gleich("und auch spaeter keine", warnungen.length, 0)
 }
@@ -237,12 +243,32 @@ console.log("\nDer Video-Hinweis geht vor")
   h.meldeAusfall("denied", KARTE)
   h.meldeAusfall("denied", KACHEL)
   fahre("canvasReady")
-  gleich("Aufbau ohne Video-Hinweis: die Meldung kommt bei canvasReady", warnungen.length, 1)
+  h.aufbauEnde()()
+  gleich("Aufbau ohne Video-Hinweis: die Meldung kommt, wenn die Videos durch sind", warnungen.length, 1)
   gleich("und zwar die fuer den Zugang", warnungen[0], "T:BENEOS.Stream.Notice.Denied")
   fahre("canvasInit")
   h.meldeAusfall("denied", KARTE)
   fahre("canvasReady")
+  h.aufbauEnde()()
   gleich("der naechste Aufbau meldet nicht noch einmal", warnungen.length, 1)
+}
+{
+  // Ein Nachladen, das zu einem abgeloesten Aufbau gehoert, beendet das Warten
+  // des neuen Aufbaus nicht.
+  const h = await frisch()
+  h.installStreamHinweis()
+  const fahre = (name) => { for (const [n, fn] of haken) if (n === name) fn() }
+  canvas.scene = szene
+  fahre("canvasInit")
+  fahre("canvasReady")
+  const alt = h.aufbauEnde()
+  fahre("canvasInit")
+  h.meldeAusfall("denied", KARTE)
+  alt()
+  gleich("das Ende eines alten Aufbaus beendet das neue Warten nicht", warnungen.length, 0)
+  fahre("canvasReady")
+  h.aufbauEnde()()
+  gleich("das Ende des eigenen Aufbaus meldet", warnungen.length, 1)
 }
 {
   // Offline wartet nicht: die Verbindung ist sofort zu melden.
@@ -454,6 +480,11 @@ const offlineTeil = FETCH.slice(FETCH.indexOf("async function offlineAntwort(url
 gleich("[Struktur] die Offline-Antwort meldet den Grund", offlineTeil.includes('meldeAusfall("offline", url)'), true)
 const video = FETCH.slice(FETCH.indexOf("function meldeVideoAbweisung(url) {"), FETCH.indexOf("function meldeVideoAbweisung(url) {") + 900)
 gleich("[Struktur] der Video-Hinweis merkt sich, dass er kam", video.includes("merkeVideoToast()"), true)
+const CANVAS = lies("scripts/stream/stream-canvas.mjs")
+const bereit = CANVAS.slice(CANVAS.indexOf('Hooks.on("canvasReady", () => {'), CANVAS.indexOf('Hooks.on("canvasReady", () => {') + 600)
+gleich("[Struktur] das Nachladen der Videos beendet das Warten, gebunden an den Aufbau vor dem Nachladen",
+  /const fertig = aufbauEnde\(\)\s*\n[\s\S]*?fillInVideos\(\)[^\n]*\.finally\(fertig\)/.test(bereit), true)
+gleich("[Struktur] stream-canvas holt aufbauEnde aus der Meldestelle", /import \{[^}]*\baufbauEnde\b[^}]*\} from "\.\/stream-hinweis\.mjs"/.test(CANVAS), true)
 const klang = ONLINE.slice(ONLINE.indexOf("function installKlangWache() {"), ONLINE.indexOf("let klangGemeldet = false"))
 gleich("[Struktur] die Klangwache meldet offline", /meldeKlang\("offline", src\)/.test(klang), true)
 gleich("[Struktur] die Klangwache meldet einen gescheiterten Torklang",

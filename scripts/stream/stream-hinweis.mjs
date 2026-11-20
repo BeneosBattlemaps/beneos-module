@@ -79,12 +79,17 @@ export function hinweisText(schluessel, daten, rueckfall) {
 const gemeldet = new Set()
 let videoHinweisKam = false
 // Waehrend eine Szene aufgebaut wird, wartet die allgemeine Meldung "nicht im
-// Zugang" bis canvasReady. Gemessen im Foundry-Test auf 30003 (20.11.2026): ein
-// Bild der Szene wurde vor dem Video abgewiesen, und der GM bekam beide
-// Meldungen, obwohl E3 genau das ausschliesst. Die Reihenfolge der Ladevorgaenge
-// ist nicht festgelegt, also wird bis zum Ende des Aufbaus gewartet.
+// Zugang". Gemessen im Foundry-Test auf 30003 (20.11.2026): ein Bild der Szene
+// wurde vor dem Video abgewiesen, und der GM bekam beide Meldungen, obwohl E3
+// genau das ausschliesst. Zweite Messung am selben Tag, Kaltstart: die Videos
+// laedt fillInVideos (stream-canvas.mjs) erst NACH canvasReady, der
+// Video-Hinweis kam 745 ms danach. Der Aufbau endet deshalb nicht bei
+// canvasReady, sondern wenn das Nachladen der Videos durch ist (aufbauEnde).
 let szeneLaedt = false
 let denieWartet = false
+// Zaehlt die Aufbauten, damit das Nachladen eines abgeloesten Aufbaus das
+// Warten des neuen nicht beendet.
+let aufbau = 0
 // Scheitert der Aufbau und canvasReady kommt nie, meldet der Zeitgeber.
 const WARTEN_HOECHSTENS_MS = 20000
 // Abgewiesene Adressen dieser Sitzung, ohne Abfrage. Das Schild fragt sie bei
@@ -151,6 +156,20 @@ export function meldeWartendes() {
     return false
   }
   return warne("denied")
+}
+
+/**
+ * Fuer den canvasReady-Behandler in stream-canvas.mjs: liefert die Funktion,
+ * die den Aufbau beendet, sobald das Nachladen der Videos durch ist. Sie wirkt
+ * nur, solange kein neuer Aufbau begonnen hat.
+ */
+export function aufbauEnde() {
+  const n = aufbau
+  return () => {
+    if (n !== aufbau) return
+    szeneLaedt = false
+    meldeWartendes()
+  }
 }
 
 /** Die erste Adresse dieser Szene, die das Tor in dieser Sitzung abgewiesen hat. */
@@ -308,13 +327,14 @@ let eingebaut = false
 export function installStreamHinweis() {
   if (eingebaut) return
   eingebaut = true
-  globalThis.Hooks?.on?.("canvasInit", () => { szeneLaedt = true })
-  globalThis.Hooks?.on?.("canvasTearDown", entferneSchild)
-  globalThis.Hooks?.on?.("canvasReady", () => {
-    szeneLaedt = false
-    pruefeSchild()
-    meldeWartendes()
+  globalThis.Hooks?.on?.("canvasInit", () => {
+    aufbau++
+    szeneLaedt = true
   })
+  globalThis.Hooks?.on?.("canvasTearDown", entferneSchild)
+  // Die wartende Meldung kommt nicht hier, sondern ueber aufbauEnde, wenn die
+  // Videos nachgeladen sind.
+  globalThis.Hooks?.on?.("canvasReady", () => pruefeSchild())
   // Faellt die Verbindung, verschwindet das Schild; kommt sie zurueck, steht
   // es wieder mit seinen Links (Kalt-Review a9acf9e, Betreiber-Nachtrag).
   onStreamState(() => pruefeSchild())

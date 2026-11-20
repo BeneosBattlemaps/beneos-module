@@ -30,6 +30,7 @@
 import { drawBudget, maxConcurrent, streamEnabled, leinwandAdresse } from "./stream-settings.mjs"
 import { abortAll, inFlightCount, laufendeAbrufe } from "./stream-fetch.mjs"
 import { reportFailure } from "./stream-report.mjs"
+import { aufbauEnde } from "./stream-hinweis.mjs"
 
 const FLAG_SCOPE = "beneos-module"
 const FLAG_KEY = "stream"
@@ -618,7 +619,10 @@ export function installStreamCanvas() {
     // Not awaited on purpose, see fillInVideos. Gefangen, weil vor dessen
     // innerem try synchroner Code werfen kann (stre-T-113); ohne `.catch` war
     // das eine unbehandelte Ablehnung ohne erklaerende Zeile.
-    fillInVideos().catch((e) => console.warn("Beneos Stream | Videos nachladen abgebrochen:", e))
+    // Erst danach steht fest, ob ein Video abgewiesen wurde; bis dahin wartet
+    // die allgemeine Zugangsmeldung (stre-T-166, E3).
+    const fertig = aufbauEnde()
+    fillInVideos().catch((e) => console.warn("Beneos Stream | Videos nachladen abgebrochen:", e)).finally(fertig)
   })
   // A draw that fails for any other reason must not leave the watchdog armed.
   Hooks.on("canvasTearDown", () => {
