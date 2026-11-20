@@ -35,12 +35,11 @@ const HIER = dirname(fileURLToPath(import.meta.url))
 const MODUL = join(HIER, "..", "..")
 
 // ---------------------------------------------------------------- Schranken
-// OBERGRENZE: so viele Stellen stehen heute offen. Sie ist bewusst keine
-// Null, denn die 24 verbliebenen liegen im Tabletop-Modus und im Codex und
-// sind ein eigenes Arbeitspaket. Sie darf nur fallen, nie steigen.
-// NULL, und das ist am 09.11.2026 erreicht, OP-PRJ-220. Erst sechs
-// Zugriffe (399bd38), dann zehn Rueckfaelle auf den nackten Namen
-// (2466745), dann die letzten 14 in scripts/beneos-table-top.js.
+// OBERGRENZE: so viele Stellen stehen heute offen. Sie darf nur fallen,
+// nie steigen. NULL, und das ist am 09.11.2026 erreicht, OP-PRJ-220.
+// Erst sechs Zugriffe, dann zehn Rueckfaelle auf den nackten Namen
+// (49e94fb), dann die letzten 14 in scripts/beneos-table-top.js
+// (3a589da), beide nachgeholt in stre-T-156.
 //
 // NULL IST DIE RICHTIGE GRENZE UND NICHT EINE STRENGE. Ein Zugriff auf
 // einen Globalen, den Foundry als veraltet fuehrt, ist nie noetig: der
