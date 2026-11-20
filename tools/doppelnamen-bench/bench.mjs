@@ -5,8 +5,10 @@
 // Methode `async complete()` ZWEIMAL, in Zeile 1347 und in Zeile 1580.
 // JavaScript nimmt den spaeteren Eintrag, ohne ein Wort zu sagen. Die Folge
 // war verkehrt herum: beim ABBRECHEN der Tour ueber `exit()` lief die
-// Aufraeumung, beim normalen BEENDEN nicht, und damit blieb der Ersatz von
-// `game.tooltip.deactivate` nach jeder zu Ende gespielten Tour stehen.
+// Aufraeumung, beim normalen BEENDEN nicht, und damit blieben der Ersatz von
+// `game.tooltip.activate` und `dismissLockedTooltips` aus
+// `_installTourTooltipGuard` und die Klasse `tour-active` am body nach jeder
+// zu Ende gespielten Tour stehen.
 //
 // WARUM ES NIEMAND GESEHEN HAT, und das ist der eigentliche Befund. Die Regel
 // `no-dupe-class-members` ist in `eslint.config.mjs` seit `OP-PRJ-195` auf
