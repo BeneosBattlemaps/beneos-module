@@ -469,7 +469,7 @@ if git diff --cached --name-only --diff-filter=ACM \
 then
   meld "pre-commit: Sabotagelaeufer vorgemerkt, die Saetze kindlauf und bench-sabotagen laufen mit"
   fahre "tools/lib/kindlauf.test.mjs" "kindlauf.test.mjs, 57 Saetze"
-  fahre "tools/bench-sabotagen.test.mjs" "bench-sabotagen.test.mjs, 33 Saetze"
+  fahre "tools/bench-sabotagen.test.mjs" "bench-sabotagen.test.mjs"
 fi
 
 # Die teure nur, wenn ihr Gegenstand angefasst wird.
