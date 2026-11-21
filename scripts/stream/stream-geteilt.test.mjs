@@ -400,8 +400,11 @@ console.log("\nDer Schalter: bei AUS bleibt alles, wie es war")
 // AUS den Kartenschluessel und ueber die Naht den geteilten.
 wahr("keine Kundeneinstellung nennt den Vorrat",
   !/geteilterVorrat/.test(JSON.stringify(SETTING)))
+// Ausgenommen ist der Gemeinschaftsvorrat selbst (`SETTING.offlineGeteilt`):
+// seit stre-T-175 liest die Lesehuelle daraus die Pruefsumme einer gehaltenen
+// Datei. Das sind Daten und kein Schalter; der Schalter bleibt die Konstante.
 struktur("die Abrufschicht liest keine Einstellung zum Vorrat",
-  !/SETTING\.\w*[gG]eteilt/.test(fetchQ))
+  !/SETTING\.(?!offlineGeteilt\b)\w*[gG]eteilt/.test(fetchQ))
 
 const { vorratsSchluessel } = await import("./stream-fetch.mjs")
 const kartenAdresse = assetUrl("beneos_bm_0001", "4k", "map_assets/foundry_bm_ui.webp")

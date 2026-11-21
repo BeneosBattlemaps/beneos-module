@@ -304,6 +304,53 @@ abschnitt("Heilen nennt die Ursache, wo es sie kennt")
   gleich("Zwischenspeicher abgeschaltet: kein speicherAus, keine Karte", JSON.stringify([schalterAus?.karten, schalterAus?.speicherAus]), JSON.stringify([0, false]))
 }
 
+abschnitt("Geteilte Datei, die schon liegt: eigener Eintrag, kein fremdes Loesen (stre-T-175)")
+{
+  // Kalt-Review stre-T-175, Befund 2. Bei Schalter AN liegt eine Datei, die
+  // Karte A geholt hat, fuer Karte B gleicher Bytes schon unter demselben
+  // Schluessel. Gemessen wird dieselbe Lage bei AUS: zwei Eintraege, die
+  // denselben Vorratsschluessel bilden, und eine schon gehaltene Datei.
+  const { vorratsSchluessel } = await import("./stream-fetch.mjs")
+  const { geteilterStand } = await import("./stream-offline.mjs")
+  const B = { release: "beneos_bm_0002", variant: "4k", karte: "k2" }
+  const ZUSAGE_B = `${BASIS}/offline/${SCHLUESSEL}/beneos_bm_0002/4k/k2`
+  const G_B = `${BASIS}/a/${SCHLUESSEL}/beneos_bm_0002/4k/map_assets/x.webp`
+  netz((adresse) => {
+    if (adresse === ZUSAGE_B || adresse === `${ZUSAGE_B}/release`) return json(200, { ok: true })
+    if (adresse.startsWith(`${BASIS}/a/`)) return new Response("bild", { status: 200 })
+    return undefined
+  })
+  ablage.clear()
+  await game.settings.set("beneos-module", "beneos-stream-offline-shared", {})
+  ablage.set(vorratsSchluessel(G_B), new Response("x", { status: 200, headers: { "x-beneos-keep": "1" } }))
+  const zu = await versuche(() => karteZusagen({ ...B, name: "B", urls: [`${BASIS}/a/${SCHLUESSEL}/beneos_bm_0002/4k/k2.webp`], bytes: 10,
+    geteilt: [{ url: G_B, bytes: 5 }] }))
+  const roh = game.settings.get("beneos-module", "beneos-stream-offline-shared") || {}
+  gleich("Zusage B gelingt", zu?.ok, true)
+  gleich("die schon gehaltene geteilte Datei bekommt einen Eintrag fuer B",
+    JSON.stringify(roh["beneos_bm_0002|4k|map_assets/x.webp"]?.karten), JSON.stringify(["beneos_bm_0002|4k|k2"]))
+
+  // Zwei Eintraege derselben Datei: die Kennung (Karte A) und ein Alteintrag
+  // in Adressform mit anderem Streamschluessel (Karte C). Beide bilden
+  // denselben Vorratsschluessel.
+  const ALT = `${BASIS}/a/k-alt-0009/beneos_bm_0002/4k/map_assets/x.webp`
+  await game.settings.set("beneos-module", "beneos-stream-offline-held", {})
+  await game.settings.set("beneos-module", "beneos-stream-offline-shared", {
+    "beneos_bm_0002|4k|map_assets/x.webp": { bytes: 5, karten: ["beneos_bm_0002|4k|k2"] },
+    [ALT]: { bytes: 5, karten: ["beneos_bm_0002|4k|k3"] },
+  })
+  gleich("dieselbe Ablage zaehlt im Stand einmal", JSON.stringify(geteilterStand()), JSON.stringify({ dateien: 1, bytes: 5 }))
+  await game.settings.set("beneos-module", "beneos-stream-offline-held", {
+    "beneos_bm_0002|4k|k2": { ...B, name: "B", urls: [`${BASIS}/a/${SCHLUESSEL}/beneos_bm_0002/4k/k2.webp`], bytes: 10 },
+  })
+  await versuche(() => karteLoesen(B.release, B.variant, B.karte))
+  const nachher = ablage.get(vorratsSchluessel(G_B))
+  gleich("Loesen von B laesst die Datei gehalten, die C noch braucht", Boolean(nachher?.headers.get("x-beneos-keep")), true)
+  await game.settings.set("beneos-module", "beneos-stream-offline-shared", {})
+  await game.settings.set("beneos-module", "beneos-stream-offline-held", {})
+  ablage.clear()
+}
+
 abschnitt("Fenster und Weltstart melden dieselbe Lage gleich")
 {
   // Kalt-Review stre-T-146, Befunde 1, 2 und 6: der Baustein war geprueft,

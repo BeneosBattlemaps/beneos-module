@@ -33,7 +33,7 @@ import { MODULE_ID, SETTING, streamEnabled, localCacheEnabled, assetUrl, zerlege
 import { offlineGehalten, offlineHalten, offlineFreigeben, nichtGehalten,
          gehalteneAdressen, speicherAusfallStand, speicherBereit, speicherLage,
          adresseNormal, ohneDeckung, gehaltenePruefung, adresseVonKennung,
-         deckungDesVorrats, pruefsummeVon } from "./stream-fetch.mjs"
+         deckungDesVorrats, pruefsummeVon, vorratsSchluessel } from "./stream-fetch.mjs"
 import { streamAdressenVon, streamState } from "./stream-online.mjs"
 import { loadStreamManifest } from "./stream-install.mjs"
 import { BeneosInstallState, releaseKern, anzeigename } from "../cloud-v2/beneos-install-state.mjs"
@@ -424,7 +424,16 @@ function szenenDerKarte(e, index) {
  * `geteilteLuecken`.
  */
 export function geteilterStand() {
-  const alle = Object.values(liesGeteilt()).filter(e => e && typeof e === "object" && !e.fehlt)
+  // Je Vorratsschluessel einmal (Kalt-Review stre-T-175): bei Schalter AN
+  // fuehren zwei Karten gleicher Bytes zwei Eintraege fuer EINE Ablage. Bei AUS
+  // hat jeder Eintrag seinen eigenen Schluessel.
+  const je = new Map()
+  for (const [url, e] of Object.entries(liesGeteilt())) {
+    if (!e || typeof e !== "object" || e.fehlt) continue
+    const s = vorratsSchluessel(url)
+    if (!je.has(s)) je.set(s, e)
+  }
+  const alle = [...je.values()]
   return { dateien: alle.length, bytes: alle.reduce((s, e) => s + (Number(e.bytes) || 0), 0) }
 }
 
@@ -648,9 +657,10 @@ export async function karteZusagen({ release, variant, karte, name, urls, bytes,
     // denn ein Eintrag ohne Datei ist genau der Zustand, den `geteilteLuecken`
     // aufraeumt; er entsteht aber auch mitten in einer Sitzung, wenn der Browser
     // unter Speicherdruck den ganzen Ursprung raeumt.
-    const geteiltZuHolen = []
+    const geteiltZuHolen = [], schonGehalten = new Set()
     for (const g of geteiltListe) {
       if (!(await offlineGehalten([g.url]))) geteiltZuHolen.push(g)
+      else schonGehalten.add(g)
     }
     if (geteiltZuHolen.length) {
       const erg = await offlineHalten(geteiltZuHolen.map(g => g.url))
@@ -673,8 +683,17 @@ export async function karteZusagen({ release, variant, karte, name, urls, bytes,
     }
     // Auch die schon liegenden bekommen diese Karte als Verweis, sonst gaebe
     // die erste geloeste Karte Dateien frei, die eine zweite noch braucht.
+    //
+    // EINE SCHON GEHALTENE DATEI OHNE EINTRAG BEKOMMT EINEN (Kalt-Review
+    // stre-T-175). Bei Schalter AN liegt eine Datei, die Karte A geholt hat,
+    // unter ihrem geteilten Schluessel und gilt fuer Karte B gleicher Bytes
+    // schon als gehalten. Ohne Eintrag unter der Kennung von B fehlte offline
+    // die Pruefsumme fuer B, und das Loesen von A gaebe die Datei frei, die B
+    // braucht. Gezaehlt wird die Datei weiter einmal: die Bytes stehen in
+    // jedem Eintrag, das Kontingent rechnet das Tor je Pruefsumme.
     for (const g of geteiltListe) {
-      const e = vorrat[g.url]
+      let e = vorrat[g.url]
+      if (!e && schonGehalten.has(g)) e = vorrat[g.url] = { bytes: Number(g.bytes) || 0, karten: [] }
       if (!e) continue
       e.karten = [...new Set([...(e.karten || []), meineId])]
     }
@@ -728,8 +747,15 @@ async function geteiltAustragen(kartenIds) {
     bytes += Number(e.bytes) || 0
     delete vorrat[url]
   }
-  if (frei.length) {
-    try { await offlineFreigeben(frei) }
+  // NICHT FREIGEBEN, WAS EIN VERBLEIBENDER EINTRAG UNTER DEMSELBEN SCHLUESSEL
+  // BRAUCHT (Kalt-Review stre-T-175). Bei Schalter AN liegen zwei Karten mit
+  // denselben Bytes unter EINEM geteilten Schluessel; das Loesen der einen
+  // gaebe sonst die Datei der anderen frei. Bei AUS hat jeder Eintrag seinen
+  // eigenen Kartenschluessel, und es bleibt, wie es war.
+  const bleibt = new Set(Object.keys(vorrat).map(u => vorratsSchluessel(u)))
+  const loesen = frei.filter(u => !bleibt.has(vorratsSchluessel(u)))
+  if (loesen.length) {
+    try { await offlineFreigeben(loesen) }
     catch (err) { console.warn("Beneos Stream | geteilte Dateien nicht freigegeben", err) }
   }
   await schreibGeteilt(vorrat)

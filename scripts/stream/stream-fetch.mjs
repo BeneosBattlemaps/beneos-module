@@ -20,7 +20,7 @@
  * to the gate cut, video running, 59 frames per second.
  */
 
-import { assetUrl, budgetFor, downloadMode, GETEILT_RAUM, geteilteAdresse, istGeteilteDatei, localCacheEnabled, maxConcurrent, MODULE_ID, streamEnabled, streamHost, streamMode, zerlegeAdresse } from "./stream-settings.mjs"
+import { assetUrl, budgetFor, downloadMode, GETEILT_RAUM, geteilteAdresse, istGeteilteDatei, localCacheEnabled, maxConcurrent, MODULE_ID, SETTING, streamEnabled, streamHost, streamMode, zerlegeAdresse } from "./stream-settings.mjs"
 import { ohneSchluessel, ohneSchluesselImText, reportFailure, reportedSoFar } from "./stream-report.mjs"
 import { isOffline, noteResult } from "./stream-online.mjs"
 import { meldeAusfall, merkeVideoToast } from "./stream-hinweis.mjs"
@@ -749,10 +749,21 @@ function geteilterDreiklang(url, t, an = GETEILTER_VORRAT_AN) {
    * gehalten als einmal unerreichbar. Dieselbe Positivliste steht in
    * `lib/geteilt-mirror-gate.php`, `geteilt_mirror_name_ok`.
    */
-  const name = String(t.pfad).split("/").pop()
-  if (!name || name.length > 200 || !/^[A-Za-z0-9._-]+$/.test(name)) return null
-  if (name[0] === ".") return null
+  const name = routenName(t.pfad)
+  if (!name) return null
   return { raum: "geteilt", release: GETEILT_RAUM, variant: sha, pfad: name }
+}
+
+/*
+ * Der Dateiname eines Pfades in der Form der Route, sonst "". Die Pruefung
+ * begruendet `geteilterDreiklang`; der Rueckfall ohne Manifest
+ * (`gehaltenerGeteilterSchluessel`, stre-T-175) bildet den Namen genauso.
+ */
+function routenName(pfad) {
+  const name = String(pfad).split("/").pop()
+  if (!name || name.length > 200 || !/^[A-Za-z0-9._-]+$/.test(name)) return ""
+  if (name[0] === ".") return ""
+  return name
 }
 
 /**
@@ -773,6 +784,11 @@ export function vorratsSchluessel(url) {
  */
 export const geteilterDreiklangFuerPruefsatz = (url, t) => geteilterDreiklang(url, t, true)
 export const vorratsSchluesselMitVorratFuerPruefsatz = (url) => vorratsSchluesselBei(url, true)
+// Der Lesepfad mit dem Schalter AN, fuer `stream-offline-geteilt.test.mjs` (stre-T-175).
+export const fromStoreMitVorratFuerPruefsatz = (store, url) => fromStore(store, url, true)
+export const offlineGehaltenMitVorratFuerPruefsatz = (urls) => offlineGehaltenBei(urls, true)
+export const alleImSpeicherMitVorratFuerPruefsatz = (urls) => alleImSpeicherBei(urls, true)
+export const nichtGehaltenMitVorratFuerPruefsatz = (urls) => nichtGehaltenBei(urls, true)
 
 function vorratsSchluesselBei(url, an) {
   const s = String(url || "")
@@ -856,6 +872,84 @@ export function adresseAusSchluessel(schluessel) {
 const vMatch = (store, url, opts) => store.match(vorratsSchluessel(url), opts)
 const vPut = (store, url, antwort) => store.put(vorratsSchluessel(url), antwort)
 const vDelete = (store, url, opts) => store.delete(vorratsSchluessel(url), opts)
+
+/**
+ * OHNE MANIFEST KEIN GETEILTER SCHLUESSEL, UND DARUM DIESER RUECKFALL
+ * (stre-T-175).
+ *
+ * Bei Schalter AN liegt eine gehaltene geteilte Datei unter
+ * `geteilt/<sha>/<name>`. Die Kartenadresse kommt dort nur mit der
+ * Pruefsumme hin, und `geteilterDreiklang` nimmt sie aus dem
+ * Sitzungsverzeichnis, das allein ein geladenes Manifest fuellt. Das Manifest
+ * wird nie gespeichert (no-store, `toStore` weist Steuerdateien ab). Offline
+ * und vor dem ersten Manifest fand der Lesepfad die Datei also nicht, obwohl
+ * sie dalag.
+ *
+ * Die Pruefsumme steht aber schon im Gemeinschaftsvorrat: `schreibGeteilt`
+ * legt jeden Eintrag unter der Kartenkennung `release|variant|pfad` ab und
+ * schreibt seit stre-T-174 die Pruefsumme mit. Das ist genau die Zuordnung,
+ * die fehlt, und verglichen wird der volle Pfad in Release und Variante,
+ * kein Name.
+ *
+ * DREI GRENZEN, jede mit Absicht:
+ *   - Ist das Manifest dieser Karte (Release und Variante) geladen, gilt es.
+ *     Hat eine Datei mit einem Update neue Bytes, kommen die alten nicht
+ *     zurueck, auch wenn das Sitzungsverzeichnis am Deckel stand.
+ *   - Nur ein gehaltener Eintrag zaehlt (`KEEP_HEADER`). Ein abgelaufener
+ *     bleibt fuer `fromStore` ein Fehlversuch, und geloescht wird nie unter
+ *     einem Schluessel, den der Aufrufer nicht gebildet hat.
+ *   - Nur Lesestellen nehmen den Rueckfall. `offlineFreigeben` legte ueber
+ *     ihn eine ungehaltene Kopie unter dem Kartenschluessel an und liesse die
+ *     gehaltene stehen. `offlineHalten` bleibt bei seinem eigenen Schluessel,
+ *     damit Halten und Loesen dieselbe Ablage sehen.
+ *
+ * Steuerdateien bleiben aus dem Cache; es wird nichts zusaetzlich gespeichert.
+ */
+function gehaltenerGeteilterSchluessel(url, liesVorrat) {
+  const roh = ohneAbfrage(url)
+  if (!istGeteilteDatei(roh)) return ""
+  const t = zerlegeAdresse(roh)
+  if (!t || t.raum === "geteilt") return ""
+  // Das Manifest dieser Karte ist geladen: dann gilt es, auch fuer eine
+  // Adresse, die es nicht ins Sitzungsverzeichnis geschafft hat (Deckel).
+  if (manifestGeladen.has(`${t.release}|${t.variant}`)) return ""
+  const name = routenName(t.pfad)
+  if (!name) return ""
+  const gesucht = `${t.release}|${t.variant}|${t.pfad}`
+  for (const [k, e] of Object.entries(liesVorrat() || {})) {
+    // Alt: der Schluessel ist eine Adresse. Neu: er ist die Kennung.
+    let kennung = k
+    if (/^https?:\/\//.test(k)) {
+      const a = zerlegeAdresse(ohneAbfrage(k))
+      kennung = a ? `${a.release}|${a.variant}|${a.pfad}` : ""
+    }
+    if (kennung !== gesucht) continue
+    const sha = pruefsummeOderLeer(e?.sha)
+    if (sha) return schluesselVonKennung(GETEILT_RAUM, sha, name)
+  }
+  return ""
+}
+
+/* Der Gemeinschaftsvorrat, wie er gespeichert ist, oder {}. */
+function gespeicherterVorrat() {
+  try { return game.settings.get(MODULE_ID, SETTING.offlineGeteilt) || {} }
+  catch (_) { return {} }
+}
+
+/**
+ * Die Lesehuelle: `vMatch` und bei Schalter AN ohne Treffer der Rueckfall
+ * oben. Gelesen wird der Vorrat erst bei diesem Fehlversuch.
+ */
+async function vMatchLesen(store, url, opts, an = GETEILTER_VORRAT_AN) {
+  const hit = await store.match(vorratsSchluesselBei(url, an), opts)
+  // Ein nicht gehaltener Treffer (etwa vom Streamen vor dem Umschalten) darf
+  // die gehaltene Kopie nicht verdecken; ohne sie bleibt es bei ihm.
+  if (!an || hit?.headers.get(KEEP_HEADER)) return hit
+  const schluessel = gehaltenerGeteilterSchluessel(url, gespeicherterVorrat)
+  if (!schluessel) return hit
+  const geteilt = await store.match(schluessel, opts)
+  return geteilt?.headers.get(KEEP_HEADER) ? geteilt : hit
+}
 
 /**
  * Eine Abweisung des Tors, einmal je Release und Variante gemeldet.
@@ -1352,9 +1446,9 @@ function fresh(hit) {
  * land in the query. Ignoring it means such a change costs nothing, instead of
  * discarding the whole store.
  */
-async function fromStore(store, url) {
+async function fromStore(store, url, an = GETEILTER_VORRAT_AN) {
   try {
-    const hit = await vMatch(store, url, { ignoreSearch: true })
+    const hit = await vMatchLesen(store, url, { ignoreSearch: true }, an)
     if (!hit) return null
     if (fresh(hit)) return hit
     await vDelete(store, url, { ignoreSearch: true })
@@ -1407,6 +1501,9 @@ async function fromStore(store, url) {
  */
 const shaZuAdresse = new Map()   // Adresse ohne Abfrageteil -> sha256
 const adressenZuSha = new Map()  // sha256 -> Set der Adressen
+// `release|variant` jedes Manifests, das in dieser Sitzung geladen wurde, auch
+// jenseits des Deckels. Fuer den Manifestvorrang im Rueckfall (stre-T-175).
+const manifestGeladen = new Set()
 
 /**
  * Traeger, die das Tor in dieser Sitzung fuer `/s/` abgewiesen hat, als
@@ -1489,6 +1586,12 @@ function ohneAbfrage(url) {
  */
 export function merkePruefsummen(paare) {
   if (!Array.isArray(paare)) return 0
+  // Vor dem Deckel: welches Manifest geladen ist, gilt auch ohne Platz im
+  // Verzeichnis (Kalt-Review stre-T-175).
+  for (const paar of paare) {
+    const t = Array.isArray(paar) ? zerlegeAdresse(ohneAbfrage(paar[0])) : null
+    if (t) manifestGeladen.add(`${t.release}|${t.variant}`)
+  }
   let neu = 0
   for (const paar of paare) {
     if (!Array.isArray(paar) || paar.length < 2) continue
@@ -1579,6 +1682,10 @@ export function pruefsummenStand() {
  * aus wie ein Fehler und nicht wie eine Ansage.
  */
 export async function alleImSpeicher(urls) {
+  return alleImSpeicherBei(urls, GETEILTER_VORRAT_AN)
+}
+
+async function alleImSpeicherBei(urls, an) {
   const liste = [...new Set((urls || []).filter(u => typeof u === "string" && ours(u)))]
   if (!liste.length) return false
   if (!localCacheEnabled()) return false
@@ -1586,7 +1693,7 @@ export async function alleImSpeicher(urls) {
   if (!store) return false
   for (const url of liste) {
     try {
-        const hit = await vMatch(store, url, { ignoreSearch: true })
+        const hit = await vMatchLesen(store, url, { ignoreSearch: true }, an)
         if (!hit || !fresh(hit)) return false
       } catch (_) { return false }
     }
@@ -2510,13 +2617,17 @@ export async function offlineFreigeben(urls) {
 
 /** Sind ALLE diese Adressen dauerhaft gehalten? Eine fehlende genuegt fuer Nein. */
 export async function offlineGehalten(urls) {
+  return offlineGehaltenBei(urls, GETEILTER_VORRAT_AN)
+}
+
+async function offlineGehaltenBei(urls, an) {
   const liste = eigeneEingaben(urls)
   if (!liste.length) return false
   const store = await openStore()
   if (!store) return false
   for (const url of liste) {
     try {
-      const hit = await vMatch(store, url, { ignoreSearch: true })
+      const hit = await vMatchLesen(store, url, { ignoreSearch: true }, an)
       if (!hit || !hit.headers.get(KEEP_HEADER)) return false
     } catch (_) { return false }
   }
@@ -2543,6 +2654,10 @@ export async function offlineGehalten(urls) {
  * Speicherausfall ohnehin gesondert prueft.
  */
 export async function nichtGehalten(urls) {
+  return nichtGehaltenBei(urls, GETEILTER_VORRAT_AN)
+}
+
+async function nichtGehaltenBei(urls, an) {
   const liste = [...new Set((urls || []).filter(u => typeof u === "string" && ours(u)))]
   if (!liste.length) return []
   const store = await openStore()
@@ -2550,7 +2665,7 @@ export async function nichtGehalten(urls) {
   const fehlt = []
   for (const url of liste) {
     try {
-      const hit = await vMatch(store, url, { ignoreSearch: true })
+      const hit = await vMatchLesen(store, url, { ignoreSearch: true }, an)
       if (!hit || !hit.headers.get(KEEP_HEADER)) fehlt.push(url)
     } catch (_) { fehlt.push(url) }
   }

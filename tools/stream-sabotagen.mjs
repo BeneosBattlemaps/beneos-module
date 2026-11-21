@@ -162,6 +162,13 @@
  * Alteintraege, und bei AUS bleibt alles wie vorher. An der Basis gibt es ihn
  * nicht.
  *
+ * Seit stre-T-175 dazu `offline-geteilt`
+ * (`scripts/stream/stream-offline-geteilt.test.mjs`): bei AN ohne Manifest
+ * findet der Lesepfad eine gehaltene geteilte Datei ueber die Pruefsumme im
+ * Gemeinschaftsvorrat, das Manifest hat Vorrang, Schreiber bleiben ohne
+ * Rueckfall, und bei AUS bleibt alles wie vorher. An der Basis gibt es ihn
+ * nicht.
+ *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
  * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig] [--zeitgrenze <ms>]
@@ -333,12 +340,12 @@ const SABOTAGEN = [
   { satz: "geteilt", ziel: ["eine Szenendatei mit bekannter Pruefsumme ist nicht geteilt","und behaelt bei AN ihren Kartenschluessel"], ersetze: [[FETCH, "  if (!istGeteilteDatei(url)) return null\n", "\n"]] },
   { satz: "geteilt", ziel: ["ohne bekannte Pruefsumme: kein Dreiklang, auch bei AN","ohne bekannte Pruefsumme: der Kartenschluessel, auch bei AN"], ersetze: [[FETCH, "  const sha = shaZuAdresse.get(ohneAbfrage(url))\n  if (!sha) return null", "  const sha = shaZuAdresse.get(ohneAbfrage(url)) || \"0\".repeat(64)\n  if (!sha) return null"]] },
   { satz: "geteilt", ziel: ["bei AN haengt der Vergleich am Pfad, eine Abfrage stoert nicht"], ersetze: [[FETCH, "  const sha = shaZuAdresse.get(ohneAbfrage(url))\n", "  const sha = shaZuAdresse.get(url)\n"]] },
-  { satz: "geteilt", ziel: ["mit Pruefsumme, Schalter AN: der geteilte Schluessel","bei AN idempotent: ein Schluessel bleibt ein Schluessel","bei AN haengt der Vergleich am Pfad, eine Abfrage stoert nicht","der Dreiklang: Raum, Raumname, Pruefsumme und der Basisname","200 Zeichen gehen noch","aus Unterordnern bleibt nur der Basisname","ein Punkt mitten im Namen ist erlaubt","Bindestrich und Unterstrich sind erlaubt"], ersetze: [[FETCH, "  const name = String(t.pfad).split(\"/\").pop()", "  const name = String(t.pfad)"]] },
+  { satz: "geteilt", ziel: ["mit Pruefsumme, Schalter AN: der geteilte Schluessel","bei AN idempotent: ein Schluessel bleibt ein Schluessel","bei AN haengt der Vergleich am Pfad, eine Abfrage stoert nicht","der Dreiklang: Raum, Raumname, Pruefsumme und der Basisname","200 Zeichen gehen noch","aus Unterordnern bleibt nur der Basisname","ein Punkt mitten im Namen ist erlaubt","Bindestrich und Unterstrich sind erlaubt"], ersetze: [[FETCH, "  const name = String(pfad).split(\"/\").pop()", "  const name = String(pfad)"]] },
   { satz: "geteilt", ziel: ["201 Zeichen: kein Dreiklang"], luecke: true, ersetze: [[FETCH, "name.length > 200", "name.length > 201"]] },
   { satz: "geteilt", ziel: ["200 Zeichen gehen noch"], ersetze: [[FETCH, "name.length > 200", "name.length > 199"]] },
   { satz: "geteilt", ziel: ["ein Name mit Nicht-ASCII-Zeichen: kein Dreiklang"], ersetze: [[FETCH, "!/^[A-Za-z0-9._-]+$/.test(name)", "!/^\\S+$/.test(name)"]] },
   { satz: "geteilt", ziel: ["200 Zeichen gehen noch","ein Punkt mitten im Namen ist erlaubt","Bindestrich und Unterstrich sind erlaubt"], ersetze: [[FETCH, "!/^[A-Za-z0-9._-]+$/.test(name)", "!/^[A-Za-z0-9_]+\\.[a-z]+$/.test(name)"]] },
-  { satz: "geteilt", ziel: ["ein fuehrender Punkt: kein Dreiklang"], ersetze: [[FETCH, "  if (name[0] === \".\") return null\n", "\n"]] },
+  { satz: "geteilt", ziel: ["ein fuehrender Punkt: kein Dreiklang"], ersetze: [[FETCH, "  if (name[0] === \".\") return \"\"\n", "\n"]] },
   { satz: "geteilt", ziel: ["ein Schluessel bleibt ein Schluessel"], ersetze: [[FETCH, "  if (s.startsWith(VORRAT_URSPRUNG)) return s\n  const t = zerlegeAdresse(s)\n  if (!t) return s\n  const g", "  const t = zerlegeAdresse(s)\n  if (!t) return s\n  const g"]] },
   { satz: "geteilt", ziel: ["mit Pruefsumme, Schalter AN: der geteilte Schluessel","bei AN idempotent: ein Schluessel bleibt ein Schluessel","bei AN haengt der Vergleich am Pfad, eine Abfrage stoert nicht"], ersetze: [[FETCH, "  const quelle = g || t\n", "  const quelle = t\n"]] },
   // Der Rueckweg und das Sammeln.
@@ -2254,6 +2261,24 @@ const SABOTAGEN = [
   { satz: "traeger-ersatz", ziel: ["genau ein Abruf"], ersetze: [[FETCH, "          versucht.add(roh)\n", "          versucht.add(`${roh}|${versucht.size}`)\n"], [FETCH, "  if (!a || !ta || ohne.has(`${ta.release}|${ta.variant}`)) return \"\"\n", "  if (!a || !ta) return \"\"\n"], [FETCH, "  if (a === roh || versucht?.has(a) || !ours(a)) return \"\"\n", "  if (versucht?.size > 2 || !ours(a)) return \"\"\n"]] },
   { satz: "traeger-ersatz", ziel: ["ein Traeger: Fehlschlag mit Grund abgewiesen","mit Abfrageteil: Fehlschlag mit Grund abgewiesen"], ersetze: [[FETCH, "        if (abgelegt) {", "        if (abgelegt || versucht.size > 0) {"]] },
   { satz: "traeger-ersatz", ziel: ["genau ein Abruf, auch mit Abfrageteil"], ersetze: [[FETCH, "          const roh = ohneAbfrage(ziel)\n", "          const roh = ziel\n"], [FETCH, "  if (!a || !ta || ohne.has(`${ta.release}|${ta.variant}`)) return \"\"\n", "  if (!a || !ta) return \"\"\n"], [FETCH, "  if (a === roh || versucht?.has(a) || !ours(a)) return \"\"\n", "  if (a === url || versucht?.has(a) || !ours(a)) return \"\"\n"]] },
+  // ----------------------------------------------------------- offline-geteilt
+  { satz: "offline-geteilt", ziel: ["Kartenadresse liefert die gehaltenen Bytes","Kartenadresse mit Abfrageteil liefert sie auch","offlineGehalten meldet sie als gehalten","Alteintrag in Adressform traegt die Pruefsumme genauso","eigene und geteilte zusammen gehalten","alleImSpeicher findet die geteilte Datei","nichtGehalten nennt nur die fehlende Variante"], ersetze: [[FETCH, "  const schluessel = gehaltenerGeteilterSchluessel(url, gespeicherterVorrat)\n", "  const schluessel = \"\"\n"]] },
+  { satz: "offline-geteilt", ziel: ["Manifest mit neuer Pruefsumme: keine alten Bytes","Manifest mit neuer Pruefsumme: nicht gehalten","Manifest mit neuer Pruefsumme, mit Abfrageteil: keine alten Bytes","Manifest geladen, Deckel erreicht: keine alten Bytes"], ersetze: [[FETCH, "  if (manifestGeladen.has(`${t.release}|${t.variant}`)) return \"\"\n", "\n"]] },
+  { satz: "offline-geteilt", ziel: ["Manifest geladen, Deckel erreicht: keine alten Bytes"], ersetze: [[FETCH, "  if (manifestGeladen.has(`${t.release}|${t.variant}`)) return \"\"\n", "  if (shaZuAdresse.has(roh)) return \"\"\n"]] },
+  { satz: "offline-geteilt", ziel: ["abgelaufener Alteintrag verdeckt die gehaltene Kopie nicht","abgelaufener Alteintrag: alleImSpeicher findet die gehaltene Kopie","abgelaufener Alteintrag: offlineGehalten meldet gehalten"], ersetze: [[FETCH, "  if (!an || hit?.headers.get(KEEP_HEADER)) return hit\n", "  if (hit || !an) return hit\n"]] },
+  { satz: "zusage", ziel: ["die schon gehaltene geteilte Datei bekommt einen Eintrag fuer B"], ersetze: [[OFFLINE, "      if (!e && schonGehalten.has(g)) e = vorrat[g.url] = { bytes: Number(g.bytes) || 0, karten: [] }\n", "\n"]] },
+  { satz: "zusage", ziel: ["Loesen von B laesst die Datei gehalten, die C noch braucht"], ersetze: [[OFFLINE, "  const loesen = frei.filter(u => !bleibt.has(vorratsSchluessel(u)))\n", "  const loesen = frei\n"]] },
+  { satz: "zusage", ziel: ["dieselbe Ablage zaehlt im Stand einmal"], ersetze: [[OFFLINE, "    if (!je.has(s)) je.set(s, e)\n", "    je.set(`${s}|${je.size}`, e)\n"]] },
+  { satz: "offline-geteilt", ziel: ["frisch, aber nicht gehalten: kein Treffer"], ersetze: [[FETCH, "  return geteilt?.headers.get(KEEP_HEADER) ? geteilt : hit\n", "  return geteilt || hit\n"]] },
+  { satz: "offline-geteilt", ziel: ["Pruefsumme in falscher Form: kein Treffer"], ersetze: [[FETCH, "    if (sha) return schluesselVonKennung(GETEILT_RAUM, sha, name)\n", "    if (e?.sha) return schluesselVonKennung(GETEILT_RAUM, String(e.sha), name)\n"]] },
+  { satz: "offline-geteilt", ziel: ["andere Variante, gleicher Name: kein Treffer","andere Variante, gleicher Name: nicht gehalten","nichtGehalten nennt nur die fehlende Variante"], ersetze: [[FETCH, "    if (kennung !== gesucht) continue\n", "    if (kennung.split(\"/\").pop() !== name) continue\n"]] },
+  { satz: "offline-geteilt", ziel: ["AUS: offlineGehalten meldet die geteilte Datei nicht","AUS: alleImSpeicher findet die geteilte Datei nicht","AUS: nichtGehalten nennt die geteilte Datei"], ersetze: [[FETCH, "  if (!an || hit?.headers.get(KEEP_HEADER)) return hit\n", "  if (hit?.headers.get(KEEP_HEADER)) return hit\n"]] },
+  { satz: "offline-geteilt", ziel: ["offlineFreigeben loest ueber die Kartenadresse nichts","unter dem Kartenschluessel entsteht keine Kopie"], ersetze: [[FETCH, "      const hit = await vMatch(store, url, { ignoreSearch: true })\n      if (!hit || !hit.headers.get(KEEP_HEADER)) continue\n", "      const hit = await vMatchLesen(store, url, { ignoreSearch: true }, true)\n      if (!hit || !hit.headers.get(KEEP_HEADER)) continue\n"]] },
+  { satz: "offline-geteilt", ziel: ["Kartenadresse liefert die gehaltenen Bytes","Kartenadresse mit Abfrageteil liefert sie auch"], ersetze: [[FETCH, "    const hit = await vMatchLesen(store, url, { ignoreSearch: true }, an)\n    if (!hit) return null\n", "    const hit = await vMatchLesen(store, url, { ignoreSearch: true })\n    if (!hit) return null\n"]] },
+  { satz: "offline-geteilt", ziel: ["eigene Datei der Karte bleibt erreichbar","Manifest mit gleicher Pruefsumme: dieselben Bytes","Manifest mit gleicher Pruefsumme: gehalten"], ersetze: [[FETCH, "  const hit = await store.match(vorratsSchluesselBei(url, an), opts)\n", "  const hit = an ? undefined : await store.match(vorratsSchluesselBei(url, an), opts)\n"]] },
+  { satz: "offline-geteilt", ziel: ["AUS: die eigene Datei bleibt gehalten"], ersetze: [[FETCH, "  if (!an || hit?.headers.get(KEEP_HEADER)) return hit\n", "  if (!an) return undefined\n  if (hit?.headers.get(KEEP_HEADER)) return hit\n"]] },
+  { satz: "offline-geteilt", ziel: ["Eintrag ohne Pruefsumme: kein Treffer","andere Variante, gleicher Name: kein Treffer"], ersetze: [[FETCH, "  if (!schluessel) return hit\n", "  if (!schluessel) {\n    const name = routenName(ohneAbfrage(url))\n    for (const r of await store.keys()) if (geteilterName(r.url) === name) return store.match(r.url, opts)\n    return hit\n  }\n"]] },
+  { satz: "offline-geteilt", ziel: ["der nicht gehaltene Eintrag bleibt liegen"], ersetze: [[FETCH, "  return geteilt?.headers.get(KEEP_HEADER) ? geteilt : hit\n", "  if (geteilt && !geteilt.headers.get(KEEP_HEADER)) await store.delete(schluessel, opts)\n  return geteilt?.headers.get(KEEP_HEADER) ? geteilt : hit\n"]] },
 ];
 
 /*
@@ -2406,6 +2431,16 @@ const EIGENPROBEN = {
     "derselbe Traeger, dieselbe Adresse":
       "Determinismus von assetUrl. Bewacht ist der Gegenwert \"anderer Traeger, andere Adresse\"; eine Sabotage, die bei gleicher Eingabe anders baut, braeuchte Zustand oder Zufall im Bauer, den es nicht gibt.",
   },
+  "offline-geteilt": {
+    "das Verzeichnis steht am Deckel":
+      "Vorbedingung des Pruefsatzes (stre-T-175): sie stellt fest, dass das Sitzungsverzeichnis wirklich voll ist, damit die Deckelprobe danach etwas unterscheidet. Den Rueckfall am Deckel bewacht \"Manifest geladen, Deckel erreicht: keine alten Bytes\" mit zwei Sabotagen.",
+    "die Adresse hat keinen Platz mehr bekommen":
+      "Vorbedingung des Pruefsatzes (stre-T-175): sie stellt fest, dass die Kartenadresse jenseits des Deckels liegt und shaZuAdresse sie nicht kennt. Den Manifestvorrang dort bewacht \"Manifest geladen, Deckel erreicht: keine alten Bytes\".",
+  },
+  zusage: {
+    "Zusage B gelingt":
+      "Vorbedingung des Abschnitts (stre-T-175): ohne gelungene Zusage sagen die Proben zu Eintrag, Stand und Loesen nichts. Die drei Fixes bewachen je eine eigene Sabotage an diesen Proben.",
+  },
 };
 
 // ------------------------------------------------------------- Werkzeug
@@ -2495,7 +2530,7 @@ if (process.argv.includes("--alle-saetze")) {
 // vier Kopien zugleich ueber eine Stunde. Er laeuft mit `--satz doppelwache`
 // und im Vorhaken, sobald tools/haken oder einer der Bench-Ordner vorgemerkt ist.
 const NUR_AUF_ZURUF = ["doppelwache"];
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "klangwache", "vorrat", "traeger", "traeger-ersatz", "pruefsumme", "doppelwache"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "klangwache", "vorrat", "traeger", "traeger-ersatz", "pruefsumme", "offline-geteilt", "doppelwache"]
   .filter((s) => (nurSatz ? s === nurSatz : !NUR_AUF_ZURUF.includes(s)));
 if (!nurSatz) console.log(`nur auf Zuruf, nicht in diesem Lauf: ${NUR_AUF_ZURUF.join(", ")}`);
 if (SAETZE.length === 0) {
