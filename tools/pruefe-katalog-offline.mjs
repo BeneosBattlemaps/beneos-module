@@ -64,12 +64,14 @@ globalThis.game = {
   beneos: {},
 }
 
-const wurzel = new URL("../", import.meta.url)
-const { BeneosDatabaseHolder } = await import(new URL("scripts/beneos_search_engine.js", wurzel))
+// Die Pfade stehen als new URL("../...", import.meta.url), damit der Importgraph
+// des pre-commit-Hakens (tools/haken/betroffen.mjs) sie liest und die Pruefung
+// bei einer Aenderung an ihrem Gegenstand startet.
+const { BeneosDatabaseHolder } = await import(new URL("../scripts/beneos_search_engine.js", import.meta.url))
 
 // Der Zwischenspeicher wird ueber BeneosUtility gelesen und geschrieben; beide
 // werden hier ersetzt, damit der Lauf nichts anfasst und wiederholbar bleibt.
-const { BeneosUtility } = await import(new URL("scripts/beneos_utility.js", wurzel))
+const { BeneosUtility } = await import(new URL("../scripts/beneos_utility.js", import.meta.url))
 BeneosUtility.getLocalStorage = () => gestellteSpeicher.store
 BeneosUtility.saveLocalStorage = (v) => { gestellteSpeicher.store = v }
 

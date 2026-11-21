@@ -21,24 +21,27 @@
 # ist nur eine Bruecke auf diese Datei hier, die im Repositorium liegt und
 # damit reproduzierbar ist. Beide Haken leben nebeneinander.
 #
-# WARUM DIE KATALOGPRUEFUNG NUR MANCHMAL LAEUFT
-#
-# `tools/pruefe-katalog-offline.mjs` brauchte gemessen 10,1 Sekunden, weil sie
-# die echten Wiederholpausen von 800 und 2500 ms abwartete. Seit 2026-11-21
-# laeuft sie mit gesteuerter Zeit, dieselben sieben Proben in rund 1,6 s. Sie
-# bleibt trotzdem an ihre zwei Dateien gebunden, wie alle Pruefungen, die nicht
-# immer laufen muessen. Die anderen beiden kosten zusammen 0,34 Sekunden und
-# laufen immer.
-#
 # WARUM DIE MEISTEN PRUEFUNGEN NACH GEGENSTAND LAUFEN
 #
-# Sieben Pruefdateien in scripts/cloud-v2, map-sharpen-curve.test.mjs und die
-# scene-merge-token-bench liefen bis 2026-11-21 nie, sechs davon sichern
-# behobene Kundenfehler. Jede startet einen eigenen node-Prozess; alle bei
-# jedem Commit waere der Preis, fuer den ein Tor mit `--no-verify` umgangen
-# wird. Sie laufen deshalb, wenn eine Datei vorgemerkt ist, die sie laden.
-# Den Gegenstand bestimmt tools/haken/betroffen.mjs aus dem Importgraphen,
-# Begruendung dort.
+# anker.test.mjs und v14 unit.mjs kosten zusammen 0,34 Sekunden und laufen
+# immer. Sieben Pruefdateien in scripts/cloud-v2, map-sharpen-curve.test.mjs,
+# die Katalogpruefung und die scene-merge-token-bench liefen bis 2026-11-21
+# nie oder nur an einer Handliste, sechs davon sichern behobene Kundenfehler.
+# Jede startet einen eigenen node-Prozess; alle bei jedem Commit waere der
+# Preis, fuer den ein Tor mit `--no-verify` umgangen wird. Sie laufen deshalb,
+# wenn eine Datei vorgemerkt ist, die sie laden. Den Gegenstand bestimmt
+# tools/haken/betroffen.mjs aus dem Importgraphen, Begruendung dort.
+#
+# Die Katalogpruefung hing bis dahin an einer Handliste aus zwei Dateien. Sie
+# laedt gemessen 16, darunter scripts/beneos_cloud.js, und lief weder bei
+# denen noch bei einer Aenderung an sich selbst oder am Haken (Kalt-Review
+# 2026-11-21, Befund pre-commit:144). Seit sie mit gesteuerter Zeit laeuft
+# (rund 1,6 s statt 10,1 s), steht sie bei den anderen im Graphen.
+#
+# Die Liste der vorgemerkten Dateien entsteht mit `--no-renames`. Ohne das
+# nennt `git diff --name-only` bei `git mv` nur den NEUEN Pfad; der alte, den
+# eine Pruefung noch importiert, fehlte, und der Haken blieb gruen, obwohl
+# die Pruefung mit ERR_MODULE_NOT_FOUND brach (Befund pre-commit:166).
 #
 # WARUM DIE VORGEMERKTE FASSUNG GEPRUEFT WIRD UND NICHT DIE IM BAUM
 #
@@ -46,6 +49,13 @@
 # lagen 26 fremde Aenderungen im Arbeitsbaum. `node --check` laeuft deshalb
 # gegen `git show :<pfad>`, also gegen das, was wirklich committet wird.
 # Fremde halbfertige Arbeit blockiert den eigenen Commit so nicht.
+#
+# Fuer die Pruefungen gilt dasselbe. Der Index von scripts, tools, lang und
+# module.json wird in ein Wegwerfverzeichnis ausgespielt, und betroffen.mjs,
+# jede Pruefung und die Bank laufen dort. Vorher wurde nach dem Index
+# ausgewaehlt und der Arbeitsbaum gefahren: eine kaputte vorgemerkte Fassung
+# neben einer heilen im Baum ging gruen durch (Befund pre-commit:185). Nicht
+# `git archive`, denn .gitattributes setzt *.test.mjs auf export-ignore.
 #
 # WARUM EINE FEHLENDE PRUEFUNG NICHT IMMER EIN BEFUND IST
 #
@@ -94,8 +104,9 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 
 # ---------------------------------------------------------------- Syntax -----
-git diff --cached --name-only --diff-filter=ACM -- '*.js' '*.mjs' '*.cjs' \
-  > "$TMP/vorgemerkt" 2>/dev/null
+# --no-renames: eine umbenannte Datei erscheint sonst als R und faellt durch
+# den Filter ACM, ihre neue Fassung bliebe ungeprueft.
+git diff --cached --name-only --no-renames --diff-filter=ACM   -- '*.js' '*.mjs' '*.cjs' > "$TMP/vorgemerkt" 2>/dev/null
 
 ANZ_SYNTAX=0
 while IFS= read -r pfad; do
@@ -105,7 +116,7 @@ while IFS= read -r pfad; do
     continue
   fi
   ANZ_SYNTAX=$((ANZ_SYNTAX + 1))
-  if ! node --check "$ziel" 2>"$TMP/fehler"; then
+  if ! node --check "$ziel" 2>"$TMP/fehler" < /dev/null; then
     meld ""
     meld "pre-commit: Syntaxfehler in der VORGEMERKTEN Fassung von $pfad"
     sed -n '1,6p' "$TMP/fehler" >&2
@@ -115,19 +126,38 @@ done < "$TMP/vorgemerkt"
 
 [ "$ANZ_SYNTAX" -gt 0 ] && meld "pre-commit: node --check ueber $ANZ_SYNTAX vorgemerkte Datei(en)"
 
+# ------------------------------------------------------ Index ausspielen ----
+# Alle Pruefungen laufen gegen die vorgemerkte Fassung, Begruendung oben.
+# Gemessen am 2026-11-21: 180 Dateien, rund 0,5 s.
+IDX="$TMP/idx"
+if ! git ls-files -z -- scripts tools lang module.json > "$TMP/indexliste"    || ! xargs -0 git checkout-index --prefix="$IDX/" -- < "$TMP/indexliste"         2>"$TMP/fehler"
+then
+  meld "pre-commit: ROT  der Index liess sich nicht ausspielen, keine Pruefung lief"
+  sed -n '1,6p' "$TMP/fehler" >&2
+  meld "pre-commit: 1 Befund(e), Commit abgebrochen."
+  exit 1
+fi
+
 # ------------------------------------------------------------- Pruefungen ----
+# Liefert 0, wenn die Datei im Index fehlt. Kennt HEAD sie, hat sie jemand
+# entfernt, und das ist ein Befund. Kennt HEAD sie nicht, ist dies ein Zweig
+# ohne diese Pruefung, dann wird geschwiegen.
+fehlt() {
+  [ -f "$IDX/$1" ] && return 1
+  if git cat-file -e "HEAD:$1" 2>/dev/null; then
+    meld "pre-commit: ROT  $2 fehlt in der vorgemerkten Fassung, HEAD kennt sie aber ($1)"
+    ROT=$((ROT + 1))
+  fi
+  return 0
+}
+
+# stdin aus /dev/null: fahre laeuft auch in while-read-Schleifen, und eine
+# Pruefung, die stdin liest, verschluckte sonst den Rest der Liste.
 fahre() {
   datei=$1
   name=$2
-  if [ ! -f "$datei" ]; then
-    if git cat-file -e "HEAD:$datei" 2>/dev/null; then
-      meld "pre-commit: $name fehlt im Arbeitsbaum, HEAD kennt sie aber ($datei)"
-      ROT=$((ROT + 1))
-    fi
-    # Kennt HEAD sie nicht, ist dies ein Zweig ohne diese Pruefung. Kein Befund.
-    return
-  fi
-  if node "$datei" > "$TMP/lauf" 2>&1; then
+  fehlt "$datei" "$name" && return
+  if (cd "$IDX" && node "$datei") > "$TMP/lauf" 2>&1 < /dev/null; then
     meld "pre-commit: ok  $name"
   else
     meld ""
@@ -140,20 +170,12 @@ fahre() {
 fahre "scripts/creature-installer/anker.test.mjs" "anker.test.mjs, 22 Saetze"
 fahre "tools/v14-import-bench/unit.mjs"           "v14-import unit.mjs, 53 Saetze"
 
-# Die teure nur, wenn ihr Gegenstand angefasst wird.
-if git diff --cached --name-only --diff-filter=ACM \
-     -- scripts/beneos_search_engine.js scripts/beneos_utility.js \
-   | grep -q .
-then
-  meld "pre-commit: Katalogdateien vorgemerkt, die 10s-Pruefung laeuft mit"
-  fahre "tools/pruefe-katalog-offline.mjs" "pruefe-katalog-offline.mjs, 7 Saetze"
-fi
-
 # ------------------------------------------- Pruefungen nach Gegenstand ----
 # Welche laufen, entscheidet tools/haken/betroffen.mjs aus dem Importgraphen.
 # Geloeschte Dateien zaehlen mit (D), denn eine fehlende Quelle bricht die
-# Pruefung genauso. Ist der Haken selbst vorgemerkt, laufen alle: eine
-# Aenderung am Tor wird an allen Pruefungen gemessen, die es faehrt.
+# Pruefung genauso; eine Umbenennung erscheint dank --no-renames als D plus A.
+# Ist der Haken selbst vorgemerkt, laufen alle: eine Aenderung am Tor wird an
+# allen Pruefungen gemessen, die es faehrt.
 NACH_GEGENSTAND="scripts/cloud-v2/install-ausgang.test.mjs
 scripts/cloud-v2/install-badge.test.mjs
 scripts/cloud-v2/install-nachspiel.test.mjs
@@ -161,19 +183,22 @@ scripts/cloud-v2/install-ziel.test.mjs
 scripts/cloud-v2/item-tooltip.test.mjs
 scripts/cloud-v2/retry-nachlauf.test.mjs
 scripts/cloud-v2/transfer-drossel.test.mjs
-scripts/canvas/map-sharpen-curve.test.mjs"
+scripts/canvas/map-sharpen-curve.test.mjs
+tools/pruefe-katalog-offline.mjs"
 
-git diff --cached --name-only --diff-filter=ACMRD > "$TMP/gegenstand" 2>/dev/null
+git diff --cached --name-only --no-renames --diff-filter=ACMD   > "$TMP/gegenstand" 2>/dev/null
 ALLE_GEGENSTAND=0
 grep -q '^tools/haken/' "$TMP/gegenstand" && ALLE_GEGENSTAND=1
 
-if [ -s "$TMP/gegenstand" ] && [ -f tools/haken/betroffen.mjs ]; then
+if [ -s "$TMP/gegenstand" ]; then
   if [ "$ALLE_GEGENSTAND" -eq 1 ]; then
-    printf '%s\n' "$NACH_GEGENSTAND" > "$TMP/betroffen"
+    printf '%s
+' "$NACH_GEGENSTAND" > "$TMP/betroffen"
+  elif fehlt tools/haken/betroffen.mjs "betroffen.mjs"; then
+    : > "$TMP/betroffen"
   else
     # shellcheck disable=SC2086
-    node tools/haken/betroffen.mjs "$TMP/gegenstand" $NACH_GEGENSTAND \
-      > "$TMP/betroffen" 2>"$TMP/fehler" || {
+    (cd "$IDX" && node tools/haken/betroffen.mjs "$TMP/gegenstand" $NACH_GEGENSTAND)       > "$TMP/betroffen" 2>"$TMP/fehler" < /dev/null || {
         meld "pre-commit: ROT  betroffen.mjs konnte den Gegenstand nicht bestimmen"
         sed -n '1,6p' "$TMP/fehler" >&2
         ROT=$((ROT + 1))
@@ -192,18 +217,20 @@ fi
 # weist das unbehobene Update ab. Gefahren wird gegen jede Installation aus
 # BENEOS_FOUNDRY_APPS (Pfade zu resources/app, mit ; getrennt), ohne Vorgabe
 # gegen die zwei dieser Maschine. Fehlen alle, ist das ein Befund: ein Tor,
-# das ungeprueft durchlaesst, ist keines.
+# das ungeprueft durchlaesst, ist keines. Die Bank laeuft wie alle anderen im
+# ausgespielten Index; die Foundry-Pfade sind absolut und brauchen ihn nicht.
 BANK="tools/scene-merge-token-bench/unit.mjs"
-if [ -f "$BANK" ] && { [ "$ALLE_GEGENSTAND" -eq 1 ] || grep -qx -e "$BANK" \
-     -e 'scripts/cloud-v2/token-delta.mjs' "$TMP/gegenstand"; }; then
+if { [ "$ALLE_GEGENSTAND" -eq 1 ] || grep -qx -e "$BANK"      -e 'scripts/cloud-v2/token-delta.mjs' "$TMP/gegenstand"; }    && ! fehlt "$BANK" "scene-merge-token-bench"; then
   FVTT="D:/PNP_Game/Foundry VTT/FoundryVTT"
   APPS="${BENEOS_FOUNDRY_APPS:-$FVTT/Foundry Virtual Tabletop v13/resources/app;$FVTT/Foundry Virtual Tabletop V14/App/resources/app}"
-  printf '%s\n' "$APPS" | tr ';' '\n' > "$TMP/apps"
+  printf '%s
+' "$APPS" | tr ';' '
+' > "$TMP/apps"
   ANZ_APPS=0
   while IFS= read -r app; do
     [ -f "$app/package.json" ] || continue
     ANZ_APPS=$((ANZ_APPS + 1))
-    if node "$BANK" --foundry "$app" > "$TMP/lauf" 2>&1; then
+    if (cd "$IDX" && node "$BANK" --foundry "$app") > "$TMP/lauf" 2>&1 < /dev/null; then
       meld "pre-commit: ok  scene-merge-token-bench, $(tail -n 3 "$TMP/lauf" | grep -o 'generation [0-9]*')"
     else
       meld ""
