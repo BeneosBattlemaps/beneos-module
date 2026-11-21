@@ -116,9 +116,9 @@ export const SABOTAGEN = [
   { bench: "waisen-adressform", ziel: ["sie erkennt den Stummel des Deinstallierers"],
     ersetze: [[CLOUD, "if (Number.isFinite(len) && len <= BENEOS_STUB_MAX_BYTES) return false",
       "if (Number.isFinite(len) && len <= 8) return false"]] },
-  // Zwei Aufrufe weg: die Schranke verlangt mindestens 3 Treffer und zaehlt
-  // die Erklaerung mit (heute 4). Ein einzelner entfernter Aufruf bleibt
-  // gruen; das ist eine Luecke des Benches, gemeldet unter stre-T-015.
+  // Zwei Aufrufe weg. Seit stre-T-162 zaehlt die Schranke nur Aufrufstellen
+  // (heute 3), ein einzelner entfernter Aufruf wird also auch rot; die
+  // Einzelfaelle stehen unten bei stre-T-162.
   { bench: "waisen-adressform", ziel: ["die Forge-Ausnahme wird wirklich aufgerufen"],
     ersetze: [[CLOUD, "if (_beneosUsingTheForge()) return 0", "if (false) return 0"],
       [CLOUD, "if (_beneosUsingTheForge()) return { aspectsExpected: 0, aspectsMissing: [] }", "if (false) return { aspectsExpected: 0, aspectsMissing: [] }"]] },
@@ -172,16 +172,16 @@ export const SABOTAGEN = [
   { bench: "bildform-adresse", ziel: ["C2 keine Stelle ausser dem Helfer fragt nach image64", "C5 drei Vorpruefungen "],
     ersetze: [[CLOUD, "if (!_beneosBildDa(part)) continue", "if (!part.image64) continue"]] },
   // Der base64-Rueckfall faellt weg. Den Adresszweig immer zu nehmen
-  // (`if (true)`) bringt den Bench zum Absturz statt zu einer roten Zeile
-  // (bench.mjs:388), gemeldet unter stre-T-015.
+  // (`if (true)`) brach den Bench bis stre-T-162 mit einem Wurf ab; jetzt
+  // ist es eine rote Zeile, die Sabotage steht unten bei stre-T-162.
   { bench: "bildform-adresse", ziel: ["E3 die alte Form geht weiter"],
     ersetze: [[CLOUD, "return alsDatei(await antwort.blob())", "return null"]] },
   { bench: "bildform-adresse", ziel: ["E2 die Adresse hat Vorrang"],
     ersetze: [[CLOUD, 'if (typeof eintrag.url === "string" && eintrag.url !== "") {',
       'if (typeof eintrag.url === "string" && eintrag.url !== "" && !eintrag.image64) {']] },
   // Der zweite Versuch, je Weiche einzeln. Die Schleife selbst auf einen
-  // Versuch zu kuerzen bringt den Bench zum Absturz statt zu einer roten
-  // Zeile (bench.mjs:388), gemeldet unter stre-T-015.
+  // Versuch zu kuerzen steht unten bei stre-T-162 (auf e549e16 nachgemessen
+  // eine rote Zeile, kein Absturz).
   { bench: "bildform-adresse", ziel: ["E7 ein 503 wird wiederholt"],
     ersetze: [[CLOUD, "if (versuch === 2) {", "if (true) {", 2, 1]] },
   { bench: "bildform-adresse", ziel: ["E8 ein geworfener Netzfehler wird wiederholt"],
@@ -216,11 +216,9 @@ export const SABOTAGEN = [
   weiteSperre("icons/ export-ignore", ["icons/ traegt mindestens "]),
   weiteSperre("fonts/ export-ignore", ["fonts/ traegt mindestens "]),
   weiteSperre("assets/ export-ignore", ["assets/ traegt mindestens "]),
-  // `* export-ignore` macht die Pflichtproben rot, nicht aber "keine der N
-  // Sperrzeilen": deren Muster `^(\*|...)\b` verlangt hinter dem Stern eine
-  // Wortgrenze, und vor einem Leerzeichen gibt es keine. Gemeldet unter
-  // stre-T-015.
-  { bench: "paket-grenze", ziel: ["module.json liegt im Archiv", "readme.md liegt im Archiv"],
+  // `* export-ignore` macht die Pflichtproben rot und seit stre-T-162 auch
+  // "keine der N Sperrzeilen": der Stern hat dort eine eigene Grenze.
+  { bench: "paket-grenze", ziel: ["keine der ", "module.json liegt im Archiv", "readme.md liegt im Archiv"],
     ersetze: [[ATTRIBUTE, "\ndev/ export-ignore\n", "\ndev/ export-ignore\n* export-ignore\n"]] },
 
   // TC-312 v15-globale. V1 ist die Wiki-Sabotage (b): eine echte neue Stelle
@@ -240,6 +238,51 @@ export const SABOTAGEN = [
     ersetze: [["scripts/sabotage-doppelschluessel.mjs", null, "export const o = { eins: 1, eins: 2 }\n"]] },
   { bench: "doppelnamen", ziel: ["Doppelnamen: 1, erlaubt 0"],
     ersetze: [[TOUREN, "  async complete() {", "  async complete() {}\n  async complete() {", 3, 1]] },
+  // stre-T-162: die vier Bench-Luecken aus stre-T-015 Schritt 2.
+  // waisen: jeder der drei Forge-Aufrufe einzeln entfernt.
+  { bench: "waisen-adressform", ziel: ["die Forge-Ausnahme wird wirklich aufgerufen"],
+    ersetze: [[CLOUD, "if (_beneosUsingTheForge()) return { aspectsExpected: 0, aspectsMissing: [] }", "if (false) return { aspectsExpected: 0, aspectsMissing: [] }"]] },
+  { bench: "waisen-adressform", ziel: ["die Forge-Ausnahme wird wirklich aufgerufen"],
+    ersetze: [[CLOUD, "if (_beneosUsingTheForge()) return 0", "if (false) return 0"]] },
+  { bench: "waisen-adressform", ziel: ["die Forge-Ausnahme wird wirklich aufgerufen"],
+    ersetze: [[CLOUD, "if (_beneosUsingTheForge()) return { install: true,", "if (false) return { install: true,"]] },
+  // paket-grenze: die Stern-Sperre mit Schraegstrich.
+  { bench: "paket-grenze", ziel: ["keine der "],
+    ersetze: [[ATTRIBUTE, "\ndev/ export-ignore\n", "\ndev/ export-ignore\n*/ export-ignore\n"]] },
+  // bildform: der Adresszweig immer genommen. Bis stre-T-162 brach das den
+  // Bench mit einem TypeError ab (bench.mjs:388).
+  { bench: "bildform-adresse", ziel: ["E3 die alte Form geht weiter"],
+    ersetze: [[CLOUD, "if (typeof eintrag.url === \"string\" && eintrag.url !== \"\") {", "if (true) {"]] },
+  // Die Schleife auf einen Versuch gekuerzt. Schon auf e549e16 eine rote
+  // Zeile (Nachstellung stre-T-162), also nur noch als Sabotage.
+  { bench: "bildform-adresse", ziel: ["E4b und sie wird zweimal versucht", "E7 ", "E8 "],
+    ersetze: [[CLOUD, "for (let versuch = 1; versuch <= 2; versuch++) {", "for (let versuch = 1; versuch <= 1; versuch++) {"]] },
+  // stream-sprachen: "laesst" stand nicht in der Liste gefalteter Formen.
+  { bench: "stream-sprachen", ziel: ["kein ausgelieferter Textbaustein traegt eine gefaltete Wortform "],
+    ersetze: [[DE, "Diese Karte lässt sich derzeit nicht installieren.", "Diese Karte laesst sich derzeit nicht installieren."]] },
+  { bench: "stream-sprachen", ziel: ["kein ausgelieferter Textbaustein traegt eine gefaltete Wortform "],
+    ersetze: [[DE, "listet jede Fähigkeit der Kreatur auf und lässt dich", "listet jede Fähigkeit der Kreatur auf und laesst dich"]] },
+  // stre-T-162, die Reparaturen selbst: Zaehlung, Sternmuster, Absturzwache.
+  { bench: "waisen-adressform", ziel: ["[Zaehlung] die Erklaerung zaehlt nicht mit"],
+    ersetze: [[BENCHDATEI("waisen-adressform"), "const FORGE_AUFRUF = /(?<!function\\s+)_beneosUsingTheForge\\(\\)/g", "const FORGE_AUFRUF = /_beneosUsingTheForge\\(\\)/g"]] },
+  { bench: "waisen-adressform", ziel: ["[Zaehlung] die Erklaerung zaehlt nicht mit"],
+    ersetze: [[BENCHDATEI("waisen-adressform"), "const FORGE_AUFRUF = /(?<!function\\s+)_beneosUsingTheForge\\(\\)/g", "const FORGE_AUFRUF = /(?<!function )_beneosUsingTheForge\\(\\)/g"]] },
+  { bench: "waisen-adressform", ziel: ["[Zaehlung] ein Methodenaufruf zaehlt als Aufruf"],
+    ersetze: [[BENCHDATEI("waisen-adressform"), "const FORGE_AUFRUF = /(?<!function\\s+)_beneosUsingTheForge\\(\\)/g", "const FORGE_AUFRUF = /(?<!\\.|function\\s+)_beneosUsingTheForge\\(\\)/g"]] },
+  { bench: "paket-grenze", ziel: ["[Muster] *.test.mjs und *.code-workspace gelten nicht als zu weit"],
+    ersetze: [[BENCHDATEI("paket-grenze"), "/^(?:\\*\\/?(?=\\s|$)|", "/^(?:\\*\\/?|"]] },
+  { bench: "paket-grenze", ziel: ["[Muster] * und */ und docs/ gelten als zu weit"],
+    ersetze: [[BENCHDATEI("paket-grenze"), "/^(?:\\*\\/?(?=\\s|$)|", "/^(?:\\*\\/?\\b|"]] },
+  { bench: "paket-grenze", ziel: ["[Muster] * und */ und docs/ gelten als zu weit"],
+    ersetze: [[BENCHDATEI("paket-grenze"), "/^(?:\\*\\/?(?=\\s|$)|", "/^(?:\\*(?=\\s|$)|"]] },
+  // Die Absturzwache: ein Wurf in E5, davor schon ein echter Befund in A2.
+  // Beide bleiben rot, und die Wurfzeile traegt den Namen der gestarteten
+  // Probe; faellt der Name weg, wird "E5 " nicht rot und das hier ein Befund.
+  { bench: "bildform-adresse", ziel: ["A2 die Vorgabe ist AUS", "E5 "],
+    ersetze: [[CLOUD, "const BILDFORM_ADRESSE_AN = false", "const BILDFORM_ADRESSE_AN = true"], [BENCHDATEI("bildform-adresse"), "beginne(\"E5\")\n", "beginne(\"E5\")\nthrow new Error(\"Sabotage stre-T-162\")\n"]] },
+  // Eine abgelehnte Zusage statt eines Wurfs.
+  { bench: "bildform-adresse", ziel: ["E8 "],
+    ersetze: [[BENCHDATEI("bildform-adresse"), "beginne(\"E8\")\n", "beginne(\"E8\")\nawait Promise.reject(new Error(\"Sabotage stre-T-162\"))\n"]] },
 ]
 
 /*

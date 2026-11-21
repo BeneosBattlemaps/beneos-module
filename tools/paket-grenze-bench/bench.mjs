@@ -275,7 +275,17 @@ for (const zeile of [
 const SPERRZEILEN = ATTR.split("\n")
   .map((z) => z.trim())
   .filter((z) => z && !z.startsWith("#") && z.includes("export-ignore"))
-const WEIT = SPERRZEILEN.filter((z) => /^(\*|\*\/|docs|icons|assets|lang|ui|fonts|scripts|templates|css|data)\b/.test(z))
+/* Der Stern bekommt eine eigene Grenze (stre-T-162). `\b` hinter `*` oder `*\/`
+ * verlangt eine Wortgrenze, und vor dem Leerzeichen gibt es keine: die Zeile
+ * `* export-ignore` blieb gruen. Gemeint ist der Stern ALLEIN, also nicht
+ * `*.test.mjs` oder `*.code-workspace`. */
+const WEIT_MUSTER = /^(?:\*\/?(?=\s|$)|(?:docs|icons|assets|lang|ui|fonts|scripts|templates|css|data)\b)/
+const istWeit = (z) => WEIT_MUSTER.test(z)
+wahr("[Muster] * und */ und docs/ gelten als zu weit",
+  istWeit("* export-ignore") && istWeit("*/ export-ignore") && istWeit("docs/ export-ignore"))
+wahr("[Muster] *.test.mjs und *.code-workspace gelten nicht als zu weit",
+  !istWeit("*.test.mjs export-ignore") && !istWeit("*.code-workspace export-ignore"))
+const WEIT = SPERRZEILEN.filter(istWeit)
 wahr(
   `keine der ${SPERRZEILEN.length} Sperrzeilen trifft einen Produktordner`,
   WEIT.length === 0,

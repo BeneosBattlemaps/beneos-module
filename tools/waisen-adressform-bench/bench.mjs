@@ -85,6 +85,12 @@ function nurCode(text) {
 
 const code = nurCode(quelle)
 
+// Die Aufrufstellen der Forge-Ausnahme, ohne ihre Erklaerung (stre-T-162).
+const FORGE_AUFRUF = /(?<!function\s+)_beneosUsingTheForge\(\)/g
+function zaehleForgeAufrufe(text) {
+  return [...text.matchAll(FORGE_AUFRUF)].length
+}
+
 const B = streamBase()
 const K = "sk_live_7f3a9c21d4e5b6a7"
 
@@ -251,9 +257,19 @@ console.log("Die Gesamtmenge: wie viele Dateiproben fuehrt diese Datei")
    * einen NAMEN zielt, muss die Grenze mitnennen, und besser als der Name ist
    * die Zahl der Stellen, die ihn WIRKLICH aufrufen.
    */
-  const forgeAufrufe = [...code.matchAll(/_beneosUsingTheForge\(\)/g)]
+  /*
+   * UND NUR DIE AUFRUFSTELLE (stre-T-162). Das Muster ohne Lookbehind traf
+   * auch die Erklaerung `function _beneosUsingTheForge() {`, zaehlte also vier
+   * statt drei, und ein einzeln entfernter Aufruf blieb gruen. Ein
+   * Methodenaufruf `x._beneosUsingTheForge()` zaehlt weiter als Aufruf.
+   */
+  const forgeAufrufe = zaehleForgeAufrufe(code)
   gleich("die Forge-Ausnahme wird wirklich aufgerufen",
-    forgeAufrufe.length >= 3, true)
+    forgeAufrufe >= 3, true)
+  gleich("[Zaehlung] die Erklaerung zaehlt nicht mit, auch mit zwei Leerzeichen oder async",
+    zaehleForgeAufrufe("function _beneosUsingTheForge() {\nfunction  _beneosUsingTheForge() {\nasync function _beneosUsingTheForge() {"), 0)
+  gleich("[Zaehlung] ein Methodenaufruf zaehlt als Aufruf",
+    zaehleForgeAufrufe("if (x._beneosUsingTheForge()) return 0"), 1)
   gleich("und sie ist als Funktion mit genau diesem Namen erklaert",
     /function\s+_beneosUsingTheForge\s*\(/.test(code), true)
 }

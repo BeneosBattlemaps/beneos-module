@@ -254,7 +254,9 @@ const GEFALTET = {
     "aender\\w*", "pruef\\w*", "loesch\\w*", "spaeter", "haelt", "faellt",
     "traegt", "haette", "heisst", "verfuegbar", "zusaetzlich", "laeuft",
     "unterstuetz\\w*", "hinzufueg\\w*", "uebrig\\w*", "groesse\\w*",
-    "taeglich", "staendig", "naemlich", "ausfuehr\\w*", "schluessel\\w*"],
+    "taeglich", "staendig", "naemlich", "ausfuehr\\w*", "schluessel\\w*",
+    // stre-T-162: "laesst" fehlte, eine gefaltete Fassung blieb gruen.
+    "laess\\w*"],
   ca: ["video", "connexio\\b", "publicacio\\b", "mon\\b", "aixi\\b", "despres",
     "mante\\b", "rapid(?:a|s|es)?", "paisos", "propia", "aqui\\b", "gairebe",
     "unica", "rao\\b", "linia\\b", "debo\\b", "obte\\b", "instal\\.l\\w*",

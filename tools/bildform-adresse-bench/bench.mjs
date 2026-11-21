@@ -64,6 +64,27 @@ function pruefe(name, bedingung, auskunft) {
   }
 }
 
+/*
+ * DIE ABSTURZWACHE (stre-T-162). Ein Wurf in einer Probe beendete den Bench
+ * bis dahin mit einem Stacktrace ohne Probennamen, und der Sabotagelaeufer
+ * sah keine rote Zeile. Jetzt wird er zur roten Zeile der zuletzt
+ * gestarteten Probe. Was vorher schon rot war, steht weiter da und zaehlt
+ * weiter; der Ausgang ist rot.
+ */
+let laeuft = "Aufbau vor E1"
+function beginne(name) {
+  laeuft = name
+}
+function absturz(fehler) {
+  rot++
+  console.log(`  ROT  ${laeuft} Absturz: ${String(fehler?.message ?? fehler).slice(0, 200)}`)
+  console.log("")
+  console.log(`Ergebnis: ${gruen} gehalten, ${rot} Befund(e), abgebrochen.`)
+  process.exit(1)
+}
+process.on("uncaughtException", absturz)
+process.on("unhandledRejection", absturz)
+
 function gleich(name, ist, soll) {
   const o = JSON.stringify(ist) === JSON.stringify(soll)
   pruefe(name, o, o ? undefined
@@ -353,6 +374,7 @@ const ADR = {
   bytes: 1234,
 }
 
+beginne("E1")
 // E1: die Adresse wird geholt, nicht das base64.
 let gerufen = []
 let datei = await hole(ADR, async (u) => {
@@ -365,6 +387,7 @@ pruefe("E1 die neue Form holt die Adresse",
   datei === null ? "KEINE Datei zurueck"
     : `${gerufen.length} Abruf(e), Ziel ${gerufen[0]}`)
 
+beginne("E2")
 // E2: die Adresse hat Vorrang, auch wenn base64 dabei steht.
 gerufen = []
 datei = await hole({ ...ADR, image64: "QUFB" }, async (u) => {
@@ -376,6 +399,7 @@ pruefe("E2 die Adresse hat Vorrang vor mitgeschicktem base64",
   gerufen.length === 0 ? "KEIN Abruf, also wurde base64 genommen"
     : `Ziel ${gerufen[0]}`)
 
+beginne("E3")
 // E3: die alte Form geht weiter, und zwar ueber den base64-Umschlag.
 gerufen = []
 datei = await hole({ filename: "a-1-top.webp", image64: "QUFB" },
@@ -385,10 +409,12 @@ datei = await hole({ filename: "a-1-top.webp", image64: "QUFB" },
   })
 pruefe("E3 die alte Form geht weiter",
   datei !== null && gerufen.length === 1
+    && typeof gerufen[0] === "string"
     && gerufen[0].startsWith("data:image/webp;base64,"),
   datei === null ? "KEINE Datei zurueck"
     : `Ziel ${String(gerufen[0]).slice(0, 32)}`)
 
+beginne("E4")
 // E4: die Bytezahl wird gegengeprueft.
 gerufen = []
 datei = await hole(ADR, async (u) => {
@@ -412,6 +438,7 @@ pruefe("E4c die Meldung nennt beide Zahlen",
   meldungen.length === 0 ? "KEINE Meldung"
     : meldungen[0].slice(0, 80))
 
+beginne("E5")
 // E5: 403 wird NICHT wiederholt.
 gerufen = []
 datei = await hole(ADR, async (u) => {
@@ -423,6 +450,7 @@ pruefe("E5 ein 403 wird nicht wiederholt",
   `${gerufen.length} Versuch(e). Das Zeichen ist abgelaufen oder der `
   + "Anspruch ist weg, und ein zweiter Ruf gibt dieselbe Antwort")
 
+beginne("E6")
 // E6: 404 ebenso.
 gerufen = []
 datei = await hole(ADR, async (u) => {
@@ -433,6 +461,7 @@ pruefe("E6 ein 404 wird nicht wiederholt",
   datei === null && gerufen.length === 1,
   `${gerufen.length} Versuch(e)`)
 
+beginne("E7")
 // E7: 500 WIRD wiederholt, und der zweite Versuch gilt.
 gerufen = []
 datei = await hole(ADR, async (u) => {
@@ -450,6 +479,7 @@ pruefe("E7 ein 503 wird wiederholt, und der zweite Versuch traegt",
     : `${gerufen.length} Versuche, zweiter erfolgreich. Das ist der `
       + "eigentliche Gewinn: vorher war eine Antwort von 19 MB EIN Versuch")
 
+beginne("E8")
 // E8: ein geworfener Fehler wird ebenso wiederholt.
 gerufen = []
 datei = await hole(ADR, async (u) => {
@@ -461,6 +491,7 @@ pruefe("E8 ein geworfener Netzfehler wird wiederholt",
   datei !== null && gerufen.length === 2,
   `${gerufen.length} Versuch(e)`)
 
+beginne("E9")
 // E9: ein leerer Blob ist keine Datei.
 gerufen = []
 datei = await hole({ ...ADR, bytes: 0 }, async (u) => {
@@ -472,6 +503,7 @@ pruefe("E9 ein leerer Blob wird nicht zur Datei",
   datei === null ? "null statt einer Datei von 0 Byte"
     : "EINE LEERE DATEI WURDE GEBAUT")
 
+beginne("E10")
 // E10: ohne Bytezahl wird nicht gegengeprueft, aber genommen.
 gerufen = []
 const ohneBytes = { filename: "a.webp", image64: null, url: ADR.url }
@@ -486,6 +518,7 @@ pruefe("E10 ohne Bytezahl in der Antwort wird nicht gegengeprueft",
       + "jede Datei abgewiesen"
     : "genommen, ein Abruf")
 
+beginne("E11")
 // E11: die fehlende Datei gibt null, ohne einen Abruf.
 gerufen = []
 datei = await hole({ filename: "a.webp", image64: null, url: null },
