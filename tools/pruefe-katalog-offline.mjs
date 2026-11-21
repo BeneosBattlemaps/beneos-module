@@ -80,6 +80,22 @@ BeneosDatabaseHolder.starteKatalogProbe = () => {}   // Takt hier nicht mitlaufe
 const KATALOG = "beneos_i18n.json"
 const faelle = []
 
+// Gesteuerte Zeit. Die Wiederholpausen von 800 und 2500 ms sind nicht Gegenstand
+// der Proben, gezaehlt werden Abrufe und der Zustand danach. Echt abgewartet
+// kosteten sie gemessen 10,1 s je Lauf und mit dem Deckel-Sabotagefall 30 s.
+// Waehrend eines Falls laeuft jeder Zeitgeber deshalb sofort an, die verlangte
+// Dauer wird mitgeschrieben. Erst nach den Importen gesetzt, damit kein
+// Zeitgeber aus der Ladezeit der Module vorgezogen wird.
+const echtesSetTimeout = globalThis.setTimeout
+const gewartetMs = []
+async function mitGesteuerterZeit(lauf) {
+  globalThis.setTimeout = (fn, ms, ...rest) => {
+    gewartetMs.push(ms)
+    return echtesSetTimeout(fn, 0, ...rest)
+  }
+  try { await lauf() } finally { globalThis.setTimeout = echtesSetTimeout }
+}
+
 async function fahre(name, verhalten, vorbefuellen) {
   gestellteSpeicher.store = vorbefuellen ? {
     tokenData: {}, bmapData: {}, itemData: {}, spellData: {}, commonData: {}, i18nMatrix: {},
@@ -87,7 +103,7 @@ async function fahre(name, verhalten, vorbefuellen) {
   fetchProtokoll = []
   fetchVerhalten = verhalten
   BeneosDatabaseHolder.isOffline = false
-  await BeneosDatabaseHolder.loadDatabaseFiles()
+  await mitGesteuerterZeit(() => BeneosDatabaseHolder.loadDatabaseFiles())
   faelle.push({ name, offline: BeneosDatabaseHolder.isOffline, abrufe: fetchProtokoll.length })
 }
 
@@ -110,6 +126,7 @@ console.log("  " + spalte("Fall", 38) + spalte("offline?", 10) + "Netzabrufe")
 for (const f of faelle) {
   console.log("  " + spalte(f.name, 38) + spalte(f.offline ? "JA" : "nein", 10) + f.abrufe)
 }
+console.log("  verlangte Pausen in ms, nicht abgewartet: " + (gewartetMs.join(", ") || "keine"))
 
 const [nurI18n, eineEchte, allesGut, nichtsGeht] = faelle
 const proben = [
