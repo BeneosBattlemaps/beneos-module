@@ -156,6 +156,12 @@
  * Traeger, `offlineHalten` holt die Datei ueber ihn, und mit einem einzigen
  * Traeger bleibt alles wie vorher. An der Basis gibt es ihn nicht.
  *
+ * Seit stre-T-174 dazu `pruefsumme` (`scripts/stream/stream-pruefsumme.test.mjs`):
+ * der Gemeinschaftsvorrat schreibt die Pruefsumme mit, ein Eintrag mit
+ * Pruefsumme deckt bei AN genau seine Datei, die Namensregel bleibt nur fuer
+ * Alteintraege, und bei AUS bleibt alles wie vorher. An der Basis gibt es ihn
+ * nicht.
+ *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
  * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig] [--zeitgrenze <ms>]
@@ -2218,6 +2224,25 @@ const SABOTAGEN = [
   { satz: "traeger", ziel: ["ein Traeger: genau ein Abruf"], ersetze: [[FETCH, "          versucht.add(ziel)\n", "          versucht.add(`${ziel}|${versucht.size}`)\n"], [FETCH, "if (!naechste || versucht.has(naechste) || !ours(naechste)) break", "if (!naechste || versucht.size > 1 || !ours(naechste)) break"]] },
   { satz: "traeger", ziel: ["ein Traeger: Fehlschlag wie vorher","ein Traeger: Grund abgewiesen wie vorher"], ersetze: [[FETCH, "        if (abgelegt) {", "        if (abgelegt || versucht.size > 0) {"]] },
   { satz: "traeger", ziel: ["[Struktur] der Abweisungszweig des Abrufersatzes merkt den Traeger"], ersetze: [[FETCH, "        // Sitzung, der Rueckweg nimmt danach den naechsten (stre-T-173).\n        merkeTraegerAbweisung(url)\n", "\n"]] },
+  // ---------------------------------------------------------------- pruefsumme (stre-T-174)
+  { satz: "pruefsumme", ziel: ["gleicher Name, fremde Pruefsumme: wird geloest","Adresse mit Pruefsumme: fremde Pruefsumme wird geloest"], ersetze: [[FETCH, "    if (genau) { decke.schluessel.add(genau); continue }\n", "    if (genau) decke.schluessel.add(genau)\n"]] },
+  { satz: "pruefsumme", ziel: ["gleiche Pruefsumme: bleibt","geteilteLuecken, mit Pruefsumme und eigen gehalten: gehalten"], ersetze: [[FETCH, "  return name ? schluesselVonKennung(GETEILT_RAUM, sha, name) : \"\"", "  return name ? schluesselVonKennung(GETEILT_RAUM, sha, `${name}x`) : \"\""]] },
+  { satz: "pruefsumme", ziel: ["Alteintrag ohne Pruefsumme, gleicher Name: bleibt wie vorher","Eintrag mit unbrauchbarer Pruefsumme gilt als Alteintrag: bleibt"], ersetze: [[FETCH, "    if (name) decke.namen.add(name)\n  }\n  return decke\n", "  }\n  return decke\n"]] },
+  { satz: "pruefsumme", ziel: ["Eintrag mit unbrauchbarer Pruefsumme gilt als Alteintrag: bleibt"], ersetze: [[FETCH, "  return /^[a-f0-9]{64}$/.test(s) ? s : \"\"", "  return s"]] },
+  { satz: "pruefsumme", ziel: ["Datei unter dem Kartenschluessel aus der AUS-Zeit: bleibt","AUS, Kartenschluessel: mit Pruefsumme wie ohne"], ersetze: [[FETCH, "    const s = deckungsSchluessel(e, an)\n    decke.schluessel.add(s)\n", "    const s = deckungsSchluessel(e, an)\n    if (!sha) decke.schluessel.add(s)\n"]] },
+  { satz: "pruefsumme", ziel: ["AUS, geteilter Schluessel: mit Pruefsumme wie ohne"], ersetze: [[FETCH, "    const genau = an ? schluesselMitSumme(e, sha) : \"\"", "    const genau = schluesselMitSumme(e, sha)"]] },
+  { satz: "pruefsumme", ziel: ["geteilteLuecken, mit Pruefsumme und nur fremd gehalten: fehlt"], ersetze: [[FETCH, "    if (genau) return schluessel.has(genau)\n", "\n"]] },
+  { satz: "pruefsumme", ziel: ["geteilteLuecken, Alteintrag ohne Pruefsumme: unklar wie vorher"], ersetze: [[FETCH, "    return name && namen.has(name) ? \"unklar\" : false", "    return name && namen.has(name) ? true : false"]] },
+  { satz: "pruefsumme", ziel: ["AUS, Kartenschluessel: geteilteLuecken mit Pruefsumme wie ohne"], ersetze: [[FETCH, "    if (schluessel.has(s)) return true\n    // Mit Pruefsumme", "    if (!sha && schluessel.has(s)) return true\n    // Mit Pruefsumme"]] },
+  { satz: "pruefsumme", ziel: ["AUS, geteilter Schluessel: geteilteLuecken mit Pruefsumme wie ohne"], ersetze: [[FETCH, "    const genau = an ? schluesselMitSumme(eintrag, sha) : \"\"", "    const genau = schluesselMitSumme(eintrag, sha)"]] },
+  { satz: "pruefsumme", ziel: ["bekannte Pruefsumme wird mitgeschrieben"], ersetze: [[OFFLINE, "    const sha = pruefsummeVon(url) || (", "    const sha = ("]] },
+  { satz: "pruefsumme", ziel: ["eine vorhandene Pruefsumme bleibt, wenn die Sitzung keine kennt"], ersetze: [[OFFLINE, "    const sha = pruefsummeVon(url) || (/^[a-f0-9]{64}$/.test(String(alt || \"\")) ? String(alt) : \"\")", "    const sha = pruefsummeVon(url)"]] },
+  { satz: "pruefsumme", ziel: ["eine vorhandene Pruefsumme bleibt, wenn die Sitzung keine kennt"], ersetze: [[OFFLINE, "          ...(vorrat[g.url]?.sha ? { sha: vorrat[g.url].sha } : {}) }\n", "          }\n"]] },
+  { satz: "pruefsumme", ziel: ["eine kaputte Pruefsumme wird nicht geschrieben"], ersetze: [[OFFLINE, "(/^[a-f0-9]{64}$/.test(String(alt || \"\")) ? String(alt) : \"\")", "String(alt || \"\")"]] },
+  { satz: "pruefsumme", ziel: ["der Schluessel des Eintrags bleibt die Kennung"], ersetze: [[OFFLINE, "    sauber[kennungVon(url) || url] = sha ? { ...rest, sha } : rest\n", "    sauber[url] = sha ? { ...rest, sha } : rest\n"]] },
+  { satz: "pruefsumme", ziel: ["Vorbedingung: die Zusage gelingt"], ersetze: [[OFFLINE, "    const { sha: alt, ...rest } = e\n", "    const { sha: alt, ...rest } = null\n"]] },
+  { satz: "pruefsumme", ziel: ["[Struktur] verwaisteLoesen deckt den Gemeinschaftsvorrat ueber deckungDesVorrats"], ersetze: [[OFFLINE, "    for (const d of deckungDesVorrats(liesGeteilt())) gedeckt.add(d)\n", "    for (const u of Object.keys(liesGeteilt())) gedeckt.add(adresseNormal(u))\n"]] },
+  { satz: "pruefsumme", ziel: ["[Struktur] geteilteLuecken fragt mit dem Eintrag"], ersetze: [[OFFLINE, "istGehalten(deckungDesVorrats({ [url]: e })[0])", "istGehalten(url)"]] },
 ];
 
 /*
@@ -2459,7 +2484,7 @@ if (process.argv.includes("--alle-saetze")) {
 // vier Kopien zugleich ueber eine Stunde. Er laeuft mit `--satz doppelwache`
 // und im Vorhaken, sobald tools/haken oder einer der Bench-Ordner vorgemerkt ist.
 const NUR_AUF_ZURUF = ["doppelwache"];
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "klangwache", "vorrat", "traeger", "doppelwache"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "klangwache", "vorrat", "traeger", "pruefsumme", "doppelwache"]
   .filter((s) => (nurSatz ? s === nurSatz : !NUR_AUF_ZURUF.includes(s)));
 if (!nurSatz) console.log(`nur auf Zuruf, nicht in diesem Lauf: ${NUR_AUF_ZURUF.join(", ")}`);
 if (SAETZE.length === 0) {

@@ -482,11 +482,71 @@ function gedecktIn(decke, schluessel) {
   return Boolean(name && decke.namen.has(name))
 }
 
+/* Eine Pruefsumme in der Form, die das Manifest fuehrt, sonst "". */
+function pruefsummeOderLeer(sha) {
+  const s = String(sha || "").toLowerCase()
+  return /^[a-f0-9]{64}$/.test(s) ? s : ""
+}
+
+/**
+ * Die Pruefsumme, unter der diese Adresse im Sitzungsverzeichnis steht, sonst
+ * "". Fuer `schreibGeteilt`, das sie in den Gemeinschaftsvorrat mitschreibt
+ * (stre-T-174).
+ */
+export function pruefsummeVon(url) {
+  return shaZuAdresse.get(ohneAbfrage(String(url || ""))) || ""
+}
+
+/**
+ * Der Gemeinschaftsvorrat, wie `liesGeteilt` ihn liefert (Adresse oder
+ * Kennung auf Eintrag), als Deckung fuer `ohneDeckung` und
+ * `gehaltenePruefung` (stre-T-174).
+ *
+ * Ein Eintrag mit gueltiger Pruefsumme wird `{ eintrag, sha }`, einer ohne
+ * bleibt die blosse Adresse wie vor stre-T-174. Beim Weltstart ist kein
+ * Manifest geladen; die Pruefsumme aus dem Eintrag ist dann die einzige
+ * Quelle, die sagt, WELCHE Datei dieses Namens gemeint ist.
+ */
+export function deckungDesVorrats(vorrat) {
+  const raus = []
+  for (const [url, e] of Object.entries(vorrat || {})) {
+    const sha = pruefsummeOderLeer(e?.sha)
+    raus.push(sha ? { eintrag: adresseNormal(url), sha } : adresseNormal(url))
+  }
+  return raus
+}
+
+/*
+ * Ein Eintrag der Deckung in seine Teile: Adresse oder Kennung, und die
+ * Pruefsumme, falls er eine traegt.
+ */
+function deckungsTeile(e) {
+  if (e && typeof e === "object") return { roh: e.eintrag, sha: pruefsummeOderLeer(e.sha) }
+  return { roh: e, sha: "" }
+}
+
+/*
+ * Der geteilte Schluessel, den ein Eintrag mit Pruefsumme deckt, sonst "".
+ * Der Name ist der Dateiname der geteilten Datei, wie `geteilterDreiklang` ihn
+ * nimmt.
+ */
+function schluesselMitSumme(roh, sha) {
+  if (!sha) return ""
+  const name = ungeloesterGeteilterName(roh, "")
+  return name ? schluesselVonKennung(GETEILT_RAUM, sha, name) : ""
+}
+
 function baueDecke(eintraege, an) {
   const decke = { schluessel: new Set(), namen: new Set() }
-  for (const e of eintraege || []) {
+  for (const d of eintraege || []) {
+    const { roh: e, sha } = deckungsTeile(d)
     const s = deckungsSchluessel(e, an)
     decke.schluessel.add(s)
+    // EIN EINTRAG MIT PRUEFSUMME DECKT GENAU SEINE DATEI (stre-T-174) und
+    // traegt keinen Namen bei. Die Namensregel bleibt fuer Alteintraege ohne
+    // Pruefsumme: lieber gehalten als einem Kunden offline genommen.
+    const genau = an ? schluesselMitSumme(e, sha) : ""
+    if (genau) { decke.schluessel.add(genau); continue }
     // Nur bei AN: bei AUS liegt keine geteilte Datei unter einem geteilten
     // Schluessel, und das Ergebnis soll bleiben, wie es war.
     const name = an ? ungeloesterGeteilterName(e, s) : ""
@@ -499,8 +559,10 @@ function baueDecke(eintraege, an) {
  * Die gehaltenen Eintraege ohne Deckung (stre-T-081).
  *
  * `gehalten` ist die Liste aus `gehalteneAdressen`, `gedeckt` jede Adresse
- * oder Kennung, die eine Zusage oder der Gemeinschaftsvorrat deckt. Eine reine
- * Funktion, damit der Abgleich in node gemessen werden kann.
+ * oder Kennung, die eine Zusage oder der Gemeinschaftsvorrat deckt, fuer den
+ * Gemeinschaftsvorrat seit stre-T-174 auch `{ eintrag, sha }` aus
+ * `deckungDesVorrats`. Eine reine Funktion, damit der Abgleich in node
+ * gemessen werden kann.
  *
  * VERGLICHEN WIRD IM RAUM DER VORRATSSCHLUESSEL, nicht der Toradressen. Mit
  * dem Schalter AN hat eine geteilte Datei drei Schreibweisen: die /a/-Adresse
@@ -529,7 +591,10 @@ export function ohneDeckung(gehalten, gedeckt, { an = GETEILTER_VORRAT_AN } = {}
  * ist "im Zweifel halten" die sichere Richtung, fuer `geteilteLuecken` waere
  * "im Zweifel gehalten" die unsichere: ein echter Fehlvermerk einer
  * gleichnamigen anderen Datei fiele weg. Der Aufrufer laesst den Vermerk bei
- * "unklar" deshalb stehen. Die Namensregel gilt nur bei AN.
+ * "unklar" deshalb stehen. Die Namensregel gilt nur bei AN, und seit
+ * stre-T-174 nur fuer einen Eintrag ohne Pruefsumme: `eintrag` darf auch
+ * `{ eintrag, sha }` aus `deckungDesVorrats` sein, und dann ist die Antwort
+ * `true` oder `false`.
  */
 export function gehaltenePruefung(gehalten, { an = GETEILTER_VORRAT_AN } = {}) {
   const schluessel = new Set(), namen = new Set()
@@ -539,9 +604,14 @@ export function gehaltenePruefung(gehalten, { an = GETEILTER_VORRAT_AN } = {}) {
     const name = an ? geteilterName(s) : ""
     if (name) namen.add(name)
   }
-  return eintrag => {
+  return d => {
+    const { roh: eintrag, sha } = deckungsTeile(d)
     const s = deckungsSchluessel(eintrag, an)
     if (schluessel.has(s)) return true
+    // Mit Pruefsumme gibt es kein "unklar" mehr (stre-T-174): gehalten ist
+    // genau die Datei dieser Pruefsumme, oder keine.
+    const genau = an ? schluesselMitSumme(eintrag, sha) : ""
+    if (genau) return schluessel.has(genau)
     const name = an ? ungeloesterGeteilterName(eintrag, s) : ""
     return name && namen.has(name) ? "unklar" : false
   }

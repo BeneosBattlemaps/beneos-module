@@ -32,7 +32,8 @@
 import { MODULE_ID, SETTING, streamEnabled, localCacheEnabled, assetUrl, zerlegeAdresse, streamKey, streamBase, VIDEO_EXT, istGeteilteDatei } from "./stream-settings.mjs"
 import { offlineGehalten, offlineHalten, offlineFreigeben, nichtGehalten,
          gehalteneAdressen, speicherAusfallStand, speicherBereit, speicherLage,
-         adresseNormal, ohneDeckung, gehaltenePruefung, adresseVonKennung } from "./stream-fetch.mjs"
+         adresseNormal, ohneDeckung, gehaltenePruefung, adresseVonKennung,
+         deckungDesVorrats, pruefsummeVon } from "./stream-fetch.mjs"
 import { streamAdressenVon, streamState } from "./stream-online.mjs"
 import { loadStreamManifest } from "./stream-install.mjs"
 import { BeneosInstallState, releaseKern, anzeigename } from "../cloud-v2/beneos-install-state.mjs"
@@ -263,7 +264,17 @@ async function schreibGeteilt(alle) {
   const sauber = {}
   for (const [url, e] of Object.entries(alle || {})) {
     if (!e || typeof e !== "object") continue
-    sauber[kennungVon(url) || url] = e
+    // DIE PRUEFSUMME GEHT MIT (stre-T-174). Beim Weltstart ist kein Manifest
+    // geladen, und nur sie sagt dann, welche Datei dieses Namens gemeint ist.
+    // Die Sitzung hat Vorrang, weil eine Datei mit einem Update neue Bytes
+    // bekommen kann; kennt sie keine, bleibt die alte. Eine Summe in falscher
+    // Form wird nicht geschrieben. Geschrieben wird auch bei Schalter AUS,
+    // damit jeder Eintrag, den diese Fassung anfasst, die Summe traegt, bevor
+    // der Schalter umgelegt wird. Der Schluessel bleibt die Kennung, und eine
+    // aeltere Fassung liest den Eintrag weiter: sie kennt das Feld nicht.
+    const { sha: alt, ...rest } = e
+    const sha = pruefsummeVon(url) || (/^[a-f0-9]{64}$/.test(String(alt || "")) ? String(alt) : "")
+    sauber[kennungVon(url) || url] = sha ? { ...rest, sha } : rest
   }
   try { await game.settings.set(MODULE_ID, SETTING.offlineGeteilt, sauber) }
   catch (e) { console.warn("Beneos Stream | Gemeinschaftsvorrat nicht schreibbar", e) }
@@ -655,7 +666,8 @@ export async function karteZusagen({ release, variant, karte, name, urls, bytes,
         // die das Verzeichnis bereits fuehrt, deren Datei aber fehlte; sie
         // pauschal auf `[meineId]` zu setzen naehme allen anderen Karten ihren
         // Verweis, und die erste geloeste Karte risse ihnen die Symbole weg.
-        vorrat[g.url] = { bytes: Number(g.bytes) || 0, karten: vorrat[g.url]?.karten || [] }
+        vorrat[g.url] = { bytes: Number(g.bytes) || 0, karten: vorrat[g.url]?.karten || [],
+          ...(vorrat[g.url]?.sha ? { sha: vorrat[g.url].sha } : {}) }
         geteiltGeholt++
       }
     }
@@ -1833,7 +1845,8 @@ export async function verwaisteLoesen() {
       if (!e || typeof e !== "object") continue
       for (const u of (e.urls || [])) gedeckt.add(adresseNormal(u))
     }
-    for (const u of Object.keys(liesGeteilt())) gedeckt.add(adresseNormal(u))
+    // Mit der Pruefsumme des Eintrags, falls er eine traegt (stre-T-174).
+    for (const d of deckungDesVorrats(liesGeteilt())) gedeckt.add(d)
   } catch (fehler) {
     // Im Zweifel nichts anfassen. Ein uebersehener Block kostet Platz, ein
     // faelschlich geloester Vorrat kostet den Kunden seine Offline-Karten.
@@ -1967,7 +1980,7 @@ export async function geteilteLuecken() {
 
   let fehlend = 0, bytes = 0, geaendert = 0
   for (const [url, e] of eintraege) {
-    const stand = istGehalten(url)
+    const stand = istGehalten(deckungDesVorrats({ [url]: e })[0])
     // Nur der Name passt, die Pruefsumme ist unbekannt: den Vermerk weder
     // setzen noch loeschen, bis ein Lauf mit Manifest es sicher weiss.
     if (stand === "unklar") continue
